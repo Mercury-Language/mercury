@@ -1789,6 +1789,13 @@ Reports an error if there is no break point with that number.
 @item enable *
 Enables all break points.
 @sp 1
+@item delete @var{num}
+Deletes the break point with the given number.
+Reports an error if there is no break point with that number.
+@sp 1
+@item delete *
+Deletes all break points.
+@sp 1
 @item modules
 Lists all the debuggable modules
 (i.e. modules that have debugging information).

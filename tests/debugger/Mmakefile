@@ -17,6 +17,7 @@ MDB = MERCURY_SUPPRESS_MDB_BANNER=yes mdb
 #-----------------------------------------------------------------------------#
 
 DEBUGGER_PROGS=	\
+	breakpoints			\
 	browser_test			\
 	debugger_regs			\
 	existential_type_classes	\

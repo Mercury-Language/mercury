@@ -34,9 +34,6 @@
 #include <ctype.h>
 #include <errno.h>
 
-/* The initial size of the spy points table. */
-#define	MR_INIT_SPY_POINTS	10
-
 /* The initial size of arrays of words. */
 #define	MR_INIT_WORD_COUNT	20
 
@@ -77,15 +74,6 @@ FILE	*MR_mdb_out;
 FILE	*MR_mdb_err;
 
 static	MR_Trace_Print_Level	MR_default_print_level = MR_PRINT_LEVEL_SOME;
-
-/*
-** The table of spy points, with counters saying which is the next free slot
-** and how many slots are allocated.
-*/
-
-static	MR_Spy_Point    	**MR_spy_points;
-static	int			MR_spy_point_next = 0;
-static	int			MR_spy_point_max  = 0;
 
 /*
 ** These variables say (a) whether the printing of event sequences will pause
@@ -159,10 +147,6 @@ static	bool	MR_trace_options_detailed(bool *detailed, char ***words,
 static	bool	MR_trace_options_confirmed(bool *confirmed, char ***words,
 			int *word_count, const char *cat, const char *item);
 static	void	MR_trace_usage(const char *cat, const char *item);
-static	void	MR_trace_internal_add_spy_point(MR_Spy_When when,
-			MR_Spy_Action action,
-			const MR_Stack_Layout_Entry *entry,
-			const MR_Stack_Layout_Label *label);
 static	void	MR_print_spy_point(int i);
 static	void	MR_trace_do_noop(void);
 
@@ -866,8 +850,19 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 
 		if (word_count == 2 && streq(words[1], "info")) {
 			int	i;
+			int	count;
+
+			count = 0;
 			for (i = 0; i < MR_spy_point_next; i++) {
-				MR_print_spy_point(i);
+				if (MR_spy_points[i]->spy_exists) {
+					MR_print_spy_point(i);
+					count++;
+				}
+			}
+
+			if (count == 0) {
+				fprintf(MR_mdb_out,
+					"There are no break points.\n");
 			}
 
 			return KEEP_INTERACTING;
@@ -880,22 +875,27 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 		{
 			; /* the usage message has already been printed */
 		} else if (word_count == 2 && streq(words[1], "here")) {
+			int	slot;
+
 			MR_register_all_modules_and_procs(MR_mdb_out, TRUE);
-			MR_trace_internal_add_spy_point(MR_SPY_SPECIFIC,
-				action, layout->MR_sll_entry, layout);
+			slot = MR_add_spy_point(MR_SPY_SPECIFIC, action,
+					layout->MR_sll_entry, layout);
+			MR_print_spy_point(slot);
 		} else if (word_count == 2 &&
 				MR_parse_proc_spec(words[1], &spec))
 		{
 			const MR_Stack_Layout_Entry	*spy_proc;
 			bool				unique;
+			int				slot;
 
 			MR_register_all_modules_and_procs(MR_mdb_out, TRUE);
 			spy_proc = MR_search_for_matching_procedure(&spec,
 					&unique);
 			if (spy_proc != NULL) {
 				if (unique) {
-					MR_trace_internal_add_spy_point(when,
-						action, spy_proc, NULL);
+					slot = MR_add_spy_point(when, action,
+						spy_proc, NULL);
+					MR_print_spy_point(slot);
 				} else {
 					fflush(MR_mdb_out);
 					fprintf(MR_mdb_err,
@@ -917,7 +917,9 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	} else if (streq(words[0], "enable")) {
 		int	n;
 		if (word_count == 2 && MR_trace_is_number(words[1], &n)) {
-			if (0 <= n && n < MR_spy_point_next) {
+			if (0 <= n && n < MR_spy_point_next
+					&& MR_spy_points[n]->spy_exists)
+			{
 				MR_spy_points[n]->spy_enabled = TRUE;
 				MR_print_spy_point(n);
 			} else {
@@ -927,15 +929,21 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 					n);
 			}
 		} else if (word_count == 2 && streq(words[1], "*")) {
-			int i;
+			int	i;
+			int	count;
+
+			count = 0;
 			for (i = 0; i < MR_spy_point_next; i++) {
-				MR_spy_points[i]->spy_enabled = TRUE;
-				MR_print_spy_point(i);
+				if (MR_spy_points[i]->spy_exists) {
+					MR_spy_points[i]->spy_enabled = TRUE;
+					MR_print_spy_point(i);
+					count++;
+				}
 			}
 
-			if (MR_spy_point_next == 0) {
-				fprintf(MR_mdb_out,
-					"There are no break points yet.\n");
+			if (count == 0) {
+				fprintf(MR_mdb_err,
+					"There are no break points.\n");
 			}
 		} else {
 			MR_trace_usage("breakpoint", "enable");
@@ -943,7 +951,9 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	} else if (streq(words[0], "disable")) {
 		int	n;
 		if (word_count == 2 && MR_trace_is_number(words[1], &n)) {
-			if (0 <= n && n < MR_spy_point_next) {
+			if (0 <= n && n < MR_spy_point_next
+					&& MR_spy_points[n]->spy_exists)
+			{
 				MR_spy_points[n]->spy_enabled = FALSE;
 				MR_print_spy_point(n);
 			} else {
@@ -953,19 +963,60 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 					n);
 			}
 		} else if (word_count == 2 && streq(words[1], "*")) {
-			int i;
+			int	i;
+			int	count;
+
+			count = 0;
 			for (i = 0; i < MR_spy_point_next; i++) {
-				MR_spy_points[i]->spy_enabled = FALSE;
-				MR_print_spy_point(i);
+				if (MR_spy_points[i]->spy_exists) {
+					MR_spy_points[i]->spy_enabled = FALSE;
+					MR_print_spy_point(i);
+					count++;
+				}
 			}
 
-			if (MR_spy_point_next == 0) {
+			if (count == 0) {
 				fflush(MR_mdb_out);
 				fprintf(MR_mdb_err,
-					"There are no break points yet.\n");
+					"There are no break points.\n");
 			}
 		} else {
 			MR_trace_usage("breakpoint", "disable");
+		}
+	} else if (streq(words[0], "delete")) {
+		int	n;
+		if (word_count == 2 && MR_trace_is_number(words[1], &n)) {
+			if (0 <= n && n < MR_spy_point_next
+					&& MR_spy_points[n]->spy_exists)
+			{
+				MR_delete_spy_point(n);
+				MR_print_spy_point(n);
+			} else {
+				fflush(MR_mdb_out);
+				fprintf(MR_mdb_err,
+					"Break point #%d does not exist.\n",
+					n);
+			}
+		} else if (word_count == 2 && streq(words[1], "*")) {
+			int	i;
+			int	count;
+
+			count = 0;
+			for (i = 0; i < MR_spy_point_next; i++) {
+				if (MR_spy_points[i]->spy_exists) {
+					MR_delete_spy_point(i);
+					MR_print_spy_point(i);
+					count++;
+				}
+			}
+
+			if (count == 0) {
+				fflush(MR_mdb_out);
+				fprintf(MR_mdb_err,
+					"There are no break points.\n");
+			}
+		} else {
+			MR_trace_usage("breakpoint", "delete");
 		}
 	} else if (streq(words[0], "register")) {
 		bool	verbose;
@@ -1689,31 +1740,20 @@ MR_trace_usage(const char *cat, const char *item)
 		item, item);
 }
 
-
-static void
-MR_trace_internal_add_spy_point(MR_Spy_When when, MR_Spy_Action action,
-	const MR_Stack_Layout_Entry *entry, const MR_Stack_Layout_Label *label)
-{
-	MR_Spy_Point	*spy_point;
-
-	MR_ensure_room_for_next(MR_spy_point, MR_Spy_Point *,
-		MR_INIT_SPY_POINTS);
-	spy_point = MR_add_spy_point(when, action, entry, label);
-	MR_spy_points[MR_spy_point_next] = spy_point;
-	MR_print_spy_point(MR_spy_point_next);
-	MR_spy_point_next++;
-}
-
 static void
 MR_print_spy_point(int spy_point_num)
 {
+	MR_Spy_Point	*point;
+
+	point = MR_spy_points[spy_point_num];
 	fprintf(MR_mdb_out, "%2d: %1s %-5s %9s ",
 		spy_point_num,
-		MR_spy_points[spy_point_num]->spy_enabled ? "+" : "-",
-		MR_spy_action_string(MR_spy_points[spy_point_num]->spy_action),
-		MR_spy_when_string(MR_spy_points[spy_point_num]->spy_when));
-	MR_print_proc_id(MR_mdb_out, MR_spy_points[spy_point_num]->spy_proc,
-		NULL, NULL, NULL);
+		point->spy_exists ?
+			(point->spy_enabled ? "+" : "-") :
+			(point->spy_enabled ? "E" : "D"),
+		MR_spy_action_string(point->spy_action),
+		MR_spy_when_string(point->spy_when));
+	MR_print_proc_id(MR_mdb_out, point->spy_proc, NULL, NULL, NULL);
 }
 
 /*
@@ -2271,8 +2311,9 @@ static	MR_trace_cmd_cat_item MR_trace_valid_command_list[] =
 	{ "browsing", "level" },
 	{ "browsing", "current" },
 	{ "breakpoint", "break" },
-	{ "breakpoint", "disable" },
 	{ "breakpoint", "enable" },
+	{ "breakpoint", "disable" },
+	{ "breakpoint", "delete" },
 	{ "breakpoint", "modules" },
 	{ "breakpoint", "procedures" },
 	{ "breakpoint", "register" },

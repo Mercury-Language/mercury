@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998 The University of Melbourne.
+** Copyright (C) 1998-1999 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -35,13 +35,23 @@ typedef enum {
 typedef struct MR_Spy_Point_Struct MR_Spy_Point;
 
 struct MR_Spy_Point_Struct {
-	MR_Spy_When			spy_when;
+	bool				spy_exists; /* FALSE if deleted */
 	bool				spy_enabled;
+	MR_Spy_When			spy_when;
 	MR_Spy_Action			spy_action;
 	const MR_Stack_Layout_Entry	*spy_proc;
 	const MR_Stack_Layout_Label	*spy_label; /* if MR_SPY_SPECIFIC */
 	MR_Spy_Point			*spy_next;
 };
+
+/*
+** The table of spy points, with counters saying which is the next free slot
+** and how many slots are allocated.
+*/
+
+extern	MR_Spy_Point    **MR_spy_points;
+extern	int		MR_spy_point_next;
+extern	int		MR_spy_point_max;
 
 /*
 ** Check whether the event described by the given label layout and port
@@ -57,9 +67,15 @@ extern	bool		MR_event_matches_spy_point(const MR_Stack_Layout_Label
 ** Add a new spy point to the table.
 */
 
-extern	MR_Spy_Point	*MR_add_spy_point(MR_Spy_When when,
+extern	int		MR_add_spy_point(MR_Spy_When when,
 				MR_Spy_Action action,
 				const MR_Stack_Layout_Entry *entry,
 				const MR_Stack_Layout_Label *label);
+
+/*
+** Delete a spy point from the table.
+*/
+
+extern	void		MR_delete_spy_point(int point_table_slot);
 
 #endif	/* not MERCURY_TRACE_SPY_H */
