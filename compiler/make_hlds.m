@@ -32,12 +32,48 @@ parse_tree_to_hlds(module(Name, Items), Module) -->
 	add_item_list_decls(Items, Module0, Module1),
 	lookup_option(statistics, bool(Statistics)),
 	maybe_report_stats(Statistics),
-	add_item_list_clauses(Items, Module1, Module2),
+	{ module_balance(Module1, Module2) },
+	lookup_option(statistics, bool(Statistics)),
+	maybe_report_stats(Statistics),
+	add_item_list_clauses(Items, Module2, Module3),
 		% the predid list is constructed in reverse order, for
 		% effiency, so we return it to the correct order here.
-	{ moduleinfo_predids(Module2, RevPredIds) },
+	{ moduleinfo_predids(Module3, RevPredIds) },
 	{ reverse(RevPredIds, PredIds) },
-	{ moduleinfo_set_predids(Module2, PredIds, Module) }.
+	{ moduleinfo_set_predids(Module3, PredIds, Module) }.
+
+	% After we have finished constructing the symbol tables,
+	% we balance all the binary trees, to improve performance
+	% in later stages of the compiler.
+
+:- pred module_balance(module_info, module_info).
+:- mode module_balance(in, out).
+
+module_balance(ModuleInfo0, ModuleInfo) :-
+
+	moduleinfo_preds(ModuleInfo0, Preds0),
+	bintree__balance(Preds0, Preds),
+	moduleinfo_set_preds(ModuleInfo0, Preds, ModuleInfo1),
+
+	moduleinfo_pred_name_index(ModuleInfo1, PredNameIndex0),
+	bintree__balance(PredNameIndex0, PredNameIndex),
+	moduleinfo_set_pred_name_index(ModuleInfo1, PredNameIndex, ModuleInfo2),
+
+	moduleinfo_types(ModuleInfo2, Types0),
+	bintree__balance(Types0, Types),
+	moduleinfo_set_types(ModuleInfo2, Types, ModuleInfo3),
+
+	moduleinfo_insts(ModuleInfo3, Insts0),
+	bintree__balance(Insts0, Insts),
+	moduleinfo_set_insts(ModuleInfo3, Insts, ModuleInfo4),
+
+	moduleinfo_modes(ModuleInfo4, Modes0),
+	bintree__balance(Modes0, Modes),
+	moduleinfo_set_modes(ModuleInfo4, Modes, ModuleInfo5),
+
+	moduleinfo_ctors(ModuleInfo5, Ctors0),
+	bintree__balance(Ctors0, Ctors),
+	moduleinfo_set_ctors(ModuleInfo5, Ctors, ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -267,7 +303,7 @@ module_add_type_defn(Module0, VarSet, TypeDefn, Cond, Context, Module) -->
 		% if there was an existing non-abstract definition for the type
 		{ map__search(Types0, Name - Arity, T2) },
 		{ T2 = hlds__type_defn(_, _, Body_2, _, _) },
-		{ \+ (Body_2 = abstract_type) }
+		{ Body_2 \= abstract_type }
 	->
 		{ Module = Module0 },
 	  	(
@@ -621,31 +657,37 @@ warn_singletons([Var | Vars0], VarSet, PredId, Context) -->
 	{ delete_all(Vars0, Var, Vars1, Found) },
 	( { varset__lookup_name(VarSet, Var, Name) } ->
 		(
-			{ Found = yes },
 			{ string__first_char(Name, '_', _) }
 		->
-			prog_out__write_context(Context),
-			io__write_string("In clause for predicate `"),
-			hlds_out__write_pred_id(PredId),
-			io__write_string("':\n"),
-			prog_out__write_context(Context),
-			io__write_string("  Warning: variable `"),
-			io__write_variable(Var, VarSet),
-			io__write_string("' occurs more than once.\n")
+			(
+				{ Found = yes }
+			->
+				prog_out__write_context(Context),
+				io__write_string("In clause for predicate `"),
+				hlds_out__write_pred_id(PredId),
+				io__write_string("':\n"),
+				prog_out__write_context(Context),
+				io__write_string("  Warning: variable `"),
+				io__write_variable(Var, VarSet),
+				io__write_string("' occurs more than once.\n")
+			;
+				[]
+			)
 		;
-			{ Found = no },
-			{ \+ string__first_char(Name, '_', _) }
-		->
-			prog_out__write_context(Context),
-			io__write_string("In clause for predicate `"),
-			hlds_out__write_pred_id(PredId),
-			io__write_string("':\n"),
-			prog_out__write_context(Context),
-			io__write_string("  Warning: variable `"),
-			io__write_variable(Var, VarSet),
-			io__write_string("' occurs only once.\n")
-		;
-			[]
+			(
+				{ Found = no }
+			->
+				prog_out__write_context(Context),
+				io__write_string("In clause for predicate `"),
+				hlds_out__write_pred_id(PredId),
+				io__write_string("':\n"),
+				prog_out__write_context(Context),
+				io__write_string("  Warning: variable `"),
+				io__write_variable(Var, VarSet),
+				io__write_string("' occurs only once.\n")
+			;
+				[]
+			)
 		)
 	;
 		[]

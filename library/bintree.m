@@ -317,11 +317,13 @@ bintree__from_sorted_list_2(Num, List0, Tree, List) :-
 		Tree = empty
 	;
 		Num1 is Num - 1,
-		Half is Num1 // 2,
-		bintree__from_sorted_list_2(Half, List0, LeftSubTree, List1),
+		SmallHalf is Num1 // 2,
+		BigHalf is Num1 - SmallHalf,
+		bintree__from_sorted_list_2(SmallHalf, List0, LeftSubTree,
+				List1),
 		List1 = [HeadKey - HeadValue | List2],
 		Tree = tree(HeadKey, HeadValue, LeftSubTree, RightSubTree),
-		bintree__from_sorted_list_2(Half, List2, RightSubTree, List)
+		bintree__from_sorted_list_2(BigHalf, List2, RightSubTree, List)
 	).
 
 %-----------------------------------------------------------------------------%

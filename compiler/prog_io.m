@@ -1330,7 +1330,7 @@ check_for_errors_3(Name, Args, Body, Term, Result) :-
 	( %%%	some [Arg]
 		(
 			member(Arg, Args),
-			\+ Arg = term_variable(_)
+			Arg \= term_variable(_)
 		)
 	->
 		Result = error("Type parameters must be variables", Arg)
@@ -1544,7 +1544,7 @@ convert_inst_defn_2(ok(Name, Args), Head, Body, Result) :-
 	( %%%	some [Arg]
 		(
 			member(Arg, Args),
-			\+ Arg = term_variable(_)
+			Arg \= term_variable(_)
 		)
 	->
 		Result = error("Inst parameters must be variables", Arg)
@@ -1666,7 +1666,7 @@ convert_mode_defn_2(ok(Name, Args), Head, Body, Result) :-
 	( %%% some [Arg]
 		(
 			member(Arg, Args),
-			\+ Arg = term_variable(_)
+			Arg \= term_variable(_)
 		)
 	->
 		Result = error("Mode parameters must be variables", Arg)
