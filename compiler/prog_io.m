@@ -1,19 +1,37 @@
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- module prog_io.
 :- import_module string, list, varset, term, io.
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
 :- interface.
 
-:- type message_list	==	list(string).
+%-----------------------------------------------------------------------------%
+
+:- type int		==	integer.
+
+%-----------------------------------------------------------------------------%
+
+	% This is how programs (and parse errors) are represented.
+
 :- type maybe_program	--->	ok(message_list, program)
 			;	error(message_list).
+:- type message_list	==	list(pair(string, term)).
 :- type program		==	list(item).
 :- type item		--->	clause(varset, string, list(term), goal)
-			; 	type_defn(varset, type_defn, goal)
+			; 	type_defn(varset, type_defn, condition)
+			; 	inst_defn(varset, inst_defn, condition)
+			; 	mode_defn(varset, mode_defn, condition)
 			; 	module_defn(varset, module_defn)
-			; 	pred(varset, string, list(type_body), goal)
-			; 	rule(varset, string, list(type_body), goal)
+			; 	pred(varset, string, list(type_body), condition)
+			; 	rule(varset, string, list(type_body), condition)
+			; 	mode(varset, string, list(mode_body), condition)
 			; 	error.
+
+%-----------------------------------------------------------------------------%
 
 	% Here's how clauses and goals are represented.
 	% (Constructs like "=>", "<=", and "<=>" are considered to be
@@ -40,35 +58,58 @@
 :- type goals		==	list(goal).
 :- type vars		==	list(variable).
 
-:- type int		==	integer.
-
 %-----------------------------------------------------------------------------%
 
-	% OK, this is how types are represented.
+	% This is how types are represented.
 
-			% one day I'll allow value parameters as well
-			% as type parameters.
+			% one day we might allow types to take
+			% value parameters as well as type parameters.
+
 :- type type_defn	--->	du_type(string, list(term), list(constructor))
 			;	uu_type(string, list(term), list(type_body))
 			;	eqv_type(string, list(term), type_body).
-:- type constructor	==	term.
-:- type type_head	==	term.
-:- type type_body	==	term.
-:- type (type)		==	term.
+:- type constructor	=	term.
+:- type type_head	=	term.
+:- type type_body	=	term.
+:- type (type)		==	type_body.
 
 /** JUNK
 :- type constructor	--->	string - list(type_body).
 :- type type_head	--->	string - list(type_param).
-:- type type_param	==	variable.
+:- type type_param	=	variable.
 :- type type_body	--->	param(variable)
  			;	string - list(type_body).
 **/
 
+	% Types may have arbitrary assertions associated with them
+	% (eg. you can define a type which represents sorted lists).
+	% The compiler will ignore these assertions - they are intended
+	% to be used by other tools, such as the debugger.
 
 :- type condition	--->	true
 			;	where(term).
 
 %-----------------------------------------------------------------------------%
+
+	% This is how modes are represented.
+	% XXX this is incomplete.
+
+:- type inst_defn	--->	inst_defn(string, list(term), inst).
+
+:- type (inst)		--->	free
+			%%% ;	bound(list(inst_cons))	XXX
+			;	ground
+			;	user_defined_inst(term).
+
+:- type mode_defn	--->	mode_defn(string, list(term), mode).
+
+:- type mode		--->	((inst) -> (inst))
+			;	user_defined_mode(term).
+
+%-----------------------------------------------------------------------------%
+	
+	% This is how module-system declarations (such as imports
+	% and exports) are represented.
 
 :- type module_defn	--->	module(module_name)
 			;	interface
@@ -102,6 +143,7 @@
 			;	name_args_res(sym_name,
 						list(type), type).
 :- type op_specifier	--->	sym(sym_name_specifier)
+			% XXX operator fixity specifiers not yet implemented
 			;	fixity(sym_name_specifier, fixity).
 :- type fixity		--->	infix ; prefix ; postfix.
 :- type sym_name_specifier ---> name(sym_name)
@@ -109,14 +151,15 @@
 :- type sym_name 	--->	unqualified(string)
 			;	qualified(module_specifier, string).
 
-:- type module_specifier == string.
-:- type module_name == string.
+:- type module_specifier ==	string.
+:- type module_name 	== 	string.
 
 %-----------------------------------------------------------------------------%
 
-% This module exports the following predicates:
+% This module (prog_io) exports the following predicates:
 
 :- pred prog_io__read_program(string, maybe_program, io__state, io__state).
+:- mode prog_io__read_program(input, output, di, uo).
 
 % 	read_program(FileName, Result)
 %	- reads and parses file 'FileName'. Result is either
@@ -125,9 +168,11 @@
 %	  and Messages is a list of warning/error messages.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 	% When actually reading in type declarations, we need to
@@ -135,12 +180,10 @@
 
 :- type maybe(T)	--->	error(string, term)
 			;	ok(T).
-:- type maybe_functor	--->	error(string)
-			;	ok(string, list(term)).
-:- type maybe_type_defn	--->	error(string)
-			;	type_defn(type_defn).
-:- type maybe_module_defn =	maybe(module_defn).
-:- type maybe_decl	=	maybe(item).
+:- type maybe2(T1, T2)	--->	error(string, term)
+			;	ok(T1, T2).
+:- type maybe_functor	== 	maybe2(string, list(term)).
+:- type maybe_constructor ==	maybe2(sym_name, list(type)).
 
 % This implementation uses io__read_term to read in the program
 % term at a time, and then converts those terms into clauses and
@@ -158,20 +201,21 @@ prog_io__read_program(FileName, Result) -->
 	% due to a NU-Prolog bug)
 
 :- pred read_program_2(res, string, maybe_program, io__state, io__state).
+:- mode read_program_2(input, input, output, di, uo).
 read_program_2(ok, _, Program) -->
 	read_program_3(Messages, Items, no, Error),
 	{if Error = yes then
 		Program = error(Messages)
 	else
-		Program = ok(Items, Messages)
+		Program = ok(Messages, Items)
 	},
 	io__seen.
-read_program_2(error, FileName, error([Message])) -->
+read_program_2(error, FileName, error([Message - Term])) -->
 	{ io__progname(Progname),
-	  % Message = Progname ++ ": can't open file '" ++ FileName ++ "'.\n"
-	  append(Progname, ": can't open file '", Message1),
-	  append(Message1, FileName, Message2),
-	  append(Message2, "'.\n", Message)
+	  string__append(Progname, ": can't open file '", Message1),
+	  string__append(Message1, FileName, Message2),
+	  string__append(Message2, "'.\n", Message),
+	  Term = term_functor(term_atom("<end of file>"), [])
 	}.
 
 %-----------------------------------------------------------------------------%
@@ -189,22 +233,29 @@ read_program_2(error, FileName, error([Message])) -->
 :- type yes_or_no ---> yes ; no.
 :- pred read_program_3(message_list, program, yes_or_no, yes_or_no,
 			io__state, io__state).
+:- mode read_program_3(output, output, input, output, di, uo).
 read_program_3(Messages, Items, Error0, Error) -->
 	io__read_term(Result),
 	read_program_4(Result, Messages, Items, Error0, Error).
 
+	% XXX This uses difference lists in a way not allowed by
+	% the simple sequential mode system without late-input args.
+
 :- pred read_program_4(read_term,message_list,program,yes_or_no,yes_or_no,
 			io__state,io__state).
+:- mode read_program_4(input, output, output, input, output, di, uo).
 read_program_4(eof, [], [], Error, Error) --> []. 
 read_program_4(term(VarSet, Term), Messages, Items, Error0, Error) -->
 	{ read_program_5(VarSet, Term, Messages, Items, Error0,
 				 Messages1, Items1, Error1) },
- 	read_program_3(Messages1, Items1, Error1, Error).
-
-
+ 	read_program_3(Messages1, Items1, Error1, Error),
+	{ require(ground(Messages1), "Messages1 must be ground"),
+	require(ground(Messages), "Messages must be ground") }.
 
 :- pred read_program_5(varset, term, message_list, program, yes_or_no,
 		       message_list, program, yes_or_no).
+:- mode read_program_5(input, input, output, output, input,
+				     input, input, output).
 read_program_5(VarSet, Term, Msgs, Items, Error0, Msgs1, Items1, Error) :-
 	Items = Item.Items1,
  	(if some [Decl]
@@ -233,11 +284,13 @@ read_program_5(VarSet, Term, Msgs, Items, Error0, Msgs1, Items1, Error) :-
 		else
 			Item = error,
 			Error = yes,
-			add_error("atom expected in clause head", Msgs, Msgs1)
+			add_error("atom expected in clause head", Head,
+					Msgs, Msgs1)
 		)
 	).
 
 :- pred join_error(yes_or_no, yes_or_no, yes_or_no).
+:- mode join_error(input, input, output).
 join_error(yes, _, yes).
 join_error(no, Error, Error).
 
@@ -246,6 +299,7 @@ join_error(no, Error, Error).
 	% parse a goal
 
 :- pred parse_goal(term, goal).
+:- mode parse_goal(input, output).
 parse_goal(Term, Goal) :-
 	(if some Goal2 parse_goal_2(Term, Goal2) then
 		Goal = Goal2
@@ -254,6 +308,7 @@ parse_goal(Term, Goal) :-
 	).
 
 :- pred parse_goal_2(term, goal).
+:- pred parse_goal_2(input, output).
 parse_goal_2(term_functor(term_atom("true"),[]), true).
 parse_goal_2(term_functor(term_atom("fail"),[]), fail).
 parse_goal_2(term_functor(term_atom(","),[A0,B0]), (A,B)) :-
@@ -284,6 +339,7 @@ parse_goal_2( term_functor(term_atom("all"),[Vars0,A0]),all(Vars,A) ):-
 	parse_goal(A0, A).
 
 :- pred parse_some_vars_goal(term, vars, goal).
+:- pred parse_some_vars_goal(input, output, output).
 parse_some_vars_goal(A0, Vars, A) :-
 	(if some [Vars0, A1]
 		A0 = term_functor(term_atom("some"), [Vars0,A1])
@@ -297,6 +353,7 @@ parse_some_vars_goal(A0, Vars, A) :-
 
 %-----------------------------------------------------------------------------%
 :- pred parse_decl(varset, term, item, message_list, message_list, yes_or_no).
+:- pred parse_decl(input, input, output, input, output, output).
 parse_decl(VarSet, F, ParsedDecl, Msgs, Msgs1, Error) :-
 	(if some [Atom, As]
 		F = term_functor(term_atom(Atom), As)
@@ -308,27 +365,34 @@ parse_decl(VarSet, F, ParsedDecl, Msgs, Msgs1, Error) :-
 		else
 			ParsedDecl = error,
 			Error = yes,
-			add_error("unrecognized declaration", Msgs, Msgs1)
+			add_error("unrecognized declaration", F, Msgs, Msgs1)
 		)
 	else
 		ParsedDecl = error,
 		Error = yes,
-		add_error("atom expected after `:-'", Msgs, Msgs1)
+		add_error("atom expected after `:-'", F, Msgs, Msgs1)
 	).
 
-add_warning(Warning, Msg.Msgs, Msgs) :-
+:- pred add_warning(string, term, message_list, message_list).
+:- mode add_warning(input, input, output, input).
+add_warning(Warning, Term, [Msg - Term | Msgs], Msgs) :-
 	string__append("warning: ", Warning, Msg).
-add_error(Error, Msg.Msgs, Msgs) :-
+
+:- pred add_error(string, term, message_list, message_list).
+:- mode add_error(input, input, output, input).
+add_error(Error, Term, [Msg - Term | Msgs], Msgs) :-
 	string__append("error: ", Error, Msg).
 
-:- pred parse_decl_2(maybe_decl, item, message_list, message_list, yes_or_no).
-parse_decl_2(error(ErrorMsg,_), error, ErrorMsg.Msgs1, Msgs1, yes).
+:- pred parse_decl_2(maybe(item), item, message_list, message_list, yes_or_no).
+:- pred parse_decl_2(input, output, output, input, output).
+parse_decl_2(error(ErrorMsg,Term), error, (ErrorMsg-Term).Msgs1, Msgs1, yes).
 parse_decl_2(ok(ParsedDecl), ParsedDecl, Msgs1, Msgs1, no).
 
 	% process_decl(VarSet, Atom, Args, Result) succeeds if Atom(Args)
 	% is a declaration and binds Result to a representation of that
 	% declaration.
-:- pred process_decl(varset, string, list(term), maybe_decl).
+:- pred process_decl(varset, string, list(term), maybe(item)).
+:- mode process_decl(input, input, input, output).
 process_decl(VarSet, "type", [TypeDecl], Result) :-
 	parse_type_decl(VarSet, TypeDecl, Result).
 
@@ -347,17 +411,32 @@ process_decl(VarSet, "use_module", [ModuleSpec], Result) :-
 process_decl(VarSet, "export_module", [ModuleSpec], Result) :-
 	parse_export_module_decl(VarSet, ModuleSpec, Result).
 
+process_decl(VarSet, "import_sym", [SymSpec], Result) :-
+	parse_import_sym_decl(VarSet, SymSpec, Result).
+
+process_decl(VarSet, "use_sym", [SymSpec], Result) :-
+	parse_use_sym_decl(VarSet, SymSpec, Result).
+
+process_decl(VarSet, "export_sym", [SymSpec], Result) :-
+	parse_export_sym_decl(VarSet, SymSpec, Result).
+
 process_decl(VarSet, "import_pred", [PredSpec], Result) :-
 	parse_import_pred_decl(VarSet, PredSpec, Result).
 
 process_decl(VarSet, "use_pred", [PredSpec], Result) :-
 	parse_use_pred_decl(VarSet, PredSpec, Result).
 
-process_decl(VarSet, "import_pred", [PredSpec], Result) :-
-	parse_export_pred_decl(VarSet, PredSpec, Result).
-
 process_decl(VarSet, "export_pred", [PredSpec], Result) :-
 	parse_export_pred_decl(VarSet, PredSpec, Result).
+
+process_decl(VarSet, "import_cons", [ConsSpec], Result) :-
+	parse_import_cons_decl(VarSet, ConsSpec, Result).
+
+process_decl(VarSet, "use_cons", [ConsSpec], Result) :-
+	parse_use_cons_decl(VarSet, ConsSpec, Result).
+
+process_decl(VarSet, "export_cons", [ConsSpec], Result) :-
+	parse_export_cons_decl(VarSet, ConsSpec, Result).
 
 process_decl(VarSet, "import_type", [TypeSpec], Result) :-
 	parse_import_type_decl(VarSet, TypeSpec, Result).
@@ -368,11 +447,30 @@ process_decl(VarSet, "use_type", [TypeSpec], Result) :-
 process_decl(VarSet, "export_type", [TypeSpec], Result) :-
 	parse_export_type_decl(VarSet, TypeSpec, Result).
 
+process_decl(VarSet, "import_adt", [ADT_Spec], Result) :-
+	parse_import_adt_decl(VarSet, ADT_Spec, Result).
+
+process_decl(VarSet, "use_adt", [ADT_Spec], Result) :-
+	parse_use_adt_decl(VarSet, ADT_Spec, Result).
+
+process_decl(VarSet, "export_adt", [ADT_Spec], Result) :-
+	parse_export_adt_decl(VarSet, ADT_Spec, Result).
+
+process_decl(VarSet, "import_op", [OpSpec], Result) :-
+	parse_import_op_decl(VarSet, OpSpec, Result).
+
+process_decl(VarSet, "use_op", [OpSpec], Result) :-
+	parse_use_op_decl(VarSet, OpSpec, Result).
+
+process_decl(VarSet, "export_op", [OpSpec], Result) :-
+	parse_export_op_decl(VarSet, OpSpec, Result).
+
 process_decl(VarSet, "interface", [], ok(module_defn(VarSet, interface))).
 process_decl(VarSet, "implementation", [],
 				ok(module_defn(VarSet, implementation))).
 
-:- pred type_decl(varset, term, maybe_decl).
+:- pred parse_type_decl(varset, term, maybe(item)).
+:- mode parse_type_decl(input, input, output).
 parse_type_decl(VarSet, TypeDecl, Result) :-
     (if some [R, Cond]
 	parse_type_decl_type(TypeDecl, Cond, R) 
@@ -382,7 +480,8 @@ parse_type_decl(VarSet, TypeDecl, Result) :-
 	Result = error("Invalid type declaration (need =, == or --->)", TypeDecl)
     ).
 
-:- pred parse_type_decl_2(maybe_type_defn, varset, condition, maybe_decl).
+:- pred parse_type_decl_2(maybe(type_defn), varset, condition, maybe(item)).
+:- mode parse_type_decl_2(input, input, input, output).
 parse_type_decl_2(error(Error, Term), _, _, error(Error, Term)).
 parse_type_decl_2(ok(TypeDefn), VarSet, Cond,
 					ok(type_defn(VarSet, TypeDefn, Cond))).
@@ -395,7 +494,8 @@ parse_type_decl_2(ok(TypeDefn), VarSet, Cond,
 	% to the condition for that declaration (if any), and Result to
 	% a representation of the declaration.
 
-:- pred parse_type_decl_type(term, condition, maybe_type_defn).
+:- pred parse_type_decl_type(term, condition, maybe(type_defn)).
+:- mode parse_type_decl_type(input, input, output).
 
 parse_type_decl_type(term_functor(term_atom("--->"),[H,B]), Condition, R) :-
 	get_condition(B, Body, Condition),
@@ -414,7 +514,8 @@ parse_type_decl_type(term_functor(term_atom("=="),[H,B]), Condition, R) :-
 	% if Pred is a "pred" type declaration, and binds Condition
 	% to the condition for that declaration (if any), and Result to
 	% a representation of the declaration.
-:- pred parse_type_decl_pred(varset, term, maybe_decl).
+:- pred parse_type_decl_pred(varset, term, maybe(item)).
+:- mode parse_type_decl_pred(input, input, output).
 parse_type_decl_pred(VarSet, Pred, R) :-
 	get_condition(Pred, Body, Condition),
 	process_pred(VarSet, Body, Condition, R).
@@ -424,7 +525,8 @@ parse_type_decl_pred(VarSet, Pred, R) :-
 	% if Rule is a "rule" type declaration, and binds Result to
 	% a representation of the declaration.
 	% ("rule" here means DCG predicate, not horn clause.)
-:- pred parse_type_decl_rule(varset, term, maybe_decl).
+:- pred parse_type_decl_rule(varset, term, maybe(item)).
+:- mode parse_type_decl_rule(input, input, output).
 parse_type_decl_rule(VarSet, Rule, R) :-
 	get_condition(Rule, Body, Condition),
 	process_rule(VarSet, Body, Condition, R).
@@ -435,6 +537,7 @@ parse_type_decl_rule(VarSet, Rule, R) :-
 	% and binds Term to the other part of Term0. If Term0 does not
 	% contain a condition, then Condition is bound to true.
 :- pred get_condition(term, term, condition).
+:- mode get_condition(input, output, output).
 get_condition(B, Body, Condition) :-
 	(if some [Body1, Condition1]
 		B = term_functor(term_atom("where"), [Body1, Condition1])
@@ -449,12 +552,14 @@ get_condition(B, Body, Condition) :-
 %-----------------------------------------------------------------------------%
 
 	% This is for "Head = Body" (undiscriminated union) definitions.
-:- pred process_uu_type(type_head, term, maybe_type_defn).
+:- pred process_uu_type(type_head, term, maybe(type_defn)).
+:- mode process_uu_type(input, input, output).
 process_uu_type(Head, Body, Result) :-
 	check_for_errors(Head, Body, Result0),
 	process_uu_type_2(Result0, Body, Result).
 
-:- pred process_uu_type_2(maybe_functor, term, maybe_type_defn).
+:- pred process_uu_type_2(maybe_functor, term, maybe(type_defn)).
+:- mode process_uu_type_2(input, input, output).
 process_uu_type_2(error(Error, Term), _, error(Error, Term)).
 process_uu_type_2(ok(Name, Args), Body, ok(uu_type(Name,Args,List))) :-
 		sum_to_list(Body, List).
@@ -462,12 +567,14 @@ process_uu_type_2(ok(Name, Args), Body, ok(uu_type(Name,Args,List))) :-
 %-----------------------------------------------------------------------------%
 
 	% This is for "Head == Body" (equivalence) definitions.
-:- pred process_eqv_type(type_head, term, maybe_type_defn).
+:- pred process_eqv_type(type_head, term, maybe(type_defn)).
+:- mode process_eqv_type(input, input, output).
 process_eqv_type(Head, Body, Result) :-
 	check_for_errors(Head, Body, Result0),
 	process_eqv_type_2(Result0, Body, Result).
 
-:- pred process_eqv_type_2(maybe_functor, term, maybe_type_defn).
+:- pred process_eqv_type_2(maybe_functor, term, maybe(type_defn)).
+:- mode process_eqv_type_2(input, input, output).
 process_eqv_type_2(error(Error, Term), _, error(Error, Term)).
 process_eqv_type_2(ok(Name, Args), Body, ok(eqv_type(Name,Args,Body))).
 
@@ -478,12 +585,14 @@ process_eqv_type_2(ok(Name, Args), Body, ok(eqv_type(Name,Args,Body))).
 	% binds Result to a representation of the type information about the
 	% TypeHead.
 	% This is for "Head ---> Body" (constructor) definitions.
-:- pred process_du_type(type_head, term, maybe_type_defn).
+:- pred process_du_type(type_head, term, maybe(type_defn)).
+:- mode process_du_type(input, input, output).
 process_du_type(Head, Body, Result) :-
 	check_for_errors(Head, Body, Result0),
 	process_du_type_2(Result0, Body, Result).
 
-:- pred process_du_type_2(maybe_functor, term, maybe_type_defn).
+:- pred process_du_type_2(maybe_functor, term, maybe(type_defn)).
+:- mode process_du_type_2(input, input, output).
 process_du_type_2(error(Error, Term), _, error(Error, Term)).
 process_du_type_2(ok(Functor,Args), Body, Result) :-
 	% check that body is a disjunction of constructors
@@ -498,12 +607,15 @@ process_du_type_2(ok(Functor,Args), Body, Result) :-
 %-----------------------------------------------------------------------------%
 	
 :- pred check_for_errors(term, term, maybe_functor).
-check_for_errors(term_variable(V), _, 
-		error("variable on LHS of type definition", term_variable(V))).
-check_for_errors(term_functor(Functor,Args), Body, Result) :-
+:- mode check_for_errors(input, input, output).
+check_for_errors(Term, _, error("variable on LHS of type definition", Term)) :-
+	Term = term_variable(_).
+check_for_errors(Term, Body, Result) :-
+	Term = term_functor(Functor,Args),
 	check_for_errors_2(Functor, Args, Body, Term, Result).
 
 :- pred check_for_errors_2(const, list(term), term, term, maybe_functor).
+:- mode check_for_errors_2(input, input, input, input, output).
 check_for_errors_2(term_float(_), _, _, Term, 
 		error("type name can't be a floating point number", Term)).
 check_for_errors_2(term_integer(_), _, _, Term,
@@ -514,6 +626,7 @@ check_for_errors_2(term_atom(Name), Args, Body, Term, Result) :-
 	check_for_errors_3(Name, Args, Body, Term, Result).
 
 :- pred check_for_errors_3(string, list(term), term, term, maybe_functor).
+:- mode check_for_errors_3(input, input, input, input, output).
 check_for_errors_3(Name, Args, Body, Term, Result) :-
 	% check that all the head args are variables
 	(if	some [Arg] (
@@ -546,22 +659,25 @@ check_for_errors_3(Name, Args, Body, Term, Result) :-
 %-----------------------------------------------------------------------------%
 
 :- pred convert_constructors(term, list(term)).
+:- mode convert_constructors(input, output).
 convert_constructors(Body,Constrs) :-
 	disjunction_to_list(Body, List),
 	convert_constructors_2(List, Constrs).
 
+	% true if input argument is a valid list of constructors
+
 :- pred convert_constructors_2(list(term), list(term)).
+:- mode convert_constructors_2(input, output).
 convert_constructors_2([], []).
 convert_constructors_2(Term.Terms, Constr.Constrs) :-
 	convert_constructor(Term, Constr),
 	convert_constructors_2(Terms, Constrs).
 
-	% true if argument is a valid constructor
-	% (used to mean a functor all of whose arguments are variables,
-	%  but now we allow any terms as arguments).
+	% true if input argument is a valid constructor
+
 :- pred convert_constructor(term, term).
+:- mode convert_constructor(input, output).
 convert_constructor(term_functor(Functor,Args), term_functor(Functor,Args)).
-	% all [Arg] member(Arg,Args) => some Var Arg = term_variable(Var).
 
 %-----------------------------------------------------------------------------%
 
@@ -578,6 +694,23 @@ disjunction_to_list_2(Term, List0, List) :-
 	then
 		disjunction_to_list_2(L, List0, List1),
 		disjunction_to_list_2(R, List1, List)
+	else
+		List = Term.List0
+	).
+
+	% convert an conjunction to a list
+
+:- pred conjunction_to_list(term, list(term)).
+conjunction_to_list(Term, List) :-
+	conjunction_to_list_2(Term, [], List).
+
+:- pred conjunction_to_list_2(term, list(term), list(term)).
+conjunction_to_list_2(Term, List0, List) :-
+	(if some [L, R]
+		Term = term_functor(term_atom(","), [L, R])
+	then
+		conjunction_to_list_2(L, List0, List1),
+		conjunction_to_list_2(R, List1, List)
 	else
 		List = Term.List0
 	).
@@ -603,7 +736,7 @@ sum_to_list_2(Term, List0, List) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred process_pred(varset, term, condition, maybe_decl).
+:- pred process_pred(varset, term, condition, maybe(item)).
 process_pred(VarSet, PredType, Cond, Result) :-
 	(if some [F,As]
 		PredType = term_functor(term_atom(F), As)
@@ -616,7 +749,7 @@ process_pred(VarSet, PredType, Cond, Result) :-
 
 	% A rule declaration is just the same as a pred declaration,
 	% except that there are two hidden arguments. 
-:- pred process_rule(varset, term, condition, maybe_decl).
+:- pred process_rule(varset, term, condition, maybe(item)).
 process_rule(VarSet, RuleType, Cond, Result) :-
 	(if some [F,As]
 		RuleType = term_functor(term_atom(F), As)
@@ -638,58 +771,198 @@ process_rule(VarSet, RuleType, Cond, Result) :-
 
 %-----------------------------------------------------------------------------%
 
-% parse import, use, and export module declarations
+% parse {import,use,export}_module declarations
 
-:- pred parse_import_module_decl(varset, term, maybe_decl).
+:- pred parse_import_module_decl(varset, term, maybe(item)).
 parse_import_module_decl(VarSet, ModuleSpec, Result) :-
 	parse_module_spec_list(ModuleSpec, R),
-	process_import(R, Result).
+	process_import(R, VarSet, Result).
 
-:- pred parse_use_module_decl(varset, term, maybe_decl).
+:- pred parse_use_module_decl(varset, term, maybe(item)).
 parse_use_module_decl(VarSet, ModuleSpec, Result) :-
 	parse_module_spec_list(ModuleSpec, R),
-	process_use(R, Result).
+	process_use(R, VarSet, Result).
 
-:- pred parse_export_module_decl(varset, term, maybe_decl).
+:- pred parse_export_module_decl(varset, term, maybe(item)).
 parse_export_module_decl(VarSet, ModuleSpec, Result) :-
 	parse_module_spec_list(ModuleSpec, R),
-	process_export(R, Result).
-
-% import, use, and export predicate
-
-:- pred import_module_decl(varset, term, maybe_decl).
-parse_import_pred_decl(VarSet, ModuleSpec, Result) :-
-	parse_pred_spec_list(ModuleSpec, R),
-	process_import(R, Result).
-
-:- pred parse_use_pred_decl(varset, term, maybe_decl).
-parse_use_pred_decl(VarSet, ModuleSpec, Result) :-
-	parse_pred_spec_list(ModuleSpec, R),
-	process_use(R, Result).
-
-:- pred parse_export_pred_decl(varset, term, maybe_decl).
-parse_export_pred_decl(VarSet, ModuleSpec, Result) :-
-	parse_pred_spec_list(ModuleSpec, R),
 	process_export(R, VarSet, Result).
 
-% import, use, and export type
+% parse {import,use,export}_sym declarations
 
-:- pred parse_import_type_decl(varset, term, maybe_decl).
-parse_import_type_decl(VarSet, ModuleSpec, Result) :-
-	parse_type_spec_list(ModuleSpec, R),
-	process_import(R, Result).
+:- pred parse_export_sym_decl(varset, term, maybe(item)).
+parse_export_sym_decl(VarSet, SymSpec, Result) :-
+	parse_sym_spec_list(SymSpec, R),
+	process_export(R, VarSet, Result).
 
-:- pred parse_use_type_decl(varset, term, maybe_decl).
-parse_use_type_decl(VarSet, ModuleSpec, Result) :-
-	parse_type_spec_list(ModuleSpec, R),
-	process_use(R, Result).
+:- pred parse_import_sym_decl(varset, term, maybe(item)).
+parse_import_sym_decl(VarSet, SymSpec, Result) :-
+	parse_sym_spec_list(SymSpec, R),
+	process_import(R, VarSet, Result).
 
-:- pred parse_export_type_decl(varset, term, maybe_decl).
-parse_export_type_decl(VarSet, ModuleSpec, Result) :-
-	parse_type_spec_list(ModuleSpec, R),
+:- pred parse_use_sym_decl(varset, term, maybe(item)).
+parse_use_sym_decl(VarSet, SymSpec, Result) :-
+	parse_sym_spec_list(SymSpec, R),
+	process_use(R, VarSet, Result).
+
+% parse {import,use,export}_pred declarations
+
+:- pred parse_import_pred_decl(varset, term, maybe(item)).
+parse_import_pred_decl(VarSet, PredSpec, Result) :-
+	parse_pred_spec_list(PredSpec, R),
+	process_import(R, VarSet, Result).
+
+:- pred parse_use_pred_decl(varset, term, maybe(item)).
+parse_use_pred_decl(VarSet, PredSpec, Result) :-
+	parse_pred_spec_list(PredSpec, R),
+	process_use(R, VarSet, Result).
+
+:- pred parse_export_pred_decl(varset, term, maybe(item)).
+parse_export_pred_decl(VarSet, PredSpec, Result) :-
+	parse_pred_spec_list(PredSpec, R),
+	process_export(R, VarSet, Result).
+
+% parse {import,use,export}_cons declarations
+
+:- pred parse_import_cons_decl(varset, term, maybe(item)).
+parse_import_cons_decl(VarSet, ConsSpec, Result) :-
+	parse_cons_spec_list(ConsSpec, R),
+	process_import(R, VarSet, Result).
+
+:- pred parse_use_cons_decl(varset, term, maybe(item)).
+parse_use_cons_decl(VarSet, ConsSpec, Result) :-
+	parse_cons_spec_list(ConsSpec, R),
+	process_use(R, VarSet, Result).
+
+:- pred parse_export_cons_decl(varset, term, maybe(item)).
+parse_export_cons_decl(VarSet, ConsSpec, Result) :-
+	parse_cons_spec_list(ConsSpec, R),
+	process_export(R, VarSet, Result).
+
+% parse {import,use,export}_type declarations
+
+:- pred parse_import_type_decl(varset, term, maybe(item)).
+parse_import_type_decl(VarSet, TypeSpec, Result) :-
+	parse_type_spec_list(TypeSpec, R),
+	process_import(R, VarSet, Result).
+
+:- pred parse_use_type_decl(varset, term, maybe(item)).
+parse_use_type_decl(VarSet, TypeSpec, Result) :-
+	parse_type_spec_list(TypeSpec, R),
+	process_use(R, VarSet, Result).
+
+:- pred parse_export_type_decl(varset, term, maybe(item)).
+parse_export_type_decl(VarSet, TypeSpec, Result) :-
+	parse_type_spec_list(TypeSpec, R),
+	process_export(R, VarSet, Result).
+
+% parse {import,use,export}_adt declarations
+
+:- pred parse_import_adt_decl(varset, term, maybe(item)).
+parse_import_adt_decl(VarSet, ADT_Spec, Result) :-
+	parse_adt_spec_list(ADT_Spec, R),
+	process_import(R, VarSet, Result).
+
+:- pred parse_use_adt_decl(varset, term, maybe(item)).
+parse_use_adt_decl(VarSet, ADT_Spec, Result) :-
+	parse_adt_spec_list(ADT_Spec, R),
+	process_use(R, VarSet, Result).
+
+:- pred parse_export_adt_decl(varset, term, maybe(item)).
+parse_export_adt_decl(VarSet, ADT_Spec, Result) :-
+	parse_adt_spec_list(ADT_Spec, R),
+	process_export(R, VarSet, Result).
+
+% parse {import,use,export}_op declarations
+
+:- pred parse_import_op_decl(varset, term, maybe(item)).
+parse_import_op_decl(VarSet, OpSpec, Result) :-
+	parse_op_spec_list(OpSpec, R),
+	process_import(R, VarSet, Result).
+
+:- pred parse_use_op_decl(varset, term, maybe(item)).
+parse_use_op_decl(VarSet, OpSpec, Result) :-
+	parse_op_spec_list(OpSpec, R),
+	process_use(R, VarSet, Result).
+
+:- pred parse_export_op_decl(varset, term, maybe(item)).
+parse_export_op_decl(VarSet, OpSpec, Result) :-
+	parse_op_spec_list(OpSpec, R),
 	process_export(R, VarSet, Result).
 
 %-----------------------------------------------------------------------------%
+
+	% Parse a comma-separated list (misleading described as
+	% a "conjunction") of module specifiers.
+
+:- pred parse_module_spec_list(term, maybe(list(module_specifier))).
+:- mode parse_module_spec_list(input, output).
+parse_module_spec_list(Term, Result) :-
+	conjunction_to_list(Term, List),
+	parse_module_spec_list_2(List, Result).
+
+:- pred parse_module_spec_list_2(list(term), maybe(list(module_specifier))).
+:- mode parse_module_spec_list_2(input, output).
+parse_module_spec_list_2([], ok([])).
+parse_module_spec_list_2(X.Xs, Result) :-
+	parse_module_specifier(X, X_Result),
+	parse_module_spec_list_2(Xs, Xs_Result),
+	combine_list_results(X_Result, Xs_Result, Result).
+
+
+	% Parse a comma-separated list (misleading described as
+	% a "conjunction") of symbol specifiers.
+
+:- pred parse_sym_spec_list(term, maybe(list(sym_specifier))).
+:- mode parse_sym_spec_list(input, output).
+parse_sym_spec_list(Term, Result) :-
+	conjunction_to_list(Term, List),
+	parse_sym_spec_list_2(List, Result).
+
+:- pred parse_sym_spec_list_2(list(term), maybe(list(sym_specifier))).
+:- mode parse_sym_spec_list_2(input, output).
+parse_sym_spec_list_2([], ok([])).
+parse_sym_spec_list_2(X.Xs, Result) :-
+	parse_symbol_specifier(X, X_Result),
+	parse_sym_spec_list_2(Xs, Xs_Result),
+	combine_list_results(X_Result, Xs_Result, Result).
+
+
+	% Parse a comma-separated list (misleading described as
+	% a "conjunction") of predicate specifiers.
+
+:- pred parse_pred_spec_list(term, maybe(list(pred_specifier))).
+:- mode parse_pred_spec_list(input, output).
+parse_pred_spec_list(Term, Result) :-
+	conjunction_to_list(Term, List),
+	parse_pred_spec_list_2(List, Result).
+
+:- pred parse_pred_spec_list_2(list(term), maybe(list(pred_specifier))).
+:- mode parse_pred_spec_list_2(input, output).
+parse_pred_spec_list_2([], ok([])).
+parse_pred_spec_list_2(X.Xs, Result) :-
+	parse_predicate_specifier(X, X_Result),
+	parse_pred_spec_list_2(Xs, Xs_Result),
+	combine_list_results(X_Result, Xs_Result, Result).
+
+
+	% Parse a comma-separated list (misleading described as
+	% a "conjunction") of constructor specifiers.
+
+:- pred parse_cons_spec_list(term, maybe(list(cons_specifier))).
+:- mode parse_cons_spec_list(input, output).
+parse_cons_spec_list(Term, Result) :-
+	conjunction_to_list(Term, List),
+	parse_cons_spec_list_2(List, Result).
+
+:- pred parse_cons_spec_list_2(list(term), maybe(list(cons_specifier))).
+:- mode parse_cons_spec_list_2(input, output).
+parse_cons_spec_list_2([], ok([])).
+parse_cons_spec_list_2(X.Xs, Result) :-
+	parse_constructor_specifier(X, X_Result),
+	parse_cons_spec_list_2(Xs, Xs_Result),
+	combine_list_results(X_Result, Xs_Result, Result).
+
 
 	% Parse a comma-separated list (misleading described as
 	% a "conjunction") of type specifiers.
@@ -704,9 +977,47 @@ parse_type_spec_list(Term, Result) :-
 :- mode parse_type_spec_list_2(input, output).
 parse_type_spec_list_2([], ok([])).
 parse_type_spec_list_2(X.Xs, Result) :-
-	parse_type_specifier(X, X_Result),
+	parse_typespecifier(X, X_Result),
 	parse_type_spec_list_2(Xs, Xs_Result),
 	combine_list_results(X_Result, Xs_Result, Result).
+
+
+	% Parse a comma-separated list (misleading described as
+	% a "conjunction") of adt specifiers.
+
+:- pred parse_adt_spec_list(term, maybe(list(sym_name_specifier))).
+:- mode parse_adt_spec_list(input, output).
+parse_adt_spec_list(Term, Result) :-
+	conjunction_to_list(Term, List),
+	parse_adt_spec_list_2(List, Result).
+
+:- pred parse_adt_spec_list_2(list(term), maybe(list(sym_name_specifier))).
+:- mode parse_adt_spec_list_2(input, output).
+parse_adt_spec_list_2([], ok([])).
+parse_adt_spec_list_2(X.Xs, Result) :-
+	parse_adt_symbol_specifier(X, X_Result),
+	parse_adt_spec_list_2(Xs, Xs_Result),
+	combine_list_results(X_Result, Xs_Result, Result).
+
+
+	% Parse a comma-separated list (misleading described as
+	% a "conjunction") of operator specifiers.
+
+:- pred parse_op_spec_list(term, maybe(list(sym_name_specifier))).
+:- mode parse_op_spec_list(input, output).
+parse_op_spec_list(Term, Result) :-
+	conjunction_to_list(Term, List),
+	parse_op_spec_list_2(List, Result).
+
+:- pred parse_op_spec_list_2(list(term), maybe(list(sym_name_specifier))).
+:- mode parse_op_spec_list_2(input, output).
+parse_op_spec_list_2([], ok([])).
+parse_op_spec_list_2(X.Xs, Result) :-
+	parse_op_specifier(X, X_Result),
+	parse_op_spec_list_2(Xs, Xs_Result),
+	combine_list_results(X_Result, Xs_Result, Result).
+
+%-----------------------------------------------------------------------------%
 
 	% If a list of things contains multiple errors, then we only
 	% report the first one.
@@ -718,7 +1029,9 @@ combine_list_results(ok(_), error(Msg, Term), error(Msg, Term)).
 combine_list_results(ok(X), ok(Xs), ok([X|Xs])).
 
 %-----------------------------------------------------------------------------%
+%
 %	A symbol specifier is one of
+%
 %		SymbolNameSpecifier
 %			Matches any symbol matched by the SymbolNameSpecifier.
 %		TypedConstructorSpecifier
@@ -737,7 +1050,7 @@ combine_list_results(ok(X), ok(Xs), ok([X|Xs])).
 %			names.
 %		op(SymbolNameSpecifier)
 %			Matches only operators.
-%		module(Module)
+%		module(ModuleSpecifier)
 %			Matches all symbols in the specified module.
 
 :- pred parse_symbol_specifier(term, maybe(sym_specifier)).
@@ -777,6 +1090,61 @@ parse_symbol_specifier(Term, Result) :-
 	    process_any_symbol_specifier(TermResult, Result)
 	).
 
+% 	Once we've parsed the appropriate type of symbol specifier, we
+%	need to convert it to a sym_specifier, propagating errors upwards.
+
+:- pred process_any_symbol_specifier(maybe(cons_specifier),
+				     maybe(sym_specifier)).
+:- mode process_any_symbol_specifier(input, output).
+process_any_symbol_specifier(error(Msg, Term), error(Msg, Term)).
+process_any_symbol_specifier(ok(sym(SymSpec)), ok(sym(SymSpec))).
+process_any_symbol_specifier(ok(typed(ConsSpec)), ok(typed_sym(ConsSpec))).
+
+:- pred process_pred_symbol_specifier(maybe(pred_specifier),
+					maybe(sym_specifier)).
+:- mode process_pred_symbol_specifier(input, output).
+process_pred_symbol_specifier(error(Msg, Term), error(Msg, Term)).
+process_pred_symbol_specifier(ok(PredSpec), ok(pred(PredSpec))).
+
+:- pred process_cons_symbol_specifier(maybe(cons_specifier),
+					maybe(sym_specifier)).
+:- mode process_cons_symbol_specifier(input, output).
+process_cons_symbol_specifier(error(Msg, Term), error(Msg, Term)).
+process_cons_symbol_specifier(ok(ConsSpec), ok(cons(ConsSpec))).
+
+:- pred process_type_symbol_specifier(maybe(sym_name_specifier),
+					maybe(sym_specifier)).
+:- mode process_type_symbol_specifier(input, output).
+process_type_symbol_specifier(ok(SymSpec), ok(type(SymSpec))).
+process_type_symbol_specifier(error(Msg, Term), error(Msg, Term)).
+
+:- pred process_adt_symbol_specifier(maybe(sym_name_specifier),
+					maybe(sym_specifier)).
+:- mode process_adt_symbol_specifier(input, output).
+process_adt_symbol_specifier(ok(SymSpec), ok(adt(SymSpec))).
+process_adt_symbol_specifier(error(Msg, Term), error(Msg, Term)).
+
+:- pred process_op_symbol_specifier(maybe(op_specifier),
+					maybe(sym_specifier)).
+:- mode process_op_symbol_specifier(input, output).
+process_op_symbol_specifier(ok(OpSpec), ok(op(OpSpec))).
+process_op_symbol_specifier(error(Msg, Term), error(Msg, Term)).
+
+%-----------------------------------------------------------------------------%
+
+%	A ModuleSpecifier is just an identifier.
+
+parse_module_specifier(Term, Result) :-
+	(if some [ModuleName]
+		Term = term_functor(term_atom(ModuleName), [])
+	then
+		Result = ok(ModuleName)
+	else
+		Result = error("module specifier should be an identifier", Term)
+	).
+
+%-----------------------------------------------------------------------------%
+
 %	A ConstructorSpecifier is one of
 %		SymbolNameSpecifier
 %		TypedConstructorSpecifier
@@ -795,7 +1163,7 @@ parse_symbol_specifier(Term, Result) :-
 :- pred parse_constructor_specifier(term, maybe(cons_specifier)).
 parse_constructor_specifier(Term, Result) :-
     (if some [NameArgsTerm, TypeTerm]
-	Term = term_functor(term_atom("::"), NameArgsTerm, TypeTerm)
+	Term = term_functor(term_atom("::"), [NameArgsTerm, TypeTerm])
     then
 	parse_arg_types_specifier(NameArgsTerm, NameArgsResult),
 	parse_type(TypeTerm, TypeResult),
@@ -805,6 +1173,8 @@ parse_constructor_specifier(Term, Result) :-
 	process_untyped_constructor_specifier(TermResult, Result)
     ).
 
+%-----------------------------------------------------------------------------%
+
 %	A PredicateSpecifier is one of
 %		SymbolName(ArgType1, ..., ArgTypeN)
 %			Matches only predicates with the specified argument
@@ -813,7 +1183,7 @@ parse_constructor_specifier(Term, Result) :-
 
 :- pred parse_predicate_specifier(term, maybe(pred_specifier)).
 parse_predicate_specifier(Term, Result) :-
-    (if Term = term_functor(term_atom("/"), [_,_]) then
+    (if some [X, Y] Term = term_functor(term_atom("/"), [X,Y]) then
 	parse_symbol_name_specifier(Term, TermResult),
         process_arity_predicate_specifier(TermResult, Result)
     else
@@ -821,8 +1191,9 @@ parse_predicate_specifier(Term, Result) :-
 	process_typed_predicate_specifier(TermResult, Result)
     ).
     
-:- pred process_typed_predicate_specifier(maybe(pair(sym_name_specifier, list(term))), maybe(pred_specifier)).
-process_typed_predicate_specifier(ok(pair(Name, Args)), ok(Result)) :-
+:- pred process_typed_predicate_specifier(maybe(pair(sym_name, list(term))),
+		maybe(pred_specifier)).
+process_typed_predicate_specifier(ok(Name - Args), ok(Result)) :-
     (if Args = [] then
 	Result = sym(name(Name))
     else
@@ -834,6 +1205,48 @@ process_typed_predicate_specifier(error(Msg, Term), error(Msg, Term)).
 		maybe(pred_specifier)).
 process_arity_predicate_specifier(ok(Result), ok(sym(Result))).
 process_arity_predicate_specifier(error(Msg, Term), error(Msg, Term)).
+
+%-----------------------------------------------------------------------------%
+
+% 	Parsing the name & argument types of a constructor specifier is
+% 	exactly the same as parsing a predicate specifier...
+
+:- pred parse_arg_types_specifier(term, maybe(pred_specifier)).
+:- mode parse_arg_types_specifier(input, output).
+parse_arg_types_specifier(NameArgsTerm, NameArgsResult) :-
+	parse_predicate_specifier(NameArgsTerm, NameArgsResult).
+
+% 	... but we have to convert the result back into the appropriate
+% 	format.
+
+:- pred process_typed_constructor_specifier(maybe(pred_specifier), maybe(type),
+		maybe(cons_specifier)).
+:- mode process_typed_constructor_specifier(input, input, output).
+process_typed_constructor_specifier(error(Msg, Term), _, error(Msg, Term)).
+process_typed_constructor_specifier(_, error(Msg, Term), error(Msg, Term)).
+process_typed_constructor_specifier(ok(NameArgs), ok(ResType), ok(Result)) :-
+	process_typed_cons_spec_2(NameArgs, ResType, Result).
+
+:- pred process_typed_cons_spec_2(pred_specifier, type, cons_specifier).
+:- mode process_typed_cons_spec_2(input, input, output).
+process_typed_cons_spec_2(sym(Name), Res, typed(name_res(Name, Res))).
+process_typed_cons_spec_2(name_args(Name, Args), Res,
+			  typed(name_args_res(Name, Args, Res))).
+
+:- pred process_untyped_constructor_specifier(maybe(pred_specifier),
+		maybe(cons_specifier)).
+:- mode process_untyped_constructor_specifier(input, output).
+process_untyped_constructor_specifier(error(Msg, Term), error(Msg, Term)).
+process_untyped_constructor_specifier(ok(NameArgs), ok(Result)) :-
+	process_untyped_cons_spec_2(NameArgs, Result).
+
+:- pred process_untyped_cons_spec_2(pred_specifier, cons_specifier).
+:- mode process_untyped_cons_spec_2(input, output).
+process_untyped_cons_spec_2(sym(Name), sym(Name)).
+process_untyped_cons_spec_2(name_args(Name, Args),
+			    typed(name_args(Name, Args))).
+
+%-----------------------------------------------------------------------------%
 
 %	A SymbolNameSpecifier is one of
 %		SymbolName
@@ -872,6 +1285,8 @@ process_name_arity_specifier(error(Error, Term), _, error(Error, Term)).
 process_name_specifier(ok(Name), ok(name(Name))).
 process_name_specifier(error(Error, Term), error(Error, Term)).
 
+%-----------------------------------------------------------------------------%
+
 %	A SymbolName is one of
 %		Name
 %			Matches symbols with the specified name in the
@@ -891,7 +1306,7 @@ parse_symbol_name_args(Term, Result) :-
             (if some [Module]
                 ModuleTerm = term_functor(term_atom(Module),[])
 	    then
-		Result = ok(pair(qualified(Module, Name), Args))
+		Result = ok(qualified(Module, Name) - Args)
 	    else
 		Result = error("module name identifier expected before ':' in qualified symbol name", Term)
             )
@@ -902,11 +1317,13 @@ parse_symbol_name_args(Term, Result) :-
         (if some [Name2, Args2]
             Term = term_functor(term_atom(Name2), Args2)
         then
-            Result = ok(pair(unqualified(Name2), Args2))
+            Result = ok(unqualified(Name2) - Args2)
         else
             Result = error("symbol name specifier expected", Term)
         )
     ).
+
+%-----------------------------------------------------------------------------%
 
 %	A SymbolName is one of
 %		Name
@@ -949,28 +1366,40 @@ parse_symbol_name(Term, Result) :-
 % convert a module definition to a program item,
 % propagating errors upwards
 
-:- pred process_import(maybe_module_defn, varset, maybe_decl).
+:- pred process_import(maybe(module_defn), varset, maybe(item)).
 process_import(ok(X), VarSet, ok(module_defn(VarSet, import(X)))).
-process_import(error(X), _, error(X)).
+process_import(error(Msg, Term), _, error(Msg, Term)).
 
-:- pred process_use(maybe_module_defn, varset, maybe_decl).
+:- pred process_use(maybe(module_defn), varset, maybe(item)).
 process_use(ok(X), VarSet, ok(module_defn(VarSet, use(X)))).
-process_use(error(X), _, error(X)).
+process_use(error(Msg, Term), _, error(Msg, Term)).
 
-:- pred process_export(maybe_module_defn, varset, maybe_decl).
+:- pred process_export(maybe(module_defn), varset, maybe(item)).
 process_export(ok(X), VarSet, ok(module_defn(VarSet, export(X)))).
-process_export(error(X), _, error(X)).
+process_export(error(Msg, Term), _, error(Msg, Term)).
 
 %-----------------------------------------------------------------------------%
 
-% print an error message
+%	A TypeSpecifier is just a symbol name specifier.
 
-:- pred print_error(string,io__state,io__state).
-print_error(Error) -->
-	% io__tell("user_output"),
-	io__write_string("Error: "),
-	io__write_string(Error),
-	io__write_string("\n").
-	% io__told.
+:- pred parse_adt_specifier(term, maybe(sym_name_specifier)).
+:- mode parse_adt_specifier(input, output).
+parse_type_specifier(Term, Result) :-
+	parse_symbol_name_specifier(Term, Result).
 
+%	An ADT_Specifier is just a symbol name specifier.
+
+:- pred parse_adt_specifier(term, maybe(sym_name_specifier)).
+:- mode parse_adt_specifier(input, output).
+parse_adt_specifier(Term, Result) :-
+	parse_sym_name_specifier(Term, Result).
+
+%	For the moment, an OpSpecifier is just a symbol name specifier.
+% 	XXX We should allow specifying the fixity of an operator
+
+:- pred parse_op_specifier(term, maybe(op_specifier)).
+:- mode parse_op_specifier(input, output).
+parse_op_specifier(Term, sym(Result)) :-
+	parse_sym_name_specifier(Term, Result).
+	
 %-----------------------------------------------------------------------------%
