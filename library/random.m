@@ -52,7 +52,6 @@ random__params(2416, 374441, 1771875).
 random__init(I0, RS) :-
 	RS = I0.
 
-/**** temp hack - we use the version below
 random__random(I, RS0, RS) :-
 	RS0 = I0,
 	random__params(A, C, M),
@@ -60,7 +59,6 @@ random__random(I, RS0, RS) :-
 	I2 is I1 + C,
 	I is I2 mod M,
 	RS = I.
-*****/
 
 random__randmax(M1, Rs0, Rs) :-
 	Rs0 = I,
@@ -68,12 +66,12 @@ random__randmax(M1, Rs0, Rs) :-
 	M1 is M - 1,
 	Rs = I.
 
-/*** start of temp hack ****/
+/*** start of temp hack
 % we use this code since the above doesn't work with sicstus
 random__random(R, X, X1) :-
 	X1 is X + 1,
 	random__bit_reverse(X1, R).
-
+ ****/
 
 random__bit_reverse(A, B) :-
 	A0 is A /\ 255,

@@ -41,6 +41,9 @@
 :- pred map__contains(map(K,_V), K).
 :- mode map__contains(in, in) is semidet.
 
+:- pred map__member(map(K,V), K, V).
+:- mode map__member(in, out, out) is nondet.
+
 	% Search map for key.
 :- pred map__search(map(K,V), K, V).
 :- mode map__search(in, in, in) is semidet.	% implied
@@ -175,6 +178,9 @@ map__is_empty(M) :-
 
 map__contains(Map, K) :-
 	map__search(Map, K, _).
+
+map__member(Map, K, V) :-
+	tree234__member(Map, K, V).
 
 :- map__search(_Map, K, _V) when K.	% required by bimap.nl
 

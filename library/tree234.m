@@ -20,6 +20,9 @@
 :- pred tree234__init(tree234(K, V)).
 :- mode tree234__init(out) is det.
 
+:- pred tree234__member(tree234(K, V), K, V).
+:- mode tree234__member(in, out, out) is nondet.
+
 :- pred tree234__search(tree234(K, V), K, V).
 :- mode tree234__search(in, in, out) is semidet.
 
@@ -73,6 +76,52 @@
 %------------------------------------------------------------------------------%
 
 tree234__init(empty).
+
+%------------------------------------------------------------------------------%
+
+tree234__member(empty, _K, _V) :- fail.
+tree234__member(two(K0, V0, T0, T1), K, V) :-
+	(
+		K = K0,
+		V = V0
+	;
+		tree234__member(T0, K, V)
+	;
+		tree234__member(T1, K, V)
+	).
+tree234__member(three(K0, V0, K1, V1, T0, T1, T2), K, V) :-
+	(
+		K = K0,
+		V = V0
+	;
+		K = K1,
+		V = V1
+	;
+		tree234__member(T0, K, V)
+	;
+		tree234__member(T1, K, V)
+	;
+		tree234__member(T2, K, V)
+	).
+tree234__member(four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3), K, V) :-
+	(
+		K = K0,
+		V = V0
+	;
+		K = K1,
+		V = V1
+	;
+		K = K2,
+		V = V2
+	;
+		tree234__member(T0, K, V)
+	;
+		tree234__member(T1, K, V)
+	;
+		tree234__member(T2, K, V)
+	;
+		tree234__member(T3, K, V)
+	).
 
 %------------------------------------------------------------------------------%
 
