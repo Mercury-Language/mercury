@@ -1,5 +1,5 @@
 #---------------------------------------------------------------------------#
-# Copyright (C) 1996-2001 The University of Melbourne.
+# Copyright (C) 1996-2002 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -26,12 +26,7 @@ UTILS		= $(INSTALL_PREFIX)/bin/mkinit$(EXT_FOR_EXE) \
 
 README_ETC	= ../COPYING ../COPYING.LIB ../HISTORY ../LIMITATIONS \
 		  ../NEWS ../RELEASE_NOTES ../BUGS ../WORK_IN_PROGRESS \
-		  ../VERSION ../README.AIX ../README.BSDI ../README.FreeBSD \
-		  ../README.HPUX ../README.IRIX-5 ../README.Linux \
-		  ../README.Linux-Alpha ../README.Linux-PPC \
-		  ../README.Linux-m68k ../README.MS-VisualC \
-		  ../README.MS-Windows ../README.OSF1 ../README.Solaris \
-		  ../README.DotNet
+		  ../VERSION ../README.*
 
 SCRIPT_FILES	= ../scripts/*.in ../scripts/*.sh-subr \
 		  ../scripts/Mmake.rules \
