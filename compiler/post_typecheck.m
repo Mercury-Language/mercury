@@ -941,6 +941,12 @@ post_typecheck__resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0,
 			AccessType, FieldName),
 
 		%
+		% We don't do this for compiler-generated predicates --
+		% they will never contain calls to field access functions.
+		%
+		\+ code_util__compiler_generated(PredInfo0),
+
+		%
 		% If there is a constructor for which the argument types
 		% match, this unification couldn't be a call to a field
 		% access function, otherwise there would have been an
@@ -979,18 +985,16 @@ find_matching_constructor(ModuleInfo, TVarSet, ConsId, Type, ArgTypes) :-
 	list__member(ConsDefn, ConsDefns),
 
 	% Overloading resolution ignores the class constraints.
-	ConsDefn = hlds_cons_defn(_, _, ConsArgTypes0, ConsTypeId, _),
+	ConsDefn = hlds_cons_defn(ConsExistQVars, _,
+			ConsArgTypes, ConsTypeId, _),
 	ConsTypeId = TypeId,
 
 	module_info_types(ModuleInfo, Types),
 	map__search(Types, TypeId, TypeDefn),
 	hlds_data__get_type_defn_tvarset(TypeDefn, TypeTVarSet),
 
-	varset__merge_subst(TVarSet, TypeTVarSet, _, Renaming),
-	term__apply_substitution_to_list(ConsArgTypes0,
-		Renaming, ConsArgTypes),
-
-	type_list_subsumes(ConsArgTypes, ArgTypes, _).
+	arg_type_list_subsumes(TVarSet, ArgTypes,
+		TypeTVarSet, ConsExistQVars, ConsArgTypes).
 
 %-----------------------------------------------------------------------------%
 

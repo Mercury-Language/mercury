@@ -1522,52 +1522,8 @@ typecheck__find_matching_pred_id([PredId | PredIds], ModuleInfo,
 		pred_info_arg_types(PredInfo, PredTVarSet, PredExistQVars0,
 			PredArgTypes0),
 
-		%
-		% rename them apart from the actual argument types
-		%
-		varset__merge_subst(TVarSet, PredTVarSet, _TVarSet1,
-			Subst),
-		term__apply_substitution_to_list(PredArgTypes0, Subst,
-					PredArgTypes),
-		map__apply_to_list(PredExistQVars0, Subst, PredExistQTypes0),
-
-		%
-		% check that the types of the candidate predicate/function
-		% subsume the actual argument types
-		% [This is the right thing to do even for calls to
-		% existentially typed preds, because we're using the
-		% type variables from the callee's pred decl (obtained
-		% from the pred_info via pred_info_arg_types) not the types
-		% inferred from the callee's clauses (and stored in the
-		% clauses_info and proc_info) -- the latter
-		% might not subsume the actual argument types.]
-		%
-		type_list_subsumes(PredArgTypes, ArgTypes, TypeSubst),
-
-		%
-		% check that the type substitution did not bind any
-		% existentially typed variables to non-ground types
-		%
-		( PredExistQTypes0 = [] ->
-			% optimize common case
-			true
-		;
-			term__apply_rec_substitution_to_list(
-				PredExistQTypes0, TypeSubst, PredExistQTypes),
-			% SICStus doesn't allow the following syntax
-			% all [T] (list__member(T, PredExistQTypes) => 
-			% 		type_util__var(T, _))
-			\+ (
-				list__member(T, PredExistQTypes),
-				\+ type_util__var(T, _)
-			)
-
-			% it might make sense to also check that
-			% the type substitution did not bind any
-			% existentially typed variables to universally 
-			% quantified type variables in the caller's
-			% argument types
-		)
+		arg_type_list_subsumes(TVarSet, ArgTypes,
+			PredTVarSet, PredExistQVars0, PredArgTypes0)
 	->
 		%
 		% we've found a matching predicate

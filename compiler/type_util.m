@@ -238,6 +238,18 @@
 :- pred type_list_subsumes(list(type), list(type), tsubst).
 :- mode type_list_subsumes(in, in, out) is semidet.
 
+	% arg_type_list_subsumes(TVarSet, ArgTypes,
+	%       CalleeTVarSet, CalleeExistQVars, CalleeArgTypes).
+	%
+	% Check that the argument types of the called predicate,
+	% function or constructor subsume the types of the
+	% arguments of the call. This checks that none
+	% of the existentially quantified type variables of
+	% the callee are bound.
+:- pred arg_type_list_subsumes(tvarset, list(type),
+		tvarset, existq_tvars, list(type)).
+:- mode arg_type_list_subsumes(in, in, in, in, in) is semidet.
+
 	% apply a type substitution (i.e. map from tvar -> type)
 	% to all the types in a variable typing (i.e. map from var -> type).
 
@@ -359,7 +371,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module bool, int, require, std_util, string.
+:- import_module bool, int, require, std_util, string, varset.
 :- import_module prog_io, prog_io_goal, prog_util.
 
 type_util__type_id_module(_ModuleInfo, TypeName - _Arity, ModuleName) :-
@@ -834,6 +846,51 @@ type_list_subsumes(TypesA, TypesB, TypeSubst) :-
 	term__vars_list(TypesB, TypesBVars),
 	map__init(TypeSubst0),
 	type_unify_list(TypesA, TypesB, TypesBVars, TypeSubst0, TypeSubst).
+
+
+arg_type_list_subsumes(TVarSet, ArgTypes, CalleeTVarSet,
+		CalleeExistQVars0, CalleeArgTypes0) :-
+
+	%
+	% rename the type variables in the callee's argument types.
+	%
+	varset__merge_subst(TVarSet, CalleeTVarSet, _TVarSet1, Subst),
+	term__apply_substitution_to_list(CalleeArgTypes0, Subst,
+				CalleeArgTypes),
+	map__apply_to_list(CalleeExistQVars0, Subst, CalleeExistQTypes0),
+
+	%
+	% check that the types of the candidate predicate/function
+	% subsume the actual argument types
+	% [This is the right thing to do even for calls to
+	% existentially typed preds, because we're using the
+	% type variables from the callee's pred decl (obtained
+	% from the pred_info via pred_info_arg_types) not the types
+	% inferred from the callee's clauses (and stored in the
+	% clauses_info and proc_info) -- the latter
+	% might not subsume the actual argument types.]
+	%
+	type_list_subsumes(CalleeArgTypes, ArgTypes, TypeSubst),
+
+	%
+	% check that the type substitution did not bind any
+	% existentially typed variables to non-ground types
+	%
+	( CalleeExistQTypes0 = [] ->
+		% optimize common case
+		true
+	;
+		term__apply_rec_substitution_to_list(CalleeExistQTypes0,
+			TypeSubst, CalleeExistQTypes),
+		all [T] (list__member(T, CalleeExistQTypes) =>
+				type_util__var(T, _))	
+
+		% it might make sense to also check that
+		% the type substitution did not bind any
+		% existentially typed variables to universally 
+		% quantified type variables in the caller's
+		% argument types
+	).
 
 %-----------------------------------------------------------------------------%
 

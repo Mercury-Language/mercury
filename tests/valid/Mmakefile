@@ -111,6 +111,7 @@ OTHER_SOURCES= \
 	qualified_cons_id.m \
 	quantifier_warning.m \
 	record_syntax_bug.m \
+	record_syntax_bug_2.m \
 	recursive_no_tag_type.m \
 	same_length_2.m \
 	semidet_disj.m \
