@@ -72,6 +72,7 @@
 **	HAVE_MEMALIGN    	we have the memalign() function.
 **	HAVE_STRERROR    	we have the strerror() function.
 **	HAVE_SETITIMER   	we have the setitimer() function.
+**	HAVE_MEMMOVE   		we have the memmove() function.
 */
 #undef	HAVE_SYSCONF
 #undef	HAVE_SIGACTION
@@ -80,6 +81,7 @@
 #undef	HAVE_MPROTECT
 #undef	HAVE_STRERROR
 #undef	HAVE_SETITIMER
+#undef	HAVE_MEMMOVE
 
 /*
 ** RETSIGTYPE: the return type of signal handlers.

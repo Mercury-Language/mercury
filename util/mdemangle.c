@@ -37,6 +37,15 @@ static bool cut_trailing_integer(char *str, char **end, int *num);
 static bool cut_trailing_underscore_integer(char *str, char **end, int *num);
 static bool strip_prefix(char **str, const char *prefix);
 
+/*
+** Bloody SunOS 4.x doesn't have memmove()...
+** Using memcpy() may not work, but it doesn't really matter
+** if the demangler doesn't work 100% correctly on SunOS 4.x.
+*/
+#ifndef HAVE_MEMMOVE
+#define memmove memcpy
+#endif
+
 int 
 main(int argc, char **argv)
 {

@@ -213,7 +213,7 @@ AC_PROG_CPP
 AC_C_CROSS
 AC_PROG_RANLIB
 AC_RETSIGTYPE
-AC_HAVE_FUNCS(sysconf getpagesize memalign mprotect sigaction setitimer strerror)
+AC_HAVE_FUNCS(sysconf getpagesize memalign mprotect sigaction setitimer strerror memmove)
 #-----------------------------------------------------------------------------#
 AC_CHECK_HEADER(sys/siginfo.h, HAVE_SYS_SIGINFO_H=1)
 if test "$HAVE_SYS_SIGINFO_H" = 1; then
