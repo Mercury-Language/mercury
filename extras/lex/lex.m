@@ -2,13 +2,13 @@
 % vim: ts=4 sw=4 et tw=0 wm=0 ff=unix
 %
 % lex.m
-% Copyright (C) 2001 Ralph Becket <rbeck@microsoft.com>
+% Copyright (C) 2001-2002 Ralph Becket <rbeck@microsoft.com>
 % Sun Aug 20 09:08:46 BST 2000
 %   THIS FILE IS HEREBY CONTRIBUTED TO THE MERCURY PROJECT TO
 %   BE RELEASED UNDER WHATEVER LICENCE IS DEEMED APPROPRIATE
 %   BY THE ADMINISTRATORS OF THE MERCURY PROJECT.
 % Thu Jul 26 07:45:47 UTC 2001
-% Copyright (C) 2001 The Rationalizer Intelligent Software AG
+% Copyright (C) 2001-2002 The Rationalizer Intelligent Software AG
 %   The changes made by Rationalizer are contributed under the terms 
 %   of the GNU Lesser General Public License, see the file COPYING.LGPL
 %   in this directory.
@@ -168,9 +168,13 @@
 :- mode read_from_stdin(in, out, di, uo) is det.
 
 :- pred read_from_string(offset, read_result, string, string).
-:- mode read_from_string(in, out, in, out) is det.
+:- mode read_from_string(in, out, di, uo) is det.
 
     % Generate a running instance of a lexer on some input source.
+    % If you want to lex strings, you must ensure they are unique
+    % by calling either copy/1 or unsafe_promise_unique/1 on the
+    % source string argument.
+    %
     % Note that you can't get the input source back until you stop
     % lexing.
     %
@@ -548,7 +552,7 @@ read_from_stdin(_Offset, Result) -->
 
 %------------------------------------------------------------------------------%
 
-read_from_string(Offset, Result, String, String) :-
+read_from_string(Offset, Result, String, unsafe_promise_unique(String)) :-
     ( if   Offset < string__length(String)
       then Result = ok(string__unsafe_index(String, Offset))
       else Result = eof
