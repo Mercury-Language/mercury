@@ -27,8 +27,9 @@
 
 :- implementation.
 
-:- import_module switch_detection, list, map, set, std_util, require.
-:- import_module modes, mode_util, term, make_hlds, quantification.
+:- import_module list, map, set, std_util, require, term.
+:- import_module options, globals.
+:- import_module modes, mode_util, make_hlds, quantification, switch_detection.
 :- import_module hlds_out.
 
 %-----------------------------------------------------------------------------%
@@ -60,51 +61,48 @@ detect_cse_in_preds([PredId | PredIds], ModuleInfo0, ModuleInfo) -->
 	io__state, io__state).
 :- mode detect_cse_in_pred(in, in, di, uo, di, uo) is det.
 
-detect_cse_in_pred(PredId, PredInfo0, ModuleInfo0, ModuleInfo,
-		IOstate0, IOstate) :-
-	pred_info_procids(PredInfo0, ProcIds),
+detect_cse_in_pred(PredId, PredInfo0, ModuleInfo0, ModuleInfo) -->
+	{ pred_info_procids(PredInfo0, ProcIds) },
 	detect_cse_in_procs(ProcIds, PredId, no, Redo,
-		ModuleInfo0, ModuleInfo1, IOstate0, IOstate1),
+		ModuleInfo0, ModuleInfo1),
 	(
-		Redo = no,
-		ModuleInfo = ModuleInfo1,
-		IOstate = IOstate1
+		{ Redo = no },
+		{ ModuleInfo = ModuleInfo1 }
 	;
-		Redo = yes,
-		io__write_string("% Repeating mode check.\n",
-			IOstate1, IOstate2),
-		module_info_preds(ModuleInfo1, PredTable1),
-		map__lookup(PredTable1, PredId, PredInfo1),
+		{ Redo = yes },
+		globals__io_lookup_bool_option(verbose, Verbose),
+		maybe_write_string(Verbose, "% Repeating mode check.\n"),
+		{ module_info_preds(ModuleInfo1, PredTable1) },
+		{ map__lookup(PredTable1, PredId, PredInfo1) },
 		modecheck_pred_mode(PredId, PredInfo1,
-			ModuleInfo1, ModuleInfo2, Errs, IOstate2, IOstate3),
-		( Errs > 0 ->
+			ModuleInfo1, ModuleInfo2, Errs),
+		{ Errs > 0 ->
 			error("mode check fails when repeated")
 		;
 			true
-		),
+		},
 
-		io__write_string("% Repeating switch detection.\n",
-			IOstate3, IOstate4),
-		module_info_preds(ModuleInfo2, PredTable2),
-		map__lookup(PredTable2, PredId, PredInfo2),
+		maybe_write_string(Verbose, "% Repeating switch detection.\n"),
+		{ module_info_preds(ModuleInfo2, PredTable2) },
+		{ map__lookup(PredTable2, PredId, PredInfo2) },
 		detect_switches_in_pred(PredId, PredInfo2,
-			ModuleInfo2, ModuleInfo3, IOstate4, IOstate5),
+			ModuleInfo2, ModuleInfo3),
 
-		( ModuleInfo0 = ModuleInfo3 ->
-			io__write_string("% Repeating cse is futile\n",
-				IOstate5, IOstate),
-			ModuleInfo = ModuleInfo3
+		% XXX this test could be very expensive!
+		( { ModuleInfo0 = ModuleInfo3 } ->
+			maybe_write_string(Verbose,
+				"% Repeating cse is futile\n"),
+			{ ModuleInfo = ModuleInfo3 }
 		;
-			% io__write_string("% Repeating cse detection.\n",
-			% 	IOstate5, IOstate6),
-			% module_info_preds(ModuleInfo3, PredTable3),
-			% map__lookup(PredTable3, PredId, PredInfo3),
+			% maybe_write_string(Verbose,
+			% 	"% Repeating cse detection.\n"),
+			% { module_info_preds(ModuleInfo3, PredTable3) },
+			% { map__lookup(PredTable3, PredId, PredInfo3) },
 			% detect_cse_in_pred(PredId, PredInfo3,
-			% 	ModuleInfo3, ModuleInfo, IOstate6, IOstate)
-			io__write_string("% Would repeat cse detection.\n",
-				IOstate5, IOstate6),
-			ModuleInfo = ModuleInfo3,
-			IOstate = IOstate6
+			% 	ModuleInfo3, ModuleInfo)
+			maybe_write_string(Verbose,
+				"% Would repeat cse detection.\n"),
+			{ ModuleInfo = ModuleInfo3 }
 		)
 	).
 
