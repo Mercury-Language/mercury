@@ -252,6 +252,14 @@
 							code_info, code_info).
 :- mode code_info__generate_test_and_fail(in, out, in, out) is det.
 
+:- pred code_info__generate_cond_branch(rval, label, label, code_tree,
+							code_info, code_info).
+:- mode code_info__generate_cond_branch(in, in, in, out, in, out) is det.
+
+:- pred code_info__generate_icond_branch(rval, label, label, code_tree,
+							code_info, code_info).
+:- mode code_info__generate_icond_branch(in, in, in, out, in, out) is det.
+
 :- pred code_info__get_continuation(maybe(label), code_info, code_info).
 :- mode code_info__get_continuation(out, in, out) is det.
 
@@ -1829,6 +1837,22 @@ code_info__generate_test_and_fail(Rval, Code) -->
 		{ Code = node([ if_not_val(Rval, Cont) - "" ]) }
 	).
 
+
+%---------------------------------------------------------------------------%
+
+code_info__generate_cond_branch(Rval, YesLab, NoLab, Code) -->
+	{ Code = node([
+		if_val(Rval, YesLab) - "",
+		goto(NoLab) - ""
+	]) }.
+
+%---------------------------------------------------------------------------%
+
+code_info__generate_icond_branch(Rval, YesLab, NoLab, Code) -->
+	{ Code = node([
+		if_not_val(Rval, NoLab) - "",
+		goto(YesLab) - ""
+	]) }.
 
 %---------------------------------------------------------------------------%
 

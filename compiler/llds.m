@@ -276,7 +276,9 @@ output_instruction(mkframe(Str, Num, Maybe)) -->
 	(
 		{ Maybe = yes(Label) }
 	->
-		output_label(Label)
+		io__write_string("LABEL("),
+		output_label(Label),
+		io__write_string(")")
 	;
 		io__write_string("dofail")
 	),
@@ -288,7 +290,9 @@ output_instruction(modframe(Maybe)) -->
 	(
 		{ Maybe = yes(Label) }
 	->
-		output_label(Label)
+		io__write_string("LABEL("),
+		output_label(Label),
+		io__write_string(")")
 	;
 		io__write_string("dofail")
 	),

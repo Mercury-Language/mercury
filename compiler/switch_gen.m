@@ -63,12 +63,16 @@ switch_gen__generate_det_cases([], _Var, _Lval, EndLabel, Code) -->
 	% stored in their stack slot.
 switch_gen__generate_det_cases([case(Cons, Goal)|Cases], Var, Lval, EndLabel,
 								CasesCode) -->
+	code_info__get_next_label(ThisLab),
 	code_info__get_next_label(ElseLab),
 	code_info__grab_code_info(CodeInfo),
-	code_info__set_failure_cont(ElseLab),
-	unify_gen__generate_tag_test(Var, Cons, TestCode),
-	code_info__unset_failure_cont,
+	unify_gen__generate_tag_rval(Var, Cons, Rval, FlushCode),
 		% generate the case as a deterministic goal
+	code_info__generate_icond_branch(Rval,ThisLab, ElseLab, BranchCode),
+	{ TestCode = tree(
+		tree(BranchCode, FlushCode),
+		node([label(ThisLab) - ""])
+	) },
 	code_gen__generate_forced_det_goal(Goal, ThisCode),
 	{ ElseLabel = node([
 		goto(EndLabel) - "skip to the end of the switch",
@@ -115,10 +119,15 @@ switch_gen__generate_semi_cases([], _Var, _Lval, EndLabel, Code) -->
 switch_gen__generate_semi_cases([case(Cons, Goal)|Cases], Var, Lval, EndLabel,
 								CasesCode) -->
 	code_info__grab_code_info(CodeInfo),
+	code_info__get_next_label(ThisLab),
 	code_info__get_next_label(ElseLab),
-	code_info__set_failure_cont(ElseLab),
-	unify_gen__generate_tag_test(Var, Cons, TestCode),
-	code_info__unset_failure_cont,
+	unify_gen__generate_tag_rval(Var, Cons, Rval, FlushCode),
+		% generate the case as a deterministic goal
+	code_info__generate_icond_branch(Rval,ThisLab, ElseLab, BranchCode),
+	{ TestCode = tree(
+		tree(FlushCode, BranchCode),
+		node([label(ThisLab) - ""])
+	) },
 		% generate the case as a semi-deterministc goal
 	code_gen__generate_forced_semi_goal(Goal, ThisCode),
 	{ ElseLabel = node([
@@ -168,10 +177,15 @@ switch_gen__generate_non_cases([], _Var, _Lval, EndLabel, Code) -->
 switch_gen__generate_non_cases([case(Cons, Goal)|Cases], Var, Lval, EndLabel,
 								CasesCode) -->
 	code_info__grab_code_info(CodeInfo),
+	code_info__get_next_label(ThisLab),
 	code_info__get_next_label(ElseLab),
-	code_info__push_failure_cont(ElseLab),
-	unify_gen__generate_tag_test(Var, Cons, TestCode),
-	code_info__pop_failure_cont(_),
+	unify_gen__generate_tag_rval(Var, Cons, Rval, FlushCode),
+		% generate the case as a deterministic goal
+	code_info__generate_icond_branch(Rval,ThisLab, ElseLab, BranchCode),
+	{ TestCode = tree(
+		tree(FlushCode, BranchCode),
+		node([label(ThisLab) - ""])
+	) },
 		% generate the case as a non-deterministc goal
 	code_gen__generate_forced_non_goal(Goal, ThisCode),
 	{ ElseLabel = node([

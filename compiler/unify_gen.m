@@ -41,6 +41,10 @@
 						code_info, code_info).
 :- mode unify_gen__generate_tag_test(in, in, out, in, out) is det.
 
+:- pred unify_gen__generate_tag_rval(var, cons_id, rval, code_tree,
+						code_info, code_info).
+:- mode unify_gen__generate_tag_rval(in, in, out, out, in, out) is det.
+
 %---------------------------------------------------------------------------%
 :- implementation.
 
@@ -120,6 +124,32 @@ unify_gen__generate_tag_test_2(complicated_constant_tag(Bits, Num), Lval,
 	code_info__generate_test_and_fail(
 		binop(eq, lval(Lval), mkword(Bits, mkbody(iconst(Num)))),
 								TestCode).
+
+%---------------------------------------------------------------------------%
+
+unify_gen__generate_tag_rval(Var, ConsId, Rval, Code) -->
+        code_info__flush_variable(Var, Code),
+	code_info__get_variable_register(Var, Lval),
+	code_info__cons_id_to_tag(Var, ConsId, Tag),
+	{ unify_gen__generate_tag_rval_2(Tag, Lval, Rval) }.
+
+:- pred unify_gen__generate_tag_rval_2(cons_tag, lval, rval).
+:- mode unify_gen__generate_tag_rval_2(in, in, out) is det.
+
+unify_gen__generate_tag_rval_2(string_constant(_String), _, _) :-
+	error("String tests unimplemented").
+unify_gen__generate_tag_rval_2(float_constant(_String), _, _) :-
+	error("Float tests unimplemented").
+unify_gen__generate_tag_rval_2(int_constant(Int), Lval, Rval) :-
+	Rval = binop(eq,lval(Lval), iconst(Int)).
+unify_gen__generate_tag_rval_2(simple_tag(SimpleTag), Lval, Rval) :-
+	Rval = binop(eq,lval(Lval), iconst(SimpleTag)).
+unify_gen__generate_tag_rval_2(complicated_tag(Bits, Num), Lval, Rval) :-
+	Rval = binop(and, binop(eq,lval(Lval), iconst(Bits)), 
+			binop(eq,field(Bits, lval(Lval), 1), iconst(Num))).
+unify_gen__generate_tag_rval_2(complicated_constant_tag(Bits, Num), Lval,
+		Rval) :-
+	Rval = binop(eq, lval(Lval), mkword(Bits, mkbody(iconst(Num)))).
 
 %---------------------------------------------------------------------------%
 
