@@ -33,7 +33,7 @@
 :- import_module store, rbtree, parser, lexer, ops.
 :- import_module prolog.
 :- import_module integer, rational.
-:- import_module exception.
+:- import_module exception, gc.
 
 % library__version must be implemented using pragma c_code,
 % so we can get at the MR_VERSION and MR_FULLARCH configuration
