@@ -48,6 +48,9 @@
 
 :- implementation.
 
+:- import_module type_util.
+:- import_module std_util.
+
 special_pred_list([unify, index, compare]).
 
 % **** Replace the above definition of special_pred_list with the following ****
@@ -75,40 +78,37 @@ special_pred_info(unify, Type, "__Unify__", [Type, Type], [In, In2], semidet) :-
 		% which causes a duplicate label in the generated C code
 
 special_pred_info(index, Type, "__Index__", [Type, IntType], [In, Out], det) :-
-	term__context_init(Context),
-	IntType = term__functor(term__atom("int"), [], Context),
+	construct_type(unqualified("int") - 0, [], IntType),
 	in_mode(In),
 	out_mode(Out).
 
 special_pred_info(compare, Type,
 		 "__Compare__", [ResType, Type, Type], [Out, In, In2], det) :-
-	term__context_init(Context),
-	ResType = term__functor(term__atom("comparison_result"), [], Context),
+	construct_type(qualified("mercury_builtin", "comparison_result") - 0,
+							[], ResType),
 	in_mode(In),
 	in_mode(In2),
 	out_mode(Out).
 
 special_pred_info(term_to_type, Type,
 		"__Term_To_Type__", [TermType, Type], [In, Out], semidet) :-
-	term__context_init(Context),
-	TermType = term__functor(term__atom("term"), [], Context),
+	construct_type(qualified("mercury_builtin", "term") - 0, [], TermType),
 	in_mode(In),
 	out_mode(Out).
 
 special_pred_info(type_to_term, Type,
 		"__Type_To_Term__", [Type, TermType], [In, Out], det) :-
-	term__context_init(Context),
-	TermType = term__functor(term__atom("term"), [], Context),
+	construct_type(qualified("mercury_builtin", "term") - 0, [], TermType),
 	in_mode(In),
 	out_mode(Out).
 
 :- pred in_mode((mode)::out) is det.
 
-in_mode(user_defined_mode(unqualified("in"), [])).
+in_mode(user_defined_mode(qualified("mercury_builtin", "in"), [])).
 
 :- pred out_mode((mode)::out) is det.
 
-out_mode(user_defined_mode(unqualified("out"), [])).
+out_mode(user_defined_mode(qualified("mercury_builtin", "out"), [])).
 
 
 	% Given the mangled predicate name and the list of argument types,

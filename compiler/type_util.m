@@ -55,6 +55,16 @@
 :- pred type_to_type_id(type, type_id, list(type)).
 :- mode type_to_type_id(in, out, out) is semidet.
 
+	% Given a type_id, a list of argument types and maybe a context,
+	% construct a type.
+
+:- pred construct_type(type_id, list(type), (type)).
+:- mode construct_type(in, in, out) is det.
+
+:- pred construct_type(type_id, list(type), term__context, (type)).
+:- mode construct_type(in, in, in, out) is det.
+
+
 	% Given a constant and an arity, return a type_id.
 	% Fails if the constant is not an atom.
 
@@ -115,11 +125,10 @@
 
 :- implementation.
 :- import_module bool, list, term, require, map, std_util.
-:- import_module prog_util.
+:- import_module prog_io, prog_util.
 
-type_util__type_id_module(_ModuleInfo, _TypeId, ModuleName) :-
-	% XXX Module qualifiers not yet implemented
-	ModuleName = "xxx".
+type_util__type_id_module(_ModuleInfo, qualified(ModuleName, _) -_, ModuleName).
+type_util__type_id_module(_ModuleInfo, unqualified(_) - _, "").
 
 type_util__type_id_name(_ModuleInfo, Name0 - _Arity, Name) :-
 	unqualify_name(Name0, Name).
@@ -194,16 +203,34 @@ type_is_enumeration(Type, ModuleInfo) :-
 	TypeBody = du_type(_, _, IsEnum),
 	IsEnum = yes.
 
-type_to_type_id(term__functor(Name, Args, _), TypeId, Args) :-
-	list__length(Args, Arity),
-	make_type_id(Name, Arity, TypeId).
+
+type_to_type_id(Type, SymName - Arity, Args) :-
+	Type = term__functor(term__atom(Atom), Args0, _),
+	(
+		Atom = ":", Args0 = [ModuleTerm, TypeAndArgsTerm]
+	->
+		ModuleTerm = term__functor(term__atom(ModuleName), [], _),
+		TypeAndArgsTerm = term__functor(term__atom(TypeName), Args, _),
+		SymName = qualified(ModuleName, TypeName)
+	;
+		SymName = unqualified(Atom),
+		Args = Args0
+	),
+	list__length(Args, Arity).
+
+
+construct_type(SymName - _, Args, Type) :-
+	construct_qualified_term(SymName, Args, Type).
+
+construct_type(SymName - _, Args, Context, Type) :-
+	construct_qualified_term(SymName, Args, Context, Type).
 
 %-----------------------------------------------------------------------------%
 
 	% Given a constant and an arity, return a type_id.
 	% This really ought to take a name and an arity -
 	% use of integers/floats/strings as type names should
-	% be rejected by the parser in prog_io.m, not in undef_types.m.
+	% be rejected by the parser in prog_io.m, not in module_qual.m.
 
 make_type_id(term__atom(Name), Arity, unqualified(Name) - Arity).
 

@@ -141,8 +141,7 @@ code_util__make_proc_label(ModuleInfo, PredId, ProcId, ProcLabel) :-
 				PredName, "'"], ErrorMessage),
 			error(ErrorMessage)
 		),
-		type_util__type_id_name(ModuleInfo, TypeId, TypeName),
-		type_util__type_id_arity(ModuleInfo, TypeId, Arity),
+		TypeId = TypeName - Arity,
 		ProcLabel = special_proc(ModuleName, PredName, TypeName,
 				Arity, ProcId)
 	;
@@ -151,9 +150,8 @@ code_util__make_proc_label(ModuleInfo, PredId, ProcId, ProcLabel) :-
 	).
 
 code_util__make_uni_label(ModuleInfo, TypeId, UniModeNum, ProcLabel) :-
-	type_util__type_id_module(ModuleInfo, TypeId, ModuleName),
-	type_util__type_id_name(ModuleInfo, TypeId, TypeName),
-	type_util__type_id_arity(ModuleInfo, TypeId, Arity),
+	module_info_name(ModuleInfo, ModuleName),
+	TypeId = TypeName - Arity,
 	ProcLabel = special_proc(ModuleName, "__Unify__", TypeName, Arity,
 				UniModeNum).
 

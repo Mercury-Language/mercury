@@ -25,13 +25,23 @@
 
 %-----------------------------------------------------------------------------%
 
-	% Convert a (possibly module-qualified) sym_name into a string.
+	% Convert a sym_name into a string.
 
 :- pred unqualify_name(sym_name, string).
 :- mode unqualify_name(in, out) is det.
 
 :- pred sym_name_get_module_name(sym_name, module_name, module_name).
 :- mode sym_name_get_module_name(in, in, out) is det.
+
+        % Given a possible module qualified sym_name and a list of
+	% argument types and a context, construct a term. This is
+	% used to construct types. 
+
+:- pred construct_qualified_term(sym_name, list(term), term).
+:- mode construct_qualified_term(in, in, out) is det.
+
+:- pred construct_qualified_term(sym_name, list(term), term__context, term).
+:- mode construct_qualified_term(in, in, in, out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -64,7 +74,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module bool, std_util, map, term.
+:- import_module bool, std_util, map, term, type_util.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -79,7 +89,7 @@ prog_util__expand_eqv_types(Items0, Items) :-
 	prog_util__replace_eqv_type_item_list(Items0, EqvMap, [], Items1),
 	list__reverse(Items1, Items).
 
-:- type eqv_type_id == pair(string, arity).
+:- type eqv_type_id == pair(sym_name, arity).
 :- type eqv_type_body ---> eqv_type_body(tvarset, list(type_param), type).
 :- type eqv_map == map(eqv_type_id, eqv_type_body).
 
@@ -89,9 +99,8 @@ prog_util__expand_eqv_types(Items0, Items) :-
 prog_util__build_eqv_map([], EqvMap, EqvMap).
 prog_util__build_eqv_map([Item - _Context | Items], EqvMap0, EqvMap) :-
 	( Item = type_defn(VarSet, eqv_type(Name, Args, Body), _Cond) ->
-		unqualify_name(Name, Name2),
 		list__length(Args, Arity),
-		map__set(EqvMap0, Name2 - Arity,
+		map__set(EqvMap0, Name - Arity,
 			eqv_type_body(VarSet, Args, Body), EqvMap1)
 	;
 		EqvMap1 = EqvMap0
@@ -218,30 +227,43 @@ prog_util__replace_eqv_type_type(Type0, VarSet0, EqvMap, Found0,
 
 prog_util__replace_eqv_type_type_2(term__variable(V), VarSet, _EqvMap, Found,
 		_Seen, term__variable(V), VarSet, Found).
-prog_util__replace_eqv_type_type_2(term__functor(F, TArgs0, Context), VarSet0,
-		EqvMap, Found0, TypeIdsAlreadyExpanded, Type, VarSet, Found) :- 
-	prog_util__replace_eqv_type_list(TArgs0, VarSet0, EqvMap, Found0,
-		TArgs1, VarSet1, Found1),
-	(	
-		F = term__atom(Name),
-		list__length(TArgs1, Arity),
-		EqvTypeId = Name - Arity,
-		\+ list__member(EqvTypeId, TypeIdsAlreadyExpanded),
-		map__search(EqvMap, EqvTypeId,
-			eqv_type_body(EqvVarSet, Args0, Body0)),
-		varset__merge(VarSet1, EqvVarSet, [Body0 | Args0],
-				VarSet2, [Body | Args])
+prog_util__replace_eqv_type_type_2(Type0, VarSet0, EqvMap, Found0,
+		TypeIdsAlreadyExpanded, Type, VarSet, Found) :- 
+
+	Type0 = term__functor(_, _, Context),
+	(
+		type_to_type_id(Type0, EqvTypeId, TArgs0)
 	->
-		term__term_list_to_var_list(Args, Args2),
-		term__substitute_corresponding(Args2, TArgs1, Body, Type1),
-		prog_util__replace_eqv_type_type_2(Type1, VarSet2,
+
+		prog_util__replace_eqv_type_list(TArgs0, VarSet0, EqvMap,
+				Found0, TArgs1, VarSet1, Found1),
+
+		(	
+			\+ list__member(EqvTypeId, TypeIdsAlreadyExpanded),
+			map__search(EqvMap, EqvTypeId,
+				eqv_type_body(EqvVarSet, Args0, Body0)),
+			varset__merge(VarSet1, EqvVarSet, [Body0 | Args0],
+					VarSet2, [Body | Args])
+		->
+			term__term_list_to_var_list(Args, Args2),
+			term__substitute_corresponding(Args2, TArgs1,
+							Body, Type1),
+			prog_util__replace_eqv_type_type_2(Type1, VarSet2,
 				EqvMap, yes,
 				[EqvTypeId | TypeIdsAlreadyExpanded],
 				Type, VarSet, Found)
+		;
+			VarSet = VarSet1,
+			Found = Found1,
+			EqvTypeId = SymName - _,
+			construct_qualified_term(SymName, TArgs1,
+							Context, Type)
+			
+		)
 	;
-		VarSet = VarSet1,
-		Found = Found1,
-		Type = term__functor(F, TArgs1, Context)
+		VarSet = VarSet0,
+		Found = Found0,
+		Type = Type0
 	).
 
 :- pred prog_util__replace_eqv_type_tms(list(type_and_mode), tvarset, eqv_map,
@@ -278,6 +300,19 @@ unqualify_name(qualified(_ModuleName, PredName), PredName).
 
 sym_name_get_module_name(unqualified(_), ModuleName, ModuleName).
 sym_name_get_module_name(qualified(ModuleName, _PredName), _, ModuleName).
+
+construct_qualified_term(qualified(Module, Name), Args, Context, Term) :-
+	ModuleTerm = term__functor(term__atom(Module), [], Context),
+	UnqualifiedTerm = term__functor(term__atom(Name), Args, Context),
+	Term = term__functor(term__atom(":"), [ModuleTerm, UnqualifiedTerm],
+							Context).
+construct_qualified_term(unqualified(Name), Args, Context, Term) :-
+	Term = term__functor(term__atom(Name), Args, Context).
+
+
+construct_qualified_term(SymName, Args, Term) :-
+	term__context_init(Context),
+	construct_qualified_term(SymName, Args, Context, Term).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

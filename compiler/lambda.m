@@ -305,7 +305,7 @@ lambda__transform_lambda(PredOrFunc, Vars, Modes, Detism, OrigNonLocals0,
 		% we use the mode in the lambda expression. 
 
 		list__length(ArgVars, NumArgVars),
-		In = user_defined_mode(unqualified("in"), []),
+		In = user_defined_mode(qualified("mercury_builtin", "in"), []),
 		list__duplicate(NumArgVars, In, InModes),
 		map__from_corresponding_lists(ArgVars, InModes,
 			ArgModesMap),

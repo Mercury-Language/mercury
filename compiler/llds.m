@@ -306,7 +306,7 @@
 :- type proc_label
 	--->	proc(string, string, int, int)
 		%	 module, predicate name, predicate arity, mode #
-	;	special_proc(string, string, string, int, int).
+	;	special_proc(string, string, sym_name, int, int).
 		%	module, pred name, type name, type arity, mode #
 
 :- type tag		==	int.

@@ -98,7 +98,7 @@ constraint__transform_proc_1(PredId, ProcId, ModuleInfo0, ModuleInfo,
 
 	proc_info_get_initial_instmap(ProcInfo0, ModuleInfo0, InstMap0),
 	proc_info_context(ProcInfo0, Context),
-	mode_info_init(IoState99, ModuleInfo0, PredId, ProcId,
+	mode_info_init(IoState99, ModuleInfo0, no, PredId, ProcId,
 			Context, VarSet1, InstMap0, ModeInfo0),
 
 	constraint__propagate_goal(Goal0, Goal, ModeInfo0, ModeInfo),

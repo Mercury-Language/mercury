@@ -233,21 +233,25 @@ insts_to_mode(Initial, Final, Mode) :-
 	% more readable.
 	%
 	( Initial = free, Final = ground(shared, no) ->
-		Mode = user_defined_mode(unqualified("out"), [])
+		Mode = user_defined_mode(
+				qualified("mercury_builtin", "out"), [])
 	; Initial = free, Final = ground(unique, no) ->
-		Mode = user_defined_mode(unqualified("uo"), [])
+		Mode = user_defined_mode(qualified("mercury_builtin", "uo"), [])
 	; Initial = ground(shared, no), Final = ground(shared, no) ->
-		Mode = user_defined_mode(unqualified("in"), [])
+		Mode = user_defined_mode(qualified("mercury_builtin", "in"), [])
 	; Initial = ground(unique, no), Final = ground(clobbered, no) ->
-		Mode = user_defined_mode(unqualified("di"), [])
+		Mode = user_defined_mode(qualified("mercury_builtin", "di"), [])
 	; Initial = ground(unique, no), Final = ground(unique, no) ->
-		Mode = user_defined_mode(unqualified("ui"), [])
+		Mode = user_defined_mode(qualified("mercury_builtin", "ui"), [])
 	; Initial = free ->
-		Mode = user_defined_mode(unqualified("out"), [Final])
+		Mode = user_defined_mode(qualified("mercury_builtin", "out"),
+								[Final])
 	; Final = ground(clobbered, no) ->
-		Mode = user_defined_mode(unqualified("di"), [Initial])
+		Mode = user_defined_mode(qualified("mercury_builtin", "di"),
+								[Initial])
 	; Initial = Final ->
-		Mode = user_defined_mode(unqualified("in"), [Initial])
+		Mode = user_defined_mode(qualified("mercury_builtin", "in"),
+								[Initial])
 	;
 		Mode = (Initial -> Final)
 	).
@@ -765,8 +769,9 @@ inst_lookup_2(InstName, ModuleInfo, Inst) :-
 	; InstName = user_inst(Name, Args),
 		module_info_insts(ModuleInfo, InstTable),
 		inst_table_get_user_insts(InstTable, UserInstTable),
+		user_inst_table_get_inst_defns(UserInstTable, InstDefns),
 		list__length(Args, Arity),
-		( map__search(UserInstTable, Name - Arity, InstDefn) ->
+		( map__search(InstDefns, Name - Arity, InstDefn) ->
 			InstDefn = hlds__inst_defn(_VarSet, Params, Inst0,
 					_Cond, _C),
 			inst_lookup_subst_args(Inst0, Params, Name, Args, Inst)
@@ -978,7 +983,8 @@ mode_get_insts(_ModuleInfo, (InitialInst -> FinalInst), InitialInst, FinalInst).
 mode_get_insts(ModuleInfo, user_defined_mode(Name, Args), Initial, Final) :-
 	list__length(Args, Arity),
 	module_info_modes(ModuleInfo, Modes),
-	map__lookup(Modes, Name - Arity, HLDS_Mode),
+	mode_table_get_mode_defns(Modes, ModeDefns),
+	map__lookup(ModeDefns, Name - Arity, HLDS_Mode),
 	HLDS_Mode = hlds__mode_defn(_VarSet, Params, ModeDefn, _Cond, _Context),
 	ModeDefn = eqv_mode(Mode0),
 	mode_substitute_arg_list(Mode0, Params, Args, Mode),

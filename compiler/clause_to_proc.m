@@ -77,8 +77,10 @@ maybe_add_default_mode(PredInfo0, PredInfo) :-
 		%
 		pred_info_arity(PredInfo0, PredArity),
 		FuncArity is PredArity - 1,
-		InMode = user_defined_mode(unqualified("in"), []),
-		OutMode = user_defined_mode(unqualified("out"), []),
+		InMode = user_defined_mode(
+				qualified("mercury_builtin", "in"), []),
+		OutMode = user_defined_mode(
+				qualified("mercury_builtin", "out"), []),
 		list__duplicate(FuncArity, InMode, FuncArgModes),
 		FuncRetMode = OutMode,
 		list__append(FuncArgModes, [FuncRetMode], PredArgModes),

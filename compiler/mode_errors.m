@@ -80,9 +80,12 @@
 	;	mode_error_conj(list(delayed_goal))
 			% a conjunction contains one or more unscheduleable
 			% goals
-	;	mode_error_final_inst(int, var, inst, inst, final_inst_error).
+	;	mode_error_final_inst(int, var, inst, inst, final_inst_error)
 			% one of the head variables did not have the
 			% expected final inst on exit from the proc
+	;	mode_error_undefined_mode_in_lambda.
+			% This is a dummy error - the actual message
+			% is output by module_qual.m.
 
 :- type final_inst_error
 	--->	too_instantiated
@@ -181,6 +184,7 @@ report_mode_error(mode_error_final_inst(ArgNum, Var, VarInst, Inst, Reason),
 		ModeInfo) -->
 	report_mode_error_final_inst(ModeInfo, ArgNum, Var, VarInst, Inst,
 		Reason).
+report_mode_error(mode_error_undefined_mode_in_lambda, _ModeInfo) --> [].
 
 %-----------------------------------------------------------------------------%
 
@@ -647,15 +651,17 @@ mode_info_write_context(ModeInfo) -->
 	{ map__lookup(Preds, PredId, PredInfo) },
 	{ pred_info_procedures(PredInfo, Procs) },
 	{ map__lookup(Procs, ProcId, ProcInfo) },
-	{ proc_info_argmodes(ProcInfo, ArgModes) },
+	{ proc_info_argmodes(ProcInfo, ArgModes0) },
 	{ pred_info_name(PredInfo, PredName) },
 	{ mode_info_get_instvarset(ModeInfo, InstVarSet) },
 
 	prog_out__write_context(Context),
 	io__write_string("In clause for `"),
 	io__write_string(PredName),
-	( { ArgModes \= [] } ->
+	( { ArgModes0 \= [] } ->
 		io__write_string("("),
+		{ strip_builtin_qualifiers_from_mode_list(ArgModes0,
+							ArgModes) },
 		mercury_output_mode_list(ArgModes, InstVarSet),
 		io__write_string(")")
 	;
@@ -844,11 +850,12 @@ write_mode_inference_message(PredInfo, ProcInfo) -->
 	{ pred_info_name(PredInfo, PredName) },
 	{ Name = unqualified(PredName) },
 	{ pred_info_context(PredInfo, Context) },
-	{ proc_info_argmodes(ProcInfo, Modes) },
+	{ proc_info_argmodes(ProcInfo, Modes0) },
 	{ varset__init(VarSet) },
 	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
 	{ MaybeDet = no },
 	prog_out__write_context(Context),
+	{ strip_builtin_qualifiers_from_mode_list(Modes0, Modes) },
 	io__write_string("Inferred "),
 	(	{ PredOrFunc = predicate },
 		mercury_output_pred_mode_decl(VarSet, Name, Modes,
@@ -857,6 +864,35 @@ write_mode_inference_message(PredInfo, ProcInfo) -->
 		{ pred_args_to_func_args(Modes, ArgModes, RetMode) },
 		mercury_output_func_mode_decl(VarSet, Name, ArgModes, RetMode,
 				MaybeDet, Context)
+	).
+
+
+	% 
+	% Predicates to make error messages more readable by stripping
+	% "mercury_builtin" module qualifiers from modes.
+	%
+
+:- pred strip_builtin_qualifiers_from_mode_list(list(mode)::in,
+						list(mode)::out) is det.
+
+strip_builtin_qualifiers_from_mode_list(Modes0, Modes) :-
+	list__map(strip_builtin_qualifiers_from_mode, Modes0, Modes).
+
+:- pred strip_builtin_qualifiers_from_mode((mode)::in, (mode)::out) is det.
+
+strip_builtin_qualifiers_from_mode(Inst1 -> Inst2, Inst1 -> Inst2).
+strip_builtin_qualifiers_from_mode(user_defined_mode(SymName0, Insts),
+				user_defined_mode(SymName, Insts)) :-
+	strip_builtin_qualifier_from_sym_name(SymName0, SymName).
+
+:- pred strip_builtin_qualifier_from_sym_name(sym_name::in,
+						sym_name::out) is det.
+
+strip_builtin_qualifier_from_sym_name(SymName0, SymName) :-
+	( SymName0 = qualified("mercury_builtin", Name) ->
+		SymName = unqualified(Name)
+	;
+		SymName = SymName0
 	).
 
 %-----------------------------------------------------------------------------%

@@ -29,8 +29,8 @@
 :- import_module library, getopt, term, varset.
 
 	% the main compiler passes (in order of execution)
-:- import_module handle_options, prog_io, modules, make_hlds.
-:- import_module undef_types, typecheck, undef_modes, modes.
+:- import_module handle_options, prog_io, modules, module_qual, make_hlds.
+:- import_module typecheck, modes.
 :- import_module switch_detection, cse_detection, det_analysis, unique_modes.
 :- import_module simplify, bytecode_gen, bytecode, (lambda), polymorphism.
 :- import_module higher_order, inlining, common, dnf.
@@ -147,7 +147,7 @@ process_module_2(ModuleName) -->
 	globals__io_lookup_bool_option(halt_at_syntax_errors, HaltSyntax),
 	globals__io_lookup_bool_option(make_interface, MakeInterface),
 	globals__io_lookup_bool_option(make_short_interface,
-							MakeShortInterface),
+						MakeShortInterface),
 	globals__io_lookup_bool_option(convert_to_mercury, ConvertToMercury),
 	globals__io_lookup_bool_option(convert_to_goedel, ConvertToGoedel),
 	( { Error = fatal } ->
@@ -157,8 +157,7 @@ process_module_2(ModuleName) -->
 	; { MakeInterface = yes } ->
 		make_interface(ModuleName, Items0)
 	; { MakeShortInterface = yes } ->
-		% temporary, until my other changes can be committed - stayl
-		make_interface(ModuleName, Items0)
+		make_short_interface(ModuleName, Items0)
 	; { ConvertToMercury = yes } ->
 		{ string__append(ModuleName, ".ugly", OutputFileName) },
 		convert_to_mercury(ModuleName, OutputFileName, Items0)
@@ -210,8 +209,10 @@ process_module_2(ModuleName) -->
 
 mercury_compile(Module) -->
 	{ Module = module_imports(ModuleName, _, _, _, _) },
-	mercury_compile__pre_hlds_pass(Module, HLDS1, Errors1),
-	mercury_compile__frontend_pass(HLDS1, HLDS20, Errors2),
+	mercury_compile__pre_hlds_pass(Module, HLDS1, UndefTypes,
+						UndefModes, Errors1),
+	mercury_compile__frontend_pass(HLDS1, HLDS20, UndefTypes,
+						UndefModes, Errors2),
 	( { Errors1 = no }, { Errors2 = no } ->
 	    globals__io_lookup_bool_option(verbose, Verbose),
 	    globals__io_lookup_bool_option(statistics, Stats),
@@ -256,16 +257,19 @@ mercury_compile(Module) -->
 %-----------------------------------------------------------------------------%
 
 :- pred mercury_compile__pre_hlds_pass(module_imports, module_info, bool,
-	io__state, io__state).
-:- mode mercury_compile__pre_hlds_pass(in, out, out, di, uo) is det.
+	bool, bool, io__state, io__state).
+:- mode mercury_compile__pre_hlds_pass(in, out, out, out, out, di, uo) is det.
 
 mercury_compile__pre_hlds_pass(module_imports(Module, ShortDeps, LongDeps,
-		Items0, _), HLDS1, FoundError) -->
+		Items0, _), HLDS1, UndefTypes, UndefModes, FoundError) -->
 	globals__io_lookup_bool_option(statistics, Stats),
 	globals__io_lookup_bool_option(verbose, Verbose),
 
 	write_dependency_file(Module, ShortDeps, LongDeps),
-	mercury_compile__expand_equiv_types(Items0, Verbose, Stats, Items),
+	mercury_compile__module_qualify_items(Items0, Items1, Module, Verbose,
+				Stats, _, UndefTypes, UndefModes),
+
+	mercury_compile__expand_equiv_types(Items1, Verbose, Stats, Items),
 	mercury_compile__make_hlds(Module, Items, Verbose, Stats, HLDS0,
 		FoundError),
 	mercury_compile__maybe_dump_hlds(HLDS0, "1", "initial"),
@@ -283,6 +287,21 @@ mercury_compile__pre_hlds_pass(_, HLDS1, Proceed) -->
 #endif
 	{ true }.
 
+:- pred mercury_compile__module_qualify_items(item_list, item_list, string,
+		bool, bool, int, bool, bool, io__state, io__state).
+:- mode mercury_compile__module_qualify_items(in, out, in, in, in, out, out,
+			out, di, uo) is det. 
+
+mercury_compile__module_qualify_items(Items0, Items, ModuleName, Verbose, Stats,
+			NumErrors, UndefTypes, UndefModes) -->
+	maybe_write_string(Verbose, "% Module qualifying items...\n"),
+	maybe_flush_output(Verbose),
+	module_qual__module_qualify_items(Items0, Items, ModuleName, yes,
+				NumErrors, UndefTypes, UndefModes),
+	maybe_write_string(Verbose, "% done.\n"),
+	maybe_report_stats(Stats).
+
+	
 :- pred mercury_compile__expand_equiv_types(item_list, bool, bool, item_list,
 	io__state, io__state).
 :- mode mercury_compile__expand_equiv_types(in, in, in, out, di, uo) is det.
@@ -317,24 +336,20 @@ mercury_compile__make_hlds(Module, Items, Verbose, Stats,
 %-----------------------------------------------------------------------------%
 
 :- pred mercury_compile__frontend_pass(module_info, module_info, bool,
-					io__state, io__state).
-% :- mode mercury_compile__frontend_pass(di, uo, in, out, di, uo) is det.
-:- mode mercury_compile__frontend_pass(in, out, out, di, uo) is det.
+					bool, bool, io__state, io__state).
+% :- mode mercury_compile__frontend_pass(di, uo, in, in, out, di, uo) is det.
+:- mode mercury_compile__frontend_pass(in, out, in, in, out, di, uo) is det.
 
-mercury_compile__frontend_pass(HLDS1, HLDS, FoundError) -->
+mercury_compile__frontend_pass(HLDS1, HLDS, FoundUndefTypeError,
+		FoundUndefModeError, FoundError) -->
 	%
-	% First check for undefined types.
 	% We can't continue after an undefined type error, since
 	% typecheck would get internal errors
 	%
 	globals__io_lookup_bool_option(verbose, Verbose),
-	globals__io_lookup_bool_option(statistics, Stats),
 	maybe_write_string(Verbose, "% Type-checking...\n"),
-	mercury_compile__check_undef_types(HLDS1, Verbose, Stats, HLDS2,
-	    FoundUndefTypeError),
-	mercury_compile__maybe_dump_hlds(HLDS2, "2", "undef_types"),
 	( { FoundUndefTypeError = yes } ->
-	    { HLDS = HLDS2 },
+	    { HLDS = HLDS1 },
 	    { FoundError = yes },
 	    maybe_write_string(Verbose,
 		    "% Program contains undefined type error(s).\n"),
@@ -344,7 +359,7 @@ mercury_compile__frontend_pass(HLDS1, HLDS, FoundError) -->
 	    %
 	    % Next typecheck the clauses.
 	    %
-	    typecheck(HLDS2, HLDS3, FoundTypeError),
+	    typecheck(HLDS1, HLDS3, FoundTypeError),
 	    ( { FoundTypeError = yes } ->
 		maybe_write_string(Verbose,
 			"% Program contains type error(s).\n"),
@@ -364,16 +379,12 @@ mercury_compile__frontend_pass(HLDS1, HLDS, FoundError) -->
 		{ FoundError = FoundTypeError }
 	    ;
 		%
-		% Check for undefined insts and modes.
 		% We can't continue after an undefined insts/mode error, since
 		% mode analysis would get internal errors
 		%
-		mercury_compile__check_undef_modes(HLDS3, Verbose, Stats, HLDS4,
-		    FoundUndefModeError),
-		mercury_compile__maybe_dump_hlds(HLDS4, "4", "undef_modes"),
 		( { FoundUndefModeError = yes } ->
 		    { FoundError = yes },
-		    { HLDS = HLDS4 },
+		    { HLDS = HLDS3 },
 		    maybe_write_string(Verbose,
 	"% Program contains undefined inst or undefined mode error(s).\n"),
 		    io__set_exit_status(1)
@@ -382,7 +393,7 @@ mercury_compile__frontend_pass(HLDS1, HLDS, FoundError) -->
 		    % Now go ahead and do the rest of mode checking and
 		    % determinism analysis
 		    %
-		    mercury_compile__frontend_pass_2_by_phases(HLDS4, HLDS,
+		    mercury_compile__frontend_pass_2_by_phases(HLDS3, HLDS,
 			    FoundModeOrDetError),
 		    { bool__or(FoundTypeError, FoundModeOrDetError,
 			    FoundError) }
@@ -707,25 +718,6 @@ mercury_compile__backend_pass_by_preds_4(ProcInfo0, ProcId, PredId,
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
-
-:- pred mercury_compile__check_undef_types(module_info, bool, bool,
-	module_info, bool, io__state, io__state).
-:- mode mercury_compile__check_undef_types(in, in, in, out, out, di, uo) is det.
-
-mercury_compile__check_undef_types(HLDS0, Verbose, Stats, HLDS, FoundError) -->
-	maybe_write_string(Verbose, "% Checking for undefined types...\n"),
-	check_undefined_types(HLDS0, HLDS, FoundError),
-	maybe_report_stats(Stats).
-
-:- pred mercury_compile__check_undef_modes(module_info, bool, bool,
-	module_info, bool, io__state, io__state).
-:- mode mercury_compile__check_undef_modes(in, in, in, out, out, di, uo) is det.
-
-mercury_compile__check_undef_modes(HLDS0, Verbose, Stats, HLDS, FoundError) -->
-	maybe_write_string(Verbose, "% Mode-checking...\n"),
-	maybe_write_string(Verbose, "% Checking for undefined insts and modes...\n"),
-	check_undefined_modes(HLDS0, HLDS, FoundError),
-	maybe_report_stats(Stats).
 
 :- pred mercury_compile__modecheck(module_info, bool, bool, module_info, bool,
 	io__state, io__state).

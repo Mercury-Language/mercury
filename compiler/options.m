@@ -42,6 +42,7 @@
 		;	warn_det_decls_too_lax
 		;	warn_nothing_exported
 		;	warn_unused_args
+		;	warn_interface_imports
 	% Verbosity options
 		;	verbose
 		;	very_verbose
@@ -182,7 +183,6 @@
 		;	link_libraries
 		;	link_objects
 	% Miscellaneous Options
-		;	builtin_module
 		;	heap_space
 		;	search_directories
 		;	help.
@@ -222,7 +222,8 @@ option_defaults_2(warning_option, [
 	warn_missing_det_decls	-	bool(yes),
 	warn_det_decls_too_lax	-	bool(yes),
 	warn_nothing_exported	-	bool(yes),
-	warn_unused_args	-	bool(no)
+	warn_unused_args	-	bool(no),
+	warn_interface_imports	-	bool(no)
 ]).
 option_defaults_2(verbosity_option, [
 		% Verbosity Options
@@ -417,7 +418,6 @@ option_defaults_2(link_option, [
 ]).
 option_defaults_2(miscellaneous_option, [
 		% Miscellaneous Options
-	builtin_module		-	string("mercury_builtin"),
 	heap_space		-	int(0),
 	search_directories 	-	accumulating(["."]),
 	help 			-	bool(no)
@@ -462,6 +462,7 @@ long_option("warn-missing-det-decls",	warn_missing_det_decls).
 long_option("warn-det-decls-too-lax",	warn_det_decls_too_lax).
 long_option("warn-nothing-exported",	warn_nothing_exported).
 long_option("warn-unused-args",		warn_unused_args).
+long_option("warn-interface-imports",	warn_interface_imports).
 
 % verbosity options
 long_option("verbose",			verbose).
@@ -643,7 +644,6 @@ long_option("link-object",		link_objects).
 % misc options
 long_option("help",			help).
 long_option("heap-space",		heap_space).
-long_option("builtin-module",		builtin_module).
 long_option("search-directory",		search_directories).
 
 %-----------------------------------------------------------------------------%
@@ -895,7 +895,10 @@ options_help_warning -->
 	io__write_string("\t--no-warn-nothing-exported\n"),
 	io__write_string("\t\tDon't warn about modules which export nothing.\n"),
 	io__write_string("\t--warn-unused-args\n"),
-	io__write_string("\t\tWarn about predicate arguments which are not used.\n").
+	io__write_string("\t\tWarn about predicate arguments which are not used.\n"),
+	io__write_string("\t--warn-interface-imports\n"),
+	io__write_string("\t\tWarn about modules imported in the interface, but\n"),
+	io__write_string("\t\twhich are not used in the interface").
 
 :- pred options_help_verbosity(io__state::di, io__state::uo) is det.
 
@@ -938,10 +941,10 @@ options_help_output -->
 	io__write_string("\t\tOutput `Make'-style dependencies for the module\n"),
 	io__write_string("\t\tand all of its dependencies to `<module>.dep'.\n"),
 	io__write_string("\t-i, --make-interface\n"),
-	io__write_string("\t\tWrite the module interface to `<module>.int'.\n"),
+	io__write_string("\t\tWrite the module interface to `<module>.int'\n"),
 	io__write_string("\t\tThis option should only be used by mmake.\n"),
 	io__write_string("\t--make-short-interface\n"),
-	io__write_string("\t\tWrite the short interface to `<module>.int2'.\n"),
+	io__write_string("\t\tWrite the short interface to `<module>.int3'.\n"),
 	io__write_string("\t-G, --convert-to-goedel\n"),
 	io__write_string("\t\tConvert to Goedel. Output to file `<module>.loc'.\n"),
 	io__write_string("\t\tNote that some Mercury language constructs cannot\n"),
@@ -1329,8 +1332,6 @@ options_help_misc -->
 	% io__write_string("\t\t\t""Panic: growing stacks has required shifting the heap""\n"),
 	% io__write_string("\t\tmessage.\n"),
 
-	io__write_string("\t-b <builtin>, --builtin-module <builtin>\n"),
-	io__write_string("\t\tUse `<builtin>' instead of `mercury_builtin' as the \n\t\tmodule which always gets automatically imported.\n"),
 	io__write_string("\t-I <dir>, --search-directory <dir>\n"),
 	io__write_string("\t\tAdd <dir> to the list of directories to be searched for \n\t\timported modules.\n").
 

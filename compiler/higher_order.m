@@ -53,14 +53,14 @@ specialize_higher_order(ModuleInfo0, ModuleInfo) -->
 
 process_requests(Requests0, GoalSizes0, NextHOid0, NextHOid,
 			NewPreds0, NewPreds, ModuleInfo1, ModuleInfo) -->
+	{ filter_requests(Requests0, GoalSizes0, Requests) },
 	(
-		{ set__empty(Requests0) }
+		{ Requests = [] }
 	->
 		{ ModuleInfo = ModuleInfo1 },
 		{ NextHOid = NextHOid0 },
 		{ NewPreds = NewPreds0 }
 	;
-		{ filter_requests(Requests0, GoalSizes0, Requests) },
 		{ set__init(PredProcsToFix0) },
 		{ map__init(NewPredsForThisPass0) },
 		create_new_preds(Requests, NewPredsForThisPass0,
@@ -145,9 +145,16 @@ max_specialized_goal_size(20).
 			list(higher_order_arg)	% specialized args
 		).
 
+
+	% Returned by traverse_goal. 
+:- type changed --->
+		changed		% Need to requantify goal + check other procs
+	;	request		% Need to check other procs
+	;	unchanged.	% Do nothing more for this predicate
+
 %-------------------------------------------------------------------------------
 :- pred get_specialization_requests(set(request)::out, goal_sizes::out,
-				module_info::in, module_info::out) is det.
+			module_info::in, module_info::out) is det.
 
 get_specialization_requests(Requests, GoalSizes, ModuleInfo0, ModuleInfo) :-
 	module_info_predids(ModuleInfo0, PredIds),
@@ -162,7 +169,7 @@ get_specialization_requests(Requests, GoalSizes, ModuleInfo0, ModuleInfo) :-
 		module_info::in, module_info::out) is det.
 
 get_specialization_requests_2([], Requests, Requests, Sizes, Sizes, 
-							ModuleInfo, ModuleInfo).
+					ModuleInfo, ModuleInfo).
 get_specialization_requests_2([PredId | PredIds], Requests0, Requests,
 			GoalSizes0, GoalSizes, ModuleInfo0, ModuleInfo) :-
 	module_info_preds(ModuleInfo0, Preds0), 
@@ -187,7 +194,7 @@ get_specialization_requests_2([PredId | PredIds], Requests0, Requests,
 				GoalSize, Info0, info(_, Requests1,_,_)),
 		map__set(GoalSizes0, PredId, GoalSize, GoalSizes1),
 		(
-			Changed = yes
+			Changed = changed
 		->
 			proc_info_vartypes(ProcInfo0, VarTypes0),
 			proc_info_headvars(ProcInfo0, HeadVars),
@@ -197,15 +204,21 @@ get_specialization_requests_2([PredId | PredIds], Requests0, Requests,
 			proc_info_set_goal(ProcInfo0, Goal, ProcInfo1),
 			proc_info_set_variables(ProcInfo1, Varset, ProcInfo2),
 			proc_info_set_vartypes(ProcInfo2, VarTypes, ProcInfo),
-			map__det_update(Procs0, ProcId, ProcInfo, Procs1),
+			map__det_update(Procs0, ProcId, ProcInfo, Procs1)
+		;
+			Procs1 = Procs0
+		),
+		(
+			(Changed = request ; Changed = changed)
+		->
 			traverse_other_procs(PredId, ProcIds, ModuleInfo0,
 					Requests1, Requests2, Procs1, Procs),
 			pred_info_set_procedures(PredInfo0, Procs, PredInfo),
 			map__det_update(Preds0, PredId, PredInfo, Preds),
 			module_info_set_preds(ModuleInfo0, Preds, ModuleInfo1)
 		;
-			Requests2 = Requests0,
-			ModuleInfo1 = ModuleInfo0
+			ModuleInfo1 = ModuleInfo0,
+			Requests2 = Requests1	
 		)
 	),
 	get_specialization_requests_2(PredIds, Requests2, Requests,
@@ -252,12 +265,13 @@ traverse_other_procs(PredId, [ProcId | ProcIds], ModuleInfo, Requests0,
 	% is call/N. The pred_proc_id is that of the current procedure,
 	% used to find out which procedures need fixing up later.
 :- pred traverse_goal(hlds__goal::in, hlds__goal::out, pred_proc_id::in,
-	bool::out, int::out, higher_order_info::in,
+	changed::out, int::out, higher_order_info::in,
 	higher_order_info::out) is det.
 
 traverse_goal(conj(Goals0) - Info, conj(Goals) - Info,
 			PredProcId, Changed, GoalSize) -->
-	traverse_conj(Goals0, Goals, PredProcId, no, Changed, 0, GoalSize).
+	traverse_conj(Goals0, Goals, PredProcId, unchanged, Changed,
+					0, GoalSize).
 
 traverse_goal(disj(Goals0, FV) - Info, disj(Goals, FV) - Info,
 				PredProcId, Changed, GoalSize) -->
@@ -290,7 +304,8 @@ traverse_goal(Goal0, Goal, PredProcId, Changed, GoalSize, Info0, Info) :-
 						GoalSize3, Info0, Info3),
 	Goal = if_then_else(Vars, Cond, Then, Else, FV) - GoalInfo,
 	GoalSize is GoalSize1 + GoalSize2 + GoalSize3,
-	bool__or_list([Changed1, Changed2, Changed3], Changed),
+	update_changed_status(Changed1, Changed2, Changed4),
+	update_changed_status(Changed4, Changed3, Changed),
 	merge_higher_order_infos(Info2, Info3, Info).
 
 traverse_goal(not(NegGoal0) - Info, not(NegGoal) - Info,
@@ -301,31 +316,24 @@ traverse_goal(some(Vars, Goal0) - Info, some(Vars, Goal) - Info,
 				PredProcId, Changed, GoalSize) -->
 	traverse_goal(Goal0, Goal, PredProcId, Changed, GoalSize).
 
-traverse_goal(Goal, Goal, _, no, 1) -->
+traverse_goal(Goal, Goal, _, unchanged, 1) -->
 	{ Goal = pragma_c_code(_, _, _, _, _, _) - _ }.
 
-traverse_goal(Goal, Goal, _, no, 1) -->
+traverse_goal(Goal, Goal, _, unchanged, 1) -->
 	{ Goal = unify(_, _, _, Unify, _) - _ }, 
 	check_unify(Unify).
 
 
 :- pred traverse_conj(hlds__goals::in, hlds__goals::out, pred_proc_id::in,
-	bool::in, bool::out, int::in, int::out, higher_order_info::in,
+	changed::in, changed::out, int::in, int::out, higher_order_info::in,
 	higher_order_info::out) is det.
 
 traverse_conj([], [], _, Changed, Changed, Size, Size) --> [].
 traverse_conj([Goal0 | Goals0], [Goal | Goals],
 		PredProcId, Changed0, Changed, GoalSize0, GoalSize) --> 
-	traverse_goal(Goal0, Goal, PredProcId,
-						LocalChanged, ThisGoalSize),
+	traverse_goal(Goal0, Goal, PredProcId, LocalChanged, ThisGoalSize),
 	{ GoalSize1 is GoalSize0 + ThisGoalSize },
-	(
-		{ LocalChanged = yes }
-	->
-		{ Changed1 = yes }
-	;
-		{ Changed1 = Changed0 }
-	),
+	{ update_changed_status(Changed0, LocalChanged, Changed1) },
 	traverse_conj(Goals0, Goals, PredProcId, Changed1, Changed,
 							GoalSize1, GoalSize).
 
@@ -334,10 +342,10 @@ traverse_conj([Goal0 | Goals0], [Goal | Goals],
 		% results to give the specialization information after the
 		% disjunction.
 :- pred traverse_disj(hlds__goals::in, hlds__goals::out, pred_proc_id::in,
-		bool::out, int::out, higher_order_info::in,
+		changed::out, int::out, higher_order_info::in,
 		higher_order_info::out) is det.
 
-traverse_disj([], [], _, no, 0) --> [].
+traverse_disj([], [], _, unchanged, 0) --> [].
 traverse_disj([Goal0 | Goals0], [Goal | Goals], PredProcId,
 						Changed, GoalSize) -->
 	=(Info0),
@@ -347,21 +355,15 @@ traverse_disj([Goal0 | Goals0], [Goal | Goals], PredProcId,
 
 
 :- pred traverse_disj_2(hlds__goals::in, hlds__goals::out, pred_proc_id::in,
-		bool::in, bool::out, int::in, int::out, higher_order_info::in,
-		higher_order_info::in, higher_order_info::out) is det.
+	changed::in, changed::out, int::in, int::out, higher_order_info::in,
+	higher_order_info::in, higher_order_info::out) is det.
 
 traverse_disj_2([], [], _, Changed, Changed, Size, Size, _, Info, Info).
 traverse_disj_2([Goal0 | Goals0], [Goal | Goals], PredProcId, Changed0, Changed,
 			GoalSize0, GoalSize, InitialInfo, Info0, Info) :-
 	traverse_goal(Goal0, Goal, PredProcId, LocalChanged, ThisGoalSize,
 						InitialInfo, ThisGoalInfo),
-	(
-		LocalChanged = yes
-	->
-		Changed1 = yes
-	;
-		Changed1 = Changed0
-	),
+	update_changed_status(Changed0, LocalChanged, Changed1),
 	GoalSize1 is GoalSize0 + ThisGoalSize,
 	merge_higher_order_infos(Info0, ThisGoalInfo, Info1),
 	traverse_disj_2(Goals0, Goals, PredProcId, Changed1, Changed,
@@ -370,10 +372,10 @@ traverse_disj_2([Goal0 | Goals0], [Goal | Goals], PredProcId, Changed0, Changed,
 
 		% Switches are treated in exactly the same way as disjunctions.
 :- pred traverse_cases(list(case)::in, list(case)::out, pred_proc_id::in,
-		bool::out, int::out, higher_order_info::in,
+		changed::out, int::out, higher_order_info::in,
 		higher_order_info::out) is det.
 
-traverse_cases([], [], _, no, 0) --> [].
+traverse_cases([], [], _, unchanged, 0) --> [].
 traverse_cases([case(ConsId, Goal0) | Cases0], [case(ConsId, Goal) | Cases], 
 				PredProcId, Changed, GoalSize) -->
 	=(Info0),
@@ -382,8 +384,8 @@ traverse_cases([case(ConsId, Goal0) | Cases0], [case(ConsId, Goal) | Cases],
 					Changed, ThisGoalSize, GoalSize, Info0).
 
 :- pred traverse_cases_2(list(case)::in, list(case)::out, pred_proc_id::in,
-		bool::in, bool::out, int::in, int::out, higher_order_info::in,
-		higher_order_info::in, higher_order_info::out) is det.
+	changed::in, changed::out, int::in, int::out, higher_order_info::in,
+	higher_order_info::in, higher_order_info::out) is det.
 
 traverse_cases_2([], [], _, Changed, Changed, Size, Size, _, Info, Info).
 traverse_cases_2([Case0 | Cases0], [Case | Cases], PredProcId, Changed0,
@@ -392,13 +394,7 @@ traverse_cases_2([Case0 | Cases0], [Case | Cases], PredProcId, Changed0,
 	traverse_goal(Goal0, Goal, PredProcId, LocalChanged,
 				ThisGoalSize, InitialInfo, ThisGoalInfo),
 	Case = case(ConsId, Goal),
-	(
-		LocalChanged = yes
-	->
-		Changed1 = yes
-	;
-		Changed1 = Changed0
-	),
+	update_changed_status(Changed0, LocalChanged, Changed1),
 	GoalSize1 is GoalSize0 + ThisGoalSize,
 	merge_higher_order_infos(Info0, ThisGoalInfo, Info1),
 	traverse_cases_2(Cases0, Cases, PredProcId, Changed1, Changed,
@@ -518,7 +514,7 @@ check_unify(complicated_unify(_, _, _)) -->
 		% Process a higher-order call to see if it could possibly
 		% be specialized.
 :- pred maybe_specialize_higher_order_call( hlds__goal::in, hlds__goal::out,
-		pred_proc_id::in, bool::out, higher_order_info::in,
+		pred_proc_id::in, changed::out, higher_order_info::in,
 		higher_order_info::out) is det.
 
 maybe_specialize_higher_order_call(Goal0 - GoalInfo, Goal - GoalInfo,
@@ -552,18 +548,18 @@ maybe_specialize_higher_order_call(Goal0 - GoalInfo, Goal - GoalInfo,
 		maybe_specialize_call(Goal1 - GoalInfo,
 			Goal - _, PredProcId, _, Info0,
 			info(_, Requests, _, _)),
-		Changed = yes
+		Changed = changed 
 	;
 		% non-specializable call to call/N
 		Goal = Goal0,
-		Changed = no,
+		Changed = unchanged,
 		Requests = Requests0
 	),
 	Info = info(PredVars, Requests, NewPreds, Module).
 
 		% Process a call to see if it could possibly be specialized.
 :- pred maybe_specialize_call( hlds__goal::in, hlds__goal::out,
-		pred_proc_id::in, bool::out, higher_order_info::in,
+		pred_proc_id::in, changed::out, higher_order_info::in,
 		higher_order_info::out) is det.
 
 maybe_specialize_call(Goal0 - GoalInfo, Goal - GoalInfo, PredProcId,
@@ -583,7 +579,7 @@ maybe_specialize_call(Goal0 - GoalInfo, Goal - GoalInfo, PredProcId,
 		HigherOrderArgs = []
 	->
 		Requests = Requests0,
-		Changed = no,
+		Changed = unchanged,
 		Goal = Goal0
 	;
 		% Check to see if any of the specialized
@@ -591,10 +587,10 @@ maybe_specialize_call(Goal0 - GoalInfo, Goal - GoalInfo, PredProcId,
 		map__search(NewPreds,
 			proc(CalledPred, CalledProc),
 			NewPredSet),
-		solutions(lambda([X::out] is nondet, (
-			set__member(X, NewPredSet),
+		set__to_sorted_list(NewPredSet, NewPredList),	% NOP
+		list__filter(lambda([X::in] is semidet, (
 			X = new_pred(_,_,_, HigherOrderArgs)
-			)), Matches),
+			)), NewPredList, Matches),
 		(
 			Matches = [Match],
 			Match = new_pred(NewCalledPred,
@@ -610,7 +606,7 @@ maybe_specialize_call(Goal0 - GoalInfo, Goal - GoalInfo, PredProcId,
 		Goal = call(NewCalledPred, NewCalledProc,
 				Args2, IsBuiltin, MaybeContext,
 				NewName, FollowVars),
-		Changed = yes,
+		Changed = changed,
 		Requests = Requests0
 	;
 		% There is a known higher order variable in the
@@ -621,7 +617,7 @@ maybe_specialize_call(Goal0 - GoalInfo, Goal - GoalInfo, PredProcId,
 				proc(CalledPred, CalledProc),
 				HigherOrderArgs), 
 		set__insert(Requests0, Request, Requests),
-		Changed = yes
+		Changed = request
 	),
 	Info = info(PredVars, Requests, NewPreds, Module).
 
@@ -672,6 +668,14 @@ maybe_add_alias(LVar, RVar,
 	).
 		
 
+:- pred update_changed_status(changed::in, changed::in, changed::out) is det.
+
+update_changed_status(changed, _, changed).
+update_changed_status(request, changed, changed).
+update_changed_status(request, request, request).
+update_changed_status(request, unchanged, request).
+update_changed_status(unchanged, Changed, Changed).
+
 %-------------------------------------------------------------------------------
 % Predicates to process requests for specialization, and create any  
 % new predicates that are required.	
@@ -686,14 +690,14 @@ maybe_add_alias(LVar, RVar,
 						list(request)::out) is det.
 
 filter_requests(Requests0, GoalSizes, Requests) :-
-	solutions(lambda([X::out] is nondet, (
-			set__member(X, Requests0),
+	set__to_sorted_list(Requests0, Requests1),
+	list__filter(lambda([X::in] is semidet, (
 			X = request(_, CalledPredProcId, _),
 			CalledPredProcId = proc(CalledPredId, _),
 			map__search(GoalSizes, CalledPredId, GoalSize),
 			max_specialized_goal_size(MaxSize),
-			GoalSize =< MaxSize
-			)), Requests).
+			GoalSize =< MaxSize)),
+		Requests1, Requests).
 
 :- pred create_new_preds(list(request)::in, new_preds::in, new_preds::out,
 		set(pred_proc_id)::in, set(pred_proc_id)::out, int::in,

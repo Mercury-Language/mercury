@@ -60,11 +60,18 @@
 :- pred llds_out__name_mangle(string, string).
 :- mode llds_out__name_mangle(in, out) is det.
 
+	% Used to mangle the qualified name of a type.
+	% Produces a string of the form Module__Name, unless Module__
+	% is already a prefix of Name.
+
+:- pred llds_out__sym_name_mangle(sym_name, string).
+:- mode llds_out__sym_name_mangle(in, out) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 :- import_module char, require, globals, options.
-:- import_module exprn_aux, prog_out.
+:- import_module exprn_aux, prog_data, prog_out.
 
 %-----------------------------------------------------------------------------%
 
@@ -1571,10 +1578,12 @@ get_proc_label(proc(Module, Pred, Arity, ModeNum0),ProcLabelString) :-
 	string__append_list([LabelName, "_", ArityString, "_", ModeNumString], 
 		ProcLabelString).
 
+	% For a special proc, output a label of the form:
+	% mercury____<PredName>___<TypeModule>__<TypeName>_<TypeArity>_<Mode>
 get_proc_label(special_proc(Module, PredName, TypeName0, TypeArity,
 				ModeNum0), ProcLabelString) :-
 	get_label_name(Module, PredName, TypeArity, LabelName),
-	llds_out__name_mangle(TypeName0, TypeName),
+	llds_out__sym_name_mangle(TypeName0, TypeName),
 	string__int_to_string(TypeArity, TypeArityString),
 	ModeNum is ModeNum0 mod 10000,		% strip off the priority
 	string__int_to_string(ModeNum, ModeNumString),
@@ -1615,15 +1624,8 @@ get_label_name(Module0, Name0, Arity, LabelName) :-
 		llds_out__name_mangle(Name0, Name),
 		string__append(Prefix, Name, LabelName)
 	;
-		string__append(Module0, "__", UnderscoresModule),
-		( string__append(UnderscoresModule, Name1, Name0) ->
-			Name2 = Name1
-		;
-			Name2 = Name0
-		),
-		llds_out__name_mangle(Module0, Module),
-		llds_out__name_mangle(Name2, Name),
-		string__append_list([Prefix, Module, "__", Name], LabelName)
+		make_qualified_name(Module0, Name0, LabelName0),
+		string__append(Prefix, LabelName0, LabelName)
 	).
 
 	% To ensure that Mercury labels don't clash with C symbols, we
@@ -2207,6 +2209,32 @@ llds_out__convert_to_valid_c_identifier(String, Name) :-
 		llds_out__convert_to_valid_c_identifier_2(String, Name0),
 		string__append("f", Name0, Name)
 	).
+
+llds_out__sym_name_mangle(unqualified(Name0), Name) :-
+	llds_out__name_mangle(Name0, Name).
+llds_out__sym_name_mangle(qualified(Module, Name0), Name) :-
+	make_qualified_name(Module, Name0, Name).
+
+	% make_qualified_name(Module0, Name0, LabelName) 
+	%
+	% Given a qualified name, produce a label fragment.
+	% If Module0__ is a prefix of Name0, return the mangled
+	% form of Name0, otherwise mangle both names and
+	% return MangledModule0__MangledName0.
+:- pred make_qualified_name(module_name, string, string).
+:- mode make_qualified_name(in, in, out) is det.
+
+make_qualified_name(Module0, Name0, LabelName) :-
+	string__append(Module0, "__", UnderscoresModule),
+	( string__append(UnderscoresModule, Name1, Name0) ->
+		Name2 = Name1
+	;
+		Name2 = Name0
+	),
+	llds_out__name_mangle(Module0, Module),
+	llds_out__name_mangle(Name2, Name),
+	string__append_list([Module, "__", Name], LabelName).
+
 
 	% A table used to convert Mercury functors into
 	% C identifiers.  Feel free to add any new translations you want.

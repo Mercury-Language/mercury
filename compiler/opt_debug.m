@@ -708,8 +708,9 @@ opt_debug__dump_proclabel(proc(Module, Pred, Arity, Mode), Str) :-
 opt_debug__dump_proclabel(special_proc(Module, Pred, Type, Arity, Mode), Str) :-
 	string__int_to_string(Arity, A_str),
 	string__int_to_string(Mode, M_str),
+	llds_out__sym_name_mangle(Type, TypeStr),
 	string__append_list(
-		[Module, "_", Pred, "_", Type, "_", A_str, "_", M_str], Str).
+		[Module, "_", Pred, "_", TypeStr, "_", A_str, "_", M_str], Str).
 
 opt_debug__dump_bool(yes, "yes").
 opt_debug__dump_bool(no, "no").

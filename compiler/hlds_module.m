@@ -237,7 +237,9 @@
 	% to attempt to optimize the data structures for lots of accesses
 	% and relatively few insertion/deletions. (This was useful when
 	% we were using unbalanced binary trees, but now that we are using
-	% 234-trees, it is a no-op.)
+	% 234-trees, it is a no-op, except for the mode and inst tables,
+	% where the cached lists of mode_ids and inst_ids are sorted for
+	% efficient conversion to sets in module_qual.m.)
 
 :- pred module_info_optimize(module_info, module_info).
 :- mode module_info_optimize(in, out) is det.
@@ -279,7 +281,7 @@ module_info_init(Name, module(Name, C_Code_Info, PredicateTable, Requests,
 	map__init(UnifyPredMap),
 	map__init(Types),
 	inst_table_init(Insts),
-	map__init(Modes),
+	mode_table_init(Modes),
 	shapes__init_shape_table(ShapeTable),
 	map__init(AbsExports),
 	Shapes = shape_info(ShapeTable, AbsExports),
@@ -377,14 +379,14 @@ module_info_insts(ModuleInfo, Insts) :-
 module_info_instids(ModuleInfo, InstIDs) :-
 	module_info_insts(ModuleInfo, InstTable),
 	inst_table_get_user_insts(InstTable, UserInstTable),
-	map__keys(UserInstTable, InstIDs).
+	user_inst_table_get_inst_ids(UserInstTable, InstIDs).
 
 module_info_modes(ModuleInfo, Modes) :-
 	ModuleInfo = module(_, _, _, _, _, _, _, _, Modes, _, _, _, _, _).
 
 module_info_modeids(ModuleInfo, ModeIDs) :-
 	ModuleInfo = module(_, _, _, _, _, _, _, _, Modes, _, _, _, _, _),
-	map__keys(Modes, ModeIDs).
+	mode_table_get_mode_ids(Modes, ModeIDs).
 
 module_info_ctors(ModuleInfo, Ctors) :-
 	ModuleInfo = module(_, _, _, _, _, _, _, _, _, Ctors, _, _, _, _).
@@ -525,12 +527,12 @@ module_info_optimize(ModuleInfo0, ModuleInfo) :-
 
 	module_info_insts(ModuleInfo4, InstTable0),
 	inst_table_get_user_insts(InstTable0, Insts0),
-	map__optimize(Insts0, Insts),
+	user_inst_table_optimize(Insts0, Insts),
 	inst_table_set_user_insts(InstTable0, Insts, InstTable),
 	module_info_set_insts(ModuleInfo4, InstTable, ModuleInfo5),
 
 	module_info_modes(ModuleInfo5, Modes0),
-	map__optimize(Modes0, Modes),
+	mode_table_optimize(Modes0, Modes),
 	module_info_set_modes(ModuleInfo4, Modes, ModuleInfo6),
 
 	module_info_ctors(ModuleInfo6, Ctors0),
@@ -761,6 +763,18 @@ hlds__dependency_info_set_dependency_ordering(DepInfo0, DepRel, DepInfo) :-
 :- pred predicate_table_search_pf_name_arity(predicate_table, pred_or_func,
 					string, arity, list(pred_id)).
 :- mode predicate_table_search_pf_name_arity(in, in, in, in, out) is semidet.
+
+	% Search the table for predicates or functions matching
+	% this pred_or_func category, sym_name, and arity.
+	% When searching for functions, the arity used
+	% is the arity of the predicate that the function gets converted
+	% to, i.e. the arity of the function plus one.
+	% NB.  This is opposite to what happens with the search
+	% predicates declared above!!
+
+:- pred predicate_table_search_pf_sym_arity(predicate_table, pred_or_func,
+				sym_name, arity, list(pred_id)) is semidet.
+:- mode predicate_table_search_pf_sym_arity(in, in, in, in, out) is semidet.
 
 	% Insert a new pred_info structure into the predicate_table
 	% and assign it a new pred_id. You should check beforehand
@@ -1088,6 +1102,17 @@ predicate_table_search_pf_name_arity(PredicateTable, function, Name, Arity,
 	FuncArity is Arity - 1,
 	predicate_table_search_func_name_arity(PredicateTable, Name, FuncArity,
 			PredIds).
+
+:- predicate_table_search_pf_sym_arity(_, X, _, _, _) when X.
+
+predicate_table_search_pf_sym_arity(PredicateTable, PredOrFunc,
+		qualified(Module, Name), Arity, PredIdList) :-
+	predicate_table_search_pf_m_n_a(PredicateTable, PredOrFunc,
+		Module, Name, Arity, PredIdList).
+predicate_table_search_pf_sym_arity(PredicateTable, PredOrFunc,
+		unqualified(Name), Arity, PredIdList) :-
+	predicate_table_search_pf_name_arity(PredicateTable, PredOrFunc,
+		Name, Arity, PredIdList).
 
 %-----------------------------------------------------------------------------%
 

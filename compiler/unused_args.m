@@ -55,18 +55,20 @@
 :- import_module bool, char, int, list, map, require.
 :- import_module set, std_util, string, varset. 
 
-		% stores whether a given variable is definitely used,
-		%	or depends on a set of other variables and arguments.
+		% Information about the dependencies of a variable
+		% that is not known to be used.
 :- type usage_info --->
 		unused(set(var), set(arg)).
 
-	% a collection of variable usages for each procedure
+	% A collection of variable usages for each procedure.
 :- type var_usage == map(pred_proc_id, var_dep).
 
 	% arguments are stored as their variable id, not their index
 	%	in the argument vector
 :- type arg == pair(pred_proc_id, var). 
 
+		% Contains dependency information for the variables
+		% in a procedure that are not yet known to be used.
 :- type var_dep == map(var, usage_info).
 
 		% map from pred_proc_id to a list of argument numbers
@@ -184,8 +186,8 @@ initialise_vardep( VarDep, [], VarDep).
 initialise_vardep( VarDep0, [Var | Vars], VarDep) :-
 	set__init(VDep),
 	set__init(Args),
-	map__set( VarDep0, Var, unused(VDep, Args), VarDep1),
-	initialise_vardep( VarDep1, Vars, VarDep).
+	map__set(VarDep0, Var, unused(VDep, Args), VarDep1),
+	initialise_vardep(VarDep1, Vars, VarDep).
 
 %-------------------------------------------------------------------------------
 	% Predicates for manipulating the var_usage and var_dep structures.
@@ -226,6 +228,10 @@ var_is_used(PredProc, Var, VarUsage) :-
 		map__contains(UsageInfos, Var)
 	).
 
+:- pred local_var_is_used(var_dep::in, var::in) is semidet.
+
+local_var_is_used(VarDep, Var) :-
+	\+ map__contains(VarDep, Var).
 
 		% add a list of aliases for a variable
 :- pred add_aliases(var_dep::in, var::in, list(var)::in, var_dep::out) is det.
@@ -251,6 +257,13 @@ set_list_vars_used(UseInfo0, Vars, UseInfo) :-
 
 set_var_used(UseInfo0, Var, UseInfo) :-
 	map__delete(UseInfo0, Var, UseInfo).
+
+
+:- pred lookup_local_var(var_dep::in, var::in, usage_info::out) is semidet.
+
+lookup_local_var(VarDep, Var, UsageInfo) :-
+	map__search(VarDep, Var, UsageInfo).
+
 
 %-------------------------------------------------------------------------------
 	% Traversal of goal structure, building up dependencies for all
@@ -381,7 +394,7 @@ add_pred_call_arg_dep(PredProc, LocalArguments, HeadVarIds,
 
 add_arg_dep(UseInf0, Var, PredProc, Arg, UseInf) :-
 	(
-		map__search(UseInf0, Var, VarUsage0)
+		lookup_local_var(UseInf0, Var, VarUsage0)
 	->
 		VarUsage0 = unused(VarDep, ArgDep0),
 		set__insert(ArgDep0, PredProc - Arg, ArgDep),
@@ -422,7 +435,7 @@ get_instantiating_variables(ModuleInfo, ArgVars, ArgModes, InstVars) :-
 add_construction_aliases(UseInf, _, [], UseInf).
 add_construction_aliases(UseInf0, Alias, [Var | Vars], UseInf) :-
 	(
-		map__search(UseInf0, Var, VarInf)
+		lookup_local_var(UseInf0, Var, VarInf)
 	->
 		VarInf = unused(VarDep0, ArgDep),
 		set__insert(VarDep0, Alias, VarDep), 
@@ -509,7 +522,7 @@ unused_args_check_all_vars(_, Changed, Changed, [], LocalVars, LocalVars).
 unused_args_check_all_vars(VarUsage, Changed0, Changed, [Var| Vars],
 						LocalVars0, LocalVars) :-
 	(
-		map__search(LocalVars0, Var, Usage)
+		lookup_local_var(LocalVars0, Var, Usage)
 	->
 		Usage = unused(VarDep0, ArgDep0),
 		(
@@ -520,10 +533,10 @@ unused_args_check_all_vars(VarUsage, Changed0, Changed, [Var| Vars],
 				Argument = PredProc - ArgVar,
 				var_is_used(PredProc, ArgVar, VarUsage)
 			;	
-				% Check whether any variables thath the
+				% Check whether any variables that the
 				% current variable depends on are used.
 				set__member(Var2, VarDep0),
-				\+ map__contains(LocalVars0, Var2)
+				local_var_is_used(LocalVars0, Var2)
 			)
 		->
 			% set the current variable to used
@@ -634,10 +647,12 @@ create_new_preds([proc(PredId, ProcId) | PredProcs], UnusedArgInfo,
 		proc_info_variables(OldProc0, Varset0),
 		hlds__is_builtin_make_builtin(no, no, IsBuiltin),
 		map__init(FVars0),
+		pred_info_module(PredInfo0, ModuleName),
 		pred_info_name(PredInfo0, Name),
 		remove_listof_elements(HeadVars, 1, UnusedArgs, NewHeadVars),
 		GoalExpr = call(NewPredId, NewProcId, NewHeadVars,
-			      IsBuiltin, no, unqualified(Name), FVars0),
+			      IsBuiltin, no, qualified(ModuleName, Name),
+			      FVars0),
 		Goal1 = GoalExpr - GoalInfo0,
 		implicitly_quantify_goal(Goal1, Varset0, VarTypes1, NonLocals, 
 				Goal, Varset, VarTypes, _),
@@ -704,9 +719,9 @@ make_new_pred_info(ModuleInfo, PredInfo0, UnusedArgs, ProcId, PredInfo) :-
 	pred_info_get_goal_type(PredInfo0, GoalType),
 		% *** This will need to be fixed when the condition
 		%	field of the pred_info becomes used.
-	pred_info_init(Module, unqualified(Name), Arity, Tvars, ArgTypes, true,
-		Context, ClausesInfo, local, Inline, GoalType, predicate,
-		PredInfo1),
+	pred_info_init(Module, qualified(Module, Name), Arity, Tvars,
+		ArgTypes, true, Context, ClausesInfo, local, Inline,
+		GoalType, predicate, PredInfo1),
 	pred_info_set_typevarset(PredInfo1, TypeVars, PredInfo).
 
 :- pred remove_listof_elements(list(T)::in, int::in, list(int)::in,

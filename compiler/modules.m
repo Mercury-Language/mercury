@@ -36,6 +36,9 @@
 :- pred make_interface(string, item_list, io__state, io__state).
 :- mode make_interface(in, in, di, uo) is det.
 
+:- pred make_short_interface(string, item_list, io__state, io__state).
+:- mode make_short_interface(in, in, di, uo) is det.
+
 	% grab_imported_modules(ModuleName, Items, Module, Error)
 	%	Given a module name and the list of items in that module,
 	%	read in the full interface files for all the imported modules,
@@ -81,16 +84,95 @@
 :- implementation.
 :- import_module bool, set, map, term, varset, dir, std_util, library.
 :- import_module globals, options, passes_aux, prog_out, mercury_to_mercury.
+:- import_module module_qual.
 
+
+	% The interface system works as follows:
+	%
+	% 1) a .int3 file is written, which contains all the types, insts
+	% and modes defined in the interface. Equivalence types, insts and
+	% modes are written in full, others are written in abstract form.
+	% These are module qualified as far as possible given the information
+	% present in the current module. The datestamp on the .date3 file
+	% gives the last time the .int3 file was checked for consistency.
+	%
+	% 2) The .int and .int2 files are created, using the .int3 files
+	% of imported modules to fully module qualify all items. Therefore
+	% the .int2 file is just a fully qualified version of the .int3 file.
+	% The .int3 file must be kept for datestamping purposes. The datestamp
+	% on the .date file gives the last time the .int and .int2 files
+	% were checked.
+
+
+	% Read in the .int3 files that the current module depends on,
+	% and use these to qualify all items in the interface as much as
+	% possible. Then write out the .int and .int2 files.
 make_interface(ModuleName, Items0) -->
-	{ get_interface(Items0, InterfaceItems0) },
-	check_for_clauses_in_interface(InterfaceItems0, InterfaceItems),
-	write_interface_file(ModuleName, ".int", InterfaceItems),
-	{ get_short_interface(InterfaceItems, ShortInterfaceItems) },
-	write_interface_file(ModuleName, ".int2", ShortInterfaceItems),
-	check_for_no_exports(InterfaceItems, ModuleName),
-	touch_interface_datestamp(ModuleName).
+		% Get interface, including imports.
+	{ get_interface(Items0, yes, InterfaceItems0) },
+	{ term__context_init(Context) },
+	{ varset__init(Varset) },
+	{ get_dependencies(InterfaceItems0, InterfaceDeps) },
+	{ list__append(InterfaceItems0,
+			[module_defn(Varset, imported) - Context],
+			InterfaceItems0a) },
+	{ Module0 = module_imports(ModuleName, [], [], InterfaceItems0a, no) },
+		% Get the .int3s that the current .int depends on.
+	process_module_short_interfaces(["mercury_builtin" | InterfaceDeps],
+					".int3", Module0, Module),
+	{ Module = module_imports(_, _, _, InterfaceItems1, Error) },
+	( { Error = yes } ->
+		io__write_strings(["Error reading short interface files.\n",
+				ModuleName, ".int and ",
+				ModuleName, ".int2 not written.\n"])
+	;
+			% Qualify all items.
+		module_qual__module_qualify_items(InterfaceItems1,
+				InterfaceItems2, ModuleName, yes, _, _, _),
+		io__get_exit_status(Status),
+		( { Status \= 0 } ->
+			io__write_strings([ModuleName, ".int not written.\n"])
+		;
+			{ strip_imported_items(InterfaceItems2, [],
+							InterfaceItems3) },
+			check_for_clauses_in_interface(InterfaceItems3,
+							InterfaceItems),
+			check_for_no_exports(InterfaceItems, ModuleName),
+			write_interface_file(ModuleName, ".int",
+							InterfaceItems),
+			{ get_short_interface(InterfaceItems,
+						ShortInterfaceItems) },
+			write_interface_file(ModuleName, ".int2",
+						ShortInterfaceItems),
+			touch_interface_datestamp(ModuleName, ".date")
+		)
+	).
 
+	% This qualifies everything as much as it can given the
+	% information in the current module and writes out the .int3 file.
+make_short_interface(ModuleName, Items0) -->
+	{ get_interface(Items0, no, InterfaceItems0) },
+	check_for_clauses_in_interface(InterfaceItems0, InterfaceItems),
+	{ get_short_interface(InterfaceItems, ShortInterfaceItems0) },
+	module_qual__module_qualify_items(ShortInterfaceItems0,
+			ShortInterfaceItems, ModuleName, no, _, _, _),
+	write_interface_file(ModuleName, ".int3", ShortInterfaceItems),
+	touch_interface_datestamp(ModuleName, ".date3").
+
+
+:- pred strip_imported_items(item_list::in, item_list::in,
+						item_list::out) is det.
+
+strip_imported_items([], Items0, Items) :-
+	list__reverse(Items0, Items). 
+strip_imported_items([Item - Context | Rest], Items0, Items) :-
+	(
+		Item = module_defn(_, imported)
+	->
+		list__reverse(Items0, Items)
+	;
+		strip_imported_items(Rest, [Item - Context | Items0], Items)
+	).
 %-----------------------------------------------------------------------------%
 
 :- pred check_for_clauses_in_interface(item_list, item_list,
@@ -202,15 +284,15 @@ write_interface_file(ModuleName, Suffix, InterfaceItems) -->
 
 %-----------------------------------------------------------------------------%
 
-	% Touch the datestamp file `<Module>.date'.
-	% This datestamp is used to record when the interface files
-	% were last updated.
+	% Touch the datestamp file `<Module>.date' or `<Module>.date3'.
+	% This datestamp is used to record when each of the interface files
+	% was last updated.
 
-:- pred touch_interface_datestamp(string, io__state, io__state).
-:- mode touch_interface_datestamp(in, di, uo) is det.
+:- pred touch_interface_datestamp(string, string, io__state, io__state).
+:- mode touch_interface_datestamp(in, in, di, uo) is det.
 
-touch_interface_datestamp(ModuleName) -->
-	{ string__append(ModuleName, ".date", OutputFileName) },
+touch_interface_datestamp(ModuleName, Ext) -->
+	{ string__append(ModuleName, Ext, OutputFileName) },
 
 	globals__io_lookup_bool_option(verbose, Verbose),
 	maybe_write_string(Verbose, "% Touching `"),
@@ -234,10 +316,6 @@ touch_interface_datestamp(ModuleName) -->
 grab_imported_modules(ModuleName, Items0, Module, Error) -->
 	{ get_dependencies(Items0, ImportedModules) },
 
-		% Note that the module `mercury_builtin' is always
-		% automatically imported.  (Well, the actual name
-		% is overrideable using the `--builtin-module' option.) 
-	globals__io_lookup_string_option(builtin_module, BuiltinModule),
 		% we add a pseudo-declaration `:- imported' at the end
 		% of the item list, so that make_hlds knows which items
 		% are imported and which are defined in the main module
@@ -247,7 +325,7 @@ grab_imported_modules(ModuleName, Items0, Module, Error) -->
 		[module_defn(VarSet, imported) - Context], Items1) },
 	{ dir__basename(ModuleName, BaseModuleName) },
 	{ Module0 = module_imports(BaseModuleName, [], [], Items1, no) },
-	process_module_interfaces([BuiltinModule | ImportedModules], 
+	process_module_interfaces(["mercury_builtin" | ImportedModules], 
 		[], Module0, Module),
 	{ Module = module_imports(_, _, _, _, Error) }.
 
@@ -276,6 +354,13 @@ write_dependency_file(ModuleName, LongDeps0, ShortDeps0) -->
 		] ),
 		write_dependencies_list(LongDeps, ".int", DepStream),
 		write_dependencies_list(ShortDeps, ".int2", DepStream),
+
+		io__write_strings(DepStream, [
+				"\n\n", ModuleName, ".date : ",
+				ModuleName, ".m"
+		]),
+		write_dependencies_list(LongDeps, ".int3", DepStream),
+		write_dependencies_list(ShortDeps, ".int3", DepStream),
 
 		io__write_strings(DepStream, [
 			"\n\n",
@@ -462,6 +547,11 @@ generate_dep_file(ModuleName, DepsMap, DepStream) -->
 	io__write_string(DepStream, "\n"),
 
 	io__write_string(DepStream, ModuleName),
+	io__write_string(DepStream, ".date3s = "),
+	write_dependencies_list(Modules, ".date3", DepStream),
+	io__write_string(DepStream, "\n"),
+
+	io__write_string(DepStream, ModuleName),
 	io__write_string(DepStream, ".ds = "),
 	write_dependencies_list(Modules, ".d", DepStream),
 	io__write_string(DepStream, "\n"),
@@ -470,6 +560,11 @@ generate_dep_file(ModuleName, DepsMap, DepStream) -->
 	io__write_string(DepStream, ".ints = "),
 	write_dependencies_list(Modules, ".int", DepStream),
 	write_dependencies_list(Modules, ".int2", DepStream),
+	io__write_string(DepStream, "\n\n"),
+
+	io__write_string(DepStream, ModuleName),
+	io__write_string(DepStream, ".int3s = "),
+	write_dependencies_list(Modules, ".int3", DepStream),
 	io__write_string(DepStream, "\n\n"),
 
 	io__write_strings(DepStream, [
@@ -547,7 +642,8 @@ generate_dep_file(ModuleName, DepsMap, DepStream) -->
 	io__write_strings(DepStream, [
 		ModuleName, ".check : $(", ModuleName, ".errs)\n\n",
 
-		ModuleName, ".ints : $(", ModuleName, ".dates)\n\n"
+		ModuleName, ".ints : $(", ModuleName, ".dates)\n\n",
+		ModuleName, ".int3s : $(", ModuleName, ".date3s)\n\n"
 	]),
 
 	io__write_strings(DepStream, [
@@ -573,7 +669,9 @@ generate_dep_file(ModuleName, DepsMap, DepStream) -->
 	io__write_strings(DepStream, [
 		ModuleName, ".realclean : ", ModuleName, ".clean\n",
 		"\t-rm -f $(", ModuleName, ".dates)\n",
+		"\t-rm -f $(", ModuleName, ".date3s)\n",
 		"\t-rm -f $(", ModuleName, ".ints)\n",
+		"\t-rm -f $(", ModuleName, ".int3s)\n",
 		"\t-rm -f $(", ModuleName, ".ds)\n"
 	]),
 	io__write_strings(DepStream, [
@@ -707,13 +805,9 @@ read_dependencies(Module, InterfaceDeps, ImplementationDeps, Error) -->
 		{ Items = Items0 }
 	),
 	{ get_dependencies(Items, ImplementationDeps0) },
-	{ get_interface(Items, InterfaceItems) },
+	{ get_interface(Items, no, InterfaceItems) },
 	{ get_dependencies(InterfaceItems, InterfaceDeps) },
-		% Note that the module `mercury_builtin' is always
-		% automatically imported.  (Well, the actual name
-		% is overrideable using the `--builtin-module' option.) 
-	globals__io_lookup_string_option(builtin_module, BuiltinModule),
-	{ ImplementationDeps = [BuiltinModule | ImplementationDeps0] }.
+	{ ImplementationDeps = ["mercury_builtin" | ImplementationDeps0] }.
 
 %-----------------------------------------------------------------------------%
 
@@ -767,12 +861,12 @@ read_mod_ignore_errors(ModuleName, Extension, Descr, Items, Error) -->
 	prog_io__read_module(FileName, Module, Error, _Messages, Items),
 	maybe_write_string(VeryVerbose, "done.\n").
 
-:- pred read_mod_short_interface(string, string, item_list, module_error,
-				io__state, io__state).
-:- mode read_mod_short_interface(in, in, out, out, di, uo) is det.
+:- pred read_mod_short_interface(string, string, string, item_list,
+			module_error, io__state, io__state).
+:- mode read_mod_short_interface(in, in, in, out, out, di, uo) is det.
 
-read_mod_short_interface(Module, Descr, Items, Error) -->
-	read_mod(Module, ".int2", Descr, Items, Error).
+read_mod_short_interface(Module, Ext, Descr, Items, Error) -->
+	read_mod(Module, Ext, Descr, Items, Error).
 
 :- pred read_mod_interface(string, string, item_list, module_error,
 				io__state, io__state).
@@ -798,8 +892,7 @@ process_module_interfaces([Import | Imports], IndirectImports0, Module0, Module)
 	(
 		{ Import = ModuleName }
 	->
-		globals__io_lookup_string_option(builtin_module, BuiltinModule),
-		( { ModuleName = BuiltinModule } ->
+		( { ModuleName = "mercury_builtin" } ->
 			[]
 		;
 			{ term__context_init(ModuleName, 1, Context) },
@@ -858,8 +951,16 @@ process_module_interfaces([Import | Imports], IndirectImports0, Module0, Module)
 		module_imports, module_imports, io__state, io__state).
 :- mode process_module_short_interfaces(in, in, out, di, uo) is det.
 
-process_module_short_interfaces([], Module, Module) --> [].
-process_module_short_interfaces([Import | Imports], Module0, Module) -->
+process_module_short_interfaces(Imports, Module0, Module) -->
+	process_module_short_interfaces(Imports, ".int2", Module0, Module).
+
+
+:- pred process_module_short_interfaces(list(string), string, 
+		module_imports, module_imports, io__state, io__state).
+:- mode process_module_short_interfaces(in, in, in, out, di, uo) is det.
+
+process_module_short_interfaces([], _, Module, Module) --> [].
+process_module_short_interfaces([Import | Imports], Ext, Module0, Module) -->
 	{ Module0 = module_imports(ModuleName, DirectImports, IndirectImports0,
 			Items0, Error0) },
 	(
@@ -869,10 +970,10 @@ process_module_short_interfaces([Import | Imports], Module0, Module) -->
 		; list__member(Import, IndirectImports0)
 		}
 	->
-		process_module_short_interfaces(Imports, Module0, Module)
+		process_module_short_interfaces(Imports, Ext, Module0, Module)
 	;
 		io__gc_call(
-			read_mod_short_interface(Import,
+			read_mod_short_interface(Import, Ext,
 				"Reading short interface for module",
 					ShortIntItems1, Error1)
 		),
@@ -900,7 +1001,7 @@ process_module_short_interfaces([Import | Imports], Module0, Module) -->
 		{ IndirectImports1 = [Import | IndirectImports0] },
 		{ Module1 = module_imports(ModuleName, DirectImports,
 			IndirectImports1, Items2, Error2) },
-		process_module_short_interfaces(Imports2, Module1, Module)
+		process_module_short_interfaces(Imports2, Ext, Module1, Module)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -931,23 +1032,35 @@ get_dependencies_2([Item - _Context | Items], Deps0, Deps) :-
 
 	% Given a module (well, a list of items), extract the interface
 	% part of that module, i.e. all the items between `:- interface'
-	% and `:- implementation'.
+	% and `:- implementation'. If IncludeImported is yes, also
+	% include all items after a `:- imported'. This is useful for
+	% making the .int file.
 
-:- pred get_interface(item_list, item_list).
-:- mode get_interface(in, out) is det.
+:- pred get_interface(item_list, bool, item_list).
+:- mode get_interface(in, in, out) is det.
 
-get_interface(Items0, Items) :-
-	get_interface_2(Items0, no, [], RevItems),
+get_interface(Items0, IncludeImported, Items) :-
+	get_interface_2(Items0, no, IncludeImported, [], RevItems),
 	list__reverse(RevItems, Items).
 
-:- pred get_interface_2(item_list, bool, item_list, item_list).
-:- mode get_interface_2(in, in, in, out) is det.
+:- pred get_interface_2(item_list, bool, bool, item_list, item_list).
+:- mode get_interface_2(in, in, in, in, out) is det.
 
-get_interface_2([], _, Items, Items).
-get_interface_2([Item - Context | Rest], InInterface0, Items0, Items) :-
+get_interface_2([], _, _, Items, Items).
+get_interface_2([Item - Context | Rest], InInterface0,
+				IncludeImported, Items0, Items) :-
 	( Item = module_defn(_, interface) ->
 		Items1 = Items0,
 		InInterface1 = yes
+	; Item = module_defn(_, imported) ->
+		% module_qual.m needs the :- imported declaration.
+		( IncludeImported = yes ->
+			InInterface1 = yes,
+			Items1 = [Item - Context | Items0]
+		;
+			InInterface1 = no,
+			Items1 = Items0
+		)
 	; Item = module_defn(_, implementation) ->
 		Items1 = Items0,
 		InInterface1 = no
@@ -959,7 +1072,7 @@ get_interface_2([Item - Context | Rest], InInterface0, Items0, Items) :-
 		),
 		InInterface1 = InInterface0
 	),
-	get_interface_2(Rest, InInterface1, Items1, Items).
+	get_interface_2(Rest, InInterface1, IncludeImported, Items1, Items).
 
 	% Given a module interface (well, a list of items), extract the
 	% short interface part of that module, i.e. the exported

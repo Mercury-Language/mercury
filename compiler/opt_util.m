@@ -301,7 +301,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module map, require, exprn_aux.
+:- import_module map, require, exprn_aux, llds_out.
 
 opt_util__get_prologue(Instrs0, ProcLabel, Comments, Instrs) :-
 	opt_util__gather_comments(Instrs0, Comments1, Instrs1),
@@ -1234,10 +1234,11 @@ opt_util__format_proclabel(proc(_Module, Pred, Arity, Mode), Str) :-
 	string__int_to_string(Arity, ArityStr),
 	string__int_to_string(Mode, ModeStr),
 	string__append_list([Pred, "/", ArityStr, " mode ", ModeStr], Str).
-opt_util__format_proclabel(special_proc(_Module, Pred, Type, Arity, Mode),
+opt_util__format_proclabel(special_proc(_Module, Pred, Type0, Arity, Mode),
 		Str) :-
 	string__int_to_string(Arity, ArityStr),
 	string__int_to_string(Mode, ModeStr),
+	llds_out__sym_name_mangle(Type0, Type),
 	string__append_list(
 		[Pred, "_", Type, "/", ArityStr, " mode ", ModeStr], Str).
 

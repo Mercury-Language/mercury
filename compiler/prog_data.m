@@ -152,6 +152,11 @@
 	% probably type parameters should be variables not terms.
 :- type type_param	==	term.
 
+	% Module qualified types are represented as ':'/2 terms.
+	% Use type_util:type_to_type_id to convert a type to a qualified
+	% type_id and a list of arguments.
+	% type_util:construct_type to construct a type from a type_id 
+	% and a list of arguments.
 :- type (type)		==	term.
 
 :- type tvar		==	var.	% used for type variables

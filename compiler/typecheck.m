@@ -2220,9 +2220,7 @@ convert_cons_defn(TypeInfo, HLDS_ConsDefn, ConsTypeInfo) :-
 	type_info_get_types(TypeInfo, Types),
 	map__lookup(Types, TypeId, TypeDefn),
 	TypeDefn = hlds__type_defn(ConsTypeVarSet, ConsTypeParams, _, _, _),
-	TypeId = QualifiedName - _Arity,
-	unqualify_name(QualifiedName, Name),
-	ConsType = term__functor(term__atom(Name), ConsTypeParams, Context),
+	construct_type(TypeId, ConsTypeParams, Context, ConsType),
 	ConsTypeInfo = cons_type_info(ConsTypeVarSet, ConsType, ArgTypes).
 
 %-----------------------------------------------------------------------------%
@@ -2656,8 +2654,9 @@ write_type_of_functor(Functor, Arity, Context, ConsDefnList) -->
 			io__state, io__state).
 :- mode write_cons_type(in, in, in, di, uo) is det.
 
-write_cons_type(cons_type_info(TVarSet, ConsType, ArgTypes), Functor, Context)
+write_cons_type(cons_type_info(TVarSet, ConsType0, ArgTypes0), Functor, Context)
 		-->
+	{ strip_builtin_qualifiers_from_type_list(ArgTypes0, ArgTypes) },
 	( { ArgTypes \= [] } ->
 		{ Term = term__functor(Functor, ArgTypes, Context) },
 		mercury_output_term(Term, TVarSet),
@@ -2665,6 +2664,7 @@ write_cons_type(cons_type_info(TVarSet, ConsType, ArgTypes), Functor, Context)
 	;
 		[]
 	),
+	{ strip_builtin_qualifiers_from_type(ConsType0, ConsType) },
 	mercury_output_term(ConsType, TVarSet).
 
 :- pred write_cons_type_list(list(cons_type_info), const, int, term__context,
@@ -2800,7 +2800,8 @@ write_type_assign_2([Var | Vars], VarSet, VarTypes, TypeBindings, TypeVarSet,
 
 write_type_b(Type, TypeVarSet, TypeBindings) -->
 	{ term__apply_rec_substitution(Type, TypeBindings, Type2) },
-	mercury_output_term(Type2, TypeVarSet).
+	{ strip_builtin_qualifiers_from_type(Type2, Type3) },
+	mercury_output_term(Type3, TypeVarSet).
 
 %-----------------------------------------------------------------------------%
 
@@ -2866,12 +2867,14 @@ report_error_arg_var(TypeInfo, VarId, ArgTypeAssignSet0) -->
 	io__write_string("  type error: "),
 	( { ArgTypeStuffList = [SingleArgTypeStuff] } ->
 		write_argument_name(VarSet, VarId),
-		{ SingleArgTypeStuff = arg_type_stuff(Type, VType, TVarSet) },
+		{ SingleArgTypeStuff = arg_type_stuff(Type0, VType0, TVarSet) },
 		io__write_string(" has type `"),
+		{ strip_builtin_qualifiers_from_type(VType0, VType) },
 		mercury_output_term(VType, TVarSet),
 		io__write_string("',\n"),
 		prog_out__write_context(Context),
 		io__write_string("  expected type was `"),
+		{ strip_builtin_qualifiers_from_type(Type0, Type) },
 		mercury_output_term(Type, TVarSet),
 		io__write_string("'.\n")
 	;
@@ -2937,9 +2940,11 @@ write_var_type_stuff_list_2([type_stuff(VT, TVarSet, TBinding) | Ts], T) -->
 :- mode write_arg_type_stuff_list(in, di, uo) is det.
 
 write_arg_type_stuff_list([]) --> [].
-write_arg_type_stuff_list([arg_type_stuff(T, VT, TVarSet) | Ts]) -->
+write_arg_type_stuff_list([arg_type_stuff(T0, VT0, TVarSet) | Ts]) -->
+	{ strip_builtin_qualifiers_from_type(VT0, VT) },
 	mercury_output_term(VT, TVarSet),
 	io__write_string("/"),
+	{ strip_builtin_qualifiers_from_type(T0, T) },
 	mercury_output_term(T, TVarSet),
 	write_arg_type_stuff_list_2(Ts).
 
@@ -2947,10 +2952,12 @@ write_arg_type_stuff_list([arg_type_stuff(T, VT, TVarSet) | Ts]) -->
 :- mode write_arg_type_stuff_list_2(in, di, uo) is det.
 
 write_arg_type_stuff_list_2([]) --> [].
-write_arg_type_stuff_list_2([arg_type_stuff(T, VT, TVarSet) | Ts]) -->
+write_arg_type_stuff_list_2([arg_type_stuff(T0, VT0, TVarSet) | Ts]) -->
 	io__write_string(", "),
+	{ strip_builtin_qualifiers_from_type(VT0, VT) },
 	mercury_output_term(VT, TVarSet),
 	io__write_string("/"),
+	{ strip_builtin_qualifiers_from_type(T0, T) },
 	mercury_output_term(T, TVarSet),
 	write_arg_type_stuff_list_2(Ts).
 
@@ -3246,8 +3253,8 @@ report_ambiguity_error(TypeInfo, TypeAssign1, TypeAssign2) -->
 	).
 
 :- pred report_ambiguity_error_2(list(var), varset, type_info,
-				type_assign, type_assign, bool, bool,
-				io__state, io__state).
+			type_assign, type_assign, bool, bool,
+			io__state, io__state).
 :- mode report_ambiguity_error_2(in, in, type_info_no_io, in, in, in, out,
 				di, uo) is det.
 
@@ -3262,9 +3269,9 @@ report_ambiguity_error_2([V | Vs], VarSet, TypeInfo, TypeAssign1, TypeAssign2,
 	( {
 		map__search(VarTypes1, V, Type1),
 		map__search(VarTypes2, V, Type2),
-		term__apply_rec_substitution(Type1, TypeBindings1, T1),
-		term__apply_rec_substitution(Type2, TypeBindings2, T2),
-		\+ identical_types(T1, T2)
+		term__apply_rec_substitution(Type1, TypeBindings1, T1a),
+		term__apply_rec_substitution(Type2, TypeBindings2, T2a),
+		\+ identical_types(T1a, T2a)
 	} ->
 		{ type_info_get_context(TypeInfo, Context) },
 		( { Found0 = no } ->
@@ -3279,9 +3286,11 @@ report_ambiguity_error_2([V | Vs], VarSet, TypeInfo, TypeAssign1, TypeAssign2,
 		mercury_output_var(V, VarSet),
 		io__write_string(" :: "),
 		{ type_assign_get_typevarset(TypeAssign1, TVarSet1) },
+		{ strip_builtin_qualifiers_from_type(T1a, T1) },
 		mercury_output_term(T1, TVarSet1),
 		io__write_string(" or "),
 		{ type_assign_get_typevarset(TypeAssign2, TVarSet2) },
+		{ strip_builtin_qualifiers_from_type(T2a, T2) },
 		mercury_output_term(T2, TVarSet2),
 		io__write_string("\n")
 	;
@@ -3311,6 +3320,37 @@ identical_up_to_renaming(TypesList1, TypesList2) :-
 	% They are identical up to renaming if they each subsume each other.
 	type_list_subsumes(TypesList1, TypesList2, _),
 	type_list_subsumes(TypesList2, TypesList1, _).
+
+
+	% Make error messages more readable by removing "mercury_builtin"
+	% qualifiers.
+
+:- pred strip_builtin_qualifiers_from_type((type), (type)).
+:- mode strip_builtin_qualifiers_from_type(in, out) is det.
+
+strip_builtin_qualifiers_from_type(Type0, Type) :-
+	(
+		type_to_type_id(Type0, TypeId0, Args0)
+	->
+		strip_builtin_qualifiers_from_type_list(Args0, Args),
+		TypeId0 = SymName0 - Arity,
+		(
+			SymName0 = qualified("mercury_builtin", Name)
+		->
+			SymName = unqualified(Name)
+		;
+			SymName = SymName0
+		),
+		construct_type(SymName - Arity, Args, Type)
+	;
+		Type = Type0
+	).
+
+:- pred strip_builtin_qualifiers_from_type_list(list(type), list(type)).
+:- mode strip_builtin_qualifiers_from_type_list(in, out) is det.
+
+strip_builtin_qualifiers_from_type_list(Types0, Types) :-
+	list__map(strip_builtin_qualifiers_from_type, Types0, Types).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

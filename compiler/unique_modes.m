@@ -172,8 +172,8 @@ unique_modes__check_proc_2(ProcInfo0, PredId, ProcId, ModuleInfo0,
 	%
 	% At last we're ready to construct the initial mode_info
 	%
-	mode_info_init(IOState0, ModuleInfo0, PredId, ProcId, Context, LiveVars,
-			InstMap0, ModeInfo0),
+	mode_info_init(IOState0, ModuleInfo0, no, PredId, ProcId, Context,
+			LiveVars, InstMap0, ModeInfo0),
 	%
 	% Modecheck the goal
 	%

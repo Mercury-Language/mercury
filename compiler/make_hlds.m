@@ -407,12 +407,10 @@ add_pred_marker(Module0, PragmaName, Name, Arity, Context, Markers, Module) -->
 module_mark_as_external(PredName, Arity, Context, Module0, Module) -->
 	% `external' declarations can only apply to things defined
 	% in this module, since everything else is already external.
-	{ module_info_name(Module0, ModuleName) },
 	{ module_info_get_predicate_table(Module0, PredicateTable0) },
-	{ unqualify_name(PredName, PName) },	% ignore any module qualifier
 	(
-		{ predicate_table_search_m_n_a(PredicateTable0,
-			ModuleName, PName, Arity, PredIdList) }
+		{ predicate_table_search_sym_arity(PredicateTable0,
+			PredName, Arity, PredIdList) }
 	->
 		{ module_mark_preds_as_external(PredIdList, Module0, Module) }
 	;
@@ -458,13 +456,14 @@ insts_add(Insts0, VarSet, eqv_inst(Name, Args, Body), Cond, Context, Insts) -->
 	(
 		{ I = hlds__inst_defn(VarSet, Args, eqv_inst(Body), Cond,
 			Context) },
-		{ map__insert(Insts0, Name - Arity, I, Insts1) }
+		{ user_inst_table_insert(Insts0, Name - Arity, I, Insts1) }
 	->
 		{ Insts = Insts1 }
 	;
 		{ Insts = Insts0 },
 		% XXX we should record each error using module_info_incr_errors
-		{ map__lookup(Insts, Name - Arity, OrigI) },
+		{ user_inst_table_get_inst_defns(Insts, InstDefns) },
+		{ map__lookup(InstDefns, Name - Arity, OrigI) },
 		{ OrigI = hlds__inst_defn(_, _, _, _, OrigContext) },
 		multiple_def_error(Name, Arity, "inst", Context, OrigContext)
 	).
@@ -489,12 +488,13 @@ modes_add(Modes0, VarSet, eqv_mode(Name, Args, Body), Cond, Context, Modes) -->
 	(
 		{ I = hlds__mode_defn(VarSet, Args, eqv_mode(Body), Cond,
 			Context) },
-		{ map__insert(Modes0, Name - Arity, I, Modes1) }
+		{ mode_table_insert(Modes0, Name - Arity, I, Modes1) }
 	->
 		{ Modes = Modes1 }
 	;
 		{ Modes = Modes0 },
-		{ map__lookup(Modes, Name - Arity, OrigI) },
+		{ mode_table_get_mode_defns(Modes, ModeDefns) },
+		{ map__lookup(ModeDefns, Name - Arity, OrigI) },
 		{ OrigI = hlds__mode_defn(_, _, _, _, OrigContext) },
 		% XXX we should record each error using module_info_incr_errors
 		multiple_def_error(Name, Arity, "mode", Context, OrigContext)
@@ -553,9 +553,7 @@ module_add_type_defn(Module0, TVarSet, TypeDefn, Cond, Context, Status,
 		;
 			{ Module1 = Module0 }
 		),
-		{ unqualify_name(Name, UnqualifiedName) },
-		{ TypeFunctor = term__atom(UnqualifiedName) },
-		{ Type = term__functor(TypeFunctor, Args, Context) },
+		{ construct_qualified_term(Name, Args, Type) },
 		(
 			{ Body = abstract_type }
 		->
@@ -882,12 +880,11 @@ module_add_mode(ModuleInfo0, _VarSet, PredName, Modes, MaybeDet, _Cond,
 
 	{ module_info_name(ModuleInfo0, ModuleName0) },
 	{ sym_name_get_module_name(PredName, ModuleName0, ModuleName) },
-	{ unqualify_name(PredName, PName) },	% ignore any module qualifier
 	{ list__length(Modes, Arity) },
 	{ module_info_get_predicate_table(ModuleInfo0, PredicateTable0) },
 	(
-		{ predicate_table_search_pf_m_n_a(PredicateTable0,
-			PredOrFunc, ModuleName, PName, Arity,
+		{ predicate_table_search_pf_sym_arity(PredicateTable0,
+			PredOrFunc, PredName, Arity,
 			[PredId0]) }
 	->
 		{ PredicateTable1 = PredicateTable0 },
@@ -960,10 +957,9 @@ preds_add_implicit(PredicateTable0,
 	pred_info_init(ModuleName, PredName, Arity, TVarSet, Types, Cond,
 		Context, ClausesInfo, local, no, none, PredOrFunc, PredInfo0),
 	pred_info_set_marker_list(PredInfo0, [request(infer_type)], PredInfo),
-	unqualify_name(PredName, PName),	% ignore any module qualifier
 	(
-		\+ predicate_table_search_pf_m_n_a(PredicateTable0,
-			PredOrFunc, ModuleName, PName, Arity, _)
+		\+ predicate_table_search_pf_sym_arity(PredicateTable0,
+			PredOrFunc, PredName, Arity, _)
 	->
 		predicate_table_insert(PredicateTable0, PredInfo, PredId,
 			PredicateTable)
@@ -1076,12 +1072,11 @@ module_add_clause(ModuleInfo0, ClauseVarSet, PredName, Args, Body, Context,
 		% (if it's not there, call maybe_undefined_pred_error
 		% and insert an implicit declaration for the predicate.)
 	{ module_info_name(ModuleInfo0, ModuleName) },
-	{ unqualify_name(PredName, PName) },	% ignore any module qualifier
 	{ list__length(Args, Arity) },
 	{ module_info_get_predicate_table(ModuleInfo0, PredicateTable0) },
 	(
-		{ predicate_table_search_pf_m_n_a(PredicateTable0, PredOrFunc,
-			ModuleName, PName, Arity, [PredId0]) }
+		{ predicate_table_search_pf_sym_arity(PredicateTable0,
+				PredOrFunc, PredName, Arity, [PredId0]) }
 	->
 		{ PredId = PredId0 },
 		{ PredicateTable1 = PredicateTable0 }
@@ -1186,7 +1181,6 @@ module_add_pragma_c_code(IsRecursive, PredName, PVars, VarSet, C_Code, Context,
 
 		% print out a progress message
 	{ module_info_name(ModuleInfo0, ModuleName) },
-	{ unqualify_name(PredName, PName) },	% ignore any module qualifier
 	{ list__length(PVars, Arity) },
 	globals__io_lookup_bool_option(very_verbose, VeryVerbose),
 	( 
@@ -1203,8 +1197,8 @@ module_add_pragma_c_code(IsRecursive, PredName, PVars, VarSet, C_Code, Context,
 		% a dummy declaration for the predicate.) 
 	{ module_info_get_predicate_table(ModuleInfo0, PredicateTable0) }, 
 	( 
-		{ predicate_table_search_pf_m_n_a(PredicateTable0,
-			PredOrFunc, ModuleName, PName, Arity,
+		{ predicate_table_search_pf_sym_arity(PredicateTable0,
+			PredOrFunc, PredName, Arity,
 			[PredId0]) }
 	->
 		{ PredId = PredId0 },
@@ -1273,7 +1267,7 @@ module_add_pragma_c_code(IsRecursive, PredName, PVars, VarSet, C_Code, Context,
 			io__write_string("Error: `:- pragma c_code' "),
 			io__write_string("declaration for undeclared mode "),
 			io__write_string("of `"),
-			io__write_string(PName),
+			prog_out__write_sym_name(PredName),
 			io__write_string("/"),
 			io__write_int(Arity),
 			io__write_string("'.\n"),

@@ -217,8 +217,8 @@ polymorphism__process_proc(ProcInfo0, PredInfo0, ModuleInfo0,
 				ExtraHeadVars, VarSet1, VarTypes1),
 	list__append(ExtraHeadVars, HeadVars0, HeadVars),
 	list__length(ExtraHeadVars, NumExtraVars),
-	list__duplicate(NumExtraVars, user_defined_mode(unqualified("in"), []),
-			ExtraModes),
+	list__duplicate(NumExtraVars, user_defined_mode(
+		qualified("mercury_builtin", "in"), []), ExtraModes),
 	list__append(ExtraModes, ArgModes0, ArgModes),
 
 	% process any polymorphic calls inside the goal
@@ -982,9 +982,8 @@ polymorphism__new_type_info_var(Type, VarSet0, VarTypes0,
 	% introduce new variable
 	varset__new_var(VarSet0, Var, VarSet1),
 	varset__name_var(VarSet1, Var, "TypeInfo", VarSet),
-	term__context_init(Context),
-	UnifyPredType = term__functor(term__atom("type_info"), [Type],
-				Context),
+	construct_type(qualified("mercury_builtin", "type_info") - 1,
+					[Type], UnifyPredType),
 	map__set(VarTypes0, Var, UnifyPredType, VarTypes).
 
 :- pred polymorphism__get_module_info(module_info, poly_info, poly_info).

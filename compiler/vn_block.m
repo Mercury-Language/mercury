@@ -16,7 +16,7 @@
 :- interface.
 
 :- import_module list, set, bool.
-:- import_module llds, vn_type, livemap.
+:- import_module llds, vn_table, vn_type, livemap.
 
 :- pred vn_block__divide_into_blocks(list(instruction), set(label),
 	list(list(instruction))).
@@ -35,7 +35,7 @@
 
 :- implementation.
 
-:- import_module vn_table, vn_util, vn_cost, opt_util, opt_debug.
+:- import_module vn_util, vn_cost, opt_util, opt_debug.
 :- import_module map, int, string, require, std_util, assoc_list.
 
 %-----------------------------------------------------------------------------%

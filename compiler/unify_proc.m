@@ -691,9 +691,9 @@ unify_proc__generate_du_compare_clauses(Ctors, Res, X, Y, [Clause]) -->
 
 unify_proc__generate_du_compare_clauses_2(Ctors, Res, X, Y, Goal) -->
 	{ term__context_init(Context) },
-	{ IntType = term__functor(term__atom("int"), [], Context) },
-	{ ResType = term__functor(term__atom("comparison_result"), [],
-			Context) },
+	{ construct_type(unqualified("int") - 0, [], IntType) },
+	{ construct_type(qualified("mercury_builtin", "comparison_result") - 0,
+					[], ResType) },
 	unify_proc__info_new_var(IntType, X_Index),
 	unify_proc__info_new_var(IntType, Y_Index),
 	unify_proc__info_new_var(ResType, R),
@@ -835,8 +835,9 @@ unify_proc__compare_args([X|Xs], [Y|Ys], R, Goal) -->
 		unify_proc__build_call("compare", [R, X, Y], Goal)
 	;
 		{ term__context_init(Context) },
-		{ ResType = term__functor(term__atom("comparison_result"), [],
-				Context) },
+		{ construct_type(
+			qualified("mercury_builtin", "comparison_result") - 0,
+			[], ResType) },
 		unify_proc__info_new_var(ResType, R1),
 
 		unify_proc__build_call("compare", [R1, X, Y], Do_Comparison),
@@ -939,11 +940,15 @@ unify_proc__generate_du_term_to_type_clauses([Ctor | Ctors], Term, X,
 		Context, explicit, [],
 		AtomGoal) },
 
-	{ ConstType = term__functor(term__atom("const"), [], Context) },
-	{ TermType = term__functor(term__atom("term"), [], Context) },
-	{ TermListType = term__functor(term__atom("list"),[TermType],Context) },
-	{ ContextType = term__functor(term__atom("term__context"),[],Context) },
-	{ StringType = term__functor(term__atom("string"), [], Context) },
+	{ construct_type(qualified("mercury_builtin", "const") - 0,
+					[], ConstType) },
+	{ construct_type(qualified("mercury_builtin", "term") - 0,
+					[], TermType) },
+	{ construct_type(qualified("mercury_builtin", "list") - 1,
+					[TermType], TermListType) },
+	{ construct_type(qualified("mercury_builtin", "term__context") - 0,
+					[], ContextType) },
+	{ construct_type(unqualified("string") - 0, [], StringType) },
 
 	% Make disjunctions for the difference functors of the type
 	unify_proc__generate_du_term_to_type_disjunctions([Ctor | Ctors],
@@ -1112,11 +1117,15 @@ unify_proc__generate_du_type_to_term_clauses([Ctor | Ctors], X, Term,
         { FunctorString = term__string(UnqualifiedFunctorName) },
         { term__context_init(Context) },
 
-	{ ConstType = term__functor(term__atom("const"), [], Context) },
-	{ TermType = term__functor(term__atom("term"), [], Context) },
-	{ TermListType = term__functor(term__atom("list"),[TermType],Context) },
-	{ ContextType = term__functor(term__atom("term__context"),[],Context) },
-	{ StringType = term__functor(term__atom("string"), [], Context) },
+	{ construct_type(qualified("mercury_builtin", "const") - 0,
+					[], ConstType) },
+	{ construct_type(qualified("mercury_builtin", "term") - 0,
+					[], TermType) },
+	{ construct_type(qualified("mercury_builtin", "list") - 0,
+					[TermType], TermListType) },
+	{ construct_type(qualified("mercury_builtin", "term__context") - 0,
+					[], ContextType) },
+	{ construct_type(unqualified("string") - 0, [], StringType) },
 
         % Make Key, Val, L, R
 	unify_proc__make_fresh_vars(ArgTypes, ArgVars),
@@ -1161,7 +1170,7 @@ unify_proc__generate_du_type_to_term_clauses([Ctor | Ctors], X, Term,
 	% unify_proc__build_call("term__context_init", [V3], ContextGoal),
 	% --- From here ---
 	unify_proc__info_new_var(StringType, ContextString),
-	{ IntType = term__functor(term__atom("string"), [], Context) },
+	{ construct_type(unqualified("int") - 0, [], IntType) }, 
 	unify_proc__info_new_var(IntType, ContextInt),
 	{ create_atomic_unification(
 		V3,

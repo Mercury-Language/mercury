@@ -231,7 +231,8 @@ make_cons_id(unqualified(Name), Args, _TypeId, cons(Name, Arity)) :-
 
 :- type inst_table.
 
-:- type user_inst_table	==	map(inst_id, hlds__inst_defn).
+:- type user_inst_table.
+:- type user_inst_defns ==	map(inst_id, hlds__inst_defn).
 
 :- type unify_inst_table ==	map(inst_name, maybe_inst_det).
 
@@ -321,6 +322,21 @@ make_cons_id(unqualified(Name), Args, _TypeId, cons(Name, Arity)) :-
 					inst_table).
 :- mode inst_table_set_mostly_uniq_insts(in, in, out) is det.
 
+:- pred user_inst_table_get_inst_defns(user_inst_table, user_inst_defns).
+:- mode user_inst_table_get_inst_defns(in, out) is det.
+
+:- pred user_inst_table_get_inst_ids(user_inst_table, list(inst_id)).
+:- mode user_inst_table_get_inst_ids(in, out) is det.
+
+:- pred user_inst_table_insert(user_inst_table, inst_id, hlds__inst_defn,
+					user_inst_table).
+:- mode user_inst_table_insert(in, in, in, out) is semidet.
+
+	% Optimize the user_inst_table for lookups. This just sorts
+	% the cached list of inst_ids.
+:- pred user_inst_table_optimize(user_inst_table, user_inst_table).
+:- mode user_inst_table_optimize(in, out) is det.
+
 :- implementation.
 
 :- type inst_table
@@ -333,9 +349,19 @@ make_cons_id(unqualified(Name), Args, _TypeId, cons(Name, Arity)) :-
 			mostly_uniq_inst_table
 		).
 
+:- type user_inst_defns.
+
+:- type user_inst_table
+	--->	user_inst_table(
+			user_inst_defns,
+			list(inst_id)	% Cached for efficiency when module
+				% qualifying the modes of lambda expressions.
+		).
+
 inst_table_init(inst_table(UserInsts, UnifyInsts, MergeInsts, GroundInsts,
 				SharedInsts, NondetLiveInsts)) :-
-	map__init(UserInsts),
+	map__init(UserInstDefns),
+	UserInsts = user_inst_table(UserInstDefns, []),
 	map__init(UnifyInsts),
 	map__init(MergeInsts),
 	map__init(GroundInsts),
@@ -375,6 +401,19 @@ inst_table_set_shared_insts(inst_table(A, B, C, D, _, F), SharedInsts,
 inst_table_set_mostly_uniq_insts(inst_table(A, B, C, D, E, _), NondetLiveInsts,
 			inst_table(A, B, C, D, E, NondetLiveInsts)).
 
+user_inst_table_get_inst_defns(user_inst_table(InstDefns, _), InstDefns).
+
+user_inst_table_get_inst_ids(user_inst_table(_, InstIds), InstIds).
+
+user_inst_table_insert(user_inst_table(InstDefns0, InstIds0), InstId,
+			InstDefn, user_inst_table(InstDefns, InstIds)) :-
+	map__insert(InstDefns0, InstId, InstDefn, InstDefns),
+	InstIds = [InstId | InstIds0].
+
+user_inst_table_optimize(user_inst_table(InstDefns0, InstIds0), 
+			user_inst_table(InstDefns, InstIds)) :-
+	map__optimize(InstDefns0, InstDefns),
+	list__sort(InstIds0, InstIds).
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -385,7 +424,8 @@ inst_table_set_mostly_uniq_insts(inst_table(A, B, C, D, E, _), NondetLiveInsts,
 :- type mode_id		==	pair(sym_name, arity).
 				% name, arity
 
-:- type mode_table	==	map(mode_id, hlds__mode_defn).
+:- type mode_table.
+:- type mode_defns	 ==	map(mode_id, hlds__mode_defn).
 
 	% A hlds__mode_defn stores the information about a mode
 	% definition such as
@@ -418,8 +458,57 @@ inst_table_set_mostly_uniq_insts(inst_table(A, B, C, D, E, _), NondetLiveInsts,
 	--->	eqv_mode(mode).		% This mode is equivalent to some
 					% other mode.
 
+	% Given a mode table get the mode_id - hlds__mode_defn map.
+:- pred mode_table_get_mode_defns(mode_table, mode_defns).
+:- mode mode_table_get_mode_defns(in, out) is det.
+
+	% Get the list of defined mode_ids from the mode_table.
+:- pred mode_table_get_mode_ids(mode_table, list(mode_id)).
+:- mode mode_table_get_mode_ids(in, out) is det.
+
+	% Insert a mode_id and corresponding hlds__mode_defn into the
+	% mode_table. Fail if the mode_id is already present in the table.
+:- pred mode_table_insert(mode_table, mode_id, hlds__mode_defn, mode_table).
+:- mode mode_table_insert(in, in, in, out) is semidet.
+
+:- pred mode_table_init(mode_table).
+:- mode mode_table_init(out) is det.
+
+	% Optimize the mode table for lookups.
+:- pred mode_table_optimize(mode_table, mode_table).
+:- mode mode_table_optimize(in, out) is det.
+
+
+:- implementation.
+
+:- type mode_table
+	--->	mode_table(
+			mode_defns,
+			list(mode_id)	% Cached for efficiency
+		).
+
+mode_table_get_mode_defns(mode_table(ModeDefns, _), ModeDefns).
+
+mode_table_get_mode_ids(mode_table(_, ModeIds), ModeIds).
+
+mode_table_insert(mode_table(ModeDefns0, ModeIds0), ModeId, ModeDefn,
+			mode_table(ModeDefns, ModeIds)) :-
+	map__insert(ModeDefns0, ModeId, ModeDefn, ModeDefns),
+	ModeIds = [ModeId | ModeIds0].
+
+mode_table_init(mode_table(ModeDefns, [])) :-
+	map__init(ModeDefns).
+
+mode_table_optimize(mode_table(ModeDefns0, ModeIds0),
+			mode_table(ModeDefns, ModeIds)) :-
+	map__optimize(ModeDefns0, ModeDefns), 	% NOP	
+	list__sort(ModeIds0, ModeIds).		% Sort the list of mode_ids
+			% for quick conversion to a set by module_qual
+			% when qualifying the modes of lambda expressions.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
+:- interface.
 
 :- type determinism	--->	det
 			;	semidet

@@ -261,15 +261,13 @@ mercury_write_module_spec_list([ModuleName | ModuleNames]) -->
 
 mercury_output_inst_defn(VarSet, abstract_inst(Name, Args), Context) -->
 	io__write_string(":- inst ("),
-	{ unqualify_name(Name, Name2) },
-	mercury_output_term(term__functor(term__atom(Name2), Args, Context),
-			VarSet),
+	{ construct_qualified_term(Name, Args, Context, InstTerm) },
+	mercury_output_term(InstTerm, VarSet),
 	io__write_string(").\n").
 mercury_output_inst_defn(VarSet, eqv_inst(Name, Args, Body), Context) -->
 	io__write_string(":- inst ("),
-	{ unqualify_name(Name, Name2) },
-	mercury_output_term(term__functor(term__atom(Name2), Args, Context),
-			VarSet),
+	{ construct_qualified_term(Name, Args, Context, InstTerm) },
+	mercury_output_term(InstTerm, VarSet),
 	io__write_string(") = "),
 	mercury_output_inst(Body, VarSet),
 	io__write_string(".\n").
@@ -472,9 +470,8 @@ mercury_output_bound_insts([functor(ConsId, Args) | BoundInsts], VarSet) -->
 
 mercury_output_mode_defn(VarSet, eqv_mode(Name, Args, Mode), Context) -->
 	io__write_string(":- mode ("),
-	{ unqualify_name(Name, Name2) },
-	mercury_output_term(term__functor(term__atom(Name2), Args, Context),
-			VarSet),
+	{ construct_qualified_term(Name, Args, Context, ModeTerm) },
+	mercury_output_term(ModeTerm, VarSet),
 	io__write_string(") :: "),
 	mercury_output_mode(Mode, VarSet),
 	io__write_string(".\n").
@@ -554,25 +551,22 @@ mercury_output_type_defn_2(uu_type(_Name, _Args, _Body), _VarSet, Context) -->
 
 mercury_output_type_defn_2(abstract_type(Name, Args), VarSet, Context) -->
 	io__write_string(":- type "),
-	{ unqualify_name(Name, Name2) },
-	mercury_output_term(term__functor(term__atom(Name2), Args, Context),
-			VarSet),
+	{ construct_qualified_term(Name, Args, Context, TypeTerm) },
+	mercury_output_term(TypeTerm, VarSet),
 	io__write_string(".\n").
 
 mercury_output_type_defn_2(eqv_type(Name, Args, Body), VarSet, Context) -->
 	io__write_string(":- type "),
-	{ unqualify_name(Name, Name2) },
-	mercury_output_term(term__functor(term__atom(Name2), Args, Context),
-			VarSet),
+	{ construct_qualified_term(Name, Args, Context, TypeTerm) },
+	mercury_output_term(TypeTerm, VarSet),
 	io__write_string(" == "),
 	mercury_output_term(Body, VarSet),
 	io__write_string(".\n").
 
 mercury_output_type_defn_2(du_type(Name, Args, Ctors), VarSet, Context) -->
 	io__write_string(":- type "),
-	{ unqualify_name(Name, Name2) },
-	mercury_output_term(term__functor(term__atom(Name2), Args, Context),
-			VarSet),
+	{ construct_qualified_term(Name, Args, Context, TypeTerm) },
+	mercury_output_term(TypeTerm, VarSet),
 	io__write_string("\n\t--->\t"),
 	mercury_output_ctors(Ctors, VarSet),
 	io__write_string(".\n").
@@ -807,11 +801,21 @@ mercury_output_det(failure) -->
 mercury_output_det(erroneous) -->
 	io__write_string("erroneous").
 
+	%
+	% Use mercury_output_bracketed_sym_name/3 when the sym_name has
+	% no arguments, otherwise use mercury_output_sym_name/3.
+	%
+
 :- pred mercury_output_bracketed_sym_name(sym_name, io__state, io__state).
 :- mode mercury_output_bracketed_sym_name(in, di, uo) is det.
 
 mercury_output_bracketed_sym_name(Name) -->
-	{ unqualify_name(Name, Name2) },
+	(	{ Name = qualified(ModuleName, Name2) },
+		mercury_output_bracketed_constant(term__atom(ModuleName)),
+		io__write_char(':')
+	;
+		{ Name = unqualified(Name2) }
+	),
 	mercury_output_bracketed_constant(term__atom(Name2)).
 
 :- pred mercury_output_sym_name(sym_name, io__state, io__state).
@@ -1236,9 +1240,13 @@ mercury_output_term(term__functor(Functor, Args, _), VarSet) -->
 	->
 		io__write_string("("),
 		mercury_output_term(Arg1, VarSet),
-		io__write_string(" "),
-		io__write_string(FunctorName),
-		io__write_string(" "),
+		( { FunctorName = ":" } ->
+			io__write_string(":")
+		;
+			io__write_string(" "),
+			io__write_string(FunctorName),
+			io__write_string(" ")
+		),
 		mercury_output_term(Arg2, VarSet),
 		io__write_string(")")
 	;
