@@ -1178,9 +1178,9 @@ send_term_to_socket(Term) -->
 
     % These two functions are just like like pprint:to_doc, except their input
     % is not a natural term, but a synthetic term defined by a functor, a list
-    % of arguments, and a boolean that is true iff the synthetic term is a
-    % function application, and thus should be printed not as f(a1, ... an)
-    % but as f(a1, ... an-1) = an.
+    % of arguments, and if the synthetic term is a function application, then
+    % the result of that function application.
+
 :- func synthetic_term_to_doc(string, list(univ), maybe(univ))      = doc.
 :- func synthetic_term_to_doc(int, string, list(univ), maybe(univ)) = doc.
 
