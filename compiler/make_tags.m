@@ -66,10 +66,15 @@ assign_constructor_tags(Ctors, Globals, CtorTags, IsEnum) :-
 		% work out how many tag bits there are
 	globals__lookup_int_option(Globals, num_tag_bits, NumTagBits),
 
+		% determine if we need to reserve a tag
+		% (this also disables enumerations and no_tag types)
+	globals__lookup_bool_option(Globals, reserve_tag, ReserveTag),
+
 		% now assign them
 	map__init(CtorTags0),
 	(
-		ctors_are_all_constants(Ctors)
+		ctors_are_all_constants(Ctors),
+		ReserveTag = no
 	->
 		IsEnum = yes,
 		assign_enum_constants(Ctors, 0, CtorTags0, CtorTags)
@@ -77,14 +82,22 @@ assign_constructor_tags(Ctors, Globals, CtorTags, IsEnum) :-
 		IsEnum = no,
 		(
 			% assign single functor of arity one a `no_tag' tag
-			% (unless it is type_info/1)
-			type_is_no_tag_type(Ctors, SingleFunc, SingleArg)
+			% (unless it is type_info/1 or we are reserving a tag)
+			type_is_no_tag_type(Ctors, SingleFunc, SingleArg),
+			ReserveTag = no
 		->
 			create_cons_id(SingleFunc, [SingleArg], SingleConsId),
 			map__set(CtorTags0, SingleConsId, no_tag, CtorTags)
 		;
 			NumTagBits = 0
 		->
+			( ReserveTag = yes ->
+				% XXX Need to fix this.
+				% What architectures does this occur on?
+				error("Oops: sorry, not implemented: --reserve-tag with num_tag_bits = 0")
+			;
+				true
+			),
 			( Ctors = [_SingleCtor] ->
 				assign_simple_tags(Ctors, 0, 1,
 					CtorTags0, CtorTags)
@@ -94,8 +107,6 @@ assign_constructor_tags(Ctors, Globals, CtorTags, IsEnum) :-
 			)
 		;
 			max_num_tags(NumTagBits, MaxNumTags),
-			globals__lookup_bool_option(Globals, reserve_tag,
-					ReserveTag),
 			( ReserveTag = yes ->
 				MaxTag is MaxNumTags - 2
 			;
