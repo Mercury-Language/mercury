@@ -18,7 +18,8 @@
 :- module map.
 :- import_module list.
 :- export_pred	map__init/1, map__search/3, map__search_insert/4,
-		map__update/4, map__set/3, map__keys/2, map__to_assoc_list/2.
+		map__update/4, map__set/3, map__keys/2, map__to_assoc_list/2,
+		map__contains/2.
 :- export_type	map__pair.
 
 %-----------------------------------------------------------------------------%
@@ -41,6 +42,14 @@
 :- pred map__init(map(_,_)).
 :- mode map__init(output).
 map__init([]).
+
+%-----------------------------------------------------------------------------%
+
+	% Check whether map contains key
+:- pred map__contains(map(K,_V), K).
+:- mode map__contains(input, input).
+map__contains(Map, K) :-
+	some [V] assoc_list_member(K-V, Map).
 
 %-----------------------------------------------------------------------------%
 
