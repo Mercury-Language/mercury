@@ -15,7 +15,8 @@ SOURCES= \
 	impure_pred_t1.m \
 	impure_pred_t2.m \
 	purity.m \
-	purity_nonsense.m
+	purity_nonsense.m \
+	purity_type_error.m
 
 DEPS=		$(SOURCES:%.m=%.dep)
 DEPENDS=	$(SOURCES:%.m=%.depend)

@@ -370,7 +370,7 @@ check_preds_purity_2([PredId | PredIds], FoundTypeError, ModuleInfo0,
 			PostTypecheckError1 = PostTypecheckError0
 		},
 		puritycheck_pred(PredId, PredInfo1, PredInfo2, ModuleInfo0,
-				FoundTypeError, PurityErrsInThisPred),
+				PurityErrsInThisPred),
 		post_typecheck__finish_pred(ModuleInfo0, PredId, PredInfo2,
 				PredInfo),
 		{ NumErrors1 is NumErrors0 + UnboundTypeErrsInThisPred
@@ -414,12 +414,11 @@ check_preds_purity_2([PredId | PredIds], FoundTypeError, ModuleInfo0,
 %  them, and in the translation from goal to hlds_goal, the attached purity is
 %  turned into the appropriate feature in the hlds_goal_info.)
 
-:- pred puritycheck_pred(pred_id, pred_info, pred_info, module_info, bool, int,
+:- pred puritycheck_pred(pred_id, pred_info, pred_info, module_info, int,
 		io__state, io__state).
-:- mode puritycheck_pred(in, in, out, in, in, out, di, uo) is det.
+:- mode puritycheck_pred(in, in, out, in, out, di, uo) is det.
 
-puritycheck_pred(PredId, PredInfo0, PredInfo, ModuleInfo,
-		FoundTypeError, NumErrors) -->
+puritycheck_pred(PredId, PredInfo0, PredInfo, ModuleInfo, NumErrors) -->
 	{ pred_info_get_purity(PredInfo0, DeclPurity) } ,
 	{ pred_info_get_promised_purity(PredInfo0, PromisedPurity) },
 	( { pred_info_get_goal_type(PredInfo0, pragmas) } ->
@@ -436,13 +435,7 @@ puritycheck_pred(PredId, PredInfo0, PredInfo, ModuleInfo,
 		{ clauses_info_clauses(ClausesInfo0, Clauses0) },
 		{ clauses_info_vartypes(ClausesInfo0, VarTypes0) },
 		{ clauses_info_varset(ClausesInfo0, VarSet0) },
-
-		%
-		% Exceeding the type inference iteration limit can result
-		% in aborts in the code in post_typecheck.m to resolve
-		% overloading.
-		%
-		{ RunPostTypecheck = bool__not(FoundTypeError) },
+		{ RunPostTypecheck = yes },
 		{ PurityInfo0 = purity_info(ModuleInfo, RunPostTypecheck,
 			PredInfo0, VarTypes0, VarSet0, []) },
 		{ compute_purity(Clauses0, Clauses, ProcIds, pure, Purity,

@@ -105,25 +105,19 @@
 :- import_module hlds_module, hlds_pred, hlds_data, prog_data.
 :- import_module bool, io, list, map.
 
-:- pred typecheck(module_info, module_info, bool, io__state, io__state).
-:- mode typecheck(in, out, out, di, uo) is det.
+	% typecheck(Module0, Module, FoundError,
+	%		ExceededIterationLimit, IO0, IO) 
+	%
+	% Type-checks Module0 and annotates it with variable typings
+	% (returning the result in Module), printing out appropriate
+	% error messages.
+	% FoundError is set to `yes' if there are any errors and
+	% `no' otherwise.
+	% ExceededIterationLimit is set to `yes' if the type inference
+	% iteration limit was reached and `no' otherwise.
 
-/*
-	Formally, typecheck(Module0, Module, FoundError, IO0, IO) is
-	intended to be true iff Module is Module0 annotated with the
-	variable typings that result from the process of type-checking,
-	FoundError is `yes' if Module0 contains any type errors and `no'
-	otherwise, and IO is the io__state that results from IO0 after
-	printing out appropriate error messages for the type errors in
-	Module0, if any.
-
-	Informally, typecheck(Module0, Module, FoundError, IO0, IO) 
-	type-checks Module0 and annotates it with variable typings
-	(returning the result in Module), prints out appropriate error
-	messages, and sets FoundError to `yes' if it finds any errors
-	and `no' otherwise.
-*/
-
+:- pred typecheck(module_info, module_info, bool, bool, io__state, io__state).
+:- mode typecheck(in, out, out, out, di, uo) is det.
 
 	% Find a predicate which matches the given name and argument types.
 	% Abort if there is no matching pred.
@@ -168,14 +162,14 @@
 
 %-----------------------------------------------------------------------------%
 
-typecheck(Module0, Module, FoundError) -->
+typecheck(Module0, Module, FoundError, ExceededIterationLimit) -->
 	globals__io_lookup_bool_option(statistics, Statistics),
 	globals__io_lookup_bool_option(verbose, Verbose),
 	io__stderr_stream(StdErr),
 	io__set_output_stream(StdErr, OldStream),
 
 	maybe_write_string(Verbose, "% Type-checking clauses...\n"),
-	check_pred_types(Module0, Module, FoundError),
+	check_pred_types(Module0, Module, FoundError, ExceededIterationLimit),
 	maybe_report_stats(Statistics),
 
 	io__set_output_stream(OldStream, _).
@@ -184,32 +178,33 @@ typecheck(Module0, Module, FoundError) -->
 
 	% Type-check the code for all the predicates in a module.
 
-:- pred check_pred_types(module_info, module_info, bool,
+:- pred check_pred_types(module_info, module_info, bool, bool,
 		io__state, io__state).
-:- mode check_pred_types(in, out, out, di, uo) is det.
+:- mode check_pred_types(in, out, out, out, di, uo) is det.
 
-check_pred_types(Module0, Module, FoundError) -->
+check_pred_types(Module0, Module, FoundError, ExceededIterationLimit) -->
 	{ module_info_predids(Module0, PredIds) },
 	globals__io_lookup_int_option(type_inference_iteration_limit,
 		MaxIterations),
 	typecheck_to_fixpoint(MaxIterations, PredIds, Module0,
-		Module, FoundError),
+		Module, FoundError, ExceededIterationLimit),
 	write_inference_messages(PredIds, Module).
 
 	% Repeatedly typecheck the code for a group of predicates
 	% until a fixpoint is reached, or until some errors are detected.
 
 :- pred typecheck_to_fixpoint(int, list(pred_id), module_info, module_info, 
-		bool, io__state, io__state).
-:- mode typecheck_to_fixpoint(in, in, in, out, out, di, uo) is det.
+		bool, bool, io__state, io__state).
+:- mode typecheck_to_fixpoint(in, in, in, out, out, out, di, uo) is det.
 
 typecheck_to_fixpoint(NumIterations, PredIds, Module0, Module,
-		FoundError) -->
+		FoundError, ExceededIterationLimit) -->
 	typecheck_pred_types_2(PredIds, Module0, Module1,
 		no, FoundError1, no, Changed),
 	( { Changed = no ; FoundError1 = yes } ->
 		{ Module = Module1 },
-		{ FoundError = FoundError1 }
+		{ FoundError = FoundError1 },
+		{ ExceededIterationLimit = no }
 	;
 		globals__io_lookup_bool_option(debug_types, DebugTypes),
 		( { DebugTypes = yes } ->
@@ -220,11 +215,12 @@ typecheck_to_fixpoint(NumIterations, PredIds, Module0, Module,
 		{ NumIterations1 = NumIterations - 1 },
 		( { NumIterations1 > 0 } ->
 			typecheck_to_fixpoint(NumIterations1, PredIds, Module1,
-				Module, FoundError)
+				Module, FoundError, ExceededIterationLimit)
 		;
 			typecheck_report_max_iterations_exceeded,
 			{ Module = Module1 },
-			{ FoundError = yes }
+			{ FoundError = yes },
+			{ ExceededIterationLimit = yes }
 		)
 	).
 

@@ -1355,7 +1355,8 @@ mercury_compile__frontend_pass(HLDS1, QualInfo0, FoundUndefTypeError,
 	    %
 	    % Next typecheck the clauses.
 	    %
-	    typecheck(HLDS2b, HLDS3, FoundTypeError),
+	    typecheck(HLDS2b, HLDS3, FoundTypeError,
+	    		ExceededTypeCheckIterationLimit),
 	    ( { FoundTypeError = yes } ->
 		maybe_write_string(Verbose,
 			"% Program contains type error(s).\n"),
@@ -1369,13 +1370,23 @@ mercury_compile__frontend_pass(HLDS1, QualInfo0, FoundUndefTypeError,
 	    % We can't continue after an undefined inst/mode
 	    % error, since propagate_types_into_proc_modes
 	    % (in post_typecheck.m -- called by purity.m)
-	    % and mode analysis would get internal errors
+	    % and mode analysis would get internal errors.
 	    %
+	    % We can't continue if the type inference iteration
+	    % limit was exceeeded because the code to resolve
+	    % overloading in post_typecheck.m (called by purity.m)
+	    % could abort.
 	    ( { FoundUndefModeError = yes } ->
 		{ FoundError = yes },
 		{ HLDS = HLDS3 },
 		maybe_write_string(Verbose,
 	"% Program contains undefined inst or undefined mode error(s).\n"),
+		io__set_exit_status(1)
+	    ; { ExceededTypeCheckIterationLimit = yes } ->
+		% FoundTypeError will always be true here, so we've already
+		% printed a message about the program containing type errors.
+		{ FoundError = yes },
+		{ HLDS = HLDS3 },
 		io__set_exit_status(1)
 	    ;
 	        %
