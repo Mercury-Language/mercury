@@ -140,6 +140,12 @@
 :- pred set__intersect(set(T), set(T), set(T)).
 :- mode set__intersect(in, in, out) is det.
 
+	% `set__power_union(A, B)' is true iff `B' is the union of
+	% all the sets in `A'
+
+:- pred set__power_intersect(set(set(T)), set(T)).
+:- mode set__power_intersect(in, out) is det.
+
 	% `set__difference(SetA, SetB, Set)' is true iff `Set' is the
 	% set containing all the elements of `SetA' except those that
 	% occur in `SetB'
@@ -254,6 +260,17 @@ set__intersect_2([E|S0], S1, S2, S) :-
 		S3 = S2
 	),
 	set__intersect_2(S0, S1, S3, S).
+
+set__power_intersect([], []).
+set__power_intersect([S0|Ss], S) :-
+	(
+		Ss = []
+	->
+		S = S0
+	;
+		set__power_intersect(Ss, S1),
+		set__intersect(S1, S0, S)
+	).
 
 %--------------------------------------------------------------------------%
 
