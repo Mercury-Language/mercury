@@ -12,8 +12,6 @@
 
 :- interface.
 
-:- type int == integer.
-
 :- type c_file		--->	c_file(string, list(c_module)).
 			%	filename, modules
 
@@ -37,16 +35,16 @@
 			;	if_tag(reg, tag, label)
 					% branch to label if tag doesn't
 					% match reg's tag.
-			;	incr_sp(integer)
-			;	decr_sp(integer)
-			;	incr_hp(integer).
+			;	incr_sp(int)
+			;	decr_sp(int)
+			;	incr_hp(int).
 
 :- type lval		--->	reg(reg)
-			;	field(tag, lval, integer).
+			;	field(tag, lval, int).
 
 :- type rval		--->	lval(lval)
 			;	mkword(tag, rval)
-			;	iconst(integer)		% integer constants
+			;	iconst(int)		% integer constants
 			;	sconst(string)		% string constants
 			;	binop(operator,rval,rval).
 
@@ -55,23 +53,23 @@
 			;	(*)
 			;	(/).
 
-:- type reg		--->	r(integer)		% integer regs
+:- type reg		--->	r(int)		% integer regs
 			;	succip
 			;	hp
 			;	sp
-			;	stackvar(integer)	% det stack slots
-			;	f(integer).		% floating point regs
+			;	stackvar(int)	% det stack slots
+			;	f(int).		% floating point regs
 
-:- type code_addr 	--->	nonlocal(string, string, integer, integer)
+:- type code_addr 	--->	nonlocal(string, string, int, int)
 				%	module, predicate, arity, mode #
 			;	local(label).
 
-:- type label 		--->	entrylabel(string, string, integer, integer)
+:- type label 		--->	entrylabel(string, string, int, int)
 				%	 module, predicate, arity, mode #
 			;	label(string, string, int, int, int).
 				% module, predicate, arity, mode #, #
 
-:- type tag		==	integer.
+:- type tag		==	int.
 
 :- pred output_c_file(c_file, io__state, io__state).
 :- mode output_c_file(i, di, uo).
