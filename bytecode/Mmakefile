@@ -17,7 +17,7 @@ INCPATH		= -I$(RUNTIME_DIR) \
 		  -I$(BOEHM_GC_DIR) \
 		  -I$(BOEHM_GC_DIR)/include \
 		  -I.
-LIBPATH		= -L$(RUNTIME_DIR) -L$(BOEHM_GC_DIR)
+LIBPATH		= -L$(RUNTIME_DIR) -L$(BOEHM_GC_DIR) -L.
 CFLAGS		= -g $(EXTRA_CFLAGS) -D_POSIX_SOURCE $(INCPATH) -DDEBUGGING
 MGNUC		= MERCURY_ALL_C_INCL_DIRS="$(INCPATH)" $(SCRIPTS_DIR)/mgnuc
 MGNUCFLAGS	= $(CFLAGS) 
@@ -37,14 +37,15 @@ HDRS		= $(MB_HDRS) getopt.h
 ORIG_CS		= bytecode.c dict.c disasm.c machine.c mbi.c mbi_main.c \
 		  mdis.c mem.c static_data.c template.c util.c
 
-LIBS		= -lmer ` \
-                  case "$(GRADE)" in \
-		    *.par*.gc*.prof*)	echo "-lpar_gc_prof" ;;		\
-		    *.par*.gc*)		echo "-lpar_gc" ;;		\
-		    *.gc*.prof*)	echo "-lgc_prof" ;;		\
-		    *.gc*)		echo "-lgc" ;;			\
-                  esac \
-                  `
+#LIBS		= -lmer ` \
+#                  case "$(GRADE)" in \
+#		    *.par*.gc*.prof*)	echo "-lpar_gc_prof" ;;		\
+#		    *.par*.gc*)		echo "-lpar_gc" ;;		\
+#		    *.gc*.prof*)	echo "-lgc_prof" ;;		\
+#		    *.gc*)		echo "-lgc" ;;			\
+#                  esac \
+#                  `
+LIBS		= libgc.a
 
 #-----------------------------------------------------------------------------#
 

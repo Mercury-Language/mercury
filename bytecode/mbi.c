@@ -1,51 +1,151 @@
+
 /*
-** Copyright (C) 1997 The University of Melbourne.
+** Copyright (C) 2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 **
-** $Id: mbi.c,v 1.9 1997-07-27 14:59:24 fjh Exp $
+** $Id: mbi.c,v 1.10 2001-01-24 07:42:28 lpcam Exp $
+**
+** Mercury bytecode interpreter
+**
 */
 
+static char
+rcs_id[]	= "$Id: mbi.c,v 1.10 2001-01-24 07:42:28 lpcam Exp $";
+
 /* Imports */
-
-	/*
-	** Interface to Mercury runtime must be included first.
-	*/
-#include	"imp.h"
-
-#include	<stdlib.h>
-#include	<stdio.h>
-#include	<unistd.h>
 #include	<getopt.h>
+#include	<stdio.h>
+#include	<stdlib.h>
+#include	<ctype.h>
 
-#include	"util.h"
-#include	"mem.h"
-#include	"mbi.h"
-
-
-/* Exports */
-
+#include	"mb_util.h"
+#include	"mb_disasm.h"
+#include	"mb_machine.h"
+/* Exported definitions */
 
 /* Local declarations */
-
-static char
-rcs_id[]	= "$Id: mbi.c,v 1.9 1997-07-27 14:59:24 fjh Exp $";
-
-static void
-usage(void);
-
-static char*
-program_name	= NULL;
+static void usage(const char* program_name, FILE* fp);
+static int match(const char* c, const char* controlstr);
+static void interactive(MB_Machine_State* ms);
+static void show_help(void);
 
 /* Implementation */
 
-int
-BC_mbi_main(int argc, char* argv[])
-{
-	int	c;
 
-	/* We do this in case we change the program name. */
-	program_name = argv[0];
+static void
+show_help(void)
+{
+	printf( "\n---------------------------------------"
+		"\n Mercury Bytecode Interpreter"
+		"\n"
+		"\n  Interactive mode commands:"
+		"\n"
+		"\n  ? | help            - this screen" 
+		"\n  state               - show machine state"
+		"\n  next                - single step execute into predicates"
+		"\n  over                - step execute over predicates"
+		"\n  run                 - run until exception"
+		"\n  list [from [to]]    - source listing"
+		"\n  call                - show call stack"
+		"\n  x | exit | quit     - exit interpreter"
+		"\n"
+		"\n---------------------------------------"
+		"\n");
+}
+
+/* returns true if string pointed to by c could be interpreted
+** as matching command (eg: "cyo" will match "cyote" but
+** "cyor" will not match "cyote")
+**
+** White space will be stripped out of c, but should already
+** have been taken out of commmand
+**
+** Strings are not case sensitive
+**
+*/
+static int
+match(const char* c, const char* command)
+{
+	/* Remove leading whitespace from c */
+	while (isspace(*c)) c++;
+	
+	/* Find where the strings differ */
+	while (tolower(*c) == tolower(*command)) {
+		c++;
+		command++;
+	}
+
+	/* Allow a truncated c to still match */
+	if (isspace(*c) || *c == 0) return TRUE;
+
+	return FALSE;
+}
+
+static void
+interactive(MB_Machine_State* ms)
+{
+	char buffer[78];
+	char* c;
+	
+	printf("Found main/2, proc 0 at %04x\n", MB_ip_get(ms));
+
+	/* Show the current machine state */
+	MB_show_state(ms, stdout);
+
+	do {
+		printf("> ");
+		fgets(buffer, sizeof(buffer), stdin);
+		printf("\n");
+
+		/* Read the next command */
+		c = buffer;
+		while (isspace(*c)) c++;
+
+		if (match(c, "next") || (*c == 0)) {
+			MB_step(ms);
+			MB_show_state(ms, stdout);
+			
+		} else if (match(c, "run")) {
+			MB_run(ms);
+			MB_show_state(ms, stdout);
+			
+		} else if (match(c, "over")) {
+			MB_step_over(ms);
+			MB_show_state(ms, stdout);
+			
+		} else if (match(c, "list")) {
+			int start = 0;
+			int end = -1;
+			scanf("list %i %i", &start, &end);
+			MB_listing(ms, stdout, start, end);
+
+		} else if (match(c, "quit")
+			|| match(c, "exit")
+			|| match(c, "x"))
+		{
+			break;
+		} else if (match(c, "?") || match(c, "help")) {
+			show_help();
+			
+		} else if (match(c, "call")) {
+			MB_show_call(ms, stdout);
+
+		} else if (match(c, "state")) {
+			MB_show_state(ms, stdout);
+			
+		} else {
+			printf("Unrecognised command. Enter ? for Help\n");
+		}
+		
+	} while (!feof(stdin));
+
+}
+
+int
+main(int argc, char* argv[]) {
+
+	int c;
 
 	/* Don't use default error messages from getopt() */
 	opterr = 0;
@@ -54,63 +154,43 @@ BC_mbi_main(int argc, char* argv[])
 	while ((c = getopt(argc,argv,"h")) != EOF) {
 		switch (c) {
 			case 'h':
-				usage();
+				usage(argv[0], stderr);
 				exit(EXIT_SUCCESS);
 				break;
 			default:
-				usage();
+				usage(argv[0], stdout);
 				exit(EXIT_FAILURE);
 				break;
 		}
 	}
 
-	/* We _must_ have a file argument */
+	/* If no arguments, then we obviously don't have a filename */
 	if (optind == argc) {
-		usage();
+		usage(argv[0], stdout);
 	} else {
-		/* Process each bytecode file in order */
-		int 	i;
-		char	*filename;
-		FILE	*fp;
+		
+		MB_Machine_State* ms = MB_load_program_name(argv[optind]);
+		if (ms == NULL) {
+			/* XXX: Give better error message */
+			MB_util_error("error reading bytecode file `%s'",
+				argv[optind]);
+		} else {
+			/* Run the interpreter */
+			interactive(ms);
 
-		for (i = optind; i < argc; i++) {
-			filename = argv[i];
-			if ((fp = fopen(filename, "r")) != NULL) {
-#if 0
-				if (is bytecode file) /* file ext = .mb */
-				{
-					read bytecodes into code area
-					and store label and procedure
-					entry points, etc.
-				}
-				else if (is shared library) /* file ext = .so*/
-				{
-					do a dlopen and add to list
-					of shlibs.
-				} else {
-					error: wrong file extension
-				}
-				
-#endif /* 0 */
-			} else {
-				/* XXX: Give better error message */
-				MB_util_error("can not open file \"%s\"",
-					filename);
-			}
-		} /* end for */
-
-		/*
-		 * XXX: Now start the bytecode interpreter
-		 * Fire up the read-eval-print loop?
-		 */
-
+			/* And when finished, unload */
+			MB_unload_program(ms);
+		}
 	} /* end else */
 
 	exit(EXIT_SUCCESS);
 } /* end main() */
 
+/* usage - print a short help screen to given output file */
 static void
-usage(void)
-{
-	fprintf(stderr, "Usage: %s [-h] files\n", program_name);
+usage(const char* program_name, FILE* fp) {
+	fprintf(fp,
+			"usage: %s [-h | bytecodefile]\n", program_name);
 }
+
+

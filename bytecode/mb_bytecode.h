@@ -1,47 +1,33 @@
+
 /*
 ** Copyright (C) 1997 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 **
-** $Id: bytecode.h,v 1.13 2001-01-24 07:42:22 lpcam Exp $
+** $Id: mb_bytecode.h,v 1.1 2001-01-24 07:42:22 lpcam Exp $
+**
+** This file contains the bytecode format and data types
+** This must be the same as that in compiler/bytecode.m
 */
 
-/*
-** This file defines the bytecode format.
-** The definitions here must match those in compiler/bytecode.m.
-*/
 
 #ifndef MB_BYTECODE_H
 #define	MB_BYTECODE_H
 
-#include	"mercury_conf.h"
-#include	"mercury_types.h"
-#include	"mercury_float.h"
-#include	"gc.h"
+#include <stdio.h>
 
-/*
- * XXX: We should make bytecode portable from platform to platform.
- *
- * We require the following:
- *	sizeof(MB_Byte) = 1
- *	sizeof(MB_Short16) = 2 (2's complement)
- *	sizeof(MB_Integer64) = 8 (2's complement)
- *	sizeof(Float64) = 8 (IEEE)	// We don't really need float.
- * Each of the above is big-endian in the bytecode file.
- * That is, we read the byte at the big end first.
- *
- * We should have platform-dependent #defines to ensure that each of
- * these types has identical size on all platforms.
- */
+#include "mercury_conf.h"
+#include "mercury_types.h"
+#include "mercury_float.h"
 
+#include "mb_util.h"
+
+/* XXX expects sizeof(unsigned char) == 1 */
 typedef unsigned char
 	MB_Byte;
 
-typedef short
+typedef MR_INT_LEAST16_TYPE
 	MB_Short;
-
-typedef char*
-	MB_CString;
 
 typedef MR_Word
 	MB_Word;
@@ -55,6 +41,9 @@ typedef MR_Float
 typedef MR_Float64
 	MB_Float64;
 
+typedef MR_Bool
+	MB_Bool;
+
 typedef struct MB_Tag_struct {
 	MB_Byte	id;
 	union {
@@ -67,7 +56,6 @@ typedef struct MB_Tag_struct {
 	} opt;
 } MB_Tag;
 
-
 /* 
  *	Possible values for Tag.id ...
  */
@@ -76,7 +64,6 @@ typedef struct MB_Tag_struct {
 #define	MB_TAG_COMPLICATED_CONSTANT	2
 #define	MB_TAG_ENUM			3
 #define	MB_TAG_NONE			4
-
 
 typedef MB_Byte
 	MB_Determinism;
@@ -172,201 +159,216 @@ typedef struct MB_Cons_id_struct {
 #define	MB_CONSID_BASE_TYPE_INFO_CONST	6
 #define	MB_CONSID_CHAR_CONST		7
 
+typedef union MB_Bytecode_Arg_tag {
+	struct {
+		MB_CString	pred_name;	/* XXX: malloc */
+		MB_Short	pred_arity;
+		MB_Byte		is_func;
+		MB_Short	proc_count;
+	} enter_pred;
+
+	struct {
+	} endof_pred;
+
+	struct {
+		MB_Byte		proc_id;
+		MB_Determinism	det;
+		MB_Short	label_count;
+		MB_Short	temp_count;
+		MB_Short	list_length;
+		MB_CString	*var_info_list; /* XXX: malloc */
+		
+		/* index onto label heap for label indexes
+		 * (not in the file) */
+		MB_Word		label_index; 	
+	} enter_proc;
+
+	struct {
+	} endof_proc;
+
+	struct {
+		MB_Short	label;
+	} label;
+
+	struct {
+		MB_Short	end_label;
+	} enter_disjunction;
+
+	struct {
+	} endof_disjunction;
+
+	struct {
+		MB_Short	next_label;
+	} enter_disjunct;
+
+	struct {
+		MB_Short	label; /* XXX: what's label for? */
+	} endof_disjunct;
+
+	struct {
+		MB_Short	var;
+		MB_Short	end_label;
+	} enter_switch;
+
+	struct {
+	} endof_switch;
+
+	struct {
+		MB_Cons_id	cons_id;
+		MB_Short	next_label;
+	} enter_switch_arm;
+
+	struct {
+		MB_Short	label;	/* XXX: what's this label for? */
+	} endof_switch_arm;
+
+	struct {
+		MB_Short	else_label;
+		MB_Short	end_label;
+		MB_Short	frame_ptr_tmp;
+	} enter_if;
+
+	struct {
+		MB_Short	frame_ptr_tmp;
+	} enter_then;
+	
+	struct {
+		MB_Short	follow_label;
+	} endof_then;	/* XXX: should rename to enter_else */
+
+	struct {
+	} endof_if;
+
+	struct {
+		MB_Short	end_label;
+	} enter_negation;
+
+	struct {
+	} endof_negation;
+
+	struct {
+		MB_Short	temp;	
+	} enter_commit;
+
+	struct {
+		MB_Short	temp;	
+	} endof_commit;
+
+	struct {
+		MB_Short	to_var;
+		MB_Short	from_var;
+	} assign;
+
+	struct {
+		MB_Short	var1;
+		MB_Short	var2;
+	} test;
+
+	struct {
+		MB_Short	to_var;
+		MB_Cons_id	consid;
+		MB_Short	list_length;
+		MB_Short	*var_list;	/* XXX: malloc */
+	} construct;
+
+	struct {
+		MB_Short	from_var;
+		MB_Cons_id	consid;
+		MB_Short	list_length;
+		MB_Short	*var_list;	/* XXX: malloc */
+	} deconstruct;
+
+	struct {
+		MB_Short	to_var;
+		MB_Cons_id	consid;
+		MB_Short	list_length;
+		MB_Var_dir	*var_dir_list;/* XXX: malloc */	
+	} complex_construct;
+
+	struct {
+		MB_Short	from_var;
+		MB_Cons_id	consid;
+		MB_Short	list_length;
+		MB_Var_dir	*var_dir_list;/* XXX: malloc */
+	} complex_deconstruct;
+
+	struct {
+		MB_Byte		to_reg;
+		MB_Short	from_var;
+	} place_arg;
+
+	struct {
+		MB_Byte		from_reg;
+		MB_Short	to_var;
+	} pickup_arg;
+		
+	struct {
+		MB_CString	module_id;	/* XXX: malloc */
+		MB_CString	pred_id;	/* XXX: malloc */
+		MB_Short	arity;
+		MB_Byte		proc_id;
+
+		/* code address to call (generated when file is loaded) */
+		MB_Word		adr;
+	} call;
+
+	struct  {
+		MB_Short	pred_var;
+		MB_Short	in_var_count;
+		MB_Short	out_var_count;
+		MB_Determinism	det;
+	} higher_order_call;
+
+	struct {
+		MB_Byte		binop;
+		MB_Op_arg	arg1;
+		MB_Op_arg	arg2;
+		MB_Short	to_var;
+	} builtin_binop;
+
+	struct {
+		MB_Byte		unop;
+		MB_Op_arg	arg;
+		MB_Short	to_var;
+	} builtin_unop;
+
+	struct {
+		MB_Byte		binop;
+		MB_Op_arg	arg1;
+		MB_Op_arg	arg2;
+	} builtin_bintest;	
+
+	struct {
+		MB_Byte		unop;
+		MB_Op_arg	arg;
+	} builtin_untest;	
+
+	struct {
+	} semidet_succeed;
+
+	struct {
+	} semidet_success_check;
+
+	struct {
+	} fail;
+
+	struct {
+		/* XXX: is this int or short?? */
+		MB_Short	line_number;
+	} context;
+
+	struct {
+	} not_supported;
+} MB_Bytecode_Arg;
 
 typedef struct MB_Bytecode_struct {
 	MB_Byte	id;	/* Which bytecode instruction. e.g. BC_fail */
-	union {
-		struct {
-			MB_CString	pred_name;	/* XXX: malloc */
-			MB_Short	proc_count;
-		} enter_pred;
-
-		/* endof_pred */
-
-		struct {
-			MB_Byte		proc_id;
-			MB_Determinism	det;
-			MB_Short	label_count;
-			MB_Short	temp_count;
-			MB_Short	list_length;
-			MB_CString	*var_info_list; /* XXX: malloc */
-		} enter_proc;
-
-		struct {
-			MB_Short	label;
-		} label;
-
-		struct {
-			MB_Short	end_label;
-		} enter_disjunction;
-
-		/* endof_disjunction */
-
-		struct {
-			MB_Short	next_label;
-		} enter_disjunct;
-
-		struct {
-			MB_Short	label; /* XXX: what's label for? */
-		} endof_disjunct;
-
-		struct {
-			MB_Short	var;
-			MB_Short	end_label;
-		} enter_switch;
-			
-		/* endof_switch */
-
-		struct {
-			MB_Cons_id	cons_id;
-			MB_Short	next_label;
-		} enter_switch_arm;
-
-		struct {
-			MB_Short	label;	/* XXX: what's this label for? */
-		} endof_switch_arm;
-
-		struct {
-			MB_Short	else_label;
-			MB_Short	end_label;
-			MB_Short	frame_ptr_tmp;
-		} enter_if;
-
-		struct {
-			MB_Short	frame_ptr_tmp;
-		} enter_then;
-		
-		struct {
-			MB_Short	follow_label;
-		} endof_then;	/* XXX: should rename to enter_else */
-
-		/* endof_if */
-	
-		struct {
-			MB_Short	end_label;
-		} enter_negation;
-
-		/* endof_negation */
-
-		struct {
-			MB_Short	temp;	
-		} enter_commit;
-
-		struct {
-			MB_Short	temp;	
-		} endof_commit;
-
-		struct {
-			MB_Short	to_var;
-			MB_Short	from_var;
-		} assign;
-
-		struct {
-			MB_Short	var1;
-			MB_Short	var2;
-		} test;
-
-		struct {
-			MB_Short	to_var;
-			MB_Cons_id	consid;
-			MB_Short	list_length;
-			MB_Short	*var_list;	/* XXX: malloc */
-		} construct;
-
-		struct {
-			MB_Short	from_var;
-			MB_Cons_id	consid;
-			MB_Short	list_length;
-			MB_Short	*var_list;	/* XXX: malloc */
-		} deconstruct;
-
-		struct {
-			MB_Short	to_var;
-			MB_Cons_id	consid;
-			MB_Short	list_length;
-			MB_Var_dir	*var_dir_list;/* XXX: malloc */	
-		} complex_construct;
-
-		struct {
-			MB_Short	from_var;
-			MB_Cons_id	consid;
-			MB_Short	list_length;
-			MB_Var_dir	*var_dir_list;/* XXX: malloc */
-		} complex_deconstruct;
-
-		struct {
-			MB_Byte		to_reg;
-			MB_Short	from_var;
-		} place_arg;
-
-		struct {
-			MB_Byte		from_reg;
-			MB_Short	to_var;
-		} pickup_arg;
-			
-		struct {
-			MB_CString	module_id;	/* XXX: malloc */
-			MB_CString	pred_id;	/* XXX: malloc */
-			MB_Short	arity;
-			MB_Byte		proc_id;
-		} call;
-
-		struct  {
-			MB_Short	pred_var;
-			MB_Short	in_var_count;
-			MB_Short	out_var_count;
-			MB_Determinism	det;
-		} higher_order_call;
-
-		struct {
-			MB_Byte		binop;
-			MB_Op_arg	arg1;
-			MB_Op_arg	arg2;
-			MB_Short	to_var;
-		} builtin_binop;
-
-		struct {
-			MB_Byte		unop;
-			MB_Op_arg	arg;
-			MB_Short	to_var;
-		} builtin_unop;
-
-		struct {
-			MB_Byte		binop;
-			MB_Op_arg	arg1;
-			MB_Op_arg	arg2;
-		} builtin_bintest;	
-
-		struct {
-			MB_Byte		unop;
-			MB_Op_arg	arg;
-		} builtin_untest;	
-
-		/* semidet_succeed */
-
-		/* semidet_success_check */
-
-		/* fail */
-
-		struct {
-			/* XXX: is this int or short?? */
-			MB_Short	line_number;
-		} context;
-
-		/* not_supported */
-
-	} opt;
+	MB_Bytecode_Arg	opt;
 } MB_Bytecode;
 
 /*
- *	Possible values for Bytecode.id ...
- *
- *	We use #defines rather than an enumeration here since
- *	C enumeration constant must be of type int whereas we
- *	want byte (unsigned char).   XXX the preceding comment is
- *	a bogus explanation, because the constants are #defines
- *	for integerliterals, which are of type int anyway.
- */
+** Possible Bytecode.id values
+*/
 #define	MB_BC_enter_pred		0
 #define	MB_BC_endof_pred		1
 #define	MB_BC_enter_proc		2
@@ -408,7 +410,13 @@ typedef struct MB_Bytecode_struct {
 #define	MB_BC_fail			37
 #define	MB_BC_context			38
 #define	MB_BC_not_supported		39
-#define	MB_BC_noop			255
+
+/* These are used internally by the interpreter */
+/* all codes above MB_BC_debug are debugging values */
+#define MB_BC_debug			254
+#define	MB_BC_debug_trap		254
+#define	MB_BC_debug_invalid		255
+/*#define	MB_BC_noop			255*/
 
 /*
  *	Read the next bytecode from the stream fp.
@@ -427,3 +435,5 @@ MB_Bool
 MB_read_bytecode_version_number(FILE *fp, MB_Short *version_number_p);
 
 #endif	/* MB_BYTECODE_H */
+
+
