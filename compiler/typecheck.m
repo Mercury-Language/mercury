@@ -333,7 +333,7 @@ typecheck_pred_type(PredId, PredInfo0, ModuleInfo, ModeError,
 			% declarations are module qualified, unless undefined
 			% modes were found by an earlier pass.
 			% 
-			maybe_add_default_mode(PredInfo1, PredInfo2),
+			maybe_add_default_mode(PredInfo1, PredInfo2, _),
 			copy_clauses_to_procs(PredInfo2, PredInfo3),
 			pred_info_arg_types(PredInfo3, _, ArgTypes),
 			pred_info_procedures(PredInfo3, Procs1),
@@ -2825,8 +2825,9 @@ typecheck_info_add_type_assign_constraints(NewConstraints, TypecheckInfo0,
 	% XXX reduction, and that is the class context of the pred.
 typecheck_constraints(yes, TypeCheckInfo, TypeCheckInfo).
 typecheck_constraints(no, TypeCheckInfo0, TypeCheckInfo) :-
-		%get the declared constraints
+		% get the declared constraints
 	typecheck_info_get_constraints(TypeCheckInfo0, DeclaredConstraints0),
+		% put them in the canonical order
 	list__sort_and_remove_dups(DeclaredConstraints0, DeclaredConstraints),
 
 

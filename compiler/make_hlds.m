@@ -1311,11 +1311,25 @@ module_add_class_defn(Module0, Constraints, Name, Vars, Interface, VarSet,
 	module_info, io__state, io__state).
 :- mode module_add_class_interface(in, in, in, in, in, out, out, di, uo) is det.
 
-module_add_class_interface(Module, _, _, [], _, [], Module) --> [].
-module_add_class_interface(Module0, Name, Vars, [M|Ms], Status, [P|Ps], 
+module_add_class_interface(Module0, Name, Vars, Methods, Status, PredProcIds, 
+		Module) -->
+	module_add_class_interface_2(Module0, Name, Vars, Methods, Status,
+		PredProcIds0, Module1),
+	{ add_default_class_method_func_modes(Methods, PredProcIds0,
+		PredProcIds, Module1, Module) }.
+
+:- pred module_add_class_interface_2(module_info, sym_name, list(var),
+	class_interface, item_status, list(maybe(pair(pred_id, proc_id))), 
+	module_info, io__state, io__state).
+:- mode module_add_class_interface_2(in, in, in, in, in, out, out, 
+	di, uo) is det.
+
+module_add_class_interface_2(Module, _, _, [], _, [], Module) --> [].
+module_add_class_interface_2(Module0, Name, Vars, [M|Ms], Status, [P|Ps], 
 		Module) -->
 	module_add_class_method(M, Name, Vars, Status, P, Module0, Module1),
-	module_add_class_interface(Module1, Name, Vars, Ms, Status, Ps, Module).
+	module_add_class_interface_2(Module1, Name, Vars, Ms, Status, Ps,
+		Module).
 
 :- pred module_add_class_method(class_method, sym_name, list(var), 
 	item_status, maybe(pair(pred_id, proc_id)), module_info, module_info,
@@ -1359,6 +1373,52 @@ module_add_class_method(Method, Name, Vars, Status, MaybePredIdProcId,
 			Module),
 		{ MaybePredIdProcId = yes(PredIdProcId) }
 	).
+
+	% Go through the list of class methods, looking for functions without
+	% mode declarations.
+:- pred add_default_class_method_func_modes(class_interface, 
+	list(maybe(pair(pred_id, proc_id))), 
+	list(maybe(pair(pred_id, proc_id))), module_info, module_info).
+:- mode add_default_class_method_func_modes(in, in, out, in, out) is det.
+
+add_default_class_method_func_modes([], PredProcIds, PredProcIds,
+		Module, Module).
+add_default_class_method_func_modes([M|Ms], PredProcIds0, PredProcIds,
+		Module0, Module) :-
+	(
+		M = func(_, FuncName, TypesAndModes, _, _, _, _, _)
+	->
+		module_info_name(Module0, ModuleName0),
+		sym_name_get_module_name(FuncName, ModuleName0, ModuleName),
+		unqualify_name(FuncName, Func),
+		list__length(TypesAndModes, FuncArity),
+		module_info_get_predicate_table(Module0, PredTable),
+		(
+			predicate_table_search_func_m_n_a(PredTable, ModuleName,
+				Func, FuncArity, [PredId])
+		->
+			module_info_pred_info(Module0, PredId, PredInfo0),
+			maybe_add_default_mode(PredInfo0, PredInfo, MaybeProc),
+			(
+				MaybeProc = no,
+				PredProcIds1 = PredProcIds0,
+				Module1 = Module0
+			;
+				MaybeProc = yes(ProcId),
+				NewPredProc = yes(PredId - ProcId),
+				PredProcIds1 = [NewPredProc | PredProcIds0],
+				module_info_set_pred_info(Module0, PredId,
+					PredInfo, Module1)
+			)
+		;
+			error("add_default_class_method_func_modes")
+		)
+	;
+		PredProcIds1 = PredProcIds0,
+		Module1 = Module0
+	),
+	add_default_class_method_func_modes(Ms, PredProcIds1, PredProcIds,
+		Module1, Module).
 
 :- pred module_add_instance_defn(module_info, list(class_constraint), sym_name,
 	list(type), instance_interface, varset, import_status, term__context, 
@@ -1902,7 +1962,7 @@ module_add_clause(ModuleInfo0, ClauseVarSet, PredName, Args, Body, Status,
 		{
 		pred_info_clauses_info(PredInfo1, Clauses0),
 		pred_info_typevarset(PredInfo1, TVarSet0),
-		maybe_add_default_mode(PredInfo1, PredInfo2),
+		maybe_add_default_mode(PredInfo1, PredInfo2, _),
 		pred_info_procedures(PredInfo2, Procs),
 		map__keys(Procs, ModeIds)
 		},

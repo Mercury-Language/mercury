@@ -40,8 +40,8 @@
 :- pred maybe_add_default_modes(list(pred_id), pred_table, pred_table).
 :- mode maybe_add_default_modes(in, in, out) is det.
 
-:- pred maybe_add_default_mode(pred_info, pred_info).
-:- mode maybe_add_default_mode(in, out) is det.
+:- pred maybe_add_default_mode(pred_info, pred_info, maybe(proc_id)).
+:- mode maybe_add_default_mode(in, out, out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -53,11 +53,11 @@
 maybe_add_default_modes([], Preds, Preds).
 maybe_add_default_modes([PredId | PredIds], Preds0, Preds) :-
 	map__lookup(Preds0, PredId, PredInfo0),
-	maybe_add_default_mode(PredInfo0, PredInfo),
+	maybe_add_default_mode(PredInfo0, PredInfo, _),
 	map__det_update(Preds0, PredId, PredInfo, Preds1),
 	maybe_add_default_modes(PredIds, Preds1, Preds).
 
-maybe_add_default_mode(PredInfo0, PredInfo) :-
+maybe_add_default_mode(PredInfo0, PredInfo, MaybeProcId) :-
 	pred_info_procedures(PredInfo0, Procs0),
 	pred_info_get_is_pred_or_func(PredInfo0, PredOrFunc),
 	( 
@@ -89,9 +89,11 @@ maybe_add_default_mode(PredInfo0, PredInfo) :-
 		MaybePredArgLives = no,
 		add_new_proc(PredInfo0, PredArity, PredArgModes, 
 			yes(PredArgModes), MaybePredArgLives, yes(Determinism),
-			Context, PredInfo, _ProcId)
+			Context, PredInfo, ProcId),
+		MaybeProcId = yes(ProcId)
 	;
-		PredInfo = PredInfo0
+		PredInfo = PredInfo0,
+		MaybeProcId = no
 	).
 
 copy_module_clauses_to_procs(PredIds, ModuleInfo0, ModuleInfo) :-
