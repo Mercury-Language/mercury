@@ -454,25 +454,25 @@ to_doc(X) = to_doc(int__max_int, X).
     % This may throw an exception or cause a runtime abort if the term
     % in question has user-defined equality.
 
-to_doc(Depth, X) =
-    ( if Arity = 0 then
-        text(Name)
-      else if Depth =< 0 then
-        text(Name) `<>` text("(...)")
-      else
-        text(Name) `<>`
-        parentheses(
-            group(
-                nest(2, line `<>` separated(id, comma_space_line, Args)) `<>`
-                line
-            )
-        )
-    )
-:-
+to_doc(Depth, X) = Doc :-
     deconstruct(X, Name, Arity, UnivArgs),
-    Args = list__map(
-        ( func(UnivArg) = to_doc(Depth - 1, univ_value(UnivArg)) ),
-        UnivArgs
+    ( if Arity = 0 then
+        Doc = text(Name)
+      else if Depth =< 0 then
+        Doc = text(Name) `<>` text("(...)")
+      else
+        Args = list__map(
+            ( func(UnivArg) = to_doc(Depth - 1, univ_value(UnivArg)) ),
+            UnivArgs
+        ),
+        Doc = text(Name) `<>`
+            parentheses(
+                group(
+                    nest(2,
+		        line `<>` separated(id, comma_space_line, Args)
+		    ) `<>` line
+                )
+            )
     ).
 
 %------------------------------------------------------------------------------%
