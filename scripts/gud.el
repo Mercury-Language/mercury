@@ -6,7 +6,7 @@
 ;; Keywords: unix, tools
 
 ;; Copyright (C) 1992, 1993, 1994, 1995, 1996 Free Software Foundation, Inc.
-;; Copyright (C) 1998 Fergus Henderson.
+;; Copyright (C) 1998-1999 Fergus Henderson.
 
 ;; This file is part of GNU Emacs.
 
@@ -1500,8 +1500,8 @@ comint mode, which see."
     (if gud-redirect-io
 	;; Create window for I/O, and insert "--tty" option in args
 	(let* ((buf-tty (gud-start-io-window prog-buf-name))
-	       (buf (first buf-tty))
-	       (tty (second buf-tty)))
+	       (buf (car buf-tty))
+	       (tty (car (cdr buf-tty))))
 	  (setq prog-buf-name base-file)
 	  (setq debugger-buf buf)
 	  (setq args (cons "--tty" (cons tty args)))))
