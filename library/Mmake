@@ -127,9 +127,9 @@ library.nu library.nu.debug: $(NU_LIBRARY_NOS)
 library.sicstus library.sicstus.debug: sp_builtin.ql $(NU_LIBRARY_QLS)
 
 library.nu.debug: error.no debug.no portray.no
-library.sicstus.debug: error.ql
+library.sicstus.debug: portray.ql
 
-sp_builtin.ql $(library.qls) $(NU_LIBRARY_QLS) error.ql: sicstus_compile
+sp_builtin.ql $(library.qls) $(NU_LIBRARY_QLS) portray.ql: sicstus_compile
 
 $(library.nos) $(NU_LIBRARY_NOS) error.no debug.no portray.no: nc_builtin.nl
 
