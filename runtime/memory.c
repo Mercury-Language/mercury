@@ -50,7 +50,11 @@ static	void	simple_sighandler(int);
 #ifdef	HAVE_SYSCONF
 #define	getpagesize()	sysconf(_SC_PAGESIZE)
 #else
+#ifdef	HAVE_GETPAGESIZE
 extern	int	getpagesize(void);
+#else
+#define	getpagesize()	8192
+#endif
 #endif
 
 #ifndef	HAVE_MEMALIGN
