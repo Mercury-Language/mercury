@@ -1225,7 +1225,8 @@ MR_check_minimal_model_calls(MR_Event_Info *event_info, int ancestor_level,
         redoip = MR_redoip_slot(cur_maxfr);
         label = MR_lookup_internal_by_addr(redoip);
         if (label == NULL) {
-            *problem = "reached unknown label ";
+            /* code in this file depends on the exact string we return here */
+            *problem = "reached unknown label";
             return MR_RETRY_ERROR;
         }
 
