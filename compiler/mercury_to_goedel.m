@@ -517,10 +517,10 @@ goedel_output_call(term__functor(Functor, Args, Context), VarSet, Indent) -->
 		}
 	->
 		% output `if Cond then true else error(Msg)'
-		{ parse_goal(Cond, CondGoal) },
+		{ parse_goal(Cond, VarSet, CondGoal, VarSet2) },
 		goedel_output_goal(if_then_else([], CondGoal, true,
 			call(term__functor(term__atom("error"), [Message],
-			Context))), VarSet, Indent)
+			Context))), VarSet2, Indent)
 	;
 		{ Args = [Arg1, Arg2],
 		  Functor = term__atom("is")

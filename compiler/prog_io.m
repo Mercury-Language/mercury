@@ -302,8 +302,8 @@
 
 	% Convert a single term into a goal.
 
-:- pred parse_goal(term, goal).
-:- mode parse_goal(in, out) is det.
+:- pred parse_goal(term, varset, goal, varset).
+:- mode parse_goal(in, in, out, out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -648,9 +648,9 @@ parse_item(VarSet, Term, Result) :-
 			),
 			Body = term__functor(term__atom("true"), [], TheContext)
 		),
-		parse_goal(Body, Body2),
+		parse_goal(Body, VarSet, Body2, VarSet2),
 		parse_qualified_term(Head, "clause head", R2),
-		process_clause(R2, VarSet, Body2, R3),
+		process_clause(R2, VarSet2, Body2, R3),
 		add_context(R3, TheContext, Result)
 	).
 
@@ -675,102 +675,131 @@ process_clause(error(ErrMessage, Term), _, _, error(ErrMessage, Term)).
 	% XXX we should do more parsing here - type qualification and
 	% module qualification should be parsed here.
 
-parse_goal(Term, Goal) :-
+parse_goal(Term, VarSet0, Goal, VarSet) :-
 	(
 		Term = term__functor(term__atom(Name), Args, _Context),
-		parse_goal_2(Name, Args, Goal2)
+		parse_goal_2(Name, Args, VarSet0, Goal2, VarSet1)
 	->
-		Goal = Goal2
+		Goal = Goal2,
+		VarSet = VarSet1
 	;
-		Goal = call(Term)
+		Goal = call(Term),
+		VarSet = VarSet0
 	).
 
-:- pred parse_goal_2(string, list(term), goal).
-:- mode parse_goal_2(in, in, out) is semidet.
-parse_goal_2("true", [], true).
-parse_goal_2("fail", [], fail).
-parse_goal_2("=", [A,B], unify(A,B)).
+:- pred parse_goal_2(string, list(term), varset, goal, varset).
+:- mode parse_goal_2(in, in, in, out, out) is semidet.
+parse_goal_2("true", [], V, true, V).
+parse_goal_2("fail", [], V, fail, V).
+parse_goal_2("=", [A,B], V, unify(A,B), V).
 /******
 	Since (A -> B) has different semantics in standard Prolog
 	(A -> B ; fail) than it does in NU-Prolog or Mercury (A -> B ; true),
 	for the moment we'll just disallow it.
-parse_goal_2("->", [A0,B0], if_then(Vars,A,B)) :-
-	parse_some_vars_goal(A0, Vars, A),
-	parse_goal(B0, B).
+parse_goal_2("->", [A0,B0], V0, if_then(Vars,A,B), V) :-
+	parse_some_vars_goal(A0, V0, Vars, A, V1),
+	parse_goal(B0, V1, B, V).
 ******/
-parse_goal_2(",", [A0,B0], (A,B)) :-
-	parse_goal(A0, A),
-	parse_goal(B0, B).
-parse_goal_2(";", [A0,B0], R) :-
+parse_goal_2(",", [A0,B0], V0, (A,B), V) :-
+	parse_goal(A0, V0, A, V1),
+	parse_goal(B0, V1, B, V).
+parse_goal_2(";", [A0,B0], V0, R, V) :-
 	(
 		A0 = term__functor(term__atom("->"), [X0,Y0], _Context)
 	->
-		parse_some_vars_goal(X0, Vars, X),
-		parse_goal(Y0, Y),
-		parse_goal(B0, B),
+		parse_some_vars_goal(X0, V0, Vars, X, V1),
+		parse_goal(Y0, V1, Y, V2),
+		parse_goal(B0, V2, B, V),
 		R = if_then_else(Vars, X, Y, B)
 	;
-		parse_goal(A0, A),
-		parse_goal(B0, B),
+		parse_goal(A0, V0, A, V1),
+		parse_goal(B0, V1, B, V),
 		R = (A;B)
 	).
 parse_goal_2("if",
-		[term__functor(term__atom("then"),[A0,B0],_)],
-		if_then(Vars,A,B)) :-
-	parse_some_vars_goal(A0, Vars, A),
-	parse_goal(B0, B).
+		[term__functor(term__atom("then"),[A0,B0],_)], V0,
+		if_then(Vars,A,B), V) :-
+	parse_some_vars_goal(A0, V0, Vars, A, V1),
+	parse_goal(B0, V1, B, V).
 parse_goal_2("else",[
 		    term__functor(term__atom("if"),[
 			term__functor(term__atom("then"),[A0,B0],_)
 		    ],_),
 		    C0
-		],
-		if_then_else(Vars,A,B,C)) :-
-	parse_some_vars_goal(A0, Vars, A),
-	parse_goal(B0, B),
-	parse_goal(C0, C).
-parse_goal_2("not", [A0], not(A) ) :-
-	parse_goal(A0, A).
-parse_goal_2("\\+", [A0], not(A) ) :-
-	parse_goal(A0, A).
-parse_goal_2("all", [Vars0,A0], all(Vars,A) ):-
+		], V0,
+		if_then_else(Vars,A,B,C), V) :-
+	parse_some_vars_goal(A0, V0, Vars, A, V1),
+	parse_goal(B0, V1, B, V2),
+	parse_goal(C0, V2, C, V).
+parse_goal_2("not", [A0], V0, not(A), V ) :-
+	parse_goal(A0, V0, A, V).
+parse_goal_2("\\+", [A0], V0, not(A), V) :-
+	parse_goal(A0, V0, A, V).
+parse_goal_2("all", [Vars0,A0], V0, all(Vars,A), V ):-
 	term__vars(Vars0, Vars),
-	parse_goal(A0, A).
+	parse_goal(A0, V0, A, V).
 	
 	% handle implication
-parse_goal_2("<=", [A0,B0], implies(B,A) ):-
-	parse_goal(A0, A),
-	parse_goal(B0, B).
+parse_goal_2("<=", [A0,B0], V0, implies(B,A), V ):-
+	parse_goal(A0, V0, A, V1),
+	parse_goal(B0, V1, B, V).
 
-parse_goal_2("=>", [A0,B0], implies(A,B) ):-
-	parse_goal(A0, A),
-	parse_goal(B0, B).
+parse_goal_2("=>", [A0,B0], V0, implies(A,B), V ):-
+	parse_goal(A0, V0, A, V1),
+	parse_goal(B0, V1, B, V).
 
 	% handle equivalence
-parse_goal_2("<=>", [A0,B0], equivalent(A,B) ):-
-	parse_goal(A0, A),
-	parse_goal(B0, B).
+parse_goal_2("<=>", [A0,B0], V0, equivalent(A,B), V ):-
+	parse_goal(A0, V0, A, V1),
+	parse_goal(B0, V1, B, V).
 
-parse_goal_2("some", [Vars0,A0], some(Vars,A) ):-
+parse_goal_2("some", [Vars0,A0], V0, some(Vars,A), V ):-
 	term__vars(Vars0, Vars),
-	parse_goal(A0, A).
+	parse_goal(A0, V0, A, V).
 
 	% The following is a temporary and gross hack to handle `is' in
 	% the parser - we ought to handle it in the code generation -
 	% but then `is/2' itself is a bit of a hack
 	%
-parse_goal_2("is", [Destination, Expression] , Goal) :-
-	parse_is(Expression, Destination, Goal).
+parse_goal_2("is", [Destination, Expression], VarSet0, Goal, VarSet) :-
+	parse_expression(Expression, Destination, VarSet0, Goal, VarSet).
 
-:- pred parse_is(term, term, goal).
-:- mode parse_is(in, in, out) is semidet.
+:- pred parse_expression(term, term, varset, goal, varset).
+:- mode parse_expression(in, in, in, out, out) is semidet.
 
-parse_is(Expression, Destination, Goal) :-
-	Expression = term__functor(term__atom(Operator), Args0, Context),
-	list__length(Args0, Arity),
-	parse_arith_expression(Operator, Arity, BuiltinPredName),
-	list__append(Args0, [Destination], Args),
-	Goal = call(term__functor(term__atom(BuiltinPredName), Args, Context)).
+parse_expression(Expression, Destination, VarSet0, Goal, VarSet) :-
+	( 
+		Expression = term__functor(term__atom(Operator), Args0,
+						Context),
+		list__length(Args0, Arity),
+		parse_arith_expression(Operator, Arity, BuiltinPredName)
+	->
+		parse_expression_list(Args0, VarSet0, Args1, ArgGoal, VarSet),
+		list__append(Args1, [Destination], Args),
+		ExprGoal = call(term__functor(term__atom(BuiltinPredName), Args,
+			Context)),
+		Goal = (ArgGoal, ExprGoal)
+	;
+		Goal = unify(Destination, Expression),
+		VarSet = VarSet0
+	).
+
+:- pred parse_expression_list(list(term), varset, list(term), goal, varset).
+:- mode parse_expression_list(in, in, out, out, out) is semidet.
+
+parse_expression_list([], VarSet, [], true, VarSet).
+parse_expression_list([Expr0 | Exprs0], VarSet0, [Expr | Exprs], Goal, VarSet)
+		:-
+	( Expr0 = term__variable(_) ->
+		Expr = Expr0,
+		VarSet1 = VarSet0
+	;
+		varset__new_var(VarSet0, Var, VarSet1),
+		Expr = term__variable(Var)
+	),
+	parse_expression(Expr0, Expr, VarSet1, ThisGoal, VarSet2),
+	Goal = (ThisGoal, Goals),
+	parse_expression_list(Exprs0, VarSet2, Exprs, Goals, VarSet).
 
 :- pred parse_arith_expression(string, int, string).
 :- mode parse_arith_expression(in, in, out) is semidet.
@@ -787,17 +816,17 @@ parse_arith_expression("/\\", 2, "builtin_bit_and").
 parse_arith_expression("^", 2, "builtin_bit_xor").
 parse_arith_expression("\\", 1, "builtin_bit_neg").
 
-:- pred parse_some_vars_goal(term, vars, goal).
-:- mode parse_some_vars_goal(in, out, out) is det.
-parse_some_vars_goal(A0, Vars, A) :-
+:- pred parse_some_vars_goal(term, varset, vars, goal, varset).
+:- mode parse_some_vars_goal(in, in, out, out, out) is det.
+parse_some_vars_goal(A0, VarSet0, Vars, A, VarSet) :-
 	( 
 		A0 = term__functor(term__atom("some"), [Vars0,A1], _Context)
 	->
 		term__vars(Vars0, Vars),
-		parse_goal(A1, A)
+		parse_goal(A1, VarSet0, A, VarSet)
 	;
 		Vars = [],
-		parse_goal(A0, A)
+		parse_goal(A0, VarSet0, A, VarSet)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -900,9 +929,9 @@ parse_dcg_goal_2("io__gc_call", [Goal0],
 	parse_dcg_goal(Goal0, VarSet0, N0, Var0, Goal, VarSet, N, Var).
 
 	% Ordinary goal inside { curly braces }.
-parse_dcg_goal_2("{}", [G], _, VarSet, N, Var,
+parse_dcg_goal_2("{}", [G], _, VarSet0, N, Var,
 		Goal, VarSet, N, Var) :-
-	parse_goal(G, Goal).
+	parse_goal(G, VarSet0, Goal, VarSet).
 
 	% Empty list - just unify the input and output DCG args.
 parse_dcg_goal_2("[]", [], _, VarSet0, N0, Var0,
