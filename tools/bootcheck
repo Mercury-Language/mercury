@@ -31,7 +31,7 @@ fi
 
 echo "starting at `date`"
 
-if mmake $mmake_opts $jfactor all
+if mmake $mmake_opts MMAKEFLAGS=$jfactor all
 then
 	echo "building of stage 1 successful"
 else
