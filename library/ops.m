@@ -116,8 +116,8 @@ ops__lookup_postfix_op(_OpTable, Name, Priority, LeftAssoc) :-
 ops__lookup_op(_OpTable, Name) :-
 	ops__op_table(Name, _, _, _).
 
-	% Changes here may require changes to compiler/mercury_to_mercury.m
-	% and doc/transition_guide.texi.
+	% Changes here may require changes to compiler/mercury_to_mercury.m,
+	% doc/transition_guide.texi and doc/reference_manual.texi.
 :- pred ops__op_table(string, ops__category, ops__specifier, ops__priority).
 :- mode ops__op_table(in, in, out, out) is semidet.
 :- mode ops__op_table(in, out, out, out) is nondet.
