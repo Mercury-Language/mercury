@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2000 The University of Melbourne.
+** Copyright (C) 1998-2001 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -145,5 +145,12 @@ extern	void	MR_process_matching_procedures(MR_Proc_Spec *spec,
 
 extern	void	MR_print_proc_id_for_debugger(FILE *fp,
 			const MR_Stack_Layout_Entry *entry);
+
+/*
+** MR_label_layout_stats(fp):
+**	Prints statistics about the label layout structures of the program.
+*/
+
+extern	void	MR_label_layout_stats(FILE *fp);
 
 #endif	/* not MERCURY_TRACE_TABLES_H */

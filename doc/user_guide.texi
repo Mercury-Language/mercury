@@ -2428,6 +2428,25 @@ that point to the det and nondet stacks.
 @sp 1
 @item all_regs
 Prints the contents of all the virtual machine registers.
+@sp 1
+@item table_io
+Reports which phase of I/O tabling we are in at the moment.
+@sp 1
+@item table_io stats
+Reports statistics about I/O tabling.
+@sp 1
+@item table_io start
+Tells the debugger to start tabling I/O actions.
+@sp 1
+@item table_io end
+Tells the debugger to stop tabling I/O actions.
+@sp 1
+@item label_stats
+Prints statistics about label layout structures in the program.
+@sp 1
+@item label_stats @var{filename}
+Prints statistics about label layout structures in the program
+to the file @var{filename}.
 @end table
 @node Miscellaneous commands
 @subsection Miscellaneous commands

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2000 The University of Melbourne.
+** Copyright (C) 1998-2001 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -437,3 +437,54 @@ MR_print_proc_id_for_debugger(FILE *fp,
 	fprintf(fp, "\n");
 }
 
+void
+MR_label_layout_stats(FILE *fp)
+{
+	const MR_Module_Layout		*module_layout;
+	const MR_Module_File_Layout	*file_layout;
+	const MR_Stack_Layout_Label	*label_layout;
+	int				module_num, file_num, label_num;
+	MR_Trace_Port			port;
+	int				total;
+	int				histogram[MR_PORT_PRAGMA_LATER + 1];
+
+	total = 0;
+	for (port = 0; port < MR_PORT_NUM_PORTS; port++) {
+		histogram[port] = 0;
+	}
+
+	for (module_num = 0; module_num < MR_module_info_next; module_num++) {
+		module_layout = MR_module_infos[module_num];
+
+		for (file_num = 0;
+			file_num < module_layout->MR_ml_filename_count;
+			file_num++)
+		{
+			file_layout = module_layout->
+				MR_ml_module_file_layout[file_num];
+
+			for (label_num = 0;
+				label_num < file_layout->MR_mfl_label_count;
+				label_num++)
+			{
+				label_layout = file_layout->
+					MR_mfl_label_layout[label_num];
+
+				total++;
+				if (0 <= label_layout->MR_sll_port &&
+					label_layout->MR_sll_port
+					< MR_PORT_NUM_PORTS)
+				{
+					histogram[label_layout->MR_sll_port]++;
+				}
+			}
+		}
+	}
+
+	for (port = 0; port < MR_PORT_NUM_PORTS; port++) {
+		fprintf(fp, "%4s %10d\n",
+			MR_port_names[port],
+			histogram[port]);
+	}
+	fprintf(fp, "%s %10d\n", "all ", total);
+}
