@@ -617,8 +617,9 @@ output_instruction(block(N, Instrs)) -->
 
 output_instruction(assign(Lval, Rval)) -->
 	io__write_string("\t{ "),
-	output_lval_decls(Lval),
-	output_rval_decls(Rval),
+	{ set__init(DeclSet0) },
+	output_lval_decls(Lval, DeclSet0, DeclSet1),
+	output_rval_decls(Rval, DeclSet1, _),
 	output_lval(Lval),
 	io__write_string(" = "),
 	output_rval(Rval),
@@ -626,16 +627,18 @@ output_instruction(assign(Lval, Rval)) -->
 
 output_instruction(call(Target, Continuation, CallerAddress, LiveVals)) -->
 	io__write_string("\t{ "),
-	output_code_addr_decls(Target),
-	output_code_addr_decls(Continuation),
-	output_code_addr_decls(CallerAddress),
+	{ set__init(DeclSet0) },
+	output_code_addr_decls(Target, DeclSet0, DeclSet1),
+	output_code_addr_decls(Continuation, DeclSet1, DeclSet2),
+	output_code_addr_decls(CallerAddress, DeclSet2, _),
 	output_call(Target, Continuation, CallerAddress),
 	io__write_string(" }\n"),
 	output_gc_livevals(LiveVals).
 
 output_instruction(call_closure(IsSemidet, Continuation, LiveVals)) -->
 	io__write_string("\t{ "),
-	output_code_addr_decls(Continuation),
+	{ set__init(DeclSet0) },
+	output_code_addr_decls(Continuation, DeclSet0, _),
 	output_call_closure(IsSemidet, Continuation),
 	io__write_string(" }\n"),
 	output_gc_livevals(LiveVals).
@@ -646,7 +649,8 @@ output_instruction(c_code(C_Code_String)) -->
 
 output_instruction(mkframe(Str, Num, FailureContinuation)) -->
 	io__write_string("\t{ "),
-	output_code_addr_decls(FailureContinuation),
+	{ set__init(DeclSet0) },
+	output_code_addr_decls(FailureContinuation, DeclSet0, _),
 	io__write_string("mkframe("""),
 	io__write_string(Str),
 	io__write_string(""", "),
@@ -657,7 +661,8 @@ output_instruction(mkframe(Str, Num, FailureContinuation)) -->
 
 output_instruction(modframe(FailureContinuation)) -->
 	io__write_string("\t{ "),
-	output_code_addr_decls(FailureContinuation),
+	{ set__init(DeclSet0) },
+	output_code_addr_decls(FailureContinuation, DeclSet0, _),
 	io__write_string("modframe("),
 	output_code_addr(FailureContinuation),
 	io__write_string("); }").
@@ -668,14 +673,16 @@ output_instruction(label(Label)) -->
 	
 output_instruction(goto(CodeAddr, CallerAddr)) -->
 	io__write_string("\t{ "),
-	output_code_addr_decls(CodeAddr),
-	output_code_addr_decls(CallerAddr),
+	{ set__init(DeclSet0) },
+	output_code_addr_decls(CodeAddr, DeclSet0, DeclSet1),
+	output_code_addr_decls(CallerAddr, DeclSet1, _),
 	output_goto(CodeAddr, CallerAddr),
 	io__write_string(" }").
 
 output_instruction(computed_goto(Rval, Labels)) -->
 	io__write_string("\t{ "),
-	output_rval_decls(Rval),
+	{ set__init(DeclSet0) },
+	output_rval_decls(Rval, DeclSet0, _),
 	io__write_string("COMPUTED_GOTO("),
 	output_rval(Rval),
 	io__write_string(",\n\t\t"),
@@ -684,8 +691,9 @@ output_instruction(computed_goto(Rval, Labels)) -->
 
 output_instruction(if_val(Rval, Target)) -->
 	io__write_string("\t{ "),
-	output_rval_decls(Rval),
-	output_code_addr_decls(Target),
+	{ set__init(DeclSet0) },
+	output_rval_decls(Rval, DeclSet0, DeclSet1),
+	output_code_addr_decls(Target, DeclSet1, _),
 	io__write_string("if ("),
 	output_rval(Rval),
 	io__write_string(")\n\t\t"),
@@ -696,8 +704,9 @@ output_instruction(incr_hp(Lval, MaybeTag, Rval)) -->
 	(
 		{ MaybeTag = no },
 		io__write_string("\t{ "),
-		output_lval_decls(Lval),
-		output_rval_decls(Rval),
+		{ set__init(DeclSet0) },
+		output_lval_decls(Lval, DeclSet0, DeclSet1),
+		output_rval_decls(Rval, DeclSet1, _),
 		io__write_string("incr_hp("),
 		output_lval(Lval),
 		io__write_string(", "),
@@ -706,8 +715,9 @@ output_instruction(incr_hp(Lval, MaybeTag, Rval)) -->
 	;
 		{ MaybeTag = yes(Tag) },
 		io__write_string("\t{ "),
-		output_lval_decls(Lval),
-		output_rval_decls(Rval),
+		{ set__init(DeclSet0) },
+		output_lval_decls(Lval, DeclSet0, DeclSet1),
+		output_rval_decls(Rval, DeclSet1, _),
 		io__write_string("tag_incr_hp("),
 		output_lval(Lval),
 		io__write_string(", "),
@@ -719,14 +729,16 @@ output_instruction(incr_hp(Lval, MaybeTag, Rval)) -->
 
 output_instruction(mark_hp(Lval)) -->
 	io__write_string("\t{ "),
-	output_lval_decls(Lval),
+	{ set__init(DeclSet0) },
+	output_lval_decls(Lval, DeclSet0, _),
 	io__write_string("mark_hp("),
 	output_lval(Lval),
 	io__write_string("); }").
 
 output_instruction(restore_hp(Rval)) -->
 	io__write_string("\t{ "),
-	output_rval_decls(Rval),
+	{ set__init(DeclSet0) },
+	output_rval_decls(Rval, DeclSet0, _),
 	io__write_string("restore_hp("),
 	output_rval(Rval),
 	io__write_string("); }").
@@ -803,26 +815,32 @@ output_temp_decls_2(Next, Max) -->
 		[]
 	).
 
-:- pred output_rval_decls(rval, io__state, io__state).
-:- mode output_rval_decls(in, di, uo) is det.
+% Every time we emit a declaration for a symbol, we insert it into the
+% set of symbols we've already declared.  That way, we avoid generating
+% the same symbol twice, which would cause an error in the C code.
 
-output_rval_decls(lval(Lval)) --> 
-	output_lval_decls(Lval).
-output_rval_decls(var(_)) --> 
+:- type decl_set == set(int).
+
+:- pred output_rval_decls(rval, decl_set, decl_set, io__state, io__state).
+:- mode output_rval_decls(in, in, out, di, uo) is det.
+
+output_rval_decls(lval(Lval), DeclSet0, DeclSet) --> 
+	output_lval_decls(Lval, DeclSet0, DeclSet).
+output_rval_decls(var(_), _, _) --> 
 	{ error("output_rval_decls: unexpected var") }.
-output_rval_decls(mkword(_, Rval)) --> 
-	output_rval_decls(Rval).
-output_rval_decls(const(Const)) -->
+output_rval_decls(mkword(_, Rval), DeclSet0, DeclSet) --> 
+	output_rval_decls(Rval, DeclSet0, DeclSet).
+output_rval_decls(const(Const), DeclSet0, DeclSet) -->
 	( { Const = address_const(CodeAddress) } ->
-		output_code_addr_decls(CodeAddress)
+		output_code_addr_decls(CodeAddress, DeclSet0, DeclSet)
 	;
-		[]
+		{ DeclSet = DeclSet0 }
 	).
-output_rval_decls(unop(_, Rval)) -->
-	output_rval_decls(Rval).
-output_rval_decls(binop(_, Rval1, Rval2)) -->
-	output_rval_decls(Rval1),
-	output_rval_decls(Rval2).
+output_rval_decls(unop(_, Rval), DeclSet0, DeclSet) -->
+	output_rval_decls(Rval, DeclSet0, DeclSet).
+output_rval_decls(binop(_, Rval1, Rval2), DeclSet0, DeclSet) -->
+	output_rval_decls(Rval1, DeclSet0, DeclSet1),
+	output_rval_decls(Rval2, DeclSet1, DeclSet).
 
 	%
 	% Originally we used to output static constants as
@@ -854,34 +872,40 @@ output_rval_decls(binop(_, Rval1, Rval2)) -->
 	% References to other static consts should be resolved at compile time,
 	% not link time, so should not cause problems.
 	%
-output_rval_decls(create(_Tag, ArgVals, Label)) -->
-	output_cons_arg_decls(ArgVals),
-	{ exprn_aux__maybe_rval_list_code_addrs(ArgVals, CodeAddrs) },
-	( { CodeAddrs = [] } ->
-		io__write_string("static const Word mercury_const_"),
-		io__write_int(Label),
-		io__write_string("[] = {\n\t\t"),
-		output_cons_args(ArgVals, no),
-		io__write_string("};\n\t  ")
+output_rval_decls(create(_Tag, ArgVals, Label), DeclSet0, DeclSet) -->
+	( { set__member(Label, DeclSet0) } ->
+		{ DeclSet = DeclSet0 }
 	;
-		io__write_string("static const Word * mercury_const_"),
-		io__write_int(Label),
-		io__write_string("[] = {\n\t\t"),
-		output_cons_args(ArgVals, yes),
-		io__write_string("};\n\t  ")
+		{ set__insert(DeclSet0, Label, DeclSet1) },
+		output_cons_arg_decls(ArgVals, DeclSet1, DeclSet),
+		{ exprn_aux__maybe_rval_list_code_addrs(ArgVals, CodeAddrs) },
+		( { CodeAddrs = [] } ->
+			io__write_string("static const Word mercury_const_"),
+			io__write_int(Label),
+			io__write_string("[] = {\n\t\t"),
+			output_cons_args(ArgVals, no),
+			io__write_string("};\n\t  ")
+		;
+			io__write_string("static const Word * mercury_const_"),
+			io__write_int(Label),
+			io__write_string("[] = {\n\t\t"),
+			output_cons_args(ArgVals, yes),
+			io__write_string("};\n\t  ")
+		)
 	).
 
-:- pred output_cons_arg_decls(list(maybe(rval)), io__state, io__state).
-:- mode output_cons_arg_decls(in, di, uo) is det.
+:- pred output_cons_arg_decls(list(maybe(rval)), decl_set, decl_set,
+				io__state, io__state).
+:- mode output_cons_arg_decls(in, in, out, di, uo) is det.
 
-output_cons_arg_decls([]) --> [].
-output_cons_arg_decls([Arg | Args]) -->
+output_cons_arg_decls([], DeclSet, DeclSet) --> [].
+output_cons_arg_decls([Arg | Args], DeclSet0, DeclSet) -->
 	( { Arg = yes(Rval) } ->
-		output_rval_decls(Rval)
+		output_rval_decls(Rval, DeclSet0, DeclSet1)
 	;
-		[]
+		{ DeclSet1 = DeclSet0 }
 	),
-	output_cons_arg_decls(Args).
+	output_cons_arg_decls(Args, DeclSet1, DeclSet).
 
 :- pred output_cons_args(list(maybe(rval)), bool, io__state, io__state).
 :- mode output_cons_args(in, in, di, uo) is det.
@@ -910,35 +934,36 @@ output_cons_args([Arg | Args], CastToPointer) -->
 		io__write_string("\n\t  ")
 	).
 
-:- pred output_lval_decls(lval, io__state, io__state).
-:- mode output_lval_decls(in, di, uo) is det.
+:- pred output_lval_decls(lval, decl_set, decl_set, io__state, io__state).
+:- mode output_lval_decls(in, in, out, di, uo) is det.
 
-output_lval_decls(field(_, Rval, FieldNum)) -->
-	output_rval_decls(Rval),
-	output_rval_decls(FieldNum).
-output_lval_decls(reg(_)) --> [].
-output_lval_decls(stackvar(_)) --> [].
-output_lval_decls(framevar(_)) --> [].
-output_lval_decls(succip) --> [].
-output_lval_decls(maxfr) --> [].
-output_lval_decls(curfr) --> [].
-output_lval_decls(succfr(Rval)) -->
-	output_rval_decls(Rval).
-output_lval_decls(prevfr(Rval)) -->
-	output_rval_decls(Rval).
-output_lval_decls(redoip(Rval)) -->
-	output_rval_decls(Rval).
-output_lval_decls(hp) --> [].
-output_lval_decls(sp) --> [].
-output_lval_decls(lvar(_)) --> [].
-output_lval_decls(temp(_)) --> [].
+output_lval_decls(field(_, Rval, FieldNum), DeclSet0, DeclSet) -->
+	output_rval_decls(Rval, DeclSet0, DeclSet1),
+	output_rval_decls(FieldNum, DeclSet1, DeclSet).
+output_lval_decls(reg(_), DeclSet, DeclSet) --> [].
+output_lval_decls(stackvar(_), DeclSet, DeclSet) --> [].
+output_lval_decls(framevar(_), DeclSet, DeclSet) --> [].
+output_lval_decls(succip, DeclSet, DeclSet) --> [].
+output_lval_decls(maxfr, DeclSet, DeclSet) --> [].
+output_lval_decls(curfr, DeclSet, DeclSet) --> [].
+output_lval_decls(succfr(Rval), DeclSet0, DeclSet) -->
+	output_rval_decls(Rval, DeclSet0, DeclSet).
+output_lval_decls(prevfr(Rval), DeclSet0, DeclSet) -->
+	output_rval_decls(Rval, DeclSet0, DeclSet).
+output_lval_decls(redoip(Rval), DeclSet0, DeclSet) -->
+	output_rval_decls(Rval, DeclSet0, DeclSet).
+output_lval_decls(hp, DeclSet, DeclSet) --> [].
+output_lval_decls(sp, DeclSet, DeclSet) --> [].
+output_lval_decls(lvar(_), DeclSet, DeclSet) --> [].
+output_lval_decls(temp(_), DeclSet, DeclSet) --> [].
 
-:- pred output_code_addr_decls(code_addr, io__state, io__state).
-:- mode output_code_addr_decls(in, di, uo) is det.
+:- pred output_code_addr_decls(code_addr, decl_set, decl_set,
+				io__state, io__state).
+:- mode output_code_addr_decls(in, in, out, di, uo) is det.
 
-output_code_addr_decls(succip) --> [].
-output_code_addr_decls(do_succeed(_)) --> [].
-output_code_addr_decls(do_fail) -->
+output_code_addr_decls(succip, DeclSet, DeclSet) --> [].
+output_code_addr_decls(do_succeed(_), DeclSet, DeclSet) --> [].
+output_code_addr_decls(do_fail, DeclSet, DeclSet) -->
 	globals__io_lookup_bool_option(use_macro_for_redo_fail, UseMacro),
 	(
 		{ UseMacro = yes }
@@ -948,7 +973,7 @@ output_code_addr_decls(do_fail) -->
 		io__write_string("do_fail"),
 		io__write_string(");\n\t  ")
 	).
-output_code_addr_decls(do_redo) -->
+output_code_addr_decls(do_redo, DeclSet, DeclSet) -->
 	globals__io_lookup_bool_option(use_macro_for_redo_fail, UseMacro),
 	(
 		{ UseMacro = yes }
@@ -958,8 +983,8 @@ output_code_addr_decls(do_redo) -->
 		io__write_string("do_redo"),
 		io__write_string(");\n\t  ")
 	).
-output_code_addr_decls(label(_)) --> [].
-output_code_addr_decls(imported(ProcLabel)) -->
+output_code_addr_decls(label(_), DeclSet, DeclSet) --> [].
+output_code_addr_decls(imported(ProcLabel), DeclSet, DeclSet) -->
 	io__write_string("Declare_entry("),
 	output_proc_label(ProcLabel),
 	io__write_string(");\n\t  ").
