@@ -110,9 +110,8 @@
   #define MR_SIGNAL(nothing)		do { } while (0)
   #define MR_WAIT(no, thing)		do { } while (0)
 
-  #define MR_OBTAIN_GLOBAL_C_LOCK()	do { } while (0)
-
-  #define MR_RELEASE_GLOBAL_C_LOCK()	do { } while (0)
+  #define MR_OBTAIN_GLOBAL_LOCK(where)	do { } while (0)
+  #define MR_RELEASE_GLOBAL_LOCK(where)	do { } while (0)
 
 #endif
 
