@@ -5,7 +5,7 @@ HIGHLIGHTS
 ==========
 
 Changes to the Mercury language:
-* We've added support for explicit type quantification.
+* We've added support for explicit type qualification.
 * We've added support for tuples.
 * We've added support for record syntax.
 * Type class methods can now be defined by listing the clauses
@@ -33,7 +33,7 @@ DETAILED LISTING
 
 Changes to the Mercury language:
 
-* We've added support for explicit type quantification.
+* We've added support for explicit type qualification.
 
   An expression of the form "Term `with_type` Type",
   e.g. "X `with_type` list(int)", can be used in place of
@@ -41,7 +41,7 @@ Changes to the Mercury language:
   This is sometimes useful for resolving type ambiguities,
   which can occur as a result of overloading or polymorphism.
 
-  See the "Explicit type quantification" and "Variable scoping"
+  See the "Explicit type qualification" and "Variable scoping"
   sections of the language reference manual for details.
 
 * We've added support for tuple types, similar to those in most
