@@ -1226,6 +1226,10 @@ Don't migrate builtin goals into branched goals.
 Don't optimize the assignment of registers in branched goals.
 
 @sp 1
+@item --compact-args
+Use the same register for both input and output arguments.
+
+@sp 1
 @item --no-reclaim-heap-on-nondet-failure
 Don't reclaim heap on backtracking in nondet code.
 
