@@ -56,6 +56,9 @@
 :- pred reverse(list(T), list(T)).
 :- mode reverse(input, output).
 
+:- pred delete(list(T), T, list(T)).
+:- mode delete(in, in, out).
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
