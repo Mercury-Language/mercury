@@ -97,6 +97,10 @@ Changes to the Mercury standard library:
   analogous to list__foldl, and map__map_values which is analogous
   to list__map.
 
+* We have added integer.m, which implements arbitrary precision integers,
+  and rational.m, which implements arbitrary precision rational numbers.
+
+
 New library packages in the `extras' distribution:
 **************************************************
 
