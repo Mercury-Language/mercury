@@ -5,8 +5,8 @@
 # Generates index.html files with a link to each file in the directory, and
 # recursively for its sub-directories.
 #
-# Note: This script recursively calls itself, so it had better be in its
-# own path!
+# Note: This script recursively calls itself, so if invoked without
+# an absolute path name, it had better be in its own path!
 #
 
 CURRENT_RELEASE=0.11.0
@@ -55,6 +55,8 @@ echo "<BODY>" >> $INDEX
 echo "<H1>Directory listing</H1>" >> $INDEX
 echo "<hr>" >> $INDEX
 
+#-----------------------------------------------------------------------------#
+
 # link_to_file prefix filename description.
 #
 # Generate a line with the prefix followed by a link to the given file.
@@ -69,6 +71,8 @@ link_to_file () {
 	echo "$prefix <a href=$this_file>$this_file_descr</a> ($this_file_sizekb kilobytes)" >> $INDEX 
 }
 
+#-----------------------------------------------------------------------------#
+
 # link_to_file filename description
 #
 # Generate a link to a file if it exists.
@@ -78,6 +82,8 @@ link_to_existing_file () {
 		link_to_file "<li> " $1 "$2"
 	fi
 }
+
+#-----------------------------------------------------------------------------#
 
 # handle_release release_file
 #
@@ -93,6 +99,8 @@ handle_release () {
 		esac
 	fi
 }
+
+#-----------------------------------------------------------------------------#
 
 do_handle_release () {
 	file=$1
@@ -162,7 +170,7 @@ do_handle_release () {
 		    	"$bindist" : "mercury-$release_id.\(.*\).tar.gz"`
 		    link_to_file "<li> " $bindist $bindist_name
 		    echo "<ul>" >> $INDEX
-		    bindist_news="mercury-NEWS-$release_id.txt"
+		    bindist_news="mercury-NEWS-$release_id.$bindist_name.txt"
 
 		    # If the news file for the source distribution
 		    # doesn't exist, or doesn't match the news file for
@@ -173,11 +181,9 @@ do_handle_release () {
 		    # distributions don't match, but that should be rare.
 		    if cmp $bindist_news $source_dist_news >& /dev/null
 		    then
-		    	:
+			handled_files="$bindist_news $handled_files"
 		    else
-			link_to_existing_file \
-			    mercury-NEWS-$release_id.$bindist_name.txt \
-			    "News"
+			link_to_existing_file $bindist_news "News"
 		    fi
 
 		    link_to_existing_file \
@@ -192,11 +198,14 @@ do_handle_release () {
 		;;
 	esac
 	link_to_existing_file mercury-extras-$release_id.tar.gz "Extras"
+	link_to_existing_file mercury-gcc-$release_id.tar.gz "GCC native-code interface source"
 	link_to_existing_file mercury-tests-$release_id.tar.gz "Test suite"
 	link_to_existing_file mercury-test-failures-$release_id.txt \
 		"Test failures"
 	echo '</ul><p>' >> $INDEX
 }
+
+#-----------------------------------------------------------------------------#
 
 echo "$img_bak <a href=../>Parent Directory</a><br>" >> $INDEX
 
@@ -207,8 +216,9 @@ for file in *
 do
 	if [ -d $file -a $file != $LOCKDIR ]
 	then
-		(cd $file && generate_index_html)
-		echo "$img_dir <a href=$file/>$file/</a><br>" >> $INDEX
+		(cd $file && $0)
+		echo "$img_dir <a href=$file/index.html>$file/</a><br>" \
+			>> $INDEX
 	fi
 done
 
@@ -230,9 +240,11 @@ handle_release mercury-compiler-${CURRENT_RELEASE}.tar.gz
 #
 # Stable beta for current release + bug fixes.
 # There may be an unstable beta, but there's no point using it.
+# We list these in reverse alphabetical order,
+# so that the most recently dated ones come first.
 #
-for file in mercury-compiler-${BETA_RELEASE}-beta*.tar.gz \
-		mercury-${BETA_RELEASE}-beta*.tar.gz
+for file in `ls -1 mercury-compiler-${BETA_RELEASE}-beta*.tar.gz \
+		mercury-${BETA_RELEASE}-beta*.tar.gz 2>&1 | sort -r`
 do
 	case $file in
 		*-unstable*) ;;
@@ -243,7 +255,8 @@ done
 #
 # Stable release-of-the-day.
 #
-for file in mercury-compiler-rotd*.tar.gz mercury-rotd-*
+for file in `ls -1 mercury-compiler-rotd*.tar.gz mercury-rotd-* 2>/dev/null \
+		| sort -r`
 do
 	case $file in
 		*-unstable*) ;;
@@ -254,7 +267,8 @@ done
 #
 # Unstable release-of-the-day
 #
-for file in mercury-compiler-rotd-*-unstable.tar.gz
+for file in `ls -1 mercury-compiler-rotd-*-unstable.tar.gz 2>/dev/null \
+		| sort -r`
 do
 	handle_release $file
 done
@@ -262,7 +276,7 @@ done
 #
 # Other assorted releases.
 #
-for file in mercury-compiler-* mercury-rotd-*
+for file in mercury-compiler-* mercury-rotd-* mercury-gcc-*
 do
 	handle_release $file
 done
