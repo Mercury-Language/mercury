@@ -472,7 +472,7 @@ float__pow(X, Exp, float__pow(X, Exp)).
 :- pragma c_code(float__hash(F::in) = (H::out),
 	[will_not_call_mercury, thread_safe],
 "
-	H = hash_float(F);
+	H = MR_hash_float(F);
 ").
 
 float__hash(F, float__hash(F)).

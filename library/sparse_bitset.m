@@ -767,7 +767,7 @@ mask(N) = \ unchecked_left_shift(\ 0, N).
 :- pragma c_code(make_bitset_elem(A::in, B::in) = (Pair::out),
 		[will_not_call_mercury, thread_safe],
 "{
-	incr_hp_atomic_msg(Pair, 2, MR_PROC_LABEL,
+	MR_incr_hp_atomic_msg(Pair, 2, MR_PROC_LABEL,
 			""sparse_bitset:bitset_elem/0"");
 	MR_field(MR_mktag(0), Pair, 0) = A;
 	MR_field(MR_mktag(0), Pair, 1) = B;

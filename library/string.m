@@ -1532,7 +1532,7 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
 	** register spilled' in grade asm_fast.gc.tr.debug
 	** if we write this inline.
 	*/
-	static void MR_set_char(String str, MR_Integer ind, MR_Char ch)
+	static void MR_set_char(MR_String str, MR_Integer ind, MR_Char ch)
 	{
 		str[ind] = ch;
 	}

@@ -454,7 +454,7 @@ MR_define_entry(mercury__copy_2_1);
 	value = r2;
 
 	MR_save_transient_registers();
-	copy = deep_copy(&value, (MR_TypeInfo) type_info, NULL, NULL);
+	copy = MR_deep_copy(&value, (MR_TypeInfo) type_info, NULL, NULL);
 	MR_restore_transient_registers();
 
 	r1 = copy;

@@ -164,8 +164,8 @@ ML_report_stats(void)
 
 	fprintf(stderr, 
 		""[Time: +%.3fs, %.3fs,"",
-		(time_at_last_stat - time_at_prev_stat) / 1000.0,
-		(time_at_last_stat - MR_time_at_start) / 1000.0
+		(MR_time_at_last_stat - time_at_prev_stat) / 1000.0,
+		(MR_time_at_last_stat - MR_time_at_start) / 1000.0
 	);
 
 #ifndef MR_HIGHLEVEL_CODE
