@@ -47,15 +47,3 @@ get_next(String, More) -->
 	else	More = no
 	}.
 
-% This source file is hereby placed in the public domain.  -fjh (the author).
-
-:- module committed_choice.
-:- interface.
-:- import_module io.
-
-:- pred main(io__state::di, io__state::uo) is cc_multi.
-
-:- implementation.
-
-main --> io__write_string("Hello, world\n").
-main --> io__write_string("Goodbye, world\n").
