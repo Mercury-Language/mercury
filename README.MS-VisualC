@@ -15,7 +15,8 @@ To use MSVC to build the compiler issue the following configure command.
 
 CC='CL /nologo' CPP='CL /nologo /E' ./configure
 
-Also ensure that the environment variable TMPDIR points to a valid directory.
+Also ensure that the environment variable TMPDIR exists and is set to
+".".  This avoids problems with mixing cygwin and windows paths.
 
 -----------------------------------------------------------------------------
 

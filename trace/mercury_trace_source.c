@@ -351,7 +351,7 @@ MR_trace_source_attach(MR_Trace_Source_Server *server, int timeout,
         ** busy-wait for a few billion cycles, which should hopefully
         ** take a second or more.
         */
-        volatile int i;
+        volatile long i;
         for (i = 0; i < 100000000; i++)
         {}
 #endif
