@@ -10,7 +10,7 @@
 %
 % The predicates of this module generate code for if-then-elses, and for
 % negations (which are cut-down versions of if-then-elses, since not(G)
-% is equivalent to (G -> fail ; true).
+% is equivalent to (G -> fail ; true)).
 %
 %---------------------------------------------------------------------------%
 
@@ -102,6 +102,7 @@ ite_gen__generate_ite(CodeModel, CondGoal0, ThenGoal, ElseGoal, StoreMap, Code)
 		EffectResumeCode),
 
 		% Generate the condition
+	trace__maybe_generate_internal_event_code(CondGoal, CondTraceCode),
 	code_gen__generate_goal(CondCodeModel, CondGoal, CondCode),
 
 	code_info__ite_enter_then(HijackInfo, ThenNeckCode, ElseNeckCode),
@@ -171,6 +172,7 @@ ite_gen__generate_ite(CodeModel, CondGoal0, ThenGoal, ElseGoal, StoreMap, Code)
 		tree(SaveTicketCode,
 		tree(PrepareHijackCode,
 		tree(EffectResumeCode,
+		tree(CondTraceCode,
 		tree(CondCode,
 		tree(ThenNeckCode,
 		tree(DiscardTicketCode,
@@ -185,7 +187,7 @@ ite_gen__generate_ite(CodeModel, CondGoal0, ThenGoal, ElseGoal, StoreMap, Code)
 		tree(ElseTraceCode,
 		tree(ElseCode,
 		tree(ElseSaveCode,
-		     EndLabelCode)))))))))))))))))))
+		     EndLabelCode))))))))))))))))))))
 	},
 	code_info__after_all_branches(StoreMap, MaybeEnd).
 
@@ -290,6 +292,7 @@ generate_negation_general(CodeModel, Goal, ResumeVars, ResumeLocs, Code) -->
 		% Generate the negated goal as a semi-deterministic goal;
 		% it cannot be nondet, since mode correctness requires it
 		% to have no output vars.
+	trace__maybe_generate_internal_event_code(Goal, EnterTraceCode),
 	code_gen__generate_goal(model_semi, Goal, GoalCode),
 
 	code_info__ite_enter_then(HijackInfo, ThenNeckCode, ElseNeckCode),
@@ -303,6 +306,7 @@ generate_negation_general(CodeModel, Goal, ResumeVars, ResumeLocs, Code) -->
 	( { CodeModel = model_det } ->
 			% the then branch will never be reached
 		{ DiscardTicketCode = empty },
+		{ FailTraceCode = empty },
 		{ FailCode = empty }
 	;
 		code_info__remember_position(AfterNegatedGoal),
@@ -311,6 +315,8 @@ generate_negation_general(CodeModel, Goal, ResumeVars, ResumeLocs, Code) -->
 		code_info__maybe_release_hp(MaybeHpSlot),
 		code_info__maybe_reset_discard_and_release_ticket(
 			MaybeTicketSlot, commit, DiscardTicketCode),
+		trace__maybe_generate_negated_event_code(Goal, neg_failure,
+			FailTraceCode),
 		code_info__generate_failure(FailCode),
 			% We want liveness after not(G) to be the same as
 			% after G. Information about what variables are where
@@ -327,6 +333,8 @@ generate_negation_general(CodeModel, Goal, ResumeVars, ResumeLocs, Code) -->
 	code_info__maybe_restore_and_release_hp(MaybeHpSlot, RestoreHpCode),
 	code_info__maybe_reset_discard_and_release_ticket(
 		MaybeTicketSlot, undo, RestoreTicketCode),
+	trace__maybe_generate_negated_event_code(Goal, neg_success,
+		SuccessTraceCode),
 
 	{ Code =
 		tree(FlushCode,
@@ -334,14 +342,17 @@ generate_negation_general(CodeModel, Goal, ResumeVars, ResumeLocs, Code) -->
 		tree(EffectResumeCode,
 		tree(SaveHpCode,
 		tree(SaveTicketCode,
+		tree(EnterTraceCode,
 		tree(GoalCode,
 		tree(ThenNeckCode,
 		tree(DiscardTicketCode,
+		tree(FailTraceCode,
 		tree(FailCode,
 		tree(ResumeCode,
 		tree(ElseNeckCode,
 		tree(RestoreTicketCode,
-		     RestoreHpCode))))))))))))
+		tree(RestoreHpCode,
+		     SuccessTraceCode)))))))))))))))
 	}.
 
 %---------------------------------------------------------------------------%

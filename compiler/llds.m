@@ -500,8 +500,12 @@
 	--->	call
 	;	exit
 	;	fail
+	;	ite_cond
 	;	ite_then
 	;	ite_else
+	;	neg_enter
+	;	neg_success
+	;	neg_failure
 	;	switch
 	;	disj
 	;	nondet_pragma_first

@@ -55,8 +55,12 @@ dummy_pred_to_avoid_warning_about_nothing_exported.
 	;	exit
 	;	redo
 	;	fail
+	;	ite_cond
 	;	ite_then
 	;	ite_else
+	;	neg_enter
+	;	neg_success
+	;	neg_failure
 	;	disj
 	;	switch
 	;	nondet_pragma_first

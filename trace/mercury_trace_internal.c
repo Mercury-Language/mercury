@@ -2183,12 +2183,28 @@ MR_trace_print_port(MR_Trace_Port port)
 			port_name = "FAIL";
 			break;
 
+		case MR_PORT_COND:
+			port_name = "COND";
+			break;
+
 		case MR_PORT_THEN:
 			port_name = "THEN";
 			break;
 
 		case MR_PORT_ELSE:
 			port_name = "ELSE";
+			break;
+
+		case MR_PORT_NEG_ENTER:
+			port_name = "NEGE";
+			break;
+
+		case MR_PORT_NEG_SUCCESS:
+			port_name = "NEGS";
+			break;
+
+		case MR_PORT_NEG_FAILURE:
+			port_name = "NEGF";
 			break;
 
 		case MR_PORT_DISJ:

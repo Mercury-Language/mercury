@@ -29,8 +29,12 @@ typedef	enum {
 	MR_PORT_EXIT,
 	MR_PORT_REDO,
 	MR_PORT_FAIL,
+	MR_PORT_COND,
 	MR_PORT_THEN,
 	MR_PORT_ELSE,
+	MR_PORT_NEG_ENTER,
+	MR_PORT_NEG_SUCCESS,	/* negated goal failed; negation succeeds */
+	MR_PORT_NEG_FAILURE,	/* negated goal succeeded; negation fails */
 	MR_PORT_DISJ,
 	MR_PORT_SWITCH,
 	MR_PORT_PRAGMA_FIRST,

@@ -807,10 +807,14 @@ output_comp_gen_c_data(trace_call_info(Label, Path, MaxRegInUse, Port),
 llds_out__trace_port_to_string(call, "MR_PORT_CALL").
 llds_out__trace_port_to_string(exit, "MR_PORT_EXIT").
 llds_out__trace_port_to_string(fail, "MR_PORT_FAIL").
+llds_out__trace_port_to_string(ite_cond, "MR_PORT_COND").
 llds_out__trace_port_to_string(ite_then, "MR_PORT_THEN").
 llds_out__trace_port_to_string(ite_else, "MR_PORT_ELSE").
-llds_out__trace_port_to_string(switch,   "MR_PORT_SWITCH").
-llds_out__trace_port_to_string(disj,     "MR_PORT_DISJ").
+llds_out__trace_port_to_string(neg_enter,   "MR_PORT_NEG_ENTER").
+llds_out__trace_port_to_string(neg_success, "MR_PORT_NEG_SUCCESS").
+llds_out__trace_port_to_string(neg_failure, "MR_PORT_NEG_FAILURE").
+llds_out__trace_port_to_string(switch, "MR_PORT_SWITCH").
+llds_out__trace_port_to_string(disj,   "MR_PORT_DISJ").
 llds_out__trace_port_to_string(nondet_pragma_first, "MR_PORT_PRAGMA_FIRST").
 llds_out__trace_port_to_string(nondet_pragma_later, "MR_PORT_PRAGMA_LATER").
 
