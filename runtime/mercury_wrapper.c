@@ -218,7 +218,7 @@ mercury_runtime_init(int argc, char **argv)
 	** Double-check that the garbage collector knows about
 	** global variables in shared libraries.
 	*/
-	GC_is_visible(&MR_runqueue);
+	GC_is_visible(&MR_runqueue_head);
 
 	/* The following code is necessary to tell the conservative */
 	/* garbage collector that we are using tagged pointers */

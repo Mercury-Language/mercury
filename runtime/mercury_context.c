@@ -22,7 +22,8 @@ ENDINIT
 #include "mercury_context.h"
 #include "mercury_engine.h"	/* for `memdebug' */
 
-MR_Context	*MR_runqueue;
+MR_Context	*MR_runqueue_head;
+MR_Context	*MR_runqueue_tail;
 #ifdef	MR_THREAD_SAFE
   MercuryLock	*MR_runqueue_lock;
   MercuryCond	*MR_runqueue_cond;
@@ -159,6 +160,74 @@ flounder(void)
 	fatal_error("computation floundered");
 }
 
-void mercury_sys_init_context(void); /* suppress gcc warning */
-void mercury_sys_init_context(void) {
+/*
+INIT mercury_scheduler_wrapper
+ENDINIT
+*/
+
+BEGIN_MODULE(scheduler_module)
+	init_entry(do_runnext);
+BEGIN_CODE
+
+Define_entry(do_runnext);
+#ifdef MR_THREAD_SAFE
+{
+	MR_Context *tmp, *prev;
+	unsigned depth;
+	MercuryThread thd;
+
+	depth = MR_ENGINE(c_depth);
+	thd = MR_ENGINE(owner_thread);
+
+	MR_LOCK(MR_runqueue_lock, "do_runnext (i)");
+
+	while (1) {
+		if (MR_exit_now = TRUE) {
+			MR_UNLOCK(MR_runqueue_lock, "do_runnext (ii)");
+			destroy_thread(MR_engine_base);
+		}
+		tmp = MR_runqueue_head;
+		prev = NULL;
+		while(tmp != NULL) {
+			if (depth > 0 && tmp->owner_thread == thd
+					|| tmp->owner_thread == NULL)
+				break;
+			prev = tmp;
+			tmp = tmp->next;
+		}
+		if (tmp != NULL)
+			break;
+		MR_WAIT(MR_runqueue_cond, MR_runqueue_lock);
+	}
+	MR_ENGINE(this_context) = tmp;
+	if (prev != NULL)
+		prev->next = tmp->next;
+	else
+		MR_runqueue_head = tmp->next;
+	if (MR_runqueue_tail == tmp)
+		MR_runqueue_tail = prev;
+	MR_UNLOCK(MR_runqueue_lock, "do_runnext (iii)");
+	load_context(MR_ENGINE(this_context));
+	GOTO(MR_ENGINE(this_context)->resume);
+}
+#else /* !MR_THREAD_SAFE */
+{
+	if (MR_runqueue_head == NULL)
+		fatal_error("empty runqueue!");
+
+	MR_ENGINE(this_context) = MR_runqueue_head;
+	MR_runqueue_head = MR_runqueue_head->next;
+	if (MR_runqueue_head == NULL)
+		MR_runqueue_tail = NULL;
+
+	load_context(MR_ENGINE(this_context));
+	GOTO(MR_ENGINE(this_context)->resume);
+}
+#endif
+
+END_MODULE
+
+void mercury_scheduler_wrapper(void); /* suppress gcc warning */
+void mercury_scheduler_wrapper(void) {
+	scheduler_module();
 }
