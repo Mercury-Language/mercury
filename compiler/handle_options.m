@@ -1334,9 +1334,9 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
 		% of a non-enum du type to an integer.
 		{ Target = c ; Target = asm },
 
-		% To ensure that ll constants in general du types are allocated
-		% in one word, make_tags.m need to have at least one tag bit
-		% left over after --reserve-tags possibly takes one.
+		% To ensure that all constants in general du types are
+		% allocated in one word, make_tags.m need to have at least one
+		% tag bit left over after --reserve-tags possibly takes one.
 		{ TagsMethod = low ; TagsMethod = high },
 		{ NumTagBits >= 2 }
 	->
