@@ -133,6 +133,15 @@ lib$(BROWSER_LIB_NAME).ss: lib$(MDBCOMP_LIB_NAME).ss
 lib$(BROWSER_LIB_NAME).ils: lib$(MDBCOMP_LIB_NAME).ils
 lib$(BROWSER_LIB_NAME).javas: lib$(MDBCOMP_LIB_NAME).javas
 lib$(BROWSER_LIB_NAME).check: lib$(MDBCOMP_LIB_NAME).check
+$($(BROWSER_LIB_NAME).ints): $($(MDBCOMP_LIB_NAME).ints)
+$($(BROWSER_LIB_NAME).cs): $($(MDBCOMP_LIB_NAME).cs)
+$($(BROWSER_LIB_NAME).ss): $($(MDBCOMP_LIB_NAME).ss)
+$($(BROWSER_LIB_NAME).ils): $($(MDBCOMP_LIB_NAME).ils)
+$($(BROWSER_LIB_NAME).javas): $($(MDBCOMP_LIB_NAME).java_dates)
+$($(BROWSER_LIB_NAME).c_dates): $($(MDBCOMP_LIB_NAME).c_dates)
+$($(BROWSER_LIB_NAME).s_dates): $($(MDBCOMP_LIB_NAME).s_dates)
+$($(BROWSER_LIB_NAME).il_dates): $($(MDBCOMP_LIB_NAME).il_dates)
+$($(BROWSER_LIB_NAME).java_dates): $($(MDBCOMP_LIB_NAME).java_dates)
 
 # This directory contains source files for which the module
 # name doesn't match the file name, so smart recompilation
