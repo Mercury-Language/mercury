@@ -2393,8 +2393,8 @@ AC_MSG_CHECKING(whether Mercury supports shared libraries on this system)
 LINK_SHARED_OBJ="$CC -shared"
 LINK_SHARED_OBJ_SH="$CC -shared"
 if test "$GCC" = "yes"; then
-	SHARED_LIBS='`$CC -print-libgcc-file-name` $(MATH_LIB) -lc'
-	SHARED_LIBS_SH='`$CC -print-libgcc-file-name` $MATH_LIB -lc'
+	SHARED_LIBS="\`$CC -print-libgcc-file-name\` \$(MATH_LIB) -lc"
+	SHARED_LIBS_SH="\`$CC -print-libgcc-file-name\` \$MATH_LIB -lc"
 else
 	SHARED_LIBS='$(MATH_LIB) -lc'
 	SHARED_LIBS_SH='$MATH_LIB -lc'
