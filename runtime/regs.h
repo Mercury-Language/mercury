@@ -43,19 +43,29 @@
 #define SP_REG_NUM	7
 #define CHILDCP_REG_NUM	8
 #define CURCP_REG_NUM	9
-#define MAXCP_REG_NUM	10
+
+#ifndef OPTIMIZE_FOR_NQUEENS
+  #define MAXCP_REG_NUM	10
+#else
+  #define MAXCP_REG_NUM	5
+#endif
 
 #define succip		LVALUE_CAST(Code *, count_usage(0, mr0))
 #define r1		count_usage(1, mr1)
 #define r2		count_usage(2, mr2)
 #define r3		count_usage(3, mr3)
 #define r4		count_usage(4, mr4)
-#define r5		count_usage(5, mr5)
+#ifndef OPTIMIZE_FOR_NQUEENS
+  #define r5		count_usage(5, mr5)
+  #define maxfr		LVALUE_CAST(Word *, count_usage(10, mr10))
+#else
+  #define r5		count_usage(5, mr10)
+  #define maxfr		LVALUE_CAST(Word *, count_usage(10, mr5))
+#endif
 #define hp		LVALUE_CAST(Word *, count_usage(6, mr6))
 #define sp		LVALUE_CAST(Word *, count_usage(7, mr7))
 #define childfr		LVALUE_CAST(Word *, count_usage(8, mr8))
 #define curfr		LVALUE_CAST(Word *, count_usage(9, mr9))
-#define maxfr		LVALUE_CAST(Word *, count_usage(10, mr10))
 #define r6		count_usage(11, mr11)
 #define r7		count_usage(12, mr12)
 #define r8		count_usage(13, mr13)
