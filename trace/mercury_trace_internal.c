@@ -65,6 +65,13 @@
 ** the distinction between stdout and stderr: ordinary output, including
 ** information messages about conditions which are not errors, should
 ** go to MR_mdb_out, but error messages should go to MR_mdb_err.
+**
+** Note that MR_mdb_out and MR_mdb_err may both write to the same
+** file, so we need to be careful to ensure that buffering does
+** not stuff up the interleaving of error messages and ordinary output.
+** To ensure this, we do two things:
+**	- MR_mdb_err is unbuffered
+**	- we always fflush(MR_mdb_out) before writing to MR_mdb_err
 */
 FILE *MR_mdb_in;
 FILE *MR_mdb_out;
@@ -297,7 +304,8 @@ MR_try_fopen(const char *filename, const char *mode, FILE *default_file)
 	} else {
 		FILE *f = fopen(filename, mode);
 		if (f == NULL) {
-			fprintf(stderr, "mdb: error opening `%s': %s\n",
+			fflush(MR_mdb_out);
+			fprintf(MR_mdb_err, "mdb: error opening `%s': %s\n",
 				filename, strerror(errno));
 			return default_file;
 		} else {
@@ -318,6 +326,9 @@ MR_trace_internal_ensure_init(void)
 		MR_mdb_in = MR_try_fopen(MR_mdb_in_filename, "r", stdin);
 		MR_mdb_out = MR_try_fopen(MR_mdb_out_filename, "w", stdout);
 		MR_mdb_err = MR_try_fopen(MR_mdb_err_filename, "w", stderr);
+
+		/* Ensure that MR_mdb_err is not buffered */
+		setvbuf(MR_mdb_err, NULL, _IONBF, 0);
 
 		if (getenv("MERCURY_SUPPRESS_MDB_BANNER") == NULL) {
 			fprintf(MR_mdb_out, MR_trace_banner, MR_VERSION);
@@ -389,6 +400,7 @@ MR_trace_internal_init_from_home_dir(void)
 static void
 MR_trace_do_noop(void)
 {
+	fflush(MR_mdb_out);
 	fprintf(MR_mdb_err,
 		"This command is a no-op from this port.\n");
 }
@@ -451,6 +463,7 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 
 	problem = MR_trace_parse_line(line, &words, &word_max, &word_count);
 	if (problem != NULL) {
+		fflush(MR_mdb_out);
 		fprintf(MR_mdb_err, "%s.\n", problem);
 		goto return_keep_interacting;
 	}
@@ -479,6 +492,7 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 			cmd->MR_trace_print_level = MR_default_print_level;
 			goto return_stop_interacting;
 		} else {
+			fflush(MR_mdb_out);
 			fprintf(MR_mdb_err, "One of the first two words "
 				"must be a command.\n");
 		}
@@ -516,6 +530,7 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 				goto return_stop_interacting;
 			} else {
 				/* XXX this message is misleading */
+				fflush(MR_mdb_out);
 				fprintf(MR_mdb_err, "The debugger cannot go "
 					"to a past event.\n");
 			}
@@ -775,6 +790,7 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 					MR_saved_curfr(saved_regs),
 					include_trace_data);
 			if (msg != NULL) {
+				fflush(MR_mdb_out);
 				fprintf(MR_mdb_err, "%s.\n", msg);
 			}
 		} else {
@@ -824,6 +840,7 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 					MR_trace_internal_add_spy_point(when,
 						action, spy_proc, NULL);
 				} else {
+					fflush(MR_mdb_out);
 					fprintf(MR_mdb_err,
 						"Ambiguous procedure "
 						"specification. "
@@ -833,6 +850,7 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 						MR_mdb_err);
 				}
 			} else {
+				fflush(MR_mdb_out);
 				fprintf(MR_mdb_err,
 					"There is no such procedure.\n");
 			}
@@ -845,6 +863,7 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 				MR_spy_points[n]->spy_enabled = TRUE;
 				MR_print_spy_point(n);
 			} else {
+				fflush(MR_mdb_out);
 				fprintf(MR_mdb_err,
 					"Break point #%d does not exist.\n",
 					n);
@@ -868,6 +887,7 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 				MR_spy_points[n]->spy_enabled = FALSE;
 				MR_print_spy_point(n);
 			} else {
+				fflush(MR_mdb_out);
 				fprintf(MR_mdb_err,
 					"Break point #%d does not exist.\n",
 					n);
@@ -879,6 +899,7 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 			}
 
 			if (MR_spy_point_next == 0) {
+				fflush(MR_mdb_out);
 				fprintf(MR_mdb_err,
 					"There are no break points yet.\n");
 			}
@@ -1050,6 +1071,7 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 						words[1]);
 				}
 			} else {
+				fflush(MR_mdb_out);
 				fprintf(MR_mdb_err,
 					"Alias `%s' cannot be removed, "
 					"since it does not exist.\n",
@@ -1071,6 +1093,7 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 		} else {
 			msg = MR_trace_add_cat(words[2], slot, help_text);
 			if (msg != NULL) {
+				fflush(MR_mdb_out);
 				fprintf(MR_mdb_err,
 					"Document category `%s' not added: "
 					"%s.\n", words[2], msg);
@@ -1090,6 +1113,7 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 			msg = MR_trace_add_item(words[1], words[3], slot,
 				help_text);
 			if (msg != NULL) {
+				fflush(MR_mdb_out);
 				fprintf(MR_mdb_err,
 					"Document item `%s' in category `%s' "
 					"not added: %s.\n",
@@ -1113,7 +1137,9 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 
 			fp = fopen(words[1], "w");
 			if (fp == NULL) {
-				fprintf(stderr, "mdb: cannot open file `%s' "
+				fflush(MR_mdb_out);
+				fprintf(MR_mdb_err,
+					"mdb: cannot open file `%s' "
 					"for output: %s.\n",
 					words[1], strerror(errno));
 			} else {
@@ -1121,7 +1147,9 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 					MR_trace_histogram_all,
 					MR_trace_histogram_hwm);
 				if (fclose(fp) != 0) {
-					fprintf(stderr, "mdb: error closing "
+					fflush(MR_mdb_out);
+					fprintf(MR_mdb_err,
+						"mdb: error closing "
 						"file `%s': %s.\n",
 						words[1], strerror(errno));
 				}
@@ -1135,7 +1163,9 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 
 			fp = fopen(words[1], "w");
 			if (fp == NULL) {
-				fprintf(stderr, "mdb: cannot open file `%s' "
+				fflush(MR_mdb_out);
+				fprintf(MR_mdb_err,
+					"mdb: cannot open file `%s' "
 					"for output: %s.\n",
 					words[1], strerror(errno));
 			} else {
@@ -1143,7 +1173,9 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 					MR_trace_histogram_exp,
 					MR_trace_histogram_hwm);
 				if (fclose(fp) != 0) {
-					fprintf(stderr, "mdb: error closing "
+					fflush(MR_mdb_out);
+					fprintf(MR_mdb_err,
+						"mdb: error closing "
 						"file `%s': %s.\n",
 						words[1], strerror(errno));
 				}
@@ -1232,21 +1264,26 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 #ifdef	MR_USE_DECLARATIVE_DEBUGGER
         } else if (streq(words[0], "dd_wrong")) {
 		if (word_count != 1) {
-			fprintf(stderr,
+			fflush(MR_mdb_out);
+			fprintf(MR_mdb_err,
 				"mdb: dd_wrong requires no arguments.\n");
 		} else if (port != MR_PORT_EXIT) {
-			fprintf(stderr, "mdb: wrong answer analysis is only "
-					"available from EXIT events.\n");
+			fflush(MR_mdb_out);
+			fprintf(MD_mdb_err,
+				"mdb: wrong answer analysis is only "
+				"available from EXIT events.\n");
 		} else if (MR_trace_start_wrong_answer(cmd, layout,
 				saved_regs, event_details, seqno, depth,
 				max_mr_num, jumpaddr)) {
 			goto return_stop_interacting;
 		} else {
-			fprintf(stderr, "mdb: unable to start declarative "
-					"debugging.\n");
+			fflush(MR_mdb_out);
+			fprintf(MR_mdb_err, "mdb: unable to start declarative "
+				"debugging.\n");
 		}
 #endif  /* MR_USE_DECLARATIVE_DEBUGGER */
 	} else {
+		fflush(MR_mdb_out);
 		fprintf(MR_mdb_err, "Unknown command `%s'. "
 			"Give the command `help' for help.\n", words[0]);
 	}
@@ -1475,7 +1512,7 @@ static void
 MR_trace_usage(const char *cat, const char *item)
 /* cat is unused now, but could be used later */
 {
-
+	fflush(MR_mdb_out);
 	fprintf(MR_mdb_err,
 		"mdb: %s: usage error -- type `help %s' for help.\n",
 		item, item);
@@ -1500,6 +1537,7 @@ MR_trace_retry(const MR_Stack_Layout_Label *this_label, Word *saved_regs,
 	call_label = entry->MR_sle_call_label;
 
 	if (call_label->MR_sll_var_count < 0) {
+		fflush(MR_mdb_out);
 		fprintf(MR_mdb_err,
 			"Cannot perform retry, because information about "
 			"the input arguments is not available.\n");
@@ -1524,6 +1562,7 @@ MR_trace_retry(const MR_Stack_Layout_Label *this_label, Word *saved_regs,
 				input_args->MR_slvs_names[i], &succeeded);
 
 		if (! succeeded) {
+			fflush(MR_mdb_out);
 			fprintf(MR_mdb_err,
 				"Cannot perform retry because the values of "
 				"some input arguments are missing.\n");
@@ -1679,12 +1718,14 @@ MR_trace_list_vars(const MR_Stack_Layout_Label *top_layout, Word *saved_regs,
 				&base_sp, &base_curfr, &problem);
 
 	if (level_layout == NULL) {
+		fflush(MR_mdb_out);
 		fprintf(MR_mdb_err, "%s\n", problem);
 		return;
 	}
 
 	problem = MR_trace_validate_var_count(level_layout, &var_count);
 	if (problem != NULL) {
+		fflush(MR_mdb_out);
 		fprintf(MR_mdb_err, "mdb: %s.\n", problem);
 		return;
 	}
@@ -1709,6 +1750,7 @@ MR_trace_set_level(const MR_Stack_Layout_Label *layout,
 		fprintf(MR_mdb_out, "Ancestor level set to %d.\n",
 			*ancestor_level);
 	} else {
+		fflush(MR_mdb_out);
 		fprintf(MR_mdb_err, "%s.\n", problem);
 	}
 }
@@ -1762,12 +1804,14 @@ MR_trace_browse_one(const MR_Stack_Layout_Label *top_layout,
 				&base_sp, &base_curfr, &problem);
 
 	if (level_layout == NULL) {
+		fflush(MR_mdb_out);
 		fprintf(MR_mdb_err, "mdb: %s.\n", problem);
 		return;
 	}
 
 	problem = MR_trace_find_var(level_layout, var_spec, &which_var);
 	if (problem != NULL) {
+		fflush(MR_mdb_out);
 		fprintf(MR_mdb_err, "mdb: %s.\n", problem);
 		return;
 	}
@@ -1807,12 +1851,14 @@ MR_trace_browse_all(const MR_Stack_Layout_Label *top_layout,
 				&base_sp, &base_curfr, &problem);
 
 	if (level_layout == NULL) {
+		fflush(MR_mdb_out);
 		fprintf(MR_mdb_err, "mdb: %s.\n", problem);
 		return;
 	}
 
 	problem = MR_trace_validate_var_count(level_layout, &var_count);
 	if (problem != NULL) {
+		fflush(MR_mdb_out);
 		fprintf(MR_mdb_err, "mdb: %s.\n", problem);
 		return;
 	}
@@ -2218,6 +2264,7 @@ MR_trace_source(const char *filename)
 		fclose(fp);
 		return TRUE;
 	} else {
+		fflush(MR_mdb_out);
 		fprintf(MR_mdb_err, "%s: %s.\n", filename, strerror(errno));
 		return FALSE;
 	}
@@ -2404,6 +2451,7 @@ MR_trace_event_internal_report(MR_Trace_Cmd_Info *cmd,
 								max_mr_num);
 
 					default:
+						fflush(MR_mdb_out);
 						fprintf(MR_mdb_err,
 							"unknown command, "
 							"try again\n");
