@@ -223,7 +223,8 @@ Changes to the Mercury standard library:
 
 * Several new functions have been added to the string module, namely
   elem/2, unsafe_elem/2, chomp/1, lstrip/1, lstrip/2, rstrip/1, rstrip/2,
-  strip/1, prefix_length/2, suffix_length/2, string/1, string/2 and string/4.
+  strip/1, prefix_length/2, suffix_length/2, string/1, string/2, string/4
+  and string.det_to_float/1. 
 
 * We've added some new predicates, list__map2_foldl, list__map_foldl3,
   and list__foldl4 to list.m.

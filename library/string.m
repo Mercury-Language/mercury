@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-2004 The University of Melbourne.
+% Copyright (C) 1993-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -147,14 +147,14 @@
 :- mode string__first_char(uo, in, in) is det.
 
 	% string__replace(String0, Search, Replace, String):
-	% string__replace replaces the first occurence of Search in String0
+	% string__replace replaces the first occurrence of Search in String0
 	% with Replace to give String. It fails if Search does not occur
 	% in String0.
 :- pred string__replace(string, string, string, string).
 :- mode string__replace(in, in, in, uo) is semidet.
 
 	% string__replace_all(String0, Search, Replace, String):
-	% string__replace_all replaces any occurences of Search in
+	% string__replace_all replaces any occurrences of Search in
 	% String0 with Replace to give String.
 :- func string__replace_all(string, string, string) = string.
 :- mode string__replace_all(in, in, in) = uo is det.
@@ -215,7 +215,7 @@
 	% Convert a string in the specified base (2-36) to an int. The
 	% string must contain one or more digits in the specified base,
 	% optionally preceded by a plus or minus sign. For bases > 10,
-	% digits 10 to 35 are repesented by the letters A-Z or a-z. If
+	% digits 10 to 35 are represented by the letters A-Z or a-z. If
 	% the string does not match this syntax, the predicate fails.
 :- pred string__base_string_to_int(int::in, string::in, int::out) is semidet.
 
@@ -224,7 +224,12 @@
 	% by a non-empty string of base N digits.
 :- func string__det_base_string_to_int(int, string) = int.
 
-	% Convert a string to an float. If the string is not a syntactically
+	% Convert a string to a float.  Throws an exception if the string
+	% is not a syntactically correct float literal.
+	%
+:- func string__det_to_float(string) = float.
+
+	% Convert a string to a float. If the string is not a syntactically
 	% correct float literal, string__to_float fails.
 :- pred string__to_float(string::in, float::out) is semidet.
 
@@ -2897,6 +2902,12 @@ max_precision = min_precision + 2.
 "
 	FloatString = java.lang.Double.toString(FloatVal);
 ").
+
+string__det_to_float(FloatString) =
+	( if	string__to_float(FloatString, FloatVal)
+	  then	FloatVal
+	  else	func_error("string.det_to_float/1 - conversion failed.")
+	).
 
 :- pragma export(string__to_float(in, out), "ML_string_to_float").
 :- pragma foreign_proc("C",
