@@ -19,11 +19,6 @@
 
 MAIN_TARGET = runtests
 
--include $(TESTS_DIR)/Mmake.params
-
-# Avoid trying to make this file with `mmc --make' if it doesn't exist.
-$(TESTS_DIR)/Mmake.params: ;
-
 # Set up to test a particular workspace.
 ifdef WORKSPACE
 
@@ -72,6 +67,11 @@ PARAMS_MSG = in grade $(GRADE) with --target asm
 else
 PARAMS_MSG = in grade $(GRADE)
 endif
+
+-include $(TESTS_DIR)/Mmake.params
+
+# Avoid trying to make this file with `mmc --make' if it doesn't exist.
+$(TESTS_DIR)/Mmake.params: ;
 
 #-----------------------------------------------------------------------------#
 
