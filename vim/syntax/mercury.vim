@@ -35,11 +35,11 @@ endif
 syn keyword mercuryKeyword      module use_module import_module
 syn keyword mercuryKeyword      include_module end_module
 syn keyword mercuryKeyword      interface implementation
-syn keyword mercuryKeyword      pred mode func type inst 
+syn keyword mercuryKeyword      pred mode func type inst solver 
 syn keyword mercuryKeyword      is semidet det nondet multi erroneous failure
 syn keyword mercuryKeyword      cc_nondet cc_multi
 syn keyword mercuryKeyword      typeclass instance where
-syn keyword mercuryKeyword      pragma promise
+syn keyword mercuryKeyword      pragma promise external
 syn keyword mercuryPragma       inline no_inline
 syn keyword mercuryPragma       type_spec source_file fact_table obsolete
 syn keyword mercuryPragma       memo loop_check minimal_model
@@ -51,7 +51,7 @@ syn keyword mercuryCInterface   may_call_mercury will_not_call_mercury
 syn keyword mercuryCInterface   thread_safe not_thread_safe
 syn keyword mercuryCInterface   promise_pure promise_semipure
 syn keyword mercuryCInterface   tabled_for_io
-syn keyword mercuryCInterface   can_pass_as_mercury_type
+syn keyword mercuryCInterface   can_pass_as_mercury_type stable
 syn keyword mercuryCInterface   export import
 syn keyword mercuryImpure       impure semipure
 syn keyword mercuryToDo         XXX TODO NOTE         
