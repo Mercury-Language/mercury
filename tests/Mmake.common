@@ -64,6 +64,12 @@ MDB = HOME=/nonexistent MERCURY_SUPPRESS_MDB_BANNER=yes mdb
 
 MDB_STD = MERCURY_OPTIONS="$$MERCURY_OPTIONS -de" $(MDB)
 
+ifeq ($(TARGET_ASM),yes)
+PARAMS_MSG = in grade $(GRADE) with --target asm
+else
+PARAMS_MSG = in grade $(GRADE)
+endif
+
 #-----------------------------------------------------------------------------#
 
 # .PRECIOUS: %.c %.o %_init.c
@@ -139,16 +145,20 @@ MERCURY_MAIN_MODULES = $(PROGS)
 
 ERROR_OUTPUT_FILE = runtests.errs
 
-realclean_local: clean_errors
+realclean_local: clean_logs clean_errors
 clean_local: clean_out clean_res clean_zip
 
-clean_mc: clean_c clean_o clean_out clean_res
+# XXX what is this target for??
+clean_mc: clean_c clean_o clean_out clean_res 
 
 clean_out:
 	rm -f *.out
 
 clean_res:
 	rm -f *.res*
+
+clean_logs:
+	rm -f *.log
 
 clean_errors:
 	rm -f $(ERROR_OUTPUT_FILE) FAILED_TESTS
@@ -193,7 +203,6 @@ runtests:
 		    if [ -f $$subdir/$(ERROR_OUTPUT_FILE) ]; then \
 			cat $$subdir/$(ERROR_OUTPUT_FILE) \
 				>> $(ERROR_OUTPUT_FILE); \
-			rm -f $$subdir/$(ERROR_OUTPUT_FILE); \
 		    fi; \
 		done; \
 		echo SOME TESTS FAILED: see $(ERROR_OUTPUT_FILE); \
@@ -233,7 +242,7 @@ RM_JFACTOR=-j10
 #
 .PHONY: start_runtests_local
 start_runtests_local:
-	@echo STARTING tests in $(THIS_DIR) in grade $(GRADE)
+	@echo STARTING tests in $(THIS_DIR) $(PARAMS_MSG)
 	@echo cleaning up the directory before the tests
 	+@if ls -lt | head -2 | egrep CLEAN > /dev/null 2>&1; then \
 		rm -f CLEAN > /dev/null 2>&1; \
@@ -253,7 +262,7 @@ start_runtests_local:
 .PHONY: %.log
 %.log: start_runtests_local
 	+@test=$(*:%-nodepend=%); \
-	echo RUNNING TEST $(THIS_DIR)/$* in grade $(GRADE) | tee $@; \
+	echo RUNNING TEST $(THIS_DIR)/$* $(PARAMS_MSG) | tee $@; \
 	case $* in \
 		*-nodepend) \
 			rm -f $*.failed;; \
@@ -263,7 +272,7 @@ start_runtests_local:
 				| tee -a $@ ;; \
 	esac; \
 	if [ -f $*.failed ]; then \
-		echo FAILED TEST $(THIS_DIR)/$* in grade $(GRADE) \
+		echo FAILED TEST $(THIS_DIR)/$* $(PARAMS_MSG) \
 			| tee -a $@; \
 		echo $* >> FAILED_TESTS; \
 		exit 1; \
@@ -275,7 +284,7 @@ start_runtests_local:
 		    	if [ -f $$test ]; then \
 				rm -f $$test.gz; gzip $$test; \
 			fi; \
-			echo FAILED TEST $(THIS_DIR)/$* in grade $(GRADE) \
+			echo FAILED TEST $(THIS_DIR)/$* $(PARAMS_MSG) \
 				| tee -a $@; \
 			echo $* >> FAILED_TESTS; \
 			exit 1; \
@@ -283,7 +292,7 @@ start_runtests_local:
 			rm -f $@; \
 			rm -f $$test.out* $$test.*res*; \
 			mmake $$test.realclean > /dev/null 2>&1; \
-			echo FINISHED TEST $(THIS_DIR)/$*; \
+			echo PASSED TEST $(THIS_DIR)/$* $(PARAMS_MSG); \
 		fi; \
 	fi
 
@@ -294,19 +303,19 @@ start_runtests_local:
 # of the target are finished with it.
 TEST_LOGS = $(THIS_DIR_TESTS_TO_RUN:%=%.log)
 runtests_local:
-	@touch DUMMY.log
-	@if mmake -k -j1 $(TEST_LOGS) && \
-		cat *.log > $(ERROR_OUTPUT_FILE) && \
-		rm -f *.log && \
-		[ ! -s $(ERROR_OUTPUT_FILE) ]; \
-	then \
-		echo "FINISHED tests in $(THIS_DIR) in grade $(GRADE)"; \
+	@ \
+	mmake -k -j1 $(TEST_LOGS); \
+	touch DUMMY.log; \
+	cat *.log > $(ERROR_OUTPUT_FILE); \
+	rm -f DUMMY.log; \
+	if [ ! -s $(ERROR_OUTPUT_FILE) ]; then \
+		echo "PASSED tests in $(THIS_DIR) $(PARAMS_MSG)"; \
 		echo cleaning up the directory after the tests; \
 		mmake $(RM_JFACTOR) realclean_local > /dev/null 2>&1; \
 		rm core > /dev/null 2>&1; \
 		touch CLEAN; \
 	else \
-		echo "FAILED tests in $(THIS_DIR) in grade $(GRADE)"; \
+		echo "FAILED tests in $(THIS_DIR) $(PARAMS_MSG)"; \
 		exit 1; \
 	fi
 
