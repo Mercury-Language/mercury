@@ -1844,10 +1844,21 @@ within the predicate or function to which the procedure belongs.
 
 When the debugger (as opposed to the program being debugged) is interacting
 with the user, the debugger prints a prompt and reads in a line of text,
-which it will interpret as its next command. Each command line consists
-of several words separated by white space. The first word is the name of
-the command, while any other words give options and/or parameters to the
-command.
+which it will interpret as its next command line.
+A command line consists of a single command,
+or several commands separated by semicolons.
+Each command consists of several words separated by white space.
+The first word is the name of the command,
+while any other words give options and/or parameters to the command.
+
+A word may itself contain semicolons or whitespace if it is
+enclosed in single quotes (').
+This is useful for commands that have other commands as parameters,
+for example @samp{view -w 'xterm -e'}.
+Characters that have special meaning to @samp{mdb} will be treated like
+ordinary charaters if they are escaped with a backslash (\).
+It is possible to escape single quotes, whitespace, semicolons, newlines
+and the escape character itself.
 
 Some commands take a number as their first parameter.
 For such commands, users can type `@var{number} @var{command}'

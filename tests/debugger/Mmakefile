@@ -27,6 +27,7 @@ RETRY_PROGS = \
 NONRETRY_PROGS = \
 	breakpoints			\
 	browse_pretty			\
+	cmd_quote			\
 	debugger_regs			\
 	exception_cmd			\
 	exception_value			\
@@ -121,6 +122,12 @@ browse_pretty.out: browse_pretty browse_pretty.inp
 browser_test.out: browser_test browser_test.inp
 	$(MDB) ./browser_test < browser_test.inp 2>&1 | \
 		sed 's/io.m:[0-9]*/io.m:NNNN/g' > browser_test.out 2>&1
+
+# We need to pipe the output through sed to avoid hard-coding dependencies on
+# particular line numbers in the standard library source code.
+cmd_quote.out: cmd_quote cmd_quote.inp
+	$(MDB) ./cmd_quote < cmd_quote.inp 2>&1 | \
+		sed 's/io.m:[0-9]*/io.m:NNNN/g' > cmd_quote.out 2>&1
 
 debugger_regs.out: debugger_regs debugger_regs.inp
 	$(MDB) ./debugger_regs < debugger_regs.inp > debugger_regs.out 2>&1

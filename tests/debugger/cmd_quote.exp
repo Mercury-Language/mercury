@@ -1,0 +1,41 @@
+       1:      1  1 CALL pred cmd_quote:main/2-0 (det) cmd_quote.m:7
+mdb> echo on
+Command echo enabled.
+mdb> print \ foo
+mdb: there is no such variable.
+mdb> print \\
+mdb: there is no such variable.
+mdb> print 'foo'
+mdb: there is no such variable.
+mdb> print '\''
+mdb: there is no such variable.
+mdb> print ''''
+mdb: there is no such variable.
+mdb> print \
+> foo \
+> bar \
+> baz
+mdb: print: usage error -- type `help print' for help.
+mdb> print 'foo
+> bar
+> baz '
+mdb: there is no such variable.
+mdb> print '
+> foo \
+> bar \'
+> '
+mdb: there is no such variable.
+mdb> \\\
+> \\\\
+Unknown command `\'. Give the command `help' for help.
+mdb> \\\\\\\\
+Unknown command `\\\\'. Give the command `help' for help.
+mdb> \'\'\'\'
+Unknown command `'''''. Give the command `help' for help.
+mdb> 'foo\''
+Unknown command `foo''. Give the command `help' for help.
+mdb> \ \ \ .
+Unknown command `   .'. Give the command `help' for help.
+mdb> '\ \\\''
+Unknown command ` \''. Give the command `help' for help.
+mdb> quit -y

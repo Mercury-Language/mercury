@@ -68,6 +68,10 @@
   #include <sys/stropts.h>
 #endif
 
+/* Special characters used in mdb commands. */
+#define MR_MDB_QUOTE_CHAR	'\''
+#define MR_MDB_ESCAPE_CHAR	'\\'
+
 /* The initial size of arrays of words. */
 #define	MR_INIT_WORD_COUNT	20
 
@@ -285,11 +289,13 @@ static	const char *MR_trace_parse_line(char *line,
 			char ***words, int *word_max, int *word_count);
 static	int	MR_trace_break_into_words(char *line,
 			char ***words_ptr, int *word_max_ptr);
+static	int	MR_trace_break_off_one_word(char *line, int char_pos);
 static	void	MR_trace_expand_aliases(char ***words,
 			int *word_max, int *word_count);
 static	MR_bool	MR_trace_source(const char *filename, MR_bool ignore_errors);
 static	void	MR_trace_source_from_open_file(FILE *fp);
 static	char	*MR_trace_getline_queue(void);
+static	MR_bool	MR_trace_continue_line(char *ptr, MR_bool *quoted);
 static	void	MR_insert_line_at_head(const char *line);
 static	void	MR_insert_line_at_tail(const char *line);
 
@@ -3633,9 +3639,11 @@ MR_trace_parse_line(char *line, char ***words, int *word_max, int *word_count)
 }
 
 /*
-** Given a text line, break it up into words composed of non-space characters
-** separated by space characters. Make each word a NULL-terminated string,
-** overwriting some spaces in the line array in the process.
+** Given a text line, break it up into words.  Words are composed of
+** non-space characters separated by space characters, except where
+** quotes (') or escapes (\) change the treatment of characters. Make
+** each word a NULL-terminated string, and remove the quotes and escapes,
+** overwriting some parts of the line array in the process.
 **
 ** On return *words will point to an array of strings, with space for
 ** *words_max strings. The number of strings filled in will be given by
@@ -3672,18 +3680,57 @@ MR_trace_break_into_words(char *line, char ***words_ptr, int *word_max_ptr)
 		MR_ensure_big_enough(token_number, word, char *,
 			MR_INIT_WORD_COUNT);
 		words[token_number] = line + char_pos;
-
-		while (line[char_pos] != '\0' && !MR_isspace(line[char_pos])) {
-			char_pos++;
-		}
-
-		if (line[char_pos] != '\0') {
-			line[char_pos] = '\0';
-			char_pos++;
-		}
+		char_pos = MR_trace_break_off_one_word(line, char_pos);
 
 		token_number++;
 	}
+}
+
+static int
+MR_trace_break_off_one_word(char *line, int char_pos)
+{
+	int		lag = 0;
+	MR_bool		quoted = MR_FALSE;
+	MR_bool		another = MR_FALSE;
+
+	while (line[char_pos] != '\0')
+	{
+		if (!quoted && MR_isspace(line[char_pos])) {
+			another = MR_TRUE;
+			break;
+		}
+		if (line[char_pos] == MR_MDB_QUOTE_CHAR) {
+			lag++;
+			char_pos++;
+			quoted = !quoted;
+		} else {
+			if (line[char_pos] == MR_MDB_ESCAPE_CHAR) {
+				lag++;
+				char_pos++;
+				if (line[char_pos] == '\0') {
+					MR_fatal_error(
+						"MR_trace_break_off_one_word: "
+						"unhandled backslash");
+				}
+			}
+
+			if (lag) {
+				line[char_pos - lag] = line[char_pos];
+			}
+			char_pos++;
+		}
+	}
+
+	if (quoted) {
+		MR_fatal_error("MR_trace_break_off_one_word: unmatched quote");
+	}
+
+	line[char_pos - lag] = '\0';
+	if (another) {
+		char_pos++;
+	}
+
+	return char_pos;
 }
 
 static void
@@ -3759,15 +3806,20 @@ MR_trace_source_from_open_file(FILE *fp)
 ** Call MR_trace_getline to get the next line of input, then do some
 ** further processing.  If the input has reached EOF, return the command
 ** "quit".  If the line contains multiple commands then split it and
-** only return the first one.  The command is returned in a MR_malloc'd
-** buffer.
+** only return the first one.  If the newline at the end is either quoted
+** or escaped, read another line (using the prompt '>') and append it to
+** the first.  The command is returned in a MR_malloc'd buffer.
 */
 
 char *
 MR_trace_get_command(const char *prompt, FILE *mdb_in, FILE *mdb_out)
 {
 	char		*line;
-	char		*semicolon;
+	char		*ptr;
+	char		*cmd_chars;
+	int		cmd_char_max;
+	MR_bool		quoted;
+	int		len, extra_len;
 
 	line = MR_trace_getline(prompt, mdb_in, mdb_out);
 
@@ -3778,19 +3830,31 @@ MR_trace_get_command(const char *prompt, FILE *mdb_in, FILE *mdb_out)
 		** specially in the command interpreter.
 		*/
 		line = MR_copy_string("quit");
+		return line;
 	}
 
-	if ((semicolon = strchr(line, ';')) != NULL) {
+	len = strlen(line);
+	ptr = line;
+	cmd_chars = line;
+	cmd_char_max = len + 1;
+	quoted = MR_FALSE;
+	while (MR_trace_continue_line(ptr, &quoted)) {
 		/*
-		** The line contains at least two commands.
-		** Return only the first command now; put the others
-		** back in the input to be processed later.
+		** We were inside quotes when the end of the line was
+		** reached, or the newline was escaped, so input continues
+		** on the next line.  We append it to the first line,
+		** allocating more space if necessary.
 		*/
-		*semicolon = '\0';
-		MR_insert_line_at_head(MR_copy_string(semicolon + 1));
+		line = MR_trace_getline("> ", mdb_in, mdb_out);
+		extra_len = strlen(line);
+		/* cmd_char_max is always > 0 */
+		MR_ensure_big_enough(len + extra_len + 1, cmd_char, char, 0);
+		ptr = cmd_chars + len;
+		strcpy(ptr, line);
+		len = len + extra_len;
 	}
 
-	return line;
+	return cmd_chars;
 }
 
 /*
@@ -3888,6 +3952,51 @@ MR_insert_line_at_tail(const char *contents)
 		MR_line_tail->MR_line_next = line;
 		MR_line_tail = line;
 	}
+}
+
+/*
+** This returns MR_TRUE iff the given line continues on to the next line,
+** because the newline is in quotes or escaped.  The second parameter
+** indicates whether we are inside quotes or not, and is updated by
+** this function.  If an unquoted and unescaped semicolon is encountered,
+** the line is split at that point.
+*/
+
+static MR_bool
+MR_trace_continue_line(char *ptr, MR_bool *quoted)
+{
+	MR_bool		escaped = MR_FALSE;
+
+	while (*ptr != '\0') {
+		if (escaped) {
+			/* do nothing special */
+			escaped = MR_FALSE;
+		} else if (*ptr == MR_MDB_ESCAPE_CHAR) {
+			escaped = MR_TRUE;
+		} else if (*ptr == MR_MDB_QUOTE_CHAR) {
+			*quoted = !(*quoted);
+		} else if (!(*quoted) && *ptr == ';') {
+			/*
+			** The line contains at least two commands.
+			** Return only the first command now; put the
+			** others back in the input to be processed later.
+			*/
+			*ptr = '\0';
+			MR_insert_line_at_head(MR_copy_string(ptr + 1));
+			return MR_FALSE;
+		}
+
+		++ptr;
+	}
+
+	if (escaped) {
+		/*
+		** Replace the escaped newline with a space.
+		*/
+		*(ptr - 1) = ' ';
+	}
+
+	return (*quoted || escaped);
 }
 
 MR_Code *

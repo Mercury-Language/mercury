@@ -1,0 +1,25 @@
+echo on
+print \ foo
+print \\
+print 'foo'
+print '\''
+print ''''
+print \
+foo \
+bar \
+baz
+print 'foo
+bar
+baz '
+print '
+foo \
+bar \'
+'
+\\\
+\\\\
+\\\\\\\\
+\'\'\'\'
+'foo\''
+\ \ \ .
+'\ \\\''
+quit -y
