@@ -36,6 +36,14 @@
 % CODE GENERATION SUMMARY
 %-----------------------------------------------------------------------------%
 %
+% In each procedure, we declare a local variable `bool succeeded'.
+% This is used to hold the success status of semidet sub-goals.
+% Note that the comments below show local declarations for the
+% `succeeded' variable in all the places where they would be
+% needed if we were generating them locally, but currently
+% we actually just generate a single `succeeded' variable for
+% each procedure.
+%
 % The calling convention for sub-goals is as follows.
 %
 %	model_det goal:
@@ -86,12 +94,8 @@
 %	det goal in semidet context:
 %		<succeeded = Goal>
 %	===>
-%	{
-%		bool succeeded;
-%
 %		<do Goal>
 %		succeeded = TRUE;
-%	}
 
 %	det goal in nondet context:
 %		<Goal && SUCCEED()>
@@ -137,7 +141,6 @@
 %	model_non in semi context: (using try_commit/do_commit)
 %		<succeeded = Goal>
 % 	===>
-%		bool succeeded;
 %		MR_COMMIT_TYPE ref;
 %		void success() {
 %			succeeded = TRUE;
@@ -153,7 +156,6 @@
 %	model_non in semi context: (using catch/throw)
 %		<succeeded = Goal>
 % 	===>
-%		bool succeeded;
 %		void success() {
 %			throw COMMIT;
 %		}
@@ -167,7 +169,6 @@
 %	model_non in semi context: (using setjmp/longjmp)
 %		<succeeded = Goal>
 % 	===>
-%		bool succeeded;
 %		jmp_buf buf;
 %		void success() {
 %			longjmp(buf, 1);
@@ -185,7 +186,6 @@
 %				to a label in the containing function)
 %		<succeeded = Goal>
 % 	===>
-%		bool succeeded;
 %		__label__ commit;
 %		void success() {
 %			goto commit;
@@ -272,20 +272,39 @@
 
 % We need to handle the case where the first goal cannot succeed
 % specially:
+%
 %	at_most_zero Goal:
 %		<Goal, Goals>
 %	===>
 %		<Goal>
+%
+% The remaining cases for conjunction all assume that the first
+% goal's determinism is not `erroneous' or `failure'.
 
+% If the first goal is model_det, it is straight-forward:
+%
 %	model_det Goal:
 %		<Goal, Goals>
 % 	===>
 %		<do Goal>
 %		<Goals>
-%	
 
-%	model_semi Goal:
-%		<Goal, Goals>
+% If the first goal is model_semidet, then there are two cases:
+% if the disj as a whole is semidet, things are simple, and
+% if the disj as a whole is model_non, then we do the same as
+% for the semidet case, except that we also (ought to) declare
+% a local `succeeded' variable.
+%
+%	model_semi Goal in model_semi disj:
+%		<succeeded = (Goal, Goals)>
+% 	===>
+%		<succeeded = Goal>;
+%		if (succeeded) {
+%			<Goals>;
+%		}
+%
+%	model_semi Goal in model_non disj:
+%		<Goal && Goals>
 % 	===>
 %	{
 %		bool succeeded;
@@ -296,6 +315,14 @@
 %		}
 %	}
 
+% For model_non goals, there are a couple of different
+% ways that we could generate code, depending on whether
+% we are aiming to maximize readability, or whether we
+% prefer to generate code that may be more efficient
+% but is a little less readabile.  The more readable method
+% puts the generated goals in the same order that
+% they occur in the source code:
+%
 %	model_non Goal (optimized for readability)
 %		<Goal, Goals>
 % 	===>
@@ -310,6 +337,11 @@
 %		entry_func();
 %	}
 %
+% The more efficient method generates the goals in
+% reverse order, so its less readable, but it has fewer
+% function calls and can make it easier for the C compiler
+% to inline things:
+%
 %	model_non Goal (optimized for efficiency):
 %		<Goal, Goals>
 % 	===>
@@ -320,7 +352,12 @@
 %
 %		<Goal && succ_func()>;
 %	}
-
+%
+% The more efficient method is the one we actually use.
+%
+% Here's how those two methods look on longer
+% conjunctions of nondet goals:
+%
 %	model_non goals (optimized for readability):
 %		<Goal1, Goal2, Goal3, Goals>
 % 	===>
@@ -340,8 +377,27 @@
 %
 %		label0_func();
 %	}
-
+%
 %	model_non goals (optimized for efficiency):
+%		<Goal1, Goal2, Goal3, Goals>
+% 	===>
+%	{
+%		label1_func() {
+%			label2_func() {
+%				label3_func() {
+%					<Goals && SUCCEED()>;
+%				}
+%				<Goal3 && label3_func()>;
+%			}
+%			<Goal2 && label2_func()>;
+%		}
+%		<Goal1 && label1_func()>;
+%	}
+%
+% Note that it might actually make more sense to generate
+% conjunctions of nondet goals like this:
+%
+%	model_non goals (optimized for efficiency, alternative version):
 %		<Goal1, Goal2, Goal3, Goals>
 % 	===>
 %	{
@@ -357,6 +413,12 @@
 %
 %		<Goal1 && label1_func()>;
 %	}
+%
+% This would avoid the undesirable deep nesting that we sometimes get
+% with our current scheme.  However, if we're eliminating nested
+% functions, as is normally the case, then after the ml_elim_nested
+% transformation all the functions and variables have been hoisted
+% to the top level, so there is no difference between these two.
 
 %-----------------------------------------------------------------------------%
 %
@@ -510,20 +572,14 @@
 % model_semi negation, model_det Goal:
 %		<succeeded = not(Goal)>
 %	===>
-%	{
-%		bool succeeded;
-%		<succeeded = Goal>
+%		<do Goal>
 %		succeeded = FALSE;
-%	}
 
 % model_semi negation, model_semi Goal:
 %		<succeeded = not(Goal)>
 %	===>
-%	{
-%		bool succeeded;
 %		<succeeded = Goal>
 %		succeeded = !succeeded;
-%	}
 
 %-----------------------------------------------------------------------------%
 %
@@ -1064,12 +1120,8 @@ ml_gen_wrap_goal(model_semi, model_det, Context,
 	% det goal in semidet context:
 	%	<succeeded = Goal>
 	% ===>
-	% {
-	%	bool succeeded;
-	%
 	%	<do Goal>
 	%	succeeded = TRUE
-	% }
 	%
 	ml_gen_set_success(const(true), Context, SetSuccessTrue),
 	{ MLDS_Statements = list__append(MLDS_Statements0, [SetSuccessTrue]) }.
@@ -2020,7 +2072,7 @@ ml_gen_ite(CodeModel, Cond, Then, Else, Context,
 		%	**     achieve.
 		%	*/
 		%
-		% /* XXX Bug: Cond might clobber the value of succeeded! */
+		% /* XXX Bug: Cond or Then might clobber the value of succeeded! */
 		%
 		%	model_non cond:
 		%		<(Cond -> Then ; Else)>
@@ -2104,11 +2156,8 @@ ml_gen_negation(Cond, CodeModel, Context,
 		% model_semi negation, model_det goal:
 		%		<succeeded = not(Goal)>
 		%	===>
-		%	{
-		%		bool succeeded;
-		%		<succeeded = Goal>
+		%		<do Goal>
 		%		succeeded = FALSE;
-		%	}
 		{ CodeModel = model_semi, CondCodeModel = model_det },
 		ml_gen_goal(model_det, Cond, CondDecls, CondStatements),
 		ml_gen_set_success(const(false), Context, SetSuccessFalse),
@@ -2119,11 +2168,8 @@ ml_gen_negation(Cond, CodeModel, Context,
 		% model_semi negation, model_semi goal:
 		%		<succeeded = not(Goal)>
 		%	===>
-		%	{
-		%		bool succeeded;
 		%		<succeeded = Goal>
 		%		succeeded = !succeeded;
-		%	}
 		{ CodeModel = model_semi, CondCodeModel = model_semi },
 		ml_gen_goal(model_semi, Cond, CondDecls, CondStatements),
 		ml_gen_test_success(Succeeded),
