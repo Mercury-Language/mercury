@@ -266,9 +266,11 @@
 	__asm__ __volatile__(				\
 		INLINE_ASM_FIXUP_REGS			\
 	);
+#define NEED_ASM_FIXUP_REGS
 #else
 #define ASM_FIXUP_REGS
 #define INLINE_ASM_FIXUP_REGS
+#undef  NEED_ASM_FIXUP_REGS
 #endif
 
 /*
