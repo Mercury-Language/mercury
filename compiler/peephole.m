@@ -174,17 +174,24 @@ peephole__jumpopt_instr_list([Instr0|Moreinstrs0], Jumpmap, Procmap,
 		map__lookup(Jumpmap, Retlabel, Retinstr),
 		peephole__jumpopt_final_dest(Retlabel, Retinstr,
 			Jumpmap, Destlabel, Destinstr),
-		( Retlabel = Destlabel ->
-			Newinstrs = [Instr0],
-			Mod0 = no
-		;
-			Newinstrs = [call(Proc, Destlabel) - Redirect],
+		( map__search(Procmap, Destlabel, Between) ->
+			list__append(Between, [tailcall(Proc) - Redirect], Newinstrs),
 			Mod0 = yes
+		;
+			( Retlabel = Destlabel ->
+				Newinstrs = [Instr0],
+				Mod0 = no
+			;
+				Newinstrs = [call(Proc, Destlabel) - Redirect],
+				Mod0 = yes
+			)
 		)
 	; Uinstr0 = entrycall(Proc, Retlabel) ->
 		map__lookup(Jumpmap, Retlabel, Retinstr),
 		peephole__jumpopt_final_dest(Retlabel, Retinstr,
 			Jumpmap, Destlabel, Destinstr),
+		% If there were an entrytailcall instr, we could do the
+		% same thing here as we do in the previous case
 		( Retlabel = Destlabel ->
 			Newinstrs = [Instr0],
 			Mod0 = no
@@ -196,6 +203,8 @@ peephole__jumpopt_instr_list([Instr0|Moreinstrs0], Jumpmap, Procmap,
 		map__lookup(Jumpmap, Retlabel, Retinstr),
 		peephole__jumpopt_final_dest(Retlabel, Retinstr,
 			Jumpmap, Destlabel, Destinstr),
+		% If there were an entrytailcall instr, we could do the
+		% same thing here as we do in the previous case
 		( Retlabel = Destlabel ->
 			Newinstrs = [Instr0],
 			Mod0 = no
@@ -347,6 +356,9 @@ peephole__opt_instr(Instr0, Comment0, Instructions0, Instructions, Mod) :-
 	% Note that we can't delete the return label and the following
 	% code, since the label might be branched to from elsewhere.
 	% If it isn't, label elimination will get rid of it later.
+	%
+	% Actually, this optimization should never be executed; by the
+	% time we get here, it should already have been done in jumpopt.
 
 peephole__opt_instr_2(call(CodeAddress, ContLabel), Comment, Instrs0, Instrs) :-
 	peephole__is_this_label_next(ContLabel, Instrs0, Instrs1),
