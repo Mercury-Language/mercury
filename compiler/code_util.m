@@ -117,6 +117,24 @@
 :- pred code_util__cons_id_to_tag(cons_id, type, module_info, cons_tag).
 :- mode code_util__cons_id_to_tag(in, in, in, out) is det.
 
+	% Succeed if the given goal cannot encounter a context
+	% that causes any variable to be flushed to its stack slot.
+	% If such a goal needs a resume point, and that resume point cannot
+	% be backtracked to once control leaves the goal, then the only entry
+	% point we need for the resume point is the one with the resume
+	% variables in their original locations.
+
+:- pred code_util__cannot_stack_flush(hlds__goal).
+:- mode code_util__cannot_stack_flush(in) is semidet.
+
+	% Succeed if the given goal cannot fail before encountering a context
+	% that forces all variables to be flushed to their stack slots.
+	% If such a goal needs a resume point, the only entry point we need
+	% is the stack entry point.
+
+:- pred code_util__cannot_fail_before_stack_flush(hlds__goal).
+:- mode code_util__cannot_fail_before_stack_flush(in) is semidet.
+
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -651,6 +669,78 @@ code_util__cons_id_to_tag(cons(unqualified(Name), Arity),
 		),
 			% Finally look up the cons_id in the table
 		map__lookup(ConsTable, cons(unqualified(Name), Arity), Tag)
+	).
+
+%-----------------------------------------------------------------------------%
+
+code_util__cannot_stack_flush(GoalExpr - _) :-
+	code_util__cannot_stack_flush_2(GoalExpr).
+
+:- pred code_util__cannot_stack_flush_2(hlds__goal_expr).
+:- mode code_util__cannot_stack_flush_2(in) is semidet.
+
+code_util__cannot_stack_flush_2(unify(_, _, _, Unify, _)) :-
+	Unify \= complicated_unify(_, _).
+code_util__cannot_stack_flush_2(call(_, _, _, IsBuiltin, _, _)) :-
+	hlds__is_builtin_is_internal(IsBuiltin),
+	hlds__is_builtin_is_inline(IsBuiltin).
+code_util__cannot_stack_flush_2(conj(Goals)) :-
+	code_util__cannot_stack_flush_goals(Goals).
+code_util__cannot_stack_flush_2(switch(_, _, Cases, _)) :-
+	code_util__cannot_stack_flush_cases(Cases).
+
+:- pred code_util__cannot_stack_flush_goals(list(hlds__goal)).
+:- mode code_util__cannot_stack_flush_goals(in) is semidet.
+
+code_util__cannot_stack_flush_goals([]).
+code_util__cannot_stack_flush_goals([Goal | Goals]) :-
+	code_util__cannot_stack_flush(Goal),
+	code_util__cannot_stack_flush_goals(Goals).
+
+:- pred code_util__cannot_stack_flush_cases(list(case)).
+:- mode code_util__cannot_stack_flush_cases(in) is semidet.
+
+code_util__cannot_stack_flush_cases([]).
+code_util__cannot_stack_flush_cases([case(_, Goal) | Cases]) :-
+	code_util__cannot_stack_flush(Goal),
+	code_util__cannot_stack_flush_cases(Cases).
+
+%-----------------------------------------------------------------------------%
+
+code_util__cannot_fail_before_stack_flush(GoalExpr - GoalInfo) :-
+	goal_info_get_determinism(GoalInfo, Detism),
+	determinism_components(Detism, CanFail, _),
+	( CanFail = cannot_fail ->
+		true
+	;
+		code_util__cannot_fail_before_stack_flush_2(GoalExpr)
+	).
+
+:- pred code_util__cannot_fail_before_stack_flush_2(hlds__goal_expr).
+:- mode code_util__cannot_fail_before_stack_flush_2(in) is semidet.
+
+code_util__cannot_fail_before_stack_flush_2(conj(Goals)) :-
+	code_util__cannot_fail_before_stack_flush_conj(Goals).
+
+:- pred code_util__cannot_fail_before_stack_flush_conj(list(hlds__goal)).
+:- mode code_util__cannot_fail_before_stack_flush_conj(in) is semidet.
+
+code_util__cannot_fail_before_stack_flush_conj([]).
+code_util__cannot_fail_before_stack_flush_conj([Goal | Goals]) :-
+	Goal = GoalExpr - GoalInfo,
+	(
+		( GoalExpr = call(_, _, _, _, _, _)
+		; GoalExpr = higher_order_call(_, _, _, _, _)
+		)
+	->
+		true
+	;
+		goal_info_get_determinism(GoalInfo, Detism),
+		determinism_components(Detism, cannot_fail, _)
+	->
+		code_util__cannot_fail_before_stack_flush_conj(Goals)
+	;
+		fail
 	).
 
 %-----------------------------------------------------------------------------%

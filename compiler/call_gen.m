@@ -160,10 +160,11 @@ call_gen__generate_semidet_call_2(PredId, ModeId, Arguments, Code) -->
 	call_gen__generate_return_livevals(OutArgs, OutputArguments,	
 		OutLiveVals),
 	code_info__make_entry_label(ModuleInfo, PredId, ModeId, yes, Address),
-        { CodeC1 = node([
-                call(Address, label(ReturnLabel), OutLiveVals, semidet)
+	{ CodeC1 = node([
+		call(Address, label(ReturnLabel), OutLiveVals, semidet)
 			- "branch to semidet procedure",
-		label(ReturnLabel) - "Continuation label"
+		label(ReturnLabel)
+			- "Continuation label"
 	]) },
 	call_gen__rebuild_registers(Args),
 	code_info__generate_failure(FailCode),
@@ -181,32 +182,33 @@ call_gen__generate_nondet_call(PredId, ModeId, Arguments, Code) -->
 	code_info__get_pred_proc_arginfo(PredId, ModeId, ArgInfo),
 	{ assoc_list__from_corresponding_lists(Arguments, ArgInfo, Args) },
 	{ call_gen__select_out_args(Args, OutArgs) },
-	call_gen__save_variables(OutArgs, CodeA),
-	code_info__setup_call(Args, caller, CodeB),
+	call_gen__save_variables(OutArgs, SaveCode),
+	code_info__unset_failure_cont(FlushCode),
+	code_info__setup_call(Args, caller, SetupCode),
 	code_info__get_next_label(ReturnLabel),
 	code_info__get_module_info(ModuleInfo),
 	{ call_gen__input_args(ArgInfo, InputArguments) },
-	call_gen__generate_call_livevals(OutArgs, InputArguments, CodeC0),
+	call_gen__generate_call_livevals(OutArgs, InputArguments, LiveCode),
 	{ call_gen__output_arg_locs(Args, OutputArguments) },
 	call_gen__generate_return_livevals(OutArgs, OutputArguments,
 		OutLiveVals),
 	code_info__make_entry_label(ModuleInfo, PredId, ModeId, yes, Address),
-	code_info__failure_cont(failure_cont(IsKnown, _, FailureMap)),
-	(
-		{ IsKnown = known(_) },
-		{ FailureMap = [_ - do_fail | _] }
-	->
-		{ TailCallable = nondet(yes) }
-	;
-		{ TailCallable = nondet(no) }
-	),
-        { CodeC1 = node([
-                call(Address, label(ReturnLabel), OutLiveVals, TailCallable)
+	code_info__may_use_nondet_tailcall(TailCall),
+	{ CallModel = nondet(TailCall) },
+	{ CallCode = node([
+		call(Address, label(ReturnLabel), OutLiveVals, CallModel)
 			- "branch to nondet procedure",
-		label(ReturnLabel) - "Continuation label"
+		label(ReturnLabel)
+			- "Continuation label"
 	]) },
-	{ Code = tree(CodeA, tree(CodeB, tree(CodeC0, CodeC1))) },
-	call_gen__rebuild_registers(Args).
+	call_gen__rebuild_registers(Args),
+	{ Code =
+		tree(SaveCode,
+		tree(FlushCode,
+		tree(SetupCode,
+		tree(LiveCode,
+		     CallCode))))
+	}.
 
 %---------------------------------------------------------------------------%
 
@@ -235,8 +237,8 @@ call_gen__save_variables(Args, Code) -->
 call_gen__save_variables_2([], empty) --> [].
 call_gen__save_variables_2([Var | Vars], Code) -->
 	code_info__save_variable_on_stack(Var, CodeA),
-        call_gen__save_variables_2(Vars, CodeB),
-        { Code = tree(CodeA, CodeB) }.
+	call_gen__save_variables_2(Vars, CodeB),
+	{ Code = tree(CodeA, CodeB) }.
 
 %---------------------------------------------------------------------------%
 
@@ -610,6 +612,11 @@ call_gen__generate_higher_call(CodeModel, PredVar, InVars, OutVars, Code) -->
 	code_info__set_succip_used(yes),
 	{ set__list_to_set(OutVars, OutArgs) },
 	call_gen__save_variables(OutArgs, SaveCode),
+	( { CodeModel = model_non } ->
+		code_info__unset_failure_cont(FlushCode)
+	;
+		{ FlushCode = empty }
+	),
 		% place the immediate input arguments in registers
 		% starting at r4.
 	call_gen__generate_immediate_args(InVars, 4, InLocs, ImmediateCode),
@@ -656,16 +663,8 @@ call_gen__generate_higher_call(CodeModel, PredVar, InVars, OutVars, Code) -->
 		{ RuntimeAddr = do_semidet_closure }
 	;
 		{ CodeModel = model_non },
-		code_info__failure_cont(failure_cont(IsKnown, _, FailureMap)),
-		(
-			{ IsKnown = known(_) },
-			{ FailureMap = [_ - do_fail | _] }
-		->
-			{ TailCallable = yes }
-		;
-			{ TailCallable = no }
-		),
-		{ CallModel = nondet(TailCallable) },
+		code_info__may_use_nondet_tailcall(TailCall),
+		{ CallModel = nondet(TailCall) },
 		{ RuntimeAddr = do_nondet_closure }
 	),
 	{ TryCallCode = node([
@@ -680,16 +679,27 @@ call_gen__generate_higher_call(CodeModel, PredVar, InVars, OutVars, Code) -->
 	->
 		code_info__generate_failure(FailCode),
 		code_info__get_next_label(ContLab),
-		{ CheckReturnCode = tree(node([
+		{ TestSuccessCode = node([
 			if_val(lval(reg(r(1))), label(ContLab)) -
 				"Test for success"
-			]), tree(FailCode, node([ label(ContLab) - "" ]))) },
-		{ CallCode = tree(TryCallCode, CheckReturnCode) }
+		]) },
+		{ ContLabelCode = node([label(ContLab) - ""]) },
+		{ CallCode =
+			tree(TryCallCode,
+			tree(TestSuccessCode,
+			tree(FailCode,
+			     ContLabelCode))) }
 	;
 		{ CallCode = TryCallCode }
 	),
-	{ Code = tree(tree(SaveCode, tree(ImmediateCode, PredVarCode)),
-		tree(SetupCode, CallCode)) }.
+	{ Code =
+		tree(SaveCode,
+		tree(FlushCode,
+		tree(ImmediateCode,
+		tree(PredVarCode,
+		tree(SetupCode,
+		     CallCode)))))
+	}.
 
 %---------------------------------------------------------------------------%
 

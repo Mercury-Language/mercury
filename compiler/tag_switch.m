@@ -208,8 +208,10 @@ tag_switch__generate_primary_tag_code(GoalMap, Primary, MaxSecondary, StagLoc,
 		{ StagLoc = none }
 	->
 		( { GoalList = [-1 - Goal] } ->
-			code_gen__generate_forced_goal(CodeModel, Goal,
-				StoreMap, Code)
+			code_gen__generate_goal(CodeModel, Goal, GoalCode),
+			code_info__generate_branch_end(CodeModel, StoreMap,
+				SaveCode),
+			{ Code = tree(GoalCode, SaveCode) }
 		;
 			{ error("more than one goal for non-shared tag") }
 		)
@@ -272,8 +274,10 @@ tag_switch__generate_primary_tag_code(GoalMap, Primary, MaxSecondary, StagLoc,
 tag_switch__generate_secondary_tag_chain([], _SecTagRval, _CodeModel, CanFail,
 		_StoreMap, _EndLabel, FailLabel, Code) -->
 	( { CanFail = can_fail } ->
-		{ Code = node([goto(label(FailLabel))
-			- "secondary tag does not match"]) }
+		{ Code = node([
+			goto(label(FailLabel)) -
+				"secondary tag does not match"
+		]) }
 	;
 		{ Code = empty }
 	).
@@ -286,20 +290,28 @@ tag_switch__generate_secondary_tag_chain([Case0 | Cases0], SecTagRval,
 		{ TestCode = node([if_val(binop(ne, SecTagRval,
 			const(int_const(Secondary))),
 			label(ElseLabel)) - "test remote sec tag only"]) },
-		code_gen__generate_forced_goal(CodeModel, Goal, StoreMap,
-			GoalCode),
+		code_gen__generate_goal(CodeModel, Goal, GoalCode),
+		code_info__generate_branch_end(CodeModel, StoreMap, SaveCode),
 		{ ElseCode = node([
-			goto(label(EndLabel)) - "skip to end of tag switch",
-			label(ElseLabel) - "handle next secondary tag"]) },
-		{ ThisCode = tree(TestCode, tree(GoalCode, ElseCode)) },
+			goto(label(EndLabel)) -
+				"skip to end of tag switch",
+			label(ElseLabel) -
+				"handle next secondary tag"
+		]) },
+		{ ThisCode =
+			tree(TestCode,
+			tree(GoalCode,
+			tree(SaveCode,
+			     ElseCode))) },
 		( { Cases0 = [_|_] } ->
 			code_info__slap_code_info(CodeInfo)
 		;
 			[]
 		)
 	;
-		code_gen__generate_forced_goal(CodeModel, Goal, StoreMap,
-			ThisCode)
+		code_gen__generate_goal(CodeModel, Goal, GoalCode),
+		code_info__generate_branch_end(CodeModel, StoreMap, SaveCode),
+		{ ThisCode = tree(GoalCode, SaveCode) }
 	),
 	tag_switch__generate_secondary_tag_chain(Cases0, SecTagRval,
 		CodeModel, CanFail, StoreMap, EndLabel, FailLabel, OtherCode),
@@ -330,26 +342,39 @@ tag_switch__generate_secondary_tag_table(CaseList, CurSecondary, MaxSecondary,
 		{ NextSecondary is CurSecondary + 1 },
 		( { CaseList = [CurSecondary - Goal | CaseList1] } ->
 			code_info__get_next_label(NewLabel),
+			{ LabelCode = node([
+				label(NewLabel) -
+					"start of a case in tag switch"
+			]) },
 			( { CaseList1 = [] } ->
-				code_gen__generate_forced_goal(CodeModel, Goal,
-					StoreMap, GoalCode)
+				code_gen__generate_goal(CodeModel, Goal,
+					GoalCode),
+				code_info__generate_branch_end(CodeModel,
+					StoreMap, SaveCode)
 			;
 				code_info__grab_code_info(CodeInfo),
-				code_gen__generate_forced_goal(CodeModel, Goal,
-					StoreMap, GoalCode),
+				code_gen__generate_goal(CodeModel, Goal,
+					GoalCode),
+				code_info__generate_branch_end(CodeModel,
+					StoreMap, SaveCode),
 				code_info__slap_code_info(CodeInfo)
 			),
-			{ LabelCode = node([label(NewLabel) -
-				"start of a case in tag switch"]) },
-			{ GotoCode = node([goto(label(EndLabel)) -
-				"branch to end of tag switch"]) },
+			{ GotoCode = node([
+				goto(label(EndLabel)) -
+					"branch to end of tag switch"
+			]) },
 			tag_switch__generate_secondary_tag_table(CaseList1,
 				NextSecondary, MaxSecondary, CodeModel,
 				StoreMap, EndLabel, FailLabel, OtherLabels,
 				OtherCode),
 			{ Labels = [NewLabel | OtherLabels] },
-			{ Code = tree(tree(LabelCode, GoalCode),
-				tree(GotoCode, OtherCode)) }
+			{ Code =
+				tree(LabelCode,
+				tree(GoalCode,
+				tree(SaveCode,
+				tree(GotoCode,
+				     OtherCode))))
+			}
 		;
 			tag_switch__generate_secondary_tag_table(CaseList,
 				NextSecondary, MaxSecondary, CodeModel,

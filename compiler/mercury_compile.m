@@ -733,7 +733,7 @@ mercury_compile__backend_pass_by_preds_4(ProcInfo0, ProcId, PredId,
 	;
 		{ ProcInfo3 = ProcInfo2 }
 	),
-	{ detect_liveness_proc(ProcInfo3, ModuleInfo1, ProcInfo4) },
+	detect_liveness_proc(PredId, ProcId, ModuleInfo1, ProcInfo3, ProcInfo4),
 	{ allocate_stack_slots_in_proc(ProcInfo4, ModuleInfo1, ProcInfo5) },
 	{ store_alloc_in_proc(ProcInfo5, ModuleInfo1, ProcInfo6) },
 	{ module_info_get_shapes(ModuleInfo1, Shapes0) },
@@ -1268,11 +1268,11 @@ mercury_compile__maybe_followcode(HLDS0, Verbose, Stats, HLDS) -->
 :- mode mercury_compile__compute_liveness(in, in, in, out, di, uo) is det.
 
 mercury_compile__compute_liveness(HLDS0, Verbose, Stats, HLDS) -->
-	maybe_write_string(Verbose, "% Computing liveness..."),
+	maybe_write_string(Verbose, "% Computing liveness...\n"),
 	maybe_flush_output(Verbose),
-	process_all_nonimported_procs(update_proc(detect_liveness_proc),
+	process_all_nonimported_procs(update_proc_io(detect_liveness_proc),
 		HLDS0, HLDS),
-	maybe_write_string(Verbose, " done.\n"),
+	maybe_write_string(Verbose, "% done.\n"),
 	maybe_report_stats(Stats).
 
 :- pred mercury_compile__compute_stack_vars(module_info, bool, bool,

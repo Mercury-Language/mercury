@@ -59,9 +59,9 @@
 :- implementation.
 
 :- import_module dense_switch, string_switch, tag_switch, lookup_switch.
-:- import_module bool, int, string, list, map, tree, std_util, require.
-:- import_module llds, code_gen, unify_gen, type_util, code_util.
+:- import_module llds, code_gen, unify_gen, code_aux, type_util, code_util.
 :- import_module globals, options.
+:- import_module bool, int, string, list, map, tree, std_util, require.
 
 :- type switch_category
 	--->	atomic_switch
@@ -214,22 +214,27 @@ switch_gen__priority(base_type_info_constant(_, _, _), 6).% should never occur
 	% code to do a tag-test and fall through to the next case in
 	% the event of failure.
 	%
-	% Each case except the last consists of a tag test, followed by
-	% the goal for that case, followed by a branch to the end of
-	% the switch. The goal is generated as a "forced" goal which
-	% ensures that all variables which are live at the end of the
-	% case get stored in their stack slot.  For the last case, if
-	% the switch is locally deterministic, then we don't need to
-	% generate the tag test, and we never need to generate the
-	% branch to the end of the switch.  After the last case, we put
-	% the end-of-switch label which other cases branch to after
-	% their case goals.
+	% Each case except the last consists of
 	%
-	% In the important special case of a det switch with two cases,
-	% we put the code for the second case first, since it is much
-	% more likely to be the recursive and therefore frequently executed
-	% case, while using a negated form of the test for the first case,
-	% since this is cheaper.
+	%	a tag test, jumping to the next case if it fails
+	%	the goal for that case
+	%	code to move variables to where the store map says they
+	%		ought to be
+	%	a branch to the end of the switch.
+	%
+	% For the last case, if the switch covers all cases that can occur,
+	% we don't need to generate the tag test, and we never need to
+	% generate the branch to the end of the switch.
+	%
+	% After the last case, we put the end-of-switch label which other
+	% cases branch to after their case goals.
+	%
+	% In the important special case of a det switch with two cases, in
+	% which one case is a base case while the other is singly recursive,
+	% we put the code for the recursive case first, while using a negated
+	% form of the test for the base case. This form of the test is almost
+	% always cheaper, and putting the frequently executed case first
+	% minimizes the number of pipeline branches caused by taken branches.
 
 :- pred switch_gen__generate_all_cases(list(extended_case), var, code_model,
 	can_fail, store_map, label, code_tree, code_info, code_info).
@@ -242,38 +247,64 @@ switch_gen__generate_all_cases(Cases, Var, CodeModel, CanFail, StoreMap,
 	(
 		{ CodeModel = model_det },
 		{ CanFail = cannot_fail },
-		{ Cases = [Case1, Case2] }
-	->
+		{ Cases = [Case1, Case2] },
 		{ Case1 = case(_, _, Cons1, Goal1) },
-		unify_gen__generate_tag_test(Var, Cons1, branch_on_failure,
-			NextLab, TestCode),
-		code_info__grab_code_info(CodeInfo),
-		code_gen__generate_forced_goal(CodeModel, Goal1, StoreMap,
-			Case1Code),
-
-		{ Case2 = case(_, _, _Cons2, Goal2) },
-		code_info__slap_code_info(CodeInfo),
-		code_gen__generate_forced_goal(CodeModel, Goal2, StoreMap,
-			Case2Code),
-
+		{ Case2 = case(_, _, Cons2, Goal2) }
+	->
+		=(TestCodeInfo),
+		{
+			code_aux__contains_only_builtins(Goal2),
+			code_aux__contains_simple_recursive_call(Goal1,
+				TestCodeInfo, _)
+		->
+			RareGoal = Goal2,
+			FreqGoal = Goal1,
+			TestCons = Cons2
+		;
+			RareGoal = Goal1,
+			FreqGoal = Goal2,
+			TestCons = Cons1
+		},
+		% XXX we should be using the predicate for generating
+		% the tag test in a reversed form in the first place
+		unify_gen__generate_tag_test(Var, TestCons, branch_on_failure,
+			NextLabel, TestCode),
 		{ tree__flatten(TestCode, TestListList) },
 		{ list__condense(TestListList, TestList) },
 		{ code_util__negate_the_test(TestList, RealTestList) },
-		{ Code  = tree(
-			tree(
-				VarCode,
-				tree(
-					node(RealTestList),
-					Case2Code)),
-			tree(
-				node([
-					goto(label(EndLabel)) -
-						"skip to the end of the switch",
-					label(NextLab) - "next case" ]),
-				tree(
-					Case1Code,
-					node([ label(EndLabel) -
-						"End of switch" ]))))
+		{ RealTestCode = node(RealTestList) },
+
+		code_info__grab_code_info(CodeInfo),
+		code_gen__generate_goal(CodeModel, FreqGoal, FreqGoalCode),
+		code_info__generate_branch_end(CodeModel, StoreMap,
+			FreqSaveCode),
+
+		{ MiddleCode = node([
+			goto(label(EndLabel)) -
+				"skip to the end of the switch",
+			label(NextLabel) -
+				"next case"
+		]) },
+
+		code_info__slap_code_info(CodeInfo),
+		code_gen__generate_goal(CodeModel, RareGoal, RareGoalCode),
+		code_info__generate_branch_end(CodeModel, StoreMap,
+			RareSaveCode),
+
+		{ EndCode = node([
+			label(EndLabel) -
+				"end of switch"
+		]) },
+
+		{ Code =
+			tree(VarCode,
+			tree(RealTestCode,
+			tree(FreqGoalCode,
+			tree(FreqSaveCode,
+			tree(MiddleCode,
+			tree(RareGoalCode,
+			tree(RareSaveCode,
+			     EndCode)))))))
 		}
 	;
 		switch_gen__generate_cases(Cases, Var, CodeModel, CanFail,
@@ -296,38 +327,47 @@ switch_gen__generate_cases([], _Var, _CodeModel, CanFail, _StoreMap,
 	;
 		{ FailCode = empty }
 	),
-	{ Code = tree(FailCode, node([ label(EndLabel) -
-		"End of switch" ])) }.
+	{ EndCode = node([
+		label(EndLabel) -
+			"end of switch"
+	]) },
+	{ Code = tree(FailCode, EndCode) }.
 
-	% A case consists of a tag-test followed by a 
-	% goal and a label for the start of the next case.
-switch_gen__generate_cases([case(_, _, Cons, Goal)|Cases], Var, CodeModel,
+switch_gen__generate_cases([case(_, _, Cons, Goal) | Cases], Var, CodeModel,
 		CanFail, StoreMap, EndLabel, CasesCode) -->
-	code_info__grab_code_info(CodeInfo),
+	code_info__grab_code_info(CodeInfo0),
 	(
 		{ Cases = [_|_] ; CanFail = can_fail }
 	->
 		unify_gen__generate_tag_test(Var, Cons, branch_on_failure,
-			NextLab, TestCode),
-		code_gen__generate_forced_goal(CodeModel, Goal, StoreMap,
-			ThisCode),
+			NextLabel, TestCode),
+		code_gen__generate_goal(CodeModel, Goal, GoalCode),
+		code_info__generate_branch_end(CodeModel, StoreMap, SaveCode),
 		{ ElseCode = node([
-			goto(label(EndLabel)) - "skip to the end of the switch",
-			label(NextLab) - "next case"
+			goto(label(EndLabel)) -
+				"skip to the end of the switch",
+			label(NextLabel) -
+				"next case"
 		]) },
-		{ ThisCaseCode = tree(tree(TestCode, ThisCode), ElseCode) },
+		{ ThisCaseCode =
+			tree(TestCode,
+			tree(GoalCode,
+			tree(SaveCode,
+			     ElseCode)))
+		},
 		code_info__grab_code_info(CodeInfo1),
-		code_info__slap_code_info(CodeInfo)
+		code_info__slap_code_info(CodeInfo0)
 	;
-		code_gen__generate_forced_goal(CodeModel, Goal, StoreMap,
-			ThisCaseCode),
+		code_gen__generate_goal(CodeModel, Goal, GoalCode),
+		code_info__generate_branch_end(CodeModel, StoreMap, SaveCode),
+		{ ThisCaseCode = tree(GoalCode, SaveCode) },
 		code_info__grab_code_info(CodeInfo1),
-		code_info__slap_code_info(CodeInfo)
+		code_info__slap_code_info(CodeInfo0)
 	),
 		% generate the rest of the cases.
 	switch_gen__generate_cases(Cases, Var, CodeModel, CanFail, StoreMap,
-		EndLabel, CasesCode0),
-	{ CasesCode = tree(ThisCaseCode, CasesCode0) },
+		EndLabel, OtherCasesCode),
+	{ CasesCode = tree(ThisCaseCode, OtherCasesCode) },
 	code_info__slap_code_info(CodeInfo1).
 
 %------------------------------------------------------------------------------%

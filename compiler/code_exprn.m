@@ -84,6 +84,15 @@
 :- pred code_exprn__place_var(var, lval, code_tree, exprn_info, exprn_info).
 :- mode code_exprn__place_var(in, in, out, in, out) is det.
 
+%	code_exprn__place_vars(StoreMap, Code, ExprnInfo0, ExprnInfo)
+%		Produces Code and a modified version of ExprnInfo0,
+%		ExprnInfo which places the value of each variable
+%		mentioned in the store map into the corresponding location.
+
+:- pred code_exprn__place_vars(assoc_list(var, lval), code_tree,
+	exprn_info, exprn_info).
+:- mode code_exprn__place_vars(in, out, in, out) is det.
+
 %	code_exprn__produce_var(Var, Rval, Code, ExprnInfo0, ExprnInfo)
 %		Produces a code fragment Code to evaluate Var and
 %		provide it as Rval (which may be a const, etc, or an lval).
@@ -887,6 +896,12 @@ code_exprn__cache_exprn(Var, Rval) -->
 	code_exprn__set_vars(Vars).
 
 %------------------------------------------------------------------------------%
+
+code_exprn__place_vars([], empty) --> [].
+code_exprn__place_vars([Var - Lval | StoreMap], Code) -->
+	code_exprn__place_var(Var, Lval, FirstCode),
+	code_exprn__place_vars(StoreMap, RestCode),
+	{ Code = tree(FirstCode, RestCode) }.
 
 code_exprn__place_var(Var, Lval, Code) -->
 	code_exprn__get_var_status(Var, Stat),

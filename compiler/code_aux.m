@@ -64,9 +64,8 @@
 	% If any of the variables that have died wrt forward execution are
 	% nevertheless needed at a resume point, we need to flush them to
 	% their stack slots. The returned code does this.
-:- pred code_aux__pre_goal_update(hlds__goal_info, bool, code_tree,
-	code_info, code_info).
-:- mode code_aux__pre_goal_update(in, in, out, in, out) is det.
+:- pred code_aux__pre_goal_update(hlds__goal_info, bool, code_info, code_info).
+:- mode code_aux__pre_goal_update(in, in, in, out) is det.
 
 	% code_aux__post_goal_update(GoalInfo, OldCodeInfo, NewCodeInfo)
 	% updates OldCodeInfo to produce NewCodeInfo with the changes described
@@ -84,9 +83,8 @@
 	% If any of the variables that have died wrt forward execution are
 	% nevertheless needed at a resume point, we need to flush them to
 	% their stack slots. The returned code does this.
-:- pred code_aux__post_goal_update(hlds__goal_info, code_tree,
-	code_info, code_info).
-:- mode code_aux__post_goal_update(in, out, in, out) is det.
+:- pred code_aux__post_goal_update(hlds__goal_info, code_info, code_info).
+:- mode code_aux__post_goal_update(in, in, out) is det.
 
 :- pred code_aux__explain_stack_slots(stack_slots, varset, string).
 :- mode code_aux__explain_stack_slots(in, in, out) is det.
@@ -223,58 +221,39 @@ code_aux__is_recursive_call(Goal, CodeInfo) :-
 
 	% Update the code info structure to be consistent
 	% immediately prior to generating a goal
-code_aux__pre_goal_update(GoalInfo, Atomic, Code) -->
+code_aux__pre_goal_update(GoalInfo, Atomic) -->
 	{ goal_info_nondet_lives(GoalInfo, NondetLives) },
 	code_info__set_nondet_lives(NondetLives),
+	{ goal_info_get_resume_point(GoalInfo, ResumePoint) },
+	(
+		{ ResumePoint = no_resume_point }
+	;
+		{ ResumePoint = resume_point(_, _) },
+		{ error("pre_goal_update with resume point") }
+	),
 	{ goal_info_pre_births(GoalInfo, PreBirths) },
 	{ goal_info_pre_deaths(GoalInfo, PreDeaths) },
 	code_info__update_liveness_info(PreBirths),
 	code_info__update_deadness_info(PreDeaths),
-	code_info__make_vars_dead(PreDeaths, Code),
+	code_info__make_vars_dead(PreDeaths),
 	( { Atomic = yes } ->
 		{ goal_info_post_deaths(GoalInfo, PostDeaths) },
 		code_info__update_deadness_info(PostDeaths)
 	;
 		[]
-	),
-	{ goal_info_get_resume_point(GoalInfo, ResumePoint) },
-	(
-		{ ResumePoint = none}
-	;
-		{ ResumePoint = orig_only(ResumeVars)},
-		code_info__push_resume_point_vars(ResumeVars)
-	;
-		{ ResumePoint = stack_only(ResumeVars)},
-		code_info__push_resume_point_vars(ResumeVars)
-	;
-		{ ResumePoint = orig_and_stack(ResumeVars)},
-		code_info__push_resume_point_vars(ResumeVars)
 	).
 
 	% Update the code info structure to be consistent
 	% immediately after generating a goal
-code_aux__post_goal_update(GoalInfo, Code) -->
+code_aux__post_goal_update(GoalInfo) -->
 	{ goal_info_post_births(GoalInfo, PostBirths) },
 	{ goal_info_post_deaths(GoalInfo, PostDeaths) },
 	code_info__update_liveness_info(PostBirths),
 	code_info__update_deadness_info(PostDeaths),
-	code_info__make_vars_dead(PostDeaths, Code),
+	code_info__make_vars_dead(PostDeaths),
 	code_info__make_vars_live(PostBirths),
 	{ goal_info_get_instmap_delta(GoalInfo, InstMapDelta) },
-	code_info__apply_instmap_delta(InstMapDelta),
-	{ goal_info_get_resume_point(GoalInfo, ResumePoint) },
-	(
-		{ ResumePoint = none}
-	;
-		{ ResumePoint = orig_only(_)},
-		code_info__pop_resume_point_vars
-	;
-		{ ResumePoint = stack_only(_)},
-		code_info__pop_resume_point_vars
-	;
-		{ ResumePoint = orig_and_stack(_)},
-		code_info__pop_resume_point_vars
-	).
+	code_info__apply_instmap_delta(InstMapDelta).
 
 %-----------------------------------------------------------------------------%
 

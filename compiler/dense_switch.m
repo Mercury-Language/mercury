@@ -172,9 +172,8 @@ dense_switch__generate(Cases, StartVal, EndVal, Var, CodeModel, CanFail,
 		computed_goto(Index, Labels)
 			- "switch (using dense jump table)"
 	]) },
-		% Assemble to code together
-	{ Code = tree(tree(VarCode, RangeCheck), tree(DoJump, CasesCode)) },
-	code_info__remake_with_store_map(StoreMap).
+		% Assemble the code together
+	{ Code = tree(VarCode, tree(RangeCheck, tree(DoJump, CasesCode))) }.
 
 :- pred dense_switch__generate_cases(cases_list, int, int,
 	code_model, store_map, label, list(label), code_tree, 
@@ -230,12 +229,13 @@ dense_switch__generate_case(Cases0, NextVal, CodeModel, StoreMap, Cases,
 		% and restore them when we've finished
 		{ Comment = "case of dense switch" },
 		code_info__grab_code_info(CodeInfo),
-		code_gen__generate_forced_goal(CodeModel, Goal, StoreMap,
-			Code),
+		code_gen__generate_goal(CodeModel, Goal, GoalCode),
+		code_info__generate_branch_end(CodeModel, StoreMap, SaveCode),
+		{ Code = tree(GoalCode, SaveCode) },
 		code_info__get_liveness_info(L),
 		code_info__slap_code_info(CodeInfo),
-		{ ML = yes(L) },
-		{ Cases = Cases1 }
+		{ Cases = Cases1 },
+		{ ML = yes(L) }
 	;
 		% This case didn't occur in the original case list - just
 		% generate a `fail' for it.

@@ -118,42 +118,31 @@ middle_rec__generate_switch(Var, BaseConsId, Base, Recursive, StoreMap,
 	{ code_util__make_local_entry_label(ModuleInfo, PredId, ProcId, no,
 		EntryLabel) },
 
-	code_aux__pre_goal_update(SwitchGoalInfo, no, PreFlushCode),
-
-	{ tree__flatten(PreFlushCode, PreFlushListList) },
-	{ list__condense(PreFlushListList, PreFlushList) },
-	{ require(lambda([] is semidet, (PreFlushList = [])),
-		"PreFlushList is not empty in middle_rec") },
-
+	code_aux__pre_goal_update(SwitchGoalInfo, no),
 	unify_gen__generate_tag_test(Var, BaseConsId, branch_on_success,
 		BaseLabel, EntryTestCode),
 	{ tree__flatten(EntryTestCode, EntryTestListList) },
 	{ list__condense(EntryTestListList, EntryTestList) },
 
 	code_info__grab_code_info(CodeInfo),
-	code_gen__generate_forced_goal(model_det, Base, StoreMap,
-		BaseCodeFrag),
+	code_gen__generate_goal(model_det, Base, BaseGoalCode),
+	code_info__generate_branch_end(model_det, StoreMap, BaseSaveCode),
 	code_info__slap_code_info(CodeInfo),
-	code_gen__generate_forced_goal(model_det, Recursive, StoreMap,
-		RecCodeFrag),
+	code_gen__generate_goal(model_det, Recursive, RecGoalCode),
+	code_info__generate_branch_end(model_det, StoreMap, RecSaveCode),
 
-	code_aux__post_goal_update(SwitchGoalInfo, PostFlushCode),
+	code_aux__post_goal_update(SwitchGoalInfo),
 	code_info__remake_with_store_map(StoreMap),
-
-	{ tree__flatten(PostFlushCode, PostFlushListList) },
-	{ list__condense(PostFlushListList, PostFlushList) },
-	{ require(lambda([] is semidet, (PostFlushList = [])),
-		"PostFlushList is not empty in middle_rec") },
 
 	code_info__get_arginfo(ArgModes),
 	code_info__get_headvars(HeadVars),
 	{ assoc_list__from_corresponding_lists(HeadVars, ArgModes, Args) },
-	code_info__setup_call(Args, callee, EpilogFrag),
+	code_info__setup_call(Args, callee, EpilogCode),
 
 	{ code_gen__output_args(Args, LiveArgs) },
 
-	{ BaseCode = tree(BaseCodeFrag, EpilogFrag) },
-	{ RecCode = tree(RecCodeFrag, EpilogFrag) },
+	{ BaseCode = tree(BaseGoalCode, tree(BaseSaveCode, EpilogCode)) },
+	{ RecCode = tree(RecGoalCode, tree(RecSaveCode, EpilogCode)) },
 	{ LiveValCode = [livevals(LiveArgs) - ""] },
 
 	{ tree__flatten(BaseCode, BaseListList) },

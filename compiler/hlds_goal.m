@@ -337,10 +337,13 @@
 				% for the definition of this.
 
 	% see notes/ALLOCATION for what these alternatives mean
-:- type resume_point	--->	none
-			;	orig_only(set(var))
-			;	stack_only(set(var))
-			;	orig_and_stack(set(var)).
+:- type resume_point	--->	resume_point(set(var), resume_locs)
+			;	no_resume_point.
+
+:- type resume_locs	--->	orig_only
+			;	stack_only
+			;	orig_and_stack
+			;	stack_and_orig.
 
 :- implementation.
 
@@ -552,6 +555,9 @@ get_pragma_c_var_names_2([MaybeName | MaybeNames], Names0, Names) :-
 :- pred goal_set_resume_point(hlds__goal, resume_point, hlds__goal).
 :- mode goal_set_resume_point(in, in, out) is det.
 
+:- pred goal_info_resume_vars_and_loc(resume_point, set(var), resume_locs).
+:- mode goal_info_resume_vars_and_loc(in, out, out) is det.
+
 	% Convert a goal to a list of conjuncts.
 	% If the goal is a conjunction, then return its conjuncts,
 	% otherwise return the goal as a singleton list.
@@ -594,6 +600,8 @@ get_pragma_c_var_names_2([MaybeName | MaybeNames], Names0, Names) :-
 
 :- implementation.
 
+:- import_module require.
+
 goal_info_init(GoalInfo) :-
 	ExternalDetism = erroneous,
 	set__init(PreBirths),
@@ -607,7 +615,7 @@ goal_info_init(GoalInfo) :-
 	set__init(Features),
 	GoalInfo = goal_info(PreBirths, PostBirths, PreDeaths, PostDeaths,
 		ExternalDetism, InstMapDelta, Context, NonLocals, no,
-		no, Features, NondetLives, none).
+		no, Features, NondetLives, no_resume_point).
 
 goal_info_pre_births(GoalInfo, PreBirths) :-
 	GoalInfo = goal_info(PreBirths, _, _, _, _, _, _, _, _, _, _, _, _).
@@ -740,6 +748,17 @@ goal_set_follow_vars(Goal - GoalInfo0, FollowVars, Goal - GoalInfo) :-
 
 goal_set_resume_point(Goal - GoalInfo0, ResumePoint, Goal - GoalInfo) :-
 	goal_info_set_resume_point(GoalInfo0, ResumePoint, GoalInfo).
+
+%-----------------------------------------------------------------------------%
+
+goal_info_resume_vars_and_loc(Resume, Vars, Locs) :-
+
+	(
+		Resume = resume_point(Vars, Locs)
+	;
+		Resume = no_resume_point,
+		error("goal_info__get_resume_vars_and_loc: no resume point")
+	).
 
 %-----------------------------------------------------------------------------%
 

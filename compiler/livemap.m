@@ -3,12 +3,12 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
-% livemap.m
+%
+% File: livemap.m
+%
+% Main author: zs.
 %
 % This module builds up a map that gives the set of live lvals at each label.
-
-% Author: zs.
 
 %-----------------------------------------------------------------------------%
 

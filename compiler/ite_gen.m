@@ -5,9 +5,14 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 %
-% file: ite_gen.m
+% File: ite_gen.m
 %
-% main authors: conway, fjh.
+% Main authors: conway, fjh, zs.
+%
+% The predicates of this module generate code for if-then-elses.
+%
+% The handling of model_det and model_semi if-then-elses is almost identical.
+% The handling of model_non if-then-elses is also quite similar.
 %
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -31,302 +36,249 @@
 :- mode ite_gen__generate_nondet_ite(in, in, in, in, out, in, out) is det.
 
 %---------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module code_gen, code_util, options, globals.
 :- import_module bool, set, tree, list, map, std_util, require.
 
-ite_gen__generate_det_ite(CondGoal, ThenGoal, ElseGoal, StoreMap, Instr) -->
-	code_info__get_globals(Options),
-	{ CondGoal = _Goal - CondGoalInfo },
-	{ goal_info_cont_lives(CondGoalInfo, MaybeLives) },
-	{
-		MaybeLives = yes(Vars0)
-	->
-		Vars = Vars0
-	;
-		error("ite_gen__generate_det_ite: no cont_lives!")
-	},
-	code_info__make_known_failure_cont(Vars, no, ModContCode),
-	{ 
-		globals__lookup_bool_option(Options,
-				reclaim_heap_on_semidet_failure, yes),
-		code_util__goal_may_allocate_heap(CondGoal)
-	->
-		ReclaimHeap = yes
-	;
-		ReclaimHeap = no
-	},
-	code_info__maybe_save_hp(ReclaimHeap, HPSaveCode),
-		% Grab the instmap
-		% generate the semi-deterministic test goal
-	code_info__get_instmap(InstMap),
+ite_gen__generate_det_ite(CondGoal, ThenGoal, ElseGoal, StoreMap, Code) -->
+	ite_gen__generate_basic_ite(CondGoal, ThenGoal, ElseGoal, StoreMap,
+		model_det, Code).
 
-		% Store the current solver state before the condition of
-		% the ite
-	{ globals__lookup_bool_option(Options,
-				constraints, UseConstraints) },
-	code_info__maybe_save_ticket(UseConstraints, SaveTicketCode),
-	code_gen__generate_goal(model_semi, CondGoal, TestCode0),
-	{ TestCode = tree(SaveTicketCode, TestCode0) },
-	code_info__grab_code_info(CodeInfo),
-	code_info__pop_failure_cont,
-	code_info__maybe_pop_stack(ReclaimHeap, HPPopCode),
-		% Discard solver ticket if the condition succeeded
-	code_info__maybe_discard_ticket(UseConstraints, PopTicketCode),
-	code_gen__generate_forced_goal(model_det, ThenGoal, StoreMap,
-		ThenGoalCode0),
-	{ ThenGoalCode = tree(PopTicketCode, ThenGoalCode0) },
-		% generate code that executes the then condition
-		% and branches to the end of the if-then-else
-	code_info__slap_code_info(CodeInfo),
-	code_info__restore_failure_cont(RestoreContCode),
-		% restore the instmap
-	code_info__set_instmap(InstMap),
-	code_info__maybe_restore_hp(ReclaimHeap, HPRestoreCode),
-		% Restore the solver ticket if the condition failed
-	code_info__maybe_restore_ticket_and_pop(UseConstraints, 
-		RestoreTicketCode),
-	code_gen__generate_forced_goal(model_det, ElseGoal, StoreMap,
-		ElseGoalCode0),
-	{ ElseGoalCode = tree(RestoreTicketCode, ElseGoalCode0) },
-	code_info__get_next_label(EndLab),
-		% place the label marking the start of the then code,
-		% then execute the then goal, and then mark the end
-		% of the if-then-else
-	{ CondCode = tree(
-		HPSaveCode,
-		TestCode
-	) },
-	{ ThenCode = tree(
-		tree(HPPopCode, ThenGoalCode),
-		node([ goto(label(EndLab)) -
-			"Jump to the end of if-then-else" ])
-	) },
-	{ ElseCode = tree(
-		tree(
-			tree(RestoreContCode, HPRestoreCode),
-			ElseGoalCode
-		),
-		node([label(EndLab) - "end of if-then-else"])
-	) },
-		% generate the then condition
-	{ Instr = tree(
-		tree(ModContCode, CondCode),
-		tree(ThenCode, ElseCode)
-	) },
-	code_info__remake_with_store_map(StoreMap).
+ite_gen__generate_semidet_ite(CondGoal, ThenGoal, ElseGoal, StoreMap, Code) -->
+	ite_gen__generate_basic_ite(CondGoal, ThenGoal, ElseGoal, StoreMap,
+		model_semi, Code).
 
 %---------------------------------------------------------------------------%
 
-ite_gen__generate_semidet_ite(CondGoal, ThenGoal, ElseGoal, StoreMap, Instr)
-		-->
-	code_info__get_globals(Options),
-	{ CondGoal = _Goal - CondGoalInfo },
-	{ goal_info_cont_lives(CondGoalInfo, MaybeLives) },
-	{
-		MaybeLives = yes(Vars0)
-	->
-		Vars = Vars0
-	;
-		error("ite_gen__generate_det_ite: no cont_lives!")
-	},
-	code_info__make_known_failure_cont(Vars, no, ModContCode),
-	{ 
-		globals__lookup_bool_option(Options,
-				reclaim_heap_on_semidet_failure, yes),
-		code_util__goal_may_allocate_heap(CondGoal)
-	->
-		ReclaimHeap = yes
-	;
-		ReclaimHeap = no
-	},
-	code_info__maybe_save_hp(ReclaimHeap, HPSaveCode),
-		% generate the semi-deterministic test goal
-	code_info__get_instmap(InstMap),
+:- pred ite_gen__generate_basic_ite(hlds__goal, hlds__goal, hlds__goal,
+	store_map, code_model, code_tree, code_info, code_info).
+:- mode ite_gen__generate_basic_ite(in, in, in, in, in, out, in, out) is det.
 
-		% Store the current solver state before the condition of
-		% the ite
-	{ globals__lookup_bool_option(Options,
-				constraints, UseConstraints) },
-	code_info__maybe_save_ticket(UseConstraints, StoreTicketCode),
-	code_gen__generate_goal(model_semi, CondGoal, CondCode0),
-	{ CondCode = tree(StoreTicketCode, CondCode0) },
-	code_info__grab_code_info(CodeInfo),
-	code_info__maybe_pop_stack(ReclaimHeap, HPPopCode),
-	code_info__pop_failure_cont,
-		% Pop the solver ticket if the condition succeeded
-	code_info__maybe_discard_ticket(UseConstraints, PopTicketCode),
-	code_gen__generate_forced_goal(model_semi, ThenGoal, StoreMap,
-		ThenGoalCode0),
-	{ ThenGoalCode = tree(PopTicketCode, ThenGoalCode0) },
-	code_info__slap_code_info(CodeInfo),
-	code_info__restore_failure_cont(RestoreContCode),
-		% restore the instmap
-	code_info__set_instmap(InstMap),
-	code_info__maybe_restore_hp(ReclaimHeap, HPRestoreCode),
-		% Restore the solver ticket if the condition failed
-	code_info__maybe_restore_ticket_and_pop(UseConstraints, 
-		RestoreTicketCode),
-	code_gen__generate_forced_goal(model_semi, ElseGoal, StoreMap,
-		ElseGoalCode0),
-	{ ElseGoalCode = tree(RestoreTicketCode, ElseGoalCode0) },
-	code_info__get_next_label(EndLab),
-	{ TestCode = tree(
-		tree(ModContCode, HPSaveCode),
-		CondCode
-	) },
-	{ ThenCode = tree(
-		tree(
-			HPPopCode,
-			ThenGoalCode
-		),
-		node([ goto(label(EndLab)) -
-			"Jump to the end of if-then-else" ])
-	) },
-	{ ElseCode = tree(
-		tree(
-			tree(RestoreContCode, HPRestoreCode),
-			ElseGoalCode
-		),
-		node([label(EndLab) - "end of if-then-else"])
-	) },
-		% generate the then condition
-	{ Instr = tree(TestCode, tree(ThenCode, ElseCode)) },
-	code_info__remake_with_store_map(StoreMap).
+ite_gen__generate_basic_ite(CondGoal0, ThenGoal, ElseGoal, StoreMap, CodeModel,
+		Code) -->
 
-%---------------------------------------------------------------------------%
-
-ite_gen__generate_nondet_ite(CondGoal, ThenGoal, ElseGoal, StoreMap, Instr)
-		-->
-	code_info__get_globals(Options),
-	{ 
-		globals__lookup_bool_option(Options,
-				reclaim_heap_on_semidet_failure, yes),
-		code_util__goal_may_allocate_heap(CondGoal)
-	->
-		ReclaimHeap = yes
-	;
-		ReclaimHeap = no
-	},
-	{ CondGoal = _ - CondGoalInfo },
-	{ goal_info_get_code_model(CondGoalInfo, CondCodeModel) },
+		% Set up for the possible failure of the condition
+	{ CondGoal0 = CondExpr - CondInfo0 },
+	{ goal_info_get_resume_point(CondInfo0, Resume) },
 	(
-		{ CondCodeModel = model_non }
+		{ Resume = resume_point(ResumeVarsPrime, ResumeLocsPrime) }
 	->
+		{ ResumeVars = ResumeVarsPrime},
+		{ ResumeLocs = ResumeLocsPrime}
+	;
+		{ error("condition of an if-then-else has no resume point") }
+	),
+	code_info__make_known_failure_cont(ResumeVars, ResumeLocs, no,
+		no, _, ModContCode),
+		% The next line is to enable Cond to pass the
+		% pre_goal_update sanity check
+	{ goal_info_set_resume_point(CondInfo0, no_resume_point, CondInfo) },
+	{ CondGoal = CondExpr - CondInfo },
+
+		% Maybe save the heap state current before the condition;
+		% this ought to be after we make the failure continuation
+		% because that causes the cache to get flushed
+	code_info__get_globals(Globals),
+	{ 
+		globals__lookup_bool_option(Globals,
+			reclaim_heap_on_semidet_failure, yes),
+		code_util__goal_may_allocate_heap(CondGoal)
+	->
+		ReclaimHeap = yes
+	;
+		ReclaimHeap = no
+	},
+	code_info__maybe_save_hp(ReclaimHeap, SaveHPCode),
+
+		% Maybe save the solver state current before the condition
+	{ globals__lookup_bool_option(Globals, constraints, Constraints) },
+	code_info__maybe_save_ticket(Constraints, SaveTicketCode),
+
+	code_info__grab_code_info(CodeInfo),
+
+		% Generate the condition as a semi-deterministic goal
+	code_info__push_resume_point_vars(ResumeVars),
+	code_gen__generate_goal(model_semi, CondGoal, CondCode),
+	code_info__pop_resume_point_vars,
+
+		% Kill again any variables that have become zombies
+	code_info__pickup_zombies(Zombies),
+	code_info__make_vars_dead(Zombies),
+
+	code_info__pop_failure_cont,
+
+		% Discard hp and solver ticket if the condition succeeded
+	code_info__maybe_pop_stack(ReclaimHeap, PopHPCode),
+	code_info__maybe_discard_ticket(Constraints, PopTicketCode),
+
+		% Generate the then branch
+	code_gen__generate_goal(CodeModel, ThenGoal, ThenCode),
+	code_info__generate_branch_end(CodeModel, StoreMap, ThenSaveCode),
+
+		% Generate the entry to the else branch
+	code_info__slap_code_info(CodeInfo),
+	code_info__restore_failure_cont(RestoreContCode),
+	code_info__maybe_restore_hp(ReclaimHeap, RestoreHPCode),
+	code_info__maybe_restore_ticket_and_pop(Constraints, RestoreTicketCode),
+
+		% Generate the else branch
+	code_gen__generate_goal(CodeModel, ElseGoal, ElseCode),
+	code_info__generate_branch_end(CodeModel, StoreMap, ElseSaveCode),
+
+	code_info__get_next_label(EndLab),
+	{ JumpToEndCode = node([goto(label(EndLab))
+		- "Jump to the end of if-then-else"]) },
+	{ EndLabelCode = node([label(EndLab) - "end of if-then-else"]) },
+	{ Code = tree(ModContCode,
+		 tree(SaveHPCode,
+		 tree(SaveTicketCode,
+		 tree(CondCode,
+		 tree(PopHPCode,
+		 tree(PopTicketCode,
+		 tree(ThenCode,
+		 tree(ThenSaveCode,
+		 tree(JumpToEndCode,
+		 tree(RestoreContCode,
+		 tree(RestoreHPCode,
+		 tree(RestoreTicketCode,
+		 tree(ElseCode,
+		 tree(ElseSaveCode,
+		      EndLabelCode))))))))))))))
+	},
+	code_info__remake_with_store_map(StoreMap).
+
+%---------------------------------------------------------------------------%
+
+ite_gen__generate_nondet_ite(CondGoal0, ThenGoal, ElseGoal, StoreMap, Code) -->
+
+		% Set up for the possible failure of the condition
+	{ CondGoal0 = CondExpr - CondInfo0 },
+	{ goal_info_get_code_model(CondInfo0, CondCodeModel) },
+	( { CondCodeModel = model_non } ->
 		{ NondetCond = yes }
 	;
 		{ NondetCond = no }
 	),
-	{ goal_info_cont_lives(CondGoalInfo, MaybeLives) },
-	{
-		MaybeLives = yes(Vars0)
-	->
-		Vars = Vars0
-	;
-		error("ite_gen__generate_det_ite: no cont_lives!")
-	},
-	code_info__make_known_failure_cont(Vars, NondetCond, ModContCode),
+	{ goal_info_get_resume_point(CondInfo0, Resume) },
 	(
-		{ NondetCond = yes }
+		{ Resume = resume_point(ResumeVarsPrime, ResumeLocsPrime) }
 	->
-			% prevent the condition from hijacking the redoip slot
-			% We could improve the efficiency of this
-		code_info__unset_failure_cont,
+		{ ResumeVars = ResumeVarsPrime},
+		{ ResumeLocs = ResumeLocsPrime}
+	;
+		{ error("condition of an if-then-else has no resume point") }
+	),
+	code_info__make_known_failure_cont(ResumeVars, ResumeLocs, NondetCond,
+		no, _, ModContCode),
+		% The next line is to enable Cond to pass the
+		% pre_goal_update sanity check
+	{ goal_info_set_resume_point(CondInfo0, no_resume_point, CondInfo) },
+	{ CondGoal = CondExpr - CondInfo },
+
+		% Prevent a nondet condition from hijacking the redoip slot
+		% We could improve the efficiency of this
+	( { NondetCond = yes } ->
+		code_info__unset_failure_cont(FlushEnclosingResumeVarsCode),
 		code_info__save_maxfr(MaxfrLval0, SaveMaxfrCode),
 		{ MaybeMaxfrLval = yes(MaxfrLval0) }
 	;
-		{ MaybeMaxfrLval = no },
-		{ SaveMaxfrCode = empty }
+		{ FlushEnclosingResumeVarsCode = empty },
+		{ SaveMaxfrCode = empty },
+		{ MaybeMaxfrLval = no }
 	),
-	code_info__maybe_save_hp(ReclaimHeap, HPSaveCode),
-	(
-		{ NondetCond = yes }
-	->
-		% we need to save variables on the stack here since the
-		% condition might do a redo() without saving them
-		{ set__to_sorted_list(Vars, VarList) },
-		code_gen__ensure_vars_are_saved(VarList, EnsureCode)
-	;
-		{ EnsureCode = empty }
-	),
-	code_info__get_instmap(InstMap),
 
-		% Store the current solver state before the condition of
-		% the ite
-	{ globals__lookup_bool_option(Options,	
-			constraints, UseConstraints) },
-	code_info__maybe_save_ticket(UseConstraints, StoreTicketCode),
-	code_gen__generate_goal(model_non, CondGoal, CondCode0),
-	{ CondCode = 	tree(EnsureCode,
-			tree(StoreTicketCode, CondCode0)) },
-	code_info__grab_code_info(CodeInfo),
-	code_info__maybe_pop_stack(ReclaimHeap, HPPopCode),
-	code_info__pop_failure_cont,
-	(
-		{ MaybeMaxfrLval = yes(MaxfrLval) }
+		% Maybe save the heap state current before the condition;
+		% this ought to be after we make the failure continuation
+		% because that causes the cache to get flushed
+	code_info__get_globals(Globals),
+	{ 
+		globals__lookup_bool_option(Globals,
+			reclaim_heap_on_semidet_failure, yes),
+		code_util__goal_may_allocate_heap(CondGoal)
 	->
-		code_info__do_soft_cut(MaxfrLval, HackStackCode),
-		code_info__unset_failure_cont
+		ReclaimHeap = yes
 	;
-		{ HackStackCode = empty }
+		ReclaimHeap = no
+	},
+	code_info__maybe_save_hp(ReclaimHeap, SaveHPCode),
+
+		% Maybe save the current solver state before the condition
+	{ globals__lookup_bool_option(Globals, constraints, Constraints) },
+	code_info__maybe_save_ticket(Constraints, SaveTicketCode),
+
+	code_info__grab_code_info(CodeInfo),
+
+		% Generate the condition as a non-deterministic goal
+		% XXX surely we ought to pass CondCodeModel here?
+	code_info__push_resume_point_vars(ResumeVars),
+	code_gen__generate_goal(model_non, CondGoal, CondCode),
+	code_info__pop_resume_point_vars,
+
+	code_info__pop_failure_cont,
+	( { MaybeMaxfrLval = yes(MaxfrLval) } ->
+		code_info__do_soft_cut(MaxfrLval, SoftCutCode),
+		code_info__unset_failure_cont(FlushCode)
+	;
+		{ SoftCutCode = empty },
+		{ FlushCode = empty }
 	),
-	(
-		{ NondetCond = yes }
-	->
+
+		% Kill again any variables that have become zombies
+	code_info__pickup_zombies(Zombies),
+	code_info__make_vars_dead(Zombies),
+
+		% Discard hp and maybe solver ticket if the condition succeeded
+	code_info__maybe_pop_stack(ReclaimHeap, PopHPCode),
+	( { NondetCond = yes } ->
 			% We cannot discard the solver ticket if the 
 			% condition can be backtracked into.
-		code_info__maybe_pop_stack(UseConstraints, PopTicketCode)
+		code_info__maybe_pop_stack(Constraints, PopTicketCode)
 	;
 			% Discard the solver ticket if the condition succeeded
 			% and we will not backtrack into the condition
-		code_info__maybe_discard_ticket(UseConstraints, PopTicketCode)
+		code_info__maybe_discard_ticket(Constraints, PopTicketCode)
 	),
-	code_gen__generate_forced_goal(model_non, ThenGoal, StoreMap,
-		ThenGoalCode0),
-	{ ThenGoalCode = tree(PopTicketCode, ThenGoalCode0) },
+
+		% Generate the then branch
+	code_gen__generate_goal(model_non, ThenGoal, ThenCode),
+	code_info__generate_branch_end(model_non, StoreMap, ThenSaveCode),
+
+		% Generate the entry to the else branch
 	code_info__slap_code_info(CodeInfo),
 	code_info__restore_failure_cont(RestoreContCode),
-		% restore the instmap
-	code_info__set_instmap(InstMap),
-	code_info__maybe_restore_hp(ReclaimHeap, HPRestoreCode),
-		% Restore the solver ticket if the condition failed
-	code_info__maybe_restore_ticket_and_pop(UseConstraints, 
-		RestoreTicketCode),
-	code_gen__generate_forced_goal(model_non, ElseGoal, StoreMap,
-		ElseGoalCode0),
-	{ ElseGoalCode = tree(RestoreTicketCode, ElseGoalCode0) },
+	code_info__maybe_restore_hp(ReclaimHeap, RestoreHPCode),
+	code_info__maybe_restore_ticket_and_pop(Constraints, RestoreTicketCode),
+
+		% Generate the else branch
+	code_gen__generate_goal(model_non, ElseGoal, ElseCode),
+	code_info__generate_branch_end(model_non, StoreMap, ElseSaveCode),
+
 	code_info__get_next_label(EndLab),
-	code_info__remake_with_store_map(StoreMap),
-	{ TestCode = tree(
-		tree(
-			tree(ModContCode, SaveMaxfrCode),
-			HPSaveCode
-		),
-		CondCode
-	) },
-	{ ThenCode = tree(
-		tree(
-			tree(
-				HackStackCode,
-				HPPopCode
-			),
-			ThenGoalCode
-		),
-		node([ goto(label(EndLab)) -
-			"Jump to the end of if-then-else" ])
-	) },
-	{ ElseCode = tree(
-		tree(
-			tree(
-				RestoreContCode,
-				HPRestoreCode
-			),
-			ElseGoalCode
-		),
-		node([label(EndLab) - "end of if-then-else"])
-	) },
-		% generate the then condition
-	{ Instr = tree(TestCode, tree(ThenCode, ElseCode)) }.
+	{ JumpToEndCode = node([goto(label(EndLab))
+		- "Jump to the end of if-then-else"]) },
+	{ EndLabelCode = node([label(EndLab) - "end of if-then-else"]) },
+	{ Code = tree(ModContCode,
+		 tree(FlushEnclosingResumeVarsCode,
+		 tree(SaveMaxfrCode,
+		 tree(SaveHPCode,
+		 tree(SaveTicketCode,
+		 tree(CondCode,
+		 tree(SoftCutCode,
+		 tree(FlushCode,
+		 tree(PopHPCode,
+		 tree(PopTicketCode,
+		 tree(ThenCode,
+		 tree(ThenSaveCode,
+		 tree(JumpToEndCode,
+		 tree(RestoreContCode,
+		 tree(RestoreHPCode,
+		 tree(RestoreTicketCode,
+		 tree(ElseCode,
+		 tree(ElseSaveCode,
+		      EndLabelCode))))))))))))))))))
+	},
+	code_info__remake_with_store_map(StoreMap).
 
 %---------------------------------------------------------------------------%

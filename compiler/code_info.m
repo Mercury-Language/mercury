@@ -4,9 +4,9 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
 %
-% file: code_info.m
+% File: code_info.m
 %
-% main author: conway.
+% Main authors: conway, zs.
 %
 % This file defines the code_info type and various operations on it.
 %
@@ -66,6 +66,7 @@
 		% --procs-per-c-function option and the current procedure id.
 		% Using an address that is only valid from within the current
 		% procedure may make jumps more efficient.
+		% XXX
 :- pred code_info__make_entry_label(module_info, pred_id, proc_id, bool,
 		code_addr, code_info, code_info).
 :- mode code_info__make_entry_label(in, in, in, in, out, in, out) is det.
@@ -114,8 +115,12 @@
 :- mode code_info__setup_call(in, in, out, in, out) is det.
 
 :- pred code_info__save_variable_on_stack(var, code_tree,
-							code_info, code_info).
+			code_info, code_info).
 :- mode code_info__save_variable_on_stack(in, out, in, out) is det.
+
+:- pred code_info__save_variables_on_stack(list(var), code_tree,
+			code_info, code_info).
+:- mode code_info__save_variables_on_stack(in, out, in, out) is det.
 
 		% Succeed if the given variable is live at the
 		% end of this goal.
@@ -149,9 +154,9 @@
 :- pred code_info__get_live_variables(list(var), code_info, code_info).
 :- mode code_info__get_live_variables(out, in, out) is det.
 
-:- pred code_info__generate_forced_saves(store_map, code_tree,
+:- pred code_info__generate_branch_end(code_model, store_map, code_tree,
 	code_info, code_info).
-:- mode code_info__generate_forced_saves(in, out, in, out) is det.
+:- mode code_info__generate_branch_end(in, in, out, in, out) is det.
 
 :- pred code_info__grab_code_info(code_info, code_info, code_info).
 :- mode code_info__grab_code_info(out, in, out) is det.
@@ -170,9 +175,6 @@
 
 :- pred code_info__remake_with_store_map(store_map, code_info, code_info).
 :- mode code_info__remake_with_store_map(in, in, out) is det.
-
-:- pred code_info__remake_with_stack_slots(code_info, code_info).
-:- mode code_info__remake_with_stack_slots(in, out) is det.
 
 :- pred code_info__update_liveness_info(set(var), code_info, code_info).
 :- mode code_info__update_liveness_info(in, in, out) is det.
@@ -197,8 +199,11 @@
 		code_info).
 :- mode code_info__materialize_vars_in_rval(in, out, out, in, out) is det.
 
-:- pred code_info__make_vars_dead(set(var), code_tree, code_info, code_info).
-:- mode code_info__make_vars_dead(in, out, in, out) is det.
+:- pred code_info__pickup_zombies(set(var), code_info, code_info).
+:- mode code_info__pickup_zombies(out, in, out) is det.
+
+:- pred code_info__make_vars_dead(set(var), code_info, code_info).
+:- mode code_info__make_vars_dead(in, in, out) is det.
 
 :- pred code_info__make_vars_live(set(var), code_info, code_info).
 :- mode code_info__make_vars_live(in, in, out) is det.
@@ -233,11 +238,20 @@
 :- pred code_info__set_shapes(shape_table, code_info, code_info).
 :- mode code_info__set_shapes(in, in, out) is det.
 
+:- implementation.
+
+% This implementation section is an ugly hack.
+% I will fix it when I break code_info into mini-modules. - zs
+
 :- type failure_cont
-	--->	failure_cont(failure_continuation, maybe(label), failure_map).
+	--->	failure_cont(
+			failure_continuation,
+			maybe(label),
 				% the maybe(label) is yes if we created a
 				% temporary frame and we need to restore
 				% curfr after a redo()
+			resume_maps
+		).
 
 :- type failure_continuation
 	--->	known(bool)	% on failure we jump to a label
@@ -249,19 +263,22 @@
 				% better save variables that are live (on
 				% redo) onto the stack.
 
-:- type failure_map	==	assoc_list(map(var, set(rval)), code_addr).
-			% we assume that there are exactly two
-			% alternatives in the failure_map list;
-			% the first one is the entry point with variables
-			% potentially in registers and the second one in
-			% the list is the entry point with variables on the
-			% stack.
+:- type resume_map	==	map(var, set(rval)).
+
+:- type resume_maps
+	--->	orig_only(resume_map, code_addr)
+	;	stack_only(resume_map, code_addr)
+	;	orig_and_stack(resume_map, code_addr, resume_map, code_addr)
+	;	stack_and_orig(resume_map, code_addr, resume_map, code_addr).
+
+:- interface.
 
 	% push a new failure continuation onto the stack
 
-:- pred code_info__make_known_failure_cont(set(var), bool, code_tree,
-						code_info, code_info).
-:- mode code_info__make_known_failure_cont(in, in, out, in, out) is det.
+:- pred code_info__make_known_failure_cont(set(var), resume_locs, bool,
+	bool, bool, code_tree, code_info, code_info).
+:- mode code_info__make_known_failure_cont(in, in, in, in, out, out, in, out)
+	is det.
 
 	% We manufacture a failure cont when we start generating
 	% code for a proc because on the failure of a procedure
@@ -278,22 +295,20 @@
 	% set the topmost failure cont to `unknown' (e.g. after
 	% a nondet call or after a disjunction).
 
-:- pred code_info__unset_failure_cont(code_info, code_info).
-:- mode code_info__unset_failure_cont(in, out) is det.
+:- pred code_info__unset_failure_cont(code_tree, code_info, code_info).
+:- mode code_info__unset_failure_cont(out, in, out) is det.
 
-	% lookup the value on the top of the failure continuation stack
+	% flush the variables needed for any current resumption point
+	% to their stack slots.
 
-:- pred code_info__failure_cont(failure_cont, code_info, code_info).
-:- mode code_info__failure_cont(out, in, out) is det.
+:- pred code_info__flush_resume_vars_to_stack(code_tree, code_info, code_info).
+:- mode code_info__flush_resume_vars_to_stack(out, in, out) is det.
 
 	% generate some code to restore the current redoip, by looking
 	% at the top of the failure continuation stack.
 
 :- pred code_info__restore_failure_cont(code_tree, code_info, code_info).
 :- mode code_info__restore_failure_cont(out, in, out) is det.
-
-:- pred code_info__modify_failure_cont(code_tree, code_info, code_info).
-:- mode code_info__modify_failure_cont(out, in, out) is det.
 
 		% do_soft_cut takes the lval where the address of the
 		% failure frame is stored, and it returns code to
@@ -305,14 +320,8 @@
 :- pred code_info__stack_variable(int, lval, code_info, code_info).
 :- mode code_info__stack_variable(in, out, in, out) is det.
 
-:- pred code_info__generate_nondet_saves(code_tree, code_info, code_info).
-:- mode code_info__generate_nondet_saves(out, in, out) is det.
-
 :- pred code_info__generate_failure(code_tree, code_info, code_info).
 :- mode code_info__generate_failure(out, in, out) is det.
-
-:- pred code_info__generate_under_failure(code_tree, code_info, code_info).
-:- mode code_info__generate_under_failure(out, in, out) is det.
 
 :- pred code_info__generate_test_and_fail(rval, code_tree,
 							code_info, code_info).
@@ -330,6 +339,9 @@
 
 :- pred code_info__generate_semi_commit(label, code_tree, code_info, code_info).
 :- mode code_info__generate_semi_commit(in, out, in, out) is det.
+
+:- pred code_info__may_use_nondet_tailcall(bool, code_info, code_info).
+:- mode code_info__may_use_nondet_tailcall(out, in, out) is det.
 
 :- pred code_info__save_maxfr(lval, code_tree, code_info, code_info).
 :- mode code_info__save_maxfr(out, out, in, out) is det.
@@ -382,7 +394,7 @@
 :- pred code_info__maybe_restore_ticket(bool, code_tree, code_info, code_info).
 :- mode code_info__maybe_restore_ticket(in, out, in, out) is det.
 
-:- pred code_info__maybe_restore_ticket_and_pop(bool, code_tree, 
+:- pred code_info__maybe_restore_ticket_and_pop(bool, code_tree,
 	code_info, code_info).
 :- mode code_info__maybe_restore_ticket_and_pop(in, out, in, out) is det.
 
@@ -427,7 +439,7 @@
 :- pred code_info__can_generate_direct_branch(code_addr, code_info, code_info).
 :- mode code_info__can_generate_direct_branch(out, in, out) is semidet.
 
-	% Given a list of type variables, find the lvals where the 
+	% Given a list of type variables, find the lvals where the
 	% corresponding type_infos are being stored.
 
 :- pred code_info__find_type_infos(list(var), list(lval), code_info, code_info).
@@ -504,6 +516,9 @@
 			set(var),	% Variables that are not quite live
 					% but are only nondet-live (so that
 					% we make sure we save them).
+			set(var),	% Zombie variables; variables that have
+					% been killed but are protected by a
+					% resume point.
 			stack(set(var)),
 					% Each resumption point has an
 					% associated set of variables
@@ -543,6 +558,7 @@ code_info__init(Varset, Liveness, StackSlots, SaveSuccip, Globals,
 	stack__init(PushedVals0),
 	stack__init(ResumeSetStack0),
 	set__init(NondetLives),
+	set__init(Zombies),
 	code_info__max_slot(StackSlots, SlotCount0),
 	proc_info_interface_code_model(ProcInfo, CodeModel),
 	(
@@ -556,7 +572,7 @@ code_info__init(Varset, Liveness, StackSlots, SaveSuccip, Globals,
 		SlotCount,
 		0,
 		Varset,
-		StackSlots, 
+		StackSlots,
 		PredId,
 		ProcId,
 		0,
@@ -573,9 +589,12 @@ code_info__init(Varset, Liveness, StackSlots, SaveSuccip, Globals,
 		PushedVals0,
 		Shapes,
 		NondetLives,
+		Zombies,
 		ResumeSetStack0,
 		[]
 	).
+
+	% XXX This should call arg_info
 
 :- pred code_info__build_input_arg_list(assoc_list(var, arg_info),
 						assoc_list(var, rval)).
@@ -701,17 +720,22 @@ code_info__cons_id_to_tag(Var, ConsId, ConsTag) -->
 
 code_info__get_live_variables(VarList) -->
 	code_info__get_liveness_info(NormalLiveVars),
+	code_info__current_resume_point_vars(ResumeVars),
 	code_info__get_nondet_lives(NondetLiveVars),
-	{ set__union(NormalLiveVars, NondetLiveVars, Vars) },
+	{ set__union(NormalLiveVars, NondetLiveVars, Vars1) },
+	{ set__union(Vars1, ResumeVars, Vars) },
 	{ set__to_sorted_list(Vars, VarList) }.
 
 %---------------------------------------------------------------------------%
 
 code_info__variable_is_live(Var) -->
 	code_info__get_liveness_info(Liveness),
+	code_info__current_resume_point_vars(ResumeVars),
 	code_info__get_nondet_lives(Nondets),
 	(
 		{ set__member(Var, Liveness) }
+	;
+		{ set__member(Var, ResumeVars) }
 	;
 		{ set__member(Var, Nondets) }
 	).
@@ -883,8 +907,9 @@ code_info__setup_call([V - arg_info(Loc,Mode) | Rest], Direction, Code) -->
 			{ Code = tree(Code0, Code1) }
 		;
 			{ code_exprn__lock_reg(Reg, Exprn1, Exprn2) },
-			{ code_exprn__var_becomes_dead(V, Exprn2, Exprn3) },
-			code_info__set_exprn_info(Exprn3),
+			code_info__set_exprn_info(Exprn2),
+			{ set__singleton_set(Vset, V) },
+			code_info__make_vars_dead(Vset),
 			code_info__setup_call(Rest, Direction, Code1),
 			code_info__get_exprn_info(Exprn4),
 			{ code_exprn__unlock_reg(Reg, Exprn4, Exprn) },
@@ -903,6 +928,12 @@ code_info__save_variable_on_stack(Var, Code) -->
 	{ code_exprn__place_var(Var, Slot, Code, Exprn0, Exprn) },
 	code_info__set_exprn_info(Exprn).
 
+code_info__save_variables_on_stack([], empty) --> [].
+code_info__save_variables_on_stack([Var | Vars], Code) -->
+	code_info__save_variable_on_stack(Var, FirstCode),
+	code_info__save_variables_on_stack(Vars, RestCode),
+	{ Code = tree(FirstCode, RestCode) }.
+
 %---------------------------------------------------------------------------%
 
 code_info__get_arginfo(ArgInfo) -->
@@ -913,66 +944,17 @@ code_info__get_arginfo(ArgInfo) -->
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-code_info__generate_forced_saves(StoreMap, Code) --> 
-	code_info__get_stack_slots(StackSlots),
-	code_info__get_live_variables(Vars),
-	code_info__generate_forced_saves_2(Vars, StoreMap, StackSlots, Code).
-
-:- pred code_info__generate_forced_saves_2(list(var), map(var, lval),
-			map(var, lval), code_tree, code_info, code_info).
-:- mode code_info__generate_forced_saves_2(in, in, in, out, in, out) is det.
-
-code_info__generate_forced_saves_2([], _Store, _StackSlots, empty) --> [].
-code_info__generate_forced_saves_2([V | Vs], Store, StackSlots, Code) -->
-	(
-		{ map__search(Store, V, Lval) }
-	->
-		code_info__get_exprn_info(Exprn0),
-		{ code_exprn__place_var(V, Lval, Code0, Exprn0, Exprn) },
-		code_info__set_exprn_info(Exprn)
+code_info__generate_branch_end(CodeModel, StoreMap, Code) -->
+	code_info__get_exprn_info(Exprn0),
+	{ map__to_assoc_list(StoreMap, VarLocs) },
+	{ code_exprn__place_vars(VarLocs, PlaceCode, Exprn0, Exprn) },
+	code_info__set_exprn_info(Exprn),
+	( { CodeModel = model_non } ->
+		code_info__unset_failure_cont(FlushCode),
+		{ Code = tree(PlaceCode, FlushCode) }
 	;
-		{ map__search(StackSlots, V, Lval) }
-	->
-		code_info__get_exprn_info(Exprn0),
-		{ code_exprn__place_var(V, Lval, Code0, Exprn0, Exprn) },
-		code_info__set_exprn_info(Exprn)
-	;
-		code_info__variable_to_string(V, Name),
-		{ term__var_to_int(V, Num) },
-		{ string__int_to_string(Num, NumStr) },
-		{ string__append_list([
-			"code_info__generate_forced_saves: variable `",
-			Name, "' (", NumStr, ") not found"], Str) },
-		{ error(Str) }
-	),
-	code_info__generate_forced_saves_2(Vs, Store, StackSlots, Code1),
-	{ Code = tree(Code0, Code1) }.
-
-%---------------------------------------------------------------------------%
-
-code_info__generate_nondet_saves(Code) -->
-	code_info__get_stack_slots(StackSlots),
-	{ map__to_assoc_list(StackSlots, StackSlotList) },
-	code_info__generate_nondet_saves_2(StackSlotList, Code).
-
-:- pred code_info__generate_nondet_saves_2(assoc_list(var, lval), code_tree,
-							code_info, code_info).
-:- mode code_info__generate_nondet_saves_2(in, out, in, out) is det.
-
-code_info__generate_nondet_saves_2([], empty) --> [].
-code_info__generate_nondet_saves_2([Var - StackThing | VarSlots], Code) --> 
-	(
-		code_info__variable_is_live(Var)
-	->
-		code_info__get_exprn_info(Exprn0),
-		{ code_exprn__place_var(Var, StackThing, Code0,
-							Exprn0, Exprn) },
-		code_info__set_exprn_info(Exprn)
-	;
-		{ Code0 = empty }
-	),
-	{ Code = tree(Code0, Code1) },
-	code_info__generate_nondet_saves_2(VarSlots, Code1).
+		{ Code = PlaceCode }
+	).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -989,54 +971,22 @@ code_info__get_headvars(HeadVars) -->
 
 %---------------------------------------------------------------------------%
 
-% code_info__remake_with_store_map rebuilds the register info and
-% variable info data structures. It operates under the assumption
-% that if a variable is live, it is stored somewhere. What is more,
-% it assumes that if a variable is live, then there is a copy of it
-% stored on the stack in the location given by the store map. This
-% means that it only makes sense to call this predicate in situations
-% such as the start of disjuncts where it only makes sense to have
-% variables on the stack. (Note that disj_gen contains a piece of
-% magic to use the register versions of variables if possible in the
-% first disjunct).
+% code_info__remake_with_store_map throws away the exprn_info data structure,
+% forgetting the current locations of all variables, and rebuilds it from
+% scratch based on the given store map. The new exprn_info will know about
+% only the variables present in the store map, and will believe they are
+% where the store map says they are.
 
 code_info__remake_with_store_map(StoreMap) -->
+	{ map__to_assoc_list(StoreMap, VarLvals) },
+	{ code_info__fixup_lvallist(VarLvals, VarRvals) },
 	code_info__get_varset(Varset),
-	code_info__get_live_variables(VarList),
-	{ set__list_to_set(VarList, Vars) },
-	code_info__get_stack_slots(StackSlots),
-	{ map__overlay(StackSlots, StoreMap, LvalMap0) },
-	{ map__select(LvalMap0, Vars, LvalMap) },
-	{ map__to_assoc_list(LvalMap, VarLvals0) },
-	{ code_info__fixup_lvallist(VarLvals0, VarLvals) },
 	code_info__get_globals(Globals),
 	{ globals__get_options(Globals, Options) },
-	{ code_exprn__init_state(VarLvals, Varset, Options, Exprn) },
+	{ code_exprn__init_state(VarRvals, Varset, Options, Exprn) },
 	code_info__set_exprn_info(Exprn).
 
 %---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
-
-% code_info__remake_with_stack_slots rebuilds the register info and the
-% variable info structures. It operates under the assumption that if
-% a variable is live, then it should be located in the storage indicated
-% by the call info information. This is for use at the end of the branches
-% in branched structures, where we need to ensure that variables are
-% stored in consistient places.
-
-code_info__remake_with_stack_slots -->
-	code_info__get_varset(Varset),
-	code_info__get_live_variables(VarList),
-	{ set__list_to_set(VarList, Vars) },
-	code_info__get_stack_slots(StackSlots),
-	{ map__select(StackSlots, Vars, LvalMap) },
-	{ map__to_assoc_list(LvalMap, VarLvals0) },
-	{ code_info__fixup_lvallist(VarLvals0, VarLvals) },
-	code_info__get_globals(Globals),
-	{ globals__get_options(Globals, Options) },
-	{ code_exprn__init_state(VarLvals, Varset, Options, Exprn) },
-	code_info__set_exprn_info(Exprn).
-
 %---------------------------------------------------------------------------%
 
 :- pred code_info__fixup_lvallist(assoc_list(var, lval), assoc_list(var, rval)).
@@ -1060,26 +1010,25 @@ code_info__update_deadness_info(Deaths) -->
 
 %---------------------------------------------------------------------------%
 
-code_info__make_vars_dead(Vars0, Code) -->
+code_info__pickup_zombies(Zombies) -->
+	code_info__get_zombies(Zombies),
+	{ set__init(Empty) },
+	code_info__set_zombies(Empty).
+
+%---------------------------------------------------------------------------%
+
+code_info__make_vars_dead(Vars0) -->
 	code_info__current_resume_point_vars(ResumeVars),
 	{ set__intersect(Vars0, ResumeVars, FlushVars) },
-	{ set__to_sorted_list(FlushVars, FlushVarList) },
-	code_info__flush_resume_variables(FlushVarList, Code),
+	code_info__get_zombies(Zombies0),
+	{ set__union(Zombies0, FlushVars, Zombies) },
+	code_info__set_zombies(Zombies),
 	code_info__get_nondet_lives(NondetLives),
-		% Don't kill off nondet-live variables
-	{ set__difference(Vars0, NondetLives, Vars) },
+		% Don't kill off nondet-live or zombie variables
+	{ set__difference(Vars0, NondetLives, Vars1) },
+	{ set__difference(Vars1, Zombies, Vars) },
 	{ set__to_sorted_list(Vars, VarList) },
 	code_info__make_vars_dead_2(VarList).
-
-:- pred code_info__flush_resume_variables(list(var), code_tree,
-	code_info, code_info).
-:- mode code_info__flush_resume_variables(in, out, in, out) is det.
-
-code_info__flush_resume_variables([], empty) --> [].
-code_info__flush_resume_variables([Var | Vars], Code) -->
-	code_info__save_variable_on_stack(Var, FirstCode),
-	code_info__flush_resume_variables(Vars, RestCode),
-	{ Code = tree(FirstCode, RestCode) }.
 
 :- pred code_info__make_vars_dead_2(list(var), code_info, code_info).
 :- mode code_info__make_vars_dead_2(in, in, out) is det.
@@ -1097,28 +1046,29 @@ code_info__make_vars_dead_2([V | Vs]) -->
 	% We don't care where they are put.
 
 code_info__make_vars_live(Vars) -->
-	{ set__to_sorted_list(Vars, VarList) },
-	code_info__make_vars_live_2(VarList, 1).
-
-:- pred code_info__make_vars_live_2(list(var), int, code_info, code_info).
-:- mode code_info__make_vars_live_2(in, in, in, out) is det.
-
-code_info__make_vars_live_2([], _) --> [].
-code_info__make_vars_live_2([V | Vs], N0) -->
-	code_info__get_exprn_info(Exprn0),
 	code_info__get_stack_slots(StackSlots),
+	code_info__get_exprn_info(Exprn0),
+	{ set__to_sorted_list(Vars, VarList) },
+	{ code_info__make_vars_live_2(VarList, StackSlots, 1, Exprn0, Exprn) },
+	code_info__set_exprn_info(Exprn).
+
+:- pred code_info__make_vars_live_2(list(var), stack_slots, int,
+	exprn_info, exprn_info).
+:- mode code_info__make_vars_live_2(in, in, in, in, out) is det.
+
+code_info__make_vars_live_2([], _, _, Exprn, Exprn).
+code_info__make_vars_live_2([V | Vs], StackSlots, N0, Exprn0, Exprn) :-
 	(
-		{ map__search(StackSlots, V, Lval0) }
+		map__search(StackSlots, V, Lval0)
 	->
-		{ Lval = Lval0 },
-		{ N1 = N0 }
+		Lval = Lval0,
+		N1 = N0
 	;
-		{ code_info__find_unused_reg(N0, Exprn0, N1) },
-		{ Lval = reg(r(N1)) }
+		code_info__find_unused_reg(N0, Exprn0, N1),
+		Lval = reg(r(N1))
 	),
-	{ code_exprn__maybe_set_var_location(V, Lval, Exprn0, Exprn) },
-	code_info__set_exprn_info(Exprn),
-	code_info__make_vars_live_2(Vs, N1).
+	code_exprn__maybe_set_var_location(V, Lval, Exprn0, Exprn1),
+	code_info__make_vars_live_2(Vs, StackSlots, N1, Exprn1, Exprn).
 
 :- pred code_info__find_unused_reg(int, exprn_info, int).
 :- mode code_info__find_unused_reg(in, in, out) is det.
@@ -1130,32 +1080,6 @@ code_info__find_unused_reg(N0, Exprn0, N) :-
 	;
 		N = N0
 	).
-
-% :- pred code_info__make_vars_live_2(list(var), code_info, code_info).
-% :- mode code_info__make_vars_live_2(in, in, out) is det.
-% 
-% code_info__make_vars_live_2([], _) --> [].
-% code_info__make_vars_live_2([V | Vs]) -->
-% 	(
-% 		{ map__search(StoreMap, V, Lval0) }
-% 	->
-% 		{ Lval = Lval0 }
-% 	;
-% 		code_info__get_stack_slots(StackSlots),
-% 		{ map__search(StackSlots, V, Lval0) }
-% 	->
-% 		{ Lval = Lval0 }
-% 	;
-% 		code_info__get_varset(Varset),
-% 		{ varset__lookup_name(Varset, V, Name) },
-% 		{ string__append("I don't know where to put variable ",
-% 			Name, Msg) },
-% 		{ error(Msg) }
-% 	),
-% 	code_info__get_exprn_info(Exprn0),
-% 	{ code_exprn__maybe_set_var_location(V, Lval, Exprn0, Exprn) },
-% 	code_info__set_exprn_info(Exprn),
-% 	code_info__make_vars_live_2(Vs, StoreMap).
 
 %---------------------------------------------------------------------------%
 
@@ -1293,7 +1217,7 @@ code_info__stack_variable(Num, Lval) -->
 	% The stack pointer points to the first free location at the
 	% top of the stack.
 	%
-	% `code_info__num_stackslots' counts the number of slots reserved 
+	% `code_info__num_stackslots' counts the number of slots reserved
 	% for saving local variables.
 	%
 	% `code_info__max_push_count' counts the number of slots reserved
@@ -1351,7 +1275,7 @@ code_info__add_commit_val(Item, StackVar) -->
 
 code_info__rem_commit_val -->
 	code_info__get_commit_vals(Stack0),
-	( 
+	(
 		{ Stack0 = [_ | Stack] },
 		code_info__set_commit_vals(Stack)
 	;
@@ -1399,64 +1323,62 @@ code_info__get_stack_top(StackVar) -->
 %---------------------------------------------------------------------------%
 
 code_info__generate_failure(Code) -->
-	code_info__grab_code_info(CodeInfo),
-	code_info__failure_cont(failure_cont(Cont, _MaybeRedoLab, FailureMap)),
+	code_info__top_failure_cont(FailureCont),
+	{ FailureCont = failure_cont(Cont, _MaybeRedoLabel, FailureMap) },
 	(
 		{ Cont = known(_) },
 		(
-			code_info__pick_failure(FailureMap, FailureAddress0)
+			code_info__pick_matching_resume_addr(FailureMap,
+				FailureAddress0)
 		->
 			{ FailureAddress = FailureAddress0 },
 			{ PlaceCode = empty }
 		;
-			{ FailureMap = [Map - Addr | _] }
-		->
-			{ FailureAddress = Addr },
+			{ code_info__pick_first_resume_point(FailureMap,
+				Map, FailureAddress) },
 			{ map__to_assoc_list(Map, AssocList) },
-			code_info__place_vars(AssocList, PlaceCode)
-		;
-			{error("code_info__generate_failure: no valid failmap")}
+			code_info__grab_code_info(CodeInfo),
+			code_info__place_vars(AssocList, PlaceCode),
+			code_info__slap_code_info(CodeInfo)
 		),
 		{ BranchCode = node([goto(FailureAddress) - "fail"]) },
 		{ Code = tree(PlaceCode, BranchCode) }
 	;
 		{ Cont = unknown },
 		{ Code = node([goto(do_redo) - "fail"]) }
-	),
-	code_info__slap_code_info(CodeInfo).
-
-%---------------------------------------------------------------------------%
-
-code_info__generate_under_failure(Code) -->
-	code_info__grab_code_info(CodeInfo),
-	code_info__pop_failure_cont,
-	code_info__generate_failure(Code),
-	code_info__slap_code_info(CodeInfo).
+	).
 
 %---------------------------------------------------------------------------%
 
 code_info__generate_test_and_fail(Rval0, Code) -->
-	code_info__failure_cont(failure_cont(Cont, _MaybeRedoLab, FailureMap)),
+	code_info__top_failure_cont(FailureCont),
+	{ FailureCont = failure_cont(Cont, _MaybeRedoLabel, FailureMap) },
 	(
 		{ Cont = known(_) },
 		(
-			code_info__pick_failure(FailureMap, FailureAddress0)
+			code_info__pick_matching_resume_addr(FailureMap,
+				FailureAddress0)
 		->
 				% We branch away if the test *fails*
 			{ code_util__neg_rval(Rval0, Rval) },
-			{ Code = node([ if_val(Rval, FailureAddress0) -
-						"Test for failure" ]) }
+			{ Code = node([
+				if_val(Rval, FailureAddress0) -
+					"Test for failure"
+			]) }
 		;
-			{ FailureMap = [Map - Addr | _] }
-		->
-			{ FailureAddress = Addr },
+			{ code_info__pick_first_resume_point(FailureMap,
+				Map, FailureAddress) },
 			{ map__to_assoc_list(Map, AssocList) },
 			code_info__get_next_label(SuccessLabel),
 			code_info__grab_code_info(CodeInfo),
 			code_info__place_vars(AssocList, PlaceCode),
 			code_info__slap_code_info(CodeInfo),
 			{ SuccessAddress = label(SuccessLabel) },
-				% We branch away if the test Succeeds
+				% We branch away if the test *fails*,
+				% therefore we branch around the code
+				% that moves variables to their failure
+				% locations and branches away
+				% if the test succeeds
 			{ TestCode = node([ if_val(Rval0, SuccessAddress) -
 					"Test for failure" ]) },
 			{ FailCode = tree(PlaceCode, node([
@@ -1465,54 +1387,112 @@ code_info__generate_test_and_fail(Rval0, Code) -->
 			{ Code = tree(tree(TestCode, FailCode), node([
 				label(SuccessLabel) - "success continuation"
 			])) }
-		;
-			{ error("code_info__generate_test_and_fail: no valid failmap") }
 		)
 	;
 		{ Cont = unknown },
 		{ FailureAddress = do_redo },
 			% We branch away if the test *fails*
 		{ code_util__neg_rval(Rval0, Rval) },
-		{ Code = node([ if_val(Rval, FailureAddress) -
-					"Test for failure" ]) }
+		{ Code = node([
+			if_val(Rval, FailureAddress) -
+				"Test for failure"
+		]) }
 	).
 
 %---------------------------------------------------------------------------%
 
 code_info__can_generate_direct_branch(CodeAddr) -->
-	code_info__failure_cont(failure_cont(known(no), no, FailureMap)),
-	code_info__pick_failure(FailureMap, CodeAddr).
-	% { FailureMap = [Map - CodeAddr | _] },
-	% { map__is_empty(Map) }.
+	code_info__top_failure_cont(FailureCont),
+	{ FailureCont = failure_cont(known(no), no, FailureMap) },
+	code_info__pick_matching_resume_addr(FailureMap, CodeAddr).
 
 %---------------------------------------------------------------------------%
 
-:- pred code_info__pick_failure(assoc_list(map(var, set(rval)), code_addr),
-			code_addr, code_info, code_info).
-:- mode code_info__pick_failure(in, out, in, out) is semidet.
+	% See whether the current locations of variables match the locations
+	% associated with any of the options in the given failure map.
+	% If yes, return the code_addr of that option.
 
-code_info__pick_failure([], _CodeAddr) -->
-	{ fail }.
-code_info__pick_failure([Map - Addr | Rest], CodeAddr) -->
-	{ map__keys(Map, KeyList) },
-	{ set__list_to_set(KeyList, Keys) },
-	code_info__variable_locations(Locations0),
-	{ map__select(Locations0, Keys, Locations) },
-	{ map__to_assoc_list(Locations, List) },
-	(
-		\+ (
-			{ list__member(Thingy, List) },
-			\+ (
-				{ Thingy = Var - Actual },
-				{ map__search(Map, Var, Rvals) },
-				{ set__subset(Rvals, Actual) }
-			)
+:- pred code_info__pick_matching_resume_addr(resume_maps, code_addr,
+	code_info, code_info).
+:- mode code_info__pick_matching_resume_addr(in, out, in, out) is semidet.
+
+code_info__pick_matching_resume_addr(ResumeMaps, Addr) -->
+	code_info__variable_locations(Locations),
+	{
+		ResumeMaps = orig_only(Map1, Addr1),
+		( code_info__match_resume_loc(Map1, Locations) ->
+			Addr = Addr1
+		;
+			fail
 		)
-	->
-		{ CodeAddr = Addr }
 	;
-		code_info__pick_failure(Rest, CodeAddr)
+		ResumeMaps = stack_only(Map1, Addr1),
+		( code_info__match_resume_loc(Map1, Locations) ->
+			Addr = Addr1
+		;
+			fail
+		)
+	;
+		ResumeMaps = orig_and_stack(Map1, Addr1, Map2, Addr2),
+		( code_info__match_resume_loc(Map1, Locations) ->
+			Addr = Addr1
+		; code_info__match_resume_loc(Map2, Locations) ->
+			Addr = Addr2
+		;
+			fail
+		)
+	;
+		ResumeMaps = stack_and_orig(Map1, Addr1, Map2, Addr2),
+		( code_info__match_resume_loc(Map1, Locations) ->
+			Addr = Addr1
+		; code_info__match_resume_loc(Map2, Locations) ->
+			Addr = Addr2
+		;
+			fail
+		)
+	}.
+
+:- pred code_info__match_resume_loc(resume_map, resume_map).
+:- mode code_info__match_resume_loc(in, in) is semidet.
+
+code_info__match_resume_loc(Map, Locations0) :-
+	map__keys(Map, KeyList),
+	set__list_to_set(KeyList, Keys),
+	map__select(Locations0, Keys, Locations),
+	map__to_assoc_list(Locations, List),
+	\+ (
+		list__member(Thingy, List),
+		\+ (
+			Thingy = Var - Actual,
+			map__search(Map, Var, Rvals),
+			set__subset(Rvals, Actual)
+		)
 	).
+
+:- pred code_info__pick_first_resume_point(resume_maps, resume_map, code_addr).
+:- mode code_info__pick_first_resume_point(in, out, out) is det.
+
+code_info__pick_first_resume_point(orig_only(Map, Addr), Map, Addr).
+code_info__pick_first_resume_point(stack_only(Map, Addr), Map, Addr).
+code_info__pick_first_resume_point(orig_and_stack(Map, Addr, _, _), Map, Addr).
+code_info__pick_first_resume_point(stack_and_orig(Map, Addr, _, _), Map, Addr).
+
+:- pred code_info__pick_last_resume_point(resume_maps, resume_map, code_addr).
+:- mode code_info__pick_last_resume_point(in, out, out) is det.
+
+code_info__pick_last_resume_point(orig_only(Map, Addr), Map, Addr).
+code_info__pick_last_resume_point(stack_only(Map, Addr), Map, Addr).
+code_info__pick_last_resume_point(orig_and_stack( _, _, Map, Addr), Map, Addr).
+code_info__pick_last_resume_point(stack_and_orig( _, _, Map, Addr), Map, Addr).
+
+:- pred code_info__pick_stack_resume_point(resume_maps, resume_map, code_addr).
+:- mode code_info__pick_stack_resume_point(in, out, out) is det.
+
+code_info__pick_stack_resume_point(orig_only(_, _), _, _) :-
+	error("no stack resume point").
+code_info__pick_stack_resume_point(stack_only(Map, Addr), Map, Addr).
+code_info__pick_stack_resume_point(orig_and_stack(_, _, Map, Addr), Map, Addr).
+code_info__pick_stack_resume_point(stack_and_orig(Map, Addr, _, _), Map, Addr).
 
 %---------------------------------------------------------------------------%
 
@@ -1528,59 +1508,27 @@ code_info__variable_locations(Locations) -->
 
 	% `semi_pre_commit' and `semi_commit' should be generated as a pair
 	% surrounding a nondet goal.
+	%
 	% `generate_semi_pre_commit' returns a label (a failure cont label)
 	% which should be passed to `generate_semi_commit'.
 	% If the goal succeeds, the `commit' will cut any choice points
 	% generated in the goal.
 
-code_info__generate_semi_pre_commit(RedoLab, PreCommit) -->
-	code_info__get_proc_model(CodeModel),
-	( { CodeModel = model_non } ->
-		% the pushes and pops on the det stack below will cause
-		% problems for accurate garbage collection. Hence we 
-		% make sure the commit vals are made live, so gc
-		% can figure out what is going on later.
-		code_info__get_module_info(ModuleInfo),
-		code_info__get_pred_id(PredId),
-		{ predicate_name(ModuleInfo, PredId, PredName) },
-		{ string__append("commit in ", PredName, Message) },
-		{ PushCode = node([
-			incr_sp(3, Message) - 
-			"push space for curfr, maxfr, and redoip" 
-		]) },
-		{ CurfrSlot = stackvar(1) },
-		{ MaxfrSlot = stackvar(2) },
-		{ RedoipSlot = stackvar(3) },
-		code_info__add_commit_val(curfr, CurfrSlot),
-		code_info__add_commit_val(maxfr, MaxfrSlot),
-		code_info__add_commit_val(redoip(lval(maxfr)), RedoipSlot)
-	;
-		{ PushCode = empty },
-		code_info__push_temp(lval(curfr), CurfrSlot),
-		code_info__push_temp(lval(maxfr), MaxfrSlot),
-		code_info__push_temp(lval(redoip(lval(maxfr))), RedoipSlot)
-	),
-	{ SaveCode = node([
-		assign(CurfrSlot, lval(curfr)) -
-				"Save current nondet frame pointer",
-		assign(MaxfrSlot, lval(maxfr)) -
-				"Save top of nondet stack",
-		assign(RedoipSlot, lval(redoip(lval(maxfr)))) -
-				"Save the top redoip"
-	]) },
-	code_info__failure_cont(failure_cont(_OrigCont, _MaybeRedo,
-				FailureMap0)),
-	code_info__relabel_failure_cont(FailureMap0, FailureMap),
+code_info__generate_semi_pre_commit(RedoLabel, PreCommit) -->
+	code_info__generate_pre_commit_saves(SaveCode),
+	code_info__top_failure_cont(FailureCont),
+	{ FailureCont = failure_cont(_OrigCont, _MaybeRedo, FailureMap0) },
+	code_info__clone_failure_cont(FailureMap0, FailureMap),
 	code_info__push_failure_cont(failure_cont(known(yes), no, FailureMap)),
-	code_info__get_next_label(RedoLab),
+	code_info__get_next_label(RedoLabel),
 	{ HijackCode = node([
 		assign(redoip(lval(maxfr)),
-			const(code_addr_const(label(RedoLab)))) -
+			const(code_addr_const(label(RedoLabel)))) -
 			"Hijack the failure cont"
 	]) },
-	{ PreCommit = tree(tree(PushCode, SaveCode), HijackCode) }.
+	{ PreCommit = tree(SaveCode, HijackCode) }.
 
-code_info__generate_semi_commit(RedoLab, Commit) -->
+code_info__generate_semi_commit(RedoLabel, Commit) -->
 	code_info__get_next_label(SuccLabel),
 	{ GotoSuccLabel = node([
 		goto(label(SuccLabel)) - "Jump to success continuation"
@@ -1588,54 +1536,44 @@ code_info__generate_semi_commit(RedoLab, Commit) -->
 	{ SuccLabelCode = node([
 		label(SuccLabel) - "Success continuation"
 	]) },
-	{ RedoLabCode = node([
-		label(RedoLab) - "Failure (redo) continuation"
+	{ RedoLabelCode = node([
+		label(RedoLabel) - "Failure (redo) continuation"
 	]) },
+
 	code_info__grab_code_info(CodeInfo0),
-	code_info__failure_cont(failure_cont(_OldCont, _MaybeRedo,
-				HFailureMap)),
-	code_info__generate_failure_continuation(HFailureMap, FailureContCode),
-	code_info__generate_under_failure(Fail),
+	code_info__top_failure_cont(FailureCont),
+	{ FailureCont = failure_cont(_OldCont, _MaybeRedo, HFailureMap) },
+	code_info__generate_resume_setup(HFailureMap, FailureContCode),
+	code_info__pop_failure_cont,
+	code_info__generate_failure(Fail),
 	code_info__slap_code_info(CodeInfo0),
 	code_info__pop_failure_cont,
-	code_info__get_proc_model(CodeModel),
-	( { CodeModel = model_non } ->
-		{ PopCode = node([decr_sp(3) - 
-			"pop redoip, maxfr & curfr"]) },
-		{ RedoipSlot = stackvar(3) },
-		{ MaxfrSlot = stackvar(2) },
-		{ CurfrSlot = stackvar(1) },
-		code_info__rem_commit_val,
-		code_info__rem_commit_val,
-		code_info__rem_commit_val
-	;
-		{ PopCode = empty },
-		code_info__pop_temp(RedoipSlot),
-		code_info__pop_temp(MaxfrSlot),
-		code_info__pop_temp(CurfrSlot)
-	),
-	{ RestoreMaxfr = node([
-		assign(maxfr, lval(MaxfrSlot)) -
-			"Prune away unwanted choice-points"
-	]) },
-	{ RestoreRedoip = node([
-		assign(redoip(lval(maxfr)), lval(RedoipSlot)) -
-			"Restore the top redoip"
-	]) },
-	{ RestoreCurfr = node([
-		assign(curfr, lval(CurfrSlot)) -
-			"Restore nondet frame pointer"
-	]) },
-	{ SuccessCode = tree(
-		RestoreMaxfr,
-		tree(tree(RestoreRedoip, RestoreCurfr), PopCode)
-	) },
-	{ FailCode = tree(
-		tree(tree(RedoLabCode, RestoreCurfr), FailureContCode),
-		tree(tree(RestoreRedoip, PopCode), Fail)
-	) },
-	{ Commit = tree(tree(SuccessCode, tree(GotoSuccLabel, FailCode)),
-			SuccLabelCode) }.
+
+	code_info__undo_pre_commit_saves(RestoreMaxfr, RestoreRedoip,
+		RestoreCurfr, PopCode),
+
+	{ SuccessCode =
+		tree(RestoreMaxfr,
+		tree(RestoreRedoip,
+		tree(RestoreCurfr,
+		     PopCode)))
+	},
+	{ FailCode =
+		tree(RedoLabelCode,
+		tree(RestoreCurfr,
+		tree(FailureContCode,
+		tree(RestoreRedoip,
+		tree(PopCode,
+		     Fail)))))
+	},
+	{ Commit =
+		tree(SuccessCode,
+		tree(GotoSuccLabel,
+		tree(FailCode,
+		     SuccLabelCode)))
+	}.
+
+%---------------------------------------------------------------------------%
 
 	% `det_pre_commit' and `det_commit' should be generated as a pair
 	% surrounding a multidet goal.
@@ -1643,10 +1581,27 @@ code_info__generate_semi_commit(RedoLab, Commit) -->
 	% generated in the goal.
 
 code_info__generate_det_pre_commit(PreCommit) -->
+	code_info__generate_pre_commit_saves(PreCommit).
+
+code_info__generate_det_commit(Commit) -->
+	code_info__undo_pre_commit_saves(RestoreMaxfr, RestoreRedoip,
+		RestoreCurfr, PopCode),
+	{ Commit = tree(RestoreMaxfr,
+		   tree(RestoreRedoip,
+		   tree(RestoreCurfr,
+		        PopCode)))
+	}.
+
+%---------------------------------------------------------------------------%
+
+:- pred code_info__generate_pre_commit_saves(code_tree, code_info, code_info).
+:- mode code_info__generate_pre_commit_saves(out, in, out) is det.
+
+code_info__generate_pre_commit_saves(Code) -->
 	code_info__get_proc_model(CodeModel),
 	( { CodeModel = model_non } ->
 		% the pushes and pops on the det stack below will cause
-		% problems for accurate garbage collection. Hence we 
+		% problems for accurate garbage collection. Hence we
 		% make sure the commit vals are made live, so gc
 		% can figure out what is going on later.
 		code_info__get_module_info(ModuleInfo),
@@ -1654,8 +1609,8 @@ code_info__generate_det_pre_commit(PreCommit) -->
 		{ predicate_name(ModuleInfo, PredId, PredName) },
 		{ string__append("commit in ", PredName, Message) },
 		{ PushCode = node([
-			incr_sp(3, Message) - 
-			"push space for curfr, maxfr, and redoip" 
+			incr_sp(3, Message) -
+				"push space for curfr, maxfr, and redoip"
 		]) },
 		{ CurfrSlot = stackvar(1) },
 		{ MaxfrSlot = stackvar(2) },
@@ -1677,12 +1632,17 @@ code_info__generate_det_pre_commit(PreCommit) -->
 		assign(RedoipSlot, lval(redoip(lval(maxfr)))) -
 				"Save the top redoip"
 	]) },
-	{ PreCommit = tree(PushCode, SaveCode) }.
+	{ Code = tree(PushCode, SaveCode) }.
 
-code_info__generate_det_commit(Commit) -->
+:- pred code_info__undo_pre_commit_saves(code_tree, code_tree,
+	code_tree, code_tree, code_info, code_info).
+:- mode code_info__undo_pre_commit_saves(out, out, out, out, in, out) is det.
+
+code_info__undo_pre_commit_saves(RestoreMaxfr, RestoreRedoip,
+		RestoreCurfr, PopCode) -->
 	code_info__get_proc_model(CodeModel),
 	( { CodeModel = model_non } ->
-		{ PopCode = node([decr_sp(3) - 
+		{ PopCode = node([decr_sp(3) -
 			"pop redoip, maxfr & curfr"]) },
 		{ RedoipSlot = stackvar(3) },
 		{ MaxfrSlot = stackvar(2) },
@@ -1707,10 +1667,7 @@ code_info__generate_det_commit(Commit) -->
 	{ RestoreCurfr = node([
 		assign(curfr, lval(CurfrSlot)) -
 			"Restore nondet frame pointer"
-	]) },
-	{ Commit = tree( RestoreMaxfr,
-		tree(tree(RestoreRedoip, RestoreCurfr), PopCode)
-	) }.
+	]) }.
 
 %---------------------------------------------------------------------------%
 
@@ -1723,7 +1680,7 @@ code_info__push_failure_cont(Cont) -->
 	code_info__set_fall_through(Fall).
 
 code_info__pop_failure_cont -->
-	( 
+	(
 		code_info__get_fall_through(Fall0),
 		{ stack__pop(Fall0, _, Fall) },
 		code_info__set_fall_through(Fall)
@@ -1733,7 +1690,12 @@ code_info__pop_failure_cont -->
 		{ error("code_info__pop_failure_cont: empty stack") }
 	).
 
-code_info__failure_cont(Cont) -->
+	% lookup the value on the top of the failure continuation stack
+
+:- pred code_info__top_failure_cont(failure_cont, code_info, code_info).
+:- mode code_info__top_failure_cont(out, in, out) is det.
+
+code_info__top_failure_cont(Cont) -->
 	code_info__get_fall_through(Fall),
 	(
 		{ stack__top(Fall, Cont0) }
@@ -1748,63 +1710,116 @@ code_info__failure_cont(Cont) -->
 code_info__manufacture_failure_cont(IsNondet) -->
 	{ map__init(Empty) },
 	(
-		{ IsNondet = no }
-	->
+		{ IsNondet = no },
 		code_info__get_next_label(ContLab1),
-		code_info__get_next_label(ContLab2),
 		{ Address1 = label(ContLab1) },
-		{ Address2 = label(ContLab2) }
+		{ ResumeMap = stack_only(Empty, Address1) }
 	;
+		{ IsNondet = yes },
 		{ Address1 = do_fail },
-		{ Address2 = do_fail }
+		{ ResumeMap = stack_only(Empty, Address1) }
 	),
-	code_info__push_failure_cont(failure_cont(known(IsNondet),
-				no, [Empty - Address1, Empty - Address2])).
+	{ FailureCont = failure_cont(known(IsNondet), no, ResumeMap) },
+	code_info__push_failure_cont(FailureCont).
 
-code_info__make_known_failure_cont(Vars, IsNondet, ModContCode) -->
-	code_info__get_next_label(ContLab),
-	code_info__get_next_label(StackLab),
+%---------------------------------------------------------------------------%
+
+code_info__make_known_failure_cont(ResumeVars, ResumeLocs, IsNondet,
+		HaveTempFrame0, HaveTempFrame, ModContCode) -->
+	code_info__get_next_label(OrigLabel),
+	code_info__get_next_label(StackLabel),
+	{ OrigAddr = label(OrigLabel) },
+	{ StackAddr = label(StackLabel) },
 	(
-		{ IsNondet = no }
-	->
 		% In semidet continuations we don't use the redoip
-		{ HijackCode = empty },
-		{ MaybeRedoLab = no }
+		% of the top stack frame.
+
+		{ IsNondet = no },
+		{ TempFrameCode = empty },
+		{ MaybeRedoLabel = no },
+		{ HaveTempFrame = HaveTempFrame0 }
 	;
-		code_info__failure_cont(failure_cont(OrigCont, _, _)),
-		{ OrigCont = unknown }
-	->
-			% efficiency of this code could be improved
-			% ("mkframe()" is a bit of a sledge hammer)
-		code_info__get_next_label(RedoLab),
-		{ MaybeRedoLab = yes(RedoLab) },
-		{ HijackCode =
-			node([
-				mkframe("hijack", 1, label(RedoLab)) -
-					"create a temporary frame",
-				assign(curfr, lval(succfr(lval(maxfr)))) -
-				"restore curfr (which was clobbered by mkframe)"
-			])
-		}
-	;
-		{ MaybeRedoLab = no },
-		{ HijackCode = node([
-			assign(redoip(lval(maxfr)),
-				const(code_addr_const(label(StackLab)))) -
-				"Set failure continuation"
-		]) }
+		% In nondet continuations we may use the redoip
+		% of the top stack frame. Therefore we must ensure
+		% that this redoip is free for use, creating our own
+		% frame if necessary.
+
+		{ IsNondet = yes },
+		code_info__top_failure_cont(FailureCont),
+		{ FailureCont = failure_cont(OrigCont, _, _) },
+		(
+			{ OrigCont = unknown }
+		->
+			code_info__get_next_label(RedoLabel),
+			{ MaybeRedoLabel = yes(RedoLabel) },
+			{ RedoAddr = label(RedoLabel) },
+			(
+				{ HaveTempFrame0 = no }
+			->
+					% this code could be better
+					% (mkframe is a bit of a sledge hammer)
+				{ TempFrameCode = node([
+					mkframe("temp frame", 1, RedoAddr)
+						- "create a temporary frame",
+					assign(curfr, lval(succfr(lval(maxfr))))
+						- "restore curfr after mkframe"
+				]) }
+			;
+				{ TempFrameCode = node([
+					assign(redoip(lval(maxfr)),
+						const(code_addr_const(RedoAddr)))
+						- "Set failure continuation"
+				]) }
+			),
+			{ HaveTempFrame = yes }
+		;
+			{ MaybeRedoLabel = no },
+			{ TempFrameCode = node([
+				assign(redoip(lval(maxfr)),
+					const(code_addr_const(StackAddr))) -
+					"Set failure continuation"
+			]) },
+			{ HaveTempFrame = HaveTempFrame0 }
+		)
 	),
-	{ set__to_sorted_list(Vars, VarList) },
-	code_info__produce_vars(VarList, RegMap, RegCode),
-	code_info__get_stack_slots(StackSlots),
-	{ map__select(StackSlots, Vars, StackMap0) },
-	{ map__to_assoc_list(StackMap0, StackList0) },
-	{ code_info__tweak_stacklist(StackList0, StackList) },
-	{ map__from_assoc_list(StackList, StackMap) },
-	{ ContMap = [RegMap-label(ContLab), StackMap-label(StackLab)] },
+	{ set__to_sorted_list(ResumeVars, VarList) },
+	(
+		{ ResumeLocs = orig_only },
+		code_info__produce_vars(VarList, OrigMap, OrigCode),
+		{ ResumeMaps = orig_only(OrigMap, OrigAddr) }
+	;
+		{ ResumeLocs = stack_only },
+		code_info__produce_vars(VarList, _OrigMap, OrigCode),
+		code_info__get_stack_slots(StackSlots),
+		{ map__select(StackSlots, ResumeVars, StackMap0) },
+		{ map__to_assoc_list(StackMap0, StackList0) },
+		{ code_info__tweak_stacklist(StackList0, StackList) },
+		{ map__from_assoc_list(StackList, StackMap) },
+		{ ResumeMaps = stack_only(StackMap, StackAddr) }
+	;
+		{ ResumeLocs = orig_and_stack },
+		code_info__produce_vars(VarList, OrigMap, OrigCode),
+		code_info__get_stack_slots(StackSlots),
+		{ map__select(StackSlots, ResumeVars, StackMap0) },
+		{ map__to_assoc_list(StackMap0, StackList0) },
+		{ code_info__tweak_stacklist(StackList0, StackList) },
+		{ map__from_assoc_list(StackList, StackMap) },
+		{ ResumeMaps = orig_and_stack(OrigMap, OrigAddr,
+			StackMap, StackAddr) }
+	;
+		{ ResumeLocs = stack_and_orig },
+		code_info__produce_vars(VarList, OrigMap, OrigCode),
+		code_info__get_stack_slots(StackSlots),
+		{ map__select(StackSlots, ResumeVars, StackMap0) },
+		{ map__to_assoc_list(StackMap0, StackList0) },
+		{ code_info__tweak_stacklist(StackList0, StackList) },
+		{ map__from_assoc_list(StackList, StackMap) },
+		{ ResumeMaps = stack_and_orig(StackMap, StackAddr,
+			OrigMap, OrigAddr) }
+	),
 	code_info__push_failure_cont(
-		failure_cont(known(IsNondet), MaybeRedoLab, ContMap)),
-	{ ModContCode = tree(RegCode, HijackCode) }.
+		failure_cont(known(IsNondet), MaybeRedoLabel, ResumeMaps)),
+	{ ModContCode = tree(OrigCode, TempFrameCode) }.
 
 %---------------------------------------------------------------------------%
 
@@ -1816,6 +1831,7 @@ code_info__produce_vars([], Map, empty) -->
 	{ map__init(Map) }.
 code_info__produce_vars([V | Vs], Map, Code) -->
 	code_info__produce_vars(Vs, Map0, Code0),
+		% XXX should use follow_vars to decide whether to put into reg
 	code_info__produce_variable_in_reg_or_stack(V, Code1, Rval),
 	{ set__singleton_set(Rvals, Rval) },
 	{ map__set(Map0, V, Rvals, Map) },
@@ -1834,134 +1850,148 @@ code_info__tweak_stacklist([V-L | Rest0], [V-Rs | Rest]) :-
 
 %---------------------------------------------------------------------------%
 
-code_info__unset_failure_cont -->
-	code_info__failure_cont(
-		failure_cont(_OrigCont, MaybeRedoLabel, FailureMap)),
+code_info__unset_failure_cont(Code) -->
+	code_info__flush_resume_vars_to_stack(Code),
+	code_info__top_failure_cont(FailureCont0),
+	{ FailureCont0 = failure_cont(_, MaybeRedoLabel, FailureMap) },
 	code_info__pop_failure_cont,
-	code_info__push_failure_cont(
-		failure_cont(unknown, MaybeRedoLabel, FailureMap)).
+	{ FailureCont = failure_cont(unknown, MaybeRedoLabel, FailureMap) },
+	code_info__push_failure_cont(FailureCont).
+
+code_info__flush_resume_vars_to_stack(Code) -->
+	code_info__top_failure_cont(FailureCont0),
+	{ FailureCont0 = failure_cont(_, _, FailureMap) },
+	{ code_info__pick_stack_resume_point(FailureMap, StackMap, _) },
+	{ map__to_assoc_list(StackMap, StackLocs) },
+	code_info__place_resume_vars(StackLocs, Code).
 
 %---------------------------------------------------------------------------%
 
-:- pred code_info__relabel_failure_cont(failure_map, failure_map,
+:- pred code_info__clone_failure_cont(resume_maps, resume_maps,
 					code_info, code_info).
-:- mode code_info__relabel_failure_cont(in, out, in, out) is det.
+:- mode code_info__clone_failure_cont(in, out, in, out) is det.
 
-code_info__relabel_failure_cont([], []) --> [].
-code_info__relabel_failure_cont([Map - _ | Rest0], [Map - L | Rest]) -->
-	code_info__get_next_label(L0),
-	{ L = label(L0) },
-	code_info__relabel_failure_cont(Rest0, Rest).
+code_info__clone_failure_cont(ResumeMaps0, ResumeMaps) -->
+	(
+		{ ResumeMaps0 = orig_only(Map1, _) },
+		code_info__get_next_label(Label1),
+		{ Addr1 = label(Label1) },
+		{ ResumeMaps = orig_only(Map1, Addr1) }
+	;
+		{ ResumeMaps0 = stack_only(Map1, _) },
+		code_info__get_next_label(Label1),
+		{ Addr1 = label(Label1) },
+		{ ResumeMaps = stack_only(Map1, Addr1) }
+	;
+		{ ResumeMaps0 = stack_and_orig(Map1, _, Map2, _) },
+		code_info__get_next_label(Label1),
+		{ Addr1 = label(Label1) },
+		code_info__get_next_label(Label2),
+		{ Addr2 = label(Label2) },
+		{ ResumeMaps = stack_and_orig(Map1, Addr1, Map2, Addr2) }
+	;
+		{ ResumeMaps0 = orig_and_stack(Map1, _, Map2, _) },
+		code_info__get_next_label(Label1),
+		{ Addr1 = label(Label1) },
+		code_info__get_next_label(Label2),
+		{ Addr2 = label(Label2) },
+		{ ResumeMaps = orig_and_stack(Map1, Addr1, Map2, Addr2) }
+	).
 
 %---------------------------------------------------------------------------%
 
-code_info__modify_failure_cont(ModifyCode) -->
-	code_info__failure_cont(failure_cont(OldCont, MaybeRedo0, FailureMap)),
-	code_info__generate_failure_cont(FailureMap, FailureCode),
-	code_info__pop_failure_cont,
-	code_info__get_next_label(NewRegCont),
-	code_info__get_next_label(NewStackCont),
-	(
-		{ OldCont = unknown ; OldCont = known(yes) }
-	->
-		{ NewCont = known(yes) },
-		( { MaybeRedo0 = yes(_OldRedo) } ->
-			code_info__get_next_label(NewRedoCont),
-			{ MaybeRedo = yes(NewRedoCont) }
-		;
-			{ NewRedoCont = NewStackCont },
-			{ MaybeRedo = no }
-		),
-		{ ResetCode = node([
-			assign(redoip(lval(maxfr)),
-				const(code_addr_const(label(NewRedoCont)))) -
-				"modify failure cont"
-		]) }
-	;
-		{ error("code_info__modify_failure_cont: semidet context") }
-		% { NewCont = known(no) },
-		% { ResetCode = empty },
-		% { MaybeRedo = no }
-	),
-	(
-		{ FailureMap = [RegMap - _RegCont, StackMap - _StackCont] }
-	->
-		code_info__push_failure_cont(failure_cont(NewCont, MaybeRedo,
-			[RegMap - label(NewRegCont),
-			StackMap - label(NewStackCont)]))
-	;
-		{ error("code_info__modify_failure_cont: bad failure map.") }
-	),
-	{ ModifyCode = tree(FailureCode, ResetCode) }.
+% :- pred code_info__modify_failure_cont(code_tree, code_info, code_info).
+% :- mode code_info__modify_failure_cont(out, in, out) is det.
+% 
+% code_info__modify_failure_cont(ModifyCode) -->
+% 	code_info__top_failure_cont(FailureCont),
+% 	{ FailureCont = failure_cont(OldCont, MaybeRedo0, FailureMap) },
+% 	code_info__generate_failure_cont(FailureCont, FailureCode),
+% 	code_info__pop_failure_cont,
+% 	code_info__get_next_label(NewRegCont),
+% 	code_info__get_next_label(NewStackCont),
+% 	(
+% 		{ OldCont = unknown ; OldCont = known(yes) }
+% 	->
+% 		{ NewCont = known(yes) },
+% 		( { MaybeRedo0 = yes(_OldRedo) } ->
+% 			code_info__get_next_label(NewRedoCont),
+% 			{ MaybeRedo = yes(NewRedoCont) }
+% 		;
+% 			{ NewRedoCont = NewStackCont },
+% 			{ MaybeRedo = no }
+% 		),
+% 		{ ResetCode = node([
+% 			assign(redoip(lval(maxfr)),
+% 				const(code_addr_const(label(NewRedoCont)))) -
+% 				"modify failure cont"
+% 		]) }
+% 	;
+% 		{ error("code_info__modify_failure_cont: semidet context") }
+% 		% { NewCont = known(no) },
+% 		% { ResetCode = empty },
+% 		% { MaybeRedo = no }
+% 	),
+% 	(
+% 		{ FailureMap = [RegMap - _RegCont, StackMap - _StackCont] }
+% 	->
+% 		code_info__push_failure_cont(failure_cont(NewCont, MaybeRedo,
+% 			[RegMap - label(NewRegCont),
+% 			StackMap - label(NewStackCont)]))
+% 	;
+% 		{ error("code_info__modify_failure_cont: bad failure map.") }
+% 	),
+% 	{ ModifyCode = tree(FailureCode, ResetCode) }.
 
 	% XXX rewrite this to fit on one screeen
 code_info__restore_failure_cont(Code) -->
-	code_info__failure_cont(failure_cont(CurrentCont, _Redo1, FailureMap)),
-	code_info__generate_failure_cont(FailureMap, FailureCode),
+	code_info__top_failure_cont(CurFailureCont),
+	{ CurFailureCont = failure_cont(CurrentCont, _Redo1, _FailureMap) },
+	code_info__generate_failure_cont(CurFailureCont, FailureCode),
 	code_info__pop_failure_cont,
 		% Fixup the redoip of the top frame if necessary
 	(
 		{ CurrentCont = known(no) }
 	->
-		{ RestoreCode = empty },
 		{ ResetCode = empty }
 	;
 		% { CurrentCont = known(yes)  ; CurrentCont = unknown }
-		{ RestoreCode = empty },
-		code_info__failure_cont(failure_cont(NewCont, MaybeRedoLab,
-					NewFailureMap)),
-		(
-			{ NewCont = unknown },
-			{ ResetCode = node([
+		code_info__top_failure_cont(NewFailureCont),
+		{ NewFailureCont = failure_cont(NewCont, _, _) },
+		{
+			NewCont = unknown,
+			ResetCode = node([
 				assign(redoip(lval(maxfr)),
 					const(code_addr_const(do_fail))) -
 					"restore failure cont"
-			]) }
+			])
 		;
-			{ NewCont = known(NondetCont) },
+			NewCont = known(NondetCont),
 			(
-				{ NondetCont = no },
-				{ ResetCode = empty }
+				NondetCont = no,
+				ResetCode = empty
 			;
-				{ NondetCont = yes },
-				(
-					{ MaybeRedoLab = yes(RedoLab) }
-				->
-					{ NewRedoAddress = label(RedoLab) }
-				;
-					{ NewFailureMap = [_, _Map - Cont] }
-				->
-					{ NewRedoAddress = Cont }
-				;
-					{ error("code_info__restore_failure_cont: no valid failure-map") }
-				),
-				{ ResetCode = node([
+				NondetCont = yes,
+				code_info__find_first_resume_label(
+					NewFailureCont, NewRedoAddress),
+				ResetCode = node([
 					assign(redoip(lval(maxfr)),
 					const(code_addr_const(NewRedoAddress)))
 						- "restore failure cont"
-				]) }
+				])
 			)
-		)
+		}
 	),
-	{ Code = tree(FailureCode, tree(RestoreCode, ResetCode)) }.
+	{ Code = tree(FailureCode, ResetCode) }.
 
 %---------------------------------------------------------------------------%
 
 code_info__do_soft_cut(TheFrame, Code) -->
-	code_info__failure_cont(failure_cont(ContType, MaybeRedo, FailMap)),
+	code_info__top_failure_cont(FailureCont),
+	{ FailureCont = failure_cont(ContType, _, _) },
 	(
 		{ ContType = known(_) },
-		(
-			{ MaybeRedo = yes(RedoLab) }
-		->
-			{ Address = label(RedoLab) }
-		;
-			{ FailMap = [_, _Places - StackLab] }
-		->
-			{ Address = StackLab }
-		;
-			{ error("code_info__do_soft_cut: invalid failmap") }
-		)
+		{ code_info__find_first_resume_label(FailureCont, Address) }
 	;
 			% If the newly uncovered cont is unknown then
 			% we must have created a new frame before the
@@ -1977,63 +2007,154 @@ code_info__do_soft_cut(TheFrame, Code) -->
 
 %---------------------------------------------------------------------------%
 
-:- pred code_info__generate_failure_cont(failure_map,
-					code_tree, code_info, code_info).
+	% Find the first label that will be generated for the
+	% given failure continuation based on the scheme used by
+	% code_info__generate_failure_cont.
+
+:- pred code_info__find_first_resume_label(failure_cont, code_addr).
+:- mode code_info__find_first_resume_label(in, out) is det.
+
+code_info__find_first_resume_label(FailureCont, Address) :-
+	FailureCont = failure_cont(_, MaybeRedoLabel, FailMap),
+	(
+		MaybeRedoLabel = yes(RedoLabel)
+	->
+		Address = label(RedoLabel)
+	;
+		code_info__pick_first_resume_point(FailMap, _, Address)
+	).
+
+%---------------------------------------------------------------------------%
+
+	% In establishing this resumption point, we may have pushed
+	% a temporary frame onto the nondet stack. If we have done so,
+	% we will have recorded this fact by setting the second argument
+	% of the top failure continuation to yes, with the argument of
+	% the yes giving the name of the label whose address was put
+	% into the redoip slot of that frame.
+	%
+	% When control arrives at that label, curfr will point to the
+	% temporary frame. However, the variables needed by the code
+	% at the resumption point are in the main nondet frame of the
+	% procedure. Since this was the current frame when we created
+	% the temporary frame, we can find it by following the succfr
+	% link in the temporary frame.
+	%
+	% The code we generate in general is
+	%
+	% label(RedoLabel)
+	% <reset curfr>
+	% label(StackLabel)
+	% <assume variables are where StackMap says they are>
+	% <copy variables to their locations according to OrigMap>
+	% label(OrigLabel)
+	% <assume variables are where OrigMap says they are>
+	%
+	% If, in establishing this resumption point, we did not create
+	% a temporary frame, then curfr will be OK when code to the right
+	% does a fail(), and hence the first label and the resetting of
+	% the curfr register can be omitted.
+	%
+	% Failures at different points may cause control to arrive at
+	% the resumption point via any one of these each labels.
+	% The last line above is necessary since it may arrive at OrigLabel
+	% without going through StackLabel first.
+	%
+	% The first two lines above are generated in this predicate;
+	% the others are generated in code_info__generate_resume_setup.
+	% It may not generate some of these other lines if it knows that
+	% they won't be needed.
+
+:- pred code_info__generate_failure_cont(failure_cont, code_tree,
+	code_info, code_info).
 :- mode code_info__generate_failure_cont(in, out, in, out) is det.
 
-code_info__generate_failure_cont(FailMap, Code) -->
-	code_info__failure_cont(FailureCont),
-	{ FailureCont = failure_cont(_CurrentCont, MaybeRedo, _FailureMap) },
+code_info__generate_failure_cont(FailureCont, Code) -->
+	{ FailureCont = failure_cont(_CurrentCont, MaybeRedo, ResumeMap) },
 
-		% did we create a temp nondet frame?
-		% if so, we need to create a redo() continuation, 
-		% which restores curfr before continuing
-	(
-		{ MaybeRedo = yes(RedoLab) }
+		% Did we create a temp nondet frame for this continuation?
+		% If not, then curfr will be right when we arrive here.
+		% If yes, it will be wrong, pointing to the temp frame,
+		% so we must restore curfr before continuing.
+	{
+		MaybeRedo = yes(RedoLabel)
 	->
-		{ FixCurFrCode = 
-			node([
-				label(RedoLab) - "redo entry point",
-				assign(curfr, lval(succfr(lval(maxfr)))) -
-					"restore curfr"
-			])
-		}
+		FixCurFrCode = node([
+			label(RedoLabel) -
+				"redo entry point",
+			assign(curfr, lval(succfr(lval(maxfr)))) -
+				"restore curfr"
+		]),
+		(
+			( ResumeMap = orig_only(_, _)
+			; ResumeMap = orig_and_stack(_, _, _, _)
+			)
+		->
+			error("redo entry before an orig resume point")
+		;
+			true
+		)
 	;
-		{ FixCurFrCode = empty }
-	),
-	code_info__generate_failure_continuation(FailMap, Code0),
-	{ Code = tree(FixCurFrCode, Code0) }.
+		FixCurFrCode = empty
+	},
+	code_info__generate_resume_setup(ResumeMap, ResumeCode),
+	{ Code = tree(FixCurFrCode, ResumeCode) }.
 
-:- pred code_info__generate_failure_continuation(failure_map, code_tree,
+:- pred code_info__generate_resume_setup(resume_maps, code_tree,
 	code_info, code_info).
-:- mode code_info__generate_failure_continuation(in, out, in, out) is det.
+:- mode code_info__generate_resume_setup(in, out, in, out) is det.
 
-code_info__generate_failure_continuation(Cs, Code) -->
+code_info__generate_resume_setup(ResumeMaps, Code) -->
 	(
-		{ Cs = [] },
-		{ error("code_info__generate_failure_continuation: |map| = 0") }
-	;
-		{ Cs = [C1] },
-		{ C1 = Map1 - CodeAddr1 },
-		{ extract_label_from_code_addr(CodeAddr1, Label1) },
-		{ Code = node([label(Label1) - "Failure Continuation" ]) },
+		{ ResumeMaps = orig_only(Map1, Addr1) },
+		{ extract_label_from_code_addr(Addr1, Label1) },
+		{ Code = node([
+			label(Label1) -
+				"orig only failure continuation"
+		]) },
 		code_info__set_var_locations(Map1)
 	;
-		{ Cs = [C1, C2] },
-		{ C1 = Map1 - CodeAddr1 },
-		{ C2 = Map2 - CodeAddr2 },
-		{ extract_label_from_code_addr(CodeAddr1, Label1) },
-		{ extract_label_from_code_addr(CodeAddr2, Label2) },
-		{ Entry = node([label(Label2) - "fail continuation entry" ]) },
-		code_info__set_var_locations(Map2),
-		{ map__to_assoc_list(Map1, AssocList1) },
-		code_info__place_resume_vars(AssocList1, PlaceCode),
-		{ Exit = node([label(Label1) - "fail continuation exit" ]) },
-		code_info__set_var_locations(Map1),
-		{ Code = tree(Entry, tree(PlaceCode, Exit)) }
+		{ ResumeMaps = stack_only(Map1, Addr1) },
+		{ extract_label_from_code_addr(Addr1, Label1) },
+		{ Code = node([
+			label(Label1) -
+				"stack only failure continuation"
+		]) },
+		code_info__set_var_locations(Map1)
 	;
-		{ Cs = [_, _, _ | _] },
-		{ error("code_info__generate_failure_continuation: |map| > 2") }
+		{ ResumeMaps = stack_and_orig(Map1, Addr1, Map2, Addr2) },
+		{ extract_label_from_code_addr(Addr1, Label1) },
+		{ extract_label_from_code_addr(Addr2, Label2) },
+		{ Label1Code = node([
+			label(Label1) -
+				"stack failure continuation before orig"
+		]) },
+		code_info__set_var_locations(Map1),
+		{ map__to_assoc_list(Map2, AssocList2) },
+		code_info__place_resume_vars(AssocList2, PlaceCode),
+		{ Label2Code = node([
+			label(Label2) -
+				"orig failure continuation after stack"
+		]) },
+		code_info__set_var_locations(Map2),
+		{ Code = tree(Label1Code, tree(PlaceCode, Label2Code)) }
+	;
+		{ ResumeMaps = orig_and_stack(Map1, Addr1, Map2, Addr2) },
+		{ extract_label_from_code_addr(Addr1, Label1) },
+		{ extract_label_from_code_addr(Addr2, Label2) },
+		{ Label1Code = node([
+			label(Label1) -
+				"orig failure continuation before stack"
+		]) },
+		code_info__set_var_locations(Map1),
+		{ map__to_assoc_list(Map2, AssocList2) },
+		code_info__place_resume_vars(AssocList2, PlaceCode),
+		{ Label2Code = node([
+			label(Label2) -
+				"stack failure continuation after orig"
+		]) },
+		code_info__set_var_locations(Map2),
+		{ Code = tree(Label1Code, tree(PlaceCode, Label2Code)) }
 	).
 
 :- pred extract_label_from_code_addr(code_addr, label).
@@ -2043,7 +2164,7 @@ extract_label_from_code_addr(CodeAddr, Label) :-
 	( CodeAddr = label(Label0) ->
 		Label = Label0
 	;
-		error("code_info__generate_failure_continuation: non-label!")
+		error("code_info__generate_resume_setup: non-label!")
 	).
 
 :- pred code_info__place_resume_vars(assoc_list(var, set(rval)), code_tree,
@@ -2073,6 +2194,20 @@ code_info__place_resume_var(Var, [Target | Targets], Code) -->
 
 %---------------------------------------------------------------------------%
 
+code_info__may_use_nondet_tailcall(MayTailCall) -->
+	code_info__top_failure_cont(FailureCont),
+	{ FailureCont = failure_cont(IsKnown, _, FailureMap) },
+	(
+		{ IsKnown = known(_) },
+		{ FailureMap = stack_only(_, do_fail) }
+	->
+		{ MayTailCall = yes }
+	;
+		{ MayTailCall = no }
+	).
+
+%---------------------------------------------------------------------------%
+
 :- pred code_info__lval_member(lval, list(rval)).
 :- mode code_info__lval_member(out, in) is semidet.
 
@@ -2086,6 +2221,10 @@ code_info__lval_member(Lval, [X | Xs]) :-
 	).
 
 %---------------------------------------------------------------------------%
+
+	% Reset the the code generator's database of what is where.
+	% Remember that the variables in the map are available in their
+	% associated rvals; forget about all other variables.
 
 :- pred code_info__set_var_locations(map(var, set(rval)), code_info, code_info).
 :- mode code_info__set_var_locations(in, in, out) is det.
@@ -2142,7 +2281,7 @@ code_info__generate_stack_livevals_2([V | Vs], Vals0, Vals) -->
 	{ set__insert(Vals0, Slot, Vals1) },
 	code_info__generate_stack_livevals_2(Vs, Vals1, Vals).
 
-:- pred code_info__generate_stack_livevals_3(stack(pair(lval, lval_or_ticket)), 
+:- pred code_info__generate_stack_livevals_3(stack(pair(lval, lval_or_ticket)),
 					set(lval), set(lval)).
 :- mode code_info__generate_stack_livevals_3(in, in, out) is det.
 
@@ -2171,18 +2310,18 @@ code_info__generate_stack_livelvals(Args, LiveVals) -->
 	{ set__list_to_set(LiveVars, Vars0) },
 	{ set__difference(Vars0, Args, Vars) },
 	{ set__to_sorted_list(Vars, VarList) },
-        { set__init(LiveVals0) },
-        code_info__generate_stack_livelvals_2(VarList, LiveVals0, LiveVals1),
+	{ set__init(LiveVals0) },
+	code_info__generate_stack_livelvals_2(VarList, LiveVals0, LiveVals1),
 	{ set__to_sorted_list(LiveVals1, LiveVals2) },
 	code_info__get_globals(Globals),
 	{ globals__get_gc_method(Globals, GC_Method) },
 	code_info__livevals_to_livelvals(LiveVals2, LiveVals3, GC_Method),
-        code_info__get_pushed_values(Pushed0),
+	code_info__get_pushed_values(Pushed0),
 	code_info__get_commit_vals(CommitVals),
 	{ stack__push_list(Pushed0, CommitVals, Pushed) },
-        { code_info__generate_stack_livelvals_3(Pushed, LiveVals3, LiveVals) }.
+	{ code_info__generate_stack_livelvals_3(Pushed, LiveVals3, LiveVals) }.
 
-:- pred code_info__generate_stack_livelvals_2(list(var), 
+:- pred code_info__generate_stack_livelvals_2(list(var),
 					set(pair(lval, var)),
 					set(pair(lval, var)),
 					code_info, code_info).
@@ -2215,11 +2354,11 @@ code_info__generate_stack_livelvals_3(Stack0, LiveInfo0, LiveInfo) :-
 code_info__get_shape_num(lval(succip), succip).
 code_info__get_shape_num(lval(hp), hp).
 code_info__get_shape_num(lval(maxfr), maxfr).
-code_info__get_shape_num(lval(curfr), curfr).	
-code_info__get_shape_num(lval(succfr(_)), succfr).	
-code_info__get_shape_num(lval(prevfr(_)), prevfr).	
-code_info__get_shape_num(lval(redoip(_)), redoip). 
-code_info__get_shape_num(lval(succip(_)), succip). 
+code_info__get_shape_num(lval(curfr), curfr).
+code_info__get_shape_num(lval(succfr(_)), succfr).
+code_info__get_shape_num(lval(prevfr(_)), prevfr).
+code_info__get_shape_num(lval(redoip(_)), redoip).
+code_info__get_shape_num(lval(succip(_)), succip).
 code_info__get_shape_num(lval(sp), sp).
 code_info__get_shape_num(lval(lvar(_)), unwanted).
 code_info__get_shape_num(lval(field(_, _, _)), unwanted).
@@ -2234,9 +2373,9 @@ code_info__get_shape_num(ticket, ticket).
 :- mode code_info__livevals_to_livelvals(in, out, in, in, out) is det.
 
 code_info__livevals_to_livelvals([], [], _GC_Method, C, C).
-code_info__livevals_to_livelvals([L - V | Ls], 
+code_info__livevals_to_livelvals([L - V | Ls],
 		[live_lvalue(L, num(S_Num), TypeParams) | Lives], GC_Method) -->
-	( 
+	(
 		{ GC_Method = accurate }
 	->
 		code_info__get_module_info(ModuleInfo),
@@ -2246,7 +2385,7 @@ code_info__livevals_to_livelvals([L - V | Ls],
 
 		% XXX We don't yet support partial insts when allocating
 		% XXX shapes, so pass ground(shared, no) as a placeholder.
-		{ shapes__request_shape_number(Type - ground(shared, no), 
+		{ shapes__request_shape_number(Type - ground(shared, no),
 			Type_Table, S_Tab0, S_Tab1, S_Num) },
 		{ type_util__vars(Type, TypeVars) },
 		(
@@ -2312,13 +2451,19 @@ code_info__variable_type(Var, Type) -->
 :- pred code_info__set_max_push_count(int, code_info, code_info).
 :- mode code_info__set_max_push_count(in, in, out) is det.
 
-:- pred code_info__get_pushed_values(stack(pair(lval, lval_or_ticket)), 
+:- pred code_info__get_pushed_values(stack(pair(lval, lval_or_ticket)),
 	code_info, code_info).
 :- mode code_info__get_pushed_values(out, in, out) is det.
 
-:- pred code_info__set_pushed_values(stack(pair(lval, lval_or_ticket)), 
+:- pred code_info__set_pushed_values(stack(pair(lval, lval_or_ticket)),
 	code_info, code_info).
 :- mode code_info__set_pushed_values(in, in, out) is det.
+
+:- pred code_info__get_zombies(set(var), code_info, code_info).
+:- mode code_info__get_zombies(out, in, out) is det.
+
+:- pred code_info__set_zombies(set(var), code_info, code_info).
+:- mode code_info__set_zombies(in, in, out) is det.
 
 :- pred code_info__get_resume_point_stack(stack(set(var)),
 	code_info, code_info).
@@ -2328,101 +2473,105 @@ code_info__variable_type(Var, Type) -->
 	code_info, code_info).
 :- mode code_info__set_resume_point_stack(in, in, out) is det.
 
-:- pred code_info__get_commit_vals(list(pair(lval, lval_or_ticket)), 
+:- pred code_info__get_commit_vals(list(pair(lval, lval_or_ticket)),
 	code_info, code_info).
 :- mode code_info__get_commit_vals(out, in, out) is det.
 
-:- pred code_info__set_commit_vals(list(pair(lval, lval_or_ticket)), 
+:- pred code_info__set_commit_vals(list(pair(lval, lval_or_ticket)),
 	code_info, code_info).
 :- mode code_info__set_commit_vals(in, in, out) is det.
 
 code_info__get_stackslot_count(A, CI, CI) :-
 	CI = code_info(A, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
-		_, _, _).
+		_, _, _, _).
 
 code_info__get_label_count(B, CI, CI) :-
 	CI = code_info(_, B, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
-		_, _, _).
+		_, _, _, _).
 
 code_info__get_varset(C, CI, CI) :-
 	CI = code_info(_, _, C, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
-		_, _, _).
+		_, _, _, _).
 
 code_info__get_stack_slots(D, CI, CI) :-
 	CI = code_info(_, _, _, D, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
-		_, _, _).
+		_, _, _, _).
 
 code_info__get_pred_id(E, CI, CI) :-
 	CI = code_info(_, _, _, _, E, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
-		_, _, _).
+		_, _, _, _).
 
 code_info__get_proc_id(F, CI, CI) :-
 	CI = code_info(_, _, _, _, _, F, _, _, _, _, _, _, _, _, _, _, _, _, _,
-		_, _, _).
+		_, _, _, _).
 
 code_info__get_cell_count(G, CI, CI) :-
 	CI = code_info(_, _, _, _, _, _, G, _, _, _, _, _, _, _, _, _, _, _, _,
-		_, _, _).
+		_, _, _, _).
 
 code_info__get_exprn_info(H, CI, CI) :-
 	CI = code_info(_, _, _, _, _, _, _, H, _, _, _, _, _, _, _, _, _, _, _,
-		_, _, _).
+		_, _, _, _).
 
 code_info__get_proc_info(I, CI, CI) :-
 	CI = code_info(_, _, _, _, _, _, _, _, I, _, _, _, _, _, _, _, _, _, _,
-		_, _, _).
+		_, _, _, _).
 
 code_info__get_succip_used(J, CI, CI) :-
 	CI = code_info(_, _, _, _, _, _, _, _, _, J, _, _, _, _, _, _, _, _, _,
-		_, _, _).
+		_, _, _, _).
 
 code_info__get_fall_through(K, CI, CI) :-
 	CI = code_info(_, _, _, _, _, _, _, _, _, _, K, _, _, _, _, _, _, _, _,
-		_, _, _).
+		_, _, _, _).
 
 code_info__get_module_info(L, CI, CI) :-
 	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, L, _, _, _, _, _, _, _,
-		_, _, _).
+		_, _, _, _).
 
 code_info__get_liveness_info(M, CI, CI) :-
 	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, M, _, _, _, _, _, _,
-		_, _, _).
+		_, _, _, _).
 
 code_info__get_instmap(N, CI, CI) :-
 	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, _, N, _, _, _, _, _,
-		_, _, _).
+		_, _, _, _).
 
 code_info__get_push_count(O, CI, CI) :-
 	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, _, _, O, _, _, _, _,
-		_, _, _).
+		_, _, _, _).
 
 code_info__get_max_push_count(P, CI, CI) :-
 	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, P, _, _, _,
-		_, _, _).
+		_, _, _, _).
 
 code_info__get_globals(Q, CI, CI) :-
 	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, Q, _, _,
-		_, _, _).
+		_, _, _, _).
 
 code_info__get_pushed_values(R, CI, CI) :-
 	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, R, _,
-		_, _, _).
+		_, _, _, _).
 
 code_info__get_shapes(S, CI, CI) :-
 	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, S,
-		_, _, _).
+		_, _, _, _).
 
 code_info__get_nondet_lives(T, CI, CI) :-
 	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
-		T, _, _).
+		T, _, _, _).
 
-code_info__get_resume_point_stack(U, CI, CI) :-
+code_info__get_zombies(U, CI, CI) :-
 	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
-		_, U, _).
+		_, U, _, _).
 
-code_info__get_commit_vals(V, CI, CI) :-
+code_info__get_resume_point_stack(V, CI, CI) :-
 	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
-		_, _, V).
+		_, _, V, _).
+
+code_info__get_commit_vals(W, CI, CI) :-
+	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
+		_, _, _, W).
 
 % :- type code_info	--->
 % 		code_info(
@@ -2464,7 +2613,10 @@ code_info__get_commit_vals(V, CI, CI) :-
 % 	T		set(var),	% Variables that are not quite live
 % 					% but are only nondet-live (so that
 % 					% we make sure we save them).
-% 	U		stack(set(var)),
+% 	U		set(var),	% Zombie variables; variables that have
+% 					% been killed but are protected by a
+% 					% resume point.
+% 	V		stack(set(var)),
 % 					% Each resumption point has an
 % 					% associated set of variables
 % 					% whose values may be needed on
@@ -2476,7 +2628,7 @@ code_info__get_commit_vals(V, CI, CI) :-
 % 					% When a variable included in the top
 % 					% set becomes no longer forward live,
 % 					% we must save its value to the stack.
-% 	V		list(pair(lval, lval_or_ticket))
+% 	W		list(pair(lval, lval_or_ticket))
 % 					% A list of lvalues (ie curfr, maxfr
 % 					% and redoip) that get saved onto the
 % 					% det stack even though the current
@@ -2489,57 +2641,57 @@ code_info__get_commit_vals(V, CI, CI) :-
 
 code_info__set_label_count(B, CI0, CI) :-
 	CI0 = code_info(A, _, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
-		R, S, T, U, V),
+		R, S, T, U, V, W),
 	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
-		R, S, T, U, V).
+		R, S, T, U, V, W).
 
 code_info__set_varset(C, CI0, CI) :-
 	CI0 = code_info(A, B, _, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
-		R, S, T, U, V),
+		R, S, T, U, V, W),
 	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
-		R, S, T, U, V).
+		R, S, T, U, V, W).
 
 code_info__set_stack_slots(D, CI0, CI) :-
 	CI0 = code_info(A, B, C, _, E, F, G, H, I, J, K, L, M, N, O, P, Q,
-		R, S, T, U, V),
+		R, S, T, U, V, W),
 	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
-		R, S, T, U, V).
+		R, S, T, U, V, W).
 
 code_info__set_pred_id(E, CI0, CI) :-
 	CI0 = code_info(A, B, C, D, _, F, G, H, I, J, K, L, M, N, O, P, Q,
-		R, S, T, U, V),
+		R, S, T, U, V, W),
 	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
-		R, S, T, U, V).
+		R, S, T, U, V, W).
 
 code_info__set_proc_id(F, CI0, CI) :-
 	CI0 = code_info(A, B, C, D, E, _, G, H, I, J, K, L, M, N, O, P, Q,
-		R, S, T, U, V),
+		R, S, T, U, V, W),
 	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
-		R, S, T, U, V).
+		R, S, T, U, V, W).
 
 code_info__set_cell_count(G, CI0, CI) :-
 	CI0 = code_info(A, B, C, D, E, F, _, H, I, J, K, L, M, N, O, P, Q,
-		R, S, T, U, V),
+		R, S, T, U, V, W),
 	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
-		R, S, T, U, V).
+		R, S, T, U, V, W).
 
 code_info__set_exprn_info(H, CI0, CI) :-
 	CI0 = code_info(A, B, C, D, E, F, G, _, I, J, K, L, M, N, O, P, Q,
-		R, S, T, U, V),
+		R, S, T, U, V, W),
 	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
-		R, S, T, U, V).
+		R, S, T, U, V, W).
 
 code_info__set_succip_used(J, CI0, CI) :-
 	CI0 = code_info(A, B, C, D, E, F, G, H, I, _, K, L, M, N, O, P, Q,
-		R, S, T, U, V),
+		R, S, T, U, V, W),
 	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
-		R, S, T, U, V).
+		R, S, T, U, V, W).
 
 code_info__set_fall_through(K, CI0, CI) :-
 	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, _, L, M, N, O, P, Q,
-		R, S, T, U, V),
+		R, S, T, U, V, W),
 	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
-		R, S, T, U, V).
+		R, S, T, U, V, W).
 
 % It is a bad idea to allow the code generator to modify module_info
 % in arbitrary ways.
@@ -2547,64 +2699,70 @@ code_info__set_fall_through(K, CI0, CI) :-
 
 code_info__set_liveness_info(M, CI0, CI) :-
 	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, _, N, O, P, Q,
-		R, S, T, U, V),
+		R, S, T, U, V, W),
 	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
-		R, S, T, U, V).
+		R, S, T, U, V, W).
 
 code_info__set_instmap(N, CI0, CI) :-
 	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, _, O, P, Q,
-		R, S, T, U, V),
+		R, S, T, U, V, W),
 	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
-		R, S, T, U, V).
+		R, S, T, U, V, W).
 
 code_info__set_push_count(O, CI0, CI) :-
 	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, _, P0, Q,
-		R, S, T, U, V),
+		R, S, T, U, V, W),
 	int__max(P0, O, P),
 	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
-		R, S, T, U, V).
+		R, S, T, U, V, W).
 
 code_info__set_max_push_count(P, CI0, CI) :-
 	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, _, Q,
-		R, S, T, U, V),
+		R, S, T, U, V, W),
 	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
-		R, S, T, U, V).
+		R, S, T, U, V, W).
 
 code_info__set_globals(Q, CI0, CI) :-
 	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, _,
-		R, S, T, U, V),
+		R, S, T, U, V, W),
 	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
-		R, S, T, U, V).
+		R, S, T, U, V, W).
 
 code_info__set_pushed_values(R, CI0, CI) :-
 	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
-		_, S, T, U, V),
+		_, S, T, U, V, W),
 	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
-		R, S, T, U, V).
+		R, S, T, U, V, W).
 
 code_info__set_shapes(S, CI0, CI) :-
 	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
-		R, _, T, U, V),
+		R, _, T, U, V, W),
 	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
-		R, S, T, U, V).
+		R, S, T, U, V, W).
 
 code_info__set_nondet_lives(T, CI0, CI) :-
 	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
-		R, S, _, U, V),
+		R, S, _, U, V, W),
 	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
-		R, S, T, U, V).
+		R, S, T, U, V, W).
 
-code_info__set_resume_point_stack(U, CI0, CI) :-
+code_info__set_zombies(U, CI0, CI) :-
 	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
-		R, S, T, _, V),
+		R, S, T, _, V, W),
 	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
-		R, S, T, U, V).
+		R, S, T, U, V, W).
 
-code_info__set_commit_vals(V, CI0, CI) :-
+code_info__set_resume_point_stack(V, CI0, CI) :-
 	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
-		R, S, T, U, _),
+		R, S, T, U, _, W),
 	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
-		R, S, T, U, V).
+		R, S, T, U, V, W).
+
+code_info__set_commit_vals(W, CI0, CI) :-
+	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
+		R, S, T, U, V, _),
+	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
+		R, S, T, U, V, W).
 
 %---------------------------------------------------------------------------%
 
@@ -2666,7 +2824,7 @@ code_info__variable_to_string(Var, Name) -->
 %---------------------------------------------------------------------------%
 
 code_info__find_type_infos([], []) --> [].
-code_info__find_type_infos([TVar | TVars], [Lval | Lvals]) --> 
+code_info__find_type_infos([TVar | TVars], [Lval | Lvals]) -->
 	code_info__get_proc_info(ProcInfo),
 	{ proc_info_typeinfo_varmap(ProcInfo, TypeInfoMap) },
 	(
@@ -2677,7 +2835,7 @@ code_info__find_type_infos([TVar | TVars], [Lval | Lvals]) -->
 		{ error("cannot find var for type variable") }
 	),
 	{ proc_info_stack_slots(ProcInfo, StackSlots) },
-	( 
+	(
 		{ map__search(StackSlots, Var, Lval0) }
 	->
 		{ Lval = Lval0 }

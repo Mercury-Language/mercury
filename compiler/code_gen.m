@@ -47,20 +47,8 @@
 						code_info, code_info).
 :- mode code_gen__generate_goal(in, in, out, in, out) is det.
 
-		% This predicate generates code for a goal
-		% and leaves all live values in locations
-		% determined by the stack_slots structure.
-
-:- pred code_gen__generate_forced_goal(code_model, hlds__goal, store_map,
-					code_tree, code_info, code_info).
-:- mode code_gen__generate_forced_goal(in, in, in, out, in, out) is det.
-
 :- pred code_gen__output_args(assoc_list(var, arg_info), set(lval)).
 :- mode code_gen__output_args(in, out) is det.
-
-:- pred code_gen__ensure_vars_are_saved(list(var), code_tree,
-						code_info, code_info).
-:- mode code_gen__ensure_vars_are_saved(in, out, in, out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -584,14 +572,6 @@ code_gen__generate_non_epilog(Instr) -->
 
 %---------------------------------------------------------------------------%
 
-code_gen__generate_forced_goal(Det, Goal, StoreMap, Code) -->
-	code_gen__generate_goal(Det, Goal, CodeA),
-	code_info__generate_forced_saves(StoreMap, CodeB),
-	{ Code = tree(CodeA, CodeB) },
-	code_info__remake_with_store_map(StoreMap).
-
-%---------------------------------------------------------------------------%
-
 % Generate a goal. This predicate arranges for the necessary updates of
 % the generic data structures before and after the actual code generation,
 % which is delegated to context-specific predicates.
@@ -603,7 +583,7 @@ code_gen__generate_goal(ContextModel, Goal - GoalInfo, Code) -->
 	;
 		IsAtomic = no
 	},
-	code_aux__pre_goal_update(GoalInfo, IsAtomic, PreFlushCode),
+	code_aux__pre_goal_update(GoalInfo, IsAtomic),
 	code_info__get_instmap(Instmap),
 	(
 		{ instmap__is_reachable(Instmap) }
@@ -624,12 +604,7 @@ code_gen__generate_goal(ContextModel, Goal - GoalInfo, Code) -->
 			{ CodeModel = model_non },
 			( { ContextModel = model_non } ->
 				code_gen__generate_non_goal_2(Goal, GoalInfo,
-					Code0),
-				% the nondet goal may have created choice
-				% points, so we must set the current failure
-				% continuation to `unknown', which means
-				% "on failure, just do a redo()".
-				code_info__unset_failure_cont
+					Code0)
 			;
 				{ error("nondet model in det/semidet context") }
 			)
@@ -637,7 +612,7 @@ code_gen__generate_goal(ContextModel, Goal - GoalInfo, Code) -->
 			% Make live any variables which subsequent goals
 			% will expect to be live, but were not generated
 		code_info__set_instmap(Instmap),
-		code_aux__post_goal_update(GoalInfo, PostFlushCode),
+		code_aux__post_goal_update(GoalInfo),
 		code_info__get_globals(Options),
 		(
 			{ globals__lookup_bool_option(Options, lazy_code, yes) }
@@ -647,10 +622,9 @@ code_gen__generate_goal(ContextModel, Goal - GoalInfo, Code) -->
 			{ error("Eager code unavailable") }
 %%%			code_info__generate_eager_flush(Code1)
 		),
-		{ Code = tree(PreFlushCode,
-			tree(Code0, tree(PostFlushCode, Code1))) }
+		{ Code = tree(Code0, Code1) }
 	;
-		{ Code = PreFlushCode }
+		{ Code = empty }
 	),
 	!.
 
@@ -685,7 +659,7 @@ code_gen__generate_goals([Goal | Goals], CodeModel, Instr) -->
 
 code_gen__generate_det_goal_2(conj(Goals), _GoalInfo, Instr) -->
 	code_gen__generate_goals(Goals, model_det, Instr).
-code_gen__generate_det_goal_2(some(Vars, Goal), _GoalInfo, Instr) -->
+code_gen__generate_det_goal_2(some(_Vars, Goal), _GoalInfo, Instr) -->
 	{ Goal = _ - InnerGoalInfo },
 	{ goal_info_get_code_model(InnerGoalInfo, CodeModel) },
 	(
@@ -700,18 +674,11 @@ code_gen__generate_det_goal_2(some(Vars, Goal), _GoalInfo, Instr) -->
 		code_gen__generate_goal(model_non, Goal, GoalCode),
 		code_info__generate_det_commit(Commit),
 		{ Instr = tree(PreCommit, tree(GoalCode, Commit)) }
-	),
-		% Any variables that became nondet live
-		% during the quantified goal that are
-		% quantified to the scope of that goal
-		% are no longer nondet live.
-	code_info__get_nondet_lives(NondetLives0),
-	{ set__delete_list(NondetLives0, Vars, NondetLives) },
-	code_info__set_nondet_lives(NondetLives).
+	).
 code_gen__generate_det_goal_2(disj(Goals, StoreMap), _GoalInfo, Instr) -->
 	disj_gen__generate_det_disj(Goals, StoreMap, Instr).
 code_gen__generate_det_goal_2(not(Goal), _GoalInfo, Instr) -->
-	code_gen__generate_negation_general(model_det, Goal, Instr).
+	code_gen__generate_negation(model_det, Goal, Instr).
 code_gen__generate_det_goal_2(higher_order_call(PredVar, Args, Types,
 		Modes, Det),
 		_CodeInfo, Instr) -->
@@ -1081,7 +1048,7 @@ code_gen__generate_semi_goal_2(some(_Vars, Goal), _GoalInfo, Code) -->
 code_gen__generate_semi_goal_2(disj(Goals, StoreMap), _GoalInfo, Code) -->
 	disj_gen__generate_semi_disj(Goals, StoreMap, Code).
 code_gen__generate_semi_goal_2(not(Goal), _GoalInfo, Code) -->
-	code_gen__generate_negation(Goal, Code).
+	code_gen__generate_negation(model_semi, Goal, Code).
 code_gen__generate_semi_goal_2(higher_order_call(PredVar, Args, Types, Modes,
 		Det), _CodeInfo, Code) -->
 	call_gen__generate_higher_order_call(model_semi, PredVar, Args,
@@ -1134,16 +1101,33 @@ code_gen__generate_semi_goal_2(pragma_c_code(C_Code, IsRecursive,
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-:- pred code_gen__generate_negation(hlds__goal, code_tree,
-					code_info, code_info).
-:- mode code_gen__generate_negation(in, out, in, out) is det.
+:- pred code_gen__generate_negation(code_model, hlds__goal, code_tree,
+	code_info, code_info).
+:- mode code_gen__generate_negation(in, in, out, in, out) is det.
 
-code_gen__generate_negation(Goal, Code) -->
-		% for a negated simple test, we see if
-		% we can do a more efficient mechanism that
-		% doesn't require a cache flush.
+code_gen__generate_negation(CodeModel, Goal0, Code) -->
+	{ Goal0 = GoalExpr - GoalInfo0 },
+	{ goal_info_get_resume_point(GoalInfo0, Resume) },
 	(
-		{ Goal = unify(_, _, _, simple_test(L, R), _) - GoalInfo },
+		{ Resume = resume_point(ResumeVarsPrime, ResumeLocsPrime) }
+	->
+		{ ResumeVars = ResumeVarsPrime},
+		{ ResumeLocs = ResumeLocsPrime}
+	;
+		{ error("negated goal has no resume point") }
+	),
+	code_info__push_resume_point_vars(ResumeVars),
+		% The next line is to enable Goal to pass the
+		% pre_goal_update sanity check
+	{ goal_info_set_resume_point(GoalInfo0, no_resume_point, GoalInfo) },
+	{ Goal = GoalExpr - GoalInfo },
+
+		% for a negated simple test, we can generate better code
+		% than the general mechanism, because we don't have to
+		% flush the cache.
+	(
+		{ CodeModel = model_semi },
+		{ GoalExpr = unify(_, _, _, simple_test(L, R), _) },
 		code_info__can_generate_direct_branch(CodeAddr),
 		code_info__get_globals(Globals),
 		{ globals__lookup_bool_option(Globals, simple_neg, yes) }
@@ -1152,7 +1136,7 @@ code_gen__generate_negation(Goal, Code) -->
 			% (special-cased, though it may be)
 			% we need to apply the pre- and post-
 			% updates.
-		code_aux__pre_goal_update(GoalInfo, yes, PreFlushCode),
+		code_aux__pre_goal_update(GoalInfo, yes),
 		code_info__produce_variable(L, CodeL, ValL),
 		code_info__produce_variable(R, CodeR, ValR),
 		code_info__variable_type(L, Type),
@@ -1167,61 +1151,64 @@ code_gen__generate_negation(Goal, Code) -->
 			if_val(binop(Op, ValL, ValR), CodeAddr) -
 				"test inequality"
 		]) },
-		code_aux__post_goal_update(GoalInfo, PostFlushCode),
-		{ Code = tree(PreFlushCode, tree(tree(CodeL, CodeR),
-			tree(TestCode, PostFlushCode))) }
+		code_aux__post_goal_update(GoalInfo),
+		{ Code = tree(tree(CodeL, CodeR), TestCode) }
 	;
-		code_gen__generate_negation_general(model_semi, Goal, Code)
-	).
+		code_gen__generate_negation_general(CodeModel, Goal,
+			ResumeVars, ResumeLocs, Code)
+	),
+	code_info__pop_resume_point_vars.
 
-:- pred code_gen__generate_negation_general(code_model, hlds__goal, code_tree,
-					code_info, code_info).
-:- mode code_gen__generate_negation_general(in, in, out, in, out) is det.
+:- pred code_gen__generate_negation_general(code_model, hlds__goal,
+	set(var), resume_locs, code_tree, code_info, code_info).
+:- mode code_gen__generate_negation_general(in, in, in, in, out, in, out)
+	is det.
 
-code_gen__generate_negation_general(CodeModel, Goal, Code) -->
-		% make sure that any variables that became
-		% nondet live during the negated goal are
-		% no longer considered nondet live by reinstating
-		% the initial set of nondet live variables.
-	code_info__get_nondet_lives(NondetLives),
+code_gen__generate_negation_general(CodeModel, Goal, ResumeVars, ResumeLocs,
+		Code) -->
+		% This code is a cut-down version of the code for semidet
+		% if-then-elses.
+		% XXX It does not save or restore tickets
+
+	code_info__make_known_failure_cont(ResumeVars, ResumeLocs, no,
+		no, _, ModContCode),
+
+		% Maybe save the heap state current before the condition;
+		% this ought to be after we make the failure continuation
+		% because that causes the cache to get flushed
 	code_info__get_globals(Globals),
-	{ Goal = _NotGoal - GoalInfo },
-	{ goal_info_cont_lives(GoalInfo, Lives) },
-	{
-		Lives = yes(Vars0)
-	->
-		Vars = Vars0
-	;
-		error("code_gen__generate_negation: no cont_lives!")
-	},
-		% make the failure cont before saving the heap
-		% pointer because the cache gets flushed.
-	code_info__make_known_failure_cont(Vars, no, ModContCode),
 	{
 		globals__lookup_bool_option(Globals,
 			reclaim_heap_on_semidet_failure, yes),
 		code_util__goal_may_allocate_heap(Goal)
 	->
-		Reclaim = yes
+		ReclaimHeap = yes
 	;
-		Reclaim = no
+		ReclaimHeap = no
 	},
-	code_info__maybe_save_hp(Reclaim, SaveHeapCode),
-		% The contained goal cannot be nondet, because if it's
-		% mode-correct, it won't have any output vars, and so
-		% it will be semi-det.
+	code_info__maybe_save_hp(ReclaimHeap, SaveHeapCode),
+
+		% Generate the condition as a semi-deterministic goal;
+		% it cannot be nondet, since mode correctness requires it
+		% to have no output vars
 	code_gen__generate_goal(model_semi, Goal, GoalCode),
+
 	( { CodeModel = model_det } ->
 		{ FailCode = empty }
 	;
-		code_info__generate_under_failure(FailCode)
+		code_info__grab_code_info(CodeInfo),
+		code_info__pop_failure_cont,
+		code_info__generate_failure(FailCode),
+		code_info__slap_code_info(CodeInfo)
 	),
 	code_info__restore_failure_cont(RestoreContCode),
-	code_info__maybe_restore_hp(Reclaim, RestoreHeapCode),
-	code_info__set_nondet_lives(NondetLives),
-	{ Code = tree(tree(tree(ModContCode, SaveHeapCode), GoalCode),
-			tree(FailCode, tree(RestoreContCode,
-						RestoreHeapCode))) }.
+	code_info__maybe_restore_hp(ReclaimHeap, RestoreHeapCode),
+	{ Code = tree(ModContCode,
+		 tree(SaveHeapCode,
+		 tree(GoalCode,
+		 tree(FailCode,
+		 tree(RestoreContCode,
+		      RestoreHeapCode))))) }.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -1317,16 +1304,6 @@ code_gen__add_saved_succip([Instrn0 - Comment | Instrns0 ], StackLoc,
 		Instrn = Instrn0
 	),
 	code_gen__add_saved_succip(Instrns0, StackLoc, Instrns).
-
-%---------------------------------------------------------------------------%
-
-code_gen__ensure_vars_are_saved([], empty) --> [].
-code_gen__ensure_vars_are_saved([V | Vs], Code) -->
-	code_info__get_stack_slots(StackSlots),
-	{ map__lookup(StackSlots, V, Slot) },
-	code_info__place_var(V, Slot, Code0),
-	code_gen__ensure_vars_are_saved(Vs, Code1),
-	{ Code = tree(Code0, Code1) }.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

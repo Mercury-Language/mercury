@@ -197,8 +197,7 @@ lookup_switch__generate_constants([Case|Cases], Vars, CodeModel,
 	{ Case = case(_, int_constant(CaseTag), _, Goal) },
 	code_info__grab_code_info(CodeInfo),
 	code_gen__generate_goal(CodeModel, Goal, Code),
-	code_info__get_live_variables(LiveList),
-	{ set__list_to_set(LiveList, Liveness) },
+	code_info__get_liveness_info(Liveness),
 	{ lookup_switch__code_is_empty(Code) },
 	lookup_switch__get_case_rvals(Vars, CaseRvals),
 	{ CaseVal = CaseTag - CaseRvals },
@@ -313,12 +312,16 @@ lookup_switch__generate(Var, OutVars, CaseValues,
 		{ MLiveness = no },
 		{ error("lookup_switch__generate: no liveness!") }
 	),
-	code_info__generate_forced_saves(StoreMap, LookupCode),
+	code_info__generate_branch_end(model_det, StoreMap, LookupCode),
 		% Assemble to code together
 	{ Comment = node([comment("lookup switch") - ""]) },
-	{ Code = tree(tree(tree(Comment, VarCode), RangeCheck),
-			tree(CheckBitVec, LookupCode)) },
-	code_info__remake_with_store_map(StoreMap).
+	{ Code =
+		tree(Comment,
+		tree(VarCode,
+		tree(RangeCheck,
+		tree(CheckBitVec,
+		     LookupCode))))
+	}.
 
 %------------------------------------------------------------------------------%
 

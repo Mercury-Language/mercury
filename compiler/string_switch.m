@@ -122,10 +122,13 @@ string_switch__generate(Cases, Var, CodeModel, _CanFail, StoreMap,
 		])
 	},
 		% Collect all the generated code fragments together
-	{ Code = tree(tree(VarCode, tree(HashLookupCode, FailCode)),
-			tree(JumpCode, SlotsCode))
-	},
-	code_info__remake_with_store_map(StoreMap).
+	{ Code =
+		tree(VarCode,
+		tree(HashLookupCode,
+		tree(FailCode,
+		tree(JumpCode,
+		     SlotsCode))))
+	}.
 
 :- pred string_switch__hash_cases(cases_list, int, map(int, cases_list)).
 :- mode string_switch__hash_cases(in, in, out) is det.
@@ -297,22 +300,29 @@ string_switch__gen_hash_slot(Slot, TblSize, HashSlotMap, CodeModel, StoreMap,
 		{ LabelCode = node([
 			label(Label) - Comment
 		]) },
-		{ FinishCode = node([
-			goto(label(EndLabel)) - "jump to end of switch"
-		]) },
 		(
 			{ string_switch__this_is_last_case(Slot, TblSize,
 				HashSlotMap) }
 		->
-			code_gen__generate_forced_goal(CodeModel, Goal,
-				StoreMap, GoalCode)
+			code_gen__generate_goal(CodeModel, Goal, GoalCode),
+			code_info__generate_branch_end(CodeModel, StoreMap,
+				SaveCode)
 		;
 			code_info__grab_code_info(CodeInfo),
-			code_gen__generate_forced_goal(CodeModel, Goal,
-				StoreMap, GoalCode),
+			code_gen__generate_goal(CodeModel, Goal, GoalCode),
+			code_info__generate_branch_end(CodeModel, StoreMap,
+				SaveCode),
 			code_info__slap_code_info(CodeInfo)
 		),
-		{ Code = tree(LabelCode, tree(GoalCode, FinishCode)) }
+		{ FinishCode = node([
+			goto(label(EndLabel)) - "jump to end of switch"
+		]) },
+		{ Code =
+			tree(LabelCode,
+			tree(GoalCode,
+			tree(SaveCode,
+			     FinishCode)))
+		}
 	;
 		{ StringRval = const(int_const(0)) },
 		{ Label = FailLabel },

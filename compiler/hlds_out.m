@@ -606,19 +606,19 @@ hlds_out__write_goal_a(Goal - GoalInfo, ModuleInfo,
 			VarSet, Indent, Follow, TypeQual) -->
 	globals__io_lookup_bool_option(verbose_dump_hlds, Verbose),
 	( { Verbose = yes } ->
-		{ goal_info_context(GoalInfo, Context) },
-		{ term__context_file(Context, FileName) },
-		{ term__context_line(Context, LineNumber) },
-		( { FileName \= "" } ->
-			hlds_out__write_indent(Indent),
-			io__write_string("% context: file `"),
-			io__write_string(FileName),
-			io__write_string("', line "),
-			io__write_int(LineNumber),
-			io__write_string("\n")
-		;
-			[]
-		),
+%		{ goal_info_context(GoalInfo, Context) },
+%		{ term__context_file(Context, FileName) },
+%		{ term__context_line(Context, LineNumber) },
+%		( { FileName \= "" } ->
+%			hlds_out__write_indent(Indent),
+%			io__write_string("% context: file `"),
+%			io__write_string(FileName),
+%			io__write_string("', line "),
+%			io__write_int(LineNumber),
+%			io__write_string("\n")
+%		;
+%			[]
+%		),
 		{ goal_info_get_nonlocals(GoalInfo, NonLocalsSet) },
 		{ set__to_sorted_list(NonLocalsSet, NonLocalsList) },
 		( { NonLocalsList \= [] } ->
@@ -645,29 +645,6 @@ hlds_out__write_goal_a(Goal - GoalInfo, ModuleInfo,
 			hlds_out__write_indent(Indent),
 			io__write_string("% pre-deaths: "),
 			mercury_output_vars(PreDeathList, VarSet),
-			io__write_string("\n")
-		;
-			[]
-		),
-		{ goal_info_nondet_lives(GoalInfo, NondetLives) },
-		{ set__to_sorted_list(NondetLives, NondetList) },
-		( { NondetList \= [] } ->
-			hlds_out__write_indent(Indent),
-			io__write_string("% nondet-lives: "),
-			mercury_output_vars(NondetList, VarSet),
-			io__write_string("\n")
-		;
-			[]
-		),
-		{ goal_info_cont_lives(GoalInfo, MaybeContLives) },
-		(
-			{ MaybeContLives = yes(ContLives) },
-			{ set__to_sorted_list(ContLives, ContList) },
-			{ ContList \= [] }
-		->
-			hlds_out__write_indent(Indent),
-			io__write_string("% cont-lives: "),
-			mercury_output_vars(ContList, VarSet),
 			io__write_string("\n")
 		;
 			[]
@@ -728,26 +705,25 @@ hlds_out__write_goal_a(Goal - GoalInfo, ModuleInfo,
 		),
 		{ goal_info_get_resume_point(GoalInfo, Resume) },
 		(
-			{ Resume = none }
+			{ Resume = no_resume_point }
 		;
-			{ Resume = orig_only(ResumeVars) },
+			{ Resume = resume_point(ResumeVars, Locs) },
 			{ set__to_sorted_list(ResumeVars, ResumeVarList) },
 			hlds_out__write_indent(Indent),
-			io__write_string("% resume point orig only: "),
-			mercury_output_vars(ResumeVarList, VarSet),
-			io__write_string("\n")
-		;
-			{ Resume = stack_only(ResumeVars) },
-			{ set__to_sorted_list(ResumeVars, ResumeVarList) },
-			hlds_out__write_indent(Indent),
-			io__write_string("% resume point stack only: "),
-			mercury_output_vars(ResumeVarList, VarSet),
-			io__write_string("\n")
-		;
-			{ Resume = orig_and_stack(ResumeVars) },
-			{ set__to_sorted_list(ResumeVars, ResumeVarList) },
-			hlds_out__write_indent(Indent),
-			io__write_string("% resume point orig and stack: "),
+			io__write_string("% resume point "),
+			(
+				{ Locs = orig_only },
+				io__write_string("orig only ")
+			;
+				{ Locs = stack_only },
+				io__write_string("stack only ")
+			;
+				{ Locs = orig_and_stack },
+				io__write_string("orig and stack ")
+			;
+				{ Locs = stack_and_orig },
+				io__write_string("stack and orig ")
+			),
 			mercury_output_vars(ResumeVarList, VarSet),
 			io__write_string("\n")
 		),

@@ -3,13 +3,19 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
-% Main author: conway.
-
-% Computes the `stack_slots', i.e. which variables are either live across a
-% call or live at the start of a disjunction, allocates a stack slot for
-% each of these variables, and stores this information in the stack_slots
-% structure in the proc_info.
+%
+% File live_vars.m
+%
+% Main authors: conway, zs.
+%
+% This module allocates stack slots to the variables that need to be saved
+% either across a call or across a goal that may fail.
+%
+% The jobs is done in two steps. First we traverse the predicate definition
+% looking for sets of variables that must be saved on the stack at the same
+% time. Then we use a graph colouring algorithm to find an allocation of
+% stack slots (colours) to variables such that in each set of variables
+% that must be saved at the same time, each variable has a different colour.
 
 %-----------------------------------------------------------------------------%
 
@@ -29,7 +35,7 @@
 :- implementation.
 
 :- import_module llds, arg_info, prog_data, hlds_goal, hlds_data, mode_util.
-:- import_module code_aux, globals, graph_colour, instmap.
+:- import_module liveness, code_aux, globals, graph_colour, instmap.
 :- import_module list, map, set, std_util, assoc_list.
 :- import_module int, term, require.
 
@@ -39,10 +45,11 @@ allocate_stack_slots_in_proc(ProcInfo0, ModuleInfo, ProcInfo) :-
 	proc_info_goal(ProcInfo0, Goal0),
 	proc_info_interface_code_model(ProcInfo0, CodeModel),
 
-	detect_initial_liveness(ProcInfo0, ModuleInfo, Liveness0),
+	initial_liveness(ProcInfo0, ModuleInfo, Liveness0),
 	set__init(LiveSets0),
-	build_live_sets_in_goal(Goal0, Liveness0, LiveSets0,
-		ModuleInfo, ProcInfo0, _Liveness, LiveSets),
+	set__init(ResumeVars0),
+	build_live_sets_in_goal(Goal0, Liveness0, ResumeVars0, LiveSets0,
+		ModuleInfo, ProcInfo0, _Liveness, _ResumeVars, LiveSets),
 	graph_colour__group_elements(LiveSets, ColourSets),
 	set__to_sorted_list(ColourSets, ColourList),
 	allocate_stack_slots(ColourList, CodeModel, StackSlots),
@@ -56,20 +63,18 @@ allocate_stack_slots_in_proc(ProcInfo0, ModuleInfo, ProcInfo) :-
 % of the goal. The liveness information is computed from the liveness
 % delta annotations.
 
-:- pred build_live_sets_in_goal(hlds__goal, 
-		liveness_info, set(set(var)), module_info,
-		proc_info, liveness_info, set(set(var))).
-:- mode build_live_sets_in_goal(in, in, in, in, in, out, out) is det.
+:- pred build_live_sets_in_goal(hlds__goal, set(var), set(var), set(set(var)),
+	module_info, proc_info, set(var), set(var), set(set(var))).
+:- mode build_live_sets_in_goal(in, in, in, in, in, in, out, out, out) is det.
 
-build_live_sets_in_goal(Goal0 - GoalInfo, Liveness0,
-		LiveSets0, ModuleInfo, ProcInfo,
-			Liveness, LiveSets) :-
+build_live_sets_in_goal(Goal0 - GoalInfo, Liveness0, ResumeVars0, LiveSets0,
+		ModuleInfo, ProcInfo, Liveness, ResumeVars, LiveSets) :-
 	goal_info_pre_births(GoalInfo, PreBirths),
 	goal_info_pre_deaths(GoalInfo, PreDeaths),
 	goal_info_post_births(GoalInfo, PostBirths),
 	goal_info_post_deaths(GoalInfo, PostDeaths),
 
-	set__difference(Liveness0,  PreDeaths, Liveness1),
+	set__difference(Liveness0, PreDeaths, Liveness1),
 	set__union(Liveness1, PreBirths, Liveness2),
 	%
 	% if the goal is atomic, we want to apply the postdeaths
@@ -84,29 +89,35 @@ build_live_sets_in_goal(Goal0 - GoalInfo, Liveness0,
 		Liveness3 = Liveness2
 	),
 
-	goal_info_get_code_model(GoalInfo, CodeModel),
-	goal_info_nondet_lives(GoalInfo, NondetLives0),
 	goal_info_get_resume_point(GoalInfo, ResumePoint),
 	(
-		ResumePoint = none,
-		NondetLives = NondetLives0,
+		ResumePoint = no_resume_point,
+		ResumeVars1 = ResumeVars0,
 		LiveSets1 = LiveSets0
 	;
-		ResumePoint = orig_only(_),
-		NondetLives = NondetLives0,
-		LiveSets1 = LiveSets0
-	;
-		ResumePoint = stack_only(ResumeVars),
-		set__union(NondetLives0, ResumeVars, NondetLives),
-		set__insert(LiveSets0, ResumeVars, LiveSets1)
-	;
-		ResumePoint = orig_and_stack(ResumeVars),
-		set__union(NondetLives0, ResumeVars, NondetLives),
-		set__insert(LiveSets0, ResumeVars, LiveSets1)
+		ResumePoint = resume_point(ResumePointVars, Locs),
+		(
+			Locs = orig_only,
+			ResumeVars1 = ResumeVars0,
+			LiveSets1 = LiveSets0
+		;
+			Locs = stack_only,
+			set__union(ResumeVars0, ResumePointVars, ResumeVars1),
+			set__insert(LiveSets0, ResumeVars1, LiveSets1)
+		;
+			Locs = orig_and_stack,
+			set__union(ResumeVars0, ResumePointVars, ResumeVars1),
+			set__insert(LiveSets0, ResumeVars1, LiveSets1)
+		;
+			Locs = stack_and_orig,
+			set__union(ResumeVars0, ResumePointVars, ResumeVars1),
+			set__insert(LiveSets0, ResumeVars1, LiveSets1)
+		)
 	),
 
-	build_live_sets_in_goal_2(Goal0, NondetLives, Liveness3, LiveSets1,
-		CodeModel, ModuleInfo, ProcInfo, Liveness4, LiveSets2),
+	build_live_sets_in_goal_2(Goal0, Liveness3, ResumeVars1, LiveSets1,
+		GoalInfo, ModuleInfo, ProcInfo,
+		Liveness4, ResumeVars, LiveSets2),
 
 	(
 		goal_is_atomic(Goal0)
@@ -116,7 +127,7 @@ build_live_sets_in_goal(Goal0 - GoalInfo, Liveness0,
 		set__difference(Liveness4, PostDeaths, Liveness5)
 	),
 
-        set__union(Liveness5, PostBirths, Liveness),
+	set__union(Liveness5, PostBirths, Liveness),
 
 		% Add extra interference for variables that become live
 		% and variables that be come dead in this goal.
@@ -134,294 +145,300 @@ build_live_sets_in_goal(Goal0 - GoalInfo, Liveness0,
 	).
 
 %-----------------------------------------------------------------------------%
+
 	% Here we process each of the different sorts of goals.
 	% `Liveness' is the set of live variables, i.e. vars which
 	% have been referenced and may be referenced again (during
 	% forward execution).
-	% `LiveSets' is the interference graph, i.e. the set of sets
-	% of variables which need to be on the stack at the same time.
-	% `NondetLives' is the set of variables that may or may not be
+	% `ResumeVars' is the set of variables that may or may not be
 	% `live' during the current forward execution but will become
 	% live again on backtracking.
+	% `LiveSets' is the interference graph, i.e. the set of sets
+	% of variables which need to be on the stack at the same time.
 
-:- pred build_live_sets_in_goal_2(hlds__goal_expr, set(var), liveness_info,
-			set(set(var)), code_model, module_info, proc_info,
-			liveness_info, set(set(var))).
-:- mode build_live_sets_in_goal_2(in, in, in, in, in, in, in, out, out) is det.
+:- pred build_live_sets_in_goal_2(hlds__goal_expr, set(var), set(var),
+	set(set(var)), hlds__goal_info, module_info, proc_info,
+	set(var), set(var), set(set(var))).
+:- mode build_live_sets_in_goal_2(in, in, in, in, in, in, in, out, out, out)
+	is det.
 
-build_live_sets_in_goal_2(conj(Goals0), _NondetLives, Liveness0, LiveSets0,
-		_CodeModel, ModuleInfo, ProcInfo, Liveness, LiveSets) :-
-	build_live_sets_in_conj(Goals0, Liveness0, LiveSets0,
-		ModuleInfo, ProcInfo, Liveness, LiveSets).
+build_live_sets_in_goal_2(conj(Goals0), Liveness0, ResumeVars0, LiveSets0,
+		_, ModuleInfo, ProcInfo, Liveness, ResumeVars, LiveSets) :-
+	build_live_sets_in_conj(Goals0, Liveness0, ResumeVars0, LiveSets0,
+		ModuleInfo, ProcInfo, Liveness, ResumeVars, LiveSets).
 
-build_live_sets_in_goal_2(disj(Goals0, _), NondetLives, Liveness0, LiveSets0,
-		CodeModel, ModuleInfo, ProcInfo, Liveness, LiveSets) :-
-	( CodeModel = model_non ->
-		% All the currently live variables need to be saved
-		% on the stack at the start of a nondet disjunction, since we
-		% may need them on backtracking.  Therefore they need to
-		% be on the stack at the same time, and hence we insert
-		% them as an interference set into LiveSets.
-		set__union(Liveness0, NondetLives, LiveVars),
-		set__insert(LiveSets0, LiveVars, LiveSets1)
-	;
-		LiveSets1 = LiveSets0
-	),
-	build_live_sets_in_disj(Goals0, Liveness0, LiveSets1,
-		ModuleInfo, ProcInfo, Liveness, LiveSets).
+build_live_sets_in_goal_2(disj(Goals0, _), Liveness0, ResumeVars0, LiveSets0,
+		GoalInfo, ModuleInfo, ProcInfo, Liveness, ResumeVars, LiveSets)
+		:-
+	build_live_sets_in_disj(Goals0, Liveness0, ResumeVars0, LiveSets0,
+		GoalInfo, ModuleInfo, ProcInfo, Liveness, ResumeVars, LiveSets).
 
-build_live_sets_in_goal_2(switch(_Var, _Det, Cases0, _), 
-		_NondetLives, Liveness0, LiveSets0, _CodeModel,
-			ModuleInfo, ProcInfo, Liveness, LiveSets) :-
-	build_live_sets_in_cases(Cases0, Liveness0, LiveSets0,
-		ModuleInfo, ProcInfo, Liveness, LiveSets).
+build_live_sets_in_goal_2(switch(_, _, Cases0, _), Liveness0,
+		ResumeVars0, LiveSets0, _, ModuleInfo, ProcInfo, Liveness,
+		ResumeVars, LiveSets) :-
+	build_live_sets_in_cases(Cases0, Liveness0, ResumeVars0, LiveSets0,
+		ModuleInfo, ProcInfo, Liveness, ResumeVars, LiveSets).
 
 build_live_sets_in_goal_2(if_then_else(_Vars, Cond0, Then0, Else0, _),
-		NondetLives, Liveness0, LiveSets0, _CodeModel,
-			ModuleInfo, ProcInfo, Liveness, LiveSets) :-
-	set__union(Liveness0, NondetLives, LiveVars),
-	( code_aux__contains_only_builtins(Cond0) ->
-		LiveSets0A = LiveSets0
+		Liveness0, ResumeVars0, LiveSets0, _, ModuleInfo, ProcInfo,
+		Liveness, ResumeVars, LiveSets) :-
+	build_live_sets_in_goal(Cond0, Liveness0, ResumeVars0, LiveSets0,
+		ModuleInfo, ProcInfo, Liveness1, ResumeVars1, LiveSets1),
+	build_live_sets_in_goal(Then0, Liveness1, ResumeVars1, LiveSets1,
+		ModuleInfo, ProcInfo, _Liveness2, ResumeVars2, LiveSets2),
+	build_live_sets_in_goal(Else0, Liveness0, ResumeVars0, LiveSets2,
+		ModuleInfo, ProcInfo, Liveness, ResumeVars3, LiveSets),
+	set__union(ResumeVars2, ResumeVars3, ResumeVars).
+
+build_live_sets_in_goal_2(not(Goal0), Liveness0, ResumeVars0, LiveSets0,
+		_, ModuleInfo, ProcInfo, Liveness, ResumeVars0, LiveSets) :-
+	build_live_sets_in_goal(Goal0, Liveness0, ResumeVars0, LiveSets0,
+		ModuleInfo, ProcInfo, Liveness, _, LiveSets).
+
+build_live_sets_in_goal_2(some(_Vs, Goal0), Liveness0, ResumeVars0, LiveSets0,
+		GoalInfo, ModuleInfo, ProcInfo, Liveness, ResumeVars, LiveSets)
+		:-
+	build_live_sets_in_goal(Goal0, Liveness0, ResumeVars0, LiveSets0,
+		ModuleInfo, ProcInfo, Liveness, ResumeVars1, LiveSets),
+
+	% If the "some" goal cannot succeed more than once,
+	% then execution cannot backtrack into the inner goal once control
+	% has left it. Therefore the code following the "some" can reuse
+	% any stack slots needed by resume points in the inner goal.
+
+	goal_info_get_code_model(GoalInfo, CodeModel),
+	( CodeModel = model_non ->
+		ResumeVars = ResumeVars1
 	;
-		set__insert(LiveSets0, LiveVars, LiveSets0A)
-	),
-	build_live_sets_in_goal(Cond0, Liveness0, LiveSets0A,
-		ModuleInfo, ProcInfo, Liveness1, LiveSets1),
-	build_live_sets_in_goal(Then0, Liveness1, LiveSets1,
-		ModuleInfo, ProcInfo, _Liveness2, LiveSets2),
-	build_live_sets_in_goal(Else0, Liveness0, LiveSets2,
-		ModuleInfo, ProcInfo, Liveness, LiveSets).
+		ResumeVars = ResumeVars0
+	).
 
-build_live_sets_in_goal_2(not(Goal0), NondetLives, Liveness0, LiveSets0,
-		_CodeModel, ModuleInfo, ProcInfo, Liveness, LiveSets) :-
-	set__union(Liveness0, NondetLives, LiveVars),
-	set__insert(LiveSets0, LiveVars, LiveSets1),
-	build_live_sets_in_goal(Goal0, Liveness0, LiveSets1,
-		ModuleInfo, ProcInfo, Liveness, LiveSets).
-
-build_live_sets_in_goal_2(some(_Vs, Goal0), _NondetLives, Liveness0, LiveSets0,
-		_CodeModel, ModuleInfo, ProcInfo, Liveness, LiveSets) :-
-	build_live_sets_in_goal(Goal0, Liveness0, LiveSets0,
-		ModuleInfo, ProcInfo, Liveness, LiveSets).
-
-build_live_sets_in_goal_2(higher_order_call(_PredVar, ArgVars, Types, Modes,
-		Det),
-		NondetLives, Liveness, LiveSets0,
-		_CodeModel, ModuleInfo, ProcInfo, Liveness, LiveSets) :-
+build_live_sets_in_goal_2(higher_order_call(_, ArgVars, Types, Modes, Det),
+		Liveness, ResumeVars0, LiveSets0,
+		GoalInfo, ModuleInfo, ProcInfo,
+		Liveness, ResumeVars, LiveSets) :-
 	% The variables which need to be saved onto the stack
 	% before the call are all the variables that are live
 	% after the call, except for the output arguments produced
-	% by the call, plus all the variables that are nondet
-	% live at the call.
+	% by the call, plus all the variables that may be needed
+	% at an enclosing resumption point.
+
 	% To figure out which variables are output, we use the arg_info;
 	% but it shouldn't matter which arg convention we're using,
 	% so we can just pass convention `simple' to make_arg_infos.
 
-	determinism_to_code_model(Det, CodeModel),
-	make_arg_infos(simple, Types, Modes, CodeModel, ModuleInfo, ArgInfos),
+	determinism_to_code_model(Det, CallModel),
+	make_arg_infos(simple, Types, Modes, CallModel, ModuleInfo, ArgInfos),
 	find_output_vars_from_arg_info(ArgVars, ArgInfos, OutVars),
-	set__difference(Liveness, OutVars, LiveVars0),
-	set__union(LiveVars0, NondetLives, LiveVars1),
+	set__difference(Liveness, OutVars, InputLiveness),
+	set__union(InputLiveness, ResumeVars0, StackVars0),
 
 	% Might need to add more live variables with accurate GC.
 
-	maybe_add_accurate_gc_typeinfos(ModuleInfo, ProcInfo, 
-		OutVars, LiveVars1, LiveVars),
+	maybe_add_accurate_gc_typeinfos(ModuleInfo, ProcInfo,
+		OutVars, StackVars0, StackVars),
 
-	set__insert(LiveSets0, LiveVars, LiveSets).
+	set__insert(LiveSets0, StackVars, LiveSets),
 
+	% If this is a nondet call, then all the stack slots we need
+	% must be protected against reuse in following code.
 
-build_live_sets_in_goal_2(
-		call(PredId, ProcId, ArgVars, Builtin, _, _),
-		NondetLives, Liveness, LiveSets0,
-		_CodeModel, ModuleInfo, ProcInfo, Liveness, LiveSets) :-
+	goal_info_get_code_model(GoalInfo, CodeModel),
+	( CodeModel = model_non ->
+		ResumeVars = StackVars		% includes ResumeVars0
+	;
+		ResumeVars = ResumeVars0
+	).
+
+build_live_sets_in_goal_2(call(PredId, ProcId, ArgVars, Builtin, _, _),
+		Liveness, ResumeVars0, LiveSets0,
+		GoalInfo, ModuleInfo, ProcInfo,
+		Liveness, ResumeVars, LiveSets) :-
 	(
 		hlds__is_builtin_is_inline(Builtin)
 	->
+		ResumeVars = ResumeVars0,
 		LiveSets = LiveSets0
 	;
 		% The variables which need to be saved onto the stack
 		% before the call are all the variables that are live
 		% after the call, except for the output arguments produced
-		% by the call, plus all the variables that are nondet
-		% live at the call.
+		% by the call, plus all the variables that may be needed
+		% at an enclosing resumption point.
+
 		find_output_vars(PredId, ProcId, ArgVars, ModuleInfo, OutVars),
-		set__difference(Liveness, OutVars, LiveVars0),
-		set__union(LiveVars0, NondetLives, LiveVars1),
+		set__difference(Liveness, OutVars, InputLiveness),
+		set__union(InputLiveness, ResumeVars0, StackVars0),
 
 		% Might need to add more live variables with accurate GC.
 
-		maybe_add_accurate_gc_typeinfos(ModuleInfo, 
-			ProcInfo, OutVars, LiveVars1, LiveVars),
+		maybe_add_accurate_gc_typeinfos(ModuleInfo,
+			ProcInfo, OutVars, StackVars0, StackVars),
 
-		set__insert(LiveSets0, LiveVars, LiveSets)
+		set__insert(LiveSets0, StackVars, LiveSets),
+
+		% If this is a nondet call, then all the stack slots we need
+		% must be protected against reuse in following code.
+
+		goal_info_get_code_model(GoalInfo, CodeModel),
+		( CodeModel = model_non ->
+			ResumeVars = StackVars		% includes ResumeVars0
+		;
+			ResumeVars = ResumeVars0
+		)
 	).
 
-build_live_sets_in_goal_2(unify(_,_,_,D,_), NondetLives, Liveness, LiveSets0,
-		_CodeModel, _ModuleInfo, _ProcInfo, Liveness, LiveSets) :-
+build_live_sets_in_goal_2(unify(_,_,_,D,_), Liveness, ResumeVars0, LiveSets0,
+		_, _, _, Liveness, ResumeVars0, LiveSets) :-
 	(
 		D = complicated_unify(_, _)
 	->
-			% we have to save all live variables
-			% (and nondet-live variables)
-			% across complicated unifications. 
-		set__union(Liveness, NondetLives, LiveVars),
+			% we have to save all live and protected variables
+			% across complicated unifications.
+		set__union(Liveness, ResumeVars0, LiveVars),
 		set__insert(LiveSets0, LiveVars, LiveSets)
 	;
 		LiveSets = LiveSets0
 	).
 
-build_live_sets_in_goal_2(
-		pragma_c_code(_C_Code, IsRecursive, PredId, ProcId, Args,
-				_ArgNameMap), 
-		NondetLives, Liveness, LiveSets0, _Model, ModuleInfo, ProcInfo,
-		Liveness, LiveSets) :-
+build_live_sets_in_goal_2(pragma_c_code(_, IsRec, PredId, ProcId, Args, _),
+		Liveness, ResumeVars0, LiveSets0,
+		GoalInfo, ModuleInfo, ProcInfo,
+		Liveness, ResumeVars, LiveSets) :-
 
-	( IsRecursive = non_recursive ->
+	goal_info_get_code_model(GoalInfo, CodeModel),
+	(
+		CodeModel \= model_non,
+		IsRec = non_recursive
+	->
 		% We don't need to save any variables onto the stack
-		% before a pragma_c_code if we know that it is not going to call
-		% back Mercury code, because C code won't clobber the registers.
+		% before a pragma_c_code if we know that it can't succeed
+		% more than once and that it is not going to call back
+		% Mercury code, because C code won't clobber the registers.
 
+		ResumeVars = ResumeVars0,
 		LiveSets = LiveSets0
 	;
 		% The variables which need to be saved onto the stack
-		% before the c_code execution are all the variables that are
-		% live after the c_code execution, except for the output
-		% arguments produced by the c_code, plus all the variables
-		% that are nondet live at the c_code.
+		% before the call are all the variables that are live
+		% after the call, except for the output arguments produced
+		% by the call, plus all the variables that may be needed
+		% at an enclosing resumption point.
 
 		find_output_vars(PredId, ProcId, Args, ModuleInfo, OutVars),
-		set__difference(Liveness, OutVars, LiveVars0),
-		set__union(LiveVars0, NondetLives, LiveVars1),
+		set__difference(Liveness, OutVars, InputLiveness),
+		set__union(InputLiveness, ResumeVars0, StackVars0),
 
 		% Might need to add more live variables with accurate GC.
 
-		maybe_add_accurate_gc_typeinfos(ModuleInfo, 
-			ProcInfo, OutVars, LiveVars1, LiveVars),
+		maybe_add_accurate_gc_typeinfos(ModuleInfo,
+			ProcInfo, OutVars, StackVars0, StackVars),
 
-		set__insert(LiveSets0, LiveVars, LiveSets)
+		set__insert(LiveSets0, StackVars, LiveSets),
+
+		( CodeModel = model_non ->
+			ResumeVars = StackVars		% includes ResumeVars0
+		;
+			ResumeVars = ResumeVars0
+		)
 	).
 
 %-----------------------------------------------------------------------------%
 
-:- pred build_live_sets_in_conj(list(hlds__goal), liveness_info,
-	set(set(var)), module_info, proc_info,
-	liveness_info, set(set(var))).
-:- mode build_live_sets_in_conj(in, in, in, in, in, out, out) is det.
+:- pred build_live_sets_in_conj(list(hlds__goal), set(var), set(var),
+	set(set(var)), module_info, proc_info, set(var), set(var),
+	set(set(var))).
+:- mode build_live_sets_in_conj(in, in, in, in, in, in, out, out, out) is det.
 
-build_live_sets_in_conj([], Liveness, LiveVars,
-		_ModuleInfo, _ProcInfo, Liveness, LiveVars).
-build_live_sets_in_conj([Goal0 | Goals0], Liveness0, LiveVars0,
-		ModuleInfo, ProcInfo, Liveness, LiveVars) :-
+build_live_sets_in_conj([], Liveness, ResumeVars, LiveSets,
+		_ModuleInfo, _ProcInfo, Liveness, ResumeVars, LiveSets).
+build_live_sets_in_conj([Goal0 | Goals0], Liveness0, ResumeVars0, LiveSets0,
+		ModuleInfo, ProcInfo, Liveness, ResumeVars, LiveSets) :-
 	(
 		Goal0 = _ - GoalInfo,
 		goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
 		instmap_delta_is_unreachable(InstMapDelta)
 	->
-		build_live_sets_in_goal(Goal0, Liveness0,
-			LiveVars0, ModuleInfo, ProcInfo,
-				Liveness, LiveVars)
+		build_live_sets_in_goal(Goal0,
+			Liveness0, ResumeVars0, LiveSets0, ModuleInfo, ProcInfo,
+			Liveness, ResumeVars, LiveSets)
 	;
-		build_live_sets_in_goal(Goal0, Liveness0,
-			LiveVars0, ModuleInfo, ProcInfo,
-				Liveness1, LiveVars1),
-		build_live_sets_in_conj(Goals0, Liveness1,
-			LiveVars1, ModuleInfo, ProcInfo,
-				Liveness, LiveVars)
+		build_live_sets_in_goal(Goal0,
+			Liveness0, ResumeVars0, LiveSets0, ModuleInfo, ProcInfo,
+			Liveness1, ResumeVars1, LiveSets1),
+		build_live_sets_in_conj(Goals0,
+			Liveness1, ResumeVars1, LiveSets1, ModuleInfo, ProcInfo,
+			Liveness, ResumeVars, LiveSets)
 	).
 
 %-----------------------------------------------------------------------------%
 
-:- pred build_live_sets_in_disj(list(hlds__goal), liveness_info,
-	set(set(var)), module_info, proc_info, liveness_info,
+:- pred build_live_sets_in_disj(list(hlds__goal), set(var), set(var),
+	set(set(var)), hlds__goal_info, module_info, proc_info,
+	set(var), set(var), set(set(var))).
+:- mode build_live_sets_in_disj(in, in, in, in, in, in, in, out, out, out)
+	is det.
+
+build_live_sets_in_disj([], Liveness, ResumeVars, LiveSets, _, _, _,
+		Liveness, ResumeVars, LiveSets).
+build_live_sets_in_disj([Goal0 | Goals0], Liveness0, ResumeVars0, LiveSets0,
+		GoalInfo, ModuleInfo, ProcInfo,
+		Liveness, ResumeVars, LiveSets) :-
+	build_live_sets_in_goal(Goal0, Liveness0, ResumeVars0, LiveSets0,
+		ModuleInfo, ProcInfo, Liveness, ResumeVars1, LiveSets1),
+	build_live_sets_in_disj(Goals0, Liveness0, ResumeVars0, LiveSets1,
+		GoalInfo, ModuleInfo, ProcInfo,
+		_Liveness2, ResumeVars2, LiveSets),
+	goal_info_get_code_model(GoalInfo, CodeModel),
+	( CodeModel = model_non ->
+		set__union(ResumeVars1, ResumeVars2, ResumeVars3),
+		goal_info_get_resume_point(GoalInfo, Resume),
+		(
+			Resume = resume_point(ResumePointVars, _),
+			set__union(ResumeVars3, ResumePointVars, ResumeVars)
+		;
+			Resume = no_resume_point,
+			ResumeVars = ResumeVars3
+		)
+	;
+		ResumeVars = ResumeVars0
+	).
+
+%-----------------------------------------------------------------------------%
+
+:- pred build_live_sets_in_cases(list(case), set(var), set(var),
+	set(set(var)), module_info, proc_info, set(var), set(var),
 	set(set(var))).
-:- mode build_live_sets_in_disj(in, in, in, in, in, out, out) is det.
+:- mode build_live_sets_in_cases(in, in, in, in, in, in, out, out, out) is det.
 
-build_live_sets_in_disj([], Liveness, LiveSets,
-		_ModuleInfo, _ProcInfo, Liveness, LiveSets).
-build_live_sets_in_disj([Goal0 | Goals0], Liveness0, LiveSets0,
-		ModuleInfo, ProcInfo, Liveness, LiveSets) :-
-	build_live_sets_in_goal(Goal0, Liveness0, LiveSets0,
-		ModuleInfo, ProcInfo, Liveness, LiveSets1),
-	build_live_sets_in_disj(Goals0, Liveness0, LiveSets1,
-		ModuleInfo, ProcInfo, _Liveness2, LiveSets).
-	% set__union(Liveness1, Liveness2, Liveness).
-	% This predicate call is unnecessary because the post-deaths and
-	% pre-births sets *should* be taking care of everything.
-
-%-----------------------------------------------------------------------------%
-
-:- pred build_live_sets_in_cases(list(case), liveness_info,
-		set(set(var)), module_info, proc_info,
-		liveness_info, set(set(var))).
-:- mode build_live_sets_in_cases(in, in, in, in, in, out, out) is det.
-
-build_live_sets_in_cases([], Liveness, LiveSets,
-		_ModuleInfo, _ProcInfo, Liveness, LiveSets).
-build_live_sets_in_cases([case(_Cons, Goal0) | Goals0], Liveness0,
-		LiveSets0, ModuleInfo, ProcInfo,
-			Liveness, LiveSets) :-
-	build_live_sets_in_goal(Goal0, Liveness0, LiveSets0,
-		ModuleInfo, ProcInfo, Liveness, LiveSets1),
-	build_live_sets_in_cases(Goals0, Liveness0, LiveSets1,
-		ModuleInfo, ProcInfo, _Liveness2, LiveSets).
-	% set__union(Liveness1, Liveness2, Liveness).
-	% This predicate call is unnecessary because the post-deaths and
-	% pre-births sets *should* be taking care of everything.
+build_live_sets_in_cases([], Liveness, ResumeVars, LiveSets, _, _,
+		Liveness, ResumeVars, LiveSets).
+build_live_sets_in_cases([case(_Cons, Goal0) | Goals0],
+		Liveness0, ResumeVars0, LiveSets0, ModuleInfo, ProcInfo,
+		Liveness, ResumeVars, LiveSets) :-
+	build_live_sets_in_goal(Goal0, Liveness0, ResumeVars0, LiveSets0,
+		ModuleInfo, ProcInfo, Liveness, ResumeVars1, LiveSets1),
+	build_live_sets_in_cases(Goals0, Liveness0, ResumeVars0, LiveSets1,
+		ModuleInfo, ProcInfo, _Liveness2, ResumeVars2, LiveSets),
+	set__union(ResumeVars1, ResumeVars2, ResumeVars).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- pred detect_initial_liveness(proc_info, module_info, set(var)).
-:- mode detect_initial_liveness(in, in, out) is det.
-
-detect_initial_liveness(ProcInfo, ModuleInfo, Liveness) :-
-	proc_info_headvars(ProcInfo, Vars),
-	proc_info_argmodes(ProcInfo, Modes),
-	proc_info_vartypes(ProcInfo, VarTypes),
-	map__apply_to_list(Vars, VarTypes, Types),
-	set__init(Liveness0),
-	(
-		detect_initial_liveness_2(Vars, Modes, Types, ModuleInfo,
-			Liveness0, Liveness1) 
-	->
-		Liveness = Liveness1
-	;
-		error("detect_initial_liveness: list length mis-match")
-	).
-
-:- pred detect_initial_liveness_2(list(var), list(mode), list(type),
-				module_info, set(var), set(var)).
-:- mode detect_initial_liveness_2(in, in, in, in, in, out) is semidet.
-
-detect_initial_liveness_2([], [], [], _ModuleInfo, Liveness, Liveness).
-detect_initial_liveness_2([V | Vs], [M | Ms], [T | Ts], ModuleInfo,
-						Liveness0, Liveness) :-
-	(
-		mode_to_arg_mode(ModuleInfo, M, T, top_in)
-	->
-		set__insert(Liveness0, V, Liveness1)
-	;
-		Liveness1 = Liveness0
-	),
-	detect_initial_liveness_2(Vs, Ms, Ts, ModuleInfo, Liveness1, Liveness).
-
-%-----------------------------------------------------------------------------%
-
-	% If doing accurate garbage collection, any typeinfos for 
-	% output variables or live variables are also live. 
-	% This is because if you want to collect, you need to 
-	% know what shape the polymorphic args of the variables 
+	% If doing accurate garbage collection, any typeinfos for
+	% output variables or live variables are also live.
+	% This is because if you want to collect, you need to
+	% know what shape the polymorphic args of the variables
 	% are, so you need the typeinfos to be present on the stack.
 
-	% The live variables obviously need their typeinfos 
+	% The live variables obviously need their typeinfos
 	% live, but the output variables also need their typeinfos
 	% saved (otherwise we would throw out typeinfos and might
 	% need one at a continuation point just after a call).
 
-	% maybe_add_accurate_gc_typeinfos takes a set of vars 
-	% (output vars) and a set of live vars and if we 
-	% are doing accurate GC, add the appropriate typeinfo variables to the 
+	% maybe_add_accurate_gc_typeinfos takes a set of vars
+	% (output vars) and a set of live vars and if we
+	% are doing accurate GC, add the appropriate typeinfo variables to the
 	% set of variables. If not, return the live vars unchanged.
 
 	% Make sure you get the output vars first, and the live vars second,
@@ -431,16 +448,16 @@ detect_initial_liveness_2([V | Vs], [M | Ms], [T | Ts], ModuleInfo,
 	set(var), set(var), set(var)).
 :- mode maybe_add_accurate_gc_typeinfos(in, in, in, in, out) is det.
 
-maybe_add_accurate_gc_typeinfos(ModuleInfo, ProcInfo, OutVars, 
+maybe_add_accurate_gc_typeinfos(ModuleInfo, ProcInfo, OutVars,
 	LiveVars1, LiveVars) :-
 	module_info_globals(ModuleInfo, Globals),
 	globals__get_gc_method(Globals, GC_Method),
-	( 
+	(
 		GC_Method = accurate
 	->
-		proc_info_get_used_typeinfos_setwise(ProcInfo, LiveVars1, 
+		proc_info_get_used_typeinfos_setwise(ProcInfo, LiveVars1,
 			TypeInfoVarsLive),
-		proc_info_get_used_typeinfos_setwise(ProcInfo, OutVars, 
+		proc_info_get_used_typeinfos_setwise(ProcInfo, OutVars,
 			TypeInfoVarsOut),
 		set__union(LiveVars1, TypeInfoVarsOut, LiveVars2),
 		set__union(LiveVars2, TypeInfoVarsLive, LiveVars)
