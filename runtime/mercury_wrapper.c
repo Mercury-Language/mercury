@@ -947,6 +947,9 @@ process_options(int argc, char **argv)
 #ifdef MR_CONSERVATIVE_GC
 				GC_quiet = MR_FALSE;
 #endif
+#ifdef MR_NATIVE_GC
+				MR_agc_debug      = MR_TRUE;
+#endif
 			} else if (MR_streq(MR_optarg, "b")) {
 				MR_nondstackdebug = MR_TRUE;
 			} else if (MR_streq(MR_optarg, "c")) {
@@ -960,6 +963,8 @@ process_options(int argc, char **argv)
 			} else if (MR_streq(MR_optarg, "G")) {
 #ifdef MR_CONSERVATIVE_GC
 				GC_quiet = MR_FALSE;
+#elif defined(MR_NATIVE_GC)
+				MR_agc_debug = MR_TRUE;
 #else
 				; /* ignore inapplicable option */
 #endif

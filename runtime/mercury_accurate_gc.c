@@ -84,16 +84,19 @@ MR_garbage_collect(void)
     old_heap = MR_ENGINE(MR_eng_heap_zone);
     new_heap = MR_ENGINE(MR_eng_heap_zone2);
 
-#ifdef MR_DEBUG_AGC_COLLECTION
-    fprintf(stderr, "\ngarbage_collect() called.\n");
+    /*
+    ** Print some debugging messages.
+    */
+    if (MR_agc_debug) {
+        fprintf(stderr, "\ngarbage_collect() called.\n");
 
-    fprintf(stderr, "old_heap->min:  %lx \t old_heap->hardmax:  %lx\n", 
-        (long) old_heap->min, (long) old_heap->hardmax);
+        fprintf(stderr, "old_heap->min:  %lx \t old_heap->hardmax:  %lx\n", 
+            (long) old_heap->min, (long) old_heap->hardmax);
 	fprintf(stderr, "new_heap->min: %lx \t new_heap->hardmax: %lx\n", 
-        (long) new_heap->min, (long) new_heap->hardmax);
+            (long) new_heap->min, (long) new_heap->hardmax);
 
-    fprintf(stderr, "MR_virtual_hp:  %lx\n", (long) MR_virtual_hp);
-#endif
+        fprintf(stderr, "MR_virtual_hp:  %lx\n", (long) MR_virtual_hp);
+    }
 
     old_hp = MR_virtual_hp;
 
@@ -128,10 +131,10 @@ MR_garbage_collect(void)
         MR_ENGINE(MR_eng_heap_zone) = tmp; 
     }
 
-#ifdef MR_DEBUG_AGC_COLLECTION
-    fprintf(stderr, "Swapped heaps\n"); 
-    fprintf(stderr, "MR_virtual_hp: %lx\n", (long) MR_virtual_hp);
-#endif
+    if (MR_agc_debug) {
+        fprintf(stderr, "Swapped heaps\n"); 
+        fprintf(stderr, "MR_virtual_hp: %lx\n", (long) MR_virtual_hp);
+    }
 
     /*
     ** Copy any roots on the stack
@@ -143,41 +146,42 @@ MR_garbage_collect(void)
     */
     garbage_collect_roots();
 
-#ifdef MR_DEBUG_AGC_COLLECTION
-    fprintf(stderr, "Clearing old heap:\n");
+    /*
+    ** Print some more debugging messages,
+    ** and clear out the old heap.
+    */
+    if (MR_agc_debug) {
+        fprintf(stderr, "Clearing old heap:\n");
 
-    {
-	MR_Word *tmp_hp;
+        {
+	    MR_Word *tmp_hp;
 
-	for (tmp_hp = old_heap->min; tmp_hp <= old_hp; tmp_hp++) {
+	    for (tmp_hp = old_heap->min; tmp_hp <= old_hp; tmp_hp++) {
 		*tmp_hp = 0xDEADBEAF;
-	}
-    }
+	    }
+        }
 
-    fprintf(stderr, "AFTER:\n");
+        fprintf(stderr, "AFTER:\n");
 
     	/* XXX save this, it appears to get clobbered */
-    new_hp = MR_virtual_hp;
+        new_hp = MR_virtual_hp;
 
-    MR_agc_dump_roots(root_list);
+        MR_agc_dump_roots(root_list);
 
     	/* XXX restore this, it appears to get clobbered */
-    fprintf(stderr, "MR_virtual_hp: %lx\n", (long) MR_virtual_hp);
-    MR_virtual_hp = new_hp;
-    fprintf(stderr, "MR_virtual_hp: %lx\n", (long) MR_virtual_hp);
+        fprintf(stderr, "MR_virtual_hp: %lx\n", (long) MR_virtual_hp);
+        MR_virtual_hp = new_hp;
+        fprintf(stderr, "MR_virtual_hp: %lx\n", (long) MR_virtual_hp);
 
-    fprintf(stderr, "old heap: %ld bytes, new heap: %ld bytes\n",
-        (long) ((char *) old_hp - (char *) old_heap->min),
-        (long) ((char *) MR_virtual_hp - (char *) new_heap->min));
-    fprintf(stderr, "%ld bytes recovered\n", 
-        (long) ((char *) old_hp - (char *) old_heap->min) -
-        ((char *) MR_virtual_hp - (char *) new_heap->min));
+        fprintf(stderr, "old heap: %ld bytes, new heap: %ld bytes\n",
+            (long) ((char *) old_hp - (char *) old_heap->min),
+            (long) ((char *) MR_virtual_hp - (char *) new_heap->min));
+        fprintf(stderr, "%ld bytes recovered\n", 
+            (long) ((char *) old_hp - (char *) old_heap->min) -
+            ((char *) MR_virtual_hp - (char *) new_heap->min));
 
-#endif
-
-#ifdef MR_DEBUG_AGC_COLLECTION
-    fprintf(stderr, "garbage_collect() done.\n\n");
-#endif
+        fprintf(stderr, "garbage_collect() done.\n\n");
+    }
 }
 
 static void
@@ -403,16 +407,16 @@ garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer,
     old_heap = MR_ENGINE(MR_eng_heap_zone);
     new_heap = MR_ENGINE(MR_eng_heap_zone2);
 
-#ifdef MR_DEBUG_AGC_COLLECTION
-    fprintf(stderr, "\ngarbage_collect() called.\n");
+    if (MR_agc_debug) {
+        fprintf(stderr, "\ngarbage_collect() called.\n");
 
-    fprintf(stderr, "old_heap->min:  %lx \t old_heap->hardmax:  %lx\n", 
-        (long) old_heap->min, (long) old_heap->hardmax);
+        fprintf(stderr, "old_heap->min:  %lx \t old_heap->hardmax:  %lx\n", 
+            (long) old_heap->min, (long) old_heap->hardmax);
 	fprintf(stderr, "new_heap->min: %lx \t new_heap->hardmax: %lx\n", 
-        (long) new_heap->min, (long) new_heap->hardmax);
+            (long) new_heap->min, (long) new_heap->hardmax);
 
-    fprintf(stderr, "MR_virtual_hp:  %lx\n", (long) MR_virtual_hp);
-#endif
+        fprintf(stderr, "MR_virtual_hp:  %lx\n", (long) MR_virtual_hp);
+    }
 
     old_hp = MR_virtual_hp;
 
@@ -432,34 +436,34 @@ garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer,
         MR_ENGINE(MR_eng_heap_zone) = tmp; 
     }
 
-#ifdef MR_DEBUG_AGC_COLLECTION
-    fprintf(stderr, "Swapped heaps\n"); 
-    fprintf(stderr, "MR_virtual_hp: %lx\n", (long) MR_virtual_hp);
-#endif
+    if (MR_agc_debug) {
+        fprintf(stderr, "Swapped heaps\n"); 
+        fprintf(stderr, "MR_virtual_hp: %lx\n", (long) MR_virtual_hp);
+    }
 
     label = MR_lookup_internal_by_addr(success_ip);
     label_layout = label->i_layout;
 
-#ifdef MR_DEBUG_AGC_COLLECTION
-    first_label = label;
-    first_stack_pointer = stack_pointer;
-    first_current_frame = current_frame;
-    first_max_frame = max_frame;
-    fprintf(stderr, "BEFORE:\n");
-    MR_agc_dump_stack_frames(first_label, old_heap, first_stack_pointer,
-        first_current_frame);
-    MR_agc_dump_nondet_stack_frames(first_label, old_heap, first_stack_pointer,
-        first_current_frame, first_max_frame);
-    MR_agc_dump_roots(root_list);
+    if (MR_agc_debug) {
+        first_label = label;
+        first_stack_pointer = stack_pointer;
+        first_current_frame = current_frame;
+        first_max_frame = max_frame;
+        fprintf(stderr, "BEFORE:\n");
+        MR_agc_dump_stack_frames(first_label, old_heap, first_stack_pointer,
+            first_current_frame);
+        MR_agc_dump_nondet_stack_frames(first_label, old_heap,
+	    first_stack_pointer, first_current_frame, first_max_frame);
+        MR_agc_dump_roots(root_list);
 
-      /* 
-      ** XXX the debug code seems to be messing up the heap pointer.
-      ** easier to reset it than debug the problem at the moment
-      */
-    fprintf(stderr, "MR_virtual_hp: %lx\n", (long) MR_virtual_hp);
-    MR_virtual_hp = new_heap->min;
-    fprintf(stderr, "MR_virtual_hp: %lx\n", (long) MR_virtual_hp);
-#endif
+        /* 
+        ** XXX the debug code seems to be messing up the heap pointer.
+        ** easier to reset it than debug the problem at the moment
+        */
+        fprintf(stderr, "MR_virtual_hp: %lx\n", (long) MR_virtual_hp);
+        MR_virtual_hp = new_heap->min;
+        fprintf(stderr, "MR_virtual_hp: %lx\n", (long) MR_virtual_hp);
+    }
 
     /*
     ** For each stack frame ...
@@ -470,10 +474,10 @@ garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer,
         const MR_Label_Layout           *return_label_layout;
 	int				short_var_count, long_var_count;
 
-#ifdef MR_DEBUG_AGC_COLLECTION
-	printlabel((MR_Code *) (Word) label->i_addr);
-        fflush(NULL);
-#endif
+	if (MR_agc_debug) {
+	    printlabel((MR_Code *) (Word) label->i_addr);
+       	    fflush(NULL);
+	}
 
         short_var_count = MR_short_desc_var_count(label_layout);
         long_var_count = MR_long_desc_var_count(label_layout);
@@ -574,21 +578,21 @@ garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer,
 	frame_size = max_frame - MR_prevfr_slot(max_frame);
 
 	if (frame_size == MR_NONDET_TEMP_SIZE) {
-#ifdef MR_DEBUG_AGC_COLLECTION
+	    if (MR_agc_debug) {
 		printlabel(MR_redoip_slot(max_frame));
 		fflush(NULL);
-#endif
+	    }
 	} else if (frame_size == MR_DET_TEMP_SIZE) {
-#ifdef MR_DEBUG_AGC_COLLECTION
+	    if (MR_agc_debug) {
 		printlabel(MR_redoip_slot(max_frame));
 		fflush(NULL);
-#endif
-		stack_pointer = MR_detfr_slot(max_frame); /* XXX ??? */
+	    }
+	    stack_pointer = MR_detfr_slot(max_frame); /* XXX ??? */
 	} else {
-#ifdef MR_DEBUG_AGC_COLLECTION
+	    if (MR_agc_debug) {
 		printlabel(MR_redoip_slot(max_frame));
 		fflush(NULL);
-#endif
+	    }
 	}
 	label = MR_lookup_internal_by_addr(MR_redoip_slot(max_frame));
 
@@ -649,48 +653,47 @@ garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer,
     */
     garbage_collect_roots();
 
-#ifdef MR_DEBUG_AGC_COLLECTION
-    fprintf(stderr, "Clearing old heap:\n");
+    if (MR_agc_debug) {
+        fprintf(stderr, "Clearing old heap:\n");
 
-    {
-	Word *tmp_hp;
+        {
+	    Word *tmp_hp;
 
-	for (tmp_hp = old_heap->min; tmp_hp <= old_hp; tmp_hp++) {
-		*tmp_hp = 1;
-	}
-    }
+	    for (tmp_hp = old_heap->min; tmp_hp <= old_hp; tmp_hp++) {
+		*tmp_hp = 0xDEADBEAF;
+	    }
+        }
 
-    fprintf(stderr, "AFTER:\n");
+        fprintf(stderr, "AFTER:\n");
 
     	/* XXX save this, it appears to get clobbered */
-    new_hp = MR_virtual_hp;
+        new_hp = MR_virtual_hp;
 
-    MR_agc_dump_stack_frames(first_label, new_heap, first_stack_pointer,
-        first_current_frame);
-    MR_agc_dump_roots(root_list);
-    MR_agc_dump_nondet_stack_frames(first_label, new_heap, first_stack_pointer,
-        first_current_frame, first_max_frame);
+        MR_agc_dump_stack_frames(first_label, new_heap, first_stack_pointer,
+            first_current_frame);
+        MR_agc_dump_roots(root_list);
+        MR_agc_dump_nondet_stack_frames(first_label, new_heap,
+	    first_stack_pointer, first_current_frame, first_max_frame);
 
     	/* XXX restore this, it appears to get clobbered */
-    fprintf(stderr, "MR_virtual_hp: %lx\n", (long) MR_virtual_hp);
-    MR_virtual_hp = new_hp;
-    fprintf(stderr, "MR_virtual_hp: %lx\n", (long) MR_virtual_hp);
+        fprintf(stderr, "MR_virtual_hp: %lx\n", (long) MR_virtual_hp);
+        MR_virtual_hp = new_hp;
+        fprintf(stderr, "MR_virtual_hp: %lx\n", (long) MR_virtual_hp);
 
-    fprintf(stderr, "old heap: %ld bytes, new heap: %ld bytes\n",
-        (long) ((char *) old_hp - (char *) old_heap->min),
-        (long) ((char *) MR_virtual_hp - (char *) new_heap->min));
-    fprintf(stderr, "%ld bytes recovered\n", 
-        (long) ((char *) old_hp - (char *) old_heap->min) -
-        ((char *) MR_virtual_hp - (char *) new_heap->min));
-
-#endif
+        fprintf(stderr, "old heap: %ld bytes, new heap: %ld bytes\n",
+            (long) ((char *) old_hp - (char *) old_heap->min),
+            (long) ((char *) MR_virtual_hp - (char *) new_heap->min));
+        fprintf(stderr, "%ld bytes recovered\n", 
+            (long) ((char *) old_hp - (char *) old_heap->min) -
+            ((char *) MR_virtual_hp - (char *) new_heap->min));
+    }
 
     /* Reset the redzone on the old heap */
     MR_reset_redzone(old_heap);
 
-#ifdef MR_DEBUG_AGC_COLLECTION
-    fprintf(stderr, "garbage_collect() done.\n\n");
-#endif
+    if (MR_agc_debug) {
+        fprintf(stderr, "garbage_collect() done.\n\n");
+    }
 
 }
 

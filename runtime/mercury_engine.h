@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1994-2001 The University of Melbourne.
+** Copyright (C) 1994-2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -50,8 +50,9 @@ extern	MR_bool	MR_debugflag[];
 #define	MR_TABLEHASHFLAG	11
 #define	MR_TABLESTACKFLAG	12
 #define	MR_UNBUFFLAG		13
-#define	MR_DETAILFLAG		14
-#define	MR_MAXFLAG		15
+#define	MR_AGC_FLAG 		14
+#define	MR_DETAILFLAG		15
+#define	MR_MAXFLAG		16
 /* MR_DETAILFLAG should be the last real flag */
 
 #define	MR_progdebug		MR_debugflag[MR_PROGFLAG]
@@ -69,6 +70,7 @@ extern	MR_bool	MR_debugflag[];
 #define	MR_tablestackdebug	MR_debugflag[MR_TABLESTACKFLAG]
 #define	MR_unbufdebug		MR_debugflag[MR_UNBUFFLAG]
 #define	MR_detaildebug		MR_debugflag[MR_DETAILFLAG]
+#define	MR_agc_debug		MR_debugflag[MR_AGC_FLAG]
 
 	/* 
 	** MR_setjmp and MR_longjmp are wrappers around setjmp and longjmp 
