@@ -2732,12 +2732,44 @@ lookup_dependencies(Module, DepsMap0, Search, Done, ModuleImports, DepsMap) -->
 		{ map__lookup(DepsMap, Module, deps(Done, ModuleImports)) }
 	).
 
+	%
+	% insert_into_deps_map/3:
+	%
+	% Insert a new entry into the deps_map.
+	% If the module already occured in the deps_map, then we just
+	% replace the old entry (presumed to be a dummy entry) with the
+	% new one.
+	%
+	% This can only occur for sub-modules which have
+	% been imported before their parent module was imported:
+	% before reading a module and inserting it into the
+	% deps map, we check if it was already there, but
+	% when we read in the module, we try to insert not just
+	% that module but also all the nested sub-modules inside
+	% that module.  If a sub-module was previously imported,
+	% then it may already have an entry in the deps_map.
+	% However, unless the sub-module is defined both as a
+	% separate sub-module and also as a nested sub-module,
+	% the previous entry will be a dummy entry that we inserted
+	% after trying to read the source file and failing.
+	%
+	% XXX We could make some effort here to catch the case where a
+	% module is defined as both a separate sub-module and also
+	% as a nested sub-module.  However, that doesn't seem worthwhile,
+	% since not all such cases would arrive here anyway --
+	% it would be nice to catch that case but this is not the
+	% place to catch it.
+	% (Currently for that case we just ignore the file containing the
+	% separate sub-module.  Since we don't consider the
+	% file containing the separate sub-module to be part of the
+	% program's source, there's no duplicate definition, and thus
+	% no requirement to report any error message.)
+	%
 :- pred insert_into_deps_map(module_imports, deps_map, deps_map).
 :- mode insert_into_deps_map(in, in, out) is det.
 insert_into_deps_map(ModuleImports, DepsMap0, DepsMap) :-
 	module_imports_get_module_name(ModuleImports, ModuleName),
-	map__det_insert(DepsMap0, ModuleName, deps(no, ModuleImports),
-		DepsMap).
+	map__set(DepsMap0, ModuleName, deps(no, ModuleImports), DepsMap).
 
 	% Read a module to determine the (direct) dependencies
 	% of that module and any nested sub-modules it contains.
