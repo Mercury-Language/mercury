@@ -76,28 +76,31 @@
 
 %---------------------------------------------------------------------------%
 
-call_gen__generate_call(CodeModel, PredId, ProcId, ArgVars, GoalInfo, Code) -->
+call_gen__generate_call(CodeModel, PredId, ProcId, ArgVars, GoalInfo, Code,
+		!CI) :-
 
 		% Find out which arguments are input and which are output.
-	code_info__get_pred_proc_arginfo(PredId, ProcId, ArgInfo),
-	{ assoc_list__from_corresponding_lists(ArgVars, ArgInfo, ArgsInfos) },
+	ArgInfo = code_info__get_pred_proc_arginfo(!.CI, PredId, ProcId),
+	assoc_list__from_corresponding_lists(ArgVars, ArgInfo, ArgsInfos),
 
 		% Save the necessary vars on the stack and move the input args
 		% to their registers.
-	code_info__setup_call(GoalInfo, ArgsInfos, LiveVals, SetupCode),
-	call_gen__kill_dead_input_vars(ArgsInfos, GoalInfo, NonLiveOutputs),
+	code_info__setup_call(GoalInfo, ArgsInfos, LiveVals, SetupCode, !CI),
+	call_gen__kill_dead_input_vars(ArgsInfos, GoalInfo, NonLiveOutputs,
+		!CI),
 
 		% Figure out what the call model is.
-	call_gen__prepare_for_call(CodeModel, CallModel, TraceCode),
+	call_gen__prepare_for_call(CodeModel, CallModel, TraceCode, !CI),
 
 		% Make the call.
-	code_info__get_module_info(ModuleInfo),
-	code_info__make_entry_label(ModuleInfo, PredId, ProcId, yes, Address),
-	code_info__get_next_label(ReturnLabel),
-	{ call_gen__call_comment(CodeModel, CallComment) },
-	{ goal_info_get_context(GoalInfo, Context) },
-	{ goal_info_get_goal_path(GoalInfo, GoalPath) },
-	{ CallCode = node([
+	code_info__get_module_info(!.CI, ModuleInfo),
+	Address = code_info__make_entry_label(!.CI, ModuleInfo,	
+		PredId, ProcId, yes),
+	code_info__get_next_label(ReturnLabel, !CI),
+	call_gen__call_comment(CodeModel, CallComment),
+	goal_info_get_context(GoalInfo, Context),
+	goal_info_get_goal_path(GoalInfo, GoalPath),
+	CallCode = node([
 		livevals(LiveVals)
 			- "",
 		call(Address, label(ReturnLabel), ReturnLiveLvalues, Context,
@@ -105,30 +108,29 @@ call_gen__generate_call(CodeModel, PredId, ProcId, ArgVars, GoalInfo, Code) -->
 			- CallComment,
 		label(ReturnLabel)
 			- "continuation label"
-	]) },
+	]),
 
 		% Figure out what variables will be live at the return point,
 		% and where, for use in the accurate garbage collector, and
 		% in the debugger.
-	code_info__get_instmap(InstMap),
-	{ goal_info_get_instmap_delta(GoalInfo, InstMapDelta) },
-	{ instmap__apply_instmap_delta(InstMap, InstMapDelta, ReturnInstMap) },
+	code_info__get_instmap(!.CI, InstMap),
+	goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
+	instmap__apply_instmap_delta(InstMap, InstMapDelta, ReturnInstMap),
 
 		% Update the code generator state to reflect the situation
 		% after the call.
 	call_gen__handle_return(ArgsInfos, GoalInfo, NonLiveOutputs,
-		ReturnInstMap, ReturnLiveLvalues),
+		ReturnInstMap, ReturnLiveLvalues, !CI),
 
 		% If the call can fail, generate code to check for and
 		% handle the failure.
-	call_gen__handle_failure(CodeModel, GoalInfo, FailHandlingCode),
+	call_gen__handle_failure(CodeModel, GoalInfo, FailHandlingCode, !CI),
 
-	{ Code =
+	Code =
 		tree(SetupCode,
 		tree(TraceCode,
 		tree(CallCode,
-		     FailHandlingCode)))
-	}.
+		     FailHandlingCode))).
 
 %---------------------------------------------------------------------------%
 
@@ -142,74 +144,74 @@ call_gen__generate_call(CodeModel, PredId, ProcId, ArgVars, GoalInfo, Code) -->
 	%
 
 call_gen__generate_generic_call(OuterCodeModel, GenericCall, Args0,
-		Modes0, Det, GoalInfo, Code) -->
+		Modes0, Det, GoalInfo, Code, !CI) :-
 	% `unsafe_cast' differs from the other generic call types in
 	% that there is no address. Also, live_vars.m assumes that
 	% unsafe_casts do not require live variables to be saved to the stack.
-	( { GenericCall = unsafe_cast } ->
-		( { Args0 = [InputArg, OutputArg] } ->
+	( GenericCall = unsafe_cast ->
+		( Args0 = [InputArg, OutputArg] ->
 			call_gen__generate_assign_builtin(OutputArg,
-				leaf(InputArg), Code)
+				leaf(InputArg), Code, !CI)
 		;
-			{ error(
-		"call_gen__generate_generic_call: invalid unsafe_cast call") }
+			error(
+		"call_gen__generate_generic_call: invalid unsafe_cast call")
 		)
 	;
 		call_gen__generate_generic_call_2(OuterCodeModel,
-			GenericCall, Args0, Modes0, Det, GoalInfo, Code)
+			GenericCall, Args0, Modes0, Det, GoalInfo, Code, !CI)
 	).	
 
-:- pred call_gen__generate_generic_call_2(code_model, generic_call,
-			list(prog_var), list(mode), determinism,
-			hlds_goal_info, code_tree, code_info, code_info).
-:- mode call_gen__generate_generic_call_2(in, in, in, in, in, in,
-			out, in, out) is det.
+:- pred call_gen__generate_generic_call_2(code_model::in, generic_call::in,
+	list(prog_var)::in, list(mode)::in, determinism::in,
+	hlds_goal_info::in, code_tree::out, code_info::in, code_info::out)
+	is det.
 
 call_gen__generate_generic_call_2(_OuterCodeModel, GenericCall, Args,
-		Modes, Det, GoalInfo, Code) -->
-	list__map_foldl(code_info__variable_type, Args, Types),
+		Modes, Det, GoalInfo, Code, !CI) :-
+	Types = list__map(code_info__variable_type(!.CI), Args),
 
-	{ determinism_to_code_model(Det, CodeModel) },
-	{ call_gen__generic_call_info(CodeModel, GenericCall,
-		CodeAddr, SpecifierArgInfos, FirstImmInput) },
-	{ CodeModel = model_semi ->
+	determinism_to_code_model(Det, CodeModel),
+	call_gen__generic_call_info(CodeModel, GenericCall,
+		CodeAddr, SpecifierArgInfos, FirstImmInput),
+	( CodeModel = model_semi ->
 		FirstOutput = 2
 	;
 		FirstOutput = 1
-	},
+	),
 
-	code_info__get_module_info(ModuleInfo),
-	{ arg_info__compute_in_and_out_vars(ModuleInfo, Args, Modes, Types,
-		InVars, OutVars) },
-	{ call_gen__give_vars_consecutive_arg_infos(InVars, FirstImmInput,
-		top_in, InVarArgInfos) },
-	{ call_gen__give_vars_consecutive_arg_infos(OutVars, FirstOutput,
-		top_out, OutArgsInfos) },
-	{ list__append(SpecifierArgInfos, InVarArgInfos, InArgInfos) },
-	{ list__append(InArgInfos, OutArgsInfos, ArgInfos) },
+	code_info__get_module_info(!.CI, ModuleInfo),
+	arg_info__compute_in_and_out_vars(ModuleInfo, Args, Modes, Types,
+		InVars, OutVars),
+	call_gen__give_vars_consecutive_arg_infos(InVars, FirstImmInput,
+		top_in, InVarArgInfos),
+	call_gen__give_vars_consecutive_arg_infos(OutVars, FirstOutput,
+		top_out, OutArgsInfos),
+	list__append(SpecifierArgInfos, InVarArgInfos, InArgInfos),
+	list__append(InArgInfos, OutArgsInfos, ArgInfos),
 
 		% Save the necessary vars on the stack and move the input args
 		% defined by variables to their registers.
-	code_info__setup_call(GoalInfo, ArgInfos, LiveVals0, SetupCode),
-	call_gen__kill_dead_input_vars(ArgInfos, GoalInfo, NonLiveOutputs),
+	code_info__setup_call(GoalInfo, ArgInfos, LiveVals0, SetupCode, !CI),
+	call_gen__kill_dead_input_vars(ArgInfos, GoalInfo, NonLiveOutputs,
+		!CI),
 
 		% Move the input args not defined by variables to their
 		% registers. Setting up these arguments last results in
 		% slightly more efficient code, since we can use their
 		% registers when placing the variables.
 	call_gen__generic_call_nonvar_setup(GenericCall, InVars, OutVars,
-		NonVarCode),
+		NonVarCode, !CI),
 
-	{ call_gen__extra_livevals(FirstImmInput, ExtraLiveVals) },
-	{ set__insert_list(LiveVals0, ExtraLiveVals, LiveVals) },
+	call_gen__extra_livevals(FirstImmInput, ExtraLiveVals),
+	set__insert_list(LiveVals0, ExtraLiveVals, LiveVals),
 
-	call_gen__prepare_for_call(CodeModel, CallModel, TraceCode),
+	call_gen__prepare_for_call(CodeModel, CallModel, TraceCode, !CI),
 
 		% Make the call.
-	code_info__get_next_label(ReturnLabel),
-	{ goal_info_get_context(GoalInfo, Context) },
-	{ goal_info_get_goal_path(GoalInfo, GoalPath) },
-	{ CallCode = node([
+	code_info__get_next_label(ReturnLabel, !CI),
+	goal_info_get_context(GoalInfo, Context),
+	goal_info_get_goal_path(GoalInfo, GoalPath),
+	CallCode = node([
 		livevals(LiveVals)
 			- "",
 		call(CodeAddr, label(ReturnLabel), ReturnLiveLvalues,
@@ -217,31 +219,30 @@ call_gen__generate_generic_call_2(_OuterCodeModel, GenericCall, Args,
 			- "Setup and call",
 		label(ReturnLabel)
 			- "Continuation label"
-	]) },
+	]),
 
 		% Figure out what variables will be live at the return point,
 		% and where, for use in the accurate garbage collector, and
 		% in the debugger.
-	code_info__get_instmap(InstMap),
-	{ goal_info_get_instmap_delta(GoalInfo, InstMapDelta) },
-	{ instmap__apply_instmap_delta(InstMap, InstMapDelta, ReturnInstMap) },
+	code_info__get_instmap(!.CI, InstMap),
+	goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
+	instmap__apply_instmap_delta(InstMap, InstMapDelta, ReturnInstMap),
 
 		% Update the code generator state to reflect the situation
 		% after the call.
 	call_gen__handle_return(OutArgsInfos, GoalInfo, NonLiveOutputs,
-		ReturnInstMap, ReturnLiveLvalues),
+		ReturnInstMap, ReturnLiveLvalues, !CI),
 
 		% If the call can fail, generate code to check for and
 		% handle the failure.
-	call_gen__handle_failure(CodeModel, GoalInfo, FailHandlingCode),
+	call_gen__handle_failure(CodeModel, GoalInfo, FailHandlingCode, !CI),
 
-	{ Code =
+	Code =
 		tree(SetupCode,
 		tree(NonVarCode,
 		tree(TraceCode,
 		tree(CallCode,
-		     FailHandlingCode))))
-	}.
+		     FailHandlingCode)))).
 
 %---------------------------------------------------------------------------%
 
@@ -289,83 +290,82 @@ call_gen__generic_call_info(_, aditi_builtin(_, _), _, _, _) :-
 	code_info::in, code_info::out) is det.
 
 call_gen__generic_call_nonvar_setup(higher_order(_, _, _, _),
-		InVars, OutVars, Code) -->
-	code_info__clobber_regs([reg(r, 2), reg(r, 3)]),
-	{ list__length(InVars, NInVars) },
-	{ list__length(OutVars, NOutVars) },
-	{ Code = node([
+		InVars, OutVars, Code, !CI) :-
+	code_info__clobber_regs([reg(r, 2), reg(r, 3)], !CI),
+	list__length(InVars, NInVars),
+	list__length(OutVars, NOutVars),
+	Code = node([
 		assign(reg(r, 2), const(int_const(NInVars))) -
 			"Assign number of immediate input arguments",
 		assign(reg(r, 3), const(int_const(NOutVars))) -
 			"Assign number of output arguments"
-	]) }.
+	]).
 call_gen__generic_call_nonvar_setup(class_method(_, Method, _, _),
-		InVars, OutVars, Code) -->
-	code_info__clobber_regs([reg(r, 2), reg(r, 3), reg(r, 4)]),
-	{ list__length(InVars, NInVars) },
-	{ list__length(OutVars, NOutVars) },
-	{ Code = node([
+		InVars, OutVars, Code, !CI) :-
+	code_info__clobber_regs([reg(r, 2), reg(r, 3), reg(r, 4)], !CI),
+	list__length(InVars, NInVars),
+	list__length(OutVars, NOutVars),
+	Code = node([
 		assign(reg(r, 2), const(int_const(Method))) -
 			"Index of class method in typeclass info",
 		assign(reg(r, 3), const(int_const(NInVars))) -
 			"Assign number of immediate input arguments",
 		assign(reg(r, 4), const(int_const(NOutVars))) -
 			"Assign number of output arguments"
-	]) }.
-call_gen__generic_call_nonvar_setup(unsafe_cast, _, _, _) -->
-	{ error("call_gen__generic_call_nonvar_setup: unsafe_cast") }.
-call_gen__generic_call_nonvar_setup(aditi_builtin(_, _), _, _, _) -->
+	]).
+call_gen__generic_call_nonvar_setup(unsafe_cast, _, _, _, !CI) :-
+	error("call_gen__generic_call_nonvar_setup: unsafe_cast").
+call_gen__generic_call_nonvar_setup(aditi_builtin(_, _), _, _, _, !CI) :-
 	% These should have been transformed into normal calls.
-	{ error("call_gen__generic_call_info: aditi_builtin") }.
+	error("call_gen__generic_call_info: aditi_builtin").
 
 %---------------------------------------------------------------------------%
 
 :- pred call_gen__prepare_for_call(code_model::in, call_model::out,
 	code_tree::out, code_info::in, code_info::out) is det.
 
-call_gen__prepare_for_call(CodeModel, CallModel, TraceCode) -->
-	code_info__succip_is_used,
+call_gen__prepare_for_call(CodeModel, CallModel, TraceCode, !CI) :-
+	code_info__succip_is_used(!CI),
 	(
-		{ CodeModel = model_det },
-		{ CallModel = det }
+		CodeModel = model_det,
+		CallModel = det
 	;
-		{ CodeModel = model_semi },
-		{ CallModel = semidet }
+		CodeModel = model_semi,
+		CallModel = semidet
 	;
-		{ CodeModel = model_non },
-		code_info__may_use_nondet_tailcall(TailCallStatus),
-		{ CallModel = nondet(TailCallStatus) },
-		code_info__set_resume_point_and_frame_to_unknown
+		CodeModel = model_non,
+		code_info__may_use_nondet_tailcall(!.CI, TailCallStatus),
+		CallModel = nondet(TailCallStatus),
+		code_info__set_resume_point_and_frame_to_unknown(!CI)
 	),
-	trace__prepare_for_call(TraceCode).
+	trace__prepare_for_call(!.CI, TraceCode).
 
 :- pred call_gen__handle_failure(code_model::in, hlds_goal_info::in,
 	code_tree::out, code_info::in, code_info::out) is det.
 
-call_gen__handle_failure(CodeModel, GoalInfo, FailHandlingCode) -->
-	( { CodeModel = model_semi } ->
-		{ goal_info_get_determinism(GoalInfo, Detism) },
-		( { Detism = failure } ->
-			code_info__generate_failure(FailHandlingCode)
+call_gen__handle_failure(CodeModel, GoalInfo, FailHandlingCode, !CI) :-
+	( CodeModel = model_semi ->
+		goal_info_get_determinism(GoalInfo, Detism),
+		( Detism = failure ->
+			code_info__generate_failure(FailHandlingCode, !CI)
 		;
-			code_info__get_next_label(ContLab),
-			{ FailTestCode = node([
+			code_info__get_next_label(ContLab, !CI),
+			FailTestCode = node([
 				if_val(lval(reg(r, 1)), label(ContLab))
 					- "test for success"
-			]) },
-			code_info__generate_failure(FailCode),
-			{ ContLabelCode = node([
+			]),
+			code_info__generate_failure(FailCode, !CI),
+			ContLabelCode = node([
 				label(ContLab)
 					- ""
-			]) },
-			{ FailHandlingCode =
+			]),
+			FailHandlingCode =
 				tree(FailTestCode,
 				tree(FailCode,
 				     ContLabelCode))
-			}
 		)
 	;
-		{ FailHandlingCode = empty }
+		FailHandlingCode = empty
 	).
 
 :- pred call_gen__call_comment(code_model::in, string::out) is det.
@@ -399,31 +399,31 @@ call_gen__call_comment(model_non,  "branch to nondet procedure").
 	hlds_goal_info::in, set(prog_var)::out,
 	code_info::in, code_info::out) is det.
 
-call_gen__kill_dead_input_vars(ArgsInfos, GoalInfo, NonLiveOutputs) -->
-	code_info__get_forward_live_vars(Liveness),
-	{ call_gen__find_nonlive_outputs(ArgsInfos, Liveness,
-		set__init, NonLiveOutputs) },
-	{ goal_info_get_post_deaths(GoalInfo, PostDeaths) },
-	{ set__difference(PostDeaths, NonLiveOutputs, ImmediatePostDeaths) },
-	code_info__make_vars_forward_dead(ImmediatePostDeaths).
+call_gen__kill_dead_input_vars(ArgsInfos, GoalInfo, NonLiveOutputs, !CI) :-
+	code_info__get_forward_live_vars(!.CI, Liveness),
+	call_gen__find_nonlive_outputs(ArgsInfos, Liveness,
+		set__init, NonLiveOutputs),
+	goal_info_get_post_deaths(GoalInfo, PostDeaths),
+	set__difference(PostDeaths, NonLiveOutputs, ImmediatePostDeaths),
+	code_info__make_vars_forward_dead(ImmediatePostDeaths, !CI).
 
 :- pred call_gen__handle_return(assoc_list(prog_var, arg_info)::in,
 	hlds_goal_info::in, set(prog_var)::in, instmap::in,
 	list(liveinfo)::out, code_info::in, code_info::out) is det.
 
 call_gen__handle_return(ArgsInfos, GoalInfo, _NonLiveOutputs, ReturnInstMap,
-		ReturnLiveLvalues) -->
-	{ goal_info_get_instmap_delta(GoalInfo, InstMapDelta) },
-	{ instmap_delta_is_reachable(InstMapDelta) ->
+		ReturnLiveLvalues, !CI) :-
+	goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
+	( instmap_delta_is_reachable(InstMapDelta) ->
 		OkToDeleteAny = no
 	;
 		OkToDeleteAny = yes
-	},
-	code_info__clear_all_registers(OkToDeleteAny),
-	code_info__get_forward_live_vars(Liveness),
-	call_gen__rebuild_registers(ArgsInfos, Liveness, OutputArgLocs),
-	code_info__generate_return_live_lvalues(OutputArgLocs, ReturnInstMap,
-		OkToDeleteAny, ReturnLiveLvalues).
+	),
+	code_info__clear_all_registers(OkToDeleteAny, !CI),
+	code_info__get_forward_live_vars(!.CI, Liveness),
+	call_gen__rebuild_registers(ArgsInfos, Liveness, OutputArgLocs, !CI),
+	code_info__generate_return_live_lvalues(!.CI, OutputArgLocs,
+		ReturnInstMap, OkToDeleteAny, ReturnLiveLvalues).
 
 :- pred call_gen__find_nonlive_outputs(assoc_list(prog_var, arg_info)::in,
 	set(prog_var)::in, set(prog_var)::in, set(prog_var)::out) is det.
@@ -447,28 +447,28 @@ call_gen__find_nonlive_outputs([Var - arg_info(_ArgLoc, Mode) | Args],
 	set(prog_var)::in, assoc_list(prog_var, arg_loc)::out,
 	code_info::in, code_info::out) is det.
 
-call_gen__rebuild_registers([], _, []) --> [].
+call_gen__rebuild_registers([], _, [], !CI).
 call_gen__rebuild_registers([Var - arg_info(ArgLoc, Mode) | Args], Liveness,
-		OutputArgLocs) -->
-	call_gen__rebuild_registers(Args, Liveness, OutputArgLocs1),
+		OutputArgLocs, !CI) :-
+	call_gen__rebuild_registers(Args, Liveness, OutputArgLocs1, !CI),
 	(
-		{ Mode = top_out },
-		{ set__member(Var, Liveness) }
+		Mode = top_out,
+		set__member(Var, Liveness)
 	->
-		{ code_util__arg_loc_to_register(ArgLoc, Register) },
-		code_info__set_var_location(Var, Register),
-		{ OutputArgLocs = [Var - ArgLoc | OutputArgLocs1] }
+		code_util__arg_loc_to_register(ArgLoc, Register),
+		code_info__set_var_location(Var, Register, !CI),
+		OutputArgLocs = [Var - ArgLoc | OutputArgLocs1]
 	;
-		{ OutputArgLocs = OutputArgLocs1 }
+		OutputArgLocs = OutputArgLocs1
 	).
 
 %---------------------------------------------------------------------------%
 
-call_gen__generate_builtin(CodeModel, PredId, ProcId, Args, Code) -->
-	code_info__get_module_info(ModuleInfo),
-	{ predicate_module(ModuleInfo, PredId, ModuleName) },
-	{ predicate_name(ModuleInfo, PredId, PredName) },
-	{
+call_gen__generate_builtin(CodeModel, PredId, ProcId, Args, Code, !CI) :-
+	code_info__get_module_info(!.CI, ModuleInfo),
+	predicate_module(ModuleInfo, PredId, ModuleName),
+	predicate_name(ModuleInfo, PredId, PredName),
+	(
 		builtin_ops__translate_builtin(ModuleName, PredName,
 			ProcId, Args, SimpleCode0)
 	->
@@ -478,44 +478,44 @@ call_gen__generate_builtin(CodeModel, PredId, ProcId, Args, Code) -->
 		format("Unknown builtin predicate: %s/%d",
 			[s(PredName), i(Arity)], Msg),
 		error(Msg)
-	},
+	),
 	(
-		{ CodeModel = model_det },
+		CodeModel = model_det,
 		(
-			{ SimpleCode = assign(Var, AssignExpr) }
+			SimpleCode = assign(Var, AssignExpr)
 		->
 			call_gen__generate_assign_builtin(Var,
-				AssignExpr, Code)
+				AssignExpr, Code, !CI)
 		;
-			{ error("Malformed det builtin predicate") }
+			error("Malformed det builtin predicate")
 		)
 	;
-		{ CodeModel = model_semi },
+		CodeModel = model_semi,
 		(
-			{ SimpleCode = test(TestExpr) }
+			SimpleCode = test(TestExpr)
 		->
 			call_gen__generate_simple_test(TestExpr, Rval,
-				ArgCode),
-			code_info__fail_if_rval_is_false(Rval, TestCode),
-			{ Code = tree(ArgCode, TestCode) }
+				ArgCode, !CI),
+			code_info__fail_if_rval_is_false(Rval, TestCode, !CI),
+			Code = tree(ArgCode, TestCode)
 		;
-			{ error("Malformed semi builtin predicate") }
+			error("Malformed semi builtin predicate")
 		)
 	;
-		{ CodeModel = model_non },
-		{ error("Nondet builtin predicate") }
+		CodeModel = model_non,
+		error("Nondet builtin predicate")
 	).
 
-:- pred call_gen__generate_assign_builtin(prog_var, simple_expr(prog_var),
-		code_tree, code_info, code_info).
-:- mode call_gen__generate_assign_builtin(in, in, out, in, out) is det.
+:- pred call_gen__generate_assign_builtin(prog_var::in,
+	simple_expr(prog_var)::in, code_tree::out,
+	code_info::in, code_info::out) is det.
 
-call_gen__generate_assign_builtin(Var, AssignExpr, Code) -->
-	( code_info__variable_is_forward_live(Var) ->
-		{ Rval = convert_simple_expr(AssignExpr) },
-		code_info__assign_expr_to_var(Var, Rval, Code)
+call_gen__generate_assign_builtin(Var, AssignExpr, Code, !CI) :-
+	( code_info__variable_is_forward_live(!.CI, Var) ->
+		Rval = convert_simple_expr(AssignExpr),
+		code_info__assign_expr_to_var(Var, Rval, Code, !CI)
 	;
-		{ Code = empty }
+		Code = empty
 	).
 
 :- func convert_simple_expr(simple_expr(prog_var)) = rval.
@@ -532,31 +532,31 @@ convert_simple_expr(binary(BinOp, Expr1, Expr2)) =
 	simple_expr(prog_var)::in(simple_test_expr), rval::out,
 	code_tree::out, code_info::in, code_info::out) is det.
 
-call_gen__generate_simple_test(TestExpr, Rval, ArgCode) -->
+call_gen__generate_simple_test(TestExpr, Rval, ArgCode, !CI) :-
 	(
-		{ TestExpr = binary(BinOp, X0, Y0) },
-		{ X1 = convert_simple_expr(X0) },
-		{ Y1 = convert_simple_expr(Y0) },
-		call_gen__generate_builtin_arg(X1, X, CodeX),
-		call_gen__generate_builtin_arg(Y1, Y, CodeY),
-		{ Rval = binop(BinOp, X, Y) },
-		{ ArgCode = tree(CodeX, CodeY) }
+		TestExpr = binary(BinOp, X0, Y0),
+		X1 = convert_simple_expr(X0),
+		Y1 = convert_simple_expr(Y0),
+		call_gen__generate_builtin_arg(X1, X, CodeX, !CI),
+		call_gen__generate_builtin_arg(Y1, Y, CodeY, !CI),
+		Rval = binop(BinOp, X, Y),
+		ArgCode = tree(CodeX, CodeY)
 	;
-		{ TestExpr = unary(UnOp, X0) },
-		{ X1 = convert_simple_expr(X0) },
-		call_gen__generate_builtin_arg(X1, X, ArgCode),
-		{ Rval = unop(UnOp, X) }
+		TestExpr = unary(UnOp, X0),
+		X1 = convert_simple_expr(X0),
+		call_gen__generate_builtin_arg(X1, X, ArgCode, !CI),
+		Rval = unop(UnOp, X)
 	).
 
 :- pred call_gen__generate_builtin_arg(rval::in, rval::out, code_tree::out,
 	code_info::in, code_info::out) is det.
 
-call_gen__generate_builtin_arg(Rval0, Rval, Code) -->
-	( { Rval0 = var(Var) } ->
-		code_info__produce_variable(Var, Code, Rval)
+call_gen__generate_builtin_arg(Rval0, Rval, Code, !CI) :-
+	( Rval0 = var(Var) ->
+		code_info__produce_variable(Var, Code, Rval, !CI)
 	;
-		{ Rval = Rval0 },
-		{ Code = empty }
+		Rval = Rval0,
+		Code = empty
 	).
 
 %---------------------------------------------------------------------------%
@@ -586,12 +586,12 @@ call_gen__output_arg_locs([Var - arg_info(Loc, Mode) | Args], Vs) :-
 	set(prog_var)::in, code_tree::out,
 	code_info::in, code_info::out) is det.
 
-call_gen__generate_call_vn_livevals(InputArgLocs, OutputArgs, Code) -->
-	code_info__generate_call_vn_livevals(InputArgLocs, OutputArgs,
+call_gen__generate_call_vn_livevals(InputArgLocs, OutputArgs, Code, !CI) :-
+	code_info__generate_call_vn_livevals(!.CI, InputArgLocs, OutputArgs,
 		LiveVals),
-	{ Code = node([
+	Code = node([
 		livevals(LiveVals) - ""
-	]) }.
+	]).
 
 %---------------------------------------------------------------------------%
 

@@ -325,7 +325,7 @@ ml_switch_gen__determine_category(CaseVar, SwitchCategory) -->
 	=(MLGenInfo),
 	{ ml_gen_info_get_module_info(MLGenInfo, ModuleInfo) },
 	{ type_util__classify_type(ModuleInfo, Type) = TypeCategory },
-	{ switch_util__type_cat_to_switch_cat(TypeCategory, SwitchCategory) }.
+	{ SwitchCategory = switch_util__type_cat_to_switch_cat(TypeCategory) }.
 
 %-----------------------------------------------------------------------------%
 
@@ -341,7 +341,7 @@ ml_switch_lookup_tags([Case | Cases], Var, [TaggedCase | TaggedCases]) -->
 	{ Case = case(ConsId, Goal) },
 	ml_variable_type(Var, Type),
 	ml_cons_id_to_tag(ConsId, Type, Tag),
-	{ switch_util__switch_priority(Tag, Priority) },
+	{ Priority = switch_util__switch_priority(Tag) },
 	{ TaggedCase = case(Priority, Tag, ConsId, Goal) },
 	ml_switch_lookup_tags(Cases, Var, TaggedCases).
 

@@ -47,7 +47,7 @@
 
 %---------------------------------------------------------------------------%
 
-middle_rec__match_and_generate(Goal, Instrs, CodeInfo0, CodeInfo) :-
+middle_rec__match_and_generate(Goal, Instrs, !CI) :-
 	Goal = GoalExpr - GoalInfo,
 	(
 		GoalExpr = switch(Var, cannot_fail, [Case1, Case2]),
@@ -56,17 +56,17 @@ middle_rec__match_and_generate(Goal, Instrs, CodeInfo0, CodeInfo) :-
 		(
 			contains_only_builtins(Goal1),
 			code_aux__contains_simple_recursive_call(Goal2,
-				CodeInfo0, _)
+				!.CI, _)
 		->
 			middle_rec__generate_switch(Var, ConsId1, Goal1, Goal2,
-				GoalInfo, Instrs, CodeInfo0, CodeInfo)
+				GoalInfo, Instrs, !CI)
 		;
 			contains_only_builtins(Goal2),
 			code_aux__contains_simple_recursive_call(Goal1,
-				CodeInfo0, _)
+				!.CI, _)
 		->
 			middle_rec__generate_switch(Var, ConsId2, Goal2, Goal1,
-				GoalInfo, Instrs, CodeInfo0, CodeInfo)
+				GoalInfo, Instrs, !CI)
 		;
 			fail
 		)
@@ -75,23 +75,21 @@ middle_rec__match_and_generate(Goal, Instrs, CodeInfo0, CodeInfo) :-
 		(
 			contains_only_builtins(Cond),
 			contains_only_builtins(Then),
-			code_aux__contains_simple_recursive_call(Else,
-				CodeInfo0, no)
+			code_aux__contains_simple_recursive_call(Else, !.CI,
+				no)
 		->
 			semidet_fail,
 			middle_rec__generate_ite(Vars, Cond, Then, Else,
-				in_else, GoalInfo, Instrs,
-				CodeInfo0, CodeInfo)
+				in_else, GoalInfo, Instrs, !CI)
 		;
 			contains_only_builtins(Cond),
-			code_aux__contains_simple_recursive_call(Then,
-				CodeInfo0, no),
+			code_aux__contains_simple_recursive_call(Then, !.CI,
+				no),
 			contains_only_builtins(Else)
 		->
 			semidet_fail,
 			middle_rec__generate_ite(Vars, Cond, Then, Else,
-				in_then, GoalInfo, Instrs,
-				CodeInfo0, CodeInfo)
+				in_then, GoalInfo, Instrs, !CI)
 		;
 			fail
 		)
@@ -101,92 +99,89 @@ middle_rec__match_and_generate(Goal, Instrs, CodeInfo0, CodeInfo) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred middle_rec__generate_ite(list(prog_var), hlds_goal, hlds_goal,
-	hlds_goal, ite_rec, hlds_goal_info,
-	code_tree, code_info, code_info).
-:- mode middle_rec__generate_ite(in, in, in, in, in, in, out, in, out)
-	is det.
+:- pred middle_rec__generate_ite(list(prog_var)::in, hlds_goal::in,
+	hlds_goal::in, hlds_goal::in, ite_rec::in, hlds_goal_info::in,
+	code_tree::out, code_info::in, code_info::out) is det.
 
 middle_rec__generate_ite(_Vars, _Cond, _Then, _Else, _Rec, _IteGoalInfo,
-		Instrs) -->
-	( { semidet_fail } ->
-		{ Instrs = empty }
+		Instrs, !CI) :-
+	( semidet_fail ->
+		Instrs = empty
 	;
-		{ error("middle_rec__generate_ite reached") }
+		error("middle_rec__generate_ite reached")
 	).
 
 %---------------------------------------------------------------------------%
 
-:- pred middle_rec__generate_switch(prog_var, cons_id, hlds_goal, hlds_goal,
-	hlds_goal_info, code_tree, code_info, code_info).
-:- mode middle_rec__generate_switch(in, in, in, in, in, out, in, out)
-	is semidet.
+:- pred middle_rec__generate_switch(prog_var::in, cons_id::in, hlds_goal::in,
+	hlds_goal::in, hlds_goal_info::in, code_tree::out,
+	code_info::in, code_info::out) is semidet.
 
 middle_rec__generate_switch(Var, BaseConsId, Base, Recursive, SwitchGoalInfo,
-		Instrs) -->
-	code_info__get_stack_slots(StackSlots),
-	code_info__get_varset(VarSet),
-	{ code_aux__explain_stack_slots(StackSlots, VarSet, SlotsComment) },
-	code_info__get_module_info(ModuleInfo),
-	code_info__get_pred_id(PredId),
-	code_info__get_proc_id(ProcId),
-	{ code_util__make_local_entry_label(ModuleInfo, PredId, ProcId, no,
-		EntryLabel) },
+		Instrs, !CI) :-
+	code_info__get_stack_slots(!.CI, StackSlots),
+	code_info__get_varset(!.CI, VarSet),
+	code_aux__explain_stack_slots(StackSlots, VarSet, SlotsComment),
+	code_info__get_module_info(!.CI, ModuleInfo),
+	code_info__get_pred_id(!.CI, PredId),
+	code_info__get_proc_id(!.CI, ProcId),
+	code_util__make_local_entry_label(ModuleInfo, PredId, ProcId, no,
+		EntryLabel),
 
-	code_info__pre_goal_update(SwitchGoalInfo, no),
+	code_info__pre_goal_update(SwitchGoalInfo, no, !CI),
 	unify_gen__generate_tag_test(Var, BaseConsId, branch_on_success,
-		BaseLabel, EntryTestCode),
-	{ tree__flatten(EntryTestCode, EntryTestListList) },
-	{ list__condense(EntryTestListList, EntryTestList) },
+		BaseLabel, EntryTestCode, !CI),
+	tree__flatten(EntryTestCode, EntryTestListList),
+	list__condense(EntryTestListList, EntryTestList),
 
-	{ goal_info_get_store_map(SwitchGoalInfo, StoreMap) },
-	code_info__remember_position(BranchStart),
-	code_gen__generate_goal(model_det, Base, BaseGoalCode),
+	goal_info_get_store_map(SwitchGoalInfo, StoreMap),
+	code_info__remember_position(!.CI, BranchStart),
+	code_gen__generate_goal(model_det, Base, BaseGoalCode, !CI),
 	code_info__generate_branch_end(StoreMap, no, MaybeEnd1,
-		BaseSaveCode),
-	code_info__reset_to_position(BranchStart),
-	code_gen__generate_goal(model_det, Recursive, RecGoalCode),
+		BaseSaveCode, !CI),
+	code_info__reset_to_position(BranchStart, !CI),
+	code_gen__generate_goal(model_det, Recursive, RecGoalCode, !CI),
 	code_info__generate_branch_end(StoreMap, MaybeEnd1, MaybeEnd,
-		RecSaveCode),
+		RecSaveCode, !CI),
 
-	code_info__post_goal_update(SwitchGoalInfo),
-	code_info__after_all_branches(StoreMap, MaybeEnd),
+	code_info__post_goal_update(SwitchGoalInfo, !CI),
+	code_info__after_all_branches(StoreMap, MaybeEnd, !CI),
 
-	code_info__get_arginfo(ArgModes),
-	code_info__get_headvars(HeadVars),
-	{ assoc_list__from_corresponding_lists(HeadVars, ArgModes, Args) },
-	code_info__setup_return(Args, LiveArgs, EpilogCode),
+	ArgModes = code_info__get_arginfo(!.CI),
+	HeadVars = code_info__get_headvars(!.CI),
+	assoc_list__from_corresponding_lists(HeadVars, ArgModes, Args),
+	code_info__setup_return(Args, LiveArgs, EpilogCode, !CI),
 
-	{ BaseCode = tree(BaseGoalCode, tree(BaseSaveCode, EpilogCode)) },
-	{ RecCode = tree(RecGoalCode, tree(RecSaveCode, EpilogCode)) },
-	{ LiveValCode = [livevals(LiveArgs) - ""] },
+	BaseCode = tree(BaseGoalCode, tree(BaseSaveCode, EpilogCode)),
+	RecCode = tree(RecGoalCode, tree(RecSaveCode, EpilogCode)),
+	LiveValCode = [livevals(LiveArgs) - ""],
 
-	{ tree__flatten(BaseCode, BaseListList) },
-	{ list__condense(BaseListList, BaseList) },
-	{ tree__flatten(RecCode, RecListList) },
-	{ list__condense(RecListList, RecList) },
+	tree__flatten(BaseCode, BaseListList),
+	list__condense(BaseListList, BaseList),
+	tree__flatten(RecCode, RecListList),
+	list__condense(RecListList, RecList),
 
 	% In the code we generate, the base instruction sequence is executed
 	% in situations where this procedure has no stack frame. If this
 	% sequence refers to stackvars, it will be to some other procedure's
 	% variables, which is obviously incorrect.
-	{ opt_util__block_refers_stackvars(BaseList, no) },
+	opt_util__block_refers_stackvars(BaseList, no),
 
-	{ list__append(BaseList, RecList, AvoidList) },
-	{ middle_rec__find_unused_register(AvoidList, AuxReg) },
+	list__append(BaseList, RecList, AvoidList),
+	middle_rec__find_unused_register(AvoidList, AuxReg),
 
-	{ middle_rec__split_rec_code(RecList, BeforeList0, AfterList) },
-	{ middle_rec__add_counter_to_livevals(BeforeList0, AuxReg,
-		BeforeList) },
+	middle_rec__split_rec_code(RecList, BeforeList0, AfterList),
+	middle_rec__add_counter_to_livevals(BeforeList0, AuxReg,
+		BeforeList),
 
-	code_info__get_next_label(Loop1Label),
-	code_info__get_next_label(Loop2Label),
-	code_info__get_total_stackslot_count(FrameSize),
+	code_info__get_next_label(Loop1Label, !CI),
+	code_info__get_next_label(Loop2Label, !CI),
+	code_info__get_total_stackslot_count(!.CI, FrameSize),
 
-	{ middle_rec__generate_downloop_test(EntryTestList,
-		Loop1Label, Loop1Test) },
+	middle_rec__generate_downloop_test(EntryTestList,
+		Loop1Label, Loop1Test),
 
-	{ FrameSize = 0 ->
+	( FrameSize = 0 ->
 		MaybeIncrSp = [],
 		MaybeDecrSp = [],
 		InitAuxReg = [assign(AuxReg, const(int_const(0)))
@@ -215,7 +210,7 @@ middle_rec__generate_switch(Var, BaseConsId, Base, Recursive, SwitchGoalInfo,
 				lval(sp), lval(AuxReg)),
 				label(Loop2Label))
 				- "test on upward loop"]
-	},
+	),
 
 	% Even though the recursive call is followed by some goals
 	% in the HLDS, these goals may generate no LLDS code, so
@@ -223,7 +218,8 @@ middle_rec__generate_switch(Var, BaseConsId, Base, Recursive, SwitchGoalInfo,
 	% There is no point in testing BeforeList for empty,
 	% since if it is, the code is an infinite loop anyway.
 
-	{ AfterList = [] ->
+	(
+		AfterList = [],
 		list__condense([
 			[
 				label(EntryLabel) - "Procedure entry point",
@@ -248,6 +244,7 @@ middle_rec__generate_switch(Var, BaseConsId, Base, Recursive, SwitchGoalInfo,
 			]
 		], InstrList)
 	;
+		AfterList = [_ | _],
 		% The instruction list we are constructing has two copies
 		% of BaseList. If this list of instructions defines any
 		% labels, we must either not apply this version of the
@@ -294,8 +291,8 @@ middle_rec__generate_switch(Var, BaseConsId, Base, Recursive, SwitchGoalInfo,
 				- "exit from base case"
 			]
 		], InstrList)
-	},
-	{ Instrs = node(InstrList) }.
+	),
+	Instrs = node(InstrList).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -311,10 +308,12 @@ middle_rec__generate_downloop_test([Instr0 | Instrs0], Target, Instrs) :-
 		( Instrs0 = [] ->
 			true
 		;
-			error("middle_rec__generate_downloop_test: if_val followed by other instructions")
+			error("middle_rec__generate_downloop_test: " ++
+				"if_val followed by other instructions")
 		),
 		code_util__neg_rval(Test, NewTest),
-		Instrs = [if_val(NewTest, label(Target)) - "test on downward loop"]
+		Instrs = [if_val(NewTest, label(Target))
+			- "test on downward loop"]
 	;
 		middle_rec__generate_downloop_test(Instrs0, Target, Instrs1),
 		Instrs = [Instr0 | Instrs1]
@@ -338,7 +337,8 @@ middle_rec__split_rec_code([Instr0 | Instrs1], Before, After) :-
 			Before = [],
 			After = Instrs3
 		;
-			error("call not followed by label in middle_rec__split_rec_code")
+			error("middle_rec__split_rec_code: " ++
+				"call not followed by label")
 		)
 	;
 		middle_rec__split_rec_code(Instrs1, Before1, After),
@@ -347,9 +347,8 @@ middle_rec__split_rec_code([Instr0 | Instrs1], Before, After) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred middle_rec__add_counter_to_livevals(list(instruction), lval,
-						list(instruction)).
-:- mode middle_rec__add_counter_to_livevals(in, in, out) is det.
+:- pred middle_rec__add_counter_to_livevals(list(instruction)::in, lval::in,
+	list(instruction)::out) is det.
 
 middle_rec__add_counter_to_livevals([], _Lval, []).
 middle_rec__add_counter_to_livevals([I0|Is0], Lval, [I|Is]) :-
@@ -365,8 +364,8 @@ middle_rec__add_counter_to_livevals([I0|Is0], Lval, [I|Is]) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred middle_rec__find_unused_register(list(instruction), lval).
-:- mode middle_rec__find_unused_register(in, out) is det.
+:- pred middle_rec__find_unused_register(list(instruction)::in, lval::out)
+	is det.
 
 middle_rec__find_unused_register(Instrs, UnusedReg) :-
 	set__init(Used0),
@@ -374,8 +373,8 @@ middle_rec__find_unused_register(Instrs, UnusedReg) :-
 	set__to_sorted_list(Used1, UsedList),
 	middle_rec__find_unused_register_2(UsedList, 1, UnusedReg).
 
-:- pred middle_rec__find_unused_register_2(list(int), int, lval).
-:- mode middle_rec__find_unused_register_2(in, in, out) is det.
+:- pred middle_rec__find_unused_register_2(list(int)::in, int::in, lval::out)
+	is det.
 
 middle_rec__find_unused_register_2([], N, reg(r, N)).
 middle_rec__find_unused_register_2([H | T], N, Reg) :-
@@ -386,16 +385,16 @@ middle_rec__find_unused_register_2([H | T], N, Reg) :-
 		middle_rec__find_unused_register_2(T, N1, Reg)
 	).
 
-:- pred middle_rec__find_used_registers(list(instruction), set(int), set(int)).
-:- mode middle_rec__find_used_registers(in, di, uo) is det.
+:- pred middle_rec__find_used_registers(list(instruction)::in,
+	set(int)::di, set(int)::uo) is det.
 
-middle_rec__find_used_registers([], Used, Used).
-middle_rec__find_used_registers([Instr - _ | Instrs], Used0, Used) :-
-	middle_rec__find_used_registers_instr(Instr, Used0, Used1),
-	middle_rec__find_used_registers(Instrs, Used1, Used).
+middle_rec__find_used_registers([], !Used).
+middle_rec__find_used_registers([Instr - _ | Instrs], !Used) :-
+	middle_rec__find_used_registers_instr(Instr, !Used),
+	middle_rec__find_used_registers(Instrs, !Used).
 
-:- pred middle_rec__find_used_registers_instr(instr, set(int), set(int)).
-:- mode middle_rec__find_used_registers_instr(in, di, uo) is det.
+:- pred middle_rec__find_used_registers_instr(instr::in,
+	set(int)::di, set(int)::uo) is det.
 
 middle_rec__find_used_registers_instr(comment(_), !Used).
 middle_rec__find_used_registers_instr(livevals(LvalSet), !Used) :-
@@ -447,144 +446,137 @@ middle_rec__find_used_registers_instr(join_and_terminate(Lval), !Used) :-
 middle_rec__find_used_registers_instr(join_and_continue(Lval,_), !Used) :-
 	middle_rec__find_used_registers_lval(Lval, !Used).
 
-:- pred middle_rec__find_used_registers_components(list(pragma_c_component),
-	set(int), set(int)).
-:- mode middle_rec__find_used_registers_components(in, di, uo) is det.
+:- pred middle_rec__find_used_registers_components(
+	list(pragma_c_component)::in,
+	set(int)::di, set(int)::uo) is det.
 
-middle_rec__find_used_registers_components([], Used, Used).
-middle_rec__find_used_registers_components([Comp | Comps], Used0, Used) :-
-	middle_rec__find_used_registers_component(Comp, Used0, Used1),
-	middle_rec__find_used_registers_components(Comps, Used1, Used).
+middle_rec__find_used_registers_components([], !Used).
+middle_rec__find_used_registers_components([Comp | Comps], !Used) :-
+	middle_rec__find_used_registers_component(Comp, !Used),
+	middle_rec__find_used_registers_components(Comps, !Used).
 
-:- pred middle_rec__find_used_registers_component(pragma_c_component,
-	set(int), set(int)).
-:- mode middle_rec__find_used_registers_component(in, di, uo) is det.
+:- pred middle_rec__find_used_registers_component(pragma_c_component::in,
+	set(int)::di, set(int)::uo) is det.
 
-middle_rec__find_used_registers_component(pragma_c_inputs(In), Used0, Used) :-
-	insert_pragma_c_input_registers(In, Used0, Used).
-middle_rec__find_used_registers_component(pragma_c_outputs(Out), Used0, Used) :-
-	insert_pragma_c_output_registers(Out, Used0, Used).
-middle_rec__find_used_registers_component(pragma_c_user_code(_, _), Used, Used).
-middle_rec__find_used_registers_component(pragma_c_raw_code(_, _), Used, Used).
-middle_rec__find_used_registers_component(pragma_c_fail_to(_), Used, Used).
-middle_rec__find_used_registers_component(pragma_c_noop, Used, Used).
+middle_rec__find_used_registers_component(pragma_c_inputs(In), !Used) :-
+	insert_pragma_c_input_registers(In, !Used).
+middle_rec__find_used_registers_component(pragma_c_outputs(Out), !Used) :-
+	insert_pragma_c_output_registers(Out, !Used).
+middle_rec__find_used_registers_component(pragma_c_user_code(_, _), !Used).
+middle_rec__find_used_registers_component(pragma_c_raw_code(_, _), !Used).
+middle_rec__find_used_registers_component(pragma_c_fail_to(_), !Used).
+middle_rec__find_used_registers_component(pragma_c_noop, !Used).
 
-:- pred middle_rec__find_used_registers_lvals(list(lval), set(int), set(int)).
-:- mode middle_rec__find_used_registers_lvals(in, di, uo) is det.
+:- pred middle_rec__find_used_registers_lvals(list(lval)::in,
+	set(int)::di, set(int)::uo) is det.
 
-middle_rec__find_used_registers_lvals([], Used, Used).
-middle_rec__find_used_registers_lvals([Lval | Lvals], Used0, Used) :-
-	middle_rec__find_used_registers_lval(Lval, Used0, Used1),
-	middle_rec__find_used_registers_lvals(Lvals, Used1, Used).
+middle_rec__find_used_registers_lvals([], !Used).
+middle_rec__find_used_registers_lvals([Lval | Lvals], !Used) :-
+	middle_rec__find_used_registers_lval(Lval, !Used),
+	middle_rec__find_used_registers_lvals(Lvals, !Used).
 
-:- pred middle_rec__find_used_registers_lval(lval, set(int), set(int)).
-:- mode middle_rec__find_used_registers_lval(in, di, uo) is det.
+:- pred middle_rec__find_used_registers_lval(lval::in,
+	set(int)::di, set(int)::uo) is det.
 
-middle_rec__find_used_registers_lval(Lval, Used0, Used) :-
+middle_rec__find_used_registers_lval(Lval, !Used) :-
 	( Lval = reg(r, N) ->
 		copy(N, N1),
-		set__insert(Used0, N1, Used)
+		set__insert(!.Used, N1, !:Used)
 	; Lval = field(_, Rval, FieldNum) ->
-		middle_rec__find_used_registers_rval(Rval, Used0, Used1),
-		middle_rec__find_used_registers_rval(FieldNum, Used1, Used)
+		middle_rec__find_used_registers_rval(Rval, !Used),
+		middle_rec__find_used_registers_rval(FieldNum, !Used)
 	; Lval = lvar(_) ->
 		error("lvar found in middle_rec__find_used_registers_lval")
 	;
-		Used = Used0
+		true
 	).
 
-:- pred middle_rec__find_used_registers_rval(rval, set(int), set(int)).
-:- mode middle_rec__find_used_registers_rval(in, di, uo) is det.
+:- pred middle_rec__find_used_registers_rval(rval::in,
+	set(int)::di, set(int)::uo) is det.
 
-middle_rec__find_used_registers_rval(Rval, Used0, Used) :-
+middle_rec__find_used_registers_rval(Rval, !Used) :-
 	(
 		Rval = lval(Lval),
-		middle_rec__find_used_registers_lval(Lval, Used0, Used)
+		middle_rec__find_used_registers_lval(Lval, !Used)
 	;
 		Rval = var(_),
 		error("var found in middle_rec__find_used_registers_rval")
 	;
 		Rval = mkword(_, Rval1),
-		middle_rec__find_used_registers_rval(Rval1, Used0, Used)
+		middle_rec__find_used_registers_rval(Rval1, !Used)
 	;
-		Rval = const(_),
-		Used = Used0
+		Rval = const(_)
 	;
 		Rval = unop(_, Rval1),
-		middle_rec__find_used_registers_rval(Rval1, Used0, Used)
+		middle_rec__find_used_registers_rval(Rval1, !Used)
 	;
 		Rval = binop(_, Rval1, Rval2),
-		middle_rec__find_used_registers_rval(Rval1, Used0, Used1),
-		middle_rec__find_used_registers_rval(Rval2, Used1, Used)
+		middle_rec__find_used_registers_rval(Rval1, !Used),
+		middle_rec__find_used_registers_rval(Rval2, !Used)
 	;
 		Rval = mem_addr(MemRef),
-		middle_rec__find_used_registers_mem_ref(MemRef, Used0, Used)
+		middle_rec__find_used_registers_mem_ref(MemRef, !Used)
 	).
 
-:- pred middle_rec__find_used_registers_mem_ref(mem_ref, set(int), set(int)).
-:- mode middle_rec__find_used_registers_mem_ref(in, di, uo) is det.
+:- pred middle_rec__find_used_registers_mem_ref(mem_ref::in,
+	set(int)::di, set(int)::uo) is det.
 
-middle_rec__find_used_registers_mem_ref(stackvar_ref(_), Used, Used).
-middle_rec__find_used_registers_mem_ref(framevar_ref(_), Used, Used).
-middle_rec__find_used_registers_mem_ref(heap_ref(Rval, _, _), Used0, Used) :-
-	middle_rec__find_used_registers_rval(Rval, Used0, Used).
+middle_rec__find_used_registers_mem_ref(stackvar_ref(_), !Used).
+middle_rec__find_used_registers_mem_ref(framevar_ref(_), !Used).
+middle_rec__find_used_registers_mem_ref(heap_ref(Rval, _, _), !Used) :-
+	middle_rec__find_used_registers_rval(Rval, !Used).
 
-:- pred middle_rec__find_used_registers_maybe_rvals(list(maybe(rval)),
-	set(int), set(int)).
-:- mode middle_rec__find_used_registers_maybe_rvals(in, di, uo) is det.
+:- pred middle_rec__find_used_registers_maybe_rvals(list(maybe(rval))::in,
+	set(int)::di, set(int)::uo) is det.
 
-middle_rec__find_used_registers_maybe_rvals([], Used, Used).
-middle_rec__find_used_registers_maybe_rvals([MaybeRval | MaybeRvals],
-		Used0, Used) :-
+middle_rec__find_used_registers_maybe_rvals([], !Used).
+middle_rec__find_used_registers_maybe_rvals([MaybeRval | MaybeRvals], !Used) :-
 	(
-		MaybeRval = no,
-		Used1 = Used0
+		MaybeRval = no
 	;
 		MaybeRval = yes(Rval),
-		middle_rec__find_used_registers_rval(Rval, Used0, Used1)
+		middle_rec__find_used_registers_rval(Rval, !Used)
 	),
-	middle_rec__find_used_registers_maybe_rvals(MaybeRvals, Used1, Used).
+	middle_rec__find_used_registers_maybe_rvals(MaybeRvals, !Used).
 
-:- pred insert_pragma_c_input_registers(list(pragma_c_input), 
-	set(int), set(int)).
-:- mode insert_pragma_c_input_registers(in, di, uo) is det.
+:- pred insert_pragma_c_input_registers(list(pragma_c_input)::in, 
+	set(int)::di, set(int)::uo) is det.
 
-insert_pragma_c_input_registers([], Used, Used).
-insert_pragma_c_input_registers([Input|Inputs], Used0, Used) :-	
+insert_pragma_c_input_registers([], !Used).
+insert_pragma_c_input_registers([Input|Inputs], !Used) :-	
 	Input = pragma_c_input(_, _, Rval, _),
-	middle_rec__find_used_registers_rval(Rval, Used0, Used1),
-	insert_pragma_c_input_registers(Inputs, Used1, Used).
+	middle_rec__find_used_registers_rval(Rval, !Used),
+	insert_pragma_c_input_registers(Inputs, !Used).
 
-:- pred insert_pragma_c_output_registers(list(pragma_c_output), 
-	set(int), set(int)).
-:- mode insert_pragma_c_output_registers(in, di, uo) is det.
+:- pred insert_pragma_c_output_registers(list(pragma_c_output)::in, 
+	set(int)::di, set(int)::uo) is det.
 
-insert_pragma_c_output_registers([], Used, Used).
-insert_pragma_c_output_registers([Output|Outputs], Used0, Used) :-	
+insert_pragma_c_output_registers([], !Used).
+insert_pragma_c_output_registers([Output|Outputs], !Used) :-	
 	Output = pragma_c_output(Lval, _, _, _),
-	middle_rec__find_used_registers_lval(Lval, Used0, Used1),
-	insert_pragma_c_output_registers(Outputs, Used1, Used).
+	middle_rec__find_used_registers_lval(Lval, !Used),
+	insert_pragma_c_output_registers(Outputs, !Used).
 
 %---------------------------------------------------------------------------%
 
 	% Find all the labels defined in an instruction sequence.
 
-:- pred middle_rec__find_labels(list(instruction), list(label)).
-:- mode middle_rec__find_labels(in, out) is det.
+:- pred middle_rec__find_labels(list(instruction)::in, list(label)::out)
+	is det.
 
 middle_rec__find_labels(Instrs, Label2) :-
 	middle_rec__find_labels_2(Instrs, [], Label2).
 
-:- pred middle_rec__find_labels_2(list(instruction), list(label), list(label)).
-:- mode middle_rec__find_labels_2(in, in, out) is det.
+:- pred middle_rec__find_labels_2(list(instruction)::in,
+	list(label)::in, list(label)::out) is det.
 
-middle_rec__find_labels_2([], Labels, Labels).
-middle_rec__find_labels_2([Instr - _ | Instrs], Labels0, Labels) :-
+middle_rec__find_labels_2([], !Labels).
+middle_rec__find_labels_2([Instr - _ | Instrs], !Labels) :-
 	( Instr = label(Label) ->
-		Labels1 = [Label | Labels0]
+		!:Labels = [Label | !.Labels]
 	; Instr = block(_, _, Block) ->
-		middle_rec__find_labels_2(Block, Labels0, Labels1)
+		middle_rec__find_labels_2(Block, !Labels)
 	;
-		Labels1 = Labels0
+		true
 	),
-	middle_rec__find_labels_2(Instrs, Labels1, Labels).
+	middle_rec__find_labels_2(Instrs, !Labels).

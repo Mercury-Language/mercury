@@ -25,11 +25,10 @@
 :- import_module ll_backend__llds.
 :- import_module parse_tree__prog_data.
 
-:- pred string_switch__generate(cases_list, prog_var, code_model,
-	can_fail, hlds_goal_info, label, branch_end, branch_end, code_tree,
-	code_info, code_info).
-:- mode string_switch__generate(in, in, in, in, in, in, in, out, out, in, out)
-	is det.
+:- pred string_switch__generate(cases_list::in, prog_var::in, code_model::in,
+	can_fail::in, hlds_goal_info::in, label::in,
+	branch_end::in, branch_end::out, code_tree::out,
+	code_info::in, code_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -45,13 +44,13 @@
 :- import_module bool, int, string, list, map, std_util, assoc_list, require.
 
 string_switch__generate(Cases, Var, CodeModel, _CanFail, SwitchGoalInfo,
-		EndLabel, MaybeEnd0, MaybeEnd, Code, !CodeInfo) :-
-	code_info__produce_variable(Var, VarCode, VarRval, !CodeInfo),
-	code_info__acquire_reg(r, SlotReg, !CodeInfo),
-	code_info__acquire_reg(r, StringReg, !CodeInfo),
-	code_info__get_next_label(LoopLabel, !CodeInfo),
-	code_info__get_next_label(FailLabel, !CodeInfo),
-	code_info__get_next_label(JumpLabel, !CodeInfo),
+		EndLabel, !MaybeEnd, Code, !CI) :-
+	code_info__produce_variable(Var, VarCode, VarRval, !CI),
+	code_info__acquire_reg(r, SlotReg, !CI),
+	code_info__acquire_reg(r, StringReg, !CI),
+	code_info__get_next_label(LoopLabel, !CI),
+	code_info__get_next_label(FailLabel, !CI),
+	code_info__get_next_label(JumpLabel, !CI),
 
 	% Determine how big to make the hash table.
 	% Currently we round the number of cases up to the nearest
@@ -78,29 +77,28 @@ string_switch__generate(Cases, Var, CodeModel, _CanFail, SwitchGoalInfo,
 		% registers), and because that code is generated manually
 		% (below) so we don't need the reg info to be valid when
 		% we generate it.
-	code_info__release_reg(SlotReg, !CodeInfo),
-	code_info__release_reg(StringReg, !CodeInfo),
+	code_info__release_reg(SlotReg, !CI),
+	code_info__release_reg(StringReg, !CI),
 
 		% Generate the code for when the hash lookup fails.
 		% This must be done before gen_hash_slots, since
 		% we want to use the exprn_info corresponding to
 		% the start of the switch, not to the end of the last case.
-	code_info__generate_failure(FailCode, !CodeInfo),
+	code_info__generate_failure(FailCode, !CI),
 
 		% Generate the code etc. for the hash table
 		%
 	string_switch__gen_hash_slots(0, TableSize, HashSlotsMap, CodeModel,
-		SwitchGoalInfo, FailLabel, EndLabel, MaybeEnd0, MaybeEnd,
-		Strings, Labels, NextSlots, SlotsCode, !CodeInfo),
+		SwitchGoalInfo, FailLabel, EndLabel, !MaybeEnd,
+		Strings, Labels, NextSlots, SlotsCode, !CI),
 
 		% Generate code which does the hash table lookup
 	(
 		add_static_cell_natural_types(NextSlots, NextSlotsTableAddr,
-			!CodeInfo),
+			!CI),
 		NextSlotsTable = const(
 			data_addr_const(NextSlotsTableAddr, no)),
-		add_static_cell_natural_types(Strings, StringTableAddr,
-			!CodeInfo),
+		add_static_cell_natural_types(Strings, StringTableAddr, !CI),
 		StringTable = const(data_addr_const(StringTableAddr, no)),
 		HashLookupCode = node([
 			comment("hashed string switch") -
@@ -141,102 +139,91 @@ string_switch__generate(Cases, Var, CodeModel, _CanFail, SwitchGoalInfo,
 		tree(JumpCode,
 		     SlotsCode)))).
 
-:- pred string_switch__gen_hash_slots(int, int, map(int, hash_slot),
-	code_model, hlds_goal_info, label, label, branch_end, branch_end,
-	list(rval), list(label), list(rval), code_tree, code_info, code_info).
-:- mode string_switch__gen_hash_slots(in, in, in, in, in, in, in,
-	in, out, out, out, out, out, in, out) is det.
+:- pred string_switch__gen_hash_slots(int::in, int::in,
+	map(int, hash_slot)::in, code_model::in, hlds_goal_info::in, label::in,
+	label::in, branch_end::in, branch_end::out,
+	list(rval)::out, list(label)::out, list(rval)::out, code_tree::out,
+	code_info::in, code_info::out) is det.
 
 string_switch__gen_hash_slots(Slot, TableSize, HashSlotMap, CodeModel,
-		SwitchGoalInfo, FailLabel, EndLabel, MaybeEnd0, MaybeEnd,
-		Strings, Labels, NextSlots, Code) -->
-	( { Slot = TableSize } ->
-		{
-			MaybeEnd = MaybeEnd0,
-			Strings = [],
-			Labels = [],
-			NextSlots = [],
-			Code = node([
-				label(EndLabel) - "end of hashed string switch"
-			])
-		}
+		SwitchGoalInfo, FailLabel, EndLabel, !MaybeEnd,
+		Strings, Labels, NextSlots, Code, !CI) :-
+	( Slot = TableSize ->
+		Strings = [],
+		Labels = [],
+		NextSlots = [],
+		Code = node([
+			label(EndLabel) - "end of hashed string switch"
+		])
 	;
 		string_switch__gen_hash_slot(Slot, TableSize, HashSlotMap,
 			CodeModel, SwitchGoalInfo, FailLabel, EndLabel,
-			MaybeEnd0, MaybeEnd1,
-			String, Label, NextSlot, SlotCode),
-		{ Slot1 = Slot + 1 },
-		{ 
-			Strings = [String | Strings0],
-			Labels = [Label | Labels0],
-			NextSlots = [NextSlot | NextSlots0],
-			Code = tree(SlotCode, Code0)
-		},
+			!MaybeEnd, String, Label, NextSlot, SlotCode, !CI),
+		Slot1 = Slot + 1,
 		string_switch__gen_hash_slots(Slot1, TableSize, HashSlotMap,
 			CodeModel, SwitchGoalInfo, FailLabel, EndLabel,
-			MaybeEnd1, MaybeEnd,
-			Strings0, Labels0, NextSlots0, Code0)
+			!MaybeEnd, Strings0, Labels0, NextSlots0, Code0, !CI),
+		Strings = [String | Strings0],
+		Labels = [Label | Labels0],
+		NextSlots = [NextSlot | NextSlots0],
+		Code = tree(SlotCode, Code0)
 	).
 
-:- pred string_switch__gen_hash_slot(int, int, map(int, hash_slot),
-	code_model, hlds_goal_info, label, label, branch_end, branch_end,
-	rval, label, rval, code_tree,
-	code_info, code_info).
-:- mode string_switch__gen_hash_slot(in, in, in, in, in, in, in,
-	in, out, out, out, out, out, in, out) is det.
+:- pred string_switch__gen_hash_slot(int::in, int::in, map(int, hash_slot)::in,
+	code_model::in, hlds_goal_info::in, label::in, label::in,
+	branch_end::in, branch_end::out, rval::out, label::out, rval::out,
+	code_tree::out, code_info::in, code_info::out) is det.
 
 string_switch__gen_hash_slot(Slot, TblSize, HashSlotMap, CodeModel,
-		SwitchGoalInfo, FailLabel, EndLabel, MaybeEnd0, MaybeEnd,
-		StringRval, Label, NextSlotRval, Code) -->
-	( { map__search(HashSlotMap, Slot, hash_slot(Case, Next)) } ->
-		{ NextSlotRval = const(int_const(Next)) },
-		{ Case = case(_, ConsTag, _, Goal) },
-		{ ConsTag = string_constant(String0) ->
+		SwitchGoalInfo, FailLabel, EndLabel, !MaybeEnd,
+		StringRval, Label, NextSlotRval, Code, !CI) :-
+	( map__search(HashSlotMap, Slot, hash_slot(Case, Next)) ->
+		NextSlotRval = const(int_const(Next)),
+		Case = case(_, ConsTag, _, Goal),
+		( ConsTag = string_constant(String0) ->
 			String = String0
 		;
 			error("string_switch__gen_hash_slots: string expected")
-		},
-		{ StringRval = const(string_const(String)) },
-		code_info__get_next_label(Label),
-		{ string__append_list(["case """, String, """"], Comment) },
-		{ LabelCode = node([
-			label(Label) - Comment
-		]) },
-		code_info__remember_position(BranchStart),
-		trace__maybe_generate_internal_event_code(Goal, SwitchGoalInfo,
-			TraceCode),
-		code_gen__generate_goal(CodeModel, Goal, GoalCode),
-		{ goal_info_get_store_map(SwitchGoalInfo, StoreMap) },
-		code_info__generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd,
-			SaveCode),
-		(
-			{ string_switch__this_is_last_case(Slot, TblSize,
-				HashSlotMap) }
-		->
-			[]
-		;
-			code_info__reset_to_position(BranchStart)
 		),
-		{ FinishCode = node([
+		StringRval = const(string_const(String)),
+		code_info__get_next_label(Label, !CI),
+		string__append_list(["case """, String, """"], Comment),
+		LabelCode = node([
+			label(Label) - Comment
+		]),
+		code_info__remember_position(!.CI, BranchStart),
+		trace__maybe_generate_internal_event_code(Goal, SwitchGoalInfo,
+			TraceCode, !CI),
+		code_gen__generate_goal(CodeModel, Goal, GoalCode, !CI),
+		goal_info_get_store_map(SwitchGoalInfo, StoreMap),
+		code_info__generate_branch_end(StoreMap, !MaybeEnd,
+			SaveCode, !CI),
+		(
+			string_switch__this_is_last_case(Slot, TblSize,
+				HashSlotMap)
+		->
+			true
+		;
+			code_info__reset_to_position(BranchStart, !CI)
+		),
+		FinishCode = node([
 			goto(label(EndLabel)) - "jump to end of switch"
-		]) },
-		{ Code =
+		]),
+		Code =
 			tree(LabelCode,
 			tree(TraceCode,
 			tree(GoalCode,
 			tree(SaveCode,
 			     FinishCode))))
-		}
 	;
-		{ MaybeEnd = MaybeEnd0 },
-		{ StringRval = const(int_const(0)) },
-		{ Label = FailLabel },
-		{ NextSlotRval = const(int_const(-2)) },
-		{ Code = empty }
+		StringRval = const(int_const(0)),
+		Label = FailLabel,
+		NextSlotRval = const(int_const(-2)),
+		Code = empty
 	).
 
-:- pred string_switch__this_is_last_case(int, int, map(int, hash_slot)).
-:- mode string_switch__this_is_last_case(in, in, in) is semidet.
+:- pred string_switch__this_is_last_case(int::in, int::in,
+	map(int, hash_slot)::in) is semidet.
 
 string_switch__this_is_last_case(Slot, TableSize, Table) :-
 	Slot1 = Slot + 1,

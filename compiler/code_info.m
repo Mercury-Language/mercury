@@ -93,40 +93,33 @@
 	code_info::out) is det.
 
 		% Get the globals table.
-:- pred code_info__get_globals(globals::out,
-	code_info::in, code_info::out) is det.
+:- pred code_info__get_globals(code_info::in, globals::out) is det.
 
 		% Get the HLDS of the entire module.
-:- pred code_info__get_module_info(module_info::out,
-	code_info::in, code_info::out) is det.
+:- pred code_info__get_module_info(code_info::in, module_info::out) is det.
 
 		% Get the id of the predicate we are generating code for.
-:- pred code_info__get_pred_id(pred_id::out,
-	code_info::in, code_info::out) is det.
+:- pred code_info__get_pred_id(code_info::in, pred_id::out) is det.
 
 		% Get the id of the procedure we are generating code for.
-:- pred code_info__get_proc_id(proc_id::out,
-	code_info::in, code_info::out) is det.
+:- pred code_info__get_proc_id(code_info::in, proc_id::out) is det.
 
 		% Get the HLDS of the procedure we are generating code for.
-:- pred code_info__get_proc_info(proc_info::out,
-	code_info::in, code_info::out) is det.
+:- pred code_info__get_proc_info(code_info::in, proc_info::out) is det.
 
 		% Get the HLDS of the predicate containing the procedure
 		% we are generating code for.
-:- pred code_info__get_pred_info(pred_info::out,
-	code_info::in, code_info::out) is det.
+:- pred code_info__get_pred_info(code_info::in, pred_info::out) is det.
 
 		% Get the variables for the current procedure.
-:- pred code_info__get_varset(prog_varset::out,
-	code_info::in, code_info::out) is det.
+:- pred code_info__get_varset(code_info::in, prog_varset::out) is det.
 
-:- pred code_info__get_maybe_trace_info(maybe(trace_info)::out,
-	code_info::in, code_info::out) is det.
+:- pred code_info__get_maybe_trace_info(code_info::in, maybe(trace_info)::out)
+	is det.
 
 		% Get the set of currently forward-live variables.
-:- pred code_info__get_forward_live_vars(set(prog_var)::out,
-	code_info::in, code_info::out) is det.
+:- pred code_info__get_forward_live_vars(code_info::in, set(prog_var)::out)
+	is det.
 
 		% Set the set of currently forward-live variables.
 :- pred code_info__set_forward_live_vars(set(prog_var)::in,
@@ -134,8 +127,7 @@
 
 		% Get the table mapping variables to the current
 		% instantiation states.
-:- pred code_info__get_instmap(instmap::out,
-	code_info::in, code_info::out) is det.
+:- pred code_info__get_instmap(code_info::in, instmap::out) is det.
 
 		% Set the table mapping variables to the current
 		% instantiation states.
@@ -143,36 +135,32 @@
 	code_info::in, code_info::out) is det.
 
 		% The number of the last local label allocated.
-:- pred code_info__get_label_counter(counter::out,
-	code_info::in, code_info::out) is det.
+:- pred code_info__get_label_counter(code_info::in, counter::out) is det.
 
 		% Get the flag that indicates whether succip is used or not.
-:- pred code_info__get_succip_used(bool::out,
-	code_info::in, code_info::out) is det.
+:- pred code_info__get_succip_used(code_info::in, bool::out) is det.
 
 		% Get the label layout information created by tracing
 		% during code generation.
-:- pred code_info__get_layout_info(map(label, internal_layout_info)::out,
-	code_info::in, code_info::out) is det.
+:- pred code_info__get_layout_info(code_info::in,
+	map(label, internal_layout_info)::out) is det.
 
 		% Get the global static data structures that have
 		% been created during code generation for closure layouts.
-:- pred code_info__get_closure_layouts(list(comp_gen_c_data)::out,
-	code_info::in, code_info::out) is det.
+:- pred code_info__get_closure_layouts(code_info::in,
+	list(comp_gen_c_data)::out) is det.
 
-:- pred code_info__get_max_reg_in_use_at_trace(int::out,
-	code_info::in, code_info::out) is det.
+:- pred code_info__get_max_reg_in_use_at_trace(code_info::in, int::out) is det.
 
 :- pred code_info__set_max_reg_in_use_at_trace(int::in,
 	code_info::in, code_info::out) is det.
 
 		% Get the flag which is true iff the procedure has so far
 		% emitted code that creates a temporary nondet stack frame.
-:- pred code_info__get_created_temp_frame(bool::out,
-	code_info::in, code_info::out) is det.
+:- pred code_info__get_created_temp_frame(code_info::in, bool::out) is det.
 
-:- pred code_info__get_static_cell_info(static_cell_info::out,
-	code_info::in, code_info::out) is det.
+:- pred code_info__get_static_cell_info(code_info::in, static_cell_info::out)
+	is det.
 
 :- pred code_info__set_static_cell_info(static_cell_info::in,
 	code_info::in, code_info::out) is det.
@@ -181,35 +169,29 @@
 
 :- implementation.
 
-:- pred code_info__get_var_slot_count(int::out,
-	code_info::in, code_info::out) is det.
+:- pred code_info__get_var_slot_count(code_info::in, int::out) is det.
 
 :- pred code_info__set_maybe_trace_info(maybe(trace_info)::in,
 	code_info::in, code_info::out) is det.
 
-:- pred code_info__get_opt_no_return_calls(bool::out,
-	code_info::in, code_info::out) is det.
+:- pred code_info__get_opt_no_return_calls(code_info::in, bool::out) is det.
 
-:- pred code_info__get_zombies(set(prog_var)::out,
-	code_info::in, code_info::out) is det.
+:- pred code_info__get_zombies(code_info::in, set(prog_var)::out) is det.
 
 :- pred code_info__set_zombies(set(prog_var)::in,
 	code_info::in, code_info::out) is det.
 
-:- pred code_info__get_var_locn_info(var_locn_info::out,
-	code_info::in, code_info::out) is det.
+:- pred code_info__get_var_locn_info(code_info::in, var_locn_info::out) is det.
 
 :- pred code_info__set_var_locn_info(var_locn_info::in,
 	code_info::in, code_info::out) is det.
 
-:- pred code_info__get_temps_in_use(set(lval)::out,
-	code_info::in, code_info::out) is det.
+:- pred code_info__get_temps_in_use(code_info::in, set(lval)::out) is det.
 
 :- pred code_info__set_temps_in_use(set(lval)::in,
 	code_info::in, code_info::out) is det.
 
-:- pred code_info__get_fail_info(fail_info::out,
-	code_info::in, code_info::out) is det.
+:- pred code_info__get_fail_info(code_info::in, fail_info::out) is det.
 
 :- pred code_info__set_fail_info(fail_info::in,
 	code_info::in, code_info::out) is det.
@@ -223,14 +205,13 @@
 :- pred code_info__set_layout_info(map(label, internal_layout_info)::in,
 	code_info::in, code_info::out) is det.
 
-:- pred code_info__get_max_temp_slot_count(int::out,
-	code_info::in, code_info::out) is det.
+:- pred code_info__get_max_temp_slot_count(code_info::in, int::out) is det.
 
 :- pred code_info__set_max_temp_slot_count(int::in,
 	code_info::in, code_info::out) is det.
 
-:- pred code_info__get_temp_content_map(map(lval, slot_contents)::out,
-	code_info::in, code_info::out) is det.
+:- pred code_info__get_temp_content_map(code_info::in,
+	map(lval, slot_contents)::out) is det.
 
 :- pred code_info__set_temp_content_map(map(lval, slot_contents)::in,
 	code_info::in, code_info::out) is det.
@@ -238,8 +219,7 @@
 :- pred code_info__set_closure_layouts(list(comp_gen_c_data)::in,
 	code_info::in, code_info::out) is det.
 
-:- pred code_info__get_closure_seq_counter(counter::out,
-	code_info::in, code_info::out) is det.
+:- pred code_info__get_closure_seq_counter(code_info::in, counter::out) is det.
 
 :- pred code_info__set_closure_seq_counter(counter::in,
 	code_info::in, code_info::out) is det.
@@ -463,82 +443,106 @@ code_info__init(SaveSuccip, Globals, PredId, ProcId, PredInfo, ProcInfo,
 	code_info::in, code_info::out) is det.
 
 code_info__init_maybe_trace_info(TraceLevel, Globals, ModuleInfo, PredInfo,
-		ProcInfo, TraceSlotInfo) -->
-	( { eff_trace_level_is_none(PredInfo, ProcInfo, TraceLevel) = no } ->
+		ProcInfo, TraceSlotInfo, !CI) :-
+	( eff_trace_level_is_none(PredInfo, ProcInfo, TraceLevel) = no ->
 		trace__setup(ModuleInfo, PredInfo, ProcInfo, Globals,
-			TraceSlotInfo, TraceInfo),
-		code_info__set_maybe_trace_info(yes(TraceInfo))
+			TraceSlotInfo, TraceInfo, !CI),
+		code_info__set_maybe_trace_info(yes(TraceInfo), !CI)
 	;
-		{ TraceSlotInfo = trace_slot_info(no, no, no, no, no) }
+		TraceSlotInfo = trace_slot_info(no, no, no, no, no)
 	).
 
 %---------------------------------------------------------------------------%
 
-code_info__get_globals(CI^code_info_static^globals, CI, CI).
-code_info__get_module_info(CI^code_info_static^module_info, CI, CI).
-code_info__get_pred_id(CI^code_info_static^pred_id, CI, CI).
-code_info__get_proc_id(CI^code_info_static^proc_id, CI, CI).
-code_info__get_proc_info(CI^code_info_static^proc_info, CI, CI).
-code_info__get_pred_info(CI^code_info_static^pred_info, CI, CI).
-code_info__get_varset(CI^code_info_static^varset, CI, CI).
-code_info__get_var_slot_count(CI^code_info_static^var_slot_count, CI, CI).
-code_info__get_maybe_trace_info(CI^code_info_static^maybe_trace_info, CI, CI).
-code_info__get_opt_no_return_calls(CI^code_info_static^opt_no_resume_calls,
-	CI, CI).
-code_info__get_forward_live_vars(CI^code_info_loc_dep^forward_live_vars,
-	CI, CI).
-code_info__get_instmap(CI^code_info_loc_dep^instmap, CI, CI).
-code_info__get_zombies(CI^code_info_loc_dep^zombies, CI, CI).
-code_info__get_var_locn_info(CI^code_info_loc_dep^var_locn_info, CI, CI).
-code_info__get_temps_in_use(CI^code_info_loc_dep^temps_in_use, CI, CI).
-code_info__get_fail_info(CI^code_info_loc_dep^fail_info, CI, CI).
-code_info__get_label_counter(CI^code_info_persistent^label_num_src, CI, CI).
-code_info__get_succip_used(CI^code_info_persistent^store_succip, CI, CI).
-code_info__get_layout_info(CI^code_info_persistent^label_info, CI, CI).
-code_info__get_max_temp_slot_count(CI^code_info_persistent^stackslot_max,
-	CI, CI).
-code_info__get_temp_content_map(CI^code_info_persistent^temp_contents, CI, CI).
-code_info__get_closure_seq_counter(CI^code_info_persistent^closure_layout_seq,
-	CI, CI).
-code_info__get_closure_layouts(CI^code_info_persistent^closure_layouts,
-	CI, CI).
-code_info__get_max_reg_in_use_at_trace(CI^code_info_persistent^max_reg_used,
-	CI, CI).
-code_info__get_created_temp_frame(CI^code_info_persistent^created_temp_frame,
-	CI, CI).
-code_info__get_static_cell_info(CI^code_info_persistent^static_cell_info,
-	CI, CI).
+code_info__get_globals(CI,
+	CI ^ code_info_static ^ globals).
+code_info__get_module_info(CI,
+	CI ^ code_info_static ^ module_info).
+code_info__get_pred_id(CI,
+	CI ^ code_info_static ^ pred_id).
+code_info__get_proc_id(CI,
+	CI ^ code_info_static ^ proc_id).
+code_info__get_proc_info(CI,
+	CI ^ code_info_static ^ proc_info).
+code_info__get_pred_info(CI,
+	CI ^ code_info_static ^ pred_info).
+code_info__get_varset(CI,
+	CI ^ code_info_static ^ varset).
+code_info__get_var_slot_count(CI,
+	CI ^ code_info_static ^ var_slot_count).
+code_info__get_maybe_trace_info(CI,
+	CI ^ code_info_static ^ maybe_trace_info).
+code_info__get_opt_no_return_calls(CI,
+	CI ^ code_info_static ^ opt_no_resume_calls).
+code_info__get_forward_live_vars(CI,
+	CI ^ code_info_loc_dep ^ forward_live_vars).
+code_info__get_instmap(CI,
+	CI ^ code_info_loc_dep ^ instmap).
+code_info__get_zombies(CI,
+	CI ^ code_info_loc_dep ^ zombies).
+code_info__get_var_locn_info(CI,
+	CI ^ code_info_loc_dep ^ var_locn_info).
+code_info__get_temps_in_use(CI,
+	CI ^ code_info_loc_dep ^ temps_in_use).
+code_info__get_fail_info(CI,
+	CI ^ code_info_loc_dep ^ fail_info).
+code_info__get_label_counter(CI,
+	CI ^ code_info_persistent ^ label_num_src).
+code_info__get_succip_used(CI,
+	CI ^ code_info_persistent ^ store_succip).
+code_info__get_layout_info(CI,
+	CI ^ code_info_persistent ^ label_info).
+code_info__get_max_temp_slot_count(CI,
+	CI ^ code_info_persistent ^ stackslot_max).
+code_info__get_temp_content_map(CI,
+	CI ^ code_info_persistent ^ temp_contents).
+code_info__get_closure_seq_counter(CI,
+	CI ^ code_info_persistent ^ closure_layout_seq).
+code_info__get_closure_layouts(CI,
+	CI ^ code_info_persistent ^ closure_layouts).
+code_info__get_max_reg_in_use_at_trace(CI,
+	CI ^ code_info_persistent ^ max_reg_used).
+code_info__get_created_temp_frame(CI,
+	CI ^ code_info_persistent ^ created_temp_frame).
+code_info__get_static_cell_info(CI,
+	CI ^ code_info_persistent ^ static_cell_info).
 
 %---------------------------------------------------------------------------%
 
 code_info__set_maybe_trace_info(TI, CI,
-	CI^code_info_static^maybe_trace_info := TI).
+	CI ^ code_info_static ^ maybe_trace_info := TI).
 code_info__set_forward_live_vars(LV, CI,
-	CI^code_info_loc_dep^forward_live_vars := LV).
-code_info__set_instmap(IM, CI, CI^code_info_loc_dep^instmap := IM).
-code_info__set_zombies(Zs, CI, CI^code_info_loc_dep^zombies := Zs).
+	CI ^ code_info_loc_dep ^ forward_live_vars := LV).
+code_info__set_instmap(IM, CI,
+	CI ^ code_info_loc_dep ^ instmap := IM).
+code_info__set_zombies(Zs, CI,
+	CI ^ code_info_loc_dep ^ zombies := Zs).
 code_info__set_var_locn_info(EI, CI,
-	CI^code_info_loc_dep^var_locn_info := EI).
-code_info__set_temps_in_use(TI, CI, CI^code_info_loc_dep^temps_in_use := TI).
-code_info__set_fail_info(FI, CI, CI^code_info_loc_dep^fail_info := FI).
+	CI ^ code_info_loc_dep ^ var_locn_info := EI).
+code_info__set_temps_in_use(TI, CI,
+	CI ^ code_info_loc_dep ^ temps_in_use := TI).
+code_info__set_fail_info(FI, CI,
+	CI ^ code_info_loc_dep ^ fail_info := FI).
 code_info__set_label_counter(LC, CI,
-	CI^code_info_persistent^label_num_src := LC).
-code_info__set_succip_used(SU, CI, CI^code_info_persistent^store_succip := SU).
-code_info__set_layout_info(LI, CI, CI^code_info_persistent^label_info := LI).
+	CI ^ code_info_persistent ^ label_num_src := LC).
+code_info__set_succip_used(SU, CI,
+	CI ^ code_info_persistent ^ store_succip := SU).
+code_info__set_layout_info(LI, CI,
+	CI ^ code_info_persistent ^ label_info := LI).
 code_info__set_max_temp_slot_count(TM, CI,
-	CI^code_info_persistent^stackslot_max := TM).
+	CI ^ code_info_persistent ^ stackslot_max := TM).
 code_info__set_temp_content_map(CM, CI,
-	CI^code_info_persistent^temp_contents := CM).
+	CI ^ code_info_persistent ^ temp_contents := CM).
 code_info__set_closure_seq_counter(CLS, CI,
-	CI^code_info_persistent^closure_layout_seq := CLS).
+	CI ^ code_info_persistent ^ closure_layout_seq := CLS).
 code_info__set_closure_layouts(CG, CI,
-	CI^code_info_persistent^closure_layouts := CG).
+	CI ^ code_info_persistent ^ closure_layouts := CG).
 code_info__set_max_reg_in_use_at_trace(MR, CI,
-	CI^code_info_persistent^max_reg_used := MR).
+	CI ^ code_info_persistent ^ max_reg_used := MR).
 code_info__set_created_temp_frame(MR, CI,
-	CI^code_info_persistent^created_temp_frame := MR).
+	CI ^ code_info_persistent ^ created_temp_frame := MR).
 code_info__set_static_cell_info(SCI, CI,
-	CI^code_info_persistent^static_cell_info := SCI).
+	CI ^ code_info_persistent ^ static_cell_info := SCI).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -548,81 +552,66 @@ code_info__set_static_cell_info(SCI, CI,
 :- interface.
 
 		% Get the hlds mapping from variables to stack slots
-:- pred code_info__get_stack_slots(stack_slots, code_info, code_info).
-:- mode code_info__get_stack_slots(out, in, out) is det.
+:- pred code_info__get_stack_slots(code_info::in, stack_slots::out) is det.
 
 		% Get the table that contains advice about where
 		% variables should be put.
-:- pred code_info__get_follow_var_map(follow_vars_map, code_info, code_info).
-:- mode code_info__get_follow_var_map(out, in, out) is det.
+:- pred code_info__get_follow_var_map(code_info::in, follow_vars_map::out)
+	is det.
 
 		% Get the integer that gives the number of the next
 		% non-reserved register.
-:- pred code_info__get_next_non_reserved(int, code_info, code_info).
-:- mode code_info__get_next_non_reserved(out, in, out) is det.
+:- pred code_info__get_next_non_reserved(code_info::in, int::out) is det.
 
 		% Set the table that contains advice about where
 		% variables should be put.
-:- pred code_info__set_follow_vars(follow_vars, code_info, code_info).
-:- mode code_info__set_follow_vars(in, in, out) is det.
+:- pred code_info__set_follow_vars(follow_vars::in,
+	code_info::in, code_info::out) is det.
 
 	% code_info__pre_goal_update(GoalInfo, Atomic, OldCodeInfo, NewCodeInfo)
 	% updates OldCodeInfo to produce NewCodeInfo with the changes
 	% specified by GoalInfo.
-:- pred code_info__pre_goal_update(hlds_goal_info, bool, code_info, code_info).
-:- mode code_info__pre_goal_update(in, in, in, out) is det.
+:- pred code_info__pre_goal_update(hlds_goal_info::in, bool::in,
+	code_info::in, code_info::out) is det.
 
 	% code_info__post_goal_update(GoalInfo, OldCodeInfo, NewCodeInfo)
 	% updates OldCodeInfo to produce NewCodeInfo with the changes described
 	% by GoalInfo.
-:- pred code_info__post_goal_update(hlds_goal_info, code_info, code_info).
-:- mode code_info__post_goal_update(in, in, out) is det.
+:- pred code_info__post_goal_update(hlds_goal_info::in,
+	code_info::in, code_info::out) is det.
 
 	% Find out whether the body of the current procedure should use
 	% typeinfo liveness.
-:- pred code_info__body_typeinfo_liveness(bool::out,
-	code_info::in, code_info::out) is det.
+:- func code_info__body_typeinfo_liveness(code_info) = bool.
 
 	% Find out the type of the given variable.
-:- pred code_info__variable_type(prog_var, type, code_info, code_info).
-:- mode code_info__variable_type(in, out, in, out) is det.
+:- func code_info__variable_type(code_info, prog_var) = (type).
 
-:- pred code_info__lookup_type_defn(type, hlds_type_defn,
-	code_info, code_info).
-:- mode code_info__lookup_type_defn(in, out, in, out) is det.
+:- func code_info__lookup_type_defn(code_info, (type)) = hlds_type_defn.
 
 	% Given a constructor id, and a variable (so that we can work out the
 	% type of the constructor), determine correct tag (representation)
 	% of that constructor.
-:- pred code_info__cons_id_to_tag(prog_var, cons_id, cons_tag,
-		code_info, code_info).
-:- mode code_info__cons_id_to_tag(in, in, out, in, out) is det.
+:- func code_info__cons_id_to_tag(code_info, prog_var, cons_id) = cons_tag.
 
 	% Get the code model of the current procedure.
-:- pred code_info__get_proc_model(code_model, code_info, code_info).
-:- mode code_info__get_proc_model(out, in, out) is det.
+:- func code_info__get_proc_model(code_info) = code_model.
 
 	% Get the list of the head variables of the current procedure.
-:- pred code_info__get_headvars(list(prog_var), code_info, code_info).
-:- mode code_info__get_headvars(out, in, out) is det.
+:- func code_info__get_headvars(code_info) = list(prog_var).
 
 	% Get the call argument information for the current procedure
-:- pred code_info__get_arginfo(list(arg_info), code_info, code_info).
-:- mode code_info__get_arginfo(out, in, out) is det.
+:- func code_info__get_arginfo(code_info) = list(arg_info).
 
 	% Get the call argument info for a given mode of a given predicate
-:- pred code_info__get_pred_proc_arginfo(pred_id, proc_id, list(arg_info),
-	code_info, code_info).
-:- mode code_info__get_pred_proc_arginfo(in, in, out, in, out) is det.
+:- func code_info__get_pred_proc_arginfo(code_info, pred_id, proc_id)
+	= list(arg_info).
 
 	% Get the set of variables currently needed by the resume
 	% points of enclosing goals.
-:- pred code_info__current_resume_point_vars(set(prog_var),
-		code_info, code_info).
-:- mode code_info__current_resume_point_vars(out, in, out) is det.
+:- func code_info__current_resume_point_vars(code_info) = set(prog_var).
 
-:- pred code_info__variable_to_string(prog_var, string, code_info, code_info).
-:- mode code_info__variable_to_string(in, out, in, out) is det.
+:- func code_info__variable_to_string(code_info, prog_var) = string.
 
 	% Create a code address which holds the address of the specified
 	% procedure.
@@ -642,32 +631,28 @@ code_info__set_static_cell_info(SCI, CI,
 	% the same C function. However, at the time of code generation,
 	% we do not yet know which procedures will be put into the same
 	% C functions, and so we cannot do this.
-:- pred code_info__make_entry_label(module_info, pred_id, proc_id, bool,
-	code_addr, code_info, code_info).
-:- mode code_info__make_entry_label(in, in, in, in, out, in, out) is det.
+:- func code_info__make_entry_label(code_info, module_info, pred_id, proc_id,
+	bool) = code_addr.
 
 	% Generate the next local label in sequence.
-:- pred code_info__get_next_label(label, code_info, code_info).
-:- mode code_info__get_next_label(out, in, out) is det.
+:- pred code_info__get_next_label(label::out, code_info::in, code_info::out)
+	is det.
 
 	% Note that the succip slot is used, and thus cannot be
 	% optimized away.
-:- pred code_info__succip_is_used(code_info, code_info).
-:- mode code_info__succip_is_used(in, out) is det.
+:- pred code_info__succip_is_used(code_info::in, code_info::out) is det.
 
-:- pred code_info__add_trace_layout_for_label(label, term__context,
-	trace_port, bool, goal_path, layout_label_info, code_info, code_info).
-:- mode code_info__add_trace_layout_for_label(in, in, in, in, in, in, in, out)
-	is det.
+:- pred code_info__add_trace_layout_for_label(label::in, term__context::in,
+	trace_port::in, bool::in, goal_path::in, layout_label_info::in,
+	code_info::in, code_info::out) is det.
 
-:- pred code_info__get_cur_proc_label(proc_label, code_info, code_info).
-:- mode code_info__get_cur_proc_label(out, in, out) is det.
+:- pred code_info__get_cur_proc_label(code_info::in, proc_label::out) is det.
 
-:- pred code_info__get_next_closure_seq_no(int, code_info, code_info).
-:- mode code_info__get_next_closure_seq_no(out, in, out) is det.
+:- pred code_info__get_next_closure_seq_no(int::out,
+	code_info::in, code_info::out) is det.
 
-:- pred code_info__add_closure_layout(comp_gen_c_data, code_info, code_info).
-:- mode code_info__add_closure_layout(in, in, out) is det.
+:- pred code_info__add_closure_layout(comp_gen_c_data::in,
+	code_info::in, code_info::out) is det.
 
 :- pred code_info__add_static_cell(assoc_list(rval, llds_type)::in,
 	data_addr::out, code_info::in, code_info::out) is det.
@@ -679,187 +664,184 @@ code_info__set_static_cell_info(SCI, CI,
 
 :- implementation.
 
-:- pred code_info__add_resume_layout_for_label(label, layout_label_info,
-	code_info, code_info).
-:- mode code_info__add_resume_layout_for_label(in, in, in, out) is det.
+:- pred code_info__add_resume_layout_for_label(label::in,
+	layout_label_info::in, code_info::in, code_info::out) is det.
 
-code_info__get_stack_slots(StackSlots, CI, CI) :-
-	code_info__get_var_locn_info(VarLocnInfo, CI, _),
-	var_locn__get_stack_slots(StackSlots, VarLocnInfo, _).
+code_info__get_stack_slots(CI, StackSlots) :-
+	code_info__get_var_locn_info(CI, VarLocnInfo),
+	var_locn__get_stack_slots(VarLocnInfo, StackSlots).
 
-code_info__get_follow_var_map(FollowVarMap, CI, CI) :-
-	code_info__get_var_locn_info(VarLocnInfo, CI, _),
-	var_locn__get_follow_var_map(FollowVarMap, VarLocnInfo, _).
+code_info__get_follow_var_map(CI, FollowVarMap) :-
+	code_info__get_var_locn_info(CI, VarLocnInfo),
+	var_locn__get_follow_var_map(VarLocnInfo, FollowVarMap).
 
-code_info__get_next_non_reserved(NextNonReserved, CI, CI) :-
-	code_info__get_var_locn_info(VarLocnInfo, CI, _),
-	var_locn__get_next_non_reserved(NextNonReserved, VarLocnInfo, _).
+code_info__get_next_non_reserved(CI, NextNonReserved) :-
+	code_info__get_var_locn_info(CI, VarLocnInfo),
+	var_locn__get_next_non_reserved(VarLocnInfo, NextNonReserved).
 
-code_info__set_follow_vars(FollowVars, CI0, CI) :-
-	code_info__get_var_locn_info(VarLocnInfo0, CI0, _),
+code_info__set_follow_vars(FollowVars, !CI) :-
+	code_info__get_var_locn_info(!.CI, VarLocnInfo0),
 	var_locn__set_follow_vars(FollowVars, VarLocnInfo0, VarLocnInfo),
-	code_info__set_var_locn_info(VarLocnInfo, CI0, CI).
+	code_info__set_var_locn_info(VarLocnInfo, !CI).
 
 %-----------------------------------------------------------------------------%
 
 	% Update the code info structure to be consistent
 	% immediately prior to generating a goal.
-code_info__pre_goal_update(GoalInfo, Atomic) -->
+code_info__pre_goal_update(GoalInfo, Atomic, !CI) :-
 	% The liveness pass puts resume_point annotations on some kinds
 	% of goals. The parts of the code generator that handle those kinds
 	% of goals should handle the resume point annotation as well;
 	% when they do, they remove the annotation. The following code
 	% is a sanity check to make sure that this has in fact been done.
-	{ goal_info_get_resume_point(GoalInfo, ResumePoint) },
+	goal_info_get_resume_point(GoalInfo, ResumePoint),
 	(
-		{ ResumePoint = no_resume_point }
+		ResumePoint = no_resume_point
 	;
-		{ ResumePoint = resume_point(_, _) },
-		{ error("pre_goal_update with resume point") }
+		ResumePoint = resume_point(_, _),
+		error("pre_goal_update with resume point")
 	),
-	{ goal_info_get_follow_vars(GoalInfo, MaybeFollowVars) },
+	goal_info_get_follow_vars(GoalInfo, MaybeFollowVars),
 	(
-		{ MaybeFollowVars = yes(FollowVars) },
-		code_info__set_follow_vars(FollowVars)
+		MaybeFollowVars = yes(FollowVars),
+		code_info__set_follow_vars(FollowVars, !CI)
 	;
-		{ MaybeFollowVars = no }
+		MaybeFollowVars = no
 	),
 	% note: we must be careful to apply deaths before births
-	{ goal_info_get_pre_deaths(GoalInfo, PreDeaths) },
-	code_info__rem_forward_live_vars(PreDeaths),
-	code_info__maybe_make_vars_forward_dead(PreDeaths, no),
-	{ goal_info_get_pre_births(GoalInfo, PreBirths) },
-	code_info__add_forward_live_vars(PreBirths),
-	( { Atomic = yes } ->
-		{ goal_info_get_post_deaths(GoalInfo, PostDeaths) },
-		code_info__rem_forward_live_vars(PostDeaths)
+	goal_info_get_pre_deaths(GoalInfo, PreDeaths),
+	code_info__rem_forward_live_vars(PreDeaths, !CI),
+	code_info__maybe_make_vars_forward_dead(PreDeaths, no, !CI),
+	goal_info_get_pre_births(GoalInfo, PreBirths),
+	code_info__add_forward_live_vars(PreBirths, !CI),
+	( Atomic = yes ->
+		goal_info_get_post_deaths(GoalInfo, PostDeaths),
+		code_info__rem_forward_live_vars(PostDeaths, !CI)
 	;
-		[]
+		true
 	).
 
 	% Update the code info structure to be consistent
 	% immediately after generating a goal.
-code_info__post_goal_update(GoalInfo) -->
+code_info__post_goal_update(GoalInfo, !CI) :-
 	% note: we must be careful to apply deaths before births
-	{ goal_info_get_post_deaths(GoalInfo, PostDeaths) },
-	code_info__rem_forward_live_vars(PostDeaths),
-	code_info__maybe_make_vars_forward_dead(PostDeaths, no),
-	{ goal_info_get_post_births(GoalInfo, PostBirths) },
-	code_info__add_forward_live_vars(PostBirths),
-	code_info__make_vars_forward_live(PostBirths),
-	{ goal_info_get_instmap_delta(GoalInfo, InstMapDelta) },
-	code_info__get_instmap(InstMap0),
-	{ instmap__apply_instmap_delta(InstMap0, InstMapDelta, InstMap) },
-	code_info__set_instmap(InstMap).
+	goal_info_get_post_deaths(GoalInfo, PostDeaths),
+	code_info__rem_forward_live_vars(PostDeaths, !CI),
+	code_info__maybe_make_vars_forward_dead(PostDeaths, no, !CI),
+	goal_info_get_post_births(GoalInfo, PostBirths),
+	code_info__add_forward_live_vars(PostBirths, !CI),
+	code_info__make_vars_forward_live(PostBirths, !CI),
+	goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
+	code_info__get_instmap(!.CI, InstMap0),
+	instmap__apply_instmap_delta(InstMap0, InstMapDelta, InstMap),
+	code_info__set_instmap(InstMap, !CI).
 
 %---------------------------------------------------------------------------%
 
-code_info__body_typeinfo_liveness(TypeInfoLiveness) -->
-	code_info__get_module_info(ModuleInfo),
-	code_info__get_pred_id(PredId),
-	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
-	code_info__get_globals(Globals),
-	{ body_should_use_typeinfo_liveness(PredInfo, Globals,
-		TypeInfoLiveness) }.
+code_info__body_typeinfo_liveness(CI) = TypeInfoLiveness :-
+	code_info__get_module_info(CI, ModuleInfo),
+	code_info__get_pred_id(CI, PredId),
+	module_info_pred_info(ModuleInfo, PredId, PredInfo),
+	code_info__get_globals(CI, Globals),
+	body_should_use_typeinfo_liveness(PredInfo, Globals, TypeInfoLiveness).
 
-:- pred code_info__get_var_types(map(prog_var, type), code_info, code_info).
-:- mode code_info__get_var_types(out, in, out) is det.
+:- func code_info__get_var_types(code_info) = map(prog_var, type).
 
-code_info__get_var_types(VarTypes) -->
-	code_info__get_proc_info(ProcInfo),
-	{ proc_info_vartypes(ProcInfo, VarTypes) }.
+code_info__get_var_types(CI) = VarTypes :-
+	code_info__get_proc_info(CI, ProcInfo),
+	proc_info_vartypes(ProcInfo, VarTypes).
 
-code_info__variable_type(Var, Type) -->
-	code_info__get_var_types(VarTypes),
-	{ map__lookup(VarTypes, Var, Type) }.
+code_info__variable_type(CI, Var) = Type :-
+	map__lookup(code_info__get_var_types(CI), Var, Type).
 
-code_info__lookup_type_defn(Type, TypeDefn) -->
-	code_info__get_module_info(ModuleInfo),
-	{ type_to_ctor_and_args(Type, TypeCtorPrime, _) ->
+code_info__lookup_type_defn(CI, Type) = TypeDefn :-
+	code_info__get_module_info(CI, ModuleInfo),
+	( type_to_ctor_and_args(Type, TypeCtorPrime, _) ->
 		TypeCtor = TypeCtorPrime
 	;
 		error("unknown type in code_info__lookup_type_defn")
-	},
-	{ module_info_types(ModuleInfo, TypeTable) },
-	{ map__lookup(TypeTable, TypeCtor, TypeDefn) }.
-
-code_info__cons_id_to_tag(Var, ConsId, ConsTag) -->
-	code_info__variable_type(Var, Type),
-	code_info__get_module_info(ModuleInfo),
-	{ ConsTag = cons_id_to_tag(ConsId, Type, ModuleInfo) }.
-
-%---------------------------------------------------------------------------%
-
-code_info__get_proc_model(CodeModel) -->
-	code_info__get_proc_info(ProcInfo),
-	{ proc_info_interface_code_model(ProcInfo, CodeModel) }.
-
-code_info__get_headvars(HeadVars) -->
-	code_info__get_module_info(ModuleInfo),
-	code_info__get_pred_id(PredId),
-	code_info__get_proc_id(ProcId),
-	{ module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo) },
-	{ proc_info_headvars(ProcInfo, HeadVars) }.
-
-code_info__get_arginfo(ArgInfo) -->
-	code_info__get_pred_id(PredId),
-	code_info__get_proc_id(ProcId),
-	code_info__get_pred_proc_arginfo(PredId, ProcId, ArgInfo).
-
-code_info__get_pred_proc_arginfo(PredId, ProcId, ArgInfo) -->
-	code_info__get_module_info(ModuleInfo),
-	{ module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo) },
-	{ proc_info_arg_info(ProcInfo, ArgInfo) }.
-
-code_info__current_resume_point_vars(ResumeVars) -->
-	code_info__get_fail_info(FailInfo),
-	{ FailInfo = fail_info(ResumePointStack, _, _, _, _) },
-	{ stack__top_det(ResumePointStack, ResumePointInfo) },
-	{ code_info__pick_first_resume_point(ResumePointInfo, ResumeMap, _) },
-	{ map__keys(ResumeMap, ResumeMapVarList) },
-	{ set__list_to_set(ResumeMapVarList, ResumeVars) }.
-
-code_info__variable_to_string(Var, Name) -->
-	code_info__get_varset(Varset),
-	{ varset__lookup_name(Varset, Var, Name) }.
-
-%---------------------------------------------------------------------------%
-
-code_info__make_entry_label(ModuleInfo, PredId, ProcId, Immed0, PredAddress) -->
-	(
-		{ Immed0 = no },
-		{ Immed = no }
-	;
-		{ Immed0 = yes },
-		code_info__get_globals(Globals),
-		{ globals__lookup_int_option(Globals, procs_per_c_function,
-			ProcsPerFunc) },
-		code_info__get_pred_id(CurPredId),
-		code_info__get_proc_id(CurProcId),
-		{ Immed = yes(ProcsPerFunc - proc(CurPredId, CurProcId)) }
 	),
-	{ code_util__make_entry_label(ModuleInfo, PredId, ProcId, Immed,
-		PredAddress) }.
+	module_info_types(ModuleInfo, TypeTable),
+	map__lookup(TypeTable, TypeCtor, TypeDefn).
 
-code_info__get_next_label(Label) -->
-	code_info__get_module_info(ModuleInfo),
-	code_info__get_pred_id(PredId),
-	code_info__get_proc_id(ProcId),
-	code_info__get_label_counter(C0),
-	{ counter__allocate(N, C0, C) },
-	code_info__set_label_counter(C),
-	{ code_util__make_internal_label(ModuleInfo, PredId, ProcId, N,
-		Label) }.
+code_info__cons_id_to_tag(CI, Var, ConsId) = ConsTag :-
+	code_info__get_module_info(CI, ModuleInfo),
+	ConsTag = cons_id_to_tag(ConsId, code_info__variable_type(CI, Var),
+		ModuleInfo).
 
-code_info__succip_is_used -->
-	code_info__set_succip_used(yes).
+%---------------------------------------------------------------------------%
+
+code_info__get_proc_model(CI) = CodeModel :-
+	code_info__get_proc_info(CI, ProcInfo),
+	proc_info_interface_code_model(ProcInfo, CodeModel).
+
+code_info__get_headvars(CI) = HeadVars :-
+	code_info__get_module_info(CI, ModuleInfo),
+	code_info__get_pred_id(CI, PredId),
+	code_info__get_proc_id(CI, ProcId),
+	module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
+	proc_info_headvars(ProcInfo, HeadVars).
+
+code_info__get_arginfo(CI) = ArgInfo :-
+	code_info__get_pred_id(CI, PredId),
+	code_info__get_proc_id(CI, ProcId),
+	ArgInfo = code_info__get_pred_proc_arginfo(CI, PredId, ProcId).
+
+code_info__get_pred_proc_arginfo(CI, PredId, ProcId) = ArgInfo :-
+	code_info__get_module_info(CI, ModuleInfo),
+	module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
+	proc_info_arg_info(ProcInfo, ArgInfo).
+
+code_info__current_resume_point_vars(CI) = ResumeVars :-
+	code_info__get_fail_info(CI, FailInfo),
+	FailInfo = fail_info(ResumePointStack, _, _, _, _),
+	stack__top_det(ResumePointStack, ResumePointInfo),
+	code_info__pick_first_resume_point(ResumePointInfo, ResumeMap, _),
+	map__keys(ResumeMap, ResumeMapVarList),
+	set__list_to_set(ResumeMapVarList, ResumeVars).
+
+code_info__variable_to_string(CI, Var) = Name :-
+	code_info__get_varset(CI, Varset),
+	varset__lookup_name(Varset, Var, Name).
+
+%---------------------------------------------------------------------------%
+
+code_info__make_entry_label(CI, ModuleInfo, PredId, ProcId, Immed0) =
+		PredAddress :-
+	(
+		Immed0 = no,
+		Immed = no
+	;
+		Immed0 = yes,
+		code_info__get_globals(CI, Globals),
+		globals__lookup_int_option(Globals, procs_per_c_function,
+			ProcsPerFunc),
+		code_info__get_pred_id(CI, CurPredId),
+		code_info__get_proc_id(CI, CurProcId),
+		Immed = yes(ProcsPerFunc - proc(CurPredId, CurProcId))
+	),
+	code_util__make_entry_label(ModuleInfo, PredId, ProcId, Immed,
+		PredAddress).
+
+code_info__get_next_label(Label, !CI) :-
+	code_info__get_module_info(!.CI, ModuleInfo),
+	code_info__get_pred_id(!.CI, PredId),
+	code_info__get_proc_id(!.CI, ProcId),
+	code_info__get_label_counter(!.CI, C0),
+	counter__allocate(N, C0, C),
+	code_info__set_label_counter(C, !CI),
+	code_util__make_internal_label(ModuleInfo, PredId, ProcId, N,
+		Label).
+
+code_info__succip_is_used(!CI) :-
+	code_info__set_succip_used(yes, !CI).
 
 code_info__add_trace_layout_for_label(Label, Context, Port, IsHidden, Path,
-		Layout) -->
-	code_info__get_layout_info(Internals0),
-	{ Exec = yes(trace_port_layout_info(Context, Port, IsHidden,
-		Path, Layout)) },
-	{ map__search(Internals0, Label, Internal0) ->
+		Layout, !CI) :-
+	code_info__get_layout_info(!.CI, Internals0),
+	Exec = yes(trace_port_layout_info(Context, Port, IsHidden,
+		Path, Layout)),
+	( map__search(Internals0, Label, Internal0) ->
 		Internal0 = internal_layout_info(Exec0, Resume, Return),
 		( Exec0 = no ->
 			true
@@ -871,13 +853,13 @@ code_info__add_trace_layout_for_label(Label, Context, Port, IsHidden, Path,
 	;
 		Internal = internal_layout_info(Exec, no, no),
 		map__det_insert(Internals0, Label, Internal, Internals)
-	},
-	code_info__set_layout_info(Internals).
+	),
+	code_info__set_layout_info(Internals, !CI).
 
-code_info__add_resume_layout_for_label(Label, LayoutInfo) -->
-	code_info__get_layout_info(Internals0),
-	{ Resume = yes(LayoutInfo) },
-	{ map__search(Internals0, Label, Internal0) ->
+code_info__add_resume_layout_for_label(Label, LayoutInfo, !CI) :-
+	code_info__get_layout_info(!.CI, Internals0),
+	Resume = yes(LayoutInfo),
+	( map__search(Internals0, Label, Internal0) ->
 		Internal0 = internal_layout_info(Exec, Resume0, Return),
 		( Resume0 = no ->
 			true
@@ -889,45 +871,44 @@ code_info__add_resume_layout_for_label(Label, LayoutInfo) -->
 	;
 		Internal = internal_layout_info(no, Resume, no),
 		map__det_insert(Internals0, Label, Internal, Internals)
-	},
-	code_info__set_layout_info(Internals).
+	),
+	code_info__set_layout_info(Internals, !CI).
 
-:- pred code_info__get_active_temps_data(assoc_list(lval, slot_contents),
-	code_info, code_info).
-:- mode code_info__get_active_temps_data(out, in, out) is det.
+:- pred code_info__get_active_temps_data(code_info::in,
+	assoc_list(lval, slot_contents)::out) is det.
 
-code_info__get_active_temps_data(Temps) -->
-	code_info__get_temps_in_use(TempsInUse),
-	code_info__get_temp_content_map(TempContentMap),
-	{ map__select(TempContentMap, TempsInUse, TempsInUseContentMap) },
-	{ map__to_assoc_list(TempsInUseContentMap, Temps) }.
+code_info__get_active_temps_data(CI, Temps) :-
+	code_info__get_temps_in_use(CI, TempsInUse),
+	code_info__get_temp_content_map(CI, TempContentMap),
+	map__select(TempContentMap, TempsInUse, TempsInUseContentMap),
+	map__to_assoc_list(TempsInUseContentMap, Temps).
 
-code_info__get_cur_proc_label(ProcLabel) -->
-	code_info__get_module_info(ModuleInfo),
-	code_info__get_pred_id(PredId),
-	code_info__get_proc_id(ProcId),
-	{ ProcLabel = make_proc_label(ModuleInfo, PredId, ProcId) }.
+code_info__get_cur_proc_label(CI, ProcLabel) :-
+	code_info__get_module_info(CI, ModuleInfo),
+	code_info__get_pred_id(CI, PredId),
+	code_info__get_proc_id(CI, ProcId),
+	ProcLabel = make_proc_label(ModuleInfo, PredId, ProcId).
 
-code_info__get_next_closure_seq_no(SeqNo) -->
-	code_info__get_closure_seq_counter(C0),
-	{ counter__allocate(SeqNo, C0, C) },
-	code_info__set_closure_seq_counter(C).
+code_info__get_next_closure_seq_no(SeqNo, !CI) :-
+	code_info__get_closure_seq_counter(!.CI, C0),
+	counter__allocate(SeqNo, C0, C),
+	code_info__set_closure_seq_counter(C, !CI).
 
-code_info__add_closure_layout(ClosureLayout) -->
-	code_info__get_closure_layouts(ClosureLayouts),
-	code_info__set_closure_layouts([ClosureLayout | ClosureLayouts]).
+code_info__add_closure_layout(ClosureLayout, !CI) :-
+	code_info__get_closure_layouts(!.CI, ClosureLayouts),
+	code_info__set_closure_layouts([ClosureLayout | ClosureLayouts], !CI).
 
-code_info__add_static_cell(RvalsTypes, DataAddr) -->
-	code_info__get_static_cell_info(StaticCellInfo0),
-	{ add_static_cell(RvalsTypes, DataAddr,
-		StaticCellInfo0, StaticCellInfo) },
-	code_info__set_static_cell_info(StaticCellInfo).
+code_info__add_static_cell(RvalsTypes, DataAddr, !CI) :-
+	code_info__get_static_cell_info(!.CI, StaticCellInfo0),
+	add_static_cell(RvalsTypes, DataAddr,
+		StaticCellInfo0, StaticCellInfo),
+	code_info__set_static_cell_info(StaticCellInfo, !CI).
 
-code_info__add_static_cell_natural_types(Rvals, DataAddr) -->
-	code_info__get_static_cell_info(StaticCellInfo0),
-	{ add_static_cell_natural_types(Rvals, DataAddr,
-		StaticCellInfo0, StaticCellInfo) },
-	code_info__set_static_cell_info(StaticCellInfo).
+code_info__add_static_cell_natural_types(Rvals, DataAddr, !CI) :-
+	code_info__get_static_cell_info(!.CI, StaticCellInfo0),
+	add_static_cell_natural_types(Rvals, DataAddr,
+		StaticCellInfo0, StaticCellInfo),
+	code_info__set_static_cell_info(StaticCellInfo, !CI).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -941,26 +922,22 @@ code_info__add_static_cell_natural_types(Rvals, DataAddr) -->
 
 :- type branch_end	==	maybe(branch_end_info).
 
-:- pred code_info__remember_position(position_info, code_info, code_info).
-:- mode code_info__remember_position(out, in, out) is det.
+:- pred code_info__remember_position(code_info::in, position_info::out) is det.
 
-:- pred code_info__reset_to_position(position_info, code_info, code_info).
-:- mode code_info__reset_to_position(in, in, out) is det.
+:- pred code_info__reset_to_position(position_info::in,
+	code_info::in, code_info::out) is det.
 
-:- pred code_info__reset_resume_known(position_info, code_info, code_info).
-:- mode code_info__reset_resume_known(in, in, out) is det.
+:- pred code_info__reset_resume_known(position_info::in,
+	code_info::in, code_info::out) is det.
 
-:- pred code_info__generate_branch_end(store_map, branch_end, branch_end,
-	code_tree, code_info, code_info).
-:- mode code_info__generate_branch_end(in, in, out, out, in, out) is det.
+:- pred code_info__generate_branch_end(store_map::in, branch_end::in,
+	branch_end::out, code_tree::out, code_info::in, code_info::out) is det.
 
-:- pred code_info__after_all_branches(store_map, branch_end,
-	code_info, code_info).
-:- mode code_info__after_all_branches(in, in, in, out) is det.
+:- pred code_info__after_all_branches(store_map::in, branch_end::in,
+	code_info::in, code_info::out) is det.
 
-:- pred code_info__save_hp_in_branch(code_tree, lval, position_info,
-	position_info).
-:- mode code_info__save_hp_in_branch(out, out, in, out) is det.
+:- pred code_info__save_hp_in_branch(code_tree::out, lval::out,
+	position_info::in, position_info::out) is det.
 
 :- implementation.
 
@@ -975,40 +952,40 @@ code_info__add_static_cell_natural_types(Rvals, DataAddr) -->
 			code_info	% The code_info at the end of a branch.
 		).
 
-code_info__remember_position(position_info(C), C, C).
+code_info__remember_position(CI, position_info(CI)).
 
 code_info__reset_to_position(position_info(PosCI), CurCI, NextCI) :-
 	PosCI  = code_info(_, LocDep, _),
 	CurCI  = code_info(Static, _, Persistent),
 	NextCI = code_info(Static, LocDep, Persistent).
 
-code_info__reset_resume_known(BranchStart) -->
-	{ BranchStart = position_info(BranchStartCI) },
-	{ code_info__get_fail_info(BranchStartFailInfo, BranchStartCI, _) },
-	{ BranchStartFailInfo = fail_info(_, BSResumeKnown, _, _, _) },
-	code_info__get_fail_info(CurFailInfo),
-	{ CurFailInfo = fail_info(CurFailStack, _,
-		CurCurfMaxfr, CurCondEnv, CurHijack) },
-	{ NewFailInfo = fail_info(CurFailStack, BSResumeKnown,
-		CurCurfMaxfr, CurCondEnv, CurHijack) },
-	code_info__set_fail_info(NewFailInfo).
+code_info__reset_resume_known(BranchStart, !CI) :-
+	BranchStart = position_info(BranchStartCI),
+	code_info__get_fail_info(BranchStartCI, BranchStartFailInfo),
+	BranchStartFailInfo = fail_info(_, BSResumeKnown, _, _, _),
+	code_info__get_fail_info(!.CI, CurFailInfo),
+	CurFailInfo = fail_info(CurFailStack, _,
+		CurCurfMaxfr, CurCondEnv, CurHijack),
+	NewFailInfo = fail_info(CurFailStack, BSResumeKnown,
+		CurCurfMaxfr, CurCondEnv, CurHijack),
+	code_info__set_fail_info(NewFailInfo, !CI).
 
-code_info__generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd, Code) -->
+code_info__generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd, Code, !CI) :-
 		% The code generator generates better code
-			% if it knows in advance where each variable should
-			% go. We don't need to reset the follow_vars
-			% afterwards, since every goal following a branched
-			% control structure must in any case be annotated with
-			% its own follow_var set.
-	{ map__to_assoc_list(StoreMap, VarLocs) },
-		{ map__from_assoc_list(VarLocs, FollowVarsMap) },
-		{ assoc_list__values(VarLocs, Locs) },
-		{ code_util__max_mentioned_reg(Locs, MaxMentionedReg) },
-		code_info__set_follow_vars(follow_vars(FollowVarsMap,
-		MaxMentionedReg + 1)),
-	code_info__get_instmap(InstMap),
-	( { instmap__is_reachable(InstMap) } ->
-		code_info__place_vars(VarLocs, Code)
+		% if it knows in advance where each variable should
+		% go. We don't need to reset the follow_vars
+		% afterwards, since every goal following a branched
+		% control structure must in any case be annotated with
+		% its own follow_var set.
+	map__to_assoc_list(StoreMap, VarLocs),
+	map__from_assoc_list(VarLocs, FollowVarsMap),
+	assoc_list__values(VarLocs, Locs),
+	code_util__max_mentioned_reg(Locs, MaxMentionedReg),
+	code_info__set_follow_vars(
+		follow_vars(FollowVarsMap, MaxMentionedReg + 1), !CI),
+	code_info__get_instmap(!.CI, InstMap),
+	( instmap__is_reachable(InstMap) ->
+		code_info__place_vars(VarLocs, Code, !CI)
 	;
 		% With --opt-no-return-call, the variables that we would have
 		% saved across a call that cannot return have had the last
@@ -1017,11 +994,11 @@ code_info__generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd, Code) -->
 		% pretending that all the variables are where the store map
 		% says they should be is perfectly fine, since we can never
 		% reach the end of *this* branch anyway.
-		code_info__remake_with_store_map(StoreMap),
-		{ Code = empty }
+		code_info__remake_with_store_map(StoreMap, !CI),
+		Code = empty
 	),
-	=(EndCodeInfo1),
-	{
+	EndCodeInfo1 = !.CI,
+	(
 		MaybeEnd0 = no,
 		EndCodeInfo = EndCodeInfo1
 	;
@@ -1029,8 +1006,8 @@ code_info__generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd, Code) -->
 
 			% Make sure the left context we leave the
 			% branched structure with is valid for all branches.
-		code_info__get_fail_info(FailInfo0, EndCodeInfo0, _),
-		code_info__get_fail_info(FailInfo1, EndCodeInfo1, _),
+		code_info__get_fail_info(EndCodeInfo0, FailInfo0),
+		code_info__get_fail_info(EndCodeInfo1, FailInfo1),
 		FailInfo0 = fail_info(_, ResumeKnown0, CurfrMaxfr0,
 			CondEnv0, Hijack0),
 		FailInfo1 = fail_info(R, ResumeKnown1, CurfrMaxfr1,
@@ -1070,21 +1047,21 @@ code_info__generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd, Code) -->
 			% Make sure the "temps in use" set at the end of the
 			% branched control structure includes every slot
 			% in use at the end of any branch.
-		code_info__get_temps_in_use(TempsInUse0, EndCodeInfo0, _),
-		code_info__get_temps_in_use(TempsInUse1, EndCodeInfo1, _),
+		code_info__get_temps_in_use(EndCodeInfo0, TempsInUse0),
+		code_info__get_temps_in_use(EndCodeInfo1, TempsInUse1),
 		set__union(TempsInUse0, TempsInUse1, TempsInUse),
 		code_info__set_temps_in_use(TempsInUse, EndCodeInfoA,
 			EndCodeInfo)
-	},
-	{ MaybeEnd = yes(branch_end_info(EndCodeInfo)) }.
+	),
+	MaybeEnd = yes(branch_end_info(EndCodeInfo)).
 
-code_info__after_all_branches(StoreMap, MaybeEnd, CI0, CI) :-
+code_info__after_all_branches(StoreMap, MaybeEnd, !CI) :-
 	(
 		MaybeEnd = yes(BranchEnd),
 		BranchEnd = branch_end_info(BranchEndCodeInfo),
 		code_info__reset_to_position(position_info(BranchEndCodeInfo),
-			CI0, CI1),
-		code_info__remake_with_store_map(StoreMap, CI1, CI)
+			!CI),
+		code_info__remake_with_store_map(StoreMap, !CI)
 	;
 		MaybeEnd = no,
 		error("no branches in branched control structure")
@@ -1097,14 +1074,14 @@ code_info__after_all_branches(StoreMap, MaybeEnd, CI0, CI) :-
 	% in the store map, and will believe they are where the store map
 	% says they are.
 
-:- pred code_info__remake_with_store_map(store_map, code_info, code_info).
-:- mode code_info__remake_with_store_map(in, in, out) is det.
+:- pred code_info__remake_with_store_map(store_map::in,
+	code_info::in, code_info::out) is det.
 
-code_info__remake_with_store_map(StoreMap) -->
-	{ map__to_assoc_list(StoreMap, VarLvals) },
-	code_info__get_var_locn_info(VarLocnInfo0),
-	{ var_locn__reinit_state(VarLvals, VarLocnInfo0, VarLocnInfo) },
-	code_info__set_var_locn_info(VarLocnInfo).
+code_info__remake_with_store_map(StoreMap, !CI) :-
+	map__to_assoc_list(StoreMap, VarLvals),
+	code_info__get_var_locn_info(!.CI, VarLocnInfo0),
+	var_locn__reinit_state(VarLvals, VarLocnInfo0, VarLocnInfo),
+	code_info__set_var_locn_info(VarLocnInfo, !CI).
 
 code_info__save_hp_in_branch(Code, Slot, Pos0, Pos) :-
 	Pos0 = position_info(CodeInfo0),
@@ -1223,8 +1200,8 @@ code_info__save_hp_in_branch(Code, Slot, Pos0, Pos) :-
 	% Return the details of the resume point currently on top of the
 	% failure continuation stack.
 
-:- pred code_info__top_resume_point(resume_point_info::out,
-	code_info::in, code_info::out) is det.
+:- pred code_info__top_resume_point(code_info::in, resume_point_info::out)
+	is det.
 
 	% Call this predicate to say "we have just left a disjunction;
 	% we don't know what address the following code will need to
@@ -1257,16 +1234,16 @@ code_info__save_hp_in_branch(Code, Slot, Pos0, Pos) :-
 	% Checks whether the appropriate code for failure in the current
 	% failure environment is a direct branch.
 
-:- pred code_info__failure_is_direct_branch(code_addr::out,
-	code_info::in, code_info::out) is semidet.
+:- pred code_info__failure_is_direct_branch(code_info::in, code_addr::out)
+	is semidet.
 
 	% Checks under what circumstances the current failure environment
 	% would allow a model_non call at this point to be turned into a
 	% tail call, provided of course that the return from the call is
 	% followed immediately by succeed().
 
-:- pred code_info__may_use_nondet_tailcall(nondet_tail_call::out,
-	code_info::in, code_info::out) is det.
+:- pred code_info__may_use_nondet_tailcall(code_info::in,
+	nondet_tail_call::out) is det.
 
 	% Materialize the given variables into registers or stack slots.
 
@@ -1375,118 +1352,118 @@ code_info__save_hp_in_branch(Code, Slot, Pos0, Pos) :-
 					% the value of the hijacked redofr.
 		).
 
-code_info__prepare_for_disj_hijack(CodeModel, HijackInfo, Code) -->
-	code_info__get_fail_info(FailInfo),
-	{ FailInfo = fail_info(_, ResumeKnown, CurfrMaxfr, CondEnv, Allow) },
+code_info__prepare_for_disj_hijack(CodeModel, HijackInfo, Code, !CI) :-
+	code_info__get_fail_info(!.CI, FailInfo),
+	FailInfo = fail_info(_, ResumeKnown, CurfrMaxfr, CondEnv, Allow),
 	(
-		{ CodeModel \= model_non }
+		CodeModel \= model_non
 	->
-		{ HijackInfo = disj_no_hijack },
-		{ Code = node([
+		HijackInfo = disj_no_hijack,
+		Code = node([
 			comment("disj no hijack")
 				- ""
-		]) }
+		])
 	;
-		{ Allow = not_allowed ; CondEnv = inside_non_condition }
+		( Allow = not_allowed ; CondEnv = inside_non_condition )
 	->
-		{ HijackInfo = disj_temp_frame },
+		HijackInfo = disj_temp_frame,
 		code_info__create_temp_frame(do_fail,
-			"prepare for disjunction", Code)
+			"prepare for disjunction", Code, !CI)
 	;
-		{ CurfrMaxfr = must_be_equal },
-		{ ResumeKnown = resume_point_known(has_been_done) }
+		CurfrMaxfr = must_be_equal,
+		ResumeKnown = resume_point_known(has_been_done)
 	->
-		{ HijackInfo = disj_quarter_hijack },
-		{ Code = node([
+		HijackInfo = disj_quarter_hijack,
+		Code = node([
 			comment("disj quarter hijack")
 				- ""
-		]) }
+		])
 	;
-		{ CurfrMaxfr = must_be_equal }
+		CurfrMaxfr = must_be_equal
 	->
 		% Here ResumeKnown must be resume_point_unknown
 		% or resume_point_known(wont_be_done).
 		code_info__acquire_temp_slot(lval(redoip(lval(curfr))),
-			RedoipSlot),
-		{ HijackInfo = disj_half_hijack(RedoipSlot) },
-		{ Code = node([
+			RedoipSlot, !CI),
+		HijackInfo = disj_half_hijack(RedoipSlot),
+		Code = node([
 			assign(RedoipSlot, lval(redoip(lval(curfr))))
 				- "prepare for half disj hijack"
-		]) }
+		])
 	;
 		% Here CurfrMaxfr must be may_be_different.
 		code_info__acquire_temp_slot(lval(redoip(lval(maxfr))),
-			RedoipSlot),
+			RedoipSlot, !CI),
 		code_info__acquire_temp_slot(lval(redofr(lval(maxfr))),
-			RedofrSlot),
-		{ HijackInfo = disj_full_hijack(RedoipSlot, RedofrSlot) },
-		{ Code = node([
+			RedofrSlot, !CI),
+		HijackInfo = disj_full_hijack(RedoipSlot, RedofrSlot),
+		Code = node([
 			assign(RedoipSlot, lval(redoip(lval(maxfr))))
 				- "prepare for full disj hijack",
 			assign(RedofrSlot, lval(redofr(lval(maxfr))))
 				- "prepare for full disj hijack",
 			assign(redofr(lval(maxfr)), lval(curfr))
 				- "prepare for full disj hijack"
-		]) }
+		])
 	).
 
-code_info__undo_disj_hijack(HijackInfo, Code) -->
-	code_info__get_fail_info(FailInfo0),
-	{ FailInfo0 = fail_info(ResumePoints, ResumeKnown, CurfrMaxfr,
-		CondEnv, Allow) },
+code_info__undo_disj_hijack(HijackInfo, Code, !CI) :-
+	code_info__get_fail_info(!.CI, FailInfo0),
+	FailInfo0 = fail_info(ResumePoints, ResumeKnown, CurfrMaxfr,
+		CondEnv, Allow),
 	(
-		{ HijackInfo = disj_no_hijack },
-		{ Code = empty }
+		HijackInfo = disj_no_hijack,
+		Code = empty
 	;
-		{ HijackInfo = disj_temp_frame },
-		{ Code = node([
+		HijackInfo = disj_temp_frame,
+		Code = node([
 			assign(maxfr, lval(prevfr(lval(maxfr))))
 				- "restore maxfr for temp frame disj"
-		]) }
+		])
 	;
-		{ HijackInfo = disj_quarter_hijack },
-		{ require(unify(CurfrMaxfr, must_be_equal),
-			"maxfr may differ from curfr in disj_quarter_hijack") },
-		{ stack__top_det(ResumePoints, ResumePoint) },
-		{ code_info__pick_stack_resume_point(ResumePoint,
-			_, StackLabel) },
-		{ LabelConst = const(code_addr_const(StackLabel)) },
-		{ Code = node([
+		HijackInfo = disj_quarter_hijack,
+		require(unify(CurfrMaxfr, must_be_equal),
+			"maxfr may differ from curfr in disj_quarter_hijack"),
+		stack__top_det(ResumePoints, ResumePoint),
+		code_info__pick_stack_resume_point(ResumePoint,
+			_, StackLabel),
+		LabelConst = const(code_addr_const(StackLabel)),
+		Code = node([
 			assign(redoip(lval(curfr)), LabelConst)
 				- "restore redoip for quarter disj hijack"
-		]) }
+		])
 	;
-		{ HijackInfo = disj_half_hijack(RedoipSlot) },
-		{ require(unify(ResumeKnown, resume_point_unknown),
-			"resume point known in disj_half_hijack") },
-		{ require(unify(CurfrMaxfr, must_be_equal),
-			"maxfr may differ from curfr in disj_half_hijack") },
-		{ Code = node([
+		HijackInfo = disj_half_hijack(RedoipSlot),
+		require(unify(ResumeKnown, resume_point_unknown),
+			"resume point known in disj_half_hijack"),
+		require(unify(CurfrMaxfr, must_be_equal),
+			"maxfr may differ from curfr in disj_half_hijack"),
+		Code = node([
 			assign(redoip(lval(curfr)), lval(RedoipSlot))
 				- "restore redoip for half disj hijack"
-		]) }
+		])
 	;
-		{ HijackInfo = disj_full_hijack(RedoipSlot, RedofrSlot) },
-		{ require(unify(CurfrMaxfr, may_be_different),
-			"maxfr same as curfr in disj_full_hijack") },
-		{ Code = node([
+		HijackInfo = disj_full_hijack(RedoipSlot, RedofrSlot),
+		require(unify(CurfrMaxfr, may_be_different),
+			"maxfr same as curfr in disj_full_hijack"),
+		Code = node([
 			assign(redoip(lval(maxfr)), lval(RedoipSlot))
 				- "restore redoip for full disj hijack",
 			assign(redofr(lval(maxfr)), lval(RedofrSlot))
 				- "restore redofr for full disj hijack"
-		]) }
+		])
 	),
 	(
 			% HijackInfo \= disj_no_hijack if and only if
 			% the disjunction is model_non.
-		{ HijackInfo \= disj_no_hijack },
-		{ CondEnv = inside_non_condition }
+		HijackInfo \= disj_no_hijack,
+		CondEnv = inside_non_condition
 	->
-		{ FailInfo = fail_info(ResumePoints, resume_point_unknown,
-			CurfrMaxfr, CondEnv, Allow) },
-		code_info__set_fail_info(FailInfo)
+		FailInfo = fail_info(ResumePoints, resume_point_unknown,
+			CurfrMaxfr, CondEnv, Allow),
+		code_info__set_fail_info(FailInfo, !CI)
 	;
-		[]
+		true
 	).
 
 %---------------------------------------------------------------------------%
@@ -1518,60 +1495,60 @@ code_info__undo_disj_hijack(HijackInfo, Code) -->
 					% the value of maxfr.
 		).
 
-code_info__prepare_for_ite_hijack(EffCodeModel, HijackInfo, Code) -->
-	code_info__get_fail_info(FailInfo),
-	{ FailInfo = fail_info(_, ResumeKnown, CurfrMaxfr, CondEnv, Allow) },
+code_info__prepare_for_ite_hijack(EffCodeModel, HijackInfo, Code, !CI) :-
+	code_info__get_fail_info(!.CI, FailInfo),
+	FailInfo = fail_info(_, ResumeKnown, CurfrMaxfr, CondEnv, Allow),
 	(
-		{ EffCodeModel \= model_non }
+		EffCodeModel \= model_non
 	->
-		{ HijackType = ite_no_hijack },
-		{ Code = node([
+		HijackType = ite_no_hijack,
+		Code = node([
 			comment("ite no hijack")
 				- ""
-		]) }
+		])
 	;
-		{ Allow = not_allowed ; CondEnv = inside_non_condition }
+		( Allow = not_allowed ; CondEnv = inside_non_condition )
 	->
-		code_info__acquire_temp_slot(lval(maxfr), MaxfrSlot),
-		{ HijackType = ite_temp_frame(MaxfrSlot) },
+		code_info__acquire_temp_slot(lval(maxfr), MaxfrSlot, !CI),
+		HijackType = ite_temp_frame(MaxfrSlot),
 		code_info__create_temp_frame(do_fail, "prepare for ite",
-			TempFrameCode),
-		{ MaxfrCode = node([
+			TempFrameCode, !CI),
+		MaxfrCode = node([
 			assign(MaxfrSlot, lval(maxfr))
 				- "prepare for ite"
-		]) },
-		{ Code = tree(TempFrameCode, MaxfrCode) }
+		]),
+		Code = tree(TempFrameCode, MaxfrCode)
 	;
-		{ CurfrMaxfr = must_be_equal },
-		{ ResumeKnown = resume_point_known(_) }
+		CurfrMaxfr = must_be_equal,
+		ResumeKnown = resume_point_known(_)
 	->
-		{ HijackType = ite_quarter_hijack },
-		{ Code = node([
+		HijackType = ite_quarter_hijack,
+		Code = node([
 			comment("ite quarter hijack")
 				- ""
-		]) }
+		])
 	;
-		{ CurfrMaxfr = must_be_equal }
+		CurfrMaxfr = must_be_equal
 	->
 		% Here ResumeKnown must be resume_point_unknown.
 		code_info__acquire_temp_slot(lval(redoip(lval(curfr))),
-			RedoipSlot),
-		{ HijackType = ite_half_hijack(RedoipSlot) },
-		{ Code = node([
+			RedoipSlot, !CI),
+		HijackType = ite_half_hijack(RedoipSlot),
+		Code = node([
 			assign(RedoipSlot, lval(redoip(lval(curfr))))
 				- "prepare for half ite hijack"
-		]) }
+		])
 	;
 		% Here CurfrMaxfr must be may_be_different.
 		code_info__acquire_temp_slot(lval(redoip(lval(maxfr))),
-			RedoipSlot),
+			RedoipSlot, !CI),
 		code_info__acquire_temp_slot(lval(redofr(lval(maxfr))),
-			RedofrSlot),
+			RedofrSlot, !CI),
 		code_info__acquire_temp_slot(lval(maxfr),
+			MaxfrSlot, !CI),
+		HijackType = ite_full_hijack(RedoipSlot, RedofrSlot,
 			MaxfrSlot),
-		{ HijackType = ite_full_hijack(RedoipSlot, RedofrSlot,
-			MaxfrSlot) },
-		{ Code = node([
+		Code = node([
 			assign(MaxfrSlot, lval(maxfr))
 				- "prepare for full ite hijack",
 			assign(RedoipSlot, lval(redoip(lval(maxfr))))
@@ -1580,22 +1557,22 @@ code_info__prepare_for_ite_hijack(EffCodeModel, HijackInfo, Code) -->
 				- "prepare for full ite hijack",
 			assign(redofr(lval(maxfr)), lval(curfr))
 				- "prepare for full ite hijack"
-		]) }
+		])
 	),
-	{ HijackInfo = ite_info(ResumeKnown, CondEnv, HijackType) },
-	( { EffCodeModel = model_non } ->
-		code_info__inside_non_condition
+	HijackInfo = ite_info(ResumeKnown, CondEnv, HijackType),
+	( EffCodeModel = model_non ->
+		code_info__inside_non_condition(!CI)
 	;
-		[]
+		true
 	).
 
-code_info__ite_enter_then(HijackInfo, ThenCode, ElseCode) -->
-	code_info__get_fail_info(FailInfo0),
-	{ FailInfo0 = fail_info(ResumePoints0, ResumeKnown0, CurfrMaxfr,
-		_, Allow) },
-	{ stack__pop_det(ResumePoints0, _, ResumePoints) },
-	{ HijackInfo = ite_info(HijackResumeKnown, OldCondEnv, HijackType) },
-	{
+code_info__ite_enter_then(HijackInfo, ThenCode, ElseCode, !CI) :-
+	code_info__get_fail_info(!.CI, FailInfo0),
+	FailInfo0 = fail_info(ResumePoints0, ResumeKnown0, CurfrMaxfr,
+		_, Allow),
+	stack__pop_det(ResumePoints0, _, ResumePoints),
+	HijackInfo = ite_info(HijackResumeKnown, OldCondEnv, HijackType),
+	(
 		HijackType = ite_no_hijack,
 		ThenCode = empty,
 		ElseCode = ThenCode
@@ -1651,22 +1628,22 @@ code_info__ite_enter_then(HijackInfo, ThenCode, ElseCode) -->
 			assign(redofr(lval(maxfr)), lval(RedofrSlot))
 				- "restore redofr for full ite hijack"
 		])
-	},
-	{ ResumeKnown0 = resume_point_unknown ->
+	),
+	( ResumeKnown0 = resume_point_unknown ->
 		ResumeKnown = resume_point_unknown
 	;
 		ResumeKnown = HijackResumeKnown
-	},
-	{ FailInfo = fail_info(ResumePoints, ResumeKnown, CurfrMaxfr,
-		OldCondEnv, Allow) },
-	code_info__set_fail_info(FailInfo).
+	),
+	FailInfo = fail_info(ResumePoints, ResumeKnown, CurfrMaxfr,
+		OldCondEnv, Allow),
+	code_info__set_fail_info(FailInfo, !CI).
 
 %---------------------------------------------------------------------------%
 
 :- type simple_neg_info		==	fail_info.
 
-code_info__enter_simple_neg(ResumeVars, GoalInfo, FailInfo0) -->
-	code_info__get_fail_info(FailInfo0),
+code_info__enter_simple_neg(ResumeVars, GoalInfo, FailInfo0, !CI) :-
+	code_info__get_fail_info(!.CI, FailInfo0),
 		% The only reason why we push a resume point at all
 		% is to protect the variables in ResumeVars from becoming
 		% unknown; by including them in the domain of the resume point,
@@ -1676,18 +1653,18 @@ code_info__enter_simple_neg(ResumeVars, GoalInfo, FailInfo0) -->
 		% is the set of variables in the resume map; the other
 		% parts of ResumePoint (the locations, the code address)
 		% will not be referenced.
-	{ set__to_sorted_list(ResumeVars, ResumeVarList) },
-	{ map__init(ResumeMap0) },
-	{ code_info__make_fake_resume_map(ResumeVarList,
-		ResumeMap0, ResumeMap) },
-	{ ResumePoint = orig_only(ResumeMap, do_redo) },
-	code_info__effect_resume_point(ResumePoint, model_semi, Code),
-	{ require(unify(Code, empty), "nonempty code for simple neg") },
-	code_info__pre_goal_update(GoalInfo, yes).
+	set__to_sorted_list(ResumeVars, ResumeVarList),
+	map__init(ResumeMap0),
+	code_info__make_fake_resume_map(ResumeVarList,
+		ResumeMap0, ResumeMap),
+	ResumePoint = orig_only(ResumeMap, do_redo),
+	code_info__effect_resume_point(ResumePoint, model_semi, Code, !CI),
+	require(unify(Code, empty), "nonempty code for simple neg"),
+	code_info__pre_goal_update(GoalInfo, yes, !CI).
 
-code_info__leave_simple_neg(GoalInfo, FailInfo) -->
-	code_info__post_goal_update(GoalInfo),
-	code_info__set_fail_info(FailInfo).
+code_info__leave_simple_neg(GoalInfo, FailInfo, !CI) :-
+	code_info__post_goal_update(GoalInfo, !CI),
+	code_info__set_fail_info(FailInfo, !CI).
 
 :- pred code_info__make_fake_resume_map(list(prog_var)::in,
 	map(prog_var, set(lval))::in, map(prog_var, set(lval))::out) is det.
@@ -1708,45 +1685,45 @@ code_info__make_fake_resume_map([Var | Vars], ResumeMap0, ResumeMap) :-
 						% counter and trail pointer.
 		).
 
-code_info__prepare_for_det_commit(DetCommitInfo, Code) -->
-	code_info__get_fail_info(FailInfo0),
-	{ FailInfo0 = fail_info(_, _, CurfrMaxfr, _, _) },
+code_info__prepare_for_det_commit(DetCommitInfo, Code, !CI) :-
+	code_info__get_fail_info(!.CI, FailInfo0),
+	FailInfo0 = fail_info(_, _, CurfrMaxfr, _, _),
 	(
-		{ CurfrMaxfr = may_be_different },
-		code_info__acquire_temp_slot(lval(maxfr), MaxfrSlot),
-		{ SaveMaxfrCode = node([
+		CurfrMaxfr = may_be_different,
+		code_info__acquire_temp_slot(lval(maxfr), MaxfrSlot, !CI),
+		SaveMaxfrCode = node([
 			assign(MaxfrSlot, lval(maxfr))
 				- "save the value of maxfr"
-		]) },
-		{ MaybeMaxfrSlot = yes(MaxfrSlot) }
+		]),
+		MaybeMaxfrSlot = yes(MaxfrSlot)
 	;
-		{ CurfrMaxfr = must_be_equal },
-		{ SaveMaxfrCode = empty },
-		{ MaybeMaxfrSlot = no }
+		CurfrMaxfr = must_be_equal,
+		SaveMaxfrCode = empty,
+		MaybeMaxfrSlot = no
 	),
-	code_info__maybe_save_trail_info(MaybeTrailSlots, SaveTrailCode),
-	{ DetCommitInfo = det_commit_info(MaybeMaxfrSlot, MaybeTrailSlots) },
-	{ Code = tree(SaveMaxfrCode, SaveTrailCode) }.
+	code_info__maybe_save_trail_info(MaybeTrailSlots, SaveTrailCode, !CI),
+	DetCommitInfo = det_commit_info(MaybeMaxfrSlot, MaybeTrailSlots),
+	Code = tree(SaveMaxfrCode, SaveTrailCode).
 
-code_info__generate_det_commit(DetCommitInfo, Code) -->
-	{ DetCommitInfo = det_commit_info(MaybeMaxfrSlot, MaybeTrailSlots) },
+code_info__generate_det_commit(DetCommitInfo, Code, !CI) :-
+	DetCommitInfo = det_commit_info(MaybeMaxfrSlot, MaybeTrailSlots),
 	(
-		{ MaybeMaxfrSlot = yes(MaxfrSlot) },
-		{ RestoreMaxfrCode = node([
+		MaybeMaxfrSlot = yes(MaxfrSlot),
+		RestoreMaxfrCode = node([
 			assign(maxfr, lval(MaxfrSlot))
 				- "restore the value of maxfr - perform commit"
-		]) },
-		code_info__release_temp_slot(MaxfrSlot)
+		]),
+		code_info__release_temp_slot(MaxfrSlot, !CI)
 	;
-		{ MaybeMaxfrSlot = no },
-		{ RestoreMaxfrCode = node([
+		MaybeMaxfrSlot = no,
+		RestoreMaxfrCode = node([
 			assign(maxfr, lval(curfr))
 				- "restore the value of maxfr - perform commit"
-		]) }
+		])
 	),
 	code_info__maybe_restore_trail_info(MaybeTrailSlots,
-		CommitTrailCode, _),
-	{ Code = tree(RestoreMaxfrCode, CommitTrailCode) }.
+		CommitTrailCode, _, !CI),
+	Code = tree(RestoreMaxfrCode, CommitTrailCode).
 
 %---------------------------------------------------------------------------%
 
@@ -1780,34 +1757,34 @@ code_info__generate_det_commit(DetCommitInfo, Code) -->
 					% the value of maxfr.
 		).
 
-code_info__prepare_for_semi_commit(SemiCommitInfo, Code) -->
-	code_info__get_fail_info(FailInfo0),
-	{ FailInfo0 = fail_info(ResumePoints0, ResumeKnown, CurfrMaxfr,
-		CondEnv, Allow) },
-	{ stack__top_det(ResumePoints0, TopResumePoint) },
-	code_info__clone_resume_point(TopResumePoint, NewResumePoint),
-	{ stack__push(ResumePoints0, NewResumePoint, ResumePoints) },
-	{ FailInfo = fail_info(ResumePoints, resume_point_known(has_been_done),
-		CurfrMaxfr, CondEnv, Allow) },
-	code_info__set_fail_info(FailInfo),
+code_info__prepare_for_semi_commit(SemiCommitInfo, Code, !CI) :-
+	code_info__get_fail_info(!.CI, FailInfo0),
+	FailInfo0 = fail_info(ResumePoints0, ResumeKnown, CurfrMaxfr,
+		CondEnv, Allow),
+	stack__top_det(ResumePoints0, TopResumePoint),
+	code_info__clone_resume_point(TopResumePoint, NewResumePoint, !CI),
+	stack__push(ResumePoints0, NewResumePoint, ResumePoints),
+	FailInfo = fail_info(ResumePoints, resume_point_known(has_been_done),
+		CurfrMaxfr, CondEnv, Allow),
+	code_info__set_fail_info(FailInfo, !CI),
 
-	{ code_info__pick_stack_resume_point(NewResumePoint, _, StackLabel) },
-	{ StackLabelConst = const(code_addr_const(StackLabel)) },
+	code_info__pick_stack_resume_point(NewResumePoint, _, StackLabel),
+	StackLabelConst = const(code_addr_const(StackLabel)),
 	(
-		{ Allow = not_allowed ; CondEnv = inside_non_condition }
+		( Allow = not_allowed ; CondEnv = inside_non_condition )
 	->
-		code_info__acquire_temp_slot(lval(maxfr), MaxfrSlot),
-		{ MaxfrCode = node([
+		code_info__acquire_temp_slot(lval(maxfr), MaxfrSlot, !CI),
+		MaxfrCode = node([
 			assign(MaxfrSlot, lval(maxfr))
 				- "prepare for temp frame commit"
-		]) },
+		]),
 		code_info__create_temp_frame(StackLabel,
-			"prepare for temp frame commit", TempFrameCode),
-		code_info__get_globals(Globals),
-		{ globals__lookup_bool_option(Globals, use_minimal_model,
-			UseMinimalModel) },
-		{ HijackInfo = commit_temp_frame(MaxfrSlot, UseMinimalModel) },
-		{
+			"prepare for temp frame commit", TempFrameCode, !CI),
+		code_info__get_globals(!.CI, Globals),
+		globals__lookup_bool_option(Globals, use_minimal_model,
+			UseMinimalModel),
+		HijackInfo = commit_temp_frame(MaxfrSlot, UseMinimalModel),
+		(
 			UseMinimalModel = yes,
 			% If the code we are committing across starts but
 			% does not complete the evaluation of a tabled subgoal,
@@ -1837,42 +1814,42 @@ code_info__prepare_for_semi_commit(SemiCommitInfo, Code) -->
 		;
 			UseMinimalModel = no,
 			MarkCode = empty
-		},
-		{ HijackCode = tree(MaxfrCode, tree(TempFrameCode, MarkCode)) }
+		),
+		HijackCode = tree(MaxfrCode, tree(TempFrameCode, MarkCode))
 	;
-		{ ResumeKnown = resume_point_known(has_been_done) },
-		{ CurfrMaxfr = must_be_equal }
+		ResumeKnown = resume_point_known(has_been_done),
+		CurfrMaxfr = must_be_equal
 	->
-		{ HijackInfo = commit_quarter_hijack },
-		{ HijackCode = node([
+		HijackInfo = commit_quarter_hijack,
+		HijackCode = node([
 			assign(redoip(lval(curfr)), StackLabelConst)
 				- "hijack the redofr slot"
-		]) }
+		])
 	;
-		{ CurfrMaxfr = must_be_equal }
+		CurfrMaxfr = must_be_equal
 	->
 		% Here ResumeKnown must be resume_point_unknown or
 		% resume_point_known(wont_be_done).
 
 		code_info__acquire_temp_slot(lval(redoip(lval(curfr))),
-			RedoipSlot),
-		{ HijackInfo = commit_half_hijack(RedoipSlot) },
-		{ HijackCode = node([
+			RedoipSlot, !CI),
+		HijackInfo = commit_half_hijack(RedoipSlot),
+		HijackCode = node([
 			assign(RedoipSlot, lval(redoip(lval(curfr))))
 				- "prepare for half commit hijack",
 			assign(redoip(lval(curfr)), StackLabelConst)
 				- "hijack the redofr slot"
-		]) }
+		])
 	;
 		% Here CurfrMaxfr must be may_be_different.
 		code_info__acquire_temp_slot(lval(redoip(lval(maxfr))),
-			RedoipSlot),
+			RedoipSlot, !CI),
 		code_info__acquire_temp_slot(lval(redofr(lval(maxfr))),
-			RedofrSlot),
-		code_info__acquire_temp_slot(lval(maxfr), MaxfrSlot),
-		{ HijackInfo = commit_full_hijack(RedoipSlot, RedofrSlot,
-			MaxfrSlot) },
-		{ HijackCode = node([
+			RedofrSlot, !CI),
+		code_info__acquire_temp_slot(lval(maxfr), MaxfrSlot, !CI),
+		HijackInfo = commit_full_hijack(RedoipSlot, RedofrSlot,
+			MaxfrSlot),
+		HijackCode = node([
 			assign(RedoipSlot, lval(redoip(lval(maxfr))))
 				- "prepare for full commit hijack",
 			assign(RedofrSlot, lval(redofr(lval(maxfr))))
@@ -1883,26 +1860,26 @@ code_info__prepare_for_semi_commit(SemiCommitInfo, Code) -->
 				- "hijack the redofr slot",
 			assign(redoip(lval(maxfr)), StackLabelConst)
 				- "hijack the redoip slot"
-		]) }
+		])
 	),
-	code_info__maybe_save_trail_info(MaybeTrailSlots, SaveTrailCode),
-	{ SemiCommitInfo = semi_commit_info(FailInfo0, NewResumePoint,
-		HijackInfo, MaybeTrailSlots) },
-	{ Code = tree(HijackCode, SaveTrailCode) }.
+	code_info__maybe_save_trail_info(MaybeTrailSlots, SaveTrailCode, !CI),
+	SemiCommitInfo = semi_commit_info(FailInfo0, NewResumePoint,
+		HijackInfo, MaybeTrailSlots),
+	Code = tree(HijackCode, SaveTrailCode).
 
-code_info__generate_semi_commit(SemiCommitInfo, Code) -->
-	{ SemiCommitInfo = semi_commit_info(FailInfo, ResumePoint,
-		HijackInfo, MaybeTrailSlots) },
+code_info__generate_semi_commit(SemiCommitInfo, Code, !CI) :-
+	SemiCommitInfo = semi_commit_info(FailInfo, ResumePoint,
+		HijackInfo, MaybeTrailSlots),
 
-	code_info__set_fail_info(FailInfo),
+	code_info__set_fail_info(FailInfo, !CI),
 	% XXX should release the temp slots in each arm of the switch
 	(
-		{ HijackInfo = commit_temp_frame(MaxfrSlot, UseMinimalModel) },
-		{ MaxfrCode = node([
+		HijackInfo = commit_temp_frame(MaxfrSlot, UseMinimalModel),
+		MaxfrCode = node([
 			assign(maxfr, lval(MaxfrSlot))
 				- "restore maxfr for temp frame hijack"
-		]) },
-		{
+		]),
+		(
 			UseMinimalModel = yes,
 			% See the comment in prepare_for_semi_commit above.
 			Components = [
@@ -1917,130 +1894,125 @@ code_info__generate_semi_commit(SemiCommitInfo, Code) -->
 		;
 			UseMinimalModel = no,
 			CutCode = empty
-		},
-		{ SuccessUndoCode = tree(MaxfrCode, CutCode) },
-		{ FailureUndoCode = tree(MaxfrCode, CutCode) }
+		),
+		SuccessUndoCode = tree(MaxfrCode, CutCode),
+		FailureUndoCode = tree(MaxfrCode, CutCode)
 	;
-		{ HijackInfo = commit_quarter_hijack },
-		{ FailInfo = fail_info(ResumePoints, _, _, _, _) },
-		{ stack__top_det(ResumePoints, TopResumePoint) },
-		{ code_info__pick_stack_resume_point(TopResumePoint,
-			_, StackLabel) },
-		{ StackLabelConst = const(code_addr_const(StackLabel)) },
-		{ SuccessUndoCode = node([
+		HijackInfo = commit_quarter_hijack,
+		FailInfo = fail_info(ResumePoints, _, _, _, _),
+		stack__top_det(ResumePoints, TopResumePoint),
+		code_info__pick_stack_resume_point(TopResumePoint,
+			_, StackLabel),
+		StackLabelConst = const(code_addr_const(StackLabel)),
+		SuccessUndoCode = node([
 			assign(maxfr, lval(curfr))
 				- "restore maxfr for quarter commit hijack",
 			assign(redoip(lval(maxfr)), StackLabelConst)
 				- "restore redoip for quarter commit hijack"
-		]) },
-		{ FailureUndoCode = node([
+		]),
+		FailureUndoCode = node([
 			assign(redoip(lval(maxfr)), StackLabelConst)
 				- "restore redoip for quarter commit hijack"
-		]) }
+		])
 	;
-		{ HijackInfo = commit_half_hijack(RedoipSlot) },
-		{ SuccessUndoCode = node([
+		HijackInfo = commit_half_hijack(RedoipSlot),
+		SuccessUndoCode = node([
 			assign(maxfr, lval(curfr))
 				- "restore maxfr for half commit hijack",
 			assign(redoip(lval(maxfr)), lval(RedoipSlot))
 				- "restore redoip for half commit hijack"
-		]) },
-		{ FailureUndoCode = node([
+		]),
+		FailureUndoCode = node([
 			assign(redoip(lval(maxfr)), lval(RedoipSlot))
 				- "restore redoip for half commit hijack"
-		]) }
+		])
 	;
-		{ HijackInfo = commit_full_hijack(RedoipSlot, RedofrSlot,
-			MaxfrSlot) },
-		{ SuccessUndoCode = node([
+		HijackInfo = commit_full_hijack(RedoipSlot, RedofrSlot,
+			MaxfrSlot),
+		SuccessUndoCode = node([
 			assign(maxfr, lval(MaxfrSlot))
 				- "restore maxfr for full commit hijack",
 			assign(redoip(lval(maxfr)), lval(RedoipSlot))
 				- "restore redoip for full commit hijack",
 			assign(redofr(lval(maxfr)), lval(RedofrSlot))
 				- "restore redofr for full commit hijack"
-		]) },
-		{ FailureUndoCode = node([
+		]),
+		FailureUndoCode = node([
 			assign(redoip(lval(maxfr)), lval(RedoipSlot))
 				- "restore redoip for full commit hijack",
 			assign(redofr(lval(maxfr)), lval(RedofrSlot))
 				- "restore redofr for full commit hijack"
-		]) }
+		])
 	),
 
-	code_info__remember_position(AfterCommit),
-	code_info__generate_resume_point(ResumePoint, ResumePointCode),
-	code_info__generate_failure(FailCode),
-	code_info__reset_to_position(AfterCommit),
+	code_info__remember_position(!.CI, AfterCommit),
+	code_info__generate_resume_point(ResumePoint, ResumePointCode, !CI),
+	code_info__generate_failure(FailCode, !CI),
+	code_info__reset_to_position(AfterCommit, !CI),
 
 	code_info__maybe_restore_trail_info(MaybeTrailSlots,
-		CommitTrailCode, RestoreTrailCode),
+		CommitTrailCode, RestoreTrailCode, !CI),
 
-	code_info__get_next_label(SuccLabel),
-	{ GotoSuccLabel = node([
+	code_info__get_next_label(SuccLabel, !CI),
+	GotoSuccLabel = node([
 		goto(label(SuccLabel)) - "Jump to success continuation"
-	]) },
-	{ SuccLabelCode = node([
+	]),
+	SuccLabelCode = node([
 		label(SuccLabel) - "Success continuation"
-	]) },
-	{ SuccessCode =
+	]),
+	SuccessCode =
 		tree(SuccessUndoCode,
-		     CommitTrailCode)
-	},
-	{ FailureCode =
+		     CommitTrailCode),
+	FailureCode =
 		tree(ResumePointCode,
 		tree(FailureUndoCode,
 		tree(RestoreTrailCode,
-		     FailCode)))
-	},
-	{ Code =
+		     FailCode))),
+	Code =
 		tree(SuccessCode,
 		tree(GotoSuccLabel,
 		tree(FailureCode,
-		     SuccLabelCode)))
-	}.
+		     SuccLabelCode))).
 
 %---------------------------------------------------------------------------%
 
 :- pred code_info__inside_non_condition(code_info::in, code_info::out) is det.
 
-code_info__inside_non_condition -->
-	code_info__get_fail_info(FailInfo0),
-	{ FailInfo0 = fail_info(ResumePoints, ResumeKnown, CurfrMaxfr,
-		_, Allow) },
-	{ FailInfo = fail_info(ResumePoints, ResumeKnown, CurfrMaxfr,
-		inside_non_condition, Allow) },
-	code_info__set_fail_info(FailInfo).
+code_info__inside_non_condition(!CI) :-
+	code_info__get_fail_info(!.CI, FailInfo0),
+	FailInfo0 = fail_info(ResumePoints, ResumeKnown, CurfrMaxfr,
+		_, Allow),
+	FailInfo = fail_info(ResumePoints, ResumeKnown, CurfrMaxfr,
+		inside_non_condition, Allow),
+	code_info__set_fail_info(FailInfo, !CI).
 
 :- pred code_info__create_temp_frame(code_addr::in, string::in, code_tree::out,
 	code_info::in, code_info::out) is det.
 
-code_info__create_temp_frame(Redoip, Comment, Code) -->
-	code_info__get_proc_model(ProcModel),
-	{ ProcModel = model_non ->
+code_info__create_temp_frame(Redoip, Comment, Code, !CI) :-
+	( code_info__get_proc_model(!.CI) = model_non ->
 		Kind = nondet_stack_proc
 	;
 		Kind = det_stack_proc
-	},
-	{ Code = node([
+	),
+	Code = node([
 		mkframe(temp_frame(Kind), Redoip)
 			- Comment
-	]) },
-	code_info__set_created_temp_frame(yes),
-	code_info__get_fail_info(FailInfo0),
-	{ FailInfo0 = fail_info(ResumePoints, ResumeKnown, _, CondEnv, Allow) },
-	{ FailInfo = fail_info(ResumePoints, ResumeKnown, may_be_different,
-		CondEnv, Allow) },
-	code_info__set_fail_info(FailInfo).
+	]),
+	code_info__set_created_temp_frame(yes, !CI),
+	code_info__get_fail_info(!.CI, FailInfo0),
+	FailInfo0 = fail_info(ResumePoints, ResumeKnown, _, CondEnv, Allow),
+	FailInfo = fail_info(ResumePoints, ResumeKnown, may_be_different,
+		CondEnv, Allow),
+	code_info__set_fail_info(FailInfo, !CI).
 
 %---------------------------------------------------------------------------%
 
-code_info__effect_resume_point(ResumePoint, CodeModel, Code) -->
-	code_info__get_fail_info(FailInfo0),
-	{ FailInfo0 = fail_info(ResumePoints0, _ResumeKnown, CurfrMaxfr,
-		CondEnv, Allow) },
-
-	{ stack__top(ResumePoints0, OldResumePoint) ->
+code_info__effect_resume_point(ResumePoint, CodeModel, Code, !CI) :-
+	code_info__get_fail_info(!.CI, FailInfo0),
+	FailInfo0 = fail_info(ResumePoints0, _ResumeKnown, CurfrMaxfr,
+		CondEnv, Allow),
+	( stack__top(ResumePoints0, OldResumePoint) ->
 		code_info__pick_first_resume_point(OldResumePoint, OldMap, _),
 		code_info__pick_first_resume_point(ResumePoint, NewMap, _),
 		map__keys(OldMap, OldKeys),
@@ -2051,151 +2023,150 @@ code_info__effect_resume_point(ResumePoint, CodeModel, Code) -->
 			"non-nested resume point variable sets")
 	;
 		true
-	},
-
-	{ stack__push(ResumePoints0, ResumePoint, ResumePoints) },
-	( { CodeModel = model_non } ->
-		{ code_info__pick_stack_resume_point(ResumePoint,
-			_, StackLabel) },
-		{ LabelConst = const(code_addr_const(StackLabel)) },
-		{ Code = node([
+	),
+	stack__push(ResumePoints0, ResumePoint, ResumePoints),
+	( CodeModel = model_non ->
+		code_info__pick_stack_resume_point(ResumePoint,
+			_, StackLabel),
+		LabelConst = const(code_addr_const(StackLabel)),
+		Code = node([
 			assign(redoip(lval(maxfr)), LabelConst)
 				- "hijack redoip to effect resume point"
-		]) },
-		{ RedoipUpdate = has_been_done }
+		]),
+		RedoipUpdate = has_been_done
 	;
-		{ Code = empty },
-		{ RedoipUpdate = wont_be_done }
+		Code = empty,
+		RedoipUpdate = wont_be_done
 	),
-	{ FailInfo = fail_info(ResumePoints, resume_point_known(RedoipUpdate),
-		CurfrMaxfr, CondEnv, Allow) },
-	code_info__set_fail_info(FailInfo).
+	FailInfo = fail_info(ResumePoints, resume_point_known(RedoipUpdate),
+		CurfrMaxfr, CondEnv, Allow),
+	code_info__set_fail_info(FailInfo, !CI).
 
-code_info__pop_resume_point -->
-	code_info__get_fail_info(FailInfo0),
-	{ FailInfo0 = fail_info(ResumePoints0, ResumeKnown, CurfrMaxfr,
-		CondEnv, Allow) },
-	{ stack__pop_det(ResumePoints0, _, ResumePoints) },
-	{ FailInfo = fail_info(ResumePoints, ResumeKnown, CurfrMaxfr,
-		CondEnv, Allow) },
-	code_info__set_fail_info(FailInfo).
-
-%---------------------------------------------------------------------------%
-
-code_info__top_resume_point(ResumePoint) -->
-	code_info__get_fail_info(FailInfo),
-	{ FailInfo = fail_info(ResumePoints, _, _, _, _) },
-	{ stack__top_det(ResumePoints, ResumePoint) }.
-
-code_info__set_resume_point_to_unknown -->
-	code_info__get_fail_info(FailInfo0),
-	{ FailInfo0 = fail_info(ResumePoints, _, CurfrMaxfr, CondEnv, Allow) },
-	{ FailInfo = fail_info(ResumePoints, resume_point_unknown,
-		CurfrMaxfr, CondEnv, Allow) },
-	code_info__set_fail_info(FailInfo).
-
-code_info__set_resume_point_and_frame_to_unknown -->
-	code_info__get_fail_info(FailInfo0),
-	{ FailInfo0 = fail_info(ResumePoints, _, _, CondEnv, Allow) },
-	{ FailInfo = fail_info(ResumePoints, resume_point_unknown,
-		may_be_different, CondEnv, Allow) },
-	code_info__set_fail_info(FailInfo).
+code_info__pop_resume_point(!CI) :-
+	code_info__get_fail_info(!.CI, FailInfo0),
+	FailInfo0 = fail_info(ResumePoints0, ResumeKnown, CurfrMaxfr,
+		CondEnv, Allow),
+	stack__pop_det(ResumePoints0, _, ResumePoints),
+	FailInfo = fail_info(ResumePoints, ResumeKnown, CurfrMaxfr,
+		CondEnv, Allow),
+	code_info__set_fail_info(FailInfo, !CI).
 
 %---------------------------------------------------------------------------%
 
-code_info__generate_failure(Code) -->
-	code_info__get_fail_info(FailInfo),
-	{ FailInfo = fail_info(ResumePoints, ResumeKnown, _, _, _) },
+code_info__top_resume_point(CI, ResumePoint) :-
+	code_info__get_fail_info(CI, FailInfo),
+	FailInfo = fail_info(ResumePoints, _, _, _, _),
+	stack__top_det(ResumePoints, ResumePoint).
+
+code_info__set_resume_point_to_unknown(!CI) :-
+	code_info__get_fail_info(!.CI, FailInfo0),
+	FailInfo0 = fail_info(ResumePoints, _, CurfrMaxfr, CondEnv, Allow),
+	FailInfo = fail_info(ResumePoints, resume_point_unknown,
+		CurfrMaxfr, CondEnv, Allow),
+	code_info__set_fail_info(FailInfo, !CI).
+
+code_info__set_resume_point_and_frame_to_unknown(!CI) :-
+	code_info__get_fail_info(!.CI, FailInfo0),
+	FailInfo0 = fail_info(ResumePoints, _, _, CondEnv, Allow),
+	FailInfo = fail_info(ResumePoints, resume_point_unknown,
+		may_be_different, CondEnv, Allow),
+	code_info__set_fail_info(FailInfo, !CI).
+
+%---------------------------------------------------------------------------%
+
+code_info__generate_failure(Code, !CI) :-
+	code_info__get_fail_info(!.CI, FailInfo),
+	FailInfo = fail_info(ResumePoints, ResumeKnown, _, _, _),
 	(
-		{ ResumeKnown = resume_point_known(_) },
-		{ stack__top_det(ResumePoints, TopResumePoint) },
+		ResumeKnown = resume_point_known(_),
+		stack__top_det(ResumePoints, TopResumePoint),
 		(
-			code_info__pick_matching_resume_addr(TopResumePoint,
-				FailureAddress0)
+			code_info__pick_matching_resume_addr(!.CI,
+				TopResumePoint, FailureAddress0)
 		->
-			{ FailureAddress = FailureAddress0 },
-			{ PlaceCode = empty }
+			FailureAddress = FailureAddress0,
+			PlaceCode = empty
 		;
-			{ code_info__pick_first_resume_point(TopResumePoint,
-				Map, FailureAddress) },
-			{ map__to_assoc_list(Map, AssocList) },
-			code_info__remember_position(CurPos),
+			code_info__pick_first_resume_point(TopResumePoint,
+				Map, FailureAddress),
+			map__to_assoc_list(Map, AssocList),
+			code_info__remember_position(!.CI, CurPos),
 			code_info__pick_and_place_vars(AssocList, _,
-				PlaceCode),
-			code_info__reset_to_position(CurPos)
+				PlaceCode, !CI),
+			code_info__reset_to_position(CurPos, !CI)
 		),
-		{ BranchCode = node([goto(FailureAddress) - "fail"]) },
-		{ Code = tree(PlaceCode, BranchCode) }
+		BranchCode = node([goto(FailureAddress) - "fail"]),
+		Code = tree(PlaceCode, BranchCode)
 	;
-		{ ResumeKnown = resume_point_unknown },
-		{ Code = node([goto(do_redo) - "fail"]) }
+		ResumeKnown = resume_point_unknown,
+		Code = node([goto(do_redo) - "fail"])
 	).
 
-code_info__fail_if_rval_is_false(Rval0, Code) -->
-	code_info__get_fail_info(FailInfo),
-	{ FailInfo = fail_info(ResumePoints, ResumeKnown, _, _, _) },
+code_info__fail_if_rval_is_false(Rval0, Code, !CI) :-
+	code_info__get_fail_info(!.CI, FailInfo),
+	FailInfo = fail_info(ResumePoints, ResumeKnown, _, _, _),
 	(
-		{ ResumeKnown = resume_point_known(_) },
-		{ stack__top_det(ResumePoints, TopResumePoint) },
+		ResumeKnown = resume_point_known(_),
+		stack__top_det(ResumePoints, TopResumePoint),
 		(
-			code_info__pick_matching_resume_addr(TopResumePoint,
-				FailureAddress0)
+			code_info__pick_matching_resume_addr(!.CI,
+				TopResumePoint, FailureAddress0)
 		->
 				% We branch away if the test *fails*
-			{ code_util__neg_rval(Rval0, Rval) },
-			{ Code = node([
+			code_util__neg_rval(Rval0, Rval),
+			Code = node([
 				if_val(Rval, FailureAddress0) -
 					"Test for failure"
-			]) }
+			])
 		;
-			{ code_info__pick_first_resume_point(TopResumePoint,
-				Map, FailureAddress) },
-			{ map__to_assoc_list(Map, AssocList) },
-			code_info__get_next_label(SuccessLabel),
-			code_info__remember_position(CurPos),
+			code_info__pick_first_resume_point(TopResumePoint,
+				Map, FailureAddress),
+			map__to_assoc_list(Map, AssocList),
+			code_info__get_next_label(SuccessLabel, !CI),
+			code_info__remember_position(!.CI, CurPos),
 			code_info__pick_and_place_vars(AssocList, _,
-				PlaceCode),
-			code_info__reset_to_position(CurPos),
-			{ SuccessAddress = label(SuccessLabel) },
+				PlaceCode, !CI),
+			code_info__reset_to_position(CurPos, !CI),
+			SuccessAddress = label(SuccessLabel),
 				% We branch away if the test *fails*,
 				% therefore if the test succeeds, we branch
 				% around the code that moves variables to
 				% their failure locations and branches away
 				% to the failure continuation
-			{ TestCode = node([
+			TestCode = node([
 				if_val(Rval0, SuccessAddress) -
 					"Test for failure"
-			]) },
-			{ TailCode = node([
+			]),
+			TailCode = node([
 				goto(FailureAddress) -
 					"Goto failure",
 				label(SuccessLabel) -
 					"Success continuation"
-			]) },
-			{ Code = tree(TestCode, tree(PlaceCode, TailCode)) }
+			]),
+			Code = tree(TestCode, tree(PlaceCode, TailCode))
 		)
 	;
-		{ ResumeKnown = resume_point_unknown },
+		ResumeKnown = resume_point_unknown,
 			% We branch away if the test *fails*
-		{ code_util__neg_rval(Rval0, Rval) },
-		{ Code = node([
+		code_util__neg_rval(Rval0, Rval),
+		Code = node([
 			if_val(Rval, do_redo) -
 				"Test for failure"
-		]) }
+		])
 	).
 
 %---------------------------------------------------------------------------%
 
-code_info__failure_is_direct_branch(CodeAddr) -->
-	code_info__get_fail_info(FailInfo),
-	{ FailInfo = fail_info(ResumePoints, resume_point_known(_), _, _, _) },
-	{ stack__top(ResumePoints, TopResumePoint) },
-	code_info__pick_matching_resume_addr(TopResumePoint, CodeAddr).
+code_info__failure_is_direct_branch(CI, CodeAddr) :-
+	code_info__get_fail_info(CI, FailInfo),
+	FailInfo = fail_info(ResumePoints, resume_point_known(_), _, _, _),
+	stack__top(ResumePoints, TopResumePoint),
+	code_info__pick_matching_resume_addr(CI, TopResumePoint, CodeAddr).
 
-code_info__may_use_nondet_tailcall(TailCallStatus) -->
-	code_info__get_fail_info(FailInfo),
-	{ FailInfo = fail_info(ResumePoints0, ResumeKnown, _, _, _) },
-	{
+code_info__may_use_nondet_tailcall(CI, TailCallStatus) :-
+	code_info__get_fail_info(CI, FailInfo),
+	FailInfo = fail_info(ResumePoints0, ResumeKnown, _, _, _),
+	(
 		stack__pop(ResumePoints0, ResumePoint1, ResumePoints1),
 		stack__is_empty(ResumePoints1),
 		ResumePoint1 = stack_only(_, do_fail)
@@ -2209,7 +2180,7 @@ code_info__may_use_nondet_tailcall(TailCallStatus) -->
 		)
 	;
 		TailCallStatus = no_tail_call
-	}.
+	).
 
 %---------------------------------------------------------------------------%
 
@@ -2217,12 +2188,12 @@ code_info__may_use_nondet_tailcall(TailCallStatus) -->
 	% associated with any of the options in the given failure map.
 	% If yes, return the code_addr of that option.
 
-:- pred code_info__pick_matching_resume_addr(resume_point_info::in,
-	code_addr::out, code_info::in, code_info::out) is semidet.
+:- pred code_info__pick_matching_resume_addr(code_info::in,
+	resume_point_info::in, code_addr::out) is semidet.
 
-code_info__pick_matching_resume_addr(ResumeMaps, Addr) -->
-	code_info__variable_locations(CurLocs),
-	{
+code_info__pick_matching_resume_addr(CI, ResumeMaps, Addr) :-
+	code_info__variable_locations(CI, CurLocs),
+	(
 		ResumeMaps = orig_only(Map1, Addr1),
 		( code_info__match_resume_loc(Map1, CurLocs) ->
 			Addr = Addr1
@@ -2254,7 +2225,7 @@ code_info__pick_matching_resume_addr(ResumeMaps, Addr) -->
 		;
 			fail
 		)
-	}.
+	).
 
 :- pred code_info__match_resume_loc(resume_map::in, resume_map::in) is semidet.
 
@@ -2301,124 +2272,125 @@ code_info__maybe_pick_stack_resume_point(stack_and_orig(Map, Addr, _, _),
 
 %---------------------------------------------------------------------------%
 
-code_info__produce_vars(Vars, Map, Code) -->
-	{ set__to_sorted_list(Vars, VarList) },
-	code_info__produce_vars_2(VarList, Map, Code).
+code_info__produce_vars(Vars, Map, Code, !CI) :-
+	set__to_sorted_list(Vars, VarList),
+	code_info__produce_vars_2(VarList, Map, Code, !CI).
 
 :- pred code_info__produce_vars_2(list(prog_var)::in,
 	map(prog_var, set(lval))::out,
 	code_tree::out, code_info::in, code_info::out) is det.
 
-code_info__produce_vars_2([], Map, empty) -->
-	{ map__init(Map) }.
-code_info__produce_vars_2([V | Vs], Map, Code) -->
-	code_info__produce_vars_2(Vs, Map0, Code0),
-	code_info__produce_variable_in_reg_or_stack(V, Code1, Lval),
-	{ set__singleton_set(Lvals, Lval) },
-	{ map__set(Map0, V, Lvals, Map) },
-	{ Code = tree(Code0, Code1) }.
+code_info__produce_vars_2([], Map, empty, !CI) :-
+	map__init(Map).
+code_info__produce_vars_2([V | Vs], Map, Code, !CI) :-
+	code_info__produce_vars_2(Vs, Map0, Code0, !CI),
+	code_info__produce_variable_in_reg_or_stack(V, Code1, Lval, !CI),
+	set__singleton_set(Lvals, Lval),
+	map__set(Map0, V, Lvals, Map),
+	Code = tree(Code0, Code1).
 
-code_info__flush_resume_vars_to_stack(Code) -->
-	code_info__compute_resume_var_stack_locs(VarLocs),
-	code_info__place_vars(VarLocs, Code).
+code_info__flush_resume_vars_to_stack(Code, !CI) :-
+	code_info__compute_resume_var_stack_locs(!.CI, VarLocs),
+	code_info__place_vars(VarLocs, Code, !CI).
 
-:- pred compute_resume_var_stack_locs(assoc_list(prog_var, lval)::out,
-	code_info::in, code_info::out) is det.
+:- pred compute_resume_var_stack_locs(code_info::in,
+	assoc_list(prog_var, lval)::out) is det.
 
-code_info__compute_resume_var_stack_locs(VarLocs) -->
-	code_info__get_fail_info(FailInfo),
-	{ FailInfo = fail_info(ResumePointStack, _, _, _, _) },
-	{ stack__top_det(ResumePointStack, ResumePoint) },
-	{ code_info__pick_stack_resume_point(ResumePoint, StackMap, _) },
-	{ map__to_assoc_list(StackMap, VarLocSets) },
-	{ code_info__pick_var_places(VarLocSets, VarLocs) }.
+code_info__compute_resume_var_stack_locs(CI, VarLocs) :-
+	code_info__get_fail_info(CI, FailInfo),
+	FailInfo = fail_info(ResumePointStack, _, _, _, _),
+	stack__top_det(ResumePointStack, ResumePoint),
+	code_info__pick_stack_resume_point(ResumePoint, StackMap, _),
+	map__to_assoc_list(StackMap, VarLocSets),
+	code_info__pick_var_places(VarLocSets, VarLocs).
 
 %---------------------------------------------------------------------------%
 
 :- pred code_info__init_fail_info(code_model::in, maybe(set(prog_var))::in,
 	resume_point_info::out, code_info::in, code_info::out) is det.
 
-code_info__init_fail_info(CodeModel, MaybeFailVars, ResumePoint) -->
+code_info__init_fail_info(CodeModel, MaybeFailVars, ResumePoint, !CI) :-
 	(
-		{ CodeModel = model_det },
-		code_info__get_next_label(ResumeLabel),
-		{ ResumeAddress = label(ResumeLabel) },
-		{ ResumeKnown = resume_point_unknown },
-		{ CurfrMaxfr = may_be_different }
+		CodeModel = model_det,
+		code_info__get_next_label(ResumeLabel, !CI),
+		ResumeAddress = label(ResumeLabel),
+		ResumeKnown = resume_point_unknown,
+		CurfrMaxfr = may_be_different
 	;
-		{ CodeModel = model_semi },
+		CodeModel = model_semi,
 			% The resume point for this label
 			% will be part of the procedure epilog.
-		code_info__get_next_label(ResumeLabel),
-		{ ResumeAddress = label(ResumeLabel) },
-		{ ResumeKnown = resume_point_known(wont_be_done) },
-		{ CurfrMaxfr = may_be_different }
+		code_info__get_next_label(ResumeLabel, !CI),
+		ResumeAddress = label(ResumeLabel),
+		ResumeKnown = resume_point_known(wont_be_done),
+		CurfrMaxfr = may_be_different
 	;
-		{ CodeModel = model_non },
-		( { MaybeFailVars = yes(_) } ->
-			code_info__get_next_label(ResumeLabel),
-			{ ResumeAddress = label(ResumeLabel) }
+		CodeModel = model_non,
+		( MaybeFailVars = yes(_) ->
+			code_info__get_next_label(ResumeLabel, !CI),
+			ResumeAddress = label(ResumeLabel)
 		;
-			{ ResumeAddress = do_fail }
+			ResumeAddress = do_fail
 		),
-		{ ResumeKnown = resume_point_known(has_been_done) },
-		{ CurfrMaxfr = must_be_equal }
+		ResumeKnown = resume_point_known(has_been_done),
+		CurfrMaxfr = must_be_equal
 	),
-	( { MaybeFailVars = yes(FailVars) } ->
-		code_info__get_stack_slots(StackSlots),
-		{ map__select(StackSlots, FailVars, StackMap0) },
-		{ map__to_assoc_list(StackMap0, StackList0) },
-		{ code_info__make_singleton_sets(StackList0, StackList) },
-		{ map__from_assoc_list(StackList, StackMap) }
+	( MaybeFailVars = yes(FailVars) ->
+		code_info__get_stack_slots(!.CI, StackSlots),
+		map__select(StackSlots, FailVars, StackMap0),
+		map__to_assoc_list(StackMap0, StackList0),
+		code_info__make_singleton_sets(StackList0, StackList),
+		map__from_assoc_list(StackList, StackMap)
 	;
-		{ map__init(StackMap) }
+		map__init(StackMap)
 	),
-	{ ResumePoint = stack_only(StackMap, ResumeAddress) },
-	{ stack__init(ResumeStack0) },
-	{ stack__push(ResumeStack0, ResumePoint, ResumeStack) },
-	code_info__get_fail_info(FailInfo0),
-	{ FailInfo0 = fail_info(_, _, _, _, Allow) },
-	{ FailInfo = fail_info(ResumeStack, ResumeKnown, CurfrMaxfr,
-		not_inside_non_condition, Allow) },
-	code_info__set_fail_info(FailInfo).
+	ResumePoint = stack_only(StackMap, ResumeAddress),
+	stack__init(ResumeStack0),
+	stack__push(ResumeStack0, ResumePoint, ResumeStack),
+	code_info__get_fail_info(!.CI, FailInfo0),
+	FailInfo0 = fail_info(_, _, _, _, Allow),
+	FailInfo = fail_info(ResumeStack, ResumeKnown, CurfrMaxfr,
+		not_inside_non_condition, Allow),
+	code_info__set_fail_info(FailInfo, !CI).
 
 %---------------------------------------------------------------------------%
 
-code_info__make_resume_point(ResumeVars, ResumeLocs, FullMap, ResumePoint) -->
-	code_info__get_stack_slots(StackSlots),
-	{ map__select(FullMap, ResumeVars, OrigMap) },
+code_info__make_resume_point(ResumeVars, ResumeLocs, FullMap, ResumePoint,
+		!CI) :-
+	code_info__get_stack_slots(!.CI, StackSlots),
+	map__select(FullMap, ResumeVars, OrigMap),
 	(
-		{ ResumeLocs = orig_only },
-		code_info__get_next_label(OrigLabel),
-		{ OrigAddr = label(OrigLabel) },
-		{ ResumePoint = orig_only(OrigMap, OrigAddr) }
+		ResumeLocs = orig_only,
+		code_info__get_next_label(OrigLabel, !CI),
+		OrigAddr = label(OrigLabel),
+		ResumePoint = orig_only(OrigMap, OrigAddr)
 	;
-		{ ResumeLocs = stack_only },
-		{ code_info__make_stack_resume_map(ResumeVars,
-			StackSlots, StackMap) },
-		code_info__get_next_label(StackLabel),
-		{ StackAddr = label(StackLabel) },
-		{ ResumePoint = stack_only(StackMap, StackAddr) }
+		ResumeLocs = stack_only,
+		code_info__make_stack_resume_map(ResumeVars,
+			StackSlots, StackMap),
+		code_info__get_next_label(StackLabel, !CI),
+		StackAddr = label(StackLabel),
+		ResumePoint = stack_only(StackMap, StackAddr)
 	;
-		{ ResumeLocs = orig_and_stack },
-		{ code_info__make_stack_resume_map(ResumeVars,
-			StackSlots, StackMap) },
-		code_info__get_next_label(OrigLabel),
-		{ OrigAddr = label(OrigLabel) },
-		code_info__get_next_label(StackLabel),
-		{ StackAddr = label(StackLabel) },
-		{ ResumePoint = orig_and_stack(OrigMap, OrigAddr,
-			StackMap, StackAddr) }
+		ResumeLocs = orig_and_stack,
+		code_info__make_stack_resume_map(ResumeVars,
+			StackSlots, StackMap),
+		code_info__get_next_label(OrigLabel, !CI),
+		OrigAddr = label(OrigLabel),
+		code_info__get_next_label(StackLabel, !CI),
+		StackAddr = label(StackLabel),
+		ResumePoint = orig_and_stack(OrigMap, OrigAddr,
+			StackMap, StackAddr)
 	;
-		{ ResumeLocs = stack_and_orig },
-		{ code_info__make_stack_resume_map(ResumeVars,
-			StackSlots, StackMap) },
-		code_info__get_next_label(StackLabel),
-		{ StackAddr = label(StackLabel) },
-		code_info__get_next_label(OrigLabel),
-		{ OrigAddr = label(OrigLabel) },
-		{ ResumePoint = stack_and_orig(StackMap, StackAddr,
-			OrigMap, OrigAddr) }
+		ResumeLocs = stack_and_orig,
+		code_info__make_stack_resume_map(ResumeVars,
+			StackSlots, StackMap),
+		code_info__get_next_label(StackLabel, !CI),
+		StackAddr = label(StackLabel),
+		code_info__get_next_label(OrigLabel, !CI),
+		OrigAddr = label(OrigLabel),
+		ResumePoint = stack_and_orig(StackMap, StackAddr,
+			OrigMap, OrigAddr)
 	).
 
 :- pred code_info__make_stack_resume_map(set(prog_var)::in, stack_slots::in,
@@ -2468,60 +2440,60 @@ code_info__make_singleton_sets([V - L | Rest0], [V - Ls | Rest]) :-
 	% in the other order (e.g. because the code after the resumption point
 	% needs most of the variables in their stack slots).
 
-code_info__generate_resume_point(ResumePoint, Code) -->
+code_info__generate_resume_point(ResumePoint, Code, !CI) :-
 	(
-		{ ResumePoint = orig_only(Map1, Addr1) },
-		{ extract_label_from_code_addr(Addr1, Label1) },
-		{ Code = node([
+		ResumePoint = orig_only(Map1, Addr1),
+		extract_label_from_code_addr(Addr1, Label1),
+		Code = node([
 			label(Label1) -
 				"orig only failure continuation"
-		]) },
-		code_info__set_var_locations(Map1)
+		]),
+		code_info__set_var_locations(Map1, !CI)
 	;
-		{ ResumePoint = stack_only(Map1, Addr1) },
-		{ extract_label_from_code_addr(Addr1, Label1) },
-		{ Code = node([
+		ResumePoint = stack_only(Map1, Addr1),
+		extract_label_from_code_addr(Addr1, Label1),
+		Code = node([
 			label(Label1) -
 				"stack only failure continuation"
-		]) },
-		code_info__set_var_locations(Map1),
-		code_info__generate_resume_layout(Label1, Map1)
+		]),
+		code_info__set_var_locations(Map1, !CI),
+		code_info__generate_resume_layout(Label1, Map1, !CI)
 	;
-		{ ResumePoint = stack_and_orig(Map1, Addr1, Map2, Addr2) },
-		{ extract_label_from_code_addr(Addr1, Label1) },
-		{ extract_label_from_code_addr(Addr2, Label2) },
-		{ Label1Code = node([
+		ResumePoint = stack_and_orig(Map1, Addr1, Map2, Addr2),
+		extract_label_from_code_addr(Addr1, Label1),
+		extract_label_from_code_addr(Addr2, Label2),
+		Label1Code = node([
 			label(Label1) -
 				"stack failure continuation before orig"
-		]) },
-		code_info__set_var_locations(Map1),
-		code_info__generate_resume_layout(Label1, Map1),
-		{ map__to_assoc_list(Map2, AssocList2) },
-		code_info__place_resume_vars(AssocList2, PlaceCode),
-		{ Label2Code = node([
+		]),
+		code_info__set_var_locations(Map1, !CI),
+		code_info__generate_resume_layout(Label1, Map1, !CI),
+		map__to_assoc_list(Map2, AssocList2),
+		code_info__place_resume_vars(AssocList2, PlaceCode, !CI),
+		Label2Code = node([
 			label(Label2) -
 				"orig failure continuation after stack"
-		]) },
-		code_info__set_var_locations(Map2),
-		{ Code = tree(Label1Code, tree(PlaceCode, Label2Code)) }
+		]),
+		code_info__set_var_locations(Map2, !CI),
+		Code = tree(Label1Code, tree(PlaceCode, Label2Code))
 	;
-		{ ResumePoint = orig_and_stack(Map1, Addr1, Map2, Addr2) },
-		{ extract_label_from_code_addr(Addr1, Label1) },
-		{ extract_label_from_code_addr(Addr2, Label2) },
-		{ Label1Code = node([
+		ResumePoint = orig_and_stack(Map1, Addr1, Map2, Addr2),
+		extract_label_from_code_addr(Addr1, Label1),
+		extract_label_from_code_addr(Addr2, Label2),
+		Label1Code = node([
 			label(Label1) -
 				"orig failure continuation before stack"
-		]) },
-		code_info__set_var_locations(Map1),
-		{ map__to_assoc_list(Map2, AssocList2) },
-		code_info__place_resume_vars(AssocList2, PlaceCode),
-		{ Label2Code = node([
+		]),
+		code_info__set_var_locations(Map1, !CI),
+		map__to_assoc_list(Map2, AssocList2),
+		code_info__place_resume_vars(AssocList2, PlaceCode, !CI),
+		Label2Code = node([
 			label(Label2) -
 				"stack failure continuation after orig"
-		]) },
-		code_info__set_var_locations(Map2),
-		code_info__generate_resume_layout(Label2, Map2),
-		{ Code = tree(Label1Code, tree(PlaceCode, Label2Code)) }
+		]),
+		code_info__set_var_locations(Map2, !CI),
+		code_info__generate_resume_layout(Label2, Map2, !CI),
+		Code = tree(Label1Code, tree(PlaceCode, Label2Code))
 	).
 
 :- pred extract_label_from_code_addr(code_addr::in, label::out) is det.
@@ -2536,21 +2508,21 @@ extract_label_from_code_addr(CodeAddr, Label) :-
 :- pred code_info__place_resume_vars(assoc_list(prog_var, set(lval))::in,
 	code_tree::out, code_info::in, code_info::out) is det.
 
-code_info__place_resume_vars([], empty) --> [].
-code_info__place_resume_vars([Var - TargetSet | Rest], Code) -->
-	{ set__to_sorted_list(TargetSet, Targets) },
-	code_info__place_resume_var(Var, Targets, FirstCode),
-	{ Code = tree(FirstCode, RestCode) },
-	code_info__place_resume_vars(Rest, RestCode).
+code_info__place_resume_vars([], empty, !CI).
+code_info__place_resume_vars([Var - TargetSet | Rest], Code, !CI) :-
+	set__to_sorted_list(TargetSet, Targets),
+	code_info__place_resume_var(Var, Targets, FirstCode, !CI),
+	Code = tree(FirstCode, RestCode),
+	code_info__place_resume_vars(Rest, RestCode, !CI).
 
 :- pred code_info__place_resume_var(prog_var::in, list(lval)::in,
 	code_tree::out, code_info::in, code_info::out) is det.
 
-code_info__place_resume_var(_Var, [], empty) --> [].
-code_info__place_resume_var(Var, [Target | Targets], Code) -->
-	code_info__place_var(Var, Target, FirstCode),
-	code_info__place_resume_var(Var, Targets, RestCode),
-	{ Code = tree(FirstCode, RestCode) }.
+code_info__place_resume_var(_Var, [], empty, !CI).
+code_info__place_resume_var(Var, [Target | Targets], Code, !CI) :-
+	code_info__place_var(Var, Target, FirstCode, !CI),
+	code_info__place_resume_var(Var, Targets, RestCode, !CI),
+	Code = tree(FirstCode, RestCode).
 
 	% Reset the code generator's database of what is where.
 	% Remember that the variables in the map are available in their
@@ -2559,12 +2531,12 @@ code_info__place_resume_var(Var, [Target | Targets], Code) -->
 :- pred code_info__set_var_locations(resume_map::in,
 	code_info::in, code_info::out) is det.
 
-code_info__set_var_locations(Map) -->
-	{ map__to_assoc_list(Map, LvalList0) },
-	{ code_info__flatten_varlval_list(LvalList0, LvalList) },
-	code_info__get_var_locn_info(VarLocnInfo0),
-	{ var_locn__reinit_state(LvalList, VarLocnInfo0, VarLocnInfo) },
-	code_info__set_var_locn_info(VarLocnInfo).
+code_info__set_var_locations(Map, !CI) :-
+	map__to_assoc_list(Map, LvalList0),
+	code_info__flatten_varlval_list(LvalList0, LvalList),
+	code_info__get_var_locn_info(!.CI, VarLocnInfo0),
+	var_locn__reinit_state(LvalList, VarLocnInfo0, VarLocnInfo),
+	code_info__set_var_locn_info(VarLocnInfo, !CI).
 
 :- pred code_info__flatten_varlval_list(assoc_list(prog_var, set(lval))::in,
 	assoc_list(prog_var, lval)::out) is det.
@@ -2595,49 +2567,49 @@ code_info__resume_point_stack_addr(ResumePoint, StackAddr) :-
 :- pred code_info__maybe_save_trail_info(maybe(pair(lval))::out,
 	code_tree::out, code_info::in, code_info::out) is det.
 
-code_info__maybe_save_trail_info(MaybeTrailSlots, SaveTrailCode) -->
-	code_info__get_globals(Globals),
-	{ globals__lookup_bool_option(Globals, use_trail, UseTrail) },
-	( { UseTrail = yes } ->
-		code_info__acquire_temp_slot(ticket_counter, CounterSlot),
-		code_info__acquire_temp_slot(ticket, TrailPtrSlot),
-		{ MaybeTrailSlots = yes(CounterSlot - TrailPtrSlot) },
-		{ SaveTrailCode = node([
+code_info__maybe_save_trail_info(MaybeTrailSlots, SaveTrailCode, !CI) :-
+	code_info__get_globals(!.CI, Globals),
+	globals__lookup_bool_option(Globals, use_trail, UseTrail),
+	( UseTrail = yes ->
+		code_info__acquire_temp_slot(ticket_counter, CounterSlot, !CI),
+		code_info__acquire_temp_slot(ticket, TrailPtrSlot, !CI),
+		MaybeTrailSlots = yes(CounterSlot - TrailPtrSlot),
+		SaveTrailCode = node([
 			mark_ticket_stack(CounterSlot)
 				- "save the ticket counter",
 			store_ticket(TrailPtrSlot)
 				- "save the trail pointer"
-		]) }
+		])
 	;
-		{ MaybeTrailSlots = no },
-		{ SaveTrailCode = empty }
+		MaybeTrailSlots = no,
+		SaveTrailCode = empty
 	).
 
 :- pred code_info__maybe_restore_trail_info(maybe(pair(lval))::in,
 	code_tree::out, code_tree::out, code_info::in, code_info::out) is det.
 
 code_info__maybe_restore_trail_info(MaybeTrailSlots,
-		CommitCode, RestoreCode) -->
+		CommitCode, RestoreCode, !CI) :-
 	(
-		{ MaybeTrailSlots = no },
-		{ CommitCode = empty },
-		{ RestoreCode = empty }
+		MaybeTrailSlots = no,
+		CommitCode = empty,
+		RestoreCode = empty
 	;
-		{ MaybeTrailSlots = yes(CounterSlot - TrailPtrSlot) },
-		{ CommitCode = node([
+		MaybeTrailSlots = yes(CounterSlot - TrailPtrSlot),
+		CommitCode = node([
 			reset_ticket(lval(TrailPtrSlot), commit)
 				- "discard trail entries and restore trail ptr",
 			prune_tickets_to(lval(CounterSlot))
 				- "restore ticket counter (but not high water mark)"
-		]) },
-		{ RestoreCode = node([
+		]),
+		RestoreCode = node([
 			reset_ticket(lval(TrailPtrSlot), undo)
 				- "apply trail entries and restore trail ptr",
 			discard_ticket
 				- "restore ticket counter and high water mark"
-		]) },
-		code_info__release_temp_slot(CounterSlot),
-		code_info__release_temp_slot(TrailPtrSlot)
+		]),
+		code_info__release_temp_slot(CounterSlot, !CI),
+		code_info__release_temp_slot(TrailPtrSlot, !CI)
 	).
 
 %---------------------------------------------------------------------------%
@@ -2645,29 +2617,29 @@ code_info__maybe_restore_trail_info(MaybeTrailSlots,
 :- pred code_info__clone_resume_point(resume_point_info::in,
 	resume_point_info::out, code_info::in, code_info::out) is det.
 
-code_info__clone_resume_point(ResumePoint0, ResumePoint) -->
+code_info__clone_resume_point(ResumePoint0, ResumePoint, !CI) :-
 	(
-		{ ResumePoint0 = orig_only(_, _) },
-		{ error("cloning orig_only resume point") }
+		ResumePoint0 = orig_only(_, _),
+		error("cloning orig_only resume point")
 	;
-		{ ResumePoint0 = stack_only(Map1, _) },
-		code_info__get_next_label(Label1),
-		{ Addr1 = label(Label1) },
-		{ ResumePoint = stack_only(Map1, Addr1) }
+		ResumePoint0 = stack_only(Map1, _),
+		code_info__get_next_label(Label1, !CI),
+		Addr1 = label(Label1),
+		ResumePoint = stack_only(Map1, Addr1)
 	;
-		{ ResumePoint0 = stack_and_orig(Map1, _, Map2, _) },
-		code_info__get_next_label(Label1),
-		{ Addr1 = label(Label1) },
-		code_info__get_next_label(Label2),
-		{ Addr2 = label(Label2) },
-		{ ResumePoint = stack_and_orig(Map1, Addr1, Map2, Addr2) }
+		ResumePoint0 = stack_and_orig(Map1, _, Map2, _),
+		code_info__get_next_label(Label1, !CI),
+		Addr1 = label(Label1),
+		code_info__get_next_label(Label2, !CI),
+		Addr2 = label(Label2),
+		ResumePoint = stack_and_orig(Map1, Addr1, Map2, Addr2)
 	;
-		{ ResumePoint0 = orig_and_stack(Map1, _, Map2, _) },
-		code_info__get_next_label(Label2),
-		{ Addr2 = label(Label2) },
-		code_info__get_next_label(Label1),
-		{ Addr1 = label(Label1) },
-		{ ResumePoint = stack_and_orig(Map2, Addr2, Map1, Addr1) }
+		ResumePoint0 = orig_and_stack(Map1, _, Map2, _),
+		code_info__get_next_label(Label2, !CI),
+		Addr2 = label(Label2),
+		code_info__get_next_label(Label1, !CI),
+		Addr1 = label(Label1),
+		ResumePoint = stack_and_orig(Map2, Addr2, Map1, Addr1)
 	).
 
 %---------------------------------------------------------------------------%
@@ -2680,121 +2652,119 @@ code_info__clone_resume_point(ResumePoint0, ResumePoint) -->
 
 :- interface.
 
-:- pred code_info__get_known_variables(list(prog_var), code_info, code_info).
-:- mode code_info__get_known_variables(out, in, out) is det.
+:- pred code_info__get_known_variables(code_info::in, list(prog_var)::out)
+	is det.
 
-:- pred code_info__variable_is_forward_live(prog_var, code_info, code_info).
-:- mode code_info__variable_is_forward_live(in, in, out) is semidet.
+:- pred code_info__variable_is_forward_live(code_info::in, prog_var::in)
+	is semidet.
 
-:- pred code_info__make_vars_forward_dead(set(prog_var), code_info, code_info).
-:- mode code_info__make_vars_forward_dead(in, in, out) is det.
+:- pred code_info__make_vars_forward_dead(set(prog_var)::in,
+	code_info::in, code_info::out) is det.
 
-:- pred code_info__pickup_zombies(set(prog_var), code_info, code_info).
-:- mode code_info__pickup_zombies(out, in, out) is det.
+:- pred code_info__pickup_zombies(set(prog_var)::out,
+	code_info::in, code_info::out) is det.
 
 %---------------------------------------------------------------------------%
 
 :- implementation.
 
-:- pred code_info__add_forward_live_vars(set(prog_var), code_info, code_info).
-:- mode code_info__add_forward_live_vars(in, in, out) is det.
+:- pred code_info__add_forward_live_vars(set(prog_var)::in,
+	code_info::in, code_info::out) is det.
 
-:- pred code_info__rem_forward_live_vars(set(prog_var), code_info, code_info).
-:- mode code_info__rem_forward_live_vars(in, in, out) is det.
+:- pred code_info__rem_forward_live_vars(set(prog_var)::in,
+	code_info::in, code_info::out) is det.
 
 	% Make these variables appear magically live.
 	% We don't care where they are put.
 
-:- pred code_info__make_vars_forward_live(set(prog_var), code_info, code_info).
-:- mode code_info__make_vars_forward_live(in, in, out) is det.
+:- pred code_info__make_vars_forward_live(set(prog_var)::in,
+	code_info::in, code_info::out) is det.
 
-code_info__get_known_variables(VarList) -->
-	code_info__get_forward_live_vars(ForwardLiveVars),
-	code_info__current_resume_point_vars(ResumeVars),
-	{ set__union(ForwardLiveVars, ResumeVars, Vars) },
-	{ set__to_sorted_list(Vars, VarList) }.
+code_info__get_known_variables(CI, VarList) :-
+	code_info__get_forward_live_vars(CI, ForwardLiveVars),
+	ResumeVars = code_info__current_resume_point_vars(CI),
+	set__union(ForwardLiveVars, ResumeVars, Vars),
+	set__to_sorted_list(Vars, VarList).
 
-code_info__variable_is_forward_live(Var) -->
-	code_info__get_forward_live_vars(Liveness),
-	{ set__member(Var, Liveness) }.
+code_info__variable_is_forward_live(CI, Var) :-
+	code_info__get_forward_live_vars(CI, Liveness),
+	set__member(Var, Liveness).
 
-code_info__add_forward_live_vars(Births) -->
-	code_info__get_forward_live_vars(Liveness0),
-	{ set__union(Liveness0, Births, Liveness) },
-	code_info__set_forward_live_vars(Liveness).
+code_info__add_forward_live_vars(Births, !CI) :-
+	code_info__get_forward_live_vars(!.CI, Liveness0),
+	set__union(Liveness0, Births, Liveness),
+	code_info__set_forward_live_vars(Liveness, !CI).
 
-code_info__rem_forward_live_vars(Deaths) -->
-	code_info__get_forward_live_vars(Liveness0),
-	{ set__difference(Liveness0, Deaths, Liveness) },
-	code_info__set_forward_live_vars(Liveness).
+code_info__rem_forward_live_vars(Deaths, !CI) :-
+	code_info__get_forward_live_vars(!.CI, Liveness0),
+	set__difference(Liveness0, Deaths, Liveness),
+	code_info__set_forward_live_vars(Liveness, !CI).
 
-code_info__make_vars_forward_live(Vars) -->
-	code_info__get_stack_slots(StackSlots),
-	code_info__get_var_locn_info(VarLocnInfo0),
-	{ set__to_sorted_list(Vars, VarList) },
-	{ code_info__make_vars_forward_live_2(VarList, StackSlots, 1,
-		VarLocnInfo0, VarLocnInfo) },
-	code_info__set_var_locn_info(VarLocnInfo).
+code_info__make_vars_forward_live(Vars, !CI) :-
+	code_info__get_stack_slots(!.CI, StackSlots),
+	code_info__get_var_locn_info(!.CI, VarLocnInfo0),
+	set__to_sorted_list(Vars, VarList),
+	code_info__make_vars_forward_live_2(VarList, StackSlots, 1,
+		VarLocnInfo0, VarLocnInfo),
+	code_info__set_var_locn_info(VarLocnInfo, !CI).
 
 :- pred code_info__make_vars_forward_live_2(list(prog_var)::in,
-	stack_slots::in, int::in, var_locn_info::in, var_locn_info::out) is det.
+	stack_slots::in, int::in, var_locn_info::in, var_locn_info::out)
+	is det.
 
-code_info__make_vars_forward_live_2([], _, _, VarLocnInfo, VarLocnInfo).
+code_info__make_vars_forward_live_2([], _, _, !VarLocnInfo).
 code_info__make_vars_forward_live_2([Var | Vars], StackSlots, N0,
-		VarLocnInfo0, VarLocnInfo) :-
+		!VarLocnInfo) :-
 	( map__search(StackSlots, Var, Lval0) ->
 		Lval = Lval0,
 		N1 = N0
 	;
-		code_info__find_unused_reg(N0, VarLocnInfo0, N1),
+		code_info__find_unused_reg(!.VarLocnInfo, N0, N1),
 		Lval = reg(r, N1)
 	),
-	var_locn__set_magic_var_location(Var, Lval, VarLocnInfo0, VarLocnInfo1),
+	var_locn__set_magic_var_location(Var, Lval, !VarLocnInfo),
 	code_info__make_vars_forward_live_2(Vars, StackSlots, N1,
-		VarLocnInfo1, VarLocnInfo).
+		!VarLocnInfo).
 
-:- pred code_info__find_unused_reg(int::in, var_locn_info::in, int::out) is det.
+:- pred code_info__find_unused_reg(var_locn_info::in, int::in, int::out) is det.
 
-code_info__find_unused_reg(N0, Exprn0, N) :-
-	( var_locn__lval_in_use(reg(r, N0), Exprn0, _) ->
-		code_info__find_unused_reg(N0 + 1, Exprn0, N)
+code_info__find_unused_reg(VLI, N0, N) :-
+	( var_locn__lval_in_use(VLI, reg(r, N0)) ->
+		code_info__find_unused_reg(VLI, N0 + 1, N)
 	;
 		N = N0
 	).
 
-code_info__make_vars_forward_dead(Vars) -->
-	code_info__maybe_make_vars_forward_dead(Vars, yes).
+code_info__make_vars_forward_dead(Vars, !CI) :-
+	code_info__maybe_make_vars_forward_dead(Vars, yes, !CI).
 
-:- pred code_info__maybe_make_vars_forward_dead(set(prog_var), bool,
-	code_info, code_info).
-:- mode code_info__maybe_make_vars_forward_dead(in, in, in, out) is det.
+:- pred code_info__maybe_make_vars_forward_dead(set(prog_var)::in, bool::in,
+	code_info::in, code_info::out) is det.
 
-code_info__maybe_make_vars_forward_dead(Vars0, FirstTime) -->
-	code_info__current_resume_point_vars(ResumeVars),
-	{ set__intersect(Vars0, ResumeVars, FlushVars) },
-	code_info__get_zombies(Zombies0),
-	{ set__union(Zombies0, FlushVars, Zombies) },
-	code_info__set_zombies(Zombies),
-	{ set__difference(Vars0, Zombies, Vars) },
-	{ set__to_sorted_list(Vars, VarList) },
-	code_info__maybe_make_vars_forward_dead_2(VarList, FirstTime).
+code_info__maybe_make_vars_forward_dead(Vars0, FirstTime, !CI) :-
+	ResumeVars = code_info__current_resume_point_vars(!.CI),
+	set__intersect(Vars0, ResumeVars, FlushVars),
+	code_info__get_zombies(!.CI, Zombies0),
+	set__union(Zombies0, FlushVars, Zombies),
+	code_info__set_zombies(Zombies, !CI),
+	set__difference(Vars0, Zombies, Vars),
+	set__to_sorted_list(Vars, VarList),
+	code_info__maybe_make_vars_forward_dead_2(VarList, FirstTime, !CI).
 
-:- pred code_info__maybe_make_vars_forward_dead_2(list(prog_var), bool,
-	code_info, code_info).
-:- mode code_info__maybe_make_vars_forward_dead_2(in, in, in, out) is det.
+:- pred code_info__maybe_make_vars_forward_dead_2(list(prog_var)::in, bool::in,
+	code_info::in, code_info::out) is det.
 
-code_info__maybe_make_vars_forward_dead_2([], _) --> [].
-code_info__maybe_make_vars_forward_dead_2([V | Vs], FirstTime) -->
-	code_info__get_var_locn_info(VarLocnInfo0),
-	{ var_locn__var_becomes_dead(V, FirstTime,
-		VarLocnInfo0, VarLocnInfo) },
-	code_info__set_var_locn_info(VarLocnInfo),
-	code_info__maybe_make_vars_forward_dead_2(Vs, FirstTime).
+code_info__maybe_make_vars_forward_dead_2([], _, !CI).
+code_info__maybe_make_vars_forward_dead_2([V | Vs], FirstTime, !CI) :-
+	code_info__get_var_locn_info(!.CI, VarLocnInfo0),
+	var_locn__var_becomes_dead(V, FirstTime,
+		VarLocnInfo0, VarLocnInfo),
+	code_info__set_var_locn_info(VarLocnInfo, !CI),
+	code_info__maybe_make_vars_forward_dead_2(Vs, FirstTime, !CI).
 
-code_info__pickup_zombies(Zombies) -->
-	code_info__get_zombies(Zombies),
-	{ set__init(Empty) },
-	code_info__set_zombies(Empty).
+code_info__pickup_zombies(Zombies, !CI) :-
+	code_info__get_zombies(!.CI, Zombies),
+	code_info__set_zombies(set__init, !CI).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -2804,244 +2774,225 @@ code_info__pickup_zombies(Zombies) -->
 
 :- interface.
 
-:- pred code_info__save_hp(code_tree, lval, code_info, code_info).
-:- mode code_info__save_hp(out, out, in, out) is det.
+:- pred code_info__save_hp(code_tree::out, lval::out,
+	code_info::in, code_info::out) is det.
 
-:- pred code_info__restore_hp(lval, code_tree, code_info, code_info).
-:- mode code_info__restore_hp(in, out, in, out) is det.
+:- pred code_info__restore_hp(lval::in, code_tree::out) is det.
 
-:- pred code_info__release_hp(lval, code_info, code_info).
-:- mode code_info__release_hp(in, in, out) is det.
+:- pred code_info__release_hp(lval::in,
+	code_info::in, code_info::out) is det.
 
-:- pred code_info__restore_and_release_hp(lval, code_tree,
-	code_info, code_info).
-:- mode code_info__restore_and_release_hp(in, out, in, out) is det.
+:- pred code_info__restore_and_release_hp(lval::in, code_tree::out,
+	code_info::in, code_info::out) is det.
 
-:- pred code_info__maybe_save_hp(bool, code_tree, maybe(lval),
-	code_info, code_info).
-:- mode code_info__maybe_save_hp(in, out, out, in, out) is det.
+:- pred code_info__maybe_save_hp(bool::in, code_tree::out, maybe(lval)::out,
+	code_info::in, code_info::out) is det.
 
-:- pred code_info__maybe_restore_hp(maybe(lval), code_tree,
-	code_info, code_info).
-:- mode code_info__maybe_restore_hp(in, out, in, out) is det.
+:- pred code_info__maybe_restore_hp(maybe(lval)::in, code_tree::out) is det.
 
-:- pred code_info__maybe_release_hp(maybe(lval), code_info, code_info).
-:- mode code_info__maybe_release_hp(in, in, out) is det.
+:- pred code_info__maybe_release_hp(maybe(lval)::in,
+	code_info::in, code_info::out) is det.
 
-:- pred code_info__maybe_restore_and_release_hp(maybe(lval), code_tree,
-	code_info, code_info).
-:- mode code_info__maybe_restore_and_release_hp(in, out, in, out) is det.
+:- pred code_info__maybe_restore_and_release_hp(maybe(lval)::in,
+	code_tree::out, code_info::in, code_info::out) is det.
 
-:- pred code_info__save_ticket(code_tree, lval, code_info, code_info).
-:- mode code_info__save_ticket(out, out, in, out) is det.
+:- pred code_info__save_ticket(code_tree::out, lval::out,
+	code_info::in, code_info::out) is det.
 
-:- pred code_info__reset_ticket(lval, reset_trail_reason, code_tree,
-	code_info, code_info).
-:- mode code_info__reset_ticket(in, in, out, in, out) is det.
+:- pred code_info__reset_ticket(lval::in, reset_trail_reason::in,
+	code_tree::out) is det.
 
-:- pred code_info__release_ticket(lval, code_info, code_info).
-:- mode code_info__release_ticket(in, in, out) is det.
+:- pred code_info__release_ticket(lval::in,
+	code_info::in, code_info::out) is det.
 
-:- pred code_info__reset_and_prune_ticket(lval, reset_trail_reason,
-	code_tree, code_info, code_info).
-:- mode code_info__reset_and_prune_ticket(in, in, out, in, out) is det.
+:- pred code_info__reset_and_prune_ticket(lval::in, reset_trail_reason::in,
+	code_tree::out) is det.
 
-:- pred code_info__reset_prune_and_release_ticket(lval, reset_trail_reason,
-	code_tree, code_info, code_info).
-:- mode code_info__reset_prune_and_release_ticket(in, in, out, in, out)
-	is det.
+:- pred code_info__reset_prune_and_release_ticket(lval::in,
+	reset_trail_reason::in, code_tree::out,
+	code_info::in, code_info::out) is det.
 
-:- pred code_info__reset_and_discard_ticket(lval, reset_trail_reason,
-	code_tree, code_info, code_info).
-:- mode code_info__reset_and_discard_ticket(in, in, out, in, out) is det.
+:- pred code_info__reset_and_discard_ticket(lval::in, reset_trail_reason::in,
+	code_tree::out) is det.
 
-:- pred code_info__reset_discard_and_release_ticket(lval, reset_trail_reason,
-	code_tree, code_info, code_info).
-:- mode code_info__reset_discard_and_release_ticket(in, in, out, in, out)
-	is det.
+:- pred code_info__reset_discard_and_release_ticket(lval::in,
+	reset_trail_reason::in, code_tree::out,
+	code_info::in, code_info::out) is det.
 
-:- pred code_info__maybe_save_ticket(bool, code_tree, maybe(lval),
-	code_info, code_info).
-:- mode code_info__maybe_save_ticket(in, out, out, in, out) is det.
+:- pred code_info__maybe_save_ticket(bool::in, code_tree::out,
+	maybe(lval)::out, code_info::in, code_info::out) is det.
 
-:- pred code_info__maybe_reset_ticket(maybe(lval), reset_trail_reason,
-	code_tree, code_info, code_info).
-:- mode code_info__maybe_reset_ticket(in, in, out, in, out) is det.
+:- pred code_info__maybe_reset_ticket(maybe(lval)::in, reset_trail_reason::in,
+	code_tree::out) is det.
 
-:- pred code_info__maybe_release_ticket(maybe(lval), code_info, code_info).
-:- mode code_info__maybe_release_ticket(in, in, out) is det.
+:- pred code_info__maybe_release_ticket(maybe(lval)::in,
+	code_info::in, code_info::out) is det.
 
-:- pred code_info__maybe_reset_and_prune_ticket(maybe(lval),
-	reset_trail_reason, code_tree, code_info, code_info).
-:- mode code_info__maybe_reset_and_prune_ticket(in, in, out, in, out) is det.
+:- pred code_info__maybe_reset_and_prune_ticket(maybe(lval)::in,
+	reset_trail_reason::in, code_tree::out) is det.
 
-:- pred code_info__maybe_reset_prune_and_release_ticket(maybe(lval),
-	reset_trail_reason, code_tree, code_info, code_info).
-:- mode code_info__maybe_reset_prune_and_release_ticket(in, in, out, in, out)
-	is det.
+:- pred code_info__maybe_reset_prune_and_release_ticket(maybe(lval)::in,
+	reset_trail_reason::in, code_tree::out,
+	code_info::in, code_info::out) is det.
 
-:- pred code_info__maybe_reset_and_discard_ticket(maybe(lval),
-	reset_trail_reason, code_tree, code_info, code_info).
-:- mode code_info__maybe_reset_and_discard_ticket(in, in, out, in, out) is det.
+:- pred code_info__maybe_reset_and_discard_ticket(maybe(lval)::in,
+	reset_trail_reason::in, code_tree::out) is det.
 
-:- pred code_info__maybe_reset_discard_and_release_ticket(maybe(lval),
-	reset_trail_reason, code_tree, code_info, code_info).
-:- mode code_info__maybe_reset_discard_and_release_ticket(in, in, out, in, out)
-	is det.
+:- pred code_info__maybe_reset_discard_and_release_ticket(maybe(lval)::in,
+	reset_trail_reason::in, code_tree::out,
+	code_info::in, code_info::out) is det.
 
 %---------------------------------------------------------------------------%
 
 :- implementation.
 
-code_info__save_hp(Code, HpSlot) -->
-	code_info__acquire_temp_slot(lval(hp), HpSlot),
-	{ Code = node([
+code_info__save_hp(Code, HpSlot, !CI) :-
+	code_info__acquire_temp_slot(lval(hp), HpSlot, !CI),
+	Code = node([
 		mark_hp(HpSlot) - "Save heap pointer"
-	]) }.
+	]).
 
-code_info__restore_hp(HpSlot, Code) -->
-	{ Code = node([
+code_info__restore_hp(HpSlot, Code) :-
+	Code = node([
 		restore_hp(lval(HpSlot)) - "Restore heap pointer"
-	]) }.
+	]).
 
-code_info__release_hp(HpSlot) -->
-	code_info__release_temp_slot(HpSlot).
+code_info__release_hp(HpSlot, !CI) :-
+	code_info__release_temp_slot(HpSlot, !CI).
 
-code_info__restore_and_release_hp(HpSlot, Code) -->
-	{ Code = node([
-		restore_hp(lval(HpSlot)) - "Release heap pointer"
-	]) },
-	code_info__release_hp(HpSlot).
+code_info__restore_and_release_hp(HpSlot, Code, !CI) :-
+	code_info__restore_hp(HpSlot, Code),
+	code_info__release_hp(HpSlot, !CI).
 
 %---------------------------------------------------------------------------%
 
-code_info__maybe_save_hp(Maybe, Code, MaybeHpSlot) -->
-	( { Maybe = yes } ->
-		code_info__save_hp(Code, HpSlot),
-		{ MaybeHpSlot = yes(HpSlot) }
+code_info__maybe_save_hp(Maybe, Code, MaybeHpSlot, !CI) :-
+	( Maybe = yes ->
+		code_info__save_hp(Code, HpSlot, !CI),
+		MaybeHpSlot = yes(HpSlot)
 	;
-		{ Code = empty },
-		{ MaybeHpSlot = no }
+		Code = empty,
+		MaybeHpSlot = no
 	).
 
-code_info__maybe_restore_hp(MaybeHpSlot, Code) -->
-	( { MaybeHpSlot = yes(HpSlot) } ->
+code_info__maybe_restore_hp(MaybeHpSlot, Code) :-
+	( MaybeHpSlot = yes(HpSlot) ->
 		code_info__restore_hp(HpSlot, Code)
 	;
-		{ Code = empty }
+		Code = empty
 	).
 
-code_info__maybe_release_hp(MaybeHpSlot) -->
-	( { MaybeHpSlot = yes(HpSlot) } ->
-		code_info__release_hp(HpSlot)
+code_info__maybe_release_hp(MaybeHpSlot, !CI) :-
+	( MaybeHpSlot = yes(HpSlot) ->
+		code_info__release_hp(HpSlot, !CI)
 	;
-		[]
+		true
 	).
 
-code_info__maybe_restore_and_release_hp(MaybeHpSlot, Code) -->
-	( { MaybeHpSlot = yes(HpSlot) } ->
-		code_info__restore_and_release_hp(HpSlot, Code)
+code_info__maybe_restore_and_release_hp(MaybeHpSlot, Code, !CI) :-
+	( MaybeHpSlot = yes(HpSlot) ->
+		code_info__restore_and_release_hp(HpSlot, Code, !CI)
 	;
-		{ Code = empty }
+		Code = empty
 	).
 
 %---------------------------------------------------------------------------%
 
-code_info__save_ticket(Code, TicketSlot) -->
-	code_info__acquire_temp_slot(ticket, TicketSlot),
-	{ Code = node([
+code_info__save_ticket(Code, TicketSlot, !CI) :-
+	code_info__acquire_temp_slot(ticket, TicketSlot, !CI),
+	Code = node([
 		store_ticket(TicketSlot) - "Save trail state"
-	]) }.
+	]).
 
-code_info__reset_ticket(TicketSlot, Reason, Code) -->
-	{ Code = node([
+code_info__reset_ticket(TicketSlot, Reason, Code) :-
+	Code = node([
 		reset_ticket(lval(TicketSlot), Reason) - "Reset trail"
-	]) }.
+	]).
 
-code_info__release_ticket(TicketSlot) -->
-	code_info__release_temp_slot(TicketSlot).
+code_info__release_ticket(TicketSlot, !CI) :-
+	code_info__release_temp_slot(TicketSlot, !CI).
 
-code_info__reset_and_prune_ticket(TicketSlot, Reason, Code) -->
-	{ Code = node([
+code_info__reset_and_prune_ticket(TicketSlot, Reason, Code) :-
+	Code = node([
 		reset_ticket(lval(TicketSlot), Reason) - "Restore trail",
 		prune_ticket - "Prune ticket stack"
-	]) }.
+	]).
 
-code_info__reset_prune_and_release_ticket(TicketSlot, Reason, Code) -->
-	{ Code = node([
+code_info__reset_prune_and_release_ticket(TicketSlot, Reason, Code, !CI) :-
+	Code = node([
 		reset_ticket(lval(TicketSlot), Reason) - "Release trail",
 		prune_ticket - "Prune ticket stack"
-	]) },
-	code_info__release_temp_slot(TicketSlot).
+	]),
+	code_info__release_temp_slot(TicketSlot, !CI).
 
-code_info__reset_and_discard_ticket(TicketSlot, Reason, Code) -->
-	{ Code = node([
+code_info__reset_and_discard_ticket(TicketSlot, Reason, Code) :-
+	Code = node([
 		reset_ticket(lval(TicketSlot), Reason) - "Restore trail",
 		discard_ticket - "Pop ticket stack"
-	]) }.
+	]).
 
-code_info__reset_discard_and_release_ticket(TicketSlot, Reason, Code) -->
-	{ Code = node([
+code_info__reset_discard_and_release_ticket(TicketSlot, Reason, Code, !CI) :-
+	Code = node([
 		reset_ticket(lval(TicketSlot), Reason) - "Release trail",
 		discard_ticket - "Pop ticket stack"
-	]) },
-	code_info__release_temp_slot(TicketSlot).
+	]),
+	code_info__release_temp_slot(TicketSlot, !CI).
 
 %---------------------------------------------------------------------------%
 
-code_info__maybe_save_ticket(Maybe, Code, MaybeTicketSlot) -->
-	( { Maybe = yes } ->
-		code_info__save_ticket(Code, TicketSlot),
-		{ MaybeTicketSlot = yes(TicketSlot) }
+code_info__maybe_save_ticket(Maybe, Code, MaybeTicketSlot, !CI) :-
+	( Maybe = yes ->
+		code_info__save_ticket(Code, TicketSlot, !CI),
+		MaybeTicketSlot = yes(TicketSlot)
 	;
-		{ Code = empty },
-		{ MaybeTicketSlot = no }
+		Code = empty,
+		MaybeTicketSlot = no
 	).
 
-code_info__maybe_reset_ticket(MaybeTicketSlot, Reason, Code) -->
-	( { MaybeTicketSlot = yes(TicketSlot) } ->
+code_info__maybe_reset_ticket(MaybeTicketSlot, Reason, Code) :-
+	( MaybeTicketSlot = yes(TicketSlot) ->
 		code_info__reset_ticket(TicketSlot, Reason, Code)
 	;
-		{ Code = empty }
+		Code = empty
 	).
 
-code_info__maybe_release_ticket(MaybeTicketSlot) -->
-	( { MaybeTicketSlot = yes(TicketSlot) } ->
-		code_info__release_ticket(TicketSlot)
+code_info__maybe_release_ticket(MaybeTicketSlot, !CI) :-
+	( MaybeTicketSlot = yes(TicketSlot) ->
+		code_info__release_ticket(TicketSlot, !CI)
 	;
-		[]
+		true
 	).
 
-code_info__maybe_reset_and_prune_ticket(MaybeTicketSlot, Reason, Code) -->
-	( { MaybeTicketSlot = yes(TicketSlot) } ->
+code_info__maybe_reset_and_prune_ticket(MaybeTicketSlot, Reason, Code) :-
+	( MaybeTicketSlot = yes(TicketSlot) ->
 		code_info__reset_and_prune_ticket(TicketSlot, Reason, Code)
 	;
-		{ Code = empty }
+		Code = empty
 	).
 
 code_info__maybe_reset_prune_and_release_ticket(MaybeTicketSlot, Reason,
-		Code) -->
-	( { MaybeTicketSlot = yes(TicketSlot) } ->
+		Code, !CI) :-
+	( MaybeTicketSlot = yes(TicketSlot) ->
 		code_info__reset_prune_and_release_ticket(TicketSlot, Reason,
-			Code)
+			Code, !CI)
 	;
-		{ Code = empty }
+		Code = empty
 	).
 
-code_info__maybe_reset_and_discard_ticket(MaybeTicketSlot, Reason, Code) -->
-	( { MaybeTicketSlot = yes(TicketSlot) } ->
+code_info__maybe_reset_and_discard_ticket(MaybeTicketSlot, Reason, Code) :-
+	( MaybeTicketSlot = yes(TicketSlot) ->
 		code_info__reset_and_discard_ticket(TicketSlot, Reason, Code)
 	;
-		{ Code = empty }
+		Code = empty
 	).
 
 code_info__maybe_reset_discard_and_release_ticket(MaybeTicketSlot, Reason,
-		Code) -->
-	( { MaybeTicketSlot = yes(TicketSlot) } ->
+		Code, !CI) :-
+	( MaybeTicketSlot = yes(TicketSlot) ->
 		code_info__reset_discard_and_release_ticket(TicketSlot, Reason,
-			Code)
+			Code, !CI)
 	;
-		{ Code = empty }
+		Code = empty
 	).
 
 %---------------------------------------------------------------------------%
@@ -3051,8 +3002,8 @@ code_info__maybe_reset_discard_and_release_ticket(MaybeTicketSlot, Reason,
 
 :- interface.
 
-:- pred code_info__variable_locations(map(prog_var, set(lval))::out,
-	code_info::in, code_info::out) is det.
+:- pred code_info__variable_locations(code_info::in,
+	map(prog_var, set(lval))::out) is det.
 
 :- pred code_info__set_var_location(prog_var::in, lval::in,
 	code_info::in, code_info::out) is det.
@@ -3149,16 +3100,15 @@ code_info__maybe_reset_discard_and_release_ticket(MaybeTicketSlot, Reason,
 :- pred code_info__save_variables_on_stack(list(prog_var)::in, code_tree::out,
 	code_info::in, code_info::out) is det.
 
-:- pred code_info__max_reg_in_use(int::out, code_info::in, code_info::out)
-	is det.
+:- pred code_info__max_reg_in_use(code_info::in, int::out) is det.
 
 %---------------------------------------------------------------------------%
 
 :- implementation.
 
-code_info__variable_locations(Lvals) -->
-	code_info__get_var_locn_info(VarLocnInfo),
-	{ var_locn__get_var_locations(VarLocnInfo, Lvals) }.
+code_info__variable_locations(CI, Lvals) :-
+	code_info__get_var_locn_info(CI, VarLocnInfo),
+	var_locn__get_var_locations(VarLocnInfo, Lvals).
 
 :- func code_info__rval_map_to_lval_map(prog_var, set(rval)) = set(lval).
 
@@ -3169,65 +3119,65 @@ code_info__rval_map_to_lval_map(_Var, Rvals) =
 
 code_info__rval_is_lval(lval(Lval)) = Lval.
 
-code_info__set_var_location(Var, Lval) -->
-	code_info__get_var_locn_info(VarLocnInfo0),
-	{ var_locn__check_and_set_magic_var_location(Var, Lval,
-		VarLocnInfo0, VarLocnInfo) },
-	code_info__set_var_locn_info(VarLocnInfo).
+code_info__set_var_location(Var, Lval, !CI) :-
+	code_info__get_var_locn_info(!.CI, VarLocnInfo0),
+	var_locn__check_and_set_magic_var_location(Var, Lval,
+		VarLocnInfo0, VarLocnInfo),
+	code_info__set_var_locn_info(VarLocnInfo, !CI).
 
-code_info__assign_var_to_var(Var, AssignedVar) -->
-	code_info__get_var_locn_info(VarLocnInfo0),
-	{ var_locn__assign_var_to_var(Var, AssignedVar,
-		VarLocnInfo0, VarLocnInfo) },
-	code_info__set_var_locn_info(VarLocnInfo).
+code_info__assign_var_to_var(Var, AssignedVar, !CI) :-
+	code_info__get_var_locn_info(!.CI, VarLocnInfo0),
+	var_locn__assign_var_to_var(Var, AssignedVar,
+		VarLocnInfo0, VarLocnInfo),
+	code_info__set_var_locn_info(VarLocnInfo, !CI).
 
-code_info__assign_lval_to_var(Var, Lval, Code) -->
-	code_info__get_var_locn_info(VarLocnInfo0),
-	code_info__get_static_cell_info(StaticCellInfo),
-	{ var_locn__assign_lval_to_var(Var, Lval, StaticCellInfo, Code,
-		VarLocnInfo0, VarLocnInfo) },
-	code_info__set_var_locn_info(VarLocnInfo).
+code_info__assign_lval_to_var(Var, Lval, Code, !CI) :-
+	code_info__get_var_locn_info(!.CI, VarLocnInfo0),
+	code_info__get_static_cell_info(!.CI, StaticCellInfo),
+	var_locn__assign_lval_to_var(Var, Lval, StaticCellInfo, Code,
+		VarLocnInfo0, VarLocnInfo),
+	code_info__set_var_locn_info(VarLocnInfo, !CI).
 
-code_info__assign_const_to_var(Var, ConstRval) -->
-	code_info__get_var_locn_info(VarLocnInfo0),
-	{ var_locn__assign_const_to_var(Var, ConstRval,
-		VarLocnInfo0, VarLocnInfo) },
-	code_info__set_var_locn_info(VarLocnInfo).
+code_info__assign_const_to_var(Var, ConstRval, !CI) :-
+	code_info__get_var_locn_info(!.CI, VarLocnInfo0),
+	var_locn__assign_const_to_var(Var, ConstRval,
+		VarLocnInfo0, VarLocnInfo),
+	code_info__set_var_locn_info(VarLocnInfo, !CI).
 
-code_info__assign_expr_to_var(Var, Rval, Code) -->
-	code_info__get_var_locn_info(VarLocnInfo0),
-	{
+code_info__assign_expr_to_var(Var, Rval, Code, !CI) :-
+	code_info__get_var_locn_info(!.CI, VarLocnInfo0),
+	(
 		code_util__lvals_in_rval(Rval, Lvals),
 		Lvals = []
 	->
-			var_locn__assign_expr_to_var(Var, Rval, Code,
-			VarLocnInfo0, VarLocnInfo)
+		var_locn__assign_expr_to_var(Var, Rval, Code,
+		VarLocnInfo0, VarLocnInfo)
 	;
 		error("code_info__assign_expr_to_var: non-var lvals")
-	},
-	code_info__set_var_locn_info(VarLocnInfo).
+	),
+	code_info__set_var_locn_info(VarLocnInfo, !CI).
 
-code_info__assign_cell_to_var(Var, Ptag, Vector, Size, TypeMsg, Code) -->
-	code_info__get_var_locn_info(VarLocnInfo0),
-	code_info__get_static_cell_info(StaticCellInfo0),
-	{ var_locn__assign_cell_to_var(Var, Ptag, Vector, Size, TypeMsg, Code,
-		StaticCellInfo0, StaticCellInfo, VarLocnInfo0, VarLocnInfo) },
-	code_info__set_static_cell_info(StaticCellInfo),
-	code_info__set_var_locn_info(VarLocnInfo).
+code_info__assign_cell_to_var(Var, Ptag, Vector, Size, TypeMsg, Code, !CI) :-
+	code_info__get_var_locn_info(!.CI, VarLocnInfo0),
+	code_info__get_static_cell_info(!.CI, StaticCellInfo0),
+	var_locn__assign_cell_to_var(Var, Ptag, Vector, Size, TypeMsg, Code,
+		StaticCellInfo0, StaticCellInfo, VarLocnInfo0, VarLocnInfo),
+	code_info__set_static_cell_info(StaticCellInfo, !CI),
+	code_info__set_var_locn_info(VarLocnInfo, !CI).
 
-code_info__place_var(Var, Lval, Code) -->
-	code_info__get_var_locn_info(VarLocnInfo0),
-	{ var_locn__place_var(Var, Lval, Code, VarLocnInfo0, VarLocnInfo) },
-	code_info__set_var_locn_info(VarLocnInfo).
+code_info__place_var(Var, Lval, Code, !CI) :-
+	code_info__get_var_locn_info(!.CI, VarLocnInfo0),
+	var_locn__place_var(Var, Lval, Code, VarLocnInfo0, VarLocnInfo),
+	code_info__set_var_locn_info(VarLocnInfo, !CI).
 
 :- pred code_info__pick_and_place_vars(assoc_list(prog_var, set(lval))::in,
 	set(lval)::out, code_tree::out, code_info::in, code_info::out) is det.
 
-code_info__pick_and_place_vars(VarLocSets, LiveLocs, Code) -->
-	{ code_info__pick_var_places(VarLocSets, VarLocs) },
-	{ assoc_list__values(VarLocs, Locs) },
-	{ set__list_to_set(Locs, LiveLocs) },
-	code_info__place_vars(VarLocs, Code).
+code_info__pick_and_place_vars(VarLocSets, LiveLocs, Code, !CI) :-
+	code_info__pick_var_places(VarLocSets, VarLocs),
+	assoc_list__values(VarLocs, Locs),
+	set__list_to_set(Locs, LiveLocs),
+	code_info__place_vars(VarLocs, Code, !CI).
 
 :- pred code_info__pick_var_places(assoc_list(prog_var, set(lval))::in,
 	assoc_list(prog_var, lval)::out) is det.
@@ -3247,48 +3197,48 @@ code_info__pick_var_places([Var - LvalSet | VarLvalSets], VarLvals) :-
 :- pred code_info__place_vars(assoc_list(prog_var, lval)::in,
 	code_tree::out, code_info::in, code_info::out) is det.
 
-code_info__place_vars(VarLocs, Code) -->
-	code_info__get_var_locn_info(VarLocnInfo0),
-	{ var_locn__place_vars(VarLocs, Code, VarLocnInfo0, VarLocnInfo) },
-	code_info__set_var_locn_info(VarLocnInfo).
+code_info__place_vars(VarLocs, Code, !CI) :-
+	code_info__get_var_locn_info(!.CI, VarLocnInfo0),
+	var_locn__place_vars(VarLocs, Code, VarLocnInfo0, VarLocnInfo),
+	code_info__set_var_locn_info(VarLocnInfo, !CI).
 
-code_info__produce_variable(Var, Code, Rval) -->
-	code_info__get_var_locn_info(VarLocnInfo0),
-	{ var_locn__produce_var(Var, Rval, Code, VarLocnInfo0, VarLocnInfo) },
-	code_info__set_var_locn_info(VarLocnInfo).
+code_info__produce_variable(Var, Code, Rval, !CI) :-
+	code_info__get_var_locn_info(!.CI, VarLocnInfo0),
+	var_locn__produce_var(Var, Rval, Code, VarLocnInfo0, VarLocnInfo),
+	code_info__set_var_locn_info(VarLocnInfo, !CI).
 
-code_info__produce_variable_in_reg(Var, Code, Lval) -->
-	code_info__get_var_locn_info(VarLocnInfo0),
-	{ var_locn__produce_var_in_reg(Var, Lval, Code,
-		VarLocnInfo0, VarLocnInfo) },
-	code_info__set_var_locn_info(VarLocnInfo).
+code_info__produce_variable_in_reg(Var, Code, Lval, !CI) :-
+	code_info__get_var_locn_info(!.CI, VarLocnInfo0),
+	var_locn__produce_var_in_reg(Var, Lval, Code,
+		VarLocnInfo0, VarLocnInfo),
+	code_info__set_var_locn_info(VarLocnInfo, !CI).
 
-code_info__produce_variable_in_reg_or_stack(Var, Code, Lval) -->
-	code_info__get_var_locn_info(VarLocnInfo0),
-	{ var_locn__produce_var_in_reg_or_stack(Var, Lval, Code,
-		VarLocnInfo0, VarLocnInfo) },
-	code_info__set_var_locn_info(VarLocnInfo).
+code_info__produce_variable_in_reg_or_stack(Var, Code, Lval, !CI) :-
+	code_info__get_var_locn_info(!.CI, VarLocnInfo0),
+	var_locn__produce_var_in_reg_or_stack(Var, Lval, Code,
+		VarLocnInfo0, VarLocnInfo),
+	code_info__set_var_locn_info(VarLocnInfo, !CI).
 
-code_info__materialize_vars_in_rval(Rval0, Rval, Code, CI0, CI) :-
-	code_info__get_var_locn_info(VarLocnInfo0, CI0, CI1),
-		( Rval0 = lval(Lval0) ->
-			var_locn__materialize_vars_in_lval(Lval0, Lval, Code,
-				VarLocnInfo0, VarLocnInfo),
+code_info__materialize_vars_in_rval(Rval0, Rval, Code, !CI) :-
+	code_info__get_var_locn_info(!.CI, VarLocnInfo0),
+	( Rval0 = lval(Lval0) ->
+		var_locn__materialize_vars_in_lval(Lval0, Lval, Code,
+			VarLocnInfo0, VarLocnInfo),
 		Rval = lval(Lval)
-		; exprn_aux__vars_in_rval(Rval0, []) ->
-			Rval = Rval0,
-			Code = empty,
+	; exprn_aux__vars_in_rval(Rval0, []) ->
+		Rval = Rval0,
+		Code = empty,
 		VarLocnInfo = VarLocnInfo0
-		;
+	;
 		error("code_info__materialize_vars_in_rval")
 	),
-	code_info__set_var_locn_info(VarLocnInfo, CI1, CI).
+	code_info__set_var_locn_info(VarLocnInfo, !CI).
 
-code_info__acquire_reg_for_var(Var, Lval) -->
-	code_info__get_follow_var_map(FollowVarsMap),
-	code_info__get_next_non_reserved(NextNonReserved),
-	code_info__get_var_locn_info(VarLocnInfo0),
-	{
+code_info__acquire_reg_for_var(Var, Lval, !CI) :-
+	code_info__get_follow_var_map(!.CI, FollowVarsMap),
+	code_info__get_next_non_reserved(!.CI, NextNonReserved),
+	code_info__get_var_locn_info(!.CI, VarLocnInfo0),
+	(
 		map__search(FollowVarsMap, Var, PrefLval),
 		PrefLval = reg(PrefRegType, PrefRegNum),
 		PrefRegNum >= 1
@@ -3301,54 +3251,54 @@ code_info__acquire_reg_for_var(Var, Lval) -->
 		% succeeded; otherwise we should put the var in its stack slot.
 		var_locn__acquire_reg_start_at_given(NextNonReserved, Lval,
 			VarLocnInfo0, VarLocnInfo)
-	},
-	code_info__set_var_locn_info(VarLocnInfo).
+	),
+	code_info__set_var_locn_info(VarLocnInfo, !CI).
 
-code_info__acquire_reg(Type, Lval) -->
-	code_info__get_var_locn_info(VarLocnInfo0),
-	{ require(unify(Type, r),
-		"code_info__acquire_reg: unknown reg type") },
-	{ var_locn__acquire_reg(Lval, VarLocnInfo0, VarLocnInfo) },
-	code_info__set_var_locn_info(VarLocnInfo).
+code_info__acquire_reg(Type, Lval, !CI) :-
+	code_info__get_var_locn_info(!.CI, VarLocnInfo0),
+	require(unify(Type, r),
+		"code_info__acquire_reg: unknown reg type"),
+	var_locn__acquire_reg(Lval, VarLocnInfo0, VarLocnInfo),
+	code_info__set_var_locn_info(VarLocnInfo, !CI).
 
-code_info__release_reg(Lval) -->
-	code_info__get_var_locn_info(VarLocnInfo0),
-	{ var_locn__release_reg(Lval, VarLocnInfo0, VarLocnInfo) },
-	code_info__set_var_locn_info(VarLocnInfo).
+code_info__release_reg(Lval, !CI) :-
+	code_info__get_var_locn_info(!.CI, VarLocnInfo0),
+	var_locn__release_reg(Lval, VarLocnInfo0, VarLocnInfo),
+	code_info__set_var_locn_info(VarLocnInfo, !CI).
 
-code_info__reserve_r1(Code) -->
-	code_info__get_var_locn_info(VarLocnInfo0),
-	{ var_locn__clear_r1(Code, VarLocnInfo0, VarLocnInfo1) },
-	{ var_locn__acquire_reg_require_given(reg(r, 1),
-		VarLocnInfo1, VarLocnInfo) },
-	code_info__set_var_locn_info(VarLocnInfo).
+code_info__reserve_r1(Code, !CI) :-
+	code_info__get_var_locn_info(!.CI, VarLocnInfo0),
+	var_locn__clear_r1(Code, VarLocnInfo0, VarLocnInfo1),
+	var_locn__acquire_reg_require_given(reg(r, 1),
+		VarLocnInfo1, VarLocnInfo),
+	code_info__set_var_locn_info(VarLocnInfo, !CI).
 
-code_info__clear_r1(empty) -->
-	code_info__get_var_locn_info(VarLocnInfo0),
-	{ var_locn__release_reg(reg(r, 1), VarLocnInfo0, VarLocnInfo) },
-	code_info__set_var_locn_info(VarLocnInfo).
+code_info__clear_r1(empty, !CI) :-
+	code_info__get_var_locn_info(!.CI, VarLocnInfo0),
+	var_locn__release_reg(reg(r, 1), VarLocnInfo0, VarLocnInfo),
+	code_info__set_var_locn_info(VarLocnInfo, !CI).
 
 %---------------------------------------------------------------------------%
 
-code_info__setup_return(VarArgInfos, OutLocs, Code) -->
-	code_info__setup_call_args(VarArgInfos, callee, OutLocs, Code).
+code_info__setup_return(VarArgInfos, OutLocs, Code, !CI) :-
+	code_info__setup_call_args(VarArgInfos, callee, OutLocs, Code, !CI).
 
-code_info__setup_call(GoalInfo, ArgInfos, LiveLocs, Code) -->
-	{ partition_args(ArgInfos, InArgInfos, OutArgInfos, _UnusedArgInfos) },
-	{ assoc_list__keys(OutArgInfos, OutVars) },
-	{ set__list_to_set(OutVars, OutVarSet) },
-	{ goal_info_get_determinism(GoalInfo, Detism) },
-	code_info__get_opt_no_return_calls(OptNoReturnCalls),
+code_info__setup_call(GoalInfo, ArgInfos, LiveLocs, Code, !CI) :-
+	partition_args(ArgInfos, InArgInfos, OutArgInfos, _UnusedArgInfos),
+	assoc_list__keys(OutArgInfos, OutVars),
+	set__list_to_set(OutVars, OutVarSet),
+	goal_info_get_determinism(GoalInfo, Detism),
+	code_info__get_opt_no_return_calls(!.CI, OptNoReturnCalls),
 	(
-		{ Detism = erroneous },
-		{ OptNoReturnCalls = yes }
+		Detism = erroneous,
+		OptNoReturnCalls = yes
 	->
-		{ StackVarLocs = [] }
+		StackVarLocs = []
 	;
-		code_info__compute_forward_live_var_saves(OutVarSet,
+		code_info__compute_forward_live_var_saves(!.CI, OutVarSet,
 			ForwardVarLocs),
-		{ goal_info_get_code_model(GoalInfo, CodeModel) },
-		( { CodeModel = model_non } ->
+		goal_info_get_code_model(GoalInfo, CodeModel),
+		( CodeModel = model_non ->
 				% Save variables protected by the nearest
 				% resumption point on the stack. XXX This
 				% should be unnecessary; with the current
@@ -3359,47 +3309,41 @@ code_info__setup_call(GoalInfo, ArgInfos, LiveLocs, Code) -->
 				% of the resume vars on the stack is delayed
 				% until the first call after the setup of
 				% the resume point.
-			code_info__compute_resume_var_stack_locs(ResumeVarLocs),
-			{ list__append(ResumeVarLocs, ForwardVarLocs,
-				StackVarLocs) }
+			code_info__compute_resume_var_stack_locs(!.CI,
+				ResumeVarLocs),
+			list__append(ResumeVarLocs, ForwardVarLocs,
+				StackVarLocs)
 		;
-			{ StackVarLocs = ForwardVarLocs }
+			StackVarLocs = ForwardVarLocs
 		)
 	),
 
-	code_info__get_var_locn_info(VarLocnInfo0),
-		{ code_info__var_arg_info_to_lval(InArgInfos, InArgLocs) },
-		{ list__append(StackVarLocs, InArgLocs, AllLocs) },
-		{ var_locn__place_vars(AllLocs, Code,
-			VarLocnInfo0, VarLocnInfo) },
-	code_info__set_var_locn_info(VarLocnInfo),
-		{ assoc_list__values(AllLocs, LiveLocList) },
-	{ set__list_to_set(LiveLocList, LiveLocs) }.
-
-		% { assoc_list__keys(InArgLocs, InArgVars) },
-		% { set__init(DeadVars0) },
-		% code_info__which_variables_are_forward_live(InArgVars,
-		% 	DeadVars0, DeadVars),
-		% code_info__make_vars_forward_dead(DeadVars)
+	code_info__get_var_locn_info(!.CI, VarLocnInfo0),
+	code_info__var_arg_info_to_lval(InArgInfos, InArgLocs),
+	list__append(StackVarLocs, InArgLocs, AllLocs),
+	var_locn__place_vars(AllLocs, Code,
+		VarLocnInfo0, VarLocnInfo),
+	code_info__set_var_locn_info(VarLocnInfo, !CI),
+	assoc_list__values(AllLocs, LiveLocList),
+	set__list_to_set(LiveLocList, LiveLocs).
 
 :- pred code_info__setup_call_args(assoc_list(prog_var, arg_info)::in,
 	call_direction::in, set(lval)::out, code_tree::out,
 	code_info::in, code_info::out) is det.
 
-code_info__setup_call_args(AllArgsInfos, Direction, LiveLocs, Code) -->
-	{ list__filter(code_info__call_arg_in_selected_dir(Direction),
-		AllArgsInfos, ArgsInfos) },
-	{ code_info__var_arg_info_to_lval(ArgsInfos, ArgsLocns) },
-	code_info__get_var_locn_info(VarLocnInfo0),
-	{ var_locn__place_vars(ArgsLocns, Code, VarLocnInfo0, VarLocnInfo1) },
-	code_info__set_var_locn_info(VarLocnInfo1),
-	{ assoc_list__values(ArgsLocns, LiveLocList) },
-	{ set__list_to_set(LiveLocList, LiveLocs) },
-	{ assoc_list__keys(ArgsLocns, ArgVars) },
-	{ set__init(DeadVars0) },
-	code_info__which_variables_are_forward_live(ArgVars,
-		DeadVars0, DeadVars),
-	code_info__make_vars_forward_dead(DeadVars).
+code_info__setup_call_args(AllArgsInfos, Direction, LiveLocs, Code, !CI) :-
+	list__filter(code_info__call_arg_in_selected_dir(Direction),
+		AllArgsInfos, ArgsInfos),
+	code_info__var_arg_info_to_lval(ArgsInfos, ArgsLocns),
+	code_info__get_var_locn_info(!.CI, VarLocnInfo0),
+	var_locn__place_vars(ArgsLocns, Code, VarLocnInfo0, VarLocnInfo1),
+	code_info__set_var_locn_info(VarLocnInfo1, !CI),
+	assoc_list__values(ArgsLocns, LiveLocList),
+	set__list_to_set(LiveLocList, LiveLocs),
+	assoc_list__keys(ArgsLocns, ArgVars),
+	code_info__which_variables_are_forward_live(!.CI, ArgVars,
+		set__init, DeadVars),
+	code_info__make_vars_forward_dead(DeadVars, !CI).
 
 :- pred code_info__var_arg_info_to_lval(assoc_list(prog_var, arg_info)::in,
 	assoc_list(prog_var, lval)::out) is det.
@@ -3411,19 +3355,17 @@ code_info__var_arg_info_to_lval([Var - ArgInfo | RestInfos],
 	code_util__arg_loc_to_register(Loc, Lval),
 	code_info__var_arg_info_to_lval(RestInfos, RestLvals).
 
-:- pred code_info__which_variables_are_forward_live(list(prog_var)::in,
-	set(prog_var)::in, set(prog_var)::out,
-	code_info::in, code_info::out) is det.
+:- pred code_info__which_variables_are_forward_live(code_info::in,
+	list(prog_var)::in, set(prog_var)::in, set(prog_var)::out) is det.
 
-code_info__which_variables_are_forward_live([], DeadVars, DeadVars) --> [].
-code_info__which_variables_are_forward_live([Var | Vars], DeadVars0, DeadVars)
-		-->
-	( code_info__variable_is_forward_live(Var) ->
-		{ DeadVars1 = DeadVars0 }
+code_info__which_variables_are_forward_live(_, [], !DeadVars).
+code_info__which_variables_are_forward_live(CI, [Var | Vars], !DeadVars) :-
+	( code_info__variable_is_forward_live(CI, Var) ->
+		true
 	;
-		{ set__insert(DeadVars0, Var, DeadVars1) }
+		set__insert(!.DeadVars, Var, !:DeadVars)
 	),
-	code_info__which_variables_are_forward_live(Vars, DeadVars1, DeadVars).
+	code_info__which_variables_are_forward_live(CI, Vars, !DeadVars).
 
 :- pred code_info__call_arg_in_selected_dir(call_direction::in,
 	pair(prog_var, arg_info)::in) is semidet.
@@ -3437,62 +3379,62 @@ code_info__call_arg_in_selected_dir(Direction, _ - arg_info(_, Mode)) :-
 		Direction = callee
 	).
 
-code_info__lock_regs(N, Exceptions) -->
-	code_info__get_var_locn_info(VarLocnInfo0),
-	{ var_locn__lock_regs(N, Exceptions, VarLocnInfo0, VarLocnInfo) },
-	code_info__set_var_locn_info(VarLocnInfo).
+code_info__lock_regs(N, Exceptions, !CI) :-
+	code_info__get_var_locn_info(!.CI, VarLocnInfo0),
+	var_locn__lock_regs(N, Exceptions, VarLocnInfo0, VarLocnInfo),
+	code_info__set_var_locn_info(VarLocnInfo, !CI).
 
-code_info__unlock_regs -->
-	code_info__get_var_locn_info(VarLocnInfo0),
-	{ var_locn__unlock_regs(VarLocnInfo0, VarLocnInfo) },
-	code_info__set_var_locn_info(VarLocnInfo).
+code_info__unlock_regs(!CI) :-
+	code_info__get_var_locn_info(!.CI, VarLocnInfo0),
+	var_locn__unlock_regs(VarLocnInfo0, VarLocnInfo),
+	code_info__set_var_locn_info(VarLocnInfo, !CI).
 
-code_info__clear_all_registers(OkToDeleteAny) -->
-	code_info__get_var_locn_info(VarLocnInfo0),
-	{ var_locn__clobber_all_regs(OkToDeleteAny,
-		VarLocnInfo0, VarLocnInfo) },
-	code_info__set_var_locn_info(VarLocnInfo).
+code_info__clear_all_registers(OkToDeleteAny, !CI) :-
+	code_info__get_var_locn_info(!.CI, VarLocnInfo0),
+	var_locn__clobber_all_regs(OkToDeleteAny,
+		VarLocnInfo0, VarLocnInfo),
+	code_info__set_var_locn_info(VarLocnInfo, !CI).
 
-code_info__clobber_regs(Regs) -->
-	code_info__get_var_locn_info(VarLocnInfo0),
-	{ var_locn__clobber_regs(Regs, VarLocnInfo0, VarLocnInfo) },
-	code_info__set_var_locn_info(VarLocnInfo).
+code_info__clobber_regs(Regs, !CI) :-
+	code_info__get_var_locn_info(!.CI, VarLocnInfo0),
+	var_locn__clobber_regs(Regs, VarLocnInfo0, VarLocnInfo),
+	code_info__set_var_locn_info(VarLocnInfo, !CI).
 
-code_info__save_variables(OutArgs, SavedLocs, Code) -->
-	code_info__compute_forward_live_var_saves(OutArgs, VarLocs),
-	{ assoc_list__values(VarLocs, SavedLocList) },
-	{ set__list_to_set(SavedLocList, SavedLocs) },
-	code_info__place_vars(VarLocs, Code).
+code_info__save_variables(OutArgs, SavedLocs, Code, !CI) :-
+	code_info__compute_forward_live_var_saves(!.CI, OutArgs, VarLocs),
+	assoc_list__values(VarLocs, SavedLocList),
+	set__list_to_set(SavedLocList, SavedLocs),
+	code_info__place_vars(VarLocs, Code, !CI).
 
-code_info__save_variables_on_stack(Vars, Code) -->
-	list__map_foldl(code_info__associate_stack_slot, Vars, VarLocs),
-	code_info__place_vars(VarLocs, Code).
+code_info__save_variables_on_stack(Vars, Code, !CI) :-
+	list__map(code_info__associate_stack_slot(!.CI), Vars, VarLocs),
+	code_info__place_vars(VarLocs, Code, !CI).
 
-:- pred code_info__compute_forward_live_var_saves(set(prog_var)::in,
-	assoc_list(prog_var, lval)::out, code_info::in, code_info::out) is det.
+:- pred code_info__compute_forward_live_var_saves(code_info::in,
+	set(prog_var)::in, assoc_list(prog_var, lval)::out) is det.
 
-code_info__compute_forward_live_var_saves(OutArgs, VarLocs) -->
-	code_info__get_known_variables(Variables0),
-	{ set__list_to_set(Variables0, Vars0) },
-	code_info__body_typeinfo_liveness(TypeInfoLiveness),
-	code_info__get_proc_info(ProcInfo),
-	{ proc_info_vartypes(ProcInfo, VarTypes) },
-	{ proc_info_typeinfo_varmap(ProcInfo, TVarMap) },
-	{ proc_info_maybe_complete_with_typeinfo_vars(Vars0, TypeInfoLiveness,
-		VarTypes, TVarMap, Vars1) },
-	{ set__difference(Vars1, OutArgs, Vars) },
-	{ set__to_sorted_list(Vars, Variables) },
-	list__map_foldl(code_info__associate_stack_slot, Variables, VarLocs).
+code_info__compute_forward_live_var_saves(CI, OutArgs, VarLocs) :-
+	code_info__get_known_variables(CI, Variables0),
+	set__list_to_set(Variables0, Vars0),
+	TypeInfoLiveness = code_info__body_typeinfo_liveness(CI),
+	code_info__get_proc_info(CI, ProcInfo),
+	proc_info_vartypes(ProcInfo, VarTypes),
+	proc_info_typeinfo_varmap(ProcInfo, TVarMap),
+	proc_info_maybe_complete_with_typeinfo_vars(Vars0, TypeInfoLiveness,
+		VarTypes, TVarMap, Vars1),
+	set__difference(Vars1, OutArgs, Vars),
+	set__to_sorted_list(Vars, Variables),
+	list__map(code_info__associate_stack_slot(CI), Variables, VarLocs).
 
-:- pred code_info__associate_stack_slot(prog_var::in,
-	pair(prog_var, lval)::out, code_info::in, code_info::out) is det.
+:- pred code_info__associate_stack_slot(code_info::in, prog_var::in,
+	pair(prog_var, lval)::out) is det.
 
-code_info__associate_stack_slot(Var, Var - Slot) -->
-	code_info__get_variable_slot(Var, Slot).
+code_info__associate_stack_slot(CI, Var, Var - Slot) :-
+	code_info__get_variable_slot(CI, Var, Slot).
 
-code_info__max_reg_in_use(Max) -->
-	code_info__get_var_locn_info(VarLocnInfo),
-	{ var_locn__max_reg_in_use(VarLocnInfo, Max) }.
+code_info__max_reg_in_use(CI, Max) :-
+	code_info__get_var_locn_info(CI, VarLocnInfo),
+	var_locn__max_reg_in_use(VarLocnInfo, Max).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -3506,94 +3448,93 @@ code_info__max_reg_in_use(Max) -->
 
 :- interface.
 
-:- pred code_info__generate_call_vn_livevals(list(arg_loc)::in,
-	set(prog_var)::in, set(lval)::out, code_info::in, code_info::out)
-	is det.
+:- pred code_info__generate_call_vn_livevals(code_info::in, list(arg_loc)::in,
+	set(prog_var)::in, set(lval)::out) is det.
 
-:- pred code_info__generate_return_live_lvalues(
+:- pred code_info__generate_return_live_lvalues(code_info::in,
 	assoc_list(prog_var, arg_loc)::in, instmap::in, bool::in,
-	list(liveinfo)::out, code_info::in, code_info::out) is det.
+	list(liveinfo)::out) is det.
 
 %---------------------------------------------------------------------------%
 
 :- implementation.
 
-code_info__generate_call_vn_livevals(InputArgLocs, OutputArgs, LiveVals) -->
-	code_info__generate_call_stack_vn_livevals(OutputArgs, StackLiveVals),
-	{ code_info__generate_input_var_vn(InputArgLocs, StackLiveVals,
-		LiveVals) }.
+code_info__generate_call_vn_livevals(CI, InputArgLocs, OutputArgs, LiveVals) :-
+	code_info__generate_call_stack_vn_livevals(CI, OutputArgs,
+		StackLiveVals),
+	code_info__generate_input_var_vn(InputArgLocs, StackLiveVals,
+		LiveVals).
 
-:- pred code_info__generate_call_stack_vn_livevals(set(prog_var)::in,
-	set(lval)::out, code_info::in, code_info::out) is det.
+:- pred code_info__generate_call_stack_vn_livevals(code_info::in,
+	set(prog_var)::in, set(lval)::out) is det.
 
-code_info__generate_call_stack_vn_livevals(OutputArgs, LiveVals) -->
-	code_info__get_known_variables(KnownVarList),
-	{ set__list_to_set(KnownVarList, KnownVars) },
-	{ set__difference(KnownVars, OutputArgs, LiveVars) },
-	{ set__to_sorted_list(LiveVars, LiveVarList) },
-	{ set__init(LiveVals0) },
-	code_info__generate_stack_var_vn(LiveVarList, LiveVals0, LiveVals1),
+code_info__generate_call_stack_vn_livevals(CI, OutputArgs, LiveVals) :-
+	code_info__get_known_variables(CI, KnownVarList),
+	set__list_to_set(KnownVarList, KnownVars),
+	set__difference(KnownVars, OutputArgs, LiveVars),
+	set__to_sorted_list(LiveVars, LiveVarList),
+	code_info__generate_stack_var_vn(CI, LiveVarList,
+		set__init, LiveVals1),
+	code_info__get_active_temps_data(CI, Temps),
+	code_info__generate_call_temp_vn(Temps, LiveVals1, LiveVals).
 
-	code_info__get_active_temps_data(Temps),
-	{ code_info__generate_call_temp_vn(Temps, LiveVals1, LiveVals) }.
+:- pred code_info__generate_stack_var_vn(code_info::in, list(prog_var)::in,
+	set(lval)::in, set(lval)::out) is det.
 
-:- pred code_info__generate_stack_var_vn(list(prog_var)::in, set(lval)::in,
-	set(lval)::out, code_info::in, code_info::out) is det.
-
-code_info__generate_stack_var_vn([], Vals, Vals) --> [].
-code_info__generate_stack_var_vn([V | Vs], Vals0, Vals) -->
-	code_info__get_variable_slot(V, Lval),
-	{ set__insert(Vals0, Lval, Vals1) },
-	code_info__generate_stack_var_vn(Vs, Vals1, Vals).
+code_info__generate_stack_var_vn(_, [], !Vals).
+code_info__generate_stack_var_vn(CI, [V | Vs], !Vals) :-
+	code_info__get_variable_slot(CI, V, Lval),
+	set__insert(!.Vals, Lval, !:Vals),
+	code_info__generate_stack_var_vn(CI, Vs, !Vals).
 
 :- pred code_info__generate_call_temp_vn(assoc_list(lval, slot_contents)::in,
 	set(lval)::in, set(lval)::out) is det.
 
-code_info__generate_call_temp_vn([], Vals, Vals).
-code_info__generate_call_temp_vn([Lval - _ | Temps], Vals0, Vals) :-
-	set__insert(Vals0, Lval, Vals1),
-	code_info__generate_call_temp_vn(Temps, Vals1, Vals).
+code_info__generate_call_temp_vn([], !Vals).
+code_info__generate_call_temp_vn([Lval - _ | Temps], !Vals) :-
+	set__insert(!.Vals, Lval, !:Vals),
+	code_info__generate_call_temp_vn(Temps, !Vals).
 
 :- pred code_info__generate_input_var_vn(list(arg_loc)::in,
 	set(lval)::in, set(lval)::out) is det.
 
-code_info__generate_input_var_vn([], Vals, Vals).
-code_info__generate_input_var_vn([InputArgLoc | InputArgLocs], Vals0, Vals) :-
+code_info__generate_input_var_vn([], !Vals).
+code_info__generate_input_var_vn([InputArgLoc | InputArgLocs], !Vals) :-
 	code_util__arg_loc_to_register(InputArgLoc, Lval),
-	set__insert(Vals0, Lval, Vals1),
-	code_info__generate_input_var_vn(InputArgLocs, Vals1, Vals).
+	set__insert(!.Vals, Lval, !:Vals),
+	code_info__generate_input_var_vn(InputArgLocs, !Vals).
 
 %---------------------------------------------------------------------------%
 
-code_info__generate_return_live_lvalues(OutputArgLocs, ReturnInstMap,
-		OkToDeleteAny, LiveLvalues) -->
-	code_info__variable_locations(VarLocs),
-	code_info__get_known_variables(Vars),
-	code_info__get_active_temps_data(Temps),
-	code_info__get_proc_info(ProcInfo),
-	code_info__get_globals(Globals),
-	code_info__get_module_info(ModuleInfo),
-	{ continuation_info__generate_return_live_lvalues(OutputArgLocs,
+code_info__generate_return_live_lvalues(CI, OutputArgLocs, ReturnInstMap,
+		OkToDeleteAny, LiveLvalues) :-
+	code_info__variable_locations(CI, VarLocs),
+	code_info__get_known_variables(CI, Vars),
+	code_info__get_active_temps_data(CI, Temps),
+	code_info__get_proc_info(CI, ProcInfo),
+	code_info__get_globals(CI, Globals),
+	code_info__get_module_info(CI, ModuleInfo),
+	continuation_info__generate_return_live_lvalues(OutputArgLocs,
 		ReturnInstMap, Vars, VarLocs, Temps, ProcInfo, ModuleInfo,
-		Globals, OkToDeleteAny, LiveLvalues) }.
+		Globals, OkToDeleteAny, LiveLvalues).
 
 :- pred code_info__generate_resume_layout(label::in, resume_map::in,
 	code_info::in, code_info::out) is det.
 
-code_info__generate_resume_layout(Label, ResumeMap) -->
-	code_info__get_globals(Globals),
-	{ globals__lookup_bool_option(Globals, agc_stack_layout,
-		AgcStackLayout) },
-	( { AgcStackLayout = yes } ->
-		code_info__get_active_temps_data(Temps),
-		code_info__get_instmap(InstMap),
-		code_info__get_proc_info(ProcInfo),
-		code_info__get_module_info(ModuleInfo),
-		{ continuation_info__generate_resume_layout(ResumeMap,
-			Temps, InstMap, ProcInfo, ModuleInfo, Layout) },
-		code_info__add_resume_layout_for_label(Label, Layout)
+code_info__generate_resume_layout(Label, ResumeMap, !CI) :-
+	code_info__get_globals(!.CI, Globals),
+	globals__lookup_bool_option(Globals, agc_stack_layout,
+		AgcStackLayout),
+	( AgcStackLayout = yes ->
+		code_info__get_active_temps_data(!.CI, Temps),
+		code_info__get_instmap(!.CI, InstMap),
+		code_info__get_proc_info(!.CI, ProcInfo),
+		code_info__get_module_info(!.CI, ModuleInfo),
+		continuation_info__generate_resume_layout(ResumeMap,
+			Temps, InstMap, ProcInfo, ModuleInfo, Layout),
+		code_info__add_resume_layout_for_label(Label, Layout, !CI)
 	;
-		[]
+		true
 	).
 
 %---------------------------------------------------------------------------%
@@ -3633,93 +3574,89 @@ code_info__generate_resume_layout(Label, ResumeMap) -->
 	% Returns the total stackslot count, but not including space for
 	% succip. This total can change in the future if this call is
 	% followed by further allocations of temp slots.
-:- pred code_info__get_total_stackslot_count(int, code_info, code_info).
-:- mode code_info__get_total_stackslot_count(out, in, out) is det.
+:- pred code_info__get_total_stackslot_count(code_info::in, int::out) is det.
 
 	% Acquire a stack slot for storing a temporary. The slot_contents
 	% description is for accurate gc.
-:- pred code_info__acquire_temp_slot(slot_contents, lval,
-	code_info, code_info).
-:- mode code_info__acquire_temp_slot(in, out, in, out) is det.
+:- pred code_info__acquire_temp_slot(slot_contents::in, lval::out,
+	code_info::in, code_info::out) is det.
 
 	% Release a stack slot acquired earlier for a temporary value.
-:- pred code_info__release_temp_slot(lval, code_info, code_info).
-:- mode code_info__release_temp_slot(in, in, out) is det.
+:- pred code_info__release_temp_slot(lval::in,
+	code_info::in, code_info::out) is det.
 
 	% Return the lval of the stack slot in which the given variable
 	% is stored. Aborts if the variable does not have a stack slot
 	% an assigned to it.
-:- pred code_info__get_variable_slot(prog_var, lval, code_info, code_info).
-:- mode code_info__get_variable_slot(in, out, in, out) is det.
+:- pred code_info__get_variable_slot(code_info::in, prog_var::in, lval::out)
+	is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
 
-code_info__acquire_temp_slot(Item, StackVar) -->
-	code_info__get_temps_in_use(TempsInUse0),
-	{ IsTempUsable = lambda([TempContent::in, Lval::out] is semidet, (
+code_info__acquire_temp_slot(Item, StackVar, !CI) :-
+	code_info__get_temps_in_use(!.CI, TempsInUse0),
+	IsTempUsable = lambda([TempContent::in, Lval::out] is semidet, (
 		TempContent = Lval - ContentType,
 		ContentType = Item,
 		\+ set__member(Lval, TempsInUse0)
-	)) },
-	code_info__get_temp_content_map(TempContentMap0),
-	{ map__to_assoc_list(TempContentMap0, TempContentList) },
-	{ list__filter_map(IsTempUsable, TempContentList, UsableLvals) },
+	)),
+	code_info__get_temp_content_map(!.CI, TempContentMap0),
+	map__to_assoc_list(TempContentMap0, TempContentList),
+	list__filter_map(IsTempUsable, TempContentList, UsableLvals),
 	(
-		{ UsableLvals = [UsableLval | _] },
-		{ StackVar = UsableLval }
+		UsableLvals = [UsableLval | _],
+		StackVar = UsableLval
 	;
-		{ UsableLvals = [] },
-		code_info__get_var_slot_count(VarSlots),
-		code_info__get_max_temp_slot_count(TempSlots0),
-		{ TempSlots = TempSlots0 + 1 },
-		{ Slot = VarSlots + TempSlots },
-		code_info__stack_variable(Slot, StackVar),
-		code_info__set_max_temp_slot_count(TempSlots),
-		{ map__det_insert(TempContentMap0, StackVar, Item,
-			TempContentMap) },
-		code_info__set_temp_content_map(TempContentMap)
+		UsableLvals = [],
+		code_info__get_var_slot_count(!.CI, VarSlots),
+		code_info__get_max_temp_slot_count(!.CI, TempSlots0),
+		TempSlots = TempSlots0 + 1,
+		Slot = VarSlots + TempSlots,
+		code_info__stack_variable(!.CI, Slot, StackVar),
+		code_info__set_max_temp_slot_count(TempSlots, !CI),
+		map__det_insert(TempContentMap0, StackVar, Item,
+			TempContentMap),
+		code_info__set_temp_content_map(TempContentMap, !CI)
 	),
-	{ set__insert(TempsInUse0, StackVar, TempsInUse) },
-	code_info__set_temps_in_use(TempsInUse).
+	set__insert(TempsInUse0, StackVar, TempsInUse),
+	code_info__set_temps_in_use(TempsInUse, !CI).
 
-code_info__release_temp_slot(StackVar) -->
-	code_info__get_temps_in_use(TempsInUse0),
-	{ set__delete(TempsInUse0, StackVar, TempsInUse) },
-	code_info__set_temps_in_use(TempsInUse).
+code_info__release_temp_slot(StackVar, !CI) :-
+	code_info__get_temps_in_use(!.CI, TempsInUse0),
+	set__delete(TempsInUse0, StackVar, TempsInUse),
+	code_info__set_temps_in_use(TempsInUse, !CI).
 
 %---------------------------------------------------------------------------%
 
-code_info__get_variable_slot(Var, Slot) -->
-	code_info__get_stack_slots(StackSlots),
-	( { map__search(StackSlots, Var, SlotPrime) } ->
-		{ Slot = SlotPrime }
+code_info__get_variable_slot(CI, Var, Slot) :-
+	code_info__get_stack_slots(CI, StackSlots),
+	( map__search(StackSlots, Var, SlotPrime) ->
+		Slot = SlotPrime
 	;
-		code_info__variable_to_string(Var, Name),
-		{ term__var_to_int(Var, Num) },
-		{ string__int_to_string(Num, NumStr) },
-		{ string__append_list([
+		Name = code_info__variable_to_string(CI, Var),
+		term__var_to_int(Var, Num),
+		string__int_to_string(Num, NumStr),
+		string__append_list([
 			"code_info__get_variable_slot: variable `",
-			Name, "' (", NumStr, ") not found"], Str) },
-		{ error(Str) }
+			Name, "' (", NumStr, ") not found"], Str),
+		error(Str)
 	).
 
-code_info__get_total_stackslot_count(NumSlots) -->
-	code_info__get_var_slot_count(SlotsForVars),
-	code_info__get_max_temp_slot_count(SlotsForTemps),
-	{ NumSlots = SlotsForVars + SlotsForTemps }.
+code_info__get_total_stackslot_count(CI, NumSlots) :-
+	code_info__get_var_slot_count(CI, SlotsForVars),
+	code_info__get_max_temp_slot_count(CI, SlotsForTemps),
+	NumSlots = SlotsForVars + SlotsForTemps.
 
-:- pred code_info__max_var_slot(stack_slots, int).
-:- mode code_info__max_var_slot(in, out) is det.
+:- pred code_info__max_var_slot(stack_slots::in, int::out) is det.
 
 code_info__max_var_slot(StackSlots, SlotCount) :-
 	map__values(StackSlots, StackSlotList),
 	code_info__max_var_slot_2(StackSlotList, 0, SlotCount).
 
-:- pred code_info__max_var_slot_2(list(lval), int, int).
-:- mode code_info__max_var_slot_2(in, in, out) is det.
+:- pred code_info__max_var_slot_2(list(lval)::in, int::in, int::out) is det.
 
 code_info__max_var_slot_2([], Max, Max).
 code_info__max_var_slot_2([L | Ls], Max0, Max) :-
@@ -3732,26 +3669,23 @@ code_info__max_var_slot_2([L | Ls], Max0, Max) :-
 	),
 	code_info__max_var_slot_2(Ls, Max1, Max).
 
-:- pred code_info__stack_variable(int, lval, code_info, code_info).
-:- mode code_info__stack_variable(in, out, in, out) is det.
+:- pred code_info__stack_variable(code_info::in, int::in, lval::out) is det.
 
-code_info__stack_variable(Num, Lval) -->
-	code_info__get_proc_model(CodeModel),
-	( { CodeModel = model_non } ->
-		{ Lval = framevar(Num) }
+code_info__stack_variable(CI, Num, Lval) :-
+	( code_info__get_proc_model(CI) = model_non ->
+		Lval = framevar(Num)
 	;
-		{ Lval = stackvar(Num) }
+		Lval = stackvar(Num)
 	).
 
-:- pred code_info__stack_variable_reference(int, rval, code_info, code_info).
-:- mode code_info__stack_variable_reference(in, out, in, out) is det.
+:- pred code_info__stack_variable_reference(code_info::in, int::in, rval::out)
+	is det.
 
-code_info__stack_variable_reference(Num, mem_addr(Ref)) -->
-	code_info__get_proc_model(CodeModel),
-	( { CodeModel = model_non } ->
-		{ Ref = framevar_ref(Num) }
+code_info__stack_variable_reference(CI, Num, mem_addr(Ref)) :-
+	( code_info__get_proc_model(CI) = model_non ->
+		Ref = framevar_ref(Num)
 	;
-		{ Ref = stackvar_ref(Num) }
+		Ref = stackvar_ref(Num)
 	).
 
 %---------------------------------------------------------------------------%

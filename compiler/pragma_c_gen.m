@@ -327,28 +327,28 @@
 
 pragma_c_gen__generate_pragma_c_code(CodeModel, Attributes,
 		PredId, ProcId, ArgVars, ArgDatas, OrigArgTypes, GoalInfo,
-		PragmaImpl, Code) -->
+		PragmaImpl, Code, !CI) :-
 	(
-		{ PragmaImpl = ordinary(C_Code, Context) },
+		PragmaImpl = ordinary(C_Code, Context),
 		pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes,
 			PredId, ProcId, ArgVars, ArgDatas, OrigArgTypes,
-			C_Code, Context, GoalInfo, Code)
+			C_Code, Context, GoalInfo, Code, !CI)
 	;
-		{ PragmaImpl = nondet(
+		PragmaImpl = nondet(
 			Fields, FieldsContext, First, FirstContext,
-			Later, LaterContext, Treat, Shared, SharedContext) },
+			Later, LaterContext, Treat, Shared, SharedContext),
 		pragma_c_gen__nondet_pragma_c_code(CodeModel, Attributes,
 			PredId, ProcId, ArgVars, ArgDatas, OrigArgTypes,
 			Fields, FieldsContext, First, FirstContext,
 			Later, LaterContext, Treat, Shared, SharedContext,
-			Code)
+			Code, !CI)
 	;
-		{ PragmaImpl = import(Name, HandleReturn, Vars, Context) },
-		{ C_Code = string__append_list([HandleReturn, " ",
-				Name, "(", Vars, ");"]) },
+		PragmaImpl = import(Name, HandleReturn, Vars, Context),
+		C_Code = string__append_list([HandleReturn, " ",
+				Name, "(", Vars, ");"]),
 		pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes,
 			PredId, ProcId, ArgVars, ArgDatas, OrigArgTypes,
-			C_Code, Context, GoalInfo, Code)
+			C_Code, Context, GoalInfo, Code, !CI)
 	).
 
 %---------------------------------------------------------------------------%
@@ -362,52 +362,52 @@ pragma_c_gen__generate_pragma_c_code(CodeModel, Attributes,
 
 pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes,
 		PredId, ProcId, ArgVars, ArgDatas, OrigArgTypes,
-		C_Code, Context, GoalInfo, Code) -->
+		C_Code, Context, GoalInfo, Code, !CI) :-
 	
 	%
 	% Extract the attributes
 	%
-	{ may_call_mercury(Attributes, MayCallMercury) },
-	{ thread_safe(Attributes, ThreadSafe) },
+	may_call_mercury(Attributes, MayCallMercury),
+	thread_safe(Attributes, ThreadSafe),
 
 	%
 	% First we need to get a list of input and output arguments
 	%
-	code_info__get_pred_proc_arginfo(PredId, ProcId, ArgInfos),
-	{ make_c_arg_list(ArgVars, ArgDatas, OrigArgTypes, ArgInfos, Args) },
-	{ pragma_select_in_args(Args, InArgs) },
-	{ pragma_select_out_args(Args, OutArgs) },
+	ArgInfos = code_info__get_pred_proc_arginfo(!.CI, PredId, ProcId),
+	make_c_arg_list(ArgVars, ArgDatas, OrigArgTypes, ArgInfos, Args),
+	pragma_select_in_args(Args, InArgs),
+	pragma_select_out_args(Args, OutArgs),
 
-	{ goal_info_get_post_deaths(GoalInfo, PostDeaths) },
-	{ set__init(DeadVars0) },
-	{ find_dead_input_vars(InArgs, PostDeaths, DeadVars0, DeadVars) },
+	goal_info_get_post_deaths(GoalInfo, PostDeaths),
+	set__init(DeadVars0),
+	find_dead_input_vars(InArgs, PostDeaths, DeadVars0, DeadVars),
 
 	%
 	% Generate code to <save live variables on stack>
 	%
-	( { MayCallMercury = will_not_call_mercury } ->
-		{ SaveVarsCode = empty }
+	( MayCallMercury = will_not_call_mercury ->
+		SaveVarsCode = empty
 	;
 		% the C code might call back Mercury code
 		% which clobbers the succip
-		code_info__succip_is_used,
+		code_info__succip_is_used(!CI),
 
 		% the C code might call back Mercury code which clobbers the
 		% other registers, so we need to save any live variables
 		% (other than the output args) onto the stack
-		{ get_c_arg_list_vars(OutArgs, OutArgs1) },
-		{ set__list_to_set(OutArgs1, OutArgsSet) },
-		code_info__save_variables(OutArgsSet, _, SaveVarsCode)
+		get_c_arg_list_vars(OutArgs, OutArgs1),
+		set__list_to_set(OutArgs1, OutArgsSet),
+		code_info__save_variables(OutArgsSet, _, SaveVarsCode, !CI)
 	),
 
-	{ goal_info_get_determinism(GoalInfo, Detism) },
-	( { CodeModel = model_semi } ->
+	goal_info_get_determinism(GoalInfo, Detism),
+	( CodeModel = model_semi ->
 		% We want to clear r1 even for Detism = failure,
 		% since code with such detism may still assign to
 		% SUCCESS_INDICATOR (i.e. r1).
-		code_info__reserve_r1(ReserveR1_Code)
+		code_info__reserve_r1(ReserveR1_Code, !CI)
 	;
-		{ ReserveR1_Code = empty }
+		ReserveR1_Code = empty
 	),
 
 	%
@@ -415,7 +415,7 @@ pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes,
 	% (NB we need to be careful that the rvals generated here
 	% remain valid below.)
 	%
-	get_pragma_input_vars(InArgs, InputDescs, InputVarsCode),
+	get_pragma_input_vars(InArgs, InputDescs, InputVarsCode, !CI),
 
 	%
 	% For semidet pragma c_code, we have to move anything that is
@@ -434,13 +434,13 @@ pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes,
 	% SUCCESS_INDICATOR. Instead we generate that argument directly
 	% into some other location.
 	%
-	( { CodeModel = model_semi } ->
+	( CodeModel = model_semi ->
 		% We want to clear r1 even for Detism = failure,
 		% since code with such detism may still assign to
 		% SUCCESS_INDICATOR (i.e. r1).
-		code_info__clear_r1(ClearR1_Code)
+		code_info__clear_r1(ClearR1_Code, !CI)
 	;
-		{ ClearR1_Code = empty }
+		ClearR1_Code = empty
 	),
 
 	%
@@ -448,44 +448,46 @@ pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes,
 	% finished generating the code producing the input variables.
 	% (The forward dead variables will be dead after the pragma_c_code,
 	% but are live during its input phase.)
-	code_info__make_vars_forward_dead(DeadVars),
+	code_info__make_vars_forward_dead(DeadVars, !CI),
 
 	%
 	% Generate <declaration of one local variable for each arg>
 	%
-	code_info__get_module_info(ModuleInfo),
-	{ make_pragma_decls(Args, ModuleInfo, Decls) },
+	code_info__get_module_info(!.CI, ModuleInfo),
+	make_pragma_decls(Args, ModuleInfo, Decls),
 
 	%
 	% Generate #define MR_PROC_LABEL <procedure label> /* see note (5) */
 	% and #undef MR_PROC_LABEL
 	%
-	code_info__get_pred_id(CallerPredId),
-	code_info__get_proc_id(CallerProcId),
-	{ make_proc_label_hash_define(ModuleInfo, CallerPredId, CallerProcId,
-		ProcLabelHashDefine, ProcLabelHashUndef) },
+	code_info__get_pred_id(!.CI, CallerPredId),
+	code_info__get_proc_id(!.CI, CallerProcId),
+	make_proc_label_hash_define(ModuleInfo, CallerPredId, CallerProcId,
+		ProcLabelHashDefine, ProcLabelHashUndef),
 
 	%
 	% <assignment of input values from registers to local vars>
 	%
-	{ InputComp = pragma_c_inputs(InputDescs) },
+	InputComp = pragma_c_inputs(InputDescs),
 
 	%
 	% MR_save_registers(); /* see notes (1) and (2) above */
 	%
-	{ MayCallMercury = will_not_call_mercury ->
+	(
+		MayCallMercury = will_not_call_mercury,
 		SaveRegsComp = pragma_c_raw_code("",
 			live_lvals_info(set__init))
 	;
+		MayCallMercury = may_call_mercury,
 		SaveRegsComp = pragma_c_raw_code(
 			"\tMR_save_registers();\n",
 			live_lvals_info(set__init))
-	},
+	),
 
 	%
 	% Code fragments to obtain and release the global lock
 	%
-	{ ThreadSafe = thread_safe ->
+	( ThreadSafe = thread_safe ->
 		ObtainLock = pragma_c_raw_code("", live_lvals_info(set__init)),
 		ReleaseLock = pragma_c_raw_code("", live_lvals_info(set__init))
 	;
@@ -500,23 +502,23 @@ pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes,
 			MangledName, """);\n"], ReleaseLockStr),
 		ReleaseLock = pragma_c_raw_code(ReleaseLockStr,
 			live_lvals_info(set__init))
-	},
+	),
 
 	%
 	% <The C code itself>
 	%
-	{ C_Code_Comp = pragma_c_user_code(Context, C_Code) },
+	C_Code_Comp = pragma_c_user_code(Context, C_Code),
 
 	%
 	% <for semidet code, check of r1>
 	%
-	( { CodeModel = model_semi, Detism \= failure } ->
-		code_info__get_next_label(FailLabel),
-		{ CheckR1_Comp = pragma_c_fail_to(FailLabel) },
-		{ MaybeFailLabel = yes(FailLabel) }
+	( ( CodeModel = model_semi, Detism \= failure ) ->
+		code_info__get_next_label(FailLabel, !CI),
+		CheckR1_Comp = pragma_c_fail_to(FailLabel),
+		MaybeFailLabel = yes(FailLabel)
 	;
-		{ CheckR1_Comp = pragma_c_noop },
-		{ MaybeFailLabel = no }
+		CheckR1_Comp = pragma_c_noop,
+		MaybeFailLabel = no
 	),
 
 	%
@@ -524,51 +526,52 @@ pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes,
 	%   MR_restore_registers(); /* see notes (1) and (3) above */
 	% #endif
 	%
-	{ MayCallMercury = will_not_call_mercury ->
+	( MayCallMercury = will_not_call_mercury ->
 		RestoreRegsComp = pragma_c_noop
 	;
 		RestoreRegsComp = pragma_c_raw_code(
 		"#ifndef MR_CONSERVATIVE_GC\n\tMR_restore_registers();\n#endif\n",
 		live_lvals_info(set__init)
 		)
-	},
+	),
 
 	%
 	% The C code may have called Mercury code which clobbered the regs,
 	% in which case we need to tell the code_info that they have been
 	% clobbered.
 	%
-	( { MayCallMercury = will_not_call_mercury } ->
-		[]
+	(
+		MayCallMercury = will_not_call_mercury
 	;
-		{ goal_info_get_instmap_delta(GoalInfo, InstMapDelta) },
-		{ instmap_delta_is_reachable(InstMapDelta) ->
+		MayCallMercury = may_call_mercury,
+		goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
+		(instmap_delta_is_reachable(InstMapDelta) ->
 			OkToDelete = no
 		;
 			OkToDelete = yes
-		},
-		code_info__clear_all_registers(OkToDelete)
+		),
+		code_info__clear_all_registers(OkToDelete, !CI)
 	),
 
 	%
 	% <assignment of the output values from local variables to registers>
 	%
-	pragma_acquire_regs(OutArgs, Regs),
-	place_pragma_output_args_in_regs(OutArgs, Regs, OutputDescs),
-	{ OutputComp = pragma_c_outputs(OutputDescs) },
+	pragma_acquire_regs(OutArgs, Regs, !CI),
+	place_pragma_output_args_in_regs(OutArgs, Regs, OutputDescs, !CI),
+	OutputComp = pragma_c_outputs(OutputDescs),
 
 	%
 	% join all the components of the pragma_c together
 	%
-	{ Components = [ProcLabelHashDefine, InputComp, SaveRegsComp,
+	Components = [ProcLabelHashDefine, InputComp, SaveRegsComp,
 			ObtainLock, C_Code_Comp, ReleaseLock,
 			CheckR1_Comp, RestoreRegsComp,
-			OutputComp, ProcLabelHashUndef] },
-	{ PragmaCCode = node([
+			OutputComp, ProcLabelHashUndef],
+	PragmaCCode = node([
 		pragma_c(Decls, Components, MayCallMercury, no, no, no,
 			MaybeFailLabel, no)
 			- "Pragma C inclusion"
-	]) },
+	]),
 
 	%
 	% for semidet code, we need to insert the failure handling code here:
@@ -583,41 +586,38 @@ pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes,
 	%
 	%	<code to fail>
 	%
-	( { MaybeFailLabel = yes(TheFailLabel) } ->
-		code_info__get_next_label(SkipLabel),
-		code_info__generate_failure(FailCode),
-		{ GotoSkipLabelCode = node([
+	( MaybeFailLabel = yes(TheFailLabel) ->
+		code_info__get_next_label(SkipLabel, !CI),
+		code_info__generate_failure(FailCode, !CI),
+		GotoSkipLabelCode = node([
 			goto(label(SkipLabel)) - "Skip past failure code"
-		]) },
-		{ SkipLabelCode = node([ label(SkipLabel) - "" ]) },
-		{ FailLabelCode = node([ label(TheFailLabel) - "" ]) },
-		{ FailureCode =
+		]),
+		SkipLabelCode = node([ label(SkipLabel) - "" ]),
+		FailLabelCode = node([ label(TheFailLabel) - "" ]),
+		FailureCode =
 			tree(GotoSkipLabelCode,
 			tree(FailLabelCode,
 			tree(FailCode,
 			     SkipLabelCode)))
-		}
-	; { Detism = failure } ->
-		code_info__generate_failure(FailureCode)
+	; Detism = failure ->
+		code_info__generate_failure(FailureCode, !CI)
 	;
-		{ FailureCode = empty }
+		FailureCode = empty
 	),
 
 	%
 	% join all code fragments together
 	%
-	{ Code =
+	Code =
 		tree(SaveVarsCode,
 		tree(ReserveR1_Code, 
 		tree(InputVarsCode,
 		tree(ClearR1_Code, 
 		tree(PragmaCCode,
-		     FailureCode)))))
-	}.
+		     FailureCode))))).
 
-:- pred make_proc_label_hash_define(module_info, pred_id, proc_id,
-		pragma_c_component, pragma_c_component).
-:- mode make_proc_label_hash_define(in, in, in, out, out) is det.
+:- pred make_proc_label_hash_define(module_info::in, pred_id::in, proc_id::in,
+	pragma_c_component::out, pragma_c_component::out) is det.
 
 make_proc_label_hash_define(ModuleInfo, PredId, ProcId,
 		ProcLabelHashDef, ProcLabelHashUndef) :-
@@ -666,9 +666,9 @@ pragma_c_gen__nondet_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
 	% Generate #define MR_PROC_LABEL <procedure label> /* see note (5) */
 	% and #undef MR_PROC_LABEL
 	%
-	code_info__get_module_info(ModuleInfo, !CI),
-	code_info__get_pred_id(CallerPredId, !CI),
-	code_info__get_proc_id(CallerProcId, !CI),
+	code_info__get_module_info(!.CI, ModuleInfo),
+	code_info__get_pred_id(!.CI, CallerPredId),
+	code_info__get_proc_id(!.CI, CallerProcId),
 	make_proc_label_hash_define(ModuleInfo, CallerPredId, CallerProcId,
 		ProcLabelDefine, ProcLabelUndef),
 
@@ -681,15 +681,15 @@ pragma_c_gen__nondet_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
 	%
 	% Get a list of input and output arguments
 	%
-	code_info__get_pred_proc_arginfo(PredId, ProcId, ArgInfos, !CI),
+	ArgInfos = code_info__get_pred_proc_arginfo(!.CI, PredId, ProcId),
 	make_c_arg_list(ArgVars, ArgDatas, OrigArgTypes, ArgInfos, Args),
 	pragma_select_in_args(Args, InArgs),
 	pragma_select_out_args(Args, OutArgs),
 	make_pragma_decls(Args, ModuleInfo, Decls),
 	make_pragma_decls(OutArgs, ModuleInfo, OutDecls),
 
-	input_descs_from_arg_info(InArgs, InputDescs, !CI),
-	output_descs_from_arg_info(OutArgs, OutputDescs, !CI),
+	input_descs_from_arg_info(!.CI, InArgs, InputDescs),
+	output_descs_from_arg_info(!.CI, OutArgs, OutputDescs),
 
 	module_info_pred_info(ModuleInfo, PredId, PredInfo),
 	ModuleName = pred_info_module(PredInfo),
@@ -715,51 +715,53 @@ pragma_c_gen__nondet_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
 			"Start of the retry block"
 	]),
 
-	code_info__get_globals(Globals, !CI),
+	code_info__get_globals(!.CI, Globals),
 
 	globals__lookup_bool_option(Globals, reclaim_heap_on_nondet_failure,
 		ReclaimHeap),
 	code_info__maybe_save_hp(ReclaimHeap, SaveHeapCode, MaybeHpSlot, !CI),
-	code_info__maybe_restore_hp(MaybeHpSlot, RestoreHeapCode, !CI),
+	code_info__maybe_restore_hp(MaybeHpSlot, RestoreHeapCode),
 
 	globals__lookup_bool_option(Globals, use_trail, UseTrail),
-	code_info__maybe_save_ticket(UseTrail, SaveTicketCode,
-		MaybeTicketSlot, !CI),
+	code_info__maybe_save_ticket(UseTrail, SaveTicketCode, MaybeTicketSlot,
+		!CI),
 	code_info__maybe_reset_ticket(MaybeTicketSlot, undo,
-		RestoreTicketCode, !CI),
+		RestoreTicketCode),
 
-	( FirstContext = yes(FirstContextPrime) ->
-		ActualFirstContext = FirstContextPrime
+	(
+		FirstContext = yes(ActualFirstContext)
 	;
+		FirstContext = no,
 		term__context_init(ActualFirstContext)
 	),
 	trace__maybe_generate_pragma_event_code(nondet_pragma_first,
 		ActualFirstContext, FirstTraceCode, !CI),
-	( LaterContext = yes(LaterContextPrime) ->
-		ActualLaterContext = LaterContextPrime
+	(
+		LaterContext = yes(ActualLaterContext)
 	;
+		LaterContext = no,
 		term__context_init(ActualLaterContext)
 	),
 	trace__maybe_generate_pragma_event_code(nondet_pragma_later,
 		ActualLaterContext, LaterTraceCode, !CI),
 
-	( FirstDisjunctCode =
+	FirstDisjunctCode =
 		tree(SaveHeapCode,
 		tree(SaveTicketCode,
-		     FirstTraceCode))
-	),
-	( LaterDisjunctCode =
+		     FirstTraceCode)),
+	LaterDisjunctCode =
 		tree(RestoreHeapCode,
 		tree(RestoreTicketCode,
-		     LaterTraceCode))
-	),
+		     LaterTraceCode)),
 
 	%
 	% MR_save_registers(); /* see notes (1) and (2) above */
 	%
-	( MayCallMercury = will_not_call_mercury ->
+	(
+		MayCallMercury = will_not_call_mercury,
 		SaveRegs = ""
 	;
+		MayCallMercury = may_call_mercury,
 		SaveRegs = "\tMR_save_registers();\n"
 	),
 
@@ -1043,7 +1045,7 @@ pragma_c_gen__nondet_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
 		).
 
 :- pred make_c_arg_list(list(prog_var)::in, list(maybe(pair(string, mode)))::in,
-		list(type)::in, list(arg_info)::in, list(c_arg)::out) is det.
+	list(type)::in, list(arg_info)::in, list(c_arg)::out) is det.
 
 make_c_arg_list(Vars, ArgDatas, Types, ArgInfos, ArgList) :-
 	(
@@ -1186,31 +1188,31 @@ find_dead_input_vars([Arg | Args], PostDeaths, DeadVars0, DeadVars) :-
 :- pred get_pragma_input_vars(list(c_arg)::in, list(pragma_c_input)::out,
 	code_tree::out, code_info::in, code_info::out) is det.
 
-get_pragma_input_vars([], [], empty) --> [].
-get_pragma_input_vars([Arg | Args], Inputs, Code) -->
-	{ Arg = c_arg(Var, MaybeName, Type, _ArgInfo) },
-	( { var_is_not_singleton(MaybeName, Name) } ->
-		code_info__produce_variable(Var, FirstCode, Rval),
-		% code_info__produce_variable_in_reg(Var, FirstCode, Lval),
-		% { Rval = lval(Lval) },
-		get_maybe_foreign_type_name(Type, MaybeForeign),
-		{ Input = pragma_c_input(Name, Type, Rval, MaybeForeign) },
-		get_pragma_input_vars(Args, Inputs1, RestCode),
-		{ Inputs = [Input | Inputs1] },
-		{ Code = tree(FirstCode, RestCode) }
+get_pragma_input_vars([], [], empty, !CI).
+get_pragma_input_vars([Arg | Args], Inputs, Code, !CI) :-
+	Arg = c_arg(Var, MaybeName, Type, _ArgInfo),
+	( var_is_not_singleton(MaybeName, Name) ->
+		code_info__produce_variable(Var, FirstCode, Rval, !CI),
+		% code_info__produce_variable_in_reg(Var, FirstCode, Lval, !CI)
+		% Rval = lval(Lval),
+		MaybeForeign = get_maybe_foreign_type_name(!.CI, Type),
+		Input = pragma_c_input(Name, Type, Rval, MaybeForeign),
+		get_pragma_input_vars(Args, Inputs1, RestCode, !CI),
+		Inputs = [Input | Inputs1],
+		Code = tree(FirstCode, RestCode)
 	;
 		% if the variable doesn't occur in the ArgNames list,
 		% it can't be used, so we just ignore it
-		get_pragma_input_vars(Args, Inputs, Code)
+		get_pragma_input_vars(Args, Inputs, Code, !CI)
 	).
 
-:- pred get_maybe_foreign_type_name((type)::in, maybe(string)::out,
-		code_info::in, code_info::out) is det.
+:- func get_maybe_foreign_type_name(code_info, (type)) = maybe(string).
 
-get_maybe_foreign_type_name(Type, MaybeForeignType) -->
-	code_info__get_module_info(Module),
-	{ module_info_types(Module, Types) },
-	{ 
+get_maybe_foreign_type_name(CI, Type) = MaybeForeignType :-
+	code_info__get_module_info(CI, Module),
+	module_info_types(Module, Types),
+	
+	(
 		type_to_ctor_and_args(Type, TypeId, _SubTypes),
 		map__search(Types, TypeId, Defn),
 		hlds_data__get_type_defn_body(Defn, Body),
@@ -1222,12 +1224,12 @@ get_maybe_foreign_type_name(Type, MaybeForeignType) -->
 		; MaybeC = no,
 			% This is ensured by check_foreign_type in
 			% make_hlds.
-			unexpected(this_file,
-			"get_maybe_foreign_type_name: no c foreign type")
+			unexpected(this_file, "get_maybe_foreign_type_name: "
+				++ "no c foreign type")
 		)
 	;
 		MaybeForeignType = no
-	}.
+	).
 		
 %---------------------------------------------------------------------------%
 
@@ -1237,11 +1239,11 @@ get_maybe_foreign_type_name(Type, MaybeForeignType) -->
 :- pred pragma_acquire_regs(list(c_arg)::in, list(lval)::out,
 	code_info::in, code_info::out) is det.
 
-pragma_acquire_regs([], []) --> [].
-pragma_acquire_regs([Arg | Args], [Reg | Regs]) -->
-	{ Arg = c_arg(Var, _, _, _) },
-	code_info__acquire_reg_for_var(Var, Reg),
-	pragma_acquire_regs(Args, Regs).
+pragma_acquire_regs([], [], !CI).
+pragma_acquire_regs([Arg | Args], [Reg | Regs], !CI) :-
+	Arg = c_arg(Var, _, _, _),
+	code_info__acquire_reg_for_var(Var, Reg, !CI),
+	pragma_acquire_regs(Args, Regs, !CI).
 
 %---------------------------------------------------------------------------%
 
@@ -1252,54 +1254,49 @@ pragma_acquire_regs([Arg | Args], [Reg | Regs]) -->
 :- pred place_pragma_output_args_in_regs(list(c_arg)::in, list(lval)::in,
 	list(pragma_c_output)::out, code_info::in, code_info::out) is det.
 
-place_pragma_output_args_in_regs([], [], []) --> [].
-place_pragma_output_args_in_regs([Arg | Args], [Reg | Regs], Outputs) -->
-	place_pragma_output_args_in_regs(Args, Regs, Outputs0),
-	{ Arg = c_arg(Var, MaybeName, OrigType, _ArgInfo) },
-	code_info__release_reg(Reg),
-	( code_info__variable_is_forward_live(Var) ->
-		code_info__set_var_location(Var, Reg),
-		get_maybe_foreign_type_name(OrigType, MaybeForeign),
-		{
-			var_is_not_singleton(MaybeName, Name)
-		->
+place_pragma_output_args_in_regs([], [], [], !CI).
+place_pragma_output_args_in_regs([Arg | Args], [Reg | Regs], Outputs, !CI) :-
+	place_pragma_output_args_in_regs(Args, Regs, Outputs0, !CI),
+	Arg = c_arg(Var, MaybeName, OrigType, _ArgInfo),
+	code_info__release_reg(Reg, !CI),
+	( code_info__variable_is_forward_live(!.CI, Var) ->
+		code_info__set_var_location(Var, Reg, !CI),
+		MaybeForeign = get_maybe_foreign_type_name(!.CI, OrigType),
+		( var_is_not_singleton(MaybeName, Name) ->
 			PragmaCOutput = pragma_c_output(Reg, OrigType,
-						Name, MaybeForeign),
+				Name, MaybeForeign),
 			Outputs = [PragmaCOutput | Outputs0]
 		;
 			Outputs = Outputs0
-		}
+		)
 	;
-		{ Outputs = Outputs0 }
+		Outputs = Outputs0
 	).
-place_pragma_output_args_in_regs([_|_], [], _) -->
-	{ error("place_pragma_output_args_in_regs: length mismatch") }.
-place_pragma_output_args_in_regs([], [_|_], _) -->
-	{ error("place_pragma_output_args_in_regs: length mismatch") }.
+place_pragma_output_args_in_regs([_|_], [], _, !CI) :-
+	error("place_pragma_output_args_in_regs: length mismatch").
+place_pragma_output_args_in_regs([], [_|_], _, !CI) :-
+	error("place_pragma_output_args_in_regs: length mismatch").
 
 %---------------------------------------------------------------------------%
 
 % input_descs_from_arg_info returns a list of pragma_c_inputs, which
 % are pairs of rvals and (C) variables which receive the input value.
 
-:- pred input_descs_from_arg_info(list(c_arg)::in, list(pragma_c_input)::out,
-		code_info::in, code_info::out) is det.
+:- pred input_descs_from_arg_info(code_info::in, list(c_arg)::in,
+	list(pragma_c_input)::out) is det.
 
-input_descs_from_arg_info([], [], CodeInfo, CodeInfo).
-input_descs_from_arg_info([Arg | Args], Inputs, CodeInfo0, CodeInfo) :-
+input_descs_from_arg_info(_, [], []).
+input_descs_from_arg_info(CI, [Arg | Args], Inputs) :-
 	Arg = c_arg(_Var, MaybeName, OrigType, ArgInfo),
-	(
-		var_is_not_singleton(MaybeName, Name)
-	->
+	( var_is_not_singleton(MaybeName, Name) ->
 		ArgInfo = arg_info(N, _),
 		Reg = reg(r, N),
-		get_maybe_foreign_type_name(OrigType, MaybeForeign,
-				CodeInfo0, CodeInfo1),
+		MaybeForeign = get_maybe_foreign_type_name(CI, OrigType),
 		Input = pragma_c_input(Name, OrigType, lval(Reg), MaybeForeign),
-		Inputs = [Input | Inputs1],
-		input_descs_from_arg_info(Args, Inputs1, CodeInfo1, CodeInfo)
+		input_descs_from_arg_info(CI, Args, Inputs1),
+		Inputs = [Input | Inputs1]
 	;
-		input_descs_from_arg_info(Args, Inputs, CodeInfo0, CodeInfo)
+		input_descs_from_arg_info(CI, Args, Inputs)
 	).
 
 %---------------------------------------------------------------------------%
@@ -1308,25 +1305,21 @@ input_descs_from_arg_info([Arg | Args], Inputs, CodeInfo0, CodeInfo) :-
 % are pairs of names of output registers and (C) variables which hold the
 % output value.
 
-:- pred output_descs_from_arg_info(list(c_arg)::in, list(pragma_c_output)::out,
-		code_info::in, code_info::out) is det.
+:- pred output_descs_from_arg_info(code_info::in, list(c_arg)::in,
+	list(pragma_c_output)::out) is det.
 
-output_descs_from_arg_info([], [], CodeInfo, CodeInfo).
-output_descs_from_arg_info([Arg | Args], Outputs, CodeInfo0, CodeInfo) :-
+output_descs_from_arg_info(_, [], []).
+output_descs_from_arg_info(CI, [Arg | Args], Outputs) :-
 	Arg = c_arg(_Var, MaybeName, OrigType, ArgInfo),
-	output_descs_from_arg_info(Args, Outputs0, CodeInfo0, CodeInfo1),
-	(
-		var_is_not_singleton(MaybeName, Name)
-	->
+	output_descs_from_arg_info(CI, Args, Outputs0),
+	( var_is_not_singleton(MaybeName, Name) ->
 		ArgInfo = arg_info(N, _),
 		Reg = reg(r, N),
-		get_maybe_foreign_type_name(OrigType, MaybeForeign,
-				CodeInfo1, CodeInfo),
+		MaybeForeign = get_maybe_foreign_type_name(CI, OrigType),
 		Outputs = [pragma_c_output(Reg, OrigType, Name, MaybeForeign) |
-				Outputs0]
+			Outputs0]
 	;
-		Outputs = Outputs0,
-		CodeInfo = CodeInfo1
+		Outputs = Outputs0
 	).
 
 %---------------------------------------------------------------------------%

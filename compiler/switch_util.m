@@ -39,16 +39,14 @@
 	;	tag_switch
 	;	other_switch.
 
-:- pred switch_util__type_cat_to_switch_cat(type_category, switch_category).
-:- mode switch_util__type_cat_to_switch_cat(in, out) is det.
+:- func switch_util__type_cat_to_switch_cat(type_category) = switch_category.
 
 	% Return the priority of a constructor test.
 	% A low number here indicates a high priority.
 	% We prioritize the tag tests so that the cheapest
 	% (most efficient) ones come first.
 	%
-:- pred switch_util__switch_priority(cons_tag, int).
-:- mode switch_util__switch_priority(in, out) is det.
+:- func switch_util__switch_priority(cons_tag) = int.
 
 	% switch_util__type_range(TypeCategory, Type, ModuleInfo, Min, Max):
 	% Determine the range [Min..Max] of an atomic type.
@@ -67,9 +65,8 @@
 	% in the list of cases, and store the cases in a map
 	% from hash values to cases.
 
-:- pred switch_util__string_hash_cases(cases_list, int,
-		map(int, cases_list)).
-:- mode switch_util__string_hash_cases(in, in, out) is det.
+:- pred switch_util__string_hash_cases(cases_list::in, int::in,
+	map(int, cases_list)::out) is det.
 
 	% switch_util__calc_hash_slots(AssocList, HashMap, Map) :-
 	%	For each (HashVal - Case) pair in AssocList,
@@ -83,9 +80,8 @@
 
 :- type hash_slot ---> hash_slot(extended_case, int).
 
-:- pred switch_util__calc_hash_slots(assoc_list(int, cases_list),
-	map(int, cases_list), map(int, hash_slot)).
-:- mode switch_util__calc_hash_slots(in, in, out) is det.
+:- pred switch_util__calc_hash_slots(assoc_list(int, cases_list)::in,
+	map(int, cases_list)::in, map(int, hash_slot)::out) is det.
 
 %-----------------------------------------------------------------------------%
 %
@@ -111,9 +107,8 @@
 	% Group together all the cases that depend on the given variable
 	% having the same primary tag value.
 
-:- pred switch_util__group_cases_by_ptag(cases_list,
-		ptag_case_map, ptag_case_map).
-:- mode switch_util__group_cases_by_ptag(in, in, out) is det.
+:- pred switch_util__group_cases_by_ptag(cases_list::in,
+	ptag_case_map::in, ptag_case_map::out) is det.
 
 	% Order the primary tags based on the number of secondary tags
 	% associated with them, putting the ones with the most secondary tags
@@ -123,9 +118,8 @@
 	% where the initial inst of the switch variable is a bound(...) inst
 	% representing a subtype.
 
-:- pred switch_util__order_ptags_by_count(ptag_count_list, ptag_case_map,
-		ptag_case_list).
-:- mode switch_util__order_ptags_by_count(in, in, out) is det.
+:- pred switch_util__order_ptags_by_count(ptag_count_list::in,
+	ptag_case_map::in, ptag_case_list::out) is det.
 
 	% switch_util__order_ptags_by_value(FirstPtag, MaxPtag,
 	%	PtagCaseMap0, PtagCaseList):
@@ -134,16 +128,14 @@
 	% Note that it is not an error for a primary tag to have no case list,
 	% since this can happen in semidet switches.
 
-:- pred switch_util__order_ptags_by_value(int, int, ptag_case_map,
-		ptag_case_list).
-:- mode switch_util__order_ptags_by_value(in, in, in, out) is det.
+:- pred switch_util__order_ptags_by_value(int::in, int::in, ptag_case_map::in,
+	ptag_case_list::out) is det.
 
 	% Find out how many secondary tags share each primary tag
 	% of the given variable.
 
-:- pred switch_util__get_ptag_counts(type, module_info, int,
-		ptag_count_map).
-:- mode switch_util__get_ptag_counts(in, in, out, out) is det.
+:- pred switch_util__get_ptag_counts((type)::in, module_info::in,
+	int::out, ptag_count_map::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -199,8 +191,8 @@ switch_util__calc_hash_slots_1([HashVal-Cases | Rest], HashMap, Map0,
 		LastUsed1, Map, LastUsed).
 
 :- pred switch_util__calc_hash_slots_2(cases_list, int,
-		map(int, cases_list), map(int, hash_slot), int,
-		map(int, hash_slot), int).
+	map(int, cases_list), map(int, hash_slot), int,
+	map(int, hash_slot), int).
 :- mode switch_util__calc_hash_slots_2(in, in, in, in, in, out, out) is det.
 
 switch_util__calc_hash_slots_2([], _HashVal, _HashMap, Map, LastUsed,
@@ -265,24 +257,24 @@ switch_util__next_free_hash_slot(Map, H_Map, LastUsed, FreeSlot) :-
 %
 
 	% Convert a type category to a switch category
-switch_util__type_cat_to_switch_cat(enum_type, atomic_switch).
-switch_util__type_cat_to_switch_cat(int_type,  atomic_switch).
-switch_util__type_cat_to_switch_cat(char_type, atomic_switch).
-switch_util__type_cat_to_switch_cat(float_type, other_switch).
-switch_util__type_cat_to_switch_cat(str_type,  string_switch).
-switch_util__type_cat_to_switch_cat(higher_order_type, other_switch).
-switch_util__type_cat_to_switch_cat(user_ctor_type, tag_switch).
-switch_util__type_cat_to_switch_cat(variable_type, other_switch).
-switch_util__type_cat_to_switch_cat(tuple_type, other_switch).
-switch_util__type_cat_to_switch_cat(void_type, _) :-
+switch_util__type_cat_to_switch_cat(enum_type) = atomic_switch.
+switch_util__type_cat_to_switch_cat(int_type) =  atomic_switch.
+switch_util__type_cat_to_switch_cat(char_type) = atomic_switch.
+switch_util__type_cat_to_switch_cat(float_type) = other_switch.
+switch_util__type_cat_to_switch_cat(str_type) =  string_switch.
+switch_util__type_cat_to_switch_cat(higher_order_type) = other_switch.
+switch_util__type_cat_to_switch_cat(user_ctor_type) = tag_switch.
+switch_util__type_cat_to_switch_cat(variable_type) = other_switch.
+switch_util__type_cat_to_switch_cat(tuple_type) = other_switch.
+switch_util__type_cat_to_switch_cat(void_type) = _ :-
 	error("switch_util__type_cat_to_switch_cat: void").
-switch_util__type_cat_to_switch_cat(type_info_type, _) :-
+switch_util__type_cat_to_switch_cat(type_info_type) = _ :-
 	error("switch_util__type_cat_to_switch_cat: type_info").
-switch_util__type_cat_to_switch_cat(type_ctor_info_type, _) :-
+switch_util__type_cat_to_switch_cat(type_ctor_info_type) = _ :-
 	error("switch_util__type_cat_to_switch_cat: type_ctor_info").
-switch_util__type_cat_to_switch_cat(typeclass_info_type, _) :-
+switch_util__type_cat_to_switch_cat(typeclass_info_type) = _ :-
 	error("switch_util__type_cat_to_switch_cat: typeclass_info").
-switch_util__type_cat_to_switch_cat(base_typeclass_info_type, _) :-
+switch_util__type_cat_to_switch_cat(base_typeclass_info_type) = _ :-
 	error("switch_util__type_cat_to_switch_cat: base_typeclass_info").
 
 	% Return the priority of a constructor test.
@@ -290,25 +282,24 @@ switch_util__type_cat_to_switch_cat(base_typeclass_info_type, _) :-
 	% We prioritize the tag tests so that the cheapest
 	% (most efficient) ones come first.
 	%
-switch_util__switch_priority(no_tag, 0).		% should never occur
-switch_util__switch_priority(int_constant(_), 1).
-switch_util__switch_priority(reserved_address(_), 1).
-switch_util__switch_priority(shared_local_tag(_, _), 1).
-switch_util__switch_priority(single_functor, 2).
-switch_util__switch_priority(unshared_tag(_), 2).
-switch_util__switch_priority(float_constant(_), 3).
-switch_util__switch_priority(shared_remote_tag(_, _), 4).
-switch_util__switch_priority(string_constant(_), 5).
-switch_util__switch_priority(shared_with_reserved_addresses(RAs, Tag), N) :-
-	switch_util__switch_priority(Tag, N0),
-	N = N0 + list__length(RAs).
+switch_util__switch_priority(no_tag) = 0.		% should never occur
+switch_util__switch_priority(int_constant(_)) = 1.
+switch_util__switch_priority(reserved_address(_)) = 1.
+switch_util__switch_priority(shared_local_tag(_, _)) = 1.
+switch_util__switch_priority(single_functor) = 2.
+switch_util__switch_priority(unshared_tag(_)) = 2.
+switch_util__switch_priority(float_constant(_)) = 3.
+switch_util__switch_priority(shared_remote_tag(_, _)) = 4.
+switch_util__switch_priority(string_constant(_)) = 5.
+switch_util__switch_priority(shared_with_reserved_addresses(RAs, Tag)) =
+	switch_util__switch_priority(Tag) + list__length(RAs).
 	% The following tags should all never occur in switches.
-switch_util__switch_priority(pred_closure_tag(_, _, _), 6).
-switch_util__switch_priority(type_ctor_info_constant(_, _, _), 6).
-switch_util__switch_priority(base_typeclass_info_constant(_, _, _), 6).
-switch_util__switch_priority(tabling_pointer_constant(_, _), 6).
-switch_util__switch_priority(deep_profiling_proc_static_tag(_), 6).
-switch_util__switch_priority(table_io_decl_tag(_), 6).
+switch_util__switch_priority(pred_closure_tag(_, _, _)) = 6.
+switch_util__switch_priority(type_ctor_info_constant(_, _, _)) = 6.
+switch_util__switch_priority(base_typeclass_info_constant(_, _, _)) = 6.
+switch_util__switch_priority(tabling_pointer_constant(_, _)) = 6.
+switch_util__switch_priority(deep_profiling_proc_static_tag(_)) = 6.
+switch_util__switch_priority(table_io_decl_tag(_)) = 6.
 
 	% Determine the range of an atomic type.
 	% Fail if the type isn't the sort of type that has a range

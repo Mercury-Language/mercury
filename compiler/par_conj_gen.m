@@ -129,8 +129,8 @@
 
 %---------------------------------------------------------------------------%
 
-par_conj_gen__generate_par_conj(Goals, GoalInfo, CodeModel, Code) -->
-	{
+par_conj_gen__generate_par_conj(Goals, GoalInfo, CodeModel, Code, !CI) :-
+	(
 		CodeModel = model_det
 	;
 		CodeModel = model_semi,
@@ -138,24 +138,24 @@ par_conj_gen__generate_par_conj(Goals, GoalInfo, CodeModel, Code) -->
 	;
 		CodeModel = model_non,
 		error("sorry, nondet parallel conjunction not implemented")
-	},
-	code_info__get_globals(Globals),
-	{ globals__lookup_int_option(Globals, sync_term_size, STSize) },
-	code_info__get_known_variables(Vars),
-	code_info__save_variables_on_stack(Vars, SaveCode),
-	{ goal_info_get_code_gen_nonlocals(GoalInfo, Nonlocals) },
-	{ set__to_sorted_list(Nonlocals, Variables) },
-	code_info__get_instmap(Initial),
-	{ goal_info_get_instmap_delta(GoalInfo, Delta) },
-	{ instmap__apply_instmap_delta(Initial, Delta, Final) },
-	code_info__get_module_info(ModuleInfo),
-	{ par_conj_gen__find_outputs(Variables, Initial, Final, ModuleInfo,
-			[], Outputs) },
-	{ list__length(Goals, NumGoals) },
-	code_info__acquire_reg(r, RegLval),
-	code_info__acquire_temp_slot(sync_term, SyncSlot),
-	code_info__acquire_temp_slot(lval(sp), SpSlot),
-	{ MakeTerm = node([
+	),
+	code_info__get_globals(!.CI, Globals),
+	globals__lookup_int_option(Globals, sync_term_size, STSize),
+	code_info__get_known_variables(!.CI, Vars),
+	code_info__save_variables_on_stack(Vars, SaveCode, !CI),
+	goal_info_get_code_gen_nonlocals(GoalInfo, Nonlocals),
+	set__to_sorted_list(Nonlocals, Variables),
+	code_info__get_instmap(!.CI, Initial),
+	goal_info_get_instmap_delta(GoalInfo, Delta),
+	instmap__apply_instmap_delta(Initial, Delta, Final),
+	code_info__get_module_info(!.CI, ModuleInfo),
+	par_conj_gen__find_outputs(Variables, Initial, Final, ModuleInfo,
+		[], Outputs),
+	list__length(Goals, NumGoals),
+	code_info__acquire_reg(r, RegLval, !CI),
+	code_info__acquire_temp_slot(sync_term, SyncSlot, !CI),
+	code_info__acquire_temp_slot(lval(sp), SpSlot, !CI),
+	MakeTerm = node([
 		assign(SpSlot, lval(sp))
 			- "save the parent stack pointer",
 		incr_hp(RegLval, no, no, const(int_const(STSize)),
@@ -165,15 +165,15 @@ par_conj_gen__generate_par_conj(Goals, GoalInfo, CodeModel, Code) -->
 			- "initialize sync term",
 		assign(SyncSlot, lval(RegLval))
 			- "store the sync-term on the stack"
-	]) },
-	code_info__release_reg(RegLval),
-	code_info__clear_all_registers(no),
+	]),
+	code_info__release_reg(RegLval, !CI),
+	code_info__clear_all_registers(no, !CI),
 	par_conj_gen__generate_det_par_conj_2(Goals, 0, SyncSlot, SpSlot,
-		Initial, no, GoalCode),
-	code_info__release_temp_slot(SyncSlot),
-	{ Code = tree(tree(SaveCode, MakeTerm), GoalCode) },
-	code_info__clear_all_registers(no),
-	par_conj_gen__place_all_outputs(Outputs).
+		Initial, no, GoalCode, !CI),
+	code_info__release_temp_slot(SyncSlot, !CI),
+	Code = tree(tree(SaveCode, MakeTerm), GoalCode),
+	code_info__clear_all_registers(no, !CI),
+	par_conj_gen__place_all_outputs(Outputs, !CI).
 
 :- pred par_conj_gen__generate_det_par_conj_2(list(hlds_goal), int, lval, lval,
 		instmap, branch_end, code_tree, code_info, code_info).
@@ -181,118 +181,113 @@ par_conj_gen__generate_par_conj(Goals, GoalInfo, CodeModel, Code) -->
 		in, in, out, in, out) is det.
 
 par_conj_gen__generate_det_par_conj_2([], _N, _SyncTerm, _SpSlot, _Initial,
-		_, empty) --> [].
-par_conj_gen__generate_det_par_conj_2([Goal|Goals], N, SyncTerm, SpSlot,
-		Initial, MaybeEnd0, Code) -->
-	code_info__remember_position(StartPos),
-	code_info__get_next_label(ThisConjunct),
-	code_info__get_next_label(NextConjunct),
-	code_gen__generate_goal(model_det, Goal, ThisGoalCode),
-	code_info__get_stack_slots(AllSlots),
-	code_info__get_known_variables(Variables),
-	{ set__list_to_set(Variables, LiveVars) },
-	{ map__select(AllSlots, LiveVars, StoreMap) },
+		_, empty, !CI).
+par_conj_gen__generate_det_par_conj_2([Goal | Goals], N, SyncTerm, SpSlot,
+		Initial, MaybeEnd0, Code, !CI) :-
+	code_info__remember_position(!.CI, StartPos),
+	code_info__get_next_label(ThisConjunct, !CI),
+	code_info__get_next_label(NextConjunct, !CI),
+	code_gen__generate_goal(model_det, Goal, ThisGoalCode, !CI),
+	code_info__get_stack_slots(!.CI, AllSlots),
+	code_info__get_known_variables(!.CI, Variables),
+	set__list_to_set(Variables, LiveVars),
+	map__select(AllSlots, LiveVars, StoreMap),
 	code_info__generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd,
-		SaveCode),
-	{ Goal = _GoalExpr - GoalInfo },
-	{ goal_info_get_instmap_delta(GoalInfo, Delta) },
-	{ instmap__apply_instmap_delta(Initial, Delta, Final) },
-	code_info__get_module_info(ModuleInfo),
-	{ par_conj_gen__find_outputs(Variables, Initial, Final, ModuleInfo,
-			[], TheseOutputs) },
-	par_conj_gen__copy_outputs(TheseOutputs, SpSlot, CopyCode),
+		SaveCode, !CI),
+	Goal = _GoalExpr - GoalInfo,
+	goal_info_get_instmap_delta(GoalInfo, Delta),
+	instmap__apply_instmap_delta(Initial, Delta, Final),
+	code_info__get_module_info(!.CI, ModuleInfo),
+	par_conj_gen__find_outputs(Variables, Initial, Final, ModuleInfo,
+			[], TheseOutputs),
+	par_conj_gen__copy_outputs(!.CI, TheseOutputs, SpSlot, CopyCode),
 	(
-		{ Goals = [_|_] }
+		Goals = [_ | _]
 	->
-		code_info__reset_to_position(StartPos),
-		code_info__get_total_stackslot_count(NumSlots),
-		{ ForkCode = node([
+		code_info__reset_to_position(StartPos, !CI),
+		code_info__get_total_stackslot_count(!.CI, NumSlots),
+		ForkCode = node([
 			fork(ThisConjunct, NextConjunct, NumSlots)
 				- "fork off a child",
 			label(ThisConjunct)
 				- "child thread"
-		]) },
-		{ JoinCode = node([
+		]),
+		JoinCode = node([
 			join_and_terminate(SyncTerm)
 				- "finish",
 			label(NextConjunct)
 				- "start of the next conjunct"
-		]) }
+		])
 	;
-		code_info__get_next_label(ContLab),
-		{ ForkCode = empty },
-		{ JoinCode = node([
+		code_info__get_next_label(ContLab, !CI),
+		ForkCode = empty,
+		JoinCode = node([
 			join_and_continue(SyncTerm, ContLab)
 				- "sync with children then continue",
 			label(ContLab)
 				- "end of parallel conjunction"
-		]) }
+		])
 	),
-	{ ThisCode = tree(
+	ThisCode = tree(
 		ForkCode,
 		tree(ThisGoalCode, tree(tree(SaveCode, CopyCode), JoinCode))
-	) },
-	{ N1 = N + 1 },
+	),
+	N1 = N + 1,
 	par_conj_gen__generate_det_par_conj_2(Goals, N1, SyncTerm, SpSlot,
-			Initial, MaybeEnd, RestCode),
-	{ Code = tree(ThisCode, RestCode) }.
+		Initial, MaybeEnd, RestCode, !CI),
+	Code = tree(ThisCode, RestCode).
 
-:- pred par_conj_gen__find_outputs(list(prog_var), instmap, instmap,
-		module_info, list(prog_var), list(prog_var)).
-:- mode par_conj_gen__find_outputs(in, in, in, in, in, out) is det.
+:- pred par_conj_gen__find_outputs(list(prog_var)::in,
+	instmap::in, instmap::in, module_info::in,
+	list(prog_var)::in, list(prog_var)::out) is det.
 
-par_conj_gen__find_outputs([], _Initial, _Final, _ModuleInfo,
-		Outputs, Outputs).
-par_conj_gen__find_outputs([Var|Vars],  Initial, Final, ModuleInfo,
-		Outputs0, Outputs) :-
+par_conj_gen__find_outputs([], _Initial, _Final, _ModuleInfo, !Outputs).
+par_conj_gen__find_outputs([Var | Vars],  Initial, Final, ModuleInfo,
+		!Outputs) :-
 	instmap__lookup_var(Initial, Var, InitialInst),
 	instmap__lookup_var(Final, Var, FinalInst),
-	(
-		mode_is_output(ModuleInfo, (InitialInst -> FinalInst))
-	->
-		Outputs1 = [Var|Outputs0]
+	( mode_is_output(ModuleInfo, (InitialInst -> FinalInst)) ->
+		!:Outputs = [Var | !.Outputs]
 	;
-		Outputs1 = Outputs0
+		!:Outputs = !.Outputs
 	),
-	par_conj_gen__find_outputs(Vars, Initial, Final, ModuleInfo,
-			Outputs1, Outputs).
+	par_conj_gen__find_outputs(Vars, Initial, Final, ModuleInfo, !Outputs).
 
-:- pred par_conj_gen__copy_outputs(list(prog_var), lval, code_tree,
-		code_info, code_info).
-:- mode par_conj_gen__copy_outputs(in, in, out, in, out) is det.
+:- pred par_conj_gen__copy_outputs(code_info::in, list(prog_var)::in, lval::in,
+	code_tree::out) is det.
 
-par_conj_gen__copy_outputs([], _, empty) --> [].
-par_conj_gen__copy_outputs([Var|Vars], SpSlot, Code) -->
-	code_info__get_variable_slot(Var, SrcSlot),
+par_conj_gen__copy_outputs(_, [], _, empty).
+par_conj_gen__copy_outputs(CI, [Var | Vars], SpSlot, Code) :-
+	code_info__get_variable_slot(CI, Var, SrcSlot),
 	(
-		{ SrcSlot = stackvar(SlotNum) }
+		SrcSlot = stackvar(SlotNum)
 	->
-		{ NegSlotNum = (- SlotNum) },
-		{ DestSlot = field(yes(0), lval(SpSlot),
-			const(int_const(NegSlotNum))) }
+		NegSlotNum = (- SlotNum),
+		DestSlot = field(yes(0), lval(SpSlot),
+			const(int_const(NegSlotNum)))
 	;
-		{ error("par conj in model non procedure!") }
+		error("par conj in model non procedure!")
 	),
-	{ ThisCode = node([
+	ThisCode = node([
 		assign(DestSlot, lval(SrcSlot))
 			- "copy result to parent stackframe"
-	]) },
-	{ Code = tree(ThisCode, RestCode) },
-	par_conj_gen__copy_outputs(Vars, SpSlot, RestCode).
+	]),
+	Code = tree(ThisCode, RestCode),
+	par_conj_gen__copy_outputs(CI, Vars, SpSlot, RestCode).
 
-:- pred par_conj_gen__place_all_outputs(list(prog_var), code_info, code_info).
-:- mode par_conj_gen__place_all_outputs(in, in, out) is det.
+:- pred par_conj_gen__place_all_outputs(list(prog_var)::in,
+	code_info::in, code_info::out) is det.
 
-par_conj_gen__place_all_outputs([]) --> [].
-par_conj_gen__place_all_outputs([Var|Vars]) -->
-	code_info__variable_locations(VarLocations),
-	code_info__get_variable_slot(Var, Slot),
+par_conj_gen__place_all_outputs([], !CI).
+par_conj_gen__place_all_outputs([Var | Vars], !CI) :-
+	code_info__variable_locations(!.CI, VarLocations),
+	code_info__get_variable_slot(!.CI, Var, Slot),
 	(
-		{ map__search(VarLocations, Var, Locations) },
-		{ set__member(Slot, Locations) }
+		map__search(VarLocations, Var, Locations),
+		set__member(Slot, Locations)
 	->
-		[]
+		true
 	;
-		code_info__set_var_location(Var, Slot)
+		code_info__set_var_location(Var, Slot, !CI)
 	),
-	par_conj_gen__place_all_outputs(Vars).
+	par_conj_gen__place_all_outputs(Vars, !CI).

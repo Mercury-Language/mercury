@@ -54,10 +54,9 @@
 
 :- import_module list.
 
-:- pred switch_gen__generate_switch(code_model, prog_var, can_fail, list(case),
-	hlds_goal_info, code_tree, code_info, code_info).
-:- mode switch_gen__generate_switch(in, in, in, in, in, out, in, out)
-	is det.
+:- pred switch_gen__generate_switch(code_model::in, prog_var::in, can_fail::in,
+	list(case)::in, hlds_goal_info::in, code_tree::out,
+	code_info::in, code_info::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -87,84 +86,85 @@
 	% CanFail says whether the switch covers all cases.
 
 switch_gen__generate_switch(CodeModel, CaseVar, CanFail, Cases, GoalInfo,
-		Code) -->
-	{ goal_info_get_store_map(GoalInfo, StoreMap) },
-	switch_gen__determine_category(CaseVar, SwitchCategory),
-	code_info__get_next_label(EndLabel),
-	switch_gen__lookup_tags(Cases, CaseVar, TaggedCases0),
-	{ list__sort_and_remove_dups(TaggedCases0, TaggedCases) },
-	code_info__get_globals(Globals),
-	{ globals__lookup_bool_option(Globals, smart_indexing,
-		Indexing) },
+		Code, !CI) :-
+	goal_info_get_store_map(GoalInfo, StoreMap),
+	SwitchCategory = switch_gen__determine_category(!.CI, CaseVar),
+	code_info__get_next_label(EndLabel, !CI),
+	switch_gen__lookup_tags(!.CI, Cases, CaseVar, TaggedCases0),
+	list__sort_and_remove_dups(TaggedCases0, TaggedCases),
+	code_info__get_globals(!.CI, Globals),
+	globals__lookup_bool_option(Globals, smart_indexing,
+		Indexing),
 	(
 		% Check for a switch on a type whose representation
 		% uses reserved addresses 
-		{ list__member(Case, TaggedCases) },    
-		{ Case = case(_Priority, Tag, _ConsId, _Goal) },
-		{
+		list__member(Case, TaggedCases),    
+		Case = case(_Priority, Tag, _ConsId, _Goal),
+		(
 			Tag = reserved_address(_)
 		;
 			Tag = shared_with_reserved_addresses(_, _)
-		}
+		)
 	->
 		% XXX This may be be inefficient in some cases.
 		switch_gen__generate_all_cases(TaggedCases, CaseVar, CodeModel,
-			CanFail, GoalInfo, EndLabel, no, MaybeEnd, Code)
+			CanFail, GoalInfo, EndLabel, no, MaybeEnd, Code, !CI)
 	;
-		{ Indexing = yes },
-		{ SwitchCategory = atomic_switch },
-		code_info__get_maybe_trace_info(MaybeTraceInfo),
-		{ MaybeTraceInfo = no },
-		{ list__length(TaggedCases, NumCases) },
-		{ globals__lookup_int_option(Globals, lookup_switch_size,
-			LookupSize) },
-		{ NumCases >= LookupSize },
-		{ globals__lookup_int_option(Globals, lookup_switch_req_density,
-			ReqDensity) },
-		lookup_switch__is_lookup_switch(CaseVar, TaggedCases, GoalInfo,
-			CanFail, ReqDensity, StoreMap, no, MaybeEndPrime,
-			CodeModel, FirstVal, LastVal, NeedRangeCheck,
-			NeedBitVecCheck, OutVars, CaseVals, MLiveness)
+		Indexing = yes,
+		SwitchCategory = atomic_switch,
+		code_info__get_maybe_trace_info(!.CI, MaybeTraceInfo),
+		MaybeTraceInfo = no,
+		list__length(TaggedCases, NumCases),
+		globals__lookup_int_option(Globals, lookup_switch_size,
+			LookupSize),
+		NumCases >= LookupSize,
+		globals__lookup_int_option(Globals, lookup_switch_req_density,
+			ReqDensity),
+		lookup_switch__is_lookup_switch(CaseVar, TaggedCases,
+			GoalInfo, CanFail, ReqDensity, StoreMap, no,
+			MaybeEndPrime, CodeModel, FirstVal, LastVal,
+			NeedRangeCheck, NeedBitVecCheck, OutVars, CaseVals,
+			MLiveness, !CI)
 	->
-		{ MaybeEnd = MaybeEndPrime },
+		MaybeEnd = MaybeEndPrime,
 		lookup_switch__generate(CaseVar, OutVars, CaseVals,
 			FirstVal, LastVal, NeedRangeCheck, NeedBitVecCheck,
-			MLiveness, StoreMap, no, Code)
+			MLiveness, StoreMap, no, Code, !CI)
 	;
-		{ Indexing = yes },
-		{ SwitchCategory = atomic_switch },
-		{ list__length(TaggedCases, NumCases) },
-		{ globals__lookup_int_option(Globals, dense_switch_size,
-			DenseSize) },
-		{ NumCases >= DenseSize },
-		{ globals__lookup_int_option(Globals, dense_switch_req_density,
-			ReqDensity) },
-		dense_switch__is_dense_switch(CaseVar, TaggedCases, CanFail,
-			ReqDensity, FirstVal, LastVal, CanFail1)
+		Indexing = yes,
+		SwitchCategory = atomic_switch,
+		list__length(TaggedCases, NumCases),
+		globals__lookup_int_option(Globals, dense_switch_size,
+			DenseSize),
+		NumCases >= DenseSize,
+		globals__lookup_int_option(Globals, dense_switch_req_density,
+			ReqDensity),
+		dense_switch__is_dense_switch(!.CI, CaseVar, TaggedCases,
+			CanFail, ReqDensity, FirstVal, LastVal, CanFail1)
 	->
 		dense_switch__generate(TaggedCases,
 			FirstVal, LastVal, CaseVar, CodeModel, CanFail1,
-			GoalInfo, EndLabel, no, MaybeEnd, Code)
+			GoalInfo, EndLabel, no, MaybeEnd, Code, !CI)
 	;
-		{ Indexing = yes },
-		{ SwitchCategory = string_switch },
-		{ list__length(TaggedCases, NumCases) },
-		{ globals__lookup_int_option(Globals, string_switch_size,
-			StringSize) },
-		{ NumCases >= StringSize }
+		Indexing = yes,
+		SwitchCategory = string_switch,
+		list__length(TaggedCases, NumCases),
+		globals__lookup_int_option(Globals, string_switch_size,
+			StringSize),
+		NumCases >= StringSize
 	->
 		string_switch__generate(TaggedCases, CaseVar, CodeModel,
-			CanFail, GoalInfo, EndLabel, no, MaybeEnd, Code)
+			CanFail, GoalInfo, EndLabel, no, MaybeEnd, Code, !CI)
 	;
-		{ Indexing = yes },
-		{ SwitchCategory = tag_switch },
-		{ list__length(TaggedCases, NumCases) },
-		{ globals__lookup_int_option(Globals, tag_switch_size,
-			TagSize) },
-		{ NumCases >= TagSize }
+		Indexing = yes,
+		SwitchCategory = tag_switch,
+		list__length(TaggedCases, NumCases),
+		globals__lookup_int_option(Globals, tag_switch_size,
+			TagSize),
+		NumCases >= TagSize
 	->
 		tag_switch__generate(TaggedCases, CaseVar, CodeModel, CanFail,
-			GoalInfo, EndLabel, no, MaybeEnd, Code)
+			GoalInfo, EndLabel, no, MaybeEnd, Code, !CI)
 	;
 		% To generate a switch, first we flush the
 		% variable on whose tag we are going to switch, then we
@@ -172,9 +172,9 @@ switch_gen__generate_switch(CodeModel, CaseVar, CanFail, Cases, GoalInfo,
 
 		switch_gen__generate_all_cases(TaggedCases, CaseVar,
 			CodeModel, CanFail, GoalInfo, EndLabel, no, MaybeEnd,
-			Code)
+			Code, !CI)
 	),
-	code_info__after_all_branches(StoreMap, MaybeEnd).
+	code_info__after_all_branches(StoreMap, MaybeEnd, !CI).
 
 %---------------------------------------------------------------------------%
 
@@ -182,29 +182,26 @@ switch_gen__generate_switch(CodeModel, CaseVar, CanFail, Cases, GoalInfo,
 	% being switched on is an atomic type, a string, or
 	% something more complicated.
 
-:- pred switch_gen__determine_category(prog_var, switch_category,
-	code_info, code_info).
-:- mode switch_gen__determine_category(in, out, in, out) is det.
+:- func switch_gen__determine_category(code_info, prog_var) = switch_category.
 
-switch_gen__determine_category(CaseVar, SwitchCategory) -->
-	code_info__variable_type(CaseVar, Type),
-	code_info__get_module_info(ModuleInfo),
-	{ classify_type(ModuleInfo, Type) = TypeCategory },
-	{ switch_util__type_cat_to_switch_cat(TypeCategory, SwitchCategory) }.
+switch_gen__determine_category(CI, CaseVar) = SwitchCategory :-
+	Type = code_info__variable_type(CI, CaseVar),
+	code_info__get_module_info(CI, ModuleInfo),
+	classify_type(ModuleInfo, Type) = TypeCategory,
+	SwitchCategory = switch_util__type_cat_to_switch_cat(TypeCategory).
 
 %---------------------------------------------------------------------------%
 
-:- pred switch_gen__lookup_tags(list(case), prog_var, cases_list,
-				code_info, code_info).
-:- mode switch_gen__lookup_tags(in, in, out, in, out) is det.
+:- pred switch_gen__lookup_tags(code_info::in, list(case)::in, prog_var::in,
+	cases_list::out) is det.
 
-switch_gen__lookup_tags([], _, []) --> [].
-switch_gen__lookup_tags([Case | Cases], Var, [TaggedCase | TaggedCases]) -->
-	{ Case = case(ConsId, Goal) },
-	code_info__cons_id_to_tag(Var, ConsId, Tag),
-	{ switch_util__switch_priority(Tag, Priority) },
-	{ TaggedCase = case(Priority, Tag, ConsId, Goal) },
-	switch_gen__lookup_tags(Cases, Var, TaggedCases).
+switch_gen__lookup_tags(_, [], _, []).
+switch_gen__lookup_tags(CI, [Case | Cases], Var, [TaggedCase | TaggedCases]) :-
+	Case = case(ConsId, Goal),
+	Tag = code_info__cons_id_to_tag(CI, Var, ConsId),
+	Priority = switch_util__switch_priority(Tag),
+	TaggedCase = case(Priority, Tag, ConsId, Goal),
+	switch_gen__lookup_tags(CI, Cases, Var, TaggedCases).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -235,27 +232,26 @@ switch_gen__lookup_tags([Case | Cases], Var, [TaggedCase | TaggedCases]) -->
 	% and put that one first. This minimizes the number of pipeline
 	% breaks caused by taken branches.
 
-:- pred switch_gen__generate_all_cases(list(extended_case), prog_var,
-	code_model, can_fail, hlds_goal_info, label, branch_end, branch_end,
-	code_tree, code_info, code_info).
-:- mode switch_gen__generate_all_cases(in, in, in, in, in, in, in, out, out,
-	in, out) is det.
+:- pred switch_gen__generate_all_cases(list(extended_case)::in, prog_var::in,
+	code_model::in, can_fail::in, hlds_goal_info::in, label::in,
+	branch_end::in, branch_end::out, code_tree::out,
+	code_info::in, code_info::out) is det.
 
 switch_gen__generate_all_cases(Cases0, Var, CodeModel, CanFail, GoalInfo,
-		EndLabel, MaybeEnd0, MaybeEnd, Code) -->
-	code_info__produce_variable(Var, VarCode, _Rval),
+		EndLabel, !MaybeEnd, Code, !CI) :-
+	code_info__produce_variable(Var, VarCode, _Rval, !CI),
 	(
-		{ CodeModel = model_det },
-		{ CanFail = cannot_fail },
-		{ Cases0 = [Case1, Case2] },
-		{ Case1 = case(_, _, _, Goal1) },
-		{ Case2 = case(_, _, _, Goal2) }
+		CodeModel = model_det,
+		CanFail = cannot_fail,
+		Cases0 = [Case1, Case2],
+		Case1 = case(_, _, _, Goal1),
+		Case2 = case(_, _, _, Goal2)
 	->
-		code_info__get_pred_id(PredId),
-		code_info__get_proc_id(ProcId),
-		{ count_recursive_calls(Goal1, PredId, ProcId, Min1, Max1) },
-		{ count_recursive_calls(Goal2, PredId, ProcId, Min2, Max2) },
-		{
+		code_info__get_pred_id(!.CI, PredId),
+		code_info__get_proc_id(!.CI, ProcId),
+		count_recursive_calls(Goal1, PredId, ProcId, Min1, Max1),
+		count_recursive_calls(Goal2, PredId, ProcId, Min2, Max2),
+		(
 			Max1 = 0,	% Goal1 is a base case
 			Min2 = 1	% Goal2 is probably singly recursive
 		->
@@ -267,82 +263,78 @@ switch_gen__generate_all_cases(Cases0, Var, CodeModel, CanFail, GoalInfo,
 			Cases = [Case2, Case1]
 		;
 			Cases = Cases0
-		}
+		)
 	;
-		{ Cases = Cases0 }
+		Cases = Cases0
 	),
 	switch_gen__generate_cases(Cases, Var, CodeModel, CanFail,
-		GoalInfo, EndLabel, MaybeEnd0, MaybeEnd, CasesCode),
-	{ Code = tree(VarCode, CasesCode) }.
+		GoalInfo, EndLabel, !MaybeEnd, CasesCode, !CI),
+	Code = tree(VarCode, CasesCode).
 
-:- pred switch_gen__generate_cases(list(extended_case), prog_var, code_model,
-	can_fail, hlds_goal_info, label, branch_end, branch_end, code_tree,
-	code_info, code_info).
-:- mode switch_gen__generate_cases(in, in, in, in, in, in, in, out, out,
-	in, out) is det.
+:- pred switch_gen__generate_cases(list(extended_case)::in, prog_var::in,
+	code_model::in, can_fail::in, hlds_goal_info::in, label::in,
+	branch_end::in, branch_end::out, code_tree::out,
+	code_info::in, code_info::out) is det.
 
 	% At the end of a locally semidet switch, we fail because we
 	% came across a tag which was not covered by one of the cases.
 	% It is followed by the end of switch label to which the cases
 	% branch.
 switch_gen__generate_cases([], _Var, _CodeModel, CanFail, _GoalInfo,
-		EndLabel, MaybeEnd, MaybeEnd, Code) -->
-	( { CanFail = can_fail } ->
-		code_info__generate_failure(FailCode)
+		EndLabel, !MaybeEnd, Code, !CI) :-
+	( CanFail = can_fail ->
+		code_info__generate_failure(FailCode, !CI)
 	;
-		{ FailCode = empty }
+		FailCode = empty
 	),
-	{ EndCode = node([
+	EndCode = node([
 		label(EndLabel) -
 			"end of switch"
-	]) },
-	{ Code = tree(FailCode, EndCode) }.
+	]),
+	Code = tree(FailCode, EndCode).
 
 switch_gen__generate_cases([case(_, _, Cons, Goal) | Cases], Var, CodeModel,
-		CanFail, SwitchGoalInfo, EndLabel, MaybeEnd0, MaybeEnd,
-		CasesCode) -->
-	code_info__remember_position(BranchStart),
-	{ goal_info_get_store_map(SwitchGoalInfo, StoreMap) },
+		CanFail, SwitchGoalInfo, EndLabel, !MaybeEnd, CasesCode,
+		!CI) :-
+	code_info__remember_position(!.CI, BranchStart),
+	goal_info_get_store_map(SwitchGoalInfo, StoreMap),
 	(
-		{ Cases = [_|_] ; CanFail = can_fail }
+		( Cases = [_|_] ; CanFail = can_fail )
 	->
 		unify_gen__generate_tag_test(Var, Cons, branch_on_failure,
-			NextLabel, TestCode),
+			NextLabel, TestCode, !CI),
 		trace__maybe_generate_internal_event_code(Goal, SwitchGoalInfo,
-			TraceCode),
-		code_gen__generate_goal(CodeModel, Goal, GoalCode),
-		code_info__generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd1,
-			SaveCode),
-		{ ElseCode = node([
+			TraceCode, !CI),
+		code_gen__generate_goal(CodeModel, Goal, GoalCode, !CI),
+		code_info__generate_branch_end(StoreMap, !MaybeEnd, SaveCode,
+			!CI),
+		ElseCode = node([
 			goto(label(EndLabel)) -
 				"skip to the end of the switch",
 			label(NextLabel) -
 				"next case"
-		]) },
-		{ ThisCaseCode =
+		]),
+		ThisCaseCode =
 			tree(TestCode,
 			tree(TraceCode,
 			tree(GoalCode,
 			tree(SaveCode,
 			     ElseCode))))
-		}
 	;
 		trace__maybe_generate_internal_event_code(Goal, SwitchGoalInfo,
-			TraceCode),
-		code_gen__generate_goal(CodeModel, Goal, GoalCode),
-		code_info__generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd1,
-			SaveCode),
-		{ ThisCaseCode =
+			TraceCode, !CI),
+		code_gen__generate_goal(CodeModel, Goal, GoalCode, !CI),
+		code_info__generate_branch_end(StoreMap, !MaybeEnd, SaveCode,
+			!CI),
+		ThisCaseCode =
 			tree(TraceCode,
 			tree(GoalCode,
 			     SaveCode))
-		}
 	),
-	code_info__reset_to_position(BranchStart),
+	code_info__reset_to_position(BranchStart, !CI),
 		% generate the rest of the cases.
 	switch_gen__generate_cases(Cases, Var, CodeModel, CanFail,
-		SwitchGoalInfo, EndLabel, MaybeEnd1, MaybeEnd,
-		OtherCasesCode),
-	{ CasesCode = tree(ThisCaseCode, OtherCasesCode) }.
+		SwitchGoalInfo, EndLabel, !MaybeEnd, OtherCasesCode, !CI),
+	CasesCode = tree(ThisCaseCode, OtherCasesCode).
 
 %------------------------------------------------------------------------------%

@@ -78,9 +78,9 @@ code_aux__contains_simple_recursive_call_expr([Goal|Goals], CodeInfo, Last) :-
 code_aux__is_recursive_call(Goal, CodeInfo) :-
 	Goal = call(CallPredId, CallProcId, _, BuiltinState, _, _),
 	BuiltinState = not_builtin,
-	code_info__get_pred_id(PredId, CodeInfo, _),
+	code_info__get_pred_id(CodeInfo, PredId),
 	PredId = CallPredId,
-	code_info__get_proc_id(ProcId, CodeInfo, _),
+	code_info__get_proc_id(CodeInfo, ProcId),
 	ProcId = CallProcId.
 
 %-----------------------------------------------------------------------------%
