@@ -31,6 +31,11 @@
 :- pred int__min(int, int, int).
 :- mode int__min(intput, input, output).
 
+/*
+
+% Undiscriminated unions aren't implemented yet,
+% so this won't work.
+
 :- type int__expr 	= 	int__expr_2 + int.
 :- type int__expr_2	--->	(int__expr + int__expr)
 			;	(int__expr * int__expr)
@@ -38,6 +43,15 @@
 			;	(int__expr / int__expr).
 
 :- pred is(int :: output, int__expr :: input) is det.
+
+*/
+
+:- type int__simple_expr --->	(int + int)
+			;	(int * int)
+			;	(int - int)
+			;	(int / int).
+
+:- pred is(int :: output, int__simple_expr :: input) is det.
 
 :- implementation.
 
