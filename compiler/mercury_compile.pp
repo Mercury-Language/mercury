@@ -32,7 +32,7 @@
 :- import_module handle_options, prog_io, modules, make_hlds, hlds.
 :- import_module undef_types, typecheck, undef_modes, modes.
 :- import_module switch_detection, cse_detection, det_analysis, unique_modes.
-:- import_module (lambda), polymorphism, higher_order, inlining, common.
+:- import_module (lambda), polymorphism, higher_order, inlining, common, dnf.
 :- import_module constraint, unused_args, dead_proc_elim, excess, liveness.
 :- import_module follow_code, follow_vars, live_vars, arg_info, store_alloc.
 :- import_module code_gen, optimize, llds.
@@ -485,7 +485,13 @@ mercury_compile__middle_pass(HLDS25, HLDS50) -->
 	maybe_report_stats(Statistics),
 	mercury_compile__maybe_dump_hlds(HLDS37, "37", "common"),
 
-	mercury_compile__maybe_propagate_constraints(HLDS37, HLDS40),
+	% dnf transformations should be after inlining
+	% magic sets transformations should be before constraints
+	mercury_compile__transform_dnf(HLDS37, HLDS38),
+	maybe_report_stats(Statistics),
+	mercury_compile__maybe_dump_hlds(HLDS38, "38", "dnf"),
+
+	mercury_compile__maybe_propagate_constraints(HLDS38, HLDS40),
 	maybe_report_stats(Statistics),
 	mercury_compile__maybe_dump_hlds(HLDS40, "40", "constraint"),
 
@@ -949,6 +955,17 @@ mercury_compile__maybe_do_inlining(HLDS0, HLDS) -->
 	;
 		{ HLDS = HLDS0 }
 	).
+
+:- pred mercury_compile__transform_dnf(module_info, module_info,
+	io__state, io__state).
+:- mode mercury_compile__transform_dnf(in, out, di, uo) is det.
+
+mercury_compile__transform_dnf(HLDS0, HLDS) -->
+	globals__io_lookup_bool_option(verbose, Verbose),
+	maybe_write_string(Verbose, "% Disjunctive normal form transformation..."),
+	maybe_flush_output(Verbose),
+	{ dnf__transform_module(HLDS0, no, HLDS) },
+	maybe_write_string(Verbose, " done.\n").
 
 :- pred mercury_compile__maybe_propagate_constraints(module_info, module_info,
 	io__state, io__state).

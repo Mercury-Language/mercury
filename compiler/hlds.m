@@ -1608,6 +1608,7 @@ make_cons_id(unqualified(Name), Args, _TypeId, cons(Name, Arity)) :-
 	% The type `import_status' describes whether an entity (a predicate,
 	% type, inst, or mode) is local to the current module, exported from
 	% the current module, or imported from some other module.
+
 :- type import_status
 	--->	imported	% defined in the interface of some other module
 				% or `external' (in some other language)
@@ -1623,8 +1624,31 @@ make_cons_id(unqualified(Name), Args, _TypeId, cons(Name, Arity)) :-
 				% of a unification is exported
 	;	local.		% defined in the implementation of this module
 
-:- type marker		--->	inline ; dnf ; magic ; memo.
-:- type marker_status	--->	request(marker) ; done(marker).
+	% Predicates can be marked, to request that transformations be
+	% performed on them and to record that these transformations have been
+	% done and are still valid.
+	%
+	% The code that performs the transformation should remove the request
+	% marker status and substitute the done marker status.
+	%
+	% In the future, we can use markers to request the use of a different
+	% code generator for certain predicates, e.g. to generate RL instead
+	% of normal C code, with a C code stub to link to the RL.
+
+:- type marker
+	--->	inline		% Requests that this be predicate be inlined.
+				% Since the transformation affects *other*
+				% predicates, the done status is not meaningful
+	;	dnf		% Requests that this predicate be transformed
+				% into disjunctive normal form.
+	;	magic		% Requests that this predicate be transformed
+				% using the magic set transformation
+	;	memo.		% Requests that this predicate be evaluated
+				% using memoing.
+
+:- type marker_status
+	--->	request(marker)
+	;	done(marker).
 
 :- pred predicate_module(module_info, pred_id, module_name).
 :- mode predicate_module(in, in, out) is det.
