@@ -73,6 +73,17 @@ MCFLAGS-func_test	=	--infer-all
 MCFLAGS-ho_order	=	--optimize-higher-order
 MCFLAGS-no_fully_strict	=	--no-fully-strict
 
+# In grade `none' with options `-O1 --opt-space' on kryten
+# (a sparc-sun-solaris2.5 system), mode_choice needs to be linked
+# with `--no-strip', otherwise it gets a seg fault. 
+# The test case ../hard_coded/string_test suffers from a similar problem.
+# This is probably a bug in one of the underlying tools (e.g. the Solaris
+# linker) rather than a bug in Mercury, and since it is goes away when you
+# compile with debugging information, it is very difficult to debug.
+# It is much easier to just work around it this way rather than
+# tracking it down.
+MLFLAGS-mode_choice = --no-strip
+
 # no_fully_strict is expected to fail (it calls error/1)
 # so we need to ignore the exit status (hence the leading `-')
 no_fully_strict.out: no_fully_strict
