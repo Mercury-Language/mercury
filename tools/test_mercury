@@ -260,11 +260,11 @@ TEST_CFLAGS=""
 TEST_MLFLAGS=""
 
 case $FULLARCH in
-	i*86-*-linux*)
-		# On x86 Linux, we need to set the following flags to enable
+	i*86-*-linux*|i*86-*-freebsd*|i*86-*-solaris2.*)
+		# On x86 Unix, we need to set the following flags to enable
 		# shared libraries (and we need to use shared libraries to
 		# avoid running out of disk space...)
-		TEST_MCFLAGS="$TEST_MCFLAGS --pic-reg"
+		TEST_MCFLAGS="$TEST_MCFLAGS --mercury-linkage shared"
 		TEST_MGNUCFLAGS="$TEST_MGNUCFLAGS --pic-reg"
 		TEST_MLFLAGS="$TEST_MLFLAGS --shared"
 		;;
