@@ -1434,10 +1434,17 @@ polymorphism__process_call(PredId, ArgVars0, GoalInfo0,
 		goal_info_get_instmap_delta(GoalInfo1, InstmapDelta0),
 		AddInstDelta = lambda([TVar::in, IMD0::in, IMD::out] is det, (
 			map__lookup(TypeVarMap, TVar, TypeInfoLocn),
-			type_info_locn_var(TypeInfoLocn, TypeInfoVar),
-			instmap_delta_set(IMD0, TypeInfoVar,
-				ground(shared, no), IMD)
-			)),
+			(
+				TypeInfoLocn = type_info(TypeInfoVar),
+				instmap_delta_set(IMD0, TypeInfoVar,
+					ground(shared, no), IMD)
+			;
+				TypeInfoLocn = typeclass_info(_, _),
+				% the instmap delta for the type class info
+				% variable will be added by AddTCInstDelta
+				% (below)
+				IMD = IMD0
+			))),
 		AddTCInstDelta = lambda([Constraint::in, IMD0::in, IMD::out]
 					is det, (
 			map__lookup(TypeClassVarMap, Constraint,
@@ -1458,9 +1465,24 @@ polymorphism__process_call(PredId, ArgVars0, GoalInfo0,
 
 polymorphism__update_typeclass_infos(Constraints, Vars, Info0, Info) :-
 	poly_info_get_typeclass_info_map(Info0, TypeClassInfoMap0),
-	map__det_insert_from_corresponding_lists(TypeClassInfoMap0,
-		Constraints, Vars, TypeClassInfoMap),
+	insert_typeclass_info_locns( Constraints, Vars, TypeClassInfoMap0, 
+		TypeClassInfoMap),
 	poly_info_set_typeclass_info_map(TypeClassInfoMap, Info0, Info).
+
+:- pred insert_typeclass_info_locns(list(class_constraint), list(var), 
+	map(class_constraint, var), map(class_constraint, var)).
+:- mode insert_typeclass_info_locns(in, in, in, out) is det.
+
+insert_typeclass_info_locns([], [], TypeClassInfoMap, TypeClassInfoMap).
+insert_typeclass_info_locns([C|Cs], [V|Vs], TypeClassInfoMap0, 
+		TypeClassInfoMap) :-
+	map__set(TypeClassInfoMap0, C, V, TypeClassInfoMap1),
+	insert_typeclass_info_locns(Cs, Vs, 
+	TypeClassInfoMap1, TypeClassInfoMap).
+insert_typeclass_info_locns([], [_|_], _, _) :-
+	error("polymorphism:insert_typeclass_info_locns").
+insert_typeclass_info_locns([_|_], [], _, _) :-
+	error("polymorphism:insert_typeclass_info_locns").
 
 %-----------------------------------------------------------------------------%
 
