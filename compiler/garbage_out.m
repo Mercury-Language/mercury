@@ -41,8 +41,8 @@
 :- type num_slots == int.
 
 :- type det		---> 	deterministic
-			;	semideterministic % really just det
-			;	nondeterministic.
+			;	nondeterministic
+			;	commit.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -138,7 +138,7 @@ garbage_out__proc_instr(I, Cs, Cout) :-
 		)
 	->
 		garbage_out__remove_fields(LiveInfo0, LiveInfo1),
-		garbage_out__get_det(LiveInfo1, Det),
+		garbage_out__get_det(LiveInfo1, none, Det),
 		list__length(LiveInfo1, Length),
 		C = gc_label_info(Contn, Det, Length, LiveInfo1),
 		Cout = [C | Cs]
@@ -166,33 +166,58 @@ garbage_out__remove_fields([L|Ls], Ms) :-
 %-----------------------------------------------------------------------------%
 % Find the determinism of this label by looking for framevars or stackvars
 % or succip. If there is no succip, then we assume nondet. 
+% XXX Should deal with this properly - commits must be detected also.
 %-----------------------------------------------------------------------------%
-:- pred garbage_out__get_det(list(liveinfo), det).
-:- mode garbage_out__get_det(in, out) is det.
 
-garbage_out__get_det([], nondeterministic).
-garbage_out__get_det([L | Ls], Det) :-
+:- type so_far_det	--->	det ; nondet ; commit ; none.
+
+:- pred garbage_out__get_det(list(liveinfo), so_far_det, det).
+:- mode garbage_out__get_det(in, in, out) is det.
+
+garbage_out__get_det([], none, _) :-
+	error("garbage_out__get_det: Unable to determine determinism.").
+	% nondeterministic is a pretty safe bet though.
+garbage_out__get_det([], commit, commit).
+garbage_out__get_det([], nondet, nondeterministic).
+garbage_out__get_det([], det, deterministic).
+
+garbage_out__get_det([L | Ls], OldD, NewDet) :-
 	(
-		(
-			L = live_lvalue(stackvar(_), _)
-		;
-			L = live_lvalue(succip, _)
-		)
+		L = live_lvalue(stackvar(_), _)
 	->
-		Det = deterministic
-	;
 		(
-			L = live_lvalue(framevar(_), _)
+			OldD = none,
+			Det = det
 		;
-			L = live_lvalue(maxfr, _)
+			OldD = nondet,
+			Det = commit
 		;
-			L = live_lvalue(redoip(_), _)
+			OldD = det,
+			Det = det
+		;
+			OldD = commit,
+			Det = commit
 		)
-	->
-		Det = nondeterministic
 	;
-		garbage_out__get_det(Ls, Det)
-	).
+		L = live_lvalue(framevar(_), _)
+	->
+		(
+			OldD = none,
+			Det = nondet
+		;
+			OldD = nondet,
+			Det = OldD
+		;
+			OldD = det,
+			Det = commit
+		;
+			OldD = commit,
+			Det = commit
+		)
+	;
+		Det = OldD
+	),
+	garbage_out__get_det(Ls, Det, NewDet).
 
 %-----------------------------------------------------------------------------%
 % Actually write the garbage information.
@@ -218,19 +243,23 @@ garbage_out__write_cont_list([G|Gs]) -->
 	{ G = gc_label_info(Code_Addr, Det, Num_Slots, Live_Info_List) },
 	io__write_string("continuation("),
 	garbage_out__write_code_addr(Code_Addr),
-	( 
-		{ Det = nondeterministic }   % We treat semi = det
-        ->
-		io__write_string(", nondeterministic")
-	;
-		io__write_string(", deterministic")
-	),
+	garbage_out__write_det(Det),
 	io__write_string(", "),
 	io__write_int(Num_Slots),
 	io__write_string(", ["),
 	garbage_out__write_liveinfo_list(Live_Info_List),
 	io__write_string("]).\n"),
 	garbage_out__write_cont_list(Gs).
+
+:- pred garbage_out__write_det(det, io__state, io__state).
+:- mode garbage_out__write_det(in, di, uo) is det.
+garbage_out__write_det(deterministic) -->
+	io__write_string(", deterministic").
+garbage_out__write_det(nondeterministic) -->
+	io__write_string(", nondeterministic").
+garbage_out__write_det(commit) -->
+	io__write_string(", commit").
+
 
 %-----------------------------------------------------------------------------%
 % Perhaps write a comma and a newline, this is used as a sort of 'if
