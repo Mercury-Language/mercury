@@ -166,7 +166,7 @@
 :- import_module parse_tree__error_util.
 :- import_module parse_tree__prog_out.
 
-:- import_module char, dir, getopt, int, require, string.
+:- import_module char, dir, getopt_io, int, require, string.
 
 il_assemble(ErrorStream, ModuleName, HasMain, Succeeded, !IO) :-
 	module_name_to_file_name(ModuleName, ".il", no, IL_File, !IO),

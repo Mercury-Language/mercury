@@ -7,7 +7,7 @@
 % File: options.m.
 % Main author: fjh.
 
-% This defines the stuff necessary so that getopt.m
+% This defines the stuff necessary so that getopt_io.m
 % can parse the command-line options.
 
 % IMPORTANT NOTE: any changes to the options should be
@@ -19,7 +19,7 @@
 :- module libs__options.
 :- interface.
 
-:- import_module char, io, getopt.
+:- import_module char, io, getopt_io.
 
 :- pred short_option(char::in, option::out) is semidet.
 :- pred long_option(string::in, option::out) is semidet.
@@ -2217,7 +2217,7 @@ option_table_add_mercury_library_directory(OptionTable0, Dir) =
 append_to_accumulating_option(Option - Value, OptionTable0) =
 	OptionTable0 ^ elem(Option) :=
 	    accumulating(
-		getopt__lookup_accumulating_option(OptionTable0, Option)
+		getopt_io__lookup_accumulating_option(OptionTable0, Option)
 		++ [Value]).
 
 :- pred set_opt_level(int, option_table, option_table).
@@ -2313,7 +2313,7 @@ opt_level(1, OptionTable, [
 	optimize_tailcalls	-	bool(yes)
 	% dups?
 ]) :-
-	getopt__lookup_bool_option(OptionTable, have_delay_slot, DelaySlot).
+	getopt_io__lookup_bool_option(OptionTable, have_delay_slot, DelaySlot).
 
 % Optimization level 2: apply optimizations which have a good
 % payoff relative to their cost; but include optimizations

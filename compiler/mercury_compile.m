@@ -167,7 +167,7 @@
 
 	% library modules
 :- import_module int, list, map, set, std_util, require, string, bool, dir.
-:- import_module library, getopt, term, varset, assoc_list.
+:- import_module library, getopt_io, term, varset, assoc_list.
 :- import_module gc, benchmarking.
 :- import_module pprint.
 
@@ -195,7 +195,8 @@ real_main(!IO) :-
 		options_file__read_args_file(ArgFile, MaybeArgs1, !IO),
 		(
 			MaybeArgs1 = yes(Args1),
-			process_options(Args1, OptionArgs, NonOptionArgs, _),
+			process_options(Args1, OptionArgs, NonOptionArgs, _,
+				!IO),
 			MaybeMCFlags = yes([])
 		;
 			MaybeArgs1 = no,

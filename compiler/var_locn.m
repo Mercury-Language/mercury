@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 2000-2004 The University of Melbourne.
+% Copyright (C) 2000-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -333,7 +333,7 @@
 :- import_module ll_backend__exprn_aux.
 :- import_module parse_tree__error_util.
 
-:- import_module int, string, bag, require, getopt, varset, term.
+:- import_module int, string, bag, require, getopt_io, varset, term.
 
 :- type dead_or_alive	--->	dead ; alive.
 

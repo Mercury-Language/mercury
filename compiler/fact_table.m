@@ -112,7 +112,7 @@
 
 % Standard library modules
 :- import_module int, map, std_util, assoc_list, char, require, library, bool.
-:- import_module float, math, getopt, string.
+:- import_module float, math, getopt_io, string.
 :- import_module parser, term, term_io.
 
 :- type fact_result

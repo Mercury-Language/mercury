@@ -137,7 +137,7 @@
 :- import_module transform_hlds__term_util.
 
 :- import_module string, char, int, set, map, multi_map, require.
-:- import_module bag, term, varset, getopt, assoc_list, term_io.
+:- import_module bag, term, varset, getopt_io, assoc_list, term_io.
 
 parse_tree_to_hlds(module(Name, Items), MQInfo0, EqvMap, Module, QualInfo,
 		InvalidTypes, InvalidModes, !IO) :-

@@ -77,7 +77,7 @@
 :- import_module parse_tree__prog_out.
 :- import_module top_level__mercury_compile. % XXX unwanted dependency
 
-:- import_module assoc_list, bool, char, dir, exception, getopt, int, list.
+:- import_module assoc_list, bool, char, dir, exception, getopt_io, int, list.
 :- import_module map, parser, require, set, std_util, string, term, term_io.
 
 :- type make_info

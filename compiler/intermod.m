@@ -109,8 +109,10 @@
 :- import_module parse_tree__prog_util.
 :- import_module transform_hlds__inlining.
 
-:- import_module assoc_list, dir, getopt, int, list, map, multi_map, require.
-:- import_module set, std_util, string, term, varset.
+:- import_module int, string, list, assoc_list.
+:- import_module map, multi_map, set.
+:- import_module dir, getopt_io, require.
+:- import_module std_util, term, varset.
 
 %-----------------------------------------------------------------------------%
 

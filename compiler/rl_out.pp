@@ -84,7 +84,7 @@
 #else
 #endif
 
-:- import_module getopt.
+:- import_module getopt_io.
 :- import_module assoc_list, bool, char, int, map, multi_map, require, set.
 :- import_module string, term, libs__tree, varset.
 

@@ -21,7 +21,7 @@
 :- import_module libs__globals.
 :- import_module libs__options.
 
-:- import_module list, bool, getopt, io.
+:- import_module list, bool, getopt_io, io.
 
 	% handle_options(Args, Errors, OptionArgs, NonOptionArgs, Link).
 :- pred handle_options(list(string)::in, list(string)::out, list(string)::out,
@@ -33,7 +33,7 @@
 	% modify the globals. This is mainly useful for separating
 	% the list of arguments into option and non-option arguments.
 :- pred process_options(list(string)::in, list(string)::out, list(string)::out,
-	maybe_option_table(option)::out) is det.
+	maybe_option_table(option)::out, io::di, io::uo) is det.
 
 	% Display the compiler version.
 	%
@@ -77,7 +77,7 @@
 handle_options(Args0, Errors, OptionArgs, Args, Link) -->
 	% io__write_string("original arguments\n"),
 	% dump_arguments(Args0),
-	{ process_options(Args0, OptionArgs, Args, Result) },
+	process_options(Args0, OptionArgs, Args, Result),
 	% io__write_string("final arguments\n"),
 	% dump_arguments(Args),
 	postprocess_options(Result, Errors),
@@ -126,10 +126,11 @@ handle_options(Args0, Errors, OptionArgs, Args, Link) -->
 		)
 	).
 
-process_options(Args0, OptionArgs, Args, Result) :-
+process_options(Args0, OptionArgs, Args, Result, !IO) :-
 	OptionOps = option_ops(short_option, long_option,
 		option_defaults, special_handler),
-	getopt__process_options(OptionOps, Args0, OptionArgs, Args, Result).
+	getopt_io__process_options(OptionOps, Args0, OptionArgs, Args, Result,
+		!IO).
 
 :- pred dump_arguments(list(string)::in, io::di, io::uo) is det.
 

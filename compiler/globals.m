@@ -22,7 +22,7 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp__prim_data. % for module_name
 
-:- import_module bool, getopt, list, map, io, std_util.
+:- import_module bool, getopt_io, list, map, io, std_util.
 
 :- type globals.
 
@@ -411,9 +411,9 @@ globals__have_static_code_addresses(Globals, IsConst) :-
 	bool::out) is det.
 
 globals__have_static_code_addresses_2(OptionTable, IsConst) :-
-	getopt__lookup_bool_option(OptionTable, gcc_non_local_gotos,
+	getopt_io__lookup_bool_option(OptionTable, gcc_non_local_gotos,
 		NonLocalGotos),
-	getopt__lookup_bool_option(OptionTable, asm_labels, AsmLabels),
+	getopt_io__lookup_bool_option(OptionTable, asm_labels, AsmLabels),
 	globals__imported_is_constant(NonLocalGotos, AsmLabels, IsConst).
 
 globals__want_return_var_layouts(Globals, WantReturnLayouts) :-

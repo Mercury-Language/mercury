@@ -153,7 +153,7 @@
 :- import_module parse_tree__prog_type.
 
 :- import_module assoc_list, bool, int, map, set, std_util, require, string.
-:- import_module getopt, term, varset.
+:- import_module getopt_io, term, varset.
 
 %-----------------------------------------------------------------------------%
 

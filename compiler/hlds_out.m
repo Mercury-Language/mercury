@@ -280,7 +280,7 @@
 
 % Standard library modules
 :- import_module int, string, set, assoc_list, map, multi_map.
-:- import_module require, getopt, std_util, term_io, varset.
+:- import_module require, getopt_io, std_util, term_io, varset.
 
 hlds_out__write_type_ctor(Name - Arity, !IO) :-
 	prog_out__write_sym_name_and_arity(Name / Arity, !IO).

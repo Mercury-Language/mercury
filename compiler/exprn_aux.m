@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2004 The University of Melbourne.
+% Copyright (C) 1995-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %------------------------------------------------------------------------------%
@@ -102,13 +102,13 @@
 :- import_module libs__globals.
 :- import_module libs__options.
 
-:- import_module int, set, require, getopt.
+:- import_module int, set, require, getopt_io.
 
 exprn_aux__init_exprn_opts(Options, ExprnOpts) :-
-	getopt__lookup_bool_option(Options, gcc_non_local_gotos, NLG),
-	getopt__lookup_bool_option(Options, asm_labels, ASM),
-	getopt__lookup_bool_option(Options, static_ground_terms, SGT),
-	getopt__lookup_bool_option(Options, unboxed_float, UBF),
+	getopt_io__lookup_bool_option(Options, gcc_non_local_gotos, NLG),
+	getopt_io__lookup_bool_option(Options, asm_labels, ASM),
+	getopt_io__lookup_bool_option(Options, static_ground_terms, SGT),
+	getopt_io__lookup_bool_option(Options, unboxed_float, UBF),
 	ExprnOpts = nlg_asm_sgt_ubf(NLG, ASM, SGT, UBF).
 
 % Determine whether a const (well, what _we_ consider to be a const)
