@@ -2698,7 +2698,9 @@ mlds_type_to_ilds_class_name(DataRep, MldsType) =
 :- func get_ilds_type_class_name(ilds__type) = ilds__class_name.
 get_ilds_type_class_name(ILType) = ClassName :-
 	( 
-		ILType = ilds__type(_, class(ClassName0))
+		( ILType = ilds__type(_, class(ClassName0))
+		; ILType = ilds__type(_, value_class(ClassName0))
+		)
 	->
 		ClassName = ClassName0
 	;
@@ -3215,7 +3217,12 @@ data_addr_constant_to_fieldref(data_addr(ModuleName, DataName), FieldRef) :-
 	% this in a separate pass.   See defn_to_class_decl which does
 	% the same thing when creating the fields.
 :- func get_fieldref(il_data_rep, field_id, mlds__type, mlds__type) = fieldref.
-get_fieldref(DataRep, FieldNum, FieldType, ClassType) = FieldRef :-
+get_fieldref(DataRep, FieldNum, FieldType, ClassType0) = FieldRef :-
+	( ClassType0 = mlds__ptr_type(ClassType1) ->
+		ClassType = ClassType1
+	;
+		ClassType = ClassType0
+	),
 	FieldILType0 = mlds_type_to_ilds_type(DataRep,
 		FieldType),
 	( FieldILType0 = ilds__type(_, '&'(FieldILType1)) ->
@@ -3225,8 +3232,7 @@ get_fieldref(DataRep, FieldNum, FieldType, ClassType) = FieldRef :-
 	),
 	( 
 		FieldNum = offset(OffsetRval),
-		ClassName = mlds_type_to_ilds_class_name(DataRep,
-			ClassType),
+		ClassName = mlds_type_to_ilds_class_name(DataRep, ClassType),
 		( OffsetRval = const(int_const(Num)) ->
 			string__format("f%d", [i(Num)], FieldId)
 		;
@@ -3234,11 +3240,39 @@ get_fieldref(DataRep, FieldNum, FieldType, ClassType) = FieldRef :-
 				"offsets for non-int_const rvals")
 		)
 	; 
-		FieldNum = named_field(qual(ModuleName, FieldId),
-			_Type),
-		ClassName = mlds_module_name_to_class_name(ModuleName)
+		FieldNum = named_field(qual(ModuleName, FieldId), _CtorType),
+		% The MLDS doesn't record which qualifiers are class qualifiers
+		% and which are namespace qualifiers... we first generate
+		% a name for the CtorClass as if it wasn't nested, and then
+		% we call fixup_class_qualifiers to make it correct.
+		CtorClassName = mlds_module_name_to_class_name(ModuleName),
+		BaseClassName = mlds_type_to_ilds_class_name(DataRep, ClassType),
+		ClassName = fixup_class_qualifiers(CtorClassName, BaseClassName)
 	),
 	FieldRef = make_fieldref(FieldILType, ClassName, FieldId).
+
+	% The CtorClass will be nested inside the BaseClass.
+	% But when we initially generate the name, we don't
+	% know that it is nested.  This routine fixes up the
+	% CtorClassName by moving the nested parts into the
+	% third field of the structured_name.
+:- func fixup_class_qualifiers(ilds__class_name, ilds__class_name) =
+	ilds__class_name.
+fixup_class_qualifiers(CtorClassName0, BaseClassName) = CtorClassName :-
+	BaseClassName  = structured_name(BaseAssembly, BaseClass, BaseNested),
+	CtorClassName0 = structured_name(CtorAssembly, CtorClass, CtorNested),
+	(
+		list__append(BaseClass, NestedClasses, CtorClass),
+		% some sanity checks
+		BaseAssembly = CtorAssembly,
+		BaseNested = [],
+		CtorNested = []
+	->
+		CtorClassName = structured_name(CtorAssembly, BaseClass,
+			NestedClasses)
+	;
+		unexpected(this_file, "fixup_class_qualifiers")
+	).
 
 %-----------------------------------------------------------------------------%
 
