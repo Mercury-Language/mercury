@@ -1280,6 +1280,12 @@ simplify__call_goal(PredId, ProcId, Args, IsBuiltin, Goal0, Goal,
 		%
 		\+ proc_info_eval_method(ProcInfo, eval_minimal),
 
+		% Don't warn about impure procedures, since they may modify
+		% the state in ways not visible to us (unlike pure and semipure
+		% procedures).
+		pred_info_get_purity(PredInfo1, Purity),
+		\+ Purity = (impure),
+
 		% Don't warn about Aditi relations.
 		\+ hlds_pred__pred_info_is_aditi_relation(PredInfo1)
 	->
