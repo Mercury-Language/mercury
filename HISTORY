@@ -884,6 +884,13 @@ But as well as bug fixes, there are a few minor improvements:
   no longer have to precede non-unique mode declarations.
 
 
+Mercury 0.7.4, 1 November 1997
+------------------------------
+
+This release just corrected a couple of bugs in the binary
+distribution for 0.7.3.
+
+
 Mercury 0.8, 18 November 1998
 -----------------------------
 
@@ -1184,4 +1191,11 @@ Changes to the Mercury implementation:
   information.
 
 * Numerous bug fixes.
+
+
+Mercury 0.8.1
+-------------
+
+This release just corrected some bugs in the binary
+distribution for 0.8.
 
