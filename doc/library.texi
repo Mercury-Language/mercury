@@ -1,10 +1,12 @@
 \input texinfo
 @setfilename mercury_library.info
 @settitle The Mercury Library Reference Manual
-@dircategory The Mercury Programming Language
-@direntry
-* Mercury Library: (mercury_library).  The Mercury Library Reference Manual.
-@end direntry
+
+@c --- texi2html doesn't support the @dir commands yet
+@c @dircategory The Mercury Programming Language
+@c @direntry
+@c * Mercury Library: (mercury_library).  The Mercury Library Reference Manual.
+@c @end direntry
 
 @c @smallbook
 @c @cropmarks

@@ -1,10 +1,12 @@
 \input texinfo
 @setfilename mercury_user_guide.info
 @settitle The Mercury User's Guide
-@dircategory The Mercury Programming Language
-@direntry
-* Mercury User's Guide: (mercury_user_guide).  The Mercury User's Guide.
-@end direntry
+
+@c --- texi2html doesn't support the @dir commands yet
+@c @dircategory The Mercury Programming Language
+@c @direntry
+@c * Mercury User's Guide: (mercury_user_guide).  The Mercury User's Guide.
+@c @end direntry
 
 @c Uncomment the line below to enable documentation of the Aditi interface.
 @c @set aditi

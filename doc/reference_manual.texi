@@ -1,10 +1,12 @@
 \input texinfo
 @setfilename mercury_ref.info
 @settitle The Mercury Language Reference Manual
-@dircategory The Mercury Programming Language
-@direntry
-* Mercury Language: (mercury_ref).  The Mercury Language Reference Manual.
-@end direntry
+
+@c --- texi2html doesn't support the @dir commands yet
+@c @dircategory The Mercury Programming Language
+@c @direntry
+@c * Mercury Language: (mercury_ref).  The Mercury Language Reference Manual.
+@c @end direntry
 
 @c Uncomment the line below to enable documentation of the Aditi interface.
 @c @set aditi

@@ -1,10 +1,12 @@
 \input texinfo
 @setfilename mercury_trans_guide.info
 @settitle The Prolog to Mercury transition guide
-@dircategory The Mercury Programming Language
-@direntry
-* Mercury Transition Guide: (mercury_trans_guide). The Prolog to Mercury Transition Guide.
-@end direntry
+
+@c --- texi2html doesn't support the @dir commands yet
+@c @dircategory The Mercury Programming Language
+@c @direntry
+@c * Mercury Transition Guide: (mercury_trans_guide). The Prolog to Mercury Transition Guide.
+@c @end direntry
 
 @c @smallbook
 @c @cropmarks
