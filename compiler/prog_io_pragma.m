@@ -215,8 +215,9 @@ parse_pragma_foreign_code_pragma(ModuleName, Pragma, PragmaTerms,
 	Check6 = (func(PTerms6, ForeignLanguage) = Res is semidet :- 
             PTerms6 = [PredAndVarsTerm, FlagsTerm,
 		    FieldsTerm, FirstTerm, LaterTerm, SharedTerm],
-	    ( parse_pragma_foreign_proc_attributes_term(
-	    		ForeignLanguage, FlagsTerm, Flags) ->
+	    parse_pragma_foreign_proc_attributes_term(
+		ForeignLanguage, FlagsTerm, MaybeFlags),
+	    ( MaybeFlags = ok(Flags) ->
 	        ( parse_pragma_keyword("local_vars", FieldsTerm, Fields,
 			FieldsContext) ->
 	            ( parse_pragma_keyword("first_code", FirstTerm, First,
@@ -271,8 +272,9 @@ parse_pragma_foreign_code_pragma(ModuleName, Pragma, PragmaTerms,
 			    	FieldsTerm)
 		)
 	    ;
-		ErrMsg = "-- invalid third argument, expecting foreign proc attribute or list of attributes",
-		Res = error(string__append(InvalidDeclStr, ErrMsg), FlagsTerm)
+		MaybeFlags = error(ErrorStr, ErrorTerm),
+		ErrMsg = "-- invalid third argument, expecting foreign proc attribute or list of attributes: " ++ ErrorStr,
+		Res = error(string__append(InvalidDeclStr, ErrMsg), ErrorTerm)
 	    )
 	),
 
@@ -292,29 +294,43 @@ parse_pragma_foreign_code_pragma(ModuleName, Pragma, PragmaTerms,
 	    (
 		CodeTerm = term__functor(term__string(Code), [], Context)
 	    ->
-		( parse_pragma_foreign_proc_attributes_term(ForeignLanguage, 
-			FlagsTerm, Flags) ->
-		    parse_pragma_foreign_code(ModuleName, Flags,
-			PredAndVarsTerm, ordinary(Code, yes(Context)),
-			VarSet, Res)
-	        ; parse_pragma_foreign_proc_attributes_term(ForeignLanguage,
-			PredAndVarsTerm, Flags) ->
-		    % XXX we should issue a warning; this syntax is deprecated
-		    % We will continue to accept this if c_code is used, but
-		    % not with foreign_code
-		    ( Pragma = "c_code" ->
-	                parse_pragma_foreign_code(ModuleName,
-			    Flags, FlagsTerm, ordinary(Code, yes(Context)),
-			    VarSet, Res)
-		    ;
-			ErrMsg = "-- invalid second argument, expecting predicate or function mode",
-		        Res = error(string__append(InvalidDeclStr, ErrMsg), 
-		    	    PredAndVarsTerm)
-		    )	
+		parse_pragma_foreign_proc_attributes_term(
+			ForeignLanguage, FlagsTerm, MaybeFlags),
+		( 
+			MaybeFlags = ok(Flags),
+			parse_pragma_foreign_code(ModuleName, Flags,
+				PredAndVarsTerm, ordinary(Code, yes(Context)),
+				VarSet, Res),
+			parse_pragma_foreign_proc_attributes_term(
+				ForeignLanguage, PredAndVarsTerm,
+				MaybeFlags2),
+			( 
+				MaybeFlags2 = ok(Flags)
+			->
+			    % XXX we should issue a warning; this syntax is
+			    % deprecated We will continue to accept this if
+			    % c_code is used, but not with foreign_code
+				( Pragma = "c_code" ->
+					parse_pragma_foreign_code(ModuleName,
+					Flags, FlagsTerm, ordinary(Code,
+					yes(Context)), VarSet, Res)
+				;
+					ErrMsg = "-- invalid second argument, expecting predicate or function mode",
+					Res = error(string__append(
+						InvalidDeclStr, ErrMsg),
+						PredAndVarsTerm)
+				)
+			;
+				ErrMsg = "-- invalid second argument, expecting predicate or function mode",
+				Res = error(string__append(
+					InvalidDeclStr, ErrMsg),
+					PredAndVarsTerm)
+			)
 	        ;
-		    ErrMsg = "-- invalid third argument, expecting a foreign proc attribute or list of attributes",
-		    Res = error(string__append(InvalidDeclStr, ErrMsg), 
-		    	FlagsTerm)
+		    MaybeFlags = error(FlagsError, ErrorTerm),
+		    ErrMsg = "-- invalid third argument: ",
+		    Res = error(InvalidDeclStr ++ ErrMsg ++ FlagsError,
+			ErrorTerm)
 		)
 	    ;
 		ErrMsg = "-- invalid fourth argument, expecting string containing foreign code",
@@ -418,8 +434,9 @@ parse_pragma_foreign_proc_pragma(ModuleName, Pragma, PragmaTerms,
 	Check6 = (func(PTerms6, ForeignLanguage) = Res is semidet :- 
             PTerms6 = [PredAndVarsTerm, FlagsTerm,
 		    FieldsTerm, FirstTerm, LaterTerm, SharedTerm],
-	    ( parse_pragma_foreign_proc_attributes_term(
-	    		ForeignLanguage, FlagsTerm, Flags) ->
+	    parse_pragma_foreign_proc_attributes_term(
+	    		ForeignLanguage, FlagsTerm, MaybeFlags),
+	    ( MaybeFlags = ok(Flags) ->
 	        ( parse_pragma_keyword("local_vars", FieldsTerm, Fields,
 			FieldsContext) ->
 	            ( parse_pragma_keyword("first_code", FirstTerm, First,
@@ -474,8 +491,9 @@ parse_pragma_foreign_proc_pragma(ModuleName, Pragma, PragmaTerms,
 			    	FieldsTerm)
 		)
 	    ;
-		ErrMsg = "-- invalid third argument, expecting foreign proc attribute or list of attributes",
-		Res = error(string__append(InvalidDeclStr, ErrMsg), FlagsTerm)
+		MaybeFlags = error(FlagsErrorStr, ErrorTerm),
+		ErrMsg = "-- invalid third argument: " ++ FlagsErrorStr,
+		Res = error(string__append(InvalidDeclStr, ErrMsg), ErrorTerm)
 	    )
 	),
 
@@ -495,29 +513,39 @@ parse_pragma_foreign_proc_pragma(ModuleName, Pragma, PragmaTerms,
 	    (
 		CodeTerm = term__functor(term__string(Code), [], Context)
 	    ->
-		( parse_pragma_foreign_proc_attributes_term(ForeignLanguage, 
-			FlagsTerm, Flags) ->
-		    parse_pragma_foreign_code(ModuleName, Flags,
-			PredAndVarsTerm, ordinary(Code, yes(Context)),
-			VarSet, Res)
-	        ; parse_pragma_foreign_proc_attributes_term(ForeignLanguage,
-			PredAndVarsTerm, Flags) ->
-		    % XXX we should issue a warning; this syntax is deprecated
-		    % We will continue to accept this if c_code is used, but
-		    % not with foreign_code
-		    ( Pragma = "c_code" ->
-	                parse_pragma_foreign_code(ModuleName,
-			    Flags, FlagsTerm, ordinary(Code, yes(Context)),
-			    VarSet, Res)
-		    ;
-			ErrMsg = "-- invalid second argument, expecting predicate or function mode",
-		        Res = error(string__append(InvalidDeclStr, ErrMsg), 
-		    	    PredAndVarsTerm)
-		    )	
-	        ;
-		    ErrMsg = "-- invalid third argument, expecting a foreign proc attribute or list of attributes",
-		    Res = error(string__append(InvalidDeclStr, ErrMsg), 
-		    	FlagsTerm)
+		parse_pragma_foreign_proc_attributes_term(ForeignLanguage, 
+			FlagsTerm, MaybeFlags),
+		( 
+			MaybeFlags = ok(Flags)
+		->
+			parse_pragma_foreign_code(ModuleName, Flags,
+				PredAndVarsTerm, ordinary(Code, yes(Context)),
+				VarSet, Res)
+	        ; 
+			parse_pragma_foreign_proc_attributes_term(
+				ForeignLanguage, PredAndVarsTerm, MaybeFlags),
+			(
+				MaybeFlags = ok(Flags),
+			    % XXX we should issue a warning; this syntax is
+			    % deprecated We will continue to accept this if
+			    % c_code is used, but not with foreign_code
+				( Pragma = "c_code" ->
+					parse_pragma_foreign_code(ModuleName,
+						Flags, FlagsTerm,
+						ordinary(Code, yes(Context)),
+						VarSet, Res)
+				;
+					ErrMsg = "-- invalid second argument, expecting predicate or function mode",
+					Res = error(string__append(
+						InvalidDeclStr, ErrMsg), 
+						PredAndVarsTerm)
+				)	
+			;
+				MaybeFlags = error(FlagsErr, ErrTerm),
+				ErrMsg = "-- invalid third argument: ",
+				Res = error(InvalidDeclStr ++ ErrMsg ++
+					FlagsErr, ErrTerm)
+			)
 		)
 	    ;
 		ErrMsg = "-- invalid fourth argument, expecting string containing foreign code",
@@ -611,12 +639,14 @@ parse_pragma_type(ModuleName, "import", PragmaTerms,
 	(
 	    (
 		PragmaTerms = [PredAndModesTerm, FlagsTerm, FunctionTerm],
-		( parse_pragma_foreign_proc_attributes_term(ForeignLanguage,
-				FlagsTerm, Flags) ->
-			FlagsResult = ok(Flags)
+		parse_pragma_foreign_proc_attributes_term(ForeignLanguage,
+				FlagsTerm, MaybeFlags),
+		(
+			MaybeFlags = error(FlagError, ErrorTerm),
+			FlagsResult = error("invalid second argument in `:- pragma import/3' declaration : " ++ FlagError, ErrorTerm)
 		;
-			FlagsResult = error("invalid second argument in `:- pragma import/3' declaration -- expecting a foreign proc attribute or list of attributes'",
-					FlagsTerm)
+			MaybeFlags = ok(Flags),
+			FlagsResult = ok(Flags)
 	        )
 	    ;
 		PragmaTerms = [PredAndModesTerm, FunctionTerm],
@@ -1099,44 +1129,66 @@ parse_pragma_keyword(ExpectedKeyword, Term, StringArg, StartContext) :-
 	;	aliasing.
 
 :- pred parse_pragma_foreign_proc_attributes_term(foreign_language, term, 
-		pragma_foreign_proc_attributes).
-:- mode parse_pragma_foreign_proc_attributes_term(in, in, out) is semidet.
+		maybe1(pragma_foreign_proc_attributes)).
+:- mode parse_pragma_foreign_proc_attributes_term(in, in, out) is det.
 
-parse_pragma_foreign_proc_attributes_term(ForeignLanguage, Term, Attributes) :-
+parse_pragma_foreign_proc_attributes_term(ForeignLanguage, Term,
+		MaybeAttributes) :-
 	default_attributes(ForeignLanguage, Attributes0),
-	parse_pragma_foreign_proc_attributes_term0(Term, AttrList),
-	( list__member(may_call_mercury(will_not_call_mercury), AttrList) ->
-		( list__member(may_call_mercury(may_call_mercury), AttrList) ->
-			% XXX an error message would be nice
-			fail
+	ConflictingAttributes = [
+		may_call_mercury(will_not_call_mercury) - 
+			may_call_mercury(may_call_mercury),
+		thread_safe(thread_safe) - 
+			thread_safe(not_thread_safe),
+		tabled_for_io(tabled_for_io) - 
+			tabled_for_io(not_tabled_for_io)
+	],
+	(
+		parse_pragma_foreign_proc_attributes_term0(Term, AttrList)
+	->
+		( 
+			list__member(Conflict1 - Conflict2,
+				ConflictingAttributes),
+			list__member(Conflict1, AttrList),
+			list__member(Conflict2, AttrList)
+		->
+			MaybeAttributes = error("conflicting attributes in attribute list", Term)
 		;
-			set_may_call_mercury(Attributes0,
-				will_not_call_mercury, Attributes1)
+			( 
+				list__member(may_call_mercury(
+					will_not_call_mercury), AttrList)
+			->
+				set_may_call_mercury(Attributes0,
+					will_not_call_mercury, Attributes1)
+			;
+				Attributes1 = Attributes0
+			),
+			(
+				list__member(thread_safe(thread_safe),
+					AttrList)
+			->
+				set_thread_safe(Attributes1, thread_safe,
+					Attributes2)
+			;
+				Attributes2 = Attributes1
+			),
+			( 
+				list__member(tabled_for_io(tabled_for_io),
+					AttrList)
+			->
+				set_tabled_for_io(Attributes2, tabled_for_io,
+					Attributes)
+			;
+				Attributes = Attributes2
+			),
+			MaybeAttributes = ok(Attributes)
 		)
 	;
-		Attributes1 = Attributes0
-	),
-	( list__member(thread_safe(thread_safe), AttrList) ->
-		( list__member(thread_safe(not_thread_safe), AttrList) ->
-			% XXX an error message would be nice
-			fail
-		;
-			set_thread_safe(Attributes1, thread_safe, Attributes2)
-		)
-	;
-		Attributes2 = Attributes1
-	),
-	( list__member(tabled_for_io(tabled_for_io), AttrList) ->
-		( list__member(tabled_for_io(not_tabled_for_io), AttrList) ->
-			% XXX an error message would be nice
-			fail
-		;
-			set_tabled_for_io(Attributes2, tabled_for_io,
-				Attributes)
-		)
-	;
-		Attributes = Attributes2
+		ErrMsg = "expecting a foreign proc attribute or list of attributes",
+		MaybeAttributes = error(ErrMsg, Term)
 	).
+
+
 
 :- pred parse_pragma_foreign_proc_attributes_term0(term,
 		list(collected_pragma_foreign_proc_attribute)).

@@ -199,7 +199,7 @@ int	ML_DL_closure_counter = 0;
 
 :- func make_closure_layout = c_pointer.
 
-:- pragma foreign_code("C", make_closure_layout = (ClosureLayout::out),
+:- pragma foreign_proc("C", make_closure_layout = (ClosureLayout::out),
 	[will_not_call_mercury, thread_safe],
 "{
 	MR_Closure_Id			*closure_id;
