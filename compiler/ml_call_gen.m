@@ -123,10 +123,7 @@ ml_gen_generic_call(GenericCall, ArgVars, ArgModes, Determinism, Context,
 	% of the boxed arguments
 	%
 	{ NumArgs = list__length(ArgVars) },
-	{ varset__init(TypeVarSet0) },
-	{ varset__new_vars(TypeVarSet0, NumArgs, ArgTypeVars,
-		_TypeVarSet) },
-	{ term__var_list_to_term_list(ArgTypeVars, BoxedArgTypes) },
+	{ BoxedArgTypes = ml_make_boxed_types(NumArgs) },
 
 	%
 	% create the boxed parameter types for the called function
@@ -143,8 +140,13 @@ ml_gen_generic_call(GenericCall, ArgVars, ArgModes, Determinism, Context,
 	%
 	% insert the `closure_arg' parameter
 	%
-	% XXX The GC handling for `closure_arg' here is wrong
-	{ GC_TraceCode = no }, % XXX wrong
+	% The GC_TraceCode for `closure_arg' here is wrong,
+	% but it doesn't matter, since `closure_arg' is only part
+	% of a type (a function parameter in the function type).
+	% We won't use the GC tracing code generated here, since we don't
+	% generate any actual local variable or parameter for `closure_arg'.
+	%
+	{ GC_TraceCode = no },
 	{ ClosureArgType = mlds__generic_type },
 	{ ClosureArg = mlds__argument(
 		data(var(var_name("closure_arg", no))),
