@@ -207,17 +207,12 @@ about unbound type variables.
 	% environment.
 :- pred make_command_string(string::in, quote_char::in, string::out) is det.
 
-	% raise_signal(Signal).
-	% Send `Signal' to the current process.
-	% XXX This belongs somewhere else.
-:- pred raise_signal(int::in, io__state::di, io__state::uo) is det.
-
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module options, globals, hlds_out, prog_out, mode_util.
-:- import_module mercury_to_mercury.
+:- import_module mercury_to_mercury, process_util.
 :- import_module int, string, map, require, varset.
 
 process_all_nonimported_procs(Task, ModuleInfo0, ModuleInfo) -->
@@ -533,18 +528,6 @@ invoke_system_command(ErrorStream, Verbosity, Command, Succeeded) -->
 				++ io__error_message(TmpFileError))
 	),
 	io__remove_file(TmpFile, _).
-
-:- pragma foreign_decl("C", "#include <signal.h>").
-
-raise_signal(_::in, IO::di, IO::uo).
-
-:- pragma foreign_proc("C",
-	raise_signal(Signal::in, IO0::di, IO::uo),
-	[will_not_call_mercury, promise_pure],
-"
-	IO = IO0;
-	raise(Signal);
-").
 
 make_command_string(String0, QuoteType, String) :-
 	( use_win32 ->

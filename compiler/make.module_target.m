@@ -283,13 +283,13 @@ build_target_2(ModuleName, target_code_to_object_code,
 	io__state::di, io__state::uo) is det.
 
 build_object_code(ModuleName, c, ErrorStream, _Imports, Succeeded) -->
-	mercury_compile__compile_c_file(ErrorStream, ModuleName, Succeeded).
+	compile_target_code__compile_c_file(ErrorStream, ModuleName, Succeeded).
 build_object_code(ModuleName, asm, ErrorStream, _Imports, Succeeded) -->
-	mercury_compile__assemble(ErrorStream, ModuleName, Succeeded).
+	compile_target_code__assemble(ErrorStream, ModuleName, Succeeded).
 build_object_code(ModuleName, java, ErrorStream, _Imports, Succeeded) -->
-	mercury_compile__compile_java_file(ErrorStream, ModuleName, Succeeded).
+	compile_target_code__compile_java_file(ErrorStream, ModuleName, Succeeded).
 build_object_code(ModuleName, il, ErrorStream, Imports, Succeeded) -->
-	mercury_compile__il_assemble(ErrorStream, ModuleName,
+	compile_target_code__il_assemble(ErrorStream, ModuleName,
 		Imports ^ has_main, Succeeded).
 
 :- pred compile_foreign_code_file(io__output_stream::in, foreign_code_file::in,
@@ -297,21 +297,21 @@ build_object_code(ModuleName, il, ErrorStream, Imports, Succeeded) -->
 
 compile_foreign_code_file(ErrorStream, foreign_code_file(c, CFile, ObjFile),
 		Succeeded) -->
-	mercury_compile__compile_c_file(ErrorStream,
+	compile_target_code__compile_c_file(ErrorStream,
 		CFile, ObjFile, Succeeded).
 compile_foreign_code_file(ErrorStream, foreign_code_file(il, ILFile, DLLFile),
 		Succeeded) -->
-	mercury_compile__il_assemble(ErrorStream, ILFile, DLLFile,
+	compile_target_code__il_assemble(ErrorStream, ILFile, DLLFile,
 		no_main, Succeeded).
 compile_foreign_code_file(ErrorStream,
 		foreign_code_file(managed_cplusplus, MCPPFile, DLLFile),
 		Succeeded) -->
-	mercury_compile__compile_managed_cplusplus_file(ErrorStream,
+	compile_target_code__compile_managed_cplusplus_file(ErrorStream,
 		MCPPFile, DLLFile, Succeeded).
 compile_foreign_code_file(ErrorStream,
 		foreign_code_file(csharp, CSharpFile, DLLFile),
 		Succeeded) -->
-	mercury_compile__compile_csharp_file(ErrorStream,
+	compile_target_code__compile_csharp_file(ErrorStream,
 		CSharpFile, DLLFile, Succeeded).
 
 %-----------------------------------------------------------------------------%

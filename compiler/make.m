@@ -48,6 +48,7 @@
 :- import_module globals, options, handle_options, modules.
 :- import_module prog_data, foreign, mercury_compile, mercury_to_mercury.
 :- import_module prog_io, prog_out, prog_io_util, timestamp.
+:- import_module compile_target_code, process_util.
 
 :- import_module assoc_list, bool, char, dir, exception, getopt, int, list.
 :- import_module map, parser, require, set, std_util, string, term, term_io.

@@ -148,7 +148,7 @@ build_linked_target(MainModuleName, FileType, OutputFileName, MaybeTimestamp,
 		{ FileType = executable },
 		{ CompilationTarget = c ; CompilationTarget = asm }
 	->
-		mercury_compile__make_init_obj_file(ErrorStream,
+		compile_target_code__make_init_obj_file(ErrorStream,
 			MainModuleName, AllModulesList, InitObjectResult),
 		(
 			{ InitObjectResult = yes(InitObject) },
@@ -235,16 +235,16 @@ build_linked_target(MainModuleName, FileType, OutputFileName, MaybeTimestamp,
 			% Run the link in a separate process so it can
 			% be killed if an interrupt is received.
 			call_in_forked_process(
-				mercury_compile__link(ErrorStream, FileType,
-					MainModuleName, AllObjects),
+				compile_target_code__link(ErrorStream,
+					FileType, MainModuleName, AllObjects),
 				Succeeded)
 		;
 			{ CompilationTarget = asm },
 			% Run the link in a separate process so it can
 			% be killed if an interrupt is received.
 			call_in_forked_process(
-				mercury_compile__link(ErrorStream, FileType,
-					MainModuleName, AllObjects),
+				compile_target_code__link(ErrorStream,
+					FileType, MainModuleName, AllObjects),
 				Succeeded)
 		;
 			%

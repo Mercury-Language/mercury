@@ -125,10 +125,6 @@ mercury_compile.m calls library/getopt.m, passing the predicates
 defined in options.m as arguments, to parse them.  It then invokes
 handle_options.m to postprocess the option set.  The results are
 stored in the io__state, using the type globals defined in globals.m.
-After the options are processed, the options files specified
-by the `--option-defaults-file' option is read by options_file.m.
-The options are then reprocessed with the options set in the options
-file.
 
 <p>
 
@@ -165,6 +161,18 @@ file.
 <dt> make.util.m
 	<dd>
 	Utility predicates.
+
+<dt> options_file.m
+	<dd>
+	Read the options files specified by the `--options-file'
+	option. Also used by mercury_compile.m to collect the value
+	of DEFAULT_MCFLAGS, which contains the auto-configured flags
+	passed to the compiler.
+
+<dt> compile_target_code.m
+	<dd>
+	Invoke C, C#, IL, Java, etc. compilers and linkers to compile
+	the generated code.
 
 </dl>
 
@@ -1134,9 +1142,6 @@ compiled code.
   It uses the information written by recompilation_version.m and
   recompilation_usage.m to work out whether the recompilation is
   actually needed.
-
-<li> timestamp.m contains an ADT representing timestamps used
-  by smart recompilation.
 </ul>
 
 <p>
@@ -1193,6 +1198,16 @@ compiled code.
 	<dt> error_util.m:
 		<dd>
 		Utility routines for printing nicely formatted error messages.
+
+	<dt> process_util.m:
+		<dd>
+		Predicates to deal with process creation and signal handling.
+		This module is mainly used by make.m and its sub-modules.
+
+	<dt> timestamp.m
+		<dd>
+		Contains an ADT representing timestamps used by smart
+		recompilation and `mmc --make'.
 	</dl>
 
 
@@ -1219,6 +1234,6 @@ compiled code.
 <hr>
 <!---------------------------------------------------------------------------->
 
-Last update was $Date: 2002-03-15 07:32:06 $ by $Author: stayl $@cs.mu.oz.au. <br>
+Last update was $Date: 2002-03-18 04:44:16 $ by $Author: stayl $@cs.mu.oz.au. <br>
 </body>
 </html>
