@@ -592,10 +592,12 @@ mercury_compile__middle_pass(ModuleName, HLDS25, HLDS50) -->
 
 	mercury_compile__maybe_bytecodes(HLDS30, ModuleName, Verbose, Stats),
 
-	mercury_compile__maybe_higher_order(HLDS30, Verbose, Stats, HLDS31),
-	mercury_compile__maybe_dump_hlds(HLDS31, "31", "higher_order"),
+	% stage number 31 is used by mercury_compile__maybe_bytecodes
 
-	mercury_compile__maybe_do_inlining(HLDS31, Verbose, Stats, HLDS34),
+	mercury_compile__maybe_higher_order(HLDS30, Verbose, Stats, HLDS32),
+	mercury_compile__maybe_dump_hlds(HLDS32, "32", "higher_order"),
+
+	mercury_compile__maybe_do_inlining(HLDS32, Verbose, Stats, HLDS34),
 	mercury_compile__maybe_dump_hlds(HLDS34, "34", "inlining"),
 
 	% dnf transformations should be after inlining
@@ -1076,6 +1078,8 @@ mercury_compile__maybe_bytecodes(HLDS0, ModuleName, Verbose, Stats) -->
 	globals__io_lookup_bool_option(generate_bytecode, GenBytecode),
 	( { GenBytecode = yes } ->
 		mercury_compile__map_args_to_regs(HLDS0, Verbose, Stats, HLDS1),
+		mercury_compile__maybe_dump_hlds(HLDS1, "31",
+			"bytecode_args_to_regs"),
 		maybe_write_string(Verbose,
 			"% Generating bytecodes...\n"),
 		maybe_flush_output(Verbose),
