@@ -695,8 +695,18 @@ generate_dep_file(ModuleName, DepsMap, DepStream) -->
 		"\t-rm -f $(", ModuleName, ".nos)\n",
 		"\t-rm -f $(", ModuleName, ".qls)\n",
 		"\t-rm -f $(", ModuleName, ".errs)\n",
-		"\t-rm -f $(", ModuleName, ".err2s)\n\n"
+		"\t-rm -f $(", ModuleName, ".err2s)\n"
 	]),
+
+	( { GC_Opt = "accurate" } ->
+		io__write_strings(DepStream, [
+			"\t-rm -f $(", ModuleName, ".garbs)\n",
+			"\t-rm -f ", ModuleName, "_garb.o ", ModuleName, 
+				"_garb.c ", ModuleName, "_garb.s\n\n"
+		])
+	;
+		io__write_string(DepStream, "\n")
+	),
 
 	io__write_strings(DepStream, [
 		"realclean: ", ModuleName, ".realclean\n"
