@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1997 The University of Melbourne.
+% Copyright (C) 1994-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -65,7 +65,7 @@
 	;	mode_error_no_matching_mode(list(var), list(inst))
 			% call to a predicate with an insufficiently
 			% instantiated variable (for preds with >1 mode)
-	;	mode_error_bind_var(var, inst, inst)
+	;	mode_error_bind_var(var_lock_reason, var, inst, inst)
 			% attempt to bind a non-local variable inside
 			% a negated context
 	;	mode_error_unify_var_var(var, var, inst, inst)
@@ -188,8 +188,8 @@ report_mode_error(mode_error_implied_mode(Var, InstA, InstB), ModeInfo) -->
 	report_mode_error_implied_mode(ModeInfo, Var, InstA, InstB).
 report_mode_error(mode_error_no_mode_decl, ModeInfo) -->
 	report_mode_error_no_mode_decl(ModeInfo).
-report_mode_error(mode_error_bind_var(Var, InstA, InstB), ModeInfo) -->
-	report_mode_error_bind_var(ModeInfo, Var, InstA, InstB).
+report_mode_error(mode_error_bind_var(Reason, Var, InstA, InstB), ModeInfo) -->
+	report_mode_error_bind_var(ModeInfo, Reason, Var, InstA, InstB).
 report_mode_error(mode_error_unify_var_var(VarA, VarB, InstA, InstB),
 		ModeInfo) -->
 	report_mode_error_unify_var_var(ModeInfo, VarA, VarB, InstA, InstB).
@@ -367,18 +367,29 @@ write_merge_context(if_then_else) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred report_mode_error_bind_var(mode_info, var, inst, inst,
+:- pred report_mode_error_bind_var(mode_info, var_lock_reason, var, inst, inst,
 					io__state, io__state).
-:- mode report_mode_error_bind_var(mode_info_ui, in, in, in, di, uo) is det.
+:- mode report_mode_error_bind_var(mode_info_ui, in, in, in, in, di, uo) is det.
 
-report_mode_error_bind_var(ModeInfo, Var, VarInst, Inst) -->
+report_mode_error_bind_var(ModeInfo, Reason, Var, VarInst, Inst) -->
 	{ mode_info_get_context(ModeInfo, Context) },
 	{ mode_info_get_varset(ModeInfo, VarSet) },
 	{ mode_info_get_instvarset(ModeInfo, InstVarSet) },
 	mode_info_write_context(ModeInfo),
 	prog_out__write_context(Context),
-	io__write_string(
-		"  scope error: attempt to bind variable inside a negation.\n"),
+	io__write_string("  scope error: "),
+	( { Reason = negation },
+		io__write_string("attempt to bind a variable inside a negation.\n")
+	; { Reason = if_then_else },
+		io__write_string("attempt to bind a non-local variable inside the\n"),
+		prog_out__write_context(Context),
+		io__write_string("  condition of an if-then-else.\n")
+	; { Reason = lambda(PredOrFunc) },
+		{ hlds_out__pred_or_func_to_str(PredOrFunc, PredOrFuncS) },
+		io__write_string("attempt to bind a non-local variable inside\n"),
+		prog_out__write_context(Context),
+		io__write_strings(["  a ", PredOrFuncS, " lambda goal.\n"])
+	),
 	prog_out__write_context(Context),
 	io__write_string("  Variable `"),
 	mercury_output_var(Var, VarSet, no),
@@ -391,12 +402,18 @@ report_mode_error_bind_var(ModeInfo, Var, VarInst, Inst) -->
 	io__write_string("'.\n"),
 	globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
 	( { VerboseErrors = yes } ->
-		io__write_string("\tA negation is only allowed to bind variables which are local to the\n"),
-		io__write_string("\tnegation, i.e. those which are implicitly existentially quantified\n"),
-		io__write_string("\tinside the scope of the negation.\n"),
-		io__write_string("\tNote that the condition of an if-then-else is implicitly\n"),
-		io__write_string("\tnegated in the ""else"" part, so the condition can only bind\n"),
-		io__write_string("\tvariables in the ""then"" part.\n")
+		( { Reason = negation },
+			io__write_string("\tA negation is only allowed to bind variables which are local to the\n"),
+			io__write_string("\tnegation, i.e. those which are implicitly existentially quantified\n"),
+			io__write_string("\tinside the scope of the negation.\n")
+		; { Reason = if_then_else },
+			io__write_string("\tThe condition of an if-then-else is only allowed\n"),
+			io__write_string("\tto bind variables which are local to the condition\n"),
+			io__write_string("\tor which occur only in the condition and the `then' part.\n")
+		; { Reason = lambda(_) },
+			io__write_string("\tA lambda goal is only allowed to bind its arguments\n"),
+			io__write_string("\tand variables local to the lambda expression.\n")
+		)
 	;
 		[]
 	).

@@ -294,7 +294,7 @@ unique_modes__check_goal_2(if_then_else(Vs, A0, B0, C0, SM), GoalInfo0, Goal)
 	{ unique_modes__goal_get_nonlocals(B0, B_Vars) },
 	{ unique_modes__goal_get_nonlocals(C0, C_Vars) },
 	mode_info_dcg_get_instmap(InstMap0),
-	mode_info_lock_vars(NonLocals),
+	mode_info_lock_vars(if_then_else, NonLocals),
 
 	%
 	% At this point, we should set the inst of any `unique'
@@ -320,7 +320,7 @@ unique_modes__check_goal_2(if_then_else(Vs, A0, B0, C0, SM), GoalInfo0, Goal)
 	mode_info_add_live_vars(B_Vars),
 	unique_modes__check_goal(A0, A),
 	mode_info_remove_live_vars(B_Vars),
-	mode_info_unlock_vars(NonLocals),
+	mode_info_unlock_vars(if_then_else, NonLocals),
 	% mode_info_dcg_get_instmap(InstMapA),
 	unique_modes__check_goal(B0, B),
 	mode_info_dcg_get_instmap(InstMapB),
@@ -340,9 +340,9 @@ unique_modes__check_goal_2(not(A0), GoalInfo0, not(A)) -->
 	=(ModeInfo),
 	{ select_live_vars(NonLocalsList, ModeInfo, LiveNonLocals) },
 	make_var_list_mostly_uniq(LiveNonLocals),
-	mode_info_lock_vars(NonLocals),
+	mode_info_lock_vars(negation, NonLocals),
 	unique_modes__check_goal(A0, A),
-	mode_info_unlock_vars(NonLocals),
+	mode_info_unlock_vars(negation, NonLocals),
 	mode_info_set_instmap(InstMap0),
 	mode_checkpoint(exit, "not").
 

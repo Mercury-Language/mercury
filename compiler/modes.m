@@ -894,11 +894,11 @@ modecheck_goal_expr(if_then_else(Vs, A0, B0, C0, SM), GoalInfo0, Goal) -->
 	{ goal_info_get_nonlocals(GoalInfo0, NonLocals) },
 	{ goal_get_nonlocals(B0, B_Vars) },
 	mode_info_dcg_get_instmap(InstMap0),
-	mode_info_lock_vars(NonLocals),
+	mode_info_lock_vars(if_then_else, NonLocals),
 	mode_info_add_live_vars(B_Vars),
 	modecheck_goal(A0, A),
 	mode_info_remove_live_vars(B_Vars),
-	mode_info_unlock_vars(NonLocals),
+	mode_info_unlock_vars(if_then_else, NonLocals),
 	modecheck_goal(B0, B),
 	mode_info_dcg_get_instmap(InstMapB),
 	mode_info_set_instmap(InstMap0),
@@ -913,9 +913,9 @@ modecheck_goal_expr(not(A0), GoalInfo0, not(A)) -->
 	mode_checkpoint(enter, "not"),
 	{ goal_info_get_nonlocals(GoalInfo0, NonLocals) },
 	mode_info_dcg_get_instmap(InstMap0),
-	mode_info_lock_vars(NonLocals),
+	mode_info_lock_vars(negation, NonLocals),
 	modecheck_goal(A0, A),
-	mode_info_unlock_vars(NonLocals),
+	mode_info_unlock_vars(negation, NonLocals),
 	mode_info_set_instmap(InstMap0),
 	mode_checkpoint(exit, "not").
 
@@ -1582,12 +1582,12 @@ modecheck_set_var_inst(Var0, FinalInst, ModeInfo0, ModeInfo) :-
 		;
 			% We've bound part of the var.  If the var was locked,
 			% then we need to report an error.
-			mode_info_var_is_locked(ModeInfo1, Var0)
+			mode_info_var_is_locked(ModeInfo1, Var0, Reason0)
 		->
 			set__singleton_set(WaitingVars, Var0),
 			mode_info_error(WaitingVars,
-					mode_error_bind_var(Var0, Inst0, Inst),
-					ModeInfo1, ModeInfo
+				mode_error_bind_var(Reason0, Var0, Inst0, Inst),
+				ModeInfo1, ModeInfo
 			)
 		;
 			instmap__set(InstMap0, Var0, Inst, InstMap),

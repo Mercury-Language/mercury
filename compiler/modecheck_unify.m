@@ -384,7 +384,8 @@ modecheck_unification(X, lambda_goal(PredOrFunc, Vars, Modes0, Det, Goal0),
 	Goal0 = _ - GoalInfo0,
 	goal_info_get_nonlocals(GoalInfo0, NonLocals0),
 	set__delete_list(NonLocals0, Vars, NonLocals),
-	mode_info_lock_vars(NonLocals, ModeInfo2, ModeInfo3),
+	mode_info_lock_vars(lambda(PredOrFunc), NonLocals,
+		ModeInfo2, ModeInfo3),
  
 	mode_checkpoint(enter, "lambda goal", ModeInfo3, ModeInfo4),
 	% if we're being called from unique_modes.m, then we need to 
@@ -399,7 +400,8 @@ modecheck_unification(X, lambda_goal(PredOrFunc, Vars, Modes0, Det, Goal0),
 	mode_checkpoint(exit, "lambda goal", ModeInfo6, ModeInfo7),
  
 	mode_info_remove_live_vars(LiveVars, ModeInfo7, ModeInfo8),
-	mode_info_unlock_vars(NonLocals, ModeInfo8, ModeInfo9),
+	mode_info_unlock_vars(lambda(PredOrFunc), NonLocals,
+		ModeInfo8, ModeInfo9),
 	mode_info_set_instmap(InstMap0, ModeInfo9, ModeInfo10),
  
 	%

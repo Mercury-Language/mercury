@@ -56,6 +56,13 @@
 	;	call(pred_id)
 	;	higher_order_call(pred_or_func).
 
+:- type var_lock_reason
+	--->	negation
+	;	if_then_else
+	;	lambda(pred_or_func).
+
+:- type locked_vars == assoc_list(var_lock_reason, set(var)).
+
 :- type mode_info.
 
 :- pred mode_info_init(io__state, module_info, pred_id, proc_id,
@@ -119,10 +126,10 @@
 :- pred mode_info_set_instmap(instmap, mode_info, mode_info).
 :- mode mode_info_set_instmap(in, mode_info_di, mode_info_uo) is det.
 
-:- pred mode_info_get_locked_vars(mode_info, list(set(var))).
+:- pred mode_info_get_locked_vars(mode_info, locked_vars).
 :- mode mode_info_get_locked_vars(mode_info_ui, out) is det.
 
-:- pred mode_info_set_locked_vars(mode_info, list(set(var)), mode_info).
+:- pred mode_info_set_locked_vars(mode_info, locked_vars, mode_info).
 :- mode mode_info_set_locked_vars(mode_info_di, in, mode_info_uo) is det.
 
 :- pred mode_info_get_errors(mode_info, list(mode_error_info)).
@@ -173,17 +180,17 @@
 :- pred mode_info_get_types_of_vars(mode_info, list(var), list(type)).
 :- mode mode_info_get_types_of_vars(mode_info_ui, in, out) is det.
 
-:- pred mode_info_lock_vars(set(var), mode_info, mode_info).
-:- mode mode_info_lock_vars(in, mode_info_di, mode_info_uo) is det.
+:- pred mode_info_lock_vars(var_lock_reason, set(var), mode_info, mode_info).
+:- mode mode_info_lock_vars(in, in, mode_info_di, mode_info_uo) is det.
 
-:- pred mode_info_unlock_vars(set(var), mode_info, mode_info).
-:- mode mode_info_unlock_vars(in, mode_info_di, mode_info_uo) is det.
+:- pred mode_info_unlock_vars(var_lock_reason, set(var), mode_info, mode_info).
+:- mode mode_info_unlock_vars(in, in, mode_info_di, mode_info_uo) is det.
 
-:- pred mode_info_var_is_locked(mode_info, var).
-:- mode mode_info_var_is_locked(mode_info_ui, in) is semidet.
+:- pred mode_info_var_is_locked(mode_info, var, var_lock_reason).
+:- mode mode_info_var_is_locked(mode_info_ui, in, out) is semidet.
 
-:- pred mode_info_var_is_locked_2(list(set(var)), var).
-:- mode mode_info_var_is_locked_2(in, in) is semidet.
+:- pred mode_info_var_is_locked_2(locked_vars, var, var_lock_reason).
+:- mode mode_info_var_is_locked_2(in, in, out) is semidet.
 
 :- pred mode_info_get_delay_info(mode_info, delay_info).
 :- mode mode_info_get_delay_info(mode_info_no_io, out) is det.
@@ -285,7 +292,7 @@
 					% goal the error occurred
 			instmap,	% The current instantiatedness
 					% of the variables
-			list(set(var)),	% The "locked" variables,
+			locked_vars,	% The "locked" variables,
 					% i.e. variables which cannot be
 					% further instantiated inside a
 					% negated context
@@ -633,30 +640,34 @@ mode_info_get_types_of_vars(ModeInfo, Vars, TypesOfVars) :-
 	% push them on the stack, and to unlock a set of vars, we just
 	% pop them off the stack.  The stack is implemented as a list.
 
-mode_info_lock_vars(Vars, ModeInfo0, ModeInfo) :-
+mode_info_lock_vars(Reason, Vars, ModeInfo0, ModeInfo) :-
 	mode_info_get_locked_vars(ModeInfo0, LockedVars),
-	mode_info_set_locked_vars(ModeInfo0, [Vars | LockedVars], ModeInfo).
+	mode_info_set_locked_vars(ModeInfo0, [Reason - Vars | LockedVars],
+			ModeInfo).
 
-mode_info_unlock_vars(_, ModeInfo0, ModeInfo) :-
+mode_info_unlock_vars(Reason, Vars, ModeInfo0, ModeInfo) :-
 	mode_info_get_locked_vars(ModeInfo0, LockedVars0),
-	( LockedVars0 = [_ | LockedVars1] ->
+	(
+		LockedVars0 = [Reason - TheseVars | LockedVars1],
+		set__equal(TheseVars, Vars)
+	->
 		LockedVars = LockedVars1
 	;
-		error("mode_info_unlock_vars: stack is empty")
+		error("mode_info_unlock_vars: some kind of nesting error")
 	),
 	mode_info_set_locked_vars(ModeInfo0, LockedVars, ModeInfo).
 
-mode_info_var_is_locked(ModeInfo, Var) :-
+mode_info_var_is_locked(ModeInfo, Var, Reason) :-
 	mode_info_get_locked_vars(ModeInfo, LockedVarsList),
-	mode_info_var_is_locked_2(LockedVarsList, Var).
+	mode_info_var_is_locked_2(LockedVarsList, Var, Reason).
 
-mode_info_var_is_locked_2([Set | Sets], Var) :-
+mode_info_var_is_locked_2([ThisReason - Set | Sets], Var, Reason) :-
 	(
 		set__member(Var, Set)
 	->
-		true
+		Reason = ThisReason
 	;
-		mode_info_var_is_locked_2(Sets, Var)
+		mode_info_var_is_locked_2(Sets, Var, Reason)
 	).
 
 mode_info_get_delay_info(mode_info(_,_,_,_,_,_,_,_,_,_,DelayInfo,_,_,_,_,_),
