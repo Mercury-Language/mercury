@@ -15,7 +15,7 @@
 :- interface.
 
 :- import_module hlds_pred, hlds_data, llds, tree.
-:- import_module list, io.
+:- import_module list, std_util, io.
 
 :- type byte_tree	==	tree(list(byte_code)).
 
@@ -47,6 +47,8 @@
 					list(byte_var))
 			;	deconstruct(byte_var, byte_cons_id,
 					list(byte_var))
+			;	complex_deconstruct(byte_var, byte_cons_id,
+					list(pair(byte_var, byte_dir)))
 			;	place_arg(reg, byte_var)
 			;	call(byte_module_id, byte_pred_id,
 					arity, byte_proc_id)
@@ -83,6 +85,11 @@
 			;	float_const(float)
 			.
 
+:- type byte_dir	--->	to_arg
+			;	to_var
+			;	to_none
+			.
+
 :- type byte_module_id	==	string.
 :- type byte_pred_id	==	string.
 :- type byte_proc_id	==	int.
@@ -103,7 +110,7 @@
 
 :- pred bytecode__version(int::out) is det.
 
-bytecode__version(2).
+bytecode__version(3).
 
 output_bytecode_file(FileName, ByteCodes) -->
 	io__tell_binary(FileName, Result),
@@ -227,6 +234,12 @@ output_args(deconstruct(Var, ConsId, Vars)) -->
 	{ list__length(Vars, Length) },
 	output_length(Length),
 	output_vars(Vars).
+output_args(complex_deconstruct(Var, ConsId, VarDirs)) -->
+	output_var(Var),
+	output_cons_id(ConsId),
+	{ list__length(VarDirs, Length) },
+	output_length(Length),
+	output_var_dirs(VarDirs).
 output_args(place_arg(Reg, Var)) -->
 	output_reg(Reg),
 	output_var(Var).
@@ -318,6 +331,12 @@ debug_args(deconstruct(Var, ConsId, Vars)) -->
 	{ list__length(Vars, Length) },
 	debug_length(Length),
 	debug_vars(Vars).
+debug_args(complex_deconstruct(Var, ConsId, VarDirs)) -->
+	debug_var(Var),
+	debug_cons_id(ConsId),
+	{ list__length(VarDirs, Length) },
+	debug_length(Length),
+	debug_var_dirs(VarDirs).
 debug_args(place_arg(Reg, Var)) -->
 	debug_reg(Reg),
 	debug_var(Var).
@@ -488,6 +507,46 @@ debug_vars([]) --> [].
 debug_vars([Var | Vars]) -->
 	debug_var(Var),
 	debug_vars(Vars).
+
+%---------------------------------------------------------------------------%
+
+:- pred output_dir(byte_dir, io__state, io__state).
+:- mode output_dir(in, di, uo) is det.
+
+output_dir(to_arg) -->
+	output_byte(0).
+output_dir(to_var) -->
+	output_byte(1).
+output_dir(to_none) -->
+	output_byte(2).
+
+:- pred output_var_dirs(list(pair(byte_var, byte_dir)), io__state, io__state).
+:- mode output_var_dirs(in, di, uo) is det.
+
+output_var_dirs([]) --> [].
+output_var_dirs([Var - Dir | VarDirs]) -->
+	output_var(Var),
+	output_dir(Dir),
+	output_var_dirs(VarDirs).
+
+:- pred debug_dir(byte_dir, io__state, io__state).
+:- mode debug_dir(in, di, uo) is det.
+
+debug_dir(to_arg) -->
+	debug_string("to_arg").
+debug_dir(to_var) -->
+	debug_string("to_var").
+debug_dir(to_none) -->
+	debug_string("to_none").
+
+:- pred debug_var_dirs(list(pair(byte_var, byte_dir)), io__state, io__state).
+:- mode debug_var_dirs(in, di, uo) is det.
+
+debug_var_dirs([]) --> [].
+debug_var_dirs([Var - Dir | VarDirs]) -->
+	debug_var(Var),
+	debug_dir(Dir),
+	debug_var_dirs(VarDirs).
 
 %---------------------------------------------------------------------------%
 
@@ -717,15 +776,16 @@ byte_code(assign(_, _),				21).
 byte_code(test(_, _),				22).
 byte_code(construct(_, _, _),			23).
 byte_code(deconstruct(_, _, _),			24).
-byte_code(place_arg(_, _),			25).
-byte_code(call(_, _, _, _),			26).
-byte_code(pickup_arg(_, _),			27).
-byte_code(builtin_binop(_, _, _, _),		28).
-byte_code(builtin_unop(_, _, _),		29).
-byte_code(builtin_bintest(_, _, _),		30).
-byte_code(builtin_untest(_, _),			31).
-byte_code(context(_),				32).
-byte_code(not_supported,			33).
+byte_code(complex_deconstruct(_, _, _),		25).
+byte_code(place_arg(_, _),			26).
+byte_code(call(_, _, _, _),			27).
+byte_code(pickup_arg(_, _),			28).
+byte_code(builtin_binop(_, _, _, _),		29).
+byte_code(builtin_unop(_, _, _),		30).
+byte_code(builtin_bintest(_, _, _),		31).
+byte_code(builtin_untest(_, _),			32).
+byte_code(context(_),				33).
+byte_code(not_supported,			34).
 
 :- pred byte_debug(byte_code, string).
 :- mode byte_debug(in, out) is det.
@@ -755,6 +815,7 @@ byte_debug(assign(_, _),			"assign").
 byte_debug(test(_, _),				"test").
 byte_debug(construct(_, _, _),			"construct").
 byte_debug(deconstruct(_, _, _),		"deconstruct").
+byte_debug(complex_deconstruct(_, _, _),	"complex_deconstruct").
 byte_debug(place_arg(_, _),			"place_arg").
 byte_debug(call(_, _, _, _),			"call").
 byte_debug(pickup_arg(_, _),			"pickup_arg").

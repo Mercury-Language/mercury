@@ -184,6 +184,7 @@ generate_proc_code(ProcInfo, ProcId, PredId, ModuleInfo,
 		% get the information about this procedure that we need.
 	{ proc_info_variables(ProcInfo, VarInfo) },
 	{ proc_info_liveness_info(ProcInfo, Liveness) },
+	{ proc_info_follow_vars(ProcInfo, FollowVars) },
 	{ proc_info_call_info(ProcInfo, CallInfo) },
 	{ proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InitialInst) },
 	globals__io_get_gc_method(GC_Method),
@@ -195,7 +196,7 @@ generate_proc_code(ProcInfo, ProcId, PredId, ModuleInfo,
 	globals__io_get_globals(Globals),
 		% initialise the code_info structure 
 	{ code_info__init(VarInfo, Liveness, CallInfo, SaveSuccip, Globals,
-		PredId, ProcId, ProcInfo, CodeModel, InitialInst,
+		PredId, ProcId, ProcInfo, CodeModel, InitialInst, FollowVars,
 		ModuleInfo, Shapes0, CodeInfo0) },
 		% generate code for the procedure
 	{ generate_category_code(CodeModel, Goal, CodeTree, SUsed, CodeInfo0,

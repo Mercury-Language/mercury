@@ -115,7 +115,7 @@ livemap__build_livemap_instr(Instr0, Instrs0, Instrs,
 		Uinstr0 = livevals(_),
 		error("livevals found in backward scan in build_livemap")
 	;
-		Uinstr0 = block(_, _),
+		Uinstr0 = block(_, _, _),
 		error("block found in backward scan in build_livemap")
 	;
 		Uinstr0 = assign(Lval, Rval),

@@ -24,10 +24,10 @@
 
 :- implementation.
 
-:- import_module hlds_pred, hlds_goal, hlds_data, llds.
-:- import_module passes_aux, call_gen, code_util, goal_util, tree.
+:- import_module hlds_pred, hlds_goal, hlds_data, prog_data, llds.
+:- import_module passes_aux, call_gen, mode_util, code_util, goal_util, tree.
 
-:- import_module bool, int, list, assoc_list, set, map, varset.
+:- import_module bool, int, string, list, assoc_list, set, map, varset.
 :- import_module std_util, require.
 
 bytecode_gen__module(ModuleInfo, Code) -->
@@ -274,33 +274,54 @@ bytecode_gen__builtin(PredId, ProcId, Args, ByteInfo, Code) :-
 	predicate_name(ModuleInfo, PredId, PredName),
 	(
 		code_util__translate_builtin(ModuleName, PredName, ProcId,
-			Args, MaybeVar, Rval)
+			Args, MaybeTest, MaybeAssign)
 	->
-		( Rval = binop(Binop, X, Y) ->
-			bytecode_gen__map_arg(ByteInfo, X, ByteX),
-			bytecode_gen__map_arg(ByteInfo, Y, ByteY),
-			( MaybeVar = yes(Var) ->
-				bytecode_gen__map_var(ByteInfo, Var, ByteVar),
-				Code = node([builtin_binop(Binop,
-					ByteX, ByteY, ByteVar)])
-			;
-				Code = node([builtin_bintest(Binop,
-					ByteX, ByteY)])
-			)
-		; Rval = unop(Unop, X) ->
-			bytecode_gen__map_arg(ByteInfo, X, ByteX),
-			( MaybeVar = yes(Var) ->
-				bytecode_gen__map_var(ByteInfo, Var, ByteVar),
-				Code = node([builtin_unop(Unop, ByteX,
-					ByteVar)])
-			;
-				Code = node([builtin_untest(Unop, ByteX)])
-			)
+		( MaybeTest = yes(Test) ->
+			bytecode_gen__map_test(ByteInfo, Test, TestCode)
 		;
-			error("unknown builtin predicate")
-		)
+			TestCode = empty
+		),
+		( MaybeAssign = yes(Var - Rval) ->
+			bytecode_gen__map_assign(ByteInfo, Var, Rval,
+				AssignCode)
+		;
+			AssignCode = empty
+		),
+		Code = tree(TestCode, AssignCode)
 	;
-		error("unknown builtin predicate")
+		string__append("unknown builtin predicate ", PredName, Msg),
+		error(Msg)
+	).
+
+:- pred bytecode_gen__map_test(byte_info::in, rval::in, byte_tree::out) is det.
+
+bytecode_gen__map_test(ByteInfo, Rval, Code) :-
+	( Rval = binop(Binop, X, Y) ->
+		bytecode_gen__map_arg(ByteInfo, X, ByteX),
+		bytecode_gen__map_arg(ByteInfo, Y, ByteY),
+		Code = node([builtin_bintest(Binop, ByteX, ByteY)])
+	; Rval = unop(Unop, X) ->
+		bytecode_gen__map_arg(ByteInfo, X, ByteX),
+		Code = node([builtin_untest(Unop, ByteX)])
+	;
+		error("builtin test is not a unary or binary operator")
+	).
+
+:- pred bytecode_gen__map_assign(byte_info::in, var::in, rval::in,
+	byte_tree::out) is det.
+
+bytecode_gen__map_assign(ByteInfo, Var, Rval, Code) :-
+	( Rval = binop(Binop, X, Y) ->
+		bytecode_gen__map_arg(ByteInfo, X, ByteX),
+		bytecode_gen__map_arg(ByteInfo, Y, ByteY),
+		bytecode_gen__map_var(ByteInfo, Var, ByteVar),
+		Code = node([builtin_binop(Binop, ByteX, ByteY, ByteVar)])
+	; Rval = unop(Unop, X) ->
+		bytecode_gen__map_arg(ByteInfo, X, ByteX),
+		bytecode_gen__map_var(ByteInfo, Var, ByteVar),
+		Code = node([builtin_unop(Unop, ByteX, ByteVar)])
+	;
+		error("builtin assignment is not a unary or binary operator")
 	).
 
 :- pred bytecode_gen__map_arg(byte_info::in, rval::in, byte_arg::out) is det.
@@ -324,18 +345,33 @@ bytecode_gen__map_arg(ByteInfo, Rval, ByteArg) :-
 :- pred bytecode_gen__unify(unification::in, var::in, unify_rhs::in,
 	byte_info::in, byte_tree::out) is det.
 
-bytecode_gen__unify(construct(Var, ConsId, Args, _Modes), _, _, ByteInfo,
+bytecode_gen__unify(construct(Var, ConsId, Args, UniModes), _, _, ByteInfo,
 		Code) :-
 	bytecode_gen__map_var(ByteInfo, Var, ByteVar),
 	bytecode_gen__map_vars(ByteInfo, Args, ByteArgs),
 	bytecode_gen__map_cons_id(ByteInfo, Var, ConsId, ByteConsId),
-	Code = node([construct(ByteVar, ByteConsId, ByteArgs)]).
-bytecode_gen__unify(deconstruct(Var, ConsId, Args, _Modes, _), _, _, ByteInfo,
+	(
+		bytecode_gen__map_uni_modes(UniModes, ByteInfo, Dirs),
+		bytecode_gen__all_dirs_same(Dirs, to_var)
+	->
+		Code = node([construct(ByteVar, ByteConsId, ByteArgs)])
+	;
+		error("invalid mode for construction unification")
+	).
+bytecode_gen__unify(deconstruct(Var, ConsId, Args, UniModes, _), _, _, ByteInfo,
 		Code) :-
 	bytecode_gen__map_var(ByteInfo, Var, ByteVar),
 	bytecode_gen__map_vars(ByteInfo, Args, ByteArgs),
 	bytecode_gen__map_cons_id(ByteInfo, Var, ConsId, ByteConsId),
-	Code = node([deconstruct(ByteVar, ByteConsId, ByteArgs)]).
+	bytecode_gen__map_uni_modes(UniModes, ByteInfo, Dirs),
+	(
+		bytecode_gen__all_dirs_same(Dirs, to_arg)
+	->
+		Code = node([deconstruct(ByteVar, ByteConsId, ByteArgs)])
+	;
+		assoc_list__from_corresponding_lists(ByteArgs, Dirs, Pairs),
+		Code = node([complex_deconstruct(ByteVar, ByteConsId, Pairs)])
+	).
 bytecode_gen__unify(assign(Target, Source), _, _, ByteInfo, Code) :-
 	bytecode_gen__map_var(ByteInfo, Target, ByteTarget),
 	bytecode_gen__map_var(ByteInfo, Source, ByteSource),
@@ -346,6 +382,54 @@ bytecode_gen__unify(simple_test(Var1, Var2), _, _, ByteInfo, Code) :-
 	Code = node([test(ByteVar1, ByteVar2)]).
 bytecode_gen__unify(complicated_unify(_, _, _), _Var, _RHS, _ByteInfo, _Code) :-
 	error("we do not handle complicated unifications yet").
+
+:- pred bytecode_gen__map_uni_modes(list(uni_mode)::in, byte_info::in,
+	list(byte_dir)::out) is det.
+
+bytecode_gen__map_uni_modes([], _, []).
+bytecode_gen__map_uni_modes([UniMode | UniModes], ByteInfo, [Dir | Dirs]) :-
+	UniMode = ((VarInitial - ArgInitial) -> (VarFinal - ArgFinal)),
+	bytecode_gen__get_module_info(ByteInfo, ModuleInfo),
+	( mode_is_input(ModuleInfo, VarInitial -> VarFinal) ->
+		VarMode = top_in
+	; mode_is_output(ModuleInfo, VarInitial -> VarFinal) ->
+		VarMode = top_out
+	;
+		VarMode = top_unused
+	),
+	( mode_is_input(ModuleInfo, ArgInitial -> ArgFinal) ->
+		ArgMode = top_in
+	; mode_is_output(ModuleInfo, ArgInitial -> ArgFinal) ->
+		ArgMode = top_out
+	;
+		ArgMode = top_unused
+	),
+	(
+		VarMode = top_in,
+		ArgMode = top_out
+	->
+		Dir = to_arg
+	;
+		VarMode = top_out,
+		ArgMode = top_in
+	->
+		Dir = to_var
+	;
+		VarMode = top_out,
+		ArgMode = top_in
+	->
+		Dir = to_none
+	;
+		error("invalid mode for deconstruct unification")
+	),
+	bytecode_gen__map_uni_modes(UniModes, ByteInfo, Dirs).
+
+:- pred bytecode_gen__all_dirs_same(list(byte_dir)::in, byte_dir::in)
+	is semidet.
+
+bytecode_gen__all_dirs_same([], _).
+bytecode_gen__all_dirs_same([Dir | Dirs], Dir) :-
+	bytecode_gen__all_dirs_same(Dirs, Dir).
 
 %---------------------------------------------------------------------------%
 

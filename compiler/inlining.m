@@ -76,12 +76,12 @@ inlining__mark_in_procs([ProcId | ProcIds], PredId, ModuleInfo,
 	(
 		{ Params = params(Simple, SingleUse, Threshold) },
 		{ PredProcId = proc(PredId, ProcId) },
+		{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
+		{ pred_info_procedures(PredInfo, Procs) },
+		{ map__lookup(Procs, ProcId, ProcInfo) },
+		{ proc_info_goal(ProcInfo, CalledGoal) },
 		(
 				% this heuristic could be improved
-			{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
-			{ pred_info_procedures(PredInfo, Procs) },
-			{ map__lookup(Procs, ProcId, ProcInfo) },
-			{ proc_info_goal(ProcInfo, CalledGoal) },
 			(
 				{ Simple = yes },
 				{ inlining__simple_goal(CalledGoal) }
@@ -96,7 +96,9 @@ inlining__mark_in_procs([ProcId | ProcIds], PredId, ModuleInfo,
 			{ map__search(NeededMap, PredProcId, Needed) },
 			{ Needed = yes(NumUses) },
 			{ NumUses = 1 }
-		)
+		),
+		% Don't inline recursive predicates
+		{ \+ goal_calls(CalledGoal, PredProcId) }
 	->
 		inlining__mark_proc_as_inlined(PredProcId, ModuleInfo,
 			InlinedProcs0, InlinedProcs1)

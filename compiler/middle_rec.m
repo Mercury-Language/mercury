@@ -368,7 +368,7 @@ middle_rec__find_used_registers_instr(comment(_), Used, Used).
 middle_rec__find_used_registers_instr(livevals(LvalSet), Used0, Used) :-
 	set__to_sorted_list(LvalSet, LvalList),
 	middle_rec__find_used_registers_lvals(LvalList, Used0, Used).
-middle_rec__find_used_registers_instr(block(_, Instrs), Used0, Used) :-
+middle_rec__find_used_registers_instr(block(_, _, Instrs), Used0, Used) :-
 	middle_rec__find_used_registers(Instrs, Used0, Used).
 middle_rec__find_used_registers_instr(assign(Lval, Rval), Used0, Used) :-
 	middle_rec__find_used_registers_lval(Lval, Used0, Used1),

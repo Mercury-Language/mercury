@@ -484,7 +484,10 @@ mercury_compile__middle_pass(ModuleName, HLDS25, HLDS50) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
 	globals__io_lookup_bool_option(statistics, Stats),
 
-	mercury_compile__maybe_polymorphism(HLDS25, Verbose, Stats, HLDS28),
+	mercury_compile__maybe_excess_assigns(HLDS25, Verbose, Stats, HLDS26),
+	mercury_compile__maybe_dump_hlds(HLDS26, "26", "excessassign"),
+
+	mercury_compile__maybe_polymorphism(HLDS26, Verbose, Stats, HLDS28),
 	mercury_compile__maybe_dump_hlds(HLDS28, "28", "polymorphism"),
 
 	mercury_compile__maybe_bytecodes(HLDS28, ModuleName, Verbose, Stats),

@@ -77,7 +77,7 @@
 	% or constants.
 
 :- pred code_util__translate_builtin(string, string, proc_id, list(var),
-	maybe(var), rval).
+	maybe(rval), maybe(pair(var, rval))).
 :- mode code_util__translate_builtin(in, in, in, in, out, out) is semidet.
 
 	% Find out how a function symbol (constructor) is represented
@@ -188,171 +188,171 @@ code_util__builtin(ModuleName, PredName, ProcId, Arity) :-
 	code_util__translate_builtin(ModuleName, PredName, ProcId, Args, _, _).
 
 code_util__translate_builtin("mercury_builtin", "builtin_int_gt", 0, [X, Y],
-	no, binop((>), var(X), var(Y))).
+	yes(binop((>), var(X), var(Y))), no).
 code_util__translate_builtin("mercury_builtin", "builtin_int_lt", 0, [X, Y],
-	no, binop((<), var(X), var(Y))).
+	yes(binop((<), var(X), var(Y))), no).
 
 code_util__translate_builtin("int", "builtin_plus", 10000, [X, Y, Z],
-	yes(Z), binop((+), var(X), var(Y))).
+	no, yes(Z - binop((+), var(X), var(Y)))).
 code_util__translate_builtin("int", "builtin_plus", 10001, [X, Y, Z],
-	yes(X), binop((-), var(Z), var(Y))).
+	no, yes(X - binop((-), var(Z), var(Y)))).
 code_util__translate_builtin("int", "builtin_plus", 10002, [X, Y, Z],
-	yes(Y), binop((-), var(Z), var(X))).
+	no, yes(Y - binop((-), var(Z), var(X)))).
 code_util__translate_builtin("int", "+", 10000, [X, Y, Z],
-	yes(Z), binop((+), var(X), var(Y))).
+	no, yes(Z - binop((+), var(X), var(Y)))).
 code_util__translate_builtin("int", "+", 10001, [X, Y, Z],
-	yes(X), binop((-), var(Z), var(Y))).
+	no, yes(X - binop((-), var(Z), var(Y)))).
 code_util__translate_builtin("int", "+", 10002, [X, Y, Z],
-	yes(Y), binop((-), var(Z), var(X))).
+	no, yes(Y - binop((-), var(Z), var(X)))).
 code_util__translate_builtin("int", "builtin_minus", 10000, [X, Y, Z],
-	yes(Z), binop((-), var(X), var(Y))).
+	no, yes(Z - binop((-), var(X), var(Y)))).
 code_util__translate_builtin("int", "builtin_minus", 10001, [X, Y, Z],
-	yes(X), binop((+), var(Y), var(Z))).
+	no, yes(X - binop((+), var(Y), var(Z)))).
 code_util__translate_builtin("int", "builtin_minus", 10002, [X, Y, Z],
-	yes(Y), binop((-), var(X), var(Z))).
+	no, yes(Y - binop((-), var(X), var(Z)))).
 code_util__translate_builtin("int", "-", 10000, [X, Y, Z],
-	yes(Z), binop((-), var(X), var(Y))).
+	no, yes(Z - binop((-), var(X), var(Y)))).
 code_util__translate_builtin("int", "-", 10001, [X, Y, Z],
-	yes(X), binop((+), var(Y), var(Z))).
+	no, yes(X - binop((+), var(Y), var(Z)))).
 code_util__translate_builtin("int", "-", 10002, [X, Y, Z],
-	yes(Y), binop((-), var(X), var(Z))).
+	no, yes(Y - binop((-), var(X), var(Z)))).
 code_util__translate_builtin("int", "builtin_times", 10000, [X, Y, Z],
-	yes(Z), binop((*), var(X), var(Y))).
+	no, yes(Z - binop((*), var(X), var(Y)))).
 code_util__translate_builtin("int", "builtin_times", 10001, [X, Y, Z],
-	yes(X), binop((/), var(Z), var(Y))).
+	no, yes(X - binop((/), var(Z), var(Y)))).
 code_util__translate_builtin("int", "builtin_times", 10002, [X, Y, Z],
-	yes(Y), binop((/), var(Z), var(X))).
+	no, yes(Y - binop((/), var(Z), var(X)))).
 code_util__translate_builtin("int", "*", 10000, [X, Y, Z],
-	yes(Z), binop((*), var(X), var(Y))).
+	no, yes(Z - binop((*), var(X), var(Y)))).
 code_util__translate_builtin("int", "*", 10001, [X, Y, Z],
-	yes(X), binop((/), var(Z), var(Y))).
+	no, yes(X - binop((/), var(Z), var(Y)))).
 code_util__translate_builtin("int", "*", 10002, [X, Y, Z],
-	yes(Y), binop((/), var(Z), var(X))).
+	no, yes(Y - binop((/), var(Z), var(X)))).
 code_util__translate_builtin("int", "builtin_div", 10000, [X, Y, Z],
-	yes(Z), binop((/), var(X), var(Y))).
+	no, yes(Z - binop((/), var(X), var(Y)))).
 code_util__translate_builtin("int", "builtin_div", 10001, [X, Y, Z],
-	yes(X), binop((*), var(Y), var(Z))).
+	no, yes(X - binop((*), var(Y), var(Z)))).
 code_util__translate_builtin("int", "builtin_div", 10002, [X, Y, Z],
-	yes(Y), binop((/), var(X), var(Z))).
+	no, yes(Y - binop((/), var(X), var(Z)))).
 code_util__translate_builtin("int", "//", 10000, [X, Y, Z],
-	yes(Z), binop((/), var(X), var(Y))).
+	no, yes(Z - binop((/), var(X), var(Y)))).
 code_util__translate_builtin("int", "//", 10001, [X, Y, Z],
-	yes(X), binop((*), var(Y), var(Z))).
+	no, yes(X - binop((*), var(Y), var(Z)))).
 code_util__translate_builtin("int", "//", 10002, [X, Y, Z],
-	yes(Y), binop((/), var(X), var(Z))).
+	no, yes(Y - binop((/), var(X), var(Z)))).
 code_util__translate_builtin("int", "builtin_mod", 10000, [X, Y, Z],
-	yes(Z), binop((mod), var(X), var(Y))).
+	no, yes(Z - binop((mod), var(X), var(Y)))).
 code_util__translate_builtin("int", "mod", 10000, [X, Y, Z],
-	yes(Z), binop((mod), var(X), var(Y))).
+	no, yes(Z - binop((mod), var(X), var(Y)))).
 code_util__translate_builtin("int", "builtin_left_shift", 10000, [X, Y, Z],
-	yes(Z), binop((<<), var(X), var(Y))).
+	no, yes(Z - binop((<<), var(X), var(Y)))).
 code_util__translate_builtin("int", "<<", 10000, [X, Y, Z],
-	yes(Z), binop((<<), var(X), var(Y))).
+	no, yes(Z - binop((<<), var(X), var(Y)))).
 code_util__translate_builtin("int", "builtin_right_shift", 10000, [X, Y, Z],
-	yes(Z), binop((>>), var(X), var(Y))).
+	no, yes(Z - binop((>>), var(X), var(Y)))).
 code_util__translate_builtin("int", ">>", 10000, [X, Y, Z],
-	yes(Z), binop((>>), var(X), var(Y))).
+	no, yes(Z - binop((>>), var(X), var(Y)))).
 code_util__translate_builtin("int", "builtin_bit_and", 10000, [X, Y, Z],
-	yes(Z), binop((&), var(X), var(Y))).
+	no, yes(Z - binop((&), var(X), var(Y)))).
 code_util__translate_builtin("int", "/\\", 10000, [X, Y, Z],
-	yes(Z), binop((&), var(X), var(Y))).
+	no, yes(Z - binop((&), var(X), var(Y)))).
 code_util__translate_builtin("int", "builtin_bit_or", 10000, [X, Y, Z],
-	yes(Z), binop(('|'), var(X), var(Y))).
+	no, yes(Z - binop(('|'), var(X), var(Y)))).
 code_util__translate_builtin("int", "\\/", 10000, [X, Y, Z],
-	yes(Z), binop(('|'), var(X), var(Y))).
+	no, yes(Z - binop(('|'), var(X), var(Y)))).
 code_util__translate_builtin("int", "builtin_bit_xor", 10000, [X, Y, Z],
-	yes(Z), binop((^), var(X), var(Y))).
+	no, yes(Z - binop((^), var(X), var(Y)))).
 code_util__translate_builtin("int", "^", 10000, [X, Y, Z],
-	yes(Z), binop((^), var(X), var(Y))).
-% code_util__translate_builtin("int", "builtin_unary_plus", 10000, [X, Y],
-% 	yes(Y), var(X)).
-% code_util__translate_builtin("int", "+", 10000, [X, Y],
-% 	yes(Y), var(X)).
-% code_util__translate_builtin("int", "builtin_unary_minus", 10000, [X, Y],
-% 	yes(Y), binop((-), const(int_const(0)), var(X))).
-% code_util__translate_builtin("int", "-", 10000, [X, Y],
-% 	yes(Y), binop((-), const(int_const(0)), var(X))).
+	no, yes(Z - binop((^), var(X), var(Y)))).
+code_util__translate_builtin("int", "builtin_unary_plus", 10000, [X, Y],
+	no, yes(Y - var(X))).
+code_util__translate_builtin("int", "+", 10000, [X, Y],
+	no, yes(Y - var(X))).
+code_util__translate_builtin("int", "builtin_unary_minus", 10000, [X, Y],
+	no, yes(Y - binop((-), const(int_const(0)), var(X)))).
+code_util__translate_builtin("int", "-", 10000, [X, Y],
+	no, yes(Y - binop((-), const(int_const(0)), var(X)))).
 code_util__translate_builtin("int", "builtin_bit_neg", 10000, [X, Y],
-	yes(Y), unop(bitwise_complement, var(X))).
+	no, yes(Y - unop(bitwise_complement, var(X)))).
 code_util__translate_builtin("int", "\\", 10000, [X, Y],
-	yes(Y), unop(bitwise_complement, var(X))).
+	no, yes(Y - unop(bitwise_complement, var(X)))).
 code_util__translate_builtin("int", ">", 0, [X, Y],
-	no, binop((>), var(X), var(Y))).
+	yes(binop((>), var(X), var(Y))), no).
 code_util__translate_builtin("int", "<", 0, [X, Y],
-	no, binop((<), var(X), var(Y))).
+	yes(binop((<), var(X), var(Y))), no).
 code_util__translate_builtin("int", ">=", 0, [X, Y],
-	no, binop((>=), var(X), var(Y))).
+	yes(binop((>=), var(X), var(Y))), no).
 code_util__translate_builtin("int", "=<", 0, [X, Y],
-	no, binop((<=), var(X), var(Y))).
+	yes(binop((<=), var(X), var(Y))), no).
 
 code_util__translate_builtin("float", "builtin_float_plus", 10000, [X, Y, Z],
-	yes(Z), binop(float_plus, var(X), var(Y))).
+	no, yes(Z - binop(float_plus, var(X), var(Y)))).
 code_util__translate_builtin("float", "builtin_float_plus", 10001, [X, Y, Z],
-	yes(X), binop(float_minus, var(Z), var(Y))).
+	no, yes(X - binop(float_minus, var(Z), var(Y)))).
 code_util__translate_builtin("float", "builtin_float_plus", 10002, [X, Y, Z],
-	yes(Y), binop(float_minus, var(Z), var(X))).
+	no, yes(Y - binop(float_minus, var(Z), var(X)))).
 code_util__translate_builtin("float", "+", 10000, [X, Y, Z],
-	yes(Z), binop(float_plus, var(X), var(Y))).
+	no, yes(Z - binop(float_plus, var(X), var(Y)))).
 code_util__translate_builtin("float", "+", 10001, [X, Y, Z],
-	yes(X), binop(float_minus, var(Z), var(Y))).
+	no, yes(X - binop(float_minus, var(Z), var(Y)))).
 code_util__translate_builtin("float", "+", 10002, [X, Y, Z],
-	yes(Y), binop(float_minus, var(Z), var(X))).
+	no, yes(Y - binop(float_minus, var(Z), var(X)))).
 code_util__translate_builtin("float", "builtin_float_minus", 10000, [X, Y, Z],
-	yes(Z), binop(float_minus, var(X), var(Y))).
+	no, yes(Z - binop(float_minus, var(X), var(Y)))).
 code_util__translate_builtin("float", "builtin_float_minus", 10001, [X, Y, Z],
-	yes(X), binop(float_plus, var(Y), var(Z))).
+	no, yes(X - binop(float_plus, var(Y), var(Z)))).
 code_util__translate_builtin("float", "builtin_float_minus", 10002, [X, Y, Z],
-	yes(Y), binop(float_minus, var(X), var(Z))).
+	no, yes(Y - binop(float_minus, var(X), var(Z)))).
 code_util__translate_builtin("float", "-", 10000, [X, Y, Z],
-	yes(Z), binop(float_minus, var(X), var(Y))).
+	no, yes(Z - binop(float_minus, var(X), var(Y)))).
 code_util__translate_builtin("float", "-", 10001, [X, Y, Z],
-	yes(X), binop(float_plus, var(Y), var(Z))).
+	no, yes(X - binop(float_plus, var(Y), var(Z)))).
 code_util__translate_builtin("float", "-", 10002, [X, Y, Z],
-	yes(Y), binop(float_minus, var(X), var(Z))).
+	no, yes(Y - binop(float_minus, var(X), var(Z)))).
 code_util__translate_builtin("float", "builtin_float_times", 10000, [X, Y, Z],
-	yes(Z), binop(float_times, var(X), var(Y))).
+	no, yes(Z - binop(float_times, var(X), var(Y)))).
 code_util__translate_builtin("float", "builtin_float_times", 10001, [X, Y, Z],
-	yes(X), binop(float_divide, var(Z), var(Y))).
+	no, yes(X - binop(float_divide, var(Z), var(Y)))).
 code_util__translate_builtin("float", "builtin_float_times", 10002, [X, Y, Z],
-	yes(Y), binop(float_divide, var(Z), var(X))).
+	no, yes(Y - binop(float_divide, var(Z), var(X)))).
 code_util__translate_builtin("float", "*", 10000, [X, Y, Z],
-	yes(Z), binop(float_times, var(X), var(Y))).
+	no, yes(Z - binop(float_times, var(X), var(Y)))).
 code_util__translate_builtin("float", "*", 10001, [X, Y, Z],
-	yes(X), binop(float_divide, var(Z), var(Y))).
+	no, yes(X - binop(float_divide, var(Z), var(Y)))).
 code_util__translate_builtin("float", "*", 10002, [X, Y, Z],
-	yes(Y), binop(float_divide, var(Z), var(X))).
+	no, yes(Y - binop(float_divide, var(Z), var(X)))).
 code_util__translate_builtin("float", "builtin_float_divide", 10000, [X, Y, Z],
-	yes(Z), binop(float_divide, var(X), var(Y))).
+	no, yes(Z - binop(float_divide, var(X), var(Y)))).
 code_util__translate_builtin("float", "builtin_float_divide", 10001, [X, Y, Z],
-	yes(X), binop(float_times, var(Y), var(Z))).
+	no, yes(X - binop(float_times, var(Y), var(Z)))).
 code_util__translate_builtin("float", "builtin_float_divide", 10002, [X, Y, Z],
-	yes(Y), binop(float_divide, var(X), var(Z))).
+	no, yes(Y - binop(float_divide, var(X), var(Z)))).
 code_util__translate_builtin("float", "/", 10000, [X, Y, Z],
-	yes(Z), binop(float_divide, var(X), var(Y))).
+	no, yes(Z - binop(float_divide, var(X), var(Y)))).
 code_util__translate_builtin("float", "/", 10001, [X, Y, Z],
-	yes(X), binop(float_times, var(Y), var(Z))).
+	no, yes(X - binop(float_times, var(Y), var(Z)))).
 code_util__translate_builtin("float", "/", 10002, [X, Y, Z],
-	yes(Y), binop(float_divide, var(X), var(Z))).
-% code_util__translate_builtin("float", "+", 10000, [X, Y],
-% 	yes(Y), var(X)).
-% code_util__translate_builtin("float", "-", 10000, [X, Y],
-% 	yes(Y), binop(float_minus, const(float_const(0.0)), var(X))).
+	no, yes(Y - binop(float_divide, var(X), var(Z)))).
+code_util__translate_builtin("float", "+", 10000, [X, Y],
+	no, yes(Y - var(X))).
+code_util__translate_builtin("float", "-", 10000, [X, Y],
+	no, yes(Y - binop(float_minus, const(float_const(0.0)), var(X)))).
 code_util__translate_builtin("float", "builtin_float_gt", 0, [X, Y],
-	no, binop(float_gt, var(X), var(Y))).
+	yes(binop(float_gt, var(X), var(Y))), no).
 code_util__translate_builtin("float", ">", 0, [X, Y],
-	no, binop(float_gt, var(X), var(Y))).
+	yes(binop(float_gt, var(X), var(Y))), no).
 code_util__translate_builtin("float", "builtin_float_lt", 0, [X, Y],
-	no, binop(float_lt, var(X), var(Y))).
+	yes(binop(float_lt, var(X), var(Y))), no).
 code_util__translate_builtin("float", "<", 0, [X, Y],
-	no, binop(float_lt, var(X), var(Y))).
+	yes(binop(float_lt, var(X), var(Y))), no).
 code_util__translate_builtin("float", "builtin_float_ge", 0, [X, Y],
-	no, binop(float_ge, var(X), var(Y))).
+	yes(binop(float_ge, var(X), var(Y))), no).
 code_util__translate_builtin("float", ">=", 0, [X, Y],
-	no, binop(float_ge, var(X), var(Y))).
+	yes(binop(float_ge, var(X), var(Y))), no).
 code_util__translate_builtin("float", "builtin_float_le", 0, [X, Y],
-	no, binop(float_le, var(X), var(Y))).
+	yes(binop(float_le, var(X), var(Y))), no).
 code_util__translate_builtin("float", "=<", 0, [X, Y],
-	no, binop(float_le, var(X), var(Y))).
+	yes(binop(float_le, var(X), var(Y))), no).
 
 %-----------------------------------------------------------------------------%
 

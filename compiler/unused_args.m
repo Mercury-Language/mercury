@@ -50,6 +50,7 @@
 :- import_module hlds_pred, hlds_goal, hlds_data, type_util.
 :- import_module code_util, globals, make_hlds, mercury_to_mercury, mode_util.
 :- import_module options, prog_data, prog_out, quantification, special_pred.
+:- import_module passes_aux.
 
 :- import_module bool, char, int, list, map, require.
 :- import_module set, std_util, string, varset. 
@@ -642,10 +643,7 @@ create_new_preds([proc(PredId, ProcId) | PredProcs], UnusedArgInfo,
 				Goal, Varset, VarTypes, _),
 		proc_info_set_goal(OldProc0, Goal, OldProc1),
 		proc_info_set_varset(OldProc1, Varset, OldProc2),
-		proc_info_set_vartypes(OldProc2, VarTypes, OldProc3),
-		proc_info_argmodes(OldProc3, ArgModes0),
-		fixup_unused_arg_modes(ArgModes0, 1, UnusedArgs, ArgModes),
-		proc_info_set_argmodes(OldProc3, ArgModes, OldProc),
+		proc_info_set_vartypes(OldProc2, VarTypes, OldProc),
 		map__set(Procs0, ProcId, OldProc, Procs),
 		pred_info_set_procedures(PredInfo0, Procs, PredInfo),
 		map__det_update(Preds0, PredId, PredInfo, Preds1),
@@ -710,23 +708,6 @@ make_new_pred_info(ModuleInfo, PredInfo0, UnusedArgs, ProcId, PredInfo) :-
 		Context, ClausesInfo, local, Inline, GoalType, predicate,
 		PredInfo1),
 	pred_info_set_typevarset(PredInfo1, TypeVars, PredInfo).
-
-
-:- pred fixup_unused_arg_modes(list(mode)::in, int::in, list(int)::in,
-						list(mode)::out) is det.
-
-fixup_unused_arg_modes([], _, _, []).
-fixup_unused_arg_modes([Mode0 | Modes0], ArgNo, UnusedArgs, [Mode | Modes]) :-
-	(
-		list__member(ArgNo, UnusedArgs)
-	->
-		Mode = (free -> free)
-	;
-		Mode = Mode0
-	),
-	NextArg is ArgNo + 1,
-	fixup_unused_arg_modes(Modes0, NextArg, UnusedArgs, Modes).
-
 
 :- pred remove_listof_elements(list(T)::in, int::in, list(int)::in,
 							 list(T)::out) is det.

@@ -73,7 +73,7 @@ vn_cost__instr_cost(Uinstr, Params, Cost) :-
 		Uinstr = livevals(_),
 		Cost = 0
 	;
-		Uinstr = block(_, _),
+		Uinstr = block(_, _, _),
 		error("block found in vn_block_cost")
 	;
 		Uinstr = assign(Lval, Rval),
@@ -234,10 +234,17 @@ vn_cost__lval_cost(Lval, Params, Cost) :-
 		Lval = lvar(_),
 		error("lvar found in lval_cost")
 	;
-		Lval = temp(Tempno),
+		Lval = temp(TempReg),
 		(
-			vn_type__real_r_regs(Params, MaxRealTempno),
-			Tempno =< MaxRealTempno
+			TempReg = r(TempRno),
+			vn_type__real_r_temps(Params, MaxRealTempRno),
+			TempRno =< MaxRealTempRno
+		->
+			Cost = 0
+		;
+			TempReg = f(TempFno),
+			vn_type__real_f_temps(Params, MaxRealTempFno),
+			TempFno =< MaxRealTempFno
 		->
 			Cost = 0
 		;

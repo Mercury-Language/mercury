@@ -539,8 +539,8 @@ vn_util__lval_to_vnlval(Lval, Vnlval, VnTables0, VnTables) :-
 % check vn_util__lval_to_vnlval above as well.
 
 vn_util__no_access_lval_to_vnlval(reg(Reg),		yes(vn_reg(Reg))).
-vn_util__no_access_lval_to_vnlval(stackvar(N),	yes(vn_stackvar(N))).
-vn_util__no_access_lval_to_vnlval(framevar(N),	yes(vn_framevar(N))).
+vn_util__no_access_lval_to_vnlval(stackvar(N),		yes(vn_stackvar(N))).
+vn_util__no_access_lval_to_vnlval(framevar(N),		yes(vn_framevar(N))).
 vn_util__no_access_lval_to_vnlval(succip,		yes(vn_succip)).
 vn_util__no_access_lval_to_vnlval(maxfr,		yes(vn_maxfr)).
 vn_util__no_access_lval_to_vnlval(curfr,		yes(vn_curfr)).
@@ -548,27 +548,27 @@ vn_util__no_access_lval_to_vnlval(redoip(_),		no).
 vn_util__no_access_lval_to_vnlval(succip(_),		no).
 vn_util__no_access_lval_to_vnlval(prevfr(_),		no).
 vn_util__no_access_lval_to_vnlval(succfr(_),		no).
-vn_util__no_access_lval_to_vnlval(hp,		yes(vn_hp)).
-vn_util__no_access_lval_to_vnlval(sp,		yes(vn_sp)).
+vn_util__no_access_lval_to_vnlval(hp,			yes(vn_hp)).
+vn_util__no_access_lval_to_vnlval(sp,			yes(vn_sp)).
 vn_util__no_access_lval_to_vnlval(field(_, _, _),	no).
-vn_util__no_access_lval_to_vnlval(temp(N),		yes(vn_temp(N))).
+vn_util__no_access_lval_to_vnlval(temp(Reg),		yes(vn_temp(Reg))).
 vn_util__no_access_lval_to_vnlval(lvar(_Var), _) :-
 	error("lvar detected in value_number").
 
-vn_util__no_access_vnlval_to_lval(vn_reg(Reg),	yes(reg(Reg))).
+vn_util__no_access_vnlval_to_lval(vn_reg(Reg),		yes(reg(Reg))).
 vn_util__no_access_vnlval_to_lval(vn_stackvar(N),	yes(stackvar(N))).
 vn_util__no_access_vnlval_to_lval(vn_framevar(N),	yes(framevar(N))).
 vn_util__no_access_vnlval_to_lval(vn_succip,		yes(succip)).
 vn_util__no_access_vnlval_to_lval(vn_maxfr,		yes(maxfr)).
 vn_util__no_access_vnlval_to_lval(vn_curfr,		yes(curfr)).
-vn_util__no_access_vnlval_to_lval(vn_succfr(_),	no).
-vn_util__no_access_vnlval_to_lval(vn_prevfr(_),	no).
-vn_util__no_access_vnlval_to_lval(vn_redoip(_),	no).
-vn_util__no_access_vnlval_to_lval(vn_succip(_),	no).
+vn_util__no_access_vnlval_to_lval(vn_succfr(_),		no).
+vn_util__no_access_vnlval_to_lval(vn_prevfr(_),		no).
+vn_util__no_access_vnlval_to_lval(vn_redoip(_),		no).
+vn_util__no_access_vnlval_to_lval(vn_succip(_),		no).
 vn_util__no_access_vnlval_to_lval(vn_hp,		yes(hp)).
 vn_util__no_access_vnlval_to_lval(vn_sp,		yes(sp)).
-vn_util__no_access_vnlval_to_lval(vn_field(_, _, _), no).
-vn_util__no_access_vnlval_to_lval(vn_temp(N),	yes(temp(N))).
+vn_util__no_access_vnlval_to_lval(vn_field(_, _, _),	no).
+vn_util__no_access_vnlval_to_lval(vn_temp(Reg),		yes(temp(Reg))).
 
 /* one of these preds should be eliminated XXX */
 vn_util__vnlval_access_vns(vn_reg(_), []).
@@ -676,7 +676,9 @@ vn_util__is_vn_shared(Vn, Vnrval, Uses0, VnTables) :-
 vn_util__real_uses([], [], _VnTables).
 vn_util__real_uses([Use0 | Uses0], Uses, VnTables) :-
 	vn_util__real_uses(Uses0, Uses1, VnTables),
-	( Use0 = src_liveval(Vnlval) ->
+	( list__member(Use0, Uses1) ->
+		Uses = Uses1
+	; Use0 = src_liveval(Vnlval) ->
 		(
 			vn_table__search_desired_value(Vnlval, Vn, VnTables),
 			vn_table__search_current_value(Vnlval, Vn, VnTables)
@@ -824,6 +826,10 @@ vn_util__build_uses_from_ctrl(Ctrl, Ctrlmap, VnTables0, VnTables) :-
 		;
 			VnInstr = vn_decr_sp(_),
 			VnTables1 = VnTables0
+		;
+			VnInstr = vn_assign_curfr(Vn),
+			vn_util__record_use(Vn, src_ctrl(Ctrl),
+				VnTables0, VnTables1)
 		),
 		NextCtrl is Ctrl + 1,
 		vn_util__build_uses_from_ctrl(NextCtrl, Ctrlmap,

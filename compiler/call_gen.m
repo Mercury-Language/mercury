@@ -257,7 +257,7 @@ call_gen__generate_det_builtin(PredId, ProcId, Args, Code) -->
 	{ predicate_name(ModuleInfo, PredId, PredName) },
 	(
 		{ code_util__translate_builtin(ModuleName, PredName, ProcId,
-			Args, yes(Var), Rval) }
+			Args, no, yes(Var - Rval)) }
 	->
 		code_info__cache_expression(Var, Rval),
 		{ Code = empty }
@@ -273,7 +273,7 @@ call_gen__generate_semidet_builtin(PredId, ProcId, Args, Code) -->
 	{ predicate_name(ModuleInfo, PredId, PredName) },
 	(
 		{ code_util__translate_builtin(ModuleName, PredName, ProcId,
-			Args, no, Rval0) }
+			Args, yes(Rval0), Assign) }
 	->
 		( { Rval0 = binop(BinOp, X0, Y0) } ->
 			call_gen__generate_builtin_arg(X0, X, CodeX),
@@ -287,6 +287,11 @@ call_gen__generate_semidet_builtin(PredId, ProcId, Args, Code) -->
 			{ error("Unknown builtin predicate") }
 		),
 		code_info__generate_test_and_fail(Rval, TestCode),
+		( { Assign = yes(Var - AssignRval) } ->
+			code_info__cache_expression(Var, AssignRval)
+		;
+			[]
+		),
 		{ Code = tree(ArgCode, TestCode) }
 	;
 		{ error("Unknown builtin predicate") }

@@ -116,12 +116,20 @@ vn_flush__lval_node(Vnlval, Ctrlmap, Nodes0, Nodes,
 		{ vn_util__real_uses(Uses, RealUses, VnTables0) },
 		{ RealUses = [_|_] }
 	->
-		% This path should be taken only if some circularities
-		% are broken arbitrarily. Otherwise, the shared node
-		% should come before the user lval nodes.
-		vn_flush__node(node_shared(DesVn), Ctrlmap,
-			Nodes0, Nodes, VnTables0, VnTables1,
-			Templocs0, Templocs1, Params, Instrs1),
+		( { RealUses = [src_liveval(UserVnlval)] } ->
+			vn_flush__node(node_lval(UserVnlval), Ctrlmap,
+				Nodes0, Nodes1, VnTables0, VnTables1,
+				Templocs0, Templocs1, Params, Instrs1),
+			{ list__delete_all(Nodes1, node_lval(UserVnlval),
+				Nodes) }
+		;
+			% This path should be taken only if some circularities
+			% are broken arbitrarily. Otherwise, the shared node
+			% should come before the user lval nodes.
+			vn_flush__node(node_shared(DesVn), Ctrlmap,
+				Nodes0, Nodes, VnTables0, VnTables1,
+				Templocs0, Templocs1, Params, Instrs1)
+		),
 		{ vn_flush__ensure_assignment(Vnlval, DesVn, [],
 			VnTables1, VnTables,
 			Templocs1, Templocs, Params, Instrs2) },
@@ -243,10 +251,8 @@ vn_flush__ctrl_node(Vn_instr, N, VnTables0, VnTables, Templocs0, Templocs,
 		list__append(FlushInstrs, [Instr], Instrs)
 	;
 		Vn_instr = vn_restore_ticket(Vn),
-		vn_flush__vn(Vn, [src_ctrl(N)], [], Rval, VnTables0, VnTables1,
+		vn_flush__vn(Vn, [src_ctrl(N)], [], Rval, VnTables0, VnTables,
 			Templocs0, Templocs, Params, FlushInstrs),
-
-		VnTables1 = VnTables,
 		Instr = restore_ticket(Rval) - "",
 		list__append(FlushInstrs, [Instr], Instrs)
 	;
@@ -264,6 +270,58 @@ vn_flush__ctrl_node(Vn_instr, N, VnTables0, VnTables, Templocs0, Templocs,
 		VnTables = VnTables0,
 		Templocs = Templocs0,
 		Instrs = [decr_sp(Decr) - ""]
+	;
+		Vn_instr = vn_assign_curfr(Vn),
+		vn_table__get_loc_to_vn_table(VnTables0, LocToVnTable),
+		map__keys(LocToVnTable, Locs),
+		vn_flush__move_away_framevars(Locs, VnTables0, VnTables1,
+			Templocs0, Templocs1, Params, MoveAwayInstrs),
+		vn_flush__vn(Vn, [src_ctrl(N)], [], Rval, VnTables1, VnTables,
+			Templocs1, Templocs, Params, FlushInstrs),
+		Instr = assign(curfr, Rval) - "",
+		list__append(FlushInstrs, [Instr], MainInstrs),
+		list__append(MoveAwayInstrs, MainInstrs, Instrs)
+	).
+
+%-----------------------------------------------------------------------------%
+
+:- pred vn_flush__move_away_framevars(list(vnlval), vn_tables, vn_tables,
+	templocs, templocs, vn_params, list(instruction)).
+:- mode vn_flush__move_away_framevars(in, in, out, in, out, in, out) is det.
+
+vn_flush__move_away_framevars([], VnTables, VnTables, Templocs, Templocs,
+		_Params, []).
+vn_flush__move_away_framevars([Loc | Locs], VnTables0, VnTables,
+		Templocs0, Templocs, Params, Instrs) :-
+	vn_flush__move_away_framevars(Locs, VnTables0, VnTables1,
+		Templocs0, Templocs1, Params, Instrs1),
+	(
+		Loc = vn_framevar(_),
+		vn_table__search_current_value(Loc, Vn, VnTables1),
+		vn_table__lookup_uses(Vn, Uses0,
+			"vn_flush__move_away_framevars", VnTables1),
+		vn_util__real_uses(Uses0, Uses, VnTables1),
+		Uses = [_|_]
+	->
+		(
+			vn_flush__find_cheap_users(Vn, Users, VnTables1),
+			vn_util__choose_cheapest_loc(Users, BestUser),
+			vn_util__vnlval_access_vns(BestUser, []),
+			vn_util__classify_loc_cost(BestUser, 0)
+		->
+			Chosen = BestUser,
+			Templocs2 = Templocs1
+		;
+			vn_temploc__next_tempr(Templocs1, Templocs2, Chosen)
+		),
+		% We should also delete the record that Loc contains *anything*
+		vn_flush__ensure_assignment(Chosen, Vn, [], VnTables1, VnTables,
+			Templocs2, Templocs, Params, Instrs2),
+		list__append(Instrs1, Instrs2, Instrs)
+	;
+		VnTables = VnTables1,
+		Templocs = Templocs1,
+		Instrs = Instrs1
 	).
 
 %-----------------------------------------------------------------------------%
@@ -321,7 +379,7 @@ vn_flush__choose_loc_for_shared_vn(Vn, Chosen, VnTables, Templocs0, Templocs) :-
 		Chosen = BestUser,
 		Templocs = Templocs0
 	;
-		vn_temploc__next_temploc(Templocs0, Templocs, Chosen)
+		vn_temploc__next_tempr(Templocs0, Templocs, Chosen)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -332,8 +390,10 @@ vn_flush__choose_loc_for_shared_vn(Vn, Chosen, VnTables, Templocs0, Templocs) :-
 	% should be assignable to one of its users without needing any
 	% more assignments. At the moment we insist that this user be
 	% a register. We could allow stack/frame variables as well,
-	% but we must now allow fields, or in general any location
-	% that needs access vns.
+	% but we must not allow fields, or in general any location
+	% that needs access vns. (When flushing framevars before assigning
+	% to curfr, we don't want to pick anything that references a framevar
+	% in any case.)
 
 :- pred vn_flush__find_cheap_users(vn, list(vnlval), vn_tables).
 :- mode vn_flush__find_cheap_users(in, out, in) is det.
@@ -533,10 +593,11 @@ vn_flush__vn(Vn, Srcs, Forbidden, Rval, VnTables0, VnTables,
 					Templocs0, Templocs, Params, Instrs)
 			;
 				NewUses = [_,_|_],
-				\+ ( Loc = vn_reg(_) ; Loc = vn_temp(_) ),
+				vn_util__classify_loc_cost(Loc, Cost),
+				Cost > 0,
 				\+ Src = src_liveval(_)
 			->
-				vn_temploc__next_temploc(Templocs0, Templocs1,
+				vn_temploc__next_tempr(Templocs0, Templocs1,
 					Vnlval),
 				vn_flush__generate_assignment(Vnlval, Vn,
 					Forbidden, VnTables0, VnTables3,
@@ -752,7 +813,7 @@ vn_flush__old_hp(Srcs0, Forbidden0, ReturnRval, VnTables0, VnTables,
 			),
 			Templocs2 = Templocs1
 		;
-			vn_temploc__next_temploc(Templocs1, Templocs2, Vnlval),
+			vn_temploc__next_tempr(Templocs1, Templocs2, Vnlval),
 			vn_util__no_access_vnlval_to_lval(Vnlval, MaybeLval),
 			(
 				MaybeLval = yes(Lval)
@@ -765,7 +826,7 @@ vn_flush__old_hp(Srcs0, Forbidden0, ReturnRval, VnTables0, VnTables,
 	;
 		MaybeTag = no,
 		AssignedVn = OldhpVn,
-		vn_temploc__next_temploc(Templocs1, Templocs2, Vnlval),
+		vn_temploc__next_tempr(Templocs1, Templocs2, Vnlval),
 		vn_util__no_access_vnlval_to_lval(Vnlval, MaybeLval),
 		(
 			MaybeLval = yes(Lval)
@@ -1055,10 +1116,10 @@ vn_flush__maybe_save_prev_value(Vnlval, OldVn, NewVn, Forbidden,
 			(
 				MaybePresumed = yes(PresumedLval),
 				( list__member(PresumedLval, Forbidden) ->
-					vn_temploc__next_temploc(Templocs0,
+					vn_temploc__next_tempr(Templocs0,
 						Templocs1, Chosen)
 				; RealUses = [_,_|_], \+ Presumed = vn_reg(_) ->
-					vn_temploc__next_temploc(Templocs0,
+					vn_temploc__next_tempr(Templocs0,
 						Templocs1, Chosen)
 				;
 					Chosen = Presumed,
@@ -1068,11 +1129,11 @@ vn_flush__maybe_save_prev_value(Vnlval, OldVn, NewVn, Forbidden,
 				MaybePresumed = no,
 				% we cannot use Presumed even if it is not
 				% in Forbidden
-				vn_temploc__next_temploc(Templocs0, Templocs1,
+				vn_temploc__next_tempr(Templocs0, Templocs1,
 					Chosen)
 			)
 		;
-			vn_temploc__next_temploc(Templocs0, Templocs1, Chosen)
+			vn_temploc__next_tempr(Templocs0, Templocs1, Chosen)
 		),
 		vn_flush__ensure_assignment(Chosen, OldVn, Forbidden,
 			VnTables0, VnTables, Templocs1, Templocs, Params,

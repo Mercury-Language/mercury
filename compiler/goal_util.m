@@ -26,7 +26,7 @@
 
 :- interface.
 
-:- import_module hlds_goal, llds.
+:- import_module hlds_goal, hlds_pred, llds.
 :- import_module bool, int, list, map.
 
 	% goal_util__rename_vars_in_goals(GoalList, MustRename, Substitution,
@@ -68,6 +68,10 @@
 	% Return an indication of the size of the goal.
 :- pred goal_size(hlds__goal, int).
 :- mode goal_size(in, out) is det.
+
+	% Test whether the goal calls the given procedure.
+:- pred goal_calls(hlds__goal, pred_proc_id).
+:- mode goal_calls(in, in) is semidet.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -453,9 +457,6 @@ goal_util__goal_is_branched(disj(_, _)).
 goal_size(GoalExpr - _, Size) :-
 	goal_expr_size(GoalExpr, Size).
 
-:- pred goal_expr_size(hlds__goal_expr, int).
-:- mode goal_expr_size(in, out) is det.
-
 :- pred goals_size(list(hlds__goal), int).
 :- mode goals_size(in, out) is det.
 
@@ -473,6 +474,9 @@ cases_size([case(_, Goal) | Cases], Size) :-
 	goal_size(Goal, Size1),
 	cases_size(Cases, Size2),
 	Size is Size1 + Size2.
+
+:- pred goal_expr_size(hlds__goal_expr, int).
+:- mode goal_expr_size(in, out) is det.
 
 goal_expr_size(conj(Goals), Size) :-
 	goals_size(Goals, Size).
@@ -497,3 +501,51 @@ goal_expr_size(call(_, _, _, _, _, _, _), 1).
 goal_expr_size(higher_order_call(_, _, _, _, _, _), 1).
 goal_expr_size(unify(_, _, _, _, _), 1).
 goal_expr_size(pragma_c_code(_, _, _, _, _), 1).
+
+%-----------------------------------------------------------------------------%
+
+goal_calls(GoalExpr - _, PredProcId) :-
+	goal_expr_calls(GoalExpr, PredProcId).
+
+:- pred goals_calls(list(hlds__goal), pred_proc_id).
+:- mode goals_calls(in, in) is semidet.
+
+goals_calls([Goal | Goals], PredProcId) :-
+	(
+		goal_calls(Goal, PredProcId)
+	;
+		goals_calls(Goals, PredProcId)
+	).
+
+:- pred cases_calls(list(case), pred_proc_id).
+:- mode cases_calls(in, in) is semidet.
+
+cases_calls([case(_, Goal) | Cases], PredProcId) :-
+	(
+		goal_calls(Goal, PredProcId)
+	;
+		cases_calls(Cases, PredProcId)
+	).
+
+:- pred goal_expr_calls(hlds__goal_expr, pred_proc_id).
+:- mode goal_expr_calls(in, in) is semidet.
+
+goal_expr_calls(conj(Goals), PredProcId) :-
+	goals_calls(Goals, PredProcId).
+goal_expr_calls(disj(Goals, _), PredProcId) :-
+	goals_calls(Goals, PredProcId).
+goal_expr_calls(switch(_, _, Goals, _), PredProcId) :-
+	cases_calls(Goals, PredProcId).
+goal_expr_calls(if_then_else(_, Cond, Then, Else, _), PredProcId) :-
+	(
+		goal_calls(Cond, PredProcId)
+	;
+		goal_calls(Then, PredProcId)
+	;
+		goal_calls(Else, PredProcId)
+	).
+goal_expr_calls(not(Goal), PredProcId) :-
+	goal_calls(Goal, PredProcId).
+goal_expr_calls(some(_, Goal), PredProcId) :-
+	goal_calls(Goal, PredProcId).
+goal_expr_calls(call(PredId, ProcId, _, _, _, _, _), proc(PredId, ProcId)).

@@ -138,7 +138,8 @@ dupelim__replace_labels_instr_list([Instr0 - Comment | Instrs0],
 
 dupelim__replace_labels_instr(comment(Comment), _, comment(Comment)).
 dupelim__replace_labels_instr(livevals(Livevals), _, livevals(Livevals)).
-dupelim__replace_labels_instr(block(N, Instrs0), Replmap, block(N, Instrs)) :-
+dupelim__replace_labels_instr(block(R, F, Instrs0), Replmap,
+		block(R, F, Instrs)) :-
 	dupelim__replace_labels_instr_list(Instrs0, Replmap, Instrs).
 dupelim__replace_labels_instr(assign(Lval0, Rval0), Replmap,
 		assign(Lval, Rval)) :-

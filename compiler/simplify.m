@@ -68,7 +68,8 @@ simplify__goal(Goal0 - GoalInfo0, InstMap0, DetInfo, Goal - GoalInfo, Msgs) :-
 		GoalInfo = GoalInfo0,		% need we massage this?
 		Msgs = []
 	;
-		determinism_components(Detism, cannot_fail, _MaxSoln),
+		determinism_components(Detism, cannot_fail, MaxSoln),
+		MaxSoln \= at_most_zero,
 		det_info_get_fully_strict(DetInfo, no),
 		goal_info_get_instmap_delta(GoalInfo0, DeltaInstMap),
 		goal_info_get_nonlocals(GoalInfo0, NonLocalVars),

@@ -116,7 +116,9 @@
 		;	use_macro_for_redo_fail
 		;	have_delay_slot
 		;	num_real_r_regs
-		;	num_real_temps
+		;	num_real_f_regs
+		;	num_real_r_temps
+		;	num_real_f_temps
 		;	cc
 		;	cflags
 		;	cflags_for_regs
@@ -312,7 +314,9 @@ option_defaults_2(code_gen_option, [
 					% above default if configure says
 					% the machine has branch delay slots
 	num_real_r_regs		-	int(5),
-	num_real_temps		-	int(5),
+	num_real_f_regs		-	int(0),
+	num_real_r_temps	-	int(5),
+	num_real_f_temps	-	int(0),
 					% the `mc' script will override the
 					% above defaults with values determined
 					% at configuration time
@@ -540,7 +544,10 @@ long_option("use-macro-for-redo-fail",	use_macro_for_redo_fail).
 long_option("branch-delay-slot",	have_delay_slot).
 long_option("have-delay-slot",		have_delay_slot).
 long_option("num-real-r-regs",		num_real_r_regs).
-long_option("num-real-temps",		num_real_temps).
+long_option("num-real-f-regs",		num_real_f_regs).
+long_option("num-real-r-temps",		num_real_r_temps).
+long_option("num-real-f-temps",		num_real_f_temps).
+long_option("num-real-temps",		num_real_r_temps).
 long_option("cc",			cc).
 long_option("cflags",			cflags).
 long_option("cflags-for-regs",		cflags_for_regs).
@@ -1082,10 +1089,17 @@ options_help_compilation_model -->
 	io__write_string("\t\tAssume that branch instructions have a delay slot.\n"),
 	io__write_string("\t--num-real-r-regs <n>\t"),
 	io__write_string("\t(This option is not for general use.)\n"),
-	io__write_string("\t\tAssume registers r1 up to r<n> are real machine registers.\n"),
-	io__write_string("\t--num-real-temps <n>\t"),
+	io__write_string("\t\tAssume registers r1 up to r<n> are real general purpose registers.\n"),
+	io__write_string("\t--num-real-f-regs <n>\t"),
 	io__write_string("\t(This option is not for general use.)\n"),
-	io__write_string("\t\tAssume that <n> temporaries will fit into\n"),
+	io__write_string("\t\tAssume registers f1 up to f<n> are real floating point registers.\n"),
+	io__write_string("\t--num-real-r-temps <n>\t"),
+	io__write_string("\t(This option is not for general use.)\n"),
+	io__write_string("\t\tAssume that <n> non-float temporaries will fit into\n"),
+	io__write_string("\t\treal machine registers.\n"),
+	io__write_string("\t--num-real-f-temps <n>\t"),
+	io__write_string("\t(This option is not for general use.)\n"),
+	io__write_string("\t\tAssume that <n> float temporaries will fit into\n"),
 	io__write_string("\t\treal machine registers.\n"),
 	io__write_string("\t--args {simple, compact}\n"),
 	io__write_string("\t--arg-convention {simple, compact}\n"),

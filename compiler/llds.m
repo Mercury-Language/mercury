@@ -44,6 +44,12 @@
 			list(c_procedure) 	% code
 		)
 
+		% readonly data containing a typeinfo structure
+	;	c_typeinfo(
+			string,			% the name of the C variable
+			list(proc_label)	% type-specific procedures
+		)
+
 		% some C code from a pragma(c_code) declaration
 	;	c_code(
 			string,			% C code
@@ -78,7 +84,7 @@
 			% A list of which registers and stack locations
 			% are currently live.
 
-	;	block(int, list(instruction))
+	;	block(int, int, list(instruction))
 			% A list of instructions that make use of
 			% some local temporary variables.
 
@@ -198,7 +204,7 @@
 			;	sp		% top of det stack
 			;	field(tag, rval, rval)
 			;	lvar(var)
-			;	temp(int).	% only inside blocks
+			;	temp(reg).	% only inside blocks
 
 :- type rval		--->	lval(lval)
 			;	var(var)

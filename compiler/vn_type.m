@@ -31,7 +31,7 @@
 			;	vn_hp
 			;	vn_sp
 			;	vn_field(tag, vn, vn)		% lval
-			;	vn_temp(int).
+			;	vn_temp(reg).
 
 			% these lvals do not have vnlval parallels
 			%	lvar(var)
@@ -70,7 +70,8 @@
 			;	vn_restore_ticket(vn)
 			;	vn_discard_ticket
 			;	vn_incr_sp(int)
-			;	vn_decr_sp(int).
+			;	vn_decr_sp(int)
+			;	vn_assign_curfr(vn).
 
 :- type parentry	==	pair(lval, list(rval)).
 :- type parallel	--->	parallel(label, label, list(parentry)).
@@ -95,8 +96,14 @@
 :- pred vn_type__real_r_regs(vn_params, int).
 :- mode vn_type__real_r_regs(in, out) is det.
 
-:- pred vn_type__real_temps(vn_params, int).
-:- mode vn_type__real_temps(in, out) is det.
+:- pred vn_type__real_f_regs(vn_params, int).
+:- mode vn_type__real_f_regs(in, out) is det.
+
+:- pred vn_type__real_r_temps(vn_params, int).
+:- mode vn_type__real_r_temps(in, out) is det.
+
+:- pred vn_type__real_f_temps(vn_params, int).
+:- mode vn_type__real_f_temps(in, out) is det.
 
 :- pred vn_type__costof_assign(vn_params, int).
 :- mode vn_type__costof_assign(in, out) is det.
@@ -118,7 +125,9 @@
 					int,	% word size in bytes
 						% needed for incr_hp; incr_hp
 					int,	% number of real r regs
-					int,	% number of real temps
+					int,	% number of real f regs
+					int,	% number of real r temps
+					int,	% number of real f temps
 					int,	% cost of assign
 					int,	% cost of int operation
 					int,	% cost of stack reference
@@ -126,15 +135,29 @@
 				).
 
 vn_type__init_params(OptionTable, VnParams) :-
-	getopt__lookup_int_option(OptionTable, num_real_r_regs, RealRegs),
-	getopt__lookup_int_option(OptionTable, num_real_temps, RealTemps),
+	getopt__lookup_int_option(OptionTable, num_real_r_regs, RealRRegs),
+	getopt__lookup_int_option(OptionTable, num_real_f_regs, RealFRegs),
+	getopt__lookup_int_option(OptionTable, num_real_r_temps, RealRTemps),
+	getopt__lookup_int_option(OptionTable, num_real_f_temps, RealFTemps),
 	getopt__lookup_int_option(OptionTable, bytes_per_word, WordBytes),
-	VnParams = vn_params(WordBytes, RealRegs, RealTemps, 1, 1, 2, 2).
+	VnParams = vn_params(WordBytes, RealRRegs, RealFRegs,
+		RealRTemps, RealFTemps, 1, 1, 2, 2).
 
-vn_type__bytes_per_word(vn_params(BytesPerWord, _, _, _, _, _,_), BytesPerWord).
-vn_type__real_r_regs(vn_params(_, RealRegs, _, _, _, _, _), RealRegs).
-vn_type__real_temps(vn_params(_, _, RealTemps, _, _, _, _), RealTemps).
-vn_type__costof_assign(vn_params(_, _, _, AssignCost, _, _, _), AssignCost).
-vn_type__costof_intops(vn_params(_, _, _, _, IntOpCost, _, _), IntOpCost).
-vn_type__costof_stackref(vn_params(_, _, _, _, _, StackCost, _), StackCost).
-vn_type__costof_heapref(vn_params(_, _, _, _, _, _, HeapCost), HeapCost).
+vn_type__bytes_per_word(vn_params(BytesPerWord, _, _, _, _, _, _, _, _),
+	BytesPerWord).
+vn_type__real_r_regs(vn_params(_, RealRRegs, _, _, _, _, _, _, _),
+	RealRRegs).
+vn_type__real_f_regs(vn_params(_, _, RealFRegs, _, _, _, _, _, _),
+	RealFRegs).
+vn_type__real_r_temps(vn_params(_, _, _, RealRTemps, _, _, _, _, _),
+	RealRTemps).
+vn_type__real_f_temps(vn_params(_, _, _, _, RealFTemps, _, _, _, _),
+	RealFTemps).
+vn_type__costof_assign(vn_params(_, _, _, _, _, AssignCost, _, _, _),
+	AssignCost).
+vn_type__costof_intops(vn_params(_, _, _, _, _, _, IntOpCost, _, _),
+	IntOpCost).
+vn_type__costof_stackref(vn_params(_, _, _, _, _, _, _, StackCost, _),
+	StackCost).
+vn_type__costof_heapref(vn_params(_, _, _, _, _, _, _, _, HeapCost),
+	HeapCost).

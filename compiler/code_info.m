@@ -40,8 +40,8 @@
 		% Create a new code_info structure.
 :- pred code_info__init(varset, liveness_info, call_info, bool, globals,
 			pred_id, proc_id, proc_info, code_model, instmap,
-			module_info, shape_table, code_info).
-:- mode code_info__init(in, in, in, in, in, in, in, in, in, in, in, in, out)
+			follow_vars, module_info, shape_table, code_info).
+:- mode code_info__init(in, in, in, in, in, in, in, in, in, in, in, in, in, out)
 			is det.
 
 		% Generate the next local label in sequence.
@@ -498,7 +498,7 @@
 %---------------------------------------------------------------------------%
 
 code_info__init(Varset, Liveness, CallInfo, SaveSuccip, Globals,
-		PredId, ProcId, ProcInfo, CodeModel, Requests,
+		PredId, ProcId, ProcInfo, CodeModel, Requests, FollowVars,
 		ModuleInfo, Shapes, C) :-
 	proc_info_headvars(ProcInfo, HeadVars),
 	proc_info_arg_info(ProcInfo, ArgInfos),
@@ -509,9 +509,8 @@ code_info__init(Varset, Liveness, CallInfo, SaveSuccip, Globals,
 	stack__init(Continue),
 	stack__init(StoreMapStack0),
 	stack__init(PushedVals0),
-	map__init(StoreMap),
 	set__init(NondetLives),
-	stack__push(StoreMapStack0, StoreMap, StoreMapStack),
+	stack__push(StoreMapStack0, FollowVars, StoreMapStack),
 	code_info__max_slot(CallInfo, SlotCount0),
 	(
 		CodeModel = model_non

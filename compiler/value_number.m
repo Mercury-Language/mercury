@@ -52,16 +52,15 @@
 value_number__main(Instrs0, Instrs) -->
 	{ opt_util__get_prologue(Instrs0, ProcLabel, Comments, Instrs1) },
 	{ opt_util__new_label_no(Instrs1, 1000, N0) },
-	{ set__init(AllocSet0) },
 	{ value_number__prepare_for_vn(Instrs1, ProcLabel,
-		no, AllocSet0, AllocSet, N0, N, Instrs2) },
+		no, AllocSet, BreakSet, N0, N, Instrs2) },
 	{ labelopt__build_useset(Instrs2, UseSet) },
 	{ livemap__build(Instrs2, Ccode, LiveMap) },
 	(
 		{ Ccode = no },
 		vn_debug__livemap_msg(LiveMap),
-		value_number__procedure(Instrs2, LiveMap, UseSet, AllocSet,
-			N, Instrs3),
+		value_number__procedure(Instrs2, LiveMap, UseSet,
+			AllocSet, BreakSet, N, Instrs3),
 		{ list__append(Comments, Instrs3, Instrs) }
 	;
 		% Don't perform value numbering if there is a c_code or a 
@@ -95,14 +94,24 @@ value_number__main(Instrs0, Instrs) -->
 	% with the exception of the first one in each basic block. This allows
 	% vn_block__divide_into_blocks to break up such blocks into smaller
 	% blocks, with each smaller block having at most one incr_hp.
+	%
+	% Assignments to curfr change the meaning of framevars. Moving
+	% any reference (read or write) to a framevar across such an assignment
+	% will result in invalid code. The only really safe way to handle the
+	% situation is to ensure that such assignments do not get lumped
+	% together with other statements when doing value numbering. We
+	% therefore insert labels before and after such assignments.
+	% Our caller will break the code sequence at these labels.
 
 :- pred value_number__prepare_for_vn(list(instruction), proc_label,
 	bool, set(label), set(label), int, int, list(instruction)).
-:- mode value_number__prepare_for_vn(in, in, in, in, out, in, out, out) is det.
+:- mode value_number__prepare_for_vn(in, in, in, out, out, in, out, out) is det.
 
-value_number__prepare_for_vn([], _, _, AllocSet, AllocSet, N, N, []).
+value_number__prepare_for_vn([], _, _, AllocSet, BreakSet, N, N, []) :-
+	set__init(AllocSet),
+	set__init(BreakSet).
 value_number__prepare_for_vn([Instr0 | Instrs0], ProcLabel,
-		SeenAlloc, AllocSet0, AllocSet, N0, N, Instrs) :-
+		SeenAlloc, AllocSet, BreakSet, N0, N, Instrs) :-
 	Instr0 = Uinstr0 - _Comment,
 	( Uinstr0 = if_val(Test, TrueAddr) ->
 		( Instrs0 = [label(FalseLabelPrime) - _ | _] ->
@@ -117,7 +126,7 @@ value_number__prepare_for_vn([Instr0 | Instrs0], ProcLabel,
 		value_number__breakup_complex_if(Test, TrueAddr, FalseAddr,
 			FalseAddr, ProcLabel, N1, N2, IfInstrs),
 		value_number__prepare_for_vn(Instrs0, ProcLabel,
-			SeenAlloc, AllocSet0, AllocSet, N2, N, Instrs1),
+			SeenAlloc, AllocSet, BreakSet, N2, N, Instrs1),
 		( N1 = N0 ->
 			list__append(IfInstrs, Instrs1, Instrs)
 		;
@@ -128,25 +137,37 @@ value_number__prepare_for_vn([Instr0 | Instrs0], ProcLabel,
 		% If we have seen a label, then the next incr_hp
 		% need not have a label placed in front of it.
 		value_number__prepare_for_vn(Instrs0, ProcLabel,
-			no, AllocSet0, AllocSet, N0, N, Instrs1),
+			no, AllocSet, BreakSet, N0, N, Instrs1),
 		Instrs = [Instr0 | Instrs1]
 	; Uinstr0 = incr_hp(_, _, _) ->
 		( SeenAlloc = yes ->
 			N1 is N0 + 1,
 			NewLabel = local(ProcLabel, N0),
-			set__insert(AllocSet0, NewLabel, AllocSet1),
 			value_number__prepare_for_vn(Instrs0, ProcLabel,
-				yes, AllocSet1, AllocSet, N1, N, Instrs1),
+				yes, AllocSet0, BreakSet, N1, N, Instrs1),
+			set__insert(AllocSet0, NewLabel, AllocSet),
 			LabelInstr = label(NewLabel) - "vn incr divide label",
 			Instrs = [LabelInstr, Instr0 | Instrs1]
 		;
 			value_number__prepare_for_vn(Instrs0, ProcLabel,
-				yes, AllocSet0, AllocSet, N0, N, Instrs1),
+				yes, AllocSet, BreakSet, N0, N, Instrs1),
 			Instrs = [Instr0 | Instrs1]
 		)
+	; Uinstr0 = assign(curfr, _) ->
+		N1 is N0 + 1,
+		BeforeLabel = local(ProcLabel, N0),
+		BeforeInstr = label(BeforeLabel) - "vn curfr before label",
+		N2 is N1 + 1,
+		AfterLabel = local(ProcLabel, N1),
+		AfterInstr = label(AfterLabel) - "vn curfr after label",
+		value_number__prepare_for_vn(Instrs0, ProcLabel,
+			yes, AllocSet, BreakSet0, N2, N, Instrs1),
+		set__insert(BreakSet0, BeforeLabel, BreakSet1),
+		set__insert(BreakSet1, AfterLabel, BreakSet),
+		Instrs = [BeforeInstr, Instr0, AfterInstr | Instrs1]
 	;
 		value_number__prepare_for_vn(Instrs0, ProcLabel,
-			SeenAlloc, AllocSet0, AllocSet, N0, N, Instrs1),
+			SeenAlloc, AllocSet, BreakSet, N0, N, Instrs1),
 		Instrs = [Instr0 | Instrs1]
 	).
 
@@ -197,18 +218,20 @@ value_number__breakup_complex_if(Test, TrueAddr, FalseAddr, NextAddr,
 	% Optimize the code of a procedure.
 
 :- pred value_number__procedure(list(instruction), livemap, set(label),
-	set(label), int, list(instruction), io__state, io__state).
-:- mode value_number__procedure(in, in, in, in, in, out, di, uo) is det.
+	set(label), set(label), int, list(instruction), io__state, io__state).
+:- mode value_number__procedure(in, in, in, in, in, in, out, di, uo) is det.
 
-value_number__procedure(Instrs0, LiveMap, UseSet, AllocSet, N0, OptInstrs) -->
+value_number__procedure(Instrs0, LiveMap, UseSet, AllocSet, BreakSet,
+		N0, OptInstrs) -->
 	globals__io_get_globals(Globals),
 	{ opt_util__gather_comments(Instrs0, Comments, Instrs1) },
 	{ globals__get_gc_method(Globals, GC) },
 	( { GC = conservative } ->
-		{ set__union(UseSet, AllocSet, DivideSet) }
+		{ set__union(UseSet, AllocSet, DivideSet0) }
 	;
-		{ DivideSet = UseSet }
+		{ DivideSet0 = UseSet }
 	),
+	{ set__union(DivideSet0, BreakSet, DivideSet) },
 	vn_debug__cost_header_msg("procedure before value numbering"),
 	vn_debug__dump_instrs(Instrs1),
 	{ vn_block__divide_into_blocks(Instrs1, DivideSet, Blocks) },
@@ -328,10 +351,8 @@ value_number__optimize_fragment_2(Instrs0, LiveMap, Params, ParEntries,
 		Flushmap, Res),
 	(
 		{ Res = success(VnTables2, Order) },
-		{ vn_type__real_r_regs(Params, MaxRealRegs) },
-		{ vn_type__real_temps(Params, MaxRealTemps) },
-		{ vn_temploc__init_templocs(MaxRealRegs, MaxRealTemps,
-			Liveset0, VnTables2, Templocs0) },
+		{ vn_temploc__init_templocs(Params, Liveset0, VnTables2,
+			Templocs0) },
 		vn_flush__nodelist(Order, Ctrlmap, VnTables2, Templocs0,
 			Params, Instrs1),
 
@@ -987,7 +1008,7 @@ value_number__push_livevals_back_2([Instr0 | Instrs0], Livevals, Instrs) :-
 
 value_number__boundary_instr(comment(_), no).
 value_number__boundary_instr(livevals(_), no).
-value_number__boundary_instr(block(_, _), no).
+value_number__boundary_instr(block(_, _, _), no).
 value_number__boundary_instr(assign(_,_), no).
 value_number__boundary_instr(call(_, _, _, _), yes).
 value_number__boundary_instr(mkframe(_, _, _), yes).
@@ -1011,50 +1032,46 @@ value_number__boundary_instr(pragma_c(_, _, _, _), yes).
 %-----------------------------------------------------------------------------%
 
 value_number__post_main(Instrs0, Instrs) :-
-	value_number__post_main_2(Instrs0, 0, [], Instrs).
+	value_number__post_main_2(Instrs0, 0, 0, [], Instrs).
 
-	% N is the number of the highest numbered temp variable seen so far;
-	% N = 0 means we haven't seen any temp variables. RevSofar is a
+	% R is the number of the highest numbered tempr variable seen so far;
+	% R = 0 means we haven't seen any temp variables. Similarly, F is the
+	% highest numbered tempf variable seen so far. RevSofar is a
 	% reversed list of instructions starting with the first instruction
 	% in this block that accesses a temp variable. Invariant: RevSofar
-	% is always empty if N = 0.
+	% is always empty if R = 0 and F = 0.
 
-:- pred value_number__post_main_2(list(instruction), int, list(instruction),
-	list(instruction)).
-:- mode value_number__post_main_2(in, in, in, out) is det.
+:- pred value_number__post_main_2(list(instruction), int, int,
+	list(instruction), list(instruction)).
+:- mode value_number__post_main_2(in, in, in, in, out) is det.
 
-value_number__post_main_2([], N, RevSofar, []) :-
+value_number__post_main_2([], R, F, RevSofar, []) :-
 	( RevSofar = [_|_] ->
 		error("procedure ends with fallthrough")
-	; N > 0 ->
+	; ( R > 0 ; F > 0 ) ->
 		error("procedure ends without closing block")
 	;
 		true
 	).
-value_number__post_main_2([Instr0 | Instrs0], N0, RevSofar, Instrs) :-
+value_number__post_main_2([Instr0 | Instrs0], R0, F0, RevSofar, Instrs) :-
 	Instr0 = Uinstr0 - _Comment0,
-	opt_util__count_temps_instr(Uinstr0, N0, N1),
-	(
-		N1 > 0
-	->
-		(
-			opt_util__can_instr_fall_through(Uinstr0, no)
-		->
+	opt_util__count_temps_instr(Uinstr0, R0, R1, F0, F1),
+	( ( R1 > 0 ; F0 > 0) ->
+		( opt_util__can_instr_fall_through(Uinstr0, no) ->
 			list__reverse([Instr0 | RevSofar], BlockInstrs),
-			value_number__post_main_2(Instrs0, 0, [], Instrs1),
-			Instrs = [block(N1, BlockInstrs) - "" | Instrs1]
-		;
-			Uinstr0 = label(_)
-		->
+			value_number__post_main_2(Instrs0, 0, 0, [], Instrs1),
+			Instrs = [block(R1, F1, BlockInstrs) - "" | Instrs1]
+		; Uinstr0 = label(_) ->
 			list__reverse(RevSofar, BlockInstrs),
-			value_number__post_main_2(Instrs0, 0, [], Instrs1),
-			Instrs = [block(N1, BlockInstrs) - "", Instr0 | Instrs1]
+			value_number__post_main_2(Instrs0, 0, 0, [], Instrs1),
+			Instrs = [block(R1, F1, BlockInstrs) - "", Instr0
+				| Instrs1]
 		;
-			value_number__post_main_2(Instrs0,
-				N1, [Instr0 | RevSofar], Instrs)
+			value_number__post_main_2(Instrs0, R1, F1,
+				[Instr0 | RevSofar], Instrs)
 		)
 	;
-		value_number__post_main_2(Instrs0, 0, [], Instrs1),
+		value_number__post_main_2(Instrs0, 0, 0, [], Instrs1),
 		Instrs = [Instr0 | Instrs1]
 	).
 

@@ -197,18 +197,25 @@ vn_block__handle_instr(livevals(Livevals),
 	vn_block__new_ctrl_node(vn_livevals(Livevals), Livemap,
 		Params, LabelsSoFar, VnTables0, VnTables,
 		Liveset0, Liveset, Tuple0, Tuple).
-vn_block__handle_instr(block(_, _),
+vn_block__handle_instr(block(_, _, _),
 		_Livemap, _Params, VnTables, VnTables, Liveset, Liveset,
 		LabelsSoFar, LabelsSoFar, SeenIncr, SeenIncr, Tuple, Tuple) :-
 	error("block should not be found in vn_block__handle_instr").
 vn_block__handle_instr(assign(Lval, Rval),
-		_Livemap, _Params, VnTables0, VnTables, Liveset0, Liveset,
-		LabelsSoFar, LabelsSoFar, SeenIncr, SeenIncr, Tuple, Tuple) :-
+		Livemap, Params, VnTables0, VnTables, Liveset0, Liveset,
+		LabelsSoFar, LabelsSoFar, SeenIncr, SeenIncr, Tuple0, Tuple) :-
 	vn_util__rval_to_vn(Rval, Vn, VnTables0, VnTables1),
-	vn_util__lval_to_vnlval(Lval, Vnlval, VnTables1, VnTables2),
-	vn_table__set_desired_value(Vnlval, Vn, VnTables2, VnTables),
-	vn_util__find_specials(Vnlval, Specials),
-	set__insert_list(Liveset0, Specials, Liveset).
+	( Lval = curfr ->
+		vn_block__new_ctrl_node(vn_assign_curfr(Vn), Livemap,
+			Params, LabelsSoFar, VnTables1, VnTables,
+			Liveset0, Liveset, Tuple0, Tuple)
+	;
+		vn_util__lval_to_vnlval(Lval, Vnlval, VnTables1, VnTables2),
+		vn_table__set_desired_value(Vnlval, Vn, VnTables2, VnTables),
+		vn_util__find_specials(Vnlval, Specials),
+		set__insert_list(Liveset0, Specials, Liveset),
+		Tuple = Tuple0
+	).
 vn_block__handle_instr(call(Proc, Return, Info, CallModel),
 		Livemap, Params, VnTables0, VnTables, Liveset0, Liveset,
 		LabelsSoFar, LabelsSoFar, SeenIncr, SeenIncr, Tuple0, Tuple) :-
@@ -340,13 +347,13 @@ vn_block__handle_instr(pragma_c(_, _, _, _),
 :- mode vn_block__new_ctrl_node(in, in, in, in, in, out, in, out, in, out)
 	is det.
 
-vn_block__new_ctrl_node(Vn_instr, Livemap, Params, LabelsSoFar,
+vn_block__new_ctrl_node(VnInstr, Livemap, Params, LabelsSoFar,
 		VnTables0, VnTables, Liveset0, Liveset,
 		tuple(Ctrl0, Ctrlmap0, Flushmap0, LabelNo0, Parmap0),
 		tuple(Ctrl,  Ctrlmap,  Flushmap,  LabelNo,  Parmap)) :-
 	map__init(FlushEntry0),
 	(
-		Vn_instr = vn_livevals(Livevals),
+		VnInstr = vn_livevals(Livevals),
 		set__to_sorted_list(Livevals, Livelist),
 		vn_util__convert_to_vnlval_and_insert(Livelist,
 			Liveset0, Liveset),
@@ -355,27 +362,27 @@ vn_block__new_ctrl_node(Vn_instr, Livemap, Params, LabelsSoFar,
 		LabelNo = LabelNo0,
 		Parallels = []
 	;
-		Vn_instr = vn_call(_, _, _, _),
+		VnInstr = vn_call(_, _, _, _),
 		vn_block__record_at_call(VnTables0, VnTables, Liveset0, Liveset,
 			FlushEntry0, FlushEntry),
 		LabelNo = LabelNo0,
 		Parallels = []
 	;
-		Vn_instr = vn_mkframe(_, _, _),
+		VnInstr = vn_mkframe(_, _, _),
 		VnTables = VnTables0,
 		Liveset = Liveset0,
 		FlushEntry = FlushEntry0,
 		LabelNo = LabelNo0,
 		Parallels = []
 	;
-		Vn_instr = vn_label(_),
+		VnInstr = vn_label(_),
 		VnTables = VnTables0,
 		Liveset = Liveset0,
 		FlushEntry = FlushEntry0,
 		LabelNo = LabelNo0,
 		Parallels = []
 	;
-		Vn_instr = vn_goto(TargetAddr),
+		VnInstr = vn_goto(TargetAddr),
 		(
 			TargetAddr = label(Label),
 			map__search(Livemap, Label, _)
@@ -396,7 +403,7 @@ vn_block__new_ctrl_node(Vn_instr, Livemap, Params, LabelsSoFar,
 			Parallels = []
 		)
 	;
-		Vn_instr = vn_computed_goto(_, Labels),
+		VnInstr = vn_computed_goto(_, Labels),
 		vn_block__record_several_labels(Labels, Livemap, Params,
 			VnTables0, VnTables, Liveset0, Liveset,
 			FlushEntry0, FlushEntry, LabelNo0, LabelNo, Parallels1),
@@ -409,7 +416,7 @@ vn_block__new_ctrl_node(Vn_instr, Livemap, Params, LabelsSoFar,
 			Parallels = Parallels1
 		)
 	;
-		Vn_instr = vn_if_val(_, TargetAddr),
+		VnInstr = vn_if_val(_, TargetAddr),
 		vn_block__new_if_node(TargetAddr, Livemap, Params,
 			Ctrlmap0, Ctrl0, VnTables0, VnTables, Liveset0, Liveset,
 			FlushEntry0, FlushEntry, LabelNo0, LabelNo, Parallels1),
@@ -422,7 +429,7 @@ vn_block__new_ctrl_node(Vn_instr, Livemap, Params, LabelsSoFar,
 			Parallels = Parallels1
 		)
 	;
-		Vn_instr = vn_mark_hp(Vnlval),
+		VnInstr = vn_mark_hp(Vnlval),
 		vn_util__rval_to_vn(lval(hp), Vn, VnTables0, VnTables1),
 		vn_table__set_desired_value(Vnlval, Vn, VnTables1, VnTables),
 		set__insert(Liveset0, Vnlval, Liveset),
@@ -430,14 +437,14 @@ vn_block__new_ctrl_node(Vn_instr, Livemap, Params, LabelsSoFar,
 		LabelNo = LabelNo0,
 		Parallels = []
 	;
-		Vn_instr = vn_restore_hp(_),
+		VnInstr = vn_restore_hp(_),
 		VnTables = VnTables0,
 		Liveset = Liveset0,
 		FlushEntry = FlushEntry0,
 		LabelNo = LabelNo0,
 		Parallels = []
 	;
-		Vn_instr = vn_store_ticket(Vnlval),
+		VnInstr = vn_store_ticket(Vnlval),
 		( vn_table__search_desired_value(Vnlval, Vn_prime, VnTables0) ->
 			Vn = Vn_prime,
 			VnTables1 = VnTables0
@@ -451,36 +458,43 @@ vn_block__new_ctrl_node(Vn_instr, Livemap, Params, LabelsSoFar,
 		LabelNo = LabelNo0,
 		Parallels = []
 	;
-		Vn_instr = vn_restore_ticket(_),
+		VnInstr = vn_restore_ticket(_),
 		VnTables = VnTables0,
 		Liveset = Liveset0,
 		FlushEntry = FlushEntry0,
 		LabelNo = LabelNo0,
 		Parallels = []
 	;
-		Vn_instr = vn_discard_ticket,
+		VnInstr = vn_discard_ticket,
 		VnTables = VnTables0,
 		Liveset = Liveset0,
 		FlushEntry = FlushEntry0,
 		LabelNo = LabelNo0,
 		Parallels = []
 	;
-		Vn_instr = vn_incr_sp(_),
+		VnInstr = vn_incr_sp(_),
 		VnTables = VnTables0,
 		Liveset = Liveset0,
 		FlushEntry = FlushEntry0,
 		LabelNo = LabelNo0,
 		Parallels = []
 	;
-		Vn_instr = vn_decr_sp(_),
+		VnInstr = vn_decr_sp(_),
 		VnTables = VnTables0,
 		Liveset = Liveset0,
 		FlushEntry = FlushEntry0,
+		LabelNo = LabelNo0,
+		Parallels = []
+	;
+		VnInstr = vn_assign_curfr(_),
+		set__to_sorted_list(Liveset0, Vnlivelist),
+		vn_block__record_livevnlvals(Vnlivelist, VnTables0, VnTables,
+			Liveset0, Liveset, FlushEntry0, FlushEntry),
 		LabelNo = LabelNo0,
 		Parallels = []
 	),
 	Ctrl is Ctrl0 + 1,
-	map__det_insert(Ctrlmap0, Ctrl0, Vn_instr, Ctrlmap),
+	map__det_insert(Ctrlmap0, Ctrl0, VnInstr, Ctrlmap),
 	map__det_insert(Flushmap0, Ctrl0, FlushEntry, Flushmap),
 	map__det_insert(Parmap0, Ctrl0, Parallels, Parmap).
 
@@ -839,7 +853,7 @@ vn_block__split_at_next_ctrl_instr([Instr0 | Instrs0], Before, Instr, After) :-
 
 vn_block__is_ctrl_instr(comment(_), no).
 vn_block__is_ctrl_instr(livevals(_), yes).
-vn_block__is_ctrl_instr(block(_, _), no).
+vn_block__is_ctrl_instr(block(_, _, _), no).
 vn_block__is_ctrl_instr(assign(_, _), no).
 vn_block__is_ctrl_instr(call(_, _, _, _), yes).
 vn_block__is_ctrl_instr(mkframe(_, _, _), yes).

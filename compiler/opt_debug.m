@@ -323,6 +323,9 @@ opt_debug__dump_vninstr(vn_incr_sp(N), Str) :-
 opt_debug__dump_vninstr(vn_decr_sp(N), Str) :-
 	string__int_to_string(N, N_str),
 	string__append_list(["decr_sp(", N_str, ")"], Str).
+opt_debug__dump_vninstr(vn_assign_curfr(Vn), Str) :-
+	opt_debug__dump_vn(Vn, Vn_str),
+	string__append_list(["assign_curfr(", Vn_str, ")"], Str).
 
 opt_debug__dump_flushmap(Flushmap, Str) :-
 	map__to_assoc_list(Flushmap, Flushlist),
@@ -502,9 +505,9 @@ opt_debug__dump_vnlval(vn_field(T, N, F), Str) :-
 	string__int_to_string(F, F_str),
 	string__append_list(["vn_field(", T_str, ", ", N_str, ", ",
 		F_str, ")"], Str).
-opt_debug__dump_vnlval(vn_temp(N), Str) :-
-	string__int_to_string(N, N_str),
-	string__append_list(["vn_temp(", N_str, ")"], Str).
+opt_debug__dump_vnlval(vn_temp(R), Str) :-
+	opt_debug__dump_reg(R, R_str),
+	string__append_list(["vn_temp(", R_str, ")"], Str).
 
 opt_debug__dump_vnrval(vn_origlval(Vnlval), Str) :-
 	opt_debug__dump_vnlval(Vnlval, Lval_str),
@@ -572,9 +575,9 @@ opt_debug__dump_lval(field(T, N, F), Str) :-
 		F_str, ")"], Str).
 opt_debug__dump_lval(lvar(_), Str) :-
 	string__append_list(["lvar(_)"], Str).
-opt_debug__dump_lval(temp(N), Str) :-
-	string__int_to_string(N, N_str),
-	string__append_list(["temp(", N_str, ")"], Str).
+opt_debug__dump_lval(temp(R), Str) :-
+	opt_debug__dump_reg(R, R_str),
+	string__append_list(["temp(", R_str, ")"], Str).
 
 opt_debug__dump_rval(lval(Lval), Str) :-
 	opt_debug__dump_lval(Lval, Lval_str),
@@ -723,9 +726,10 @@ opt_debug__dump_instr(comment(Comment), Str) :-
 opt_debug__dump_instr(livevals(Livevals), Str) :-
 	opt_debug__dump_livevals(Livevals, L_str),
 	string__append_list(["livevals(", L_str, ")"], Str).
-opt_debug__dump_instr(block(N, _), Str) :-
-	string__int_to_string(N, N_str),
-	string__append_list(["block(", N_str, ", ...)"], Str).
+opt_debug__dump_instr(block(RTemps, FTemps, _), Str) :-
+	string__int_to_string(RTemps, R_str),
+	string__int_to_string(FTemps, F_str),
+	string__append_list(["block(", R_str, ", ", F_str, ", ...)"], Str).
 opt_debug__dump_instr(assign(Lval, Rval), Str) :-
 	opt_debug__dump_lval(Lval, L_str),
 	opt_debug__dump_rval(Rval, R_str),

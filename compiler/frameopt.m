@@ -176,7 +176,7 @@ frameopt__build_sets([Instr0 | Instrs0], FrameSize, Livemap, FDS,
 			% that cannot fall through. At the moment only value
 			% numbering creates blocks, and it establishes this
 			% invariant.
-			Uinstr0 = block(_, BlockInstrs),
+			Uinstr0 = block(_, _, BlockInstrs),
 			frameopt__build_sets(BlockInstrs, FrameSize, Livemap,
 				FDS, PrevInstrs, SetupFrame0, SetupSuccip0,
 				FrameSet0, FrameSet1, SuccipSet0, SuccipSet1),
@@ -751,7 +751,7 @@ frameopt__doit([Instr0 | Instrs0], FrameSize, PrevInstrs,
 				FDS, N0, N, Instrs1),
 			Instrs = [Instr0 | Instrs1]
 		;
-			Uinstr0 = block(Temps, BlockInstrs),
+			Uinstr0 = block(RTemps, FTemps, BlockInstrs),
 			frameopt__doit(BlockInstrs, FrameSize,
 				PrevInstrs, SetupFrame0, SetupSuccip0,
 				FrameSet, SuccipSet, Livemap, TeardownMap,
@@ -761,7 +761,8 @@ frameopt__doit([Instr0 | Instrs0], FrameSize, PrevInstrs,
 				FrameSet, SuccipSet, Livemap, TeardownMap,
 				InsertMap1, InsertMap, ProcLabel,
 				FDS, N1, N, Instrs2),
-			Instrs = [block(Temps, Instrs1) - Comment | Instrs2]
+			Instrs = [block(RTemps, FTemps, Instrs1) - Comment
+				| Instrs2]
 		;
 			Uinstr0 = assign(Lval, Rval),
 			opt_util__lval_refers_stackvars(Lval, Use1),
@@ -1463,7 +1464,7 @@ frameopt__is_succip_restored([Uinstr - _Comment | Instrs]) :-
 	(
 		Uinstr = assign(succip, lval(stackvar(_)))
 	;
-		Uinstr = block(_, BlockInstrs),
+		Uinstr = block(_, _, BlockInstrs),
 		frameopt__is_succip_restored(BlockInstrs)
 	;
 		frameopt__is_succip_restored(Instrs)

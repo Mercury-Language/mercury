@@ -144,8 +144,7 @@ make_arg_infos(Method, _ArgTypes, ArgModes, CodeModel, ModuleInfo, ArgInfo) :-
 		make_arg_infos_list(ArgModes, StartReg, ModuleInfo, ArgInfo)
 	;
 		Method = compact,
-		% XXX should input args start at reg 1 for compact?
-		make_arg_infos_compact_list(ArgModes, StartReg, StartReg,
+		make_arg_infos_compact_list(ArgModes, 1, StartReg,
 			ModuleInfo, ArgInfo)
 	).
 
@@ -199,9 +198,10 @@ make_arg_infos_compact_list([Mode | Modes], InReg0, OutReg0, ModuleInfo,
 
 arg_info__unify_arg_info(_ArgsMethod, model_det,
 	[arg_info(1, top_in), arg_info(2, top_in)]).
-arg_info__unify_arg_info(_ArgsMethod, model_semi,
-	% XXX should this be regs 1 and 2 for compact?
+arg_info__unify_arg_info(simple, model_semi,
 	[arg_info(2, top_in), arg_info(3, top_in)]).
+arg_info__unify_arg_info(compact, model_semi,
+	[arg_info(1, top_in), arg_info(2, top_in)]).
 arg_info__unify_arg_info(_ArgsMethod, model_non, _) :-
 	error("arg_info: nondet unify!").
 

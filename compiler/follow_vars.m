@@ -100,9 +100,10 @@ find_follow_vars_in_proc(ProcInfo0, ModuleInfo, ProcInfo) -->
 
 	find_final_follow_vars(ProcInfo0, FollowVars0),
 	find_follow_vars_in_goal(Goal0, ArgsMethod, ModuleInfo, FollowVars0,
-		Goal, _FollowVars),
+		Goal, FollowVars),
 
-	proc_info_set_goal(ProcInfo0, Goal, ProcInfo)
+	proc_info_set_follow_vars(ProcInfo0, FollowVars, ProcInfo1),
+	proc_info_set_goal(ProcInfo1, Goal, ProcInfo)
 	}.
 
 %-----------------------------------------------------------------------------%

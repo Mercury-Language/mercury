@@ -118,7 +118,7 @@ postprocess_options(ok(OptionTable0), Error) -->
 						ArgsMethod),
 					{ Error = no }
 				;
-					{ Error = yes("Invalid args option (must be `old' or `compact')") }
+					{ Error = yes("Invalid args option (must be `simple' or `compact')") }
 				)
 			;
 				{ Error = yes("Invalid tags option (must be `none', `low' or `high')") }

@@ -220,11 +220,11 @@
 
 	% Find the maximum temp variable number used.
 
-:- pred opt_util__count_temps_instr_list(list(instruction), int, int).
-:- mode opt_util__count_temps_instr_list(in, in, out) is det.
+:- pred opt_util__count_temps_instr_list(list(instruction), int, int, int, int).
+:- mode opt_util__count_temps_instr_list(in, in, out, in, out) is det.
 
-:- pred opt_util__count_temps_instr(instr, int, int).
-:- mode opt_util__count_temps_instr(in, in, out) is det.
+:- pred opt_util__count_temps_instr(instr, int, int, int, int).
+:- mode opt_util__count_temps_instr(in, in, out, in, out) is det.
 
 	% See whether an lval references any stackvars.
 
@@ -755,7 +755,7 @@ opt_util__block_refers_stackvars([Uinstr0 - _ | Instrs0], Need) :-
 		Uinstr0 = livevals(_),
 		opt_util__block_refers_stackvars(Instrs0, Need)
 	;
-		Uinstr0 = block(_, BlockInstrs),
+		Uinstr0 = block(_, _, BlockInstrs),
 		opt_util__block_refers_stackvars(BlockInstrs, Need)
 	;
 		Uinstr0 = assign(Lval, Rval),
@@ -949,7 +949,7 @@ opt_util__new_label_no([Instr0 | Instrs0], N0, N) :-
 
 opt_util__can_instr_branch_away(comment(_), no).
 opt_util__can_instr_branch_away(livevals(_), no).
-opt_util__can_instr_branch_away(block(_, _), yes).
+opt_util__can_instr_branch_away(block(_, _, _), yes).
 opt_util__can_instr_branch_away(assign(_, _), no).
 opt_util__can_instr_branch_away(call(_, _, _, _), yes).
 opt_util__can_instr_branch_away(mkframe(_, _, _), no).
@@ -971,7 +971,7 @@ opt_util__can_instr_branch_away(pragma_c(_, _, _, _), no).
 
 opt_util__can_instr_fall_through(comment(_), yes).
 opt_util__can_instr_fall_through(livevals(_), yes).
-opt_util__can_instr_fall_through(block(_, Instrs), FallThrough) :-
+opt_util__can_instr_fall_through(block(_, _, Instrs), FallThrough) :-
 	opt_util__can_block_fall_through(Instrs, FallThrough).
 opt_util__can_instr_fall_through(assign(_, _), yes).
 opt_util__can_instr_fall_through(call(_, _, _, _), no).
@@ -1011,7 +1011,7 @@ opt_util__can_block_fall_through([Instr - _ | Instrs], FallThrough) :-
 
 opt_util__can_use_livevals(comment(_), no).
 opt_util__can_use_livevals(livevals(_), no).
-opt_util__can_use_livevals(block(_, _), no).
+opt_util__can_use_livevals(block(_, _, _), no).
 opt_util__can_use_livevals(assign(_, _), no).
 opt_util__can_use_livevals(call(_, _, _, _), yes).
 opt_util__can_use_livevals(mkframe(_, _, _), no).
@@ -1050,7 +1050,7 @@ opt_util__instr_labels(Instr, Labels, CodeAddrs) :-
 
 opt_util__instr_labels_2(comment(_), [], []).
 opt_util__instr_labels_2(livevals(_), [], []).
-opt_util__instr_labels_2(block(_, Instrs), Labels, CodeAddrs) :-
+opt_util__instr_labels_2(block(_, _, Instrs), Labels, CodeAddrs) :-
 	opt_util__instr_list_labels(Instrs, Labels, CodeAddrs).
 opt_util__instr_labels_2(assign(_,_), [], []).
 opt_util__instr_labels_2(call(Target, Ret, _, _), [], [Target, Ret]).
@@ -1078,7 +1078,7 @@ opt_util__instr_labels_2(pragma_c(_, _, _, _), [], []).
 
 opt_util__instr_rvals_and_lvals(comment(_), [], []).
 opt_util__instr_rvals_and_lvals(livevals(_), [], []).
-opt_util__instr_rvals_and_lvals(block(_, Instrs), Labels, CodeAddrs) :-
+opt_util__instr_rvals_and_lvals(block(_, _, Instrs), Labels, CodeAddrs) :-
 	opt_util__instr_list_rvals_and_lvals(Instrs, Labels, CodeAddrs).
 opt_util__instr_rvals_and_lvals(assign(Lval,Rval), [Rval], [Lval]).
 opt_util__instr_rvals_and_lvals(call(_, _, _, _), [], []).
@@ -1154,62 +1154,71 @@ opt_util__livevals_addr(do_det_closure, yes).
 opt_util__livevals_addr(do_semidet_closure, yes).
 opt_util__livevals_addr(do_nondet_closure, yes).
 
-opt_util__count_temps_instr_list([], N, N).
-opt_util__count_temps_instr_list([Uinstr - _Comment | Instrs], N0, N) :-
-	opt_util__count_temps_instr(Uinstr, N0, N1),
-	opt_util__count_temps_instr_list(Instrs, N1, N).
+opt_util__count_temps_instr_list([], R, R, F, F).
+opt_util__count_temps_instr_list([Uinstr - _Comment | Instrs], R0, R, F0, F) :-
+	opt_util__count_temps_instr(Uinstr, R0, R1, F0, F1),
+	opt_util__count_temps_instr_list(Instrs, R1, R, F1, F).
 
-opt_util__count_temps_instr(comment(_), N, N).
-opt_util__count_temps_instr(livevals(_), N, N).
-opt_util__count_temps_instr(block(_, _), N, N).
-opt_util__count_temps_instr(assign(Lval, Rval), N0, N) :-
-	opt_util__count_temps_lval(Lval, N0, N1),
-	opt_util__count_temps_rval(Rval, N1, N).
-opt_util__count_temps_instr(call(_, _, _, _), N, N).
-opt_util__count_temps_instr(mkframe(_, _, _), N, N).
-opt_util__count_temps_instr(modframe(_), N, N).
-opt_util__count_temps_instr(label(_), N, N).
-opt_util__count_temps_instr(goto(_), N, N).
-opt_util__count_temps_instr(computed_goto(Rval, _), N0, N) :-
-	opt_util__count_temps_rval(Rval, N0, N).
-opt_util__count_temps_instr(if_val(Rval, _), N0, N) :-
-	opt_util__count_temps_rval(Rval, N0, N).
-opt_util__count_temps_instr(c_code(_), N, N).
-opt_util__count_temps_instr(incr_hp(Lval, _, Rval), N0, N) :-
-	opt_util__count_temps_lval(Lval, N0, N1),
-	opt_util__count_temps_rval(Rval, N1, N).
-opt_util__count_temps_instr(mark_hp(Lval), N0, N) :-
-	opt_util__count_temps_lval(Lval, N0, N).
-opt_util__count_temps_instr(restore_hp(Rval), N0, N) :-
-	opt_util__count_temps_rval(Rval, N0, N).
-opt_util__count_temps_instr(store_ticket(Lval), N0, N) :-
-	opt_util__count_temps_lval(Lval, N0, N).
-opt_util__count_temps_instr(restore_ticket(Rval), N0, N) :-
-	opt_util__count_temps_rval(Rval, N0, N).
-opt_util__count_temps_instr(discard_ticket, N, N).
-opt_util__count_temps_instr(incr_sp(_), N, N).
-opt_util__count_temps_instr(decr_sp(_), N, N).
-opt_util__count_temps_instr(pragma_c(_, _, _, _), N, N).
+opt_util__count_temps_instr(comment(_), R, R, F, F).
+opt_util__count_temps_instr(livevals(_), R, R, F, F).
+opt_util__count_temps_instr(block(_, _, _), R, R, F, F).
+opt_util__count_temps_instr(assign(Lval, Rval), R0, R, F0, F) :-
+	opt_util__count_temps_lval(Lval, R0, R1, F0, F1),
+	opt_util__count_temps_rval(Rval, R1, R, F1, F).
+opt_util__count_temps_instr(call(_, _, _, _), R, R, F, F).
+opt_util__count_temps_instr(mkframe(_, _, _), R, R, F, F).
+opt_util__count_temps_instr(modframe(_), R, R, F, F).
+opt_util__count_temps_instr(label(_), R, R, F, F).
+opt_util__count_temps_instr(goto(_), R, R, F, F).
+opt_util__count_temps_instr(computed_goto(Rval, _), R0, R, F0, F) :-
+	opt_util__count_temps_rval(Rval, R0, R, F0, F).
+opt_util__count_temps_instr(if_val(Rval, _), R0, R, F0, F) :-
+	opt_util__count_temps_rval(Rval, R0, R, F0, F).
+opt_util__count_temps_instr(c_code(_), R, R, F, F).
+opt_util__count_temps_instr(incr_hp(Lval, _, Rval), R0, R, F0, F) :-
+	opt_util__count_temps_lval(Lval, R0, R1, F0, F1),
+	opt_util__count_temps_rval(Rval, R1, R, F1, F).
+opt_util__count_temps_instr(mark_hp(Lval), R0, R, F0, F) :-
+	opt_util__count_temps_lval(Lval, R0, R, F0, F).
+opt_util__count_temps_instr(restore_hp(Rval), R0, R, F0, F) :-
+	opt_util__count_temps_rval(Rval, R0, R, F0, F).
+opt_util__count_temps_instr(store_ticket(Lval), R0, R, F0, F) :-
+	opt_util__count_temps_lval(Lval, R0, R, F0, F).
+opt_util__count_temps_instr(restore_ticket(Rval), R0, R, F0, F) :-
+	opt_util__count_temps_rval(Rval, R0, R, F0, F).
+opt_util__count_temps_instr(discard_ticket, R, R, F, F).
+opt_util__count_temps_instr(incr_sp(_), R, R, F, F).
+opt_util__count_temps_instr(decr_sp(_), R, R, F, F).
+opt_util__count_temps_instr(pragma_c(_, _, _, _), R, R, F, F).
 
-:- pred opt_util__count_temps_lval(lval, int, int).
-:- mode opt_util__count_temps_lval(in, in, out) is det.
+:- pred opt_util__count_temps_lval(lval, int, int, int, int).
+:- mode opt_util__count_temps_lval(in, in, out, in, out) is det.
 
-opt_util__count_temps_lval(Lval, N0, N) :-
-	( Lval = temp(T) ->
-		int__max(N0, T, N)
+opt_util__count_temps_lval(Lval, R0, R, F0, F) :-
+	( Lval = temp(Temp) ->
+		(
+			Temp = r(N),
+			int__max(R0, N, R),
+			F = F0
+		;
+			Temp = f(N),
+			int__max(F0, N, F),
+			R = R0
+		)
 	; Lval = field(_, Rval, FieldNum) ->
-		opt_util__count_temps_rval(Rval, N0, N1),
-		opt_util__count_temps_rval(FieldNum, N1, N)
+		opt_util__count_temps_rval(Rval, R0, R1, F0, F1),
+		opt_util__count_temps_rval(FieldNum, R1, R, F1, F)
 	;
-		N = N0
+		R = R0,
+		F = F0
 	).
 
-:- pred opt_util__count_temps_rval(rval, int, int).
-:- mode opt_util__count_temps_rval(in, in, out) is det.
+:- pred opt_util__count_temps_rval(rval, int, int, int, int).
+:- mode opt_util__count_temps_rval(in, in, out, in, out) is det.
 
 % XXX assume that we don't generate code
 % that uses a temp var without defining it.
-opt_util__count_temps_rval(_, N, N).
+opt_util__count_temps_rval(_, R, R, F, F).
 
 opt_util__format_label(local(ProcLabel), Str) :-
 	opt_util__format_proclabel(ProcLabel, Str).

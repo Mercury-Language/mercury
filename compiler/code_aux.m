@@ -180,7 +180,8 @@ code_aux__contains_simple_recursive_call_2([Goal|Goals], CodeInfo, Last) :-
 	(
 		code_aux__contains_only_builtins_2(GoalExpr)
 	->
-		code_aux__contains_simple_recursive_call_2(Goals, CodeInfo, Last)
+		code_aux__contains_simple_recursive_call_2(Goals, CodeInfo,
+			Last)
 	;
 		code_aux__is_recursive_call(GoalExpr, CodeInfo),
 		( Goals = [] ->

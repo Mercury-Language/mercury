@@ -218,7 +218,7 @@ vn_verify__subst_access_vns(vn_succip(_), [R], succip(R)).
 vn_verify__subst_access_vns(vn_hp, [], hp).
 vn_verify__subst_access_vns(vn_sp, [], sp).
 vn_verify__subst_access_vns(vn_field(T, _, _), [R1, R2], field(T, R1, R2)).
-vn_verify__subst_access_vns(vn_temp(N), [], temp(N)).
+vn_verify__subst_access_vns(vn_temp(Reg), [], temp(Reg)).
 
 :- pred vn_verify__subst_sub_vns(vnrval, list(rval), vn_tables, rval).
 :- mode vn_verify__subst_sub_vns(in, in, in, out) is semidet.
@@ -266,7 +266,7 @@ vn_verify__tags_instr(Instr, NoDeref0, NoDeref, Tested0, Tested) :-
 		NoDeref = NoDeref0,
 		Tested = Tested0
 	;
-		Instr = block(_, _),
+		Instr = block(_, _, _),
 		error("found block in vn_verify__tags_instr")
 	;
 		Instr = assign(Lval, Rval),

@@ -217,6 +217,8 @@ output_c_module_init_list(BaseName, Modules) -->
 :- mode output_c_module_init_list_2(in, in, in, in, in, out, di, uo) is det.
 
 output_c_module_init_list_2([], _, _, _, InitFunc, InitFunc) --> [].
+output_c_module_init_list_2([c_typeinfo(_, _) | Ms], A, B, C, D, E) -->
+	output_c_module_init_list_2(Ms, A, B, C, D, E).
 output_c_module_init_list_2([c_export(_) | Ms], A, B, C, D, E) -->
 	output_c_module_init_list_2(Ms, A, B, C, D, E).
 output_c_module_init_list_2([c_code(_, _) | Ms], A, B, C, D, E) -->
@@ -303,18 +305,6 @@ output_c_module_list([M|Ms], BaseName) -->
 :- pred output_c_module(c_module, string, io__state, io__state).
 :- mode output_c_module(in, in, di, uo) is det.
 
-output_c_module(c_code(C_Code, Context), _) -->
-	globals__io_lookup_bool_option(auto_comments, PrintComments),
-	( { PrintComments = yes } ->
-		io__write_string("/* "),
-		prog_out__write_context(Context),
-		io__write_string(" pragma(c_code) */\n")
-	;
-		[]
-	),
-	io__write_string(C_Code),
-	io__write_string("\n").
-
 output_c_module(c_module(ModuleName, Procedures), _) -->
 	{ gather_labels(Procedures, Labels) },
 	io__write_string("\n"),
@@ -330,6 +320,20 @@ output_c_module(c_module(ModuleName, Procedures), _) -->
 	globals__io_lookup_bool_option(emit_c_loops, EmitCLoops),
 	output_c_procedure_list(Procedures, PrintComments, EmitCLoops),
 	io__write_string("END_MODULE\n").
+
+output_c_module(c_typeinfo(_VarName, _Procs), _) --> [].
+
+output_c_module(c_code(C_Code, Context), _) -->
+	globals__io_lookup_bool_option(auto_comments, PrintComments),
+	( { PrintComments = yes } ->
+		io__write_string("/* "),
+		prog_out__write_context(Context),
+		io__write_string(" pragma(c_code) */\n")
+	;
+		[]
+	),
+	io__write_string(C_Code),
+	io__write_string("\n").
 
 output_c_module(c_export(PragmaExports), BaseName) -->
 	(
@@ -560,7 +564,7 @@ llds_out__find_cont_labels([Instr - _ | Instrs], ContLabelSet0, ContLabelSet)
 	->
 		set__insert(ContLabelSet0, ContLabel, ContLabelSet1)
 	;
-		Instr = block(_, Block)
+		Instr = block(_, _, Block)
 	->
 		llds_out__find_cont_labels(Block, ContLabelSet0, ContLabelSet1)
 	;
@@ -726,10 +730,22 @@ output_instruction(livevals(LiveVals), _) -->
 	output_livevals(LiveValsList),
 	io__write_string(" */").
 
-output_instruction(block(N, Instrs), ProfInfo) -->
-	io__write_string("\t{ Word "),
-	output_temp_decls(N),
-	io__write_string(";\n"),
+output_instruction(block(TempR, TempF, Instrs), ProfInfo) -->
+	io__write_string("\t{\n"),
+	( { TempR > 0 } ->
+		io__write_string("\tWord "),
+		output_temp_decls(TempR, "r"),
+		io__write_string(";\n")
+	;
+		[]
+	),
+	( { TempF > 0 } ->
+		io__write_string("\tWord "),
+		output_temp_decls(TempF, "f"),
+		io__write_string(";\n")
+	;
+		[]
+	),
 	globals__io_lookup_bool_option(auto_comments, PrintComments),
 	{ set__init(WhileSet0) },
 	output_instruction_list(Instrs, PrintComments, ProfInfo, WhileSet0),
@@ -1015,16 +1031,16 @@ output_gc_livevals_2([live_lvalue(Lval, Shape)|Lvals]) -->
 	io__write_string("\n"),
 	output_gc_livevals_2(Lvals).
 
-:- pred output_temp_decls(int, io__state, io__state).
-:- mode output_temp_decls(in, di, uo) is det.
+:- pred output_temp_decls(int, string, io__state, io__state).
+:- mode output_temp_decls(in, in, di, uo) is det.
 
-output_temp_decls(N) --> 
-	output_temp_decls_2(1, N).
+output_temp_decls(N, Type) --> 
+	output_temp_decls_2(1, N, Type).
 
-:- pred output_temp_decls_2(int, int, io__state, io__state).
-:- mode output_temp_decls_2(in, in, di, uo) is det.
+:- pred output_temp_decls_2(int, int, string, io__state, io__state).
+:- mode output_temp_decls_2(in, in, in, di, uo) is det.
 
-output_temp_decls_2(Next, Max) --> 
+output_temp_decls_2(Next, Max, Type) --> 
 	( { Next =< Max } ->
 		( { Next > 1 } ->
 			io__write_string(", ")
@@ -1032,9 +1048,10 @@ output_temp_decls_2(Next, Max) -->
 			[]
 		),
 		io__write_string("temp"),
+		io__write_string(Type),
 		io__write_int(Next),
 		{ Next1 is Next + 1 },
-		output_temp_decls_2(Next1, Max)
+		output_temp_decls_2(Next1, Max, Type)
 	;
 		[]
 	).
@@ -1908,9 +1925,16 @@ output_lval(field(Tag, Rval, FieldNum)) -->
 	io__write_string(")").
 output_lval(lvar(_)) -->
 	{ error("Illegal to output an lvar") }.
-output_lval(temp(N)) -->
-	io__write_string("temp"),
-	io__write_int(N).
+output_lval(temp(R)) -->
+	(
+		{ R = r(N) },
+		io__write_string("tempr"),
+		io__write_int(N)
+	;
+		{ R = f(N) },
+		io__write_string("tempf"),
+		io__write_int(N)
+	).
 
 % output_rval_lval is the same as output_lval,
 % except that the result is cast to (Integer).
@@ -1975,9 +1999,16 @@ output_rval_lval(field(Tag, Rval, FieldNum)) -->
 	io__write_string(")").
 output_rval_lval(lvar(_)) -->
 	{ error("Illegal to output an lvar") }.
-output_rval_lval(temp(N)) -->
-	io__write_string("(Integer) temp"),
-	io__write_int(N).
+output_rval_lval(temp(R)) -->
+	(
+		{ R = r(N) },
+		io__write_string("(Integer) tempr"),
+		io__write_int(N)
+	;
+		{ R = f(N) },
+		io__write_string("(Integer) tempf"),
+		io__write_int(N)
+	).
 
 %-----------------------------------------------------------------------------%
 

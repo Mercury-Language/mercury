@@ -389,6 +389,11 @@ vn_order__vn_ctrl_order(Ctrl, Ctrlmap, VnTables0, VnTables,
 			Succmap1 = Succmap0,
 			Predmap1 = Predmap0,
 			VnTables1 = VnTables0
+		;
+			Vn_instr = vn_assign_curfr(Vn),
+			vn_order__find_links(Vn, node_ctrl(Ctrl),
+				VnTables0, VnTables1,
+				Succmap0, Succmap1, Predmap0, Predmap1)
 		),
 		NextCtrl is Ctrl + 1,
 		vn_order__vn_ctrl_order(NextCtrl, Ctrlmap, VnTables1, VnTables,
