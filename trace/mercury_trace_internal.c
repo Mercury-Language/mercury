@@ -133,7 +133,8 @@ static	MR_bool			MR_echo_commands = MR_FALSE;
 /*
 ** The details of the source server, if any.
 */
-static	MR_Trace_Source_Server	MR_trace_source_server = { NULL, NULL };
+static	MR_Trace_Source_Server	MR_trace_source_server =
+	{ NULL, NULL, MR_FALSE };
 
 /*
 ** We print confirmation of commands (e.g. new aliases) if this is MR_TRUE.
