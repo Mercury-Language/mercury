@@ -225,9 +225,11 @@ transform_aditi_bottom_up_closure(Var, PredId, ProcId, Args,
 			"do_call_returning_relation"), NumBuiltinArgs) },
 	{ Rhs = functor(Functor, no, BuiltinArgs) },
 
-	% XXX This is wrong - closure is not ground.
-	{ UniMode = ((free_inst - ground_inst) ->
-			(ground_inst - ground_inst)) },
+	{ CastInputInst = ground(shared,
+			higher_order(pred_inst_info(predicate,
+				[aditi_ui_mode, out_mode], det))) },
+	{ UniMode = ((free_inst - CastInputInst) ->
+			(CastInputInst - CastInputInst)) },
 	{ list__duplicate(NumBuiltinArgs, UniMode, UniModes) },
 	{ BuiltinConsId = pred_const(BuiltinPredId, BuiltinProcId, normal) },
 	{ ExprnId = no },
@@ -283,10 +285,6 @@ transform_aditi_bottom_up_closure(Var, PredId, ProcId, Args,
 	{ CastOutputInst = ground(shared,
 			higher_order(pred_inst_info(CalleePredOrFunc,
 				NonCurriedArgModes, CalleeDetism))) },
-
-	{ CastInputInst = ground(shared,
-			higher_order(pred_inst_info(predicate,
-				[aditi_ui_mode, out_mode], det))) },
 	{ CastModes = [(CastInputInst -> CastInputInst),
 			(free_inst -> CastOutputInst)] },
 	{ CastGoal = generic_call(unsafe_cast, [NewVar, Var],
