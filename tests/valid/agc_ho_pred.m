@@ -91,9 +91,9 @@ agc_ho_pred__process_options(OptionOps, Args) :-
 	; 
 		OptionOps = option_ops(_, _, OptionDefaultsPred, _) 
 	),
-        solutions(lambda([OptionDataPair::out] is nondet, (
+        solutions((pred(OptionDataPair::out) is nondet :-
                         OptionDataPair = Option - OptionData,
                         call(OptionDefaultsPred, Option, OptionData)
-                )), OptionDefaultsList),
+                ), OptionDefaultsList),
 	Args = OptionDefaultsList.
 

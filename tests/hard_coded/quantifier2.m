@@ -25,7 +25,7 @@ foo(testsum([1,2,3])).
 
 main -->
 	(
-		{ P = lambda([I :: in, X :: out] is semidet, (I > 0, X = 6)),
+		{ P = (pred(I :: in, X :: out) is semidet :- I > 0, X = 6),
 		  foo(Q), 
 		  J = 1,
 		  (call(P,J,_X) <=> call(Q,J,_Y)) }

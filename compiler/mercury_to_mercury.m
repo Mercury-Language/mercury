@@ -688,11 +688,9 @@ mercury_output_item(UnqualifiedItemNames,
 	mercury_output_sym_name(ClassName),
 	io__write_char('('),
 	io__write_list(Vars, ", ",
-			lambda([V::in, IO0::di, IO::uo] is det,
-				(
+			(pred(V::in, IO0::di, IO::uo) is det :-
 				varset__lookup_name(VarSet, V, VarName),
 				io__write_string(VarName, IO0, IO)
-				)
 			)
 		),
 	io__write_char(')'),

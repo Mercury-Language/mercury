@@ -56,7 +56,7 @@ edge12(A, B) :-
 :- pred join(int::in, list(int)::out) is det.   
 
 join(A, Bs) :- 
-	solutions(lambda([B::out] is nondet, (edge12(A, B))), Bs).
+	solutions((pred(B::out) is nondet :- edge12(A, B)), Bs).
 
 :- pred write_ints(list(int)::in, io__state::di, io__state::uo) is det.
 

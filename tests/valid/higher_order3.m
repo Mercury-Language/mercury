@@ -6,7 +6,7 @@
 :- implementation.
 :- import_module list.
 
-bar :- foo(lambda([X::in] is semidet, X = [_|_]), []).
+bar :- foo((pred(X::in) is semidet :- X = [_|_]), []).
 
 :- pred foo(pred(T), T).
 :- mode foo(pred(in) is semidet, in) is semidet.

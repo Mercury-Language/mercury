@@ -24,7 +24,7 @@ foo(sum([1,2,3])).
 
 
 main -->
-	( {P = lambda([X :: out] is det, X = 6),
+	( {P = (pred(X :: out) is det :- X = 6),
 		foo(Q), 
 		all [X] (call(P,X) <=> call(Q,X))}
 	->

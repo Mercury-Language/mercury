@@ -42,7 +42,7 @@ arrow(d, a).
 :- pred cycles(node::in, list(list(node))::out) is det.   
 
 cycles(N, Nodes) :- 
-	solutions(lambda([C::out] is nondet, (cycle(N, C))), Nodes).
+	solutions((pred(C::out) is nondet :- cycle(N, C)), Nodes).
 
 %--------------------------------------------------
 :- pred cycle(node::in, list(node)::out) is nondet.

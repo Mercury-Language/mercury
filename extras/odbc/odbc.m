@@ -1969,10 +1969,10 @@ odbc__data_sources(MaybeSources - Messages) -->
 		{ list__reverse(RevDescs, Descs) },
 		{ assoc_list__from_corresponding_lists(SourceNames, 
 			Descs, SourceAL) },
-		{ MakeSource = lambda([Pair::in, SourceDesc::out] is det, (
+		{ MakeSource = (pred(Pair::in, SourceDesc::out) is det :-
 				Pair = SourceName - Desc,
 				SourceDesc = odbc__source_desc(SourceName, Desc)
-			)) },
+			) },
 		{ list__map(MakeSource, SourceAL, Sources) },
 		{ MaybeSources = ok(Sources) }
 	; { odbc__no_data(Status) } ->
@@ -2101,13 +2101,13 @@ odbc__tables(Qualifier, Owner, TableName, Tables) -->
 
 odbc__convert_table_desc(Row0, Table) :-
 	NullToEmptyStr = 
-		lambda([Data0::in, Data::out] is det, (
+		(pred(Data0::in, Data::out) is det :-
 			( Data0 = null ->
 				Data = string("")
 			;
 				Data = Data0
 			)
-		)),
+		),
 	list__map(NullToEmptyStr, Row0, Row),
 	Row = [string(Qualifier), string(Owner), string(Name), 
 		string(Type), string(Description) | DriverColumns],

@@ -30,7 +30,7 @@ main -->
 	io__write_strings(List),
 	io__write_string("\n"),
 	(
-		{ higher_order__map(lambda([X::in, Y::in] is semidet,
+		{ higher_order__map((pred(X::in, Y::in) is semidet :-
 			double(X, Y)), ["ab"], ["abab"]) }
 	->
 		io__write_string("Yes\n")
@@ -38,7 +38,7 @@ main -->
 		io__write_string("Oops\n")
 	),
 	(
-		{ higher_order__map(lambda([X::in, Y::in] is semidet,
+		{ higher_order__map((pred(X::in, Y::in) is semidet :-
 			double(X, Y)), ["ab"], ["abracadabra"]) }
 	->
 		io__write_string("Oops\n")
@@ -46,7 +46,7 @@ main -->
 		io__write_string("No\n")
 	),
 	(
-		{ higher_order__map(lambda([X::in, Y::in] is semidet,
+		{ higher_order__map((pred(X::in, Y::in) is semidet :-
 			double(X, Y)), ["ab"], []) }
 	->
 		io__write_string("Oops\n")

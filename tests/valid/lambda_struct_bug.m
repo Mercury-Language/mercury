@@ -26,7 +26,7 @@
 :- import_module int, require.
 
 adj(pos(X, Y), Adjs) :-
-	Pred = lambda([Adj::out] is nondet, (
+	Pred = (pred(Adj::out) is nondet :-
 			(
 				X1 = X - 1,
 				Adj = adj(pos(X1, Y), pos(X, Y))
@@ -43,5 +43,5 @@ adj(pos(X, Y), Adjs) :-
 			Adj = adj(pos(A, B), _),
 			A >= 0, A =< 10, % XXX
 			B >= 0, B =< 10 % XXX
-	)),
+	),
 	solutions(Pred, Adjs).

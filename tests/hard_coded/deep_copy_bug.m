@@ -18,12 +18,11 @@ main --> test1, test2, test3.
 
 :- pred test1(io__state::di, io__state::uo) is det.
 test1 -->
-	{ Lambda = lambda([X::out] is nondet,
-	(
+	{ Lambda = (pred(X::out) is nondet :-
 		varset__init(Varset0),
 		varset__new_vars(Varset0, 10, Vars, _),
 		list__member(X, Vars)
-	)) },
+	) },
 	{ solutions(Lambda, List) },
 	io__write(List),
 	io__write_string("\n").

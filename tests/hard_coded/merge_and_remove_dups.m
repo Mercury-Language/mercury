@@ -20,8 +20,8 @@
 main -->
         { List1 = [1,2,3],
           List2 = [3,4,5],
-          P = lambda([I1::in,I2::in,R::out] is det,
-                         (compare(R,I1,I2)) ),
+          P = (pred(I1::in,I2::in,R::out) is det :-
+                         compare(R,I1,I2) ),
           list__merge_and_remove_dups(P,List1,List2,List3) },
         io__write_string("List1: "),
         io__print(List1),

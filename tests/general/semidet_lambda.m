@@ -25,5 +25,5 @@ p(42).
 :- pred q(list(int)::out) is det.
 
 q(Y) :-
-	solutions(lambda([X::out] is nondet,p(X)), Y).
+	solutions((pred(X::out) is nondet :- p(X)), Y).
 

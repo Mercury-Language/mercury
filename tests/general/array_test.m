@@ -18,7 +18,7 @@ main -->
 
 test(Xs) -->
 	{
-		Cmp = lambda([X :: in, Y :: in, Res :: out] is det,
+		Cmp = (pred(X :: in, Y :: in, Res :: out) is det :-
 			compare(Res, X, Y)),
 		array__from_list(Xs, A0)
 	},

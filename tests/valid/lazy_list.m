@@ -369,7 +369,7 @@ lazy_list__append([], Ys, Ys).
 lazy_list__append([X | Xs], Ys, [X | Zs]) :-
 	lazy_list__append(Xs, Ys, Zs).
 lazy_list__append(lazy(P0), Ys, lazy(P)) :-
-	P = lambda([Zs::out] is det, (P0(Xs), lazy_list__append(Xs, Ys, Zs))).
+	P = (pred(Zs::out) is det :- P0(Xs), lazy_list__append(Xs, Ys, Zs)).
 
 %-----------------------------------------------------------------------------%
 
@@ -378,7 +378,7 @@ lazy_list__condense([L|Ls], R) :-
 	lazy_list__condense(Ls, R1),
 	lazy_list__append(L, R1, R).
 lazy_list__condense(lazy(P0), lazy(P)) :-
-	P = lambda([L::out] is det, (P0(L0), lazy_list__condense(L0, L))).
+	P = (pred(L::out) is det :- P0(L0), lazy_list__condense(L0, L)).
 
 %-----------------------------------------------------------------------------%
 
@@ -416,8 +416,8 @@ lazy_list__delete_all([X | Xs], Y, Zs) :-
 		lazy_list__delete_all(Xs, Y, Zs1)
 	).
 lazy_list__delete_all(lazy(P0), Elem, lazy(P)) :-
-	P = lambda([L::out] is det,
-		(P0(L0), lazy_list__delete_all(L0, Elem, L))).
+	P = (pred(L::out) is det :-
+		P0(L0), lazy_list__delete_all(L0, Elem, L)).
 
 lazy_list__delete_elems(Xs, [], Xs).
 lazy_list__delete_elems(Xs, [E | Es], Zs) :-
@@ -475,10 +475,10 @@ lazy_list__merge([X|Xs], [Y|Ys], [Z|Zs]) :-
 		lazy_list__merge([X|Xs], Ys, Zs)
 	).
 lazy_list__merge([X|Xs], lazy(YsP), lazy(ZsP)) :-
-	ZsP = lambda([Zs::out] is det, (
+	ZsP = (pred(Zs::out) is det :-
 			YsP(Ys),
 			lazy_list__merge([X|Xs], Ys, Zs)
-		)).
+		).
 lazy_list__merge(lazy(XsP), Ys, Zs) :-
 	XsP(Xs),
 	lazy_list__merge(Xs, Ys, Zs).
@@ -509,10 +509,10 @@ lazy_list__remove_adjacent_dups([], []).
 lazy_list__remove_adjacent_dups([X|Xs], L) :-
 	lazy_list__remove_adjacent_dups_2(Xs, X, L).
 lazy_list__remove_adjacent_dups(lazy(P0), lazy(P)) :-
-	P = lambda([L::out] is det, (
+	P = (pred(L::out) is det :-
 			P0(L0),
 			lazy_list__remove_adjacent_dups(L0, L)
-		)).
+		).
 
 :- pred lazy_list__remove_adjacent_dups_2(lazy_list(T), T, lazy_list(T)).
 :- mode lazy_list__remove_adjacent_dups_2(in(lazy_list), in, out(lazy_list))
@@ -527,10 +527,10 @@ lazy_list__remove_adjacent_dups_2([X1|Xs], X0, L) :-
 		lazy_list__remove_adjacent_dups_2(Xs, X1, L0)
 	).
 lazy_list__remove_adjacent_dups_2(lazy(P0), X, lazy(P)) :-
-	P = lambda([L::out] is det, (
+	P = (pred(L::out) is det :-
 			P0(L0),
 			lazy_list__remove_adjacent_dups_2(L0, X, L)
-		)).
+		).
 
 %-----------------------------------------------------------------------------%
 
@@ -538,7 +538,7 @@ lazy_list__zip([], Bs, Bs).
 lazy_list__zip([A|As], Bs, [A|Cs]) :-
 	lazy_list__zip2(As, Bs, Cs).
 lazy_list__zip(lazy(P0), Bs, lazy(P)) :-
-	P = lambda([Cs::out] is det, (P0(As), lazy_list__zip(As, Bs, Cs))).
+	P = (pred(Cs::out) is det :- P0(As), lazy_list__zip(As, Bs, Cs)).
 
 :- pred lazy_list__zip2(lazy_list(T), lazy_list(T), lazy_list(T)).
 :- mode lazy_list__zip2(in(lazy_list), in(lazy_list), out(lazy_list)) is det.
@@ -549,7 +549,7 @@ lazy_list__zip2(As, [], As).
 lazy_list__zip2(As, [B|Bs], [B|Cs]) :-
 	lazy_list__zip(As, Bs, Cs).
 lazy_list__zip2(As, lazy(P0), lazy(P)) :-
-	P = lambda([Cs::out] is det, (P0(Bs), lazy_list__zip(As, Bs, Cs))).
+	P = (pred(Cs::out) is det :- P0(Bs), lazy_list__zip(As, Bs, Cs)).
 
 %-----------------------------------------------------------------------------%
 
@@ -654,21 +654,21 @@ lazy_list__map(P, [H0|T0], [H|T]) :-
 	call(P, H0, H),
 	lazy_list__map(P, T0, T).
 lazy_list__map(As, lazy(P0), lazy(P)) :-
-	P = lambda([Cs::out] is det, (P0(Bs), lazy_list__map(As, Bs, Cs))).
+	P = (pred(Cs::out) is det :- P0(Bs), lazy_list__map(As, Bs, Cs)).
 
 lazy_list__filter(_, [],  []).
 lazy_list__filter(P, [H|T], lazy(Pred)) :-
 	lazy_list__filter(P, T, L1),
-	Pred = lambda([L::out] is det, (
+	Pred = (pred(L::out) is det :-
 			( P(H) ->
 				L = [H|L1]
 			;
 				L = L1
 			)
-		)).
+		).
 lazy_list__filter(P, lazy(ListP), lazy(TrueP)) :-
 	ListP(L0),
-	TrueP = lambda([L::out] is det, lazy_list__filter(P, L0, L)).
+	TrueP = (pred(L::out) is det :- lazy_list__filter(P, L0, L)).
 
 /* NYI
 lazy_list__merge(_P, [], L, L).

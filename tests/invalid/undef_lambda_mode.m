@@ -7,5 +7,5 @@
 
 :- implementation.
 
-test(lambda([X::junk] is semidet, X = 1)).
+test((pred(X::junk) is semidet :- X = 1)).
 

@@ -9,7 +9,7 @@
 
 :- implementation.
 
-ok(Var, lambda([X::in] is semidet, X = 5)) :-
+ok(Var, (pred(X::in) is semidet :- X = 5)) :-
 	inferred(Var).
 
 :- pred inferred(int).

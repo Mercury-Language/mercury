@@ -22,7 +22,7 @@
 :- type my_pair(A) ---> pair(A, A).
 
 calling_pred(_) :-
-	Plus1 = lambda([Int0::in, IntPair::out] is det,
+	Plus1 = (pred(Int0::in, IntPair::out) is det :-
 			IntPair = pair(Int0, Int0)),
 	called_pred(Plus1, [1,2,3], [X | Ys]),
 	X = pair(2, 2),

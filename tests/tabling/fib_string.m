@@ -165,7 +165,7 @@ translate_digit_2(9, "nine").
 :- pragma memo(digits/1).
 
 digits(PairList) :-
-	solutions(lambda([Pair::out] is multi, (
+	solutions((pred(Pair::out) is multi :-
 		translate_digit_2(Int, String),
 		Pair = String - Int
-	)), PairList).
+	), PairList).

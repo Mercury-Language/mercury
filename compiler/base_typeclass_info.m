@@ -118,7 +118,7 @@ base_typeclass_info__gen_body(yes(PredProcIds0), Types, Constraints,
 	list__length(Constraints, NumConstraints),
 	list__length(Unconstrained, NumUnconstrained),
 	NumExtra = NumConstraints + NumUnconstrained,
-	ExtractPredProcId = lambda([HldsPredProc::in, PredProc::out] is det,
+	ExtractPredProcId = (pred(HldsPredProc::in, PredProc::out) is det :-
 		(
 			HldsPredProc = hlds_class_proc(PredId, ProcId),
 			PredProc = proc(PredId, ProcId)

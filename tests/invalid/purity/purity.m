@@ -15,11 +15,18 @@
 :- mode in(in) is semidet.
 in(a).
 
+:- semipure pred semi(foo::in) is semidet.
+:- pragma foreign_proc("C",
+	semi(X::in), 
+	[will_not_call_mercury, promise_semipure],
+"
+	/* X */
+	SUCCESS_INDICATOR=0;
+").
+
 :- impure pred imp1(foo).
 :- mode imp1(in) is semidet.
 :- pragma c_code(imp1(_X::in), will_not_call_mercury, "SUCCESS_INDICATOR=0;").
-
-
 
 %----------------------------------------------------------------
 %  Warnings
@@ -109,14 +116,14 @@ e7 :-
 :- pred e10 is semidet.
 
 e10 :-
-	Goal1 = lambda([] is semidet, imp1(b)),
-	call(Goal1).
+	Goal1 = (pred(X::in) is semidet :- imp1(X)),
+	call(Goal1, b).
 
 :- pred e11 is semidet.
 
 e11 :-
-	Goal2 = lambda([] is semidet, semi),
-	call(Goal2).
+	Goal2 = (pred(X::in) is semidet :- semi(X)),
+	call(Goal2, b).
 
 :- import_module std_util.
 imp.

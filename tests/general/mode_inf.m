@@ -9,7 +9,7 @@
 :- use_module array.
 
 main -->
-	{ solutions(lambda([X::out] is multi, do_some_stuff(X)), L) },
+	{ solutions((pred(X::out) is multi :- do_some_stuff(X)), L) },
 	io__write_list(L, "\n", io__write), io__nl.
 
 do_some_stuff(X) :-

@@ -8,10 +8,10 @@
 :- implementation.
 
 p :-
-	_X = lambda([W::out] is det, W = 1),
-	_Y = lambda([W::out] is det, W = a).
+	_X = (pred(W::out) is det :- W = 1),
+	_Y = (pred(W::out) is det :- W = a).
 
 q :-
-	_X = lambda([W::out] is det, (W = 1, Z = 1)),
-	_Y = lambda([W::out] is det, (W = a, Z = a)).
+	_X = (pred(W::out) is det :- W = 1, Z = 1),
+	_Y = (pred(W::out) is det :- W = a, Z = a).
 

@@ -18,7 +18,7 @@
 p(X) :-
 	Y = f(1),
 	Y = f(_),
-	Lambda = lambda([Z::int_mode] is det, Z = 2),
+	Lambda = (pred(Z::int_mode) is det :- Z = 2),
 	local(Lambda, X),
 	intermod_test2__baz(X).
 

@@ -49,10 +49,10 @@ lp_solve(Equations, Dir, Objective, Varset0, Result, IO0, IO) :-
 	(
 		Resolved = yes,
 		index(Tableau, N, M, 0, M, ObjVal),
-		GetObjVar = lambda([Var::out] is nondet, (
+		GetObjVar = (pred(Var::out) is nondet :-
 			list__member(Coeff, Objective),
 			Coeff = Var - _
-		)),
+		),
 		solutions(GetObjVar, ObjVars),
 		map__init(ObjVarVals0),
 		list__foldl(objvarval(Tableau, VarNumbers, N, M), ObjVars,
@@ -85,11 +85,11 @@ form_tableau(Equations, Dir, Objective, Varset0,
 	number_vars(VarList, 0, VarNumbers0, VarNumbers),
 	(
 		Dir = max,
-		Neg = lambda([Pair0::in, Pair::out] is det, (
+		Neg = (pred(Pair0::in, Pair::out) is det :-
 				Pair0 = V - X0,
 				X1 is -X0,
 				Pair = V - (X1)
-		)),
+		),
 		list__map(Neg, Objective, NegObjective)
 	;
 		Dir = min,
@@ -127,7 +127,7 @@ normalize_equations([Eqn0|Eqns], NEqns0, NEqns, Varset0, Varset) :-
 
 simplify(eqn(Coeffs0, Op, Const), eqn(Coeffs, Op, Const)) :-
 	map__init(CoeffMap0),
-	AddCoeff = lambda([Pair::in, Map0::in, Map::out] is det, (
+	AddCoeff = (pred(Pair::in, Map0::in, Map::out) is det :-
 		Pair = Var - Coeff,
 		( map__search(Map0, Var, Acc0) ->
 			Acc1 = Acc0
@@ -136,7 +136,7 @@ simplify(eqn(Coeffs0, Op, Const), eqn(Coeffs, Op, Const)) :-
 		),
 		Acc is Acc1 + Coeff,
 		map__set(Map0, Var, Acc, Map)
-	)),
+	),
 	list__foldl(AddCoeff, Coeffs0, CoeffMap0, CoeffMap),
 	map__to_assoc_list(CoeffMap, Coeffs).
 
@@ -144,7 +144,7 @@ simplify(eqn(Coeffs0, Op, Const), eqn(Coeffs, Op, Const)) :-
 :- mode collect_vars(in, in, out) is det.
 
 collect_vars(Eqns, Obj, Vars) :-
-	GetVar = lambda([Var::out] is nondet, (
+	GetVar = (pred(Var::out) is nondet :-
 		(
 			list__member(Eqn, Eqns),
 			Eqn = eqn(Coeffs, _, _),
@@ -154,7 +154,7 @@ collect_vars(Eqns, Obj, Vars) :-
 			list__member(Pair, Obj),
 			Pair = Var - _
 		)
-	)),
+	),
 	solutions(GetVar, VarList),
 	set__list_to_set(VarList, Vars).
 
@@ -198,12 +198,12 @@ insert_coeffs([Coeff|Coeffs], Row, VarNumbers, N, M, Tableau0, Tableau) :-
 
 objvarval(Tableau, VarNumbers, N, M, Var, ObjVarVals0, ObjVarVals) :-
 	map__lookup(VarNumbers, Var, Col),
-	SelectRow = lambda([VV::out] is nondet, (
+	SelectRow = (pred(VV::out) is nondet :-
 		between(1, N, Row),
 		index(Tableau, N, M, Row, Col, V),
 		V = 1.0,
 		index(Tableau, N, M, Row, M, VV)
-	)),
+	),
 	solutions(SelectRow, ObjVarValList),
 	(
 		ObjVarValList = [ObjVarVal|_]
@@ -219,8 +219,8 @@ objvarval(Tableau, VarNumbers, N, M, Var, ObjVarVals0, ObjVarVals) :-
 :- mode simplex(in, in, in, out, out, di, uo) is cc_multi.
 
 simplex(N, M, A0, A, Result, IO0, IO) :-
-	AllColumns = lambda([Col::out] is nondet, between(0, M-1, Col)),
-	MinAgg = lambda([Col::in, Min0::in, Min::out] is det, (
+	AllColumns = (pred(Col::out) is nondet :- between(0, M-1, Col)),
+	MinAgg = (pred(Col::in, Min0::in, Min::out) is det :-
 		(
 			Min0 = no,
 			index(A0, N, M, 0, Col, MinVal),
@@ -238,7 +238,7 @@ simplex(N, M, A0, A, Result, IO0, IO) :-
 				Min = Min0
 			)
 		)
-	)),
+	),
 	unsorted_aggregate(AllColumns, MinAgg, no, MinResult),
 	(
 		MinResult = no,
@@ -247,8 +247,8 @@ simplex(N, M, A0, A, Result, IO0, IO) :-
 		Result = yes
 	;
 		MinResult = yes(Q - _Val),
-		AllRows = lambda([Row::out] is nondet, between(1, N, Row)),
-		MaxAgg = lambda([Row::in, Max0::in, Max::out] is det, (
+		AllRows = (pred(Row::out) is nondet :- between(1, N, Row)),
+		MaxAgg = (pred(Row::in, Max0::in, Max::out) is det :-
 			(
 				Max0 = no,
 				index(A0, N, M, Row, Q, MaxVal),
@@ -273,7 +273,7 @@ simplex(N, M, A0, A, Result, IO0, IO) :-
 					Max = Max0
 				)
 			)
-		)),
+		),
 		unsorted_aggregate(AllRows, MaxAgg, no, MaxResult),
 		(
 			MaxResult = no,
@@ -304,37 +304,37 @@ simplex(N, M, A0, A, Result, IO0, IO) :-
 
 pivot(P, Q, N, M, A0, A) :-
 	index(A0, N, M, P, Q, Apq),
-	MostCells = lambda([Cell::out] is nondet, (
+	MostCells = (pred(Cell::out) is nondet :-
 		between(0, N, J),
 		J \= P,
 		between(0, M, K),
 		K \= Q,
 		Cell = cell(J, K)
-	)),
-	ScaleCell = lambda([Cell::in, T0::in, T::out] is det, (
+	),
+	ScaleCell = (pred(Cell::in, T0::in, T::out) is det :-
 		Cell = cell(J, K),
 		index(T0, N, M, J, K, Ajk),
 		index(T0, N, M, J, Q, Ajq),
 		index(T0, N, M, P, K, Apk),
 		NewAjk is Ajk - Apk * Ajq / Apq,
 		set_index(T0, N, M, J, K, NewAjk, T)
-	)),
+	),
 	unsorted_aggregate(MostCells, ScaleCell, A0, A1),
-	QColumn = lambda([Cell::out] is nondet, (
+	QColumn = (pred(Cell::out) is nondet :-
 		between(0, N, J),
 		Cell = cell(J, Q)
-	)),
-	Zero = lambda([Cell::in, T0::in, T::out] is det, (
+	),
+	Zero = (pred(Cell::in, T0::in, T::out) is det :-
 		Cell = cell(J, K),
 		set_index(T0, N, M, J, K, 0.0, T)
-	)),
+	),
 	aggregate(QColumn, Zero, A1, A2),
-	PRow = lambda([K::out] is nondet, between(0, M, K)),
-	ScaleRow = lambda([K::in, T0::in, T::out] is det, (
+	PRow = (pred(K::out) is nondet :- between(0, M, K)),
+	ScaleRow = (pred(K::in, T0::in, T::out) is det :-
 		index(T0, N, M, P, K, Apk),
 		NewApk is Apk / Apq,
 		set_index(T0, N, M, P, K, NewApk, T)
-	)),
+	),
 	aggregate(PRow, ScaleRow, A2, A3),
 	set_index(A3, N, M, P, Q, 1.0, A).
 

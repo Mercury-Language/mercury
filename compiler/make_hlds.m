@@ -7497,6 +7497,11 @@ unravel_unification_2(term__variable(X), RHS, Context, MainContext, SubContext,
 			parse_lambda_expression(LambdaExpressionTerm,
 				Vars0, Modes0, Det0)
 		->
+			report_warning(Context, 0,
+			[words("Warning: deprecated lambda expression syntax."), nl,
+			 words("Lambda expressions with lambda as the top-level functor"),
+			 words("are deprecated; please use the form using pred instead.")],
+				!IO),
 			LambdaPurity = (pure),
 			PredOrFunc = predicate,
 			EvalMethod = EvalMethod0,

@@ -10,8 +10,8 @@
 :- import_module std_util, list.
 
 main -->
-	{ solutions(lambda([Pair::out] is multi,
-		(Pair = X-Y, q(X, Y))), List) },
+	{ solutions((pred(Pair::out) is multi :-
+		Pair = X-Y, q(X, Y)), List) },
 	print_list(List).
 
 :- pred print_list(list(pair(int))::in, io__state::di, io__state::uo) is det.

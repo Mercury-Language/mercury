@@ -23,12 +23,12 @@ detect_streams(Streams, Instrs0, Instrs) :-
 
 	% Don't attempt to clear or drop streams.
 	IsNotStreamClear = 
-		lambda([Instr::in] is semidet, (
+		(pred(Instr::in) is semidet :-
 			\+ (
 				( Instr = clear(Rel) - _
 				; Instr = drop(Rel) - _
 				),
 				set__member(Rel, Streams)
 			)
-		)),
+		),
 	list__filter(IsNotStreamClear, Instrs0, Instrs).

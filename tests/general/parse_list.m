@@ -17,7 +17,7 @@
 :- import_module builtin, int, string.
 
 main -->
-	{P = lambda([I::in, O::out, N::out] is semidet, one_or_two(N, I, O))},
+	{P = (pred(I::in, O::out, N::out) is semidet :- one_or_two(N, I, O))},
 	( {meta_parse_list(P, [X, Y], [2, 1, 3], _)} ->
 		{string__int_to_string(X, SX)},
 		{string__int_to_string(Y, SY)},
