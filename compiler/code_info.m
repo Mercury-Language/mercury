@@ -258,7 +258,8 @@
 					% model_non procedures. The value
 					% numbering pass and the accurate
 					% garbage collector need to know about
-					% these slots.
+					% these slots.  (Triple is a misnomer:
+					% in grades with trailing, it is four.)
 	).
 
 :- type lval_or_ticket  --->	ticket ; lval(lval).
@@ -478,7 +479,8 @@ code_info__get_commit_triple_count(U, CI, CI) :-
 %					% model_non procedures. The value
 %					% numbering pass and the accurate
 %					% garbage collector need to know about
-%					% these slots.
+%					% these slots.  (Triple is a misnomer:
+%					% in grades with trailing, it is four.)
 %	).
 %
 % we don't need
@@ -1077,7 +1079,13 @@ code_info__succip_is_used -->
 	code_info, code_info).
 :- mode code_info__generate_det_commit(in, out, in, out) is det.
 
-:- type commit_slots	--->	commit_slots(lval, lval, lval).
+:- type commit_slots
+	--->	commit_slots(
+			lval,		% curfr
+			lval,		% maxfr
+			lval,		% redoip
+			maybe(lval)	% trail pointer
+		).
 
 %---------------------------------------------------------------------------%
 
@@ -1873,20 +1881,20 @@ code_info__generate_semi_commit(RedoLabel, Slots, Commit) -->
 	code_info__pop_failure_cont,
 
 	code_info__undo_pre_commit_saves(Slots, RestoreMaxfr, RestoreRedoip,
-		RestoreCurfr, PopCode),
+		RestoreCurfr, SuccPopCode, FailPopCode),
 
 	{ SuccessCode =
 		tree(RestoreMaxfr,
 		tree(RestoreRedoip,
 		tree(RestoreCurfr,
-		     PopCode)))
+		     SuccPopCode)))
 	},
 	{ FailCode =
 		tree(RedoLabelCode,
 		tree(RestoreCurfr,
 		tree(FailureContCode,
 		tree(RestoreRedoip,
-		tree(PopCode,
+		tree(FailPopCode,
 		     Fail)))))
 	},
 	{ Commit =
@@ -1915,11 +1923,11 @@ code_info__generate_det_commit(Slots, Commit) -->
 	% Remove the dummy failure continuation pushed by det_pre_commit.
 	code_info__pop_failure_cont,
 	code_info__undo_pre_commit_saves(Slots, RestoreMaxfr, RestoreRedoip,
-		RestoreCurfr, PopCode),
+		RestoreCurfr, SuccPopCode, _FailPopCode),
 	{ Commit = tree(RestoreMaxfr,
 		   tree(RestoreRedoip,
 		   tree(RestoreCurfr,
-		        PopCode)))
+		        SuccPopCode)))
 	}.
 
 %---------------------------------------------------------------------------%
@@ -1929,6 +1937,16 @@ code_info__generate_det_commit(Slots, Commit) -->
 :- mode code_info__generate_pre_commit_saves(out, out, in, out) is det.
 
 code_info__generate_pre_commit_saves(Slots, Code) -->
+	code_info__get_globals(Globals),
+	{ globals__lookup_bool_option(Globals, use_trail, UseTrail) },
+	( { UseTrail = yes } ->
+		{ NumSlots = 4 },
+		{ SaveMessage =
+		  "push space for curfr, maxfr, redoip, and trail" }
+	;
+		{ NumSlots = 3 },
+		{ SaveMessage = "push space for curfr, maxfr, and redoip" }
+	),
 	code_info__get_proc_model(CodeModel),
 	( { CodeModel = model_non } ->
 		% the pushes and pops on the det stack below will cause
@@ -1942,13 +1960,19 @@ code_info__generate_pre_commit_saves(Slots, Code) -->
 		{ string__append_list(["commit in ", ModuleName, ":", PredName],
 			Message) },
 		{ PushCode = node([
-			incr_sp(3, Message) -
-				"push space for curfr, maxfr, and redoip"
+			incr_sp(NumSlots, Message) - SaveMessage
 		]) },
 		{ CurfrSlot = stackvar(1) },
 		{ MaxfrSlot = stackvar(2) },
 		{ RedoipSlot = stackvar(3) },
-		{ Slots = commit_slots(CurfrSlot, MaxfrSlot, RedoipSlot) },
+		( { UseTrail = yes } ->
+			{ TrailSlot = stackvar(4) },
+			{ MaybeTrailSlot = yes(TrailSlot) }
+		;
+			{ MaybeTrailSlot = no }
+		),
+		{ Slots = commit_slots(CurfrSlot, MaxfrSlot, RedoipSlot,
+			MaybeTrailSlot) },
 		code_info__add_commit_triple
 	;
 		{ PushCode = empty },
@@ -1956,7 +1980,14 @@ code_info__generate_pre_commit_saves(Slots, Code) -->
 		code_info__acquire_temp_slot(lval(maxfr), MaxfrSlot),
 		code_info__acquire_temp_slot(lval(redoip(lval(maxfr))),
 			RedoipSlot),
-		{ Slots = commit_slots(CurfrSlot, MaxfrSlot, RedoipSlot) }
+		( { UseTrail = yes } ->
+			code_info__acquire_temp_slot(ticket, TrailSlot),
+			{ MaybeTrailSlot = yes(TrailSlot) }
+		;
+			{ MaybeTrailSlot = no }
+		),
+		{ Slots = commit_slots(CurfrSlot, MaxfrSlot, RedoipSlot,
+			MaybeTrailSlot) }
 	),
 	{ SaveCode = node([
 		assign(CurfrSlot, lval(curfr)) -
@@ -1966,16 +1997,24 @@ code_info__generate_pre_commit_saves(Slots, Code) -->
 		assign(RedoipSlot, lval(redoip(lval(maxfr)))) -
 				"Save the top redoip"
 	]) },
-	{ Code = tree(PushCode, SaveCode) }.
+	{ MaybeTrailSlot = yes(TheTrailSlot) ->
+		MaybeSaveTrailCode = node([
+			store_ticket(TheTrailSlot) - "Save trail state"
+		])
+	;
+		MaybeSaveTrailCode = empty
+	},
+	{ Code = tree(PushCode, tree(SaveCode, MaybeSaveTrailCode)) }.
 
 :- pred code_info__undo_pre_commit_saves(commit_slots, code_tree, code_tree,
-	code_tree, code_tree, code_info, code_info).
-:- mode code_info__undo_pre_commit_saves(in, out, out, out, out, in, out)
+	code_tree, code_tree, code_tree, code_info, code_info).
+:- mode code_info__undo_pre_commit_saves(in, out, out, out, out, out, in, out)
 	is det.
 
 code_info__undo_pre_commit_saves(Slots, RestoreMaxfr, RestoreRedoip,
-		RestoreCurfr, PopCode) -->
-	{ Slots = commit_slots(CurfrSlot, MaxfrSlot, RedoipSlot) },
+		RestoreCurfr, SuccPopCode, FailPopCode) -->
+	{ Slots = commit_slots(CurfrSlot, MaxfrSlot, RedoipSlot,
+		MaybeTrailSlot) },
 	{ RestoreMaxfr = node([
 		assign(maxfr, lval(MaxfrSlot)) -
 			"Prune away unwanted choice-points"
@@ -1991,16 +2030,36 @@ code_info__undo_pre_commit_saves(Slots, RestoreMaxfr, RestoreRedoip,
 	code_info__get_proc_model(CodeModel),
 	( { CodeModel = model_non } ->
 		code_info__rem_commit_triple,
-		{ PopCode = node([
-			decr_sp(3) -
-				"pop curfr, maxfr, and redoip"
+		( { MaybeTrailSlot = yes(_) } ->
+			{ NumSlots = 4 },
+			{ PopMessage = "pop curfr, maxfr, redoip, and trail" }
+		;
+			{ NumSlots = 3 },
+			{ PopMessage = "pop curfr, maxfr, and redoip" }
+		),
+		{ MainPopCode = node([
+			decr_sp(NumSlots) - PopMessage
 		]) }
 	;
 		code_info__release_temp_slot(CurfrSlot),
 		code_info__release_temp_slot(MaxfrSlot),
 		code_info__release_temp_slot(RedoipSlot),
-		{ PopCode = empty }
-	).
+		{ MainPopCode = empty }
+	),
+	code_info__maybe_reset_ticket(MaybeTrailSlot, commit,
+		MaybeCommitTicket),
+	code_info__maybe_reset_ticket(MaybeTrailSlot, undo,
+		MaybeUndoTicket),
+	code_info__maybe_discard_ticket(MaybeTrailSlot, MaybeDiscardTicket),
+	{ SuccPopCode =
+		tree(MainPopCode,
+		tree(MaybeCommitTicket,
+		     MaybeDiscardTicket)) },
+	{ FailPopCode =
+		tree(MainPopCode,
+		tree(MaybeUndoTicket,
+		     MaybeDiscardTicket)) }.
+
 
 :- pred code_info__clone_resume_maps(resume_maps, resume_maps,
 	code_info, code_info).
