@@ -5294,7 +5294,7 @@ clauses_info_add_pragma_foreign_proc(ClausesInfo0, Purity, Attributes0, PredId,
 		_HasForeignClauses) },
 
 
-		% Find all the exising clauses for this mode, and
+		% Find all the existing clauses for this mode, and
 		% extract their implementation language and clause number
 		% (that is, their index in the list).
 	{ foreign_language(Attributes0, NewLang) },
