@@ -106,6 +106,16 @@ library.opts	: $(library.opts)
 
 #-----------------------------------------------------------------------------#
 
+library.m: library.m.in ../VERSION ../Mmake.common
+	sed	-e 's/@VERSION@/$(VERSION)/g' \
+		-e 's/@FULLARCH@/$(FULLARCH)/' \
+		library.m.in > library.m
+
+library.dep : library.m
+library.depend : library.m
+
+#-----------------------------------------------------------------------------#
+
 tags		: $(MTAGS) $(library.ms)
 	$(MTAGS) $(library.ms)
 

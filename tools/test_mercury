@@ -30,6 +30,19 @@ export TMPDIR
 
 #-----------------------------------------------------------------------------#
 
+DATE=`date '+%Y-%m-%d'`
+
+RELEASE_VERSION=rotd-$DATE
+CHECKOUT_OPTS=-A
+
+# To build one of the official releases, uncomment the following two lines
+# which specify the release number and the cvs checkout option needed to
+# retrieve it.
+### RELEASE_VERSION=0.7
+### CHECKOUT_OPTS=-rversion-0_7		
+
+#-----------------------------------------------------------------------------#
+
 case $HOST in
 	# test things at different optimization levels...
 	murlibobo)	OPTIMIZE=-O5 ;;
@@ -137,8 +150,13 @@ set -x	# trace execution
 
 : checkout the sources and make sure the installation directory exists
 cd $DIR || { false; exit 1; }
-cvs checkout mercury tests || { false; exit 1; }
+cvs checkout $CHECKOUT_OPTS mercury tests || { false; exit 1; }
 [ -d $INSTALL_DIR ] || mkdir -p $INSTALL_DIR
+
+: update the VERSION file to specify the version we are building
+sed	"s/VERSION=.*/VERSION=$RELEASE_VERSION/" \
+	mercury/VERSION > mercury/VERSION.new
+mv mercury/VERSION.new mercury/VERSION
 
 : bootstrap the compiler up to stage 3 and check that the results match
 MERCURY_COMPILER=$BOOTSTRAP_MERCURY_COMPILER
@@ -268,8 +286,8 @@ case $HOST in murlibobo)
 	version=`mmake version` &&
 	mmake MMAKEFLAGS='EXTRA_MCFLAGS="-O5 --opt-space" -j6' tar &&
 	cd .. &&
-	rm -f mercury-latest-unstable.tar.gz &&
-	mv mercury-$version.tar.gz mercury-latest-unstable.tar.gz
+	rm -f mercury-latest-unstable/* &&
+	mv mercury-$version.tar.gz mercury-latest-unstable
 	} || status=1
 	;;
 esac
@@ -341,10 +359,14 @@ case $status in
 	[ -d $TESTDIR/logs ] || mkdir -p $TESTDIR/logs
 	date >> $TESTDIR/logs/successful_tests.$HOST
 	case $HOST in murlibobo)
-		cd $DIR &&
-		rm -f mercury-latest-stable.tar.gz &&
-		ln mercury-latest-unstable.tar.gz mercury-latest-stable.tar.gz
-		;;
+	    cd $DIR &&
+	    rm -f mercury-latest-stable/* &&
+	    ln mercury-latest-unstable/mercury-$version.tar.gz \
+	        mercury-latest-stable/mercury-$version.tar.gz &&
+	    rm -f /home/tsa/ftp/pub/mercury/beta-releases/mercury-rotd-*.tar.gz
+	    cp mercury-latest-stable/mercury-$version.tar.gz \
+	        /home/tsa/ftp/pub/mercury/beta-releases
+	    ;;
 	esac
 	echo "test_mercury exiting successfully at `date`" 1>&2
 	true

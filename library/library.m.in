@@ -32,7 +32,7 @@
 :- import_module store, rbtree, parser, lexer, ops, time.
 :- import_module prolog.
 
-library__version("0.6").
+library__version("@VERSION@, configured for @FULLARCH@").
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

@@ -1,14 +1,9 @@
 <html>
 <head>
-<title>
-	Mercury Coding Standard for the Mercury Project
-</title>
+<title>Mercury Coding Standard for the Mercury Project</title>
 </head>
 
-<body
-	bgcolor="#ffffff"
-	text="#000000"
->
+<body bgcolor="#ffffff" text="#000000">
 
 <hr>
 <!-------------------------->
@@ -20,20 +15,26 @@ taken when releasing a new version of Mercury.
 <!-------------------------->
 
 <ol>
-<li> Update the version number in
-	<ul>
-	<li> README
-	<li> INSTALL (various places)
-	<li> Mmake
-	<li> bindist/Mmake
-	<li> configure.in
-	<li> library/library.m
-	</ul>
-    and update the NEWS, RELEASE_NOTES, and HISTORY files. 
-    The RELEASE_NOTES file should include the contents of the NEWS file.
-    The HISTORY file should include the NEWS files from previous releases.
+<li> Update the NEWS, RELEASE_NOTES, and HISTORY files. 
+     Don't forget to update the version number in RELEASE_NOTES for major
+     releases.
+     The HISTORY file should include the NEWS files from previous releases.
 
-<li>  Checkout a fresh copy, and do
+<li> Update the WWW documentation in the `www' directory,
+     but don't commit it to the main branch yet, because otherwise
+     it would be installed on the WWW pages overnight.
+
+<li> Use `cvs tag' to tag all the files with a `version-x_y_z' tag.
+
+<li> Edit the tools/test_mercury script in
+     /home/mercury/public/test_mercury/scripts/mercury:
+     set the RELEASE_VERSION and CHECKOUT_OPTS variables
+     as explained in the comments there.
+
+<li> Run tools/run_all_tests_from_cron on murlibobo.
+     (Or just wait 24 hours or so.) <p>
+
+     This should have the effect of checking out a fresh copy, and doing
 
 	<pre>
 	touch Mmake.params &&
@@ -47,30 +48,32 @@ taken when releasing a new version of Mercury.
 	
 	<p>
 
-    This step should be done automatically by tools/test_mercury every night,
-    so you should be able to just grab the mercury-latest-stable.tar.gz
-    file from /home/mercury/public/testing/test_dirs/murlibobo.
+    If it passes all the tests, it should put the resulting tar file in
+    /home/mercury/public/test_mercury/test_dirs/mercury-latest-stable and
+    ftp://turiel.cs.mu.oz.au/pub/mercury/beta-releases.
 
 <li>  Test it on lots of architectures. <br>
 
 	<p>
-    Make sure you test that all the programs in the `samples' directory
-    work.
+    Make sure you test all the programs in the `samples' and `extras'
+    directories.
 
 <li>  Build binary distributions for those architectures.
 
-<li>  Copy the gzipped tar files to ~fjh/www_public/mercury, and
-    to the turiel ftp site ftp://turiel.cs.mu.oz.au/pub/mercury.
+<li>  Move the gzipped tar files from the /pub/mercury/beta-releases directory
+      to the main /pub/mercury directory on the turiel ftp site
+      ftp://turiel.cs.mu.oz.au/pub/mercury. <br>
     Email kostis@cs.sunysb.edu (Konstantinos Sagonas) to tell him
     to make copies of it on ftp://ftp.cs.sunysb.edu/pub/XSB/mercury
     respectively. <br>
-    The mirror on ftp://ftp.csd.uu.se/pub/Mercury is automated.
+    The mirror on ftp://ftp.csd.uu.se/pub/Mercury is supposedly automated.
 
 <li>  Email mercury-announce@cs.mu.oz.au and cross-post announcement to
     comp.lang.misc, comp.lang.prolog, comp.lang.functional, comp.object.logic,
     and for major releases also to comp.compilers and gnu.announce.
 
-<li>  Update the Mercury WWW home page (/local/dept/www/mercury/mercury.html).
+<li>  Update the Mercury WWW home page (/local/dept/www/mercury/mercury.html)
+      by commiting the changes you made earlier.
 
 </ol>
 
@@ -78,6 +81,6 @@ taken when releasing a new version of Mercury.
 <hr>
 <!-------------------------->
 
-Last update was $Date: 1997-04-03 05:17:42 $ by $Author: aet $@cs.mu.oz.au. <br>
+Last update was $Date: 1997-07-28 08:52:06 $ by $Author: fjh $@cs.mu.oz.au. <br>
 </body>
 </html>
