@@ -12,7 +12,7 @@
 #
 # The test for the composite stage2 compiler is either bootstrap checking
 # (the default), or the successful execution of the all the test cases in
-# one or more dubdirectories of the tests directory.
+# one or more subdirectories of the tests directory.
 
 usage="\
 Usage: $0 [options]
