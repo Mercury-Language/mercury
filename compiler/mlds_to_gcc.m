@@ -218,15 +218,14 @@ mlds_to_gcc__run_gcc_backend(ModuleName, CallBack, CallBackOutput) -->
 mlds_to_gcc__compile_to_asm(MLDS, ContainsCCode) -->
 	{ MLDS = mlds(ModuleName, AllForeignCode, Imports, Defns0) },
 
-		% We only handle C currently, so we just look up C
-	{ ForeignCode = map__lookup(AllForeignCode, c) },
-
 	%
 	% Handle output of any foreign code (C, Ada, Fortran, etc.)
 	% to appropriate files.
 	%
 	{ list__filter(defn_contains_foreign_code(lang_asm), Defns0,
 		ForeignDefns, Defns) },
+		% We only handle C currently, so we just look up C
+	{ ForeignCode = map__lookup(AllForeignCode, c) },
 	(
 		% Check if there is any code from pragma foreign_code,
 		% pragma export, or pragma foreign_proc declarations.
