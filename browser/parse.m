@@ -19,10 +19,10 @@
 % The Command Language
 %
 %	commandline:
-%		"?"			// SICstus help
-%		"^" [numlist]		// SICstus cd
-%		"d"			// SICstus display
-%		"w"			// SICstus write
+%		"?"			// SICStus help
+%		"^" [numlist]		// SICStus cd
+%		"d"			// SICStus display
+%		"w"			// SICStus write
 %		"help"
 %		"cd" [path]
 %		"pwd"
