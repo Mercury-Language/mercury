@@ -160,7 +160,9 @@ string__to_char_list(String, CharList) :-
 	string__to_int_list(String, IntList),
 	string__int_list_to_char_list(IntList, CharList).
 
-:- pred string__int_list_to_char_list(list(int)::in, list(character)::out).
+:- pred string__int_list_to_char_list(list(int), list(character)).
+:- mode string__int_list_to_char_list(in, out).
+:- mode string__int_list_to_char_list(out, in).
 
 string__int_list_to_char_list([], []).
 string__int_list_to_char_list([Code | Codes], [Char | Chars]) :-

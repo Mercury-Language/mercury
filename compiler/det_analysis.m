@@ -104,8 +104,12 @@ get_all_pred_procs(ModuleInfo, PredProcs) :-
 get_all_pred_procs_2(_Preds, [], PredProcs, PredProcs).
 get_all_pred_procs_2(Preds, [PredId|PredIds], PredProcs0, PredProcs) :-
 	map__lookup(Preds, PredId, Pred),
-	pred_info_procids(Pred, ProcIds),
-	fold_pred_modes(PredId, ProcIds, PredProcs0, PredProcs1),
+	( pred_info_is_imported(Pred) ->
+		PredProcs1 = PredProcs0
+	;
+		pred_info_procids(Pred, ProcIds),
+		fold_pred_modes(PredId, ProcIds, PredProcs0, PredProcs1)
+	),
 	get_all_pred_procs_2(Preds, PredIds, PredProcs1, PredProcs).
 
 :- pred fold_pred_modes(pred_id, list(proc_id), predproclist, predproclist).
