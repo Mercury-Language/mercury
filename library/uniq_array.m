@@ -20,7 +20,12 @@
 
 :- type uniq_array(T).
 
-:- inst uniq_array(I) ---> uniq_array(I).
+	% XXX the current Mercury compiler doesn't support `ui' modes,
+	% so to work-around that problem, we currently don't use
+	% unique modes in this module.
+
+% :- inst uniq_array(I) = unique(unique_array(I)).
+:- inst uniq_array(I) = bound(unique_array(I)).
 :- inst uniq_array == uniq_array(ground).
 :- inst uniq_array_skel == uniq_array(free).
 
@@ -50,17 +55,55 @@
 :- mode uniq_array__size(uniq_array_ui, out) is det.
 :- mode uniq_array__size(in, out) is det.
 
-	% uniq_array__lookup returns the Nth element of an uniq_array.
+	% uniq_array__in_bounds checks whether an index is in the bounds
+	% of a uniq_array
+:- pred uniq_array__in_bounds(uniq_array(_T), int).
+:- mode uniq_array__in_bounds(uniq_array_ui, in) is semidet.
+:- mode uniq_array__in_bounds(in, in) is semidet.
+
+	% uniq_array__lookup returns the Nth element of a uniq_array.
 	% It is an error if the index is out of bounds.
 :- pred uniq_array__lookup(uniq_array(T), int, T).
 :- mode uniq_array__lookup(uniq_array_ui, in, out) is det.
 :- mode uniq_array__lookup(in, in, out) is det.
 
-	% uniq_array__set sets the nth element of an uniq_array, and returns the
+	% uniq_array__semidet_lookup returns the Nth element of a uniq_array.
+	% It fails if the index is out of bounds.
+:- pred uniq_array__semidet_lookup(uniq_array(T), int, T).
+:- mode uniq_array__semidet_lookup(uniq_array_ui, in, out) is semidet.
+:- mode uniq_array__semidet_lookup(in, in, out) is semidet.
+
+	% uniq_array__set sets the nth element of a uniq_array, and returns the
 	% resulting uniq_array (good opportunity for destructive update ;-).  
 	% It is an error if the index is out of bounds.
 :- pred uniq_array__set(uniq_array(T), int, T, uniq_array(T)).
 :- mode uniq_array__set(uniq_array_di, in, in, uniq_array_uo) is det.
+
+	% uniq_array__semidet_set sets the nth element of a uniq_array,
+	% and returns the resulting uniq_array.
+	% It fails if the index is out of bounds.
+:- pred uniq_array__semidet_set(uniq_array(T), int, T, uniq_array(T)).
+:- mode uniq_array__semidet_set(uniq_array_ui, in, in, uniq_array_uo)
+				is semidet.
+
+	% uniq_array__slow_set sets the nth element of a uniq_array,
+	% and returns the resulting uniq_array.  The initial array is not
+	% required to be unique, so the implementation may not be able to use
+	% destructive update.
+	% It is an error if the index is out of bounds.
+:- pred uniq_array__slow_set(uniq_array(T), int, T, uniq_array(T)).
+:- mode uniq_array__slow_set(uniq_array_di, in, in, uniq_array_uo) is det.
+:- mode uniq_array__slow_set(in, in, in, uniq_array_uo) is det.
+
+	% uniq_array__semidet_slow_set sets the nth element of a uniq_array,
+	% and returns the resulting uniq_array.  The initial array is not
+	% required to be unique, so the implementation may not be able to use
+	% destructive update.
+	% It fails if the index is out of bounds.
+:- pred uniq_array__semidet_slow_set(uniq_array(T), int, T, uniq_array(T)).
+:- mode uniq_array__semidet_slow_set(uniq_array_ui, in, in, uniq_array_uo)
+				is semidet.
+:- mode uniq_array__semidet_slow_set(in, in, in, uniq_array_uo) is semidet.
 
 	% uniq_array__copy(Array0, Array):
 	% Makes a new unique copy of a uniq_array.
@@ -76,25 +119,25 @@
 :- mode uniq_array__resize(uniq_array_di, in, in, uniq_array_uo) is det.
 
 	% uniq_array__from_list takes a list (of nonzero length),
-	% and returns an uniq_array containing those elements in
+	% and returns a uniq_array containing those elements in
 	% the same order that they occured in the list.
 :- pred uniq_array__from_list(list(T), uniq_array(T)).
 :- mode uniq_array__from_list(in, uniq_array_uo) is det.
 
-	% uniq_array__to_list takes an uniq_array and returns a list containing
+	% uniq_array__to_list takes a uniq_array and returns a list containing
 	% the elements of the uniq_array in the same order that they
 	% occurred in the uniq_array.
 :- pred uniq_array__to_list(uniq_array(T), list(T)).
 :- mode uniq_array__to_list(uniq_array_ui, out) is det.
 
-	% uniq_array__fetch_items takes an uniq_array and a lower and upper
+	% uniq_array__fetch_items takes a uniq_array and a lower and upper
 	% index, and places those items in the uniq_array between these
 	% indices into a list.  It is an error if either index is
 	% out of bounds.
 :- pred uniq_array__fetch_items(uniq_array(T), int, int, list(T)).
 :- mode uniq_array__fetch_items(in, in, in, out) is det.
 
-	% uniq_array__bsearch takes an uniq_array, an element to be found
+	% uniq_array__bsearch takes a uniq_array, an element to be found
 	% and a comparison predicate and returns the position of
 	% the element in the uniq_array.  Assumes the uniq_array is in sorted
 	% order.  Fails if the element is not present.  If the
@@ -107,6 +150,7 @@
 		maybe(int)).
 :- mode uniq_array__bsearch(uniq_array_ui, in, pred(in, in, out) is det,
 		out) is det.
+:- mode uniq_array__bsearch(in, in, pred(in, in, out) is det, out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -117,7 +161,7 @@
 
 /****
 lower bounds other than zero are not supported
-	% uniq_array__resize takes an uniq_array and new lower and upper bounds.
+	% uniq_array__resize takes a uniq_array and new lower and upper bounds.
 	% the uniq_array is expanded or shrunk at each end to make it fit
 	% the new bounds.
 :- pred uniq_array__resize(uniq_array(T), int, int, uniq_array(T)).
@@ -276,6 +320,28 @@ uniq_array__bounds(Array, Min, Max) :-
 :- pragma(c_code, uniq_array__size(UniqArray::in, Max::out), "
 	Max = ((UniqArrayType *)UniqArray)->size;
 ").
+
+%-----------------------------------------------------------------------------%
+
+uniq_array__in_bounds(Array, Index) :-
+	uniq_array__bounds(Array, Min, Max),
+	Min =< Index, Index =< Max.
+
+uniq_array__semidet_lookup(UniqArray, Index, Item) :-
+	uniq_array__in_bounds(UniqArray, Index),
+	uniq_array__lookup(UniqArray, Index, Item).
+
+uniq_array__semidet_set(UniqArray0, Index, Item, UniqArray) :-
+	uniq_array__in_bounds(UniqArray0, Index),
+	uniq_array__set(UniqArray0, Index, Item, UniqArray).
+
+uniq_array__semidet_slow_set(UniqArray0, Index, Item, UniqArray) :-
+	uniq_array__in_bounds(UniqArray0, Index),
+	uniq_array__slow_set(UniqArray0, Index, Item, UniqArray).
+
+uniq_array__slow_set(UniqArray0, Index, Item, UniqArray) :-
+	uniq_array__copy(UniqArray0, UniqArray1),
+	uniq_array__set(UniqArray1, Index, Item, UniqArray).
 
 %-----------------------------------------------------------------------------%
 
