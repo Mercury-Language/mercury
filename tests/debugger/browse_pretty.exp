@@ -16,12 +16,9 @@ big(
     big(
       small, 
       .(1, .(2, .(3, .(4, [])))), 
-      big(small, .(1, .(2, .(3, .(4, .(5, []))))), small)
-    ), 
+      big(small, .(1, .(2, .(3, .(4, .(5, []))))), small)), 
     .(1, .(2, .(3, .(4, .(5, .(6, [])))))), 
-    small
-  )
-)
+    small))
 browser> set clipx 131
 browser> ls
 big(
@@ -30,9 +27,7 @@ big(
   big(
     big(small, .(1, .(2, .(3, .(4, [])))), big(small, .(1, .(2, .(3, .(4, .(5, []))))), small)), 
     .(1, .(2, .(3, .(4, .(5, .(6, [])))))), 
-    small
-  )
-)
+    small))
 browser> set clipx 30
 browser> ls
 big(
@@ -40,78 +35,10 @@ big(
     big(
       small, 
       .(1, []), 
-      small
-    ), 
+      small), 
     .(1, .(2, [])), 
-    small
-  ), 
+    small), 
   .(1, .(2, .(3, []))), 
-  big(
-    big(
-      small, 
-      .(
-        1, 
-        .(2, .(3, .(4, [])))
-      ), 
-      big(
-        small, 
-        .(
-          1, 
-          .(
-            2, 
-            .(
-              3, 
-              .(4, .(5, []))
-            )
-          )
-        ), 
-        small
-      )
-    ), 
-    .(
-      1, 
-      .(
-        2, 
-        .(
-          3, 
-          .(4, .(5, .(6, [])))
-        )
-      )
-    ), 
-    small
-  )
-)
-browser> set clipx 10
-browser> ls
-big(
-  big(
-    big(
-      small, 
-      .(
-        1, 
-        []
-      ), 
-      small
-    ), 
-    .(
-      1, 
-      .(
-        2, 
-        []
-      )
-    ), 
-    small
-  ), 
-  .(
-    1, 
-    .(
-      2, 
-      .(
-        3, 
-        []
-      )
-    )
-  ), 
   big(
     big(
       small, 
@@ -119,15 +46,7 @@ big(
         1, 
         .(
           2, 
-          .(
-            3, 
-            .(
-              4, 
-              []
-            )
-          )
-        )
-      ), 
+          .(3, .(4, [])))), 
       big(
         small, 
         .(
@@ -140,15 +59,69 @@ big(
                 4, 
                 .(
                   5, 
-                  []
-                )
-              )
-            )
-          )
-        ), 
-        small
-      )
-    ), 
+                  []))))), 
+        small)), 
+    .(
+      1, 
+      .(
+        2, 
+        .(
+          3, 
+          .(
+            4, 
+            .(
+              5, 
+              .(6, [])))))), 
+    small))
+browser> set clipx 10
+browser> ls
+big(
+  big(
+    big(
+      small, 
+      .(
+        1, 
+        []), 
+      small), 
+    .(
+      1, 
+      .(
+        2, 
+        [])), 
+    small), 
+  .(
+    1, 
+    .(
+      2, 
+      .(
+        3, 
+        []))), 
+  big(
+    big(
+      small, 
+      .(
+        1, 
+        .(
+          2, 
+          .(
+            3, 
+            .(
+              4, 
+              [])))), 
+      big(
+        small, 
+        .(
+          1, 
+          .(
+            2, 
+            .(
+              3, 
+              .(
+                4, 
+                .(
+                  5, 
+                  []))))), 
+        small)), 
     .(
       1, 
       .(
@@ -161,24 +134,15 @@ big(
               5, 
               .(
                 6, 
-                []
-              )
-            )
-          )
-        )
-      )
-    ), 
-    small
-  )
-)
+                [])))))), 
+    small))
 browser> set clipx 79
 browser> set depth 3
 browser> ls
 big(
-  big(big(small, .(...), small), .(1, .(...)), small), 
-  .(1, .(2, .(...))), 
-  big(big(small, .(...), big(...)), .(1, .(...)), small)
-)
+  big(big(small, ./2, small), .(1, ./2), small), 
+  .(1, .(2, ./2)), 
+  big(big(small, ./2, big/3), .(1, ./2), small))
 browser> quit
 mdb> continue
 big(big(big(small, [1], small), [1, 2], small), [1, 2, 3], big(big(small, [1, 2, 3, 4], big(small, [1, 2, 3, 4, 5], small)), [1, 2, 3, 4, 5, 6], small)).
