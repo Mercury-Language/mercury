@@ -12,7 +12,6 @@
 #
 # Use `msc -h' for help.
 
-sp_builtin_pl=${MERCURY_SP_BUILTIN=@LIBDIR@/sicstus/sp_builtin.pl}
 sicstus_compile=\
 ${MERCURY_SICSTUS_COMPILER=@LIBDIR@/sicstus/@FULLARCH@/sicstus_compile}
 
@@ -62,7 +61,7 @@ Options:
 		Use the specified mode of compilation.
 		<compile-mode> should be either compactcode, fastcode,
 		or profiledcode.
-Environment variables: MERCURY_SP_BUILTIN, MERCURY_SICSTUS_COMPILER
+Environment variables: MERCURY_SICSTUS_COMPILER
 EOF
 	exit 0
 fi

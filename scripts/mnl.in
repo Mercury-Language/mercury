@@ -11,12 +11,12 @@
 # Links NU-Prolog object files together with the Mercury library
 # to produce an executable binary.
 #
-# Usage: mnl [-v|--verbose] [<nc link options>] files...
+# Usage: mnl [-v|--verbose] [-d|--debug] [<nc link options>] files...
 #
 # Environment variables: MERCURY_LIB_DIR, MERCURY_LIB_OBJS
 
-NULIBDIR=${MERCURY_LIB_DIR=@LIBDIR@/nuprolog/@FULLARCH@}
-LIBRARY_OBJS=${MERCURY_LIB_OBJS=" `cd $NULIBDIR; echo *.no` "}
+NULIBDIR=${MERCURY_NU_LIB_DIR=@LIBDIR@/nuprolog/@FULLARCH@}
+LIBRARY_OBJS=${MERCURY_NU_LIB_OBJS=" `cd $NULIBDIR; echo *.no` "}
 debug_objs="portray.no debug.no error.no"
 
 options=
