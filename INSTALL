@@ -2,10 +2,14 @@
 #
 # INSTALL - installation instructions and installation script.
 #
-# This file lists the steps needed to install Mercury.
-# It also includes shell commands to perform these
-# instructions, so that all you need to do to install Mercury
-# is to type `sh INSTALL'.
+# Step 0.  Extract the files from the gzipped tar archive.
+#
+# Step 1.  Set the installation target directories in the file Mmake.common.
+#
+# Step 2.  Execute this script.  (Just type `sh INSTALL'.)
+#
+# Step 3.  Check the permissions on the installed files.
 
-(cd scripts && make) &&
-scripts/mmake install
+(cd scripts && make -f Mmake.makefile) &&
+PATH=`pwd`/scripts:$PATH &&
+mmake install
