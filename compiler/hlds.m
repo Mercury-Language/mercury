@@ -111,7 +111,7 @@
 							% not the clause.
 					call_info,	% stack allocations
 					determinism,	% _inferred_ det'ism
-					code_model,	% selected code model
+					unit,		% junk (unused)
 					list(arg_info),	% information about
 							% the arguments
 							% derived from the
@@ -1609,9 +1609,6 @@ pred_info_set_typevarset(PredInfo0, TypeVarSet, PredInfo) :-
 :- pred proc_info_inferred_determinism(proc_info, determinism).
 :- mode proc_info_inferred_determinism(in, out) is det.
 
-:- pred proc_info_code_model(proc_info, code_model).
-:- mode proc_info_code_model(in, out) is det.
-
 :- pred proc_info_interface_determinism(proc_info, determinism).
 :- mode proc_info_interface_determinism(in, out) is det.
 
@@ -1667,9 +1664,6 @@ pred_info_set_typevarset(PredInfo0, TypeVarSet, PredInfo) :-
 :- pred proc_info_set_inferred_determinism(proc_info, determinism, proc_info).
 :- mode proc_info_set_inferred_determinism(in, in, out) is det.
 
-:- pred proc_info_set_code_model(proc_info, code_model, proc_info).
-:- mode proc_info_set_code_model(in, in, out) is det.
-
 :- pred proc_info_set_goal(proc_info, hlds__goal, proc_info).
 :- mode proc_info_set_goal(in, in, out) is det.
 
@@ -1706,15 +1700,7 @@ proc_info_init(Arity, Modes, MaybeDet, MContext, NewProc) :-
 	goal_info_init(GoalInfo),
 	varset__init(BodyVarSet0),
 	make_n_fresh_vars(Arity, BodyVarSet0, HeadVars, BodyVarSet),
-	(
-		MaybeDet = no,
-		Det = erroneous,
-		CodeModel = model_det
-	;
-		MaybeDet = yes(DeclDet),
-		Det = DeclDet,
-		determinism_to_code_model(DeclDet, CodeModel)
-	),
+	InferredDet = erroneous,
 	map__init(CallInfo),
 	set__init(Liveness),
 	ArgInfo = [],
@@ -1722,7 +1708,7 @@ proc_info_init(Arity, Modes, MaybeDet, MContext, NewProc) :-
 	map__init(FollowVars),
 	NewProc = procedure(
 		MaybeDet, BodyVarSet, BodyTypes, HeadVars, Modes,
-		ClauseBody, MContext, CallInfo, Det, CodeModel, ArgInfo,
+		ClauseBody, MContext, CallInfo, InferredDet, unit, ArgInfo,
 		Liveness, FollowVars
 	).
 
@@ -1757,8 +1743,8 @@ proc_info_call_info(ProcInfo, CallInfo) :-
 	ProcInfo = procedure(_, _, _, _, _, _, _, CallInfo, _, _, _, _, _).
 proc_info_inferred_determinism(ProcInfo, Determinism) :-
 	ProcInfo = procedure(_, _, _, _, _, _, _, _, Determinism, _, _, _, _).
-proc_info_code_model(ProcInfo, CodeModel) :-
-	ProcInfo = procedure(_, _, _, _, _, _, _, _, _, CodeModel, _, _, _).
+% proc_info_junk(ProcInfo, Junk) :-
+% 	ProcInfo = procedure(_, _, _, _, _, _, _, _, _, Junk, _, _, _).
 proc_info_arg_info(ProcInfo, ArgInfo) :-
 	ProcInfo = procedure(_, _, _, _, _, _, _, _, _, _, ArgInfo, _, _).
 proc_info_liveness_info(ProcInfo, Liveness) :-
@@ -1778,7 +1764,7 @@ proc_info_follow_vars(ProcInfo, Follow) :-
 % 							% not the clause.
 % 				H	call_info,	% stack allocations
 % 				I	determinism,	% _inferred_ detism
-% 				J	code_model,	% selected code model
+% 				J	unit,		% junk (unused)
 % 				K	list(arg_info),	% information about
 % 							% the arguments
 % 							% derived from the
@@ -1809,9 +1795,9 @@ proc_info_set_inferred_determinism(ProcInfo0, Determinism, ProcInfo) :-
 	ProcInfo0 = procedure(A, B, C, D, E, F, G, H, _, J, K, L, M),
 	ProcInfo = procedure(A, B, C, D, E, F, G, H, Determinism, J, K, L, M).
 
-proc_info_set_code_model(ProcInfo0, CodeModel, ProcInfo) :-
-	ProcInfo0 = procedure(A, B, C, D, E, F, G, H, I, _, K, L, M),
-	ProcInfo = procedure(A, B, C, D, E, F, G, H, I, CodeModel, K, L, M).
+% proc_info_set_junk(ProcInfo0, Junk, ProcInfo) :-
+% 	ProcInfo0 = procedure(A, B, C, D, E, F, G, H, I, _, K, L, M),
+% 	ProcInfo = procedure(A, B, C, D, E, F, G, H, I, Junk, K, L, M).
 
 proc_info_set_goal(ProcInfo0, Goal, ProcInfo) :-
 	ProcInfo0 = procedure(A, B, C, D, E, _, G, H, I, J, K, L, M),
