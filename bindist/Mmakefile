@@ -1,5 +1,5 @@
 #---------------------------------------------------------------------------#
-# Copyright (C) 1996-1999 The University of Melbourne.
+# Copyright (C) 1996-2000 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -93,14 +93,22 @@ binary_distribution: bindist.configure bindist.build_vars
 	else								\
 		cd ../../tests; mmake realclean;			\
 	fi
-	cp -r ../samples $(MERCURY_VERSION)/samples
-	cp -r ../extras $(MERCURY_VERSION)/extras
+	(dir=`pwd` && cd .. && \
+		tar -cf $$dir/$(MERCURY_VERSION)/samples.tar samples && \
+		gzip $$dir/$(MERCURY_VERSION)/samples.tar)
+	(dir=`pwd` && cd .. && \
+		tar -cf $$dir/$(MERCURY_VERSION)/extras.tar extras && \
+		gzip $$dir/$(MERCURY_VERSION)/extras.tar)
 	# Aditi isn't ready for distribution yet.
 	rm -rf $(MERCURY_VERSION)/extras/aditi
 	if [ -d ../tests ]; then					\
-		cp -r ../tests $(MERCURY_VERSION)/tests;		\
+		(dir=`pwd` && cd .. && \
+			tar -cf $$dir/$(MERCURY_VERSION)/tests.tar tests && \
+			gzip $$dir/$(MERCURY_VERSION)/tests.tar)	\
 	else								\
-		cp -r ../../tests $(MERCURY_VERSION)/tests;		\
+		(dir=`pwd` && cd ../.. && \
+			tar -cf $$dir/$(MERCURY_VERSION)/tests.tar tests && \
+			gzip $$dir/$(MERCURY_VERSION)/tests.tar)	\
 	fi
 	for file in $(MISC_FILES); do					\
 		sed	-e 's/<VERSION>/$(VERSION)/g'			\
