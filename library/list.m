@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-1997 The University of Melbourne.
+% Copyright (C) 1993-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -337,6 +337,7 @@
 :- mode list__map(pred(in, out) is semidet, in, out) is semidet.
 :- mode list__map(pred(in, out) is multi, in, out) is multi.
 :- mode list__map(pred(in, out) is nondet, in, out) is nondet.
+:- mode list__map(pred(in, in) is semidet, in, in) is semidet.
 
 	% list__foldl(Pred, List, Start, End) calls Pred with each
 	% element of List (working left-to-right) and an accumulator
