@@ -6,13 +6,16 @@ See the samples for example code, and the interfaces of
 fully documented in any way, but if you know Tcl/Tk, you shouldn't
 have any problems.
 
-The main tricky thing is that it is *CRUCIAL* that you link with a
+The main tricky thing is that it is *CRUCIAL* that you enable recognition
+of interior pointers in the garbage collection library.  The simplest
+way to do this is to set the GC_ALL_INTERIOR_POINTERS environment variable
+before running your program.  Another alternative is to link with a
 version of the garbage collection library (libgc.a or libgc.so) which
 has been compiled with `-DALL_INTERIOR_POINTERS'.  You can create
 this by typing the commands
 
 	make clean
-	make libgc.a libgc.so EXTRA_CFLAGS=-DALL_INTERIOR_POINTERS
+	make libgc.a libgc.so GC_GRADE=gc EXTRA_CFLAGS=-DALL_INTERIOR_POINTERS
 
 in the boehm_gc directory of the Mercury compiler source distribution.
 
