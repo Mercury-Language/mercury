@@ -17,13 +17,18 @@ debugger_test.out: debugger_test debugger_test.inp
 	./debugger_test debugger_test.m < debugger_test.inp \
 		> debugger_test.out 2>&1
 
+pretty_print_test.out: pretty_print_test.ugly
+	cp pretty_print_test.ugly pretty_print_test.out
+
 #-----------------------------------------------------------------------------#
 
 STACK_LAYOUT_PROGS=	\
 	debugger_regs	\
 	debugger_test
 
-OTHER_PROGS=
+OTHER_PROGS =
+
+OTHER_TESTS = mdemangle_test pretty_print_test
 
 MCFLAGS-debugger_regs = --generate-trace
 MCFLAGS-debugger_test = --generate-trace
@@ -44,8 +49,8 @@ endif
 
 DEPS=	$(PROGS:%=%.dep)
 DEPENDS=$(PROGS:%=%.depend)
-OUTS=	$(PROGS:%=%.out) mdemangle_test.out
-RESS=	$(PROGS:%=%.res) mdemangle_test.res
+OUTS=	$(PROGS:%=%.out) $(OTHER_TESTS:%=%.out)
+RESS=	$(PROGS:%=%.res) $(OTHER_TESTS:%=%.res)
 MODS=	$(PROGS:%=%.mod)
 
 #-----------------------------------------------------------------------------#

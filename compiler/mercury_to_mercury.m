@@ -374,7 +374,7 @@ mercury_output_item(typeclass(Constraints, ClassName, Vars, Methods,
 
 	output_class_methods(Methods),
 	
-	io__write_string("].\n").
+	io__write_string("\n].\n").
 mercury_output_item(instance(Constraints, ClassName, Types, Methods, 
 		VarSet), _) --> 
 	io__write_string(":- instance "),
@@ -401,7 +401,7 @@ mercury_output_item(instance(Constraints, ClassName, Types, Methods,
 
 	output_instance_methods(Methods),
 	
-	io__write_string("].\n").
+	io__write_string("\n].\n").
 
 %-----------------------------------------------------------------------------%
 :- pred output_class_constraints(list(class_constraint), varset, 
@@ -430,52 +430,53 @@ output_class_methods(Methods) -->
 :- mode output_class_method(in, di, uo) is det.
 
 output_class_method(Method) -->
-	io__write_string("\t("),
+	io__write_string("\t"),
 	(
 		{ Method = pred(VarSet, Name, TypesAndModes, Detism, 
 			_Condition, ClassContext, Context) },
 		mercury_output_pred_decl(VarSet, Name, TypesAndModes, Detism,
-			pure, ClassContext, Context, "", "),\n(", "\n")
+			pure, ClassContext, Context, "", ",\n\t", "")
 	;
 		{ Method = func(VarSet, Name, TypesAndModes, TypeAndMode, 
 			Detism, _Condition, ClassContext, Context) },
 		mercury_output_func_decl(VarSet, Name, TypesAndModes,
 			TypeAndMode, Detism, pure, ClassContext, Context, 
-			"", "),\n(", "\n")
+			"", ",\n\t", "")
 	;
 		{ Method = pred_mode(VarSet, Name, Modes, Detism, 
 			_Condition, Context) },
 		mercury_output_pred_mode_decl_2(VarSet, Name, Modes, Detism,
-			Context, "", "\n")
+			Context, "", "")
 	;
 		{ Method = func_mode(VarSet, Name, Modes, Mode, 
 			Detism, _Condition, Context) },
 		mercury_output_func_mode_decl_2(VarSet, Name, Modes, 
-			Mode, Detism, Context, "", "\n")
-	),
-	io__write_char(')').
+			Mode, Detism, Context, "", "")
+	).
 
 :- pred output_instance_methods(instance_interface, io__state, io__state).
 :- mode output_instance_methods(in, di, uo) is det.
 
 output_instance_methods(Methods) -->
-	{ OutputMethod = lambda([Method::in, IO0::di, IO::uo] is det,
-		(
-			(
-				Method = func_instance(Name1, Name2, Arity),
-				io__write_string("func((", IO0, IO1)
-			;
-				Method = pred_instance(Name1, Name2, Arity),
-				io__write_string("pred((", IO0, IO1)
-			),
-			mercury_output_bracketed_sym_name(Name1, IO1, IO2),
-			io__write_string(")/", IO2, IO3),
-			io__write_int(Arity, IO3, IO4),
-			io__write_string(") is ", IO4, IO5),
-			mercury_output_bracketed_sym_name(Name2, IO5, IO)
-		)
-	) },
-	io__write_list(Methods, ",\n", OutputMethod).
+	io__write_list(Methods, ",\n", output_instance_method).
+
+:- pred output_instance_method(instance_method, io__state, io__state).
+:- mode output_instance_method(in, di, uo) is det.
+
+output_instance_method(Method) -->
+	io__write_char('\t'),
+	(
+		{ Method = func_instance(Name1, Name2, Arity) },
+		io__write_string("func(")
+	;
+		{ Method = pred_instance(Name1, Name2, Arity) },
+		io__write_string("pred(")
+	),
+	mercury_output_bracketed_sym_name(Name1),
+	io__write_string("/"),
+	io__write_int(Arity),
+	io__write_string(") is "),
+	mercury_output_bracketed_sym_name(Name2).
 
 %-----------------------------------------------------------------------------%
 
