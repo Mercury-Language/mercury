@@ -1067,7 +1067,7 @@ case $HOST in
 		fullname=i686-pc-linux-libc2.2-gnu-O5
 		;;
 	ceres)	
-		fullname=i686-pc-linux-libc2.2-gnu-O5-hlc
+		fullname=i686-pc-linux-libc2.3-gnu-O5-hlc
 		;;
 	aral)	
 		fullname=i686-pc-linux-libc2.3-gnu-O5
