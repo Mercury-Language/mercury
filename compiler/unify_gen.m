@@ -22,10 +22,16 @@
 					code_tree, code_info, code_info).
 :- mode unify_gen__generate_construction(in, in, in, in, out, in, out) is det.
 
-:- pred unify_gen__generate_deconstruction(var, cons_id,
+:- pred unify_gen__generate_det_deconstruction(var, cons_id,
 				list(var), list(uni_mode),
 					code_tree, code_info, code_info).
-:- mode unify_gen__generate_deconstruction(in, in, in, in, out,
+:- mode unify_gen__generate_det_deconstruction(in, in, in, in, out,
+							in, out) is det.
+
+:- pred unify_gen__generate_semi_deconstruction(var, cons_id,
+				list(var), list(uni_mode),
+					code_tree, code_info, code_info).
+:- mode unify_gen__generate_semi_deconstruction(in, in, in, in, out,
 							in, out) is det.
 
 :- pred unify_gen__generate_test(var, var, code_tree, code_info, code_info).
@@ -79,14 +85,14 @@ unify_gen__generate_construction(Var, Tag, Args, Modes, Code) -->
 	code_info__get_variable_register(Var, Lval),
 	{ unify_gen__make_fields_and_argvars(Args, Lval, First, TagNum,
 							Fields, ArgVars) },
-	unify_gen__generate_unify_args(Fields, ArgVars, Modes, CodeB),
+	unify_gen__generate_det_unify_args(Fields, ArgVars, Modes, CodeB),
 	{ Code = tree(node(CodeA), CodeB) }.
 
 :- pred unify_gen__generate_cons_args(list(var), list(rval)).
 :- mode unify_gen__generate_cons_args(in, out) is det.
 
 unify_gen__generate_cons_args([], []).
-unify_gen__generate_cons_args([_|Vars], [unused|RVals]) :-
+unify_gen__generate_cons_args([Var|Vars], [var(Var)|RVals]) :-
 	unify_gen__generate_cons_args(Vars, RVals).
 
 %---------------------------------------------------------------------------%
@@ -105,7 +111,28 @@ unify_gen__make_fields_and_argvars([Var|Vars], Lval, Field0, TagNum,
 
 %---------------------------------------------------------------------------%
 
-unify_gen__generate_deconstruction(Var, Tag, Args, Modes, Code) -->
+unify_gen__generate_det_deconstruction(Var, Tag, Args, Modes, Code) -->
+	code_info__cons_id_to_abstag(Tag, AbsTag),
+	(
+		{ AbsTag = simple(TagNum0) }
+	->
+		{ TagNum = TagNum0 },
+		{ First = 0 }
+	;
+		{ AbsTag = unsimple(TagNum) },
+		{ First = 1 }
+	),
+	code_info__flush_variable(Var, Code0),
+	code_info__get_variable_register(Var, Lval),
+	{ CodeA = node(Code0) },
+	{ unify_gen__make_fields_and_argvars(Args, Lval, First, TagNum,
+							Fields, ArgVars) },
+	unify_gen__generate_det_unify_args(Fields, ArgVars, Modes, CodeB),
+	{ Code = tree(CodeA, CodeB) }.
+
+%---------------------------------------------------------------------------%
+
+unify_gen__generate_semi_deconstruction(Var, Tag, Args, Modes, Code) -->
 	code_info__cons_id_to_abstag(Tag, AbsTag),
 	(
 		{ AbsTag = simple(TagNum0) }
@@ -125,28 +152,74 @@ unify_gen__generate_deconstruction(Var, Tag, Args, Modes, Code) -->
 	]) },
 	{ unify_gen__make_fields_and_argvars(Args, Lval, First, TagNum,
 							Fields, ArgVars) },
-	unify_gen__generate_unify_args(Fields, ArgVars, Modes, CodeC),
+	unify_gen__generate_semi_unify_args(Fields, ArgVars, Modes, CodeC),
 	{ Code = tree(CodeA, tree(CodeB, CodeC)) }.
 
 %---------------------------------------------------------------------------%
 
-:- pred unify_gen__generate_unify_args(list(uni_val), list(uni_val),
+:- pred unify_gen__generate_det_unify_args(list(uni_val), list(uni_val),
 			list(uni_mode), code_tree, code_info, code_info).
-:- mode unify_gen__generate_unify_args(in, in, in, out, in, out) is det.
+:- mode unify_gen__generate_det_unify_args(in, in, in, out, in, out) is det.
 
-unify_gen__generate_unify_args([], [], [], empty) --> [].
-unify_gen__generate_unify_args([L|Ls], [R|Rs], [M|Ms], Code) -->
-	unify_gen__generate_sub_unify(L, R, M, CodeA),
-	unify_gen__generate_unify_args(Ls, Rs, Ms, CodeB),
+unify_gen__generate_det_unify_args([], [], [], empty) --> [].
+unify_gen__generate_det_unify_args([L|Ls], [R|Rs], [M|Ms], Code) -->
+	unify_gen__generate_det_sub_unify(L, R, M, CodeA),
+	unify_gen__generate_det_unify_args(Ls, Rs, Ms, CodeB),
 	{ Code = tree(CodeA, CodeB) }.
 
 %---------------------------------------------------------------------------%
 
-:- pred unify_gen__generate_sub_unify(uni_val, uni_val, uni_mode, code_tree,
-							code_info, code_info).
-:- mode unify_gen__generate_sub_unify(in, in, in, out, in, out) is det.
+:- pred unify_gen__generate_semi_unify_args(list(uni_val), list(uni_val),
+			list(uni_mode), code_tree, code_info, code_info).
+:- mode unify_gen__generate_semi_unify_args(in, in, in, out, in, out) is det.
 
-unify_gen__generate_sub_unify(L, R, M, Code) -->
+unify_gen__generate_semi_unify_args([], [], [], empty) --> [].
+unify_gen__generate_semi_unify_args([L|Ls], [R|Rs], [M|Ms], Code) -->
+	unify_gen__generate_semi_sub_unify(L, R, M, CodeA),
+	unify_gen__generate_semi_unify_args(Ls, Rs, Ms, CodeB),
+	{ Code = tree(CodeA, CodeB) }.
+
+%---------------------------------------------------------------------------%
+
+:- pred unify_gen__generate_det_sub_unify(uni_val, uni_val, uni_mode, code_tree,
+							code_info, code_info).
+:- mode unify_gen__generate_det_sub_unify(in, in, in, out, in, out) is det.
+
+unify_gen__generate_det_sub_unify(L, R, M, Code) -->
+	{ M = ((LI - RI) -> (LF - RF)) },
+	code_info__get_module_info(ModuleInfo),
+	(
+		{ mode_is_input(ModuleInfo, (LI -> LF)) },
+		{ mode_is_input(ModuleInfo, (RI -> RF)) }
+	->
+		% { true }
+		{ error("Det unifications may not contain tests") }
+	;
+		{ mode_is_input(ModuleInfo, (LI -> LF)) },
+		{ mode_is_output(ModuleInfo, (RI -> RF)) }
+	->
+		unify_gen__generate_sub_assign(R, L, Code)
+	;
+		{ mode_is_output(ModuleInfo, (LI -> LF)) },
+		{ mode_is_input(ModuleInfo, (RI -> RF)) }
+	->
+		unify_gen__generate_sub_assign(L, R, Code)
+	;
+		{ mode_is_output(ModuleInfo, (LI -> LF)) },
+		{ mode_is_output(ModuleInfo, (RI -> RF)) }
+	->
+		{ error("Some strange unify") }
+	;
+		{ Code = empty } % free-free - ignore
+	).
+
+%---------------------------------------------------------------------------%
+
+:- pred unify_gen__generate_semi_sub_unify(uni_val, uni_val, uni_mode, code_tree,
+							code_info, code_info).
+:- mode unify_gen__generate_semi_sub_unify(in, in, in, out, in, out) is det.
+
+unify_gen__generate_semi_sub_unify(L, R, M, Code) -->
 	{ M = ((LI - RI) -> (LF - RF)) },
 	code_info__get_module_info(ModuleInfo),
 	(

@@ -11,16 +11,15 @@
 %
 % The following assumptions are made about the state of the high-level
 % data structure:
-%	o  Variables are never stored in more than one place.
-%		The exception to this is when variables are stored in
-%		stack slots across calls, but this case is handled
-%		separately by making the mapping between stackslots and
-%		variables bijective.
+%	o  Variables can be stored in any number of distinct places.
+%	o  Registers may contain a value corresponding to more than
+%		one variable.
 %	o  Procedures are in superhomogeneous form. This means that
 %		construction unifications and builtins are not nested.
 %	o  Evaluation of arguments in construction and deconstruction
 %		unifications is lazy. This means that arguments in a
-%		`don't care' mode are ignored.
+%		`don't care' mode are ignored, and that assignments
+%		are cashed.
 %
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -57,9 +56,13 @@
 :- pred code_info__set_varset(varset, code_info, code_info).
 :- mode code_info__set_varset(in, in, out) is det.
 
+		% Get the hlds mapping from variables to
+		% stack slots
 :- pred code_info__get_call_info(call_info, code_info, code_info).
 :- mode code_info__get_call_info(out, in, out) is det.
 
+		% Set the hlds mapping from variables to
+		% stack slots
 :- pred code_info__set_call_info(call_info, code_info, code_info).
 :- mode code_info__set_call_info(in, in, out) is det.
 
@@ -81,54 +84,72 @@
 :- pred code_info__set_module_info(module_info, code_info, code_info).
 :- mode code_info__set_module_info(in, in, out) is det.
 
+		% Get an unused register, and mark it as
+		% `reserved'
 :- pred code_info__get_free_register(reg, code_info, code_info).
 :- mode code_info__get_free_register(out, in, out) is det.
 
+		% Clear all reserved registers.
 :- pred code_info__clear_reserved_registers(code_info, code_info).
 :- mode code_info__clear_reserved_registers(in, out) is det.
 
+		% Generate all cashed expressions
 :- pred code_info__flush_expression_cashe(list(instruction),
 						code_info, code_info).
 :- mode code_info__flush_expression_cashe(out, in, out) is det.
 
+		% Flush a single cashed expression
 :- pred code_info__flush_variable(var, list(instruction), code_info, code_info).
 :- mode code_info__flush_variable(in, out, in, out) is det.
 
+		% Enter the expression for a variable into the cashe
 :- pred code_info__cashe_expression(var, rval, code_info, code_info).
 :- mode code_info__cashe_expression(in, in, in, out) is det.
 
+		% Enter an expression and variable into the cashe
+		% with a specific target
 :- pred code_info__cashe_expression_with_target(var, rval, lval,
 							code_info, code_info).
 :- mode code_info__cashe_expression_with_target(in, in, in, in, out) is det.
 
-:- pred code_info__shuffle_register(reg, list(instruction),
+		% Generate code to swap a live value out of the given
+		% register, and place the value for the given variable
+		% into that register.
+:- pred code_info__shuffle_register(var, reg, list(instruction),
 						code_info, code_info).
-:- mode code_info__shuffle_register(in, out, in, out) is det.
+:- mode code_info__shuffle_register(in, in, out, in, out) is det.
 
+		% Get the fall though point for failure
 :- pred code_info__get_fall_through(label, code_info, code_info).
 :- mode code_info__get_fall_through(out, in, out) is det.
 
+		% Set the fall though point for failure
 :- pred code_info__set_fall_through(label, code_info, code_info).
 :- mode code_info__set_fall_through(in, in, out) is det.
 
-:- pred code_info__generate_fall_through(list(instruction), code_info,
-								code_info).
-:- mode code_info__generate_fall_through(out, in, out) is det.
-
+		% Mark a register as reserved
 :- pred code_info__reserve_register(reg, code_info, code_info).
 :- mode code_info__reserve_register(in, in, out) is det.
 
+		% Generate code to store the value of
+		% a given variable on the det stack
 :- pred code_info__save_variable_on_stack(var, list(instruction),
 							code_info, code_info).
 :- mode code_info__save_variable_on_stack(in, out, in, out) is det.
 
+		% Succeed if the given variable is live at the
+		% end of this goal.
 :- pred code_info__variable_is_live(var, code_info, code_info).
 :- mode code_info__variable_is_live(in, in, out) is semidet.
 
+		% Get the call argument info for a given mode
+		% of a given predicate
 :- pred code_info__get_pred_proc_arginfo(pred_id, proc_id, list(arg_info),
 							code_info, code_info).
 :- mode code_info__get_pred_proc_arginfo(in, in, out, in, out) is det.
 
+		% Get the call argument information for the
+		% current procedure
 :- pred code_info__get_arginfo(list(arg_info), code_info, code_info).
 :- mode code_info__get_arginfo(out, in, out) is det.
 
@@ -154,8 +175,8 @@
 :- pred code_info__reset_variable_target(var, lval, code_info, code_info).
 :- mode code_info__reset_variable_target(in, in, in, out) is semidet.
 
-:- pred code_info__clear_all_variables_and_registers(code_info, code_info).
-:- mode code_info__clear_all_variables_and_registers(in, out) is det.
+:- pred code_info__clear_all_registers(code_info, code_info).
+:- mode code_info__clear_all_registers(in, out) is det.
 
 :- pred code_info__set_variable_register(var, reg, code_info, code_info).
 :- mode code_info__set_variable_register(in, in, in, out) is det.
@@ -173,8 +194,8 @@
 :- pred code_info__slap_code_info(code_info, code_info, code_info).
 :- mode code_info__slap_code_info(in, in, out) is det.
 
-:- pred code_info__register_variable(reg, var, code_info, code_info).
-:- mode code_info__register_variable(in, out, in, out) is semidet.
+:- pred code_info__register_variables(reg, set(var), code_info, code_info).
+:- mode code_info__register_variables(in, out, in, out) is semidet.
 
 :- pred code_info__get_succip_used(bool, code_info, code_info).
 :- mode code_info__get_succip_used(out, in, out) is det.
@@ -187,6 +208,12 @@
 
 :- pred code_info__update_liveness_info(delta_liveness, code_info, code_info).
 :- mode code_info__update_liveness_info(in, in, out) is det.
+
+:- pred code_info__reduce_variables_and_registers(code_info, code_info).
+:- mode code_info__reduce_variables_and_registers(in, out) is det.
+
+:- pred code_info__add_lvalue_to_variable(lval, var, code_info, code_info).
+:- mode code_info__add_lvalue_to_variable(in, in, in, out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -212,8 +239,7 @@
 					% what is stored in each register.
 			variable_info,	% A map storing the information about
 					% the status of each variable.
-			stackslot_info,	% A bijective map between variables and
-					% stack locations.
+			unit,		% Unused
 			bool,		% do we need to store succip?
 			fall_through,	% The fallthrough label for semi-
 					% deterministic code.
@@ -226,9 +252,7 @@
 
 :- type register_stat	--->	unused
 			;	reserved
-			;	result
-			;	var(var)
-			;	iconst(int).
+			;	vars(set(var)).
 
 :- type target_register	--->	none
 			;	target(lval).
@@ -236,18 +260,13 @@
 :- type variable_info	==	map(var, variable_stat).
 
 :- type variable_stat	--->	unused
-			;	evaluated(lval)
+			;	evaluated(set(lval))
 			;	cashed(rval, target_register).
-
-:- type stackslot_info	==	bimap(stackslot_num, var).
-
-:- type stackslot_num	==	int.
-
-:- type result_register	--->	unallocated
-			;	allocated(reg).
 
 :- type fall_through	--->	none
 			;	label(label).
+
+%---------------------------------------------------------------------------%
 
 code_info__init(SlotCount, Varset, Liveness, CallInfo,
 					PredId, ProcId, ModuleInfo, C) :-
@@ -255,8 +274,6 @@ code_info__init(SlotCount, Varset, Liveness, CallInfo,
 					ModuleInfo, RegisterInfo),
 	code_info__init_variable_info(PredId, ProcId,
 					ModuleInfo, VariableInfo),
-	code_info__init_stackslot_info(PredId, ProcId,
-					ModuleInfo, StackslotInfo),
 	SuccIPUsed = yes, % succip is always saved.
 	FallThough = none,
 	C = code_info(
@@ -268,7 +285,7 @@ code_info__init(SlotCount, Varset, Liveness, CallInfo,
 		ProcId,
 		RegisterInfo,
 		VariableInfo,
-		StackslotInfo,
+		unit,
 		SuccIPUsed,
 		FallThough,
 		ModuleInfo,
@@ -304,7 +321,8 @@ code_info__init_reg_info_2([arg_info(ArgLoc, Mode)|ArgVars], N0, HeadVars,
 	(
 		Mode = top_in
 	->
-		map__set(RegisterInfo0, Reg, var(Var), RegisterInfo1)
+		set__singleton_set(Vars, Var),
+		map__set(RegisterInfo0, Reg, vars(Vars), RegisterInfo1)
 	;
 		RegisterInfo1 = RegisterInfo0
 	),
@@ -341,8 +359,9 @@ code_info__init_var_info_2([arg_info(ArgLoc, Mode)|ArgVars], N0, HeadVars,
 	->
 		code_util__arg_loc_to_register(ArgLoc, Reg),
 		list__nth_member_lookup(HeadVars, N0, Var),
-		LVAL = reg(Reg),
-		map__set(VariableInfo0, Var, evaluated(LVAL), VariableInfo1)
+		Lval = reg(Reg),
+		set__singleton_set(Lvals, Lval),
+		map__set(VariableInfo0, Var, evaluated(Lvals), VariableInfo1)
 	;
 		VariableInfo1 = VariableInfo0
 	),
@@ -352,14 +371,7 @@ code_info__init_var_info_2([arg_info(ArgLoc, Mode)|ArgVars], N0, HeadVars,
 
 %---------------------------------------------------------------------------%
 
-:- pred code_info__init_stackslot_info(pred_id, proc_id, module_info,
-								stackslot_info).
-:- mode code_info__init_stackslot_info(in, in, in, out) is det.
-
-code_info__init_stackslot_info(_PredId, _ProcId, _ModuleInfo, StackslotInfo) :-
-	bimap__init(StackslotInfo).
-
-%---------------------------------------------------------------------------%
+	% The lowest numbered free register is returned.
 
 code_info__get_free_register(Reg) -->
 	code_info__get_registers(Registers0),
@@ -451,15 +463,11 @@ code_info__flush_variable(Var, Code) -->
 		(
 			{ TargetReg = reg(Reg) }
 		->
-			code_info__get_registers(Registers0),
-			{ map__set(Registers0, Reg, var(Var), Registers) },
-			code_info__set_registers(Registers)
+			code_info__add_variable_to_register(Var, Reg)
 		;
 			{ true }
 		),
-		code_info__get_variables(Variables0),
-		{ map__set(Variables0, Var, evaluated(TargetReg), Variables) },
-		code_info__set_variables(Variables)
+		code_info__add_lvalue_to_variable(TargetReg, Var)
 	;
 		{ Code = [] }
 	).
@@ -473,27 +481,32 @@ code_info__generate_expression(lval(Lval), TargetReg, Code) -->
 code_info__generate_expression(var(Var), TargetReg, Code) -->
 	code_info__get_variable(Var, VarStat),
 	(
-		{ VarStat = evaluated(Lval0) },
-		{ not TargetReg = Lval0 }
+		{ VarStat = evaluated(Lvals0) }
 	->
-		code_info__make_assignment_comment(Var, TargetReg, Comment),
-		{ Code = [ assign(TargetReg, lval(Lval0)) - Comment] }
+		(
+			{ code_info__select_lvalue(Lvals0, TargetReg, Lval0) }
+		->
+			code_info__make_assignment_comment(Var,
+							TargetReg, Comment),
+			{ Code = [ assign(TargetReg, lval(Lval0)) -
+								Comment] }
+		;
+			{ Code = [] }
+		)
 	;
 		{ VarStat = cashed(Exprn, target(TargetReg1)) }
 	->
 		code_info__generate_expression(Exprn, TargetReg1, Code0),
 			% Mark the target register.
-		code_info__get_variables(Variables0),
-		{ map__set(Variables0, Var, evaluated(TargetReg1), Variables) },
-		code_info__set_variables(Variables),
+		code_info__add_lvalue_to_variable(TargetReg1, Var),
 			% Assemble the code
 		(
 			{ not TargetReg = TargetReg1 }
 		->
 			code_info__make_assignment_comment(Var,
 							TargetReg, Comment),
-			{ Code1 = [ assign(TargetReg, lval(TargetReg1)) -
-				Comment] }
+			{ Code1 = [assign(TargetReg, lval(TargetReg1)) -
+								Comment] }
 		;
 			{ Code1 = [] }
 		),
@@ -503,14 +516,11 @@ code_info__generate_expression(var(Var), TargetReg, Code) -->
 	->
 		code_info__generate_expression(Exprn, TargetReg, Code0),
 			% Mark the target register.
-		code_info__get_variables(Variables0),
-		{ map__set(Variables0, Var, evaluated(TargetReg), Variables) },
-		code_info__set_variables(Variables),
+		code_info__add_lvalue_to_variable(TargetReg, Var),
 			% Assemble the code
 		{ Code = Code0 }
 	;
-		% { VarStat = unused } or
-		% { Lval0 = Lval }
+		% { VarStat = unused }
 		{ Code = [] }
 	).
 code_info__generate_expression(binop(Op, L0, R0), TargetReg, Code) -->
@@ -588,7 +598,8 @@ code_info__generate_expression_vars(lval(Lval), lval(Lval), []) --> [].
 code_info__generate_expression_vars(var(Var), Result, Code) -->
 	code_info__get_variable(Var, VarStat),
 	(
-		{ VarStat = evaluated(Lval0) }
+		{ VarStat = evaluated(Lvals0) },
+		{ set__to_sorted_list(Lvals0, [Lval0|_]) }
 	->
 		{ Result = lval(Lval0) },
 		{ Code = [] }
@@ -597,6 +608,14 @@ code_info__generate_expression_vars(var(Var), Result, Code) -->
 	->
 		code_info__target_to_lvalue(Target, Exprn, TargetReg),
 		code_info__generate_expression(Exprn, TargetReg, Code),
+		(
+			{ TargetReg = reg(Reg) }
+		->
+			code_info__add_variable_to_register(Var, Reg)
+		;
+			{ true }
+		),
+		code_info__add_lvalue_to_variable(TargetReg, Var),
 		{ Result = lval(TargetReg) }
 	;
 		% { VarStat = unused },
@@ -658,15 +677,35 @@ code_info__evaluated_expression(var(Var), Lval) -->
 	code_info__get_variables(Variables),
 	{ map__lookup(Variables, Var, VarStat) },
 	(
-		{ VarStat = evaluated(Lval0) }
+		{ VarStat = evaluated(Lvals0) },
+		{ set__to_sorted_list(Lvals0, [Lval0|_]) }
 	->
 		{ Lval = Lval0 }
 	;
 		{ VarStat = cashed(Exprn,_) }
 	->
-		code_info__evaluated_expression(Exprn, Lval)
+		code_info__evaluated_expression(Exprn, Lval),
+		code_info__add_lvalue_to_variable(Lval, Var)
 	;
 		{ fail }
+	).
+
+%---------------------------------------------------------------------------%
+
+:- pred code_info__select_lvalue(set(lval), lval, lval).
+:- mode code_info__select_lvalue(in, in, out) is det.
+
+code_info__select_lvalue(Lvals, Target, Lval) :-
+	(
+		set__member(Target, Lvals)
+	->
+		Lval = Target
+	;
+		set__to_sorted_list(Lvals, [Lval0|_])
+	->
+		Lval = Lval0
+	;
+		error("No lval to select")
 	).
 
 %---------------------------------------------------------------------------%
@@ -686,15 +725,22 @@ code_info__cashe_expression_with_target(Var, Exprn, TargetReg) -->
 
 %---------------------------------------------------------------------------%
 
-code_info__shuffle_register(Reg, Code) -->
+code_info__shuffle_register(Var, Reg, Code) -->
 	code_info__get_registers(Registers),
 	(
 		{ map__search(Registers, Reg, RegContents) }
 	->
-		code_info__shuffle_registers_2(Reg, RegContents, Code)
+			% Generate code to swap the contents of
+			% the register out of the way
+		code_info__shuffle_registers_2(Reg, RegContents, CodeA)
 	;
-		{ Code = [] }
-	).
+		{ CodeA = [] }
+	),
+		% generate the code to place the variable in
+		% the desired register
+	code_info__generate_expression(var(Var), reg(Reg), CodeB),
+	code_info__remap_variable(Var, reg(Reg)),
+	{ list__append(CodeA, CodeB, Code) }.
 
 :- pred code_info__shuffle_registers_2(reg, register_stat, list(instruction),
 						code_info, code_info).
@@ -710,28 +756,18 @@ code_info__shuffle_registers_2(Reg, Contents, Code) -->
 	->
 		{ error("Cannot shuffle a reserved register.") }
 	;
-		{ Contents = result }
-	->
-		{ error("Cannot shuffle the result register.") }
-	;
-		{ Contents = var(Var) }
+		{ Contents = vars(Vars) }
 	->
 			% get a spare register
 		code_info__get_free_register(NewReg),
 			% Update the register info -
 			% remove the entry for the old register,
 			% and set the entry for the new register.
-		code_info__get_registers(Registers0),
-		{ map__delete(Registers0, Reg, Registers1) },
-		{ map__set(Registers1, NewReg, var(Var), Registers) },
-		code_info__set_registers(Registers),
+		code_info__add_variables_to_register(Vars, NewReg),
 			% Update the variable info -
 			% Set the location of the variable to the
 			% new register.
-		code_info__get_variables(Variables0),
-		{ map__set(Variables0, Var, evaluated(reg(NewReg)),
-								Variables) },
-		code_info__set_variables(Variables),
+		code_info__remap_variables(Vars, reg(NewReg)),
 			% Generate the code fragment.
 		{ Code = [assign(reg(NewReg), lval(reg(Reg))) -
 				"Swap variable to a new register"] }
@@ -748,43 +784,28 @@ code_info__save_variable_on_stack(Var, Code) -->
 	->
 		{ Code = [] }
 	;
-		{ VarStat = evaluated(Lval) }
+		{ VarStat = evaluated(_) }
 	->
-		code_info__get_stackslots(Stackslots0),
-		(
-			{ bimap__search(Stackslots0, _Slot0, Var) }
-		->
-			{ Code = [] }
-		;
-			code_info__get_call_info(CallInfo),
-			{ map__lookup(CallInfo, Var, Slot) },
-			{ bimap__set(Stackslots0, Slot, Var, StackSlots1) },
-			code_info__set_stackslots(StackSlots1),
-			{ Code = [assign(stackvar(Slot), lval(Lval)) -
-						"Copy Lval to det stack"] }
-		)
+		code_info__get_variable_slot(Var, Slot1),
+		code_info__generate_expression(
+					var(Var), stackvar(Slot1), Code),
+		code_info__add_lvalue_to_variable(stackvar(Slot1), Var)
 	;
-		{ VarStat = cashed(Exprn, Target) }
+		{ VarStat = cashed(Exprn, none) }
 	->
-		code_info__target_to_lvalue(Target, Exprn, TargetReg1),
-		code_info__generate_expression(Exprn, TargetReg1, Code0),
-		code_info__get_variables(Variables1),
-		{ map__set(Variables1, Var, evaluated(TargetReg1),
-							Variables2) },
-		code_info__set_variables(Variables2),
-		code_info__get_stackslots(Stackslots2),
-		(
-			{ bimap__search(Stackslots2, _Slot1, Var) }
-		->
-			{ Code1 = [] }
-		;
-			code_info__get_call_info(CallInfo),
-			{ map__lookup(CallInfo, Var, Slot2) },
-			{ bimap__set(Stackslots2, Slot2, Var, StackSlots3) },
-			code_info__set_stackslots(StackSlots3),
-			{ Code1 = [assign(stackvar(Slot2), lval(TargetReg1)) -
-						"Copy Lval to det stack"] }
-		),
+		code_info__get_variable_slot(Var, Slot1),
+		code_info__generate_expression(Exprn,
+						stackvar(Slot1), Code),
+		code_info__add_lvalue_to_variable(stackvar(Slot1), Var)
+	;
+		{ VarStat = cashed(Exprn, target(TargetReg)) }
+	->
+		code_info__generate_expression(Exprn, TargetReg, Code0),
+		code_info__add_lvalue_to_variable(TargetReg, Var),
+		code_info__get_variable_slot(Var, Slot1),
+		code_info__generate_expression(var(Var),
+						stackvar(Slot1), Code1),
+		code_info__add_lvalue_to_variable(stackvar(Slot1), Var),
 		{ list__append(Code0, Code1, Code) }
 	;
 		{ error("This should never happen") }
@@ -795,11 +816,12 @@ code_info__save_variable_on_stack(Var, Code) -->
 code_info__reserve_register(Reg) -->
 	code_info__get_registers(Registers0),
 	(
-		{ map__insert(Registers0, Reg, reserved, Registers) }
+		{ map__search(Registers0, Reg, reserved) }
 	->
-		code_info__set_registers(Registers)
-	;
 		{ error("Cannot reserve a live register.") }
+	;
+		{ map__set(Registers0, Reg, reserved, Registers) },
+		code_info__set_registers(Registers)
 	).
 
 %---------------------------------------------------------------------------%
@@ -822,42 +844,14 @@ code_info__get_current_label(Label) -->
 
 %---------------------------------------------------------------------------%
 
-:- pred code_info__get_free_stackslot(stackslot_num, code_info, code_info).
-:- mode code_info__get_free_stackslot(out, in, out) is det.
-
-code_info__get_free_stackslot(Slot) -->
-	code_info__get_stackslots(StackSlots),
-	{ bimap__ordinates(StackSlots, SlotKeys) },
-	{ code_info__get_free_stackslot_2(0, SlotKeys, Slot) }.
-
-:- pred code_info__get_free_stackslot_2(int, list(int), int).
-:- mode code_info__get_free_stackslot_2(in, in, out) is det.
-
-code_info__get_free_stackslot_2(N, [], N).
-code_info__get_free_stackslot_2(N0, [S|Ss], Slot) :-
-	(
-		N0 < S
-	->
-		Slot = N0
-	;
-		N is S + 1,
-		code_info__get_free_stackslot_2(N, Ss, Slot)
-	).
-
-%---------------------------------------------------------------------------%
-
 code_info__get_variable_register(Var, Lval) -->
 	code_info__get_variables(Variables),
 	(
 		{ map__search(Variables, Var, VarStat) },
-		{ VarStat = evaluated(Lval0) }
+		{ VarStat = evaluated(Lvals0) },
+		{ set__to_sorted_list(Lvals0, [Lval0|_]) }
 	->
 		{ Lval = Lval0 }
-	;
-		code_info__get_stackslots(StackSlots),
-		{ bimap__search(StackSlots, Slot, Var) }
-	->
-		{ Lval = stackvar(Slot) }
 	;
 		{ error("Cannot find lvalue of variable") }
 	).
@@ -867,46 +861,81 @@ code_info__get_variable_register(Var, Lval) -->
 code_info__variable_register(Var, Lval) -->
 	code_info__get_variables(Variables),
 	{ map__search(Variables, Var, VarStat) },
-	{ VarStat = evaluated(Lval) }.
+	{ VarStat = evaluated(Lvals) },
+	{ set__to_sorted_list(Lvals, [Lval|_]) }.
 
 %---------------------------------------------------------------------------%
 
-code_info__register_variable(Reg, Var) -->
+code_info__register_variables(Reg, Vars) -->
 	code_info__get_registers(Registers),
 	{ map__search(Registers, Reg, RegStat) },
-	{ RegStat = var(Var) }.
+	{ RegStat = vars(Vars) }.
 
 %---------------------------------------------------------------------------%
 
 code_info__set_variable_register(Var, Reg) -->
-	code_info__get_variables(Variables0),
-	{ map__set(Variables0, Var, evaluated(reg(Reg)), Variables) },
-	code_info__set_variables(Variables),
-	code_info__get_registers(Registers0),
-	{ map__set(Registers0, Reg, var(Var), Registers) },
-	code_info__set_registers(Registers).
+	code_info__add_lvalue_to_variable(reg(Reg), Var),
+	code_info__add_variable_to_register(Var, Reg).
 
 %---------------------------------------------------------------------------%
 
 code_info__reset_variable_target(Var, Lval) -->
 	code_info__get_variables(Variables0),
-	(
-		{ map__search(Variables0, Var, VarStat) },
-		{ VarStat = cashed(Exprn, _) }
-	->
-		{ map__set(Variables0, Var, cashed(Exprn, target(Lval)),
-								Variables) },
-		code_info__set_variables(Variables)
-	).
-
+	{ map__search(Variables0, Var, VarStat) },
+	{ VarStat = cashed(Exprn, _) },
+	{ map__set(Variables0, Var,
+				cashed(Exprn, target(Lval)), Variables) },
+	code_info__set_variables(Variables).
 
 %---------------------------------------------------------------------------%
 
-code_info__clear_all_variables_and_registers -->
+:- pred code_info__get_variable_slot(var, int, code_info, code_info).
+:- mode code_info__get_variable_slot(in, out, in, out) is det.
+
+code_info__get_variable_slot(Var, Slot) -->
+	code_info__get_call_info(CallInfo),
+	{ map__lookup(CallInfo, Var, Slot) }.
+
+%---------------------------------------------------------------------------%
+
+code_info__clear_all_registers -->
 	{ map__init(Registers) },
 	code_info__set_registers(Registers),
+	code_info__get_variables(Variables0),
 	{ map__init(Variables) },
-	code_info__set_variables(Variables).
+	code_info__set_variables(Variables),
+	{ map__to_assoc_list(Variables0, Variables1) },
+	code_info__reconstruct_variables(Variables1).
+
+:- pred code_info__reconstruct_variables(assoc_list(var, variable_stat),
+							code_info, code_info).
+:- mode code_info__reconstruct_variables(in, in, out) is det.
+
+code_info__reconstruct_variables([]) --> [].
+code_info__reconstruct_variables([Var - VarStat|VarStats]) -->
+	(
+		{ VarStat = evaluated(Lvals0) }
+	->
+		{ set__to_sorted_list(Lvals0, LvalList) },
+		code_info__reenter_lvals(Var, LvalList)
+	;
+		{ true }
+	),
+	code_info__reconstruct_variables(VarStats).
+
+:- pred code_info__reenter_lvals(var, list(lval), code_info, code_info).
+:- mode code_info__reenter_lvals(in, in, in, out) is det.
+
+code_info__reenter_lvals(_Var, []) --> [].
+code_info__reenter_lvals(Var, [L|Ls]) -->
+	(
+		{ L = stackvar(_) }
+	->
+		code_info__add_lvalue_to_variable(L, Var)
+	;
+		{ true }
+	),
+	code_info__reenter_lvals(Var, Ls).
 
 %---------------------------------------------------------------------------%
 
@@ -941,16 +970,7 @@ code_info__get_variable(Var, VarLoc) -->
 	->
 		{ VarLoc = VarStat }
 	;
-		code_info__get_stackslots(StackSlots),
-		(
-			{ bimap__search(StackSlots, Slot0, Var) }
-		->
-			{ VarLoc = evaluated(stackvar(Slot0)) },
-			{ map__set(Variables, Var, VarLoc, Variables1) },
-			code_info__set_variables(Variables1)
-		;
-			{ error("Variable not in register or on stack.") }
-		)
+		{ error("Variable not in register or on stack.") }
 	).
 
 %---------------------------------------------------------------------------%
@@ -965,48 +985,36 @@ code_info__get_arginfo(ArgInfo) -->
 code_info__get_live_variables(Variables) -->
 	code_info__get_variables(Variables0),
 	{ map__keys(Variables0, Variables1) },
-	code_info__get_live_variables_2(Variables1, [], Variables).
+	code_info__get_live_variables_2(Variables1, Variables).
 
-:- pred code_info__get_live_variables_2(list(var), list(var), list(var),
-						code_info, code_info).
-:- mode code_info__get_live_variables_2(in, in, out, in, out) is det.
+:- pred code_info__get_live_variables_2(list(var), list(var), code_info,
+								code_info).
+:- mode code_info__get_live_variables_2(in, out, in, out) is det.
 
-code_info__get_live_variables_2([], Vars, Vars) --> [].
-code_info__get_live_variables_2([Var|Vars0], Vars1, Vars) -->
+code_info__get_live_variables_2([], []) --> [].
+code_info__get_live_variables_2([Var|Vars0], Vars) -->
+	code_info__get_live_variables_2(Vars0, Vars1),
 	(
 		code_info__variable_is_live(Var)
 	->
-		{ Vars2 = [Var|Vars1] }
+		{ Vars = [Var|Vars1] }
 	;
-		{ Vars2 = Vars1 }
-	),
-	code_info__get_live_variables_2(Vars0, Vars2, Vars).
+		{ Vars = Vars1 }
+	).
 
 %---------------------------------------------------------------------------%
 
 code_info__generate_forced_saves([], empty) --> [].
 code_info__generate_forced_saves([Var - Slot|VarSlots], Code) --> 
-	code_info__get_variables(Variables),
-	code_info__get_stackslots(StackSlots),
 	(
-		{ bimap__search(StackSlots, _, Var) }
+		code_info__variable_is_live(Var)
 	->
-			% If a variable is on the stack but not
-			% in the vars, then it has been generated,
-			% so we do nothing.
-		code_info__generate_forced_saves(VarSlots, Code)
+		code_info__generate_expression(var(Var), stackvar(Slot),
+								Code0),
+		code_info__add_lvalue_to_variable(stackvar(Slot), Var),
+		code_info__generate_forced_saves(VarSlots, RestCode),
+		{ Code = tree(node(Code0), RestCode) }
 	;
-		{ map__search(Variables, Var, _) }
-	->
-			% The variable isn't on the stack,
-			% so we check to see if it exists in a
-			% register, or in the cashe
-		code_info__generate_expression(var(Var), stackvar(Slot), Code0),
-		{ CodeA = node(Code0) },
-		code_info__generate_forced_saves(VarSlots, CodeB),
-		{ Code = tree(CodeA, CodeB) }
-	;
-			% The variable is not live yet.
 		code_info__generate_forced_saves(VarSlots, Code)
 	).
 
@@ -1026,23 +1034,23 @@ code_info__get_headvars(HeadVars) -->
 
 code_info__remake_code_info -->
 	code_info__get_call_info(CallInfo0),
-	{ map__init(Variables0) },
 	{ map__to_assoc_list(CallInfo0, CallInfo) },
-	{ code_info__remake_code_info_2(CallInfo, Variables0, Variables) },
-	code_info__set_variables(Variables),
+	{ map__init(Variables0) },
+	code_info__set_variables(Variables0),
+	code_info__remake_code_info_2(CallInfo),
 	{ map__init(Registers) },
 	code_info__set_registers(Registers).
 
 %---------------------------------------------------------------------------%
 
 :- pred code_info__remake_code_info_2(assoc_list(var, int),
-						variable_info, variable_info).
+						code_info, code_info).
 :- mode code_info__remake_code_info_2(in, in, out) is det.
 
-code_info__remake_code_info_2([], Variables, Variables).
-code_info__remake_code_info_2([V - S|VSs], Variables0, Variables) :-
-	map__insert(Variables0,V, evaluated(stackvar(S)), Variables1),
-	code_info__remake_code_info_2(VSs, Variables1, Variables).
+code_info__remake_code_info_2([]) --> [].
+code_info__remake_code_info_2([V - S|VSs]) -->
+	code_info__add_lvalue_to_variable(stackvar(S), V),
+	code_info__remake_code_info_2(VSs).
 
 %---------------------------------------------------------------------------%
 
@@ -1051,6 +1059,240 @@ code_info__update_liveness_info(Births - Deaths) -->
 	{ set__difference(Liveness0, Deaths, Liveness1) },
 	{ set__union(Liveness1, Births, Liveness) },
 	code_info__set_liveness_info(Liveness).
+
+%---------------------------------------------------------------------------%
+
+code_info__reduce_variables_and_registers -->
+	code_info__get_live_variables(Vars),
+	{ map__init(Variables0) },
+	code_info__reduce_variables_and_registers_2(Vars, Variables0).
+
+:- pred code_info__reduce_variables_and_registers_2(list(var),
+				variable_info, code_info, code_info).
+:- mode code_info__reduce_variables_and_registers_2(in, in, in, out)
+								is det.
+
+code_info__reduce_variables_and_registers_2([], Variables) -->
+	code_info__set_variables(Variables),
+	{ map__to_assoc_list(Variables, VarList) },
+	{ map__init(Registers) },
+	code_info__set_registers(Registers),
+	code_info__reconstruct_registers(VarList).
+code_info__reduce_variables_and_registers_2([Var|Vars], Variables0) -->
+	(
+		code_info__get_variables(VariablesA),
+		{ map__search(VariablesA, Var, VarStat) }
+	->
+		{ code_info__update_variables(Var, VarStat,
+						Variables0, Variables1) },
+		code_info__variable_dependencies(Var, VarStat,
+			Variables1, Variables)
+	;
+		{ error("Live variable not found!") }
+	),
+	code_info__reduce_variables_and_registers_2(Vars, Variables).
+
+%---------------------------------------------------------------------------%
+
+:- pred code_info__variable_dependencies(var, variable_stat,
+					variable_info, variable_info, 
+							code_info, code_info).
+:- mode code_info__variable_dependencies(in, in, in, out, in, out) is det.
+
+code_info__variable_dependencies(_Var, unused, V, V) --> [].
+code_info__variable_dependencies(Var, evaluated(Lvals), V0, V) -->
+	{ set__to_sorted_list(Lvals, LvalList) },
+	code_info__lvalues_dependencies(Var, LvalList, V0, V).
+code_info__variable_dependencies(Var, cashed(Exprn, _), V0, V) -->
+	code_info__expression_dependencies(Var, Exprn, V0, V).
+
+%---------------------------------------------------------------------------%
+
+:- pred code_info__expression_dependencies(var, rval,
+				variable_info, variable_info,
+						code_info, code_info).
+:- mode code_info__expression_dependencies(in, in, in, out, in, out) is det.
+
+code_info__expression_dependencies(Var, lval(Lval), V0, V) -->
+	code_info__lvalue_dependencies(Var, Lval, V0, V).
+code_info__expression_dependencies(_Var, var(Var0), V0, V) -->
+	(
+		code_info__get_variables(VariablesA),
+		{ map__search(VariablesA, Var0, VarStat) }
+	->
+		{ code_info__update_variables(Var0, VarStat, V0, V1) },
+		code_info__variable_dependencies(Var0, VarStat, V1, V)
+	;
+		{ error("Live variable not found!") }
+	).
+code_info__expression_dependencies(Var, binop(_, E0, E1), V0, V) -->
+	code_info__expression_dependencies(Var, E0, V0, V1),
+	code_info__expression_dependencies(Var, E1, V1, V).
+code_info__expression_dependencies(Var, field(_, Rval,_), V0, V) -->
+	code_info__expression_dependencies(Var, Rval, V0, V).
+code_info__expression_dependencies(_Var, iconst(_), V, V) --> [].
+code_info__expression_dependencies(_Var, sconst(_), V, V) --> [].
+
+%---------------------------------------------------------------------------%
+
+:- pred code_info__lvalues_dependencies(var, list(lval),
+				variable_info, variable_info,
+						code_info, code_info).
+:- mode code_info__lvalues_dependencies(in, in, in, out, in, out) is det.
+
+code_info__lvalues_dependencies(_Var, [], V, V) --> [].
+code_info__lvalues_dependencies(Var, [L|Ls], V0, V) -->
+	code_info__lvalue_dependencies(Var, L, V0, V1),
+	code_info__lvalues_dependencies(Var, Ls, V1, V).
+
+:- pred code_info__lvalue_dependencies(var, lval,
+			variable_info, variable_info,
+						code_info, code_info).
+:- mode code_info__lvalue_dependencies(in, in,
+						in, out, in, out) is det.
+
+code_info__lvalue_dependencies(_Var, stackvar(_), V, V) --> [].
+code_info__lvalue_dependencies(_Var, reg(_), V, V) --> [].
+code_info__lvalue_dependencies(Var, field(_, Lval, _), V0, V) -->
+	code_info__lvalue_dependencies(Var, Lval, V0, V).
+
+%---------------------------------------------------------------------------%
+
+:- pred code_info__update_variables(var, variable_stat, variable_info,
+						variable_info).
+:- mode code_info__update_variables(in, in, in, out) is det.
+
+code_info__update_variables(Var, VarStat, Variables0, Variables) :-
+	(
+		map__insert(Variables0, Var, VarStat, Variables1)
+	->
+		Variables = Variables1
+	;
+		Variables = Variables0
+	).
+
+%---------------------------------------------------------------------------%
+
+:- pred code_info__reconstruct_registers(assoc_list(var, variable_stat),
+						code_info, code_info).
+:- mode code_info__reconstruct_registers(in, in, out) is det.
+
+code_info__reconstruct_registers([]) --> [].
+code_info__reconstruct_registers([Var - VarStat|VarStats]) -->
+	(
+		{ VarStat = evaluated(Lvals) }
+	->
+		{ set__to_sorted_list(Lvals, LvalList) },
+		code_info__reenter_registers(Var, LvalList)
+	;
+		{ true }
+	),
+	code_info__reconstruct_registers(VarStats).
+
+:- pred code_info__reenter_registers(var, list(lval), code_info, code_info).
+:- mode code_info__reenter_registers(in, in, in, out) is det.
+
+code_info__reenter_registers(_Var, []) --> [].
+code_info__reenter_registers(Var, [L|Ls]) -->
+	(
+		{ L = reg(R) }
+	->
+		code_info__add_variable_to_register(Var, R)
+	;
+		{ true }
+	),
+	code_info__reenter_registers(Var, Ls).
+
+%---------------------------------------------------------------------------%
+
+:- pred code_info__add_variable_to_register(var, reg, code_info, code_info).
+:- mode code_info__add_variable_to_register(in, in, in, out) is det.
+
+code_info__add_variable_to_register(Var, Reg) -->
+	code_info__get_registers(Registers0),
+	(
+		{ map__search(Registers0, Reg, vars(Vars0)) }
+	->
+		{ set__insert(Vars0, Var, Vars) }
+	;
+		{ set__singleton_set(Vars, Var) }
+	),
+	{ map__set(Registers0, Reg, vars(Vars), Registers) },
+	code_info__set_registers(Registers).
+
+:- pred code_info__add_variables_to_register(set(var), reg,
+						code_info, code_info).
+:- mode code_info__add_variables_to_register(in, in, in, out) is det.
+
+code_info__add_variables_to_register(Vars0, Reg) -->
+	{ set__to_sorted_list(Vars0, Vars) },
+	code_info__add_variables_to_register_2(Vars, Reg).
+
+:- pred code_info__add_variables_to_register_2(list(var), reg,
+						code_info, code_info).
+:- mode code_info__add_variables_to_register_2(in, in, in, out) is det.
+
+code_info__add_variables_to_register_2([], _Reg) --> [].
+code_info__add_variables_to_register_2([Var|Vars], Reg) -->
+	code_info__add_variable_to_register(Var, Reg),
+	code_info__add_variables_to_register_2(Vars, Reg).
+
+%---------------------------------------------------------------------------%
+
+code_info__add_lvalue_to_variable(Lval, Var) -->
+	code_info__get_variables(Variables0),
+	(
+		{ map__search(Variables0, Var, evaluated(Lvals0)) }
+	->
+		{ set__insert(Lvals0, Lval, Lvals) }
+	;
+		{ set__singleton_set(Lvals, Lval) }
+	),
+	{ map__set(Variables0, Var, evaluated(Lvals), Variables) },
+	code_info__set_variables(Variables).
+
+:- pred code_info__add_lvalues_to_variable(set(lval), var,
+						code_info, code_info).
+:- mode code_info__add_lvalues_to_variable(in, in, in, out) is det.
+
+code_info__add_lvalues_to_variable(Lvals0, Var) -->
+	{ set__to_sorted_list(Lvals0, Lvals) },
+	code_info__add_lvalues_to_variable_2(Lvals, Var).
+
+:- pred code_info__add_lvalues_to_variable_2(list(lval), var,
+						code_info, code_info).
+:- mode code_info__add_lvalues_to_variable_2(in, in, in, out) is det.
+
+code_info__add_lvalues_to_variable_2([], _Var) --> [].
+code_info__add_lvalues_to_variable_2([Lval|Lvals], Var) -->
+	code_info__add_lvalue_to_variable(Lval, Var),
+	code_info__add_lvalues_to_variable_2(Lvals, Var).
+
+%---------------------------------------------------------------------------%
+
+:- pred code_info__remap_variable(var, lval, code_info, code_info).
+:- mode code_info__remap_variable(in, in, in, out) is det.
+
+code_info__remap_variable(Var, Lval) -->
+	code_info__get_variables(Variables0),
+	{ set__singleton_set(Lvals, Lval) },
+	{ map__set(Variables0, Var, evaluated(Lvals), Variables) },
+	code_info__set_variables(Variables).
+
+:- pred code_info__remap_variables(set(var), lval, code_info, code_info).
+:- mode code_info__remap_variables(in, in, in, out) is det.
+
+code_info__remap_variables(Vars0, Lval) -->
+	{ set__to_sorted_list(Vars0, Vars) },
+	code_info__remap_variables_2(Vars, Lval).
+
+:- pred code_info__remap_variables_2(list(var), lval, code_info, code_info).
+:- mode code_info__remap_variables_2(in, in, in, out) is det.
+
+code_info__remap_variables_2([], _Lval) --> [].
+code_info__remap_variables_2([Var|Vars], Lval) -->
+	code_info__remap_variable(Var, Lval),
+	code_info__remap_variables_2(Vars, Lval).
 
 %---------------------------------------------------------------------------%
 
@@ -1074,12 +1316,6 @@ code_info__update_liveness_info(Births - Deaths) -->
 
 :- pred code_info__set_variables(variable_info, code_info, code_info).
 :- mode code_info__set_variables(in, in, out) is det.
-
-:- pred code_info__get_stackslots(stackslot_info, code_info, code_info).
-:- mode code_info__get_stackslots(out, in, out) is det.
-
-:- pred code_info__set_stackslots(stackslot_info, code_info, code_info).
-:- mode code_info__set_stackslots(in, in, out) is det.
 
 :- pred code_info__get_liveness_info(liveness_info, code_info, code_info).
 :- mode code_info__get_liveness_info(out, in, out) is det.
@@ -1141,13 +1377,6 @@ code_info__get_variables(H, CI, CI) :-
 
 code_info__set_variables(H, CI0, CI) :-
 	CI0 = code_info(A, B, C, D, E, F, G, _, I, J, K, L, M),
-	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M).
-
-code_info__get_stackslots(I, CI, CI) :-
-	CI = code_info(_, _, _, _, _, _, _, _, I, _, _, _, _).
-
-code_info__set_stackslots(I, CI0, CI) :-
-	CI0 = code_info(A, B, C, D, E, F, G, H, _, J, K, L, M),
 	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M).
 
 code_info__get_succip_used(J, CI, CI) :-
