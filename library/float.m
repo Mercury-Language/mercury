@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1998,2001 The University of Melbourne.
+% Copyright (C) 1994-1998,2001-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -194,124 +194,6 @@
 %---------------------------------------------------------------------------%
 
 :- implementation.
-:- interface.
-
-	% Everything below here will not appear in the
-	% Mercury Library Reference Manual.
-
-%---------------------------------------------------------------------------%
-
-%
-% Obsolete predicate versions of the functions declared above.
-% These were intended for use in programs that need to work
-% in both Prolog and Mercury. Running Mercury programs using
-% Prolog is no longer supported.
-%
-
-%
-% Conversion predicates
-%
-
-	% float__ceiling_to_int(X, Ceil) is true if Ceil is the
-	% smallest integer not less than X.
-:- pragma obsolete(float__ceiling_to_int/2).
-:- pred float__ceiling_to_int(float, int).
-:- mode float__ceiling_to_int(in, out) is det.
-
-	% float__floor_to_int(X, Ceil) is true if Ceil is the
-	% largest integer not greater than X.
-:- pragma obsolete(float__floor_to_int/2).
-:- pred float__floor_to_int(float, int).
-:- mode float__floor_to_int(in, out) is det.
-
-	% float__round_to_int(X, Round) is true if Round is the
-	% integer closest to X.  If X has a fractional value of
-	% 0.5, it is rounded up.
-:- pragma obsolete(float__round_to_int/2).
-:- pred float__round_to_int(float, int).
-:- mode float__round_to_int(in, out) is det.
-
-	% float__truncate_to_int(X, Trunc) is true if Trunc is
-	% the integer closest to X such that |Trunc| =< |X|.
-:- pragma obsolete(float__truncate_to_int/2).
-:- pred float__truncate_to_int(float, int).
-:- mode float__truncate_to_int(in, out) is det.
-
-%
-% Miscellaneous predicates
-%
-
-	% absolute value
-:- pragma obsolete(float__abs/2).
-:- pred float__abs(float, float).
-:- mode float__abs(in, out) is det.
-
-	% maximum
-:- pragma obsolete(float__max/3).
-:- pred float__max(float, float, float).
-:- mode float__max(in, in, out) is det.
-
-	% minimum
-:- pragma obsolete(float__min/3).
-:- pred float__min(float, float, float).
-:- mode float__min(in, in, out) is det.
-
-	% float__pow(Base, Exponent, Answer) is true iff Answer is
-	% Base raised to the power Exponent. Currently this function runs
-	% at O(n), where n is the value of the exponent.
-	% Throws a `math__domain_error' exception if the exponent is negative.
-:- pragma obsolete(float__pow/3).
-:- pred float__pow(float, int, float).
-:- mode float__pow(in, in, out) is det.
-
-	% Compute a non-negative integer hash value for a float.
-:- pragma obsolete(float__hash/2).
-:- pred float__hash(float, int).
-:- mode float__hash(in, out) is det.
-
-%
-% System constant predicates
-%
-
-	% Maximum floating-point number
-:- pragma obsolete(float__max/1).
-:- pred float__max(float).
-:- mode float__max(out) is det.
-
-	% Minimum normalised floating-point number
-:- pragma obsolete(float__min/1).
-:- pred float__min(float).
-:- mode float__min(out) is det.
-
-	% Smallest number x such that 1.0 + x \= 1.0
-:- pragma obsolete(float__epsilon/1).
-:- pred float__epsilon(float).
-:- mode float__epsilon(out) is det.
-
-	% Radix of the floating-point representation.
-:- pragma obsolete(float__radix/1).
-:- pred float__radix(int).
-:- mode float__radix(out) is det.
-
-	% The number of base-radix digits in the mantissa.
-:- pragma obsolete(float__mantissa_digits/1).
-:- pred float__mantissa_digits(int).
-:- mode float__mantissa_digits(out) is det.
-
-	% Smallest exponent of a normalised floating-point number.
-:- pragma obsolete(float__min_exponent/1).
-:- pred float__min_exponent(int).
-:- mode float__min_exponent(out) is det.
-
-	% Largest exponent of a normalised floating-point number.
-:- pragma obsolete(float__max_exponent/1).
-:- pred float__max_exponent(int).
-:- mode float__max_exponent(out) is det.
-
-%---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
-
-:- implementation.
 :- import_module exception, int, math.
 
 %
@@ -384,8 +266,6 @@ float(Int) = Float :-
 	Ceil = System.Convert.ToInt32(System.Math.Ceiling(X));
 ").
 
-float__ceiling_to_int(X, float__ceiling_to_int(X)).
-
 	% float__floor_to_int(X) returns the
 	% largest integer not greater than X.
 :- pragma foreign_proc("C", float__floor_to_int(X :: in) = (Floor :: out),
@@ -398,8 +278,6 @@ float__ceiling_to_int(X, float__ceiling_to_int(X)).
 "
 	Floor = System.Convert.ToInt32(System.Math.Floor(X));
 ").
-
-float__floor_to_int(X, float__floor_to_int(X)).
 
 	% float__round_to_int(X) returns the integer closest to X.
 	% If X has a fractional value of 0.5, it is rounded up.
@@ -414,8 +292,6 @@ float__floor_to_int(X, float__floor_to_int(X)).
 	Round = System.Convert.ToInt32(System.Math.Floor(X + 0.5));
 ").
 
-float__round_to_int(X, float__round_to_int(X)).
-
 	% float__truncate_to_int(X) returns the integer closest
 	% to X such that |float__truncate_to_int(X)| =< |X|.
 :- pragma foreign_proc("C", float__truncate_to_int(X :: in) = (Trunc :: out),
@@ -428,8 +304,6 @@ float__round_to_int(X, float__round_to_int(X)).
 "
 	Trunc = System.Convert.ToInt32(X);
 ").
-
-float__truncate_to_int(X, float__truncate_to_int(X)).
 
 %---------------------------------------------------------------------------%
 %
@@ -445,8 +319,6 @@ float__abs(Num) = Abs :-
 		Abs = Num
 	).
 
-float__abs(Num, float__abs(Num)).
-
 float__max(X, Y) = Max :-
 	(
 		X >= Y
@@ -456,8 +328,6 @@ float__max(X, Y) = Max :-
 		Max = Y
 	).
 
-float__max(X, Y, float__max(X, Y)).
-
 float__min(X, Y) = Min :-
 	(
 		X =< Y
@@ -466,8 +336,6 @@ float__min(X, Y) = Min :-
 	;
 		Min = Y
 	).
-
-float__min(X, Y, float__min(X, Y)).
 
 % float_pow(Base, Exponent) = Answer.
 %	XXXX This function could be more efficient, with an int_mod pred, to
@@ -484,8 +352,6 @@ float__pow(X, Exp) = Ans :-
 		Ans is X * float__pow(X, New_e)
 	).
 
-float__pow(X, Exp, float__pow(X, Exp)).
-
 :- pragma foreign_proc("C", float__hash(F::in) = (H::out),
 	[will_not_call_mercury, thread_safe],
 "
@@ -496,8 +362,6 @@ float__pow(X, Exp, float__pow(X, Exp)).
 "
 	H = F.GetHashCode();
 ").
-
-float__hash(F, float__hash(F)).
 
 %---------------------------------------------------------------------------%
 %
@@ -537,8 +401,6 @@ float__hash(F, float__hash(F)).
 	"Max = System.Double.MaxValue;").
 
 
-float__max(float__max).
-
 	% Minimum normalised floating-point number */
 :- pragma foreign_proc("C", float__min = (Min::out),
 		[will_not_call_mercury, thread_safe],
@@ -547,8 +409,6 @@ float__max(float__max).
 		[will_not_call_mercury, thread_safe],
 	"Min = System.Double.MinValue;").
 
-float__min(float__min).
-
 	% Smallest x such that x \= 1.0 + x
 :- pragma foreign_proc("C", float__epsilon = (Eps::out),
 		[will_not_call_mercury, thread_safe],
@@ -556,8 +416,6 @@ float__min(float__min).
 :- pragma foreign_proc("C#", float__epsilon = (Eps::out),
 		[will_not_call_mercury, thread_safe],
 	"Eps = System.Double.Epsilon;").
-
-float__epsilon(float__epsilon).
 
 	% Radix of the floating-point representation.
 :- pragma foreign_proc("C", float__radix = (Radix::out),
@@ -569,8 +427,6 @@ float__epsilon(float__epsilon).
 	_Radix = 0;
 ").
 
-float__radix(float__radix).
-
 	% The number of base-radix digits in the mantissa.
 :- pragma foreign_proc("C", float__mantissa_digits = (MantDig::out),
 		[will_not_call_mercury, thread_safe],
@@ -580,8 +436,6 @@ float__radix(float__radix).
 	mercury.runtime.Errors.SORRY(""foreign code for this function"");
 	_MantDig = 0;
 ").
-
-float__mantissa_digits(float__mantissa_digits).
 
 	% Minimum negative integer such that:
 	%	radix ** (min_exponent - 1)
@@ -594,8 +448,6 @@ float__mantissa_digits(float__mantissa_digits).
 	mercury.runtime.Errors.SORRY(""foreign code for this function"");
 	_MinExp = 0;
 ").
-
-float__min_exponent(float__min_exponent).
 
 	% Maximum integer such that:
 	%	radix ** (max_exponent - 1)
@@ -610,8 +462,6 @@ float__min_exponent(float__min_exponent).
 	_MaxExp = 0;
 ").
 
-
-float__max_exponent(float__max_exponent).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

@@ -32,10 +32,10 @@ get_planar_coords(IndList, VertArr, PlaneList, Norm) :-
         get_angles_from_z_axis(Norm, Theta, Phi),
 
         % need to rotate -Theta about Z axis then -Phi about Y axis
-        math__cos(-Theta, CosZ),
-        math__sin(-Theta, SinZ),
-        math__cos(-Phi, CosY),
-        math__sin(-Phi, SinY),
+        CosZ = math__cos(-Theta),
+        SinZ = math__sin(-Theta),
+        CosY = math__cos(-Phi),
+        SinY = math__sin(-Phi),
         MZ = mat(vec(CosZ,-SinZ,0.0), vec(SinZ,CosZ,0.0), vec(0.0,0.0,1.0)),
         MY = mat(vec(CosY,0.0,SinY), vec(0.0,1.0,0.0), vec(-SinY,0.0,CosY)),
         M =  matmult(MZ, MY),
@@ -52,7 +52,7 @@ get_angles_from_z_axis(Vec, Theta, Phi) :-
         Vec = vec(X, Y, Z),
         Vector_radius = mag(Vec),
         XY_radius = mag(vec(X, Y, 0.0)), % magnitude of xy projection
-        math__pi(Pi),   % get a useful constant
+        Pi = math__pi,   % get a useful constant
         (
             Vector_radius = 0.0
         ->
@@ -65,9 +65,9 @@ get_angles_from_z_axis(Vec, Theta, Phi) :-
                 Theta = 0.0,
                 Phi = 0.0
             ;
-                float__abs(X, Xabs),
-                math__asin(Xabs / XY_radius, Theta1),
-                math__asin(XY_radius / Vector_radius, Phi1),
+                Xabs = float__abs(X),
+                Theta1 = math__asin(Xabs / XY_radius),
+                Phi1 = math__asin(XY_radius / Vector_radius),
 
                 % angles have been calculated for the first octant
                 % they need to be corrected for the octant they are actually in
