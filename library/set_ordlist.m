@@ -15,7 +15,7 @@
 
 :- module set_ordlist.
 :- interface.
-:- import_module bool, list, std_util.
+:- import_module bool, list.
 
 :- type set_ordlist(_T).
 

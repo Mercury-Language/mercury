@@ -17,7 +17,7 @@
 
 :- module lexer.
 :- interface.
-:- import_module char, string, int, float, list, std_util, io.
+:- import_module list, std_util, io.
 
 :- type	token
 	--->	name(string)
@@ -70,7 +70,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module require.
+:- import_module require, char, string, int.
 
 lexer__token_to_string(name(Name), String) :-
 	string__append_list(["token '", Name, "'"], String).

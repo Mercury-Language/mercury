@@ -1,8 +1,8 @@
 :- module simple_code.
 :- interface.
-:- import_module io.
 :- pred p(int::in, int::out) is erroneous.
 :- implementation.
+
 :- import_module require.
 p --> 
 	(

@@ -15,8 +15,6 @@
 
 :- interface.
 
-:- import_module float.
-
 	% less than
 :- pred int < int.
 :- mode in  < in is semidet.

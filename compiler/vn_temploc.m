@@ -15,7 +15,7 @@
 :- interface.
 
 :- import_module vn_type, vn_table.
-:- import_module list, set, int.
+:- import_module list.
 
 :- type templocs.
 
@@ -58,7 +58,7 @@
 
 :- implementation.
 
-:- import_module llds, require.
+:- import_module llds, require, int, set.
 
 :- type templocs ---> templocs(
 				vnlvalset,	% live values; don't use

@@ -38,7 +38,7 @@
 
 :- module getopt.
 :- interface.
-:- import_module int, string, bool, list, map, std_util.
+:- import_module bool, list, map, std_util.
 
 % getopt__process_options(OptionOps, Args, NonOptionArgs, Result)
 %
@@ -150,7 +150,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module require.
+:- import_module require, string.
 
 getopt__process_options(OptionOps, Args0, Args, Result) :-
 	getopt__get_option_defaults(OptionOps, OptionDefaultsPred),

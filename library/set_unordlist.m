@@ -15,7 +15,7 @@
 
 :- module set_unordlist.
 :- interface.
-:- import_module bool, list, std_util.
+:- import_module bool, list.
 
 :- type set_unordlist(_T).
 

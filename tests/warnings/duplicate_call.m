@@ -3,12 +3,12 @@
 
 :- interface.
 
-:- import_module int.
 :- pred dup_call(int::in, int::in, int::out) is det.
 
 :- pred called(int::in, int::in, int::out) is det.
 
 :- implementation.
+:- import_module int.
 
 dup_call(Int1, Int2, Int) :-
 	called(Int1, Int2, Int3),

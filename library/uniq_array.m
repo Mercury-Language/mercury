@@ -17,7 +17,7 @@
 
 :- module uniq_array.
 :- interface.
-:- import_module int, list, term.
+:- import_module list, term.
 
 :- type uniq_array(T).
 
@@ -195,7 +195,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module std_util.
+:- import_module std_util, int.
 
 :- type uniq_array(T).
 

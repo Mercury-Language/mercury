@@ -20,7 +20,7 @@
 
 :- module bimap.
 :- interface.
-:- import_module list, int, std_util, assoc_list.
+:- import_module list, assoc_list.
 
 %-----------------------------------------------------------------------------%
 

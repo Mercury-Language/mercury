@@ -16,7 +16,7 @@
 
 :- interface.
 
-:- import_module hlds_module, hlds_pred, mode_info.
+:- import_module mode_info.
 
 	% Print a debugging message which includes the port, message string,
 	% and the current instmap (but only if `--debug-modes' was enabled).

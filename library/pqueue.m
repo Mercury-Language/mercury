@@ -24,7 +24,7 @@
 
 :- interface.
 
-:- import_module list, std_util, assoc_list.
+:- import_module assoc_list.
 
 :- type pqueue(_K, _V).
 
@@ -56,7 +56,7 @@
 
 :- implementation.
 
-:- import_module int.
+:- import_module int, list, std_util.
 
 :- type pqueue(K, V)	--->	empty
 			;	pqueue(int, K, V, pqueue(K, V), pqueue(K, V)).

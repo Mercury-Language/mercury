@@ -23,7 +23,7 @@
 
 :- interface.
 
-:- import_module set, list, std_util, assoc_list.
+:- import_module set, list, assoc_list.
 
 :- type group(T).
 
@@ -84,7 +84,7 @@
 
 :- implementation.
 
-:- import_module map, int, require.
+:- import_module map, int, require, std_util.
 
 :- type group(T)	--->
 		group(

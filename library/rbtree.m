@@ -35,7 +35,7 @@
 :- module rbtree.
 :- interface.
 
-:- import_module list, std_util, assoc_list.
+:- import_module list, assoc_list.
 
 :- type rbtree(Key, Value).
 
@@ -105,7 +105,7 @@
 
 :- implementation.
 
-:- import_module int, require.
+:- import_module int, require, std_util.
 
 
 :- type rbtree(K,V)	 --->	empty

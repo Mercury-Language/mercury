@@ -34,12 +34,12 @@
 :- interface.
 
 :- import_module hlds_pred, hlds_goal, llds, instmap.
-:- import_module code_util, tree, globals, unify_proc.
+:- import_module globals.
 :- import_module bool, set, std_util, assoc_list.
 
 :- implementation.
 
-:- import_module hlds_module, hlds_data.
+:- import_module hlds_module, hlds_data, code_util.
 :- import_module code_exprn, set, varset, term, stack, prog_data.
 :- import_module type_util, mode_util, options, shapes.
 :- import_module string, require, char, list, map, bimap, tree, int.

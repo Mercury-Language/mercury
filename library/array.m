@@ -23,7 +23,7 @@
 
 :- module array.
 :- interface.
-:- import_module int, list.
+:- import_module list.
 
 :- type array(T).
 
@@ -90,7 +90,7 @@
 
 :- implementation.
 
-:- import_module require, map.
+:- import_module int, require, map.
 
 :- type array(T)	--->	array(int, int, map(int,T)).
 

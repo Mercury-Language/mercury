@@ -326,7 +326,6 @@
 % by conway.
 %
 %-----------------------------------------------------------------------------%
-:- import_module std_util.
 
 	% list__map(T, L, M) uses the closure T
 	% to transform the elements of L into the elements of L.

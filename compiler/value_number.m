@@ -14,7 +14,7 @@
 
 :- interface.
 
-:- import_module bool, list, io.
+:- import_module list, io.
 :- import_module llds.
 
 	% Find straight-line code sequences and optimize them using
@@ -40,6 +40,7 @@
 :- implementation.
 
 :- import_module set, map, bimap, require, int, string, std_util, assoc_list.
+:- import_module bool.
 
 :- import_module vn_type, vn_table, vn_block, vn_order, vn_flush, vn_temploc. 
 :- import_module vn_cost, vn_debug, vn_util, vn_verify, vn_filter.

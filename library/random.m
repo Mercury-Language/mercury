@@ -19,7 +19,7 @@
 
 :- interface.
 
-:- import_module int, list.
+:- import_module list.
 
 :- type random__supply.
 
@@ -38,7 +38,7 @@
 %---------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module require.
+:- import_module require, int.
 
 :- type random__supply		==	int.	% I(j)
 

@@ -17,7 +17,6 @@
 :- interface.
 
 :- import_module llds, switch_gen, code_info, type_util.
-:- import_module list.
 
 	% Should this switch be implemented as a dense jump table?
 	% If so, we return the starting and ending values for the table,
@@ -50,7 +49,7 @@
 :- implementation.
 
 :- import_module hlds_module, hlds_goal, hlds_data, code_gen.
-:- import_module char, map, tree, int, std_util, require.
+:- import_module char, map, tree, int, std_util, require, list.
 
 dense_switch__is_dense_switch(CaseVar, TaggedCases, CanFail0, ReqDensity,
 		FirstVal, LastVal, CanFail) -->

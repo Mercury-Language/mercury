@@ -15,7 +15,7 @@
 
 :- module stack.
 :- interface.
-:- import_module int, std_util, list.
+:- import_module list.
 
 :- type stack(_T).
 
@@ -81,7 +81,7 @@
 
 :- implementation.
 
-:- import_module list, require.
+:- import_module list, require, std_util.
 
 :- type stack(T) == list(T).
 

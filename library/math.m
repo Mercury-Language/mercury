@@ -20,7 +20,6 @@
 
 :- module math.
 :- interface.
-:- import_module float.
 
 %---------------------------------------------------------------------------%
 % Mathematical constants

@@ -38,7 +38,7 @@
 :- interface.
 
 :- import_module hlds_module.
-:- import_module int, io.
+:- import_module io.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -58,7 +58,7 @@
 :- import_module prog_util, mode_util, hlds_out, stack, quantification.
 :- import_module globals, options.
 :- import_module string, map, list, require, std_util, term, term_io, getopt.
-:- import_module bool, set, varset.
+:- import_module bool, set, varset, int.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

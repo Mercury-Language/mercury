@@ -16,7 +16,7 @@
 
 :- interface.
 
-:- import_module list, std_util, assoc_list.
+:- import_module list, assoc_list.
 
 :- type tree234(K, V).
 
@@ -83,7 +83,7 @@
 
 :- implementation.
 
-:- import_module int, require, bool.
+:- import_module int, require, bool, std_util.
 
 :- type tree234(K, V)	--->
 		empty

@@ -13,7 +13,7 @@
 
 :- interface.
 
-:- import_module hlds_module, hlds_pred, llds.
+:- import_module hlds_module, hlds_pred.
 
 :- pred move_follow_code_in_proc(proc_info, proc_info,
 	module_info, module_info).

@@ -29,7 +29,7 @@
 
 :- module varset.
 :- interface.
-:- import_module string, term.
+:- import_module term.
 
 :- type varset.
 
@@ -149,7 +149,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module int, list, map, std_util, assoc_list, set, require.
+:- import_module int, list, map, std_util, assoc_list, set, require, string.
 
 :- type varset		--->	varset(
 					var_supply,

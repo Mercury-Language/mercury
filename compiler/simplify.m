@@ -28,7 +28,7 @@
 :- interface.
 
 :- import_module common, hlds_pred, det_report, det_util.
-:- import_module list, io.
+:- import_module io.
 
 :- pred simplify__proc(simplify, pred_id, proc_id, module_info, module_info,
 	proc_info, proc_info, int, int, io__state, io__state).
@@ -65,7 +65,7 @@
 :- import_module hlds_module, hlds_goal, hlds_data, instmap, inst_match.
 :- import_module globals, options, passes_aux, prog_data, mode_util, type_util.
 :- import_module code_util, quantification, modes.
-:- import_module bool, set, map, require, std_util, term, varset.
+:- import_module bool, list, set, map, require, std_util, term, varset.
 
 %-----------------------------------------------------------------------------%
 

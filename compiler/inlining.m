@@ -78,7 +78,7 @@
 %-----------------------------------------------------------------------------%
 
 :- interface.
-:- import_module hlds_module, llds.
+:- import_module hlds_module.
 :- import_module io.
 
 :- pred inlining(module_info, module_info, io__state, io__state).
@@ -92,7 +92,7 @@
 
 :- implementation.
 
-:- import_module hlds_pred, hlds_goal, globals, options.
+:- import_module hlds_pred, hlds_goal, globals, options, llds.
 :- import_module dead_proc_elim, type_util, mode_util, goal_util.
 :- import_module passes_aux, code_aux, quantification.
 

@@ -15,7 +15,7 @@
 
 :- module mercury_compile.
 :- interface.
-:- import_module bool, string, io.
+:- import_module io.
 
 :- pred main(io__state::di, io__state::uo) is det.
 
@@ -25,7 +25,7 @@
 :- implementation.
 
 	% library modules
-:- import_module int, list, map, set, std_util, dir, require.
+:- import_module int, list, map, set, std_util, dir, require, string, bool.
 :- import_module library, getopt, term, varset.
 
 	% the main compiler passes (in order of execution)

@@ -17,7 +17,7 @@
 %-----------------------------------------------------------------------------%
 
 :- interface.
-:- import_module list, char, int, float, require, std_util.
+:- import_module list, char.
 
 :- pred string__length(string, int).
 :- mode string__length(in, out) is det.
@@ -300,7 +300,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module bool.
+:- import_module bool, std_util, int, float, require.
 
 :- pred string__to_int_list(string, list(int)).
 :- mode string__to_int_list(out, in) is det.

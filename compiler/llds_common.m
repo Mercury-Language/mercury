@@ -20,7 +20,7 @@
 
 :- interface.
 
-:- import_module llds, string.
+:- import_module llds.
 
 :- pred llds_common(list(c_procedure), list(c_module), string, 
 	list(c_procedure), list(c_module), list(c_module)).

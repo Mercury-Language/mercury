@@ -16,7 +16,7 @@
 
 :- interface.
 
-:- import_module set, list, std_util.
+:- import_module set, list.
 
 :- type eqvclass(T).
 

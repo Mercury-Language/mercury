@@ -31,7 +31,7 @@
 
 :- interface.
 
-:- import_module llds, list, varset, std_util, assoc_list, tree, options.
+:- import_module llds, list, varset, assoc_list, options.
 
 :- type exprn_info.
 
@@ -238,8 +238,8 @@
 
 :- implementation.
 
-:- import_module exprn_aux.
-:- import_module bool, map, bag, set, require, int, term, string.
+:- import_module exprn_aux, tree.
+:- import_module bool, map, bag, set, require, int, term, string, std_util.
 
 :- type var_stat	--->	evaled(set(rval))
 			;	cached(rval).

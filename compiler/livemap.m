@@ -16,7 +16,7 @@
 
 :- interface.
 
-:- import_module bool, list, set, map.
+:- import_module list, set, map.
 :- import_module llds.
 
 :- type livemap		==	map(label, lvalset).
@@ -33,7 +33,7 @@
 :- implementation.
 
 :- import_module opt_util.
-:- import_module std_util, require, string.
+:- import_module std_util, require, string, bool.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -23,7 +23,7 @@
 
 :- interface.
 
-:- import_module hlds_module, llds.
+:- import_module hlds_module.
 :- import_module io.
 
 :- pred constraint_propagation(module_info, module_info, io__state, io__state).

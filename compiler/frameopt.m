@@ -75,7 +75,7 @@
 :- interface.
 
 :- import_module llds.
-:- import_module bool, list, map, bimap.
+:- import_module bool, list.
 
 	% Delay the construction of det stack frames as long as possible,
 	% in order to avoid the construction in as many cases as possible.

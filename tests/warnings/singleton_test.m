@@ -1,6 +1,6 @@
 :- module singleton_test.
 :- interface.
-:- import_module list, int, io.
+:- import_module list, io.
 
 :- pred my_append(list(int), list(int), list(int)).
 :- mode my_append(in, in, out) is det.
@@ -15,8 +15,8 @@
 :- mode my_c_pred(in, in, out) is det.
 
 :- pred c_hello_world(string::in, io__state::di, io__state::uo) is det.
-
 :- implementation.
+:- import_module int.
 
 my_append([], L, L) :-
 	L = L2.

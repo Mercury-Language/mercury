@@ -24,8 +24,6 @@
 :- module char.
 :- interface.
 
-:- import_module list.
-
 %-----------------------------------------------------------------------------%
 
 :- type char == character.

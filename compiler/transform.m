@@ -30,7 +30,7 @@
 
 :- module transform.
 :- interface.
-:- import_module hlds_goal, llds, mode_info.
+:- import_module hlds_goal, mode_info.
 
 %:- pred unfold__in_proc(pred_id, proc_id, hlds_goal_expr,
 %			mode_info, mode_info).

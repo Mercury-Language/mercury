@@ -20,7 +20,7 @@
 
 :- module queue.
 :- interface.
-:- import_module int, list.
+:- import_module list.
 
 :- type queue(T).
 
@@ -93,7 +93,7 @@
 
 :- implementation.
 
-:- import_module list, std_util.
+:- import_module list, std_util, int.
 
 :- type queue(T) == pair(list(T)).
 

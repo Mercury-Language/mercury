@@ -824,7 +824,7 @@ write_module_list([Import1, Import2, Import3 | Imports]) -->
 write_module_list([Import1, Import2]) -->
 	io__write_strings([Import1, ".m and ", Import2 ,".m"]).
 write_module_list([Import]) -->
-	io__write_string(Import).
+	io__write_strings([Import, ".m"]).
 write_module_list([]) -->
 	{ error("module_qual:write_module_list") }.
 

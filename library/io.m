@@ -21,7 +21,7 @@
 
 :- module io.
 :- interface.
-:- import_module char, int, float, string, std_util, list.
+:- import_module char, string, std_util, list.
 
 %-----------------------------------------------------------------------------%
 
@@ -869,6 +869,7 @@
 
 :- implementation.
 :- import_module map, dir, term, term_io, varset, require, time, uniq_array.
+:- import_module int, std_util.
 
 :- type io__state
 	---> 	io__state(

@@ -15,7 +15,7 @@
 
 :- module term.
 :- interface.
-:- import_module int, string, float, list, map.
+:- import_module list, map.
 
 %-----------------------------------------------------------------------------%
 
@@ -249,7 +249,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module std_util, require, uniq_array.
+:- import_module std_util, require, uniq_array, int, string.
 
 %-----------------------------------------------------------------------------%
 

@@ -15,7 +15,7 @@
 :- interface.
 
 :- import_module vn_type, llds.
-:- import_module bool, list, int, io.
+:- import_module bool, list, io.
 
 :- pred vn_cost__block_cost(list(instruction), vn_params, bool, int,
 	io__state, io__state).
@@ -30,7 +30,7 @@
 :- implementation.
 
 :- import_module vn_debug.
-:- import_module require, string, std_util.
+:- import_module require, string, std_util, int.
 
 vn_cost__block_cost(Instr, Params, PrintInstr, Cost) -->
 	vn_cost__block_cost_2(Instr, Params, PrintInstr, 0, Cost).

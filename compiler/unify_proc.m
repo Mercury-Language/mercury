@@ -44,8 +44,8 @@
 
 :- interface.
 :- import_module hlds_module, hlds_pred, hlds_goal, hlds_data.
-:- import_module llds, modes, prog_data, special_pred.
-:- import_module bool, std_util, io, list.
+:- import_module modes, prog_data, special_pred.
+:- import_module std_util, io.
 
 :- type unify_requests.
 
@@ -89,7 +89,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module tree, map, queue, int, string, require.
+:- import_module list, tree, map, queue, int, string, require, bool.
 :- import_module code_util, code_info, type_util, varset.
 :- import_module mercury_to_mercury, hlds_out.
 :- import_module make_hlds, term, prog_util.

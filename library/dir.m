@@ -14,7 +14,6 @@
 
 :- module dir.
 :- interface.
-:- import_module string.
 
 	% predicates to isolate system dependencies 
 
@@ -38,7 +37,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module int, require.
+:- import_module int, require, string.
 
 dir__directory_separator('/').
 

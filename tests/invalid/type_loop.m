@@ -5,13 +5,13 @@
 
 :- interface.
 
-:- import_module map, io.
-
+:- import_module io.
 :- type foo.
 
 :- pred main(io__state::di, io__state::uo) is det.
 
 :- implementation.
+:- import_module map.
 
 :- type foo == map(int, foo).   % ps, this looks a bit suspect.
 

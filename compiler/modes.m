@@ -164,7 +164,7 @@ a variable live if its value will be used later on in the computation.
 
 % The following predicates are used by unique_modes.m.
 
-:- import_module mode_info, mode_errors, clause_to_proc.
+:- import_module mode_info.
 
 	% Modecheck a unification.
 
@@ -260,7 +260,7 @@ a variable live if its value will be used later on in the computation.
 :- import_module mode_info, delay_info, mode_errors, inst_match, instmap.
 :- import_module type_util, mode_util, code_util, prog_data, unify_proc.
 :- import_module globals, options, mercury_to_mercury, hlds_out, int, set.
-:- import_module passes_aux, typecheck, module_qual.
+:- import_module passes_aux, typecheck, module_qual, clause_to_proc.
 :- import_module modecheck_unify, modecheck_call.
 :- import_module list, map, varset, term, prog_out, string, require, std_util.
 :- import_module assoc_list.

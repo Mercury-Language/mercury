@@ -13,7 +13,7 @@
 
 :- interface.
 
-:- import_module prog_data, prog_io_util, hlds_pred.
+:- import_module prog_data, prog_io_util.
 :- import_module list, term, varset.
 
 	% Convert a single term into a goal.

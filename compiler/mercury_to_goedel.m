@@ -30,7 +30,7 @@
 :- module mercury_to_goedel.
 :- interface.
 
-:- import_module string, list, io.
+:- import_module list, io.
 :- import_module prog_data.
 
 :- pred convert_to_goedel(string, list(item_and_context), io__state, io__state).
@@ -39,7 +39,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module bool, int, char, std_util, varset, term, require.
+:- import_module bool, int, char, std_util, varset, term, require, string.
 :- import_module prog_io, prog_out, prog_util, equiv_type.
 :- import_module globals, options.
 %-----------------------------------------------------------------------------%

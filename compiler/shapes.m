@@ -43,7 +43,7 @@
 :- interface.
 
 :- import_module hlds_module.
-:- import_module list, term, io.
+:- import_module list, io.
 
 :- type tagged_num	==	pair(shape_num, tag_type).
 :- type tag_type	--->	const; simple; complicated.
@@ -89,7 +89,7 @@
 :- implementation.
 
 :- import_module code_util, hlds_pred, hlds_data, llds, prog_data, type_util.
-:- import_module int, assoc_list, map, std_util, require.
+:- import_module int, assoc_list, map, std_util, require, term.
 
 :- type bit_number --->	bit_zero; bit_one; bit_two; bit_three.
 

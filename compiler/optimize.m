@@ -14,7 +14,7 @@
 
 :- interface.
 
-:- import_module llds, io, options.
+:- import_module llds, io.
 
 :- pred optimize__main(list(c_procedure), list(c_procedure),
 	io__state, io__state).
@@ -30,7 +30,7 @@
 :- import_module bool, list, map, bimap, int, std_util.
 
 :- import_module jumpopt, labelopt, dupelim, peephole.
-:- import_module frameopt, delay_slot, value_number.
+:- import_module frameopt, delay_slot, value_number, options.
 :- import_module globals, passes_aux, opt_util, opt_debug, vn_debug.
 
 optimize__main([], []) --> [].

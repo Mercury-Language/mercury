@@ -18,7 +18,7 @@
 
 :- interface.
 
-:- import_module hlds_pred, hlds_goal, llds, code_info.
+:- import_module hlds_pred, llds, code_info.
 
 :- pred call_gen__generate_higher_order_call(code_model, var, list(var),
 				list(type), list(mode), determinism,

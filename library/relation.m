@@ -18,7 +18,7 @@
 :- module relation.
 
 :- interface.
-:- import_module list, set, set_bbbtree, std_util, assoc_list.
+:- import_module list, set, set_bbbtree, assoc_list.
 
 :- type relation(T).
 

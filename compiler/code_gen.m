@@ -29,7 +29,7 @@
 
 :- interface.
 
-:- import_module hlds_module, hlds_pred, hlds_goal, llds, code_info, shapes.
+:- import_module hlds_module, hlds_pred, hlds_goal, llds, code_info.
 :- import_module list, assoc_list, io.
 
 		% Translate a HLDS structure into an LLDS
@@ -62,7 +62,7 @@
 :- import_module disj_gen, pragma_c_gen, globals, options, hlds_out.
 :- import_module code_aux, middle_rec, passes_aux.
 :- import_module code_util, type_util, mode_util.
-:- import_module prog_data, instmap.
+:- import_module prog_data, instmap, shapes.
 :- import_module bool, char, int, string, list, term.
 :- import_module map, tree, std_util, require, set, varset.
 

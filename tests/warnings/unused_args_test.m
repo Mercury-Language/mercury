@@ -4,13 +4,15 @@
 
 :- interface.
 
-:- import_module char, int.
+
 
 :- pred recursive(int::in, switch_test::in, int::in) is semidet.
 
 :- pred nonrecursive(int::in) is semidet.
 
 :- implementation.
+
+:- import_module char, int.
 
 :- type switch_test --->
 		f1(int)

@@ -57,7 +57,6 @@
 :- interface.
 
 :- import_module hlds_module, hlds_pred.
-:- import_module io.
 
 	% Add liveness annotations to the goal of the procedure.
 	% This consists of the {pre,post}{birth,death} sets and

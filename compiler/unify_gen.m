@@ -19,7 +19,7 @@
 
 :- interface.
 
-:- import_module hlds_goal, hlds_data, llds, code_info, code_util.
+:- import_module hlds_goal, hlds_data, llds, code_info.
 :- import_module list.
 
 :- type test_sense --->
@@ -62,7 +62,7 @@
 
 :- implementation.
 
-:- import_module hlds_module, hlds_pred, prog_data.
+:- import_module hlds_module, hlds_pred, prog_data, code_util.
 :- import_module mode_util, code_aux, hlds_out, tree.
 :- import_module bool, string, int, map, term, require, std_util.
 

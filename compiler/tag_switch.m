@@ -15,7 +15,7 @@
 :- interface.
 
 :- import_module hlds_goal, llds, switch_gen, code_info.
-:- import_module list, assoc_list.
+:- import_module list.
 
 	% Generate intelligent indexing code for tag based switches.
 

@@ -14,7 +14,7 @@
 %-----------------------------------------------------------------------------%
 :- module prolog.
 :- interface.
-:- import_module int, std_util.
+:- import_module std_util.
 
 % We define !/0 (and !/2 for dcgs) to be equivalent to `true'.  This is for
 % backwards compatibility with Prolog systems.  But of course it only works
@@ -94,7 +94,7 @@ is/2 is currently defined in int.m, for historical reasons.
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module require.
+:- import_module require, int.
 
 /*********
 % !/0 and !/2 currently defined in mercury_builtin.m, for historical reasons.

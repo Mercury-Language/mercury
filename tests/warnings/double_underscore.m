@@ -2,7 +2,7 @@
 
 :- interface.
 
-:- import_module int.
+
 
 :- pred p(int::in, int::out) is det.
 
