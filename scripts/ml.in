@@ -35,7 +35,15 @@ CC=${MERCURY_C_COMPILER=@CC@}
 MKFIFO=${MERCURY_MKFIFO=@MKFIFO@}
 
 verbose=false
-strip=true
+case $FULLARCH in
+	*-win95|*-winnt|*-win32)
+		# `gcc -s' is broken in gnu-win32
+		strip=false
+		;;
+	*)
+		strip=true
+		;;
+esac
 demangle=true
 GRADE=$DEFAULT_GRADE
 
