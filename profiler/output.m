@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1997 The University of Melbourne.
+% Copyright (C) 1995-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -235,8 +235,12 @@ output_formatted_prof_node(ProfNode, Index, IndexMap) -->
 		{ string__format("%67s", [s("<spontaneous>\n")], String) }, 
 		io__write_string(String)
 	;
-		output_formatted_cycle_parent_list(CycleParentList, IndexMap),
-		output_formatted_parent_list(ParentList, IndexMap, TotalCalls)
+		{ list__sort(CycleParentList, SortedCycleParentList) },
+		output_formatted_cycle_parent_list(SortedCycleParentList,
+			IndexMap),
+		{ list__sort(ParentList, SortedParentList) },
+		output_formatted_parent_list(SortedParentList, IndexMap,
+			TotalCalls)
 	),
 
 
@@ -256,8 +260,10 @@ output_formatted_prof_node(ProfNode, Index, IndexMap) -->
 	io__write_string(IndexStr),
 	io__write_string("\n"),
 
-	output_formatted_child_list(ChildList, IndexMap),
-	output_formatted_cycle_child_list(CycleChildList, IndexMap),
+	{ list__sort(ChildList, SortedChildList) },
+	output_formatted_child_list(SortedChildList, IndexMap),
+	{ list__sort(CycleChildList, SortedCycleChildList) },
+	output_formatted_cycle_child_list(SortedCycleChildList, IndexMap),
 
 	(
 		{ SelfCalls \= 0 }
