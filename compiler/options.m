@@ -881,9 +881,14 @@ opt_level(3, _, [
 % and increases the inlining thresholds
 
 opt_level(4, _, [
-	optimize_value_number	-	bool(yes),
+	optimize_value_number	-	bool(yes)
+/***
+XXX Unfortunately the compiler doesn't bootstrap with these options
+enabled -- it dies compiling library/string.m -- so for the moment,
+they're disabled.
 	inline_simple_threshold	-	int(8),
 	inline_compound_threshold -	int(20)
+***/
 ]).
 
 % Optimization level 5: apply optimizations which may have some
