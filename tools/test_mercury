@@ -444,9 +444,12 @@ cd ..
 
 BETA_FTPDIR=/home/tsa/ftp/pub/mercury/beta-releases
 
-rm -f $BETA_FTPDIR/mercury-*-rotd-*-unstable.tar.gz &&
-cp mercury-latest-unstable/mercury-*-$version-unstable.tar.gz \
-	$BETA_FTPDIR
+case $HOST in murlibobo)
+	rm -f $BETA_FTPDIR/mercury-*-rotd-*-unstable.tar.gz &&
+	cp mercury-latest-unstable/mercury-*-$version-unstable.tar.gz \
+		$BETA_FTPDIR
+	;;
+esac
 
 #-----------------------------------------------------------------------------#
 
