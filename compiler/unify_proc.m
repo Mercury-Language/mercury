@@ -704,9 +704,11 @@ unify_proc__generate_du_compare_clauses_2(Ctors, Res, X, Y, Goal) -->
 
 	unify_proc__build_call("index", [Y, Y_Index], Call_Y_Index),
 
-	unify_proc__build_call("<", [X_Index, Y_Index], Call_Less_Than),
+	unify_proc__build_call("builtin_int_lt", [X_Index, Y_Index],
+		Call_Less_Than),
 
-	unify_proc__build_call(">", [X_Index, Y_Index], Call_Greater_Than),
+	unify_proc__build_call("builtin_int_gt", [X_Index, Y_Index],
+		Call_Greater_Than),
 
 	{ create_atomic_unification(
 		Res, functor(term__atom("<"), []), Context, explicit, [], 
