@@ -467,13 +467,13 @@ output_instance_method(Method) -->
 	io__write_char('\t'),
 	(
 		{ Method = func_instance(Name1, Name2, Arity) },
-		io__write_string("func(")
+		io__write_string("func((")
 	;
 		{ Method = pred_instance(Name1, Name2, Arity) },
-		io__write_string("pred(")
+		io__write_string("pred((")
 	),
 	mercury_output_bracketed_sym_name(Name1),
-	io__write_string("/"),
+	io__write_string(")/"),
 	io__write_int(Arity),
 	io__write_string(") is "),
 	mercury_output_bracketed_sym_name(Name2).
