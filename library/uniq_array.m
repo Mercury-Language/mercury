@@ -217,6 +217,12 @@ const struct mercury_data_uniq_array__base_type_layout_uniq_array_1_struct {
 		mkbody(TYPELAYOUT_INT_VALUE))
 };
 
+const struct mercury_data_uniq_array__base_type_functors_uniq_array_1_struct {
+	Integer f1;
+} mercury_data_uniq_array__base_type_functors_uniq_array_1 = {
+	MR_TYPEFUNCTORS_SPECIAL
+};
+
 #endif
 
 BEGIN_MODULE(uniq_array_module)

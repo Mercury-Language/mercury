@@ -145,12 +145,15 @@ base_type_info__construct_base_type_infos([BaseGenInfo | BaseGenInfos],
 	->
 		base_type_info__construct_layout(ModuleInfo, TypeName,
 			TypeArity, LayoutArg),
+		base_type_info__construct_functors(ModuleInfo, TypeName,
+			TypeArity, FunctorsArg),
 		NameArg = yes(const(string_const(TypeName))),
-		list__append(PredAddrArgs, [LayoutArg, NameArg], FinalArgs)
+		list__append(PredAddrArgs, [LayoutArg, FunctorsArg, NameArg], 
+			FinalArgs)
 	;
 		FinalArgs = PredAddrArgs
 	),
-	CModule = c_data(ModuleName, base_type_info(TypeName, TypeArity),
+	CModule = c_data(ModuleName, base_type(info, TypeName, TypeArity),
 			Exported, [ArityArg | FinalArgs], Procs),
 	base_type_info__construct_base_type_infos(BaseGenInfos, ModuleInfo,
 		CModules).
@@ -160,7 +163,15 @@ base_type_info__construct_base_type_infos([BaseGenInfo | BaseGenInfos],
 base_type_info__construct_layout(ModuleInfo, TypeName, TypeArity, Rval) :-
 	module_info_name(ModuleInfo, ModuleName),
 	Rval = yes(const(data_addr_const(data_addr(ModuleName, 
-		base_type_layout(TypeName, TypeArity))))).
+		base_type(layout, TypeName, TypeArity))))).
+
+:- pred base_type_info__construct_functors(module_info, string, int, 
+	maybe(rval)).
+:- mode base_type_info__construct_functors(in, in, in, out) is det.
+base_type_info__construct_functors(ModuleInfo, TypeName, TypeArity, Rval) :-
+	module_info_name(ModuleInfo, ModuleName),
+	Rval = yes(const(data_addr_const(data_addr(ModuleName, 
+		base_type(functors, TypeName, TypeArity))))).
 
 :- pred base_type_info__construct_pred_addrs(list(pred_proc_id), maybe(int), 
 	module_info, list(maybe(rval))).

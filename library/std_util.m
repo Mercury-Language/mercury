@@ -692,6 +692,12 @@ const struct mercury_data_std_util__base_type_layout_univ_0_struct {
 		mkbody(TYPELAYOUT_UNIV_VALUE))
 };
 
+const struct mercury_data_std_util__base_type_functors_univ_0_struct {
+	Integer f1;
+} mercury_data_std_util__base_type_functors_univ_0 = {
+	MR_TYPEFUNCTORS_UNIV
+};
+
 #endif
 
 Define_extern_entry(mercury____Unify___std_util__univ_0_0);

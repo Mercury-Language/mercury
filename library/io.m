@@ -767,7 +767,8 @@
 :- type io__binary_input_stream ==	io__stream.
 :- type io__binary_output_stream ==	io__stream.
 
-:- type io__stream.
+:- type io__stream == c_pointer.
+
 /*
  * In NU-Prolog: 
  *	io__stream	--->	stream(int, int)
@@ -1783,93 +1784,6 @@ void sys_init_io_run_module(void) {
 
 /* stream predicates */
 
-:- pragma(c_code, "
-
-#ifdef  USE_TYPE_LAYOUT
-
-	/* Rest of word is pointer to 2 cell struct */
-
-extern const struct mercury_data___base_type_info_int_0_struct
-	mercury_data___base_type_info_int_0;
-
-static const struct {
-	const Word *f1;
-} mercury_data_io__base_type_layout_io__stream_0b = {
-	(const Word *) & mercury_data___base_type_info_int_0
-};
-
-static const struct {
-	Integer f1;
-	const Word *f2;
-	const Word *f3;
-	const Word *f4;
-} mercury_data_io__base_type_layout_io__stream_0a = {
-	((Integer) 2),
-	(const Word *) & mercury_data_io__base_type_layout_io__stream_0b,
-	(const Word *) & mercury_data_io__base_type_layout_io__stream_0b,
-	(const Word *) string_const(""io__stream"", 10)
-};
-
-const struct mercury_data_io__base_type_layout_io__stream_0_struct {
-	TYPE_LAYOUT_FIELDS
-} mercury_data_io__base_type_layout_io__stream_0 = {
-	make_typelayout_for_all_tags(TYPELAYOUT_SIMPLE_TAG, 
-	    (const Word *) & mercury_data_io__base_type_layout_io__stream_0a)
-};
-
-#endif
-
-Define_extern_entry(mercury____Unify___io__stream_0_0);
-Define_extern_entry(mercury____Index___io__stream_0_0);
-Define_extern_entry(mercury____Compare___io__stream_0_0);
-Define_extern_entry(mercury____Term_To_Type___io__stream_0_0);
-Define_extern_entry(mercury____Type_To_Term___io__stream_0_0);
-
-BEGIN_MODULE(io_stream_module)
-	init_entry(mercury____Unify___io__stream_0_0);
-	init_entry(mercury____Index___io__stream_0_0);
-	init_entry(mercury____Compare___io__stream_0_0);
-	init_entry(mercury____Term_To_Type___io__stream_0_0);
-	init_entry(mercury____Type_To_Term___io__stream_0_0);
-BEGIN_CODE
-
-Define_entry(mercury____Unify___io__stream_0_0);
-	unify_output =
-		((MercuryFile*) unify_input1 == (MercuryFile *) unify_input2);
-	proceed();
-
-Define_entry(mercury____Index___io__stream_0_0);
-	index_output = -1;
-	proceed();
-
-Define_entry(mercury____Compare___io__stream_0_0);
-	compare_output = ((compare_input1 < compare_input2) ? COMPARE_LESS :
-		          (compare_input1 > compare_input2) ? COMPARE_GREATER :
-			  				      COMPARE_EQUAL);
-	proceed();
-
-Define_entry(mercury____Term_To_Type___io__stream_0_0);
-	/* don't know what to put here. */
-	fatal_error(""cannot convert term to type io__stream"");
-
-Define_entry(mercury____Type_To_Term___io__stream_0_0);
-	/* don't know what to put here. */
-	fatal_error(""cannot convert type io__stream to term"");
-
-END_MODULE
-
-/* Ensure that the initialization code for the above module gets run. */
-/*
-INIT sys_init_io_stream_module
-*/
-void sys_init_io_stream_module(void); /* suppress gcc -Wmissing-decl warning */
-void sys_init_io_stream_module(void) {
-	extern ModuleFunc io_stream_module;
-	io_stream_module();
-}
-
-").
-
 :- pragma(c_code, io__stdin_stream(Stream::out, IO0::di, IO::uo), "
 	Stream = (Word) &mercury_stdin;
 	update_io(IO0, IO);
@@ -2147,6 +2061,12 @@ const struct mercury_data_io__base_type_layout_io__external_state_0_struct {
 } mercury_data_io__base_type_layout_io__external_state_0 = {
 	make_typelayout_for_all_tags(TYPELAYOUT_CONST_TAG, 
 		mkbody(TYPELAYOUT_INT_VALUE))
+};
+
+const struct mercury_data_io__base_type_functors_io__external_state_0_struct {
+	Integer f1;
+} mercury_data_io__base_type_functors_io__external_state_0 = {
+	MR_TYPEFUNCTORS_SPECIAL
 };
 
 #endif

@@ -386,10 +386,16 @@
 
 :- type data_name
 	--->	common(int)
-	;	base_type_info(string, arity)
-			% type name, type arity
-	;	base_type_layout(string, arity).
-			% type name, type arity
+	;	base_type(base_data, string, arity).
+			% base_data, type name, type arity
+
+:- type base_data
+	--->	info
+			% basic information, including special preds
+	;	layout
+			% layout information
+	;	functors.
+			% information on functors
 
 :- type unary_op
 	--->	mktag

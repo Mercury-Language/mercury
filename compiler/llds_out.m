@@ -65,6 +65,11 @@
 :- pred llds_out__maybe_qualify_name(string, string, string).
 :- mode llds_out__maybe_qualify_name(in, in, out) is det.
 
+	% Create a name for base_type_*
+
+:- pred llds_out__make_base_type_name(base_data, string, arity, string).
+:- mode llds_out__make_base_type_name(in, in, in, out) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -324,7 +329,7 @@ output_c_data_init_list([c_module(_, _) | Ms]) -->
 	output_c_data_init_list(Ms).
 output_c_data_init_list([c_data(BaseName, DataName, _, _, _) | Ms])  -->
 	(
-		{ DataName = base_type_info(TypeName, Arity) }
+		{ DataName = base_type(info, TypeName, Arity) }
 	->
 		io__write_string("\tMR_INIT_BASE_TYPE_INFO(\n\t\t"),
 		output_data_addr(BaseName, DataName),
@@ -1499,7 +1504,7 @@ output_const_term_decl(ArgVals, DeclId, Exported, FirstIndent, LaterIndent,
 	{ globals__have_static_code_addresses(Globals, StaticCode) },
 	(
 		{ StaticCode = no },
-		{ DeclId = data_addr(data_addr(_, base_type_info(_, _))) }
+		{ DeclId = data_addr(data_addr(_, base_type(info, _, _))) }
 	->
 		[]
 	;
@@ -1802,7 +1807,7 @@ output_data_addr_decls(data_addr(BaseName, VarName),
 		% Don't make decls of base_type_infos `const' if we
 		% don't have static code addresses.
 	(
-		{ VarName = base_type_info(_, _) },
+		{ VarName = base_type(info, _, _) },
 		{ globals__have_static_code_addresses(Globals, no) }
 	->
 		[]
@@ -2009,19 +2014,11 @@ output_data_addr(BaseName0, VarName) -->
 		{ string__int_to_string(N, NStr) },
 		io__write_string(NStr)
 	;
-		{ VarName = base_type_info(TypeName0, TypeArity) },
-		io__write_string("__base_type_info_"),
-		{ llds_out__name_mangle(TypeName0, TypeName) },
-		io__write_string(TypeName),
-		io__write_string("_"),
-		io__write_int(TypeArity)
-	;
-		{ VarName = base_type_layout(TypeName0, TypeArity) },
-		io__write_string("__base_type_layout_"),
-		{ llds_out__name_mangle(TypeName0, TypeName) },
-		io__write_string(TypeName),
-		io__write_string("_"),
-		io__write_int(TypeArity)
+		{ VarName = base_type(BaseData, TypeName0, TypeArity) },
+		{ llds_out__make_base_type_name(BaseData, TypeName0, TypeArity,
+			Str) },
+		io__write_string("__"),
+		io__write_string(Str)
 	).
 
 :- pred output_label_as_code_addr(label, io__state, io__state).
@@ -2935,6 +2932,25 @@ llds_out__convert_to_valid_c_identifier_2(String, Name) :-
 		% String is the empty string
 		Name = String
 	).
+
+%-----------------------------------------------------------------------------%
+
+llds_out__make_base_type_name(BaseData, TypeName0, TypeArity, Str) :-
+	(
+		BaseData = info,
+		BaseString = "info"
+	;
+		BaseData = layout,
+		BaseString = "layout"
+	;
+		BaseData = functors,
+		BaseString = "functors"
+	),
+	llds_out__name_mangle(TypeName0, TypeName),
+	string__int_to_string(TypeArity, A_str),
+        string__append_list(["base_type_", BaseString, "_", TypeName, "_", 
+		A_str], Str).
+
 
 %-----------------------------------------------------------------------------%
 

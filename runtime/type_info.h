@@ -73,11 +73,13 @@
 #ifdef USE_TYPE_TO_TERM
 	#define OFFSET_FOR_ARG_TYPE_INFOS 6 
 	#define OFFSET_FOR_BASE_TYPE_LAYOUT 6 
-	#define OFFSET_FOR_TYPE_NAME 7
+	#define OFFSET_FOR_BASE_TYPE_FUNCTORS 7 
+	#define OFFSET_FOR_TYPE_NAME 8
 #else
 	#define OFFSET_FOR_ARG_TYPE_INFOS 4
 	#define OFFSET_FOR_BASE_TYPE_LAYOUT 4
-	#define OFFSET_FOR_TYPE_NAME 5
+	#define OFFSET_FOR_BASE_TYPE_FUNCTORS 5
+	#define OFFSET_FOR_TYPE_NAME 6
 #endif
 
 /*
@@ -435,6 +437,20 @@
 	do { } while (0)
 
 #endif /* MR_STATIC_CODE_ADDRESSES */
+
+/*---------------------------------------------------------------------------*/
+
+/*
+** Macros and defintions for defining and dealing with
+** base_type_functors.
+*/
+
+#define MR_TYPEFUNCTORS_DU	((Integer) 0)
+#define MR_TYPEFUNCTORS_ENUM	((Integer) 1)
+#define MR_TYPEFUNCTORS_EQUIV	((Integer) 2)
+#define MR_TYPEFUNCTORS_SPECIAL	((Integer) 3)
+#define MR_TYPEFUNCTORS_NO_TAG	((Integer) 4)
+#define MR_TYPEFUNCTORS_UNIV	((Integer) 5)
 
 /*---------------------------------------------------------------------------*/
 
