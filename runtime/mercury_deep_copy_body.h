@@ -628,9 +628,52 @@ try_again:
         return new_data;
 
     case MR_TYPECTOR_REP_FOREIGN:
-        MR_fatal_error("Cannot copy foreign types");
+        {
+            MR_Word *data_value;
 
-    case MR_TYPECTOR_REP_UNKNOWN: /* fallthru */
+            data_value = (MR_Word *) MR_strip_tag(data);
+
+            /*
+            ** XXX It is bad that the behaviour here depends on
+            ** the value of the foreign type.  But I don't see any
+            ** better alternative at the moment.
+            */
+            if (lower_limit != NULL && !in_range(data_value)) {
+                /*
+                ** If the foreign value does not point into the area of
+                ** the heap that we are copying, then it is safe to
+                ** leave it unchanged.  
+                **
+                ** It is important to allow these cases, when doing partial
+                ** copies (as occurs with accurate GC or solutions),
+                ** since they include the common cases of pointer types
+                ** that point to the C heap, global data, or stack data.
+                ** io__stream is a particularly important example.
+                **
+                ** However, when doing complete copies (lower_limit == NULL),
+                ** we should not allow shallow copying of foreign types,
+                ** because in cases where the foreign type is (or represents)
+                ** a pointer of some kind, that might violate unique mode
+                ** correctness.  That's why we check lower_limit != NULL above.
+                */
+                new_data = data;
+            } else {
+                /*
+                ** The foreign value points into the Mercury heap.
+                ** It might be a foreign pointer to a Mercury heap
+                ** value; or it might be a pointer to a foreign struct
+                ** which MR_MAYBE_BOX_FOREIGN_TYPE() has copied to the
+                ** Mercury heap; or it might be a non-pointer type
+                ** whose bit pattern happens to point to the heap.
+                **
+                ** We don't know how to copy it, so we have to abort.
+                */
+                MR_fatal_error("Cannot copy foreign type");
+            }
+        }
+        return new_data;
+
+    case MR_TYPECTOR_REP_UNKNOWN:
         MR_fatal_error("Unknown layout type in deep copy");
     }
 
