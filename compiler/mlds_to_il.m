@@ -457,7 +457,7 @@ mlds_defn_to_ilasm_decl(defn(_Name, _Context, _Flags,
 		function(_MaybePredProcId, _Params, _MaybeStmts)),
 		_Decl, Info, Info) :-
 	sorry(this_file, "top level function definition!").
-mlds_defn_to_ilasm_decl(defn(Name, _Context, Flags, class(ClassDefn)),
+mlds_defn_to_ilasm_decl(defn(Name, _Context, Flags0, class(ClassDefn)),
 		Decl, Info0, Info) :-
 	il_info_new_class(ClassDefn, Info0, Info1),
 
@@ -488,6 +488,16 @@ mlds_defn_to_ilasm_decl(defn(Name, _Context, Flags, class(ClassDefn)),
 	;
 		MethodDecls = MethodsAndFieldsAndCtors,
 		Info = Info2
+	),
+		% XXX Needed to work around a bug where private classes
+		% aren't accessible from classes in the same assembly
+		% when that assembly is created by al.exe.
+		% This occurs for nondet environment classes in the
+		% mercury std library.
+	( ClassName = structured_name("mercury", _) ->
+		Flags = set_access(Flags0, public)
+	;
+		Flags = Flags0
 	),
 	Decl = class(decl_flags_to_classattrs(Flags), EntityName, Extends,
 			Interfaces, MethodDecls).

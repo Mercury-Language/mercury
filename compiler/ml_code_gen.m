@@ -2117,7 +2117,7 @@ ml_gen_nondet_pragma_foreign_proc(CodeModel, Attributes,
 	%
 	% Generate <declaration of one local variable for each arg>
 	%
-	{ ml_gen_pragma_c_decls(ArgList, ArgDeclsList) },
+	ml_gen_pragma_c_decls(ArgList, ArgDeclsList),
 
 	%
 	% Generate definitions of the FAIL, SUCCEED, SUCCEED_LAST,
@@ -2375,7 +2375,7 @@ ml_gen_ordinary_pragma_c_proc(CodeModel, Attributes,
 	%
 	% Generate <declaration of one local variable for each arg>
 	%
-	{ ml_gen_pragma_c_decls(ArgList, ArgDeclsList) },
+	ml_gen_pragma_c_decls(ArgList, ArgDeclsList),
 
 	%
 	% Generate code to set the values of the input variables.
@@ -2547,32 +2547,45 @@ ml_make_c_arg_list(Vars, ArgDatas, Types, ArgList) :-
 % for a `pragma c_code' declaration.
 %
 :- pred ml_gen_pragma_c_decls(list(ml_c_arg)::in,
-		list(target_code_component)::out) is det.
+		list(target_code_component)::out,
+		ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_pragma_c_decls([], []).
-ml_gen_pragma_c_decls([Arg|Args], [Decl|Decls]) :-
+ml_gen_pragma_c_decls([], []) --> [].
+ml_gen_pragma_c_decls([Arg|Args], [Decl|Decls]) -->
 	ml_gen_pragma_c_decl(Arg, Decl),
 	ml_gen_pragma_c_decls(Args, Decls).
 
 % ml_gen_pragma_c_decl generates C code to declare an argument
 % of a `pragma c_code' declaration.
 %
-:- pred ml_gen_pragma_c_decl(ml_c_arg::in, target_code_component::out) is det.
+:- pred ml_gen_pragma_c_decl(ml_c_arg::in, target_code_component::out,
+		ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_pragma_c_decl(ml_c_arg(_Var, MaybeNameAndMode, Type), Decl) :-
-	(
+ml_gen_pragma_c_decl(ml_c_arg(_Var, MaybeNameAndMode, Type), Decl) -->
+	=(MLDSGenInfo),
+	{ ml_gen_info_get_module_info(MLDSGenInfo, ModuleInfo) },
+	{ module_info_globals(ModuleInfo, Globals) },
+	{ globals__get_target(Globals, Target) },
+	{
 		MaybeNameAndMode = yes(ArgName - _Mode),
 		\+ var_is_singleton(ArgName)
 	->
-		export__type_to_type_string(Type, TypeString),
+		( 
+			type_util__var(Type, _),
+			Target = il
+		->
+			TypeString = "MR_Box"
+		;
+			export__type_to_type_string(Type, TypeString)
+		),
 		string__format("\t%s %s;\n", [s(TypeString), s(ArgName)],
 			DeclString)
 	;
 		% if the variable doesn't occur in the ArgNames list,
 		% it can't be used, so we just ignore it
 		DeclString = ""
-	),
-	Decl = raw_target_code(DeclString).
+	},
+	{ Decl = raw_target_code(DeclString) }.
 
 %-----------------------------------------------------------------------------%
 
@@ -2634,6 +2647,7 @@ ml_gen_pragma_c_input_arg(ml_c_arg(Var, MaybeNameAndMode, OrigType),
 		{ module_info_globals(ModuleInfo, Globals) },
 		{ globals__lookup_bool_option(Globals, highlevel_data,
 			HighLevelData) },
+		{ globals__get_target(Globals, Target) },
 		{ HighLevelData = yes ->
 			% In general, the types used for the C interface
 			% are not the same as the types used by
@@ -2647,7 +2661,12 @@ ml_gen_pragma_c_input_arg(ml_c_arg(Var, MaybeNameAndMode, OrigType),
 			% a cast is for polymorphic types, which are
 			% `Word' in the C interface but `MR_Box' in the
 			% MLDS back-end.
-			( type_util__var(OrigType, _) ->
+			% Except for --grade ilc, where polymorphic types
+			% are MR_Box.
+			( 
+				type_util__var(OrigType, _),
+				Target \= il
+			->
 				Cast = "(MR_Word) "
 			;
 				Cast = ""

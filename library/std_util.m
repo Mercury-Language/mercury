@@ -955,8 +955,6 @@ do_while(GeneratorPred, CollectorPred, Accumulator0, Accumulator) :-
 	** than defining our own heaps.  So we don't need to
 	** worry about swapping them.  Hence do nothing here.
 	*/
-
-	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 ").
 
 %
@@ -1124,28 +1122,30 @@ XXX `ui' modes don't work yet
 ").
 
 :- pragma foreign_proc("MC++", 
-	new_mutvar(_X::in, _Ref::out), will_not_call_mercury,
+	new_mutvar(X::in, Ref::out), will_not_call_mercury,
 "
-	mercury::runtime::Errors::SORRY(""foreign code for this function"");
+	MR_untagged_newobj(Ref, 1);
+	Ref[0] = X;
 ").
 :- pragma foreign_proc("MC++", 
-	new_mutvar(_X::di, _Ref::uo), will_not_call_mercury,
+	new_mutvar(X::di, Ref::uo), will_not_call_mercury,
 "
-	mercury::runtime::Errors::SORRY(""foreign code for this function"");
+	MR_untagged_newobj(Ref, 1);
+	Ref[0] = X;
 ").
 
 :- pragma inline(get_mutvar/2).
 :- pragma foreign_proc("MC++",
-	get_mutvar(_Ref::in, _X::uo), will_not_call_mercury,
+	get_mutvar(Ref::in, X::uo), will_not_call_mercury,
 "
-	mercury::runtime::Errors::SORRY(""foreign code for this function"");
+	X = Ref[0];
 ").
 
 :- pragma inline(set_mutvar/2).
 :- pragma foreign_proc("MC++",
-	set_mutvar(_Ref::in, _X::in), will_not_call_mercury,
+	set_mutvar(Ref::in, X::in), will_not_call_mercury,
 "
-	mercury::runtime::Errors::SORRY(""foreign code for this function"");
+	Ref[0] = X;
 ").
 
 
