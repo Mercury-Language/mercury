@@ -563,15 +563,11 @@ write_dependency_file(ModuleName, LongDeps0, ShortDeps0) -->
 		{ list__sort_and_remove_dups(ShortDeps0, ShortDeps) },
 
 		io__write_string(DepStream, ModuleName),
-		io__write_string(DepStream, ".err : "),
+		io__write_string(DepStream, ".c "),
 		io__write_string(DepStream, ModuleName),
-		io__write_string(DepStream, ".m"),
-		write_dependencies_list(LongDeps, ".int", DepStream),
-		write_dependencies_list(ShortDeps, ".int2", DepStream),
-		io__write_string(DepStream, "\n"),
-
+		io__write_string(DepStream, ".err "),
 		io__write_string(DepStream, ModuleName),
-		io__write_string(DepStream, ".c : "),
+		io__write_string(DepStream, ".o : "),
 		io__write_string(DepStream, ModuleName),
 		io__write_string(DepStream, ".m"),
 		write_dependencies_list(LongDeps, ".int", DepStream),
