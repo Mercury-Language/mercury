@@ -1302,8 +1302,9 @@ code_info__generate_test_and_fail(Rval0, Code) -->
 
 code_info__can_generate_direct_branch(CodeAddr) -->
 	code_info__failure_cont(failure_cont(known(no), no, FailureMap)),
-	{ FailureMap = [Map - CodeAddr|_] },
-	{ map__is_empty(Map) }.
+	code_info__pick_failure(FailureMap, CodeAddr).
+	% { FailureMap = [Map - CodeAddr|_] },
+	% { map__is_empty(Map) }.
 
 %---------------------------------------------------------------------------%
 

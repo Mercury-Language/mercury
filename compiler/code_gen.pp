@@ -868,11 +868,17 @@ code_gen__generate_negation(Goal, Code) -->
 		% we can do a more efficient mechanism that
 		% doesn't require a cache flush.
 	(
-		{ Goal = unify(_, _, _, simple_test(L,R), _) - _ },
+		{ Goal = unify(_, _, _, simple_test(L,R), _) - GoalInfo },
 		code_info__can_generate_direct_branch(CodeAddr)
 	->
+			% Because we're generating a goal
+			% (special-cased, though it may be)
+			% we need to apply the pre- and post-
+			% updates.
+		code_aux__pre_goal_update(GoalInfo),
 		code_info__produce_variable(L, Code0, ValA),
 		code_info__produce_variable(R, Code1, ValB),
+		code_aux__post_goal_update(GoalInfo),
 		code_info__variable_type(L, Type),
 		{ Type = term__functor(term__atom("string"), [], _) ->
 			Op = str_eq
