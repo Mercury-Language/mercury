@@ -2147,7 +2147,7 @@ options_help_verbosity -->
 	write_tabbed_lines([
 		"-v, --verbose",
 		"\tOutput progress messages at each stage in the compilation.",
-		"-V, --very_verbose",
+		"-V, --very-verbose",
 		"\tOutput very verbose progress messages.",
 		"-E, --verbose-error-messages",
 		"\tExplain error messages.  Asks the compiler to give you a more",

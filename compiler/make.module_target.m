@@ -416,7 +416,7 @@ update_target_status(TargetStatus, TargetFile, Info,
 
 compilation_task(_, source) = _ :- error("compilation_task").
 compilation_task(_, errors) =
-		process_module(errorcheck) - ["--errorcheck_only"].
+		process_module(errorcheck) - ["--errorcheck-only"].
 compilation_task(_, unqualified_short_interface) =
 		process_module(make_short_interface) -
 				["--make-short-interface"].
