@@ -2018,7 +2018,7 @@ AC_MSG_CHECKING(whether Mercury supports shared libraries on this system)
 # see Mmake.common.in for documentation on the meaning of these variables
 LINK_SHARED_OBJ="$CC -shared"
 LINK_SHARED_OBJ_SH="$CC -shared"
-SHARED_LIBS='`gcc -print-libgcc-file-name` $(MATH_LIB) -lc'
+SHARED_LIBS='`gcc -print-libgcc-file-name` $MATH_LIB -lc'
 EXE_RPATH_OPT="-Wl,-rpath,"
 EXE_RPATH_SEP=" -Wl,-rpath,"
 SHLIB_RPATH_OPT="-Wl,-rpath,"
@@ -2055,7 +2055,7 @@ case "$host" in
 		;;
 	sparc-sun-solaris2.*)
 		AC_MSG_RESULT(yes)
-		SHARED_LIBS="$(MATH_LIB) -lc"	# don't link in libgcc.a
+		SHARED_LIBS="$MATH_LIB -lc"	# don't link in libgcc.a
 		LINK_SHARED_OBJ="$CC -G"
 		LINK_SHARED_OBJ_SH="$CC -G"
 		ERROR_UNDEFINED="-Wl,-z,defs"
