@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1999 The University of Melbourne.
+% Copyright (C) 1995-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -16,14 +16,14 @@
 % update:
 %	changes value of key already in tree.  fails if key doesn't exist.
 % set:
-%	insert's or update's. Never fails.
+%	inserts or updates. Never fails.
 %
 % insert_duplicate:
-%	insert's duplicate keys into the tree, never fails.  Search doesn't
+%	inserts duplicate keys into the tree, never fails.  Search doesn't
 %	yet support looking for duplicates.
 %
 % delete:
-%	delete's a node from the tree if it exists.
+%	deletes a node from the tree if it exists.
 % remove:
 %	fails if node to remove doesn't exist in the tree.
 %
@@ -46,17 +46,17 @@
 :- pred rbtree__init(rbtree(K, V)).
 :- mode rbtree__init(out) is det.
 
-	% Insert's a new key-value pair into the tree.  Fails if key 
+	% Inserts a new key-value pair into the tree.  Fails if key 
 	% already in the tree.
 :- pred rbtree__insert(rbtree(K, V), K, V, rbtree(K, V)).
 :- mode rbtree__insert(in, in, in, out) is semidet.
 
-	% Update's the value associated with a key.  Fails if the key 
+	% Updates the value associated with a key.  Fails if the key 
 	% doesn't exist.
 :- pred rbtree__update(rbtree(K, V), K, V, rbtree(K, V)).
 :- mode rbtree__update(in, in, in, out) is semidet.
 
-	% Set's a value irregardless of whether key exists or not.  Never
+	% Sets a value irregardless of whether key exists or not.  Never
 	% fails.
 :- pred rbtree__set(rbtree(K, V), K, V, rbtree(K, V)).
 :- mode rbtree__set(in, in, in, out) is det.
@@ -70,7 +70,7 @@
 :- pred rbtree__search(rbtree(K, V), K, V).
 :- mode rbtree__search(in, in, out) is semidet.
 
-	% Lookup a value associated with a key.  Program abort's if key
+	% Lookup a value associated with a key.  Program aborts if key
 	% doesn't exist.
 :- pred rbtree__lookup(rbtree(K, V), K, V).
 :- mode rbtree__lookup(in, in, out) is det.
@@ -109,11 +109,11 @@
 :- pred rbtree__remove(rbtree(K, V), K, rbtree(K, V)).
 :- mode rbtree__remove(in, in, out) is semidet.
 
-	% Return's an in-order list of all the key's in the rbtree.
+	% Returns an in-order list of all the keys in the rbtree.
 :- pred rbtree__keys(rbtree(K, V), list(K)).
 :- mode rbtree__keys(in, out) is det.
 
-	% Return's a list of values such that the key's associated with the
+	% Returns a list of values such that the keys associated with the
 	% values are in-order.
 :- pred rbtree__values(rbtree(K, V), list(V)).
 :- mode rbtree__values(in, out) is det.
@@ -214,7 +214,7 @@ rbtree__insert_2(black(K0, V0, L0, R0), K, V, Tree) :-
 			rbtree__insert_2(L0, K, V, NewL),
 			(
 				% Only need to start looking for a rotation case
-				% if the current node is black(known), and it's
+				% if the current node is black(known), and its
 				% new child red. 
 				NewL = red(LK, LV, LL, LR)
 			->
@@ -243,7 +243,7 @@ rbtree__insert_2(black(K0, V0, L0, R0), K, V, Tree) :-
 			rbtree__insert_2(R0, K, V, NewR),
 			(
 				% Only need to start looking for a rotation case
-				% if the current node is black(known), and it's
+				% if the current node is black(known), and its
 				% new child red. 
 				NewR = red(RK, RV, RL, RR)
 			->
@@ -377,7 +377,7 @@ rbtree__set_2(black(K0, V0, L0, R0), K, V, Tree) :-
 			rbtree__set_2(L0, K, V, NewL),
 			(
 				% Only need to start looking for a rotation case
-				% if the current node is black(known), and it's
+				% if the current node is black(known), and its
 				% new child red. 
 				NewL = red(LK, LV, LL, LR)
 			->
@@ -404,7 +404,7 @@ rbtree__set_2(black(K0, V0, L0, R0), K, V, Tree) :-
 			rbtree__set_2(R0, K, V, NewR),
 			(
 				% Only need to start looking for a rotation case
-				% if the current node is black(known), and it's
+				% if the current node is black(known), and its
 				% new child red. 
 				NewR = red(RK, RV, RL, RR)
 			->
@@ -500,7 +500,7 @@ rbtree__insert_duplicate_2(black(K0, V0, L0, R0), K, V, Tree) :-
 			rbtree__insert_duplicate_2(L0, K, V, NewL),
 			(
 				% Only need to start looking for a rotation case
-				% if the current node is black(known), and it's
+				% if the current node is black(known), and its
 				% new child red. 
 				NewL = red(LK, LV, LL, LR)
 			->
@@ -528,7 +528,7 @@ rbtree__insert_duplicate_2(black(K0, V0, L0, R0), K, V, Tree) :-
 			rbtree__insert_duplicate_2(R0, K, V, NewR),
 			(
 				% Only need to start looking for a rotation case
-				% if the current node is black(known), and it's
+				% if the current node is black(known), and its
 				% new child red. 
 				NewR = red(RK, RV, RL, RR)
 			->
@@ -556,7 +556,7 @@ rbtree__insert_duplicate_2(black(K0, V0, L0, R0), K, V, Tree) :-
 			rbtree__insert_duplicate_2(L0, K, V, NewL),
 			(
 				% Only need to start looking for a rotation case
-				% if the current node is black(known), and it's
+				% if the current node is black(known), and its
 				% new child red. 
 				NewL = red(LK, LV, LL, LR)
 			->
@@ -769,7 +769,7 @@ rbtree__remove(black(K0, V0, L, R), K, Tree) :-
 	).
 
 % rbtree__get_tree_max:
-%	Delete's the node with the maximum K from the tree, and returns the
+%	Deletes the node with the maximum K from the tree, and returns the
 %	key and value fields.
 
 :- pred rbtree__get_tree_max(rbtree(K, V), K, V, rbtree(K, V)).
@@ -801,7 +801,7 @@ rbtree__get_tree_max(black(K0, V0, L, R), NewK, NewV, Tree) :-
 	).
 
 % rbtree__get_tree_min:
-%	Delete's the node with the minimum K from the tree, and returns the
+%	Deletes the node with the minimum K from the tree, and returns the
 %	key and value fields.
 
 :- pred rbtree__get_tree_min(rbtree(K, V), K, V, rbtree(K, V)).
