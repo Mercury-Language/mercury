@@ -65,8 +65,9 @@
 				unify_proc_num).
 :- mode unify_proc__lookup_num(in, in, in, out) is det.
 
-:- pred unify_proc__generate_clause_info(type, hlds__type_body, clauses_info).
-:- mode unify_proc__generate_clause_info(in, in, out) is det.
+:- pred unify_proc__generate_clause_info(special_pred_id, type,
+			hlds__type_body, module_info, clauses_info).
+:- mode unify_proc__generate_clause_info(in, in, in, in, out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -233,6 +234,84 @@ unify_proc__write_unify_proc_id(TypeId - UniMode) -->
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
+
+unify_proc__generate_clause_info(SpecialPredId, Type, TypeBody, ModuleInfo,
+				ClauseInfo) :-
+	unify_proc_info__init(ModuleInfo, VarTypeInfo0),
+	( TypeBody = eqv_type(EqvType) ->
+		HeadVarType = EqvType
+	;
+		HeadVarType = Type
+	),
+	special_pred_info(SpecialPredId, HeadVarType,
+			_PredName, ArgTypes, _Modes, _Det),
+	unify_proc__make_fresh_vars(ArgTypes, Args, VarTypeInfo0, VarTypeInfo1),
+	( SpecialPredId = unify, Args = [H1, H2] ->
+		unify_proc__generate_unify_clauses(TypeBody, H1, H2,
+					Clauses, VarTypeInfo1, VarTypeInfo)
+	; SpecialPredId = index, Args = [X, Index] ->
+		unify_proc__generate_index_clauses(TypeBody, X, Index,
+					Clauses, VarTypeInfo1, VarTypeInfo)
+	; SpecialPredId = compare, Args = [Res, X, Y] ->
+		unify_proc__generate_compare_clauses(TypeBody, Res, X, Y,
+					Clauses, VarTypeInfo1, VarTypeInfo)
+	;
+		error("unknown special pred")
+	),
+	unify_proc_info__extract(VarTypeInfo, VarSet, Types),
+	ClauseInfo = clauses_info(VarSet, Types, Args, Clauses).
+
+:- pred unify_proc__generate_unify_clauses(hlds__type_body, var, var,
+				list(clause), unify_proc_info, unify_proc_info).
+:- mode unify_proc__generate_unify_clauses(in, in, in, out, in, out) is det.
+
+unify_proc__generate_unify_clauses(TypeBody, H1, H2, Clauses) -->
+	( { TypeBody = du_type(Ctors, _, IsEnum), IsEnum = no } ->
+		unify_proc__generate_du_unify_clauses(Ctors, H1, H2, Clauses)
+	;
+		{ create_atomic_unification(term__variable(H1),
+			term__variable(H2), explicit, [], Goal) },
+		{ implicitly_quantify_clause_body([H1, H2], Goal, Body) },
+		{ term__context_init(Context) },
+		{ Clauses = [clause([], Body, Context)] }
+	).
+
+:- pred unify_proc__generate_index_clauses(hlds__type_body, var, var,
+				list(clause), unify_proc_info, unify_proc_info).
+:- mode unify_proc__generate_index_clauses(in, in, in, out, in, out) is det.
+
+unify_proc__generate_index_clauses(TypeBody, X, Index, Clauses) -->
+	( { TypeBody = du_type(Ctors, _, IsEnum), IsEnum = no } ->
+		unify_proc__generate_du_index_clauses(Ctors, X, Index, 0,
+			Clauses)
+	;
+		{ ArgVars = [X, Index] },
+		unify_proc__build_call("index", ArgVars, Goal),
+		{ implicitly_quantify_clause_body(ArgVars, Goal, Body) },
+		{ term__context_init(Context) },
+		{ Clauses = [clause([], Body, Context)] }
+	).
+
+:- pred unify_proc__generate_compare_clauses(hlds__type_body, var, var, var,
+				list(clause), unify_proc_info, unify_proc_info).
+:- mode unify_proc__generate_compare_clauses(in, in, in, in, out, in, out)
+	is det.
+
+unify_proc__generate_compare_clauses(TypeBody, Res, H1, H2, Clauses) -->
+	( { TypeBody = du_type(Ctors, _, IsEnum), IsEnum = no } ->
+		unify_proc__generate_du_compare_clauses(Ctors, Res, H1, H2,
+			Clauses)
+	;
+		{ ArgVars = [Res, H1, H2] },
+		unify_proc__build_call("compare", ArgVars, Goal),
+		{ implicitly_quantify_clause_body(ArgVars, Goal, Body) },
+		{ term__context_init(Context) },
+		{ Clauses = [clause([], Body, Context)] }
+	).
+
+
+%-----------------------------------------------------------------------------%
+
 /*
 	For a type such as
 
@@ -261,52 +340,13 @@ unify_proc__write_unify_proc_id(TypeId - UniMode) -->
 			).
 */
 
+:- pred unify_proc__generate_du_unify_clauses(list(constructor), var, var,
+				list(clause), unify_proc_info, unify_proc_info).
+:- mode unify_proc__generate_du_unify_clauses(in, in, in, out, in, out) is det.
 
-:- unify_proc__generate_clause_info(_, X, _) when X. % NU-Prolog indexing.
-
-unify_proc__generate_clause_info(Type, TypeBody, ClauseInfo) :-
-	var_type_info__init(VarTypeInfo0),
-	( TypeBody = eqv_type(EqvType) ->
-		HeadVarType = EqvType
-	;
-		HeadVarType = Type
-	),
-	unify_proc__generate_head_vars(HeadVarType, H1, H2,
-					VarTypeInfo0, VarTypeInfo1),
-	unify_proc__generate_clauses(TypeBody, H1, H2, Clauses,
-					VarTypeInfo1, VarTypeInfo),
-	var_type_info__extract(VarTypeInfo, VarSet, Types),
-	ClauseInfo = clauses_info(VarSet, Types, [H1, H2], Clauses).
-
-:- pred unify_proc__generate_head_vars(type, var, var,
-					var_type_info, var_type_info).
-:- mode unify_proc__generate_head_vars(in, out, out, in, out) is det.
-
-unify_proc__generate_head_vars(Type, H1, H2) -->
-	var_type_info__new_var(Type, H1),
-	var_type_info__new_var(Type, H2).
-
-:- pred unify_proc__generate_clauses(hlds__type_body, var, var, list(clause),
-					var_type_info, var_type_info).
-:- mode unify_proc__generate_clauses(in, in, in, out, in, out) is det.
-
-unify_proc__generate_clauses(TypeBody, H1, H2, Clauses) -->
-	( { TypeBody = du_type(Ctors, _, IsEnum), IsEnum = no } ->
-		unify_proc__generate_du_clauses(Ctors, H1, H2, Clauses)
-	;
-		{ create_atomic_unification(term__variable(H1),
-			term__variable(H2), explicit, [], Goal) },
-		{ implicitly_quantify_clause_body([H1, H2], Goal, Body) },
-		{ term__context_init(Context) },
-		{ Clauses = [clause([], Body, Context)] }
-	).
-
-:- pred unify_proc__generate_du_clauses(list(constructor), var, var,
-				list(clause), var_type_info, var_type_info).
-:- mode unify_proc__generate_du_clauses(in, in, in, out, in, out) is det.
-
-unify_proc__generate_du_clauses([], _H1, _H2, []) --> [].
-unify_proc__generate_du_clauses([Ctor | Ctors], H1, H2, [Clause | Clauses]) -->
+unify_proc__generate_du_unify_clauses([], _H1, _H2, []) --> [].
+unify_proc__generate_du_unify_clauses([Ctor | Ctors], H1, H2,
+		[Clause | Clauses]) -->
 	{ Ctor = FunctorName - ArgTypes },
 	{ unqualify_name(FunctorName, UnqualifiedFunctorName) },
 	{ Functor = term__atom(UnqualifiedFunctorName) },
@@ -329,15 +369,334 @@ unify_proc__generate_du_clauses([Ctor | Ctors], H1, H2, [Clause | Clauses]) -->
 	{ conj_list_to_goal(GoalList, GoalInfo, Goal) },
 	{ implicitly_quantify_clause_body([H1, H2], Goal, Body) },
 	{ Clause = clause([], Body, Context) },
-	unify_proc__generate_du_clauses(Ctors, H1, H2, Clauses).
+	unify_proc__generate_du_unify_clauses(Ctors, H1, H2, Clauses).
+
+%-----------------------------------------------------------------------------%
+
+/*
+	For a type such as 
+
+		:- type foo ---> f ; g(a, b, c) ; h(foo).
+	
+	we want to generate code
+
+		index(X, Index) :-
+			(
+				X = f,
+				Index = 0
+			;
+				X = g(_, _, _),
+				Index = 1
+			;
+				X = h(_),
+				Index = 2
+			).
+*/
+
+:- pred unify_proc__generate_du_index_clauses(list(constructor), var, var, int,
+				list(clause), unify_proc_info, unify_proc_info).
+:- mode unify_proc__generate_du_index_clauses(in, in, in, in, out, in, out)
+	is det.
+
+unify_proc__generate_du_index_clauses([], _X, _Index, _N, []) --> [].
+unify_proc__generate_du_index_clauses([Ctor | Ctors], X, Index, N,
+		[Clause | Clauses]) -->
+	{ Ctor = FunctorName - ArgTypes },
+	{ unqualify_name(FunctorName, UnqualifiedFunctorName) },
+	{ Functor = term__atom(UnqualifiedFunctorName) },
+	{ term__context_init(Context) },
+	unify_proc__make_fresh_vars(ArgTypes, ArgVars),
+	{ term__var_list_to_term_list(ArgVars, ArgVarTerms) },
+	{ create_atomic_unification(
+		term__variable(X), term__functor(Functor, ArgVarTerms,
+			Context), explicit, [], 
+		UnifyX_Goal) },
+	{ create_atomic_unification(
+		term__variable(Index), term__functor(term__integer(N), [],
+			Context), explicit, [], 
+		UnifyIndex_Goal) },
+	{ GoalList = [UnifyX_Goal, UnifyIndex_Goal] },
+	{ goal_info_init(GoalInfo) },
+	{ conj_list_to_goal(GoalList, GoalInfo, Goal) },
+	{ implicitly_quantify_clause_body([X, Index], Goal, Body) },
+	{ Clause = clause([], Body, Context) },
+	{ N1 is N + 1 },
+	unify_proc__generate_du_index_clauses(Ctors, X, Index, N1, Clauses).
+
+%-----------------------------------------------------------------------------%
+
+/*	For a type such as 
+
+		:- type foo ---> f ; g(a) ; h(b, foo).
+
+   	we want to generate code
+
+		compare(Res, X, Y) :-
+			index(X, X_Index),	% Call_X_Index
+			index(Y, Y_Index),	% Call_Y_Index
+			( X_Index < Y_Index ->	% Call_Less_Than
+				Res = (<)	% Return_Less_Than
+			; X_Index > Y_Index ->	% Call_Greater_Than
+				Res = (>)	% Return_Greater_Than
+			;
+				% This disjunction is generated by
+				% unify_proc__generate_compare_cases, below.
+				(
+					X = f, Y = f,
+					R = (=)
+				;
+					X = g(X1), Y = g(Y1),
+					compare(R, X1, Y1)
+				;
+					X = h(X1, X2), Y = h(Y1, Y2),
+					( compare(R1, X1, Y1), R1 \= (=) ->
+						R = R1
+					; 
+						compare(R, X2, Y2)
+					)
+				)
+			->
+				Res = R		% Return_R
+			;
+				compare_error 	% Abort
+			).
+*/
+
+:- pred unify_proc__generate_du_compare_clauses(
+			list(constructor), var, var, var,
+			list(clause), unify_proc_info, unify_proc_info).
+:- mode unify_proc__generate_du_compare_clauses(in, in, in, in, out, in, out)
+	is det.
+
+unify_proc__generate_du_compare_clauses(Ctors, Res, X, Y, [Clause]) -->
+	( { Ctors = [SingleCtor] } ->
+		unify_proc__generate_compare_case(SingleCtor, Res, X, Y, Goal)
+	;
+		unify_proc__generate_du_compare_clauses_2(Ctors, Res, X, Y,
+			Goal)
+	),
+	{ ArgVars = [Res, X, Y] },
+	{ implicitly_quantify_clause_body(ArgVars, Goal, Body) },
+	{ term__context_init(Context) },
+	{ Clause = clause([], Body, Context) }.
+
+:- pred unify_proc__generate_du_compare_clauses_2(
+			list(constructor), var, var, var,
+			hlds__goal, unify_proc_info, unify_proc_info).
+:- mode unify_proc__generate_du_compare_clauses_2(in, in, in, in, out, in, out)
+	is det.
+
+unify_proc__generate_du_compare_clauses_2(Ctors, Res, X, Y, Goal) -->
+	{ term__context_init(Context) },
+	{ IntType = term__functor(term__atom("int"), [], Context) },
+	{ ResType = term__functor(term__atom("comparison_result"), [],
+			Context) },
+	unify_proc_info__new_var(IntType, X_Index),
+	unify_proc_info__new_var(IntType, Y_Index),
+	unify_proc_info__new_var(ResType, R),
+
+	{ goal_info_init(GoalInfo) },
+
+	unify_proc__build_call("index", [X, X_Index], Call_X_Index),
+
+	unify_proc__build_call("index", [Y, Y_Index], Call_Y_Index),
+
+	unify_proc__build_call("<", [X_Index, Y_Index], Call_Less_Than),
+
+	unify_proc__build_call(">", [X_Index, Y_Index], Call_Greater_Than),
+
+	{ create_atomic_unification(
+		term__variable(Res), term__functor(term__atom("<"), [],
+				Context), explicit, [], 
+		Return_Less_Than) },
+
+	{ create_atomic_unification(
+		term__variable(Res), term__functor(term__atom(">"), [],
+				Context), explicit, [], 
+		Return_Greater_Than) },
+
+	{ create_atomic_unification(
+		term__variable(Res), term__variable(R), explicit, [], 
+		Return_R) },
+
+	unify_proc__generate_compare_cases(Ctors, R, X, Y, Cases),
+	{ CasesGoal = disj(Cases) - GoalInfo },
+
+	unify_proc__build_call("compare_error", [], Abort),
+
+	{ Goal = conj([
+		Call_X_Index,
+		Call_Y_Index, 
+		if_then_else([], Call_Less_Than, Return_Less_Than,
+		    if_then_else([], Call_Greater_Than, Return_Greater_Than,
+		        if_then_else([], CasesGoal, Return_R,
+		            Abort
+		        ) - GoalInfo
+		    ) - GoalInfo
+		) - GoalInfo
+	]) - GoalInfo }.
+
+/*	
+	unify_proc__generate_compare_cases: for a type such as 
+
+		:- type foo ---> f ; g(a) ; h(b, foo).
+
+   	we want to generate code
+		(
+			X = f,		% UnifyX_Goal
+			Y = f,		% UnifyY_Goal
+			R = (=)		% CompareArgs_Goal
+		;
+			X = g(X1),	
+			Y = g(Y1),
+			compare(R, X1, Y1)
+		;
+			X = h(X1, X2),
+			Y = h(Y1, Y2),
+			( compare(R1, X1, Y1), R1 \= (=) ->
+				R = R1
+			; 
+				compare(R, X2, Y2)
+			)
+		)
+*/
+
+:- pred unify_proc__generate_compare_cases(list(constructor), var, var, var,
+			list(hlds__goal), unify_proc_info, unify_proc_info).
+:- mode unify_proc__generate_compare_cases(in, in, in, in, out, in, out) is det.
+
+unify_proc__generate_compare_cases([], _R, _X, _Y, []) --> [].
+unify_proc__generate_compare_cases([Ctor | Ctors], R, X, Y, [Case | Cases]) -->
+	unify_proc__generate_compare_case(Ctor, R, X, Y, Case),
+	unify_proc__generate_compare_cases(Ctors, R, X, Y, Cases).
+
+:- pred unify_proc__generate_compare_case(constructor, var, var, var,
+			hlds__goal, unify_proc_info, unify_proc_info).
+:- mode unify_proc__generate_compare_case(in, in, in, in, out, in, out) is det.
+
+unify_proc__generate_compare_case(Ctor, R, X, Y, Case) -->
+	{ Ctor = FunctorName - ArgTypes },
+	{ unqualify_name(FunctorName, UnqualifiedFunctorName) },
+	{ Functor = term__atom(UnqualifiedFunctorName) },
+	{ term__context_init(Context) },
+	unify_proc__make_fresh_vars(ArgTypes, Vars1),
+	unify_proc__make_fresh_vars(ArgTypes, Vars2),
+	{ term__var_list_to_term_list(Vars1, VarTerms1) },
+	{ term__var_list_to_term_list(Vars2, VarTerms2) },
+	{ create_atomic_unification(
+		term__variable(X), term__functor(Functor, VarTerms1, Context), 
+		explicit, [], 
+		UnifyX_Goal) },
+	{ create_atomic_unification(
+		term__variable(Y), term__functor(Functor, VarTerms2, Context),
+		explicit, [], 
+		UnifyY_Goal) },
+	unify_proc__compare_args(Vars1, Vars2, R, CompareArgs_Goal),
+	{ GoalList = [UnifyX_Goal, UnifyY_Goal, CompareArgs_Goal] },
+	{ goal_info_init(GoalInfo) },
+	{ conj_list_to_goal(GoalList, GoalInfo, Case) }.
+
+/*	unify_proc__compare_args: for a constructor such as
+
+		h(list(int), foo, string)
+	
+	we want to generate code
+
+		(
+			compare(R1, X1, Y1),	% Do_Comparison
+			R1 \= (=)		% Check_Not_Equal
+		->
+			R = R1			% Return_R1
+		;
+			compare(R2, X2, Y2),
+			R2 \= (=)
+		->
+			R = R2
+		; 
+			compare(R, X3, Y3)	% Return_Comparison
+		)
+
+	For a constructor with no arguments, we want to generate code
+
+		R = (=)		% Return_Equal
+
+*/
+
+:- pred unify_proc__compare_args(list(var), list(var), var, hlds__goal,
+				unify_proc_info, unify_proc_info).
+:- mode unify_proc__compare_args(in, in, in, out, in, out) is det.
+
+unify_proc__compare_args([], [], R, Return_Equal) -->
+	{ term__context_init(Context) },
+	{ create_atomic_unification(
+		term__variable(R), term__functor(term__atom("="), [],
+				Context), explicit, [], 
+		Return_Equal) }.
+unify_proc__compare_args([X|Xs], [Y|Ys], R, Goal) -->
+	{ goal_info_init(GoalInfo) },
+	( { Xs = [], Ys = [] } ->
+		unify_proc__build_call("compare", [R, X, Y], Goal)
+	;
+		{ term__context_init(Context) },
+		{ ResType = term__functor(term__atom("comparison_result"), [],
+				Context) },
+		unify_proc_info__new_var(ResType, R1),
+
+		unify_proc__build_call("compare", [R1, X, Y], Do_Comparison),
+
+		{ create_atomic_unification(
+			term__variable(R1), term__functor(term__atom("="), [],
+					Context), explicit, [], 
+			Check_Equal) },
+		{ Check_Not_Equal = not(Check_Equal) - GoalInfo },
+
+		{ create_atomic_unification(
+			term__variable(R), term__variable(R1), explicit, [], 
+			Return_R1) },
+		{ Condition = conj([Do_Comparison, Check_Not_Equal])
+					- GoalInfo },
+		{ Goal = if_then_else([], Condition, Return_R1, ElseCase)
+					- GoalInfo},
+		unify_proc__compare_args(Xs, Ys, R, ElseCase)
+	).
+unify_proc__compare_args([], [_|_], _, _) -->
+	{ error("unify_proc__compare_args: length mismatch") }.
+unify_proc__compare_args([_|_], [], _, _) -->
+	{ error("unify_proc__compare_args: length mismatch") }.
+
+%-----------------------------------------------------------------------------%
+
+:- pred unify_proc__build_call(string, list(var), hlds__goal,
+				unify_proc_info, unify_proc_info).
+:- mode unify_proc__build_call(in, in, out, in, out) is det.
+
+unify_proc__build_call(Name, ArgVars, Goal) -->
+	unify_proc_info__get_module_info(ModuleInfo),
+	{ module_info_get_predicate_table(ModuleInfo, PredicateTable) },
+	{ list__length(ArgVars, Arity) },
+	{
+		predicate_table_search_name_arity(PredicateTable,
+			Name, Arity, [PredId])
+	->
+		IndexPredId = PredId
+	;
+		error("unify_proc__build_call: invalid/ambiguous pred")
+	},
+	{ ModeId = 0 },
+	{ map__init(Follow) },
+	{ term__var_list_to_term_list(ArgVars, Args) },
+	{ Call = call(IndexPredId, ModeId, Args, not_builtin,
+			unqualified(Name), Follow) },
+	{ goal_info_init(GoalInfo) },
+	{ Goal = Call - GoalInfo }.
 
 :- pred unify_proc__make_fresh_vars(list(type), list(var),
-					var_type_info, var_type_info).
+					unify_proc_info, unify_proc_info).
 :- mode unify_proc__make_fresh_vars(in, out, in, out) is det.
 
 unify_proc__make_fresh_vars([], []) --> [].
 unify_proc__make_fresh_vars([Type | Types], [Var | Vars]) -->
-	var_type_info__new_var(Type, Var),
+	unify_proc_info__new_var(Type, Var),
 	unify_proc__make_fresh_vars(Types, Vars).
 
 :- pred unify_proc__unify_var_lists(list(var), list(var), list(hlds__goal)).
@@ -360,36 +719,52 @@ unify_proc__unify_var_lists([Var1 | Vars1], [Var2 | Vars2], [Goal | Goals]) :-
 
 % It's a pity that we don't have nested modules.
 
-% :- begin_module var_type_info.
+% :- begin_module unify_proc_info.
 % :- interface.
 
-:- type var_type_info.
+:- type unify_proc_info.
 
-:- pred var_type_info__init(var_type_info).
-:- mode var_type_info__init(out) is det.
+:- pred unify_proc_info__init(module_info, unify_proc_info).
+:- mode unify_proc_info__init(in, out) is det.
 
-:- pred var_type_info__new_var(type, var, var_type_info, var_type_info).
-:- mode var_type_info__new_var(in, out, in, out) is det.
+:- pred unify_proc_info__new_var(type, var, unify_proc_info, unify_proc_info).
+:- mode unify_proc_info__new_var(in, out, in, out) is det.
 
-:- pred var_type_info__extract(var_type_info, varset, map(var, type)).
-:- mode var_type_info__extract(in, out, out) is det.
+:- pred unify_proc_info__extract(unify_proc_info, varset, map(var, type)).
+:- mode unify_proc_info__extract(in, out, out) is det.
+
+:- pred unify_proc_info__get_module_info(module_info,
+					unify_proc_info, unify_proc_info).
+:- mode unify_proc_info__get_module_info(out, in, out) is det.
 
 %-----------------------------------------------------------------------------%
 
 % :- implementation
 
-:- type var_type_info == pair(varset, map(var, type)).
+:- type unify_proc_info
+	--->	unify_proc_info(
+			varset,
+			map(var, type),
+			module_info
+		).
 
-var_type_info__init(VarSet - Types) :-
+unify_proc_info__init(ModuleInfo, VarTypeInfo) :-
 	varset__init(VarSet),
-	map__init(Types).
+	map__init(Types),
+	VarTypeInfo = unify_proc_info(VarSet, Types, ModuleInfo).
 
-var_type_info__new_var(Type, Var, VarSet0 - Types0, VarSet - Types) :-
+unify_proc_info__new_var(Type, Var,
+		unify_proc_info(VarSet0, Types0, ModuleInfo),
+		unify_proc_info(VarSet, Types, ModuleInfo)) :-
 	varset__new_var(VarSet0, Var, VarSet),
 	map__set(Types0, Var, Type, Types).
 
-var_type_info__extract(VarSet - Types, VarSet, Types).
+unify_proc_info__extract(unify_proc_info(VarSet, Types, _ModuleInfo),
+		VarSet, Types).
 
-% :- end_module var_type_info.
+unify_proc_info__get_module_info(ModuleInfo, VarTypeInfo, VarTypeInfo) :-
+	VarTypeInfo = unify_proc_info(_VarSet, _Types, ModuleInfo).
+
+% :- end_module unify_proc_info.
 
 %-----------------------------------------------------------------------------%

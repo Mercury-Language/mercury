@@ -128,35 +128,125 @@
 
 %-----------------------------------------------------------------------------%
 
+:- type comparison_result ---> (=) ; (<) ; (>).
+
+:- pred unify(T::in, T::in) is semidet.
+
+:- pred compare(comparison_result::out, T::in, T::in) is det.
+
 % The following are used by the compiler, to implement polymorphism.
 % They should not be used in programs.
 
+:- pred index(T::in, int::out) is det.
+
 :- pred builtin_unify_int(int::in, int::in) is semidet.
+:- pred builtin_index_int(int::in, int::out) is det.
+:- pred builtin_compare_int(comparison_result::out, int::in, int::in) is det.
 
 :- pred builtin_unify_string(string::in, string::in) is semidet.
-/*
+:- pred builtin_index_string(string::in, int::out) is det.
+:- pred builtin_compare_string(comparison_result::out, string::in, string::in)
+	is det.
+
+/***** float not yet implemented
 :- pred builtin_unify_float(float::in, float::in) is semidet.
-*/
-:- pred builtin_unify_pred(int::in, int::in) is semidet.
+:- pred builtin_index_float(float::in, int::out) is det.
+:- pred builtin_compare_float(comparison_result::out, float::in, float::in)
+	is det.
+*****/
+
+:- pred builtin_unify_pred((pred)::in, (pred)::in) is semidet.
+:- pred builtin_index_pred((pred)::in, int::out) is det.
+:- pred builtin_compare_pred(comparison_result::out, (pred)::in, (pred)::in)
+	is det.
+
+:- pred compare_error is erroneous.
+
+:- type type_info(T) ---> type_info.
+
+% These should be defined in int.nl, but we define them here since
+% they're need for the implementation of compare/3.
+
+:- pred <(int, int).
+:- mode <(in, in) is semidet.
+
+:- pred >(int, int).
+:- mode >(in, in) is semidet.
 
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 :- import_module require, std_util.
 
-!.
-!(X, X).
-
 % Many of the predicates defined in this module are builtin -
 % the compiler generates code for them inline.
 
+%-----------------------------------------------------------------------------%
+
+!.
+!(X, X).
+
+%-----------------------------------------------------------------------------%
+
+	% A temporary hack until we implement call/N (N>1) properly
+	% The way this works is magic ;-)
+
+call(Pred, T) :-
+	call(call(Pred, T)).
+
+call(Pred, T1, T2) :-
+	call(call(Pred, T1, T2)).
+
+%-----------------------------------------------------------------------------%
+
+:- external(unify/2).
+:- external(index/2).
+:- external(compare/3).
+
 builtin_unify_int(X, X).
+
+builtin_index_int(X, X).
+
+builtin_compare_int(R, X, Y) :-
+	( X < Y ->
+		R = (<)
+	; X = Y ->
+		R = (=)
+	;
+		R = (>)
+	).
 
 builtin_unify_string(S, S).
 
+builtin_index_string(_, -1).
+
+builtin_compare_string(R, S1, S2) :-
+	builtin_strcmp(Res, S1, S2),
+	( Res < 0 ->
+		R = (<)
+	; Res = 0 ->
+		R = (=)
+	;
+		R = (>)
+	).
+
+:- pred builtin_strcmp(int, string, string).
+:- mode builtin_strcmp(out, in, in) is det.
+
+:- external(builtin_strcmp/3).
+
 builtin_unify_pred(_Pred1, _Pred2) :-
 	semidet_succeed,	% suppress determinism warning
-	error("attempted higher-order unification").
+	error("attempted unification of higher-order predicate terms").
+
+builtin_compare_pred(_Res, _Pred1, _Pred2) :-
+	error("attempted comparison of higher-order predicate terms").
+
+builtin_index_pred(_, -1).
+
+	% This is used by the code that the compiler generates for compare/3.
+compare_error :-
+	error("internal error in compare/3").
 
 :- end_module mercury_builtin.
 

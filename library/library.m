@@ -22,5 +22,12 @@
 
 :- import_module parser, lexer, ops.
 
+:- pred main(io__state::di, io__state::uo) is det.
+
+:- implementation.
+
+main -->
+	io__write_string("Mercury library\n").
+
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

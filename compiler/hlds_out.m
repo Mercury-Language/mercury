@@ -110,8 +110,7 @@ hlds_out__write_pred_id(ModuleInfo, PredId) -->
 	%%% io__write_string(Module),
 	%%% io__write_string(":"),
 	{ predicate_name(ModuleInfo, PredId, Name) },
-	{ predicate_arity(ModuleInfo, PredId, Arity) },
-	( { Name = "=", Arity = 2 } ->
+	( { string__append("__", _, Name) } ->
 		{ module_info_preds(ModuleInfo, Preds) },
 		{ map__lookup(Preds, PredId, PredInfo) },
 		{ pred_info_arg_types(PredInfo, TVarSet, ArgTypes) },
@@ -119,6 +118,7 @@ hlds_out__write_pred_id(ModuleInfo, PredId) -->
 		mercury_output_term(term__functor(term__atom(Name),
 				ArgTypes, Context), TVarSet)
 	;
+		{ predicate_arity(ModuleInfo, PredId, Arity) },
 		io__write_string(Name),
 		io__write_string("/"),
 		io__write_int(Arity)

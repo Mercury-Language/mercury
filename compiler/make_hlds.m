@@ -43,17 +43,20 @@ parse_tree_to_hlds(module(Name, Items), Module) -->
 	add_item_list_decls(Items, local, Module0, Module1),
 	globals__io_lookup_bool_option(statistics, Statistics),
 	maybe_report_stats(Statistics),
-		% balance the binary trees
-	{ module_info_optimize(Module1, Module2) },
+	add_item_list_type_defns(Items, local, Module1, Module2),
 	maybe_report_stats(Statistics),
-	add_item_list_clauses(Items, Module2, Module3),
+		% balance the binary trees
+	{ module_info_optimize(Module2, Module3) },
+	maybe_report_stats(Statistics),
+	add_item_list_clauses(Items, Module3, Module4),
 		% the predid list is constructed in reverse order, for
 		% efficiency, so we return it to the correct order here.
-	{ module_info_reverse_predids(Module3, Module) }.
+	{ module_info_reverse_predids(Module4, Module) }.
 
 %-----------------------------------------------------------------------------%
 
-	% add the declarations one by one to the module
+	% add the declarations (other than type definitions)
+	% one by one to the module
 
 :- pred add_item_list_decls(item_list, import_status, module_info, module_info,
 				io__state, io__state).
@@ -63,6 +66,21 @@ add_item_list_decls([], _, Module, Module) --> [].
 add_item_list_decls([Item - Context | Items], Status0, Module0, Module) -->
 	add_item_decl(Item, Context, Status0, Module0, Status1, Module1),
 	add_item_list_decls(Items, Status1, Module1, Module).
+
+	% Add the type definitions one by one to the module.
+	% This needs to come after we have added the pred declarations,
+	% since we need to have the pred_id for `index/2' and `compare/3'
+	% when we add compiler-generated clauses for `compare/3'.
+	% (And similarly for other compiler-generated predicates like that.)
+
+:- pred add_item_list_type_defns(item_list, import_status,
+		module_info, module_info, io__state, io__state).
+:- mode add_item_list_type_defns(in, in, in, out, di, uo) is det.
+
+add_item_list_type_defns([], _, Module, Module) --> [].
+add_item_list_type_defns([Item - Context | Items], Status0, Module0, Module) -->
+	add_item_type_defn(Item, Context, Status0, Module0, Status1, Module1),
+	add_item_list_type_defns(Items, Status1, Module1, Module).
 
 	% add the clauses one by one to the module
 
@@ -87,10 +105,7 @@ add_item_list_clauses([Item - Context | Items], Module0, Module) -->
 	% skip clauses
 add_item_decl(clause(_, _, _, _), _, Status, Module, Status, Module) --> [].
 
-add_item_decl(type_defn(VarSet, TypeDefn, Cond), Context, Status, Module0,
-		Status, Module) -->
-	module_add_type_defn(Module0, VarSet, TypeDefn, Cond, Context, Status,
-		Module).
+add_item_decl(type_defn(_, _, _), _, Status, Module, Status, Module) --> [].
 
 add_item_decl(inst_defn(VarSet, InstDefn, Cond), Context, Status, Module0,
 		Status, Module) -->
@@ -138,6 +153,48 @@ add_item_decl(module_defn(_VarSet, ModuleDefn), Context, Status0, Module0,
 	).
 
 add_item_decl(nothing, _, Status, Module, Status, Module) --> [].
+
+%-----------------------------------------------------------------------------%
+
+	% dispatch on the different types of items
+
+:- pred add_item_type_defn(item, term__context, import_status, module_info,
+			import_status, module_info,
+			io__state, io__state).
+:- mode add_item_type_defn(in, in, in, in, out, out, di, uo) is det.
+
+add_item_type_defn(type_defn(VarSet, TypeDefn, Cond), Context, Status, Module0,
+		Status, Module) -->
+	module_add_type_defn(Module0, VarSet, TypeDefn, Cond, Context, Status,
+		Module).
+
+add_item_type_defn(module_defn(_VarSet, ModuleDefn), _Context, Status0, Module0,
+		Status, Module) -->
+	( { ModuleDefn = interface } ->
+		{ Status = exported },
+		{ Module = Module0 }
+	; { ModuleDefn = implementation } ->
+		{ Status = local },
+		{ Module = Module0 }
+	; { ModuleDefn = imported } ->
+		{ Status = imported },
+		{ Module = Module0 }
+	;
+		{ Status = Status0 },
+		{ Module = Module0 }
+	).
+
+add_item_type_defn(clause(_, _, _, _), _, Status, Module, Status, Module) -->
+	[].
+add_item_type_defn(inst_defn(_, _, _), _, Status, Module, Status, Module) -->
+	[].
+add_item_type_defn(mode_defn(_, _, _), _, Status, Module, Status, Module) -->
+	[].
+add_item_type_defn(pred(_, _, _, _, _), _, Status, Module, Status, Module) -->
+	[].
+add_item_type_defn(mode(_, _, _, _, _), _, Status, Module, Status, Module) -->
+	[].
+add_item_type_defn(nothing, _, Status, Module, Status, Module) --> [].
 
 %-----------------------------------------------------------------------------%
 
@@ -313,12 +370,15 @@ module_add_type_defn(Module0, TVarSet, TypeDefn, Cond, Context, Status,
 		(
 			{ Body = abstract_type }
 		->
-			{ add_unify_pred_decl(Module1, TVarSet, Type, TypeId,
+			{ special_pred_list(SpecialPredIds) },
+			{ add_special_pred_decl_list(SpecialPredIds,
+					Module1, TVarSet, Type, TypeId,
 					Context, Status, Module2) }
 		;
-			{ add_unify_pred(Module1, TVarSet, Type, TypeId,
-				Body, Context,
-				Status, Module2) }
+			{ special_pred_list(SpecialPredIds) },
+			{ add_special_pred_list(SpecialPredIds,
+					Module1, TVarSet, Type, TypeId,
+					Body, Context, Status, Module2) }
 		),
 		{ module_info_set_types(Module2, Types, Module) },
 		( { Body = uu_type(_) } ->
@@ -434,48 +494,88 @@ preds_add(Module0, TVarSet, PredName, Types, Cond, Context, Status, Module) -->
 		multiple_def_error(PredName, Arity, "pred", Context)
 	).
 
-:- pred add_unify_pred(module_info, tvarset, type, type_id, hlds__type_body,
+:- pred add_special_pred_list(list(special_pred_id),
+			module_info, tvarset, type, type_id, hlds__type_body,
 			term__context, import_status,
 			module_info).
-:- mode add_unify_pred(in, in, in, in, in, in, in, out) is det.
+:- mode add_special_pred_list(in, in, in, in, in, in, in, in, out) is det.
 
-add_unify_pred(Module0, TVarSet, Type, TypeId, TypeBody, Context, Status,
+add_special_pred_list([], Module, _, _, _, _, _, _, Module).
+add_special_pred_list([SpecialPredId | SpecialPredIds], Module0,
+		TVarSet, Type, TypeId, Body, Context, Status, Module) :-
+	add_special_pred(SpecialPredId, Module0,
+		TVarSet, Type, TypeId, Body, Context, Status, Module1),
+	add_special_pred_list(SpecialPredIds, Module1,
+		TVarSet, Type, TypeId, Body, Context, Status, Module).
+
+:- pred add_special_pred(special_pred_id,
+			module_info, tvarset, type, type_id, hlds__type_body,
+			term__context, import_status,
+			module_info).
+:- mode add_special_pred(in, in, in, in, in, in, in, in, out) is det.
+
+add_special_pred(SpecialPredId,
+		Module0, TVarSet, Type, TypeId, TypeBody, Context, Status,
 		Module) :-
-	module_info_get_unify_pred_map(Module0, UnifyPredMap0),
-	( map__contains(UnifyPredMap0, TypeId) ->
+	module_info_get_special_pred_map(Module0, SpecialPredMap0),
+	( map__contains(SpecialPredMap0, SpecialPredId - TypeId) ->
 		Module1 = Module0
 	;
-		add_unify_pred_decl(Module0, TVarSet, Type, TypeId, Context,
-			Status, Module1)
+		add_special_pred_decl(SpecialPredId,
+			Module0, TVarSet, Type, TypeId, Context, Status,
+			Module1)
 	),
-	module_info_get_unify_pred_map(Module1, UnifyPredMap1),
-	map__lookup(UnifyPredMap1, TypeId, PredId),
+	module_info_get_special_pred_map(Module1, SpecialPredMap1),
+	map__lookup(SpecialPredMap1, SpecialPredId - TypeId, PredId),
 	module_info_preds(Module1, Preds0),
 	map__lookup(Preds0, PredId, PredInfo0),
-	pred_info_set_status(PredInfo0, Status, PredInfo1),
-	unify_proc__generate_clause_info(Type, TypeBody, ClausesInfo),
+	% PredInfo1 = PredInfo0,
+%% /******** this hack doesn't work
+	( Status = imported ->
+		% this is a bit of a hack
+		pred_info_set_status(PredInfo0, imported, PredInfo1)
+	;
+		PredInfo1 = PredInfo0
+	),
+%% ********/
+	unify_proc__generate_clause_info(SpecialPredId, Type, TypeBody,
+				Module1, ClausesInfo),
 	pred_info_set_clauses_info(PredInfo1, ClausesInfo, PredInfo),
 	map__set(Preds0, PredId, PredInfo, Preds),
 	module_info_set_preds(Module1, Preds, Module).
 
-:- pred add_unify_pred_decl(module_info, tvarset, type, type_id,
+:- pred add_special_pred_decl_list(list(special_pred_id),
+			module_info, tvarset, type, type_id, 
+			term__context, import_status,
+			module_info).
+:- mode add_special_pred_decl_list(in, in, in, in, in, in, in, out) is det.
+
+add_special_pred_decl_list([], Module, _, _, _, _, _, Module).
+add_special_pred_decl_list([SpecialPredId | SpecialPredIds], Module0,
+		TVarSet, Type, TypeId, Context, Status, Module) :-
+	add_special_pred_decl(SpecialPredId, Module0,
+		TVarSet, Type, TypeId, Context, Status, Module1),
+	add_special_pred_decl_list(SpecialPredIds, Module1,
+		TVarSet, Type, TypeId, Context, Status, Module).
+
+:- pred add_special_pred_decl(special_pred_id,
+				module_info, tvarset, type, type_id,
 				term__context, import_status,
 				module_info).
-:- mode add_unify_pred_decl(in, in, in, in, in, in, out) is det.
+:- mode add_special_pred_decl(in, in, in, in, in, in, in, out) is det.
 
-add_unify_pred_decl(Module0, TVarSet, Type, TypeId, Context, Status,
+add_special_pred_decl(SpecialPredId,
+			Module0, TVarSet, Type, TypeId, Context, Status,
 			Module) :-
 	module_info_name(Module0, ModuleName),
-	PredName = unqualified("="),
-	Arity = 2,
+	PredName = unqualified(Name),
+	special_pred_info(SpecialPredId, Type, Name, ArgTypes, ArgModes, Det),
+	special_pred_name_arity(SpecialPredId, _, Arity),
 	Cond = true,
-	ArgTypes = [Type, Type],
 	clauses_info_init(Arity, ClausesInfo0),
 	pred_info_init(ModuleName, PredName, Arity, TVarSet, ArgTypes, Cond,
 		Context, ClausesInfo0, Status, PredInfo0),
 
-	ArgModes = [(ground -> ground), (ground -> ground)],
-	Det = semidet,
 	pred_info_procedures(PredInfo0, Procs0),
 	next_mode_id(Procs0, Det, ModeId),
 	proc_info_init(Arity, ArgModes, Det, Context, NewProc),
@@ -487,9 +587,10 @@ add_unify_pred_decl(Module0, TVarSet, Type, TypeId, Context, Status,
 		PredicateTable),
 	module_info_set_predicate_table(Module0, PredicateTable,
 		Module1),
-	module_info_get_unify_pred_map(Module1, UnifyPredMap0),
-	map__set(UnifyPredMap0, TypeId, PredId, UnifyPredMap),
-	module_info_set_unify_pred_map(Module1, UnifyPredMap, Module).
+	module_info_get_special_pred_map(Module1, SpecialPredMap0),
+	map__set(SpecialPredMap0, SpecialPredId - TypeId, PredId,
+		SpecialPredMap),
+	module_info_set_special_pred_map(Module1, SpecialPredMap, Module).
 
 %-----------------------------------------------------------------------------%
 

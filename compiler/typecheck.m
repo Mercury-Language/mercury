@@ -194,10 +194,14 @@ typecheck_pred_types_2([PredId | PredIds], ModuleInfo0, Error0,
 	    IOState2 = IOState0,
 	    Error2 = Error0
 	;
-	    % Unification predicates are created already type-correct,
+	    % Compiler-generated predicates are created already type-correct,
 	    % there's no need to typecheck them.
-	    pred_info_name(PredInfo0, "="),
-	    pred_info_arity(PredInfo0, 2)
+	    pred_info_name(PredInfo0, PredName),
+	    pred_info_arity(PredInfo0, PredArity),
+	    ( PredName = "__Unify__", PredArity = 2
+	    ; PredName = "__Compare__", PredArity = 3
+	    ; PredName = "__Index__", PredArity = 2
+	    )
 	->
 	    pred_info_clauses_info(PredInfo0, ClausesInfo0),
 	    ClausesInfo0 = clauses_info(VarSet, VarTypes0, HeadVars,

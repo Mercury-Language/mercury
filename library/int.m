@@ -10,14 +10,17 @@
 
 :- interface.
 
-:- pred <(int, int).
-:- mode <(in, in) is semidet.
+% '<' and '>' are currently defined in mercury_builtin.nl, since they need to
+% be because they are used in the implementation of compare/3.
+% 
+% :- pred <(int, int).
+% :- mode <(in, in) is semidet.
+%
+% :- pred >(int, int).
+% :- mode >(in, in) is semidet.
 
 :- pred =<(int, int).
 :- mode =<(in, in) is semidet.
-
-:- pred >(int, int).
-:- mode >(in, in) is semidet.
 
 :- pred >=(int, int).
 :- mode >=(in, in) is semidet.

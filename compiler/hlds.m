@@ -57,7 +57,7 @@
 					string,		% module name
 					predicate_table,
 					unify_requests,
-					unify_pred_map,
+					special_pred_map,
 					shape_table,
 					type_table,
 					inst_table,
@@ -68,8 +68,6 @@
 				).
 
 :- interface.
-
-:- type unify_pred_map	==	map(type_id, pred_id).
 
 :- type unify_requests.
 
@@ -121,6 +119,61 @@
 
 :- type liveness        --->    live
                         ;       dead.
+
+
+%-----------------------------------------------------------------------------%
+
+:- type special_pred_map	==	map(special_pred, pred_id).
+
+:- type special_pred		==	pair(special_pred_id, type_id).
+
+:- type special_pred_id
+	--->	unify
+	;	index
+	;	compare.
+	/*
+	;	read
+	;	write.
+	*/
+
+:- pred special_pred_info(special_pred_id, type, string, list(type),
+			list(mode), determinism).
+:- mode special_pred_info(in, in, out, out, out, out) is det.
+
+:- pred special_pred_name_arity(special_pred_id, string, int).
+:- mode special_pred_name_arity(in, out, out) is det.
+
+:- pred special_pred_list(list(special_pred_id)).
+:- mode special_pred_list(out) is det.
+
+:- implementation.
+
+special_pred_list([unify, index, compare]).
+
+special_pred_name_arity(unify, "unify", 2).
+special_pred_name_arity(index, "index", 2).
+special_pred_name_arity(compare, "compare", 3).
+
+special_pred_info(unify, Type, "__Unify__", [Type, Type], [In, In2], semidet) :-
+	In = (ground -> ground),
+		% we use `In2' to work around a bug with --static-ground-terms
+		% which causes a duplicate label in the generated C code
+	In2 = (ground -> ground).
+
+special_pred_info(index, Type, "__Index__", [Type, IntType], [In, Out], det) :-
+	term__context_init(Context),
+	IntType = term__functor(term__atom("int"), [], Context),
+	In = (ground -> ground),
+	Out = (free -> ground).
+special_pred_info(compare, Type,
+		 "__Compare__", [ResType, Type, Type], [Out, In, In2], det) :-
+	term__context_init(Context),
+	ResType = term__functor(term__atom("comparison_result"), [], Context),
+	In = (ground -> ground),
+	In2 = (ground -> ground),
+	Out = (free -> ground).
+
+:- interface.
 
 %-----------------------------------------------------------------------------%
 
@@ -536,8 +589,8 @@ inst_table_set_ground_insts(inst_table(A, B, C, _), GroundInsts,
 :- pred module_info_get_unify_requests(module_info, unify_requests).
 :- mode module_info_get_unify_requests(in, out) is det.
 
-:- pred module_info_get_unify_pred_map(module_info, unify_pred_map).
-:- mode module_info_get_unify_pred_map(in, out) is det.
+:- pred module_info_get_special_pred_map(module_info, special_pred_map).
+:- mode module_info_get_special_pred_map(in, out) is det.
 
 :- pred module_info_shapes(module_info, shape_table).
 :- mode module_info_shapes(in, out) is det.
@@ -586,9 +639,9 @@ inst_table_set_ground_insts(inst_table(A, B, C, _), GroundInsts,
 					module_info).
 :- mode module_info_set_unify_requests(in, in, out) is det.
 
-:- pred module_info_set_unify_pred_map(module_info, unify_pred_map,
+:- pred module_info_set_special_pred_map(module_info, special_pred_map,
 					module_info).
-:- mode module_info_set_unify_pred_map(in, in, out) is det.
+:- mode module_info_set_special_pred_map(in, in, out) is det.
 
 :- pred module_info_set_shapes(module_info, shape_table, module_info).
 :- mode module_info_set_shapes(in, in, out) is det.
@@ -673,8 +726,8 @@ module_info_get_unify_requests(ModuleInfo, Requests) :-
 	ModuleInfo = module(_, _, Requests, _, _, _, _, _, _, _, _).
 
 
-module_info_get_unify_pred_map(ModuleInfo, UnifyPredMap) :-
-	ModuleInfo = module(_, _, _, UnifyPredMap, _, _, _, _, _, _, _).
+module_info_get_special_pred_map(ModuleInfo, SpecialPredMap) :-
+	ModuleInfo = module(_, _, _, SpecialPredMap, _, _, _, _, _, _, _).
 
 module_info_shapes(ModuleInfo, Shapes) :-
 	ModuleInfo = module(_, _, _, _, Shapes, _, _, _, _, _, _).
@@ -734,9 +787,9 @@ module_info_set_unify_requests(ModuleInfo0, Requests, ModuleInfo) :-
 	ModuleInfo0 = module(A, B, _, D, E, F, G, H, I, J, K),
 	ModuleInfo = module(A, B, Requests, D, E, F, G, H, I, J, K).
 
-module_info_set_unify_pred_map(ModuleInfo0, UnifyPredMap, ModuleInfo) :-
+module_info_set_special_pred_map(ModuleInfo0, SpecialPredMap, ModuleInfo) :-
 	ModuleInfo0 = module(A, B, C, _, E, F, G, H, I, J, K),
-	ModuleInfo = module(A, B, C, UnifyPredMap, E, F, G, H, I, J, K).
+	ModuleInfo = module(A, B, C, SpecialPredMap, E, F, G, H, I, J, K).
 
 module_info_set_shapes(ModuleInfo0, Shapes, ModuleInfo) :-
 	ModuleInfo0 = module(A, B, C, D, _, F, G, H, I, J, K),

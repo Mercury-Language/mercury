@@ -202,8 +202,8 @@
 :- type proc_label 	
 	--->	proc(string, string, int, int)
 		%	 module, predicate name, predicate arity, mode #
-	;	unify_proc(string, string, int, int).
-		%	module, type name, type arity, mode #
+	;	special_proc(string, string, string, int, int).
+		%	module, pred name, type name, type arity, mode #
 
 :- type tag		==	int.
 
@@ -764,7 +764,7 @@ output_label(local(ProcLabel, Num)) -->
 output_proc_label(proc(_Module, Pred0, Arity, ModeNum0)) -->
 	output_label_prefix,
 	%%% io__write_string(Module),
-	{ llds__name_mangle(Pred0 ,Pred) },
+	{ llds__name_mangle(Pred0, Pred) },
 	io__write_string(Pred),
 	io__write_string("_"),
 	io__write_int(Arity),
@@ -772,10 +772,12 @@ output_proc_label(proc(_Module, Pred0, Arity, ModeNum0)) -->
 	{ ModeNum is ModeNum0 mod 10000 },	% strip off the priority
 	io__write_int(ModeNum).
 
-output_proc_label(unify_proc(_Module, TypeName, TypeArity, ModeNum0)) -->
+output_proc_label(special_proc(_Module, PredName, TypeName, TypeArity,
+				ModeNum0)) -->
 	output_label_prefix,
 	%%% io__write_string(Module),
-	io__write_string("unify_"),
+	io__write_string(PredName),
+	io__write_string("_"),
 	io__write_string(TypeName),
 	io__write_string("_"),
 	io__write_int(TypeArity),

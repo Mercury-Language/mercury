@@ -55,17 +55,6 @@
 
 %-----------------------------------------------------------------------------%
 
-% compare/3 is not possible in a strictly parametric polymorphic type
-% system such as that of Goedel.
-
-:- type comparison_result ---> (=) ; (<) ; (>).
-
-:- pred compare(comparison_result, T, T).
-:- mode compare(out, in, in) is det.
-:- mode compare(in, in, in) is semidet.	% implied
-
-%-----------------------------------------------------------------------------%
-
 :- type unit		--->	unit.
 
 :- type pair(T1, T2)	--->	(T1 - T2).
@@ -119,9 +108,8 @@
 
 :- external(report_stats/0).
 :- external(type_to_univ/2).
-:- external(gc_call/1).		% currently only implemented for NU-Prolog
-:- external(solutions/2).	% currently only implemented for NU-Prolog
-:- external(compare/3).		% currently only implemented for NU-Prolog
+:- external(gc_call/1).		% currently only implemented for Prolog
+:- external(solutions/2).	% currently only implemented for Prolog
 
 assoc_list__reverse_members([], []).
 assoc_list__reverse_members([K-V|KVs], [V-K|VKs]) :-

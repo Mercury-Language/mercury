@@ -600,10 +600,11 @@ opt_debug__dump_proclabel(proc(Module, Pred, Arity, Mode), Str) :-
 	string__int_to_string(Arity, A_str),
 	string__int_to_string(Mode, M_str),
 	string__append_list([Module, "_", Pred, "_", A_str, "_", M_str], Str).
-opt_debug__dump_proclabel(unify_proc(Module, Type, Arity, Mode), Str) :-
+opt_debug__dump_proclabel(special_proc(Module, Pred, Type, Arity, Mode), Str) :-
 	string__int_to_string(Arity, A_str),
 	string__int_to_string(Mode, M_str),
-	string__append_list([Module, "_", Type, "_", A_str, "_", M_str], Str).
+	string__append_list(
+		[Module, "_", Pred, "_", Type, "_", A_str, "_", M_str], Str).
 
 opt_debug__dump_bool(yes, "yes").
 opt_debug__dump_bool(no, "no").

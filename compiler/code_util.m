@@ -112,21 +112,42 @@ code_util__make_local_label(ModuleInfo, PredId, ProcId, LabelNum, Label) :-
 code_util__make_proc_label(ModuleInfo, PredId, ProcId, ProcLabel) :-
 	predicate_module(ModuleInfo, PredId, ModuleName),
 	predicate_name(ModuleInfo, PredId, PredName),
-	( PredName = "=" ->
+	( string__append("__", _, PredName) ->
 		module_info_preds(ModuleInfo, Preds),
 		map__lookup(Preds, PredId, PredInfo),
 		pred_info_arg_types(PredInfo, _TypeVarSet, ArgTypes),
+		% XXX  This is a kludge!
+		% For compiler-generated type-specific predicates,
+		% we should really store the type as a separate
+		% field in pred_info.
+		% Instead we use some nast hacks:
+		% for __Index__(...TypeInfos..., T, int)
+		% we use the type of the second last argument,
+		% and for __Compare__(...TypeInfos..., comparison_result, T, T)
+		% and __Unify__(...TypeInfos..., T, T) we use the
+		% type of the last argument.
 		(
+			PredName = "__Index__",
+			list__reverse(ArgTypes, [_, Type | _]),
+			type_to_type_id(Type, TypeId0, _)
+		->
+			TypeId = TypeId0
+		;
+			( PredName = "__Unify__" ; PredName = "__Compare__" ),
 			list__reverse(ArgTypes, [Type | _]),
 			type_to_type_id(Type, TypeId0, _)
 		->
 			TypeId = TypeId0
 		;
-			error("Cannot find type name.")
+			string__append_list(["code_util__make_proc_label:\n",
+				"cannot make label for special pred `",
+				PredName, "'"], ErrorMessage),
+			error(ErrorMessage)
 		),
 		type_util__type_id_name(ModuleInfo, TypeId, TypeName),
 		type_util__type_id_arity(ModuleInfo, TypeId, Arity),
-		ProcLabel = unify_proc(ModuleName, TypeName, Arity, ProcId)
+		ProcLabel = special_proc(ModuleName, PredName, TypeName,
+				Arity, ProcId)
 	;
 		predicate_arity(ModuleInfo, PredId, Arity),
 		ProcLabel = proc(ModuleName, PredName, Arity, ProcId)
@@ -136,7 +157,8 @@ code_util__make_uni_label(ModuleInfo, TypeId, UniModeNum, ProcLabel) :-
 	type_util__type_id_module(ModuleInfo, TypeId, ModuleName),
 	type_util__type_id_name(ModuleInfo, TypeId, TypeName),
 	type_util__type_id_arity(ModuleInfo, TypeId, Arity),
-	ProcLabel = unify_proc(ModuleName, TypeName, Arity, UniModeNum).
+	ProcLabel = special_proc(ModuleName, "__Unify__", TypeName, Arity,
+				UniModeNum).
 
 %-----------------------------------------------------------------------------%
 

@@ -817,10 +817,12 @@ opt_util__format_proclabel(proc(_Module, Pred, Arity, Mode), Str) :-
 	string__int_to_string(Arity, ArityStr),
 	string__int_to_string(Mode, ModeStr),
 	string__append_list([Pred, "/", ArityStr, " mode ", ModeStr], Str).
-opt_util__format_proclabel(unify_proc(_Module, Type, Arity, Mode), Str) :-
+opt_util__format_proclabel(special_proc(_Module, Pred, Type, Arity, Mode),
+		Str) :-
 	string__int_to_string(Arity, ArityStr),
 	string__int_to_string(Mode, ModeStr),
-	string__append_list(["unify_", Type, "/", ArityStr, " mode ", ModeStr], Str).
+	string__append_list(
+		[Pred, "_", Type, "/", ArityStr, " mode ", ModeStr], Str).
 
 opt_util__has_both_incr_decr_sp(Instrs) :-
 	opt_util__has_both_incr_decr_sp_2(Instrs, no, yes, no, yes).
