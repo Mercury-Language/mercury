@@ -27,7 +27,7 @@ export CVSROOT
 
 case $HOST in
 	# test things at different optimization levels...
-	murlibobo)	OPTIMIZE=-O5 ;;
+	murlibobo)	OPTIMIZE=-O1 ;;
 	kryten) 	OPTIMIZE=-O4 ;;
 	mercury) 	OPTIMIZE=-O3 ;;
 	muse)		OPTIMIZE=-O0 ;;
