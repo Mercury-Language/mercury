@@ -56,7 +56,7 @@ MR_make_string(MR_Code *proclabel, const char *fmt, ...) {
 			proclabel);
 	strcpy((char *) result, p);
 
-#ifdef HAVE_VFPRINTF
+#ifdef HAVE_VSNPRINTF
 	MR_free(p);
 #endif
 
