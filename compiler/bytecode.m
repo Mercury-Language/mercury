@@ -28,6 +28,12 @@
 			;	endof_disjunction
 			;	enter_disjunct(byte_label_id)
 			;	endof_disjunct
+			;	enter_switch(byte_var, byte_label_id)
+			;	endof_switch
+			;	enter_switch_arm(cons_id, tag, byte_label_id)
+			;	endof_switch_arm
+			;	enter_negation(byte_label_id)
+			;	endof_negation
 			;	enter_commit
 			;	endof_commit
 			;	assign(byte_var, byte_var)
@@ -43,6 +49,7 @@
 			;	builtin_binop(binary_op, byte_var, byte_var,
 					byte_var)
 			;	builtin_unop(unary_op, byte_var, byte_var)
+			;	pragma_c_code
 			.
 
 :- type byte_module_id	==	string.
@@ -144,6 +151,18 @@ output_args(endof_disjunction) --> [].
 output_args(enter_disjunct(LabelId)) -->
 	output_label_id(LabelId).
 output_args(endof_disjunct) --> [].
+output_args(enter_switch(Var, LabelId)) -->
+	output_var(Var),
+	output_label_id(LabelId).
+output_args(endof_switch) --> [].
+output_args(enter_switch_arm(ConsId, Tag, LabelId)) -->
+	output_cons_id(ConsId),
+	output_tag(Tag),
+	output_label_id(LabelId).
+output_args(endof_switch_arm) --> [].
+output_args(enter_negation(LabelId)) -->
+	output_label_id(LabelId).
+output_args(endof_negation) --> [].
 output_args(enter_commit) --> [].
 output_args(endof_commit) --> [].
 output_args(assign(Var1, Var2)) -->
@@ -186,6 +205,7 @@ output_args(builtin_unop(Unop, Var1, Var2)) -->
 	output_unop(Unop),
 	output_var(Var1),
 	output_var(Var2).
+output_args(pragma_c_code) --> [].
 
 :- pred debug_args(byte_code, io__state, io__state).
 :- mode debug_args(in, di, uo) is det.
@@ -206,6 +226,18 @@ debug_args(endof_disjunction) --> [].
 debug_args(enter_disjunct(LabelId)) -->
 	debug_label_id(LabelId).
 debug_args(endof_disjunct) --> [].
+debug_args(enter_switch(Var, LabelId)) -->
+	debug_var(Var),
+	debug_label_id(LabelId).
+debug_args(endof_switch) --> [].
+debug_args(enter_switch_arm(ConsId, Tag, LabelId)) -->
+	debug_cons_id(ConsId),
+	debug_tag(Tag),
+	debug_label_id(LabelId).
+debug_args(endof_switch_arm) --> [].
+debug_args(enter_negation(LabelId)) -->
+	debug_label_id(LabelId).
+debug_args(endof_negation) --> [].
 debug_args(enter_commit) --> [].
 debug_args(endof_commit) --> [].
 debug_args(assign(Var1, Var2)) -->
@@ -248,6 +280,7 @@ debug_args(builtin_unop(Unop, Var1, Var2)) -->
 	debug_unop(Unop),
 	debug_var(Var1),
 	debug_var(Var2).
+debug_args(pragma_c_code) --> [].
 
 %---------------------------------------------------------------------------%
 
@@ -459,17 +492,24 @@ byte_code(enter_disjunction(_),			 5).
 byte_code(endof_disjunction,			 6).
 byte_code(enter_disjunct(_),			 7).
 byte_code(endof_disjunct,			 8).
-byte_code(enter_commit,				 9).
-byte_code(endof_commit,				10).
-byte_code(assign(_, _),				11).
-byte_code(test(_, _),				12).
-byte_code(construct(_, _, _, _),		13).
-byte_code(deconstruct(_, _, _, _),		14).
-byte_code(place_arg(_, _),			15).
-byte_code(call(_, _, _, _),			16).
-byte_code(pickup_arg(_, _),			17).
-byte_code(builtin_binop(_, _, _, _),		18).
-byte_code(builtin_unop(_, _, _),		19).
+byte_code(enter_switch(_, _),			 9).
+byte_code(endof_switch,				10).
+byte_code(enter_switch_arm(_, _, _),		11).
+byte_code(endof_switch_arm,			12).
+byte_code(enter_negation(_),			13).
+byte_code(endof_negation,			14).
+byte_code(enter_commit,				15).
+byte_code(endof_commit,				16).
+byte_code(assign(_, _),				17).
+byte_code(test(_, _),				18).
+byte_code(construct(_, _, _, _),		19).
+byte_code(deconstruct(_, _, _, _),		20).
+byte_code(place_arg(_, _),			21).
+byte_code(call(_, _, _, _),			22).
+byte_code(pickup_arg(_, _),			23).
+byte_code(builtin_binop(_, _, _, _),		24).
+byte_code(builtin_unop(_, _, _),		25).
+byte_code(pragma_c_code,			26).
 
 :- pred byte_debug(byte_code, string).
 :- mode byte_debug(in, out) is det.
@@ -483,6 +523,12 @@ byte_debug(enter_disjunction(_),		"enter_disjunction").
 byte_debug(endof_disjunction,			"endof_disjunction").
 byte_debug(enter_disjunct(_),			"enter_disjunct").
 byte_debug(endof_disjunct,			"endof_disjunct").
+byte_debug(enter_switch(_, _),			"enter_switch").
+byte_debug(endof_switch,			"endof_switch").
+byte_debug(enter_switch_arm(_, _, _),		"enter_switch_arm").
+byte_debug(endof_switch_arm,			"endof_switch_arm").
+byte_debug(enter_negation(_),			"enter_negation").
+byte_debug(endof_negation,			"enter_negation").
 byte_debug(enter_commit,			"enter_commit").
 byte_debug(endof_commit,			"enter_commit").
 byte_debug(assign(_, _),			"assign").
@@ -494,6 +540,7 @@ byte_debug(call(_, _, _, _),			"call").
 byte_debug(pickup_arg(_, _),			"pickup_arg").
 byte_debug(builtin_binop(_, _, _, _),		"builtin_binop").
 byte_debug(builtin_unop(_, _, _),		"builtin_unop").
+byte_debug(pragma_c_code,			"pragma_c_code").
 
 :- pred determinism_code(determinism, int).
 :- mode determinism_code(in, out) is det.
