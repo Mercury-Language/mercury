@@ -11,6 +11,7 @@ TYPECLASS_PROGS=	\
 	extract_typeinfo \
 	existential_type_classes \
 	existential_data_types \
+	existential_data_types_regr_test \
 	extra_typeinfo \
 	func_default_mode_bug \
 	ho_map \
