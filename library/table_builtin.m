@@ -685,77 +685,11 @@ table_io_right_bracket_unitized_goal(_TraceEnabled) :-
 #ifdef	MR_HIGHLEVEL_CODE
 #error ""Sorry, not yet implemented: minimal model tabling with high level code""
 #endif
-	/*
-	** Initialize the subgoal if this is the first time we see it.
-	** If the subgoal structure already exists but is marked inactive,
-	** then it was left by a previous generator that couldn't
-	** complete the evaluation of the subgoal due to a commit.
-	** In that case, we want to forget all about the old generator.
-	*/
 
-	if (T->MR_subgoal == NULL) {
-		MR_Subgoal	*subgoal;
+	MR_save_transient_registers();
+	Subgoal = MR_setup_subgoal(T);
+	MR_restore_transient_registers();
 
-		subgoal = MR_TABLE_NEW(MR_Subgoal);
-
-		subgoal->MR_sg_back_ptr = T;
-		subgoal->MR_sg_status = MR_SUBGOAL_INACTIVE;
-		subgoal->MR_sg_leader = NULL;
-		subgoal->MR_sg_followers = MR_TABLE_NEW(MR_SubgoalListNode);
-		subgoal->MR_sg_followers->MR_sl_item = subgoal;
-		subgoal->MR_sg_followers->MR_sl_next = NULL;
-		subgoal->MR_sg_followers_tail =
-			&(subgoal->MR_sg_followers->MR_sl_next);
-		subgoal->MR_sg_answer_table.MR_integer = 0;
-		subgoal->MR_sg_num_ans = 0;
-		subgoal->MR_sg_answer_list = NULL;
-		subgoal->MR_sg_answer_list_tail =
-			&subgoal->MR_sg_answer_list;
-		subgoal->MR_sg_consumer_list = NULL;
-		subgoal->MR_sg_consumer_list_tail =
-			&subgoal->MR_sg_consumer_list;
-
-#ifdef	MR_TABLE_DEBUG
-		/*
-		** MR_subgoal_debug_cur_proc refers to the last procedure
-		** that executed a call event, if any. If the procedure that is
-		** executing table_nondet_setup is traced, this will be that
-		** procedure, and recording the layout structure of the
-		** processor in the subgoal allows us to interpret the contents
-		** of the subgoal's answer tables. If the procedure executing
-		** table_nondet_setup is not traced, then the layout structure
-		** belongs to another procedure and the any use of the
-		** MR_sg_proc_layout field will probably cause a core dump.
-		** For implementors debugging minimal model tabling, this is
-		** the right tradeoff.
-		*/
-		subgoal->MR_sg_proc_layout = MR_subgoal_debug_cur_proc;
-
-		MR_enter_subgoal_debug(subgoal);
-
-		if (MR_tabledebug) {
-			printf(""setting up subgoal %p -> %s, "",
-				T, MR_subgoal_addr_name(subgoal));
-			printf(""answer slot %p\\n"",
-				subgoal->MR_sg_answer_list_tail);
-			if (subgoal->MR_sg_proc_layout != NULL) {
-				printf(""proc: "");
-				MR_print_proc_id(stdout,
-					subgoal->MR_sg_proc_layout);
-				printf(""\\n"");
-			}
-		}
-
-		if (MR_maxfr != MR_curfr) {
-			MR_fatal_error(
-				""MR_maxfr != MR_curfr at table setup\\n"");
-		}
-#endif
-		subgoal->MR_sg_generator_fr = MR_curfr;
-		subgoal->MR_sg_deepest_nca_fr = MR_curfr;
-		T->MR_subgoal = subgoal;
-	}
-	Subgoal = T->MR_subgoal;
 #endif /* MR_USE_MINIMAL_MODEL */
 ").
 

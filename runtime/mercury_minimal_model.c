@@ -353,9 +353,7 @@ MR_print_subgoal(FILE *fp, const MR_Proc_Layout *proc, MR_Subgoal *subgoal)
     }
 
     fprintf(fp, "\n");
-    fprintf(fp, "answers: %d, committed: %d\n",
-        subgoal->MR_sg_num_ans,
-        subgoal->MR_sg_num_committed_ans);
+    fprintf(fp, "answers: %d\n", subgoal->MR_sg_num_ans);
 
     if (proc != NULL) {
         answer_list = subgoal->MR_sg_answer_list;
@@ -398,6 +396,82 @@ MR_print_consumer(FILE *fp, const MR_Proc_Layout *proc, MR_Consumer *consumer)
     fprintf(fp, ", remaining answers %p\n",
         consumer->MR_cns_remaining_answer_list_ptr);
     print_saved_state(fp, &consumer->MR_cns_saved_state);
+}
+
+/*---------------------------------------------------------------------------*/
+
+MR_Subgoal *
+MR_setup_subgoal(MR_TrieNode trie_node)
+{
+    /*
+    ** Initialize the subgoal if this is the first time we see it.
+    ** If the subgoal structure already exists but is marked inactive,
+    ** then it was left by a previous generator that couldn't
+    ** complete the evaluation of the subgoal due to a commit.
+    ** In that case, we want to forget all about the old generator.
+    */
+
+    MR_restore_transient_registers();
+    if (trie_node->MR_subgoal == NULL) {
+        MR_Subgoal  *subgoal;
+
+        subgoal = MR_TABLE_NEW(MR_Subgoal);
+
+        subgoal->MR_sg_back_ptr = trie_node;
+        subgoal->MR_sg_status = MR_SUBGOAL_INACTIVE;
+        subgoal->MR_sg_leader = NULL;
+        subgoal->MR_sg_followers = MR_TABLE_NEW(MR_SubgoalListNode);
+        subgoal->MR_sg_followers->MR_sl_item = subgoal;
+        subgoal->MR_sg_followers->MR_sl_next = NULL;
+        subgoal->MR_sg_followers_tail =
+            &(subgoal->MR_sg_followers->MR_sl_next);
+        subgoal->MR_sg_answer_table.MR_integer = 0;
+        subgoal->MR_sg_num_ans = 0;
+        subgoal->MR_sg_answer_list = NULL;
+        subgoal->MR_sg_answer_list_tail = &subgoal->MR_sg_answer_list;
+        subgoal->MR_sg_consumer_list = NULL;
+        subgoal->MR_sg_consumer_list_tail = &subgoal->MR_sg_consumer_list;
+
+#ifdef  MR_TABLE_DEBUG
+        /*
+        ** MR_subgoal_debug_cur_proc refers to the last procedure
+        ** that executed a call event, if any. If the procedure that is
+        ** executing table_nondet_setup is traced, this will be that
+        ** procedure, and recording the layout structure of the
+        ** processor in the subgoal allows us to interpret the contents
+        ** of the subgoal's answer tables. If the procedure executing
+        ** table_nondet_setup is not traced, then the layout structure
+        ** belongs to another procedure and the any use of the
+        ** MR_sg_proc_layout field will probably cause a core dump.
+        ** For implementors debugging minimal model tabling, this is
+        ** the right tradeoff.
+        */
+        subgoal->MR_sg_proc_layout = MR_subgoal_debug_cur_proc;
+
+        MR_enter_subgoal_debug(subgoal);
+
+        if (MR_tabledebug) {
+            printf("setting up subgoal %p -> %s, ",
+                trie_node, MR_subgoal_addr_name(subgoal));
+            printf("answer slot %p\n", subgoal->MR_sg_answer_list_tail);
+            if (subgoal->MR_sg_proc_layout != NULL) {
+                printf("proc: ");
+                MR_print_proc_id(stdout, subgoal->MR_sg_proc_layout);
+                printf("\n");
+            }
+        }
+
+        if (MR_maxfr != MR_curfr) {
+            MR_fatal_error("MR_maxfr != MR_curfr at table setup\n");
+        }
+#endif
+        subgoal->MR_sg_generator_fr = MR_curfr;
+        subgoal->MR_sg_deepest_nca_fr = MR_curfr;
+        trie_node->MR_subgoal = subgoal;
+    }
+
+    return trie_node->MR_subgoal;
+    MR_save_transient_registers();
 }
 
 /*---------------------------------------------------------------------------*/
@@ -1100,6 +1174,7 @@ MR_define_label(SUSPEND_LABEL(Call));
     MR_Word         *stop_addr;
     MR_Word         offset;
     MR_Word         *clobber_addr;
+    MR_Word         *common_ancestor;
 
     subgoal = (MR_SubgoalPtr) MR_r1;
     MR_register_suspension(subgoal);
@@ -1121,24 +1196,26 @@ MR_define_label(SUSPEND_LABEL(Call));
         (const MR_Label_Layout *) &MR_LAYOUT_FROM_LABEL(SUSPEND_LABEL(Call)));
     MR_restore_transient_registers();
 
-    cur_gen = MR_gen_next - 1;
-    cur_cut = MR_cut_next - 1;
-    cur_pneg = MR_pneg_next - 1;
-    stop_addr = consumer->MR_cns_saved_state.MR_ss_non_stack_real_start;
-
-    if (stop_addr < subgoal->MR_sg_deepest_nca_fr) {
+    common_ancestor = consumer->MR_cns_saved_state.MR_ss_common_ancestor_fr;
+    if (common_ancestor < subgoal->MR_sg_deepest_nca_fr)
+    {
 #ifdef  MR_TABLE_DEBUG
         if (MR_tabledebug) {
             printf("resetting deepest nca for subgoal %s from ",
                 MR_subgoal_addr_name(subgoal));
             MR_print_nondstackptr(stdout, subgoal->MR_sg_deepest_nca_fr);
             printf(" to ");
-            MR_print_nondstackptr(stdout, stop_addr);
+            MR_print_nondstackptr(stdout, common_ancestor);
             printf("\n");
         }
 #endif
-        subgoal->MR_sg_deepest_nca_fr = stop_addr;
+        subgoal->MR_sg_deepest_nca_fr = common_ancestor;
     }
+
+    cur_gen = MR_gen_next - 1;
+    cur_cut = MR_cut_next - 1;
+    cur_pneg = MR_pneg_next - 1;
+    stop_addr = consumer->MR_cns_saved_state.MR_ss_non_stack_real_start;
 
     for (fr = MR_maxfr; fr > stop_addr; fr = MR_prevfr_slot(fr)) {
         offset = MR_redoip_addr(fr) -
@@ -1345,7 +1422,6 @@ MR_define_label(RESUME_LABEL(StartCompletionOp));
         resume_info->MR_ri_cur_subgoal = NULL;
         resume_info->MR_ri_consumer_list = NULL;
         resume_info->MR_ri_cur_consumer = NULL;
-        resume_info->MR_ri_cur_consumer_answer_list = NULL;
         resume_info->MR_ri_saved_succip = MR_succip;         /*NEW*/
 
 #ifdef  MR_TABLE_DEBUG
@@ -1383,9 +1459,6 @@ MR_define_label(RESUME_LABEL(LoopOverSubgoals));
     resume_info->MR_ri_consumer_list =
         resume_info->MR_ri_cur_subgoal->MR_sg_consumer_list;
 
-    resume_info->MR_ri_cur_subgoal->MR_sg_num_committed_ans =
-        resume_info->MR_ri_cur_subgoal->MR_sg_num_ans;
-
     /* fall through to LoopOverSuspensions */
 }
 
@@ -1393,6 +1466,7 @@ MR_define_label(RESUME_LABEL(LoopOverSubgoals));
 MR_define_label(RESUME_LABEL(LoopOverSuspensions));
 {
     MR_ResumeInfo   *resume_info;
+    MR_AnswerList   cur_consumer_answer_list;
 
     resume_info = MR_cur_leader->MR_sg_resume_info;
 
@@ -1410,10 +1484,10 @@ MR_define_label(RESUME_LABEL(LoopOverSuspensions));
     resume_info->MR_ri_consumer_list =
         resume_info->MR_ri_consumer_list->MR_cl_next;
 
-    resume_info->MR_ri_cur_consumer_answer_list =
+    cur_consumer_answer_list =
         *(resume_info->MR_ri_cur_consumer->MR_cns_remaining_answer_list_ptr);
 
-    if (resume_info->MR_ri_cur_consumer_answer_list == NULL) {
+    if (cur_consumer_answer_list == NULL) {
 #ifdef  MR_TABLE_DEBUG
         if (MR_tabledebug) {
             printf("no first answer for this suspension\n");
@@ -1455,24 +1529,26 @@ MR_define_label(RESUME_LABEL(LoopOverSuspensions));
 MR_define_label(RESUME_LABEL(ReturnAnswer));
 {
     MR_ResumeInfo   *resume_info;
+    MR_Consumer     *consumer;
+    MR_AnswerList   answer_list;
 
     resume_info = MR_cur_leader->MR_sg_resume_info;
+    consumer = resume_info->MR_ri_cur_consumer;
+    answer_list = *consumer->MR_cns_remaining_answer_list_ptr;
 
     /*
-    ** Return the next answer in MR_cur_leader->MR_sg_resume_info->
-    ** cur_consumer_answer_list to the current consumer. Since we have
-    ** already restored the context of the suspended consumer before
-    ** we returned the first answer, we don't need to restore it again,
-    ** since will not have changed in the meantime.
+    ** Return the next answer in the answer_list of the current consumer
+    ** to the current consumer. Since we have already restored the context
+    ** of the suspended consumer before we returned the first answer,
+    ** we don't need to restore it again, since will not have changed
+    ** in the meantime.
+    **
+    ** XXX we need to prove that assertion
     */
 
-    MR_r1 = (MR_Word)
-        resume_info->MR_ri_cur_consumer_answer_list->MR_aln_answer_data.
-        MR_answerblock;
-    resume_info->MR_ri_cur_consumer->MR_cns_remaining_answer_list_ptr =
-        &(resume_info->MR_ri_cur_consumer_answer_list->MR_aln_next_answer);
-    resume_info->MR_ri_cur_consumer_answer_list =
-        resume_info->MR_ri_cur_consumer_answer_list->MR_aln_next_answer;
+    MR_r1 = (MR_Word) answer_list->MR_aln_answer_data.MR_answerblock;
+    consumer->MR_cns_remaining_answer_list_ptr =
+        &(answer_list->MR_aln_next_answer);
 
     /*
     ** Return the answer. Since we just restored the state of the
@@ -1500,20 +1576,20 @@ MR_define_label(RESUME_LABEL(RedoPoint));
 MR_define_label(RESUME_LABEL(RestartPoint));
 {
     MR_ResumeInfo   *resume_info;
+    MR_AnswerList   cur_consumer_answer_list;
 
     resume_info = MR_cur_leader->MR_sg_resume_info;
+    cur_consumer_answer_list =
+        *(resume_info->MR_ri_cur_consumer->MR_cns_remaining_answer_list_ptr);
 
 #ifdef  MR_TABLE_DEBUG
     if (MR_tabledebug) {
-        printf("cur_consumer_answer_list: %p\n",
-            resume_info->MR_ri_cur_consumer_answer_list);
         printf("*cur_consumer->remaining_answer_list_ptr: %p\n",
-            *(resume_info->MR_ri_cur_consumer->
-                MR_cns_remaining_answer_list_ptr));
+            cur_consumer_answer_list);
     }
 #endif
 
-    if (resume_info->MR_ri_cur_consumer_answer_list != NULL) {
+    if (cur_consumer_answer_list != NULL) {
         MR_GOTO_LABEL(RESUME_LABEL(ReturnAnswer));
     }
 
@@ -1591,7 +1667,6 @@ MR_define_label(RESUME_LABEL(ReachedFixpoint));
 #endif
 
         subgoal_list->MR_sl_item->MR_sg_status = MR_SUBGOAL_COMPLETE;
-        subgoal_list->MR_sl_item->MR_sg_num_committed_ans = -1;
     }
 
     resume_info = MR_cur_leader->MR_sg_resume_info;

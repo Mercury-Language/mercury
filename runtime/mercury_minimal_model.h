@@ -109,8 +109,6 @@ typedef struct {
 	MR_Subgoal		*MR_ri_cur_subgoal;
 	MR_ConsumerList		MR_ri_consumer_list; /* for the cur subgoal */
 	MR_Consumer		*MR_ri_cur_consumer;
-	MR_AnswerList		MR_ri_cur_consumer_answer_list;
-	MR_bool			MR_ri_changed;
 	MR_Code			*MR_ri_saved_succip;
 } MR_ResumeInfo;
 
@@ -153,8 +151,6 @@ struct MR_SubgoalListNode_Struct {
 **
 ** The MR_sg_num_ans field gives the number of answers computed so far, i.e.
 ** the number of answers in MR_sg_answer_table and MR_sg_answer_list.
-** The MR_sg_num_committed_ans field gives the number of answers that the
-** leader is committed to returning to all consumers.
 **
 ** The MR_sg_consumer_list gives the list of consumer goals, with the field
 ** MR_sg_consumer_list_tail allowing fast appending to the end.
@@ -174,7 +170,6 @@ struct MR_Subgoal_Struct {
 	MR_ResumeInfo		*MR_sg_resume_info;
 	MR_TableNode		MR_sg_answer_table;
 	MR_Integer		MR_sg_num_ans;
-	MR_Integer		MR_sg_num_committed_ans;
 	MR_AnswerList		MR_sg_answer_list;
 	MR_AnswerList		*MR_sg_answer_list_tail;
 	MR_ConsumerList		MR_sg_consumer_list;
@@ -217,6 +212,8 @@ extern	void		MR_print_consumer_debug(FILE *fp,
 				MR_ConsumerDebug *consumer_debug);
 extern	void		MR_print_consumer(FILE *fp, const MR_Proc_Layout *proc,
 				MR_Consumer *consumer);
+
+extern	MR_Subgoal	*MR_setup_subgoal(MR_TrieNode);
 
 #endif	/* MR_USE_MINIMAL_MODEL */
 
