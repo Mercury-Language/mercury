@@ -1,4 +1,3 @@
-#include 	<string.h>
 #include	"imp.h"
 #include	"timing.h"
 #include	"getopt.h"
@@ -78,6 +77,7 @@ int main(int argc, char **argv)
 #endif
 
 #ifdef CONSERVATIVE_GC
+	GC_quiet = TRUE;
 	/* call the init_gc() function defined in <foo>_init.c -
 	   this is to work around a Solaris 2.X (X <= 4) linker bug */
 	init_gc();
@@ -165,6 +165,12 @@ static void process_options(int argc, char **argv)
 					detaildebug  = TRUE;
 				or (streq(optarg, "g"))
 					gotodebug    = TRUE;
+				or (streq(optarg, "G"))
+#ifdef CONSERVATIVE_GC
+					GC_quiet = FALSE;
+#else
+					fatal_error("-dG: GC not enabled")
+#endif
 				or (streq(optarg, "s"))
 					detstackdebug   = TRUE;
 				or (streq(optarg, "h"))
@@ -277,6 +283,7 @@ static void usage(void)
 	printf("-df \t\tdebug final success/failure\n");
 	printf("-da \t\tdebug all\n");
 	printf("-dm \t\tdebug memory allocation\n");
+	printf("-dG \t\tdebug garbage collection\n");
 	printf("-dd \t\tdetailed debug\n");
 	printf("-sh<n> \t\tallocate n kb for the heap\n");
 	printf("-sd<n> \t\tallocate n kb for the det stack\n");
