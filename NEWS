@@ -4,7 +4,7 @@ Work in progress
 ----------------
 
 * There is a new `--generate-bytecode' option --
-  but we haven't written the bytecode interpreter yet.
+  but the bytecode interpreter isn't working yet.
 
 * There is a new `--generate-prolog' option
   which does not work yet.
@@ -29,12 +29,14 @@ DRAFT NEWS for Mercury release 0.7
   You can now write `P(X)' as an alternative to `call(P, X)'
   or `F(X)' as an alternative for `apply(F, X)'.
 
-* The C interface is now fully implemented.
+* We've improved the C interface.
 
   The C interface now handles Mercury functions properly --
   previously it only handled predicates, not functions. 
   Also, exporting semidet predicates or functions to C now works
   (see `samples/c_interface/c_calls_mercury.m' for some examples).
+  We've included some examples of how to use the C interface
+  to interface with C++.
 
 * We now support cross-module optimizations.
 
@@ -84,6 +86,16 @@ DRAFT NEWS for Mercury release 0.7
 
   The Mercury `char' type is now 8-bit clean (previously, "for
   compatibility with NU-Prolog" we only supported 7-bit characters).
+
+* We've added `man' pages.
+
+  The documentation now includes Unix-style `man' pages for
+  most of the development tools, including mmake, mc, mgnuc, ml,
+  and mprof.  These supplement the existing documentation in the
+  Mercury User's Guide.
+
+  Most of the information in the man pages is also available using
+  the standard `--help' option.
 
 * We've improved the compiler's diagnostics a bit.
 
