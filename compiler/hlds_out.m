@@ -207,7 +207,7 @@
 
 :- import_module mercury_to_mercury, globals, options, purity, special_pred.
 :- import_module llds_out, prog_out, prog_util, (inst), instmap, trace.
-:- import_module term_io, varset, termination, term_errors.
+:- import_module term_io, varset, termination, term_errors, check_typeclass.
 
 :- import_module int, string, set, std_util, assoc_list, multi_map.
 :- import_module require, getopt.
@@ -280,7 +280,9 @@ hlds_out__write_pred_id(ModuleInfo, PredId) -->
 	{ pred_info_name(PredInfo, Name) },
 	{ pred_info_arity(PredInfo, Arity) },
 	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
-	( { special_pred_name_arity(Kind, _, Name, Arity) } ->
+	( 
+		{ special_pred_name_arity(Kind, _, Name, Arity) } 
+	->
 		{ special_pred_description(Kind, Descr) },
 		io__write_string(Descr),
 		io__write_string(" for type "),
@@ -291,7 +293,10 @@ hlds_out__write_pred_id(ModuleInfo, PredId) -->
 		;
 			{ error("special_pred_get_type failed!") }
 		)
-	; { string__prefix(Name, "Introduced_pred_for_") } ->
+	; 
+		{ string__prefix(Name,
+			check_typeclass__introduced_pred_name_prefix) } 
+	->
 		io__write_string("type class method implementation")
 	;
 		hlds_out__write_pred_or_func(PredOrFunc),
