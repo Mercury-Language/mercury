@@ -380,8 +380,6 @@ is_mercury_punctuation_char(';').
 is_mercury_punctuation_char(':').
 is_mercury_punctuation_char('''').
 is_mercury_punctuation_char('"').
-is_mercury_punctuation_char('"').
-is_mercury_punctuation_char(',').
 is_mercury_punctuation_char('<').
 is_mercury_punctuation_char('>').
 is_mercury_punctuation_char('.').
