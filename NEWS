@@ -36,10 +36,11 @@ NEWS since Mercury release 0.7
   There is a new set of grades `*.tr' (e.g. `asm_fast.gc.tr') which
   provide support for trailing.  This could be used by predicates or
   functions defined using the C interface to perform such things as
-  constraint solving, backtrackable destructive update, and automatic
-  unwinding of database transactions on backtracking.  See the declarations
-  and comments at the end of runtime/mercury_trail.h for documentation
-  of the interface.
+  constraint solving, backtrackable destructive update, or even automatic
+  unwinding of database transactions on backtracking.  See the
+  documentation in the "Trailing" section of the Mercury language
+  reference manual (it's at the end of the "C interface" section,
+  which is in the chapter on "Pragmas").
 
 * We've added support for backtrackable destructive update on arrays.
 
