@@ -1550,7 +1550,7 @@ convert_constructor(ModuleName, Term0, Result) :-
 	( 
 		Term0 = term__functor(term__atom("some"), [Vars, Term1], _)
 	->
-		term__vars(Vars, ExistQVars),
+		parse_list_of_vars(Vars, ExistQVars),
 		Term2 = Term1
 	;
 		ExistQVars = [],
