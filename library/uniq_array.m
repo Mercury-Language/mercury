@@ -6,8 +6,10 @@
 
 % File: uniq_array.m
 % Main author: fjh
-% Based on the original version using 2-3 trees by conway.
-% Stability: low
+% Stability: VERY LOW
+
+% This module provides dynamically-sized one-dimensional arrays.
+% Array indices start at zero.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -37,35 +39,13 @@
 :- pred uniq_array__init(int, T, uniq_array(T)).
 :- mode uniq_array__init(in, in, uniq_array_uo) is det.
 
-/****
-lower bounds other than zero are not supported
-
-	% uniq_array__init(Low, High, Init, Array):
-	% create a uniq_array with bounds from Low to High,
-	% with each element initialized to Init.
-:- pred uniq_array__init(int, int, T, uniq_array(T)).
-:- mode uniq_array__init(in, in, in, out) is det. % want an uniq_array_skeleton?
-****/
-
-	% uniq_array__bounds returns the upper and lower bounds of an
-	% uniq_array
-	% Note: in this implementation, the lower bound is always zero.
-:- pred uniq_array__bounds(uniq_array(_T), int, int).
-:- mode uniq_array__bounds(in, out, out) is det.
-
-	% uniq_array__min returns the lower bound of the array
-	% Note: in this implementation, the lower bound is always zero.
-:- pred uniq_array__min(uniq_array(_T), int).
-:- mode uniq_array__min(uniq_array_ui, out) is det.
-:- mode uniq_array__min(in, out) is det.
-
 	% uniq_array__max returns the upper bound of the array
 :- pred uniq_array__max(uniq_array(_T), int).
 :- mode uniq_array__max(uniq_array_ui, out) is det.
 :- mode uniq_array__max(in, out) is det.
 
 	% uniq_array__size returns the length of the array,
-	% i.e. upper bound - lower bound + 1.
+	% i.e. upper bound + 1.
 :- pred uniq_array__size(uniq_array(_T), int).
 :- mode uniq_array__size(uniq_array_ui, out) is det.
 :- mode uniq_array__size(in, out) is det.
@@ -91,18 +71,9 @@ lower bounds other than zero are not supported
 	% uniq_array__resize(Array0, Size, Init, Array):
 	% The uniq_array is expanded or shrunk to make it fit
 	% the new size `Size'.  Any new entries are filled
-	% with `Init'.  (The lower bound remains unchanged.)
+	% with `Init'.
 :- pred uniq_array__resize(uniq_array(T), int, T, uniq_array(T)).
 :- mode uniq_array__resize(uniq_array_di, in, in, uniq_array_uo) is det.
-
-/****
-lower bounds other than zero are not supported
-	% uniq_array__resize takes an uniq_array and new lower and upper bounds.
-	% the uniq_array is expanded or shrunk at each end to make it fit
-	% the new bounds.
-:- pred uniq_array__resize(uniq_array(T), int, int, uniq_array(T)).
-:- mode uniq_array__resize(in, in, in, out) is det.
-****/
 
 	% uniq_array__from_list takes a list (of nonzero length),
 	% and returns an uniq_array containing those elements in
@@ -143,6 +114,29 @@ lower bounds other than zero are not supported
 :- import_module std_util.
 
 :- type uniq_array(T).
+
+/****
+lower bounds other than zero are not supported
+	% uniq_array__resize takes an uniq_array and new lower and upper bounds.
+	% the uniq_array is expanded or shrunk at each end to make it fit
+	% the new bounds.
+:- pred uniq_array__resize(uniq_array(T), int, int, uniq_array(T)).
+:- mode uniq_array__resize(in, in, in, out) is det.
+****/
+
+	% uniq_array__bounds returns the upper and lower bounds of an
+	% uniq_array
+	% Note: in this implementation, the lower bound is always zero.
+:- pred uniq_array__bounds(uniq_array(_T), int, int).
+:- mode uniq_array__bounds(in, out, out) is det.
+
+	% uniq_array__min returns the lower bound of the array
+	% Note: in this implementation, the lower bound is always zero.
+:- pred uniq_array__min(uniq_array(_T), int).
+:- mode uniq_array__min(uniq_array_ui, out) is det.
+:- mode uniq_array__min(in, out) is det.
+
+%-----------------------------------------------------------------------------%
 
 :- pragma(c_header_code, "
 
@@ -223,14 +217,14 @@ uniq_array__bounds(Array, Min, Max) :-
 		Item::out), "{
 	UniqArrayType *uniq_array = (UniqArrayType *)UniqArray;
 	if ((Unsigned) Index >= uniq_array->size) {
-		fatal_error("uniq_array__lookup: array index out of bounds")
+		fatal_error(""uniq_array__lookup: array index out of bounds"");
 	}
 	Item = uniq_array->elements[Index];
 }").
 :- pragma(c_code, uniq_array__lookup(UniqArray::in, Index::in, Item::out), "{
 	UniqArrayType *uniq_array = (UniqArrayType *)UniqArray;
 	if ((Unsigned) Index >= uniq_array->size) {
-		fatal_error("uniq_array__lookup: array index out of bounds")
+		fatal_error(""uniq_array__lookup: array index out of bounds"");
 	}
 	Item = uniq_array->elements[Index];
 }").
@@ -241,7 +235,7 @@ uniq_array__bounds(Array, Min, Max) :-
 		Item::in, UniqArray::uniq_array_uo), "{
 	UniqArrayType *uniq_array = (UniqArrayType *)UniqArray0;
 	if ((Unsigned) Index >= uniq_array->size) {
-		fatal_error("uniq_array__lookup: array index out of bounds")
+		fatal_error(""uniq_array__set: array index out of bounds"");
 	}
 	uniq_array->elements[Index] = Item;	/* destructive update! */
 	UniqArray = UniqArray0;
