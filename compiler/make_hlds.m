@@ -4177,7 +4177,7 @@ module_add_pragma_foreign_proc(Attributes, PredName, PredOrFunc,
 	->
 		{ module_info_incr_errors(ModuleInfo1, ModuleInfo) },
 		prog_out__write_context(Context),
-		io__write_string("Error: `:- pragma foreign_code' (or `pragma c_code')\n"),
+		io__write_string("Error: `:- pragma foreign_proc' (or `pragma c_code')\n"),
 		prog_out__write_context(Context),
 		io__write_string("declaration for imported "),
 		hlds_out__write_simple_call_id(PredOrFunc, PredName/Arity),
