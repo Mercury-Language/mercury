@@ -674,8 +674,8 @@ dead_proc_elim__eliminate_proc(Pass, PredId, Keep, WarnForThisProc, ElimInfo,
 	module_info::in, io::di, io::uo) is det.
 
 warn_dead_proc(PredId, ProcId, Context, ModuleInfo, !IO) :-
-	describe_one_proc_name(ModuleInfo, proc(PredId, ProcId),
-		ProcName),
+	describe_one_proc_name(ModuleInfo, should_not_module_qualify,
+		proc(PredId, ProcId), ProcName),
 	Components = [words("Warning:"), fixed(ProcName),
 		words("is never called.")],
 	error_util__report_warning(Context, 0, Components, !IO).

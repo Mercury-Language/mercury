@@ -246,8 +246,8 @@ process_proc(PredId, ProcId, !ProcInfo, !ModuleInfo, !IO) :-
 		->
 			true
 		;
-			describe_one_pred_name(!.ModuleInfo, PredId,
-				PredName),
+			describe_one_pred_name(!.ModuleInfo,
+				should_module_qualify, PredId, PredName),
 			pred_info_context(PredInfo, Context),
 
 			error_util__write_error_pieces(Context, 0,
@@ -333,7 +333,8 @@ output_warnings([W | Ws], VarSet, ModuleInfo, !IO) :-
 
 output_warning(warn(Context, PredId, VarA, VarB), VarSet, ModuleInfo,
 		Context, Formats) :-
-	describe_one_pred_name(ModuleInfo, PredId, PredStr),
+	describe_one_pred_name(ModuleInfo, should_module_qualify, PredId,
+		PredStr),
 
 	varset__lookup_name(VarSet, VarA, VarAStr0),
 	varset__lookup_name(VarSet, VarB, VarBStr0),

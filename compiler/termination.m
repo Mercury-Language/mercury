@@ -190,8 +190,8 @@ check_foreign_code_attributes_2([PPId], !Module, !IO) :-
 				proc_info_set_maybe_termination_info(
 					yes(can_loop([TermErr])), ProcInfo0,
 					ProcInfo),
-				describe_one_proc_name(!.Module, PPId,
-					ProcName),
+				describe_one_proc_name(!.Module,
+					should_module_qualify, PPId, ProcName),
 				Piece1 = words("has a `pragma terminates'"),
 				Piece2 = words("declaration but also has the"),
 				Piece3 = words("`does_not_terminate' foreign"),
@@ -215,7 +215,8 @@ check_foreign_code_attributes_2([PPId], !Module, !IO) :-
 			    proc_info_set_maybe_termination_info(
 			        yes(can_loop(TermErrs)),
 			        ProcInfo0, ProcInfo),
-			    describe_one_proc_name(!.Module, PPId, ProcName),
+			    describe_one_proc_name(!.Module,
+				    should_module_qualify, PPId, ProcName),
 			    Piece1 = words("has a `pragma does_not_terminate'"),
 			    Piece2 = words("declaration but also has the"),
 			    Piece3 = words("`terminates' foreign code"),
@@ -300,8 +301,8 @@ check_scc_pragmas_are_consistent(SCC, !Module, !IO) :-
 			
 			PredIds = list__map((func(proc(PredId, _)) = PredId), 
 				SCCTerminationKnown),
-			describe_several_pred_names(!.Module, PredIds,
-				PredNames),	
+			describe_several_pred_names(!.Module,
+				should_module_qualify, PredIds, PredNames),	
 			Piece1 = words(
 				"are mutually recursive but some of their"),
 			Piece2 = words(

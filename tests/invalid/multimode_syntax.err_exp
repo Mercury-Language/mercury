@@ -29,8 +29,7 @@ multimode_syntax.m:045: In clause for predicate `multimode_syntax.test2/2':
 multimode_syntax.m:045:   syntax error: some but not all arguments have mode annotations.
 multimode_syntax.m:047: In clause for predicate `multimode_syntax.test2/2':
 multimode_syntax.m:047:   syntax error: some but not all arguments have mode annotations.
-multimode_syntax.m:011: Error: no clauses for
-multimode_syntax.m:011:   function `multimode_syntax.func0/0'.
+multimode_syntax.m:011: Error: no clauses for function `func0/0'.
 multimode_syntax.m:013: In clause for predicate `multimode_syntax.::/2':
 multimode_syntax.m:013:   in argument 1 of clause head:
 multimode_syntax.m:013:   error: the language construct =/2 should be

@@ -986,7 +986,8 @@ rl_exprn__call(PredId, ProcId, Vars, GoalInfo, Fail, Code) -->
 
 rl_exprn__call_not_implemented_error(Context, 
 		ModuleInfo, PredId, ProcId, ErrorDescr) :-
-	describe_one_proc_name(ModuleInfo, proc(PredId, ProcId), ProcName),
+	describe_one_proc_name(ModuleInfo, should_module_qualify,
+		proc(PredId, ProcId), ProcName),
 	prog_out__context_to_string(Context, ContextStr),
 	string__append_list(
 		[

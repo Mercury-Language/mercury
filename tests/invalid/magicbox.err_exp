@@ -1,4 +1,7 @@
 magicbox.m:036: In `arguments_handler(di, uo, out)':
+magicbox.m:036:   error: invalid determinism for a predicate with I/O state
+magicbox.m:036:   arguments.
+magicbox.m:036: In `arguments_handler(di, uo, out)':
 magicbox.m:036:   error: determinism declaration not satisfied.
 magicbox.m:036:   Declared `cc_multi', inferred `cc_nondet'.
 magicbox.m:055:   call to `to_int(in, out)' can fail.

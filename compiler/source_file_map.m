@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2003 The University of Melbourne.
+% Copyright (C) 2002-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -91,8 +91,8 @@ get_source_file_map(SourceFileMap) -->
 			{ SourceFileMap = map__init }
 		),
 		globals__io_get_globals(Globals1),
-		{ globals__set_source_file_map(Globals1,
-			yes(SourceFileMap), Globals2) },
+		{ globals__set_source_file_map(yes(SourceFileMap),
+			Globals1, Globals2) },
 		{ unsafe_promise_unique(Globals2, Globals) },
 		globals__io_set_globals(Globals)
 	).

@@ -8,5 +8,6 @@ simple_code.m:030: Warning: the condition of this if-then-else cannot succeed.
 simple_code.m:028: Warning: the negated goal cannot fail.
 simple_code.m:028: Warning: the negated goal cannot succeed.
 simple_code.m:033: Warning: the negated goal cannot succeed.
-simple_code.m:039: Warning: call to obsolete predicate `simple_code.obsolete/0'.
+simple_code.m:039: Warning: call to obsolete
+simple_code.m:039:   predicate `simple_code.obsolete/0'.
 simple_code.m:099: Warning: recursive call will lead to infinite recursion.

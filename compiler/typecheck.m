@@ -362,7 +362,8 @@ typecheck_pred(Iteration, PredId, !PredInfo, !ModuleInfo, Error, Changed,
 		;
 			true
 		),
-		describe_one_pred_name(!.ModuleInfo, PredId, PredName),
+		describe_one_pred_name(!.ModuleInfo, should_module_qualify,
+			PredId, PredName),
 		generate_stub_clause(PredName, !PredInfo, !.ModuleInfo,
 			StubClause, VarSet0, VarSet),
 		Clauses1 = [StubClause],
@@ -4608,7 +4609,8 @@ write_inference_message(PredInfo, !IO) :-
 
 report_no_clauses(MessageKind, PredId, PredInfo, ModuleInfo, !IO) :-
 	pred_info_context(PredInfo, Context),
-	describe_one_pred_name(ModuleInfo, PredId, PredName0),
+	describe_one_pred_name(ModuleInfo, should_not_module_qualify, PredId,
+		PredName0),
 	string__append(PredName0, ".", PredName),
 	ErrorMsg = [ words(MessageKind ++ ": no clauses for "),
 		fixed(PredName) ],
@@ -6026,7 +6028,8 @@ write_context_and_pred_id(Info, !IO) :-
 make_pred_id_preamble(Info, Preamble) :-
 	typecheck_info_get_module_info(Info, Module),
 	typecheck_info_get_predid(Info, PredID),
-	describe_one_pred_name(Module, PredID, PredName),
+	describe_one_pred_name(Module, should_not_module_qualify, PredID,
+		PredName),
 	Preamble = "In clause for " ++ PredName ++ ":".
 
 %-----------------------------------------------------------------------------%

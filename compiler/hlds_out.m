@@ -33,10 +33,12 @@
 :- interface.
 
 % Parse tree modules
+:- import_module parse_tree__error_util.
 :- import_module parse_tree__inst.
 :- import_module parse_tree__prog_data.
 % HLDS modules
 :- import_module hlds__hlds_data.
+% :- import_module hlds__hlds_error_util.
 :- import_module hlds__hlds_goal.
 :- import_module hlds__hlds_module.
 :- import_module hlds__hlds_pred.
@@ -47,6 +49,7 @@
 %-----------------------------------------------------------------------------%
 
 :- pred hlds_out__write_type_ctor(type_ctor::in, io::di, io::uo) is det.
+:- func hlds_out__type_ctor_to_string(type_ctor) = string.
 
 :- pred hlds_out__write_class_id(class_id::in, io::di, io::uo) is det.
 
@@ -71,6 +74,7 @@
 	io::di, io::uo) is det.
 
 :- pred hlds_out__write_call_id(call_id::in, io::di, io::uo) is det.
+:- func hlds_out__call_id_to_string(call_id) = string.
 
 :- pred hlds_out__write_simple_call_id(simple_call_id::in, io::di, io::uo)
 	is det.
@@ -93,6 +97,7 @@
 	% any explicit call.
 :- pred hlds_out__write_call_arg_id(call_id::in, int::in, pred_markers::in,
 	io::di, io::uo) is det.
+:- func hlds_out__call_arg_id_to_string(call_id, int, pred_markers) = string.
 
 	% Print "predicate" or "function" depending on the given value.
 :- pred hlds_out__write_pred_or_func(pred_or_func::in, io::di, io::uo) is det.
@@ -124,6 +129,9 @@
 	%
 :- pred hlds_out__write_unify_context(bool::in, unify_context::in,
 	prog_context::in, bool::out, io::di, io::uo) is det.
+
+:- pred hlds_out__unify_context_to_pieces(unify_context::in,
+	list(format_component)::in, list(format_component)::out) is det.
 
 :- pred hlds_out__write_determinism(determinism::in, io::di, io::uo) is det.
 :- func hlds_out__determinism_to_string(determinism) = string.
@@ -271,6 +279,9 @@
 hlds_out__write_type_ctor(Name - Arity, !IO) :-
 	prog_out__write_sym_name_and_arity(Name / Arity, !IO).
 
+hlds_out__type_ctor_to_string(Name - Arity) = Str :-
+	prog_out__sym_name_and_arity_to_string(Name / Arity, Str).
+
 hlds_out__write_class_id(class_id(Name, Arity), !IO) :-
 	prog_out__write_sym_name_and_arity(Name / Arity, !IO).
 
@@ -341,7 +352,7 @@ hlds_out__write_cons_id(table_io_decl(_)) -->
 	io__write_string("<table_io_decl>").
 
 	% The code of this predicate duplicates the functionality of
-	% error_util__describe_one_pred_name. Changes here should be made
+	% hlds_error_util__describe_one_pred_name. Changes here should be made
 	% there as well.
 
 hlds_out__write_pred_id(ModuleInfo, PredId, !IO) :-
@@ -445,32 +456,44 @@ hlds_out__simple_call_id_to_sym_name_and_arity(PredOrFunc - SymName/Arity,
 		SymName/OrigArity) :-
 	adjust_func_arity(PredOrFunc, OrigArity, Arity).
 
-hlds_out__write_call_id(call(PredCallId), !IO) :-
-	hlds_out__write_simple_call_id(PredCallId, !IO).
-hlds_out__write_call_id(generic_call(GenericCallId), !IO) :-
-	hlds_out__write_generic_call_id(GenericCallId, !IO).
+hlds_out__write_call_id(CallId, !IO) :-
+	Str = hlds_out__call_id_to_string(CallId),
+	io__write_string(Str, !IO).
+
+hlds_out__call_id_to_string(call(PredCallId)) =
+	hlds_out__simple_call_id_to_string(PredCallId).
+hlds_out__call_id_to_string(generic_call(GenericCallId)) =
+	hlds_out__generic_call_id_to_string(GenericCallId).
 
 :- pred hlds_out__write_generic_call_id(generic_call_id::in,
 	io::di, io::uo) is det.
 
-hlds_out__write_generic_call_id(higher_order(Purity, PredOrFunc, _), !IO) :-
-	write_purity_prefix(Purity, !IO),
-	io__write_string("higher-order ", !IO),
-	hlds_out__write_pred_or_func(PredOrFunc, !IO),
-	io__write_string(" call", !IO).
+hlds_out__write_generic_call_id(GenericCallId, !IO) :-
+	Str = hlds_out__generic_call_id_to_string(GenericCallId),
+	io__write_string(Str, !IO).
 
-hlds_out__write_generic_call_id(class_method(_ClassId, MethodId), !IO) :-
-	hlds_out__write_simple_call_id(MethodId, !IO).
+:- func hlds_out__generic_call_id_to_string(generic_call_id) = string.
 
-hlds_out__write_generic_call_id(unsafe_cast, !IO) :-
-	io__write_string("unsafe_cast", !IO).
-
-hlds_out__write_generic_call_id(aditi_builtin(AditiBuiltin, CallId), !IO) :-
+hlds_out__generic_call_id_to_string(higher_order(Purity, PredOrFunc, _)) =
+	purity_prefix_to_string(Purity)
+		++ "higher-order "
+		++ pred_or_func_to_full_str(PredOrFunc)
+		++ " call".
+hlds_out__generic_call_id_to_string(class_method(_ClassId, MethodId)) =
+	hlds_out__simple_call_id_to_string(MethodId).
+hlds_out__generic_call_id_to_string(unsafe_cast) =
+	"unsafe_cast".
+hlds_out__generic_call_id_to_string(aditi_builtin(AditiBuiltin, CallId))
+		= Str :-
 	hlds_out__aditi_builtin_name(AditiBuiltin, Name),
-	io__write_strings(["`", Name, "' of "], !IO),
-	hlds_out__write_simple_call_id(CallId, !IO).
+	Str = "`" ++ Name ++ "' of " ++
+		hlds_out__simple_call_id_to_string(CallId).
 
 hlds_out__write_call_arg_id(CallId, ArgNum, PredMarkers, !IO) :-
+	Str = hlds_out__call_arg_id_to_string(CallId, ArgNum, PredMarkers),
+	io__write_string(Str, !IO).
+
+hlds_out__call_arg_id_to_string(CallId, ArgNum, PredMarkers) = Str :-
 	( ArgNum =< 0 ->
 		% Argument numbers that are less than or equal to zero
 		% are used for the type_info and typeclass_info arguments
@@ -480,10 +503,10 @@ hlds_out__write_call_arg_id(CallId, ArgNum, PredMarkers, !IO) :-
 		% about which argument it is.
 		% For both of these, we just say "in call to"
 		% rather than "in argument N of call to".
-		true
+		Str1 = ""
 	;
-		hlds_out__write_arg_number(CallId, ArgNum, !IO),
-		io__write_string(" of ", !IO)
+		Str1 = hlds_out__arg_number_to_string(CallId, ArgNum)
+			++ " of "
 	),
 	(
 		(
@@ -502,94 +525,90 @@ hlds_out__write_call_arg_id(CallId, ArgNum, PredMarkers, !IO) :-
 			check_marker(PredMarkers, named_class_instance_method)
 		)
 	->
-		true
+		Str2 = Str1
 	;
-		io__write_string("call to ", !IO)
+		Str2 = Str1 ++ "call to "
 	),
-	hlds_out__write_call_id(CallId, !IO).
+	Str = Str2 ++ call_id_to_string(CallId).
 
 :- pred hlds_out__write_arg_number(call_id::in, int::in, io::di, io::uo)
 	is det.
 
-hlds_out__write_arg_number(call(PredOrFunc - _/Arity), ArgNum, !IO) :-
+hlds_out__write_arg_number(CallId, ArgNum, !IO) :-
+	Str = hlds_out__arg_number_to_string(CallId, ArgNum),
+	io__write_string(Str, !IO).
+
+:- func hlds_out__arg_number_to_string(call_id, int) = string.
+
+hlds_out__arg_number_to_string(call(PredOrFunc - _/Arity), ArgNum) =
 	(
 		PredOrFunc = function,
 		Arity = ArgNum
 	->
-		io__write_string("the return value", !IO)
+		"the return value"
 	;
-		io__write_string("argument ", !IO),
-		io__write_int(ArgNum, !IO)
+		"argument " ++ int_to_string(ArgNum)
 	).
-hlds_out__write_arg_number(generic_call(
-		higher_order(_Purity, PredOrFunc, Arity)), ArgNum, !IO) :-
+hlds_out__arg_number_to_string(generic_call(
+		higher_order(_Purity, PredOrFunc, Arity)), ArgNum) = Str :-
 	(
 		PredOrFunc = function,
 		ArgNum = Arity
 	->
-		io__write_string("the return value", !IO)
+		Str = "the return value"
 	;
-		io__write_string("argument ", !IO),
-		io__write_int(ArgNum, !IO),
-
 		% Make error messages for higher-order calls
 		% such as `P(A, B)' clearer.
-		io__write_string(" (i.e. ", !IO),
+		Main = "argument " ++ int_to_string(ArgNum),
+		PredOrFuncStr = pred_or_func_to_full_str(PredOrFunc),
 		( ArgNum = 1 ->
-			io__write_string("the ", !IO),
-			hlds_out__write_pred_or_func(PredOrFunc, !IO),
-			io__write_string(" term", !IO)
+			Expl = "the " ++ PredOrFuncStr ++ " term"
 		;
-			io__write_string("argument ", !IO),
-			io__write_int(ArgNum - 1, !IO),
-			io__write_string(" of the called ", !IO),
-			hlds_out__write_pred_or_func(PredOrFunc, !IO)
-		)
+			Expl = "argument " ++ int_to_string(ArgNum - 1)
+				++ " of the called " ++ PredOrFuncStr
 	),
-	io__write_string(")", !IO).
-
-hlds_out__write_arg_number(generic_call(class_method(_, _)), ArgNum, !IO) :-
-	io__write_string("argument ", !IO),
-	io__write_int(ArgNum, !IO).
-
-hlds_out__write_arg_number(generic_call(unsafe_cast), ArgNum, !IO) :-
-	io__write_string("argument ", !IO),
-	io__write_int(ArgNum, !IO).
-
-hlds_out__write_arg_number(generic_call(aditi_builtin(Builtin, CallId)),
-		ArgNum, !IO) :-
-	hlds_out__write_aditi_builtin_arg_number(Builtin, CallId, ArgNum, !IO).
+		Str = Main ++ " (i.e. " ++ Expl ++ ")"
+	).
+hlds_out__arg_number_to_string(generic_call(class_method(_, _)), ArgNum) =
+	"argument " ++ int_to_string(ArgNum).
+hlds_out__arg_number_to_string(generic_call(unsafe_cast), ArgNum) =
+	"argument " ++ int_to_string(ArgNum).
+hlds_out__arg_number_to_string(generic_call(aditi_builtin(Builtin, CallId)),
+		ArgNum) =
+	hlds_out__aditi_builtin_arg_number_to_string(Builtin, CallId, ArgNum).
 
 :- pred hlds_out__write_aditi_builtin_arg_number(aditi_builtin::in,
 	simple_call_id::in, int::in, io::di, io::uo) is det.
 
-hlds_out__write_aditi_builtin_arg_number(aditi_tuple_update(InsertDelete, _),
-		_ - _/Arity, ArgNum, !IO) :-
-	io__write_string("argument ", !IO),
+hlds_out__write_aditi_builtin_arg_number(Builtin, SimpleCallId, ArgNum, !IO) :-
+	Str = hlds_out__aditi_builtin_arg_number_to_string(Builtin,
+		SimpleCallId, ArgNum),
+	io__write_string(Str, !IO).
+
+:- func hlds_out__aditi_builtin_arg_number_to_string(aditi_builtin,
+	simple_call_id, int) = string.
+
+hlds_out__aditi_builtin_arg_number_to_string(
+		aditi_tuple_update(InsertDelete, _),
+		_ - _/Arity, ArgNum) = Str :-
 	( ArgNum =< Arity ->
-		io__write_int(ArgNum, !IO),
-		io__write_string(" of the ", !IO),
-		( InsertDelete = insert, Str = "inserted"
-		; InsertDelete = delete, Str = "deleted"
+		( InsertDelete = insert, OpStr = "inserted"
+		; InsertDelete = delete, OpStr = "deleted"
 		),
-		io__write_string(Str, !IO),
-		io__write_string(" tuple", !IO)
+		Str = "argument " ++ int_to_string(ArgNum) ++
+			" of the " ++ OpStr ++ " tuple"
 	;
-		io__write_int(ArgNum - Arity + 1, !IO)
+		Str = "argument " ++ int_to_string(ArgNum - Arity + 1)
 	).
-
-hlds_out__write_aditi_builtin_arg_number(aditi_bulk_update(_, _, pred_term),
-		_, ArgNum, !IO) :-
-	io__write_string("argument ", !IO),
-	io__write_int(ArgNum, !IO).
-
-hlds_out__write_aditi_builtin_arg_number(
+hlds_out__aditi_builtin_arg_number_to_string(aditi_bulk_update(_, _, pred_term),
+		_, ArgNum) = Str :-
+	Str = "argument " ++ int_to_string(ArgNum).
+hlds_out__aditi_builtin_arg_number_to_string(
 		aditi_bulk_update(_, _, sym_name_and_closure),
-		_, ArgNum, !IO) :-
+		_, ArgNum) = Str :-
 	% The original goal had a sym_name/arity
 	% at the front of the argument list.
-	io__write_string("argument ", !IO),
-	io__write_int(ArgNum + 1, !IO).
+	Str = "argument " ++ int_to_string(ArgNum + 1).
 
 hlds_out__write_pred_or_func(predicate, !IO) :-
 	io__write_string("predicate", !IO).
@@ -608,14 +627,19 @@ hlds_out__pred_or_func_to_str(function) = "func".
 hlds_out__write_unify_context(UnifyContext, Context, !IO) :-
 	hlds_out__write_unify_context(no, UnifyContext, Context, _, !IO).
 
-hlds_out__write_unify_context(First0,
-		unify_context(MainContext, RevSubContexts), Context, First,
-		!IO) :-
+hlds_out__write_unify_context(First0, UnifyContext, Context, First, !IO) :-
+	UnifyContext = unify_context(MainContext, RevSubContexts),
+	list__reverse(RevSubContexts, SubContexts),
 	hlds_out__write_unify_main_context(First0, MainContext, Context,
 		First1, !IO),
-	list__reverse(RevSubContexts, SubContexts),
 	hlds_out__write_unify_sub_contexts(First1, SubContexts, Context,
 		First, !IO).
+
+hlds_out__unify_context_to_pieces(UnifyContext, !Pieces) :-
+	UnifyContext = unify_context(MainContext, RevSubContexts),
+	list__reverse(RevSubContexts, SubContexts),
+	hlds_out__unify_main_context_to_pieces(MainContext, !Pieces),
+	hlds_out__unify_sub_contexts_to_pieces(SubContexts, !Pieces).
 
 :- pred hlds_out__write_unify_main_context(bool::in, unify_main_context::in,
 	prog_context::in, bool::out, io::di, io::uo) is det.
@@ -648,6 +672,34 @@ hlds_out__write_unify_main_context(First, implicit(Source), Context, First,
 	hlds_out__start_in_message(First, Context, !IO),
 	io__format("implicit %s unification:\n", [s(Source)], !IO).
 
+:- pred hlds_out__unify_main_context_to_pieces(unify_main_context::in,
+	list(format_component)::in, list(format_component)::out) is det.
+
+hlds_out__unify_main_context_to_pieces(explicit, !Pieces).
+hlds_out__unify_main_context_to_pieces(head(ArgNum), !Pieces) :-
+	hlds_out__in_argument_to_pieces(ArgNum, !Pieces),
+	!:Pieces = !.Pieces ++ [words("of clause head:"), nl].
+hlds_out__unify_main_context_to_pieces(head_result, !Pieces) :-
+	hlds_out__start_in_message_to_pieces(!Pieces),
+	!:Pieces = !.Pieces ++
+		[words("function result term of clause head:"), nl].
+hlds_out__unify_main_context_to_pieces(call(CallId, ArgNum), !Pieces) :-
+	hlds_out__start_in_message_to_pieces(!Pieces),
+	% The markers argument below is used only for type class method
+	% implementations defined using the named syntax rather than
+	% the clause syntax, and the bodies of such procedures should
+	% only contain a single call, so we shouldn't get unifications
+	% nested inside calls.  Hence we can safely initialize the
+	% markers to empty here.  (Anyway the worst possible consequence
+	% is slightly sub-optimal text for an error message.)
+	init_markers(Markers),
+	ArgIdStr = hlds_out__call_arg_id_to_string(CallId, ArgNum, Markers),
+	!:Pieces = !.Pieces ++ [words(ArgIdStr ++ ":"), nl].
+hlds_out__unify_main_context_to_pieces(implicit(Source), !Pieces) :-
+	hlds_out__start_in_message_to_pieces(!Pieces),
+	string__format("implicit %s unification:\n", [s(Source)], Msg),
+	!:Pieces = !.Pieces ++ [words(Msg)].
+
 :- pred hlds_out__write_unify_sub_contexts(bool::in, unify_sub_contexts::in,
 	prog_context::in, bool::out, io::di, io::uo) is det.
 
@@ -661,6 +713,19 @@ hlds_out__write_unify_sub_contexts(First0, [ConsId - ArgNum | SubContexts],
 	hlds_out__write_unify_sub_contexts(no, SubContexts, Context, First,
 		!IO).
 
+:- pred hlds_out__unify_sub_contexts_to_pieces(unify_sub_contexts::in,
+	list(format_component)::in, list(format_component)::out) is det.
+
+hlds_out__unify_sub_contexts_to_pieces([], !Pieces).
+hlds_out__unify_sub_contexts_to_pieces([ConsId - ArgNum | SubContexts],
+		!Pieces) :-
+	hlds_out__in_argument_to_pieces(ArgNum, !Pieces),
+	NewPieces = [words("of functor"),
+		fixed("`" ++ cons_id_to_string(ConsId) ++ "':"),
+		nl],
+	!:Pieces = !.Pieces ++ NewPieces,
+	hlds_out__unify_sub_contexts_to_pieces(SubContexts, !Pieces).
+
 :- pred hlds_out__write_in_argument(bool::in, int::in, prog_context::in,
 	io::di, io::uo) is det.
 
@@ -668,6 +733,14 @@ hlds_out__write_in_argument(First, ArgNum, Context, !IO) :-
 	hlds_out__start_in_message(First, Context, !IO),
 	io__write_string("argument ", !IO),
 	io__write_int(ArgNum, !IO).
+
+:- pred hlds_out__in_argument_to_pieces(int::in,
+	list(format_component)::in, list(format_component)::out) is det.
+
+hlds_out__in_argument_to_pieces(ArgNum, !Pieces) :-
+	hlds_out__start_in_message_to_pieces(!Pieces),
+	ArgNumStr = int_to_string(ArgNum),
+	!:Pieces = !.Pieces ++ [words("argument"), words(ArgNumStr)].
 
 :- pred hlds_out__start_in_message(bool::in, prog_context::in,
 	io::di, io::uo) is det.
@@ -678,6 +751,18 @@ hlds_out__start_in_message(First, Context, !IO) :-
 		io__write_string("  In ", !IO)
 	;
 		io__write_string("  in ", !IO)
+	).
+
+:- pred hlds_out__start_in_message_to_pieces(
+	list(format_component)::in, list(format_component)::out) is det.
+
+hlds_out__start_in_message_to_pieces(!Pieces) :-
+	(
+		!.Pieces = [],
+		!:Pieces = !.Pieces ++ [words("In")]
+	;
+		!.Pieces = [_ | _],
+		!:Pieces = !.Pieces ++ [words("in")]
 	).
 
 %-----------------------------------------------------------------------------%

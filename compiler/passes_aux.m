@@ -141,9 +141,18 @@
 
 :- pred maybe_report_sizes(module_info::in, io::di, io::uo) is det.
 
+	% Prints the id of the given procedure via report_pred_name_mode,
+	% preceded by "In: " and the context.
+	% In new code, use describe_one_pred_name_mode in error_util instead.
 :- pred report_pred_proc_id(module_info::in, pred_id::in, proc_id::in,
 	maybe(prog_context)::in, prog_context::out, io::di, io::uo) is det.
 
+	% report_pred_name_mode(PredOrFunc, Name, ArgModes):
+	% Depending on PredOrFunc, prints either
+	%	Name(ArgMode1, ..., ArgModeN)
+	% or
+	%	Name(ArgMode1, ..., ArgModeN-1) = ArgModeN
+	% In new code, use describe_one_pred_name_mode in error_util instead.
 :- pred report_pred_name_mode(pred_or_func::in, string::in, list(mode)::in,
 	io::di, io::uo) is det.
 

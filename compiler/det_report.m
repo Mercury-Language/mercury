@@ -60,7 +60,7 @@
 		;	par_conj_not_det(determinism, pred_id, proc_id,
 				hlds_goal_info, list(hlds_goal))
 		; 	pragma_c_code_without_det_decl(pred_id, proc_id)
-		.
+		;	has_io_state_but_not_det(pred_id, proc_id).
 
 :- type seen_call_id
 	--->	seen_call(pred_id, proc_id)
@@ -212,8 +212,7 @@ check_determinism(PredId, ProcId, PredInfo0, ProcInfo0, !ModuleInfo, !IO) :-
 				% warnings about unimplemented
 				% predicates.
 				(
-					WarnAboutInferredErroneous = yes,
-					true
+					WarnAboutInferredErroneous = yes
 				;
 					WarnAboutInferredErroneous = no,
 					InferredDetism \= erroneous
@@ -261,26 +260,27 @@ check_determinism(PredId, ProcId, PredInfo0, ProcInfo0, !ModuleInfo, !IO) :-
 		module_info_set_pred_info(PredId, PredInfo, !ModuleInfo)
 	;
 		proc_info_context(ProcInfo0, Context),
-		prog_out__write_context(Context, !IO),
-		EvalMethodS = eval_method_to_string(EvalMethod),
-		io__write_string("Error: `pragma ", !IO),
-		io__write_string(EvalMethodS, !IO),
-		io__write_string("' declaration not allowed for procedure\n",
-			!IO),
-		prog_out__write_context(Context, !IO),
-		io__write_string("  with determinism `", !IO),
-		mercury_output_det(InferredDetism, !IO),
-		io__write_string("'.\n", !IO),
+		write_error_pieces(Context, 0,
+			[words("Error: `pragma "
+				++ eval_method_to_string(EvalMethod)
+				++ "'"),
+			words("declaration not allowed for"),
+			words("with determinism `"
+				++ determinism_to_string(InferredDetism)
+				++ "'.")], !IO),
 		globals__io_lookup_bool_option(verbose_errors, VerboseErrors,
 			!IO),
-		( VerboseErrors = yes ->
-			io__write_string("\tThe pragma requested is only " ++
-				"valid for the folowing determinism(s):\n",
-				!IO),
-			solutions(get_valid_dets(EvalMethod), Sols),
-			print_dets(Sols, !IO)
+		(
+			VerboseErrors = yes,
+			solutions(get_valid_dets(EvalMethod), Detisms),
+			DetismStrs = list__map(determinism_to_string, Detisms),
+			list_to_pieces(DetismStrs, DetismPieces),
+			write_error_pieces_not_first_line(Context, 0,
+				[words("The pragma requested is only valid"),
+				words("for the following determinism(s):") |
+				DetismPieces], !IO)
 		;
-			true
+			VerboseErrors = no
 		),
 		module_info_incr_errors(!ModuleInfo)
 	).
@@ -305,15 +305,6 @@ determinism(cc_nondet).
 determinism(erroneous).
 determinism(failure).
 
-:- pred print_dets(list(determinism)::in, io::di, io::uo) is det.
-
-print_dets([]) --> [].
-print_dets([D|Rest]) -->
-	io__write_string("\t\t"),
-	mercury_output_det(D),
-	io__nl,
-	print_dets(Rest).
-
 :- pred check_determinism_of_main(pred_id::in, proc_id::in,
 	pred_info::in, proc_info::in, module_info::in, module_info::out,
 	io::di, io::uo) is det.
@@ -334,9 +325,9 @@ check_determinism_of_main(_PredId, _ProcId, PredInfo, ProcInfo,
 		DeclaredDetism \= cc_multidet
 	->
 		proc_info_context(ProcInfo, Context1),
-		prog_out__write_context(Context1, !IO),
-		io__write_string(
-			"Error: main/2 must be `det' or `cc_multi'.\n", !IO),
+		write_error_pieces(Context1, 0, 
+			[words("Error: main/2 must be " ++
+				"`det' or `cc_multi'.")], !IO),
 		module_info_incr_errors(!ModuleInfo)
 	;
 		true
@@ -373,7 +364,8 @@ check_for_multisoln_func(PredId, _ProcId, PredInfo, ProcInfo,
 		% ... then it is an error.
 		proc_info_context(ProcInfo, FuncContext),
 		proc_info_inst_varset(ProcInfo, InstVarSet),
-		describe_one_pred_name_mode(!.ModuleInfo, PredId, InstVarSet,
+		describe_one_pred_name_mode(!.ModuleInfo,
+			should_not_module_qualify, PredId, InstVarSet,
 			PredArgModes, PredModeDesc),
 		Pieces = [words("Error: invalid determinism for"),
 			fixed(PredModeDesc ++ ":"), nl,
@@ -423,23 +415,21 @@ det_check_lambda(DeclaredDetism, InferredDetism, Goal, GoalInfo, DetInfo,
 :- pred report_determinism_problem(pred_id::in, proc_id::in, module_info::in,
 	string::in, determinism::in, determinism::in, io::di, io::uo) is det.
 
-report_determinism_problem(PredId, ModeId, ModuleInfo, Message,
-		DeclaredDetism, InferredDetism) -->
-	globals__io_lookup_bool_option(halt_at_warn, HaltAtWarn),
-	( { HaltAtWarn = yes } ->
-		io__set_exit_status(1)
-	;
-		[]
-	),
-	report_pred_proc_id(ModuleInfo, PredId, ModeId, no, Context),
-	prog_out__write_context(Context),
-	io__write_string(Message),
-	prog_out__write_context(Context),
-	io__write_string("  Declared `"),
-	hlds_out__write_determinism(DeclaredDetism),
-	io__write_string("', inferred `"),
-	hlds_out__write_determinism(InferredDetism),
-	io__write_string("'.\n").
+report_determinism_problem(PredId, ProcId, ModuleInfo, Message,
+		DeclaredDetism, InferredDetism, !IO) :-
+	record_warning(!IO),
+	module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
+	proc_info_context(ProcInfo, Context),
+	describe_one_proc_name_mode(ModuleInfo, should_not_module_qualify,
+		proc(PredId, ProcId), Desc),
+	Pieces = [words("In " ++ Desc ++ ":"), nl,
+		words(Message), nl,
+		words("Declared `"
+			++ determinism_to_string(DeclaredDetism)
+			++ "', inferred `"
+			++ determinism_to_string(InferredDetism)
+			++ "'.")],
+	write_error_pieces(Context, 0, Pieces, !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -685,14 +675,13 @@ det_diagnose_goal_2(shorthand(_), _, _, _, _, _, _, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred report_generic_call_context(prog_context::in,
-	generic_call::in, io::di, io::uo) is det.
+:- pred report_generic_call_context(prog_context::in, generic_call::in,
+	io::di, io::uo) is det.
 
-report_generic_call_context(Context, CallType) -->
-	prog_out__write_context(Context),
-	io__write_string("  "),
-	{ hlds_goal__generic_call_id(CallType, CallId) },
-	hlds_out__write_call_id(CallId).
+report_generic_call_context(Context, CallType, !IO) :-
+	hlds_goal__generic_call_id(CallType, CallId),
+	write_error_pieces(Context, 0, [words(call_id_to_string(CallId))],
+		!IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -895,10 +884,11 @@ det_report_call_context(Context, CallUnifyContext, DetInfo, PredId, ProcId,
 			% generated type-specific unification predicate
 			% should have a unify_context
 			CallUnifyContext = no,
-			prog_out__write_context(Context, !IO),
-			io__write_string("  Some weird unification " ++
-				"(or explicit call to a type-specific " ++
-				"unify predicate?)", !IO)
+			write_error_pieces(Context, 0,
+				[words("Some weird unification"
+					++ "(or explicit call to a"
+					++ "type-specific unify predicate?)")],
+				!IO)
 		)
 	;
 		(
@@ -1017,8 +1007,7 @@ det_report_msgs(Msgs, ModuleInfo, WarnCnt, ErrCnt, !IO) :-
 	module_info::in, int::in, int::out, int::in, int::out,
 	io::di, io::uo) is det.
 
-det_report_msgs_2([], _, _, _ModuleInfo,
-		!WarnCnt, !ErrCnt, !IO).
+det_report_msgs_2([], _, _, _ModuleInfo, !WarnCnt, !ErrCnt, !IO).
 det_report_msgs_2([Msg | Msgs], WarnSimple, WarnCalls, ModuleInfo,
 		!WarnCnt, !ErrCnt, !IO) :-
 	det_msg_get_type(Msg, MsgType),
@@ -1067,6 +1056,7 @@ det_msg_get_type(higher_order_cc_pred_in_wrong_context(_, _), error).
 det_msg_get_type(error_in_lambda(_, _, _, _, _, _), error).
 det_msg_get_type(par_conj_not_det(_, _, _, _, _), error).
 det_msg_get_type(pragma_c_code_without_det_decl(_, _), error).
+det_msg_get_type(has_io_state_but_not_det(_, _), error).
 
 det_msg_is_any_mode_msg(multidet_disj(_, _), all_modes).
 det_msg_is_any_mode_msg(det_disj(_, _), all_modes).
@@ -1089,335 +1079,360 @@ det_msg_is_any_mode_msg(higher_order_cc_pred_in_wrong_context(_, _), any_mode).
 det_msg_is_any_mode_msg(error_in_lambda(_, _, _, _, _, _), any_mode).
 det_msg_is_any_mode_msg(par_conj_not_det(_, _, _, _, _), any_mode).
 det_msg_is_any_mode_msg(pragma_c_code_without_det_decl(_, _), any_mode).
+det_msg_is_any_mode_msg(has_io_state_but_not_det(_, _), any_mode).
 
 :- pred det_report_msg(det_msg::in, module_info::in, io::di, io::uo) is det.
 
-det_report_msg(multidet_disj(Context, DisjunctContexts), _) -->
-	prog_out__write_context(Context),
-	io__write_string("Warning: the disjunction with arms on lines "),
-	det_report_context_lines(DisjunctContexts, yes),
-	io__write_string("\n"),
-	prog_out__write_context(Context),
-	io__write_string("  has no outputs, but can succeed more than once.\n").
-det_report_msg(det_disj(Context, DisjunctContexts), _) -->
-	prog_out__write_context(Context),
-	io__write_string("Warning: the disjunction with arms on lines "),
-	det_report_context_lines(DisjunctContexts, yes),
-	io__write_string("\n"),
-	prog_out__write_context(Context),
-	io__write_string("  will succeed exactly once.\n").
-det_report_msg(semidet_disj(Context, DisjunctContexts), _) -->
-	prog_out__write_context(Context),
-	io__write_string("Warning: the disjunction with arms on lines "),
-	det_report_context_lines(DisjunctContexts, yes),
-	io__write_string("\n"),
-	prog_out__write_context(Context),
-	io__write_string("  is semidet, yet it has an output.\n").
-det_report_msg(zero_soln_disj(Context, DisjunctContexts), _) -->
-	prog_out__write_context(Context),
-	io__write_string("Warning: the disjunction with arms on lines "),
-	det_report_context_lines(DisjunctContexts, yes),
-	io__write_string("\n"),
-	prog_out__write_context(Context),
-	io__write_string("  cannot succeed.\n").
-det_report_msg(zero_soln_disjunct(Context), _) -->
-	prog_out__write_context(Context),
-	io__write_string("Warning: this disjunct will never have any solutions.\n").
-det_report_msg(ite_cond_cannot_fail(Context), _) -->
-	prog_out__write_context(Context),
-	io__write_string("Warning: the condition of this if-then-else cannot fail.\n").
-det_report_msg(ite_cond_cannot_succeed(Context), _) -->
-	prog_out__write_context(Context),
-	io__write_string("Warning: the condition of this if-then-else cannot succeed.\n").
-det_report_msg(negated_goal_cannot_fail(Context), _) -->
-	prog_out__write_context(Context),
-	io__write_string("Warning: the negated goal cannot fail.\n").
-det_report_msg(negated_goal_cannot_succeed(Context), _) -->
-	prog_out__write_context(Context),
-	io__write_string("Warning: the negated goal cannot succeed.\n").
-det_report_msg(goal_cannot_succeed(Context), _) -->
-	prog_out__write_context(Context),
-	io__write_string("Warning: this goal cannot succeed.\n"),
-	globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
-	( { VerboseErrors = yes } ->
-		io__write_string(
-"\tThe compiler will optimize away this goal, replacing it with `fail'.
-\tTo disable this optimization, use the `--fully-strict' option.\n")
+det_report_msg(multidet_disj(Context, DisjunctContexts), _, !IO) :-
+	Pieces = [words("Warning: the disjunction with arms on lines"),
+		words(det_report_context_lines(DisjunctContexts)),
+		words("has no outputs, but can succeed more than once.")],
+	write_error_pieces(Context, 0, Pieces, !IO).
+det_report_msg(det_disj(Context, DisjunctContexts), _, !IO) :-
+	Pieces = [words("Warning: the disjunction with arms on lines"),
+		words(det_report_context_lines(DisjunctContexts)),
+		words("will succeed exactly once.")],
+	write_error_pieces(Context, 0, Pieces, !IO).
+det_report_msg(semidet_disj(Context, DisjunctContexts), _, !IO) :-
+	Pieces = [words("Warning: the disjunction with arms on lines"),
+		words(det_report_context_lines(DisjunctContexts)),
+		words("is semidet, yet it has an output.")],
+	write_error_pieces(Context, 0, Pieces, !IO).
+det_report_msg(zero_soln_disj(Context, DisjunctContexts), _, !IO) :-
+	Pieces = [words("Warning: the disjunction with arms on lines"),
+		words(det_report_context_lines(DisjunctContexts)),
+		words("cannot succeed.")],
+	write_error_pieces(Context, 0, Pieces, !IO).
+det_report_msg(zero_soln_disjunct(Context), _, !IO) :-
+	Pieces = [words("Warning: this disjunct"),
+		words("will never have any solutions.")],
+	write_error_pieces(Context, 0, Pieces, !IO).
+det_report_msg(ite_cond_cannot_fail(Context), _, !IO) :-
+	Pieces = [words("Warning: the condition of this if-then-else"),
+		words("cannot fail.")],
+	write_error_pieces(Context, 0, Pieces, !IO).
+det_report_msg(ite_cond_cannot_succeed(Context), _, !IO) :-
+	Pieces = [words("Warning: the condition of this if-then-else"),
+		words("cannot succeed.")],
+	write_error_pieces(Context, 0, Pieces, !IO).
+det_report_msg(negated_goal_cannot_fail(Context), _, !IO) :-
+	Pieces = [words("Warning: the negated goal cannot fail.")],
+	write_error_pieces(Context, 0, Pieces, !IO).
+det_report_msg(negated_goal_cannot_succeed(Context), _, !IO) :-
+	Pieces = [words("Warning: the negated goal cannot succeed.")],
+	write_error_pieces(Context, 0, Pieces, !IO).
+det_report_msg(goal_cannot_succeed(Context), _, !IO) :-
+	Pieces0 = [words("Warning: this goal cannot succeed.")],
+	globals__io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
+	(
+		VerboseErrors = yes,
+		Pieces1 = [words("The compiler will optimize away this goal,"),
+			words("replacing it with `fail'."),
+			words("To disable this optimization, use "),
+			words("the `--fully-strict' option.")],
+		Pieces = Pieces0 ++ Pieces1
 	;
-		[]
-	).
-det_report_msg(det_goal_has_no_outputs(Context), _) -->
-	prog_out__write_context(Context),
-	io__write_string("Warning: det goal has no outputs.\n"),
-	globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
-	( { VerboseErrors = yes } ->
-		io__write_string(
-"\tThe compiler will optimize away this goal, replacing it with `true'.
-\tTo disable this optimization, use the `--fully-strict' option.\n")
+		VerboseErrors = no,
+		Pieces = Pieces0
+	),
+	write_error_pieces(Context, 0, Pieces, !IO).
+det_report_msg(det_goal_has_no_outputs(Context), _, !IO) :-
+	Pieces0 = [words("Warning: det goal has no outputs.")],
+	globals__io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
+	(
+		VerboseErrors = yes,
+		Pieces1 = [words("The compiler will optimize away this goal,"),
+			words("replacing it with `true'."),
+			words("To disable this optimization, use "),
+			words("the `--fully-strict' option.")],
+		Pieces = Pieces0 ++ Pieces1
 	;
-		[]
-	).
-det_report_msg(warn_obsolete(PredId, Context), ModuleInfo) -->
-	prog_out__write_context(Context),
-	io__write_string("Warning: call to obsolete "),
-	hlds_out__write_pred_id(ModuleInfo, PredId),
-	io__write_string(".\n").
-det_report_msg(warn_infinite_recursion(Context), _ModuleInfo) -->
-/*
-% it would be better if we supplied more information
-% than just the line number.
-	prog_out__write_context(Context),
-	io__write_string("In "),
-	hlds_out__write_pred_id(ModuleInfo, PredId),
-	io__write_string(":\n"),
-*/
-	prog_out__write_context(Context),
-	io__write_string(
-		"Warning: recursive call will lead to infinite recursion.\n"),
-	globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
-	( { VerboseErrors = yes } ->
-		io__write_string(
-"\tIf this recursive call is executed, the procedure will call itself
-\twith exactly the same input arguments, leading to infinite recursion.\n")
+		VerboseErrors = no,
+		Pieces = Pieces0
+	),
+	write_error_pieces(Context, 0, Pieces, !IO).
+det_report_msg(warn_obsolete(PredId, Context), ModuleInfo, !IO) :-
+	describe_one_pred_name(ModuleInfo, should_module_qualify, PredId,
+		PredDesc),
+	Pieces = [words("Warning: call to obsolete "),
+		fixed(PredDesc ++ ".")],
+	write_error_pieces(Context, 0, Pieces, !IO).
+det_report_msg(warn_infinite_recursion(Context), _ModuleInfo, !IO) :-
+	% it would be better if we supplied more information than just
+	% the line number, e.g. we should print the name of the containing
+	% predicate.
+	Pieces0 = [words("Warning: recursive call will lead"),
+		words("to infinite recursion.")],
+	globals__io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
+	(
+		VerboseErrors = yes,
+		Pieces1 = [words("If this recursive call is executed,"),
+			words("the procedure will call itself"),
+			words("with exactly the same input arguments,"),
+			words("leading to infinite recursion.")],
+		Pieces = Pieces0 ++ Pieces1
 	;
-		[]
-	).
-det_report_msg(duplicate_call(SeenCall, PrevContext, Context), ModuleInfo) -->
-	prog_out__write_context(Context),
-	io__write_string("Warning: redundant "),
-	det_report_seen_call_id(SeenCall, ModuleInfo),
-	io__write_string(".\n"),
-	prog_out__write_context(PrevContext),
-	io__write_string("Here is the previous "),
-	det_report_seen_call_id(SeenCall, ModuleInfo),
-	io__write_string(".\n").
+		VerboseErrors = no,
+		Pieces = Pieces0
+	),
+	write_error_pieces(Context, 0, Pieces, !IO).
+det_report_msg(duplicate_call(SeenCall, PrevContext, Context), ModuleInfo,
+		!IO) :-
+	CallPieces = det_report_seen_call_id(ModuleInfo, SeenCall),
+	CurPieces = [words("Warning: redundant") |
+		append_punctuation(CallPieces, '.')],
+	PrevPieces = [words("Here is the previous") |
+		append_punctuation(CallPieces, '.')],
+	write_error_pieces(Context, 0, CurPieces, !IO),
+	write_error_pieces(PrevContext, 0, PrevPieces, !IO).
 det_report_msg(cc_unify_can_fail(GoalInfo, Var, Type, VarSet, GoalContext),
-		_ModuleInfo) -->
-	{ goal_info_get_context(GoalInfo, Context) },
-	{ First0 = yes },
-	( { GoalContext = switch },
-		prog_out__write_context(Context),
-		io__write_string("In switch on variable `"),
-		mercury_output_var(Var, VarSet, no),
-		io__write_string("':\n"),
-		{ First = no }
-	; { GoalContext = unify(UnifyContext) },
-		hlds_out__write_unify_context(First0, UnifyContext, Context,
-			First)
-	),
-	prog_out__write_context(Context),
-	( { First = yes } ->
-		io__write_string("Error: ")
+		_ModuleInfo, !IO) :-
+	goal_info_get_context(GoalInfo, Context),
+	(
+		GoalContext = switch,
+		VarStr = mercury_var_to_string(Var, VarSet, no),
+		Pieces0 = [words("In switch on variable `" ++ VarStr ++ "':"),
+			nl]
 	;
-		io__write_string("  error: ")
+		GoalContext = unify(UnifyContext),
+		hlds_out__unify_context_to_pieces(UnifyContext, [], Pieces0)
 	),
-	io__write_string("unification for non-canonical type\n"),
-	prog_out__write_context(Context),
-	io__write_string("  `"),
-	( { type_to_ctor_and_args(Type, TypeCtor, _TypeArgs) } ->
-		hlds_out__write_type_ctor(TypeCtor)
+	( type_to_ctor_and_args(Type, TypeCtor, _TypeArgs) ->
+		TypeCtorStr = hlds_out__type_ctor_to_string(TypeCtor)
 	;
-		{ error("det_report_message: type_to_ctor_and_args failed") }
+		error("det_report_msg: type_to_ctor_and_args failed")
 	),
-	io__write_string("'\n"),
-	prog_out__write_context(Context),
-	io__write_string("  is not guaranteed to succeed.\n"),
-	globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
-	( { VerboseErrors = yes } ->
-		io__write_strings([
-"	Since the type has a user-defined equality predicate, I must\n",
-"	presume that there is more than one possible concrete\n",
-"	representation for each abstract value of this type.  The success\n",
-"	of this unification might depend on the choice of concrete\n",
-"	representation.  Figuring out whether there is a solution to\n",
-"	this unification would require backtracking over all possible\n",
-"	representations, but I'm not going to do that implicitly.\n",
-"	(If that's really what you want, you must do it explicitly.)\n"
-		])
+	(	
+		Pieces0 = [],
+		ErrorMsg = "Error:"
 	;
-		[]
+		Pieces0 = [_ | _],
+		ErrorMsg = "error:"
 	),
-	io__set_exit_status(1).
+	Pieces1 = [words(ErrorMsg),
+		words("unification for non-canonical type"),
+		words("`" ++ TypeCtorStr ++ "'"),
+		words("is not guaranteed to succeed.")],
+	Pieces = Pieces0 ++ Pieces1,
+	write_error_pieces(Context, 0, Pieces, !IO),
+	globals__io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
+	(
+		VerboseErrors = yes,
+		VerbosePieces = [words("Since the type has a user-defined"),
+			words("equality predicate, I must presume that"),
+			words("there is more than one possible concrete"),
+			words("representation for each abstract value"),
+			words("of this type. The success of this unification"),
+			words("might depend on the choice of concrete"),
+			words("representation. Figuring out whether there is"),
+			words("a solution to this unification would require"),
+			words("backtracking over all possible"),
+			words("representations, but I'm not going to do that"),
+			words("implicitly. (If that's really what you want,"),
+			words("you must do it explicitly.")],
+		write_error_pieces_not_first_line(Context, 0, VerbosePieces,
+			!IO)
+	;
+		VerboseErrors = no
+	).
 det_report_msg(cc_unify_in_wrong_context(GoalInfo, Var, Type, VarSet,
-		GoalContext), _ModuleInfo) -->
-	{ goal_info_get_context(GoalInfo, Context) },
-	{ First0 = yes },
-	( { GoalContext = switch },
-		prog_out__write_context(Context),
-		io__write_string("In switch on variable `"),
-		mercury_output_var(Var, VarSet, no),
-		io__write_string("':\n"),
-		{ First = no }
-	; { GoalContext = unify(UnifyContext) },
-		hlds_out__write_unify_context(First0, UnifyContext, Context,
-			First)
-	),
-	prog_out__write_context(Context),
-	( { First = yes } ->
-		io__write_string("Error: ")
+		GoalContext), _ModuleInfo, !IO) :-
+	goal_info_get_context(GoalInfo, Context),
+	(
+		GoalContext = switch,
+		VarStr = mercury_var_to_string(Var, VarSet, no),
+		Pieces0 = [words("In switch on variable `" ++ VarStr ++ "':"),
+			nl]
 	;
-		io__write_string("  error: ")
+		GoalContext = unify(UnifyContext),
+		hlds_out__unify_context_to_pieces(UnifyContext, [], Pieces0)
 	),
-	io__write_string("unification for non-canonical type\n"),
-	prog_out__write_context(Context),
-	io__write_string("  `"),
-	( { type_to_ctor_and_args(Type, TypeCtor, _TypeArgs) } ->
-		hlds_out__write_type_ctor(TypeCtor)
+	( type_to_ctor_and_args(Type, TypeCtor, _TypeArgs) ->
+		TypeCtorStr = hlds_out__type_ctor_to_string(TypeCtor)
 	;
-		{ error("det_report_message: type_to_ctor_and_args failed") }
+		error("det_report_msg: type_to_ctor_and_args failed")
 	),
-	io__write_string("'\n"),
-	prog_out__write_context(Context),
-	io__write_string(
-		"  occurs in a context which requires all solutions.\n"),
-	globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
-	( { VerboseErrors = yes } ->
-		io__write_strings([
-"	Since the type has a user-defined equality predicate, I must\n",
-"	presume that there is more than one possible concrete\n",
-"	representation for each abstract value of this type.  The results\n",
-"	of this unification might depend on the choice of concrete\n",
-"	representation.  Finding all possible solutions to this\n",
-"	unification would require backtracking over all possible\n",
-"	representations, but I'm not going to do that implicitly.\n",
-"	(If that's really what you want, you must do it explicitly.)\n"
-		])
+	(	
+		Pieces0 = [],
+		ErrorMsg = "Error:"
 	;
-		[]
+		Pieces0 = [_ | _],
+		ErrorMsg = "error:"
 	),
-	io__set_exit_status(1).
+	Pieces1 = [words(ErrorMsg),
+		words("unification for non-canonical type"),
+		words("`" ++ TypeCtorStr ++ "'"),
+		words("occurs in a context which requires all solutions.")],
+	Pieces = Pieces0 ++ Pieces1,
+	write_error_pieces(Context, 0, Pieces, !IO),
+	globals__io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
+	(
+		VerboseErrors = yes,
+		VerbosePieces = [words("Since the type has a user-defined"),
+			words("equality predicate, I must presume that"),
+			words("there is more than one possible concrete"),
+			words("representation for each abstract value"),
+			words("of this type. The results of this unification"),
+			words("might depend on the choice of concrete"),
+			words("representation. Finding all possible"),
+			words("solutions to this unification would require"),
+			words("backtracking over all possible"),
+			words("representations, but I'm not going to do that"),
+			words("implicitly. (If that's really what you want,"),
+			words("you must do it explicitly.")],
+		write_error_pieces_not_first_line(Context, 0, VerbosePieces,
+			!IO)
+	;
+		VerboseErrors = no
+	).
 det_report_msg(cc_pred_in_wrong_context(GoalInfo, Detism, PredId, _ModeId),
-		ModuleInfo) -->
-	{ goal_info_get_context(GoalInfo, Context) },
-	prog_out__write_context(Context),
-	io__write_string("Error: call to "),
-	hlds_out__write_pred_id(ModuleInfo, PredId),
-	io__write_string(" with determinism `"),
-	mercury_output_det(Detism),
-	io__write_string("'\n"),
-	prog_out__write_context(Context),
-	io__write_string("  occurs in a context which requires all solutions.\n"),
-	io__set_exit_status(1).
+		ModuleInfo, !IO) :-
+	goal_info_get_context(GoalInfo, Context),
+	describe_one_pred_name(ModuleInfo, should_not_module_qualify, PredId,
+		PredDesc),
+	DetStr = mercury_det_to_string(Detism),
+	Pieces = [words("Error: call to"),
+		fixed(PredDesc),
+		words("with determinism `" ++ DetStr ++ "'"),
+		words("occurs in a context which requires all solutions.")],
+	write_error_pieces(Context, 0, Pieces, !IO).
 det_report_msg(higher_order_cc_pred_in_wrong_context(GoalInfo, Detism),
-		_ModuleInfo) -->
-	{ goal_info_get_context(GoalInfo, Context) },
-	prog_out__write_context(Context),
-	io__write_string("Error: higher-order call to predicate with determinism `"),
-	mercury_output_det(Detism),
-	io__write_string("'\n"),
-	prog_out__write_context(Context),
-	io__write_string("  occurs in a context which requires all solutions.\n"),
-	io__set_exit_status(1).
+		_ModuleInfo, !IO) :-
+	goal_info_get_context(GoalInfo, Context),
+	DetStr = mercury_det_to_string(Detism),
+	Pieces = [words("Error: higher-order call to predicate with"),
+		words("determinism `" ++ DetStr ++ "'"),
+		words("occurs in a context which requires all solutions.")],
+	write_error_pieces(Context, 0, Pieces, !IO).
 det_report_msg(error_in_lambda(DeclaredDetism, InferredDetism, Goal, GoalInfo,
-			PredId, ProcId), ModuleInfo) -->
-	report_pred_proc_id(ModuleInfo, PredId, ProcId, no, _ProcContext),
-	{ goal_info_get_context(GoalInfo, Context) },
-	prog_out__write_context(Context),
-	io__write_string("Determinism error in lambda expression.\n"),
-	prog_out__write_context(Context),
-	io__write_string("  Declared `"),
-	hlds_out__write_determinism(DeclaredDetism),
-	io__write_string("', inferred `"),
-	hlds_out__write_determinism(InferredDetism),
-	io__write_string("'.\n"),
-	globals__io_get_globals(Globals),
-	{ module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo) },
-	{ proc_info_vartypes(ProcInfo, VarTypes) },
-	{ det_info_init(ModuleInfo, VarTypes, PredId, ProcId, Globals,
-		DetInfo) },
-	det_diagnose_goal(Goal, DeclaredDetism, [], DetInfo, _),
-	io__set_exit_status(1).
+			PredId, ProcId), ModuleInfo, !IO) :-
+	describe_one_proc_name_mode(ModuleInfo, should_not_module_qualify,
+		proc(PredId, ProcId), Desc),
+	goal_info_get_context(GoalInfo, Context),
+	write_error_pieces(Context, 0, 
+		[words("In " ++ Desc ++ ":"), nl,
+		words("Determinism error in lambda expression."), nl,
+		words("Declared `"
+			++ determinism_to_string(DeclaredDetism)
+			++ "', inferred `"
+			++ determinism_to_string(InferredDetism)
+			++ "'.")], !IO),
+	globals__io_get_globals(Globals, !IO),
+	module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
+	proc_info_vartypes(ProcInfo, VarTypes),
+	det_info_init(ModuleInfo, VarTypes, PredId, ProcId, Globals,
+		DetInfo),
+	det_diagnose_goal(Goal, DeclaredDetism, [], DetInfo, _, !IO).
 det_report_msg(par_conj_not_det(InferredDetism, PredId,
-			ProcId, GoalInfo, Goals), ModuleInfo) -->
-	{ goal_info_get_context(GoalInfo, Context) },
-	prog_out__write_context(Context),
-	{ determinism_components(InferredDetism, CanFail, MaxSoln) },
+		ProcId, GoalInfo, Goals), ModuleInfo, !IO) :-
+	goal_info_get_context(GoalInfo, Context),
+	determinism_components(InferredDetism, CanFail, MaxSoln),
 	(
-		{ CanFail \= cannot_fail }
+		CanFail \= cannot_fail
 	->
-		io__write_string("Error: parallel conjunct may fail.\n")
+		First = "Error: parallel conjunct may fail."
 	;
-		{ MaxSoln = at_most_many }
+		MaxSoln = at_most_many
 	->
-		prog_out__write_context(Context),
-		io__write_string("Error: parallel conjunct may have multiple solutions.\n")
+		First = "Error: parallel conjunct may have multiple solutions."
 	;
-		{ error("strange determinism error for parallel conjunction") }
+		error("strange determinism error for parallel conjunction")
 	),
-	prog_out__write_context(Context),
-	io__write_string(
-		"  The current implementation supports only single-solution\n"
-	),
-	prog_out__write_context(Context),
-	io__write_string("  non-failing parallel conjunctions.\n"),
-	globals__io_get_globals(Globals),
-	{ module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo) },
-	{ proc_info_vartypes(ProcInfo, VarTypes) },
-	{ det_info_init(ModuleInfo, VarTypes, PredId, ProcId, Globals,
-		DetInfo) },
-	det_diagnose_conj(Goals, det, [], DetInfo, _),
-	io__set_exit_status(1).
+	Rest = "The current implementation supports only single-solution"
+		++ "non-failing parallel conjunctions.",
+	write_error_pieces(Context, 0, [words(First), words(Rest)], !IO),
+	globals__io_get_globals(Globals, !IO),
+	module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
+	proc_info_vartypes(ProcInfo, VarTypes),
+	det_info_init(ModuleInfo, VarTypes, PredId, ProcId, Globals,
+		DetInfo),
+	det_diagnose_conj(Goals, det, [], DetInfo, _, !IO).
 det_report_msg(pragma_c_code_without_det_decl(PredId, ProcId),
-		ModuleInfo) -->
-	report_pred_proc_id(ModuleInfo, PredId, ProcId, no, Context),
-	prog_out__write_context(Context),
-	io__write_string("  error: `:- pragma c_code(...)' for a procedure"),
-	io__nl,
-	prog_out__write_context(Context),
-	io__write_string("  without a determinism declaration."),
-	io__nl.
-
-%-----------------------------------------------------------------------------%
-
-:- pred det_report_seen_call_id(seen_call_id::in, module_info::in,
-	io::di, io::uo) is det.
-
-det_report_seen_call_id(SeenCall, ModuleInfo) -->
+		ModuleInfo, !IO) :-
+	module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
+	proc_info_context(ProcInfo, Context),
+	describe_one_proc_name_mode(ModuleInfo, should_not_module_qualify,
+		proc(PredId, ProcId), Desc),
+	Pieces = [words("In " ++ Desc ++ ":"), nl,
+		words("error: `:- pragma c_code(...)' for a procedure"),
+		words("without a determinism declaration.")],
+	write_error_pieces(Context, 0, Pieces, !IO).
+det_report_msg(has_io_state_but_not_det(PredId, ProcId), ModuleInfo, !IO) :-
+	module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
+	proc_info_context(ProcInfo, Context),
+	describe_one_proc_name_mode(ModuleInfo, should_not_module_qualify,
+		proc(PredId, ProcId), Desc),
+	Pieces = [words("In " ++ Desc ++ ":"), nl,
+		words("error: invalid determinism for a predicate"),
+		words("with I/O state arguments.")],
+	write_error_pieces(Context, 0, Pieces, !IO),
+	globals__io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
 	(
-		{ SeenCall = seen_call(PredId, _) },
-		io__write_string("call to "),
-		hlds_out__write_pred_id(ModuleInfo, PredId)
+		VerboseErrors = yes,
+		VerbosePieces = [words("Valid determinisms are "),
+			words("det, cc_multi and erroneous.")],
+		write_error_pieces_not_first_line(Context, 0, VerbosePieces,
+			!IO)
 	;
-		{ SeenCall = higher_order_call },
-		io__write_string("higher-order call")
+		VerboseErrors = no
 	).
 
 %-----------------------------------------------------------------------------%
 
-:- pred det_report_context_lines(list(prog_context)::in, bool::in,
-	io::di, io::uo) is det.
+:- func det_report_seen_call_id(module_info, seen_call_id)
+	= list(format_component).
 
-det_report_context_lines([], _) --> [].
-det_report_context_lines([Context | Contexts], First) -->
-	{ term__context_line(Context, Line) },
-	( { First = yes } ->
-		[]
-	; { Contexts = [] } ->
-		io__write_string(" and ")
+det_report_seen_call_id(ModuleInfo, SeenCall) = Pieces :-
+	(
+		SeenCall = seen_call(PredId, _),
+		describe_one_pred_name(ModuleInfo, should_module_qualify,
+			PredId, PredDesc),
+		Pieces = [words("call to"), fixed(PredDesc)]
 	;
-		io__write_string(", ")
+		SeenCall = higher_order_call,
+		Pieces = [words("higher-order call")]
+	).
+
+%-----------------------------------------------------------------------------%
+
+:- func det_report_context_lines(list(prog_context)) = string.
+
+det_report_context_lines(Contexts) = det_report_context_lines_2(Contexts, yes).
+
+:- func det_report_context_lines_2(list(prog_context), bool) = string.
+
+det_report_context_lines_2([], _) = "".
+det_report_context_lines_2([Context | Contexts], First) = Str :-
+	term__context_line(Context, Line),
+	( First = yes ->
+		Punct = ""
+	; Contexts = [] ->
+		Punct = " and "
+	;
+		Punct = ", "
 	),
-	io__write_int(Line),
-	det_report_context_lines(Contexts, no).
+	int_to_string(Line, This),
+	Later = det_report_context_lines_2(Contexts, no),
+	Str = Punct ++ This ++ Later.
 
 %-----------------------------------------------------------------------------%
 
 :- type options_to_restore == assoc_list(option, option_data).
 
-disable_det_warnings(OptionsToRestore) -->
-	globals__io_lookup_option(warn_simple_code, WarnSimple),
+disable_det_warnings(OptionsToRestore, !IO) :-
+	globals__io_lookup_option(warn_simple_code, WarnSimple, !IO),
 	globals__io_lookup_option(warn_det_decls_too_lax,
-		WarnDeclsTooLax),
-	globals__io_set_option(warn_simple_code, bool(no)),
-	globals__io_set_option(warn_det_decls_too_lax, bool(no)),
-	{ OptionsToRestore = [
+		WarnDeclsTooLax, !IO),
+	globals__io_set_option(warn_simple_code, bool(no), !IO),
+	globals__io_set_option(warn_det_decls_too_lax, bool(no), !IO),
+	OptionsToRestore = [
 		warn_simple_code - WarnSimple,
 		warn_det_decls_too_lax - WarnDeclsTooLax
-	] }.
+	].
 
-restore_det_warnings(OptionsToRestore) -->
+restore_det_warnings(OptionsToRestore, !IO) :-
 	list__foldl((pred((Option - Value)::in, di, uo) is det -->
 		globals__io_set_option(Option, Value)
-	), OptionsToRestore).
+	), OptionsToRestore, !IO).
 
 %-----------------------------------------------------------------------------%

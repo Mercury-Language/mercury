@@ -1758,7 +1758,8 @@ magic_util__report_errors(Errors, ModuleInfo, Verbose) -->
 magic_util__report_error(ModuleInfo, Verbose,
 		argument_error(Error, Arg, proc(PredId, _)) - Context) -->
 
-	{ describe_one_pred_name(ModuleInfo, PredId, PredName) },
+	{ describe_one_pred_name(ModuleInfo, should_module_qualify,
+		PredId, PredName) },
 	{ string__append_list(["In Aditi ", PredName, ":"], PredNamePiece) },
 	{ magic_util__error_arg_id_piece(Arg, ArgPiece) },
 	{ magic_util__report_argument_error(Context, Error, ArgPiece,
@@ -1767,7 +1768,8 @@ magic_util__report_error(ModuleInfo, Verbose,
 
 magic_util__report_error(ModuleInfo, _Verbose,
 		nonspecific_polymorphism(proc(PredId, _), _) - Context) -->
-	{ describe_one_pred_name(ModuleInfo, PredId, PredName) },
+	{ describe_one_pred_name(ModuleInfo, should_module_qualify,
+		PredId, PredName) },
 	{ string__append_list(["In ", PredName, ":"], PredNamePiece) },
 	{ SecondPart = [words("the code uses polymorphism or type-classes"),
 			words("which are not supported by Aditi.")] },
@@ -1775,7 +1777,8 @@ magic_util__report_error(ModuleInfo, _Verbose,
 
 magic_util__report_error(ModuleInfo, _Verbose,
 		curried_argument(proc(PredId, _)) - Context) -->
-	{ describe_one_pred_name(ModuleInfo, PredId, PredName) },
+	{ describe_one_pred_name(ModuleInfo, should_module_qualify,
+		PredId, PredName) },
 	{ string__append_list(["In ", PredName, ":"], PredNamePiece) },
 	{ SecondPart = [words("sorry, curried closure arguments are not"),
 			words("implemented for Aditi procedures."),
@@ -1785,7 +1788,8 @@ magic_util__report_error(ModuleInfo, _Verbose,
 magic_util__report_error(ModuleInfo, _Verbose,
 		non_removeable_aditi_state(proc(PredId, _), VarSet, Vars)
 			- Context) -->
-	{ describe_one_pred_name(ModuleInfo, PredId, PredName) },
+	{ describe_one_pred_name(ModuleInfo, should_module_qualify,
+		PredId, PredName) },
 	{ string__append_list(["In ", PredName, ":"], PredNamePiece) },
 	{ Vars = [_] ->
 		VarPiece = words("variable"),
@@ -1802,7 +1806,8 @@ magic_util__report_error(ModuleInfo, _Verbose,
 
 magic_util__report_error(ModuleInfo, Verbose,
 		context_error(Error, proc(PredId, _ProcId)) - Context) -->
-	{ describe_one_pred_name(ModuleInfo, PredId, PredName) },
+	{ describe_one_pred_name(ModuleInfo, should_module_qualify,
+		PredId, PredName) },
 	{ string__append_list(["In ", PredName, ":"], PredNamePiece) },
 	{ SecondPart = [words("with `:- pragma context(...)' declaration:"),
 		nl, words("error: recursive rule is not linear.\n")] },
@@ -1815,9 +1820,9 @@ magic_util__report_error(ModuleInfo, Verbose,
 magic_util__report_error(ModuleInfo, _Verbose,
 		mutually_recursive_context(PredProcId,
 			OtherPredProcIds) - Context) -->
-	{ describe_one_proc_name(ModuleInfo,
+	{ describe_one_proc_name(ModuleInfo, should_module_qualify,
 		PredProcId, ProcPiece) },
-	{ describe_several_proc_names(ModuleInfo,
+	{ describe_several_proc_names(ModuleInfo, should_module_qualify,
 		OtherPredProcIds, OtherProcPieces) },
 	{ list__condense(
 		[[words("Error: procedure"), words(ProcPiece), words("with a"),
@@ -1828,7 +1833,7 @@ magic_util__report_error(ModuleInfo, _Verbose,
 
 magic_util__report_error(ModuleInfo, _Verbose,
 		mixed_scc(PredProcIds) - Context) -->
-	{ describe_several_proc_names(ModuleInfo,
+	{ describe_several_proc_names(ModuleInfo, should_module_qualify,
 		PredProcIds, SCCPieces) },
 	{ list__condense([
 		[words("In the strongly connected component consisting of")],

@@ -1,3 +1,3 @@
-warn_stubs.m:004: Warning: no clauses for predicate `warn_stubs.main/2'.
-warn_stubs.m:005: Warning: no clauses for predicate `warn_stubs.foo/0'.
-warn_stubs.m:008: Warning: no clauses for predicate `warn_stubs.main2/2'.
+warn_stubs.m:004: Warning: no clauses for predicate `main/2'.
+warn_stubs.m:005: Warning: no clauses for predicate `foo/0'.
+warn_stubs.m:008: Warning: no clauses for predicate `main2/2'.

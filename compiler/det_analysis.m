@@ -130,6 +130,7 @@
 :- import_module check_hlds__modecheck_call.
 :- import_module check_hlds__purity.
 :- import_module check_hlds__type_util.
+:- import_module hlds__code_model.
 :- import_module hlds__hlds_out.
 :- import_module hlds__passes_aux.
 :- import_module libs__options.
@@ -199,19 +200,14 @@ global_inference_single_pass([proc(PredId, ProcId) | PredProcs], Debug,
 	det_infer_proc(PredId, ProcId, !ModuleInfo, Globals,
 		Detism0, Detism, ProcMsgs),
 	( Detism = Detism0 ->
-		( Debug = yes ->
-			io__write_string("% Inferred old detism ", !IO),
-			mercury_output_det(Detism, !IO),
-			io__write_string(" for ", !IO),
-			hlds_out__write_pred_proc_id(!.ModuleInfo,
-				PredId, ProcId, !IO),
-			io__write_string("\n", !IO)
-		;
-			true
-		)
+		ChangeStr = "old"
 	;
+		ChangeStr = "new",
+		!:Changed = changed
+	),
 		( Debug = yes ->
-			io__write_string("% Inferred new detism ", !IO),
+		io__write_string("% Inferred " ++ ChangeStr ++ " detism ",
+			!IO),
 			mercury_output_det(Detism, !IO),
 			io__write_string(" for ", !IO),
 			hlds_out__write_pred_proc_id(!.ModuleInfo,
@@ -220,8 +216,6 @@ global_inference_single_pass([proc(PredId, ProcId) | PredProcs], Debug,
 		;
 			true
 		),
-		!:Changed = changed
-	),
 	list__append(ProcMsgs, !Msgs),
 	global_inference_single_pass(PredProcs, Debug, !ModuleInfo, !Msgs,
 		!Changed, !IO).
@@ -237,7 +231,8 @@ global_final_pass(!ModuleInfo, ProcList, Debug, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-det_infer_proc(PredId, ProcId, !ModuleInfo, Globals, Detism0, Detism, Msgs) :-
+det_infer_proc(PredId, ProcId, !ModuleInfo, Globals, Detism0, Detism,
+		!:Msgs) :-
 
 		% Get the proc_info structure for this procedure
 	module_info_preds(!.ModuleInfo, Preds0),
@@ -276,7 +271,7 @@ det_infer_proc(PredId, ProcId, !ModuleInfo, Globals, Detism0, Detism, Msgs) :-
 	det_info_init(!.ModuleInfo, VarTypes, PredId, ProcId, Globals,
 		DetInfo),
 	det_infer_goal(Goal0, InstMap0, SolnContext, DetInfo,
-		Goal, Detism1, Msgs),
+		Goal, Detism1, !:Msgs),
 
 		% Take the worst of the old and new detisms.
 		% This is needed to prevent loops on p :- not(p)
@@ -295,6 +290,17 @@ det_infer_proc(PredId, ProcId, !ModuleInfo, Globals, Detism0, Detism, Msgs) :-
 	proc_info_eval_method(Proc0, EvalMethod),
 	Detism = eval_method_change_determinism(EvalMethod, Detism2),		
 			
+	(
+		proc_info_has_io_state_pair(!.ModuleInfo, Proc,
+			_InArgNum, _OutArgNum),
+		determinism_to_code_model(Detism, CodeModel),
+		CodeModel \= model_det
+	->
+		!:Msgs = [has_io_state_but_not_det(PredId, ProcId) | !.Msgs]
+	;
+		true
+	),
+
 		% Save the newly inferred information
 	proc_info_set_goal(Goal, Proc0, Proc1),
 	proc_info_set_inferred_determinism(Detism, Proc1, Proc),

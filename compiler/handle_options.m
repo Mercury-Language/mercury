@@ -1127,10 +1127,10 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
 	( { MaybeStdLibDir = yes(StdLibDir) } ->
 		globals__io_get_globals(Globals2),
 		{ globals__get_options(Globals2, OptionTable2) },
-		{ globals__set_options(Globals2,
+		{ globals__set_options(
 			option_table_add_mercury_library_directory(
 				OptionTable2, StdLibDir),
-			Globals3) },
+			Globals2, Globals3) },
 		{ unsafe_promise_unique(Globals3, Globals4) },
 		globals__io_set_globals(Globals4),
 

@@ -489,7 +489,8 @@ subgoal_tabled_for_io_attribute(Goal, TabledForIoAttr) :-
 
 report_missing_tabled_for_io(ModuleInfo, PredInfo, PredId, ProcId) -->
 	{ pred_info_context(PredInfo, Context) },
-	{ describe_one_proc_name(ModuleInfo, proc(PredId, ProcId), Name) },
+	{ describe_one_proc_name(ModuleInfo, should_not_module_qualify,
+		proc(PredId, ProcId), Name) },
 	{ Msg = [fixed(Name), words("contains untabled I/O primitive.")] },
 	error_util__write_error_pieces(Context, 0, Msg).
 

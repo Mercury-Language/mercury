@@ -1,3 +1,6 @@
-infinite_recursion.m:013: Warning: recursive call will lead to infinite recursion.
-infinite_recursion.m:022: Warning: recursive call will lead to infinite recursion.
-infinite_recursion.m:034: Warning: recursive call will lead to infinite recursion.
+infinite_recursion.m:013: Warning: recursive call will lead to infinite
+infinite_recursion.m:013:   recursion.
+infinite_recursion.m:022: Warning: recursive call will lead to infinite
+infinite_recursion.m:022:   recursion.
+infinite_recursion.m:034: Warning: recursive call will lead to infinite
+infinite_recursion.m:034:   recursion.
