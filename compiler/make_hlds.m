@@ -3816,12 +3816,12 @@ select_applicable_modes(Args0, VarSet, Context, PredId, PredInfo, ModuleInfo0,
 		)
 	;
 		{ ModeAnnotations = empty },
-		{ pred_info_all_procids(PredInfo, ProcIds) },
+		{ ProcIds = [] }, % this means the clauses applies to all modes
 		{ ModuleInfo = ModuleInfo0 },
 		{ Info = Info0 }
 	;
 		{ ModeAnnotations = none },
-		{ pred_info_all_procids(PredInfo, ProcIds) },
+		{ ProcIds = [] }, % this means the clauses applies to all modes
 		{ ModuleInfo = ModuleInfo0 },
 		{ Info = Info0 }
 	;

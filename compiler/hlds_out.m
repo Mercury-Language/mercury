@@ -964,18 +964,14 @@ hlds_out__write_clause(Indent, ModuleInfo, PredId, VarSet,
 	( { Modes = [] ; Modes = ProcIds } ->
 		hlds_out__write_clause_head(ModuleInfo, PredId, VarSet,
 			AppendVarnums, HeadTerms, PredOrFunc)
-	; { Modes = [SingleMode] } ->
-		{ module_info_pred_proc_info(ModuleInfo, PredId, SingleMode,
-			_PredInfo, ProcInfo) },
-		{ proc_info_argmodes(ProcInfo, ArgModes) },
-		{ assoc_list__from_corresponding_lists(HeadTerms, ArgModes, 
-			AnnotatedPairs) },
-		{ AnnotatedHeadTerms = list__map(add_mode_qualifier(Context),
-			AnnotatedPairs) },
-		hlds_out__write_clause_head(ModuleInfo, PredId, VarSet,
-			AppendVarnums, AnnotatedHeadTerms, PredOrFunc)
 	;
-		{ error("No syntax for clause which applies to >1 mode") }
+		% If Modes contains more than one mode, the output will have
+		% multiple clause heads. This won't be pretty and it won't be 
+		% syntactically valid, but it is more useful for debugging
+		% than a compiler abort during the dumping process.
+		hlds_out__write_annotated_clause_heads(ModuleInfo, Context,
+			PredId, Modes, VarSet, AppendVarnums, HeadTerms,
+			PredOrFunc)
 	),
 	( { Goal = conj([]) - _GoalInfo } ->
 		io__write_string(".\n")
@@ -985,36 +981,41 @@ hlds_out__write_clause(Indent, ModuleInfo, PredId, VarSet,
 			Indent1, ".\n", TypeQual)
 	).
 
-:- pred hlds_out__write_intlist(list(int), io__state, io__state).
-:- mode hlds_out__write_intlist(in, di, uo) is det.
+:- pred hlds_out__write_annotated_clause_heads(module_info::in,
+	term__context::in, pred_id::in, list(proc_id)::in, prog_varset::in,
+	bool::in, list(prog_term)::in, pred_or_func::in,
+	io__state::di, io__state::uo) is det.
 
-hlds_out__write_intlist(IntList) -->
-	(
-		{ IntList = [] }
-	->
-		io__write_string("[]")
-	;
-		io__write_string("[ "),
-		hlds_out__write_intlist_2(IntList),
-		io__write_string("]")
-	).
+hlds_out__write_annotated_clause_heads(_, _, _, [], _, _, _, _) --> [].
+hlds_out__write_annotated_clause_heads(ModuleInfo, Context, PredId,
+		[ProcId | ProcIds], VarSet, AppendVarnums, HeadTerms,
+		PredOrFunc) -->
+	hlds_out__write_annotated_clause_head(ModuleInfo, Context, PredId,
+		ProcId, VarSet, AppendVarnums, HeadTerms, PredOrFunc),
+	hlds_out__write_annotated_clause_heads(ModuleInfo, Context, PredId,
+		ProcIds, VarSet, AppendVarnums, HeadTerms, PredOrFunc).
 
-:- pred hlds_out__write_intlist_2(list(int), io__state, io__state).
-:- mode hlds_out__write_intlist_2(in, di, uo) is det.
+:- pred hlds_out__write_annotated_clause_head(module_info::in,
+	term__context::in, pred_id::in, proc_id::in, prog_varset::in,
+	bool::in, list(prog_term)::in, pred_or_func::in,
+	io__state::di, io__state::uo) is det.
 
-hlds_out__write_intlist_2(Ns0) -->
-	(
-		{ Ns0 = [N] }
-	->
-		io__write_int(N)
+hlds_out__write_annotated_clause_head(ModuleInfo, Context, PredId, ProcId,
+		VarSet, AppendVarnums, HeadTerms, PredOrFunc) -->
+	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
+	{ pred_info_procedures(PredInfo, Procedures) },
+	( { map__search(Procedures, ProcId, ProcInfo) } ->
+		{ proc_info_argmodes(ProcInfo, ArgModes) },
+		{ assoc_list__from_corresponding_lists(HeadTerms, ArgModes, 
+			AnnotatedPairs) },
+		{ AnnotatedHeadTerms = list__map(add_mode_qualifier(Context),
+			AnnotatedPairs) },
+		hlds_out__write_clause_head(ModuleInfo, PredId, VarSet,
+			AppendVarnums, AnnotatedHeadTerms, PredOrFunc)
 	;
-		{ Ns0 = [N|Ns] }
-	->
-		io__write_int(N),
-		io__write_string(", "),
-		hlds_out__write_intlist_2(Ns)
-	;
-		{ error("This should be unreachable.") }
+		% This procedure, even though it existed in the past, has been
+		% eliminated.
+		[]
 	).
 
 :- pred hlds_out__write_clause_head(module_info, pred_id, prog_varset, bool,
@@ -3171,6 +3172,33 @@ hlds_out__write_indent(Indent) -->
 		io__write_char('\t'),
 		{ Indent1 is Indent - 1 },
 		hlds_out__write_indent(Indent1)
+	).
+
+:- pred hlds_out__write_intlist(list(int), io__state, io__state).
+:- mode hlds_out__write_intlist(in, di, uo) is det.
+
+hlds_out__write_intlist(IntList) -->
+	(
+		{ IntList = [] },
+		io__write_string("[]")
+	;
+		{ IntList = [H | T] },
+		io__write_string("[ "),
+		hlds_out__write_intlist_2(H, T),
+		io__write_string("]")
+	).
+
+:- pred hlds_out__write_intlist_2(int, list(int), io__state, io__state).
+:- mode hlds_out__write_intlist_2(in, in, di, uo) is det.
+
+hlds_out__write_intlist_2(H, T) -->
+	io__write_int(H),
+	(
+		{ T = [TH | TT] },
+		io__write_string(", "),
+		hlds_out__write_intlist_2(TH, TT)
+	;
+		{ T = [] }
 	).
 
 %-----------------------------------------------------------------------------%
