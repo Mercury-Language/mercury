@@ -190,12 +190,6 @@ AC_SUBST(MKNOD)
 
 PATH="$save_PATH"
 #-----------------------------------------------------------------------------#
-case "$host" in
-	# on rs6000, it doesn't work if you use gcc, so default to using cc
-	rs6000-*)
-		CC=${CC-cc}
-		;;
-esac
 AC_PROG_CC
 AC_SUBST(CC)
 
