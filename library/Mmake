@@ -3,7 +3,10 @@
 # Makefile.main - this is the main part of the Makefile
 # for building the Mercury libraries.
 
+MERCURY_DIR=..
 include ../Mmake.common
+
+MAIN_TARGET=libmercury
 
 #-----------------------------------------------------------------------------#
 
@@ -42,27 +45,21 @@ NU_LIBRARY_OBJS = \
 
 # targets
 
-MAIN_TARGET=libmercury
-
-.PHONY: main_target
-main_target : $(MAIN_TARGET)
-
 .PHONY: all
-all : libmercury
+all : libmercury library.nu
 
 #-----------------------------------------------------------------------------#
+
+.PHONY: depend
+depend		: library.depend
 
 .PHONY: check
 check		: library.check
 
-#-----------------------------------------------------------------------------#
-
 .PHONY: ints 
 ints		: library.ints
 
-#-----------------------------------------------------------------------------#
-
-.PHONY: mods library.mods
+.PHONY: mods
 mods		: library.mods
 library.mods	: $(library.mods)
 
@@ -116,13 +113,17 @@ CHMOD=go+w
 
 .PHONY: install
 install: install_ints install_library install_nuprolog
-	-chgrp -R $CHGRP $(LIBDIR) 2>/dev/null
-	-chmod -R $CHMOD $(LIBDIR) 2>/dev/null
+	-chgrp -R $(CHGRP) $(INSTALL_LIBDIR) 2>/dev/null
+	-chmod -R $(CHMOD) $(INSTALL_LIBDIR) 2>/dev/null
 
 .PHONY: install_ints
 install_ints: $(LIBRARY_INTS)
 	mkdir -p $(INSTALL_INT_DIR)
-	cp `vpath_find $(LIBRARY_INTS)` $(INSTALL_INT_DIR)
+	for file in `vpath_find $(LIBRARY_INTS)`; do \
+		target=$(INSTALL_INT_DIR)/`basename $$file`; \
+		cp $$file $$target.tmp; \
+		mercury_update_interface $$target; \
+	done
 
 .PHONY: install_mods
 install_mods: $(library.cs)
