@@ -89,6 +89,7 @@ edt_children_2(Child, Siblings) :-
 :- pragma c_header_code("
 	#include ""mercury_trace_declarative.h""
 	#include ""mercury_type_info.h""
+	#include ""mercury_wrapper.h""
 ").
 
 :- pred edt_first_child(evaluation_tree, evaluation_tree).
@@ -134,9 +135,17 @@ edt_children_2(Child, Siblings) :-
 :- pred edt_root(evaluation_tree, edt_node).
 :- mode edt_root(in, out) is det.
 
-:- pragma import(edt_root(in, out),
+:- pragma c_code(edt_root(EDT::in, Root::out),
 	[will_not_call_mercury],
-	"MR_edt_root_node"
+	"
+		/*
+		** We wish to call MR_edt_root_node in the trace
+		** directory, but due to problems with linking we
+		** call it indirectly via a pointer defined in
+		** runtime/mercury_wrapper.c.
+		*/
+		MR_address_of_edt_root_node(EDT, &Root);
+	"
 ).
 
 %-----------------------------------------------------------------------------%

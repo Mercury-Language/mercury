@@ -16,13 +16,13 @@
 */
 
 #include "mercury_imp.h"
+#include "mercury_trace_declarative.h"
 
 #ifdef MR_USE_DECLARATIVE_DEBUGGER
 
 #include "mercury_trace.h"
 #include "mercury_trace_browse.h"
 #include "mercury_trace_internal.h"
-#include "mercury_trace_declarative.h"
 #include "mercury_trace_tables.h"
 #include "mercury_trace_util.h"
 #include "mercury_layout_util.h"
@@ -559,4 +559,11 @@ MR_edt_root_node_args(const MR_Edt_Node *edt)
 	return arglist;
 }
 
-#endif	/* MR_USE_DECLARATIVE_DEBUGGER */
+#else	/* not MR_USE_DECLARATIVE_DEBUGGER */
+
+extern void
+MR_edt_root_node(Word EDT, Word *Node)
+{
+	fatal_error("MR_edt_root_node should not have been called");
+}
+#endif
