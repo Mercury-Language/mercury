@@ -51,6 +51,6 @@ export DEFAULT_MCFLAGS
 
 case $# in
 	0) exec $MC -I "$INTDIR" ;;
-	*) exec $MC -I "$@" "$INTDIR" ;;
+	*) exec $MC "$@" -I "$INTDIR" ;;
 esac
 
