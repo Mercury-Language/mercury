@@ -373,7 +373,11 @@ output_import(Import) -->
 	% XXX Name mangling code should be put here when we start enforcing
 	%     Java's naming conventions.
 	{ ClassFile = File },
-	io__write_strings(["import ", ClassFile, ";\n"]).
+	% There are issues related to using import statements and Java's
+	% naming conventions.  To avoid these problems, we output
+	% dependencies as comments only.  This is ok, since we always use
+	% fully qualified names anyway.
+	io__write_strings(["// import ", ClassFile, ";\n"]).
 
 %--------------------------------------------------------------------
 %
