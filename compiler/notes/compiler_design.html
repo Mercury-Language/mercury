@@ -102,7 +102,8 @@ stored in the io__state, using the type globals defined in globals.m.
 	using Definite Clause Grammar notation), prog_io_goal.m (which handles
 	goals), prog_io_pragma.m (which handles pragma declarations) and
 	prog_io_util.m (which defines predicates and types needed by the other
-	prog_io*.m modules.
+	prog_io*.m modules.  The data structure for insts is stored in
+	its own module, inst.m.
 	
 	<p>
 
@@ -250,9 +251,12 @@ in an HLDS goal.
 			a set of variables may be bound to.
 		<dt> inst_match.m
 			<dd>
-			This contains the code for dealing with insts:
-			abstractly unifying them, checking whether two
-			insts match, etc.
+			This contains the code for examining insts and
+			checking whether they match.
+		<dt> inst_util.m
+			<dd>
+			This contains the code for creating new insts from
+			old ones: unifying them, merging them and so on.
 		<dt> mode_errors.m
 			<dd>
 			This module contains all the code to
@@ -727,6 +731,6 @@ Some of them are obsolete; other are work-in-progress.
 <hr>
 <!-------------------------->
 
-Last update was $Date: 1997-06-25 05:23:57 $ by $Author: fjh $@cs.mu.oz.au. <br>
+Last update was $Date: 1997-07-24 01:33:04 $ by $Author: bromage $@cs.mu.oz.au. <br>
 </body>
 </html>
