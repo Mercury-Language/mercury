@@ -232,4 +232,19 @@ extern	void	*allocate_bytes(size_t numbytes);
 
 void deallocate_memory(void *);
 
+
+/*
+** checked_malloc() and checked_realloc() are like the standard C
+** malloc() and realloc() functions, except that the return values
+** are checked.
+**
+** NOTE: checked_malloc()ed and checked_realloc()ed structures must
+** never contain pointers into GCed memory, otherwise those pointers
+** will never be traced.
+*/
+
+#include <stddef.h>	/* for size_t */
+void *checked_malloc(size_t n);
+void *checked_realloc(void *old, size_t n);
+
 #endif /* not MERCURY_MEMORY_H */

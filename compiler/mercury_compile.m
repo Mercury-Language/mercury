@@ -1283,7 +1283,7 @@ mercury_compile__maybe_polymorphism(HLDS0, Verbose, Stats, HLDS) -->
 		maybe_write_string(Verbose,
 			"% Transforming polymorphic unifications..."),
 		maybe_flush_output(Verbose),
-		{ polymorphism__process_module(HLDS0, HLDS) },
+		polymorphism__process_module(HLDS0, HLDS),
 		maybe_write_string(Verbose, " done.\n"),
 		maybe_report_stats(Stats)
 	;

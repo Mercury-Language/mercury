@@ -63,10 +63,4 @@ extern	void	printlabel(/* const */ Code *w);
 #endif
 extern	void	fatal_error(const char *msg) NO_RETURN;
 
-/* 
-** XXX checked_malloc() should be moved to mercury_memory.h or mercury_heap.h
-*/
-#include <stddef.h>	/* for size_t */
-void *checked_malloc(size_t n);
-
 #endif /* not MERCURY_MISC_H */

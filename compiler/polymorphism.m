@@ -281,9 +281,11 @@
 :- module polymorphism.
 :- interface.
 :- import_module hlds_module.
+:- import_module io.
 
-:- pred polymorphism__process_module(module_info, module_info).
-:- mode polymorphism__process_module(in, out) is det.
+:- pred polymorphism__process_module(module_info, module_info,
+			io__state, io__state).
+:- mode polymorphism__process_module(in, out, di, uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -293,7 +295,7 @@
 :- import_module hlds_pred, hlds_goal, hlds_data, llds, (lambda).
 :- import_module prog_data, type_util, mode_util, quantification, instmap.
 :- import_module code_util, unify_proc, special_pred, prog_util, make_hlds.
-:- import_module (inst), hlds_out, base_typeclass_info.
+:- import_module (inst), hlds_out, base_typeclass_info, passes_aux.
 
 :- import_module bool, int, string, list, set, map.
 :- import_module term, varset, std_util, require, assoc_list.
@@ -308,27 +310,30 @@
 	% the argtypes of the called predicates, and so we need to make
 	% sure we don't muck them up before we've finished the first pass.
 
-polymorphism__process_module(ModuleInfo0, ModuleInfo) :-
+polymorphism__process_module(ModuleInfo0, ModuleInfo, IO0, IO) :-
 	module_info_preds(ModuleInfo0, Preds0),
 	map__keys(Preds0, PredIds0),
-	polymorphism__process_preds(PredIds0, ModuleInfo0, ModuleInfo1),
+	polymorphism__process_preds(PredIds0, ModuleInfo0, ModuleInfo1,
+				IO0, IO),
 	module_info_preds(ModuleInfo1, Preds1),
 	map__keys(Preds1, PredIds1),
 	polymorphism__fixup_preds(PredIds1, ModuleInfo1, ModuleInfo2),
 	polymorphism__expand_class_method_bodies(ModuleInfo2, ModuleInfo).
 
-:- pred polymorphism__process_preds(list(pred_id), module_info, module_info).
-:- mode polymorphism__process_preds(in, in, out) is det.
+:- pred polymorphism__process_preds(list(pred_id), module_info, module_info,
+			io__state, io__state).
+:- mode polymorphism__process_preds(in, in, out, di, uo) is det.
 
-polymorphism__process_preds([], ModuleInfo, ModuleInfo).
-polymorphism__process_preds([PredId | PredIds], ModuleInfo0, ModuleInfo) :-
+polymorphism__process_preds([], ModuleInfo, ModuleInfo) --> [].
+polymorphism__process_preds([PredId | PredIds], ModuleInfo0, ModuleInfo) -->
 	polymorphism__process_pred(PredId, ModuleInfo0, ModuleInfo1),
 	polymorphism__process_preds(PredIds, ModuleInfo1, ModuleInfo).
 
-:- pred polymorphism__process_pred(pred_id, module_info, module_info).
-:- mode polymorphism__process_pred(in, in, out) is det.
+:- pred polymorphism__process_pred(pred_id, module_info, module_info,
+			io__state, io__state).
+:- mode polymorphism__process_pred(in, in, out, di, uo) is det.
 
-polymorphism__process_pred(PredId, ModuleInfo0, ModuleInfo) :-
+polymorphism__process_pred(PredId, ModuleInfo0, ModuleInfo, IO0, IO) :-
 	module_info_pred_info(ModuleInfo0, PredId, PredInfo),
 	pred_info_module(PredInfo, PredModule),
 	pred_info_name(PredInfo, PredName),
@@ -337,24 +342,29 @@ polymorphism__process_pred(PredId, ModuleInfo0, ModuleInfo) :-
 		polymorphism__no_type_info_builtin(PredModule,
 			PredName, PredArity) 
 	->
-		ModuleInfo = ModuleInfo0
+		ModuleInfo = ModuleInfo0,
+		IO = IO0
 	;
 		pred_info_procids(PredInfo, ProcIds),
 		polymorphism__process_procs(PredId, ProcIds,
-			ModuleInfo0, ModuleInfo)
+			ModuleInfo0, ModuleInfo, IO0, IO)
 	).
 
 :- pred polymorphism__process_procs(pred_id, list(proc_id),
-					module_info, module_info).
-:- mode polymorphism__process_procs(in, in, in, out) is det.
+					module_info, module_info,
+					io__state, io__state).
+:- mode polymorphism__process_procs(in, in, in, out, di, uo) is det.
 
-polymorphism__process_procs(_PredId, [], ModuleInfo, ModuleInfo).
+polymorphism__process_procs(_PredId, [], ModuleInfo, ModuleInfo, IO, IO).
 polymorphism__process_procs(PredId, [ProcId | ProcIds], ModuleInfo0,
-		ModuleInfo) :-
+		ModuleInfo, IO0, IO) :-
 	module_info_preds(ModuleInfo0, PredTable0),
 	map__lookup(PredTable0, PredId, PredInfo0),
 	pred_info_procedures(PredInfo0, ProcTable0),
 	map__lookup(ProcTable0, ProcId, ProcInfo0),
+
+	write_proc_progress_message("% Transforming polymorphism for ",
+				PredId, ProcId, ModuleInfo0, IO0, IO1),
 
 	polymorphism__process_proc(ProcInfo0, PredInfo0, ModuleInfo0,
 					ProcInfo, PredInfo1, ModuleInfo1),
@@ -366,7 +376,8 @@ polymorphism__process_procs(PredId, [ProcId | ProcIds], ModuleInfo0,
 	map__det_update(PredTable1, PredId, PredInfo, PredTable),
 	module_info_set_preds(ModuleInfo1, PredTable, ModuleInfo2),
 
-	polymorphism__process_procs(PredId, ProcIds, ModuleInfo2, ModuleInfo).
+	polymorphism__process_procs(PredId, ProcIds, ModuleInfo2, ModuleInfo,
+			IO1, IO).
 
 	% unsafe_type_cast and unsafe_promise_unique are polymorphic
 	% builtins which do not need their type_infos. unsafe_type_cast
