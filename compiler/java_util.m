@@ -76,8 +76,6 @@
 
 %-----------------------------------------------------------------------------%
 
-% XXX I'm not sure what the first seven of these should be
-%     for the Java backend.
 java_util__unary_prefix_op(mktag, _) :-
 	unexpected(this_file, "Java backend does not support tags").
 java_util__unary_prefix_op(tag,	_) :-
