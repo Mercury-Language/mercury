@@ -137,9 +137,14 @@ ln -s ../doc .
 ln -s ../scripts .
 ln -s ../util .
 ln -s ../profiler .
-ln -s ../Mmake* .
 ln -s ../conf* .
 rm -f config*.log
+ln -s ../Mmake* .
+if test -f ../Mmake.stage.params
+then
+	/bin/rm -f Mmake.params
+	ln -s ../Mmake.stage.params Mmake.params
+fi
 cd ..
 
 set -x
@@ -224,9 +229,14 @@ ln -s ../runtime .
 ln -s ../scripts .
 ln -s ../util .
 ln -s ../profiler .
-ln -s ../Mmake* .
 ln -s ../conf* .
 rm -f config*.log
+ln -s ../Mmake* .
+if test -f ../Mmake.stage.params
+then
+	/bin/rm -f Mmake.params
+	ln -s ../Mmake.stage.params Mmake.params
+fi
 cd ..
 set -x
 
