@@ -7,24 +7,24 @@
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 %
-% propogate.m
+% propagate.m
 %
 % Main author: petdr.
 %
-% Propogates the counts around the call_graph.
+% Propagates the counts around the call_graph.
 %
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- module propogate.
+:- module propagate.
 
 :- interface.
 
 :- import_module prof_info.
 :- import_module io.
 
-:- pred propogate__counts(list(set(string)), prof, prof, io__state, io__state).
-:- mode propogate__counts(in, in, out, di, uo) is det.
+:- pred propagate__counts(list(set(string)), prof, prof, io__state, io__state).
+:- mode propagate__counts(in, in, out, di, uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -36,62 +36,62 @@
 :- import_module require, std_util.
 
 
-% propogate_counts:
-%	Propogates counts around the call_graph.  Starts from the end of the
+% propagate_counts:
+%	Propagates counts around the call_graph.  Starts from the end of the
 %	list, which is the leaves of the call graph.
 %
-propogate__counts([], Prof, Prof) --> [].
-propogate__counts([_Clique | Cliques], Prof0, Prof) -->
+propagate__counts([], Prof, Prof) --> [].
+propagate__counts([_Clique | Cliques], Prof0, Prof) -->
 	{ prof_get_addrdeclmap(Prof0, AddrDeclMap) },
 	{ prof_get_profnodemap(Prof0, ProfNodeMap0) },
 
-	propogate_counts_2(Cliques, AddrDeclMap, ProfNodeMap0, ProfNodeMap),
+	propagate_counts_2(Cliques, AddrDeclMap, ProfNodeMap0, ProfNodeMap),
 	
 	{ prof_set_profnodemap(ProfNodeMap, Prof0, Prof) }.
 
 
-:- pred propogate_counts_2(list(set(string)), addrdecl, prof_node_map, 
+:- pred propagate_counts_2(list(set(string)), addrdecl, prof_node_map, 
 					prof_node_map, io__state, io__state).
-:- mode propogate_counts_2(in, in, in, out, di, uo) is det.
+:- mode propagate_counts_2(in, in, in, out, di, uo) is det.
 
-propogate_counts_2([], _, ProfNodeMap, ProfNodeMap) --> [].
-propogate_counts_2([Clique | Cs], AddrDecl, ProfNodeMap0, ProfNodeMap) -->
+propagate_counts_2([], _, ProfNodeMap, ProfNodeMap) --> [].
+propagate_counts_2([Clique | Cs], AddrDecl, ProfNodeMap0, ProfNodeMap) -->
 	{ set__to_sorted_list(Clique, CliqueList) },
 
-	propogate_counts_2(Cs, AddrDecl, ProfNodeMap0, ProfNodeMap1),
+	propagate_counts_2(Cs, AddrDecl, ProfNodeMap0, ProfNodeMap1),
 
-	% On the way up propogate the counts.
+	% On the way up propagate the counts.
 	{ build_parent_map(CliqueList, AddrDecl, ProfNodeMap1, ParentMap) },
 	{ sum_counts(CliqueList, AddrDecl, ProfNodeMap1, TotalCounts) },
 	{ sum_calls(ParentMap, TotalCalls) },
 	{ map__to_assoc_list(ParentMap, ParentList) },
-	propogate_counts_3(ParentList, TotalCounts, TotalCalls, AddrDecl, 
+	propagate_counts_3(ParentList, TotalCounts, TotalCalls, AddrDecl, 
 						ProfNodeMap1, ProfNodeMap).
 
 
-:- pred propogate_counts_3(assoc_list(string, int), float, int, addrdecl, 
+:- pred propagate_counts_3(assoc_list(string, int), float, int, addrdecl, 
 			prof_node_map, prof_node_map, io__state, io__state).
-:- mode propogate_counts_3(in, in, in, in, in, out, di, uo) is det.
+:- mode propagate_counts_3(in, in, in, in, in, out, di, uo) is det.
 
-propogate_counts_3([], _, _, _, ProfNodeMap, ProfNodeMap) --> [].
-propogate_counts_3([ Pred - Calls | Ps], TotalCounts, TotalCalls, AddrMap, 
+propagate_counts_3([], _, _, _, ProfNodeMap, ProfNodeMap) --> [].
+propagate_counts_3([ Pred - Calls | Ps], TotalCounts, TotalCalls, AddrMap, 
 						ProfNodeMap0, ProfNodeMap) -->
 	{ map__lookup(AddrMap, Pred, Key),
 	map__lookup(ProfNodeMap0, Key, ProfNode0),
 
-	% Work out the number of counts to propogate.
+	% Work out the number of counts to propagate.
 	int__to_float(Calls, FloatCalls),
 	int__to_float(TotalCalls, FloatTotalCalls),
 	builtin_float_divide(FloatCalls, FloatTotalCalls, Proportion),
 	builtin_float_times(Proportion, TotalCounts, ToPropCount),
 
-	% Add new counts to current propogated counts
-	prof_node_get_propogated_counts(ProfNode0, PropCount0),
+	% Add new counts to current propagated counts
+	prof_node_get_propagated_counts(ProfNode0, PropCount0),
 	builtin_float_plus(PropCount0, ToPropCount, PropCount),
-	prof_node_set_propogated_counts(PropCount, ProfNode0, ProfNode),
+	prof_node_set_propagated_counts(PropCount, ProfNode0, ProfNode),
 	map__det_update(ProfNodeMap0, Key, ProfNode, ProfNodeMap1) },
 
-	propogate_counts_3(Ps, TotalCounts, TotalCalls, AddrMap, ProfNodeMap1,
+	propagate_counts_3(Ps, TotalCounts, TotalCalls, AddrMap, ProfNodeMap1,
 								ProfNodeMap).
 
 
@@ -173,7 +173,7 @@ sum_counts([], _, _, 0.0).
 sum_counts([Pred | Preds], AddrMap, ProfNodeMap, TotalCount) :-
 	get_prof_node(Pred, AddrMap, ProfNodeMap, ProfNode),
 	prof_node_get_initial_counts(ProfNode, InitCount),
-	prof_node_get_propogated_counts(ProfNode, PropCounts),
+	prof_node_get_propagated_counts(ProfNode, PropCounts),
 	sum_counts(Preds, AddrMap, ProfNodeMap, TotalCount0),
 	int__to_float(InitCount, InitCountFloat),
 	builtin_float_plus(PropCounts, InitCountFloat, PredCount),

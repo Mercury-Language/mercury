@@ -237,7 +237,7 @@ process_prof_node_children_2([pred_info(LabelName, Calls) | PNs], Prof,
 	Prof = prof(Hertz, ClockTicks, _IntTotalCounts, AddrMap, ProfNodeMap),
 	get_prof_node(LabelName, AddrMap, ProfNodeMap, ProfNode),
 	prof_node_get_initial_counts(ProfNode, Initial),
-	prof_node_get_propogated_counts(ProfNode, Prop),
+	prof_node_get_propagated_counts(ProfNode, Prop),
 	prof_node_get_total_calls(ProfNode, TotalCalls),
 
 	int__to_float(Initial, InitialFloat),

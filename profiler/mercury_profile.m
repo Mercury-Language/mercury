@@ -33,7 +33,7 @@
 
 :- implementation.
 
-:- import_module process_file, call_graph, generate_output, propogate, output.
+:- import_module process_file, call_graph, generate_output, propagate, output.
 :- import_module prof_info.
 :- import_module list, std_util, string, library.
 :- import_module options, getopt, globals.
@@ -157,8 +157,8 @@ main_2(no, Args) -->
 		{ relation__atsort(CallGraph, Cliques) },
 		maybe_write_string(Verbose, " done\n"),
 
-		maybe_write_string(Verbose, "% Propogating counts..."),
-		propogate__counts(Cliques, Prof0, Prof),
+		maybe_write_string(Verbose, "% Propagating counts..."),
+		propagate__counts(Cliques, Prof0, Prof),
 		maybe_write_string(Verbose, " done\n"),
 		
 		maybe_write_string(Verbose, "% Generating output..."),

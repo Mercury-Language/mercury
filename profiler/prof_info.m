@@ -58,7 +58,7 @@
 			string, 		% current predicate (label)
 			int,			% index number
 			int, 			% self counts
-			float, 			% propogated counts
+			float, 			% propagated counts
 			list(pred_info), 	% Parent pred and the number
 						% of times it calls this
 						% predicate
@@ -124,8 +124,8 @@
 :- pred prof_node_get_initial_counts(prof_node, int).
 :- mode prof_node_get_initial_counts(in, out) is det.
 
-:- pred prof_node_get_propogated_counts(prof_node, float).
-:- mode prof_node_get_propogated_counts(in, out) is det.
+:- pred prof_node_get_propagated_counts(prof_node, float).
+:- mode prof_node_get_propagated_counts(in, out) is det.
 
 :- pred prof_node_get_parent_list(prof_node, list(pred_info)).
 :- mode prof_node_get_parent_list(in, out) is det.
@@ -148,8 +148,8 @@
 :- pred prof_node_set_initial_counts(int, prof_node, prof_node).
 :- mode prof_node_set_initial_counts(in, in, out) is det.
 
-:- pred prof_node_set_propogated_counts(float, prof_node, prof_node).
-:- mode prof_node_set_propogated_counts(in, in, out) is det.
+:- pred prof_node_set_propagated_counts(float, prof_node, prof_node).
+:- mode prof_node_set_propagated_counts(in, in, out) is det.
 
 :- pred prof_node_concat_to_parent(pred_info, prof_node, prof_node).
 :- mode prof_node_concat_to_parent(in, in, out) is det.
@@ -217,7 +217,7 @@ prof_node_get_index_number(prof_node(_, Index, _, _, _, _, _, _, _), Index).
 
 prof_node_get_initial_counts(prof_node(_, _, Count, _, _, _, _, _, _), Count).
 
-prof_node_get_propogated_counts(prof_node(_, _, _, Count, _, _, _, _, _), Count).
+prof_node_get_propagated_counts(prof_node(_, _, _, Count, _, _, _, _, _), Count).
 
 prof_node_get_parent_list(prof_node(_, _, _, _, PList, _, _, _, _), PList).
 
@@ -235,7 +235,7 @@ prof_node_set_index_num(Index, prof_node(A, _, C, D, E, F, G, H, I),
 prof_node_set_initial_counts(Count, prof_node(A, B, _, D, E, F, G, H, I), 
 				prof_node(A, B, Count, D, E, F, G, H, I)).
 
-prof_node_set_propogated_counts(Count, prof_node(A, B, C, _, E, F, G, H, I),
+prof_node_set_propagated_counts(Count, prof_node(A, B, C, _, E, F, G, H, I),
 				 prof_node(A, B, C, Count, E, F, G, H, I)).
 
 prof_node_concat_to_parent(PredInfo, prof_node(A, B, C, D, PList, F, G, H, I), 
