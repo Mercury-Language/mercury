@@ -15,7 +15,7 @@
 @ifinfo
 This file is an aid for people porting Prolog programs to Mercury.
 
-Copyright (C) 1995-2000 The University of Melbourne.
+Copyright (C) 1995-2001 The University of Melbourne.
 
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice
@@ -45,7 +45,7 @@ into another language, under the above conditions for modified versions.
 @author Fergus Henderson
 @page
 @vskip 0pt plus 1filll
-Copyright @copyright{} 1995-2000 The University of Melbourne.
+Copyright @copyright{} 1995-2001 The University of Melbourne.
 
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice
@@ -199,6 +199,8 @@ and
 @example
 all Vars Goal
 @end example
+
+The constructor for lists in Mercury is @samp{[|]/2}, not @samp{./2}.
 
 Terms with functor '@{@}/@var{N}' are treated slightly differently in Mercury
 than in ISO Prolog. ISO Prolog specifies that ``@{1, 2, 3@}'' is parsed as
