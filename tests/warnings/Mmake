@@ -22,7 +22,7 @@ MCFLAGS-unused_import		= --warn-interface-imports
 
 %.res:	%.exp %.err
 	-rm -f $@
-	diff -u $*.exp $*.err > $@
+	diff -c $*.exp $*.err > $@
 
 #-----------------------------------------------------------------------------#
 

@@ -44,7 +44,7 @@ ERR_RESS=	$(SOURCES:%.m=%.err_res)	# not yet used
 
 %.err_res: %.err %.err_exp
 	-rm -f $@
-	diff -u $*.err_exp $*.err > $@
+	diff -c $*.err_exp $*.err > $@
 
 all:	check
 
