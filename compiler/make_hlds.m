@@ -3277,11 +3277,13 @@ module_add_pragma_fact_table(Pred, Arity, FileName, Status, Context,
 
 		    % compile the fact table into a separate .o file
 		fact_table_compile_facts(Pred, Arity, FileName, 
-			PredInfo0, PredInfo, Context),
+			PredInfo0, PredInfo, Context, Module0, C_HeaderCode, 
+			PrimaryProcID),
 
 		{module_info_set_pred_info(Module0, PredID, PredInfo, Module1)},
 		{ pred_info_procedures(PredInfo, ProcTable) },
 		{ pred_info_procids(PredInfo, ProcIDs) },
+		{ pred_info_arg_types(PredInfo, _, ArgTypes) },
 		{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
 		{
 		    PredOrFunc = predicate,
@@ -3291,10 +3293,21 @@ module_add_pragma_fact_table(Pred, Arity, FileName, Status, Context,
 		    NumArgs is Arity + 1
 		},
 
-		    % create some pragma c_code to access table in each mode
-		module_add_fact_table_procedures(ProcIDs, ProcTable, Pred,
-		    PredOrFunc, NumArgs, Status, Context, 
-		    Module1, Module, Info0, Info)
+		    % create pragma c_header_code to declare extern variables
+		{ module_add_c_header(C_HeaderCode, Context, Module1, Module2)},
+
+		io__get_exit_status(ExitStatus),
+		(
+		    { ExitStatus = 1 }
+		->
+		    { Module = Module2 },
+		    { Info = Info0 }
+		;
+			% create some pragma c_code to access table in each mode
+		    module_add_fact_table_procedures(ProcIDs, PrimaryProcID, 
+			ProcTable, Pred, PredOrFunc, NumArgs, ArgTypes, 
+			Status, Context, Module2, Module, Info0, Info)
+		)
 	    ;
 	    	{ PredIDs1 = [_ | _] },		% >1 predicate found
 	    	io__set_exit_status(1),
@@ -3320,40 +3333,53 @@ module_add_pragma_fact_table(Pred, Arity, FileName, Status, Context,
 	% `pragma fact_table's are represented in the HLDS by a 
 	% `pragma c_code' for each mode of the predicate.
 
-:- pred module_add_fact_table_procedures(list(proc_id), proc_table, sym_name, 
-		pred_or_func, arity, import_status, term__context, module_info, 
-		module_info, qual_info, qual_info, io__state, io__state).
-:- mode module_add_fact_table_procedures(in, in, in, in, in, in, in, in, out,
-		in, out, di, uo) is det.
+:- pred module_add_fact_table_procedures(list(proc_id), proc_id, proc_table, 
+		sym_name, pred_or_func, arity, list(type), import_status, 
+		term__context, module_info, module_info, qual_info, qual_info, 
+		io__state, io__state).
+:- mode module_add_fact_table_procedures(in, in, in, in, in, in, in, in, 
+		in, in, out, in, out, di, uo) is det.
 
-module_add_fact_table_procedures([],_,_,_,_,_,_, Mod, Mod, Inf, Inf) --> [].
-module_add_fact_table_procedures([ProcID | ProcIDs], ProcTable, SymName, 
-		PredOrFunc, Arity, Status, Context, 
+module_add_fact_table_procedures([],_,_,_,_,_,_,_,_,Mod,Mod,Inf,Inf) --> [].
+module_add_fact_table_procedures([ProcID | ProcIDs], PrimaryProcID, ProcTable, 
+		SymName, PredOrFunc, Arity, ArgTypes, Status, Context,
 		Module0, Module, Info0, Info) -->
-	module_add_fact_table_proc(ProcID, ProcTable, SymName, PredOrFunc, 
-			Arity, Status, Context, Module0, Module1, Info0, Info1),
-	module_add_fact_table_procedures(ProcIDs, ProcTable, SymName, 
-		PredOrFunc, Arity, Status, Context, 
+	module_add_fact_table_proc(ProcID, PrimaryProcID, ProcTable, SymName, 
+			PredOrFunc, Arity, ArgTypes, Status, Context, 
+			Module0, Module1, Info0, Info1),
+	module_add_fact_table_procedures(ProcIDs, PrimaryProcID, ProcTable, 
+		SymName, PredOrFunc, Arity, ArgTypes, Status, Context,
 		Module1, Module, Info1, Info).
 
-:- pred module_add_fact_table_proc(proc_id, proc_table, sym_name, pred_or_func, 
-		arity, import_status, term__context, module_info, module_info, 
-		qual_info, qual_info, io__state, io__state).
-:- mode module_add_fact_table_proc(in, in, in, in, in, in, in, in, out,
-		in, out, di, uo) is det.
+:- pred module_add_fact_table_proc(proc_id, proc_id, proc_table, sym_name, 
+		pred_or_func, arity, list(type), import_status, 
+		term__context, module_info, module_info, qual_info, qual_info, 
+		io__state, io__state).
+:- mode module_add_fact_table_proc(in, in, in, in, in, in, in, in, in, in,
+		out, in, out, di, uo) is det.
 
-module_add_fact_table_proc(ProcID, ProcTable, SymName, PredOrFunc, Arity, 
-		Status, Context, Module0, Module, Info0, Info) -->
+module_add_fact_table_proc(ProcID, PrimaryProcID, ProcTable, SymName, 
+		PredOrFunc, Arity, ArgTypes, Status, Context, 
+		Module0, Module, Info0, Info) -->
 	{ map__lookup(ProcTable, ProcID, ProcInfo) },
 	{ varset__init(VarSet0) },
 	{ varset__new_vars(VarSet0, Arity, Vars, VarSet) },
 	{ proc_info_argmodes(ProcInfo, Modes) },
 	{ fact_table_pragma_vars(Vars, Modes, VarSet, PragmaVars) },
-	{ fact_table_generate_c_code(SymName, PragmaVars, C_Code) },
+	fact_table_generate_c_code(SymName, PragmaVars, ProcID, PrimaryProcID,
+		ProcInfo, ArgTypes, Module0, C_ProcCode, C_ExtraCode),
+
 	% XXX this should be modified to use the new type of pragma_c.
-	module_add_pragma_c_code(will_not_call_mercury, SymName, PredOrFunc,
-		PragmaVars, VarSet, C_Code, Status, Context, no,
-		Module0, Module, Info0, Info).
+	module_add_pragma_c_code(will_not_call_mercury, SymName, PredOrFunc, 
+		PragmaVars, VarSet, C_ProcCode, Status, Context, no,
+		Module0, Module1, Info0, Info),
+	{
+		C_ExtraCode = ""
+	->
+		Module = Module1
+	;
+		module_add_c_body_code(C_ExtraCode, Context, Module1, Module)
+	}.
 
 	% Create a list(pragma_var) that looks like the ones that are created
 	% for pragma c_code in prog_io.m.

@@ -214,7 +214,21 @@ inlining__mark_predproc(PredProcId, NeededMap, Params, ModuleInfo,
 			{ NumUses = 1 }
 		),
 		% Don't inline recursive predicates
-		{ \+ goal_calls(CalledGoal, PredProcId) }
+		{ \+ goal_calls(CalledGoal, PredProcId) },
+
+		% Don't inline model_non pragma c that doesn't have an
+		% `extra_pragma_info'.  
+		%
+		% XXX  model_non pragma c without `extra_pragma_info' should
+		% not be accepted by the compiler, but at the moment it's
+		% the only way to get model_non pragma c (the ``correct''
+		% way of doing it hasn't been implemented yet).  We just
+		% have to make sure it doesn't get inlined because that stops
+		% it from working.
+		\+ {
+			CalledGoal = pragma_c_code(_,_,_,_,_,_,none) - _,
+			proc_info_interface_code_model(ProcInfo, model_non)
+		}
 	->
 		inlining__mark_proc_as_inlined(PredProcId, ModuleInfo,
 			InlinedProcs0, InlinedProcs)

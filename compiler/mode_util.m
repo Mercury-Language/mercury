@@ -28,10 +28,19 @@
 :- pred mode_is_input(module_info, mode).
 :- mode mode_is_input(in, in) is semidet.
 
+	% a mode is considered fully input if the inital inst is ground
+:- pred mode_is_fully_input(module_info, mode).
+:- mode mode_is_fully_input(in, in) is semidet.
+
 	% a mode is considered output if the initial inst is free
 	% and the final inst is bound
 :- pred mode_is_output(module_info, mode).
 :- mode mode_is_output(in, in) is semidet.
+
+	% a mode is considered fully output if the inital inst is free and
+	% the final inst is ground
+:- pred mode_is_fully_output(module_info, mode).
+:- mode mode_is_fully_output(in, in) is semidet.
 
 	% a mode is considered unused if both initial and final insts are free
 :- pred mode_is_unused(module_info, mode).
@@ -314,6 +323,12 @@ mode_is_input(ModuleInfo, Mode) :-
 	mode_get_insts(ModuleInfo, Mode, InitialInst, _FinalInst),
 	inst_is_bound(ModuleInfo, InitialInst).
 
+	% A mode is considered fully input if its initial inst is ground.
+
+mode_is_fully_input(ModuleInfo, Mode) :-
+	mode_get_insts(ModuleInfo, Mode, InitialInst, _FinalInst),
+	inst_is_ground(ModuleInfo, InitialInst).
+
 	% A mode is considered an output mode if the top-level
 	% node is output.
 
@@ -321,6 +336,14 @@ mode_is_output(ModuleInfo, Mode) :-
 	mode_get_insts(ModuleInfo, Mode, InitialInst, FinalInst),
 	inst_is_free(ModuleInfo, InitialInst),
 	inst_is_bound(ModuleInfo, FinalInst).
+
+	% A mode is considered fully output if its initial inst is free
+	% and its final insts is ground.
+
+mode_is_fully_output(ModuleInfo, Mode) :-
+	mode_get_insts(ModuleInfo, Mode, InitialInst, FinalInst),
+	inst_is_free(ModuleInfo, InitialInst),
+	inst_is_ground(ModuleInfo, FinalInst).
 
 	% A mode is considered a unused mode if it is equivalent
 	% to free->free.

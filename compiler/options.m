@@ -134,6 +134,15 @@
 		;	cflags_for_gotos
 		;	c_include_directory
 		;	aditi
+		;	fact_table_max_array_size
+				% maximum number of elements in a single 
+				% fact table data array
+
+		;	fact_table_hash_percent_full
+				% how full the fact table hash tables should
+				% be allowed to get, given as an integer
+				% percentage.
+
 	% Optimization Options
 		;	opt_level
 		;	opt_space	% default is to optimize time
@@ -366,7 +375,9 @@ option_defaults_2(code_gen_option, [
 					% the `mc' script will override the
 					% above default with a value determined
 					% at configuration time
-	aditi			-	bool(no)
+	aditi			-	bool(no),
+	fact_table_max_array_size -	int(1024),
+	fact_table_hash_percent_full - 	int(90)
 ]).
 option_defaults_2(special_optimization_option, [
 		% Special optimization options.
@@ -614,6 +625,9 @@ long_option("cflags",			cflags).
 long_option("cflags-for-regs",		cflags_for_regs).
 long_option("cflags-for-gotos",		cflags_for_gotos).
 long_option("c-include-directory",	c_include_directory).
+long_option("fact-table-max-array-size",fact_table_max_array_size).
+long_option("fact-table-hash-percent-full",
+					fact_table_hash_percent_full).
 
 % optimization options
 
@@ -1303,6 +1317,19 @@ options_help_code_generation -->
 	io__write_string("\t\tSpecify the directory containing the Mercury C header files.\n"),
 	io__write_string("\t--cflags <options>\n"),
 	io__write_string("\t\tSpecify options to be passed to the C compiler.\n").
+
+/*************
+ % XXX documentation on `pragma fact_table' options should be uncommented when
+ % fact tables are ready for public release.
+
+	io__write_string("\t--fact-table-max-array-size <n>\n"),
+	io__write_string("\t\tSpecify the maximum number of elements in a single\n"),
+	io__write_string("\t\t`pragma fact_table' data array (default: 1024).\n"),
+	io__write_string("\t--fact-table-hash-percent-full <percentage>\n"),
+	io__write_string("\t\tSpecify how full the `pragma fact_table' hash tables should be\n"),
+	io__write_string("\t\tallowed to get.  Given as an integer percentage\n"),
+	io__write_string("\t\t(valid range: 1 to 100, default: 90).\n").
+**************/
 
 :- pred options_help_optimization(io__state::di, io__state::uo) is det.
 

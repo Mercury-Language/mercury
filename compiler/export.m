@@ -33,6 +33,18 @@
 :- pred export__term_to_type_string(term, string).
 :- mode export__term_to_type_string(in, out) is det.
 
+	% Generate C code to convert an rval (represented as a string), from
+	% a C type to a mercury C type (ie. convert strings and floats to
+	% words) and return the resulting C code as a string.
+:- pred convert_type_to_mercury(string, type, string).
+:- mode convert_type_to_mercury(in, in, out) is det.
+
+	% Generate C code to convert an rval (represented as a string), from
+	% a mercury C type to a C type. (ie. convert words to strings and
+	% floats if required) and return the resulting C code as a string.
+:- pred convert_type_from_mercury(string, type, string).
+:- mode convert_type_from_mercury(in, in, out) is det.
+
 :- implementation.
 
 :- import_module code_gen, code_util, hlds_pred, llds, llds_out.
@@ -345,11 +357,6 @@ argloc_to_string(RegNum, RegName) :-
 		string__append("r", RegNumString, RegName)
 	).
 
-	% Convert an rval (represented as a string), from a C type to
-	% a mercury C type. (ie. convert strings and floats to words).
-:- pred convert_type_to_mercury(string, type, string).
-:- mode convert_type_to_mercury(in, in, out) is det.
-
 convert_type_to_mercury(Rval, Type, ConvertedRval) :-	
 	(
         	Type = term__functor(term__atom("string"), [], _)
@@ -370,11 +377,6 @@ convert_type_to_mercury(Rval, Type, ConvertedRval) :-
 	;
 		ConvertedRval = Rval
 	).
-
-	% Convert an rval (represented as a string), from a mercury C type to
-	% a C type. (ie. convert words to strings and floats if required).
-:- pred convert_type_from_mercury(string, type, string).
-:- mode convert_type_from_mercury(in, in, out) is det.
 
 convert_type_from_mercury(Rval, Type, ConvertedRval) :-	
 	(

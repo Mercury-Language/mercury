@@ -127,10 +127,21 @@ postprocess_options(ok(OptionTable0), Error) -->
                                 { convert_prolog_dialect(PrologDialectStr,
                                     PrologDialect) }
                             ->
-                                postprocess_options_2(OptionTable, GC_Method,
-                                    TagsMethod, ArgsMethod, TypeInfoMethod,
-                                    PrologDialect),
-                                { Error = no }
+				{ map__lookup(OptionTable,
+					fact_table_hash_percent_full,
+					PercentFull) },
+				( 
+				    { PercentFull = int(Percent) },
+				    { Percent >= 1 },
+				    { Percent =< 100 }
+				->
+				    postprocess_options_2(OptionTable,
+				    	GC_Method, TagsMethod, ArgsMethod,
+				    	TypeInfoMethod, PrologDialect),
+				    { Error = no }
+				;
+				    { Error = yes("Invalid argument to option `--fact-table-hash-percent-full'\n                 (must be an integer between 1 and 100)") }
+				)
                             ;
                                 { Error = yes("Invalid prolog-dialect option (must be `sicstus', `nu', or `default')") }
                             )

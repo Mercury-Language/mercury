@@ -398,6 +398,39 @@ write_dependency_file(ModuleName, LongDeps0, ShortDeps0, FactDeps0) -->
 		{ list__delete_all(ShortDeps2, ModuleName, ShortDeps) },
 		{ list__sort_and_remove_dups(FactDeps0, FactDeps) },
 
+		( { FactDeps \= [] } ->
+			io__write_strings(DepStream, 
+				[ModuleName, ".fact_tables = "]),
+			write_dependencies_list(FactDeps, "", DepStream),
+			io__nl(DepStream),
+			globals__io_lookup_bool_option(assume_gmake,
+				AssumeGmake),
+			( { AssumeGmake = no} ->
+				io__write_strings(DepStream,
+					[ModuleName, ".fact_tables.os = "]),
+				write_dependencies_list(FactDeps, ".o",
+					DepStream),
+				io__write_strings(DepStream, [
+					"\n\n", 
+					ModuleName, ".fact_tables.cs = "]),
+				write_dependencies_list(FactDeps, ".c",
+					DepStream),
+				io__nl(DepStream)
+			;
+				io__write_strings(DepStream, [
+					"\n\n", ModuleName,
+					".fact_tables.os = $(", ModuleName,
+					".fact_tables:%=%.o)\n\n",
+					ModuleName,
+					".fact_tables.cs = $(", ModuleName,
+					".fact_tables:%=%.c)\n\n"
+				])
+			)
+		;
+			[]
+		),
+
+
 		io__write_strings(DepStream, [
 			ModuleName, ".optdate ",
 			ModuleName, ".c ",
@@ -407,7 +440,19 @@ write_dependency_file(ModuleName, LongDeps0, ShortDeps0, FactDeps0) -->
 		] ),
 		write_dependencies_list(LongDeps, ".int", DepStream),
 		write_dependencies_list(ShortDeps, ".int2", DepStream),
-		write_dependencies_list(FactDeps, "", DepStream),
+
+		( { FactDeps \= [] } ->
+			io__write_strings(DepStream, [
+				" \\\n\t$(", ModuleName, ".fact_tables)\n\n",
+				"$(", ModuleName, ".fact_tables.os) : $(",
+				ModuleName, ".fact_tables) ",
+				ModuleName, ".m\n\n",
+				"$(", ModuleName, ".fact_tables.cs) : ",
+				ModuleName, ".o\n"
+			] )
+		;
+			[]
+		),
 
 		globals__io_lookup_bool_option(intermodule_optimization,
 							Intermod),
@@ -448,17 +493,6 @@ write_dependency_file(ModuleName, LongDeps0, ShortDeps0, FactDeps0) -->
 			"\trm -rf ", ModuleName, ".dir\n",
 			"\t$(MCS) -s$(GRADE) $(MCSFLAGS) ", ModuleName, ".m\n"
 		]),
-
-		( { FactDeps = [_|_] } -> 
-			{ Lambda = lambda([S0::in, S::out] is det, 
-				string__append(S0, ".c ", S)) },
-			{ list__map(Lambda, FactDeps, Fact_C_Files) },
-			io__nl,
-			io__write_strings(DepStream, Fact_C_Files),
-			io__write_strings(DepStream, [": ",ModuleName,".o\n"])
-		;
-			[]
-		),
 
 		io__close_output(DepStream),
 		maybe_write_string(Verbose, " done.\n")
