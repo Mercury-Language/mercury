@@ -93,6 +93,7 @@
 %	<assignment of input values from registers to local variables>
 %	<assignment to save struct pointer>
 %	save_registers(); /* see notes (1) and (2) below */
+%	#define MR_PROC_LABEL <procedure label> /* see note (5) below */
 %	#define SUCCEED()	goto callsuccesslabel
 %	#define SUCCEED_LAST()	goto calllastsuccesslabel
 %	#define FAIL()		fail()
@@ -109,6 +110,7 @@
 % 	#undef SUCCEED
 % 	#undef SUCCEED_LAST
 % 	#undef FAIL
+%	#undef MR_PROC_LABEL /* see note (5) below */
 % }
 % Define_label(xxx_i1)
 % <code for entry to a later disjunct>
@@ -117,6 +119,7 @@
 %	<declaration of one local variable to point to save struct>
 %	<assignment to save struct pointer>
 %	save_registers(); /* see notes (1) and (2) below */
+%	#define MR_PROC_LABEL <procedure label> /* see note (5) below */
 %	#define SUCCEED()	goto retrysuccesslabel
 %	#define SUCCEED_LAST()	goto retrylastsuccesslabel
 %	#define FAIL()		fail()
@@ -133,6 +136,7 @@
 % 	#undef SUCCEED
 % 	#undef SUCCEED_LAST
 % 	#undef FAIL
+%	#undef MR_PROC_LABEL /* see note (5) below */
 % }
 % <--- boundary between code generated here and epilog --->
 % <#undef MR_ORDINARY_SLOTS>
@@ -150,6 +154,7 @@
 %	<assignment of input values from registers to local variables>
 %	<assignment to save struct pointer>
 %	save_registers(); /* see notes (1) and (2) below */
+%	#define MR_PROC_LABEL <procedure label> /* see note (5) below */
 %	#define SUCCEED()	goto callsuccesslabel
 %	#define SUCCEED_LAST()	goto calllastsuccesslabel
 %	#define FAIL()		fail()
@@ -166,6 +171,7 @@
 % 	#undef SUCCEED
 % 	#undef SUCCEED_LAST
 % 	#undef FAIL
+%	#undef MR_PROC_LABEL /* see note (5) below */
 % }
 % Define_label(xxx_i1)
 % <code for entry to a later disjunct>
@@ -174,6 +180,7 @@
 %	<declaration of one local variable to point to save struct>
 %	<assignment to save struct pointer>
 %	save_registers(); /* see notes (1) and (2) below */
+%	#define MR_PROC_LABEL <procedure label> /* see note (5) below */
 %	#define SUCCEED()	goto retrysuccesslabel
 %	#define SUCCEED_LAST()	goto retrylastsuccesslabel
 %	#define FAIL()		fail()
@@ -190,12 +197,14 @@
 % 	#undef SUCCEED
 % 	#undef SUCCEED_LAST
 % 	#undef FAIL
+%	#undef MR_PROC_LABEL /* see note (5) below */
 % }
 % Define_label(xxx_i2)
 % {
 %	<declaration of one local variable for each output arg>
 %	<declaration of one local variable to point to save struct>
 %	<assignment to save struct pointer>
+%	#define MR_PROC_LABEL <procedure label> /* see note (5) below */
 %	#define SUCCEED()	goto sharedsuccesslabel
 %	#define SUCCEED_LAST()	goto sharedlastsuccesslabel
 %	#define FAIL()		fail()
@@ -211,6 +220,7 @@
 % 	#undef SUCCEED
 % 	#undef SUCCEED_LAST
 % 	#undef FAIL
+%	#undef MR_PROC_LABEL /* see note (5) below */
 % }
 % <--- boundary between code generated here and epilog --->
 % <#undef MR_ORDINARY_SLOTS>
@@ -376,7 +386,8 @@ pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes,
 	{ make_pragma_decls(Args, Decls) },
 
 	%
-	% Generate <declaration for procedure>
+	% Generate #define MR_PROC_LABEL <procedure label> /* see note (5) */
+	% and #undef MR_PROC_LABEL
 	%
 	code_info__get_module_info(ModuleInfo),
 	code_info__get_pred_id(CallerPredId),
@@ -558,7 +569,20 @@ pragma_c_gen__nondet_pragma_c_code(CodeModel, Attributes,
 	% Extract the may_call_mercury attribute
 	%
 	{ may_call_mercury(Attributes, MayCallMercury) },
-	% First we need to get a list of input and output arguments
+
+	%
+	% Generate #define MR_PROC_LABEL <procedure label> /* see note (5) */
+	% and #undef MR_PROC_LABEL
+	%
+	code_info__get_module_info(ModuleInfo),
+	code_info__get_pred_id(CallerPredId),
+	code_info__get_proc_id(CallerProcId),
+	{ make_proc_label_hash_define(ModuleInfo, CallerPredId, CallerProcId,
+		ProcLabelDefine, ProcLabelUndef) },
+
+	%
+	% Get a list of input and output arguments
+	%
 	code_info__get_pred_proc_arginfo(PredId, ProcId, ArgInfos),
 	{ make_c_arg_list(ArgVars, ArgDatas, OrigArgTypes, ArgInfos, Args) },
 	{ pragma_select_in_args(Args, InArgs) },
@@ -569,7 +593,6 @@ pragma_c_gen__nondet_pragma_c_code(CodeModel, Attributes,
 	{ input_descs_from_arg_info(InArgs, InputDescs) },
 	{ output_descs_from_arg_info(OutArgs, OutputDescs) },
 
-	code_info__get_module_info(ModuleInfo),
 	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
 	{ pred_info_module(PredInfo, ModuleName) },
 	{ pred_info_name(PredInfo, PredName) },
@@ -700,6 +723,7 @@ pragma_c_gen__nondet_pragma_c_code(CodeModel, Attributes,
 			pragma_c_inputs(InputDescs),
 			pragma_c_raw_code(InitSaveStruct),
 			pragma_c_raw_code(SaveRegs),
+			ProcLabelDefine,
 			pragma_c_raw_code(CallDef1),
 			pragma_c_raw_code(CallDef2),
 			pragma_c_raw_code(CallDef3),
@@ -715,7 +739,8 @@ pragma_c_gen__nondet_pragma_c_code(CodeModel, Attributes,
 			pragma_c_raw_code(SucceedDiscard),
 			pragma_c_raw_code(Undef1),
 			pragma_c_raw_code(Undef2),
-			pragma_c_raw_code(Undef3)
+			pragma_c_raw_code(Undef3),
+			ProcLabelUndef
 		],
 		CallBlockCode = node([
 			pragma_c(CallDecls, CallComponents,
@@ -727,6 +752,7 @@ pragma_c_gen__nondet_pragma_c_code(CodeModel, Attributes,
 		RetryComponents = [
 			pragma_c_raw_code(InitSaveStruct),
 			pragma_c_raw_code(SaveRegs),
+			ProcLabelDefine,
 			pragma_c_raw_code(RetryDef1),
 			pragma_c_raw_code(RetryDef2),
 			pragma_c_raw_code(RetryDef3),
@@ -742,7 +768,8 @@ pragma_c_gen__nondet_pragma_c_code(CodeModel, Attributes,
 			pragma_c_raw_code(SucceedDiscard),
 			pragma_c_raw_code(Undef1),
 			pragma_c_raw_code(Undef2),
-			pragma_c_raw_code(Undef3)
+			pragma_c_raw_code(Undef3),
+			ProcLabelUndef
 		],
 		RetryBlockCode = node([
 			pragma_c(RetryDecls, RetryComponents,
@@ -782,6 +809,7 @@ pragma_c_gen__nondet_pragma_c_code(CodeModel, Attributes,
 			pragma_c_inputs(InputDescs),
 			pragma_c_raw_code(InitSaveStruct),
 			pragma_c_raw_code(SaveRegs),
+			ProcLabelDefine,
 			pragma_c_raw_code(CallDef1),
 			pragma_c_raw_code(CallDef2),
 			pragma_c_raw_code(CallDef3),
@@ -797,7 +825,8 @@ pragma_c_gen__nondet_pragma_c_code(CodeModel, Attributes,
 			pragma_c_raw_code(SucceedDiscard),
 			pragma_c_raw_code(Undef1),
 			pragma_c_raw_code(Undef2),
-			pragma_c_raw_code(Undef3)
+			pragma_c_raw_code(Undef3),
+			ProcLabelUndef
 		],
 		CallBlockCode = node([
 			pragma_c(CallDecls, CallComponents,
@@ -809,6 +838,7 @@ pragma_c_gen__nondet_pragma_c_code(CodeModel, Attributes,
 		RetryComponents = [
 			pragma_c_raw_code(InitSaveStruct),
 			pragma_c_raw_code(SaveRegs),
+			ProcLabelDefine,
 			pragma_c_raw_code(RetryDef1),
 			pragma_c_raw_code(RetryDef2),
 			pragma_c_raw_code(RetryDef3),
@@ -824,7 +854,8 @@ pragma_c_gen__nondet_pragma_c_code(CodeModel, Attributes,
 			pragma_c_raw_code(SucceedDiscard),
 			pragma_c_raw_code(Undef1),
 			pragma_c_raw_code(Undef2),
-			pragma_c_raw_code(Undef3)
+			pragma_c_raw_code(Undef3),
+			ProcLabelUndef
 		],
 		RetryBlockCode = node([
 			pragma_c(RetryDecls, RetryComponents,
@@ -836,6 +867,7 @@ pragma_c_gen__nondet_pragma_c_code(CodeModel, Attributes,
 		SharedComponents = [
 			pragma_c_raw_code(InitSaveStruct),
 			pragma_c_raw_code(SaveRegs),
+			ProcLabelDefine,
 			pragma_c_raw_code(SharedDef1),
 			pragma_c_raw_code(SharedDef2),
 			pragma_c_raw_code(SharedDef3),
@@ -850,7 +882,8 @@ pragma_c_gen__nondet_pragma_c_code(CodeModel, Attributes,
 			pragma_c_raw_code(SucceedDiscard),
 			pragma_c_raw_code(Undef1),
 			pragma_c_raw_code(Undef2),
-			pragma_c_raw_code(Undef3)
+			pragma_c_raw_code(Undef3),
+			ProcLabelUndef
 		],
 		SharedBlockCode = node([
 			pragma_c(SharedDecls, SharedComponents,
