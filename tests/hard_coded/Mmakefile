@@ -34,6 +34,7 @@ PROGS=	\
 	elim_special_pred \
 	existential_bound_tvar \
 	existential_reordering \
+	existential_rtti \
 	existential_type_switch \
 	existential_type_switch_opt \
 	existential_types_test \
