@@ -15,17 +15,6 @@ Changes to the Mercury language:
   required to be defined in the same module as the type.
 * Experimental support for user-defined constrained types has been added.
 
-Changes to the Mercury compiler:
-* We have added optional support for a new type-accurate garbage collector
-  as an alternative to using the Boehm et al conservative collector.
-* Better support for incremental program development:
-  there's two new compiler options, `--allow-stubs' and `--no-warn-stubs',
-  to support execution of incomplete programs.
-* There's a new warning option `--warn-dead-procs' for detecting unreachable
-  code.
-* It's now easier to use shared libraries on Linux/x86 systems
-  with `mmc --make'.
-
 Changes to the Mercury standard library:
 * We've added several new modules: cord, for sequences with O(1) consing and
   concatenation, array2d, for two-dimensional arrays, and version_array,
@@ -37,6 +26,17 @@ Changes to the Mercury standard library:
   directories and symbolic links, for checking file types and file
   accessibility, for detecting floating point infinities and NaNs.
 * The dir module now handles Microsoft Windows pathnames correctly.
+
+Changes to the Mercury compiler:
+* We have added optional support for a new type-accurate garbage collector
+  as an alternative to using the Boehm et al conservative collector.
+* Better support for incremental program development:
+  there's two new compiler options, `--allow-stubs' and `--no-warn-stubs',
+  to support execution of incomplete programs.
+* There's a new warning option `--warn-dead-procs' for detecting unreachable
+  code.
+* It's now easier to use shared libraries on Linux/x86 systems
+  with `mmc --make'.
 
 Portability improvements:
 * We have made the implementation compatible with gcc 3.4.
@@ -108,6 +108,8 @@ Changes to the Mercury language:
 
   For details, see the "Higher-order impurity" section of the "Impurity"
   chapter of the Mercury Language Reference Manual.
+
+Changes to the Mercury standard library:
 
 * We've add some new predicates and functions to int.m.
   int.fold_up/4, int.fold_down/4, int.fold_up/5, int.fold_down/5,
