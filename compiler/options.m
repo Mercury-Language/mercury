@@ -42,6 +42,7 @@
 		;	warn_nothing_exported
 		;	warn_unused_args
 		;	warn_interface_imports
+		;	warn_missing_opt_files
 	% Verbosity options
 		;	verbose
 		;	very_verbose
@@ -132,6 +133,7 @@
 	% Optimization Options
 		;	opt_level
 		;	opt_space	% default is to optimize time
+		;	intermodule_optimization
 	%	- HLDS
 		;	inlining
 		;	inline_simple
@@ -139,6 +141,7 @@
 		;	inline_compound_threshold
 		;	inline_simple_threshold
 		;	inline_vars_threshold
+		;	intermod_inline_simple_threshold
 		;	common_struct
 		;	common_goal
 		;	constraint_propagation
@@ -149,7 +152,6 @@
 		;	follow_code
 		;	prev_code
 		;	optimize_dead_procs
-		;	intermodule_optimization
 	%	- HLDS->LLDS
 		;	smart_indexing
 		;	  dense_switch_req_density
@@ -231,7 +233,8 @@ option_defaults_2(warning_option, [
 	warn_det_decls_too_lax	-	bool(yes),
 	warn_nothing_exported	-	bool(yes),
 	warn_unused_args	-	bool(no),
-	warn_interface_imports	-	bool(no)
+	warn_interface_imports	-	bool(no),
+	warn_missing_opt_files  -	bool(yes)
 ]).
 option_defaults_2(verbosity_option, [
 		% Verbosity Options
@@ -370,6 +373,8 @@ option_defaults_2(optimization_option, [
 	inline_compound_threshold	-	int(0),
 	inline_simple_threshold	-	int(0),
 	inline_vars_threshold	-	int(100),
+	intermod_inline_simple_threshold
+				-	int(0),
 	common_struct		-	bool(no),
 	common_goal		-	bool(yes),
 		% commmon_goal is not really an optimization, since
@@ -479,6 +484,7 @@ long_option("warn-det-decls-too-lax",	warn_det_decls_too_lax).
 long_option("warn-nothing-exported",	warn_nothing_exported).
 long_option("warn-unused-args",		warn_unused_args).
 long_option("warn-interface-imports",	warn_interface_imports).
+long_option("warn-missing-opt-files",	warn_missing_opt_files).
 
 % verbosity options
 long_option("verbose",			verbose).
@@ -589,6 +595,8 @@ long_option("optimisation-level",	opt_level).
 long_option("opt-space",		opt_space).
 long_option("optimize-space",		opt_space).
 long_option("optimise-space",		opt_space).
+long_option("intermodule-optimization", intermodule_optimization).
+long_option("intermodule-optimisation", intermodule_optimization).
 
 % HLDS->HLDS optimizations
 long_option("inlining", 		inlining).
@@ -611,8 +619,6 @@ long_option("optimise-constructor-recursion",	optimize_constructor_recursion).
 long_option("optimize-constructor-recursion",	optimize_constructor_recursion).
 long_option("optimize-dead-procs",	optimize_dead_procs).
 long_option("optimise-dead-procs",	optimize_dead_procs).
-long_option("intermodule-optimization", intermodule_optimization).
-long_option("intermodule-optimisation", intermodule_optimization).
 
 % HLDS->LLDS optimizations
 long_option("smart-indexing",		smart_indexing).
@@ -935,7 +941,9 @@ options_help_warning -->
 	io__write_string("\t\tWarn about predicate arguments which are not used.\n"),
 	io__write_string("\t--warn-interface-imports\n"),
 	io__write_string("\t\tWarn about modules imported in the interface, but\n"),
-	io__write_string("\t\twhich are not used in the interface").
+	io__write_string("\t\twhich are not used in the interface"),
+	io__write_string("\t--warn-missing-opt-files\n"),
+	io__write_string("\t\tWarn about `.opt' files which cannot be opened\n").
 
 :- pred options_help_verbosity(io__state::di, io__state::uo) is det.
 
@@ -1222,7 +1230,11 @@ options_help_optimization -->
 	io__write_string("\t--opt-space, --optimize-space\n"),
 	io__write_string("\t\tTurn on optimizations that reduce code size\n"),
 	io__write_string("\t\tand turn off optimizations that significantly\n"),
-	io__write_string("\t\tincrease code size.\n").
+	io__write_string("\t\tincrease code size.\n"),
+	io__write_string("\t--intermodule-optimization\n"),
+	io__write_string("\t\tPerform inlining and higher-order specialization of\n"),
+	io__write_string("\t\tthe code for predicates imported from other modules.\n"),
+	io__write_string("\t\tThis option must be set throughout the compilation process.\n").
 
 :- pred options_help_hlds_hlds_optimization(io__state::di, io__state::uo)
 	is det.
@@ -1235,11 +1247,20 @@ options_help_hlds_hlds_optimization -->
 	io__write_string("\t\tDisable the inlining of simple procedures.\n"),
 	io__write_string("\t--no-inline-single-use\n"),
 	io__write_string("\t\tDisable the inlining of procedures called only once.\n"),
-	io__write_string("\t--inline-threshold <threshold>\n"),
+	io__write_string("\t--inline-compound-threshold <threshold>\n"),
 	io__write_string("\t\tInline a procedure if its size (measured roughly\n"),
 	io__write_string("\t\tin terms of the number of connectives in its internal form),\n"),
 	io__write_string("\t\tmultiplied by the number of times it is called,\n"),
 	io__write_string("\t\tis below the given threshold.\n"),
+	io__write_string("\t--inline-simple-threshold <threshold>\n"),
+	io__write_string("\t\tInline a procedure if its size is less than the\n"),
+	io__write_string("\t\tgiven threshold.\n"),
+	io__write_string("\t--intermod-inline-simple-threshold\n"),
+	io__write_string("\t\tSimilar to --inline-simple-threshold, except used to\n"),
+	io__write_string("\t\tdetermine which predicates should be included in\n"),
+	io__write_string("\t\t`.opt' files. Note that changing this between writing\n"),
+	io__write_string("\t\tthe `.opt' file and compiling to C may cause link errors,\n"),
+	io__write_string("\t\tand too high a value may result in reduced performance.\n"),
 	io__write_string("\t--no-common-struct\n"),
 	io__write_string("\t\tDisable optimization of common term structures.\n"),
 	io__write_string("\t--no-common-goal\n"),
@@ -1264,11 +1285,7 @@ options_help_hlds_hlds_optimization -->
 	io__write_string("\t\tDisable specialization of higher-order predicates.\n"),
 	io__write_string("\t--optimize-constructor recursion\n"),
 	io__write_string("\t\tEnable the optimization of tail recursion modulo\n"),
-	io__write_string("\t\tconstructor application.\n"),
-	io__write_string("\t--intermodule-optimization\n"),
-	io__write_string("\t\tPerform inlining and higher-order specialization of\n"),
-	io__write_string("\t\tthe code for predicates imported from other modules.\n"),
-	io__write_string("\t\tThis option must be set throughout the compilation process.\n").
+	io__write_string("\t\tconstructor application.\n").
 	 
 :- pred options_help_hlds_llds_optimization(io__state::di, io__state::uo) is det.
 

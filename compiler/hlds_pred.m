@@ -88,12 +88,17 @@
 	% The type `import_status' describes whether an entity (a predicate,
 	% type, inst, or mode) is local to the current module, exported from
 	% the current module, or imported from some other module.
+	% Only predicates can have status opt_decl, pseudo_exported
+	% or pseudo_imported.
+	% Only types can have status abstract_exported or abstract_imported.
 
 :- type import_status
 	--->	imported	% defined in the interface of some other module
 				% or `external' (in some other language)
 	;	opt_decl	% predicate declared in an optimization
-				% interface
+				% interface -  this is needed to identify 
+				% predicates that must be ignored when
+				% processing local predicates
 	;	opt_imported	% defined in the optimization 
 				% interface of another module
 	;	abstract_imported % describes a type with only an abstract

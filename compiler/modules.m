@@ -381,19 +381,10 @@ write_dependency_file(ModuleName, LongDeps0, ShortDeps0) -->
 		{ list__sort_and_remove_dups(ShortDeps0, ShortDeps1) },
 		{ list__delete_elems(ShortDeps1, LongDeps, ShortDeps2) },
 		{ list__delete_all(ShortDeps2, ModuleName, ShortDeps) },
-		globals__io_lookup_bool_option(intermodule_optimization,
-							Intermod),
 
-		( { Intermod = yes } ->
-			io__write_strings(DepStream, [
-				ModuleName, ".optdate "
-			])
-		;
-			io__write_strings(DepStream, [
-				ModuleName, ".c "
-			])
-		),
 		io__write_strings(DepStream, [
+			ModuleName, ".optdate ",
+			ModuleName, ".c ",
 			ModuleName, ".err ",
 			ModuleName, ".o : ",
 			ModuleName, ".m"
@@ -401,23 +392,20 @@ write_dependency_file(ModuleName, LongDeps0, ShortDeps0) -->
 		write_dependencies_list(LongDeps, ".int", DepStream),
 		write_dependencies_list(ShortDeps, ".int2", DepStream),
 
-		% The .c file doesn't actually use the information in the
-		% .opt file for the same module. The reason that it
-		% depends on that file is that all error checking must
-		% be done without the use of items from the optimization
-		% interfaces of other modules.
-		% It is not possible to just error check the module, then
-		% read in the optimization interfaces and process the new
-		% predicates because this would require the adjustment of
-		% all equivalence types in the module, since new information
-		% may be present in the .opt files that may allow further
-		% expansion.
+		globals__io_lookup_bool_option(intermodule_optimization,
+							Intermod),
 		( { Intermod = yes } ->
 			io__write_strings(DepStream, [
-				"\n\n", ModuleName, ".c : "
+				"\n\n", ModuleName, ".c ",
+				ModuleName, ".err ", ModuleName, ".o :"
 			]),
-			write_dependencies_list([ModuleName | LongDeps],
-							".opt", DepStream)
+			% The .c file only depends on the .opt files from 
+			% the current directory, so that inter-module
+			% optimization works when the .opt files for the 
+			% library are unavailable. This is only necessary 
+			% because make doesn't allow conditional dependencies.
+			get_curr_dir_deps(LongDeps, [], OptDeps),
+			write_dependencies_list(OptDeps, ".opt", DepStream)
 		;
 			[]
 		),
@@ -444,6 +432,22 @@ write_dependency_file(ModuleName, LongDeps0, ShortDeps0) -->
 				"' for output."], Message) },
 		report_error(Message)
 	).
+
+	% Filter out the dependencies that are in the current directory.
+:- pred get_curr_dir_deps(list(string)::in, list(string)::in, 
+		list(string)::out, io__state::di, io__state::uo) is det.
+
+get_curr_dir_deps([], CurrDirDeps, CurrDirDeps) --> [].
+get_curr_dir_deps([Dep | Deps], CurrDirDeps0, CurrDirDeps) -->
+	{ string__append(Dep, ".m", DepName) },
+	io__see(DepName, Res),
+	( { Res = ok } ->
+		{ CurrDirDeps1 = [Dep | CurrDirDeps0] },
+		io__seen
+	;
+		{ CurrDirDeps1 = CurrDirDeps0 }
+	),
+	get_curr_dir_deps(Deps, CurrDirDeps1, CurrDirDeps).
 
 %-----------------------------------------------------------------------------%
 
@@ -756,7 +760,8 @@ generate_dep_file(ModuleName, DepsMap, DepStream) -->
 		ModuleName, ".check : $(", ModuleName, ".errs)\n\n",
 
 		ModuleName, ".ints : $(", ModuleName, ".dates)\n\n",
-		ModuleName, ".int3s : $(", ModuleName, ".date3s)\n\n"
+		ModuleName, ".int3s : $(", ModuleName, ".date3s)\n\n",
+		ModuleName, ".opts : $(", ModuleName, ".opdates)\n\n"
 	]),
 
 	io__write_strings(DepStream, [

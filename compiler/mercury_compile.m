@@ -270,7 +270,7 @@ mercury_compile__pre_hlds_pass(ModuleImports0, HLDS1, UndefTypes, UndefModes,
 							Items1, no) },
 		% Errors in .opt files result in software errors.
 	mercury_compile__maybe_grab_optfiles(ModuleImports1, Verbose,
-						 ModuleImports2),
+					 ModuleImports2, IntermodError),
 	{ ModuleImports2 = module_imports(_, _, _, Items2, _) },
 	mercury_compile__expand_equiv_types(Items2, Verbose, Stats,
 					Items, CircularTypes, EqvMap),
@@ -281,7 +281,8 @@ mercury_compile__pre_hlds_pass(ModuleImports0, HLDS1, UndefTypes, UndefModes,
 	{ bool__or(UndefModes0, UndefModes2, UndefModes) },
 	mercury_compile__maybe_dump_hlds(HLDS0, "1", "initial"),
 
-	( { FoundError = yes } ->
+	% Only stop on syntax errors in .opt files.
+	( { FoundError = yes ; IntermodError = yes } ->
 		{ module_info_incr_errors(HLDS0, HLDS1) }
 	;	
 		{ HLDS1 = HLDS0 }
@@ -302,20 +303,21 @@ mercury_compile__module_qualify_items(Items0, Items, ModuleName, Verbose, Stats,
 	maybe_report_stats(Stats).
 
 :- pred mercury_compile__maybe_grab_optfiles(module_imports, bool,
-	 module_imports, io__state, io__state).
-:- mode mercury_compile__maybe_grab_optfiles(in, in, out, di, uo) is det.
+	 module_imports, bool, io__state, io__state).
+:- mode mercury_compile__maybe_grab_optfiles(in, in, out, out, di, uo) is det.
 
-mercury_compile__maybe_grab_optfiles(Imports0, Verbose, Imports) -->
+mercury_compile__maybe_grab_optfiles(Imports0, Verbose, Imports, Error) -->
 	globals__io_lookup_bool_option(intermodule_optimization, UseOptInt),
 	globals__io_lookup_bool_option(make_optimization_interface,
 						MakeOptInt),
 	( { UseOptInt = yes, MakeOptInt = no } ->
 		maybe_write_string(Verbose, "% Reading .opt files...\n"),
 		maybe_flush_output(Verbose),
-		intermod__grab_optfiles(Imports0, Imports),
+		intermod__grab_optfiles(Imports0, Imports, Error),
 		maybe_write_string(Verbose, "% Done.\n")
 	;
-		{ Imports = Imports0 }
+		{ Imports = Imports0 },
+		{ Error = no }
 	).
 
 :- pred mercury_compile__expand_equiv_types(item_list, bool, bool, item_list,

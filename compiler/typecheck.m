@@ -881,12 +881,17 @@ typecheck__resolve_pred_overloading(ModuleInfo, Args, VarTypes, TVarSet,
 typecheck__find_matching_pred_id([PredId | PredIds], ModuleInfo,
 		TVarSet, ArgTypes, ThePredId, PredName) :-
 	(
+		% Calls to preds declared in .opt files should always be 
+		% module qualified, so they should not be considered
+		% when resolving overloading.
+		module_info_pred_info(ModuleInfo, PredId, PredInfo),
+		\+ pred_info_import_status(PredInfo, opt_decl),
+
 		%
 		% lookup the argument types of the candidate predicate
 		% (or the argument types + return type of the candidate
 		% function)
 		%
-		module_info_pred_info(ModuleInfo, PredId, PredInfo),
 		pred_info_arg_types(PredInfo, PredTVarSet, PredArgTypes0),
 
 		%

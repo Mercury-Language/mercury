@@ -45,9 +45,9 @@
 
 	% Add the items from the .opt files of imported modules to
 	% the items for this module.
-:- pred intermod__grab_optfiles(module_imports, module_imports,
+:- pred intermod__grab_optfiles(module_imports, module_imports, bool,
 				io__state, io__state).
-:- mode intermod__grab_optfiles(in, out, di, uo) is det.
+:- mode intermod__grab_optfiles(in, out, out, di, uo) is det.
 
 	% Make sure that local preds which have been exported in the .opt
 	% file get an exported(_) label.
@@ -87,7 +87,8 @@ intermod__write_optfile(ModuleInfo0) -->
 		{ Result2 = ok },
 		{ module_info_predids(ModuleInfo0, PredIds) },
 		{ init_intermod_info(ModuleInfo0, IntermodInfo0) },
-		{ intermod__inline_simple_threshold(Threshold) },
+		globals__io_lookup_int_option(
+			intermod_inline_simple_threshold, Threshold),
 		{ intermod__gather_preds(PredIds, yes, Threshold,
 				IntermodInfo0, IntermodInfo1) },
 		{ intermod__gather_abstract_exported_types(IntermodInfo1,
@@ -111,14 +112,6 @@ intermod__write_optfile(ModuleInfo0) -->
 		touch_interface_datestamp(ModuleName, ".optdate")
 	).
 
-
-	% Define the inline threshold to be used when updating the
-	% import_status of local preds so that there are no link
-	% errors if the user changes --inline-simple-threshold
-	% in between writing the .opt file and compiling to C.
-:- pred intermod__inline_simple_threshold(int::out) is det.
-
-intermod__inline_simple_threshold(5).
 
 
 	% a collection of stuff to go in the .opt file
@@ -1112,13 +1105,11 @@ intermod__adjust_pred_import_status(Module0, Module) :-
 	% The .opt file may have been written with a higher 
 	% --inline-simple-threshold value, so to be safe all
 	% preds called by exported preds need to be exported too.
-	% XXX - for some reason doing this removes any performance benefit
-	% 	from cross-module inlining.
-	%
-	% For now the threshold is hardwired. Do I retrospectively fail 244?
 
-	intermod__inline_simple_threshold(Thresh),
-	intermod__gather_preds(PredIds, yes, Thresh, Info0, Info1),
+	module_info_globals(Module0, Globals),
+	globals__lookup_int_option(Globals, intermod_inline_simple_threshold, 
+			Threshold),
+	intermod__gather_preds(PredIds, yes, Threshold, Info0, Info1),
 	intermod_info_get_pred_decls(PredDecls0, Info1, Info),
 	intermod_info_get_types(TypeIds0, Info, _),
 	set__to_sorted_list(PredDecls0, PredDecls),
@@ -1182,11 +1173,12 @@ set_list_of_preds_exported([PredId | PredIds], Preds0, Preds) :-
 %-----------------------------------------------------------------------------%
 	% Read in and process the optimization interfaces.
 
-intermod__grab_optfiles(Module0, Module) -->
+intermod__grab_optfiles(Module0, Module, FoundError) -->
 	{ Module0 = module_imports(ModuleName, DirectImports0,
 					IndirectImports0, Items0, _) },
 	{ list__sort_and_remove_dups(DirectImports0, DirectImports1) },
-	read_optimization_interfaces(DirectImports1, [], OptItems),
+	read_optimization_interfaces(DirectImports1, [],
+		OptItems, no, OptError),
 	{ get_dependencies(OptItems, NewDeps0) },
 	{ set__list_to_set(NewDeps0, NewDepsSet0) },
 	{ set__delete_list(NewDepsSet0, [ModuleName | DirectImports1],
@@ -1200,12 +1192,12 @@ intermod__grab_optfiles(Module0, Module) -->
 	process_module_interfaces(NewDeps, [], Module1, Module2),
 	globals__io_set_option(inhibit_warnings, NoWarn),
 	{ Module2 = module_imports(_, DirectImports, IndirectImports,
-					InterfaceItems, Error) },
-	( { Error = yes } ->
-		{ error("error reading interface file") }
+		InterfaceItems, IntError) },
+	{ ( IntError \= no ; OptError = yes ) ->
+		FoundError = yes
 	;
-		[]
-	),
+		FoundError = no
+	},
 	{ list__append(OptItems, InterfaceItems, NewItems) },
 	{ term__context_init(Context) },
 		% Let make_hlds know the opt_imported stuff is coming.
@@ -1217,10 +1209,12 @@ intermod__grab_optfiles(Module0, Module) -->
 
 
 :- pred read_optimization_interfaces(list(module_name)::in, item_list::in,
-		item_list::out, io__state::di, io__state::uo) is det.
+			item_list::out, bool::in, bool::out,
+			io__state::di, io__state::uo) is det.
 
-read_optimization_interfaces([], Items, Items) --> [].
-read_optimization_interfaces([Import | Imports], Items0, Items) -->
+read_optimization_interfaces([], Items, Items, Error, Error) --> [].
+read_optimization_interfaces([Import | Imports],
+		Items0, Items, Error0, Error) -->
 	globals__io_lookup_bool_option(very_verbose, VeryVerbose),
 	maybe_write_string(VeryVerbose,
 			"% Reading optimization interface for module"),
@@ -1233,16 +1227,34 @@ read_optimization_interfaces([Import | Imports], Items0, Items) -->
 	{ string__append(Import, ".opt", FileName) },
         io__gc_call(
 		prog_io__read_module(FileName, Import, yes,
-					Error, Messages, Items1)
+				ModuleError, Messages, Items1)
         ),
-	( { Error = no } ->
-		[]
+	(
+		{ ModuleError = no },
+		{ Error1 = Error0 }
 	;
+		{ ModuleError = yes },
 		prog_out__write_messages(Messages),
-		{ error("errors in .opt files") }
+		{ Error1 = yes }
+	;
+		{ ModuleError = fatal },
+		globals__io_lookup_bool_option(warn_missing_opt_files, DoWarn),
+		( { DoWarn = yes } ->
+			io__write_string("Warning: cannot open `"),
+			io__write_string(FileName),
+			io__write_string("'.\n"),
+			globals__io_lookup_bool_option(halt_at_warn,
+					HaltAtWarn),
+			{ HaltAtWarn = yes ->
+				Error1 = yes
+			;
+				Error1 = Error0
+			}
+		;
+			{ Error1 = Error0 }	
+		)
 	),
-		% Include the header file.
 	{ list__append(Items0, Items1, Items2) },
-	read_optimization_interfaces(Imports, Items2, Items).
+	read_optimization_interfaces(Imports, Items2, Items, Error1, Error).
 
 %-----------------------------------------------------------------------------%

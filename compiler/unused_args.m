@@ -364,10 +364,17 @@ traverse_goal(_, unify(Var1, _, _, construct(_, _, Args, _), _),
 	).
 	
 	% These should be transformed into calls by polymorphism.m.
-traverse_goal(_, unify(_, _, _, complicated_unify(_, _), _),
-		UseInf, UseInf) :-
-    error("unused_args should come after making out of line compl unify pred").
-
+traverse_goal(_, unify(Var, Rhs, _, complicated_unify(_, _), _),
+		UseInf0, UseInf) :-
+    	% This is here to cover the case where unused arguments is called 
+	% with --error-check-only and polymorphism has not been run.
+	% Complicated unifications should only be var-var.
+	( Rhs = var(RhsVar) ->
+		set_var_used(UseInf0, RhsVar, UseInf1),
+		set_var_used(UseInf1, Var, UseInf)
+	;
+		error("complicated unifications should only be var-var")
+	).
 
 	% add PredProc - HeadVar as an alias for the same element of Args.
 :- pred add_pred_call_arg_dep(pred_proc_id::in, list(var)::in, list(var)::in,
