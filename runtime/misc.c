@@ -316,10 +316,10 @@ Word do_mklist(int start, int len)
 	int	i;
 
 	restore_transient_registers();	/* need hp */
-	curr = mkword(TAG_NIL, 0);
+	curr = list_empty();
 	for (i = 1; i <= len; i++)
 	{
-		curr = mkword(TAG_CONS, create2(start + len - i, curr));
+		curr = list_cons(start + len - i, curr);
 	}
 	save_transient_registers();
 	return curr;
