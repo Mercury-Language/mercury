@@ -185,7 +185,7 @@ lower bounds other than zero are not supported
 	if ((Unsigned) Index >= (Unsigned) array->size) {
 		fatal_error(""tr_array__mdi_set: array index out of bounds"");
 	}
-	MR_trail_value_at_address(&array->elements[Index]);
+	MR_trail_current_value(&array->elements[Index]);
 	array->elements[Index] = Item;	/* destructive update! */
 	Array = Array0;
 }").
