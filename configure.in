@@ -30,7 +30,6 @@ case "$host" in
 esac
 #-----------------------------------------------------------------------------#
 echo looking for an already installed Mercury compiler to bootstrap with...
-BOOTSTRAP_MC=
 AC_PATH_PROG(BOOTSTRAP_MC,mc)
 if test "$BOOTSTRAP_MC" != ""; then
 	AC_MSG_CHECKING(that $BOOTSTRAP_MC works)
@@ -41,6 +40,7 @@ if test "$BOOTSTRAP_MC" != ""; then
 		:- pred main(io__state::unique->clobbered, io__state::uo)
 			is det.
 		:- implementation.
+		:- type type_containing_pred(T) ---> foo(pred(T)).
 		main --> io__write_string("Hello, world\n").
 EOF
 	if
@@ -56,7 +56,6 @@ EOF
 	rm -f conftest*
 fi
 #-----------------------------------------------------------------------------#
-GNU_MAKE=
 echo looking for GNU Make...
 AC_PROGRAMS_CHECK(GNU_MAKE,gmake make)
 if test "$GNU_MAKE" != ""; then
@@ -76,7 +75,6 @@ AC_SUBST(GNU_MAKE)
 #-----------------------------------------------------------------------------#
 INSTALL_SICSTUS=
 SICSTUS=
-SP=
 echo "looking for SICStus Prolog..."
 AC_PROGRAMS_CHECK(SP,sp sicstus prolog)
 if test "$SP" != ""; then
@@ -98,8 +96,6 @@ AC_SUBST(SICSTUS)
 #-----------------------------------------------------------------------------#
 INSTALL_NUPROLOG=
 NUPROLOG=
-NP=
-
 echo "looking for NU-Prolog..."
 AC_PROGRAMS_CHECK(NP,np)
 if test "$NP" != ""; then
@@ -123,7 +119,6 @@ echo "looking for a way to create named pipes..."
 save_PATH="$PATH"
 PATH="$PATH:/etc:/usr/etc:/sbin"
 
-MKFIFO=
 AC_PATH_PROG(MKFIFO,mkfifo)
 if test "$MKFIFO" != ""; then
 	# check that it really works
@@ -136,7 +131,6 @@ if test "$MKFIFO" != ""; then
 	fi
 	rm -f $tmp
 fi
-MKNOD=
 if test "$MKFIFO" = ""; then
 	AC_PATH_PROG(MKNOD,mknod)
 	if test "$MKNOD" != ""; then
@@ -603,21 +597,21 @@ AC_MSG_RESULT($mercury_cv_gcc_model_reg)
 
 if test $mercury_cv_asm_labels = yes; then
 	if test $mercury_cv_gcc_model_fast = yes; then
-		GRADE=asm_fast.gc
+		BEST_GRADE=asm_fast
 	else
-		GRADE=asm_jump.gc
+		BEST_GRADE=asm_jump
 	fi
 elif test $mercury_cv_gcc_labels = yes; then
 	if test $mercury_cv_gcc_model_fast = yes; then
-		GRADE=fast.gc
+		BEST_GRADE=fast
 	else
-		GRADE=jump.gc
+		BEST_GRADE=jump
 	fi
 else
 	if test $mercury_cv_gcc_model_reg = yes; then
-		GRADE=reg.gc
+		BEST_GRADE=reg
 	else
-		GRADE=none.gc
+		BEST_GRADE=none
 	fi
 fi
 
@@ -625,9 +619,10 @@ fi
 # compiler to bootstrap with, since the C code generated for the other
 # grades won't work in grade jump.gc or fast.gc.
 
+DESIRED_GRADE=$BEST_GRADE.gc
+GRADE=$DESIRED_GRADE
 if test "$GRADE" = jump.gc || test "$GRADE" = fast.gc; then
 	if test "$BOOTSTRAP_MC" = ""; then
-		DESIRED_GRADE=$GRADE
 		if test "$DESIRED_GRADE" = jump.gc; then
 			GRADE=none.gc
 		else
@@ -652,35 +647,49 @@ fi
 
 AC_SUBST(GRADE)
 
-DEFAULT_GRADE=$GRADE
-# For Irix 5.x, shared libraries are incompatible with gcc non-local gotos
-# We prefer to use shared libraries by default
-case "$host" in
-	mips-sgi-irix5.*)
-		DEFAULT_GRADE=reg.gc
-		;;
-esac
+if test "$DEFAULT_GRADE" = ""; then
+	DEFAULT_GRADE=$GRADE
+	# For Irix 5.x, shared libraries are incompatible
+	# with gcc non-local gotos.
+	# We prefer to use shared libraries by default
+	case "$host" in
+		mips-sgi-irix5.*)
+			DEFAULT_GRADE=reg.gc
+			;;
+	esac
+fi
 echo "using \`DEFAULT_GRADE=$DEFAULT_GRADE' as the default grade for applications"
 AC_SUBST(DEFAULT_GRADE)
 
-LIBGRADES="none"
+ALL_LIBGRADES="none"
 if test $mercury_cv_gcc_labels = yes; then
-	LIBGRADES="$LIBGRADES jump"
+	ALL_LIBGRADES="$ALL_LIBGRADES jump"
 fi
 if test $mercury_cv_gcc_model_reg = yes; then
-	LIBGRADES="$LIBGRADES reg"
+	ALL_LIBGRADES="$ALL_LIBGRADES reg"
 fi
 if test $mercury_cv_gcc_model_fast = yes; then
-	LIBGRADES="$LIBGRADES fast"
+	ALL_LIBGRADES="$ALL_LIBGRADES fast"
 fi
 if test $mercury_cv_asm_labels = yes; then
-	if test $mercury_cv_gcc_model_fast = yes; then
-		LIBGRADES="$LIBGRADES asm_fast"
-	fi
 	if test $mercury_cv_gcc_labels = yes; then
-		LIBGRADES="$LIBGRADES asm_jump"
+		ALL_LIBGRADES="$ALL_LIBGRADES asm_jump"
+	fi
+	if test $mercury_cv_gcc_model_fast = yes; then
+		ALL_LIBGRADES="$ALL_LIBGRADES asm_fast"
 	fi
 fi
+
+AC_ARG_ENABLE(all-grades,
+[  --enable-all-grades     install all the different versions of the library],
+enable_all_grades=yes,enable_all_grades=no)
+
+if test $enable_all_grades = yes; then
+	LIBGRADES="$ALL_LIBGRADES"
+else
+	LIBGRADES="$BEST_GRADE"
+fi
+
 for grade in $LIBGRADES; do
 	LIBGRADES="$LIBGRADES $grade.gc"
 done
@@ -788,13 +797,11 @@ fi
 AC_SUBST(BOOTSTRAP_MC)
 #-----------------------------------------------------------------------------#
 
-# XXX compiler/conf.m - problems with bootstrapping
-
 AC_OUTPUT(Mmake.common scripts/Mmake.vars scripts/mc scripts/mprof
 scripts/mercury_update_interface scripts/mgnuc scripts/mint scripts/ml
 scripts/mmake scripts/mnc scripts/mnl scripts/mnp scripts/c2init
 scripts/msc scripts/msl scripts/msp scripts/sicstus_conv
-scripts/mkfifo_using_mknod bindist/bindist
+scripts/mkfifo_using_mknod bindist/bindist.build_vars
 ,
 if test "$CONFIG_HEADERS" = "runtime/conf.h"; then
 	touch runtime/conf.h.date
