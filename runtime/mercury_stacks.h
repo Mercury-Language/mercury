@@ -4,7 +4,12 @@
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
 
-/* mercury_stacks.h - definitions for manipulating the det and nondet stacks */
+/*
+** mercury_stacks.h - definitions for manipulating the det and nondet stacks.
+**
+** See compiler/notes/failure.html for documentation on the nondet stack
+** frame handling.
+*/
 
 #ifndef MERCURY_STACKS_H
 #define MERCURY_STACKS_H

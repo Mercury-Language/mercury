@@ -48,7 +48,7 @@
 ** MR_CONSERVATIVE_GC (= boehm_gc *or* MPS)
 ** MR_BOEHM_GC
 ** MR_MPS_GC
-** MR_NATIVE_GC		[not yet working]
+** MR_NATIVE_GC
 ** MR_NO_TYPE_LAYOUT
 ** MR_BOXED_FLOAT
 ** MR_USE_TRAIL
@@ -67,7 +67,7 @@
 **		--gcc-non-local-gotos
 **		--gcc-asm-labels
 **		--gc conservative
-**		--gc accurate		[not yet working]
+**		--gc accurate
 **		--no-type-layout
 **		--unboxed-float
 **		--use-trail
