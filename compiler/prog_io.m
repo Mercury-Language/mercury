@@ -1430,6 +1430,7 @@ get_determinism(B, Body, Determinism) :-
 :- mode standard_det(in, out) is semidet.
 standard_det("det", det).
 standard_det("nondet", nondet).
+standard_det("multidet", nondet).
 standard_det("semidet", semidet).
 standard_det("erroneous", erroneous).
 standard_det("failure", failure).
