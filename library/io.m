@@ -3348,7 +3348,7 @@ extern MercuryFile *mercury_current_binary_output;
 #define final_io_state(r)		((void)0)
 
 void 		mercury_init_io(void);
-MercuryFile*	mercury_open(const char *filename, const char *type);
+MercuryFile*	mercury_open(const char *filename, const char *openmode);
 void		mercury_io_error(MercuryFile* mf, const char *format, ...);
 void		mercury_output_error(MercuryFile* mf);
 void		mercury_print_string(MercuryFile* mf, const char *s);
@@ -3505,12 +3505,12 @@ static System::IO::IOException *MR_io_exception;
 :- pragma foreign_code("C", "
 
 MercuryFile*
-mercury_open(const char *filename, const char *type)
+mercury_open(const char *filename, const char *openmode)
 {
 	MercuryFile *mf;
 	FILE *f;
 
-	f = fopen(filename, type);
+	f = fopen(filename, openmode);
 	if (!f) return NULL;
 	mf = MR_GC_NEW(MercuryFile);
 	MR_mercuryfile_init(f, 1, mf);
@@ -3522,7 +3522,7 @@ mercury_open(const char *filename, const char *type)
 :- pragma foreign_code("MC++", "
 
 MR_MercuryFile
-static mercury_open(MR_String filename, MR_String type)
+static mercury_open(MR_String filename, MR_String openmode)
 {
         MR_MercuryFile mf = new MR_MercuryFileStruct();
         System::IO::FileMode fa;
@@ -3530,17 +3530,17 @@ static mercury_open(MR_String filename, MR_String type)
 
 	try {
 			// XXX get this right...
-		if (System::String::op_Equality(type, ""r"")) {
+		if (System::String::op_Equality(openmode, ""r"")) {
 			fa = System::IO::FileMode::Open;
-		} else if (System::String::op_Equality(type, ""a"")) {
+		} else if (System::String::op_Equality(openmode, ""a"")) {
 			fa = System::IO::FileMode::Append;
-		} else if (System::String::op_Equality(type, ""w"")) {
+		} else if (System::String::op_Equality(openmode, ""w"")) {
 			fa = System::IO::FileMode::Truncate;
 		} else {
 			MR_String msg;
 			msg = System::String::Concat(
-				""foreign code for this function, open type:"",
-				type);
+				""foreign code for this function, open mode:"",
+				openmode);
 			mercury::runtime::Errors::SORRY(msg);
 
 			// fa = XXX;
