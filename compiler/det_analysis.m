@@ -294,6 +294,13 @@ det_infer_goal(Goal0 - GoalInfo0, InstMap0, SolnContext0, DetInfo,
 
 	determinism_components(InternalDetism, InternalCanFail, InternalSolns),
 	(
+		% if mode analysis notices that a goal cannot succeed,
+		% then determinism analysis should notice this too
+
+		DeltaInstMap = unreachable
+	->
+		Solns = at_most_zero
+	;
 		% If a goal with multiple solutions has no output variables,
 		% then it really it has only one solution
 		% (we will need to do pruning)
@@ -303,7 +310,7 @@ det_infer_goal(Goal0 - GoalInfo0, InstMap0, SolnContext0, DetInfo,
 		),
 		OutputVars = no
 	->
-		determinism_components(Detism, InternalCanFail, at_most_one)
+		Solns = at_most_one
 	;
 		% If a goal with multiple solutions occurs in a single-solution
 		% context, then we will need to do pruning
@@ -311,11 +318,11 @@ det_infer_goal(Goal0 - GoalInfo0, InstMap0, SolnContext0, DetInfo,
 		InternalSolns = at_most_many,
 		SolnContext = first_soln
 	->
-		determinism_components(Detism, InternalCanFail, at_most_many_cc)
+		Solns = at_most_many_cc
 	;
-		Detism = InternalDetism
+		Solns = InternalSolns
 	),
-
+	determinism_components(Detism, InternalCanFail, Solns),
 	goal_info_set_determinism(GoalInfo0, Detism, GoalInfo),
 
 	% See how we should introduce the commit operator, if one is needed.
