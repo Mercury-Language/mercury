@@ -21,6 +21,7 @@ define(MERCURY_MSG,
 [echo $1 1>&AC_FD_MSG])
 #-----------------------------------------------------------------------------#
 AC_INIT(runtime/mercury_wrapper.c)
+TMPDIR=${TMPDIR=/tmp}
 #-----------------------------------------------------------------------------#
 #
 # Ensure that all messages are saved to a file `configure.log' by
@@ -126,7 +127,7 @@ PATH="$PATH:/etc:/usr/etc:/sbin"
 AC_PATH_PROG(MKFIFO,mkfifo)
 if test "$MKFIFO" != ""; then
 	# check that it really works
-	tmp=/tmp/fifo$$
+	tmp=$TMPDIR/fifo$$
 	trap "rm -f $tmp" 1 2 3 13 15
 	if $MKFIFO $tmp && test -p $tmp; then
 		true
@@ -139,7 +140,7 @@ if test "$MKFIFO" = ""; then
 	AC_PATH_PROG(MKNOD,mknod)
 	if test "$MKNOD" != ""; then
 		# check that it really works
-		tmp=/tmp/fifo$$
+		tmp=$TMPDIR/fifo$$
 		trap "rm -f $tmp" 1 2 3 13 15
 		if $MKNOD $tmp p && test -p $tmp; then
 			MKFIFO=mkfifo_using_mknod
@@ -163,9 +164,9 @@ MERCURY_MSG("looking for a way to create temporary files...")
 AC_PATH_PROG(MKTEMP,mktemp)
 if test "$MKTEMP" != ""; then
 	# check that it really works
-	TMPFILE="`mktemp /tmp/configure.XXXXXX < /dev/null`"
+	TMPFILE="`mktemp $TMPDIR/configure.XXXXXX < /dev/null`"
 	case "$TMPFILE" in 
-		/tmp/configure.*) rm -f $TMPFILE ;;
+		$TMPDIR/configure.*) rm -f $TMPFILE ;;
 		*) MKTEMP="" ;;
 	esac
 fi
