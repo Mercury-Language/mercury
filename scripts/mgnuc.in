@@ -68,7 +68,7 @@ while true; do
 done
 
 case "$grade" in
-	*.gc)	GC_OPTS="-DCONSERVATIVE_GC -DTAGBITS=0"
+	*.gc)	GC_OPTS="-DCONSERVATIVE_GC"
 		grade="` expr $grade : '\(.*\).gc' `"
 		;;
 	*)
@@ -131,7 +131,7 @@ case "`hostname`" in
 	cadillac.*)
 		GCC=/usr/local/bin/gcc ;;
 	kryten.*)
-		GCC=/usr/local/contrib/bin/gcc
+		GCC=/usr/local/contrib/bin/gcc -V2.6.3
 		HOST_OPTS="-msupersparc" ;;
 	*)
 		GCC=gcc
