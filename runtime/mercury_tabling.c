@@ -1460,6 +1460,27 @@ make_subgoal_follow_leader(MR_Subgoal *this_follower, MR_Subgoal *leader)
 ** table_nondet_resume.
 */
 
+#ifdef MR_HIGHLEVEL_CODE
+
+void MR_CALL
+mercury__table_builtin__table_nondet_resume_1_p_0(
+	MR_C_Pointer subgoal_table_node, MR_C_Pointer *answer_block,
+	MR_Cont cont, void *cont_env_ptr)
+{
+	MR_fatal_error("sorry, not implemented: "
+		"minimal model tabling with --high-level-code");
+}
+
+void MR_CALL
+mercury__table_builtin__table_nondet_suspend_2_p_0(
+	MR_C_Pointer subgoal_table_node)
+{
+	MR_fatal_error("sorry, not implemented: "
+		"minimal model tabling with --high-level-code");
+}
+
+#else /* ! MR_HIGHLEVEL_CODE */
+
 MR_declare_entry(mercury__table_nondet_resume_1_0);
 MR_declare_entry(MR_do_trace_redo_fail);
 MR_declare_entry(MR_table_nondet_commit);
@@ -1971,6 +1992,8 @@ MR_define_entry(MR_table_nondet_commit);
 	MR_commit_cut();
 	MR_fail();
 END_MODULE
+
+#endif /* ! MR_HIGHLEVEL_CODE */
 
 #endif	/* MR_USE_MINIMAL_MODEL */
 

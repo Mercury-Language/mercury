@@ -40,7 +40,6 @@
 	% mode_util__recompute_instmap_delta.
 :- pred free_heap(_T).
 :- mode free_heap(di) is det.
-:- external(free_heap/1).
 
 %-----------------------------------------------------------------------------%
 
@@ -90,13 +89,11 @@
 	% for compare/3 preds.
 :- pred builtin_int_lt(int, int).
 :- mode builtin_int_lt(in, in) is semidet.
-:- external(builtin_int_lt/2).
 
 	% The builtin > operator on ints, used in the code generated
 	% for compare/3 preds.
 :- pred builtin_int_gt(int, int).
 :- mode builtin_int_gt(in, in) is semidet.
-:- external(builtin_int_gt/2).
 
 	% A "typed" version of unify/2 -- i.e. one that can handle arguments
 	% of different types.  It first unifies their types, and then if
@@ -121,6 +118,10 @@
 :- pragma inline(builtin_compare_character/3).
 :- pragma inline(builtin_compare_string/3).
 :- pragma inline(builtin_compare_float/3).
+
+:- pragma c_code(free_heap(Val::di),
+	[will_not_call_mercury, thread_safe],
+	"MR_free_heap((void *) Val);").
 
 builtin_unify_int(X, X).
 
