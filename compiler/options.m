@@ -1525,9 +1525,9 @@ options_help_misc -->
 	io__write_string("\t\tAdd <dir> to the list of directories to be\n"),
 	io__write_string("\t\tsearched for `.opt' files.\n"),
 	io__write_string("\t--no-use-search-directories-for-intermod\n"),
-	io__write_string("\t\tDon't add arguments to --search-directory to the list\n"),
-	io__write_string("\t\tof directories to search for `.opt' files - use onlythe\n"),
-	io__write_string("\t\tdirectories given by --intermod-directory.\n").
+	io__write_string("\t\tDon't add arguments to `--search-directory' to the list\n"),
+	io__write_string("\t\tof directories to search for `.opt' files - use only the\n"),
+	io__write_string("\t\tdirectories given by `--intermod-directory'.\n").
 
 
 :- end_module options.
