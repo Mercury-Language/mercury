@@ -877,7 +877,9 @@ parse_expression_list([Expr0 | Exprs0], VarSet0, Context,
 :- mode parse_arith_expression(in, in, out) is semidet.
 
 parse_arith_expression("+", 2, "builtin_plus").
+parse_arith_expression("+", 1, "builtin_unary_plus").
 parse_arith_expression("-", 2, "builtin_minus").
+parse_arith_expression("-", 1, "builtin_unary_minus").
 parse_arith_expression("*", 2, "builtin_times").
 parse_arith_expression("//", 2, "builtin_div").
 parse_arith_expression("mod", 2, "builtin_mod").
