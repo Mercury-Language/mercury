@@ -426,11 +426,13 @@ case $status in 0)
         false)	cd ../.. || status=1 ;;
         true)	cd .. || status=1 ;;
     esac
+
+    [ -d $TESTDIR/logs ] || mkdir -p $TESTDIR/logs
+    case $status in
+        0) date >> $TESTDIR/logs/install.$INSTALL_DIR_NAME.$HOST ;;
+        *) date >> $TESTDIR/logs/install-failed.$INSTALL_DIR_NAME.$HOST ;;
+    esac
 esac
-
-
-[ -d $TESTDIR/logs ] || mkdir -p $TESTDIR/logs
-date >> $TESTDIR/logs/install.$HOST
 
 #-----------------------------------------------------------------------------#
 
@@ -720,7 +722,7 @@ case $status in
     0)
 	: if we get this far, then it worked.
 	[ -d $TESTDIR/logs ] || mkdir -p $TESTDIR/logs
-	date >> $TESTDIR/logs/successful_tests.$HOST
+	date >> $TESTDIR/logs/successful_tests.$INSTALL_DIR_NAME.$HOST
 	case $HOST in murlibobo)
 	    cd $DIR &&
 		# Delete older stable versions that this one replaces
