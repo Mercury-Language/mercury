@@ -1234,7 +1234,10 @@ polymorphism__new_type_info_var(Type, Symbol, VarSet0, VarTypes0,
 				Var, VarSet, VarTypes) :-
 	% introduce new variable
 	varset__new_var(VarSet0, Var, VarSet1),
-	varset__name_var(VarSet1, Var, "TypeInfo", VarSet),
+	term__var_to_int(Var, VarNum),
+	string__int_to_string(VarNum, VarNumStr),
+	string__append("TypeInfo_", VarNumStr, Name),
+	varset__name_var(VarSet1, Var, Name, VarSet),
 	construct_type(qualified("mercury_builtin", Symbol) - 1,
 					[Type], UnifyPredType),
 	map__set(VarTypes0, Var, UnifyPredType, VarTypes).
