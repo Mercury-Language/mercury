@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2000 The University of Melbourne.
+% Copyright (C) 1999-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -81,7 +81,8 @@
 :- implementation.
 
 :- import_module hlds_out, builtin_ops.
-:- import_module ml_call_gen, ml_type_gen, prog_util, type_util, mode_util.
+:- import_module ml_code_gen, ml_call_gen, ml_type_gen.
+:- import_module prog_util, type_util, mode_util.
 :- import_module rtti, error_util.
 :- import_module code_util. % XXX needed for `code_util__cons_id_to_tag'.
 :- import_module globals, options.
@@ -145,14 +146,12 @@ ml_gen_unification(deconstruct(Var, ConsId, Args, ArgModes, CanFail, CanCGC),
 		CodeModel, Context, MLDS_Decls, MLDS_Statements) -->
 	(
 		{ CanFail = can_fail },
-		{ require(unify(CodeModel, model_semi),
-			"ml_code_gen: can_fail deconstruct not semidet") },
+		{ ExpectedCodeModel = model_semi },
 		ml_gen_semi_deconstruct(Var, ConsId, Args, ArgModes, Context,
 			MLDS_Decls, MLDS_Unif_Statements)
 	;
 		{ CanFail = cannot_fail },
-		{ require(unify(CodeModel, model_det),
-			"ml_code_gen: cannot_fail deconstruct not det") },
+		{ ExpectedCodeModel = model_det },
 		ml_gen_det_deconstruct(Var, ConsId, Args, ArgModes, Context,
 			MLDS_Decls, MLDS_Unif_Statements)
 	),
@@ -171,8 +170,17 @@ ml_gen_unification(deconstruct(Var, ConsId, Args, ArgModes, CanFail, CanCGC),
 		{ CanCGC = no },
 		{ MLDS_CGC_Statements = [] }
 	),
-	{ MLDS_Statements = MLDS_Unif_Statements `list__append`
-			MLDS_CGC_Statements }.
+	{ MLDS_Statements0 = MLDS_Unif_Statements `list__append`
+			MLDS_CGC_Statements },
+	%
+	% We used to require that CodeModel = ExpectedCodeModel.
+	% But the determinism field in the goal_info is allowed to
+	% be a conservative approximation, so we need to handle
+	% the case were CodeModel is less precise than
+	% ExpectedCodeModel.
+	%
+	ml_gen_wrap_goal(CodeModel, ExpectedCodeModel, Context,
+		MLDS_Statements0, MLDS_Statements).
 
 ml_gen_unification(complicated_unify(_, _, _), _, _, [], []) -->
 	% simplify.m should convert these into procedure calls
