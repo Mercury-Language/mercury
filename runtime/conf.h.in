@@ -7,7 +7,8 @@
 ** @configure_input@
 */
 /*
-**	Various configuration parameters. Their meanings are:
+**	Various configuration parameters, generally automatically by
+**	the auto-configuration script.  Their meanings are:
 **
 **	WORD_TYPE		the base type for the definition of Word.
 **	LOW_TAG_BITS		the number of low-order tag bits we can use.
@@ -17,8 +18,13 @@
 **	HAVE_MPROTECT		the machine has the mprotect() syscall.
 **	RETSIGTYPE		the return type of signal handlers.
 **	HAVE_SIGINFO		signal handlers are given siginfo arguments.
+**				we have <sys/siginfo.h>
 **	HAVE_UCONTEXT		signal handlers are given ucontext arguments
-**				and we need ucontext.h to get access.
+**				we have <ucontext.h>
+**	HAVE_SYS_UCONTEXT	we have <sys/ucontext.h>
+**	HAVE_SYS_TIME		we have <sys/time.h>
+**	HAVE_SYS_PARAM		we have <sys/param.h>
+**	HAVE_SETTIMER		we have setitimer()
 **	PC_INDEX		index of PC in ucontexts.
 **	HAVE_SIGACTION		the machine has the sigaction() syscall.
 **	SIGACTION_FIELD		the name of the field in the sigaction struct
@@ -35,6 +41,10 @@
 #undef	RETSIGTYPE
 #undef	HAVE_SIGINFO
 #undef	HAVE_UCONTEXT
+#undef	HAVE_SYS_UCONTEXT
+#undef	HAVE_SYS_TIME
+#undef	HAVE_SYS_PARAM
+#undef	HAVE_SET_ITIMER
 #undef	PC_INDEX
 #undef	HAVE_SIGACTION
 #undef	SIGACTION_FIELD
