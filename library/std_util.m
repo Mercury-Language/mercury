@@ -61,8 +61,8 @@
 :- mode univ_to_type(out, in) is det.
 :- mode univ_to_type(uo, di) is det.
 
-	% The functions univ/1 and univ_value/1 provide equivalent
-	% functionality to type_to_univ/2 and univ_to_type/2.
+	% The function univ/1 provides the same
+	% functionality as type_to_univ/2.
 
 	% univ(Object) = Univ :- type_to_univ(Object, Univ).
 	%
@@ -70,11 +70,6 @@
 :- mode univ(in) = out is det.
 :- mode univ(di) = uo is det.
 :- mode univ(out) = in is semidet.
-
-	% univ_value(Univ) = Object :- univ_to_type(Univ, Object).
-	%
-:- func univ_value(univ) = T.
-:- mode univ_value(in) = out is semidet.
 
 	% univ_type(Univ):
 	%	returns the type_info for the type stored in `Univ'.
@@ -700,7 +695,23 @@ univ_to_type(Univ, X) :- type_to_univ(X, Univ).
 
 univ(X) = Univ :- type_to_univ(X, Univ).
 
-univ_value(Univ) = X :- type_to_univ(X, Univ).
+/****
+
+% univ_value/1 can't be implemented yet, due to the lack of support for
+% existential types in Mercury.
+
+	% univ_value(Univ):
+	%	returns the value of the object stored in Univ.
+:- some [T] (
+   func univ_value(univ) = T
+).
+
+:- pragma c_code(univ_value(Univ::uo) = (Value), will_not_call_mercury, "
+	TypeInfo_for_T = field(mktag(0), Univ, UNIV_OFFSET_FOR_TYPEINFO);
+	Value = field(mktag(0), Univ, UNIV_OFFSET_FOR_Data);
+").
+
+****/
 
 :- pragma c_header_code("
 
@@ -1863,6 +1874,8 @@ ML_get_num_functors(Word type_info)
 
 
 :- pragma c_header_code("
+
+	#include <stdio.h>
 
 	/* 
 	 * Code for functor, arg and expand
