@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-2002 The University of Melbourne.
+** Copyright (C) 1997-2003 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -363,6 +363,32 @@
 */
 #ifdef MR_HIGHLEVEL_CODE
   #define MR_BOXED_FLOAT 1
+#endif
+
+/*
+** MR_PIC means that we are generating position independent code,
+** i.e. that the file was compiled with the gcc option `-fpic' or equivalent.
+*/ 
+#if (defined(__pic__) || defined(__PIC__))
+  #define MR_PIC 1
+#endif
+
+/*
+** Should we keep the GOT register (e.g. ebx on i386) free for PIC code?
+** We need to do this if we are generating position independent code
+** (MR_PIC), or if we are linking with position independent Mercury code
+** (in which case -DMR_PIC_REG will be passed on the command line).
+**
+** The GOT register is only needed for Unix-style shared libraries.
+** Windows DLLs do not use the GOT register.  So don't do this if
+** __CYGWIN__ or _WIN32 is defined, even if -DMR_PIC_REG was passed
+** on the command line.
+*/
+#if defined(MR_PIC)
+  #define MR_PIC_REG 1
+#endif
+#if defined(__CYGWIN__) || defined(_WIN32)
+  #undef MR_PIC_REG
 #endif
 
 /* MR_LOWLEVEL_DEBUG implies MR_DEBUG_GOTOS and MR_CHECK_FOR_OVERFLOW */

@@ -189,13 +189,10 @@
   #define MR_JUMP(label)	MR_ASM_JUMP(label)
 
   /*
-  ** If we're using position-independent code on i386, then we need to
-  ** set up the correct value of the GOT register (ebx).
+  ** If we're using position-independent code, then we need to
+  ** set up the correct value of the GOT register (ebx on 386
+  ** or a5 on m68000).
   */
-
-  #if (defined(__pic__) || defined(__PIC__)) && !defined(MR_PIC)
-    #define MR_PIC 1
-  #endif
 
   #if MR_PIC
 

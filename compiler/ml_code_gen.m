@@ -1103,6 +1103,7 @@ ml_gen_proc_defn(ModuleInfo, PredId, ProcId, MLDS_ProcDefnBody, ExtraDefns) :-
 	pred_info_arg_types(PredInfo, ArgTypes),
 	proc_info_interface_code_model(ProcInfo, CodeModel),
 	proc_info_headvars(ProcInfo, HeadVars),
+	proc_info_argmodes(ProcInfo, Modes),
 	proc_info_goal(ProcInfo, Goal0),
 
 	%
@@ -1180,7 +1181,8 @@ ml_gen_proc_defn(ModuleInfo, PredId, ProcId, MLDS_ProcDefnBody, ExtraDefns) :-
 		MLDS_Context = mlds__make_context(Context),
 		MLDS_LocalVars = [ml_gen_succeeded_var_decl(MLDS_Context) |
 				OutputVarLocals],
-		ml_gen_proc_body(CodeModel, HeadVars, ArgTypes,
+		modes_to_arg_modes(ModuleInfo, Modes, ArgTypes, ArgModes),
+		ml_gen_proc_body(CodeModel, HeadVars, ArgTypes, ArgModes,
 				CopiedOutputVars, Goal,
 				MLDS_Decls0, MLDS_Statements,
 				MLDSGenInfo2, MLDSGenInfo3),
@@ -1316,12 +1318,13 @@ ml_gen_local_var_decls(VarSet, VarTypes, Context, [Var|Vars], MLDS_Defns) -->
 	% Generate the code for a procedure body.
 	%
 :- pred ml_gen_proc_body(code_model, list(prog_var), list(prog_type),
-		list(prog_var), hlds_goal, mlds__defns, mlds__statements,
+		list(arg_mode), list(prog_var), hlds_goal,
+		mlds__defns, mlds__statements,
 		ml_gen_info, ml_gen_info).
-:- mode ml_gen_proc_body(in, in, in, in, in, out, out, in, out) is det.
+:- mode ml_gen_proc_body(in, in, in, in, in, in, out, out, in, out) is det.
 
-ml_gen_proc_body(CodeModel, HeadVars, ArgTypes, CopiedOutputVars, Goal,
-		MLDS_Decls, MLDS_Statements) -->
+ml_gen_proc_body(CodeModel, HeadVars, ArgTypes, ArgModes, CopiedOutputVars,
+		Goal, MLDS_Decls, MLDS_Statements) -->
 	{ Goal = _ - GoalInfo },
 	{ goal_info_get_context(GoalInfo, Context) },
 
@@ -1340,8 +1343,8 @@ ml_gen_proc_body(CodeModel, HeadVars, ArgTypes, CopiedOutputVars, Goal,
 	% we append below, we want the original vars, not their cast versions.
 	%
 	ml_gen_var_list(CopiedOutputVars, CopiedOutputVarOriginalLvals),
-	ml_gen_convert_headvars(HeadVars, ArgTypes, CopiedOutputVars, Context,
-		ConvDecls, ConvInputStatements, ConvOutputStatements),
+	ml_gen_convert_headvars(HeadVars, ArgTypes, ArgModes, CopiedOutputVars,
+		Context, ConvDecls, ConvInputStatements, ConvOutputStatements),
 	(
 		{ ConvDecls = [] },
 		{ ConvInputStatements = [] },
@@ -1383,28 +1386,51 @@ ml_gen_proc_body(CodeModel, HeadVars, ArgTypes, CopiedOutputVars, Goal,
 % This procedure handles that.
 %
 :- pred ml_gen_convert_headvars(list(prog_var), list(prog_type),
-		list(prog_var), prog_context,
+		list(arg_mode), list(prog_var), prog_context,
 		mlds__defns, mlds__statements, mlds__statements,
 		ml_gen_info, ml_gen_info).
-:- mode ml_gen_convert_headvars(in, in, in, in, out, out, out, in, out) is det.
+:- mode ml_gen_convert_headvars(in, in, in, in, in, out, out, out, in, out)
+	is det.
 
-ml_gen_convert_headvars([], [], _, _, [], [], []) --> [].
-ml_gen_convert_headvars([Var|Vars], [HeadType|HeadTypes], CopiedOutputVars,
-		Context, Decls, InputStatements, OutputStatements) -->
-	ml_variable_type(Var, BodyType),
+ml_gen_convert_headvars(Vars, HeadTypes, ArgModes, CopiedOutputVars, Context,
+		Decls, InputStatements, OutputStatements) -->
 	(
+	    % base case
+	    { Vars = [], HeadTypes = [], ArgModes = [] }
+	->
+	    { Decls = [], InputStatements = [], OutputStatements = [] }
+	;
+	    % recursive case
+	    { Vars = [Var | Vars1] },
+	    { HeadTypes = [HeadType | HeadTypes1] },
+	    { ArgModes = [ArgMode | ArgModes1] }
+	->
+	    ml_variable_type(Var, BodyType),
+	    (
+		%
+		% Arguments with mode `top_unused' do not need to be converted
+		%
+	    	{ ArgMode = top_unused }
+	    ->
+		% just recursively process the remaining arguments
+		ml_gen_convert_headvars(Vars1, HeadTypes1, ArgModes1,
+			CopiedOutputVars, Context, Decls,
+			InputStatements, OutputStatements)
+	    ;
 		%
 		% Check whether HeadType is the same as BodyType
-		% (modulo the term__contexts)
+		% (modulo the term__contexts).
+		% If so, no conversion is needed.
 		%
 		{ map__init(Subst0) },
 		{ type_unify(HeadType, BodyType, [], Subst0, Subst) },
 		{ map__is_empty(Subst) }
-	->
+	    ->
 		% just recursively process the remaining arguments
-		ml_gen_convert_headvars(Vars, HeadTypes, CopiedOutputVars,
-			Context, Decls, InputStatements, OutputStatements)
-	;
+		ml_gen_convert_headvars(Vars1, HeadTypes1, ArgModes1,
+			CopiedOutputVars, Context, Decls,
+			InputStatements, OutputStatements)
+	    ;
 		%
 		% generate the lval for the head variable
 		%
@@ -1431,8 +1457,9 @@ ml_gen_convert_headvars([Var|Vars], [HeadType|HeadTypes], CopiedOutputVars,
 		%
 		% Recursively process the remaining arguments
 		%
-		ml_gen_convert_headvars(Vars, HeadTypes, CopiedOutputVars,
-			Context, Decls1, InputStatements1, OutputStatements1),
+		ml_gen_convert_headvars(Vars1, HeadTypes1, ArgModes1,
+			CopiedOutputVars, Context, Decls1, InputStatements1,
+			OutputStatements1),
 
 		%
 		% Add the code to convert this input or output.
@@ -1454,11 +1481,12 @@ ml_gen_convert_headvars([Var|Vars], [HeadType|HeadTypes], CopiedOutputVars,
 			OutputStatements = OutputStatements1
 		},
 		{ list__append(ConvDecls, Decls1, Decls) }
+	    )
+	;
+	    % neither base case nor recursive case matched
+	    { unexpected(this_file,
+	    	"ml_gen_convert_headvars: length mismatch") }
 	).
-ml_gen_convert_headvars([], [_|_], _, _, _, _, _) -->
-	{ error("ml_gen_convert_headvars: length mismatch") }.
-ml_gen_convert_headvars([_|_], [], _, _, _, _, _) -->
-	{ error("ml_gen_convert_headvars: length mismatch") }.
 
 %-----------------------------------------------------------------------------%
 %

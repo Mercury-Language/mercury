@@ -654,10 +654,13 @@ ml_gen_arg_list(VarNames, VarLvals, CallerTypes, CalleeTypes, Modes,
 		{ ml_gen_info_get_module_info(MLDSGenInfo, ModuleInfo) },
 		{ mode_to_arg_mode(ModuleInfo, Mode, CalleeType, ArgMode) },
 		(
-			{ type_util__is_dummy_argument_type(CalleeType) }
+			{ type_util__is_dummy_argument_type(CalleeType)
+			; ArgMode = top_unused
+			}
 		->
 			%
-			% exclude arguments of type io__state etc.
+			% Exclude arguments of type io__state etc.
+			% Also exclude those with arg_mode `top_unused'.
 			%
 			{ InputRvals = InputRvals1 },
 			{ OutputLvals = OutputLvals1 },
@@ -688,21 +691,14 @@ ml_gen_arg_list(VarNames, VarLvals, CallerTypes, CalleeTypes, Modes,
 			{ ConvOutputStatements = ConvOutputStatements1 }
 		;
 			%
-			% it's an output argument, or an unused argument
+			% it's an output argument
 			%
 			ml_gen_box_or_unbox_lval(CallerType, CalleeType,
 				VarLval, VarName, Context, ForClosureWrapper,
 				ArgNum, ArgLval, ThisArgConvDecls,
 				_ThisArgConvInput, ThisArgConvOutput),
 			{ ConvDecls = ThisArgConvDecls ++ ConvDecls1 },
-			{ ConvOutputStatements =
-				(if ArgMode = top_out then
-					ThisArgConvOutput
-				else
-					% don't unbox arguments
-					% with mode `top_unused'
-					[]
-				)
+			{ ConvOutputStatements = ThisArgConvOutput
 				++ ConvOutputStatements1 },
 
 			ml_gen_info_get_globals(Globals),
@@ -712,10 +708,6 @@ ml_gen_arg_list(VarNames, VarLvals, CallerTypes, CalleeTypes, Modes,
 					%
 					% if the target language allows
 					% multiple return values, then use them
-					%
-					% XXX for top_unused argument modes,
-					% the generated code will copy an
-					% uninitialized value
 					%
 					{ CopyOut = yes }
 				;

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1993-1998, 2000 The University of Melbourne.
+** Copyright (C) 1993-1998, 2000, 2003 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -16,8 +16,8 @@
 ** (ebx, esi, edi).  If we're using position-independent code (PIC),
 ** i.e. if this code is being compiled with `-fpic' or `-fPIC',
 ** then ebx is reserved, so we use only esi and edi.
-** We also avoid using ebx if compiled with -DPIC_REG;
-** compiling with -DPIC_REG but not -fpic allows one to
+** We also avoid using ebx if compiled with -DMR_PIC_REG;
+** compiling with -DMR_PIC_REG but not -fpic allows one to
 ** preserve link-compatibility with PIC code while generating
 ** non-PIC code.
 **
@@ -37,20 +37,6 @@
 ** there are some functions for which gcc cannot avoid the use of
 ** the frame pointer.  (E.g. the one containing io__init_state/2.)
 */
-
-/*
-** Are we using PIC?
-*/
-#if (defined(__PIC__) || defined(__pic__)) && !defined(MR_PIC)
-  #define MR_PIC 1
-#endif
-
-/*
-** Should we keep the GOT register (ebx) free for PIC code?
-*/
-#if MR_PIC && !defined(MR_PIC_REG)
-  #define MR_PIC_REG 1
-#endif
 
 #if MR_PIC_REG
   #define MR_NUM_REAL_REGS 2

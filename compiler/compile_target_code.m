@@ -1489,7 +1489,7 @@ get_object_code_type(FileType, ObjectCodeType) -->
 				% files if `-DMR_PIC_REG' has an
 				% effect, which currently is only
 				% with grades using GCC global
-				% registers on x86.
+				% registers on x86 Unix.
 				( LinkWithPicObjExt = ObjExt
 				; HighLevelCode = yes
 				; GCCGlobals = no
