@@ -3231,9 +3231,17 @@ append_to_init_list(DepStream, InitFileName, Module) -->
 	{ llds_out__make_init_name(Module, InitFuncName) },
 	{ llds_out__make_rl_data_name(Module, RLName) },
 	io__write_strings(DepStream, [
-		"\techo ""INIT ", InitFuncName, """ >> ", InitFileName, "\n",
-		"\techo ""ADITI_DATA ", RLName, """ >> ", InitFileName, "\n"
-	]).
+		"\techo ""INIT ", InitFuncName, """ >> ", InitFileName, "\n"
+	]),
+	globals__io_lookup_bool_option(aditi, Aditi),
+	( { Aditi = yes } ->
+		io__write_strings(DepStream, [
+			"\techo ""ADITI_DATA ", RLName, """ >> ",
+				InitFileName, "\n"
+		])
+	;
+		[]
+	).
 
 %-----------------------------------------------------------------------------%
 
