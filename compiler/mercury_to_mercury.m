@@ -192,6 +192,9 @@ mercury_output_item(func_clause(VarSet, FuncName, Args, Result, Body),
 mercury_output_item(pragma(Pragma), Context) -->
 	maybe_output_line_number(Context),
 	(
+		{ Pragma = source_file(SourceFile) },
+		mercury_output_pragma_source_file(SourceFile)
+	;
 		{ Pragma = c_header_code(C_HeaderString) },
 		mercury_output_pragma_c_header(C_HeaderString)
 	;
@@ -1055,12 +1058,22 @@ mercury_output_some(Vars, VarSet) -->
 :- mode mercury_output_pragma_c_header(in, di, uo) is det.
 
 mercury_output_pragma_c_header(C_HeaderString) -->
-	io__write_string(":- pragma c_header_code("),
-	io__write_string(""""),
+	io__write_string(":- pragma c_header_code("""),
 	% XXX need to quote special characters
 	io__write_string(C_HeaderString),
-	io__write_string(""""),
-	io__write_string(").\n").
+	io__write_string(""").\n").
+
+%-----------------------------------------------------------------------------%
+
+	% Output the given pragma source_file declaration
+:- pred mercury_output_pragma_source_file(string, io__state, io__state).
+:- mode mercury_output_pragma_source_file(in, di, uo) is det.
+
+mercury_output_pragma_source_file(SourceFileString) -->
+	io__write_string(":- pragma source_file("""),
+	% XXX need to quote special characters
+	io__write_string(SourceFileString),
+	io__write_string(""").\n").
 
 %-----------------------------------------------------------------------------%
 
@@ -1069,12 +1082,10 @@ mercury_output_pragma_c_header(C_HeaderString) -->
 :- mode mercury_output_pragma_c_body_code(in, di, uo) is det.
 
 mercury_output_pragma_c_body_code(C_CodeString) -->
-	io__write_string(":- pragma c_code("),
-	io__write_string(""""),
+	io__write_string(":- pragma c_code("""),
 	% XXX need to quote special characters
 	io__write_string(C_CodeString),
-	io__write_string(""""),
-	io__write_string(").\n").
+	io__write_string(""").\n").
 
 %-----------------------------------------------------------------------------%
 

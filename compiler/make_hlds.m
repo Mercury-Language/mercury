@@ -240,7 +240,12 @@ add_item_decl_pass_2(type_defn(VarSet, TypeDefn, Cond), Context,
 add_item_decl_pass_2(pragma(Pragma), Context, Status, Module0, Status, Module)
 		-->
 	(
-		{ Pragma  = c_code(C_Body_Code) },
+		% ignore `pragma source_file' declarations - they're dealt
+		% with elsewhere
+		{ Pragma = source_file(_) },
+		{ Module = Module0 }
+	;
+		{ Pragma = c_code(C_Body_Code) },
 		{ module_add_c_body_code(C_Body_Code, Context,
 			Module0, Module) }
 	;

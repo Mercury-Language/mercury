@@ -149,7 +149,7 @@
 :- implementation.
 
 :- import_module hlds_data, hlds_pred, prog_util, globals, options.
-:- import_module bool, int, std_util, term_io, dir, require.
+:- import_module bool, int, std_util, parser, term_io, dir, require.
 
 %-----------------------------------------------------------------------------%
 
@@ -301,11 +301,11 @@ check_begin_module(ModuleName, Messages0, Items0, Error0, EndModule, FileName,
     ;
 	term__context_init(FileName, 1, Context),
 	dummy_term_with_context(Context, Term2),
-        ThisError = "Error: module should start with a `:- module' declaration"
+        ThisError = "Warning: module should start with a `:- module' declaration"
 		- Term2,
         Messages = [ThisError | Messages0],
 	Items = Items0,
-	Error = yes
+	Error = Error0
     ).
 
 	% Create a dummy term.
@@ -345,7 +345,10 @@ dummy_term_with_context(Context, Term) :-
 :- mode read_all_items(in, out, out, out, di, uo) is det.
 
 read_all_items(ModuleName, Messages, Items, Error) -->
-	read_items_loop(ModuleName, [], [], no, Messages, Items, Error).
+	io__input_stream(Stream),
+	io__input_stream_name(Stream, SourceFileName),
+	read_items_loop(ModuleName, SourceFileName, [], [], no,
+			Messages, Items, Error).
 
 %-----------------------------------------------------------------------------%
 
@@ -363,49 +366,50 @@ read_all_items(ModuleName, Messages, Items, Error) -->
 	% implementation unless the compiler is smart enough to inline
 	% read_items_loop_2.
 
-:- pred read_items_loop(string, message_list, item_list, module_error, 
+:- pred read_items_loop(string, string, message_list, item_list, module_error, 
 			message_list, item_list, module_error, 
 			io__state, io__state).
-:- mode read_items_loop(in, in, in, in, out, out, out, di, uo) is det.
+:- mode read_items_loop(in, in, in, in, in, out, out, out, di, uo) is det.
 
-read_items_loop(ModuleName, Msgs1, Items1, Error1, Msgs, Items, Error) -->
-	io__gc_call(read_item(ModuleName, MaybeItem)),
- 	read_items_loop_2(ModuleName, MaybeItem, Msgs1, Items1, Error1, 
-				Msgs, Items, Error).
+read_items_loop(ModuleName, SourceFileName, Msgs1, Items1, Error1,
+		Msgs, Items, Error) -->
+	io__gc_call(read_item(ModuleName, SourceFileName, MaybeItem)),
+ 	read_items_loop_2(MaybeItem, ModuleName, SourceFileName,
+			Msgs1, Items1, Error1, Msgs, Items, Error).
 
 %-----------------------------------------------------------------------------%
 
-:- pred read_items_loop_2(string, maybe_item_or_eof, message_list, item_list,
-			module_error, message_list, item_list, module_error,
+:- pred read_items_loop_2(maybe_item_or_eof, string, string,
+			message_list, item_list, module_error,
+			message_list, item_list, module_error,
 			io__state, io__state).
-:- mode read_items_loop_2(in, in, in, in, in, out, out, out, di, uo) is det.
+:- mode read_items_loop_2(in, in, in, in, in, in, out, out, out, di, uo) is det.
 
-:- pragma(inline, read_items_loop_2/10).
+:- pragma(inline, read_items_loop_2/11).
 
 % do a switch on the type of the next item
 
-read_items_loop_2(_ModuleName, eof, Msgs, Items, Error, Msgs, Items, Error) 
-			--> []. 
+read_items_loop_2(eof, _ModuleName, _SourceFileName, Msgs, Items, Error,
+		Msgs, Items, Error) --> []. 
 	% if the next item was end-of-file, then we're done.
 
-read_items_loop_2(ModuleName, syntax_error(ErrorMsg, LineNumber), Msgs0, 
-			Items0, _Error0, Msgs, Items, Error) -->
+read_items_loop_2(syntax_error(ErrorMsg, LineNumber), ModuleName,
+		SourceFileName, Msgs0, Items0, _Error0, Msgs, Items, Error) -->
 	% if the next item was a syntax error, then insert it in
 	% the list of messages and continue looping
-	io__input_stream(Stream),
-	io__input_stream_name(Stream, StreamName),
 	{
-	  term__context_init(StreamName, LineNumber, Context),
+	  term__context_init(SourceFileName, LineNumber, Context),
 	  dummy_term_with_context(Context, Term),
 	  ThisError = ErrorMsg - Term,
 	  Msgs1 = [ThisError | Msgs0],
 	  Items1 = Items0,
 	  Error1 = yes
 	},
-	read_items_loop(ModuleName, Msgs1, Items1, Error1, Msgs, Items, Error).
+	read_items_loop(ModuleName, SourceFileName, Msgs1, Items1, Error1,
+		Msgs, Items, Error).
 
-read_items_loop_2(ModuleName, error(M, T), Msgs0, Items0, _Error0, Msgs, Items, 
-			Error) -->
+read_items_loop_2(error(M, T), ModuleName, SourceFileName,
+		Msgs0, Items0, _Error0, Msgs, Items, Error) -->
 	% if the next item was a semantic error, then insert it in
 	% the list of messages and continue looping
 	{
@@ -413,18 +417,24 @@ read_items_loop_2(ModuleName, error(M, T), Msgs0, Items0, _Error0, Msgs, Items,
 	  Items1 = Items0,
 	  Error1 = yes
 	},
- 	read_items_loop(ModuleName, Msgs1, Items1, Error1, Msgs, Items, Error).
+ 	read_items_loop(ModuleName, SourceFileName, Msgs1, Items1, Error1,
+			Msgs, Items, Error).
 
-read_items_loop_2(ModuleName, ok(Item, Context), Msgs0, Items0, Error0,
-			Msgs, Items, Error) -->
-	% if the next item was a valid item, then insert it in
-	% the list of items and continue looping
-	{
-	  Msgs1 = Msgs0,
-	  Items1 = [Item - Context | Items0],
-	  Error1 = Error0
+read_items_loop_2(ok(Item, Context), ModuleName, SourceFileName0,
+			Msgs0, Items0, Error0, Msgs, Items, Error) -->
+	% if the next item was a valid item, check whether it was
+	% a `pragma source_file' declaration.  If so, set the new
+	% source file name, and consume that item, otherwise insert
+	% the item in the item list.  Then continue looping.
+	{ Item = pragma(source_file(NewSourceFileName)) ->
+		SourceFileName = NewSourceFileName,
+		Items1 = Items0
+	;
+		SourceFileName = SourceFileName0,
+		Items1 = [Item - Context | Items0]
 	},
- 	read_items_loop(ModuleName, Msgs1, Items1, Error1, Msgs, Items, Error).
+ 	read_items_loop(ModuleName, SourceFileName, Msgs0, Items1, Error0,
+			Msgs, Items, Error).
 
 %-----------------------------------------------------------------------------%
 
@@ -436,11 +446,11 @@ read_items_loop_2(ModuleName, ok(Item, Context), Msgs0, Items0, Error0,
 			;	error(string, term)
 			;	ok(item, term__context).
 
-:- pred read_item(string, maybe_item_or_eof, io__state, io__state).
-:- mode read_item(in, out, di, uo) is det.
+:- pred read_item(string, string, maybe_item_or_eof, io__state, io__state).
+:- mode read_item(in, in, out, di, uo) is det.
 
-read_item(ModuleName, MaybeItem) -->
-	term_io__read_term(MaybeTerm),
+read_item(ModuleName, SourceFileName, MaybeItem) -->
+	parser__read_term(SourceFileName, MaybeTerm),
 	{ process_read_term(ModuleName, MaybeTerm, MaybeItem) }.
 
 :- pred process_read_term(string, read_term, maybe_item_or_eof).
@@ -1163,10 +1173,10 @@ parse_decl(ModuleName, VarSet, F, Result) :-
 		->
 			Result = R
 		;
-			Result = error("Unrecognized declaration", F)
+			Result = error("unrecognized declaration", F)
 		)
 	;
-		Result = error("Atom expected after `:-'", F)
+		Result = error("atom expected after `:-'", F)
 	).
 
 	% process_decl(VarSet, Atom, Args, Result) succeeds if Atom(Args)
@@ -1303,9 +1313,9 @@ process_decl(_ModuleName0, VarSet, "module", [ModuleName], Result) :-
 		ModuleName = term__variable(_)
 	->
 		dummy_term(ErrorContext),
-		Result = error("Module names starting with capital letters must be quoted using single quotes (e.g. "":- module 'Foo'."")", ErrorContext)
+		Result = error("module names starting with capital letters must be quoted using single quotes (e.g. "":- module 'Foo'."")", ErrorContext)
 	;
-		Result = error("Module name expected", ModuleName)
+		Result = error("module name expected", ModuleName)
 	).
 
 process_decl(_ModuleName0, VarSet, "end_module", [ModuleName], Result) :-
@@ -1314,7 +1324,7 @@ process_decl(_ModuleName0, VarSet, "end_module", [ModuleName], Result) :-
 	->
 		Result = ok(module_defn(VarSet, end_module(Module)))
 	;
-		Result = error("Module name expected", ModuleName)
+		Result = error("module name expected", ModuleName)
 	).
 
 	% NU-Prolog `when' declarations are silently ignored for
@@ -1478,6 +1488,23 @@ parse_pragma(ModuleName, VarSet, PragmaTerms, Result) :-
 						varset, maybe1(item)).
 :- mode parse_pragma_type(in, in, in, in, in, out) is semidet.
 
+parse_pragma_type(_, "source_file", PragmaTerms, ErrorTerm, _VarSet, Result) :-
+	( PragmaTerms = [SourceFileTerm] ->
+	    (
+		SourceFileTerm = term__functor(term__string(SourceFile), [], _)
+	    ->
+		Result = ok(pragma(source_file(SourceFile)))
+	    ;
+		Result = error(
+		"String expected in `pragma source_file' declaration",
+				SourceFileTerm)
+	    )
+	;
+	    Result = error(
+		"Wrong number of arguments in `pragma source_file' declaration",
+			ErrorTerm)
+	).
+
 parse_pragma_type(_, "c_header_code", PragmaTerms,
 			ErrorTerm, _VarSet, Result) :-
     	(
@@ -1488,7 +1515,7 @@ parse_pragma_type(_, "c_header_code", PragmaTerms,
 	    ->
 	        Result = ok(pragma(c_header_code(HeaderCode)))
 	    ;
-		Result = error("Expected string for C header code", HeaderTerm)
+		Result = error("expected string for C header code", HeaderTerm)
 	    )
 	;
 	    Result = error(
@@ -1507,7 +1534,7 @@ parse_pragma_type(ModuleName, "c_code", PragmaTerms,
 	    ->
 	        Result = ok(pragma(c_code(Just_C_Code)))
 	    ;
-		Result = error("Expected string for C code", Just_C_Code_Term)
+		Result = error("expected string for C code", Just_C_Code_Term)
 	    )
 	;
     	    PragmaTerms = [PredAndVarsTerm, C_CodeTerm]
@@ -1678,14 +1705,14 @@ parse_pragma_c_code(ModuleName, Recursiveness, PredAndVarsTerm, C_CodeTerm,
 		    Result = error(ErrorMessage, PredAndVarsTerm)
 	        )
 	    ;
-		Result = error("Expected string for C code", C_CodeTerm)
+		Result = error("expected string for C code", C_CodeTerm)
 	    )
         ;
 	    PredNameResult = error(Msg, Term),
 	    Result = error(Msg, Term)
 	)
     ;
-	Result = error("Unexpected variable in pragma(c_code, ...)",
+	Result = error("unexpected variable in pragma(c_code, ...)",
 						PredAndVarsTerm)
     ).
 
@@ -1844,7 +1871,7 @@ process_du_type_2(ok(Functor, Args), Body, Result) :-
 	->
 		Result = ok(du_type(Functor, Args, Constrs))
 	;
-		Result = error("Invalid RHS of type definition", Body)
+		Result = error("invalid RHS of type definition", Body)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -1874,7 +1901,7 @@ process_abstract_type_2(ok(Functor, Args), ok(abstract_type(Functor, Args))).
 :- mode check_for_errors(in, in, in, out) is det.
 check_for_errors(ModuleName, Head, Body, Result) :-
 	( Head = term__variable(_) ->
-		Result = error("Variable on LHS of type definition", Head)
+		Result = error("variable on LHS of type definition", Head)
 	;
 		parse_qualified_term(ModuleName, Head, "type definition", R),
 		check_for_errors_2(R, Body, Head, Result)
@@ -1896,7 +1923,7 @@ check_for_errors_3(Name, Args, Body, Head, Result) :-
 			Arg \= term__variable(_)
 		)
 	->
-		Result = error("Type parameters must be variables", Head)
+		Result = error("type parameters must be variables", Head)
 	;
 	% check that all the head arg variables are distinct
 	  %%%	some [Arg2, OtherArgs]
@@ -1905,7 +1932,7 @@ check_for_errors_3(Name, Args, Body, Head, Result) :-
 			list__member(Arg2, OtherArgs)
 		)
 	->
-		Result = error("Repeated type parameters in LHS of type defn", Head)
+		Result = error("repeated type parameters in LHS of type defn", Head)
 	% check that all the variables in the body occur in the head
 	; %%% some [Var2]
 		(
@@ -1913,7 +1940,7 @@ check_for_errors_3(Name, Args, Body, Head, Result) :-
 			\+ term__contains_var_list(Args, Var2)
 		)
 	->
-		Result = error("Free type parameter in RHS of type definition",
+		Result = error("free type parameter in RHS of type definition",
 				Body)
 	;
 		Result = ok(Name, Args)
@@ -2023,7 +2050,7 @@ process_pred_2(ok(F, As0), PredType, VarSet, MaybeDet, Cond, Result) :-
 	->
 		Result = ok(pred(VarSet, F, As, MaybeDet, Cond))
 	;
-		Result = error("Syntax error in `:- pred' declaration",
+		Result = error("syntax error in `:- pred' declaration",
 				PredType)
 	).
 process_pred_2(error(M, T), _, _, _, _, error(M, T)).
@@ -2103,7 +2130,7 @@ process_pred_mode(ok(F, As0), PredMode, VarSet, MaybeDet, Cond, Result) :-
 	->
 		Result = ok(pred_mode(VarSet, F, As, MaybeDet, Cond))
 	;
-		Result = error("Syntax error in predicate mode declaration",
+		Result = error("syntax error in predicate mode declaration",
 				PredMode)
 	).
 process_pred_mode(error(M, T), _, _, _, _, error(M, T)).
@@ -2189,7 +2216,7 @@ convert_inst_defn_2(ok(Name, Args), Head, Body, Result) :-
 			Arg \= term__variable(_)
 		)
 	->
-		Result = error("Inst parameters must be variables", Head)
+		Result = error("inst parameters must be variables", Head)
 	;
 	% check that all the head arg variables are distinct
 	%%%	some [Arg2, OtherArgs]
@@ -2198,7 +2225,7 @@ convert_inst_defn_2(ok(Name, Args), Head, Body, Result) :-
 			list__member(Arg2, OtherArgs)
 		)
 	->
-		Result = error("Repeated inst parameters in LHS of inst defn",
+		Result = error("repeated inst parameters in LHS of inst defn",
 				Head)
 	;
 	% check that all the variables in the body occur in the head
@@ -2208,7 +2235,7 @@ convert_inst_defn_2(ok(Name, Args), Head, Body, Result) :-
 			\+ term__contains_var_list(Args, Var2)
 		)
 	->
-		Result = error("Free inst parameter in RHS of inst definition",
+		Result = error("free inst parameter in RHS of inst definition",
 				Body)
 	;
 		% should improve the error message here
@@ -2218,7 +2245,7 @@ convert_inst_defn_2(ok(Name, Args), Head, Body, Result) :-
 		->
 			Result = ok(eqv_inst(Name, Args, ConvertedBody))
 		;
-			Result = error("Syntax error in inst body", Body)
+			Result = error("syntax error in inst body", Body)
 		)
 	).
 
@@ -2239,7 +2266,7 @@ convert_abstract_inst_defn_2(ok(Name, Args), Head, Result) :-
 			Arg \= term__variable(_)
 		)
 	->
-		Result = error("Inst parameters must be variables", Head)
+		Result = error("inst parameters must be variables", Head)
 	;
 	% check that all the head arg variables are distinct
 	%%%	some [Arg2, OtherArgs]
@@ -2425,7 +2452,7 @@ convert_mode_defn_2(ok(Name, Args), Head, Body, Result) :-
 			Arg \= term__variable(_)
 		)
 	->
-		Result = error("Mode parameters must be variables", Head)
+		Result = error("mode parameters must be variables", Head)
 	;
 	% check that all the head arg variables are distinct
 		%%% some [Arg2, OtherArgs]
@@ -2434,7 +2461,7 @@ convert_mode_defn_2(ok(Name, Args), Head, Body, Result) :-
 			list__member(Arg2, OtherArgs)
 		)
 	->
-		Result = error("Repeated parameters in LHS of mode defn",
+		Result = error("repeated parameters in LHS of mode defn",
 				Head)
 	% check that all the variables in the body occur in the head
 	; %%% some [Var2]
@@ -2443,7 +2470,7 @@ convert_mode_defn_2(ok(Name, Args), Head, Body, Result) :-
 			\+ term__contains_var_list(Args, Var2)
 		)
 	->
-		Result = error("Free inst parameter in RHS of mode definition",
+		Result = error("free inst parameter in RHS of mode definition",
 				Body)
 	;
 		% should improve the error message here
@@ -2455,7 +2482,7 @@ convert_mode_defn_2(ok(Name, Args), Head, Body, Result) :-
 		;
 			% catch-all error message - we should do
 			% better than this
-			Result = error("Syntax error in mode definition body",
+			Result = error("syntax error in mode definition body",
 					Body)
 		)
 	).
@@ -2757,7 +2784,7 @@ parse_module_specifier(Term, Result) :-
 	->
 		Result = ok(ModuleName)
 	;
-		Result = error("Module specifier should be an identifier", Term)
+		Result = error("module specifier should be an identifier", Term)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -2888,10 +2915,10 @@ parse_symbol_name_specifier(Term, Result) :-
 		process_maybe1(make_name_arity_specifier(Arity), NameResult,
 			Result)
 	    ;
-		Result = error("Arity in symbol name specifier must be a non-negative integer", Term)
+		Result = error("arity in symbol name specifier must be a non-negative integer", Term)
 	    )
         ;
-	    Result = error("Arity in symbol name specifier must be an integer", Term)
+	    Result = error("arity in symbol name specifier must be an integer", Term)
         )
     ;
 	parse_symbol_name(Term, SymbolNameResult),
@@ -2941,13 +2968,13 @@ parse_qualified_term(DefaultModName, Term, Msg, Result) :-
 		->
 		    Result = ok(qualified(Module, Name), Args)
 		;
-		    Result = error("Module qualifier in definition does not match preceding `:- module' declaration", Term)
+		    Result = error("module qualifier in definition does not match preceding `:- module' declaration", Term)
 		)
 	    ;
-		Result = error("Module name identifier expected before ':' in qualified symbol name", Term)
+		Result = error("module name identifier expected before ':' in qualified symbol name", Term)
             )
         ;
-            Result = error("Identifier expected after ':' in qualified symbol name", Term)
+            Result = error("identifier expected after ':' in qualified symbol name", Term)
 	)
     ;
         ( 
@@ -2996,10 +3023,10 @@ parse_symbol_name(DefaultModName, Term, Result) :-
 	    ->
 		Result = ok(qualified(Module, Name))
 	    ;
-		Result = error("Module name identifier expected before ':' in qualified symbol name", Term)
+		Result = error("module name identifier expected before ':' in qualified symbol name", Term)
             )
         ;
-            Result = error("Identifier expected after ':' in qualified symbol name", Term)
+            Result = error("identifier expected after ':' in qualified symbol name", Term)
 	)
     ;
         ( 
@@ -3013,7 +3040,7 @@ parse_symbol_name(DefaultModName, Term, Result) :-
 		Result = ok(qualified(DefaultModName, Name2))
 	    )
         ;
-            Result = error("Symbol name specifier expected", Term)
+            Result = error("symbol name specifier expected", Term)
         )
     ).
 

@@ -556,6 +556,7 @@ qualify_type(Type0, Type, Info0, Info) -->
 :- pred qualify_pragma((pragma_type)::in, (pragma_type)::out,
 		mq_info::in, mq_info::out, io__state::di, io__state::uo) is det.
 
+qualify_pragma(source_file(File), source_file(File), Info, Info) --> [].
 qualify_pragma(c_header_code(Code), c_header_code(Code), Info, Info) --> [].
 qualify_pragma(c_code(Code), c_code(Code), Info, Info) --> [].
 qualify_pragma(c_code(Rec, SymName, PragmaVars0, Varset, CCode),

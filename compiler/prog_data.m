@@ -87,8 +87,10 @@
 				% Predname, Arity
 			;	obsolete(sym_name, int)
 				% Predname, Arity
-			;	export(sym_name, list(mode), string).
+			;	export(sym_name, list(mode), string)
 				% Predname, Modes, C function name.
+			;	source_file(string).
+				% Source file name.
 
 	% For pragma c_code, there are two different calling conventions,
 	% one for C code that may recursively call Mercury code, and another
