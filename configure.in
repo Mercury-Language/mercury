@@ -87,12 +87,12 @@ if test "$BOOTSTRAP_MC" != ""; then
 
 		:- implementation.
 	
-		% Check that we can declare foreign_code for C and MC++.
+		% Check that we can declare foreign_proc for C and MC++.
 		:- pred foo(int::out) is det.
-		:- pragma foreign_code("C",    foo(X::out),
+		:- pragma foreign_proc("C",    foo(X::out),
 			[[will_not_call_mercury, thread_safe]],
 			" X = 42; ").
-		:- pragma foreign_code("MC++", foo(X::out),
+		:- pragma foreign_proc("MC++", foo(X::out),
 			[[will_not_call_mercury, thread_safe]],
 			" X = 42; ").
 

@@ -632,21 +632,21 @@ ML_make_array(MR_Integer size, MR_Word item)
 }
 ").
 
-:- pragma foreign_code("C", 
+:- pragma foreign_proc("C", 
 		array__init(Size::in, Item::in, Array::array_uo),
 		[will_not_call_mercury, thread_safe], "
 	MR_maybe_record_allocation(Size + 1, MR_PROC_LABEL, ""array:array/1"");
 	Array = (MR_Word) ML_make_array(Size, Item);
 ").
 
-:- pragma foreign_code("C",
+:- pragma foreign_proc("C",
 		array__make_empty_array(Array::array_uo),
 		[will_not_call_mercury, thread_safe], "
 	MR_maybe_record_allocation(1, MR_PROC_LABEL, ""array:array/1"");
 	Array = (MR_Word) ML_make_array(0, 0);
 ").
 
-:- pragma foreign_code("MC++", 
+:- pragma foreign_proc("MC++", 
 		array__init(Size::in, Item::in, Array::array_uo),
 		[will_not_call_mercury, thread_safe], "
         mercury::runtime::Errors::SORRY(""foreign code for this predicate"");
@@ -654,7 +654,7 @@ ML_make_array(MR_Integer size, MR_Word item)
 	Array = (MR_Word) System::Array::CreateInstance(Item->GetType(), Size);
 ").
 
-:- pragma foreign_code("MC++",
+:- pragma foreign_proc("MC++",
 		array__make_empty_array(Array::array_uo),
 		[will_not_call_mercury, thread_safe], "
         mercury::runtime::Errors::SORRY(""foreign code for this predicate"");
@@ -667,27 +667,27 @@ ML_make_array(MR_Integer size, MR_Word item)
 
 %-----------------------------------------------------------------------------%
 
-:- pragma foreign_code("C",
+:- pragma foreign_proc("C",
 		array__min(Array::array_ui, Min::out),
 		[will_not_call_mercury, thread_safe], "
 	/* Array not used */
 	Min = 0;
 ").
-:- pragma foreign_code("C", 
+:- pragma foreign_proc("C", 
 		array__min(Array::in, Min::out),
 		[will_not_call_mercury, thread_safe], "
 	/* Array not used */
 	Min = 0;
 ").
 
-:- pragma foreign_code("MC++",
+:- pragma foreign_proc("MC++",
 		array__min(Array::array_ui, Min::out),
 		[will_not_call_mercury, thread_safe], "
         mercury::runtime::Errors::SORRY(""foreign code for this predicate"");
 	/* Array not used */
 	Min = 0;
 ").
-:- pragma foreign_code("MC++", 
+:- pragma foreign_proc("MC++", 
 		array__min(Array::in, Min::out),
 		[will_not_call_mercury, thread_safe], "
         mercury::runtime::Errors::SORRY(""foreign code for this predicate"");
@@ -695,23 +695,23 @@ ML_make_array(MR_Integer size, MR_Word item)
 	Min = 0;
 ").
 
-:- pragma foreign_code("C", 
+:- pragma foreign_proc("C", 
 		array__max(Array::array_ui, Max::out), 
 		[will_not_call_mercury, thread_safe], "
 	Max = ((MR_ArrayType *)Array)->size - 1;
 ").
-:- pragma foreign_code("C",
+:- pragma foreign_proc("C",
 		array__max(Array::in, Max::out), 
 		[will_not_call_mercury, thread_safe], "
 	Max = ((MR_ArrayType *)Array)->size - 1;
 ").
-:- pragma foreign_code("MC++", 
+:- pragma foreign_proc("MC++", 
 		array__max(Array::array_ui, Max::out), 
 		[will_not_call_mercury, thread_safe], "
         mercury::runtime::Errors::SORRY(""foreign code for this predicate"");
 	Max = Array->get_Length() - 1;
 ").
-:- pragma foreign_code("MC++",
+:- pragma foreign_proc("MC++",
 		array__max(Array::in, Max::out), 
 		[will_not_call_mercury, thread_safe], "
         mercury::runtime::Errors::SORRY(""foreign code for this predicate"");
@@ -725,24 +725,24 @@ array__bounds(Array, Min, Max) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pragma foreign_code("C",
+:- pragma foreign_proc("C",
 		array__size(Array::array_ui, Max::out),
 		[will_not_call_mercury, thread_safe], "
 	Max = ((MR_ArrayType *)Array)->size;
 ").
-:- pragma foreign_code("C",
+:- pragma foreign_proc("C",
 		array__size(Array::in, Max::out),
 		[will_not_call_mercury, thread_safe], "
 	Max = ((MR_ArrayType *)Array)->size;
 ").
 
-:- pragma foreign_code("MC++",
+:- pragma foreign_proc("MC++",
 		array__size(Array::array_ui, Max::out),
 		[will_not_call_mercury, thread_safe], "
         mercury::runtime::Errors::SORRY(""foreign code for this predicate"");
 	Max = Array->get_Length() - 1;
 ").
-:- pragma foreign_code("MC++",
+:- pragma foreign_proc("MC++",
 		array__size(Array::in, Max::out),
 		[will_not_call_mercury, thread_safe], "
         mercury::runtime::Errors::SORRY(""foreign code for this predicate"");
@@ -774,7 +774,7 @@ array__slow_set(Array0, Index, Item, Array) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pragma foreign_code("C",
+:- pragma foreign_proc("C",
 		array__lookup(Array::array_ui, Index::in, Item::out),
 		[will_not_call_mercury, thread_safe], "{
 	MR_ArrayType *array = (MR_ArrayType *)Array;
@@ -785,7 +785,7 @@ array__slow_set(Array0, Index, Item, Array) :-
 #endif
 	Item = array->elements[Index];
 }").
-:- pragma foreign_code("C",
+:- pragma foreign_proc("C",
 		array__lookup(Array::in, Index::in, Item::out),
 		[will_not_call_mercury, thread_safe], "{
 	MR_ArrayType *array = (MR_ArrayType *)Array;
@@ -797,13 +797,13 @@ array__slow_set(Array0, Index, Item, Array) :-
 	Item = array->elements[Index];
 }").
 
-:- pragma foreign_code("MC++",
+:- pragma foreign_proc("MC++",
 		array__lookup(Array::array_ui, Index::in, Item::out),
 		[will_not_call_mercury, thread_safe], "{
         mercury::runtime::Errors::SORRY(""foreign code for this predicate"");
 	Item = Array->GetValue(Index);
 }").
-:- pragma foreign_code("MC++",
+:- pragma foreign_proc("MC++",
 		array__lookup(Array::in, Index::in, Item::out),
 		[will_not_call_mercury, thread_safe], "{
         mercury::runtime::Errors::SORRY(""foreign code for this predicate"");
@@ -813,7 +813,7 @@ array__slow_set(Array0, Index, Item, Array) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pragma foreign_code("C",
+:- pragma foreign_proc("C",
 		array__set(Array0::array_di, Index::in,
 		Item::in, Array::array_uo),
 		[will_not_call_mercury, thread_safe], "{
@@ -827,7 +827,7 @@ array__slow_set(Array0, Index, Item, Array) :-
 	Array = Array0;
 }").
 
-:- pragma foreign_code("MC++",
+:- pragma foreign_proc("MC++",
 		array__set(Array0::array_di, Index::in,
 		Item::in, Array::array_uo),
 		[will_not_call_mercury, thread_safe], "{
@@ -878,14 +878,14 @@ ML_resize_array(MR_ArrayType *old_array, MR_Integer array_size,
 }
 ").
 
-:- pragma foreign_code("C",
+:- pragma foreign_proc("C",
 		array__resize(Array0::array_di, Size::in, Item::in,
 		Array::array_uo), [will_not_call_mercury, thread_safe], "
 	MR_maybe_record_allocation(Size + 1, MR_PROC_LABEL, ""array:array/1"");
 	Array = (MR_Word) ML_resize_array(
 				(MR_ArrayType *) Array0, Size, Item);
 ").
-:- pragma foreign_code("MC++",
+:- pragma foreign_proc("MC++",
 		array__resize(_Array0::array_di, _Size::in, _Item::in,
 		_Array::array_uo), [will_not_call_mercury, thread_safe], "
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
@@ -930,14 +930,14 @@ ML_shrink_array(MR_ArrayType *old_array, MR_Integer array_size)
 }
 ").
 
-:- pragma foreign_code("C",
+:- pragma foreign_proc("C",
 		array__shrink(Array0::array_di, Size::in, Array::array_uo),
 		[will_not_call_mercury, thread_safe], "
 	MR_maybe_record_allocation(Size + 1, MR_PROC_LABEL, ""array:array/1"");
 	Array = (MR_Word) ML_shrink_array(
 				(MR_ArrayType *) Array0, Size);
 ").
-:- pragma foreign_code("MC++",
+:- pragma foreign_proc("MC++",
 		array__shrink(_Array0::array_di, _Size::in, _Array::array_uo),
 		[will_not_call_mercury, thread_safe], "
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
@@ -973,7 +973,7 @@ ML_copy_array(MR_ArrayType *old_array)
 }
 ").
 
-:- pragma foreign_code("C",
+:- pragma foreign_proc("C",
 		array__copy(Array0::array_ui, Array::array_uo),
 		[will_not_call_mercury, thread_safe], "
 	MR_maybe_record_allocation((((MR_ArrayType *) Array0)->size) + 1,
@@ -981,7 +981,7 @@ ML_copy_array(MR_ArrayType *old_array)
 	Array = (MR_Word) ML_copy_array((MR_ArrayType *) Array0);
 ").
 
-:- pragma foreign_code("C",
+:- pragma foreign_proc("C",
 		array__copy(Array0::in, Array::array_uo),
 		[will_not_call_mercury, thread_safe], "
 	MR_maybe_record_allocation((((MR_ArrayType *) Array0)->size) + 1,
@@ -989,7 +989,7 @@ ML_copy_array(MR_ArrayType *old_array)
 	Array = (MR_Word) ML_copy_array((MR_ArrayType *) Array0);
 ").
 
-:- pragma foreign_code("MC++",
+:- pragma foreign_proc("MC++",
 		array__copy(Array0::array_ui, Array::array_uo),
 		[will_not_call_mercury, thread_safe], "
 		// XXX need to deep copy it
@@ -998,7 +998,7 @@ ML_copy_array(MR_ArrayType *old_array)
 
 ").
 
-:- pragma foreign_code("MC++",
+:- pragma foreign_proc("MC++",
 		array__copy(Array0::in, Array::array_uo),
 		[will_not_call_mercury, thread_safe], "
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");

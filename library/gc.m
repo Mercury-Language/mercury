@@ -38,7 +38,7 @@ garbage_collect -->
 
 :- pragma no_inline(garbage_collect/0).
 
-:- pragma foreign_code("C", garbage_collect, [may_call_mercury], "
+:- pragma foreign_proc("C", garbage_collect, [may_call_mercury], "
 #ifdef CONSERVATIVE_GC
   #ifndef MR_HIGHLEVEL_CODE
 	/* clear out the stacks and registers before garbage collecting */
@@ -50,7 +50,7 @@ garbage_collect -->
 	GC_gcollect();
 #endif
 ").
-:- pragma foreign_code("MC++", garbage_collect, [will_not_call_mercury], "
+:- pragma foreign_proc("MC++", garbage_collect, [will_not_call_mercury], "
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 ").
 

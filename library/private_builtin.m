@@ -120,11 +120,11 @@
 :- pragma inline(builtin_compare_string/3).
 :- pragma inline(builtin_compare_float/3).
 
-:- pragma foreign_code("C", free_heap(Val::di),
+:- pragma foreign_proc("C", free_heap(Val::di),
 	[will_not_call_mercury, thread_safe],
 	"MR_free_heap((void *) Val);").
 
-:- pragma foreign_code("MC++", free_heap(_Val::di),
+:- pragma foreign_proc("MC++", free_heap(_Val::di),
 	[will_not_call_mercury, thread_safe], "
 	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 ").
@@ -168,11 +168,11 @@ builtin_compare_string(R, S1, S2) :-
 :- pred builtin_strcmp(int, string, string).
 :- mode builtin_strcmp(out, in, in) is det.
 
-:- pragma foreign_code("C", builtin_strcmp(Res::out, S1::in, S2::in),
+:- pragma foreign_proc("C", builtin_strcmp(Res::out, S1::in, S2::in),
 	[will_not_call_mercury, thread_safe],
 	"Res = strcmp(S1, S2);").
 
-:- pragma foreign_code("MC++", builtin_strcmp(Res::out, S1::in, S2::in),
+:- pragma foreign_proc("MC++", builtin_strcmp(Res::out, S1::in, S2::in),
 	[will_not_call_mercury, thread_safe],
 "
 	Res = System::String::Compare(S1, S2);
@@ -711,14 +711,14 @@ static void init_runtime(void)
 
 ").
 
-:- pragma foreign_code("C",
+:- pragma foreign_proc("C",
 	type_info_from_typeclass_info(TypeClassInfo::in, Index::in,
 		TypeInfo::out), [will_not_call_mercury, thread_safe],
 "
 	TypeInfo = MR_typeclass_info_type_info(TypeClassInfo, Index);
 ").
 
-:- pragma foreign_code("C",
+:- pragma foreign_proc("C",
 	unconstrained_type_info_from_typeclass_info(TypeClassInfo::in,
 		Index::in, TypeInfo::out), [will_not_call_mercury, thread_safe],
 "
@@ -726,7 +726,7 @@ static void init_runtime(void)
 			Index);
 ").
 
-:- pragma foreign_code("C",
+:- pragma foreign_proc("C",
 	superclass_from_typeclass_info(TypeClassInfo0::in, Index::in,
 		TypeClassInfo::out), [will_not_call_mercury, thread_safe],
 "
@@ -734,7 +734,7 @@ static void init_runtime(void)
 		MR_typeclass_info_superclass_info(TypeClassInfo0, Index);
 ").
 
-:- pragma foreign_code("C",
+:- pragma foreign_proc("C",
 	instance_constraint_from_typeclass_info(TypeClassInfo0::in,
 		Index::in, TypeClassInfo::out),
 		[will_not_call_mercury, thread_safe],
@@ -743,14 +743,14 @@ static void init_runtime(void)
 		MR_typeclass_info_arg_typeclass_info(TypeClassInfo0, Index);
 ").
 
-:- pragma foreign_code("MC++",
+:- pragma foreign_proc("MC++",
 	type_info_from_typeclass_info(TypeClassInfo::in, Index::in,
 		TypeInfo::out), [will_not_call_mercury, thread_safe],
 "
 	TypeInfo = MR_typeclass_info_type_info(TypeClassInfo, Index);
 ").
 
-:- pragma foreign_code("MC++",
+:- pragma foreign_proc("MC++",
 	unconstrained_type_info_from_typeclass_info(TypeClassInfo::in,
 		Index::in, TypeInfo::out), [will_not_call_mercury, thread_safe],
 "
@@ -758,7 +758,7 @@ static void init_runtime(void)
 			Index);
 ").
 
-:- pragma foreign_code("MC++",
+:- pragma foreign_proc("MC++",
 	superclass_from_typeclass_info(TypeClassInfo0::in, Index::in,
 		TypeClassInfo::out), [will_not_call_mercury, thread_safe],
 "
@@ -766,7 +766,7 @@ static void init_runtime(void)
 		MR_typeclass_info_superclass_info(TypeClassInfo0, Index);
 ").
 
-:- pragma foreign_code("MC++",
+:- pragma foreign_proc("MC++",
 	instance_constraint_from_typeclass_info(TypeClassInfo0::in,
 		Index::in, TypeClassInfo::out),
 		[will_not_call_mercury, thread_safe],
@@ -812,7 +812,7 @@ static void init_runtime(void)
 
 :- implementation.
 
-:- pragma foreign_code("C", store_ticket(Ticket::out),
+:- pragma foreign_proc("C", store_ticket(Ticket::out),
 	[will_not_call_mercury, thread_safe],
 "
 #ifdef MR_USE_TRAIL
@@ -822,7 +822,7 @@ static void init_runtime(void)
 #endif
 ").
 
-:- pragma foreign_code("C", reset_ticket_undo(Ticket::in),
+:- pragma foreign_proc("C", reset_ticket_undo(Ticket::in),
 	[will_not_call_mercury, thread_safe],
 "
 #ifdef MR_USE_TRAIL
@@ -830,7 +830,7 @@ static void init_runtime(void)
 #endif
 ").
 
-:- pragma foreign_code("C", reset_ticket_commit(Ticket::in),
+:- pragma foreign_proc("C", reset_ticket_commit(Ticket::in),
 	[will_not_call_mercury, thread_safe],
 "
 #ifdef MR_USE_TRAIL
@@ -838,7 +838,7 @@ static void init_runtime(void)
 #endif
 ").
 
-:- pragma foreign_code("C", reset_ticket_solve(Ticket::in),
+:- pragma foreign_proc("C", reset_ticket_solve(Ticket::in),
 	[will_not_call_mercury, thread_safe],
 "
 #ifdef MR_USE_TRAIL
@@ -846,7 +846,7 @@ static void init_runtime(void)
 #endif
 ").
 
-:- pragma foreign_code("C", discard_ticket,
+:- pragma foreign_proc("C", discard_ticket,
 	[will_not_call_mercury, thread_safe],
 "
 #ifdef MR_USE_TRAIL
@@ -854,7 +854,7 @@ static void init_runtime(void)
 #endif
 ").
 
-:- pragma foreign_code("C", prune_ticket,
+:- pragma foreign_proc("C", prune_ticket,
 	[will_not_call_mercury, thread_safe],
 "
 #ifdef MR_USE_TRAIL
@@ -862,7 +862,7 @@ static void init_runtime(void)
 #endif
 ").
 
-:- pragma foreign_code("C", mark_ticket_stack(TicketCounter::out),
+:- pragma foreign_proc("C", mark_ticket_stack(TicketCounter::out),
 	[will_not_call_mercury, thread_safe],
 "
 #ifdef MR_USE_TRAIL
@@ -872,7 +872,7 @@ static void init_runtime(void)
 #endif
 ").
 
-:- pragma foreign_code("C", prune_tickets_to(TicketCounter::in),
+:- pragma foreign_proc("C", prune_tickets_to(TicketCounter::in),
 	[will_not_call_mercury, thread_safe],
 "
 #ifdef MR_USE_TRAIL
@@ -880,7 +880,7 @@ static void init_runtime(void)
 #endif
 ").
 
-:- pragma foreign_code("MC++", store_ticket(Ticket::out),
+:- pragma foreign_proc("MC++", store_ticket(Ticket::out),
 	[will_not_call_mercury, thread_safe],
 "
 #ifdef MR_USE_TRAIL
@@ -891,7 +891,7 @@ static void init_runtime(void)
 #endif
 ").
 
-:- pragma foreign_code("MC++", reset_ticket_undo(Ticket::in),
+:- pragma foreign_proc("MC++", reset_ticket_undo(Ticket::in),
 	[will_not_call_mercury, thread_safe],
 "
 #ifdef MR_USE_TRAIL
@@ -900,7 +900,7 @@ static void init_runtime(void)
 #endif
 ").
 
-:- pragma foreign_code("MC++", reset_ticket_commit(Ticket::in),
+:- pragma foreign_proc("MC++", reset_ticket_commit(Ticket::in),
 	[will_not_call_mercury, thread_safe],
 "
 #ifdef MR_USE_TRAIL
@@ -909,7 +909,7 @@ static void init_runtime(void)
 #endif
 ").
 
-:- pragma foreign_code("MC++", reset_ticket_solve(Ticket::in),
+:- pragma foreign_proc("MC++", reset_ticket_solve(Ticket::in),
 	[will_not_call_mercury, thread_safe],
 "
 #ifdef MR_USE_TRAIL
@@ -918,7 +918,7 @@ static void init_runtime(void)
 #endif
 ").
 
-:- pragma foreign_code("MC++", discard_ticket,
+:- pragma foreign_proc("MC++", discard_ticket,
 	[will_not_call_mercury, thread_safe],
 "
 #ifdef MR_USE_TRAIL
@@ -927,7 +927,7 @@ static void init_runtime(void)
 #endif
 ").
 
-:- pragma foreign_code("MC++", prune_ticket,
+:- pragma foreign_proc("MC++", prune_ticket,
 	[will_not_call_mercury, thread_safe],
 "
 #ifdef MR_USE_TRAIL
@@ -936,7 +936,7 @@ static void init_runtime(void)
 #endif
 ").
 
-:- pragma foreign_code("MC++", mark_ticket_stack(TicketCounter::out),
+:- pragma foreign_proc("MC++", mark_ticket_stack(TicketCounter::out),
 	[will_not_call_mercury, thread_safe],
 "
 #ifdef MR_USE_TRAIL
@@ -947,7 +947,7 @@ static void init_runtime(void)
 #endif
 ").
 
-:- pragma foreign_code("MC++", prune_tickets_to(TicketCounter::in),
+:- pragma foreign_proc("MC++", prune_tickets_to(TicketCounter::in),
 	[will_not_call_mercury, thread_safe],
 "
 #ifdef MR_USE_TRAIL
@@ -1018,42 +1018,42 @@ unused :-
 
 :- implementation.
 
-:- pragma foreign_code("C", var(_X::ui),
+:- pragma foreign_proc("C", var(_X::ui),
 		[thread_safe, will_not_call_mercury], "
 	SUCCESS_INDICATOR = FALSE;
 ").
-:- pragma foreign_code("C", var(_X::in),
+:- pragma foreign_proc("C", var(_X::in),
 		[thread_safe, will_not_call_mercury], "
 	SUCCESS_INDICATOR = FALSE;
 ").
-:- pragma foreign_code("C", var(_X::unused),
+:- pragma foreign_proc("C", var(_X::unused),
 		[thread_safe, will_not_call_mercury], "").
 
-:- pragma foreign_code("C", nonvar(_X::ui),
+:- pragma foreign_proc("C", nonvar(_X::ui),
 		[thread_safe, will_not_call_mercury], "").
-:- pragma foreign_code("C", nonvar(_X::in),
+:- pragma foreign_proc("C", nonvar(_X::in),
 		[thread_safe, will_not_call_mercury], "").
-:- pragma foreign_code("C", nonvar(_X::unused),
+:- pragma foreign_proc("C", nonvar(_X::unused),
 		[thread_safe, will_not_call_mercury], "
 	SUCCESS_INDICATOR = FALSE;
 ").
 
-:- pragma foreign_code("MC++", var(_X::ui),
+:- pragma foreign_proc("MC++", var(_X::ui),
 		[thread_safe, will_not_call_mercury], "
 	SUCCESS_INDICATOR = FALSE;
 ").
-:- pragma foreign_code("MC++", var(_X::in),
+:- pragma foreign_proc("MC++", var(_X::in),
 		[thread_safe, will_not_call_mercury], "
 	SUCCESS_INDICATOR = FALSE;
 ").
-:- pragma foreign_code("MC++", var(_X::unused),
+:- pragma foreign_proc("MC++", var(_X::unused),
 		[thread_safe, will_not_call_mercury], "").
 
-:- pragma foreign_code("MC++", nonvar(_X::ui),
+:- pragma foreign_proc("MC++", nonvar(_X::ui),
 		[thread_safe, will_not_call_mercury], "").
-:- pragma foreign_code("MC++", nonvar(_X::in),
+:- pragma foreign_proc("MC++", nonvar(_X::in),
 		[thread_safe, will_not_call_mercury], "").
-:- pragma foreign_code("MC++", nonvar(_X::unused),
+:- pragma foreign_proc("MC++", nonvar(_X::unused),
 		[thread_safe, will_not_call_mercury], "
 	SUCCESS_INDICATOR = FALSE;
 ").
