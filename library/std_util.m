@@ -27,7 +27,16 @@
 
 :- type pair(T1, T2)	--->	(T1 - T2).
 
+:- pred gc_call(pred).
+
+:- pred report_stats.
+
 :- implementation.
+
+/*
+:- external("NU-Prolog", gc_call/1).
+:- external("NU-Prolog", report_stats/0).
+*/
 
 :- end_module std_util.
 

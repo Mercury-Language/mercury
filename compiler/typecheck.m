@@ -83,6 +83,9 @@
 %-----------------------------------------------------------------------------%
 %  TODO:
 %
+% 	XXX 	we should check that a predicate's type parameters
+%		don't get bound.
+%
 % 	XXX 	we should handle explicit type qualifications
 % 		(and remove them here) but we don't do so yet
 %
@@ -90,7 +93,9 @@
 %
 %	XXX	we should handle overloading of predicates
 %
-%	XXX	improve error reporting
+%	XXX	error reporting could still be improved;
+%		eg. undefined symbols are only handled cleanly
+%		if they occur as predicate arguments.
 %
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -129,12 +134,18 @@
 	% XXX need to pass FoundError to all steps
 
 typecheck(Module0, Module, FoundError) -->
+	{ report_stats }, 
 	io__write_string("Checking for undefined types...\n"),
+	{ report_stats }, 
 	check_undefined_types(Module0, Module1),
+	{ report_stats }, 
 	io__write_string("Checking for circularly defined types...\n"),
 	check_circular_types(Module1, Module2),
+	{ report_stats }, 
 	io__write_string("Type-checking clauses...\n"),
-	check_pred_types(Module2, Module, FoundError).
+	check_pred_types(Module2, Module, FoundError),
+	{ report_stats },
+	[].
 
 %-----------------------------------------------------------------------------%
 	
@@ -163,6 +174,7 @@ typecheck_pred_types_2([PredId | PredIds], ModuleInfo0, Error0,
 	io__write_string("Type-checking predicate "),
 	write_pred_id(PredId),
 	io__write_string("\n"),
+	    %%% { report_stats },
 	{ predinfo_arg_types(PredInfo0, TypeVarSet, ArgTypes) },
 	{ predinfo_clauses(PredInfo0, Clauses0) },
 	typecheck_clause_list(Clauses0, PredId, TypeVarSet, ArgTypes,
@@ -187,8 +199,8 @@ typecheck_clause_list([], _PredId, _TypeVarSet, _ArgTypes, _ModuleInfo, Error,
 		--> [].
 typecheck_clause_list([Clause0|Clauses0], PredId, TypeVarSet, ArgTypes,
 		ModuleInfo, Error0, [Clause|Clauses], Error) -->
-	typecheck_clause(Clause0, PredId, TypeVarSet, ArgTypes, ModuleInfo,
-		Error0, Clause, Error1),
+	typecheck_clause(Clause0, PredId, TypeVarSet, ArgTypes,
+		ModuleInfo, Error0, Clause, Error1),
 	typecheck_clause_list(Clauses0, PredId, TypeVarSet, ArgTypes,
 		ModuleInfo, Error1, Clauses, Error).
 
@@ -211,6 +223,8 @@ typecheck_clause_list([Clause0|Clauses0], PredId, TypeVarSet, ArgTypes,
 	% But doing it deterministically would make bootstrapping more
 	% difficult, and most importantly would make good error
 	% messages very difficult.
+
+	% XXX we should do manual garbage collection here
 
 :- pred typecheck_clause(clause, pred_id, tvarset, list(type), module_info,
 		bool, clause, bool, io__state, io__state).
@@ -267,31 +281,39 @@ typecheck_finish_up([TypeAssign1, TypeAssign2 | _], TypeInfo, _Error,
 :- pred typecheck_goal(hlds__goal, type_info, type_info).
 :- mode typecheck_goal(input, typeinfo_di, typeinfo_uo).
 
-typecheck_goal(Goal - _GoalInfo) -->
-	typecheck_goal_2(Goal).
+typecheck_goal(Goal - _GoalInfo, TypeInfo0, TypeInfo) :-
+	(typecheck_goal_2(Goal, TypeInfo0, TypeInfo)).
 
 :- pred typecheck_goal_2(hlds__goal_expr, type_info, type_info).
 :- mode typecheck_goal_2(input, typeinfo_di, typeinfo_uo).
 
-typecheck_goal_2(true) --> [].
-typecheck_goal_2(fail) --> [].
 typecheck_goal_2(conj(List)) -->
+	%%% checkpoint("conj"),
 	typecheck_goal_list(List).
 typecheck_goal_2(disj(List)) -->
+	%%% checkpoint("disj"),
 	typecheck_goal_list(List).
 typecheck_goal_2(if_then_else(_Vs, A, B, C)) -->
+	%%% checkpoint("if"),
 	typecheck_goal(A),
+	%%% checkpoint("then"),
 	typecheck_goal(B),
+	%%% checkpoint("else"),
 	typecheck_goal(C).
 typecheck_goal_2(not(_Vs, A)) -->
+	%%% checkpoint("not"),
 	typecheck_goal(A).
 typecheck_goal_2(some(_Vs, G)) -->
+	%%% checkpoint("some"),
 	typecheck_goal(G).
 typecheck_goal_2(all(_Vs, G)) -->
+	%%% checkpoint("all"),
 	typecheck_goal(G).
 typecheck_goal_2(call(PredId, _Mode, Args, _Builtin)) -->
+	%%% checkpoint("call"),
 	typecheck_call_pred(PredId, Args).
 typecheck_goal_2(unify(A, B, _Mode, _Info)) -->
+	%%% checkpoint("unify"),
 	typecheck_unification(A, B).
 
 %-----------------------------------------------------------------------------%
@@ -314,16 +336,29 @@ typecheck_goal_list([Goal | Goals]) -->
 typecheck_call_pred(PredId, Args, TypeInfo0, TypeInfo) :-
 		% look up the called predicate's arg types
 	typeinfo_get_preds(TypeInfo0, Preds),
-	map__search(Preds, PredId, PredInfo),
-	predinfo_arg_types(PredInfo, PredTypeVarSet, PredArgTypes),
-		% rename apart the type variables in called
-		% predicate's arg types
-	typeinfo_get_typevarset(TypeInfo0, TypeVarSet0),
-	varset__merge(TypeVarSet0, PredTypeVarSet, TypeVarSet),
-	typeinfo_set_typevarset(TypeInfo0, TypeVarSet, TypeInfo1),
-		% unify the types of the call arguments with the
-		% called predicates' arg types
-	typecheck_term_has_type_list(Args, PredArgTypes, TypeInfo1, TypeInfo).
+	(if some [PredInfo]
+		map__search(Preds, PredId, PredInfo)
+	then
+		predinfo_arg_types(PredInfo, PredTypeVarSet, PredArgTypes),
+			% rename apart the type variables in called
+			% predicate's arg types
+		typeinfo_get_typevarset(TypeInfo0, TypeVarSet0),
+		varset__merge(TypeVarSet0, PredTypeVarSet, TypeVarSet),
+		typeinfo_set_typevarset(TypeInfo0, TypeVarSet, TypeInfo1),
+			% unify the types of the call arguments with the
+			% called predicates' arg types
+		typecheck_term_has_type_list(Args, PredArgTypes, TypeInfo1,
+				TypeInfo)
+	else
+		typeinfo_get_io_state(TypeInfo0, IOState0),
+		typeinfo_get_predid(TypeInfo0, CallingPredId),
+		typeinfo_get_context(TypeInfo0, Context),
+		report_error_undef_pred(CallingPredId, Context, PredId,
+			IOState0, IOState),
+		typeinfo_set_io_state(TypeInfo0, IOState, TypeInfoB1),
+		typeinfo_set_found_error(TypeInfoB1, true, TypeInfoB2),
+		typeinfo_set_type_assign_set(TypeInfoB2, [], TypeInfo)
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -369,18 +404,20 @@ get_type_of_var([], _VarId, []).
 get_type_of_var([TypeAssign | TypeAssigns], VarId, L) :-
 	get_type_of_var(TypeAssigns, VarId, L0),
 	type_assign_get_var_types(TypeAssign, VarTypes),
-	(if some [Type0]
+	( %%% if some [Type0]
 		map__search(VarTypes, VarId, Type0)
-	then
+	->
 		Type = Type0
-	else
+	;
 		type_assign_get_typevarset(TypeAssign, TVarSet),
 		varset__new_var(TVarSet, NewVar, _),
 		Type = term_variable(NewVar)
 	),
-	(if member_chk(Type, L0) then
+	(
+		member_chk(Type, L0)
+	->
 		L = L0
-	else
+	;
 		L = [Type | L0]
 	).
 
@@ -400,18 +437,18 @@ typecheck_var_has_type_2([TypeAssign0 | TypeAssignSet0], VarId, Type) -->
 type_assign_var_has_type(TypeAssign0, VarId, Type,
 		TypeAssignSet0, TypeAssignSet) :-
 	type_assign_get_var_types(TypeAssign0, VarTypes0),
-	(if some [VarType]
+	( %%% if some [VarType]
 		map__search(VarTypes0, VarId, VarType)
-	then
-		(if some [TypeAssign1]
+	->
+		( %%% if some [TypeAssign1]
 			type_assign_unify_type(TypeAssign0, VarType, Type,
 					TypeAssign1)
-		then
+		->
 			TypeAssignSet = [TypeAssign1 | TypeAssignSet0]
-		else
+		;
 			TypeAssignSet = TypeAssignSet0
 		)
-	else
+	;
 		map__set(VarTypes0, VarId, Type, VarTypes),
 		type_assign_set_var_types(TypeAssign0, VarTypes, TypeAssign),
 		TypeAssignSet = [TypeAssign | TypeAssignSet0]
@@ -436,14 +473,22 @@ typecheck_term_has_type(term_variable(Var), Type, TypeInfo0, TypeInfo) :-
 
 typecheck_term_has_type(term_functor(F, As, C), Type, TypeInfo0, TypeInfo) :-
 	length(As, Arity),
-	typeinfo_get_ctor_list(TypeInfo, F, Arity, ConsDefnList),
-	typeinfo_get_type_assign_set(TypeInfo0, TypeAssignSet0),
-	typecheck_cons_has_type(TypeAssignSet0, ConsDefnList, As, Type,
-		TypeInfo, [], TypeAssignSet),
-	(if
+	typeinfo_get_ctor_list(TypeInfo0, F, Arity, ConsDefnList),
+	(ConsDefnList = [] ->
+	    typeinfo_get_io_state(TypeInfo0, IOState0),
+	    typeinfo_get_predid(TypeInfo0, PredId),
+	    report_error_undef_cons(PredId, C, F, Arity, IOState0, IOState),
+	    typeinfo_set_io_state(TypeInfo0, IOState, TypeInfo1),
+	    typeinfo_set_found_error(TypeInfo1, true, TypeInfo2),
+	    typeinfo_set_type_assign_set(TypeInfo2, [], TypeInfo)
+	;
+	    typeinfo_get_type_assign_set(TypeInfo0, TypeAssignSet0),
+	    typecheck_cons_has_type(TypeAssignSet0, ConsDefnList, As, Type,
+			TypeInfo, [], TypeAssignSet),
+	    (
 		TypeAssignSet = [],
-		(not TypeAssignSet0 = [])
-	then
+		(\+ TypeAssignSet0 = [])
+	    ->
 		typeinfo_get_io_state(TypeInfo0, IOState0),
 		typeinfo_get_predid(TypeInfo0, PredId),
 		report_error_cons(PredId, C, F, Arity, Type,
@@ -451,8 +496,9 @@ typecheck_term_has_type(term_functor(F, As, C), Type, TypeInfo0, TypeInfo) :-
 		typeinfo_set_io_state(TypeInfo0, IOState, TypeInfo1),
 		typeinfo_set_found_error(TypeInfo1, true, TypeInfo2),
 		typeinfo_set_type_assign_set(TypeInfo2, TypeAssignSet, TypeInfo)
-	else
+	    ;
 		typeinfo_set_type_assign_set(TypeInfo0, TypeAssignSet, TypeInfo)
+	    )
 	).
 
 %-----------------------------------------------------------------------------%
@@ -517,7 +563,9 @@ type_assign_cons_has_type_2(ConsDefn, TypeAssign0, Args, Type, TypeInfo,
 	type_assign_get_typevarset(TypeAssign0, TypeVarSet0),
 	type_id_to_type(TypeId, Context, TypeVarSet0, ConsType, TypeVarSet),
 	type_assign_set_typevarset(TypeAssign0, TypeVarSet, TypeAssign1),
+
 	( type_assign_unify_type(TypeAssign1, ConsType, Type, TypeAssign2) ->
+			% check the types of the arguments
 		type_assign_term_has_type_list(Args, ArgTypes, TypeAssign2,
 			TypeInfo, TypeAssignSet0, TypeAssignSet)
 	;
@@ -529,11 +577,23 @@ type_assign_cons_has_type_2(ConsDefn, TypeAssign0, Args, Type, TypeInfo,
 :- mode type_assign_term_has_type_list(input, input, input,
 			typeinfo_ui, input, output).
 
-type_assign_term_has_type_list([], [], _, _) --> [].
+type_assign_term_has_type_list([], [], _, _, TypeAssignSet, TypeAssignSet).
 type_assign_term_has_type_list([Arg | Args], [Type | Types], TypeAssign0,
-		TypeInfo) -->
-	type_assign_term_has_type(Arg, Type, TypeAssign0, TypeInfo),
-	type_assign_term_has_type_list(Args, Types, TypeAssign0, TypeInfo).
+		TypeInfo, TypeAssignSet0, TypeAssignSet) :-
+	type_assign_term_has_type(Arg, Type, TypeAssign0, TypeInfo,
+		[], TypeAssignSet1),
+	type_assign_list_term_has_type_list(TypeAssignSet1,
+		Args, Types, TypeInfo, TypeAssignSet0, TypeAssignSet).
+
+:- pred type_assign_list_term_has_type_list(type_assign_set, list(term),
+		list(type), type_info, type_assign_set, type_assign_set).
+:- mode type_assign_list_term_has_type_list(input, input, input,
+			typeinfo_ui, input, output).
+
+type_assign_list_term_has_type_list([], _, _, _) --> [].
+type_assign_list_term_has_type_list([TA | TAs], Args, Types, TypeInfo) -->
+	type_assign_term_has_type_list(Args, Types, TA, TypeInfo),
+	type_assign_list_term_has_type_list(TAs, Args, Types, TypeInfo).
 	
 :- pred type_assign_term_has_type(term, type, type_assign,
 			type_info, type_assign_set, type_assign_set).
@@ -548,6 +608,34 @@ type_assign_term_has_type(term_functor(F, Args, _Context), Type, TypeAssign,
 	{ typeinfo_get_ctor_list(TypeInfo, F, Arity, ConsDefnList) },
 	type_assign_cons_has_type(ConsDefnList, TypeAssign, Args, Type,
 		TypeInfo).
+
+%-----------------------------------------------------------------------------%
+
+	% used for debugging
+
+:- pred checkpoint(string, type_info, type_info).
+:- mode checkpoint(input, typeinfo_di, typeinfo_uo).
+
+/***
+checkpoint(_, T, T).
+****/
+checkpoint(Msg, T0, T) :-
+	typeinfo_get_io_state(T0, I0),
+	checkpoint_2(Msg, T0, I0, I),
+	typeinfo_set_io_state(T0, I, T).
+
+:- pred checkpoint_2(string, type_info, io__state, io__state).
+:- mode checkpoint_2(input, typeinfo_ui, di, uo).
+
+checkpoint_2(Msg, T0) -->
+	io__write_string("Typechecking "),
+	io__write_string(Msg),
+	io__write_string(": "),
+	{ report_stats },
+	%%% io__write_string("\n"),
+	{ typeinfo_get_type_assign_set(T0, TypeAssignSet) },
+	{ typeinfo_get_varset(T0, VarSet) },
+	write_type_assign_set(TypeAssignSet, VarSet).
 
 %-----------------------------------------------------------------------------%
 
@@ -569,7 +657,7 @@ typecheck_unification(X, Y, TypeInfo0, TypeInfo) :-
 		typeinfo_get_varset(TypeInfo0, VarSet),
 		typeinfo_get_io_state(TypeInfo0, IOState0),
 		report_error_unif(PredId, Context, VarSet, X, Y,
-				IOState0, IOState1),
+				TypeAssignSet0, IOState0, IOState1),
 		typeinfo_set_io_state(TypeInfo0, IOState1, TypeInfo1),
 		typeinfo_set_found_error(TypeInfo1, yes, TypeInfo2)
 	;
@@ -610,23 +698,23 @@ typecheck_unification_2([TypeAssign0 | TypeAssigns0], X, Y, TypeInfo) -->
 type_assign_unify_term(term_variable(X), term_variable(Y), TypeAssign0,
 		_TypeInfo, TypeAssignSet0, TypeAssignSet) :-
 	type_assign_get_var_types(TypeAssign0, VarTypes0),
-	(if some [TypeX]
+	( %%% if some [TypeX]
 		map__search(VarTypes0, X, TypeX)
-	then
-		(if some [TypeY]
+	->
+		( %%% if some [TypeY]
 			map__search(VarTypes0, Y, TypeY)
-		then
+		->
 			% both X and Y already have types - just
 			% unify their types
-			(if some [TypeAssign3]
+			( %%% if some [TypeAssign3]
 				type_assign_unify_type(TypeAssign0, TypeX,
 					TypeY, TypeAssign3)
-			then
+			->
 				TypeAssignSet = [TypeAssign3 | TypeAssignSet0]
-			else
+			;
 				TypeAssignSet = TypeAssignSet0
 			)
-		else
+		;
 			% Y is a fresh variable which hasn't been
 			% assigned a type yet
 			map__set(VarTypes0, Y, TypeX, VarTypes),
@@ -634,22 +722,22 @@ type_assign_unify_term(term_variable(X), term_variable(Y), TypeAssign0,
 				TypeAssign),
 			TypeAssignSet = [TypeAssign | TypeAssignSet0]
 		)
-	else
-		(if some [TypeY2]
+	;
+		( %%% if some [TypeY2]
 			map__search(VarTypes0, Y, TypeY2)
-		then
+		->
 			% X is a fresh variable which hasn't been
 			% assigned a type yet
 			map__set(VarTypes0, X, TypeY2, VarTypes),
 			type_assign_set_var_types(TypeAssign0, VarTypes,
 				TypeAssign),
 			TypeAssignSet = [TypeAssign | TypeAssignSet0]
-		else
+		;
 			% both X and Y are fresh variables -
 			% introduce a fresh type variable to represent
 			% their type
 			type_assign_get_typevarset(TypeAssign0, TypeVarSet0),
-			varset__new_var(TypeVarSet0, TypeVar, Type, TypeVarSet),
+			varset__new_var(TypeVarSet0, TypeVar, TypeVarSet),
 			type_assign_set_typevarset(TypeAssign0, TypeVarSet,
 				TypeAssign1),
 			Type = term_variable(TypeVar),
@@ -706,26 +794,26 @@ type_assign_unify_var_functor([ConsDefn | ConsDefns], Args, Y, TypeAssign0,
 
 		% unify the type of Var with the type of the constructor
 	type_assign_get_var_types(TypeAssign0, VarTypes0),
-	(if some [TypeY]
+	( %%% if some [TypeY]
 		map__search(VarTypes0, Y, TypeY)
-	then
-		(if some [TypeAssign2]
+	->
+		( %%% if some [TypeAssign2]
 			type_assign_unify_type(TypeAssign1, ConsType, TypeY,
 						TypeAssign2)
-		then
+		->
 			TypeAssignSet1 = [TypeAssign2 | TypeAssignSet0],
 			% check that the types of the arguments matches the
 			% specified arg types for this constructor
 			type_assign_term_has_type_list(Args, ArgTypes,
 				TypeAssign2, TypeInfo,
 				TypeAssignSet1, TypeAssignSet2)
-		else
+		;
 			% the top-level types didn't unify - no need to
 			% check the types of the arguments, since this
 			% type-assignment has already been rules out
 			TypeAssignSet2 = TypeAssignSet0
 		)
-	else
+	;
 		map__set(VarTypes0, Y, ConsType, VarTypes),
 		type_assign_set_var_types(TypeAssign1, VarTypes, TypeAssign3),
 		TypeAssignSet1 = [TypeAssign3 | TypeAssignSet0],
@@ -788,50 +876,66 @@ make_n_fresh_var_terms(VarSet0, N, VarSet, VarTerms) :-
 :- mode type_assign_unify_type(input, input, input, output).
 
 type_assign_unify_type(TypeAssign0, X, Y, TypeAssign) :-
+	% debugging crap
+	/****
+	io__init_state(IO0),
+	t2(TypeAssign0, X, Y, IO0, IO1),
+	io__final_state(IO1),
+	****/
+
 	type_assign_get_type_bindings(TypeAssign0, TypeBindings0),
 	type_unify(X, Y, TypeBindings0, TypeBindings),
 	type_assign_set_type_bindings(TypeAssign0, TypeBindings, TypeAssign).
 
+t2(TypeAssign, X, Y) -->
+	{ type_assign_get_type_bindings(TypeAssign, TypeBindings) },
+	io__write_string("unifying types: "),
+	io__write_term(TypeBindings, term_functor(term_atom("="), [X, Y],
+		term__context("", 0))),
+	io__write_string("\ntype assignment (minus var names) is:\n"),
+	{ varset__init(VarSet) },
+	write_type_assign(TypeAssign, VarSet).
+
 %-----------------------------------------------------------------------------%
 
-	% Unify (with occurs check) two types with respect to a type substition
-	% and update the type bindings.
+	% Unify (with occurs check) two types with respect to a type
+	% substitution and update the type bindings.
 	% (Types are represented as terms, but we can't just use term__unify
 	% because we need to handle equivalent types).
 
 :- type_unify(X, Y, _, _) when X and Y.		% NU-Prolog indexing
 
-:- pred type_unify(type, type, substition, substition).
+:- pred type_unify(type, type, substitution, substitution).
 :- mode type_unify(input, input, input, output).
 
 type_unify(term_variable(X), term_variable(Y), Bindings0, Bindings) :-
-	(if some [BindingOfX]
+	( %%% if some [BindingOfX]
 		map__search(Bindings0, X, BindingOfX)
-	then
-		(if some [BindingOfY]
+	->
+		( %%% if some [BindingOfY]
 			map__search(Bindings0, Y, BindingOfY)
-		then
+		->
 			% both X and Y already have bindings - just
 			% unify the types they are bound to
 			type_unify(Bindings0, BindingOfX, BindingOfY, Bindings)
-		else
+		;
 			% Y is a type variable which hasn't been bound yet
 			not term__occurs(BindingOfX, Y, Bindings0),
 			map__set(Bindings0, Y, BindingOfX, Bindings)
 		)
-	else
-		(if some [BindingOfY2]
+	;
+		( %%% if some [BindingOfY2]
 			map__search(Bindings0, Y, BindingOfY2)
-		then
+		->
 			% X is a type variable which hasn't been bound yet
 			not term__occurs(BindingOfY2, X, Bindings0),
 			map__set(Bindings0, X, BindingOfY2, Bindings)
-		else
+		;
 			% both X and Y are unbound type variables -
 			% bind one to the other
-			(if X = Y then
+			( X = Y ->
 				Bindings = Bindings0
-			else
+			;
 				map__set(Bindings0, X, term_variable(Y),
 					Bindings)
 			)
@@ -839,24 +943,24 @@ type_unify(term_variable(X), term_variable(Y), Bindings0, Bindings) :-
 	).
 
 type_unify(term_variable(X), term_functor(F, As, C), Bindings0, Bindings) :-
-	(if some [BindingOfX]
+	( %%% if some [BindingOfX]
 		map__search(Bindings0, X, BindingOfX)
-	then
+	->
 		type_unify(BindingOfX, term_functor(F, As, C), Bindings0,
 			Bindings)
-	else
-		not term__occurs_list(As, X, Bindings0),
+	;
+		\+ term__occurs_list(As, X, Bindings0),
 		map__set(Bindings0, X, term_functor(F, As, C), Bindings)
 	).
 
 type_unify(term_functor(F, As, C), term_variable(X), Bindings0, Bindings) :-
-	(if some [BindingOfX]
+	( %%% if some [BindingOfX]
 		map__search(Bindings0, X, BindingOfX)
-	then
-		not term__occurs_list(As, X, Bindings0),
+	->
+		\+ term__occurs_list(As, X, Bindings0),
 		type_unify(term_functor(F, As, C), BindingOfX, Bindings0,
 			Bindings)
-	else
+	;
 		map__set(Bindings0, X, term_functor(F, As, C), Bindings)
 	).
 
@@ -864,18 +968,18 @@ type_unify(term_functor(FX, AsX, _), term_functor(FY, AsY, _), Bindings0,
 		Bindings) :-
 	length(AsX, ArityX),
 	length(AsY, ArityY),
-	(if
+	(
 		FX = FY,
 		ArityX = ArityY
-	then
+	->
 		type_unify_list(AsX, AsY, Bindings0, Bindings)
-	else
+	;
 		% XXX check if these types have been defined to be
 		% equivalent using equivalence types
 		fail	% XXX stub only!!!
 	).
 
-:- pred type_unify_list(list(type), list(type), substition, substition).
+:- pred type_unify_list(list(type), list(type), substitution, substitution).
 :- mode type_unify_list(input, input, input, output).
 
 type_unify_list([], []) --> [].
@@ -1377,10 +1481,10 @@ type_assign_set_type_bindings(type_assign(A, B, _), TypeBindings,
 %-----------------------------------------------------------------------------%
 
 :- pred report_error_unif(pred_id, term__context, varset, term, term,
-			io__state, io__state).
-:- mode report_error_unif(input, input, input, input, input, di, uo).
+			type_assign_set, io__state, io__state).
+:- mode report_error_unif(input, input, input, input, input, input, di, uo).
 
-report_error_unif(PredId, Context, VarSet, X, Y) -->
+report_error_unif(PredId, Context, VarSet, X, Y, TypeAssignSet) -->
 	prog_out__write_context(Context),
 	io__write_string("type error in clause for predicate `"),
 	write_pred_id(PredId),
@@ -1389,7 +1493,69 @@ report_error_unif(PredId, Context, VarSet, X, Y) -->
 	io__write_term(VarSet, X),
 	io__write_string("' and `"),
 	io__write_term(VarSet, Y),
-	io__write_string("'.\n").
+	io__write_string("'.\n"),
+	( { TypeAssignSet = [_] } ->
+	    io__write_string("The partial type assignment was:\n")
+	;
+	    io__write_string("The possible partial type assignments were:\n")
+	),
+	write_type_assign_set(TypeAssignSet, VarSet).
+
+%-----------------------------------------------------------------------------%
+
+:- pred write_type_assign_set(type_assign_set, tvarset, io__state, io__state).
+:- mode write_type_assign_set(input, input, di, uo).
+
+write_type_assign_set([], _) --> [].
+write_type_assign_set([TypeAssign | TypeAssigns], VarSet) -->
+	write_type_assign(TypeAssign, VarSet),
+	write_type_assign_set(TypeAssigns, VarSet).
+
+:- pred write_type_assign(type_assign, tvarset, io__state, io__state).
+:- mode write_type_assign(input, input, di, uo).
+
+write_type_assign(TypeAssign, VarSet) -->
+	{
+	  type_assign_get_var_types(TypeAssign, VarTypes),
+	  type_assign_get_type_bindings(TypeAssign, TypeBindings),
+	  type_assign_get_typevarset(TypeAssign, TypeVarSet),
+	  map__keys(VarTypes, Vars),
+	  Vars = [Var | Vars1]
+	},
+	( { map__search(VarTypes, Var, Type) } ->
+		io__write_variable(Var, VarSet),
+		io__write_string(" :: "),
+		write_type_b(Type, TypeVarSet, TypeBindings)
+	;
+		[]
+	),
+	write_type_assign_2(Vars1, VarSet, VarTypes, TypeBindings, TypeVarSet),
+	io__write_string("\n").
+
+:- pred write_type_assign_2(list(variable), varset, map(var, type),
+			map(type_param, type), tvarset, io__state, io__state).
+:- mode write_type_assign_2(input, input, input, input, input, di, uo).
+
+write_type_assign_2([], _, _, _, _) --> [].
+write_type_assign_2([Var | Vars], VarSet, VarTypes, TypeBindings, TypeVarSet)
+		-->
+	( { map__search(VarTypes, Var, Type) } ->
+		io__write_string(", "),
+		io__write_variable(Var, VarSet),
+		io__write_string(" :: "),
+		write_type_b(Type, TypeVarSet, TypeBindings)
+	;
+		[]
+	),
+	write_type_assign_2(Vars, VarSet, VarTypes, TypeBindings, TypeVarSet).
+
+:- pred write_type_b(type, map(type_param, type), tvarset,
+			io__state, io__state).
+:- mode write_type_b(input, input, input, di, uo).
+
+write_type_b(Type, TypeVarSet, TypeBindings) -->
+	{ term__apply_substitution(Type, TypeBindings, Type2) },
+	io__write_term(TypeVarSet, Type2).
 
 %-----------------------------------------------------------------------------%
 
@@ -1436,6 +1602,32 @@ write_type_list_2([T | Ts]) -->
 
 %-----------------------------------------------------------------------------%
 
+:- pred report_error_undef_pred(pred_id, term__context, pred_id,
+			io__state, io__state).
+:- mode report_error_undef_pred(input, input, input, di, uo).
+
+report_error_undef_pred(CallingPredId, Context, PredId) -->
+	prog_out__write_context(Context),
+	io__write_string("undefined predicate `"),
+	write_pred_id(PredId),
+	io__write_string("' used in clause for predicate `"),
+	write_pred_id(CallingPredId),
+	io__write_string("'.\n").
+
+:- pred report_error_undef_cons(pred_id, term__context, const, int, 
+			io__state, io__state).
+:- mode report_error_undef_cons(input, input, input, input, di, uo).
+
+report_error_undef_cons(PredId, Context, Functor, Arity) -->
+	prog_out__write_context(Context),
+	io__write_string("undefined symbol `"),
+	io__write_constant(Functor),
+	io__write_string("/"),
+	io__write_int(Arity),
+	io__write_string("' used in clause for predicate `"),
+	write_pred_id(PredId),
+	io__write_string("'.\n").
+
 :- pred report_error_cons(pred_id, term__context, const, int, type, 
 			io__state, io__state).
 :- mode report_error_cons(input, input, input, input, input, di, uo).
@@ -1448,7 +1640,7 @@ report_error_cons(PredId, Context, Functor, Arity, Type) -->
 	io__write_string("constructor `"),
 	io__write_constant(Functor),
 	io__write_string("/"),
-	io__write_string(Arity),
+	io__write_int(Arity),
 	io__write_string("' does not have type `"),
 	write_type(Type),	% XXX
 	io__write_string("'.\n").

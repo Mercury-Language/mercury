@@ -35,8 +35,8 @@
 :- type op_details ---> op(integer, op_type, string).
 :- pred io__current_ops(list(op_details), io__state, io__state).
 :- mode io__current_ops(output, di, uo).
-%	io__current_ops(Ops, IOState0, IOState1).
 %		Return a list containing all the current operator definitions.
+%		Does not modify the io__state.
 
 :- type read_term ---> eof ; error(string) ; term(varset, term).
 :- pred io__read_term(read_term, io__state, io__state).
@@ -50,18 +50,19 @@
 
 :- pred io__write_term(varset, term, io__state, io__state).
 :- mode io__write_term(input, input, di, uo).
-%	io__write_term(VarSet, Term, IO0, IO1).
 %		Writes a term to standard output.
 
 :- pred io__write_term_nl(varset, term, io__state, io__state).
 :- mode io__write_term_nl(input, input, di, uo).
-%	io__write_term_nl(VarSet, Term, IO0, IO1).
 %		As above, except it appends a period and new-line.
 
 :- pred io__write_constant(const, io__state, io__state).
 :- mode io__write_constant(input, di, uo).
-%	io__write_constant(Const, IO0, IO1).
 %		Writes a constant (integer, float, or atom) to stdout.
+
+:- pred io__write_variable(variable, varset, io__state, io__state).
+:- mode io__write_variable(input, input, di, uo).
+%		Writes a variable to stdout.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -79,17 +80,18 @@
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-	% write a term to standard output.
+	% write a variable to standard output.
 	% use the variable names specified by varset and write _N
 	% for all unnamed variables with N starting at 0.
 
-io__write_term(VarSet, Term) -->
-	io__write_term_2(Term, VarSet, 0, _, _).
+io__write_variable(Variable, VarSet) -->
+	io__write_variable_2(Variable, VarSet, 0, _, _).
 
-:- pred io__write_term_2(term, varset, int, varset, int, io__state, io__state).
-:- mode io__write_term_2(input, input, input, output, output, di, uo).
+:- pred io__write_variable_2(variable, varset, int, varset, int,
+				io__state, io__state).
+:- mode io__write_variable_2(input, input, input, output, output, di, uo).
 
-io__write_term_2(term_variable(Id), VarSet0, N0, VarSet, N) -->
+io__write_variable_2(Id, VarSet0, N0, VarSet, N) -->
 	( { varset__lookup_name(VarSet0, Id, Name) } ->
 		{ N = N0 },
 		{ VarSet = VarSet0 },
@@ -103,6 +105,21 @@ io__write_term_2(term_variable(Id), VarSet0, N0, VarSet, N) -->
 		{ N is N0 + 1 },
 		io__write_string(VarName)
 	).
+
+%-----------------------------------------------------------------------------%
+
+	% write a term to standard output.
+	% use the variable names specified by varset and write _N
+	% for all unnamed variables with N starting at 0.
+
+io__write_term(VarSet, Term) -->
+	io__write_term_2(Term, VarSet, 0, _, _).
+
+:- pred io__write_term_2(term, varset, int, varset, int, io__state, io__state).
+:- mode io__write_term_2(input, input, input, output, output, di, uo).
+
+io__write_term_2(term_variable(Id), VarSet0, N0, VarSet, N) -->
+	io__write_variable_2(Id, VarSet0, N0, VarSet, N).
 io__write_term_2(term_functor(Functor, Args, _), VarSet0, N0, VarSet, N) -->
 	(
 		{ Args = [PrefixArg] },

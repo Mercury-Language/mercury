@@ -185,7 +185,7 @@ io__write_float(S, F) -->
 %-----------------------------------------------------------------------------%
 
 io__write_string(Stream, String) -->
-	{ format(Stream, "~s", [String]) },
+	{ (format(Stream, "~s", [String]), fail ; true) },
 	io__update_state.
 	
 %-----------------------------------------------------------------------------%
@@ -217,13 +217,22 @@ io__init_state(io__state(Names, current)) :-
 
 :- pred io__update_state(io__state, io__state).
 io__update_state(IOState0, IOState) :-
-	require(nonvar(IOState0),
-		"\nio.nl: I/O predicate called with free io__state"),
-	require(IOState0 = io__state(_, current),
-		"\nio.nl: cannot retry I/O operation"),
-	$replacn(2, IOState0, old),
-	IOState0 = io__state(Names, _),
-	IOState = io__state(Names, current).
+	% using require/2 here causes rampant memory usage
+	% because the strings get allocated every time
+	( var(IOState0) ->
+		error("\nio.nl: I/O predicate called with free io__state")
+	;
+		true
+	),
+	%%% ( IOState0 = io__state(_, current) ->
+	%%% 	true
+	%%% ;
+	%%% 	error("\nio.nl: cannot retry I/O operation")
+	%%% ),
+	%%% IOState0 = io__state(Names, _),
+	%%% $replacn(2, IOState0, old),
+	%%% IOState = io__state(Names, current).
+	IOState = IOState0.
 
 :- pred io__final_state(io__state).
 io__final_state(IOState) :-
