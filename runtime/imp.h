@@ -182,9 +182,8 @@ extern	Word	*cpstackmin;
 #define create1(w1)	(					\
 				hp[0] = (Word) (w1),		\
 				debugcr1(hp[0], hp),		\
-				p = (Word) hp,			\
-				heap_overflow_check(),		\
 				hp += 1,			\
+				heap_overflow_check(),		\
 				/* return */ (Word) (hp - 1)	\
 			)
 
