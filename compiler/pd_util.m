@@ -1144,11 +1144,11 @@ match_generic_call(aditi_builtin(Builtin1, CallId),
 :- pred match_aditi_builtin(aditi_builtin::in, aditi_builtin::in) is semidet.
 
 	% The other fields are all implied by the pred_proc_id.
-match_aditi_builtin(aditi_tuple_insert_delete(InsertDelete, PredId),
-		aditi_tuple_insert_delete(InsertDelete, PredId)).
+match_aditi_builtin(aditi_tuple_update(Update, PredId),
+		aditi_tuple_update(Update, PredId)).
 	% The syntax used does not change the result of the call.
-match_aditi_builtin(aditi_insert_delete_modify(Op, PredId, _),
-		aditi_insert_delete_modify(Op, PredId, _)).
+match_aditi_builtin(aditi_bulk_update(Update, PredId, _),
+		aditi_bulk_update(Update, PredId, _)).
 
 %-----------------------------------------------------------------------------%
 

@@ -165,8 +165,8 @@ modecheck_aditi_builtin(AditiBuiltin, _, Args0, Modes, Det,
 :- pred aditi_builtin_determinism(aditi_builtin, determinism).
 :- mode aditi_builtin_determinism(in, out) is det.
 
-aditi_builtin_determinism(aditi_tuple_insert_delete(_, _), det).
-aditi_builtin_determinism(aditi_insert_delete_modify(_, _, _), det).
+aditi_builtin_determinism(aditi_tuple_update(_, _), det).
+aditi_builtin_determinism(aditi_bulk_update(_, _, _), det).
 
 modecheck_builtin_cast(Args0, Modes, Det, Args, ExtraGoals) -->
 	{ Det = det },

@@ -114,15 +114,6 @@
 
 %-----------------------------------------------------------------------------%
 
-	% This is used for a closure executed top-down on the Aditi
-	% side of the connection.
-	% These expression numbers are stored in the proc_info - the owner
-	% and module name from the pred_info are also required to completely
-	% identify the expressions.
-:- type rl_exprn_id == int.
-
-%-----------------------------------------------------------------------------%
-
 	% The clauses_info structure contains the clauses for a predicate
 	% after conversion from the item_list by make_hlds.m.
 	% Typechecking is performed on the clauses info, then the clauses
@@ -410,12 +401,6 @@
 
 	;	aditi		% Generate bottom-up Aditi-RL for this
 				% predicate.
-
-	;	(aditi_top_down)
-				% Generate top-down Aditi-RL, not C, for this
-				% predicate. This is used for the builtin
-				% `delete' predicate - the closure is used
-				% to select which tuples are to be deleted.
 
 	;	base_relation	% This predicate is an Aditi base relation.
 
@@ -1884,12 +1869,6 @@ compute_arg_types_modes([Var | Vars], VarTypes, InstMap0, InstMap,
 :- pred proc_info_set_address_taken(proc_info, is_address_taken, proc_info).
 :- mode proc_info_set_address_taken(in, in, out) is det.
 
-:- pred proc_info_get_rl_exprn_id(proc_info, maybe(rl_exprn_id)).
-:- mode proc_info_get_rl_exprn_id(in, out) is det.
-
-:- pred proc_info_set_rl_exprn_id(proc_info, rl_exprn_id, proc_info).
-:- mode proc_info_set_rl_exprn_id(in, in, out) is det.
-
 :- pred proc_info_get_need_maxfr_slot(proc_info, bool).
 :- mode proc_info_get_need_maxfr_slot(in, out) is det.
 
@@ -2097,13 +2076,6 @@ compute_arg_types_modes([Var | Vars], VarTypes, InstMap0, InstMap,
 					% must be considered as having its
 					% address taken, since it is possible
 					% that some other module may do so.
-			maybe_aditi_rl_id :: maybe(rl_exprn_id),
-					% For predicates with an
-					% `aditi_top_down' marker, which are
-					% executed top-down on the Aditi side
-					% of the connection, we generate an RL
-					% expression, for which this is an
-					% identifier. See rl_update.m.
  			need_maxfr_slot	:: bool,
 					% True iff tracing is enabled, this
  					% is a procedure that lives on the det
@@ -2190,13 +2162,12 @@ proc_info_init(Arity, Types, Modes, DeclaredModes, MaybeArgLives,
 	CanProcess = yes,
 	map__init(TVarsMap),
 	map__init(TCVarsMap),
-	RLExprn = no,
 	NewProc = procedure(
 		BodyVarSet, BodyTypes, HeadVars, Modes, ModeErrors, InstVarSet,
 		MaybeArgLives, ClauseBody, MContext, StackSlots, MaybeDet,
 		InferredDet, CanProcess, ArgInfo, InitialLiveness, TVarsMap,
 		TCVarsMap, eval_normal, no, no, DeclaredModes, IsAddressTaken,
-		RLExprn, no, no, no, no
+		no, no, no, no
 	).
 
 proc_info_set(DeclaredDetism, BodyVarSet, BodyTypes, HeadVars, HeadModes,
@@ -2204,14 +2175,13 @@ proc_info_set(DeclaredDetism, BodyVarSet, BodyTypes, HeadVars, HeadModes,
 		InferredDetism, CanProcess, ArgInfo, Liveness, TVarMap,
 		TCVarsMap, ArgSizes, Termination, IsAddressTaken,
 		ProcInfo) :-
-	RLExprn = no,
 	ModeErrors = [],
 	ProcInfo = procedure(
 		BodyVarSet, BodyTypes, HeadVars, HeadModes, ModeErrors,
 		InstVarSet, HeadLives, Goal, Context,
 		StackSlots, DeclaredDetism, InferredDetism, CanProcess, ArgInfo,
 		Liveness, TVarMap, TCVarsMap, eval_normal, ArgSizes,
-		Termination, no, IsAddressTaken, RLExprn, no, no, no, no).
+		Termination, no, IsAddressTaken, no, no, no, no).
 
 proc_info_create(VarSet, VarTypes, HeadVars, HeadModes, InstVarSet,
 		Detism, Goal, Context, TVarMap, TCVarsMap,
@@ -2226,13 +2196,12 @@ proc_info_create(VarSet, VarTypes, HeadVars, HeadModes, InstVarSet,
 	map__init(StackSlots),
 	set__init(Liveness),
 	MaybeHeadLives = no,
-	RLExprn = no,
 	ModeErrors = [],
 	ProcInfo = procedure(VarSet, VarTypes, HeadVars, HeadModes, ModeErrors,
 		InstVarSet, MaybeHeadLives, Goal, Context, StackSlots,
 		MaybeDeclaredDetism, Detism, yes, no, Liveness, TVarMap,
 		TCVarsMap, eval_normal, no, no, no, IsAddressTaken,
-		RLExprn, no, no, no, no).
+		no, no, no, no).
 
 proc_info_set_body(ProcInfo0, VarSet, VarTypes, HeadVars, Goal,
 		TI_VarMap, TCI_VarMap, ProcInfo) :-
@@ -2324,7 +2293,6 @@ proc_info_get_maybe_arg_size_info(ProcInfo, ProcInfo^maybe_arg_sizes).
 proc_info_get_maybe_termination_info(ProcInfo, ProcInfo^maybe_termination).
 proc_info_maybe_declared_argmodes(ProcInfo, ProcInfo^maybe_declared_head_modes).
 proc_info_is_address_taken(ProcInfo, ProcInfo^is_address_taken).
-proc_info_get_rl_exprn_id(ProcInfo, ProcInfo^maybe_aditi_rl_id).
 proc_info_get_need_maxfr_slot(ProcInfo, ProcInfo^need_maxfr_slot).
 proc_info_get_call_table_tip(ProcInfo, ProcInfo^call_table_tip).
 proc_info_get_maybe_proc_table_info(ProcInfo, ProcInfo^maybe_table_info).
@@ -2355,7 +2323,6 @@ proc_info_set_maybe_arg_size_info(ProcInfo, MAS,
 proc_info_set_maybe_termination_info(ProcInfo, MT,
 	ProcInfo^maybe_termination := MT).
 proc_info_set_address_taken(ProcInfo, AT, ProcInfo^is_address_taken := AT).
-proc_info_set_rl_exprn_id(ProcInfo, ID, ProcInfo^maybe_aditi_rl_id := yes(ID)).
 proc_info_set_need_maxfr_slot(ProcInfo, NMS, ProcInfo^need_maxfr_slot := NMS).
 proc_info_set_call_table_tip(ProcInfo, CTT, ProcInfo^call_table_tip := CTT).
 proc_info_set_maybe_proc_table_info(ProcInfo, MTI,

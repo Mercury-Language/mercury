@@ -589,7 +589,7 @@ hlds_out__write_arg_number(generic_call(aditi_builtin(Builtin, CallId)),
 :- mode hlds_out__write_aditi_builtin_arg_number(in, in, in, di, uo) is det.
 
 hlds_out__write_aditi_builtin_arg_number(
-		aditi_tuple_insert_delete(InsertDelete, _),
+		aditi_tuple_update(InsertDelete, _),
 		_ - _/Arity, ArgNum) -->
 	io__write_string("argument "),
 	( { ArgNum =< Arity } ->
@@ -605,13 +605,13 @@ hlds_out__write_aditi_builtin_arg_number(
 	).
 
 hlds_out__write_aditi_builtin_arg_number(
-		aditi_insert_delete_modify(_, _, pred_term),
+		aditi_bulk_update(_, _, pred_term),
 		_, ArgNum) -->
 	io__write_string("argument "),
 	io__write_int(ArgNum).
 
 hlds_out__write_aditi_builtin_arg_number(
-		aditi_insert_delete_modify(_, _, sym_name_and_closure),
+		aditi_bulk_update(_, _, sym_name_and_closure),
 		_, ArgNum) -->
 	% The original goal had a sym_name/arity
 	% at the front of the argument list.
@@ -1020,7 +1020,6 @@ hlds_out__marker_name(terminates, "terminates").
 hlds_out__marker_name(check_termination, "check_termination").
 hlds_out__marker_name(does_not_terminate, "does_not_terminate").
 hlds_out__marker_name(aditi, "aditi").
-hlds_out__marker_name((aditi_top_down), "aditi_top_down").
 hlds_out__marker_name(base_relation, "base_relation").
 hlds_out__marker_name(generate_inline, "generate_inline").
 hlds_out__marker_name(aditi_memo, "aditi_memo").
@@ -2070,7 +2069,7 @@ hlds_out__write_string_list([Name1, Name2 | Names]) -->
 	di, uo) is det.
 
 hlds_out__write_aditi_builtin(_ModuleInfo,
-		aditi_tuple_insert_delete(InsertDelete, PredId), CallId,
+		aditi_tuple_update(InsertDelete, PredId), CallId,
 		ArgVars, VarSet, AppendVarnums, Indent, Follow) -->
 	% make_hlds.m checks the arity so this cannot fail. 
 	{ get_state_args_det(ArgVars, Args, State0Var, StateVar) },
@@ -2106,7 +2105,7 @@ hlds_out__write_aditi_builtin(_ModuleInfo,
 
 hlds_out__write_aditi_builtin(_ModuleInfo, Builtin, CallId,
 		ArgVars, VarSet, AppendVarnums, Indent, Follow) -->
-	{ Builtin = aditi_insert_delete_modify(_, PredId, _Syntax) },
+	{ Builtin = aditi_bulk_update(_, PredId, _Syntax) },
 	hlds_out__write_indent(Indent),	
 	{ hlds_out__aditi_builtin_name(Builtin, UpdateName) },
 	io__write_string(UpdateName),
@@ -2135,20 +2134,16 @@ hlds_out__write_aditi_builtin_pred_id(Indent, PredId) -->
 	io__write_int(PredInt),
 	io__write_string(".\n").
 
-hlds_out__aditi_builtin_name(aditi_tuple_insert_delete(_, _), "aditi_insert").
-hlds_out__aditi_builtin_name(aditi_insert_delete_modify(InsertDelMod, _, _),
-		Name) :-
-	hlds_out__aditi_insert_delete_modify_name(InsertDelMod, Name).
+hlds_out__aditi_builtin_name(aditi_tuple_update(_, _), "aditi_insert").
+hlds_out__aditi_builtin_name(aditi_bulk_update(Update, _, _), Name) :-
+	hlds_out__aditi_bulk_update_name(Update, Name).
 
-:- pred hlds_out__aditi_insert_delete_modify_name(aditi_insert_delete_modify,
-		string).
-:- mode hlds_out__aditi_insert_delete_modify_name(in, out) is det.
+:- pred hlds_out__aditi_bulk_update_name(aditi_bulk_update, string).
+:- mode hlds_out__aditi_bulk_update_name(in, out) is det.
 
-hlds_out__aditi_insert_delete_modify_name(bulk_insert, "aditi_bulk_insert").
-hlds_out__aditi_insert_delete_modify_name(delete(bulk), "aditi_bulk_delete").
-hlds_out__aditi_insert_delete_modify_name(delete(filter), "aditi_delete").
-hlds_out__aditi_insert_delete_modify_name(modify(bulk), "aditi_bulk_modify").
-hlds_out__aditi_insert_delete_modify_name(modify(filter), "aditi_modify").
+hlds_out__aditi_bulk_update_name(bulk_insert, "aditi_bulk_insert").
+hlds_out__aditi_bulk_update_name(bulk_delete, "aditi_bulk_delete").
+hlds_out__aditi_bulk_update_name(bulk_modify, "aditi_bulk_modify").
 
 :- pred hlds_out__write_unification(unification, module_info, prog_varset,
 		inst_varset, bool, int, io__state, io__state).
@@ -2304,9 +2299,6 @@ hlds_out__write_unify_rhs_3(
 	;
 		EvalMethod = (aditi_bottom_up),
 		EvalStr = "aditi_bottom_up "
-	;
-		EvalMethod = (aditi_top_down),
-		EvalStr = "aditi_top_down "
 	},
 	(
 		{ PredOrFunc = predicate },

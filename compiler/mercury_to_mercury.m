@@ -3953,8 +3953,6 @@ output_eval_method(EvalMethod) -->
 
 output_lambda_eval_method(normal) -->
 	output_string("normal").
-output_lambda_eval_method(aditi_top_down) -->
-	output_string("aditi_top_down").
 output_lambda_eval_method(aditi_bottom_up) -->
 	output_string("aditi_bottom_up").
 

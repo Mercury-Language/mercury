@@ -1567,21 +1567,20 @@ typecheck_aditi_builtin(CallId, Args, Builtin0, Builtin) -->
 		typecheck_info_di, typecheck_info_uo) is det.
 
 typecheck_aditi_builtin_2(CallId, Args,
-		aditi_tuple_insert_delete(InsertDelete, _),
-		aditi_tuple_insert_delete(InsertDelete, PredId)) -->
+		aditi_tuple_update(Update, _),
+		aditi_tuple_update(Update, PredId)) -->
 	% The tuple to insert or delete has the same argument types
 	% as the relation being inserted into or deleted from.
 	typecheck_call_pred(CallId, Args, PredId).
 typecheck_aditi_builtin_2(CallId, Args,
-		aditi_insert_delete_modify(InsertDelMod, _, Syntax),
-		aditi_insert_delete_modify(InsertDelMod, PredId, Syntax)) -->
-	{ aditi_insert_del_mod_eval_method(InsertDelMod, EvalMethod) },
-
+		aditi_bulk_update(Update, _, Syntax),
+		aditi_bulk_update(Update, PredId, Syntax)) -->
 	{ CallId = PredOrFunc - _ },
 	{ InsertDeleteAdjustArgTypes = 
 	    lambda([RelationArgTypes::in, UpdateArgTypes::out] is det, (
 			construct_higher_order_type((pure), PredOrFunc,
-				EvalMethod, RelationArgTypes, ClosureType),
+				(aditi_bottom_up), RelationArgTypes,
+				ClosureType),
 			UpdateArgTypes = [ClosureType]
 	    )) },
 
@@ -1592,32 +1591,23 @@ typecheck_aditi_builtin_2(CallId, Args,
 	    lambda([RelationArgTypes::in, AditiModifyTypes::out] is det, (
 			list__append(RelationArgTypes, RelationArgTypes,
 				ClosureArgTypes),
-			construct_higher_order_pred_type((pure), EvalMethod,
-				ClosureArgTypes, ClosureType),
+			construct_higher_order_pred_type((pure),
+				(aditi_bottom_up), ClosureArgTypes,
+				ClosureType),
 			AditiModifyTypes = [ClosureType]
 	    )) },
 
 	{
-		InsertDelMod = bulk_insert,
+		Update = bulk_insert,
 		AdjustArgTypes = InsertDeleteAdjustArgTypes
 	;
-		InsertDelMod = delete(_),
+		Update = bulk_delete,
 		AdjustArgTypes = InsertDeleteAdjustArgTypes
 	;
-		InsertDelMod = modify(_),
+		Update = bulk_modify,
 		AdjustArgTypes = ModifyAdjustArgTypes
 	},
 	typecheck_aditi_builtin_closure(CallId, Args, AdjustArgTypes, PredId).
-
-:- pred aditi_insert_del_mod_eval_method(aditi_insert_delete_modify,
-		lambda_eval_method).
-:- mode aditi_insert_del_mod_eval_method(in, out) is det.
-
-aditi_insert_del_mod_eval_method(bulk_insert, (aditi_bottom_up)).
-aditi_insert_del_mod_eval_method(delete(filter), (aditi_top_down)).
-aditi_insert_del_mod_eval_method(delete(bulk), (aditi_bottom_up)).
-aditi_insert_del_mod_eval_method(modify(filter), (aditi_top_down)).
-aditi_insert_del_mod_eval_method(modify(bulk), (aditi_bottom_up)).
 
 	% Check that there is only one argument (other than the `aditi__state'
 	% arguments) passed to an `aditi_delete', `aditi_bulk_insert',
@@ -1647,8 +1637,7 @@ typecheck_aditi_builtin_closure(CallId, OtherArgs, AdjustArgTypes, PredId) -->
 		typecheck_info_di, typecheck_info_uo) is det.
 
 typecheck_aditi_state_args(Builtin, CallId, AditiState0Var, AditiStateVar) -->
-	{ construct_type(qualified(unqualified("aditi"), "state") - 0,
-		[], StateType) },
+	{ StateType = aditi_state_type },
 	typecheck_var_has_type_list([AditiState0Var, AditiStateVar],
 		[StateType, StateType],
 		aditi_builtin_first_state_arg(Builtin, CallId)).
@@ -1657,12 +1646,12 @@ typecheck_aditi_state_args(Builtin, CallId, AditiState0Var, AditiStateVar) -->
 	% `aditi__state' DCG argument.
 :- func aditi_builtin_first_state_arg(aditi_builtin, simple_call_id) = int.
 
-aditi_builtin_first_state_arg(aditi_tuple_insert_delete(_, _),
+aditi_builtin_first_state_arg(aditi_tuple_update(_, _),
 		_ - _/Arity) = Arity + 1.
 	% XXX removing the space between the 2 and the `.' will possibly
 	% cause lexing to fail as io__putback_char will be called twice
 	% in succession in lexer__get_int_dot.
-aditi_builtin_first_state_arg(aditi_insert_delete_modify(_, _, _), _) = 2 .
+aditi_builtin_first_state_arg(aditi_bulk_update(_, _, _), _) = 2 .
 
 %-----------------------------------------------------------------------------%
 
@@ -5228,7 +5217,6 @@ report_error_lambda_var(TypeCheckInfo, PredOrFunc, EvalMethod, Var, ArgVars,
 
 	{ EvalMethod = normal, EvalStr = ""
 	; EvalMethod = (aditi_bottom_up), EvalStr = "aditi_bottom_up "
-	; EvalMethod = (aditi_top_down), EvalStr = "aditi_top_down "
 	},
 
 	(

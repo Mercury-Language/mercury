@@ -87,9 +87,9 @@
 		list(mode), determinism).
 :- mode parse_func_expression(in, out, out, out, out) is semidet.
 
-	% parse_lambda_eval_method/3 extracts the `aditi' or `aditi_top_down'
-	% annotation (if any) from a pred expression and returns the rest
-	% of the term.
+	% parse_lambda_eval_method/3 extracts the `aditi_bottom_up'
+	% annotation (if any) from a pred expression and returns the
+	% rest of the term.
 :- pred parse_lambda_eval_method(term(T), lambda_eval_method, term(T)).
 :- mode parse_lambda_eval_method(in, out, out) is det.
 
@@ -439,9 +439,6 @@ parse_lambda_eval_method(Term0, EvalMethod, Term) :-
 	( Term0 = term__functor(term__atom(MethodStr), [Term1], _) ->
 		( MethodStr = "aditi_bottom_up" ->
 			EvalMethod = (aditi_bottom_up),
-			Term = Term1
-		; MethodStr = "aditi_top_down" ->
-			EvalMethod = (aditi_top_down),
 			Term = Term1
 		;	
 			EvalMethod = normal,

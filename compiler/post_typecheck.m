@@ -488,7 +488,7 @@ get_qualified_pred_name(ModuleInfo, PredId, qualified(PredModule, PredName)) :-
 %-----------------------------------------------------------------------------%
 
 post_typecheck__finish_aditi_builtin(ModuleInfo, CallerPredInfo, Args, Context,
-		aditi_tuple_insert_delete(InsertDelete, PredId0), Builtin,
+		aditi_tuple_update(Update, PredId0), Builtin,
 		PredOrFunc - SymName0/Arity, InsertCallId,
 		Modes, MaybeError) :-
 	% make_hlds.m checks the arity, so this is guaranteed to succeed.
@@ -499,7 +499,7 @@ post_typecheck__finish_aditi_builtin(ModuleInfo, CallerPredInfo, Args, Context,
 	post_typecheck__resolve_pred_overloading(PredId0, OtherArgs,
 		CallerPredInfo, ModuleInfo, SymName0, SymName, PredId),
 
-	Builtin = aditi_tuple_insert_delete(InsertDelete, PredId),
+	Builtin = aditi_tuple_update(Update, PredId),
 	InsertCallId = PredOrFunc - SymName/Arity,
 
 	module_info_pred_info(ModuleInfo, PredId, RelationPredInfo),
@@ -518,16 +518,16 @@ post_typecheck__finish_aditi_builtin(ModuleInfo, CallerPredInfo, Args, Context,
 post_typecheck__finish_aditi_builtin(ModuleInfo, CallerPredInfo, Args, Context,
 		Builtin0, Builtin, PredOrFunc - SymName0/Arity,
 		UpdateCallId, Modes, MaybeError) :-
-	Builtin0 = aditi_insert_delete_modify(InsertDelMod, PredId0, Syntax),
+	Builtin0 = aditi_bulk_update(Update, PredId0, Syntax),
 	UnchangedArgTypes = (pred(X::in, X::out) is det),
 	(
-		InsertDelMod = bulk_insert,
+		Update = bulk_insert,
 		AdjustArgTypes = UnchangedArgTypes
 	;
-		InsertDelMod = delete(_),
+		Update = bulk_delete,
 		AdjustArgTypes = UnchangedArgTypes
 	;
-		InsertDelMod = modify(_),
+		Update = bulk_modify,
 		% The argument types of the closure passed to `aditi_modify'
 		% contain two copies of the arguments of the base relation -
 		% one set input and one set output.
@@ -545,7 +545,7 @@ post_typecheck__finish_aditi_builtin(ModuleInfo, CallerPredInfo, Args, Context,
 	),
 	resolve_aditi_builtin_overloading(ModuleInfo, CallerPredInfo, Args,
 		AdjustArgTypes, PredId0, PredId, SymName0, SymName),
-	Builtin = aditi_insert_delete_modify(InsertDelMod, PredId, Syntax),
+	Builtin = aditi_bulk_update(Update, PredId, Syntax),
 
 	UpdateCallId = PredOrFunc - SymName/Arity,
 
@@ -554,7 +554,7 @@ post_typecheck__finish_aditi_builtin(ModuleInfo, CallerPredInfo, Args, Context,
 		Builtin, UpdateCallId, MaybeError),
 
 	pred_info_arg_types(RelationPredInfo, ArgTypes),
-	post_typecheck__insert_delete_modify_closure_info(InsertDelMod,
+	post_typecheck__bulk_update_closure_info(Update,
 		PredOrFunc, ArgTypes, ClosurePredOrFunc,
 		ClosureArgModes, ClosureDetism),
 
@@ -562,47 +562,32 @@ post_typecheck__finish_aditi_builtin(ModuleInfo, CallerPredInfo, Args, Context,
 		ClosureArgModes, ClosureDetism))),
 	Modes = [(Inst -> Inst), aditi_di_mode, aditi_uo_mode].
 
-:- pred post_typecheck__insert_delete_modify_closure_info(
-		aditi_insert_delete_modify, pred_or_func, list(type),
+:- pred post_typecheck__bulk_update_closure_info(
+		aditi_bulk_update, pred_or_func, list(type),
 		pred_or_func, list(mode), determinism).
-:- mode post_typecheck__insert_delete_modify_closure_info(in, in, in,
+:- mode post_typecheck__bulk_update_closure_info(in, in, in,
 		out, out, out) is det.
 
-post_typecheck__insert_delete_modify_closure_info(bulk_insert, PredOrFunc,
+post_typecheck__bulk_update_closure_info(bulk_insert, PredOrFunc,
 		ArgTypes, PredOrFunc, ClosureArgModes, nondet) :-
 	out_mode(OutMode),
 	AditiStateMode = aditi_mui_mode,
 	aditi_builtin_modes(OutMode, AditiStateMode,
 		ArgTypes, ClosureArgModes).
-post_typecheck__insert_delete_modify_closure_info(delete(BulkOrFilter),
+post_typecheck__bulk_update_closure_info(bulk_delete,
 		PredOrFunc, ArgTypes, PredOrFunc, ClosureArgModes, nondet) :-
-	(
-		BulkOrFilter = bulk,
-		out_mode(ArgMode)
-	;
-		BulkOrFilter = filter,
-		in_mode(ArgMode)
-	),
+	ArgMode = out_mode,
 	AditiStateMode = aditi_mui_mode,
 	aditi_builtin_modes(ArgMode, AditiStateMode,
 		ArgTypes, ClosureArgModes).
-post_typecheck__insert_delete_modify_closure_info(modify(BulkOrFilter),
+post_typecheck__bulk_update_closure_info(bulk_modify,
 		_PredOrFunc, ArgTypes, LambdaPredOrFunc,
 		ClosureArgModes, nondet) :-
 	LambdaPredOrFunc = predicate,
 	out_mode(OutMode),
-	in_mode(InMode),
 	unused_mode(UnusedMode),
-	(
-		BulkOrFilter = bulk,
-		DeleteArgMode = OutMode,
-		DeleteAditiStateMode = aditi_mui_mode
-	;
-		BulkOrFilter = filter,
-		DeleteArgMode = InMode,
-		DeleteAditiStateMode = UnusedMode
-	),
-
+	DeleteArgMode = OutMode,
+	DeleteAditiStateMode = aditi_mui_mode,
 	aditi_builtin_modes(DeleteArgMode, DeleteAditiStateMode,
 			ArgTypes, DeleteArgModes),
 

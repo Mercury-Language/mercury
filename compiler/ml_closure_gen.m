@@ -110,12 +110,8 @@ ml_gen_closure(PredId, ProcId, EvalMethod, Var, ArgVars, ArgModes,
 		{ EvalMethod = normal }
 	;
 		{ EvalMethod = (aditi_bottom_up) },
-		% XXX not yet implemented
+		% These are transformed away by aditi_builtin_ops.m.
 		{ sorry(this_file, "`aditi_bottom_up' closures") }
-	;
-		{ EvalMethod = (aditi_top_down) },
-		% XXX not yet implemented
-		{ sorry(this_file, "`aditi_top_down' closures") }
 	),
 
 	%

@@ -885,15 +885,10 @@
 	% expressions constructed for arguments of the builtin Aditi
 	% update constructs.
 	%
-	% `aditi_top_down' expressions are used by `aditi_delete'
-	% goals (see hlds_goal.m) to determine whether a tuple
-	% should be deleted.
-	%
 	% `aditi_bottom_up' expressions are used as database queries to
 	% produce a set of tuples to be inserted or deleted.
 :- type lambda_eval_method
 	--->	normal
-	;	(aditi_top_down)
 	;	(aditi_bottom_up)
 	.
 

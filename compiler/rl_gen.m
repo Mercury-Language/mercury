@@ -1729,9 +1729,7 @@ rl_gen__aggregate(InputRelationArg, UpdateAcc, ComputeInitial,
 	(
 		% XXX The type declaration in extras/aditi/aditi.m
 		% should be changed to require that the eval_method
-		% for the UpdateAcc and ComputeInitial parameters
-		% is `aditi_top_down', and the InputRelationArg
-		% is `aditi_bottom_up'.
+		% for the InputRelationArg is `aditi_bottom_up'.
 		{ type_is_higher_order(ComputeInitialType, (pure),
 			predicate, _, ComputeInitialArgTypes) },
 		{ ComputeInitialArgTypes = [GrpByType, _NGrpByType, AccType] }

@@ -375,21 +375,7 @@
 			construct_is_unique	:: cell_is_unique,
 					% Can the cell be allocated
 					% in shared data.
-			construct_exprn_id	:: maybe(rl_exprn_id)
-					% Used for `aditi_top_down' closures
-					% passed to `aditi_delete' and
-					% `aditi_modify' calls where the
-					% relation being modified has a
-					% B-tree index.
-					% The Aditi-RL expression referred
-					% to by this field constructs a key
-					% range which restricts the deletion
-					% or modification of the relation using
-					% the index so that the deletion or
-					% modification closure is only applied
-					% to tuples for which the closure could
-					% succeed, reducing the number of
-					% tuples read from disk.
+			maybe(unit)	% Unused.
 		)
 
 		% A deconstruction unification is a unification with a functor
@@ -1037,8 +1023,8 @@
 		% Arguments:
 		%   the arguments of tuple to insert
 		%   aditi__state::di, aditi__state::uo
-		aditi_tuple_insert_delete(
-			aditi_insert_delete,
+		aditi_tuple_update(
+			aditi_tuple_update,
 			pred_id		% base relation to insert into
 		)
 
@@ -1073,35 +1059,22 @@
 		%		q(DB, X, Y)
 		% ),
 		% aditi_bulk_delete(pred p/3, DeletePred).
-	;	aditi_insert_delete_modify(
-			aditi_insert_delete_modify,
+	;	aditi_bulk_update(
+			aditi_bulk_update,
 			pred_id,
 			aditi_builtin_syntax
 		)
 	.
 
-:- type aditi_insert_delete
+:- type aditi_tuple_update
 	--->	delete			% `aditi_delete'
 	;	insert			% `aditi_insert'
 	.
 
-:- type aditi_insert_delete_modify
-	--->	delete(bulk_or_filter)	% `aditi_bulk_delete' or `aditi_filter'
+:- type aditi_bulk_update
+	--->	bulk_delete		% `aditi_bulk_delete'
 	;	bulk_insert		% `aditi_bulk_insert'
-	;	modify(bulk_or_filter)	% `aditi_bulk_modify' or `aditi_modify'
-	.
-
-	% Deletions and modifications can either be done by computing
-	% all tuples for which the update applies, then applying the
-	% update for all tuples in one go (`bulk'), or by applying
-	% the update to each tuple during a pass over the relation
-	% being modified (`filter').
-	%
-	% The `filter' updates are not yet implemented in Aditi, and
-	% it may be difficult to ever implement them.
-:- type bulk_or_filter
-	--->	bulk
-	;	filter
+	;	bulk_modify		% `aditi_bulk_modify'
 	.
 
 	% Which syntax was used for an `aditi_delete' or `aditi_modify'

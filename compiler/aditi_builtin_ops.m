@@ -232,10 +232,9 @@ transform_aditi_bottom_up_closure(Var, PredId, ProcId, Args,
 			(CastInputInst - CastInputInst)) },
 	{ list__duplicate(NumBuiltinArgs, UniMode, UniModes) },
 	{ BuiltinConsId = pred_const(BuiltinPredId, BuiltinProcId, normal) },
-	{ ExprnId = no },
 	{ Unification = construct(NewVar, BuiltinConsId, BuiltinArgs,
 			UniModes, construct_dynamically,
-			cell_is_unique, ExprnId) },
+			cell_is_unique, no) },
 	{ set__list_to_set([NewVar | BuiltinArgs], NonLocals) },
 	{ instmap_delta_from_assoc_list([NewVar - ground_inst],
 		InstMapDelta) },
@@ -322,7 +321,7 @@ transform_aditi_builtin(Builtin, Args, Modes, Det, GoalInfo, Goal) -->
 :- mode transform_aditi_builtin_2(in, in, in, in, in, in, in, in,
 		out, in, out) is det.
 
-transform_aditi_builtin_2(aditi_tuple_insert_delete(_, _),
+transform_aditi_builtin_2(aditi_tuple_update(_, _),
 		Args0, _Modes0, _Det, _GoalInfo, BuiltinPredProcId,
 		BuiltinSymName, ConstArgs, Goals) -->
 
@@ -365,7 +364,7 @@ transform_aditi_builtin_2(aditi_tuple_insert_delete(_, _),
 	{ Goals = list__append(TupleGoals, [CallGoal]) }. 
 
 transform_aditi_builtin_2(
-		aditi_insert_delete_modify(Op, PredId, _),
+		aditi_bulk_update(Op, PredId, _),
 		Args, _Modes, _Det, _GoalInfo, BuiltinPredProcId,
 		BuiltinSymName, ConstArgs, Goals) -->
 
@@ -390,7 +389,7 @@ transform_aditi_builtin_2(
 	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
 	{ list__length(ArgTypes, PredArity) },
 	{
-		Op = delete(_),
+		Op = bulk_delete,
 		ClosurePredOrFunc = PredOrFunc,
 		ClosureArity = PredArity
 	;
@@ -398,7 +397,7 @@ transform_aditi_builtin_2(
 		ClosurePredOrFunc = PredOrFunc,
 		ClosureArity = PredArity
 	;
-		Op = modify(_),
+		Op = bulk_modify,
 		ClosurePredOrFunc = predicate,
 		ClosureArity = PredArity * 2
 	},
@@ -658,7 +657,7 @@ create_bulk_update_closure_var(NewVar, Info0, Info) :-
 		string, arity, list(const_arg)).
 :- mode aditi_builtin_info(in, in, out, out, out) is det.
 
-aditi_builtin_info(ModuleInfo, aditi_tuple_insert_delete(Op, PredId),
+aditi_builtin_info(ModuleInfo, aditi_tuple_update(Op, PredId),
 		BuiltinProcName, BuiltinProcArity, ConstArgs) :-
 	rl__permanent_relation_name(ModuleInfo, PredId, RelName),
 	(
@@ -681,25 +680,21 @@ aditi_builtin_info(ModuleInfo, aditi_tuple_insert_delete(Op, PredId),
 		UpdateProcArgs = [string(DeleteProcStr), string(InputSchema)]
 	),
 	ConstArgs = [string(RelName) | UpdateProcArgs].
-aditi_builtin_info(ModuleInfo, aditi_insert_delete_modify(Op, PredId, _),
+aditi_builtin_info(ModuleInfo, aditi_bulk_update(Op, PredId, _),
 		BuiltinProcName, BuiltinProcArity, ConstArgs) :-
 
 	rl__permanent_relation_name(ModuleInfo, PredId, RelName),
 	(
-		Op = delete(BulkFilter),
+		Op = bulk_delete,
 		BuiltinProcName = "do_bulk_delete",
-		require(unify(BulkFilter, bulk),
-			"sorry, top-down Aditi updates not yet implemented"),
 		rl__get_delete_proc_name(ModuleInfo, PredId, UpdateProcName)
 	;
 		Op = bulk_insert,
 		BuiltinProcName = "do_bulk_insert",
 		rl__get_insert_proc_name(ModuleInfo, PredId, UpdateProcName)
 	;
-		Op = modify(BulkFilter),
+		Op = bulk_modify,
 		BuiltinProcName = "do_bulk_modify",
-		require(unify(BulkFilter, bulk),
-			"sorry, top-down Aditi updates not yet implemented"),
 		rl__get_modify_proc_name(ModuleInfo, PredId, UpdateProcName)
 	),
 	BuiltinProcArity = 5,

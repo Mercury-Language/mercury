@@ -393,10 +393,6 @@ lambda__process_lambda(Purity, PredOrFunc, EvalMethod, Vars, Modes, Detism,
 			Call_PredInfo, Call_ProcInfo),
 
 		(
-			EvalMethod = (aditi_top_down),
-			pred_info_get_markers(Call_PredInfo, Call_Markers),
-			check_marker(Call_Markers, (aditi_top_down))
-		;
 			EvalMethod = (aditi_bottom_up),
 			pred_info_get_markers(Call_PredInfo, Call_Markers),
 			check_marker(Call_Markers, aditi)
@@ -549,11 +545,6 @@ lambda__process_lambda(Purity, PredOrFunc, EvalMethod, Vars, Modes, Detism,
 		->
 			add_marker(LambdaMarkers0, aditi, LambdaMarkers)
 		;
-			EvalMethod = (aditi_top_down)
-		->
-			add_marker(LambdaMarkers0, aditi_top_down,
-				LambdaMarkers)
-		; 
 			LambdaMarkers = LambdaMarkers0
 		),
 

@@ -625,16 +625,6 @@ compute_expr_purity(Unif0, GoalExpr, GoalInfo, ActualPurity) -->
 				error(
 	"compute_expr_purity: modes need fixing for normal lambda_goal")
 			;
-				EvalMethod = (aditi_top_down),
-				% `aditi_top_down' predicates can't call
-				% database predicates, so their `aditi__state'
-				% arguments must have mode `unused'.
-				% The `aditi__state's are passed even
-				% though they are not used so that the
-				% arguments of the closure and the
-				% base relation being updated match.
-				unused_mode(StateMode)
-			;
 				EvalMethod = (aditi_bottom_up),
 				% Make sure `aditi_bottom_up' expressions have
 				% a `ui' mode for their aditi_state.

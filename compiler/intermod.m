@@ -723,17 +723,7 @@ intermod__module_qualify_unify_rhs(_, var(Var), var(Var), yes) --> [].
 intermod__module_qualify_unify_rhs(_LVar,
 		lambda_goal(A,B,EvalMethod,C,D,E,Modes,G,Goal0),
 		lambda_goal(A,B,EvalMethod,C,D,E,Modes,G,Goal), DoWrite) -->
-	( { EvalMethod = (aditi_top_down) } ->
-		% XXX Predicates which build this type of lambda expression
-		% can't be exported because the importing modules have
-		% no way of knowing which Aditi-RL bytecode fragment
-		% to use. The best way to handle these is probably to
-		% add some sort of lookup table to Aditi.
-		{ DoWrite = no },
-		{ Goal = Goal0 }
-	;
-		intermod__traverse_goal(Goal0, Goal, DoWrite)
-	).	
+	intermod__traverse_goal(Goal0, Goal, DoWrite).
 
 	% Fully module-qualify the right-hand-side of a unification.
 	% For function calls and higher-order terms, call intermod__add_proc
@@ -745,23 +735,13 @@ intermod__module_qualify_unify_rhs(_LVar, functor(Functor, E, Vars),
 		% Is this a higher-order predicate or higher-order function
 		% term?
 		%
-		{ Functor = pred_const(PredId, _, EvalMethod) }
+		{ Functor = pred_const(PredId, _, _) }
 	->
-		( { EvalMethod = (aditi_top_down) } ->
-			% XXX Predicates which build this type of lambda
-			% expression can't be exported because the importing
-			% modules have no way of knowing which Aditi-RL
-			% bytecode fragment to use. The best way to handle
-			% these is probably to add some sort of lookup table
-			% to Aditi. 
-			{ DoWrite = no }
-		;
-			%
-			% Yes, the unification creates a higher-order term.
-			% Make sure that the predicate/function is exported.
-			%
-			intermod__add_proc(PredId, DoWrite)
-		)
+		%
+		% Yes, the unification creates a higher-order term.
+		% Make sure that the predicate/function is exported.
+		%
+		intermod__add_proc(PredId, DoWrite)
 	;
 		%
 		% It's an ordinary constructor, or a constant of a builtin
@@ -1864,11 +1844,6 @@ intermod__should_output_marker(inline, yes).
 intermod__should_output_marker(no_inline, yes).
 intermod__should_output_marker(dnf, yes).
 intermod__should_output_marker(aditi, yes).
-intermod__should_output_marker((aditi_top_down), _) :-
-	% We don't write out code for predicates which depend on
-	% predicates with this marker: see the comments in
-	% intermod__module_qualify_unify_rhs.
-	error("intermod__should_output_marker: aditi_top_down").
 intermod__should_output_marker(base_relation, yes).
 intermod__should_output_marker(aditi_memo, yes).
 intermod__should_output_marker(aditi_no_memo, yes).

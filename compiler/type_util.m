@@ -677,12 +677,8 @@ get_lambda_eval_method_and_args(PorFStr, Type0, EvalMethod, ArgTypes) :-
 	;	
 		Args = [Type1],
 		Type1 = term__functor(term__atom(PorFStr), ArgTypes, _),
-		( Functor = "aditi_bottom_up" ->
-			EvalMethod = (aditi_bottom_up)
-		;
-			Functor = "aditi_top_down",
-			EvalMethod = (aditi_top_down)
-		)
+		Functor = "aditi_bottom_up",
+		EvalMethod = (aditi_bottom_up)
 	).
 
 type_ctor_is_higher_order(SymName - _Arity, Purity, PredOrFunc, EvalMethod) :-
@@ -704,10 +700,6 @@ get_purity_and_eval_method(SymName, Purity, EvalMethod, PorFStr) :-
 		(
 			Qualifier = "aditi_bottom_up",
 			EvalMethod = (aditi_bottom_up),
-			Purity = (pure)
-		;
-			Qualifier = "aditi_top_down",
-			EvalMethod = (aditi_top_down),
 			Purity = (pure)
 		;
 			Qualifier = "impure",
@@ -870,10 +862,6 @@ type_to_ctor_and_args(Type, SymName - Arity, Args) :-
 			insert_module_qualifier("aditi_bottom_up", SymName0,
 				SymName1)
 		;
-			EvalMethod = (aditi_top_down),
-			insert_module_qualifier("aditi_top_down", SymName0,
-				SymName1)
-		;
 			EvalMethod = normal,
 			SymName1 = SymName0
 		),
@@ -961,9 +949,6 @@ add_purity_annotation(Purity, Type0) = Type :-
 :- mode qualify_higher_order_type(in, in, out) is det.
 
 qualify_higher_order_type(normal, Type, Type).
-qualify_higher_order_type((aditi_top_down), Type0,
-	    term__functor(term__atom("aditi_top_down"), [Type0], Context)) :- 
-	term__context_init(Context).
 qualify_higher_order_type((aditi_bottom_up), Type0,
 	    term__functor(term__atom("aditi_bottom_up"), [Type0], Context)) :-
 	term__context_init(Context).

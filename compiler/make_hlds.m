@@ -6534,10 +6534,6 @@ transform_goal_2(call(Name, Args0, Purity), Context, VarSet0, Subst, Goal,
 		; Name1 = "aditi_bulk_insert"
 		; Name1 = "aditi_bulk_delete"
 		; Name1 = "aditi_bulk_modify"
-
-		% These are not yet implemented in Aditi.
-		%; Name1 = "aditi_filter"
-		%; Name1 = "aditi_modify"
 		}
 	->
 		{ term__apply_substitution_to_list(Args1, Subst, Args2) },
@@ -7077,9 +7073,7 @@ parse_field_list(Term, MaybeFieldNames) :-
 	;	"aditi_delete"
 	;	"aditi_bulk_insert"
 	;	"aditi_bulk_delete"
-	;	"aditi_filter"
 	;	"aditi_bulk_modify"
-	;	"aditi_modify"
 	).
 
 	% See the "Aditi update syntax" section of the
@@ -7094,55 +7088,36 @@ parse_field_list(Term, MaybeFieldNames) :-
 transform_aditi_builtin(UpdateStr, Args0, Context, VarSet0,
 		Goal, VarSet, Info0, Info, SInfo0, SInfo) -->
 	(
-		{ UpdateStr = "aditi_insert", InsertDelete = insert
-		; UpdateStr = "aditi_delete", InsertDelete = delete
+		{ UpdateStr = "aditi_insert", Update = insert
+		; UpdateStr = "aditi_delete", Update = delete
 		}
 	->
-		transform_aditi_tuple_insert_delete(UpdateStr, InsertDelete,
+		transform_aditi_tuple_update(UpdateStr, Update,
 			Args0, Context, VarSet0, Goal,
 			VarSet, Info0, Info, SInfo0, SInfo)
 	;
-		{
-			UpdateStr = "aditi_insert",
-			% This is handled above
-			error("transform_aditi_builtin: aditi_insert")
-		;
-			UpdateStr = "aditi_delete",
-			% This is handled above
-			error("transform_aditi_builtin: aditi_delete")
-		;
-			UpdateStr = "aditi_bulk_insert",
-			Update = bulk_insert
-		;
-			UpdateStr = "aditi_bulk_delete",
-			Update = delete(bulk)
-		;
-			UpdateStr = "aditi_bulk_modify",
-			Update = modify(bulk)
-		;
-			UpdateStr = "aditi_filter",
-			% not yet implemented
-			Update = delete(filter)
-		;
-			UpdateStr = "aditi_modify",
-			% not yet implemented
-			Update = modify(filter)
-		},
-		transform_aditi_insert_delete_modify(UpdateStr,
+		{ UpdateStr = "aditi_bulk_insert", Update = bulk_insert
+		; UpdateStr = "aditi_bulk_delete", Update = bulk_delete
+		; UpdateStr = "aditi_bulk_modify", Update = bulk_modify
+		}
+	->
+		transform_aditi_bulk_update(UpdateStr,
 			Update, Args0, Context, VarSet0, Goal,
 			VarSet, Info0, Info, SInfo0, SInfo)
 		
+	;
+		{ error("transform_aditi_builtin") }
 	).
 
-:- pred transform_aditi_tuple_insert_delete(string, aditi_insert_delete,
+:- pred transform_aditi_tuple_update(string, aditi_tuple_update,
 		list(prog_term), prog_context,
 		prog_varset, hlds_goal, prog_varset,
 		transform_info, transform_info, svar_info, svar_info,
 		io__state, io__state).
-:- mode transform_aditi_tuple_insert_delete(in, in, in, in,
+:- mode transform_aditi_tuple_update(in, in, in, in,
 		in, out, out, in, out, in, out, di, uo) is det.
 
-transform_aditi_tuple_insert_delete(UpdateStr, InsertDelete, Args0, Context,
+transform_aditi_tuple_update(UpdateStr, Update, Args0, Context,
 		VarSet0, Goal, VarSet, Info0, Info, SInfo0, SInfo) -->
 	% Build an empty goal_info. 
 	{ goal_info_init(Context, GoalInfo) },
@@ -7177,8 +7152,7 @@ transform_aditi_tuple_insert_delete(UpdateStr, InsertDelete, Args0, Context,
 			list__length(TupleArgVars, InsertArity),
 
 			invalid_pred_id(PredId),
-			Builtin = aditi_tuple_insert_delete(InsertDelete,
-					PredId),
+			Builtin = aditi_tuple_update(Update, PredId),
 			InsertCallId = PredOrFunc - SymName/InsertArity,
 			Call = generic_call(
 				aditi_builtin(Builtin, InsertCallId),
@@ -7206,7 +7180,7 @@ transform_aditi_tuple_insert_delete(UpdateStr, InsertDelete, Args0, Context,
 			io__set_exit_status(1),
 			prog_out__write_context(Context),
 			io__write_string("Error: expected tuple to "),
-			io__write(InsertDelete),
+			io__write(Update),
 			io__write_string(" in `"),
 			io__write_string(UpdateStr),
 			io__write_string("'.\n"),
@@ -7224,14 +7198,14 @@ transform_aditi_tuple_insert_delete(UpdateStr, InsertDelete, Args0, Context,
 	).
 
 	% Parse an `aditi_delete' or `aditi_modify' goal.
-:- pred transform_aditi_insert_delete_modify(string,
-		aditi_insert_delete_modify, list(prog_term), prog_context,
+:- pred transform_aditi_bulk_update(string,
+		aditi_bulk_update, list(prog_term), prog_context,
 		prog_varset, hlds_goal, prog_varset, transform_info, 
 		transform_info, svar_info, svar_info, io__state, io__state).
-:- mode transform_aditi_insert_delete_modify(in, in, in, in, in, out, out,
+:- mode transform_aditi_bulk_update(in, in, in, in, in, out, out,
 		in, out, in, out, di, uo) is det.
 
-transform_aditi_insert_delete_modify(Descr, InsertDelMod, Args0, Context,
+transform_aditi_bulk_update(Descr, Update, Args0, Context,
 		VarSet0, UpdateGoal, VarSet, Info0, Info, SInfo0, SInfo) -->
 	{ goal_info_init(Context, GoalInfo) },
 	(
@@ -7259,17 +7233,17 @@ transform_aditi_insert_delete_modify(Descr, InsertDelMod, Args0, Context,
 		{ Args0 = [HOTerm, AditiState0Term, AditiStateTerm] },
 		{ parse_rule_term(Context, HOTerm, HeadTerm, GoalTerm1) },
 		{ 
-			InsertDelMod = bulk_insert,
+			Update = bulk_insert,
 			parse_pred_or_func_and_args(HeadTerm,
 				PredOrFunc, SymName, HeadArgs1),
 			list__length(HeadArgs1, PredArity)
 		;
-			InsertDelMod = delete(_),
+			Update = bulk_delete,
 			parse_pred_or_func_and_args(HeadTerm,
 				PredOrFunc, SymName, HeadArgs1),
 			list__length(HeadArgs1, PredArity)
 		;
-			InsertDelMod = modify(_),
+			Update = bulk_modify,
 			HeadTerm = term__functor(term__atom("==>"),
 				[LeftHeadTerm, RightHeadTerm], _),
 			parse_pred_or_func_and_args(LeftHeadTerm,
@@ -7321,15 +7295,14 @@ transform_aditi_insert_delete_modify(Descr, InsertDelMod, Args0, Context,
 		{ set__delete_list(LambdaGoalVars0,
 			HeadArgs, LambdaGoalVars1) },
 		{ set__to_sorted_list(LambdaGoalVars1, LambdaNonLocals) },
-		{ aditi_delete_insert_delete_modify_goal_info(InsertDelMod,
+		{ aditi_bulk_update_goal_info(Update,
 			PredOrFunc, SymName, PredArity, HeadArgs,
 			LambdaPredOrFunc, EvalMethod, LambdaModes,
 			Detism, PredGoal0, PredGoal) },
 		{ ModifiedCallId = PredOrFunc - SymName/PredArity },
 
 		{ invalid_pred_id(PredId) },
-		{ Builtin = aditi_insert_delete_modify(InsertDelMod,
-				PredId, Syntax) },
+		{ Builtin = aditi_bulk_update(Update, PredId, Syntax) },
 		{ MainContext =
 			call(generic_call(
 				aditi_builtin(Builtin, ModifiedCallId)),
@@ -7391,8 +7364,6 @@ transform_aditi_insert_delete_modify(Descr, InsertDelMod, Args0, Context,
 		% Second syntax -
 		% aditi_bulk_delete(pred p/3,
 		%	(aditi_bottom_up pred(..) :- ..), DB0, DB).
-		% aditi_bulk_modify(pred p/3,
-		%	(aditi_top_down pred(..) :- ..), DB0, DB).
 		%
 		% The `pred_term' syntax parsed above is transformed
 		% into the equivalent of this syntax.
@@ -7410,8 +7381,7 @@ transform_aditi_insert_delete_modify(Descr, InsertDelMod, Args0, Context,
 			VarSet0, OtherArgs, VarSet1) },
 		{ invalid_pred_id(PredId) },
 
-		{ Builtin = aditi_insert_delete_modify(InsertDelMod,
-				PredId, Syntax) },
+		{ Builtin = aditi_bulk_update(Update, PredId, Syntax) },
 
 		{ ModifiedCallId = PredOrFunc - SymName/Arity },
 		
@@ -7434,18 +7404,18 @@ transform_aditi_insert_delete_modify(Descr, InsertDelMod, Args0, Context,
 			QualInfo) },
 		{ Info = Info0 ^ qual_info := QualInfo },
 		io__set_exit_status(1),
-		output_expected_aditi_update_syntax(Context, InsertDelMod),
+		output_expected_aditi_update_syntax(Context, Update),
 		{ SInfo = SInfo0 }
 	).
 
-:- pred aditi_delete_insert_delete_modify_goal_info(aditi_insert_delete_modify,
+:- pred aditi_bulk_update_goal_info(aditi_bulk_update,
 		pred_or_func, sym_name, arity, list(prog_var), pred_or_func,
 		lambda_eval_method, list(mode), determinism,
 		hlds_goal, hlds_goal).
-:- mode aditi_delete_insert_delete_modify_goal_info(in, in, in, in, in, out,
+:- mode aditi_bulk_update_goal_info(in, in, in, in, in, out,
 		out, out, out, in, out) is det.
 
-aditi_delete_insert_delete_modify_goal_info(bulk_insert, PredOrFunc, _SymName,
+aditi_bulk_update_goal_info(bulk_insert, PredOrFunc, _SymName,
 		PredArity, _Args, LambdaPredOrFunc, EvalMethod,
 		LambdaModes, Detism, Goal, Goal) :-
 	LambdaPredOrFunc = PredOrFunc,
@@ -7455,32 +7425,21 @@ aditi_delete_insert_delete_modify_goal_info(bulk_insert, PredOrFunc, _SymName,
 	% Modes for the arguments of the input tuple.
 	list__duplicate(PredArity, OutMode, LambdaModes).
 
-aditi_delete_insert_delete_modify_goal_info(delete(BulkOrFilter), PredOrFunc, 
+aditi_bulk_update_goal_info(bulk_delete, PredOrFunc, 
 		SymName, PredArity, Args, LambdaPredOrFunc, EvalMethod,
 		LambdaModes, Detism, Goal0, Goal) :-
 	LambdaPredOrFunc = PredOrFunc,
+	EvalMethod = (aditi_bottom_up),
+	Detism = nondet,
+	out_mode(OutMode),
+	list__duplicate(PredArity, OutMode, LambdaModes),
 
-	(
-		BulkOrFilter = filter,
-		EvalMethod = (aditi_top_down),
-		in_mode(InMode),
-		list__duplicate(PredArity, InMode, LambdaModes),
-		Detism = semidet,
-		Goal = Goal0
-	;
-		BulkOrFilter = bulk,
-		EvalMethod = (aditi_bottom_up),
-		Detism = nondet,
-		out_mode(OutMode),
-		list__duplicate(PredArity, OutMode, LambdaModes),
+	% Join the result of the deletion goal with the
+	% relation to be updated.
+	conjoin_aditi_update_goal_with_call(PredOrFunc, SymName,
+		Args, Goal0, Goal).
 
-		% Join the result of the deletion goal with the
-		% relation to be updated.
-		conjoin_aditi_update_goal_with_call(PredOrFunc, SymName,
-			Args, Goal0, Goal)
-	).
-
-aditi_delete_insert_delete_modify_goal_info(modify(BulkOrFilter), PredOrFunc, 
+aditi_bulk_update_goal_info(bulk_modify, PredOrFunc, 
 		SymName, PredArity, Args, LambdaPredOrFunc, EvalMethod,
 		LambdaModes, Detism, Goal0, Goal) :-
 
@@ -7488,41 +7447,27 @@ aditi_delete_insert_delete_modify_goal_info(modify(BulkOrFilter), PredOrFunc,
 	% is always a predicate closure.
 	LambdaPredOrFunc = predicate,
 
-	in_mode(InMode),
 	out_mode(OutMode),
-	(
-		BulkOrFilter = filter,
+	EvalMethod = (aditi_bottom_up),
+	Detism = nondet,
 
-		% Modes for the arguments corresponding to
-		% the input tuple.
-		list__duplicate(PredArity, InMode,
-			DeleteModes),
-		EvalMethod = (aditi_top_down),
-		Detism = semidet,
-		Goal = Goal0
+	% Modes for the arguments corresponding to
+	% the input tuple.
+	list__duplicate(PredArity, OutMode,
+		DeleteModes),
+
+	% `Args' must have length `PredArity * 2',
+	% so this will always succeed.
+	( list__take(PredArity, Args, CallArgs0) ->
+		CallArgs = CallArgs0
 	;
-		BulkOrFilter = bulk,
-		EvalMethod = (aditi_bottom_up),
-		Detism = nondet,
-
-		% Modes for the arguments corresponding to
-		% the input tuple.
-		list__duplicate(PredArity, OutMode,
-			DeleteModes),
-
-		% `Args' must have length `PredArity * 2',
-		% so this will always succeed.
-		( list__take(PredArity, Args, CallArgs0) ->
-			CallArgs = CallArgs0
-		;
-			error("aditi_delete_insert_delete_modify_goal_info")
-		),
-
-		% Join the result of the modify goal with the
-		% relation to be updated.
-		conjoin_aditi_update_goal_with_call(PredOrFunc, SymName,
-			CallArgs, Goal0, Goal)
+		error("aditi_delete_insert_delete_modify_goal_info")
 	),
+
+	% Join the result of the modify goal with the
+	% relation to be updated.
+	conjoin_aditi_update_goal_with_call(PredOrFunc, SymName,
+		CallArgs, Goal0, Goal),
 
 	% Modes for the arguments corresponding to
 	% the output tuple.
@@ -7538,7 +7483,7 @@ conjoin_aditi_update_goal_with_call(PredOrFunc, SymName, Args, Goal0, Goal) :-
 	Goal0 = _ - GoalInfo,
 
 	% The predicate is recorded as used in
-	% transform_aditi_tuple_insert_delete and
+	% transform_aditi_tuple_update and
 	% transform_aditi_insert_delete_modify
 	do_construct_pred_or_func_call(PredId, PredOrFunc, SymName, Args,
 		GoalInfo, CallGoal),
@@ -7546,19 +7491,15 @@ conjoin_aditi_update_goal_with_call(PredOrFunc, SymName, Args, Goal0, Goal) :-
 	Goal = conj([CallGoal, Goal0]) - GoalInfo.
 	
 :- pred output_expected_aditi_update_syntax(prog_context,
-		aditi_insert_delete_modify, io__state, io__state). 
+		aditi_bulk_update, io__state, io__state). 
 :- mode output_expected_aditi_update_syntax(in, in, di, uo) is det.
 
 output_expected_aditi_update_syntax(Context, bulk_insert) -->
 	output_insert_or_delete_expected_syntax(Context, "aditi_bulk_insert").
-output_expected_aditi_update_syntax(Context, delete(bulk)) -->
+output_expected_aditi_update_syntax(Context, bulk_delete) -->
 	output_insert_or_delete_expected_syntax(Context, "aditi_bulk_delete").
-output_expected_aditi_update_syntax(Context, delete(filter)) -->
-	output_insert_or_delete_expected_syntax(Context, "aditi_delete").
-output_expected_aditi_update_syntax(Context, modify(BulkOrFilter)) -->
-	{ BulkOrFilter = bulk, Name = "aditi_bulk_modify"
-	; BulkOrFilter = filter, Name = "aditi_modify"
-	},
+output_expected_aditi_update_syntax(Context, bulk_modify) -->
+	{ Name = "aditi_bulk_modify" },
 	prog_out__write_context(Context),
 	io__write_string("Error: expected\n"),
 	prog_out__write_context(Context),
