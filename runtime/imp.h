@@ -44,6 +44,7 @@ enum {
 	D_1,
 	E_1,
 	F_1,
+
 	MAXENTRIES
 };
 
@@ -120,31 +121,7 @@ extern	Code	*dofastnegproceed;
 
 /* DEFINITIONS FOR VIRTUAL MACHINE REGISTERS */
 
-reg	Word	r0 __asm("s0");
-reg	Word	r1 __asm("s1");
-reg	Word	r2 __asm("s2");
-reg	Word	r3 __asm("s3");
-reg	Word	r4 __asm("s4");
-reg	Word	r5 __asm("s5");
-reg	Word	r6 __asm("s6");
-reg	Word	r7 __asm("s7");
-
-extern	Word	tmp0;
-extern	Word	tmp1;
-extern	Word	tmp2;
-extern	Word	tmp3;
-extern	Word	tmp4;
-extern	Word	tmp5;
-extern	Word	tmp6;
-extern	Word	tmp7;
-
-#define	hp	((Word *) r6)
-#define	sp	((Word *) r7)
-
-#define	succip	((Code *) r0)
-#define	childcp	((Word *) tmp5)
-#define	curcp	((Word *) tmp6)
-#define	maxcp	((Word *) tmp7)
+#include "regs.h"
 
 /* DEFINITIONS FOR CALLS AND RETURNS */
 
@@ -245,28 +222,35 @@ extern	Word	*cpstackmin;
 
 /* DEFINITIONS FOR CHOICE AND RECLAIM POINTS */
 
-/* these offsets and used by both choice points and reclaim points */
-#define	PREDNM		-0   /* for debugging, set up at call	     */
-#define	REDOIP		-1   /* in this proc, set up at clause entry */
-#define	PREVCP		-2   /* prev cp on stack, set up at call     */
-#define	SAVEHP		-3   /* in calling proc, set up at call      */
-#define	SUCCIP		-3   /* in calling proc, set up at call      */
-#define	SUCCCP		-4   /* cp of calling proc, set up at call   */
-#define	SAVEVAL		-5   /* saved values start at this offset    */
+#define	PREDNM		-0	/* for debugging, set up at call 	*/
+#define	REDOIP		-1	/* in this proc, set up at clause entry	*/
+#define	PREVCP		-2	/* prev cp on stack, set up at call	*/
+#define	SAVEHP		-3	/* in calling proc, set up at call	*/
+#define	SUCCIP		-3	/* in calling proc, set up at call	*/
+#define	SUCCCP		-4	/* cp of calling proc, set up at call	*/
+#define	SAVEVAL		-5	/* saved values start at this offset	*/
+
+#define	bt_prednm(curcp)	((const char *) curcp[PREDNM])
+#define	bt_redoip(curcp)	((Code *) curcp[REDOIP])
+#define	bt_prevcp(curcp)	((Word *) curcp[PREVCP])
+#define	bt_savehp(curcp)	((Code *) curcp[SAVEHP])
+#define	bt_succip(curcp)	((Code *) curcp[SUCCIP])
+#define	bt_succcp(curcp)	((Word *) curcp[SUCCCP])
+#define	bt_var(curcp,n)		curcp[SAVEVAL-n]
 
 /* the offsets used by choice points */
-#define	cpprednm	(const char *) curcp[PREDNM]
-#define	cpredoip	(Code *) curcp[REDOIP]
-#define	cpprevcp	(Word *) curcp[PREVCP]
-#define	cpsuccip	(Code *) curcp[SUCCIP]
-#define	cpsucccp	(Word *) curcp[SUCCCP]
-#define	cpvar(n)	curcp[SAVEVAL-n]
+#define	cpprednm	bt_prednm(curcp)
+#define	cpredoip	bt_redoip(curcp)
+#define	cpprevcp	bt_prevcp(curcp)
+#define	cpsuccip	bt_succip(curcp)
+#define	cpsucccp	bt_succcp(curcp)
+#define	cpvar(n)	bt_var(curcp,n)
 
 /* the offsets used by reclaim points */
-#define	recprednm	(const char *) maxcp[PREDNM]
-#define	recredoip	(Code *) maxcp[REDOIP]
-#define	recprevcp	(Word *) maxcp[PREVCP]
-#define	recsavehp	(Word *) maxcp[SAVEHP]
+#define	recprednm	bt_prednm(maxcp)
+#define	recredoip	bt_redoip(maxcp)
+#define	recprevcp	bt_prevcp(maxcp)
+#define	recsavehp	bt_savehp(maxcp)
 
 #define	RECLAIM_SIZE	4	/* units: words */
 
@@ -313,7 +297,7 @@ extern	Word	*cpstackmin;
 				debugsucceed();			\
 				childcp = curcp;		\
 				curcp = cpsucccp;		\
-				goto * (Code *) childcp[SUCCIP];\
+				goto * bt_succip(childcp);	\
 			} while (0)
 
 #define	fail()		do {					\
@@ -569,7 +553,6 @@ extern	void	neg_module(void);
 extern	void	heap_module(void);
 
 extern	Word	mklist(int start, int len);
-extern	void	mkinput(int r1val, int r2val, int r3val);
 
 /* DEFINITIONS TO SUPPORT DEBUGGING */
 
@@ -580,7 +563,7 @@ extern	void	mkinput(int r1val, int r2val, int r3val);
 */
 
 typedef void PrintRegFunc(Word);
-extern	PrintRegFunc * regtable[MAXENTRIES][16];
+extern	PrintRegFunc * regtable[MAXENTRIES][32];
 
 extern	bool	calldebug;
 extern	bool	heapdebug;
@@ -596,8 +579,8 @@ extern	void	modcp_msg(void);
 extern	void	succeed_msg(void);
 extern	void	fail_msg(void);
 extern	void	redo_msg(void);
-extern	void	call_msg(const Word *proc, const Word *succcont);
-extern	void	tailcall_msg(const Word *proc);
+extern	void	call_msg(const Code *proc, const Code *succcont);
+extern	void	tailcall_msg(const Code *proc);
 extern	void	proceed_msg(void);
 extern	void	cr1_msg(Word val0, const Word *addr);
 extern	void	cr2_msg(Word val0, Word val1, const Word *addr);
@@ -609,10 +592,11 @@ extern	void	pop_msg(Word val, const Word *addr);
 extern	void	printregs(const char *msg);
 extern	void	printtmps(void);
 extern	void	printint(Word n);
-extern	void	printheap(Word h);
-extern	void	printstack(Word s);
-extern	void	printcpstack(Word s);
+extern	void	printheap(const Word *h);
+extern	void	printstack(const Word *s);
+extern	void	printcpstack(const Word *s);
 extern	void	printlist(Word p);
-extern	void	printlabel(Word w);
+extern	void	printlabel(const Code *w);
 extern	void	printregs(const char *);
 extern	void	dumpcpstack(void);
+

@@ -1,68 +1,71 @@
+#include	<assert.h>
 #include	"imp.h"
 
-void mkcp_msg()
+static Word get_reg(int num);
+
+void mkcp_msg(void)
 {
 	printf("\nnew choice point for procedure %s\n", cpprednm);
-	printf("new  cp: "); printcpstack((Word) curcp);
-	printf("prev cp: "); printcpstack((Word) cpprevcp);
-	printf("succ cp: "); printcpstack((Word) cpsucccp);
-	printf("succ ip: "); printlabel((Word) cpsuccip);
-	printf("redo ip: "); printlabel((Word) cpredoip);
+	printf("new  cp: "); printcpstack(curcp);
+	printf("prev cp: "); printcpstack(cpprevcp);
+	printf("succ cp: "); printcpstack(cpsucccp);
+	printf("succ ip: "); printlabel(cpsuccip);
+	printf("redo ip: "); printlabel(cpredoip);
 	if (detaildebug)
 		dumpcpstack();
 }
 
-void mkreclaim_msg()
+void mkreclaim_msg(void)
 {
 	printf("\nnew reclaim point for procedure %s\n", cpprednm);
-	printf("new  cp: "); printcpstack((Word) curcp);
-	printf("prev cp: "); printcpstack((Word) recprevcp);
-	printf("redo ip: "); printlabel((Word) recredoip);
-	printf("save hp: "); printheap((Word) recsavehp);
+	printf("new  cp: "); printcpstack(curcp);
+	printf("prev cp: "); printcpstack(recprevcp);
+	printf("redo ip: "); printlabel(recredoip);
+	printf("save hp: "); printheap(recsavehp);
 	if (detaildebug)
 		dumpcpstack();
 }
 
-void modcp_msg()
+void modcp_msg(void)
 {
 	printf("\nmodifying choice point for procedure %s\n", cpprednm);
-	printf("redo ip: "); printlabel((Word) cpredoip);
+	printf("redo ip: "); printlabel(cpredoip);
 }
 
-void succeed_msg()
+void succeed_msg(void)
 {
 	printf("\nsucceeding from procedure %s\n", cpprednm);
-	printf("curr cp: "); printcpstack((Word) curcp);
-	printf("succ cp: "); printcpstack((Word) cpsucccp);
-	printf("succ ip: "); printlabel((Word) cpsuccip);
+	printf("curr cp: "); printcpstack(curcp);
+	printf("succ cp: "); printcpstack(cpsucccp);
+	printf("succ ip: "); printlabel(cpsuccip);
 }
 
-void fail_msg()
+void fail_msg(void)
 {
 	printf("\nfailing from procedure %s\n", cpprednm);
-	printf("curr cp: "); printcpstack((Word) curcp);
-	printf("fail cp: "); printcpstack((Word) cpprevcp);
-	printf("fail ip: "); printlabel((Word) (((Word *) cpprevcp)[REDOIP]));
+	printf("curr cp: "); printcpstack(curcp);
+	printf("fail cp: "); printcpstack(cpprevcp);
+	printf("fail ip: "); printlabel((Code *)cpprevcp[REDOIP]);
 }
 
-void redo_msg()
+void redo_msg(void)
 {
 	printf("\nredo from procedure %s\n", cpprednm);
-	printf("curr cp: "); printcpstack((Word) curcp);
-	printf("redo cp: "); printcpstack((Word) maxcp);
-	printf("redo ip: "); printlabel((Word) maxcp[REDOIP]);
+	printf("curr cp: "); printcpstack(curcp);
+	printf("redo cp: "); printcpstack(maxcp);
+	printf("redo ip: "); printlabel((Code *) maxcp[REDOIP]);
 }
 
-void call_msg(const Word *proc, const Word *succcont)
+void call_msg(const Code *proc, const Code *succcont)
 {
-	printf("\ncalling      "); printlabel((Word) proc);
-	printf("continuation "); printlabel((Word) succcont);
+	printf("\ncalling      "); printlabel(proc);
+	printf("continuation "); printlabel(succcont);
 }
 
-void tailcall_msg(const Word *proc)
+void tailcall_msg(const Code *proc)
 {
-	printf("\ntail calling "); printlabel((Word) proc);
-	printf("continuation "); printlabel((Word) succip);
+	printf("\ntail calling "); printlabel(proc);
+	printf("continuation "); printlabel(succip);
 }
 
 void proceed_msg(void)
@@ -73,57 +76,52 @@ void proceed_msg(void)
 void cr1_msg(Word val0, const Word *addr)
 {
 	printf("put value %9x at ", val0);
-	printheap((Word) addr);
+	printheap(addr);
 }
 
 void cr2_msg(Word val0, Word val1, const Word *addr)
 {
 	printf("put values %9x,%9x at ", val0, val1);
-	printheap((Word) addr);
+	printheap(addr);
 }
 
 void push_msg(Word val, const Word *addr)
 {
 	printf("push value %9x to ", val);
-	printstack((Word) addr);
+	printstack(addr);
 }
 
 void pop_msg(Word val, const Word *addr)
 {
 	printf("pop value %9x from ", val);
-	printstack((Word) addr);
+	printstack(addr);
 }
 
-void printtmps(void)
-{
-	printf("tmps x%x x%x x%x x%x x%x x%x x%x x%x\n",
-		tmp0, tmp1, tmp2, tmp3, tmp4, tmp5, tmp6, tmp7);
-}
+/*---------------------------------------------------------------------------*/
 
 void printint(Word n)
 {
 	printf("int %d\n", n);
 }
-void printheap(Word h)
+
+void printheap(const Word *h)
 {
-	printf("ptr %9x, offset %3d words\n",
-		h, (Word *) h - heapmin);
+	printf("ptr %p, offset %3d words\n", h, h - heapmin);
 }
 
-void printstack(Word s)
+void printstack(const Word *s)
 {
-	printf("ptr %9x, offset %3d words\n",
-		s, (Word *) s - stackmin);
+	printf("ptr %p, offset %3d words\n",
+		s, s - stackmin);
 }
 
-void printcpstack(Word s)
+void printcpstack(const Word *s)
 {
-	printf("ptr %9x, offset %3d words, procedure %s\n",
-		s, (Word *) s - cpstackmin,
-		(const char *)(((Word *) s)[PREDNM]));
+	printf("ptr %p, offset %3d words, procedure %s\n",
+		s, s - cpstackmin, (const char *) s[PREDNM]);
 }
 
-void dumpcpstack()
+void dumpcpstack(void)
 {
 	reg	Word	*cp;
 	reg	int	i;
@@ -136,19 +134,19 @@ void dumpcpstack()
 			printf("reclaim frame at ptr %p, offset %3d words\n",
 				cp, cp - cpstackmin);
 			printf("\tpredname  %s\n", (const char *)cp[PREDNM]);
-			printf("\tredoip    "); printlabel(cp[REDOIP]);
-			printf("\tprevcp    "); printcpstack(cp[PREVCP]);
-			printf("\tsavehp    "); printheap(cp[SAVEHP]);
+			printf("\tredoip    "); printlabel((Code *)cp[REDOIP]);
+			printf("\tprevcp    "); printcpstack((Word *)cp[PREVCP]);
+			printf("\tsavehp    "); printheap((Word *)cp[SAVEHP]);
 		}
 		else
 		{
 			printf("cp frame at ptr %p, offset %3d words\n",
 				cp, cp - cpstackmin);
 			printf("\tpredname  %s\n", (const char *)cp[PREDNM]);
-			printf("\tsuccip    "); printlabel(cp[SUCCIP]);
-			printf("\tredoip    "); printlabel(cp[REDOIP]);
-			printf("\tsucccp    "); printcpstack(cp[SUCCCP]);
-			printf("\tprevcp    "); printcpstack(cp[PREVCP]);
+			printf("\tsuccip    "); printlabel((Code *)cp[SUCCIP]);
+			printf("\tredoip    "); printlabel((Word *)cp[REDOIP]);
+			printf("\tsucccp    "); printcpstack((Word *)cp[SUCCCP]);
+			printf("\tprevcp    "); printcpstack((Word *)cp[PREVCP]);
 
 			for (i = 0; &cp[SAVEVAL-i] > (Word *) cp[PREVCP]; i++)
 				printf("\tcpvar(%d)  %x\n", i, cp[SAVEVAL-i]);
@@ -198,225 +196,151 @@ void printlist(Word p)
 	fflush(stdout);
 }
 
-void printlabel(Word w)
+void printlabel(const Code *w)
 {
 	int	i;
 
 	for (i = 0; i < MAXENTRIES; i++)
-		if (entries[i].e_addr == (void *) w)
+		if (entries[i].e_addr == w)
 		{
-			printf("label %s (%x)\n", entries[i].e_name, w);
+			printf("label %s (%p)\n", entries[i].e_name, w);
 			return;
 		}
 
 	for (i = STARTLABELS; i < cur_entry; i++)
-		if (entries[i].e_addr == (void *) w)
+		if (entries[i].e_addr == w)
 		{
-			printf("label %s (%x)\n", entries[i].e_name, w);
+			printf("label %s (%p)\n", entries[i].e_name, w);
 			return;
 		}
 
-	printf("label UNKNOWN (%x)\n", w);
+	printf("label UNKNOWN (%p)\n", w);
 }
 
-#define	FNULL	((PrintRegFunc *)0)
+#define	FNULL	((PrintRegFunc *) 0)
+#define P_LABEL ((PrintRegFunc *) printlabel)
+#define P_INT 	((PrintRegFunc *) printint)
+#define P_LIST 	((PrintRegFunc *) printlist)
+#define P_STACK	((PrintRegFunc *) printstack)
+#define P_HEAP	((PrintRegFunc *) printheap)
 
-PrintRegFunc	*regtable[MAXENTRIES][16] =
+/* The following table describes the contents of the
+   the registers r1, r2, ... for the specified
+   entry points.
+*/
+
+PrintRegFunc	*regtable[MAXENTRIES][32] =
 {
 /* APPEND_1 */
-	{ printlabel, printlist, printlist, printlist,
-	FNULL, FNULL, printheap, printstack,
-	FNULL, FNULL, FNULL, FNULL, FNULL, FNULL, FNULL, FNULL },
+	{ P_LIST, P_LIST, P_LIST, FNULL },
 /* APPEND_2 */
-	{ printlabel, printlist, printlist, printlist,
-	FNULL, FNULL, printheap, printstack,
-	FNULL, FNULL, FNULL, FNULL,
-	FNULL, printcpstack, printcpstack, printcpstack },
+	{ P_LIST, P_LIST, P_LIST, FNULL },
 /* NREV_1 */
-	{ printlabel, printlist, printlist, printlist,
-	FNULL, FNULL, printheap, printstack,
-	FNULL, FNULL, FNULL, FNULL, FNULL, FNULL, FNULL, FNULL },
+	{ P_LIST, P_LIST, P_LIST, FNULL },
 /* LENGTH_1 */
-	{ printlabel, printlist, printint, FNULL,
-	FNULL, FNULL, printheap, printstack,
-	FNULL, FNULL, FNULL, FNULL, FNULL, FNULL, FNULL, FNULL },
+	{ P_LIST, P_INT, FNULL },
 /* LENGTH_2 */
-	{ printlabel, printlist, printint, FNULL,
-	FNULL, FNULL, printheap, printstack,
-	FNULL, FNULL, FNULL, FNULL, FNULL, FNULL, FNULL, FNULL },
+	{ P_LIST, P_INT, FNULL },
 /* ACLENGTH_1 */
-	{ printlabel, printlist, printint, printint,
-	FNULL, FNULL, printheap, printstack,
-	FNULL, FNULL, FNULL, FNULL, FNULL, FNULL, FNULL, FNULL },
+	{ P_LIST, P_INT, P_INT, FNULL },
 /* MEMBER_1 */
-	{ printlabel, printint, printlist, FNULL,
-	FNULL, FNULL, printheap, printstack,
-	FNULL, FNULL, FNULL, FNULL, FNULL, FNULL, FNULL, FNULL },
+	{ P_INT, P_LIST, FNULL },
 /* MEMBER_2 */
-	{ printlabel, printint, printlist, FNULL,
-	FNULL, FNULL, printheap, printstack,
-	FNULL, FNULL, FNULL, FNULL, FNULL, FNULL, FNULL, FNULL },
+	{ P_INT, P_LIST, FNULL },
 /* MEMDET_1 */
-	{ printlabel, printlist, printint, printint,
-	FNULL, FNULL, printheap, printstack,
-	FNULL, FNULL, FNULL, FNULL, FNULL, FNULL, FNULL, FNULL },
+	{ P_LIST, P_INT, P_INT, FNULL },
 /* MKLIST_1 */
-	{ printlabel, printlist, FNULL, FNULL, FNULL, FNULL, FNULL, FNULL,
-	FNULL, FNULL, FNULL, FNULL, FNULL, FNULL, FNULL, FNULL },
+	{ P_LIST, FNULL },
 /* HEAP_1 */
-	{ printlabel, printlist, printint, FNULL,
-	FNULL, FNULL, printheap, printstack,
-	FNULL, FNULL, FNULL, FNULL,
-	FNULL, printcpstack, printcpstack, printcpstack },
+	{ P_LIST, P_INT, FNULL },
 /* ONEDET_1 */
-	{ printlabel, printint, FNULL, FNULL, FNULL, FNULL, FNULL, FNULL,
-	FNULL, FNULL, FNULL, FNULL,
-	FNULL, printcpstack, printcpstack, printcpstack },
+	{ P_INT, FNULL },
 /* INT_1 */
-	{ printlabel, printint, printint, FNULL, FNULL, FNULL, FNULL, FNULL,
-	FNULL, FNULL, FNULL, FNULL,
-	FNULL, printcpstack, printcpstack, printcpstack },
+	{ P_INT, P_INT, FNULL },
 /* Q_1 */
-	{ printlabel, printint, printint, FNULL, FNULL, FNULL, FNULL, FNULL,
-	FNULL, FNULL, FNULL, FNULL,
-	FNULL, printcpstack, printcpstack, printcpstack },
+	{ P_INT, P_INT, FNULL },
 /* NOT_Q_1 */
-	{ printlabel, printint, printint, FNULL, FNULL, FNULL, FNULL, FNULL,
-	FNULL, FNULL, FNULL, FNULL,
-	FNULL, printcpstack, printcpstack, printcpstack },
+	{ P_INT, P_INT, FNULL },
 /* NOT_Q5_1 */
-	{ printlabel, printint, printint, FNULL, FNULL, FNULL, FNULL, FNULL,
-	FNULL, FNULL, FNULL, FNULL,
-	FNULL, printcpstack, printcpstack, printcpstack },
+	{ P_INT, P_INT, FNULL },
 /* DETNEG_1 */
-	{ printlabel, printint, printint, FNULL, FNULL, FNULL, FNULL, FNULL,
-	FNULL, FNULL, FNULL, FNULL,
-	FNULL, printcpstack, printcpstack, printcpstack },
+	{ P_INT, P_INT, FNULL },
 /* NONDETNEG_1 */
-	{ printlabel, printint, printint, FNULL, FNULL, FNULL, FNULL, FNULL,
-	FNULL, FNULL, FNULL, FNULL,
-	FNULL, printcpstack, printcpstack, printcpstack },
+	{ P_INT, P_INT, FNULL },
 /* A_1 */
-	{ printlabel, printint, printint, FNULL, FNULL, FNULL, FNULL, FNULL,
-	FNULL, FNULL, FNULL, FNULL,
-	FNULL, printcpstack, printcpstack, printcpstack },
+	{ P_INT, P_INT, FNULL },
 /* C_1 */
-	{ printlabel, printint, printint, FNULL, FNULL, FNULL, FNULL, FNULL,
-	FNULL, FNULL, FNULL, FNULL,
-	FNULL, printcpstack, printcpstack, printcpstack },
+	{ P_INT, P_INT, FNULL },
 /* D_1 */
-	{ printlabel, printint, printint, FNULL, FNULL, FNULL, FNULL, FNULL,
-	FNULL, FNULL, FNULL, FNULL,
-	FNULL, printcpstack, printcpstack, printcpstack },
+	{ P_INT, P_INT, FNULL },
 /* E_1 */
-	{ printlabel, printint, printint, FNULL, FNULL, FNULL, FNULL, FNULL,
-	FNULL, FNULL, FNULL, FNULL,
-	FNULL, printcpstack, printcpstack, printcpstack },
+	{ P_INT, P_INT, FNULL },
 /* F_1 */
-	{ printlabel, printint, printint, FNULL, FNULL, FNULL, FNULL, FNULL,
-	FNULL, FNULL, FNULL, FNULL,
-	FNULL, printcpstack, printcpstack, printcpstack },
+	{ P_INT, P_INT, FNULL },
 };
 
 void printregs(const char *msg)
 {
+	int i;
+
 	printf("\n%s\n", msg);
 
-	if (*regtable[which][0] != FNULL)
-	{
-		printf("%-9s", "succip:");
-		(*regtable[which][0])(r0);
-	}
+	printf("%-9s", "succip:");  printlabel(succip);
+	printf("%-9s", "curcp:");  printcpstack(curcp);
+	printf("%-9s", "maxcp:");  printcpstack(maxcp);
+	printf("%-9s", "childcp:");  printcpstack(maxcp);
+	printf("%-9s", "hp:");  printheap(hp);
+	printf("%-9s", "sp:");  printstack(sp);
 
-	if (*regtable[which][1] != FNULL)
+	for (i = 0; i < 31 && regtable[which][i] != FNULL; i++)
 	{
-		printf("%-9s", "r1:");
-		(*regtable[which][1])(r1);
+		if (i < 10) {
+			printf("r%d:      ", i + 1);
+		} else {
+			printf("r%2d:     ", i + 1);
+		}
+		(*regtable[which][i])(get_reg(i + 1));
 	}
+}
 
-	if (*regtable[which][2] != FNULL)
-	{
-		printf("%-9s", "r2:");
-		(*regtable[which][2])(r2);
+static Word get_reg(int num)
+{
+ 	switch(num) {
+		case 1: return r1;
+		case 2: return r2;
+		case 3: return r3;
+		case 4: return r4;
+		case 5: return r5;
+		case 6: return r6;
+		case 7: return r7;
+		case 8: return r8;
+		case 9: return r9;
+		case 10: return r10;
+		case 11: return r11;
+		case 12: return r12;
+		case 13: return r13;
+		case 14: return r14;
+		case 15: return r15;
+		case 16: return r16;
+		case 17: return r17;
+		case 18: return r18;
+		case 19: return r19;
+		case 20: return r20;
+		case 21: return r21;
+		case 22: return r22;
+		case 23: return r23;
+		case 24: return r24;
+		case 25: return r25;
+		case 26: return r26;
+		case 27: return r27;
+		case 28: return r28;
+		case 29: return r29;
+		case 30: return r30;
+		case 31: return r31;
+		case 32: return r32;
 	}
-
-	if (*regtable[which][3] != FNULL)
-	{
-		printf("%-9s", "r3:");
-		(*regtable[which][3])(r3);
-	}
-
-	if (*regtable[which][4] != FNULL)
-	{
-		printf("%-9s", "r4:");
-		(*regtable[which][4])(r4);
-	}
-
-	if (*regtable[which][5] != FNULL)
-	{
-		printf("%-9s", "r5:");
-		(*regtable[which][5])(r5);
-	}
-
-	if (*regtable[which][6] != FNULL)
-	{
-		printf("%-9s", "hp:");
-		(*regtable[which][6])(r6);
-	}
-
-	if (*regtable[which][7] != FNULL)
-	{
-		printf("%-9s", "sp:");
-		(*regtable[which][7])(r7);
-	}
-
-	if (*regtable[which][8] != FNULL)
-	{
-		printf("%-9s", "tmp0:");
-		(*regtable[which][8])(tmp0);
-	}
-
-	if (*regtable[which][9] != FNULL)
-	{
-		printf("%-9s", "tmp1:");
-		(*regtable[which][9])(tmp1);
-	}
-
-	if (*regtable[which][10] != FNULL)
-	{
-		printf("%-9s", "tmp2:");
-		(*regtable[which][10])(tmp2);
-	}
-
-	if (*regtable[which][11] != FNULL)
-	{
-		printf("%-9s", "tmp3:");
-		(*regtable[which][11])(tmp3);
-	}
-
-	if (*regtable[which][12] != FNULL)
-	{
-		printf("%-9s", "tmp4:");
-		(*regtable[which][12])(tmp4);
-	}
-
-	if (*regtable[which][13] != FNULL)
-	{
-		printf("%-9s", "childcp:");
-		(*regtable[which][13])(tmp5);
-	}
-
-	if (*regtable[which][14] != FNULL)
-	{
-		printf("%-9s", "curcp:");
-		(*regtable[which][14])(tmp6);
-	}
-
-	if (*regtable[which][15] != FNULL)
-	{
-		printf("%-9s", "maxcp:");
-		(*regtable[which][15])(tmp7);
-	}
+	/* NOTREACHED */
+	abort();
 }
 
 Word mklist(int start, int len)
@@ -433,23 +357,3 @@ Word mklist(int start, int len)
 	return curr;
 }
 
-void mkinput(int r1val, int r2val, int r3val)
-{
-	if (*regtable[which][1] == printlist)
-		r1 = mklist(1, r1val);
-	else
-		r1 = r1val;
-
-	if (*regtable[which][2] == printlist)
-		r2 = mklist(101, r2val);
-	else
-		r2 = r2val;
-
-	if (*regtable[which][3] == printlist)
-		r3 = mklist(201, r3val);
-	else
-		r3 = r3val;
-
-	r4 = 0;
-	r5 = 0;
-}
