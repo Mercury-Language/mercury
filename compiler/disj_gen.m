@@ -15,7 +15,7 @@
 
 :- interface.
 
-:- import_module hlds, llds, code_gen, code_info, code_util.
+:- import_module hlds, llds, code_gen, code_info, code_util, std_util.
 
 :- pred disj_gen__generate_semi_disj(list(hlds__goal),
 					code_tree, code_info, code_info).
@@ -69,7 +69,14 @@ disj_gen__generate_semi_disj_2(Goals, Code) -->
 	{ Code = tree(tree(SaveVarsCode, HPSaveCode),
 			tree(GoalsCode, HPRestoreCode)) }.
 */
-	{ Code = tree(SaveVarsCode, GoalsCode) }.
+	code_info__get_globals(Globals),
+		% If we are using constraints, save the current solver state
+		% before the first disjunct.
+	{ globals__lookup_bool_option(Globals,
+			constraints, SaveTicket) },
+	code_info__maybe_save_ticket(SaveTicket, SaveTicketCode),
+	{ Code = tree(SaveVarsCode, 
+		 tree(SaveTicketCode, GoalsCode)) }.
 
 :- pred disj_gen__generate_semi_cases(list(hlds__goal), label,
 					code_tree, code_info, code_info).
@@ -78,20 +85,30 @@ disj_gen__generate_semi_disj_2(Goals, Code) -->
 disj_gen__generate_semi_cases([], _EndLabel, _Code) -->
 	{ error("disj_gen__generate_semi_cases") }.
 disj_gen__generate_semi_cases([Goal|Goals], EndLabel, GoalsCode) -->
+	code_info__get_globals(Globals),
+	{ globals__lookup_bool_option(Globals,
+			constraints, RestoreTicket) },
 	(
 		{ Goals = [] }
 	->
+			% Restore the solver state if necessary
+		code_info__maybe_restore_ticket_and_pop(RestoreTicket, 
+			RestoreAndPopCode),
 			% generate the case as a semi-deterministic goal
 		code_gen__generate_forced_goal(model_semi, Goal, ThisCode),
-		{ GoalsCode = tree(ThisCode, node([
+		{ GoalsCode = tree(RestoreAndPopCode,
+		              tree(ThisCode, node([
 			label(EndLabel) - "End of semideterministic disj"
-		])) }
+		]))) }
 	;
 		code_info__get_live_variables(VarList),
 		{ set__list_to_set(VarList, Vars) },
 		code_info__make_known_failure_cont(Vars, no, ModContCode),
 
 		code_info__grab_code_info(CodeInfo),
+
+		code_info__maybe_restore_ticket(RestoreTicket,
+			RestoreTicketCode),
 
 			% generate the case as a semi-deterministic goal
 		code_gen__generate_forced_goal(model_semi, Goal, ThisCode),
@@ -105,7 +122,8 @@ disj_gen__generate_semi_cases([Goal|Goals], EndLabel, GoalsCode) -->
 
 			% generate the rest of the cases.
 		disj_gen__generate_semi_cases(Goals, EndLabel, GoalsCode0),
-		{ GoalsCode = tree(tree(ModContCode, ThisCode),
+		{ GoalsCode = tree(tree(ModContCode, 
+				tree(RestoreTicketCode, ThisCode)),
 				tree(RestoreContCode, GoalsCode0)) }
 	).
 
@@ -130,12 +148,20 @@ disj_gen__generate_non_disj(Goals1, Code) -->
 	{ globals__lookup_bool_option(Globals,
 			reclaim_heap_on_nondet_failure, ReclaimHeap) },
 	code_info__maybe_save_hp(ReclaimHeap, SaveHeapCode),
-
+	{ globals__lookup_bool_option(Globals,
+			constraints, SaveTicket) },
+	code_info__maybe_save_ticket(SaveTicket, SaveTicketCode),
 	code_info__get_next_label(EndLab),
 	disj_gen__generate_non_disj_2(Goals1, EndLab, GoalsCode),
-	{ Code = tree(HijackCode, tree(SaveHeapCode, GoalsCode)) }.
+	{ Code = tree(HijackCode, 
+		tree(SaveHeapCode, 
+		tree(SaveTicketCode, GoalsCode))) },
 
-:- pred disj_gen__generate_non_disj_2(list(hlds__goal), label, 
+		% since we don't know which disjunct we have come from
+		% we must set the current failure continuation to unkown.
+	code_info__unset_failure_cont.
+
+:- pred disj_gen__generate_non_disj_2(list(hlds__goal), label,
 					code_tree, code_info, code_info).
 :- mode disj_gen__generate_non_disj_2(in, in, out, in, out) is det.
 
@@ -145,6 +171,8 @@ disj_gen__generate_non_disj_2([Goal|Goals], EndLab, DisjCode) -->
 	code_info__get_globals(Globals),
 	{ globals__lookup_bool_option(Globals,
 			reclaim_heap_on_nondet_failure, ReclaimHeap) },
+	{ globals__lookup_bool_option(Globals,
+			constraints, RestoreTicket) },
 	code_info__get_live_variables(Vars),
 	code_gen__ensure_vars_are_saved(Vars, GoalCode0), 
 	code_info__grab_code_info(CodeInfo),
@@ -159,26 +187,36 @@ disj_gen__generate_non_disj_2([Goal|Goals], EndLab, DisjCode) -->
 	( { Goals = [] } ->
 		{ error("disj_gen__generate_non_disj_2 #2") }
 	; { Goals = [Goal2] } ->
+			% Process the last disjunct
 		code_info__remake_with_call_info,
 		code_info__restore_failure_cont(RestoreAfterFailureCode),
 		code_info__maybe_get_old_hp(ReclaimHeap, RestoreHeapCode),
 		code_info__maybe_pop_stack(ReclaimHeap, PopCode),
+			% restore and pop the solver ticket before 
+			% the final arm of the disjunction
+		code_info__maybe_restore_ticket_and_pop(RestoreTicket, 
+			RestorePopCode),
 		code_gen__generate_forced_goal(model_non, Goal2, Goal2Code),
 		{ EndCode = node([
 			label(EndLab) - "End of disj"
 		]) },
 		{ DisjCode = tree(tree(GoalCode, SuccCode),
 				tree(RestoreAfterFailureCode,
-				tree(RestoreHeapCode, tree(PopCode,
-				tree(Goal2Code, EndCode))))) }
+				tree(RestoreHeapCode, 
+				tree(PopCode,
+				tree(RestorePopCode, 
+				tree(Goal2Code, EndCode)))))) }
 	;
 		code_info__remake_with_call_info,
 		code_info__modify_failure_cont(ModifyFailureContCode),
 		code_info__maybe_get_old_hp(ReclaimHeap, RestoreHeapCode),
+		code_info__maybe_restore_ticket(RestoreTicket, 
+			RestoreTicketCode),
 		disj_gen__generate_non_disj_2(Goals, EndLab, RestCode),
 		{ DisjCode = tree(tree(GoalCode, SuccCode),
 				tree(ModifyFailureContCode,
-				tree(RestoreHeapCode, RestCode))) }
+				tree(RestoreHeapCode, 
+				tree(RestoreTicketCode, RestCode)))) }
 	).
 
 %---------------------------------------------------------------------------%

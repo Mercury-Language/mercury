@@ -854,7 +854,7 @@ mercury_compile__maybe_write_dependency_graph(ModuleInfo0, ModuleInfo) -->
 	).
 
         % Output's the file <module_name>.prof, which contains the static
-        % call graph in terms of label names, if the profiling flag enabled.
+        % call graph in terms of label names, if the profiling flag is enabled.
 :- pred mercury_compile__maybe_output_prof_call_graph(module_info, module_info,
 						        io__state, io__state).
 :- mode mercury_compile__maybe_output_prof_call_graph(in, out, di, uo) is det.
@@ -1432,6 +1432,12 @@ mercury_compile__single_c_to_obj(ModuleName, Succeeded) -->
 	;
 		CompilerType = unknown
 	},
+	globals__io_lookup_bool_option(constraints, Constraints),
+	{ Constraints = yes ->
+		ConstraintsOpt = "-DCONSTRAINTS "
+	;
+		ConstraintsOpt = ""
+	},
 	globals__io_lookup_bool_option(c_optimize, C_optimize),
 	{ C_optimize = yes, Debug = no ->
 		( CompilerType = gcc ->
@@ -1454,7 +1460,7 @@ mercury_compile__single_c_to_obj(ModuleName, Succeeded) -->
 	{ string__append_list([CC, " ", InclOpt, SplitOpt,
 		CFLAGS_FOR_REGS, RegOpt, CFLAGS_FOR_GOTOS, GotoOpt, AsmOpt,
 		GC_Opt, ProfileOpt, TagsOpt, NumTagBitsOpt, DebugOpt,
-		OptimizeOpt, WarningOpt, CFLAGS,
+		ConstraintsOpt, OptimizeOpt, WarningOpt, CFLAGS,
 		" -c ", C_File, " -o ", O_File], Command) },
 	invoke_system_command(Command, Succeeded),
 	( { Succeeded = no } ->

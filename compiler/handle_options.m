@@ -223,18 +223,25 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod) -->
 	is semidet.
 
 convert_grade_option(Grade0) -->
-	( { string__remove_suffix(Grade0, ".prof", Grade1) } ->
+	( { string__remove_suffix(Grade0, ".cnstr", Grade1) } ->
 		{ Grade2 = Grade1 },
-		set_bool_opt(profiling, yes)
+		set_bool_opt(constraints, yes)
 	;
 		{ Grade2 = Grade0 },
+		set_bool_opt(constraints, no)
+	),
+	( { string__remove_suffix(Grade2, ".prof", Grade3) } ->
+		{ Grade4 = Grade3 },
+		set_bool_opt(profiling, yes)
+	;
+		{ Grade4 = Grade2 },
 		set_bool_opt(profiling, no)
 	),
-	( { string__remove_suffix(Grade2, ".gc", Grade3) } ->
-		{ Grade = Grade3 },
+	( { string__remove_suffix(Grade4, ".gc", Grade5) } ->
+		{ Grade = Grade5 },
 		{ GC = conservative }
 	;
-		{ Grade = Grade2 },
+		{ Grade = Grade4 },
 		{ GC = none }
 	),
 	% Set the type of gc that the grade option implies.

@@ -245,6 +245,25 @@ livemap__build_livemap_instr(Instr0, Instrs0, Instrs,
 		Instrs = Instrs0,
 		Ccode = Ccode0
 	;
+		Uinstr0 = store_ticket(Lval),
+		opt_util__lval_access_rvals(Lval, Rvals),
+		livemap__make_live(Rvals, Livevals0, Livevals),
+		Livemap = Livemap0,
+		Instrs = Instrs0,
+		Ccode = Ccode0
+	;
+		Uinstr0 = restore_ticket(Rval),
+		livemap__make_live([Rval], Livevals0, Livevals),
+		Livemap = Livemap0,
+		Instrs = Instrs0,
+		Ccode = Ccode0
+	;
+		Uinstr0 = discard_ticket,
+		Livevals = Livevals0,
+		Livemap = Livemap0,
+		Instrs = Instrs0,
+		Ccode = Ccode0
+	;
 		Uinstr0 = incr_sp(_),
 		Livevals = Livevals0,
 		Livemap = Livemap0,

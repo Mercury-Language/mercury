@@ -67,6 +67,9 @@
 			;	vn_if_val(vn, code_addr)
 			;	vn_mark_hp(vnlval)
 			;	vn_restore_hp(vn)
+			;	vn_store_ticket(vnlval)
+			;	vn_restore_ticket(vn)
+			;	vn_discard_ticket
 			;	vn_incr_sp(int)
 			;	vn_decr_sp(int).
 

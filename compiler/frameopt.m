@@ -302,6 +302,29 @@ frameopt__build_sets([Instr0 | Instrs0], FrameSize, Livemap, FDS,
 				SetupSuccip0, SetupSuccip1),
 			frameopt__build_sets(Instrs0, FrameSize, Livemap, FDS,
 				[Instr0|PrevInstrs], SetupFrame1, SetupSuccip1,
+				FrameSet0, FrameSet, SuccipSet0, SuccipSet)	
+		;
+			Uinstr0 = store_ticket(Lval),
+			opt_util__lval_refers_stackvars(Lval, Use),
+			frameopt__setup_use(Use,
+				SetupFrame0, SetupFrame1,
+				SetupSuccip0, SetupSuccip1),
+			frameopt__build_sets(Instrs0, FrameSize, Livemap, FDS,
+				[Instr0|PrevInstrs], SetupFrame1, SetupSuccip1,
+				FrameSet0, FrameSet, SuccipSet0, SuccipSet)
+		;
+			Uinstr0 = restore_ticket(Rval),
+			opt_util__rval_refers_stackvars(Rval, Use),
+			frameopt__setup_use(Use,
+				SetupFrame0, SetupFrame1,
+				SetupSuccip0, SetupSuccip1),
+			frameopt__build_sets(Instrs0, FrameSize, Livemap, FDS,
+				[Instr0|PrevInstrs], SetupFrame1, SetupSuccip1,
+				FrameSet0, FrameSet, SuccipSet0, SuccipSet)
+		;
+			Uinstr0 = discard_ticket,
+			frameopt__build_sets(Instrs0, FrameSize, Livemap,
+				FDS, [], SetupFrame0, SetupSuccip0,
 				FrameSet0, FrameSet, SuccipSet0, SuccipSet)
 		;
 			Uinstr0 = incr_sp(_),
@@ -860,6 +883,44 @@ frameopt__doit([Instr0 | Instrs0], FrameSize, PrevInstrs,
 				InsertMap0, InsertMap, ProcLabel,
 				FDS, N0, N, Instrs1),
 			list__append(SetupCode, [Instr0 | Instrs1], Instrs)
+		;
+			Uinstr0 = store_ticket(Lval),
+			opt_util__lval_refers_stackvars(Lval, Use),
+			frameopt__setup_use(Use,
+				SetupFrame0, SetupFrame1,
+				SetupSuccip0, SetupSuccip1),
+			frameopt__generate_setup(SetupFrame0, SetupFrame1,
+				SetupSuccip0, SetupSuccip1,
+				FrameSize, SetupCode),
+			frameopt__doit(Instrs0, FrameSize,
+				[Instr0|PrevInstrs], SetupFrame1, SetupSuccip1,
+				FrameSet, SuccipSet, Livemap, TeardownMap,
+				InsertMap0, InsertMap, ProcLabel,
+				FDS, N0, N, Instrs1),
+			list__append(SetupCode, [Instr0 | Instrs1], Instrs)
+		;
+			Uinstr0 = restore_ticket(Rval),
+			opt_util__rval_refers_stackvars(Rval, Use),
+			frameopt__setup_use(Use,
+				SetupFrame0, SetupFrame1,
+				SetupSuccip0, SetupSuccip1),
+			frameopt__generate_setup(SetupFrame0, SetupFrame1,
+				SetupSuccip0, SetupSuccip1,
+				FrameSize, SetupCode),
+			frameopt__doit(Instrs0, FrameSize,
+				[Instr0|PrevInstrs], SetupFrame1, SetupSuccip1,
+				FrameSet, SuccipSet, Livemap, TeardownMap,
+				InsertMap0, InsertMap, ProcLabel,
+				FDS, N0, N, Instrs1),
+			list__append(SetupCode, [Instr0 | Instrs1], Instrs)
+		;
+			Uinstr0 = discard_ticket,
+			frameopt__doit(Instrs0, FrameSize,
+				[], SetupFrame0, SetupSuccip0,
+				FrameSet, SuccipSet, Livemap, TeardownMap,
+				InsertMap0, InsertMap, ProcLabel,
+				FDS, N0, N, Instrs1),
+			Instrs = [Instr0 | Instrs1]
 		;
 			Uinstr0 = incr_sp(_),
 			error("incr_sp in frameopt__doit")

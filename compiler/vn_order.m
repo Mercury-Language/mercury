@@ -378,6 +378,22 @@ vn_order__vn_ctrl_order(Ctrl, Ctrlmap, VnTables0, VnTables,
 				VnTables0, VnTables1,
 				Succmap0, Succmap1, Predmap0, Predmap1)
 		;
+			Vn_instr = vn_store_ticket(Vnlval),
+			vn_util__vnlval_access_vns(Vnlval, Vns),
+			vn_order__find_all_links(Vns, node_ctrl(Ctrl),
+				VnTables0, VnTables1,
+				Succmap0, Succmap1, Predmap0, Predmap1)
+		;
+			Vn_instr = vn_restore_ticket(Vn),
+			vn_order__find_links(Vn, node_ctrl(Ctrl),
+				VnTables0, VnTables1,
+				Succmap0, Succmap1, Predmap0, Predmap1)
+		;
+			Vn_instr = vn_discard_ticket,
+			Succmap1 = Succmap0,
+			Predmap1 = Predmap0,
+			VnTables1 = VnTables0
+		;
 			Vn_instr = vn_incr_sp(_),
 			Succmap1 = Succmap0,
 			Predmap1 = Predmap0,

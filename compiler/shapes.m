@@ -62,6 +62,7 @@
                          ;       succfr
                          ;       prevfr
                          ;       sp
+			 ;	 ticket
                          ;       unwanted.
 
 :- pred shapes__init_shape_table(shape_table).
@@ -655,6 +656,7 @@ shapes__write_shape_num(sp) --> io__write_string("sp").
 shapes__write_shape_num(unwanted) --> io__write_string("unwanted").
 shapes__write_shape_num(prevfr) --> io__write_string("prevfr").
 shapes__write_shape_num(succfr) --> io__write_string("succfr").
+shapes__write_shape_num(ticket) --> io__write_string("ticket").
 
 
 

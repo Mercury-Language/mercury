@@ -137,6 +137,18 @@
 			% The effect is to deallocate all the memory which
 			% was allocated since that call to mark_hp.
 
+	;	store_ticket(lval)
+			% Get a ticket from the constraint solver, and store it
+			% in the lval
+
+	;	restore_ticket(rval)
+			% Restore the the constraint solver to the ticket given
+			% in the rval
+
+	;	discard_ticket
+			% Decrement the ticket stack by the size of a solver
+			% stack frame.
+
 	;	incr_sp(int)
 			% Increment the det stack pointer.
 
@@ -1086,6 +1098,26 @@ output_instruction(restore_hp(Rval), _) -->
 	io__write_string("restore_hp("),
 	output_rval(Rval),
 	io__write_string("); }").
+
+output_instruction(store_ticket(Lval), _) -->
+	io__write_string("\t{ "),
+	{ set__init(DeclSet0) },
+	output_lval_decls(Lval, DeclSet0, _),
+	io__write_string("store_ticket("),
+	output_lval(Lval),
+	io__write_string("); }").
+
+output_instruction(restore_ticket(Rval), _) -->
+	io__write_string("\t{ "),
+	{ set__init(DeclSet0) },
+	output_rval_decls(Rval, DeclSet0, _),
+	io__write_string("restore_ticket("),
+	output_rval(Rval),
+	io__write_string("); }").
+
+output_instruction(discard_ticket, _) -->
+	io__write_string("\t"),
+	io__write_string("discard_ticket();").
 
 output_instruction(incr_sp(N), _) -->
 	io__write_string("\t"),

@@ -831,6 +831,25 @@ opt_util__block_refers_stackvars([Uinstr0 - _ | Instrs0], Need) :-
 			opt_util__block_refers_stackvars(Instrs0, Need)
 		)
 	;
+		Uinstr0 = store_ticket(Lval),
+		opt_util__lval_refers_stackvars(Lval, Use),
+		( Use = yes ->
+			Need = yes
+		;
+			opt_util__block_refers_stackvars(Instrs0, Need)
+		)
+	;
+		Uinstr0 = restore_ticket(Rval),
+		opt_util__rval_refers_stackvars(Rval, Use),
+		( Use = yes ->
+			Need = yes
+		;
+			opt_util__block_refers_stackvars(Instrs0, Need)
+		)
+	;
+		Uinstr0 = discard_ticket,
+		opt_util__block_refers_stackvars(Instrs0, Need)
+	;
 		% handled specially
 		Uinstr0 = incr_sp(_),
 		Need = no
@@ -947,6 +966,9 @@ opt_util__can_instr_branch_away(if_val(_, _), yes).
 opt_util__can_instr_branch_away(incr_hp(_, _, _), no).
 opt_util__can_instr_branch_away(mark_hp(_), no).
 opt_util__can_instr_branch_away(restore_hp(_), no).
+opt_util__can_instr_branch_away(store_ticket(_), no).
+opt_util__can_instr_branch_away(restore_ticket(_), no).
+opt_util__can_instr_branch_away(discard_ticket, no).
 opt_util__can_instr_branch_away(incr_sp(_), no).
 opt_util__can_instr_branch_away(decr_sp(_), no).
 opt_util__can_instr_branch_away(pragma_c(_, _, _, _), no).
@@ -967,6 +989,9 @@ opt_util__can_instr_fall_through(if_val(_, _), yes).
 opt_util__can_instr_fall_through(incr_hp(_, _, _), yes).
 opt_util__can_instr_fall_through(mark_hp(_), yes).
 opt_util__can_instr_fall_through(restore_hp(_), yes).
+opt_util__can_instr_fall_through(store_ticket(_), yes).
+opt_util__can_instr_fall_through(restore_ticket(_), yes).
+opt_util__can_instr_fall_through(discard_ticket, yes).
 opt_util__can_instr_fall_through(incr_sp(_), yes).
 opt_util__can_instr_fall_through(decr_sp(_), yes).
 opt_util__can_instr_fall_through(pragma_c(_, _, _, _), yes).
@@ -990,6 +1015,9 @@ opt_util__can_use_livevals(if_val(_, _), yes).
 opt_util__can_use_livevals(incr_hp(_, _, _), no).
 opt_util__can_use_livevals(mark_hp(_), no).
 opt_util__can_use_livevals(restore_hp(_), no).
+opt_util__can_use_livevals(store_ticket(_), no).
+opt_util__can_use_livevals(restore_ticket(_), no).
+opt_util__can_use_livevals(discard_ticket, no).
 opt_util__can_use_livevals(incr_sp(_), no).
 opt_util__can_use_livevals(decr_sp(_), no).
 opt_util__can_use_livevals(pragma_c(_, _, _, _), no).
@@ -1028,6 +1056,9 @@ opt_util__instr_labels_2(if_val(_, Addr), [], [Addr]).
 opt_util__instr_labels_2(incr_hp(_, _, _), [], []).
 opt_util__instr_labels_2(mark_hp(_), [], []).
 opt_util__instr_labels_2(restore_hp(_), [], []).
+opt_util__instr_labels_2(store_ticket(_), [], []).
+opt_util__instr_labels_2(restore_ticket(_), [], []).
+opt_util__instr_labels_2(discard_ticket, [], []).
 opt_util__instr_labels_2(incr_sp(_), [], []).
 opt_util__instr_labels_2(decr_sp(_), [], []).
 opt_util__instr_labels_2(pragma_c(_, _, _, _), [], []).
@@ -1054,6 +1085,9 @@ opt_util__instr_rvals_and_lvals(if_val(Rval, _), [Rval], []).
 opt_util__instr_rvals_and_lvals(incr_hp(Lval, _, Rval), [Rval], [Lval]).
 opt_util__instr_rvals_and_lvals(mark_hp(Lval), [], [Lval]).
 opt_util__instr_rvals_and_lvals(restore_hp(Rval), [Rval], []).
+opt_util__instr_rvals_and_lvals(store_ticket(Lval), [], [Lval]).
+opt_util__instr_rvals_and_lvals(restore_ticket(Rval), [Rval], []).
+opt_util__instr_rvals_and_lvals(discard_ticket, [], []).
 opt_util__instr_rvals_and_lvals(incr_sp(_), [], []).
 opt_util__instr_rvals_and_lvals(decr_sp(_), [], []).
 opt_util__instr_rvals_and_lvals(pragma_c(_, In, _, Out), Rvals, Lvals) :-
@@ -1139,6 +1173,11 @@ opt_util__count_temps_instr(mark_hp(Lval), N0, N) :-
 	opt_util__count_temps_lval(Lval, N0, N).
 opt_util__count_temps_instr(restore_hp(Rval), N0, N) :-
 	opt_util__count_temps_rval(Rval, N0, N).
+opt_util__count_temps_instr(store_ticket(Lval), N0, N) :-
+	opt_util__count_temps_lval(Lval, N0, N).
+opt_util__count_temps_instr(restore_ticket(Rval), N0, N) :-
+	opt_util__count_temps_rval(Rval, N0, N).
+opt_util__count_temps_instr(discard_ticket, N, N).
 opt_util__count_temps_instr(incr_sp(_), N, N).
 opt_util__count_temps_instr(decr_sp(_), N, N).
 opt_util__count_temps_instr(pragma_c(_, _, _, _), N, N).

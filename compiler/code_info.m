@@ -324,6 +324,18 @@
 :- pred code_info__restore_hp(code_tree, code_info, code_info).
 :- mode code_info__restore_hp(out, in, out) is det.
 
+:- pred code_info__save_ticket(code_tree, code_info, code_info).
+:- mode code_info__save_ticket(out, in, out) is det.
+
+:- pred code_info__restore_ticket(code_tree, code_info, code_info).
+:- mode code_info__restore_ticket(out, in, out) is det.
+
+:- pred code_info__restore_ticket_and_pop(code_tree, code_info, code_info).
+:- mode code_info__restore_ticket_and_pop(out, in, out) is det.
+
+:- pred code_info__discard_ticket(code_tree, code_info, code_info).
+:- mode code_info__discard_ticket(out, in, out) is det.
+
 :- pred code_info__save_redoip(code_tree, code_info, code_info).
 :- mode code_info__save_redoip(out, in, out) is det.
 
@@ -347,6 +359,19 @@
 
 :- pred code_info__maybe_pop_stack(bool, code_tree, code_info, code_info).
 :- mode code_info__maybe_pop_stack(in, out, in, out) is det.
+
+:- pred code_info__maybe_save_ticket(bool, code_tree, code_info, code_info).
+:- mode code_info__maybe_save_ticket(in, out, in, out) is det.
+
+:- pred code_info__maybe_restore_ticket(bool, code_tree, code_info, code_info).
+:- mode code_info__maybe_restore_ticket(in, out, in, out) is det.
+
+:- pred code_info__maybe_restore_ticket_and_pop(bool, code_tree, 
+	code_info, code_info).
+:- mode code_info__maybe_restore_ticket_and_pop(in, out, in, out) is det.
+
+:- pred code_info__maybe_discard_ticket(bool, code_tree, code_info, code_info).
+:- mode code_info__maybe_discard_ticket(in, out, in, out) is det.
 
 :- pred code_info__get_globals(globals, code_info, code_info).
 :- mode code_info__get_globals(out, in, out) is det.
@@ -446,12 +471,13 @@
 					% that have been pushed during the
 					% procedure
 			globals,	% code generation options
-			stack(pair(lval)),% the locations in use on the stack
+			stack(pair(lval, lval_or_ticket)),
+					% the locations in use on the stack
 			shape_table,	% Table of shapes.
 			set(var),	% Variables that are not quite live
 					% but are only nondet-live (so that
 					% we make sure we save them).
-			list(pair(lval))
+			list(pair(lval, lval_or_ticket))
 					% A list of lvalues (ie curfr, maxfr
 					% and redoip) that get saved onto the
 					% det stack even though the current
@@ -460,6 +486,8 @@
 	).
 
 :- type fall_through	==	stack(failure_cont).
+
+:- type lval_or_ticket  ---> ticket ; lval(lval).
 
 %---------------------------------------------------------------------------%
 
@@ -1129,10 +1157,38 @@ code_info__maybe_pop_stack(Maybe, Code) -->
 		{ Code = empty }
 	).
 
+code_info__maybe_save_ticket(Maybe, Code) -->
+	( { Maybe = yes } ->
+		code_info__save_ticket(Code)
+	;
+		{ Code = empty }
+	).
+
+code_info__maybe_restore_ticket(Maybe, Code) -->
+	( { Maybe = yes } ->
+		code_info__restore_ticket(Code)
+	;
+		{ Code = empty }
+	).
+
+code_info__maybe_restore_ticket_and_pop(Maybe, Code) -->
+	( { Maybe = yes } ->
+		code_info__restore_ticket_and_pop(Code)
+	;
+		{ Code = empty }
+	).
+
+code_info__maybe_discard_ticket(Maybe, Code) -->
+	( { Maybe = yes } ->
+		code_info__discard_ticket(Code)
+	;
+		{ Code = empty }
+	).
+
 %---------------------------------------------------------------------------%
 
 code_info__save_hp(Code) -->
-	code_info__push_temp(hp, HpSlot),
+	code_info__push_temp(lval(hp), HpSlot),
 	{ Code = node([ mark_hp(HpSlot) - "Save heap pointer" ]) }.
 
 code_info__restore_hp(Code) -->
@@ -1143,13 +1199,32 @@ code_info__get_old_hp(Code) -->
 	code_info__get_stack_top(Lval),
 	{ Code = node([ restore_hp(lval(Lval)) - "Reset heap pointer" ]) }.
 
+code_info__save_ticket(Code) -->
+	code_info__push_temp(ticket, Lval),
+	{ Code = node([ store_ticket(Lval) - "Save ticket" ]) }.
+
+code_info__restore_ticket(Code) -->
+	code_info__get_stack_top(Lval),
+	{ Code = node([ restore_ticket(lval(Lval)) - "Restore ticket" ]) }.
+
+code_info__restore_ticket_and_pop(Code) -->
+	code_info__pop_temp(Lval),
+	{ Code = tree(
+		node([ restore_ticket(lval(Lval)) - "Restore ticket" ]),
+		node([ discard_ticket - "Restore ticket" ]) )
+		}.
+
+code_info__discard_ticket(Code) -->
+	code_info__pop_temp(_),
+	{ Code = node([ discard_ticket - "Restore ticket" ]) }.
+
 code_info__save_redoip(Code) -->
-	code_info__push_temp(redoip(lval(maxfr)), RedoIpSlot),
+	code_info__push_temp(lval(redoip(lval(maxfr))), RedoIpSlot),
 	{ Code = node([ assign(RedoIpSlot, lval(redoip(lval(maxfr))))
 				- "Save the redoip" ]) }.
 
 code_info__save_maxfr(MaxfrSlot, Code) -->
-	code_info__push_temp(maxfr, MaxfrSlot),
+	code_info__push_temp(lval(maxfr), MaxfrSlot),
 	{ Code = node([ assign(MaxfrSlot, lval(maxfr))
 				- "Save maxfr" ]) }.
 
@@ -1216,7 +1291,7 @@ code_info__get_total_stackslot_count(NumSlots) -->
 	% increments the push count.  The space will be allocated in the
 	% procedure prologue.
 
-:- pred code_info__push_temp(lval, lval, code_info, code_info).
+:- pred code_info__push_temp(lval_or_ticket, lval, code_info, code_info).
 :- mode code_info__push_temp(in, out, in, out) is det.
 
 code_info__push_temp(Item, StackVar) -->
@@ -1237,7 +1312,7 @@ code_info__push_temp(Item, StackVar) -->
 
 code_info__add_commit_val(Item, StackVar) -->
 	code_info__get_commit_vals(Stack0),
-	code_info__set_commit_vals([StackVar - Item | Stack0]).
+	code_info__set_commit_vals([StackVar - lval(Item) | Stack0]).
 
 %---------------------------------------------------------------------------%
 
@@ -1447,9 +1522,9 @@ code_info__generate_semi_pre_commit(RedoLab, PreCommit) -->
 		code_info__add_commit_val(redoip(lval(maxfr)), RedoipSlot)
 	;
 		{ PushCode = empty },
-		code_info__push_temp(curfr, CurfrSlot),
-		code_info__push_temp(maxfr, MaxfrSlot),
-		code_info__push_temp(redoip(lval(maxfr)), RedoipSlot)
+		code_info__push_temp(lval(curfr), CurfrSlot),
+		code_info__push_temp(lval(maxfr), MaxfrSlot),
+		code_info__push_temp(lval(redoip(lval(maxfr))), RedoipSlot)
 	),
 	{ SaveCode = node([
 		assign(CurfrSlot, lval(curfr)) -
@@ -1552,9 +1627,9 @@ code_info__generate_det_pre_commit(PreCommit) -->
 		code_info__add_commit_val(redoip(lval(maxfr)), RedoipSlot)
 	;
 		{ PushCode = empty },
-		code_info__push_temp(curfr, CurfrSlot),
-		code_info__push_temp(maxfr, MaxfrSlot),
-		code_info__push_temp(redoip(lval(maxfr)), RedoipSlot)
+		code_info__push_temp(lval(curfr), CurfrSlot),
+		code_info__push_temp(lval(maxfr), MaxfrSlot),
+		code_info__push_temp(lval(redoip(lval(maxfr))), RedoipSlot)
 	),
 	{ SaveCode = node([
 		assign(CurfrSlot, lval(curfr)) -
@@ -2098,7 +2173,7 @@ code_info__generate_stack_livevals_2([V|Vs], Vals0, Vals) -->
 	{ set__insert(Vals0, Slot, Vals1) },
 	code_info__generate_stack_livevals_2(Vs, Vals1, Vals).
 
-:- pred code_info__generate_stack_livevals_3(stack(pair(lval)), 
+:- pred code_info__generate_stack_livevals_3(stack(pair(lval, lval_or_ticket)), 
 					set(lval), set(lval)).
 :- mode code_info__generate_stack_livevals_3(in, in, out) is det.
 
@@ -2148,7 +2223,7 @@ code_info__generate_stack_livelvals_2([V|Vs], Vals0, Vals) -->
 	{ set__insert(Vals0, Slot - V, Vals1) },
 	code_info__generate_stack_livelvals_2(Vs, Vals1, Vals).
 
-:- pred code_info__generate_stack_livelvals_3(stack(pair(lval)), 
+:- pred code_info__generate_stack_livelvals_3(stack(pair(lval, lval_or_ticket)), 
 			list(liveinfo), list(liveinfo)).
 :- mode code_info__generate_stack_livelvals_3(in, in, out) is det.
 
@@ -2163,24 +2238,25 @@ code_info__generate_stack_livelvals_3(Stack0, LiveInfo0, LiveInfo) :-
 		LiveInfo = LiveInfo0
 	).
 
-:- pred code_info__get_shape_num(lval, shape_num).
+:- pred code_info__get_shape_num(lval_or_ticket, shape_num).
 :- mode code_info__get_shape_num(in, out) is det.
 
-code_info__get_shape_num(succip, succip).
-code_info__get_shape_num(hp, hp).
-code_info__get_shape_num(maxfr, maxfr).
-code_info__get_shape_num(curfr, curfr).	
-code_info__get_shape_num(succfr(_), succfr).	
-code_info__get_shape_num(prevfr(_), prevfr).	
-code_info__get_shape_num(redoip(_), redoip). 
-code_info__get_shape_num(succip(_), succip). 	% XXX Tyson, is this correct?
-code_info__get_shape_num(sp, sp).
-code_info__get_shape_num(lvar(_), unwanted).
-code_info__get_shape_num(field(_, _, _), unwanted).
-code_info__get_shape_num(temp(_), unwanted).
-code_info__get_shape_num(reg(_), unwanted).
-code_info__get_shape_num(stackvar(_), unwanted).
-code_info__get_shape_num(framevar(_), unwanted).
+code_info__get_shape_num(lval(succip), succip).
+code_info__get_shape_num(lval(hp), hp).
+code_info__get_shape_num(lval(maxfr), maxfr).
+code_info__get_shape_num(lval(curfr), curfr).	
+code_info__get_shape_num(lval(succfr(_)), succfr).	
+code_info__get_shape_num(lval(prevfr(_)), prevfr).	
+code_info__get_shape_num(lval(redoip(_)), redoip). 
+code_info__get_shape_num(lval(succip(_)), succip). 
+code_info__get_shape_num(lval(sp), sp).
+code_info__get_shape_num(lval(lvar(_)), unwanted).
+code_info__get_shape_num(lval(field(_, _, _)), unwanted).
+code_info__get_shape_num(lval(temp(_)), unwanted).
+code_info__get_shape_num(lval(reg(_)), unwanted).
+code_info__get_shape_num(lval(stackvar(_)), unwanted).
+code_info__get_shape_num(lval(framevar(_)), unwanted).
+code_info__get_shape_num(ticket, ticket).
 
 :- pred code_info__livevals_to_livelvals(list(pair(lval, var)), list(liveinfo),
 					 code_info, code_info).
@@ -2255,16 +2331,20 @@ code_info__variable_type(Var, Type) -->
 :- pred code_info__set_store_map(stack(map(var, lval)), code_info, code_info).
 :- mode code_info__set_store_map(in, in, out) is det.
 
-:- pred code_info__get_pushed_values(stack(pair(lval)), code_info, code_info).
+:- pred code_info__get_pushed_values(stack(pair(lval, lval_or_ticket)), 
+	code_info, code_info).
 :- mode code_info__get_pushed_values(out, in, out) is det.
 
-:- pred code_info__set_pushed_values(stack(pair(lval)), code_info, code_info).
+:- pred code_info__set_pushed_values(stack(pair(lval, lval_or_ticket)), 
+	code_info, code_info).
 :- mode code_info__set_pushed_values(in, in, out) is det.
 
-:- pred code_info__get_commit_vals(list(pair(lval)), code_info, code_info).
+:- pred code_info__get_commit_vals(list(pair(lval, lval_or_ticket)), 
+	code_info, code_info).
 :- mode code_info__get_commit_vals(out, in, out) is det.
 
-:- pred code_info__set_commit_vals(list(pair(lval)), code_info, code_info).
+:- pred code_info__set_commit_vals(list(pair(lval, lval_or_ticket)), 
+	code_info, code_info).
 :- mode code_info__set_commit_vals(in, in, out) is det.
 
 code_info__get_stackslot_count(A, CI, CI) :-

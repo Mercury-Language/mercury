@@ -886,6 +886,9 @@ value_number__boundary_instr(if_val(_, _), yes).
 value_number__boundary_instr(incr_hp(_, _, _), no).
 value_number__boundary_instr(mark_hp(_), no).
 value_number__boundary_instr(restore_hp(_), no).
+value_number__boundary_instr(store_ticket(_), yes).
+value_number__boundary_instr(restore_ticket(_), yes).
+value_number__boundary_instr(discard_ticket, yes).
 value_number__boundary_instr(incr_sp(_), yes).
 value_number__boundary_instr(decr_sp(_), yes).
 value_number__boundary_instr(pragma_c(_, _, _, _), yes).

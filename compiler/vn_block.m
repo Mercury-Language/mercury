@@ -283,6 +283,23 @@ vn_block__handle_instr(restore_hp(Rval),
 	vn_util__rval_to_vn(Rval, Vn, VnTables0, VnTables1),
 	vn_block__new_ctrl_node(vn_restore_hp(Vn),
 		Livemap, VnTables1, VnTables, Liveset0, Liveset, Tuple0, Tuple).
+vn_block__handle_instr(store_ticket(Lval),
+		Livemap, VnTables0, VnTables,
+		Liveset0, Liveset, SeenIncr, SeenIncr, Tuple0, Tuple) :-
+	vn_util__lval_to_vnlval(Lval, Vnlval, VnTables0, VnTables1),
+	vn_block__new_ctrl_node(vn_store_ticket(Vnlval),
+		Livemap, VnTables1, VnTables, Liveset0, Liveset, Tuple0, Tuple).
+vn_block__handle_instr(restore_ticket(Rval),
+		Livemap, VnTables0, VnTables,
+		Liveset0, Liveset, SeenIncr, SeenIncr, Tuple0, Tuple) :-
+	vn_util__rval_to_vn(Rval, Vn, VnTables0, VnTables1),
+	vn_block__new_ctrl_node(vn_restore_ticket(Vn),
+		Livemap, VnTables1, VnTables, Liveset0, Liveset, Tuple0, Tuple).
+vn_block__handle_instr(discard_ticket,
+		Livemap, VnTables0, VnTables,
+		Liveset0, Liveset, SeenIncr, SeenIncr, Tuple0, Tuple) :-
+	vn_block__new_ctrl_node(vn_discard_ticket,
+		Livemap, VnTables0, VnTables, Liveset0, Liveset, Tuple0, Tuple).
 vn_block__handle_instr(incr_sp(N),
 		Livemap, VnTables0, VnTables,
 		Liveset0, Liveset, SeenIncr, SeenIncr, Tuple0, Tuple) :-
@@ -382,6 +399,34 @@ vn_block__new_ctrl_node(Vn_instr, Livemap, VnTables0, VnTables,
 		Parallels = []
 	;
 		Vn_instr = vn_restore_hp(_),
+		VnTables = VnTables0,
+		Liveset = Liveset0,
+		FlushEntry = FlushEntry0,
+		LabelNo = LabelNo0,
+		Parallels = []
+	;
+		Vn_instr = vn_store_ticket(Vnlval),
+		( vn_table__search_desired_value(Vnlval, Vn_prime, VnTables0) ->
+			Vn = Vn_prime,
+			VnTables1 = VnTables0
+		;
+			vn_table__record_first_vnlval(Vnlval, Vn, 
+				VnTables0, VnTables1)
+		),
+		vn_table__set_desired_value(Vnlval, Vn, VnTables1, VnTables),
+		set__insert(Liveset0, Vnlval, Liveset),
+		FlushEntry = FlushEntry0,
+		LabelNo = LabelNo0,
+		Parallels = []
+	;
+		Vn_instr = vn_restore_ticket(_),
+		VnTables = VnTables0,
+		Liveset = Liveset0,
+		FlushEntry = FlushEntry0,
+		LabelNo = LabelNo0,
+		Parallels = []
+	;
+		Vn_instr = vn_discard_ticket,
 		VnTables = VnTables0,
 		Liveset = Liveset0,
 		FlushEntry = FlushEntry0,
@@ -764,6 +809,9 @@ vn_block__is_ctrl_instr(if_val(_, _), yes).
 vn_block__is_ctrl_instr(incr_hp(_, _, _), no).
 vn_block__is_ctrl_instr(mark_hp(_), yes).
 vn_block__is_ctrl_instr(restore_hp(_), yes).
+vn_block__is_ctrl_instr(store_ticket(_), yes).
+vn_block__is_ctrl_instr(restore_ticket(_), yes).
+vn_block__is_ctrl_instr(discard_ticket, yes).
 vn_block__is_ctrl_instr(incr_sp(_), yes).
 vn_block__is_ctrl_instr(decr_sp(_), yes).
 vn_block__is_ctrl_instr(pragma_c(_, _, _, _), no).

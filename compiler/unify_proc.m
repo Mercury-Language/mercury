@@ -21,7 +21,7 @@
 % After we've done mode analysis for all the ordinary predicates, we then
 % do mode analysis for the out-of-line unification procedures.  Note that
 % unification procedures may call other unification procedures which have
-% not yet been enountered, causing new entries to be added to the
+% not yet been encountered, causing new entries to be added to the
 % unify_requests table.  We store the entries in a queue and continue the
 % process until the queue is empty.
 %

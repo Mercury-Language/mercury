@@ -810,6 +810,18 @@ vn_util__build_uses_from_ctrl(Ctrl, Ctrlmap, VnTables0, VnTables) :-
 			vn_util__record_use(Vn, src_ctrl(Ctrl),
 				VnTables0, VnTables1)
 		;
+			VnInstr = vn_store_ticket(Vnlval),
+			vn_util__vnlval_access_vns(Vnlval, Vns),
+			vn_util__record_use_list(Vns, src_ctrl(Ctrl),
+				VnTables0, VnTables1)
+		;
+			VnInstr = vn_restore_ticket(Vn),
+			vn_util__record_use(Vn, src_ctrl(Ctrl),
+				VnTables0, VnTables1)
+		;
+			VnInstr = vn_discard_ticket,
+			VnTables1 = VnTables0
+		;
 			VnInstr = vn_incr_sp(_),
 			VnTables1 = VnTables0
 		;

@@ -61,11 +61,21 @@ ite_gen__generate_det_ite(CondGoal, ThenGoal, ElseGoal, Instr) -->
 		% Grab the instmap
 		% generate the semi-deterministic test goal
 	code_info__get_instmap(InstMap),
-	code_gen__generate_goal(model_semi, CondGoal, TestCode),
+
+		% Store the current solver state before the condition of
+		% the ite
+	{ globals__lookup_bool_option(Options,
+				constraints, UseConstraints) },
+	code_info__maybe_save_ticket(UseConstraints, SaveTicketCode),
+	code_gen__generate_goal(model_semi, CondGoal, TestCode0),
+	{ TestCode = tree(SaveTicketCode, TestCode0) },
 	code_info__grab_code_info(CodeInfo),
 	code_info__pop_failure_cont,
 	code_info__maybe_pop_stack(ReclaimHeap, HPPopCode),
-	code_gen__generate_forced_goal(model_det, ThenGoal, ThenGoalCode),
+		% Discard solver ticket if the condition succeeded
+	code_info__maybe_discard_ticket(UseConstraints, PopTicketCode),
+	code_gen__generate_forced_goal(model_det, ThenGoal, ThenGoalCode0),
+	{ ThenGoalCode = tree(PopTicketCode, ThenGoalCode0) },
 		% generate code that executes the then condition
 		% and branches to the end of the if-then-else
 	code_info__slap_code_info(CodeInfo),
@@ -73,7 +83,11 @@ ite_gen__generate_det_ite(CondGoal, ThenGoal, ElseGoal, Instr) -->
 		% restore the instmap
 	code_info__set_instmap(InstMap),
 	code_info__maybe_restore_hp(ReclaimHeap, HPRestoreCode),
-	code_gen__generate_forced_goal(model_det, ElseGoal, ElseGoalCode),
+		% Restore the solver ticket if the condition failed
+	code_info__maybe_restore_ticket_and_pop(UseConstraints, 
+		RestoreTicketCode),
+	code_gen__generate_forced_goal(model_det, ElseGoal, ElseGoalCode0),
+	{ ElseGoalCode = tree(RestoreTicketCode, ElseGoalCode0) },
 	code_info__get_next_label(EndLab),
 		% place the label marking the start of the then code,
 		% then execute the then goal, and then mark the end
@@ -127,17 +141,31 @@ ite_gen__generate_semidet_ite(CondGoal, ThenGoal, ElseGoal, Instr) -->
 	code_info__maybe_save_hp(ReclaimHeap, HPSaveCode),
 		% generate the semi-deterministic test goal
 	code_info__get_instmap(InstMap),
-	code_gen__generate_goal(model_semi, CondGoal, CondCode),
+
+		% Store the current solver state before the condition of
+		% the ite
+	{ globals__lookup_bool_option(Options,
+				constraints, UseConstraints) },
+	code_info__maybe_save_ticket(UseConstraints, StoreTicketCode),
+	code_gen__generate_goal(model_semi, CondGoal, CondCode0),
+	{ CondCode = tree(StoreTicketCode, CondCode0) },
 	code_info__grab_code_info(CodeInfo),
 	code_info__maybe_pop_stack(ReclaimHeap, HPPopCode),
 	code_info__pop_failure_cont,
-	code_gen__generate_forced_goal(model_semi, ThenGoal, ThenGoalCode),
+		% Pop the solver ticket if the condition succeeded
+	code_info__maybe_discard_ticket(UseConstraints, PopTicketCode),
+	code_gen__generate_forced_goal(model_semi, ThenGoal, ThenGoalCode0),
+	{ ThenGoalCode = tree(PopTicketCode, ThenGoalCode0) },
 	code_info__slap_code_info(CodeInfo),
 	code_info__restore_failure_cont(RestoreContCode),
 		% restore the instmap
 	code_info__set_instmap(InstMap),
 	code_info__maybe_restore_hp(ReclaimHeap, HPRestoreCode),
-	code_gen__generate_forced_goal(model_semi, ElseGoal, ElseGoalCode),
+		% Restore the solver ticket if the condition failed
+	code_info__maybe_restore_ticket_and_pop(UseConstraints, 
+		RestoreTicketCode),
+	code_gen__generate_forced_goal(model_semi, ElseGoal, ElseGoalCode0),
+	{ ElseGoalCode = tree(RestoreTicketCode, ElseGoalCode0) },
 	code_info__get_next_label(EndLab),
 	{ TestCode = tree(
 		tree(ModContCode, HPSaveCode),
@@ -217,8 +245,15 @@ ite_gen__generate_nondet_ite(CondGoal, ThenGoal, ElseGoal, Instr) -->
 		{ EnsureCode = empty }
 	),
 	code_info__get_instmap(InstMap),
+
+		% Store the current solver state before the condition of
+		% the ite
+	{ globals__lookup_bool_option(Options,	
+			constraints, UseConstraints) },
+	code_info__maybe_save_ticket(UseConstraints, StoreTicketCode),
 	code_gen__generate_goal(model_non, CondGoal, CondCode0),
-	{ CondCode = tree(EnsureCode, CondCode0) },
+	{ CondCode = 	tree(EnsureCode,
+			tree(StoreTicketCode, CondCode0)) },
 	code_info__grab_code_info(CodeInfo),
 	code_info__maybe_pop_stack(ReclaimHeap, HPPopCode),
 	code_info__pop_failure_cont,
@@ -230,13 +265,29 @@ ite_gen__generate_nondet_ite(CondGoal, ThenGoal, ElseGoal, Instr) -->
 	;
 		{ HackStackCode = empty }
 	),
-	code_gen__generate_forced_goal(model_non, ThenGoal, ThenGoalCode),
+	(
+		{ NondetCond = yes }
+	->
+			% We cannot discard the solver ticket if the 
+			% condition can be backtracked into.
+		code_info__maybe_pop_stack(UseConstraints, PopTicketCode)
+	;
+			% Discard the solver ticket if the condition succeeded
+			% and we will not backtrack into the condition
+		code_info__maybe_discard_ticket(UseConstraints, PopTicketCode)
+	),
+	code_gen__generate_forced_goal(model_non, ThenGoal, ThenGoalCode0),
+	{ ThenGoalCode = tree(PopTicketCode, ThenGoalCode0) },
 	code_info__slap_code_info(CodeInfo),
 	code_info__restore_failure_cont(RestoreContCode),
 		% restore the instmap
 	code_info__set_instmap(InstMap),
 	code_info__maybe_restore_hp(ReclaimHeap, HPRestoreCode),
-	code_gen__generate_forced_goal(model_non, ElseGoal, ElseGoalCode),
+		% Restore the solver ticket if the condition failed
+	code_info__maybe_restore_ticket_and_pop(UseConstraints, 
+		RestoreTicketCode),
+	code_gen__generate_forced_goal(model_non, ElseGoal, ElseGoalCode0),
+	{ ElseGoalCode = tree(RestoreTicketCode, ElseGoalCode0) },
 	code_info__get_next_label(EndLab),
 	code_info__remake_with_store_map,
 	{ TestCode = tree(

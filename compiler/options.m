@@ -71,6 +71,7 @@
 		;	asm_labels
 		;	gc
 		;	profiling
+		;	constraints
 		;	debug
 		;	debug_data
 		;	tags
@@ -233,6 +234,7 @@ option_defaults_2(compilation_model_option, [
 	asm_labels		-	bool(yes),
 	gc			-	string("conservative"),
 	profiling		-	bool(no),
+	constraints		-	bool(no),
 	debug			-	bool(no),
 	tags			-	string("low"),
 	num_tag_bits		-	int(-1),
@@ -858,6 +860,8 @@ options_help -->
 	io__write_string("\t\tgenerated code, and also output some profiling\n"),
 	io__write_string("\t\tinformation (the static call graph) to the file\n"),
 	io__write_string("\t\t`<module>.prof'.\n"),
+	%io__write_string("\t--constraints\n"),
+	%io__write_string("\t\tInterface with the CLP(R) constraint solver.\n"),
 	io__write_string("\t--debug\t\t\t"),
 	io__write_string("\t(grades: debug)\n"),
 	io__write_string("\t\tEnable debugging.\n"),

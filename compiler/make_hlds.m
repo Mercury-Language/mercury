@@ -1090,7 +1090,7 @@ module_add_c_body_code(C_Body_Code, Context, Module0, Module) :-
 	term__context, module_info, module_info, io__state, io__state).
 :- mode module_add_pragma_c_code(in, in, in, in, in, in, out, di, uo) is det.
 
-module_add_pragma_c_code(PredName, PVars, VarSet, C_Code0, Context, 
+module_add_pragma_c_code(PredName, PVars, VarSet, C_Code, Context, 
 			ModuleInfo0, ModuleInfo) --> 
 		% print out a progress message
 	{ module_info_name(ModuleInfo0, ModuleName) },
@@ -1166,7 +1166,6 @@ module_add_pragma_c_code(PredName, PVars, VarSet, C_Code0, Context,
 			{ get_matching_procedure(ExistingProcs, Modes, ProcId) }
 		->
 			{ pred_info_clauses_info(PredInfo0, Clauses0) },
-			{ C_Code = C_Code0 },
 			{ clauses_info_add_pragma_c_code(Clauses0, PredId, 
 					ProcId, VarSet, PVars, C_Code, Context, 
 					Clauses, Goal) },

@@ -150,6 +150,17 @@ vn_cost__instr_cost(Uinstr, Cost) :-
 		vn_cost__rval_cost(Rval, RvalCost),
 		Cost = RvalCost
 	;
+		Uinstr = store_ticket(Lval),
+		vn_cost__lval_cost(Lval, LvalCost),
+		Cost = LvalCost
+	;
+		Uinstr = restore_ticket(Rval),
+		vn_cost__rval_cost(Rval, RvalCost),
+		Cost = RvalCost
+	;
+		Uinstr = discard_ticket,
+		Cost = 0
+	;
 		Uinstr = incr_sp(_),
 		Cost = 0
 	;
