@@ -1,9 +1,0 @@
-s/term_atom/term__atom/g
-s/term_string/term__string/g
-s/term_integer/term__integer/g
-s/term_float/term__float/g
-s/term_context/term__context/g
-s/term_functor/term__functor/g
-s/term_variable/term__variable/g
-s/_term__/_term_/g
-s/std_util__bool_/bool__/g

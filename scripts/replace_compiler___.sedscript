@@ -1,8 +1,0 @@
-s/vn_[a-z]*__\([a-z_]*\)\>/vn__\1/g
-s/\<value_number__/vn__/g
-
-s/hlds__is_builtin/is_builtin_/g
-s/hlds__dependency_info/dependency_info_/g
-s/unify_proc__info_/unify_proc_info__/g
-s/transform__reschedule_conj/reschedule__conj/g
-s/mercury_to_c__gen/c__gen/g
