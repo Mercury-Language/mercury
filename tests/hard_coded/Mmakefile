@@ -193,6 +193,7 @@ JAVA_PASS_PROGS= \
 	brace \
 	c_write_string \
 	compare_spec \
+	constant_prop_2 \
 	contains_char \
 	constraint \
 	curry \
