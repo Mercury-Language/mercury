@@ -25,6 +25,28 @@
 
 :- pred report_stats is det.
 
+% benchmark_det(Pred, In, Out, Repeats, Time) is for benchmarking the
+% det predicate Pred. We call Pred with the input In and the output Out,
+% and return Out so that the caller can check the correctness of the
+% benchmarked predicate. Since most systems do not have good facilities
+% for measuring small times, the Repeats parameter allows the caller to
+% specify how many times Pred should be called inside the timed interval.
+% The number of milliseconds required to execute Pred with input In this
+% many times is returned as Time.
+
+:- pred benchmark_det(pred(T1, T2), T1, T2, int, int).
+:- mode benchmark_det(pred(in, out) is det, in, out, in, out) is det.
+
+% benchmark_nondet(Pred, In, Count, Repeats, Time) is for benchmarking
+% the nondet predicate Pred. benchmark_nondet is similar to benchmark_det,
+% but since solutions/2 is not yet available in all grades, it can't
+% return the list of solutions, so it returns the count of solutions
+% as the next best thing. The number of milliseconds required to generate
+% all solutions of Pred with input In Repeats times is returned as Time.
+
+:- pred benchmark_nondet(pred(T1, T2), T1, int, int, int).
+:- mode benchmark_nondet(pred(in, out) is nondet, in, out, in, out) is det.
+
 :- implementation.
 
 :- pragma(c_header_code, "
@@ -62,12 +84,6 @@
 	);
 #endif
 ").
-
-:- pred benchmark_det(pred(T1, T2), T1, T2, int, int).
-:- mode benchmark_det(pred(in, out) is det, in, out, in, out) is det.
-
-:- pred benchmark_nondet(pred(T1, T2), T1, int, int, int).
-:- mode benchmark_nondet(pred(in, out) is nondet, in, out, in, out) is det.
 
 :- external(benchmark_det/5).
 :- external(benchmark_nondet/5).
