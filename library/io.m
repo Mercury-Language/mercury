@@ -3448,6 +3448,9 @@ namespace mercury {
 
 	System::IO::Stream 	*stream; // The stream itself
 	System::IO::TextReader 	*reader; // A stream reader for reading it
+	int			putback;
+			// the next character or byte to read,
+			// or -1 if no putback char/byte is stored
 	System::IO::TextWriter 	*writer; // A stream writer for writing it
 	ML_file_encoding_kind	file_encoding; // DOS, Unix, or raw binary
 	int			line_number;
@@ -3530,6 +3533,7 @@ mercury_file_init(System::IO::Stream *stream,
 	MR_MercuryFile mf = new MR_MercuryFileStruct();
 	mf->stream = stream;
 	mf->reader = reader;
+	mf->putback = -1;
 	mf->writer = writer;
 	mf->file_encoding = file_encoding;
 	mf->line_number = 1;
@@ -3553,6 +3557,7 @@ static MR_MercuryFile mercury_stderr =
 	mercury_file_init(System::Console::OpenStandardError(),
 	    NULL, System::Console::Error, ML_default_text_encoding);
 
+	// XXX should we use BufferedStreams here?
 static MR_MercuryFile mercury_stdin_binary =
 	mercury_file_init(System::Console::OpenStandardInput(),
 	    System::Console::In, NULL, ML_raw_binary);
@@ -3565,6 +3570,7 @@ static MR_MercuryFile mercury_current_text_output = mercury_stdout;
 static MR_MercuryFile mercury_current_binary_input = mercury_stdin_binary;
 static MR_MercuryFile mercury_current_binary_output = mercury_stdout_binary;
 
+// XXX not thread-safe! */
 static System::IO::IOException *MR_io_exception;
 
 ").
@@ -3629,6 +3635,8 @@ static mercury_open(MR_String filename, MR_String openmode,
         if (!stream) {
                 return 0;
         } else {
+		stream = new System::IO::BufferedStream(stream);
+		
 		// we initialize the `reader' and `writer' fields to null;
 		// they will be filled in later if they are needed.
                 mf = mercury_file_init(stream, NULL, NULL, file_encoding);
@@ -3863,6 +3871,12 @@ mercury_getc(MR_MercuryFile mf)
 {
 	int c;
 
+	if (mf->putback != -1) {
+		c = mf->putback;
+		mf->putback = -1;
+		return c;
+	}
+
 	if (mf->reader == NULL) {
 		mf->reader = new System::IO::StreamReader(mf->stream,
 				System::Text::Encoding::Default);
@@ -3907,6 +3921,18 @@ mercury_getc(MR_MercuryFile mf)
         return c;
 }
 
+static void
+mercury_ungetc(MR_MercuryFile mf, int code)
+{
+	if (mf->putback != -1) {
+		mercury::runtime::Errors::SORRY(
+			""mercury_ungetc: max one character of putback"");
+	}
+	mf->putback = code;
+	if (code == '\\n') {
+		mf->line_number--;
+	}
+}
 ").
 
 
@@ -4177,30 +4203,34 @@ ML_fprintf(MercuryFile* mf, const char *format, ...)
 		[will_not_call_mercury, promise_pure], "
 	MR_MercuryFile mf = ML_DownCast(MR_MercuryFile, 
 		MR_word_to_c_pointer(File));
-	ByteVal = mf->stream->ReadByte();
+	if (mf->putback != -1) {
+		ByteVal = mf->putback;
+		mf->putback = -1;
+	} else {
+		ByteVal = mf->stream->ReadByte();
+	}
 	MR_update_io(IO0, IO);
 ").
 
 :- pragma foreign_proc("MC++", 
 	io__putback_char(File::in, Character::in, IO0::di, IO::uo),
 		[may_call_mercury, promise_pure], "{
-	// XXX This is wrong; it doesn't handle CR-LF properly.
-
 	MR_MercuryFile mf = ML_DownCast(MR_MercuryFile,
 		MR_word_to_c_pointer(File));
-	if (Character == '\\n') {
-		mf->line_number--;
-	}
-	mf->stream->Seek(-1, System::IO::SeekOrigin::Current);
+	mercury_ungetc(mf, Character);
 	MR_update_io(IO0, IO);
 }").
 
 :- pragma foreign_proc("MC++",
-	io__putback_byte(File::in, _Character::in, IO0::di, IO::uo),
+	io__putback_byte(File::in, Byte::in, IO0::di, IO::uo),
 		[may_call_mercury, promise_pure], "{
 	MR_MercuryFile mf = ML_DownCast(MR_MercuryFile, 
 		MR_word_to_c_pointer(File));
-	mf->stream->Seek(-1, System::IO::SeekOrigin::Current);
+	if (mf->putback != -1) {
+		mercury::runtime::Errors::SORRY(
+			""io__putback_byte: max one character of putback"");
+	}
+	mf->putback = Byte;
 	MR_update_io(IO0, IO);
 }").
 
