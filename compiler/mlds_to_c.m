@@ -2734,12 +2734,21 @@ mlds_output_boxed_rval(Type, Exprn) -->
 		mlds_output_rval(Exprn),
 		io__write_string(")")
 	;
+		{ Type = mlds__mercury_type(term__functor(term__atom("character"),
+				[], _), _)
+		; Type = mlds__native_char_type
+		; Type = mlds__native_bool_type
+		; Type = mlds__native_int_type
+		}
+	->
 		% We cast first to MR_Word, and then to MR_Box.
 		% This is done to avoid spurious warnings about "cast from
-		% pointer to integer of different size" from gcc.
-		% XXX The generated code would be more readable if we
-		%     only did this for the cases where it was necessary.
+		% integer to pointer of different size" from gcc.
 		io__write_string("((MR_Box) (MR_Word) ("),
+		mlds_output_rval(Exprn),
+		io__write_string("))")
+	;
+		io__write_string("((MR_Box) ("),
 		mlds_output_rval(Exprn),
 		io__write_string("))")
 	).
@@ -2758,14 +2767,24 @@ mlds_output_unboxed_rval(Type, Exprn) -->
 		mlds_output_rval(Exprn),
 		io__write_string(")")
 	;
+		{ Type = mlds__mercury_type(term__functor(term__atom("character"),
+				[], _), _)
+		; Type = mlds__native_char_type
+		; Type = mlds__native_bool_type
+		; Type = mlds__native_int_type
+		}
+	->
 		% We cast first to MR_Word, and then to the desired type.
 		% This is done to avoid spurious warnings about "cast from
 		% pointer to integer of different size" from gcc.
-		% XXX The generated code would be more readable if we
-		%     only did this for the cases where it was necessary.
 		io__write_string("("),
 		mlds_output_cast(Type),
 		io__write_string("(MR_Word) "),
+		mlds_output_rval(Exprn),
+		io__write_string(")")
+	;
+		io__write_string("("),
+		mlds_output_cast(Type),
 		mlds_output_rval(Exprn),
 		io__write_string(")")
 	).
