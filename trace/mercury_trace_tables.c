@@ -488,7 +488,7 @@ MR_label_layout_stats(FILE *fp)
 	int				module_num, file_num, label_num;
 	MR_Trace_Port			port;
 	int				total;
-	int				histogram[MR_PORT_PRAGMA_LATER + 1];
+	int				histogram[MR_PORT_NUM_PORTS];
 
 	total = 0;
 	for (port = 0; port < MR_PORT_NUM_PORTS; port++) {

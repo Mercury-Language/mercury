@@ -136,6 +136,7 @@ const char	*MR_port_names[] =
 	"SWTC",
 	"FRST",
 	"LATR",
+	"NONE",
 };
 
 MR_Code *

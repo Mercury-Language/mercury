@@ -42,10 +42,11 @@ typedef	enum {
 	MR_PORT_DISJ,
 	MR_PORT_SWITCH,
 	MR_PORT_PRAGMA_FIRST,
-	MR_PORT_PRAGMA_LATER
+	MR_PORT_PRAGMA_LATER,
+	MR_PORT_NONE
 } MR_Trace_Port;
 
-#define	MR_PORT_NUM_PORTS		((int) MR_PORT_PRAGMA_LATER + 1)
+#define	MR_PORT_NUM_PORTS		((int) MR_PORT_NONE + 1)
 
 extern	const char 			*MR_port_names[];
 

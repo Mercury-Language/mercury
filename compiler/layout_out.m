@@ -400,7 +400,7 @@ output_label_layout_data_defn(Label, ProcLayoutAddr, MaybePort, MaybeGoalPath,
 		io__write_string(trace_port_to_string(Port))
 	;
 		{ MaybePort = no },
-		io__write_string("(MR_Trace_Port) -1")
+		io__write_string("MR_PORT_NONE")
 	),
 	io__write_string(",\n\t"),
 	(
