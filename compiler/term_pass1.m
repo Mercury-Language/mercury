@@ -49,8 +49,8 @@
 :- implementation.
 
 :- import_module int, list, bag, require, bool, std_util, char, map, string.
-:- import_module hlds_pred, hlds_goal, hlds_data. 
-:- import_module term_errors, mode_util, type_util, term.
+:- import_module hlds_pred, hlds_goal, hlds_data, float.
+:- import_module term_errors, mode_util, type_util, term, varset, lp.
 
 %------------------------------------------------------------------------------
 
@@ -856,437 +856,94 @@ goal_will_fail(GoalInfo) :-
 :- mode solve_equations(in, in, in, in, in, out, di, uo) is det.
 
 solve_equations(Module0, Equations, PPIds, UsedArgs, Context, Module) -->
-	io__tmpnam(ConstraintFile),
-	solve_equations_create_constraint_file(Equations, PPIds, 
-		ConstraintFile, ConstraintSucc),
-	( { ConstraintSucc = yes } ->
-		solve_equations_solve_constraint_file(ConstraintFile, Soln)
-	;
-		% Failed to create the constraint file.
-		{ Soln = fatal_error }
-	),
-	% The equations have been solved, now put the
-	% results into the module_info.
-	( { Soln = solved(SolutionList) } ->
-		% The solver successfully solved the constraints.
-		{ module_info_preds(Module0, PredTable0) },
-		{ proc_inequalities_set_module(SolutionList, UsedArgs, 
-			PredTable0, PredTable) },
-		{ module_info_set_preds(Module0, PredTable, 
-			Module) }
-	; { Soln = optimal } ->
-		% All 'optimal' results should have been
-		% changed into a list of solutions in
-		% solve_equations.  
-		{ error("term_pass1__solve_equations: Unexpected Value\n")}
-	;
-		% The constraint solver failed to solve the
-		% set of constraints - set the termination
-		% constant to infinity.
-		{ Error = Context - lpsolve_failed(Soln) },
-		{ set_pred_proc_ids_const(PPIds, 
-			inf(Error), Module0, Module) }
-	).
-
-:- pred solve_equations_solve_constraint_file(string, eqn_soln, 
-	io__state, io__state).
-:- mode solve_equations_solve_constraint_file(in, out, di, uo) is det.
-solve_equations_solve_constraint_file(ConstraintFile, Soln) -->
-	io__tmpnam(OutputFile),
-	% run lp_solve
-	solve_equations_run_lp_solve(ConstraintFile, OutputFile, MaybeResult),
-	( 
-		{ MaybeResult = yes(Result) },
-		( { Result = optimal } ->
-			solve_equations_process_output_file(OutputFile, Soln0)
-		;
-			% lp_solve failed to solve the constraints.
-			% This could be for a number of reasons,
-			% and the value of Result will represent
-			% the reason.
-			{ Soln0 = Result }
-		)
-	;
-		{ MaybeResult = no },
-		{ Soln0 = fatal_error }
-	),
-
-	% Remove and close all temporary files.
-	solve_equations_remove_file(ConstraintFile, Success0),
-	solve_equations_remove_file(OutputFile, Success1),
-	{ bool__or(Success0, Success1, Success) },
-	{ ( 
-		Success = yes,
-		Soln = Soln0
-	;
-		Success = no,
-		Soln = fatal_error
-	) }.
-
-% This runs lp_solve, and outputs an error message and returns `no' 
-% if the system call fails.  On success, it returns the return value of
-% lp_solve after the return value has been changed from an integer into a
-% lpsolve_ret_val type.
-:- pred solve_equations_run_lp_solve(string, string, maybe(eqn_soln),
-	io__state, io__state).
-:- mode solve_equations_run_lp_solve(in, in, out, di, uo) is det.
-solve_equations_run_lp_solve(ConstraintFile, OutputFile, MaybeResult) -->
-	io__get_environment_var("MERCURY_LPSOLVE", Lpsolve0),
-	( { Lpsolve0 = yes(Lpsolve1) } ->
-		{ Lpsolve = Lpsolve1 }
-	;
-		{ Lpsolve = "lp_solve" }
-	),
-	{ string__append_list([ Lpsolve, " <",
-		ConstraintFile, " > ",
-		OutputFile], Command) },
-	io__call_system(Command, Res0),
-	% Test the return value
-	( 
-		{ Res0  = ok(RetVal) },
-		{ lpsolve_ret_val(RetVal, Result) },
-		{ MaybeResult = yes(Result) }
-	;
-		{ Res0 = error(Error0) },
-		io__progname_base("term_pass1.m", ProgName),
-		{ io__error_message(Error0, Msg0) },
-		io__write_strings([
-			ProgName,
-			": Error with system call `",
-			Command,
-			"': ",
-			Msg0,
-			"\n" ]),
-		io__set_exit_status(1),
-		{ MaybeResult = no }
-	).
-
-:- pred solve_equations_remove_file(string, bool, io__state, io__state).
-:- mode solve_equations_remove_file(in, out, di, uo) is det.
-solve_equations_remove_file(File, Success) -->
-	io__remove_file(File, Res1),
-	( { Res1 = error(Error1) } ->
-		io__progname_base("term_pass1.m", ProgName),
-		{ io__error_message(Error1, Msg1) },
-		io__write_strings([
-			ProgName,
-			": Error deleting temporary file `",
-			File,
-			"' : ",
-			Msg1,
-			"\n" ]),
-		io__set_exit_status(1),
-		{ Success = no }
-	;
-		{ Success = yes }
-	).
-
-% This predicate creates the constraint file in a format suitable for
-% lp_solve.  This really shouldn't be called with Equations=[] as lp_solve
-% exits with an error if it is called without any constraints.
-:- pred solve_equations_create_constraint_file(list(term_pass1__equation),
-	list(pred_proc_id), string, bool, io__state, io__state).
-:- mode solve_equations_create_constraint_file(in, in, in, out, di, uo) is det.
-
-solve_equations_create_constraint_file(Equations, PPIds, 
-		ConstraintFile, Success) -->
-	io__open_output(ConstraintFile, Res),
-	( 	{ Res = error(Error) },
-		% error message and quit
-		io__progname_base("termination.m", ProgName),
-		{ io__error_message(Error, Msg) },
-	
-		io__write_string(ProgName),
-		io__write_string(": cannot open temporary file `"),
-		io__write_string(ConstraintFile),
-		io__write_string("' for output: "),
-		io__write_string(Msg),
-		io__write_string("\n"),
-		io__set_exit_status(1),
-		{ Success = no }
-	;
-		{ Res = ok(Stream) },
-		( { Equations = [] } ->
-			{ Success = no }
-		;
-			io__set_output_stream(Stream, OldStream),
-			% create the constraint file
-			output_equations(Equations, PPIds, Success),
-	
-			io__set_output_stream(OldStream, _),
-			io__close_output(Stream)
-		)
-	).
-
-% Prepare to parse the output from lp_solve.
-:- pred solve_equations_process_output_file(string, eqn_soln, 
-	io__state, io__state).
-:- mode solve_equations_process_output_file(in, out, di, uo) is det.
-solve_equations_process_output_file(OutputFile, Soln) -->
-	io__open_input(OutputFile, OutputRes),
-	( 	{ OutputRes = error(Error) },
-		io__progname_base("term_pass1.m", ProgName),
-		{ io__error_message(Error, Msg) },
-
-		io__write_string(ProgName),
-		io__write_string(": cannot open temporary file `"),
-		io__write_string(OutputFile),
-		io__write_string("' for input: "),
-		io__write_string(Msg),
-		io__write_string("\n"),
-		io__set_exit_status(1),
-		{ Soln = fatal_error }
-	;
-		{ OutputRes = ok(Stream) },
-		io__set_input_stream(Stream, OldStream),
-		% need to interpret it now
-		solve_equations_parse_output_file(Soln),
-		io__set_input_stream(OldStream, _),
-		io__close_input(Stream)
-	).
-
-% Parse the output from lp_solve.
-:- pred solve_equations_parse_output_file(eqn_soln, io__state, io__state).
-:- mode solve_equations_parse_output_file(out, di, uo) is det.
-solve_equations_parse_output_file(Soln) -->
-	io__read_line(Res1),
-	( { Res1 = ok(_) } ->
-		solve_equations_parse_output_file_2(Soln0, MaybeBVal),
-		( { Soln0 = solved(Result0) } ->
-			( { MaybeBVal = yes(BVal) } ->
-				{ solve_equations_output_file_2(Result0, BVal,
-					Result) },
-				{ Soln = solved(Result) }
-			;
-				{ Soln = parse_error }
-			)
-		;
-			io__write_string(
-				"parse_output_file returned not solved\n"),
-			{ Soln = parse_error }
-		)
-	;
-		{ Soln = parse_error }
-	).
-
-:- pred solve_equations_output_file_2(list(pair(pred_proc_id, int)), int,
-	list(pair(pred_proc_id, int))).
-:- mode solve_equations_output_file_2(in, in, out) is det.
-solve_equations_output_file_2([], _, []). 
-solve_equations_output_file_2([X | Xs], BVal, [Y | Ys]) :-
-	X = PPId - XVal, 	% pair deconstruction
-	YVal is XVal - BVal,	% subtraction
-	Y = PPId - YVal,	% pair construction
-	solve_equations_output_file_2(Xs, BVal, Ys).
-		
-:- pred solve_equations_parse_output_file_2(eqn_soln, maybe(int), io__state,
-	io__state).
-:- mode solve_equations_parse_output_file_2(out, out, di, uo) is det.
-solve_equations_parse_output_file_2(Soln, BVal) -->
-	io__read_line(Res1),
-	( { Res1 = ok([ X | Xs ]) } ->
-		( 
-			{ X = 'a' },
-			{ char_list_remove_int(Xs, PredInt, Xs1) },
-			{ Xs1 = [ '_' | Xs2 ] },
-			{ char_list_remove_int(Xs2, ProcInt, Xs3) },
-			{ char_list_remove_whitespace(Xs3, Xs4) },
-			{ char_list_remove_int(Xs4, Value, _Xs5) }
-		->
-			% Have found a solution.
-			{ pred_id_to_int(PredId, PredInt) },
-			{ proc_id_to_int(ProcId, ProcInt) },
-			solve_equations_parse_output_file_2(Soln0, BVal),
-			( { Soln0 = solved(SolnList) } ->
-				{ NewSoln = proc(PredId, ProcId) - Value },
-				{ Soln = solved([NewSoln | SolnList ]) }
-			;
-				{ Soln = Soln0 }
-			)
-		; % else if
-			{ X = 'b' },
-			{ char_list_remove_whitespace(Xs, Xs1) },
-			{ char_list_remove_int(Xs1, Value, _Xs2) }
-		->
-			solve_equations_parse_output_file_2(Soln, _Bval),
-			{ BVal = yes(Value) }
-		;
-			{ Soln = parse_error },
-			{ BVal = no }
-		)
-	; { Res1 = eof } ->
-		{ Soln = solved([]) },
-		{ BVal = no }
-	;
-		{ Soln = parse_error },
-		{ BVal = no }
-	).
-
-:- pred char_list_remove_int(list(char), int, list(char)).
-:- mode char_list_remove_int(in, out, out) is semidet.
-char_list_remove_int([X | Xs], Int, ListOut) :-
-	char__is_digit(X),
-	char__to_int(X, Int0),
-	char__to_int('0', IntValueofZero),
-	Int1 is Int0 - IntValueofZero,   
-	char_list_remove_int_2(Xs, Int1, Int, ListOut).
-
-:- pred char_list_remove_int_2(list(char), int, int, list(char)).
-:- mode char_list_remove_int_2(in, in, out, out) is semidet.
-
-char_list_remove_int_2([], Int, Int, []).
-char_list_remove_int_2([X | Xs], Int0, Int, ListOut) :-
-	( char__is_digit(X) ->
-		char__to_int('0', IntValueofZero),
-		char__to_int(X, Int1),
-		Int2 is Int0 * 10 + Int1 - IntValueofZero,
-		char_list_remove_int_2(Xs, Int2, Int, ListOut)
-	;
-		ListOut = [ X | Xs ],
-		Int = Int0
-	).
-		
-:- pred char_list_remove_whitespace(list(char), list(char)).
-:- mode char_list_remove_whitespace(in, out) is det.
-char_list_remove_whitespace([], []).
-char_list_remove_whitespace([ X | Xs ], Out) :-
-	( char__is_whitespace(X) ->
-		char_list_remove_whitespace(Xs, Out)
-	;
-		Out = [ X | Xs ]
-	).
-
-:- pred lpsolve_ret_val(int, eqn_soln).
-:- mode lpsolve_ret_val(in, out) is det.
-lpsolve_ret_val(Int, Result) :-
-	( Int = 0	->	Result = optimal
-	; Int = 2	->	Result = infeasible
-	; Int = 3	->	Result = unbounded
-	; 			Result = failure
-	).
-
-%-----------------------------------------------------------------------------%
-% These predicates are used to output a list of equations in a form
-% suitable for lp_solve.  
-:- pred output_equations(list(term_pass1__equation), list(pred_proc_id),
-	bool, io__state , io__state).
-:- mode output_equations(in, in, out, di, uo) is det.
-
-output_equations(Xs, PPIds, Success) --> 
-	% output: 'max: # b - PPIds'
-	io__write_string("max: "),
-	{ list__length(PPIds, Length) },
-	io__write_int(Length),
-	io__write_string(" b "),
-	output_eqn_2(PPIds),
-	io__write_string(";\n"),
-
-	output_equations_2(Xs, 1, Success).
-
-:- pred output_equations_2(list(term_pass1__equation), int,
-	bool, io__state , io__state).
-:- mode output_equations_2(in, in, out, di, uo) is det.
-
-output_equations_2([], _Count, yes) --> [].
-output_equations_2([ X | Xs ], Count, Succ) --> 
-	output_eqn(X, Count, Succ0),
-	( { Succ0 = yes } ->
-		{ Count1 is Count + 1 },
-		output_equations_2(Xs, Count1, Succ)
-	;
-		{ Succ = Succ0 }
-	).
-
-:- pred output_eqn(term_pass1__equation, int, bool, io__state,
-	io__state).
-:- mode output_eqn(in, in, out, di, uo) is det.
-
-% each constraint is of the form:
-% c#: # b + PPId - (PPIdList) > Const;
-% each PPId is printed as `aPredId_ProcId'
-% As each PPId can be negative, and lp_solve allows only positive
-% variables, we introduce a dummy variable 'b' such that 
-% Actual PPId value = returned PPId value - b, where the returned value is 
-% always non-negative
-output_eqn(Eqn, Count, Succ) -->
-	{ Eqn = eqn(Const, PPId, PPIdList0) },
-	{ list__length(PPIdList0, Length) },
-	% As there are `Length' negative PPIds, and 1 positive PPId, and
-	% each PPId is replaced with `PPId - b', the multiplier of b is
-	% Length - 1.
-	{ BMultiplier is Length - 1 },
-	( { list__delete_first(PPIdList0, PPId, PPIdList1) } ->
-		{ Deleted = yes },
-		{ PPIdList = PPIdList1 }
-	;
-		{ Deleted = no },
-		{ PPIdList = PPIdList0 }
-	),
-
-	( 
-		{ Length = 1 },
-		{ Deleted = yes }
+	(
+		{ convert_equations(Equations, Varset, LPEquations,
+			Objective, PPVars) }
 	->
-		% There is nothing on the left hand side  of the
-		% constraint, as there was only one element in the list,
-		% and it was deleted.  Therefore the left hand side of the
-		% equation is PPId - PPId which lpsolve does not process.
-		% Constraints of this type should all be removed by 
-		% proc_inequalities_scc_remove_useless_offsets.
-		{ Succ = no }
+		{ map__values(PPVars, AllVars0) },
+		{ list__sort_and_remove_dups(AllVars0, AllVars) },
+		lp_solve(LPEquations, min, Objective, Varset, AllVars, Soln),
+		(
+			{ Soln = unsatisfiable },
+			{ Error = Context - lpsolve_failed },
+			{ set_pred_proc_ids_const(PPIds, 
+				inf(Error), Module0, Module) }
+		;
+			{ Soln = satisfiable(_ObjVal, SolnVal) },
+			{ list__map(lookup_coeff(PPVars, SolnVal), PPIds,
+				SolutionList) },
+			{ module_info_preds(Module0, PredTable0) },
+			{ proc_inequalities_set_module(SolutionList, UsedArgs, 
+				PredTable0, PredTable) },
+			{ module_info_set_preds(Module0, PredTable, 
+				Module) }
+		)
 	;
-		% output 'c#: '
-		io__write_char('c'),
-		io__write_int(Count),
-		io__write_string(": "),
-	
-		% maybe output '# b '
-		( { BMultiplier = 0 } ->
-			[]
-		;	
-			io__write_int(BMultiplier),
-			io__write_string(" b ")
-		),
-		
-		% maybe output ' + PPId'
-		( { Deleted = yes } ->
-			[]
-		;
-			io__write_string(" + a"),
-			output_eqn_ppid(PPId)
-		),
-
-		% output `PPIdList' 
-		output_eqn_2(PPIdList),
-
-		% output ` > Const;'
-		io__write_string(" > "),
-		( { Const = set(Int) } ->
-			io__write_int(Int), 
-			{ Succ = yes }
-		;
-			{ Succ = no }
-		),
-		io__write_string(";\n")
+		{ Error = Context - lpsolve_failed },
+		{ set_pred_proc_ids_const(PPIds, inf(Error), Module0, Module) }
 	).
-	
-% Outputs each of the pred proc id's in the form: ' - aPredId_ProcId'
-:- pred output_eqn_2(list(pred_proc_id), io__state, io__state).
-:- mode output_eqn_2(in, di, uo) is det.
 
-output_eqn_2([]) --> [].
-output_eqn_2([ X | Xs ]) --> 
-	io__write_string(" - a"),
-	output_eqn_ppid(X),
-	output_eqn_2(Xs).
+:- pred convert_equations(list(term_pass1__equation), varset,
+		lp__equations, objective, map(pred_proc_id, var)).
+:- mode convert_equations(in, out, out, out, out) is semidet.
 
-% Outputs a pred proc id in the form "PredId_ProcId"
-:- pred output_eqn_ppid(pred_proc_id, io__state, io__state).
-:- mode output_eqn_ppid(in, di, uo) is det.
-output_eqn_ppid(proc(PredId, ProcId)) -->
-	{ pred_id_to_int(PredId, PredInt) },
-	{ proc_id_to_int(ProcId, ProcInt) },
-	io__write_int(PredInt),
-	io__write_char('_'),
-	io__write_int(ProcInt).
+convert_equations(TermEquations, Varset, LPEquations, Objective, PPVars) :-
+	varset__init(Varset0),
+	map__init(PredProcVars0),
+	convert_equations2(TermEquations, PredProcVars0, PPVars,
+		Varset0, Varset, [], LPEquations),
+	map__values(PPVars, Vars),
+	Convert = lambda([Var::in, Coeff::out] is det,
+	(
+		Coeff = Var - 1.0
+	)),
+	list__map(Convert, Vars, Objective).
+
+:- pred convert_equations2(list(term_pass1__equation),
+		map(pred_proc_id, var), map(pred_proc_id, var), varset, varset,
+		lp__equations, lp__equations).
+:- mode convert_equations2(in, in, out, in, out, in, out) is semidet.
+
+convert_equations2([], PPVars, PPVars, Varset, Varset, LPEqns, LPEqns).
+convert_equations2([Eqn|Eqns], PPVars0, PPVars, Varset0, Varset,
+		LPEqns0, LPEqns) :-
+	Eqn = eqn(set(IntConst), ThisPPId, PPIds),
+	int__to_float(IntConst, FloatConst),
+	LPEqn = eqn(Coeffs, (>=), FloatConst),
+	pred_proc_var(ThisPPId, ThisVar, Varset0, Varset2, PPVars0, PPVars1),
+	Coeffs = [ThisVar - 1.0|RestCoeffs],
+	Convert = lambda([PPId::in, Coeff::out, Pair0::in, Pair::out] is det,
+	(
+		Pair0 = VS0 - PPV0,
+		pred_proc_var(PPId, Var, VS0, VS, PPV0, PPV),
+		Coeff = Var - (-1.0),
+		Pair = VS - PPV
+	)),
+	list__map_foldl(Convert, PPIds, RestCoeffs, Varset2 - PPVars1,
+		Varset3 - PPVars2),
+	convert_equations2(Eqns, PPVars2, PPVars, Varset3, Varset,
+						[LPEqn|LPEqns0], LPEqns).
+
+:- pred lookup_coeff(map(pred_proc_id, var), map(var, float), pred_proc_id,
+		pair(pred_proc_id, int)).
+:- mode lookup_coeff(in, in, in, out) is det.
+
+lookup_coeff(PPIds, Soln, PPId, PPId - ICoeff) :-
+	map__lookup(PPIds, PPId, Var),
+	map__lookup(Soln, Var, Coeff),
+	ceiling_to_int(Coeff, ICoeff).
+
+:- pred pred_proc_var(pred_proc_id, var, varset, varset,
+		map(pred_proc_id, var), map(pred_proc_id, var)).
+:- mode pred_proc_var(in, out, in, out, in, out) is det.
+
+pred_proc_var(PPId, Var, Varset0, Varset, PPVars0, PPVars) :-
+	( map__search(PPVars0, PPId, Var0) ->
+		Var = Var0,
+		Varset = Varset0,
+		PPVars = PPVars0
+	;
+		varset__new_var(Varset0, Var, Varset),
+		map__set(PPVars0, PPId, Var, PPVars)
+	).
 

@@ -85,7 +85,7 @@
 	;	not_subset(pred_proc_id, bag(var), bag(var))
 	;	not_dag
 	;	no_eqns
-	;	lpsolve_failed(eqn_soln)
+	;	lpsolve_failed
 	;	call_in_single_arg(pred_proc_id)
 			% single argument analysis did not find a head
 			% variable that was decreasing in size. 
@@ -473,49 +473,12 @@ term_errors__output_2(_PredId, _ProcId, _Module, ConstErrorOutput, ForHLDSDump,
 	io__write_string("  and functions in this SCC\n").
 
 term_errors__output_2(_PredId, _ProcId, _Module, _ConstErrorOutput, ForHLDSDump,
-		Context - lpsolve_failed(Reason)) -->
+		Context - lpsolve_failed) -->
 	io__write_string("the constraint solver "),
-	(
- 		{ Reason = optimal },
-		{ error("term_errors:output_2 Unexpected return value from lp_solve") }
-	;
-		{ Reason = infeasible },
-		io__write_string("found the\n"),
-		maybe_write_string(ForHLDSDump, "% "),
-		prog_out__write_context(Context),
-		io__write_string("  constraints that the analysis produced to be infeasible\n")
-	;
-		{ Reason = unbounded },
-		io__write_string("found that the\n"),
-		maybe_write_string(ForHLDSDump, "% "),
-		prog_out__write_context(Context),
-		io__write_string(
-			"  constraints were not strong enough to put a\n"),
-		maybe_write_string(ForHLDSDump, "% "),
-		prog_out__write_context(Context),
-		io__write_string(
-			"  bound on the value of the change constants\n")
-	;
-		{ Reason = failure },
-		io__write_string("was unable to\n"),
-		maybe_write_string(ForHLDSDump, "% "),
-		prog_out__write_context(Context),
-		io__write_string(
-			"  solve the constraints that were produced\n")
-	;
-		{ Reason = fatal_error },
-		io__set_exit_status(1),
-		io__write_string("was unable to create and/or\n"),
-		maybe_write_string(ForHLDSDump, "% "),
-		prog_out__write_context(Context),
-		io__write_string("  remove the temporary files it required\n")
-	;
-		{ Reason = parse_error },
-		{ error("term_errors:output_2 Unexpected return value from lp_solve") }
-	;
-		{ Reason = solved(_) },
-		{ error("term_errors:output_2 Unexpected return value from lp_solve") }
-	).
+	io__write_string("found the\n"),
+	maybe_write_string(ForHLDSDump, "% "),
+	prog_out__write_context(Context),
+	io__write_string("  constraints that the analysis produced to be infeasible\n").
 
 % call_in_single_arg will only be printed out as the second part of the
 % single_arg_failed(NormErr, SingleErr) error.  Therefore, the following
