@@ -17,8 +17,8 @@
 :- interface.
 
 :- import_module hlds_module, hlds_pred, hlds_goal, hlds_data, instmap.
-:- import_module mode_errors, delay_info, (inst).
-:- import_module map, list, varset, set, bool, term, assoc_list.
+:- import_module mode_debug, mode_errors, delay_info, (inst).
+:- import_module map, list, varset, set, bool, term.
 
 :- interface.
 
@@ -207,13 +207,11 @@
 :- pred mode_info_set_nondet_live_vars(list(set(var)), mode_info, mode_info).
 :- mode mode_info_set_nondet_live_vars(in, mode_info_di, mode_info_uo) is det.
 
-:- pred mode_info_get_last_checkpoint_insts(mode_info, assoc_list(var, inst)).
-:- mode mode_info_get_last_checkpoint_insts(mode_info_no_io, out) is det.
+:- pred mode_info_get_mode_debug_info(mode_info, mode_debug_info).
+:- mode mode_info_get_mode_debug_info(mode_info_no_io, out) is det.
 
-:- pred mode_info_set_last_checkpoint_insts(assoc_list(var, inst),
-	mode_info, mode_info).
-:- mode mode_info_set_last_checkpoint_insts(in, mode_info_di, mode_info_uo)
-	is det.
+:- pred mode_info_set_mode_debug_info(mode_debug_info, mode_info, mode_info).
+:- mode mode_info_set_mode_debug_info(in, mode_info_di, mode_info_uo) is det.
 
 :- pred mode_info_get_changed_flag(mode_info, bool).
 :- mode mode_info_get_changed_flag(mode_info_no_io, out) is det.
@@ -275,6 +273,10 @@
 :- mode mode_info_add_error(in, mode_info_di, mode_info_uo) is det.
 
 %-----------------------------------------------------------------------------%
+
+:- pred instmap_sanity_check(instmap :: in, inst_table :: in) is det.
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -322,12 +324,11 @@
 	% execution point, since those variables will *already* have
 	% been marked as mostly_unique rather than unique.)
 
-			assoc_list(var, inst),
+			mode_debug_info,
 	% This field is used by the checkpoint code when debug_modes is on.
-	% It has the instmap that was current at the last mode checkpoint,
-	% so that checkpoints do not print out the insts of variables
-	% whose insts have not changed since the last checkpoint.
-	% This field will always contain an empty list if debug_modes is off,
+	% It contains any "context" which mode_info_checkpoint wishes to
+	% preserve between checkpoints.
+	% This field will always be small if debug_modes is off,
 	% since its information is not needed then.
 
 			bool		% Changed flag
@@ -359,7 +360,7 @@ mode_info_init(IOState, ModuleInfo, IKT, PredId, ProcId, Context,
 
 	LiveVarsList = [LiveVars],
 	NondetLiveVarsList = [LiveVars],
-	LastCheckpointInsts = [],
+	mode_debug_info_init(ModeDebugInfo),
 
 	Changed = no,
 
@@ -367,7 +368,7 @@ mode_info_init(IOState, ModuleInfo, IKT, PredId, ProcId, Context,
 		IOState, ModuleInfo, IKT, PredId, ProcId, VarSet, VarTypes,
 		Context, ModeContext, InstMapping0, LockedVars, DelayInfo,
 		ErrorList, LiveVarsList, NondetLiveVarsList,
-		LastCheckpointInsts, Changed
+		ModeDebugInfo, Changed
 	).
 
 %-----------------------------------------------------------------------------%
@@ -699,13 +700,13 @@ mode_info_set_nondet_live_vars(NondetLiveVars,
 		mode_info(A,B,C,D,E,F,G,H,I,J,K,L,M,N,_,P,Q),
 		mode_info(A,B,C,D,E,F,G,H,I,J,K,L,M,N,NondetLiveVars,P,Q)).
 
-mode_info_get_last_checkpoint_insts(mode_info(_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,
-		LastCheckpointInsts,_), LastCheckpointInsts).
+mode_info_get_mode_debug_info(mode_info(_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,
+		ModeDebugInfo,_), ModeDebugInfo).
 
-mode_info_set_last_checkpoint_insts(LastCheckpointInsts,
+mode_info_set_mode_debug_info(ModeDebugInfo,
 			mode_info(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,_,Q),
 			mode_info(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,
-				LastCheckpointInsts,Q)).
+				ModeDebugInfo,Q)).
 
 mode_info_get_changed_flag(mode_info(_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,Changed),
 				Changed).
@@ -719,7 +720,9 @@ mode_info_set_changed_flag(Changed,
 mode_info_error(Vars, ModeError, ModeInfo0, ModeInfo) :-
         mode_info_get_context(ModeInfo0, Context),
         mode_info_get_mode_context(ModeInfo0, ModeContext),
-        ModeErrorInfo = mode_error_info(Vars, ModeError, Context, ModeContext),
+        mode_info_get_inst_table(ModeInfo0, InstTable),
+        ModeErrorInfo = mode_error_info(Vars, ModeError, InstTable,
+		Context, ModeContext),
         mode_info_add_error(ModeErrorInfo, ModeInfo0, ModeInfo).
 
 mode_info_add_error(ModeErrorInfo, ModeInfo0, ModeInfo) :-
@@ -752,6 +755,17 @@ mode_info_apply_inst_key_sub(Sub, ModeInfo0, ModeInfo) :-
 
 	mode_info_set_instmap(InstMap, ModeInfo0, ModeInfo1),
 	mode_info_set_inst_table(InstTable, ModeInfo1, ModeInfo).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+instmap_sanity_check(InstMap, InstTable) :-
+	inst_table_get_inst_key_table(InstTable, IKT),
+	instmap__vars(InstMap, VarsSet),
+	set__to_sorted_list(VarsSet, Vars),
+	instmap__lookup_vars(Vars, InstMap, Insts),
+	list__foldl(inst_keys_in_inst, Insts, [], IKs),
+	list__map(inst_key_table_lookup(IKT), IKs, _).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -472,7 +472,6 @@ mercury_output_structured_inst(Expand, alias(Key), Indent, VarSet,
 	; { Expand = dont_expand },
 		io__write_string("alias("),
 		inst_key_table_write_inst_key(IKT, Key),
-		mercury_output_tabs(Indent),
 		io__write_string(")\n")
 	; { Expand = expand_silently },
 		{ inst_key_table_lookup(IKT, Key, Inst) },

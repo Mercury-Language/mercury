@@ -206,8 +206,9 @@ simplify__goal(Goal0, Goal - GoalInfo, Info0, Info) :-
 		goal_info_get_instmap_delta(GoalInfo0, InstMapDelta),
 		goal_info_get_nonlocals(GoalInfo0, NonLocalVars),
 		simplify_info_get_instmap(Info0, InstMap0),
-		det_no_output_vars(NonLocalVars, InstMap0, InstMapDelta,
-			DetInfo),
+		simplify_info_get_inst_table(Info0, InstTable),
+		instmap__no_output_vars(InstMap0, InstMapDelta, NonLocalVars,
+		                InstTable, ModuleInfo),
 		( det_info_get_fully_strict(DetInfo, no)
 		; code_aux__goal_cannot_loop(ModuleInfo, Goal0)
 		)
@@ -330,9 +331,11 @@ simplify__goal_2(disj(Disjuncts0, SM), GoalInfo0,
 		->
 			goal_info_get_instmap_delta(GoalInfo, DeltaInstMap),
 			goal_info_get_nonlocals(GoalInfo, NonLocalVars),
+			simplify_info_get_inst_table(Info0, InstTable0),
+			simplify_info_get_module_info(Info0, ModuleInfo0),
 			(
-				det_no_output_vars(NonLocalVars, InstMap0,
-					DeltaInstMap, DetInfo)
+				instmap__no_output_vars(InstMap0, DeltaInstMap,
+					NonLocalVars, InstTable0, ModuleInfo0),
 			->
 				OutputVars = no
 			;

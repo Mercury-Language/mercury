@@ -249,7 +249,8 @@ setup_pred_args(ModuleInfo, PredId, [ProcId | Rest], UnusedArgInfo, VarUsage0,
 		setup_output_args(ModuleInfo, HeadVars, ArgInstTable, ArgModes,
 			VarDep1, VarDep2),
 		proc_info_goal(ProcInfo, Goal - _),
-		traverse_goal(ModuleInfo, Goal, VarDep2, VarDep),
+		proc_info_inst_table(ProcInfo, InstTable),
+		traverse_goal(InstTable, ModuleInfo, Goal, VarDep2, VarDep),
 		map__set(VarUsage0, proc(PredId, ProcId), VarDep, VarUsage1),
 		PredProcs1 = [proc(PredId, ProcId) | PredProcs0],
 		OptProcs1 = OptProcs0
@@ -352,25 +353,26 @@ lookup_local_var(VarDep, Var, UsageInfo) :-
 	% Traversal of goal structure, building up dependencies for all
 	% variables. 
 
-:- pred traverse_goal(module_info::in, hlds_goal_expr::in,
+:- pred traverse_goal(inst_table::in, module_info::in, hlds_goal_expr::in,
 				var_dep::in, var_dep::out) is det.
 
 % handle conjunction
-traverse_goal(ModuleInfo, conj(Goals), UseInf0, UseInf) :-
-	traverse_list_of_goals(ModuleInfo, Goals, UseInf0, UseInf).
+traverse_goal(InstTable, ModuleInfo, conj(Goals), UseInf0, UseInf) :-
+	traverse_list_of_goals(InstTable, ModuleInfo, Goals, UseInf0, UseInf).
 
 % handle disjunction
-traverse_goal(ModuleInfo, disj(Goals, _), UseInf0, UseInf) :-
-	traverse_list_of_goals(ModuleInfo, Goals, UseInf0, UseInf).
+traverse_goal(InstTable, ModuleInfo, disj(Goals, _), UseInf0, UseInf) :-
+	traverse_list_of_goals(InstTable, ModuleInfo, Goals, UseInf0, UseInf).
 
 % handle switch
-traverse_goal(ModuleInfo, switch(Var, _, Cases, _), UseInf0, UseInf) :-
+traverse_goal(InstTable, ModuleInfo, switch(Var, _, Cases, _),
+		UseInf0, UseInf) :-
 	set_var_used(UseInf0, Var, UseInf1),
 	list_case_to_list_goal(Cases, Goals),
-	traverse_list_of_goals(ModuleInfo, Goals, UseInf1, UseInf).
+	traverse_list_of_goals(InstTable, ModuleInfo, Goals, UseInf1, UseInf).
 
 % handle predicate call
-traverse_goal(ModuleInfo, call(PredId, ProcId, Args, _, _, _),
+traverse_goal(_, ModuleInfo, call(PredId, ProcId, Args, _, _, _),
 						UseInf0, UseInf) :-
 	module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _Pred, Proc),
 	proc_info_headvars(Proc, HeadVars),
@@ -378,36 +380,38 @@ traverse_goal(ModuleInfo, call(PredId, ProcId, Args, _, _, _),
 		UseInf0, UseInf).
 
 % handle if then else
-traverse_goal(ModuleInfo, if_then_else(_, Cond - _, Then - _, Else - _, _),
+traverse_goal(InstTable, ModuleInfo,
+			if_then_else(_, Cond - _, Then - _, Else - _, _),
 			UseInf0, UseInf) :-
-	traverse_goal(ModuleInfo, Cond, UseInf0, UseInf1),
-	traverse_goal(ModuleInfo, Then, UseInf1, UseInf2),
-	traverse_goal(ModuleInfo, Else, UseInf2, UseInf).
+	traverse_goal(InstTable, ModuleInfo, Cond, UseInf0, UseInf1),
+	traverse_goal(InstTable, ModuleInfo, Then, UseInf1, UseInf2),
+	traverse_goal(InstTable, ModuleInfo, Else, UseInf2, UseInf).
 
 % handle negation
-traverse_goal(ModuleInfo, not(Goal - _), UseInf0, UseInf) :-
-	traverse_goal(ModuleInfo, Goal, UseInf0, UseInf).
+traverse_goal(InstTable, ModuleInfo, not(Goal - _), UseInf0, UseInf) :-
+	traverse_goal(InstTable, ModuleInfo, Goal, UseInf0, UseInf).
 
 % handle quantification
-traverse_goal(ModuleInfo, some(_,  Goal - _), UseInf0, UseInf) :-
-	traverse_goal(ModuleInfo, Goal, UseInf0, UseInf).
+traverse_goal(InstTable, ModuleInfo, some(_,  Goal - _), UseInf0, UseInf) :-
+	traverse_goal(InstTable, ModuleInfo, Goal, UseInf0, UseInf).
 
 
 % we assume that higher-order predicate calls use all variables involved
-traverse_goal(_, higher_order_call(PredVar,Args,_,_,_,_), UseInf0, UseInf) :-
+traverse_goal(_, _, higher_order_call(PredVar,Args,_,_,_,_), UseInf0, UseInf) :-
 	set_list_vars_used(UseInf0, [PredVar|Args], UseInf).
 
 % handle pragma(c_code, ...) - pragma_c_code uses all its args
-traverse_goal(_, pragma_c_code(_, _, _, _, Args, _, _, _), UseInf0, UseInf) :-
+traverse_goal(_, _, pragma_c_code(_, _, _, _, Args, _, _, _), UseInf0, UseInf)
+		:-
 	set_list_vars_used(UseInf0, Args, UseInf).
 
 % cases to handle all the different types of unification
-traverse_goal(_, unify(_, _, _, simple_test(Var1, Var2),_), UseInf0, UseInf)
+traverse_goal(_, _, unify(_, _, _, simple_test(Var1, Var2),_), UseInf0, UseInf)
 		:-
 	set_var_used(UseInf0, Var1, UseInf1),
 	set_var_used(UseInf1, Var2, UseInf).
 		
-traverse_goal(_, unify(_, _, _, assign(Var1, Var2), _), UseInf0, UseInf) :-
+traverse_goal(_, _, unify(_, _, _, assign(Var1, Var2), _), UseInf0, UseInf) :-
 	(
 		map__contains(UseInf0, Var1)
 	->
@@ -417,7 +421,7 @@ traverse_goal(_, unify(_, _, _, assign(Var1, Var2), _), UseInf0, UseInf) :-
 		set_var_used(UseInf0, Var2, UseInf)
 	).
 
-traverse_goal(ModuleInfo,
+traverse_goal(InstTable, ModuleInfo,
 		unify(Var1, _, _, deconstruct(_, _, Args, Modes, CanFail), _),
 		UseInf0, UseInf) :-
 	(
@@ -426,7 +430,8 @@ traverse_goal(ModuleInfo,
 		% a deconstruction that can_fail uses its left arg
 		set_var_used(UseInf0, Var1, UseInf)
 	;
-		get_instantiating_variables(ModuleInfo, Args, Modes, InputVars),
+		get_instantiating_variables(InstTable, ModuleInfo, Args, Modes,
+				InputVars),
 		list__delete_elems(Args, InputVars, OutputVars),
 			% The deconstructed variable is used if any of the
 			% variables, that the deconstruction binds are used.
@@ -436,7 +441,7 @@ traverse_goal(ModuleInfo,
 		add_construction_aliases(UseInf1, Var1, InputVars, UseInf)	
 	).
 
-traverse_goal(_, unify(Var1, _, _, construct(_, _, Args, _), _),
+traverse_goal(_, _, unify(Var1, _, _, construct(_, _, Args, _), _),
 					UseInf0, UseInf) :-
 	(
 		map__contains(UseInf0, Var1)
@@ -447,7 +452,7 @@ traverse_goal(_, unify(Var1, _, _, construct(_, _, Args, _), _),
 	).
 	
 	% These should be transformed into calls by polymorphism.m.
-traverse_goal(_, unify(Var, Rhs, _, complicated_unify(_, _), _),
+traverse_goal(_, _, unify(Var, Rhs, _, complicated_unify(_, _), _),
 		UseInf0, UseInf) :-
     	% This is here to cover the case where unused arguments is called 
 	% with --error-check-only and polymorphism has not been run.
@@ -495,23 +500,24 @@ add_arg_dep(UseInf0, Var, PredProc, Arg, UseInf) :-
 	).
 			
 	% Returns variables which further instantiate a deconstructed variable.
-:- pred get_instantiating_variables(module_info::in, list(var)::in,
-				list(uni_mode)::in, list(var)::out) is det.
+:- pred get_instantiating_variables(inst_table::in, module_info::in,
+		list(var)::in, list(uni_mode)::in, list(var)::out) is det.
 
-get_instantiating_variables(ModuleInfo, ArgVars, ArgModes, InstVars) :-
+get_instantiating_variables(InstTable, ModuleInfo, ArgVars, ArgModes,
+		InstVars) :-
 	(
 		ArgVars = [Var | Vars], ArgModes = [Mode | Modes]
 	->
 		Mode = ((Inst1 - _) -> (Inst2 - _)),
 		(
-			inst_table_init(InstTable),	% YYY
 			inst_matches_binding(Inst1, Inst2, InstTable, ModuleInfo)
 		->
 			InstVars = InstVars1
 		;
 			InstVars = [Var | InstVars1]
 		),
-		get_instantiating_variables(ModuleInfo, Vars, Modes, InstVars1)
+		get_instantiating_variables(InstTable, ModuleInfo, Vars,
+			Modes, InstVars1)
 	;
 		( ArgVars = [], ArgModes = [] )
 	->
@@ -545,13 +551,14 @@ list_case_to_list_goal([case(_, Goal) | Cases], [Goal | Goals]) :-
 	list_case_to_list_goal(Cases, Goals).
 
 
-:- pred traverse_list_of_goals(module_info::in, list(hlds_goal)::in,
-					var_dep::in, var_dep::out) is det.
+:- pred traverse_list_of_goals(inst_table::in, module_info::in,
+			list(hlds_goal)::in, var_dep::in, var_dep::out) is det.
 
-traverse_list_of_goals(_, [], UseInf, UseInf).
-traverse_list_of_goals(ModuleInfo, [Goal - _ | Goals], UseInf0, UseInf) :-
-	traverse_goal(ModuleInfo, Goal, UseInf0, UseInf1),
-	traverse_list_of_goals(ModuleInfo, Goals, UseInf1, UseInf).  
+traverse_list_of_goals(_, _, [], UseInf, UseInf).
+traverse_list_of_goals(InstTable, ModuleInfo, [Goal - _ | Goals],
+		UseInf0, UseInf) :-
+	traverse_goal(InstTable, ModuleInfo, Goal, UseInf0, UseInf1),
+	traverse_list_of_goals(InstTable, ModuleInfo, Goals, UseInf1, UseInf).  
 
 
 %-------------------------------------------------------------------------------

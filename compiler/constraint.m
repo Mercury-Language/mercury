@@ -139,63 +139,73 @@ constraint__propagate_goal(Goal0 - GoalInfo, Goal - GoalInfo) -->
 					mode_info_di, mode_info_uo) is det.
 
 constraint__propagate_goal_2(conj(Goals0), conj(Goals)) -->
-	mode_checkpoint(enter, "conj"),
+%	mode_checkpoint(enter, "conj"),
 	constraint__propagate_conj(Goals0, Goals),
-	mode_checkpoint(exit, "conj").
+%	mode_checkpoint(exit, "conj"),
+	[].
 
 constraint__propagate_goal_2(disj(Goals0, SM), disj(Goals, SM)) -->
-	mode_checkpoint(enter, "disj"),
+%	mode_checkpoint(enter, "disj"),
 	constraint__propagate_disj(Goals0, Goals),
-	mode_checkpoint(exit, "disj").
+%	mode_checkpoint(exit, "disj"),
+	[].
 
 constraint__propagate_goal_2(switch(Var, Det, Cases0, SM),
 				switch(Var, Det, Cases, SM)) -->
-	mode_checkpoint(enter, "switch"),
+%	mode_checkpoint(enter, "switch"),
 	constraint__propagate_cases(Cases0, Cases),
-	mode_checkpoint(exit, "switch").
+%	mode_checkpoint(exit, "switch"),
+	[].
 
 constraint__propagate_goal_2(if_then_else(Vars, Cond0, Then0, Else0, SM),
 			if_then_else(Vars, Cond, Then, Else, SM)) -->
-	mode_checkpoint(enter, "if_then_else"),
+%	mode_checkpoint(enter, "if_then_else"),
 	mode_info_dcg_get_instmap(InstMap0),
 	constraint__propagate_goal(Cond0, Cond),
 %	mode_info_dcg_get_instmap(InstMap1),
 	constraint__propagate_goal(Then0, Then),
 	mode_info_set_instmap(InstMap0),
 	constraint__propagate_goal(Else0, Else),
-	mode_checkpoint(exit, "if_then_else").
+%	mode_checkpoint(exit, "if_then_else"),
+	[].
 
 constraint__propagate_goal_2(not(Goal0), not(Goal)) -->
-	mode_checkpoint(enter, "not"),
+%	mode_checkpoint(enter, "not"),
 	constraint__propagate_goal(Goal0, Goal),
-	mode_checkpoint(exit, "not").
+%	mode_checkpoint(exit, "not"),
+	[].
 
 constraint__propagate_goal_2(some(Vars, Goal0), some(Vars, Goal)) -->
-	mode_checkpoint(enter, "some"),
+%	mode_checkpoint(enter, "some"),
 	constraint__propagate_goal(Goal0, Goal),
-	mode_checkpoint(exit, "some").
+%	mode_checkpoint(exit, "some"),
+	[].
 
 constraint__propagate_goal_2(
 		higher_order_call(A, B, C, D, E, F),
 		higher_order_call(A, B, C, D, E, F)) -->
-	mode_checkpoint(enter, "higher-order call"),
-	mode_checkpoint(exit, "higher-order call").
+%	mode_checkpoint(enter, "higher-order call"),
+%	mode_checkpoint(exit, "higher-order call"),
+	[].
 
 constraint__propagate_goal_2(
 		call(PredId, ProcId, ArgVars, Builtin, Sym, Context),
 		call(PredId, ProcId, ArgVars, Builtin, Sym, Context)) -->
-	mode_checkpoint(enter, "call"),
-	mode_checkpoint(exit, "call").
+%	mode_checkpoint(enter, "call"),
+%	mode_checkpoint(exit, "call"),
+	[].
 
 constraint__propagate_goal_2(unify(A,B,C,D,E), unify(A,B,C,D,E)) -->
-	mode_checkpoint(enter, "unify"),
-	mode_checkpoint(exit, "unify").
+%	mode_checkpoint(enter, "unify"),
+%	mode_checkpoint(exit, "unify"),
+	[].
 
 constraint__propagate_goal_2(
 		pragma_c_code(A, B, C, D, E, F, G, H), 
 		pragma_c_code(A, B, C, D, E, F, G, H)) -->
-	mode_checkpoint(enter, "pragma_c_code"),
-	mode_checkpoint(exit, "pragma_c_code").
+%	mode_checkpoint(enter, "pragma_c_code"),
+%	mode_checkpoint(exit, "pragma_c_code"),
+	[].
 
 %-----------------------------------------------------------------------------%
 

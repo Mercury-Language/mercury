@@ -451,7 +451,7 @@ modecheck_unification(X, lambda_goal(PredOrFunc, Vars, Modes0, Det, _, Goal0),
 	set__delete_list(NonLocals0, Vars, NonLocals),
 	mode_info_lock_vars(NonLocals, ModeInfo3, ModeInfo4),
  
-	mode_checkpoint(enter, "lambda goal", ModeInfo4, ModeInfo5),
+	mode_checkpoint(enter, "lambda goal", GoalInfo0, ModeInfo4, ModeInfo5),
 	% if we're being called from unique_modes.m, then we need to 
 	% call unique_modes__check_goal rather than modecheck_goal.
 	( HowToCheckGoal = check_unique_modes ->
@@ -461,7 +461,7 @@ modecheck_unification(X, lambda_goal(PredOrFunc, Vars, Modes0, Det, _, Goal0),
 	),
 	mode_list_get_final_insts(ArgModes, ModuleInfo0, FinalInsts),
 	modecheck_final_insts(Vars, FinalInsts, ModeInfo6, ModeInfo7),
-	mode_checkpoint(exit, "lambda goal", ModeInfo7, ModeInfo8),
+	mode_checkpoint(exit, "lambda goal", GoalInfo0, ModeInfo7, ModeInfo8),
  
 	mode_info_remove_live_vars(LiveVars, ModeInfo8, ModeInfo9),
 	mode_info_unlock_vars(NonLocals, ModeInfo9, ModeInfo10),
@@ -632,21 +632,19 @@ modecheck_unify_functor(X, TypeOfX, ConsId0, ArgVars0, Unification0,
 			error("get_mode_of_args failed")
 		),
 		(
-			inst_expand(InstTable2, ModuleInfo4, InstOfX, InstOfX2),
+			inst_expand(InstTable4, ModuleInfo4, InstOfX, InstOfX2),
 			get_arg_insts(InstOfX2, ConsId, Arity, InstOfXArgs),
-			get_mode_of_args(Inst, InstOfXArgs, InstTable2,
+			get_mode_of_args(Inst, InstOfXArgs, InstTable4,
 				ModuleInfo4, ModeOfXArgs0)
 		->
-			ModeOfXArgs = ModeOfXArgs0,
-			mode_info_set_inst_table(InstTable2, ModeInfo4,
-				ModeInfo4a)
+			ModeOfXArgs = ModeOfXArgs0
 		;
 			error("get_(inst/mode)_of_args failed")
 		),
-		mode_info_get_var_types(ModeInfo4a, VarTypes),
+		mode_info_get_var_types(ModeInfo4, VarTypes),
 		categorize_unify_var_functor(ModeOfX, ModeOfXArgs, ModeArgs,
 				X, ConsId, ArgVars0, VarTypes,
-				Unification0, ModeInfo4a,
+				Unification0, ModeInfo4,
 				Unification1, ModeInfo5),
 		split_complicated_subunifies(Unification1, ArgVars0,
 					Unification, ArgVars, ExtraGoals,

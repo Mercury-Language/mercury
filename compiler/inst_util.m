@@ -105,7 +105,7 @@ in the general case.
 :- import_module hlds_data, inst_match, mode_util, det_analysis.
 :- import_module bool, std_util, require, map, list, set.
 
-:- pred find_latest_inst_key(map(inst_key, inst_key), inst_key, inst_key).
+:- pred find_latest_inst_key(inst_key_sub, inst_key, inst_key).
 :- mode find_latest_inst_key(in, in, out) is det.
 
 find_latest_inst_key(Sub, IK0, IK) :-
@@ -159,6 +159,12 @@ unify_inst_info_get_inst_key_sub(unify_inst_info(_, _, Sub), Sub).
 		inst_key_sub :: in, unify_inst_info :: out) is det.
 unify_inst_info_set_inst_key_sub(unify_inst_info(A, B, _), Sub,
 		unify_inst_info(A, B, Sub)).
+
+:- pred unify_inst_info_find_latest_inst_key(unify_inst_info :: in,
+		inst_key :: in, inst_key :: out) is det.
+unify_inst_info_find_latest_inst_key(UI, Key0, Key) :-
+	unify_inst_info_get_inst_key_sub(UI, Sub),
+	find_latest_inst_key(Sub, Key0, Key).
 
 	% Abstractly unify two insts.
 
@@ -634,7 +640,7 @@ abstractly_unify_inst_list([X|Xs], [Y|Ys], Live, Real, UI0, [Z|Zs], Det, UI) :-
 abstractly_unify_inst_functor(Live, InstA, ConsId, ArgInsts, ArgLives, Real,
 		InstTable0, ModuleInfo0, Sub0, Inst, Det, InstTable,
 		ModuleInfo, Sub) :-
-	inst_expand(InstTable0, ModuleInfo0, InstA, InstA2),
+	inst_expand_defined_inst(InstTable0, ModuleInfo0, InstA, InstA2),
 
 	UI0 = unify_inst_info(ModuleInfo0, InstTable0, Sub0),
 
@@ -680,12 +686,11 @@ abstractly_unify_inst_functor(Live, InstA, ConsId, ArgInsts, ArgLives, Real,
 abstractly_unify_inst_functor_2(live, _, not_reached, _, _, _, UI,
 			not_reached, erroneous, UI).
 
-abstractly_unify_inst_functor_2(live, _Real, free, ConsId, Args0, ArgLives, UI0,
+abstractly_unify_inst_functor_2(live, _Real, free, ConsId, Args, ArgLives, UI,
 			bound(unique, [functor(ConsId, Args)]), det, UI) :-
-	unify_inst_info_get_module_info(UI0, M0),
-	unify_inst_info_get_inst_table(UI0, InstTable0),
-	inst_list_is_ground_or_any_or_dead(Args0, ArgLives, InstTable0, M0),
-	maybe_make_shared_inst_list(Args0, ArgLives, UI0, Args, UI).
+	unify_inst_info_get_module_info(UI, M),
+	unify_inst_info_get_inst_table(UI, InstTable),
+	inst_list_is_ground_or_any_or_dead(Args, ArgLives, InstTable, M).
 
 abstractly_unify_inst_functor_2(live, Real, bound(Uniq, ListX), ConsId, Args,
 			ArgLives, UI0, bound(Uniq, List), Det, UI) :-
@@ -1250,17 +1255,21 @@ make_shared_inst_list([Inst0 | Insts0], UI0, [Inst | Insts], UI) :-
 :- mode make_shared_inst(in, in, out, out) is det.
 
 make_shared_inst(not_reached, UI, not_reached, UI).
-make_shared_inst(alias(Key), UI0, Inst, UI) :-
+make_shared_inst(alias(Key0), UI0, Inst, UI) :-
+	unify_inst_info_find_latest_inst_key(UI0, Key0, Key1),
 	unify_inst_info_get_inst_table(UI0, InstTable0),
 	inst_table_get_inst_key_table(InstTable0, IKT0),
-	inst_key_table_lookup(IKT0, Key, Inst0),
+	inst_key_table_lookup(IKT0, Key1, Inst0),
 	make_shared_inst(Inst0, UI0, Inst1, UI1),
+	unify_inst_info_find_latest_inst_key(UI1, Key1, Key),
 	( Inst0 = Inst1 ->
 		Inst = alias(Key),
 		UI = UI1
 	;
-		inst_key_table_add(IKT0, Inst1, NewKey, IKT),
-		inst_table_set_inst_key_table(InstTable0, IKT, InstTable),
+		unify_inst_info_get_inst_table(UI1, InstTable1),
+		inst_table_get_inst_key_table(InstTable1, IKT1),
+		inst_key_table_add(IKT1, Inst1, NewKey, IKT),
+		inst_table_set_inst_key_table(InstTable1, IKT, InstTable),
 		unify_inst_info_set_inst_table(UI1, InstTable, UI2),
 		unify_inst_info_get_inst_key_sub(UI2, S0),
 		map__set(S0, Key, NewKey, S),
@@ -1438,11 +1447,13 @@ make_mostly_uniq_inst_2(defined_inst(InstName), UI0, Inst, UI) :-
 	;
 		Inst = NondetLiveInst
 	).
-make_mostly_uniq_inst_2(alias(InstKey), UI0, Inst, UI) :-
+make_mostly_uniq_inst_2(alias(InstKey0), UI0, Inst, UI) :-
+	unify_inst_info_find_latest_inst_key(UI0, InstKey0, InstKey1),
 	unify_inst_info_get_inst_table(UI0, InstTable0),
 	inst_table_get_inst_key_table(InstTable0, IKT0),
-	inst_key_table_lookup(IKT0, InstKey, Inst0),
+	inst_key_table_lookup(IKT0, InstKey1, Inst0),
 	make_mostly_uniq_inst_2(Inst0, UI0, Inst1, UI1),
+	unify_inst_info_find_latest_inst_key(UI1, InstKey1, InstKey),
 	( Inst0 = Inst1 ->
 		Inst = alias(InstKey),
 		UI = UI1

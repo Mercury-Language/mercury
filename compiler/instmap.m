@@ -245,6 +245,11 @@
 :- mode instmap_delta_to_assoc_list(in, out) is det.
 
 %-----------------------------------------------------------------------------%
+
+:- pred instmap__get_inst_keys(instmap, list(inst_key)).
+:- mode instmap__get_inst_keys(in, out) is det.
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -850,6 +855,14 @@ instmap__to_assoc_list(reachable(InstMapping, _Bwd), AL) :-
 instmap_delta_to_assoc_list(unreachable, []).
 instmap_delta_to_assoc_list(reachable(InstMapping, _Bwd), AL) :-
 	map__to_assoc_list(InstMapping, AL).
+
+%-----------------------------------------------------------------------------%
+
+instmap__get_inst_keys(unreachable, []).
+instmap__get_inst_keys(reachable(InstMapping, _Bwd), Keys) :-
+	map__values(InstMapping, Insts),
+	list__foldl(inst_keys_in_inst, Insts, [], Keys0),
+	list__sort_and_remove_dups(Keys0, Keys).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -290,7 +290,7 @@ remove_delayed_goals([SeqNum | SeqNums], DelayedGoalsTable, Depth,
 
 delay_info__delay_goal(DelayInfo0, Error, Goal, DelayInfo) :-
 	delay_info__check_invariant(DelayInfo0),
-	Error = mode_error_info(Vars, _, _, _),
+	Error = mode_error_info(Vars, _, _, _, _),
 	DelayInfo0 = delay_info(CurrentDepth, DelayedGoalStack0,
 				WaitingGoalsTable0, PendingGoals, NextSeqNums0),
 

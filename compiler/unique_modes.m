@@ -122,18 +122,29 @@ unique_modes__check_goal(Goal0, Goal, ModeInfo0, ModeInfo) :-
 	% 
 	% Restore the original bag of nondet-live vars
 	%
-	mode_info_set_nondet_live_vars(NondetLiveVars0, ModeInfo3, ModeInfo),
+	mode_info_set_nondet_live_vars(NondetLiveVars0, ModeInfo3, ModeInfo4),
 
 	%
 	% Grab the final instmap, compute the change in insts
 	% over this goal, and save that instmap_delta in the goal_info.
 	%
-	mode_info_get_instmap(ModeInfo, InstMap),
+	mode_info_get_instmap(ModeInfo4, InstMap),
 	goal_info_get_nonlocals(GoalInfo0, NonLocals),
 	compute_instmap_delta(InstMap0, InstMap, NonLocals, DeltaInstMap),
 	goal_info_set_instmap_delta(GoalInfo0, DeltaInstMap, GoalInfo),
 
-	Goal = GoalExpr - GoalInfo.
+	Goal = GoalExpr - GoalInfo,
+
+	%
+	% Optimise the backward mapping in the inst_key_table.
+	%
+
+	mode_info_get_inst_table(ModeInfo4, InstTable0),
+	instmap__get_inst_keys(InstMap, InstKeys),
+	inst_table_get_inst_key_table(InstTable0, IKT0),
+	inst_key_table_project(IKT0, InstKeys, IKT),
+	inst_table_set_inst_key_table(InstTable0, IKT, InstTable),
+	mode_info_set_inst_table(InstTable, ModeInfo4, ModeInfo).
 
 	% Make all nondet-live variables whose current inst
 	% is `unique' become `mostly_unique'.
@@ -250,18 +261,18 @@ make_var_mostly_uniq(Var, ModeInfo0, ModeInfo) :-
 :- mode unique_modes__check_goal_2(in, in, out, mode_info_di, mode_info_uo)
 		is det.
 
-unique_modes__check_goal_2(conj(List0), _GoalInfo0, conj(List)) -->
-	mode_checkpoint(enter, "conj"),
+unique_modes__check_goal_2(conj(List0), GoalInfo0, conj(List)) -->
+	mode_checkpoint(enter, "conj", GoalInfo0),
 	mode_info_add_goals_live_vars(List0),
 	( { List0 = [] } ->	% for efficiency, optimize common case
 		{ List = [] }
 	;
 		unique_modes__check_conj(List0, List)
 	),
-	mode_checkpoint(exit, "conj").
+	mode_checkpoint(exit, "conj", GoalInfo0).
 
 unique_modes__check_goal_2(disj(List0, SM), GoalInfo0, disj(List, SM)) -->
-	mode_checkpoint(enter, "disj"),
+	mode_checkpoint(enter, "disj", GoalInfo0),
 	( { List0 = [] } ->
 		{ List = [] },
 		{ instmap__init_unreachable(InstMap) },
@@ -290,11 +301,11 @@ unique_modes__check_goal_2(disj(List0, SM), GoalInfo0, disj(List, SM)) -->
 		unique_modes__check_disj(List0, List, InstMapList),
 		instmap__merge(NonLocals, InstMapList, disj)
 	),
-	mode_checkpoint(exit, "disj").
+	mode_checkpoint(exit, "disj", GoalInfo0).
 
 unique_modes__check_goal_2(if_then_else(Vs, A0, B0, C0, SM), GoalInfo0, Goal)
 		-->
-	mode_checkpoint(enter, "if-then-else"),
+	mode_checkpoint(enter, "if-then-else", GoalInfo0),
 	{ goal_info_get_nonlocals(GoalInfo0, NonLocals) },
 	{ unique_modes__goal_get_nonlocals(A0, A_Vars) },
 	{ unique_modes__goal_get_nonlocals(B0, B_Vars) },
@@ -336,10 +347,10 @@ unique_modes__check_goal_2(if_then_else(Vs, A0, B0, C0, SM), GoalInfo0, Goal)
 	mode_info_set_instmap(InstMap0),
 	instmap__merge(NonLocals, [InstMapB, InstMapC], if_then_else),
 	{ Goal = if_then_else(Vs, A, B, C, SM) },
-	mode_checkpoint(exit, "if-then-else").
+	mode_checkpoint(exit, "if-then-else", GoalInfo0).
 
 unique_modes__check_goal_2(not(A0), GoalInfo0, not(A)) -->
-	mode_checkpoint(enter, "not"),
+	mode_checkpoint(enter, "not", GoalInfo0),
 	{ goal_info_get_nonlocals(GoalInfo0, NonLocals) },
 	mode_info_dcg_get_instmap(InstMap0),
 	{ set__to_sorted_list(NonLocals, NonLocalsList) },
@@ -350,16 +361,16 @@ unique_modes__check_goal_2(not(A0), GoalInfo0, not(A)) -->
 	unique_modes__check_goal(A0, A),
 	mode_info_unlock_vars(NonLocals),
 	mode_info_set_instmap(InstMap0),
-	mode_checkpoint(exit, "not").
+	mode_checkpoint(exit, "not", GoalInfo0).
 
-unique_modes__check_goal_2(some(Vs, G0), _, some(Vs, G)) -->
-	mode_checkpoint(enter, "some"),
+unique_modes__check_goal_2(some(Vs, G0), GoalInfo0, some(Vs, G)) -->
+	mode_checkpoint(enter, "some", GoalInfo0),
 	unique_modes__check_goal(G0, G),
-	mode_checkpoint(exit, "some").
+	mode_checkpoint(exit, "some", GoalInfo0).
 
 unique_modes__check_goal_2(higher_order_call(PredVar, Args, Types, Modes, Det,
-		PredOrFunc), _GoalInfo0, Goal) -->
-	mode_checkpoint(enter, "higher-order call"),
+		PredOrFunc), GoalInfo0, Goal) -->
+	mode_checkpoint(enter, "higher-order call", GoalInfo0),
 	mode_info_set_call_context(higher_order_call(PredOrFunc)),
 	{ determinism_components(Det, _, at_most_zero) ->
 		NeverSucceeds = yes
@@ -378,31 +389,31 @@ unique_modes__check_goal_2(higher_order_call(PredVar, Args, Types, Modes, Det,
 	{ Goal = higher_order_call(PredVar, Args, Types, Modes, Det,
 			PredOrFunc) },
 	mode_info_unset_call_context,
-	mode_checkpoint(exit, "higher-order call").
+	mode_checkpoint(exit, "higher-order call", GoalInfo0).
 
 unique_modes__check_goal_2(call(PredId, ProcId, Args, Builtin, CallContext,
-		PredName), _GoalInfo0, Goal) -->
-	mode_checkpoint(enter, "call"),
+		PredName), GoalInfo0, Goal) -->
+	mode_checkpoint(enter, "call", GoalInfo0),
 	mode_info_set_call_context(call(PredId)),
 	unique_modes__check_call(PredId, ProcId, Args),
 	{ Goal = call(PredId, ProcId, Args, Builtin, CallContext, PredName) },
 	mode_info_unset_call_context,
-	mode_checkpoint(exit, "call").
+	mode_checkpoint(exit, "call", GoalInfo0).
 
 unique_modes__check_goal_2(unify(A0, B0, _, UnifyInfo0, UnifyContext),
 		GoalInfo0, Goal) -->
-	mode_checkpoint(enter, "unify"),
+	mode_checkpoint(enter, "unify", GoalInfo0),
 	mode_info_set_call_context(unify(UnifyContext)),
 
 	modecheck_unification(A0, B0, UnifyInfo0, UnifyContext, GoalInfo0,
 		check_unique_modes, Goal),
 
 	mode_info_unset_call_context,
-	mode_checkpoint(exit, "unify").
+	mode_checkpoint(exit, "unify", GoalInfo0).
 
 unique_modes__check_goal_2(switch(Var, CanFail, Cases0, SM), GoalInfo0,
 		switch(Var, CanFail, Cases, SM)) -->
-	mode_checkpoint(enter, "switch"),
+	mode_checkpoint(enter, "switch", GoalInfo0),
 	( { Cases0 = [] } ->
 		{ Cases = [] },
 		{ instmap__init_unreachable(InstMap) },
@@ -412,20 +423,20 @@ unique_modes__check_goal_2(switch(Var, CanFail, Cases0, SM), GoalInfo0,
 		unique_modes__check_case_list(Cases0, Var, Cases, InstMapList),
 		instmap__merge(NonLocals, InstMapList, disj)
 	),
-	mode_checkpoint(exit, "switch").
+	mode_checkpoint(exit, "switch", GoalInfo0).
 
 	% to modecheck a pragma_c_code, we just modecheck the proc for 
 	% which it is the goal.
 unique_modes__check_goal_2(pragma_c_code(IsRecursive, C_Code, PredId, ProcId,
 		Args, ArgNameMap, OrigArgTypes, ExtraPragmaInfo),
-		_GoalInfo, Goal) -->
-	mode_checkpoint(enter, "pragma_c_code"),
+		GoalInfo, Goal) -->
+	mode_checkpoint(enter, "pragma_c_code", GoalInfo),
 	mode_info_set_call_context(call(PredId)),
 	unique_modes__check_call(PredId, ProcId, Args),
 	{ Goal = pragma_c_code(IsRecursive, C_Code, PredId, ProcId, Args,
 			ArgNameMap, OrigArgTypes, ExtraPragmaInfo) },
 	mode_info_unset_call_context,
-	mode_checkpoint(exit, "pragma_c_code").
+	mode_checkpoint(exit, "pragma_c_code", GoalInfo).
 
 :- pred unique_modes__check_call(pred_id, proc_id, list(var), 
 			mode_info, mode_info).

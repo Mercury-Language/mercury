@@ -1288,11 +1288,22 @@ recompute_instmap_delta_2(Goal0 - GoalInfo0, Goal - GoalInfo,
 	;
 ************/
 	recompute_instmap_delta_3(Goal0, GoalInfo0, Goal, InstMap0,
-			InstMapDelta0, RI0, RI),
+			InstMapDelta0, RI0, RI1),
 	goal_info_get_nonlocals(GoalInfo0, NonLocals),
 	instmap_delta_restrict(InstMapDelta0, NonLocals, InstMapDelta),
 	goal_info_set_instmap_delta(GoalInfo0, InstMapDelta, GoalInfo),
-	instmap__apply_instmap_delta(InstMap0, InstMapDelta, InstMap).
+	instmap__apply_instmap_delta(InstMap0, InstMapDelta, InstMap),
+
+		% Optimisation: Remove any inst_keys which are not
+		% visible from outside this goal from the inst_key_table
+		% backward mapping.
+	RI1 = recompute_info(Atomic, ModuleInfo, InstTable0),
+	instmap__get_inst_keys(InstMap, InstKeys),
+	inst_table_get_inst_key_table(InstTable0, IKT0),
+	inst_key_table_project(IKT0, InstKeys, IKT),
+	inst_table_set_inst_key_table(InstTable0, IKT, InstTable),
+	instmap_sanity_check(InstMap, InstTable),	% YYY Just in case
+	RI = recompute_info(Atomic, ModuleInfo, InstTable).
 
 :- pred recompute_instmap_delta_3(hlds_goal_expr, hlds_goal_info,
 		hlds_goal_expr, instmap, instmap_delta,

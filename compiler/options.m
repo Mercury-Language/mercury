@@ -65,6 +65,7 @@
 		;	statistics
 		;	debug_types
 		;	debug_modes
+		;	debug_inst_keys
 		;	debug_det
 		;	debug_opt
 		;	debug_vn
@@ -298,6 +299,7 @@ option_defaults_2(verbosity_option, [
 	statistics		-	bool(no),
 	debug_types		- 	bool(no),
 	debug_modes		- 	bool(no),
+	debug_inst_keys		- 	bool(no),
 	debug_det		- 	bool(no),
 	debug_opt		- 	bool(no),
 	debug_vn		- 	int(0)
@@ -579,6 +581,7 @@ long_option("verbose-error-messages",	verbose_errors).
 long_option("statistics",		statistics).
 long_option("debug-types",		debug_types).
 long_option("debug-modes",		debug_modes).
+long_option("debug-inst-keys",		debug_inst_keys).
 long_option("debug-determinism",	debug_det).
 long_option("debug-det",		debug_det).
 long_option("debug-opt",		debug_opt).
@@ -1137,6 +1140,9 @@ options_help_verbosity -->
 	io__write_string("\t\tOutput detailed debugging traces of the type checking.\n"),
 	io__write_string("\t-N, --debug-modes\n"),
 	io__write_string("\t\tOutput detailed debugging traces of the mode checking.\n"),
+	io__write_string("\t--debug-inst-keys\n"),
+	io__write_string("\t\tOutput debugging traces of the inst key tables.\n"),
+	io__write_string("\t\tOnly works when --debug-modes is enabled.\n"),
 	io__write_string("\t--debug-det, --debug-determinism\n"),
 	io__write_string("\t\tOutput detailed debugging traces of determinism analysis.\n"),
 	io__write_string("\t--debug-opt\n"),

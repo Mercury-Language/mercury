@@ -334,7 +334,7 @@ check_pred_modes(WhatToCheck, ModuleInfo0, ModuleInfo, UnsafeToContinue) -->
 			[]
 		)
 	),
-	modecheck_unify_procs(check_modes, ModuleInfo1, ModuleInfo).
+	modecheck_unify_procs(WhatToCheck, ModuleInfo1, ModuleInfo).
 
 	% Iterate over the list of pred_ids in a module.
 
@@ -625,6 +625,11 @@ modecheck_proc_3(ProcId, PredId, WhatToCheck,
 	proc_info_argmodes(ProcInfo0, argument_modes(InstTable0, ArgModes0)),
 	proc_info_arglives(ProcInfo0, ModuleInfo0, ArgLives0),
 	proc_info_goal(ProcInfo0, Body0),
+	( WhatToCheck = check_modes,
+		InitialInstTable = InstTable0
+	; WhatToCheck = check_unique_modes,
+		proc_info_inst_table(ProcInfo0, InitialInstTable)
+	),
 
 		% We use the context of the first clause, unless
 		% there weren't any clauses at all, in which case
@@ -656,7 +661,7 @@ modecheck_proc_3(ProcId, PredId, WhatToCheck,
 	set__list_to_set(LiveVarsList, LiveVars),
 
 		% initialize the mode info
-	mode_info_init(IOState0, ModuleInfo0, InstTable0, PredId, ProcId,
+	mode_info_init(IOState0, ModuleInfo0, InitialInstTable, PredId, ProcId,
 			Context, LiveVars, InstMap0, ModeInfo0),
 	mode_info_set_changed_flag(Changed0, ModeInfo0, ModeInfo1),
 
@@ -851,24 +856,33 @@ modecheck_goal(Goal0 - GoalInfo0, Goal - GoalInfo, ModeInfo0, ModeInfo) :-
 		%
 	mode_info_get_instmap(ModeInfo1, InstMap0),
 
-	modecheck_goal_expr(Goal0, GoalInfo0, Goal, ModeInfo1, ModeInfo),
+	modecheck_goal_expr(Goal0, GoalInfo0, Goal, ModeInfo1, ModeInfo2),
 
-	mode_info_get_instmap(ModeInfo, InstMap),
+	mode_info_get_instmap(ModeInfo2, InstMap),
+
+		% Optimise the inst_key_table backward mapping.
+	mode_info_get_inst_table(ModeInfo2, InstTable0),
+	instmap__get_inst_keys(InstMap, InstKeys),
+	inst_table_get_inst_key_table(InstTable0, IKT0),
+	inst_key_table_project(IKT0, InstKeys, IKT),
+	inst_table_set_inst_key_table(InstTable0, IKT, InstTable),
+	mode_info_set_inst_table(InstTable, ModeInfo2, ModeInfo),
+
 	goal_info_get_nonlocals(GoalInfo0, NonLocals),
 	compute_instmap_delta(InstMap0, InstMap, NonLocals, DeltaInstMap),
 	goal_info_set_instmap_delta(GoalInfo0, DeltaInstMap, GoalInfo).
 
-modecheck_goal_expr(conj(List0), _GoalInfo0, conj(List)) -->
-	mode_checkpoint(enter, "conj"),
+modecheck_goal_expr(conj(List0), GoalInfo0, conj(List)) -->
+	mode_checkpoint(enter, "conj", GoalInfo0),
 	( { List0 = [] } ->	% for efficiency, optimize common case
 		{ List = [] }
 	;
 		modecheck_conj_list(List0, List)
 	),
-	mode_checkpoint(exit, "conj").
+	mode_checkpoint(exit, "conj", GoalInfo0).
 
 modecheck_goal_expr(disj(List0, SM), GoalInfo0, disj(List, SM)) -->
-	mode_checkpoint(enter, "disj"),
+	mode_checkpoint(enter, "disj", GoalInfo0),
 	( { List0 = [] } ->	% for efficiency, optimize common case
 		{ List = [] },
 		{ instmap__init_unreachable(InstMap) },
@@ -878,10 +892,10 @@ modecheck_goal_expr(disj(List0, SM), GoalInfo0, disj(List, SM)) -->
 		modecheck_disj_list(List0, List, InstMapList),
 		instmap__merge(NonLocals, InstMapList, disj)
 	),
-	mode_checkpoint(exit, "disj").
+	mode_checkpoint(exit, "disj", GoalInfo0).
 
 modecheck_goal_expr(if_then_else(Vs, A0, B0, C0, SM), GoalInfo0, Goal) -->
-	mode_checkpoint(enter, "if-then-else"),
+	mode_checkpoint(enter, "if-then-else", GoalInfo0),
 	{ goal_info_get_nonlocals(GoalInfo0, NonLocals) },
 	{ goal_get_nonlocals(B0, B_Vars) },
 	mode_info_dcg_get_instmap(InstMap0),
@@ -898,22 +912,22 @@ modecheck_goal_expr(if_then_else(Vs, A0, B0, C0, SM), GoalInfo0, Goal) -->
 	mode_info_set_instmap(InstMap0),
 	instmap__merge(NonLocals, [InstMapB, InstMapC], if_then_else),
 	{ Goal = if_then_else(Vs, A, B, C, SM) },
-	mode_checkpoint(exit, "if-then-else").
+	mode_checkpoint(exit, "if-then-else", GoalInfo0).
 
 modecheck_goal_expr(not(A0), GoalInfo0, not(A)) -->
-	mode_checkpoint(enter, "not"),
+	mode_checkpoint(enter, "not", GoalInfo0),
 	{ goal_info_get_nonlocals(GoalInfo0, NonLocals) },
 	mode_info_dcg_get_instmap(InstMap0),
 	mode_info_lock_vars(NonLocals),
 	modecheck_goal(A0, A),
 	mode_info_unlock_vars(NonLocals),
 	mode_info_set_instmap(InstMap0),
-	mode_checkpoint(exit, "not").
+	mode_checkpoint(exit, "not", GoalInfo0).
 
-modecheck_goal_expr(some(Vs, G0), _, some(Vs, G)) -->
-	mode_checkpoint(enter, "some"),
+modecheck_goal_expr(some(Vs, G0), GoalInfo0, some(Vs, G)) -->
+	mode_checkpoint(enter, "some", GoalInfo0),
 	modecheck_goal(G0, G),
-	mode_checkpoint(exit, "some").
+	mode_checkpoint(exit, "some", GoalInfo0).
 
 modecheck_goal_expr(call(PredId0, _, Args0, _, Context, PredName0),
                 GoalInfo0, Goal) -->
@@ -922,7 +936,7 @@ modecheck_goal_expr(call(PredId0, _, Args0, _, Context, PredName0),
         { resolve_pred_overloading(PredId0, Args0, PredName0, PredName,
                 ModeInfo0, PredId) },
 
-	mode_checkpoint(enter, "call"),
+	mode_checkpoint(enter, "call", GoalInfo0),
 	mode_info_set_call_context(call(PredId)),
 	=(ModeInfo1),
 	{ mode_info_get_instmap(ModeInfo1, InstMap0) },
@@ -937,7 +951,7 @@ modecheck_goal_expr(call(PredId0, _, Args0, _, Context, PredName0),
 				InstMap0, ModeInfo, Goal) },
 
 	mode_info_unset_call_context,
-	mode_checkpoint(exit, "call").
+	mode_checkpoint(exit, "call", GoalInfo0).
 
 modecheck_goal_expr(higher_order_call(PredVar, Args0, _, _, _, PredOrFunc),
 		GoalInfo0, Goal) -->
@@ -946,16 +960,16 @@ modecheck_goal_expr(higher_order_call(PredVar, Args0, _, _, _, PredOrFunc),
 
 modecheck_goal_expr(unify(A0, B0, _, UnifyInfo0, UnifyContext), GoalInfo0, Goal)
 		-->
-	mode_checkpoint(enter, "unify"),
+	mode_checkpoint(enter, "unify", GoalInfo0),
 	mode_info_set_call_context(unify(UnifyContext)),
 	modecheck_unification(A0, B0, UnifyInfo0, UnifyContext, GoalInfo0,
 		check_modes, Goal),
 	mode_info_unset_call_context,
-	mode_checkpoint(exit, "unify").
+	mode_checkpoint(exit, "unify", GoalInfo0).
 
 modecheck_goal_expr(switch(Var, CanFail, Cases0, SM), GoalInfo0,
 		switch(Var, CanFail, Cases, SM)) -->
-	mode_checkpoint(enter, "switch"),
+	mode_checkpoint(enter, "switch", GoalInfo0),
 	( { Cases0 = [] } ->
 		{ Cases = [] },
 		{ instmap__init_unreachable(InstMap) },
@@ -965,13 +979,13 @@ modecheck_goal_expr(switch(Var, CanFail, Cases0, SM), GoalInfo0,
 		modecheck_case_list(Cases0, Var, Cases, InstMapList),
 		instmap__merge(NonLocals, InstMapList, disj)
 	),
-	mode_checkpoint(exit, "switch").
+	mode_checkpoint(exit, "switch", GoalInfo0).
 
 	% to modecheck a pragma_c_code, we just modecheck the proc for 
 	% which it is the goal.
 modecheck_goal_expr(pragma_c_code(IsRecursive, C_Code, PredId, _ProcId0, Args0,
 		ArgNameMap, OrigArgTypes, ExtraPragmaInfo), GoalInfo, Goal) -->
-	mode_checkpoint(enter, "pragma_c_code"),
+	mode_checkpoint(enter, "pragma_c_code", GoalInfo),
 	mode_info_set_call_context(call(PredId)),
 
 	=(ModeInfo0),
@@ -985,7 +999,7 @@ modecheck_goal_expr(pragma_c_code(IsRecursive, C_Code, PredId, _ProcId0, Args0,
 				InstMap0, ModeInfo, Goal) },
 
 	mode_info_unset_call_context,
-	mode_checkpoint(exit, "pragma_c_code").
+	mode_checkpoint(exit, "pragma_c_code", GoalInfo).
 
  	% given the right-hand-side of a unification, return a list of
 	% the potentially non-local variables of that unification.
@@ -1131,8 +1145,9 @@ mode_info_remove_goals_live_vars([Goal | Goals]) -->
 modecheck_conj_list_2([], []) --> [].
 modecheck_conj_list_2([Goal0 | Goals0], Goals) -->
 
-		% Hang onto the original instmap & delay_info
+		% Hang onto the original instmap, inst_table & delay_info
 	mode_info_dcg_get_instmap(InstMap0),
+	mode_info_dcg_get_inst_table(InstTable0),
 	=(ModeInfo0),
 	{ mode_info_get_delay_info(ModeInfo0, DelayInfo0) },
 
@@ -1151,6 +1166,7 @@ modecheck_conj_list_2([Goal0 | Goals0], Goals) -->
 	( { Errors = [ FirstError | _] } ->
 		mode_info_set_errors([]),
 		mode_info_set_instmap(InstMap0),
+		mode_info_set_inst_table(InstTable0),
 		mode_info_add_live_vars(NonLocalVars),
 		{ delay_info__delay_goal(DelayInfo0, FirstError, Goal0,
 					DelayInfo1) }
@@ -1162,12 +1178,12 @@ modecheck_conj_list_2([Goal0 | Goals0], Goals) -->
 		% and then continue scheduling the rest of the goal.
 	{ delay_info__wakeup_goals(DelayInfo1, WokenGoals, DelayInfo) },
 	{ list__append(WokenGoals, Goals0, Goals1) },
-	( { WokenGoals = [] } ->
+	( { WokenGoals = [] },
 		[]
-	; { WokenGoals = [_] } ->
-		mode_checkpoint(wakeup, "goal")
-	;
-		mode_checkpoint(wakeup, "goals")
+	; { WokenGoals = [_ - WokenGoalInfo] },
+		mode_checkpoint(wakeup, "goal", WokenGoalInfo)
+	; { WokenGoals = [_ - WokenGoalInfo, _ | _] },
+		mode_checkpoint(wakeup, "goals", WokenGoalInfo)
 	),
 	mode_info_set_delay_info(DelayInfo),
 	mode_info_dcg_get_instmap(InstMap),
@@ -1398,10 +1414,11 @@ modecheck_set_var_inst(Var0, InitialInst, FinalInst, Var,
 		handle_implied_mode(Var0,
 			VarInst0, VarInst, InitialInst, FinalInst, Det,
 		 	_Var, ExtraGoals1, ExtraGoals, ModeInfo7, ModeInfo8),
-		modecheck_set_var_inst(Var0, FinalInst, Sub1, Sub2,
+		modecheck_force_set_var_inst(Var0, VarInst,
 			ModeInfo8, ModeInfo9),
-		modecheck_set_var_inst(Var, FinalInst, Sub2, Sub,	
-			ModeInfo9, ModeInfo)
+		modecheck_force_set_var_inst(Var, VarInst,
+			ModeInfo9, ModeInfo),
+		Sub = Sub1
 	;
 		Var = Var0,
 		ExtraGoals = ExtraGoals0,

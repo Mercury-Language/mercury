@@ -94,7 +94,7 @@
 :- implementation.
 :- import_module list, tree, map, queue, int, string, require, bool.
 :- import_module code_util, code_info, type_util, varset.
-:- import_module mercury_to_mercury, hlds_out.
+:- import_module mercury_to_mercury, hlds_out, hlds_module, hlds_pred.
 :- import_module make_hlds, term, prog_util, inst_match.
 :- import_module quantification, clause_to_proc.
 :- import_module globals, options, mode_util, (inst).
@@ -298,7 +298,19 @@ modecheck_unify_procs(HowToCheckGoal, ModuleInfo0, ModuleInfo) -->
 			io__write_string("% with insts `"),
 			{ UniMode = ((InstA - InstB) -> _FinalInst) },
 			{ varset__init(InstVarSet) },
-			{ inst_table_init(InstTable) },	% YYY
+
+			% XXX This is a lot of trouble just to get an
+			%     inst_table.  Can we do better?
+			{ module_info_get_special_pred_map(ModuleInfo0,
+				SpecialPredMap) },
+			{ map__lookup(SpecialPredMap, unify - TypeId, PredId) },
+			{ unify_proc__get_req_map(Requests0, ReqMap) },
+			{ map__lookup(ReqMap, UnifyProcId, ProcId) },
+			{ module_info_pred_proc_info(ModuleInfo0, PredId,
+				ProcId, _, ProcInfo0) },
+			{ proc_info_argmodes(ProcInfo0,
+				argument_modes(InstTable, _)) },
+
 			mercury_output_inst(expand_noisily, InstA, InstVarSet,
 				InstTable),
 			io__write_string("', `"),

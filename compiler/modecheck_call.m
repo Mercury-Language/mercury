@@ -66,7 +66,7 @@
 
 modecheck_higher_order_pred_call(PredVar, Args0, PredOrFunc, GoalInfo0, Goal)
 		-->
-	mode_checkpoint(enter, "higher-order call"),
+	mode_checkpoint(enter, "higher-order call", GoalInfo0),
 	mode_info_set_call_context(higher_order_call(PredOrFunc)),
 	=(ModeInfo0),
 
@@ -81,10 +81,10 @@ modecheck_higher_order_pred_call(PredVar, Args0, PredOrFunc, GoalInfo0, Goal)
 			[PredVar | Args0], [PredVar | Args],
 			InstMap0, ModeInfo, Goal) },
 	mode_info_unset_call_context,
-	mode_checkpoint(exit, "higher-order predicate call").
+	mode_checkpoint(exit, "higher-order predicate call", GoalInfo0).
 
 modecheck_higher_order_func_call(FuncVar, Args0, RetVar, GoalInfo0, Goal) -->
-	mode_checkpoint(enter, "higher-order function call"),
+	mode_checkpoint(enter, "higher-order function call", GoalInfo0),
 	mode_info_set_call_context(higher_order_call(function)),
 
 	=(ModeInfo0),
@@ -102,7 +102,7 @@ modecheck_higher_order_func_call(FuncVar, Args0, RetVar, GoalInfo0, Goal) -->
 				InstMap0, ModeInfo, Goal) },
 
 	mode_info_unset_call_context,
-	mode_checkpoint(exit, "higher-order function call").
+	mode_checkpoint(exit, "higher-order function call", GoalInfo0).
 
 modecheck_higher_order_call(PredOrFunc, PredVar, Args0, Types, Modes, Det, Args,
 		ExtraGoals, ModeInfo0, ModeInfo) :-
@@ -367,7 +367,7 @@ modecheck_find_matching_modes([ProcId | ProcIds], PredId, Procs, ArgVars0,
 	->
 		MatchingProcIds1 = MatchingProcIds0,
 		mode_info_set_errors([], ModeInfo3, ModeInfo4),
-		FirstError = mode_error_info(ErrorWaitingVars, _, _, _),
+		FirstError = mode_error_info(ErrorWaitingVars, _, _, _, _),
 		set__union(WaitingVars0, ErrorWaitingVars, WaitingVars1)
 	;
 		MatchingProcIds1 = [ProcId | MatchingProcIds0],

@@ -104,6 +104,9 @@
 		set(inst_key)).
 :- mode inst_key_table_added_keys(in, in, out) is det.
 
+:- pred inst_key_table_project(inst_key_table, list(inst_key), inst_key_table).
+:- mode inst_key_table_project(in, in, out) is det.
+
 	% `inst_key_table_create_sub(IKT0, IKT1, Sub, IKT)' renames
 	% apart all the inst_keys in IKT1 with respect to IKT0 and
 	% returns the substitution used (Sub) and IKT0 with all of
@@ -112,6 +115,8 @@
 		inst_key_sub, inst_key_table).
 :- mode inst_key_table_create_sub(in, in, out, out) is det.
 
+%-----------------------------------------------------------------------------%
+
 :- pred inst_key_table_optimise(inst_key_table, list(inst), inst_key_sub,
 		inst_key_table).
 :- mode inst_key_table_optimise(in, in, out, out) is det.
@@ -119,6 +124,21 @@
 :- pred inst_key_table_write_inst_key(inst_key_table, inst_key,
 		io__state, io__state).
 :- mode inst_key_table_write_inst_key(in, in, di, uo) is det.
+
+%-----------------------------------------------------------------------------%
+
+	% Debugging trace code.
+:- type inst_key_table_mark.
+
+:- pred inst_key_table_mark_init(inst_key_table_mark).
+:- mode inst_key_table_mark_init(out) is det.
+
+:- pred inst_key_table_get_mark(inst_key_table, inst_key_table_mark).
+:- mode inst_key_table_get_mark(in, out) is det.
+
+:- pred inst_key_table_print_since_mark(inst_key_table, inst_key_table_mark,
+		io__state, io__state).
+:- mode inst_key_table_print_since_mark(in, in, di, uo) is det.
 
 :- pred inst_key_table_sanity_check(inst_key_table :: in) is semidet.
 
@@ -140,7 +160,7 @@
 :- implementation.
 :- import_module mercury_to_mercury.	% ZZZ Remove this dependency!
 :- import_module set, multi_map, assoc_list, require, int, varset.
-:- import_module set_bbbtree.
+:- import_module set_bbbtree, string.
 
 :- type inst_key == int.
 
@@ -216,6 +236,70 @@ inst_key_table_added_keys_2(FirstKey, LastKey, AddedKeys0, AddedKeys) :-
 		inst_key_table_added_keys_2(FirstKey, LastKey1,
 				AddedKeys1, AddedKeys)
 	).
+
+%-----------------------------------------------------------------------------%
+
+inst_key_table_project(inst_key_table(NextKey, FwdMap, BwdMap0), Keys0,
+		inst_key_table(NextKey, FwdMap, BwdMap)) :-
+	set_bbbtree__init(SeenKeys0),	
+	inst_key_table_project_2(Keys0, SeenKeys0, FwdMap, SeenKeys),
+	map__to_assoc_list(BwdMap0, BwdAL),
+	map__init(BwdMap1),
+	list__foldl(inst_key_table_project_bwd_mapping(SeenKeys), BwdAL,
+			BwdMap1, BwdMap).
+
+:- pred inst_key_table_project_2(list(inst_key), set_bbbtree(inst_key),
+		map(inst_key, inst), set_bbbtree(inst_key)).
+:- mode inst_key_table_project_2(in, in, in, out) is det.
+
+inst_key_table_project_2(KeysList, Keys0, FwdMap, Keys) :-
+	( KeysList = [] ->
+		Keys = Keys0
+	;
+		set_bbbtree__init(NewKeys0),
+		inst_key_table_project_3(KeysList, FwdMap, Keys0, Keys1,
+			NewKeys0, NewKeys),
+		set_bbbtree__to_sorted_list(NewKeys, NewKeysList),
+		inst_key_table_project_2(NewKeysList, Keys1, FwdMap, Keys)
+	).
+
+:- pred inst_key_table_project_3(list(inst_key), map(inst_key, inst),
+		set_bbbtree(inst_key), set_bbbtree(inst_key),
+		set_bbbtree(inst_key), set_bbbtree(inst_key)).
+:- mode inst_key_table_project_3(in, in, in, out, in, out) is det.
+
+inst_key_table_project_3([], _FwdMap, Keys, Keys, NewKeys, NewKeys).
+inst_key_table_project_3([K | Ks], FwdMap, Keys0, Keys, NewKeys0, NewKeys) :-
+	map__lookup(FwdMap, K, Inst),
+	inst_keys_in_inst(Inst, [], InstKeys),
+	inst_key_table_project_4(InstKeys, Keys0, Keys1, NewKeys0, NewKeys1),
+	inst_key_table_project_3(Ks, FwdMap, Keys1, Keys, NewKeys1, NewKeys).
+
+:- pred inst_key_table_project_4(list(inst_key),
+		set_bbbtree(inst_key), set_bbbtree(inst_key),
+		set_bbbtree(inst_key), set_bbbtree(inst_key)).
+:- mode inst_key_table_project_4(in, in, out, in, out) is det.
+
+inst_key_table_project_4([], Keys, Keys, NewKeys, NewKeys).
+inst_key_table_project_4([K | Ks], Keys0, Keys, NewKeys0, NewKeys) :-
+	( set_bbbtree__member(K, Keys0) ->
+		Keys1 = Keys0, NewKeys1 = NewKeys0
+	;
+		set_bbbtree__insert(Keys0, K, Keys1),
+		set_bbbtree__insert(NewKeys0, K, NewKeys1)
+	),
+	inst_key_table_project_4(Ks, Keys1, Keys, NewKeys1, NewKeys).
+
+:- pred inst_key_table_project_bwd_mapping(set_bbbtree(inst_key),
+		pair(inst_key, list(inst_key)),
+		map(inst_key, list(inst_key)), map(inst_key, list(inst_key))).
+:- mode inst_key_table_project_bwd_mapping(in, in, in, out) is det.
+
+inst_key_table_project_bwd_mapping(SeenKeys, IK - IKs0, Map0, Map) :-
+	list__filter(lambda([X :: in] is semidet,
+			set_bbbtree__member(X, SeenKeys)),
+		IKs0, IKs),
+	map__det_insert(Map0, IK, IKs, Map).
 
 %-----------------------------------------------------------------------------%
 
@@ -442,6 +526,35 @@ break_multi_assoc_list([K - Vs | AL0], AL) :-
 break_multi_assoc_list_2(_K, [], AL, AL).
 break_multi_assoc_list_2(K, [V | Vs], AL0, [K - V | AL]) :-
 	break_multi_assoc_list_2(K, Vs, AL0, AL).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+:- type inst_key_table_mark == inst_key.
+
+inst_key_table_mark_init(-1).
+
+inst_key_table_get_mark(inst_key_table(NextKey, _, _), NextKey).
+
+inst_key_table_print_since_mark(inst_key_table(_, FwdTable, _), Mark) -->
+	{ map__keys(FwdTable, KeysList) },
+	inst_key_table_print_since_mark_2(KeysList, Mark, FwdTable).
+
+:- pred inst_key_table_print_since_mark_2(list(inst_key), inst_key_table_mark,
+		map(inst_key, inst), io__state, io__state).
+:- mode inst_key_table_print_since_mark_2(in, in, in, di, uo) is det.
+
+inst_key_table_print_since_mark_2([], _, _) --> [].
+inst_key_table_print_since_mark_2([K | Ks], Mark, FwdMap) -->
+	( { K < Mark } ->
+		[]
+	;
+		io__format("\tIK_%d = \t", [i(K)]),
+		{ map__lookup(FwdMap, K, Inst) },
+		io__write(Inst),
+		io__nl
+	),
+	inst_key_table_print_since_mark_2(Ks, Mark, FwdMap).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
