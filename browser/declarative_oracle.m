@@ -27,6 +27,7 @@
 :- interface.
 
 :- import_module mdb.browser_info.
+:- import_module mdbcomp.prim_data.
 :- import_module mdb.declarative_debugger.
 :- import_module mdb.declarative_execution.
 
@@ -52,8 +53,8 @@
 
 	% Add a module to the set of modules trusted by the oracle
 	%
-:- pred add_trusted_module(string::in, oracle_state::in, oracle_state::out) 
-	is det. 
+:- pred add_trusted_module(module_name::in, oracle_state::in, 
+	oracle_state::out) is det. 
 
 	% Add a predicate/function to the set of predicates/functions trusted 
 	% by the oracle.
@@ -183,8 +184,8 @@ query_oracle_user(UserQuestion, OracleResponse, !Oracle, !IO) :-
 	;
 		UserResponse = trust_module(Question),
 		Atom = get_decl_question_atom(Question),
-		ProcId = get_proc_id_from_layout(Atom ^ proc_layout),
-		get_pred_attributes(ProcId, Module, _, _, _),
+		ProcLabel = get_proc_label_from_layout(Atom ^ proc_layout),
+		get_pred_attributes(ProcLabel, Module, _, _, _),
 		add_trusted_module(Module, !Oracle),
 		OracleResponse = oracle_answer(
 			ignore(get_decl_question_node(Question)))
@@ -263,14 +264,14 @@ oracle_state_init(InStr, OutStr, Browser, Oracle) :-
 %-----------------------------------------------------------------------------%
 
 :- type trusted_object
-	--->	module(string) % all predicates/functions in a module
+	--->	module(module_name) % all predicates/functions in a module
 	;	predicate(
-			string,		% module name
+			module_name,
 			string,		% pred name
 			int		% arity
 		)
 	;	function(
-			string,		% module name
+			module_name,
 			string,		% function name
 			int		% arity including return value
 		)
@@ -290,11 +291,11 @@ add_trusted_module(ModuleName, !Oracle) :-
 
 add_trusted_pred_or_func(ProcLayout, !Oracle) :-
 	counter.allocate(Id, !.Oracle ^ trusted_id_counter, Counter),
-	ProcId = get_proc_id_from_layout(ProcLayout),
+	ProcLabel = get_proc_label_from_layout(ProcLayout),
 	(
-		ProcId = proc(ModuleName, PredOrFunc, _, Name, Arity, _)
+		ProcLabel = proc(ModuleName, PredOrFunc, _, Name, Arity, _)
 	;
-		ProcId = uci_proc(ModuleName, _, _, Name, Arity, _),
+		ProcLabel = special_proc(ModuleName, _, _, Name, Arity, _),
 		PredOrFunc = predicate
 	),
 	(
@@ -349,30 +350,37 @@ get_trusted_list(Oracle, no, DisplayStr) :-
 :- pred format_trust_command(trusted_object::in, string::in,
 	string::out) is det.
 
-format_trust_command(module(ModuleName), S, S ++ "trust " ++ ModuleName++"\n").
+format_trust_command(module(ModuleName), S, S ++ "trust " ++ ModuleNameStr ++
+		"\n") :-
+	sym_name_to_string(ModuleName, ".", ModuleNameStr).
 format_trust_command(predicate(ModuleName, Name, Arity), S, S ++ Command) :-
 	ArityStr = int_to_string(Arity),
-	Command = "trust pred*" ++ ModuleName ++ "."++Name ++ "/" ++ ArityStr 
-	++ "\n".
+	sym_name_to_string(ModuleName, ".", ModuleNameStr),
+	Command = "trust pred*" ++ ModuleNameStr ++ "."++Name ++ "/" ++ 
+		ArityStr ++ "\n".
 format_trust_command(function(ModuleName, Name, Arity), S, S ++ Command) :-
 	ArityStr = int_to_string(Arity - 1),
-	Command = "trust func*"++ModuleName ++ "." ++ Name++"/" ++ ArityStr ++
-	"\n".
+	sym_name_to_string(ModuleName, ".", ModuleNameStr),
+	Command = "trust func*" ++ ModuleNameStr ++ "." ++ Name++"/" ++ 
+		ArityStr ++ "\n".
 format_trust_command(standard_library, S, S ++ "trust std lib\n").
 
 :- pred format_trust_display(int::in, trusted_object::in, string::in, 
 	string::out) is det.
 
 format_trust_display(Id, module(ModuleName), S, S ++ Display) :-
-	Display = int_to_string(Id) ++ ": module " ++ ModuleName ++ "\n".
+	sym_name_to_string(ModuleName, ".", ModuleNameStr),
+	Display = int_to_string(Id) ++ ": module " ++ ModuleNameStr ++ "\n".
 format_trust_display(Id, predicate(ModuleName, Name, Arity), S, S ++ Display) 
 		:-
-	Display = int_to_string(Id) ++ ": predicate " ++ ModuleName ++ "." ++
-		Name ++ "/" ++ int_to_string(Arity) ++ "\n".
+	sym_name_to_string(ModuleName, ".", ModuleNameStr),
+	Display = int_to_string(Id) ++ ": predicate " ++ ModuleNameStr ++ "." 
+		++ Name ++ "/" ++ int_to_string(Arity) ++ "\n".
 format_trust_display(Id, function(ModuleName, Name, Arity), S, S ++ Display)
 		:-
-	Display = int_to_string(Id) ++ ": function " ++ ModuleName ++ "." ++
-		Name++"/" ++ int_to_string(Arity - 1) ++ "\n".
+	sym_name_to_string(ModuleName, ".", ModuleNameStr),
+	Display = int_to_string(Id) ++ ": function " ++ ModuleNameStr ++ "." ++
+		Name ++ "/" ++ int_to_string(Arity - 1) ++ "\n".
 format_trust_display(Id, standard_library, S, S ++ Display) :-
 	Display = int_to_string(Id) ++ ": the Mercury standard library\n".
 		
@@ -489,12 +497,17 @@ answer_known(Oracle, Question, Answer) :-
 
 trusted(ProcLayout, Oracle) :-
 	Trusted = Oracle ^ trusted,
-	ProcId = get_proc_id_from_layout(ProcLayout),
+	ProcLabel = get_proc_label_from_layout(ProcLayout),
 	(
-		ProcId = proc(Module, PredOrFunc, _, Name, Arity, _),
+		ProcLabel = proc(Module, PredOrFunc, _, Name, Arity, _),
 		(
 			bimap.search(Trusted, standard_library, _),
-			mercury_std_library_module(Module)
+			(
+				Module = qualified(_, ModuleNameStr)
+			;
+				Module = unqualified(ModuleNameStr)
+			),
+			mercury_std_library_module(ModuleNameStr)
 		;
 			bimap.search(Trusted, module(Module), _)
 		;
@@ -506,7 +519,7 @@ trusted(ProcLayout, Oracle) :-
 			bimap.search(Trusted, function(Module, Name, Arity), _)
 		)
 	;
-		ProcId = uci_proc(_, _, _, _, _, _)
+		ProcLabel = special_proc(_, _, _, _, _, _)
 	).
 
 :- pred query_oracle_kb(oracle_kb::in, decl_question(T)::in,

@@ -295,7 +295,7 @@ hlds_out__write_cons_id(ConsId, !IO) :-
 	io__write_string(hlds_out__cons_id_to_string(ConsId), !IO).
 
 hlds_out__cons_id_to_string(cons(SymName, Arity)) = String :-
-	prog_out__sym_name_to_string(SymName, SymNameString0),
+	mdbcomp__prim_data__sym_name_to_string(SymName, SymNameString0),
 	( string__contains_char(SymNameString0, '*') ->
 		% We need to protect against the * appearing next to a /
 		Stuff = (pred(Char::in, Str0::in, Str::out) is det :-

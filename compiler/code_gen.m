@@ -1392,7 +1392,8 @@ code_gen__bytecode_stub(ModuleInfo, PredId, ProcId, BytecodeInstructions) :-
 	module_info_pred_info(ModuleInfo, PredId, PredInfo),
 	ModuleSymName = pred_info_module(PredInfo),
 
-	prog_out__sym_name_to_string(ModuleSymName, "__", ModuleName),
+	mdbcomp__prim_data__sym_name_to_string(ModuleSymName, "__", 
+		ModuleName),
 
 	code_util__make_local_entry_label(ModuleInfo, PredId,
 		ProcId, no, Entry),
@@ -1461,7 +1462,7 @@ code_gen__push_msg(ModuleInfo, PredId, ProcId) = PushMsg :-
 		FullPredName = PredName
 	),
 	PredOrFuncString = pred_or_func_to_str(PredOrFunc),
-	prog_out__sym_name_to_string(ModuleName, ModuleNameString),
+	mdbcomp__prim_data__sym_name_to_string(ModuleName, ModuleNameString),
 	string__int_to_string(Arity, ArityStr),
 	proc_id_to_int(ProcId, ProcNum),
 	string__int_to_string(ProcNum, ProcNumStr),
@@ -1476,7 +1477,7 @@ code_gen__push_msg(ModuleInfo, PredId, ProcId) = PushMsg :-
 
 code_gen__find_arg_type_ctor_name(TypeCtor, TypeName) :-
 	TypeCtor = TypeCtorSymName - TypeCtorArity,
-	prog_out__sym_name_to_string(TypeCtorSymName, TypeCtorName),
+	mdbcomp__prim_data__sym_name_to_string(TypeCtorSymName, TypeCtorName),
 	string__int_to_string(TypeCtorArity, ArityStr),
 	string__append_list([TypeCtorName, "_", ArityStr], TypeName).
 

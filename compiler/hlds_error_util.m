@@ -190,7 +190,8 @@ describe_several_call_sites(Module, ShouldModuleQualify, Sites) = Pieces :-
 module_qualification(ModuleName, ShouldModuleQualify) = ModuleQualification :-
 	(
 		ShouldModuleQualify = should_module_qualify,
-		prog_out__sym_name_to_string(ModuleName, ModuleNameString),
+		mdbcomp__prim_data__sym_name_to_string(ModuleName, 
+			ModuleNameString),
 		ModuleQualification = string__append(ModuleNameString, ".")
 	;
 		ShouldModuleQualify = should_not_module_qualify,

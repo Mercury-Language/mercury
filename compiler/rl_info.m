@@ -247,6 +247,7 @@
 :- import_module libs__globals.
 :- import_module libs__options.
 :- import_module parse_tree__prog_out.
+:- import_module mdbcomp__prim_data.
 
 :- import_module int, require.
 
@@ -500,7 +501,8 @@ rl_info_lookup_relation(TempRelationId, RelationId) -->
 		% Get a (sort of) human readable version of the relation name.
 		{ proc_relation_type_to_str(ProcRelType, ProcRelStr) },
 		{ PredModule0 = pred_info_module(PredInfo) },
-		{ prog_out__sym_name_to_string(PredModule0, PredModule) },
+		{ mdbcomp__prim_data__sym_name_to_string(PredModule0, 
+			PredModule) },
 		{ PredName = pred_info_name(PredInfo) },
 		{ Arity = pred_info_orig_arity(PredInfo) },
 		rl_info_get_next_relation_id(RelationId),

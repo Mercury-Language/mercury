@@ -865,7 +865,7 @@ read_module(module(ModuleName), ReturnTimestamp, ModuleName, FileName,
 		MaybeTimestamp, Items, Error, !ReadModules, !IO) :-
 	globals__io_lookup_bool_option(verbose, Verbose, !IO),
 	maybe_write_string(Verbose, "% Parsing module `", !IO),
-	prog_out__sym_name_to_string(ModuleName, ModuleNameString),
+	mdbcomp__prim_data__sym_name_to_string(ModuleName, ModuleNameString),
 	maybe_write_string(Verbose, ModuleNameString, !IO),
 	maybe_write_string(Verbose, "' and imported interfaces...\n", !IO),
 	(
@@ -1839,7 +1839,7 @@ mercury_compile__maybe_grab_optfiles(Imports0, Verbose, MaybeTransOptDeps,
 				warn_missing_trans_opt_deps,
 				WarnNoTransOptDeps),
 			( WarnNoTransOptDeps = yes ->
-				prog_out__sym_name_to_string(ModuleName,
+				mdbcomp__prim_data__sym_name_to_string(ModuleName,
 					ModuleString),
 				Msg1 = "Warning: cannot read trans-opt " ++
 					"dependencies for module `" ++
@@ -4457,7 +4457,7 @@ mercury_compile__maybe_dump_rl(Procs, ModuleInfo, _StageNum, StageName, !IO) :-
 	globals__io_lookup_bool_option(dump_rl, Dump, !IO),
 	( Dump = yes ->
 		module_info_name(ModuleInfo, ModuleName0),
-		prog_out__sym_name_to_string(ModuleName0, ModuleName),
+		mdbcomp__prim_data__sym_name_to_string(ModuleName0, ModuleName),
 		string__append_list([ModuleName, ".rl_dump", StageName],
 			DumpFile),
 		globals__io_lookup_bool_option(verbose, Verbose, !IO),

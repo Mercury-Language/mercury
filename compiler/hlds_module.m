@@ -1998,7 +1998,7 @@ get_pred_id_and_proc_id(IsFullyQualified, SymName, PredOrFunc, TVarSet,
 		% the type-checker should ensure that this never happens
 		list__length(ArgTypes, Arity),
 		PredOrFuncStr = prog_out__pred_or_func_to_str(PredOrFunc),
-		prog_out__sym_name_to_string(SymName, Name2),
+		mdbcomp__prim_data__sym_name_to_string(SymName, Name2),
 		string__int_to_string(Arity, ArityString),
 		string__append_list(["get_pred_id_and_proc_id: ",
 			"undefined/invalid ", PredOrFuncStr,

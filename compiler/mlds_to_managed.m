@@ -77,7 +77,7 @@ output_managed_code(Lang, MLDS) -->
 
 output_src_start(ModuleName) -->
 	{ library__version(Version) },
-	{ prog_out__sym_name_to_string(ModuleName, ModuleNameStr) },
+	{ mdbcomp__prim_data__sym_name_to_string(ModuleName, ModuleNameStr) },
 	io__write_strings(
 		["//\n// Automatically generated from `",
 		ModuleNameStr,
@@ -212,7 +212,8 @@ output_language_specific_header_code(managed_cplusplus, ModuleName, Imports) -->
 			    )
 			;
 			    SymName = mlds_module_name_to_sym_name(Name),
-			    prog_out__sym_name_to_string(SymName, ".", Str)
+			    mdbcomp__prim_data__sym_name_to_string(SymName, 
+			    	".", Str)
 			),
 			Result = [Str]
 		    ;
@@ -227,7 +228,7 @@ output_language_specific_header_code(managed_cplusplus, ModuleName, Imports) -->
 			io__write_string(".dll""\n")
 		), ActualImports),
 
-	{ prog_out__sym_name_to_string(ModuleName, ModuleNameStr) },
+	{ mdbcomp__prim_data__sym_name_to_string(ModuleName, ModuleNameStr) },
 	io__write_strings([
 		"#using """, ModuleNameStr, ".dll""\n",
 		"#include ""mercury_mcpp.h""\n",

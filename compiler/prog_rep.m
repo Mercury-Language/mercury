@@ -243,7 +243,7 @@ prog_rep__represent_goal_expr(call(PredId, _, Args, Builtin, _, _),
 		GoalInfo, InstMap0, Info, Rep) :-
 	module_info_pred_info(Info ^ module_info, PredId, PredInfo),
 	ModuleSymName = pred_info_module(PredInfo),
-	prog_out__sym_name_to_string(ModuleSymName, ModuleName),
+	mdbcomp__prim_data__sym_name_to_string(ModuleSymName, ModuleName),
 	PredName = pred_info_name(PredInfo),
 	list__map(term__var_to_int, Args, ArgsRep),
 	(

@@ -414,11 +414,12 @@ browse_atom_argument(InitAtom, FinalAtom, ArgNum, MaybeMark, !User, !IO) :-
 
 browse_atom(InitAtom, FinalAtom, MaybeMark, !User, !IO) :-
 	FinalAtom = atom(ProcLayout, Args),
-	ProcId = get_proc_id_from_layout(ProcLayout),
+	ProcLabel = get_proc_label_from_layout(ProcLayout),
 	get_user_arg_values(Args, ArgValues),
-	get_pred_attributes(ProcId, Module, Name, _, PredOrFunc),
+	get_pred_attributes(ProcLabel, Module, Name, _, PredOrFunc),
 	Function = pred_to_bool(unify(PredOrFunc,function)),
-	BrowserTerm = synthetic_term_to_browser_term(Module++"."++Name, 
+	sym_name_to_string(Module, ".", ModuleStr),
+	BrowserTerm = synthetic_term_to_browser_term(ModuleStr ++ "." ++ Name, 
 		ArgValues, Function),
 	browse_browser_term(BrowserTerm, !.User ^ instr, !.User ^ outstr,
 		yes(get_subterm_mode_from_atoms(InitAtom, FinalAtom)),
@@ -843,9 +844,9 @@ write_decl_final_atom(User, Indent, CallerType, FinalAtom, !IO) :-
 write_decl_atom(User, Indent, CallerType, DeclAtom, !IO) :-
 	io.write_string(User ^ outstr, Indent, !IO),
 	unravel_decl_atom(DeclAtom, TraceAtom, IoActions),
-	TraceAtom = atom(ProcLabel, Args0),
-	ProcId = get_proc_id_from_layout(ProcLabel),
-	get_pred_attributes(ProcId, _, Functor, _, PredOrFunc),
+	TraceAtom = atom(ProcLayout, Args0),
+	ProcLabel = get_proc_label_from_layout(ProcLayout),
+	get_pred_attributes(ProcLabel, _, Functor, _, PredOrFunc),
 	Which = chosen_head_vars_presentation,
 	maybe_filter_headvars(Which, Args0, Args1),
 	list.map(trace_atom_arg_to_univ, Args1, Args),

@@ -194,45 +194,20 @@
 						% data structures.
 		).
  
-	% A module name should consist of a base name and a list of the names
-	% of the enclosing modules. For now, we have them all in one string.
-:- type flat_module_name == string.
-
-:- type proc_id
-	--->	proc(
-			flat_module_name,	% defining module
-			pred_or_func,
-			flat_module_name,	% declaring module
-			string,			% name
-			int,			% arity
-			int			% mode number
-		)
-	;	uci_proc(
-			flat_module_name,	% defining module
-			special_pred_id,	% indirectly defines pred name
-			flat_module_name,	% type module
-			string,			% type name
-			int,			% type arity
-			int			% mode number
-		).
-
-	% Should be a foreign type, MR_Proc_Layout *. This is a
-	% temporary workaround: we can't do compare_representation
-	% on foreign types yet.
 :- type proc_layout. 
 
-:- func get_proc_id_from_layout(proc_layout) = proc_id.
+:- func get_proc_label_from_layout(proc_layout) = proc_label.
 
-:- func get_proc_name(proc_id) = string.
+:- func get_proc_name(proc_label) = string.
 
 :- func get_all_modes_for_layout(proc_layout) = list(proc_layout).
 
-	% get_pred_attributes(ProcId, Module, Name, Arity, PredOrFunc).
+	% get_pred_attributes(ProcLabel, Module, Name, Arity, PredOrFunc).
 	% Return the predicate/function attributes common to both UCI and
 	% regular predicates/functions.  
 	%
-:- pred get_pred_attributes(proc_id::in, string::out, string::out, int::out, 
-	pred_or_func::out) is det.
+:- pred get_pred_attributes(proc_label::in, module_name::out, string::out, 
+	int::out, pred_or_func::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -409,7 +384,7 @@
 	[can_pass_as_mercury_type, stable]).
 :- pragma foreign_type("Java", proc_layout, "Object", []). % stub only
 
-get_proc_id_from_layout(Layout) = ProcId :-
+get_proc_label_from_layout(Layout) = ProcLabel :-
 	( proc_layout_is_uci(Layout) ->
 		proc_layout_get_uci_fields(Layout, TypeName, TypeModule,
 			DefModule, PredName, TypeArity, ModeNum),
@@ -420,19 +395,24 @@ get_proc_id_from_layout(Layout) = ProcId :-
 		; PredName = "__Compare__" ->
 			SpecialId = compare
 		;
-			error("get_proc_id_from_layout: bad special_pred_id")
+			error("get_proc_label_from_layout: " ++ 
+				"bad special_pred_id")
 		),
-		ProcId = uci_proc(DefModule, SpecialId, TypeModule, TypeName, 
-			TypeArity, ModeNum)
+		string_to_sym_name(DefModule, ".", SymDefModule),
+		string_to_sym_name(TypeModule, ".", SymTypeModule),
+		ProcLabel = special_proc(SymDefModule, SpecialId, 
+			SymTypeModule, TypeName, TypeArity, ModeNum)
 	;
 		proc_layout_get_non_uci_fields(Layout, PredOrFunc,
 			DeclModule, DefModule, PredName, Arity, ModeNum),
-		ProcId = proc(DefModule, PredOrFunc, DeclModule, PredName, 
-			Arity, ModeNum)
+		string_to_sym_name(DefModule, ".", SymDefModule),
+		string_to_sym_name(DeclModule, ".", SymDeclModule),
+		ProcLabel = proc(SymDefModule, PredOrFunc, SymDeclModule, 
+			PredName, Arity, ModeNum)
 	).
 
 get_proc_name(proc(_, _, _, ProcName, _, _)) = ProcName.
-get_proc_name(uci_proc(_, _, _, ProcName , _, _)) = ProcName. 
+get_proc_name(special_proc(_, _, _, ProcName , _, _)) = ProcName. 
 
 :- pred proc_layout_is_uci(proc_layout::in) is semidet.
 
@@ -591,7 +571,7 @@ get_pred_attributes(ProcId, Module, Name, Arity, PredOrFunc) :-
 	(
 		ProcId = proc(Module, PredOrFunc, _, Name, Arity, _)
 	;
-		ProcId = uci_proc(Module, SpecialId, _, _, _, _), 
+		ProcId = special_proc(Module, SpecialId, _, _, _, _), 
 		PredOrFunc = predicate,
 		Arity = get_special_pred_id_arity(SpecialId),
 		Name = get_special_pred_id_name(SpecialId)

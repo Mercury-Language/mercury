@@ -3260,7 +3260,7 @@ add_ctor_field_name(FieldName, FieldDefn, NeedQual, PartialQuals,
 		% XXX we should record each error
 		% using module_info_incr_errors
 		FieldDefn = hlds_ctor_field_defn(Context, _, _, _, _),
-		prog_out__sym_name_to_string(FieldName, FieldString),
+		mdbcomp__prim_data__sym_name_to_string(FieldName, FieldString),
 		ErrorPieces = [
 			words("Error: field"),
 			fixed(string__append_list(["`", FieldString, "'"])),
@@ -4623,7 +4623,8 @@ module_add_clause(ClauseVarSet, PredOrFunc, PredName, Args0, Body, Status,
 	->
 		PredId = PredId0,
 		( GoalType = promise(_) ->
-			prog_out__sym_name_to_string(PredName, NameString),
+			mdbcomp__prim_data__sym_name_to_string(PredName, 
+				NameString),
 			string__format("%s %s %s (%s).\n",
 				[s("Attempted to introduce a predicate"),
 				s("for a promise with an identical"),

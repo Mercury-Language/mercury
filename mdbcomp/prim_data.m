@@ -111,6 +111,20 @@
 	%
 :- pred string_to_sym_name(string::in, string::in, sym_name::out) is det.
 
+	% sym_name_to_string(SymName, Separator, String):
+	%	convert a symbol name to a string,
+	%	with module qualifiers separated by Separator.
+:- pred sym_name_to_string(sym_name::in, string::in, string::out)
+	is det.
+:- func sym_name_to_string(sym_name, string) = string.
+
+	% sym_name_to_string(SymName, String):
+	%	convert a symbol name to a string,
+	%	with module qualifiers separated by
+	%	the standard Mercury module qualifier operator.
+:- pred sym_name_to_string(sym_name::in, string::out) is det.
+:- func sym_name_to_string(sym_name) = string.
+
 	% insert_module_qualifier(ModuleName, SymName0, SymName):
 	%	prepend the specified ModuleName onto the module
 	%	qualifiers in SymName0, giving SymName.
@@ -121,7 +135,7 @@
 
 :- implementation.
 
-:- import_module int, string. 
+:- import_module int, string, list. 
 
 % This would be simpler if we had a string__rev_sub_string_search/3 pred.
 % With that, we could search for underscores right-to-left,
@@ -150,3 +164,18 @@ insert_module_qualifier(ModuleName, unqualified(PlainName),
 insert_module_qualifier(ModuleName, qualified(ModuleQual0, PlainName),
 		qualified(ModuleQual, PlainName)) :-
 	insert_module_qualifier(ModuleName, ModuleQual0, ModuleQual).
+
+sym_name_to_string(SymName, String) :-
+	sym_name_to_string(SymName, ".", String).
+
+sym_name_to_string(SymName) = String :-
+	sym_name_to_string(SymName, String).
+
+sym_name_to_string(SymName, Separator) = String :-
+	sym_name_to_string(SymName, Separator, String).
+
+sym_name_to_string(unqualified(Name), _Separator, Name).
+sym_name_to_string(qualified(ModuleSym, Name), Separator,
+		QualName) :-
+	sym_name_to_string(ModuleSym, Separator, ModuleName),
+	string__append_list([ModuleName, Separator, Name], QualName).

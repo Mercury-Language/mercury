@@ -78,6 +78,7 @@
 :- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_util.
+:- import_module mdbcomp__prim_data.
 
 #if INCLUDE_ADITI_OUTPUT	% See ../Mmake.common.in.
 :- import_module aditi_backend__rl_exprn.
@@ -147,7 +148,8 @@ rl_out__generate_derived_schema(ModuleInfo, Proc) -->
 	->
 		{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
 		{ PredModule0 = pred_info_module(PredInfo) }, 
-		{ prog_out__sym_name_to_string(PredModule0, PredModule) },
+		{ mdbcomp__prim_data__sym_name_to_string(PredModule0, 
+			PredModule) },
 		{ PredName = pred_info_name(PredInfo) },
 		{ PredArity0 = pred_info_orig_arity(PredInfo) },
 		{ string__int_to_string(PredArity0, PredArity) },
@@ -234,7 +236,7 @@ rl_out__generate_rl_bytecode(Procs, MaybeRLFile, ModuleInfo0, ModuleInfo) -->
 	globals__io_lookup_string_option(aditi_user, Owner),
 	{ rl_out_info_assign_const(string(Owner), OwnerIndex,
 		RLInfo2, RLInfo3) },
-	{ prog_out__sym_name_to_string(ModuleName0, ModuleName) },
+	{ mdbcomp__prim_data__sym_name_to_string(ModuleName0, ModuleName) },
 	module_name_to_file_name(ModuleName0, ".m", no, SourceFileName),
 	module_name_to_file_name(ModuleName0, ".int", no, IntFileName),
 	{ rl_out_info_assign_const(string(ModuleName), ModuleIndex, 
@@ -763,7 +765,7 @@ rl_out__collect_memoed_relations(Owner, ProcName, [Rel | Rels], Counter0,
 	{ string__from_char_list(ProcNameList, ProcNameStr1) },
 	rl_out_info_get_module_info(ModuleInfo),
 	{ module_info_name(ModuleInfo, ModuleName0) },
-	{ prog_out__sym_name_to_string(ModuleName0, ModuleName) },
+	{ mdbcomp__prim_data__sym_name_to_string(ModuleName0, ModuleName) },
 	{ string__format("%s/%s/Memoed__%s__%i", 
 		[s(Owner), s(ModuleName), s(ProcNameStr1), i(Counter0)],
 		UniqueName) },

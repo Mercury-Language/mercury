@@ -1189,7 +1189,7 @@ modecheck_goal_expr(some(Vs, CanRemove, SubGoal0), _,
 
 modecheck_goal_expr(call(PredId, ProcId0, Args0, _, Context, PredName),
 		GoalInfo0, Goal, !ModeInfo, !IO) :-
-	prog_out__sym_name_to_string(PredName, PredNameString),
+	mdbcomp__prim_data__sym_name_to_string(PredName, PredNameString),
 	string__append("call ", PredNameString, CallString),
 	mode_checkpoint(enter, CallString, !ModeInfo, !IO),
 

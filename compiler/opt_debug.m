@@ -311,7 +311,7 @@ dump_const(label_entry(Label), Str) :-
 	string__append_list(["label_entry(", LabelStr, ")"], Str).
 
 dump_data_addr(data_addr(ModuleName, DataName), Str) :-
-	prog_out__sym_name_to_string(ModuleName, ModuleName_str),
+	mdbcomp__prim_data__sym_name_to_string(ModuleName, ModuleName_str),
 	dump_data_name(DataName, DataName_str),
 	string__append_list(
 		["data_addr(", ModuleName_str, ", ", DataName_str, ")"], Str).

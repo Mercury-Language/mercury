@@ -215,7 +215,7 @@ gen_init_rtti_data_defn(RttiData, RttiId, ModuleInfo, Init, SubDefns) :-
 	TypeCtorData = type_ctor_data(Version, TypeModule, TypeName,
 		TypeArity, UnifyUniv, CompareUniv, Flags, TypeCtorDetails),
 	RttiTypeCtor = rtti_type_ctor(TypeModule, TypeName, TypeArity),
-	prog_out__sym_name_to_string(TypeModule, TypeModuleName),
+	mdbcomp__prim_data__sym_name_to_string(TypeModule, TypeModuleName),
 	NumPtags = type_ctor_details_num_ptags(TypeCtorDetails),
 	NumFunctors = type_ctor_details_num_functors(TypeCtorDetails),
 	FunctorsRttiId = ctor_rtti_id(RttiTypeCtor, type_functors),
@@ -337,7 +337,8 @@ gen_type_class_decl_defn(TCDecl, RttiId, ModuleInfo, Init, SubDefns) :-
 		MethodIdsInit = gen_init_rtti_id(ModuleName, MethodIdsRttiId)
 	),
 	TCIdRttiId = tc_rtti_id(TCName, type_class_id),
-	prog_out__sym_name_to_string(ModuleSymName, ModuleSymNameStr),
+	mdbcomp__prim_data__sym_name_to_string(ModuleSymName, 
+		ModuleSymNameStr),
 	list__length(TVarNames, NumTVars),
 	list__length(MethodIds, NumMethods),
 	TCIdInit = init_struct(mlds__rtti_type(item_type(TCIdRttiId)), [

@@ -453,7 +453,7 @@ deforest__propagate_conj_constraints([Goal0 | Goals0],
 		), Goals0, Constraints, Goals1),
 		Constraints \= []
 	->
-		prog_out__sym_name_to_string(SymName, SymNameString),
+		mdbcomp__prim_data__sym_name_to_string(SymName, SymNameString),
 		pd_debug__message("propagating constraints into call to %s\n",
 			[s(SymNameString)], !IO),
 

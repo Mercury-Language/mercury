@@ -810,14 +810,15 @@ module_name_to_file_name(ModuleName, Ext, Search, MkDir, FileName, !IO) :-
 		source_file_map__lookup_module_source_file(ModuleName,
 			FileName, !IO)
 	;
-		prog_out__sym_name_to_string(ModuleName, ".", BaseFileName),
+		mdbcomp__prim_data__sym_name_to_string(ModuleName, ".", 
+			BaseFileName),
 		string__append(BaseFileName, Ext, BaseName),
 		choose_file_name(ModuleName, BaseName, Ext,
 			Search, MkDir, FileName, !IO)
 	).
 
 module_name_to_lib_file_name(Prefix, ModuleName, Ext, MkDir, FileName, !IO) :-
-	prog_out__sym_name_to_string(ModuleName, ".", BaseFileName),
+	mdbcomp__prim_data__sym_name_to_string(ModuleName, ".", BaseFileName),
 	string__append_list([Prefix, BaseFileName, Ext], BaseName),
 	choose_file_name(ModuleName, BaseName, Ext, no, MkDir, FileName, !IO).
 
@@ -1050,10 +1051,10 @@ file_name_to_module_name(FileName, ModuleName) :-
 	string_to_sym_name(FileName, ".", ModuleName).
 
 module_name_to_file_name(ModuleName, FileName) :-
-	prog_out__sym_name_to_string(ModuleName, ".", FileName).
+	mdbcomp__prim_data__sym_name_to_string(ModuleName, ".", FileName).
 
 module_name_to_make_var_name(ModuleName, MakeVarName) :-
-	prog_out__sym_name_to_string(ModuleName, ".", MakeVarName).
+	mdbcomp__prim_data__sym_name_to_string(ModuleName, ".", MakeVarName).
 
 maybe_make_symlink(LinkTarget, LinkName, Result, !IO) :-
 	globals__io_lookup_bool_option(use_symlinks, UseSymLinks, !IO),
@@ -3647,7 +3648,8 @@ generate_dependencies(ModuleName, DepsMap0, !IO) :-
 	map__lookup(DepsMap, ModuleName, deps(_, ModuleImports)),
 	module_imports_get_error(ModuleImports, Error),
 	( Error = fatal_module_errors ->
-		prog_out__sym_name_to_string(ModuleName, ModuleString),
+		mdbcomp__prim_data__sym_name_to_string(ModuleName, 
+			ModuleString),
 		string__append_list(["can't read source file for module `",
 			ModuleString, "'."], Message),
 		report_error(Message, !IO)
@@ -4180,7 +4182,8 @@ generate_dependencies_write_dep_file(SourceFileName, ModuleName, DepsMap,
 generate_dv_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 	io__write_string(DepStream,
 		"# Automatically generated dependency variables for module `"),
-	{ prog_out__sym_name_to_string(ModuleName, ModuleNameString) },
+	{ mdbcomp__prim_data__sym_name_to_string(ModuleName, 
+		ModuleNameString) },
 	io__write_string(DepStream, ModuleNameString),
 	io__write_string(DepStream, "'\n"),
 	io__write_string(DepStream,
@@ -4664,7 +4667,8 @@ generate_dv_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 	io__write_string(DepStream,
 		"# Automatically generated dependencies for module `"),
-	{ prog_out__sym_name_to_string(ModuleName, ModuleNameString) },
+	{ mdbcomp__prim_data__sym_name_to_string(ModuleName, 
+		ModuleNameString) },
 	io__write_string(DepStream, ModuleNameString),
 	io__write_string(DepStream, "'\n"),
 	io__write_string(DepStream,
@@ -4932,7 +4936,8 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 	% The `force-module_init' dependency forces the commands for
 	% the `module_init.c' rule to be run every time the rule
 	% is considered.
-	{ prog_out__sym_name_to_string(ModuleName, ".", ModuleFileName) },
+	{ mdbcomp__prim_data__sym_name_to_string(ModuleName, ".", 
+		ModuleFileName) },
 	{ ForceC2InitTarget = "force-" ++ ModuleFileName ++ "_init" },
 	{ TmpInitCFileName = InitCFileName ++ ".tmp" },
 	io__write_strings(DepStream, [
@@ -5361,7 +5366,7 @@ get_extra_link_objects_2([Module | Modules], DepsMap, Target,
 			= contains_foreign_code(Langs),
 		set__member(c, Langs)
 	->
-		prog_out__sym_name_to_string(Module, ".", FileName),
+		mdbcomp__prim_data__sym_name_to_string(Module, ".", FileName),
 		NewLinkObjs = [(FileName ++ "__c_code") - Module |
 			FactTableObjs]
 	;

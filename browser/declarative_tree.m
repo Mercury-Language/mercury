@@ -380,9 +380,18 @@ node_events(wrap(Store), dynamic(Ref), PrevEvents, Events, RecordDups,
 :- pred missing_answer_special_case(trace_atom::in) is semidet.
 
 missing_answer_special_case(Atom) :-
-	ProcId = get_proc_id_from_layout(Atom ^ proc_layout),
-	ProcId = proc("std_util", predicate, "std_util", "builtin_aggregate", 
-		4, _).
+	ProcLabel = get_proc_label_from_layout(Atom ^ proc_layout),
+	ProcLabel = proc(StdUtilModule1, predicate, StdUtilModule2, 
+		"builtin_aggregate", 4, _),
+	possible_sym_library_module_name("std_util", StdUtilModule1),
+	possible_sym_library_module_name("std_util", StdUtilModule2).
+
+:- pred possible_sym_library_module_name(string::in, module_name::out) 
+	is multi.
+
+possible_sym_library_module_name(ModuleStr, unqualified(ModuleStr)).
+possible_sym_library_module_name(ModuleStr, qualified(unqualified("library"), 
+	ModuleStr)).
 
 :- pred not_at_depth_limit(S::in, R::in) is semidet <= annotated_trace(S, R).
 
@@ -1389,10 +1398,11 @@ match_atomic_goal_to_contour_event(Store, File, Line, BoundVars, AtomicGoal,
 
 atomic_goal_matches_atom(AtomicGoalId, Atom) :-	
 	AtomicGoalId = atomic_goal_id(GoalModule, GoalName, GoalArity),
-	ProcId = get_proc_id_from_layout(Atom ^ proc_layout),
-	get_pred_attributes(ProcId, EventModule, EventName, _, _),
+	ProcLabel = get_proc_label_from_layout(Atom ^ proc_layout),
+	get_pred_attributes(ProcLabel, EventModule, EventName, _, _),
 	EventArity = length(Atom ^ atom_args),
-	EventModule = GoalModule, 
+	sym_name_to_string(EventModule, ".", EventModuleStr),
+	EventModuleStr = GoalModule, 
 	EventName = GoalName, 
 	EventArity = GoalArity.
 

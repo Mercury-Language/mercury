@@ -302,6 +302,7 @@
 :- import_module mdb.declarative_oracle.
 :- import_module mdb.declarative_tree.
 :- import_module mdb.util.
+:- import_module mdbcomp.prim_data.
 
 :- import_module exception, int, map, bool.
 
@@ -629,7 +630,8 @@ diagnoser_require_supertree(require_supertree(Event, SeqNo), Event, SeqNo).
 		"MR_DD_decl_add_trusted_module").
 		
 add_trusted_module(ModuleName, Diagnoser0, Diagnoser) :-
-	add_trusted_module(ModuleName, Diagnoser0 ^ oracle_state, Oracle),
+	string_to_sym_name(ModuleName, ".", SymModuleName),
+	add_trusted_module(SymModuleName, Diagnoser0 ^ oracle_state, Oracle),
 	Diagnoser = Diagnoser0 ^ oracle_state := Oracle.
 
 	% Adds a trusted predicate/function to the given diagnoser.
@@ -744,9 +746,9 @@ decl_bug_get_event_number(i_bug(IBug), Event) :-
 write_origin(wrap(Store), Origin, !IO) :-
 	(Origin = output(dynamic(NodeId), ArgPos, TermPath) ->
 		exit_node_from_id(Store, NodeId, ExitNode),
-		ProcId = get_proc_id_from_layout(
+		ProcLabel = get_proc_label_from_layout(
 			ExitNode ^ exit_atom ^ proc_layout),
-		ProcName = get_proc_name(ProcId),
+		ProcName = get_proc_name(ProcLabel),
 		io.write_string("output(", !IO),
 		io.write_string(ProcName, !IO),
 		io.write_string(", ", !IO),

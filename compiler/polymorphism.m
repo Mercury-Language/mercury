@@ -1650,7 +1650,7 @@ polymorphism__process_foreign_proc_args(PredInfo, Impl, Vars, Args) :-
 polymorphism__foreign_proc_add_typeclass_info(Mode, Impl, TypeVarSet,
 		Constraint, MaybeArgName) :-
 	Constraint = constraint(Name0, Types),
-	prog_out__sym_name_to_string(Name0, "__", Name),
+	mdbcomp__prim_data__sym_name_to_string(Name0, "__", Name),
 	term__vars_list(Types, TypeVars),
 	TypeVarNames =
 		list__map(underscore_and_tvar_name(TypeVarSet), TypeVars),

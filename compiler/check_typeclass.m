@@ -323,7 +323,8 @@ check_for_bogus_methods(InstanceMethods, ClassId, ClassPredIds, Context,
 		% Construct an appropriate error message.
 		%
 		ClassId = class_id(ClassName, ClassArity),
-		prog_out__sym_name_to_string(ClassName, ClassNameString),
+		mdbcomp__prim_data__sym_name_to_string(ClassName, 
+			ClassNameString),
 		string__int_to_string(ClassArity, ClassArityString),
 		string__append_list([
 			"In instance declaration for `",
@@ -525,8 +526,10 @@ check_instance_pred_procs(ClassId, ClassVars, MethodName, Markers,
 		OrderedInstanceMethods = OrderedInstanceMethods0,
 		InstanceDefn = InstanceDefn0,
 		ClassId = class_id(ClassName, _ClassArity),
-		prog_out__sym_name_to_string(MethodName, MethodNameString),
-		prog_out__sym_name_to_string(ClassName, ClassNameString),
+		mdbcomp__prim_data__sym_name_to_string(MethodName, 
+			MethodNameString),
+		mdbcomp__prim_data__sym_name_to_string(ClassName, 
+			ClassNameString),
 		pred_or_func_to_string(PredOrFunc, PredOrFuncString),
 		string__int_to_string(Arity, ArityString),
 		InstanceTypesString = mercury_type_list_to_string(
@@ -562,8 +565,10 @@ check_instance_pred_procs(ClassId, ClassVars, MethodName, Markers,
 		OrderedInstanceMethods = OrderedInstanceMethods0,
 		InstanceDefn = InstanceDefn0,
 		ClassId = class_id(ClassName, _ClassArity),
-		prog_out__sym_name_to_string(MethodName, MethodNameString),
-		prog_out__sym_name_to_string(ClassName, ClassNameString),
+		mdbcomp__prim_data__sym_name_to_string(MethodName, 
+			MethodNameString),
+		mdbcomp__prim_data__sym_name_to_string(ClassName, 
+			ClassNameString),
 		pred_or_func_to_string(PredOrFunc, PredOrFuncString),
 		string__int_to_string(Arity, ArityString),
 		InstanceTypesString = mercury_type_list_to_string(
@@ -779,8 +784,10 @@ apply_substitution_to_var_list(Vars0, RenameSubst, Vars) :-
 make_introduced_pred_name(ClassId, MethodName, Arity,
 		InstanceTypes, PredName) :-
 	ClassId = class_id(ClassName, _ClassArity),
-	prog_out__sym_name_to_string(ClassName, "__", ClassNameString),
-	prog_out__sym_name_to_string(MethodName, "__", MethodNameString),
+	mdbcomp__prim_data__sym_name_to_string(ClassName, "__", 
+		ClassNameString),
+	mdbcomp__prim_data__sym_name_to_string(MethodName, "__", 
+		MethodNameString),
 		% Perhaps we should include the arity in this mangled
 		% string?
 	string__int_to_string(Arity, ArityString),
@@ -852,7 +859,8 @@ check_superclass_conformance(ClassId, SuperClasses0, ClassVars0, ClassVarSet,
 	;
 		UnprovenConstraints = [_ | _],
 		ClassId = class_id(ClassName, _ClassArity),
-		prog_out__sym_name_to_string(ClassName, ClassNameString),
+		mdbcomp__prim_data__sym_name_to_string(ClassName, 
+			ClassNameString),
 		InstanceTypesString = mercury_type_list_to_string(
 			InstanceVarSet2, InstanceTypes),
 		constraint_list_to_string(ClassVarSet, UnprovenConstraints,

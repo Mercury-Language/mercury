@@ -684,7 +684,7 @@ debug_test_id(enum_test) 	--> debug_string("enum").
 :- pred output_module_id(byte_module_id::in, io::di, io::uo) is det.
 
 output_module_id(ModuleId) -->
-	{ prog_out__sym_name_to_string(ModuleId, ModuleIdString) },
+	{ mdbcomp__prim_data__sym_name_to_string(ModuleId, ModuleIdString) },
 	output_string(ModuleIdString).
 
 :- pred debug_module_id(byte_module_id::in, io::di, io::uo) is det.

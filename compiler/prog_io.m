@@ -308,8 +308,10 @@ prog_io__read_opt_file(FileName, DefaultModuleName, Error, Messages, Items,
 
 check_module_has_expected_name(FileName, ExpectedName, ActualName, !IO) :-
 	( ActualName \= ExpectedName ->
-		prog_out__sym_name_to_string(ActualName, ActualString),
-		prog_out__sym_name_to_string(ExpectedName, ExpectedString),
+		mdbcomp__prim_data__sym_name_to_string(ActualName, 
+			ActualString),
+		mdbcomp__prim_data__sym_name_to_string(ExpectedName, 
+			ExpectedString),
 		io__write_strings([
 			"Error: file `", FileName,
 				"' contains the wrong module.\n",
@@ -720,7 +722,7 @@ read_first_item(DefaultModuleName, SourceFileName, ModuleName,
 			ModuleName = StartModuleName,
 			Messages = []
 		;
-			prog_out__sym_name_to_string(StartModuleName,
+			mdbcomp__prim_data__sym_name_to_string(StartModuleName,
 				StartModuleNameString),
 			string__append_list(["source file `", SourceFileName,
 				"' contains module named `",
