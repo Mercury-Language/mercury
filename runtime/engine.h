@@ -13,7 +13,7 @@
 #define	MAXFLAG		9
 /* DETAILFLAG should be the last real flag */
 
-#define	progdebug	debugflag[GOTOFLAG]
+#define	progdebug	debugflag[PROGFLAG]
 #define	gotodebug	debugflag[GOTOFLAG]
 #define	calldebug	debugflag[CALLFLAG]
 #define	heapdebug	debugflag[HEAPFLAG]
