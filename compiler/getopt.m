@@ -150,6 +150,11 @@ process_short_option_2(int(_), _Flag, _Opts, Args, _OptionTable0, Args,
 		Result) :-
 			% XXX improve error message
 	Result = error("option in group requires an argument").
+process_short_option_2(accumulating(_), _Flag, _Opts, Args, _OptionTable0, Args,
+		Result) :-
+			% XXX improve error message
+	Result = error("option in group requires an argument").
+
 
 :- pred process_option(option, list(string), option_table,
 			list(string), maybe_option_table).
