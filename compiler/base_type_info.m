@@ -36,7 +36,7 @@
 :- implementation.
 
 :- import_module prog_data, hlds_data, hlds_pred, hlds_out.
-:- import_module llds, code_util, globals, special_pred.
+:- import_module llds, code_util, globals, special_pred, options.
 :- import_module bool, string, list, map, std_util, require.
 
 %---------------------------------------------------------------------------%
@@ -121,9 +121,17 @@ base_type_info__construct_base_type_infos([BaseGenInfo | BaseGenInfos],
 	;
 		Exported = no
 	),
-	base_type_info__construct_layout(ModuleInfo, TypeName, TypeArity, 
-		LayoutArg),
-	list__append(PredAddrArgs, [LayoutArg], FinalArgs),
+	module_info_globals(ModuleInfo, Globals),
+	globals__lookup_bool_option(Globals, type_layout, TypeLayoutOption),
+	(
+		TypeLayoutOption = yes
+	->
+		base_type_info__construct_layout(ModuleInfo, TypeName,
+			TypeArity, LayoutArg),
+		list__append(PredAddrArgs, [LayoutArg], FinalArgs)
+	;
+		FinalArgs = PredAddrArgs
+	),
 	CModule = c_data(ModuleName, base_type_info(TypeName, TypeArity),
 		yes, Exported, [ArityArg | FinalArgs], Procs),
 	base_type_info__construct_base_type_infos(BaseGenInfos, ModuleInfo,

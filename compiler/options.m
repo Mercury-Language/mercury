@@ -111,6 +111,7 @@
 				% `--num-tag-bits'.
 		;	args
 		;	type_info
+		;	type_layout
 		;	highlevel_c
 		;	unboxed_float
 	% Code generation options
@@ -320,6 +321,7 @@ option_defaults_2(compilation_model_option, [
 					% at configuration time
 	args			-	string("compact"),
 	type_info		-	string("default"),
+	type_layout		-	bool(yes),
 	highlevel_c		-	bool(no),
 	unboxed_float		-	bool(no)
 ]).
@@ -574,6 +576,7 @@ long_option("args",			args).
 long_option("arg-convention",		args).
 long_option("type-info",		type_info).
 long_option("type-info-convention",	type_info).
+long_option("type-layout",		type_layout).
 long_option("highlevel-C",		highlevel_c).
 long_option("highlevel-c",		highlevel_c).
 long_option("high-level-C",		highlevel_c).
@@ -1229,6 +1232,11 @@ options_help_compilation_model -->
 	io__write_string("\t\tone-cell requires the C code to be compiled with the relevant\n"),
 	io__write_string("\t\toption from `-DDEFAULT_TYPE_INFO', `-DONE_OR_TWO_CELL_TYPE_INFO'\n"),
 	io__write_string("\t\tand `-DSHARED_ONE_OR_TWO_CELL_TYPE_INFO'.\n"),
+	io__write_string("\t--no-type-layout\n"),
+	io__write_string("\t(This option is not for general use.)\n"),
+	io__write_string("\t\tDon't output base_type_layout structures or references\n"),
+	io__write_string("\t\tto them. (The C code also needs to be compiled with\n"),
+	io__write_string("\t\t`-DNO_TYPE_LAYOUT').\n"),
 	io__write_string("\t--single-prec-float\n"),
 	io__write_string("\t--unboxed-float\n"),
 	io__write_string("\t(This option is not for general use.)\n"),

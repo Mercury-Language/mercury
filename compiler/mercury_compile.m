@@ -1000,7 +1000,11 @@ mercury_compile__maybe_base_type_infos(HLDS0, Verbose, Stats, HLDS) -->
 
 mercury_compile__maybe_base_type_layouts(HLDS0, Verbose, Stats, HLDS) -->
 	globals__io_get_type_info_method(TypeInfoMethod),
-	( { TypeInfoMethod = shared_one_or_two_cell } ->
+	globals__io_lookup_bool_option(type_layout, TypeLayoutOption),
+	( 
+		{ TypeInfoMethod = shared_one_or_two_cell, 
+		  TypeLayoutOption = yes } 
+	->
 		maybe_write_string(Verbose,
 			"% Generating base_type_layout structures..."),
 		maybe_flush_output(Verbose),
@@ -1648,6 +1652,12 @@ mercury_compile__single_c_to_obj(ModuleName, Succeeded) -->
 	; TypeInfoMethod = one_or_two_cell,
 		TypeInfoOpt = "-DONE_OR_TWO_CELL_TYPEINFO "
 	},
+	globals__io_lookup_bool_option(type_layout, TypeLayoutOption),
+	{ TypeLayoutOption = no ->
+		TypeLayoutOpt = "-DNO_TYPE_LAYOUT"
+	;
+		TypeLayoutOpt = ""
+	},
 	globals__io_lookup_bool_option(c_optimize, C_optimize),
 	{ C_optimize = yes, Debug = no ->
 		( CompilerType = gcc ->
@@ -1687,7 +1697,7 @@ mercury_compile__single_c_to_obj(ModuleName, Succeeded) -->
 		RegOpt, GotoOpt, AsmOpt,
 		CFLAGS_FOR_REGS, " ", CFLAGS_FOR_GOTOS, " ",
 		GC_Opt, ProfileOpt, TagsOpt, NumTagBitsOpt, DebugOpt,
-		ConstraintsOpt, ArgsOpt, TypeInfoOpt,
+		ConstraintsOpt, ArgsOpt, TypeInfoOpt, TypeLayoutOpt,
 		InlineAllocOpt, WarningOpt, CFLAGS,
 		" -c ", C_File, " -o ", O_File], Command) },
 	invoke_system_command(Command, Succeeded),
