@@ -1966,8 +1966,12 @@ ml_gen_negation(Cond, CodeModel, Context,
 
 ml_gen_conj([], CodeModel, Context, [], MLDS_Statements) -->
 	ml_gen_success(CodeModel, Context, MLDS_Statements).
+ml_gen_conj([SingleGoal], CodeModel, _Context,
+		MLDS_Decls, MLDS_Statements) -->
+	ml_gen_goal(CodeModel, SingleGoal, MLDS_Decls, MLDS_Statements).
 ml_gen_conj([First | Rest], CodeModel, Context,
 		MLDS_Decls, MLDS_Statements) -->
+	{ Rest = [_ | _] },
 	{ First = _ - FirstGoalInfo },
 	{ goal_info_get_code_model(FirstGoalInfo, FirstCodeModel) },
 	(
