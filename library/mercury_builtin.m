@@ -182,7 +182,7 @@
 :- mode call(pred(in,  out, out) is multi,   in,  out, out) is multi.
 :- mode call(pred(in,  out, out) is nondet,  in,  out, out) is nondet.
 
-:- mode call(pred(uo,  uo,  uo) is det,      uo,  uo,  uo) is det.
+:- mode call(pred(uo,  uo,  uo) is det,      uo,  uo,  uo)  is det.
 
 :- mode call(pred(out, out, out) is det,     out, out, out) is det.
 :- mode call(pred(out, out, out) is semidet, out, out, out) is semidet.
@@ -207,19 +207,106 @@
 :- mode call(pred(in,  in,  out, out) is multi,   in,  in,  out, out) is multi.
 :- mode call(pred(in,  in,  out, out) is nondet,  in,  in,  out, out) is nondet.
 
-:- mode call(pred(di,  uo,  uo,  uo)  is det,      di,  uo,  uo,  uo) is det.
+:- mode call(pred(di,  uo,  uo,  uo)  is det,     di,  uo,  uo,  uo)  is det.
 
 :- mode call(pred(in,  out, out, out) is det,     in,  out, out, out) is det.
 :- mode call(pred(in,  out, out, out) is semidet, in,  out, out, out) is semidet.
 :- mode call(pred(in,  out, out, out) is multi,   in,  out, out, out) is multi.
 :- mode call(pred(in,  out, out, out) is nondet,  in,  out, out, out) is nondet.
 
-:- mode call(pred(uo,  uo,  uo,  uo)  is det,      uo,  uo,  uo,  uo) is det.
+:- mode call(pred(uo,  uo,  uo,  uo)  is det,     uo,  uo,  uo,  uo)  is det.
 
 :- mode call(pred(out, out, out, out) is det,     out, out, out, out) is det.
 :- mode call(pred(out, out, out, out) is semidet, out, out, out, out) is semidet.
 :- mode call(pred(out, out, out, out) is multi,   out, out, out, out) is multi.
 :- mode call(pred(out, out, out, out) is nondet,  out, out, out, out) is nondet.
+
+:- pred call(pred(T1, T2, T3, T4, T5), T1, T2, T3, T4, T5).
+
+:- mode call(pred(in,  in,  in,  in,  in)  is semidet, in,  in,  in,  in,  in)  is semidet.
+
+:- mode call(pred(di,  di,  di,  di,  uo)  is det,     di,  di,  di,  di,  uo)  is det.
+
+:- mode call(pred(in,  in,  in,  in,  out) is det,     in,  in,  in,  in,  out) is det.
+:- mode call(pred(in,  in,  in,  in,  out) is semidet, in,  in,  in,  in,  out) is semidet.
+:- mode call(pred(in,  in,  in,  in,  out) is multi,   in,  in,  in,  in,  out) is multi.
+:- mode call(pred(in,  in,  in,  in,  out) is nondet,  in,  in,  in,  in,  out) is nondet.
+ 
+:- mode call(pred(di,  di,  di,  uo,  uo)  is det,     di,  di,  di,  uo,  uo)  is det.
+
+:- mode call(pred(in,  in,  in,  out, out) is det,     in,  in,  in,  out, out) is det.
+:- mode call(pred(in,  in,  in,  out, out) is semidet, in,  in,  in,  out, out) is semidet.
+:- mode call(pred(in,  in,  in,  out, out) is multi,   in,  in,  in,  out, out) is multi.
+:- mode call(pred(in,  in,  in,  out, out) is nondet,  in,  in,  in,  out, out) is nondet.
+
+:- mode call(pred(di,  di,  uo,  uo,  uo)  is det,     di,  di,  uo,  uo,  uo)  is det.
+
+:- mode call(pred(in,  in,  out, out, out) is det,     in,  in,  out, out, out) is det.
+:- mode call(pred(in,  in,  out, out, out) is semidet, in,  in,  out, out, out) is semidet.
+:- mode call(pred(in,  in,  out, out, out) is multi,   in,  in,  out, out, out) is multi.
+:- mode call(pred(in,  in,  out, out, out) is nondet,  in,  in,  out, out, out) is nondet.
+
+:- mode call(pred(di,  uo,  uo,  uo,  uo)  is det,     di,  uo,  uo,  uo,  uo)  is det.
+
+:- mode call(pred(in,  out, out, out, out) is det,     in,  out, out, out, out) is det.
+:- mode call(pred(in,  out, out, out, out) is semidet, in,  out, out, out, out) is semidet.
+:- mode call(pred(in,  out, out, out, out) is multi,   in,  out, out, out, out) is multi.
+:- mode call(pred(in,  out, out, out, out) is nondet,  in,  out, out, out, out) is nondet.
+
+:- mode call(pred(uo,  uo,  uo,  uo,  uo)  is det,     uo,  uo,  uo,  uo,  uo)  is det.
+
+:- mode call(pred(out, out, out, out, out) is det,     out, out, out, out, out) is det.
+:- mode call(pred(out, out, out, out, out) is semidet, out, out, out, out, out) is semidet.
+:- mode call(pred(out, out, out, out, out) is multi,   out, out, out, out, out) is multi.
+:- mode call(pred(out, out, out, out, out) is nondet,  out, out, out, out, out) is nondet.
+
+:- pred call(pred(T1, T2, T3, T4, T5, T6), T1, T2, T3, T4, T5, T6).
+
+:- mode call(pred(in,  in,  in,  in,  in,  in)  is semidet, in,  in,  in,  in,  in,  in)  is semidet.
+
+:- mode call(pred(di,  di,  di,  di,  di,  uo)  is det,     di,  di,  di,  di,  di,  uo)  is det.
+
+:- mode call(pred(in,  in,  in,  in,  in,  out) is det,     in,  in,  in,  in,  in,  out) is det.
+:- mode call(pred(in,  in,  in,  in,  in,  out) is semidet, in,  in,  in,  in,  in,  out) is semidet.
+:- mode call(pred(in,  in,  in,  in,  in,  out) is multi,   in,  in,  in,  in,  in,  out) is multi.
+:- mode call(pred(in,  in,  in,  in,  in,  out) is nondet,  in,  in,  in,  in,  in,  out) is nondet.
+ 
+:- mode call(pred(di,  di,  di,  di,  uo,  uo)  is det,     di,  di,  di,  di,  uo,  uo)  is det.
+
+:- mode call(pred(in,  in,  in,  in,  out, out) is det,     in,  in,  in,  in,  out, out) is det.
+:- mode call(pred(in,  in,  in,  in,  out, out) is semidet, in,  in,  in,  in,  out, out) is semidet.
+:- mode call(pred(in,  in,  in,  in,  out, out) is multi,   in,  in,  in,  in,  out, out) is multi.
+:- mode call(pred(in,  in,  in,  in,  out, out) is nondet,  in,  in,  in,  in,  out, out) is nondet.
+
+:- mode call(pred(di,  di,  di,  uo,  uo,  uo)  is det,     di,  di,  di,  uo,  uo,  uo)  is det.
+
+:- mode call(pred(in,  in,  in,  out, out, out) is det,     in,  in,  in,  out, out, out) is det.
+:- mode call(pred(in,  in,  in,  out, out, out) is semidet, in,  in,  in,  out, out, out) is semidet.
+:- mode call(pred(in,  in,  in,  out, out, out) is multi,   in,  in,  in,  out, out, out) is multi.
+:- mode call(pred(in,  in,  in,  out, out, out) is nondet,  in,  in,  in,  out, out, out) is nondet.
+
+:- mode call(pred(di,  di,  uo,  uo,  uo,  uo)  is det,     di,  di,  uo,  uo,  uo,  uo)  is det.
+
+:- mode call(pred(in,  in,  out, out, out, out) is det,     in,  in,  out, out, out, out) is det.
+:- mode call(pred(in,  in,  out, out, out, out) is semidet, in,  in,  out, out, out, out) is semidet.
+:- mode call(pred(in,  in,  out, out, out, out) is multi,   in,  in,  out, out, out, out) is multi.
+:- mode call(pred(in,  in,  out, out, out, out) is nondet,  in,  in,  out, out, out, out) is nondet.
+
+:- mode call(pred(di,  uo,  uo,  uo,  uo,  uo)  is det,     di,  uo,  uo,  uo,  uo,  uo)  is det.
+
+:- mode call(pred(in,  out, out, out, out, out) is det,     in,  out, out, out, out, out) is det.
+:- mode call(pred(in,  out, out, out, out, out) is semidet, in,  out, out, out, out, out) is semidet.
+:- mode call(pred(in,  out, out, out, out, out) is multi,   in,  out, out, out, out, out) is multi.
+:- mode call(pred(in,  out, out, out, out, out) is nondet,  in,  out, out, out, out, out) is nondet.
+
+:- mode call(pred(uo,  uo,  uo,  uo,  uo,  uo)  is det,     uo,  uo,  uo,  uo,  uo,  uo)  is det.
+
+:- mode call(pred(out, out, out, out, out, out) is det,     out, out, out, out, out, out) is det.
+:- mode call(pred(out, out, out, out, out, out) is semidet, out, out, out, out, out, out) is semidet.
+:- mode call(pred(out, out, out, out, out, out) is multi,   out, out, out, out, out, out) is multi.
+:- mode call(pred(out, out, out, out, out, out) is nondet,  out, out, out, out, out, out) is nondet.
+
+:- mode call(pred(in,  in,  in,  di,  out, uo)  is det,     in,  in,  in,  di,  out, uo)  is det.
 
 % In addition, the following predicate-like constructs are builtin:
 %

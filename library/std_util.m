@@ -162,8 +162,9 @@ univ_to_type(Univ, X) :- type_to_univ(X, Univ).
 	time_at_last_stat = get_run_time();
 
 	fprintf(stderr, 
-		""[Time: %.3fs, D Stack: %.3fk, ND Stack: %.3fk, "",
+		""[Time: +%.3fs, %.3fs, D Stack: %.3fk, ND Stack: %.3fk, "",
 		(time_at_last_stat - time_at_prev_stat) / 1000.0,
+		(time_at_last_stat - time_at_start) / 1000.0,
 		((char *) sp - (char *) detstackmin) / 1024.0,
 		((char *) maxfr - (char *) nondstackmin) / 1024.0
 	);
