@@ -635,13 +635,13 @@ post_typecheck__finish_assertion(Module0, PredId, Module) -->
 	(
 		{ pred_info_is_exported(PredInfo) }
 	->
-		assertion__in_interface_check(Goal, PredInfo, Module2)
+		assertion__in_interface_check(Goal, PredInfo, Module2, Module3)
 	;
-		[]
+		{ Module3 = Module2 }
 	),
 
 		% record which predicates are used in assertions
-	{ assertion__record_preds_used_in(Goal, AssertionId, Module2, Module) }.
+	{ assertion__record_preds_used_in(Goal, AssertionId, Module3, Module) }.
 	
 
 	% 

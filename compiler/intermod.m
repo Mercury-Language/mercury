@@ -655,7 +655,7 @@ intermod_info_add_proc(PredId, DoWrite) -->
 		{ set__insert(PredDecls0, PredId, PredDecls) },
 		intermod_info_set_pred_decls(PredDecls)
 	;
-		{ Status = imported
+		{ Status = imported(_)
 		; Status = opt_imported
 		}
 	->
@@ -880,7 +880,7 @@ intermod__gather_proc_modes(ModuleInfo, ModeTable,
 			{ set__insert(ModesToExport0, ModeId,
 							ModesToExport) },
 			intermod_info_set_modes(ModesToExport) 
-		; { Status = imported } ->
+		; { Status = imported(_) } ->
 			(
 				{ Name = qualified(Module, _) },
 				intermod_info_get_modules(Modules0),
@@ -924,7 +924,7 @@ intermod__add_inst(UserInstTable, Inst) -->
 			{ set__insert(InstsToExport0, InstId,
 							InstsToExport) },
 			intermod_info_set_insts(InstsToExport)
-		; { Status = imported } ->
+		; { Status = imported(_) } ->
 			( { Name = qualified(Module, _) } ->
 				intermod_info_get_modules(Modules0),
 				{ set__insert(Modules0, Module, Modules) },

@@ -784,19 +784,21 @@
 		% such items need to be exported to the
 		% sub-modules.
 
-	;	imported
+	;	imported(section)
 		% This is used internally by the compiler,
 		% to identify declarations which originally
 		% came from some other module imported with 
-		% a `:- import_module' declaration.
-	;	used
+		% a `:- import_module' declaration, and which
+		% section the module was imported.
+	;	used(section)
 		% This is used internally by the compiler,
 		% to identify declarations which originally
 		% came from some other module and for which
 		% all uses must be module qualified. This
 		% applies to items from modules imported using
 		% `:- use_module', and items from `.opt'
-		% and `.int2' files.
+		% and `.int2' files. It also records from which
+		% section the module was imported.
 	;	opt_imported
 		% This is used internally by the compiler,
 		% to identify items which originally
@@ -809,6 +811,10 @@
 	;	use(sym_list)
 
 	;	include_module(list(module_name)).
+
+:- type section
+	--->	implementation
+	;	interface.
 
 :- type sym_list	
 	--->	sym(list(sym_specifier))

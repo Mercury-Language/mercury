@@ -2207,8 +2207,10 @@ hlds_out__write_import_status(abstract_exported) -->
 	io__write_string("abstract_exported").
 hlds_out__write_import_status(pseudo_exported) -->
 	io__write_string("pseudo_exported").
-hlds_out__write_import_status(imported) -->
-	io__write_string("imported").
+hlds_out__write_import_status(imported(interface)) -->
+	io__write_string("imported in the interface").
+hlds_out__write_import_status(imported(implementation)) -->
+	io__write_string("imported in the implementation").
 hlds_out__write_import_status(abstract_imported) -->
 	io__write_string("abstract_imported").
 hlds_out__write_import_status(opt_imported) -->

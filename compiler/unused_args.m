@@ -1029,7 +1029,7 @@ make_imported_unused_args_pred_infos([OptProc | OptProcs],
 	module_info_pred_proc_info(ModuleInfo0,
 		PredId, ProcId, PredInfo0, ProcInfo0),
 	make_new_pred_info(ModuleInfo0, PredInfo0, UnusedArgs,
-		"__ua", imported, OptProc, NewPredInfo0),
+		"__ua", imported(interface), OptProc, NewPredInfo0),
 	pred_info_procedures(NewPredInfo0, NewProcs0),
 	next_mode_id(NewProcs0, no, NewProcId),
 

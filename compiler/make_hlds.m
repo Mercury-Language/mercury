@@ -562,11 +562,11 @@ module_defn_update_import_status(implementation,
 		item_status(local, may_be_unqualified)).
 module_defn_update_import_status(private_interface,
 		item_status(exported_to_submodules, may_be_unqualified)).
-module_defn_update_import_status(imported, 
-		item_status(imported, may_be_unqualified)).
-module_defn_update_import_status(used, 
-		item_status(imported, must_be_qualified)).
-module_defn_update_import_status(opt_imported, 
+module_defn_update_import_status(imported(Section),
+		item_status(imported(Section), may_be_unqualified)).
+module_defn_update_import_status(used(Section),
+		item_status(imported(Section), must_be_qualified)).
+module_defn_update_import_status(opt_imported,
 		item_status(opt_imported, must_be_qualified)).
 
 %-----------------------------------------------------------------------------%
@@ -581,7 +581,7 @@ module_defn_update_import_status(opt_imported,
 
 maybe_enable_aditi_compilation(Status, Context, Module0, Module) -->
 	{ Status = item_status(ItemStatus, _) },
-	( { ItemStatus \= imported } ->
+	( { ItemStatus \= imported(_) } ->
 		globals__io_lookup_bool_option(aditi, Aditi),
 		( { Aditi = no } ->
 			prog_out__write_context(Context),
@@ -1863,7 +1863,7 @@ module_add_type_defn(Module0, TVarSet, TypeDefn, _Cond, Context,
 make_status_abstract(Status, AbstractStatus) :-
 	( Status = exported ->
 		AbstractStatus = abstract_exported
-	; Status = imported ->
+	; Status = imported(_) ->
 		AbstractStatus = abstract_imported
 	;
 		AbstractStatus = Status
@@ -1882,7 +1882,7 @@ combine_status(StatusA, StatusB, Status) :-
 :- pred combine_status_2(import_status, import_status, import_status).
 :- mode combine_status_2(in, in, out) is semidet.
 
-combine_status_2(imported, Status2, Status) :-
+combine_status_2(imported(_), Status2, Status) :-
 	combine_status_imported(Status2, Status).
 combine_status_2(local, Status2, Status) :-
 	combine_status_local(Status2, Status).
@@ -1897,17 +1897,17 @@ combine_status_2(abstract_exported, Status2, Status) :-
 :- pred combine_status_imported(import_status, import_status).
 :- mode combine_status_imported(in, out) is semidet.
 
-combine_status_imported(imported,	imported).
-combine_status_imported(local,		imported).
-combine_status_imported(exported,	exported).
-combine_status_imported(opt_imported,	opt_imported).
-combine_status_imported(abstract_imported, imported).
-combine_status_imported(abstract_exported, abstract_exported).
+combine_status_imported(imported(Section),	imported(Section)).
+combine_status_imported(local,			imported(implementation)).
+combine_status_imported(exported,		exported).
+combine_status_imported(opt_imported,		opt_imported).
+combine_status_imported(abstract_imported,	imported(interface)).
+combine_status_imported(abstract_exported,	abstract_exported).
 
 :- pred combine_status_local(import_status, import_status).
 :- mode combine_status_local(in, out) is semidet.
 
-combine_status_local(imported,		local).
+combine_status_local(imported(_),	local).
 combine_status_local(local,		local).
 combine_status_local(exported,		exported).
 combine_status_local(opt_imported,	local).
@@ -1928,8 +1928,8 @@ combine_status_abstract_exported(Status2, Status) :-
 :- mode combine_status_abstract_imported(in, out) is det.
 
 combine_status_abstract_imported(Status2, Status) :-
-	( Status2 = imported ->
-		Status = imported
+	( Status2 = imported(Section) ->
+		Status = imported(Section)
 	;
 		Status = abstract_imported
 	).
@@ -2056,7 +2056,7 @@ module_add_pred(Module0, TypeVarSet, InstVarSet, ExistQVars, PredName,
 	% that the compiler doesn't look for clauses for other preds read in
 	% from optimization interfaces.
 	{ Status = opt_imported ->
-		DeclStatus = imported
+		DeclStatus = imported(interface)
 	;
 		DeclStatus = Status
 	},
@@ -2099,7 +2099,7 @@ module_add_func(Module0, TypeVarSet, InstVarSet, ExistQVars, FuncName,
 	% Only funcs with opt_imported clauses are tagged as opt_imported, so
 	% that the compiler doesn't look for clauses for other preds.
 	{ Status = opt_imported ->
-		DeclStatus = imported
+		DeclStatus = imported(interface)
 	;
 		DeclStatus = Status
 	},
@@ -2577,7 +2577,7 @@ add_special_pred(SpecialPredId,
 	map__lookup(Preds0, PredId, PredInfo0),
 	% if the type was imported, then the special preds for that
 	% type should be imported too
-	( (Status = imported ; Status = pseudo_imported) ->
+	( (Status = imported(_) ; Status = pseudo_imported) ->
 		pred_info_set_import_status(PredInfo0, Status, PredInfo1)
 	;
 		PredInfo1 = PredInfo0
@@ -2648,7 +2648,7 @@ add_special_pred_decl(SpecialPredId,
 
 adjust_special_pred_status(Status0, SpecialPredId, Status) :-
 	( ( Status0 = opt_imported ; Status0 = abstract_imported ) ->
-		Status1 = imported
+		Status1 = imported(interface)
 	; Status0 = abstract_exported ->
 		Status1 = exported
 	;
@@ -2658,7 +2658,7 @@ adjust_special_pred_status(Status0, SpecialPredId, Status) :-
 	% unification predicates are special - they are 
 	% "pseudo"-imported/exported (only mode 0 is imported/exported).
 	( SpecialPredId = unify ->
-		( Status1 = imported ->
+		( Status1 = imported(_) ->
 			Status = pseudo_imported
 		; Status1 = exported ->
 			Status = pseudo_exported

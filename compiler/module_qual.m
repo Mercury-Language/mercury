@@ -99,7 +99,7 @@
 %-----------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module type_util, prog_out.
+:- import_module type_util, prog_io, prog_out.
 :- import_module prog_util, mercury_to_mercury, modules, globals, options.
 :- import_module (inst), instmap.
 :- import_module int, map, require, set, std_util, string, term, varset.
@@ -198,7 +198,32 @@ collect_mq_info_2(func(_,_,__,_,_,_,_,_,_,_), Info, Info).
 collect_mq_info_2(pred_mode(_,_,_,_,_), Info, Info).
 collect_mq_info_2(func_mode(_,_,_,_,_,_), Info, Info).
 collect_mq_info_2(pragma(_), Info, Info).
-collect_mq_info_2(assertion(_, _), Info, Info).
+collect_mq_info_2(assertion(Goal, _ProgVarSet), Info0, Info) :-
+	process_assert(Goal, SymNames, Success),
+	(
+		Success = yes,
+		list__foldl((pred(SymName::in, I0::in, I::out) is det :- 
+				(
+					SymName = qualified(ModuleName, _)
+				->
+					mq_info_set_module_used(I0,
+							ModuleName, I)
+				;
+					error("collect_mq_info_2: SymName not qualified.")
+				)
+			), 
+			SymNames, Info0, Info)
+	;
+			% Any unqualified symbol in the assertion might
+			% come from *any* of the imported modules.
+			% There's no way for us to tell which ones.  So
+			% we conservatively assume that it uses all of
+			% them. 
+		Success = no,
+		set__init(UnusedInterfaceModules),
+		mq_info_set_unused_interface_modules(Info0,
+				UnusedInterfaceModules, Info)
+	).
 collect_mq_info_2(nothing, Info, Info).
 collect_mq_info_2(typeclass(_, Name, Vars, _, _), Info0, Info) :-
 	add_typeclass_defn(Name, Vars, Info0, Info).
@@ -277,10 +302,10 @@ process_module_defn(private_interface, Info0, Info) :-
 	mq_info_set_import_status(Info0, not_exported, Info).
 process_module_defn(implementation, Info0, Info) :-
 	mq_info_set_import_status(Info0, not_exported, Info).
-process_module_defn(imported, Info0, Info) :-
+process_module_defn(imported(_), Info0, Info) :-
 	mq_info_set_import_status(Info0, not_exported, Info1),
 	mq_info_set_need_qual_flag(Info1, may_be_unqualified, Info).
-process_module_defn(used, Info0, Info) :-
+process_module_defn(used(_), Info0, Info) :-
 	mq_info_set_import_status(Info0, not_exported, Info1),
 	mq_info_set_need_qual_flag(Info1, must_be_qualified, Info).
 process_module_defn(opt_imported, Info0, Info) :-
@@ -318,6 +343,125 @@ add_imports(Imports, Info0, Info) :-
 	;
 		Info = Info0
 	).
+
+%------------------------------------------------------------------------------
+
+	% process_assert(G, SNs, B)
+	%
+	% Scan the goal, G, building the list of qualified symbols, SNs.
+	% If there exists a single unqualifed symbol in G, the bool, B,
+	% will be set to no.
+:- pred process_assert(goal::in, list(sym_name)::out, bool::out) is det.
+
+	% AAA Some more stuff to do accumulator introduction on, it
+	% would be better to rewrite using maybes and then to declare
+	% the maybe_and predicate to be associative.
+	% NB. accumulator introduction doesn't work on this case yet.
+process_assert((GA , GB) - _, Symbols, Success) :-
+	process_assert(GA, SymbolsA, SuccessA),
+	process_assert(GB, SymbolsB, SuccessB),
+	list__append(SymbolsA, SymbolsB, Symbols),
+	bool__and(SuccessA, SuccessB, Success).
+process_assert(true - _, [], yes).
+process_assert((GA & GB) - _, Symbols, Success) :-
+	process_assert(GA, SymbolsA, SuccessA),
+	process_assert(GB, SymbolsB, SuccessB),
+	list__append(SymbolsA, SymbolsB, Symbols),
+	bool__and(SuccessA, SuccessB, Success).
+process_assert((GA ; GB) - _, Symbols, Success) :-
+	process_assert(GA, SymbolsA, SuccessA),
+	process_assert(GB, SymbolsB, SuccessB),
+	list__append(SymbolsA, SymbolsB, Symbols),
+	bool__and(SuccessA, SuccessB, Success).
+process_assert(fail - _, [], yes).
+process_assert(some(_, G) - _, Symbols, Success) :-
+	process_assert(G, Symbols, Success).
+process_assert(all(_, G) - _, Symbols, Success) :-
+	process_assert(G, Symbols, Success).
+process_assert(implies(GA, GB) - _, Symbols, Success) :-
+	process_assert(GA, SymbolsA, SuccessA),
+	process_assert(GB, SymbolsB, SuccessB),
+	list__append(SymbolsA, SymbolsB, Symbols),
+	bool__and(SuccessA, SuccessB, Success).
+process_assert(equivalent(GA, GB) - _, Symbols, Success) :-
+	process_assert(GA, SymbolsA, SuccessA),
+	process_assert(GB, SymbolsB, SuccessB),
+	list__append(SymbolsA, SymbolsB, Symbols),
+	bool__and(SuccessA, SuccessB, Success).
+process_assert(not(G) - _, Symbols, Success) :-
+	process_assert(G, Symbols, Success).
+process_assert(if_then(_, GA, GB) - _, Symbols, Success) :-
+	process_assert(GA, SymbolsA, SuccessA),
+	process_assert(GB, SymbolsB, SuccessB),
+	list__append(SymbolsA, SymbolsB, Symbols),
+	bool__and(SuccessA, SuccessB, Success).
+process_assert(if_then_else(_, GA, GB, GC) - _, Symbols, Success) :-
+	process_assert(GA, SymbolsA, SuccessA),
+	process_assert(GB, SymbolsB, SuccessB),
+	process_assert(GC, SymbolsC, SuccessC),
+	list__append(SymbolsA, SymbolsB, Symbols0),
+	list__append(Symbols0, SymbolsC, Symbols),
+	bool__and(SuccessA, SuccessB, Success0),
+	bool__and(Success0, SuccessC, Success).
+process_assert(call(SymName, Args0, _) - _, Symbols, Success) :-
+	(
+		SymName = qualified(_, _)
+	->
+		list__map(term__coerce, Args0, Args),
+		(
+			term_qualified_symbols_list(Args, Symbols0)
+		->
+			Symbols = [SymName | Symbols0],
+			Success = yes
+		;
+			Symbols = [],
+			Success = no
+		)
+	;
+		Symbols = [],
+		Success = no
+	).
+process_assert(unify(LHS0, RHS0) - _, Symbols, Success) :-
+	term__coerce(LHS0, LHS),
+	term__coerce(RHS0, RHS),
+	(
+		term_qualified_symbols(LHS, SymbolsL),
+		term_qualified_symbols(RHS, SymbolsR)
+	->
+		list__append(SymbolsL, SymbolsR, Symbols),
+		Success = yes
+	;
+		Symbols = [],
+		Success = no
+	).
+
+	% term_qualified_symbols(T, S)
+	%
+	% Given a term, T, return the list of all the sym_names, S, in
+	% the term.  The predicate fails if any sub-term of T is
+	% unqualified.
+:- pred term_qualified_symbols(term::in, list(sym_name)::out) is semidet.
+
+term_qualified_symbols(Term, Symbols) :-
+	(
+		sym_name_and_args(Term, SymName, Args)
+	->
+		SymName = qualified(_, _),
+		term_qualified_symbols_list(Args, Symbols0),
+		Symbols = [SymName | Symbols0]
+	;
+		Symbols = []
+	).
+
+:- pred term_qualified_symbols_list(list(term)::in,
+		list(sym_name)::out) is semidet.
+
+	% Yeah one more place where accumulators will be introduced!
+term_qualified_symbols_list([], []).
+term_qualified_symbols_list([Term | Terms], Symbols) :-
+	term_qualified_symbols(Term, TermSymbols),
+	term_qualified_symbols_list(Terms, Symbols0),
+	list__append(Symbols0, TermSymbols, Symbols).
 
 %------------------------------------------------------------------------------
 
@@ -452,8 +596,8 @@ update_import_status(implementation, Info0, Info, yes) :-
 	mq_info_set_import_status(Info0, not_exported, Info).
 update_import_status(private_interface, Info0, Info, yes) :-
 	mq_info_set_import_status(Info0, not_exported, Info).
-update_import_status(imported, Info, Info, no).
-update_import_status(used, Info, Info, no).
+update_import_status(imported(_), Info, Info, no).
+update_import_status(used(_), Info, Info, no).
 update_import_status(external(_), Info, Info, yes).
 update_import_status(end_module(_), Info, Info, yes).
 update_import_status(export(_), Info, Info, yes).

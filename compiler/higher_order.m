@@ -1091,7 +1091,7 @@ find_higher_order_args(ModuleInfo, CalleeStatus, [Arg | Args],
 			% If we don't have clauses for the callee, we can't
 			% specialize any higher-order arguments. We may be
 			% able to do user guided type specialization.
-			CalleeStatus \= imported,
+			CalleeStatus \= imported(_),
 			type_is_higher_order(CalleeArgType, _, _, _)
 		;
 			true

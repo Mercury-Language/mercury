@@ -231,7 +231,8 @@
 	% Only types can have status abstract_exported or abstract_imported.
 
 :- type import_status
-	--->	imported	% defined in the interface of some other module
+	--->	imported(section)
+				% defined in the interface of some other module
 				% or `external' (in some other language)
 	;	opt_imported	% defined in the optimization 
 				% interface of another module
@@ -704,7 +705,7 @@ invalid_pred_id(-1).
 
 invalid_proc_id(-1).
 
-status_is_exported(imported,			no).
+status_is_exported(imported(_),			no).
 status_is_exported(abstract_imported,		no).
 status_is_exported(pseudo_imported,		no).
 status_is_exported(opt_imported,		no).
@@ -718,7 +719,7 @@ status_is_imported(Status, Imported) :-
 	status_defined_in_this_module(Status, InThisModule),
 	bool__not(InThisModule, Imported).
 
-status_defined_in_this_module(imported,			no).
+status_defined_in_this_module(imported(_),		no).
 status_defined_in_this_module(abstract_imported,	no).
 status_defined_in_this_module(pseudo_imported,		no).
 status_defined_in_this_module(opt_imported,		no).
@@ -862,7 +863,7 @@ pred_info_procids(PredInfo, ProcIds) :-
 
 pred_info_non_imported_procids(PredInfo, ProcIds) :-
 	pred_info_import_status(PredInfo, ImportStatus),
-	( ImportStatus = imported ->
+	( ImportStatus = imported(_) ->
 		ProcIds = []
 	; ImportStatus = pseudo_imported ->
 		pred_info_procids(PredInfo, ProcIds0),
@@ -943,7 +944,7 @@ pred_info_import_status(PredInfo, ImportStatus) :-
 				_, _, _, _, _, _, _, _, _).
 
 pred_info_is_imported(PredInfo) :-
-	pred_info_import_status(PredInfo, imported).
+	pred_info_import_status(PredInfo, imported(_)).
 
 pred_info_is_pseudo_imported(PredInfo) :-
 	pred_info_import_status(PredInfo, ImportStatus),
@@ -972,10 +973,20 @@ procedure_is_exported(PredInfo, ProcId) :-
 	).
 
 pred_info_mark_as_external(PredInfo0, PredInfo) :-
-	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, _, K, L, M, N, O, P,
-		Q, R, S, T, U, V),
-	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, imported, K, L, M, 
-		N, O, P, Q, R, S, T, U, V).
+	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, ImportStatus,
+		K, L, M, N, O, P, Q, R, S, T, U, V),
+	status_is_exported(ImportStatus, Exported),
+	(
+		Exported = yes,
+		PredInfo = predicate(A, B, C, D, E, F, G, H, I,
+				imported(interface), K, L, M, N, O,
+				P, Q, R, S, T, U, V)
+	;
+		Exported = no,
+		PredInfo = predicate(A, B, C, D, E, F, G, H, I,
+				imported(implementation), K, L, M, N, O,
+				P, Q, R, S, T, U, V)
+	).
 
 pred_info_set_import_status(PredInfo0, Status, PredInfo) :-
 	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, _, K, L, M, N, O, P,
