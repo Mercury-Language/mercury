@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002 The University of Melbourne.
+% Copyright (C) 2002-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -103,11 +103,11 @@ write_help_message(ProgName) -->
 	io__format("Usage: %s [<options>] <filename>\n", [s(ProgName)]),
 	io__format("<filename> must name a deep profiling data file.\n", []),
 	io__format("You should specify one of the following options:\n", []),
-	io__format("--help      Generate this help message.", []),
-	io__format("--version   Report the program's version number.", []),
-	io__format("--test   	Test the deep profiler, generating all\n", []),
-	io__format("            possible web pages of the popular types.", []),
-	io__format("You may also specify the following options:.", []),
+	io__format("--help      Generate this help message.\n", []),
+	io__format("--version   Report the program's version number.\n", []),
+	io__format("--test      Test the deep profiler, generating all\n", []),
+	io__format("            possible web pages of the popular types.\n", []),
+	io__format("You may also specify the following options:.\n", []),
 	io__format("--test-dir <dirname>\n", []),
 	io__format("            Put the generated web pages into <dirname>.\n",
 					[]).
