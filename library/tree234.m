@@ -36,7 +36,7 @@
 :- mode tree234__insert(in, in, in, out) is semidet.
 
 :- pred tree234__set(tree234(K, V), K, V, tree234(K, V)).
-:- mode tree234__set(di, in, di, uo) is det.
+:- mode tree234__set(di, di, di, uo) is det.
 :- mode tree234__set(in, in, in, out) is det.
 
 :- pred tree234__delete(tree234(K, V), K, tree234(K, V)).
@@ -330,8 +330,9 @@ tree234__insert(two(K0, V0, T0, T1), K, V, Tree) :-
 		(
 			Result = (<),
 			(
-				tree234__four(T0, K1, V1, T2, T3)
+				T0 = four(_, _, _, _, _, _, _, _, _, _)
 			->
+				tree234__four(T0, K1, V1, T2, T3),
 				T4 = three(K1, V1, K0, V0, T2, T3, T1),
 				tree234__insert(T4, K, V, Tree)
 			;
@@ -344,8 +345,9 @@ tree234__insert(two(K0, V0, T0, T1), K, V, Tree) :-
 		;
 			Result = (>),
 			(
-				tree234__four(T1, K1, V1, T2, T3)
+				T1 = four(_, _, _, _, _, _, _, _, _, _)
 			->
+				tree234__four(T1, K1, V1, T2, T3),
 				T4 = three(K0, V0, K1, V1, T0, T2, T3),
 				tree234__insert(T4, K, V, Tree)
 			;
@@ -390,8 +392,9 @@ tree234__insert(three(K0, V0, K1, V1, T0, T1, T2), K, V, Tree) :-
 		(
 			Result0 = (<),
 			(
-				tree234__four(T0, K2, V2, T3, T4)
+				T0 = four(_, _, _, _, _, _, _, _, _, _)
 			->
+				tree234__four(T0, K2, V2, T3, T4),
 				T5 = four(K2, V2, K0, V0, K1, V1,
 						T3, T4, T1, T2),
 				tree234__insert(T5, K, V, Tree)
@@ -408,8 +411,9 @@ tree234__insert(three(K0, V0, K1, V1, T0, T1, T2), K, V, Tree) :-
 			(
 				Result1 = (<),
 				(
-					tree234__four(T1, K2, V2, T3, T4)
+					T1 = four(_, _, _, _, _, _, _, _, _, _)
 				->
+					tree234__four(T1, K2, V2, T3, T4),
 					T5 = four(K0, V0, K2, V2, K1, V1,
 						T0, T3, T4, T2),
 					tree234__insert(T5, K, V, Tree)
@@ -423,8 +427,9 @@ tree234__insert(three(K0, V0, K1, V1, T0, T1, T2), K, V, Tree) :-
 			;
 				Result1 = (>),
 				(
-					tree234__four(T2, K2, V2, T3, T4)
+					T2 = four(_, _, _, _, _, _, _, _, _, _)
 				->
+					tree234__four(T2, K2, V2, T3, T4),
 					T5 = four(K0, V0, K1, V1, K2, V2,
 							T0, T1, T3, T4),
 					tree234__insert(T5, K, V, Tree)
@@ -471,8 +476,9 @@ tree234__set(two(K0, V0, T0, T1), K, V, Tree) :-
 		(
 			Result = (<),
 			(
-				tree234__four(T0, K1, V1, T2, T3)
+				T0 = four(_, _, _, _, _, _, _, _, _, _)
 			->
+				tree234__four(T0, K1, V1, T2, T3),
 				T4 = three(K1, V1, K0, V0, T2, T3, T1),
 				tree234__set(T4, K, V, Tree)
 			;
@@ -485,8 +491,9 @@ tree234__set(two(K0, V0, T0, T1), K, V, Tree) :-
 		;
 			Result = (>),
 			(
-				tree234__four(T1, K1, V1, T2, T3)
+				T1 = four(_, _, _, _, _, _, _, _, _, _)
 			->
+				tree234__four(T1, K1, V1, T2, T3),
 				T4 = three(K0, V0, K1, V1, T0, T2, T3),
 				tree234__set(T4, K, V, Tree)
 			;
@@ -531,8 +538,9 @@ tree234__set(three(K0, V0, K1, V1, T0, T1, T2), K, V, Tree) :-
 		(
 			Result0 = (<),
 			(
-				tree234__four(T0, K2, V2, T3, T4)
+				T0 = four(_, _, _, _, _, _, _, _, _, _)
 			->
+				tree234__four(T0, K2, V2, T3, T4),
 				T5 = four(K2, V2, K0, V0, K1, V1,
 					T3, T4, T1, T2),
 				tree234__set(T5, K, V, Tree)
@@ -549,8 +557,9 @@ tree234__set(three(K0, V0, K1, V1, T0, T1, T2), K, V, Tree) :-
 			(
 				Result1 = (<),
 				(
-					tree234__four(T1, K2, V2, T3, T4)
+					T1 = four(_, _, _, _, _, _, _, _, _, _)
 				->
+					tree234__four(T1, K2, V2, T3, T4),
 					T5 = four(K0, V0, K2, V2, K1, V1,
 						T0, T3, T4, T2),
 					tree234__set(T5, K, V, Tree)
@@ -564,8 +573,9 @@ tree234__set(three(K0, V0, K1, V1, T0, T1, T2), K, V, Tree) :-
 			;
 				Result1 = (>),
 				(
-					tree234__four(T2, K2, V2, T3, T4)
+					T2 = four(_, _, _, _, _, _, _, _, _, _)
 				->
+					tree234__four(T2, K2, V2, T3, T4),
 					T5 = four(K0, V0, K1, V1, K2, V2,
 						T0, T1, T3, T4),
 					tree234__set(T5, K, V, Tree)
@@ -586,23 +596,107 @@ tree234__set(four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3), K, V, Tree) :-
 
 %------------------------------------------------------------------------------%
 
+:- inst uniq_four == unique(four(unique, unique, unique, unique,
+			unique, unique, unique, unique, unique, unique)).
+:- inst four == bound(four(ground, ground, ground, ground,
+			ground, ground, ground, ground, ground, ground)).
+
 :- pred tree234__four(tree234(K, V), K, V, tree234(K, V), tree234(K, V)).
-:- mode tree234__four(di, uo, uo, uo, uo) is semidet.
-:- mode tree234__four(in, out, out, out, out) is semidet.
+:- mode tree234__four(di(uniq_four), uo, uo, uo, uo) is det.
+:- mode tree234__four(in(four), out, out, out, out) is det.
 
 tree234__four(four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3),
 		K1, V1, two(K0, V0, T0, T1), two(K2, V2, T2, T3)).
 
 %------------------------------------------------------------------------------%
 
-tree234__delete(Tree0, K, Tree) :-
+tree234__delete(empty, _K, empty).
+
+tree234__delete(two(K0, V0, T0, T1), K, Tree) :-
+	compare(Result0, K, K0),
 	(
-		tree234__remove(Tree0, K, _V, Tree1)
-	->
-		Tree = Tree1
+		Result0 = (<),
+		tree234__delete(T0, K, T2),
+		Tree = two(K0, V0, T2, T1)
 	;
-		Tree = Tree0
+		Result0 = (=),
+		tree234__glue(T0, T1, Tree)
+	;
+		Result0 = (>),
+		tree234__delete(T1, K, T2),
+		Tree = two(K0, V0, T0, T2)
 	).
+
+tree234__delete(three(K0, V0, K1, V1, T0, T1, T2), K, Tree) :-
+	compare(Result0, K, K0),
+	(
+		Result0 = (<),
+		tree234__delete(T0, K, T3),
+		Tree = three(K0, V0, K1, V1, T3, T1, T2)
+	;
+		Result0 = (=),
+		tree234__glue(T0, T1, T3),
+		Tree = two(K1, V1, T3, T2)
+	;
+		Result0 = (>),
+		compare(Result1, K, K1),
+		(
+			Result1 = (<),
+			tree234__delete(T1, K, T3),
+			Tree = three(K0, V0, K1, V1, T0, T3, T2)
+		;
+			Result1 = (=),
+			tree234__glue(T1, T2, T3),
+			Tree = two(K0, V0, T0, T3)
+		;
+			Result1 = (>),
+			tree234__delete(T2, K, T3),
+			Tree = three(K0, V0, K1, V1, T0, T1, T3)
+		)
+	).
+
+tree234__delete(four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3), K, Tree) :-
+	compare(Result0, K, K0),
+	(
+		Result0 = (<),
+		tree234__delete(T0, K, NewT0),
+		Tree = four(K0, V0, K1, V1, K2, V2, NewT0, T1, T2, T3)
+	;
+		Result0 = (=),
+		tree234__glue(T0, T1, T0_and_1),
+		Tree = three(K1, V1, K2, V2, T0_and_1, T2, T3)
+	;
+		Result0 = (>),
+		compare(Result1, K, K1),
+		(
+			Result1 = (<),
+			tree234__delete(T1, K, NewT1),
+			Tree = four(K0, V0, K1, V1, K2, V2, T0, NewT1, T2, T3)
+		;
+			Result1 = (=),
+			tree234__glue(T1, T2, T1_and_2),
+			Tree = three(K0, V0, K2, V2, T0, T1_and_2, T3)
+		;
+			Result1 = (>),
+			compare(Result2, K, K2),
+			(
+				Result2 = (<),
+				tree234__delete(T2, K, NewT2),
+				Tree = four(K0, V0, K1, V1, K2, V2,
+						T0, T1, NewT2, T3)
+			;
+				Result2 = (=),
+				tree234__glue(T2, T3, T2_and_3),
+				Tree = three(K0, V0, K1, V1, T0, T1, T2_and_3)
+			;
+				Result2 = (>),
+				tree234__delete(T3, K, NewT3),
+				Tree = four(K0, V0, K1, V1, K2, V2,
+						T0, T1, T2, NewT3)
+			)
+		)
+	).
+
 
 %------------------------------------------------------------------------------%
 

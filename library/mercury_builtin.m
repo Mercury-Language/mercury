@@ -40,12 +40,6 @@
 
 :- inst dead = clobbered.
 
-/*
-:- inst dead = ground.
-:- inst clobbered = ground.
-:- inst unique = ground.
-*/
-
 %-----------------------------------------------------------------------------%
 
 % MODES.
@@ -61,12 +55,30 @@
 
 :- mode in(Inst) :: (Inst -> Inst).
 :- mode out(Inst) :: (free -> Inst).
+:- mode di(Inst) :: (Inst -> clobbered).
 
 % Unique modes.  These are still not fully implemented.
 
+% unique output
 :- mode uo :: free -> unique.
+
+% unique input
 :- mode ui :: unique -> unique.
+
+% destructive input
 :- mode di :: unique -> clobbered.
+
+% "Mostly" unique modes (unique except that that may be referenced
+% again on backtracking).
+
+% mostly unique output
+:- mode muo :: free -> mostly_unique.
+
+% mostly unique input
+:- mode mui :: mostly_unique -> mostly_unique.
+
+% mostly destructive input
+:- mode mdi :: mostly_unique -> mostly_clobbered.
 
 % Higher-order predicate modes are builtin.
 
