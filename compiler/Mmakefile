@@ -197,7 +197,6 @@ $(PREPROCESSED_M_FILES): %.m: $(dates_subdir)%.pp_date
 .PHONY: depend
 depend:		mercury_compile.depend
 
-.PHONY: mercury_compile.depend
 mercury_compile.depend: regenerate_preprocessed_files
 
 .PHONY: all
@@ -220,7 +219,6 @@ libmmc:		libmercury_compile.a mercury_compile_init.$O
 .PHONY: depend
 depend:		mlds_to_gcc.depend
 
-.PHONY: mlds_to_gcc.depend
 mlds_to_gcc.depend: regenerate_preprocessed_files
 
 .PHONY: mercury
