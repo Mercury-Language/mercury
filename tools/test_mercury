@@ -560,7 +560,7 @@ case $HOST in
 		fullname=i686-pc-linux-libc2.1-gnu
 		;;
 	quicksilver)	
-		fullname=i586-pc-linux-libc2.0-gnu
+		fullname=i586-pc-linux-libc2.1-gnu
 		;;
 	hydra)	
 		fullname=i686-pc-linux-libc2.0-gnu
