@@ -3587,7 +3587,7 @@ keep track of the next alternative to return.
                 int state;
         "),
         first_code("
-                LOCALS->state = 0;
+                LOCALS->state = 1;
         "),
         retry_code("
                 LOCALS->state++;
@@ -3631,7 +3631,7 @@ two pieces, using @samp{pragma c_code}.
         "),
         common_code("
                 S1 = copy_substring(LOCALS->s, 0, LOCALS->count);
-                S2 = copy_substring(LOCALS->s, LOCALS->count + 1,
+                S2 = copy_substring(LOCALS->s, LOCALS->count,
                                                LOCALS->len);
                 if (LOCALS->count < LOCALS->len) @{
                         SUCCEED;
