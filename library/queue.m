@@ -88,12 +88,35 @@
 	%
 :- func queue__from_list(list(T)) = queue(T).
 
+	% `queue__to_list(Queue) = List' is the inverse of queue__from_list/1.
+	%
+:- func queue__to_list(queue(T)) = list(T).
+
 	% `queue__delete_all(Queue0, Elem, Queue)' is true iff `Queue' is
 	% the same queue as `Queue0' with all occurrences of `Elem' removed
 	% from it.
 	% 
 :- pred queue__delete_all(queue(T)::in, T::in, queue(T)::out) is det.
 :- func queue__delete_all(queue(T), T) = queue(T).
+
+	% `queue__put_on_front(Queue0, Elem) = Queue' pushes `Elem' on to
+	% the front of `Queue0', giving `Queue'.
+	%
+:- func queue__put_on_front(queue(T), T) = queue(T).
+:- pred queue__put_on_front(queue(T)::in, T::in, queue(T)::out) is det.
+
+	% `queue__put_list_on_front(Queue0, Elems) = Queue' pushes `Elems'
+	% on to the front of `Queue0', giving `Queue' (the Nth member
+	% of `Elems' becomes the Nth member from the front of `Queue').
+	%
+:- func queue__put_list_on_front(queue(T), list(T)) = queue(T).
+:- pred queue__put_list_on_front(queue(T)::in, list(T)::in, queue(T)::out)
+	is det.
+
+	% `queue__get_from_back(Queue0, Elem, Queue)' removes `Elem' from
+	% the back of `Queue0', giving `Queue'.
+	%
+:- pred queue__get_from_back(queue(T)::in, T::out, queue(T)::out) is semidet.
 
 %--------------------------------------------------------------------------%
 %--------------------------------------------------------------------------%
@@ -166,6 +189,8 @@ queue__list_to_queue(List, [] - List).
 
 queue__from_list(List) = [] - List.
 
+queue__to_list(On - Off) = Off ++ list__reverse(On).
+
 queue__delete_all(On0 - Off0, Elem, On - Off) :-
 	list__delete_all(On0, Elem, On1),
 	list__delete_all(Off0, Elem, Off1),
@@ -175,6 +200,45 @@ queue__delete_all(On0 - Off0, Elem, On - Off) :-
 	;
 		On = On1,
 		Off = Off1
+	).
+
+queue__put_on_front(On - Off, Elem, On - [Elem | Off]).
+
+queue__put_on_front(Queue0, Elem) = Queue :-
+	queue__put_on_front(Queue0, Elem, Queue).
+
+queue__put_list_on_front(On - Off, Elems, On - (Elems ++ Off)).
+
+queue__put_list_on_front(Queue0, Elems) = Queue :-
+	queue__put_list_on_front(Queue0, Elems, Queue).
+
+queue__get_from_back(On0 - Off0, Elem, On - Off) :-
+	(
+		% The On list is non-empty and the last element
+		% in the queue is the head of the On list.
+		%
+		On0 = [Elem | On],
+		Off = Off0
+	;
+		% The On list is empty.
+		%
+		On0 = [],
+		(
+			% The Off list contains a single element.
+			%
+			Off0 = [Elem],
+			On   = [],
+			Off  = []
+		;
+			% The Off list contains two or more elements.
+			% We split it in two and take the head of the
+			% new On list as Elem.
+			%
+			Off0 = [_, _ | _],
+			N    = list__length(Off0),
+			list__split_list(N / 2, Off0, Off, RevOn),
+			[Elem | On] = list__reverse(RevOn)
+		)
 	).
 
 %--------------------------------------------------------------------------%

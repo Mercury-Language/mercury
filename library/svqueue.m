@@ -46,6 +46,23 @@
 	%
 :- pred svqueue__delete_all(T::in, queue(T)::in, queue(T)::out) is det.
 
+	% `svqueue__put_on_front(Elem, Queue0, Queue)' pushes `Elem' on to
+	% the front of `Queue0', giving `Queue'.
+	%
+:- pred svqueue__put_on_front(T::in, queue(T)::in, queue(T)::out) is det.
+
+	% `svqueue__put_list_on_front(Queue0, Elems, Queue)' pushes `Elems'
+	% on to the front of `Queue0', giving `Queue' (the Nth member
+	% of `Elems' becomes the Nth member from the front of `Queue').
+	%
+:- pred svqueue__put_list_on_front(list(T)::in, queue(T)::in, queue(T)::out)
+	is det.
+
+	% `queue__get_from_back(Elem, Queue0, Queue)' removes `Elem' from
+	% the back of `Queue0', giving `Queue'.
+	%
+:- pred svqueue__get_from_back(T::out, queue(T)::in, queue(T)::out) is semidet.
+
 %--------------------------------------------------------------------------%
 %--------------------------------------------------------------------------%
 
@@ -62,3 +79,13 @@ svqueue__get(Elem, Queue0, Queue) :-
 
 svqueue__delete_all(Elem, Queue0, Queue) :-
 	queue__delete_all(Queue0, Elem, Queue).
+
+svqueue__put_on_front(Elem, Queue0, Queue) :-
+	queue__put_on_front(Queue0, Elem, Queue).
+
+svqueue__put_list_on_front(Elems, Queue0, Queue) :-
+	queue__put_list_on_front(Queue0, Elems, Queue).
+
+svqueue__get_from_back(Elem, Queue0, Queue) :-
+	queue__get_from_back(Queue0, Elem, Queue).
+

@@ -130,7 +130,12 @@ Changes to the Mercury language:
 Changes to the Mercury standard library:
 
 * We've add the function queue.from_list/1 as a synonym for
-  queue.list_to_queue/1.
+  queue.list_to_queue/1, function queue.to_list/1 (and predicate
+  queue.to_list/2) as the converse of queue.from_list/1, queue.put_on_front/2
+  (and predicate queue.put_on_front/3) to put items on to the front of a
+  queue, queue.put_list_on_front/2 (and predicate queue.put_list_on_front/3)
+  to put a list of items on to the front of a queue, and predicate
+  queue.get_from_back/3 which removes the last element from a queue.
 
 * We've added the function pqueue.from_assoc_list/1 as a synonym
   for pqueue.assoc_list_to_pqueue/1.
