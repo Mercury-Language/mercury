@@ -26,6 +26,7 @@ ALLOW_BROWSER_PREFIX=no
 MERCURY_DIR=..
 LINK_RUNTIME_ONLY=yes
 include $(MERCURY_DIR)/Mmake.common
+-include Mmake.library.params
 
 # Module-specific options should go in Mercury.options so they
 # can be found by `mmc --make'.
@@ -40,8 +41,8 @@ VPATH=.
 #-----------------------------------------------------------------------------#
 
 # Specify which options to use to compile the library.
-# Don't change these without good reason - if you want to
-# do a temporary change, change ../Mmake.params.
+# Don't change these without good reason - if you want to do a temporary
+# change, change ../Mmake.params, or create Mmake.library.params.
 
 ifeq ($(LIBRARY_INTERMODULE),yes)
 
@@ -78,9 +79,17 @@ endif
 # library to be shallow traced, not deep traced, in debugging grades.
 # This is probably what most users want, and it makes it much easier to
 # maintain the expected output of the debugging test cases in debugging grades.
+# However, this can be overridden by setting LIBRARY_TRACE_MINIMUM to no.
 #
 # Always generate dependencies for use by `mmc --make'.
-MCFLAGS += --strict-sequential --trace minimum --generate-mmc-deps \
+
+ifeq ($(LIBRARY_TRACE_MINIMUM),no)
+LIBRARY_TRACE_LEVEL =
+else
+LIBRARY_TRACE_LEVEL = --trace minimum
+endif
+
+MCFLAGS += --strict-sequential $(LIBRARY_TRACE_LEVEL) --generate-mmc-deps \
 		$(INTERMODULE_OPTS) $(ENABLE_TERM_OPTS) $(CHECK_TERM_OPTS)
 
 # The IL and Java implementations of the standard library are not yet complete,

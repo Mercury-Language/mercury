@@ -142,6 +142,15 @@ MCFLAGS	+= --no-infer-all --halt-at-warn --no-warn-inferred-erroneous
 # complicating things.
 LIBRARY_INTERMODULE = yes
 
+# Do we want to compile the library with --trace minimum?
+# By default yes, since the library is pretty well debugged. However,
+# when it is being modified, it may have bugs we may want to chase down,
+# so we allow the user to override this by setting LIBRARY_TRACE_MINIMUM to no.
+# However, the test cases assume that the library is compiled with --trace
+# minimum, so if you do that, expect test case failures in the debugger
+# directory.
+LIBRARY_TRACE_MINIMUM = yes
+
 # Do we want to include the support for compiling directly to assembler
 # using the GCC back-end in the compiler?
 # This requires that you have the source code for gcc in the
