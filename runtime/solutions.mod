@@ -33,7 +33,8 @@ BEGIN_CODE
 **		framevar(2) = list_empty();
 **	
 **		r2 = (Word) 1;
-**		call_closure(LABEL(more_solutions), LABEL(do_solutions));
+**		call(ENTRY(do_call_nondet_closure),
+**			LABEL(more_solutions), LABEL(do_solutions));
 **	
 **	more_solutions:
 **		r3 = deep_copy(r1, framevar(1));
@@ -83,8 +84,12 @@ mercury__std_util__builtin_solutions_2_1:
 	r1 = r2;
 	r2 = (Word) 0;	/* the closure has no input arguments */
 	r3 = (Word) 1;	/* the closure has one argument */
-	call_nondet_closure(LABEL(mercury__std_util__builtin_solutions_2_0_i1),
+	{ 
+		Declare_entry(do_call_nondet_closure);
+		call(ENTRY(do_call_nondet_closure),
+			LABEL(mercury__std_util__builtin_solutions_2_0_i1),
 			LABEL(mercury__std_util__builtin_solutions_2_0));
+	}
 
 mercury__std_util__builtin_solutions_2_0_i1:
 	/* we found a solution */

@@ -13,7 +13,7 @@
  *	Closures contain only input arguments.
  *
  *	Invocations of call/(1+M+N) consist of a closure giving some of the
- *	input arguments followed M further input arguments, followed by
+ *	input arguments, followed by M further input arguments, followed by
  *	N output arguments which are returned in registers 1 -- N
  *	or 2 -- N+1 for semidet preds.
  *
@@ -36,8 +36,8 @@ BEGIN_CODE
 
 do_call_det_closure:
 {
-	Word closure;
-	int i, num_in_args, num_extra_args;
+	Word	closure;
+	int	i, num_in_args, num_extra_args;
 
 	closure = r1; /* The closure */
 	num_in_args = field(0, closure, 0); /* number of input args */
@@ -50,26 +50,26 @@ do_call_det_closure:
 	save_registers();
 
 	if (num_in_args < 3) {
-		for (i=1; i<=num_extra_args;i++) {
+		for (i = 1; i <= num_extra_args; i++) {
 			virtual_reg(i+num_in_args) = virtual_reg(i+3);
 		}
 	} else if (num_in_args > 3) {
-		for (i=num_extra_args; i>0; i--) {
+		for (i = num_extra_args; i>0; i--) {
 			virtual_reg(i+num_in_args) = virtual_reg(i+3);
 		}
 	} /* else do nothing because i == 3 */
 
-	for(i=1; i <= num_in_args; i++) 
+	for (i = 1; i <= num_in_args; i++) 
 		virtual_reg(i) = field(0, closure, i+1); /* copy args */
 
 	restore_registers();
 
-	call((Code *)field(0, closure, 1), LABEL(det_closure_return),
+	call((Code *) field(0, closure, 1), LABEL(det_closure_return),
 		LABEL(do_call_det_closure));
 }
 det_closure_return:
 {
-	int i,num_in_args, num_out_args;
+	int	i, num_in_args, num_out_args;
 
 	succip = pop(); /* restore succip */
 	num_in_args = pop(); /* restore the input arg counter */
@@ -77,7 +77,7 @@ det_closure_return:
 
 	save_registers();
 
-	for (i=1; i<= num_out_args; i++)
+	for (i = 1; i <= num_out_args; i++)
 		virtual_reg(i) = virtual_reg(i+num_in_args);
 
 	restore_registers();
@@ -87,8 +87,8 @@ det_closure_return:
 
 do_call_semidet_closure:
 {
-	Word closure;
-	int i,num_in_args, num_extra_args;
+	Word	closure;
+	int	i, num_in_args, num_extra_args;
 
 	closure = r1; /* The closure */
 	num_in_args = field(0, closure, 0); /* number of input args */
@@ -101,24 +101,26 @@ do_call_semidet_closure:
 	save_registers();
 
 	if (num_in_args < 2) {
-		for (i=1; i<=num_extra_args;i++) {
+		for (i = 1; i <= num_extra_args; i++) {
 			virtual_reg(1+i+num_in_args) = virtual_reg(i+3);
 		}
 	} else if (num_in_args > 2) {
-		for (i=num_extra_args; i>0; i--) {
+		for (i = num_extra_args; i>0; i--) {
 			virtual_reg(1+i+num_in_args) = virtual_reg(i+3);
 		}
 	} /* else do nothing because i == 2 */
 
-	for(i=1; i <= num_in_args; i++) 
+	for (i = 1; i <= num_in_args; i++) 
 		virtual_reg(i+1) = field(0, closure, i+1); /* copy args */
+
 	restore_registers();
-	call((Code *)field(0, closure, 1), LABEL(semidet_closure_return),
+
+	call((Code *) field(0, closure, 1), LABEL(semidet_closure_return),
 		LABEL(do_call_semidet_closure));
 }
 semidet_closure_return:
 {
-	int i,num_in_args, num_out_args;
+	int	i, num_in_args, num_out_args;
 
 	succip = pop(); /* restore succip */
 	num_in_args = pop(); /* restore the input arg counter */
@@ -126,7 +128,7 @@ semidet_closure_return:
 
 	save_registers();
 
-	for (i=1; i<= num_out_args; i++)
+	for (i = 1; i <= num_out_args; i++)
 		virtual_reg(i+1) = virtual_reg(i+1+num_in_args);
 
 	restore_registers();
@@ -136,8 +138,8 @@ semidet_closure_return:
 
 do_call_nondet_closure:
 {
-	Word closure;
-	int i, num_in_args, num_extra_args;
+	Word	closure;
+	int	i, num_in_args, num_extra_args;
 
 	closure = r1; /* The closure */
 	num_in_args = field(0, closure, 0); /* number of input args */
@@ -151,33 +153,33 @@ do_call_nondet_closure:
 	save_registers();
 
 	if (num_in_args < 3) {
-		for (i=1; i<=num_extra_args;i++) {
+		for (i = 1; i <= num_extra_args; i++) {
 			virtual_reg(i+num_in_args) = virtual_reg(i+3);
 		}
 	} else if (num_in_args > 3) {
-		for (i=num_extra_args; i>0; i--) {
+		for (i = num_extra_args; i > 0; i--) {
 			virtual_reg(i+num_in_args) = virtual_reg(i+3);
 		}
 	} /* else do nothing because i == 3 */
 
-	for(i=1; i <= num_in_args; i++) 
+	for (i = 1; i <= num_in_args; i++) 
 		virtual_reg(i) = field(0, closure, i+1); /* copy args */
 
 	restore_registers();
 
-	call((Code *)field(0, closure, 1), LABEL(nondet_closure_return),
+	call((Code *) field(0, closure, 1), LABEL(nondet_closure_return),
 		LABEL(do_call_nondet_closure));
 }
 nondet_closure_return:
 {
-	int i,num_in_args, num_out_args;
+	int	i, num_in_args, num_out_args;
 
 	num_in_args = framevar(1); /* restore the input arg counter */
 	num_out_args = framevar(0); /* restore the ouput arg counter */
 
 	save_registers();
 
-	for (i=1; i<= num_out_args; i++)
+	for (i = 1; i <= num_out_args; i++)
 		virtual_reg(i) = virtual_reg(i+num_in_args);
 
 	restore_registers();
@@ -187,10 +189,10 @@ nondet_closure_return:
 
 mercury__index_2_0:
 {
-	Word type_info;
-	Code* index_pred;
-	Word x;
-	int i, type_arity;
+	Word	type_info;
+	Code	*index_pred;
+	Word	x;
+	int	i, type_arity;
 
 	/* we get called as `index(TypeInfo, X, Index)' */
 	/* in the mode `index(in, in, out) is det'. */
@@ -199,7 +201,7 @@ mercury__index_2_0:
 	/* r3 will hold the result */
 	type_arity = field(0, type_info, OFFSET_FOR_COUNT);
 		/* number of type_info args */
-	index_pred = (Code *)field(0, type_info, OFFSET_FOR_INDEX_PRED);
+	index_pred = (Code *) field(0, type_info, OFFSET_FOR_INDEX_PRED);
 		/* address of the comparison pred for this type */
 
 	save_registers();
@@ -221,7 +223,8 @@ mercury__index_2_0:
 }
 mercury__index_2_0_i1:
 {
-	int type_arity;
+	int	type_arity;
+
 	type_arity = pop();
 	succip = pop();
 	save_registers();
@@ -234,10 +237,10 @@ mercury__compare_3_1:
 mercury__compare_3_2:
 mercury__compare_3_3:
 {
-	Word type_info;
-	Code *compare_pred;
-	Word x, y;
-	int i, type_arity;
+	Word	type_info;
+	Code	*compare_pred;
+	Word	x, y;
+	int	i, type_arity;
 
 	/* we get called as `compare(TypeInfo, Result, X, Y)' */
 	/* in the mode `compare(in, out, in, in) is det'. */
@@ -247,7 +250,7 @@ mercury__compare_3_3:
 	y = r4;
 	type_arity = field(0, type_info, OFFSET_FOR_COUNT);
 		/* number of type_info args */
-	compare_pred = (Code *)field(0, type_info, OFFSET_FOR_COMPARE_PRED);
+	compare_pred = (Code *) field(0, type_info, OFFSET_FOR_COMPARE_PRED);
 		/* address of the comparison pred for this type */
 
 	save_registers();
@@ -270,7 +273,8 @@ mercury__compare_3_3:
 }
 mercury__compare_3_0_i1:
 {
-	int type_arity;
+	int	type_arity;
+
 	type_arity = pop();
 	succip = pop();
 	save_registers();
@@ -280,10 +284,10 @@ mercury__compare_3_0_i1:
 
 mercury__unify_2_0:
 {
-	Word type_info;
-	Code *unify_pred;
-	Word x, y;
-	int i, type_arity;
+	Word	type_info;
+	Code	*unify_pred;
+	Word	x, y;
+	int	i, type_arity;
 
 	/* we get called as `unify(TypeInfo, X, Y)' */
 	/* in the mode `unify(in, in, in) is semidet'. */
@@ -293,7 +297,7 @@ mercury__unify_2_0:
 	y = r4;
 	type_arity = field(0, type_info, OFFSET_FOR_COUNT);
 		/* number of type_info args */
-	unify_pred = (Code *)field(0, type_info, OFFSET_FOR_UNIFY_PRED);
+	unify_pred = (Code *) field(0, type_info, OFFSET_FOR_UNIFY_PRED);
 		/* address of the comparison pred for this type */
 
 	save_registers();
@@ -325,10 +329,10 @@ mercury__term_to_type_2_0:
 	/* r3 holds the term */
 	/* r4 will hold the result for X */
 
-	Word type_info;
-	Code *term_to_type_pred;
-	Word term;
-	int i, type_arity;
+	Word	type_info;
+	Code	*term_to_type_pred;
+	Word	term;
+	int	i, type_arity;
 
 	type_info = r2;
 	term = r3;
@@ -364,7 +368,7 @@ mercury__term_to_type_2_0_i1:
 	/* r1 already contains the truth result of the semidet pred
 	** mercury__term_to_type_2_0 so r1 does not have to be updated. */
 
-	int type_arity;
+	int	type_arity;
 	
 	type_arity = pop();
 	succip = pop();
@@ -379,10 +383,10 @@ mercury__type_to_term_2_0:
 #if OFFSET_FOR_ARG_TYPE_INFOS != 6
 	fatal_error("type_to_term/2 and term_to_type/2 not implemented");
 #else
-	Word type_info;
-	Code *type_to_term_pred;
-	Word x;
-	int i, type_arity;
+	Word	type_info;
+	Code	*type_to_term_pred;
+	Word	x;
+	int	i, type_arity;
 
 	/* we get called as 'type_to_term(TypeInfo, X, Term)' */
 	/* in the mode 'type_to_term(in, in, out) is det'. */
@@ -418,7 +422,7 @@ mercury__type_to_term_2_0_i1:
 #if OFFSET_FOR_ARG_TYPE_INFOS != 6
 	fatal_error("type_to_term/2 and term_to_type/2 not implemented");
 #else
-	int type_arity;
+	int	type_arity;
 	
 	type_arity = pop();
 	succip = pop();

@@ -129,27 +129,6 @@ typedef void (*Cont) (void);
 			noprof_call_localret(proc, succ_cont); \
 		} while (0)
 
-#define	call_det_closure(succ_cont, current_label)		\
-		do {						\
-			Declare_entry(do_call_det_closure);	\
-			call(ENTRY(do_call_det_closure),	\
-				(succ_cont), (current_label));	\
-		} while (0)
-
-#define	call_semidet_closure(succ_cont, current_label)		\
-		do {						\
-			Declare_entry(do_call_semidet_closure); \
-			call(ENTRY(do_call_semidet_closure),	\
-				(succ_cont), (current_label));	\
-		} while (0)
-
-#define	call_nondet_closure(succ_cont, current_label)		\
-		do {						\
-			Declare_entry(do_call_nondet_closure);	\
-			call(ENTRY(do_call_nondet_closure),	\
-				(succ_cont), (current_label));	\
-		} while (0)
-
 #define	localtailcall(label, current_label)			\
 		do {						\
 			debugtailcall(LABEL(label));		\
