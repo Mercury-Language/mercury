@@ -430,7 +430,17 @@ implicitly_quantify_goal_2(bi_implication(LHS0, RHS0), Context, Goal) -->
 	{ NotLHS = not(LHS) - LHS_GI },
 	{ NotRHS = not(RHS) - RHS_GI },
 	{ ForwardsImplication = not(conj([LHS, NotRHS]) - GI) - GI },
-	{ ReverseImplication = not(conj([RHS, NotLHS]) - GI) - GI },
+
+		%
+		% Rename apart the local variables of the goals
+		% we've just duplicated.
+		%
+	{ ReverseImplication0 = not(conj([RHS, NotLHS]) - GI) - GI },
+	{ quantification__goal_vars(ReverseImplication0, GoalVars) },
+	{ set__difference(GoalVars, NonLocalVars, RenameVars) },
+	quantification__rename_apart(RenameVars, _,
+		ReverseImplication0, ReverseImplication),
+
 	{ Goal = conj([ForwardsImplication, ReverseImplication]) }.
 
 :- pred implicitly_quantify_atomic_goal(list(prog_var), quant_info, quant_info).
