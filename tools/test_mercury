@@ -723,9 +723,9 @@ do
 		} > mercury/extras/Mmake.params &&
 		(cd mercury/extras/clpr &&
 			mmake realclean $PARALLEL MMAKEFLAGS=$PARALLEL &&
-			mmake depend	 $PARALLEL MMAKEFLAGS=$PARALLEL &&
-			mmake 		 $PARALLEL MMAKEFLAGS=$PARALLEL &&
-			mmake check	 $PARALLEL MMAKEFLAGS=$PARALLEL &&
+			mmake -k depend	 $PARALLEL MMAKEFLAGS=$PARALLEL &&
+			mmake -k 	$PARALLEL MMAKEFLAGS=$PARALLEL &&
+			mmake -k check	 $PARALLEL MMAKEFLAGS=$PARALLEL &&
 			mmake install LIBGRADES=$grade \
 					$PARALLEL MMAKEFLAGS=$PARALLEL &&
 			mmake realclean $PARALLEL MMAKEFLAGS=$PARALLEL) ||
@@ -733,9 +733,9 @@ do
 		echo "test trailed_update stuff for grade $grade" 1>&2
 		(cd mercury/extras/trailed_update &&
 			mmake realclean $PARALLEL MMAKEFLAGS=$PARALLEL &&
-			mmake depend	 $PARALLEL MMAKEFLAGS=$PARALLEL &&
-			mmake 		 $PARALLEL MMAKEFLAGS=$PARALLEL &&
-			mmake check	 $PARALLEL MMAKEFLAGS=$PARALLEL &&
+			mmake -k depend	 $PARALLEL MMAKEFLAGS=$PARALLEL &&
+			mmake -k	 $PARALLEL MMAKEFLAGS=$PARALLEL &&
+			mmake -k check	 $PARALLEL MMAKEFLAGS=$PARALLEL &&
 			mmake realclean $PARALLEL MMAKEFLAGS=$PARALLEL) ||
 			    set_status "trailed_update tests"
 		;;
