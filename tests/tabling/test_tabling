@@ -1,0 +1,60 @@
+#!/bin/sh
+#
+# A script to test all the test cases in this directory using the setup
+# (runtime, library, compiler etc) from a given workspace. The workspace
+# is specified via the mmc command to execute to create the test case
+# executables; it is intended that this command be a wrapper around tools/lmc.
+
+case $# in
+	1)	mmc_cmd=$1
+		;;
+	*)	echo "usage: test_tabling mmc_cmd"
+		exit 1
+		;;
+esac
+
+set -x
+
+status=0
+failed=""
+testcases=`mmake echo_nondet_nonloop_progs echo_simple_nonloop_progs`
+for testcase in $testcases
+do
+	echo "testing $testcase"
+
+	if $mmc_cmd --grade asm_fast.gc.mm $testcase.m
+	then
+		if test -f $testcase.inp
+		then
+			inputfile=$testcase.inp
+		else
+			inputfile="/dev/null"
+		fi
+
+		if ./$testcase < $inputfile > $testcase.out
+		then
+			diff -u $testcase.exp $testcase.out > $testcase.res
+			if test -s $testcase.res
+			then
+				echo "$testcase generated unexpected output"
+				failed="$failed $testcase"
+				status=1
+			fi
+		else
+			echo "execution of $testcase failed"
+			failed="$failed $testcase"
+			status=1
+		fi
+	else
+		echo "compilation of $testcase failed"
+		status=1
+		failed="$failed $testcase"
+	fi
+done
+
+if test "$failed" != ""
+then
+	echo "failed test cases: $failed"
+fi
+
+exit $status

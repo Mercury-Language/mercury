@@ -4,7 +4,7 @@ THIS_DIR = tabling
 
 #-----------------------------------------------------------------------------#
 
-SIMPLE_PROGS = \
+SIMPLE_NONLOOP_PROGS = \
 	boyer \
 	expand \
 	expand_float \
@@ -14,11 +14,13 @@ SIMPLE_PROGS = \
 	fib_float \
 	fib_list \
 	fib_string \
-	loopcheck \
 	loopcheck_no_loop \
 	unused_args
 
-NONDET_PROGS = \
+SIMPLE_LOOP_PROGS = \
+	loopcheck
+
+NONDET_NONLOOP_PROGS = \
 	combine \
 	completed_consumer_in_solutions \
 	consumer_in_commit \
@@ -31,32 +33,41 @@ NONDET_PROGS = \
 	coup_non_tabled_frame \
 	generator_in_commit \
 	mday \
+	oota \
 	repeat \
 	seq \
 	seq2 \
 	seq3 \
 	seq4 \
 	sg \
-	tc_loop \
 	tc_minimal \
 	tc_minimal2
 
-# We don't yet pass the following minimal model tests. The reason is that
-# they contain interactions between tabling and constructs that function
-# as committed or negated contexts.
+NONDET_LOOP_PROGS = \
+	tc_loop
+
+# We don't yet pass the following minimal model tests.
 #
-#	consumer_in_solutions
-#	oota
+#	consumer_in_solutions 	it contains interactions between tabling
+#				and constructs that function as committed
+#				or negated contexts.
+
+ALL_SIMPLE_PROGS = $(SIMPLE_NONLOOP_PROGS) $(SIMPLE_LOOP_PROGS)
+ALL_NONDET_PROGS = $(NONDET_NONLOOP_PROGS) $(NONDET_LOOP_PROGS)
 
 # Tabling does not yet work in .rt grades
 ifneq "$(findstring .gc,$(GRADE))" ""
 	ifneq "$(findstring .rt,$(GRADE))" ""
 		PROGS=
+		NONLOOP_PROGS=
 	else
 		ifneq "$(findstring .mm,$(GRADE))" ""
-			PROGS=$(SIMPLE_PROGS) $(NONDET_PROGS)
+			PROGS=$(ALL_SIMPLE_PROGS) $(ALL_NONDET_PROGS)
+			NONLOOP_PROGS=$(SIMPLE_NONLOOP_PROGS) \
+				$(NONDET_NONLOOP_PROGS)
 		else
-			PROGS=$(SIMPLE_PROGS)
+			PROGS=$(ALL_SIMPLE_PROGS)
+			NONLOOP_PROGS=$(SIMPLE_NONLOOP_PROGS)
 		endif
 	endif
 else
@@ -103,5 +114,21 @@ loopcheck.out: loopcheck
 			< $@.tmp > $@; \
 		rm -f $@.tmp; \
 	fi
+
+.PHONY: echo_progs
+echo_progs:
+	@echo $(PROGS)
+
+.PHONY: echo_nonloop_progs
+echo_nonloop_progs:
+	@echo $(NONLOOP_PROGS)
+
+.PHONY: echo_nondet_nonloop_progs
+echo_nondet_nonloop_progs:
+	@echo $(NONDET_NONLOOP_PROGS)
+
+.PHONY: echo_simple_nonloop_progs
+echo_simple_nonloop_progs:
+	@echo $(SIMPLE_NONLOOP_PROGS)
 
 #-----------------------------------------------------------------------------#

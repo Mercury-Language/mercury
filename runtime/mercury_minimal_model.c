@@ -27,6 +27,12 @@ static  void    save_state(MR_SavedState *saved_state, MR_Word *generator_fr,
                     const MR_Label_Layout *top_layout);
 static  void    restore_state(MR_SavedState *saved_state, const char *who,
                     const char *what);
+static  MR_Word *saved_to_real_nondet_stack(MR_SavedState *saved_state,
+                    MR_Word *saved_ptr);
+static  MR_Word *real_to_saved_nondet_stack(MR_SavedState *saved_state,
+                    MR_Word *real_ptr);
+static  void    pickle_stack_segment(MR_SavedState *saved_state,
+                    MR_Integer already_pickled, MR_Subgoal *subgoal);
 static  void    extend_consumer_stacks(MR_Subgoal *leader,
                     MR_Consumer *consumer);
 static  void    make_subgoal_follow_leader(MR_Subgoal *this_follower,
@@ -697,10 +703,6 @@ extend_consumer_stacks(MR_Subgoal *leader, MR_Consumer *consumer)
     MR_Word         extension_size;
     MR_Word         *old_common_ancestor_fr;
     MR_Word         *new_common_ancestor_fr;
-    MR_Word         *saved_fr;
-    MR_Word         *real_fr;
-    MR_Word         frame_size;
-    MR_Word         offset;
     MR_SavedState   *cons_saved_state;
 
     cons_saved_state = &consumer->MR_cns_saved_state;
@@ -821,50 +823,9 @@ extend_consumer_stacks(MR_Subgoal *leader, MR_Consumer *consumer)
         cons_saved_state->MR_ss_non_stack_saved_block = arena_block;
         cons_saved_state->MR_ss_non_stack_block_size = arena_size;
         cons_saved_state->MR_ss_non_stack_real_start = arena_start;
-    }
 
-#ifdef  MR_TABLE_DEBUG
-    if (MR_tablestackdebug) {
-        printf("\nbefore pickling nondet stack\n");
-        print_saved_state(stdout, cons_saved_state);
-    }
-#endif  /* MR_TABLE_DEBUG */
-
-    /* XXX we should be doing this only for the newly added segment */
-    saved_fr = cons_saved_state->MR_ss_non_stack_saved_block +
-        cons_saved_state->MR_ss_non_stack_block_size - 1;
-    real_fr = cons_saved_state->MR_ss_non_stack_real_start +
-        cons_saved_state->MR_ss_non_stack_block_size - 1;
-    while (saved_fr > cons_saved_state->MR_ss_non_stack_saved_block) {
-        frame_size = real_fr - MR_prevfr_slot(saved_fr);
-
-        if (saved_fr - frame_size >
-            cons_saved_state->MR_ss_non_stack_saved_block)
-        {
-            *MR_redoip_addr(saved_fr) = (MR_Word) MR_ENTRY(MR_do_fail);
-
-#ifdef  MR_TABLE_DEBUG
-            if (MR_tabledebug) {
-                printf("do_fail to redoip at %p (%d)\n",
-                    MR_redoip_addr(saved_fr),
-                    MR_redoip_addr(saved_fr) -
-                        cons_saved_state->MR_ss_non_stack_saved_block);
-            }
-#endif  /* MR_TABLE_DEBUG */
-        } else {
-            *MR_redoip_addr(saved_fr) = (MR_Word) MR_ENTRY(MR_RESUME_ENTRY);
-#ifdef  MR_TABLE_DEBUG
-            if (MR_tabledebug) {
-                printf("resume to redoip at %p (%d)\n",
-                    MR_redoip_addr(saved_fr),
-                    MR_redoip_addr(saved_fr) -
-                        cons_saved_state->MR_ss_non_stack_saved_block);
-            }
-#endif  /* MR_TABLE_DEBUG */
-        } /*** else cut_stack XXX */
-
-        saved_fr -= frame_size;
-        real_fr -= frame_size;
+        pickle_stack_segment(cons_saved_state, arena_size - extension_size,
+            NULL);
     }
 
 #ifdef  MR_TABLE_DEBUG
@@ -873,6 +834,275 @@ extend_consumer_stacks(MR_Subgoal *leader, MR_Consumer *consumer)
         print_saved_state(stdout, cons_saved_state);
     }
 #endif  /* MR_TABLE_DEBUG */
+}
+
+static MR_Word *
+saved_to_real_nondet_stack(MR_SavedState *saved_state, MR_Word *saved_ptr)
+{
+    MR_Word *real_ptr;
+
+    if (saved_state->MR_ss_non_stack_saved_block <= saved_ptr
+        && saved_ptr < saved_state->MR_ss_non_stack_saved_block +
+            saved_state->MR_ss_non_stack_block_size)
+    {
+        MR_Integer  offset;
+
+        offset = saved_ptr - saved_state->MR_ss_non_stack_saved_block;
+        real_ptr = saved_state->MR_ss_non_stack_real_start + offset;
+#if 0
+        printf("real start %p, saved block %p, real ptr %p, saved ptr %p\n",
+            saved_state->MR_ss_non_stack_real_start,
+            saved_state->MR_ss_non_stack_saved_block,
+            real_ptr,
+            saved_ptr);
+#endif
+        return real_ptr;
+    } else {
+        MR_fatal_error("saved_to_real_nondet_stack: out of bounds");
+    }
+}
+
+static MR_Word *
+real_to_saved_nondet_stack(MR_SavedState *saved_state, MR_Word *real_ptr)
+{
+    MR_Word *saved_ptr;
+
+    if (saved_state->MR_ss_non_stack_real_start <= real_ptr
+        && real_ptr < saved_state->MR_ss_non_stack_real_start +
+            saved_state->MR_ss_non_stack_block_size)
+    {
+        MR_Integer  offset;
+
+        offset = real_ptr - saved_state->MR_ss_non_stack_real_start;
+#if 0
+        saved_ptr = saved_state->MR_ss_non_stack_saved_block + offset;
+        printf("real start %p, saved block %p, real ptr %p, saved ptr %p\n",
+            saved_state->MR_ss_non_stack_real_start,
+            saved_state->MR_ss_non_stack_saved_block,
+            real_ptr,
+            saved_ptr);
+#endif
+        return saved_ptr;
+    } else {
+        MR_fatal_error("real_to_saved_nondet_stack: out of bounds");
+    }
+}
+
+MR_declare_entry(MR_table_nondet_commit);
+
+static void
+pickle_stack_segment(MR_SavedState *saved_state, MR_Integer already_pickled,
+    MR_Subgoal *subgoal)
+{
+    MR_Word         *saved_fr;
+    MR_Word         *saved_stop_fr;
+    MR_Word         *saved_top_fr;
+    MR_Word         *saved_next_fr;
+    MR_Word         *real_fr;
+    MR_Word         *saved_redoip_addr;
+    MR_Word         *real_redoip_addr;
+    MR_Word         frame_size;
+    MR_Word         *real_main_branch_fr;
+    MR_Integer      cur_gen;
+    MR_Integer      cur_cut;
+    MR_Integer      cur_pneg;
+    MR_bool         ordinary;
+    MR_bool         generator_is_at_bottom;
+
+    if (already_pickled > 0) {
+        generator_is_at_bottom = MR_TRUE;
+    } else {
+        generator_is_at_bottom = MR_FALSE;
+    }
+
+#ifdef  MR_TABLE_DEBUG
+    if (MR_tablestackdebug) {
+        printf("\nbefore pickling nondet stack, already pickled %d\n",
+            already_pickled);
+        print_saved_state(stdout, saved_state);
+    }
+#endif  /* MR_TABLE_DEBUG */
+
+    saved_stop_fr = saved_state->MR_ss_non_stack_saved_block - 1;
+    saved_top_fr = saved_state->MR_ss_non_stack_saved_block +
+        saved_state->MR_ss_non_stack_block_size - 1;
+    saved_fr = saved_top_fr;
+
+    /*
+    real_stop_fr = saved_state->MR_ss_non_stack_real_start - 1;
+    real_top_fr = saved_state->MR_ss_non_stack_real_start +
+        saved_state->MR_ss_non_stack_block_size - 1;
+    real_fr = real_top_fr;
+    */
+
+    real_main_branch_fr =
+        saved_to_real_nondet_stack(saved_state, saved_top_fr);
+
+    cur_gen = MR_gen_next - 1;
+    cur_cut = MR_cut_next - 1;
+    cur_pneg = MR_pneg_next - 1;
+
+    while (saved_fr > saved_stop_fr) {
+        real_fr = saved_to_real_nondet_stack(saved_state, saved_fr);
+        frame_size = real_fr - MR_prevfr_slot(saved_fr);
+        saved_next_fr = saved_fr - frame_size;
+
+        if (frame_size >= MR_NONDET_FIXED_SIZE) {
+            ordinary = MR_TRUE;
+        } else {
+            ordinary = MR_FALSE;
+        }
+
+        /*
+        redoip_offset_from_stop = MR_redoip_addr(saved_fr) - real_stop_fr;
+        saved_redoip_addr = saved_stop_fr + redoip_offset_from_stop;
+        real_redoip_addr = saved_stop_fr + redoip_offset_from_stop;
+        */
+
+#if MR_TABLE_DEBUG
+        if (MR_tablestackdebug) {
+            printf("considering %s frame ",
+                (ordinary? "ordinary" : "temp"));
+            MR_print_nondstackptr(stdout,
+                saved_to_real_nondet_stack(saved_state, saved_fr));
+            printf(" with redoip slot at ");
+            MR_print_nondstackptr(stdout, MR_redoip_addr(saved_fr));
+            printf("\n");
+        }
+#endif
+
+        if (already_pickled > 0) {
+#ifdef  MR_TABLE_DEBUG
+            if (MR_tabledebug) {
+                printf("already pickled %d -> %d\n",
+                    already_pickled, already_pickled - frame_size);
+            }
+#endif  /* MR_TABLE_DEBUG */
+
+            already_pickled -= frame_size;
+
+            if (real_fr == real_main_branch_fr && ordinary) {
+#ifdef  MR_TABLE_DEBUG
+                if (MR_tabledebug) {
+                    printf("next main sequence frame ");
+                    MR_printnondstackptr(MR_succfr_slot(saved_fr));
+                }
+#endif  /* MR_TABLE_DEBUG */
+
+                real_main_branch_fr = MR_succfr_slot(saved_fr);
+            }
+        } else if (MR_redofr_slot(saved_fr) != real_main_branch_fr) {
+#ifdef  MR_TABLE_DEBUG
+            if (MR_tabledebug) {
+                printf("skipping over non-main-branch frame\n");
+            }
+#endif  /* MR_TABLE_DEBUG */
+            /* do nothing */;
+        } else if (generator_is_at_bottom && saved_next_fr == saved_stop_fr) {
+#ifdef  MR_TABLE_DEBUG
+            if (MR_tabledebug) {
+                printf("completing redoip of bottom frame at ");
+                MR_print_nondstackptr(stdout,
+                    saved_to_real_nondet_stack(saved_state, saved_fr));
+                printf(" (in saved copy)\n");
+            }
+#endif  /* MR_TABLE_DEBUG */
+
+            *MR_redoip_addr(saved_fr) = (MR_Word) MR_ENTRY(MR_RESUME_ENTRY);
+        } else if (!generator_is_at_bottom &&
+            real_fr == MR_gen_stack[cur_gen].MR_gen_frame)
+        {
+            assert(subgoal != NULL);
+            assert(ordinary);
+
+            if (MR_gen_stack[cur_gen].MR_gen_subgoal == subgoal) {
+                /*
+                ** This is the nondet stack frame of the generator
+                ** corresponding to the consumer whose saved state
+                ** we are pickling.
+                */
+
+#ifdef  MR_TABLE_DEBUG
+                if (MR_tabledebug) {
+                    printf("completing redoip of frame at ");
+                    MR_print_nondstackptr(stdout,
+                        saved_to_real_nondet_stack(saved_state, saved_fr));
+                    printf(" (in saved copy)\n");
+                }
+#endif  /* MR_TABLE_DEBUG */
+
+                *MR_redoip_addr(saved_fr) = (MR_Word) MR_ENTRY(MR_RESUME_ENTRY);
+
+  #ifdef  MR_TABLE_DEBUG
+                if (MR_tabledebug) {
+                    printf("saved gen_next set to %d from %d\n",
+                        cur_gen + 1, saved_state->MR_ss_gen_next);
+                    if (saved_state->MR_ss_gen_next != cur_gen + 1) {
+                        printf("XXX saved gen_next := not idempotent\n");
+                        MR_print_gen_stack(stdout);
+                        MR_print_cut_stack(stdout);
+                    }
+                }
+  #endif    /* MR_TABLE_DEBUG */
+
+                saved_state->MR_ss_gen_next = cur_gen + 1;
+            } else {
+                /*
+                ** This is the nondet stack frame of some other generator.
+                */
+
+                /* reenable XXX */
+                assert(MR_prevfr_slot(saved_fr) !=
+                    saved_to_real_nondet_stack(saved_state, saved_stop_fr));
+
+  #ifdef  MR_TABLE_DEBUG
+                if (MR_tablestackdebug) {
+                    printf("clobbering redoip of follower frame at ");
+                    MR_printnondstackptr(real_fr);
+                    printf(" (in saved copy)\n");
+                }
+  #endif    /* MR_TABLE_DEBUG */
+
+                *MR_redoip_addr(saved_fr) = (MR_Word) MR_ENTRY(MR_do_fail);
+
+                MR_save_transient_registers();
+                make_subgoal_follow_leader(
+                    MR_gen_stack[cur_gen].MR_gen_subgoal, subgoal);
+                MR_restore_transient_registers();
+            }
+
+            cur_gen--;
+        } else if (generator_is_at_bottom && cur_cut > 0
+            && real_fr == MR_cut_stack[cur_cut].MR_cut_frame)
+        {
+            assert(! ordinary);
+
+  #ifdef  MR_TABLE_DEBUG
+            if (MR_tablestackdebug) {
+                printf("committing redoip of frame at ");
+                MR_printnondstackptr(real_fr);
+                printf(" (in saved copy)\n");
+            }
+  #endif    /* MR_TABLE_DEBUG */
+
+            *MR_redoip_addr(saved_fr) = (MR_Word)
+                MR_ENTRY(MR_table_nondet_commit);
+            cur_cut--;
+        } else {
+#ifdef  MR_TABLE_DEBUG
+            if (MR_tabledebug) {
+                printf("clobbering redoip of frame at ");
+                MR_printnondstackptr(real_fr);
+                printf(" (in saved copy)\n");
+            }
+
+            *MR_redoip_addr(saved_fr) = (MR_Word) MR_ENTRY(MR_do_fail);
+#endif  /* MR_TABLE_DEBUG */
+        }
+
+        saved_fr -= frame_size;
+        real_fr -= frame_size;
+    }
 }
 
 /*
@@ -1213,107 +1443,7 @@ MR_define_label(SUSPEND_LABEL(Call));
         subgoal->MR_sg_deepest_nca_fr = common_ancestor;
     }
 
-    cur_gen = MR_gen_next - 1;
-    cur_cut = MR_cut_next - 1;
-    cur_pneg = MR_pneg_next - 1;
-    stop_addr = consumer->MR_cns_saved_state.MR_ss_non_stack_real_start;
-
-    for (fr = MR_maxfr; fr > stop_addr; fr = MR_prevfr_slot(fr)) {
-        offset = MR_redoip_addr(fr) -
-            consumer->MR_cns_saved_state.MR_ss_non_stack_real_start;
-        clobber_addr = consumer->MR_cns_saved_state.MR_ss_non_stack_saved_block
-            + offset;
-#if 0
-        if (MR_tablestackdebug) {
-            printf("redoip addr ");
-            MR_printnondstackptr(MR_redoip_addr(fr));
-            printf(", offset %d from start, ", offset);
-            printf("saved copy at %p\n", clobber_addr);
-        }
-#endif
-
-        if (fr == MR_gen_stack[cur_gen].MR_gen_frame) {
-            if (MR_gen_stack[cur_gen].MR_gen_subgoal == subgoal) {
-                /*
-                ** This is the nondet stack frame of the
-                ** generator corresponding to this consumer.
-                */
-
-  #ifdef  MR_TABLE_DEBUG
-                if (MR_tablestackdebug) {
-                    printf("completing redoip of frame at ");
-                    MR_printnondstackptr(fr);
-                    printf(" (in saved copy)\n");
-                    printf("  old contents was %p\n",
-                        (MR_Word *) *clobber_addr);
-                }
-  #endif    /* MR_TABLE_DEBUG */
-                *clobber_addr = (MR_Word) MR_ENTRY(MR_RESUME_ENTRY);
-
-  #ifdef  MR_TABLE_DEBUG
-                if (MR_tabledebug) {
-                    printf("saved gen_next set to %d from %d\n",
-                        cur_gen + 1,
-                        consumer->MR_cns_saved_state.MR_ss_gen_next);
-                    /* XXX if next assignment is not idempotent */
-                    if (consumer->MR_cns_saved_state.MR_ss_gen_next
-                        != cur_gen + 1)
-                    {
-                        MR_print_gen_stack(stdout);
-                        MR_print_cut_stack(stdout);
-                    }
-                }
-  #endif    /* MR_TABLE_DEBUG */
-                consumer->MR_cns_saved_state.MR_ss_gen_next = cur_gen + 1;
-            } else {
-                /*
-                ** This is the nondet stack frame of some other generator.
-                */
-
-  #if 0
-                /* reenable XXX */
-                assert(MR_prevfr_slot(fr) != (stop_addr - 1));
-  #endif
-
-                *clobber_addr = (MR_Word) MR_ENTRY(MR_do_fail);
-  #ifdef  MR_TABLE_DEBUG
-                if (MR_tablestackdebug) {
-                    printf("clobbering redoip of frame at ");
-                    MR_printnondstackptr(fr);
-                    printf(" (in saved copy)\n");
-                }
-  #endif    /* MR_TABLE_DEBUG */
-
-                MR_save_transient_registers();
-                make_subgoal_follow_leader(MR_gen_stack[cur_gen].
-                    MR_gen_subgoal, subgoal);
-                MR_restore_transient_registers();
-            }
-
-            cur_gen--;
-            /* XXX can we be at a generator AND a cut? */
-        } else if (cur_cut > 0 && fr == MR_cut_stack[cur_cut].MR_cut_frame) {
-            *clobber_addr = (MR_Word) MR_ENTRY(MR_table_nondet_commit);
-  #ifdef  MR_TABLE_DEBUG
-            if (MR_tablestackdebug) {
-                printf("committing redoip of frame at ");
-                MR_printnondstackptr(fr);
-                printf(" (in saved copy)\n");
-            }
-  #endif    /* MR_TABLE_DEBUG */
-
-            cur_cut--;
-        } else {
-            *clobber_addr = (MR_Word) MR_ENTRY(MR_do_fail);
-  #ifdef  MR_TABLE_DEBUG
-            if (MR_tablestackdebug) {
-                printf("clobbering redoip of frame at ");
-                MR_printnondstackptr(fr);
-                printf(" (in saved copy)\n");
-            }
-  #endif    /* MR_TABLE_DEBUG */
-        }
-    }
+    pickle_stack_segment(&consumer->MR_cns_saved_state, 0, subgoal);
 
   #ifdef  MR_TABLE_DEBUG
     if (MR_tabledebug) {
