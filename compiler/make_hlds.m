@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2001 The University of Melbourne.
+% Copyright (C) 1993-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -2501,11 +2501,14 @@ module_add_class_defn(Module0, Constraints, Name, Vars, Interface, VarSet,
 :- mode superclass_constraints_are_identical(in, in,
 	in, in, in, in) is semidet.
 
-superclass_constraints_are_identical(OldVars, OldVarSet, OldConstraints0,
+superclass_constraints_are_identical(OldVars0, OldVarSet, OldConstraints0,
 		Vars, VarSet, Constraints) :-
 	varset__merge_subst(VarSet, OldVarSet, _, Subst),
 	apply_subst_to_constraint_list(Subst,
 		OldConstraints0, OldConstraints1),
+	OldVars = term__term_list_to_var_list(
+		map__apply_to_list(OldVars0, Subst)),
+
 	map__from_corresponding_lists(OldVars, Vars, VarRenaming),
 	apply_variable_renaming_to_constraint_list(VarRenaming,
 		OldConstraints1, OldConstraints),
