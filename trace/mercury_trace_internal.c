@@ -53,7 +53,6 @@
 ** XXX We should consider whether all the static variables in this module
 ** should be thread local.
 */
-
 /*
 ** Debugger I/O streams.
 ** Replacements for stdin/stdout/stderr respectively.
@@ -214,6 +213,10 @@ static	void	MR_trace_event_print_internal_report(
 static	void	MR_trace_print_port(MR_Trace_Port port);
 
 static	bool	MR_trace_valid_command(const char *word);
+
+static	void	MR_dump_stack_record_print(FILE *fp,
+			const MR_Stack_Layout_Entry *, int, int,
+			Word *base_sp, Word *base_curfr);
 
 Code *
 MR_trace_event_internal(MR_Trace_Cmd_Info *cmd, bool interactive,
@@ -789,7 +792,8 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 					layout->MR_sll_entry,
 					MR_saved_sp(saved_regs),
 					MR_saved_curfr(saved_regs),
-					include_trace_data);
+					include_trace_data,
+					&MR_dump_stack_record_print);
 			if (msg != NULL) {
 				fflush(MR_mdb_out);
 				fprintf(MR_mdb_err, "%s.\n", msg);
@@ -2460,3 +2464,25 @@ MR_trace_valid_command(const char *word)
 
 	return FALSE;
 }
+
+static void
+MR_dump_stack_record_print(FILE *fp, const MR_Stack_Layout_Entry *entry_layout,
+	int count, int start_level, Word *base_sp, Word *base_curfr)
+{
+	fprintf(fp, "%4d ", start_level);
+
+	if (count > 1) {
+		fprintf(fp, " %3d* ", count);
+	} else if ((base_sp == NULL) && (base_curfr == NULL)) {
+		fprintf(fp, "%5s ", "");
+	} else {
+		/*
+		** If we are printing trace data, we need all the horizonal
+		** room we can get, and there will not be any repeated lines,
+		** so we don't reserve space for the repeat counts.
+		*/
+	}
+
+	MR_print_proc_id(fp, entry_layout, NULL, base_sp, base_curfr);
+}
+

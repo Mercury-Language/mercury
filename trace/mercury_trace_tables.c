@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998 The University of Melbourne.
+** Copyright (C) 1998-1999 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -15,6 +15,7 @@
 #include "mercury_label.h"
 #include "mercury_array_macros.h"
 #include "mercury_trace_tables.h"
+#include "mercury_trace.h"
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
@@ -386,5 +387,118 @@ MR_process_matching_procedures_in_module(MR_Module_Info *module,
 		{
 			f(data, cur_entry);
 		}
+	}
+}
+
+void
+MR_print_proc_id_for_debugger(FILE *fp,
+	const MR_Stack_Layout_Entry *entry_layout)
+{
+	MR_print_proc_id(fp, entry_layout, NULL, NULL, NULL);
+}
+
+void
+MR_print_proc_id(FILE *fp, const MR_Stack_Layout_Entry *entry,
+	const char *extra, Word *base_sp, Word *base_curfr)
+{
+	if (! MR_ENTRY_LAYOUT_HAS_PROC_ID(entry)) {
+		fatal_error("cannot print procedure id without layout");
+	}
+
+	if (base_sp != NULL && base_curfr != NULL) {
+		bool print_details = FALSE;
+		if (MR_ENTRY_LAYOUT_HAS_EXEC_TRACE(entry)) {
+			Word maybe_from_full = entry->MR_sle_maybe_from_full;
+			if (maybe_from_full > 0) {
+				/*
+				** for procedures compiled with shallow
+				** tracing, the details will be valid only
+				** if the value of MR_from_full saved in
+				** the appropriate stack slot was TRUE.
+			    	*/
+				if (MR_DETISM_DET_STACK(entry->MR_sle_detism)) {
+					print_details = MR_based_stackvar(
+						base_sp, maybe_from_full);
+				} else {
+					print_details = MR_based_framevar(
+						base_curfr, maybe_from_full);
+				}
+			} else {
+				/*
+				** for procedures compiled with full tracing,
+				** always print out the details
+				*/
+				print_details = TRUE;
+			}
+		}
+		if (print_details) {
+			if (MR_DETISM_DET_STACK(entry->MR_sle_detism)) {
+				fprintf(fp, "%7lu %7lu %4lu ",
+					(unsigned long)
+					MR_event_num_stackvar(base_sp) + 1,
+					(unsigned long)
+					MR_call_num_stackvar(base_sp),
+					(unsigned long)
+					MR_call_depth_stackvar(base_sp));
+			} else {
+				fprintf(fp, "%7lu %7lu %4lu ",
+					(unsigned long)
+					MR_event_num_framevar(base_curfr) + 1,
+					(unsigned long)
+					MR_call_num_framevar(base_curfr),
+					(unsigned long)
+					MR_call_depth_framevar(base_curfr));
+			}
+		} else {
+			/* ensure that the remaining columns line up */
+			fprintf(fp, "%21s", "");
+		}
+	}
+
+	if (MR_ENTRY_LAYOUT_COMPILER_GENERATED(entry)) {
+		fprintf(fp, "%s for %s:%s/%ld-%ld",
+			entry->MR_sle_comp.MR_comp_pred_name,
+			entry->MR_sle_comp.MR_comp_type_module,
+			entry->MR_sle_comp.MR_comp_type_name,
+			(long) entry->MR_sle_comp.MR_comp_arity,
+			(long) entry->MR_sle_comp.MR_comp_mode);
+
+		if (strcmp(entry->MR_sle_comp.MR_comp_type_module,
+				entry->MR_sle_comp.MR_comp_def_module) != 0)
+		{
+			fprintf(fp, " {%s}",
+				entry->MR_sle_comp.MR_comp_def_module);
+		}
+	} else {
+		if (entry->MR_sle_user.MR_user_pred_or_func == MR_PREDICATE) {
+			fprintf(fp, "pred");
+		} else if (entry->MR_sle_user.MR_user_pred_or_func ==
+				MR_FUNCTION)
+		{
+			fprintf(fp, "func");
+		} else {
+			fatal_error("procedure is not pred or func");
+		}
+
+		fprintf(fp, " %s:%s/%ld-%ld",
+			entry->MR_sle_user.MR_user_decl_module,
+			entry->MR_sle_user.MR_user_name,
+			(long) entry->MR_sle_user.MR_user_arity,
+			(long) entry->MR_sle_user.MR_user_mode);
+
+		if (strcmp(entry->MR_sle_user.MR_user_decl_module,
+				entry->MR_sle_user.MR_user_def_module) != 0)
+		{
+			fprintf(fp, " {%s}",
+				entry->MR_sle_user.MR_user_def_module);
+		}
+	}
+
+	fprintf(fp, " (%s)", MR_detism_names[entry->MR_sle_detism]);
+
+	if (extra != NULL) {
+		fprintf(fp, " %s\n", extra);
+	} else {
+		fprintf(fp, "\n");
 	}
 }

@@ -432,3 +432,28 @@ MR_trace_find_input_arg(const MR_Stack_Layout_Label *label, Word *saved_regs,
 	*succeeded = FALSE;
 	return 0;
 }
+
+
+/*
+** The different Mercury determinisms are internally represented by integers. 
+** This array gives the correspondance with the internal representation and 
+** the names that are usually used to denote determinisms.
+*/
+
+extern const char * MR_detism_names[] = {
+	"failure",	/* 0 */
+	"",		/* 1 */
+	"semidet",	/* 2 */
+	"nondet",	/* 3 */
+	"erroneous",	/* 4 */
+	"",		/* 5 */
+	"det",		/* 6 */
+	"multi",	/* 7 */
+	"",		/* 8 */
+	"",		/* 9 */
+	"cc_nondet",	/* 10 */
+	"",		/* 11 */
+	"",		/* 12 */
+	"",		/* 13 */
+	"cc_multi"	/* 14 */
+};

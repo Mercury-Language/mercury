@@ -16,6 +16,7 @@ extern	Code   *MR_trace_event_external(MR_Trace_Cmd_Info *cmd,
 			Word *saved_regs, MR_Trace_Port port, Unsigned seqno,
 			Unsigned depth, const char *path, int *max_mr_num);
 
+
 #endif	/* MR_USE_EXTERNAL_DEBUGGER */
 
 #endif	/* MERCURY_TRACE_EXTERNAL_H */

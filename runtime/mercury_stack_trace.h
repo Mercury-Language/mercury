@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998 The University of Melbourne.
+** Copyright (C) 1998-1999 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -56,7 +56,10 @@ extern	void	MR_dump_stack(Code *success_pointer, Word *det_stack_pointer,
 extern	const char	*MR_dump_stack_from_layout(FILE *fp,
 				const MR_Stack_Layout_Entry *entry_layout,
 				Word *det_stack_pointer, Word *current_frame,
-				bool include_trace_data);
+				bool include_trace_data,
+				void *print_stack_record(FILE *, 
+					const MR_Stack_Layout_Entry *, 
+					int, int, Word *, Word *));
 
 /*
 ** MR_dump_nondet_stack_from_layout:
@@ -134,20 +137,5 @@ Code	*MR_stack_trace_bottom;
 
 Word	*MR_nondet_stack_trace_bottom;
 
-/*
-** MR_print_proc_id prints an identification of the given procedure,
-** consisting of "pred" or "func", module name, pred or func name, arity,
-** mode number and determinism, followed by an optional extra string,
-** and a newline.
-**
-** If the procedure has trace layout information and the relevant one of
-** base_sp and base_curfr is not NULL, it also prints the call event number,
-** call sequence number and call depth of the call.
-*/
-
-extern	void	MR_print_proc_id_for_debugger(FILE *fp,
-			const MR_Stack_Layout_Entry *entry);
-extern	void	MR_print_proc_id(FILE *fp, const MR_Stack_Layout_Entry *entry,
-			const char *extra, Word *base_sp, Word *base_curfr);
 
 #endif /* MERCURY_STACK_TRACE_H */

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998 The University of Melbourne.
+** Copyright (C) 1998-1999 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -120,5 +120,21 @@ extern	const MR_Stack_Layout_Entry *MR_search_for_matching_procedure(
 extern	void	MR_process_matching_procedures(MR_Proc_Spec *spec,
 			void f(void *, const MR_Stack_Layout_Entry *), 
 			void *data);
+
+/*
+** MR_print_proc_id prints an identification of the given procedure,
+** consisting of "pred" or "func", module name, pred or func name, arity,
+** mode number and determinism, followed by an optional extra string,
+** and a newline.
+**
+** If the procedure has trace layout information and the relevant one of
+** base_sp and base_curfr is not NULL, it also prints the call event number,
+** call sequence number and call depth of the call.
+*/
+
+extern	void	MR_print_proc_id_for_debugger(FILE *fp,
+			const MR_Stack_Layout_Entry *entry);
+extern	void	MR_print_proc_id(FILE *fp, const MR_Stack_Layout_Entry *entry,
+			const char *extra, Word *base_sp, Word *base_curfr);
 
 #endif	/* not MERCURY_TRACE_TABLES_H */

@@ -118,6 +118,14 @@ dummy_pred_to_avoid_warning_about_nothing_exported.
 			% restarts execution at the call port of the call 
 			% corresponding to the current event
 	;	retry
+			% print the ancestors stack
+	;	stack
+			% prints the contents of the fixed slots of the 
+			% frames on the nondet stack
+	;	nondet_stack
+			% print the contents of the virtual machine registers 
+			% that point to the det and nondet stacks
+	;	stack_regs
 			% something went wrong when trying to get the
 			% next request
 	;	error(string)
@@ -383,6 +391,9 @@ classify_request(error(_), 6).
 classify_request(current_live_var_names, 7).
 classify_request(current_nth_var(_), 8).
 classify_request(retry, 9).
+classify_request(stack, 10).
+classify_request(nondet_stack, 11).
+classify_request(stack_regs, 12).
 
 
 %-----------------------------------------------------------------------------%

@@ -98,6 +98,14 @@ typedef struct {
 	bool			MR_trace_must_check;
 } MR_Trace_Cmd_Info;
 
+/*
+** The different Mercury determinisms are internally represented by integers. 
+** This array gives the correspondance with the internal representation and 
+** the names that are usually used to denote determinisms.
+*/
+
+extern const char * MR_detism_names[];
+
 #define	MR_port_is_final(port)		((port) == MR_PORT_EXIT || \
 					 (port) == MR_PORT_FAIL || \
 					 (port) == MR_PORT_EXCEPTION)
