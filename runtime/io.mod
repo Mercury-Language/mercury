@@ -250,17 +250,19 @@ mercury__io__set_output_stream_4_0:
 
 mercury__io__do_open_input_5_0:
 	r3 = (int)mercury_open((char*)r1, "r");
-	r2 = (r3) ? 1 : -1; /* XXX ??? */
+	r2 = (r3) ? 0 : -1;
 	update_io(r4, r5);
 	proceed();
 
 mercury__io__do_open_output_5_0:
 	r3 = r2 = (int)mercury_open((char*)r1, "w");
+	r2 = (r3) ? 0 : -1;
 	update_io(r4, r5);
 	proceed();
 
 mercury__io__do_open_append_5_0:
-	r3 = r2 = (int)mercury_open((char*)r1, "a");
+	r2 = (int)mercury_open((char*)r1, "a");
+	r2 = (r3) ? 0 : -1;
 	update_io(r4, r5);
 	proceed();
 
