@@ -282,7 +282,9 @@ modecheck_proc(ProcId, PredId, ModuleInfo, ProcInfo0, ProcInfo, NumErrors,
 		% the mode declaration
 	mode_list_get_initial_insts(ArgModes, ModuleInfo, ArgInitialInsts),
 	map__from_corresponding_lists(HeadVars, ArgInitialInsts, InstMapping0),
-	mode_info_init(IOState0, ModuleInfo, PredId, ProcId, Context,
+		% initially, only the head variables are live
+	set__list_to_set(HeadVars, LiveVars),
+	mode_info_init(IOState0, ModuleInfo, PredId, ProcId, Context, LiveVars,
 			InstMapping0, ModeInfo0),
 	modecheck_goal(Body0, Body, ModeInfo0, ModeInfo1),
 	modecheck_final_insts(HeadVars, ArgModes, ModeInfo1, ModeInfo2),
@@ -358,9 +360,15 @@ modecheck_goal_2(disj(List0), NonLocals, disj(List)) -->
 modecheck_goal_2(if_then_else(Vs, A0, B0, C0), NonLocals,
 		if_then_else(Vs, A, B, C)) -->
 	mode_checkpoint(enter, "if-then-else"),
+	{ goal_get_nonlocals(B0, B_Vars) },
+	{ goal_get_nonlocals(C0, C_Vars) },
 	mode_info_dcg_get_instmap(InstMap0),
 	mode_info_lock_vars(NonLocals),
+	mode_info_add_live_vars(B_Vars),
+	mode_info_add_live_vars(C_Vars),
 	modecheck_goal(A0, A),
+	mode_info_remove_live_vars(B_Vars),
+	mode_info_remove_live_vars(C_Vars),
 	mode_info_unlock_vars(NonLocals),
 	modecheck_goal(B0, B),
 	mode_info_dcg_get_instmap(InstMapB),
@@ -404,6 +412,12 @@ modecheck_goal_2(unify(A, B, _, _, UnifyContext), _,
 	modecheck_unification(A, B, Mode, UnifyInfo),
 	mode_info_unset_call_context,
 	mode_checkpoint(exit, "unify").
+
+:- pred goal_get_nonlocals(hlds__goal, set(var)).
+:- mode goal_get_nonlocals(in, out).
+
+goal_get_nonlocals(_Goal - GoalInfo, NonLocals) :-
+	goal_info_get_nonlocals(GoalInfo, NonLocals).
 
 %-----------------------------------------------------------------------------%
 
@@ -456,64 +470,85 @@ instmap_lookup_arg_list([Arg|Args], InstMap, [Inst|Insts]) :-
 				mode_info, mode_info).
 :- mode modecheck_conj_list(in, in, mode_info_di, mode_info_uo) is det.
 
-modecheck_conj_list(Goals0, Goals, ModeInfo0, ModeInfo) :-
-	mode_info_get_delay_info(ModeInfo0, DelayInfo0),
-	delay_info_enter_conj(DelayInfo0, DelayInfo1),
-	mode_info_set_delay_info(ModeInfo0, DelayInfo1, ModeInfo1),
+modecheck_conj_list(Goals0, Goals) -->
+	=(ModeInfo0),
+	{ mode_info_get_errors(ModeInfo0, OldErrors) },
+	mode_info_set_errors([]),
 
-	mode_info_get_errors(ModeInfo1, OldErrors),
-	mode_info_set_errors(ModeInfo1, [], ModeInfo2),
+	{ mode_info_get_delay_info(ModeInfo0, DelayInfo0) },
+	{ delay_info_enter_conj(DelayInfo0, DelayInfo1) },
+	mode_info_set_delay_info(DelayInfo1),
+	mode_info_add_goals_live_vars(Goals0),
 
-	modecheck_conj_list_2(Goals0, Goals, ModeInfo2, ModeInfo3),
+	modecheck_conj_list_2(Goals0, Goals),
 
-	mode_info_get_errors(ModeInfo3, NewErrors),
-	append(OldErrors, NewErrors, Errors),
-	mode_info_set_errors(ModeInfo3, Errors, ModeInfo4),
+	=(ModeInfo3),
+	{ mode_info_get_errors(ModeInfo3, NewErrors) },
+	{ append(OldErrors, NewErrors, Errors) },
+	mode_info_set_errors(Errors),
 
-	mode_info_get_delay_info(ModeInfo4, DelayInfo4),
-	delay_info_leave_conj(DelayInfo4, DelayedGoals, DelayInfo5),
-	mode_info_set_delay_info(ModeInfo4, DelayInfo5, ModeInfo5),
+	{ mode_info_get_delay_info(ModeInfo3, DelayInfo4) },
+	{ delay_info_leave_conj(DelayInfo4, DelayedGoals, DelayInfo5) },
+	mode_info_set_delay_info(DelayInfo5),
 
-	( DelayedGoals = [] ->
-		ModeInfo = ModeInfo5
+	( { DelayedGoals = [] } ->
+		[]
 	;
-		get_all_waiting_vars(DelayedGoals, Vars0),
-		sort(Vars0, Vars),	% eliminate duplicates
-		mode_info_error(Vars, mode_error_conj(DelayedGoals),
-			ModeInfo5, ModeInfo)
+		{ get_all_waiting_vars(DelayedGoals, Vars0) },
+		{ sort(Vars0, Vars) },	% eliminate duplicates
+		mode_info_error(Vars, mode_error_conj(DelayedGoals))
 	).
+
+:- pred mode_info_add_goals_live_vars(list(hlds__goal), mode_info, mode_info).
+:- mode mode_info_add_goals_live_vars(in, mode_info_di, mode_info_uo).
+
+mode_info_add_goals_live_vars([]) --> [].
+mode_info_add_goals_live_vars([Goal | Goals]) -->
+	{ goal_get_nonlocals(Goal, Vars) },
+	mode_info_add_live_vars(Vars),
+	mode_info_add_goals_live_vars(Goals).
 
 :- pred modecheck_conj_list_2(list(hlds__goal), list(hlds__goal),
 				mode_info, mode_info).
 :- mode modecheck_conj_list_2(in, in, mode_info_di, mode_info_uo) is det.
 
-modecheck_conj_list_2([], [], ModeInfo, ModeInfo).
-modecheck_conj_list_2([Goal0 | Goals0], Goals, ModeInfo0, ModeInfo) :-
-	modecheck_goal(Goal0, Goal, ModeInfo0, ModeInfo1),
-	mode_info_get_errors(ModeInfo1, Errors),
-	( Errors = [] ->
-		Goals = [Goal | Goals1],
-		mode_info_get_delay_info(ModeInfo1, DelayInfo0),
-		( delay_info_wakeup_goal(DelayInfo0, WokenGoal, DelayInfo) ->
-			mode_checkpoint(wakeup, "goal", ModeInfo1, ModeInfo2),
-			mode_info_set_delay_info(ModeInfo2, DelayInfo,
-				ModeInfo3),
-			modecheck_conj_list_2([WokenGoal | Goals0], Goals1,
-				ModeInfo3, ModeInfo)
+modecheck_conj_list_2([], []) --> [].
+modecheck_conj_list_2([Goal0 | Goals0], Goals) -->
+	=(ModeInfo0),
+	{ goal_get_nonlocals(Goal0, NonLocalVars) },
+	mode_info_remove_live_vars(NonLocalVars),
+	modecheck_goal(Goal0, Goal),
+	=(ModeInfo1),
+	{ mode_info_get_errors(ModeInfo1, Errors) },
+	( { Errors = [] } ->
+		{ Goals = [Goal | Goals1] },
+		{ mode_info_get_delay_info(ModeInfo1, DelayInfo0) },
+		(
+			{ delay_info_wakeup_goal(DelayInfo0, WokenGoal,
+				DelayInfo) }
+		->
+			mode_checkpoint(wakeup, "goal"),
+			mode_info_set_delay_info(DelayInfo),
+			modecheck_conj_list_2([WokenGoal | Goals0], Goals1)
 		;
-			modecheck_conj_list_2(Goals0, Goals1,
-				ModeInfo1, ModeInfo)
+			modecheck_conj_list_2(Goals0, Goals1)
 		)
 	;
-			% Note that we use ModeInfo0 here, not ModeInfo1 -
-			% that is deliberate! We want to ignore changes
-			% introduced when we called modecheck_goal(Goal0, ...).
-		Errors = [ mode_error_info(Vars, _, _, _) | _],
-		mode_info_get_delay_info(ModeInfo0, DelayInfo0),
-		delay_info_delay_goal(DelayInfo0, Vars, Goal0, DelayInfo),
-		mode_info_set_delay_info(ModeInfo0, DelayInfo, ModeInfoB1),
-		modecheck_conj_list_2(Goals0, Goals, ModeInfoB1, ModeInfo)
+			% If we didn't manage to schedule the goal, then we
+			% restore the original mode_info here.
+		dcg_set_state(ModeInfo0),
+
+		{ Errors = [ mode_error_info(Vars, _, _, _) | _] },
+		{ mode_info_get_delay_info(ModeInfo0, DelayInfo0) },
+		{ delay_info_delay_goal(DelayInfo0, Vars, Goal0, DelayInfo) },
+		mode_info_set_delay_info(DelayInfo),
+		modecheck_conj_list_2(Goals0, Goals)
 	).
+
+:- pred dcg_set_state(T, T, T).
+:- mode dcg_set_state(in, in, out).
+
+dcg_set_state(Val, _OldVal, Val).
 
 	% Given an association list of Vars - Goals,
 	% combine all the Vars together into a single list.
@@ -673,7 +708,7 @@ modecheck_call_pred(PredId, Args, TheProcId, ModeInfo0, ModeInfo) :-
 			% save the old one in `OldErrors').  This is so the
 			% test for `Errors = []' in call_pred_2 will work.
 		mode_info_get_errors(ModeInfo0, OldErrors),
-		mode_info_set_errors(ModeInfo0, [], ModeInfo1),
+		mode_info_set_errors([], ModeInfo0, ModeInfo1),
 
 		modecheck_call_pred_2(ProcIds, Procs, ArgVars,
 			[], TheProcId, ModeInfo1, ModeInfo2),
@@ -681,7 +716,7 @@ modecheck_call_pred(PredId, Args, TheProcId, ModeInfo0, ModeInfo) :-
 			% restore the error list, appending any new error(s)
 		mode_info_get_errors(ModeInfo2, NewErrors),
 		append(OldErrors, NewErrors, Errors),
-		mode_info_set_errors(ModeInfo2, Errors, ModeInfo)
+		mode_info_set_errors(Errors, ModeInfo2, ModeInfo)
 	).
 
 :- pred modecheck_call_pred_2(list(proc_id), proc_table, list(var), list(var),
@@ -796,21 +831,45 @@ inst_gteq_2(bound(List), ground, ModuleInfo) :-
 inst_gteq_2(ground, _, _).
 inst_gteq_2(abstract_inst(_Name, _Args), free, _).
 
+	% To make things consistent, we assume that if a bound(...)
+	% inst only specifies the insts for some of the constructors
+	% of its type, then it means that all other constructors
+	% must have all their arguments ground.
+	% The code here makes use of the fact that the bound_inst lists
+	% are sorted.
+
 :- pred bound_inst_list_gteq(list(bound_inst), list(bound_inst), module_info).
 :- mode bound_inst_list_gteq(in, in, in) is semidet.
 
+:- bound_inst_list_gteq(A, B, _) when A and B.	% Indexing
+
 bound_inst_list_gteq([], _, _).
-bound_inst_list_gteq([_|_], [], _) :-
-	error("modecheck internal error: bound(...) missing case").
+bound_inst_list_gteq([X|Xs], [], ModuleInfo) :-
+	bound_inst_list_is_ground([X|Xs], ModuleInfo).
 bound_inst_list_gteq([X|Xs], [Y|Ys], ModuleInfo) :-
 	X = functor(NameX, ArgsX),
 	Y = functor(NameY, ArgsY),
 	length(ArgsX, ArityX),
 	length(ArgsY, ArityY),
 	( NameX = NameY, ArityX = ArityY ->
-		inst_list_gteq(ArgsX, ArgsY, ModuleInfo)
+		inst_list_gteq(ArgsX, ArgsY, ModuleInfo),
+		bound_inst_list_gteq(Xs, Ys, ModuleInfo)
 	;
-		bound_inst_list_gteq([X|Xs], Ys, ModuleInfo)
+		( compare(<, X, Y) ->
+			% NameX/ArityX does not occur in [Y|Ys].
+			% Hence for X to be gteq [Y|Yz] for NameX/ArityX,
+			% ArgsX must be ground.
+			inst_list_is_ground(ArgsX, ModuleInfo),
+			% We also nede to check that Xs is gteq [Y|Ys].
+			bound_inst_list_gteq(Xs, [Y|Ys], ModuleInfo)
+		;
+			% NameY/ArityY does not occur in [X|Xs].
+			% Hence [X|Xs] implicitly specifies "ground"
+			% for the args of NameY/ArityY, and hence is
+			% automatically gteq Y.  We just need to check
+			% that [X|Xs] is gteq Ys.
+			bound_inst_list_gteq([X|Xs], Ys, ModuleInfo)
+		)
 	).
 
 :- pred inst_list_gteq(list(inst), list(inst), module_info).
@@ -872,7 +931,7 @@ modecheck_set_var_inst(Var, Inst, ModeInfo0, ModeInfo) :-
 		mode_info_set_instmap(InstMap, ModeInfo0, ModeInfo1),
 		mode_info_get_delay_info(ModeInfo1, DelayInfo0),
 		delay_info_bind_var(DelayInfo0, Var, DelayInfo),
-		mode_info_set_delay_info(ModeInfo1, DelayInfo, ModeInfo)
+		mode_info_set_delay_info(DelayInfo, ModeInfo1, ModeInfo)
 	).
 
 :- pred inst_is_compat(inst, inst, module_info).
@@ -1005,7 +1064,17 @@ modecheck_unification(term__variable(X), term__variable(Y), Modes, Unification,
 	mode_info_get_instmap(ModeInfo0, InstMap0),
 	instmap_lookup_var(InstMap0, X, InstX),
 	instmap_lookup_var(InstMap0, Y, InstY),
-	( abstractly_unify_inst(InstX, InstY, ModuleInfo, UnifyInst) ->
+	mode_info_var_is_live(ModeInfo0, X, LiveX),
+	mode_info_var_is_live(ModeInfo0, Y, LiveY),
+	(
+		( LiveX = live, LiveY = live ->
+			abstractly_unify_inst(live, InstX, InstY, ModuleInfo,
+				UnifyInst)
+		;
+			abstractly_unify_inst(dead, InstX, InstY, ModuleInfo,
+				UnifyInst)
+		)
+	->
 		Inst = UnifyInst,
 		ModeInfo1 = ModeInfo0
 	;
@@ -1029,12 +1098,13 @@ modecheck_unification(term__variable(X), term__functor(Name, Args, _),
 	mode_info_get_instmap(ModeInfo0, InstMap0),
 	instmap_lookup_var(InstMap0, X, InstX),
 	instmap_lookup_arg_list(Args, InstMap0, InstArgs),
+	mode_info_var_is_live(ModeInfo0, X, LiveX),
+	term_list_to_var_list(Args, ArgVars),
+	mode_info_var_list_is_live(ArgVars, ModeInfo0, LiveArgs),
 	InstY = bound([functor(Name, InstArgs)]),
 	(
-		% could just use abstractly_unify_inst(InstX, InstY, ...)
-		% but this is a little bit faster
-		abstractly_unify_inst_functor(InstX, Name, InstArgs, ModuleInfo,
-			UnifyInst)
+		abstractly_unify_inst_functor(LiveX, InstX, Name,
+			InstArgs, LiveArgs, ModuleInfo, UnifyInst)
 	->
 		Inst = UnifyInst,
 		ModeInfo1 = ModeInfo0
@@ -1148,51 +1218,96 @@ mode_ground_args([Inst | Insts], [Mode | Modes]) :-
 	% something like bound([]), which effectively means "this program
 	% point will never be reached".
 
-:- pred abstractly_unify_inst_list(list(inst), list(inst), module_info,
+	% Abstractly unify two inst lists.
+
+:- pred abstractly_unify_inst_list(list(inst), list(inst), is_live, module_info,
 					list(inst)).
-:- mode abstractly_unify_inst_list(in, in, in, out).
+:- mode abstractly_unify_inst_list(in, in, in, in, out).
 
-abstractly_unify_inst_list([], [], _, []).
-abstractly_unify_inst_list([X|Xs], [Y|Ys], ModuleInfo, [Z|Zs]) :-
-	abstractly_unify_inst(X, Y, ModuleInfo, Z),
-	abstractly_unify_inst_list(Xs, Ys, ModuleInfo, Zs).
+abstractly_unify_inst_list([], [], _, _, []).
+abstractly_unify_inst_list([X|Xs], [Y|Ys], Live, ModuleInfo, [Z|Zs]) :-
+	abstractly_unify_inst(Live, X, Y, ModuleInfo, Z),
+	abstractly_unify_inst_list(Xs, Ys, Live, ModuleInfo, Zs).
 
-:- pred abstractly_unify_inst(inst, inst, module_info, inst).
-:- mode abstractly_unify_inst(in, in, in, out) is semidet.
+	% Abstractly unify two insts, both of which are live.
 
-abstractly_unify_inst(InstA, InstB, ModuleInfo, Inst) :-
+:- pred abstractly_unify_inst(is_live, inst, inst, module_info, inst).
+:- mode abstractly_unify_inst(in, in, in, in, out) is semidet.
+
+abstractly_unify_inst(Live, InstA, InstB, ModuleInfo, Inst) :-
 	inst_expand(ModuleInfo, InstA, InstA2),
 	inst_expand(ModuleInfo, InstB, InstB2),
-	abstractly_unify_inst_2(InstA2, InstB2, ModuleInfo, Inst).
+	abstractly_unify_inst_2(Live, InstA2, InstB2, ModuleInfo, Inst).
 
-:- pred abstractly_unify_inst_2(inst, inst, module_info, inst).
-:- mode abstractly_unify_inst_2(in, in, in, out) is semidet.
+	% Abstractly unify two expanded insts, both of which are live.
 
-abstractly_unify_inst_2(free,		free,		_, _) :- fail.
-abstractly_unify_inst_2(free,		bound(List),	M, bound(List)) :-
-	bound_inst_list_is_ground(List, M).	% maybe too strict
-abstractly_unify_inst_2(free,		ground,		_, ground).
-abstractly_unify_inst_2(free,		abstract_inst(_,_), _, _) :- fail.
+:- pred abstractly_unify_inst_2(is_live, inst, inst, module_info, inst).
+:- mode abstractly_unify_inst_2(in, in, in, in, out) is semidet.
+
+:- abstractly_unify_inst_2(_, A, B, _, _) when A and B.
+
+abstractly_unify_inst_2(live, free,	free,		_, _) :- fail.
+abstractly_unify_inst_2(live, free,	bound(List),	M, bound(List)) :-
+	bound_inst_list_is_ground(List, M).
+abstractly_unify_inst_2(live, free,	ground,		_, ground).
+abstractly_unify_inst_2(live, free,	abstract_inst(_,_), _, _) :- fail.
 	
-abstractly_unify_inst_2(bound(List),	free,		M, bound(List)) :-
-	bound_inst_list_is_ground(List, M).	% maybe too strict
-abstractly_unify_inst_2(bound(ListX),	bound(ListY),	M, bound(List)) :-
-	abstractly_unify_bound_inst_list(ListX, ListY, M, List).
-abstractly_unify_inst_2(bound(_),	ground,		_, ground).
-abstractly_unify_inst_2(bound(List),	abstract_inst(_,_), ModuleInfo,
+abstractly_unify_inst_2(live, bound(List), free,	M, bound(List)) :-
+	bound_inst_list_is_ground(List, M).
+abstractly_unify_inst_2(live, bound(ListX),bound(ListY), M, bound(List)) :-
+	abstractly_unify_bound_inst_list(live, ListX, ListY, M, List).
+abstractly_unify_inst_2(live, bound(_),	ground,		_, ground).
+abstractly_unify_inst_2(live, bound(List), abstract_inst(_,_), ModuleInfo,
 							   ground) :-
 	bound_inst_list_is_ground(List, ModuleInfo).
 
-abstractly_unify_inst_2(ground,		_,		_, ground).
+abstractly_unify_inst_2(live, ground,	_,		_, ground).
 
-abstractly_unify_inst_2(abstract_inst(_,_), free,	_, _) :- fail.
-abstractly_unify_inst_2(abstract_inst(_,_), bound(List), ModuleInfo, ground) :-
+abstractly_unify_inst_2(live, abstract_inst(_,_), free,	_, _) :- fail.
+abstractly_unify_inst_2(live, abstract_inst(_,_), bound(List), ModuleInfo,
+				ground) :-
 	bound_inst_list_is_ground(List, ModuleInfo).
-abstractly_unify_inst_2(abstract_inst(_,_), ground,	_, ground).
-abstractly_unify_inst_2(abstract_inst(Name, ArgsA),
+abstractly_unify_inst_2(live, abstract_inst(_,_), ground, _, ground).
+abstractly_unify_inst_2(live, abstract_inst(Name, ArgsA),
 			abstract_inst(Name, ArgsB), ModuleInfo, 
 			abstract_inst(Name, Args)) :-
-	abstractly_unify_inst_list(ArgsA, ArgsB, ModuleInfo, Args).
+	abstractly_unify_inst_list(ArgsA, ArgsB, live, ModuleInfo, Args).
+
+abstractly_unify_inst_2(dead, free, Inst, _, Inst).
+	
+abstractly_unify_inst_2(dead, bound(List), free, _, bound(List)).
+
+abstractly_unify_inst_2(dead, bound(ListX), bound(ListY), M, bound(List)) :-
+	abstractly_unify_bound_inst_list(dead, ListX, ListY, M, List).
+abstractly_unify_inst_2(dead, bound(_), ground, _, ground).
+abstractly_unify_inst_2(dead, bound(List), abstract_inst(N,As), ModuleInfo,
+							   Result) :-
+	( bound_inst_list_is_ground(List, ModuleInfo) ->
+		Result = ground
+	; bound_inst_list_is_free(List, ModuleInfo) ->
+		Result = abstract_inst(N,As)
+	;
+		fail
+	).
+
+abstractly_unify_inst_2(dead, ground,		_,		_, ground).
+
+abstractly_unify_inst_2(dead, abstract_inst(N,As), abstract_inst(N,As), _, _)
+						:- fail.
+abstractly_unify_inst_2(dead, abstract_inst(N,As), bound(List), ModuleInfo,
+							Result) :-
+	( bound_inst_list_is_ground(List, ModuleInfo) ->
+		Result = ground
+	; bound_inst_list_is_free(List, ModuleInfo) ->
+		Result = abstract_inst(N,As)
+	;
+		fail
+	).
+abstractly_unify_inst_2(dead, abstract_inst(_,_), ground,	_, ground).
+abstractly_unify_inst_2(dead, abstract_inst(Name, ArgsA),
+			abstract_inst(Name, ArgsB), ModuleInfo, 
+			abstract_inst(Name, Args)) :-
+	abstractly_unify_inst_list(ArgsA, ArgsB, dead, ModuleInfo, Args).
 
 %-----------------------------------------------------------------------------%
 
@@ -1203,27 +1318,52 @@ abstractly_unify_inst_2(abstract_inst(Name, ArgsA),
 	% call abstractly_unify_inst, but the following specialized code
 	% is slightly more efficient.
 
-:- pred abstractly_unify_inst_functor(inst, const, list(inst),
-					module_info, inst).
-:- mode abstractly_unify_inst_functor(in, in, in, in, out) is semidet.
+:- pred abstractly_unify_inst_functor(is_live, inst, const, list(inst),
+					list(is_live), module_info, inst).
+:- mode abstractly_unify_inst_functor(in, in, in, in, in, in, out) is semidet.
 
-abstractly_unify_inst_functor(InstA, Name, ArgInsts, ModuleInfo, Inst) :-
+abstractly_unify_inst_functor(Live, InstA, Name, ArgInsts, ArgLives,
+		ModuleInfo, Inst) :-
 	inst_expand(ModuleInfo, InstA, InstA2),
-	abstractly_unify_inst_functor_2(InstA2, Name, ArgInsts, ModuleInfo,
-		Inst).
+	abstractly_unify_inst_functor_2(Live, InstA2, Name, ArgInsts, ArgLives,
+			ModuleInfo, Inst).
 
-:- pred abstractly_unify_inst_functor_2(inst, const, list(inst),
-					module_info, inst).
-:- mode abstractly_unify_inst_functor_2(in, in, in, in, out) is semidet.
+:- pred abstractly_unify_inst_functor_2(is_live, inst, const, list(inst),
+					list(is_live), module_info, inst).
+:- mode abstractly_unify_inst_functor_2(in, in, in, in, in, in, out) is semidet.
 
-abstractly_unify_inst_functor_2(free, Name, Args, ModuleInfo,
+abstractly_unify_inst_functor_2(live, free, Name, Args, ArgLives, ModuleInfo,
 			bound([functor(Name, Args)])) :-
-	inst_list_is_ground(Args, ModuleInfo).	% maybe too strict
-abstractly_unify_inst_functor_2(bound(ListX), Name, Args, M, bound(List)) :-
+	inst_list_is_ground_or_dead(Args, ArgLives, ModuleInfo).
+abstractly_unify_inst_functor_2(live, bound(ListX), Name, Args, ArgLives, M,
+		bound(List)) :-
+	abstractly_unify_bound_inst_list_lives(ListX, Name, Args, ArgLives,
+						M, List).
+abstractly_unify_inst_functor_2(live, ground, _Name, _Args, _, _, ground).
+abstractly_unify_inst_functor_2(live, abstract_inst(_,_), _, _, _, _, _) :-
+	fail.
+
+abstractly_unify_inst_functor_2(dead, free, Name, Args, _ArgLives, _ModuleInfo,
+			bound([functor(Name, Args)])).
+abstractly_unify_inst_functor_2(dead, bound(ListX), Name, Args, _ArgLives, M,
+		bound(List)) :-
 	ListY = [functor(Name, Args)],
-	abstractly_unify_bound_inst_list(ListX, ListY, M, List).
-abstractly_unify_inst_functor_2(ground, _Name, _Args, _, ground).
-abstractly_unify_inst_functor_2(abstract_inst(_,_), _Name, _Args, _, _) :- fail.
+	abstractly_unify_bound_inst_list(dead, ListX, ListY, M, List). 
+abstractly_unify_inst_functor_2(dead, ground, _Name, _Args, _, _, ground).
+abstractly_unify_inst_functor_2(dead, abstract_inst(_,_), _, _, _, _, _) :-
+	fail.
+
+:- pred inst_list_is_ground_or_dead(list(inst), list(is_live), module_info).
+:- mode inst_list_is_ground_or_dead(in, in, in) is semidet.
+
+inst_list_is_ground_or_dead([], [], _).
+inst_list_is_ground_or_dead([Inst | Insts], [Live | Lives], ModuleInfo) :-
+	( Live = live ->
+		inst_is_ground(ModuleInfo, Inst)
+	;
+		true
+	),
+	inst_list_is_ground_or_dead(Insts, Lives, ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -1235,33 +1375,73 @@ abstractly_unify_inst_functor_2(abstract_inst(_,_), _Name, _Args, _, _) :- fail.
 	% same functor name, they are inserted in the output list
 	% iff their argument inst list can be abstractly unified.
 
-:- pred abstractly_unify_bound_inst_list(list(bound_inst), list(bound_inst),
-		module_info, list(bound_inst)).
-:- mode abstractly_unify_bound_inst_list(in, in, in, out).
+:- pred abstractly_unify_bound_inst_list(is_live, list(bound_inst),
+		list(bound_inst), module_info, list(bound_inst)).
+:- mode abstractly_unify_bound_inst_list(in, in, in, in, out).
 
-:- abstractly_unify_bound_inst_list(Xs, Ys, _, _) when Xs and Ys. % Index
+:- abstractly_unify_bound_inst_list(_, Xs, Ys, _, _) when Xs and Ys. % Index
 
-abstractly_unify_bound_inst_list([], _, _ModuleInfo, []).
-abstractly_unify_bound_inst_list([_|_], [], _ModuleInfo, []).
-abstractly_unify_bound_inst_list([X|Xs], [Y|Ys], ModuleInfo, L) :-
+abstractly_unify_bound_inst_list(_, [], _, _ModuleInfo, []).
+abstractly_unify_bound_inst_list(_, [_|_], [], _ModuleInfo, []).
+abstractly_unify_bound_inst_list(Live, [X|Xs], [Y|Ys], ModuleInfo, L) :-
 	X = functor(NameX, ArgsX),
 	length(ArgsX, ArityX),
 	Y = functor(NameY, ArgsY),
 	length(ArgsY, ArityY),
 	( NameX = NameY, ArityX = ArityY ->
-	    ( abstractly_unify_inst_list(ArgsX, ArgsY, ModuleInfo, Args) ->
+	    ( abstractly_unify_inst_list(ArgsX, ArgsY, Live, ModuleInfo, Args)
+	    ->
 		L = [functor(NameX, Args) | L1],
-		abstractly_unify_bound_inst_list(Xs, Ys, ModuleInfo, L1)
+		abstractly_unify_bound_inst_list(Live, Xs, Ys,
+						ModuleInfo, L1)
 	    ;
-		abstractly_unify_bound_inst_list(Xs, Ys, ModuleInfo, L)
+		abstractly_unify_bound_inst_list(Live, Xs, Ys,
+						ModuleInfo, L)
 	    )
 	;
 	    ( compare(<, X, Y) ->
-		abstractly_unify_bound_inst_list(Xs, [Y|Ys], ModuleInfo, L)
+		abstractly_unify_bound_inst_list(Live, Xs, [Y|Ys],
+						ModuleInfo, L)
 	    ;
-		abstractly_unify_bound_inst_list([X|Xs], Ys, ModuleInfo, L)
+		abstractly_unify_bound_inst_list(Live, [X|Xs], Ys,
+						ModuleInfo, L)
 	    )
 	).
+
+:- pred abstractly_unify_bound_inst_list_lives(list(bound_inst), const,
+		list(inst), list(is_live), module_info, list(bound_inst)).
+:- mode abstractly_unify_bound_inst_list_lives(in, in, in, in, in, out).
+
+:- abstractly_unify_bound_inst_list_lives(Xs, Ys, _, _, _, _) when Xs and Ys.
+	% Index
+
+abstractly_unify_bound_inst_list_lives([], _, _, _, _ModuleInfo, []).
+abstractly_unify_bound_inst_list_lives([X|Xs], NameY, ArgsY, LivesY,
+		ModuleInfo, L) :-
+	X = functor(NameX, ArgsX),
+	length(ArgsX, ArityX),
+	length(ArgsY, ArityY),
+	( 
+		NameX = NameY,
+		ArityX = ArityY
+	->
+		abstractly_unify_inst_list_lives(ArgsX, ArgsY, LivesY,
+			ModuleInfo, Args),
+		L = [functor(NameX, Args)]
+	;
+		abstractly_unify_bound_inst_list_lives(Xs, NameY, ArgsY,
+					LivesY, ModuleInfo, L)
+	).
+
+:- pred abstractly_unify_inst_list_lives(list(inst), list(inst), list(is_live),
+					module_info, list(inst)).
+:- mode abstractly_unify_inst_list_lives(in, in, in, in, out).
+
+abstractly_unify_inst_list_lives([], [], [], _, []).
+abstractly_unify_inst_list_lives([X|Xs], [Y|Ys], [Live|Lives], ModuleInfo,
+		[Z|Zs]) :-
+	abstractly_unify_inst(Live, X, Y, ModuleInfo, Z),
+	abstractly_unify_inst_list_lives(Xs, Ys, Lives, ModuleInfo, Zs).
 
 %-----------------------------------------------------------------------------%
 
@@ -1625,8 +1805,9 @@ write_inst_id(F - N) -->
 					% further instantiated inside a
 					% negated context
 			delay_info,	% info about delayed goals
-			list(mode_error_info)
+			list(mode_error_info),
 					% The mode errors found
+			list(set(var))	% The live variables
 		).
 
 	% The normal inst of a mode_info struct: ground, with
@@ -1637,7 +1818,8 @@ write_inst_id(F - N) -->
 					mode_info(
 						ground_unique, ground,
 						ground, ground, ground, ground,
-						ground, ground, ground, ground
+						ground, ground, ground, ground,
+						ground
 					)
 				).
 
@@ -1652,7 +1834,8 @@ write_inst_id(F - N) -->
 					mode_info(
 						dead, ground,
 						ground, ground, ground, ground,
-						ground, ground, ground, ground
+						ground, ground, ground, ground,
+						ground
 					)
 				).
 
@@ -1665,18 +1848,18 @@ write_inst_id(F - N) -->
 	% Initialize the mode_info
 
 :- pred mode_info_init(io__state, module_info, pred_id, proc_id,
-			term__context, instmap, mode_info).
-:- mode mode_info_init(di, in, in, in, in, in, mode_info_uo) is det.
+			term__context, set(var), instmap, mode_info).
+:- mode mode_info_init(di, in, in, in, in, in, in, mode_info_uo) is det.
 
-mode_info_init(IOState, ModuleInfo, PredId, ProcId, Context, InstMapping0,
-		ModeInfo) :-
+mode_info_init(IOState, ModuleInfo, PredId, ProcId, Context, LiveVars,
+		InstMapping0, ModeInfo) :-
 	mode_context_init(ModeContext),
 	LockedVars = [],
 	delay_info_init(DelayInfo),
 	ErrorList = [],
 	ModeInfo = mode_info(
 		IOState, ModuleInfo, PredId, ProcId, Context, ModeContext,
-		InstMapping0, LockedVars, DelayInfo, ErrorList
+		InstMapping0, LockedVars, DelayInfo, ErrorList, [LiveVars]
 	).
 
 %-----------------------------------------------------------------------------%
@@ -1686,29 +1869,30 @@ mode_info_init(IOState, ModuleInfo, PredId, ProcId, Context, InstMapping0,
 :- pred mode_info_get_io_state(mode_info, io__state).
 :- mode mode_info_get_io_state(mode_info_get_io_state, uo) is det.
 
-mode_info_get_io_state(mode_info(IOState,_,_,_,_,_,_,_,_,_), IOState).
+mode_info_get_io_state(mode_info(IOState,_,_,_,_,_,_,_,_,_,_), IOState).
 
 %-----------------------------------------------------------------------------%
 
 :- pred mode_info_set_io_state(mode_info, io__state, mode_info).
 :- mode mode_info_set_io_state(mode_info_set_io_state, ui, mode_info_uo) is det.
 
-mode_info_set_io_state( mode_info(_,B,C,D,E,F,G,H,I,J), IOState,
-			mode_info(IOState,B,C,D,E,F,G,H,I,J)).
+mode_info_set_io_state( mode_info(_,B,C,D,E,F,G,H,I,J,K), IOState,
+			mode_info(IOState,B,C,D,E,F,G,H,I,J,K)).
 
 %-----------------------------------------------------------------------------%
 
 :- pred mode_info_get_module_info(mode_info, module_info).
 :- mode mode_info_get_module_info(in, out) is det.
 
-mode_info_get_module_info(mode_info(_,ModuleInfo,_,_,_,_,_,_,_,_), ModuleInfo).
+mode_info_get_module_info(mode_info(_,ModuleInfo,_,_,_,_,_,_,_,_,_),
+				ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 
 :- pred mode_info_get_preds(mode_info, pred_table).
 :- mode mode_info_get_preds(in, out) is det.
 
-mode_info_get_preds(mode_info(_,ModuleInfo,_,_,_,_,_,_,_,_), Preds) :-
+mode_info_get_preds(mode_info(_,ModuleInfo,_,_,_,_,_,_,_,_,_), Preds) :-
 	module_info_preds(ModuleInfo, Preds).
 
 %-----------------------------------------------------------------------------%
@@ -1716,7 +1900,7 @@ mode_info_get_preds(mode_info(_,ModuleInfo,_,_,_,_,_,_,_,_), Preds) :-
 :- pred mode_info_get_modes(mode_info, mode_table).
 :- mode mode_info_get_modes(in, out) is det.
 
-mode_info_get_modes(mode_info(_,ModuleInfo,_,_,_,_,_,_,_,_), Modes) :-
+mode_info_get_modes(mode_info(_,ModuleInfo,_,_,_,_,_,_,_,_,_), Modes) :-
 	module_info_modes(ModuleInfo, Modes).
 
 %-----------------------------------------------------------------------------%
@@ -1724,7 +1908,7 @@ mode_info_get_modes(mode_info(_,ModuleInfo,_,_,_,_,_,_,_,_), Modes) :-
 :- pred mode_info_get_insts(mode_info, inst_table).
 :- mode mode_info_get_insts(in, out) is det.
 
-mode_info_get_insts(mode_info(_,ModuleInfo,_,_,_,_,_,_,_,_), Insts) :-
+mode_info_get_insts(mode_info(_,ModuleInfo,_,_,_,_,_,_,_,_,_), Insts) :-
 	module_info_insts(ModuleInfo, Insts).
 
 %-----------------------------------------------------------------------------%
@@ -1732,36 +1916,36 @@ mode_info_get_insts(mode_info(_,ModuleInfo,_,_,_,_,_,_,_,_), Insts) :-
 :- pred mode_info_get_predid(mode_info, pred_id).
 :- mode mode_info_get_predid(in, out) is det.
 
-mode_info_get_predid(mode_info(_,_,PredId,_,_,_,_,_,_,_), PredId).
+mode_info_get_predid(mode_info(_,_,PredId,_,_,_,_,_,_,_,_), PredId).
 
 %-----------------------------------------------------------------------------%
 
 :- pred mode_info_get_procid(mode_info, proc_id).
 :- mode mode_info_get_procid(in, out) is det.
 
-mode_info_get_procid(mode_info(_,_,_,ProcId,_,_,_,_,_,_), ProcId).
+mode_info_get_procid(mode_info(_,_,_,ProcId,_,_,_,_,_,_,_), ProcId).
 
 %-----------------------------------------------------------------------------%
 
 :- pred mode_info_get_context(mode_info, term__context).
 :- mode mode_info_get_context(in, out).
 
-mode_info_get_context(mode_info(_,_,_,_,Context,_,_,_,_,_), Context).
+mode_info_get_context(mode_info(_,_,_,_,Context,_,_,_,_,_,_), Context).
 
 %-----------------------------------------------------------------------------%
 
 :- pred mode_info_set_context(term__context, mode_info, mode_info).
 :- mode mode_info_set_context(in, mode_info_di, mode_info_uo) is det.
 
-mode_info_set_context(Context, mode_info(A,B,C,D,_,F,G,H,I,J),
-				mode_info(A,B,C,D,Context,F,G,H,I,J)).
+mode_info_set_context(Context, mode_info(A,B,C,D,_,F,G,H,I,J,K),
+				mode_info(A,B,C,D,Context,F,G,H,I,J,K)).
 
 %-----------------------------------------------------------------------------%
 
 :- pred mode_info_get_mode_context(mode_info, mode_context).
 :- mode mode_info_get_mode_context(in, out) is det.
 
-mode_info_get_mode_context(mode_info(_,_,_,_,_,ModeContext,_,_,_,_),
+mode_info_get_mode_context(mode_info(_,_,_,_,_,ModeContext,_,_,_,_,_),
 				ModeContext).
 
 %-----------------------------------------------------------------------------%
@@ -1769,8 +1953,8 @@ mode_info_get_mode_context(mode_info(_,_,_,_,_,ModeContext,_,_,_,_),
 :- pred mode_info_set_mode_context(mode_context, mode_info, mode_info).
 :- mode mode_info_set_mode_context(in, mode_info_di, mode_info_uo) is det.
 
-mode_info_set_mode_context(ModeContext, mode_info(A,B,C,D,E,_,G,H,I,J),
-				mode_info(A,B,C,D,E,ModeContext,G,H,I,J)).
+mode_info_set_mode_context(ModeContext, mode_info(A,B,C,D,E,_,G,H,I,J,K),
+				mode_info(A,B,C,D,E,ModeContext,G,H,I,J,K)).
 
 %-----------------------------------------------------------------------------%
 
@@ -1793,7 +1977,7 @@ mode_info_unset_call_context -->
 :- pred mode_info_get_instmap(mode_info, instmap).
 :- mode mode_info_get_instmap(in, out) is det.
 
-mode_info_get_instmap(mode_info(_,_,_,_,_,_,InstMap,_,_,_), InstMap).
+mode_info_get_instmap(mode_info(_,_,_,_,_,_,InstMap,_,_,_,_), InstMap).
 
 	% mode_info_dcg_get_instmap/3 is the same as mode_info_get_instmap/2
 	% except that it's easier to use inside a DCG.
@@ -1821,47 +2005,120 @@ mode_info_get_vars_instmap(ModeInfo, _Vars, InstMap) :-
 :- pred mode_info_set_instmap(instmap, mode_info, mode_info).
 :- mode mode_info_set_instmap(in, mode_info_di, mode_info_uo) is det.
 
-mode_info_set_instmap( InstMap, mode_info(A,B,C,D,E,F,_,H,I,J),
-			mode_info(A,B,C,D,E,F,InstMap,H,I,J)).
+mode_info_set_instmap( InstMap, mode_info(A,B,C,D,E,F,_,H,I,J,K),
+			mode_info(A,B,C,D,E,F,InstMap,H,I,J,K)).
 
 %-----------------------------------------------------------------------------%
 
 :- pred mode_info_get_locked_vars(mode_info, list(set(var))).
 :- mode mode_info_get_locked_vars(mode_info_ui, out) is det.
 
-mode_info_get_locked_vars(mode_info(_,_,_,_,_,_,_,LockedVars,_,_), LockedVars).
+mode_info_get_locked_vars(mode_info(_,_,_,_,_,_,_,LockedVars,_,_,_),
+		LockedVars).
 
 %-----------------------------------------------------------------------------%
 
 :- pred mode_info_set_locked_vars(mode_info, list(set(var)), mode_info).
 :- mode mode_info_set_locked_vars(mode_info_di, in, mode_info_uo) is det.
 
-mode_info_set_locked_vars( mode_info(A,B,C,D,E,F,G,_,I,J), LockedVars,
-			mode_info(A,B,C,D,E,F,G,LockedVars,I,J)).
+mode_info_set_locked_vars( mode_info(A,B,C,D,E,F,G,_,I,J,K), LockedVars,
+			mode_info(A,B,C,D,E,F,G,LockedVars,I,J,K)).
 
 %-----------------------------------------------------------------------------%
 
 :- pred mode_info_get_errors(mode_info, list(mode_error_info)).
 :- mode mode_info_get_errors(mode_info_ui, out) is det.
 
-mode_info_get_errors(mode_info(_,_,_,_,_,_,_,_,_,Errors), Errors).
+mode_info_get_errors(mode_info(_,_,_,_,_,_,_,_,_,Errors,_), Errors).
 
 %-----------------------------------------------------------------------------%
 
 :- pred mode_info_get_num_errors(mode_info, int).
 :- mode mode_info_get_num_errors(mode_info_ui, out) is det.
 
-mode_info_get_num_errors(mode_info(_,_,_,_,_,_,_,_,_,Errors), NumErrors) :-
+mode_info_get_num_errors(mode_info(_,_,_,_,_,_,_,_,_,Errors,_), NumErrors) :-
 	length(Errors, NumErrors).
 
 %-----------------------------------------------------------------------------%
 
-:- pred mode_info_set_errors(mode_info, list(mode_error_info), mode_info).
-:- mode mode_info_set_errors(mode_info_di, list(mode_error_info), mode_info_uo)
+:- pred mode_info_set_errors(list(mode_error_info), mode_info, mode_info).
+:- mode mode_info_set_errors(list(mode_error_info), mode_info_di, mode_info_uo)
 	is det.
 
-mode_info_set_errors( mode_info(A,B,C,D,E,F,G,H,I,_), Errors, 
-			mode_info(A,B,C,D,E,F,G,H,I,Errors)).
+mode_info_set_errors( Errors, mode_info(A,B,C,D,E,F,G,H,I,_,K), 
+			mode_info(A,B,C,D,E,F,G,H,I,Errors,K)).
+
+%-----------------------------------------------------------------------------%
+
+	% We keep track of the live variables as a bag, represented
+	% as a list of sets of vars.
+	% This allows us to easily add and remove sets of variables.
+	% It's probably not maximally efficient.
+
+	% Add a set of vars to the bag of live vars.
+
+:- pred mode_info_add_live_vars(set(var), mode_info, mode_info).
+:- mode mode_info_add_live_vars(in, mode_info_di, mode_info_uo).
+
+mode_info_add_live_vars(NewLiveVars,
+			mode_info(A,B,C,D,E,F,G,H,I,J,LiveVars0),
+			mode_info(A,B,C,D,E,F,G,H,I,J,LiveVars)) :-
+	LiveVars = [NewLiveVars | LiveVars0].
+
+	% Remove a set of vars from the bag of live vars.
+
+:- pred mode_info_remove_live_vars(set(var), mode_info, mode_info).
+:- mode mode_info_remove_live_vars(in, mode_info_di, mode_info_uo) is det.
+
+mode_info_remove_live_vars(OldLiveVars, ModeInfo0, ModeInfo) :-
+	ModeInfo0 = mode_info(A,B,C,D,E,F,G,H,I,J,LiveVars0),
+	ModeInfo1 = mode_info(A,B,C,D,E,F,G,H,I,J,LiveVars),
+	( delete_first(LiveVars0, OldLiveVars, LiveVars) ->
+		true
+	;
+		error("mode_info_remove_live_vars: delete_first failed")
+	),
+		% when a variable becomes dead, we may be able to wake
+		% up a goal which is waiting on that variable
+	set__to_sorted_list(OldLiveVars, VarList),
+	mode_info_get_delay_info(ModeInfo1, DelayInfo0),
+	delay_info_bind_var_list(VarList, DelayInfo0, DelayInfo),
+	mode_info_set_delay_info(DelayInfo, ModeInfo1, ModeInfo).
+
+:- pred delay_info_bind_var_list(list(var), delay_info, delay_info).
+:- mode delay_info_bind_var_list(in, in, out).
+
+delay_info_bind_var_list([], DelayInfo, DelayInfo).
+delay_info_bind_var_list([Var|Vars], DelayInfo0, DelayInfo) :-
+	delay_info_bind_var(DelayInfo0, Var, DelayInfo1),
+	delay_info_bind_var_list(Vars, DelayInfo1, DelayInfo).
+
+	% Check whether a list of variables are live or not
+
+:- pred mode_info_var_list_is_live(list(var), mode_info, list(is_live)).
+:- mode mode_info_var_list_is_live(in, mode_info_ui, out) is det.
+
+mode_info_var_list_is_live([], _, []).
+mode_info_var_list_is_live([Var | Vars], ModeInfo, [Live | Lives]) :-
+	mode_info_var_is_live(ModeInfo, Var, Live),
+	mode_info_var_list_is_live(Vars, ModeInfo, Lives).
+
+	% Check whether a variable is live or not
+
+:- pred mode_info_var_is_live(mode_info, var, is_live).
+:- mode mode_info_var_is_live(mode_info_ui, in, out) is det.
+
+mode_info_var_is_live(mode_info(_,_,_,_,_,_,_,_,_,_,LiveVarsList), Var,
+		Result) :-
+	(
+		% some [LiveVars] 
+		member(LiveVars, LiveVarsList),
+		set__member(Var, LiveVars)
+	->
+		Result = live
+	;
+		Result = dead
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -1936,13 +2193,13 @@ mode_info_var_is_locked_2([Set | Sets], Var) :-
 :- pred mode_info_get_delay_info(mode_info, delay_info).
 :- mode mode_info_get_delay_info(mode_info_no_io, out) is det.
 
-mode_info_get_delay_info(mode_info(_,_,_,_,_,_,_,_,DelayInfo,_), DelayInfo).
+mode_info_get_delay_info(mode_info(_,_,_,_,_,_,_,_,DelayInfo,_,_), DelayInfo).
 
-:- pred mode_info_set_delay_info(mode_info, delay_info, mode_info).
-:- mode mode_info_set_delay_info(mode_info_di, in, mode_info_uo) is det.
+:- pred mode_info_set_delay_info(delay_info, mode_info, mode_info).
+:- mode mode_info_set_delay_info(in, mode_info_di, mode_info_uo) is det.
 
-mode_info_set_delay_info(mode_info(A,B,C,D,E,F,G,H,_,J), DelayInfo,
-			mode_info(A,B,C,D,E,F,G,H,DelayInfo,J)).
+mode_info_set_delay_info(DelayInfo, mode_info(A,B,C,D,E,F,G,H,_,J,K),
+			mode_info(A,B,C,D,E,F,G,H,DelayInfo,J,K)).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -2230,7 +2487,7 @@ mode_info_error(Vars, ModeError, ModeInfo0, ModeInfo) :-
 	mode_info_get_errors(ModeInfo0, Errors0),
 	ModeErrorInfo = mode_error_info(Vars, ModeError, Context, ModeContext),
 	append(Errors0, [ModeErrorInfo], Errors),
-	mode_info_set_errors(ModeInfo0, Errors, ModeInfo).
+	mode_info_set_errors(Errors, ModeInfo0, ModeInfo).
 
 %-----------------------------------------------------------------------------%
 

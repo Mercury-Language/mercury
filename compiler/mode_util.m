@@ -25,6 +25,15 @@
 :- pred inst_list_is_ground(list(inst), module_info).
 :- mode inst_list_is_ground(in, in) is semidet.
 
+:- pred inst_is_free(module_info, inst).
+:- mode inst_is_free(in, in) is semidet.
+
+:- pred inst_list_is_free(list(inst), module_info).
+:- mode inst_list_is_free(in, in) is semidet.
+
+:- pred bound_inst_list_is_free(list(bound_inst), module_info).
+:- mode bound_inst_list_is_free(in, in) is semidet.
+
 :- pred bound_inst_list_is_ground(list(bound_inst), module_info).
 :- mode bound_inst_list_is_ground(in, in) is semidet.
 
@@ -77,9 +86,6 @@ mode_is_output(ModuleInfo, Mode) :-
 	% or is a user-defined inst which is defined as `free'.
 	% Abstract insts must not be free.
 
-:- pred inst_is_free(module_info, inst).
-:- mode inst_is_free(in, in).
-
 :- inst_is_free(_, X) when X.		% NU-Prolog indexing.
 
 inst_is_free(_, free).
@@ -130,6 +136,16 @@ inst_list_is_ground([], _).
 inst_list_is_ground([Inst | Insts], ModuleInfo) :-
 	inst_is_ground(ModuleInfo, Inst),
 	inst_list_is_ground(Insts, ModuleInfo).
+
+bound_inst_list_is_free([], _).
+bound_inst_list_is_free([functor(_Name, Args)|BoundInsts], ModuleInfo) :-
+	inst_list_is_free(Args, ModuleInfo),
+	bound_inst_list_is_free(BoundInsts, ModuleInfo).
+
+inst_list_is_free([], _).
+inst_list_is_free([Inst | Insts], ModuleInfo) :-
+	inst_is_free(ModuleInfo, Inst),
+	inst_list_is_free(Insts, ModuleInfo).
 
 inst_lookup(ModuleInfo, Name, Args, Inst) :-
 	length(Args, Arity),
