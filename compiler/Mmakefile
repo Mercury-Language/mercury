@@ -167,7 +167,7 @@ $(MC_PROG).depend: regenerate_preprocessed_files Mercury.modules
 # won't work without the Mercury.modules file.
 .PHONY: Mercury.modules
 Mercury.modules:
-	$(MC) $(ALL_MCFLAGS) -f *.m
+	$(MC) $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) -f *.m
 
 .PHONY: all
 all:		mercury $(TAGS_FILE_EXISTS)

@@ -166,7 +166,7 @@ $(DEPENDS): Mercury.modules
 # won't work without the Mercury.modules file.
 .PHONY: Mercury.modules
 Mercury.modules:
-	$(MC) $(ALL_MCFLAGS) -f *.m
+	$(MC) $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) -f *.m
 
 .PHONY: check
 check:	$(CHECKS)
