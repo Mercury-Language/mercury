@@ -20,6 +20,8 @@
 :- interface.
 :- import_module int, require.
 
+%---------------------------------------------------------------------------%
+
 :- pred builtin_float_plus(float, float, float).
 :- mode builtin_float_plus(in, in, out) is det.
 
@@ -44,12 +46,29 @@
 :- pred builtin_float_le(float, float).
 :- mode builtin_float_le(in, in) is semidet.
 
+%---------------------------------------------------------------------------%
+
 :- pred float__pow( float, int, float).
 :- mode float__pow( in, in, out) is det.
 %	float__pow( Base, Exponent, Answer)
 %		A limited way to calculate powers.  The exponent must be an 
 %		integer greater or equal to 0.  Currently this function runs
 %		at O(n), where n is the value of the exponent.
+
+%---------------------------------------------------------------------------%
+% System constants
+
+	% Maximum floating-point number
+:- pred float__max(float).
+:- mode float__max(out) is det.
+
+	% Minimum normalised floating-point number
+:- pred float__min(float).
+:- mode float__min(out) is det.
+
+	% Smallest number x such that 1.0 + x \= 1.0
+:- pred float__epsilon(float).
+:- mode float__epsilon(out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -73,4 +92,12 @@ float__pow( X, Exp, Ans) :-
 		builtin_float_times(X, A2, Ans)
 	).
 
+%---------------------------------------------------------------------------%
+% The following system constants are defined in math_rt.mod
+
+:- external(float__max/1).
+:- external(float__min/1).
+:- external(float__epsilon/1).
+
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
