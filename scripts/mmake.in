@@ -135,6 +135,8 @@ export MERCURY_INT_DIR
 export MERCURY_DEFAULT_GRADE
 cat ${MMAKE_VARS} $deps $ds $mmake ${MMAKE_RULES} > $tmp
 case $# in
-	0) exec ${MMAKE_MAKE} -f $tmp -r ;;
-	*) exec ${MMAKE_MAKE} -f $tmp -r "$@" ;;
+	# Note that we can't use `exec' here, because if we did that,
+	# that `trap' code which removes $tmp would never get executed.
+	0) ${MMAKE_MAKE} -f $tmp -r ;;
+	*) ${MMAKE_MAKE} -f $tmp -r "$@" ;;
 esac
