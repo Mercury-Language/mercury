@@ -850,8 +850,7 @@ type_ctor_info__make_res_name_ordered_table(MaybeResFunctor,
 compute_contains_var_bit_vector(ArgTypes) =
 	compute_contains_var_bit_vector_2(ArgTypes, 0, 0).
 
-:- func
-compute_contains_var_bit_vector_2(
+:- func compute_contains_var_bit_vector_2(
 	list(rtti_maybe_pseudo_type_info_or_self), int, int) = int.
 
 compute_contains_var_bit_vector_2([], _, Vector) = Vector.
