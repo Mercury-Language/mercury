@@ -336,8 +336,20 @@ typed_compare(R, X, Y) :- compare(R, univ(X), univ(Y)).
 :- pragma foreign_code("C", "
 
 #ifdef MR_HIGHLEVEL_CODE
-void sys_init_type_info_module(void); /* suppress gcc -Wmissing-decl warning */
-void sys_init_type_info_module(void) { return; }
+
+/* forward decl, to suppress gcc -Wmissing-decl warning */
+void sys_init_type_info_module(void);
+
+/*
+** This empty initialization function is needed just to
+** match the one that we use for LLDS grades.
+*/
+void
+sys_init_type_info_module(void)
+{
+	/* no initialization needed */
+}
+
 #else
 
 	/*

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2000 The University of Melbourne.
+% Copyright (C) 1994-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -281,8 +281,20 @@ promise_only_solution_io(Pred, X) -->
 :- pragma foreign_code("C", "
 
 #ifdef MR_HIGHLEVEL_CODE
-void sys_init_builtin_types_module(void); /* suppress gcc warning */
-void sys_init_builtin_types_module(void) { return; }
+
+/* forward decl, to suppress gcc -Wmissing-decl warning */
+void sys_init_builtin_types_module(void);
+
+/*
+** This empty initialization function is needed just to
+** match the one that we use for LLDS grades.
+*/
+void
+sys_init_builtin_types_module(void)
+{
+	/* no initialization needed */
+}
+
 #else
 
 MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_NOCM(builtin, int, 0,
@@ -963,11 +975,17 @@ mercury__builtin__copy_2_p_1(MR_Mercury_Type_Info type_info, MR_Box x, MR_Box * 
 	mercury__builtin__copy_2_p_0(type_info, x, y);
 }
 
+/* forward decl, to suppress gcc -Wmissing-decl warning */
 void sys_init_copy_module(void);
-void sys_init_copy_module(void)
+
+/*
+** This empty initialization function is needed just to
+** match the one that we use for LLDS grades.
+*/
+void
+sys_init_copy_module(void)
 {
-	MR_init_entry(mercury__builtin__copy_2_p_0);
-	MR_init_entry(mercury__builtin__copy_2_p_1);
+	/* no initialization needed */
 }
 
 #else /* ! MR_HIGHLEVEL_CODE */
@@ -1026,8 +1044,20 @@ void sys_init_copy_module(void) {
 :- pragma c_code("
 
 #ifdef MR_HIGHLEVEL_CODE
+
+/* forward decl, to suppress gcc -Wmissing-decl warning */
 void sys_init_unify_c_pointer_module(void);
-void sys_init_unify_c_pointer_module(void) { return; }
+
+/*
+** This empty initialization function is needed just to
+** match the one that we use for LLDS grades.
+*/
+void
+sys_init_unify_c_pointer_module(void)
+{
+	/* no initialization needed */
+}
+
 #else
 
 MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_PRED(builtin, c_pointer, 0,

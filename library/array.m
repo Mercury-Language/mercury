@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-1995, 1997-2000 The University of Melbourne.
+% Copyright (C) 1993-1995, 1997-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -337,9 +337,18 @@ lower bounds other than zero are not supported
 :- pragma foreign_code("C", "
 
 #ifdef MR_HIGHLEVEL_CODE
+
+/* forward decl, to suppress gcc -Wmissing-decl warning */
 void sys_init_array_module_builtins(void);
-void sys_init_array_module_builtins(void) {
-	return;
+
+/*
+** This empty initialization function is needed just to
+** match the one that we use for LLDS grades.
+*/
+void
+sys_init_array_module_builtins(void)
+{
+	/* no initialization needed */
 }
 
 bool MR_CALL
