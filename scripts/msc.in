@@ -124,6 +124,7 @@ for file in "$@"; do
 	    "") case "$use_subdirs" in
 		    no)  mv $tmp.ql "$dir/$base.ql" ;;
 		    yes) mv $tmp.ql "$dir/Mercury/qls/$base.ql" ;;
+		esac ;;
 	    *)  mv $tmp.ql "$target" ;;
 	esac
 done
