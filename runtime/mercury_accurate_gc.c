@@ -1009,11 +1009,11 @@ MR_agc_add_root(MR_Word *root_addr, MR_TypeInfo type_info)
     node = MR_malloc(sizeof(*node));
     node->root = root_addr;
     node->type_info = type_info;
+    node->next = NULL;
 
     if (root_list == NULL) {
         root_list = node;
         last_root = node;
-        last_root->next = NULL;
     } else {
         last_root->next = node;
         last_root = node;
