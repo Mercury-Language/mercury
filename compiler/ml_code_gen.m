@@ -566,7 +566,6 @@
 % TODO:
 %	- type_infos
 %	- c_code pragmas
-%	- no_tag types
 %	- typeclass_infos and class method calls
 %	- type declarations for user-defined types
 %	...
@@ -2838,15 +2837,15 @@ ml_gen_construct_rep(float_constant(Float), _, Var, Args, _ArgModes, Context,
 	{ MLDS_Statement = ml_gen_assign(VarLval, const(float_const(Float)),
 		Context) }.
 
-ml_gen_construct_rep(no_tag, _ConsId, _Var, Args, Modes, _Context,
-		_MLDS_Decls, _MLDS_Statements) -->
-	( { Args = [_Arg], Modes = [_Mode] } ->
-		{ sorry("no_tag types") }
-		/****
-		ml_variable_type(Arg, Type),
-		ml_gen_sub_unify(ref(Var), ref(Arg), Mode, Type,
-			Context, MLDS_Decls, MLDS_Statements)
-		****/
+ml_gen_construct_rep(no_tag, _ConsId, Var, Args, Modes, Context,
+		MLDS_Decls, MLDS_Statements) -->
+	( { Args = [Arg], Modes = [Mode] } ->
+		ml_variable_type(Arg, ArgType),
+		ml_gen_var(Arg, ArgLval),
+		ml_gen_var(Var, VarLval),
+		ml_gen_sub_unify(ArgLval, Mode, ArgType, VarLval,
+			Context, [], MLDS_Statements),
+		{ MLDS_Decls = [] }
 	;
 		{ error("ml_code_gen: no_tag: arity != 1") }
 	).
@@ -3516,21 +3515,16 @@ ml_gen_det_deconstruct(Var, ConsId, Args, Modes, Context,
 		{ Tag = tabling_pointer_constant(_, _) },
 		{ MLDS_Statements = [] }
 	;
-		% XXX not yet implemented
-		{ Tag = no_tag },
-		{ sorry("compound terms (no_tag deconstruct)") }
-/****
-	;
 		{ Tag = no_tag },
 		( { Args = [Arg], Modes = [Mode] } ->
-			% XXX FIXME
-			ml_variable_type(Arg, Type),
-			ml_gen_sub_unify(ref(Var), ref(Arg), Mode, Type,
-				MLDS_Statements)
+			ml_variable_type(Arg, ArgType),
+			ml_gen_var(Arg, ArgLval),
+			ml_gen_var(Var, VarLval),
+			ml_gen_sub_unify(ArgLval, Mode, ArgType, VarLval,
+				Context, [], MLDS_Statements)
 		;
 			{ error("ml_code_gen: no_tag: arity != 1") }
 		)
-****/
 	;
 		{ Tag = unshared_tag(UnsharedTag) },
 		ml_gen_var(Var, VarLval),
@@ -3590,18 +3584,35 @@ ml_gen_unify_args_2([Arg|Args], [Mode|Modes], [ArgType|ArgTypes],
 ml_gen_unify_arg(Arg, Mode, ArgType, VarLval, ArgNum, PrimaryTag, Context,
 		MLDS_Statements0, MLDS_Statements) -->
 	%
-	% Generate lvals and rvals for the LHS and the RHS
-	% Note that with the current low-level data representation,
-	% we store all fields as boxed, so we need to box
-	% values when storing them into fields and unbox them
-	% when extracting them from fields.
+	% Generate lvals for the LHS and the RHS
 	%
 	{ FieldId = offset(const(int_const(ArgNum))) },
 	{ FieldLval = field(yes(PrimaryTag), lval(VarLval), FieldId) },
-	{ MLDS_ArgType = mercury_type_to_mlds_type(ArgType) },
-	{ FieldRval = unop(unbox(MLDS_ArgType), lval(FieldLval)) },
 	ml_gen_var(Arg, ArgLval),
-	{ ArgRval = unop(box(MLDS_ArgType), lval(ArgLval)) },
+	%
+	% Now generate code to unify them
+	%
+	ml_gen_sub_unify(ArgLval, Mode, ArgType, FieldLval, Context,
+		MLDS_Statements0, MLDS_Statements).
+
+:- pred ml_gen_sub_unify(mlds__lval, uni_mode, prog_type, mlds__lval,
+		prog_context, mlds__statements, mlds__statements,
+		ml_gen_info, ml_gen_info).
+:- mode ml_gen_sub_unify(in, in, in, in, in, in, out, in, out) is det.
+
+ml_gen_sub_unify(ArgLval, Mode, ArgType, FieldLval, Context,
+		MLDS_Statements0, MLDS_Statements) -->
+	%
+	% With the current low-level data representation,
+	% we store all fields as boxed, so we need to box
+	% values when storing them into fields and unbox them
+	% when extracting them from fields.
+	% Hence we compute a polymorphic type here, for use in
+	% the calls to ml_gen_box_or_unbox_rval below.
+	% 
+	{ varset__init(TypeVarSet0) },
+	{ varset__new_var(TypeVarSet0, TypeVar, _TypeVarSet) },
+	{ type_util__var(BoxedFieldType, TypeVar) },
 
 	%
 	% Figure out the direction of data-flow from the mode,
@@ -3632,6 +3643,8 @@ ml_gen_unify_arg(Arg, Mode, ArgType, VarLval, ArgNum, PrimaryTag, Context,
 		{ LeftMode = top_in },
 		{ RightMode = top_out }
 	->
+		{ ml_gen_box_or_unbox_rval(BoxedFieldType, ArgType,
+			lval(FieldLval), FieldRval) },
 		{ MLDS_Statement = ml_gen_assign(ArgLval, FieldRval,
 			Context) },
 		{ MLDS_Statements = [MLDS_Statement | MLDS_Statements0] }
@@ -3640,6 +3653,8 @@ ml_gen_unify_arg(Arg, Mode, ArgType, VarLval, ArgNum, PrimaryTag, Context,
 		{ LeftMode = top_out },
 		{ RightMode = top_in }
 	->
+		{ ml_gen_box_or_unbox_rval(ArgType, BoxedFieldType,
+			lval(ArgLval), ArgRval) },
 		{ MLDS_Statement = ml_gen_assign(FieldLval, ArgRval,
 			Context) },
 		{ MLDS_Statements = [MLDS_Statement | MLDS_Statements0] }
@@ -3650,7 +3665,7 @@ ml_gen_unify_arg(Arg, Mode, ArgType, VarLval, ArgNum, PrimaryTag, Context,
 	->
 		{ MLDS_Statements = MLDS_Statements0 }
 	;
-		{ error("unify_gen__generate_sub_unify: some strange unify") }
+		{ error("ml_gen_sub_unify: some strange unify") }
 	).
 
 %-----------------------------------------------------------------------------%
@@ -3764,143 +3779,6 @@ ml_gen_tag_test_rval(shared_remote_tag(Bits, Num), Rval) =
 ml_gen_tag_test_rval(shared_local_tag(Bits, Num), Rval) =
 	binop(eq, Rval,
 		  mkword(Bits, unop(std_unop(mkbody), const(int_const(Num))))).
-
-%-----------------------------------------------------------------------------%
-
-/*************
-
-	% Generate code to perform a list of deterministic subunifications
-	% for the arguments of a construction.
-
-:- pred unify_gen__generate_unify_args(list(uni_val), list(uni_val),
-			list(uni_mode), list(type), code_tree,
-			code_info, code_info).
-:- mode unify_gen__generate_unify_args(in, in, in, in, out, in, out) is det.
-
-unify_gen__generate_unify_args(Ls, Rs, Ms, Ts, Code) -->
-	( unify_gen__generate_unify_args_2(Ls, Rs, Ms, Ts, Code0) ->
-		{ Code = Code0 }
-	;
-		{ error("unify_gen__generate_unify_args: length mismatch") }
-	).
-
-:- pred unify_gen__generate_unify_args_2(list(uni_val), list(uni_val),
-			list(uni_mode), list(type), code_tree,
-			code_info, code_info).
-:- mode unify_gen__generate_unify_args_2(in, in, in, in, out, in, out)
-	is semidet.
-
-unify_gen__generate_unify_args_2([], [], [], [], empty) --> [].
-unify_gen__generate_unify_args_2([L|Ls], [R|Rs], [M|Ms], [T|Ts], Code) -->
-	unify_gen__generate_sub_unify(L, R, M, T, CodeA),
-	unify_gen__generate_unify_args_2(Ls, Rs, Ms, Ts, CodeB),
-	{ Code = tree(CodeA, CodeB) }.
-
-%-----------------------------------------------------------------------------%
-
-	% Generate a subunification between two [field|variable].
-
-:- pred unify_gen__generate_sub_unify(uni_val, uni_val, uni_mode, type,
-					code_tree, code_info, code_info).
-:- mode unify_gen__generate_sub_unify(in, in, in, in, out, in, out) is det.
-
-unify_gen__generate_sub_unify(L, R, Mode, Type, Code) -->
-	{ Mode = ((LI - RI) -> (LF - RF)) },
-	code_info__get_module_info(ModuleInfo),
-	{ mode_to_arg_mode(ModuleInfo, (LI -> LF), Type, LeftMode) },
-	{ mode_to_arg_mode(ModuleInfo, (RI -> RF), Type, RightMode) },
-	(
-			% Input - input == test unification
-		{ LeftMode = top_in },
-		{ RightMode = top_in }
-	->
-		% This shouldn't happen, since mode analysis should
-		% avoid creating any tests in the arguments
-		% of a construction or deconstruction unification.
-		{ error("test in arg of [de]construction") }
-	;
-			% Input - Output== assignment ->
-		{ LeftMode = top_in },
-		{ RightMode = top_out }
-	->
-		unify_gen__generate_sub_assign(R, L, Code)
-	;
-			% Input - Output== assignment <-
-		{ LeftMode = top_out },
-		{ RightMode = top_in }
-	->
-		unify_gen__generate_sub_assign(L, R, Code)
-	;
-		{ LeftMode = top_unused },
-		{ RightMode = top_unused }
-	->
-		{ Code = empty } % free-free - ignore
-			% XXX I think this will have to change
-			% if we start to support aliasing
-	;
-		{ error("unify_gen__generate_sub_unify: some strange unify") }
-	).
-
-%-----------------------------------------------------------------------------%
-
-:- pred unify_gen__generate_sub_assign(uni_val, uni_val, code_tree,
-							code_info, code_info).
-:- mode unify_gen__generate_sub_assign(in, in, out, in, out) is det.
-
-	% Assignment between two lvalues - cannot cache [yet]
-	% so generate immediate code
-	% If the destination of the assignment contains any vars,
-	% we need to materialize those before we can do the assignment.
-unify_gen__generate_sub_assign(lval(Lval0), lval(Rval), Code) -->
-	code_info__materialize_vars_in_rval(lval(Lval0), NewLval,
-		MaterializeCode),
-	(
-		{ NewLval = lval(Lval) }
-	->
-		{ Code = tree(MaterializeCode, node([
-			assign(Lval, lval(Rval)) - "Copy field"
-		])) }
-	;
-		{ error("unify_gen__generate_sub_assign: lval vanished with lval") }
-	).
-	% assignment from a variable to an lvalue - cannot cache
-	% so generate immediately
-unify_gen__generate_sub_assign(lval(Lval0), ref(Var), Code) -->
-	code_info__produce_variable(Var, SourceCode, Source),
-	code_info__materialize_vars_in_rval(lval(Lval0), NewLval,
-		MaterializeCode),
-	(
-		{ NewLval = lval(Lval) }
-	->
-		{ Code = tree(
-			tree(SourceCode, MaterializeCode),
-			node([
-				assign(Lval, Source) - "Copy value"
-			])
-		) }
-	;
-		{ error("unify_gen__generate_sub_assign: lval vanished with ref") }
-	).
-	% assignment to a variable, so cache it.
-unify_gen__generate_sub_assign(ref(Var), lval(Rval), empty) -->
-	(
-		code_info__variable_is_forward_live(Var)
-	->
-		code_info__cache_expression(Var, lval(Rval))
-	;
-		{ true }
-	).
-	% assignment to a variable, so cache it.
-unify_gen__generate_sub_assign(ref(Lvar), ref(Rvar), empty) -->
-	(
-		code_info__variable_is_forward_live(Lvar)
-	->
-		code_info__cache_expression(Lvar, var(Rvar))
-	;
-		{ true }
-	).
-
-**********/
 
 %-----------------------------------------------------------------------------%
 %
