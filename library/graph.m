@@ -19,6 +19,7 @@
 :- module graph.
 
 :- interface.
+:- import_module set.
 
 :- type graph(N, A).
 
@@ -56,7 +57,7 @@
 
 :- implementation.
 
-:- import_module map, set, int, std_util, list.
+:- import_module map, int, std_util, list.
 :- import_module require.
 
 :- type graph(N, A)	--->
