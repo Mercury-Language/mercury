@@ -198,7 +198,7 @@
 :- type comparison_result ---> (=) ; (<) ; (>).
 
 	% compare(Res, X, Y) binds Res to =, <, or >
-	% depending on wheither X is =, <, or > Y in the
+	% depending on whether X is =, <, or > Y in the
 	% standard ordering.
 :- pred compare(comparison_result, T, T).
 	% Note to implementors: the modes must appear in this order:

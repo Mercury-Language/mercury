@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2004 The University of Melbourne.
+% Copyright (C) 1994-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -63,7 +63,7 @@
 :- pred int__to_float(int, float) is det.
 :- mode int__to_float(in, out) is det.
 
-	% expontiation
+	% exponentiation
 	% int__pow(X, Y, Z): Z is X raised to the Yth power
 	% Throws a `math__domain_error' exception if Y is negative.
 :- func int__pow(int, int) = int.
@@ -214,7 +214,7 @@
 :- func - int = int.
 :- mode - in = uo is det.
 
-	% is/2, for backwards compatiblity with Prolog (and with
+	% is/2, for backwards compatibility with Prolog (and with
 :- pred is(T, T) is det.
 :- mode is(uo, di) is det.
 :- mode is(out, in) is det.

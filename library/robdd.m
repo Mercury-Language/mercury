@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 2001-2004 The University of Melbourne.
+% Copyright (C) 2001-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -10,7 +10,7 @@
 
 % This module contains a Mercury interface to Peter Schachte's C
 % implementation of Reduced Ordered Binary Decision Diagrams (ROBDDs).
-% ROBDDs are an efficent representation for Boolean constraints.
+% ROBDDs are an efficient representation for Boolean constraints.
 
 % Boolean variables are represented using the type var(T) from the
 % `term' library module (see the `term' module documentation for

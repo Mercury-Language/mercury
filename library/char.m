@@ -265,7 +265,7 @@ char__is_alnum_or_underscore(Char) :-
 	; Char = 'Z'
 	; Char = '_'
 	).
-% A more consise implementation is:
+% A more concise implementation is:
 %	( char__is_digit(Char) ->
 %		true
 %	;

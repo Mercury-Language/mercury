@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1995-2004 The University of Melbourne.
+% Copyright (C) 1995-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -66,7 +66,7 @@
 		% as the top-level functor of an argument of a compound
 		% term.
 		%
-		% This will generally be the precendence of `,/2' less one.
+		% This will generally be the precedence of `,/2' less one.
 		% If `,/2' does not appear in the op_table,
 		% `ops__max_priority' plus one may be a reasonable value.
 	func ops__arg_priority(Table) = ops__priority

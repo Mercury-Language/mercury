@@ -13,7 +13,7 @@
 %
 % This module implements version arrays.  A version array provides O(1)
 % access and update for the "latest" version of the array.  "Older"
-% versions of the array incurr an O(k) penalty on accesses where k is
+% versions of the array incur an O(k) penalty on accesses where k is
 % the number of updates that have been made since.
 %
 % The advantage of version arrays is that in the common, singly threaded,

@@ -153,13 +153,13 @@
 	%	assigned the `Array' element.  The builtin types are assigned
 	% 	the elements `Int', `String', `Float' and `Char'.  All other
 	%	functors are assigned elements with the same name as the
-	%	functor provided the funtor name is well formed and does
+	%	functor provided the functor name is well formed and does
 	% 	not start with a capital letter.  Otherwise a mangled
 	%	version of the functor name is used.  
 	%
 	%	All elements except `Int', `String', `Float' and `Char'
 	%	will have their `functor', `arity', `type' and `field' (if
-	%	there is a field name) attrinutes set.  `Int', `String', 
+	%	there is a field name) attributes set.  `Int', `String', 
 	%	`Float' and `Char' elements will just have their `type' and
 	%	possibly their `field' attributes set.
 	%
@@ -168,7 +168,7 @@
 	%	functors. 
 	%
 	%	2. unique: Here we use the same mapping as `simple' except
-	%	we append the fuctor arity for discriminated unions and
+	%	we append the functor arity for discriminated unions and
 	%	a mangled version of the type name for every element.  The same
 	%	attributes as the `simple' scheme are provided.  The advantage
 	%	of this scheme is that it maps each functor to a unique 

@@ -175,7 +175,7 @@
 	% `set_bbbtree__sorted_list_to_set_len(List, Set, N)' is true iff
 	% `Set' is the set set containing only the members of `List' and `N'
 	% is the length of the list. If the length of the list is already known
-	% then a noticable speed improvement can be expected over
+	% then a noticeable speed improvement can be expected over
 	% `set_bbbtree__sorted_list_to_set' as a significant cost involved
 	% with `set_bbbtree__sorted_list_to_set' is the call to list__length.
 	% `List' must be sorted. O(n).

@@ -276,7 +276,7 @@
 :- implementation.
 :- import_module require, string, svset.
 
-% Please keept the differences between this module and getopt_io.m to the
+% Please keep the differences between this module and getopt_io.m to the
 % minimum. Most changes should done in both modules.
 
 :- type option_ops_special(OptionType)
