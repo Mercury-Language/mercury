@@ -1508,7 +1508,7 @@ static Word * create_type_info(Word *term_type_info,
 **
 ** Please note: 
 **	mercury_expand increments the heap pointer, however, on
-**	some platforms the reigster windows mean that transient
+**	some platforms the register windows mean that transient
 **	Mercury registers may be lost. Before calling mercury_expand,
 **	call save_transient_registers(), and afterwards, call
 **	restore_transient_registers().
