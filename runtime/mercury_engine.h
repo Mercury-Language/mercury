@@ -13,12 +13,18 @@
 #ifndef	MERCURY_ENGINE_H
 #define	MERCURY_ENGINE_H
 
+	/*
+	** include mercury_regs.h first so that we don't have
+	** any function prototypes before the global register
+	** declarations.
+	*/
+#include "mercury_regs.h"		/* for NUM_REAL_REGS */
+
 #include <setjmp.h>
 
 #include "mercury_std.h"		/* for `bool' */
 #include "mercury_types.h"		/* for `Code *' */
 #include "mercury_goto.h"		/* for `Define_entry()' */
-#include "mercury_regs.h"		/* for NUM_REAL_REGS */
 #include "mercury_thread.h"		/* for pthread types */
 #include "mercury_context.h"		/* for MR_IF_USE_TRAIL */
 
