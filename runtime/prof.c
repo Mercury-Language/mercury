@@ -113,13 +113,13 @@ checked_fopen(const char *filename, const char *mode, const char *message)
 	return file;
 }
 
-static void checked_fclose(FILE* file)
+static void checked_fclose(FILE* file, const char *filename)
 {
 	errno = 0;
 	if (fclose(file) != 0) {
 		fprintf(stderr,
 			"Mercury runtime: error closing file `%s': %s\n",
-			message, filename, strerror(errno));
+			filename, strerror(errno));
 		exit(1);
 	}
 }
@@ -145,7 +145,7 @@ void prof_init_time_profile()
 	/* output the value of HZ */
 	fptr = checked_fopen("Prof.Counts", "create", "w");
 	fprintf(fptr, "%d\n", HZ);
-	checked_fclose(fptr);
+	checked_fclose(fptr, "Prof.Counts");
 
 	itime.it_value.tv_sec = 0;
 	itime.it_value.tv_usec = (long) (USEC / HZ) * CLOCK_TICKS; 
@@ -272,7 +272,7 @@ void prof_output_addr_pair_table(void)
 			current = current->next;
 		}
 	}
-	checked_fclose(fptr);
+	checked_fclose(fptr, "Prof.CallPair");
 }
 
 /* ======================================================================== */
@@ -287,7 +287,7 @@ void prof_output_addr_pair_table(void)
 void prof_output_addr_decls(const char *name, const Code *address)
 {
 	if (!declfptr) {
-		declfptr = checked_fopen("Prof.Decl", "w");
+		declfptr = checked_fopen("Prof.Decl", "create", "w");
 	}
 	fprintf(declfptr, "%p\t%s\n", address, name);
 }
@@ -317,7 +317,7 @@ void prof_output_addr_table()
 			current = current->next;
 		}
 	}
-	checked_fclose(fptr);
+	checked_fclose(fptr, "Prof.Counts");
 }
 
 #endif /* PROFILE_TIME */
