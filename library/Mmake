@@ -23,7 +23,7 @@ MNL	=	MERCURY_LIB_DIR=. \
 	MERCURY_LIB_NOS="`vpath_find $(library.nos) $(NU_LIBRARY_NOS)`" \
 		mnl
 
-MSC	=	MERCURY_SISCTUS_COMPILER=./sicstus_compile msc
+MSC	=	MERCURY_SICSTUS_COMPILER=./sicstus_compile msc
 MSL	=	MERCURY_SP_LIB_DIR=. MERCURY_SICSTUS_PROLOG=sp \
 MERCURY_SP_LIB_OBJS="`vpath_find sp_builtin.ql $(library.qls) $(NU_LIBRARY_QLS)`" \
 		msl
