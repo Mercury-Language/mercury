@@ -2756,7 +2756,7 @@ mercury_compile__single_c_to_obj(C_File, O_File, Succeeded) -->
 	% library/math.h instead of /usr/include/math.h. C compilers
 	% which don't support `-I-' should harmlessly misinterpret this
 	% as a search directory `-'.
-	{ SystemInclOpt = "-I-" },
+	{ SystemInclOpt = " -I- " },
 
 	globals__io_lookup_bool_option(split_c_files, Split_C_Files),
 	{ Split_C_Files = yes ->
