@@ -3680,7 +3680,7 @@ simple_type_to_value_class(string) = _ :-
 	error("no value class for System.String").
 simple_type_to_value_class(refany) = _ :-
 	error("no value class for refany").
-simple_type_to_value_class(class(Name)) = _ :-
+simple_type_to_value_class(class(_)) = _ :-
 	error("no value class for class").
 simple_type_to_value_class(value_class(Name)) =
 	ilds__type([], value_class(Name)).
