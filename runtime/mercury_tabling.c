@@ -584,13 +584,13 @@ MR_type_info_lookup_or_add(MR_TrieNode table, MR_TypeInfo type_info)
         if (MR_type_ctor_rep_is_variable_arity(
                 MR_type_ctor_rep(type_ctor_info)))
         {
-                arity = MR_TYPEINFO_GET_HIGHER_ORDER_ARITY(type_info);
-                arg_vector = MR_TYPEINFO_GET_HIGHER_ORDER_ARG_VECTOR(
+                arity = MR_TYPEINFO_GET_VAR_ARITY_ARITY(type_info);
+                arg_vector = MR_TYPEINFO_GET_VAR_ARITY_ARG_VECTOR(
                         type_info);
                 node = MR_int_hash_lookup_or_add(node, arity);
         } else {
                 arity = type_ctor_info->MR_type_ctor_arity;
-                arg_vector = MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info);
+                arg_vector = MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(type_info);
         }
 
         for (i = 1; i <= arity; i++) {
@@ -769,7 +769,7 @@ MR_table_type(MR_TrieNode table, MR_TypeInfo type_info, MR_Word data)
                 for (i = 0; i < functor_desc->MR_du_functor_orig_arity; i++) {
                     if (MR_arg_type_may_contain_var(functor_desc, i)) {
                         arg_type_info = MR_make_type_info_maybe_existq(
-                            MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info),
+                            MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(type_info),
                             functor_desc->MR_du_functor_arg_types[i],
                             arg_vector, functor_desc, &allocated_memory_cells);
                     } else {
@@ -792,7 +792,7 @@ MR_table_type(MR_TrieNode table, MR_TypeInfo type_info, MR_Word data)
                 MR_TypeInfo         eqv_type_info;
 
                 eqv_type_info = MR_make_type_info(
-                    MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info),
+                    MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(type_info),
                     MR_type_ctor_layout(type_ctor_info).layout_notag->
                         MR_notag_functor_arg_type, &allocated_memory_cells);
                 MR_DEBUG_TABLE_ANY(table, eqv_type_info, data);
@@ -813,7 +813,7 @@ MR_table_type(MR_TrieNode table, MR_TypeInfo type_info, MR_Word data)
                 MR_TypeInfo         eqv_type_info;
 
                 eqv_type_info = MR_make_type_info(
-                    MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info),
+                    MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(type_info),
                     MR_type_ctor_layout(type_ctor_info).layout_equiv,
                     &allocated_memory_cells);
                 MR_DEBUG_TABLE_ANY(table, eqv_type_info, data);
@@ -881,9 +881,9 @@ MR_table_type(MR_TrieNode table, MR_TypeInfo type_info, MR_Word data)
                 int         i;
 
                 data_value = (MR_Word *) data;
-                arity = MR_TYPEINFO_GET_TUPLE_ARITY(type_info);
+                arity = MR_TYPEINFO_GET_VAR_ARITY_ARITY(type_info);
                 arg_type_info_vector =
-                        MR_TYPEINFO_GET_TUPLE_ARG_VECTOR(type_info);
+                        MR_TYPEINFO_GET_VAR_ARITY_ARG_VECTOR(type_info);
                 for (i = 0; i < arity; i++) {
                     /* type_infos are counted starting at one */
                     MR_DEBUG_TABLE_ANY(table, arg_type_info_vector[i + 1],
@@ -933,7 +933,7 @@ MR_table_type(MR_TrieNode table, MR_TypeInfo type_info, MR_Word data)
                 array_size = array->size;
 
                 new_type_info = MR_make_type_info(
-                    MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info),
+                    MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(type_info),
                     (MR_PseudoTypeInfo) 1, &allocated_memory_cells);
 
                 for (i = 0; i < array_size; i++) {

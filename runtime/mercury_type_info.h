@@ -139,33 +139,42 @@ typedef const struct MR_PseudoTypeInfo_Almost_Struct    *MR_PseudoTypeInfo;
 ** for static constant typeinfos and pseudotypeinfos.
 */
 
-#define MR_FIRST_ORDER_TYPEINFO_STRUCT(NAME, ARITY)                     \
+#define MR_FIXED_ARITY_TYPEINFO_STRUCT(NAME, ARITY)                     \
     struct NAME {                                                       \
         MR_TypeCtorInfo     MR_ti_type_ctor_info;                       \
-        MR_TypeInfo         MR_ti_first_order_arg_typeinfos[ARITY];     \
+        MR_TypeInfo         MR_ti_fixed_arity_arg_typeinfos[ARITY];     \
     }
 
 /* Tuple types also use the higher-order type-info structure. */
-#define MR_HIGHER_ORDER_TYPEINFO_STRUCT(NAME, ARITY)                    \
+#define MR_VAR_ARITY_TYPEINFO_STRUCT(NAME, ARITY)                       \
     struct NAME {                                                       \
         MR_TypeCtorInfo     MR_ti_type_ctor_info;                       \
-        MR_Integer          MR_ti_higher_order_arity;                   \
-        MR_TypeInfo         MR_ti_higher_order_arg_typeinfos[ARITY];    \
+        MR_Integer          MR_ti_var_arity_arity;                      \
+        MR_TypeInfo         MR_ti_var_arity_arg_typeinfos[ARITY];       \
     }
 
-#define MR_FIRST_ORDER_PSEUDOTYPEINFO_STRUCT(NAME, ARITY)               \
+#define MR_FIXED_ARITY_PSEUDOTYPEINFO_STRUCT(NAME, ARITY)               \
     struct NAME {                                                       \
         MR_TypeCtorInfo     MR_pti_type_ctor_info;                      \
-        MR_PseudoTypeInfo   MR_pti_first_order_arg_pseudo_typeinfos[ARITY]; \
+        MR_PseudoTypeInfo   MR_pti_fixed_arity_arg_pseudo_typeinfos[ARITY]; \
     }
 
 /* Tuple types also use the higher-order pseude-type-info structure. */
-#define MR_HIGHER_ORDER_PSEUDOTYPEINFO_STRUCT(NAME, ARITY)              \
+#define MR_VAR_ARITY_PSEUDOTYPEINFO_STRUCT(NAME, ARITY)                 \
     struct NAME {                                                       \
         MR_TypeCtorInfo     MR_pti_type_ctor_info;                      \
-        MR_Integer          MR_pti_higher_order_arity;                  \
-        MR_PseudoTypeInfo   MR_pti_higher_order_arg_pseudo_typeinfos[ARITY]; \
+        MR_Integer          MR_pti_var_arity_arity;                     \
+        MR_PseudoTypeInfo   MR_pti_var_arity_arg_pseudo_typeinfos[ARITY]; \
     }
+
+/*
+** The next two #defines are needed for bootstrapping.
+*/
+
+#define MR_FIRST_ORDER_PSEUDOTYPEINFO_STRUCT(a, b) \
+	MR_FIXED_ARITY_PSEUDOTYPEINFO_STRUCT(a, b)
+#define MR_HIGHER_ORDER_PSEUDOTYPEINFO_STRUCT(a, b) \
+	MR_VAR_ARITY_PSEUDOTYPEINFO_STRUCT(a, b)
 
 /*
 ** Now define specific versions of these struct types,
@@ -173,9 +182,9 @@ typedef const struct MR_PseudoTypeInfo_Almost_Struct    *MR_PseudoTypeInfo;
 ** typedefs above.
 */
 
-MR_HIGHER_ORDER_TYPEINFO_STRUCT(MR_TypeInfo_Almost_Struct,
+MR_VAR_ARITY_TYPEINFO_STRUCT(MR_TypeInfo_Almost_Struct,
         MR_VARIABLE_SIZED);
-MR_HIGHER_ORDER_PSEUDOTYPEINFO_STRUCT(MR_PseudoTypeInfo_Almost_Struct,
+MR_VAR_ARITY_PSEUDOTYPEINFO_STRUCT(MR_PseudoTypeInfo_Almost_Struct,
         MR_VARIABLE_SIZED);
 
 /*
@@ -241,42 +250,30 @@ typedef MR_TypeInfo     *MR_TypeInfoParams;
         ? (pseudo_type_info)->MR_pti_type_ctor_info                 \
         : (MR_TypeCtorInfo) (pseudo_type_info))
 
-#define MR_TYPEINFO_GET_HIGHER_ORDER_ARITY(type_info)               \
-    ((type_info)->MR_ti_higher_order_arity)
+#define MR_TYPEINFO_GET_VAR_ARITY_ARITY(type_info)                  \
+    ((type_info)->MR_ti_var_arity_arity)
 
-#define MR_TYPEINFO_GET_TUPLE_ARITY(type_info)                      \
-    MR_TYPEINFO_GET_HIGHER_ORDER_ARITY(type_info)
+#define MR_PSEUDO_TYPEINFO_GET_VAR_ARITY_ARITY(pseudo_type_info)    \
+    ((pseudo_type_info)->MR_pti_var_arity_arity)
 
-#define MR_PSEUDO_TYPEINFO_GET_HIGHER_ORDER_ARITY(pseudo_type_info) \
-    ((pseudo_type_info)->MR_pti_higher_order_arity)
-
-#define MR_PSEUDO_TYPEINFO_GET_TUPLE_ARITY(pseudo_type_info)        \
-    MR_PSEUDO_TYPEINFO_GET_HIGHER_ORDER_ARITY(pseudo_type_info)
-
-#define MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info)           \
+#define MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(type_info)           \
     ((MR_TypeInfoParams) &(type_info)->MR_ti_type_ctor_info)
 
-#define MR_TYPEINFO_GET_HIGHER_ORDER_ARG_VECTOR(type_info)          \
+#define MR_TYPEINFO_GET_VAR_ARITY_ARG_VECTOR(type_info)             \
     ((MR_TypeInfoParams)                                            \
-        &(type_info)->MR_ti_higher_order_arity)
-
-#define MR_TYPEINFO_GET_TUPLE_ARG_VECTOR(type_info)                 \
-    MR_TYPEINFO_GET_HIGHER_ORDER_ARG_VECTOR(type_info)
+        &(type_info)->MR_ti_var_arity_arity)
 
 /*
 ** Macros for creating type_infos.
 */
 
-#define MR_first_order_type_info_size(arity)                        \
+#define MR_fixed_arity_type_info_size(arity)                        \
     (1 + (arity))
 
-#define MR_higher_order_type_info_size(arity)                       \
+#define MR_var_arity_type_info_size(arity)                          \
     (2 + (arity))
 
-#define MR_tuple_type_info_size(arity)                              \
-    MR_higher_order_type_info_size(arity)
-
-#define MR_fill_in_first_order_type_info(arena, type_ctor_info, vector) \
+#define MR_fill_in_fixed_arity_type_info(arena, type_ctor_info, vector) \
     do {                                                            \
         MR_TypeInfo new_ti;                                         \
         new_ti = (MR_TypeInfo) (arena);                             \
@@ -284,43 +281,40 @@ typedef MR_TypeInfo     *MR_TypeInfoParams;
         (vector) = (MR_TypeInfoParams) &new_ti->MR_ti_type_ctor_info; \
     } while (0)
 
-#define MR_fill_in_higher_order_type_info(arena, type_ctor_info, arity, vector)\
+#define MR_fill_in_var_arity_type_info(arena, type_ctor_info, arity, vector)\
     do {                                                            \
         MR_TypeInfo new_ti;                                         \
         new_ti = (MR_TypeInfo) (arena);                             \
         new_ti->MR_ti_type_ctor_info = (type_ctor_info);            \
-        new_ti->MR_ti_higher_order_arity = (arity);                 \
-        (vector) = (MR_TypeInfoParams) &new_ti->MR_ti_higher_order_arity;\
+        new_ti->MR_ti_var_arity_arity = (arity);                    \
+        (vector) = (MR_TypeInfoParams) &new_ti->MR_ti_var_arity_arity;\
     } while (0)
 
-#define MR_fill_in_tuple_type_info(arena, type_ctor_info, arity, vector) \
-    MR_fill_in_higher_order_type_info(arena, type_ctor_info, arity, vector)
-
-#define MR_static_type_info_arity_0(name, ctor)				\
-	struct {							\
-		MR_TypeCtorInfo field1;					\
-	} name = {							\
-		(MR_TypeCtorInfo) (ctor)				\
+#define MR_static_type_info_arity_0(name, ctor)				        \
+	struct {							                            \
+		MR_TypeCtorInfo field1;					                    \
+	} name = {							                            \
+		(MR_TypeCtorInfo) (ctor)				                    \
 	};
 
-#define MR_static_type_info_arity_1(name, ctor, ti1)			\
-	struct {							\
-		MR_TypeCtorInfo field1;					\
-		MR_TypeInfo 	field2;					\
-	} name = {							\
-		(MR_TypeCtorInfo) (ctor),				\
-		(MR_TypeInfo)     (ti1)					\
+#define MR_static_type_info_arity_1(name, ctor, ti1)			    \
+	struct {							                            \
+		MR_TypeCtorInfo field1;					                    \
+		MR_TypeInfo 	field2;					                    \
+	} name = {							                            \
+		(MR_TypeCtorInfo) (ctor),				                    \
+		(MR_TypeInfo)     (ti1)					                    \
 	};
 
-#define MR_static_type_info_arity_2(name, ctor, ti1, ti2)		\
-	struct {							\
-		MR_TypeCtorInfo field1;					\
-		MR_TypeInfo 	field2;					\
-		MR_TypeInfo 	field3;					\
-	} name = {							\
-		(MR_TypeCtorInfo) (ctor),				\
-		(MR_TypeInfo)     (ti1),				\
-		(MR_TypeInfo)     (ti2)					\
+#define MR_static_type_info_arity_2(name, ctor, ti1, ti2)		    \
+	struct {							                            \
+		MR_TypeCtorInfo field1;					                    \
+		MR_TypeInfo 	field2;					                    \
+		MR_TypeInfo 	field3;					                    \
+	} name = {							                            \
+		(MR_TypeCtorInfo) (ctor),				                    \
+		(MR_TypeInfo)     (ti1),				                    \
+		(MR_TypeInfo)     (ti2)					                    \
 	};
 
 /*---------------------------------------------------------------------------*/

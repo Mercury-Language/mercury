@@ -168,8 +168,8 @@ MR_compare_type_info(MR_TypeInfo ti1, MR_TypeInfo ti2)
 	*/
 
 	if (MR_type_ctor_rep_is_variable_arity(MR_type_ctor_rep(tci1))) {
-		num_arg_types_1 = MR_TYPEINFO_GET_HIGHER_ORDER_ARITY(ti1);
-		num_arg_types_2 = MR_TYPEINFO_GET_HIGHER_ORDER_ARITY(ti2);
+		num_arg_types_1 = MR_TYPEINFO_GET_VAR_ARITY_ARITY(ti1);
+		num_arg_types_2 = MR_TYPEINFO_GET_VAR_ARITY_ARITY(ti2);
 
 			/* Check arity */
 		if (num_arg_types_1 < num_arg_types_2) {
@@ -178,12 +178,12 @@ MR_compare_type_info(MR_TypeInfo ti1, MR_TypeInfo ti2)
 			return MR_COMPARE_GREATER;
 		}
 
-		arg_vector_1 = MR_TYPEINFO_GET_HIGHER_ORDER_ARG_VECTOR(ti1);
-		arg_vector_2 = MR_TYPEINFO_GET_HIGHER_ORDER_ARG_VECTOR(ti2);
+		arg_vector_1 = MR_TYPEINFO_GET_VAR_ARITY_ARG_VECTOR(ti1);
+		arg_vector_2 = MR_TYPEINFO_GET_VAR_ARITY_ARG_VECTOR(ti2);
 	} else {
 		num_arg_types_1 = tci1->MR_type_ctor_arity;
-		arg_vector_1 = MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(ti1);
-		arg_vector_2 = MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(ti2);
+		arg_vector_1 = MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(ti1);
+		arg_vector_2 = MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(ti2);
 	}
 
 		/* compare the argument types */
@@ -253,20 +253,20 @@ MR_unify_type_info(MR_TypeInfo ti1, MR_TypeInfo ti2)
 	*/
 
 	if (MR_type_ctor_rep_is_variable_arity(MR_type_ctor_rep(tci1))) {
-		num_arg_types_1 = MR_TYPEINFO_GET_HIGHER_ORDER_ARITY(ti1);
-		num_arg_types_2 = MR_TYPEINFO_GET_HIGHER_ORDER_ARITY(ti2);
+		num_arg_types_1 = MR_TYPEINFO_GET_VAR_ARITY_ARITY(ti1);
+		num_arg_types_2 = MR_TYPEINFO_GET_VAR_ARITY_ARITY(ti2);
 
 			/* Check arity */
 		if (num_arg_types_1 != num_arg_types_2) {
 			return MR_FALSE;
 		}
 
-		arg_vector_1 = MR_TYPEINFO_GET_HIGHER_ORDER_ARG_VECTOR(ti1);
-		arg_vector_2 = MR_TYPEINFO_GET_HIGHER_ORDER_ARG_VECTOR(ti2);
+		arg_vector_1 = MR_TYPEINFO_GET_VAR_ARITY_ARG_VECTOR(ti1);
+		arg_vector_2 = MR_TYPEINFO_GET_VAR_ARITY_ARG_VECTOR(ti2);
 	} else {
 		num_arg_types_1 = tci1->MR_type_ctor_arity;
-		arg_vector_1 = MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(ti1);
-		arg_vector_2 = MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(ti2);
+		arg_vector_1 = MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(ti1);
+		arg_vector_2 = MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(ti2);
 	}
 
 		/* compare the argument types */
@@ -368,7 +368,7 @@ MR_collapse_equivalences(MR_TypeInfo maybe_equiv_type_info)
 	{
 
 		maybe_equiv_type_info = MR_create_type_info(
-			MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(
+			MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(
 				maybe_equiv_type_info),
 			MR_type_ctor_layout(type_ctor_info).layout_equiv);
 

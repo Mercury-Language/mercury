@@ -2175,6 +2175,7 @@ ml_type_might_contain_pointers(mlds__array_type(_)) = yes.
 ml_type_might_contain_pointers(mlds__func_type(_)) = no.
 ml_type_might_contain_pointers(mlds__generic_type) = yes.
 ml_type_might_contain_pointers(mlds__generic_env_ptr_type) = yes.
+ml_type_might_contain_pointers(mlds__type_info_type) = yes.
 ml_type_might_contain_pointers(mlds__pseudo_type_info_type) = yes.
 ml_type_might_contain_pointers(mlds__cont_type(_)) = no. 
 ml_type_might_contain_pointers(mlds__commit_type) = no.

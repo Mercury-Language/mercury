@@ -69,50 +69,100 @@ ll_pseudo_type_info__construct_typed_llds_pseudo_type_info(Type, NumUnivQTvars,
 		ExistQTvars, PseudoRval, LldsType, C0, C) :-
 	pseudo_type_info__construct_pseudo_type_info(Type, NumUnivQTvars,
 			ExistQTvars, Pseudo),
-	convert_pseudo(Pseudo, PseudoRval, LldsType, C0, C).
+	convert_pseudo_type_info(Pseudo, PseudoRval, LldsType, C0, C).
 
-:- pred convert_pseudo(pseudo_type_info, rval, llds_type, counter, counter).
-:- mode convert_pseudo(in, out, out, in, out) is det.
+:- pred convert_pseudo_type_info(rtti_pseudo_type_info::in,
+	rval::out, llds_type::out, counter::in, counter::out) is det.
 
-convert_pseudo(Pseudo, Rval, LldsType, C0, C) :-
+convert_pseudo_type_info(Pseudo, Rval, LldsType, C0, C) :-
 	(
 		Pseudo = type_var(Int),
 		Rval = const(int_const(Int)),
 		LldsType = integer,
 		C = C0
 	;
-		Pseudo = type_ctor_info(RttiTypeCtor),
+		Pseudo = plain_arity_zero_pseudo_type_info(RttiTypeCtor),
 		DataAddr = rtti_addr(RttiTypeCtor, pseudo_type_info(Pseudo)),
 		Rval = const(data_addr_const(DataAddr)),
 		LldsType = data_ptr,
 		C = C0
 	;
-		Pseudo = type_info(RttiTypeCtor, Args),
-		convert_compound_pseudo(RttiTypeCtor, [], Args, Rval, LldsType,
-			C0, C)
+		Pseudo = plain_pseudo_type_info(RttiTypeCtor, Args),
+		convert_compound_pseudo_type_info(RttiTypeCtor, [], Args,
+			Rval, LldsType, C0, C)
 	;
-		Pseudo = higher_order_type_info(RttiTypeCtor, Arity, Args),
+		Pseudo = var_arity_pseudo_type_info(VarArityId, Args),
+		list__length(Args, Arity),
 		ArityArg = yes(const(int_const(Arity))),
-		convert_compound_pseudo(RttiTypeCtor, [ArityArg], Args, Rval,
-			LldsType, C0, C)
+		RttiTypeCtor = var_arity_id_to_rtti_type_ctor(VarArityId),
+		convert_compound_pseudo_type_info(RttiTypeCtor, [ArityArg],
+			Args, Rval, LldsType, C0, C)
 	).
 
-:- pred convert_compound_pseudo(rtti_type_ctor, list(maybe(rval)),
-		list(pseudo_type_info), rval, llds_type, counter, counter).
-:- mode convert_compound_pseudo(in, in, in, out, out, in, out) is det.
+:- pred convert_plain_type_info(rtti_type_info::in,
+	rval::out, llds_type::out, counter::in, counter::out) is det.
 
-convert_compound_pseudo(RttiTypeCtor, ArgRvals0, Args,
+convert_plain_type_info(TypeInfo, Rval, LldsType, C0, C) :-
+	(
+		TypeInfo = plain_arity_zero_type_info(RttiTypeCtor),
+		DataAddr = rtti_addr(RttiTypeCtor, type_info(TypeInfo)),
+		Rval = const(data_addr_const(DataAddr)),
+		LldsType = data_ptr,
+		C = C0
+	;
+		TypeInfo = plain_type_info(RttiTypeCtor, Args),
+		convert_compound_type_info(RttiTypeCtor, [], Args,
+			Rval, LldsType, C0, C)
+	;
+		TypeInfo = var_arity_type_info(VarArityId, Args),
+		list__length(Args, Arity),
+		ArityArg = yes(const(int_const(Arity))),
+		RttiTypeCtor = var_arity_id_to_rtti_type_ctor(VarArityId),
+		convert_compound_type_info(RttiTypeCtor, [ArityArg],
+			Args, Rval, LldsType, C0, C)
+	).
+
+:- pred convert_compound_pseudo_type_info(rtti_type_ctor::in,
+	list(maybe(rval))::in, list(rtti_maybe_pseudo_type_info)::in,
+	rval::out, llds_type::out, counter::in, counter::out) is det.
+
+convert_compound_pseudo_type_info(RttiTypeCtor, ArgRvals0, Args,
 		Rval, LldsType, C0, C) :-
-	TypeCtorInfoPseudo = pseudo_type_info(type_ctor_info(RttiTypeCtor)),
-	TypeCtorInfoDataAddr = rtti_addr(RttiTypeCtor, TypeCtorInfoPseudo),
+	TypeCtorInfoData = pseudo_type_info(
+		plain_arity_zero_pseudo_type_info(RttiTypeCtor)),
+	TypeCtorInfoDataAddr = rtti_addr(RttiTypeCtor, TypeCtorInfoData),
 	TypeCtorInfoRval = yes(const(data_addr_const(TypeCtorInfoDataAddr))),
 	LldsType = data_ptr,
 	counter__allocate(CNum, C0, C1),
 	list__map_foldl((pred(A::in, yes(AR)::out, CS0::in, CS::out) is det :-
-		convert_pseudo(A, AR, _LldsType, CS0, CS)
+		(
+			A = pseudo(PTI),
+			convert_pseudo_type_info(PTI, AR, _LldsType, CS0, CS)
+		;
+			A = plain(TI),
+			convert_plain_type_info(TI, AR, _LldsType, CS0, CS)
+		)
 	), Args, ArgRvals1, C1, C),
 	list__append(ArgRvals0, ArgRvals1, ArgRvals),
 	Reuse = no,
 	Rval = create(0, [TypeCtorInfoRval | ArgRvals],
-		uniform(no), must_be_static, CNum, "type_info",
-		Reuse).
+		uniform(no), must_be_static, CNum, "type_info", Reuse).
+
+:- pred convert_compound_type_info(rtti_type_ctor::in, list(maybe(rval))::in,
+	list(rtti_type_info)::in, rval::out, llds_type::out,
+	counter::in, counter::out) is det.
+
+convert_compound_type_info(RttiTypeCtor, ArgRvals0, Args,
+		Rval, LldsType, C0, C) :-
+	TypeCtorInfoData = type_info(plain_arity_zero_type_info(RttiTypeCtor)),
+	TypeCtorInfoDataAddr = rtti_addr(RttiTypeCtor, TypeCtorInfoData),
+	TypeCtorInfoRval = yes(const(data_addr_const(TypeCtorInfoDataAddr))),
+	LldsType = data_ptr,
+	counter__allocate(CNum, C0, C1),
+	list__map_foldl((pred(A::in, yes(AR)::out, CS0::in, CS::out) is det :-
+		convert_plain_type_info(A, AR, _LldsType, CS0, CS)
+	), Args, ArgRvals1, C1, C),
+	list__append(ArgRvals0, ArgRvals1, ArgRvals),
+	Reuse = no,
+	Rval = create(0, [TypeCtorInfoRval | ArgRvals],
+		uniform(no), must_be_static, CNum, "type_info", Reuse).

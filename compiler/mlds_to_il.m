@@ -2962,6 +2962,9 @@ mlds_type_to_ilds_type(DataRep, mlds__mercury_array_type(ElementType)) =
 mlds_type_to_ilds_type(DataRep, mlds__array_type(ElementType)) = 
 	ilds__type([], '[]'(mlds_type_to_ilds_type(DataRep, ElementType), [])).
 
+	% XXX should be checked by Tyson
+mlds_type_to_ilds_type(_, mlds__type_info_type) = il_generic_type.
+
 	% This is tricky.  It could be an integer, or it could be
 	% a System.Array.
 mlds_type_to_ilds_type(_, mlds__pseudo_type_info_type) = il_generic_type.
@@ -3294,8 +3297,13 @@ mangle_dataname_module(yes(DataName), ModuleName0, ModuleName) :-
 			(
 				RttiName = type_ctor_info
 			;
+				RttiName = type_info(TypeInfo),
+				TypeInfo =
+					plain_arity_zero_type_info(RttiTypeCtor)
+			;
 				RttiName = pseudo_type_info(PseudoTypeInfo),
-				PseudoTypeInfo = type_ctor_info(RttiTypeCtor)
+				PseudoTypeInfo =
+					plain_arity_zero_pseudo_type_info(RttiTypeCtor)
 			),
 			( LibModuleName0 = "builtin",
 				( 

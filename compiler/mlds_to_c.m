@@ -679,6 +679,8 @@ mlds_output_pragma_export_type(prefix, mlds__generic_type) -->
 	io__write_string("MR_Word").
 mlds_output_pragma_export_type(prefix, mlds__generic_env_ptr_type) -->
 	io__write_string("MR_Word").
+mlds_output_pragma_export_type(prefix, mlds__type_info_type) -->
+	io__write_string("MR_Word").
 mlds_output_pragma_export_type(prefix, mlds__pseudo_type_info_type) -->
 	io__write_string("MR_Word").
 mlds_output_pragma_export_type(prefix, mlds__rtti_type(_)) -->
@@ -1678,6 +1680,8 @@ mlds_output_type_prefix(mlds__generic_type) -->
 	io__write_string("MR_Box").
 mlds_output_type_prefix(mlds__generic_env_ptr_type) -->
 	io__write_string("void *").
+mlds_output_type_prefix(mlds__type_info_type) -->
+	io__write_string("MR_TypeInfo").
 mlds_output_type_prefix(mlds__pseudo_type_info_type) -->
 	io__write_string("MR_PseudoTypeInfo").
 mlds_output_type_prefix(mlds__cont_type(ArgTypes)) -->
@@ -1815,6 +1819,7 @@ mlds_output_type_suffix(mlds__func_type(FuncParams), _) -->
 	mlds_output_func_type_suffix(FuncParams).
 mlds_output_type_suffix(mlds__generic_type, _) --> [].
 mlds_output_type_suffix(mlds__generic_env_ptr_type, _) --> [].
+mlds_output_type_suffix(mlds__type_info_type, _) --> [].
 mlds_output_type_suffix(mlds__pseudo_type_info_type, _) --> [].
 mlds_output_type_suffix(mlds__cont_type(ArgTypes), _) -->
 	( { ArgTypes = [] } ->

@@ -122,13 +122,13 @@ MR_get_functor_info(MR_TypeInfo type_info, int functor_number,
     case MR_TYPECTOR_REP_EQUIV:
         return MR_get_functor_info(
             MR_create_type_info(
-                MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info),
+                MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(type_info),
                 MR_type_ctor_layout(type_ctor_info).layout_equiv),
             functor_number, construct_info);
 
     case MR_TYPECTOR_REP_TUPLE:
         construct_info->functor_name = "{}";
-        construct_info->arity = MR_TYPEINFO_GET_TUPLE_ARITY(type_info);
+        construct_info->arity = MR_TYPEINFO_GET_VAR_ARITY_ARITY(type_info);
 
         /* Tuple types don't have pseudo-type_infos for the functors. */
         construct_info->arg_pseudo_type_infos = NULL;
@@ -205,10 +205,11 @@ MR_typecheck_arguments(MR_TypeInfo type_info, int arity, MR_Word arg_list,
         if (MR_TYPE_CTOR_INFO_IS_TUPLE(
                 MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info)))
         {
-            arg_type_info = MR_TYPEINFO_GET_TUPLE_ARG_VECTOR(type_info)[i + 1];
+            arg_type_info =
+                MR_TYPEINFO_GET_VAR_ARITY_ARG_VECTOR(type_info)[i + 1];
         } else {
             arg_type_info = MR_create_type_info(
-                MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info),
+                MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(type_info),
                 arg_pseudo_type_infos[i]);
         }
 

@@ -804,7 +804,7 @@ get_functor_info(Univ, FunctorInfo) :-
         case MR_TYPECTOR_REP_NOTAG_GROUND_USEREQ:
             functor_desc = MR_type_ctor_functors(type_ctor_info).functors_notag;
             exp_type_info = MR_create_type_info(
-                MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info),
+                MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(type_info),
                 functor_desc->MR_notag_functor_arg_type);
             MR_new_univ_on_hp(ExpUniv, exp_type_info, value);
             SUCCESS_INDICATOR = MR_TRUE;
@@ -850,7 +850,7 @@ get_functor_info(Univ, FunctorInfo) :-
 
         case MR_TYPECTOR_REP_EQUIV_GROUND:
             exp_type_info = MR_create_type_info(
-                MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info),
+                MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(type_info),
                 MR_type_ctor_layout(type_ctor_info).layout_equiv);
             MR_new_univ_on_hp(ExpUniv, exp_type_info, value);
             SUCCESS_INDICATOR = MR_TRUE;
@@ -970,7 +970,7 @@ get_functor_info(Univ, FunctorInfo) :-
 
                         if (MR_arg_type_may_contain_var(functor_desc, i)) {
                             arg_type_info = MR_create_type_info_maybe_existq(
-                                MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(
+                                MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(
                                     type_info),
                                 functor_desc->MR_du_functor_arg_types[i],
                                 arg_vector, functor_desc);

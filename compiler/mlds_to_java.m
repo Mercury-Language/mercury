@@ -1260,6 +1260,7 @@ get_java_type_initializer(mlds__ptr_type(_)) = "null".
 get_java_type_initializer(mlds__func_type(_)) = "null".
 get_java_type_initializer(mlds__generic_type) = "null".
 get_java_type_initializer(mlds__generic_env_ptr_type) = "null".
+get_java_type_initializer(mlds__type_info_type) = "null".
 get_java_type_initializer(mlds__pseudo_type_info_type) = "null".
 get_java_type_initializer(mlds__rtti_type(_)) = "null".
 get_java_type_initializer(mlds__unknown_type) = _ :-
@@ -1644,6 +1645,8 @@ output_type(mlds__generic_type) -->
 	io__write_string("java.lang.Object").	
 output_type(mlds__generic_env_ptr_type) -->
 	io__write_string("java.lang.Object").
+output_type(mlds__type_info_type) -->
+	io__write_string("mercury.runtime.TypeInfo").
 output_type(mlds__pseudo_type_info_type) -->
 	io__write_string("mercury.runtime.PseudoTypeInfo").
 output_type(mlds__cont_type(_)) -->

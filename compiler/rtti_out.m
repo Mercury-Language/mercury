@@ -474,12 +474,14 @@ output_rtti_data_defn(type_ctor_info(RttiTypeCtor, Unify, Compare, CtorRep,
 %	io__write_string(",\n\t"),
 %	output_maybe_static_code_addr(Prettyprinter),
 	io__write_string("\n};\n").
+output_rtti_data_defn(type_info(TypeInfo), DeclSet0, DeclSet) -->
+	output_type_info_defn(TypeInfo, DeclSet0, DeclSet).
+output_rtti_data_defn(pseudo_type_info(PseudoTypeInfo), DeclSet0, DeclSet) -->
+	output_pseudo_type_info_defn(PseudoTypeInfo, DeclSet0, DeclSet).
 output_rtti_data_defn(base_typeclass_info(InstanceModuleName, ClassId,
 		InstanceString, BaseTypeClassInfo), DeclSet0, DeclSet) -->
 	output_base_typeclass_info_defn(InstanceModuleName, ClassId,
 		InstanceString, BaseTypeClassInfo, DeclSet0, DeclSet).
-output_rtti_data_defn(pseudo_type_info(Pseudo), DeclSet0, DeclSet) -->
-	output_pseudo_type_info_defn(Pseudo, DeclSet0, DeclSet).
 
 :- pred output_base_typeclass_info_defn(module_name::in, class_id::in,
 	string::in, base_typeclass_info::in, decl_set::in, decl_set::out,
@@ -504,49 +506,99 @@ output_base_typeclass_info_defn(InstanceModuleName, ClassId, InstanceString,
 	io__write_string("\n};\n").
 
 :- func make_maybe_code_addr(maybe(rtti_proc_label)) = maybe(code_addr).
+
 make_maybe_code_addr(no) = no.
 make_maybe_code_addr(yes(ProcLabel)) = yes(make_code_addr(ProcLabel)).
 
 :- func make_code_addr(rtti_proc_label) = code_addr.
+
 make_code_addr(ProcLabel) = CodeAddr :-
 	code_util__make_entry_label_from_rtti(ProcLabel, no, CodeAddr).
 
-:- pred output_pseudo_type_info_defn(pseudo_type_info, decl_set, decl_set,
-		io__state, io__state).
-:- mode output_pseudo_type_info_defn(in, in, out, di, uo) is det.
+:- pred output_type_info_defn(rtti_type_info::in,
+	decl_set::in, decl_set::out, io__state::di, io__state::uo) is det.
 
-output_pseudo_type_info_defn(type_var(_), DeclSet, DeclSet) --> [].
-output_pseudo_type_info_defn(type_ctor_info(_), DeclSet, DeclSet) --> [].
-output_pseudo_type_info_defn(TypeInfo, DeclSet0, DeclSet) -->
-	{ TypeInfo = type_info(RttiTypeCtor, ArgTypes) },
-	{ TypeCtorRttiData = pseudo_type_info(type_ctor_info(RttiTypeCtor)) },
-	{ ArgRttiDatas = list__map(func(P) = pseudo_type_info(P), ArgTypes) },
-	output_rtti_data_decls(TypeCtorRttiData, "", "", 0, _, DeclSet0, DeclSet1),
-	output_rtti_datas_decls(ArgRttiDatas, "", "", 0, _, DeclSet1, DeclSet2),
+output_type_info_defn(plain_arity_zero_type_info(_),
+		DeclSet, DeclSet) --> [].
+output_type_info_defn(TypeInfo, DeclSet0, DeclSet) -->
+	{ TypeInfo = plain_type_info(RttiTypeCtor, Args) },
+	{ TypeCtorRttiData = type_info(
+		plain_arity_zero_type_info(RttiTypeCtor)) },
+	{ ArgRttiDatas = list__map(type_info_to_rtti_data, Args) },
+	output_rtti_data_decls(TypeCtorRttiData, "", "", 0, _,
+		DeclSet0, DeclSet1),
+	output_rtti_datas_decls(ArgRttiDatas, "", "", 0, _,
+		DeclSet1, DeclSet2),
 	output_generic_rtti_data_defn_start(RttiTypeCtor,
-		pseudo_type_info(TypeInfo), DeclSet2, DeclSet),
+		type_info(TypeInfo), DeclSet2, DeclSet),
 	io__write_string(" = {\n\t&"),
 	output_rtti_addr(RttiTypeCtor, type_ctor_info),
 	io__write_string(",\n{"),
 	output_addr_of_rtti_datas(ArgRttiDatas),
 	io__write_string("}};\n").
-output_pseudo_type_info_defn(HO_TypeInfo, DeclSet0, DeclSet) -->
-	{ HO_TypeInfo = higher_order_type_info(RttiTypeCtor, Arity,
-		ArgTypes) },
-	{ TypeCtorRttiData = pseudo_type_info(type_ctor_info(RttiTypeCtor)) },
-	{ ArgRttiDatas = list__map(func(P) = pseudo_type_info(P), ArgTypes) },
+output_type_info_defn(TypeInfo, DeclSet0, DeclSet) -->
+	{ TypeInfo = var_arity_type_info(RttiVarArityId, Args) },
+	{ RttiTypeCtor = var_arity_id_to_rtti_type_ctor(RttiVarArityId) },
+	{ TypeCtorRttiData = type_info(
+		plain_arity_zero_type_info(RttiTypeCtor)) },
+	{ ArgRttiDatas = list__map(type_info_to_rtti_data, Args) },
 	output_rtti_data_decls(TypeCtorRttiData, "", "", 0, _,
 		DeclSet0, DeclSet1),
-	output_rtti_datas_decls(ArgRttiDatas, "", "", 0, _, DeclSet1, DeclSet2),
+	output_rtti_datas_decls(ArgRttiDatas, "", "", 0, _,
+		DeclSet1, DeclSet2),
 	output_generic_rtti_data_defn_start(RttiTypeCtor,
-		pseudo_type_info(HO_TypeInfo), DeclSet2, DeclSet),
+		type_info(TypeInfo), DeclSet2, DeclSet),
 	io__write_string(" = {\n\t&"),
 	output_rtti_addr(RttiTypeCtor, type_ctor_info),
 	io__write_string(",\n\t"),
+	{ list__length(Args, Arity) },
 	io__write_int(Arity),
 	io__write_string(",\n{"),
 	output_addr_of_rtti_datas(ArgRttiDatas),
 	io__write_string("}};\n").
+
+:- pred output_pseudo_type_info_defn(rtti_pseudo_type_info::in,
+	decl_set::in, decl_set::out, io__state::di, io__state::uo) is det.
+
+output_pseudo_type_info_defn(plain_arity_zero_pseudo_type_info(_),
+		DeclSet, DeclSet) --> [].
+output_pseudo_type_info_defn(PseudoTypeInfo, DeclSet0, DeclSet) -->
+	{ PseudoTypeInfo = plain_pseudo_type_info(RttiTypeCtor, Args) },
+	{ TypeCtorRttiData = pseudo_type_info(
+		plain_arity_zero_pseudo_type_info(RttiTypeCtor)) },
+	{ ArgRttiDatas = list__map(maybe_pseudo_type_info_to_rtti_data, Args) },
+	output_rtti_data_decls(TypeCtorRttiData, "", "", 0, _,
+		DeclSet0, DeclSet1),
+	output_rtti_datas_decls(ArgRttiDatas, "", "", 0, _,
+		DeclSet1, DeclSet2),
+	output_generic_rtti_data_defn_start(RttiTypeCtor,
+		pseudo_type_info(PseudoTypeInfo), DeclSet2, DeclSet),
+	io__write_string(" = {\n\t&"),
+	output_rtti_addr(RttiTypeCtor, type_ctor_info),
+	io__write_string(",\n{"),
+	output_addr_of_rtti_datas(ArgRttiDatas),
+	io__write_string("}};\n").
+output_pseudo_type_info_defn(PseudoTypeInfo, DeclSet0, DeclSet) -->
+	{ PseudoTypeInfo = var_arity_pseudo_type_info(RttiVarArityId, Args) },
+	{ RttiTypeCtor = var_arity_id_to_rtti_type_ctor(RttiVarArityId) },
+	{ TypeCtorRttiData = pseudo_type_info(
+		plain_arity_zero_pseudo_type_info(RttiTypeCtor)) },
+	{ ArgRttiDatas = list__map(maybe_pseudo_type_info_to_rtti_data, Args) },
+	output_rtti_data_decls(TypeCtorRttiData, "", "", 0, _,
+		DeclSet0, DeclSet1),
+	output_rtti_datas_decls(ArgRttiDatas, "", "", 0, _,
+		DeclSet1, DeclSet2),
+	output_generic_rtti_data_defn_start(RttiTypeCtor,
+		pseudo_type_info(PseudoTypeInfo), DeclSet2, DeclSet),
+	io__write_string(" = {\n\t&"),
+	output_rtti_addr(RttiTypeCtor, type_ctor_info),
+	io__write_string(",\n\t"),
+	{ list__length(Args, Arity) },
+	io__write_int(Arity),
+	io__write_string(",\n{"),
+	output_addr_of_rtti_datas(ArgRttiDatas),
+	io__write_string("}};\n").
+output_pseudo_type_info_defn(type_var(_), DeclSet, DeclSet) --> [].
 
 :- pred output_functors_info_decl(rtti_type_ctor::in,
 	type_ctor_functors_info::in, decl_set::in, decl_set::out,
@@ -739,26 +791,41 @@ output_rtti_name_storage_type_name(OutputName, RttiName, BeingDefined) -->
 
 :- pred output_rtti_type_decl(rtti_name::in, io__state::di, io__state::uo)
 	is det.
+
 output_rtti_type_decl(RttiName) -->
 	(
 		%
-		% Each pseudo-type-info may have a different type,
-		% depending on what kind of pseudo-type-info it is,
-		% and also on its arity.
+		% Each type_info and pseudo_type_info may have a different
+		% type, depending on what kind of type_info or pseudo_type_info
+		% it is, and also on its arity.
 		% We need to declare that type here.
 		%
 		{
-		  RttiName = pseudo_type_info(type_info(_, ArgTypes)),
-		  TypeNameBase = "MR_FO_PseudoTypeInfo_Struct",
-		  DefineType = "MR_FIRST_ORDER_PSEUDOTYPEINFO_STRUCT"
+		  RttiName = type_info(TypeInfo),
+		  (
+		    TypeInfo = plain_type_info(_, ArgTypes),
+		    TypeNameBase = "MR_FA_TypeInfo_Struct",
+		    DefineType = "MR_FIXED_ARITY_TYPEINFO_STRUCT"
+		  ;
+		    TypeInfo = var_arity_type_info(_, ArgTypes),
+		    TypeNameBase = "MR_VA_TypeInfo_Struct",
+		    DefineType = "MR_VAR_ARITY_TYPEINFO_STRUCT"
+		  ),
+		  NumArgTypes = list__length(ArgTypes)
 		;
-		  RttiName = pseudo_type_info(higher_order_type_info(_, _,
-		  		ArgTypes)),
-	 	  TypeNameBase = "MR_HO_PseudoTypeInfo_Struct",
-		  DefineType = "MR_HIGHER_ORDER_PSEUDOTYPEINFO_STRUCT"
+		  RttiName = pseudo_type_info(PseudoTypeInfo),
+		  (
+		    PseudoTypeInfo = plain_pseudo_type_info(_, ArgTypes),
+		    TypeNameBase = "MR_FA_PseudoTypeInfo_Struct",
+		    DefineType = "MR_FIXED_ARITY_PSEUDOTYPEINFO_STRUCT"
+		  ;
+		    PseudoTypeInfo = var_arity_pseudo_type_info(_, ArgTypes),
+		    TypeNameBase = "MR_VA_PseudoTypeInfo_Struct",
+		    DefineType = "MR_VAR_ARITY_PSEUDOTYPEINFO_STRUCT"
+		  ),
+		  NumArgTypes = list__length(ArgTypes)
 		}
 	->
-		{ NumArgTypes = list__length(ArgTypes) },
 		{ Template = 
 "#ifndef %s%d_GUARD
 #define %s%d_GUARD
@@ -1134,16 +1201,25 @@ rtti_name_would_include_code_addr(du_ptag_ordered_table) =        no.
 rtti_name_would_include_code_addr(reserved_addr_table) =          no.
 rtti_name_would_include_code_addr(type_ctor_info) =               yes.
 rtti_name_would_include_code_addr(base_typeclass_info(_, _, _)) = yes.
-rtti_name_would_include_code_addr(pseudo_type_info(Pseudo)) =
-		pseudo_type_info_would_incl_code_addr(Pseudo).
+rtti_name_would_include_code_addr(type_info(TypeInfo)) =
+	type_info_would_incl_code_addr(TypeInfo).
+rtti_name_would_include_code_addr(pseudo_type_info(PseudoTypeInfo)) =
+	pseudo_type_info_would_incl_code_addr(PseudoTypeInfo).
 rtti_name_would_include_code_addr(type_hashcons_pointer) =        no.
 
-:- func pseudo_type_info_would_incl_code_addr(pseudo_type_info) = bool.
+:- func type_info_would_incl_code_addr(rtti_type_info) = bool.
 
+type_info_would_incl_code_addr(plain_arity_zero_type_info(_)) = yes.
+type_info_would_incl_code_addr(plain_type_info(_, _)) =		no.
+type_info_would_incl_code_addr(var_arity_type_info(_, _)) =	no.
+
+:- func pseudo_type_info_would_incl_code_addr(rtti_pseudo_type_info) = bool.
+
+pseudo_type_info_would_incl_code_addr(plain_arity_zero_pseudo_type_info(_))
+	= yes.
+pseudo_type_info_would_incl_code_addr(plain_pseudo_type_info(_, _))     = no.
+pseudo_type_info_would_incl_code_addr(var_arity_pseudo_type_info(_, _))	= no.
 pseudo_type_info_would_incl_code_addr(type_var(_))			= no.
-pseudo_type_info_would_incl_code_addr(type_ctor_info(_))		= yes.
-pseudo_type_info_would_incl_code_addr(type_info(_, _))			= no.
-pseudo_type_info_would_incl_code_addr(higher_order_type_info(_, _, _))	= no.
 
 rtti_name_linkage(RttiName, Linkage) :-
 	(
@@ -1182,27 +1258,43 @@ rtti_name_c_type(reserved_addr_table,      "MR_ReservedAddrTypeLayout", "").
 rtti_name_c_type(type_ctor_info,           "struct MR_TypeCtorInfo_Struct",
 						"").
 rtti_name_c_type(base_typeclass_info(_, _, _), "MR_Code *", "[]").
-rtti_name_c_type(pseudo_type_info(Pseudo), TypePrefix, TypeSuffix) :-
-	pseudo_type_info_name_c_type(Pseudo, TypePrefix, TypeSuffix).
+rtti_name_c_type(type_info(TypeInfo), TypePrefix, TypeSuffix) :-
+	type_info_name_c_type(TypeInfo, TypePrefix, TypeSuffix).
+rtti_name_c_type(pseudo_type_info(PseudoTypeInfo), TypePrefix, TypeSuffix) :-
+	pseudo_type_info_name_c_type(PseudoTypeInfo, TypePrefix, TypeSuffix).
 rtti_name_c_type(type_hashcons_pointer,    "union MR_TableNode_Union **", "").
 
-:- pred pseudo_type_info_name_c_type(pseudo_type_info, string, string).
+:- pred type_info_name_c_type(rtti_type_info, string, string).
+:- mode type_info_name_c_type(in, out, out) is det.
+
+type_info_name_c_type(plain_arity_zero_type_info(_),
+		"struct MR_TypeCtorInfo_Struct", "").
+type_info_name_c_type(plain_type_info(_TypeCtor, ArgTypes),
+		TypeInfoStruct, "") :-
+	TypeInfoStruct = string__format("struct MR_FA_TypeInfo_Struct%d",
+		[i(list__length(ArgTypes))]).
+type_info_name_c_type(var_arity_type_info(_TypeCtor, ArgTypes),
+		TypeInfoStruct, "") :-
+	TypeInfoStruct = string__format("struct MR_VA_TypeInfo_Struct%d",
+		[i(list__length(ArgTypes))]).
+
+:- pred pseudo_type_info_name_c_type(rtti_pseudo_type_info, string, string).
 :- mode pseudo_type_info_name_c_type(in, out, out) is det.
 
+pseudo_type_info_name_c_type(plain_arity_zero_pseudo_type_info(_),
+		"struct MR_TypeCtorInfo_Struct", "").
+pseudo_type_info_name_c_type(plain_pseudo_type_info(_TypeCtor, ArgTypes),
+		TypeInfoStruct, "") :-
+	TypeInfoStruct = string__format("struct MR_FA_PseudoTypeInfo_Struct%d",
+		[i(list__length(ArgTypes))]).
+pseudo_type_info_name_c_type(var_arity_pseudo_type_info(_TypeCtor, ArgTypes),
+		TypeInfoStruct, "") :-
+	TypeInfoStruct = string__format("struct MR_VA_PseudoTypeInfo_Struct%d",
+		[i(list__length(ArgTypes))]).
 pseudo_type_info_name_c_type(type_var(_), _, _) :-
 	% we use small integers to represent type_vars,
 	% rather than pointers, so there is no pointed-to type
-	error("rtti_name_c_type: type_var").
-pseudo_type_info_name_c_type(type_ctor_info(_),
-		"struct MR_TypeCtorInfo_Struct", "").
-pseudo_type_info_name_c_type(type_info(_TypeCtor, ArgTypes),
-		TypeInfoStruct, "") :-
-	TypeInfoStruct = string__format("struct MR_FO_PseudoTypeInfo_Struct%d",
-		[i(list__length(ArgTypes))]).
-pseudo_type_info_name_c_type(higher_order_type_info(_TypeCtor, _Arity,
-		ArgTypes), TypeInfoStruct, "") :-
-	TypeInfoStruct = string__format("struct MR_HO_PseudoTypeInfo_Struct%d",
-		[i(list__length(ArgTypes))]).
+	error("pseudo_type_info_name_c_type: type_var").
 
 %-----------------------------------------------------------------------------%
 

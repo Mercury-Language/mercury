@@ -16,19 +16,23 @@
 #define	MERCURY_BOOTSTRAP_H
 
 /*
+** These will be needed until we regularize the module-qualification
+** of builtin types.
+*/
+
+#define	mercury_data_builtin__type_ctor_info_func_0 \
+	mercury_data___type_ctor_info_func_0
+#define	mercury_data_builtin__type_ctor_info_pred_0 \
+	mercury_data___type_ctor_info_pred_0
+#define	mercury_data_builtin__type_ctor_info_tuple_0 \
+	mercury_data___type_ctor_info_tuple_0
+
+/*
 ** This stuff is enabled by default,
 ** but you can disable it by defining MR_NO_BACKWARDS_COMPAT.
 */
 
 #ifndef MR_NO_BACKWARDS_COMPAT
-
-/*
-** The next two #defines are needed for bootstrapping the new type constructor
-** structure.
-*/
-
-#define MR_TypeCtorInfo_struct  MR_TypeCtorInfo_Struct
-#define MR_NewTypeCtorInfo_struct  MR_TypeCtorInfo_Struct
 
 /*
 ** bool, TRUE and FALSE appear in the generated code.

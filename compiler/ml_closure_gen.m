@@ -284,40 +284,72 @@ ml_stack_layout_construct_closure_arg_rval(ModuleInfo, ClosureArg,
 	CastArgRval = unop(box(ArgType), ArgRval),
 	ArgInit = init_obj(CastArgRval).
 
-:- pred ml_gen_pseudo_type_info_defn(module_info::in, pseudo_type_info::in,
-		mlds__defns::in, mlds__defns::out) is det.
+:- pred ml_gen_maybe_pseudo_type_info_defn(module_info::in,
+	rtti_maybe_pseudo_type_info::in, mlds__defns::in, mlds__defns::out)
+	is det.
 
-ml_gen_pseudo_type_info_defn(ModuleInfo, Pseudo, Defns0, Defns) :-
-	ml_gen_pseudo_type_info(ModuleInfo, Pseudo, _Rval, _Type,
+ml_gen_maybe_pseudo_type_info_defn(ModuleInfo, MaybePTI, Defns0, Defns) :-
+	ml_gen_maybe_pseudo_type_info(ModuleInfo, MaybePTI, _Rval, _Type,
 		Defns0, Defns).
 
-:- pred ml_gen_pseudo_type_info(module_info::in, pseudo_type_info::in,
-		mlds__rval::out, mlds__type::out,
-		mlds__defns::in, mlds__defns::out) is det.
+:- pred ml_gen_pseudo_type_info_defn(module_info::in,
+	rtti_pseudo_type_info::in, mlds__defns::in, mlds__defns::out) is det.
 
-ml_gen_pseudo_type_info(ModuleInfo, Pseudo, Rval, Type,
+ml_gen_pseudo_type_info_defn(ModuleInfo, PTI, Defns0, Defns) :-
+	ml_gen_pseudo_type_info(ModuleInfo, PTI, _Rval, _Type, Defns0, Defns).
+
+:- pred ml_gen_type_info_defn(module_info::in,
+	rtti_type_info::in, mlds__defns::in, mlds__defns::out) is det.
+
+ml_gen_type_info_defn(ModuleInfo, TI, Defns0, Defns) :-
+	ml_gen_type_info(ModuleInfo, TI, _Rval, _Type, Defns0, Defns).
+
+:- pred ml_gen_maybe_pseudo_type_info(module_info::in,
+	rtti_maybe_pseudo_type_info::in, mlds__rval::out, mlds__type::out,
+	mlds__defns::in, mlds__defns::out) is det.
+
+ml_gen_maybe_pseudo_type_info(ModuleInfo, MaybePseudoTypeInfo, Rval, Type,
 		MLDS_Defns0, MLDS_Defns) :-
-	( Pseudo = type_var(N) ->
+	(
+		MaybePseudoTypeInfo = pseudo(PseudoTypeInfo),
+		ml_gen_pseudo_type_info(ModuleInfo, PseudoTypeInfo, Rval, Type,
+			MLDS_Defns0, MLDS_Defns)
+	;
+		MaybePseudoTypeInfo = plain(TypeInfo),
+		ml_gen_type_info(ModuleInfo, TypeInfo, Rval, Type,
+			MLDS_Defns0, MLDS_Defns)
+	).
+
+:- pred ml_gen_pseudo_type_info(module_info::in, rtti_pseudo_type_info::in,
+	mlds__rval::out, mlds__type::out,
+	mlds__defns::in, mlds__defns::out) is det.
+
+ml_gen_pseudo_type_info(ModuleInfo, PseudoTypeInfo, Rval, Type,
+		MLDS_Defns0, MLDS_Defns) :-
+	( PseudoTypeInfo = type_var(N) ->
 		% type variables are represented just as integers
 		Rval = const(int_const(N)),
 		Type = mlds__native_int_type,
 		MLDS_Defns = MLDS_Defns0
 	;
-		( Pseudo = type_ctor_info(RttiTypeId0) ->
+		(
+			PseudoTypeInfo =
+				plain_arity_zero_pseudo_type_info(RttiTypeCtor0)
+		->
 			% for zero-arity types, we just generate a
 			% reference to the already-existing type_ctor_info
 			RttiName = type_ctor_info,
-			RttiTypeId0 = rtti_type_ctor(ModuleName0, _, _),
+			RttiTypeCtor0 = rtti_type_ctor(ModuleName0, _, _),
 			ModuleName = fixup_builtin_module(ModuleName0),
-			RttiTypeId = RttiTypeId0,
+			RttiTypeCtor = RttiTypeCtor0,
 			MLDS_Defns = MLDS_Defns0
 		;
 			% for other types, we need to generate a definition
 			% of the pseudo_type_info for that type,
 			% in the the current module
 			module_info_name(ModuleInfo, ModuleName),
-			RttiData = pseudo_type_info(Pseudo),
-			rtti_data_to_name(RttiData, RttiTypeId, RttiName),
+			RttiData = pseudo_type_info(PseudoTypeInfo),
+			rtti_data_to_name(RttiData, RttiTypeCtor, RttiName),
 			RttiDefns0 = rtti_data_list_to_mlds(ModuleInfo,
 				[RttiData]),
 			% rtti_data_list_to_mlds assumes that the result
@@ -326,26 +358,76 @@ ml_gen_pseudo_type_info(ModuleInfo, Pseudo, Rval, Type,
 			% to `local'
 			RttiDefns = list__map(convert_to_local, RttiDefns0),
 			MLDS_Defns1 = RttiDefns ++ MLDS_Defns0,
-			% Generate definitions of any pseudo_type_infos
-			% referenced by this pseudotypeinfo.
-			list__foldl(ml_gen_pseudo_type_info_defn(ModuleInfo),
-				arg_pseudo_type_infos(Pseudo),
+			% Generate definitions of any type_infos and
+			% pseudo_type_infos referenced by this
+			% pseudo_type_info.
+			list__foldl(
+				ml_gen_maybe_pseudo_type_info_defn(ModuleInfo),
+				arg_maybe_pseudo_type_infos(PseudoTypeInfo),
 				MLDS_Defns1, MLDS_Defns)
 		),
 		MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
 		Rval = const(data_addr_const(data_addr(MLDS_ModuleName,
-			rtti(RttiTypeId, RttiName)))),
+			rtti(RttiTypeCtor, RttiName)))),
 		Type = mlds__rtti_type(RttiName)
 	).
 
-:- func arg_pseudo_type_infos(pseudo_type_info) = list(pseudo_type_info).
-arg_pseudo_type_infos(type_var(_)) = [].
-arg_pseudo_type_infos(type_ctor_info(_)) = [].
-arg_pseudo_type_infos(type_info(_TypeId, ArgPTIs)) = ArgPTIs.
-arg_pseudo_type_infos(higher_order_type_info(_TypeId, _Arity, ArgPTIs)) =
-	ArgPTIs.
+:- pred ml_gen_type_info(module_info::in, rtti_type_info::in,
+	mlds__rval::out, mlds__type::out,
+	mlds__defns::in, mlds__defns::out) is det.
+
+ml_gen_type_info(ModuleInfo, TypeInfo, Rval, Type,
+		MLDS_Defns0, MLDS_Defns) :-
+	( TypeInfo = plain_arity_zero_type_info(RttiTypeCtor0) ->
+		% for zero-arity types, we just generate a
+		% reference to the already-existing type_ctor_info
+		RttiName = type_ctor_info,
+		RttiTypeCtor0 = rtti_type_ctor(ModuleName0, _, _),
+		ModuleName = fixup_builtin_module(ModuleName0),
+		RttiTypeCtor = RttiTypeCtor0,
+		MLDS_Defns = MLDS_Defns0
+	;
+		% for other types, we need to generate a definition
+		% of the type_info for that type, in the the current module
+		module_info_name(ModuleInfo, ModuleName),
+		RttiData = type_info(TypeInfo),
+		rtti_data_to_name(RttiData, RttiTypeCtor, RttiName),
+		RttiDefns0 = rtti_data_list_to_mlds(ModuleInfo, [RttiData]),
+		% rtti_data_list_to_mlds assumes that the result
+		% will be at file scope, but here we're generating it
+		% as a local, so we need to convert the access
+		% to `local'
+		RttiDefns = list__map(convert_to_local, RttiDefns0),
+		MLDS_Defns1 = RttiDefns ++ MLDS_Defns0,
+		% Generate definitions of any type_infos referenced by this
+		% type_info.
+		list__foldl(ml_gen_type_info_defn(ModuleInfo),
+			arg_type_infos(TypeInfo),
+			MLDS_Defns1, MLDS_Defns)
+	),
+	MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
+	Rval = const(data_addr_const(data_addr(MLDS_ModuleName,
+		rtti(RttiTypeCtor, RttiName)))),
+	Type = mlds__rtti_type(RttiName).
+
+:- func arg_maybe_pseudo_type_infos(rtti_pseudo_type_info)
+	= list(rtti_maybe_pseudo_type_info).
+
+arg_maybe_pseudo_type_infos(type_var(_)) = [].
+arg_maybe_pseudo_type_infos(plain_arity_zero_pseudo_type_info(_)) = [].
+arg_maybe_pseudo_type_infos(plain_pseudo_type_info(_TypeCtor, ArgMPTIs))
+	= ArgMPTIs.
+arg_maybe_pseudo_type_infos(var_arity_pseudo_type_info(_VarArityId, ArgMPTIs))
+	= ArgMPTIs.
+
+:- func arg_type_infos(rtti_type_info) = list(rtti_type_info).
+
+arg_type_infos(plain_arity_zero_type_info(_)) = [].
+arg_type_infos(plain_type_info(_TypeCtor, ArgTIs)) = ArgTIs.
+arg_type_infos(var_arity_type_info(_VarArityId, ArgTIs)) = ArgTIs.
 
 :- func convert_to_local(mlds__defn) = mlds__defn.
+
 convert_to_local(mlds__defn(Name, Context, Flags0, Body)) =
 		mlds__defn(Name, Context, Flags, Body) :-
 	Flags = set_access(Flags0, local).

@@ -58,7 +58,7 @@ start_label:
         case MR_TYPECTOR_REP_EQUIV:
             MR_save_transient_hp();
             type_info = MR_create_type_info(
-                MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info),
+                MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(type_info),
                 MR_type_ctor_layout(type_ctor_info).layout_equiv);
             MR_restore_transient_hp();
             goto start_label;
@@ -73,7 +73,7 @@ start_label:
         case MR_TYPECTOR_REP_NOTAG:
             MR_save_transient_hp();
             type_info = MR_create_type_info(
-                MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info),
+                MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(type_info),
                 MR_type_ctor_layout(type_ctor_info).layout_notag->
                 MR_notag_functor_arg_type);
             MR_restore_transient_hp();
@@ -262,7 +262,7 @@ start_label:
                     if (MR_arg_type_may_contain_var(functor_desc, i)) {
                         MR_save_transient_hp();
                         arg_type_info = MR_create_type_info_maybe_existq(
-                            MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info),
+                            MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(type_info),
                             functor_desc->MR_du_functor_arg_types[i],
                             x_data_value, functor_desc);
                         MR_restore_transient_hp();
@@ -341,7 +341,7 @@ start_label:
                 MR_Word    *args_base;
 
                 args_base = (MR_Word *)
-                    MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info);
+                    MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(type_info);
                 MR_r1 = args_base[1];
                 MR_r2 = x;
                 MR_r3 = y;
@@ -352,7 +352,7 @@ start_label:
                 MR_Word    *args_base;
 
                 args_base = (MR_Word *)
-                    MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info);
+                    MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(type_info);
                 MR_r1 = args_base[1];
                 MR_r2 = args_base[2];
                 MR_r3 = x;
@@ -366,7 +366,7 @@ start_label:
 
                 type_arity = type_ctor_info->MR_type_ctor_arity;
                 args_base = (MR_Word *)
-                    MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info);
+                    MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(type_info);
                 MR_save_registers();
 
                 /* CompPred(...ArgTypeInfos..., Res, X, Y) * */
@@ -387,13 +387,13 @@ start_label:
                 int     type_arity;
                 int     result;
 
-                type_arity = MR_TYPEINFO_GET_TUPLE_ARITY(type_info);
+                type_arity = MR_TYPEINFO_GET_VAR_ARITY_ARITY(type_info);
 
                 for (i = 0; i < type_arity; i++) {
                     MR_TypeInfo arg_type_info;
 
                     /* type_infos are counted from one */
-                    arg_type_info = MR_TYPEINFO_GET_TUPLE_ARG_VECTOR(
+                    arg_type_info = MR_TYPEINFO_GET_VAR_ARITY_ARG_VECTOR(
                                             type_info)[i + 1];
 
 #ifdef  select_compare_code

@@ -280,6 +280,8 @@ gen_init_rtti_data_defn(base_typeclass_info(_InstanceModule, _ClassId,
 		gen_init_boxed_int(N5)
 		| MethodInitializers
 	]).
+gen_init_rtti_data_defn(type_info(TypeInfo), ModuleName, _, Init, []) :-
+	Init = gen_init_type_info_defn(TypeInfo, ModuleName).
 gen_init_rtti_data_defn(pseudo_type_info(Pseudo), ModuleName, _, Init, []) :-
 	Init = gen_init_pseudo_type_info_defn(Pseudo, ModuleName).
 
@@ -331,30 +333,55 @@ gen_init_maybe_proc_id(ModuleInfo, MaybeProcLabel) =
 	gen_init_maybe(mlds__func_type(mlds__func_params([], [])),
 		gen_init_proc_id(ModuleInfo), MaybeProcLabel).
 
-:- func gen_init_pseudo_type_info_defn(pseudo_type_info, module_name) =
+:- func gen_init_type_info_defn(rtti_type_info, module_name) =
 	mlds__initializer.
 
+gen_init_type_info_defn(plain_arity_zero_type_info(_), _) = _ :-
+	error("gen_init_type_info_defn: plain_arity_zero_type_info").
+gen_init_type_info_defn(plain_type_info(RttiTypeCtor, ArgTypes), ModuleName)
+		= Init :-
+	ArgRttiDatas = list__map(type_info_to_rtti_data, ArgTypes),
+	Init = init_struct([
+		gen_init_rtti_name(ModuleName, RttiTypeCtor, type_ctor_info),
+		gen_init_cast_rtti_datas_array(mlds__type_info_type,
+			ModuleName, ArgRttiDatas)
+	]).
+gen_init_type_info_defn(var_arity_type_info(VarArityId, ArgTypes), ModuleName)
+		= Init :-
+	ArgRttiDatas = list__map(type_info_to_rtti_data, ArgTypes),
+	RttiTypeCtor = var_arity_id_to_rtti_type_ctor(VarArityId),
+	Init = init_struct([
+		gen_init_rtti_name(ModuleName, RttiTypeCtor, type_ctor_info),
+		gen_init_int(list__length(ArgTypes)),
+		gen_init_cast_rtti_datas_array(mlds__type_info_type,
+			ModuleName, ArgRttiDatas)
+	]).
+
+:- func gen_init_pseudo_type_info_defn(rtti_pseudo_type_info, module_name) =
+	mlds__initializer.
+
+gen_init_pseudo_type_info_defn(plain_arity_zero_pseudo_type_info(_), _) = _ :-
+	error("gen_init_pseudo_type_info_defn: plain_arity_zero_pseudo_type_info").
+gen_init_pseudo_type_info_defn(plain_pseudo_type_info(RttiTypeCtor, ArgTypes),
+		ModuleName) = Init :-
+	ArgRttiDatas = list__map(maybe_pseudo_type_info_to_rtti_data, ArgTypes),
+	Init = init_struct([
+		gen_init_rtti_name(ModuleName, RttiTypeCtor, type_ctor_info),
+		gen_init_cast_rtti_datas_array(mlds__pseudo_type_info_type,
+			ModuleName, ArgRttiDatas)
+	]).
+gen_init_pseudo_type_info_defn(var_arity_pseudo_type_info(VarArityId,
+		ArgTypes), ModuleName) = Init :-
+	ArgRttiDatas = list__map(maybe_pseudo_type_info_to_rtti_data, ArgTypes),
+	RttiTypeCtor = var_arity_id_to_rtti_type_ctor(VarArityId),
+	Init = init_struct([
+		gen_init_rtti_name(ModuleName, RttiTypeCtor, type_ctor_info),
+		gen_init_int(list__length(ArgTypes)),
+		gen_init_cast_rtti_datas_array(mlds__pseudo_type_info_type,
+			ModuleName, ArgRttiDatas)
+	]).
 gen_init_pseudo_type_info_defn(type_var(_), _) = _ :-
 	error("gen_init_pseudo_type_info_defn: type_var").
-gen_init_pseudo_type_info_defn(type_ctor_info(_), _) = _ :-
-	error("gen_init_pseudo_type_info_defn: type_ctor_info").
-gen_init_pseudo_type_info_defn(type_info(RttiTypeCtor, ArgTypes), ModuleName) =
-		Init :-
-	ArgRttiDatas = list__map(func(P) = pseudo_type_info(P), ArgTypes),
-	Init = init_struct([
-		gen_init_rtti_name(ModuleName, RttiTypeCtor, type_ctor_info),
-		gen_init_cast_rtti_datas_array(mlds__pseudo_type_info_type,
-			ModuleName, ArgRttiDatas)
-	]).
-gen_init_pseudo_type_info_defn(higher_order_type_info(RttiTypeCtor,
-		Arity, ArgTypes), ModuleName) = Init :-
-	ArgRttiDatas = list__map(func(P) = pseudo_type_info(P), ArgTypes),
-	Init = init_struct([
-		gen_init_rtti_name(ModuleName, RttiTypeCtor, type_ctor_info),
-		gen_init_int(Arity),
-		gen_init_cast_rtti_datas_array(mlds__pseudo_type_info_type,
-			ModuleName, ArgRttiDatas)
-	]).
 
 :- func gen_init_ptag_layout_defn(module_name, rtti_type_ctor, du_ptag_layout)
 	= mlds__initializer.
@@ -459,9 +486,16 @@ gen_rtti_name(ThisModuleName, RttiTypeCtor0, RttiName) = Rval :-
 	% corresponding to the type which they are for.
 	%
 	(
-		RttiName = pseudo_type_info(PseudoTypeInfo),
-		( PseudoTypeInfo = type_info(_, _)
-		; PseudoTypeInfo = higher_order_type_info(_, _, _)
+		(
+			RttiName = type_info(TypeInfo),
+			( TypeInfo = plain_type_info(_, _)
+			; TypeInfo = var_arity_type_info(_, _)
+			)
+		;
+			RttiName = pseudo_type_info(PseudoTypeInfo),
+			( PseudoTypeInfo = plain_pseudo_type_info(_, _)
+			; PseudoTypeInfo = var_arity_pseudo_type_info(_, _)
+			)
 		)
 	->
 		ModuleName = ThisModuleName,
@@ -673,24 +707,36 @@ mlds_rtti_type_name(du_ptag_ordered_table) =	"DuPtagLayout".
 mlds_rtti_type_name(reserved_addr_table) =	"ReservedAddrTypeDesc".
 mlds_rtti_type_name(type_ctor_info) =		"TypeCtorInfo_Struct".
 mlds_rtti_type_name(base_typeclass_info(_, _, _)) = "BaseTypeclassInfo".
-mlds_rtti_type_name(pseudo_type_info(Pseudo)) =
-	mlds_pseudo_type_info_type_name(Pseudo).
+mlds_rtti_type_name(type_info(TypeInfo)) =
+	mlds_type_info_type_name(TypeInfo).
+mlds_rtti_type_name(pseudo_type_info(PseudoTypeInfo)) =
+	mlds_pseudo_type_info_type_name(PseudoTypeInfo).
 mlds_rtti_type_name(type_hashcons_pointer) =	"TableNodePtrPtr".
 
-:- func mlds_pseudo_type_info_type_name(pseudo_type_info) = string.
+:- func mlds_type_info_type_name(rtti_type_info) = string.
 
+mlds_type_info_type_name(plain_arity_zero_type_info(_)) =
+	"TypeCtorInfo_Struct".
+mlds_type_info_type_name(plain_type_info(_TypeCtor, ArgTypes)) =
+	string__format("FA_TypeInfo_Struct%d", [i(list__length(ArgTypes))]).
+mlds_type_info_type_name(var_arity_type_info(_TypeCtor,
+		ArgTypes)) =
+	string__format("VA_TypeInfo_Struct%d", [i(list__length(ArgTypes))]).
+
+:- func mlds_pseudo_type_info_type_name(rtti_pseudo_type_info) = string.
+
+mlds_pseudo_type_info_type_name(plain_arity_zero_pseudo_type_info(_)) =
+	"TypeCtorInfo_Struct".
+mlds_pseudo_type_info_type_name(plain_pseudo_type_info(_TypeCtor, ArgTypes)) =
+	string__format("FA_PseudoTypeInfo_Struct%d",
+		[i(list__length(ArgTypes))]).
+mlds_pseudo_type_info_type_name(var_arity_pseudo_type_info(_TypeCtor,
+		ArgTypes)) =
+	string__format("VA_PseudoTypeInfo_Struct%d",
+		[i(list__length(ArgTypes))]).
 mlds_pseudo_type_info_type_name(type_var(_)) = _ :-
 	% we use small integers to represent type_vars,
 	% rather than pointers, so there is no pointed-to type
 	error("mlds_rtti_type_name: type_var").
-mlds_pseudo_type_info_type_name(type_ctor_info(_)) =
-	"TypeCtorInfo_Struct".
-mlds_pseudo_type_info_type_name(type_info(_TypeCtor, ArgTypes)) =
-	string__format("FO_PseudoTypeInfo_Struct%d",
-		[i(list__length(ArgTypes))]).
-mlds_pseudo_type_info_type_name(higher_order_type_info(_TypeCtor, _Arity,
-		ArgTypes)) =
-	string__format("HO_PseudoTypeInfo_Struct%d",
-		[i(list__length(ArgTypes))]).
 
 %-----------------------------------------------------------------------------%

@@ -17,12 +17,11 @@
 :- module backend_libs__pseudo_type_info.
 :- interface.
 :- import_module parse_tree__prog_data, backend_libs__rtti.
-:- import_module list.
 
 	% pseudo_type_info__construct_pseudo_type_info(Type,
 	% 	NumUnivQTvars, ExistQVars, PseudoTypeInfo)
 	%
-	% Given a Mercury type (`Type'), this predicate returns an
+	% Given a Mercury type (`Type'), this predicate returns a
 	% representation of the pseudo type info for that type.
 	%
 	% NumUnivQTvars is either the number of universally quantified type
@@ -33,41 +32,15 @@
 	% quantified type variables of the constructor in question.
 
 :- pred pseudo_type_info__construct_pseudo_type_info((type)::in,
-	int::in, existq_tvars::in, pseudo_type_info::out) is det.
+	int::in, existq_tvars::in, rtti_pseudo_type_info::out) is det.
 
-:- type pseudo_type_info
-	--->	type_var(int)
-			% This represents a type variable.
-			% Type variables are numbered consecutively,
-			% starting from 1.
-	;	type_ctor_info(
-			%
-			% This represents a zero-arity type,
-			% i.e. a type constructor with no arguments.
-			%
-			rtti_type_ctor
-		)
-	;	type_info(
-			%
-			% This represents a type with arity > zero,
-			% i.e. a type constructor applied to some arguments.
-			% The argument list should not be empty.
-			%
-			rtti_type_ctor,
-			list(pseudo_type_info)
-		)
-	;	higher_order_type_info(
-			%
-			% This represents a higher-order or tuple type.
-			% The rtti_type_ctor field will be pred/0,
-			% func/0 or tuple/0; the real arity is 
-			% given in the arity field.
-			%
-			rtti_type_ctor,
-			arity,
-			list(pseudo_type_info)
-		)
-	.
+	% pseudo_type_info__construct_type_info(Type, TypeInfo)
+	%
+	% Given a ground Mercury type (`Type'), this predicate returns a
+	% representation of the type info for that type.
+
+:- pred pseudo_type_info__construct_type_info((type)::in, rtti_type_info::out)
+	is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -81,91 +54,59 @@
 
 pseudo_type_info__construct_pseudo_type_info(Type, NumUnivQTvars,
 		ExistQTvars, Pseudo) :-
-	(
-		type_to_ctor_and_args(Type, TypeCtor, TypeArgs0)
-	->
-		(
-			% The argument to typeclass_info types is not
-			% a type - it encodes the class constraint.
-			% So we replace the argument with type `void'.
-			mercury_private_builtin_module(PrivateBuiltin),
-			TypeCtor = qualified(PrivateBuiltin, TName) - 1,
-			( TName = "typeclass_info"
-			; TName = "base_typeclass_info"
-			)
-		->
-			construct_type(unqualified("void") - 0, [], ArgType),
-			TypeArgs = [ArgType]
-		;
-			TypeArgs = TypeArgs0
-		),
-		(
-			% For higher order types: they all refer to the
-			% defined pred_0 type_ctor_info, have an extra
-			% argument for their real arity, and then type
-			% arguments according to their types.
-			% Tuples are similar -- they use the tuple_0
-			% type_ctor_info.
-			% polymorphism.m has a detailed explanation.
-			% XXX polymorphism.m does not have a
-			% detailed explanation.
-			( type_is_higher_order(Type, _, _, _) ->
-				TypeName = "pred"
-			; type_is_tuple(Type, _) ->
-				TypeName = "tuple"
-			;
-				fail
-			)
-		->
-			TypeModule = unqualified(""),
-			Arity = 0,
-			RttiTypeCtor = rtti_type_ctor(TypeModule, TypeName,
-				Arity),
+	( type_to_ctor_and_args(Type, TypeCtor, TypeArgs0) ->
+		canonicalize_type_args(TypeCtor, TypeArgs0, TypeArgs),
+		( type_is_var_arity(Type, VarArityId) ->
 			TypeCtor = _QualTypeName - RealArity,
-			pseudo_type_info__generate_args(TypeArgs,
+			pseudo_type_info__generate_pseudo_args(TypeArgs,
 				NumUnivQTvars, ExistQTvars, PseudoArgs),
-			Pseudo = higher_order_type_info(RttiTypeCtor, RealArity,
+			require(check_var_arity(VarArityId, PseudoArgs,
+				RealArity),
+				"construct_pseudo_type_info: arity mismatch"),
+			Pseudo = var_arity_pseudo_type_info(VarArityId,
 				PseudoArgs)
 		;
 			TypeCtor = QualTypeName - Arity,
 			unqualify_name(QualTypeName, TypeName),
 			sym_name_get_module_name(QualTypeName, unqualified(""),
-					TypeModule),
+				TypeModule),
 			RttiTypeCtor = rtti_type_ctor(TypeModule, TypeName,
 				Arity),
-			pseudo_type_info__generate_args(TypeArgs,
+			pseudo_type_info__generate_pseudo_args(TypeArgs,
 				NumUnivQTvars, ExistQTvars, PseudoArgs),
+			require(check_arity(PseudoArgs, Arity),
+				"construct_pseudo_type_info: arity mismatch"),
 			( PseudoArgs = [] ->
-				Pseudo = type_ctor_info(RttiTypeCtor)
+				Pseudo = plain_arity_zero_pseudo_type_info(
+					RttiTypeCtor)
 			;
-				Pseudo = type_info(RttiTypeCtor, PseudoArgs)
+				Pseudo = plain_pseudo_type_info(RttiTypeCtor,
+					PseudoArgs)
 			)
 		)
-	;
-		type_util__var(Type, Var)
-	->
-			% In the case of a type variable, we need to assign a
-			% variable number *for this constructor*, i.e. taking
-			% only the existentially quantified variables of
-			% this constructor (and not those of other functors in
-			% the same type) into account.
+	; type_util__var(Type, Var) ->
+		% In the case of a type variable, we need to assign a
+		% variable number *for this constructor*, i.e. taking
+		% only the existentially quantified variables of
+		% this constructor (and not those of other functors in
+		% the same type) into account.
 
-			% XXX term__var_to_int doesn't guarantee anything
-			% about the ints returned (other than that they be
-			% distinct for different variables), but here we are
-			% relying more, specifically, on the integers being
-			% allocated densely (i.e. the first N vars get integers
-			% 1 to N).
+		% XXX term__var_to_int doesn't guarantee anything about the
+		% ints returned (other than that they be distinct for
+		% different variables), but here we are relying more,
+		% specifically, on the integers being allocated densely
+		% (i.e. the first N vars get integers 1 to N).
+
 		term__var_to_int(Var, VarInt0),
 		(
 			( VarInt0 =< NumUnivQTvars
 			; NumUnivQTvars < 0
 			)
 		->
-				% This is a universally quantified variable.
+			% This is a universally quantified variable.
 			VarInt = VarInt0
 		;
-				% It is existentially quantified.
+			% This is an existentially quantified variable.
 			(
 				list__nth_member_search(ExistQTvars,
 					Var, ExistNum0)
@@ -173,25 +114,146 @@ pseudo_type_info__construct_pseudo_type_info(Type, NumUnivQTvars,
 				VarInt = ExistNum0 +
 				pseudo_type_info__pseudo_typeinfo_exist_var_base
 			;
-				error("construct_pseudo_type_info: var not in list")
+				error("construct_pseudo_type_info: not in list")
 			)
 		),
 		require(VarInt =< pseudo_type_info__pseudo_typeinfo_max_var,
-			"type_ctor_layout: type variable representation exceeds limit"),
+			"construct_pseudo_type_info: type var exceeds limit"),
 		Pseudo = type_var(VarInt)
 	;
-		error("type_ctor_layout: type neither var nor non-var")
+		error("construct_pseudo_type_info: neither var nor non-var")
 	).
 
-:- pred pseudo_type_info__generate_args(list(type)::in,
-		int::in, existq_tvars::in, list(pseudo_type_info)::out) is det.
+pseudo_type_info__construct_type_info(Type, TypeInfo) :-
+	( type_to_ctor_and_args(Type, TypeCtor, TypeArgs0) ->
+		canonicalize_type_args(TypeCtor, TypeArgs0, TypeArgs),
+		( type_is_var_arity(Type, VarArityId) ->
+			TypeCtor = _QualTypeName - RealArity,
+			pseudo_type_info__generate_plain_args(TypeArgs,
+				TypeInfoArgs),
+			require(check_var_arity(VarArityId, TypeInfoArgs,
+				RealArity),
+				"construct_type_info: arity mismatch"),
+			TypeInfo = var_arity_type_info(VarArityId,
+				TypeInfoArgs)
+		;
+			TypeCtor = QualTypeName - Arity,
+			unqualify_name(QualTypeName, TypeName),
+			sym_name_get_module_name(QualTypeName, unqualified(""),
+				TypeModule),
+			RttiTypeCtor = rtti_type_ctor(TypeModule, TypeName,
+				Arity),
+			pseudo_type_info__generate_plain_args(TypeArgs,
+				TypeInfoArgs),
+			require(check_arity(TypeInfoArgs, Arity),
+				"construct_type_info: arity mismatch"),
+			( TypeInfoArgs = [] ->
+				TypeInfo = plain_arity_zero_type_info(
+					RttiTypeCtor)
+			;
+				TypeInfo = plain_type_info(RttiTypeCtor,
+					TypeInfoArgs)
+			)
+		)
+	;
+		error("construct_type_info: type is var")
+	).
 
-pseudo_type_info__generate_args(TypeArgs, NumUnivQTvars, ExistQTvars,
+:- pred check_var_arity(var_arity_ctor_id::in, list(T)::in, int::in)
+	is semidet.
+
+check_var_arity(VarArityId, Args, RealArity) :-
+	list__length(Args, NumPseudoArgs),
+	( VarArityId = func_type_info ->
+		NumPseudoArgs = RealArity + 1
+	;
+		NumPseudoArgs = RealArity
+	).
+
+:- pred check_arity(list(T)::in, int::in) is semidet.
+
+check_arity(Args, RealArity) :-
+	list__length(Args, NumPseudoArgs),
+	NumPseudoArgs = RealArity.
+
+:- pred pseudo_type_info__generate_pseudo_args(list(type)::in, int::in,
+	existq_tvars::in, list(rtti_maybe_pseudo_type_info)::out) is det.
+
+pseudo_type_info__generate_pseudo_args(TypeArgs, NumUnivQTvars, ExistQTvars,
 		PseudoArgs) :-
-	list__map((pred(T::in, P::out) is det :-
-		pseudo_type_info__construct_pseudo_type_info(
-			T, NumUnivQTvars, ExistQTvars, P)
-	), TypeArgs, PseudoArgs).
+	list__map(pseudo_type_info__generate_pseudo_arg(NumUnivQTvars,
+			ExistQTvars),
+		TypeArgs, PseudoArgs).
+
+:- pred pseudo_type_info__generate_pseudo_arg(int::in, existq_tvars::in,
+	(type)::in, rtti_maybe_pseudo_type_info::out) is det.
+
+pseudo_type_info__generate_pseudo_arg(NumUnivQTvars, ExistQTvars,
+		TypeArg, MaybePseudoArg) :-
+	( term__is_ground(TypeArg) ->
+		pseudo_type_info__construct_type_info(TypeArg, PseudoArg),
+		MaybePseudoArg = plain(PseudoArg)
+	;
+		pseudo_type_info__construct_pseudo_type_info(TypeArg,
+			NumUnivQTvars, ExistQTvars, PseudoArg),
+		MaybePseudoArg = pseudo(PseudoArg)
+	).
+
+:- pred pseudo_type_info__generate_plain_args(list(type)::in,
+	list(rtti_type_info)::out) is det.
+
+pseudo_type_info__generate_plain_args(TypeArgs,
+		PseudoArgs) :-
+	list__map(pseudo_type_info__construct_type_info, TypeArgs, PseudoArgs).
+
+%---------------------------------------------------------------------------%
+
+:- pred canonicalize_type_args(type_ctor::in, list(type)::in, list(type)::out)
+	is det.
+
+canonicalize_type_args(TypeCtor, TypeArgs0, TypeArgs) :-
+	(
+		% The argument to typeclass_info types is not
+		% a type - it encodes the class constraint.
+		% So we replace the argument with type `void'.
+		mercury_private_builtin_module(PrivateBuiltin),
+		TypeCtor = qualified(PrivateBuiltin, TypeName) - 1,
+		( TypeName = "typeclass_info"
+		; TypeName = "base_typeclass_info"
+		)
+	->
+		construct_type(unqualified("void") - 0, [], ArgType),
+		TypeArgs = [ArgType]
+	;
+		TypeArgs = TypeArgs0
+	).
+
+	% Type_infos and pseudo_type_infos whose principal type
+	% constructor is a variable arity type constructor
+	% must be handled specially, in that they must include
+	% the actual arity of the given instance between the
+	% type constructor and the arguments.
+	% runtime/mercury_type_info.h has the details.
+	%
+	% All variable arity type constructors are builtins.
+	% At the moment, we have three: pred, func, and tuple.
+
+:- pred type_is_var_arity((type)::in, var_arity_ctor_id::out) is semidet.
+
+type_is_var_arity(Type, VarArityCtorId) :-
+	( type_is_higher_order(Type, PredOrFunc, _, _) ->
+		(
+			PredOrFunc = predicate,
+			VarArityCtorId = pred_type_info
+		;
+			PredOrFunc = function,
+			VarArityCtorId = func_type_info
+		)
+	; type_is_tuple(Type, _) ->
+		VarArityCtorId = tuple_type_info
+	;
+		fail
+	).
 
 %---------------------------------------------------------------------------%
 

@@ -677,6 +677,8 @@
 		% closures for higher-order code.
 	;	mlds__generic_env_ptr_type
 
+	;	mlds__type_info_type
+
 	;	mlds__pseudo_type_info_type
 	
 	;	mlds__rtti_type(rtti_name)

@@ -141,13 +141,13 @@
         {
             MR_save_transient_registers();
             TypeInfoList = MR_type_params_vector_to_list(Arity,
-                    MR_TYPEINFO_GET_TUPLE_ARG_VECTOR(type_info));
+                    MR_TYPEINFO_GET_VAR_ARITY_ARG_VECTOR(type_info));
             MR_restore_transient_registers();
         } else {
             MR_save_transient_registers();
             TypeInfoList = MR_pseudo_type_info_vector_to_type_info_list(
                 arity,
-                MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info),
+                MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(type_info),
                 construct_info.arg_pseudo_type_infos);
             MR_restore_transient_registers();
         }
@@ -222,13 +222,13 @@ null_to_no(S) = ( if null(S) then no else yes(S) ).
         {
             MR_save_transient_registers();
             TypeInfoList = MR_type_params_vector_to_list(Arity,
-                    MR_TYPEINFO_GET_TUPLE_ARG_VECTOR(type_info));
+                    MR_TYPEINFO_GET_VAR_ARITY_ARG_VECTOR(type_info));
             ArgNameList = MR_list_empty();
                 MR_restore_transient_registers();
         } else {
             MR_save_transient_registers();
             TypeInfoList = MR_pseudo_type_info_vector_to_type_info_list(
-                arity, MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info),
+                arity, MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(type_info),
                 construct_info.arg_pseudo_type_infos);
             ArgNameList = MR_arg_name_vector_to_list(
                 arity, construct_info.arg_names);
@@ -467,7 +467,7 @@ null_to_no(S) = ( if null(S) then no else yes(S) ).
                 int     arity, i;
                 MR_Word    arg_list;
 
-                arity = MR_TYPEINFO_GET_TUPLE_ARITY(type_info);
+                arity = MR_TYPEINFO_GET_VAR_ARITY_ARITY(type_info);
     
                 if (arity == 0) {
                     new_data = (MR_Word) NULL;

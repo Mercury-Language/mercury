@@ -196,7 +196,7 @@ mercury__builtin__unify_2_p_0(MR_Mercury_Type_Info ti, MR_Box x, MR_Box y)
 	}
 
 	arity = type_ctor_info->MR_type_ctor_arity;
-	params = MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info);
+	params = MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(type_info);
 	args = (MR_Mercury_Type_Info *) params;
 
 	switch(arity) {
@@ -265,7 +265,7 @@ mercury__builtin__compare_3_p_0(MR_Mercury_Type_Info ti,
 	}
 
 	arity = type_ctor_info->MR_type_ctor_arity;
-	params = MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info);
+	params = MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(type_info);
 	args = (MR_Mercury_Type_Info *) params;
 
 	switch(arity) {
@@ -412,12 +412,12 @@ mercury__builtin____Unify____tuple_0_0(MR_Mercury_Type_Info ti,
 	MR_TypeInfo arg_type_info;
 
 	type_info = (MR_TypeInfo) ti;
-	arity = MR_TYPEINFO_GET_TUPLE_ARITY(type_info);
+	arity = MR_TYPEINFO_GET_VAR_ARITY_ARITY(type_info);
 
 	for (i = 0; i < arity; i++) {
 		/* type_infos are counted starting at one. */
 		arg_type_info =
-			MR_TYPEINFO_GET_TUPLE_ARG_VECTOR(type_info)[i + 1];
+			MR_TYPEINFO_GET_VAR_ARITY_ARG_VECTOR(type_info)[i + 1];
 		result = mercury__builtin__unify_2_p_0(
 			(MR_Mercury_Type_Info) arg_type_info, x[i], y[i]);
 		if (result == MR_FALSE) {
@@ -568,12 +568,12 @@ mercury__builtin____Compare____tuple_0_0(MR_Mercury_Type_Info ti,
 	MR_TypeInfo arg_type_info;
 
 	type_info = (MR_TypeInfo) ti;
-	arity = MR_TYPEINFO_GET_TUPLE_ARITY(type_info);
+	arity = MR_TYPEINFO_GET_VAR_ARITY_ARITY(type_info);
 
 	for (i = 0; i < arity; i++) {
 		/* type_infos are counted starting at one. */
 		arg_type_info =
-			MR_TYPEINFO_GET_TUPLE_ARG_VECTOR(type_info)[i + 1];
+			MR_TYPEINFO_GET_VAR_ARITY_ARG_VECTOR(type_info)[i + 1];
 		mercury__builtin__compare_3_p_0((MR_Mercury_Type_Info) arg_type_info,
 				result, x[i], y[i]);
 		if (*result != MR_COMPARE_EQUAL) {

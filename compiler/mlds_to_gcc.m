@@ -1777,6 +1777,7 @@ build_type(mlds__func_type(Params), _, GlobalInfo, GCC_FuncPtrType) -->
 	gcc__build_pointer_type(GCC_FuncType, GCC_FuncPtrType).
 build_type(mlds__generic_type, _, _, 'MR_Box') --> [].
 build_type(mlds__generic_env_ptr_type, _, _, gcc__ptr_type_node) --> [].
+build_type(mlds__type_info_type, _, _, 'MR_TypeInfo') --> [].
 build_type(mlds__pseudo_type_info_type, _, _, 'MR_PseudoTypeInfo') --> [].
 build_type(mlds__cont_type(ArgTypes), _, _, GCC_Type) -->
 	( { ArgTypes = [] } ->
@@ -2057,53 +2058,94 @@ build_rtti_type(type_ctor_info, _, GCC_Type) -->
 build_rtti_type(base_typeclass_info(_, _, _), Size, GCC_Type) -->
 	{ MR_BaseTypeclassInfo = gcc__ptr_type_node },
 	build_sized_array_type(MR_BaseTypeclassInfo, Size, GCC_Type).
+build_rtti_type(type_info(TypeInfo), _, GCC_Type) -->
+	build_type_info_type(TypeInfo, GCC_Type).
 build_rtti_type(pseudo_type_info(PseudoTypeInfo), _, GCC_Type) -->
 	build_pseudo_type_info_type(PseudoTypeInfo, GCC_Type).
 build_rtti_type(type_hashcons_pointer, _, MR_TableNodePtrPtr) -->
 	{ MR_TableNodePtrPtr = gcc__ptr_type_node }.
 
-:- pred build_pseudo_type_info_type(pseudo_type_info::in,
+:- pred build_type_info_type(rtti_type_info::in,
+		gcc__type::out, io__state::di, io__state::uo) is det.
+
+build_type_info_type(plain_arity_zero_type_info(_), GCC_Type) -->
+	build_rtti_type(type_ctor_info, no_size, GCC_Type).
+build_type_info_type(plain_type_info(_TypeCtor, ArgTypes),
+		GCC_Type) -->
+	{ Arity = list__length(ArgTypes) },
+	% typedef struct {
+	%     MR_TypeCtorInfo  MR_ti_type_ctor_info;
+	%     MR_TypeInfo      MR_ti_fixed_arity_arg_typeinfos[<ARITY>];
+	% } MR_FA_TypeInfo_Struct<ARITY>;
+	{ MR_TypeCtorInfo = gcc__ptr_type_node },
+	gcc__build_array_type('MR_TypeInfo', Arity, MR_TypeInfoArray),
+	{ StructName = string__format("MR_FA_TypeInfo_Struct%d",
+		[i(Arity)]) },
+	build_struct_type(StructName,
+		[MR_TypeCtorInfo	- "MR_ti_type_ctor_info",
+		 MR_TypeInfoArray	- "MR_ti_fixed_arity_arg_typeinfos"],
+		GCC_Type).
+build_type_info_type(var_arity_type_info(_VarArityTypeId, ArgTypes), GCC_Type)
+		-->
+	{ Arity = list__length(ArgTypes) },
+	% struct NAME {
+	%    MR_TypeCtorInfo    MR_ti_type_ctor_info;
+	%    MR_Integer         MR_ti_var_arity_arity;
+	%    MR_TypeInfo  	MR_ti_var_arity_arg_typeinfos[ARITY];
+	% }
+	{ MR_TypeCtorInfo = gcc__ptr_type_node },
+	gcc__build_array_type('MR_TypeInfo', Arity, MR_TypeInfoArray),
+	{ StructName = string__format("MR_VA_TypeInfo_Struct%d",
+		[i(Arity)]) },
+	build_struct_type(StructName,
+		[MR_TypeCtorInfo	- "MR_ti_type_ctor_info",
+		 'MR_Integer'		- "MR_ti_var_arity_arity",
+		 MR_TypeInfoArray	- "MR_ti_var_arity_arg_typeinfos"],
+		GCC_Type).
+
+:- pred build_pseudo_type_info_type(rtti_pseudo_type_info::in,
 		gcc__type::out, io__state::di, io__state::uo) is det.
 
 build_pseudo_type_info_type(type_var(_), _) -->
 	% we use small integers to represent type_vars,
 	% rather than pointers, so there is no pointed-to type
 	{ error("mlds_rtti_type: type_var") }.
-build_pseudo_type_info_type(type_ctor_info(_), GCC_Type) -->
+build_pseudo_type_info_type(plain_arity_zero_pseudo_type_info(_), GCC_Type) -->
 	build_rtti_type(type_ctor_info, no_size, GCC_Type).
-build_pseudo_type_info_type(type_info(_TypeCtor, ArgTypes), GCC_Type) -->
+build_pseudo_type_info_type(plain_pseudo_type_info(_TypeCtor, ArgTypes),
+		GCC_Type) -->
 	{ Arity = list__length(ArgTypes) },
 	% typedef struct {
 	%     MR_TypeCtorInfo     MR_pti_type_ctor_info;
-	%     MR_PseudoTypeInfo   MR_pti_first_order_arg_pseudo_typeinfos[<ARITY>];
-	% } MR_FO_PseudoTypeInfo_Struct<ARITY>;
+	%     MR_PseudoTypeInfo   MR_pti_fixed_arity_arg_pseudo_typeinfos[<ARITY>];
+	% } MR_FA_PseudoTypeInfo_Struct<ARITY>;
 	{ MR_TypeCtorInfo = gcc__ptr_type_node },
 	gcc__build_array_type('MR_PseudoTypeInfo', Arity,
 		MR_PseudoTypeInfoArray),
-	{ StructName = string__format("MR_FO_PseudoTypeInfo_Struct%d",
+	{ StructName = string__format("MR_FA_PseudoTypeInfo_Struct%d",
 		[i(Arity)]) },
 	build_struct_type(StructName,
 		[MR_TypeCtorInfo	- "MR_pti_type_ctor_info",
-		 MR_PseudoTypeInfoArray	- "MR_pti_first_order_arg_pseudo_typeinfos"],
+		 MR_PseudoTypeInfoArray	- "MR_pti_fixed_arity_arg_pseudo_typeinfos"],
 		GCC_Type).
-build_pseudo_type_info_type(higher_order_type_info(_TypeCtor, _Arity,
+build_pseudo_type_info_type(var_arity_pseudo_type_info(_VarArityTypeId,
 		ArgTypes), GCC_Type) -->
 	{ Arity = list__length(ArgTypes) },
-	% struct NAME {							\
-	%    MR_TypeCtorInfo     MR_pti_type_ctor_info;			\
-	%    MR_Integer          MR_pti_higher_order_arity;			\
-	%    MR_PseudoTypeInfo   MR_pti_higher_order_arg_pseudo_typeinfos[ARITY]; \
+	% struct NAME {
+	%    MR_TypeCtorInfo    MR_pti_type_ctor_info;
+	%    MR_Integer         MR_pti_var_arity_arity;
+	%    MR_PseudoTypeInfo  MR_pti_var_arity_arg_pseudo_typeinfos[ARITY];
 	% }
 	{ MR_TypeCtorInfo = gcc__ptr_type_node },
 	gcc__build_array_type('MR_PseudoTypeInfo', Arity,
 		MR_PseudoTypeInfoArray),
-	{ StructName = string__format("MR_HO_PseudoTypeInfo_Struct%d",
+	{ StructName = string__format("MR_VA_PseudoTypeInfo_Struct%d",
 		[i(Arity)]) },
 	build_struct_type(StructName,
 		[MR_TypeCtorInfo	- "MR_pti_type_ctor_info",
-		 'MR_Integer'		- "MR_pti_higher_order_arity",
+		 'MR_Integer'		- "MR_pti_var_arity_arity",
 		 MR_PseudoTypeInfoArray	-
-		 		"MR_pti_higher_order_arg_pseudo_typeinfos"],
+		 		"MR_pti_var_arity_arg_pseudo_typeinfos"],
 		GCC_Type).
 
 :- pred build_du_exist_locn_type(gcc__type, io__state, io__state).
@@ -2315,20 +2357,21 @@ fixup_rtti_type_ctor(RttiTypeCtor0) = RttiTypeCtor :-
 :- func fixup_rtti_name(rtti_name) = rtti_name.
 fixup_rtti_name(RttiTypeCtor0) = RttiTypeCtor :-
 	(
-		RttiTypeCtor0 = pseudo_type_info(PseudoTypeInfo0)
+		RttiTypeCtor0 = pseudo_type_info(PseudoTypeInfo)
 	->
 		RttiTypeCtor = pseudo_type_info(
-			fixup_pseudo_type_info(PseudoTypeInfo0))
+			fixup_pseudo_type_info(PseudoTypeInfo))
 	;
 		RttiTypeCtor = RttiTypeCtor0
 	).
 
-:- func fixup_pseudo_type_info(pseudo_type_info) = pseudo_type_info.
+:- func fixup_pseudo_type_info(rtti_pseudo_type_info) = rtti_pseudo_type_info.
 fixup_pseudo_type_info(PseudoTypeInfo0) = PseudoTypeInfo :-
 	(
-		PseudoTypeInfo0 = type_ctor_info(RttiTypeCtor0)
+		PseudoTypeInfo0 =
+			plain_arity_zero_pseudo_type_info(RttiTypeCtor0)
 	->
-		PseudoTypeInfo = type_ctor_info(
+		PseudoTypeInfo = plain_arity_zero_pseudo_type_info(
 			fixup_rtti_type_ctor(RttiTypeCtor0))
 	;
 		PseudoTypeInfo = PseudoTypeInfo0
@@ -3422,6 +3465,7 @@ gen_context(MLDS_Context) -->
 :- func 'MR_String'		= gcc__type.
 :- func 'MR_ConstString'	= gcc__type.
 :- func 'MR_Word'		= gcc__type.
+:- func 'MR_TypeInfo'		= gcc__type.
 :- func 'MR_PseudoTypeInfo'	= gcc__type.
 :- func 'MR_Sectag_Locn'	= gcc__type.
 :- func 'MR_TypeCtorRep'	= gcc__type.
@@ -3442,6 +3486,7 @@ gen_context(MLDS_Context) -->
 	% XXX 'MR_Word' should perhaps be unsigned, to match the C back-end
 'MR_Word'		= gcc__intptr_type_node.
 
+'MR_TypeInfo'		= gcc__ptr_type_node.
 'MR_PseudoTypeInfo'	= gcc__ptr_type_node.
 
 	% XXX MR_Sectag_Locn and MR_TypeCtorRep are actually enums

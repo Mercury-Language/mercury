@@ -25,21 +25,21 @@ MR_make_type_ctor_desc(MR_TypeInfo type_info, MR_TypeCtorInfo type_ctor_info)
 
 	if (MR_TYPE_CTOR_INFO_IS_HO_PRED(type_ctor_info)) {
 		type_ctor_desc = MR_TYPECTOR_DESC_MAKE_PRED(
-			MR_TYPEINFO_GET_HIGHER_ORDER_ARITY(type_info));
+			MR_TYPEINFO_GET_VAR_ARITY_ARITY(type_info));
 		if (! MR_TYPECTOR_DESC_IS_VARIABLE_ARITY(type_ctor_desc)) {
 			MR_fatal_error("MR_make_type_ctor_desc"
 				" - arity out of range.");
 		}
 	} else if (MR_TYPE_CTOR_INFO_IS_HO_FUNC(type_ctor_info)) {
 		type_ctor_desc = MR_TYPECTOR_DESC_MAKE_FUNC(
-			MR_TYPEINFO_GET_HIGHER_ORDER_ARITY(type_info));
+			MR_TYPEINFO_GET_VAR_ARITY_ARITY(type_info));
 		if (! MR_TYPECTOR_DESC_IS_VARIABLE_ARITY(type_ctor_desc)) {
 			MR_fatal_error("MR_make_type_ctor_desc"
 				" - arity out of range.");
 		}
 	} else if (MR_TYPE_CTOR_INFO_IS_TUPLE(type_ctor_info)) {
 		type_ctor_desc = MR_TYPECTOR_DESC_MAKE_TUPLE(
-			MR_TYPEINFO_GET_TUPLE_ARITY(type_info));
+			MR_TYPEINFO_GET_VAR_ARITY_ARITY(type_info));
 		if (! MR_TYPECTOR_DESC_IS_VARIABLE_ARITY(type_ctor_desc)) {
 			MR_fatal_error("MR_make_type_ctor_desc"
 				" - arity out of range.");
@@ -73,11 +73,11 @@ MR_type_ctor_and_args(MR_TypeInfo type_info, MR_bool collapse_equivalences,
 	{
 		arity = MR_TYPECTOR_DESC_GET_VA_ARITY(type_ctor_desc);
 		*arg_type_info_list_ptr = MR_type_params_vector_to_list(arity,
-			MR_TYPEINFO_GET_HIGHER_ORDER_ARG_VECTOR(type_info));
+			MR_TYPEINFO_GET_VAR_ARITY_ARG_VECTOR(type_info));
 	} else {
 		arity = type_ctor_info->MR_type_ctor_arity;
 		*arg_type_info_list_ptr = MR_type_params_vector_to_list(arity,
-			MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info));
+			MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(type_info));
 	}
 }
 
@@ -100,10 +100,10 @@ MR_make_type(int arity, MR_TypeCtorDesc type_ctor_desc, MR_Word arg_types_list)
 		MR_restore_transient_registers();
 		MR_incr_hp_atomic_msg(
 			MR_LVALUE_CAST(MR_Word, new_type_info_arena),
-			MR_higher_order_type_info_size(arity),
+			MR_var_arity_type_info_size(arity),
 			"MR_make_type", "type_info");
 		MR_save_transient_registers();
-		MR_fill_in_higher_order_type_info(new_type_info_arena,
+		MR_fill_in_var_arity_type_info(new_type_info_arena,
 			type_ctor_info, arity, new_type_info_args);
 	} else {
 		type_ctor_info =
@@ -117,10 +117,10 @@ MR_make_type(int arity, MR_TypeCtorDesc type_ctor_desc, MR_Word arg_types_list)
 		MR_restore_transient_registers();
 		MR_incr_hp_atomic_msg(
 			MR_LVALUE_CAST(MR_Word, new_type_info_arena),
-			MR_first_order_type_info_size(arity),
+			MR_fixed_arity_type_info_size(arity),
 			"MR_make_type", "type_info");
 		MR_save_transient_registers();
-		MR_fill_in_first_order_type_info(new_type_info_arena,
+		MR_fill_in_fixed_arity_type_info(new_type_info_arena,
 			type_ctor_info, new_type_info_args);
 	}
 

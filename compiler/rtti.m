@@ -26,9 +26,54 @@
 
 :- import_module parse_tree__prog_data.
 :- import_module hlds__hlds_module, hlds__hlds_pred, hlds__hlds_data.
-:- import_module backend_libs__pseudo_type_info, backend_libs__code_model.
+:- import_module backend_libs__code_model.
 
 :- import_module bool, list, std_util.
+
+:- type var_arity_ctor_id
+	--->	pred_type_info
+	;	func_type_info
+	;	tuple_type_info.
+
+:- type rtti_type_info
+	--->	plain_arity_zero_type_info(
+			rtti_type_ctor
+		)
+	;	plain_type_info(
+			rtti_type_ctor,
+			% This list should not be empty; if it is, one should
+			% use plain_arity_zero_type_info instead.
+			list(rtti_type_info)	
+		)
+	;	var_arity_type_info(
+			var_arity_ctor_id,
+			list(rtti_type_info)
+		).
+
+:- type rtti_pseudo_type_info
+	--->	plain_arity_zero_pseudo_type_info(
+			rtti_type_ctor
+		)
+	;	plain_pseudo_type_info(
+			rtti_type_ctor,
+			% This list should not be empty; if it is, one should
+			% use plain_arity_zero_pseudo_type_info instead.
+			list(rtti_maybe_pseudo_type_info)
+		)
+	;	var_arity_pseudo_type_info(
+			var_arity_ctor_id,
+			list(rtti_maybe_pseudo_type_info)
+		)
+	;	type_var(int).
+
+:- type rtti_maybe_pseudo_type_info
+	--->	pseudo(rtti_pseudo_type_info)
+	;	plain(rtti_type_info).
+
+:- type rtti_maybe_pseudo_type_info_or_self
+	--->	pseudo(rtti_pseudo_type_info)
+	;	plain(rtti_type_info)
+	;	self.
 
 	% For a given du type and a primary tag value, this says where,
 	% if anywhere, the secondary tag is.
@@ -348,7 +393,12 @@
 			% maybe(rtti_name),	% the type's hash cons table
 			% maybe(rtti_proc_label)% prettyprinter
 		)
-	;	pseudo_type_info(pseudo_type_info)
+	;	type_info(
+			rtti_type_info
+		)
+	;	pseudo_type_info(
+			rtti_pseudo_type_info
+		)
 	;	base_typeclass_info(
 			module_name,	% module containing instance decl.
 			class_id,	% specifies class name & class arity
@@ -356,8 +406,7 @@
 					% types in the instance declaration
 
 			base_typeclass_info
-		)
-	.
+		).
 
 :- type rtti_name
 	--->	exist_locns(int)		% functor ordinal
@@ -377,7 +426,8 @@
 	;	du_ptag_ordered_table
 	;	reserved_addr_table
 	;	type_ctor_info
-	;	pseudo_type_info(pseudo_type_info)
+	;	type_info(rtti_type_info)
+	;	pseudo_type_info(rtti_pseudo_type_info)
 	;	base_typeclass_info(
 			module_name,	% module containing instance decl.
 			class_id,	% specifies class name & class arity
@@ -413,16 +463,21 @@
 		methods :: list(rtti_proc_label)
 	).
 
-	% convert a rtti_data to an rtti_type_ctor and an rtti_name.
+	% Convert a rtti_data to a rtti_type_ctor and a rtti_name.
 	% This calls error/1 if the argument is a type_var/1 rtti_data,
 	% since there is no rtti_type_ctor to return in that case.
 :- pred rtti_data_to_name(rtti_data::in, rtti_type_ctor::out, rtti_name::out)
 	is det.
 
+	% Convert an id that specifies a kind of variable arity type_info
+	% or pseudo_type_info into the type_ctor of the canonical (arity-zero)
+	% type of that kind.
+:- func var_arity_id_to_rtti_type_ctor(var_arity_ctor_id) = rtti_type_ctor.
+
 	% return yes iff the specified rtti_name is an array
 :- func rtti_name_has_array_type(rtti_name) = bool.
 
-	% return yes iff the specified rtti_name should be exported
+	% Return yes iff the specified rtti_name should be exported
 	% for use by other modules.
 :- func rtti_name_is_exported(rtti_name) = bool.
 
@@ -487,11 +542,21 @@
 	% XXX this should be in rtti_out.m
 :- pred rtti__type_ctor_rep_to_string(type_ctor_rep::in, string::out) is det.
 
+:- func type_info_to_rtti_data(rtti_type_info) = rtti_data.
+
+:- func maybe_pseudo_type_info_to_rtti_data(rtti_maybe_pseudo_type_info)
+	= rtti_data.
+
+:- func maybe_pseudo_type_info_or_self_to_rtti_data(
+	rtti_maybe_pseudo_type_info_or_self) = rtti_data is semidet.
+
 :- implementation.
 
+:- import_module parse_tree__prog_util.	% for mercury_public_builtin_module
+:- import_module hlds__hlds_data.
+:- import_module check_hlds__type_util, check_hlds__mode_util.
 :- import_module ll_backend__code_util.	% for code_util__compiler_generated
 :- import_module ll_backend__llds_out.	% for name_mangle and sym_name_mangle
-:- import_module hlds__hlds_data, check_hlds__type_util, check_hlds__mode_util.
 
 :- import_module string, require.
 
@@ -529,22 +594,45 @@ rtti_data_to_name(reserved_addr_table(RttiTypeCtor, _, _, _, _, _),
 	RttiTypeCtor, reserved_addr_table).
 rtti_data_to_name(type_ctor_info(RttiTypeCtor, _,_,_,_,_,_,_,_),
 	RttiTypeCtor, type_ctor_info).
-rtti_data_to_name(base_typeclass_info(_, _, _, _), _, _) :-
-	% there's no rtti_type_ctor associated with a base_typeclass_info
-	error("rtti_data_to_name: base_typeclass_info").
+rtti_data_to_name(type_info(TypeInfo), RttiTypeCtor, type_info(TypeInfo)) :-
+	RttiTypeCtor = ti_get_rtti_type_ctor(TypeInfo).
 rtti_data_to_name(pseudo_type_info(PseudoTypeInfo), RttiTypeCtor,
 		pseudo_type_info(PseudoTypeInfo)) :-
 	RttiTypeCtor = pti_get_rtti_type_ctor(PseudoTypeInfo).
+rtti_data_to_name(base_typeclass_info(_, _, _, _), _, _) :-
+	% there's no rtti_type_ctor associated with a base_typeclass_info
+	error("rtti_data_to_name: base_typeclass_info").
 
-:- func pti_get_rtti_type_ctor(pseudo_type_info) = rtti_type_ctor.
+:- func ti_get_rtti_type_ctor(rtti_type_info) = rtti_type_ctor.
 
-pti_get_rtti_type_ctor(type_ctor_info(RttiTypeCtor)) = RttiTypeCtor.
-pti_get_rtti_type_ctor(type_info(RttiTypeCtor, _)) = RttiTypeCtor.
-pti_get_rtti_type_ctor(higher_order_type_info(RttiTypeCtor, _, _)) =
-	RttiTypeCtor.
+ti_get_rtti_type_ctor(plain_arity_zero_type_info(RttiTypeCtor))
+	= RttiTypeCtor.
+ti_get_rtti_type_ctor(plain_type_info(RttiTypeCtor, _))
+	= RttiTypeCtor.
+ti_get_rtti_type_ctor(var_arity_type_info(RttiVarArityId, _)) =
+	var_arity_id_to_rtti_type_ctor(RttiVarArityId).
+
+:- func pti_get_rtti_type_ctor(rtti_pseudo_type_info) = rtti_type_ctor.
+
+pti_get_rtti_type_ctor(plain_arity_zero_pseudo_type_info(RttiTypeCtor))
+	= RttiTypeCtor.
+pti_get_rtti_type_ctor(plain_pseudo_type_info(RttiTypeCtor, _))
+	= RttiTypeCtor.
+pti_get_rtti_type_ctor(var_arity_pseudo_type_info(RttiVarArityId, _)) =
+	var_arity_id_to_rtti_type_ctor(RttiVarArityId).
 pti_get_rtti_type_ctor(type_var(_)) = _ :-
 	% there's no rtti_type_ctor associated with a type_var
 	error("rtti_data_to_name: type_var").
+
+var_arity_id_to_rtti_type_ctor(pred_type_info) = Ctor :-
+	mercury_public_builtin_module(Builtin),
+	Ctor = rtti_type_ctor(Builtin, "pred", 0).
+var_arity_id_to_rtti_type_ctor(func_type_info) = Ctor :-
+	mercury_public_builtin_module(Builtin),
+	Ctor = rtti_type_ctor(Builtin, "func", 0).
+var_arity_id_to_rtti_type_ctor(tuple_type_info) = Ctor :-
+	mercury_public_builtin_module(Builtin),
+	Ctor = rtti_type_ctor(Builtin, "tuple", 0).
 
 rtti_name_has_array_type(exist_locns(_))		= yes.
 rtti_name_has_array_type(exist_info(_))			= no.
@@ -563,6 +651,7 @@ rtti_name_has_array_type(du_stag_ordered_table(_))	= yes.
 rtti_name_has_array_type(du_ptag_ordered_table)		= yes.
 rtti_name_has_array_type(reserved_addr_table)		= no.
 rtti_name_has_array_type(type_ctor_info)		= no.
+rtti_name_has_array_type(type_info(_))			= no.
 rtti_name_has_array_type(pseudo_type_info(_))		= no.
 rtti_name_has_array_type(base_typeclass_info(_, _, _))	= yes.
 rtti_name_has_array_type(type_hashcons_pointer)		= no.
@@ -584,16 +673,25 @@ rtti_name_is_exported(du_stag_ordered_table(_)) = no.
 rtti_name_is_exported(du_ptag_ordered_table)    = no.
 rtti_name_is_exported(reserved_addr_table)      = no.
 rtti_name_is_exported(type_ctor_info)           = yes.
-rtti_name_is_exported(pseudo_type_info(Pseudo)) =
-	pseudo_type_info_is_exported(Pseudo).
+rtti_name_is_exported(type_info(TypeInfo)) =
+	type_info_is_exported(TypeInfo).
+rtti_name_is_exported(pseudo_type_info(PseudoTypeInfo)) =
+	pseudo_type_info_is_exported(PseudoTypeInfo).
 rtti_name_is_exported(base_typeclass_info(_, _, _)) = yes.
 rtti_name_is_exported(type_hashcons_pointer)    = no.
 
-:- func pseudo_type_info_is_exported(pseudo_type_info) = bool.
+:- func type_info_is_exported(rtti_type_info) = bool.
+
+type_info_is_exported(plain_arity_zero_type_info(_)) = yes.
+type_info_is_exported(plain_type_info(_, _))	     = no.
+type_info_is_exported(var_arity_type_info(_, _))     = no.
+
+:- func pseudo_type_info_is_exported(rtti_pseudo_type_info) = bool.
+
+pseudo_type_info_is_exported(plain_arity_zero_pseudo_type_info(_)) = yes.
+pseudo_type_info_is_exported(plain_pseudo_type_info(_, _))	= no.
+pseudo_type_info_is_exported(var_arity_pseudo_type_info(_, _))	= no.
 pseudo_type_info_is_exported(type_var(_))			= no.
-pseudo_type_info_is_exported(type_ctor_info(_))			= yes.
-pseudo_type_info_is_exported(type_info(_, _))			= no.
-pseudo_type_info_is_exported(higher_order_type_info(_, _, _))	= no.
 
 rtti__make_proc_label(ModuleInfo, PredId, ProcId) = ProcLabel :-
 	module_info_name(ModuleInfo, ThisModule),
@@ -670,7 +768,8 @@ rtti__addr_to_string(RttiTypeCtor, RttiName, Str) :-
 	;
 		RttiName = reserved_addr_functor_desc(Ordinal),
 		string__int_to_string(Ordinal, O_str),
-		string__append_list([ModuleName, "__reserved_addr_functor_desc_",
+		string__append_list([ModuleName,
+			"__reserved_addr_functor_desc_",
 			TypeName, "_", A_str, "_", O_str], Str)
 	;
 		RttiName = enum_name_ordered_table,
@@ -702,8 +801,11 @@ rtti__addr_to_string(RttiTypeCtor, RttiName, Str) :-
 		string__append_list([ModuleName, "__type_ctor_info_",
 			TypeName, "_", A_str], Str)
 	;
+		RttiName = type_info(TypeInfo),
+		Str = rtti__type_info_to_string(TypeInfo)
+	;
 		RttiName = pseudo_type_info(PseudoTypeInfo),
-		rtti__pseudo_type_info_to_string(PseudoTypeInfo, Str)
+		Str = rtti__pseudo_type_info_to_string(PseudoTypeInfo)
 	;
 		RttiName = base_typeclass_info(_ModuleName, ClassId,
 			InstanceStr),
@@ -723,69 +825,99 @@ rtti__addr_to_string(RttiTypeCtor, RttiName, Str) :-
 :- pred rtti__mangle_rtti_type_ctor(rtti_type_ctor::in,
 	string::out, string::out, string::out) is det.
 
-rtti__mangle_rtti_type_ctor(RttiTypeCtor, ModuleName, TypeName, A_str) :-
+rtti__mangle_rtti_type_ctor(RttiTypeCtor, ModuleName, TypeName, ArityStr) :-
 	RttiTypeCtor = rtti_type_ctor(ModuleName0, TypeName0, TypeArity),
 	llds_out__sym_name_mangle(ModuleName0, ModuleName),
 	llds_out__name_mangle(TypeName0, TypeName),
-	string__int_to_string(TypeArity, A_str).
+	string__int_to_string(TypeArity, ArityStr).
 
-:- pred rtti__pseudo_type_info_to_string(pseudo_type_info::in, string::out)
-	is det.
+%-----------------------------------------------------------------------------%
 
-rtti__pseudo_type_info_to_string(PseudoTypeInfo, Str) :-
+:- func rtti__type_info_to_string(rtti_type_info) = string.
+
+rtti__type_info_to_string(TypeInfo) = Str :-
 	(
-		PseudoTypeInfo = type_var(VarNum),
-		string__int_to_string(VarNum, Str)
-	;
-		PseudoTypeInfo = type_ctor_info(RttiTypeCtor),
+		TypeInfo = plain_arity_zero_type_info(RttiTypeCtor),
 		rtti__addr_to_string(RttiTypeCtor, type_ctor_info, Str)
 	;
-		PseudoTypeInfo = type_info(RttiTypeCtor, ArgTypes),
+		TypeInfo = plain_type_info(RttiTypeCtor, Args),
 		rtti__mangle_rtti_type_ctor(RttiTypeCtor,
-			ModuleName, TypeName, A_str),
-		ATs_str = pseudo_type_list_to_string(ArgTypes),
-		string__append_list([ModuleName, "__type_info_",
-			TypeName, "_", A_str, ATs_str], Str)
+			ModuleName, TypeName, ArityStr),
+		ArgsStr = type_info_list_to_string(Args),
+		string__append_list([ModuleName, "__ti_",
+			TypeName, "_", ArityStr, ArgsStr], Str)
 	;
-		PseudoTypeInfo = higher_order_type_info(RttiTypeCtor,
-			RealArity, ArgTypes),
-		rtti__mangle_rtti_type_ctor(RttiTypeCtor,
-			ModuleName, TypeName, _A_str),
-		ATs_str = pseudo_type_list_to_string(ArgTypes),
-		string__int_to_string(RealArity, RA_str),
-		string__append_list([ModuleName, "__ho_type_info_",
-			TypeName, "_", RA_str, ATs_str], Str)
+		TypeInfo = var_arity_type_info(VarArityId, Args),
+		RealArity = list__length(Args),
+		ArgsStr = type_info_list_to_string(Args),
+		string__int_to_string(RealArity, RealArityStr),
+		IdStr = var_arity_ctor_id_to_string(VarArityId),
+		string__append_list(["__vti_", IdStr, "_",
+			RealArityStr, ArgsStr], Str)
 	).
 
-:- func pseudo_type_list_to_string(list(pseudo_type_info)) = string.
-pseudo_type_list_to_string(PseudoTypeList) =
-	string__append_list(list__map(pseudo_type_to_string, PseudoTypeList)).
+:- func rtti__pseudo_type_info_to_string(rtti_pseudo_type_info) = string.
 
-:- func pseudo_type_to_string(pseudo_type_info) = string.
-pseudo_type_to_string(type_var(Int)) =
-	string__append("__var_", string__int_to_string(Int)).
-pseudo_type_to_string(type_ctor_info(TypeCtor)) =
-	string__append("__type0_", rtti__type_ctor_to_string(TypeCtor)).
-pseudo_type_to_string(type_info(TypeCtor, ArgTypes)) =
-	string__append_list([
-		"__type_", rtti__type_ctor_to_string(TypeCtor),
-		pseudo_type_list_to_string(ArgTypes)
-	]).
-pseudo_type_to_string(higher_order_type_info(TypeCtor, Arity, ArgTypes)) =
-	string__append_list([
-		"__ho_type_", rtti__type_ctor_to_string(TypeCtor),
-		"_", string__int_to_string(Arity),
-		pseudo_type_list_to_string(ArgTypes)
-	]).
+rtti__pseudo_type_info_to_string(PseudoTypeInfo) = Str :-
+	(
+		PseudoTypeInfo =
+			plain_arity_zero_pseudo_type_info(RttiTypeCtor),
+		rtti__addr_to_string(RttiTypeCtor, type_ctor_info, Str)
+	;
+		PseudoTypeInfo = plain_pseudo_type_info(RttiTypeCtor, Args),
+		rtti__mangle_rtti_type_ctor(RttiTypeCtor,
+			ModuleName, TypeName, ArityStr),
+		ArgsStr = maybe_pseudo_type_info_list_to_string(Args),
+		string__append_list([ModuleName, "__pti_",
+			TypeName, "_", ArityStr, ArgsStr], Str)
+	;
+		PseudoTypeInfo = var_arity_pseudo_type_info(VarArityId, Args),
+		RealArity = list__length(Args),
+		ArgsStr = maybe_pseudo_type_info_list_to_string(Args),
+		string__int_to_string(RealArity, RealArityStr),
+		IdStr = var_arity_ctor_id_to_string(VarArityId),
+		string__append_list(["__vpti_", IdStr, "_",
+			RealArityStr, ArgsStr], Str)
+	;
+		PseudoTypeInfo = type_var(VarNum),
+		string__int_to_string(VarNum, Str)
+	).
 
-:- func rtti__type_ctor_to_string(rtti_type_ctor) = string.
-rtti__type_ctor_to_string(RttiTypeCtor) = String :-
-	rtti__mangle_rtti_type_ctor(RttiTypeCtor, ModuleName, TypeName, A_Str),
-	String0 = string__append_list([ModuleName, "__", TypeName, "_", A_Str]),
-	% To ensure that the mapping is one-to-one, and to make demangling
-	% easier, we insert the length of the string at the start of the string.
-	string__length(String0, Length),
-	String = string__format("%d_%s", [i(Length), s(String0)]).
+:- func maybe_pseudo_type_info_to_string(rtti_maybe_pseudo_type_info) = string.
+
+maybe_pseudo_type_info_to_string(plain(TypeInfo)) =
+	string__append("__plain_", type_info_to_string(TypeInfo)).
+maybe_pseudo_type_info_to_string(pseudo(PseudoTypeInfo)) =
+	string__append("__pseudo_", pseudo_type_info_to_string(PseudoTypeInfo)).
+
+:- func var_arity_ctor_id_to_string(var_arity_ctor_id) = string.
+
+var_arity_ctor_id_to_string(pred_type_info) = "pred".
+var_arity_ctor_id_to_string(func_type_info) = "func".
+var_arity_ctor_id_to_string(tuple_type_info) = "tuple".
+
+%-----------------------------------------------------------------------------%
+
+:- func maybe_pseudo_type_info_list_to_string(list(rtti_maybe_pseudo_type_info))
+	= string.
+
+maybe_pseudo_type_info_list_to_string(MaybePseudoTypeInfoList) =
+	string__append_list(
+		list__map(maybe_pseudo_type_info_to_string,
+			MaybePseudoTypeInfoList)).
+
+:- func pseudo_type_info_list_to_string(list(rtti_pseudo_type_info)) = string.
+
+pseudo_type_info_list_to_string(PseudoTypeInfoList) =
+	string__append_list(
+		list__map(pseudo_type_info_to_string, PseudoTypeInfoList)).
+
+:- func type_info_list_to_string(list(rtti_type_info)) = string.
+
+type_info_list_to_string(TypeInfoList) =
+	string__append_list(list__map(type_info_to_string, TypeInfoList)).
+
+%-----------------------------------------------------------------------------%
 
 rtti__sectag_locn_to_string(sectag_none,   "MR_SECTAG_NONE").
 rtti__sectag_locn_to_string(sectag_local,  "MR_SECTAG_LOCAL").
@@ -818,3 +950,14 @@ rtti__type_ctor_rep_to_string(equiv(equiv_type_is_ground),
 rtti__type_ctor_rep_to_string(unknown,
 	"MR_TYPECTOR_REP_UNKNOWN").
 
+type_info_to_rtti_data(TypeInfo) = type_info(TypeInfo).
+
+maybe_pseudo_type_info_to_rtti_data(pseudo(PseudoTypeInfo)) =
+	pseudo_type_info(PseudoTypeInfo).
+maybe_pseudo_type_info_to_rtti_data(plain(TypeInfo)) =
+	type_info(TypeInfo).
+
+maybe_pseudo_type_info_or_self_to_rtti_data(pseudo(PseudoTypeInfo)) =
+	pseudo_type_info(PseudoTypeInfo).
+maybe_pseudo_type_info_or_self_to_rtti_data(plain(TypeInfo)) =
+	type_info(TypeInfo).

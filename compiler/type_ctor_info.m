@@ -348,20 +348,54 @@ make_pseudo_type_info_and_tables(Type, UnivTvars, ExistTvars, RttiData,
 % of a pseudo_type_info, and prepend them to the given
 % list of rtti_data tables.
 
-:- pred make_pseudo_type_info_tables(pseudo_type_info,
-		list(rtti_data), list(rtti_data)).
-:- mode make_pseudo_type_info_tables(in, in, out) is det.
+:- pred make_type_info_tables(rtti_type_info::in,
+	list(rtti_data)::in, list(rtti_data)::out) is det.
 
+make_type_info_tables(plain_arity_zero_type_info(_), Tables, Tables).
+make_type_info_tables(PseudoTypeInfo, Tables0, Tables) :-
+	PseudoTypeInfo = plain_type_info(_, Args),
+	Tables1 = [type_info(PseudoTypeInfo) | Tables0],
+	list__foldl(make_type_info_tables, Args, Tables1, Tables).
+make_type_info_tables(PseudoTypeInfo, Tables0, Tables) :-
+	PseudoTypeInfo = var_arity_type_info(_, Args),
+	Tables1 = [type_info(PseudoTypeInfo) | Tables0],
+	list__foldl(make_type_info_tables, Args, Tables1, Tables).
+
+:- pred make_pseudo_type_info_tables(rtti_pseudo_type_info::in,
+	list(rtti_data)::in, list(rtti_data)::out) is det.
+
+make_pseudo_type_info_tables(plain_arity_zero_pseudo_type_info(_),
+		Tables, Tables).
+make_pseudo_type_info_tables(PseudoTypeInfo, Tables0, Tables) :-
+	PseudoTypeInfo = plain_pseudo_type_info(_, Args),
+	Tables1 = [pseudo_type_info(PseudoTypeInfo) | Tables0],
+	list__foldl(make_maybe_pseudo_type_info_tables, Args,
+		Tables1, Tables).
+make_pseudo_type_info_tables(PseudoTypeInfo, Tables0, Tables) :-
+	PseudoTypeInfo = var_arity_pseudo_type_info(_, Args),
+	Tables1 = [pseudo_type_info(PseudoTypeInfo) | Tables0],
+	list__foldl(make_maybe_pseudo_type_info_tables, Args,
+		Tables1, Tables).
 make_pseudo_type_info_tables(type_var(_), Tables, Tables).
-make_pseudo_type_info_tables(type_ctor_info(_), Tables, Tables).
-make_pseudo_type_info_tables(TypeInfo, Tables0, Tables) :-
-	TypeInfo = type_info(_, Args),
-	Tables1 = [pseudo_type_info(TypeInfo) | Tables0],
-	list__foldl(make_pseudo_type_info_tables, Args, Tables1, Tables).
-make_pseudo_type_info_tables(HO_TypeInfo, Tables0, Tables) :-
-	HO_TypeInfo = higher_order_type_info(_, _, Args),
-	Tables1 = [pseudo_type_info(HO_TypeInfo) | Tables0],
-	list__foldl(make_pseudo_type_info_tables, Args, Tables1, Tables).
+
+:- pred make_maybe_pseudo_type_info_tables(rtti_maybe_pseudo_type_info::in,
+	list(rtti_data)::in, list(rtti_data)::out) is det.
+
+make_maybe_pseudo_type_info_tables(pseudo(PseudoTypeInfo), Tables0, Tables) :-
+	make_pseudo_type_info_tables(PseudoTypeInfo, Tables0, Tables).
+make_maybe_pseudo_type_info_tables(plain(TypeInfo), Tables0, Tables) :-
+	make_type_info_tables(TypeInfo, Tables0, Tables).
+
+:- pred make_maybe_pseudo_type_info_or_self_tables(
+	rtti_maybe_pseudo_type_info_or_self::in,
+	list(rtti_data)::in, list(rtti_data)::out) is det.
+
+make_maybe_pseudo_type_info_or_self_tables(pseudo(PseudoTypeInfo),
+		Tables0, Tables) :-
+	make_pseudo_type_info_tables(PseudoTypeInfo, Tables0, Tables).
+make_maybe_pseudo_type_info_or_self_tables(plain(TypeInfo), Tables0, Tables) :-
+	make_type_info_tables(TypeInfo, Tables0, Tables).
+make_maybe_pseudo_type_info_or_self_tables(self, Tables, Tables).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
