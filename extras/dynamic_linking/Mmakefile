@@ -3,7 +3,7 @@ MGNUCFLAGS = --pic-reg
 MLFLAGS = --shared
 
 # Link in the `-ldl' library (this may not be needed on some systems)
-#MLLIBS = -ldl
+MLLIBS = -ldl
 
 # enable C-level debugging
 CFLAGS = -g
