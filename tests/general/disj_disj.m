@@ -4,17 +4,27 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is multidet.
+:- pred main(io__state::di, io__state::uo) is det.
 
 :- implementation.
 
+:- import_module std_util.
+
 main -->
-	{ q(X, Y) },
+	{ solutions(lambda([Pair::out] is multi,
+		(Pair = X-Y, q(X, Y))), List) },
+	print_list(List).
+
+:- pred print_list(list(pair(int))::in, io__state::di, io__state::uo) is det.
+
+print_list([]) --> [].
+print_list([X-Y|Rest]) -->
 	io__write_string("X = "),
 	io__write_int(X),
 	io__write_string(", Y = "),
 	io__write_int(Y),
-	io__write_string("\n").
+	io__write_string("\n"),
+	print_list(Rest).
 
 :- pred q(int::out, int::out) is multidet.
 
