@@ -1664,17 +1664,8 @@ mlds_output_fully_qualified_name(QualifiedName, !IO) :-
 			PredLabel = pred(predicate, no, "main", 2,
 				model_det, no)
 		;
-			%
-			% don't module-qualify base_typeclass_infos
-			%
-			% We don't want to include the module name as part
-			% of the name if it is a base_typeclass_info, since
-			% we _want_ to cause a link error for overlapping
-			% instance decls, even if they are in a different
-			% module
-			%
-			Name = data(rtti(tc_rtti_id(
-				base_typeclass_info(_, _, _))))
+			Name = data(rtti(RttiId)),
+			module_qualify_name_of_rtti_id(RttiId) = no
 		;
 			% We don't module qualify pragma export names.
 			Name = export(_)
@@ -3581,16 +3572,8 @@ mlds_output_data_addr(data_addr(ModuleName, DataName), !IO) :-
 
 mlds_output_data_var_name(ModuleName, DataName, !IO) :-
 	(
-		%
-		% don't module-qualify base_typeclass_infos
-		%
-		% We don't want to include the module name as part
-		% of the name if it is a base_typeclass_info, since
-		% we _want_ to cause a link error for overlapping
-		% instance decls, even if they are in a different
-		% module
-		%
-		DataName = rtti(tc_rtti_id(base_typeclass_info(_, _, _)))
+		DataName = rtti(RttiId),
+		module_qualify_name_of_rtti_id(RttiId) = no
 	->
 		true
 	;

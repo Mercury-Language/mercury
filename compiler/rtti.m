@@ -797,6 +797,12 @@
 	% part of C identifiers.
 :- func rtti__encode_tc_instance_type(tc_type) = string.
 
+	% Return yes iff the name of the given data structure should be module
+	% qualified.
+:- func module_qualify_name_of_rtti_id(rtti_id) = bool.
+:- func module_qualify_name_of_ctor_rtti_name(ctor_rtti_name) = bool.
+:- func module_qualify_name_of_tc_rtti_name(tc_rtti_name) = bool.
+
 :- implementation.
 
 :- import_module backend_libs__name_mangle.
@@ -1835,5 +1841,34 @@ pseudo_type_info_name_type(type_var(_)) = _ :-
 	% we use small integers to represent type_vars,
 	% rather than pointers, so there is no pointed-to type
 	error("pseudo_type_info_name_type: type_var").
+
+module_qualify_name_of_rtti_id(RttiId) = ShouldModuleQualify :-
+	(
+		RttiId = ctor_rtti_id(_, CtorRttiName),
+		ShouldModuleQualify =
+			module_qualify_name_of_ctor_rtti_name(CtorRttiName)
+	;
+		RttiId = tc_rtti_id(TCRttiName),
+		ShouldModuleQualify =
+			module_qualify_name_of_tc_rtti_name(TCRttiName)
+	).
+
+module_qualify_name_of_ctor_rtti_name(_) = yes.
+
+% We don't want to include the module name as part of the name for
+% base_typeclass_infos, since we _want_ to cause a link error for
+% overlapping instance decls, even if they are in a different modules.
+%
+% When we start generating data structures replacing base_typeclass_infos,
+% we should include their names here.
+%
+% This decision is implemented separately in rtti__tc_name_to_string.
+
+module_qualify_name_of_tc_rtti_name(TCRttiName) =
+	( TCRttiName = base_typeclass_info(_, _, _) ->
+		no
+	;
+		yes
+	).
 
 %-----------------------------------------------------------------------------%
