@@ -12,9 +12,13 @@
 %
 % Notes:
 %	Processes the Prof.* and the *.prof files to produce an output very
-%	similar to 'gprof'
+%	similar to `gprof'
 %
-%	Based on the profiling scheme described in XXX
+%	Based on the profiling scheme described in [1].
+%
+%	[1]	Graham, Kessler and McKusick "Gprof: a call graph execution
+%		profiler". In Proceedings of the 1982 SIGPLAN Symposium
+%		on Compiler Construction, pages 120-126.
 %
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -34,11 +38,9 @@
 :- implementation.
 
 :- import_module process_file, call_graph, generate_output, propagate, output.
-:- import_module prof_info.
-:- import_module bool, list, std_util, string, library.
-:- import_module options, getopt, globals.
-:- import_module relation.
-:- import_module prof_debug.
+:- import_module prof_info, prof_debug, options, globals.
+
+:- import_module bool, list, std_util, string, getopt, relation, library.
 
 %-----------------------------------------------------------------------------%
 
