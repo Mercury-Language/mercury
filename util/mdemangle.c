@@ -119,9 +119,9 @@ demangle(const char *orig_name)
 	static const char ho_suffix[] = "__ho"; /* added by higher_order.m */
 
 	static const char mercury_data[] = "mercury_data_";
-	static const char base_type_layout[] = "base_type_layout_";
-	static const char base_type_info[] = "base_type_info_";
-	static const char base_type_functors[] = "base_type_functors_";
+	static const char type_ctor_layout[] = "type_ctor_layout_";
+	static const char type_ctor_info[] = "type_ctor_info_";
+	static const char type_ctor_functors[] = "type_ctor_functors_";
 	static const char base_typeclass_info[] = "__base_typeclass_info_";
 	static const char common[] = "common";
 	static const char arity_string[] = "arity";
@@ -134,9 +134,9 @@ demangle(const char *orig_name)
 	};
 
 	static const char * trailing_context_2[] = {
-		base_type_layout,
-		base_type_info,
-		base_type_functors,
+		type_ctor_layout,
+		type_ctor_info,
+		type_ctor_functors,
 		common,
 		NULL
 	};
@@ -441,17 +441,17 @@ not_plain_mercury:
 
 	module = strip_module_name(&start, end, trailing_context_2);
 
-	if (strip_prefix(&start, base_type_info)) {
+	if (strip_prefix(&start, type_ctor_info)) {
 		data_category = INFO;
 		if (!cut_trailing_underscore_integer(start, &end, &arity)) {
 			goto wrong_format;
 		}
-	} else if (strip_prefix(&start, base_type_layout)) {
+	} else if (strip_prefix(&start, type_ctor_layout)) {
 		data_category = LAYOUT;
 		if (!cut_trailing_underscore_integer(start, &end, &arity)) {
 			goto wrong_format;
 		}
-	} else if (strip_prefix(&start, base_type_functors)) {
+	} else if (strip_prefix(&start, type_ctor_functors)) {
 		data_category = FUNCTORS;
 		if (!cut_trailing_underscore_integer(start, &end, &arity)) {
 			goto wrong_format;
@@ -471,28 +471,28 @@ not_plain_mercury:
 
 	case INFO:
 		if (*module == '\0') {
-			printf("<base type_info for type '%s'/%d>",
+			printf("<type_ctor_info for type '%s'/%d>",
 				start, arity);
 		} else {
-			printf("<base type_info for type '%s:%s'/%d>",
+			printf("<type_ctor_info for type '%s:%s'/%d>",
 				module, start, arity);
 		}
 		break;
 	case LAYOUT:
 		if (*module == '\0') {
-			printf("<type layout for type '%s'/%d>",
+			printf("<type_ctor_layout for type '%s'/%d>",
 				start, arity);
 		} else {
-			printf("<type layout for type '%s:%s'/%d>",
+			printf("<type_ctor_layout for type '%s:%s'/%d>",
 				module, start, arity);
 		}
 		break;
 	case FUNCTORS:
 		if (*module == '\0') {
-			printf("<type functors for type '%s'/%d>",
+			printf("<type_ctor_functors for type '%s'/%d>",
 				start, arity);
 		} else {
-			printf("<type functors for type '%s:%s'/%d>",
+			printf("<type_ctor_functors for type '%s:%s'/%d>",
 				module, start, arity);
 		}
 		break;

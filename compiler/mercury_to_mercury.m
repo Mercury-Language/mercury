@@ -1062,10 +1062,10 @@ mercury_output_cons_id(code_addr_const(PredId, ProcId), _) -->
 	io__write_string(", "),
 	io__write_int(ProcInt),
 	io__write_string(")>").
-mercury_output_cons_id(base_type_info_const(Module, Type, Arity), _) -->
+mercury_output_cons_id(type_ctor_info_const(Module, Type, Arity), _) -->
 	{ prog_out__sym_name_to_string(Module, ModuleString) },
 	{ string__int_to_string(Arity, ArityString) },
-	io__write_strings(["<base_type_info for ",
+	io__write_strings(["<type_ctor_info for ",
 		ModuleString, ":", Type, "/", ArityString, ">"]).
 mercury_output_cons_id(
 		base_typeclass_info_const(Module, Class, _, InstanceString),

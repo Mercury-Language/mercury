@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998 University of Melbourne.
+% Copyright (C) 1998-1999 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -327,7 +327,7 @@ rl_exprn__set_term_arg_cons_id_code(pred_const(_, _), _, _, _, _, _, _) -->
 rl_exprn__set_term_arg_cons_id_code(code_addr_const(_, _),
 		_, _, _, _, _, _) -->
 	{ error("rl_exprn__set_term_arg_cons_id_code") }.
-rl_exprn__set_term_arg_cons_id_code(base_type_info_const(_, _, _),
+rl_exprn__set_term_arg_cons_id_code(type_ctor_info_const(_, _, _),
 		_, _, _, _, _, _) -->
 	{ error("rl_exprn__set_term_arg_cons_id_code") }.
 rl_exprn__set_term_arg_cons_id_code(base_typeclass_info_const(_, _, _, _),
@@ -835,7 +835,7 @@ rl_exprn__unify(construct(Var, ConsId, Args, UniModes),
 			{ SymName = qualified(unqualified("mercury_builtin"),
 					TypeInfo) },
 			( { TypeInfo = "type_info" }
-			; { TypeInfo = "base_type_info" }
+			; { TypeInfo = "type_ctor_info" }
 			)
 		->
 			% XXX for now we ignore these and hope it doesn't
@@ -877,7 +877,7 @@ rl_exprn__unify(construct(Var, ConsId, Args, UniModes),
 		{ ConsId = code_addr_const(_, _) },
 		{ error("rl_exprn__unify: unsupported cons_id - code_addr_const") }
 	; 
-		{ ConsId = base_type_info_const(_, _, _) },
+		{ ConsId = type_ctor_info_const(_, _, _) },
 		% XXX for now we ignore these and hope it doesn't matter.
 		% They may be introduced for calls to the automatically
 		% generated unification and comparison procedures.

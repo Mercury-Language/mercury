@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1998 The University of Melbourne.
+% Copyright (C) 1994-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -225,9 +225,9 @@ unify_gen__generate_tag_rval_2(pred_closure_tag(_, _), _Rval, _TestRval) :-
 unify_gen__generate_tag_rval_2(code_addr_constant(_, _), _Rval, _TestRval) :-
 	% This should never happen
 	error("Attempted code_addr unification").
-unify_gen__generate_tag_rval_2(base_type_info_constant(_, _, _), _, _) :-
+unify_gen__generate_tag_rval_2(type_ctor_info_constant(_, _, _), _, _) :-
 	% This should never happen
-	error("Attempted base_type_info unification").
+	error("Attempted type_ctor_info unification").
 unify_gen__generate_tag_rval_2(base_typeclass_info_constant(_, _, _), _, _) :-
 	% This should never happen
 	error("Attempted base_typeclass_info unification").
@@ -328,7 +328,7 @@ unify_gen__generate_construction_2(complicated_constant_tag(Bits1, Num1),
 	{ Code = empty },
 	code_info__cache_expression(Var,
 		mkword(Bits1, unop(mkbody, const(int_const(Num1))))).
-unify_gen__generate_construction_2(base_type_info_constant(ModuleName,
+unify_gen__generate_construction_2(type_ctor_info_constant(ModuleName,
 		TypeName, TypeArity), Var, Args, _Modes, Code) -->
 	( { Args = [] } ->
 		[]
@@ -337,7 +337,7 @@ unify_gen__generate_construction_2(base_type_info_constant(ModuleName,
 	),
 	{ Code = empty },
 	code_info__cache_expression(Var, const(data_addr_const(data_addr(
-		ModuleName, base_type(info, TypeName, TypeArity))))).
+		ModuleName, type_ctor(info, TypeName, TypeArity))))).
 unify_gen__generate_construction_2(base_typeclass_info_constant(ModuleName,
 		ClassId, Instance), Var, Args, _Modes, Code) -->
 	( { Args = [] } ->
@@ -626,7 +626,7 @@ unify_gen__generate_det_deconstruction(Var, Cons, Args, Modes, Code) -->
 		{ Tag = code_addr_constant(_, _) },
 		{ Code = empty }
 	;
-		{ Tag = base_type_info_constant(_, _, _) },
+		{ Tag = type_ctor_info_constant(_, _, _) },
 		{ Code = empty }
 	;
 		{ Tag = base_typeclass_info_constant(_, _, _) },

@@ -331,22 +331,22 @@ format_proc(Category, MaybeModule, PredOrFunc, PredName, Arity, ModeNum,
 demangle_data -->
 	remove_prefix("mercury_data_"),
 	remove_maybe_module_prefix(MaybeModule0,
-		["base_type_info_", "base_type_layout_",
-		"base_type_functors_", "common_"]),
+		["type_ctor_info_", "type_ctor_layout_",
+		"type_ctor_functors_", "common_"]),
 	{ MaybeModule0 = yes("") ->
 		MaybeModule = no
 	;
 		MaybeModule = MaybeModule0
 	},
-	( remove_prefix("base_type_info_") ->
+	( remove_prefix("type_ctor_info_") ->
 		{ DataCategory = info },
 		remove_trailing_int(Arity),
 		m_remove_suffix("_")
-	; remove_prefix("base_type_layout_") ->
+	; remove_prefix("type_ctor_layout_") ->
 		{ DataCategory = layout },
 		remove_trailing_int(Arity),
 		m_remove_suffix("_")
-	; remove_prefix("base_type_functors_") ->
+	; remove_prefix("type_ctor_functors_") ->
 		{ DataCategory = functors },
 		remove_trailing_int(Arity),
 		m_remove_suffix("_")

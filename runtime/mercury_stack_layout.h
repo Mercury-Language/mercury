@@ -156,7 +156,7 @@ typedef enum {
 ** 	  mercury data values (vars).
 **
 ** The data is encoded such that low values (less than
-** TYPELAYOUT_MAX_VARINT) represent succip, hp, etc.  Higher values
+** TYPE_CTOR_LAYOUT_MAX_VARINT) represent succip, hp, etc.  Higher values
 ** represent data variables, and are pointers to a 2 word cell,
 ** containing a pseudo type_info and an instantiation represention.
 **
@@ -180,7 +180,7 @@ typedef struct {
 	Word	inst;	/* not yet used; currently always -1 */
 } MR_Var_Shape_Info;
 
-#define MR_LIVE_TYPE_IS_VAR(T)         ( (Word) T > TYPELAYOUT_MAX_VARINT )
+#define MR_LIVE_TYPE_IS_VAR(T)         ( (Word) T > TYPE_CTOR_LAYOUT_MAX_VARINT )
 
 #define MR_LIVE_TYPE_GET_NONVAR(T)			\
 		((MR_Lval_NonVar) T)

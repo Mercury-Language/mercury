@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-1998 The University of Melbourne.
+% Copyright (C) 1993-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -656,7 +656,7 @@
 
 :- type data_name
 	--->	common(int)
-	;	base_type(base_data, string, arity)
+	;	type_ctor(base_data, string, arity)
 			% base_data, type name, type arity
 	;	base_typeclass_info(class_id, string)
 			% class name & class arity, names and arities of the

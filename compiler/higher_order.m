@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------
-% Copyright (C) 1996-1998 The University of Melbourne.
+% Copyright (C) 1996-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -560,7 +560,7 @@ is_interesting_cons_id(ho_params(_, yes, _),
 	; Name = "typeclass_info"
 	).
 is_interesting_cons_id(ho_params(yes, _, _), pred_const(_, _)).
-is_interesting_cons_id(ho_params(_, yes, _), base_type_info_const(_, _, _)).
+is_interesting_cons_id(ho_params(_, yes, _), type_ctor_info_const(_, _, _)).
 is_interesting_cons_id(ho_params(_, yes, _),
 		base_typeclass_info_const(_, _, _, _)).
 	% We need to keep track of int_consts so we can interpret
@@ -1065,7 +1065,7 @@ specialize_special_pred(Info0, CalledPred, _CalledProc, Args,
 	( TypeArity = 0 ->
 		TypeInfoArgs = []
 	;
-		TypeInfoVarArgs = [_BaseTypeInfo | TypeInfoArgs]
+		TypeInfoVarArgs = [_TypeCtorInfo | TypeInfoArgs]
 	),
 
 	( SpecialId = unify, type_is_atomic(SpecialPredType, ModuleInfo) ->

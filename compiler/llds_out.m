@@ -108,10 +108,10 @@
 :- pred output_c_quoted_string(string, io__state, io__state).
 :- mode output_c_quoted_string(in, di, uo) is det.
 
-	% Create a name for base_type_*
+	% Create a name for type_ctor_*
 
-:- pred llds_out__make_base_type_name(base_data, string, arity, string).
-:- mode llds_out__make_base_type_name(in, in, in, out) is det.
+:- pred llds_out__make_type_ctor_name(base_data, string, arity, string).
+:- mode llds_out__make_type_ctor_name(in, in, in, out) is det.
 
 	% Create a name for base_typeclass_info
 
@@ -508,8 +508,8 @@ output_init_bunch_calls([_ | Bunches], ModuleName, InitStatus, Seq) -->
 	{ NextSeq is Seq + 1 },
 	output_init_bunch_calls(Bunches, ModuleName, InitStatus, NextSeq).
 
-	% Output MR_INIT_BASE_TYPE_INFO(BaseTypeInfo, TypeId);
-	% for each base_type_info defined in this module.
+	% Output MR_INIT_TYPE_CTOR_INFO(TypeCtorInfo, TypeId);
+	% for each type_ctor_info defined in this module.
 
 :- pred output_c_data_init_list(list(comp_gen_c_data)::in,
 	io__state::di, io__state::uo) is det.
@@ -518,9 +518,9 @@ output_c_data_init_list([]) --> [].
 output_c_data_init_list([Data | Datas]) -->
 	(
 		{ Data = comp_gen_c_data(ModuleName, DataName, _, _, _) },
-		{ DataName = base_type(info, TypeName, Arity) }
+		{ DataName = type_ctor(info, TypeName, Arity) }
 	->
-		io__write_string("\t\tMR_INIT_BASE_TYPE_INFO(\n\t\t"),
+		io__write_string("\t\tMR_INIT_TYPE_CTOR_INFO(\n\t\t"),
 		output_data_addr(ModuleName, DataName),
 		io__write_string(",\n\t\t\t"),
 		{ llds_out__sym_name_mangle(ModuleName, ModuleNameString) },
@@ -2192,9 +2192,9 @@ output_const_term_decl(ArgVals, DeclId, Exported, Def, Decl, Init, FirstIndent,
 :- mode data_name_would_include_code_address(in, out) is det.
 
 data_name_would_include_code_address(common(_), no).
-data_name_would_include_code_address(base_type(info, _, _), yes).
-data_name_would_include_code_address(base_type(layout, _, _), no).
-data_name_would_include_code_address(base_type(functors, _, _), no).
+data_name_would_include_code_address(type_ctor(info, _, _), yes).
+data_name_would_include_code_address(type_ctor(layout, _, _), no).
+data_name_would_include_code_address(type_ctor(functors, _, _), no).
 data_name_would_include_code_address(base_typeclass_info(_, _), yes).
 data_name_would_include_code_address(proc_layout(_), yes).
 data_name_would_include_code_address(internal_layout(_), no).
@@ -2533,10 +2533,10 @@ output_data_addr_decls(data_addr(ModuleName, VarName),
 
 	globals__io_get_globals(Globals),
 
-		% Don't make decls of base_type_infos `const' if we
+		% Don't make decls of type_ctor_infos `const' if we
 		% don't have static code addresses.
 	(
-		{ VarName = base_type(info, _, _) },
+		{ VarName = type_ctor(info, _, _) },
 		{ globals__have_static_code_addresses(Globals, no) }
 	->
 		[]
@@ -2566,9 +2566,9 @@ output_data_addr_decls(data_addr(ModuleName, VarName),
 
 :- pred linkage(data_name::in, linkage::out) is det.
 linkage(common(_),                 static).
-linkage(base_type(info, _, _),     extern).
-linkage(base_type(layout, _, _),   static).
-linkage(base_type(functors, _, _), static).
+linkage(type_ctor(info, _, _),     extern).
+linkage(type_ctor(layout, _, _),   static).
+linkage(type_ctor(functors, _, _), static).
 linkage(base_typeclass_info(_, _), extern).
 linkage(proc_layout(_),            static).
 linkage(internal_layout(_),        static).
@@ -2826,9 +2826,9 @@ output_data_addr(ModuleName, VarName) -->
 	;
 		{ llds_out__sym_name_mangle(ModuleName, MangledModuleName) },
 		io__write_string("mercury_data_"),
-		{ VarName = base_type(BaseData, TypeName0, TypeArity) },
+		{ VarName = type_ctor(BaseData, TypeName0, TypeArity) },
 		io__write_string(MangledModuleName),
-		{ llds_out__make_base_type_name(BaseData, TypeName0, TypeArity,
+		{ llds_out__make_type_ctor_name(BaseData, TypeName0, TypeArity,
 			Str) },
 		io__write_string("__"),
 		io__write_string(Str)
@@ -3797,7 +3797,7 @@ llds_out__convert_to_valid_c_identifier_2(String, Name) :-
 
 %-----------------------------------------------------------------------------%
 
-llds_out__make_base_type_name(BaseData, TypeName0, TypeArity, Str) :-
+llds_out__make_type_ctor_name(BaseData, TypeName0, TypeArity, Str) :-
 	(
 		BaseData = info,
 		BaseString = "info"
@@ -3810,7 +3810,7 @@ llds_out__make_base_type_name(BaseData, TypeName0, TypeArity, Str) :-
 	),
 	llds_out__name_mangle(TypeName0, TypeName),
 	string__int_to_string(TypeArity, A_str),
-        string__append_list(["base_type_", BaseString, "_", TypeName, "_", 
+        string__append_list(["type_ctor_", BaseString, "_", TypeName, "_", 
 		A_str], Str).
 
 

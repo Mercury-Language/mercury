@@ -26,7 +26,7 @@ Word
 copy(maybeconst Word *data_ptr, const Word *type_info, 
          const Word *lower_limit, const Word *upper_limit)
 {
-    Word *base_type_info, *base_type_layout, *base_type_functors;
+    Word *type_ctor_info, *type_ctor_layout, *type_ctor_functors;
     Word functors_indicator;
     Word layout_entry, *entry_value, *data_value;
     enum MR_DataRepresentation data_rep;
@@ -38,12 +38,12 @@ copy(maybeconst Word *data_ptr, const Word *type_info,
     data_tag = tag(data);
     data_value = (Word *) body(data, data_tag);
 
-    base_type_info = MR_TYPEINFO_GET_BASE_TYPEINFO(type_info);
-    base_type_layout = MR_BASE_TYPEINFO_GET_TYPELAYOUT(base_type_info);
-    layout_entry = base_type_layout[data_tag];
+    type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
+    type_ctor_layout = MR_TYPE_CTOR_INFO_GET_TYPE_CTOR_LAYOUT(type_ctor_info);
+    layout_entry = type_ctor_layout[data_tag];
 
-    base_type_functors = MR_BASE_TYPEINFO_GET_TYPEFUNCTORS(base_type_info);
-    functors_indicator = MR_TYPEFUNCTORS_INDICATOR(base_type_functors);
+    type_ctor_functors = MR_TYPE_CTOR_INFO_GET_TYPE_CTOR_FUNCTORS(type_ctor_info);
+    functors_indicator = MR_TYPE_CTOR_FUNCTORS_INDICATOR(type_ctor_functors);
 
     entry_value = (Word *) strip_tag(layout_entry);
 
@@ -69,10 +69,10 @@ copy(maybeconst Word *data_ptr, const Word *type_info,
                 secondary_tag = *data_value;
                 argument_vector = data_value + 1;
 
-                new_entry = MR_TYPELAYOUT_COMPLICATED_VECTOR_GET_SIMPLE_VECTOR(
+                new_entry = MR_TYPE_CTOR_LAYOUT_COMPLICATED_VECTOR_GET_SIMPLE_VECTOR(
 			entry_value, secondary_tag);
-                arity = new_entry[TYPELAYOUT_SIMPLE_ARITY_OFFSET];
-                type_info_vector = new_entry + TYPELAYOUT_SIMPLE_ARGS_OFFSET;
+                arity = new_entry[TYPE_CTOR_LAYOUT_SIMPLE_ARITY_OFFSET];
+                type_info_vector = new_entry + TYPE_CTOR_LAYOUT_SIMPLE_ARGS_OFFSET;
 
                 /* allocate space for new args, and secondary tag */
                 incr_saved_hp(new_data, arity + 1);
@@ -105,8 +105,8 @@ copy(maybeconst Word *data_ptr, const Word *type_info,
 
             /* If the argument vector is in range, copy the arguments */
             if (in_range(argument_vector)) {
-                arity = entry_value[TYPELAYOUT_SIMPLE_ARITY_OFFSET];
-                type_info_vector = entry_value + TYPELAYOUT_SIMPLE_ARGS_OFFSET;
+                arity = entry_value[TYPE_CTOR_LAYOUT_SIMPLE_ARITY_OFFSET];
+                type_info_vector = entry_value + TYPE_CTOR_LAYOUT_SIMPLE_ARGS_OFFSET;
 
                 /* allocate space for new args. */
                 incr_saved_hp(new_data, arity);
@@ -129,13 +129,13 @@ copy(maybeconst Word *data_ptr, const Word *type_info,
 
         case MR_DATAREP_NOTAG:
             new_data = copy_arg(data_ptr, type_info, 
-                    (Word *) *MR_TYPELAYOUT_NO_TAG_VECTOR_ARGS(entry_value),
+                    (Word *) *MR_TYPE_CTOR_LAYOUT_NO_TAG_VECTOR_ARGS(entry_value),
                     lower_limit, upper_limit);
             break;
 
         case MR_DATAREP_EQUIV: 
             new_data = copy_arg(data_ptr, type_info, 
-                (const Word *) MR_TYPELAYOUT_EQUIV_TYPE((Word *)
+                (const Word *) MR_TYPE_CTOR_LAYOUT_EQUIV_TYPE((Word *)
                         entry_value), lower_limit, upper_limit);
             break;
 
@@ -183,7 +183,7 @@ copy(maybeconst Word *data_ptr, const Word *type_info,
             ** as their first argument, the Code * as their second, and
             ** then the arguments
             **
-            ** Their type-infos have a pointer to base_type_info for
+            ** Their type-infos have a pointer to type_ctor_info for
             ** pred/0, arity, and then argument typeinfos.
             */
             if (in_range(data_value)) {
@@ -348,37 +348,37 @@ copy_type_info(maybeconst Word *type_info_ptr, const Word *lower_limit,
 	Word *type_info = (Word *) *type_info_ptr;
 
 	if (in_range(type_info)) {
-		Word *base_type_info;
+		Word *type_ctor_info;
 		Word *new_type_info;
 		Integer arity, offset, i;
 
 		/*
-		** Note that we assume base_type_infos will always be
+		** Note that we assume type_ctor_infos will always be
 		** allocated statically, so we never copy them.
 		*/
 
-		base_type_info = MR_TYPEINFO_GET_BASE_TYPEINFO((Word *)
+		type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO((Word *)
 			type_info);
 		/*
 		** optimize special case: if there's no arguments,
 		** we don't need to construct a type_info; instead,
-		** we can just return the base_type_info.
+		** we can just return the type_ctor_info.
 		*/
-		if (type_info == base_type_info) {
-			return base_type_info;
+		if (type_info == type_ctor_info) {
+			return type_ctor_info;
 		}
-		if (MR_BASE_TYPEINFO_IS_HO(base_type_info)) {
+		if (MR_TYPE_CTOR_INFO_IS_HO(type_ctor_info)) {
 			arity = MR_TYPEINFO_GET_HIGHER_ARITY(type_info);
 			incr_saved_hp(LVALUE_CAST(Word, new_type_info),
 				arity + 2);
-			new_type_info[0] = (Word) base_type_info;
+			new_type_info[0] = (Word) type_ctor_info;
 			new_type_info[1] = arity;
 			offset = 2;
 		} else {
-			arity = MR_BASE_TYPEINFO_GET_TYPE_ARITY(base_type_info);
+			arity = MR_TYPE_CTOR_INFO_GET_TYPE_ARITY(type_ctor_info);
 			incr_saved_hp(LVALUE_CAST(Word, new_type_info),
 				arity + 1);
-			new_type_info[0] = (Word) base_type_info;
+			new_type_info[0] = (Word) type_ctor_info;
 			offset = 1;
 		}
 		for (i = offset; i < arity + offset; i++) {

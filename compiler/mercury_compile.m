@@ -978,13 +978,13 @@ mercury_compile__middle_pass(ModuleName, HLDS24, HLDS50) -->
 	mercury_compile__maybe_termination(HLDS27, Verbose, Stats, HLDS28),
 	mercury_compile__maybe_dump_hlds(HLDS28, "28", "termination"), !,
 
-	mercury_compile__maybe_base_type_infos(HLDS28, Verbose, Stats, HLDS29),
+	mercury_compile__maybe_type_ctor_infos(HLDS28, Verbose, Stats, HLDS29),
 	!,
-	mercury_compile__maybe_dump_hlds(HLDS29, "29", "base_type_infos"), !,
+	mercury_compile__maybe_dump_hlds(HLDS29, "29", "type_ctor_infos"), !,
 
-	mercury_compile__maybe_base_type_layouts(HLDS29, Verbose, Stats,HLDS30),
+	mercury_compile__maybe_type_ctor_layouts(HLDS29, Verbose, Stats,HLDS30),
 	!,
-	mercury_compile__maybe_dump_hlds(HLDS30, "30", "base_type_layouts"), !,
+	mercury_compile__maybe_dump_hlds(HLDS30, "30", "type_ctor_layouts"), !,
 
 	mercury_compile__maybe_bytecodes(HLDS30, ModuleName, Verbose, Stats),
 	!,
@@ -1555,33 +1555,33 @@ mercury_compile__maybe_polymorphism(HLDS0, Verbose, Stats, HLDS) -->
 		{ HLDS = HLDS0 }
 	).
 
-:- pred mercury_compile__maybe_base_type_infos(module_info, bool, bool,
+:- pred mercury_compile__maybe_type_ctor_infos(module_info, bool, bool,
 	module_info, io__state, io__state).
-:- mode mercury_compile__maybe_base_type_infos(in, in, in, out, di, uo) is det.
+:- mode mercury_compile__maybe_type_ctor_infos(in, in, in, out, di, uo) is det.
 
-mercury_compile__maybe_base_type_infos(HLDS0, Verbose, Stats, HLDS) -->
+mercury_compile__maybe_type_ctor_infos(HLDS0, Verbose, Stats, HLDS) -->
 	maybe_write_string(Verbose,
-		"% Generating base_type_info structures..."),
+		"% Generating type_ctor_info structures..."),
 	maybe_flush_output(Verbose),
 	{ base_type_info__generate_hlds(HLDS0, HLDS) },
 	maybe_write_string(Verbose, " done.\n"),
 	maybe_report_stats(Stats).
 
-	% We only add base_type_layouts if shared-one-or-two-cell
+	% We only add type_ctor_layouts if shared-one-or-two-cell
 	% type_infos are being used (the layouts refer to the
-	% base_type_infos, so will fail to link without them).
+	% type_ctor_infos, so will fail to link without them).
 
-:- pred mercury_compile__maybe_base_type_layouts(module_info, bool, bool,
+:- pred mercury_compile__maybe_type_ctor_layouts(module_info, bool, bool,
 	module_info, io__state, io__state).
-:- mode mercury_compile__maybe_base_type_layouts(in, in, in, out, di, uo) is det.
+:- mode mercury_compile__maybe_type_ctor_layouts(in, in, in, out, di, uo) is det.
 
-mercury_compile__maybe_base_type_layouts(HLDS0, Verbose, Stats, HLDS) -->
+mercury_compile__maybe_type_ctor_layouts(HLDS0, Verbose, Stats, HLDS) -->
 	globals__io_lookup_bool_option(type_layout, TypeLayoutOption),
 	( 
 		{ TypeLayoutOption = yes } 
 	->
 		maybe_write_string(Verbose,
-			"% Generating base_type_layout structures..."),
+			"% Generating type_ctor_layout structures..."),
 		maybe_flush_output(Verbose),
 		{ base_type_layout__generate_hlds(HLDS0, HLDS) },
 		maybe_write_string(Verbose, " done.\n"),
@@ -1984,13 +1984,13 @@ mercury_compile__output_pass(HLDS0, Procs0, MaybeRLFile,
 	globals__io_lookup_bool_option(verbose, Verbose),
 	globals__io_lookup_bool_option(statistics, Stats),
 	{ get_c_interface_info(HLDS, C_InterfaceInfo) },
-	{ base_type_info__generate_llds(HLDS0, BaseTypeInfos) },
-	{ base_type_layout__generate_llds(HLDS0, HLDS1, BaseTypeLayouts) },
+	{ base_type_info__generate_llds(HLDS0, TypeCtorInfos) },
+	{ base_type_layout__generate_llds(HLDS0, HLDS1, TypeCtorLayouts) },
 	{ stack_layout__generate_llds(HLDS1, HLDS,
 		ProcLayouts, InternalLayouts, LayoutLabels) },
-	{ list__append(InternalLayouts, BaseTypeLayouts, StaticData0) },
+	{ list__append(InternalLayouts, TypeCtorLayouts, StaticData0) },
 	{ llds_common(Procs0, StaticData0, ModuleName, Procs1, StaticData) },
-	{ list__condense([BaseTypeInfos, ProcLayouts, StaticData], AllData) },
+	{ list__condense([TypeCtorInfos, ProcLayouts, StaticData], AllData) },
 	{ module_info_get_global_data(HLDS1, GlobalData) },
 	{ global_data_get_all_proc_vars(GlobalData, GlobalVars) },
 	mercury_compile__construct_c_file(C_InterfaceInfo, Procs1, GlobalVars,

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1998 The University of Melbourne.
+% Copyright (C) 1996-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -226,7 +226,7 @@
 	% these with various special cases (construct/deconstruct/assign/
 	% simple_test/complicated_unify).
 	% The cons_id for functor/2 cannot be a pred_const, code_addr_const,
-	% or base_type_info_const, since none of these can be created when
+	% or type_ctor_info_const, since none of these can be created when
 	% the unify_rhs field is used.
 :- type unify_rhs
 	--->	var(prog_var)

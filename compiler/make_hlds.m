@@ -669,7 +669,7 @@ add_item_clause(pragma(Pragma), Status, Status, Context,
 			{ eval_method_to_string(Type, EvalMethodS) },
 			io__write_string(EvalMethodS),
 			io__write_string(
-"' declaration requires the base_type_layout\n"),
+"' declaration requires the type_ctor_layout\n"),
 			prog_out__write_context(Context),
 			io__write_string(
 "    structures. Use the --type-layout flag to enable them.\n")

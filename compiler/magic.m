@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998 University of Melbourne.
+% Copyright (C) 1998-1999 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -62,8 +62,8 @@
 %       V_16 = 1,					% number of inputs
 %       V_17 = "(:I)",					% input relation schema
 %       V_18 = 1,					% number of outputs
-%       TypeInfo_13 = base_type_info("", "int", 0),	% input type_info
-%       TypeInfo_14 = base_type_info("", "int", 0),	% output type_info
+%       TypeInfo_13 = type_ctor_info("", "int", 0),	% input type_info
+%       TypeInfo_14 = type_ctor_info("", "int", 0),	% output type_info
 %
 %	% anc__do_aditi_call has the `aditi_interface' marker,
 %	% which causes call_gen.m to generate it as a call
