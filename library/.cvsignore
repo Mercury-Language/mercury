@@ -15,7 +15,7 @@
 *.trans_opt
 *.trans_opt_date
 sicstus_compile sicstus_saved_state
-io.h std_util.h
+io.h std_util.h exception.h
 library.nu.nl
 mer_std.init
 library.dep
