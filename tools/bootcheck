@@ -243,8 +243,8 @@ export MMAKE_USE_SUBDIRS
 
 if $use_cp
 then
-	LN="cp -r"
-	LN_S="cp -r"
+	LN="cp -pr"
+	LN_S="cp -pr"
 else
 	LN="ln"
 	LN_S="ln -s"
