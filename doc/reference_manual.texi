@@ -1516,6 +1516,14 @@ mode for that function is considered to have been declared as @samp{det}.
 If you want to write a partial function, i.e. one whose determinism
 is @samp{semidet}, then you must explicitly declare the mode and determinism.
 
+In Mercury, a function is supposed to be a true mathematical function
+of its arguments; that is, the value of the function's result should
+be determined only by the values of its arguments.  Hence, for
+any mode of a function that specifies that all the arguments are fully
+input (i.e. for which the initial inst of all the arguments is a ground inst),
+the determinism of that mode can only be
+@samp{det}, @samp{semidet}, @samp{erroneous}, or @samp{failure}.
+
 The determinism categories form this lattice:
 
 @example

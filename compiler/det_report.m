@@ -168,7 +168,60 @@ global_checking_pass([proc(PredId, ProcId) | Rest], ModuleInfo0, ModuleInfo) -->
 	;
 		{ ModuleInfo2 = ModuleInfo1 }
 	),
-	global_checking_pass(Rest, ModuleInfo2, ModuleInfo).
+	% Functions can only have more than one solution if it is a
+	% non-standard mode.  Otherwise, they would not be referentially
+	% transparent.  (Nondeterministic "functions" like C's `rand()'
+	% function are not allowed.)
+	(
+		% if it is a mode for a function...
+		{ pred_info_get_is_pred_or_func(PredInfo, function) },
+		% ... that can succeed more than once ...
+		{ determinism_components(InferredDetism, _CanFail, NumSolns) },
+		{ NumSolns \= at_most_zero },
+		{ NumSolns \= at_most_one },
+		% ... but for which all the arguments are input ...
+		{ proc_info_argmodes(ProcInfo, PredArgModes) },
+		{ pred_args_to_func_args(PredArgModes,
+			FuncArgModes, _FuncResultMode) },
+		{ \+ (
+			list__member(FuncArgMode, FuncArgModes),
+			\+ mode_is_fully_input(ModuleInfo2, FuncArgMode)
+		  )
+	 	} 
+	->
+		% ... then it is an error.
+		{ pred_info_name(PredInfo, PredName) },
+		{ proc_info_context(ProcInfo, FuncContext) },
+		prog_out__write_context(FuncContext),
+		io__write_string("Error: invalid determinism for `"),
+		report_pred_name_mode(function, PredName, PredArgModes),
+		io__write_string("':\n"),
+		prog_out__write_context(FuncContext),
+		io__write_string(
+			"  the primary mode for a function cannot be `"),
+		mercury_output_det(InferredDetism),
+		io__write_string(
+			"'.\n"),
+		globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
+		( { VerboseErrors = yes } ->
+			io__write_strings([
+"\tIn Mercury, a function is supposed to be a true mathematical function\n",
+"\tof its arguments; that is, the value of the function's result should\n",
+"\tbe determined only by the values of its arguments.\n",
+"\t(Allowing functions to have more than one result for the same\n",
+"\targuments would break referential transparency.)\n",
+"\tMost likely, this procedure should be a predicate, not a function.\n"
+			])
+		;
+			[]
+		),
+		{ module_info_incr_errors(ModuleInfo2,
+			ModuleInfo3) }
+		
+	;
+		{ ModuleInfo3 = ModuleInfo2 }
+	),
+	global_checking_pass(Rest, ModuleInfo3, ModuleInfo).
 
 det_check_lambda(DeclaredDetism, InferredDetism, Goal, GoalInfo, DetInfo,
 		Msgs) :-
