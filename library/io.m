@@ -1151,6 +1151,10 @@
 
 % input predicates
 
+% we want to inline these, to allow deforestation
+:- pragma inline(io__read_char/3).
+:- pragma inline(io__read_char/4).
+
 io__read_char(Result) -->
 	io__input_stream(Stream),
 	io__read_char(Stream, Result).
@@ -1169,6 +1173,10 @@ io__read_char(Stream, Result) -->
 		io__make_err_msg("read failed: ", Msg),
 		{ Result = error(io_error(Msg)) }
 	).
+
+% we want to inline these, to allow deforestation
+:- pragma inline(io__read_byte/3).
+:- pragma inline(io__read_byte/4).
 
 io__read_byte(Result) -->
 	io__binary_input_stream(Stream),
