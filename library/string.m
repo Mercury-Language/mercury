@@ -365,7 +365,7 @@
 		in, out) is multi.
 %	string__foldr_substring(Closure, String, Start, Count, Acc0, Acc)
 %	is equivalent to string__foldr(Closure, SubString, Acc0, Acc)
-%	where SubString = string__unsafe_substring(String, Start, Count).
+%	where SubString = string__substring(String, Start, Count).
 
 :- func string__words(pred(char), string) = list(string).
 :- mode string__words(pred(in) is semidet, in) = out is det.
@@ -676,11 +676,28 @@ string__foldr_substring(F, String, Start, Count, Acc0) = Acc :-
 string__foldr(Closure, String, Acc0, Acc) :-
 	string__foldr_substring(Closure, String, 0, length(String), Acc0, Acc).
 
-string__foldr_substring(Closure, String, I, Count, Acc0, Acc) :-
+string__foldr_substring(Closure, String, Start0, Count0, Acc0, Acc) :-
+	Start = max(0, Start0),
+	Count = min(Count0, length(String) - Start),
+	string__foldr_substring_2(Closure, String, Start, Count, Acc0, Acc).
+
+:- pred string__foldr_substring_2(pred(char, T, T), string, int, int, T, T).
+:- mode string__foldr_substring_2(pred(in, in, out) is det, in, in, in,
+		in, out) is det.
+:- mode string__foldr_substring_2(pred(in, di, uo) is det, in, in, in,
+		di, uo) is det.
+:- mode string__foldr_substring_2(pred(in, in, out) is semidet, in, in, in,
+		in, out) is semidet.
+:- mode string__foldr_substring_2(pred(in, in, out) is nondet, in, in, in,
+		in, out) is nondet.
+:- mode string__foldr_substring_2(pred(in, in, out) is multi, in, in, in,
+		in, out) is multi.
+
+string__foldr_substring_2(Closure, String, I, Count, Acc0, Acc) :-
 	( if 0 < Count then
 		Closure(string__unsafe_index(String, I + Count - 1),
 			Acc0, Acc1),
-		string__foldr_substring(Closure, String, I, Count - 1,
+		string__foldr_substring_2(Closure, String, I, Count - 1,
 			Acc1, Acc )
 	  else
 	  	Acc = Acc0
