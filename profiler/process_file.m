@@ -23,7 +23,7 @@
 :- interface.
 
 :- import_module prof_info.
-:- import_module relation, io.
+:- import_module io, relation.
 
 :- pred process_file__main(prof, relation(string), io__state, io__state).
 :- mode process_file__main(out, out, di, uo) is det.
@@ -41,12 +41,27 @@
 
 process_file__main(Prof, DynamicCallGraph) -->
         globals__io_lookup_bool_option(very_verbose, VVerbose),
-        maybe_write_string(VVerbose, "\n\t% Processing Prof.Decl..."),
+	globals__io_lookup_string_option(declfile, DeclFile),
+	globals__io_lookup_string_option(countfile, CountFile),
+	globals__io_lookup_string_option(pairfile, PairFile),
+
+        maybe_write_string(VVerbose, "\n\t% Processing "),
+	maybe_write_string(VVerbose, DeclFile),
+	maybe_write_string(VVerbose, "..."),
+
         process_addr_decl(AddrDeclMap, ProfNodeMap0),
-        maybe_write_string(VVerbose, " done.\n\t% Processing Prof.Counts..."),
+
+        maybe_write_string(VVerbose, " done.\n\t% Processing "),
+	maybe_write_string(VVerbose, CountFile),
+	maybe_write_string(VVerbose, "..."),
         process_addr(ProfNodeMap0, ProfNodeMap1, Hertz, ClockTicks,TotalCounts),
-        maybe_write_string(VVerbose, " done.\n\t% Processing Prof.CallPair..."),
+
+        maybe_write_string(VVerbose, " done.\n\t% Processing "),
+	maybe_write_string(VVerbose, PairFile),
+	maybe_write_string(VVerbose, "..."),
+
         process_addr_pair(ProfNodeMap1, DynamicCallGraph, ProfNodeMap),
+
         maybe_write_string(VVerbose, " done.\n"),
 
         {Prof = prof(Hertz, ClockTicks, TotalCounts, AddrDeclMap, ProfNodeMap)}.
