@@ -109,6 +109,7 @@ if test "$ac_cv_func_sigaction" = yes; then
 		return;
 	}],
 	[mercury_cv_sigaction_field=sa_sigaction],
+	[mercury_cv_sigaction_field=sa_handler],
 	[mercury_cv_sigaction_field=sa_handler]))
 	AC_MSG_RESULT($mercury_cv_sigaction_field)
 	AC_DEFINE_UNQUOTED(SIGACTION_FIELD,$mercury_cv_sigaction_field)
@@ -162,7 +163,7 @@ if test "$ac_cv_func_sigaction" = yes; then
 			   are autoconf quote characters */
 			save_pc = *(((ucontext_t *) context)->uc_mcontext.gregs
 					+ REG_PC);
-		}], [mercury_cv_pc_index=REG_PC], [])
+		}], [mercury_cv_pc_index=REG_PC], [true], [true])
 		AC_TRY_RUN([
 		#include <stdio.h>
 		#include <signal.h>
@@ -205,7 +206,7 @@ if test "$ac_cv_func_sigaction" = yes; then
 			save_cause = info->si_code;
 			save_pc = *(((ucontext_t *) context)->uc_mcontext.gregs
 					+ CTX_EPC);
-		}], [mercury_cv_pc_index=CTX_EPC], [])
+		}], [mercury_cv_pc_index=CTX_EPC], [true], [true])
 		)
 		AC_MSG_RESULT($mercury_cv_pc_index)
 		if test $mercury_cv_pc_index != no; then
@@ -225,7 +226,8 @@ AC_CACHE_VAL(mercury_cv_gcc_labels,
 		exit(1);
 	last:
 		exit(0);
-	}], [mercury_cv_gcc_labels=yes], [mercury_cv_gcc_labels=no])
+	}], [mercury_cv_gcc_labels=yes], [mercury_cv_gcc_labels=no],
+		[mercury_cv_gcc_labels=no])
 )
 AC_MSG_RESULT($mercury_cv_gcc_labels)
 if test $mercury_cv_gcc_labels = yes; then
@@ -251,7 +253,8 @@ if test $mercury_cv_gcc_labels = yes; then
 		__asm__(".globl entry_" "mercury__label1" "\n" "entry_"
 			"mercury__label1" ":");
 		exit(0);
-	}], [mercury_cv_asm_labels=yes], [mercury_cv_asm_labels=no])
+	}], [mercury_cv_asm_labels=yes], [mercury_cv_asm_labels=no],
+		[mercury_cv_asm_labels=no])
 	)
 else
 	mercury_cv_asm_labels=no
@@ -278,7 +281,8 @@ if test $mercury_cv_gcc_labels = yes; then
 		if (mr0 + mr7 != 42)
 			exit(1);
 		exit(0);
-	}], [mercury_cv_gcc_model_fast=yes], [mercury_cv_gcc_model_fast=no])
+	}], [mercury_cv_gcc_model_fast=yes], [mercury_cv_gcc_model_fast=no],
+		[mercury_cv_gcc_model_fast=no])
 	)
 	AC_MSG_RESULT($mercury_cv_gcc_model_fast)
 else
@@ -299,7 +303,8 @@ main() {
 	if (mr0 + mr7 != 42)
 		exit(1);
 	exit(0);
-}], [mercury_cv_gcc_model_reg=yes], [mercury_cv_gcc_model_reg=no])
+}], [mercury_cv_gcc_model_reg=yes], [mercury_cv_gcc_model_reg=no],
+	[mercury_cv_gcc_model_reg=no])
 )
 AC_MSG_RESULT($mercury_cv_gcc_model_reg)
 #-----------------------------------------------------------------------------#
