@@ -1,6 +1,8 @@
 % This is a simple example of using the C interface to call the C function
 % (or macro) puts().
 
+% This source file is hereby placed in the public domain.  -fjh (the author).
+
 :- module short_example.
 :- interface.
 :- import_module io.

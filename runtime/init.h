@@ -5,8 +5,12 @@
 */
 
 /*
-** init.h - this file defines stuff used by the automatically generated
-** _init.c files.
+** init.h - this file declares stuff defined in the automatically generated
+** *_init.c files.  This is also the interface used by C code that
+** wishes to interface to Mercury.
+**
+** It also declares some stuff that is used in the automatically
+** generate *_init.c files.
 */
 
 #ifndef	INIT_H
@@ -20,12 +24,20 @@
   #include "libmer_dll.h"
 #endif
 
-#include "goto.h"		/* for Declare_entry */
-#include "mercury_types.h"	/* for `Code *' */
-#include "wrapper.h"		/* for do_init_modules() */
+/*---------------------------------------------------------------------------*/
+/*
+** This part is the interface that should be used by C programs that wish
+** to interface to Mercury.
+*/
 
 /*
 ** mercury_main() is defined in the <module>_init.c file.
+** It calls mercury_init(), mercury_call_main(), and then mercury_terminate().
+*/
+extern	int	mercury_main(int argc, char **argv);
+
+/*
+** mercury_init() is defined in the <module>_init.c file.
 **
 ** The `argc' and `argv' parameters are as for main() in C.
 ** The `stack_bottom' parameter should be the address of a variable
@@ -34,45 +46,56 @@
 ** address won't get scanned; don't store pointers to GC'ed memory
 ** in local variables that are older than that.
 **
-** mercury_main() just does some stuff to initialize the garbage
+** mercury_init() just does some stuff to initialize the garbage
 ** collector, sets some global variables, and then calls
-** mercury_runtime_main().
+** mercury_runtime_init().
 */
-extern	int		mercury_main(int argc, char **argv, char *stack_bottom);
+extern	void	mercury_init(int argc, char **argv, char *stack_bottom);
 
 /*
-** mercury_runtime_main() is defined in wrapper.mod.
-** It does some stuff to initialize the garbage collector
-** and the Mercury engine's data areas, and then calls call_engine()
-** to start execution in the library entry point.  The library
-** entry point initializes the io__state and then calls the program
-** entry point.
+** mercury_call_main() is defined in the <module>_init.c file.
+** It just calls mercury_runtime_main(), which calls main/2
+** in the Mercury program.
 */
-extern	int		mercury_runtime_main(int argc, char **argv);
+extern	void	mercury_call_main(void);
 
 /*
-** mercury_main() takes the address of the following predicates/functions.
+** mercury_terminate() is defined in the <module>_init.c file.
+** It just calls mercury_runtime_terminate(), which performs
+** any necessary cleanup, and then returns the appropriate
+** exit status as set by io__set_exit_status.
 */
-Declare_entry(mercury__main_2_0);
-Declare_entry(mercury__io__run_0_0);
-extern	void		mercury_init_io(void);
+extern	int	mercury_terminate(void);
+
+/*---------------------------------------------------------------------------*/
 
 /*
-** The following global variables are defined in wrapper.mod,
-** and set by mercury_main() on startup.
-** The entry points are set based on the options to mkinit.c.
-** The address_of_foo pointers are set to the address of
-** the corresponding foo.
+** This part defines things which are used by the automatically
+** generated *_init.c file.  These should not be used (directly)
+** by C programs that wish to interface to Mercury.
 */
-extern	Code *		library_entry_point; /* normally mercury__io__run_0_0 */
-extern	Code *		program_entry_point; /* normally mercury__main_2_0; */
 
-extern	void		(*address_of_mercury_init_io)(void);
-extern	void		(*address_of_init_modules)(void);
+#include "goto.h"		/* for Declare_entry */
+#include "mercury_types.h"	/* for `Word' */
+#include "wrapper.h"		/* for do_init_modules,
+				   mercury_runtime_init(),
+				   mercury_runtime_main(),
+				   mercury_runtime_terminate(),
+				   etc. */
 
 #ifdef CONSERVATIVE_GC
-#include "gc.h"
-extern	void		(*address_of_init_gc)(void);
+  #include "gc.h"
 #endif
 
+/*
+** mercury_main() takes the address of the following predicates/functions,
+** which are defined elsewhere.
+*/
+Declare_entry(mercury__main_2_0);		/* in the user's program */
+extern	void	mercury_init_io(void);		/* in the Mercury library */
+extern	void	ML_io_init_state(void);		/* in the Mercury library */
+extern	void	ML_io_finalize_state(void);	/* in the Mercury library */
+
 #endif /* not INIT_H */
+
+/*---------------------------------------------------------------------------*/

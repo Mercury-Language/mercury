@@ -31,7 +31,9 @@ static	Code	*engine_init_registers(void);
 
 bool	debugflag[MAXFLAG];
 
-static jmp_buf *engine_jmp_buf;
+jmp_buf *MR_engine_jmp_buf;
+
+/*---------------------------------------------------------------------------*/
 
 /*
 ** init_engine() calls init_memory() which sets up all the necessary
@@ -41,46 +43,37 @@ static jmp_buf *engine_jmp_buf;
 ** Next, init_engine() calls init_processes() which fork()s the right
 ** number of processes, and initializes the data structures for coordinating
 ** the interaction between multiple processes.
-** Finally, init_engine() calls init_process_context() which initializes the
+** Then, init_engine() calls init_process_context() which initializes the
 ** local context for this process including the heap and solutions heap.
 ** If it is the original process, it allocates the initial context for main.
+**
+** Finally, if there are multiple processes, init_engine calls
+** call_engine(do_runnext) for all but the first one, which makes
+** them sleep until work becomes available.  The initial process
+** returns to the caller.
 */
 void 
 init_engine(void)
 {
 	init_memory();
-	init_processes();
-	init_process_context();
 
 #ifndef USE_GCC_NONLOCAL_GOTOS
 	make_label("engine_done", LABEL(engine_done));
 #endif
-	return;
-}
 
+	init_processes();
+	init_process_context();
 
-/*
-** start_mercury_engine(Code *entry_point)
-**
-** This routine is the top-level entry point into the Mercury runtime
-** engine. It should only be called once.
-**
-** It invokes call_engine(entry_point) for the first process, and if there are
-** other processes, they call call_engine(do_runnext) which makes them sleep
-** until work becomes available.
-*/
-
-void 
-start_mercury_engine(Code *entry_point)
-{
 	if (my_procnum == 0) {
-		call_engine(entry_point);
+		return;
 	} else {
 		call_engine(ENTRY(do_runnext));
+		/* not reached */
+		MR_assert(FALSE);
 	}
-
-	return;
 }
+
+/*---------------------------------------------------------------------------*/
 
 /*
 ** call_engine(Code *entry_point)
@@ -128,25 +121,25 @@ call_engine(Code *entry_point)
 	jmp_buf		* volatile prev_jmp_buf;
 
 	/*
-	** Preserve the value of engine_jmp_buf on the C stack.
+	** Preserve the value of MR_engine_jmp_buf on the C stack.
 	** This is so "C calls Mercury which calls C which calls Mercury" etc.
 	** will work.
 	*/
 
-	prev_jmp_buf = engine_jmp_buf;
-	engine_jmp_buf = &curr_jmp_buf;
+	prev_jmp_buf = MR_engine_jmp_buf;
+	MR_engine_jmp_buf = &curr_jmp_buf;
 
 	/*
 	** Mark this as the spot to return to.
 	** On return, restore the registers (since longjmp may clobber
-	** them), restore the saved value of engine_jmp_buf, and then
+	** them), restore the saved value of MR_engine_jmp_buf, and then
 	** exit.
 	*/
 
 	if (setjmp(curr_jmp_buf)) {
 		debugmsg0("...caught longjmp\n");
 		restore_registers();
-		engine_jmp_buf = prev_jmp_buf;
+		MR_engine_jmp_buf = prev_jmp_buf;
 		return;
 	}
 
@@ -273,7 +266,7 @@ Define_label(engine_done);
 	*/
 	save_registers();
 	debugmsg0("longjmping out...\n");
-	longjmp(*engine_jmp_buf, 1);
+	longjmp(*MR_engine_jmp_buf, 1);
 }} /* end call_engine_inner() */
 
 /* with nonlocal gotos, we don't save the previous locations */
@@ -302,7 +295,7 @@ engine_done(void)
 {
 	save_registers();
 	debugmsg0("longjmping out...\n");
-	longjmp(*engine_jmp_buf, 1);
+	longjmp(*MR_engine_jmp_buf, 1);
 }
 
 static Code *
@@ -388,6 +381,21 @@ if (!tracedebug) {
 } /* end call_engine_inner() */
 #endif /* not USE_GCC_NONLOCAL_GOTOS */
 
+/*---------------------------------------------------------------------------*/
+
+void
+terminate_engine(void)
+{
+	/*
+	** we don't bother to deallocate memory...
+	** that will happen automatically on process exit anyway.
+	*/
+
+	shutdown_processes();
+}
+
+/*---------------------------------------------------------------------------*/
+
 BEGIN_MODULE(special_labels_module)
 
 BEGIN_CODE
@@ -412,3 +420,5 @@ do_not_reached:
 #endif
 
 END_MODULE
+
+/*---------------------------------------------------------------------------*/

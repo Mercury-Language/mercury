@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1996 The University of Melbourne.
+% Copyright (C) 1994-1997 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -34,6 +34,19 @@
 :- dynamic io__save_progname/1.
 :- dynamic io__save_args/1.
 :- dynamic io__save_exit_status/1.
+
+% Note: in C, the io__state is all represented as global variables.
+% But for Prolog, using assert/retract for global variables was
+% found to be much too slow.  So we do actually pass around an io__state.
+
+:- type io__state
+	---> 	io__state(
+			io__stream_names,	% map from stream to stream name
+			io__stream_putback,	% map from input stream to
+						% list of putback characters
+			univ,			% for use by the application
+			io__external_state
+		).
 
 :- pred main(list(atom)).
 :- mode main(in) is det.
@@ -127,6 +140,9 @@ io__init(Args) :-
 	),
 	assert(io__save_exit_status(0)).
 
+:- pred io__gc_init(io__state, io__state).
+:- mode io__gc_init(di, uo) is det.
+io__gc_init --> [].
 
 :- pred atoms_to_strings(list(atom), list(string)).
 :- mode atoms_to_strings(in, out) is det.
@@ -252,7 +268,7 @@ io__gc_call(Goal) -->
 % input predicates
 
 io__read_char_code(Stream, Code, IO_0, IO) :-
-	IO_0 = io__state(A, PutBack0, C, D, E),
+	IO_0 = io__state(A, PutBack0, C, D),
  	(
 		map__search(PutBack0, Stream, PutBackChars),
 		PutBackChars = [Char | Chars]
@@ -262,7 +278,7 @@ io__read_char_code(Stream, Code, IO_0, IO) :-
 		;
 			map__det_update(PutBack0, Stream, Chars, PutBack)
 		),
-		IO = io__state(A, PutBack, C, D, E),
+		IO = io__state(A, PutBack, C, D),
 		char__to_int(Char, Code)
  	;
 		get0(Stream, Code),
@@ -271,18 +287,18 @@ io__read_char_code(Stream, Code, IO_0, IO) :-
 	%%% io__update_state.
 
 io__putback_char(Stream, Char, IO_0, IO) :-
-	IO_0 = io__state(A, PutBack0, C, D, E),
+	IO_0 = io__state(A, PutBack0, C, D),
 	( map__search(PutBack0, Stream, Chars) ->
 		map__det_update(PutBack0, Stream, [Char | Chars], PutBack)
 	;
 		map__det_insert(PutBack0, Stream, [Char], PutBack)
 	),
-	IO = io__state(A, PutBack, C, D, E).
+	IO = io__state(A, PutBack, C, D).
 
 io__putback_byte(_Stream, _Char, IO, IO) :-
 	error("io__putback_byte: binary IO is not implemented for Prolog.").
 
-io__read_anything(S, Result) -->
+io__read(S, Result) -->
 	{ read(S, Term) },
 	{ eof(Term) ->
 		Result = eof
@@ -290,7 +306,7 @@ io__read_anything(S, Result) -->
 		Result = ok(Term)
 	}.
 
-io__read_anything(Result) -->
+io__read(Result) -->
 	{ read(Term) },
 	{ eof(Term) ->
 		Result = eof
@@ -322,7 +338,7 @@ io__write_string(Stream, String) -->
 	{ (format(Stream, "~s", [String]), fail ; true) },
 	io__update_state.
 	
-io__write_anything(S, I) -->
+io__write(S, I) -->
 	{ write(S, I) },
 	io__update_state.
 
@@ -353,9 +369,9 @@ io__write_float(Float) -->
 	io__output_stream(Stream),
 	io__write_float(Stream, Float).
 
-io__write_anything(Term) -->
+io__write(Term) -->
 	io__output_stream(Stream),
-	io__write_anything(Stream, Term).
+	io__write(Stream, Term).
 
 io__flush_output -->
 	io__output_stream(Stream),
@@ -454,7 +470,7 @@ io__get_line_number(LineNumber) -->
 
 io__get_line_number(Stream, LineNumber) -->
 	{ lineCount(Stream, LineNumber0) },
-	=(io__state(_, PutBack, _, _, _)),
+	=(io__state(_, PutBack, _, _)),
 	{ map__search(PutBack, Stream, Chars) ->
 		io__adjust_line_num(Chars, LineNumber0, LineNumber)
 	;
@@ -472,6 +488,13 @@ io__adjust_line_num([C | Cs], N0, N) :-
 	),
 	io__adjust_line_num(Cs, N1, N).
 
+io__get_output_line_number(LineNumber) -->
+	{ currentOutput(Stream) },
+	io__get_output_line_number(Stream, LineNumber).
+
+io__get_output_line_number(Stream, LineNumber) -->
+	{ lineCount(Stream, LineNumber) }.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -480,9 +503,13 @@ io__adjust_line_num([C | Cs], N0, N) :-
 	% to ensure that once an io state has been used it can't be
 	% used again.
 
+
 :- pred io__init_state(io__state).
 io__init_state(IO_State) :-
-	io__init_state(current, IO_State).
+	ExternalState = current,
+	map__init(PutBack),
+	IOState0 = io__state(_Names0, PutBack, _Globals, ExternalState),
+	io__init_state(IOState0, IO_State).
 
 :- pred io__update_state(io__state, io__state).
 io__update_state(IOState0, IOState) :-
@@ -493,14 +520,14 @@ io__update_state(IOState0, IOState) :-
 	;
 		true
 	),
-	%%% ( IOState0 = io__state(_, _, current) ->
+	%%% ( IOState0 = io__state(_, _, _, current) ->
 	%%% 	true
 	%%% ;
 	%%% 	error("io.nu.nl: cannot retry I/O operation")
 	%%% ),
-	%%% IOState0 = io__state(Names, Globals, _),
+	%%% IOState0 = io__state(Names, PutBack, Globals, _),
 	%%% $replacn(2, IOState0, old),
-	%%% IOState = io__state(Names, Globals, current).
+	%%% IOState = io__state(Names, PutBack, Globals, current).
 	IOState = IOState0.
 
 :- pred io__final_state(io__state).
@@ -529,6 +556,20 @@ io__get_exit_status(ExitStatus) -->
 io__set_exit_status(ExitStatus) --> 
 	{ retractall(io__save_exit_status(_)) },
 	{ assert(io__save_exit_status(ExitStatus)) }.
+
+io__get_stream_names(StreamNames, IOState, IOState) :-
+	IOState = io__state(StreamNames, _, _, _).
+
+io__set_stream_names(StreamNames, IOState0, IOState) :-
+	IOState0 = io__state(_, B, C, D),
+	IOState = io__state(StreamNames, B, C, D).
+
+io__get_globals(Globals, IOState, IOState) :-
+	IOState = io__state(_, _, Globals, _).
+
+io__set_globals(Globals, IOState0, IOState) :-
+	IOState0 = io__state(A, B, _, D),
+	IOState = io__state(A, B, Globals, D).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

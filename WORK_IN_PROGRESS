@@ -28,10 +28,6 @@ distribution.
 
 * Support for Haskell-style type classes.
 
-* Support for user-defined equality axioms, for types which have
-  multiple representations of the same abstract value, e.g. sets
-  represented as unsorted lists.
-
 * Termination analysis. The paper describing our algorithm and results
   is available from our Web page; a shorter version will be published
   in the Static Analysis Symposium.

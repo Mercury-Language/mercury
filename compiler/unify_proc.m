@@ -170,16 +170,18 @@ unify_proc__lookup_mode_num(IKT, ModuleInfo, TypeId, UniMode, Det, Num) :-
 	% Given the type, mode, and determinism of a unification, look up the
 	% mode number for the unification proc.
 	% We handle semidet unifications with mode (in, in) specially - they
-	% are always mode zero.  For unreachable unifications,
-	% we also use mode zero.
+	% are always mode zero.  Similarly for unifications of `any' insts.
+	% (It should be safe to use the `in, in' mode for any insts, since
+	% we assume that `ground' and `any' have the same representation.)
+	% For unreachable unifications, we also use mode zero.
 
 unify_proc__search_mode_num(IKT, ModuleInfo, TypeId, UniMode, Determinism,
 		ProcId) :-
 	UniMode = (XInitial - YInitial -> _Final),
 	(
 		Determinism = semidet,
-		inst_is_ground(XInitial, IKT, ModuleInfo),
-		inst_is_ground(YInitial, IKT, ModuleInfo)
+		inst_is_ground_or_any(XInitial, IKT, ModuleInfo),
+		inst_is_ground_or_any(YInitial, IKT, ModuleInfo)
 	->
 		hlds_pred__in_in_unification_proc_id(ProcId)
 	;

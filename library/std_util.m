@@ -1,8 +1,8 @@
-%---------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 % Copyright (C) 1994-1997 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
-%---------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 % File: std_util.m.
 % Main author: fjh.
@@ -134,26 +134,30 @@
 		in, out) is det.
 
 	% unsorted_aggregate/4 generates all the solutions to a predicate
-	% and applies an accumulator predicate to each solution in turn:
+	% and applies an accumulator predicate to each solution in turn.
+	% Declaratively, the specification is as follows:
 	%
 	% unsorted_aggregate(Generator, Accumulator, Acc0, Acc) <=>
 	%	unsorted_solutions(Generator, Solutions),
 	%	list__foldl(Accumulator, Solutions, Acc0, Acc).
 	%
-	% The current implementation is in terms of [unsorted_]solutions and
-	% list__foldl, which, for a predicate with N solutions requires O(N)
-	% memory, whereas it is possible to implement unsorted_aggregate
-	% to use O(1) memory.
+	% Operationally, however, unsorted_aggregate/4 will call the
+	% Accumulator for each solution as it is obtained, rather than
+	% first building a list of all the solutions.
 
 :- pred unsorted_aggregate(pred(T), pred(T, U, U), U, U).
 :- mode unsorted_aggregate(pred(out) is multi, pred(in, in, out) is det,
 		in, out) is cc_multi.
 :- mode unsorted_aggregate(pred(out) is multi, pred(in, di, uo) is det,
 		di, uo) is cc_multi.
+:- mode unsorted_aggregate(pred(muo) is multi, pred(mdi, di, uo) is det,
+		di, uo) is cc_multi.
 :- mode unsorted_aggregate(pred(out) is nondet, pred(in, di, uo) is det,
 		di, uo) is cc_multi.
 :- mode unsorted_aggregate(pred(out) is nondet, pred(in, in, out) is det,
 		in, out) is cc_multi.
+:- mode unsorted_aggregate(pred(muo) is nondet, pred(mdi, di, uo) is det,
+		di, uo) is cc_multi.
 
 %-----------------------------------------------------------------------------%
 
@@ -180,7 +184,9 @@
 
 :- pred semidet_fail is semidet.
 
-:- pred cc_multi_equal(T::in, T::out) is cc_multi.
+:- pred cc_multi_equal(T, T).
+:- mode cc_multi_equal(di, uo) is cc_multi.
+:- mode cc_multi_equal(in, out) is cc_multi.
 
 %-----------------------------------------------------------------------------%
 
@@ -366,32 +372,32 @@
 	%
 :- pred functor(T::in, string::out, int::out) is det.
 
-	% argument(Data, ArgumentIndex) = Argument
+	% arg(Data, ArgumentIndex) = Argument
+	% argument(Data, ArgumentIndex) = ArgumentUniv
 	% 
 	% Given a data item (Data) and an argument index
 	% (ArgumentIndex), starting at 0 for the first argument, binds
 	% Argument to that argument of the functor of the data item. If
 	% the argument index is out of range -- that is, greater than or
 	% equal to the arity of the functor or lower than 0 -- then
-	% argument/2 fails.  The argument returned has the type univ. 
-	% (Also aborts if the type of Data is a type with a non-canonical
+	% the call fails.  For argument/1 the argument returned has the
+	% type univ, which can store any type.  For arg/1, if the
+	% argument has the wrong type, then the call fails.
+	% (Both abort if the type of Data is a type with a non-canonical
 	% representation, i.e. one for which there is a user-defined
 	% equality predicate.)
 	%
+:- func arg(T::in, int::in) = (ArgT::out) is semidet.
 :- func argument(T::in, int::in) = (univ::out) is semidet.
 
-	% det_argument(ArgumentIndex, Data, Argument)
+	% det_arg(Data, ArgumentIndex) = Argument
+	% det_argument(Data, ArgumentIndex) = ArgumentUniv
 	% 
-	% Given a data item (Data) and an argument index
-	% (ArgumentIndex), starting at 0 for the first argument, binds
-	% Argument to that argument of the functor of the data item. If
-	% the argument index is out of range -- that is, greater than or
-	% equal to the arity of the functor or lower than 0 -- then
-	% det_argument/2 aborts. 
-	% (Also aborts if the type of Data is a type with a non-canonical
-	% representation, i.e. one for which there is a user-defined
-	% equality predicate.)
+	% Same as arg/2 and argument/2 respectively, except that
+	% for cases where arg/2 or argument/2 would fail,
+	% det_arg/2 or det_argument/2 will abort.
 	%
+:- func det_arg(T::in, int::in) = (ArgT::out) is det.
 :- func det_argument(T::in, int::in) = (univ::out) is det.
 
 	% deconstruct(Data, Functor, Arity, Arguments) 
@@ -436,93 +442,163 @@ maybe_pred(Pred, X, Y) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred builtin_solutions(pred(T), list(T)).
-:- mode builtin_solutions(pred(out) is multi, out) is det.
-:- mode builtin_solutions(pred(out) is nondet, out) is det.
-:- external(builtin_solutions/2).
-	% builtin_solutions is implemented in c_code.
+:- pred builtin_aggregate(pred(T), pred(T, U, U), U, U).
+:- mode builtin_aggregate(pred(out) is multi, pred(in, in, out) is det,
+		in, out) is det. /* really cc_multi */
+:- mode builtin_aggregate(pred(out) is multi, pred(in, di, uo) is det,
+		di, uo) is det. /* really cc_multi */
+:- mode builtin_aggregate(pred(muo) is multi, pred(mdi, di, uo) is det,
+		di, uo) is det. /* really cc_multi */
+:- mode builtin_aggregate(pred(out) is nondet, pred(in, di, uo) is det,
+		di, uo) is det. /* really cc_multi */
+:- mode builtin_aggregate(pred(out) is nondet, pred(in, in, out) is det,
+		in, out) is det. /* really cc_multi */
+:- mode builtin_aggregate(pred(muo) is nondet, pred(mdi, di, uo) is det,
+		di, uo) is det. /* really cc_multi */
+
+:- external(builtin_aggregate/4).
+	% builtin_aggregate is implemented in c_code.
 
 :- pragma c_code("
-
+ 
 /*
-** file: solutions.mod
-** authors: conway, fjh.
-**
-** this module defines solutions/2 which takes a closure of type
-** pred(T) in which the remaining argument is output.
+** This module defines builtin_aggregate/4 which takes a closure of type
+** pred(T) in which the remaining argument is output, and backtracks over
+** solutions for this, using the second argument to aggregate them however the
+** user wishes.  This is basically a generalization of solutions/2.
 */
-
+ 
 #include ""imp.h""
 #include ""deep_copy.h""
 
-MR_DECLARE_STRUCT(
-	mercury_data_list__base_type_info_list_1);
-
 Declare_entry(do_call_nondet_closure);
+Declare_entry(do_call_det_closure);
 
-Define_extern_entry(mercury__std_util__builtin_solutions_2_0);
-Define_extern_entry(mercury__std_util__builtin_solutions_2_1);
-Declare_label(mercury__std_util__builtin_solutions_2_0_i1);
-Declare_label(mercury__std_util__builtin_solutions_2_0_i2);
+Define_extern_entry(mercury__std_util__builtin_aggregate_4_0);
+Define_extern_entry(mercury__std_util__builtin_aggregate_4_1);
+Define_extern_entry(mercury__std_util__builtin_aggregate_4_2);
+Define_extern_entry(mercury__std_util__builtin_aggregate_4_3);
+Define_extern_entry(mercury__std_util__builtin_aggregate_4_4);
+Define_extern_entry(mercury__std_util__builtin_aggregate_4_5);
+Declare_label(mercury__std_util__builtin_aggregate_4_0_i1);
+Declare_label(mercury__std_util__builtin_aggregate_4_0_i2);
+Declare_label(mercury__std_util__builtin_aggregate_4_0_i3);
 
-BEGIN_MODULE(solutions_module)
-	init_entry(mercury__std_util__builtin_solutions_2_0);
-	init_entry(mercury__std_util__builtin_solutions_2_1);
-	init_label(mercury__std_util__builtin_solutions_2_0_i1);
-	init_label(mercury__std_util__builtin_solutions_2_0_i2);
+BEGIN_MODULE(builtin_aggregate_module)
+	init_entry(mercury__std_util__builtin_aggregate_4_0);
+	init_entry(mercury__std_util__builtin_aggregate_4_1);
+	init_entry(mercury__std_util__builtin_aggregate_4_2);
+	init_entry(mercury__std_util__builtin_aggregate_4_3);
+	init_entry(mercury__std_util__builtin_aggregate_4_4);
+	init_entry(mercury__std_util__builtin_aggregate_4_5);
+	init_label(mercury__std_util__builtin_aggregate_4_0_i1);
+	init_label(mercury__std_util__builtin_aggregate_4_0_i2);
+	init_label(mercury__std_util__builtin_aggregate_4_0_i3);
 BEGIN_CODE
 
 /*
-** :- pred builtin_solutions(pred(T), list(T)).
-** :- mode builtin_solutions(pred(out) is multi/nondet, out) is det.
+** :- pred builtin_aggregate(pred(T), pred(T,T2,T2), T2, T2).
+** :- mode builtin_aggregate(pred([out/muo]) is [multi/nondet],
+**		pred([in/mdi],[in/di],[out/uo]) is det, in, out) is cc_multi.
 **
-** Polymorphism will add an extra input parameter, a type_info for T,
-** which we don't use at the moment (later it could be used to find
-** the address of the deep copy routine).
+** Polymorphism will add two extra input parameters, type_infos for T and T2,
+** which we don't use at the moment (later they could be used to find
+** the address of the respective deep copy routines).
 **
-** The type_info structure will be in r1 and the closure will be in r2
-** with both calling conventions. The output should go either in r3
-** (for the normal parameter convention) or r1 (for the compact parameter
-** convention).
+** The type_info structures will be in r1 and r2, the closures will be in
+** r3 and r4, and the 'initial value' will be in r5, with both caling
+** conventions. The output should go either in r6 (for the normal parameter
+** convention) or r1 (for the compact parameter convention).
 */
-
+ 
 #ifdef	COMPACT_ARGS
-  #define solutions_output_reg	r1
+  #define builtin_aggregate_output	r1
 #else
-  #define solutions_output_reg	r3
+  #define builtin_aggregate_output	r6
 #endif
 
-Define_entry(mercury__std_util__builtin_solutions_2_0);
 #ifdef PROFILE_CALLS
-{
-	tailcall(ENTRY(mercury__std_util__builtin_solutions_2_1),
-			LABEL(mercury__std_util__builtin_solutions_2_0));
-}
+  #define fallthru(target, caller) { tailcall((target), (caller)); }
+#else
+  #define fallthru(target, caller)
 #endif
-Define_entry(mercury__std_util__builtin_solutions_2_1);
+
+Define_entry(mercury__std_util__builtin_aggregate_4_1);
+fallthru(ENTRY(mercury__std_util__builtin_aggregate_4_0),
+			LABEL(mercury__std_util__builtin_aggregate_4_1))
+Define_entry(mercury__std_util__builtin_aggregate_4_2);
+fallthru(ENTRY(mercury__std_util__builtin_aggregate_4_0),
+			LABEL(mercury__std_util__builtin_aggregate_4_2))
+Define_entry(mercury__std_util__builtin_aggregate_4_3);
+fallthru(ENTRY(mercury__std_util__builtin_aggregate_4_0),
+			LABEL(mercury__std_util__builtin_aggregate_4_3))
+Define_entry(mercury__std_util__builtin_aggregate_4_4);
+fallthru(ENTRY(mercury__std_util__builtin_aggregate_4_0),
+			LABEL(mercury__std_util__builtin_aggregate_4_4))
+Define_entry(mercury__std_util__builtin_aggregate_4_5);
+fallthru(ENTRY(mercury__std_util__builtin_aggregate_4_0),
+			LABEL(mercury__std_util__builtin_aggregate_4_5))
+Define_entry(mercury__std_util__builtin_aggregate_4_0);
 
 #ifndef CONSERVATIVE_GC
 
 #ifndef USE_TYPE_LAYOUT
-	fatal_error(""`solutions' not supported with this grade on this ""
-		    ""system.\n""
+	fatal_error(""builtin_aggregate/4 not supported with this grade ""
+		    ""on this system.\n""
 		""Try using a `.gc' (conservative gc) grade.\n"");
 #endif
 
 /*
-** The following algorithm uses a `solutions heap', and will work with
-** non-conservative gc. We create a solution, on the normal heap, then
-** copy it to the solutions heap, a part of a solutions list. This list
-** list then copied back to the mercury heap.
+** In order to implement any sort of code that requires terms to survive
+** backtracking, we need to (deeply) copy them out of the heap and into some
+** other area before backtracking.  The obious thing to do then is just call
+** the generator predicate, let it run to completion, and copy its result into
+** another memory area (call it the solutions heap) before forcing
+** backtracking.  When we get the next solution, we do the same, this time
+** passing the previous collection (which is still on the solutions heap) to
+** the collector predicate.  If the result of this operation contains the old
+** collection as a part, then the deep copy operation is smart enough
+** not to copy again.  So this could be pretty efficient.
 **
-** An improvement to this is that we can copy each solution to the
-** solutions heap, but have deep_copy add an offset to the pointers
-** (at least, those that would otherwise point to the solutions heap),
-** so that, when finished, a block move of the solutions heap back to the
-** real heap will leave all the pointers in the correct place.
+** But what if the collector predicate does something that copies the previous
+** collection?  Then on each solution, we'll copy the previous collection to
+** the heap, and then deep copy it back to the solution heap.  This means
+** copying solutions order N**2 times, where N is the number of solutions.  So
+** this isn't as efficient as we hoped.
+**
+** So we use a slightly different approach.  When we find a solution, we deep
+** copy it to the solution heap.  Then, before calling the collector code, we
+** sneakily swap the runtime system's notion of which is the heap and which is
+** the solutions heap.  This ensures that any terms are constructed on the
+** solutions heap.  When this is complete, we swap them back, and force the
+** engine to backtrack to get the next solution.  And so on.  After we've
+** gotten the last solution, we do another deep copy to move the solution back
+** to the 'real' heap, and reset the solutions heap pointer (which of course
+** reclaims all the garbage of the collection process).
+**
+** Note that this will work with recursive calls to builtin_aggregate as
+** well.  If the recursive invocation occurs in the generator pred, there can
+** be no problem because by the time the generator succeeds, the inner
+** do_ call will have completed, copied its result from the solutions heap,
+** and reset the solutions heap pointer.  If the recursive invocation happens
+** in the collector pred, then it will happen when the heap and solutions heap
+** are 'swapped.'  This will work out fine, because the real heap isn't needed
+** while the collector pred is executing, and by the time the nested do_ is
+** completed, the 'real' heap pointer will have been reset.
 */
 
-
+/* Define a macro to swap the heap and solutions heap */
+#define swap_heap_and_solutions_heap()				\
+    do {							\
+	Word temp;						\
+	temp = (Word) heap_zone;				\
+	heap_zone = solutions_heap_zone;			\
+	LVALUE_CAST(Word, solutions_heap_zone) = temp;		\
+	temp = (Word) hp;					\
+	hp = solutions_heap_pointer;				\
+	LVALUE_CAST(Word, solutions_heap_pointer) = temp;	\
+    } while (0)
+ 
 /*
 ** Define some framevars we will be using - we need to keep the
 ** value of hp and the solutions hp (solhp) before we entered 
@@ -530,112 +606,122 @@ Define_entry(mercury__std_util__builtin_solutions_2_1);
 ** reset the solhp after all solutions have been found.
 ** To do a deep copy, we need the type_info of the type of a solution,
 ** so we save the type_info in type_info_fv.
-** Finally, we store the list of solutions so far in list_fv.
+** Finally, we store the collection of solutions so far in sofar_fv.
 */
 
-#define saved_hp_fv	(framevar(0))
-#define saved_solhp_fv	(framevar(1))
-#define type_info_fv	(framevar(2))
-#define list_fv		(framevar(3))
+#define saved_hp_fv		(framevar(0))
+#define saved_solhp_fv		(framevar(1))
+#define collector_pred_fv	(framevar(2))
+#define sofar_fv		(framevar(3))
+#define element_type_info_fv	(framevar(4))
+#define collection_type_info_fv	(framevar(5))
 
-	/* create a nondet stack frame with four slots,
-	   and set the failure continuation */
-	
-	mkframe(""builtin_solutions"", 4,
-		LABEL(mercury__std_util__builtin_solutions_2_0_i2));
+	/*
+	** Create a nondet frame with 6 slots and set the failure continuation.
+	** The six frame slots are used to hold heap states and the
+	** collector pred and the collection, and type infos for copying
+	** each solution, and for copying the collection back to the heap
+	** when we're done.
+	*/
+	mkframe(""builtin_aggregate"", 6,
+		LABEL(mercury__std_util__builtin_aggregate_4_0_i3));
+ 
+	/* save heap states */
+ 	saved_solhp_fv = (Word) solutions_heap_pointer; 
+ 	mark_hp(saved_hp_fv);
+	/* setup the (other) framevars */
+	collector_pred_fv = r4;
+	sofar_fv = r5;
+	element_type_info_fv = r1;
+	collection_type_info_fv = r2;
 
-	/* setup the framevars */
-	saved_solhp_fv = (Word) solutions_heap_pointer; 
-	mark_hp(saved_hp_fv);
-	type_info_fv = r1;		
-	list_fv = list_empty();
-
-	/* setup for calling the closure */
-	r1 = r2;
+	/* we do not (yet) need the type_info we are passed in r1 */
+	/* call the higher-order pred closure that we were passed in r3 */
+	r1 = r3;
 	r2 = (Word) 0;	/* the higher-order call has 0 extra input arguments */
 	r3 = (Word) 1;	/* the higher-order call has 1 extra output argument */
 
 	call(ENTRY(do_call_nondet_closure),
-		LABEL(mercury__std_util__builtin_solutions_2_0_i1),
-		LABEL(mercury__std_util__builtin_solutions_2_1));
+		LABEL(mercury__std_util__builtin_aggregate_4_0_i1),
+		LABEL(mercury__std_util__builtin_aggregate_4_1));
 
-Define_label(mercury__std_util__builtin_solutions_2_0_i1);
+Define_label(mercury__std_util__builtin_aggregate_4_0_i1);
 {
+	Word copied_solution;
+
 	/* we found a solution (in r1) */
 
-	Word solution_copy;
+	/* XXX we should check for delayed non-linear constraints here */
 
-	/* save the current heap pointer */
-	Word *temp_hp = hp;
-
-	/* set heap to solutions heap */
-	hp = (Word) solutions_heap_pointer;
-
+	/* swap heaps so we build on solution heap */
+	swap_heap_and_solutions_heap();
+ 
 	/*
-	** deep_copy() it to the solutions heap, up to the saved_hp.
+	** deep copy solution to the solutions heap, up to the saved_hp
 	** Note that we need to save/restore the hp register, if it
 	** is transient, before/after calling deep_copy().
 	*/
 	save_transient_registers();
-	solution_copy = deep_copy(r1, (Word *) type_info_fv,
-				(Word *) saved_hp_fv, heap_zone->top);
+	copied_solution = deep_copy(r1, (Word *) element_type_info_fv,
+			(Word *) saved_hp_fv, solutions_heap_zone->top);
 	restore_transient_registers();
 
-	/* create a cons cell on the solutions heap */
-	list_fv = list_cons(solution_copy, list_fv);
-
-	/* save solutions heap pointer */
-	solutions_heap_pointer = (Word *) hp;
-
-	/* reset the heap pointer - use the normal mercury heap */
-	hp = temp_hp;
-
-	redo();
+	/* call the collector closure */
+	r1 = collector_pred_fv;
+	r2 = (Word) 2;	/* higher-order call has 2 extra input args */
+	r3 = (Word) 1;	/* higher-order call has 1 extra output arg */
+	r4 = copied_solution;
+	r5 = sofar_fv;
+	call(ENTRY(do_call_det_closure),
+		LABEL(mercury__std_util__builtin_aggregate_4_0_i2),
+		LABEL(mercury__std_util__builtin_aggregate_4_1));
 }
+Define_label(mercury__std_util__builtin_aggregate_4_0_i2);
+	sofar_fv = r1;
+ 
+	/* swap heaps back the way they were */
+	swap_heap_and_solutions_heap();
+ 
+	/* look for the next solution */
+	redo();
 	
-Define_label(mercury__std_util__builtin_solutions_2_0_i2);
-	/* no more solutions */
+Define_label(mercury__std_util__builtin_aggregate_4_0_i3);
+{
+	Word copied_collection;
+
+	/* there were no more solutions */
 
 	/* reset heap */
 	restore_hp(saved_hp_fv);
 
-	/* copy all solutions to mercury heap */ 
+	/*
+	** deep_copy() the result to the mercury heap, copying
+	** everything between where we started on the solutions
+	** heap, and the top of the solutions heap.
+	** Note that we need to save/restore the hp register, if it
+	** is transient, before/after calling deep_copy().
+	**/
+	save_transient_registers();
+	copied_collection = deep_copy(sofar_fv,
+		    (Word *) collection_type_info_fv,
+		    (Word *) saved_solhp_fv, solutions_heap_zone->top);
+	restore_transient_registers();
 
-	{  /* create a type_info for list(T), where T is the type
-	      of the solutions */
+	builtin_aggregate_output = copied_collection;
 
-	  Word* new_type_info[2];
-	  Word solutions_copy;
-	 
-	  new_type_info[0] = (Word *) (Word)
-	  	&mercury_data_list__base_type_info_list_1;
-	  new_type_info[1] = (Word *) type_info_fv;
-
-	  /*
-	  ** deep_copy() the list to the mercury heap, copying
-	  ** everything between where we started on the solutions
-	  ** heap, and the top of the solutions heap.
-	  ** Note that we need to save/restore the hp register, if it
-	  ** is transient, before/after calling deep_copy().
-	  */
-	  save_transient_registers();
-	  solutions_copy = deep_copy(list_fv, (Word *) new_type_info,
-		(Word *) saved_solhp_fv, solutions_heap_zone->top);
-	  restore_transient_registers();
-
-	  solutions_output_reg = solutions_copy;
-	}
-
-	/* reset solutions heap to where it was before call to solutions  */
-	solutions_heap_pointer = (Word *) saved_solhp_fv;
-	
+ 	/* reset solutions heap to where it was before call to solutions  */
+ 	solutions_heap_pointer = (Word *) saved_solhp_fv;
+ 	
 	/* discard the frame we made */
 	succeed_discard();
+}
 
 #undef saved_hp_fv
 #undef saved_solhp_fv
-#undef type_info_fv
-#undef list_fv
+#undef collector_pred_fv
+#undef sofar_fv
+#undef element_type_info_fv
+#undef collection_type_info_fv
 
 #else
 
@@ -647,48 +733,80 @@ Define_label(mercury__std_util__builtin_solutions_2_0_i2);
 ** make deep copies of the solutions.  This is a `copy-zero' implementation ;-)
 */
 
-	/* create a nondet stack frame with one slot, to hold the list
-	   of solutions, and set the failure continuation */
-	mkframe(""builtin_solutions"", 1,
-		LABEL(mercury__std_util__builtin_solutions_2_0_i2));
-	framevar(0) = list_empty();
+#define collector_pred_fv	(framevar(0))
+#define sofar_fv		(framevar(1))
 
+	/* create a nondet stack frame with two slots, to hold the collector
+	   pred and the collection, and set the failure continuation */
+	mkframe(""builtin_aggregate"", 2,
+		LABEL(mercury__std_util__builtin_aggregate_4_0_i3));
+
+	/* setup the framevars */
+	collector_pred_fv = r4;
+	sofar_fv = r5;
+ 
 	/* we do not (yet) need the type_info we are passed in r1 */
-	/* call the higher-order pred closure that we were passed in r2 */
-	r1 = r2;
+	/* call the higher-order pred closure that we were passed in r3 */
+	r1 = r3;
 	r2 = (Word) 0;	/* the higher-order call has 0 extra input arguments */
 	r3 = (Word) 1;	/* the higher-order call has 1 extra output argument */
 	call(ENTRY(do_call_nondet_closure),
-		LABEL(mercury__std_util__builtin_solutions_2_0_i1),
-		LABEL(mercury__std_util__builtin_solutions_2_1));
+		LABEL(mercury__std_util__builtin_aggregate_4_0_i1),
+		LABEL(mercury__std_util__builtin_aggregate_4_1));
 
-Define_label(mercury__std_util__builtin_solutions_2_0_i1);
-	/* we found a solution */
-	/* insert it into the list, and then look for the next one */
-	framevar(0) = list_cons(r1, framevar(0));
-	redo();
+Define_label(mercury__std_util__builtin_aggregate_4_0_i1);
+	/* we found a solution (in r1) */
 
-Define_label(mercury__std_util__builtin_solutions_2_0_i2);
+	/* XXX we should check for delayed non-linear constraints here */
+
+	/* setup for calling the collector closure */
+	r4 = r1;	/* put solution to be collected where we need it */
+	r1 = collector_pred_fv;
+	r2 = (Word) 2;	/* the higher-order call has 2 extra input arguments */
+	r3 = (Word) 1;	/* the higher-order call has 1 extra output argument */
+	r5 = sofar_fv;
+
+	call(ENTRY(do_call_det_closure),
+		LABEL(mercury__std_util__builtin_aggregate_4_0_i2),
+		LABEL(mercury__std_util__builtin_aggregate_4_1));
+
+Define_label(mercury__std_util__builtin_aggregate_4_0_i2);
+	/*
+	** we inserted the solution into the collection,
+	** and we've now got a new collection (in r1)
+	*/
+	sofar_fv = r1;
+
+	/* look for the next solution */
+ 	redo();
+ 
+Define_label(mercury__std_util__builtin_aggregate_4_0_i3);
 	/* no more solutions */
-	/* return the solutions list and discard the frame we made */
-	solutions_output_reg = framevar(0);
-	succeed_discard();
+
+	/* return the collection and discard the frame we made */
+	builtin_aggregate_output = sofar_fv;
+ 	succeed_discard();
+ 
+#undef collector_pred_fv
+#undef sofar_fv
 
 #endif
+ 
+#undef builtin_aggregate_output
+#undef swap_heap_and_solutions_heap
 
 END_MODULE
-
+ 
 /* Ensure that the initialization code for the above module gets run. */
 /*
-INIT sys_init_solutions_module
+INIT sys_init_builtin_aggregate_module
 */
-extern ModuleFunc solutions_module;
-void sys_init_solutions_module(void); /* suppress gcc -Wmissing-decl warning */
-void sys_init_solutions_module(void) {
-	solutions_module();
+extern ModuleFunc builtin_aggregate_module;
+/* the extra declaration is to suppress a gcc -Wmissing-decl warning */
+void sys_init_builtin_aggregate_module(void);
+void sys_init_builtin_aggregate_module(void) {
+	builtin_aggregate_module();
 }
-
-
 
 ").
 
@@ -704,6 +822,18 @@ unsorted_solutions(Pred, List) :-
 	builtin_solutions(Pred, UnsortedList),
 	cc_multi_equal(UnsortedList, List).
 
+:- pred builtin_solutions(pred(T), list(T)).
+:- mode builtin_solutions(pred(out) is multi, out)
+	is det. /* really cc_multi */
+:- mode builtin_solutions(pred(out) is nondet, out)
+	is det. /* really cc_multi */
+
+builtin_solutions(Generator, UnsortedList) :-
+	builtin_aggregate(Generator, cons, [], UnsortedList).
+
+:- pred cons(T::in, list(T)::in, list(T)::out) is det.
+cons(H, T, [H|T]).
+
 %-----------------------------------------------------------------------------%
 
 aggregate(Generator, Accumulator, Acc0, Acc) :-
@@ -711,8 +841,8 @@ aggregate(Generator, Accumulator, Acc0, Acc) :-
 	list__foldl(Accumulator, Solutions, Acc0, Acc).
 
 unsorted_aggregate(Generator, Accumulator, Acc0, Acc) :-
-	unsorted_solutions(Generator, Solutions),
-	list__foldl(Accumulator, Solutions, Acc0, Acc).
+	builtin_aggregate(Generator, Accumulator, Acc0, Acc1),
+	cc_multi_equal(Acc1, Acc).
 
 %-----------------------------------------------------------------------------%
 
@@ -725,6 +855,8 @@ unsorted_aggregate(Generator, Accumulator, Acc0, Acc) :-
 :- pragma c_code(semidet_fail, will_not_call_mercury,
 		"SUCCESS_INDICATOR = FALSE;").
 :- pragma c_code(cc_multi_equal(X::in, Y::out), will_not_call_mercury,
+		"Y = X;").
+:- pragma c_code(cc_multi_equal(X::di, Y::uo), will_not_call_mercury,
 		"Y = X;").
 %-----------------------------------------------------------------------------%
 
@@ -2036,9 +2168,13 @@ typedef struct ML_Expand_Info_Struct {
 
 	/* Prototypes */
 
-void ML_expand(Word* type_info, Word data_word, ML_Expand_Info *info);
+void ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info);
 
 Word * ML_create_type_info(Word *term_type_info, Word *arg_pseudo_type_info);
+
+	/* NB. ML_arg() is also used by store__arg_ref in store.m */
+bool ML_arg(Word term_type_info, Word *term, Word argument_index,
+		Word *arg_type_info, Word **argument_ptr);
 
 ").
 
@@ -2083,12 +2219,13 @@ Declare_entry(mercury__builtin_compare_non_canonical_type_3_0);
 */
 
 void 
-ML_expand(Word* type_info, Word data_word, ML_Expand_Info *info)
+ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
 {
 	Code *compare_pred;
 	Word *base_type_info, *arg_type_info;
 	Word data_value, entry_value, base_type_layout_entry;
 	int entry_tag, data_tag; 
+	Word data_word;
 
 	base_type_info = MR_TYPEINFO_GET_BASE_TYPEINFO(type_info);
 
@@ -2096,6 +2233,7 @@ ML_expand(Word* type_info, Word data_word, ML_Expand_Info *info)
 	info->non_canonical_type = ( compare_pred ==
 		ENTRY(mercury__builtin_compare_non_canonical_type_3_0) );
 
+	data_word = *data_word_ptr;
 	data_tag = tag(data_word);
 	data_value = body(data_word, data_tag);
 	
@@ -2154,16 +2292,13 @@ ML_expand(Word* type_info, Word data_word, ML_Expand_Info *info)
 		if (TYPEINFO_IS_VARIABLE(entry_value)) {
 			arg_type_info = ML_create_type_info(type_info, 
 				(Word *) entry_value);
-			ML_expand(arg_type_info, data_word, info);
+			ML_expand(arg_type_info, data_word_ptr, info);
 		}
 			/* 
 			** is it a no_tag type?
 			*/
 		else if (MR_TYPELAYOUT_NO_TAG_VECTOR_IS_NO_TAG(entry_value)) {
-			Word new_arg_vector; 
-			incr_saved_hp(new_arg_vector, 1);
-			field(0, new_arg_vector, 0) = data_word;
-			ML_expand_simple(new_arg_vector, 
+			ML_expand_simple((Word) data_word_ptr,
 				(Word *) entry_value, type_info, info);
 		}
 			/* 
@@ -2173,7 +2308,7 @@ ML_expand(Word* type_info, Word data_word, ML_Expand_Info *info)
 			arg_type_info = ML_create_type_info(type_info, 
 				(Word *) MR_TYPELAYOUT_EQUIV_TYPE(
 					entry_value));
-			ML_expand(arg_type_info, data_word, info);
+			ML_expand(arg_type_info, data_word_ptr, info);
 		}
 
 		break;
@@ -2382,7 +2517,7 @@ ML_expand_builtin(Word data_value, Word entry_value, ML_Expand_Info *info)
 
 		ML_expand((Word *) 
 			((Word *) data_value)[UNIV_OFFSET_FOR_TYPEINFO], 
-			((Word *) data_value)[UNIV_OFFSET_FOR_DATA], info);
+			&((Word *) data_value)[UNIV_OFFSET_FOR_DATA], info);
 		break;
 
 	case TYPELAYOUT_PREDICATE_VALUE:
@@ -2535,13 +2670,69 @@ ML_create_type_info(Word *term_type_info, Word *arg_pseudo_type_info)
 	}
 }
 
+/*
+** ML_arg() is a subroutine used to implement arg/2, argument/2,
+** and also store__arg_ref/5 in store.m.
+** It takes a term (& its type), and an argument index,
+** and returns a
+*/
+bool
+ML_arg(Word term_type_info, Word *term_ptr, Word argument_index,
+	Word *arg_type_info, Word **argument_ptr)
+{
+	ML_Expand_Info info;
+	Word arg_pseudo_type_info;
+	bool success;
+
+	info.need_functor = FALSE;
+	info.need_args = TRUE;
+
+	ML_expand((Word *) term_type_info, term_ptr, &info);
+
+		/*
+		** Check for attempts to deconstruct a non-canonical type:
+		** such deconstructions must be cc_multi, and since
+		** arg/2 is det, we must treat violations of this
+		** as runtime errors.
+		** (There ought to be a cc_multi version of arg/2
+		** that allows this.)
+		*/
+	if (info.non_canonical_type) {
+		fatal_error(""called argument/2 for a type with a ""
+			""user-defined equality predicate"");
+	}
+
+		/* Check range */
+	success = (argument_index >= 0 && argument_index < info.arity);
+	if (success) {
+			/* figure out the type of the argument */
+		arg_pseudo_type_info = info.type_info_vector[argument_index];
+		if (TYPEINFO_IS_VARIABLE(arg_pseudo_type_info)) {
+			*arg_type_info =
+				((Word *) term_type_info)[arg_pseudo_type_info];
+		} else {
+			*arg_type_info = arg_pseudo_type_info;
+		}
+
+		*argument_ptr = &info.argument_vector[argument_index];
+	}
+
+	/*
+	** Free the allocated type_info_vector, since we just copied
+	** the stuff we want out of it.
+	*/
+	free(info.type_info_vector);
+
+	return success;
+}
+
 ").
 
 %-----------------------------------------------------------------------------%
 
 	% Code for functor, arg and deconstruct.
 
-:- pragma c_code(functor(Type::in, Functor::out, Arity::out),
+:- pragma c_code(functor(Term::in, Functor::out, Arity::out),
 		will_not_call_mercury, " 
 {
 	ML_Expand_Info info;
@@ -2551,7 +2742,7 @@ ML_create_type_info(Word *term_type_info, Word *arg_pseudo_type_info)
 
 	save_transient_registers();
 
-	ML_expand((Word *) TypeInfo_for_T, Type, &info);
+	ML_expand((Word *) TypeInfo_for_T, &Term, &info);
 
 	restore_transient_registers();
 
@@ -2574,63 +2765,78 @@ ML_create_type_info(Word *term_type_info, Word *arg_pseudo_type_info)
 	Arity = info.arity;
 }").
 
-:- pragma c_code(argument(Type::in, ArgumentIndex::in) = (Argument::out),
+/*
+** N.B. any modifications to arg/2 might also require similar
+** changes to store__arg_ref in store.m.
+*/
+
+:- pragma c_code(arg(Term::in, ArgumentIndex::in) = (Argument::out),
 		will_not_call_mercury, " 
 {
-	ML_Expand_Info info;
-	Word arg_pseudo_type_info;
+	Word arg_type_info;
+	Word *argument_ptr;
 	bool success;
-
-	info.need_functor = FALSE;
-	info.need_args = TRUE;
+	int comparison_result;
 
 	save_transient_registers();
 
-	ML_expand((Word *) TypeInfo_for_T, Type, &info);
+	success = ML_arg(TypeInfo_for_T, &Term, ArgumentIndex, &arg_type_info,
+			&argument_ptr);
+
+	if (success) {
+		/* compare the actual type with the expected type */
+		comparison_result =
+			ML_compare_type_info(arg_type_info, TypeInfo_for_ArgT);
+		success = (comparison_result == COMPARE_EQUAL);
+
+		if (success) {
+			Argument = *argument_ptr;
+		}
+	}
 
 	restore_transient_registers();
 
-		/*
-		** Check for attempts to deconstruct a non-canonical type:
-		** such deconstructions must be cc_multi, and since
-		** argument/2 is det, we must treat violations of this
-		** as runtime errors.
-		** (There ought to be a cc_multi version of argument/2
-		** that allows this.)
-		*/
-	if (info.non_canonical_type) {
-		fatal_error(""called argument/2 for a type with a ""
-			""user-defined equality predicate"");
-	}
+	SUCCESS_INDICATOR = success;
+}").
 
-		/* Check range */
-	success = (ArgumentIndex >= 0 && ArgumentIndex < info.arity);
+:- pragma c_code(argument(Term::in, ArgumentIndex::in) = (ArgumentUniv::out),
+		will_not_call_mercury, " 
+{
+	Word arg_type_info;
+	Word *argument_ptr;
+	bool success;
+
+	save_transient_registers();
+
+	success = ML_arg(TypeInfo_for_T, &Term, ArgumentIndex, &arg_type_info,
+			&argument_ptr);
+
+	restore_transient_registers();
+
 	if (success) {
-
-			/* Allocate enough room for a univ */
-		incr_hp(Argument, 2);
-		arg_pseudo_type_info = info.type_info_vector[ArgumentIndex];
-		if (TYPEINFO_IS_VARIABLE(arg_pseudo_type_info)) {
-			field(0, Argument, UNIV_OFFSET_FOR_TYPEINFO) = 
-				((Word *) TypeInfo_for_T)[arg_pseudo_type_info];
-		}
-		else {
-			field(0, Argument, UNIV_OFFSET_FOR_TYPEINFO) = 
-				arg_pseudo_type_info;
-		}
-		field(0, Argument, UNIV_OFFSET_FOR_DATA) = 
-			info.argument_vector[ArgumentIndex];
+		/* Allocate enough room for a univ */
+		incr_hp(ArgumentUniv, 2);
+		field(0, ArgumentUniv, UNIV_OFFSET_FOR_TYPEINFO) =
+			arg_type_info;
+		field(0, ArgumentUniv, UNIV_OFFSET_FOR_DATA) = *argument_ptr;
 	}
-
-	/* Free the allocated type_info_vector, since we just copied
-	 * the argument we want onto the heap. 
-	 */
-
-	free(info.type_info_vector);
 
 	SUCCESS_INDICATOR = success;
 
 }").
+
+det_arg(Type, ArgumentIndex) = Argument :-
+	(
+		arg(Type, ArgumentIndex) = Argument0
+	->
+		Argument = Argument0
+	;
+		( argument(Type, ArgumentIndex) = _ArgumentUniv ->
+			error("det_arg: argument number out of range")
+		;
+			error("det_arg: argument had wrong type")
+		)
+	).
 
 det_argument(Type, ArgumentIndex) = Argument :-
 	(
@@ -2641,7 +2847,7 @@ det_argument(Type, ArgumentIndex) = Argument :-
 		error("det_argument: argument out of range")
 	).
 
-:- pragma c_code(deconstruct(Type::in, Functor::out, Arity::out, 
+:- pragma c_code(deconstruct(Term::in, Functor::out, Arity::out, 
 		Arguments::out), will_not_call_mercury, " 
 {
 	ML_Expand_Info info;
@@ -2654,7 +2860,7 @@ det_argument(Type, ArgumentIndex) = Argument :-
 
 	save_transient_registers();
 
-	ML_expand((Word *) TypeInfo_for_T, Type, &info);
+	ML_expand((Word *) TypeInfo_for_T, &Term, &info);
 	
 	restore_transient_registers();
 
@@ -2715,5 +2921,17 @@ det_argument(Type, ArgumentIndex) = Argument :-
 	free(info.type_info_vector);
 
 }").
+
+%-----------------------------------------------------------------------------%
+
+% This is a generalization of unsorted_aggregate which allows the
+% iteration to stop before all solutions have been found.
+% NOT YET IMPLEMENTED
+%  
+% :- pred do_while(pred(T), pred(T,T2,T2,bool), T2, T2).
+% :- mode do_while(pred(out) is multi, pred(in,in,out,out) is det, in, out) is
+% 	cc_multi.
+% :- mode do_while(pred(out) is nondet, pred(in,in,out,out) is det, in, out) is
+% 	cc_multi.
 
 %-----------------------------------------------------------------------------%

@@ -20,59 +20,65 @@
 
 :- type bag(T).
 
-	% create an empty bag
+	% Create an empty bag.
 :- pred bag__init(bag(T)).
 :- mode bag__init(out) is det.
 
-	% insert a particular value in a bag
+	% Insert a particular value in a bag.
 :- pred bag__insert(bag(T), T, bag(T)).
 :- mode bag__insert(in, in, out) is det.
 
-	% insert a list of values into a bag
+	% Insert a list of values into a bag.
 :- pred bag__insert_list(bag(T), list(T), bag(T)).
 :- mode bag__insert_list(in, in, out) is det.
 
-	% make a bag from a list
+	% Make a bag from a list.
 :- pred bag__from_list(list(T), bag(T)).
 :- mode bag__from_list(in, out) is det.
 
-	% given a bag, produce a sorted list with no duplicates 
-	% containing all the values in the bag
+	 % Given a bag, produce a sorted list containing all the values in
+	 % the bag.  Each value will appear in the list the same number of
+	 % times that it appears in the bag.
+:- pred bag__to_list(bag(T), list(T)).
+:- mode bag__to_list(in, out) is det.
+
+	% Given a bag, produce a sorted list with no duplicates 
+	% containing all the values in the bag.
 :- pred bag__to_list_without_duplicates(bag(T), list(T)).
 :- mode bag__to_list_without_duplicates(in, out) is det.
 
-	% remove one occurrence of a particular value from a bag
-	% fail if the item does not exist in the bag
+	% Remove one occurrence of a particular value from a bag.
+	% Fail if the item does not exist in the bag.
 :- pred bag__remove(bag(T), T, bag(T)).
 :- mode bag__remove(in, in, out) is semidet.
 
-	% remove one occurrence of a particular value from a bag
-	% abort if the item does not exist in the bag
+	% Remove one occurrence of a particular value from a bag.
+	% Abort if the item does not exist in the bag.
 :- pred bag__det_remove(bag(T), T, bag(T)).
 :- mode bag__det_remove(in, in, out) is det.
 
-	% delete one occurrence of a particular value from a bag
-	% if the key is not present, leave the map unchanged
+	% Delete one occurrence of a particular value from a bag.
+	% If the key is not present, leave the bag unchanged.
 :- pred bag__delete(bag(T), T, bag(T)).
 :- mode bag__delete(in, in, out) is det.
 
-	% remove all occurrences of a particular value from a bag
-	% fail if the item does not exist in the bag
+	% Remove all occurrences of a particular value from a bag.
+	% Fail if the item does not exist in the bag.
 :- pred bag__remove_all(bag(T), T, bag(T)).
 :- mode bag__remove_all(in, in, out) is semidet.
 
-	% delete all occurrences of a particular value from a bag
+	% Delete all occurrences of a particular value from a bag.
 :- pred bag__delete_all(bag(T), T, bag(T)).
 :- mode bag__delete_all(in, in, out) is det.
 
-	% check whether a bag contains a particular value
+	% Check whether a bag contains a particular value.
 :- pred bag__contains(bag(T), T).
 :- mode bag__contains(in, in) is semidet.
 
 	% bag__subtract(Bag0, SubBag, Bag)
 	% subtracts SubBag from Bag0 to produce Bag
-	% each element in SubBag is removed from Bag0 to produce Bag
-	% if an element exists in SubBag, but not in Bag, then that
+	% each element in SubBag is removed from Bag0 to produce Bag.
+	% If an element exists in SubBag, but not in Bag, then that
 	% element is not removed.
 	% e.g. bag__subtract({1, 1, 2, 2, 3 }, {1, 1, 2, 3, 3, 3}, {2}). 
 :- pred bag__subtract(bag(T), bag(T), bag(T)).
@@ -82,22 +88,22 @@
 	% e.g. {1, 1, 2, 2} U {2, 2, 3, 3} = {1, 1, 2, 2, 2, 2, 3, 3}
 	% If the two input bags are known to be unequal in size, then
 	% making the first bag the larger bag will usually be more
-	% efficient
+	% efficient.
 :- pred bag__union(bag(T), bag(T), bag(T)).
 :- mode bag__union(in, in, out) is det.
 
-	% The third bag is the intersection of the first 2 bags
-	% every element in the third bag exists in both of the first 2 bags
+	% The third bag is the intersection of the first 2 bags.  Every
+	% element in the third bag exists in both of the first 2 bags.
 	% e.g. bag__intersect({1, 2, 2, 3, 3}, {2, 2, 3, 4}, {2, 2, 3}).
 :- pred bag__intersect(bag(T), bag(T), bag(T)).
 :- mode bag__intersect(in, in, out) is det.
 
-	% fails if there is no intersection between the 2 bags
+	% Fails if there is no intersection between the 2 bags.
 	% bag__intersect(A, B) :- bag__intersect(A, B, C), not bag__is_empty(C).
 :- pred bag__intersect(bag(T), bag(T)).
 :- mode bag__intersect(in, in) is semidet.
 
-	% fails if the first bag is not a subbag of the second.
+	% Fails if the first bag is not a subbag of the second.
 	% bag__is_subbag(A, B). implies that every element in the bag A
 	% is also in the bag B.  If an element is in bag A multiple times, it
 	% must be in bag B at least as many times.
@@ -110,12 +116,12 @@
 :- pred bag__is_empty(bag(T)).
 :- mode bag__is_empty(in) is semidet.
 
-	% fails if the bag is empty
+	% Fails if the bag is empty.
 :- pred bag__remove_smallest(bag(T), T, bag(T)).
 :- mode bag__remove_smallest(in, out, out) is semidet.
 
-	% compares the two bags, and returns whether the first bag is a 
-	% subset (<), is equal (=), or is a superset (>) of the second
+	% Compares the two bags, and returns whether the first bag is a 
+	% subset (<), is equal (=), or is a superset (>) of the second.
 	% bag__subset_compare(<, {apple, orange}, {apple, apple, orange}).
 	% bag__subset_compare(=, {apple, orange}, {apple, orange}).
 	% bag__subset_compare(>, {apple, apple, orange}, {apple, orange}).
@@ -127,7 +133,7 @@
 %---------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module map, int, require.
+:- import_module map, int, require, assoc_list, std_util.
 
 :- type bag(T)		==	map(T, int).
 
@@ -160,6 +166,26 @@ bag__insert_list(Bag0, [Item|Items], Bag) :-
 bag__from_list(List, Bag) :-
 	bag__init(Bag0),
 	bag__insert_list(Bag0, List, Bag).
+
+bag__to_list_without_duplicates(Bag, List) :-
+	map__keys(Bag, List).
+
+bag__to_list(Bag, List) :-
+	map__to_assoc_list(Bag, AssocList),
+	bag__to_list_2(AssocList, List).
+
+:- pred bag__to_list_2(assoc_list(T, int), list(T)).
+:- mode bag__to_list_2(in, out) is det.
+bag__to_list_2([], []).
+bag__to_list_2([X - Int | Xs ], Out) :-
+	( Int =< 0 ->
+		bag__to_list_2(Xs, Out)
+	;
+		NewInt is Int - 1,
+		bag__to_list_2([X - NewInt | Xs], Out0),
+		Out = [X | Out0]
+	).
+		
 
 %---------------------------------------------------------------------------%
 
@@ -199,11 +225,6 @@ bag__delete_all(Bag0, Item, Bag) :-	% det
 
 bag__contains(Bag, Item) :-
 	map__contains(Bag, Item).
-
-%---------------------------------------------------------------------------%
-
-bag__to_list_without_duplicates(Bag, List) :-
-	map__keys(Bag, List).
 
 %---------------------------------------------------------------------------%
 

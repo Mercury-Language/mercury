@@ -428,8 +428,8 @@ By default the debugger only displays the top levels of terms;
 you can use the @samp{|} command to enter an interactive term browser.
 (Within the term browser, type @samp{h.} for help.)
 Also note that in the debugger, we use a version of @code{error/1}
-which fails rather than aborting after printing the "Software Error:" message.
-This makes debugging easier,
+which fails rather than aborting after printing the ``Software Error:''
+message.  This makes debugging easier,
 but will of course change the behaviour after an error occurs.
 
 @node Using SICStus
@@ -795,7 +795,7 @@ which contains a list of the @file{.o} files for that module.
 If you want, once you have built a library, you could then install
 (i.e. copy) the shared object library, the static object library,
 the interface files and the initialization file into a different directory,
-or into several different directories, for that matter -- though it
+or into several different directories, for that matter --- though it
 is probably easiest for the users of the library if you keep them
 in a single directory.
 Or alternatively, you could package them up into a @samp{tar}, @samp{shar}, or
@@ -1354,6 +1354,10 @@ When generating @file{.dep} files, generate Makefile
 fragments that use only the features of standard make;
 do not assume the availability of GNU Make extensions.
 This makes these files significantly larger.
+
+@item --generate-trace
+Include code to generate an execution trace in the
+C code output by the compiler.
 
 @item --generate-bytecode
 @c Output a bytecode version of the module
@@ -2005,7 +2009,7 @@ C intermediate code from our low-level data structure.
 
 @table @code
 @item --no-emit-c-loops
-Use only gotos -- don't emit C loop constructs.
+Use only gotos --- don't emit C loop constructs.
 
 @sp 1
 @item --use-macro-for-redo-fail

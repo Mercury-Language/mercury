@@ -60,19 +60,34 @@ typedef const Char *ConstString;
 */
 #define make_aligned_string(ptr, string) 				\
 	do { 								\
-	    Word make_aligned_string_tmp;				\
-	    char * make_aligned_string_ptr;				\
-									\
 	    if (tag((Word) (string)) != 0) { 				\
-	    	incr_hp_atomic(make_aligned_string_tmp, 		\
+		make_aligned_string_copy((ptr), (string));		\
+	    } else { 							\
+	    	(ptr) = (string);					\
+	    }								\
+	} while(0)
+
+/* void make_aligned_string_copy(ConstString &ptr, const char * string);
+**	Same as make_aligned_string(ptr, string), except that the string
+**	is guaranteed to be copied. This is useful for copying C strings
+**	onto the Mercury heap.
+**
+** BEWARE: this may modify `hp', so it must only be called from
+** places where `hp' is valid.  If calling it from inside a C function,
+** rather than inside Mercury code, you may need to call
+** save/restore_transient_regs().
+*/
+#define make_aligned_string_copy(ptr, string) 				\
+	do {								\
+		Word make_aligned_string_tmp;				\
+		char * make_aligned_string_ptr;				\
+									\
+	  	incr_hp_atomic(make_aligned_string_tmp,			\
 	    	    (strlen(string) + sizeof(Word)) / sizeof(Word));	\
 	    	make_aligned_string_ptr =				\
 		    (char *) make_aligned_string_tmp;			\
 	    	strcpy(make_aligned_string_ptr, (string));		\
 	    	(ptr) = make_aligned_string_ptr;			\
-	    } else { 							\
-	    	(ptr) = (string);					\
-	    }								\
 	} while(0)
 
 /*

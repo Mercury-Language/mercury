@@ -39,11 +39,9 @@
 						io__state, io__state).
 :- mode generate_code(in, out, out, di, uo) is det.
 
-:- pred generate_proc_code(proc_info, proc_id, pred_id, module_info, 
-	continuation_info, int, continuation_info, int, c_procedure, 
-	io__state, io__state).
-:- mode generate_proc_code(in, in, in, in, in, in, out, out, out,
-	di, uo) is det.
+:- pred generate_proc_code(proc_info, proc_id, pred_id, module_info, globals,
+	continuation_info, int, continuation_info, int, c_procedure).
+:- mode generate_proc_code(in, in, in, in, in, in, in, out, out, out) is det.
 
 		% This predicate generates code for a goal.
 
@@ -59,9 +57,9 @@
 
 :- implementation.
 
-:- import_module call_gen, unify_gen, ite_gen, switch_gen.
-:- import_module disj_gen, pragma_c_gen, globals, options, hlds_out.
-:- import_module code_aux, middle_rec, passes_aux.
+:- import_module call_gen, unify_gen, ite_gen, switch_gen, disj_gen.
+:- import_module pragma_c_gen, trace, globals, options, hlds_out.
+:- import_module code_aux, middle_rec, passes_aux, llds_out.
 :- import_module code_util, type_util, mode_util.
 :- import_module prog_data, instmap.
 :- import_module bool, char, int, string, list, term.
@@ -127,8 +125,10 @@ generate_pred_code(ModuleInfo0, ModuleInfo, PredId, PredInfo, ProcIds, Code) -->
 		% generate all the procedures for this predicate
 	{ module_info_get_continuation_info(ModuleInfo0, ContInfo0) },
 	{ module_info_get_cell_count(ModuleInfo0, CellCount0) },
-	generate_proc_list_code(ProcIds, PredId, PredInfo, ModuleInfo0,
-		ContInfo0, ContInfo, CellCount0, CellCount, [], Code),
+	globals__io_get_globals(Globals),
+	{ generate_proc_list_code(ProcIds, PredId, PredInfo, ModuleInfo0,
+		Globals, ContInfo0, ContInfo, CellCount0, CellCount,
+		[], Code) },
 	{ module_info_set_cell_count(ModuleInfo0, CellCount, ModuleInfo1) },
 	{ module_info_set_continuation_info(ModuleInfo1, ContInfo, 
 		ModuleInfo) }.
@@ -137,76 +137,95 @@ generate_pred_code(ModuleInfo0, ModuleInfo, PredId, PredInfo, ProcIds, Code) -->
 % code (deterministic, semideterministic, or nondeterministic).
 
 :- pred generate_proc_list_code(list(proc_id), pred_id, pred_info, module_info,
-	continuation_info, continuation_info, int, int,
-	list(c_procedure), list(c_procedure), io__state, io__state).
-% :- mode generate_proc_list_code(in, in, in, in, di, uo, di, uo, di, uo)
+	globals, continuation_info, continuation_info, int, int,
+	list(c_procedure), list(c_procedure)).
+% :- mode generate_proc_list_code(in, in, in, in, in, di, uo, di, uo)
 %	is det.
-:- mode generate_proc_list_code(in, in, in, in, in, out, in, out, in, out,
-	di, uo) is det.
+:- mode generate_proc_list_code(in, in, in, in, in, in, out, in, out, in, out)
+	is det.
 
-generate_proc_list_code([], _PredId, _PredInfo, _ModuleInfo,
-		ContInfo, ContInfo, CellCount, CellCount, Procs, Procs) --> [].
+generate_proc_list_code([], _PredId, _PredInfo, _ModuleInfo, _Globals,
+		ContInfo, ContInfo, CellCount, CellCount, Procs, Procs).
 generate_proc_list_code([ProcId | ProcIds], PredId, PredInfo, ModuleInfo0,
-		ContInfo0, ContInfo, CellCount0, CellCount, Procs0, Procs) -->
-	{ pred_info_procedures(PredInfo, ProcInfos) },
+		Globals, ContInfo0, ContInfo, CellCount0, CellCount,
+		Procs0, Procs) :-
+	pred_info_procedures(PredInfo, ProcInfos),
 		% locate the proc_info structure for this mode of the predicate
-	{ map__lookup(ProcInfos, ProcId, ProcInfo) },
+	map__lookup(ProcInfos, ProcId, ProcInfo),
 		% find out if the proc is deterministic/etc
-	generate_proc_code(ProcInfo, ProcId, PredId, ModuleInfo0,
+	generate_proc_code(ProcInfo, ProcId, PredId, ModuleInfo0, Globals,
 		ContInfo0, CellCount0, ContInfo1, CellCount1, Proc),
-	{ Procs1 = [Proc | Procs0] },
 	generate_proc_list_code(ProcIds, PredId, PredInfo, ModuleInfo0,
-		ContInfo1, ContInfo, CellCount1, CellCount, Procs1, Procs).
+		Globals, ContInfo1, ContInfo, CellCount1, CellCount,
+		[Proc | Procs0], Procs).
 
-generate_proc_code(ProcInfo, ProcId, PredId, ModuleInfo,
-		ContInfo0, CellCount0, ContInfo, CellCount, Proc) -->
+%---------------------------------------------------------------------------%
+
+	% Values of this type hold information about stack frames that is
+	% generated when generating prologs and is used in generating epilogs
+	% and when massaging the code generated for the procedure.
+
+:- type frame_info	--->	frame(
+					int, 	    % number of slots in frame
+					maybe(int)  % slot number of succip
+						    % if succip is present
+				).
+
+%---------------------------------------------------------------------------%
+
+generate_proc_code(ProcInfo, ProcId, PredId, ModuleInfo, Globals,
+		ContInfo0, CellCount0, ContInfo, CellCount, Proc) :-
 		% find out if the proc is deterministic/etc
-	{ proc_info_interface_code_model(ProcInfo, CodeModel) },
+	proc_info_interface_code_model(ProcInfo, CodeModel),
 		% get the goal for this procedure
-	{ proc_info_goal(ProcInfo, Goal) },
+	proc_info_goal(ProcInfo, Goal),
 		% get the information about this procedure that we need.
-	{ proc_info_variables(ProcInfo, VarInfo) },
-	{ proc_info_liveness_info(ProcInfo, Liveness) },
-	{ proc_info_stack_slots(ProcInfo, StackSlots) },
-	{ proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InitialInst) },
-	{ Goal = _ - GoalInfo },
-	{ goal_info_get_follow_vars(GoalInfo, MaybeFollowVars) },
-	{
+	proc_info_variables(ProcInfo, VarInfo),
+	proc_info_liveness_info(ProcInfo, Liveness),
+	proc_info_stack_slots(ProcInfo, StackSlots),
+	proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InitialInst),
+	Goal = _ - GoalInfo,
+	goal_info_get_follow_vars(GoalInfo, MaybeFollowVars),
+	(
 		MaybeFollowVars = yes(FollowVars)
 	;
 		MaybeFollowVars = no,
 		map__init(FollowVars)
-	},
-	globals__io_get_gc_method(GC_Method),
-	{ GC_Method = accurate ->
+	),
+	globals__get_gc_method(Globals, GC_Method),
+	( GC_Method = accurate ->
 		SaveSuccip = yes
 	;
 		SaveSuccip = no
-	},
-	globals__io_get_globals(Globals),
+	),
 		% initialise the code_info structure 
-	{ code_info__init(VarInfo, Liveness, StackSlots, SaveSuccip, Globals,
+	code_info__init(VarInfo, Liveness, StackSlots, SaveSuccip, Globals,
 		PredId, ProcId, ProcInfo, InitialInst, FollowVars,
-		ModuleInfo, CellCount0, ContInfo0, CodeInfo0) },
+		ModuleInfo, CellCount0, ContInfo0, CodeInfo0),
 		% generate code for the procedure
-	{ generate_category_code(CodeModel, Goal, CodeTree, SUsed, CodeInfo0,
-		CodeInfo) },
+	globals__lookup_bool_option(Globals, generate_trace, Trace),
+	( Trace = yes ->
+		trace__setup(CodeInfo0, CodeInfo1)
+	;
+		CodeInfo1 = CodeInfo0
+	),
+	generate_category_code(CodeModel, Goal, CodeTree, FrameInfo,
+		CodeInfo1, CodeInfo),
 		% extract the new continuation_info and cell count
-	{ code_info__get_continuation_info(ContInfo1, CodeInfo, _CodeInfo1) },
-	{ code_info__get_cell_count(CellCount, CodeInfo, _CodeInfo2) },
-
+	code_info__get_continuation_info(ContInfo1, CodeInfo, _CodeInfo1),
+	code_info__get_cell_count(CellCount, CodeInfo, _CodeInfo2),
 
 		% turn the code tree into a list
-	{ tree__flatten(CodeTree, FragmentList) },
+	tree__flatten(CodeTree, FragmentList),
 		% now the code is a list of code fragments (== list(instr)),
 		% so we need to do a level of unwinding to get a flat list.
-	{ list__condense(FragmentList, Instructions0) },
-	{
-		SUsed = yes(SlotNum)
+	list__condense(FragmentList, Instructions0),
+	(
+		FrameInfo = frame(_TotalSlots, MaybeSuccipSlot),
+		MaybeSuccipSlot = yes(SuccipSlot)
 	->
-		% XXX Do we need to still do this?
 		code_gen__add_saved_succip(Instructions0,
-			SlotNum, Instructions),
+			SuccipSlot, Instructions),
 
 		( GC_Method = accurate ->
 			code_info__get_total_stackslot_count(StackSize,
@@ -215,154 +234,248 @@ generate_proc_code(ProcInfo, ProcId, PredId, ModuleInfo,
 				PredId, ProcId, ProcLabel),
 			continuation_info__add_proc_info(Instructions, 
 				ProcLabel, StackSize, CodeModel,
-				SlotNum, ContInfo1, ContInfo)
+				SuccipSlot, ContInfo1, ContInfo)
 		;
 			ContInfo = ContInfo1
 		)
 	;
 		ContInfo = ContInfo1,
 		Instructions = Instructions0
-	},
+	),
 
 		% get the name and arity of this predicate
-	{ predicate_name(ModuleInfo, PredId, Name) },
-	{ predicate_arity(ModuleInfo, PredId, Arity) },
+	predicate_name(ModuleInfo, PredId, Name),
+	predicate_arity(ModuleInfo, PredId, Arity),
 		% construct a c_procedure structure with all the information
-	{ proc_id_to_int(ProcId, LldsProcId) },
-	{ Proc = c_procedure(Name, Arity, LldsProcId, Instructions) }.
+	proc_id_to_int(ProcId, LldsProcId),
+	Proc = c_procedure(Name, Arity, LldsProcId, Instructions).
 
-:- pred generate_category_code(code_model, hlds_goal, code_tree, maybe(int),
+:- pred generate_category_code(code_model, hlds_goal, code_tree, frame_info,
 				code_info, code_info).
 :- mode generate_category_code(in, in, out, out, in, out) is det.
 
-generate_category_code(model_det, Goal, Instrs, Used) -->
+generate_category_code(model_det, Goal, Code, FrameInfo) -->
 		% generate the code for the body of the clause
 	(
 		code_info__get_globals(Globals),
 		{ globals__lookup_bool_option(Globals, middle_rec, yes) },
-		middle_rec__match_and_generate(Goal, MiddleRecInstrs)
+		middle_rec__match_and_generate(Goal, MiddleRecCode)
 	->
-		{ Instrs = MiddleRecInstrs },
-		{ Used = no }
+		{ Code = MiddleRecCode },
+		{ FrameInfo = frame(0, no) }
 	;
-		% Make a new failure cont (not model_non)
-		% This continuation is never actually used,
-		% but is a place holder.
+		% make a new failure cont (not model_non);
+		% this continuation is never actually used,
+		% but is a place holder
 		code_info__manufacture_failure_cont(no),
 
-		code_gen__generate_goal(model_det, Goal, Instr1),
+		code_gen__generate_goal(model_det, Goal, BodyCode),
 		code_info__get_instmap(Instmap),
 
-		% generate the prolog for the clause, which for deterministic
-		% procedures creates a label, increments the
-		% stack pointer to reserve space for local variables and
-		% the succip, and saves the succip.
-
-		code_gen__generate_det_prolog(Instr0, Used),
-
-		% generate a procedure epilog
-		% This needs information based on what variables are
-		% live at the end of the goal - that is, those that
-		% are output parameters which are known from goal_info,
-		% and decrement the stack pointer to free local variables,
-		% and restore the succip.
-
+		code_gen__generate_prolog(model_det, FrameInfo, PrologCode),
 		(
 			{ instmap__is_reachable(Instmap) }
 		->
-			code_gen__generate_det_epilog(Instr2)
+			code_gen__generate_epilog(model_det,
+				FrameInfo, EpilogCode)
 		;
-			{ Instr2 = empty }
+			{ EpilogCode = empty }
 		),
 
-		% combine the prolog, body and epilog
-		{ Instrs = tree(Instr0, tree(Instr1, Instr2)) }
+		{ Code = tree(PrologCode, tree(BodyCode, EpilogCode)) }
 	).
 
-generate_category_code(model_semi, Goal, Instrs, Used) -->
-		% Make a new failure cont (not model_non)
+generate_category_code(model_semi, Goal, Code, FrameInfo) -->
+		% make a new failure cont (not model_non)
 	code_info__manufacture_failure_cont(no),
 
 		% generate the code for the body of the clause
-	code_gen__generate_goal(model_semi, Goal, Instr1),
-	code_gen__generate_semi_prolog(Instr0, Used),
-	code_gen__generate_semi_epilog(Instr2),
+	code_gen__generate_goal(model_semi, Goal, BodyCode),
+	code_gen__generate_prolog(model_semi, FrameInfo, PrologCode),
+	code_gen__generate_epilog(model_semi, FrameInfo, EpilogCode),
+	{ Code = tree(PrologCode, tree(BodyCode, EpilogCode)) }.
 
-		% combine the prolog, body and epilog
-	{ Instrs = tree(Instr0, tree(Instr1, Instr2)) }.
-
-generate_category_code(model_non, Goal, Instrs, Used) -->
-		% Make a failure continuation, we lie and
-		% say that it is nondet, and then unset it
-		% so that it points to do_fail
+generate_category_code(model_non, Goal, Code, FrameInfo) -->
+		% make a new failure cont (yes, it is model_non)
 	code_info__manufacture_failure_cont(yes),
+		% we must arrange the tracing of failure out of this proc
+	code_info__get_maybe_trace_info(MaybeTraceInfo),
+	( { MaybeTraceInfo = yes(TraceInfo) } ->
+		{ set__init(ResumeVars) },
+		code_info__make_known_failure_cont(ResumeVars, stack_only, yes,
+			SetupCode),
 
-		% generate the code for the body of the clause
-	code_gen__generate_goal(model_non, Goal, Instr1),
-	code_gen__generate_non_prolog(Instr0, Used),
-	code_gen__generate_non_epilog(Instr2),
+			% generate the code for the body of the clause
+		code_info__push_resume_point_vars(ResumeVars),
+		code_gen__generate_goal(model_non, Goal, BodyCode),
+		code_gen__generate_prolog(model_non, FrameInfo, PrologCode),
+		code_gen__generate_epilog(model_non, FrameInfo, EpilogCode),
+		code_info__pop_resume_point_vars,
+		{ MainCode = tree(PrologCode, tree(BodyCode, EpilogCode)) },
 
-		% combine the prolog, body and epilog
-	{ Instrs = tree(Instr0, tree(Instr1, Instr2)) }.
+		code_info__restore_failure_cont(RestoreCode),
+		trace__generate_event_code(fail, TraceInfo, TraceEventCode),
+		code_info__generate_failure(FailCode),
+		{ Code =
+			tree(MainCode,
+			tree(SetupCode,
+			tree(RestoreCode,
+			tree(TraceEventCode,
+			     FailCode))))
+		}
+	;
+			% generate the code for the body of the clause
+		code_gen__generate_goal(model_non, Goal, BodyCode),
+		code_gen__generate_prolog(model_non, FrameInfo, PrologCode),
+		code_gen__generate_epilog(model_non, FrameInfo, EpilogCode),
+		{ Code = tree(PrologCode, tree(BodyCode, EpilogCode)) }
+	).
 
 %---------------------------------------------------------------------------%
 
-:- pred code_gen__generate_det_prolog(code_tree, maybe(int),
-	code_info, code_info).
-:- mode code_gen__generate_det_prolog(out, out, in, out) is det.
+	% Generate the prolog for a procedure.
+	%
+	% The prolog will contain
+	%
+	%	a comment to mark prolog start
+	%	a comment explaining the stack layout
+	%	the procedure entry label
+	%	code to allocate a stack frame
+	%	code to fill in some special slots in the stack frame
+	%	a comment to mark prolog end
+	%
+	% At the moment the only special slot is the succip slot.
+	%
+	% Not all frames will have all these components. For example, the code
+	% to allocate a stack frame will be missing if the procedure doesn't
+	% need a stack frame, and if the procedure is nondet, then the code
+	% to fill in the succip slot is subsumed by the mkframe.
 
-code_gen__generate_det_prolog(EntryCode, SUsed) -->
+:- pred code_gen__generate_prolog(code_model, frame_info, code_tree, 
+	code_info, code_info).
+:- mode code_gen__generate_prolog(in, out, out, in, out) is det.
+
+code_gen__generate_prolog(CodeModel, FrameInfo, PrologCode) -->
 	code_info__get_stack_slots(StackSlots),
 	code_info__get_varset(VarSet),
 	{ code_aux__explain_stack_slots(StackSlots, VarSet, SlotsComment) },
-	code_info__get_total_stackslot_count(NS0),
+	{ StartComment = node([
+		comment("Start of procedure prologue") - "",
+		comment(SlotsComment) - ""
+	]) },
+	code_info__get_total_stackslot_count(MainSlots),
 	code_info__get_pred_id(PredId),
 	code_info__get_proc_id(ProcId),
-	code_info__get_succip_used(Used),
 	code_info__get_module_info(ModuleInfo),
 	{ code_util__make_local_entry_label(ModuleInfo, PredId, ProcId, no,
 		Entry) },
-	{ CodeA = node([
-		comment(SlotsComment) - "",
+	{ LabelCode = node([
 		label(Entry) - "Procedure entry point"
 	]) },
+	code_info__get_succip_used(Used),
 	(
-		{ Used = yes }
+		% Do we need to save the succip across calls?
+		{ Used = yes },
+		% Do we need to use a general slot for storing succip?
+		{ CodeModel \= model_non }
 	->
-		{ NS is NS0 + 1 },
-		{ CodeC = node([
-			assign(stackvar(NS), lval(succip)) -
-					"save the success ip"
+		{ SuccipSlot is MainSlots + 1 },
+		{ SaveSuccipCode = node([
+			assign(stackvar(SuccipSlot), lval(succip)) -
+				"Save the success ip"
 		]) },
-		{ SUsed = yes(NS) }
+		{ TotalSlots = SuccipSlot },
+		{ MaybeSuccipSlot = yes(SuccipSlot) }
 	;
-		{ NS = NS0 },
-		{ CodeC = empty },
-		{ SUsed = no }
+		{ SaveSuccipCode = empty },
+		{ TotalSlots = MainSlots },
+		{ MaybeSuccipSlot = no }
 	),
+	{ FrameInfo = frame(TotalSlots, MaybeSuccipSlot) },
+	code_info__get_maybe_trace_info(MaybeTraceInfo),
+	( { MaybeTraceInfo = yes(TraceInfo) } ->
+		{ trace__generate_slot_fill_code(TraceInfo, TraceFillCode) },
+		trace__generate_event_code(call, TraceInfo, TraceEventCode),
+		{ TraceCode = tree(TraceFillCode, TraceEventCode) }
+	;
+		{ TraceCode = empty }
+	),
+	{ predicate_module(ModuleInfo, PredId, ModuleName) },
+	{ predicate_name(ModuleInfo, PredId, PredName) },
+	{ predicate_arity(ModuleInfo, PredId, Arity) },
+	{ string__int_to_string(Arity, ArityStr) },
+	{ string__append_list([ModuleName, ":", PredName, "/", ArityStr],
+		PushMsg) },
 	(
-		{ NS = 0 }
+		{ CodeModel = model_non }
 	->
-		{ CodeB = CodeA }
+		{ AllocCode = node([
+			mkframe(PushMsg, TotalSlots, do_fail) -
+				"Allocate stack frame"
+		]) }
 	;
-		{ predicate_module(ModuleInfo, PredId, ModuleName) },
-		{ predicate_name(ModuleInfo, PredId, PredName) },
-		{ string__append_list([ModuleName, ":", PredName], PushMsg) },
-		{ CodeB = tree(
-			CodeA,
-			node([incr_sp(NS, PushMsg) - "Allocate stack frame"])
-		) }
+		{ TotalSlots > 0 }
+	->
+		{ AllocCode = node([
+			incr_sp(TotalSlots, PushMsg) -
+				"Allocate stack frame"
+		]) }
+	;
+		{ AllocCode = empty }
 	),
-	{ PStart = node([comment("Start of procedure prologue") - ""]) },
-	{ PEnd = node([comment("End of procedure prologue") - ""]) },
-	{ EntryCode = tree(tree(PStart, CodeB), tree(CodeC, PEnd)) }.
+	{ EndComment = node([
+		comment("End of procedure prologue") - ""
+	]) },
+	{ PrologCode =
+		tree(StartComment,
+		tree(LabelCode,
+		tree(AllocCode,
+		tree(SaveSuccipCode,
+		tree(TraceCode,
+		     EndComment)))))
+	}.
 
 %---------------------------------------------------------------------------%
 
-:- pred code_gen__generate_det_epilog(code_tree, code_info, code_info).
-:- mode code_gen__generate_det_epilog(out, in, out) is det.
+	% Generate the epilog for a procedure.
+	%
+	% The epilog will contain
+	%
+	%	a comment to mark epilog start
+	%	code to place the output arguments where their caller expects
+	%	the success continuation
+	%	the faulure continuation (for semidet procedures only)
+	%	a comment to mark epilog end.
+	%
+	% The success continuation will contain
+	%
+	%	code to restore registers from some special slots
+	%	code to deallocate the stack frame
+	%	code to set r1 to TRUE (for semidet procedures only)
+	%	a jump back to the caller, including livevals information
+	%
+	% The failure continuation will contain
+	%
+	%	code that sets up the failure resumption point
+	%	code to restore registers from some special slots
+	%	code to deallocate the stack frame
+	%	code to set r1 to FALSE
+	%	a jump back to the caller, including livevals information
+	%
+	% At the moment the only special slot is the succip slot.
+	%
+	% Not all frames will have all these components. For example, for
+	% nondet procedures we don't deallocate the stack frame before
+	% success.
 
-code_gen__generate_det_epilog(ExitCode) -->
+:- pred code_gen__generate_epilog(code_model, frame_info, code_tree,
+	code_info, code_info).
+:- mode code_gen__generate_epilog(in, in, out, in, out) is det.
+
+code_gen__generate_epilog(CodeModel, FrameInfo, EpilogCode) -->
+	{ StartComment = node([
+		comment("Start of procedure epilogue") - ""
+	]) },
 	code_info__get_instmap(Instmap),
 	code_info__get_arginfo(ArgModes),
 	code_info__get_headvars(HeadVars),
@@ -370,236 +483,105 @@ code_gen__generate_det_epilog(ExitCode) -->
 	(
 		{ instmap__is_unreachable(Instmap) }
 	->
-		{ CodeA = empty }
+		{ FlushCode = empty }
 	;
-		code_info__setup_call(Args, callee, CodeA)
+		code_info__setup_call(Args, callee, FlushCode)
 	),
-	code_info__get_succip_used(Used),
-	code_info__get_total_stackslot_count(NS0),
+	{ FrameInfo = frame(TotalSlots, MaybeSuccipSlot) },
 	(
-		{ Used = yes }
+		{ MaybeSuccipSlot = yes(SuccipSlot) }
 	->
-		{ NS is NS0 + 1 },
-		{ CodeC = node([
-			assign(succip, lval(stackvar(NS))) -
-					"restore the success ip"
+		{ RestoreSuccipCode = node([
+			assign(succip, lval(stackvar(SuccipSlot))) -
+				"restore the success ip"
 		]) }
 	;
-		{ NS = NS0 },
-		{ CodeC = empty }
+		{ RestoreSuccipCode = empty }
 	),
-	{ CodeB1 = node([ goto(succip) - "Return from procedure call"]) },
 	(
-		{ NS = 0 }
+		{ TotalSlots = 0 ; CodeModel = model_non }
 	->
-		{ CodeB0 = empty }
+		{ DeallocCode = empty }
 	;
-		{ CodeB0 = node([
-			decr_sp(NS) - "Deallocate stack frame"
+		{ DeallocCode = node([
+			decr_sp(TotalSlots) - "Deallocate stack frame"
 		]) }
 	),
+	{ RestoreDeallocCode = tree(RestoreSuccipCode, DeallocCode ) },
 	{ code_gen__output_args(Args, LiveArgs) },
-	{ LiveValCode = node([
-		livevals(LiveArgs) - ""
-	]) },
-	{ CodeB = tree(CodeB0, tree(LiveValCode, CodeB1)) },
-	{ EStart = node([comment("Start of procedure epilogue") - ""]) },
-	{ EEnd = node([comment("End of procedure epilogue") - ""]) },
-	{ ExitCode = tree(tree(EStart, CodeA),
-					tree(CodeC, tree(EEnd, CodeB))) }.
-
-%---------------------------------------------------------------------------%
-
-:- pred code_gen__generate_semi_prolog(code_tree, maybe(int),
-	code_info, code_info).
-:- mode code_gen__generate_semi_prolog(out, out, in, out) is det.
-
-code_gen__generate_semi_prolog(EntryCode, SUsed) -->
-	code_info__get_stack_slots(StackSlots),
-	code_info__get_varset(VarSet),
-	{ code_aux__explain_stack_slots(StackSlots, VarSet, SlotsComment) },
-	code_info__get_pred_id(PredId),
-	code_info__get_proc_id(ProcId),
-	code_info__get_succip_used(Used),
-	code_info__get_total_stackslot_count(NS0),
-	code_info__get_module_info(ModuleInfo),
-	{ code_util__make_local_entry_label(ModuleInfo, PredId, ProcId, no,
-		Entry) },
-	{ CodeA = node([
-		comment(SlotsComment) - "",
-		label(Entry) - "Procedure entry point"
-	]) },
-	(
-		{ Used = yes }
-	->
-		{ NS is NS0 + 1 },
-		{ CodeC = node([
-			assign(stackvar(NS), lval(succip)) -
-					"save the success ip"
-		]) },
-		{ SUsed = yes(NS) }
-	;
-		{ NS = NS0 },
-		{ CodeC = empty },
-		{ SUsed = no }
-	),
-	(
-		{ NS = 0 }
-	->
-		{ CodeB = CodeA }
-	;
-		{ predicate_module(ModuleInfo, PredId, ModuleName) },
-		{ predicate_name(ModuleInfo, PredId, PredName) },
-		{ string__append_list([ModuleName, ":", PredName], PushMsg) },
-		{ CodeB = tree(
-			CodeA,
-			node([incr_sp(NS, PushMsg) - "Allocate stack frame"])
-		) }
-	),
-	{ PStart = node([comment("Start of procedure prologue") - ""]) },
-	{ PEnd = node([comment("End of procedure prologue") - ""]) },
-	{ EntryCode = tree(tree(PStart, CodeB), tree(CodeC, PEnd)) }.
-
-%---------------------------------------------------------------------------%
-
-:- pred code_gen__generate_semi_epilog(code_tree, code_info, code_info).
-:- mode code_gen__generate_semi_epilog(out, in, out) is det.
-
-code_gen__generate_semi_epilog(Instr) -->
-	code_info__get_instmap(Instmap),
-	code_info__get_arginfo(ArgModes),
-	code_info__get_headvars(HeadVars),
-	{assoc_list__from_corresponding_lists(HeadVars, ArgModes, Args) },
-	(
-		{ instmap__is_unreachable(Instmap) }
-	->
-		{ CodeA = empty }
-	;
-		code_info__setup_call(Args, callee, CodeA)
-	),
-	code_info__restore_failure_cont(FailureCont),
-	code_info__get_succip_used(Used),
-	code_info__get_total_stackslot_count(NS0),
-	{ code_gen__output_args(Args, LiveArgs0) },
-	{ set__insert(LiveArgs0, reg(r, 1), LiveArgs) },
-	{ SLiveValCode = node([
-		livevals(LiveArgs) - ""
-	]) },
-	{ set__singleton_set(LiveArg, reg(r, 1)) },
-	{ FLiveValCode = node([
-		livevals(LiveArg) - ""
-	]) },
-	(
-		{ Used = yes }
-	->
-		{ NS is NS0 + 1 },
-		{ CodeC = node([
-			assign(succip, lval(stackvar(NS))) -
-					"restore the success ip"
-		]) }
-	;
-		{ NS = NS0 },
-		{ CodeC = empty }
-	),
-	(
-		{ NS = 0 }
-	->
-		{ UnLink = CodeC }
-	;
-		{ UnLink = tree(
-			CodeC,
-			node([
-				decr_sp(NS) - "Deallocate stack frame"
-			])
-		) }
-	),
-	{ Success = tree(
-		UnLink,
-		node([ assign(reg(r, 1), const(true)) - "Succeed" ])
-	) },
-	{ Failure = tree(
-		UnLink,
-		node([ assign(reg(r, 1), const(false)) - "Fail" ])
-	) },
-	{ ExitCode = tree(
-		tree(
-			tree(Success, SLiveValCode),
-			node([ goto(succip) - "Return from procedure call" ])
-		),
-		tree(
-			FailureCont,
-			tree(
-				tree(Failure, FLiveValCode),
-				node([ goto(succip) -
-					"Return from procedure call" ])
-			)
+	code_info__get_maybe_trace_info(MaybeTraceInfo),
+	( { MaybeTraceInfo = yes(TraceInfo) } ->
+		trace__generate_event_code(exit, TraceInfo, SuccessTraceCode),
+		( { CodeModel = model_semi } ->
+			trace__generate_event_code(fail, TraceInfo,
+				FailureTraceCode)
+		;
+			{ FailureTraceCode = empty }
 		)
-	) },
-	{ EStart = node([comment("Start of procedure epilogue") - ""]) },
-	{ EEnd = node([comment("End of procedure epilogue") - ""]) },
-	{ Instr = tree(tree(EStart, CodeA), tree(ExitCode, EEnd)) }.
-
-%---------------------------------------------------------------------------%
-
-:- pred code_gen__generate_non_prolog(code_tree, maybe(int),
-	code_info, code_info).
-:- mode code_gen__generate_non_prolog(out, out, in, out) is det.
-
-code_gen__generate_non_prolog(EntryCode, no) -->
-	code_info__get_stack_slots(StackSlots),
-	code_info__get_varset(VarSet),
-	{ code_aux__explain_stack_slots(StackSlots, VarSet, SlotsComment) },
-	code_info__get_pred_id(PredId),
-	code_info__get_proc_id(ProcId),
-	code_info__get_total_stackslot_count(NS),
-	code_info__get_module_info(ModuleInfo),
-	{ code_util__make_local_entry_label(ModuleInfo, PredId, ProcId, no,
-		Entry) },
-	{ CodeA = node([
-		comment(SlotsComment) - "",
-		label(Entry) - "Procedure entry point"
-	]) },
-		% The `name' argument to mkframe() is just for
-		% debugging purposes.  We construct it as "predname/arity".
-	{ predicate_name(ModuleInfo, PredId, PredName) },
-	{ predicate_arity(ModuleInfo, PredId, PredArity) },
-	{ string__int_to_string(PredArity, PredArityString) },
-	{ string__append(PredName, "/", Tmp) },
-	{ string__append(Tmp, PredArityString, Name) },
-	{ CodeB = node([
-		mkframe(Name, NS, do_fail) - "Nondet stackframe"
-	]) },
-	{ PStart = node([comment("Start of procedure prologue") - ""]) },
-	{ PEnd = node([comment("End of procedure prologue") - ""]) },
-	{ EntryCode = tree(tree(PStart, CodeA), tree(CodeB, PEnd)) }.
-
-%---------------------------------------------------------------------------%
-
-:- pred code_gen__generate_non_epilog(code_tree, code_info, code_info).
-:- mode code_gen__generate_non_epilog(out, in, out) is det.
-
-code_gen__generate_non_epilog(Instr) -->
-	code_info__get_instmap(Instmap),
-	code_info__get_arginfo(ArgModes),
-	code_info__get_headvars(HeadVars),
-	{assoc_list__from_corresponding_lists(HeadVars, ArgModes, Args) },
-	(
-		{ instmap__is_unreachable(Instmap) }
-	->
-		{ CodeA = empty }
 	;
-		code_info__setup_call(Args, callee, CodeA)
+		{ SuccessTraceCode = empty },
+		{ FailureTraceCode = empty }
 	),
-	{ code_gen__output_args(Args, LiveArgs) },
-	{ LiveValCode = node([
-		livevals(LiveArgs) - ""
+	(
+		{ CodeModel = model_det },
+		{ SuccessCode = node([
+			livevals(LiveArgs) - "",
+			goto(succip) - "Return from procedure call"
+		]) },
+		{ AllSuccessCode =
+			tree(SuccessTraceCode,
+			tree(RestoreDeallocCode,
+			     SuccessCode))
+		},
+		{ AllFailureCode = empty }
+	;
+		{ CodeModel = model_semi },
+		code_info__restore_failure_cont(ResumeCode),
+		{ set__insert(LiveArgs, reg(r, 1), SuccessLiveRegs) },
+		{ SuccessCode = node([
+			assign(reg(r, 1), const(true)) - "Succeed",
+			livevals(SuccessLiveRegs) - "",
+			goto(succip) - "Return from procedure call"
+		]) },
+		{ AllSuccessCode =
+			tree(SuccessTraceCode,
+			tree(RestoreDeallocCode,
+			     SuccessCode))
+		},
+		{ set__singleton_set(FailureLiveRegs, reg(r, 1)) },
+		{ FailureCode = node([
+			assign(reg(r, 1), const(false)) - "Fail",
+			livevals(FailureLiveRegs) - "",
+			goto(succip) - "Return from procedure call"
+		]) },
+		{ AllFailureCode =
+			tree(ResumeCode,
+			tree(FailureTraceCode,
+			tree(RestoreDeallocCode,
+			     FailureCode)))
+		}
+	;
+		{ CodeModel = model_non },
+		{ SuccessCode = node([
+			livevals(LiveArgs) - "",
+			goto(do_succeed(no)) - "Return from procedure call"
+		]) },
+		{ AllSuccessCode =
+			tree(SuccessTraceCode,
+			     SuccessCode)
+		},
+		{ AllFailureCode = empty }
+	),
+	{ EndComment = node([
+		comment("End of procedure epilogue") - ""
 	]) },
-	{ ExitCode = tree(LiveValCode, node([
-		goto(do_succeed(no)) - "Succeed"
-	])) },
-	{ EStart = node([comment("Start of procedure epilogue") - ""]) },
-	{ EEnd = node([comment("End of procedure epilogue") - ""]) },
-	{ Instr = tree(tree(EStart, CodeA), tree(ExitCode, EEnd)) }.
+	{ EpilogCode =
+		tree(StartComment,
+		tree(FlushCode,
+		tree(AllSuccessCode,
+		tree(AllFailureCode,
+		     EndComment))))
+	}.
 
 %---------------------------------------------------------------------------%
 
@@ -721,8 +703,8 @@ code_gen__generate_det_goal_2(call(PredId, ProcId, Args, BuiltinState, _, _),
 		{ BuiltinState = not_builtin }
 	->
 		code_info__succip_is_used,
-		call_gen__generate_det_call(PredId, ProcId, Args, GoalInfo,
-			Instr)
+		call_gen__generate_call(model_det, PredId, ProcId, Args,
+			GoalInfo, Instr)
 	;
 		call_gen__generate_det_builtin(PredId, ProcId, Args, Instr)
 	).
@@ -808,8 +790,8 @@ code_gen__generate_semi_goal_2(call(PredId, ProcId, Args, BuiltinState, _, _),
 		{ BuiltinState = not_builtin }
 	->
 		code_info__succip_is_used,
-		call_gen__generate_semidet_call(PredId, ProcId, Args, GoalInfo,
-			Code)
+		call_gen__generate_call(model_semi, PredId, ProcId, Args,
+			GoalInfo, Code)
 	;
 		call_gen__generate_semidet_builtin(PredId, ProcId, Args, Code)
 	).
@@ -954,6 +936,9 @@ code_gen__generate_negation_general(CodeModel, Goal, ResumeVars, ResumeLocs,
 		% to have no output vars
 	code_gen__generate_goal(model_semi, Goal, GoalCode),
 
+		% XXX we should check for delayed goals
+		% (e.g. delayed non-linear constraints) here
+
 	( { CodeModel = model_det } ->
 		{ DiscardTicketCode = empty },
 		{ FailCode = empty }
@@ -1009,8 +994,8 @@ code_gen__generate_non_goal_2(call(PredId, ProcId, Args, BuiltinState, _, _),
 		{ BuiltinState = not_builtin }
 	->
 		code_info__succip_is_used,
-		call_gen__generate_nondet_call(PredId, ProcId, Args, GoalInfo,
-			Code)
+		call_gen__generate_call(model_non, PredId, ProcId, Args,
+			GoalInfo, Code)
 	;
 		call_gen__generate_nondet_builtin(PredId, ProcId, Args, Code)
 	).

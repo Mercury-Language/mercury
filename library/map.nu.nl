@@ -27,3 +27,17 @@ map__lookup(Map, K, V) :-
 map__lookup_error(_Map, _K, _V) :-
 	error("map__lookup: key not found").
 
+map__det_insert(Map0, K, V, Map) :-
+	( tree234__insert(Map0, K, V, Map1) ->
+		Map = Map1
+	;
+		map__det_insert_error(Map0, K, V)
+	).
+
+% map__det_insert_error is a separate predicate because it is handy
+% to be able to set a spy point on it...
+map__det_insert_error(_Map, _K, _V) :-
+	error("map__det_insert: key not found").
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%

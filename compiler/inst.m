@@ -97,13 +97,6 @@
 :- pred inst_key_table_dependent_keys(inst_key_table, inst_key, list(inst_key)).
 :- mode inst_key_table_dependent_keys(in, in, out) is det.
 
-:- pred inst_key_table_kill_keys(inst_key_table, set(inst_key),
-	inst_key_table).
-:- mode inst_key_table_kill_keys(in, in, out) is det.
-
-:- pred inst_key_table_key_is_dead(inst_key_table, inst_key).
-:- mode inst_key_table_key_is_dead(in, in) is semidet.
-
 :- pred inst_key_table_added_keys(inst_key_table, inst_key_table,
 		set(inst_key)).
 :- mode inst_key_table_added_keys(in, in, out) is det.
@@ -139,98 +132,44 @@
 	inst_key_table(
 		inst_key,
 		map(inst_key, inst),
-		multi_map(inst_key, inst_key),
-		set(inst_key)		% inst_keys which are dead
+		multi_map(inst_key, inst_key)
 	).
 
 inst_key_table_init(InstKeyTable) :-
 	map__init(FwdMap),
 	multi_map__init(BwdMap),
-	set__init(DeadKeys),
-	InstKeyTable = inst_key_table(0, FwdMap, BwdMap, DeadKeys).
+	InstKeyTable = inst_key_table(0, FwdMap, BwdMap).
 
-inst_key_table_lookup(inst_key_table(_NextKey, FwdMap, _BwdMap, DeadKeys),
+inst_key_table_lookup(inst_key_table(_NextKey, FwdMap, _BwdMap),
 		Key, Inst) :-
-	( set__member(Key, DeadKeys) ->
-		error("inst_key_table_lookup: dead key")
-	;
-		map__lookup(FwdMap, Key, Inst)
-	).
+	map__lookup(FwdMap, Key, Inst).
 
 inst_key_table_add(InstKeyTable0, Inst, ThisKey, InstKeyTable) :-
-	InstKeyTable0 = inst_key_table(ThisKey, FwdMap0, BwdMap0, DeadKeys),
+	InstKeyTable0 = inst_key_table(ThisKey, FwdMap0, BwdMap0),
 	NextKey is ThisKey + 1,
 	map__det_insert(FwdMap0, ThisKey, Inst, FwdMap),
 	inst_keys_in_inst(Inst, [], DependentKeys0),
 	list__sort_and_remove_dups(DependentKeys0, DependentKeys),
 	add_backward_dependencies(DependentKeys, ThisKey, BwdMap0, BwdMap),
-	InstKeyTable = inst_key_table(NextKey, FwdMap, BwdMap, DeadKeys),
+	InstKeyTable = inst_key_table(NextKey, FwdMap, BwdMap),
 	( inst_key_table_sanity_check(InstKeyTable) ->
 		true
 	;
 		error("inst_key_table_add: Failed sanity check")
 	).
 
-inst_key_table_dependent_keys(inst_key_table(_NextKey, _FwdMap, BwdMap,
-		DeadKeys), Key, DependentKeys) :-
+inst_key_table_dependent_keys(inst_key_table(_NextKey, _FwdMap, BwdMap),
+		Key, DependentKeys) :-
 	( multi_map__search(BwdMap, Key, DependentKeys0) ->
-		set__sorted_list_to_set(DependentKeys0, DependentKeys1),
-		set__difference(DependentKeys1, DeadKeys, DependentKeys2),
-		set__to_sorted_list(DependentKeys2, DependentKeys)
+		DependentKeys = DependentKeys0
 	;
 		DependentKeys = []
 	).
 
 %-----------------------------------------------------------------------------%
 
-inst_key_table_kill_keys(InstKeyTable0, NewDeadSet, InstKeyTable) :-
-	InstKeyTable0 = inst_key_table(NextKey, FwdMap0, BwdMap0, DeadKeys0),
-	set__to_sorted_list(NewDeadSet, NewDeadKeys),
-	inst_key_table_kill_keys_2(BwdMap0, NewDeadKeys, [], BwdKeys),
-	list__foldl(lambda([Key :: in, Map0 :: in, Map :: out] is det,
-		map__delete(Map0, Key, Map)),
-		NewDeadKeys, FwdMap0, FwdMap),
-	list__foldl(lambda([Key :: in, Map0 :: in, Map :: out] is det,
-		delete_dead_keys_from_bwd_map(Map0, Key, NewDeadSet, Map)),
-		BwdKeys, BwdMap0, BwdMap),
-	set__union(DeadKeys0, NewDeadSet, DeadKeys),
-	InstKeyTable = inst_key_table(NextKey, FwdMap, BwdMap, DeadKeys).
-
-:- pred inst_key_table_kill_keys_2(multi_map(inst_key, inst_key),
-		list(inst_key), list(inst_key), list(inst_key)).
-:- mode inst_key_table_kill_keys_2(in, in, in, out) is det.
-
-inst_key_table_kill_keys_2(_, [], BwdKeys, BwdKeys).
-inst_key_table_kill_keys_2(BwdMap, [K | Ks], BwdKeys0, BwdKeys) :-
-	( multi_map__search(BwdMap, K, NewKeys) ->
-		list__append(NewKeys, BwdKeys0, BwdKeys1)
-	;
-		BwdKeys0 = BwdKeys1
-	),
-	inst_key_table_kill_keys_2(BwdMap, Ks, BwdKeys1, BwdKeys).
-
-:- pred delete_dead_keys_from_bwd_map(multi_map(inst_key, inst_key),
-		inst_key, set(inst_key), multi_map(inst_key, inst_key)).
-:- mode delete_dead_keys_from_bwd_map(in, in, in, out) is det.
-
-delete_dead_keys_from_bwd_map(Map0, Key, DeadKeys, Map) :-
-	( map__search(Map0, Key, DepKeys0) ->
-		list__filter(lambda([TestKey :: in] is semidet,
-			\+ set__member(TestKey, DeadKeys)), DepKeys0, DepKeys),
-		map__set(Map0, Key, DepKeys, Map)
-	;
-		Map = Map0
-	).
-
-%-----------------------------------------------------------------------------%
-
-inst_key_table_key_is_dead(inst_key_table(_, _, _, DeadKeys), Key) :-
-	set__member(Key, DeadKeys).
-
-%-----------------------------------------------------------------------------%
-
-inst_key_table_added_keys(inst_key_table(FirstKey, _, _, _),
-		inst_key_table(LastKey1, _, _, _), AddedKeys) :-
+inst_key_table_added_keys(inst_key_table(FirstKey, _, _),
+		inst_key_table(LastKey1, _, _), AddedKeys) :-
 	set__init(AddedKeys0),
 	LastKey is LastKey1 - 1,
 	inst_key_table_added_keys_2(FirstKey, LastKey, AddedKeys0, AddedKeys).
@@ -258,8 +197,7 @@ inst_key_table_write_inst_key(_IKT, InstKey) -->
 %-----------------------------------------------------------------------------%
 
 /***********
-inst_key_table_sanity_check(inst_key_table(_NextKey, FwdMap, BwdMap,
-		_DeadKeys)) :-
+inst_key_table_sanity_check(inst_key_table(_NextKey, FwdMap, BwdMap)) :-
 	map__to_assoc_list(FwdMap, FwdAL0),
 	list__map(lambda([Item0 :: in, Item :: out] is det,
 		(Item0 = InstKeyK - Inst, inst_keys_in_inst(Inst, [], Keys),
@@ -300,7 +238,7 @@ break_multi_assoc_list_2(K, [V | Vs], AL0, [K - V | AL]) :-
 %-----------------------------------------------------------------------------%
 
 inst_key_table_dump(InstKeyTable) -->
-	{ InstKeyTable = inst_key_table(_NextKey, FwdMap, _BwdMap, _DeadKeys) },
+	{ InstKeyTable = inst_key_table(_NextKey, FwdMap, _BwdMap) },
 	{ map__to_assoc_list(FwdMap, FwdAL) },
 	inst_key_table_dump_2(FwdAL, InstKeyTable).
 

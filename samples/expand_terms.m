@@ -17,6 +17,8 @@
 %
 % to your Mmake file, and rename your `.m' files with the suffix `.m.in'.
 
+% This source file is hereby placed in the public domain.  -fjh (the author).
+
 %-----------------------------------------------------------------------------%
 
 :- interface.

@@ -22,38 +22,47 @@
 
 MemoryZone	*MR_trail_zone;
 MR_TrailEntry	*MR_trail_ptr_var;
-Unsigned	MR_ticket_counter_var;
+Unsigned	MR_ticket_counter_var = 1;
 
 void
 MR_untrail_to(MR_TrailEntry *old_trail_ptr, MR_untrail_reason reason)
 {
+    MR_TrailEntry *tr_ptr = MR_trail_ptr;
+
     switch (reason) {
 	case MR_commit:
 	    /* Just handle the function trail entries */
-	    while (MR_trail_ptr != old_trail_ptr) {
-	    	MR_trail_ptr--;
-	    	if (MR_get_trail_entry_kind(MR_trail_ptr) == MR_func_entry) {
-		    (*MR_get_trail_entry_untrail_func(MR_trail_ptr))(
-				MR_get_trail_entry_datum(MR_trail_ptr),
+	    while (tr_ptr != old_trail_ptr) {
+	    	tr_ptr--;
+	    	if (MR_get_trail_entry_kind(tr_ptr) == MR_func_entry) {
+		    (*MR_get_trail_entry_untrail_func(tr_ptr))(
+				MR_get_trail_entry_datum(tr_ptr),
 				reason);
 		}
 	    }
+	    /*
+	    ** NB. We do _not_ reset the trail pointer here.
+	    ** Doing so would be unsafe, for `mdi' modes,
+	    ** because we may still need to restore the value
+	    ** if/when we backtrack to a choicepoint prior to
+	    ** the one we're cutting away.
+	    */
 	    break;
-
 	case MR_undo:
 	case MR_exception:
 	    /* Handle both function and value trail entries */
-	    while (MR_trail_ptr != old_trail_ptr) {
-		MR_trail_ptr--;
-	    	if (MR_get_trail_entry_kind(MR_trail_ptr) == MR_func_entry) {
-		    (*MR_get_trail_entry_untrail_func(MR_trail_ptr))(
-				MR_get_trail_entry_datum(MR_trail_ptr),
+	    while (tr_ptr != old_trail_ptr) {
+		tr_ptr--;
+	    	if (MR_get_trail_entry_kind(tr_ptr) == MR_func_entry) {
+		    (*MR_get_trail_entry_untrail_func(tr_ptr))(
+				MR_get_trail_entry_datum(tr_ptr),
 				reason);
 		} else {
-		    *MR_get_trail_entry_address(MR_trail_ptr) =
-				MR_get_trail_entry_value(MR_trail_ptr);
+		    *MR_get_trail_entry_address(tr_ptr) =
+				MR_get_trail_entry_value(tr_ptr);
 		}
 	    }
+	    MR_trail_ptr = tr_ptr;
 	    break;
 	
 	default:

@@ -12,13 +12,10 @@
 
 /*
 The handling of `any' insts is not complete.  (See also inst_util.m)
-It would be nice to allow `free', `bound' and `ground' to
-match `any', but right now we don't.
+It would be nice to allow `free' to match `any', but right now we don't.
 The reason is that although the mode analysis would be pretty
 straight-forward, generating the correct code is quite a bit trickier.
-In fact, much of the mode analysis code in this file is already
-done, just commented out with the remark "not yet".
-In addition, modes.m would have to be changed to handle the implicit
+modes.m would have to be changed to handle the implicit
 conversions from `free'/`bound'/`ground' to `any' at
 
 	(1) procedure calls (this is just an extension of implied modes)
@@ -27,6 +24,11 @@ conversions from `free'/`bound'/`ground' to `any' at
 
 Since that is not yet done, we currently require the user to
 insert explicit calls to initialize constraint variables.
+
+We do allow `bound' and `ground' to match `any', based on the
+assumption that `bound' and `ground' are represented in the same
+way as `any', i.e. that we use the type system rather than the
+mode system to distinguish between different representations.
 */
 
 %-----------------------------------------------------------------------------%
@@ -35,7 +37,7 @@ insert explicit calls to initialize constraint variables.
 
 :- interface.
 
-:- import_module hlds_module, (inst).
+:- import_module hlds_module, (inst), term.
 
 %-----------------------------------------------------------------------------%
 
@@ -238,6 +240,14 @@ insert explicit calls to initialize constraint variables.
 :- pred inst_contains_instname(inst, inst_key_table, module_info, inst_name).
 :- mode inst_contains_instname(in, in, in, in) is semidet.
 
+	% Nondeterministically produce all the inst_vars contained
+	% in the specified list of modes.
+
+:- type inst_var == var.
+:- pred mode_list_contains_inst_var(list(mode), inst_key_table, module_info,
+	inst_var).
+:- mode mode_list_contains_inst_var(in, in, in, out) is nondet.
+
 	% Given a list of insts, and a corresponding list of livenesses,
 	% return true iff for every element in the list of insts, either
 	% the elemement is ground or the corresponding element in the liveness
@@ -300,16 +310,22 @@ inst_matches_initial_2(InstA, InstB, IKT, ModuleInfo, Expansions) :-
 
 inst_matches_initial_3(any(UniqA), any(UniqB), _, _, _) :-
 	unique_matches_initial(UniqA, UniqB).
-/* not yet:
 inst_matches_initial_3(any(_), free, _, _, _).
-inst_matches_initial_3(free, any(_), _, _, _).
-*/
+inst_matches_initial_3(free, any(Uniq), _, _, _) :-
+	/* we do not yet allow `free' to match `any',
+	   unless the `any' is `clobbered_any' or `mostly_clobbered_any' */
+	( Uniq = clobbered ; Uniq = mostly_clobbered ).
 inst_matches_initial_3(free, free, _, _, _).
-/* not yet:
-inst_matches_initial_3(bound(UniqA, ListA), any(UniqB), _, ModuleInfo, _) :-
+inst_matches_initial_3(bound(UniqA, ListA), any(UniqB), IKT, ModuleInfo, _) :-
 	unique_matches_initial(UniqA, UniqB),
-	bound_inst_list_matches_uniq(ListA, UniqB, ModuleInfo).
-*/
+	bound_inst_list_matches_uniq(ListA, UniqB, IKT, ModuleInfo),
+	/* we do not yet allow `free' to match `any',
+	   unless the `any' is `clobbered_any' or `mostly_clobbered_any' */
+	( ( UniqB = clobbered ; UniqB = mostly_clobbered ) ->
+		true
+	;
+		bound_inst_list_is_ground_or_any(ListA, IKT, ModuleInfo)
+	).
 inst_matches_initial_3(bound(_Uniq, _List), free, _, _, _).
 inst_matches_initial_3(bound(UniqA, ListA), bound(UniqB, ListB), 
 			IKT, ModuleInfo, Expansions) :-
@@ -331,10 +347,8 @@ inst_matches_initial_3(bound(Uniq, List), abstract_inst(_,_), IKT, ModuleInfo,
 	Uniq = mostly_unique,
 	bound_inst_list_is_ground(List, IKT, ModuleInfo),
 	bound_inst_list_is_mostly_unique(List, IKT, ModuleInfo).
-/* not yet:
 inst_matches_initial_3(ground(UniqA, _PredInst), any(UniqB), _, _, _) :-
 	unique_matches_initial(UniqA, UniqB).
-*/
 inst_matches_initial_3(ground(_Uniq, _PredInst), free, _, _, _).
 inst_matches_initial_3(ground(UniqA, _), bound(UniqB, List), IKT, ModuleInfo,
 		_) :-
@@ -353,9 +367,7 @@ inst_matches_initial_3(ground(_UniqA, no), abstract_inst(_,_), _, _, _) :-
 		% I don't know what this should do.
 		% Abstract insts aren't really supported.
 	error("inst_matches_initial(ground, abstract_inst) == ??").
-/* not yet:
 inst_matches_initial_3(abstract_inst(_,_), any(shared), _, _, _).
-*/
 inst_matches_initial_3(abstract_inst(_,_), free, _, _, _).
 inst_matches_initial_3(abstract_inst(Name, ArgsA), abstract_inst(Name, ArgsB),
 				IKT, ModuleInfo, Expansions) :-
@@ -553,17 +565,16 @@ inst_matches_final_2(InstA, InstB, IKT, ModuleInfo, Expansions) :-
 
 inst_matches_final_3(any(UniqA), any(UniqB), _, _, _) :-
 	unique_matches_final(UniqA, UniqB).
-/***
-	% not yet:
-inst_matches_final_3(free, any(_), _, _, _).
-***/
+inst_matches_final_3(free, any(Uniq), _, _, _) :-
+	/* we do not yet allow `free' to match `any',
+	   unless the `any' is `clobbered_any' or `mostly_clobbered_any' */
+	( Uniq = clobbered ; Uniq = mostly_clobbered ).
 inst_matches_final_3(free, free, _, _, _).
-/*
-not yet:
-inst_matches_final_3(bound(UniqA, ListA), any(UniqB), _, _, _) :-
+inst_matches_final_3(bound(UniqA, ListA), any(UniqB), IKT, ModuleInfo, _) :-
 	unique_matches_final(UniqA, UniqB),
-	bound_inst_list_matches_uniq(ListA, UniqB).
-*/
+	bound_inst_list_matches_uniq(ListA, UniqB, IKT, ModuleInfo),
+	/* we do not yet allow `free' to match `any' */
+	bound_inst_list_is_ground_or_any(ListA, IKT, ModuleInfo).
 inst_matches_final_3(bound(UniqA, ListA), bound(UniqB, ListB), 
 			IKT, ModuleInfo, Expansions) :-
 	unique_matches_final(UniqA, UniqB),
@@ -574,10 +585,9 @@ inst_matches_final_3(bound(UniqA, ListA), ground(UniqB, no), IKT, ModuleInfo,
 	unique_matches_final(UniqA, UniqB),
 	bound_inst_list_is_ground(ListA, IKT, ModuleInfo),
 	bound_inst_list_matches_uniq(ListA, UniqB, IKT, ModuleInfo).
-/* not yet:
-inst_matches_final_3(ground(UniqA, _), any(UniqB), _, _, _) :-
+inst_matches_final_3(ground(UniqA, _), any(UniqB), _IKT, _ModuleInfo,
+		_Expansions) :-
 	unique_matches_final(UniqA, UniqB).
-*/
 inst_matches_final_3(ground(UniqA, _), bound(UniqB, ListB), IKT, ModuleInfo,
 			_Exps) :-
 	unique_matches_final(UniqA, UniqB),
@@ -591,9 +601,7 @@ inst_matches_final_3(ground(UniqA, PredInstA), ground(UniqB, PredInstB),
 	maybe_pred_inst_matches_final(PredInstA, PredInstB,
 		IKT, ModuleInfo, Expansions),
 	unique_matches_final(UniqA, UniqB).
-/* not yet:
 inst_matches_final_3(abstract_inst(_, _), any(shared), _, _, _).
-*/
 inst_matches_final_3(abstract_inst(Name, ArgsA), abstract_inst(Name, ArgsB),
 			IKT, ModuleInfo, Expansions) :-
 	inst_list_matches_final(ArgsA, ArgsB, IKT, ModuleInfo, Expansions).
@@ -1229,6 +1237,91 @@ inst_list_contains_instname([Inst|Insts], IKT, ModuleInfo, Expansions,
 		inst_list_contains_instname(Insts, IKT, ModuleInfo, Expansions,
 			InstName)
 	).
+
+%-----------------------------------------------------------------------------%
+
+:- pred inst_contains_inst_var(inst, inst_key_table, module_info, inst_var).
+:- mode inst_contains_inst_var(in, in, in, out) is nondet.
+
+inst_contains_inst_var(Inst, IKT, ModuleInfo, InstVar) :-
+	set__init(Expansions),
+	inst_contains_inst_var_2(Inst, IKT, ModuleInfo, Expansions, InstVar).
+
+:- pred inst_contains_inst_var_2(inst, inst_key_table, module_info,
+		set(inst_name), inst_var).
+:- mode inst_contains_inst_var_2(in, in, in, in, out) is nondet.
+
+inst_contains_inst_var_2(inst_var(InstVar), _, _, _, InstVar).
+inst_contains_inst_var_2(alias(Key), IKT, ModuleInfo, Expansions, InstVar) :-
+	inst_key_table_lookup(IKT, Key, Inst),
+	inst_contains_inst_var_2(Inst, IKT, ModuleInfo, Expansions, InstVar).
+inst_contains_inst_var_2(defined_inst(InstName), IKT, ModuleInfo, Expansions0,
+		InstVar) :-
+	\+ set__member(InstName, Expansions0),
+	inst_lookup(IKT, ModuleInfo, InstName, Inst),
+	set__insert(Expansions0, InstName, Expansions),
+	inst_contains_inst_var_2(Inst, IKT, ModuleInfo, Expansions, InstVar).
+inst_contains_inst_var_2(bound(_Uniq, ArgInsts), IKT, ModuleInfo, Expansions,
+		InstVar) :-
+	bound_inst_list_contains_inst_var(ArgInsts, IKT, ModuleInfo, Expansions,
+		InstVar).
+inst_contains_inst_var_2(ground(_Uniq, PredInstInfo), IKT, ModuleInfo,
+		Expansions, InstVar) :-
+	PredInstInfo = yes(pred_inst_info(_PredOrFunc, Modes, _Det)),
+	mode_list_contains_inst_var_2(Modes, IKT, ModuleInfo, Expansions,
+		InstVar).
+inst_contains_inst_var_2(abstract_inst(_Name, ArgInsts), IKT, ModuleInfo,
+		Expansions, InstVar) :-
+	inst_list_contains_inst_var(ArgInsts, IKT, ModuleInfo, Expansions,
+		InstVar).
+
+:- pred bound_inst_list_contains_inst_var(list(bound_inst), inst_key_table,
+			module_info, set(inst_name), inst_var).
+:- mode bound_inst_list_contains_inst_var(in, in, in, in, out) is nondet.
+
+bound_inst_list_contains_inst_var([BoundInst|BoundInsts], IKT, ModuleInfo,
+		Expansions, InstVar) :-
+	BoundInst = functor(_Functor, ArgInsts),
+	(
+		inst_list_contains_inst_var(ArgInsts, IKT, ModuleInfo,
+			Expansions, InstVar)
+	;
+		bound_inst_list_contains_inst_var(BoundInsts, IKT, ModuleInfo,
+			Expansions, InstVar)
+	).
+
+:- pred inst_list_contains_inst_var(list(inst), inst_key_table, module_info,
+		set(inst_name), inst_var).
+:- mode inst_list_contains_inst_var(in, in, in, in, out) is nondet.
+
+inst_list_contains_inst_var([Inst|Insts], IKT, ModuleInfo, Expansions,
+		InstVar) :-
+	(
+		inst_contains_inst_var_2(Inst, IKT, ModuleInfo, Expansions,
+			InstVar)
+	;
+		inst_list_contains_inst_var(Insts, IKT, ModuleInfo, Expansions,
+			InstVar)
+	).
+
+mode_list_contains_inst_var(Modes, IKT, ModuleInfo, InstVar) :-
+	set__init(Expansions),
+	mode_list_contains_inst_var_2(Modes, IKT, ModuleInfo, Expansions,
+		InstVar).
+
+:- pred mode_list_contains_inst_var_2(list(mode), inst_key_table, module_info,
+		set(inst_name), inst_var).
+:- mode mode_list_contains_inst_var_2(in, in, in, in, out) is nondet.
+
+mode_list_contains_inst_var_2([Mode|_Modes], IKT, ModuleInfo, Expansions,
+		InstVar) :-
+	mode_get_insts_semidet(ModuleInfo, Mode, Initial, Final),
+	( Inst = Initial ; Inst = Final ),
+	inst_contains_inst_var_2(Inst, IKT, ModuleInfo, Expansions, InstVar).
+mode_list_contains_inst_var_2([_|Modes], IKT, ModuleInfo, Expansions,
+		InstVar) :-
+	mode_list_contains_inst_var_2(Modes, IKT, ModuleInfo, Expansions,
+		InstVar).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

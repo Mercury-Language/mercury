@@ -2893,6 +2893,9 @@ unravel_unification(term__variable(X), Rhs,
 				MainContext, SubContext, Goal0) },
 			{ ArgContext = functor(ConsId,
 				MainContext, SubContext) },
+			% Should this be insert_... rather than append_...?
+			% No, because that causes efficiency problems
+			% with type-checking :-(
 			append_arg_unifications(HeadVars, FunctorArgs,
 				FunctorContext, ArgContext, Goal0,
 				VarSet1, Goal, VarSet, Info0, Info)

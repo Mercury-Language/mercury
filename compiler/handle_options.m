@@ -42,7 +42,9 @@ handle_options(MaybeError, Args, Link) -->
 	% dump_arguments(Args0),
 	{ OptionOps = option_ops(short_option, long_option,
 		option_defaults, special_handler) },
-	{ getopt__process_options(OptionOps, Args0, Args, Result) },
+	% default to optimization level `-O2'
+	{ Args1 = ["-O2" | Args0] },
+	{ getopt__process_options(OptionOps, Args1, Args, Result) },
 	% io__write_string("final arguments\n"),
 	% dump_arguments(Args),
 	postprocess_options(Result, MaybeError),
@@ -251,6 +253,22 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
 		[]
 	),
 
+	% --generate-trace requires disabling optimizations
+	% that would change the trace being generated
+	globals__io_lookup_bool_option(generate_trace, Trace),
+	( { Trace = yes } ->
+		globals__io_set_option(inline_simple, bool(no)),
+		globals__io_set_option(inline_single_use, bool(no)),
+		globals__io_set_option(inline_compound_threshold, int(0)),
+		globals__io_set_option(optimize_unused_args, bool(no)),
+		globals__io_set_option(optimize_higher_order, bool(no)),
+		globals__io_set_option(optimize_duplicate_calls, bool(no)),
+		globals__io_set_option(optimize_constructor_last_call,
+			bool(no))
+	;
+		[]
+	),
+
 	% --dump-hlds and --statistics require compilation by phases
 	globals__io_lookup_accumulating_option(dump_hlds, DumpStages),
 	globals__io_lookup_bool_option(statistics, Statistics),
@@ -259,6 +277,7 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
 	;
 		[]
 	),
+
 	% --intermod-unused-args implies --intermodule-optimization and
 	% --optimize-unused-args.
 	globals__io_lookup_bool_option(intermod_unused_args, Intermod),
@@ -268,6 +287,7 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
 	;
 		[]
 	),
+
 	% Don't do the unused_args optimization when making the
 	% optimization interface.
 	globals__io_lookup_bool_option(make_optimization_interface, MakeOpt),
@@ -276,6 +296,7 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
 	;
 		[]
 	),
+
 	% If --use-search-directories-for-intermod is true, append the
 	% search directories to the list of directories to search for
 	% .opt files.
@@ -292,7 +313,7 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
 	;
 		[]
 	),
-	
+
 	% --optimize-frames requires --optimize-labels and --optimize-jumps
 	globals__io_lookup_bool_option(optimize_frames, OptFrames),
 	( { OptFrames = yes } ->

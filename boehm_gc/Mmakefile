@@ -29,7 +29,7 @@ libgc$(PROF).dll: submake
 submake: force
 	MAKEFLAGS=""; export MAKEFLAGS; \
 	$(MAKE) $(MMAKEFLAGS) GRADE=$(GRADE) PROF=$(PROF) libgc$(PROF).a \
-		libgc$(PROF).$(EXT_FOR_SHARED_LIB)
+		libgc$(PROF).$(EXT_FOR_SHARED_LIB) $(EXT_FOR_SHARED_LIB)
 
 .PHONY: force
 force:

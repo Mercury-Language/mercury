@@ -25,7 +25,7 @@ foo(X, X+1).
 
 :- pragma export(foo(in, out), "foo").
 
-:- pragma c_code(bar(X::in, Y::out),
+:- pragma c_code(bar(X::in, Y::out), may_call_mercury,
 "
 	foo(X, &Y);
 ").

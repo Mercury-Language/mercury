@@ -69,6 +69,7 @@
 		;	compile_only
 	% Auxiliary output options
 		;	assume_gmake
+		;	generate_trace
 		;	generate_bytecode
 		;	generate_prolog
 		;	prolog_dialect
@@ -290,6 +291,7 @@ option_defaults_2(output_option, [
 option_defaults_2(aux_output_option, [
 		% Auxiliary Output Options
 	assume_gmake		-	bool(yes),
+	generate_trace		-	bool(no),
 	generate_bytecode	-	bool(no),
 	generate_prolog		-	bool(no),
 	prolog_dialect		-	string("default"),
@@ -565,6 +567,7 @@ long_option("compile-only",		compile_only).
 
 % aux output options
 long_option("assume-gmake",		assume_gmake).
+long_option("generate-trace",		generate_trace).
 long_option("generate-bytecode",	generate_bytecode).
 long_option("generate-prolog",		generate_prolog).
 long_option("generate-Prolog",		generate_prolog).
@@ -1108,6 +1111,9 @@ options_help_aux_output -->
 	io__write_string("\t\tWhen generating `.dep' files, generate Makefile\n"),
 	io__write_string("\t\tfragments that use only the features of standard make;\n"),
 	io__write_string("\t\tdo not assume the availability of GNU Make extensions.\n"),
+	io__write_string("\t--generate-trace\n"),
+	io__write_string("\t\tInclude code to generate an execution trace in the\n"),
+	io__write_string("\t\tC code output by the compiler.\n"),
 	io__write_string("\t--generate-bytecode\n"),
 	io__write_string("\t\tOutput a bytecode form of the module for use\n"),
 	io__write_string("\t\tby an experimental debugger.\n"),

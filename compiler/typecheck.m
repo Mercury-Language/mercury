@@ -163,7 +163,7 @@
 :- import_module hlds_goal, hlds_data, prog_util, type_util, code_util.
 :- import_module prog_data, prog_io, prog_io_util, prog_out, hlds_out.
 :- import_module mercury_to_mercury, mode_util, options, getopt, globals.
-:- import_module passes_aux, clause_to_proc, special_pred.
+:- import_module passes_aux, clause_to_proc, special_pred, inst_match.
 
 :- import_module int, list, map, set, string, require, std_util, tree234.
 :- import_module assoc_list, varset, term, term_io, (inst).
@@ -246,16 +246,14 @@ typecheck_pred_types_2([PredId | PredIds], ModuleInfo0, ModuleInfo,
 		% Ensure that all constructors occurring in predicate mode
 		% declarations are module qualified.
 		% 
-		{
-		pred_info_arg_types(PredInfo0, _, ArgTypes),
-		pred_info_procedures(PredInfo0, Procs0),
+		{ pred_info_arg_types(PredInfo0, _, ArgTypes) },
+		{ pred_info_procedures(PredInfo0, Procs0) },
 		typecheck_propagate_types_into_proc_modes(
-		    ModuleInfo0, ProcIds, ArgTypes, Procs0, Procs),
-		pred_info_set_procedures(PredInfo0, Procs, PredInfo),
-		map__set(Preds0, PredId, PredInfo, Preds),
-		module_info_set_preds(ModuleInfo0, Preds, ModuleInfo1),
-		Changed2 = Changed0
-		}
+		    ModuleInfo0, PredId, ProcIds, ArgTypes, Procs0, Procs),
+		{ pred_info_set_procedures(PredInfo0, Procs, PredInfo) },
+		{ map__set(Preds0, PredId, PredInfo, Preds) },
+		{ module_info_set_preds(ModuleInfo0, Preds, ModuleInfo1) },
+		{ Changed2 = Changed0 }
 	;
 		typecheck_pred_type(PredId, PredInfo0, ModuleInfo0, 
 			ModeError, MaybePredInfo, Changed1),
@@ -282,10 +280,11 @@ typecheck_pred_types_2([PredId | PredIds], ModuleInfo0, ModuleInfo,
 typecheck_pred_type(PredId, PredInfo0, ModuleInfo, ModeError, 
 		MaybePredInfo, Changed, IOState0, IOState) :-
 	typecheck_pred_type_2(PredId, PredInfo0, ModuleInfo, MaybePredInfo0,
-		Changed, IOState0, IOState),
+		Changed, IOState0, IOState1),
 	(
 		MaybePredInfo0 = no,
-		MaybePredInfo = no
+		MaybePredInfo = no,
+		IOState = IOState1
 	;
 		MaybePredInfo0 = yes(PredInfo1),
 
@@ -302,32 +301,67 @@ typecheck_pred_type(PredId, PredInfo0, ModuleInfo, ModeError,
 			pred_info_procedures(PredInfo3, Procs1),
 			pred_info_procids(PredInfo3, ProcIds),
 			typecheck_propagate_types_into_proc_modes(
-				ModuleInfo, ProcIds, ArgTypes, Procs1, Procs),
+				ModuleInfo, PredId, ProcIds, ArgTypes,
+				Procs1, Procs,
+				IOState1, IOState),
 			pred_info_set_procedures(PredInfo3, Procs, PredInfo)
 		;
-			PredInfo = PredInfo1
+			PredInfo = PredInfo1,
+			IOState = IOState1
 		),
 		MaybePredInfo = yes(PredInfo)
 	).
 
 :- pred typecheck_propagate_types_into_proc_modes(module_info,
-		list(proc_id), list(type), proc_table, proc_table).
+		pred_id, list(proc_id), list(type), proc_table, proc_table,
+		io__state, io__state).
 :- mode typecheck_propagate_types_into_proc_modes(in,
-		in, in, in, out) is det.		
+		in, in, in, in, out, di, uo) is det.		
 
-typecheck_propagate_types_into_proc_modes(_, [], _, Procs, Procs).
-typecheck_propagate_types_into_proc_modes(ModuleInfo, [ProcId | ProcIds],
-		ArgTypes, Procs0, Procs) :-
-	map__lookup(Procs0, ProcId, ProcInfo0),
-	proc_info_argmodes(ProcInfo0, ArgModes0),
+typecheck_propagate_types_into_proc_modes(_, _, [], _, Procs, Procs) --> [].
+typecheck_propagate_types_into_proc_modes(ModuleInfo, PredId,
+		[ProcId | ProcIds], ArgTypes, Procs0, Procs) -->
+	{ map__lookup(Procs0, ProcId, ProcInfo0) },
+	{ proc_info_argmodes(ProcInfo0, ArgModes0) },
 	% YYY Hack alert!
-	inst_key_table_init(IKT),
-	propagate_types_into_mode_list(ArgTypes, IKT, ModuleInfo,
-		ArgModes0, ArgModes),
-	proc_info_set_argmodes(ProcInfo0, ArgModes, ProcInfo),
-	map__det_update(Procs0, ProcId, ProcInfo, Procs1),
-	typecheck_propagate_types_into_proc_modes(ModuleInfo, ProcIds,
+	{ inst_key_table_init(IKT) },
+	{ propagate_types_into_mode_list(ArgTypes, IKT, ModuleInfo,
+		ArgModes0, ArgModes) },
+	%
+	% check for unbound inst vars
+	% (this needs to be done after propagate_types_into_mode_list,
+	% because we need the insts to be module-qualified; and it
+	% needs to be done before mode analysis, to avoid internal errors)
+	%
+	(
+		{ mode_list_contains_inst_var(ArgModes, IKT, ModuleInfo,
+			_InstVar) }
+	->
+		unbound_inst_var_error(PredId, ProcInfo0, ModuleInfo),
+		% delete this mode, to avoid internal errors
+		{ map__det_remove(Procs0, ProcId, _, Procs1) }
+	;
+		{ proc_info_set_argmodes(ProcInfo0, ArgModes, ProcInfo) },
+		{ map__det_update(Procs0, ProcId, ProcInfo, Procs1) }
+	),
+	typecheck_propagate_types_into_proc_modes(ModuleInfo, PredId, ProcIds,
 		ArgTypes, Procs1, Procs).
+
+:- pred unbound_inst_var_error(pred_id, proc_info, module_info,
+				io__state, io__state).
+:- mode unbound_inst_var_error(in, in, in, di, uo) is det.
+
+unbound_inst_var_error(PredId, ProcInfo, ModuleInfo) -->
+	{ proc_info_context(ProcInfo, Context) },
+	io__set_exit_status(1),
+	prog_out__write_context(Context),
+	io__write_string("In mode declaration for "),
+	hlds_out__write_pred_id(ModuleInfo, PredId),
+	io__write_string(":\n"),
+	prog_out__write_context(Context),
+	io__write_string("  error: unbound inst variable(s).\n"),
+	prog_out__write_context(Context),
+	io__write_string("  (Sorry, polymorphic modes are not supported.)\n").
 
 :- pred typecheck_pred_type_2(pred_id, pred_info, module_info,
 	maybe(pred_info), bool, io__state, io__state).
@@ -356,7 +390,7 @@ typecheck_pred_type_2(PredId, PredInfo0, ModuleInfo, MaybePredInfo, Changed,
 	    Changed = no,
 	    IOState = IOState0
 	;
-	    pred_info_arg_types(PredInfo0, ArgTypeVarSet, ArgTypes0),
+	    pred_info_arg_types(PredInfo0, _ArgTypeVarSet, ArgTypes0),
 	    pred_info_typevarset(PredInfo0, TypeVarSet0),
 	    pred_info_clauses_info(PredInfo0, ClausesInfo0),
 	    pred_info_import_status(PredInfo0, Status),
@@ -384,7 +418,7 @@ typecheck_pred_type_2(PredId, PredInfo0, ModuleInfo, MaybePredInfo, Changed,
 				PredId, ModuleInfo, IOState0, IOState1)
 		;
 			Inferring = no,
-			varset__vars(ArgTypeVarSet, HeadTypeParams),
+			term__vars_list(ArgTypes0, HeadTypeParams),
 			write_pred_progress_message("% Type-checking ",
 				PredId, ModuleInfo, IOState0, IOState1)
 		),

@@ -1,11 +1,10 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995 The University of Melbourne.
-% This file may only be copied under the terms of the GNU General
-% Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
 % File: eliza.m.
 % Main author: bromage.
+
+% This source file is hereby placed in the public domain.  -bromage.
 
 % Eliza, the famous psychotherapist.
 

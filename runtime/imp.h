@@ -20,6 +20,12 @@
 #define IMP_H
 
 /*
+** The #include of "conf.h" must come before the `#ifdef USE_DLLS',
+** because conf.h defines the USE_DLLS macro.
+*/
+#include	"conf.h"
+
+/*
 ** The following must come before any definitions of global variables.
 ** This is necessary to support DLLs on Windows.
 */
@@ -28,8 +34,6 @@
 #endif
 
 #include	"regs.h"	/* must come before system headers */
-
-#include	"conf.h"
 
 #include	"std.h"
 
@@ -58,5 +62,7 @@
 #include	"debug.h"
 #include	"prof.h"
 #include	"misc.h"
+
+#include	"mercury_grade.h"
 
 #endif /* not IMP_H */

@@ -15,6 +15,43 @@
 #include <stddef.h>	/* for `size_t' */
 #include "std.h"	/* for `bool' */
 
+/*
+** mercury_runtime_init() does some stuff to initialize the garbage collector
+** and the Mercury engine's data areas, and then calls io__init_state/2
+** in the Mercury library to initialize the io__state.
+*/
+extern	void	mercury_runtime_init(int argc, char **argv);
+
+/*
+** mercury_runtime_main() basically just calls main/2,
+** with a bit of debugging scaffolding around it.
+*/
+extern	void	mercury_runtime_main(void);
+
+/*
+** mercury_runtime_terminate() does any necessary cleanup,
+** and then returns mercury_exit_status.
+*/
+extern	int	mercury_runtime_terminate(void);
+
+/*
+** The following global variables are set by mercury_init() on startup.
+** The entry points are set based on the options to mkinit.c.
+** The address_of_foo pointers are set to the address of
+** the corresponding foo.
+*/
+extern	Code *		program_entry_point; /* normally mercury__main_2_0; */
+
+extern	void		(*MR_library_initializer)(void);
+extern	void		(*MR_library_finalizer)(void);
+
+extern	void		(*address_of_mercury_init_io)(void);
+extern	void		(*address_of_init_modules)(void);
+
+#ifdef CONSERVATIVE_GC
+extern	void		(*address_of_init_gc)(void);
+#endif
+
 extern	void		do_init_modules(void);
 
 extern	const char *	progname;

@@ -181,13 +181,12 @@ fact_table_compile_facts(PredName, Arity, FileName, PredInfo0, PredInfo,
 	    { Result1 = ok(OutputStream) },
 	    { pred_info_arg_types(PredInfo0, _, Types) },
 	    { init_fact_arg_infos(Types, FactArgInfos0) },
-	    infer_determinism_pass_1(PredInfo0, PredInfo1, ModuleInfo,
+	    infer_determinism_pass_1(PredInfo0, PredInfo1, Context, ModuleInfo,
 	    	CheckProcs, ExistsAllInMode, WriteHashTables, WriteDataTable,
-	    	FactArgInfos0, FactArgInfos),
+	    	FactArgInfos0, FactArgInfos, Result2),
 	    write_fact_table_header(PredName, PredInfo1, FileName,
-		FactArgInfos, OutputStream, C_HeaderCode0, StructName, Result2),
-	    (
-	    	{ Result2 = ok },
+		FactArgInfos, OutputStream, C_HeaderCode0, StructName, Result3),
+	    ( { Result2 = ok, Result3 = ok } ->
 		open_sort_files(CheckProcs, ProcStreams),
 		( { WriteDataTable = yes } ->
 		    ( { CheckProcs = [] } ->
@@ -231,10 +230,10 @@ fact_table_compile_facts(PredName, Arity, FileName, PredInfo0, PredInfo,
 		{ string__append_list([C_HeaderCode0, C_HeaderCode1, 
 		    C_HeaderCode2, C_HeaderCode3], C_HeaderCode) }
 	    ;
-	    	% The `:- pred' or `:- func' declaration had some types that
+	    	% Either there are no modes declared for this fact table or
+	    	% the `:- pred' or `:- func' declaration had some types that
 	    	% are not supported in fact tables so there is no point trying
-	    	% to type-check all the facts
-	    	{ Result2 = error },
+	    	% to type-check all the facts.
 	    	{ PredInfo = PredInfo0 },
 	    	{ C_HeaderCode = C_HeaderCode0 },
 	    	{ invalid_proc_id(PrimaryProcID) },
@@ -758,39 +757,59 @@ fill_in_fact_arg_infos([Mode | Modes], IKT, ModuleInfo, [Info0 | Infos0],
 	% (out, out, ..., out) procs are multidet and (in, in, .., in) procs are
 	% semidet.  Return a list of procs containing both in's and out's.
 	% These need further analysis later in pass 2.
-:- pred infer_determinism_pass_1(pred_info, pred_info, module_info, 
-		list(proc_id), bool, bool, bool, list(fact_arg_info),
-		list(fact_arg_info), io__state, io__state).
-:- mode infer_determinism_pass_1(in, out, in, out, out, out, out, in, out,
-		di, uo) is det.
+:- pred infer_determinism_pass_1(pred_info, pred_info,term__context,
+		module_info, list(proc_id), bool, bool, bool,
+		list(fact_arg_info), list(fact_arg_info),
+		fact_result, io__state, io__state).
+:- mode infer_determinism_pass_1(in, out, in, in, out, out, out, out, in, out,
+		out, di, uo) is det.
 
-infer_determinism_pass_1(PredInfo0, PredInfo, ModuleInfo, CheckProcs,
+infer_determinism_pass_1(PredInfo0, PredInfo, Context, ModuleInfo, CheckProcs,
 		ExistsAllInMode, WriteHashTables, WriteDataTable,
-		FactArgInfos0, FactArgInfos) -->
+		FactArgInfos0, FactArgInfos, Result) -->
 	{ pred_info_procedures(PredInfo0, ProcTable0) },
 	{ pred_info_procids(PredInfo0, ProcIDs) },
-	infer_proc_determinism_pass_1(ProcIDs, ProcTable0, ProcTable,
-		ModuleInfo, [], CheckProcs0, MaybeAllInProc,
-		WriteHashTables, WriteDataTable, FactArgInfos0, FactArgInfos),
+	( { ProcIDs = [] } ->
+		% There are no declared modes so report an error.
+		{ pred_info_name(PredInfo0, PredString) },
+		{ pred_info_arity(PredInfo0, Arity) },
+		prog_out__write_context(Context),
+		io__format("Error: no modes declared for fact table `%s/%d'.\n",
+			[s(PredString), i(Arity)]),
+		io__set_exit_status(1),
+		{ PredInfo = PredInfo0 },
+		{ CheckProcs = [] },
+		{ ExistsAllInMode = no },
+		{ WriteHashTables = no },
+		{ WriteDataTable = no },
+		{ FactArgInfos = FactArgInfos0 },
+		{ Result = error }
+	;
+		infer_proc_determinism_pass_1(ProcIDs, ProcTable0, ProcTable,
+			ModuleInfo, [], CheckProcs0, MaybeAllInProc,
+			WriteHashTables, WriteDataTable, FactArgInfos0,
+			FactArgInfos),
 
 		% If there is an all_in procedure, it needs to be put on the
 		% end of the list so a sort file is created for it.  This
 		% is required when building the hash table, not for 
 		% determinism inference.
-	{
-		MaybeAllInProc = yes(ProcID),
-		CheckProcs1 = [ProcID | CheckProcs0],
-		ExistsAllInMode = yes
-	;
-		MaybeAllInProc = no,
-		CheckProcs1 = CheckProcs0,
-		ExistsAllInMode = no
-	},
+		{
+			MaybeAllInProc = yes(ProcID),
+			CheckProcs1 = [ProcID | CheckProcs0],
+			ExistsAllInMode = yes
+		;
+			MaybeAllInProc = no,
+			CheckProcs1 = CheckProcs0,
+			ExistsAllInMode = no
+		},
 
 		% need to get order right for CheckProcs because first procedure
 		% in list is used to derive the primary lookup key.
-	{ list__reverse(CheckProcs1, CheckProcs) },
-	{ pred_info_set_procedures(PredInfo0, ProcTable, PredInfo) }.
+		{ list__reverse(CheckProcs1, CheckProcs) },
+		{ pred_info_set_procedures(PredInfo0, ProcTable, PredInfo) },
+		{ Result = ok }
+	).
 
 :- pred infer_proc_determinism_pass_1(list(proc_id), proc_table, proc_table,
 		module_info, list(proc_id), list(proc_id), maybe(proc_id),
@@ -2497,7 +2516,16 @@ fact_table_generate_c_code(PredName, PragmaVars, ProcID, PrimaryProcID,
 			ProcID, ArgTypes, ArgsMethod, IKT, ModuleInfo,
 			FactTableSize, ProcCode, ExtraCode)
 	;
-		error("fact_table_generate_c_code: mode/determinism error")
+		% There is a determinism error in this procedure which will be 
+		% reported later on when the inferred determinism is compared
+		% to the declared determinism.  So all we need to do here is
+		% return some C code that does nothing.
+
+		% List the variables in the C code to stop the compiler giving
+		% a warning about them not being there.
+		pragma_vars_to_names_string(PragmaVars, NamesString),
+		string__format("/* %s */", [s(NamesString)], ProcCode),
+		ExtraCode = ""
 	}.
 
 

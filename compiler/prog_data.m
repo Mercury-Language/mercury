@@ -241,16 +241,28 @@
 	% An `inst_name' is used as a key for the inst_table.
 	% It is either a user-defined inst `user_inst(Name, Args)',
 	% or some sort of compiler-generated inst, whose name
-	% is a representation of it's meaning.  For example
-	% `merge_inst(InstA, InstB)' is the name used for the inst
-	% that results from merging InstA and InstB using `merge_inst'.
+	% is a representation of it's meaning.
+	%
+	% For example, `merge_inst(InstA, InstB)' is the name used for the
+	% inst that results from merging InstA and InstB using `merge_inst'.
 	% Similarly `unify_inst(IsLive, InstA, InstB, IsReal)' is
 	% the name for the inst that results from a call to
-	% `abstractly_unify_inst(IsLive, InstA, InstB, IsReal)', etc.
+	% `abstractly_unify_inst(IsLive, InstA, InstB, IsReal)'.
+	% And `ground_inst' and `any_inst' are insts that result
+	% from unifying an inst with `ground' or `any', respectively.
+	% `typed_inst' is an inst with added type information.
+	% `typed_ground(Uniq, Type)' a equivalent to
+	% `typed_inst(ground(Uniq, no), Type)'.
+	% Note that `typed_ground' is a special case of `typed_inst',
+	% and `ground_inst' and `any_inst' are special cases of `unify_inst'.
+	% The reason for having the special cases is efficiency.
+	
 :- type inst_name	--->	user_inst(sym_name, list(inst))
 			;	merge_inst(inst, inst)
 			;	unify_inst(is_live, inst, inst, unify_is_real)
 			;	ground_inst(inst_name, is_live, uniqueness,
+						unify_is_real)
+			;	any_inst(inst_name, is_live, uniqueness,
 						unify_is_real)
 			;	shared_inst(inst_name)
 			;	mostly_uniq_inst(inst_name)

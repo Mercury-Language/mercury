@@ -819,7 +819,6 @@ intermod__write_modes(ModuleInfo, ModeTable, [ModeId | Modes]) -->
 
 intermod__write_insts(_, _, []) --> [].
 intermod__write_insts(ModuleInfo, UserInstTable, [Inst | Insts]) -->
-	io__write_char(':'),
 	{ Inst = SymName - _Arity },
 	{ map__lookup(UserInstTable, Inst, InstDefn) },
 	{ InstDefn = hlds_inst_defn(Varset, Args, Body, _, Context, _) },
@@ -842,7 +841,6 @@ intermod__write_insts(ModuleInfo, UserInstTable, [Inst | Insts]) -->
 				InstKeyTable
 		)
 	),
-	io__write_string(".\n"),
 	intermod__write_insts(ModuleInfo, UserInstTable, Insts).
 
 	% We need to write all the declarations for local predicates so

@@ -204,8 +204,8 @@ a variable live if its value will be used later on in the computation.
 :- mode modecheck_var_has_inst_list(in, in, in, mode_info_di, mode_info_uo)
 	is det.
 
-:- pred modecheck_set_var_inst(var, inst, map(inst_key, inst_key),
-		map(inst_key, inst_key), mode_info, mode_info).
+:- pred modecheck_set_var_inst(var, inst, inst_key_sub, inst_key_sub,
+		mode_info, mode_info).
 :- mode modecheck_set_var_inst(in, in, in, out,
 		mode_info_di, mode_info_uo) is det.
 
@@ -213,7 +213,7 @@ a variable live if its value will be used later on in the computation.
 :- mode modecheck_force_set_var_inst(in, in, mode_info_di, mode_info_uo) is det.
 
 :- pred modecheck_set_var_inst_list(list(var), list(inst), list(inst),
-					list(var), pair(list(hlds_goal)),
+					list(var), extra_goals,
 					mode_info, mode_info).
 :- mode modecheck_set_var_inst_list(in, in, in, out, out,
 					mode_info_di, mode_info_uo) is det.
@@ -244,10 +244,25 @@ a variable live if its value will be used later on in the computation.
 			mode_info, mode_info).
 :- mode modecheck_goal_expr(in, in, out, mode_info_di, mode_info_uo) is det.
 
+
+:- type extra_goals
+	--->	no_extra_goals
+	;	extra_goals(
+			instmap,		% instmap at end of main goal
+			list(hlds_goal)		% goals to append after
+						% the main goal
+		).
+
+	% append_extra_goals inserts adds some goals to the
+	% list of goals to insert before/after the main goal.
+	%
+:- pred append_extra_goals(extra_goals, extra_goals, extra_goals).
+:- mode append_extra_goals(in, in, out) is det.
+
 	% handle_extra_goals combines MainGoal and ExtraGoals into a single
 	% hlds_goal_expr.
 	%
-:- pred handle_extra_goals(hlds_goal_expr, pair(list(hlds_goal)),
+:- pred handle_extra_goals(hlds_goal_expr, extra_goals,
 		hlds_goal_info, list(var), list(var),
 		instmap, mode_info, hlds_goal_expr).
 :- mode handle_extra_goals(in, in, in, in, in, in, mode_info_ui, out)
@@ -842,12 +857,36 @@ unify_rhs_vars(lambda_goal(_PredOrFunc, LambdaVars, _Modes, _Det,
 	set__delete_list(NonLocals0, LambdaVars, NonLocals),
 	set__to_sorted_list(NonLocals, Vars).
 
+append_extra_goals(no_extra_goals, ExtraGoals, ExtraGoals).
+append_extra_goals(extra_goals(InstMap, AfterGoals),
+		no_extra_goals, extra_goals(InstMap, AfterGoals)).
+append_extra_goals(extra_goals(InstMap0, AfterGoals0),
+			extra_goals(_InstMap1, AfterGoals1),
+			extra_goals(InstMap, AfterGoals)) :-
+	InstMap = InstMap0,
+	list__append(AfterGoals0, AfterGoals1, AfterGoals).
+
 handle_extra_goals(MainGoal, ExtraGoals, GoalInfo0, Args0, Args,
-		InstMap0, ModeInfo, Goal) :-
+		InstMapAtStart, _ModeInfo, Goal) :-
 	% did we introduced any extra variables (and code)?
-	( ExtraGoals = [] - [] ->
+	(
+		ExtraGoals = no_extra_goals,
 		Goal = MainGoal	% no
 	;
+		ExtraGoals = extra_goals(InstMapAfterMain, AfterGoals0),
+
+		%
+		% We need to be careful to update the delta-instmaps
+		% correctly, using the appropriate instmaps:
+		%
+		%		% InstMapAtStart is here
+		%	 main goal,
+		%		% InstMapAfterMain is here
+		%	 AfterGoals
+		%		% _InstMapAtEnd (= the instmap from _ModeInfo)
+		%		% is here, but as it happens we don't need it
+		%
+
 		% recompute the new set of non-local variables for the main goal
 		goal_info_get_nonlocals(GoalInfo0, NonLocals0),
 		set__list_to_set(Args0, OldArgVars),
@@ -858,18 +897,15 @@ handle_extra_goals(MainGoal, ExtraGoals, GoalInfo0, Args0, Args,
 		goal_info_set_nonlocals(GoalInfo0, NonLocals, GoalInfo1),
 
 		% compute the instmap delta for the main goal
-		mode_info_get_instmap(ModeInfo, InstMap),
-		compute_instmap_delta(InstMap0, InstMap, NonLocals,
-			DeltaInstMap),
+		compute_instmap_delta(InstMapAtStart, InstMapAfterMain,
+			NonLocals, DeltaInstMap),
 		goal_info_set_instmap_delta(GoalInfo1, DeltaInstMap, GoalInfo),
 
 		% combine the main goal and the extra goals into a conjunction
 		Goal0 = MainGoal - GoalInfo,
-		ExtraGoals = BeforeGoals0 - AfterGoals0,
 		goal_info_get_context(GoalInfo0, Context),
-		handle_extra_goals_contexts(BeforeGoals0, Context, BeforeGoals),
 		handle_extra_goals_contexts(AfterGoals0, Context, AfterGoals),
-		list__append(BeforeGoals, [Goal0 | AfterGoals], GoalList),
+		GoalList = [Goal0 | AfterGoals],
 		Goal = conj(GoalList)
 	).
 
@@ -1143,49 +1179,43 @@ modecheck_var_has_inst(VarId, Inst, ModeInfo0, ModeInfo) :-
 modecheck_set_var_inst_list(Vars0, InitialInsts, FinalInsts, Vars, Goals) -->
 	(
 		{ map__init(Sub0) },
-		{ list__append(InitialInsts, FinalInsts, PreserveInsts) },
 		modecheck_set_var_inst_list_2(Vars0, InitialInsts, FinalInsts,
-			Vars1, Goals1, Sub0, _, PreserveInsts)
+			no_extra_goals, Vars1, Goals1, Sub0, Sub)
 	->
+		mode_info_apply_inst_key_sub(Sub),
 		{ Vars = Vars1, Goals = Goals1 }
 	;
 		{ error("modecheck_set_var_inst_list: length mismatch") }
 	).
 
 :- pred modecheck_set_var_inst_list_2(list(var), list(inst), list(inst),
-			list(var), pair(list(hlds_goal)),
-			map(inst_key, inst_key), map(inst_key, inst_key), 
-			list(inst),
+			extra_goals, list(var), extra_goals,
+			inst_key_sub, inst_key_sub,
 			mode_info, mode_info).
-:- mode modecheck_set_var_inst_list_2(in, in, in, out, out, in, out, in,
+:- mode modecheck_set_var_inst_list_2(in, in, in, in, out, out, in, out,
 					mode_info_di, mode_info_uo) is semidet.
 
-modecheck_set_var_inst_list_2([], [], [], [], [] - [], Sub, Sub, _) --> [].
+modecheck_set_var_inst_list_2([], [], [], ExtraGoals, [], ExtraGoals,
+			Sub, Sub) --> [].
 modecheck_set_var_inst_list_2([Var0 | Vars0], [InitialInst0 | InitialInsts],
-			[FinalInst0 | FinalInsts], [Var | Vars], Goals,
-			Sub0, Sub, PreserveInsts) -->
+			[FinalInst0 | FinalInsts], ExtraGoals0,
+			[Var | Vars], ExtraGoals, Sub0, Sub) -->
 	{ inst_apply_sub(Sub0, InitialInst0, InitialInst) },
 	{ inst_apply_sub(Sub0, FinalInst0, FinalInst) },
-	modecheck_set_var_inst(Var0, InitialInst, FinalInst, Var,
-		BeforeGoals0 - AfterGoals0, Sub0, Sub1, PreserveInsts,
-		VarInst),
-	modecheck_set_var_inst_list_2(Vars0, InitialInsts, FinalInsts, Vars,
-		BeforeGoals1 - AfterGoals1, Sub1, Sub,
-			[VarInst, InitialInst, FinalInst | PreserveInsts]),
-	{ list__append(BeforeGoals0, BeforeGoals1, BeforeGoals) },
-	{ list__append(AfterGoals0, AfterGoals1, AfterGoals) },
-	{ Goals = BeforeGoals - AfterGoals }.
+	modecheck_set_var_inst(Var0, InitialInst, FinalInst,
+				Var, ExtraGoals0, ExtraGoals1, Sub0, Sub1),
+	modecheck_set_var_inst_list_2(Vars0, InitialInsts, FinalInsts,
+				ExtraGoals1, Vars, ExtraGoals, Sub1, Sub).
 
-% XXX this might need to be revisited to handle unique modes
-
-:- pred modecheck_set_var_inst(var, inst, inst, var, pair(list(hlds_goal)),
-		map(inst_key, inst_key), map(inst_key, inst_key), 
-		list(inst), inst, mode_info, mode_info).
-:- mode modecheck_set_var_inst(in, in, in, out, out, in, out, in, out,
+:- pred modecheck_set_var_inst(var, inst, inst, var, extra_goals, extra_goals,
+				inst_key_sub, inst_key_sub,
+				mode_info, mode_info).
+:- mode modecheck_set_var_inst(in, in, in, out, in, out, in, out,
 				mode_info_di, mode_info_uo) is det.
 
-modecheck_set_var_inst(Var0, InitialInst, FinalInst, Var, Goals, Sub0, Sub,
-			PreserveInsts, VarInst, ModeInfo0, ModeInfo) :-
+modecheck_set_var_inst(Var0, InitialInst, FinalInst, Var,
+			ExtraGoals0, ExtraGoals, Sub0, Sub,
+			ModeInfo0, ModeInfo) :-
 	mode_info_get_instmap(ModeInfo0, InstMap0),
 	(
 		instmap__is_reachable(InstMap0)
@@ -1200,41 +1230,48 @@ modecheck_set_var_inst(Var0, InitialInst, FinalInst, Var, Goals, Sub0, Sub,
 			map__init(NewSub0),
 			abstractly_unify_inst(dead, VarInst0, FinalInst,
 				fake_unify, IKT0, ModuleInfo0, NewSub0,
-				UnifyInst, Det, IKT1, ModuleInfo1, NewSub)
+				UnifyInst, Det0, IKT1, ModuleInfo1, NewSub)
 		->
+			Det = Det0,
 			ModuleInfo = ModuleInfo1,
 			IKT = IKT1,
 			VarInst = UnifyInst,
-			map__overlay(Sub0, NewSub, Sub),
+			map__overlay(Sub0, NewSub, Sub1),
 			mode_info_set_module_info(ModeInfo0, ModuleInfo,
 				ModeInfo1),
 			mode_info_set_inst_key_table(ModeInfo1, IKT, ModeInfo2),
-			mode_info_apply_inst_key_sub([VarInst | PreserveInsts],
-				NewSub, ModeInfo2, ModeInfo3),
+			mode_info_apply_inst_key_sub(NewSub,
+				ModeInfo2, ModeInfo3),
 			handle_implied_mode(Var0,
 				VarInst0, VarInst, InitialInst, FinalInst, Det,
-		 		Var, Goals, ModeInfo3, ModeInfo4),
+		 		Var, ExtraGoals0, ExtraGoals1, ModeInfo3,
+				ModeInfo4),
 			modecheck_force_set_var_inst(Var0, VarInst, ModeInfo4,
 				ModeInfo5),
 			modecheck_force_set_var_inst(Var, VarInst, ModeInfo5,
-				ModeInfo)
+				ModeInfo6)
 		;
-			error("modecheck_set_var_inst: unify failed")
-		)
+			error("modecheck_set_var_inst: unify_inst failed")
+		),
+		mode_info_set_module_info(ModeInfo6, ModuleInfo, ModeInfo7),
+		handle_implied_mode(Var0,
+			VarInst0, VarInst, InitialInst, FinalInst, Det,
+		 	_Var, ExtraGoals1, ExtraGoals, ModeInfo7, ModeInfo8),
+		modecheck_set_var_inst(Var0, FinalInst, Sub1, Sub2,
+			ModeInfo8, ModeInfo9),
+		modecheck_set_var_inst(Var, FinalInst, Sub2, Sub,	
+			ModeInfo9, ModeInfo)
 	;
 		Var = Var0,
-		Goals = [] - [],
+		ExtraGoals = ExtraGoals0,
 		ModeInfo = ModeInfo0,
-		Sub0 = Sub,
-		VarInst = not_reached
+		Sub = Sub0
 	).
 
 	% Note that there are two versions of modecheck_set_var_inst,
 	% one with arity 9 and one with arity 6.
 	% The former is used for predicate calls, where we may need
 	% to introduce unifications to handle calls to implied modes.
-
-% XXX this might need to be revisited to handle unique modes
 
 modecheck_set_var_inst(Var0, FinalInst, Sub0, Sub, ModeInfo0, ModeInfo) :-
 	mode_info_get_instmap(ModeInfo0, InstMap0),
@@ -1262,7 +1299,7 @@ modecheck_set_var_inst(Var0, FinalInst, Sub0, Sub, ModeInfo0, ModeInfo) :-
 		),
 		mode_info_set_module_info(ModeInfo0, ModuleInfo2, ModeInfo1),
 		mode_info_set_inst_key_table(ModeInfo1, IKT2, ModeInfo2),
-		mode_info_apply_inst_key_sub([Inst], Sub, ModeInfo2, ModeInfo3),
+		mode_info_apply_inst_key_sub(Sub, ModeInfo2, ModeInfo3),
 		mode_info_get_inst_key_table(ModeInfo3, IKT3),
 		mode_info_get_module_info(ModeInfo3, ModuleInfo3),
 		(
@@ -1381,13 +1418,13 @@ modecheck_force_set_var_inst(Var0, Inst, ModeInfo0, ModeInfo) :-
 % introduce a fresh variable.
 
 :- pred handle_implied_mode(var, inst, inst, inst, inst, determinism,
-				var, pair(list(hlds_goal)),
+				var, extra_goals, extra_goals,
 				mode_info, mode_info).
-:- mode handle_implied_mode(in, in, in, in, in, in, out, out,
+:- mode handle_implied_mode(in, in, in, in, in, in, out, in, out,
 				mode_info_di, mode_info_uo) is det.
 
 handle_implied_mode(Var0, VarInst0, VarInst, InitialInst, FinalInst, Det,
-		Var, Goals, ModeInfo0, ModeInfo) :-
+		Var, ExtraGoals0, ExtraGoals, ModeInfo0, ModeInfo) :-
 	mode_info_get_module_info(ModeInfo0, ModuleInfo0),
 	mode_info_get_inst_key_table(ModeInfo0, IKT0),
 	(
@@ -1398,7 +1435,7 @@ handle_implied_mode(Var0, VarInst0, VarInst, InitialInst, FinalInst, Det,
 		inst_matches_final(VarInst0, InitialInst, IKT0, ModuleInfo0)
 	->
 		Var = Var0,
-		Goals = [] - [],
+		ExtraGoals = ExtraGoals0,
 		ModeInfo = ModeInfo0
 	;
 		% This is the implied mode case.
@@ -1409,7 +1446,7 @@ handle_implied_mode(Var0, VarInst0, VarInst, InitialInst, FinalInst, Det,
 		( inst_is_bound(InitialInst, IKT0, ModuleInfo0) ->
 			% This is the case we can't handle
 			Var = Var0,
-			Goals = [] - [],
+			ExtraGoals = ExtraGoals0,
 			set__singleton_set(WaitingVars, Var0),
 			mode_info_error(WaitingVars,
 				mode_error_implied_mode(Var0, VarInst0,
@@ -1429,34 +1466,52 @@ handle_implied_mode(Var0, VarInst0, VarInst, InitialInst, FinalInst, Det,
 			mode_info_set_varset(VarSet, ModeInfo0, ModeInfo1),
 			mode_info_set_var_types(VarTypes, ModeInfo1, ModeInfo2),
 
+			% Calculate the instmap after the main goal.
+			% We just need to set the inst of the newly
+			% introduced variable Var to the procedure
+			% argument's final inst.
+			mode_info_get_instmap(ModeInfo2, OrigInstMap),
+			instmap__set(OrigInstMap, Var, FinalInst,
+				InstMapAfterMain),
+			mode_info_set_instmap(InstMapAfterMain,
+				ModeInfo2, ModeInfo3),
+
 			% Construct the code to do the unification
 			ModeVar0 = (VarInst0 -> VarInst),
 			ModeVar = (FinalInst -> VarInst),
-			mode_info_get_mode_context(ModeInfo2, ModeContext),
-			mode_context_to_unify_context(ModeContext, ModeInfo2,
+			mode_info_get_mode_context(ModeInfo3, ModeContext),
+			mode_context_to_unify_context(ModeContext, ModeInfo3,
 				UnifyContext),
+
 			categorize_unify_var_var(ModeVar0, ModeVar,
 				live, dead, Var0, Var, Det, UnifyContext,
-				VarTypes, ModeInfo2,
-				AfterGoal, ModeInfo),
+				VarTypes, ModeInfo3, NewUnifyGoal, ModeInfo),
+			unify_vars(NewUnifyGoal, NewUnifyGoalVars),
 
 			% compute the goal_info nonlocal vars & instmap delta
-			set__list_to_set([Var0, Var], NonLocals),
+			% N.B.  This may overestimate the set of nonlocal vars,
+			% but that should not cause any problems.
+			set__list_to_set(NewUnifyGoalVars, NonLocals),
 			( VarInst = VarInst0 ->
 				InstMapDeltaAL0 = []
 			;
 				InstMapDeltaAL0 = [Var0 - VarInst]
 			),
-			
 			InstMapDeltaAL = [Var - VarInst | InstMapDeltaAL0],
+			instmap_delta_from_assoc_list(InstMapDeltaAL,
+				InstMapDelta),
 			goal_info_init(GoalInfo0),
 			goal_info_set_nonlocals(GoalInfo0, NonLocals,
 				GoalInfo1),
-			instmap_delta_from_assoc_list(InstMapDeltaAL,
-				InstMapDelta),
 			goal_info_set_instmap_delta(GoalInfo1, InstMapDelta,
 				GoalInfo),
-			Goals = [] - [AfterGoal - GoalInfo]
+
+			% append the goals together in the appropriate order:
+			% ExtraGoals0, then NewUnify
+			NewUnifyExtraGoal = extra_goals(InstMapAfterMain,
+						[NewUnifyGoal - GoalInfo]),
+			append_extra_goals(ExtraGoals0, NewUnifyExtraGoal,
+				ExtraGoals)
 		)
 	).
 

@@ -15,9 +15,14 @@ see the file README in that directory for copyright information about
 those files.  A few files (config*) are derived from code that is
 copyright by the Free Software Foundation, Inc.  The program `texi2html'
 in the doc directory is copyright by CERN; see the copyright notice at
-the end of that file.  The `Togl' library in extras/graphics/Togl-1.2
+the end of that file.
+
+Some of the files in the `extras' subdirectory have fairly restrictive
+copyright licences.  The `Togl' library in extras/graphics/Togl-1.2
 is copyright by Brian Paul and Ben Bederson; see the file
-extras/graphics/Togl-1.2/LICENCE.
+extras/graphics/Togl-1.2/LICENCE.  The CLP(R) v1.2 implementation in
+extras/clpr/clpr is copyright by IBM; see the file extras/clpr/clpr/README
+for details, in particular the RESEARCH SOFTWARE DISCLAIMER and USER AGREEMENT.
 
 THIS MATERIAL IS PROVIDED AS IS, WITH ABSOLUTELY NO WARRANTY
 EXPRESSED OR IMPLIED.  ANY USE IS AT YOUR OWN RISK.  See the file COPYING.

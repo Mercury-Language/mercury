@@ -13,10 +13,3 @@
 ** then it will have an unresolved reference which will cause a link error.
 */
 const char MR_GRADE_VAR = 0;
-
-/*
-** To ensure that the final executable file doesn't have multiple
-** copies of this object file linked into it, we export a dummy symbol
-** whose name does not depend on the grade.
-*/
-const char MR_runtime_grade = 0;

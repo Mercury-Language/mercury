@@ -460,6 +460,15 @@ inst_lookup_2(InstName, IKT, ModuleInfo, Inst) :-
 		;
 			Inst = defined_inst(InstName)
 		)
+	; InstName = any_inst(_, _, _, _),
+		module_info_insts(ModuleInfo, InstTable),
+		inst_table_get_any_insts(InstTable, AnyInstTable),
+		map__lookup(AnyInstTable, InstName, MaybeInst),
+		( MaybeInst = known(Inst0, _) ->
+			Inst = Inst0
+		;
+			Inst = defined_inst(InstName)
+		)
 	; InstName = shared_inst(SharedInstName),
 		module_info_insts(ModuleInfo, InstTable),
 		inst_table_get_shared_insts(InstTable, SharedInstTable),
@@ -744,8 +753,7 @@ propagate_ctor_info(ground(Uniq, yes(PredInstInfo0)), Type, _Ctors, IKT,
 
 propagate_ctor_info(not_reached, _Type, _Constructors, _IKT, _ModuleInfo,
 		not_reached).
-propagate_ctor_info(inst_var(_), _, _, _, _, _) :-
-	error("propagate_ctor_info: unbound inst var").
+propagate_ctor_info(inst_var(V), _, _, _, _, inst_var(V)).
 propagate_ctor_info(abstract_inst(Name, Args), _, _, _, _,
 		abstract_inst(Name, Args)).	% XXX loses info
 propagate_ctor_info(defined_inst(InstName), Type, Ctors, IKT, ModuleInfo,
@@ -818,8 +826,7 @@ propagate_ctor_info_lazily(ground(Uniq, yes(PredInstInfo0)), Type0, Subst,
 		Modes = Modes0
 	).
 propagate_ctor_info_lazily(not_reached, _Type, _, _IKT, _M, not_reached).
-propagate_ctor_info_lazily(inst_var(_), _, _, _, _, _) :-
-	error("propagate_ctor_info_lazily: unbound inst var").
+propagate_ctor_info_lazily(inst_var(Var), _, _, _, _, inst_var(Var)).
 propagate_ctor_info_lazily(abstract_inst(Name, Args), _, _, _, _,
 		abstract_inst(Name, Args)).	% XXX loses info
 propagate_ctor_info_lazily(defined_inst(InstName0), Type0, Subst, _, _,
@@ -1106,6 +1113,9 @@ inst_name_apply_substitution(merge_inst(InstA0, InstB0), Subst,
 	inst_apply_substitution(InstB0, Subst, InstB).
 inst_name_apply_substitution(ground_inst(Inst0, IsLive, Uniq, Real), Subst,
 				ground_inst(Inst, IsLive, Uniq, Real)) :-
+	inst_name_apply_substitution(Inst0, Subst, Inst).
+inst_name_apply_substitution(any_inst(Inst0, IsLive, Uniq, Real), Subst,
+				any_inst(Inst, IsLive, Uniq, Real)) :-
 	inst_name_apply_substitution(Inst0, Subst, Inst).
 inst_name_apply_substitution(shared_inst(InstName0), Subst,
 				shared_inst(InstName)) :-
@@ -1796,68 +1806,81 @@ bind_inst_to_functor(Inst0, ConsId, Inst, Sub, IKT0, ModuleInfo0,
 %-----------------------------------------------------------------------------%
 
 apply_inst_key_sub(Sub, InstMap0, InstMap, IKT0, IKT) :-
+	set__init(DeadKeys),
+	apply_inst_key_sub_2(Sub, DeadKeys, InstMap0, InstMap, IKT0, IKT).
+
+:- pred apply_inst_key_sub_2(inst_key_sub, set(inst_key), instmap, instmap,
+		inst_key_table, inst_key_table).
+:- mode apply_inst_key_sub_2(in, in, in, out, in, out) is det.
+
+apply_inst_key_sub_2(Sub, DeadKeys0, InstMap0, InstMap, IKT0, IKT) :-
 	( map__is_empty(Sub) ->
 		InstMap0 = InstMap,
 		IKT0 = IKT
 	;
 		map__keys(Sub, SubDomain),
+		set__init(KeysToChange0),
+		list__foldl(lambda([K :: in, Ks0 :: in, Ks :: out] is det,
+				(inst_key_table_dependent_keys(IKT0, K, Ks1),
+				set__insert_list(Ks0, Ks1, Ks))
+			), SubDomain, KeysToChange0, KeysToChange1),
+		set__difference(KeysToChange1, DeadKeys0, KeysToChange),
+		set__to_sorted_list(KeysToChange, KeysToChangeList),
 
 		map__init(NewSub0),
 
-		list__map(inst_key_table_dependent_keys(IKT0),
-			SubDomain, KeysToChangeListList),
-		list__condense(KeysToChangeListList, KeysToChangeList),
-		list__sort_and_remove_dups(KeysToChangeList,
-			KeysToChange),
-		apply_inst_key_sub_inst_key_table(KeysToChange, Sub,
-			NewSub0, NewSub, IKT0, IKT1),
+		apply_inst_key_sub_inst_key_table(KeysToChangeList, Sub,
+			DeadKeys0, DeadKeys, NewSub0, NewSub, IKT0, IKT1),
 
-		list__map(instmap__lookup_dependent_vars(InstMap0),
-			SubDomain, VarsToChangeListList),
-		list__condense(VarsToChangeListList, VarsToChangeList),
-		list__sort_and_remove_dups(VarsToChangeList, VarsToChange),
-		apply_inst_key_sub_instmap(VarsToChange, Sub,
+		set__init(VarsToChange0),
+		list__foldl(lambda([V :: in, Vs0 :: in, Vs :: out] is det,
+				(instmap__lookup_dependent_vars(InstMap0, V,
+					Vs1),
+				set__insert_list(Vs0, Vs1, Vs))
+			), KeysToChangeList, VarsToChange0, VarsToChange),
+		set__to_sorted_list(VarsToChange, VarsToChangeList),
+
+		apply_inst_key_sub_instmap(VarsToChangeList, Sub,
 			InstMap0, InstMap1),
 
-		apply_inst_key_sub(NewSub, InstMap1, InstMap, IKT1, IKT)
+		apply_inst_key_sub_2(NewSub, DeadKeys, InstMap1, InstMap,
+			IKT1, IKT)
 	).
 
-:- pred apply_inst_key_sub_instmap(list(var),
-		inst_key_sub, instmap, instmap).
+:- pred apply_inst_key_sub_instmap(list(var), inst_key_sub, instmap, instmap).
 :- mode apply_inst_key_sub_instmap(in, in, in, out) is det.
 
 apply_inst_key_sub_instmap([], _Sub, InstMap, InstMap).
-apply_inst_key_sub_instmap([V | Vs], Sub, InstMap0, InstMap) :-
+apply_inst_key_sub_instmap([V | Vs], Sub, 
+		InstMap0, InstMap) :-
 	instmap__lookup_var(InstMap0, V, Inst0),
 	inst_apply_sub(Sub, Inst0, Inst),
 	instmap__set(InstMap0, V, Inst, InstMap1),
 	apply_inst_key_sub_instmap(Vs, Sub, InstMap1, InstMap).
 
 :- pred apply_inst_key_sub_inst_key_table(list(inst_key),
-		inst_key_sub, inst_key_sub,
-		inst_key_sub, inst_key_table, inst_key_table).
-:- mode apply_inst_key_sub_inst_key_table(in, in, in, out, in, out)
+		inst_key_sub, set(inst_key), set(inst_key),
+		inst_key_sub, inst_key_sub, inst_key_table, inst_key_table).
+:- mode apply_inst_key_sub_inst_key_table(in, in, in, out, in, out, in, out)
 		is det.
 
-apply_inst_key_sub_inst_key_table([], _Sub, NewSub, NewSub, IKT, IKT).
-apply_inst_key_sub_inst_key_table([Key0 | Keys], Sub,
+apply_inst_key_sub_inst_key_table([], _Sub, DeadKeys, DeadKeys, NewSub, NewSub,
+		IKT, IKT).
+apply_inst_key_sub_inst_key_table([Key0 | Keys], Sub, DeadKeys0, DeadKeys,
 		NewSub0, NewSub, IKT0, IKT) :-
-	( inst_key_table_key_is_dead(IKT0, Key0) ->
-		NewSub0 = NewSub1,
-		IKT0 = IKT1
+	inst_key_table_lookup(IKT0, Key0, Inst0),
+	inst_apply_sub(Sub, Inst0, Inst),
+	( Inst0 = Inst ->
+		IKT0 = IKT1,
+		NewSub1 = NewSub0,
+		DeadKeys1 = DeadKeys0
 	;
-		inst_key_table_lookup(IKT0, Key0, Inst0),
-		inst_apply_sub(Sub, Inst0, Inst),
-		( Inst0 = Inst ->
-			IKT0 = IKT1,
-			NewSub0 = NewSub1
-		;
-			inst_key_table_add(IKT0, Inst, Key, IKT1),
-			map__det_insert(NewSub0, Key0, Key, NewSub1)
-		)
+		inst_key_table_add(IKT0, Inst, Key, IKT1),
+		set__insert(DeadKeys0, Key0, DeadKeys1),
+		map__det_insert(NewSub0, Key0, Key, NewSub1)
 	),
-	apply_inst_key_sub_inst_key_table(Keys, Sub, NewSub1,
-		NewSub, IKT1, IKT).
+	apply_inst_key_sub_inst_key_table(Keys, Sub, DeadKeys1, DeadKeys,
+		NewSub1, NewSub, IKT1, IKT).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -178,6 +178,8 @@ tar: README INSTALL
 	# Package up the mercury directory and the tests directory, 
 	# but with some subdirectories excluded, into a gzipped tar
 	# archive that will unpack into mercury-$(VERSION).
+	# Put the extras directory into a gzipped tar archive that
+	# will unpack into mercury-$(VERSION)-extras.
 	cd .. && (							\
 		mv mercury mercury-$(VERSION);				\
 		mv tests mercury-$(VERSION)/tests;			\
@@ -185,10 +187,14 @@ tar: README INSTALL
 		mv mercury-$(VERSION)/trial	stuff-to-exclude;	\
 		mv mercury-$(VERSION)/bytecode	stuff-to-exclude;	\
 		mv mercury-$(VERSION)/lp_solve	stuff-to-exclude;	\
+		mv mercury-$(VERSION)/extras mercury-$(VERSION)-extras; \
 		tar -cf - mercury-$(VERSION) |				\
 			gzip -9 > mercury-$(VERSION).tar.gz;		\
 		mv stuff-to-exclude/* mercury-$(VERSION);		\
 		rmdir stuff-to-exclude;					\
+		tar -cf - mercury-$(VERSION)-extras |			\
+			gzip -9 > mercury-$(VERSION)-extras.tar.gz;	\
+		mv mercury-$(VERSION)-extras mercury-$(VERSION)/extras; \
 		mv mercury-$(VERSION)/tests tests;			\
 		mv mercury-$(VERSION) mercury				\
 	)

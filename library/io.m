@@ -925,13 +925,6 @@
 :- pred io__set_op_table(ops__table, io__state, io__state).
 :- mode io__set_op_table(di, di, uo) is det.
 
-% For use by the Mercury runtime:
-
-:- type io__external_state.
-
-:- pred io__init_state(io__external_state, io__state).
-:- mode io__init_state(di, uo) is det.
-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -939,19 +932,28 @@
 :- import_module map, dir, term, term_io, varset, require, benchmarking, array.
 :- import_module int, std_util.
 
-:- type io__state
-	---> 	io__state(
-			io__stream_names,	% map from stream to stream name
-			io__stream_putback,	% map from input stream to
-						% list of putback characters
-						% Note: only used for the Prolog
-						% implementation.
-			ops__table, 		% current operators
-			univ,			% for use by the application
-			io__external_state
-		).
+:- type io__state ---> io__state(c_pointer).
+	% Values of type `io__state' are never really used:
+	% instead we store data in global variables.
+	% The reason this is not defined simply as `io__state == c_pointer'
+	% is so that `type_name' produces more informative results
+	% for cases such as `type_name(main)'.
 
-:- type io__external_state == c_pointer.
+:- pragma c_header_code("
+	extern Word ML_io_stream_names;
+	extern Word ML_io_user_globals;
+	#if 0
+	  extern Word ML_io_ops_table;
+	#endif
+").
+
+:- pragma c_code("
+	Word ML_io_stream_names;
+	Word ML_io_user_globals;
+	#if 0
+	  extern Word ML_io_ops_table;
+	#endif
+").
 
 :- type io__stream_names ==	map(io__stream, string).
 :- type io__stream_putback ==	map(io__stream, list(char)).
@@ -1794,54 +1796,68 @@ io__binary_output_stream_name(Stream, Name) -->
 
 	% XXX major design flaw with regard to unique modes
 	% means that this is very inefficient.
-io__stream_name(Stream, Name, IOState0, IOState) :-
-	IOState0 = io__state(StreamNames0, B, C, D, E),
-	copy(StreamNames0, StreamNames),
-	IOState = io__state(StreamNames, B, C, D, E),
-	( map__search(StreamNames0, Stream, Name1) ->
+io__stream_name(Stream, Name) -->
+	io__get_stream_names(StreamNames0),
+	{ map__search(StreamNames0, Stream, Name1) ->
 		Name = Name1
 	;
 		Name = "<stream name unavailable>"
-	).
+	},
+	{ copy(StreamNames0, StreamNames) }, % is this necessary?
+	io__set_stream_names(StreamNames).
+
+:- pred io__get_stream_names(io__stream_names, io__state, io__state).
+:- mode io__get_stream_names(uo, di, uo) is det.
+
+:- pragma c_code(io__get_stream_names(StreamNames::uo, IO0::di, IO::uo), "
+	StreamNames = ML_io_stream_names;
+	ML_io_stream_names = 0; /* ensure uniqueness */
+	update_io(IO0, IO);
+").
+
+:- pred io__set_stream_names(io__stream_names, io__state, io__state).
+:- mode io__set_stream_names(di, di, uo) is det.
+
+:- pragma c_code(io__set_stream_names(StreamNames::di, IO0::di, IO::uo), "
+	ML_io_stream_names = StreamNames;
+	update_io(IO0, IO);
+").
 
 :- pred io__delete_stream_name(io__stream, io__state, io__state).
 :- mode io__delete_stream_name(in, di, uo) is det.
 
-io__delete_stream_name(Stream, io__state(StreamNames0, B, C, D, E),
-		io__state(StreamNames, B, C, D, E)) :-
-	map__delete(StreamNames0, Stream, StreamNames).
+io__delete_stream_name(Stream) -->
+	io__get_stream_names(StreamNames0),
+	{ map__delete(StreamNames0, Stream, StreamNames) },
+	io__set_stream_names(StreamNames).
 
 :- pred io__insert_stream_name(io__stream, string, io__state, io__state).
 :- mode io__insert_stream_name(in, in, di, uo) is det.
 
-io__insert_stream_name(Stream, Name,
-		io__state(StreamNames0, B, C, D, E),
-		io__state(StreamNames, B, C, D, E)) :-
-	copy(Stream, Stream1),
-	copy(Name, Name1),
-	map__set(StreamNames0, Stream1, Name1, StreamNames).
+io__insert_stream_name(Stream, Name) -->
+	io__get_stream_names(StreamNames0),
+	{ copy(Stream, Stream1) },
+	{ copy(Name, Name1) },
+	{ map__set(StreamNames0, Stream1, Name1, StreamNames) },
+	io__set_stream_names(StreamNames).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 % global state predicates
 
-	% XXX major design flaw with regard to unique modes
-	% and io__get_globals/3
+	% XXX design flaw with regard to unique modes
+	% and io__get_globals/3: the `Globals::uo' mode here is a lie.
 
-/* old definition
-io__get_globals(Globals, IOState, IOState) :-
-	IOState = io__state(_, _, _, Globals, _).
-*/
-/* new definition - horrendously inefficient! */
-io__get_globals(Globals, IOState0, IOState) :-
-	IOState0 = io__state(A, B, C, Globals0, E),
-	copy(Globals0, Globals1),
-	IOState = io__state(A, B, C, Globals1, E),
-	Globals = Globals0.
+:- pragma c_code(io__get_globals(Globals::uo, IOState0::di, IOState::uo), "
+	Globals = ML_io_user_globals;
+	update_io(IOState0, IOState);
+").
 
-io__set_globals(Globals, io__state(A, B, C, _, E),
-		io__state(A, B, C, Globals, E)).
+:- pragma c_code(io__set_globals(Globals::di, IOState0::di, IOState::uo), "
+	ML_io_user_globals = Globals;
+	update_io(IOState0, IOState);
+").
 
 io__progname_base(DefaultName, PrognameBase) -->
 	io__progname(DefaultName, Progname),
@@ -1885,13 +1901,45 @@ io__report_stats -->
 
 % miscellaneous predicates
 
-io__init_state(ExternalState, IOState) :-
-	map__init(Names0),
-	map__init(PutBack),
-	ops__init_op_table(OpTable),
-	type_to_univ("<globals>", Globals),
-	IOState0 = io__state(Names0, PutBack, OpTable, Globals, ExternalState),
-	io__insert_std_stream_names(IOState0, IOState).
+:- pred io__init_state(io__state, io__state).
+:- mode io__init_state(di, uo) is det.
+
+% for use by the Mercury runtime
+:- pragma export(io__init_state(di, uo), "ML_io_init_state").
+
+io__init_state -->
+	io__gc_init,
+	{ map__init(StreamNames) },
+	{ ops__init_op_table(OpTable) },
+	{ type_to_univ("<globals>", Globals) },
+	io__set_stream_names(StreamNames),
+	io__set_op_table(OpTable),
+	io__set_globals(Globals),
+	io__insert_std_stream_names.
+
+:- pred io__finalize_state(io__state, io__state).
+:- mode io__finalize_state(di, uo) is det.
+
+% for use by the Mercury runtime
+:- pragma export(io__finalize_state(di, uo), "ML_io_finalize_state").
+
+io__finalize_state -->
+	% currently no finalization needed...
+	% (Perhaps we should close all open Mercury files?
+	% That will happen on process exit anyway, so currently
+	% we don't bother.)
+	[].
+
+:- pred io__gc_init(io__state, io__state).
+:- mode io__gc_init(di, uo) is det.
+
+:- pragma c_code(io__gc_init(IO0::di, IO::uo), "
+	/* for Windows DLLs, we need to call GC_INIT() from each DLL */
+#ifdef CONSERVATIVE_GC
+	GC_INIT();
+#endif
+	update_io(IO0, IO);
+").
 
 :- pred io__insert_std_stream_names(io__state, io__state).
 :- mode io__insert_std_stream_names(di, uo) is det.
@@ -1919,20 +1967,13 @@ io__error_message(Error, Error).
 
 %-----------------------------------------------------------------------------%
 
-	% XXX major design flaw with regard to unique modes and
+	% XXX design flaw with regard to unique modes and
 	% io__get_op_table
-/* old definition
-io__get_op_table(OpTable) -->
-	=(io__state(_, _, OpTable, _, _)).
-*/
-/* new definition - awfully inefficient! */
-io__get_op_table(OpTable, IOState0, IOState) :-
-	IOState0 = io__state(A, B, OpTable, D, E),
-	copy(OpTable, OpTable1),
-	IOState = io__state(A, B, OpTable1, D, E).
 
-io__set_op_table(OpTable,	io__state(A, B, _, D, E),
-				io__state(A, B, OpTable, D, E)).
+io__get_op_table(OpTable) -->
+	{ ops__init_op_table(OpTable) }.
+
+io__set_op_table(_OpTable) --> [].
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1971,7 +2012,7 @@ extern MercuryFile *mercury_current_text_output;
 extern MercuryFile *mercury_current_binary_input;
 extern MercuryFile *mercury_current_binary_output;
 
-#define initial_external_state()	0	/* some random number */
+#define initial_io_state()		0	/* some random number */
 #define update_io(r_src, r_dest)	((r_dest) = (r_src))
 #define final_io_state(r)		((void)0)
 
@@ -1986,9 +2027,9 @@ void		mercury_close(MercuryFile* mf);
 
 :- pragma(c_code, "
 
-MercuryFile mercury_stdin = { NULL, 0 };
-MercuryFile mercury_stdout = { NULL, 0 };
-MercuryFile mercury_stderr = { NULL, 0 };
+MercuryFile mercury_stdin = { NULL, 1 };
+MercuryFile mercury_stdout = { NULL, 1 };
+MercuryFile mercury_stderr = { NULL, 1 };
 MercuryFile *mercury_current_text_input = &mercury_stdin;
 MercuryFile *mercury_current_text_output = &mercury_stdout;
 MercuryFile *mercury_current_binary_input = &mercury_stdin;
@@ -2095,88 +2136,6 @@ mercury_close(MercuryFile* mf)
 		}
 		oldmem(mf);
 	}
-}
-
-").
-
-:- pragma(c_header_code, "#include ""init.h""").
-:- pragma(c_header_code, "#include ""prof.h""").
-:- pragma(c_code, "
-
-Declare_entry(mercury__io__init_state_2_0);
-
-/* This code is the program startup point -- it is called by the Mercury
-   runtime.
-
-   The handwritten code below is almost equivalent to
-
-	io__run :-
-		gc_init,
-		initial_external_state(IO0),
-		program_entry_point(IO0, IO),
-		final_io_state(IO).
-
-   except that program_entry_point is a variable, which is by default
-   set to the address of main/2.
-*/
-
-Define_extern_entry(mercury__io__run_0_0);
-Declare_label(mercury__io__run_0_0_i1);
-Declare_label(mercury__io__run_0_0_i2);
-
-BEGIN_MODULE(io_run_module)
-	init_entry(mercury__io__run_0_0);
-	init_label(mercury__io__run_0_0_i1);
-	init_label(mercury__io__run_0_0_i2);
-BEGIN_CODE
-Define_entry(mercury__io__run_0_0);
-
-#ifdef CONSERVATIVE_GC
-	GC_INIT();
-#endif
-
-        mkframe(""mercury__io__run_0_0"", 0, ENTRY(do_fail));
-	r1 = initial_external_state();
-	noprof_call(ENTRY(mercury__io__init_state_2_0),
-		LABEL(mercury__io__run_0_0_i1));
-Define_label(mercury__io__run_0_0_i1);
-#ifdef	COMPACT_ARGS
-#else
-	r1 = r2;
-#endif
-	if (program_entry_point == NULL) {
-		fatal_error(""no program entry point supplied"");
-	}
-
-#ifdef  PROFILE_TIME
-	prof_init_time_profile();
-#endif
-
-	noprof_call(program_entry_point,
-		LABEL(mercury__io__run_0_0_i2));
-
-Define_label(mercury__io__run_0_0_i2);
-
-#ifdef  PROFILE_TIME
-	prof_turn_off_time_profiling();
-	prof_output_addr_table();
-#endif
-#ifdef  PROFILE_CALLS
-	prof_output_addr_pair_table();
-#endif
-
-	final_io_state(r2);
-	succeed();
-END_MODULE
-
-/* Ensure that the initialization code for the above module gets run. */
-/*
-INIT sys_init_io_run_module
-*/
-void sys_init_io_run_module(void); /* suppress gcc -Wmissing-decl warning */
-void sys_init_io_run_module(void) {
-	extern ModuleFunc io_run_module;
-	io_run_module();
 }
 
 ").

@@ -20,7 +20,7 @@
 :- import_module llds.
 :- import_module io.
 
-	% Given a 'c_file' structure, open the appropriate .mod file
+	% Given a 'c_file' structure, open the appropriate .c file
 	% and output the code into that file.
 
 :- pred output_c_file(c_file, io__state, io__state).
@@ -143,8 +143,8 @@ output_c_file_init(BaseName, Modules) -->
 		{ library__version(Version) },
 		io__write_strings(
 			["/*\n** Automatically generated from `", BaseName,
-			".m' by the\n** Mercury compiler, version ", Version,
-			".  Do not edit.\n*/\n"]),
+			".m' by the Mercury compiler,\n** version ", Version,
+			".\n** Do not edit.\n*/\n"]),
 		io__write_string("/*\n"),
 		io__write_string("INIT "),
 		output_init_name(BaseName),
@@ -152,6 +152,7 @@ output_c_file_init(BaseName, Modules) -->
 		io__write_string("ENDINIT\n"),
 		io__write_string("*/\n\n"),
 		io__write_string("#include ""imp.h""\n"),
+		io__write_string("\n"),
 		output_c_module_init_list(BaseName, Modules),
 		io__told
 	;
@@ -182,8 +183,8 @@ output_single_c_file(c_file(BaseName, C_HeaderLines, Modules), SplitFiles)
 		{ library__version(Version) },
 		io__write_strings(
 			["/*\n** Automatically generated from `", BaseName,
-			".m' by the\n** Mercury compiler, version ", Version,
-			".  Do not edit.\n*/\n"]),
+			".m' by the Mercury compiler,\n** version ", Version,
+			".\n** Do not edit.\n*/\n"]),
 		( { SplitFiles = yes(_) } ->
 			[]
 		;
@@ -259,7 +260,12 @@ output_c_module_init_list(BaseName, Modules) -->
 	io__write_string("\t}\n"),
 	io__write_string("#endif\n"),
 	output_c_data_init_list(Modules),
-	io__write_string("}\n").
+	io__write_string("}\n"),
+	io__write_string("\n"),
+	io__write_string(
+		"/* ensure everything is compiled with the same grade */\n"),
+	io__write_string(
+		"static const void *const MR_grade = &MR_GRADE_VAR;\n").
 
 :- pred output_c_module_init_list_2(list(c_module), string, int, int, int, int,
 	io__state, io__state).
@@ -442,8 +448,10 @@ output_c_module(c_code(C_Code, Context), DeclSet, DeclSet, _) -->
 	;
 		[]
 	),
+	output_set_line_num(Context),
 	io__write_string(C_Code),
-	io__write_string("\n").
+	io__write_string("\n"),
+	output_reset_line_num.
 
 output_c_module(c_export(PragmaExports), DeclSet, DeclSet, _BaseName) -->
 	output_exported_c_functions(PragmaExports).
@@ -470,12 +478,14 @@ output_c_header_include_lines_2([Code - Context|Hs]) -->
 	( { PrintComments = yes } ->
 		io__write_string("/* "),
 		prog_out__write_context(Context),
-		io__write_string(" pragma(c_code) */\n")
+		io__write_string(" pragma(c_header_code) */\n")
 	;
 		[]
 	),
+	output_set_line_num(Context),
 	io__write_string(Code),
 	io__write_string("\n"),
+	output_reset_line_num,
 	output_c_header_include_lines_2(Hs).
 
 :- pred output_exported_c_functions(list(string), io__state, io__state).
@@ -1043,10 +1053,21 @@ output_instruction(decr_sp(N), _) -->
 	%	<the C code itself>
 	%	<assignment to the output regs of the corresponding locals>
 	% }
-	%
-	% The printing of the #line directives is currently disabled;
-	% they are printed as comments instead.
 output_instruction(pragma_c(Decls, Inputs, C_Code, Outputs, Context), _) -->
+	io__write_string("\t{\n"),
+	output_pragma_decls(Decls),
+	output_pragma_inputs(Inputs),
+	output_set_line_num(Context),
+	io__write_string("{\t\t"),
+	io__write_string(C_Code),
+	io__write_string(";}\n"),
+	output_reset_line_num,
+	output_pragma_outputs(Outputs),
+	io__write_string("\n\t}\n").
+
+:- pred output_set_line_num(term__context, io__state, io__state).
+:- mode output_set_line_num(in, di, uo) is det.
+output_set_line_num(Context) -->
 	{ term__context_file(Context, File) },
 	{ term__context_line(Context, Line) },
 	% The context is unfortunately bogus for pragma_c_codes inlined
@@ -1055,35 +1076,35 @@ output_instruction(pragma_c(Decls, Inputs, C_Code, Outputs, Context), _) -->
 		{ Line > 0 },
 		{ File \= "" }
 	->
-		io__write_string("/* #line "),
+		io__write_string("#line "),
 		io__write_int(Line),
 		io__write_string(" """),
 		io__write_string(File),
-		io__write_string(""" */\n")
+		io__write_string("""\n")
 	;
 		[]
-	),
-	io__write_string("\t{\n"),
-	output_pragma_decls(Decls),
-	output_pragma_inputs(Inputs),
-	io__write_string("\t\t"),
-	io__write_string(C_Code),
-	io__write_string("\n"),
-	output_pragma_outputs(Outputs),
-	io__write_string("\n\t}\n").
-%	% We want to generate another #line directive to reset the C compiler's
-%	% idea of what it is processing back to the file we are generating.
-%	% However, that would require us to pass down here the filename and
-%	% line count. This current fudge depends on the code *we* generate
-%	% never getting any errors or warnings.
-%	(
-%		{ Line > 0 },
-%		{ File \= "" }
-%	->
-%		io__write_string("#line 1 ""xxx.c""\n")
-%	;
-%		[]
-%	).
+	).
+
+:- pred output_reset_line_num(io__state, io__state).
+:- mode output_reset_line_num(di, uo) is det.
+output_reset_line_num -->
+	% We want to generate another #line directive to reset the C compiler's
+	% idea of what it is processing back to the file we are generating.
+	io__get_output_line_number(Line),
+	io__output_stream_name(FileName),
+	(
+		{ Line > 0 },
+		{ FileName \= "" }
+	->
+		io__write_string("#line "),
+		{ NextLine is Line + 1 },
+		io__write_int(NextLine),
+		io__write_string(" """),
+		io__write_string(FileName),
+		io__write_string("""\n")
+	;
+		[]
+	).
 
 	% Output the local variable declarations at the top of the 
 	% pragma_c_code code.

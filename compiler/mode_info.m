@@ -221,11 +221,10 @@
 :- mode mode_info_bind_var_to_functor(in, in, mode_info_di, mode_info_uo)
 	is det.
 
-:- pred mode_info_apply_inst_key_sub(list(inst), map(inst_key, inst_key),
-		mode_info, mode_info).
-:- mode mode_info_apply_inst_key_sub(in, in, mode_info_di, mode_info_uo) is det.
+:- pred mode_info_apply_inst_key_sub(inst_key_sub, mode_info, mode_info).
+:- mode mode_info_apply_inst_key_sub(in, mode_info_di, mode_info_uo) is det.
 
-:- pred inst_apply_sub(map(inst_key, inst_key), inst, inst).
+:- pred inst_apply_sub(inst_key_sub, inst, inst).
 :- mode inst_apply_sub(in, in, out) is det.
 
 /*
@@ -741,7 +740,7 @@ mode_info_bind_var_to_functor(Var, ConsId, ModeInfo0, ModeInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-mode_info_apply_inst_key_sub(_NewInsts, Sub, ModeInfo0, ModeInfo) :-
+mode_info_apply_inst_key_sub(Sub, ModeInfo0, ModeInfo) :-
 	mode_info_get_instmap(ModeInfo0, InstMap0),
 	mode_info_get_inst_key_table(ModeInfo0, IKT0),
 
@@ -749,42 +748,6 @@ mode_info_apply_inst_key_sub(_NewInsts, Sub, ModeInfo0, ModeInfo) :-
 
 	mode_info_set_instmap(InstMap, ModeInfo0, ModeInfo1),
 	mode_info_set_inst_key_table(ModeInfo1, IKT, ModeInfo).
-
-:- pred definitely_live_keys(list(inst), inst_key_table, instmap,
-		set(inst_key)).
-:- mode definitely_live_keys(in, in, in, out) is det.
-
-definitely_live_keys(FirstInsts, InstKeyTable, Instmap, LiveKeys) :-
-	instmap__vars_list(Instmap, InstmapVars),
-	list__map(instmap__lookup_var(Instmap), InstmapVars, InstmapInsts),
-	list__foldl(inst_keys_in_inst, FirstInsts, [], LiveKeysList0),
-	list__foldl(inst_keys_in_inst, InstmapInsts, LiveKeysList0,
-		LiveKeysList1),
-	list__sort_and_remove_dups(LiveKeysList1, LiveKeysList),
-	queue__list_to_queue(LiveKeysList, KeysQ0),
-	set__init(LiveKeys0),
-	definitely_live_keys_2(KeysQ0, InstKeyTable, LiveKeys0, LiveKeys).
-
-:- pred definitely_live_keys_2(queue(inst_key), inst_key_table,
-		set(inst_key), set(inst_key)).
-:- mode definitely_live_keys_2(in, in, in, out) is det.
-
-definitely_live_keys_2(KeysQ0, InstKeyTable, LiveKeys0, LiveKeys) :-
-	( queue__get(KeysQ0, Key, KeysQ1) ->
-		( set__member(Key, LiveKeys0) ->
-			definitely_live_keys_2(KeysQ1, InstKeyTable,
-				LiveKeys0, LiveKeys)
-		;
-			inst_key_table_lookup(InstKeyTable, Key, Inst),
-			inst_keys_in_inst(Inst, [], NewKeys),
-			set__insert(LiveKeys0, Key, LiveKeys1),
-			queue__put_list(KeysQ1, NewKeys, KeysQ),
-			definitely_live_keys_2(KeysQ, InstKeyTable,
-				LiveKeys1, LiveKeys)
-		)
-	;
-		LiveKeys0 = LiveKeys
-	).
 
 inst_apply_sub(_Sub, any(Uniq), any(Uniq)).
 inst_apply_sub(Sub, alias(Key0), alias(Key)) :-

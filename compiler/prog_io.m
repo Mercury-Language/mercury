@@ -1864,7 +1864,7 @@ make_name_specifier(Name, name(Name)).
 %			Matches symbols with the specified name exported
 %			by the specified module.
 %
-%	We [will one day] also allow the syntax `Module__Name'
+%	We also allow the syntax `Module__Name'
 %	as an alternative for `Module:Name'.
 
 :- pred parse_symbol_name(string, term, maybe1(sym_name)).

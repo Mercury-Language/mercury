@@ -213,7 +213,13 @@ AC_PROG_CPP
 AC_C_CROSS
 AC_PROG_RANLIB
 AC_RETSIGTYPE
-AC_HAVE_FUNCS(sysconf getpagesize memalign mprotect sigaction setitimer strerror)
+# Don't try to use mprotect() on gnu-win32, since it is broken
+# (at least for version b18, anyway) and trying it can crash Win95.
+case "$host" in
+	*-cygwin*)
+		ac_cv_func_mprotect=no ;;
+esac
+AC_HAVE_FUNCS(sysconf getpagesize memalign mprotect sigaction setitimer strerror memmove)
 #-----------------------------------------------------------------------------#
 AC_CHECK_HEADER(sys/siginfo.h, HAVE_SYS_SIGINFO_H=1)
 if test "$HAVE_SYS_SIGINFO_H" = 1; then
@@ -1358,11 +1364,11 @@ case "$host" in
 		;;
 	alpha-dec-osf*)
 		AC_MSG_RESULT(yes)
-		LINK_SHARED_OBJ="ld -O3 -shared \
-			-update_registry ../so_locations"
+		LINK_SHARED_OBJ="gcc -shared \
+			-Wl,-O3,-update_registry,../so_locations"
 		EXE_RPATH_OPT="-Wl,-rpath,"
 		EXE_RPATH_SEP=":"
-		SHLIB_RPATH_OPT="-rpath "
+		SHLIB_RPATH_OPT="-Wl,-rpath,"
 		SHLIB_RPATH_SEP=":"
 		EXT_FOR_SHARED_LIB=so
 		# -fpic not needed on Alpha/OSF, since it is the default
@@ -1389,7 +1395,7 @@ case "$host" in
 			AC_MSG_RESULT(Read README.IRIX-5)
 		fi
 		;;
-	*-cygwin-*)
+	*-cygwin*)
 		# disabled for now, since it hasn't been tested
 		# xxx_MSG_RESULT(yes)
 		# EXT_FOR_SHARED_LIB=dll

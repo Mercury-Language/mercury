@@ -37,7 +37,7 @@
 static const char *progname = NULL;
 
 /* options and arguments, set by parse_options() */
-static const char *entry_point = "mercury__io__run_0_0";
+static const char *entry_point = "mercury__io__main_2_0";
 static int maxcalls = MAXCALLS;
 static int num_files;
 static char **files;
@@ -75,7 +75,7 @@ static const char header2[] =
 	"\n"
 	;
 
-static const char mercury_main_func[] =
+static const char mercury_funcs[] =
 	"\n"
 	"Declare_entry(%s);\n"
 	"\n"
@@ -96,7 +96,8 @@ static const char mercury_main_func[] =
 	"  #endif\n"
 	"#endif\n"
 	"\n"
-	"int mercury_main(int argc, char **argv, char *stackbottom)\n"
+	"void\n"
+	"mercury_init(int argc, char **argv, char *stackbottom)\n"
 	"{\n"
 	"\n"
 	"#ifdef CONSERVATIVE_GC\n"
@@ -128,22 +129,44 @@ static const char mercury_main_func[] =
 	"#ifdef CONSERVATIVE_GC\n"
 	"	address_of_init_gc = init_gc;\n"
 	"#endif\n"
+	"	MR_library_initializer = ML_io_init_state;\n"
+	"	MR_library_finalizer = ML_io_finalize_state;\n"
 	"#if defined(USE_GCC_NONLOCAL_GOTOS) && !defined(USE_ASM_LABELS)\n"
 	"	do_init_modules();\n"
 	"#endif\n"
-	"	program_entry_point = ENTRY(mercury__main_2_0);\n"
-	"	library_entry_point = ENTRY(%s);\n"
+	"	program_entry_point = ENTRY(%s);\n"
 	"\n"
-	"	return mercury_runtime_main(argc, argv);\n"
+	"	return mercury_runtime_init(argc, argv);\n"
+	"}\n"
+	"\n"
+	"void\n"
+	"mercury_call_main(void)\n"
+	"{\n"
+	"	mercury_runtime_main();\n"
+	"}\n"
+	"\n"
+	"int\n"
+	"mercury_terminate(void)\n"
+	"{\n"
+	"	return mercury_runtime_terminate();\n"
+	"}\n"
+	"\n"
+	"int\n"
+	"mercury_main(int argc, char **argv)\n"
+	"{\n"
+	"	char dummy;\n"
+	"	mercury_init(argc, argv, &dummy);\n"
+	"	mercury_call_main();\n"
+	"	return mercury_terminate();\n"
 	"}\n"
 	;
 
 static const char main_func[] =
 	"\n"
-	"int main(int argc, char **argv)\n"
+	"int\n"
+	"main(int argc, char **argv)\n"
 	"{\n"
-	"	char dummy;\n"
-	"	return mercury_main(argc, argv, &dummy);\n"
+	"	return mercury_main(argc, argv);\n"
 	"}\n"
 	;
 
@@ -317,7 +340,7 @@ output_main_init_function(void)
 static void 
 output_main(void)
 {
-	printf(mercury_main_func, entry_point, entry_point);
+	printf(mercury_funcs, entry_point, entry_point);
 	if (output_main_func) {
 		fputs(main_func, stdout);
 	}

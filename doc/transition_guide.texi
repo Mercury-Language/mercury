@@ -602,7 +602,7 @@ member_of_both(List1, List2, X) :-
 and in fact that's exactly how the Mercury compiler implements lambda
 expressions.
 
-The current implementation of solutions/2 is a "zero-copy" implementation,
+The current implementation of solutions/2 is a ``zero-copy'' implementation,
 so the cost of solutions/2 is proportional the number of solutions, but
 independent of the size of the solutions.  (This may change in
 future implementations.)

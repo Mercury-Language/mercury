@@ -12,6 +12,8 @@
 % a bt_array data structure.  This implementation allows O(log n) access
 % and update time, and does not require the bt_array to be unique.  If you
 % need O(1) access/update time, use the array datatype instead.
+% (`bt_array' is supposed to stand for either "binary tree array"
+% or "backtrackable array".)
 
 % Implementation obscurity: This implementation is biassed towards larger
 % indices.  The access/update time for a bt_array of size N with index I

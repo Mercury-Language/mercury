@@ -43,8 +43,10 @@
 % So are the standard unique insts `unique', `unique(...)',
 % `mostly_unique', `mostly_unique(...)', and `clobbered'.
 % The name `dead' is allowed as a synonym for `clobbered'.
+% Similarly `mostly_dead' is a synonym for `mostly_clobbered'.
 
 :- inst dead = clobbered.
+:- inst mostly_dead = mostly_clobbered.
 
 % The not yet properly supported `any' inst used for the
 % constraint solver interface is also builtin.
@@ -69,6 +71,7 @@
 :- mode in(Inst) :: (Inst -> Inst).
 :- mode out(Inst) :: (free -> Inst).
 :- mode di(Inst) :: (Inst -> clobbered).
+:- mode mdi(Inst) :: (Inst -> mostly_clobbered).
 
 % Unique modes.  These are still not fully implemented.
 

@@ -109,8 +109,8 @@
 :- pred instmap__lookup_var(instmap, var, inst).
 :- mode instmap__lookup_var(in, in, out) is det.
 
-	% Given an instmap_delta and a variable, determine the inst
-	% of that variable.
+	% Given an instmap_delta and a variable, determine the new inst
+	% of that variable (if any).
 	%
 :- pred instmap_delta_search_var(instmap_delta, var, inst).
 :- mode instmap_delta_search_var(in, in, out) is semidet.
@@ -379,7 +379,7 @@ instmapping_lookup_var(InstMap, Var, Inst) :-
 		Inst = free
 	).
 
-instmap_delta_search_var(unreachable, _Var, not_reached).
+instmap_delta_search_var(unreachable, _, not_reached).
 instmap_delta_search_var(reachable(InstmapDelta, _), Var, Inst) :-
 	map__search(InstmapDelta, Var, Inst).
 

@@ -301,9 +301,20 @@ printnondstack(const Word *s)
 	printf("ptr 0x%p, offset %3ld words\n",
 		(const void *) s, (long) (Integer) (s - nondetstack_zone->min));
 #else
-	printf("ptr 0x%p, offset %3ld words, procedure %s\n",
-		(const void *) s, (long) (Integer) (s - nondetstack_zone->min),
-		(const char *) s[PREDNM]);
+	if (s > nondetstack_zone->min) {
+		printf("ptr 0x%p, offset %3ld words, procedure %s\n",
+			(const void *) s, 
+			(long) (Integer) (s - nondetstack_zone->min),
+			(const char *) s[PREDNM]);
+	} else {
+		/*
+		** This handles the case where the prevfr of the first frame
+		** is being printed.
+		*/
+		printf("ptr 0x%p, offset %3ld words\n",
+			(const void *) s, 
+			(long) (Integer) (s - nondetstack_zone->min));
+	}
 #endif
 	return;
 }

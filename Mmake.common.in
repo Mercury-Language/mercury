@@ -26,9 +26,33 @@ include $(MERCURY_DIR)/VERSION
 # In particular, you might want to find a better place for the DVI and
 # HTML files.
 
+# FINAL_INSTALL_PREFIX describes the directory that the installation
+# will finally end up in. It should only be set by the configure 
+# script.  Other FINAL_INSTALL_* variables have a similar meaning.
+#
+# If you want to install to a different directory temporarily (e.g.
+# to build a package, or if you don't have the permissions to install
+# to a final directory), override INSTALL_PREFIX on the command-line.
+# If you have previously configured to the directory you want to
+# finally install to, you will then be able to move the files safely,
+# since any hard-coded paths will be set to their final destination
+# already (note that the installation in the temporary directory may
+# not work until moved into its final destination).
+# e.g.
+#      configure --prefix /usr
+#      make INSTALL_PREFIX=/some/temporary/directory/usr
+
+# If you don't intend to install to a temporary directory, rather than
+# overriding INSTALL_PREFIX you should reconfigure using the configure
+# script, since there are some hardcoded paths created by the configure
+# script (e.g. in the shell scripts mmc, ml, mmake, etc) that will not
+# be updated simply by overriding INSTALL_PREFIX.
+
 INSTALL_PREFIX		= @prefix@
+FINAL_INSTALL_PREFIX	= @prefix@
 INSTALL_BINDIR 		= $(INSTALL_PREFIX)/bin
 INSTALL_LIBDIR 		= $(INSTALL_PREFIX)/lib/mercury
+FINAL_INSTALL_LIBDIR 	= $(FINAL_INSTALL_PREFIX)/lib/mercury
 INSTALL_INFO_DIR 	= $(INSTALL_PREFIX)/info
 INSTALL_DVI_DIR 	= $(INSTALL_PREFIX)/lib/mercury/doc
 INSTALL_TEXT_DIR 	= $(INSTALL_PREFIX)/lib/mercury/doc
@@ -129,7 +153,9 @@ INSTALL_MMAKE_DIR 	= $(INSTALL_LIBDIR)/mmake
 FULLARCH		= @FULLARCH@
 INSTALL_MERC_BIN_DIR	= $(INSTALL_LIBDIR)/bin/$(FULLARCH)
 INSTALL_MERC_GC_LIB_DIR	= $(INSTALL_LIBDIR)/lib/$(FULLARCH)
+FINAL_INSTALL_MERC_GC_LIB_DIR = $(FINAL_INSTALL_LIBDIR)/lib/$(FULLARCH)
 INSTALL_MERC_LIB_DIR	= $(INSTALL_LIBDIR)/lib/$(GRADE)/$(FULLARCH)
+FINAL_INSTALL_MERC_LIB_DIR = $(FINAL_INSTALL_LIBDIR)/lib/$(GRADE)/$(FULLARCH)
 INSTALL_NU_DIR		= $(INSTALL_LIBDIR)/nuprolog
 INSTALL_NU_ARCH_DIR 	= $(INSTALL_LIBDIR)/nuprolog/$(FULLARCH)
 INSTALL_SP_DIR		= $(INSTALL_LIBDIR)/sicstus
