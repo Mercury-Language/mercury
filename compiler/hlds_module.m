@@ -1778,7 +1778,13 @@ predicate_table_restrict(PartialQualInfo,
 		OrigPredicateTable, PredIds, PredicateTable) :-
 	predicate_table_reset(OrigPredicateTable, PredicateTable0),
 	predicate_table_get_preds(OrigPredicateTable, Preds),
-	PredicateTable = list__foldl(
+	% Note that we use foldr here rather than foldl,
+	% so that the PredIds list in the predicate table
+	% is the same as the PredIds list argument here
+	% (if we used foldl, it would get reversed, since each
+	% new predicate inserted into the table gets its pred_id
+	% added at the start of the list).
+	PredicateTable = list__foldr(
 			(func(PredId, Table0) = Table :-
 				PredInfo = map__lookup(Preds, PredId),
 				pred_info_get_markers(PredInfo, Markers),
