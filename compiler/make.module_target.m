@@ -584,8 +584,7 @@ touched_files(TargetFile, process_module(Task), TouchedTargetFiles,
 	    ),
 
 	    { ( CompilationTarget = c ; CompilationTarget = asm ) ->
-		Names = list__map((func(MI) = MI ^ module_name),
-				ModuleImportsList),
+		Names = SourceFileModuleNames,
 	    	HeaderTargets = make_target_list(Names, c_header(mh))
 				++ HeaderTargets0
 	    ;
