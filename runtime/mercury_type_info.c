@@ -130,17 +130,16 @@ END_MODULE
 	/* 
 	** MR_create_type_info():
 	**
-	** Given a type_info (term_type_info) which contains a
-	** type_ctor_info pointer and possibly other type_infos
-	** giving the values of the type parameters of this type,
-	** and a pseudo-type_info (arg_pseudo_type_info), which contains a
-	** type_ctor_info pointer and possibly other type_infos
+	** Given a type_info `term_type_info' which contains a
+	** type_ctor_info pointer (which may be NULL) and possibly other
+	** type_infos giving the values of the type parameters of this type,
+	** and given a pseudo-type_info `arg_pseudo_type_info', which contains
+	** a type_ctor_info pointer and possibly other type_infos
 	** giving EITHER
-	** 	- the values of the type parameters of this type,
+	** 	- the values of the type parameters of this type
 	** or	- an indication of the type parameter of the
-	** 	  term_type_info that should be substituted here
-	**
-	** This returns a fully instantiated type_info, a version of the
+	** 	  term_type_info that should be substituted here,
+	** this returns a fully instantiated type_info, a version of the
 	** arg_pseudo_type_info with all the type variables filled in.
 	**
 	** We allocate memory for a new type_info on the Mercury heap,
@@ -155,6 +154,9 @@ END_MODULE
 	** first cell of the returned pointer - if it is zero, this is a
 	** type_ctor_info. Otherwise, it is an allocated copy of a
 	** type_info.
+	**
+	** If arg_pseudo_type_info does not contain any type variables,
+	** then it is OK for term_type_info to be NULL.
 	**
 	** NOTE: If you are changing this code, you might also need
 	** to change the code in MR_make_type_info in this module 
@@ -176,6 +178,11 @@ MR_create_type_info(const Word *term_type_info, const Word *arg_pseudo_type_info
 	** In order to handle this, it also takes the data value from which
 	** the values whose pseudo type-info we are looking at was taken, as
 	** well as the functor descriptor for that functor.
+	**
+	** If the term_type_info has a NULL type_ctor_info,
+	** or if the arg_pseudo_type_info does not contain any
+	** existentially typed type variables, then it is OK
+	** for the data_value and functor_descriptor to be NULL.
 	*/
 Word * 
 MR_create_type_info_maybe_existq(const Word *term_type_info, 
@@ -262,29 +269,45 @@ MR_get_arg_type_info(const Word *term_type_info,
 	const Word *functor_descriptor)
 {
 	Word *arg_type_info;
+	MR_TypeCtorInfo type_ctor_info;
 	int num_univ_type_infos;
+	Unsigned arg_num;
 
-	num_univ_type_infos =
-		MR_TYPEINFO_GET_TYPE_CTOR_INFO(term_type_info)->arity;
+	arg_num = (Unsigned) arg_pseudo_type_info;
 
-	if ((Word) arg_pseudo_type_info <= num_univ_type_infos) {
+	type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(term_type_info);
+	if (type_ctor_info == NULL) {
+		/*
+		** The term_type_info is not a real type_info, it is just
+		** a vector of type_infos for the arguments with a null
+		** type_ctor_info.  Such fake type_infos are created
+		** by MR_materialize_type_infos().  For them, we treat
+		** all the type variables as being universally quantified,
+		** i.e. coming from the arg_pseudo_type_info.
+		*/
+		arg_type_info = (Word *) term_type_info[arg_num];
+		return arg_type_info;
+	}
+
+	num_univ_type_infos = type_ctor_info->arity;
+	if (arg_num <= num_univ_type_infos) {
 		/*
 		** This is a universally quantified type variable
 		*/
-		arg_type_info = (Word *) 
-			term_type_info[(Word) arg_pseudo_type_info];
+		arg_type_info = (Word *) term_type_info[arg_num];
 	} else {
 		/*
 		** This is an existentially quantified type variable
 		*/
 
+		Word *type_info_locns;
 		Word type_info_locn;
 
-		type_info_locn = ((Word *) 
+		type_info_locns = (Word *) 
 			MR_TYPE_CTOR_LAYOUT_FUNCTOR_DESCRIPTOR_TYPE_INFO_LOCNS(
-			functor_descriptor))
-				[(Integer)arg_pseudo_type_info 
-				- num_univ_type_infos - 1];
+				functor_descriptor);
+		type_info_locn =
+			type_info_locns[arg_num - num_univ_type_infos - 1];
 
 		if (MR_TYPE_INFO_LOCN_IS_INDIRECT(type_info_locn)) {
 			/*
@@ -298,21 +321,20 @@ MR_get_arg_type_info(const Word *term_type_info,
 			typeinfo_number =
 				MR_TYPE_INFO_LOCN_INDIRECT_GET_TYPEINFO_NUMBER(
 					type_info_locn);
-
-			arg_number = MR_TYPE_INFO_LOCN_INDIRECT_GET_ARG_NUMBER(
+			arg_number =
+				MR_TYPE_INFO_LOCN_INDIRECT_GET_ARG_NUMBER(
 					type_info_locn);
-
 			arg_type_info = (Word *) MR_typeclass_info_type_info(
 				data_value[arg_number], typeinfo_number);
 		} else {
 			/*
 			** This is direct
 			*/
+			int typeinfo_number;
 
-			int typeinfo_number =
+			typeinfo_number =
 				MR_TYPE_INFO_LOCN_DIRECT_GET_TYPEINFO_NUMBER(
 					type_info_locn);
-
 			arg_type_info = (Word *) data_value[typeinfo_number];
 		}
 	}
@@ -488,18 +510,18 @@ MR_deallocate(MR_MemoryList allocated)
 }
 
 	/* 
-	** Given a type_info (term_type_info) which contains a
-	** type_ctor_info pointer and possibly other type_infos
-	** giving the values of the type parameters of this type,
-	** and a pseudo-type_info (arg_pseudo_type_info), which contains a
-	** type_ctor_info pointer and possibly other type_infos
+	** Given a type_info `term_type_info' which contains a
+	** type_ctor_info pointer (which may be NULL) and possibly other
+	** type_infos giving the values of the type parameters of this type,
+	** and given a pseudo-type_info `arg_pseudo_type_info', which contains
+	** a type_ctor_info pointer and possibly other type_infos
 	** giving EITHER
 	** 	- the values of the type parameters of this type,
 	** or	- an indication of the type parameter of the
-	** 	  term_type_info that should be substituted here
-	**
-	** This returns a fully instantiated type_info, a version of the
+	** 	  term_type_info that should be substituted here,
+	** this returns a fully instantiated type_info, a version of the
 	** arg_pseudo_type_info with all the type variables filled in.
+	**
 	** If there are no type variables to fill in, we return the
 	** arg_pseudo_type_info, unchanged. Otherwise, we allocate
 	** memory using MR_GC_malloc().  Any such memory allocated will be
@@ -507,6 +529,9 @@ MR_deallocate(MR_MemoryList allocated)
 	** It is the caller's responsibility to free these cells
 	** by calling MR_deallocate() on the list when they are no longer
 	** needed.
+	**
+	** If arg_pseudo_type_info does not contain any type variables,
+	** then it is OK for term_type_info to be NULL.
 	**
 	** This code could be tighter. In general, we want to
 	** handle our own allocations rather than using MR_GC_malloc().

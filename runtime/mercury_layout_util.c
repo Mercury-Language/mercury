@@ -85,9 +85,11 @@ MR_materialize_typeinfos_base(const MR_Stack_Layout_Vars *vars,
 		type_params = MR_NEW_ARRAY(Word, count + 1);
 
 		/*
-		** type_params should look like a typeinfo;
-		** type_params[0] is empty and will not be referred to
+		** type_params should look like a typeinfo; but
+		** type_params[0], which normally holds the type_ctor_info,
+		** will be a null pointer.
 		*/
+		type_params[0] = (Word) NULL;
 		for (i = 0; i < count; i++) {
 			if (vars->MR_slvs_tvars->MR_tp_param_locns[i] != 0) {
 				type_params[i + 1] = MR_lookup_long_lval_base(
@@ -96,11 +98,11 @@ MR_materialize_typeinfos_base(const MR_Stack_Layout_Vars *vars,
 					saved_regs, base_sp, base_curfr,
 					&succeeded);
 				if (! succeeded) {
-					fatal_error("missing type param in MR_materialize_typeinfos_base");
+					fatal_error("missing type param in "
+					    "MR_materialize_typeinfos_base");
 				}
 			}
 		}
-
 		return type_params;
 	} else {
 		return NULL;
