@@ -19,10 +19,15 @@
 :- import_module bool, list.
 
 	% mode_get_insts returns the initial instantiatedness and
-	% the final instantiatedness for a given mode.
+	% the final instantiatedness for a given mode, aborting
+	% if the mode is undefined.
 	%
 :- pred mode_get_insts(module_info, mode, inst, inst).
 :- mode mode_get_insts(in, in, out, out) is det.
+
+	% a version of mode_get_insts which fails if the mode is undefined
+:- pred mode_get_insts_semidet(module_info, mode, inst, inst).
+:- mode mode_get_insts_semidet(in, in, out, out) is semidet.
 
 	% a mode is considered input if the initial inst is bound
 :- pred mode_is_input(module_info, mode).
@@ -1296,17 +1301,28 @@ inst_lookup_subst_args(abstract_inst, _Params, Name, Args,
 	% mode_get_insts returns the initial instantiatedness and
 	% the final instantiatedness for a given mode.
 
-mode_get_insts(_ModuleInfo, (InitialInst -> FinalInst), InitialInst, FinalInst).
-mode_get_insts(ModuleInfo, user_defined_mode(Name, Args), Initial, Final) :-
+mode_get_insts_semidet(_ModuleInfo, (InitialInst -> FinalInst), 
+		InitialInst, FinalInst).
+mode_get_insts_semidet(ModuleInfo, user_defined_mode(Name, Args), 
+		Initial, Final) :-
 	list__length(Args, Arity),
 	module_info_modes(ModuleInfo, Modes),
 	mode_table_get_mode_defns(Modes, ModeDefns),
-	map__lookup(ModeDefns, Name - Arity, HLDS_Mode),
+	map__search(ModeDefns, Name - Arity, HLDS_Mode),
 	HLDS_Mode = hlds_mode_defn(_VarSet, Params, ModeDefn, _Cond,
 						_Context, _Status),
 	ModeDefn = eqv_mode(Mode0),
 	mode_substitute_arg_list(Mode0, Params, Args, Mode),
 	mode_get_insts(ModuleInfo, Mode, Initial, Final).
+
+mode_get_insts(ModuleInfo, Mode, Inst1, Inst2) :-
+	( mode_get_insts_semidet(ModuleInfo, Mode, Inst1a, Inst2a) ->
+		Inst1 = Inst1a,
+		Inst2 = Inst2a
+	;
+		error("mode_get_insts_semidet failed")
+	).
+
 
 	% mode_substitute_arg_list(Mode0, Params, Args, Mode) is true
 	% iff Mode is the mode that results from substituting all

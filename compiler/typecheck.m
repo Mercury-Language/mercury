@@ -112,19 +112,20 @@
 :- import_module hlds_module, hlds_pred.
 :- import_module bool, io.
 
-:- pred typecheck(module_info, module_info, bool, io__state, io__state).
-:- mode typecheck(in, out, out, di, uo) is det.
+:- pred typecheck(module_info, module_info, bool, bool, io__state, io__state).
+:- mode typecheck(in, out, in, out, di, uo) is det.
 
 /*
-	Formally, typecheck(Module0, Module, FoundError, IO0, IO) is
+	Formally, typecheck(Module0, Module, ModeError, FoundError, IO0, IO) is
 	intended to be true iff Module is Module0 annotated with the
 	variable typings that result from the process of type-checking,
 	FoundError is `yes' if Module0 contains any type errors and `no'
 	otherwise, and IO is the io__state that results from IO0 after
 	printing out appropriate error messages for the type errors in
-	Module0, if any.
+	Module0, if any. ModeError should be true if any undefined modes	
+	were found by previous passes.
 
-	Informally, typecheck(Module0, Module, FoundError, IO0, IO) 
+	Informally, typecheck(Module0, Module, ModeError, FoundError, IO0, IO) 
 	type-checks Module0 and annotates it with variable typings
 	(returning the result in Module), prints out appropriate error
 	messages, and sets FoundError to `yes' if it finds any errors
@@ -135,6 +136,8 @@
 	and not at the start of modecheck because modecheck may be
 	reinvoked after HLDS transformations. Any transformation that
 	needs typechecking should work with the clause_info structure.
+	Type information is also propagated into the modes of procedures
+	by this pass if the ModeError parameter is no. 
 */
 
 
@@ -173,14 +176,14 @@
 
 	% XXX need to pass FoundError to all steps
 
-typecheck(Module0, Module, FoundError) -->
+typecheck(Module0, Module, ModeError, FoundError) -->
 	globals__io_lookup_bool_option(statistics, Statistics),
 	globals__io_lookup_bool_option(verbose, Verbose),
 	io__stderr_stream(StdErr),
 	io__set_output_stream(StdErr, OldStream),
 
 	maybe_write_string(Verbose, "% Type-checking clauses...\n"),
-	check_pred_types(Module0, Module, FoundError),
+	check_pred_types(Module0, Module, ModeError, FoundError),
 	maybe_report_stats(Statistics),
 
 	io__set_output_stream(OldStream, _).
@@ -189,24 +192,25 @@ typecheck(Module0, Module, FoundError) -->
 
 	% Type-check the code for all the predicates in a module.
 
-:- pred check_pred_types(module_info, module_info, bool, io__state, io__state).
-:- mode check_pred_types(in, out, out, di, uo) is det.
+:- pred check_pred_types(module_info, module_info, bool, bool,
+		io__state, io__state).
+:- mode check_pred_types(in, out, in, out, di, uo) is det.
 
-check_pred_types(Module0, Module, FoundError) -->
+check_pred_types(Module0, Module, ModeError, FoundError) -->
 	{ module_info_predids(Module0, PredIds) },
-	typecheck_to_fixpoint(PredIds, Module0, Module, FoundError),
+	typecheck_to_fixpoint(PredIds, Module0, Module, ModeError, FoundError),
 	write_inference_messages(PredIds, Module).
 
 	% Repeatedly typecheck the code for a group of predicates
 	% until a fixpoint is reached, or until some errors are detected.
 
-:- pred typecheck_to_fixpoint(list(pred_id), module_info, module_info, bool,
-			io__state, io__state).
-:- mode typecheck_to_fixpoint(in, in, out, out, di, uo) is det.
+:- pred typecheck_to_fixpoint(list(pred_id), module_info, module_info, 
+		bool, bool, io__state, io__state).
+:- mode typecheck_to_fixpoint(in, in, out, in, out, di, uo) is det.
 
-typecheck_to_fixpoint(PredIds, Module0, Module, FoundError) -->
-	typecheck_pred_types_2(PredIds, Module0, Module1, no, FoundError1, no,
-		Changed),
+typecheck_to_fixpoint(PredIds, Module0, Module, ModeError, FoundError) -->
+	typecheck_pred_types_2(PredIds, Module0, Module1,
+		ModeError, no, FoundError1, no, Changed),
 	( { Changed = no ; FoundError1 = yes } ->
 		{ Module = Module1 },
 		{ FoundError = FoundError1 }
@@ -217,7 +221,8 @@ typecheck_to_fixpoint(PredIds, Module0, Module, FoundError) -->
 		;
 			[]
 		),
-		typecheck_to_fixpoint(PredIds, Module1, Module, FoundError)
+		typecheck_to_fixpoint(PredIds, Module1, Module,
+			ModeError, FoundError)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -225,13 +230,14 @@ typecheck_to_fixpoint(PredIds, Module0, Module, FoundError) -->
 	% Iterate over the list of pred_ids in a module.
 
 :- pred typecheck_pred_types_2(list(pred_id), module_info, module_info,
-	bool, bool, bool, bool, io__state, io__state).
-:- mode typecheck_pred_types_2(in, in, out, in, out, in, out, di, uo) is det.
+	bool, bool, bool, bool, bool, io__state, io__state).
+:- mode typecheck_pred_types_2(in, in, out,
+	in, in, out, in, out, di, uo) is det.
 
-typecheck_pred_types_2([], ModuleInfo, ModuleInfo, Error, Error,
-			Changed, Changed) --> [].
-typecheck_pred_types_2([PredId | PredIds],
-		ModuleInfo0, ModuleInfo, Error0, Error, Changed0, Changed) -->
+typecheck_pred_types_2([], ModuleInfo, ModuleInfo, 
+		_, Error, Error, Changed, Changed) --> [].
+typecheck_pred_types_2([PredId | PredIds], ModuleInfo0, ModuleInfo, 
+		ModeError, Error0, Error, Changed0, Changed) -->
 	{ module_info_preds(ModuleInfo0, Preds0) },
 	{ map__lookup(Preds0, PredId, PredInfo0) },
 	{ pred_info_procids(PredInfo0, ProcIds) },
@@ -255,21 +261,11 @@ typecheck_pred_types_2([PredId | PredIds],
 		Changed2 = Changed0
 		}
 	;
-		typecheck_pred_type(PredId, PredInfo0, ModuleInfo0,
-			MaybePredInfo, Changed1),
+		typecheck_pred_type(PredId, PredInfo0, ModuleInfo0, 
+			ModeError, MaybePredInfo, Changed1),
 		{
-			MaybePredInfo = yes(PredInfo1),
+			MaybePredInfo = yes(PredInfo),
 			Error1 = Error0,
-
-			% 
-			% Ensure that all constructors occurring in predicate 
-			% mode declarations are module qualified.
-			% 
-			pred_info_arg_types(PredInfo1, _, ArgTypes),
-			pred_info_procedures(PredInfo1, Procs1),
-			typecheck_propagate_type_info_into_proc_modes(
-			    ModuleInfo0, ProcIds, ArgTypes, Procs1, Procs),
-			pred_info_set_procedures(PredInfo1, Procs, PredInfo),
 			map__det_update(Preds0, PredId, PredInfo, Preds),
 			module_info_set_preds(ModuleInfo0, Preds, ModuleInfo1)
 		;
@@ -280,8 +276,43 @@ typecheck_pred_types_2([PredId | PredIds],
 		},
 		{ bool__or(Changed0, Changed1, Changed2) }
 	),
-	typecheck_pred_types_2(PredIds, ModuleInfo1, ModuleInfo, Error1, Error,
-		Changed2, Changed).
+	typecheck_pred_types_2(PredIds, ModuleInfo1, ModuleInfo, 
+		ModeError, Error1, Error, Changed2, Changed).
+
+:- pred typecheck_pred_type(pred_id, pred_info, module_info, bool,
+	maybe(pred_info), bool, io__state, io__state).
+:- mode typecheck_pred_type(in, in, in, in, out, out, di, uo) is det.
+
+typecheck_pred_type(PredId, PredInfo0, ModuleInfo, ModeError, 
+		MaybePredInfo, Changed, IOState0, IOState) :-
+	typecheck_pred_type_2(PredId, PredInfo0, ModuleInfo, MaybePredInfo0,
+		Changed, IOState0, IOState),
+	(
+		MaybePredInfo0 = no,
+		MaybePredInfo = no
+	;
+		MaybePredInfo0 = yes(PredInfo1),
+
+		( ModeError = no ->
+			% 
+			% Copy clauses to procs, then ensure that all 
+			% constructors occurring in predicate mode 
+			% declarations are module qualified, unless undefined
+			% modes were found by an earlier pass.
+			% 
+			maybe_add_default_mode(PredInfo1, PredInfo2),
+			copy_clauses_to_procs(PredInfo2, PredInfo3),
+			pred_info_arg_types(PredInfo3, _, ArgTypes),
+			pred_info_procedures(PredInfo3, Procs1),
+			pred_info_procids(PredInfo3, ProcIds),
+			typecheck_propagate_type_info_into_proc_modes(
+				ModuleInfo, ProcIds, ArgTypes, Procs1, Procs),
+			pred_info_set_procedures(PredInfo3, Procs, PredInfo)
+		;
+			PredInfo = PredInfo1
+		),
+		MaybePredInfo = yes(PredInfo)
+	).
 
 :- pred typecheck_propagate_type_info_into_proc_modes(module_info,
 		list(proc_id), list(type), proc_table, proc_table).
@@ -299,24 +330,6 @@ typecheck_propagate_type_info_into_proc_modes(ModuleInfo, [ProcId | ProcIds],
 	map__det_update(Procs0, ProcId, ProcInfo, Procs1),
 	typecheck_propagate_type_info_into_proc_modes(ModuleInfo, ProcIds,
 		ArgTypes, Procs1, Procs).
-
-:- pred typecheck_pred_type(pred_id, pred_info, module_info,
-	maybe(pred_info), bool, io__state, io__state).
-:- mode typecheck_pred_type(in, in, in, out, out, di, uo) is det.
-
-typecheck_pred_type(PredId, PredInfo0, ModuleInfo, MaybePredInfo, Changed,
-		IOState0, IOState) :-
-	typecheck_pred_type_2(PredId, PredInfo0, ModuleInfo, MaybePredInfo0,
-		Changed, IOState0, IOState),
-	(
-		MaybePredInfo0 = no,
-		MaybePredInfo = no
-	;
-		MaybePredInfo0 = yes(PredInfo1),
-		maybe_add_default_mode(PredInfo1, PredInfo2),
-		copy_clauses_to_procs(PredInfo2, PredInfo),
-		MaybePredInfo = yes(PredInfo)
-	).
 
 :- pred typecheck_pred_type_2(pred_id, pred_info, module_info,
 	maybe(pred_info), bool, io__state, io__state).

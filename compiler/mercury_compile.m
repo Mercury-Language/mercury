@@ -379,7 +379,7 @@ mercury_compile__frontend_pass(HLDS1, HLDS, FoundUndefTypeError,
 	    %
 	    % Next typecheck the clauses.
 	    %
-	    typecheck(HLDS1, HLDS3, FoundTypeError), !,
+	    typecheck(HLDS1, HLDS3, FoundUndefModeError, FoundTypeError), !,
 	    ( { FoundTypeError = yes } ->
 		maybe_write_string(Verbose,
 			"% Program contains type error(s).\n"),
