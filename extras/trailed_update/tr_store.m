@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-1998 The University of Melbourne.
+% Copyright (C) 1997-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -300,7 +300,7 @@ ref_functor(Ref, Functor, Arity) -->
 		will_not_call_mercury,
 "{
 	/* unsafe - does not check type & arity, won't handle no_tag types */
-	Word *Ptr = (Word *) strip_tag(Ref);
+	Word *Ptr = (Word *) MR_strip_tag(Ref);
 	ArgRef = (Word) &Ptr[Arg];
 	S = S0;
 }").
@@ -309,7 +309,7 @@ ref_functor(Ref, Functor, Arity) -->
 				S0::mdi, S::muo), will_not_call_mercury,
 "{
 	/* unsafe - does not check type & arity, won't handle no_tag types */
-	Word *Ptr = (Word *) strip_tag(Val);
+	Word *Ptr = (Word *) MR_strip_tag(Val);
 	ArgRef = (Word) &Ptr[Arg];
 	S = S0;
 }").

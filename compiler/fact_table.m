@@ -621,7 +621,7 @@ struct fact_table_hash_entry_i {
 	#define FACT_TABLE_MAKE_TAGGED_POINTER(p,t) MR_mkword(MR_mktag(t), p)
 	#define FACT_TABLE_HASH_ENTRY_TYPE(p)       MR_tag((Word)((p).index))
 	#define FACT_TABLE_HASH_INDEX(w)            MR_unmkbody(w)
-	#define FACT_TABLE_HASH_POINTER(w)          MR_body(w,tag(w))
+	#define FACT_TABLE_HASH_POINTER(w)          MR_body(w,MR_tag(w))
 #else
 	#define FACT_TABLE_MAKE_TAGGED_INDEX(i,t)   ((const Word *) i), (t)
 	#define FACT_TABLE_MAKE_TAGGED_POINTER(p,t) ((const Word *) p), (t)
@@ -3279,7 +3279,7 @@ generate_fact_test_code(PredName, PragmaVars, ArgTypes, ModuleInfo,
 		FactTableName),
 	generate_test_condition_code(FactTableName, PragmaVars, ArgTypes,
 		ModuleInfo, 1, yes, FactTableSize, CondCode),
-	string__append_list(["\t\tif(", CondCode, "\t\t) fail();\n"],
+	string__append_list(["\t\tif(", CondCode, "\t\t) MR_fail();\n"],
 		FactTestCode).
 
 :- pred generate_test_condition_code(string, list(pragma_var), list(type),
@@ -3363,7 +3363,7 @@ Define_entry(%s);
 %s
 		/* save output args to registers */
 %s
-		if (hashval == -1) succeed_discard();
+		if (hashval == -1) MR_succeed_discard();
 		MR_framevar(1) = hashval;
 		MR_framevar(2) = (Word) current_table;
 		MR_framevar(3) = (Word) keytype;
@@ -3401,7 +3401,7 @@ Define_label(%s_i1);
 %s
 		/* save output args to registers */
 %s
-		if (hashval == -1) succeed_discard();
+		if (hashval == -1) MR_succeed_discard();
 		MR_framevar(1) = hashval;
 		MR_succeed();
 	failure_code_%s:
