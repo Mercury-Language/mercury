@@ -302,13 +302,23 @@ modecheck_proc(ProcId, PredId, ModuleInfo, ProcInfo0, ProcInfo, NumErrors,
 		% extract the useful fields in the proc_info
 	proc_info_goal(ProcInfo0, Body0),
 	proc_info_argmodes(ProcInfo0, ArgModes0),
-	proc_info_context(ProcInfo0, Context),
 	proc_info_headvars(ProcInfo0, HeadVars),
+
+		% We use the context of the first clause, unless
+		% there weren't any clauses at all, in which case
+		% we use the context of the mode declaration.
+	module_info_preds(ModuleInfo, Preds),
+	map__lookup(Preds, PredId, PredInfo),
+	pred_info_clauses_info(PredInfo, ClausesInfo),
+	ClausesInfo = clauses_info(_, _, _, ClauseList),
+	( ClauseList = [FirstClause | _] ->
+		FirstClause = clause(_, _, Context)
+	;
+		proc_info_context(ProcInfo0, Context)
+	),
 /**************
 		% extract the predicate's type from the pred_info
 		% and propagate the type information into the modes
-	module_info_preds(ModuleInfo, Preds),
-	map__lookup(Preds, PredId, PredInfo),
 	pred_info_arg_types(PredInfo, _TypeVars, ArgTypes),
 	propagate_type_info_mode_list(ArgTypes, ModuleInfo, ArgModes0,
 			ArgModes),
