@@ -40,8 +40,8 @@ bindist: binary_distribution
 binary_distribution: bindist.configure bindist.build_vars
 	# Make a quick check that there is a mercury installation in
 	# $(INSTALL_DIR) by looking for mc and mercury_compile.
-	test -x $(INSTALL_BINDIR)/mc
-	test -x $(INSTALL_MERC_BIN_DIR)/mercury_compile
+	test -f $(INSTALL_BINDIR)/mc
+	test -f $(INSTALL_MERC_BIN_DIR)/mercury_compile
 	# create a temporary directory in which to assemble the distribution
 	test -d $(MERCURY_VERSION) || mkdir $(MERCURY_VERSION)
 	(cd $(INSTALL_LIB_DIR)/mercury && tar -cf - $(LIB_FILES)) | \
