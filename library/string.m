@@ -4,8 +4,6 @@
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
 
-:- module string.
-
 % Main authors: fjh, petdr.
 % Stability: medium to high.
 
@@ -17,6 +15,8 @@
 % avoid creating strings that might contain null characters.
 
 %-----------------------------------------------------------------------------%
+
+:- module string.
 
 :- interface.
 :- import_module list, char.
@@ -112,12 +112,20 @@
 :- mode string__char_to_string(in, uo) is det.
 :- mode string__char_to_string(out, in) is semidet.
 
+	% A synonym for string.char_to_string/1.
+	%
+:- func string__from_char(char::in) = (string::uo) is det.
+
 	% Convert an integer to a string.
 	%
 :- func string__int_to_string(int) = string.
 :- mode string__int_to_string(in) = uo is det.
 :- pred string__int_to_string(int, string).
 :- mode string__int_to_string(in, uo) is det.
+
+	% A synonym for string.int_to_string/1.
+	%
+:- func string__from_int(int::in) = (string::uo) is det.
 
 	% string__int_to_base_string(Int, Base, String):
 	% Convert an integer to a string in a given Base (between 2 and 36).
@@ -139,6 +147,10 @@
 :- mode string__float_to_string(in) = uo is det.
 :- pred string__float_to_string(float, string).
 :- mode string__float_to_string(in, uo) is det.
+
+	% A synonym for string.float_to_string/1.
+	%
+:- func string__from_float(float::in) = (string::uo) is det.
 
 	% string__first_char(String, Char, Rest) is true iff Char is
 	% the first character of String, and Rest is the remainder.
@@ -889,8 +901,12 @@ suffix_2_ioii(String, Suffix, SufLen, Len) :-
 string__char_to_string(Char, String) :-
 	string__to_char_list(String, [Char]).
 
+string__from_char(Char) = string__char_to_string(Char).
+
 string__int_to_string(N, Str) :-
 	string__int_to_base_string(N, 10, Str).
+
+string__from_int(N) = string__int_to_string(N).
 
 string__int_to_base_string(N, Base, Str) :-
 	(
@@ -2865,6 +2881,8 @@ is_exponent('E').
 ").
 
 %-----------------------------------------------------------------------------%
+
+string__from_float(Flt) = string__float_to_string(Flt).
 
 :- pragma foreign_proc("C",
 	string__float_to_string(Flt::in, Str::uo),

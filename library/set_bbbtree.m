@@ -775,10 +775,10 @@ set_bbbtree__intersect_r(tree(V, _N, LL, LR), R, Set, Ratio) :-
 %------------------------------------------------------------------------------%
 
 % `set_bbbtree__power_intersect' is an accumulator based algorithm. Initially
-% the accumulator is seeded with the tree at the root. Then the tree is travesed
-% inorder and each tree at each node is respectively intersected with the
-% accumulator. The aim of the algorithm is to rapidly reduce the size of the
-% accumulator, possibly of the empty set in which case the call immediately
+% the accumulator is seeded with the tree at the root. Then the tree is
+% traversed inorder and each tree at each node is respectively intersected with
+% the accumulator. The aim of the algorithm is to rapidly reduce the size of
+% the accumulator, possibly of the empty set in which case the call immediately
 % returns.
 
 set_bbbtree__power_intersect(Sets, Set) :-
@@ -1018,11 +1018,11 @@ set_bbbtree__balance(V, L, R, Set, Ratio) :-
 
 %------------------------------------------------------------------------------%
 
-% Given two trees concatenate them by removing the greates element from the left
-% subtree if it is larger than the right subtree by a factor of ratio, else
-% the smallest element from the right subtree, and make it the root along with
-% the two remaining trees as its subtrees. No rebalancing is performed on the
-% resultant tree. `set_bbbtree__concat3' is largely used for deletion of
+% Given two trees concatenate them by removing the greatest element from the
+% left subtree if it is larger than the right subtree by a factor of ratio,
+% else the smallest element from the right subtree, and make it the root along
+% with the two remaining trees as its subtrees. No rebalancing is performed on
+% the resultant tree. `set_bbbtree__concat3' is largely used for deletion of
 % elements. This predicate should not be confused with the predicate `concat3'
 % in the paper for that is `set_bbbtree__concat4'.
 

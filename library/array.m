@@ -336,7 +336,7 @@
 :- mode array__bsearch(array_ui, in, in(comparison_func)) = out is det.
 :- mode array__bsearch(in, in, in(comparison_func)) = out is det.
 
-	% array__map(Closure, OldArray, NewArray) applys `Closure' to
+	% array__map(Closure, OldArray, NewArray) applies `Closure' to
 	% each of the elements of `OldArray' to create `NewArray'.
 	%
 :- pred array__map(pred(T1, T2), array(T1), array(T2)).

@@ -26,38 +26,37 @@
 
 :- import_module assoc_list.
 
-:- type pqueue(_K, _V).
+:- type pqueue(K, V).
 
 	% Create an empty priority queue
 	%
-:- pred pqueue__init(pqueue(_K, _V)::out) is det.
-:- func pqueue__init = pqueue(_K, _V).
+:- func pqueue__init = pqueue(K, V).
+:- pred pqueue__init(pqueue(K, V)::out) is det.
 
 	% Insert a value V with key K into a priority queue
 	% and return the new priority queue.
 	%
+:- func pqueue__insert(pqueue(K, V), K, V) = pqueue(K, V).
 :- pred pqueue__insert(pqueue(K, V)::in, K::in, V::in, pqueue(K, V)::out)
 	is det.
-:- func pqueue__insert(pqueue(K, V), K, V) = pqueue(K, V).
 
 	% Remove the smallest item from the priority queue.
 	%
 :- pred pqueue__remove(pqueue(K, V)::in, K::out, V::out, pqueue(K, V)::out)
 	is semidet.
 
-	% Extract all the items from a priority queue by
-	% repeated removal, and place them in an association
-	% list.
+	% Extract all the items from a priority queue by repeated
+	% removal, and place them in an association list.
 	%
-:- pred pqueue__to_assoc_list(pqueue(K, V)::in, assoc_list(K, V)::out) is det.
 :- func pqueue__to_assoc_list(pqueue(K, V)) = assoc_list(K, V).
+:- pred pqueue__to_assoc_list(pqueue(K, V)::in, assoc_list(K, V)::out) is det.
 
 	% Insert all the key-value pairs in an association list
 	% into a priority queue.
 	% 
+:- func pqueue__assoc_list_to_pqueue(assoc_list(K, V)) = pqueue(K, V).
 :- pred pqueue__assoc_list_to_pqueue(assoc_list(K, V)::in, pqueue(K, V)::out)
 	is det.
-:- func pqueue__assoc_list_to_pqueue(assoc_list(K, V)) = pqueue(K, V).
 
 	% A synonym for pqueue.assoc_list_to_pqueue/1.
 	%
@@ -173,3 +172,7 @@ pqueue__to_assoc_list(PQ) = AL :-
 
 pqueue__assoc_list_to_pqueue(AL) = PQ2 :-
 	pqueue__assoc_list_to_pqueue(AL, PQ2).
+
+%---------------------------------------------------------------------------%
+:- end_module pqueue.
+%---------------------------------------------------------------------------%

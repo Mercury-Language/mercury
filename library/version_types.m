@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2004 The University of Melbourne.
+% Copyright (C) 2004-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
@@ -14,7 +14,7 @@
 % Version types are efficient pure implementations of typically imperative
 % structures, subject to the following caveat: efficient access is only
 % guaranteed for the "latest" version of a given structure.  An older version
-% incurrs an access cost proportional to the number of its descendants.
+% incurs an access cost proportional to the number of its descendants.
 %
 % For example, if A0 is a version array, and A1 is created by updating A0,
 % and A2 is created by updating A1, ..., and An is created by updating An-1,
