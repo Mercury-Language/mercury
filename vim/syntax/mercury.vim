@@ -36,7 +36,7 @@ syn keyword mercuryKeyword      module use_module import_module
 syn keyword mercuryKeyword      include_module end_module
 syn keyword mercuryKeyword      interface implementation
 syn keyword mercuryKeyword      pred mode func type inst 
-syn keyword mercuryKeyword      is semidet det nondet multi erroneous
+syn keyword mercuryKeyword      is semidet det nondet multi erroneous failure
 syn keyword mercuryKeyword      cc_nondet cc_multi
 syn keyword mercuryKeyword      typeclass instance where
 syn keyword mercuryKeyword      pragma promise
