@@ -15,7 +15,7 @@
 @ifinfo
 This file is an aid for people porting Prolog programs to Mercury.
 
-Copyright (C) 1995-2001 The University of Melbourne.
+Copyright (C) 1995-2002 The University of Melbourne.
 
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice
@@ -311,14 +311,6 @@ and easier for the compiler to optimize.
 @chapter Cuts and indexing
 
 The cut operator is not part of the Mercury language.
-The builtin library does contain a predicate !/0 (and !/2 for DCGs),
-but it is just defined as being identical to @samp{true},
-and is there primarily for historical reasons@footnote{
-The Mercury compiler was originally bootstrapped using
-NU-Prolog and SICStus Prolog.  We needed to use cuts for
-efficiency in a few places.  Of course, now that we compile
-the Mercury compiler with itself the cuts are not needed
---- and it runs much faster anyway.}.
 In addition, the conditional operator @samp{-> ;}
 does not do a hard cut across the condition
 - only a soft cut which prunes away either the `then' goal or the `else' goal.
@@ -379,8 +371,8 @@ whereas if you use a disjunction you will get a determinism error
 that pinpoints which part of the code needs changing.
 Second, in some situations the code generator
 can implement an indexed disjunction (which we call a @emph{switch})
-using a jump table or a hash table,
-which is faster than a chain of if-then-elses.
+using binary search, a jump table or a hash table,
+which can be faster than a chain of if-then-elses.
 
 @node Accumulators
 @chapter Accumulators and Difference lists
@@ -435,13 +427,13 @@ it is still linear in complexity, and it probably still runs faster
 than the Prolog code using difference lists.
 
 In most circumstances, the need for difference lists is negated by
-the simple fact that Mercury is efficient enough for them to be
-unnecessary.  Occasionally they can lead to a significant improvement
-in the complexity of an operation (mixed insertions and deletions
-from a long queue, for example) and in these situations an alternative
-solution should
-be sought (in the case of queues, the Mercury library uses the
-pair of lists proposed by Richard O'Keefe).
+the simple fact that Mercury is efficient enough for them to be unnecessary.
+Occasionally they can lead to a significant improvement
+in the complexity of an operation
+(mixed insertions and deletions from a long queue, for example)
+and in these situations an alternative solution should be sought
+(in the case of queues,
+the Mercury library uses the pair of lists proposed by Richard O'Keefe).
 
 @node Determinism
 @chapter Determinism
@@ -510,7 +502,7 @@ factorial(N, F) :-
 
 Prolog's various different all-solutions predicates (findall/3, bagof/3,
 and setof/3) all have semantic problems.
-Mercury's has a different set of all-solutions predicates (solutions/2,
+Mercury has a different set of all-solutions predicates (solutions/2,
 solutions_set/2, and unsorted_solutions/2 -- all defined in the library
 module @samp{std_util}) that
 address the problems of the Prolog versions.
