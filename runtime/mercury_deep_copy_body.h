@@ -349,7 +349,7 @@ try_again:
 
                 if (in_range(data_value)) {
                     restore_transient_hp();
-                    new_data = word_to_float(float_to_word(data));
+                    new_data = float_to_word(word_to_float(data));
                     save_transient_hp();
                     leave_forwarding_pointer(data_ptr, new_data);
                 } else {
