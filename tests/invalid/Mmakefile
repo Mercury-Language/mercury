@@ -34,6 +34,7 @@ SOURCES= \
 	pragma_c_code_and_clauses1.m \
 	pragma_c_code_and_clauses2.m \
 	pragma_c_code_no_det.m \
+	predmode.m \
 	prog_io_erroneous.m \
 	qual_basic_test2.m \
 	qualified_cons_id2.m \
