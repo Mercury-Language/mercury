@@ -1,1 +1,12 @@
-
+freefree.m:016: In predicate `freefree.p/0':
+freefree.m:016:   warning: unresolved polymorphism.
+freefree.m:016:   The variables with unbound types were:
+freefree.m:016:       Y: V_1
+freefree.m:016:       X: V_1
+freefree.m:016:   The unbound type variable(s) will be implicitly
+freefree.m:016:   bound to the builtin type `void'.
+freefree.m:019: In clause for `p':
+freefree.m:019:   mode error in unification of `X' and `Y'.
+freefree.m:019:   Variable `X' has instantiatedness `free',
+freefree.m:019:   variable `Y' has instantiatedness `free'.
+For more information, try recompiling with `-E'.
