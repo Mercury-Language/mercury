@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1997 The University of Melbourne.
+% Copyright (C) 1994-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -664,9 +664,11 @@ Define_entry(mercury__std_util__builtin_aggregate_4_0);
 
 	call(ENTRY(do_call_nondet_closure),
 		LABEL(mercury__std_util__builtin_aggregate_4_0_i1),
-		LABEL(mercury__std_util__builtin_aggregate_4_1));
+		LABEL(mercury__std_util__builtin_aggregate_4_0));
 
 Define_label(mercury__std_util__builtin_aggregate_4_0_i1);
+	update_prof_current_proc(
+		LABEL(mercury__std_util__builtin_aggregate_4_0));
 {
 	Word copied_solution;
 
@@ -698,9 +700,12 @@ Define_label(mercury__std_util__builtin_aggregate_4_0_i1);
 	r5 = sofar_fv;
 	call(ENTRY(do_call_det_closure),
 		LABEL(mercury__std_util__builtin_aggregate_4_0_i2),
-		LABEL(mercury__std_util__builtin_aggregate_4_1));
+		LABEL(mercury__std_util__builtin_aggregate_4_0));
 }
 Define_label(mercury__std_util__builtin_aggregate_4_0_i2);
+	update_prof_current_proc(
+		LABEL(mercury__std_util__builtin_aggregate_4_0));
+
 	sofar_fv = r1;
  
 	/* swap heaps back the way they were */
@@ -710,6 +715,8 @@ Define_label(mercury__std_util__builtin_aggregate_4_0_i2);
 	redo();
 	
 Define_label(mercury__std_util__builtin_aggregate_4_0_i3);
+	update_prof_current_proc(
+		LABEL(mercury__std_util__builtin_aggregate_4_0));
 {
 	Word copied_collection;
 
@@ -797,9 +804,12 @@ Define_label(mercury__std_util__builtin_aggregate_4_0_i3);
 	r3 = (Word) 1;	/* the higher-order call has 1 extra output argument */
 	call(ENTRY(do_call_nondet_closure),
 		LABEL(mercury__std_util__builtin_aggregate_4_0_i1),
-		LABEL(mercury__std_util__builtin_aggregate_4_1));
+		LABEL(mercury__std_util__builtin_aggregate_4_0));
 
 Define_label(mercury__std_util__builtin_aggregate_4_0_i1);
+	update_prof_current_proc(
+		LABEL(mercury__std_util__builtin_aggregate_4_0));
+
 	/* we found a solution (in r1) */
 
 #ifdef MR_USE_TRAIL
@@ -816,9 +826,12 @@ Define_label(mercury__std_util__builtin_aggregate_4_0_i1);
 
 	call(ENTRY(do_call_det_closure),
 		LABEL(mercury__std_util__builtin_aggregate_4_0_i2),
-		LABEL(mercury__std_util__builtin_aggregate_4_1));
+		LABEL(mercury__std_util__builtin_aggregate_4_0));
 
 Define_label(mercury__std_util__builtin_aggregate_4_0_i2);
+	update_prof_current_proc(
+		LABEL(mercury__std_util__builtin_aggregate_4_0));
+
 	/*
 	** we inserted the solution into the collection,
 	** and we've now got a new collection (in r1)
@@ -829,6 +842,9 @@ Define_label(mercury__std_util__builtin_aggregate_4_0_i2);
  	redo();
  
 Define_label(mercury__std_util__builtin_aggregate_4_0_i3);
+	update_prof_current_proc(
+		LABEL(mercury__std_util__builtin_aggregate_4_0));
+
 	/* no more solutions */
 
 #ifdef MR_USE_TRAIL
@@ -1283,6 +1299,9 @@ Define_entry(mercury____Compare___std_util__univ_0_0);
 #endif
 }
 Define_label(mercury____Compare___std_util__univ_0_0_i1);
+	update_prof_current_proc(
+		LABEL(mercury____Compare___std_util__univ_0_0));
+
 #ifdef	COMPACT_ARGS
 	fatal_error(""mercury____Compare___std_util__univ_0_0_i1 reached in COMPACT_ARGS mode"");
 #else
