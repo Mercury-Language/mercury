@@ -250,10 +250,12 @@ case $verbose in
     true)
 	case $demangle in
 	    false)
-		echo $CC $STRIP_OPTS $ARCH_OPTS "$@" $LIBDIR_OPTS $LIBS
+		echo $CC $STRIP_OPTS $SHARED_OR_STATIC_OPTS $ARCH_OPTS \
+			"$@" $LIBDIR_OPTS $LIBS
 		;;
 	    true)
-		echo $CC $STRIP_OPTS $ARCH_OPTS "$@" $LIBDIR_OPTS $LIBS "|"
+		echo $CC $STRIP_OPTS $SHARED_OR_STATIC_OPTS $ARCH_OPTS \
+			"$@" $LIBDIR_OPTS $LIBS "|"
 		echo "$DEMANGLER"
 		;;
 	esac
