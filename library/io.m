@@ -2206,11 +2206,12 @@ io__told -->
 
 io__tell(File, Result) -->
 	io__open_output(File, Result0),
-	( { Result0 = ok(Stream) } ->
+	(
+		{ Result0 = ok(Stream) },
 		io__set_output_stream(Stream, _),
 		{ Result = ok }
 	;
-		io__make_err_msg("can't open output file: ", Msg),
+		{ Result0 = error(Msg) },
 		{ Result = error(Msg) }
 	).
 
@@ -2221,11 +2222,12 @@ io__told_binary -->
 
 io__tell_binary(File, Result) -->
 	io__open_binary_output(File, Result0),
-	( { Result0 = ok(Stream) } ->
+	(
+		{ Result0 = ok(Stream) },
 		io__set_binary_output_stream(Stream, _),
 		{ Result = ok }
 	;
-		io__make_err_msg("can't open output file: ", Msg),
+		{ Result0 = error(Msg) },
 		{ Result = error(Msg) }
 	).
 
