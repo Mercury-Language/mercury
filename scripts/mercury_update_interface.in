@@ -45,7 +45,7 @@ then
 	$verbose && echo "\`$filename' has not changed." 1>&2
 	rm -f "$filename.tmp"
 else
-	$verbose && echo "\`$filename' has changed." 1>&2
+	echo "\`$filename' has CHANGED." 1>&2
 	mv -f "$filename.tmp" "$filename"
 	# Work-around for a parallel gmake problem
 	exit 0
