@@ -191,8 +191,8 @@ modecheck_call_pred(PredId, ArgVars0, TheProcId, ArgVars, ExtraGoals,
 		mode_list_get_final_insts(ProcArgModes, ModuleInfo, FinalInsts),
 		modecheck_set_var_inst_list(ArgVars0, InitialInsts, FinalInsts,
 			ArgVars, ExtraGoals, ModeInfo2, ModeInfo3),
-		mode_info_never_succeeds(ModeInfo3, PredId, ProcId, Result),
-		( Result = yes ->
+		proc_info_never_succeeds(ProcInfo, NeverSucceeds),
+		( NeverSucceeds = yes ->
 			instmap__init_unreachable(Instmap),
 			mode_info_set_instmap(Instmap, ModeInfo3, ModeInfo)
 		;
@@ -299,8 +299,8 @@ modecheck_call_pred_2([ProcId | ProcIds], PredId, Procs, ArgVars0, WaitingVars,
 		modecheck_set_var_inst_list(ArgVars0, InitialInsts, FinalInsts,
 				ArgVars, ExtraGoals, ModeInfo2, ModeInfo3),
 		TheProcId = ProcId,
-		mode_info_never_succeeds(ModeInfo3, PredId, ProcId, Result),
-		( Result = yes ->
+		proc_info_never_succeeds(ProcInfo, NeverSucceeds),
+		( NeverSucceeds = yes ->
 			instmap__init_unreachable(Instmap),
 			mode_info_set_instmap(Instmap, ModeInfo3, ModeInfo)
 		;

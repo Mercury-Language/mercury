@@ -211,12 +211,6 @@ a variable live if its value will be used later on in the computation.
 :- pred modecheck_final_insts(list(var), list(inst), mode_info, mode_info).
 :- mode modecheck_final_insts(in, in, mode_info_di, mode_info_uo) is det.
 
-	% mode_info_never_succeeds(ModeInfo, PredId, ProcId, Result):
-	% return Result = yes if the called predicate is known to never succeed.
-	%
-:- pred mode_info_never_succeeds(mode_info, pred_id, proc_id, bool).
-:- mode mode_info_never_succeeds(mode_info_ui, in, in, out) is det.
-
 :- pred mode_info_add_goals_live_vars(list(hlds__goal), mode_info, mode_info).
 :- mode mode_info_add_goals_live_vars(in, mode_info_di, mode_info_uo) is det.
 
@@ -889,28 +883,6 @@ handle_extra_goals_contexts([Goal0 | Goals0], Context, [Goal | Goals]) :-
 	Goal  = Expr - GoalInfo,
 	goal_info_set_context(GoalInfo0, Context, GoalInfo),
 	handle_extra_goals_contexts(Goals0, Context, Goals).
-
-	% Return Result = yes if the called predicate is known to never succeed.
-	%
-mode_info_never_succeeds(ModeInfo, PredId, ProcId, Result) :-
-	mode_info_get_module_info(ModeInfo, ModuleInfo),
-	module_info_preds(ModuleInfo, Preds),
-	map__lookup(Preds, PredId, PredInfo),
-	pred_info_procedures(PredInfo, Procs),
-	map__lookup(Procs, ProcId, ProcInfo),
-	proc_info_declared_determinism(ProcInfo, DeclaredDeterminism),
-	(
-		DeclaredDeterminism = no,
-		Result = no
-	;
-		DeclaredDeterminism = yes(Determinism),
-		determinism_components(Determinism, _, HowMany),
-		( HowMany = at_most_zero ->
-			Result = yes
-		;
-			Result = no
-		)
-	).
 
 :- pred goal_get_nonlocals(hlds__goal, set(var)).
 :- mode goal_get_nonlocals(in, out) is det.

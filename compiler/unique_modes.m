@@ -582,7 +582,7 @@ unique_modes__check_call(PredId, ProcId, ArgVars,
 	module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
 	proc_info_argmodes(ProcInfo, ProcArgModes0),
 	proc_info_interface_code_model(ProcInfo, CodeModel),
-	mode_info_never_succeeds(ModeInfo0, PredId, ProcId, NeverSucceeds),
+	proc_info_never_succeeds(ProcInfo, NeverSucceeds),
 	unique_modes__check_call_modes(ArgVars, ProcArgModes0, CodeModel,
 				NeverSucceeds, ModeInfo0, ModeInfo).
 

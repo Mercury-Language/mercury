@@ -529,6 +529,12 @@ pred_info_get_is_pred_or_func(PredInfo, IsPredOrFunc) :-
 :- pred proc_info_interface_code_model(proc_info, code_model).
 :- mode proc_info_interface_code_model(in, out) is det.
 
+	% proc_info_never_succeeds(ProcInfo, Result):
+	% return Result = yes if the procedure is known to never succeed.
+	%
+:- pred proc_info_never_succeeds(proc_info, bool).
+:- mode proc_info_never_succeeds(in, out) is det.
+
 :- pred proc_info_variables(proc_info, varset).
 :- mode proc_info_variables(in, out) is det.
 
@@ -725,6 +731,23 @@ proc_info_interface_determinism(ProcInfo, Determinism) :-
 proc_info_interface_code_model(ProcInfo, CodeModel) :-
 	proc_info_interface_determinism(ProcInfo, Determinism),
 	determinism_to_code_model(Determinism, CodeModel).
+
+	% Return Result = yes if the called predicate is known to never succeed.
+	%
+proc_info_never_succeeds(ProcInfo, Result) :-
+	proc_info_declared_determinism(ProcInfo, DeclaredDeterminism),
+	(
+		DeclaredDeterminism = no,
+		Result = no
+	;
+		DeclaredDeterminism = yes(Determinism),
+		determinism_components(Determinism, _, HowMany),
+		( HowMany = at_most_zero ->
+			Result = yes
+		;
+			Result = no
+		)
+	).
 
 proc_info_arglives(ProcInfo, ModuleInfo, ArgLives) :-
 	proc_info_maybe_arglives(ProcInfo, MaybeArgLives),
