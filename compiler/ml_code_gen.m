@@ -988,12 +988,26 @@ ml_gen_proc_body(CodeModel, HeadVars, ArgTypes, Goal,
 	%
 	ml_gen_box_existential_outputs(HeadVars, ArgTypes,
 		Context, MLDS_Params0, MLDS_Params, BoxDecls, BoxStatements),
-	{ DoBoxOutputs = (pred(Decls::out, Statements::out, in, out) is det -->
-		{ Decls = BoxDecls, Statements = BoxStatements }
-	) },
-
-	ml_combine_conj(CodeModel, Context,
-		DoGenGoal, DoBoxOutputs, MLDS_Decls, MLDS_Statements0),
+	( { BoxDecls = [], BoxStatements = [] } ->
+		% No boxing required.
+		DoGenGoal(MLDS_Decls, MLDS_Statements0)
+	;
+		% Boxing required.
+		% We need to generate the goal,
+		% box the output arguments,
+		% and then succeeed.
+		{ DoBoxOutputs = (pred(Decls::out, Statements::out, in, out)
+					is det -->
+			ml_gen_success(CodeModel, Context, SuccStatements),
+			{ Decls = [] },
+			{ Statements = list__append(BoxStatements,
+				SuccStatements) }
+		) },
+		ml_combine_conj(CodeModel, Context,
+			DoGenGoal, DoBoxOutputs,
+			MLDS_Decls0, MLDS_Statements0),
+		{ MLDS_Decls = list__append(BoxDecls, MLDS_Decls0) }
+	),
 
 	%
 	% Finally append an appropriate `return' statement, if needed.
