@@ -178,10 +178,6 @@
 
 :- import_module int, exception.
 
-% XXX The assumption that a C `time_t' can fit into a Mercury `MR_Integer'
-% is not very portable.
-:- type time_t == int.
-
 :- pragma foreign_decl("C",
 "
 	#include <time.h>
@@ -199,6 +195,27 @@
 
 	#include ""mercury_string.h"" /* for MR_make_aligned_string_copy() */
 ").
+
+% We use a no-tag wrapper type for time_t, rather than defining it as an
+% equivalence type or just using a d.u./pragma foreign_type directly,
+% to avoid the following problems:
+%
+%	- type errors in --high-level-code grades, due to the caller seeing
+%	  the abstract type, but the callee seeing the equivalence type
+%	  definition or the foreign_type definition.
+%
+%	- users can't define instance declarations for abstract equiv. types.
+%
+:- type time_t ---> time_t(time_t_rep).
+
+:- type time_t_rep ---> time_t_rep(c_pointer).
+:- pragma foreign_type("C", time_t_rep, "time_t")
+	where comparison is compare_time_t_reps.
+
+:- pred compare_time_t_reps(comparison_result::uo,
+		time_t_rep::in, time_t_rep::in) is det.
+compare_time_t_reps(Result, X, Y) :-
+	compare(Result, difftime(time_t(X), time_t(Y)), 0.0).
 
 %-----------------------------------------------------------------------------%
 
@@ -311,49 +328,62 @@ time__clk_tck = Ret :-
 
 time__time(Result, IO0, IO) :-
 	time__c_time(Ret, IO0, IO),
-	( Ret = -1 ->
+	( time__time_t_is_invalid(Ret) ->
 		throw(time_error("can't get time value"))
 	;
-		Result = Ret
+		Result = time_t(Ret)
 	).
 
-:- pred time__c_time(int, io__state, io__state).
+:- pred time__c_time(time_t_rep, io__state, io__state).
 :- mode time__c_time(out, di, uo) is det.
 
 :- pragma foreign_proc("C",
 	time__c_time(Ret::out, IO0::di, IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io],
 "{
-	Ret = (MR_Integer) time(NULL);
+	Ret = time(NULL);
 	MR_update_io(IO0, IO);
 }").
+
+:- pred time__time_t_is_invalid(time_t_rep).
+:- mode time__time_t_is_invalid(in) is semidet.
+
+:- pragma foreign_proc("C",
+	time__time_t_is_invalid(Val::in),
+	[will_not_call_mercury, promise_pure],
+"{
+	SUCCESS_INDICATOR = (Val == -1);
+}").
+
+
 
 %-----------------------------------------------------------------------------%
 
 %:- func time__difftime(time_t, time_t) = float.
 
-time__difftime(T1, T0) = Diff :-
+time__difftime(time_t(T1), time_t(T0)) = Diff :-
 	time__c_difftime(T1, T0, Diff).
 
-:- pred time__c_difftime(int, int, float).
+:- pred time__c_difftime(time_t_rep, time_t_rep, float).
 :- mode time__c_difftime(in, in, out) is det.
 
 :- pragma foreign_proc("C",
 	time__c_difftime(T1::in, T0::in, Diff::out),
 	[will_not_call_mercury, promise_pure],
 "{
-	Diff = (MR_Float) difftime((time_t) T1, (time_t) T0);
+	Diff = (MR_Float) difftime(T1, T0);
 }").
 
 %-----------------------------------------------------------------------------%
 
 %:- func time__localtime(time_t) = tm.
 
-time__localtime(Time) = TM :-
+time__localtime(time_t(Time)) = TM :-
 	time__c_localtime(Time, Yr, Mnt, MD, Hrs, Min, Sec, YD, WD, N),
 	TM = tm(Yr, Mnt, MD, Hrs, Min, Sec, YD, WD, int_to_maybe_dst(N)).
 
-:- pred time__c_localtime(int, int, int, int, int, int, int, int, int, int).
+:- pred time__c_localtime(time_t_rep, int, int, int, int, int, int,
+		int, int, int).
 :- mode time__c_localtime(in, out, out, out, out, out, out,
 		out, out, out) is det.
 
@@ -385,11 +415,12 @@ time__localtime(Time) = TM :-
 
 %:- func time__gmtime(time_t) = tm.
 
-time__gmtime(Time) = TM :-
+time__gmtime(time_t(Time)) = TM :-
 	time__c_gmtime(Time, Yr, Mnt, MD, Hrs, Min, Sec, YD, WD, N),
 	TM = tm(Yr, Mnt, MD, Hrs, Min, Sec, YD, WD, int_to_maybe_dst(N)).
 
-:- pred time__c_gmtime(int, int, int, int, int, int, int, int, int, int).
+:- pred time__c_gmtime(time_t_rep, int, int, int, int, int,
+			int, int, int, int).
 :- mode time__c_gmtime(in, out, out, out, out, out,
 			out, out, out, out) is det.
 
@@ -433,12 +464,12 @@ int_to_maybe_dst(N) = DST :-
 
 %:- func time__mktime(tm) = time_t.
 
-time__mktime(TM) = Time :-
+time__mktime(TM) = time_t(Time) :-
 	TM = tm(Yr, Mnt, MD, Hrs, Min, Sec, YD, WD, DST),
 	time__c_mktime(Yr, Mnt, MD, Hrs, Min, Sec, YD, WD,
 		maybe_dst_to_int(DST), Time).
 
-:- pred time__c_mktime(int, int, int, int, int, int, int, int, int, int).
+:- pred time__c_mktime(int, int, int, int, int, int, int, int, int, time_t_rep).
 :- mode time__c_mktime(in, in, in, in, in, in, in, in, in, out) is det.
 
 :- pragma foreign_proc("C",
@@ -458,7 +489,7 @@ time__mktime(TM) = Time :-
 	t.tm_yday = YD;
 	t.tm_isdst = N;
 
-	Time = (MR_Integer) mktime(&t);
+	Time = mktime(&t);
 }").
 
 :- func maybe_dst_to_int(maybe(dst)) = int.
@@ -511,10 +542,10 @@ time__asctime(TM) = Str :-
 
 %:- func time__ctime(time_t) = string.
 
-time__ctime(Time) = Str :-
+time__ctime(time_t(Time)) = Str :-
 	time__c_ctime(Time, Str).
 
-:- pred time__c_ctime(int, string).
+:- pred time__c_ctime(time_t_rep, string).
 :- mode time__c_ctime(in, out) is det.
 
 :- pragma foreign_proc("C",

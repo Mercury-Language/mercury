@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1998,2001-2002 The University of Melbourne.
+% Copyright (C) 1994-1998,2001-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -115,17 +115,17 @@
 :- implementation.
 :- import_module int, array.
 
-:- type random__supply		==	int.	% I(j)
+:- type random__supply ---> rs(int). % I(j)
 
 :- pred random__params(int, int, int).	% a, c, m
 :- mode random__params(out, out, out) is det.
 
 random__params(9301, 49297, 233280).
 
-random__init(I0, RS) :-
+random__init(I0, rs(RS)) :-
 	copy(I0, RS).
 
-random__random(I, RS0, RS) :-
+random__random(I, rs(RS0), rs(RS)) :-
 	RS0 = I0,
 	random__params(A, C, M),
 	I = ((I0 * A) + C) mod M,
