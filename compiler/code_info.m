@@ -2118,13 +2118,13 @@ code_info__undo_pre_commit_saves(Slots, RestoreMaxfr, RestoreRedoip,
 		{ MainPopCode = empty }
 	),
 	{ SuccPopCode =
-		tree(MainPopCode,
 		tree(CommitTrail,
-		     RestoreTicketCounter)) },
+		tree(RestoreTicketCounter,
+		     MainPopCode)) },
 	{ FailPopCode =
-		tree(MainPopCode,
 		tree(RestoreTrail,
-		     RestoreTicketCounter)) }.
+		tree(RestoreTicketCounter,
+		     MainPopCode)) }.
 
 
 :- pred code_info__clone_resume_maps(resume_maps, resume_maps,
