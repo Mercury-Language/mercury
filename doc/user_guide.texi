@@ -529,7 +529,7 @@ necessary interface files. The variable @code{INSTALL} specifies
 the name of the command to use to install each file, by default
 @samp{cp}. The variable @code{INSTALL_MKDIR} specifies the command to use
 to create directories, by default @samp{mkdir -p}.
-For more information, see @ref{Supporting multiple grades and architectures}.
+For more information, see @ref{Installing libraries}.
 @vindex LIBGRADES
 @vindex INSTALL
 @vindex INSTALL_MKDIR
@@ -693,11 +693,12 @@ Libraries should be specified using their base name; that is, without any
 @samp{lib} prefix or extension.
 For example the library including the files @file{libfoo.a} and
 @file{foo.init} would be referred to as just @samp{foo}.
+@xref{Using libraries}.
 
 @item EXTRA_LIB_DIRS
 @vindex EXTRA_LIB_DIRS
 A list of extra Mercury library directory hierarchies to search when
-looking for extra libraries.
+looking for extra libraries.  @xref{Using libraries}.
 
 @item INSTALL_PREFIX
 @vindex INSTALL_PREFIX
@@ -782,7 +783,6 @@ and, on many platforms, it supports shared object libraries.
 * Building libraries::
 * Installing libraries::
 * Using libraries::
-* Supporting multiple grades and architectures::
 @end menu
 
 @node Writing libraries
@@ -935,86 +935,7 @@ and @samp{$(MLPICOBJS)} will be the same as @samp{$(MLOBJS)}.
 @node Installing libraries
 @section Installing libraries
 
-If you want, once you have built a library, you could then install
-(i.e. copy) the shared object library, the static object library,
-the interface files (possibly including the optimization interface
-files and the transitive optimization interface files), and the
-initialization file into a different directory, or into several
-different directories, for that matter --- though it is probably
-easiest for the users of the library if you keep them in a single
-directory.
-Or alternatively, you could package them up into a @samp{tar}, @samp{shar}, or
-@samp{zip} archive and ship them to the people who will use the
-library.
-
-@node Using libraries
-@section Using libraries
-
-@vindex VPATH
-@vindex MCFLAGS
-@vindex MLFLAGS
-@vindex MLLIBS
-@vindex C2INITARGS
-@vindex MGNUCFLAGS
-@findex --intermodule-optimization
-To use a library, you need to set the Mmake variables @samp{VPATH},
-@samp{MCFLAGS}, @samp{MLFLAGS}, @samp{MLLIBS}, and @samp{C2INITARGS}
-to specify the name and location of the library or libraries that you
-wish to use. If you are using @samp{--intermodule-optimization}, you
-may also need to set @samp{MGNUCFLAGS} if the library uses the C interface.
-For example, if you want to link in the libraries @samp{mypackage} and
-@samp{myotherlib}, which were built in the directories
-@samp{/some/directory/mypackage} and @samp{/some/directory/myotherlib}
-respectively, you could use the following settings:
-
-@example
-# Specify the location of the `mypackage' and `myotherlib' directories
-MYPACKAGE_DIR = /some/directory/mypackage
-MYOTHERLIB_DIR = /some/directory/myotherlib
-
-# The following stuff tells Mmake to use the two libraries
-VPATH = $(MYPACKAGE_DIR):$(MYOTHERLIB_DIR):$(MMAKE_VPATH)
-MCFLAGS = -I$(MYPACKAGE_DIR) -I$(MYOTHERLIB_DIR) $(EXTRA_MCFLAGS)
-MLFLAGS = -R$(MYPACKAGE_DIR) -R$(MYOTHERLIB_DIR) $(EXTRA_MLFLAGS) \
-          -L$(MYPACKAGE_DIR) -L$(MYOTHERLIB_DIR)
-MLLIBS = -lmypackage -lmyotherlib $(EXTRA_MLLIBS)
-C2INITARGS = $(MYPACKAGE_DIR)/mypackage.init \
-             $(MYOTHERLIB_DIR)/myotherlib.init
-
-# This line may be needed if @samp{--intermodule-optimization}
-# is in @samp{MCFLAGS}. @samp{-I} options should be added for any other
-# directories containing header files that the libraries require.
-MGNUCFLAGS = -I$(MYPACKAGE_DIR) -I$(MYOTHERLIB_DIR) $(EXTRA_MGNUCFLAGS)
-@end example
-
-Here @samp{VPATH} is a colon-separated list of path names specifying
-directories that Mmake will search for interface files.
-The @samp{-I} options in @samp{MCFLAGS} tell @samp{mmc} where to find
-the interface files.  The @samp{-R} options in @samp{MLFLAGS} tell
-the loader where to find shared libraries, and the @samp{-L}
-options tell the linker where to find libraries.
-(Note that the @samp{-R} options must precede the @samp{-L} options.)
-The @samp{-l} options tell the linker which libraries to link with.
-The extra arguments to @samp{c2init} specified in the @samp{C2INITARGS}
-variable tell @samp{c2init} where to find the @samp{.init} files for
-the libraries (so that it can generate appropriate initialization code)
-as well as telling Mmake that any @samp{_init.c} files generated depend
-on these files.
-The @samp{-I} options in @samp{MGNUCFLAGS} tell the C preprocessor where
-to find the header files for the libraries.
-
-The example above assumes that the static object library,
-shared object library, interface files and initialization file
-for each Mercury library being used are all put in a single directory,
-which is probably the simplest way of organizing things, but the
-Mercury implementation does not require that.
-
-@node Supporting multiple grades and architectures
-@section Supporting multiple grades and architectures
-
-In order to better support using and installing libraries in multiple
-grades, @samp{mmake} now has support for alternative library directory
-hierarchies.
+@samp{mmake} has support for alternative library directory hierarchies.
 These have the same structure as the @file{@var{prefix}/lib/mercury} tree,
 including the different subdirectories for different grades and different
 machine architectures.
@@ -1059,7 +980,11 @@ If @samp{INSTALL_MKDIR} is not specified, @samp{mkdir -p} will be used.
 Note that currently it is not possible to set the installation prefix
 on a library-by-library basis.
 
-Once a library is installed in such a hierarchy, using it is easy.
+@node Using libraries
+@section Using libraries
+@cindex Libraries, linking with
+
+Once a library is installed, using it is easy.
 Suppose the user wishes to use the library @samp{mypackage} (installed
 in the tree rooted at @samp{/some/directory/mypackage}) and the library
 @samp{myotherlib} (installed in the tree rooted at
@@ -1074,14 +999,27 @@ EXTRA_LIBRARIES = mypackage myotherlib
 @vindex EXTRA_LIBRARIES
 @vindex EXTRA_LIB_DIRS
 
-Mmake will then ensure that the appropriate directories are searched for
+@findex --intermodule-optimization
+When using @samp{--intermodule-optimization} with a library which
+uses the C interface, it may be necessary to add @samp{-I} options to
+@samp{MGNUCFLAGS} so that the C compiler can find any header files
+used by the library's C code.
+
+Mmake will ensure that the appropriate directories are searched for
 the relevant interface files, module initialisation files, compiled
 libraries, etc.
 
+@findex --mld
+@findex --mercury-library-directory
+@findex --ml
+@findex --mercury-library
+To use a library when invoking @samp{mmc} directly, use the @samp{--mld}
+and @samp{--ml} options (@pxref{Link options}).
+
 Beware that the directory name that you must use in @samp{EXTRA_LIB_DIRS}
-is not quite the same as the name that was specified in the
-@samp{INSTALL_PREFIX} when the library was installed --- the name in
-@samp{EXTRA_LIB_DIRS} needs to have @samp{/lib/mercury} appended.
+or as the argument of the @samp{--mld} option is not quite the same as
+the name that was specified in the @samp{INSTALL_PREFIX} when the library
+was installed --- the name needs to have @samp{/lib/mercury} appended.
 
 One can specify extra libraries to be used on a program-by-program
 basis.  For instance, if the program @samp{foo} also uses the library
@@ -5630,17 +5568,17 @@ Link with the specified object file.
 @cindex Directories for libraries
 @cindex Search path for libraries
 Append @var{directory} to the list of directories to
-be searched for Mercury libraries. This will add
-@samp{--search-directory}, @samp{--library-directory},
+be searched for Mercury libraries.
+This will add @samp{--search-directory}, @samp{--library-directory},
 @samp{--init-file-directory} and @samp{--c-include-directory}
-options as needed.
+options as needed.  @xref{Using libraries}.
 
 @item --ml @var{library}
 @itemx --mercury-library @var{library}
 @findex --ml
 @findex --mercury-library
 @cindex Libraries, linking with
-Link with the specified Mercury library.
+Link with the specified Mercury library.  @xref{Using libraries}.
 
 @item --mercury-standard-library-directory @var{directory}
 @findex --mercury-standard-library-directory
