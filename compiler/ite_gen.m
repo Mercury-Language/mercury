@@ -164,10 +164,10 @@ ite_gen__generate_nondet_ite(CondGoal, ThenGoal, ElseGoal, Instr) -->
 	;
 		ModRedoipCode = empty
 	},
-		% generate the semi-deterministic test goal
 	code_gen__generate_non_goal(CondGoal, CondCode),
 	code_info__pop_failure_cont,
 	( { CondDeterminism = nondeterministic } ->
+		% XXX bug
 		code_info__restore_failure_cont(RestoreRedoipCode)
 	;
 		{ RestoreRedoipCode = empty }
