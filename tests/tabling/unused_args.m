@@ -71,5 +71,5 @@ test_no_input(!IO) :-
 	[will_not_call_mercury, promise_pure],
 "
 	printf(""no_input executed\\n"");
-	X = ""no_input_output"";
+	X = (MR_String) (MR_Integer) ""no_input_output"";
 ").
