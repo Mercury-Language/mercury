@@ -173,11 +173,17 @@ indented at 4 spaces per level of indentation.
 
 <p>
 
-Each line should not extend beyond 79 characters,
-unless this is necessary due to the use of long string literals.
+Each line should not extend beyond 79 characters.
 The reason we don't allow 80 character lines is that
 these lines wrap around in diffs,
 since diff adds an extra character at the start of each line.
+
+<p>
+
+String literals that don't fit on a single line should be
+split by writing them as two or more strings concatenated using the
+"++" operator; the compiler will evaluate this at compile time,
+if --optimize-constant-propagation is enabled (i.e. at -O3 or higher).
 
 <p>
 
@@ -396,6 +402,6 @@ contains more information on review policy.
 <hr>
 <!-------------------------->
 
-Last update was $Date: 2003-12-10 07:09:34 $ by $Author: juliensf $@cs.mu.oz.au. <br>
+Last update was $Date: 2004-01-12 12:06:31 $ by $Author: fjh $@cs.mu.oz.au. <br>
 </body>
 </html>
