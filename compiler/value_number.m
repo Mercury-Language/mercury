@@ -536,17 +536,33 @@ value_number__try_again([Instr0 | Instrs0], RevInstrs0, RestartLabel, LiveMap,
 			{ Instrs = [Instr0 | Instrs1] }
 		;
 			vn_debug__divide_msg(Instr0),
+			%
+			% we need to append a `goto' instruction at the
+			% end of the fragment so that optimize_fragment
+			% can know what is live at the end.
+			%
 			{ GotoInstr = goto(label(RestartLabel)) - "" },
 			{ list__reverse([GotoInstr | RevInstrs0],
 				FrontInstrs0) },
 			value_number__optimize_fragment(FrontInstrs0, LiveMap,
-				Params, [], LabelNo0, _, FrontInstrs),
+				Params, [], LabelNo0, _, FrontInstrs1),
 			value_number__optimize_fragment(Instrs0, LiveMap,
 				Params, [], LabelNo0, _, BackInstrs),
+			%
+			% we need to get rid of the introduced goto,
+			% which should still be at the end of FrontInstrs1,
+			% otherwise we would violate the invariant that
+			% labels in the middle of a block are not targets
+			% of branches.
+			%
+			{ list__reverse(FrontInstrs1, RevInstrs1) },
+			{ RevInstrs1 = [GotoInstr | RevInstrs2] ->
+				list__reverse(RevInstrs2, FrontInstrs)
+			;
+				error("value_number__try_again: lost goto")
+			},
 			{ list__append(FrontInstrs, [Instr0 | BackInstrs],
-				Instrs1) },
-			% to get rid of the introduced goto
-			{ peephole__optimize(Instrs1, Instrs, _) }
+				Instrs) }
 		)
 	;
 		{ RevInstrs1 = [Instr0 | RevInstrs0] },
