@@ -13,8 +13,7 @@ code generation:
 
 - generate code for polymorphic predicates
 
-- generate better code for switches - use jump tables
-  rather than an if-then-else chain
+- generate better code for switches on tagged types
 
 typechecking
 ------------
