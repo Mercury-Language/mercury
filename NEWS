@@ -1,5 +1,39 @@
-NEWS since Mercury release 0.8:
--------------------------------
+NEWS for Mercury release 0.9:
+-----------------------------
+
+HIGHLIGHTS
+==========
+
+Changes to the Mercury language:
+* The Mercury type system now supports existentially quantified types.
+* We now allow abstract instance declarations.
+* We now support a simple form of user-defined infix operators.
+
+Changes to the Mercury standard library:
+* Exception handling support is now part of the standard library.
+* There's two new standard library modules `time' and `gc'.
+* We've added function versions of many of the predicates in the
+  Mercury standard library.
+
+New library packages in the Mercury extras distribution:
+* We've added support for optional lazy evaluation.
+* The extras distribution now includes support for dynamic linking.
+* We've added some bindings to POSIX.3 functionality.
+
+Changes to the Mercury implementation:
+* Mmake, the Mercury make tool, now includes better support for
+  installing libraries.
+* The Mercury debugger (mdb) is much improved.
+  It now includes support for interactive queries, command-line editing
+  and command-line history, display of source line numbers, and
+  setting breakpoints on source line numbers.
+  The GNU Emacs interface provides a source-linked debugger.
+* We've removed the support for using a Prolog debugger on Mercury programs.
+* We've added support for user-guided type specialization.
+* Numerous bug fixes.
+
+DETAILED LISTING
+================
 
 Changes to the Mercury language:
 ********************************
@@ -145,7 +179,7 @@ New library packages in the Mercury extras distribution:
   which are supported by most modern Unix systems.
   See the files in extras/dynamic_linking for details.
 
-* We've added some use-at-your-own-risk bindings to POSIX.3 functionality.
+* We've added some bindings to POSIX.3 functionality.
 
   At this stage it's quite incomplete.
   See the files in extras/posix for details.
@@ -175,7 +209,7 @@ Changes to the Mercury implementation:
   violating the strict sequential semantics (see the "Semantics" chapter
   of the Mercury Language Reference Manual).
 
-  To fix switches for which determinism errors are now reported simply
+  To fix switches for which determinism errors are now reported, simply
   reorder the goals in each disjunct so that only unifications occur
   before the test of the switched-on variable.
 
@@ -195,6 +229,12 @@ Changes to the Mercury implementation:
   need to install GNU readline in order to use the debugger.
 
   For information on where to obtain GNU Readline, see the INSTALL file.
+
+* The Mercury debugger (mdb) now displays source line numbers and allows
+  setting breakpoints on source line numbers.
+
+  The GNU Emacs interface takes advantage of this to provide a
+  source-linked debugger.
 
 * We've removed the support for using a Prolog debugger on Mercury programs.
 
