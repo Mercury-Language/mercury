@@ -730,35 +730,35 @@ case "$host" in
 		# From Cornelis van der Laan <nils@ims.uni-stuttgart.de>
 		AC_MSG_RESULT(yes)
 		LINK_SHARED_OBJ="ld -Bshareable"
-		PIC=-fpic
-		PIC_O=pic_o
-		SO=so
+		CFLAGS_FOR_PIC=-fpic
+		EXT_FOR_PIC_OBJECTS=pic_o
+		EXT_FOR_SHARED_LIB=so
 		;;
 	sparc-sun-solaris2.*)
 		AC_MSG_RESULT(yes)
 		LINK_SHARED_OBJ="$CC -G"
-		PIC=
-		PIC_O=o
-		SO=so
+		CFLAGS_FOR_PIC=
+		EXT_FOR_PIC_OBJECTS=o
+		EXT_FOR_SHARED_LIB=so
 		;;
 	alpha-dec-osf*)
 		AC_MSG_RESULT(yes)
 		LINK_SHARED_OBJ="ld -shared"
-		PIC=
-		PIC_O=o
-		SO=so
+		CFLAGS_FOR_PIC=
+		EXT_FOR_PIC_OBJECTS=o
+		EXT_FOR_SHARED_LIB=so
 		;;
 	mips-sgi-irix5.*)
 		LINK_SHARED_OBJ="ld -shared -update_registry ../so_locations\
 			-show_quickstart_info -rdata_shared"
-		PIC=
-		PIC_O=o
+		CFLAGS_FOR_PIC=
+		EXT_FOR_PIC_OBJECTS=o
 		# shared libraries only work for reg.gc or none.gc
 		if test "$GRADE" = reg.gc || test "$GRADE" = none.gc; then
 			AC_MSG_RESULT(yes)
-			SO=so
+			EXT_FOR_SHARED_LIB=so
 		else
-			SO=a
+			EXT_FOR_SHARED_LIB=a
 			AC_MSG_RESULT(no)
 			AC_MSG_RESULT(Read README.IRIX-5)
 		fi
@@ -766,15 +766,15 @@ case "$host" in
 	*)
 		AC_MSG_RESULT(no)
 		LINK_SHARED_OBJ="$CC"
-		PIC=
-		PIC_O=o
-		SO=a
+		CFLAGS_FOR_PIC=
+		EXT_FOR_PIC_OBJECTS=o
+		EXT_FOR_SHARED_LIB=a
 		;;
 esac
 AC_SUBST(LINK_SHARED_OBJ)
-AC_SUBST(PIC)
-AC_SUBST(PIC_O)
-AC_SUBST(SO)
+AC_SUBST(CFLAGS_FOR_PIC)
+AC_SUBST(EXT_FOR_PIC_OBJECTS)
+AC_SUBST(EXT_FOR_SHARED_LIB)
 #-----------------------------------------------------------------------------#
 if test "$BOOTSTRAP_MC" = ""; then
 	BOOTSTRAP_MC=mc
@@ -784,7 +784,7 @@ AC_SUBST(BOOTSTRAP_MC)
 
 # XXX compiler/conf.m - problems with bootstrapping
 
-AC_OUTPUT(Mmake.common scripts/mc scripts/mprof
+AC_OUTPUT(Mmake.common scripts/Mmake.vars scripts/mc scripts/mprof
 scripts/mercury_update_interface scripts/mgnuc scripts/mint scripts/ml
 scripts/mmake scripts/mnc scripts/mnl scripts/mnp scripts/c2init
 scripts/msc scripts/msl scripts/msp scripts/sicstus_conv
