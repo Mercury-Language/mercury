@@ -1,6 +1,6 @@
 
 /*
- *	$Id: bytecode.h,v 1.1 1997-01-24 07:08:50 aet Exp $
+ *	$Id: bytecode.h,v 1.2 1997-01-28 01:59:57 aet Exp $
  *
  *	Copyright: The University of Melbourne, 1996
  */
@@ -11,27 +11,269 @@
 typedef int
 	NOT_IMPLEMENTED;
 
-typedef NOT_IMPLEMENTED
-	Tag;
+/* XXX: We shouldn't use typedefs for structs. We should also explicitly
+ * label struct variables with `struct' instead.
+ * Hmm.. Maybe this convention is bullshit.
+ */
+#if 0 
+typedef struct Tag {
+		Byte	tag_type;
+		union extra_tags {
+			Byte	primary;
+			int	secondary;
+		} extra_tags;
+	} Tag;
+#endif	/* 0 */
 
-typedef NOT_IMPLEMENTED
-	Cons_id;
+struct Tag {
+		Byte	tag_type;
+		union extra_tags {
+			Byte	primary;
+			int	secondary;
+		} extra_tags;
+};
+
+
+/* 
+ *	tag_type 
+ */
+#define	SIMPLE_TAG			0
+#define	COMPLICATED_TAG			1
+#define	COMPLICATED_CONSTANT_TAG	2
+#define	ENUM_TAG			3
+#define	NO_TAG				4
+
 
 typedef unsigned short
 	ushort;
 
 typedef Byte
 	Determinism;
+/*
+ *	Determinism
+ */
+#define	DET		0
+#define	SEMIDET		1
+#define	MULTIDET	2
+#define	NONDET		3
+#define	CC_MULTIDET	4
+#define	CC_NONDET	5
+#define	ERRONEOUS	6
+#define	FAILURE		7
 
 typedef NOT_IMPLEMENTED
 	Op_arg;
 
-typedef NOT_IMPLEMENTED
+typedef Byte
+	Dir;
+/*
+ *	Dir
+ */
+#define	TO_ARG		0
+#define	TO_VAR		1
+#define	TO_NONE		2
+
+
+typedef CString
 	Var_dir;
 
-typedef NOT_IMPLEMENTED
-	Var_info;
+struct Cons_id {
+	Byte	cons_id_type;
+	union options {
+		struct {
+			CString		string;
+			ushort		arity;
+			struct Tag	tag;
+		} cons;
+		int 	int_const;	
+		CString	string_const;
+		float	float_const;
+		struct {
+			CString		module_id;
+			CString		pred_id;
+			ushort		arity;
+			Byte		proc_id;
+		} pred_const;
+		struct {
+			CString		module_id;
+			CString		pred_id;
+			ushort		arity;
+			Byte		proc_id;
+		} code_addr_const;
+		struct {
+			CString		module_id;
+			CString		type_name;
+			Byte		type_arity;
+		} base_type_info_const;
+	} options;
+} ;
+
+#define	CONSID_CONS		0
+#define	CONSID_INT_CONST	1
+#define	CONSID_STRING_CONST	2
+#define	CONSID_FLOAT_CONST	3
+#define	CONSID_PRED_CONST	4
+#define	CONSID_CODE_ADDR_CONST	5
+#define	CONSID_BASE_TYPE_INFO_CONST	6
+
+
+struct Bytecode {
+	Byte	bc;	/* Which bytecode instruction. e.g. BC_fail */
+	union args {
+		struct {
+			CString		pred_name;	/* XXX: malloc */
+			ushort		proc_count;
+		} enter_pred;
+
+		/* endof_pred */
+
+		struct {
+			Byte		proc_id;
+			Determinism	det;
+			ushort		label_count;
+			ushort		list_length;
+			CString		*var_info_list; /* XXX: malloc */
+		} enter_proc;
+
+		struct {
+			ushort		label;
+		} label;
+
+		struct {
+			ushort		end_label;
+		} enter_disjunction;
+
+		/* endof_disjunction */
+
+		struct {
+			ushort		next_label;
+		} enter_disjunct;
+
+		struct {
+			ushort		var;
+			ushort		end_label;
+		} enter_switch;
+			
+		/* endof_switch */
+
+		struct {
+			struct Cons_id		cons_id;
+			ushort			next_label;
+		} enter_switch_arm;
+
+
+		/* endof_switch_arm */
+
+		struct {
+			ushort	else_label;
+			ushort	end_label;
+		} enter_if;
+
+		/* enter_then */
+		
+		/* enter_else */
+
+		/* endof_if */
 	
+		struct {
+			ushort	end_label;
+		} enter_negation;
+
+		/* endof_negation */
+
+		/* enter_commit */
+
+		/* endof_commit */
+
+		struct {
+			ushort	to_var;
+			ushort	from_var;
+		} assign;
+
+		struct {
+			ushort	var1;
+			ushort	var2;
+		} test;
+
+		struct {
+			ushort			to_var;
+			struct Cons_id		consid;
+			ushort			list_length;
+			ushort		*var_list;	/* XXX: malloc */
+		} construct;
+
+		struct {
+			ushort			from_var;
+			struct Cons_id		consid;
+			ushort			list_length;
+			Var_dir		*var_dir_list;	/* XXX: malloc */	
+		} complex_construct;
+
+		struct {
+			ushort			from_var;
+			struct Cons_id		consid;
+			ushort			list_length;
+			ushort		*var_list;	/* XXX: malloc */
+		} deconstruct;
+
+		struct {
+			ushort			from_var;
+			struct Cons_id		consid;
+			ushort			list_length;
+			Var_dir		*var_dir_list;	/* XXX: malloc */
+		} complex_deconstruct;
+
+		struct {
+			Byte		to_reg;
+			ushort		from_var;
+		} place_arg;
+
+		struct {
+			CString		module_id;	/* XXX: malloc */
+			CString		pred_id;	/* XXX: malloc */
+			ushort		arity;
+			Byte		proc_id;
+		} call;
+
+
+		struct {
+			Byte		from_reg;
+			ushort		to_var;
+		} pickup_arg;
+			
+		struct {
+			Byte		binop;
+			Op_arg		arg1;
+			Op_arg		arg2;
+			ushort		to_var;
+		} builtin_binop;
+
+		struct {
+			Byte		unop;
+			Op_arg		arg;
+			ushort		to_var;
+		} builtin_unop;
+
+		struct {
+			Byte		binop;
+			Op_arg		arg1;
+			Op_arg		arg2;
+		} builtin_bintest;	
+
+		struct {
+			Byte		binop;
+			Op_arg		arg;
+		} builtin_untest;	
+
+		struct {
+			ushort		line_number;
+		} context;
+
+		/* not_supported */
+
+	} args;
+};
+
 Bool
 bytecode_to_name(Byte bytecode, CString* name_p);
 
@@ -42,10 +284,10 @@ Bool
 read_bytecode_version_number(FILE* fp, int* version_number_p);
 
 Bool
-read_tag(FILE *fp, Tag *tag_p);
+read_tag(FILE *fp, struct Tag *tag_p);
 
 Bool
-read_cons_id(FILE *fp, Cons_id *cons_id_p);
+read_cons_id(FILE *fp, struct Cons_id *cons_id_p);
 
 Bool
 read_op_arg(FILE *fp, Op_arg *op_arg_p);
@@ -55,6 +297,9 @@ read_determinism(FILE *fp, Determinism *det_p);
 
 Bool
 read_ushort(FILE *fp, ushort *ushort_p);
+
+Bool
+read_float(FILE *fp, float *float_p);
 
 Bool
 read_cstring(FILE *fp, CString *cstr_p);
@@ -73,7 +318,10 @@ Bool
 read_int(FILE* fp, Int* int_p);
 
 Bool
-read_short(FILE* fp, Short* short_p);
+read_ushort(FILE* fp, ushort* ushort_p);
+
+Bool
+read_bytecode(FILE* fp, struct Bytecode  *bc_p);
 
 /*
  *	We use #defines rather than an enumeration here since
@@ -125,178 +373,6 @@ read_short(FILE* fp, Short* short_p);
 CString
 bytecode_to_string[];
 */
-
-#define	DET		0
-#define	SEMIDET		1
-#define	MULTIDET	2
-#define	NONDET		3
-#define	CC_MULTIDET	4
-#define	CC_NONDET	5
-#define	ERRONEOUS	6
-#define	FAILURE		7
-
-#define	TO_ARG		0
-#define	TO_VAR		1
-#define	TO_NONE		2
-
-
-typedef struct {
-	Byte	bc;	/* Which bytecode instruction. e.g. BC_fail */
-	union args {
-		struct {
-			CString		pred_name;
-			ushort		pred_count;
-		} enter_pred;
-
-		/* endof_pred */
-
-		struct {
-			Byte		proc_id;
-			Determinism	det;
-			ushort		label_count;
-			ushort		list_length;
-			Var_info	*var_info_list;
-		} enter_proc;
-
-		struct {
-			ushort		label;
-		} label;
-
-		struct {
-			ushort		end_label;
-		} enter_disjunction;
-
-		/* endof_disjunction */
-
-		struct {
-			ushort		next_label;
-		} enter_disjunct;
-
-		struct {
-			ushort		var;
-			ushort		end_label;
-		} enter_switch;
-			
-		/* endof_switch */
-
-		struct {
-			Cons_id		cons_id;
-			ushort		next_label;
-		} enter_switch_arm;
-
-
-		/* endof_switch_arm */
-
-		struct {
-			ushort	else_label;
-			ushort	end_label;
-		} enter_if;
-
-		/* enter_then */
-		
-		/* enter_else */
-
-		/* endof_if */
-	
-		struct {
-			ushort	end_label;
-		} enter_negation;
-
-		/* endof_negation */
-
-		/* enter_commit */
-
-		/* endof_commit */
-
-		struct {
-			ushort	to_var;
-			ushort	from_var;
-		} assign;
-
-		struct {
-			ushort	var1;
-			ushort	var2;
-		} test;
-
-
-		struct {
-			ushort		to_var;
-			Cons_id		consid;
-			ushort		list_length;
-			ushort		*var_list;
-		} construct;
-
-		struct {
-			ushort		from_var;
-			Cons_id		consid;
-			ushort		list_length;
-			Var_dir		*var_dir_list;	
-		} complex_construct;
-
-		struct {
-			ushort		from_var;
-			Cons_id		consid;
-			ushort		list_length;
-			ushort		*var_list;
-		} deconstruct;
-
-		struct {
-			ushort		from_var;
-			Cons_id		consid;
-			ushort		list_length;
-			Var_dir		*var_dir_list;
-		} complex_deconstruct;
-
-		struct {
-			Byte		to_reg;
-			ushort		from_var;
-		} place_arg;
-
-		struct {
-			CString		module_id;
-			CString		pred_id;
-			ushort		arity;
-			Byte		proc_id;
-		} call;
-
-
-		struct {
-			Byte		from_reg;
-			ushort		to_var;
-		} pickup_arg;
-			
-		struct {
-			Byte		binop;
-			Op_arg		arg1;
-			Op_arg		arg2;
-			ushort		to_var;
-		} builtin_binop;
-
-		struct {
-			Byte		unop;
-			Op_arg		arg;
-			ushort		to_var;
-		} builtin_unop;
-
-		struct {
-			Byte		binop;
-			Op_arg		arg1;
-			Op_arg		arg2;
-		} builtin_bintest;	
-
-		struct {
-			Byte		binop;
-			Op_arg		arg;
-		} builtin_untest;	
-
-		struct {
-			ushort		line_number;
-		} context;
-
-		/* not_supported */
-
-	} args;
-} Bytecode;
 
 #if	0
 main()
