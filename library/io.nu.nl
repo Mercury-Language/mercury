@@ -153,7 +153,10 @@ io__main -->
 	{ io__main_has_been_executed ->
 		true
 	;
-		write('Mercury Interpreter 0.1'), nl,
+		write('Mercury Interpreter, version 0.3'), nl,
+		write('Copyright (C) 1995 University of Melbourne'), nl,
+		write('Underlying Prolog implementation: '),
+		currentOutput(Output), flushOutput(Output),
 		assert(io__main_has_been_executed)
 	},
 	{ retractall(io__inhibit_user_main) },
