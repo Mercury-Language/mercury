@@ -2562,9 +2562,8 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 		SplitLibFileName, " : $(", MakeVarName, ".dir_os) $(MLOBJS)\n",
 		"\trm -f ", SplitLibFileName, "\n",
 		"\t$(AR) $(ALL_ARFLAGS) ", SplitLibFileName, " $(MLOBJS)\n",
-		"\tfor dir in $(", MakeVarName, ".dirs); do \\\n",
-		"\t	$(AR) q ", SplitLibFileName, " $$dir/*.o; \\\n",
-		"\tdone\n",
+		"\tfind $(", MakeVarName, ".dirs) -name ""*.o"" -print | \\\n",
+		"\t	xargs $(AR) q ", SplitLibFileName, "\n",
 		"\t$(RANLIB) $(ALL_RANLIBFLAGS) ", SplitLibFileName, "\n\n"
 	]),
 
