@@ -3194,9 +3194,13 @@ mlds_output_boxed_rval(Type, Exprn) -->
 		mlds_output_rval(Exprn)
 	;
 		{ Exprn = unop(cast(OtherType), InnerExprn) },
-		{ Type = OtherType }
+		( { Type = OtherType }
+		; { is_an_address(InnerExprn) }
+		)
 	->
 		% avoid unnecessary double-casting -- strip away the inner cast
+		% This is necessary for ANSI/ISO C conformance, to avoid
+		% casts from pointers to integers in static initializers.
 		mlds_output_boxed_rval(Type, InnerExprn)
 	;
 		{ Type = mlds__mercury_type(term__functor(term__atom("float"),
@@ -3226,6 +3230,18 @@ mlds_output_boxed_rval(Type, Exprn) -->
 		mlds_output_rval(Exprn),
 		io__write_string("))")
 	).
+
+% Succeed if the specified rval is an address
+% (possibly tagged and/or cast to a different type).
+:- pred is_an_address(mlds__rval::in) is semidet.
+is_an_address(mkword(_Tag, Expr)) :-
+	is_an_address(Expr).
+is_an_address(unop(cast(_), Expr)) :-
+	is_an_address(Expr).
+is_an_address(mem_addr(_)).
+is_an_address(const(null(_))).
+is_an_address(const(code_addr_const(_))).
+is_an_address(const(data_addr_const(_))).
 
 :- pred mlds_output_unboxed_rval(mlds__type, mlds__rval, io__state, io__state).
 :- mode mlds_output_unboxed_rval(in, in, di, uo) is det.
