@@ -1173,9 +1173,9 @@ process_module_interfaces([Import | Imports], IndirectImports0, Module0, Module)
 		( { ModuleName = "mercury_builtin" } ->
 			[]
 		;
-			globals__io_lookup_bool_option(inhibit_warnings,
-							NoWarn),
-			( { NoWarn = no } ->
+			globals__io_lookup_bool_option(warn_simple_code,
+							Warn),
+			( { Warn = yes } ->
 				{ term__context_init(ModuleName, 1, Context) },
 				prog_out__write_context(Context),
 				io__write_string(
