@@ -1,0 +1,12 @@
+
+# You may need to modify the line below
+
+MLLIBS    = -ltk8.0 -ltcl8.0 -L/usr/X11R6/lib -lX11 -lXmu -lXext -lm -ldl
+MLFLAGS	  = -R/usr/X11R6/lib
+
+LIBRARY = libmercury_tcltk
+
+MAIN_TARGET = $(LIBRARY)
+
+depend: mercury_tcltk.depend
+
