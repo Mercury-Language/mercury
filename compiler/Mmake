@@ -74,9 +74,9 @@ sicstus: mercury_compile.sicstus
 
 #-----------------------------------------------------------------------------#
 
-mercury_compile.opt: $(mercury_compile.ms)
+mercury_compile.split: $(mercury_compile.ms)
 	$(MC) --optimize-value-number --split-c-files \
-		-o mercury_compile.opt $(mercury_compile.ms)
+		-o mercury_compile.split $(mercury_compile.ms)
 
 #-----------------------------------------------------------------------------#
 
@@ -125,7 +125,7 @@ cs: $(mercury_compile.cs) mercury_compile_init.c
 #-----------------------------------------------------------------------------#
 
 realclean:
-	rm -f tags mercury_compile.stats mercury_compile.opt
+	rm -f tags mercury_compile.stats mercury_compile.split
 
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#

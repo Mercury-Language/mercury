@@ -131,10 +131,10 @@ library.init: library.dep
 		echo "INIT mercury__`basename $$file .m`__init"; \
 	done > library.init
 
-# libmercury.opt.a is a version of libmercury.a that has been compiled
+# libmercury.split.a is a version of libmercury.a that has been compiled
 # with `--split-c-files'.
-libmercury.opt.a : $(library.dir_os)
-	ar cr libmercury.opt.a $(library.dir_os)
+libmercury.split.a : $(library.dir_os)
+	ar cr libmercury.split.a $(library.dir_os)
 
 #-----------------------------------------------------------------------------#
 
@@ -231,10 +231,10 @@ install_library: libmercury.a libmercury.$(EXT_FOR_SHARED_LIB)
 	cp `vpath_find libmercury.a libmercury.$(EXT_FOR_SHARED_LIB)` \
 		$(INSTALL_MERC_LIB_DIR)
 
-.PHONY: install_library_opt
-install_library_opt: libmercury.opt.a
+.PHONY: install_split_library
+install_split_library: libmercury.split.a
 	[ -d $(INSTALL_MERC_LIB_DIR) ] || mkdir -p $(INSTALL_MERC_LIB_DIR)
-	cp `vpath_find libmercury.opt.a` $(INSTALL_MERC_LIB_DIR)/libmercury.a
+	cp `vpath_find libmercury.split.a` $(INSTALL_MERC_LIB_DIR)/libmercury.a
 
 .PHONY: install_nuprolog
 install_nuprolog: install_library_nu install_interpreter_nu
