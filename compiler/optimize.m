@@ -145,7 +145,8 @@ optimize__repeated(Instrs0, DoVn, Final, Instrs, Mod) -->
 		;
 			[]
 		),
-		{ peephole__optimize(Instrs2, Instrs3, Mod2) },
+		globals__io_get_gc_method(GC_Method),
+		{ peephole__optimize(GC_Method, Instrs2, Instrs3, Mod2) },
 		( { Mod2 = yes } ->
 			opt_debug__msg(DebugOpt, "after peepholing"),
 			opt_debug__dump_instrs(DebugOpt, Instrs3)

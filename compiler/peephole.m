@@ -15,15 +15,22 @@
 :- interface.
 
 :- import_module bool, list.
-:- import_module llds.
+:- import_module llds, globals.
 
-:- pred peephole__optimize(list(instruction), list(instruction), bool).
-:- mode peephole__optimize(in, out, out) is det.
+	% Peephole optimize a list of instructions.
+
+:- pred peephole__optimize(gc_method, list(instruction), list(instruction),
+		bool).
+:- mode peephole__optimize(in, in, out, out) is det.
 
 :- implementation.
 
 :- import_module map, string, std_util.
 :- import_module code_util, opt_util, opt_debug.
+
+	% Patterns that can be switched off.
+
+:- type pattern --->		incr_sp.
 
 	% We zip down to the end of the instruction list, and start attempting
 	% to optimize instruction sequences. As long as we can continue
@@ -31,10 +38,19 @@
 	% when we find a sequence we can't optimize, we back up and try
 	% to optimize the sequence starting with the previous instruction.
 
-peephole__optimize([], [], no).
-peephole__optimize([Instr0 - Comment | Instrs0], Instrs, Mod) :-
-	peephole__optimize(Instrs0, Instrs1, Mod0),
-	peephole__opt_instr(Instr0, Comment, Instrs1, Instrs, Mod1),
+peephole__optimize(GC_Method, Instrs0, Instrs, Mod) :-
+	peephole__invalid_opts(GC_Method, InvalidPatterns),
+	peephole__optimize_2(InvalidPatterns, Instrs0, Instrs, Mod).
+
+:- pred peephole__optimize_2(list(pattern), list(instruction),
+		list(instruction), bool).
+:- mode peephole__optimize_2(in, in, out, out) is det.
+peephole__optimize_2(_, [], [], no).
+peephole__optimize_2(InvalidPatterns, [Instr0 - Comment | Instrs0],
+		Instrs, Mod) :-
+	peephole__optimize_2(InvalidPatterns, Instrs0, Instrs1, Mod0),
+	peephole__opt_instr(Instr0, Comment, InvalidPatterns, Instrs1,
+		Instrs, Mod1),
 	( Mod0 = no, Mod1 = no ->
 		Mod = no
 	;
@@ -44,18 +60,19 @@ peephole__optimize([Instr0 - Comment | Instrs0], Instrs, Mod) :-
 	% Try to optimize the beginning of the given instruction sequence.
 	% If successful, try it again.
 
-:- pred peephole__opt_instr(instr, string,
+:- pred peephole__opt_instr(instr, string, list(pattern),
 	list(instruction), list(instruction), bool).
-:- mode peephole__opt_instr(in, in, in, out, out) is det.
+:- mode peephole__opt_instr(in, in, in, in, out, out) is det.
 
-peephole__opt_instr(Instr0, Comment0, Instrs0, Instrs, Mod) :-
+peephole__opt_instr(Instr0, Comment0, InvalidPatterns, Instrs0, Instrs, Mod) :-
 	(
 		opt_util__skip_comments(Instrs0, Instrs1),
-		peephole__match(Instr0, Comment0, Instrs1, Instrs2)
+		peephole__match(Instr0, Comment0, InvalidPatterns, Instrs1,
+			Instrs2)
 	->
 		( Instrs2 = [Instr2 - Comment2 | Instrs3] ->
-			peephole__opt_instr(Instr2, Comment2, Instrs3, Instrs,
-				_)
+			peephole__opt_instr(Instr2, Comment2, InvalidPatterns,
+				Instrs3, Instrs, _)
 		;
 			Instrs = Instrs2
 		),
@@ -67,15 +84,17 @@ peephole__opt_instr(Instr0, Comment0, Instrs0, Instrs, Mod) :-
 
 %-----------------------------------------------------------------------------%
 
+		
 	% Look for code patterns that can be optimized, and optimize them.
 
-:- pred peephole__match(instr, string, list(instruction), list(instruction)).
-:- mode peephole__match(in, in, in, out) is semidet.
+:- pred peephole__match(instr, string, list(pattern),
+		list(instruction), list(instruction)).
+:- mode peephole__match(in, in, in, in, out) is semidet.
 
 	% A `computed_goto' with all branches pointing to the same 
 	% label can be replaced with an unconditional goto. 
 
-peephole__match(computed_goto(_, Labels), Comment, Instrs0, Instrs) :-
+peephole__match(computed_goto(_, Labels), Comment, _, Instrs0, Instrs) :-
 	list__all_same(Labels),
 	Labels = [Target|_],
 	Instrs = [goto(label(Target)) - Comment | Instrs0].
@@ -89,7 +108,7 @@ peephole__match(computed_goto(_, Labels), Comment, Instrs0, Instrs) :-
 	% A conditional branch to a label followed by that label
 	% can be eliminated.
 
-peephole__match(if_val(Rval, CodeAddr), Comment, Instrs0, Instrs) :-
+peephole__match(if_val(Rval, CodeAddr), Comment, _, Instrs0, Instrs) :-
 	(
 		opt_util__is_const_condition(Rval, Taken)
 	->
@@ -138,9 +157,9 @@ peephole__match(if_val(Rval, CodeAddr), Comment, Instrs0, Instrs) :-
 	%	if_val(test, redo)		if_val(test, label)
 	%
 	% These two patterns are mutually exclusive because if_val is not
-	% straigh-line code.
+	% straight-line code.
 
-peephole__match(mkframe(Name, Slots, Pragma, Redoip1), Comment,
+peephole__match(mkframe(Name, Slots, Pragma, Redoip1), Comment, _,
 		Instrs0, Instrs) :-
 	(
 		opt_util__next_modframe(Instrs0, [], Redoip2, Skipped, Rest),
@@ -197,7 +216,7 @@ peephole__match(mkframe(Name, Slots, Pragma, Redoip1), Comment,
 	%	store_ticket(Lval)	=>	store_ticket(Lval)
 	%	reset_ticket(Lval, _R)
 
-peephole__match(store_ticket(Lval), Comment, Instrs0, Instrs) :-
+peephole__match(store_ticket(Lval), Comment, _, Instrs0, Instrs) :-
 	opt_util__skip_comments(Instrs0, Instrs1),
 	Instrs1 = [reset_ticket(lval(Lval), _Reason) - _Comment2 | Instrs2],
 	Instrs = [store_ticket(Lval) - Comment | Instrs2].
@@ -216,7 +235,7 @@ peephole__match(store_ticket(Lval), Comment, Instrs0, Instrs) :-
 	% are not touched by the straight-line instructions, then we can
 	% discard the nondet stack frame early.
 
-peephole__match(modframe(Redoip), Comment, Instrs0, Instrs) :-
+peephole__match(modframe(Redoip), Comment, _, Instrs0, Instrs) :-
 	(
 		opt_util__next_modframe(Instrs0, [], Redoip2, Skipped, Rest),
 		opt_util__touches_nondet_ctrl(Skipped, no)
@@ -249,13 +268,31 @@ peephole__match(modframe(Redoip), Comment, Instrs0, Instrs) :-
 	%	succip = detstackvar(N)
 	%	decr_sp N
 
-peephole__match(incr_sp(N, _), _, Instrs0, Instrs) :-
+peephole__match(incr_sp(N, _), _, InvalidPatterns, Instrs0, Instrs) :-
+	\+ list__member(incr_sp, InvalidPatterns),
 	(
 		opt_util__no_stackvars_til_decr_sp(Instrs0, N, Between, Remain)
 	->
 		list__append(Between, Remain, Instrs)
 	;
 		fail
+	).
+
+%-----------------------------------------------------------------------------%
+
+	% Given a GC method, return the list of invalid peephole
+	% optimizations.
+
+:- pred peephole__invalid_opts(gc_method, list(pattern)). 
+:- mode peephole__invalid_opts(in, out) is det.
+
+peephole__invalid_opts(GC_Method, InvalidPatterns) :-
+	( 
+		GC_Method = accurate
+	->
+		InvalidPatterns = [incr_sp]
+	;
+		InvalidPatterns = []
 	).
 
 %-----------------------------------------------------------------------------%

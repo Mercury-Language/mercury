@@ -273,7 +273,7 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
 	%	  paths across optimization levels
 	% 	- enabling stack layouts
 	% 	- enabling typeinfo liveness
-	( { TraceLevel = interface ; TraceLevel = full } ->
+	( { trace_level_trace_interface(TraceLevel, yes) } ->
 			% The following options modify the structure
 			% of the program, which makes it difficult to
 			% relate the trace to the source code (although
@@ -325,10 +325,12 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
 	% `trace' stack layouts need `procid' stack layouts
 	option_implies(trace_stack_layout, procid_stack_layout, bool(yes)),
 
-	% --gc accurate requires `agc' stack layouts and typeinfo liveness.
+	% --gc accurate requires `agc' stack layouts, typeinfo liveness,
+	% and needs frameopt to be switched off.
 	( { GC_Method = accurate } ->
 		globals__io_set_option(agc_stack_layout, bool(yes)),
-		globals__io_set_option(typeinfo_liveness, bool(yes)) 
+		globals__io_set_option(typeinfo_liveness, bool(yes)),
+		globals__io_set_option(optimize_frames, bool(no)) 
 	;
 		[]
 	),

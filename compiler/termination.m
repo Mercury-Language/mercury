@@ -677,15 +677,16 @@ termination__make_opt_int(PredIds, Module) -->
 	{ module_info_name(Module, ModuleName) },
 	module_name_to_file_name(ModuleName, ".opt.tmp", no, OptFileName),
 	io__open_append(OptFileName, OptFileRes),
-	( { OptFileRes = ok(OptFile) } ->
+	( { OptFileRes = ok(OptFile) },
 		io__set_output_stream(OptFile, OldStream),
 		termination__make_opt_int_preds(PredIds, Module),
 		io__set_output_stream(OldStream, _),
 		io__close_output(OptFile)
-	;
+	; { OptFileRes = error(IOError) },
 		% failed to open the .opt file for processing
-		io__write_strings(["Cannot open `",
-			OptFileName, "' for output\n"]),
+		{ io__error_message(IOError, IOErrorMessage) },
+		io__write_strings(["Error opening file `",
+			OptFileName, "' for output: ", IOErrorMessage]),
 		io__set_exit_status(1)
 	).
 

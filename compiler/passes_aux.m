@@ -29,6 +29,7 @@
 				pred_id, proc_id, module_info, module_info,
 				proc_info, proc_info, int, int,
 				io__state, io__state))
+		;	update_pred_error(pred_error_task)
 		;	update_module(pred(
 				proc_info, proc_info,
 				module_info, module_info))
@@ -44,6 +45,11 @@
 				univ, univ, module_info, module_info),
 				univ)
 		.
+
+
+:- type pred_error_task ==
+		pred(pred_id, module_info, module_info, pred_info, pred_info,
+			int, int, io__state, io__state).
 
 /****************
 
@@ -79,12 +85,17 @@ about unbound type variables.
 		;	update_proc_io(pred(in, in, in, in, out, di, uo) is det)
 		;	update_proc_error(pred(in, in, in, out, in, out,
 				out, out, di, uo) is det)
+		;	update_pred_error(pred(in, in, out, in, out,
+				out, out, di, uo) is det)
 		;	update_module(pred(in, out, in, out) is det)
 		;	update_module_io(pred(in, in, in, out,
 				in, out, di, uo) is det)
 		;	update_module_cookie(pred(in, in, in, out, in, out,
 				in, out) is det, ground)
 		)).
+
+:- inst pred_error_task =
+		(pred(in, in, out, in, out, out, out, di, uo) is det).
 
 :- mode task ::	task -> task.
 
@@ -135,13 +146,38 @@ about unbound type variables.
 
 process_all_nonimported_procs(Task, ModuleInfo0, ModuleInfo) -->
 	{ module_info_predids(ModuleInfo0, PredIds) },
-	process_nonimported_procs_in_preds(PredIds, Task, _,
-		ModuleInfo0, ModuleInfo).
+	( { Task = update_pred_error(Pred) } ->
+		list__foldl2(process_nonimported_pred(Pred), PredIds,
+			ModuleInfo0, ModuleInfo)
+	;
+		process_nonimported_procs_in_preds(PredIds, Task, _,
+			ModuleInfo0, ModuleInfo)
+	).
 
 process_all_nonimported_procs(Task0, Task, ModuleInfo0, ModuleInfo) -->
 	{ module_info_predids(ModuleInfo0, PredIds) },
 	process_nonimported_procs_in_preds(PredIds, Task0, Task,
 		ModuleInfo0, ModuleInfo).
+
+:- pred process_nonimported_pred(pred_error_task, pred_id,
+	module_info, module_info, io__state, io__state).
+:- mode process_nonimported_pred(in(pred_error_task), in,
+	in, out, di, uo) is det.
+
+process_nonimported_pred(Task, PredId, ModuleInfo0, ModuleInfo,
+		IO0, IO) :-
+	module_info_pred_info(ModuleInfo0, PredId, PredInfo0),
+	( pred_info_is_imported(PredInfo0) ->
+		ModuleInfo = ModuleInfo0,
+		IO = IO0
+	;
+		call(Task, PredId, ModuleInfo0, ModuleInfo1,
+			PredInfo0, PredInfo, WarnCnt, ErrCnt, IO0, IO1),
+		module_info_set_pred_info(ModuleInfo1,
+			PredId, PredInfo, ModuleInfo2),
+		passes_aux__handle_errors(WarnCnt, ErrCnt,
+			ModuleInfo2, ModuleInfo, IO1, IO)
+	).
 
 :- pred process_nonimported_procs_in_preds(list(pred_id), task, task,
 	module_info, module_info, io__state, io__state).
@@ -207,23 +243,12 @@ process_nonimported_procs([ProcId | ProcIds], PredId, Task0, Task,
 		Task0 = update_proc_error(Closure),
 		call(Closure, PredId, ProcId, ModuleInfo0, ModuleInfo1,
 			Proc0, Proc, WarnCnt, ErrCnt, State0, State1),
-		globals__io_lookup_bool_option(halt_at_warn, HaltAtWarn,
-			State1, State2),
 		Task1 = Task0,
-		(
-			(
-				ErrCnt > 0
-			;
-				WarnCnt > 0,
-				HaltAtWarn = yes
-			)
-		->
-			io__set_exit_status(1, State2, State9),
-			module_info_incr_errors(ModuleInfo1, ModuleInfo8)
-		;
-			ModuleInfo8 = ModuleInfo1,
-			State9 = State2
-		)
+		passes_aux__handle_errors(WarnCnt, ErrCnt,
+			ModuleInfo1, ModuleInfo8, State1, State9)
+	;
+		Task0 = update_pred_error(_),
+		error("passes_aux:process_non_imported_procs")
 	;
 		Task0 = update_module_cookie(Closure, Cookie0),
 		call(Closure, PredId, ProcId, Proc0, Proc,
@@ -282,6 +307,29 @@ report_error(ErrorMessage) -->
 	io__write_string(ErrorMessage),
 	io__write_string("\n"),
 	io__set_exit_status(1).
+
+:- pred passes_aux__handle_errors(int, int, module_info, module_info,
+		io__state, io__state).
+:- mode passes_aux__handle_errors(in, in, in, out, di, uo) is det.
+
+passes_aux__handle_errors(WarnCnt, ErrCnt, ModuleInfo1, ModuleInfo8,
+		State1, State9) :-
+	globals__io_lookup_bool_option(halt_at_warn, HaltAtWarn,
+		State1, State2),
+	(
+		(
+			ErrCnt > 0
+		;
+			WarnCnt > 0,
+			HaltAtWarn = yes
+		)
+	->
+		io__set_exit_status(1, State2, State9),
+		module_info_incr_errors(ModuleInfo1, ModuleInfo8)
+	;
+		ModuleInfo8 = ModuleInfo1,
+		State9 = State2
+	).
 
 invoke_system_command(Command, Succeeded) -->
 	globals__io_lookup_bool_option(verbose, Verbose),

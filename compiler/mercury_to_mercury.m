@@ -180,6 +180,10 @@
 		io__state, io__state).
 :- mode mercury_output_constraint(in, in, di, uo) is det.
 
+:- pred mercury_output_instance_methods(instance_interface, io__state,
+	io__state).
+:- mode mercury_output_instance_methods(in, di, uo) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -426,7 +430,7 @@ mercury_output_item(instance(Constraints, ClassName, Types, Methods,
 
 	io__write_string(" where [\n"),
 
-	output_instance_methods(Methods),
+	mercury_output_instance_methods(Methods),
 	
 	io__write_string("\n].\n").
 
@@ -484,10 +488,7 @@ output_class_method(Method) -->
 			Mode, Detism, Context, ArgInstTable, "", "")
 	).
 
-:- pred output_instance_methods(instance_interface, io__state, io__state).
-:- mode output_instance_methods(in, di, uo) is det.
-
-output_instance_methods(Methods) -->
+mercury_output_instance_methods(Methods) -->
 	io__write_list(Methods, ",\n", output_instance_method).
 
 :- pred output_instance_method(instance_method, io__state, io__state).

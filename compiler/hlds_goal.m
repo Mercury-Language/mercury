@@ -732,9 +732,15 @@ get_pragma_c_var_names_2([MaybeName | MaybeNames], Names0, Names) :-
 :- pred true_goal(hlds_goal).
 :- mode true_goal(out) is det.
 
+:- pred true_goal(term__context, hlds_goal).
+:- mode true_goal(in, out) is det.
+
 	% Return the HLDS equivalent of `fail'.
 :- pred fail_goal(hlds_goal).
 :- mode fail_goal(out) is det.
+
+:- pred fail_goal(term__context, hlds_goal).
+:- mode fail_goal(in, out) is det.
 
        % Return the union of all the nonlocals of a list of goals.
 :- pred goal_list_nonlocals(list(hlds_goal), set(var)).
@@ -1029,12 +1035,20 @@ true_goal(conj([]) - GoalInfo) :-
 	instmap_delta_init_reachable(InstMapDelta),
 	goal_info_set_instmap_delta(GoalInfo1, InstMapDelta, GoalInfo).
 
+true_goal(Context, Goal - GoalInfo) :-
+	true_goal(Goal - GoalInfo0),
+	goal_info_set_context(GoalInfo0, Context, GoalInfo).
+
 fail_goal(disj([], SM) - GoalInfo) :-
 	map__init(SM),
 	goal_info_init(GoalInfo0),
 	goal_info_set_determinism(GoalInfo0, failure, GoalInfo1), 
 	instmap_delta_init_unreachable(InstMapDelta),
 	goal_info_set_instmap_delta(GoalInfo1, InstMapDelta, GoalInfo).
+
+fail_goal(Context, Goal - GoalInfo) :-
+	fail_goal(Goal - GoalInfo0),
+	goal_info_set_context(GoalInfo0, Context, GoalInfo).
 
 %-----------------------------------------------------------------------------%
 

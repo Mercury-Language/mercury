@@ -150,6 +150,7 @@
 :- import_module hlds_goal, hlds_data, llds, quantification, (inst), instmap.
 :- import_module hlds_out, mode_util, code_util, quantification, options.
 :- import_module prog_data, trace, globals, polymorphism, passes_aux.
+:- import_module inst_match.
 
 :- import_module bool, map, std_util, list, assoc_list, require.
 :- import_module varset, string.
@@ -186,7 +187,7 @@ detect_liveness_proc(ProcInfo0, PredId, ModuleInfo, ProcInfo) :-
 	detect_deadness_in_goal(Goal1, Deadness0, LiveInfo, _, Goal2),
 
 	globals__get_trace_level(Globals, TraceLevel),
-	( ( TraceLevel = interface ; TraceLevel = full ) ->
+	( trace_level_trace_interface(TraceLevel, yes) ->
 		trace__fail_vars(ModuleInfo, ProcInfo0, ResumeVars0)
 	;
 		set__init(ResumeVars0)
@@ -223,7 +224,8 @@ detect_liveness_in_goal(Goal0 - GoalInfo0, Liveness0, Refs0, LiveInfo,
 			InstMapDelta, Births0, Births, RefBirths0, RefBirths)
 	),
 	set__union(Liveness0, Births, Liveness),
-	set__union(Refs0, RefBirths, Refs),
+	set__union(Refs0, RefBirths, Refs1),
+	remove_bound_refs(Refs1, LiveInfo, InstMapDelta, Refs),
 	(
 		goal_is_atomic(Goal0)
 	->
@@ -268,20 +270,20 @@ detect_liveness_in_goal_2(par_conj(Goals0, SM), Liveness0, Refs0, NonLocals,
 		LiveInfo, Liveness, par_conj(Goals, SM)) :-
 	set__init(Union0),
 	detect_liveness_in_par_conj(Goals0, Liveness0, NonLocals, LiveInfo,
-		Union0, Union, Refs0, _Refs, Goals),
+		Union0, Union, Refs0, Refs0, _Refs, Goals),
 	set__union(Liveness0, Union, Liveness).
 
 detect_liveness_in_goal_2(disj(Goals0, SM), Liveness0, Refs0, NonLocals,
 		LiveInfo, Liveness, disj(Goals, SM)) :-
 	set__init(Union0),
 	detect_liveness_in_disj(Goals0, Liveness0, NonLocals, LiveInfo,
-		Union0, Union, Refs0, _Refs, Goals),
+		Union0, Union, Refs0, Refs0, _Refs, Goals),
 	set__union(Liveness0, Union, Liveness).
 
 detect_liveness_in_goal_2(switch(Var, Det, Cases0, SM), Liveness0, Refs0,
 		NonLocals, LiveInfo, Liveness, switch(Var, Det, Cases, SM)) :-
 	detect_liveness_in_cases(Cases0, Liveness0, NonLocals, LiveInfo,
-		Liveness0, Liveness, Refs0, _Refs, Cases).
+		Liveness0, Liveness, Refs0, Refs0, _Refs, Cases).
 
 detect_liveness_in_goal_2(not(Goal0), Liveness0, Refs0, _, LiveInfo,
 		Liveness, not(Goal)) :-
@@ -319,7 +321,7 @@ detect_liveness_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0, SM),
 	set__difference(NonLocalLiveness, LivenessThen, ResidueThen),
 	set__difference(NonLocalLiveness, LivenessElse, ResidueElse),
 
-	set__union(RefsThen, RefsElse, Refs),
+	merge_branch_refs(Refs0, RefsThen, RefsElse, Refs),
 
 	add_liveness_after_goal(Then1, ResidueThen, Refs, Then),
 	add_liveness_after_goal(Else1, ResidueElse, Refs, Else).
@@ -369,39 +371,43 @@ detect_liveness_in_conj([Goal0 | Goals0], Liveness0, Refs0, LiveInfo, Liveness,
 
 %-----------------------------------------------------------------------------%
 
-:- pred detect_liveness_in_disj(list(hlds_goal), set(var), set(var),
-	live_info, set(var), set(var), set(var), set(var), list(hlds_goal)).
-:- mode detect_liveness_in_disj(in, in, in, in, in, out, in, out, out) is det.
+:- pred detect_liveness_in_disj(list(hlds_goal), set(var), set(var), live_info,
+	set(var), set(var), set(var), set(var), set(var), list(hlds_goal)).
+:- mode detect_liveness_in_disj(in, in, in, in, in, out, in, in, out, out)
+	is det.
 
 detect_liveness_in_disj([], _Liveness, _NonLocals, _LiveInfo,
-		Union, Union, Refs, Refs, []).
+		Union, Union, _RefsBeforeDisj, Refs, Refs, []).
 detect_liveness_in_disj([Goal0 | Goals0], Liveness, NonLocals, LiveInfo,
-		Union0, Union, Refs0, Refs, [Goal | Goals]) :-
-	detect_liveness_in_goal(Goal0, Liveness, Refs0, LiveInfo, Liveness1,
-		Refs1, Goal1),
+		Union0, Union, RefsBeforeDisj, Refs0, Refs, [Goal | Goals]) :-
+	detect_liveness_in_goal(Goal0, Liveness, RefsBeforeDisj, LiveInfo,
+		Liveness1, Refs1, Goal1),
 	set__union(Union0, Liveness1, Union1),
+	merge_branch_refs(RefsBeforeDisj, Refs0, Refs1, Refs2),
 	detect_liveness_in_disj(Goals0, Liveness, NonLocals, LiveInfo,
-		Union1, Union, Refs1, Refs, Goals),
+		Union1, Union, RefsBeforeDisj, Refs2, Refs, Goals),
 	set__intersect(Union, NonLocals, NonLocalUnion),
 	set__difference(NonLocalUnion, Liveness1, Residue),
 	add_liveness_after_goal(Goal1, Residue, Refs, Goal).
 
 %-----------------------------------------------------------------------------%
 
-:- pred detect_liveness_in_cases(list(case), set(var), set(var),
-	live_info, set(var), set(var), set(var), set(var), list(case)).
-:- mode detect_liveness_in_cases(in, in, in, in, in, out, in, out, out) is det.
+:- pred detect_liveness_in_cases(list(case), set(var), set(var), live_info,
+	set(var), set(var), set(var), set(var), set(var), list(case)).
+:- mode detect_liveness_in_cases(in, in, in, in, in, out, in, in, out, out)
+	is det.
 
 detect_liveness_in_cases([], _Liveness, _NonLocals, _LiveInfo,
-		Union, Union, Refs, Refs, []).
+		Union, Union, _RefsBeforeSwitch, Refs, Refs, []).
 detect_liveness_in_cases([case(Cons, IMDelta, Goal0) | Goals0], Liveness,
-		NonLocals, LiveInfo, Union0, Union, Refs0, Refs,
-		[case(Cons, IMDelta, Goal) | Goals]) :-
-	detect_liveness_in_goal(Goal0, Liveness, Refs0, LiveInfo, Liveness1,
-		Refs1, Goal1),
+		NonLocals, LiveInfo, Union0, Union, RefsBeforeSwitch, Refs0,
+		Refs, [case(Cons, IMDelta, Goal) | Goals]) :-
+	detect_liveness_in_goal(Goal0, Liveness, RefsBeforeSwitch, LiveInfo,
+		Liveness1, Refs1, Goal1),
 	set__union(Union0, Liveness1, Union1),
+	merge_branch_refs(RefsBeforeSwitch, Refs0, Refs1, Refs2),
 	detect_liveness_in_cases(Goals0, Liveness, NonLocals, LiveInfo,
-		Union1, Union, Refs1, Refs, Goals),
+		Union1, Union, RefsBeforeSwitch, Refs2, Refs, Goals),
 	set__intersect(Union, NonLocals, NonLocalUnion),
 	set__difference(NonLocalUnion, Liveness1, Residue),
 	add_liveness_after_goal(Goal1, Residue, Refs, Goal).
@@ -409,19 +415,22 @@ detect_liveness_in_cases([case(Cons, IMDelta, Goal0) | Goals0], Liveness,
 %-----------------------------------------------------------------------------%
 
 :- pred detect_liveness_in_par_conj(list(hlds_goal), set(var), set(var),
-	live_info, set(var), set(var), set(var), set(var), list(hlds_goal)).
-:- mode detect_liveness_in_par_conj(in, in, in, in, in, out, in, out, out)
-	is det.
+		live_info, set(var), set(var), set(var), set(var), set(var),
+		list(hlds_goal)).
+:- mode detect_liveness_in_par_conj(in, in, in, in, in, out, in, in, out, out)
+		is det.
 
 detect_liveness_in_par_conj([], _Liveness, _NonLocals, _LiveInfo,
-		Union, Union, Refs, Refs, []).
+		Union, Union, _RefsBeforeParConj, Refs, Refs, []).
 detect_liveness_in_par_conj([Goal0 | Goals0], Liveness0, NonLocals, LiveInfo,
-		Union0, Union, Refs0, Refs, [Goal | Goals]) :-
+		Union0, Union, RefsBeforeParConj, Refs0, Refs,
+		[Goal | Goals]) :-
 	detect_liveness_in_goal(Goal0, Liveness0, Refs0, LiveInfo, Liveness1,
 		Refs1, Goal1),
 	set__union(Union0, Liveness1, Union1),
+	merge_branch_refs(RefsBeforeParConj, Refs0, Refs1, Refs2),
 	detect_liveness_in_par_conj(Goals0, Liveness0, NonLocals, LiveInfo,
-		Union1, Union, Refs1, Refs, Goals),
+		Union1, Union, RefsBeforeParConj, Refs2, Refs, Goals),
 	set__intersect(Union, NonLocals, NonLocalUnion),
 	set__difference(NonLocalUnion, Liveness1, Residue),
 	add_liveness_after_goal(Goal1, Residue, Refs, Goal).
@@ -1156,6 +1165,32 @@ find_value_giving_occurrences([Var | Vars], LiveInfo, InstMapDelta,
 	),
 	find_value_giving_occurrences(Vars, LiveInfo, InstMapDelta,
 		ValueVars1, ValueVars, RefVars1, RefVars).
+
+:- pred remove_bound_refs(set(var), live_info, instmap_delta, set(var)).
+:- mode remove_bound_refs(in, in, in, out) is det.
+
+remove_bound_refs(Refs0, LiveInfo, InstMapDelta, Refs) :-
+	live_info_get_var_types(LiveInfo, VarTypes),
+	live_info_get_module_info(LiveInfo, ModuleInfo),
+	live_info_get_inst_table(LiveInfo, InstTable),
+	set__to_sorted_list(Refs0, RefList0),
+	list__filter(lambda([Var::in] is semidet,
+		\+ (
+			instmap_delta_search_var(InstMapDelta, Var, Inst),
+			map__lookup(VarTypes, Var, Type),
+			mode_to_arg_mode(InstTable, ModuleInfo,
+				(free(alias) -> Inst), Type, ref_in)
+		)), RefList0, RefList),
+	set__sorted_list_to_set(RefList, Refs).
+
+:- pred merge_branch_refs(set(var), set(var), set(var), set(var)).
+:- mode merge_branch_refs(in, in, in, out) is det.
+
+merge_branch_refs(RefsBefore, RefsBranchA, RefsBranchB, Refs) :-
+	set__difference(RefsBefore, RefsBranchB, RefDeaths),
+	set__difference(RefsBranchB, RefsBefore, RefBirths),
+	set__difference(RefsBranchA, RefDeaths, Refs0),
+	set__union(Refs0, RefBirths, Refs).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

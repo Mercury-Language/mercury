@@ -3703,6 +3703,11 @@ transform_goal_2(unify(A0, B0), Context, VarSet0, Subst, Goal, VarSet,
 all_negated([], []).
 all_negated([not(Goal) - _ | NegatedGoals], [Goal | Goals]) :-
 	all_negated(NegatedGoals, Goals).
+% nested conjunctions shouldn't occur here anyway, but just in case...
+all_negated([conj(NegatedConj) - _GoalInfo | NegatedGoals], Goals) :-
+	all_negated(NegatedConj, Goals1),
+	all_negated(NegatedGoals, Goals2),
+	list__append(Goals1, Goals2, Goals).
 
 %-----------------------------------------------------------------------------
 

@@ -83,19 +83,11 @@
 % This table has the following format:
 %
 %	procedure info		(Word *) - pointer to procedure stack layout
-%	internal label number	(Integer)
 % 	# of live vars		(Integer)
 % 	live data pairs 	(Word *) - pointer to vector of pairs
 %				containing MR_Live_Lval and MR_Live_Type
 % 	live data names	 	(Word *) - pointer to vector of String
 %	type parameters		(Word *) - pointer to vector of MR_Live_Lval
-%
-% The internal label number field holds either the real label number
-% (which is always strictly positive), 0 indicating the entry label,
-% or a negative number indicating unknown (the last alternative is possible
-% only in non-compiler-generated structures). The only purpose of this field
-% is to make debugging the native garbage collector easier. Accordingly,
-% it will be present only if the option agc_stack_layout is set.
 %
 % The live data pair vector will have an entry for each live variable.
 % The entry will give the location of the variable and its type. (It also
@@ -131,15 +123,21 @@
 %	or entrance to one branch of a branched control structure;
 %	fail events have no variable information).
 %
-% -	The option agc_stack_layout is set, and the label represents
+% -	The option agc_stack_layout is set or the trace level specifies
+%	a capability for uplevel printing, and the label represents
 % 	a point where execution can resume after a procedure call or
 %	after backtracking.
 %
-% If there are no number of live variables at a label, the "# of live vars"
-% field will be zero and the last four fields will not be present.
-% Even if there are some live variables at a label, however, the pointer
-% to the live data names vector will be NULL unless the first condition
-% holds for the label (i.e. the label is used in execution tracing).
+% For labels that do not fall into one of these two categories, the
+% "# of live vars" field will be negative to indicate the absence of
+% information about the variables live at this label, and the last
+% four fields will not be present.
+%
+% For labels that do fall into one of these two categories, the
+% "# of live vars" field will hold the number of live variables, which
+% will not be negative. If it is zero, the last four fields will not be
+% present. Even if it is not zero, however, the pointer to the live data
+% names vector will be NULL unless the label is used in execution tracing.
 %
 % XXX: Presently, inst information is ignored. We also do not yet enable
 % procid stack layouts for profiling, since profiling does not yet use
@@ -370,20 +368,17 @@ stack_layout__construct_internal_layout(ProcLabel, Label - Internal) -->
 	stack_layout__get_module_name(ModuleName),
 	{ EntryAddrRval = const(data_addr_const(data_addr(ModuleName,
 		stack_layout(local(ProcLabel))))) },
-	stack_layout__construct_internal_rvals(Internal, AgcRvals),
-	stack_layout__get_agc_stack_layout(AgcLayout),
-	( { AgcLayout = yes } ->
-		{ Label = local(_, LabelNum0) ->
-			LabelNum = LabelNum0
-		;
-			LabelNum = 0
-		},
-		{ LabelNumRval = const(int_const(LabelNum)) },
-		{ LayoutRvals = [yes(EntryAddrRval), yes(LabelNumRval)
-			| AgcRvals] }
-	;
-		{ LayoutRvals = [yes(EntryAddrRval) | AgcRvals] }
-	),
+	stack_layout__construct_internal_rvals(Internal, VarInfoRvals),
+	% Reenable this code if you want label numbers in label layouts.
+	% { Label = local(_, LabelNum0) ->
+	% 	LabelNum = LabelNum0
+	% ;
+	% 	LabelNum = 0
+	% },
+	% { LabelNumRval = const(int_const(LabelNum)) },
+	% { LayoutRvals = [yes(EntryAddrRval), yes(LabelNumRval
+	% 	| VarInfoRvals] }
+	{ LayoutRvals = [yes(EntryAddrRval) | VarInfoRvals] },
 	{ CModule = c_data(ModuleName, stack_layout(Label), no,
 		LayoutRvals, []) },
 	stack_layout__add_cmodule(CModule, Label).
@@ -395,37 +390,69 @@ stack_layout__construct_internal_layout(ProcLabel, Label - Internal) -->
 	stack_layout_info::in, stack_layout_info::out) is det.
 
 stack_layout__construct_internal_rvals(Internal, RvalList) -->
-	(
-		{ Internal = yes(layout_label_info(LiveLvalSet, TVars)) }
-	->
-		stack_layout__construct_livelval_rvals(LiveLvalSet, TVars,
-			RvalList)
+	{ Internal = internal_layout_info(Port, Return) },
+	{
+		Port = no,
+		set__init(PortLiveVarSet),
+		set__init(PortTypeVarSet)
 	;
-		% This label is not being used as a continuation,
-		% or we are not doing accurate GC, so we record
-		% no live values here.
-		% This might not be a true reflection of the
-		% liveness at this point, so the values cannot
-		% be relied upon by the runtime system unless
-		% you know you are at a continuation (and doing
-		% accurate GC).
-		{ RvalList = [yes(const(int_const(0)))] }
+		Port = yes(layout_label_info(PortLiveVarSet, PortTypeVarSet))
+	},
+	stack_layout__get_agc_stack_layout(AgcStackLayout),
+	{
+		Return = no,
+		set__init(ReturnLiveVarSet),
+		set__init(ReturnTypeVarSet)
+	;
+		Return = yes(layout_label_info(ReturnLiveVarSet0,
+			ReturnTypeVarSet0)),
+		( AgcStackLayout = yes ->
+			ReturnLiveVarSet = ReturnLiveVarSet0,
+			ReturnTypeVarSet0 = ReturnTypeVarSet
+		;
+			% This set of variables must be for uplevel printing
+			% in execution tracing, so we are interested only
+			% in (a) variables, not temporaries, (b) only named
+			% variables, and (c) only those on the stack, not
+			% the return valies.
+			set__to_sorted_list(ReturnLiveVarSet0,
+				ReturnLiveVarList0),
+			stack_layout__select_trace_return(
+				ReturnLiveVarList0, ReturnTypeVarSet0,
+				ReturnLiveVarList, ReturnTypeVarSet),
+			set__list_to_set(ReturnLiveVarList, ReturnLiveVarSet)
+		)
+	},
+	(
+		{ Port = no },
+		{ Return = no }
+	->
+			% The -1 says that there is no info available
+			% about variables at this label. (Zero would say
+			% that there are no variables live at this label,
+			% which may not be true.)
+		{ RvalList = [yes(const(int_const(-1)))] }
+	;
+		{ set__union(PortLiveVarSet, ReturnLiveVarSet, LiveVarSet) },
+		{ set__union(PortTypeVarSet, ReturnTypeVarSet, TypeVarSet) },
+		stack_layout__construct_livelval_rvals(LiveVarSet, TypeVarSet,
+			RvalList)
 	).
 
 %---------------------------------------------------------------------------%
 
-:- pred stack_layout__construct_livelval_rvals(set(var_info),
-		set(pair(tvar, lval)), list(maybe(rval)),
-		stack_layout_info, stack_layout_info).
-:- mode stack_layout__construct_livelval_rvals(in, in, out, in, out) is det.
+:- pred stack_layout__construct_livelval_rvals(set(var_info)::in,
+	set(pair(tvar, lval))::in, list(maybe(rval))::out,
+	stack_layout_info::in, stack_layout_info::out) is det.
 
 stack_layout__construct_livelval_rvals(LiveLvalSet, TVarLocnSet, RvalList) -->
 	{ set__to_sorted_list(LiveLvalSet, LiveLvals) },
 	{ list__length(LiveLvals, Length) },
 	{ VarLengthRval = const(int_const(Length)) },
 	( { Length > 0 } ->
-		stack_layout__construct_liveval_pairs(LiveLvals, LiveValRval,
-			NamesRval),
+		{ stack_layout__sort_livevals(LiveLvals, SortedLiveLvals) },
+		stack_layout__construct_liveval_pairs(SortedLiveLvals,
+			LiveValRval, NamesRval),
 
 		{ set__to_sorted_list(TVarLocnSet, TVarLocns) },
 		( { TVarLocns = [] } ->
@@ -445,6 +472,62 @@ stack_layout__construct_livelval_rvals(LiveLvalSet, TVarLocnSet, RvalList) -->
 	;
 		{ RvalList = [yes(VarLengthRval)] }
 	).
+
+%---------------------------------------------------------------------------%
+
+	% Given a list of var_infos and the type variables that occur in them,
+	% select only the var_infos that may be required by up-level printing
+	% in the trace-based debugger. At the moment the typeinfo list we
+	% return may be bigger than necessary, but this does not compromise
+	% correctness; we do this to avoid having to scan the types of all
+	% the selected var_infos.
+
+:- pred stack_layout__select_trace_return(
+	list(var_info)::in, set(pair(tvar, lval))::in,
+	list(var_info)::out, set(pair(tvar, lval))::out) is det.
+
+stack_layout__select_trace_return(Infos, TVars, TraceReturnInfos, TVars) :-
+	IsNamedReturnVar = lambda([LvalInfo::in] is semidet, (
+		LvalInfo = var_info(Lval, LvalType, Name),
+		LvalType = var(_, _),
+		Name \= "",
+		( Lval = stackvar(_) ; Lval = framevar(_) )
+	)),
+	list__filter(IsNamedReturnVar, Infos, TraceReturnInfos).
+
+	% Given a list of var_infos, put the ones that tracing can be
+	% interested in (whether at an internal port or for uplevel printing)
+	% in a block at the start, and both this block and the remaining
+	% block. The division into two blocks can make the job of the
+	% debugger somewhat easier, the sorting of the named var block makes
+	% the output of the debugger look nicer, and the sorting of the both
+	% blocks makes it more likely that different labels' layout structures
+	% will have common parts (e.g. name vectors) that can be optimized
+	% by llds_common.m.
+
+:- pred stack_layout__sort_livevals(list(var_info)::in, list(var_info)::out)
+	is det.
+
+stack_layout__sort_livevals(OrigInfos, FinalInfos) :-
+	IsNamedVar = lambda([LvalInfo::in] is semidet, (
+		LvalInfo = var_info(_Lval, LvalType, Name),
+		LvalType = var(_, _),
+		Name \= ""
+	)),
+	list__filter(IsNamedVar, OrigInfos, NamedVarInfos0, OtherInfos0),
+	CompareVarInfos = lambda([Var1::in, Var2::in, Result::out] is det, (
+		Var1 = var_info(Lval1, _, Name1),
+		Var2 = var_info(Lval2, _, Name2),
+		compare(NameResult, Name1, Name2),
+		( NameResult = (=) ->
+			compare(Result, Lval1, Lval2)
+		;
+			Result = NameResult
+		)
+	)),
+	list__sort(CompareVarInfos, NamedVarInfos0, NamedVarInfos),
+	list__sort(CompareVarInfos, OtherInfos0, OtherInfos),
+	list__append(NamedVarInfos, OtherInfos, FinalInfos).
 
 %---------------------------------------------------------------------------%
 

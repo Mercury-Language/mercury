@@ -712,9 +712,9 @@ code_info__set_maybe_trace_info(V, CI0, CI) :-
 :- pred code_info__succip_is_used(code_info, code_info).
 :- mode code_info__succip_is_used(in, out) is det.
 
-:- pred code_info__add_layout_for_label(label, internal_layout_info,
+:- pred code_info__add_trace_layout_for_label(label, layout_label_info,
 	code_info, code_info).
-:- mode code_info__add_layout_for_label(in, in, in, out) is det.
+:- mode code_info__add_trace_layout_for_label(in, in, in, out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -1007,14 +1007,22 @@ code_info__get_next_cell_number(N) -->
 code_info__succip_is_used -->
 	code_info__set_succip_used(yes).
 
-code_info__add_layout_for_label(Label, LayoutInfo) -->
+code_info__add_trace_layout_for_label(Label, LayoutInfo) -->
 	code_info__get_layout_info(Internals0),
-	( { map__contains(Internals0, Label) } ->
-		{ error("adding layout for already known label") }
+	{ map__search(Internals0, Label, Internal0) ->
+		Internal0 = internal_layout_info(Exec0, Agc),
+		( Exec0 = no ->
+			true
+		;
+			error("adding trace layout for already known label")
+		),
+		Internal = internal_layout_info(yes(LayoutInfo), Agc),
+		map__set(Internals0, Label, Internal, Internals)
 	;
-		{ map__det_insert(Internals0, Label, LayoutInfo, Internals) },
-		code_info__set_layout_info(Internals)
-	).
+		Internal = internal_layout_info(yes(LayoutInfo), no),
+		map__det_insert(Internals0, Label, Internal, Internals)
+	},
+	code_info__set_layout_info(Internals).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -3000,7 +3008,17 @@ code_info__generate_stack_livelvals(Args, AfterCallInstMap, LiveVals) -->
 	code_info__get_globals(Globals),
 	{ globals__get_gc_method(Globals, GC_Method) },
 	code_info__get_inst_table(InstTable),
-	code_info__livevals_to_livelvals(LiveVals2, GC_Method, InstTable,
+	{ globals__get_trace_level(Globals, TraceLevel) },
+	{
+		( GC_Method = accurate
+		; trace_level_trace_returns(TraceLevel, yes)
+		)
+	->
+		NeedVarInfo = yes
+	;
+		NeedVarInfo = no
+	},
+	code_info__livevals_to_livelvals(LiveVals2, NeedVarInfo, InstTable,
 		AfterCallInstMap, LiveVals3),
 	code_info__get_temps_in_use(TempsSet),
 	{ map__to_assoc_list(TempsSet, Temps) },
@@ -3057,17 +3075,17 @@ code_info__generate_commit_livelvals(Triples0, LiveInfo0, LiveInfo) :-
 				LiveInfo3]
 	).
 
-:- pred code_info__livevals_to_livelvals(assoc_list(lval, var), gc_method,
+:- pred code_info__livevals_to_livelvals(assoc_list(lval, var), bool,
 	inst_table, instmap, list(liveinfo), code_info, code_info).
 :- mode code_info__livevals_to_livelvals(in, in, in, in, out, in, out) is det.
 
-code_info__livevals_to_livelvals([], _GC_Method, _, _, []) --> [].
-code_info__livevals_to_livelvals([Lval - Var | Ls], GC_Method, InstTable,
-		AfterCallInstMap, [LiveLval | Lives]) -->
+code_info__livevals_to_livelvals([], _, _, _, []) --> [].
+code_info__livevals_to_livelvals([Lval - Var | Ls], NeedVarInfo,
+		InstTable, AfterCallInstMap, [LiveLval | Lives]) -->
 	code_info__get_varset(VarSet),
 	{ varset__lookup_name(VarSet, Var, Name) },
 	(
-		{ GC_Method = accurate }
+		{ NeedVarInfo = yes }
 	->
 		{ instmap__lookup_var(AfterCallInstMap, Var, Inst) },
 
@@ -3080,7 +3098,7 @@ code_info__livevals_to_livelvals([Lval - Var | Ls], GC_Method, InstTable,
 	;
 		{ LiveLval = live_lvalue(Lval, unwanted, Name, []) }
 	),
-	code_info__livevals_to_livelvals(Ls, GC_Method, InstTable,
+	code_info__livevals_to_livelvals(Ls, NeedVarInfo, InstTable,
 		AfterCallInstMap, Lives).
 
 :- pred code_info__get_live_value_type(slot_contents, live_value_type).

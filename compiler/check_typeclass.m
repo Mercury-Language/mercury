@@ -380,7 +380,7 @@ produce_auxiliary_procs(ClassVars,
 		Status, PredOrFunc, Context),
 
 		% Rename the instance variables apart from the class variables
-	varset__merge_subst(ArgTypeVars0, InstanceVarSet, ArgTypeVars,
+	varset__merge_subst(ArgTypeVars0, InstanceVarSet, ArgTypeVars1,
 		RenameSubst),
 	term__apply_substitution_to_list(InstanceTypes0, RenameSubst,
 		InstanceTypes),
@@ -390,14 +390,23 @@ produce_auxiliary_procs(ClassVars,
 		% Work out what the type variables are bound to for this
 		% instance, and update the class types appropriately.
 	map__from_corresponding_lists(ClassVars, InstanceTypes, TypeSubst),
-	term__apply_substitution_to_list(ArgTypes0, TypeSubst, ArgTypes),
+	term__apply_substitution_to_list(ArgTypes0, TypeSubst, ArgTypes1),
 	apply_subst_to_constraints(TypeSubst, ClassContext0, ClassContext1),
 
 		% Add the constraints from the instance declaration to the 
 		% constraints from the class method. This allows an instance
 		% method to have constraints on it which are part of the
 		% instance declaration as a whole.
-	list__append(InstanceConstraints, ClassContext1, ClassContext),
+	list__append(InstanceConstraints, ClassContext1, ClassContext2),
+
+		% Get rid of any unwanted type variables
+	term__vars_list(ArgTypes1, VarsToKeep),
+	varset__squash(ArgTypeVars1, VarsToKeep, ArgTypeVars, SquashSubst),
+	term__apply_variable_renaming_to_list(ArgTypes1, SquashSubst, 
+		ArgTypes),
+
+	list__map(apply_variable_renaming_to_constraint(SquashSubst),
+		ClassContext2, ClassContext),
 
 		% Introduce a new predicate which calls the implementation
 		% given in the instance declaration.

@@ -1162,7 +1162,7 @@ polymorphism__make_typeclass_info_var(Constraint, Subst, TypeSubst,
 	ClassId = class_id(ClassName, ClassArity),
 	term__vars_list(NewConstrainedTypes, NewConstrainedVars),
 	list__append(NewConstrainedVars, ConstrainedVars0, ConstrainedVars),
-	term__apply_rec_substitution_to_list(NewConstrainedTypes, TypeSubst, 
+	term__apply_substitution_to_list(NewConstrainedTypes, TypeSubst, 
 		ConstrainedTypes0),
 	% we need to maintain the invariant that types in class constraints
 	% do not contain any information in their term__context fields
@@ -1272,8 +1272,11 @@ polymorphism__make_typeclass_info_var(Constraint, Subst, TypeSubst,
 					% Make the type_infos for the types
 					% that are constrained by this. These
 					% are packaged in the typeclass_info
+				term__apply_substitution_to_list(
+					ConstrainedTypes, VarTypes0,
+					RenamedConstrainedTypes),
 				polymorphism__make_type_info_vars(
-					ConstrainedTypes,
+					RenamedConstrainedTypes,
 					InstanceExtraTypeInfoVars,
 					TypeInfoGoals,
 					Info0, Info1),
@@ -1547,7 +1550,7 @@ polymorphism__construct_typeclass_info(ArgTypeInfoVars, ArgTypeClassInfoVars,
 
 	TypeClassInfoGoal = Unify - GoalInfo,
 	NewGoals0 = [TypeClassInfoGoal, BaseGoal],
-	list__append(SuperClassGoals, NewGoals0, NewGoals),
+	list__append(NewGoals0, SuperClassGoals, NewGoals),
 	Info = poly_info(VarSet, VarTypes, TVarSet, TVarMap, 
 			TCVarMap, Proofs, PredName, ModuleInfo, InstTable).
 

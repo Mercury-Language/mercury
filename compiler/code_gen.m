@@ -212,9 +212,7 @@ generate_proc_code(ProcInfo, ProcId, PredId, ModuleInfo, Globals,
 		% generate code for the procedure
 	globals__get_trace_level(Globals, TraceLevel),
 	code_util__make_proc_label(ModuleInfo, PredId, ProcId, ProcLabel),
-	(
-		( TraceLevel = interface ; TraceLevel = full )
-	->
+	( trace_level_trace_interface(TraceLevel, yes) ->
 		trace__setup(TraceLevel, CodeInfo0, CodeInfo1)
 	;
 		CodeInfo1 = CodeInfo0
