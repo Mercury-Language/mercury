@@ -65,6 +65,7 @@ permission notice identical to this one.
 Permission is granted to copy and distribute translations of this manual
 into another language, under the above conditions for modified versions.
 @end titlepage
+@contents
 @page
 @c ---------------------------------------------------------------------------
 
@@ -7325,5 +7326,4 @@ Very Large Data Bases}, page 359--371, August 1990.
 @end ifset
 @c aditi
 
-@contents
 @bye
