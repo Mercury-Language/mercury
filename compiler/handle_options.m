@@ -1323,12 +1323,21 @@ convert_grade_option(GradeString, Options0, Options) :-
 	set__init(NoComps),
 	list__foldl2(lambda([CompStr::in, Opts0::in, Opts::out,
 			CompSet0::in, CompSet::out] is semidet, (
-		grade_component_table(CompStr, Comp, CompOpts),
+		grade_component_table(CompStr, Comp, CompOpts, MaybeTargets),
 			% Check that the component isn't mentioned
 			% more than once.
 		\+ set__member(Comp, CompSet0),
 		set__insert(CompSet0, Comp, CompSet),
-		add_option_list(CompOpts, Opts0, Opts)
+		add_option_list(CompOpts, Opts0, Opts1),
+
+			% XXX Here the behaviour matches what used to happen
+			% and that is to only set the target option iff there
+			% was only one possible target.  Is this a bug?
+		( MaybeTargets = yes([Target]) ->
+			add_option_list([target - Target], Opts1, Opts)
+		;
+			Opts = Opts1
+		)
 	)), Components, Options1, Options, NoComps, _FinalComps).
 
 :- pred add_option_list(list(pair(option, option_data)), option_table,
@@ -1391,7 +1400,7 @@ construct_string([_ - Bit|Bits], Grade) :-
 
 compute_grade_components(Options, GradeComponents) :-
 	solutions(lambda([CompData::out] is nondet, (
-		grade_component_table(Name, Comp, CompOpts),
+		grade_component_table(Name, Comp, CompOpts, MaybeTargets),
 			% For possible component of the grade string
 			% include it in the actual grade string if all
 			% the option setting that it implies are true.
@@ -1404,14 +1413,25 @@ compute_grade_components(Options, GradeComponents) :-
 			list__member(Opt - Value, CompOpts),
 			\+ map__search(Options, Opt, Value)
 		),
+
+			% When checking gcc_ext there exist grades which
+			% can have more then one possible target, ensure that
+			% the target in the options table matches one of the
+			% possible targets.
+		( MaybeTargets = yes(Targets) ->
+			list__member(Target, Targets),
+			map__search(Options, target, Target)
+		;
+			true
+		),
 		CompData = Comp - Name
 	)), GradeComponents).
 
 :- pred grade_component_table(string, grade_component,
-		list(pair(option, option_data))).
-:- mode grade_component_table(in, out, out) is semidet.
-:- mode grade_component_table(out, in, out) is multi.
-:- mode grade_component_table(out, out, out) is multi.
+		list(pair(option, option_data)), maybe(list(option_data))).
+:- mode grade_component_table(in, out, out, out) is semidet.
+:- mode grade_component_table(out, in, out, out) is multi.
+:- mode grade_component_table(out, out, out, out) is multi.
 
 	% Base components
 	% These specify the basic compilation model we use,
@@ -1422,162 +1442,158 @@ grade_component_table("none", gcc_ext, [
 		gcc_global_registers	- bool(no),
 		highlevel_code		- bool(no),
 		gcc_nested_functions	- bool(no),
-		highlevel_data		- bool(no),
-		target			- string("c")]).
+		highlevel_data		- bool(no)],
+		yes([string("c")])).
 grade_component_table("reg", gcc_ext, [
 		asm_labels		- bool(no),
 		gcc_non_local_gotos	- bool(no),
 		gcc_global_registers	- bool(yes),
 		highlevel_code		- bool(no),
 		gcc_nested_functions	- bool(no),
-		highlevel_data		- bool(no),
-		target			- string("c")]).
+		highlevel_data		- bool(no)],
+		yes([string("c")])).
 grade_component_table("jump", gcc_ext, [
 		asm_labels		- bool(no),
 		gcc_non_local_gotos	- bool(yes),
 		gcc_global_registers	- bool(no),
 		highlevel_code		- bool(no),
 		gcc_nested_functions	- bool(no),
-		highlevel_data		- bool(no),
-		target			- string("c")]).
+		highlevel_data		- bool(no)],
+		yes([string("c")])).
 grade_component_table("asm_jump", gcc_ext, [
 		asm_labels		- bool(yes),
 		gcc_non_local_gotos	- bool(yes),
 		gcc_global_registers	- bool(no),
 		highlevel_code		- bool(no),
 		gcc_nested_functions	- bool(no),
-		highlevel_data		- bool(no),
-		target			- string("c")]).
+		highlevel_data		- bool(no)],
+		yes([string("c")])).
 grade_component_table("fast", gcc_ext, [
 		asm_labels		- bool(no),
 		gcc_non_local_gotos	- bool(yes),
 		gcc_global_registers	- bool(yes),
 		highlevel_code		- bool(no),
 		gcc_nested_functions	- bool(no),
-		highlevel_data		- bool(no),
-		target			- string("c")]).
+		highlevel_data		- bool(no)],
+		yes([string("c")])).
 grade_component_table("asm_fast", gcc_ext, [
 		asm_labels		- bool(yes),
 		gcc_non_local_gotos	- bool(yes),
 		gcc_global_registers	- bool(yes),
 		highlevel_code		- bool(no),
 		gcc_nested_functions	- bool(no),
-		highlevel_data		- bool(no),
-		target			- string("c")]).
+		highlevel_data		- bool(no)],
+		yes([string("c")])).
 grade_component_table("hl", gcc_ext, [
 		asm_labels		- bool(no),
 		gcc_non_local_gotos	- bool(no),
 		gcc_global_registers	- bool(no),
 		highlevel_code		- bool(yes),
 		gcc_nested_functions	- bool(no),
-		highlevel_data		- bool(yes)
-		% target can be either c or asm
-		]).
+		highlevel_data		- bool(yes)],
+		yes([string("c"), string("asm")])).
 grade_component_table("hlc", gcc_ext, [
 		asm_labels		- bool(no),
 		gcc_non_local_gotos	- bool(no),
 		gcc_global_registers	- bool(no),
 		highlevel_code		- bool(yes),
 		gcc_nested_functions	- bool(no),
-		highlevel_data		- bool(no)
-		% target can be either c or asm
-		]).
+		highlevel_data		- bool(no)],
+		yes([string("c"), string("asm")])).
 grade_component_table("hl_nest", gcc_ext, [
 		asm_labels		- bool(no),
 		gcc_non_local_gotos	- bool(no),
 		gcc_global_registers	- bool(no),
 		highlevel_code		- bool(yes),
 		gcc_nested_functions	- bool(yes),
-		highlevel_data		- bool(yes)
-		% target can be either c or asm
-		]).
+		highlevel_data		- bool(yes)],
+		yes([string("c"), string("asm")])).
 grade_component_table("hlc_nest", gcc_ext, [
 		asm_labels		- bool(no),
 		gcc_non_local_gotos	- bool(no),
 		gcc_global_registers	- bool(no),
 		highlevel_code		- bool(yes),
 		gcc_nested_functions	- bool(yes),
-		highlevel_data		- bool(no)
-		% target can be either c or asm
-		]).
+		highlevel_data		- bool(no)],
+		yes([string("c"), string("asm")])).
 grade_component_table("il", gcc_ext, [
 		asm_labels		- bool(no),
 		gcc_non_local_gotos	- bool(no),
 		gcc_global_registers	- bool(no),
 		highlevel_code		- bool(yes),
 		gcc_nested_functions	- bool(no),
-		highlevel_data		- bool(yes),
-		target			- string("il")]).
+		highlevel_data		- bool(yes)],
+		yes([string("il")])).
 grade_component_table("ilc", gcc_ext, [
 		asm_labels		- bool(no),
 		gcc_non_local_gotos	- bool(no),
 		gcc_global_registers	- bool(no),
 		highlevel_code		- bool(yes),
 		gcc_nested_functions	- bool(no),
-		highlevel_data		- bool(no),
-		target			- string("il")]).
+		highlevel_data		- bool(no)],
+		yes([string("il")])).
 grade_component_table("java", gcc_ext, [
 		asm_labels		- bool(no),
 		gcc_non_local_gotos	- bool(no),
 		gcc_global_registers	- bool(no),
 		gcc_nested_functions	- bool(no),
 		highlevel_code		- bool(yes),
-		highlevel_data		- bool(yes),
-		target			- string("java")]).
+		highlevel_data		- bool(yes)],
+		yes([string("java")])).
 
 	% Parallelism/multithreading components.
-grade_component_table("par", par, [parallel - bool(yes)]).
+grade_component_table("par", par, [parallel - bool(yes)], no).
 
 	% GC components
-grade_component_table("gc", gc, [gc - string("boehm")]).
-grade_component_table("mps", gc, [gc - string("mps")]).
-grade_component_table("agc", gc, [gc - string("accurate")]).
+grade_component_table("gc", gc, [gc - string("boehm")], no).
+grade_component_table("mps", gc, [gc - string("mps")], no).
+grade_component_table("agc", gc, [gc - string("accurate")], no).
 
 	% Profiling components
 grade_component_table("prof", prof,
 	[profile_time - bool(yes), profile_calls - bool(yes),
-	profile_memory - bool(no), profile_deep - bool(no)]).
+	profile_memory - bool(no), profile_deep - bool(no)], no).
 grade_component_table("proftime", prof,
 	[profile_time - bool(yes), profile_calls - bool(no),
-	profile_memory - bool(no), profile_deep - bool(no)]).
+	profile_memory - bool(no), profile_deep - bool(no)], no).
 grade_component_table("profcalls", prof,
 	[profile_time - bool(no), profile_calls - bool(yes),
-	profile_memory - bool(no), profile_deep - bool(no)]).
+	profile_memory - bool(no), profile_deep - bool(no)], no).
 grade_component_table("memprof", prof,
 	[profile_time - bool(no), profile_calls - bool(yes),
-	profile_memory - bool(yes), profile_deep - bool(no)]).
+	profile_memory - bool(yes), profile_deep - bool(no)], no).
 grade_component_table("profall", prof,
 	[profile_time - bool(yes), profile_calls - bool(yes),
-	profile_memory - bool(yes), profile_deep - bool(no)]).
+	profile_memory - bool(yes), profile_deep - bool(no)], no).
 grade_component_table("profdeep", prof,
 	[profile_time - bool(no), profile_calls - bool(no),
-	profile_memory - bool(no), profile_deep - bool(yes)]).
+	profile_memory - bool(no), profile_deep - bool(yes)], no).
 
 	% Trailing components
-grade_component_table("tr", trail, [use_trail - bool(yes)]).
+grade_component_table("tr", trail, [use_trail - bool(yes)], no).
 
 	% Tag reservation components
-grade_component_table("rt", tag, [reserve_tag - bool(yes)]).
+grade_component_table("rt", tag, [reserve_tag - bool(yes)], no).
 
 	% Mimimal model tabling components
-grade_component_table("mm", minimal_model, [use_minimal_model - bool(yes)]).
+grade_component_table("mm", minimal_model, [use_minimal_model - bool(yes)], no).
 
 	% Pic reg components
-grade_component_table("picreg", pic, [pic_reg - bool(yes)]).
+grade_component_table("picreg", pic, [pic_reg - bool(yes)], no).
 
 	% Debugging/Tracing components
 grade_component_table("decldebug", trace,
 	[stack_trace - bool(yes), require_tracing - bool(yes),
-	decl_debug - bool(yes)]).
+	decl_debug - bool(yes)], no).
 grade_component_table("debug", trace,
 	[stack_trace - bool(yes), require_tracing - bool(yes),
-	decl_debug - bool(no)]).
+	decl_debug - bool(no)], no).
 grade_component_table("trace", trace,
 	[stack_trace - bool(no), require_tracing - bool(yes),
-	decl_debug - bool(no)]).
+	decl_debug - bool(no)], no).
 grade_component_table("strce", trace,
 	[stack_trace - bool(yes), require_tracing - bool(no),
-	decl_debug - bool(no)]).
+	decl_debug - bool(no)], no).
 
 :- pred reset_grade_options(option_table, option_table).
 :- mode reset_grade_options(in, out) is det.

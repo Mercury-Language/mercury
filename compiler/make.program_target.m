@@ -33,13 +33,12 @@
 
 :- import_module hlds__passes_aux.
 
-make_linked_target(MainModuleName - FileType, Succeeded, Info0, Info) -->
+make_linked_target(MainModuleName - FileType, Succeeded, !Info) -->
     find_reachable_local_modules(MainModuleName, DepsSuccess,
-		AllModules, Info0, Info1),
+		AllModules, !Info),
     globals__io_lookup_bool_option(keep_going, KeepGoing),
     ( { DepsSuccess = no, KeepGoing = no } ->
-	{ Succeeded = no },
-	{ Info = Info1 }
+	{ Succeeded = no }
     ;
 	globals__io_lookup_string_option(pic_object_file_extension, PicObjExt),
 	globals__io_lookup_string_option(object_file_extension, ObjExt),
@@ -76,21 +75,25 @@ make_linked_target(MainModuleName - FileType, Succeeded, Info0, Info) -->
 	},
 
 	get_target_modules(IntermediateTargetType,
-		set__to_sorted_list(AllModules), ObjModules, Info1, Info4),
+		set__to_sorted_list(AllModules), ObjModules, !Info),
 	{ IntermediateTargets = make_dependency_list(ObjModules,
 					IntermediateTargetType) },
 	{ ObjTargets = make_dependency_list(ObjModules, ObjectTargetType) },
 
+	list__map_foldl2(get_foreign_object_targets(ObjectCodeType),
+			ObjModules, ForeignObjTargetsList, !Info),
+	{ ForeignObjTargets = list__condense(ForeignObjTargetsList) },
+
 	foldl2_maybe_stop_at_error(KeepGoing,
 		foldl2_maybe_stop_at_error(KeepGoing, make_module_target),
-		[IntermediateTargets, ObjTargets], BuildDepsSucceeded,
-		Info4, Info5),
+		[IntermediateTargets, ObjTargets, ForeignObjTargets],
+		BuildDepsSucceeded, !Info),
 
 	linked_target_file_name(MainModuleName, FileType, OutputFileName),
 	get_file_timestamp([dir__this_directory], OutputFileName,
-		MaybeTimestamp, Info5, Info6),
+		MaybeTimestamp, !Info),
 	check_dependencies(OutputFileName, MaybeTimestamp, BuildDepsSucceeded,
-		ObjTargets, BuildDepsResult, Info6, Info7),
+		ObjTargets, BuildDepsResult, !Info),
 
 	(
 	    { DepsSuccess = yes },
@@ -105,10 +108,9 @@ make_linked_target(MainModuleName - FileType, Succeeded, Info0, Info) -->
 				DepsSuccess, BuildDepsResult)),
 		linked_target_cleanup(MainModuleName, FileType, OutputFileName,
 			CompilationTarget),
-		Succeeded, Info7, Info)
+		Succeeded, !Info)
     	;
-    	    { Succeeded = no },
-	    { Info = Info7 }
+    	    { Succeeded = no }
 	)
     ).
 
@@ -149,6 +151,56 @@ get_target_modules(TargetType, AllModules, TargetModules, Info0, Info) -->
 	{ Info = Info0 },
 	{ TargetModules = AllModules }
     ).
+
+:- pred get_foreign_object_targets(pic::in,
+		module_name::in, list(dependency_file)::out,
+		make_info::in, make_info::out, io::di, io::uo) is det.
+
+get_foreign_object_targets(PIC, ModuleName, ObjectTargets, !Info) -->
+	%
+	% Find externally compiled foreign code files for
+	% `:- pragma foreign_proc' declarations.
+	%
+	globals__io_get_target(CompilationTarget),
+	get_module_dependencies(ModuleName, MaybeImports, !Info),
+	{ MaybeImports = yes(Imports)
+	; MaybeImports = no,
+		unexpected(this_file, "unknown imports")
+	},
+	(
+		{ CompilationTarget = asm },
+		{ Imports ^ foreign_code = contains_foreign_code(Langs) },
+		{ set__member(c, Langs) }
+	->
+		{ ForeignObjectTargets = [
+				target(ModuleName - foreign_object(PIC, c))] }
+	;
+		{ CompilationTarget = il },
+		{ Imports ^ foreign_code = contains_foreign_code(Langs) }
+	->
+		{ ForeignObjectTargets = list__map(
+				(func(L) =
+					target(ModuleName - foreign_il_asm(L))
+				), set__to_sorted_list(Langs)) }
+	;
+		{ ForeignObjectTargets = [] }
+	),
+
+	%
+	% Find out if any externally compiled foreign code files for fact
+	% tables exist.
+	%
+	( { CompilationTarget = c ; CompilationTarget = asm } ->
+		{ Imports ^ fact_table_deps \= [] ->
+			ObjectTargets = [target(ModuleName - factt_object(PIC))
+					| ForeignObjectTargets]
+		;
+			ObjectTargets = ForeignObjectTargets
+		}
+	;
+		{ ObjectTargets = ForeignObjectTargets }
+	).
+	
 
 :- pred build_linked_target(module_name::in, linked_target_type::in,
 	file_name::in, maybe_error(timestamp)::in, set(module_name)::in,
@@ -927,5 +979,10 @@ make_module_realclean(ModuleName, Info0, Info) -->
 		],
 		Info1, Info2),
 	remove_file(ModuleName, module_dep_file_extension, Info2, Info).
+
+%-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+this_file = "make.program_target.m".
 
 %-----------------------------------------------------------------------------%

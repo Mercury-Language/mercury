@@ -10,10 +10,6 @@
 %
 % TODO:
 % - `--split-c-files'
-% - fix `--target il'
-%	- check commands for compilation of foreign code files
-%		in compile_target_code.m
-%	- fix handling of the `.exe' file
 % - transitive inter-module optimization (probably won't bother since
 %   that is being rewritten anyway)
 % - parallel/distributed builds
@@ -57,6 +53,7 @@
 :- import_module backend_libs__foreign, backend_libs__compile_target_code.
 :- import_module libs__timestamp, libs__process_util.
 :- import_module libs__globals, libs__options, libs__handle_options.
+:- import_module hlds__error_util.
 :- import_module top_level__mercury_compile. % XXX unwanted dependency
 
 :- import_module assoc_list, bool, char, dir, exception, getopt, int, list.
@@ -126,6 +123,8 @@
 			% The `pic' argument is only used for
 			% `--target c' and `--target asm'.
 	;	target_code_to_object_code(pic)
+	;	foreign_code_to_object_code(pic, foreign_language)
+	;	fact_table_code_to_object_code(pic)
 	.
 
 :- type module_compilation_task_type
@@ -154,6 +153,9 @@
 	;	java_code
 	;	asm_code(pic)
 	;	object_code(pic)
+	;	foreign_il_asm(foreign_language)
+	;	foreign_object(pic, foreign_language)
+	;	factt_object(pic)
 	.
 
 :- type c_header_type

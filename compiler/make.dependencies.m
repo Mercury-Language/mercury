@@ -189,6 +189,25 @@ target_dependencies(_, intermodule_interface) =
 			long_interface `of` non_intermod_direct_imports,
 			short_interface `of` non_intermod_indirect_imports
 		]).
+target_dependencies(_, foreign_il_asm(_)) =
+	combine_deps_list([
+		il_asm `of` self,
+		il_asm `of` filter(maybe_keep_std_lib_module, direct_imports)
+	]).
+target_dependencies(Globals, foreign_object(PIC, _)) =
+	get_foreign_deps(Globals, PIC).
+target_dependencies(Globals, factt_object(PIC)) =
+	get_foreign_deps(Globals, PIC).
+
+:- func get_foreign_deps(globals, pic) = find_module_deps(dependency_file).
+:- mode get_foreign_deps(in, in) = out(find_module_deps) is det.
+
+get_foreign_deps(Globals, PIC) = Deps :-
+	globals__get_target(Globals, CompilationTarget),
+	TargetCode = ( CompilationTarget = asm -> asm_code(PIC) ; c_code ),
+	Deps = combine_deps_list([
+		TargetCode `of` self
+	]).
 
 :- func interface_file_dependencies =
 	(find_module_deps(dependency_file)::out(find_module_deps)) is det.
@@ -558,6 +577,44 @@ get_foreign_imported_modules_2(MaybeLanguages, ForeignImportModules) =
 			MaybeLanguages = no
 		)
 	    ), ForeignImportModules).
+
+%-----------------------------------------------------------------------------%
+
+%
+% filter(F, P, MN, S, Ms, I0, I, IO0, IO)
+% 	Filter the set of module_names returned from P called with MN, I0, IO0
+% 	as its input arguments with F.  The first argument to F will be MN
+% 	and the second argument be one of the module_names returned from P.
+%
+:- pred filter(pred(module_name, module_name)::pred(in, in) is semidet,
+		pred(module_name, bool, set(module_name), make_info, make_info,
+			io, io)::pred(in, out, out, in, out, di, uo) is det,
+		module_name::in, bool::out,
+		set(module_name)::out, make_info::in, make_info::out,
+		io::di, io::uo) is det.
+
+filter(Filter, F, ModuleName, Success, Modules, !Info) -->
+	F(ModuleName, Success, Modules0, !Info),
+	{ Modules = set__filter(
+		(pred(M::in) is semidet :-
+			Filter(ModuleName, M)
+		), Modules0) }.
+
+%
+% If the current module we are compiling is not in the standard library
+% and the module we are importing is then remove it, otherwise keep it.
+% When compiling with `--target il', if the current module is not in the
+% standard library, we link with mercury.dll rather than the DLL file for
+% the imported module.
+%
+:- pred maybe_keep_std_lib_module(module_name::in,
+		module_name::in) is semidet.
+
+maybe_keep_std_lib_module(CurrentModule, ImportedModule) :-
+	\+ (
+		\+ mercury_std_library_module_name(CurrentModule),
+		mercury_std_library_module_name(ImportedModule)
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -931,5 +988,10 @@ dependency_status(target(Target) @ Dep, Status, Info0, Info) -->
 	),
 	{ Info = Info2 ^ dependency_status ^ elem(Dep) := Status }
     ).
+
+%-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+this_file = "make.dependencies.m".
 
 %-----------------------------------------------------------------------------%

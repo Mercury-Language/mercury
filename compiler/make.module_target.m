@@ -312,19 +312,37 @@ build_target_2(ModuleName, process_module(ModuleTask), _Imports,
 	).
 
 build_target_2(ModuleName, target_code_to_object_code(PIC),
-		Imports, _, ErrorStream, Succeeded, Info0, Info) -->
-	get_target_code_to_object_code_foreign_files(ModuleName,
-		ForeignCodeFiles, Info0, Info),
+		Imports, _, ErrorStream, Succeeded, Info, Info) -->
 	globals__io_get_target(CompilationTarget),
 
+	% Run the compilation in a child process so it can
+	% be killed if an interrupt arrives.
+	call_in_forked_process(
+			build_object_code(ModuleName, CompilationTarget, PIC,
+				ErrorStream, Imports),
+			Succeeded).
+
+build_target_2(ModuleName, foreign_code_to_object_code(PIC, Lang),
+		Imports, _, ErrorStream, Succeeded, Info, Info) -->
+	foreign_code_file(ModuleName, PIC, Lang, ForeignCodeFile),
+
+	% Run the compilation in a child process so it can
+	% be killed if an interrupt arrives.
+	call_in_forked_process(
+			compile_foreign_code_file(ErrorStream, PIC,
+					Imports, ForeignCodeFile),
+			Succeeded).
+
+build_target_2(ModuleName, fact_table_code_to_object_code(PIC),
+		Imports, _, ErrorStream, Succeeded, Info, Info) -->
+	list__map_foldl(fact_table_foreign_code_file(ModuleName, PIC),
+			Imports ^ fact_table_deps, FactTableForeignCodes),
 	{ CompileTargetCode =
 	    (pred(Succeeded1::out, di, uo) is det -->
-		build_object_code(ModuleName, CompilationTarget, PIC,
-			ErrorStream, Imports, Succeeded0),
-		list__map_foldl(compile_foreign_code_file(ErrorStream, PIC),
-			ForeignCodeFiles, ForeignCodeSucceeded),
+		list__map_foldl(compile_foreign_code_file(ErrorStream, PIC,
+				Imports),
+			FactTableForeignCodes, ForeignCodeSucceeded),
 		{
-			Succeeded0 = yes,
 			\+ list__member(no, ForeignCodeSucceeded)
 		->
 			Succeeded1 = yes
@@ -333,11 +351,9 @@ build_target_2(ModuleName, target_code_to_object_code(PIC),
 		}
 	    ) },
 
-
 	% Run the compilation in a child process so it can
 	% be killed if an interrupt arrives.
-	call_in_forked_process(CompileTargetCode,
-		CompileTargetCode, Succeeded).
+	call_in_forked_process(CompileTargetCode, Succeeded).
 
 :- pred build_object_code(module_name::in, compilation_target::in, pic::in,
 	io__output_stream::in, module_imports::in, bool::out,
@@ -357,26 +373,74 @@ build_object_code(ModuleName, il, _, ErrorStream, Imports, Succeeded) -->
 		Imports ^ has_main, Succeeded).
 
 :- pred compile_foreign_code_file(io__output_stream::in, pic::in,
-	foreign_code_file::in, bool::out, io__state::di, io__state::uo) is det.
+		module_imports::in, foreign_code_file::in, bool::out,
+		io__state::di, io__state::uo) is det.
 
-compile_foreign_code_file(ErrorStream, PIC,
+compile_foreign_code_file(ErrorStream, PIC, _Imports,
 		foreign_code_file(c, CFile, ObjFile), Succeeded) -->
 	compile_target_code__compile_c_file(ErrorStream, PIC,
 		CFile, ObjFile, Succeeded).
-compile_foreign_code_file(ErrorStream, _,
+compile_foreign_code_file(ErrorStream, _, _Imports,
 		foreign_code_file(il, ILFile, DLLFile), Succeeded) -->
 	compile_target_code__il_assemble(ErrorStream, ILFile, DLLFile,
 		no_main, Succeeded).
-compile_foreign_code_file(ErrorStream, _,
+compile_foreign_code_file(ErrorStream, _, _Imports,
 		foreign_code_file(managed_cplusplus, MCPPFile, DLLFile),
 		Succeeded) -->
 	compile_target_code__compile_managed_cplusplus_file(ErrorStream,
 		MCPPFile, DLLFile, Succeeded).
-compile_foreign_code_file(ErrorStream, _,
+compile_foreign_code_file(ErrorStream, _, Imports,
 		foreign_code_file(csharp, CSharpFile, DLLFile),
 		Succeeded) -->
-	compile_target_code__compile_csharp_file(ErrorStream,
+	compile_target_code__compile_csharp_file(ErrorStream, Imports,
 		CSharpFile, DLLFile, Succeeded).
+
+%-----------------------------------------------------------------------------%
+
+:- pred foreign_code_file(module_name::in, pic::in, foreign_language::in,
+		foreign_code_file::out, io::di, io::uo) is det.
+
+foreign_code_file(ModuleName, PIC, Lang, ForeignCodeFile) -->
+	globals__io_get_globals(Globals),
+	{
+		ForeignModName0 = foreign_language_module_name(
+				ModuleName, Lang),
+		SrcExt0 = foreign_language_file_extension(Lang)
+	->
+		ForeignModName = ForeignModName0,
+		SrcExt = SrcExt0
+	;
+		unexpected(this_file, "unsupported foreign language")
+	},
+	{ ObjExt = get_object_extension(Globals, PIC) },
+	module_name_to_file_name(ForeignModName, SrcExt, yes, SrcFileName),
+	module_name_to_file_name(ForeignModName, ObjExt, yes, ObjFileName),
+	{ ForeignCodeFile = foreign_code_file(Lang, SrcFileName, ObjFileName) }.
+
+:- pred fact_table_foreign_code_file(module_name::in, pic::in, string::in,
+		foreign_code_file::out, io::di, io::uo) is det.
+
+fact_table_foreign_code_file(ModuleName, PIC, FactTableName,
+		ForeignCodeFile) -->
+	globals__io_get_globals(Globals),
+	{ ObjExt = get_object_extension(Globals, PIC) },
+	fact_table_file_name(ModuleName, FactTableName, ".c", yes, CFile),
+	fact_table_file_name(ModuleName, FactTableName, ObjExt, yes, ObjFile),
+	{ ForeignCodeFile = foreign_code_file(c, CFile, ObjFile) }.
+
+:- func get_object_extension(globals, pic) = string.
+
+get_object_extension(Globals, PIC) = Ext :-
+	globals__get_target(Globals, CompilationTarget),
+	( CompilationTarget = c,
+		maybe_pic_object_file_extension(Globals, PIC, Ext)
+	; CompilationTarget = asm,
+		maybe_pic_object_file_extension(Globals, PIC, Ext)
+	; CompilationTarget = il,
+		Ext = ".dll"
+	; CompilationTarget = java,
+		sorry(this_file, "object extension for java")
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -480,13 +544,23 @@ compilation_task(_, asm_code(PIC)) =
 		process_module(compile_to_target_code) - 
 			( PIC = pic -> ["--pic"] ; [] ).
 compilation_task(Globals, object_code(PIC)) =
-			target_code_to_object_code(PIC) - Flags :-
-		globals__get_target(Globals, Target),
-		( PIC = pic ->
-			Flags = ( Target = asm -> ["--pic"] ; ["--pic-reg"] )
-		;
-			Flags = []
-		).
+	target_code_to_object_code(PIC) - get_pic_flags(Globals, PIC).
+compilation_task(_, foreign_il_asm(Lang)) =
+	foreign_code_to_object_code(non_pic, Lang) - [].
+compilation_task(Globals, foreign_object(PIC, Lang)) =
+	foreign_code_to_object_code(PIC, Lang) - get_pic_flags(Globals, PIC).
+compilation_task(Globals, factt_object(PIC)) =
+	fact_table_code_to_object_code(PIC) - get_pic_flags(Globals, PIC).
+
+:- func get_pic_flags(globals, pic) = list(string).
+
+get_pic_flags(Globals, PIC) = Flags :-
+	globals__get_target(Globals, Target),
+	( PIC = pic ->
+		Flags = ( Target = asm -> ["--pic"] ; ["--pic-reg"] )
+	;
+		Flags = []
+	).
 
 	% Find the files which could be touched by a compilation task.
 :- pred touched_files(target_file::in, compilation_task_type::in,
@@ -630,13 +704,32 @@ touched_files(TargetFile, process_module(Task), TouchedTargetFiles,
 					TimestampFileNames]) }.
 
 touched_files(TargetFile, target_code_to_object_code(_),
+		[TargetFile], [], Info, Info) -->
+	[].
+
+touched_files(TargetFile, foreign_code_to_object_code(PIC, Lang),
+		[TargetFile], [ForeignObjectFile], Info, Info) -->
+	{ TargetFile = ModuleName - _ },
+	foreign_code_file(ModuleName, PIC, Lang, ForeignCodeFile),
+	{ ForeignObjectFile = ForeignCodeFile ^ object_file }.
+
+touched_files(TargetFile, fact_table_code_to_object_code(PIC),
 		[TargetFile], ForeignObjectFiles, Info0, Info) -->
 	{ TargetFile = ModuleName - _ },
-	get_target_code_to_object_code_foreign_files(ModuleName,
-		ForeignCodeFileList, Info0, Info),
-	{ ForeignObjectFiles = list__map(
-			(func(ForeignFile) = ForeignFile ^ object_file),
-			ForeignCodeFileList) }.
+	get_module_dependencies(ModuleName, MaybeImports, Info0, Info),
+	{ MaybeImports = yes(Imports0) ->
+		Imports = Imports0
+	;
+		% This error should have been caught earlier.
+		% We shouldn't be attempting to build a target
+		% if we couldn't find the dependencies for the
+		% module.
+		unexpected(this_file, "touched_files: no module dependencies")
+	},
+	list__map_foldl(fact_table_foreign_code_file(ModuleName, PIC),
+			Imports ^ fact_table_deps, FactTableForeignCodes),
+	{ ForeignObjectFiles = list__map((func(F) = F ^ object_file),
+			FactTableForeignCodes) }.
 
 :- pred get_target_code_to_object_code_foreign_files(module_name::in, 
 		list(foreign_code_file)::out, make_info::in, make_info::out,
@@ -704,10 +797,10 @@ external_foreign_code_files(Imports, ForeignFiles) -->
 	->
 		module_name_to_file_name(
 			foreign_language_module_name(ModuleName, c), ".c",
-			yes, CCodeFileName),
+			no, CCodeFileName),
 		module_name_to_file_name(
 			foreign_language_module_name(ModuleName, c), ObjExt,
-			yes, ObjFileName),
+			no, ObjFileName),
 		{ ForeignFiles0 =
 			[foreign_code_file(c, CCodeFileName, ObjFileName) ] }
 	;
@@ -729,9 +822,9 @@ external_foreign_code_files(Imports, ForeignFiles) -->
 			(pred(FactTableFile::in, FactTableForeignFile::out,
 					di, uo) is det -->
 				fact_table_file_name(ModuleName, FactTableFile,
-					".c", FactTableCFile),
+					".c", no, FactTableCFile),
 				fact_table_file_name(ModuleName, FactTableFile,
-					ObjExt, FactTableObjFile),
+					ObjExt, no, FactTableObjFile),
 				{ FactTableForeignFile = foreign_code_file(c, 
 					FactTableCFile, FactTableObjFile) }
 			), Imports ^ fact_table_deps, FactTableForeignFiles),
@@ -761,5 +854,10 @@ external_foreign_code_files_for_il(ModuleName, Language,
 		% No external file is generated for this foreign language.
 		{ ForeignFiles = [] }
 	).
+
+%-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+this_file = "make.module_target.m".
 
 %-----------------------------------------------------------------------------%

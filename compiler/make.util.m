@@ -621,10 +621,36 @@ target_extension(_, il_asm) = ".dll". % XXX ".exe" if the module contains main.
 target_extension(_, java_code) = ".java".
 target_extension(_, asm_code(non_pic)) = ".s".
 target_extension(_, asm_code(pic)) = ".pic_s".
-target_extension(Globals, object_code(non_pic)) = Ext :-
-	globals__lookup_string_option(Globals, object_file_extension, Ext).
-target_extension(Globals, object_code(pic)) = Ext :-
-	globals__lookup_string_option(Globals, pic_object_file_extension, Ext).
+target_extension(Globals, object_code(PIC)) = Ext :-
+	maybe_pic_object_file_extension(Globals, PIC, Ext).
+target_extension(Globals, foreign_object(PIC, c)) = Ext :-
+	maybe_pic_object_file_extension(Globals, PIC, Ext).
+
+		% Note we use the bogus extension "bogus ext" so that
+		% the reverse mode of this function remains nondet.
+target_extension(_, foreign_object(PIC, csharp)) = "bogus ext" :-
+	( PIC = pic
+	; PIC = non_pic
+	),
+	unexpected(this_file, "C# foreign_object").
+target_extension(_, foreign_object(PIC, managed_cplusplus)) = "bogus ext" :-
+	( PIC = pic
+	; PIC = non_pic
+	),
+	unexpected(this_file, "MC++ foreign_object").
+target_extension(_, foreign_object(PIC, il)) = "bogus ext" :-
+	( PIC = pic
+	; PIC = non_pic
+	),
+	unexpected(this_file, "il foreign_object").
+target_extension(_, foreign_il_asm(c)) = "bogus ext" :-
+	unexpected(this_file, "C foreign_il_asm").
+
+target_extension(_, foreign_il_asm(csharp)) = ".dll".
+target_extension(_, foreign_il_asm(managed_cplusplus)) = ".dll".
+target_extension(_, foreign_il_asm(il)) = ".dll".
+target_extension(Globals, factt_object(PIC)) = Ext :-
+	maybe_pic_object_file_extension(Globals, PIC, Ext).
 
 linked_target_file_name(ModuleName, executable, FileName) -->
 	globals__io_lookup_string_option(executable_file_extension, Ext),
@@ -673,6 +699,9 @@ search_for_file_type(il_asm) = no.
 search_for_file_type(java_code) = no.
 search_for_file_type(asm_code(_)) = no.
 search_for_file_type(object_code(_)) = no.
+search_for_file_type(foreign_object(_, _)) = no.
+search_for_file_type(foreign_il_asm(_)) = no.
+search_for_file_type(factt_object(_)) = no.
 
 target_is_grade_or_arch_dependent(Target) :-
 	target_is_grade_or_arch_dependent(Target, yes).
@@ -696,6 +725,9 @@ target_is_grade_or_arch_dependent(il_asm, yes).
 target_is_grade_or_arch_dependent(java_code, yes).
 target_is_grade_or_arch_dependent(asm_code(_), yes).
 target_is_grade_or_arch_dependent(object_code(_), yes).
+target_is_grade_or_arch_dependent(foreign_object(_, _), yes).
+target_is_grade_or_arch_dependent(foreign_il_asm(_), yes).
+target_is_grade_or_arch_dependent(factt_object(_), yes).
 
 %-----------------------------------------------------------------------------%
 
@@ -729,7 +761,22 @@ debug_file_msg(TargetFile, Msg) -->
 write_dependency_file(target(TargetFile)) --> write_target_file(TargetFile).
 write_dependency_file(file(FileName, _)) --> io__write_string(FileName).
 
-write_target_file(ModuleName - FileType) -->
+write_target_file(ModuleName0 - FileType) -->
+	( { FileType = factt_object(_) } ->
+		io__write_string("fact table object files for ")
+	;
+		[]
+	),
+	{
+		( FileType = foreign_il_asm(Lang)
+		; FileType = foreign_object(_, Lang)
+		),
+		ForeignName = foreign_language_module_name(ModuleName0, Lang)
+	->
+		ModuleName = ForeignName
+	;
+		ModuleName = ModuleName0
+	},
 	prog_out__write_sym_name(ModuleName),
 	globals__io_get_globals(Globals),
 	io__write_string(target_extension(Globals, FileType)).
@@ -793,5 +840,10 @@ maybe_warn_up_to_date_target(Target @ (ModuleName - FileType), Info0, Info) -->
 	),
 	{ Info = Info0 ^ command_line_targets :=
 		set__delete(Info0 ^ command_line_targets, Target) }.
+
+%-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+this_file = "make.util.m".
 
 %-----------------------------------------------------------------------------%

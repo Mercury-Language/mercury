@@ -15,6 +15,7 @@
 
 :- import_module parse_tree__prog_data, parse_tree__prog_io.
 :- import_module parse_tree__modules.
+:- import_module libs__globals.
 
 :- import_module bool, list, io, std_util.
 
@@ -65,9 +66,9 @@
 :- mode compile_managed_cplusplus_file(in, in, in, out, di, uo) is det.
 
 	% compile_csharp_file(ErrorStream, C#File, DLLFile, Succeeded).
-:- pred compile_csharp_file(io__output_stream, file_name, file_name,
-		bool, io__state, io__state).
-:- mode compile_csharp_file(in, in, in, out, di, uo) is det.
+:- pred compile_csharp_file(io__output_stream, module_imports,
+		file_name, file_name, bool, io__state, io__state).
+:- mode compile_csharp_file(in, in, in, in, out, di, uo) is det.
 
 	% make_init_file(ErrorStream, MainModuleName, ModuleNames, Succeeded).
 	%
@@ -141,9 +142,22 @@
 		list(module_name)) = string.
 
 %-----------------------------------------------------------------------------%
+
+	% maybe_pic_object_file_extension(G, P, E) is true iff
+	% E is the extension which should be used on object files according
+	% to the value of P.
+:- pred maybe_pic_object_file_extension(globals, pic, string).
+:- mode maybe_pic_object_file_extension(in, in, out) is det.
+:- mode maybe_pic_object_file_extension(in, out, in) is nondet.
+
+	% Same as above except the globals, G, are obtained from the io__state.
+:- pred maybe_pic_object_file_extension(pic::in, string::out,
+		io__state::di, io__state::uo) is det.
+
+%-----------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module libs__globals, libs__options, libs__handle_options.
+:- import_module libs__options, libs__handle_options.
 :- import_module hlds__passes_aux, libs__trace_params.
 :- import_module parse_tree__prog_out.
 
@@ -152,16 +166,24 @@
 
 :- import_module char, dir, getopt, int, require, string.
 
-il_assemble(ErrorStream, ModuleName,
-			HasMain, Succeeded) -->
+il_assemble(ErrorStream, ModuleName, HasMain, Succeeded) -->
 	module_name_to_file_name(ModuleName, ".il", no, IL_File),
+	module_name_to_file_name(ModuleName, ".dll", yes, DllFile),
+
+	%
+	% If the module contains main/2 then we it should be built as an
+	% executable.  Unfortunately MC++ or C# code may refer to the dll
+	% so we always need to build the dll.
+	%
+	il_assemble(ErrorStream, IL_File, DllFile, no_main, DllSucceeded),
 	( { HasMain = has_main } ->
-		module_name_to_file_name(ModuleName, ".exe", yes, TargetFile)
+		module_name_to_file_name(ModuleName, ".exe", yes, ExeFile),
+		il_assemble(ErrorStream, IL_File, ExeFile,
+				HasMain, ExeSucceeded),
+		{ Succeeded = DllSucceeded `and` ExeSucceeded }
 	;	
-		module_name_to_file_name(ModuleName, ".dll", yes, TargetFile)
-	),
-	il_assemble(ErrorStream, IL_File, TargetFile,
-		HasMain, Succeeded).
+		{ Succeeded = DllSucceeded }
+	).
 	
 il_assemble(ErrorStream, IL_File, TargetFile,
 		HasMain, Succeeded) -->
@@ -225,8 +247,9 @@ compile_managed_cplusplus_file(ErrorStream,
 	% XXX Should we use a separate dll_directories options?
 	globals__io_lookup_accumulating_option(link_library_directories,
 	 	DLLDirs),
-	{ DLLDirOpts = string__append_list(list__condense(list__map(
-	 	(func(DLLDir) = ["-AI", DLLDir, " "]), DLLDirs))) },
+	{ DLLDirOpts = "-AIMercury/dlls " ++
+		string__append_list(list__condense(list__map(
+		 	(func(DLLDir) = ["-AI", DLLDir, " "]), DLLDirs))) },
 
 	{ string__append_list([MCPP, " -CLR ", DebugOpt, InclOpts,
 		DLLDirOpts, MCPPFlags, " ", MCPPFileName,
@@ -235,8 +258,8 @@ compile_managed_cplusplus_file(ErrorStream,
 	invoke_system_command(ErrorStream, verbose_commands,
 		Command, Succeeded).
 
-compile_csharp_file(ErrorStream,
-		CSharpFileName, DLLFileName, Succeeded) -->
+compile_csharp_file(ErrorStream, Imports,
+		CSharpFileName0, DLLFileName, Succeeded) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
 	maybe_write_string(Verbose, "% Compiling `"),
 	maybe_write_string(Verbose, CSharpFileName),
@@ -244,6 +267,11 @@ compile_csharp_file(ErrorStream,
 	globals__io_lookup_string_option(csharp_compiler, CSC),
 	globals__io_lookup_accumulating_option(csharp_flags, CSCFlagsList),
 	{ join_string_list(CSCFlagsList, "", "", " ", CSCFlags) },
+
+		% XXX This is because the MS C# compiler doesn't understand
+		% / as a directory seperator.
+	{ CSharpFileName = string__replace_all(CSharpFileName0, "/", "\\\\") },
+
 	globals__io_lookup_bool_option(target_debug, Debug),
 	{ Debug = yes ->
 		% XXX This needs testing before it can be enabled
@@ -258,11 +286,26 @@ compile_csharp_file(ErrorStream,
 	% XXX Should we use a separate dll_directories options?
 	globals__io_lookup_accumulating_option(link_library_directories,
 	 	DLLDirs),
-	{ DLLDirOpts = string__append_list(list__condense(list__map(
-	 	(func(DLLDir) = ["/lib:", DLLDir, " "]), DLLDirs))) },
+	{ DLLDirOpts = "/lib:Mercury/dlls " ++
+		string__append_list(list__condense(list__map(
+		 	(func(DLLDir) = ["/lib:", DLLDir, " "]), DLLDirs))) },
 
-	{ string__append_list([CSC, " -CLR ", DebugOpt,
-		"/t:library ", DLLDirOpts, CSCFlags,
+	{ mercury_std_library_module_name(Imports ^ module_name) ->
+		Prefix = "/addmodule:"
+	;
+		Prefix = "/r:"
+	},
+	{ ReferencedDlls = referenced_dlls(Imports ^ module_name,
+			Imports ^ int_deps ++ Imports ^ impl_deps) },
+	list__map_foldl((pred(Mod::in, Result::out, di, uo) is det -->
+			module_name_to_file_name(Mod, ".dll", no, FileName),
+			{ Result = [Prefix, FileName, " "] }
+		), ReferencedDlls, ReferencedDllsList),
+	{ ReferencedDllsStr = string__append_list(
+			list__condense(ReferencedDllsList)) },
+
+	{ string__append_list([CSC, DebugOpt,
+		" /t:library ", DLLDirOpts, CSCFlags, ReferencedDllsStr,
 		" /out:", DLLFileName, " ", CSharpFileName], Command) },
 	invoke_system_command(ErrorStream, verbose_commands,
 		Command, Succeeded).
@@ -586,13 +629,6 @@ compile_c_file(ErrorStream, PIC, C_File, O_File, Succeeded) -->
 		" -c ", C_File, " ", NameObjectFile, O_File], Command) },
 	invoke_system_command(ErrorStream, verbose_commands,
 		Command, Succeeded).
-
-:- pred maybe_pic_object_file_extension(pic::in, string::out,
-		io__state::di, io__state::uo) is det.
-maybe_pic_object_file_extension(pic, ObjExt) -->
-	globals__io_lookup_string_option(pic_object_file_extension, ObjExt).
-maybe_pic_object_file_extension(non_pic, ObjExt) -->
-	globals__io_lookup_string_option(object_file_extension, ObjExt).
 
 %-----------------------------------------------------------------------------%
 
@@ -1243,4 +1279,16 @@ substitute_user_command_2([Char | Chars], RevMainModule,
 			RevAllModules, [Char | RevChars0])
 	).
 
+%-----------------------------------------------------------------------------%
+
+maybe_pic_object_file_extension(Globals, pic, Ext) :-
+	globals__lookup_string_option(Globals, pic_object_file_extension, Ext).
+maybe_pic_object_file_extension(Globals, non_pic, Ext) :-
+	globals__lookup_string_option(Globals, object_file_extension, Ext).
+
+maybe_pic_object_file_extension(PIC, ObjExt) -->
+	globals__io_get_globals(Globals),
+	{ maybe_pic_object_file_extension(Globals, PIC, ObjExt) }.
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

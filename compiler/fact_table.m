@@ -190,7 +190,7 @@ fact_table_compile_facts(PredName, Arity, FileName, PredInfo0, PredInfo,
     (
 	{ Result0 = ok },
 	{ module_info_name(ModuleInfo, ModuleName) },
-	fact_table_file_name(ModuleName, FileName, ".c", OutputFileName),
+	fact_table_file_name(ModuleName, FileName, ".c", yes, OutputFileName),
 	io__open_output(OutputFileName, Result1),
 	(
 	    { Result1 = ok(OutputStream) },

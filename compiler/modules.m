@@ -130,12 +130,13 @@
 				io__state, io__state).
 :- mode module_name_to_split_c_file_pattern(in, in, out, di, uo) is det.
 
-	% fact_table_file_name(Module, FactTableFileName, Ext, FileName):
+	% fact_table_file_name(Module, FactTableFileName, Ext, MkDir, FileName):
 	%	Returns the filename to use when compiling fact table
-	%	files.
-:- pred fact_table_file_name(module_name, file_name, string, file_name,
+	%	files.  If 'MkDir' is yes, then create any directories
+	%	needed.
+:- pred fact_table_file_name(module_name, file_name, string, bool, file_name,
 				io__state, io__state).
-:- mode fact_table_file_name(in, in, in, out, di, uo) is det.
+:- mode fact_table_file_name(in, in, in, in, out, di, uo) is det.
 
 	% convert a file name (excluding the trailing `.m')
 	% to the corresponding module name
@@ -151,6 +152,14 @@
 	% for use as a variable name in makefiles.
 :- pred module_name_to_make_var_name(module_name, string).
 :- mode module_name_to_make_var_name(in, out) is det.
+
+	% Generate the list of .NET DLLs which could be referred to by this
+	% module (including the module itself).
+	% If we are compiling a module within the standard library we should
+	% reference the runtime DLLs and all other library DLLs.  If we are
+	% outside the library we should just reference mercury.dll (which will
+	% contain all the DLLs).
+:- func referenced_dlls(module_name, list(module_name)) = list(module_name).
 
 %-----------------------------------------------------------------------------%
 
@@ -841,19 +850,22 @@ module_name_to_lib_file_name(Prefix, ModuleName, Ext, MkDir, FileName) -->
 	{ string__append_list([Prefix, BaseFileName, Ext], BaseName) },
 	choose_file_name(ModuleName, BaseName, Ext, no, MkDir, FileName).
 
-fact_table_file_name(ModuleName, FactTableFileName, Ext, FileName) -->
-	extra_link_obj_file_name(ModuleName, FactTableFileName, Ext, FileName).
+fact_table_file_name(ModuleName, FactTableFileName, Ext, MkDir, FileName) -->
+	extra_link_obj_file_name(ModuleName, FactTableFileName,
+			Ext, MkDir, FileName).
 
-	% extra_link_obj_file_name(Module, ExtraLinkObjName, Ext, FileName):
+	% extra_link_obj_file_name(Module, ExtraLinkObjName,
+	% 		Ext, MkDir, FileName):
 	%	Returns the filename to use when compiling extra objects
 	%	that must be linked into the executable
 	%	(currently used only for fact tables).
-:- pred extra_link_obj_file_name(module_name, file_name, string, file_name,
-				io__state, io__state).
-:- mode extra_link_obj_file_name(in, in, in, out, di, uo) is det.
-extra_link_obj_file_name(ModuleName, ExtraLinkObjName, Ext, FileName) -->
+	%	If `MkDir' is yes, make any directories necessary.
+:- pred extra_link_obj_file_name(module_name, file_name, string, bool,
+				file_name, io__state, io__state).
+:- mode extra_link_obj_file_name(in, in, in, in, out, di, uo) is det.
+extra_link_obj_file_name(ModuleName, ExtraLinkObjName, Ext, MkDir, FileName) -->
 	{ string__append(ExtraLinkObjName, Ext, BaseName) },
-	choose_file_name(ModuleName, BaseName, Ext, no, no, FileName).
+	choose_file_name(ModuleName, BaseName, Ext, no, MkDir, FileName).
 
 :- pred choose_file_name(module_name, string, string, bool, bool, file_name,
 			io__state, io__state).
@@ -899,6 +911,7 @@ choose_file_name(_ModuleName, BaseName, Ext, Search, MkDir, FileName) -->
 			; Ext = ".exe"
 			; Ext = ".split"
 			; Ext = ".split.exe"
+			; Ext = ".dll"
 			% library files
 			; Ext = ".a"
 			; Ext = ".$A"
@@ -4908,15 +4921,6 @@ write_dependencies_list([Module | Modules], Suffix, DepStream) -->
 	io__write_string(DepStream, FileName),
 	write_dependencies_list(Modules, Suffix, DepStream).
 
-	% Generate the list of .NET DLLs which could be referred to by this
-	% module (including the module itself).
-	% If we are compiling a module within the standard library we should
-	% reference the runtime DLLs and all other library DLLs.  If we are
-	% outside the library we should just reference mercury.dll (which will
-	% contain all the DLLs).
-	
-:- func referenced_dlls(module_name, list(module_name)) = list(module_name).
-
 referenced_dlls(Module, DepModules0) = Modules :-
 	DepModules = [Module | DepModules0],
 
@@ -4986,7 +4990,7 @@ write_dll_dependency(DepStream, Prefix, Module) -->
 write_fact_table_dependencies_list(_, [], _, _) --> [].
 write_fact_table_dependencies_list(Module, [FactTable | FactTables], Suffix,
 			DepStream) -->
-	fact_table_file_name(Module, FactTable, Suffix, FileName),
+	fact_table_file_name(Module, FactTable, Suffix, no, FileName),
 	io__write_string(DepStream, " \\\n\t"),
 	io__write_string(DepStream, FileName),
 	write_fact_table_dependencies_list(Module, FactTables, Suffix,
@@ -4999,7 +5003,7 @@ write_fact_table_dependencies_list(Module, [FactTable | FactTables], Suffix,
 write_extra_link_dependencies_list([], _, _) --> [].
 write_extra_link_dependencies_list([ExtraLink - Module | ExtraLinks], Suffix,
 			DepStream) -->
-	extra_link_obj_file_name(Module, ExtraLink, Suffix, FileName),
+	extra_link_obj_file_name(Module, ExtraLink, Suffix, no, FileName),
 	io__write_string(DepStream, " \\\n\t"),
 	io__write_string(DepStream, FileName),
 	write_extra_link_dependencies_list(ExtraLinks, Suffix, DepStream).
