@@ -79,7 +79,7 @@
 
 intermod__write_optfile(ModuleInfo0, ModuleInfo) -->
 	{ module_info_name(ModuleInfo0, ModuleName) },
-	module_name_to_file_name(ModuleName, ".opt.tmp", TmpName),
+	module_name_to_file_name(ModuleName, ".opt.tmp", yes, TmpName),
 	io__tell(TmpName, Result2),
 	(
 		{ Result2 = error(Err2) },
@@ -1320,7 +1320,7 @@ read_optimization_interfaces([Import | Imports],
 	maybe_flush_output(VeryVerbose),
 	maybe_write_string(VeryVerbose, "% done.\n"),
 
-	module_name_to_file_name(Import, ".opt", FileName),
+	module_name_to_file_name(Import, ".opt", no, FileName),
 	prog_io__read_module(FileName, Import, yes,
 			ModuleError, Messages, Items1),
 	update_error_status(FileName, ModuleError, Messages, Error0, Error1),

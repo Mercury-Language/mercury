@@ -6,6 +6,9 @@
 
 # Mmake.rules - rules for building Mercury programs
 
+# N.B. All the builtin rules must use $@ as the target, so that they work
+# when $(VPATH) is set.
+
 main_target: $(MAIN_TARGET)
 
 #-----------------------------------------------------------------------------#
@@ -19,10 +22,141 @@ main_target: $(MAIN_TARGET)
 		.i .s .pic_s \
 		.ql .pl
 
-.PRECIOUS: %.date0 %.date %.date3 %.optdate %.trans_opt_date
+ifeq ($(MMAKE_USE_SUBDIRS),yes)
 
-# All the builtin rules must use $@ as the target, so that they work
-# when $(VPATH) is set.
+MCFLAGS += --use-subdirs
+
+SUBDIR=Mercury/
+# SUBDIR=
+
+.PRECIOUS: $(SUBDIR)date0s/%.date0
+.PRECIOUS: $(SUBDIR)dates/%.date
+.PRECIOUS: $(SUBDIR)date3s/%.date3
+.PRECIOUS: $(SUBDIR)optdates/%.optdate
+.PRECIOUS: $(SUBDIR)trans_opt_dates/%.trans_opt_date
+
+$(SUBDIR)nos/%.no : %.m
+	$(MNC) $(MNCFLAGS) -o $@ $<
+
+$(SUBDIR)nos/%.no : %.nl
+	$(MNC) $(MNCFLAGS) -o $@ $<
+
+$(SUBDIR)nos/%.ql : %.m
+	$(MSC) $(MSCFLAGS) -o $@ $<
+
+$(SUBDIR)nos/%.ql : %.nl
+	$(MSC) $(MSCFLAGS) -o $@ $<
+
+$(SUBDIR)date0s/%.date0 : %.m
+	$(MCPI) $(MCPIFLAGS) $<
+
+$(SUBDIR)dates/%.date : %.m
+	$(MCI) $(MCIFLAGS) $<
+
+$(SUBDIR)date3s/%.date3 : %.m
+	$(MCSI) $(MCSIFLAGS) $<
+
+$(SUBDIR)optdates/%.optdate : %.m
+	$(MCOI) $(MCOIFLAGS) $<
+
+$(SUBDIR)trans_opt_dates/%.trans_opt_date : %.m
+	$(MCTOI) $(MCTOIFLAGS) $<
+
+# Be very careful about changing the following rules.
+# The `@:' is a silent do-nothing command.
+# It is used to force GNU Make to recheck the timestamp
+# on the target file.  (It is a pity that GNU Make doesn't
+# have a way of handling these sorts of rules in a nicer manner.)
+
+$(SUBDIR)int0s/%.int0 : $(SUBDIR)date0s/%.date0
+	@:
+
+$(SUBDIR)ints/%.int : $(SUBDIR)dates/%.date
+	@:
+
+$(SUBDIR)int2s/%.int2 : $(SUBDIR)dates/%.date
+	@:
+
+$(SUBDIR)int3s/%.int3 : $(SUBDIR)date3s/%.date3
+	@:
+
+$(SUBDIR)opts/%.opt : $(SUBDIR)opt_dates/%.opt_date
+	@:
+
+$(SUBDIR)trans_opts/%.trans_opt : $(SUBDIR)trans_opt_dates/%.trans_opt_date
+	@:
+
+%.dep : $(SUBDIR)deps/%.dep
+
+$(SUBDIR)deps/%.dep: %.m
+	$(MCD) $(MCDFLAGS) $<
+
+# When creating the dependencies, we need to create the int3s
+# in order to get things started.  This should not be necessary,
+# but there seem to be some bugs in GNU Make with regard to
+# the combination of rule chaining and subdirectories.
+# I have sent off a bug report to the GNU Make maintainers (18 March 1998).
+#	-fjh.
+
+%.depend : %.m
+	$(MCD) $(MCDFLAGS) $<
+	-rm -f $(SUBDIR)cs/$*_init.c
+	$(MMAKE) $(MAKEOVERRIDES) $(MMAKEFLAGS) $*.int3s
+
+%.doit : $(SUBDIR)deps/%.dep
+	sed -e ':a' -e '/\\/N' -e 's/\\\n	//' -e 't a' $< |  \
+	tee tmp | \
+	grep 'srcs *=' | \
+	sed	-e 's/.*=/:-[ '\''nu_library.doit'\'', /' \
+		-e 's/\.nl/,/g' \
+		-e 's/$$/ portray ]./' \
+		> $@
+
+$(SUBDIR)cs/%.c : %.m
+	rm -f $(SUBDIR)cs/$*.c
+	$(MCG) $(GRADEFLAGS) $(MCGFLAGS) $< > $*.err 2>&1
+
+$(SUBDIR)os/%.o : $(SUBDIR)cs/%.c
+	$(MGNUC) $(GRADEFLAGS) $(MGNUCFLAGS) -c $< -o $@
+
+# If we aren't removing the .c files, we generate .pic_o files
+# without invoking mmake.
+ifeq ($(RM_C),:)
+$(SUBDIR)os/%.pic_o : $(SUBDIR)cs/%.c
+	$(MGNUC) $(GRADEFLAGS) $(MGNUCFLAGS) $(CFLAGS_FOR_PIC) -c $< -o $@
+endif
+
+%.s: $(SUBDIR)cs/%.c
+	$(MGNUC) $(GRADEFLAGS) $(MGNUCFLAGS) -S $< -o $@
+
+%.pic_s: $(SUBDIR)cs/%.c
+	$(MGNUC) $(GRADEFLAGS) $(MGNUCFLAGS) $(CFLAGS_FOR_PIC) -S $< -o $@
+
+%.i: $(SUBDIR)cs/%.c
+	$(MGNUC) $(GRADEFLAGS) $(MGNUCFLAGS) -E $< > $@
+
+# If we aren't removing the .c files, we don't need to invoke mmake
+# for each .c file
+ifneq ($(RM_C),:)
+$(SUBDIR)os/%.o : %.m
+	$(MMAKE_MAKE_CMD) $(MAKEOVERRIDES) $(SUBDIR)cs/$*.c
+	$(MGNUC) $(GRADEFLAGS) $(MGNUCFLAGS) -c $(SUBDIR)cs/$*.c -o $@
+	$(RM_C) $(SUBDIR)cs/$*.c
+
+$(SUBDIR)os/%.pic_o : %.m
+	$(MMAKE_MAKE_CMD) $(MAKEOVERRIDES) $(SUBDIR)cs/$*.c
+	$(MGNUC) $(GRADEFLAGS) $(MGNUCFLAGS) $(CFLAGS_FOR_PIC) \
+		-c $(SUBDIR)cs/$*.c -o $@
+
+endif
+
+$(SUBDIR)dirs/%.dir/*.o: %.m
+	rm -f $@
+	$(MCS) $(GRADEFLAGS) $(MCSFLAGS) $<
+
+else # USE_SUBDIRS=no
+
+.PRECIOUS: %.date0 %.date %.date3 %.optdate %.trans_opt_date
 
 .m.no:
 	$(MNC) $(MNCFLAGS) -o $@ $<
@@ -35,22 +169,6 @@ main_target: $(MAIN_TARGET)
 
 .nl.ql:
 	$(MSC) $(MSCFLAGS) -o $@ $<
-
-.m.pl:
-	sicstus_conv $<
-
-.nl.pl:
-	sicstus_conv $<
-
-# The `touch' is necessary, since otherwise if
-# the old .err file was of size zero and
-# the new .err file is also of size zero,
-# the time-stamp doesn't get updated!
-# (Is that a bug in unix? In bash?)
-
-.m.err:
-	$(MC) $(MCFLAGS) --errorcheck-only $< > $@ 2>&1
-	@touch $@
 
 .m.date0:
 	$(MCPI) $(MCPIFLAGS) $<
@@ -90,9 +208,6 @@ main_target: $(MAIN_TARGET)
 
 .trans_opt_date.trans_opt:
 	@:
-
-.m.ugly:
-	$(MC) --convert-to-mercury $(MCFLAGS) $<
 
 .m.dep:
 	@-[ ! -f $*.dep ] || chmod +w $*.dep
@@ -151,6 +266,29 @@ endif
 %.dir/*.o: %.m
 	rm -f $@
 	$(MCS) $(GRADEFLAGS) $(MCSFLAGS) $<
+
+endif	# !USE_SUBDIRS
+
+.m.pl:
+	sicstus_conv $<
+
+.nl.pl:
+	sicstus_conv $<
+
+# The `touch' is necessary, since otherwise if
+# the old .err file was of size zero and
+# the new .err file is also of size zero,
+# the time-stamp doesn't get updated!
+# (Is that a bug in unix? In bash?)
+
+.m.err:
+	$(MC) $(MCFLAGS) --errorcheck-only $< > $@ 2>&1
+	@touch $@
+
+.m.ugly:
+	$(MC) --convert-to-mercury $(MCFLAGS) $<
+
+#-----------------------------------------------------------------------------#
 
 MLOBJS-%: $(MLOBJS)
 	@

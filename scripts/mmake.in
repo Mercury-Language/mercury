@@ -1,7 +1,7 @@
 #! /bin/sh
 # @configure_input@
 #---------------------------------------------------------------------------#
-# Copyright (C) 1995-1997 The University of Melbourne.
+# Copyright (C) 1995-1998 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -19,6 +19,9 @@ Help="\
 Name: mmake -- Mercury Make
 Usage: mmake [<mmake options>] [-- <make options>] <target>...
 Options:
+	--use-subdirs:
+		Build intermediate files in subdirectories,
+		rather than in the current directory.
 	-s, --save-makefile:
 		Save the generated makefile to \`Mmake.makefile'.
 		This is useful for tracking down syntax errors in
@@ -60,6 +63,7 @@ MERCURY_DEFAULT_GRADE=${MERCURY_DEFAULT_GRADE=@DEFAULT_GRADE@}
 MMAKE=$0
 verbose=false
 save_makefile=false
+use_subdirs=${MMAKE_USE_SUBDIRS=no}
 
 while [ $# -gt 0 ]; do
 	case $1 in
@@ -67,13 +71,31 @@ while [ $# -gt 0 ]; do
 			echo "$Help"
 			exit 0
 			;;
+		--use-subdirs)
+			use_subdirs=yes
+			shift
+			;;
+		--no-use-subdirs)
+			use_subdirs=no
+			shift
+			;;
 		-s|--save-makefile)
 			save_makefile=true
 			MMAKE="$MMAKE $1"
 			shift
 			;;
+		-s-|--no-save-makefile)
+			save_makefile=false
+			MMAKE="$MMAKE $1"
+			shift
+			;;
 		-v|--verbose)
 			verbose=true
+			MMAKE="$MMAKE $1"
+			shift
+			;;
+		-v-|--no-verbose)
+			verbose=false
 			MMAKE="$MMAKE $1"
 			shift
 			;;
@@ -97,16 +119,30 @@ else
 		mmake=""
 	fi
 fi
-if [ "`echo *.dep`" = "*.dep" ]; then
-	deps=""
-else
-	deps="*.dep"
-fi
-if [ "`echo *.d`" = "*.d" ]; then
-	ds=""
-else
-	ds="*.d"
-fi
+case $use_subdirs in
+	no)
+		deps="`echo *.dep`"
+		if [ "$deps" = "*.dep" ]; then
+			deps=""
+		fi
+		ds="`echo *.d`"
+		if [ "$ds" = "*.d" ]; then
+			ds=""
+		fi
+		;;
+	yes)
+		deps="`echo Mercury/deps/*.dep`"
+		if [ "$deps" = "Mercury/deps/*.dep" ]; then
+			deps=""
+		fi
+		ds="`echo Mercury/ds/*.d`"
+		if [ "$ds" = "Mercury/ds/*.d" ]; then
+			ds=""
+		fi
+		;;
+esac
+
+MMAKE_USE_SUBDIRS=$use_subdirs
 
 if $save_makefile; then
 	tmp=Mmake.makefile
@@ -122,6 +158,8 @@ if $verbose; then
 	echo export MMAKE
 	echo MMAKE_MAKE_CMD=$MMAKE_MAKE_CMD
 	echo export MMAKE_MAKE_CMD
+	echo MMAKE_USE_SUBDIRS=$MMAKE_USE_SUBDIRS
+	echo export MMAKE_USE_SUBDIRS
 	echo MERCURY_INT_DIR=$MERCURY_INT_DIR
 	echo export MERCURY_INT_DIR
 	echo MERCURY_DEFAULT_GRADE=$MERCURY_DEFAULT_GRADE
@@ -131,6 +169,7 @@ if $verbose; then
 fi
 export MMAKE
 export MMAKE_MAKE_CMD
+export MMAKE_USE_SUBDIRS
 export MERCURY_INT_DIR
 export MERCURY_DEFAULT_GRADE
 cat ${MMAKE_VARS} $deps $ds $mmake ${MMAKE_RULES} > $tmp

@@ -268,6 +268,7 @@
 		;	search_directories
 		;	intermod_directories
 		;	use_search_directories_for_intermod
+		;	use_subdirs
 		;	help.
 
 :- implementation.
@@ -568,6 +569,7 @@ option_defaults_2(miscellaneous_option, [
 	intermod_directories	-	accumulating([]),
 	use_search_directories_for_intermod
 				-	bool(yes),
+	use_subdirs		-	bool(no),
 	help 			-	bool(no)
 ]).
 
@@ -883,6 +885,7 @@ long_option("search-directory",		search_directories).
 long_option("intermod-directory",	intermod_directories).
 long_option("use-search-directories-for-intermod",
 					use_search_directories_for_intermod).	
+long_option("use-subdirs",		use_subdirs).	
 
 %-----------------------------------------------------------------------------%
 
@@ -1858,8 +1861,10 @@ options_help_misc -->
 	io__write_string("\t--no-use-search-directories-for-intermod\n"),
 	io__write_string("\t\tDon't add arguments to `--search-directory' to the list\n"),
 	io__write_string("\t\tof directories to search for `.opt' files - use only the\n"),
-	io__write_string("\t\tdirectories given by `--intermod-directory'.\n").
-
+	io__write_string("\t\tdirectories given by `--intermod-directory'.\n"),
+	io__write_string("\t--use-subdirs\n"),
+	io__write_string("\t\tGenerate intermediate files in a `Mercury' subdirectory,\n"),
+	io__write_string("\t\trather than generating them in the current directory.\n").
 
 :- end_module options.
 

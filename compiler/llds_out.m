@@ -139,7 +139,7 @@ output_c_file(C_File) -->
 	globals__io_lookup_bool_option(split_c_files, SplitFiles),
 	( { SplitFiles = yes } ->
 		{ C_File = c_file(ModuleName, C_HeaderInfo, C_Modules) },
-		module_name_to_file_name(ModuleName, ".dir", ObjDirName),
+		module_name_to_file_name(ModuleName, ".dir", yes, ObjDirName),
 		make_directory(ObjDirName),
 		output_c_file_init(ModuleName, C_Modules),
 		output_c_file_list(C_Modules, 1, ModuleName, C_HeaderInfo)
@@ -170,7 +170,7 @@ output_c_file_list([Module|Modules], Num, ModuleName, C_HeaderLines) -->
 :- mode output_c_file_init(in, in, di, uo) is det.
 
 output_c_file_init(ModuleName, C_Modules) -->
-	module_name_to_file_name(ModuleName, ".m", SourceFileName),
+	module_name_to_file_name(ModuleName, ".m", no, SourceFileName),
 	module_name_to_split_c_file_name(ModuleName, 0, ".c", FileName),
 
 	io__tell(FileName, Result),
@@ -214,14 +214,14 @@ output_single_c_file(c_file(ModuleName, C_HeaderLines, Modules), SplitFiles)
 		module_name_to_split_c_file_name(ModuleName, Num, ".c",
 			FileName)
 	;
-		module_name_to_file_name(ModuleName, ".c", FileName)
+		module_name_to_file_name(ModuleName, ".c", yes, FileName)
 	),
 	io__tell(FileName, Result),
 	(
 		{ Result = ok }
 	->
 		{ library__version(Version) },
-		module_name_to_file_name(ModuleName, ".m", SourceFileName),
+		module_name_to_file_name(ModuleName, ".m", no, SourceFileName),
 		io__write_strings(
 			["/*\n",
 			"** Automatically generated from `", SourceFileName,

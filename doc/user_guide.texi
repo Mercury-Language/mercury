@@ -128,6 +128,15 @@ Each Mercury source file must contain a single Mercury module
 whose name should be the same as the filename without
 the @samp{.m} extension.
 
+The Mercury implementation uses a variety of intermediate files, which
+are described below.  But all you really need to know is how to name
+source files.  For historical reasons, the default behaviour is for
+intermediate files to be created in the current directory, but if you
+use the @samp{--use-subdirs} option to @samp{mmc} or @samp{mmake}, all
+these intermediate files will be created in a @file{Mercury}
+subdirectory, where you can happily ignore them.
+Thus you may wish to skip the rest of this chapter.
+
 Files ending in @file{.int}, @file{.int0}, @file{.int2} and @file{.int3}
 are interface files; these are generated automatically by the compiler,
 using the @samp{--make-interface} (or @samp{--make-int}),
@@ -193,6 +202,9 @@ that you use Mmake (@pxref{Using Mmake}).  Mmake will perform
 all the steps listed below, using automatic dependency analysis
 to ensure that things are done in the right order, and that
 steps are not repeated unnecessarily.
+If you use Mmake, then you don't need to understand the details
+of how the Mercury implementation goes about building programs.
+Thus you may wish to skip the rest of this chapter.
 
 To compile a module to object code without creating an executable,
 use the command
@@ -2555,6 +2567,10 @@ Append @var{dir} to the list of directories to be searched for
 @item --use-search-directories-for-intermod
 Append the arguments of all -I options to the list of directories
 to be searched for @samp{.opt} files.
+
+@item --use-subdirs
+Create intermediate files in a @file{Mercury} subdirectory,
+rather than in the current directory.
 
 @sp 1
 @item -?

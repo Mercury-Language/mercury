@@ -449,12 +449,12 @@ export__produce_header_file(Module, ModuleName) -->
 	->
 		{ module_info_get_predicate_table(Module, PredicateTable) },
 		{ predicate_table_get_preds(PredicateTable, Preds) },
-		module_name_to_file_name(ModuleName, ".h", FileName),
+		module_name_to_file_name(ModuleName, ".h", yes, FileName),
 		io__tell(FileName, Result),
 		(
 			{ Result = ok }
 		->
-			module_name_to_file_name(ModuleName, ".m",
+			module_name_to_file_name(ModuleName, ".m", no,
 				SourceFileName),
 			{ library__version(Version) },
 			io__write_strings(

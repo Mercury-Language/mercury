@@ -317,6 +317,12 @@ install_ints: $(library.ints) $(library.int3s) \
 			cp $$file $$target; \
 		fi; \
 	done
+	# The following is needed to support the `--use-subdirs' option
+	[ -d $(INSTALL_INT_DIR)/Mercury ] || \
+		mkdir -p $(INSTALL_INT_DIR)/Mercury
+	for dir in ints int2s int3s opts trans_opts; do \
+		ln -s .. $(INSTALL_INT_DIR)/Mercury/$$dir; \
+	done
 
 .PHONY: install_init
 install_init: libmercury.init
