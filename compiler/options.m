@@ -1284,7 +1284,7 @@ option_defaults_2(link_option, [
 	shlib_linker_use_install_name - bool(no),
 	shlib_linker_install_name_flag - string("-install_name "),
 	shlib_linker_install_name_path - string(
-		"$(FINAL_INSTALL_MERC_LIB_DIR)")
+		"$(INSTALL_MERC_LIB_DIR)")
 ]).
 option_defaults_2(build_system_option, [
 		% Build System Options
