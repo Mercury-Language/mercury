@@ -18,7 +18,7 @@ main_target: $(MAIN_TARGET)
 		.int0 .int .int2 .int3 .opt .trans_opt \
 		.dep .depend .dv .doit .ugly \
 		.date0 .date .date3 .optdate .trans_opt_date \
-		.c .nu .o .pic_o \
+		.c .nu .$O .pic_o \
 		.i .s .pic_s \
 		.ql .pl \
 		.rlo
@@ -176,14 +176,14 @@ $(rlos_subdir)%.rlo : %.m
 	$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) --aditi-only $< > $*.err 2>&1
 
 # If we are removing the .c files, we need to tell Make that we're
-# generating the .o files directly from the .m files, but
+# generating the .$O files directly from the .m files, but
 # in order to avoid remaking the .c files if they're already there,
 # we need to invoke mmake recursively for each .c file.
 # This can be pretty inefficient.
 
 ifneq ($(RM_C),:)
 
-$(os_subdir)%.o : %.m
+$(os_subdir)%.$O : %.m
 	$(MMAKE_MAKE_CMD) $(MFLAGS) MC="$(MC)" ALL_MCFLAGS="$(ALL_MCFLAGS)" \
 		ALL_GRADEFLAGS="$(ALL_GRADEFLAGS)" $(cs_subdir)$*.c
 	$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) -c $(cs_subdir)$*.c \
@@ -198,12 +198,12 @@ $(os_subdir)%.pic_o : %.m
 
 endif # RM_C != :
 
-# For --split-c-files, we generate the .o files directly from the .m files.
+# For --split-c-files, we generate the .$O files directly from the .m files.
 # (One reason for this is that there's no easy of telling Make how many
-# `.o' files it should make, since the number of them depends on what's
+# `.$O' files it should make, since the number of them depends on what's
 # in the source files.)
 
-$(dirs_subdir)%.dir/*.o: %.m
+$(dirs_subdir)%.dir/*.$O: %.m
 	rm -f $@
 	$(MCS) $(ALL_GRADEFLAGS) $(ALL_MCSFLAGS) $<
 
@@ -225,7 +225,7 @@ $(dirs_subdir)%.dir/*.o: %.m
 # Rules for compiling C files in the user's source directory.
 #
 
-.c.o:
+.c.$O:
 	$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) -c $< $(OBJFILE_OPT)$@
 
 .c.pic_o:
@@ -252,8 +252,8 @@ $(dirs_subdir)%.dir/*.o: %.m
 
 ifneq ("$(cs_subdir)","")
 
-$(os_subdir)%.o : $(cs_subdir)%.c
-	$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) -c $< -o $@
+$(os_subdir)%.$O : $(cs_subdir)%.c
+	$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) -c $< $(OBJFILE_OPT)$@
 
 $(os_subdir)%.pic_o : $(cs_subdir)%.c
 	$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) $(CFLAGS_FOR_PIC) \
@@ -373,7 +373,7 @@ lib%.install_grades:
 		fi; \
 	done && \
 	{ mv tmp_dir/*.c $(cs_subdir). ; \
-	  mv tmp_dir/*.o $(os_subdir). ; \
+	  mv tmp_dir/*.$O $(os_subdir). ; \
 	  mv tmp_dir/*.pic_o $(os_subdir). ; \
 	  mv tmp_dir/*.dep $(deps_subdir). ; \
 	  mv tmp_dir/* . ; rmdir tmp_dir ; true; }

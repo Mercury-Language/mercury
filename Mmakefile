@@ -336,19 +336,19 @@ install_profiler: profiler
 .PHONY: install_grades
 install_grades: scripts
 	cd boehm_gc && rm -rf tmp_dir && mkdir tmp_dir && \
-		{ mv -f *.o *.pic_o *.$A *.so tmp_dir || true; }
+		{ mv -f *.$O *.pic_o *.$A *.so tmp_dir || true; }
 	cd runtime && rm -rf tmp_dir && mkdir tmp_dir && \
-		{ mv -f *.o *.pic_o *.$A *.so tmp_dir || true; }
+		{ mv -f *.$O *.pic_o *.$A *.so tmp_dir || true; }
 	cd library && rm -rf tmp_dir && mkdir tmp_dir && \
-		{ mv -f *.dep *.h *.c *.o *.pic_o *.$A *.so \
+		{ mv -f *.dep *.h *.c *.$O *.pic_o *.$A *.so \
 			Mercury/deps/*.dep \
-			Mercury/cs/*.c Mercury/os/*.o tmp_dir || true; }
+			Mercury/cs/*.c Mercury/os/*.$O tmp_dir || true; }
 	cd browser && rm -rf tmp_dir && mkdir tmp_dir && \
-		{ mv -f *.dep *.h *.c *.o *.pic_o *.$A *.so \
+		{ mv -f *.dep *.h *.c *.$O *.pic_o *.$A *.so \
 			Mercury/deps/*.dep \
-			Mercury/cs/*.c Mercury/os/*.o tmp_dir || true; }
+			Mercury/cs/*.c Mercury/os/*.$O tmp_dir || true; }
 	cd trace && rm -rf tmp_dir && mkdir tmp_dir && \
-		{ mv -f *.o *.pic_o *.$A *.so tmp_dir || true; }
+		{ mv -f *.$O *.pic_o *.$A *.so tmp_dir || true; }
 	#
 	# Use the newly installed compiler to build the libraries
 	# in various different grades.  We need to override MC=mmc
@@ -380,13 +380,13 @@ install_grades: scripts
 		  $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade install_library ) && \
 		( cd trace && \
 		  $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade install_lib ) && \
-		( cd boehm_gc && rm -f *.o *.pic_o *.$A *.so ) && \
-		( cd runtime && rm -f *.o *.pic_o *.$A *.so ) && \
-		( cd library && rm -f *.dep *.h *.c *.o *.pic_o *.$A *.so \
-				Mercury/cs/*.c Mercury/os/*.o ) && \
-		( cd browser && rm -f *.dep *.h *.c *.o *.pic_o *.$A *.so \
-				Mercury/cs/*.c Mercury/os/*.o ) && \
-		( cd trace && rm -f *.o *.pic_o *.$A *.so ) && \
+		( cd boehm_gc && rm -f *.$O *.pic_o *.$A *.so ) && \
+		( cd runtime && rm -f *.$O *.pic_o *.$A *.so ) && \
+		( cd library && rm -f *.dep *.h *.c *.$O *.pic_o *.$A *.so \
+				Mercury/cs/*.c Mercury/os/*.$O ) && \
+		( cd browser && rm -f *.dep *.h *.c *.$O *.pic_o *.$A *.so \
+				Mercury/cs/*.c Mercury/os/*.$O ) && \
+		( cd trace && rm -f *.$O *.pic_o *.$A *.so ) && \
 		true \
 		|| { scripts/mercury_cleanup_install; exit 1; }; \
 	    fi; \
@@ -394,11 +394,11 @@ install_grades: scripts
 	cd boehm_gc && { mv tmp_dir/* . ; rmdir tmp_dir; true; }
 	cd runtime  && { mv tmp_dir/* . ; rmdir tmp_dir; true; }
 	cd library  && { [ -d Mercury/cs ] && mv tmp_dir/*.c Mercury/cs; \
-			 [ -d Mercury/os ] && mv tmp_dir/*.o Mercury/os; \
+			 [ -d Mercury/os ] && mv tmp_dir/*.$O Mercury/os; \
 			 [ -d Mercury/deps ] && mv tmp_dir/*.dep Mercury/deps;\
 			 mv tmp_dir/* . ; rmdir tmp_dir; true; }
 	cd browser  && { [ -d Mercury/cs ] && mv tmp_dir/*.c Mercury/cs; \
-			 [ -d Mercury/os ] && mv tmp_dir/*.o Mercury/os; \
+			 [ -d Mercury/os ] && mv tmp_dir/*.$O Mercury/os; \
 			 [ -d Mercury/deps ] && mv tmp_dir/*.dep Mercury/deps;\
 			 mv tmp_dir/* . ; rmdir tmp_dir; true; }
 	cd trace    && { mv tmp_dir/* . ; rmdir tmp_dir; true; }
@@ -415,17 +415,17 @@ install_split_library: scripts dep_library
 	cd library && \
 	rm -rf tmp_dir && \
 	mkdir tmp_dir && \
-	{ mv -f *.dir *.dep *.h *.c *.o *.pic_o *.$A *.so \
-		Mercury/cs/*.c Mercury/os/*.o tmp_dir || true; } && \
+	{ mv -f *.dir *.dep *.h *.c *.$O *.pic_o *.$A *.so \
+		Mercury/cs/*.c Mercury/os/*.$O tmp_dir || true; } && \
 	for grade in $(GRADE) $(LIBGRADES); do \
 	        $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade depend && \
 	        $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade install_split_library || \
 			{ scripts/mercury_cleanup_install; exit 1; }; \
-	        rm -rf *.dir *.dep *.h *.c *.o *.pic_o *.$A *.so \
-			Mercury/cs/*.c Mercury/os/*.o; \
+	        rm -rf *.dir *.dep *.h *.c *.$O *.pic_o *.$A *.so \
+			Mercury/cs/*.c Mercury/os/*.$O; \
 	done && \
 	{ [ -d Mercury/cs ] && mv tmp_dir/*.c Mercury/cs; \
-	  [ -d Mercury/os ] && mv tmp_dir/*.o Mercury/os; \
+	  [ -d Mercury/os ] && mv tmp_dir/*.$O Mercury/os; \
 	  [ -d Mercury/deps ] && mv tmp_dir/*.dep Mercury/deps; \
 	  mv tmp_dir/* . ; rmdir tmp_dir; true; }
 

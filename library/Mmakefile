@@ -24,7 +24,7 @@ MCFLAGS-int = --no-halt-at-warn
 
 #-----------------------------------------------------------------------------#
 
-# If we're going to generate both `.o' files and `.pic_o' files, then
+# If we're going to generate both `.$O' files and `.pic_o' files, then
 # don't remove the intermediate `.c' files.
 RM_C	=	$(LIBRARY_RM_C)
 
@@ -188,8 +188,8 @@ cs: $(library.cs)
 
 .PHONY: lib_std
 # the following dependency is just there to improve compilation speed;
-# making tree234.o first improves effective parallelism with parallel makes.
-lib_std: $(os_subdir)tree234.o
+# making tree234.$O first improves effective parallelism with parallel makes.
+lib_std: $(os_subdir)tree234.$O
 lib_std: lib$(STD_LIB_NAME).$A lib$(STD_LIB_NAME).$(EXT_FOR_SHARED_LIB)
 lib_std: $(STD_LIB_NAME).init
 
@@ -218,7 +218,7 @@ $(STD_LIB_NAME).init: $(deps_subdir)library.dep
 #-----------------------------------------------------------------------------#
 
 # Ensure we recompile library__version if VERSION is changed.
-$(os_subdir)library.o \
+$(os_subdir)library.$O \
 $(os_subdir)library.pic_o \
 	: $(RUNTIME_DIR)/mercury_conf.h
 
@@ -227,9 +227,9 @@ $(os_subdir)library.pic_o \
 # a global make clean. Here we list only the header files from the runtime
 # whose changes don't usually require a make clean but which nevertheless
 # require some files in the library to be recompiled.
-$(os_subdir)benchmarking.o \
+$(os_subdir)benchmarking.$O \
 $(os_subdir)benchmarking.pic_o \
-$(os_subdir)std_util.o \
+$(os_subdir)std_util.$O \
 $(os_subdir)std_util.pic_o \
 	: ../runtime/mercury_stack_layout.h
 

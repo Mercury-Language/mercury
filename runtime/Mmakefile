@@ -146,7 +146,7 @@ CFILES		= 	\
 			mercury_type_info.c	\
 			mercury_wrapper.c
 
-OBJS		= $(CFILES:.c=.o)
+OBJS		= $(CFILES:.c=.$O)
 PIC_OBJS	= $(CFILES:.c=.$(EXT_FOR_PIC_OBJECTS))
 
 LDFLAGS		= -L$(BOEHM_GC_DIR)
@@ -163,7 +163,7 @@ THREADLIBS	= \
 		`
 
 HDR_CHECK_CS = $(HDRS:.h=_check.c)
-HDR_CHECK_OBJS = $(HDRS:.h=_check.o)
+HDR_CHECK_OBJS = $(HDRS:.h=_check.$O)
 HDR_CHECK_NMS = $(HDRS:.h=_check.nms)
 HDR_CHECK_MACROS = $(HDRS:.h=_check.macros)
 
@@ -237,7 +237,7 @@ tags: $(CFILES) $(HDRS) $(BODY_HDRS)
 
 #
 # $(HDR_CHECK_OBJS) is used to check that the header files are self-contained.
-# The rule for foo_check.o checks that the header file foo.h is properly
+# The rule for foo_check.$O checks that the header file foo.h is properly
 # self-contained, i.e. that the header file foo.h includes any other
 # header files that define types used by foo.h.
 # It does this by compiling a foo_check.c file that contains only a single
@@ -249,7 +249,7 @@ tags: $(CFILES) $(HDRS) $(BODY_HDRS)
 
 # The mercury_deep_copy_body.h header is not meant to be self-contained.
 # So the following rule is used to suppress that check for this header.
-mercury_deep_copy_body_check.o:
+mercury_deep_copy_body_check.$O:
 	@true
 	
 #

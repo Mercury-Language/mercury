@@ -71,7 +71,7 @@
 	%		FileName):
 	%	Like module_name_to_file_name, but also allows a prefix.
 	%
-	%	Used for creating library names, e.g. `lib<foo>.a'
+	%	Used for creating library names, e.g. `lib<foo>.$A'
 	%	and `lib<foo>.so'.
 	%
 :- pred module_name_to_lib_file_name(string, module_name, string, bool,
@@ -86,7 +86,7 @@
 	%	`module_name_to_file_name(Module, ".dir", DirName)'.
 	%	This predicate does not create that directory.
 	%
-	%	This predicate is used for the names of .c and .o files
+	%	This predicate is used for the names of .c and .$O files
 	%	for --split-c-files.
 	%
 :- pred module_name_to_split_c_file_name(module_name, int, string, file_name,
@@ -605,9 +605,11 @@ choose_file_name(ModuleName, BaseName, Ext, MkDir, FileName) -->
 		; Ext = ".split"
 		% library files
 		; Ext = ".a"
+		; Ext = ".$A"
 		; Ext = ".so"
 		; Ext = ".$(EXT_FOR_SHARED_LIB)"
 		; Ext = ".split.a"
+		; Ext = ".split.$A"
 		; Ext = ".split.so"
 		; Ext = ".split.$(EXT_FOR_SHARED_LIB)"
 		; Ext = ".init"
@@ -643,21 +645,25 @@ choose_file_name(ModuleName, BaseName, Ext, MkDir, FileName) -->
 		% we need to handle a few cases specially
 		%
 		{
-			Ext = ".dir/*.o"
+			( Ext = ".dir/*.$O"
+			; Ext = ".dir/*.o"
+			)
+
 		->
 			SubDirName = "dirs"
 		;
-			% .o and .pic_o files need to go in the
+			% .$O and .pic_o files need to go in the
 			% same directory, so that using
 			% .$(EXT_FOR_PIC_OBJECTS) will work.
-			( Ext = ".o"
+			( Ext = ".$O"
+			; Ext = ".o"
 			; Ext = ".pic_o"
 			; Ext = "$(EXT_FOR_PIC_OBJECTS)"
 			)
 		->
 			SubDirName = "os"
 		;
-			% _init.c, _init.s, _init.o etc. files
+			% _init.c, _init.s, _init.$O etc. files
 			% go in the cs, ss, os etc. subdirectories
 			string__append("_init.", ExtName, Ext)
 		->
@@ -1607,7 +1613,7 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 				io__write_strings(DepStream, [
 					"\n\n", MakeVarName,
 					".fact_tables.os = $(", MakeVarName,
-					".fact_tables:%=$(os_subdir)%.o)\n\n",
+					".fact_tables:%=$(os_subdir)%.$O)\n\n",
 					MakeVarName,
 					".fact_tables.cs = $(", MakeVarName,
 					".fact_tables:%=$(cs_subdir)%.c)\n\n"
@@ -1620,7 +1626,7 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 				io__write_strings(DepStream, ["\n\n", 
 					MakeVarName, ".fact_tables.os ="]),
 				write_fact_table_dependencies_list(ModuleName,
-					FactDeps, ".o", DepStream),
+					FactDeps, ".$O", DepStream),
 				io__nl(DepStream)
 			)
 		;
@@ -1638,11 +1644,11 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 		module_name_to_file_name(ModuleName, ".optdate", no,
 					OptDateFileName),
 		module_name_to_file_name(ModuleName, ".c", no, CFileName),
-		module_name_to_file_name(ModuleName, ".o", no, ObjFileName),
+		module_name_to_file_name(ModuleName, ".$O", no, ObjFileName),
 		module_name_to_file_name(ModuleName, ".rlo", no, RLOFileName),
 		module_name_to_file_name(ModuleName, ".pic_o", no,
 							PicObjFileName),
-		module_name_to_split_c_file_pattern(ModuleName, ".o",
+		module_name_to_split_c_file_pattern(ModuleName, ".$O",
 			SplitObjPattern),
 		io__write_strings(DepStream, ["\n\n",
 			OptDateFileName, " ",
@@ -1777,7 +1783,7 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 		write_dependencies_list(ShortDeps, ".int3", DepStream),
 			
 		module_name_to_file_name(ModuleName, ".dir", no, DirFileName),
-		module_name_to_split_c_file_name(ModuleName, 0, ".o",
+		module_name_to_split_c_file_name(ModuleName, 0, ".$O",
 			SplitCObj0FileName),
 		io__write_strings(DepStream, [
 			"\n\n",
@@ -2596,9 +2602,9 @@ generate_dv_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 
 	io__write_string(DepStream, MakeVarName),
 	io__write_string(DepStream, ".os = "),
-	write_compact_dependencies_list(Modules, "$(os_subdir)", ".o",
+	write_compact_dependencies_list(Modules, "$(os_subdir)", ".$O",
 					Basis, DepStream),
-	write_extra_link_dependencies_list(ExtraLinkObjs, ".o", DepStream),
+	write_extra_link_dependencies_list(ExtraLinkObjs, ".$O", DepStream),
 	io__write_string(DepStream, "\n"),
 
 	io__write_string(DepStream, MakeVarName),
@@ -2622,7 +2628,7 @@ generate_dv_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 
 	io__write_string(DepStream, MakeVarName),
 	io__write_string(DepStream, ".dir_os = "),
-	write_compact_dependencies_list(Modules, "$(dirs_subdir)", ".dir/*.o",
+	write_compact_dependencies_list(Modules, "$(dirs_subdir)", ".dir/*.$O",
 					Basis, DepStream),
 	io__write_string(DepStream, "\n"),
 
@@ -2765,7 +2771,7 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 	module_name_to_file_name(ModuleName, ".init", yes, InitFileName),
 	module_name_to_file_name(ModuleName, "_init.c", yes, InitCFileName),
 	module_name_to_file_name(ModuleName, "_init.s", no, InitAsmFileName),
-	module_name_to_file_name(ModuleName, "_init.o", yes, InitObjFileName),
+	module_name_to_file_name(ModuleName, "_init.$O", yes, InitObjFileName),
 	module_name_to_file_name(ModuleName, "_init.pic_o", yes,
 							InitPicObjFileName),
 
@@ -2789,10 +2795,10 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 
 	%
 	% We include $(foo.cs) first in the dependency list, before $(foo.os).
-	% This is not strictly necessary, since the .o files themselves depend
+	% This is not strictly necessary, since the .$O files themselves depend
 	% on the .c files, but we do it to ensure that Make will try to
 	% create all the C files first, thus detecting errors early,
-	% rather than first spending time compiling C files to .o,
+	% rather than first spending time compiling C files to .$O,
 	% which could be a waste of time if the program contains errors.
 	%
 	% But we can only do this if we don't remove the .c files,
@@ -2823,7 +2829,8 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 
 	module_name_to_file_name(SourceModuleName, ".split", yes,
 				SplitExeFileName),
-	module_name_to_file_name(ModuleName, ".split.a", yes, SplitLibFileName),
+	module_name_to_file_name(ModuleName, ".split.$A",
+			yes, SplitLibFileName),
 	io__write_strings(DepStream, [
 		SplitExeFileName, " : ", SplitLibFileName, " ",
 			InitObjFileName, " ", All_MLLibsDepString, "\n",
@@ -2835,8 +2842,9 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 	io__write_strings(DepStream, [
 		SplitLibFileName, " : $(", MakeVarName, ".dir_os) $(MLOBJS)\n",
 		"\trm -f ", SplitLibFileName, "\n",
-		"\t$(AR) $(ALL_ARFLAGS) ", SplitLibFileName, " $(MLOBJS)\n",
-		"\tfind $(", MakeVarName, ".dirs) -name ""*.o"" -print | \\\n",
+		"\t$(AR) $(ALL_ARFLAGS) $(AR_LIBFILE_OPT)",
+		SplitLibFileName, " $(MLOBJS)\n",
+		"\tfind $(", MakeVarName, ".dirs) -name ""*.$O"" -print | \\\n",
 		"\t	xargs $(AR) q ", SplitLibFileName, "\n",
 		"\t$(RANLIB) $(ALL_RANLIBFLAGS) ", SplitLibFileName, "\n\n"
 	]),
@@ -2856,7 +2864,8 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 		MaybeTransOptsVar = ""
 	},
 	module_name_to_lib_file_name("lib", ModuleName, "", no, LibTargetName),
-	module_name_to_lib_file_name("lib", ModuleName, ".a", yes, LibFileName),
+	module_name_to_lib_file_name("lib", ModuleName, ".$A",
+			yes, LibFileName),
 	module_name_to_lib_file_name("lib", ModuleName, ".so", yes,
 							SharedLibFileName),
 	module_name_to_lib_file_name("lib", ModuleName,
@@ -2886,7 +2895,7 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 		LibFileName, " : $(", MakeVarName, ".maybe_cs) ",
 			"$(", MakeVarName, ".os) $(MLOBJS)\n",
 		"\trm -f ", LibFileName, "\n",
-		"\t$(AR) $(ALL_ARFLAGS) ", LibFileName, " ",
+		"\t$(AR) $(ALL_ARFLAGS) $(AR_LIBFILE_OPT)", LibFileName, " ",
 			"$(", MakeVarName, ".os) $(MLOBJS)\n",
 		"\t$(RANLIB) $(ALL_RANLIBFLAGS) ", LibFileName, "\n\n"
 	]),
@@ -3055,7 +3064,7 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 	]),
 	io__write_strings(DepStream, [
 		"\t-rm -f ",
-			ExeFileName, " ",
+			ExeFileName, "$(EXT_FOR_EXE) ",
 			SplitExeFileName, " ",
 			SplitLibFileName, " ",
 			InitFileName, " ",
@@ -3094,7 +3103,7 @@ append_to_init_list(DepStream, InitFileName, Module) -->
 
 %-----------------------------------------------------------------------------%
 	% get_extra_link_objects(Modules, DepsMap, ExtraLinkObjs) },
-	% Find any extra .o files that should be linked into the executable.
+	% Find any extra .$O files that should be linked into the executable.
 	% Currently only looks for fact table object files.
 :- pred get_extra_link_objects(list(module_name), deps_map,
 		assoc_list(file_name, module_name)).
