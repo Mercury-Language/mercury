@@ -107,9 +107,12 @@ in an HLDS goal.
 
 	- undef_types.m checks for undefined types.
 	- typecheck.m handles type checking, overloading resolution &
-	  module name resolution, and fully qualifies all predicate and
-	  functor names.  It sets the map(var, type) field in the pred_info.
-	  When it has finished, typecheck.m calls
+	  module name resolution, and almost fully qualifies all predicate
+	  and functor names.  It sets the map(var, type) field in the
+	  pred_info.  However, typecheck.m doesn't figure out the pred_id
+	  for function calls or calls to overloaded predicates; that can't
+	  be done in a single pass of typechecking, and so it is done
+	  later on in modes.m.  When it has finished, typecheck.m calls
 	  clause_to_proc.m to make duplicate copies of the clauses for
 	  each different mode of a predicate; all later stages work on
 	  procedures, not predicates.
@@ -124,7 +127,10 @@ in an HLDS goal.
 	  if necessary, and annotates each goal with a delta-instmap
 	  that specifies the changes in instantiatedness of each
 	  variable over that goal.  It also converts higher-order
-	  pred terms into lambda expressions.
+	  pred terms into lambda expressions.  It also converts function
+	  calls into predicate calls, and does the final step
+	  of figuring out which pred_id to use for a call to an
+	  overloaded predicate.
 	  It use the following sub-modules:
 		mode_info.m (the main data structure for mode analysis)
 		delay_info.m (a sub-component of the mode_info data
