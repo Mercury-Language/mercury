@@ -47,9 +47,9 @@
 
 #endif	/* PROFILE_TIME */
 
-/*******************
-  Need to make these command line options
-*******************/
+/*
+** Need to make these command line options
+*/
 #define CALL_TABLE_SIZE 4096
 #define TIME_TABLE_SIZE 4096
 #define CLOCK_TICKS     5
@@ -60,8 +60,7 @@
 ** profiling node information 
 */
 
-typedef struct s_prof_call_node
-{
+typedef struct s_prof_call_node {
         Code			*Callee;
         Code			*Caller;
         unsigned long		count;
@@ -69,8 +68,7 @@ typedef struct s_prof_call_node
         struct s_prof_call_node	*right;
 } prof_call_node;
 
-typedef struct s_prof_time_node
-{
+typedef struct s_prof_time_node {
         Code			*Addr;
         unsigned long		count;
         struct s_prof_time_node	*left;
@@ -188,9 +186,9 @@ static void
 checked_signal(int sig, void (*handler)(int))
 {
 	/*
-	   We really need sigaction and SA_RESTART, otherwise profiling signals
-	   might interrupt I/O, causing a profiled program to get I/O errors.
-	   But if we haven't got it, I guess we just have to punt...
+	** We really need sigaction and SA_RESTART, otherwise profiling signals
+	** might interrupt I/O, causing a profiled program to get I/O errors.
+	** But if we haven't got it, I guess we just have to punt...
 	*/
 #ifndef SA_RESTART
 #define SA_RESTART 0
@@ -224,7 +222,8 @@ checked_signal(int sig, void (*handler)(int))
 
 #ifdef PROFILE_TIME
 
-static void prof_time_profile(int);
+static void 
+prof_time_profile(int);
 
 /*
 **	prof_init_time_profile:
@@ -279,15 +278,15 @@ prof_call_profile(Code *Callee, Code *Caller)
 
 	node_addr = &addr_pair_table[hash_value];
 	while ((node = *node_addr) != NULL) {
-		if (node->Callee < Callee)
+		if (node->Callee < Callee) {
 			node_addr = &node->left;
-		else if (node->Callee > Callee)
+		} else if (node->Callee > Callee) {
 			node_addr = &node->right;
-		else if (node->Caller < Caller)
+		} else if (node->Caller < Caller) {
 			node_addr = &node->left;
-		else if (node->Caller > Caller)
+		} else if (node->Caller > Caller) {
 			node_addr = &node->right;
-		else {
+		} else {
 			node->count++;
 			in_profiling_code = FALSE;
 			return;
@@ -326,8 +325,9 @@ prof_time_profile(int signum)
 	int		hash_value;
 
 	/* Ignore any signals we get in this function or in prof_call_profile */
-	if (in_profiling_code)
+	if (in_profiling_code) {
 		return;
+	}
 
 	in_profiling_code = TRUE;
 
@@ -335,11 +335,11 @@ prof_time_profile(int signum)
 
 	node_addr = &addr_table[hash_value];
 	while ((node = *node_addr) != NULL) {
-		if (node->Addr < prof_current_proc)
+		if (node->Addr < prof_current_proc) {
 			node_addr = &node->left;
-		else if (node->Addr > prof_current_proc)
+		} else if (node->Addr > prof_current_proc) {
 			node_addr = &node->right;
-		else {
+		} else {
 			node->count++;
 			in_profiling_code = FALSE;
 			return;
@@ -355,7 +355,7 @@ prof_time_profile(int signum)
 
 	in_profiling_code = FALSE;
 	return;
-}
+} /* end prof_time_profile() */
 
 /* ======================================================================== */
 
@@ -398,8 +398,9 @@ prof_output_addr_pair_table(void)
 	int		i;
 
 	fptr = checked_fopen("Prof.CallPair", "create", "w");
-	for (i = 0; i < CALL_TABLE_SIZE ; i++)
+	for (i = 0; i < CALL_TABLE_SIZE ; i++) {
 		print_addr_pair_node(fptr, addr_pair_table[i]);
+	}
 
 	checked_fclose(fptr, "Prof.CallPair");
 }
@@ -460,8 +461,9 @@ prof_output_addr_table()
 	int  i;
 
 	fptr = checked_fopen("Prof.Counts", "append to", "a");
-	for (i = 0; i < TIME_TABLE_SIZE ; i++)
+	for (i = 0; i < TIME_TABLE_SIZE ; i++) {
 		print_time_node(fptr, addr_table[i]);
+	}
 
 	checked_fclose(fptr, "Prof.Counts");
 }

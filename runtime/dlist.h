@@ -17,8 +17,7 @@
 ** in the header node.
 */
 
-typedef	struct	s_list
-{
+typedef	struct	s_list {
 	union {
 		void 	*l_data;
 		int	l_length;
@@ -69,4 +68,4 @@ extern	int	length(const List *);
 extern	void	dlist_delete(List *, List *, void (*)(void *));
 extern	void	oldlist(List *, void (*)(void *));
 
-#endif /* DLIST_H */
+#endif /* not DLIST_H */

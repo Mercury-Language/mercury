@@ -15,8 +15,7 @@
 #include "mercury_types.h"	/* for `Code *' */
 #include "dlist.h"		/* for `List' */
 
-typedef struct s_label
-{
+typedef struct s_label {
 	const char	*e_name;   /* name of the procedure	     */
 	Code		*e_addr;   /* address of the code	     */
 } Label;
@@ -31,4 +30,4 @@ extern  int 	entry_table_size;
 	/* expected number of entries in the table */
 	/* we allocate 8 bytes per entry */
 
-#endif
+#endif /* not LABEL_H */

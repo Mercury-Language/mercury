@@ -112,4 +112,4 @@ register	Word	mr9 __asm__("l4");
 
 #endif
 
-#endif /* SPARC_REGS_H */
+#endif /* not SPARC_REGS_H */

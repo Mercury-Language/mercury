@@ -46,4 +46,4 @@ extern	bool		check_space;
 extern	int		time_at_start;
 extern	int		time_at_last_stat;
 
-#endif
+#endif /* not WRAPPER_H */

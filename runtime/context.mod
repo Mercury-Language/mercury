@@ -42,7 +42,8 @@ Code     *do_join_and_continue_where_to;
 
 static void init_free_context_list(void);
 
-void init_processes(void)
+void 
+init_processes(void)
 {
 	int i;
 	pid_t pid;
@@ -75,7 +76,8 @@ void init_processes(void)
 
 }
 
-void init_process_context(void)
+void 
+init_process_context(void)
 {
 	init_heap();
 
@@ -89,7 +91,8 @@ void init_process_context(void)
 	}
 }
 
-static void init_free_context_list(void)
+static void 
+init_free_context_list(void)
 {
 	int i;
 	Context *tmp;
@@ -99,10 +102,11 @@ static void init_free_context_list(void)
 	*free_context_list_ptr = allocate_array(Context, INITIAL_NUM_CONTEXTS);
 	tmp = *free_context_list_ptr;
 	for (i = 0; i < INITIAL_NUM_CONTEXTS; i++) {
-		if (i != INITIAL_NUM_CONTEXTS - 1)
+		if (i != INITIAL_NUM_CONTEXTS - 1) {
 			tmp[i].next = &(tmp[i+1]);
-		else
+		} else {
 			tmp[i].next = NULL;
+		}
 		tmp[i].resume = NULL;
 		tmp[i].context_succip = NULL;
 		tmp[i].detstack_zone = NULL;
@@ -113,7 +117,8 @@ static void init_free_context_list(void)
 	}
 }
 
-Context *new_context(void)
+Context *
+new_context(void)
 {
 	Context *c;
 
@@ -160,7 +165,8 @@ Context *new_context(void)
 	return c;
 }
 
-void delete_context(Context *c)
+void 
+delete_context(Context *c)
 {
 	get_lock(free_context_list_lock);
 	assert(free_context_list_ptr != NULL);
@@ -169,7 +175,8 @@ void delete_context(Context *c)
 	release_lock(free_context_list_lock);
 }
 
-void flounder(void)
+void 
+flounder(void)
 {
 	fatal_error("computation floundered.");
 }

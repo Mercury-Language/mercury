@@ -13,13 +13,9 @@
 #include "mercury_types.h"	/* for `Word' */
 
 #ifdef USE_SINGLE_PREC_FLOAT
-
 typedef float Float;
-
 #else
-
 typedef double Float;
-
 #endif
 
 #ifdef BOXED_FLOAT 
@@ -76,4 +72,4 @@ static Float word_to_float(Word w) { union FloatWord tmp = w; return tmp.f; }
 
 #endif /* not BOXED_FLOAT */
 
-#endif /* MERCURY_FLOAT_H */
+#endif /* not MERCURY_FLOAT_H */

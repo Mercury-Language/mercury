@@ -19,6 +19,9 @@
 ** NUM_REAL_R_REGS in ../configure.in.
 */
 
+#ifndef REGORDER_H
+#define REGORDER_H
+
 #define r1		count_usage(R_RN(1), mr2)
 #define r2		count_usage(R_RN(2), mr3)
 #define r3		count_usage(R_RN(3), mr4)
@@ -92,3 +95,5 @@
 	35, \
 	36, \
 }
+
+#endif /* not REGORDER_H */

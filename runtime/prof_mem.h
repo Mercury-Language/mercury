@@ -27,4 +27,4 @@ void *prof_malloc(size_t);
 
 #define prof_make(t)	((t *) prof_malloc(sizeof(t)))
 
-#endif
+#endif /* not PROF_MEM_H */

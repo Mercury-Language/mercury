@@ -21,10 +21,11 @@
 #include <stdio.h>	/* for `FILE' and `size_t' */
 
 
-	/* This constant is also defined in the  */
-	/* CLP(R) headers, but we'll define it   */
-	/* here too to make installation simpler */
-	/* XXX This is naughty                   */
+	/* This constant is also defined in the
+	** CLP(R) headers, but we'll define it
+	** here too to make installation simpler
+	** XXX This is naughty     
+	*/
 #ifdef SMALLER
 #define DEF_TRAIL_SZ  (60000)
 #else
@@ -46,8 +47,9 @@ extern int trtop;
 extern int **trail;
 extern int stamp;
 
-	/* CLP(R) streams - these might need to be */
-	/* used if the solver gets into trouble    */
+	/* CLP(R) streams - these might need to be
+	** used if the solver gets into trouble
+	*/
 extern FILE *error_stream;
 extern FILE *outfile;
 
@@ -66,12 +68,14 @@ extern void fatal(const char *);
 ** trtop.
 */
 
-	/* store a ticket in the stack frame starting at x. */
-	/* XXX We abort if stack overflow occurs. We should */
-	/* XXX instead dynamically re-allocate a new stack  */
-	/* XXX Note also that we assume that 'stamp'        */
-	/* XXX doesn't wrap around here, but that is an     */
-	/* XXX assumption of the CLP(R) internals.          */
+	/* 
+	** store a ticket in the stack frame starting at x.
+	** XXX We abort if stack overflow occurs. We should 
+	** XXX instead dynamically re-allocate a new stack 
+	** XXX Note also that we assume that 'stamp'
+	** XXX doesn't wrap around here, but that is an 
+	** XXX assumption of the CLP(R) internals. 
+	*/
 #define store_ticket(x)					\
 	do {						\
 	if(no_solver_stack_overflow()) {		\
@@ -103,17 +107,21 @@ extern void fatal(const char *);
 		}					\
 	} while(0)
 
-	/* discard the top ticket */
-	/* Note: the stack pointer is decremented by 4 because */
-	/* each stack frame contains 4 values                  */
+	/* 
+	** discard the top ticket
+	** Note: the stack pointer is decremented by 4 because
+	** each stack frame contains 4 values
+	*/
 #define discard_ticket()	(mercury_solver_sp -= 4)
 
-	/* trail the solver */
-	/* XXX note that the cast to int in the following      */
-	/* XXX macro seems to assume that                      */
-	/* XXX sizeof(int) == sizeof(int *), which is a little */
-	/* XXX non-portable, but this is part of the CLP(R)    */
-	/* XXX internals.                                      */
+	/* 
+	** trail the solver 
+	** XXX note that the cast to int in the following 
+	** XXX macro seems to assume that
+	** XXX sizeof(int) == sizeof(int *), which is a little
+	** XXX non-portable, but this is part of the CLP(R)
+	** XXX internals.
+	*/
 #define mercury_solver_untrail_to(new_trtop)		\
 	do {						\
 	int i;						\
@@ -143,4 +151,4 @@ extern void fatal(const char *);
 		outfile = stderr;			\
 	} while (0)
 
-#endif
+#endif /* not MERCURY_SOLVER_BACKTRACK_H */

@@ -44,4 +44,4 @@ extern	void	print_time(const char *str, int total);
 		VAR = get_run_time () - otime;			\
 	} while (0)	
 
-#endif
+#endif /* not TIMING_H */

@@ -80,4 +80,4 @@
 #define	mr35	fake_reg[35]
 #define	mr36	fake_reg[36]
 
-#endif /* NO_REGS_H */
+#endif /* not NO_REGS_H */

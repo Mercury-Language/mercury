@@ -14,8 +14,10 @@
 
 #include "conf.h"
 
-/* Note that we require sizeof(Word) == sizeof(Integer) == sizeof(Code*) */
-/* this is assured by the autoconfiguration script */
+/* 
+** Note that we require sizeof(Word) == sizeof(Integer) == sizeof(Code*)
+** this is assured by the autoconfiguration script
+*/
 
 typedef	unsigned WORD_TYPE	Word;
 typedef WORD_TYPE		Integer;
@@ -35,4 +37,4 @@ typedef Word	SpinLock;
 */
 #define SUCCESS_INDICATOR r1
 
-#endif MERCURY_TYPES_H
+#endif /* not MERCURY_TYPES_H */

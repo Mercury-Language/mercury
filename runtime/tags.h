@@ -105,4 +105,4 @@
 						body((pt), TAG_VAR);	\
 			} while(0)
 
-#endif	/* TAGS_H */
+#endif	/* not TAGS_H */

@@ -63,12 +63,12 @@
 	: tag_incr_hp_n((dest),(tag),(count))				\
 	)
 
-#else
+#else /* not INLINE_ALLOC */
 
 #define	tag_incr_hp(dest,tag,count) \
 	tag_incr_hp_n((dest),(tag),(count))
 
-#endif
+#endif /* not INLINE_ALLOC */
 
 #define	mark_hp(dest)	((void)0)
 #define	restore_hp(src)	((void)0)
@@ -78,8 +78,7 @@
 #define hp_alloc_atomic(count) \
 			(incr_hp_atomic(hp,(count)), hp += (count), (void)0)
 
-#else
-/* ! CONSERVATIVE_GC */
+#else /* not CONSERVATIVE_GC */
 
 #define	tag_incr_hp(dest,tag,count)	(			\
 				(dest) = (Word)mkword(tag, (Word)hp),	\
@@ -111,7 +110,7 @@
 #define hp_alloc(count)  incr_hp(hp,count)
 #define hp_alloc_atomic(count) incr_hp_atomic(count)
 
-#endif /* ! CONSERVATIVE_GC */
+#endif /* not CONSERVATIVE_GC */
 
 #define	incr_hp(dest,count)	tag_incr_hp((dest),mktag(0),(count))
 #define	incr_hp_atomic(dest,count) \
@@ -190,4 +189,4 @@
 					save_transient_registers();	\
 				} while (0)
 
-#endif /* HEAP_H */
+#endif /* not HEAP_H */

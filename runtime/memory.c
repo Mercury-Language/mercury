@@ -178,7 +178,8 @@ size_t	next_offset(void);
 static void init_memory_arena(void);
 static void init_zones(void);
 
-void init_memory(void)
+void 
+init_memory(void)
 {
 	/*
 	** Convert all the sizes are from kilobytes to bytes and
@@ -212,23 +213,27 @@ void init_memory(void)
 	*/
 
 #ifndef CONSERVATIVE_GC
-	if (heap_zone_size >= heap_size)
+	if (heap_zone_size >= heap_size) {
 		heap_zone_size = unit;
-	if (solutions_heap_zone_size >= solutions_heap_size)
+	}
+	if (solutions_heap_zone_size >= solutions_heap_size) {
 		solutions_heap_zone_size = unit;
+	}
 #endif
 
-	if (detstack_zone_size >= detstack_size)
+	if (detstack_zone_size >= detstack_size) {
 		detstack_zone_size = unit;
+	}
 
-	if (nondstack_zone_size >= nondstack_size)
+	if (nondstack_zone_size >= nondstack_size) {
 		nondstack_zone_size = unit;
+	}
 
 
 	init_memory_arena();
 	init_zones();
 	setup_signal();
-}
+} /* end init_memory() */
 
 /*
 ** init_memory_arena() allocates (if necessary) the top-level memory pool
@@ -238,7 +243,8 @@ void init_memory(void)
 ** manages the heap, and without GC, we can allocate memory using memalign
 ** or malloc.
 */
-static void init_memory_arena()
+static void 
+init_memory_arena()
 {
 #ifdef	PARALLEL
   #ifndef	CONSERVATIVE_GC
@@ -253,7 +259,8 @@ static void init_memory_arena()
 #endif
 }
 
-static void init_zones()
+static void 
+init_zones()
 {
 	int i;
 	size_t fake_reg_offset;
@@ -268,8 +275,7 @@ static void init_zones()
 	*/
 	used_memory_zones = NULL;
 	free_memory_zones = zone_table;
-	for(i = 0; i < MAX_ZONES; i++)
-	{
+	for(i = 0; i < MAX_ZONES; i++) {
 		zone_table[i].name = "unused";
 		zone_table[i].id = i;
 		zone_table[i].bottom = NULL;
@@ -284,10 +290,11 @@ static void init_zones()
 #endif
 		zone_table[i].hardmax = NULL;
 #endif
-		if (i+1 < MAX_ZONES)
+		if (i+1 < MAX_ZONES) {
 			zone_table[i].next = &(zone_table[i+1]);
-		else
+		} else {
 			zone_table[i].next = NULL;
+		}
 	}
 
 	offset_counter = allocate_object(int);
@@ -297,14 +304,16 @@ static void init_zones()
 
 	fake_reg_offset = (Unsigned) fake_reg % pcache_size;
 
-	for (i = 0; i < CACHE_SLICES - 1; i++)
+	for (i = 0; i < CACHE_SLICES - 1; i++) {
 		offset_vector[i] =
 			(fake_reg_offset + pcache_size / CACHE_SLICES)
 			% pcache_size;
-}
+	}
+} /* end init_zones() */
 
 
-void init_heap(void)
+void 
+init_heap(void)
 {
 #ifndef CONSERVATIVE_GC
 	heap_zone = create_zone("heap", 1, heap_size, next_offset(),
@@ -322,7 +331,8 @@ void init_heap(void)
 #endif
 }
 
-MemoryZone *get_zone(void)
+MemoryZone *
+get_zone(void)
 {
 	MemoryZone *zone;
 
@@ -331,8 +341,7 @@ MemoryZone *get_zone(void)
 	** link it onto the used-list and return it.
 	*/
 	zone = free_memory_zones;
-	if (zone == NULL)
-	{
+	if (zone == NULL) {
 		fatal_error("no more memory zones");
 	}
 	free_memory_zones = free_memory_zones->next;
@@ -343,7 +352,8 @@ MemoryZone *get_zone(void)
 	return zone;
 }
 
-void unget_zone(MemoryZone *zone)
+void 
+unget_zone(MemoryZone *zone)
 {
 	MemoryZone *prev, *tmp;
 
@@ -352,15 +362,16 @@ void unget_zone(MemoryZone *zone)
 	** the list, then link it onto the start of the free-list.
 	*/
 	for(prev = NULL, tmp = used_memory_zones;
-		tmp && tmp != zone; prev = tmp, tmp = tmp->next) ;
-	if (tmp == NULL)
-		fatal_error("memory zone not found!");
-	if (prev == NULL)
+		tmp && tmp != zone; prev = tmp, tmp = tmp->next) 
 	{
-		used_memory_zones = used_memory_zones->next;
+		/* VOID */
 	}
-	else
-	{
+	if (tmp == NULL) {
+		fatal_error("memory zone not found!");
+	}
+	if (prev == NULL) {
+		used_memory_zones = used_memory_zones->next;
+	} else {
 		prev->next = tmp->next;
 	}
 
@@ -378,7 +389,8 @@ void unget_zone(MemoryZone *zone)
 ** a fixed amount (eg 2Kb) so that as primary caches get bigger, we
 ** allocate more offsets across them.
 */
-size_t	next_offset(void)
+size_t	
+next_offset(void)
 {
 	size_t offset;
 
@@ -393,7 +405,8 @@ size_t	next_offset(void)
 	return offset;
 }
 
-MemoryZone *create_zone(const char *name, int id, size_t size,
+MemoryZone *
+create_zone(const char *name, int id, size_t size,
 		size_t offset, size_t redsize,
 		bool ((*handler)(Word *addr, MemoryZone *zone, void *context)))
 {
@@ -414,12 +427,12 @@ MemoryZone *create_zone(const char *name, int id, size_t size,
 #endif
 
   #ifdef	PARALLEL
-	if (numprocs > 1)
+	if (numprocs > 1) {
 		fatal_error("shared memory not supported yet");
+	}
   #endif
 	base = memalign(unit, total_size);
-	if (base == NULL)
-	{
+	if (base == NULL) {
 		char buf[2560];
 		sprintf(buf, "unable allocate memory zone: %s#%d", name, id);
 		fatal_error(buf);
@@ -428,15 +441,17 @@ MemoryZone *create_zone(const char *name, int id, size_t size,
 	return construct_zone(name, id, base, size, offset, redsize, handler);
 }
 
-MemoryZone *construct_zone(const char *name, int id, Word *base,
+MemoryZone *
+construct_zone(const char *name, int id, Word *base,
 		size_t size, size_t offset, size_t redsize,
 		bool ((*handler)(Word *addr, MemoryZone *zone, void *context)))
 {
 	MemoryZone	*zone;
 	size_t		total_size;
 
-	if (base == NULL)
+	if (base == NULL) {
 		fatal_error("construct_zone called with NULL pointer");
+	}
 
 	zone = get_zone();
 
@@ -468,8 +483,7 @@ MemoryZone *construct_zone(const char *name, int id, Word *base,
 #ifdef	HAVE_SIGINFO
 	zone->redzone_base = zone->redzone = (Word *)
 			round_up((Unsigned)base + size - redsize, unit);
-	if (mprotect((char *)zone->redzone, redsize + unit, MY_PROT) < 0)
-	{
+	if (mprotect((char *)zone->redzone, redsize + unit, MY_PROT) < 0) {
 		char buf[2560];
 		sprintf(buf, "unable to set %s#%d redzone\n"
 			"base=%p, redzone=%p",
@@ -478,8 +492,7 @@ MemoryZone *construct_zone(const char *name, int id, Word *base,
 	}
 #else	/* !HAVE_SIGINFO */
 	zone->hardmax = (Word *) ((char *)zone->top-unit);
-	if (mprotect((char *)zone->hardmax, unit, MY_PROT) < 0)
-	{
+	if (mprotect((char *)zone->hardmax, unit, MY_PROT) < 0) {
 		char buf[2560];
 		sprintf(buf, "unable to set %s#%d hardmax\n"
 			"base=%p, hardmax=%p",
@@ -490,9 +503,10 @@ MemoryZone *construct_zone(const char *name, int id, Word *base,
 #endif	/* HAVE_MPROTECT */
 
 	return zone;
-}
+} /* end construct_zone() */
 
-void reset_zone(MemoryZone *zone)
+void 
+reset_zone(MemoryZone *zone)
 {
 #if	defined(HAVE_MPROTECT) && defined(HAVE_SIGINFO)
 	zone->redzone = zone->redzone_base;
@@ -516,7 +530,8 @@ void reset_zone(MemoryZone *zone)
 
 #ifdef	SPEED
 
-static void print_dump_stack(void)
+static void 
+print_dump_stack(void)
 {
 	const char *msg = "You can get a stack dump by using grade debug\n";
 	write(STDERR, msg, strlen(msg));
@@ -524,7 +539,8 @@ static void print_dump_stack(void)
 
 #else /* !SPEED */
 
-static void print_dump_stack(void)
+static void 
+print_dump_stack(void)
 {
 	int	i;
 	int	start;
@@ -535,8 +551,7 @@ static void print_dump_stack(void)
 	write(STDERR, buf, strlen(buf));
 
 	i = 0;
-	while (i < dumpindex)
-	{
+	while (i < dumpindex) {
 		start = i;
 		count = 1;
 		i++;
@@ -549,12 +564,13 @@ static void print_dump_stack(void)
 			i++;
 		}
 
-		if (count > 1)
+		if (count > 1) {
 			sprintf(buf, "%s * %d\n",
 				((char **)(dumpstack_zone->min))[start], count);
-		else
+		} else {
 			sprintf(buf, "%s\n",
 				((char **)(dumpstack_zone->min))[start]);
+		}
 
 		write(STDERR, buf, strlen(buf));
 	}
@@ -562,7 +578,7 @@ static void print_dump_stack(void)
 	strcpy(buf, "\nend of stack dump\n");
 	write(STDERR, buf, strlen(buf));
 
-}
+} /* end print_dump_stack() */
 
 #endif /* SPEED */
 
@@ -572,7 +588,8 @@ static void print_dump_stack(void)
 ** from a signal handler.
 */
 
-static void fatal_abort(void *context, const char *main_msg, int dump)
+static void 
+fatal_abort(void *context, const char *main_msg, int dump)
 {
 	char	*context_msg;
 
@@ -580,13 +597,15 @@ static void fatal_abort(void *context, const char *main_msg, int dump)
 	write(STDERR, main_msg, strlen(main_msg));
 	write(STDERR, context_msg, strlen(context_msg));
 
-	if (dump)
+	if (dump) {
 		print_dump_stack();
+	}
 
 	_exit(1);
 }
 
-static bool try_munprotect(void *addr, void *context)
+static bool 
+try_munprotect(void *addr, void *context)
 {
 	Word *    fault_addr;
 	Word *    new_zone;
@@ -596,49 +615,48 @@ static bool try_munprotect(void *addr, void *context)
 
 	zone = used_memory_zones;
 
-	if (memdebug)
+	if (memdebug) {
 		fprintf(stderr, "caught fault at %p\n", (void *)addr);
+	}
 
-	while(zone != NULL)
-	{
-		if (memdebug)
-		{
+	while(zone != NULL) {
+		if (memdebug) {
 			fprintf(stderr, "checking %s#%d: %p - %p\n",
 				zone->name, zone->id, (void *) zone->redzone,
 				(void *) zone->top);
 		}
 
-		if (zone->redzone <= fault_addr && fault_addr <= zone->top)
-		{
+		if (zone->redzone <= fault_addr && fault_addr <= zone->top) {
 
-			if (memdebug)
+			if (memdebug) {
 				fprintf(stderr, "address is in %s#%d redzone\n",
 					zone->name, zone->id);
+			}
 
 			return zone->handler(fault_addr, zone, context);
 		}
 		zone = zone->next;
 	}
 
-	if (memdebug)
-	fprintf(stderr, "address not in any redzone.\n");
+	if (memdebug) {
+		fprintf(stderr, "address not in any redzone.\n");
+	}
 
 	return FALSE;
-}
+} /* end try_munprotect() */
 
-bool default_handler(Word *fault_addr, MemoryZone *zone, void *context)
+bool 
+default_handler(Word *fault_addr, MemoryZone *zone, void *context)
 {
     Word *new_zone;
     size_t zone_size;
 
     new_zone = (Word *) round_up((Unsigned) fault_addr + sizeof(Word), unit);
 
-    if (new_zone <= zone->hardmax)
-    {
+    if (new_zone <= zone->hardmax) {
 	zone_size = (char *)new_zone - (char *)zone->redzone;
 
-	if (memdebug)
-	{
+	if (memdebug) {
 	    fprintf(stderr, "trying to unprotect %s#%d from %p to %p (%x)\n",
 	    zone->name, zone->id, (void *) zone->redzone, (void *) new_zone,
 	    (int)zone_size);
@@ -655,8 +673,7 @@ bool default_handler(Word *fault_addr, MemoryZone *zone, void *context)
 
 	zone->redzone = new_zone;
 
-	if (memdebug)
-	{
+	if (memdebug) {
 	    fprintf(stderr, "successful: %s#%d redzone now %p to %p\n",
 		zone->name, zone->id, (void *) zone->redzone,
 		(void *) zone->top);
@@ -665,8 +682,7 @@ bool default_handler(Word *fault_addr, MemoryZone *zone, void *context)
     }
     else
     {
-	if (memdebug)
-	{
+	if (memdebug) {
 	    fprintf(stderr, "can't unprotect last page of %s#%d\n",
 		zone->name, zone->id);
 	    fflush(stdout);
@@ -682,9 +698,10 @@ bool default_handler(Word *fault_addr, MemoryZone *zone, void *context)
     }
 
     return FALSE;
-}
+} /* end default_handler() */
 
-bool null_handler(Word *fault_addr, MemoryZone *zone, void *context)
+bool 
+null_handler(Word *fault_addr, MemoryZone *zone, void *context)
 {
 	return FALSE;
 }
@@ -692,17 +709,20 @@ bool null_handler(Word *fault_addr, MemoryZone *zone, void *context)
 #else
 /* not HAVE_MPROTECT || not HAVE_SIGINFO */
 
-static bool try_munprotect(void *addr, void *context)
+static bool 
+try_munprotect(void *addr, void *context)
 {
 	return FALSE;
 }
 
-bool default_handler(Word *fault_addr, MemoryZone *zone, void *context)
+bool 
+default_handler(Word *fault_addr, MemoryZone *zone, void *context)
 {
 	return FALSE;
 }
 
-bool null_handler(Word *fault_addr, MemoryZone *zone, void *context)
+bool 
+null_handler(Word *fault_addr, MemoryZone *zone, void *context)
 {
 	return FALSE;
 }
@@ -711,38 +731,36 @@ bool null_handler(Word *fault_addr, MemoryZone *zone, void *context)
 
 #ifdef	HAVE_SIGINFO
 
-static void setup_signal(void)
+static void 
+setup_signal(void)
 {
 	struct sigaction	act;
 
 	act.sa_flags = SA_SIGINFO | SA_RESTART;
-	if (sigemptyset(&act.sa_mask) != 0)
-	{
+	if (sigemptyset(&act.sa_mask) != 0) {
 		perror("Mercury runtime: cannot set clear signal mask");
 		exit(1);
 	}
 
 	act.SIGACTION_FIELD = complex_bushandler;
-	if (sigaction(SIGBUS, &act, NULL) != 0)
-	{
+	if (sigaction(SIGBUS, &act, NULL) != 0) {
 		perror("Mercury runtime: cannot set SIGBUS handler");
 		exit(1);
 	}
 
 	act.SIGACTION_FIELD = complex_segvhandler;
-	if (sigaction(SIGSEGV, &act, NULL) != 0)
-	{
+	if (sigaction(SIGSEGV, &act, NULL) != 0) {
 		perror("Mercury runtime: cannot set SIGSEGV handler");
 		exit(1);
 	}
 }
 
-static void complex_bushandler(int sig, siginfo_t *info, void *context)
+static void 
+complex_bushandler(int sig, siginfo_t *info, void *context)
 {
 	fflush(stdout);
 
-	if (sig != SIGBUS || !info || info->si_signo != SIGBUS)
-	{
+	if (sig != SIGBUS || !info || info->si_signo != SIGBUS) {
 		fprintf(stderr, "\n*** Mercury runtime: ");
 		fprintf(stderr, "caught strange bus error ***\n");
 		exit(1);
@@ -751,28 +769,25 @@ static void complex_bushandler(int sig, siginfo_t *info, void *context)
 	fprintf(stderr, "\n*** Mercury runtime: ");
 	fprintf(stderr, "caught bus error ***\n");
 
-	if (info->si_code > 0)
-	{
+	if (info->si_code > 0) {
 		fprintf(stderr, "cause: ");
 		switch (info->si_code)
 		{
-
-	case BUS_ADRALN:
+		case BUS_ADRALN:
 			fprintf(stderr, "invalid address alignment\n");
 			break;
 
-	case BUS_ADRERR:
+		case BUS_ADRERR:
 			fprintf(stderr, "non-existent physical address\n");
 			break;
 
-	case BUS_OBJERR:
+		case BUS_OBJERR:
 			fprintf(stderr, "object specific hardware error\n");
 			break;
 
-	default:
+		default:
 			fprintf(stderr, "unknown\n");
 			break;
-
 		}
 
 		fprintf(stderr, "%s", explain_context((ucontext_t *) context));
@@ -783,35 +798,35 @@ static void complex_bushandler(int sig, siginfo_t *info, void *context)
 	dump_prev_locations();
 	fprintf(stderr, "exiting from signal handler\n");
 	exit(1);
-}
+} /* end complex_bushandler() */
 
-static void explain_segv(siginfo_t *info, void *context)
+static void 
+explain_segv(siginfo_t *info, void *context)
 {
 	fflush(stdout);
 
 	fprintf(stderr, "\n*** Mercury runtime: ");
 	fprintf(stderr, "caught segmentation violation ***\n");
 
-	if (!info) return;
+	if (!info) {
+		return;
+	}
 
-	if (info->si_code > 0)
-	{
+	if (info->si_code > 0) {
 		fprintf(stderr, "cause: ");
 		switch (info->si_code)
 		{
-
-	case SEGV_MAPERR:
+		case SEGV_MAPERR:
 			fprintf(stderr, "address not mapped to object\n");
 			break;
 
-	case SEGV_ACCERR:
+		case SEGV_ACCERR:
 			fprintf(stderr, "bad permissions for mapped object\n");
 			break;
 
-	default:
+		default:
 			fprintf(stderr, "unknown\n");
 			break;
-
 		}
 
 		fprintf(stderr, "%s", explain_context((ucontext_t *) context));
@@ -821,10 +836,10 @@ static void explain_segv(siginfo_t *info, void *context)
 	}
 }
 
-static void complex_segvhandler(int sig, siginfo_t *info, void *context)
+static void 
+complex_segvhandler(int sig, siginfo_t *info, void *context)
 {
-	if (sig != SIGSEGV || !info || info->si_signo != SIGSEGV)
-	{
+	if (sig != SIGSEGV || !info || info->si_signo != SIGSEGV) {
 		fprintf(stderr, "\n*** Mercury runtime: ");
 		fprintf(stderr, "caught strange segmentation violation ***\n");
 		exit(1);
@@ -836,26 +851,29 @@ static void complex_segvhandler(int sig, siginfo_t *info, void *context)
 	** only print them if try_munprotect fails.
 	*/
 
-	if (memdebug)
+	if (memdebug) {
 		explain_segv(info, context);
+	}
 
-	if (try_munprotect(info->si_addr, context))
-	{
-		if (memdebug)
+	if (try_munprotect(info->si_addr, context)) {
+		if (memdebug) {
 			fprintf(stderr, "returning from signal handler\n\n");
+		}
 
 		return;
 	}
 
-	if (!memdebug)
+	if (!memdebug) {
 		explain_segv(info, context);
+	}
 
 	dump_prev_locations();
 	fprintf(stderr, "exiting from signal handler\n");
 	exit(1);
 }
 
-static char *explain_context(ucontext_t *context)
+static char *
+explain_context(ucontext_t *context)
 {
 	static	char	buf[100];
 
@@ -880,39 +898,39 @@ static char *explain_context(ucontext_t *context)
 
 #else /* ! HAVE_SIGINFO */
 
-static void setup_signal(void)
+static void 
+setup_signal(void)
 {
-	if (signal(SIGBUS, simple_sighandler) == SIG_ERR)
-	{
+	if (signal(SIGBUS, simple_sighandler) == SIG_ERR) {
 		perror("cannot set SIGBUS handler");
 		exit(1);
 	}
 
-	if (signal(SIGSEGV, simple_sighandler) == SIG_ERR)
-	{
+	if (signal(SIGSEGV, simple_sighandler) == SIG_ERR) {
 		perror("cannot set SIGSEGV handler");
 		exit(1);
 	}
 }
 
-static void simple_sighandler(int sig)
+static void 
+simple_sighandler(int sig)
 {
 	fflush(stdout);
 	fprintf(stderr, "*** Mercury runtime: ");
 
 	switch (sig)
 	{
-
-case SIGBUS:
+	case SIGBUS:
 		fprintf(stderr, "caught bus error ***\n");
 		break;
 
-case SIGSEGV: 	fprintf(stderr, "caught segmentation violation ***\n");
+	case SIGSEGV:
+		fprintf(stderr, "caught segmentation violation ***\n");
 		break;
 
-default:	fprintf(stderr, "caught unknown signal %d ***\n", sig);
+	default:
+		fprintf(stderr, "caught unknown signal %d ***\n", sig);
 		break;
-
 	}
 
 	dump_prev_locations();
@@ -924,57 +942,66 @@ default:	fprintf(stderr, "caught unknown signal %d ***\n", sig);
 
 #ifdef	CONSERVATIVE_GC
 
-void *allocate_bytes(size_t numbytes)
+void *
+allocate_bytes(size_t numbytes)
 {
 	void	*tmp;
 
   #ifdef	PARALLEL
-	if (numprocs > 1)
+	if (numprocs > 1) {
 		fatal_error("shared memory not supported (yet)");
+	}
   #endif
 
 	tmp = GC_MALLOC(numbytes);
 	
-	if (tmp == NULL)
+	if (tmp == NULL) {
 		fatal_error("could not allocate memory");
+	}
 
 	return tmp;
 }
 
 #else
 
-void *allocate_bytes(size_t numbytes)
+void *
+allocate_bytes(size_t numbytes)
 {
 	void	*tmp;
 
   #ifdef	PARALLEL
-	if (numprocs > 1)
+	if (numprocs > 1) {
 		fatal_error("shared memory not supported (yet)");
+	}
   #endif
 
 	tmp = malloc(numbytes);
 	
-	if (tmp == NULL)
+	if (tmp == NULL) {
 		fatal_error("could not allocate memory");
+	}
 
 	return tmp;
 }
 
 #endif
 
-void deallocate_memory(void *ptr)
+void 
+deallocate_memory(void *ptr)
 {
 #ifdef CONSERVATIVE_GC
   #ifdef	PARALLEL
-	if (numprocs > 1)
+	if (numprocs > 1) {
 		fatal_error("shared memory not supported");
+	}
   #endif
 	GC_FREE(ptr);
 
 #else
   #ifdef	PARALLEL
-	if (numprocs > 1)
+	if (numprocs > 1) {
 		fatal_error("shared memory not supported");
+	}
   #endif
 	free(ptr);
 #endif

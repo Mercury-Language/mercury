@@ -49,7 +49,8 @@ the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
 
 /* Return time used so far, in milliseconds.  */
 
-int get_run_time (void)
+int 
+get_run_time (void)
 {
 #ifdef HAVE_SYSCONF
   struct tms tms;
@@ -91,7 +92,8 @@ int get_run_time (void)
 #endif
 }
 
-void print_time (const char *str, int total)
+void 
+print_time (const char *str, int total)
 {
   fprintf (stderr,
 	   "%s = %d.%03d\n",

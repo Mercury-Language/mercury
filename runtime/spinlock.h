@@ -37,7 +37,7 @@ extern	void deallocate_lock(SpinLock *);
 void get_lock(SpinLock *);
 void release_lock(SpinLock *);
 
-#endif /* end of #if 0 */
+#endif /* 0 */
 
 /*---------------------------------------------------------------------------*/
 
@@ -74,7 +74,7 @@ void do_spinunlock(SpinLock *s);
 
 #define deallocate_lock(lock)	deallocate(lock)
 
-#else
+#else /* not PARALLEL */
 
 #define	get_lock(addr)		do { } while (0)
 
@@ -85,6 +85,6 @@ void do_spinunlock(SpinLock *s);
 #define deallocate_lock(lock)	do { } while(0)
 
 
-#endif /* PARALLEL */
+#endif /* not PARALLEL */
 
-#endif
+#endif /* not SPINLOCK_H */

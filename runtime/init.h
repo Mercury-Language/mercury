@@ -66,4 +66,4 @@ extern	void		(*address_of_init_modules)(void);
 extern	void		(*address_of_init_gc)(void);
 #endif
 
-#endif /* INIT_H */
+#endif /* not INIT_H */

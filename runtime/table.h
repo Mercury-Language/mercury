@@ -14,8 +14,7 @@
 #include "std.h"	/* for bool */
 #include "dlist.h"	/* for List */
 
-typedef	struct	s_table
-{
+typedef	struct	s_table {
 	int		ta_size;
 	List		**ta_store;
 	const void *	(*ta_key)(const void *);    /* applied to entries */
@@ -40,4 +39,4 @@ extern	bool	tab_insert_table(const Table *, void *);
 extern	List	*tab_get_all_entries(const Table *);
 extern	int	tab_str_to_int(const char *);
 
-#endif
+#endif /* not TABLE_H */

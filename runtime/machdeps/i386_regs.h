@@ -137,4 +137,4 @@ register	Word	mr1 __asm__("edi");	/* succip */
 #define	mr35	fake_reg[35]
 #define	mr36	fake_reg[36]
 
-#endif /* I386_REGS_H */
+#endif /* not I386_REGS_H */

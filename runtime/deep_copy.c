@@ -24,7 +24,8 @@ static Word * make_type_info(Word *term_type_info, Word *arg_pseudo_type_info,
 /*
 ** Due to the depth of the control here, we'll use 4 space indentation.
 */
-Word deep_copy(Word data, Word *type_info, Word *lower_limit, Word *upper_limit)
+Word 
+deep_copy(Word data, Word *type_info, Word *lower_limit, Word *upper_limit)
 {
     Word layout_entry, *entry_value, *data_value;
     int data_tag, entry_tag; 
@@ -56,12 +57,12 @@ Word deep_copy(Word data, Word *type_info, Word *lower_limit, Word *upper_limit)
                     case TYPELAYOUT_UNASSIGNED_VALUE:
                         fatal_error("Attempt to use an UNASSIGNED tag "
                             "in deep_copy");
-                    break;
+                        break;
 
                     case TYPELAYOUT_UNUSED_VALUE:
                         fatal_error("Attempt to use an UNUSED tag "
                             "in deep_copy");
-                    break;
+                        break;
 
                     case TYPELAYOUT_STRING_VALUE:
                         if (in_range(data_value)) {
@@ -72,19 +73,19 @@ Word deep_copy(Word data, Word *type_info, Word *lower_limit, Word *upper_limit)
                         } else {
                             new_data = data;
                         }
-                    break;
+                        break;
 
                     case TYPELAYOUT_FLOAT_VALUE:
                         new_data = data;
-                    break;
+                        break;
 
                     case TYPELAYOUT_INT_VALUE:
                         new_data = data;
-                    break;
+                        break;
 
                     case TYPELAYOUT_CHARACTER_VALUE:
                         new_data = data;
-                    break;
+                        break;
 
                     case TYPELAYOUT_UNIV_VALUE: 
                             /* if the univ is stored in range, copy it */ 
@@ -103,7 +104,7 @@ Word deep_copy(Word data, Word *type_info, Word *lower_limit, Word *upper_limit)
                         } else {
                             new_data = data;
                         }
-                    break;
+                        break;
 
                     case TYPELAYOUT_PREDICATE_VALUE:
                     {
@@ -139,18 +140,18 @@ Word deep_copy(Word data, Word *type_info, Word *lower_limit, Word *upper_limit)
                                 lower_limit, upper_limit);
                         }
                         new_data = (Word) new_closure;
+                        break;
                     }
-                    break;
 
                     default:
                         fatal_error("Invalid tag value in deep_copy");
-                    break;
+                        break;
                 }
             } else {
                     /* a constant or enumeration */
                 new_data = data;	/* just a copy of the actual item */
             }
-        break;
+            break;
 
         case TYPELAYOUT_SIMPLE_TAG: 
 
@@ -182,7 +183,7 @@ Word deep_copy(Word data, Word *type_info, Word *lower_limit, Word *upper_limit)
             } else {
                 new_data = data;
             }
-        break;
+            break;
 
         case TYPELAYOUT_COMPLICATED_TAG:
         {
@@ -227,8 +228,8 @@ Word deep_copy(Word data, Word *type_info, Word *lower_limit, Word *upper_limit)
             } else {
                 new_data = data;
             }
+            break;
         }
-        break;
 
         case_TYPELAYOUT_EQUIV_TAG:
             /* note: we treat no_tag types just like equivalences */
@@ -245,17 +246,18 @@ Word deep_copy(Word data, Word *type_info, Word *lower_limit, Word *upper_limit)
                     free(new_type_info);
                 }
             }
-        break;
+            break;
 
         default:
             fatal_error("Unknown layout tag in deep copy");
-        break;
+            break;
     }
 
     return new_data;
-}
+} /* end deep_copy() */
 
-Word get_base_type_layout_entry(Word data_tag, Word *type_info)
+Word 
+get_base_type_layout_entry(Word data_tag, Word *type_info)
 {
 	Word *base_type_info, *base_type_layout;
 
@@ -272,37 +274,38 @@ Word get_base_type_layout_entry(Word data_tag, Word *type_info)
 
 
 	/* 
-	 * Given a type_info (term_type_info) which contains a
-	 * base_type_info pointer and possibly other type_infos
-	 * giving the values of the type parameters of this type,
-	 * and a pseudo-type_info (arg_pseudo_type_info), which contains a
-	 * base_type_info pointer and possibly other type_infos
-	 * giving EITHER
-	 * 	- the values of the type parameters of this type,
-	 * or	- an indication of the type parameter of the
-	 * 	  term_type_info that should be substituted here
-	 *
-	 * This returns a fully instantiated type_info, a version of the
-	 * arg_pseudo_type_info with all the type variables filled in.
-	 * If there are no type variables to fill in, we return the
-	 * arg_pseudo_type_info, unchanged. Otherwise, we allocate
-	 * memory using malloc().  If memory is allocated, the boolean
-	 * argument (passed by reference) is set to TRUE, otherwise it is
-	 * set to FALSE.  It is the caller's responsibility to check whether 
-	 * the call to make_type_info allocated memory, and if so, free
-	 * it.
-	 *
-	 * This code could be tighter. In general, we want to
-	 * handle our own allocations rather than using malloc().
-	 * Also, we might be able to do only one traversal.
-	 *
-	 * NOTE: If you are changing this code, you might also need
-	 * to change the code in create_type_info in library/std_util.m,
-	 * which does much the same thing, only allocating on the 
-	 * heap instead of using malloc.
-	 */
+	** Given a type_info (term_type_info) which contains a
+	** base_type_info pointer and possibly other type_infos
+	** giving the values of the type parameters of this type,
+	** and a pseudo-type_info (arg_pseudo_type_info), which contains a
+	** base_type_info pointer and possibly other type_infos
+	** giving EITHER
+	** 	- the values of the type parameters of this type,
+	** or	- an indication of the type parameter of the
+	** 	  term_type_info that should be substituted here
+	**
+	** This returns a fully instantiated type_info, a version of the
+	** arg_pseudo_type_info with all the type variables filled in.
+	** If there are no type variables to fill in, we return the
+	** arg_pseudo_type_info, unchanged. Otherwise, we allocate
+	** memory using malloc().  If memory is allocated, the boolean
+	** argument (passed by reference) is set to TRUE, otherwise it is
+	** set to FALSE.  It is the caller's responsibility to check whether 
+	** the call to make_type_info allocated memory, and if so, free
+	** it.
+	**
+	** This code could be tighter. In general, we want to
+	** handle our own allocations rather than using malloc().
+	** Also, we might be able to do only one traversal.
+	**
+	** NOTE: If you are changing this code, you might also need
+	** to change the code in create_type_info in library/std_util.m,
+	** which does much the same thing, only allocating on the 
+	** heap instead of using malloc.
+	*/
 
-Word * make_type_info(Word *term_type_info, Word *arg_pseudo_type_info,
+Word *
+make_type_info(Word *term_type_info, Word *arg_pseudo_type_info,
 	bool *allocated) 
 {
 	int arity, i;
@@ -334,9 +337,9 @@ Word * make_type_info(Word *term_type_info, Word *arg_pseudo_type_info,
 	}
 
 		/* 
-		 * See if any of the arguments were polymorphic.
-		 * If so, substitute.
-		 */
+		** See if any of the arguments were polymorphic.
+		** If so, substitute.
+		*/
 	if (i > 0) {
 		type_info = checked_malloc(arity * sizeof(Word));
 		*allocated = TRUE;
@@ -354,4 +357,4 @@ Word * make_type_info(Word *term_type_info, Word *arg_pseudo_type_info,
 	} else {
 		return arg_pseudo_type_info;
 	}
-}
+} /* end make_type_info() */

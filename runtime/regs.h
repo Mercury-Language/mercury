@@ -97,21 +97,27 @@
 
 #define r(n) mr((n) + NUM_SPECIAL_REG - 1)
 
-/* the save_registers() macro copies the physical machine registers
-   to their corresponding slots in the fake_reg array */
+/* 
+** the save_registers() macro copies the physical machine registers
+** to their corresponding slots in the fake_reg array 
+*/
 
 #define save_registers() 	save_regs_to_mem(fake_reg)
 
-/* the restore_registers() macro sets the physical machine registers
-   to the values in their corresponding slots in the fake_reg array */
+/* 
+** the restore_registers() macro sets the physical machine registers
+** to the values in their corresponding slots in the fake_reg array 
+*/
 
 #define restore_registers() 	restore_regs_from_mem(fake_reg)
 
-/* the save_transient_registers() and restore_transient_registers()
-   macros are similar to save_registers() and restore_registers()
-   except that they only save/restore registers which can be
-   affected by calling or returning from a C function (e.g.
-   by sliding register windows on SPARCs).  */
+/* 
+** the save_transient_registers() and restore_transient_registers()
+** macros are similar to save_registers() and restore_registers()
+** except that they only save/restore registers which can be
+** affected by calling or returning from a C function (e.g.
+** by sliding register windows on SPARCs).
+*/
 
 #define save_transient_registers()    save_transient_regs_to_mem(fake_reg)
 #define restore_transient_registers() restore_transient_regs_from_mem(fake_reg)
@@ -140,4 +146,11 @@
 #define	MF_RN	(ORD_RN + 4)
 #define MAX_RN	(ORD_RN + 5)
 
-#endif /* REGS_H */
+#include <stdio.h>		/* for `FILE' */
+#include "dlist.h"		/* for `List' */
+
+extern	Word	get_reg(int);
+extern	Word	set_reg(int, Word);
+
+
+#endif /* not REGS_H */

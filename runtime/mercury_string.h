@@ -64,12 +64,14 @@ extern	int	hash_string(Word);
 	})
 #endif
 
-/* if we're not using gcc, the actual definition of hash_string is in aux.c */
-/* it uses the macro HASH_STRING_FUNC_BODY below */
+/* 
+** if we're not using gcc, the actual definition of hash_string is in aux.c
+** it uses the macro HASH_STRING_FUNC_BODY below
+*/
 
 #define HASH_STRING_FUNC_BODY				\
 	   int hash;					\
 	   do_hash_string(hash, s);			\
 	   return hash;
 
-#endif MERCURY_STRING_H
+#endif /* not MERCURY_STRING_H */

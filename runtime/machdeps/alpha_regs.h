@@ -88,4 +88,4 @@ register	Word	mr6 __asm__("$15");	/* the frame pointer (fp) */
 #define	mr35	fake_reg[35]
 #define	mr36	fake_reg[36]
 
-#endif /* ALPHA_REGS_H */
+#endif /* not ALPHA_REGS_H */

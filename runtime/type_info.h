@@ -279,4 +279,4 @@
 #define UNIV_OFFSET_FOR_TYPEINFO 		0
 #define UNIV_OFFSET_FOR_DATA			1
 
-#endif
+#endif /* not TYPEINFO_H */

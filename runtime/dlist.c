@@ -17,7 +17,8 @@
 **	Make an empty list.
 */
 
-List *makelist0(void)
+List *
+makelist0(void)
 {
 	reg	List	*list;
 
@@ -33,7 +34,8 @@ List *makelist0(void)
 **	Make a list with the argument is its only element.
 */
 
-List *list_makelist(void * data)
+List *
+list_makelist(void * data)
 {
 	reg	List	*list;
 
@@ -47,12 +49,14 @@ List *list_makelist(void * data)
 **	Add some data to the head of a list.
 */
 
-List *list_addhead(List *list, void *data)
+List *
+list_addhead(List *list, void *data)
 {
 	reg	List	*item;
 
-	if (list == NULL)
+	if (list == NULL) {
 		list = makelist0();
+	}
 
 	item = make(List);
 	ldata(item) = data;
@@ -72,12 +76,14 @@ List *list_addhead(List *list, void *data)
 **	Add some data to the tail of a list.
 */
 
-List *list_addtail(List *list, void *data)
+List *
+list_addtail(List *list, void *data)
 {
 	reg	List	*item;
 
-	if (list == NULL)
+	if (list == NULL) {
 		list = makelist0();
+	}
 
 	item = make(List);
 	ldata(item) = data;
@@ -98,18 +104,19 @@ List *list_addtail(List *list, void *data)
 **	list2 is not meaningful after the operation, it is freed.
 */
 
-List *addlist(List *list1, List *list2)
+List *
+addlist(List *list1, List *list2)
 {
-	if (list1 == NULL)
+	if (list1 == NULL) {
 		list1 = makelist0();
+	}
 
-	if (list2 == NULL)
+	if (list2 == NULL) {
 		list2 = makelist0();
+	}
 
-	if (llength(list2) > 0)
-	{
-		if (llength(list1) == 0)
-		{
+	if (llength(list2) > 0) {
+		if (llength(list1) == 0) {
 			ldata(list1) = ldata(list2);
 			/* pointers from header	*/
 			next(list1) = next(list2);
@@ -117,9 +124,7 @@ List *addlist(List *list1, List *list2)
 			/* pointers to header	*/
 			prev(next(list1)) = list1;
 			next(prev(list1)) = list1;
-		}
-		else
-		{
+		} else {
 			llength(list1) = llength(list1) + llength(list2);
 			/* end of list 1 to start of list 2	*/
 			next(prev(list1)) = next(list2);
@@ -140,18 +145,22 @@ List *addlist(List *list1, List *list2)
 **	but only the data pointers of the second are used.
 */
 
-List *addndlist(List *list1, List *list2)
+List *
+addndlist(List *list1, List *list2)
 {
 	reg	List	*ptr;
 
-	if (list1 == NULL)
+	if (list1 == NULL) {
 		list1 = makelist0();
+	}
 
-	if (list2 == NULL)
+	if (list2 == NULL) {
 		list2 = makelist0();
+	}
 
-	for_list (ptr, list2)
+	for_list (ptr, list2) {
 		addtail(list1, ldata(ptr));
+	}
 
 	return list1;
 }
@@ -160,7 +169,8 @@ List *addndlist(List *list1, List *list2)
 **	Insert into a list before a given position.
 */
 
-void list_insert_before(List *list, List *where, void *data)
+void 
+list_insert_before(List *list, List *where, void *data)
 {
 	reg	List	*item;
 
@@ -180,7 +190,8 @@ void list_insert_before(List *list, List *where, void *data)
 **	Insert into a list after a given position.
 */
 
-void list_insert_after(List *list, List *where, void *data)
+void 
+list_insert_after(List *list, List *where, void *data)
 {
 	reg	List	*item;
 
@@ -194,16 +205,20 @@ void list_insert_after(List *list, List *where, void *data)
 	/* neighbour's pointers */
 	next(prev(item)) = item;
 	prev(next(item)) = item;
+
+	return;
 }
 
 /*
 **	Return the length of a given list.
 */
 
-int length(const List *list)
+int 
+length(const List *list)
 {
-	if (list == NULL)
+	if (list == NULL) {
 		return 0;
+	}
 
 	return llength(list);
 }
@@ -213,22 +228,28 @@ int length(const List *list)
 **	and maybe the data.
 */
 
-void dlist_delete(List *list, List *item, void (* func)(void *))
+void 
+dlist_delete(List *list, List *item, void (* func)(void *))
 {
-	if (list == NULL)
+	if (list == NULL) {
 		return;
+	}
 
-	if (item == NULL)
+	if (item == NULL) {
 		return;
+	}
 
-	if (func != NULL)
+	if (func != NULL) {
 		func(ldata(item));
+	}
 
 	llength(list)--;
 	next(prev(item)) = next(item);
 	prev(next(item)) = prev(item);
 
 	oldmem(item);
+
+	return;
 }
 
 /*
@@ -237,25 +258,29 @@ void dlist_delete(List *list, List *item, void (* func)(void *))
 **	by newmem, then all Hell will break loose.
 */
 
-void oldlist(List *list, void (* func)(void *))
+void 
+oldlist(List *list, void (* func)(void *))
 {
 	reg	List	*ptr;
 	reg	List	*item;
 
-	if (list == NULL)
+	if (list == NULL) {
 		return;
+	}
 
 	ptr = next(list);
-	while (ptr != list)
-	{
+	while (ptr != list) {
 		item = ptr;
 		ptr = next(ptr);
 
-		if (func != NULL)
+		if (func != NULL) {
 			func(ldata(item));
+		}
  
 		oldmem(item);
 	}
 	 
 	oldmem(list);
+
+	return;
 }

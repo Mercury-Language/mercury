@@ -231,4 +231,4 @@ extern	void	*allocate_bytes(size_t numbytes);
 
 void deallocate_memory(void *);
 
-#endif
+#endif /* not MEMORY_H */

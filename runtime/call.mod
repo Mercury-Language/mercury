@@ -66,8 +66,9 @@ do_call_det_closure:
 		}
 	} /* else do nothing because i == 3 */
 
-	for (i = 1; i <= num_in_args; i++) 
+	for (i = 1; i <= num_in_args; i++) {
 		virtual_reg(i) = field(0, closure, i+1); /* copy args */
+	}
 
 	restore_registers();
 
@@ -86,8 +87,9 @@ det_closure_return:
 #else
 	save_registers();
 
-	for (i = 1; i <= num_out_args; i++)
+	for (i = 1; i <= num_out_args; i++) {
 		virtual_reg(i) = virtual_reg(i+num_in_args);
+	}
 
 	restore_registers();
 #endif
@@ -121,8 +123,9 @@ do_call_semidet_closure:
 		}
 	} /* else do nothing because i == 3 */
 
-	for (i = 1; i <= num_in_args; i++) 
+	for (i = 1; i <= num_in_args; i++) {
 		virtual_reg(i) = field(0, closure, i+1); /* copy args */
+	}
 #else
 	if (num_in_args < 2) {
 		for (i = 1; i <= num_extra_args; i++) {
@@ -134,8 +137,9 @@ do_call_semidet_closure:
 		}
 	} /* else do nothing because i == 2 */
 
-	for (i = 1; i <= num_in_args; i++) 
+	for (i = 1; i <= num_in_args; i++) {
 		virtual_reg(i+1) = field(0, closure, i+1); /* copy args */
+	}
 #endif
 
 	restore_registers();
@@ -155,8 +159,9 @@ semidet_closure_return:
 #else
 	save_registers();
 
-	for (i = 1; i <= num_out_args; i++)
+	for (i = 1; i <= num_out_args; i++) {
 		virtual_reg(i+1) = virtual_reg(i+1+num_in_args);
+	}
 
 	restore_registers();
 #endif
@@ -190,8 +195,9 @@ do_call_nondet_closure:
 		}
 	} /* else do nothing because i == 3 */
 
-	for (i = 1; i <= num_in_args; i++) 
+	for (i = 1; i <= num_in_args; i++) {
 		virtual_reg(i) = field(0, closure, i+1); /* copy args */
+	}
 
 	restore_registers();
 
@@ -209,8 +215,9 @@ nondet_closure_return:
 #else
 	save_registers();
 
-	for (i = 1; i <= num_out_args; i++)
+	for (i = 1; i <= num_out_args; i++) {
 		virtual_reg(i) = virtual_reg(i+num_in_args);
+	}
 
 	restore_registers();
 #endif
@@ -251,15 +258,12 @@ mercury__unify_2_0:
 	y = mercury__unify__y;
 
 	base_type_info = field(0, mercury__unify__typeinfo, 0);
-	if (base_type_info == 0)
-	{
+	if (base_type_info == 0) {
 		type_arity = 0;
 		unify_pred = (Code *) field(0, mercury__unify__typeinfo,
 				OFFSET_FOR_UNIFY_PRED);
 		/* args_base will not be needed */
-	}
-	else
-	{
+	} else {
 		type_arity = field(0, base_type_info, OFFSET_FOR_COUNT);
 		unify_pred = (Code *) field(0, base_type_info,
 				OFFSET_FOR_UNIFY_PRED);
@@ -324,14 +328,11 @@ mercury__index_2_0:
 
 	x = r2;
 	base_type_info = field(0, r1, 0);
-	if (base_type_info == 0)
-	{
+	if (base_type_info == 0) {
 		type_arity = 0;
 		index_pred = (Code *) field(0, r1, OFFSET_FOR_INDEX_PRED);
 		/* args_base will not be needed */
-	}
-	else
-	{
+	} else {
 		type_arity = field(0, base_type_info, OFFSET_FOR_COUNT);
 		index_pred = (Code *) field(0, base_type_info,
 				OFFSET_FOR_INDEX_PRED);
@@ -441,15 +442,12 @@ mercury__compare_3_3:
 	y = mercury__compare__y;
 
 	base_type_info = field(0, mercury__compare__typeinfo, 0);
-	if (base_type_info == 0)
-	{
+	if (base_type_info == 0) {
 		type_arity = 0;
 		compare_pred = (Code *) field(0, mercury__compare__typeinfo,
 				OFFSET_FOR_COMPARE_PRED);
 		/* args_base will not be needed */
-	}
-	else
-	{
+	} else {
 		type_arity = field(0, base_type_info, OFFSET_FOR_COUNT);
 		compare_pred = (Code *) field(0, base_type_info,
 				OFFSET_FOR_COMPARE_PRED);
@@ -548,16 +546,13 @@ mercury__term_to_type_2_0:
 	term = mercury__term_to_type__term;
 
 	base_type_info = field(0, mercury__term_to_type__typeinfo, 0);
-	if (base_type_info == 0)
-	{
+	if (base_type_info == 0) {
 		type_arity = 0;
 		term_to_type_pred = (Code *) field(0,
 				mercury__term_to_type__typeinfo,
 				OFFSET_FOR_TERM_TO_TYPE_PRED);
 		/* args_base will not be needed */
-	}
-	else
-	{
+	} else {
 		type_arity = field(0, base_type_info, OFFSET_FOR_COUNT);
 		term_to_type_pred = (Code *) field(0, base_type_info,
 				OFFSET_FOR_TERM_TO_TYPE_PRED);
@@ -661,15 +656,12 @@ mercury__type_to_term_2_0:
 	x = r2;
 
 	base_type_info = field(0, r1, 0);
-	if (base_type_info == 0)
-	{
+	if (base_type_info == 0) {
 		type_arity = 0;
 		type_to_term_pred = (Code *) field(0, r1,
 				OFFSET_FOR_TYPE_TO_TERM_PRED);
 		/* args_base will not be needed */
-	}
-	else
-	{
+	} else {
 		type_arity = field(0, base_type_info, OFFSET_FOR_COUNT);
 		type_to_term_pred = (Code *) field(0, base_type_info,
 				OFFSET_FOR_TYPE_TO_TERM_PRED);

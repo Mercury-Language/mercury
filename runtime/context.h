@@ -43,7 +43,7 @@
 #ifndef CONTEXT_H
 #define CONTEXT_H
 
-#include "regs.h"		/* for hp */
+#include "regs.h"		/* for hp. Must come before system headers. */
 
 #include <sys/types.h>		/* for pid_t */
 

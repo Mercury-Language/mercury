@@ -16,4 +16,5 @@ void	*global_pointer_2;
 
 void dummy_function_call(void)
 {
+	return;
 }

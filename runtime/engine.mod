@@ -46,7 +46,8 @@ static jmp_buf *engine_jmp_buf;
 ** local context for this process including the heap and solutions heap.
 ** If it is the original process, it allocates the initial context for main.
 */
-void init_engine(void)
+void 
+init_engine(void)
 {
 	init_memory();
 	init_processes();
@@ -55,13 +56,15 @@ void init_engine(void)
 #ifndef USE_GCC_NONLOCAL_GOTOS
 	make_label("engine_done", LABEL(engine_done));
 #endif
+	return;
 }
 
 /*
 ** Initialize the virtual machine registers
 */
 
-static void init_registers(void)
+static void 
+init_registers(void)
 {
 #ifndef CONSERVATIVE_GC
 	hp = heap_zone->min;					
@@ -75,6 +78,8 @@ static void init_registers(void)
 	nondetstack_zone->min = maxfr;				
 
 	save_transient_registers();
+
+	return;
 }
 
 /*
@@ -88,13 +93,16 @@ static void init_registers(void)
 ** until work becomes available.
 */
 
-void start_mercury_engine(Code *entry_point)
+void 
+start_mercury_engine(Code *entry_point)
 {
 	if (my_procnum == 0) {
 		call_engine(entry_point);
 	} else {
 		call_engine(ENTRY(do_runnext));
 	}
+
+	return;
 }
 
 /*
@@ -135,7 +143,8 @@ void start_mercury_engine(Code *entry_point)
 **	and another portable version that works on standard ANSI C compilers.
 */
 
-void call_engine(Code *entry_point)
+void 
+call_engine(Code *entry_point)
 {
 
 	jmp_buf		curr_jmp_buf;
@@ -157,8 +166,7 @@ void call_engine(Code *entry_point)
 	** exit.
 	*/
 
-	if (setjmp(curr_jmp_buf))
-	{
+	if (setjmp(curr_jmp_buf)) {
 		debugmsg0("...caught longjmp\n");
 		restore_registers();
 		engine_jmp_buf = prev_jmp_buf;
@@ -172,7 +180,8 @@ void call_engine(Code *entry_point)
 
 /* The gcc-specific version */
 
-void call_engine_inner(Code *entry_point)
+void 
+call_engine_inner(Code *entry_point)
 {
 	/*
 	** Allocate some space for local variables in other
@@ -250,22 +259,23 @@ Define_label(engine_done);
 	** was actually used.
 	*/
 
-	if (check_space)
-	{
+	if (check_space) {
 		int	low = 0, high = LOCALS_SIZE;
 		int	used_low, used_high;
 
-		while (low < high && locals[low] == MAGIC_MARKER)
+		while (low < high && locals[low] == MAGIC_MARKER) {
 			low++;
-		while (low < high && locals[high - 1] == MAGIC_MARKER)
+		}
+		while (low < high && locals[high - 1] == MAGIC_MARKER) {
 			high--;
+		}
 		used_low = high;
 		used_high = LOCALS_SIZE - low;
 		printf("max locals used:  %3d bytes (probably)\n",
 			min(high, LOCALS_SIZE - low));
 		printf("(low mark = %d, high mark = %d)\n", low, high);
 	}
-#endif
+#endif /* not SPEED */
 
 	/*
 	** Despite the above precautions with allocating a large chunk
@@ -280,10 +290,11 @@ Define_label(engine_done);
 	save_registers();
 	debugmsg0("longjmping out...\n");
 	longjmp(*engine_jmp_buf, 1);
-}}
+}} /* end call_engine_inner() */
 
 /* with nonlocal gotos, we don't save the previous locations */
-void dump_prev_locations(void) {}
+void 
+dump_prev_locations(void) {}
 
 #else /* not USE_GCC_NONLOCAL_GOTOS */
 
@@ -302,14 +313,16 @@ void dump_prev_locations(void) {}
 ** would get mucked up because of the function call from call_engine_inner().
 */
 
-static Code *engine_done(void)
+static Code *
+engine_done(void)
 {
 	save_registers();
 	debugmsg0("longjmping out...\n");
 	longjmp(*engine_jmp_buf, 1);
 }
 
-static Code *engine_init_registers(void)
+static Code *
+engine_init_registers(void)
 {
 	restore_transient_registers();
 	succip = engine_done;
@@ -331,7 +344,8 @@ typedef Code	*Func(void);
 static FuncPtr	prev_fps[NUM_PREV_FPS];
 static int	prev_fp_index = 0;
 
-void dump_prev_locations(void)
+void 
+dump_prev_locations(void)
 {
 	int i, pos;
 
@@ -347,7 +361,8 @@ void dump_prev_locations(void)
 	}
 }
 
-static void call_engine_inner(Code *entry_point)
+static void 
+call_engine_inner(Code *entry_point)
 {
 	reg	Func	*fp;
 
@@ -386,7 +401,7 @@ if (!tracedebug) {
 		debugsreg();
 		fp = (*fp)();
 	}
-}
+} /* end call_engine_inner() */
 #endif /* not USE_GCC_NONLOCAL_GOTOS */
 
 BEGIN_MODULE(special_labels_module)

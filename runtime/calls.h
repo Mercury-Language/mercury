@@ -128,4 +128,4 @@
 			GOTO(succip);				\
 		} while (0)
 
-#endif /* CALLS_H */
+#endif /* not CALLS_H */

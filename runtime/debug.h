@@ -135,26 +135,3 @@
 
 #endif
 
-#if 0
-
-/* DEFINITIONS TO SUPPORT MANUAL DEBUGGING */
-
-#ifdef __GNUC__
-#define mklist(start,len) \
-	({						\
-		Word tmp;				\
-		save_transient_registers();			\
-		tmp = do_mklist(start,len);		\
-		restore_transient_registers();			\
-		/* return */ tmp;			\
-	})
-#else
-	/*
-	** if it's not gcc, then we can't use global register variables,
-	** so we don't need to worry about saving/restoring them
-	** (which would have been tricky to do in a portable macro)
-	*/
-#define mklist(start,len) do_mklist(start,len)
-#endif
-
-#endif

@@ -49,7 +49,8 @@ static void	*next	 = NULL;	/* Pointer to next data block	*/
 /*----------------------------------------------------------------------------*/
 
 
-void *prof_malloc(size_t size)
+void *
+prof_malloc(size_t size)
 {
 	register void *p;
 

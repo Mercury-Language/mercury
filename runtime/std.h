@@ -69,4 +69,4 @@ extern	void	*newmem(size_t);
 extern	void	*resizemem(void *, size_t);
 extern	void	oldmem(void *);
 
-#endif /* STD_H */
+#endif /* not STD_H */

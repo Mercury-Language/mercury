@@ -55,9 +55,6 @@ extern	void	printregs(const char *msg);
 
 extern	void	printlabel(/* const */ Code *w);
 
-#if 0 /* this used to be used for some hand-coded examples */
-extern	Word	do_mklist(int start, int len);
-#endif
 
 #if __GNUC__
 	#define NO_RETURN __attribute__((noreturn))
@@ -70,4 +67,4 @@ extern	void	fatal_error(const char *msg) NO_RETURN;
 #include <stddef.h>	/* for size_t */
 void *checked_malloc(size_t n);
 
-#endif /* MISC_H */
+#endif /* not MISC_H */

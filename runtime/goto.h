@@ -575,4 +575,4 @@
 	}
 #define AND ,	/* used to separate the labels */
 
-#endif /* GOTO_H */
+#endif /* not GOTO_H */

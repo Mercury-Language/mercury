@@ -84,4 +84,4 @@ register	Word	mr7 __asm__("s7");
 #define	mr35	fake_reg[35]
 #define	mr36	fake_reg[36]
 
-#endif /* MIPS_REGS_H */
+#endif /* not MIPS_REGS_H */

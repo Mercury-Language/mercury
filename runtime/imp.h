@@ -58,4 +58,4 @@
 #include	"prof.h"
 #include	"misc.h"
 
-#endif /* IMP_H */
+#endif /* not IMP_H */

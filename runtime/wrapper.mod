@@ -129,7 +129,8 @@ static	void	print_register_usage_counts(void);
 
 Declare_entry(do_interpreter);
 
-int mercury_runtime_main(int argc, char **argv)
+int 
+mercury_runtime_main(int argc, char **argv)
 {
 #if NUM_REAL_REGS > 0
 	Word c_regs[NUM_REAL_REGS];
@@ -207,9 +208,10 @@ int mercury_runtime_main(int argc, char **argv)
 	restore_regs_from_mem(c_regs);
 
 	return mercury_exit_status;
-}
+} /* end runtime_mercury_main() */
 
-void do_init_modules(void)
+void 
+do_init_modules(void)
 {
 	static	bool	done = FALSE;
 
@@ -279,7 +281,7 @@ make_argv(const char *string, char **args_ptr, char ***argv_ptr, int *argc_ptr)
 			}
 		}
 		args_len++;
-	}
+	} /* end for */
 
 	/*
 	** Allocate the space
@@ -326,12 +328,12 @@ make_argv(const char *string, char **args_ptr, char ***argv_ptr, int *argc_ptr)
 			}
 		}
 		*d++ = '\0';
-	}
+	} /* end for */
 
 	*args_ptr = args;
 	*argv_ptr = argv;
 	*argc_ptr = argc;
-}
+} /* end make_argv() */
 
 
 /**  
@@ -398,82 +400,85 @@ process_options(int argc, char **argv)
 		switch (c)
 		{
 
-		case 'a':	benchmark_all_solns = TRUE;
-				break;
+		case 'a':
+			benchmark_all_solns = TRUE;
+			break;
 
-		case 'c':	check_space = TRUE;
-				break;
+		case 'c':
+			check_space = TRUE;
+			break;
 
-		case 'd':	if (streq(optarg, "b"))
-					nondstackdebug = TRUE;
-				else if (streq(optarg, "c"))
-					calldebug    = TRUE;
-				else if (streq(optarg, "d"))
-					detaildebug  = TRUE;
-				else if (streq(optarg, "g"))
-					gotodebug    = TRUE;
-				else if (streq(optarg, "G"))
+		case 'd':	
+			if (streq(optarg, "b"))
+				nondstackdebug = TRUE;
+			else if (streq(optarg, "c"))
+				calldebug    = TRUE;
+			else if (streq(optarg, "d"))
+				detaildebug  = TRUE;
+			else if (streq(optarg, "g"))
+				gotodebug    = TRUE;
+			else if (streq(optarg, "G"))
 #ifdef CONSERVATIVE_GC
-					GC_quiet = FALSE;
+			GC_quiet = FALSE;
 #else
-					fatal_error("-dG: GC not enabled");
+			fatal_error("-dG: GC not enabled");
 #endif
-				else if (streq(optarg, "s"))
-					detstackdebug   = TRUE;
-				else if (streq(optarg, "h"))
-					heapdebug    = TRUE;
-				else if (streq(optarg, "f"))
-					finaldebug   = TRUE;
-				else if (streq(optarg, "p"))
-					progdebug   = TRUE;
-				else if (streq(optarg, "m"))
-					memdebug    = TRUE;
-				else if (streq(optarg, "r"))
-					sregdebug    = TRUE;
-				else if (streq(optarg, "t"))
-					tracedebug   = TRUE;
-				else if (streq(optarg, "a"))
-				{
-					calldebug      = TRUE;
-					nondstackdebug = TRUE;
-					detstackdebug  = TRUE;
-					heapdebug      = TRUE;
-					gotodebug      = TRUE;
-					sregdebug      = TRUE;
-					finaldebug     = TRUE;
-					tracedebug     = TRUE;
+			else if (streq(optarg, "s"))
+				detstackdebug   = TRUE;
+			else if (streq(optarg, "h"))
+				heapdebug    = TRUE;
+			else if (streq(optarg, "f"))
+				finaldebug   = TRUE;
+			else if (streq(optarg, "p"))
+				progdebug   = TRUE;
+			else if (streq(optarg, "m"))
+				memdebug    = TRUE;
+			else if (streq(optarg, "r"))
+				sregdebug    = TRUE;
+			else if (streq(optarg, "t"))
+				tracedebug   = TRUE;
+			else if (streq(optarg, "a")) {
+				calldebug      = TRUE;
+				nondstackdebug = TRUE;
+				detstackdebug  = TRUE;
+				heapdebug      = TRUE;
+				gotodebug      = TRUE;
+				sregdebug      = TRUE;
+				finaldebug     = TRUE;
+				tracedebug     = TRUE;
 #ifdef CONSERVATIVE_GC
-					GC_quiet = FALSE;
+				GC_quiet = FALSE;
 #endif
-				}
-				else
-					usage();
+			}
+			else
+				usage();
 
-				use_own_timer = FALSE;
-				break;
+			use_own_timer = FALSE;
+			break;
 
-		case 'h':	usage();
-				break;
+		case 'h':
+			usage();
+			break;
 
-		case 'L': 	do_init_modules();
-				break;
+		case 'L': 
+			do_init_modules();
+			break;
 
 		case 'l': {
-				List	*ptr;
-				List	*label_list;
+			List	*ptr;
+			List	*label_list;
 
-				label_list = get_all_labels();
-				for_list (ptr, label_list)
-				{
-					Label	*label;
-					label = (Label *) ldata(ptr);
-					printf("%lu %lx %s\n",
-						(unsigned long) label->e_addr,
-						(unsigned long) label->e_addr,
-						label->e_name);
-				}
+			label_list = get_all_labels();
+			for_list (ptr, label_list) {
+				Label	*label;
+				label = (Label *) ldata(ptr);
+				printf("%lu %lx %s\n",
+					(unsigned long) label->e_addr,
+					(unsigned long) label->e_addr,
+					label->e_name);
+			}
 
-				exit(0);
+			exit(0);
 		}
 
 #ifdef	PARALLEL
@@ -488,127 +493,134 @@ process_options(int argc, char **argv)
 #endif
 
 		case 'p':
-				if (sscanf(optarg, "%lu", &size) != 1)
-					usage();
+			if (sscanf(optarg, "%lu", &size) != 1)
+				usage();
 
-				pcache_size = size * 1024;
+			pcache_size = size * 1024;
 
-				break;
+			break;
 
-		case 'r':	if (sscanf(optarg, "%d", &repeats) != 1)
-					usage();
+		case 'r':	
+			if (sscanf(optarg, "%d", &repeats) != 1)
+				usage();
 
-				break;
+			break;
 
 		case 's':
-				if (sscanf(optarg+1, "%lu", &size) != 1)
-					usage();
+			if (sscanf(optarg+1, "%lu", &size) != 1)
+				usage();
 
-				if (optarg[0] == 'h')
-					heap_size = size;
-				else if (optarg[0] == 'd')
-					detstack_size = size;
-				else if (optarg[0] == 'n')
-					nondstack_size = size;
-				else if (optarg[0] == 'l')
-					entry_table_size = size *
-						1024 / (2 * sizeof(List *));
+			if (optarg[0] == 'h')
+				heap_size = size;
+			else if (optarg[0] == 'd')
+				detstack_size = size;
+			else if (optarg[0] == 'n')
+				nondstack_size = size;
+			else if (optarg[0] == 'l')
+				entry_table_size = size *
+					1024 / (2 * sizeof(List *));
 #ifdef CONSTRAINTS
-				else if (optarg[0] == 's')
-					solver_ticket_stack_size = size;
+			else if (optarg[0] == 's')
+				solver_ticket_stack_size = size;
 #endif
-				else
-					usage();
+			else
+				usage();
 
-				break;
+			break;
 
-		case 't':	use_own_timer = TRUE;
+		case 't':	
+			use_own_timer = TRUE;
 
-				calldebug      = FALSE;
-				nondstackdebug = FALSE;
-				detstackdebug  = FALSE;
-				heapdebug      = FALSE;
-				gotodebug      = FALSE;
-				sregdebug      = FALSE;
-				finaldebug     = FALSE;
-				break;
+			calldebug      = FALSE;
+			nondstackdebug = FALSE;
+			detstackdebug  = FALSE;
+			heapdebug      = FALSE;
+			gotodebug      = FALSE;
+			sregdebug      = FALSE;
+			finaldebug     = FALSE;
+			break;
 
 		case 'w': {
-				Label *which_label;
+			Label *which_label;
 
-				which_label = lookup_label_name(optarg);
-				if (which_label == NULL)
-				{
-					fprintf(stderr,
-			"Mercury runtime: label name `%s' unknown\n",
-						optarg);
-					exit(1);
-				}
+			which_label = lookup_label_name(optarg);
+			if (which_label == NULL)
+			{
+				fprintf(stderr, "Mercury runtime: "
+					"label name `%s' unknown\n",
+					optarg);
+				exit(1);
+			}
 
-				library_entry_point = which_label->e_addr;
+			library_entry_point = which_label->e_addr;
 
-				break;
+			break;
 		}
 		case 'm': {
-				Label *which_label;
+			Label *which_label;
 
-				which_label = lookup_label_name(optarg);
-				if (which_label == NULL)
-				{
-					fprintf(stderr,
-			"Mercury runtime: label name `%s' unknown\n",
-						optarg);
-					exit(1);
-				}
+			which_label = lookup_label_name(optarg);
+			if (which_label == NULL)
+			{
+				fprintf(stderr, "Mercury runtime: "
+					"label name `%s' unknown\n",
+					optarg);
+				exit(1);
+			}
 
-				program_entry_point = which_label->e_addr;
+			program_entry_point = which_label->e_addr;
 
-				break;
+			break;
 		}
 		case 'x':
 #ifdef CONSERVATIVE_GC
-				GC_dont_gc = 1;
+			GC_dont_gc = 1;
 #endif
 
-				break;
+			break;
 
 		case 'z':
-				if (sscanf(optarg+1, "%lu", &size) != 1)
-					usage();
+			if (sscanf(optarg+1, "%lu", &size) != 1)
+				usage();
 
-				if (optarg[0] == 'h')
-					heap_zone_size = size;
-				else if (optarg[0] == 'd')
-					detstack_zone_size = size;
-				else if (optarg[0] == 'n')
-					nondstack_zone_size = size;
-				else
-					usage();
+			if (optarg[0] == 'h')
+				heap_zone_size = size;
+			else if (optarg[0] == 'd')
+				detstack_zone_size = size;
+			else if (optarg[0] == 'n')
+				nondstack_zone_size = size;
+			else
+				usage();
 
-				break;
+			break;
 
-		case '1':	if (sscanf(optarg, "%d", &r1val) != 1)
-					usage();
+		case '1':	
+			if (sscanf(optarg, "%d", &r1val) != 1)
+				usage();
 
-				break;
+			break;
 
-		case '2':	if (sscanf(optarg, "%d", &r2val) != 1)
-					usage();
+		case '2':	
+			if (sscanf(optarg, "%d", &r2val) != 1)
+				usage();
 
-				break;
+			break;
 
-		case '3':	if (sscanf(optarg, "%d", &r3val) != 1)
-					usage();
+		case '3':	
+			if (sscanf(optarg, "%d", &r3val) != 1)
+				usage();
 
-				break;
+			break;
 
-		default:	usage();
+		default:	
+			usage();
 
-		}
-	}
-}
+		} /* end switch */
+	} /* end while */
+} /* end process_options() */
 
-static void usage(void)
+static void 
+usage(void)
 {
 	printf("Mercury runtime usage:\n"
 		"MERCURY_OPTIONS=\"[-hclt] [-d[abcdghs]] [-[sz][hdn]#]\n"
@@ -650,9 +662,10 @@ static void usage(void)
 		"-3<x> \t\tinitialize register r3 with value x\n");
 	fflush(stdout);
 	exit(1);
-}
+} /* end usage() */
 
-void run_code(void)
+void 
+run_code(void)
 {
 	static	int	repcounter;
 
@@ -681,15 +694,15 @@ void run_code(void)
 	time_at_start = get_run_time();
 	time_at_last_stat = time_at_start;
 
-	for (repcounter = 0; repcounter < repeats; repcounter++)
-	{
+	for (repcounter = 0; repcounter < repeats; repcounter++) {
 		debugmsg0("About to call engine\n");
 		start_mercury_engine(ENTRY(do_interpreter));
 		debugmsg0("Returning from start_mercury_engine\n");
 	}
 
-        if (use_own_timer)
+        if (use_own_timer) {
 		time_at_finish = get_run_time();
+	}
 
 #if defined(USE_GCC_NONLOCAL_GOTOS) && !defined(SPEED)
 	{
@@ -723,13 +736,15 @@ void run_code(void)
 	print_register_usage_counts();
 #endif
 
-        if (use_own_timer)
+        if (use_own_timer) {
 		printf("%8.3fu ",
 			((double) (time_at_finish - time_at_start)) / 1000);
-}
+	}
+} /* end run_code() */
 
 #ifdef MEASURE_REGISTER_USAGE
-static void print_register_usage_counts(void)
+static void 
+print_register_usage_counts(void)
 {
 	int	i;
 
@@ -762,8 +777,8 @@ static void print_register_usage_counts(void)
 		}
 
 		printf("\t%lu\n", num_uses[i]);
-	}
-}
+	} /* end for */
+} /* end print_register_usage_counts() */
 #endif
 
 BEGIN_MODULE(interpreter_module)

@@ -89,4 +89,4 @@ register	Word	mr9 __asm__("r22");
 #define	mr35	fake_reg[35]
 #define	mr36	fake_reg[36]
 
-#endif /* RS6000_REGS_H */
+#endif /* not RS6000_REGS_H */

@@ -62,4 +62,4 @@
 Word deep_copy(Word data, Word *type_info, Word *lower_limit, 
 	Word *upper_limit);
 
-#endif
+#endif /* not DEEP_COPY_H */

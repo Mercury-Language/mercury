@@ -172,4 +172,4 @@
 				GOTO(curredoip);		\
 			} while (0)
 
-#endif /* STACKS_H */
+#endif /* not STACKS_H */

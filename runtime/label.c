@@ -35,7 +35,8 @@ Table	entry_name_table =
 Table	entry_addr_table =
 	{0, NULL, entry_addr, hash_addr, equal_addr};
 
-void do_init_entries(void)
+void 
+do_init_entries(void)
 {
 	static bool done = FALSE;
 	if (!done) {
@@ -47,7 +48,8 @@ void do_init_entries(void)
 	}
 }
 
-Label *insert_entry(const char *name, Code *addr)
+Label *
+insert_entry(const char *name, Code *addr)
 {
 	Label	*entry;
 
@@ -62,12 +64,14 @@ Label *insert_entry(const char *name, Code *addr)
 #endif
 
 #ifndef	SPEED
-	if (progdebug)
+	if (progdebug) {
 		printf("inserting label %s at %p\n", name, addr);
+	}
 #endif
 
-	if (insert_table(entry_name_table, entry))
+	if (insert_table(entry_name_table, entry)) {
 		printf("duplicated label name %s\n", name);
+	}
 
 	/* two labels at same location will happen quite often */
 	/* when the code generated between them turns out to be empty */
@@ -77,63 +81,74 @@ Label *insert_entry(const char *name, Code *addr)
 	return entry;
 }
 
-Label *lookup_label_addr(const Code *addr)
+Label *
+lookup_label_addr(const Code *addr)
 {
 	do_init_entries();
 	do_init_modules();
 #ifndef	SPEED
-	if (progdebug)
+	if (progdebug) {
 		printf("looking for label at %p\n", addr);
+	}
 #endif
 
 	return (Label *) lookup_table(entry_addr_table, addr);
 }
 
-Label *lookup_label_name(const char *name)
+Label *
+lookup_label_name(const char *name)
 {
 	do_init_entries();
 	do_init_modules();
 #ifndef	SPEED
-	if (progdebug)
+	if (progdebug) {
 		printf("looking for label %s\n", name);
+	}
 #endif
 
 	return (Label *) lookup_table(entry_name_table, name);
 }
 
-List *get_all_labels(void)
+List *
+get_all_labels(void)
 {
 	do_init_entries();
 	do_init_modules();
 	return get_all_entries(entry_name_table);
 }
 
-static const void *entry_name(const void *entry)
+static const void *
+entry_name(const void *entry)
 {
 	return (const void *) (((const Label *) entry)->e_name);
 }
 
-static const void *entry_addr(const void *entry)
+static const void *
+entry_addr(const void *entry)
 {
 	return (const void *) (((const Label *) entry)->e_addr);
 }
 
-static bool equal_name(const void *name1, const void *name2)
+static bool 
+equal_name(const void *name1, const void *name2)
 {
 	return streq(((const char *) name1), ((const char *) name2));
 }
 
-static bool equal_addr(const void *addr1, const void *addr2)
+static bool 
+equal_addr(const void *addr1, const void *addr2)
 {
 	return ((const Code *) addr1) == ((const Code *) addr2);
 }
 
-static int hash_name(const void *name)
+static int 
+hash_name(const void *name)
 {
 	return str_to_int(((const char *) name)) % entry_table_size;
 }
 
-static int hash_addr(const void *addr)
+static int 
+hash_addr(const void *addr)
 {
 	return (((Unsigned) addr) >> 3) % entry_table_size;
 }

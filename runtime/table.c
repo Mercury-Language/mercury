@@ -24,14 +24,16 @@
 **	Initialize a table.
 */
 
-void tab_init_table(Table *table)
+void 
+tab_init_table(Table *table)
 {
 	reg	int	i;
 
 	table->ta_store = make_many(List *, table->ta_size);
 
-	for (i = 0; i < table->ta_size; i++)
+	for (i = 0; i < table->ta_size; i++) {
 		table->ta_store[i] = NULL;
+	}
 }
 
 /*
@@ -39,7 +41,8 @@ void tab_init_table(Table *table)
 **	in a table.
 */
 
-void *tab_lookup_table(const Table *table, const void *key)
+void *
+tab_lookup_table(const Table *table, const void *key)
 {
 	reg	List	*ptr;
 	reg	int	h;
@@ -47,13 +50,18 @@ void *tab_lookup_table(const Table *table, const void *key)
 	h = tablehash(table)(key);
 
 #ifdef	HASHDEBUG
-	if (! (0 <= h && h < table->ta_size))
-		fprintf(stderr, "internal error: bad hash index in lookup_table: %d, table size %d\n", h, table->ta_size);
+	if (! (0 <= h && h < table->ta_size)) {
+		fprintf(stderr, "internal error: bad hash index in "
+			"lookup_table: %d, table size %d\n", 
+			h, table->ta_size);
+	}
 #endif
 
-	for_list (ptr, table->ta_store[h])
-		if (tableequal(table)(key, tablekey(table)(ldata(ptr))))
+	for_list (ptr, table->ta_store[h]) {
+		if (tableequal(table)(key, tablekey(table)(ldata(ptr)))) {
 			return ldata(ptr);
+		}
+	}
 
 	return NULL;
 }
@@ -63,7 +71,8 @@ void *tab_lookup_table(const Table *table, const void *key)
 **	Return whether it was there before.
 */
 
-bool tab_insert_table(const Table *table, void *entry)
+bool 
+tab_insert_table(const Table *table, void *entry)
 {
 	reg	List		*ptr;
 	reg	const void	*key;
@@ -73,13 +82,18 @@ bool tab_insert_table(const Table *table, void *entry)
 	h   = tablehash(table)(key);
 
 #ifdef	HASHDEBUG
-	if (! (0 <= h && h < table->ta_size))
-		fprintf(stderr, "internal error: bad hash index in lookup_table: %d, table size %d\n", h, table->ta_size);
+	if (! (0 <= h && h < table->ta_size)) {
+		fprintf(stderr, "internal error: bad hash index in "
+			"lookup_table: %d, table size %d\n", 
+			h, table->ta_size);
+	}
 #endif
 
-	for_list (ptr, table->ta_store[h])
-		if (tableequal(table)(key, tablekey(table)(ldata(ptr))))
+	for_list (ptr, table->ta_store[h]) {
+		if (tableequal(table)(key, tablekey(table)(ldata(ptr)))) {
 			return TRUE;
+		}
+	}
 
 	table->ta_store[h] = addhead(table->ta_store[h], entry);
 	return FALSE;
@@ -89,14 +103,16 @@ bool tab_insert_table(const Table *table, void *entry)
 **	Return all table entries in a list.
 */
 
-List *tab_get_all_entries(const Table *table)
+List *
+tab_get_all_entries(const Table *table)
 {
 	reg	List	*list;
 	reg	int	i;
 
 	list = makelist0();
-	for (i = 0; i < table->ta_size; i++)
+	for (i = 0; i < table->ta_size; i++) {
 		addndlist(list, table->ta_store[i]);
+	}
 
 	return list;
 }
@@ -106,17 +122,20 @@ List *tab_get_all_entries(const Table *table)
 **	mod the table size is a good hash value.
 */
 
-int tab_str_to_int(const char *cs)
+int 
+tab_str_to_int(const char *cs)
 {
 	reg	int		h;
 	reg	const char	*s;
 
 	s = cs;
-	for (h = 0; *s != '\0'; s++)
+	for (h = 0; *s != '\0'; s++) {
 		h = (h << 1) + *s;
+	}
 
-	if (h < 0)
+	if (h < 0) {
 		h = -h;
+	}
 
 	return h;
 }

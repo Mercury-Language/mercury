@@ -26,4 +26,4 @@ extern int	opterr;
 extern int	optind;
 extern int	optopt;
 
-#endif
+#endif /* not GETOPT_H */
