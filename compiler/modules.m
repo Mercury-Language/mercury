@@ -2234,17 +2234,15 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 			IntermodDirs),
 
 			% If intermodule_optimization is enabled then
-			% build all the .c files for modules that exist in
-			% the current directory before the .o files to
-			% avoid problems with foreign_import_module
-			% dependencies not being correctly calculated.
+			% all the .mh files must exist because it is
+			% possible that the .c file imports them
+			% directly or indirectly.
 		( { Intermod = yes } ->
 			io__write_strings(DepStream, [
 				"\n\n",
 				ObjFileName, " : "
 			]),
-			source_files_in_current_dir(AllDeps, CurrentDirDeps),
-			write_dependencies_list(CurrentDirDeps, ".c", DepStream)
+			write_dependencies_list(AllDeps, ".mh", DepStream)
 		;
 			[]
 		),
@@ -2730,19 +2728,6 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 			maybe_write_string(Verbose, " done.\n")
 		)
 	).
-
-:- pred source_files_in_current_dir(list(module_name)::in,
-		list(module_name)::out, io__state::di, io__state::uo) is det.
-
-source_files_in_current_dir([], []) --> [].
-source_files_in_current_dir([Module | Modules], FoundModules) -->
-	source_files_in_current_dir(Modules, FoundModules0),
-	search_for_module_source(["."], Module, Result),
-	{ Result = ok(_),
-		FoundModules = [Module | FoundModules0]
-	; Result = error(_),
-		FoundModules = FoundModules0
-	}.
 
 	% Generate the following dependency.  This dependency is
 	% needed because module__cpp_code.dll might refer to
@@ -3944,17 +3929,7 @@ generate_dv_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 	io__write_string(DepStream, MakeVarName),
 	io__write_string(DepStream, ".mhs = "),
 	( { Target = c ; Target = asm } ->
-		% We only generate `.mh' files for modules containing
-		% `:- pragma export' declarations.
-		{ HeaderModules =
-		    list__filter(
-			(pred(Module::in) is semidet :-
-			    map__lookup(DepsMap, Module,
-			    		deps(_, ModuleImports)),
-			    contains_foreign_export =
-					ModuleImports ^ contains_foreign_export 
-			), Modules) },
-		write_dependencies_list(HeaderModules, ".mh", DepStream)
+		write_dependencies_list(Modules, ".mh", DepStream)
 	;
 		[]
 	),

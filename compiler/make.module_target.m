@@ -556,20 +556,10 @@ touched_files(TargetFile, process_module(Task), TouchedTargetFiles,
 	    ),
 
 	    { ( CompilationTarget = c ; CompilationTarget = asm ) ->
-		    %
-		    % We only generate a `.mh' file if the module contains
-		    % `:- pragma export' declarations.
-		    %
-	    	PragmaExportModuleNames =
-			list__filter_map(
-			    (func(MImports) =
-			    		MImports ^ module_name is semidet :-
-				contains_foreign_export =
-				    MImports ^ contains_foreign_export
-			    ), ModuleImportsList),
-	    	HeaderTargets =
-			make_target_list(PragmaExportModuleNames, c_header(mh))
-			++ HeaderTargets0
+		Names = list__map((func(MI) = MI ^ module_name),
+				ModuleImportsList),
+	    	HeaderTargets = make_target_list(Names, c_header(mh))
+				++ HeaderTargets0
 	    ;
 		HeaderTargets = HeaderTargets0
 	    },

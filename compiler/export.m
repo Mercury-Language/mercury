@@ -605,12 +605,11 @@ convert_type_from_mercury(Rval, Type, ConvertedRval) :-
 % Should this predicate go in llds_out.m?
 
 export__produce_header_file(ForeignExportDecls, ModuleName) -->
-	( { ForeignExportDecls = foreign_export_decls([], []) } ->
-		[]
-	;
-		export__produce_header_file(ForeignExportDecls,
-				ModuleName, ".mh")
-	).
+		% We always produce a .mh file because with intermodule
+		% optimization enabled the .o file depends on all the
+		% .mh files of the imported modules so we always need to
+		% produce a .mh file even if it contains nothing.
+	export__produce_header_file(ForeignExportDecls, ModuleName, ".mh").
 
 :- pred export__produce_header_file(foreign_export_decls,
 		module_name, string, io__state, io__state).
