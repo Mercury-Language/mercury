@@ -1260,24 +1260,54 @@ inst_merge_2(InstA, InstB, ModuleInfo0, Inst, ModuleInfo) :-
 :- pred inst_merge_3(inst, inst, module_info, inst, module_info).
 :- mode inst_merge_3(in, in, in, out, out) is semidet.
 
+% We do not yet allow merging of `free' and `any',
+% except in the case where the any is `mostly_clobbered_any'
+% or `clobbered_any', because that would require inserting
+% additional code to initialize the free var.
+%
+% We do NOT plan to allow merging of `free' and `ground'
+% to produce `any', because that would introduce `any'
+% insts even for builtin types such as `int' which can't
+% support `any'.  It might also make the mode system
+% too weak -- it might not be able to detect bugs as well
+% as it can currently.
+
 inst_merge_3(any(UniqA), any(UniqB), M, any(Uniq), M) :-
 	merge_uniq(UniqA, UniqB, Uniq).
-/* not yet:
-inst_merge_3(any(Uniq), free, M, any(Uniq), M).
-inst_merge_3(any(UniqA), bound(UniqB, ListB), M, any(Uniq), M) :-
-	merge_uniq_bound(UniqA, UniqB, ListB, ModuleInfo, Uniq),
+inst_merge_3(any(Uniq), free, M, any(Uniq), M) :-
+	% we do not yet allow merge of any with free, except for clobbered anys
+	( Uniq = clobbered ; Uniq = mostly_clobbered ).
+inst_merge_3(any(UniqA), bound(UniqB, ListB), ModInfo, any(Uniq), ModInfo) :-
+	merge_uniq_bound(UniqA, UniqB, ListB, ModInfo, Uniq),
+	% we do not yet allow merge of any with free, except for clobbered anys
+	( ( Uniq = clobbered ; Uniq = mostly_clobbered ) ->
+		true
+	;
+		bound_inst_list_is_ground_or_any(ListB, ModInfo)
+	).
 inst_merge_3(any(UniqA), ground(UniqB, _), M, any(Uniq), M) :-
 	merge_uniq(UniqA, UniqB, Uniq).
 inst_merge_3(any(UniqA), abstract_inst(_, _), M, any(Uniq), M) :-
-	merge_uniq(UniqA, shared, Uniq).
-inst_merge_3(free, any(Uniq), M, any(Uniq), M).
-inst_merge_3(bound(UniqA, ListA), any(UniqB), M, any(Uniq), M) :-
-	merge_uniq_bound(UniqB, UniqA, ListA, ModuleInfo, Uniq),
+	merge_uniq(UniqA, shared, Uniq),
+	% we do not yet allow merge of any with free, except for clobbered anys
+	( Uniq = clobbered ; Uniq = mostly_clobbered ).
+inst_merge_3(free, any(Uniq), M, any(Uniq), M) :-
+	% we do not yet allow merge of any with free, except for clobbered anys
+	( Uniq = clobbered ; Uniq = mostly_clobbered ).
+inst_merge_3(bound(UniqA, ListA), any(UniqB), ModInfo, any(Uniq), ModInfo) :-
+	merge_uniq_bound(UniqB, UniqA, ListA, ModInfo, Uniq),
+	% we do not yet allow merge of any with free, except for clobbered anys
+	( ( Uniq = clobbered ; Uniq = mostly_clobbered ) ->
+		true
+	;
+		bound_inst_list_is_ground_or_any(ListA, ModInfo)
+	).
 inst_merge_3(ground(UniqA, _), any(UniqB), M, any(Uniq), M) :-
-	merge_uniq(UniqA, UniqB).
+	merge_uniq(UniqA, UniqB, Uniq).
 inst_merge_3(abstract_inst(_, _), any(UniqB), M, any(Uniq), M) :-
-	merge_uniq(shared, UniqB, Uniq).
-*/
+	merge_uniq(shared, UniqB, Uniq),
+	% we do not yet allow merge of any with free, except for clobbered anys
+	( Uniq = clobbered ; Uniq = mostly_clobbered ).
 inst_merge_3(free, free, M, free, M).
 inst_merge_3(bound(UniqA, ListA), bound(UniqB, ListB), ModuleInfo0,
 		bound(Uniq, List), ModuleInfo) :-
