@@ -5883,7 +5883,8 @@ io__make_temp(Dir, Prefix, Name) -->
 :- pragma foreign_proc("C",
 	io__do_make_temp(Dir::in, Prefix::in, FileName::out,
 		Error::out, ErrorMessage::out, IO0::di, IO::uo),
-		[will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+		[will_not_call_mercury, promise_pure,
+				tabled_for_io, thread_safe],
 "{
 	/*
 	** Constructs a temporary name by concatenating Dir, `/',
@@ -5929,6 +5930,68 @@ io__make_temp(Dir, Prefix, Name) -->
 		Error = err;
 	}
 	MR_update_io(IO0, IO);
+}").
+
+/* XXX this is only needed if the problem loading the dll mentioned below
+ * is resolved.
+:- pragma foreign_decl("MC++", "
+#include <windows.h>	// for GetTempFileName()
+").
+*/
+
+:- pragma foreign_proc("MC++",
+	io__do_make_temp(Dir::in, Prefix::in, FileName::out,
+		Error::out, ErrorMessage::out, _IO0::di, _IO::uo),
+		[will_not_call_mercury, promise_pure,
+				tabled_for_io, thread_safe],
+"{
+	/* XXX For some reason this code below doesn't work.
+	 * We get the following error message:
+	 *   Unhandled Exception: System.TypeInitializationException: The type
+	 *   initializer for ""remove_file.mercury_code"" threw an exception.
+	 *   ---> System.IO.FileLoadException: The dll initialization routine
+	 *   failed for file 'io__cpp_code.dll'.
+	 * so instead we use the .NET call and ignore Dir and Prefix.
+	int result;
+	char __nogc *dir = static_cast<char*>(
+			System::Runtime::InteropServices::Marshal::
+			StringToHGlobalAnsi(Dir).ToPointer());;
+	char __nogc *prefix = static_cast<char*>(
+			System::Runtime::InteropServices::Marshal::
+			StringToHGlobalAnsi(Prefix).ToPointer());;
+	char tmpFileName[MAX_PATH];
+	System::String *msg[] = {
+			""Unable to create temporary file in "",
+			Dir,
+			"" with prefix "",
+			Prefix
+		};
+
+
+	result = GetTempFileName(dir, prefix, 0, tmpFileName);
+
+	if (result == 0) {
+		Error = -1;
+		FileName = """";
+		ErrorMessage = System::String::Join("""", msg);
+	} else {
+		Error = 0;
+		FileName = tmpFileName;
+		ErrorMessage = """";
+	}
+	*/
+
+	try {
+		FileName = System::IO::Path::GetTempFileName();
+		Error = 0;
+		ErrorMessage = """";
+	}
+	catch (System::Exception *e)
+	{
+		FileName = """";
+		Error = -1;
+		ErrorMessage = e->Message;
+	}
 }").
 
 io__do_make_temp(_, _, _, _, _) -->
@@ -6005,20 +6068,27 @@ io__remove_file(FileName, Result, IO0, IO) :-
 	MR_update_io(IO0, IO);
 }").
 
-/* XXX Implementation needs to be finished.
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 	io__remove_file_2(FileName::in, RetVal::out, RetStr::out,
-		IO0::di, IO::uo),
+		_IO0::di, _IO::uo),
 		[will_not_call_mercury, promise_pure, tabled_for_io,
 			thread_safe],
 "{
-	mercury::runtime::Errors::SORRY(""foreign code for this function"");
-	System::IO::File::Delete(FileName);
-	RetVal = 0;
-	RetStr = """";
-	MR_update_io(IO0, IO);
+	try {
+		if (System.IO.File.Exists(FileName)) {
+			System.IO.File.Delete(FileName);
+			RetVal = 0;
+			RetStr = """";
+		} else {
+			RetVal = -1;
+			RetStr = ""remove failed: No such file or directory"";
+		}
+	}
+	catch (System.Exception e) {
+		RetVal = -1;
+		RetStr = e.Message;
+	}
 }").
-*/
 
 io__remove_file_2(_, _, _) -->
 	% This version is only used for back-ends for which there is no
