@@ -29,6 +29,13 @@ C2INITARGS = ../trailed_update.init
 
 MLFLAGS += --static
 
+DIFF_OPTS=-c
+
+#-----------------------------------------------------------------------------#
+
+# The Mmake.params file can be used to override definitions in this file
+-include ../../Mmake.params
+
 #-----------------------------------------------------------------------------#
 
 # The "vqueens" program does not work in ".rt" grades,
@@ -42,7 +49,6 @@ else
 PROGS	=	interpreter vqueens
 endif
 
-
 DEPENDS =	$(PROGS:%=%.depend)
 CS	=	$(PROGS:%=%.c)
 RESS	=	$(PROGS:%=%.res)
@@ -53,8 +59,6 @@ $(PROGS): ../libtrailed_update.a
 
 %.out: %
 	./$< > $@ 2>&1;
-
-DIFF_OPTS=-c
 
 %.res: %.exp %.out
 	diff $(DIFF_OPTS) $*.exp $*.out > $@
@@ -81,10 +85,5 @@ cs: $(CS)
 .PHONY: clean_local
 clean_local:
 	rm -f *.out *.res
-
-#-----------------------------------------------------------------------------#
-
-# The Mmake.params file can be used to override definitions in this file
--include ../../Mmake.params
 
 #-----------------------------------------------------------------------------#
