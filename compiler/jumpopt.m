@@ -27,7 +27,7 @@
 
 :- implementation.
 
-:- import_module opt_util, std_util, map, string, require.
+:- import_module code_util, opt_util, std_util, map, string, require.
 
 jumpopt__main(Instrs0, Blockopt, Recjump, Instrs, Mod) :-
 	map__init(Instrmap0),
@@ -154,6 +154,9 @@ jumpopt__build_forkmap([Instr - _Comment|Instrs], Sdprocmap,
 	%
 	% We handle computed gotos by attempting to short-circuit all the
 	% labels in the label list.
+	%
+	% We handle if-vals by trying to turn them into the assignment
+	% of a boolean value to r1, or by short-circuiting the target label.
 
 :- pred jumpopt__instr_list(list(instruction), instr, instrmap, tailmap,
 	lvalmap, tailmap, tailmap, tailmap, tailmap, list(instruction), bool).
@@ -321,7 +324,33 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 		->
 			jumpopt__final_dest(TargetLabel, TargetInstr,
 				Instrmap, DestLabel, _DestInstr),
-			( TargetLabel = DestLabel ->
+			(
+				opt_util__is_sdproceed_next(Instrs0, BetweenFT),
+				map__search(Blockmap, DestLabel, Block),
+				opt_util__is_sdproceed_next(Block, BetweenBR),
+				opt_util__filter_out_r1(BetweenFT,
+					yes(SuccessFT), Between),
+				opt_util__filter_out_r1(BetweenBR,
+					yes(SuccessBR), Between),
+				(
+					SuccessFT = true,
+					SuccessBR = false,
+					code_util__neg_rval(Cond, NewCond)
+				;
+					SuccessFT = false,
+					SuccessBR = true,
+					NewCond = Cond
+				)
+			->
+				NewAssign = assign(reg(r(1)), NewCond)
+					- "shortcircuited bool computation",
+				Proceed = goto(succip) - "shortcircuit",
+				list__append([NewAssign | Between], [Proceed],
+					NewInstrs),
+				Mod0 = yes
+			;
+				TargetLabel = DestLabel
+			->
 				NewInstrs = [Instr0],
 				Mod0 = no
 			;

@@ -124,6 +124,13 @@
 	list(instruction)).
 :- mode opt_util__is_forkproceed_next(in, in, out) is semidet.
 
+	% Remove the assignment to r1 from the list returned by
+	% opt_util__is_sdproceed_next.
+
+:- pred opt_util__filter_out_r1(list(instruction), maybe(rval_const),
+	list(instruction)).
+:- mode opt_util__filter_out_r1(in, out, out) is det.
+
  	% Does the following code consist of straighline instructions
 	% that do not modify nondet frame linkages, plus possibly
 	% if_val(..., dofail), and then a succeed?
@@ -567,13 +574,6 @@ opt_util__is_forkproceed_next(Instrs0, Sdprocmap, Between) :-
 	;
 		fail
 	).
-
-	% Remove the assignment to r1 from the list returned by
-	% opt_util__is_sdproceed_next.
-
-:- pred opt_util__filter_out_r1(list(instruction), maybe(rval_const),
-	list(instruction)).
-:- mode opt_util__filter_out_r1(in, out, out) is det.
 
 opt_util__filter_out_r1([], no, []).
 opt_util__filter_out_r1([Instr0 | Instrs0], Success, Instrs) :-
