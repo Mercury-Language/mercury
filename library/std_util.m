@@ -2171,7 +2171,7 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
     layout_for_tag = type_ctor_layout[data_tag];
     layout_vector_for_tag = MR_strip_tag(layout_for_tag);
 
-    switch(MR_get_new_type_ctor_rep(type_ctor_info)) {
+    switch(type_ctor_info->type_ctor_rep) {
 
         case MR_TYPECTOR_REP_ENUM:
         case MR_TYPECTOR_REP_ENUM_USEREQ:
