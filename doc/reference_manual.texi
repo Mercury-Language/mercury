@@ -2460,10 +2460,10 @@ this section specifies the entities that are exported by this module.
 Mercury provides support for abstract data types, by allowing the
 definition of a type to be kept hidden, with the interface
 only exporting the type name.
-The interface section can contain declarations or definitions of types,
-definitions of typeclasses, typeclass instances, data constructors,
-instantiation states, and modes,
-and declarations for functions, predicates, and (sub-)modules.
+The interface section may contain definitions of types, typeclasses,
+typeclass instances, data constructors, instantiation states, and
+modes, and declarations for abstract data types, functions, predicates,
+and (sub-)modules.
 The interface section may not contain definitions for functions or
 predicates (i.e. clauses), or definitions of (sub-)modules. 
 
@@ -2487,7 +2487,8 @@ same as that in the corresponding @samp{module} declaration.
 If a module wishes to make use of entities exported by other modules,
 then it must explicitly import those modules using one or more 
 @samp{:- import_module @var{Modules}} or @samp{:- use_module @var{Modules}}
-declarations.  In both cases, @var{Modules} is a comma-separated list of
+declarations, in order to make those declarations visible.
+In both cases, @var{Modules} is a comma-separated list of
 fully-qualified module names.
 These declarations may occur either in the interface or the implementation 
 section.  If the imported entities are used in the interface section,
@@ -2498,6 +2499,7 @@ entities are only used in the implementation section, the
 the implementation section.
 
 The names of predicates, functions, constructors, types, modes, insts,
+typeclasses,
 and (sub-)modules can be explicitly module qualified using the @samp{:}
 operator, e.g. @samp{module:name} or @samp{module:submodule:name}.
 This is useful both for readability and for resolving name conflicts.
@@ -2618,14 +2620,13 @@ matching @samp{:- module} and @samp{:- end_module} declarations.
 (Note that @samp{:- end_module} for nested sub-modules 
 are mandatory, not optional, even if the nested sub-module
 is the last thing in the source file.
-Also note that the module name in a @samp{:- module} declaration
-need not be fully-qualified.)
-The sequence of items thus delimited is known as a nested sub-module
-declaration.
+Also note that the module name in a @samp{:- module} or @samp{:- end_module}
+declaration need not be fully-qualified.)
+The sequence of items thus delimited is known as a sub-module item sequence.
 
 The interface and implementation parts of a nested sub-module
 may be specified in two different sub-module declarations.
-If a nested sub-module declaration includes an interface section,
+If a sub-module item sequence includes an interface section,
 then it is a declaration of that sub-module;
 if it includes an implementation section,
 then it is a definition of that sub-module;
@@ -2657,18 +2658,20 @@ The mapping between module names and source file names is
 implementation-defined.  (The University of Melbourne Mercury
 implementation requires a module named @samp{foo:bar:baz} to be
 located in source file @file{foo.bar.baz.m}.)
-The separate source source must contain the definition of
-the sub-module, starting with a @samp{:- module} declaration
+The separate source file must contain the declaration (interface)
+and definition (implementation) of the sub-module.
+It must start with a @samp{:- module} declaration
 which matches that in the @samp{:- include_module} declaration
-in the parent, and optionally ending in a @samp{:- end_module}
+in the parent, followed by the interface and (if necessary)
+implementation sections, and it may optionally end with a @samp{:- end_module}
 declaration.  (Note: the module names in the @samp{:- module}
 and @samp{:- end_module} declaration need not be fully-qualified.)
 
 If a @samp{:- include_module} declaration occurs in the interface
-section of a module, then only the interfaces of the sub-modules
-are included in the parent module's interface; the implementations
-of the sub-modules are considered to be implicitly part of the
-parent module's implementation.
+section of a module, then only the declarations (interfaces) of the sub-modules
+are included in the parent module's interface; the definitions
+(implementations) of the sub-modules are considered to be implicitly
+part of the parent module's implementation.
 
 Apart from that, the semantics of separate sub-modules are
 identical to those of nested sub-modules.
