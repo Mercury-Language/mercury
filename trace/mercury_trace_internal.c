@@ -441,6 +441,7 @@ static	MR_TraceCmdFunc	MR_trace_cmd_help;
 static	MR_TraceCmdFunc	MR_trace_cmd_histogram_all;
 static	MR_TraceCmdFunc	MR_trace_cmd_histogram_exp;
 static	MR_TraceCmdFunc	MR_trace_cmd_clear_histogram;
+static	MR_TraceCmdFunc	MR_trace_cmd_var_details;
 static	MR_TraceCmdFunc	MR_trace_cmd_term_size;
 static	MR_TraceCmdFunc	MR_trace_cmd_flag;
 static	MR_TraceCmdFunc	MR_trace_cmd_subgoal;
@@ -3338,6 +3339,28 @@ MR_trace_cmd_clear_histogram(char **words, int word_count,
 }
 
 static MR_Next
+MR_trace_cmd_var_details(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
+	MR_Event_Info *event_info, MR_Event_Details *event_details,
+	MR_Code **jumpaddr)
+{
+	int	n;
+
+	if (word_count == 1) {
+		const char	*problem;
+
+		problem = MR_trace_list_var_details(MR_mdb_out);
+		if (problem != NULL) {
+			fflush(MR_mdb_out);
+			fprintf(MR_mdb_err, "mdb: %s.\n", problem);
+		}
+	} else {
+		MR_trace_usage("developer", "var_details");
+	}
+
+	return KEEP_INTERACTING;
+}
+
+static MR_Next
 MR_trace_cmd_term_size(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	MR_Event_Info *event_info, MR_Event_Details *event_details,
 	MR_Code **jumpaddr)
@@ -3374,9 +3397,33 @@ MR_trace_cmd_flag(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	MR_bool		*flagptr;
 	int		i;
 	MR_bool		found;
+	const char	*set_word;
 
-	if (word_count >= 2) {
+	if (word_count == 1) {
+		for (i = 0; i < MR_MAXFLAG; i++) {
+			/*
+			** The true values of the debugging flags are stored
+			** in MR_saved_debug_state inside the call tree
+			** of MR_trace_event.
+			*/
+			flagptr = &MR_saved_debug_state.MR_sds_debugflags[
+				MR_debug_flag_info[i].MR_debug_flag_index];
+			name = MR_debug_flag_info[i].MR_debug_flag_name;
+			if (*flagptr) {
+				fprintf(MR_mdb_out,
+					"Flag %s is set.\n", name);
+			} else {
+				fprintf(MR_mdb_out,
+					"Flag %s is clear.\n", name);
+			}
+		}
+		return KEEP_INTERACTING;
+	} else if (word_count == 2) {
 		name = words[1];
+		set_word = NULL;
+	} else if (word_count == 3) {
+		name = words[1];
+		set_word = words[2];
 	} else {
 		MR_trace_usage("developer", "flag");
 		return KEEP_INTERACTING;
@@ -3402,24 +3449,22 @@ MR_trace_cmd_flag(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 		return KEEP_INTERACTING;
 	}
 
-	if (word_count == 2) {
-		if (*flagptr) {
-			fprintf(MR_mdb_out, "Flag %s is set.\n", name);
-		} else {
-			fprintf(MR_mdb_out, "Flag %s is clear.\n", name);
-		}
-	} else if (word_count == 3) {
-		if (MR_streq(words[2], "on")) {
+	if (set_word != NULL) {
+		if (MR_streq(set_word, "on")) {
 			*flagptr = MR_TRUE;
 			fprintf(MR_mdb_out, "Flag %s is now set.\n", name);
-		} else if (MR_streq(words[2], "off")) {
+		} else if (MR_streq(set_word, "off")) {
 			*flagptr = MR_FALSE;
 			fprintf(MR_mdb_out, "Flag %s is now clear.\n", name);
 		} else {
 			MR_trace_usage("developer", "flag");
 		}
 	} else {
-		MR_trace_usage("developer", "flag");
+		if (*flagptr) {
+			fprintf(MR_mdb_out, "Flag %s is set.\n", name);
+		} else {
+			fprintf(MR_mdb_out, "Flag %s is clear.\n", name);
+		}
 	}
 
 	return KEEP_INTERACTING;
@@ -7128,6 +7173,8 @@ static const MR_Trace_Command_Info	MR_trace_command_infos[] =
 	{ "exp", "clear_histogram", MR_trace_cmd_clear_histogram,
 		NULL, MR_trace_null_completer },
 
+	{ "developer", "var_details", MR_trace_cmd_var_details,
+		NULL, MR_trace_null_completer },
 	{ "developer", "term_size", MR_trace_cmd_term_size,
 		NULL, MR_trace_null_completer },
 	{ "developer", "flag", MR_trace_cmd_flag,

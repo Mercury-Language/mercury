@@ -22,13 +22,13 @@ continue           goal_paths         procedures         unalias
 current            goto               query              unhide_events
 cut_stack          h                  quit               up
 d                  help               r                  v
-dd                 histogram_all      register           var_name_stats
-dd_dd              histogram_exp      retry              vars
-debug_vars         ignore             return             view
-delete             io_query           s                  
+dd                 histogram_all      register           var_details
+dd_dd              histogram_exp      retry              var_name_stats
+debug_vars         ignore             return             vars
+delete             io_query           s                  view
 h              help           histogram_all  histogram_exp  
-var_name_stats  vars            view            
-var_name_stats  vars            
+var_details     var_name_stats  vars            view
+var_details     var_name_stats  vars            
 help vars 
 vars
      Prints the names of all the known variables in the current

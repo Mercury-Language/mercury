@@ -67,6 +67,7 @@ typedef struct {
     int             MR_var_is_headvar;
     MR_bool         MR_var_is_ambiguous;
     int             MR_var_hlds_number;
+    int             MR_var_seq_num_in_label;
     MR_TypeInfo     MR_var_type;
     MR_Word         MR_var_value;
 } MR_Var_Details;
@@ -455,6 +456,7 @@ MR_trace_set_level_from_layout(const MR_Label_Layout *level_layout,
         }
 
         MR_point.MR_point_vars[slot].MR_var_hlds_number = var_num;
+        MR_point.MR_point_vars[slot].MR_var_seq_num_in_label = i;
 
         copy = MR_copy_string(name);
         MR_point.MR_point_vars[slot].MR_var_fullname = copy;
@@ -654,6 +656,34 @@ MR_trace_list_vars(FILE *out)
         fprintf(out, "%9d ", i + 1);
         MR_trace_print_var_name(out, &MR_point.MR_point_vars[i]);
         fprintf(out, "\n");
+    }
+
+    return NULL;
+}
+
+const char *
+MR_trace_list_var_details(FILE *out)
+{
+    MR_Var_Details  *details;
+    int             i;
+
+    if (MR_point.MR_point_problem != NULL) {
+        return MR_point.MR_point_problem;
+    }
+
+    for (i = 0; i < MR_point.MR_point_var_count; i++) {
+        details = &MR_point.MR_point_vars[i];
+        fprintf(out, "\n");
+        fprintf(out, "slot %d, seq %d, hlds %d: headvar: %d, ambiguous: %s\n",
+            i, details->MR_var_seq_num_in_label,
+            details->MR_var_hlds_number, details->MR_var_is_headvar,
+            details->MR_var_is_ambiguous ? "yes" : "no");
+        fprintf(out, "full <%s>, base <%s>, num_suffix %d, has_suffix %s\n",
+            details->MR_var_fullname, details->MR_var_basename,
+            details->MR_var_num_suffix,
+            details->MR_var_has_suffix ? "yes" : "no");
+        fprintf(out, "typeinfo %p, value %x\n",
+            details->MR_var_type, details->MR_var_value);
     }
 
     return NULL;

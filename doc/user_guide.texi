@@ -3281,6 +3281,10 @@ The following commands are intended for use by the developers
 of the Mercury implementation.
 @sp 1
 @table @code
+@item var_details
+@kindex var_details (mdb command)
+Prints all the information the debugger has
+about all the variables at the current program point.
 @c @item term_size @var{name}
 @c @itemx term_size @var{num}
 @c @itemx term_size *
@@ -3289,8 +3293,11 @@ of the Mercury implementation.
 @c bound to the specified variable(s).
 @c In other grades, reports an error.
 @c @sp 1
-@item flag @var{flagname}
+@item flag
 @kindex flag (mdb command)
+Prints the values of all the runtime lowlevel debugging flags.
+@sp 1
+@item flag @var{flagname}
 Prints the value of the specified runtime lowlevel debugging flag.
 @sp 1
 @item flag @var{flagname} on

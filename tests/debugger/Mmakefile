@@ -8,6 +8,7 @@ RETRY_PROGS = \
 	all_solutions			\
 	browser_test			\
 	mdb_command_test		\
+	lambda_expr			\
 	queens				\
 	retry				\
 	tabled_read			\
@@ -308,6 +309,9 @@ higher_order.out: higher_order higher_order.inp
 implied_instance.out: implied_instance implied_instance.inp
 	$(MDB) ./implied_instance < implied_instance.inp \
 		> implied_instance.out 2>&1
+
+lambda_expr.out: lambda_expr lambda_expr.inp
+	$(MDB_STD) ./lambda_expr < lambda_expr.inp > lambda_expr.out 2>&1
 
 label_layout.out: label_layout label_layout.inp
 	$(MDB) ./label_layout < label_layout.inp > label_layout.out 2>&1

@@ -224,12 +224,13 @@ generate_proc_list_code([ProcId | ProcIds], PredId, PredInfo, ModuleInfo0,
 
 %---------------------------------------------------------------------------%
 
-generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo0,
+generate_proc_code(PredInfo, ProcInfo0, ProcId, PredId, ModuleInfo0,
 		!GlobalData, Proc) :-
 
-		% The module_info with a modified trace level is discarded
+		% The modified module_info and proc_info are both discarded
 		% on return from generate_proc_code.
 	maybe_set_trace_level(PredInfo, ModuleInfo0, ModuleInfo),
+	ensure_all_headvars_are_named(ProcInfo0, ProcInfo),
 
 	proc_info_interface_determinism(ProcInfo, Detism),
 	proc_info_interface_code_model(ProcInfo, CodeModel),

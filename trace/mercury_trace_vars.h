@@ -117,6 +117,14 @@ extern	int		MR_trace_var_count(void);
 extern	const char	*MR_trace_list_vars(FILE *out);
 
 /*
+** Print all the information this module has on the variables live
+** at the current point on the given file. Intended only for debugging
+** the debugger itself.
+*/
+
+extern	const char 	*MR_trace_list_var_details(FILE *out);
+
+/*
 ** Return as a side effect the type and value of the variable with the
 ** specified HLDS number, in the specified locations, all of which must be
 ** non-NULL. If the variable isn't live or isn't known, return a non-null

@@ -546,13 +546,19 @@ lambda__process_lambda(Purity, PredOrFunc, EvalMethod, Vars, Modes, Detism,
 			AllArgVars, InstVarSet, AllArgModes, Detism,
 			LambdaGoal, TVarMap, TCVarMap, address_is_taken,
 			ProcInfo0),
+
+		% The debugger ignores unnamed variables.
+		ensure_all_headvars_are_named(ProcInfo0, ProcInfo1),
+
 		% If we previously already needed to recompute the nonlocals,
 		% then we'd better to that recomputation for the procedure
 		% that we just created.
-		( MustRecomputeNonLocals0 = yes ->
-			requantify_proc(ProcInfo0, ProcInfo)
+		(
+			MustRecomputeNonLocals0 = yes,
+			requantify_proc(ProcInfo1, ProcInfo)
 		;
-			ProcInfo = ProcInfo0
+			MustRecomputeNonLocals0 = no,
+			ProcInfo = ProcInfo1
 		),
 
 		set__init(Assertions),

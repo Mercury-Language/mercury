@@ -1,0 +1,13 @@
+echo on
+context none
+register --quiet
+step
+print
+up
+print P
+finish ; print
+retry
+print
+finish
+print
+continue

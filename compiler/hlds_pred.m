@@ -1988,6 +1988,10 @@ clauses_info_set_typeclass_info_varmap(X, CI,
 :- func 'mode_errors :='(proc_info, list(mode_error_info)) = proc_info.
 :- pred proc_info_is_valid_mode(proc_info::in) is semidet.
 
+	% Make sure that all headvars are named. This can be useful e.g.
+	% becasue the debugger ignores unnamed variables.
+:- pred ensure_all_headvars_are_named(proc_info::in, proc_info::out) is det.
+
 :- implementation.
 :- import_module check_hlds__mode_errors.
 
@@ -2616,6 +2620,25 @@ find_lowest_unused_proc_id_2(TrialProcId, ProcTable, CloneProcId) :-
 	;
 		CloneProcId = TrialProcId
 	).
+
+ensure_all_headvars_are_named(!ProcInfo) :-
+	proc_info_headvars(!.ProcInfo, HeadVars),
+	proc_info_varset(!.ProcInfo, VarSet0),
+	ensure_all_headvars_are_named_2(HeadVars, 1, VarSet0, VarSet),
+	proc_info_set_varset(VarSet, !ProcInfo).
+
+:- pred ensure_all_headvars_are_named_2(list(prog_var)::in, int::in,
+	prog_varset::in, prog_varset::out) is det.
+
+ensure_all_headvars_are_named_2([], _, !VarSet).
+ensure_all_headvars_are_named_2([Var | Vars], SeqNum, !VarSet) :-
+	( varset__search_name(!.VarSet, Var, _Name) ->
+		true
+	;
+		Name = "HeadVar__" ++ int_to_string(SeqNum),
+		varset__name_var(!.VarSet, Var, Name, !:VarSet)
+	),
+	ensure_all_headvars_are_named_2(Vars, SeqNum + 1, !VarSet).
 
 %-----------------------------------------------------------------------------%
 
