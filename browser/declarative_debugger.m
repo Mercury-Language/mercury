@@ -79,7 +79,7 @@
 
 :- pred diagnosis(S, R, diagnoser_response, diagnoser_state(R),
 		diagnoser_state(R), io__state, io__state)
-			<= execution_tree(S, R).
+			<= annotated_trace(S, R).
 :- mode diagnosis(in, in, out, in, out, di, uo) is det.
 
 %-----------------------------------------------------------------------------%
@@ -132,7 +132,7 @@ diagnosis(Store, NodeId, Response, Diagnoser0, Diagnoser) -->
 
 :- pred handle_analyser_response(S, analyser_response(edt_node(R)),
 		diagnoser_response, diagnoser_state(R), diagnoser_state(R),
-		io__state, io__state) <= execution_tree(S, R).
+		io__state, io__state) <= annotated_trace(S, R).
 :- mode handle_analyser_response(in, in, out, in, out, di, uo) is det.
 
 handle_analyser_response(_, no_suspects, no_bug_found, D, D) -->
@@ -157,7 +157,7 @@ handle_analyser_response(_, require_explicit(_), _, _, _) -->
 
 :- pred handle_oracle_response(S, oracle_response, diagnoser_response,
 		diagnoser_state(R), diagnoser_state(R), io__state, io__state)
-			<= execution_tree(S, R).
+			<= annotated_trace(S, R).
 :- mode handle_oracle_response(in, in, out, in, out, di, uo) is det.
 
 handle_oracle_response(Store, oracle_answers(Answers), Response, Diagnoser0,
@@ -178,7 +178,7 @@ handle_oracle_response(_, abort_diagnosis, no_bug_found, D, D) -->
 
 :- pred confirm_bug(S, decl_bug(edt_node(R)), diagnoser_response,
 		diagnoser_state(R), diagnoser_state(R), io__state, io__state)
-		<= execution_tree(S, R).
+		<= annotated_trace(S, R).
 :- mode confirm_bug(in, in, out, in, out, di, uo) is det.
 
 confirm_bug(Store, Bug, Response, Diagnoser0, Diagnoser) -->
@@ -241,7 +241,7 @@ diagnosis_store(Store, Node, Response, State0, State) -->
 :- type edt_node(R)
 	--->	dynamic(R).
 
-:- instance mercury_edt(wrap(S), edt_node(R)) <= execution_tree(S, R)
+:- instance mercury_edt(wrap(S), edt_node(R)) <= annotated_trace(S, R)
 	where [
 		pred(edt_root/3) is trace_root,
 		pred(edt_children/3) is trace_children
@@ -252,7 +252,7 @@ diagnosis_store(Store, Node, Response, State0, State) -->
 	%
 :- type wrap(S) ---> wrap(S).
 
-:- pred trace_root(wrap(S), edt_node(R), decl_question) <= execution_tree(S, R).
+:- pred trace_root(wrap(S), edt_node(R), decl_question) <= annotated_trace(S, R).
 :- mode trace_root(in, in, out) is det.
 
 trace_root(wrap(Store), dynamic(Ref), Root) :-
@@ -273,7 +273,7 @@ trace_root(wrap(Store), dynamic(Ref), Root) :-
 	).
 
 :- pred get_answers(S, R, list(decl_atom), list(decl_atom))
-		<= execution_tree(S, R).
+		<= annotated_trace(S, R).
 :- mode get_answers(in, in, in, out) is det.
 
 get_answers(Store, RedoId, As0, As) :-
@@ -287,7 +287,7 @@ get_answers(Store, RedoId, As0, As) :-
 	).
 
 :- pred trace_children(wrap(S), edt_node(R), list(edt_node(R)))
-		<= execution_tree(S, R).
+		<= annotated_trace(S, R).
 :- mode trace_children(in, in, out) is semidet.
 
 trace_children(wrap(Store), dynamic(Ref), Children) :-
@@ -311,7 +311,7 @@ trace_children(wrap(Store), dynamic(Ref), Children) :-
 	).
 
 :- pred wrong_answer_children(S, R, list(edt_node(R)), list(edt_node(R)))
-		<= execution_tree(S, R).
+		<= annotated_trace(S, R).
 :- mode wrong_answer_children(in, in, in, out) is det.
 
 wrong_answer_children(Store, NodeId, Ns0, Ns) :-
@@ -373,7 +373,7 @@ wrong_answer_children(Store, NodeId, Ns0, Ns) :-
 	).
 
 :- pred missing_answer_children(S, R, list(edt_node(R)), list(edt_node(R)))
-		<= execution_tree(S, R).
+		<= annotated_trace(S, R).
 :- mode missing_answer_children(in, in, in, out) is det.
 
 missing_answer_children(Store, NodeId, Ns0, Ns) :-

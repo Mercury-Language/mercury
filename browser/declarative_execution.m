@@ -125,7 +125,7 @@
 	% an abstract mapping from the identfiers to the nodes they
 	% identify.
 	%
-:- typeclass execution_tree(S, R) where [
+:- typeclass annotated_trace(S, R) where [
 
 		% Dereference the identifier.  This fails if the
 		% identifier does not refer to any trace_node (ie.
@@ -139,12 +139,12 @@
 	% The following procedures also dereference the identifiers,
 	% but they give an error if the node is not of the expected type.
 	%
-:- pred det_trace_node_from_id(S, R, trace_node(R)) <= execution_tree(S, R).
+:- pred det_trace_node_from_id(S, R, trace_node(R)) <= annotated_trace(S, R).
 :- mode det_trace_node_from_id(in, in, out) is det.
 
 :- inst trace_node_call = bound(call(ground, ground, ground, ground)).
 
-:- pred call_node_from_id(S, R, trace_node(R)) <= execution_tree(S, R).
+:- pred call_node_from_id(S, R, trace_node(R)) <= annotated_trace(S, R).
 :- mode call_node_from_id(in, in, out(trace_node_call)) is det.
 
 :- inst trace_node_redo = bound(redo(ground, ground)).
@@ -152,33 +152,33 @@
 	% maybe_redo_node_from_id/3 fails if the argument is a
 	% NULL reference.
 	% 
-:- pred maybe_redo_node_from_id(S, R, trace_node(R)) <= execution_tree(S, R).
+:- pred maybe_redo_node_from_id(S, R, trace_node(R)) <= annotated_trace(S, R).
 :- mode maybe_redo_node_from_id(in, in, out(trace_node_redo)) is semidet.
 
 :- inst trace_node_exit = bound(exit(ground, ground, ground, ground)).
 
-:- pred exit_node_from_id(S, R, trace_node(R)) <= execution_tree(S, R).
+:- pred exit_node_from_id(S, R, trace_node(R)) <= annotated_trace(S, R).
 :- mode exit_node_from_id(in, in, out(trace_node_exit)) is det.
 
 :- inst trace_node_cond = bound(cond(ground, ground, ground)).
 
-:- pred cond_node_from_id(S, R, trace_node(R)) <= execution_tree(S, R).
+:- pred cond_node_from_id(S, R, trace_node(R)) <= annotated_trace(S, R).
 :- mode cond_node_from_id(in, in, out(trace_node_cond)) is det.
 
 :- inst trace_node_neg = bound(neg(ground, ground, ground)).
 
-:- pred neg_node_from_id(S, R, trace_node(R)) <= execution_tree(S, R).
+:- pred neg_node_from_id(S, R, trace_node(R)) <= annotated_trace(S, R).
 :- mode neg_node_from_id(in, in, out(trace_node_neg)) is det.
 
 :- inst trace_node_first_disj = bound(first_disj(ground, ground)).
 
-:- pred first_disj_node_from_id(S, R, trace_node(R)) <= execution_tree(S, R).
+:- pred first_disj_node_from_id(S, R, trace_node(R)) <= annotated_trace(S, R).
 :- mode first_disj_node_from_id(in, in, out(trace_node_first_disj)) is det.
 
 :- inst trace_node_disj = bound(first_disj(ground, ground);
 				later_disj(ground, ground, ground)).
 
-:- pred disj_node_from_id(S, R, trace_node(R)) <= execution_tree(S, R).
+:- pred disj_node_from_id(S, R, trace_node(R)) <= annotated_trace(S, R).
 :- mode disj_node_from_id(in, in, out(trace_node_disj)) is det.
 
 	% Load an execution tree which was previously saved by
@@ -203,7 +203,7 @@
 	%
 :- type trace_node_store.
 :- type trace_node_id.
-:- instance execution_tree(trace_node_store, trace_node_id).
+:- instance annotated_trace(trace_node_store, trace_node_id).
 
 	% This instance is used when the declarative debugger is in
 	% test mode.  Values of this instance are produced by copying
@@ -212,7 +212,7 @@
 	% 
 :- type trace_node_map.
 :- type trace_node_key.
-:- instance execution_tree(trace_node_map, trace_node_key).
+:- instance annotated_trace(trace_node_map, trace_node_key).
 
 %-----------------------------------------------------------------------------%
 
@@ -302,7 +302,7 @@ disj_node_from_id(Store, NodeId, Node) :-
 
 %-----------------------------------------------------------------------------%
 
-:- instance execution_tree(trace_node_store, trace_node_id) where [
+:- instance annotated_trace(trace_node_store, trace_node_id) where [
 	pred(trace_node_from_id/3) is search_trace_node_store
 ].
 
@@ -742,7 +742,7 @@ add_trace_atom_arg(atom(F, Args0), Num, Val) = atom(F, Args) :-
 	% can be written to or read in from a stream easily.  It
 	% is not as efficient to use as the earlier instance, though.
 	%
-:- instance execution_tree(trace_node_map, trace_node_key) where [
+:- instance annotated_trace(trace_node_map, trace_node_key) where [
 	pred(trace_node_from_id/3) is search_trace_node_map
 ].
 
