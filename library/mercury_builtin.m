@@ -297,9 +297,9 @@ builtin_unify_float(F, F).
 builtin_index_float(_, -1).
 
 builtin_compare_float(R, F1, F2) :-
-	( builtin_float_lt(F1, F2) ->
+	( F1 < F2 ->
 		R = (<)
-	; builtin_float_gt(F1, F2) ->
+	; F1 < F2 ->
 		R = (>)
 	;
 		R = (=)
