@@ -78,6 +78,9 @@
 
 	% The third bag is the union of the first 2 bags.
 	% e.g. {1, 1, 2, 2} U {2, 2, 3, 3} = {1, 1, 2, 2, 2, 2, 3, 3}
+	% If the two input bags are known to be unequal in size, then
+	% making the first bag the larger bag will usually be more
+	% efficient
 :- pred bag__union(bag(T), bag(T), bag(T)).
 :- mode bag__union(in, in, out) is det.
 
