@@ -6,6 +6,7 @@
 %
 % file: parser.m.
 % main author: fjh.
+% stability: high.
 %
 % This file exports the predicate parser__read_term, which reads
 % a term from the current input stream.  The parser and lexer are

@@ -6,6 +6,7 @@
 
 % File: stack.m.
 % Main author: fjh.
+% Stability: high.
 
 % This file contains a `stack' ADT.
 % Stacks are implemented here using lists.

@@ -4,12 +4,18 @@
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
 %
-% file pqueue.m - implements a priority queue.
+% file pqueue.m - implements a priority queue ADT.
 % main author: conway.
+% stability: high.
 %
-% A pqueue is a priority queue ADT with the smallest element at the root.
-% It takes keys and values to provide a dictionary type function, and
-% is not guarenteed to be stable. (XXX stability should be fixed.)
+% A pqueue is a priority queue.  A priority queue holds a collection
+% of key-value pairs; the interface provides operations to create
+% an empty priority queue, to insert a key-value pair into a priority
+% queue, and to remove the element with the lowest key.
+%
+% Insertion/removal is not guaranteed to be "stable"; that is,
+% if you insert two values with the same key, the order in which
+% they will be removed is unspecified.
 %
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

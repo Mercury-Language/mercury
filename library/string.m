@@ -5,12 +5,14 @@
 %---------------------------------------------------------------------------%
 
 :- module string.
-	% Beware that char_to_string/2 won't work with NU-Prolog 1.5.33 because
-	% of a NU-Prolog bug (fixed in 1.5.35).
 
 % Main author: fjh.
+% Stability: medium to high.
 
 % This modules provides basic string handling facilities.
+
+% Beware that char_to_string/2 won't work with NU-Prolog 1.5.33 because
+% of a NU-Prolog bug (fixed in NU-Prolog 1.5.35).
 
 %-----------------------------------------------------------------------------%
 
@@ -19,6 +21,8 @@
 
 :- pred string__length(string, int).
 :- mode string__length(in, out) is det.
+	% Determine the length of a string.
+	% An empty string has length zero.
 
 :- pred string__append(string, string, string).
 :- mode string__append(in, in, out) is det.
@@ -88,6 +92,11 @@
 % 	the first string with the third string to give the fourth string.
 
 
+:- pred string__to_lower(string, string).
+:- mode string__to_lower(in, out) is det.
+:- mode string__to_lower(in, in) is semidet.		% implied
+%	Converts a string to lowercase.
+
 :- pred string__to_upper(string, string).
 :- mode string__to_upper(in, out) is det.
 :- mode string__to_upper(in, in) is semidet.		% implied
@@ -117,7 +126,7 @@
 :- mode string__base_string_to_int(in, in, out) is semidet.
 % 	Convert a string in the specified base (2-36) to an int.  The
 % 	string must contain only digits in the specified base, optionally
-% 	preceded by a plus or minus sign.  For bases > 10, digits 10 to 36
+% 	preceded by a plus or minus sign.  For bases > 10, digits 10 to 35
 % 	are repesented by the letters A-Z or a-z.  If the string does not
 % 	match this syntax, the predicate fails.
 
@@ -328,6 +337,7 @@ string__replace_all(String, SubString0, SubString1, StringOut) :-
 
 find_all_sub_charlist(CharList, SubCharList0, SubCharList1, CharList0) :-
 		% find the first occurence
+	(
 		find_sub_charlist(CharList, SubCharList0, BeforeList, AfterList)
 	->
 		(
@@ -344,7 +354,8 @@ find_all_sub_charlist(CharList, SubCharList0, SubCharList1, CharList0) :-
 		)
 	;
 		%no occurences left
-		CharList0 = CharList.
+		CharList0 = CharList
+	).
 
 
 	% find_sub_charlist(List, SubList, Before, After) is true iff SubList
@@ -356,6 +367,7 @@ find_all_sub_charlist(CharList, SubCharList0, SubCharList1, CharList0) :-
 
 find_sub_charlist(CharList, [], [], CharList).
 find_sub_charlist([C|CharList], [S|SubCharList], Before, After) :-
+	(
 		C = S
 	->
 		(
@@ -372,7 +384,8 @@ find_sub_charlist([C|CharList], [S|SubCharList], Before, After) :-
 		)
 	;
 		find_sub_charlist(CharList, [S|SubCharList], Before0, After),
-		Before = [C|Before0].
+		Before = [C|Before0]
+	).
 
 	% find_rest_of_sub_charlist(List, SubList, After) is true iff List
 	% begins with all the characters in SubList in order, and end with
@@ -582,8 +595,8 @@ string__char_list_to_int_list([Char | Chars], [Code | Codes]) :-
 	string__char_list_to_int_list(Chars, Codes).
 
 string__to_upper(StrIn, StrOut) :-
-	string__to_char_list(StrIn, ListLow),
-	string__char_list_to_upper(ListLow, ListUpp),
+	string__to_char_list(StrIn, List),
+	string__char_list_to_upper(List, ListUpp),
 	string__from_char_list(ListUpp, StrOut).
 
 :- pred string__char_list_to_upper(list(char), list(char)).
@@ -592,6 +605,18 @@ string__char_list_to_upper([], []).
 string__char_list_to_upper([X|Xs], [Y|Ys]) :-
 	char__to_upper(X,Y),
 	string__char_list_to_upper(Xs,Ys).
+
+string__to_lower(StrIn, StrOut) :-
+	string__to_char_list(StrIn, List),
+	string__char_list_to_lower(List, ListLow),
+	string__from_char_list(ListLow, StrOut).
+
+:- pred string__char_list_to_lower(list(char), list(char)).
+:- mode string__char_list_to_lower(in, out) is det.
+string__char_list_to_lower([], []).
+string__char_list_to_lower([X|Xs], [Y|Ys]) :-
+	char__to_lower(X,Y),
+	string__char_list_to_lower(Xs,Ys).
 
 string__capitalize_first(S0, S) :-
 	( string__first_char(S0, C, S1) ->

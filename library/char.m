@@ -7,6 +7,7 @@
 
 % File: char.m.
 % Main author: fjh.
+% Stability: high.
 
 % This module defines some predicates that manipulate characters.
 

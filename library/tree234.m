@@ -6,6 +6,8 @@
 
 % tree234 - implements a map (dictionary) using 2-3-4 trees.
 % main author: conway.
+% stability: medium.
+
 % See map.m for documentation.
 
 %---------------------------------------------------------------------------%

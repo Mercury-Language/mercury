@@ -6,9 +6,15 @@
 
 % File: queue.m.
 % Main author: fjh.
+% Stability: high.
 
 % This file contains a `queue' ADT.
+% A queue holds a sequence of values, and provides operations
+% to insert values at the end of the queue (queue__put) and remove them from
+% the front of the queue (queue__get).
+%
 % This implementation is in terms of a pair of lists.
+% The put and get operations are amortized constant-time.
 
 %--------------------------------------------------------------------------%
 

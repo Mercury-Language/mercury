@@ -6,6 +6,7 @@
 %
 % file: lexer.m.
 % main author: fjh.
+% stability: high.
 %
 % Lexical analysis.  This module defines the representation of tokens
 % and exports predicates for reading in tokens from an input stream.

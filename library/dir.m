@@ -8,6 +8,7 @@
 % Main author: fjh.
 
 % Filename and directory handling.
+% Stability: high.
 
 %-----------------------------------------------------------------------------%
 

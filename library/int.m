@@ -7,6 +7,7 @@
 % int - some predicates for dealing with machine-size integer numbers.
 %
 % Main authors: conway, fjh.
+% Stability: medium.
 %
 %-----------------------------------------------------------------------------%
 

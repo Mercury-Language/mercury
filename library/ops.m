@@ -6,6 +6,7 @@
 %
 % file: ops.m.
 % main author: fjh.
+% stability: low.
 %
 % Here's where we maintain the table of current operators.
 %
@@ -33,28 +34,42 @@
 
 :- type ops__priority == int.
 
+	% create an ops_table with the standard Mercury operators.
 :- pred ops__init_op_table(ops__table).
 :- mode ops__init_op_table(uo) is det.
 
+	% check whether a string is the name of an infix operator,
+	% and if it is, return its precedence and associativity.
 :- pred ops__lookup_infix_op(ops__table, string, int, ops__assoc, ops__assoc).
 :- mode ops__lookup_infix_op(in, in, out, out, out) is semidet.
 
+	% check whether a string is the name of a prefix operator,
+	% and if it is, return its precedence and associativity.
 :- pred ops__lookup_prefix_op(ops__table, string, int, ops__assoc).
 :- mode ops__lookup_prefix_op(in, in, out, out) is semidet.
 
+	% check whether a string is the name of a binary prefix operator,
+	% and if it is, return its precedence and associativity.
 :- pred ops__lookup_binary_prefix_op(ops__table, string,
 					int, ops__assoc, ops__assoc).
 :- mode ops__lookup_binary_prefix_op(in, in, out, out, out) is semidet.
 		
+	% check whether a string is the name of a postfix operator,
+	% and if it is, return its precedence and associativity.
 :- pred ops__lookup_postfix_op(ops__table, string, int, ops__assoc).
 :- mode ops__lookup_postfix_op(in, in, out, out) is semidet.
 
+	% check whether a string is the name of an operator
 :- pred ops__lookup_op(ops__table, string).
 :- mode ops__lookup_op(in, in) is semidet.
 
+	% convert an ops__specifer (e.g. `xfy') to an ops__class
+	% (e.g. `infix(x, y)').
 :- pred ops__op_specifier_to_class(ops__specifier, ops__class).
 :- mode ops__op_specifier_to_class(in, out) is det.
 % :- mode ops__op_specifier_to_class(out, in) is semidet.
+
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -112,7 +127,7 @@ ops__op_table(".", after, xfy, 600).
 ops__op_table("/", after, yfx, 400).
 ops__op_table("//", after, yfx, 400).
 ops__op_table("/\\", after, yfx, 500).
-% ops__op_table(":", after, xfx, 1175).
+ops__op_table(":", after, xfy, 600).
 % ops__op_table(":", before, fx, 1175).
 ops__op_table(":-", after, xfx, 1200).
 ops__op_table(":-", before, fx, 1200).

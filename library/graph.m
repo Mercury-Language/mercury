@@ -4,8 +4,9 @@
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %------------------------------------------------------------------------------%
 %
-% file: graph.m.
-% main author: conway.
+% File: graph.m.
+% Main author: conway.
+% Stability: low.
 %
 % This module defines a directed graph data type.
 %

@@ -6,6 +6,7 @@
 
 % File: mercury_builtin.m.
 % Main author: fjh.
+% Stability: low.
 
 % This file is automatically imported into every module.
 % It is intended for things that are part of the language,
@@ -61,8 +62,7 @@
 :- mode in(Inst) :: (Inst -> Inst).
 :- mode out(Inst) :: (free -> Inst).
 
-% Unique modes.  Currently aliased to standard modes, since unique modes
-% aren't implemented yet.
+% Unique modes.  These are still not fully implemented.
 
 :- mode uo :: free -> unique.
 :- mode ui :: unique -> unique.
@@ -189,18 +189,25 @@
 
 %-----------------------------------------------------------------------------%
 
-:- type comparison_result ---> (=) ; (<) ; (>).
-
+	% unify(X, Y) is true iff X = Y.
 :- pred unify(T::in, T::in) is semidet.
 
+:- type comparison_result ---> (=) ; (<) ; (>).
+
+	% compare(Res, X, Y) binds Res to =, <, or >
+	% depending on whether X is =, <, or > Y in the
+	% standard ordering.
 :- pred compare(comparison_result::out, T::in, T::in) is det.
+
+	% The following three predicates can convert values of any
+	% type to the type `term' and back again.
+	% However, they are not yet implemented.
 
 :- pred term_to_type(term :: in, T :: out) is semidet.
 
 :- pred det_term_to_type(term :: in, T :: out) is det.
 
 :- pred type_to_term(T :: in, term :: out) is det.
-
 
 % The following are used by the compiler, to implement polymorphism.
 % They should not be used in programs.

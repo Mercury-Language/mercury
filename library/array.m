@@ -4,17 +4,19 @@
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-% array.m
-
+% File: array.m
 % Main author: bromage.
+% Based on the original version using 2-3 trees by conway.
+% Stability: low
 
-% this file contains a set of predicates for generating an manipulating
-% an array data structure. It is based on the original module by conway,
-% which used 2-3 trees to store the array.  This uses the map module 
-% instead, because it's less likely to contain bugs.  :-)
+% This file contains a set of predicates for generating an manipulating
+% an array data structure.  The current implementation does not actually
+% use an array - instead we use a map with integer keys, which is implemented
+% using a tree data structure.
 %
-% Arrays will be internal soon anyway, so it doesn't really matter how
-% efficient this code is, as long as it works.
+% The current interface will eventually be replaced by a version using
+% unique modes, and the implementation will be replaced by one which
+% uses real arrays.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

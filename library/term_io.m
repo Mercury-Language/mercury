@@ -6,6 +6,7 @@
 %
 % File: term_io.m.
 % Main author: fjh.
+% Stability: medium to high.
 %
 % This file encapsulates all the term I/O.
 % This exports predicates to read and write terms in the

@@ -6,6 +6,7 @@
 %
 % file: relation.m.
 % main author: bromage.
+% stability: low.
 %
 % This module defines a data type for binary relations over reflexive
 % domains.

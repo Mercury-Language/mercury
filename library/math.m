@@ -6,13 +6,15 @@
 %
 % File: math.m
 % Main author: bromage
+% Stability: high (but as yet no Prolog implementation)
 %
-% Higher mathematical operations.  Basically a wrapper for math_rt.mod
-% (see the runtime directory for details).
+% Higher mathematical operations.  (The basics are in float.m.)
+% The predicates in this module are not yet implemented in Prolog.
 %
-% XXX Domain errors are currently handled by a program abort.  This is
-%     because Mercury currently does not have exceptions built in.  It
-%     would be nice, but it's kind of low on the priority scale.
+% Domain errors are currently handled by a program abort.  This is
+% because Mercury currently does not have exceptions built in.
+% Exception-handling would be nice, but it's kind of low on the
+% priority scale.
 %
 %---------------------------------------------------------------------------%
 

@@ -2,7 +2,8 @@
 %-----------------------------------------------------------------------------%
 %
 %  Red-black tree module.
-%  Main author: petdr
+%  Main author: petdr.
+%  Stability: medium.
 %
 %  Contains an implementation of red black trees.
 %

@@ -6,6 +6,7 @@
 
 % File: set_unordlist.m.
 % Main authors: conway, fjh.
+% Stability: medium.
 
 % This file contains a `set' ADT.
 % Sets are implemented here as unsorted lists, which may contain duplicates.

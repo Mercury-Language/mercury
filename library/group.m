@@ -6,6 +6,10 @@
 %
 % file: group.m.
 % main author: conway.
+% stability: low.
+%
+% This module is probably not terribly useful, and it may not be supported
+% in future releases.
 %
 % The `group' module provides a facility for handling a partitioned set.
 % A group is a set of sets of elements, where each element is unique within
@@ -74,6 +78,9 @@
 
 :- pred group__group_keys(group(T), list(group__key)).
 :- mode group__group_keys(in, out) is det.
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 

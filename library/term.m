@@ -6,6 +6,7 @@
 
 % File: term.m.
 % Main author: fjh.
+% Stability: medium.
 
 % This file provides a type `term' used to represent Prolog terms,
 % and various predicates to manipulate terms and substitutions.
@@ -18,9 +19,16 @@
 
 %-----------------------------------------------------------------------------%
 
-:- type comparison	--->	(>)
-			;	(<)
-			;	(=).
+% The term type is actually defined in mercury_builtin.m.
+
+/*
+:- type term		--->	term__functor(const, list(term), term__context)
+			;	term__variable(var).
+:- type const		--->	term__atom(string)
+			;	term__integer(int)
+			;	term__string(string)
+			;	term__float(float).
+*/
 
 :- type var.
 :- type var_supply.
@@ -146,7 +154,7 @@
 %	term__is_ground(Term, Bindings) is true iff Term contains no
 %		variables.
 
-:- pred term__compare(comparison, term, term, substitution).
+:- pred term__compare(comparison_result, term, term, substitution).
 :- mode term__compare(out, in, in, in) is semidet.
 %	term__compare(Comparison, Term1, Term2, Bindings) is true iff
 %		there is a binding of Comparison to <, =, or > such
@@ -927,18 +935,7 @@ term__compare(Cmp, Term1, Term2, Bindings) :-
 	term__is_ground(TermA, Bindings),
 	term__apply_rec_substitution(Term2, Bindings, TermB),
 	term__is_ground(TermB, Bindings),
-	compare(Cmp0, TermA, TermB),
-	(
-		Cmp0 = (=)
-	->
-		Cmp = (=)
-	;
-		Cmp0 = (<)
-	->
-		Cmp = (<)
-	;
-		Cmp = (>)
-	).
+	compare(Cmp, TermA, TermB).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -6,6 +6,11 @@
 %
 % File: bintree.m.
 % Main author: conway.
+% Stability: medium (obsolete).
+%
+% This module exists primarily for historical reasons.  It is unlikely
+% to be useful, and may not be supported in future releases.
+% You should use `map' instead.
 %
 % This file provides a straight-forward binary search tree implementation of
 % a map (dictionary).

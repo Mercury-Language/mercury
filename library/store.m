@@ -6,6 +6,11 @@
 %
 % File: store.m. 
 % Main author: fjh.
+% Stability: low.
+%
+% This module is not stable: it is highly likely that the interface
+% will change in future releases.  For the time being, we recommend
+% that you do not use this module.
 %
 % This file provides facilities for manipulating stores.
 % A store is a set of nodes, each of which may contain a value of

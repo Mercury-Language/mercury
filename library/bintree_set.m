@@ -7,11 +7,13 @@
 :- module bintree_set.
 
 % Main authors: fjh.
+% Stability: medium.
 
 % This file provides an alternate implementation of the `set' ADT
 % defined in module `set'.  See that file for comments about the semantics
 % of the predicates.  This file implements sets as binary sorted trees,
-% using module `bintree'.
+% using module `bintree', and so provides different performance
+% characteristics.
 
 % bintree_set__is_member is a version of bintree_set__member
 % with a more restricted mode, which is implemented much

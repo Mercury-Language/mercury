@@ -6,6 +6,7 @@
 %
 % File: varset.m.
 % Main author: fjh.
+% Stability: low.
 %
 % This file provides facilities for manipulating collections of
 % variables and terms.

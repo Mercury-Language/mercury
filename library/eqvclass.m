@@ -5,7 +5,8 @@
 %---------------------------------------------------------------------------%
 %
 % File: eqvclass.m.
-% Author: zs
+% Author: zs.
+% Stability: low.
 %
 % A module for handling equivalence classes.
 %

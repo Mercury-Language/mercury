@@ -4,9 +4,9 @@
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
 %
-% rand.m
-%
+% file: rand.m
 % main author: conway
+% stability: low
 %
 % Define a set of random number generator predicates. This implementation
 % uses a threaded random-number supply. It could be made non-unique, but

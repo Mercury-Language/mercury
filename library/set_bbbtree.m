@@ -6,6 +6,7 @@
 
 % File: set_bbbtree.m.
 % Main authors: benyi.
+% Stability: low.
 
 % set_bbbtree - implements sets using bounded balanced binary trees.
 
@@ -248,23 +249,6 @@
 %------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%
 
-:- implementation.
-
-:- import_module int, require.
-
-:- type set_bbbtree(T) --->
-				empty
-			;	tree(T, int, set_bbbtree(T), set_bbbtree(T)).
-
-
-	% `set_bbbtree__def_ratio(Ratio)' returns the ratio that is used in
-	% deciding whether two trees require re-balancing.
-
-:- pred set_bbbtree__def_ratio(int).
-:- mode set_bbbtree__def_ratio(uo) is det.
-
-set_bbbtree__def_ratio(5).
-
 % Implementation based on "Functional Pearls: Efficient sets - a balancing act"
 % by Stephen Adams, J. Functional Programming 3 (4): 553-561, Oct 1993.
 %
@@ -303,6 +287,24 @@ set_bbbtree__def_ratio(5).
 % predicates for predicates such as `set_bbbtree__equal' as opposed to the
 % use of other set operations.
 %
+%------------------------------------------------------------------------------%
+
+:- implementation.
+
+:- import_module int, require.
+
+:- type set_bbbtree(T) --->
+				empty
+			;	tree(T, int, set_bbbtree(T), set_bbbtree(T)).
+
+
+	% `set_bbbtree__def_ratio(Ratio)' returns the ratio that is used in
+	% deciding whether two trees require re-balancing.
+
+:- pred set_bbbtree__def_ratio(int).
+:- mode set_bbbtree__def_ratio(uo) is det.
+
+set_bbbtree__def_ratio(5).
 
 %------------------------------------------------------------------------------%
 

@@ -8,6 +8,7 @@
 % that operate on lists.
 %
 % Main author: fjh.
+% Stability: medium to high.
 %
 %---------------------------------------------------------------------------%
 
@@ -33,6 +34,8 @@
 %-----------------------------------------------------------------------------%
 
 	% Some declarations for complicated modes using lists.
+	% Partially instantiated mode aren't fully implemented yet,
+	% so don't try to use these.
 
 :- inst list_skel(I) = bound(([] ; [I | list_skel(I)])).
 :- inst list_skel = list_skel(free).

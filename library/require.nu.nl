@@ -7,16 +7,8 @@
 % File: require.nu.nl.
 % Main author: fjh.
 
-% This module implements the predicates declared in require.m
+% This module implements the error/1 predicate declared in require.m
 % using non-logical NU-Prolog.
-
-require(Goal, Message) :-
-	( call(Goal) ->
-		true
-	;
-		error(Message),
-		fail
-	).
 
 error(Message) :-
 	format(user_error, "\nSoftware error: ~s\n", [Message]),

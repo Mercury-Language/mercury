@@ -6,9 +6,14 @@
 
 % File: std_util.m.
 % Main author: fjh.
+% Stability: medium to high.
 
 % This file is intended for all the useful standard utilities
 % that don't belong elsewhere, like <stdlib.h> in C.
+%
+% It contains the predicates solutions/2, semidet_succeed/0, semidet_fail/0,
+% and report_stats/0; the types univ, unit, bool, maybe(T), assoc_list(K,V);
+% and some predicates which operate on those types.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -70,7 +75,13 @@
 
 %-----------------------------------------------------------------------------%
 
+% The "unit" type - stores no information at all.
+
 :- type unit		--->	unit.
+
+%-----------------------------------------------------------------------------%
+
+% Association lists
 
 :- type pair(T1, T2)	--->	(T1 - T2).
 :- type pair(T)		==	pair(T,T).

@@ -6,6 +6,7 @@
 %
 % File: float.m.
 % Main author: fjh.
+% Stability: low.
 %
 % Floating point support.
 %

@@ -6,6 +6,7 @@
 %
 % File: io.m.
 % Main author: fjh.
+% Stability: medium to high (but see the caveats about unique modes below).
 %
 % This file encapsulates all the file I/O.
 % We implement a purely logical I/O system using non-logical I/O primitives
@@ -69,7 +70,8 @@
 
 :- type io__error.	% Use io__error_message to decode it.
 
-	% Poly-type
+	% Poly-type is used for io__write_many, which does
+	% some vaguely printf-like formatting.
 
 :- type io__poly_type == string__poly_type.
 %			--->
@@ -127,6 +129,8 @@
 %		Reads its argument from the current input stream.
 %		The argument may be of (almost) any type. 
 %		The term read had better be of the right type!
+%		XXX io__read_anything is NOT YET IMPLEMENTED.
+%		It will also probably be renamed io__read.
 
 :- pred io__read_anything(io__input_stream, io__read_result(T),
 							io__state, io__state).
@@ -134,6 +138,8 @@
 %		Reads its argument to the specified stream.
 %		The argument may be of (almost) any type.
 %		The term read had better be of the right type!
+%		XXX io__read_anything is NOT YET IMPLEMENTED.
+%		It will also probably be renamed io__read.
 
 :- pred io__ignore_whitespace(io__result, io__state, io__state).
 :- mode io__ignore_whitespace(out, di, uo) is det.
@@ -205,11 +211,19 @@
 :- mode io__write_anything(in, di, uo) is det.
 %		Writes its argument to the current output stream.
 %		The argument may be of (almost) any type.
+%		(Any type except a higher-order predicate type,
+%		or some of the builtin types such as io__state itself.)
+%		XXX io__write_anything is NOT YET IMPLEMENTED.
+%		It will probably also be renamed `io__write'.
 
 :- pred io__write_anything(io__output_stream, T, io__state, io__state).
 :- mode io__write_anything(in, in, di, uo) is det.
 %		Writes its argument to the specified stream.
 %		The argument may be of (almost) any type.
+%		(Any type except a higher-order predicate type,
+%		or some of the builtin types such as io__state itself.)
+%		XXX io__write_anything is NOT YET IMPLEMENTED.
+%		It will probably also be renamed `io__write'.
 
 :- pred io__flush_output(io__state, io__state).
 :- mode io__flush_output(di, uo) is det.

@@ -6,11 +6,12 @@
 %
 % File: bimap.m.
 % Main author: conway.
+% Stability: medium.
 %
-% This file provides the bijective 'map' ADT.
+% This file provides a bijective map ADT.
 % A map (also known as a dictionary or an associative array) is a collection
 % of (Key,Data) pairs which allows you to look up any Data item given the
-% Key.
+% Key.  A bimap also allows you to look up the Key given the Data.
 %
 % The implementation is a pair of maps.
 %
