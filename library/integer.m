@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2000, 2003 The University of Melbourne.
+% Copyright (C) 1997-2000, 2003-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -38,7 +38,7 @@
 :- pred '>='(integer, integer).
 :- mode '>='(in, in) is semidet.
 
-:- func integer(int) = integer.
+:- func integer__integer(int) = integer.
 
 :- func integer__to_string(integer) = string.
 
@@ -189,92 +189,82 @@ lowbitmask = 1.
 
 evenmask = 16382.
 
-'<'(X1, X2) :- 
-    big_cmp(X1, X2) = C,
-    C = (<).
+'<'(X, Y) :- 
+	big_cmp(X, Y) = C,
+	C = (<).
 
-'>'(X1, X2) :-
-    big_cmp(X1, X2) = C,
-    C = (>).
+'>'(X, Y) :-
+	big_cmp(X, Y) = C,
+	C = (>).
 
-'=<'(X1, X2) :-
-    big_cmp(X1, X2) = C,
-    ( C = (<) ; C = (=)).
+'=<'(X, Y) :-
+	big_cmp(X, Y) = C,
+	( C = (<) ; C = (=)).
 
-'>='(X1, X2) :-
-    big_cmp(X1, X2) = C,
-    ( C = (>) ; C = (=)).
+'>='(X, Y) :-
+	big_cmp(X, Y) = C,
+	( C = (>) ; C = (=)).
 
-'+'(X1) = X1.
+'+'(X) = X.
 
-'-'(N) = big_neg(N).
+'-'(X) = big_neg(X).
 
-X1 + X2 = big_plus(X1, X2).
+X + Y = big_plus(X, Y).
 
-X1 - X2 = big_plus(X1, big_neg(X2)).
+X - Y = big_plus(X, big_neg(Y)).
 
-X1 * X2 = big_mul(X1, X2).
+X * Y = big_mul(X, Y).
 
-X1 div X2 = big_div(X1, X2).
+X div Y = big_div(X, Y).
 
-X1 // X2 = big_quot(X1, X2).
+X // Y = big_quot(X, Y).
 
-X1 rem X2 = big_rem(X1, X2).
+X rem Y = big_rem(X, Y).
 
-X1 mod X2 = big_mod(X1, X2).
+X mod Y = big_mod(X, Y).
 
 X << I = ( I > 0 -> big_left_shift(X, I) ; I < 0 -> X >> -I ; X ).
 
 X >> I = ( I < 0 -> X << -I ; I > 0 -> big_right_shift(X, I) ; X ).
 
-X1 /\ X2 =
-    (
-        big_isnegative(X1) ->
-            (
-                big_isnegative(X2) ->
-                    \ big_or(\ X1, \ X2)
-            ;
-                big_and_not(X2, \ X1) 
-            )
-    ;
-        big_isnegative(X2) ->
-            big_and_not(X1, \ X2) 
-    ;
-        big_and(X1, X2)
-    ).
+X /\ Y =
+	( big_isnegative(X) ->
+		( big_isnegative(Y) ->
+			\ big_or(\ X, \ Y)
+		;
+			big_and_not(Y, \ X) 
+		)
+	; big_isnegative(Y) ->
+		big_and_not(X, \ Y) 
+	;
+		big_and(X, Y)
+	).
 
+X \/ Y =
+	( big_isnegative(X) ->
+		( big_isnegative(Y) ->
+			\ big_and(\ X, \ Y)
+		;
+			\ big_and_not(\ X, Y) 
+		)
+	; big_isnegative(Y) ->
+		\ big_and_not(\ Y, X)
+	;
+		big_or(X, Y)
+	).
 
-X1 \/ X2 =
-    (
-        big_isnegative(X1) ->
-            (
-                big_isnegative(X2) ->
-                    \ big_and(\ X1, \ X2)
-            ;
-                \ big_and_not(\ X1, X2) 
-            )
-    ;
-        big_isnegative(X2) ->
-            \ big_and_not(\ X2, X1)
-    ;
-        big_or(X1, X2)
-    ).
-
-X1 `xor` X2 = 
-    (
-        big_isnegative(X1) ->
-            (
-                big_isnegative(X2) ->
-                    big_xor(\ X1, \ X2)
-            ;
-                big_xor_not(X2, \X1)
-            )
-    ;
-        big_isnegative(X2) ->
-            big_xor_not(X1, \X2)
-    ;
-        big_xor(X1, X2)
-    ).
+X `xor` Y = 
+	( big_isnegative(X) ->
+		( big_isnegative(Y) ->
+			big_xor(\ X, \ Y)
+		;
+			big_xor_not(Y, \ X)
+		)
+	; big_isnegative(Y) ->
+		big_xor_not(X, \ Y)
+	;
+		big_xor(X, Y)
+	).
 
 \ X = big_neg(big_plus(X, integer__one)).
 
@@ -286,16 +276,12 @@ big_abs(i(Sign, Ds)) = ( Sign < 0 -> big_neg(i(Sign, Ds)) ; i(Sign, Ds) ).
 
 :- pred neg_list(list(int)::in, list(int)::out, list(int)::in) is det.
 
-neg_list([]) -->
-    [].
-neg_list([H | T]) -->
-    [-H],
-    neg_list(T).
+neg_list([]) --> [].
+neg_list([H | T]) --> [-H], neg_list(T).
 
 :- pred big_isnegative(integer::in) is semidet.
 
-big_isnegative(i(Sign, _)) :-
-    Sign < 0.
+big_isnegative(i(Sign, _)) :- Sign < 0.
 
 :- pred big_iszero(integer::in) is semidet.
 
@@ -303,14 +289,14 @@ big_iszero(i(0, [])).
 
 :- func big_neg(integer) = integer.
 
-big_neg(i(S, Ds)) = i(-S, NewDs) :-
-    neg_list(Ds, NewDs, []).
+big_neg(i(S, Digits0)) = i(-S, Digits) :-
+	neg_list(Digits0, Digits, []).
 
 :- func big_mul(integer, integer) = integer.
 
-big_mul(I1, I2) =
-    big_sign(integer_signum(I1) * integer_signum(I2),
-             pos_mul(big_abs(I1), big_abs(I2))).
+big_mul(X, Y) =
+	big_sign(integer_signum(X) * integer_signum(Y),
+		pos_mul(big_abs(X), big_abs(Y))).
 
 :- func big_sign(int, integer) = integer.
 
@@ -318,173 +304,161 @@ big_sign(Sign, In) = ( Sign < 0 -> big_neg(In) ; In ).
 
 :- func big_quot(integer, integer) = integer.
 
-big_quot(X1, X2) = Q :-
-    big_quot_rem(X1, X2, Q, _R).
+big_quot(X, Y) = Quot :-
+	big_quot_rem(X, Y, Quot, _Rem).
 
 :- func big_rem(integer, integer) = integer.
 
-big_rem(X1, X2) = R :-
-    big_quot_rem(X1, X2, _Q, R).
+big_rem(X, Y) = Rem :-
+	big_quot_rem(X, Y, _Quot, Rem).
 
 :- func big_div(integer, integer) = integer.
 
 big_div(X, Y) = Div :-
-    big_quot_rem(X, Y, Trunc, Rem),
-    (integer_signum(Y) * integer_signum(Rem) < 0 ->
-        Div = Trunc - integer__one
-    ;
-        Div = Trunc
-    ).
+	big_quot_rem(X, Y, Trunc, Rem),
+	( if	integer_signum(Y) * integer_signum(Rem) < 0
+	  then	Div = Trunc - integer__one
+   	  else	Div = Trunc
+	).
 
 :- func big_mod(integer, integer) = integer.
 
 big_mod(X, Y) = Mod :-
-    big_quot_rem(X, Y, _Trunc, Rem),
-    (integer_signum(Y) * integer_signum(Rem) < 0 ->
-        Mod = Rem + Y
-    ;
-        Mod = Rem
-    ).
+	big_quot_rem(X, Y, _Trunc, Rem),
+	( if	integer_signum(Y) * integer_signum(Rem) < 0
+	  then	Mod = Rem + Y
+   	  else	Mod = Rem
+	).
 
 :- func big_right_shift(integer, int) = integer.
 
 big_right_shift(X, I) =
-    (
-        big_iszero(X) ->
-            X
-    ;
-        big_isnegative(X) ->
-            \ pos_right_shift(\ X, I)
-    ;
-        pos_right_shift(X, I)
-    ).
+	( big_iszero(X) ->
+		X
+	; big_isnegative(X) ->
+		\ pos_right_shift(\ X, I)
+	;
+		pos_right_shift(X, I)
+	).
 
 :- func pos_right_shift(integer, int) = integer.
 
 pos_right_shift(i(Len, Digits), I) = Integer :-
-    Div = I div log2base,
-    (Div < Len ->
-        Mod = I mod log2base,
-        Integer = decap(rightshift(Mod, log2base - Mod,
-                                   i(Len - Div, Digits), 0))
-    ;
-        Integer = integer__zero
-    ).
+	Div = I div log2base,
+	( Div < Len ->
+		Mod = I mod log2base,
+		Integer = decap(rightshift(Mod, log2base - Mod,
+			i(Len - Div, Digits), 0))
+	;
+		Integer = integer__zero
+	).
 
 :- func rightshift(int, int, integer, int) = integer.
 
 rightshift(_Mod, _InvMod, i(_Len, []), _Carry) = integer__zero.
 rightshift(Mod, InvMod, i(Len, [H | T]), Carry) = Integer :-
-    (Len =< 0 ->
-        Integer = integer__zero
-    ;
-        NewH = Carry \/ (H >> Mod),
-        NewCarry = (H /\ (basemask >> InvMod)) << InvMod,
-        i(TailLen, NewTail) = rightshift(Mod, InvMod, i(Len - 1, T), NewCarry),
-        Integer = i(TailLen + 1, [NewH | NewTail])
-    ).
+	( Len =< 0 ->
+		Integer = integer__zero
+	;
+		NewH = Carry \/ (H >> Mod),
+		NewCarry = (H /\ (basemask >> InvMod)) << InvMod,
+		i(TailLen, NewTail) = rightshift(Mod, InvMod, i(Len - 1, T),
+			NewCarry),
+		Integer = i(TailLen + 1, [NewH | NewTail])
+	).
 
 :- func big_left_shift(integer, int) = integer.
 
 big_left_shift(X, I) =
-    (
-        big_iszero(X) ->
-            X
-    ;
-        big_isnegative(X) ->
-            big_neg(pos_left_shift(big_neg(X), I))
-    ;
-        pos_left_shift(X, I)
-    ).
+	( big_iszero(X) ->
+		X
+	; big_isnegative(X) ->
+		big_neg(pos_left_shift(big_neg(X), I))
+	;
+		pos_left_shift(X, I)
+	).
 
 :- func pos_left_shift(integer, int) = integer.
 
 pos_left_shift(i(Len, Digits), I) = Integer :-
-    Div = I div log2base,
-    Mod = I mod log2base,
-    NewLen = Len + Div,
-    leftshift(Mod, log2base - Mod, NewLen, Digits, Carry, NewDigits),
-    ( Carry = 0 -> 
-	Integer = i(NewLen, NewDigits)
-    ;
-        Integer = i(NewLen + 1, [Carry | NewDigits])
-    ).
+	Div = I div log2base,
+	Mod = I mod log2base,
+	NewLen = Len + Div,
+	leftshift(Mod, log2base - Mod, NewLen, Digits, Carry, NewDigits),
+	( if	Carry = 0
+	  then	Integer = i(NewLen, NewDigits)
+	  else	Integer = i(NewLen + 1, [Carry | NewDigits])
+	).
 
 :- pred leftshift(int::in, int::in, int::in, list(digit)::in,
 	int::out, list(digit)::out) is det.
 
 leftshift(_Mod, _InvMod, Len, [], Carry, DigitsOut) :-
-    Carry = 0,
-    zeros(Len, DigitsOut, []).
+	Carry = 0,
+	zeros(Len, DigitsOut, []).
 leftshift(Mod, InvMod, Len, [H | T], Carry, DigitsOut) :-
-    ( Len =< 0 ->
-        Carry = 0,
-        DigitsOut = []
-    ;
-        Carry = (H /\ (basemask << InvMod)) >> InvMod,
-        leftshift(Mod, InvMod, Len - 1, T, TailCarry, Tail),
-        DigitsOut = [TailCarry \/ ((H << Mod) /\ basemask) | Tail]
-    ).
+	( Len =< 0 ->
+		Carry = 0,
+		DigitsOut = []
+	;
+		Carry = (H /\ (basemask << InvMod)) >> InvMod,
+		leftshift(Mod, InvMod, Len - 1, T, TailCarry, Tail),
+		DigitsOut = [TailCarry \/ ((H << Mod) /\ basemask) | Tail]
+	).
 
 :- pred zeros(int::in, list(digit)::out, list(digit)::in) is det.
 
 zeros(Len) -->
-    ({ Len > 0 } ->
-        [0],
-        zeros(Len - 1)
-    ;
-        []
-    ).
+	( { Len > 0 } ->
+		[0],
+		zeros(Len - 1)
+	;
+		[]
+	).
 
 :- func big_or(integer, integer) = integer.
 
-big_or(X1, X2) = decap(or_pairs(X1, X2)).
+big_or(X, Y) = decap(or_pairs(X, Y)).
 
 :- func or_pairs(integer, integer) = integer.
 
 or_pairs(i(L1, D1), i(L2, D2)) = Integer :-
-    (
-        L1 = L2 ->
-            Integer = i(L1, or_pairs_equal(D1, D2))
-    ;
-        L1 < L2, D2 = [H2 | T2] ->
-            i(_, DsT) = or_pairs(i(L1, D1), i(L2 - 1, T2)),
-            Integer = i(L2, [H2 | DsT])
-    ;
-        L1 > L2, D1 = [H1 | T1] ->
-            i(_, DsT) = or_pairs(i(L1 - 1, T1), i(L2, D2)),
-            Integer = i(L1, [H1 | DsT])
-    ;
-	error("integer__or_pairs")
-    ).
+	( L1 = L2 ->
+		Integer = i(L1, or_pairs_equal(D1, D2))
+	; L1 < L2, D2 = [H2 | T2] ->
+		i(_, DsT) = or_pairs(i(L1, D1), i(L2 - 1, T2)),
+		Integer = i(L2, [H2 | DsT])
+	; L1 > L2, D1 = [H1 | T1] ->
+		i(_, DsT) = or_pairs(i(L1 - 1, T1), i(L2, D2)),
+		Integer = i(L1, [H1 | DsT])
+	;
+		error("integer__or_pairs")
+	).
 
 :- func or_pairs_equal(list(digit), list(digit)) = list(digit).
 
 or_pairs_equal([], _) = [].
-or_pairs_equal([X | Xs], [Y | Ys]) = [X \/ Y | or_pairs_equal(Xs, Ys)].
 or_pairs_equal([_ | _], []) = [].
+or_pairs_equal([X | Xs], [Y | Ys]) = [X \/ Y | or_pairs_equal(Xs, Ys)].
 
 :- func big_xor(integer, integer) = integer.
 
-big_xor(X1, X2) = decap(xor_pairs(X1, X2)).
+big_xor(X, Y) = decap(xor_pairs(X, Y)).
 
 :- func xor_pairs(integer, integer) = integer.
 
 xor_pairs(i(L1, D1), i(L2, D2)) = Integer :-
-    (
-        L1 = L2 ->
-            Integer = i(L1, xor_pairs_equal(D1, D2))
-    ;
-        L1 < L2, D2 = [H2 | T2] ->
-            i(_, DsT) = xor_pairs(i(L1, D1), i(L2 - 1, T2)),
-            Integer = i(L2, [H2 | DsT])
-    ;
-        L1 > L2, D1 = [H1 | T1] ->
-            i(_, DsT) = xor_pairs(i(L1 - 1, T1), i(L2, D2)),
-            Integer = i(L1, [H1 | DsT])
-    ;
-	error("integer__xor_pairs")
-    ).
+	( L1 = L2 ->
+		Integer = i(L1, xor_pairs_equal(D1, D2))
+	; L1 < L2, D2 = [H2 | T2] ->
+		i(_, DsT) = xor_pairs(i(L1, D1), i(L2 - 1, T2)),
+		Integer = i(L2, [H2 | DsT])
+	; L1 > L2, D1 = [H1 | T1] ->
+		i(_, DsT) = xor_pairs(i(L1 - 1, T1), i(L2, D2)),
+		Integer = i(L1, [H1 | DsT])
+	;
+		error("integer__xor_pairs")
+	).
 
 :- func xor_pairs_equal(list(digit), list(digit)) = list(digit).
 
@@ -495,25 +469,22 @@ xor_pairs_equal([X | Xs], [Y | Ys]) =
 
 :- func big_and(integer, integer) = integer.
 
-big_and(X1, X2) = decap(and_pairs(X1, X2)).
+big_and(X, Y) = decap(and_pairs(X, Y)).
 
 :- func and_pairs(integer, integer) = integer.
 
 and_pairs(i(L1, D1), i(L2, D2)) = Integer :-
-    (
-        L1 = L2 ->
-            Integer = i(L1, and_pairs_equal(D1, D2))
-    ;
-        L1 < L2, D2 = [_ | T2] ->
-            i(_, DsT) = and_pairs(i(L1, D1), i(L2 - 1, T2)),
-            Integer = i(L1, DsT)
-    ;
-        L1 > L2, D1 = [_ | T1] ->
-            i(_, DsT) = and_pairs(i(L1 - 1, T1), i(L2, D2)),
-            Integer = i(L2, DsT)
-    ;
-	error("integer__and_pairs")
-    ).
+	( L1 = L2 ->
+		Integer = i(L1, and_pairs_equal(D1, D2))
+	; L1 < L2, D2 = [_ | T2] ->
+		i(_, DsT) = and_pairs(i(L1, D1), i(L2 - 1, T2)),
+		Integer = i(L1, DsT)
+	; L1 > L2, D1 = [_ | T1] ->
+		i(_, DsT) = and_pairs(i(L1 - 1, T1), i(L2, D2)),
+		Integer = i(L2, DsT)
+	;
+		error("integer__and_pairs")
+	).
 
 :- func and_pairs_equal(list(digit), list(digit)) = list(digit).
 
@@ -523,25 +494,22 @@ and_pairs_equal([X | Xs], [Y | Ys]) = [X /\ Y | and_pairs_equal(Xs, Ys)].
 
 :- func big_and_not(integer, integer) = integer.
 
-big_and_not(X1, X2) = decap(and_not_pairs(X1, X2)).
+big_and_not(X, Y) = decap(and_not_pairs(X, Y)).
 
 :- func and_not_pairs(integer, integer) = integer.
 
 and_not_pairs(i(L1, D1), i(L2, D2)) = Integer :-
-    (
-        L1 = L2 ->
-            Integer = i(L1, and_not_pairs_equal(D1, D2))
-    ;
-        L1 < L2, D2 = [_ | T2] ->
-            i(_, DsT) = and_not_pairs(i(L1, D1), i(L2 - 1, T2)),
-            Integer = i(L1, DsT)
-    ;
-        L1 > L2, D1 = [H1 | T1] ->
-            i(_, DsT) = and_not_pairs(i(L1 - 1, T1), i(L2, D2)),
-            Integer = i(L1, [H1 | DsT])
-    ;
-	error("integer__and_not_pairs")
-    ).
+	( L1 = L2 ->
+		Integer = i(L1, and_not_pairs_equal(D1, D2))
+	; L1 < L2, D2 = [_ | T2] ->
+		i(_, DsT) = and_not_pairs(i(L1, D1), i(L2 - 1, T2)),
+		Integer = i(L1, DsT)
+	; L1 > L2, D1 = [H1 | T1] ->
+		i(_, DsT) = and_not_pairs(i(L1 - 1, T1), i(L2, D2)),
+		Integer = i(L1, [H1 | DsT])
+	;
+		error("integer__and_not_pairs")
+	).
 
 :- func and_not_pairs_equal(list(digit), list(digit)) = list(digit).
 
@@ -553,48 +521,43 @@ and_not_pairs_equal([X | Xs], [Y | Ys]) =
 :- func big_xor_not(integer, integer) = integer.
 
 big_xor_not(X1, NotX2) =
-    \ big_and_not(big_or(X1, NotX2), big_and(X1, NotX2)).
+	\ big_and_not(big_or(X1, NotX2), big_and(X1, NotX2)).
 
 :- func big_cmp(integer, integer) = comparison_result.
 
-big_cmp(I1, I2) = Result :-
-    compare(Result, I1, I2).
+big_cmp(X, Y) = Result :-
+	compare(Result, X, Y).
 
 :- func pos_cmp(integer, integer) = comparison_result.
 
-pos_cmp(Xs, Ys) = Result :-
-    compare(Result, Xs, Ys).
+pos_cmp(X, Y) = Result :-
+	compare(Result, X, Y).
 
 :- func big_plus(integer, integer) = integer.
 
-big_plus(I1, I2) = Sum :-
-    (
-        I1 = integer__zero ->
-            Sum = I2
-    ;
-        I2 = integer__zero ->
-            Sum = I1
-    ;
-        Abs1 = big_abs(I1),
-        Abs2 = big_abs(I2),
-        S1 = integer_signum(I1),
-        S2 = integer_signum(I2),
-        (
-            S1 = S2 ->
-                Sum = big_sign(S1, pos_plus(Abs1, Abs2))
-        ;
-            C = pos_cmp(Abs1, Abs2),
-            (
-                C = (<) ->
-                    Sum = big_sign(S2, pos_minus(Abs2, Abs1))
-            ;
-                C = (>) ->
-                    Sum = big_sign(S1, pos_minus(Abs1, Abs2))
-            ;
-                Sum = integer__zero
-            )
-        )
-    ).
+big_plus(X, Y) = Sum :-
+	( X = integer__zero ->
+		Sum = Y 
+	; Y = integer__zero ->
+		Sum = X 
+	;
+		AbsX = big_abs(X),
+		AbsY = big_abs(Y),
+		SignX = integer_signum(X),
+		SignY = integer_signum(Y),
+		( SignX = SignY ->
+			Sum = big_sign(SignX, pos_plus(AbsX, AbsY))
+		;
+			C = pos_cmp(AbsX, AbsY),
+			( C = (<) ->
+				Sum = big_sign(SignY, pos_minus(AbsY, AbsX))
+			; C = (>) ->
+				Sum = big_sign(SignX, pos_minus(AbsX, AbsY))
+			;
+				Sum = integer__zero
+			)
+		)
+	).
 
 integer(N) = int_to_integer(N).
 
@@ -610,24 +573,20 @@ integer(N) = int_to_integer(N).
 :- func int_to_integer(int) = integer.
 
 int_to_integer(D) = Int :-
-    (
-        D = 0 ->
-            Int = integer__zero
-    ;
-        D > 0, D < base ->
-            Int = i(1, [D])
-    ;
-        D < 0, D > -base ->
-            Int = i(-1, [D])
-    ;
-	( int__min_int(D) ->
-	    % were we to call int__abs, int overflow might occur.
-	    Int = integer(D + 1) - integer__one
+	( D = 0 ->
+		Int = integer__zero
+	; D > 0, D < base ->
+		Int = i(1, [D])
+	; D < 0, D > -base ->
+		Int = i(-1, [D])
 	;
-	    int__abs(D, AD),
-	    Int = big_sign(D, pos_int_to_digits(AD))
-	)
-    ).
+		( int__min_int(D) ->
+			% were we to call int__abs, int overflow might occur.
+			Int = integer(D + 1) - integer__one
+		;
+			Int = big_sign(D, pos_int_to_digits(int__abs(D)))
+		)
+	).
 
 :- func shortint_to_integer(int) = integer.
 
@@ -644,28 +603,23 @@ integer_signum(i(Sign, _)) = signum(Sign).
 
 :- func pos_int_to_digits(int) = integer.
 
-pos_int_to_digits(D) =
-    pos_int_to_digits_2(D, integer__zero).
+pos_int_to_digits(D) = pos_int_to_digits_2(D, integer__zero).
 
 :- func pos_int_to_digits_2(int, integer) = integer.
 
 pos_int_to_digits_2(D, Tail) = Result :-
-    (D = 0 ->
-	Result = Tail
-    ;
-        Tail = i(Length, Digits),
-        chop(D, Div, Mod),
-        Result = pos_int_to_digits_2(Div, i(Length + 1, [Mod | Digits]))
-    ).
+	( D = 0 ->
+		Result = Tail
+	;
+		Tail = i(Length, Digits),
+		chop(D, Div, Mod),
+		Result = pos_int_to_digits_2(Div, i(Length + 1, [Mod | Digits]))
+	).
 
 :- func mul_base(integer) = integer.
 
-mul_base(i(L, Ds)) = Result :-
-    (Ds = [] ->
-        Result = integer__zero
-    ;
-        Result = i(L + 1, mul_base_2(Ds))
-    ).
+mul_base(i(Len, Digits)) = 
+	( Digits = [] -> integer__zero ; i(Len + 1, mul_base_2(Digits)) ).
 
 :- func mul_base_2(list(digit)) = list(digit).
 
@@ -674,55 +628,48 @@ mul_base_2([H | T]) = [H | mul_base_2(T)].
 
 :- func mul_by_digit(digit, integer) = integer.
 
-mul_by_digit(D, i(Len, Ds)) = Out :-
-    mul_by_digit_2(D, Mod, Ds, DsOut),
-    (Mod = 0 ->
-	Out = i(Len, DsOut)
-    ;
-	Out = i(Len + 1, [Mod | DsOut])
-    ).
+mul_by_digit(Digit, i(Len, Digits0)) = Out :-
+	mul_by_digit_2(Digit, Mod, Digits0, Digits),
+	Out = ( Mod = 0 -> i(Len, Digits) ; i(Len + 1, [Mod | Digits]) ). 
 
 :- pred mul_by_digit_2(digit::in, digit::out, list(digit)::in,
 	list(digit)::out) is det.
 
 mul_by_digit_2(_, 0, [], []).
 mul_by_digit_2(D, Div, [X | Xs], [Mod | NewXs]) :-
-    mul_by_digit_2(D, DivXs, Xs, NewXs),
-    chop(D * X + DivXs, Div, Mod).
+	mul_by_digit_2(D, DivXs, Xs, NewXs),
+	chop(D * X + DivXs, Div, Mod).
 
 :- pred chop(int::in, digit::out, digit::out) is det.
 
 chop(N, Div, Mod) :-
-    Div = N >> log2base,	% i.e. Div = N div base
-    Mod = N /\ basemask.	% i.e. Mod = N mode base
+	Div = N >> log2base,	% i.e. Div = N div base
+	Mod = N /\ basemask.	% i.e. Mod = N mode base
 
 :- func pos_plus(integer, integer) = integer.
 
 pos_plus(i(L1, D1), i(L2, D2)) = Out :-
-    add_pairs(Div, i(L1, D1), i(L2, D2), Ds),
-    Len = ( L1 > L2 -> L1 ; L2 ),
-    Out = ( Div = 0 -> i(Len, Ds) ; i(Len + 1, [Div | Ds]) ).
+	add_pairs(Div, i(L1, D1), i(L2, D2), Ds),
+	Len = ( L1 > L2 -> L1 ; L2 ),
+	Out = ( Div = 0 -> i(Len, Ds) ; i(Len + 1, [Div | Ds]) ).
 
 :- pred add_pairs(digit::out, integer::in, integer::in,
 	list(digit)::out) is det.
 
 add_pairs(Div, i(L1, D1), i(L2, D2), Ds) :-
-    (
-        L1 = L2 ->
-            add_pairs_equal(Div, D1, D2, Ds)
-    ;
-        L1 < L2, D2 = [H2 | T2] ->
-            add_pairs(Div1, i(L1, D1), i(L2 - 1, T2), Ds1),
-            chop(H2 + Div1, Div, Mod),
-            Ds = [Mod | Ds1]
-    ;
-        L1 > L2, D1 = [H1 | T1] ->
-            add_pairs(Div1, i(L1 - 1, T1), i(L2, D2), Ds1),
-            chop(H1 + Div1, Div, Mod),
-            Ds = [Mod | Ds1]
-    ;
-	error("integer__add_pairs")
-    ).
+	( L1 = L2 ->
+		add_pairs_equal(Div, D1, D2, Ds)
+	; L1 < L2, D2 = [H2 | T2] ->
+		add_pairs(Div1, i(L1, D1), i(L2 - 1, T2), Ds1),
+		chop(H2 + Div1, Div, Mod),
+		Ds = [Mod | Ds1]
+	; L1 > L2, D1 = [H1 | T1] ->
+		add_pairs(Div1, i(L1 - 1, T1), i(L2, D2), Ds1),
+		chop(H1 + Div1, Div, Mod),
+		Ds = [Mod | Ds1]
+	;
+		error("integer__add_pairs")
+	).
 
 :- pred add_pairs_equal(digit::out, list(digit)::in, list(digit)::in,
 	list(digit)::out) is det.
@@ -730,31 +677,29 @@ add_pairs(Div, i(L1, D1), i(L2, D2), Ds) :-
 add_pairs_equal(0, [], _, []).
 add_pairs_equal(0, [_ | _], [], []).
 add_pairs_equal(Div, [X | Xs], [Y | Ys], [Mod | TailDs]) :-
-    add_pairs_equal(DivTail, Xs, Ys, TailDs),
-    chop(X + Y + DivTail, Div, Mod).
+	add_pairs_equal(DivTail, Xs, Ys, TailDs),
+	chop(X + Y + DivTail, Div, Mod).
 
 :- func pos_minus(integer, integer) = integer.
 
 pos_minus(i(L1, D1), i(L2, D2)) = Out :-
-    diff_pairs(Mod, i(L1, D1), i(L2, D2), Ds),
-    Len = ( L1 > L2 -> L1 ; L2 ),
-    Out = ( Mod = 0 -> decap(i(Len, Ds)) ; i(Len + 1, [Mod | Ds]) ).
+	diff_pairs(Mod, i(L1, D1), i(L2, D2), Ds),
+	Len = ( L1 > L2 -> L1 ; L2 ),
+	Out = ( Mod = 0 -> decap(i(Len, Ds)) ; i(Len + 1, [Mod | Ds]) ).
 
 :- pred diff_pairs(digit::out, integer::in, integer::in,
 	list(digit)::out) is det.
 
 diff_pairs(Div, i(L1, D1), i(L2, D2), Ds) :-
-    (
-        L1 = L2 ->
-            diff_pairs_equal(Div, D1, D2, Ds)
-    ;
-        L1 > L2, D1 = [H1 | T1] ->
-            diff_pairs(Div1, i(L1 - 1, T1), i(L2, D2), Ds1),
-            chop(H1 + Div1, Div, Mod),
-            Ds = [Mod | Ds1]
-    ;
-	error("integer__diff_pairs")
-    ).
+	( L1 = L2 ->
+		diff_pairs_equal(Div, D1, D2, Ds)
+	; L1 > L2, D1 = [H1 | T1] ->
+		diff_pairs(Div1, i(L1 - 1, T1), i(L2, D2), Ds1),
+		chop(H1 + Div1, Div, Mod),
+		Ds = [Mod | Ds1]
+	;
+		error("integer__diff_pairs")
+	).
 
 :- pred diff_pairs_equal(digit::out, list(digit)::in, list(digit)::in,
 	list(digit)::out) is det.
@@ -762,42 +707,39 @@ diff_pairs(Div, i(L1, D1), i(L2, D2), Ds) :-
 diff_pairs_equal(0, [], _, []).
 diff_pairs_equal(0, [_ | _], [], []).
 diff_pairs_equal(Div, [X | Xs], [Y | Ys], [Mod | TailDs]) :-
-    diff_pairs_equal(DivTail, Xs, Ys, TailDs),
-    chop(X - Y + DivTail, Div, Mod).
+	diff_pairs_equal(DivTail, Xs, Ys, TailDs),
+	chop(X - Y + DivTail, Div, Mod).
 
 :- func pos_mul(integer, integer) = integer.
 
 pos_mul(i(L1, Ds1), i(L2, Ds2)) =
-    (L1 < L2 ->
-        pos_mul_list(Ds1, integer__zero, i(L2, Ds2))
-    ;
-        pos_mul_list(Ds2, integer__zero, i(L1, Ds1))
-    ).
+	( if	L1 < L2
+	  then	pos_mul_list(Ds1, integer__zero, i(L2, Ds2))
+	  else	pos_mul_list(Ds2, integer__zero, i(L1, Ds1))
+	).
 
 :- func pos_mul_list(list(digit), integer, integer) = integer.
 
 pos_mul_list([], Carry, _Y) = Carry.
-pos_mul_list([X|Xs], Carry, Y) =
-    pos_mul_list(Xs, pos_plus(mul_base(Carry), mul_by_digit(X, Y)), Y).
+pos_mul_list([X | Xs], Carry, Y) =
+	pos_mul_list(Xs, pos_plus(mul_base(Carry), mul_by_digit(X, Y)), Y).
 
 :- pred big_quot_rem(integer::in, integer::in, integer::out,
 	integer::out) is det.
 
-big_quot_rem(N1, N2, Qt, Rm) :-
-    (
-        big_iszero(N2) ->
-            error("integer__big_quot_rem: division by zero")
-    ;
-        big_iszero(N1) ->
-            Qt = integer__zero,
-            Rm = integer__zero
-    ;
-	N1 = i(S1, _),
-	N2 = i(S2, _),
-	quot_rem(big_abs(N1), big_abs(N2), Q, R),
-        Qt = big_sign(S1*S2, Q),
-        Rm = big_sign(S1, R)
-    ).
+big_quot_rem(X, Y, Quot, Rem) :-
+	( big_iszero(Y) ->
+		error("integer__big_quot_rem: division by zero")
+	; big_iszero(X) ->
+		Quot = integer__zero,
+		Rem  = integer__zero
+	;
+		X = i(SignX, _),
+		Y = i(SignY, _),
+		quot_rem(big_abs(X), big_abs(Y), Quot0, Rem0),
+		Quot = big_sign(SignX * SignY, Quot0),
+		Rem  = big_sign(SignX, Rem0)
+	).
 
 % Algorithm: We take digits from the start of U (call them Ur)
 % and divide by V to get a digit Q of the ratio.
@@ -815,69 +757,68 @@ big_quot_rem(N1, N2, Qt, Rm) :-
 
 :- pred quot_rem(integer::in, integer::in, integer::out, integer::out) is det.
 
-quot_rem(U, V, Qt, Rm) :-
-    (U = i(_, [UI]), V = i(_, [VI]) ->
-        Qt = shortint_to_integer(UI // VI),
-        Rm = shortint_to_integer(UI rem VI)
-    ;
-        V0 = head(V),
-        ( V0 < basediv2 ->
-            M = base div (V0 + 1),
-            quot_rem_2(integer__zero,
-        	       mul_by_digit(M, U),
-        	       mul_by_digit(M, V), QtZeros, R),
-            Rm = div_by_digit(M, R)
-        ;
-            quot_rem_2(integer__zero, U, V, QtZeros, Rm)
-        ),
-        Qt = decap(QtZeros)
-    ).
+quot_rem(U, V, Quot, Rem) :-
+	( U = i(_, [UI]), V = i(_, [VI]) ->
+		Quot = shortint_to_integer(UI // VI),
+		Rem  = shortint_to_integer(UI rem VI)
+	;
+		V0 = head(V),
+		( V0 < basediv2 ->
+			M = base div (V0 + 1),
+			quot_rem_2(integer__zero, mul_by_digit(M, U),
+				mul_by_digit(M, V), QuotZeros, R),
+			Rem = div_by_digit(M, R)
+		;
+			quot_rem_2(integer__zero, U, V, QuotZeros, Rem)
+		),
+		Quot = decap(QuotZeros)
+	).
 
 :- pred quot_rem_2(integer::in, integer::in, integer::in, integer::out,
 	integer::out) is det.
 
-quot_rem_2(Ur, U, V, Qt, Rm) :-
-    (pos_lt(Ur, V) ->
-	(
-            U = i(_, [Ua | _]) ->
-                quot_rem_2(integer_append(Ur, Ua), tail(U), V, Quot, Rem),
-                Qt = integer_prepend(0, Quot),
-                Rm = Rem
-        ;
-            Qt = i(1, [0]),
-            Rm = Ur
-	)
-    ;
-	(length(Ur) > length(V) ->
-	    Qhat = (head(Ur) * base + head_tail(Ur)) div head(V)
-        ;
-            Qhat = head(Ur) div head(V)
-	),
-        QhatByV = mul_by_digit(Qhat, V),
-	(pos_geq(Ur, QhatByV) ->
-            Q = Qhat,
-            QByV = QhatByV
+quot_rem_2(Ur, U, V, Quot, Rem) :-
+	( pos_lt(Ur, V) ->
+		( U = i(_, [Ua | _]) ->
+			quot_rem_2(integer_append(Ur, Ua), tail(U), V, 
+				Quot0, Rem0),
+                	Quot = integer_prepend(0, Quot0),
+                	Rem = Rem0
+		;
+			Quot = i(1, [0]),
+			Rem = Ur
+		)
 	;
-            QhatMinus1ByV = pos_minus(QhatByV, V),
-            (pos_geq(Ur, QhatMinus1ByV) ->
-        	Q = Qhat - 1,
-                QByV = QhatMinus1ByV
-            ;
-        	Q = Qhat - 2,
-                QByV = pos_minus(QhatMinus1ByV, V)
-            )
-	),
-	NewUr = pos_minus(Ur, QByV),
-	(
-            U = i(_, [Ua | _]) ->
-                quot_rem_2(integer_append(NewUr, Ua), tail(U), V, Quot, Rem),
-                Qt = integer_prepend(Q, Quot),
-                Rm = Rem
-        ;
-            Qt = i(1, [Q]),
-            Rm = NewUr
-	)
-    ).
+		( length(Ur) > length(V) ->
+			Qhat = (head(Ur) * base + head_tail(Ur)) div head(V)
+		;
+			Qhat = head(Ur) div head(V)
+		),
+		QhatByV = mul_by_digit(Qhat, V),
+		( pos_geq(Ur, QhatByV) ->
+			Q = Qhat,
+			QByV = QhatByV
+		;
+			QhatMinus1ByV = pos_minus(QhatByV, V),
+			( pos_geq(Ur, QhatMinus1ByV) ->
+				Q = Qhat - 1,
+				QByV = QhatMinus1ByV
+			;
+				Q = Qhat - 2,
+				QByV = pos_minus(QhatMinus1ByV, V)
+			)
+		),
+		NewUr = pos_minus(Ur, QByV),
+		( U = i(_, [Ua | _]) ->
+                	quot_rem_2(integer_append(NewUr, Ua), tail(U), V,
+				Quot0, Rem0),
+			Quot = integer_prepend(Q, Quot0),
+			Rem = Rem0
+		;
+			Quot = i(1, [Q]),
+			Rem = NewUr
+		)
+	).
 
 :- func length(integer) = int.
 
@@ -898,22 +839,18 @@ head_tail(I) =
 	(I = i(_, [_ | [HT | _]]) -> 
 		HT 
 	; 
-		func_error("integer__tail: []")
+		func_error("integer__head_tail: []")
 	).
 
 :- func tail(integer) = integer.
 
-tail(I) = 
-    (I = i(L, [_ | Tail]) ->
-	i(L - 1, Tail)
-    ;
-	func_error("integer__tail: []")
-    ).
+tail(i(_, [])) = func_error("integer__tail: []").
+tail(i(Len, [_ | Tail])) = i(Len - 1, Tail).
 
 :- func integer_append(integer, digit) = integer.
 
 integer_append(i(L, List), Digit) = i(L + 1, NewList) :-
-    list__append(List, [Digit], NewList).
+	list__append(List, [Digit], NewList).
 
 :- func integer_prepend(digit, integer) = integer.
 
@@ -921,133 +858,120 @@ integer_prepend(Digit, i(L, List)) = i(L + 1, [Digit | List]).
 
 :- func div_by_digit(digit, integer) = integer.
 
-div_by_digit(_D, i(_, [])) = integer__zero.
-div_by_digit(D, i(_, [X|Xs])) = div_by_digit_1(X, Xs, D).
+div_by_digit(_, i(_, [])) = integer__zero.
+div_by_digit(Digit, i(_, [X | Xs])) = div_by_digit_1(X, Xs, Digit).
 
 :- func div_by_digit_1(digit, list(digit), digit) = integer.
 
-div_by_digit_1(X, [], D) = Integer :-
-    Q = X div D,
-    (Q = 0 ->
-        Integer = integer__zero
-    ;
-        Integer = i(1, [Q])
-    ).
-div_by_digit_1(X, [H|T], D) = Integer :-
-    Q = X div D,
-    (Q = 0 ->
-        Integer = div_by_digit_1((X rem D) * base + H, T, D)
-    ;
-        i(L, Ds) = div_by_digit_2((X rem D) * base + H, T, D),
-        Integer = i(L + 1, [Q | Ds])
-    ).
+div_by_digit_1(X, [], D) = ( Q = 0 -> integer__zero ; i(1, [Q]) ) :-
+	Q = X div D.
+div_by_digit_1(X, [H | T], D) = Integer :-
+	Q = X div D,
+	( Q = 0 ->
+		Integer = div_by_digit_1((X rem D) * base + H, T, D)
+	;
+		i(L, Ds) = div_by_digit_2((X rem D) * base + H, T, D),
+		Integer = i(L + 1, [Q | Ds])
+	).
 
 :- func div_by_digit_2(digit, list(digit), digit) = integer.
 
 div_by_digit_2(X, [], D) = i(1, [X div D]).
-div_by_digit_2(X, [H|T], D) = i(Len + 1, [X div D | Tail]) :-
-    i(Len, Tail) = div_by_digit_2((X rem D) * base + H, T, D).
+div_by_digit_2(X, [H | T], D) = i(Len + 1, [X div D | Tail]) :-
+	i(Len, Tail) = div_by_digit_2((X rem D) * base + H, T, D).
 
 :- pred pos_lt(integer::in, integer::in) is semidet.
 
 pos_lt(Xs, Ys) :-
-    (<) = pos_cmp(Xs, Ys).
+	(<) = pos_cmp(Xs, Ys).
 
 :- pred pos_geq(integer::in, integer::in) is semidet.
 
 pos_geq(Xs, Ys) :-
-    C = pos_cmp(Xs, Ys),
-    ( C = (>) ; C = (=) ).
+	C = pos_cmp(Xs, Ys),
+	( C = (>) ; C = (=) ).
 
 integer__pow(A, N) = P :-
 	integer__pow(A, N, P).
 
 integer__pow(A, N, P) :-
-    ( big_isnegative(N) ->
-	error("integer__pow: negative exponent")
-    ;
-	P = big_pow(A, N)
-    ).
+	( if	big_isnegative(N)
+	  then	error("integer__pow: negative exponent")
+   	  else	P = big_pow(A, N)
+	).
 
 :- func big_pow(integer, integer) = integer.
 
 big_pow(A, N) =
-    (
-        N = integer__zero ->
-            integer__one
-    ;
-        N = integer__one ->
-            A
-    ;
-        A = integer__one ->
-            integer__one
-    ;
-        A = integer__zero ->
-            integer__zero
-    ;
-        N = i(_, [Head | Tail]) ->
-            bits_pow_list(Tail, A, bits_pow_head(Head, A))
-    ;
-        integer__zero
-    ).
+	( N = integer__zero ->
+		integer__one
+	; N = integer__one ->
+		A
+	; A = integer__one ->
+		integer__one
+	; A = integer__zero ->
+		integer__zero
+	; N = i(_, [Head | Tail]) ->
+		bits_pow_list(Tail, A, bits_pow_head(Head, A))
+	;
+        	integer__zero
+	).
 
 :- func bits_pow_head(int, integer) = integer.
 
 bits_pow_head(H, A) =
-    (
-        H = 0 ->
-            integer__one
-    ;
-        H /\ lowbitmask = 1 ->
-            A * bits_pow_head(H /\ evenmask, A)
-    ;
-        big_sqr(bits_pow_head(H >> 1, A))
-    ).
+	( H = 0 ->
+		integer__one
+	; H /\ lowbitmask = 1 ->
+		A * bits_pow_head(H /\ evenmask, A)
+	;
+		big_sqr(bits_pow_head(H >> 1, A))
+	).
 
 :- func bits_pow_list(list(int), integer, integer) = integer.
 
 bits_pow_list([], _, Accum) = Accum.
 bits_pow_list([H | T], A, Accum) =
-    bits_pow_list(T, A, bits_pow(log2base, H, A, Accum)).
+	bits_pow_list(T, A, bits_pow(log2base, H, A, Accum)).
 
 :- func bits_pow(int, int, integer, integer) = integer.
 
 bits_pow(Shifts, H, A, Accum) =
-    (
-        Shifts =< 0 ->
-            Accum
-    ;
-        H /\ lowbitmask = 1 ->
-            A * bits_pow(Shifts, H /\ evenmask, A, Accum)
-    ;
-        big_sqr(bits_pow(Shifts - 1, H >> 1, A, Accum))
-    ).
+	( Shifts =< 0 ->
+		Accum
+	; H /\ lowbitmask = 1 ->
+		A * bits_pow(Shifts, H /\ evenmask, A, Accum)
+	;
+		big_sqr(bits_pow(Shifts - 1, H >> 1, A, Accum))
+	).
 
 :- func big_sqr(integer) = integer.
 
 big_sqr(A) = A * A.
 
-integer__float(i(_, List)) = float_list(FBase, 0.0, List) :-
-    int__to_float(base, FBase).
+integer__float(i(_, List)) = float_list(float__float(base), 0.0, List).
 
 :- func float_list(float, float, list(int)) = float.
 
 float_list(_, Accum, []) = Accum.
-float_list(FBase, Accum, [H | T]) = float_list(FBase, Accum * FBase + FH, T) :-
-	int__to_float(H, FH).
+float_list(FBase, Accum, [H | T]) = 
+	float_list(FBase, Accum * FBase + float__float(H), T).
  
 integer__int(Integer) = Int :-
-    ( Integer >= integer(int__min_int), Integer =< integer(int__max_int) ->
-    	Integer = i(_Sign, List),
-	Int = int_list(List, 0)
-    ;
-        error("integer__int: domain error (conversion would overflow)")
-    ).
+	(	
+		Integer >= integer(int__min_int), 
+		Integer =< integer(int__max_int) 
+	->
+		Integer = i(_Sign, Digits),
+		Int = int_list(Digits, 0)
+	;
+		error("integer.int: domain error (conversion would overflow)")
+	).
 
 :- func int_list(list(int), int) = int.
 
 int_list([], Accum) = Accum.
-int_list([H|T], Accum) = int_list(T, Accum * base + H).
+int_list([H | T], Accum) = int_list(T, Accum * base + H).
 
 integer__zero = i(0, []).
 
@@ -1059,75 +983,72 @@ integer__one = i(1, [1]).
 %
 
 integer__from_string(S) = Big :-
-    string__to_char_list(S, Cs),
-    string_to_integer(Cs) = Big.
+	string__to_char_list(S, Cs),
+	string_to_integer(Cs) = Big.
 
-:- func string_to_integer(list(char)) = integer.
-:- mode string_to_integer(in) = out is semidet.
+:- func string_to_integer(list(char)::in) = (integer::out) is semidet.
 
 string_to_integer(CCs @ [C | Cs]) = 
-    ( C = ('-') ->
-	big_sign(-1, string_to_integer(Cs))
-    ;
-	string_to_integer_acc(CCs, integer__zero)
-    ).
+	( if	C = ('-')
+	  then	big_sign(-1, string_to_integer(Cs))
+	  else	string_to_integer_acc(CCs, integer__zero)
+	).
 
 :- func string_to_integer_acc(list(char), integer) = integer.
 :- mode string_to_integer_acc(in, in) = out is semidet.
 
 string_to_integer_acc([], Acc) = Acc.
 string_to_integer_acc([C | Cs], Acc) = Result :-
-    (char__is_digit(C) ->
-	char__to_int(C, D1),
-	char__to_int('0', Z),
-	Dig = pos_int_to_digits(D1 - Z),
-	NewAcc = pos_plus(Dig, mul_by_digit(10, Acc)),
-	Result = string_to_integer_acc(Cs, NewAcc)
-    ;
-	fail
-    ).
+		% The if-then-else here is acting as a sequential conjunction.
+		% It is needed to guarantee termination with --reorder-conj.
+		% Without it, the value of `Digit0 - Z' might be negative and
+		% then the call to pos_int_to_digits/1 may not terminate.
+	( char__is_digit(C) ->
+		Digit0 = char__to_int(C),
+		Z = char__to_int('0'), 
+		Digit = pos_int_to_digits(Digit0 - Z),
+		NewAcc = pos_plus(Digit, mul_by_digit(10, Acc)),
+		Result = string_to_integer_acc(Cs, NewAcc)
+	;	
+		fail
+	).
 
 %-----------------------------------------------------------------------------%
 %
 % Converting integers to strings. 
 %
 
-integer__to_string(i(Sign, Ds)) = Str :-
-    (Sign < 0 ->
-	Sgn = "-",
-        neg_list(Ds, AbsDs, [])
-    ;
-	Sgn = "",
-        Ds = AbsDs
-    ),
-    string__append(Sgn, digits_to_string(AbsDs), Str).
+integer__to_string(i(Sign, Digits)) = SignStr ++ digits_to_string(AbsDigits) :-
+	( Sign < 0 ->
+		SignStr = "-",
+		neg_list(Digits, AbsDigits, [])
+	;
+		SignStr = "",
+		Digits = AbsDigits
+	).
 
 :- func digits_to_string(list(digit)) = string.
 
-digits_to_string(DDs) = Str :-
-    (DDs = [] ->
-        Str = "0"
-    ;
-        printbase_rep(printbase_pos_int_to_digits(base),
-                      DDs, i(_, DDsInPrintBase)),
-        (DDsInPrintBase = [Head | Tail] ->
-            string__int_to_string(Head, SHead),
-            digits_to_strings(Tail, Ss, []),
-            string__append_list([SHead | Ss], Str)
-        ;
-            Str = "Woops"
-        )
-    ).
+digits_to_string([]) = "0".
+digits_to_string(Digits @ [_|_]) = Str :-
+	printbase_rep(printbase_pos_int_to_digits(base),
+		Digits, i(_, DigitsInPrintBase)),
+	( DigitsInPrintBase = [Head | Tail] ->
+		string__int_to_string(Head, SHead),
+		digits_to_strings(Tail, Ss, []),
+		string__append_list([SHead | Ss], Str)
+	;
+		error("integer.digits_to_string/1: empty list")	
+	).
 
 :- pred digits_to_strings(list(digit)::in, list(string)::out,
 	list(string)::in) is det.
 
-digits_to_strings([]) -->
-    [].
+digits_to_strings([]) --> [].
 digits_to_strings([H | T]) -->
-    { digit_to_string(H, S) },
-    [ S ],
-    digits_to_strings(T).
+	{ digit_to_string(H, S) },
+	[ S ],
+	digits_to_strings(T).
 
 :- pred printbase_rep(integer::in, list(digit)::in, integer::out)
    is det.
@@ -1138,15 +1059,15 @@ printbase_rep(Base, Digits, printbase_rep_1(Digits, Base, integer__zero)).
 
 printbase_rep_1([], _Base, Carry) = Carry.
 printbase_rep_1([X|Xs], Base, Carry) =
-    printbase_rep_1(Xs, Base,
-                    printbase_pos_plus(printbase_pos_mul(Base, Carry),
-                                       printbase_pos_int_to_digits(X))).
+	printbase_rep_1(Xs, Base,
+		printbase_pos_plus(printbase_pos_mul(Base, Carry),
+		printbase_pos_int_to_digits(X))).
 
 :- pred digit_to_string(digit::in, string::out) is det.
 
 digit_to_string(D, S) :-
-    string__int_to_string(D, S1),
-    string__pad_left(S1, '0', log10printbase, S).
+	string__int_to_string(D, S1),
+	string__pad_left(S1, '0', log10printbase, S).
 
 %-----------------------------------------------------------------------------%
 %
@@ -1169,62 +1090,59 @@ printbase_pos_int_to_digits(D) =
 :- func printbase_pos_int_to_digits_2(int, integer) = integer.
 
 printbase_pos_int_to_digits_2(D, Tail) = Result :-
-    (D = 0 ->
-	Result = Tail
-    ;
-        Tail = i(Length, Digits),
-        printbase_chop(D, Div, Mod),
-        Result = printbase_pos_int_to_digits_2(Div,
-		i(Length + 1, [Mod | Digits]))
-    ).
+	( D = 0 ->
+		Result = Tail
+	;
+		Tail = i(Length, Digits),
+		printbase_chop(D, Div, Mod),
+		Result = printbase_pos_int_to_digits_2(Div,
+			i(Length + 1, [Mod | Digits]))
+	).
 
 :- pred printbase_chop(int::in, digit::out, digit::out) is det.
 
 printbase_chop(N, Div, Mod) :-
-    Mod = N mod printbase,
-    Div = N div printbase.
+	Mod = N mod printbase,
+	Div = N div printbase.
 
 :- func printbase_mul_by_digit(digit, integer) = integer.
 
 printbase_mul_by_digit(D, i(Len, Ds)) = Out :-
-    printbase_mul_by_digit_2(D, Div, Ds, DsOut),
-    Out = ( Div = 0 -> i(Len, DsOut) ; i(Len + 1, [Div | DsOut]) ).
+	printbase_mul_by_digit_2(D, Div, Ds, DsOut),
+	Out = ( Div = 0 -> i(Len, DsOut) ; i(Len + 1, [Div | DsOut]) ).
 
 :- pred printbase_mul_by_digit_2(digit::in, digit::out,
 	list(digit)::in, list(digit)::out) is det.
 
 printbase_mul_by_digit_2(_, 0, [], []).
 printbase_mul_by_digit_2(D, Div, [X | Xs], [Mod | NewXs]) :-
-    printbase_mul_by_digit_2(D, DivXs, Xs, NewXs),
-    printbase_chop(D * X + DivXs, Div, Mod).
+	printbase_mul_by_digit_2(D, DivXs, Xs, NewXs),
+	printbase_chop(D * X + DivXs, Div, Mod).
 
 :- func printbase_pos_plus(integer, integer) = integer.
 
 printbase_pos_plus(i(L1, D1), i(L2, D2)) = Out :-
-    printbase_add_pairs(Div, i(L1, D1), i(L2, D2), Ds),
-    Len = ( L1 > L2 -> L1 ; L2 ),
-    Out = ( Div = 0 -> i(Len, Ds) ; i(Len + 1, [Div | Ds]) ).
+	printbase_add_pairs(Div, i(L1, D1), i(L2, D2), Ds),
+	Len = ( L1 > L2 -> L1 ; L2 ),
+	Out = ( Div = 0 -> i(Len, Ds) ; i(Len + 1, [Div | Ds]) ).
 
 :- pred printbase_add_pairs(digit::out, integer::in, integer::in,
 	list(digit)::out) is det.
 
 printbase_add_pairs(Div, i(L1, D1), i(L2, D2), Ds) :-
-    (
-        L1 = L2 ->
-            printbase_add_pairs_equal(Div, D1, D2, Ds)
-    ;
-        L1 < L2, D2 = [H2 | T2] ->
-            printbase_add_pairs(Div1, i(L1, D1), i(L2 - 1, T2), Ds1),
-            printbase_chop(H2 + Div1, Div, Mod),
-            Ds = [Mod | Ds1]
-    ;
-        L1 > L2, D1 = [H1 | T1] ->
-            printbase_add_pairs(Div1, i(L1 - 1, T1), i(L2, D2), Ds1),
-            printbase_chop(H1 + Div1, Div, Mod),
-            Ds = [Mod | Ds1]
-    ;
-	error("integer__printbase_add_pairs")
-    ).
+	( L1 = L2 ->
+		printbase_add_pairs_equal(Div, D1, D2, Ds)
+	; L1 < L2, D2 = [H2 | T2] ->
+		printbase_add_pairs(Div1, i(L1, D1), i(L2 - 1, T2), Ds1),
+		printbase_chop(H2 + Div1, Div, Mod),
+		Ds = [Mod | Ds1]
+	; L1 > L2, D1 = [H1 | T1] ->
+		printbase_add_pairs(Div1, i(L1 - 1, T1), i(L2, D2), Ds1),
+		printbase_chop(H1 + Div1, Div, Mod),
+		Ds = [Mod | Ds1]
+	;
+		error("integer__printbase_add_pairs")
+	).
 
 :- pred printbase_add_pairs_equal(digit::out, list(digit)::in, list(digit)::in,
 	list(digit)::out) is det.
@@ -1232,17 +1150,16 @@ printbase_add_pairs(Div, i(L1, D1), i(L2, D2), Ds) :-
 printbase_add_pairs_equal(0, [], _, []).
 printbase_add_pairs_equal(0, [_ | _], [], []).
 printbase_add_pairs_equal(Div, [X | Xs], [Y | Ys], [Mod | TailDs]) :-
-    printbase_add_pairs_equal(DivTail, Xs, Ys, TailDs),
-    printbase_chop(X + Y + DivTail, Div, Mod).
+	printbase_add_pairs_equal(DivTail, Xs, Ys, TailDs),
+	printbase_chop(X + Y + DivTail, Div, Mod).
 
 :- func printbase_pos_mul(integer, integer) = integer.
 
 printbase_pos_mul(i(L1, Ds1), i(L2, Ds2)) =
-    (L1 < L2 ->
-        printbase_pos_mul_list(Ds1, integer__zero, i(L2, Ds2))
-    ;
-        printbase_pos_mul_list(Ds2, integer__zero, i(L1, Ds1))
-    ).
+	( if	L1 < L2
+	  then	printbase_pos_mul_list(Ds1, integer__zero, i(L2, Ds2))
+   	  else	printbase_pos_mul_list(Ds2, integer__zero, i(L1, Ds1))
+	).
 
 :- func printbase_pos_mul_list(list(digit), integer, integer) = integer.
 
