@@ -1537,7 +1537,15 @@ output_warnings_and_pragmas(ModuleInfo, UnusedArgInfo, WriteOptPragmas,
 				IdLen = Length - Position - 4,
 				string__right(Name, IdLen, Id),
 				string__to_int(Id, _)
-			)
+			),
+			% XXX We don't currently generate pragmas
+			% for the automatically generated class
+			% instance methods because the compiler
+			% aborts when trying to read them back in
+			% from the `.opt' files. 
+			\+ check_marker(Markers, class_instance_method),
+			\+ check_marker(Markers, named_class_instance_method)	
+
 		->
 			write_unused_args_to_opt_file(WriteOptPragmas,
 				PredInfo, ProcId, UnusedArgs, !IO),
