@@ -413,7 +413,7 @@ int__abs(Num, Abs) :-
 	(
 		Num < 0
 	->
-		Abs is 0 - Num
+		Abs = 0 - Num
 	;
 		Abs = Num
 	).
@@ -484,9 +484,9 @@ int__log2_2(X, N0, N) :-
 	( X = 1 ->
 		N = N0
 	;
-		X1 is X + 1,
-		X2 is X1 // 2,
-		N1 is N0 + 1,
+		X1 = X + 1,
+		X2 = X1 // 2,
+		N1 = N0 + 1,
 		int__log2_2(X2, N1, N)
 	).
 
@@ -571,7 +571,6 @@ is(X, X).
 		[will_not_call_mercury, promise_pure, thread_safe], "
 	Rem = Int % ML_BITS_PER_INT;
 ").
-
 
 :- pragma foreign_proc("MC++", int__max_int(Max::out),
 		[will_not_call_mercury, promise_pure, thread_safe], "
