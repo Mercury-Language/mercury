@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1997-1998 University of Melbourne.
+% Copyright (C) 1997-1999 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -24,11 +24,10 @@
 %
 % Data Stucture: stack_layouts
 %
-% If the option basic_stack_layout is set, we generate a stack layout table
-% for each procedure. This table will be stored in the global variable
-% whose name is
+% If the option basic_stack_layout is set, we generate a MR_Stack_Layout_Entry
+% for each procedure. This will be stored in the global variable whose name is
 %	mercury_data__layout__mercury__<proc_label>.
-% This table will always contain the following information:
+% This structure will always contain the following information:
 %
 %	code address		(Code *) - address of entry
 % 	determinism		(Integer) actually, type MR_Determinism
@@ -38,7 +37,7 @@
 % 					if there is no succip available).
 %
 % If the option procid_stack_layout is set, i.e. if we are doing stack
-% tracing, execution tracing or profiling, the table will also include
+% tracing, execution tracing or profiling, the structure will also include
 % information on the identity of the procedure. This information will take
 % one of two forms. Almost all procedures use the first form:
 %
@@ -68,7 +67,7 @@
 % The meanings of the fields in both forms are the same as in procedure labels.
 %
 % If the option trace_stack_layout is set, i.e. if we are doing execution
-% tracing, the table will also include three extra fields:
+% tracing, the structure will also include three extra fields:
 %
 %	call trace info		(Word *) - pointer to label stack layout
 %	maybe from full		(Integer) - number of the stack slot of
@@ -175,21 +174,26 @@
 
 :- interface.
 
-:- import_module hlds_module, llds.
-:- import_module list, set_bbbtree.
+:- import_module continuation_info, hlds_module, llds.
+:- import_module std_util, list, set_bbbtree.
 
 :- pred stack_layout__generate_llds(module_info::in, module_info::out,
 	list(comp_gen_c_data)::out, list(comp_gen_c_data)::out,
 	set_bbbtree(label)::out) is det.
 
+:- pred stack_layout__construct_closure_layout(proc_label::in,
+	maybe(closure_layout_info)::in, list(maybe(rval))::out,
+	int::in, int::out) is det.
+
 :- implementation.
 
-:- import_module globals, options, continuation_info, llds_out, trace.
+:- import_module globals, options, llds_out, trace.
 :- import_module hlds_data, hlds_pred, base_type_layout, prog_data, prog_out.
+:- import_module (inst), code_util.
 :- import_module assoc_list, bool, string, int, require.
-:- import_module map, std_util, term, set.
+:- import_module map, term, set.
 
-:- type stack_layout_info 	--->	
+:- type stack_layout_info 	--->
 	stack_layout_info(
 		module_name,	% module name
 		int,		% next available cell number
@@ -238,7 +242,7 @@ stack_layout__generate_llds(ModuleInfo0, ModuleInfo,
 	% Construct the layouts that concern a single procedure:
 	% the procedure-specific layout and the layouts of the labels
 	% inside that procedure.
-	
+
 :- pred stack_layout__construct_layouts(proc_layout_info::in,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
@@ -322,7 +326,8 @@ stack_layout__construct_proc_layout(EntryLabel, Detism, StackSlots,
 	{
 		ProcIdLayout = yes
 	->
-		stack_layout__construct_procid_rvals(EntryLabel, IdRvals),
+		code_util__extract_proc_label_from_label(EntryLabel, ProcLabel),
+		stack_layout__construct_procid_rvals(ProcLabel, IdRvals),
 		list__append(MaybeRvals0, IdRvals, MaybeRvals1)
 	;
 		% Indicate the absence of the procedure id fields.
@@ -381,19 +386,10 @@ stack_layout__construct_proc_layout(EntryLabel, Detism, StackSlots,
 
 %---------------------------------------------------------------------------%
 
-:- pred stack_layout__construct_procid_rvals(label::in,
+:- pred stack_layout__construct_procid_rvals(proc_label::in,
 	list(maybe(rval))::out) is det.
 
-stack_layout__construct_procid_rvals(Label, Rvals) :-
-	( 
-		Label = local(ProcLabel, _)
-	;
-		Label = c_local(ProcLabel)
-	;
-		Label = local(ProcLabel)
-	;
-		Label = exported(ProcLabel)
-	),
+stack_layout__construct_procid_rvals(ProcLabel, Rvals) :-
 	(
 		ProcLabel = proc(DefModule, PredFunc, DeclModule,
 			PredName, Arity, ProcId),
@@ -531,15 +527,11 @@ stack_layout__construct_livelval_rvals(LiveLvalSet, TVarLocnMap, RvalList) -->
 		stack_layout__construct_liveval_pairs(SortedLiveLvals,
 			LiveValRval, NamesRval),
 
-		{ map__to_assoc_list(TVarLocnMap, TVarLocns) },
-		( { TVarLocns = [] } ->
+		( { map__is_empty(TVarLocnMap) } ->
 			{ TypeParamRval = const(int_const(0)) }
 		;
-			stack_layout__construct_type_param_locn_vector(
-				TVarLocns, 1, TypeParamLocs),
-			{ list__length(TypeParamLocs, TypeParamsLength) },
-			{ LengthRval = const(int_const(TypeParamsLength)) },
-			{ Vector = [yes(LengthRval) | TypeParamLocs] },
+			{ stack_layout__construct_tvar_rvals(TVarLocnMap,
+				Vector) },
 			stack_layout__get_next_cell_number(CNum1),
 			{ TypeParamRval = create(0, Vector, no, CNum1,
 				"stack_layout_type_param_locn_vector") }
@@ -549,6 +541,17 @@ stack_layout__construct_livelval_rvals(LiveLvalSet, TVarLocnMap, RvalList) -->
 	;
 		{ RvalList = [yes(VarLengthRval)] }
 	).
+
+:- pred stack_layout__construct_tvar_rvals(map(tvar, set(layout_locn))::in,
+	list(maybe(rval))::out) is det.
+
+stack_layout__construct_tvar_rvals(TVarLocnMap, Vector) :-
+	map__to_assoc_list(TVarLocnMap, TVarLocns),
+	stack_layout__construct_type_param_locn_vector(TVarLocns, 1,
+		TypeParamLocs),
+	list__length(TypeParamLocs, TypeParamsLength),
+	LengthRval = const(int_const(TypeParamsLength)),
+	Vector = [yes(LengthRval) | TypeParamLocs].
 
 %---------------------------------------------------------------------------%
 
@@ -628,32 +631,31 @@ stack_layout__get_name_from_live_value_type(LiveType, Name) :-
 
 :- pred stack_layout__construct_type_param_locn_vector(
 	assoc_list(tvar, set(layout_locn))::in,
-	int::in, list(maybe(rval))::out,
-	stack_layout_info::in, stack_layout_info::out) is det.
+	int::in, list(maybe(rval))::out) is det.
 
-stack_layout__construct_type_param_locn_vector([], _, []) --> [].
+stack_layout__construct_type_param_locn_vector([], _, []).
 stack_layout__construct_type_param_locn_vector([TVar - Locns | TVarLocns],
-		CurSlot, Vector) -->
-	{ term__var_to_int(TVar, TVarNum) },
-	{ NextSlot is CurSlot + 1 },
-	( { TVarNum = CurSlot } ->
-		{ set__remove_least(Locns, LeastLocn, _) ->
+		CurSlot, Vector) :-
+	term__var_to_int(TVar, TVarNum),
+	NextSlot is CurSlot + 1,
+	( TVarNum = CurSlot ->
+		( set__remove_least(Locns, LeastLocn, _) ->
 			Locn = LeastLocn
 		;
 			error("tvar has empty set of locations")
-		},
-		{ stack_layout__represent_locn(Locn, Rval) },
+		),
+		stack_layout__represent_locn(Locn, Rval),
 		stack_layout__construct_type_param_locn_vector(TVarLocns,
 			NextSlot, VectorTail),
-		{ Vector = [yes(Rval) | VectorTail] }
-	; { TVarNum > CurSlot } ->
+		Vector = [yes(Rval) | VectorTail]
+	; TVarNum > CurSlot ->
 		stack_layout__construct_type_param_locn_vector(TVarLocns,
 			NextSlot, VectorTail),
 			% This slot will never be referred to.
-		{ Vector = [yes(const(int_const(0))) | VectorTail] }
+		Vector = [yes(const(int_const(0))) | VectorTail]
 	;
 
-		{ error("unsorted tvars in construct_type_param_locn_vector") }
+		error("unsorted tvars in construct_type_param_locn_vector")
 	).
 
 	% Construct a vector of (locn, live_value_type) pairs,
@@ -716,10 +718,50 @@ stack_layout__construct_liveval_name(var_info(_, VarInfo), MaybeRval) :-
 
 %---------------------------------------------------------------------------%
 
+	% The representation we build here should be kept in sync
+	% with runtime/mercury_ho_call.h, which contains macros to access
+	% the data structures we build here.
+
+stack_layout__construct_closure_layout(ProcLabel, MaybeClosureLayoutInfo,
+		Rvals, CNum0, CNum) :-
+	stack_layout__construct_procid_rvals(ProcLabel, ProcIdRvals),
+	( MaybeClosureLayoutInfo = yes(ClosureLayoutInfo) ->
+		ClosureLayoutInfo = closure_layout_info(ClosureArgs,
+			TVarLocnMap),
+		stack_layout__construct_closure_arg_rvals(ClosureArgs,
+			ClosureArgRvals, CNum0, CNum),
+		stack_layout__construct_tvar_rvals(TVarLocnMap, TVarRvals),
+		list__append(ClosureArgRvals, TVarRvals, LayoutRvals)
+	;
+		LayoutRvals = [yes(const(int_const(-1)))],
+		CNum = CNum0
+	),
+	list__append(ProcIdRvals, LayoutRvals, Rvals).
+
+:- pred stack_layout__construct_closure_arg_rvals(list(closure_arg_info)::in,
+	list(maybe(rval))::out, int::in, int::out) is det.
+
+stack_layout__construct_closure_arg_rvals(ClosureArgs, ClosureArgRvals,
+		CNum0, CNum) :-
+	list__map_foldl(stack_layout__construct_closure_arg_rval,
+		ClosureArgs, MaybeArgRvals, CNum0, CNum),
+	list__length(MaybeArgRvals, Length),
+	ClosureArgRvals = [yes(const(int_const(Length))) | MaybeArgRvals].
+
+:- pred stack_layout__construct_closure_arg_rval(closure_arg_info::in,
+	maybe(rval)::out, int::in, int::out) is det.
+
+stack_layout__construct_closure_arg_rval(ClosureArg, yes(ArgRval),
+		CNum0, CNum) :-
+	ClosureArg = closure_arg_info(Type, _Inst),
+	base_type_layout__construct_pseudo_type_info(Type, ArgRval,
+		CNum0, CNum).
+
+%---------------------------------------------------------------------------%
+
 	% The constants and representations here should be kept in sync
-	% with constants in the runtime system:
-	% 	mercury_stack_layout.h - contains macros to access these
-	%			 	constants.
+	% with runtime/mercury_stack_layout.h, which contains structure
+	% definitions and macros to access the data structures we build here.
 
 	% Construct a representation of a live_value_type without the name.
 	%
@@ -745,16 +787,23 @@ stack_layout__represent_live_value_type(redoip, Rval) -->
 	{ Rval = const(int_const(5)) }.
 stack_layout__represent_live_value_type(unwanted, Rval) -->
 	{ Rval = const(int_const(6)) }.
-stack_layout__represent_live_value_type(var(_, _, Type, _Inst), Rval) -->
+stack_layout__represent_live_value_type(var(_, _, Type, Inst), Rval) -->
 	stack_layout__get_cell_number(CNum0),
-	{ base_type_layout__construct_pseudo_type_info(Type, Rval0,
+	{ stack_layout__represent_var_shape(Type, Inst, VarShape,
 		CNum0, CNum1) },
 	stack_layout__set_cell_number(CNum1),
-		% XXX hack - don't yet write out insts
-	{ Rval1 = const(int_const(-1)) },
 	stack_layout__get_next_cell_number(CNum2),
-	{ Rval = create(0, [yes(Rval0), yes(Rval1)], no, CNum2,
-		"stack_layout_pair") }.
+	{ Rval = create(0, VarShape, no, CNum2, "variable_shape") }.
+
+:- pred stack_layout__represent_var_shape((type)::in, (inst)::in,
+	list(maybe(rval))::out, int::in, int::out) is det.
+
+stack_layout__represent_var_shape(Type, _Inst, VarShape, CNum0, CNum) :-
+	base_type_layout__construct_pseudo_type_info(Type, TypeRval,
+		CNum0, CNum),
+	% XXX hack - don't yet write out insts
+	InstRval = const(int_const(-1)),
+	VarShape = [yes(TypeRval), yes(InstRval)].
 
 	% Construct a representation of a variable location.
 	%
@@ -815,15 +864,15 @@ stack_layout__represent_lval(temp(_, _), _) :-
 	error("stack_layout: continuation live value stored in temp register").
 
 stack_layout__represent_lval(succip(_), _) :-
-	error("stack_layout: continuation live value stored in code address").
+	error("stack_layout: continuation live value stored in fixed slot").
 stack_layout__represent_lval(redoip(_), _) :-
-	error("stack_layout: continuation live value stored in code address").
+	error("stack_layout: continuation live value stored in fixed slot").
 stack_layout__represent_lval(redofr(_), _) :-
-	error("stack_layout: continuation live value stored in code address").
+	error("stack_layout: continuation live value stored in fixed slot").
 stack_layout__represent_lval(succfr(_), _) :-
-	error("stack_layout: continuation live value stored in code address").
+	error("stack_layout: continuation live value stored in fixed slot").
 stack_layout__represent_lval(prevfr(_), _) :-
-	error("stack_layout: continuation live value stored in code address").
+	error("stack_layout: continuation live value stored in fixed slot").
 
 stack_layout__represent_lval(field(_, _, _), _) :-
 	error("stack_layout: continuation live value stored in field").
@@ -1004,7 +1053,7 @@ stack_layout__add_internal_layout_data(NewH, NewI, LayoutInfo0, LayoutInfo) :-
 :- pred stack_layout__get_next_cell_number(int::out,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
-stack_layout__get_next_cell_number(B0, LayoutInfo0, LayoutInfo) :-
+stack_layout__get_next_cell_number(B, LayoutInfo0, LayoutInfo) :-
 	LayoutInfo0 = stack_layout_info(A, B0, C, D, E, F, G, H, I),
 	B is B0 + 1,
 	LayoutInfo  = stack_layout_info(A, B,  C, D, E, F, G, H, I).

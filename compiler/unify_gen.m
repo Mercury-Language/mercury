@@ -39,8 +39,8 @@
 
 :- import_module hlds_module, hlds_pred, prog_data, prog_out, code_util.
 :- import_module mode_util, type_util, code_aux, hlds_out, tree, arg_info.
-:- import_module term.
-:- import_module bool, string, int, list, map, require, std_util.
+:- import_module globals, options, continuation_info, stack_layout.
+:- import_module term, bool, string, int, list, map, require, std_util.
 
 :- type uni_val		--->	ref(prog_var)
 			;	lval(lval).
@@ -374,6 +374,9 @@ unify_gen__generate_construction_2(code_addr_constant(PredId, ProcId),
 	code_info__cache_expression(Var, const(code_addr_const(CodeAddr))).
 unify_gen__generate_construction_2(pred_closure_tag(PredId, ProcId),
 		Var, Args, _Modes, Code) -->
+	% This code constructs or extends a closure.
+	% The structure of closures is defined in runtime/mercury_ho_call.h.
+
 	code_info__get_module_info(ModuleInfo),
 	{ module_info_preds(ModuleInfo, Preds) },
 	{ map__lookup(Preds, PredId, PredInfo) },
@@ -403,8 +406,16 @@ unify_gen__generate_construction_2(pred_closure_tag(PredId, ProcId),
 % new closure P from the old closure P0 by appending the args X, Y, Z.
 % The advantage of this optimization is that when P is called, we
 % will only need to do one indirect call rather than two.
-% (Hmm... is this optimization really worth it?  It probably
-% doesn't happen very often, and it's not guaranteed to be a win.)
+% Its disadvantage is that the cost of creating the closure P is greater.
+% Whether this is a net win depend on the number of times P is called.
+%
+% The pattern that this optimization looks for happens rarely at the moment.
+% The reason is that although we allow the creation of closures with a simple
+% syntax (e.g. P0 = append4([1])), we don't allow their extension with a
+% similarly simple syntax (e.g. P = call(P0, [2])). In fact, typecheck.m
+% contains code to detect such constructs, because it does not have code
+% to typecheck them (you get a message about call/2 should be used as a goal,
+% not an expression).
 %
 	{ proc_info_goal(ProcInfo, ProcInfoGoal) },
 	{ proc_info_interface_code_model(ProcInfo, CodeModel) },
@@ -429,46 +440,63 @@ unify_gen__generate_construction_2(pred_closure_tag(PredId, ProcId),
 		% closure
 		code_info__produce_variable(CallPred, Code, Value)
 	    ;
-		code_info__get_next_label(LoopEnd),
 		code_info__get_next_label(LoopStart),
+		code_info__get_next_label(LoopTest),
 		code_info__acquire_reg(r, LoopCounter),
 		code_info__acquire_reg(r, NumOldArgs),
 		code_info__acquire_reg(r, NewClosure),
 		{ Zero = const(int_const(0)) },
 		{ One = const(int_const(1)) },
+		{ Two = const(int_const(2)) },
+		{ Three = const(int_const(3)) },
 		{ list__length(CallArgs, NumNewArgs) },
 		{ NumNewArgs_Rval = const(int_const(NumNewArgs)) },
-		{ NumNewArgsPlusTwo is NumNewArgs + 2 },
-		{ NumNewArgsPlusTwo_Rval =
-			const(int_const(NumNewArgsPlusTwo)) },
+		{ NumNewArgsPlusThree is NumNewArgs + 3 },
+		{ NumNewArgsPlusThree_Rval =
+			const(int_const(NumNewArgsPlusThree)) },
 		code_info__produce_variable(CallPred, Code1, OldClosure),
 		{ Code2 = node([
 			comment("build new closure from old closure") - "",
 			assign(NumOldArgs,
-				lval(field(yes(0), OldClosure, Zero)))
+				lval(field(yes(0), OldClosure, Two)))
 				- "get number of arguments",
 			incr_hp(NewClosure, no,
 				binop(+, lval(NumOldArgs),
-				NumNewArgsPlusTwo_Rval), "closure")
+				NumNewArgsPlusThree_Rval), "closure")
 				- "allocate new closure",
 			assign(field(yes(0), lval(NewClosure), Zero),
+				lval(field(yes(0), OldClosure, Zero)))
+				- "set closure layout structure",
+			assign(field(yes(0), lval(NewClosure), One),
+				lval(field(yes(0), OldClosure, One)))
+				- "set closure code pointer",
+			assign(field(yes(0), lval(NewClosure), Two),
 				binop(+, lval(NumOldArgs), NumNewArgs_Rval))
 				- "set new number of arguments",
-			assign(LoopCounter, Zero)
+			assign(NumOldArgs, binop(+, lval(NumOldArgs), Three))
+				- "set up loop limit",
+			assign(LoopCounter, Three)
 				- "initialize loop counter",
+			% It is possible for the number of hidden arguments
+			% to be zero, in which case the body of this loop
+			% should not be executed at all. This is why we
+			% jump to the loop condition test.
+			goto(label(LoopTest))
+				- "enter the copy loop at the conceptual top",
 			label(LoopStart) - "start of loop",
-			assign(LoopCounter,
-				binop(+, lval(LoopCounter), One))
-				- "increment loop counter",
 			assign(field(yes(0), lval(NewClosure),
 					lval(LoopCounter)),
 				lval(field(yes(0), OldClosure,
 					lval(LoopCounter))))
-				- "copy old field",
-			if_val(binop(<=, lval(LoopCounter),
-				lval(NumOldArgs)), label(LoopStart))
-				- "repeat the loop?",
-			label(LoopEnd) - "end of loop"
+				- "copy old hidden argument",
+			assign(LoopCounter,
+				binop(+, lval(LoopCounter), One))
+				- "increment loop counter",
+			label(LoopTest)
+				- "do we have more old arguments to copy?",
+			if_val(binop(<, lval(LoopCounter), lval(NumOldArgs)),
+				label(LoopStart))
+				- "repeat the loop?"
 		]) },
 		unify_gen__generate_extra_closure_args(CallArgs,
 			LoopCounter, NewClosure, Code3),
@@ -480,15 +508,48 @@ unify_gen__generate_construction_2(pred_closure_tag(PredId, ProcId),
 	    )
 	;
 		{ Code = empty },
-		{ proc_info_arg_info(ProcInfo, ArgInfo) },
 		code_info__make_entry_label(ModuleInfo, PredId, ProcId, no,
-				CodeAddress),
-		code_info__get_next_cell_number(CellNo),
+			CodeAddr),
+		{ code_util__extract_proc_label_from_code_addr(CodeAddr,
+			ProcLabel) },
+		{ globals__lookup_bool_option(Globals, typeinfo_liveness,
+			TypeInfoLiveness) },
+		{
+			TypeInfoLiveness = yes,
+			continuation_info__generate_closure_layout(
+				ModuleInfo, PredId, ProcId, ClosureInfo),
+			MaybeClosureInfo = yes(ClosureInfo)
+		;
+			TypeInfoLiveness = no,
+			% In the absence of typeinfo liveness, procedures
+			% are not guaranteed to have typeinfos for all the
+			% type variables in their signatures. Such a missing
+			% typeinfo would cause a compile-time abort in
+			% continuation_info__generate_closure_layout,
+			% and even if that predicate was modified,
+			% we still couldn't generate a usable layout
+			% structure.
+			MaybeClosureInfo = no
+		},
+		code_info__get_cell_count(CNum0),
+		{ stack_layout__construct_closure_layout(ProcLabel,
+			MaybeClosureInfo, ClosureLayoutMaybeRvals,
+			CNum0, CNum) },
+		code_info__set_cell_count(CNum),
+		code_info__get_next_cell_number(ClosureLayoutCellNo),
+		{ ClosureLayout = create(0, ClosureLayoutMaybeRvals, no,
+			ClosureLayoutCellNo, "closure_layout") },
 		{ list__length(Args, NumArgs) },
+		{ proc_info_arg_info(ProcInfo, ArgInfo) },
 		{ unify_gen__generate_pred_args(Args, ArgInfo, PredArgs) },
-		{ Vector = [yes(const(int_const(NumArgs))),
-			yes(const(code_addr_const(CodeAddress))) | PredArgs] },
-		{ Value = create(0, Vector, no, CellNo, "closure") }
+		{ Vector = [
+			yes(ClosureLayout),
+			yes(const(code_addr_const(CodeAddr))),
+			yes(const(int_const(NumArgs)))
+			| PredArgs
+		] },
+		code_info__get_next_cell_number(ClosureCellNo),
+		{ Value = create(0, Vector, no, ClosureCellNo, "closure") }
 	),
 	code_info__cache_expression(Var, Value).
 
@@ -502,25 +563,26 @@ unify_gen__generate_extra_closure_args([Var | Vars], LoopCounter,
 	code_info__produce_variable(Var, Code0, Value),
 	{ One = const(int_const(1)) },
 	{ Code1 = node([
-		assign(LoopCounter,
-			binop(+, lval(LoopCounter), One))
-			- "increment argument counter",
 		assign(field(yes(0), lval(NewClosure), lval(LoopCounter)),
 			Value)
-			- "set new argument field"
+			- "set new argument field",
+		assign(LoopCounter,
+			binop(+, lval(LoopCounter), One))
+			- "increment argument counter"
 	]) },
 	{ Code = tree(tree(Code0, Code1), Code2) },
 	unify_gen__generate_extra_closure_args(Vars, LoopCounter,
 		NewClosure, Code2).
 
 :- pred unify_gen__generate_pred_args(list(prog_var), list(arg_info),
-					list(maybe(rval))).
+	list(maybe(rval))).
 :- mode unify_gen__generate_pred_args(in, in, out) is det.
 
 unify_gen__generate_pred_args([], _, []).
 unify_gen__generate_pred_args([_|_], [], _) :-
 	error("unify_gen__generate_pred_args: insufficient args").
-unify_gen__generate_pred_args([Var|Vars], [ArgInfo|ArgInfos], [Rval|Rvals]) :-
+unify_gen__generate_pred_args([Var | Vars], [ArgInfo | ArgInfos],
+		[Rval | Rvals]) :-
 	ArgInfo = arg_info(_, ArgMode),
 	( ArgMode = top_in ->
 		Rval = yes(var(Var))

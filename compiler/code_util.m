@@ -57,6 +57,12 @@
 :- pred code_util__make_uni_label(module_info, type_id, proc_id, proc_label).
 :- mode code_util__make_uni_label(in, in, in, out) is det.
 
+:- pred code_util__extract_proc_label_from_code_addr(code_addr, proc_label).
+:- mode code_util__extract_proc_label_from_code_addr(in, out) is det.
+
+:- pred code_util__extract_proc_label_from_label(label, proc_label).
+:- mode code_util__extract_proc_label_from_label(in, out) is det.
+
 :- pred code_util__arg_loc_to_register(arg_loc, lval).
 :- mode code_util__arg_loc_to_register(in, out) is det.
 
@@ -318,6 +324,29 @@ code_util__make_uni_label(ModuleInfo, TypeId, UniModeNum, ProcLabel) :-
 	;
 		error("code_util__make_uni_label: unqualified type_id")
 	).
+
+code_util__extract_proc_label_from_code_addr(CodeAddr, ProcLabel) :-
+	( code_util__proc_label_from_code_addr(CodeAddr, ProcLabelPrime) ->
+		ProcLabel = ProcLabelPrime
+	;
+		error("code_util__extract_label_from_code_addr failed")
+	).
+
+:- pred code_util__proc_label_from_code_addr(code_addr::in,
+	proc_label::out) is semidet.
+
+code_util__proc_label_from_code_addr(CodeAddr, ProcLabel) :-
+	(
+		CodeAddr = label(Label),
+		code_util__extract_proc_label_from_label(Label, ProcLabel)
+	;
+		CodeAddr = imported(ProcLabel)
+	).
+
+code_util__extract_proc_label_from_label(local(ProcLabel, _), ProcLabel).
+code_util__extract_proc_label_from_label(c_local(ProcLabel), ProcLabel).
+code_util__extract_proc_label_from_label(local(ProcLabel), ProcLabel).
+code_util__extract_proc_label_from_label(exported(ProcLabel), ProcLabel).
 
 %-----------------------------------------------------------------------------%
 

@@ -2423,12 +2423,8 @@ need_code_addr_decls(do_fail, NeedDecl) -->
 		{ NeedDecl = yes }
 	).
 need_code_addr_decls(do_trace_redo_fail, yes) --> [].
-need_code_addr_decls(do_det_closure, yes) --> [].
-need_code_addr_decls(do_semidet_closure, yes) --> [].
-need_code_addr_decls(do_nondet_closure, yes) --> [].
-need_code_addr_decls(do_det_class_method, yes) --> [].
-need_code_addr_decls(do_semidet_class_method, yes) --> [].
-need_code_addr_decls(do_nondet_class_method, yes) --> [].
+need_code_addr_decls(do_call_closure, yes) --> [].
+need_code_addr_decls(do_call_class_method, yes) --> [].
 need_code_addr_decls(do_det_aditi_call, yes) --> [].
 need_code_addr_decls(do_semidet_aditi_call, yes) --> [].
 need_code_addr_decls(do_nondet_aditi_call, yes) --> [].
@@ -2467,18 +2463,10 @@ output_code_addr_decls(do_fail) -->
 	).
 output_code_addr_decls(do_trace_redo_fail) -->
 	io__write_string("Declare_entry(MR_do_trace_redo_fail);\n").
-output_code_addr_decls(do_det_closure) -->
-	io__write_string("Declare_entry(do_call_det_closure);\n").
-output_code_addr_decls(do_semidet_closure) -->
-	io__write_string("Declare_entry(do_call_semidet_closure);\n").
-output_code_addr_decls(do_nondet_closure) -->
-	io__write_string("Declare_entry(do_call_nondet_closure);\n").
-output_code_addr_decls(do_det_class_method) -->
-	io__write_string("Declare_entry(do_call_det_class_method);\n").
-output_code_addr_decls(do_semidet_class_method) -->
-	io__write_string("Declare_entry(do_call_semidet_class_method);\n").
-output_code_addr_decls(do_nondet_class_method) -->
-	io__write_string("Declare_entry(do_call_nondet_class_method);\n").
+output_code_addr_decls(do_call_closure) -->
+	io__write_string("Declare_entry(mercury__do_call_closure);\n").
+output_code_addr_decls(do_call_class_method) -->
+	io__write_string("Declare_entry(mercury__do_call_class_method);\n").
 output_code_addr_decls(do_det_aditi_call) -->
 	io__write_string("Declare_entry(do_det_aditi_call);\n").
 output_code_addr_decls(do_semidet_aditi_call) -->
@@ -2680,28 +2668,12 @@ output_goto(do_fail, _) -->
 	).
 output_goto(do_trace_redo_fail, _) -->
 	io__write_string("GOTO(ENTRY(MR_do_trace_redo_fail));\n").
-output_goto(do_det_closure, CallerLabel) -->
-	io__write_string("tailcall(ENTRY(do_call_det_closure),\n\t\t"),
+output_goto(do_call_closure, CallerLabel) -->
+	io__write_string("tailcall(ENTRY(mercury__do_call_closure),\n\t\t"),
 	output_label_as_code_addr(CallerLabel),
 	io__write_string(");\n").
-output_goto(do_semidet_closure, CallerLabel) -->
-	io__write_string("tailcall(ENTRY(do_call_semidet_closure),\n\t\t"),
-	output_label_as_code_addr(CallerLabel),
-	io__write_string(");\n").
-output_goto(do_nondet_closure, CallerLabel) -->
-	io__write_string("tailcall(ENTRY(do_call_nondet_closure),\n\t\t"),
-	output_label_as_code_addr(CallerLabel),
-	io__write_string(");\n").
-output_goto(do_det_class_method, CallerLabel) -->
-	io__write_string("tailcall(ENTRY(do_call_det_class_method),\n\t\t"),
-	output_label_as_code_addr(CallerLabel),
-	io__write_string(");\n").
-output_goto(do_semidet_class_method, CallerLabel) -->
-	io__write_string("tailcall(ENTRY(do_call_semidet_class_method),\n\t\t"),
-	output_label_as_code_addr(CallerLabel),
-	io__write_string(");\n").
-output_goto(do_nondet_class_method, CallerLabel) -->
-	io__write_string("tailcall(ENTRY(do_call_nondet_class_method),\n\t\t"),
+output_goto(do_call_class_method, CallerLabel) -->
+	io__write_string("tailcall(ENTRY(mercury__do_call_class_method),\n\t\t"),
 	output_label_as_code_addr(CallerLabel),
 	io__write_string(");\n").
 output_goto(do_det_aditi_call, CallerLabel) -->
@@ -2720,7 +2692,6 @@ output_goto(do_not_reached, CallerLabel) -->
 	io__write_string("tailcall(ENTRY(do_not_reached),\n\t\t"),
 	output_label_as_code_addr(CallerLabel),
 	io__write_string(");\n").
-
 
 	% Note that we also do some optimization here by
 	% outputting `localcall' rather than `call' for
@@ -2783,18 +2754,10 @@ output_code_addr(do_fail) -->
 	io__write_string("ENTRY(do_fail)").
 output_code_addr(do_trace_redo_fail) -->
 	io__write_string("ENTRY(MR_do_trace_redo_fail)").
-output_code_addr(do_det_closure) -->
-	io__write_string("ENTRY(do_call_det_closure)").
-output_code_addr(do_semidet_closure) -->
-	io__write_string("ENTRY(do_call_semidet_closure)").
-output_code_addr(do_nondet_closure) -->
-	io__write_string("ENTRY(do_call_nondet_closure)").
-output_code_addr(do_det_class_method) -->
-	io__write_string("ENTRY(do_call_det_class_method)").
-output_code_addr(do_semidet_class_method) -->
-	io__write_string("ENTRY(do_call_semidet_class_method)").
-output_code_addr(do_nondet_class_method) -->
-	io__write_string("ENTRY(do_call_nondet_class_method)").
+output_code_addr(do_call_closure) -->
+	io__write_string("ENTRY(mercury__do_call_closure)").
+output_code_addr(do_call_class_method) -->
+	io__write_string("ENTRY(mercury__do_call_class_method)").
 output_code_addr(do_det_aditi_call) -->
 	io__write_string("ENTRY(do_det_aditi_call)").
 output_code_addr(do_semidet_aditi_call) -->

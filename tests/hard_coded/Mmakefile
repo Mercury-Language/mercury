@@ -16,6 +16,7 @@ PROGS=	\
 	cc_and_non_cc_test \
 	cc_nondet_disj \
 	cc_multi_bug \
+	closure_extension \
 	common_type_cast \
 	construct \
 	curry \

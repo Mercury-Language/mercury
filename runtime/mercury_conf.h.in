@@ -238,6 +238,14 @@
 #undef MR_CANNOT_GROK_ASM_TYPE_DIRECTIVE
 
 /*
+** Does the language support structures including, as their last element,
+** a variable sized array indicated by an empty pair of brackets? If not,
+** we have to lie and say that the array has a give number of elements
+** (e.g. 1).
+*/
+#undef	MR_SUPPORT_VARIABLE_SIZED_ARRAY
+
+/*
 ** On some platforms, structure assignments can cause gcc to abort
 ** with the message "fixed or forbidden register was spilled." in some grades.
 */

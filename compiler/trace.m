@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-1998 The University of Melbourne.
+% Copyright (C) 1997-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -492,10 +492,13 @@ trace__generate_event_code(Port, PortInfo, TraceInfo, Label, TvarDataMap,
 	{ set__init(TvarSet0) },
 	trace__produce_vars(LiveVars, VarSet, InstMap, TvarSet0, TvarSet,
 		VarInfoList, ProduceCode),
-	{ set__to_sorted_list(TvarSet, TvarList) },
-	code_info__find_typeinfos_for_tvars(TvarList, TvarDataMap),
 	code_info__max_reg_in_use(MaxReg),
+	code_info__variable_locations(VarLocs),
+	code_info__get_proc_info(ProcInfo),
 	{
+	set__to_sorted_list(TvarSet, TvarList),
+	continuation_info__find_typeinfos_for_tvars(TvarList,
+		VarLocs, ProcInfo, TvarDataMap),
 	set__list_to_set(VarInfoList, VarInfoSet),
 	LayoutLabelInfo = layout_label_info(VarInfoSet, TvarDataMap),
 	llds_out__get_label(Label, yes, LabelStr),

@@ -77,21 +77,22 @@ MR_materialize_typeinfos_base(const MR_Stack_Layout_Vars *vars,
 {
 	Word	*type_params;
 	bool	succeeded;
-	int	count;
+	Integer	count;
 	int	i;
 
 	if (vars->MR_slvs_tvars != NULL) {
-		count = (int) (Integer) vars->MR_slvs_tvars[0];
+		count = vars->MR_slvs_tvars->MR_tp_param_count;
 		type_params = checked_malloc((count + 1) * sizeof(Word));
 
 		/*
 		** type_params should look like a typeinfo;
 		** type_params[0] is empty and will not be referred to
 		*/
-		for (i = 1; i <= count; i++) {
-			if (vars->MR_slvs_tvars[i] != 0) {
-				type_params[i] = MR_lookup_live_lval_base(
-					vars->MR_slvs_tvars[i],
+		for (i = 0; i < count; i++) {
+			if (vars->MR_slvs_tvars->MR_tp_param_locns[i] != 0) {
+				type_params[i + 1] = MR_lookup_live_lval_base(
+					vars->MR_slvs_tvars->
+						MR_tp_param_locns[i],
 					saved_regs, base_sp, base_curfr,
 					&succeeded);
 				if (! succeeded) {

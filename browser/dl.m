@@ -103,7 +103,23 @@ open(FileName, Mode, Scope, Result) -->
 #endif
 }").
 
-:- type closure ---> closure(int, c_pointer).
+:- type closure_layout
+	--->	closure_layout(
+			int,
+			string,
+			string,
+			string,
+			int,
+			int,
+			int
+		).
+
+:- type closure
+	--->	closure(
+			closure_layout,
+			c_pointer,
+			int
+		).
 
 mercury_sym(Handle, MercuryProc0, Result) -->
 	{ check_proc_spec_matches_result_type(Result, _,
@@ -119,7 +135,9 @@ mercury_sym(Handle, MercuryProc0, Result) -->
 		% convert the procedure address to a closure
 		%
 		NumCurriedInputArgs = 0,
-		Closure = closure(NumCurriedInputArgs, Address),
+		ClosureLayout = closure_layout(0, "unknown", "unknown",
+			"unknown", -1, -1, -1),
+		Closure = closure(ClosureLayout, Address, NumCurriedInputArgs),
 		private_builtin__unsafe_type_cast(Closure, Value),
 		Result = ok(Value)
 	}.

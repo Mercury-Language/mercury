@@ -759,12 +759,8 @@
 					% A label in the runtime, the code
 					% at which calls MR_trace with a
 					% REDO event and then fails.
-	;	do_det_closure
-	;	do_semidet_closure
-	;	do_nondet_closure
-	;	do_det_class_method
-	;	do_semidet_class_method
-	;	do_nondet_class_method
+	;	do_call_closure
+	;	do_call_class_method
 	;	do_det_aditi_call
 	;	do_semidet_aditi_call
 	;	do_nondet_aditi_call

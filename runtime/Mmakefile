@@ -48,6 +48,7 @@ HDRS		=	\
 			mercury_hash_table.h	\
 			mercury_heap.h		\
 			mercury_heap_profile.h	\
+			mercury_ho_call.h	\
 			mercury_imp.h		\
 			mercury_init.h		\
 			mercury_label.h		\

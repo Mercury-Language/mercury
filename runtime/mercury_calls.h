@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-1998 The University of Melbourne.
+** Copyright (C) 1995-1999 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -95,27 +95,6 @@
 		do {						\
 			PROFILE((proc), (current_label));	\
 			noprof_call_localret(proc, succ_cont);	\
-		} while (0)
-
-#define	call_det_closure(succ_cont, current_label)		\
-		do {						\
-			Declare_entry(do_call_det_closure);	\
-			call(ENTRY(do_call_det_closure),	\
-				(succ_cont), (current_label));	\
-		} while (0)
-
-#define	call_semidet_closure(succ_cont, current_label)		\
-		do {						\
-			Declare_entry(do_call_semidet_closure); \
-			call(ENTRY(do_call_semidet_closure),	\
-				(succ_cont), (current_label));	\
-		} while (0)
-
-#define	call_nondet_closure(succ_cont, current_label)		\
-		do {						\
-			Declare_entry(do_call_nondet_closure);	\
-			call(ENTRY(do_call_nondet_closure),	\
-				(succ_cont), (current_label));	\
 		} while (0)
 
 #define	localtailcall(label, current_label)			\

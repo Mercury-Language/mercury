@@ -180,7 +180,7 @@ typedef struct {
 	Word	inst;	/* not yet used; currently always -1 */
 } MR_Var_Shape_Info;
 
-#define MR_LIVE_TYPE_IS_VAR(T)         ( (Word) T > TYPE_CTOR_LAYOUT_MAX_VARINT )
+#define MR_LIVE_TYPE_IS_VAR(T)         ((Word) T > TYPE_CTOR_LAYOUT_MAX_VARINT)
 
 #define MR_LIVE_TYPE_GET_NONVAR(T)			\
 		((MR_Lval_NonVar) T)
@@ -214,10 +214,15 @@ typedef	struct MR_Stack_Layout_Var_Struct {
 ** the corresponding entry will be zero.
 */
 
+typedef	struct MR_Type_Param_Locns_Struct {
+	Integer			MR_tp_param_count;
+	MR_Live_Lval		MR_tp_param_locns[MR_VARIABLE_SIZED];
+} MR_Type_Param_Locns;
+
 typedef	struct MR_Stack_Layout_Vars_Struct {
 	MR_Stack_Layout_Var	*MR_slvs_pairs;
 	String			*MR_slvs_names;
-	MR_Live_Lval		*MR_slvs_tvars;
+	MR_Type_Param_Locns	*MR_slvs_tvars;
 } MR_Stack_Layout_Vars;
 
 #define	MR_name_if_present(vars, i)					    \
@@ -266,6 +271,12 @@ typedef	struct MR_Stack_Layout_Vars_Struct {
 ** MR_ENTRY_LAYOUT_HAS_PROC_ID is true.
 **
 ** For further details on the semantics of the fields, see stack_layout.m.
+*/
+
+/*
+** The places that know about the structure of procedure ids include
+** browser/dl.m and of course compiler/stack_layout, besides all the places 
+** that refer to the C types we now define.
 */
 
 typedef struct MR_Stack_Layout_User_Proc_Struct {

@@ -32,6 +32,7 @@ ENDINIT
 */
 
 #include "mercury_imp.h"
+#include "mercury_ho_call.h"
 
 	/* 
 	** Number of input arguments to do_call_*_closure, 
@@ -50,6 +51,10 @@ ENDINIT
 	*/
 #define MR_CLASS_METHOD_CALL_INPUTS	4
 
+/*
+** The following entries are obsolete, and are kept for bootstrapping only.
+*/
+
 Define_extern_entry(do_call_det_closure);
 Define_extern_entry(do_call_semidet_closure);
 Define_extern_entry(do_call_nondet_closure);
@@ -57,6 +62,17 @@ Define_extern_entry(do_call_nondet_closure);
 Define_extern_entry(do_call_det_class_method);
 Define_extern_entry(do_call_semidet_class_method);
 Define_extern_entry(do_call_nondet_class_method);
+
+/*
+** These are the real implementations of higher order calls and method calls.
+*/
+
+Define_extern_entry(mercury__do_call_closure);
+Define_extern_entry(mercury__do_call_class_method);
+
+/*
+** These are the real implementations of unify, index and compare.
+*/
 
 Define_extern_entry(mercury__unify_2_0);
 Define_extern_entry(mercury__index_2_0);
@@ -93,9 +109,13 @@ BEGIN_MODULE(call_module)
 	init_entry_ai(do_call_semidet_closure);
 	init_entry_ai(do_call_nondet_closure);
 
+	init_entry_ai(mercury__do_call_closure);
+
 	init_entry_ai(do_call_det_class_method);
 	init_entry_ai(do_call_semidet_class_method);
 	init_entry_ai(do_call_nondet_class_method);
+
+	init_entry_ai(mercury__do_call_class_method);
 
 	init_entry_ai(mercury__unify_2_0);
 #ifdef	COMPACT_ARGS
@@ -207,6 +227,51 @@ Define_entry(do_call_nondet_closure);
 	restore_registers();
 
 	tailcall((Code *) field(0, closure, 1), LABEL(do_call_nondet_closure));
+}
+
+Define_entry(mercury__do_call_closure);
+{
+	MR_Closure	*closure;
+	int		num_extra_args;	/* # of args provided by our caller */
+	int		num_hidden_args;/* # of args hidden in the closure  */
+	int		i;
+
+	closure = (MR_Closure *) r1;
+
+	/* This check is for bootstrapping only. */
+	if (((Word) closure->MR_closure_layout) < 1024) {
+		/* we found an old-style closure, call the old handler */
+		tailcall(ENTRY(do_call_det_closure),
+			LABEL(mercury__do_call_closure));
+	}
+
+	num_extra_args = r2;
+	num_hidden_args = closure->MR_closure_num_hidden_args;
+
+	save_registers();
+
+	if (num_hidden_args < MR_HO_CALL_INPUTS) {
+		/* copy to the left, from the left */
+		for (i = 1; i <= num_extra_args; i++) {
+			virtual_reg(i + num_hidden_args) =
+				virtual_reg(i + MR_HO_CALL_INPUTS);
+		}
+	} else if (num_hidden_args > MR_HO_CALL_INPUTS) {
+		/* copy to the right, from the right */
+		for (i = num_extra_args; i > 0; i--) {
+			virtual_reg(i + num_hidden_args) =
+				virtual_reg(i + MR_HO_CALL_INPUTS);
+		}
+	} /* else the new args are in the right place */
+
+	for (i = 1; i <= num_hidden_args; i++) {
+		virtual_reg(i) = closure->MR_closure_hidden_args(i);
+	}
+
+	restore_registers();
+
+	tailcall(closure->MR_closure_code,
+		LABEL(mercury__do_call_closure));
 }
 
 	/*
@@ -331,6 +396,52 @@ Define_entry(do_call_nondet_class_method);
 	restore_registers();
 
 	tailcall(destination, LABEL(do_call_nondet_class_method));
+}
+
+	/*
+	** r1: the typeclass_info
+	** r2: index of class method
+	** r3: number of immediate input arguments
+	** r4: number of output arguments
+	** r5+:input args
+	*/
+
+Define_entry(mercury__do_call_class_method);
+{
+	Code 	*destination;
+	int	num_in_args;
+	int	num_arg_typeclass_infos;
+	int	i;
+
+	destination = MR_typeclass_info_class_method(r1, r2);
+	num_arg_typeclass_infos = (int) MR_typeclass_info_instance_arity(r1);
+
+	num_in_args = r3; /* number of input args */
+
+	save_registers();
+
+	if (num_arg_typeclass_infos < MR_CLASS_METHOD_CALL_INPUTS) {
+		/* copy to the left, from the left */
+		for (i = 1; i <= num_in_args; i++) {
+			virtual_reg(i + num_arg_typeclass_infos) =
+				virtual_reg(i + MR_CLASS_METHOD_CALL_INPUTS);
+		}
+	} else if (num_arg_typeclass_infos > MR_CLASS_METHOD_CALL_INPUTS) {
+		/* copy to the right, from the right */
+		for (i = num_in_args; i > 0; i--) {
+			virtual_reg(i + num_arg_typeclass_infos) =
+				virtual_reg(i + MR_CLASS_METHOD_CALL_INPUTS);
+		}
+	} /* else the new args are in the right place */
+
+	for (i = num_arg_typeclass_infos; i > 0; i--) {
+		virtual_reg(i) = 
+			MR_typeclass_info_arg_typeclass_info(virtual_reg(1),i);
+	}
+
+	restore_registers();
+
+	tailcall(destination, LABEL(mercury__do_call_class_method));
 }
 
 /*

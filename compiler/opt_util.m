@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1998 The University of Melbourne.
+% Copyright (C) 1994-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1282,12 +1282,8 @@ opt_util__livevals_addr(do_succeed(_), yes).
 opt_util__livevals_addr(do_redo, no).
 opt_util__livevals_addr(do_fail, no).
 opt_util__livevals_addr(do_trace_redo_fail, no).
-opt_util__livevals_addr(do_det_closure, yes).
-opt_util__livevals_addr(do_semidet_closure, yes).
-opt_util__livevals_addr(do_nondet_closure, yes).
-opt_util__livevals_addr(do_det_class_method, yes).
-opt_util__livevals_addr(do_semidet_class_method, yes).
-opt_util__livevals_addr(do_nondet_class_method, yes).
+opt_util__livevals_addr(do_call_closure, yes).
+opt_util__livevals_addr(do_call_class_method, yes).
 opt_util__livevals_addr(do_det_aditi_call, yes).
 opt_util__livevals_addr(do_semidet_aditi_call, yes).
 opt_util__livevals_addr(do_nondet_aditi_call, yes).

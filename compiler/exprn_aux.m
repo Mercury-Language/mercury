@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1998 The University of Melbourne.
+% Copyright (C) 1995-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %------------------------------------------------------------------------------%
@@ -149,12 +149,8 @@ exprn_aux__addr_is_constant(do_succeed(_), _, no).
 exprn_aux__addr_is_constant(do_redo, _, no).
 exprn_aux__addr_is_constant(do_fail, _, no).
 exprn_aux__addr_is_constant(do_trace_redo_fail, _, no).
-exprn_aux__addr_is_constant(do_det_closure, _, no).
-exprn_aux__addr_is_constant(do_semidet_closure, _, no).
-exprn_aux__addr_is_constant(do_nondet_closure, _, no).
-exprn_aux__addr_is_constant(do_det_class_method, _, no).
-exprn_aux__addr_is_constant(do_semidet_class_method, _, no).
-exprn_aux__addr_is_constant(do_nondet_class_method, _, no).
+exprn_aux__addr_is_constant(do_call_closure, _, no).
+exprn_aux__addr_is_constant(do_call_class_method, _, no).
 exprn_aux__addr_is_constant(do_det_aditi_call, _, no).
 exprn_aux__addr_is_constant(do_semidet_aditi_call, _, no).
 exprn_aux__addr_is_constant(do_nondet_aditi_call, _, no).

@@ -498,8 +498,7 @@ maybe_pred(Pred, X, Y) :-
 #include ""mercury_imp.h""
 #include ""mercury_deep_copy.h""
 
-Declare_entry(do_call_nondet_closure);
-Declare_entry(do_call_det_closure);
+Declare_entry(mercury__do_call_closure);
 
 Define_extern_entry(mercury__std_util__builtin_aggregate_4_0);
 Define_extern_entry(mercury__std_util__builtin_aggregate_4_1);
@@ -692,7 +691,7 @@ Define_entry(mercury__std_util__builtin_aggregate_4_0);
 	r2 = (Word) 0;	/* the higher-order call has 0 extra input arguments */
 	r3 = (Word) 1;	/* the higher-order call has 1 extra output argument */
 
-	call(ENTRY(do_call_nondet_closure),
+	call(ENTRY(mercury__do_call_closure),
 		LABEL(mercury__std_util__builtin_aggregate_4_0_i1),
 		LABEL(mercury__std_util__builtin_aggregate_4_0));
 
@@ -730,7 +729,7 @@ Define_label(mercury__std_util__builtin_aggregate_4_0_i1);
 	r3 = (Word) 1;	/* higher-order call has 1 extra output arg */
 	r4 = copied_solution;
 	r5 = sofar_fv;
-	call(ENTRY(do_call_det_closure),
+	call(ENTRY(mercury__do_call_closure),
 		LABEL(mercury__std_util__builtin_aggregate_4_0_i2),
 		LABEL(mercury__std_util__builtin_aggregate_4_0));
 }
@@ -839,7 +838,7 @@ Define_label(mercury__std_util__builtin_aggregate_4_0_i3);
 	r1 = r3;
 	r2 = (Word) 0;	/* the higher-order call has 0 extra input arguments */
 	r3 = (Word) 1;	/* the higher-order call has 1 extra output argument */
-	call(ENTRY(do_call_nondet_closure),
+	call(ENTRY(mercury__do_call_closure),
 		LABEL(mercury__std_util__builtin_aggregate_4_0_i1),
 		LABEL(mercury__std_util__builtin_aggregate_4_0));
 
@@ -861,7 +860,7 @@ Define_label(mercury__std_util__builtin_aggregate_4_0_i1);
 	r3 = (Word) 1;	/* the higher-order call has 1 extra output argument */
 	r5 = sofar_fv;
 
-	call(ENTRY(do_call_det_closure),
+	call(ENTRY(mercury__do_call_closure),
 		LABEL(mercury__std_util__builtin_aggregate_4_0_i2),
 		LABEL(mercury__std_util__builtin_aggregate_4_0));
 

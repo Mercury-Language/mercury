@@ -38,8 +38,8 @@
 
 :- import_module code_util, code_exprn, prog_out.
 :- import_module arg_info, type_util, mode_util, options.
-:- import_module term, varset.
 
+:- import_module term, varset.
 :- import_module set, stack.
 :- import_module string, require, char, bimap, tree, int.
 
@@ -65,11 +65,10 @@
 		% Create a new code_info structure. Also return the
 		% outermost resumption point, and info about the non-fixed
 		% stack slots used for tracing purposes.
-:- pred code_info__init(prog_varset, set(prog_var), stack_slots, bool, globals,
-	pred_id, proc_id, proc_info, instmap, follow_vars, module_info,
-	int, resume_point_info, trace_slot_info, code_info).
-:- mode code_info__init(in, in, in, in, in, in, in, in, in, in, in, in,
-	out, out, out) is det.
+:- pred code_info__init(bool, globals, pred_id, proc_id, proc_info,
+	follow_vars, module_info, int, resume_point_info,
+	trace_slot_info, code_info).
+:- mode code_info__init(in, in, in, in, in, in, in, in, out, out, out) is det.
 
 		% Get the globals table.
 :- pred code_info__get_globals(globals, code_info, code_info).
@@ -123,6 +122,9 @@
 :- pred code_info__get_cell_count(int, code_info, code_info).
 :- mode code_info__get_cell_count(out, in, out) is det.
 
+:- pred code_info__set_cell_count(int, code_info, code_info).
+:- mode code_info__set_cell_count(in, in, out) is det.
+
 		% Get the flag that indicates whether succip is used or not.
 :- pred code_info__get_succip_used(bool, code_info, code_info).
 :- mode code_info__get_succip_used(out, in, out) is det.
@@ -171,9 +173,6 @@
 
 :- pred code_info__set_label_count(int, code_info, code_info).
 :- mode code_info__set_label_count(in, in, out) is det.
-
-:- pred code_info__set_cell_count(int, code_info, code_info).
-:- mode code_info__set_cell_count(in, in, out) is det.
 
 :- pred code_info__set_succip_used(bool, code_info, code_info).
 :- mode code_info__set_succip_used(in, in, out) is det.
@@ -278,16 +277,19 @@
 
 %---------------------------------------------------------------------------%
 
-code_info__init(Varset, Liveness, StackSlots, SaveSuccip, Globals,
-		PredId, ProcId, ProcInfo, Instmap, FollowVars, ModuleInfo,
-		CellCount, ResumePoint, TraceSlotInfo, CodeInfo) :-
+code_info__init(SaveSuccip, Globals, PredId, ProcId, ProcInfo, FollowVars,
+		ModuleInfo, CellCount, ResumePoint, TraceSlotInfo, CodeInfo) :-
+	proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap),
+	proc_info_liveness_info(ProcInfo, Liveness),
 	proc_info_headvars(ProcInfo, HeadVars),
 	proc_info_arg_info(ProcInfo, ArgInfos),
 	proc_info_interface_code_model(ProcInfo, CodeModel),
 	assoc_list__from_corresponding_lists(HeadVars, ArgInfos, Args),
 	arg_info__build_input_arg_list(Args, ArgList),
 	globals__get_options(Globals, Options),
-	code_exprn__init_state(ArgList, Varset, StackSlots, FollowVars,
+	proc_info_varset(ProcInfo, VarSet),
+	proc_info_stack_slots(ProcInfo, StackSlots),
+	code_exprn__init_state(ArgList, VarSet, StackSlots, FollowVars,
 		Options, ExprnInfo),
 	stack__init(ResumePoints),
 	globals__lookup_bool_option(Globals, allow_hijacks, AllowHijack),
@@ -313,12 +315,12 @@ code_info__init(Varset, Liveness, StackSlots, SaveSuccip, Globals,
 		PredId,
 		ProcId,
 		ProcInfo,
-		Varset,
+		VarSet,
 		SlotMax,
 		no,
 
 		Liveness,
-		Instmap,
+		InstMap,
 		Zombies,
 		ExprnInfo,
 		TempsInUse,
@@ -556,12 +558,6 @@ code_info__set_temp_content_map(PF, CI0, CI) :-
 	code_info, code_info).
 :- mode code_info__lookup_type_defn(in, out, in, out) is det.
 
-	% For each type variable in the given list, find out where the
-	% typeinfo var for that type variable is.
-:- pred code_info__find_typeinfos_for_tvars(list(tvar),
-	map(tvar, set(layout_locn)), code_info, code_info).
-:- mode code_info__find_typeinfos_for_tvars(in, out, in, out) is det.
-
 	% Given a constructor id, and a variable (so that we can work out the
 	% type of the constructor), determine correct tag (representation)
 	% of that constructor.
@@ -729,44 +725,6 @@ code_info__lookup_type_defn(Type, TypeDefn) -->
 	},
 	{ module_info_types(ModuleInfo, TypeTable) },
 	{ map__lookup(TypeTable, TypeId, TypeDefn) }.
-
-code_info__find_typeinfos_for_tvars(TypeVars, TypeInfoDataMap) -->
-	code_info__variable_locations(VarLocs),
-	code_info__get_varset(VarSet),
-	code_info__get_proc_info(ProcInfo),
-	{ proc_info_typeinfo_varmap(ProcInfo, TypeInfoMap) },
-	{ map__apply_to_list(TypeVars, TypeInfoMap, TypeInfoLocns) },
-	{ FindLocn = lambda([TypeInfoLocn::in, Locns::out] is det, (
-		type_info_locn_var(TypeInfoLocn, TypeInfoVar),
-		(
-			map__search(VarLocs, TypeInfoVar, TypeInfoRvalSet)
-		->
-			ConvertRval = lambda([Locn::out] is nondet, (
-				set__member(Rval, TypeInfoRvalSet),
-				Rval = lval(Lval),
-				( 
-					TypeInfoLocn = typeclass_info(_,
-						FieldNum),
-					Locn = indirect(Lval, FieldNum)
-				;
-					TypeInfoLocn = type_info(_),
-					Locn = direct(Lval)
-				)
-			)),
-			solutions_set(ConvertRval, Locns)
-		;
-			varset__lookup_name(VarSet, TypeInfoVar,
-				VarString),
-			string__format("%s: %s %s",
-				[s("code_info__find_typeinfos_for_tvars"),
-				s("can't find lval for type_info var"),
-				s(VarString)], ErrStr),
-			error(ErrStr)
-		)
-	)) },
-	{ list__map(FindLocn, TypeInfoLocns, TypeInfoVarLocns) },
-	{ map__from_corresponding_lists(TypeVars, TypeInfoVarLocns,
-		TypeInfoDataMap) }.
 
 code_info__cons_id_to_tag(Var, ConsId, ConsTag) -->
 	code_info__variable_type(Var, Type),
@@ -3193,173 +3151,32 @@ code_info__generate_input_var_vn([InputArgLoc | InputArgLocs], Vals0, Vals) :-
 
 code_info__generate_return_live_lvalues(OutputArgLocs, ReturnInstMap,
 		LiveLvalues) -->
+	code_info__variable_locations(VarLocs),
 	code_info__get_known_variables(Vars),
-	code_info__get_globals(Globals),
-	{ globals__want_return_var_layouts(Globals, WantReturnVarLayout) },
-	code_info__find_return_var_lvals(Vars, OutputArgLocs, VarLvals),
-	code_info__generate_var_live_lvalues(VarLvals,
-		ReturnInstMap, WantReturnVarLayout, VarLiveLvalues),
-
 	code_info__get_active_temps_data(Temps),
-	{ code_info__generate_temp_live_lvalues(Temps, TempLiveLvalues) },
-
-	{ list__append(VarLiveLvalues, TempLiveLvalues, LiveLvalues) }.
-
-:- pred code_info__find_return_var_lvals(list(prog_var)::in,
-	assoc_list(prog_var, arg_loc)::in, assoc_list(prog_var, lval)::out,
-	code_info::in, code_info::out) is det.
-
-code_info__find_return_var_lvals([], _, []) --> [].
-code_info__find_return_var_lvals([Var | Vars], OutputArgLocs,
-		[Var - Lval | VarLvals]) -->
-	( { assoc_list__search(OutputArgLocs, Var, ArgLoc) } ->
-		% On return, output arguments are in their registers.
-		{ code_util__arg_loc_to_register(ArgLoc, Lval) }
-	;
-		% On return, other live variables are in their stack slots.
-		code_info__get_variable_slot(Var, Lval)
-	),
-	code_info__find_return_var_lvals(Vars, OutputArgLocs, VarLvals).
-
-:- pred code_info__generate_temp_live_lvalues(
-	assoc_list(lval, slot_contents)::in, list(liveinfo)::out) is det.
-
-code_info__generate_temp_live_lvalues([], []).
-code_info__generate_temp_live_lvalues([Temp | Temps], [Live | Lives]) :-
-	Temp = Slot - Contents,
-	code_info__get_live_value_type(Contents, LiveLvalueType),
-	map__init(Empty),
-	Live = live_lvalue(direct(Slot), LiveLvalueType, Empty),
-	code_info__generate_temp_live_lvalues(Temps, Lives).
-
-:- pred code_info__generate_var_live_lvalues(assoc_list(prog_var, lval)::in,
-	instmap::in, bool::in, list(liveinfo)::out,
-	code_info::in, code_info::out) is det.
-
-code_info__generate_var_live_lvalues([], _, _, []) --> [].
-code_info__generate_var_live_lvalues([Var - Lval | VarLvals], InstMap,
-		WantReturnVarLayout, [Live | Lives]) -->
-	(
-		{ WantReturnVarLayout = yes }
-	->
-		code_info__get_varset(VarSet),
-		{ varset__lookup_name(VarSet, Var, Name) },
-		code_info__variable_type(Var, Type),
-		{ instmap__lookup_var(InstMap, Var, Inst) },
-		{ type_util__vars(Type, TypeVars) },
-		code_info__find_typeinfos_for_tvars(TypeVars, TypeParams),
-		{ VarInfo = var(Var, Name, Type, Inst) },
-		{ Live = live_lvalue(direct(Lval), VarInfo, TypeParams) }
-	;
-		{ map__init(Empty) },
-		{ Live = live_lvalue(direct(Lval), unwanted, Empty) }
-	),
-	code_info__generate_var_live_lvalues(VarLvals, InstMap,
-		WantReturnVarLayout, Lives).
-
-:- pred code_info__get_live_value_type(slot_contents::in, live_value_type::out)
-	is det.
-
-code_info__get_live_value_type(lval(succip), succip).
-code_info__get_live_value_type(lval(hp), hp).
-code_info__get_live_value_type(lval(maxfr), maxfr).
-code_info__get_live_value_type(lval(curfr), curfr).
-code_info__get_live_value_type(lval(succfr(_)), unwanted).
-code_info__get_live_value_type(lval(prevfr(_)), unwanted).
-code_info__get_live_value_type(lval(redofr(_)), unwanted).
-code_info__get_live_value_type(lval(redoip(_)), unwanted).
-code_info__get_live_value_type(lval(succip(_)), unwanted).
-code_info__get_live_value_type(lval(sp), unwanted).
-code_info__get_live_value_type(lval(lvar(_)), unwanted).
-code_info__get_live_value_type(lval(field(_, _, _)), unwanted).
-code_info__get_live_value_type(lval(temp(_, _)), unwanted).
-code_info__get_live_value_type(lval(reg(_, _)), unwanted).
-code_info__get_live_value_type(lval(stackvar(_)), unwanted).
-code_info__get_live_value_type(lval(framevar(_)), unwanted).
-code_info__get_live_value_type(lval(mem_ref(_)), unwanted).		% XXX
-code_info__get_live_value_type(ticket, unwanted). % XXX we may need to
-					% modify this, if the GC is going
-					% to garbage-collect the trail.
-code_info__get_live_value_type(ticket_counter, unwanted).
-code_info__get_live_value_type(sync_term, unwanted).
-code_info__get_live_value_type(trace_data, unwanted).
-
-%---------------------------------------------------------------------------%
+	code_info__get_proc_info(ProcInfo),
+	code_info__get_globals(Globals),
+	{ continuation_info__generate_return_live_lvalues(OutputArgLocs,
+		ReturnInstMap, Vars, VarLocs, Temps, ProcInfo, Globals,
+		LiveLvalues) }.
 
 :- pred code_info__generate_resume_layout(label::in, resume_map::in,
 	code_info::in, code_info::out) is det.
 
 code_info__generate_resume_layout(Label, ResumeMap) -->
 	code_info__get_globals(Globals),
-	{ globals__get_gc_method(Globals, GcMethod) },
-	( { GcMethod = accurate } ->
-		{ map__to_assoc_list(ResumeMap, ResumeList) },
-		code_info__get_instmap(InstMap),
-		code_info__get_var_types(VarTypes),
-		code_info__get_varset(VarSet),
-		{ set__init(TVars0) },
-		{ code_info__generate_resume_layout_for_vars(ResumeList,
-			VarSet, VarTypes, InstMap, VarInfos, TVars0, TVars) },
-		{ set__list_to_set(VarInfos, VarInfoSet) },
-		{ set__to_sorted_list(TVars, TVarList) },
-		code_info__find_typeinfos_for_tvars(TVarList, TVarInfoMap),
+	{ globals__lookup_bool_option(Globals, agc_stack_layout,
+		AgcStackLayout) },
+	( { AgcStackLayout = yes } ->
 		code_info__get_active_temps_data(Temps),
-		{ code_info__generate_temp_var_infos(Temps, TempInfos) },
-		{ set__list_to_set(TempInfos, TempInfoSet) },
-		{ set__union(VarInfoSet, TempInfoSet, AllInfoSet) },
-		{ Layout = layout_label_info(AllInfoSet, TVarInfoMap) },
+		code_info__get_instmap(InstMap),
+		code_info__get_proc_info(ProcInfo),
+		{ continuation_info__generate_resume_layout(ResumeMap,
+			Temps, InstMap, ProcInfo, Layout) },
 		code_info__add_gc_layout_for_label(Label, Layout)
 	;
 		[]
 	).
-
-:- pred code_info__generate_resume_layout_for_vars(
-	assoc_list(prog_var, set(rval))::in, prog_varset::in,
-	map(prog_var, type)::in, instmap::in, list(var_info)::out,
-	set(tvar)::in, set(tvar)::out) is det.
-
-code_info__generate_resume_layout_for_vars([], _, _, _, [], TVars, TVars).
-code_info__generate_resume_layout_for_vars([Var - RvalSet | VarRvals], VarSet,
-		VarTypes, InstMap, [VarInfo | VarInfos], TVars0, TVars) :-
-	code_info__generate_resume_layout_for_var(Var, RvalSet, VarSet,
-		VarTypes, InstMap, VarInfo, TypeVars),
-	set__insert_list(TVars0, TypeVars, TVars1),
-	code_info__generate_resume_layout_for_vars(VarRvals, VarSet,
-		VarTypes, InstMap, VarInfos, TVars1, TVars).
-
-:- pred code_info__generate_resume_layout_for_var(prog_var::in, set(rval)::in,
-	prog_varset::in, map(prog_var, type)::in, instmap::in,
-	var_info::out, list(tvar)::out) is det.
-
-code_info__generate_resume_layout_for_var(Var, RvalSet, VarSet,
-		VarTypes, InstMap, VarInfo, TypeVars) :-
-	set__to_sorted_list(RvalSet, RvalList),
-	( RvalList = [RvalPrime] ->
-		Rval = RvalPrime
-	;
-		error("var has more than one rval in stack resume map")
-	),
-	( Rval = lval(LvalPrime) ->
-		Lval = LvalPrime
-	;
-		error("var rval is not lval in stack resume map")
-	),
-	varset__lookup_name(VarSet, Var, "V_", Name),
-	instmap__lookup_var(InstMap, Var, Inst),
-	map__lookup(VarTypes, Var, Type),
-	LiveType = var(Var, Name, Type, Inst),
-	VarInfo = var_info(direct(Lval), LiveType),
-	type_util__vars(Type, TypeVars).
-
-:- pred code_info__generate_temp_var_infos(
-	assoc_list(lval, slot_contents)::in, list(var_info)::out) is det.
-
-code_info__generate_temp_var_infos([], []).
-code_info__generate_temp_var_infos([Temp | Temps], [Live | Lives]) :-
-	Temp = Slot - Contents,
-	code_info__get_live_value_type(Contents, LiveLvalueType),
-	Live = var_info(direct(Slot), LiveLvalueType),
-	code_info__generate_temp_var_infos(Temps, Lives).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -3394,15 +3211,6 @@ code_info__generate_temp_var_infos([Temp | Temps], [Live | Lives]) :-
 	% during code generation.
 
 :- interface.
-
-:- type slot_contents 
-	--->	ticket			% a ticket (trail pointer)
-	;	ticket_counter		% a copy of the ticket counter
-	;	trace_data
-	;	sync_term		% a syncronization term used
-					% at the end of par_conjs.
-					% see par_conj_gen.m for details.
-	;	lval(lval).
 
 	% Returns the total stackslot count, but not including space for
 	% succip. This total can change in the future if this call is

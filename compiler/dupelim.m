@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1998 The University of Melbourne.
+% Copyright (C) 1995-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -946,14 +946,9 @@ dupelim__replace_labels_code_addr(do_succeed(Last), _, do_succeed(Last)).
 dupelim__replace_labels_code_addr(do_redo, _, do_redo).
 dupelim__replace_labels_code_addr(do_fail, _, do_fail).
 dupelim__replace_labels_code_addr(do_trace_redo_fail, _, do_trace_redo_fail).
-dupelim__replace_labels_code_addr(do_det_closure, _, do_det_closure).
-dupelim__replace_labels_code_addr(do_semidet_closure, _, do_semidet_closure).
-dupelim__replace_labels_code_addr(do_nondet_closure, _, do_nondet_closure).
-dupelim__replace_labels_code_addr(do_det_class_method, _, do_det_class_method).
-dupelim__replace_labels_code_addr(do_semidet_class_method, _,
-	do_semidet_class_method).
-dupelim__replace_labels_code_addr(do_nondet_class_method, _,
-	do_nondet_class_method).
+dupelim__replace_labels_code_addr(do_call_closure, _, do_call_closure).
+dupelim__replace_labels_code_addr(do_call_class_method, _,
+	do_call_class_method).
 dupelim__replace_labels_code_addr(do_det_aditi_call, _, do_det_aditi_call).
 dupelim__replace_labels_code_addr(do_semidet_aditi_call, _,
 		do_semidet_aditi_call).

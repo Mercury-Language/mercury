@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1998 The University of Melbourne.
+% Copyright (C) 1994-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -581,8 +581,7 @@ MR_MAKE_PROC_LAYOUT(mercury__benchmarking__benchmark_nondet_5_0,
 MR_MAKE_INTERNAL_LAYOUT(mercury__benchmarking__benchmark_nondet_5_0, 1);
 MR_MAKE_INTERNAL_LAYOUT(mercury__benchmarking__benchmark_nondet_5_0, 2);
 
-Declare_entry(do_call_nondet_closure);
-Declare_entry(do_call_det_closure);
+Declare_entry(mercury__do_call_closure);
 
 BEGIN_MODULE(benchmark_nondet_module)
 	init_entry_sl(mercury__benchmarking__benchmark_nondet_5_0);
@@ -632,7 +631,7 @@ Define_entry(mercury__benchmarking__benchmark_nondet_5_0);
 	r2 = (Word) 1;	/* the higher-order call has 1 extra input argument  */
 	r3 = (Word) 1;	/* the higher-order call has 1 extra output argument */
 	/* r4 already has the extra input argument */
-	call(ENTRY(do_call_nondet_closure),
+	call(ENTRY(mercury__do_call_closure),
 		LABEL(mercury__benchmarking__benchmark_nondet_5_0_i1),
 		LABEL(mercury__benchmarking__benchmark_nondet_5_0));
 
@@ -667,7 +666,7 @@ Define_label(mercury__benchmarking__benchmark_nondet_5_0_i2);
 		r2 = (Word) 1;
 		r3 = (Word) 1;
 		r4 = framevar(1);
-		call(ENTRY(do_call_nondet_closure),
+		call(ENTRY(mercury__do_call_closure),
 			LABEL(mercury__benchmarking__benchmark_nondet_5_0_i1),
 			LABEL(mercury__benchmarking__benchmark_nondet_5_0));
 	}
@@ -740,7 +739,7 @@ Define_entry(mercury__benchmarking__benchmark_det_5_0);
 	r2 = (Word) 1;	/* the higher-order call has 1 extra input argument  */
 	r3 = (Word) 1;	/* the higher-order call has 1 extra output argument */
 	/* r4 already has the extra input argument */
-	call(ENTRY(do_call_det_closure),
+	call(ENTRY(mercury__do_call_closure),
 		LABEL(mercury__benchmarking__benchmark_det_5_0_i1),
 		LABEL(mercury__benchmarking__benchmark_det_5_0));
 
@@ -765,7 +764,7 @@ Define_label(mercury__benchmarking__benchmark_det_5_0_i1);
 		r2 = (Word) 1;
 		r3 = (Word) 1;
 		r4 = detstackvar(2);
-		call(ENTRY(do_call_det_closure),
+		call(ENTRY(mercury__do_call_closure),
 			LABEL(mercury__benchmarking__benchmark_det_5_0_i1),
 			LABEL(mercury__benchmarking__benchmark_det_5_0));
 	}

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1998 The University of Melbourne.
+% Copyright (C) 1995-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -395,12 +395,8 @@ livemap__special_code_addr(do_succeed(_), yes(succip(lval(curfr)))).
 livemap__special_code_addr(do_redo, yes(redoip(lval(maxfr)))).
 livemap__special_code_addr(do_trace_redo_fail, no).
 livemap__special_code_addr(do_fail, no).
-livemap__special_code_addr(do_det_closure, no).
-livemap__special_code_addr(do_semidet_closure, no).
-livemap__special_code_addr(do_nondet_closure, no).
-livemap__special_code_addr(do_det_class_method, no).
-livemap__special_code_addr(do_semidet_class_method, no).
-livemap__special_code_addr(do_nondet_class_method, no).
+livemap__special_code_addr(do_call_closure, no).
+livemap__special_code_addr(do_call_class_method, no).
 livemap__special_code_addr(do_det_aditi_call, no).
 livemap__special_code_addr(do_semidet_aditi_call, no).
 livemap__special_code_addr(do_nondet_aditi_call, no).

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1998 The University of Melbourne.
+% Copyright (C) 1994-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -179,10 +179,6 @@ generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo, Globals,
 	proc_info_interface_determinism(ProcInfo, Detism),
 	proc_info_interface_code_model(ProcInfo, CodeModel),
 	proc_info_goal(ProcInfo, Goal),
-	proc_info_varset(ProcInfo, VarSet),
-	proc_info_liveness_info(ProcInfo, Liveness),
-	proc_info_stack_slots(ProcInfo, StackSlots),
-	proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InitialInst),
 	Goal = _ - GoalInfo,
 	goal_info_get_follow_vars(GoalInfo, MaybeFollowVars),
 	(
@@ -205,10 +201,9 @@ generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo, Globals,
 		% procedures, always needed for model_semi procedures, and
 		% needed for model_non procedures only if we are doing
 		% execution tracing.
-	code_info__init(VarSet, Liveness, StackSlots, SaveSuccip, Globals,
-		PredId, ProcId, ProcInfo, InitialInst, FollowVars,
-		ModuleInfo, CellCount0, OutsideResumePoint, TraceSlotInfo,
-		CodeInfo0),
+	code_info__init(SaveSuccip, Globals, PredId, ProcId, ProcInfo,
+		FollowVars, ModuleInfo, CellCount0, OutsideResumePoint,
+		TraceSlotInfo, CodeInfo0),
 
 		% Generate code for the procedure.
 	generate_category_code(CodeModel, Goal, OutsideResumePoint,

@@ -22,6 +22,16 @@
 /*---------------------------------------------------------------------------*/
 
 /*
+** For now, we don't give a C definition of the structures of typeinfos
+** and pseudotypeinfos. We may change this later.
+*/
+
+typedef	Word	MR_TypeInfo;
+typedef	Word	MR_PseudoTypeInfo;
+
+/*---------------------------------------------------------------------------*/
+
+/*
 ** Define offsets of fields in the type_ctor_info or type_info structure.
 ** See polymorphism.m for explanation of these offsets and how the
 ** type_info and type_ctor_info structures are laid out.
@@ -253,6 +263,9 @@ enum MR_TypeLayoutValue {
 /* 
 ** Highest allowed type variable number
 ** (corresponds with argument number of type parameter).
+**
+** Should be kept in sync with the default value of MR_VARIABLE_SIZED
+** in mercury_conf_params.h.
 */
 
 #define TYPE_CTOR_LAYOUT_MAX_VARINT		1024
