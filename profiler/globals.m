@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995, 1997 The University of Melbourne.
+% Copyright (C) 1995, 1997-1998 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -178,7 +178,7 @@ globals__io_get_globals(Globals) -->
 	}.
 
 globals__io_set_globals(Globals0) -->
-	{ copy(Globals0, Globals) },
+	{ unsafe_promise_unique(Globals0, Globals) },
 	{ type_to_univ(Globals, UnivGlobals) },
 	io__set_globals(UnivGlobals).
 
