@@ -596,6 +596,12 @@ choose_file_name(_ModuleName, BaseName, Ext, MkDir, FileName) -->
 		->
 			string__append(ExtName, "s", SubDirName)
 		;
+			% `.dv' files go in the `deps' subdirectory,
+			% along with the `.dep' files
+			Ext = ".dv"
+		->
+			SubDirName = "deps"
+		;
 			% the usual case: `*.foo' files go in the `foos'
 			% subdirectory
 			string__append(".", ExtName, Ext)
