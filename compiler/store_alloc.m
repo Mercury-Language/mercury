@@ -26,7 +26,8 @@
 :- mode store_alloc(in, out) is det.
 
 :- pred store_alloc_in_proc(proc_info, module_info, proc_info).
-:- mode store_alloc_in_proc(di, in, uo) is det.
+% :- mode store_alloc_in_proc(di, in, uo) is det.
+:- mode store_alloc_in_proc(in, in, out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

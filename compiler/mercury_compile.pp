@@ -96,7 +96,8 @@ postprocess_options_2(OptionTable, GC_Method, Tags_Method) -->
 		[]
 	),
 
-	globals__io_init(OptionTable, GC_Method, Tags_Method),
+	{ copy(OptionTable, OptionTable1) }, % XXX
+	globals__io_init(OptionTable1, GC_Method, Tags_Method),
 	
 	% --gc conservative implies --no-reclaim-heap-*
 	( { GC_Method = conservative } ->
@@ -1271,7 +1272,8 @@ mercury_compile__make_hlds(Module, Items, HLDS, FoundSemanticError) -->
 
 :- pred mercury_compile__semantic_pass(module_info, module_info,
 	bool, bool, io__state, io__state).
-:- mode mercury_compile__semantic_pass(di, uo, in, out, di, uo) is det.
+% :- mode mercury_compile__semantic_pass(di, uo, in, out, di, uo) is det.
+:- mode mercury_compile__semantic_pass(in, out, in, out, di, uo) is det.
 
 mercury_compile__semantic_pass(HLDS1, HLDS8, Proceed0, Proceed) -->
 	globals__io_lookup_bool_option(trad_passes, TradPasses),
@@ -1289,8 +1291,10 @@ mercury_compile__semantic_pass(HLDS1, HLDS8, Proceed0, Proceed) -->
 
 :- pred mercury_compile__semantic_pass_by_phases(module_info, module_info,
 	bool, bool, io__state, io__state).
-:- mode mercury_compile__semantic_pass_by_phases(di, uo, in, out, di, uo)
-	is det.
+% :- mode mercury_compile__semantic_pass_by_phases(di, uo, in, out, di, uo)
+% 	is det.
+:- mode mercury_compile__semantic_pass_by_phases(in, out, in, out, di, uo)
+ 	is det.
 
 mercury_compile__semantic_pass_by_phases(HLDS1, HLDS8, Proceed0, Proceed) -->
 	globals__io_lookup_bool_option(statistics, Statistics),
@@ -1521,7 +1525,10 @@ mercury_compile__maybe_do_inlining(HLDS0, HLDS) -->
 
 :- pred mercury_compile__semantic_pass_by_preds(module_info, module_info,
 	bool, bool, io__state, io__state).
-:- mode mercury_compile__semantic_pass_by_preds(di, uo, in, out, di, uo) is det.
+% :- mode mercury_compile__semantic_pass_by_preds(di, uo, in, out, di, uo)
+%	is det.
+:- mode mercury_compile__semantic_pass_by_preds(in, out, in, out, di, uo)
+	is det.
 
 mercury_compile__semantic_pass_by_preds(HLDS1, HLDS8, Proceed0, Proceed) -->
 	mercury_compile__semantic_pass_by_phases(HLDS1, HLDS8,
@@ -1576,7 +1583,8 @@ mercury_compile__semantic_pass_by_preds(HLDS1, HLDS8, Proceed0, Proceed) -->
 
 :- pred mercury_compile__middle_pass(module_info, module_info,
 	bool, io__state, io__state).
-:- mode mercury_compile__middle_pass(di, uo, out, di, uo) is det.
+% :- mode mercury_compile__middle_pass(di, uo, out, di, uo) is det.
+:- mode mercury_compile__middle_pass(in, out, out, di, uo) is det.
 
 mercury_compile__middle_pass(HLDS8, HLDS11, Proceed) -->
 	globals__io_lookup_bool_option(trad_passes, TradPasses),
@@ -1595,9 +1603,13 @@ mercury_compile__middle_pass(HLDS8, HLDS11, Proceed) -->
 
 :- pred mercury_compile__middle_pass_by_phases(module_info, module_info,
 	bool, bool, io__state, io__state).
-:- mode mercury_compile__middle_pass_by_phases(di, uo, in, out, di, uo) is det.
+% :- mode mercury_compile__middle_pass_by_phases(di, uo, in, out, di, uo)
+%	is det.
+:- mode mercury_compile__middle_pass_by_phases(in, out, in, out, di, uo)
+	is det.
 
-mercury_compile__middle_pass_by_phases(HLDS8, HLDS11, ErrorcheckOnly, Proceed) -->
+mercury_compile__middle_pass_by_phases(HLDS8, HLDS11, ErrorcheckOnly, Proceed)
+		-->
 	globals__io_lookup_bool_option(statistics, Statistics),
 
 	mercury_compile__check_determinism(HLDS8, HLDS9, FoundError),
@@ -1666,9 +1678,11 @@ mercury_compile__map_args_to_regs(HLDS0, HLDS) -->
 
 :- pred mercury_compile__middle_pass_by_preds(module_info, module_info,
 	bool, bool, io__state, io__state).
-:- mode mercury_compile__middle_pass_by_preds(di, uo, in, out, di, uo) is det.
+% :- mode mercury_compile__middle_pass_by_preds(di, uo, in, out, di, uo) is det.
+:- mode mercury_compile__middle_pass_by_preds(in, out, in, out, di, uo) is det.
 
-mercury_compile__middle_pass_by_preds(HLDS8, HLDS11, ErrorcheckOnly, Proceed) -->
+mercury_compile__middle_pass_by_preds(HLDS8, HLDS11, ErrorcheckOnly, Proceed)
+		-->
 	mercury_compile__middle_pass_by_phases(HLDS8, HLDS11, ErrorcheckOnly,
 		Proceed).
 
@@ -1677,7 +1691,8 @@ mercury_compile__middle_pass_by_preds(HLDS8, HLDS11, ErrorcheckOnly, Proceed) --
 
 :- pred mercury_compile__backend_pass(module_info, module_info,
 	list(c_procedure), io__state, io__state).
-:- mode mercury_compile__backend_pass(di, uo, out, di, uo) is det.
+% :- mode mercury_compile__backend_pass(di, uo, out, di, uo) is det.
+:- mode mercury_compile__backend_pass(in, out, out, di, uo) is det.
 
 mercury_compile__backend_pass(HLDS11, HLDS17, LLDS2) -->
 	globals__io_lookup_bool_option(trad_passes, TradPasses),
@@ -1848,7 +1863,8 @@ mercury_compile__maybe_do_optimize(LLDS0, LLDS) -->
 
 :- pred mercury_compile__backend_pass_by_preds(module_info, module_info,
 	list(c_procedure), io__state, io__state).
-:- mode mercury_compile__backend_pass_by_preds(di, uo, out, di, uo) is det.
+% :- mode mercury_compile__backend_pass_by_preds(di, uo, out, di, uo) is det.
+:- mode mercury_compile__backend_pass_by_preds(in, out, out, di, uo) is det.
 
 mercury_compile__backend_pass_by_preds(HLDS11, HLDS17, LLDS2) -->
 	{ module_info_predids(HLDS11, PredIds) },
@@ -1856,7 +1872,9 @@ mercury_compile__backend_pass_by_preds(HLDS11, HLDS17, LLDS2) -->
 
 :- pred mercury_compile__backend_pass_by_preds_2(list(pred_id),
 	module_info, module_info, list(c_procedure), io__state, io__state).
-:- mode mercury_compile__backend_pass_by_preds_2(in, di, uo, out, di, uo)
+% :- mode mercury_compile__backend_pass_by_preds_2(in, di, uo, out, di, uo)
+% 	is det.
+:- mode mercury_compile__backend_pass_by_preds_2(in, in, out, out, di, uo)
 	is det.
 
 mercury_compile__backend_pass_by_preds_2([], ModuleInfo, ModuleInfo, [])
@@ -1895,7 +1913,9 @@ mercury_compile__backend_pass_by_preds_2([PredId | PredIds], ModuleInfo0,
 :- pred mercury_compile__backend_pass_by_preds_3(list(proc_id), pred_id,
 	pred_info, module_info, module_info, list(c_procedure),
 	io__state, io__state).
-:- mode mercury_compile__backend_pass_by_preds_3(in, in, in, di, uo,
+% :- mode mercury_compile__backend_pass_by_preds_3(in, in, in, di, uo,
+% 	out, di, uo) is det.
+:- mode mercury_compile__backend_pass_by_preds_3(in, in, in, in, out,
 	out, di, uo) is det.
 
 mercury_compile__backend_pass_by_preds_3([], _, _, ModuleInfo, ModuleInfo, [])
@@ -1911,7 +1931,9 @@ mercury_compile__backend_pass_by_preds_3([ProcId | ProcIds], PredId, PredInfo,
 
 :- pred mercury_compile__backend_pass_by_preds_4(proc_info, proc_id, pred_id,
 	module_info, module_info, c_procedure, io__state, io__state).
-:- mode mercury_compile__backend_pass_by_preds_4(in, in, in, di, uo,
+% :- mode mercury_compile__backend_pass_by_preds_4(in, in, in, di, uo,
+% 	out, di, uo) is det.
+:- mode mercury_compile__backend_pass_by_preds_4(in, in, in, in, out,
 	out, di, uo) is det.
 
 mercury_compile__backend_pass_by_preds_4(ProcInfo0, ProcId, PredId,
@@ -1980,7 +2002,8 @@ mercury_compile__output_pass(HLDS16, LLDS2, ModuleName, CompileErrors) -->
 
 :- pred mercury_compile__chunk_llds(module_info, list(c_procedure), c_file,
 	io__state, io__state).
-:- mode mercury_compile__chunk_llds(in, di, uo, di, uo) is det.
+% :- mode mercury_compile__chunk_llds(in, di, uo, di, uo) is det.
+:- mode mercury_compile__chunk_llds(in, in, out, di, uo) is det.
 
 mercury_compile__chunk_llds(HLDS, Procedures, c_file(Name, C_HeaderCode,
 		ModuleList)) -->

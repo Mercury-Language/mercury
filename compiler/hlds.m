@@ -187,39 +187,46 @@ special_pred_name_arity(read, "read", 2).
 special_pred_name_arity(write, "write", 2).
 
 special_pred_info(unify, Type, "__Unify__", [Type, Type], [In, In2], semidet) :-
-	In = (ground -> ground),
+	in_mode(In),
+	in_mode(In2).
 		% we use `In2' to work around a bug with --static-ground-terms
 		% which causes a duplicate label in the generated C code
-	In2 = (ground -> ground).
 
 special_pred_info(index, Type, "__Index__", [Type, IntType], [In, Out], det) :-
 	term__context_init(Context),
 	IntType = term__functor(term__atom("int"), [], Context),
-	In = (ground -> ground),
-	Out = (free -> ground).
+	in_mode(In),
+	out_mode(Out).
 
 special_pred_info(compare, Type,
 		 "__Compare__", [ResType, Type, Type], [Out, In, In2], det) :-
 	term__context_init(Context),
 	ResType = term__functor(term__atom("comparison_result"), [], Context),
-	In = (ground -> ground),
-	In2 = (ground -> ground),
-	Out = (free -> ground).
+	in_mode(In),
+	in_mode(In2),
+	out_mode(Out).
 
 special_pred_info(read, Type,
 		"__Read__", [TermType, Type], [In, Out], det) :-
 	term__context_init(Context),
 	TermType = term__functor(term__atom("term"), [], Context),
-	In = (ground -> ground),
-	Out = (free -> ground).
+	in_mode(In),
+	out_mode(Out).
 
 special_pred_info(write, Type,
 		"__Write__", [Type, TermType], [In, Out], det) :-
 	term__context_init(Context),
 	TermType = term__functor(term__atom("term"), [], Context),
-	In = (ground -> ground),
-	Out = (free -> ground).
+	in_mode(In),
+	out_mode(Out).
 
+:- pred in_mode((mode)::out) is det.
+
+in_mode(user_defined_mode(unqualified("in"), [])).
+
+:- pred out_mode((mode)::out) is det.
+
+out_mode(user_defined_mode(unqualified("out"), [])).
 
 :- interface.
 
@@ -284,6 +291,8 @@ special_pred_info(write, Type,
 
 :- type ground_inst_table == 	map(inst_name, maybe_inst).
 
+:- type shared_inst_table == 	map(inst_name, maybe_inst).
+
 :- type maybe_inst	--->	unknown
 			;	known(inst).
 
@@ -305,6 +314,9 @@ special_pred_info(write, Type,
 :- pred inst_table_get_ground_insts(inst_table, ground_inst_table).
 :- mode inst_table_get_ground_insts(in, out) is det.
 
+:- pred inst_table_get_shared_insts(inst_table, shared_inst_table).
+:- mode inst_table_get_shared_insts(in, out) is det.
+
 :- pred inst_table_set_user_insts(inst_table, user_inst_table, inst_table).
 :- mode inst_table_set_user_insts(in, in, out) is det.
 
@@ -317,6 +329,9 @@ special_pred_info(write, Type,
 :- pred inst_table_set_ground_insts(inst_table, ground_inst_table, inst_table).
 :- mode inst_table_set_ground_insts(in, in, out) is det.
 
+:- pred inst_table_set_shared_insts(inst_table, ground_inst_table, inst_table).
+:- mode inst_table_set_shared_insts(in, in, out) is det.
+
 :- implementation.
 
 :- type inst_table
@@ -324,34 +339,42 @@ special_pred_info(write, Type,
 			user_inst_table,
 			unify_inst_table,
 			merge_inst_table,
-			ground_inst_table
+			ground_inst_table,
+			shared_inst_table
 		).
 
-inst_table_init(inst_table(UserInsts, UnifyInsts, MergeInsts, GroundInsts)) :-
+inst_table_init(inst_table(UserInsts, UnifyInsts, MergeInsts, GroundInsts,
+				SharedInsts)) :-
 	map__init(UserInsts),
 	map__init(UnifyInsts),
 	map__init(MergeInsts),
-	map__init(GroundInsts).
+	map__init(GroundInsts),
+	map__init(SharedInsts).
 
-inst_table_get_user_insts(inst_table(UserInsts, _, _, _), UserInsts).
+inst_table_get_user_insts(inst_table(UserInsts, _, _, _, _), UserInsts).
 
-inst_table_get_unify_insts(inst_table(_, UnifyInsts, _, _), UnifyInsts).
+inst_table_get_unify_insts(inst_table(_, UnifyInsts, _, _, _), UnifyInsts).
 
-inst_table_get_merge_insts(inst_table(_, _, MergeInsts, _), MergeInsts).
+inst_table_get_merge_insts(inst_table(_, _, MergeInsts, _, _), MergeInsts).
 
-inst_table_get_ground_insts(inst_table(_, _, _, GroundInsts), GroundInsts).
+inst_table_get_ground_insts(inst_table(_, _, _, GroundInsts, _), GroundInsts).
 
-inst_table_set_user_insts(inst_table(_, B, C, D), UserInsts,
-			inst_table(UserInsts, B, C, D)).
+inst_table_get_shared_insts(inst_table(_, _, _, _, SharedInsts), SharedInsts).
 
-inst_table_set_unify_insts(inst_table(A, _, C, D), UnifyInsts,
-			inst_table(A, UnifyInsts, C, D)).
+inst_table_set_user_insts(inst_table(_, B, C, D, E), UserInsts,
+			inst_table(UserInsts, B, C, D, E)).
 
-inst_table_set_merge_insts(inst_table(A, B, _, D), MergeInsts,
-			inst_table(A, B, MergeInsts, D)).
+inst_table_set_unify_insts(inst_table(A, _, C, D, E), UnifyInsts,
+			inst_table(A, UnifyInsts, C, D, E)).
 
-inst_table_set_ground_insts(inst_table(A, B, C, _), GroundInsts,
-			inst_table(A, B, C, GroundInsts)).
+inst_table_set_merge_insts(inst_table(A, B, _, D, E), MergeInsts,
+			inst_table(A, B, MergeInsts, D, E)).
+
+inst_table_set_ground_insts(inst_table(A, B, C, _, E), GroundInsts,
+			inst_table(A, B, C, GroundInsts, E)).
+
+inst_table_set_shared_insts(inst_table(A, B, C, D, _), SharedInsts,
+			inst_table(A, B, C, D, SharedInsts)).
 
 %-----------------------------------------------------------------------------%
 
@@ -1260,7 +1283,8 @@ predicate_table_insert(PredicateTable0, PredInfo, PredId, PredicateTable) :-
 
 	% get the next available pred id
 predicate_table_next_pred_id(Preds, NextPredId0, PredId, NextPredId) :-
-	random__random(PredId0, NextPredId0, NextPredId1),
+	copy(NextPredId0, RandSupply),
+	random__random(PredId0, RandSupply, NextPredId1),
 	(
 		\+ map__contains(Preds, PredId0),
 		\+ invalid_pred_id(PredId0)

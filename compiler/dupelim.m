@@ -17,7 +17,8 @@
 :- import_module list, llds.
 
 :- pred dupelim__main(list(instruction), list(instruction)).
-:- mode dupelim__main(di, uo) is det.
+% :- mode dupelim__main(di, uo) is det.
+:- mode dupelim__main(in, out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -57,7 +58,8 @@ dupelim__make_blocks(Instrs0, Blocks) :-
 
 :- pred dupelim__build_maps(list(block), bool, map(list(instruction), label),
 	map(label, label), map(label, label)).
-:- mode dupelim__build_maps(in, in, in, di, uo) is det.
+% :- mode dupelim__build_maps(ui, in, in, di, uo) is det.
+:- mode dupelim__build_maps(in, in, in, in, out) is det.
 
 % If a block can fall through, it should not be put into the sequence map.
 % Two identical blocks that both fall through will fall through into
@@ -104,7 +106,8 @@ dupelim__build_maps([Label - Code | Blocks1], FallInto, Seqmap0,
 %-----------------------------------------------------------------------------%
 
 :- pred dupelim__replace_labels(list(block), map(label, label), list(block)).
-:- mode dupelim__replace_labels(di, in, uo) is det.
+% :- mode dupelim__replace_labels(di, in, uo) is det.
+:- mode dupelim__replace_labels(in, in, out) is det.
 
 dupelim__replace_labels([], _Replmap, []).
 dupelim__replace_labels([Label - Code | Blocks1], Replmap, Blocks) :-
@@ -118,7 +121,8 @@ dupelim__replace_labels([Label - Code | Blocks1], Replmap, Blocks) :-
 
 :- pred dupelim__replace_labels_instr_list(list(instruction), map(label, label),
 	list(instruction)).
-:- mode dupelim__replace_labels_instr_list(di, in, uo) is det.
+% :- mode dupelim__replace_labels_instr_list(di, in, uo) is det.
+:- mode dupelim__replace_labels_instr_list(in, in, out) is det.
 
 dupelim__replace_labels_instr_list([], _Replmap, []).
 dupelim__replace_labels_instr_list([Instr0 - Comment | Instrs0],
@@ -127,7 +131,8 @@ dupelim__replace_labels_instr_list([Instr0 - Comment | Instrs0],
 	dupelim__replace_labels_instr_list(Instrs0, Replmap, Instrs).
 
 :- pred dupelim__replace_labels_instr(instr, map(label, label), instr).
-:- mode dupelim__replace_labels_instr(di, in, uo) is det.
+% :- mode dupelim__replace_labels_instr(di, in, uo) is det.
+:- mode dupelim__replace_labels_instr(in, in, out) is det.
 
 dupelim__replace_labels_instr(comment(Comment), _, comment(Comment)).
 dupelim__replace_labels_instr(livevals(Livevals), _, livevals(Livevals)).
@@ -174,7 +179,8 @@ dupelim__replace_labels_instr(incr_sp(Size), _, incr_sp(Size)).
 dupelim__replace_labels_instr(decr_sp(Size), _, decr_sp(Size)).
 
 :- pred dupelim__replace_labels_lval(lval, map(label, label), lval).
-:- mode dupelim__replace_labels_lval(di, in, uo) is det.
+% :- mode dupelim__replace_labels_lval(di, in, uo) is det.
+:- mode dupelim__replace_labels_lval(in, in, out) is det.
 
 dupelim__replace_labels_lval(reg(Reg), _, reg(Reg)).
 dupelim__replace_labels_lval(stackvar(N), _, stackvar(N)).
@@ -198,7 +204,8 @@ dupelim__replace_labels_lval(lvar(Var), _, lvar(Var)).
 dupelim__replace_labels_lval(temp(N), _, temp(N)).
 
 :- pred dupelim__replace_labels_rval(rval, map(label, label), rval).
-:- mode dupelim__replace_labels_rval(di, in, uo) is det.
+% :- mode dupelim__replace_labels_rval(di, in, uo) is det.
+:- mode dupelim__replace_labels_rval(in, in, out) is det.
 
 dupelim__replace_labels_rval(lval(Lval0), Replmap, lval(Lval)) :-
 	dupelim__replace_labels_lval(Lval0, Replmap, Lval).
@@ -217,7 +224,8 @@ dupelim__replace_labels_rval(binop(Op, LRval0, RRval0), Replmap,
 
 :- pred dupelim__replace_labels_rval_const(rval_const, map(label, label),
 	rval_const).
-:- mode dupelim__replace_labels_rval_const(di, in, uo) is det.
+% :- mode dupelim__replace_labels_rval_const(di, in, uo) is det.
+:- mode dupelim__replace_labels_rval_const(in, in, out) is det.
 
 dupelim__replace_labels_rval_const(true, _, true).
 dupelim__replace_labels_rval_const(false, _, false).
@@ -230,7 +238,8 @@ dupelim__replace_labels_rval_const(address_const(Addr0), Replmap,
 
 :- pred dupelim__replace_labels_code_addr(code_addr, map(label, label),
 	code_addr).
-:- mode dupelim__replace_labels_code_addr(di, in, uo) is det.
+% :- mode dupelim__replace_labels_code_addr(di, in, uo) is det.
+:- mode dupelim__replace_labels_code_addr(in, in, out) is det.
 
 dupelim__replace_labels_code_addr(label(Label0), Replmap, label(Label)) :-
 	dupelim__replace_labels_label(Label0, Replmap, Label).
@@ -242,7 +251,8 @@ dupelim__replace_labels_code_addr(do_fail, _, do_fail).
 
 :- pred dupelim__replace_labels_label_list(list(label), map(label, label),
 	list(label)).
-:- mode dupelim__replace_labels_label_list(di, in, uo) is det.
+% :- mode dupelim__replace_labels_label_list(di, in, uo) is det.
+:- mode dupelim__replace_labels_label_list(in, in, out) is det.
 
 dupelim__replace_labels_label_list([], _Replmap, []).
 dupelim__replace_labels_label_list([Label0 | Labels0], Replmap,
@@ -251,7 +261,8 @@ dupelim__replace_labels_label_list([Label0 | Labels0], Replmap,
 	dupelim__replace_labels_label_list(Labels0, Replmap, Labels).
 
 :- pred dupelim__replace_labels_label(label, map(label, label), label).
-:- mode dupelim__replace_labels_label(di, in, uo) is det.
+% :- mode dupelim__replace_labels_label(di, in, uo) is det.
+:- mode dupelim__replace_labels_label(in, in, out) is det.
 
 dupelim__replace_labels_label(Label0, Replmap, Label) :-
 	( map__search(Replmap, Label0, NewLabel) ->
@@ -261,7 +272,8 @@ dupelim__replace_labels_label(Label0, Replmap, Label) :-
 	).
 
 :- pred dupelim__condense(list(block), list(instruction)).
-:- mode dupelim__condense(di, uo) is det.
+% :- mode dupelim__condense(di, uo) is det.
+:- mode dupelim__condense(in, out) is det.
 
 dupelim__condense([], []).
 dupelim__condense([Label - Code | Blocks1], Instrs) :-

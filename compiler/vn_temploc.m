@@ -27,19 +27,22 @@
 	% Get a temporary location.
 
 :- pred vn__next_temploc(templocs, templocs, vnlval).
-:- mode vn__next_temploc(di, uo, out) is det.
+% :- mode vn__next_temploc(di, uo, out) is det.
+:- mode vn__next_temploc(in, out, out) is det.
 
 	% Prevent the use of this location as a temporary.
 
 :- pred vn__no_temploc(vnlval, templocs, templocs).
-:- mode vn__no_temploc(in, di, uo) is det.
+% :- mode vn__no_temploc(in, di, uo) is det.
+:- mode vn__no_temploc(in, in, out) is det.
 
 	% Make a location available for reuse as a temporary location
 	% _if_  it is not live. Heap locations are implicitly live; other
 	% locations are live if they were recorded as such during init.
 
 :- pred vn__reuse_templocs(list(vnlval), templocs, templocs).
-:- mode vn__reuse_templocs(in, di, uo) is det.
+% :- mode vn__reuse_templocs(in, di, uo) is det.
+:- mode vn__reuse_templocs(in, in, out) is det.
 
 	% Give the number of the highest temp variable used.
 

@@ -32,7 +32,8 @@
 :- mode vn__find_specials(in, out) is det.
 
 :- pred vn__convert_to_vnlval_and_insert(list(lval), vnlvalset, vnlvalset).
-:- mode vn__convert_to_vnlval_and_insert(in, di, uo) is det.
+% :- mode vn__convert_to_vnlval_and_insert(in, di, uo) is det.
+:- mode vn__convert_to_vnlval_and_insert(in, in, out) is det.
 
 :- implementation.
 
@@ -70,13 +71,16 @@ vn__convert_to_vnlval_and_insert([Lval | Lvals], Liveset0, Liveset) :-
 	% Convert an rval into a vnrval and hence into a vn.
 
 :- pred vn__rval_to_vn(rval, vn, vn_tables, vn_tables).
-:- mode vn__rval_to_vn(in, out, di, uo) is det.
+% :- mode vn__rval_to_vn(in, out, di, uo) is det.
+:- mode vn__rval_to_vn(in, out, in, out) is det.
 
 :- pred vn__lval_to_vn(lval, vn, vn_tables, vn_tables).
-:- mode vn__lval_to_vn(in, out, di, uo) is det.
+% :- mode vn__lval_to_vn(in, out, di, uo) is det.
+:- mode vn__lval_to_vn(in, out, in, out) is det.
 
 :- pred vn__lval_to_vnlval(lval, vnlval, vn_tables, vn_tables).
-:- mode vn__lval_to_vnlval(in, out, di, uo) is det.
+% :- mode vn__lval_to_vnlval(in, out, di, uo) is det.
+:- mode vn__lval_to_vnlval(in, out, in, out) is det.
 
 :- pred vn__is_const_expr(vn, bool, vn_tables).
 :- mode vn__is_const_expr(in, out, in) is det.
@@ -118,7 +122,8 @@ vn__convert_to_vnlval_and_insert([Lval | Lvals], Liveset0, Liveset) :-
 	% Find out which uses of a vn actually require an assignment.
 
 :- pred vn__real_uses(list(vn_src), list(vn_src), vn_tables).
-:- mode vn__real_uses(di, uo, in) is semidet.
+% :- mode vn__real_uses(di, uo, in) is semidet.
+:- mode vn__real_uses(in, out, in) is semidet.
 
 :- implementation.
 
@@ -158,7 +163,8 @@ vn__rval_to_vn(Rval, Vn, VnTables0, VnTables) :-
 	).
 
 :- pred vn__vnrval_to_vn(vnrval, vn, vn_tables, vn_tables).
-:- mode vn__vnrval_to_vn(in, out, di, uo) is det.
+% :- mode vn__vnrval_to_vn(in, out, di, uo) is det.
+:- mode vn__vnrval_to_vn(in, out, in, out) is det.
 
 vn__vnrval_to_vn(Vnrval, Vn, VnTables0, VnTables) :-
 	vn__simplify_vnrval(Vnrval, Vnrval1, VnTables0, VnTables1),
@@ -182,7 +188,8 @@ vn__vnrval_to_vn(Vnrval, Vn, VnTables0, VnTables) :-
 	% XXX more simplification opportunities exist
 
 :- pred vn__simplify_vnrval(vnrval, vnrval, vn_tables, vn_tables).
-:- mode vn__simplify_vnrval(in, out, di, uo) is det.
+% :- mode vn__simplify_vnrval(in, out, di, uo) is det.
+:- mode vn__simplify_vnrval(in, out, in, out) is det.
 
 vn__simplify_vnrval(Vnrval0, Vnrval, VnTables0, VnTables) :-
 	(
@@ -199,7 +206,8 @@ vn__simplify_vnrval(Vnrval0, Vnrval, VnTables0, VnTables) :-
 
 :- pred vn__simplify_vnrval_binop(binary_op, vn, vn, vnrval,
 	vn_tables, vn_tables).
-:- mode vn__simplify_vnrval_binop(in, in, in, out, di, uo) is semidet.
+% :- mode vn__simplify_vnrval_binop(in, in, in, out, di, uo) is semidet.
+:- mode vn__simplify_vnrval_binop(in, in, in, out, in, out) is semidet.
 
 vn__simplify_vnrval_binop(Binop, Vn1, Vn2, Vnrval, VnTables0, VnTables) :-
 	vn__lookup_defn(Vn1, Vnrval1, "vn__simplify_vnrval_binop", VnTables0),
@@ -590,7 +598,8 @@ vn__real_uses([Use0 | Uses0], Uses, VnTables) :-
 	% Build up a list of the uses of each vn.
 
 :- pred vn__build_uses(vnlvalset, ctrlmap, vn_tables, vn_tables).
-:- mode vn__build_uses(in, in, di, uo) is det.
+% :- mode vn__build_uses(in, in, di, uo) is det.
+:- mode vn__build_uses(in, in, in, out) is det.
 
 :- implementation.
 
@@ -600,7 +609,8 @@ vn__build_uses(Livevals, Ctrlmap, VnTables0, VnTables) :-
 	vn__build_uses_from_livevals(Livelist, VnTables1, VnTables).
 
 :- pred vn__build_uses_from_ctrl(int, ctrlmap, vn_tables, vn_tables).
-:- mode vn__build_uses_from_ctrl(in, in, di, uo) is det.
+% :- mode vn__build_uses_from_ctrl(in, in, di, uo) is det.
+:- mode vn__build_uses_from_ctrl(in, in, in, out) is det.
 
 vn__build_uses_from_ctrl(Ctrl, Ctrlmap, VnTables0, VnTables) :-
 	( map__search(Ctrlmap, Ctrl, VnInstr) ->
@@ -658,7 +668,8 @@ vn__build_uses_from_ctrl(Ctrl, Ctrlmap, VnTables0, VnTables) :-
 	% value numbers needed to access the vnlval at all.
 
 :- pred vn__build_uses_from_livevals(list(vnlval), vn_tables, vn_tables).
-:- mode vn__build_uses_from_livevals(in, di, uo) is det.
+% :- mode vn__build_uses_from_livevals(in, di, uo) is det.
+:- mode vn__build_uses_from_livevals(in, in, out) is det.
 
 vn__build_uses_from_livevals([], VnTables, VnTables).
 vn__build_uses_from_livevals([Live | Liveslist], VnTables0, VnTables) :-
@@ -673,7 +684,8 @@ vn__build_uses_from_livevals([Live | Liveslist], VnTables0, VnTables) :-
 	vn__build_uses_from_livevals(Liveslist, VnTables3, VnTables).
 
 :- pred vn__record_access(list(vnlval), vn_tables, vn_tables).
-:- mode vn__record_access(in, di, uo) is det.
+% :- mode vn__record_access(in, di, uo) is det.
+:- mode vn__record_access(in, in, out) is det.
 
 vn__record_access([], VnTables, VnTables).
 vn__record_access([Vnlval | Vnlvals], VnTables0, VnTables) :-
@@ -683,7 +695,8 @@ vn__record_access([Vnlval | Vnlvals], VnTables0, VnTables) :-
 	vn__record_access(Vnlvals, VnTables2, VnTables).
 
 :- pred vn__record_access_vns(list(vn), vn_tables, vn_tables).
-:- mode vn__record_access_vns(in, di, uo) is det.
+% :- mode vn__record_access_vns(in, di, uo) is det.
+:- mode vn__record_access_vns(in, in, out) is det.
 
 vn__record_access_vns(_, VnTables, VnTables).
 % vn__record_access_vns([], VnTables, VnTables).
@@ -693,7 +706,8 @@ vn__record_access_vns(_, VnTables, VnTables).
 % 	vn__record_access_vns(Vnlvals, VnTables1, VnTables).
 
 :- pred vn__record_use(vn, vn_src, vn_tables, vn_tables).
-:- mode vn__record_use(in, in, di, uo) is det.
+% :- mode vn__record_use(in, in, di, uo) is det.
+:- mode vn__record_use(in, in, in, out) is det.
 
 vn__record_use(Vn, Src, VnTables0, VnTables) :-
 	vn__lookup_uses(Vn, OldUses, "vn__record_use", VnTables0),
@@ -729,7 +743,8 @@ vn__record_use(Vn, Src, VnTables0, VnTables) :-
 	).
 
 :- pred vn__record_use_list(list(vn), vn_src, vn_tables, vn_tables).
-:- mode vn__record_use_list(in, in, di, uo) is det.
+% :- mode vn__record_use_list(in, in, di, uo) is det.
+:- mode vn__record_use_list(in, in, in, out) is det.
 
 vn__record_use_list([], _Src, VnTables, VnTables).
 vn__record_use_list([Vn | Vns], Src, VnTables0, VnTables) :-

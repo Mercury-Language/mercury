@@ -199,7 +199,8 @@ polymorphism__process_proc(ProcInfo0, PredInfo0, ModuleInfo,
 				ExtraHeadVars, VarSet1, VarTypes1),
 	list__append(ExtraHeadVars, HeadVars0, HeadVars),
 	list__length(ExtraHeadVars, NumExtraVars),
-	list__duplicate(NumExtraVars, (ground -> ground), ExtraModes),
+	list__duplicate(NumExtraVars, (ground(shared) -> ground(shared)),
+			ExtraModes),
 	list__append(ExtraModes, ArgModes0, ArgModes),
 
 	pred_info_name(PredInfo0, PredName),
@@ -569,7 +570,7 @@ polymorphism__init_with_int_constant(CountVar, Num, CountUnifyGoal) :-
 
 	CountConst = term__integer(Num),
 	CountTerm = functor(CountConst, []),
-	CountInst = bound([functor(CountConst, [])]),
+	CountInst = bound(shared, [functor(CountConst, [])]),
 	CountUnifyMode = (free -> CountInst) - (CountInst -> CountInst),
 	CountUnifyContext = unify_context(explicit, []),
 		% XXX the UnifyContext is wrong
@@ -627,7 +628,7 @@ polymorphism__get_special_proc_list([Id | Ids],
 	Functor = term__atom(PredName),
 	Term = functor(Functor, []),
 
-	Inst = bound([functor(Functor, [])]),
+	Inst = bound(shared, [functor(Functor, [])]),
 	UnifyMode = (free -> Inst) - (Inst -> Inst),
 	UnifyContext = unify_context(explicit, []),
 		% XXX the UnifyContext is wrong
@@ -728,11 +729,12 @@ polymorphism__init_type_info_var(Type, ArgVars, VarSet0, VarTypes0,
 		TypeInfoVar, VarSet, VarTypes),
 
 	% create the construction unification to initialize it
-	UniMode = (free - ground -> ground - ground),
+	UniMode = (free - ground(shared) -> ground(shared) - ground(shared)),
 	list__length(ArgVars, NumArgVars),
 	list__duplicate(NumArgVars, UniMode, UniModes),
 	Unification = construct(TypeInfoVar, ConsId, ArgVars, UniModes),
-	UnifyMode = (free -> ground) - (ground -> ground),
+	UnifyMode = (free -> ground(shared)) -
+			(ground(shared) -> ground(shared)),
 	UnifyContext = unify_context(explicit, []),
 		% XXX the UnifyContext is wrong
 	Unify = unify(TypeInfoVar, TypeInfoTerm, UnifyMode,
@@ -743,12 +745,12 @@ polymorphism__init_type_info_var(Type, ArgVars, VarSet0, VarTypes0,
 	set__list_to_set([TypeInfoVar | ArgVars], NonLocals),
 	goal_info_set_nonlocals(GoalInfo0, NonLocals, GoalInfo1),
 	map__init(InstMapping0),
-	list__duplicate(NumArgVars, ground, ArgInsts),
+	list__duplicate(NumArgVars, ground(shared), ArgInsts),
 		% note that we could perhaps be more accurate than
-		% `ground', but hopefully it shouldn't make any
+		% `ground(shared)', but hopefully it shouldn't make any
 		% difference.
 	map__set(InstMapping0, TypeInfoVar,
-		bound([functor(TypeInfoFunctor, ArgInsts)]),
+		bound(shared, [functor(TypeInfoFunctor, ArgInsts)]),
 		InstMapping),
 	goal_info_set_instmap_delta(GoalInfo1, reachable(InstMapping),
 		GoalInfo),

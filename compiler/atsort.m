@@ -115,7 +115,8 @@ atsort__choose(Nodes, Succmap0, Succmap, Predmap0, Predmap,
 	% Do not give preference to nodes that occur in MustPredmap.
 
 :- pred atsort__can_choose(list(T), list(T), relmap(T), list(T), list(T)).
-:- mode atsort__can_choose(in, in, in, di, uo) is det.
+% :- mode atsort__can_choose(in, in, in, di, uo) is det.
+:- mode atsort__can_choose(in, in, in, in, out) is det.
 
 atsort__can_choose([], _All, _MustPredmap, CanChoose, CanChoose).
 atsort__can_choose([Node | Nodes], All, MustPredmap, CanChoose0, CanChoose) :-
@@ -157,8 +158,10 @@ atsort__choose_pref([Pref | Prefs], CanChoose, Chosen) :-
 :- pred atsort__repeat_source_sink(list(T),
 	relmap(T), relmap(T), relmap(T), relmap(T),
 	list(list(T)), list(list(T)), list(T), list(list(T)), list(list(T))).
-:- mode atsort__repeat_source_sink(in, di, uo, di, uo,
-	di, uo, out, di, uo) is det.
+% :- mode atsort__repeat_source_sink(in, di, uo, di, uo,
+% 	di, uo, out, di, uo) is det.
+:- mode atsort__repeat_source_sink(in, in, out, in, out,
+	in, out, out, in, out) is det.
 
 atsort__repeat_source_sink(Nodes0, Succmap0, Succmap, Predmap0, Predmap,
 		Source0, Source, Mid, Sink0, Sink) :-
@@ -200,7 +203,8 @@ atsort__repeat_source_sink(Nodes0, Succmap0, Succmap, Predmap0, Predmap,
 
 :- pred atsort__source_sink(list(T), relmap(T), relmap(T),
 	list(T), list(T), list(T), list(T), list(T), list(T)).
-:- mode atsort__source_sink(in, in, in, di, uo, di, uo, di, uo) is det.
+% :- mode atsort__source_sink(in, in, in, di, uo, di, uo, di, uo) is det.
+:- mode atsort__source_sink(in, in, in, in, out, in, out, in, out) is det.
 
 atsort__source_sink([], _, _, Source, Source, Mid, Mid, Sink, Sink).
 atsort__source_sink([Node | Nodes], Succmap, Predmap,
@@ -231,7 +235,8 @@ atsort__source_sink([Node | Nodes], Succmap, Predmap,
 
 :- pred atsort__map_delete_all_source_links(list(T),
 	relmap(T), relmap(T), relmap(T)).
-:- mode atsort__map_delete_all_source_links(in, in, di, uo) is det.
+% :- mode atsort__map_delete_all_source_links(in, in, di, uo) is det.
+:- mode atsort__map_delete_all_source_links(in, in, in, out) is det.
 
 atsort__map_delete_all_source_links([], _Succmap, Predmap, Predmap).
 atsort__map_delete_all_source_links([Source | Sources],
@@ -243,7 +248,8 @@ atsort__map_delete_all_source_links([Source | Sources],
 
 :- pred atsort__map_delete_all_sink_links(list(T),
 	relmap(T), relmap(T), relmap(T)).
-:- mode atsort__map_delete_all_sink_links(in, in, di, uo) is det.
+% :- mode atsort__map_delete_all_sink_links(in, in, di, uo) is det.
+:- mode atsort__map_delete_all_sink_links(in, in, in, out) is det.
 
 atsort__map_delete_all_sink_links([], _Predmap, Succmap, Succmap).
 atsort__map_delete_all_sink_links([Sink | Sinks],
@@ -267,7 +273,8 @@ atsort__map_delete_this_element([Node | Nodes], Elt, Map0, Map) :-
 	atsort__map_delete_this_element(Nodes, Elt, Map1, Map).
 
 :- pred atsort__map_delete_all_nodes(list(T), relmap(T), relmap(T)).
-:- mode atsort__map_delete_all_nodes(in, di, uo) is det.
+% :- mode atsort__map_delete_all_nodes(in, di, uo) is det.
+:- mode atsort__map_delete_all_nodes(in, in, out) is det.
 
 atsort__map_delete_all_nodes([], Map, Map).
 atsort__map_delete_all_nodes([Node | Nodes], Map0, Map) :-
@@ -286,7 +293,8 @@ atsort__closure(Nodes, Map, Reachable) :-
 	% XXX Should think about making Reachable be a bintree set.
 
 :- pred atsort__closure_2(list(T), relmap(T), list(T), list(T)).
-:- mode atsort__closure_2(in, in, di, uo) is det.
+% :- mode atsort__closure_2(in, in, di, uo) is det.
+:- mode atsort__closure_2(in, in, in, out) is det.
 
 atsort__closure_2([], _, Reachable, Reachable).
 atsort__closure_2([Node | Nodes0], Map, Reachable0, Reachable) :-
@@ -301,7 +309,8 @@ atsort__closure_2([Node | Nodes0], Map, Reachable0, Reachable) :-
 	atsort__closure_2(Nodes1, Map, Reachable1, Reachable).
 
 :- pred atsort__maybe_insert(list(T), list(T), list(T)).
-:- mode atsort__maybe_insert(in, di, uo) is det.
+% :- mode atsort__maybe_insert(in, di, uo) is det.
+:- mode atsort__maybe_insert(in, in, out) is det.
 
 atsort__maybe_insert([], List, List).
 atsort__maybe_insert([Node | Nodes], List0, List) :-

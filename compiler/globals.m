@@ -38,8 +38,8 @@
 
 	% Access predicates for the `globals' structure.
 
-:- pred globals__init(option_table::in, gc_method::in, tags_method::in,
-			globals::out) is det.
+:- pred globals__init(option_table::di, gc_method::di, tags_method::di,
+			globals::uo) is det.
 
 :- pred globals__get_options(globals::in, option_table::out) is det.
 
@@ -73,7 +73,7 @@
 	% Access predicates for storing a `globals' structure in the
 	% io__state using io__set_globals and io__get_globals.
 
-:- pred globals__io_init(option_table::in, gc_method::in, tags_method::in,
+:- pred globals__io_init(option_table::di, gc_method::in, tags_method::in,
 			io__state::di, io__state::uo) is det.
 
 :- pred globals__io_get_gc_method(gc_method::out,
@@ -85,7 +85,7 @@
 :- pred globals__io_get_globals(globals::out, io__state::di, io__state::uo)
 	is det.
 
-:- pred globals__io_set_globals(globals::in, io__state::di, io__state::uo)
+:- pred globals__io_set_globals(globals::di, io__state::di, io__state::uo)
 	is det.
 
 :- pred globals__io_lookup_option(option::in, option_data::out,
@@ -190,7 +190,9 @@ globals__lookup_accumulating_option(Globals, Option, Value) :-
 %-----------------------------------------------------------------------------%
 
 globals__io_init(Options, GC_Method, Tags_Method) -->
-	{ globals__init(Options, GC_Method, Tags_Method, Globals) },
+	{ copy(GC_Method, GC_Method1) },
+	{ copy(Tags_Method, Tags_Method1) },
+	{ globals__init(Options, GC_Method1, Tags_Method1, Globals) },
 	globals__io_set_globals(Globals).
 
 globals__io_get_gc_method(GC_Method) -->
@@ -226,7 +228,8 @@ globals__io_set_option(Option, OptionData) -->
 	globals__io_get_globals(Globals0),
 	{ globals__get_options(Globals0, OptionTable0) },
 	{ map__set(OptionTable0, Option, OptionData, OptionTable) },
-	{ globals__set_options(Globals0, OptionTable, Globals) },
+	{ globals__set_options(Globals0, OptionTable, Globals1) },
+	{ copy(Globals1, Globals) },	% XXX inefficient!!!
 	globals__io_set_globals(Globals).
 
 %-----------------------------------------------------------------------------%

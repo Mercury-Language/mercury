@@ -23,7 +23,8 @@
 
 :- pred detect_switches_in_pred(pred_id, pred_info, module_info, module_info,
 	io__state, io__state).
-:- mode detect_switches_in_pred(in, in, di, uo, di, uo) is det.
+% :- mode detect_switches_in_pred(in, in, di, uo, di, uo) is det.
+:- mode detect_switches_in_pred(in, in, in, out, di, uo) is det.
 
 	% utility pred used by cse_detection.m
 :- pred interpret_unify(var, unify_rhs, substitution, substitution).
@@ -63,7 +64,8 @@ detect_switches_in_pred(PredId, PredInfo0, ModuleInfo0, ModuleInfo,
 
 :- pred detect_switches_in_procs(list(proc_id), pred_id,
 	module_info, module_info).
-:- mode detect_switches_in_procs(in, in, di, uo) is det.
+% :- mode detect_switches_in_procs(in, in, di, uo) is det.
+:- mode detect_switches_in_procs(in, in, in, out) is det.
 
 detect_switches_in_procs([], _PredId, ModuleInfo, ModuleInfo).
 detect_switches_in_procs([ProcId | ProcIds], PredId, ModuleInfo0, ModuleInfo) :-
@@ -298,7 +300,8 @@ partition_disj(Goals0, Var, Left, CasesAssocList) :-
 
 :- pred partition_disj_trial(list(hlds__goal), var,
 	list(hlds__goal), list(hlds__goal), cases, cases).
-:- mode partition_disj_trial(in, in, di, uo, di, uo) is det.
+% :- mode partition_disj_trial(in, in, di, uo, di, uo) is det.
+:- mode partition_disj_trial(in, in, in, out, in, out) is det.
 
 partition_disj_trial([], _Var, Left, Left, Cases, Cases).
 partition_disj_trial([Goal0 | Goals], Var, Left0, Left, Cases0, Cases) :-
@@ -406,7 +409,8 @@ interpret_unify(_X, lambda_goal(_LambdaVars, _Goal), Subst0, Subst) :-
 
 :- pred cases_to_switch(assoc_list(cons_id, list(hlds__goal)), var,
 	map(var, type), hlds__goal_info, instmap, module_info, hlds__goal_expr).
-:- mode cases_to_switch(di, in, in, in, in, in, uo) is det.
+% :- mode cases_to_switch(di, in, in, in, in, in, uo) is det.
+:- mode cases_to_switch(in, in, in, in, in, in, out) is det.
 
 cases_to_switch(CasesList, Var, VarTypes, GoalInfo, InstMap, ModuleInfo,
 		Goal) :-

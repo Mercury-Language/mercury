@@ -20,7 +20,8 @@
 
 :- pred move_follow_code_in_proc(proc_info, proc_info,
 	pair(bool), module_info, module_info).
-:- mode move_follow_code_in_proc(di, uo, in, di, uo) is det.
+% :- mode move_follow_code_in_proc(di, uo, in, di, uo) is det.
+:- mode move_follow_code_in_proc(in, out, in, in, out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -345,7 +346,8 @@ move_follow_code_is_call(call(_,_,_,Builtin, _, _, _) - _GoalInfo) :-
 
 :- pred move_prev_code(hlds__goal, hlds__goal, set(var),
 	list(hlds__goal), list(hlds__goal), bool, bool).
-:- mode move_prev_code(di, uo, in, di, uo, in, out) is det.
+% :- mode move_prev_code(di, uo, in, di, uo, in, out) is det.
+:- mode move_prev_code(in, out, in, in, out, in, out) is det.
 
 move_prev_code(Goal, Goal, _, RevPrevGoals, RevPrevGoals, R, R).
 

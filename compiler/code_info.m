@@ -2036,7 +2036,8 @@ code_info__livevals_to_livelvals([L - V|Ls],
 	code_info__get_shapes(S_Tab0),
 	{ module_info_types(Module, Type_Table) } ,
 	code_info__variable_type(V, Type),
-	{ shapes__request_shape_number(Type - ground, Type_Table, 
+		% XXX what does this do?  is `ground(shared)' right???
+	{ shapes__request_shape_number(Type - ground(shared), Type_Table, 
 					S_Tab0, S_Tab1, S_Num) } ,
 	code_info__set_shapes(S_Tab1),
 	code_info__livevals_to_livelvals(Ls, Lives).

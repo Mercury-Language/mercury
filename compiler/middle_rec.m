@@ -349,7 +349,8 @@ middle_rec__find_used_registers_lvals([Lval | Lvals], Used0, Used) :-
 
 middle_rec__find_used_registers_lval(Lval, Used0, Used) :-
 	( Lval = reg(r(N)) ->
-		set__insert(Used0, N, Used)
+		copy(N, N1),
+		set__insert(Used0, N1, Used)
 	; Lval = field(_, Rval, FieldNum) ->
 		middle_rec__find_used_registers_rval(Rval, Used0, Used1),
 		middle_rec__find_used_registers_rval(FieldNum, Used1, Used)

@@ -189,9 +189,9 @@ find_undef_inst_list([Inst|Insts], ErrorContext, InstDefns) -->
 :- mode find_undef_inst(in, in, in, di, uo) is det.
 
 find_undef_inst(free, _, _) --> [].
-find_undef_inst(ground, _, _) --> [].
+find_undef_inst(ground(_), _, _) --> [].
 find_undef_inst(inst_var(_), _, _) --> [].
-find_undef_inst(bound(BoundInsts), ErrorContext, InstDefns) -->
+find_undef_inst(bound(_Uniq, BoundInsts), ErrorContext, InstDefns) -->
 	find_undef_bound_insts(BoundInsts, ErrorContext, InstDefns).
 find_undef_inst(defined_inst(InstName), ErrorContext, InstDefns) -->
 	find_undef_inst_name(InstName, ErrorContext, InstDefns).
@@ -220,9 +220,11 @@ find_undef_inst_name(unify_inst(_, _, _), _, _) -->
 	{ error("compiler generated inst unexpected") }.
 find_undef_inst_name(merge_inst(_, _), _, _) -->
 	{ error("compiler generated inst unexpected") }.
-find_undef_inst_name(ground_inst(_), _, _) -->
+find_undef_inst_name(ground_inst(_, _, _), _, _) -->
 	{ error("compiler generated inst unexpected") }.
-find_undef_inst_name(typed_ground(_), _, _) -->
+find_undef_inst_name(typed_ground(_, _), _, _) -->
+	{ error("compiler generated inst unexpected") }.
+find_undef_inst_name(shared_inst(_), _, _) -->
 	{ error("compiler generated inst unexpected") }.
 find_undef_inst_name(typed_inst(_,_), _, _) -->
 	{ error("compiler generated inst unexpected") }.

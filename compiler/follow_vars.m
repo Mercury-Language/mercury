@@ -32,7 +32,8 @@
 :- mode find_follow_vars(in, out) is det.
 
 :- pred find_follow_vars_in_proc(proc_info, module_info, proc_info).
-:- mode find_follow_vars_in_proc(di, in, out) is det.
+% :- mode find_follow_vars_in_proc(di, in, uo) is det.
+:- mode find_follow_vars_in_proc(in, in, out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

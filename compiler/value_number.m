@@ -84,7 +84,8 @@ vn__procedure(Instrs0, Livemap, OptInstrs) -->
 :- pred vn__optimize_blocks(list(list(instruction)), livemap, int,
 	list(list(instruction)), list(maybe(vn_ctrl_tuple)),
 	list(maybe(vn_ctrl_tuple)), io__state, io__state).
-:- mode vn__optimize_blocks(in, in, in, out, di, uo, di, uo) is det.
+% :- mode vn__optimize_blocks(in, in, in, out, di, uo, di, uo) is det.
+:- mode vn__optimize_blocks(in, in, in, out, in, out, di, uo) is det.
 
 vn__optimize_blocks([], _, _, [], Tuples, Tuples) --> [].
 vn__optimize_blocks([Block0 | Blocks0], Livemap, LabelNo0, [Block | Blocks],
@@ -216,7 +217,8 @@ vn__optimize_fragment_2(Instrs0, Livemap, ParEntries, LabelNo0, Tuple, Instrs) -
 	).
 
 :- pred vn__separate_tag_test(list(instruction), list(instruction)).
-:- mode vn__separate_tag_test(di, uo) is semidet.
+% :- mode vn__separate_tag_test(di, uo) is semidet.
+:- mode vn__separate_tag_test(in, out) is semidet.
 
 vn__separate_tag_test([], []).
 vn__separate_tag_test([Instr0 | Instrs0], Instrs) :-
@@ -304,7 +306,8 @@ vn__verify_correspondence([Lval | Lvals], VerifyMap0, VerifyMap7, Problem) :-
 
 :- pred vn__make_verify_map(list(vnlval), vn_tables,
 	map(lval, rval), map(lval, rval), maybe(string)).
-:- mode vn__make_verify_map(in, in, di, uo, out) is det.
+% :- mode vn__make_verify_map(in, in, di, uo, out) is det.
+:- mode vn__make_verify_map(in, in, in, out, out) is det.
 
 vn__make_verify_map(LiveVnlvals, VnTables, VerifyMap0, VerifyMap, Problem) :-
 	vn__get_all_vnrvals(Vnrvals, VnTables),
@@ -314,7 +317,8 @@ vn__make_verify_map(LiveVnlvals, VnTables, VerifyMap0, VerifyMap, Problem) :-
 
 :- pred vn__make_verify_map_2(list(vnlval), vn_tables,
 	map(lval, rval), map(lval, rval), maybe(string)).
-:- mode vn__make_verify_map_2(in, in, di, uo, out) is det.
+% :- mode vn__make_verify_map_2(in, in, di, uo, out) is det.
+:- mode vn__make_verify_map_2(in, in, in, out, out) is det.
 
 vn__make_verify_map_2([], _, VerifyMap, VerifyMap, no).
 vn__make_verify_map_2([Vnlval | Vnlvals], VnTables, VerifyMap0, VerifyMap,
@@ -335,7 +339,8 @@ vn__make_verify_map_2([Vnlval | Vnlvals], VnTables, VerifyMap0, VerifyMap,
 	).
 
 :- pred vn__make_verify_map_specials(list(vnrval), list(vnlval), list(vnlval)).
-:- mode vn__make_verify_map_specials(in, di, uo) is det.
+% :- mode vn__make_verify_map_specials(in, di, uo) is det.
+:- mode vn__make_verify_map_specials(in, in, out) is det.
 
 vn__make_verify_map_specials([], Vnlvals, Vnlvals).
 vn__make_verify_map_specials([Vnrval | Vnrvals], Vnlvals0, Vnlvals) :-
@@ -431,7 +436,8 @@ vn__verify_tags_2([Instr0 - _| RevInstrs], NoDeref0, Tested0) :-
 
 :- pred vn__verify_tags_instr(instr, set(rval), set(rval),
 	set(rval), set(rval)).
-:- mode vn__verify_tags_instr(in, di, uo, di, uo) is semidet.
+% :- mode vn__verify_tags_instr(in, di, uo, di, uo) is semidet.
+:- mode vn__verify_tags_instr(in, in, out, in, out) is semidet.
 
 vn__verify_tags_instr(Instr, NoDeref0, NoDeref, Tested0, Tested) :-
 	(
@@ -569,7 +575,8 @@ vn__verify_tags_rval(binop(_, Rval1, Rval2), NoDeref) :-
 	vn__verify_tags_rval(Rval2, NoDeref).
 
 :- pred vn__verify_tags_cond(rval, set(rval), set(rval), set(rval), set(rval)).
-:- mode vn__verify_tags_cond(in, di, uo, di, uo) is semidet.
+% :- mode vn__verify_tags_cond(in, di, uo, di, uo) is semidet.
+:- mode vn__verify_tags_cond(in, in, out, in, out) is semidet.
 
 vn__verify_tags_cond(Cond, NoDeref0, NoDeref, Tested0, Tested) :-
 	( Cond = binop(Binop, Rval1, Rval2) ->
@@ -643,7 +650,8 @@ vn__process_parallel_tuples(Tuples0, Blocks0, Livemap, Blocks) -->
 
 :- pred vn__insert_new_blocks(assoc_list(label, list(instruction)),
 	list(list(instruction)), list(list(instruction))).
-:- mode vn__insert_new_blocks(di, di, uo) is det.
+% :- mode vn__insert_new_blocks(di, di, uo) is det.
+:- mode vn__insert_new_blocks(in, in, out) is det.
 
 vn__insert_new_blocks([], Blocks, Blocks).
 vn__insert_new_blocks([Label - Extra | Extras], Blocks0, Blocks) :-
@@ -653,8 +661,10 @@ vn__insert_new_blocks([Label - Extra | Extras], Blocks0, Blocks) :-
 
 :- pred vn__process_parallel_tuples_2(list(list(instruction)),
 	list(maybe(vn_ctrl_tuple)), livemap, list(list(instruction)),
-	list(list(instruction)), assoc_list(label, list(instruction)), io__state, io__state).
-:- mode vn__process_parallel_tuples_2(di, in, in, in, uo, out, di, uo) is det.
+	list(list(instruction)), assoc_list(label, list(instruction)),
+	io__state, io__state).
+% :- mode vn__process_parallel_tuples_2(di, in, in, in, uo, out, di, uo) is det.
+:- mode vn__process_parallel_tuples_2(in, in, in, in, out, out, di, uo) is det.
 
 vn__process_parallel_tuples_2([], _, _, _, [], []) --> [].
 vn__process_parallel_tuples_2([Block0 | Blocks0], MaybeTuples0, Livemap,
@@ -681,7 +691,8 @@ vn__process_parallel_tuples_2([Block0 | Blocks0], MaybeTuples0, Livemap,
 :- pred vn__process_parallel_tuple(list(instruction), vn_ctrl_tuple,
 	livemap, list(list(instruction)), list(instruction),
 	assoc_list(label, list(instruction)), io__state, io__state).
-:- mode vn__process_parallel_tuple(di, in, in, in, uo, out, di, uo) is det.
+% :- mode vn__process_parallel_tuple(di, in, in, in, uo, out, di, uo) is det.
+:- mode vn__process_parallel_tuple(in, in, in, in, out, out, di, uo) is det.
 
 vn__process_parallel_tuple(Block0, tuple(_, _, _, _, Parmap), Livemap,
 		AllBlocks, Block, Extras) -->
@@ -704,7 +715,8 @@ vn__all_empty_lists([[] | Lists]) :-
 :- pred vn__process_parallel_nodes(list(list(parallel)), livemap,
 	list(instruction), list(list(instruction)), list(instruction),
 	assoc_list(label, list(instruction)), io__state, io__state).
-:- mode vn__process_parallel_nodes(in, in, di, in, uo, out, di, uo) is det.
+% :- mode vn__process_parallel_nodes(in, in, di, in, uo, out, di, uo) is det.
+:- mode vn__process_parallel_nodes(in, in, in, in, out, out, di, uo) is det.
 
 vn__process_parallel_nodes([], _, Block, _, Block, []) --> [].
 vn__process_parallel_nodes([Par0 | Pars1], Livemap,
@@ -718,7 +730,8 @@ vn__process_parallel_nodes([Par0 | Pars1], Livemap,
 	{ list__append(Extras1, Extras2, Extras) }.
 
 :- pred vn__process_parallels(list(parallel), livemap, instruction, instruction,
-	list(list(instruction)), assoc_list(label, list(instruction)), io__state, io__state).
+	list(list(instruction)), assoc_list(label, list(instruction)),
+	io__state, io__state).
 :- mode vn__process_parallels(in, in, in, out, in, out, di, uo) is det.
 
 vn__process_parallels(Pars, Livemap, Instr0, Instr, AllBlocks, Extras) -->
@@ -821,7 +834,8 @@ vn__process_parallel(Par, Livemap, AllBlocks, FinalLabel, Extras) -->
 
 :- pred vn__find_block_by_label(list(list(instruction)), label,
 	list(list(instruction)), list(instruction), list(list(instruction))).
-:- mode vn__find_block_by_label(di, in, uo, uo, uo) is det.
+% :- mode vn__find_block_by_label(di, in, uo, uo, uo) is det.
+:- mode vn__find_block_by_label(in, in, out, out, out) is det.
 
 vn__find_block_by_label([], Label, _, _, _) :-
 	opt_debug__dump_label(Label, L_str),
@@ -889,7 +903,8 @@ vn__try_again([Instr0 | Instrs0], Livemap, LabelNo0, Instrs) -->
 %-----------------------------------------------------------------------------%
 
 :- pred vn__push_decr_sp_back(list(instruction), list(instruction)).
-:- mode vn__push_decr_sp_back(di, uo) is det.
+% :- mode vn__push_decr_sp_back(di, uo) is det.
+:- mode vn__push_decr_sp_back(in, out) is det.
 
 vn__push_decr_sp_back([], []).
 vn__push_decr_sp_back([Instr0 | Instrs0], Instrs) :-
@@ -901,7 +916,8 @@ vn__push_decr_sp_back([Instr0 | Instrs0], Instrs) :-
 	).
 
 :- pred vn__push_decr_sp_back_2(list(instruction), int, list(instruction)).
-:- mode vn__push_decr_sp_back_2(di, in, uo) is det.
+% :- mode vn__push_decr_sp_back_2(di, in, uo) is det.
+:- mode vn__push_decr_sp_back_2(in, in, out) is det.
 
 vn__push_decr_sp_back_2([], N, [decr_sp(N) - ""]).
 vn__push_decr_sp_back_2([Instr0 | Instrs0], N, Instrs) :-
@@ -924,7 +940,8 @@ vn__push_decr_sp_back_2([Instr0 | Instrs0], N, Instrs) :-
 	).
 
 :- pred vn__push_incr_sp_forw(list(instruction), list(instruction)).
-:- mode vn__push_incr_sp_forw(di, uo) is det.
+% :- mode vn__push_incr_sp_forw(di, uo) is det.
+:- mode vn__push_incr_sp_forw(in, out) is det.
 
 vn__push_incr_sp_forw(Instrs0, Instrs) :-
 	list__reverse(Instrs0, Instrs1),
@@ -942,7 +959,8 @@ vn__push_incr_sp_forw(Instrs0, Instrs) :-
 
 :- pred vn__push_incr_sp_forw_rev(list(instruction), maybe(int),
 	list(instruction)).
-:- mode vn__push_incr_sp_forw_rev(di, out, uo) is det.
+% :- mode vn__push_incr_sp_forw_rev(di, out, uo) is det.
+:- mode vn__push_incr_sp_forw_rev(in, out, out) is det.
 
 vn__push_incr_sp_forw_rev([], no, []).
 vn__push_incr_sp_forw_rev([Instr0 | Instrs0], MaybeFrameSize, Instrs) :-
@@ -955,7 +973,8 @@ vn__push_incr_sp_forw_rev([Instr0 | Instrs0], MaybeFrameSize, Instrs) :-
 	).
 
 :- pred vn__push_incr_sp_forw_rev_2(list(instruction), int, list(instruction)).
-:- mode vn__push_incr_sp_forw_rev_2(di, in, uo) is det.
+% :- mode vn__push_incr_sp_forw_rev_2(di, in, uo) is det.
+:- mode vn__push_incr_sp_forw_rev_2(in, in, out) is det.
 
 vn__push_incr_sp_forw_rev_2([], N, [incr_sp(N) - ""]).
 vn__push_incr_sp_forw_rev_2([Instr0 | Instrs0], N, Instrs) :-
@@ -981,7 +1000,8 @@ vn__push_incr_sp_forw_rev_2([Instr0 | Instrs0], N, Instrs) :-
 
 :- pred vn__push_save_succip_forw_rev(list(instruction), int,
 	list(instruction)).
-:- mode vn__push_save_succip_forw_rev(di, in, uo) is det.
+% :- mode vn__push_save_succip_forw_rev(di, in, uo) is det.
+:- mode vn__push_save_succip_forw_rev(in, in, out) is det.
 
 vn__push_save_succip_forw_rev([], _, []).
 vn__push_save_succip_forw_rev([Instr0 | Instrs0], FrameSize, Instrs) :-
@@ -994,7 +1014,8 @@ vn__push_save_succip_forw_rev([Instr0 | Instrs0], FrameSize, Instrs) :-
 
 :- pred vn__push_save_succip_forw_rev_2(list(instruction), int,
 	list(instruction)).
-:- mode vn__push_save_succip_forw_rev_2(di, in, uo) is det.
+% :- mode vn__push_save_succip_forw_rev_2(di, in, uo) is det.
+:- mode vn__push_save_succip_forw_rev_2(in, in, out) is det.
 
 vn__push_save_succip_forw_rev_2([], _FrameSize, _) :-
 	error("succip save without incr_sp").
@@ -1011,7 +1032,8 @@ vn__push_save_succip_forw_rev_2([Instr0 | Instrs0], FrameSize, Instrs) :-
 %-----------------------------------------------------------------------------%
 
 :- pred vn__push_livevals_back(list(instruction), list(instruction)).
-:- mode vn__push_livevals_back(di, uo) is det.
+% :- mode vn__push_livevals_back(di, uo) is det.
+:- mode vn__push_livevals_back(in, out) is det.
 
 vn__push_livevals_back([], []).
 vn__push_livevals_back([Instr0 | Instrs0], Instrs) :-
@@ -1023,7 +1045,8 @@ vn__push_livevals_back([Instr0 | Instrs0], Instrs) :-
 	).
 
 :- pred vn__push_livevals_back_2(list(instruction), lvalset, list(instruction)).
-:- mode vn__push_livevals_back_2(di, in, uo) is det.
+% :- mode vn__push_livevals_back_2(di, in, uo) is det.
+:- mode vn__push_livevals_back_2(in, in, out) is det.
 
 vn__push_livevals_back_2([], Livevals, [livevals(Livevals) - ""]).
 vn__push_livevals_back_2([Instr0 | Instrs0], Livevals, Instrs) :-

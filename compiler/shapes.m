@@ -103,13 +103,13 @@ shapes__init_shape_table((S_Tab_Out - S_Num)) :-
 	term__context_init(TermContext),
 	(
 		map__insert(S_Tab0, term__functor(term__atom("string"), [],
-			TermContext) - ground, num(0) - Const, S_Tab1),
+			TermContext) - ground(shared), num(0) - Const, S_Tab1),
 		map__insert(S_Tab1, term__functor(term__atom("float"), [],
-			TermContext) - ground, num(1) - Const, S_Tab2),
+			TermContext) - ground(shared), num(1) - Const, S_Tab2),
 		map__insert(S_Tab2, term__functor(term__atom("int"), [],
-			TermContext) - ground, num(2) - Const, S_Tab3),
+			TermContext) - ground(shared), num(2) - Const, S_Tab3),
 		map__insert(S_Tab3, term__functor(term__atom("character"), [],
-			TermContext) - ground, num(3) - Const, S_Tab4) 
+			TermContext) - ground(shared), num(3) - Const, S_Tab4) 
 	-> 
 		S_Num = 4,
 		S_Tab_Out = S_Tab4
@@ -194,7 +194,7 @@ shapes__add_shape_numbers([T - S | Ts] , Types, S0, S2, [ N | Ns] ) :-
 	;	
 		S = no(Type)
 	->
-		shapes__request_shape_number(Type - ground, Types,  
+		shapes__request_shape_number(Type - ground(shared), Types,  
  			S1, S2, S_Num),
 		N = T - yes(num(S_Num))
 	;
@@ -325,7 +325,8 @@ shapes__create_shape_2(Type_Tab, Type, Type_Id, TypeArgs, Shape,
  		% abstract type...
 		% XXX I think we want to look up a new shape number here.
 		->
-			shapes__replace_context(ET - ground, EqvType - G),
+			shapes__replace_context(ET - ground(shared),
+				EqvType - G),
 			shapes__request_shape_number(EqvType - G,
 				Type_Tab, S_Tab0, S_Tab, EqvShapeNum),
 			Shape = equivalent(num(EqvShapeNum))
@@ -439,7 +440,7 @@ shapes__create_shapeA(Type_Id, [ Ctor | Rest ] , TagVals, Bits, A,
 shapes__lookup_simple_info([], [], _, S_Tab, S_Tab).
 shapes__lookup_simple_info([ Arg | Args], [ num(Num) - S | ShapeIds],
 				Type_Table, S_Tab0, S_Tab) :-
-	S = Arg - ground,
+	S = Arg - ground(shared),
         shapes__request_shape_number(S, Type_Table, S_Tab0, S_Tab1, Num),
 	shapes__lookup_simple_info(Args, ShapeIds, Type_Table, S_Tab1, S_Tab).
 

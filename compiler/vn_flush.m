@@ -51,7 +51,8 @@ vn__flush_nodelist([Node0 | Nodes0], Ctrlmap, VnTables0, Templocs0, Instrs) -->
 :- pred vn__flush_node(vn_node, ctrlmap, list(vn_node), list(vn_node),
 	vn_tables, vn_tables, templocs, templocs, list(instruction),
 	io__state, io__state).
-:- mode vn__flush_node(in, in, di, uo, di, uo, di, uo, out, di, uo) is det.
+% :- mode vn__flush_node(in, in, di, uo, di, uo, di, uo, out, di, uo) is det.
+:- mode vn__flush_node(in, in, in, out, in, out, in, out, out, di, uo) is det.
 
 vn__flush_node(Node, Ctrlmap, Nodes0, Nodes, VnTables0, VnTables,
 		Templocs0, Templocs, Instrs) -->
@@ -87,7 +88,10 @@ vn__flush_node(Node, Ctrlmap, Nodes0, Nodes, VnTables0, VnTables,
 :- pred vn__flush_lval_node(vnlval, ctrlmap, list(vn_node), list(vn_node),
 	vn_tables, vn_tables, templocs, templocs, list(instruction),
 	io__state, io__state).
-:- mode vn__flush_lval_node(in, in, di, uo, di, uo, di, uo, out, di, uo) is det.
+% :- mode vn__flush_lval_node(in, in, di, uo, di, uo, di, uo, out, di, uo)
+%	is det.
+:- mode vn__flush_lval_node(in, in, in, out, in, out, in, out, out, di, uo)
+	is det.
 
 vn__flush_lval_node(Vnlval, Ctrlmap, Nodes0, Nodes,
 		VnTables0, VnTables, Templocs0, Templocs, Instrs) -->
@@ -131,7 +135,9 @@ vn__flush_lval_node(Vnlval, Ctrlmap, Nodes0, Nodes,
 :- pred vn__flush_shared_node(vn, list(vn_node), list(vn_node),
 	vn_tables, vn_tables, templocs, templocs, list(instruction),
 	io__state, io__state).
-:- mode vn__flush_shared_node(in, di, uo, di, uo, di, uo, out, di, uo) is det.
+% :- mode vn__flush_shared_node(in, di, uo, di, uo, di, uo, out, di, uo) is det.
+:- mode vn__flush_shared_node(in, in, out, in, out, in, out, out, di, uo)
+	is det.
 
 vn__flush_shared_node(Vn, Nodes0, Nodes, VnTables0, VnTables,
 		Templocs0, Templocs, Instrs) -->
@@ -158,7 +164,8 @@ vn__flush_shared_node(Vn, Nodes0, Nodes, VnTables0, VnTables,
 
 :- pred vn__flush_ctrl_node(vn_instr, int, vn_tables, vn_tables,
 	templocs, templocs, list(instruction)).
-:- mode vn__flush_ctrl_node(in, in, di, uo, di, uo, out) is det.
+% :- mode vn__flush_ctrl_node(in, in, di, uo, di, uo, out) is det.
+:- mode vn__flush_ctrl_node(in, in, in, out, in, out, out) is det.
 
 vn__flush_ctrl_node(Vn_instr, N, VnTables0, VnTables, Templocs0, Templocs,
 		Instrs) :-
@@ -255,7 +262,8 @@ vn__flush_ctrl_node(Vn_instr, N, VnTables0, VnTables, Templocs0, Templocs,
 	% value.
 
 :- pred vn__choose_loc_for_shared_vn(vn, vnlval, vn_tables, templocs, templocs).
-:- mode vn__choose_loc_for_shared_vn(in, out, in, di, uo) is det.
+% :- mode vn__choose_loc_for_shared_vn(in, out, in, di, uo) is det.
+:- mode vn__choose_loc_for_shared_vn(in, out, in, in, out) is det.
 
 vn__choose_loc_for_shared_vn(Vn, Chosen, VnTables, Templocs0, Templocs) :-
 	(
@@ -418,7 +426,8 @@ vn__classify_loc_cost(vn_temp(_), 0).
 
 :- pred vn__ensure_assignment(vnlval, vn, list(lval), vn_tables, vn_tables,
 	templocs, templocs, list(instruction)).
-:- mode vn__ensure_assignment(in, in, in, di, uo, di, uo, out) is det.
+% :- mode vn__ensure_assignment(in, in, in, di, uo, di, uo, out) is det.
+:- mode vn__ensure_assignment(in, in, in, in, out, in, out, out) is det.
 
 vn__ensure_assignment(Vnlval, Vn, Forbidden, VnTables0, VnTables,
 		Templocs0, Templocs, Instrs) :-
@@ -440,7 +449,8 @@ vn__ensure_assignment(Vnlval, Vn, Forbidden, VnTables0, VnTables,
 
 :- pred vn__generate_assignment(vnlval, vn, list(lval), vn_tables, vn_tables,
 	templocs, templocs, lval, list(instruction)).
-:- mode vn__generate_assignment(in, in, in, di, uo, di, uo, out, out) is det.
+% :- mode vn__generate_assignment(in, in, in, di, uo, di, uo, out, out) is det.
+:- mode vn__generate_assignment(in, in, in, in, out, in, out, out, out) is det.
 
 vn__generate_assignment(Vnlval, Vn, Forbidden0, VnTables0, VnTables,
 		Templocs0, Templocs, Lval, Instrs) :-
@@ -497,7 +507,8 @@ vn__generate_assignment(Vnlval, Vn, Forbidden0, VnTables0, VnTables,
 	% separately.
 
 :- pred vn__get_incr_hp(list(instruction), instruction, list(instruction)).
-:- mode vn__get_incr_hp(di, out, uo) is det.
+% :- mode vn__get_incr_hp(di, out, uo) is det.
+:- mode vn__get_incr_hp(in, out, out) is det.
 
 vn__get_incr_hp([], _, _) :-
 	error("could not find incr_hp").
@@ -515,7 +526,8 @@ vn__get_incr_hp([Instr0 | Instrs0], IncrHp, Instrs) :-
 
 :- pred vn__flush_vn(vn, list(vn_src), list(lval), rval, vn_tables, vn_tables,
 	templocs, templocs, list(instruction)).
-:- mode vn__flush_vn(in, in, in, out, di, uo, di, uo, out) is det.
+% :- mode vn__flush_vn(in, in, in, out, di, uo, di, uo, out) is det.
+:- mode vn__flush_vn(in, in, in, out, in, out, in, out, out) is det.
 
 vn__flush_vn(Vn, Srcs, Forbidden, Rval, VnTables0, VnTables,
 		Templocs0, Templocs, Instrs) :-
@@ -586,7 +598,8 @@ vn__flush_vn(Vn, Srcs, Forbidden, Rval, VnTables0, VnTables,
 
 :- pred vn__flush_vn_value(vn, list(vn_src), list(lval), rval,
 	vn_tables, vn_tables, templocs, templocs, list(instruction)).
-:- mode vn__flush_vn_value(in, in, in, out, di, uo, di, uo, out) is det.
+% :- mode vn__flush_vn_value(in, in, in, out, di, uo, di, uo, out) is det.
+:- mode vn__flush_vn_value(in, in, in, out, in, out, in, out, out) is det.
 
 vn__flush_vn_value(Vn, Srcs, Forbidden, Rval, VnTables0, VnTables,
 		Templocs0, Templocs, Instrs) :-
@@ -680,7 +693,8 @@ vn__flush_vn_value(Vn, Srcs, Forbidden, Rval, VnTables0, VnTables,
 
 :- pred vn__flush_old_hp(list(vn_src), list(lval), rval, vn_tables, vn_tables,
 	templocs, templocs, list(instruction)).
-:- mode vn__flush_old_hp(in, in, out, di, uo, di, uo, out) is det.
+% :- mode vn__flush_old_hp(in, in, out, di, uo, di, uo, out) is det.
+:- mode vn__flush_old_hp(in, in, out, in, out, in, out, out) is det.
 
 vn__flush_old_hp(Srcs0, Forbidden0, ReturnRval, VnTables0, VnTables,
 		Templocs0, Templocs, Instrs) :-
@@ -796,7 +810,8 @@ vn__flush_old_hp(Srcs0, Forbidden0, ReturnRval, VnTables0, VnTables,
 
 :- pred vn__flush_hp_incr(vn, list(vn_src), list(lval), maybe(rval),
 	vn_tables, vn_tables, templocs, templocs, list(instruction)).
-:- mode vn__flush_hp_incr(in, in, in, out, di, uo, di, uo, out) is det.
+% :- mode vn__flush_hp_incr(in, in, in, out, di, uo, di, uo, out) is det.
+:- mode vn__flush_hp_incr(in, in, in, out, in, out, in, out, out) is det.
 
 vn__flush_hp_incr(Vn, Srcs, Forbidden, MaybeRval, VnTables0, VnTables,
 		Templocs0, Templocs, Instrs) :-
@@ -913,7 +928,8 @@ vn__rec_find_ref_vns_list([Vn | Vns], SubVns, VnTables) :-
 
 :- pred vn__flush_access_path(vnlval, list(vn_src), list(lval), lval,
 	vn_tables, vn_tables, templocs, templocs, list(instruction)).
-:- mode vn__flush_access_path(in, in, in, out, di, uo, di, uo, out) is det.
+% :- mode vn__flush_access_path(in, in, in, out, di, uo, di, uo, out) is det.
+:- mode vn__flush_access_path(in, in, in, out, in, out, in, out, out) is det.
 
 vn__flush_access_path(Vnlval, Srcs, Forbidden, Lval, VnTables0, VnTables,
 		Templocs0, Templocs, AccessInstrs) :-
@@ -1019,7 +1035,8 @@ vn__flush_access_path(Vnlval, Srcs, Forbidden, Lval, VnTables0, VnTables,
 
 :- pred vn__maybe_save_prev_value(vnlval, vn, list(lval),
 	vn_tables, vn_tables, templocs, templocs, list(instruction)).
-:- mode vn__maybe_save_prev_value(in, in, in, di, uo, di, uo, out) is det.
+% :- mode vn__maybe_save_prev_value(in, in, in, di, uo, di, uo, out) is det.
+:- mode vn__maybe_save_prev_value(in, in, in, in, out, in, out, out) is det.
 
 vn__maybe_save_prev_value(Vnlval, Vn, Forbidden,
 		VnTables0, VnTables, Templocs0, Templocs, Instrs) :-

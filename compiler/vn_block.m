@@ -96,7 +96,8 @@ vn__build_block_info(Instrs, Livemap, ParEntries, LabelNo0,
 		Liveset0, Liveset, no, SeenIncr, Tuple0, Tuple).
 
 :- pred vn__build_from_parallel(list(parentry), vn_tables, vn_tables).
-:- mode vn__build_from_parallel(in, di, uo) is det.
+% :- mode vn__build_from_parallel(in, di, uo) is det.
+:- mode vn__build_from_parallel(in, in, out) is det.
 
 vn__build_from_parallel([], VnTables, VnTables).
 vn__build_from_parallel([Lval - Rvals | ParEntries], VnTables0, VnTables) :-
@@ -106,7 +107,8 @@ vn__build_from_parallel([Lval - Rvals | ParEntries], VnTables0, VnTables) :-
 	vn__build_from_parallel(ParEntries, VnTables2, VnTables).
 
 :- pred vn__real_fake_parentries(list(rval), list(rval), list(lval)).
-:- mode vn__real_fake_parentries(di, uo, uo) is det.
+% :- mode vn__real_fake_parentries(di, uo, uo) is det.
+:- mode vn__real_fake_parentries(in, out, out) is det.
 
 vn__real_fake_parentries([], [], []).
 vn__real_fake_parentries([Rval | Rvals], RealRvals, FakeRvals) :-
@@ -120,7 +122,8 @@ vn__real_fake_parentries([Rval | Rvals], RealRvals, FakeRvals) :-
 	).
 
 :- pred vn__build_from_real_rval(lval, list(rval), vn_tables, vn_tables).
-:- mode vn__build_from_real_rval(in, in, di, uo) is det.
+% :- mode vn__build_from_real_rval(in, in, di, uo) is det.
+:- mode vn__build_from_real_rval(in, in, in, out) is det.
 
 vn__build_from_real_rval(_Lval, [], VnTables, VnTables).
 vn__build_from_real_rval(Lval, [Rval | _], VnTables0, VnTables) :-
@@ -130,7 +133,8 @@ vn__build_from_real_rval(Lval, [Rval | _], VnTables0, VnTables) :-
 	vn__set_current_value(Vnlval, Vn, VnTables3, VnTables).
 
 :- pred vn__build_from_fake_rval(lval, list(lval), vn_tables, vn_tables).
-:- mode vn__build_from_fake_rval(in, in, di, uo) is det.
+% :- mode vn__build_from_fake_rval(in, in, di, uo) is det.
+:- mode vn__build_from_fake_rval(in, in, in, out) is det.
 
 vn__build_from_fake_rval(_Lval, [], VnTables, VnTables).
 vn__build_from_fake_rval(Lval, [Cheap | Cheaps], VnTables0, VnTables) :-
@@ -149,7 +153,8 @@ vn__build_from_fake_rval(Lval, [Cheap | Cheaps], VnTables0, VnTables) :-
 
 :- pred vn__handle_instrs(list(instruction), livemap, vn_tables, vn_tables,
 	vnlvalset, vnlvalset, bool, bool, vn_ctrl_tuple,  vn_ctrl_tuple).
-:- mode vn__handle_instrs(in, in, di, uo, di, uo, di, uo, di, uo) is det.
+% :- mode vn__handle_instrs(in, in, di, uo, di, uo, di, uo, di, uo) is det.
+:- mode vn__handle_instrs(in, in, in, out, in, out, in, out, in, out) is det.
 
 vn__handle_instrs([], _Livemap, VnTables, VnTables,
 		Liveset, Liveset, SeenIncr, SeenIncr, Tuple, Tuple).
@@ -165,7 +170,8 @@ vn__handle_instrs([Uinstr0 - _ | Instrs], Livemap, VnTables0, VnTables,
 
 :- pred vn__handle_instr(instr, livemap, vn_tables, vn_tables,
 	vnlvalset, vnlvalset, bool, bool, vn_ctrl_tuple, vn_ctrl_tuple).
-:- mode vn__handle_instr(in, in, di, uo, di, uo, di, uo, di, uo) is det.
+% :- mode vn__handle_instr(in, in, di, uo, di, uo, di, uo, di, uo) is det.
+:- mode vn__handle_instr(in, in, in, out, in, out, in, out, in, out) is det.
 
 vn__handle_instr(comment(_),
 		_Livemap, VnTables, VnTables,
@@ -281,7 +287,8 @@ vn__handle_instr(decr_sp(N),
 
 :- pred vn__new_ctrl_node(vn_instr, livemap, vn_tables, vn_tables,
 	vnlvalset, vnlvalset, vn_ctrl_tuple, vn_ctrl_tuple).
-:- mode vn__new_ctrl_node(in, in, di, uo, di, uo, di, uo) is det.
+% :- mode vn__new_ctrl_node(in, in, di, uo, di, uo, di, uo) is det.
+:- mode vn__new_ctrl_node(in, in, in, out, in, out, in, out) is det.
 
 vn__new_ctrl_node(Vn_instr, Livemap, VnTables0, VnTables, Liveset0, Liveset,
 		tuple(Ctrl0, Ctrlmap0, Flushmap0, LabelNo0, Parmap0),
@@ -385,7 +392,9 @@ vn__new_ctrl_node(Vn_instr, Livemap, VnTables0, VnTables, Liveset0, Liveset,
 :- pred vn__new_if_node(code_addr, livemap, ctrlmap, int,
 	vn_tables, vn_tables, vnlvalset, vnlvalset,
 	flushmapentry, flushmapentry, int, int, list(parallel)).
-:- mode vn__new_if_node(in, in, in, in, di, uo, di, uo, di, uo, in, out, out)
+% :- mode vn__new_if_node(in, in, in, in, di, uo, di, uo, di, uo, in, out, out)
+% 	is det.
+:- mode vn__new_if_node(in, in, in, in, in, out, in, out, in, out, in, out, out)
 	is det.
 
 vn__new_if_node(TargetAddr, Livemap, Ctrlmap0, Ctrl0, VnTables0, VnTables,
@@ -448,7 +457,8 @@ vn__new_if_node(TargetAddr, Livemap, Ctrlmap0, Ctrl0, VnTables0, VnTables,
 	).
 
 :- pred vn__filter_redo_livelist(list(vnlval), list(vnlval)).
-:- mode vn__filter_redo_livelist(di, uo) is det.
+% :- mode vn__filter_redo_livelist(di, uo) is det.
+:- mode vn__filter_redo_livelist(in, out) is det.
 
 vn__filter_redo_livelist([], []).
 vn__filter_redo_livelist([Live0 | Lives0], Lives) :-
@@ -466,7 +476,8 @@ vn__filter_redo_livelist([Live0 | Lives0], Lives) :-
 
 :- pred vn__record_at_call(vn_tables, vn_tables, vnlvalset, vnlvalset,
 	flushmapentry, flushmapentry).
-:- mode vn__record_at_call(di, uo, di, uo, di, uo) is det.
+% :- mode vn__record_at_call(di, uo, di, uo, di, uo) is det.
+:- mode vn__record_at_call(in, out, in, out, in, out) is det.
 
 vn__record_at_call(VnTables0, VnTables, Livevals0, Livevals,
 		FlushEntry0, FlushEntry) :-
@@ -479,8 +490,10 @@ vn__record_at_call(VnTables0, VnTables, Livevals0, Livevals,
 :- pred vn__record_several_labels(list(label), livemap, vn_tables, vn_tables,
 	vnlvalset, vnlvalset, flushmapentry, flushmapentry,
 	int, int, list(parallel)).
-:- mode vn__record_several_labels(in, in, di, uo, di, uo, di, uo, in, out, out)
-	is det.
+% :- mode vn__record_several_labels(in, in, di, uo, di, uo, di, uo, in,
+%		out, out) is det.
+:- mode vn__record_several_labels(in, in, in, out, in, out, in, out, in,
+		out, out) is det.
 
 vn__record_several_labels(Labels, Livemap, VnTables0, VnTables,
 		Livevals0, Livevals, FlushEntry0, FlushEntry,
@@ -494,7 +507,9 @@ vn__record_several_labels(Labels, Livemap, VnTables0, VnTables,
 :- pred vn__record_one_label(label, livemap, vn_tables, vn_tables,
 	vnlvalset, vnlvalset, flushmapentry, flushmapentry,
 	int, int, list(parallel)).
-:- mode vn__record_one_label(in, in, di, uo, di, uo, di, uo, in, out, out)
+% :- mode vn__record_one_label(in, in, di, uo, di, uo, di, uo, in, out, out)
+% 	is det.
+:- mode vn__record_one_label(in, in, in, out, in, out, in, out, in, out, out)
 	is det.
 
 vn__record_one_label(Label, Livemap, VnTables0, VnTables,
@@ -511,7 +526,10 @@ vn__record_one_label(Label, Livemap, VnTables0, VnTables,
 :- pred vn__record_labels(list(label), livemap, vn_tables, vn_tables,
 	vnlvalset, vnlvalset, flushmapentry, flushmapentry,
 	int, int, list(parallel)).
-:- mode vn__record_labels(in, in, di, uo, di, uo, di, uo, in, out, out) is det.
+% :- mode vn__record_labels(in, in, di, uo, di, uo, di, uo, in, out, out)
+%	is det.
+:- mode vn__record_labels(in, in, in, out, in, out, in, out, in, out, out)
+	is det.
 
 vn__record_labels([], _, VnTables, VnTables, Livevals, Livevals,
 	FlushEntry, FlushEntry, LabelNo, LabelNo, []).
@@ -529,7 +547,9 @@ vn__record_labels([Label | Labels], Livemap, VnTables0, VnTables,
 :- pred vn__record_label(label, livemap, vn_tables, vn_tables,
 	vnlvalset, vnlvalset, flushmapentry, flushmapentry,
 	int, int, list(parallel)).
-:- mode vn__record_label(in, in, di, uo, di, uo, di, uo, in, out, out) is det.
+% :- mode vn__record_label(in, in, di, uo, di, uo, di, uo, in, out, out) is det.
+:- mode vn__record_label(in, in, in, out, in, out, in, out, in, out, out)
+	is det.
 
 vn__record_label(Label, Livemap, VnTables0, VnTables, Livevals0, Livevals,
 		FlushEntry0, FlushEntry, LabelNo0, LabelNo, Parallels) :-
@@ -561,7 +581,8 @@ vn__record_label(Label, Livemap, VnTables0, VnTables, Livevals0, Livevals,
 
 :- pred vn__record_livevals(list(lval), vn_tables, vn_tables,
 	vnlvalset, vnlvalset, flushmapentry, flushmapentry, list(parentry)).
-:- mode vn__record_livevals(in, di, uo, di, uo, di, uo, out) is det.
+% :- mode vn__record_livevals(in, di, uo, di, uo, di, uo, out) is det.
+:- mode vn__record_livevals(in, in, out, in, out, in, out, out) is det.
 
 vn__record_livevals([], VnTables, VnTables,
 		Livevals, Livevals, FlushEntry, FlushEntry, []).
@@ -595,7 +616,8 @@ vn__record_livevals([Lval | Livelist], VnTables0, VnTables,
 
 :- pred vn__record_livevnlvals(list(vnlval), vn_tables, vn_tables,
 	vnlvalset, vnlvalset, flushmapentry, flushmapentry).
-:- mode vn__record_livevnlvals(in, di, uo, di, uo, di, uo) is det.
+% :- mode vn__record_livevnlvals(in, di, uo, di, uo, di, uo) is det.
+:- mode vn__record_livevnlvals(in, in, out, in, out, in, out) is det.
 
 vn__record_livevnlvals([], VnTables, VnTables,
 		Livevals, Livevals, FlushEntry, FlushEntry).
@@ -621,7 +643,8 @@ vn__record_livevnlvals([Vnlval | Livevnlvallist], VnTables0, VnTables,
 
 :- pred vn__record_compulsory_lvals(vn_tables, vnlvalset, vnlvalset,
 	flushmapentry, flushmapentry).
-:- mode vn__record_compulsory_lvals(in, di, uo, di, uo) is det.
+% :- mode vn__record_compulsory_lvals(in, di, uo, di, uo) is det.
+:- mode vn__record_compulsory_lvals(in, in, out, in, out) is det.
 
 vn__record_compulsory_lvals(VnTables, Livevals0, Livevals,
 		FlushEntry0, FlushEntry) :-
@@ -631,7 +654,8 @@ vn__record_compulsory_lvals(VnTables, Livevals0, Livevals,
 
 :- pred vn__record_compulsory_lval_list(assoc_list(vnlval, vn),
 	vnlvalset, vnlvalset, flushmapentry, flushmapentry).
-:- mode vn__record_compulsory_lval_list(in, di, uo, di, uo) is det.
+% :- mode vn__record_compulsory_lval_list(in, di, uo, di, uo) is det.
+:- mode vn__record_compulsory_lval_list(in, in, out, in, out) is det.
 
 vn__record_compulsory_lval_list([], Livevals, Livevals, FlushEntry, FlushEntry).
 vn__record_compulsory_lval_list([Vnlval - Vn | Lval_vn_list],

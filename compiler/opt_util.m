@@ -29,6 +29,7 @@
 :- mode opt_util__gather_comments_livevals(in, out, out) is det.
 
 :- pred opt_util__skip_comments(list(instruction), list(instruction)).
+% :- mode opt_util__skip_comments(di, uo) is det.
 :- mode opt_util__skip_comments(in, out) is det.
 
 :- pred opt_util__skip_comments_livevals(list(instruction), list(instruction)).
@@ -71,6 +72,7 @@
 
 :- pred opt_util__skip_to_next_label(list(instruction),
 	list(instruction), list(instruction)).
+% :- mode opt_util__skip_to_next_label(di, uo, uo) is det.
 :- mode opt_util__skip_to_next_label(in, out, out) is det.
 
 	% Check whether the named label follows without any intervening code.
@@ -240,7 +242,8 @@
 
 :- pred opt_util__no_stackvars_til_decr_sp(list(instruction), int,
 	list(instruction), list(instruction)).
-:- mode opt_util__no_stackvars_til_decr_sp(di, in, uo, uo) is semidet.
+% :- mode opt_util__no_stackvars_til_decr_sp(di, in, uo, uo) is semidet.
+:- mode opt_util__no_stackvars_til_decr_sp(in, in, out, out) is semidet.
 
 	% See whether a list of instructions references any stackvars.
 

@@ -40,11 +40,32 @@
 :- pred inst_is_ground(module_info, inst).
 :- mode inst_is_ground(in, in) is semidet.
 
+:- pred inst_is_unique(module_info, inst).
+:- mode inst_is_unique(in, in) is semidet.
+
+:- pred inst_is_shared(module_info, inst).
+:- mode inst_is_shared(in, in) is semidet.
+
+:- pred inst_is_clobbered(module_info, inst).
+:- mode inst_is_clobbered(in, in) is semidet.
+
 :- pred inst_list_is_ground(list(inst), module_info).
 :- mode inst_list_is_ground(in, in) is semidet.
 
+:- pred inst_list_is_unique(list(inst), module_info).
+:- mode inst_list_is_unique(in, in) is semidet.
+
+:- pred inst_list_is_shared(list(inst), module_info).
+:- mode inst_list_is_shared(in, in) is semidet.
+
 :- pred bound_inst_list_is_ground(list(bound_inst), module_info).
 :- mode bound_inst_list_is_ground(in, in) is semidet.
+
+:- pred bound_inst_list_is_unique(list(bound_inst), module_info).
+:- mode bound_inst_list_is_unique(in, in) is semidet.
+
+:- pred bound_inst_list_is_shared(list(bound_inst), module_info).
+:- mode bound_inst_list_is_shared(in, in) is semidet.
 
 :- pred inst_is_free(module_info, inst).
 :- mode inst_is_free(in, in) is semidet.
@@ -183,6 +204,19 @@ mode_util__modes_to_uni_modes(X, [M|Ms], ModuleInfo, [A|As]) :-
 
 %-----------------------------------------------------------------------------%
 
+	% inst_is_clobbered succeeds iff the inst passed is `clobbered'
+	% or is a user-defined inst which is defined as `clobbered'.
+
+:- inst_is_clobbered(_, X) when X.		% NU-Prolog indexing.
+
+inst_is_clobbered(_, ground(clobbered)).
+inst_is_clobbered(_, bound(clobbered, _)).
+inst_is_clobbered(_, inst_var(_)) :-
+	error("internal error: uninstantiated inst parameter").
+inst_is_clobbered(ModuleInfo, defined_inst(InstName)) :-
+	inst_lookup(ModuleInfo, InstName, Inst),
+	inst_is_clobbered(ModuleInfo, Inst).
+
 	% inst_is_free succeeds iff the inst passed is `free'
 	% or is a user-defined inst which is defined as `free'.
 	% Abstract insts must not be free.
@@ -202,8 +236,8 @@ inst_is_free(ModuleInfo, defined_inst(InstName)) :-
 
 :- inst_is_bound(_, X) when X.		% NU-Prolog indexing.
 
-inst_is_bound(_, ground).
-inst_is_bound(_, bound(_)).
+inst_is_bound(_, ground(_)).
+inst_is_bound(_, bound(_, _)).
 inst_is_bound(_, inst_var(_)) :-
 	error("internal error: uninstantiated inst parameter").
 inst_is_bound(ModuleInfo, defined_inst(InstName)) :-
@@ -212,18 +246,20 @@ inst_is_bound(ModuleInfo, defined_inst(InstName)) :-
 inst_is_bound(_, abstract_inst(_, _)).
 
 	% inst_is_bound_to_functors succeeds iff the inst passed is
-	% `bound(Functors)' or is a user-defined inst which expands to
-	% `bound(Functors)'.
+	% `bound(_Uniq, Functors)' or is a user-defined inst which expands to
+	% `bound(_Uniq, Functors)'.
 
 :- inst_is_bound_to_functors(_, _, X) when X.		% NU-Prolog indexing.
 
-inst_is_bound_to_functors(_, bound(Functors), Functors).
+inst_is_bound_to_functors(_, bound(_Uniq, Functors), Functors).
 inst_is_bound_to_functors(_, inst_var(_), _) :-
 	error("internal error: uninstantiated inst parameter").
 inst_is_bound_to_functors(ModuleInfo, defined_inst(InstName), Functors)
 		:-
 	inst_lookup(ModuleInfo, InstName, Inst),
 	inst_is_bound_to_functors(ModuleInfo, Inst, Functors).
+
+%-----------------------------------------------------------------------------%
 
 	% inst_is_ground succeeds iff the inst passed is `ground'
 	% or the equivalent.  Abstract insts are not considered ground.
@@ -242,9 +278,9 @@ inst_is_ground(ModuleInfo, Inst) :-
 
 :- inst_is_ground_2(_, X, _, _) when X.		% NU-Prolog indexing.
 
-inst_is_ground_2(ModuleInfo, bound(List), _, Expansions) :-
+inst_is_ground_2(ModuleInfo, bound(_, List), _, Expansions) :-
 	bound_inst_list_is_ground_2(List, ModuleInfo, Expansions).
-inst_is_ground_2(_, ground, _, _).
+inst_is_ground_2(_, ground(_), _, _).
 inst_is_ground_2(_, inst_var(_), _, _) :-
 	error("internal error: uninstantiated inst parameter").
 inst_is_ground_2(ModuleInfo, defined_inst(InstName), Inst, Expansions) :-
@@ -256,10 +292,88 @@ inst_is_ground_2(ModuleInfo, defined_inst(InstName), Inst, Expansions) :-
 		inst_is_ground_2(ModuleInfo, Inst2, Inst2, Expansions2)
 	).
 
+	% inst_is_unique succeeds iff the inst passed is unique
+	% or free.  Abstract insts are not considered unique.
+
+inst_is_unique(ModuleInfo, Inst) :-
+	set__init(Expansions),
+	inst_is_unique_2(ModuleInfo, Inst, Inst, Expansions).
+
+	% The third argument must be the same as the second.
+	% The fourth arg is the set of insts which have already
+	% been expanded - we use this to avoid going into an
+	% infinite loop.
+
+:- pred inst_is_unique_2(module_info, inst, inst, set(inst)).
+:- mode inst_is_unique_2(in, in, in, in) is semidet.
+
+:- inst_is_unique_2(_, X, _, _) when X.		% NU-Prolog indexing.
+
+inst_is_unique_2(ModuleInfo, bound(unique, List), _, Expansions) :-
+	bound_inst_list_is_unique_2(List, ModuleInfo, Expansions).
+inst_is_unique_2(_, free, _, _).
+inst_is_unique_2(_, ground(unique), _, _).
+inst_is_unique_2(_, inst_var(_), _, _) :-
+	error("internal error: uninstantiated inst parameter").
+inst_is_unique_2(ModuleInfo, defined_inst(InstName), Inst, Expansions) :-
+	( set__member(Inst, Expansions) ->
+		true
+	;
+		set__insert(Expansions, Inst, Expansions2),
+		inst_lookup(ModuleInfo, InstName, Inst2),
+		inst_is_unique_2(ModuleInfo, Inst2, Inst2, Expansions2)
+	).
+
+	% inst_is_shared succeeds iff the inst passed is shared
+	% or free.  Abstract insts are not considered shared.
+
+inst_is_shared(ModuleInfo, Inst) :-
+	set__init(Expansions),
+	inst_is_shared_2(ModuleInfo, Inst, Inst, Expansions).
+
+	% The third argument must be the same as the second.
+	% The fourth arg is the set of insts which have already
+	% been expanded - we use this to avoid going into an
+	% infinite loop.
+
+:- pred inst_is_shared_2(module_info, inst, inst, set(inst)).
+:- mode inst_is_shared_2(in, in, in, in) is semidet.
+
+:- inst_is_shared_2(_, X, _, _) when X.		% NU-Prolog indexing.
+
+inst_is_shared_2(ModuleInfo, bound(shared, List), _, Expansions) :-
+	bound_inst_list_is_shared_2(List, ModuleInfo, Expansions).
+inst_is_shared_2(_, free, _, _).
+inst_is_shared_2(_, ground(shared), _, _).
+inst_is_shared_2(_, inst_var(_), _, _) :-
+	error("internal error: uninstantiated inst parameter").
+inst_is_shared_2(ModuleInfo, defined_inst(InstName), Inst, Expansions) :-
+	( set__member(Inst, Expansions) ->
+		true
+	;
+		set__insert(Expansions, Inst, Expansions2),
+		inst_lookup(ModuleInfo, InstName, Inst2),
+		inst_is_shared_2(ModuleInfo, Inst2, Inst2, Expansions2)
+	).
+
+%-----------------------------------------------------------------------------%
+
 bound_inst_list_is_ground([], _).
 bound_inst_list_is_ground([functor(_Name, Args)|BoundInsts], ModuleInfo) :-
 	inst_list_is_ground(Args, ModuleInfo),
 	bound_inst_list_is_ground(BoundInsts, ModuleInfo).
+
+bound_inst_list_is_unique([], _).
+bound_inst_list_is_unique([functor(_Name, Args)|BoundInsts], ModuleInfo) :-
+	inst_list_is_unique(Args, ModuleInfo),
+	bound_inst_list_is_unique(BoundInsts, ModuleInfo).
+
+bound_inst_list_is_shared([], _).
+bound_inst_list_is_shared([functor(_Name, Args)|BoundInsts], ModuleInfo) :-
+	inst_list_is_shared(Args, ModuleInfo),
+	bound_inst_list_is_shared(BoundInsts, ModuleInfo).
+
+%-----------------------------------------------------------------------------%
 
 :- pred bound_inst_list_is_ground_2(list(bound_inst), module_info, set(inst)).
 :- mode bound_inst_list_is_ground_2(in, in, in) is semidet.
@@ -270,10 +384,42 @@ bound_inst_list_is_ground_2([functor(_Name, Args)|BoundInsts], ModuleInfo,
 	inst_list_is_ground_2(Args, ModuleInfo, Expansions),
 	bound_inst_list_is_ground_2(BoundInsts, ModuleInfo, Expansions).
 
+:- pred bound_inst_list_is_unique_2(list(bound_inst), module_info, set(inst)).
+:- mode bound_inst_list_is_unique_2(in, in, in) is semidet.
+
+bound_inst_list_is_unique_2([], _, _).
+bound_inst_list_is_unique_2([functor(_Name, Args)|BoundInsts], ModuleInfo,
+		Expansions) :-
+	inst_list_is_unique_2(Args, ModuleInfo, Expansions),
+	bound_inst_list_is_unique_2(BoundInsts, ModuleInfo, Expansions).
+
+:- pred bound_inst_list_is_shared_2(list(bound_inst), module_info, set(inst)).
+:- mode bound_inst_list_is_shared_2(in, in, in) is semidet.
+
+bound_inst_list_is_shared_2([], _, _).
+bound_inst_list_is_shared_2([functor(_Name, Args)|BoundInsts], ModuleInfo,
+		Expansions) :-
+	inst_list_is_shared_2(Args, ModuleInfo, Expansions),
+	bound_inst_list_is_shared_2(BoundInsts, ModuleInfo, Expansions).
+
+%-----------------------------------------------------------------------------%
+
 inst_list_is_ground([], _).
 inst_list_is_ground([Inst | Insts], ModuleInfo) :-
 	inst_is_ground(ModuleInfo, Inst),
 	inst_list_is_ground(Insts, ModuleInfo).
+
+inst_list_is_unique([], _).
+inst_list_is_unique([Inst | Insts], ModuleInfo) :-
+	inst_is_unique(ModuleInfo, Inst),
+	inst_list_is_unique(Insts, ModuleInfo).
+
+inst_list_is_shared([], _).
+inst_list_is_shared([Inst | Insts], ModuleInfo) :-
+	inst_is_shared(ModuleInfo, Inst),
+	inst_list_is_shared(Insts, ModuleInfo).
+
+%-----------------------------------------------------------------------------%
 
 :- pred inst_list_is_ground_2(list(inst), module_info, set(inst)).
 :- mode inst_list_is_ground_2(in, in, in) is semidet.
@@ -282,6 +428,24 @@ inst_list_is_ground_2([], _, _).
 inst_list_is_ground_2([Inst | Insts], ModuleInfo, Expansions) :-
 	inst_is_ground_2(ModuleInfo, Inst, Inst, Expansions),
 	inst_list_is_ground_2(Insts, ModuleInfo, Expansions).
+
+:- pred inst_list_is_unique_2(list(inst), module_info, set(inst)).
+:- mode inst_list_is_unique_2(in, in, in) is semidet.
+
+inst_list_is_unique_2([], _, _).
+inst_list_is_unique_2([Inst | Insts], ModuleInfo, Expansions) :-
+	inst_is_unique_2(ModuleInfo, Inst, Inst, Expansions),
+	inst_list_is_unique_2(Insts, ModuleInfo, Expansions).
+
+:- pred inst_list_is_shared_2(list(inst), module_info, set(inst)).
+:- mode inst_list_is_shared_2(in, in, in) is semidet.
+
+inst_list_is_shared_2([], _, _).
+inst_list_is_shared_2([Inst | Insts], ModuleInfo, Expansions) :-
+	inst_is_shared_2(ModuleInfo, Inst, Inst, Expansions),
+	inst_list_is_shared_2(Insts, ModuleInfo, Expansions).
+
+%-----------------------------------------------------------------------------%
 
 bound_inst_list_is_free([], _).
 bound_inst_list_is_free([functor(_Name, Args)|BoundInsts], ModuleInfo) :-
@@ -319,14 +483,24 @@ inst_lookup_2(merge_inst(A, B), ModuleInfo, Inst) :-
 	;
 		Inst = defined_inst(merge_inst(A, B))
 	).
-inst_lookup_2(ground_inst(A), ModuleInfo, Inst) :-
+inst_lookup_2(ground_inst(InstName, IsLive, Uniq), ModuleInfo, Inst) :-
 	module_info_insts(ModuleInfo, InstTable),
 	inst_table_get_ground_insts(InstTable, GroundInstTable),
-	map__lookup(GroundInstTable, A, MaybeInst),
+	map__lookup(GroundInstTable, ground_inst(InstName, IsLive, Uniq),
+		MaybeInst),
 	( MaybeInst = known(Inst0) ->
 		Inst = Inst0
 	;
-		Inst = defined_inst(ground_inst(A))
+		Inst = defined_inst(ground_inst(InstName, IsLive, Uniq))
+	).
+inst_lookup_2(shared_inst(InstName), ModuleInfo, Inst) :-
+	module_info_insts(ModuleInfo, InstTable),
+	inst_table_get_shared_insts(InstTable, SharedInstTable),
+	map__lookup(SharedInstTable, InstName, MaybeInst),
+	( MaybeInst = known(Inst0) ->
+		Inst = Inst0
+	;
+		Inst = defined_inst(shared_inst(InstName))
 	).
 inst_lookup_2(user_inst(Name, Args), ModuleInfo, Inst) :-
 	module_info_insts(ModuleInfo, InstTable),
@@ -338,8 +512,8 @@ inst_lookup_2(user_inst(Name, Args), ModuleInfo, Inst) :-
 	;
 		Inst = abstract_inst(Name, Args)
 	).
-inst_lookup_2(typed_ground(Type), ModuleInfo, Inst) :-
-	propagate_type_info_inst(Type, ModuleInfo, ground, Inst).
+inst_lookup_2(typed_ground(Uniq, Type), ModuleInfo, Inst) :-
+	propagate_type_info_inst(Type, ModuleInfo, ground(Uniq), Inst).
 inst_lookup_2(typed_inst(Type, InstName), ModuleInfo, Inst) :-
 	inst_lookup_2(InstName, ModuleInfo, Inst0),
 	propagate_type_info_inst(Type, ModuleInfo, Inst0, Inst).
@@ -426,7 +600,7 @@ propagate_ctor_info(free, _Type, _, _, free).	% XXX temporary hack
 
 propagate_ctor_info(free(_), _, _, _, _) :-
 	error("propagate_ctor_info: type info already present").
-propagate_ctor_info(bound(BoundInsts0), _Type, Constructors, ModuleInfo,
+propagate_ctor_info(bound(Uniq, BoundInsts0), _Type, Constructors, ModuleInfo,
 		Inst) :-
 	propagate_ctor_info_2(BoundInsts0, Constructors, ModuleInfo,
 		BoundInsts),
@@ -434,12 +608,13 @@ propagate_ctor_info(bound(BoundInsts0), _Type, Constructors, ModuleInfo,
 		Inst = not_reached
 	;
 		% XXX do we need to sort the BoundInsts?
-		Inst = bound(BoundInsts)
+		Inst = bound(Uniq, BoundInsts)
 	).
-propagate_ctor_info(ground, _Type, Constructors, ModuleInfo, Inst) :-
-	constructors_to_bound_insts(Constructors, ModuleInfo, BoundInsts0),
+propagate_ctor_info(ground(Uniq), _Type, Constructors, ModuleInfo, Inst) :-
+	constructors_to_bound_insts(Constructors, Uniq, ModuleInfo,
+		BoundInsts0),
 	list__sort(BoundInsts0, BoundInsts),
-	Inst = bound(BoundInsts).
+	Inst = bound(Uniq, BoundInsts).
 propagate_ctor_info(not_reached, _Type, _Constructors, _ModuleInfo,
 		not_reached).
 propagate_ctor_info(inst_var(_), _, _, _, _) :-
@@ -458,18 +633,18 @@ ex_propagate_ctor_info(free, _Type, _, _, free).	% XXX temporary hack
 
 ex_propagate_ctor_info(free(_), _, _, _, _) :-
 	error("ex_propagate_ctor_info: type info already present").
-ex_propagate_ctor_info(bound(BoundInsts0), _Type, Constructors, ModuleInfo,
-		Inst) :-
+ex_propagate_ctor_info(bound(Uniq, BoundInsts0), _Type, Constructors,
+		ModuleInfo, Inst) :-
 	propagate_ctor_info_2(BoundInsts0, Constructors, ModuleInfo,
 		BoundInsts),
 	( BoundInsts = [] ->
 		Inst = not_reached
 	;
 		% XXX do we need to sort the BoundInsts?
-		Inst = bound(BoundInsts)
+		Inst = bound(Uniq, BoundInsts)
 	).
-ex_propagate_ctor_info(ground, Type, _, _, Inst) :-
-	Inst = defined_inst(typed_ground(Type)).
+ex_propagate_ctor_info(ground(Uniq), Type, _, _, Inst) :-
+	Inst = defined_inst(typed_ground(Uniq, Type)).
 ex_propagate_ctor_info(not_reached, _Type, _Constructors, _ModuleInfo,
 		not_reached).
 ex_propagate_ctor_info(inst_var(_), _, _, _, _) :-
@@ -479,26 +654,26 @@ ex_propagate_ctor_info(abstract_inst(Name, Args), _, _, _,
 ex_propagate_ctor_info(defined_inst(InstName), Type, _, _,
 		defined_inst(typed_inst(Type, InstName))).
 
-:- pred constructors_to_bound_insts(list(constructor), module_info,
+:- pred constructors_to_bound_insts(list(constructor), uniqueness, module_info,
 				list(bound_inst)).
-:- mode constructors_to_bound_insts(in, in, out) is det.
+:- mode constructors_to_bound_insts(in, in, in, out) is det.
 
-constructors_to_bound_insts([], _, []).
-constructors_to_bound_insts([Ctor | Ctors], ModuleInfo,
+constructors_to_bound_insts([], _, _, []).
+constructors_to_bound_insts([Ctor | Ctors], Uniq, ModuleInfo,
 		[BoundInst | BoundInsts]) :-
 	Ctor = Name0 - Args,
-	type_list_to_inst_list(Args, Insts),
+	type_list_to_inst_list(Args, Uniq, Insts),
 	unqualify_name(Name0, Name),
 	BoundInst = functor(term__atom(Name), Insts),
-	constructors_to_bound_insts(Ctors, ModuleInfo, BoundInsts).
+	constructors_to_bound_insts(Ctors, Uniq, ModuleInfo, BoundInsts).
 
-:- pred type_list_to_inst_list(list(type), list(inst)).
-:- mode type_list_to_inst_list(in, out) is det.
+:- pred type_list_to_inst_list(list(type), uniqueness, list(inst)).
+:- mode type_list_to_inst_list(in, in, out) is det.
 
-type_list_to_inst_list([], []).
-type_list_to_inst_list([Type | Types], [Inst | Insts]) :-
-	Inst = defined_inst(typed_ground(Type)),
-	type_list_to_inst_list(Types, Insts).
+type_list_to_inst_list([], _, []).
+type_list_to_inst_list([Type | Types], Uniq, [Inst | Insts]) :-
+	Inst = defined_inst(typed_ground(Uniq, Type)),
+	type_list_to_inst_list(Types, Uniq, Insts).
 
 :- pred propagate_ctor_info_2(list(bound_inst), list(constructor),
 		module_info, list(bound_inst)).
@@ -599,8 +774,8 @@ inst_list_apply_substitution([A0 | As0], Subst, [A | As]) :-
 
 inst_apply_substitution(free, _, free).
 inst_apply_substitution(free(T), _, free(T)).
-inst_apply_substitution(ground, _, ground).
-inst_apply_substitution(bound(Alts0), Subst, bound(Alts)) :-
+inst_apply_substitution(ground(Uniq), _, ground(Uniq)).
+inst_apply_substitution(bound(Uniq, Alts0), Subst, bound(Uniq, Alts)) :-
 	alt_list_apply_substitution(Alts0, Subst, Alts).
 inst_apply_substitution(not_reached, _, not_reached).
 inst_apply_substitution(inst_var(Var), Subst, Result) :-
@@ -634,12 +809,16 @@ inst_name_apply_substitution(merge_inst(InstA0, InstB0), Subst,
 		merge_inst(InstA, InstB)) :-
 	inst_apply_substitution(InstA0, Subst, InstA),
 	inst_apply_substitution(InstB0, Subst, InstB).
-inst_name_apply_substitution(ground_inst(Inst0), Subst, ground_inst(Inst)) :-
+inst_name_apply_substitution(ground_inst(Inst0, IsLive, Uniq), Subst,
+				ground_inst(Inst, IsLive, Uniq)) :-
 	inst_name_apply_substitution(Inst0, Subst, Inst).
+inst_name_apply_substitution(shared_inst(InstName0), Subst,
+				shared_inst(InstName)) :-
+	inst_name_apply_substitution(InstName0, Subst, InstName).
 inst_name_apply_substitution(typed_inst(T, Inst0), Subst,
 		typed_inst(T, Inst)) :-
 	inst_name_apply_substitution(Inst0, Subst, Inst).
-inst_name_apply_substitution(typed_ground(T), _, typed_ground(T)).
+inst_name_apply_substitution(typed_ground(Uniq, T), _, typed_ground(Uniq, T)).
 
 :- pred alt_list_apply_substitution(list(bound_inst), inst_subst,
 				list(bound_inst)).

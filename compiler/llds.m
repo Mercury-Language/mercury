@@ -990,7 +990,7 @@ output_code_addr_decls(imported(ProcLabel), DeclSet, DeclSet) -->
 	io__write_string(");\n\t  ").
 
 :- pred maybe_output_update_prof_counter(label, io__state, io__state).
-:- mode maybe_output_update_prof_counter(in, in, out) is det.
+:- mode maybe_output_update_prof_counter(in, di, uo) is det.
 
 maybe_output_update_prof_counter(Label) -->
 	(

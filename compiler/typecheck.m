@@ -1400,7 +1400,7 @@ get_cons_stuff(ConsDefn, TypeAssign0, _TypeInfo, ConsType, ArgTypes,
 	ConsDefn = cons_type_info(ConsTypeVarSet, ConsType0, ArgTypes0),
 
 	% Rename apart the type vars in the type of the constructor
-	% and the types of it's arguments.
+	% and the types of its arguments.
 	% (Optimize the common case of a non-polymorphic type)
 
 	( ConsType0 = term__functor(_, [], _) ->
@@ -1587,14 +1587,17 @@ make_pred_cons_info(PredId, PredTable, FuncArity, ModuleInfo, L0, L) :-
 	% the io_state and the struct itself unique, but with
 	% multiple references allowed for the other parts.
 
+/*
 :- inst uniq_type_info	=	bound_unique(
 					type_info(
-						ground_unique, ground,
+						unique, ground,
 						ground, ground, ground, ground,
 						ground, ground, ground, ground,
 						ground, ground
 					)
 				).
+*/
+:- inst uniq_type_info	=	ground.
 
 :- mode type_info_uo :: (free -> uniq_type_info).
 :- mode type_info_ui :: (uniq_type_info -> uniq_type_info).
@@ -1603,6 +1606,7 @@ make_pred_cons_info(PredId, PredTable, FuncArity, ModuleInfo, L0, L) :-
 	% Some fiddly modes used when we want to extract
 	% the io_state from a type_info struct and then put it back again.
 
+/*
 :- inst type_info_no_io	=	bound_unique(
 					type_info(
 						dead, ground,
@@ -1611,6 +1615,8 @@ make_pred_cons_info(PredId, PredTable, FuncArity, ModuleInfo, L0, L) :-
 						ground, ground
 					)
 				).
+*/
+:- inst type_info_no_io	=	ground.
 
 :- mode type_info_get_io_state 	:: (uniq_type_info -> type_info_no_io).
 :- mode type_info_no_io 	:: (type_info_no_io -> type_info_no_io).
@@ -1622,13 +1628,14 @@ make_pred_cons_info(PredId, PredTable, FuncArity, ModuleInfo, L0, L) :-
 			varset, map(var, type), headtypes, type_info).
 :- mode type_info_init(di, in, in, in, in, in, in, type_info_uo) is det.
 
-type_info_init(IOState, ModuleInfo, PredId, TypeVarSet, VarSet,
+type_info_init(IOState0, ModuleInfo, PredId, TypeVarSet, VarSet,
 		VarTypes, HeadTypeParams, TypeInfo) :-
 	CallPredId = unqualified("") / 0,
 	term__context_init(Context),
 	map__init(TypeBindings),
 	FoundTypeError = no,
 	WarnedAboutOverloading = no,
+	copy(IOState0, IOState),	% XXX
 	TypeInfo = type_info(
 		IOState, ModuleInfo, CallPredId, 0, PredId, Context,
 		unify_context(explicit, []),
@@ -1641,15 +1648,17 @@ type_info_init(IOState, ModuleInfo, PredId, TypeVarSet, VarSet,
 :- pred type_info_get_io_state(type_info, io__state).
 :- mode type_info_get_io_state(type_info_get_io_state, uo) is det.
 
-type_info_get_io_state(type_info(IOState,_,_,_,_,_,_,_,_,_,_,_), IOState).
+type_info_get_io_state(type_info(IOState0,_,_,_,_,_,_,_,_,_,_,_), IOState) :-
+	copy(IOState0, IOState).	% XXX
 
 %-----------------------------------------------------------------------------%
 
 :- pred type_info_set_io_state(type_info, io__state, type_info).
 :- mode type_info_set_io_state(type_info_set_io_state, ui, type_info_uo) is det.
 
-type_info_set_io_state( type_info(_,B,C,D,E,F,G,H,I,J,K,L), IOState,
-			type_info(IOState,B,C,D,E,F,G,H,I,J,K,L)).
+type_info_set_io_state( type_info(_,B,C,D,E,F,G,H,I,J,K,L), IOState0,
+			type_info(IOState,B,C,D,E,F,G,H,I,J,K,L)) :-
+	copy(IOState0, IOState).	% XXX
 
 %-----------------------------------------------------------------------------%
 

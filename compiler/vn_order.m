@@ -90,7 +90,8 @@ vn__req_order(Ctrlmap, Flushmap, SeenIncr, VnTables,
 
 :- pred vn__req_order_2(int, ctrlmap, flushmap, bool, vn_tables,
 	relmap(vn_node), relmap(vn_node), relmap(vn_node), relmap(vn_node)).
-:- mode vn__req_order_2(in, in, in, in, in, di, uo, di, uo) is semidet.
+% :- mode vn__req_order_2(in, in, in, in, in, di, uo, di, uo) is semidet.
+:- mode vn__req_order_2(in, in, in, in, in, in, out, in, out) is semidet.
 
 vn__req_order_2(Ctrl, Ctrlmap, Flushmap, Heapop0, VnTables,
 		MustSuccmap0, MustSuccmap, MustPredmap0, MustPredmap) :-
@@ -128,7 +129,8 @@ vn__req_order_2(Ctrl, Ctrlmap, Flushmap, Heapop0, VnTables,
 
 :- pred vn__record_ctrl_deps(assoc_list(vnlval, vn), vn_node, vn_tables,
 	relmap(vn_node), relmap(vn_node), relmap(vn_node), relmap(vn_node)).
-:- mode vn__record_ctrl_deps(in, in, in, di, uo, di, uo) is semidet.
+% :- mode vn__record_ctrl_deps(in, in, in, di, uo, di, uo) is semidet.
+:- mode vn__record_ctrl_deps(in, in, in, in, out, in, out) is semidet.
 
 vn__record_ctrl_deps([], _Sink, _VnTables,
 		MustSuccmap, MustSuccmap, MustPredmap, MustPredmap).
@@ -149,7 +151,8 @@ vn__record_ctrl_deps([Vnlval - Vn | FlushList], Sink, VnTables,
 
 :- pred vn__prod_cons_order(list(vnlval), vn_tables, vn_tables,
 	relmap(vn_node), relmap(vn_node), relmap(vn_node), relmap(vn_node)).
-:- mode vn__prod_cons_order(in, di, uo, di, uo, di, uo) is det.
+% :- mode vn__prod_cons_order(in, di, uo, di, uo, di, uo) is det.
+:- mode vn__prod_cons_order(in, in, out, in, out, in, out) is det.
 
 vn__prod_cons_order([], VnTables, VnTables,
 		Succmap, Succmap, Predmap, Predmap).
@@ -181,9 +184,11 @@ vn__prod_cons_order([Vnlval | Vnlvals], VnTables0, VnTables,
 :- pred vn__ctrl_vn_order(int, flushmap,
 	relmap(vn_node), relmap(vn_node), relmap(vn_node), relmap(vn_node),
 	list(pair(vn_node)), io__state, io__state).
-:- mode vn__ctrl_vn_order(in, in, di, uo, di, uo, out, di, uo) is det.
+% :- mode vn__ctrl_vn_order(in, in, di, uo, di, uo, out, di, uo) is det.
+:- mode vn__ctrl_vn_order(in, in, in, out, in, out, out, di, uo) is det.
 
-vn__ctrl_vn_order(Ctrl, Flushmap, Succmap0, Succmap, Predmap0, Predmap, Links) -->
+vn__ctrl_vn_order(Ctrl, Flushmap, Succmap0, Succmap, Predmap0, Predmap, Links)
+		-->
 	{ map__keys(Succmap0, AllNodes) },
 	vn__ctrl_vn_order_2(Ctrl, Flushmap, AllNodes, [],
 		Succmap0, Succmap, Predmap0, Predmap, [], Links).
@@ -191,7 +196,9 @@ vn__ctrl_vn_order(Ctrl, Flushmap, Succmap0, Succmap, Predmap0, Predmap, Links) -
 :- pred vn__ctrl_vn_order_2(int, flushmap, list(vn_node), list(vn_node),
 	relmap(vn_node), relmap(vn_node), relmap(vn_node), relmap(vn_node),
 	list(pair(vn_node)), list(pair(vn_node)), io__state, io__state).
-:- mode vn__ctrl_vn_order_2(in, in, in, in, di, uo, di, uo, di, uo, di, uo)
+% :- mode vn__ctrl_vn_order_2(in, in, in, in, di, uo, di, uo, di, uo, di, uo)
+% 	is det.
+:- mode vn__ctrl_vn_order_2(in, in, in, in, in, out, in, out, in, out, di, uo)
 	is det.
 
 vn__ctrl_vn_order_2(Ctrl, Flushmap, AllNodes, Prednodes0,
@@ -213,7 +220,8 @@ vn__ctrl_vn_order_2(Ctrl, Flushmap, AllNodes, Prednodes0,
 	).
 
 :- pred vn__append_vnlval_nodes(list(vnlval), list(vn_node), list(vn_node)).
-:- mode vn__append_vnlval_nodes(in, di, uo) is det.
+% :- mode vn__append_vnlval_nodes(in, di, uo) is det.
+:- mode vn__append_vnlval_nodes(in, in, out) is det.
 
 vn__append_vnlval_nodes([], Prednodes, Prednodes).
 vn__append_vnlval_nodes([Vnlval | Vnlvals], Prednodes0, Prednodes) :-
@@ -223,7 +231,10 @@ vn__append_vnlval_nodes([Vnlval | Vnlvals], Prednodes0, Prednodes) :-
 :- pred vn__record_antideps(list(vn_node), list(vn_node), vn_node,
 	relmap(vn_node), relmap(vn_node), relmap(vn_node), relmap(vn_node),
 	list(pair(vn_node)), list(pair(vn_node)), io__state, io__state).
-:- mode vn__record_antideps(in, in, in, di, uo, di, uo, di, uo, di, uo) is det.
+% :- mode vn__record_antideps(in, in, in, di, uo, di, uo, di, uo, di, uo)
+%	is det.
+:- mode vn__record_antideps(in, in, in, in, out, in, out, in, out, di, uo)
+	is det.
 
 vn__record_antideps([], _, _, Succmap, Succmap, Predmap, Predmap, Links, Links)
 	--> [].
@@ -247,7 +258,8 @@ vn__record_antideps([Node | Nodes], Prednodes, CtrlNode,
 
 :- pred vn__add_computed_links(list(pair(vn_node)),
 	relmap(vn_node), relmap(vn_node), relmap(vn_node), relmap(vn_node)).
-:- mode vn__add_computed_links(in, di, uo, di, uo) is det.
+% :- mode vn__add_computed_links(in, di, uo, di, uo) is det.
+:- mode vn__add_computed_links(in, in, out, in, out) is det.
 
 vn__add_computed_links([], Succmap, Succmap, Predmap, Predmap).
 vn__add_computed_links([From - To | Links],
@@ -264,7 +276,8 @@ vn__add_computed_links([From - To | Links],
 
 :- pred vn__vn_ctrl_order(int, ctrlmap, vn_tables, vn_tables,
 	relmap(vn_node), relmap(vn_node), relmap(vn_node), relmap(vn_node)).
-:- mode vn__vn_ctrl_order(in, in, di, uo, di, uo, di, uo) is det.
+% :- mode vn__vn_ctrl_order(in, in, di, uo, di, uo, di, uo) is det.
+:- mode vn__vn_ctrl_order(in, in, in, out, in, out, in, out) is det.
 
 vn__vn_ctrl_order(Ctrl, Ctrlmap, VnTables0, VnTables,
 		Succmap0, Succmap, Predmap0, Predmap) :-
@@ -349,7 +362,8 @@ vn__vn_ctrl_order(Ctrl, Ctrlmap, VnTables0, VnTables,
 :- pred vn__use_before_redef(vn_tables, vnlvalset,
 	relmap(vn_node), relmap(vn_node), relmap(vn_node), relmap(vn_node),
 	io__state, io__state).
-:- mode vn__use_before_redef(in, in, di, uo, di, uo, di, uo) is det.
+% :- mode vn__use_before_redef(in, in, di, uo, di, uo, di, uo) is det.
+:- mode vn__use_before_redef(in, in, in, out, in, out, di, uo) is det.
 
 vn__use_before_redef(VnTables, Liveset,
 		Succmap0, Succmap, Predmap0, Predmap) -->
@@ -360,7 +374,8 @@ vn__use_before_redef(VnTables, Liveset,
 :- pred vn__use_sinks_before_redef(list(vn_node), vn_tables, vnlvalset,
 	relmap(vn_node), relmap(vn_node), relmap(vn_node), relmap(vn_node),
 	io__state, io__state).
-:- mode vn__use_sinks_before_redef(in, in, in, di, uo, di, uo, di, uo) is det.
+% :- mode vn__use_sinks_before_redef(in, in, in, di, uo, di, uo, di, uo) is det.
+:- mode vn__use_sinks_before_redef(in, in, in, in, out, in, out, di, uo) is det.
 
 vn__use_sinks_before_redef([], _, _, Succmap, Succmap, Predmap, Predmap) --> [].
 vn__use_sinks_before_redef([Sink | Sinks], VnTables, Liveset,
@@ -373,7 +388,8 @@ vn__use_sinks_before_redef([Sink | Sinks], VnTables, Liveset,
 :- pred vn__use_sink_before_redef(vn_node, vn_tables, vnlvalset,
 	relmap(vn_node), relmap(vn_node), relmap(vn_node), relmap(vn_node),
 	io__state, io__state).
-:- mode vn__use_sink_before_redef(in, in, in, di, uo, di, uo, di, uo) is det.
+% :- mode vn__use_sink_before_redef(in, in, in, di, uo, di, uo, di, uo) is det.
+:- mode vn__use_sink_before_redef(in, in, in, in, out, in, out, di, uo) is det.
 
 vn__use_sink_before_redef(Sink, VnTables, Liveset,
 		Succmap0, Succmap, Predmap0, Predmap) -->
@@ -451,7 +467,8 @@ vn__find_access_users([Src | Srcs], VnTables, Succmap, Users) :-
 :- pred vn__add_users(list(vn_node), vn_node, vn_tables, vnlvalset,
 	relmap(vn_node), relmap(vn_node), relmap(vn_node), relmap(vn_node),
 	io__state, io__state).
-:- mode vn__add_users(in, in, in, in, di, uo, di, uo, di, uo) is det.
+% :- mode vn__add_users(in, in, in, in, di, uo, di, uo, di, uo) is det.
+:- mode vn__add_users(in, in, in, in, in, out, in, out, di, uo) is det.
 
 vn__add_users([], _, _, _, Succmap, Succmap, Predmap, Predmap) --> [].
 vn__add_users([User | Users], Sink, VnTables, Liveset,
@@ -464,7 +481,8 @@ vn__add_users([User | Users], Sink, VnTables, Liveset,
 :- pred vn__add_user(vn_node, vn_node, vn_tables, vnlvalset,
 	relmap(vn_node), relmap(vn_node), relmap(vn_node), relmap(vn_node),
 	io__state, io__state).
-:- mode vn__add_user(in, in, in, in, di, uo, di, uo, di, uo) is det.
+% :- mode vn__add_user(in, in, in, in, di, uo, di, uo, di, uo) is det.
+:- mode vn__add_user(in, in, in, in, in, out, in, out, di, uo) is det.
 
 vn__add_user(User, Sink, VnTables, Liveset,
 		Succmap0, Succmap, Predmap0, Predmap) -->
@@ -484,7 +502,8 @@ vn__add_user(User, Sink, VnTables, Liveset,
 :- pred vn__add_aliases(assoc_list(vnlval, vn), vn, vn_node, vnlvalset,
 	relmap(vn_node), relmap(vn_node), relmap(vn_node), relmap(vn_node),
 	io__state, io__state).
-:- mode vn__add_aliases(in, in, in, in, di, uo, di, uo, di, uo) is det.
+% :- mode vn__add_aliases(in, in, in, in, di, uo, di, uo, di, uo) is det.
+:- mode vn__add_aliases(in, in, in, in, in, out, in, out, di, uo) is det.
 
 vn__add_aliases([], _, _, _, Succmap, Succmap, Predmap, Predmap) --> [].
 vn__add_aliases([Pair | Pairs], Vn, Sink, Liveset,
@@ -511,7 +530,8 @@ vn__add_aliases([Pair | Pairs], Vn, Sink, Liveset,
 
 :- pred vn__find_links(vn, vn_node, vn_tables, vn_tables,
 	relmap(vn_node), relmap(vn_node), relmap(vn_node), relmap(vn_node)).
-:- mode vn__find_links(in, in, di, uo, di, uo, di, uo) is det.
+% :- mode vn__find_links(in, in, di, uo, di, uo, di, uo) is det.
+:- mode vn__find_links(in, in, in, out, in, out, in, out) is det.
 
 vn__find_links(Vn, Sink, VnTables0, VnTables,
 		Succmap0, Succmap, Predmap0, Predmap) :-
@@ -563,7 +583,8 @@ vn__find_links(Vn, Sink, VnTables0, VnTables,
 
 :- pred vn__find_all_links(list(vn), vn_node, vn_tables, vn_tables,
 	relmap(vn_node), relmap(vn_node), relmap(vn_node), relmap(vn_node)).
-:- mode vn__find_all_links(in, in, di, uo, di, uo, di, uo) is det.
+% :- mode vn__find_all_links(in, in, di, uo, di, uo, di, uo) is det.
+:- mode vn__find_all_links(in, in, in, out, in, out, in, out) is det.
 
 vn__find_all_links([], _Sink, VnTables, VnTables,
 		Succmap, Succmap, Predmap, Predmap).
@@ -580,7 +601,8 @@ vn__find_all_links([Vn | Vns], Sink, VnTables0, VnTables,
 
 :- pred vn__add_links(list(vn_node), vn_node,
 	relmap(vn_node), relmap(vn_node), relmap(vn_node), relmap(vn_node)).
-:- mode vn__add_links(in, in, di, uo, di, uo) is det.
+% :- mode vn__add_links(in, in, di, uo, di, uo) is det.
+:- mode vn__add_links(in, in, in, out, in, out) is det.
 
 vn__add_links([], _, Succmap, Succmap, Predmap, Predmap).
 vn__add_links([Source | Sources], Sink, Succmap0, Succmap, Predmap0, Predmap) :-
@@ -589,7 +611,8 @@ vn__add_links([Source | Sources], Sink, Succmap0, Succmap, Predmap0, Predmap) :-
 
 :- pred vn__add_link(vn_node, vn_node,
 	relmap(vn_node), relmap(vn_node), relmap(vn_node), relmap(vn_node)).
-:- mode vn__add_link(in, in, di, uo, di, uo) is det.
+% :- mode vn__add_link(in, in, di, uo, di, uo) is det.
+:- mode vn__add_link(in, in, in, out, in, out) is det.
 
 vn__add_link(Source, Sink, Succmap0, Succmap, Predmap0, Predmap) :-
 	( Source = Sink ->
@@ -621,7 +644,8 @@ vn__add_link(Source, Sink, Succmap0, Succmap, Predmap0, Predmap) :-
 	).
 
 :- pred vn__insert_if_not_there(vn_node, list(vn_node), list(vn_node)).
-:- mode vn__insert_if_not_there(in, di, uo) is det.
+% :- mode vn__insert_if_not_there(in, di, uo) is det.
+:- mode vn__insert_if_not_there(in, in, out) is det.
 
 vn__insert_if_not_there(Node, Nodes0, Nodes) :-
 	( list__member(Node, Nodes0) ->
@@ -634,7 +658,8 @@ vn__insert_if_not_there(Node, Nodes0, Nodes) :-
 
 :- pred vn__add_node(vn_node,
 	relmap(vn_node), relmap(vn_node), relmap(vn_node), relmap(vn_node)).
-:- mode vn__add_node(in, di, uo, di, uo) is det.
+% :- mode vn__add_node(in, di, uo, di, uo) is det.
+:- mode vn__add_node(in, in, out, in, out) is det.
 
 vn__add_node(Node, Succmap0, Succmap, Predmap0, Predmap) :-
 	( map__search(Succmap0, Node, _) ->
@@ -661,7 +686,8 @@ vn__pref_order(Map, Order) :-
 
 :- pred vn__classify_nodes(list(vn_node), list(vn_node), list(vn_node),
 	list(vn_node), list(vn_node)).
-:- mode vn__classify_nodes(di, uo, uo, uo, uo) is det.
+% :- mode vn__classify_nodes(di, uo, uo, uo, uo) is det.
+:- mode vn__classify_nodes(in, out, out, out, out) is det.
 
 vn__classify_nodes([], [], [], [], []).
 vn__classify_nodes([Node | Nodes], Origlvals, Ctrls, Shareds, Lvals) :-
@@ -699,7 +725,8 @@ vn__classify_nodes([Node | Nodes], Origlvals, Ctrls, Shareds, Lvals) :-
 
 :- pred vn__blocks_to_order(list(list(vn_node)), int, vn_tables, list(vn_node),
 	io__state, io__state).
-:- mode vn__blocks_to_order(di, in, in, uo, di, uo) is det.
+% :- mode vn__blocks_to_order(di, in, in, uo, di, uo) is det.
+:- mode vn__blocks_to_order(in, in, in, out, di, uo) is det.
 
 vn__blocks_to_order(BlockOrder, N, VnTables, Order, IOstate0, IOstate) :-
 	vn__order_equal_lists(BlockOrder, VnTables, GoodBlockOrder,
@@ -716,7 +743,8 @@ vn__blocks_to_order(BlockOrder, N, VnTables, Order, IOstate0, IOstate) :-
 	list__append(Order1, Ctrl, Order).
 
 :- pred vn__find_last_ctrl(list(vn_node), int, list(vn_node), list(vn_node)).
-:- mode vn__find_last_ctrl(di, in, out, uo) is det.
+% :- mode vn__find_last_ctrl(di, in, out, uo) is det.
+:- mode vn__find_last_ctrl(in, in, out, out) is det.
 
 vn__find_last_ctrl([], _, [], []).
 vn__find_last_ctrl([Node0 | Nodes0], N, Ctrl, Nodes) :-
@@ -731,7 +759,8 @@ vn__find_last_ctrl([Node0 | Nodes0], N, Ctrl, Nodes) :-
 
 :- pred vn__order_equal_lists(list(list(vn_node)), vn_tables,
 	list(list(vn_node)), io__state, io__state).
-:- mode vn__order_equal_lists(di, in, uo, di, uo) is det.
+% :- mode vn__order_equal_lists(di, in, uo, di, uo) is det.
+:- mode vn__order_equal_lists(in, in, out, di, uo) is det.
 
 vn__order_equal_lists([], _, []) --> [].
 vn__order_equal_lists([Block | Blocks], VnTables, [GoodBlock | GoodBlocks]) -->
@@ -740,7 +769,8 @@ vn__order_equal_lists([Block | Blocks], VnTables, [GoodBlock | GoodBlocks]) -->
 
 :- pred vn__order_equals(list(vn_node), vn_tables, list(vn_node),
 	io__state, io__state).
-:- mode vn__order_equals(di, in, uo, di, uo) is det.
+% :- mode vn__order_equals(di, in, uo, di, uo) is det.
+:- mode vn__order_equals(in, in, out, di, uo) is det.
 
 vn__order_equals(Order0, VnTables, Order) -->
 	vn__order_equals_msg("\nold order: ", Order0),
@@ -754,7 +784,8 @@ vn__order_equals(Order0, VnTables, Order) -->
 	vn__order_equals_msg("new order: ", Order).
 
 :- pred vn__find_ctrls(list(vn_node), list(vn_node), list(vn_node)).
-:- mode vn__find_ctrls(di, out, uo) is det.
+% :- mode vn__find_ctrls(di, out, uo) is det.
+:- mode vn__find_ctrls(in, out, out) is det.
 
 vn__find_ctrls([], [], []).
 vn__find_ctrls([Node0 | Nodes0], Ctrls, Nodes) :-
@@ -768,7 +799,8 @@ vn__find_ctrls([Node0 | Nodes0], Ctrls, Nodes) :-
 	).
 
 :- pred vn__find_noops(list(vn_node), vn_tables, list(vn_node), list(vn_node)).
-:- mode vn__find_noops(di, in, out, uo) is det.
+% :- mode vn__find_noops(di, in, out, uo) is det.
+:- mode vn__find_noops(in, in, out, out) is det.
 
 vn__find_noops([], _, [], []).
 vn__find_noops([Node0 | Nodes0], VnTables, Noops, Nodes) :-
@@ -786,7 +818,8 @@ vn__find_noops([Node0 | Nodes0], VnTables, Noops, Nodes) :-
 	).
 
 :- pred vn__find_regs(list(vn_node), set(vn_node), list(vn_node)).
-:- mode vn__find_regs(di, out, uo) is det.
+% :- mode vn__find_regs(di, out, uo) is det.
+:- mode vn__find_regs(in, out, out) is det.
 
 vn__find_regs([], Regs, []) :-
 	set__init(Regs).
@@ -801,7 +834,8 @@ vn__find_regs([Node0 | Nodes0], Regs, Nodes) :-
 	).
 
 :- pred vn__find_stackvars(list(vn_node), set(vn_node), list(vn_node)).
-:- mode vn__find_stackvars(di, out, uo) is det.
+% :- mode vn__find_stackvars(di, out, uo) is det.
+:- mode vn__find_stackvars(in, out, out) is det.
 
 vn__find_stackvars([], Stackvars, []) :-
 	set__init(Stackvars).
@@ -827,7 +861,8 @@ vn__find_stackvars([Node0 | Nodes0], Stackvars, Nodes) :-
 	% for the shortest possible time.
 
 :- pred vn__reorder_noops(list(vn_node), vn_tables, list(vn_node)).
-:- mode vn__reorder_noops(di, in, uo) is det.
+% :- mode vn__reorder_noops(di, in, uo) is det.
+:- mode vn__reorder_noops(in, in, out) is det.
 
 vn__reorder_noops(Order0, VnTables, Order) :-
 	vn__reorder_noops_2(Order0, VnTables, Noops, Ops),
@@ -835,7 +870,8 @@ vn__reorder_noops(Order0, VnTables, Order) :-
 
 :- pred vn__reorder_noops_2(list(vn_node), vn_tables,
 	list(vn_node), list(vn_node)).
-:- mode vn__reorder_noops_2(di, in, uo, uo) is det.
+% :- mode vn__reorder_noops_2(di, in, uo, uo) is det.
+:- mode vn__reorder_noops_2(in, in, out, out) is det.
 
 vn__reorder_noops_2([], _, [], []).
 vn__reorder_noops_2([Node | Nodes], VnTables, Noops, Ops) :-

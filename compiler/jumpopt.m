@@ -58,8 +58,10 @@ jumpopt__main(Instrs0, Blockopt, Final, Instrs, Mod) :-
 :- pred jumpopt__build_maps(list(instruction), bool, bool, instrmap, instrmap,
 	tailmap, tailmap, lvalmap, lvalmap,
 	tailmap, tailmap, tailmap, tailmap, tailmap, tailmap).
-:- mode jumpopt__build_maps(in, in, in, di, uo, di, uo, di, uo, di, uo, di, uo,
-	di, uo) is det.
+% :- mode jumpopt__build_maps(in, in, in, di, uo, di, uo, di, uo, di, uo,
+%	di, uo, di, uo) is det.
+:- mode jumpopt__build_maps(in, in, in, in, out, in, out, in, out, in, out,
+	in, out, in, out) is det.
 
 jumpopt__build_maps([], _, _,
 		Instrmap, Instrmap, Blockmap, Blockmap, Lvalmap, Lvalmap,
@@ -270,7 +272,8 @@ jumpopt__instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
 	).
 
 :- pred jumpopt__adjust_livevals(instr, list(instruction), list(instruction)).
-:- mode jumpopt__adjust_livevals(in, di, uo) is det.
+% :- mode jumpopt__adjust_livevals(in, di, uo) is det.
+:- mode jumpopt__adjust_livevals(in, in, out) is det.
 
 jumpopt__adjust_livevals(PrevInstr, Instrs0, Instrs) :-
 	(

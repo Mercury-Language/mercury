@@ -198,9 +198,9 @@
 
 :- type (inst)		--->	free
 			;	free(type)
-			;	bound(list(bound_inst))
-					% The list must be sorted
-			;	ground
+			;	bound(uniqueness, list(bound_inst))
+					% The list(bound_inst) must be sorted
+			;	ground(uniqueness)
 			;	not_reached
 			;	inst_var(var)
 			;	defined_inst(inst_name)
@@ -209,13 +209,20 @@
 				% defined (yet).
 			;	abstract_inst(sym_name, list(inst)).
 
+:- type uniqueness
+	--->		shared		% there might be other references
+	;		unique		% there is only one reference
+	;		clobbered.	% this was the only reference, but
+					% the data has already been reused
+
 :- type bound_inst	--->	functor(const, list(inst)).
 
 :- type inst_name	--->	user_inst(sym_name, list(inst))
 			;	merge_inst(inst, inst)
 			;	unify_inst(is_live, inst, inst)
-			;	ground_inst(inst_name)
-			;	typed_ground(type)
+			;	ground_inst(inst_name, is_live, uniqueness)
+			;	shared_inst(inst_name)
+			;	typed_ground(uniqueness, type)
 			;	typed_inst(type, inst_name).
 
 :- type is_live		--->	live ; dead.
@@ -1958,19 +1965,29 @@ convert_inst(term__functor(Name, Args0, Context), Result) :-
 	( Name = term__atom("free"), Args0 = [] ->
 		Result = free
 	; Name = term__atom("ground"), Args0 = [] ->
-		Result = ground
+		Result = ground(shared)
+	; Name = term__atom("unique"), Args0 = [] ->
+		Result = ground(unique)
+	; Name = term__atom("clobbered"), Args0 = [] ->
+		Result = ground(clobbered)
 	; Name = term__atom("not_reached"), Args0 = [] ->
 		Result = not_reached
-	;
-		(   Name = term__atom(Bound),
-		    ( Bound = "bound" ; Bound = "bound_unique" ),
-		    Args0 = [Disj]
-		)
-	->
+	; Name = term__atom("bound"), Args0 = [Disj] ->
 		disjunction_to_list(Disj, List),
 		convert_bound_inst_list(List, Functors0),
 		list__sort(Functors0, Functors),
-		Result = bound(Functors)
+		Result = bound(shared, Functors)
+/* backwards compatibility */
+	; Name = term__atom("bound_unique"), Args0 = [Disj] ->
+		disjunction_to_list(Disj, List),
+		convert_bound_inst_list(List, Functors0),
+		list__sort(Functors0, Functors),
+		Result = bound(unique, Functors)
+	; Name = term__atom("unique"), Args0 = [Disj] ->
+		disjunction_to_list(Disj, List),
+		convert_bound_inst_list(List, Functors0),
+		list__sort(Functors0, Functors),
+		Result = bound(unique, Functors)
 	;
 		parse_qualified_term(term__functor(Name, Args0, Context),
 			"", ok(QualifiedName, Args1)),

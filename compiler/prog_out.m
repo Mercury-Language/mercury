@@ -30,7 +30,7 @@
 :- mode prog_out__write_sym_name(in, di, uo) is det.
 
 :- pred prog_out__write_module_spec(module_specifier, io__state, io__state).
-:- mode prog_out__write_module_spec(in, in, out) is det.
+:- mode prog_out__write_module_spec(in, di, uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

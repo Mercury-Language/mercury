@@ -60,7 +60,8 @@ labelopt__build_usemap([Instr | Instructions], Usemap0, Usemap) :-
 labelopt__code_addr_list_build_usemap([], Usemap, Usemap).
 labelopt__code_addr_list_build_usemap([Code_addr | Rest], Usemap0, Usemap) :-
 	( Code_addr = label(Label) ->
-		bintree_set__insert(Usemap0, Label, Usemap1)
+		copy(Label, Label1),
+		bintree_set__insert(Usemap0, Label1, Usemap1)
 	;
 		Usemap1 = Usemap0
 	),
@@ -71,7 +72,8 @@ labelopt__code_addr_list_build_usemap([Code_addr | Rest], Usemap0, Usemap) :-
 
 labelopt__label_list_build_usemap([], Usemap, Usemap).
 labelopt__label_list_build_usemap([Label | Labels], Usemap0, Usemap) :-
-	bintree_set__insert(Usemap0, Label, Usemap1),
+	copy(Label, Label1),
+	bintree_set__insert(Usemap0, Label1, Usemap1),
 	labelopt__label_list_build_usemap(Labels, Usemap1, Usemap).
 
 %-----------------------------------------------------------------------------%

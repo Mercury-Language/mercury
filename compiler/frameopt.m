@@ -455,7 +455,8 @@ frameopt__setup_if(Rval, Target, Instrs0, FrameSize, Livemap,
 
 :- pred frameopt__delay_slot(list(instruction), rval, label, livemap,
 	instruction, list(instruction)).
-:- mode frameopt__delay_slot(di, in, in, in, uo, uo) is semidet.
+% :- mode frameopt__delay_slot(di, in, in, in, uo, uo) is semidet.
+:- mode frameopt__delay_slot(in, in, in, in, out, out) is semidet.
 
 frameopt__delay_slot(Instrs0, Cond, Label, Livemap, DelaySlot, Instrs) :-
 	opt_util__skip_comments(Instrs0, Instrs1),
@@ -537,7 +538,8 @@ frameopt__targeting_labels(Labels, Setup, Set0, Set1) :-
 	).
 
 :- pred frameopt__setup_liveval_use(label, livemap, set(label), set(label)).
-:- mode frameopt__setup_liveval_use(in, in, di, uo) is det.
+% :- mode frameopt__setup_liveval_use(in, in, di, uo) is det.
+:- mode frameopt__setup_liveval_use(in, in, in, out) is det.
 
 frameopt__setup_liveval_use(Label, Livemap, Set0, Set) :-
 	(
@@ -587,7 +589,9 @@ frameopt__dup_teardown_labels([Instr0 | Instrs0], FrameSize,
 :- pred frameopt__doit(list(instruction), int, bool, bool, bool,
 	set(label), set(label), livemap, map(label, label),
 	insertmap, insertmap, proc_label, int, int, list(instruction)).
-:- mode frameopt__doit(in, in, in, in, in, in, in, in, in, di, uo,
+% :- mode frameopt__doit(in, in, in, in, in, in, in, in, in, di, uo,
+% 	in, in, out, out) is det.
+:- mode frameopt__doit(in, in, in, in, in, in, in, in, in, in, out,
 	in, in, out, out) is det.
 
 frameopt__doit([], _, _, _, _, _, _, _, _, InsertMap, InsertMap, _, N, N, []).
@@ -797,8 +801,10 @@ frameopt__doit([Instr0 | Instrs0], FrameSize, First, SetupFrame0, SetupSuccip0,
 :- pred frameopt__generate_if(rval, code_addr, string, list(instruction), int,
 	bool, bool, bool, set(label), set(label), livemap, map(label, label),
 	insertmap, insertmap, proc_label, int, int, list(instruction)).
+% :- mode frameopt__generate_if(in, in, in, in, in, in, in, in, in, in, in, in,
+% 	di, uo, in, in, out, out) is det.
 :- mode frameopt__generate_if(in, in, in, in, in, in, in, in, in, in, in, in,
-	di, uo, in, in, out, out) is det.
+	in, out, in, in, out, out) is det.
 
 frameopt__generate_if(Rval, CodeAddr, Comment, Instrs0, FrameSize,
 		First, SetupFrame0, SetupSuccip0, FrameSet, SuccipSet,
@@ -1184,7 +1190,8 @@ frameopt__detstack_teardown_2(Instrs0, FrameSize,
 
 :- pred frameopt__insert_late_setups(list(instruction), insertmap, instr,
 	list(instruction)).
-:- mode frameopt__insert_late_setups(di, in, in, uo) is det.
+% :- mode frameopt__insert_late_setups(di, in, in, uo) is det.
+:- mode frameopt__insert_late_setups(in, in, in, out) is det.
 
 frameopt__insert_late_setups([], _, _, []).
 frameopt__insert_late_setups([Instr0 | Instrs0], InsertMap, Prev, Instrs) :-

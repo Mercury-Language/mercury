@@ -67,7 +67,7 @@
 	% print out an entire hlds structure.
 
 :- pred hlds_out__write_hlds(int, module_info, io__state, io__state).
-:- mode hlds_out__write_hlds(in, in, in, out) is det.
+:- mode hlds_out__write_hlds(in, in, di, uo) is det.
 
 	% print out an hlds goal.
 
@@ -223,7 +223,7 @@ hlds_out__write_hlds(Indent, Module) -->
 	hlds_out__write_footer(Indent, Module).
 
 :- pred hlds_out__write_header(int, module_info, io__state, io__state).
-:- mode hlds_out__write_header(in, in, in, out) is det.
+:- mode hlds_out__write_header(in, in, di, uo) is det.
 
 hlds_out__write_header(Indent, Module) -->
 	{ module_info_name(Module, Name) },
@@ -254,7 +254,7 @@ hlds_out__write_preds(Indent, ModuleInfo, PredTable) -->
 
 :- pred hlds_out__write_preds_2(int, module_info, list(pred_id), pred_table,
 			io__state, io__state).
-:- mode hlds_out__write_preds_2(in, in, in, in, in, out) is det.
+:- mode hlds_out__write_preds_2(in, in, in, in, di, uo) is det.
 
 hlds_out__write_preds_2(Indent, ModuleInfo, PredIds0, PredTable) --> 
 	(
@@ -276,7 +276,7 @@ hlds_out__write_preds_2(Indent, ModuleInfo, PredIds0, PredTable) -->
 
 :- pred hlds_out__write_pred(int, module_info, pred_id, pred_info,
 				io__state, io__state).
-:- mode hlds_out__write_pred(in, in, in, in, in, out) is det.
+:- mode hlds_out__write_pred(in, in, in, in, di, uo) is det.
 
 hlds_out__write_pred(Indent, ModuleInfo, PredId, PredInfo) -->
 	{ pred_info_arg_types(PredInfo, TVarSet, ArgTypes) },
@@ -357,7 +357,7 @@ hlds_out__write_clause(Indent, ModuleInfo, PredId, VarSet, HeadVars, Clause) -->
 	io__write_string(".\n").
 
 :- pred hlds_out__write_intlist(list(int), io__state, io__state).
-:- mode hlds_out__write_intlist(in, in, out) is det.
+:- mode hlds_out__write_intlist(in, di, uo) is det.
 
 hlds_out__write_intlist(IntList) -->
 	(
@@ -371,7 +371,7 @@ hlds_out__write_intlist(IntList) -->
 	).
 
 :- pred hlds_out__write_intlist_2(list(int), io__state, io__state).
-:- mode hlds_out__write_intlist_2(in, in, out) is det.
+:- mode hlds_out__write_intlist_2(in, di, uo) is det.
 
 hlds_out__write_intlist_2(Ns0) -->
 	(
@@ -692,7 +692,7 @@ hlds_out__write_cases(CasesList, Var, ModuleInfo, VarSet, Indent) -->
 hlds_out__write_some(_Vars, _VarSet) --> [].
 
 :- pred hlds_out__write_builtin(is_builtin, io__state, io__state).
-:- mode hlds_out__write_builtin(in, in, out) is det.
+:- mode hlds_out__write_builtin(in, di, uo) is det.
 
 hlds_out__write_builtin(Builtin) -->
 	(
@@ -783,28 +783,28 @@ hlds_out__write_call_info_2([Var - Slot | Vars], Indent, VarSet) -->
 	hlds_out__write_call_info_2(Vars, Indent, VarSet).
 	
 :- pred hlds_out__write_types(int, type_table, io__state, io__state).
-:- mode hlds_out__write_types(in, in, in, out) is det.
+:- mode hlds_out__write_types(in, in, di, uo) is det.
 
 hlds_out__write_types(Indent, _X) -->
 	hlds_out__write_indent(Indent),
 	io__write_string("% types (sorry, output of types not implemented)\n").
 
 :- pred hlds_out__write_insts(int, inst_table, io__state, io__state).
-:- mode hlds_out__write_insts(in, in, in, out) is det.
+:- mode hlds_out__write_insts(in, in, di, uo) is det.
 
 hlds_out__write_insts(Indent, _X) -->
 	hlds_out__write_indent(Indent),
 	io__write_string("% insts (sorry, output of insts not implemented)\n").
 
 :- pred hlds_out__write_modes(int, mode_table, io__state, io__state).
-:- mode hlds_out__write_modes(in, in, in, out) is det.
+:- mode hlds_out__write_modes(in, in, di, uo) is det.
 
 hlds_out__write_modes(Indent, _X) -->
 	hlds_out__write_indent(Indent),
 	io__write_string("% modes (sorry, output of modes not implemented)\n").
 
 :- pred hlds_out__write_mode_list(int, list(mode), io__state, io__state).
-:- mode hlds_out__write_mode_list(in, in, in, out) is det.
+:- mode hlds_out__write_mode_list(in, in, di, uo) is det.
 
 hlds_out__write_mode_list(Indent, _X) -->
 	hlds_out__write_indent(Indent),
@@ -889,7 +889,7 @@ hlds_out__write_anything(Indent, X) -->
 	io__write_string("\n").
 
 :- pred hlds_out__write_varnames(int, map(var, string), io__state, io__state).
-:- mode hlds_out__write_varnames(in, in, in, out) is det.
+:- mode hlds_out__write_varnames(in, in, di, uo) is det.
 
 hlds_out__write_varnames(Indent, VarNames) -->
 	{ map__to_assoc_list(VarNames, VarNameList) },
@@ -909,7 +909,7 @@ hlds_out__write_varnames(Indent, VarNames) -->
 
 :- pred hlds_out__write_varnames_2(int, list(pair(var, string)),
 							io__state, io__state).
-:- mode hlds_out__write_varnames_2(in, in, in, out) is det.
+:- mode hlds_out__write_varnames_2(in, in, di, uo) is det.
 
 hlds_out__write_varnames_2(Indent, VarNameList0) -->
 	(

@@ -70,6 +70,10 @@ an error due to the binding of a non-local variable, then scheduling
 fails.  If mode-checking would report an error due to the binding of
 a local variable, then report the error [this idea not yet implemented].
 
+Note that the notion of liveness used here is different to that
+used in liveness.m and the code generator.  Here, we consider
+a variable live if its value will be used later on in the computation.
+
 ******************************************/
 
 %-----------------------------------------------------------------------------%
@@ -84,7 +88,8 @@ a local variable, then report the error [this idea not yet implemented].
 
 :- pred modecheck_pred_mode(pred_id, pred_info, module_info, module_info,
 	int, io__state, io__state).
-:- mode modecheck_pred_mode(in, in, di, uo, out, di, uo) is det.
+% :- mode modecheck_pred_mode(in, in, di, uo, out, di, uo) is det.
+:- mode modecheck_pred_mode(in, in, in, out, out, di, uo) is det.
 
 :- pred modecheck_proc(proc_id, pred_id, module_info, module_info, int,
 			io__state, io__state).
@@ -260,29 +265,44 @@ modecheck_proc_2(ProcId, PredId, ModuleInfo0, ProcInfo0,
 	mode_list_get_initial_insts(ArgModes, ModuleInfo0, ArgInitialInsts),
 	map__from_corresponding_lists(HeadVars, ArgInitialInsts, InstMapping0),
 	InstMap0 = reachable(InstMapping0),
-		% initially, only the head variables are live
-	set__list_to_set(HeadVars, LiveVars),
-	proc_info_set_liveness_info(ProcInfo0, LiveVars, ProcInfo1),
+		% initially, only the non-clobbered head variables are live
+	mode_list_get_final_insts(ArgModes, ModuleInfo0, ArgFinalInsts),
+	get_live_vars(HeadVars, ArgFinalInsts, ModuleInfo0, LiveVarsList),
+	set__list_to_set(LiveVarsList, LiveVars),
 	mode_info_init(IOState0, ModuleInfo0, PredId, ProcId, Context, LiveVars,
 			InstMap0, ModeInfo0),
 	modecheck_goal(Body0, Body, ModeInfo0, ModeInfo1),
-	modecheck_final_insts(HeadVars, ArgModes, ModeInfo1, ModeInfo2),
+	modecheck_final_insts(HeadVars, ArgFinalInsts, ModeInfo1, ModeInfo2),
 	modecheck_report_errors(ModeInfo2, ModeInfo),
 	mode_info_get_module_info(ModeInfo, ModuleInfo),
 	mode_info_get_num_errors(ModeInfo, NumErrors),
 	mode_info_get_io_state(ModeInfo, IOState),
 	mode_info_get_varset(ModeInfo, VarSet),
 	mode_info_get_var_types(ModeInfo, VarTypes),
-	proc_info_set_goal(ProcInfo1, Body, ProcInfo2),
-	proc_info_set_variables(ProcInfo2, VarSet, ProcInfo3),
-	proc_info_set_vartypes(ProcInfo3, VarTypes, ProcInfo).
+	proc_info_set_goal(ProcInfo0, Body, ProcInfo1),
+	proc_info_set_variables(ProcInfo1, VarSet, ProcInfo2),
+	proc_info_set_vartypes(ProcInfo2, VarTypes, ProcInfo).
 
-:- pred modecheck_final_insts(list(var), list(mode), mode_info, mode_info).
+:- pred get_live_vars(list(var), list(inst), module_info, list(var)).
+:- mode get_live_vars(in, in, in, out) is det.
+
+get_live_vars([], [], _, []).
+get_live_vars([Var|Vars], [FinalInst|FinalInsts], ModuleInfo, LiveVars) :-
+	( inst_is_clobbered(ModuleInfo, FinalInst) ->
+		LiveVars = LiveVars0
+	;
+		LiveVars = [Var | LiveVars0]
+	),
+	get_live_vars(Vars, FinalInsts, ModuleInfo, LiveVars0).
+
+get_live_vars([_|_], [], _, _) :- error("get_live_vars: length mismatch").
+get_live_vars([], [_|_], _, _) :- error("get_live_vars: length mismatch").
+
+:- pred modecheck_final_insts(list(var), list(inst), mode_info, mode_info).
 :- mode modecheck_final_insts(in, in, mode_info_di, mode_info_uo) is det.
 
-modecheck_final_insts(HeadVars, ArgModes, ModeInfo0, ModeInfo) :-
+modecheck_final_insts(HeadVars, ArgFinalInsts, ModeInfo0, ModeInfo) :-
 	mode_info_get_module_info(ModeInfo0, ModuleInfo),
-	mode_list_get_final_insts(ArgModes, ModuleInfo, ArgFinalInsts),
 	mode_info_get_instmap(ModeInfo0, InstMap),
 	check_final_insts(HeadVars, ArgFinalInsts, 1, InstMap,
 		ModuleInfo, ModeInfo0, ModeInfo).
@@ -362,13 +382,6 @@ modecheck_goal(Goal0 - GoalInfo0, Goal - GoalInfo, ModeInfo0, ModeInfo) :-
 	mode_info_get_vars_instmap(ModeInfo, NonLocals, InstMap),
 	compute_instmap_delta(InstMap0, InstMap, NonLocals, DeltaInstMap),
 	goal_info_set_instmap_delta(GoalInfo0, DeltaInstMap, GoalInfo).
-
-:- pred compute_liveness_delta(set(var), set(var), delta_liveness).
-:- mode compute_liveness_delta(in, in, out) is det.
-
-compute_liveness_delta(Liveness0, Liveness, Births - Deaths) :-
-	set__difference(Liveness0, Liveness, Deaths),
-	set__difference(Liveness, Liveness0, Births).
 
 :- pred modecheck_goal_2(hlds__goal_expr, set(var), hlds__goal_expr,
 			mode_info, mode_info).
@@ -638,6 +651,16 @@ mode_info_add_goals_live_vars([Goal | Goals]) -->
 	mode_info_add_live_vars(Vars),
 	mode_info_add_goals_live_vars(Goals).
 
+:- pred mode_info_remove_goals_live_vars(list(hlds__goal), mode_info,
+					mode_info).
+:- mode mode_info_remove_goals_live_vars(in, mode_info_di, mode_info_uo) is det.
+
+mode_info_remove_goals_live_vars([]) --> [].
+mode_info_remove_goals_live_vars([Goal | Goals]) -->
+	{ goal_get_nonlocals(Goal, Vars) },
+	mode_info_remove_live_vars(Vars),
+	mode_info_remove_goals_live_vars(Goals).
+
 :- pred modecheck_conj_list_2(list(hlds__goal), list(hlds__goal),
 				mode_info, mode_info).
 :- mode modecheck_conj_list_2(in, out, mode_info_di, mode_info_uo) is det.
@@ -697,6 +720,7 @@ modecheck_conj_list_2([Goal0 | Goals0], Goals) -->
 	),
 	mode_info_dcg_get_instmap(InstMap),
 	( { InstMap = unreachable } ->
+		mode_info_remove_goals_live_vars(Goals1),
 		{ Goals2  = [] }
 	;
 		modecheck_conj_list_2(Goals1, Goals2)
@@ -755,7 +779,8 @@ modecheck_case_list([Case0 | Cases0], Var,
 		% instmap before processing this case
 	( { cons_id_to_const(ConsId, Const, Arity) } ->
 		{ list__duplicate(Arity, free, ArgInsts) },
-		modecheck_set_var_inst(Var, bound([functor(Const, ArgInsts)]))
+		modecheck_set_var_inst(Var,
+			bound(unique, [functor(Const, ArgInsts)]))
 	;
 		% cons_id_to_const will fail for pred_consts and
 		% address_consts; we don't worry about them.
@@ -1090,6 +1115,8 @@ modecheck_set_var_inst_list_2([Var0 | Vars0], [InitialInst | InitialInsts],
 :- mode modecheck_set_var_inst(in, in, in, out, out,
 				mode_info_di, mode_info_uo) is det.
 
+% XXX this might need to be revisited to handle unique modes
+
 modecheck_set_var_inst(Var0, InitialInst, FinalInst, Var, Goals,
 			ModeInfo0, ModeInfo) :-
 	mode_info_get_instmap(ModeInfo0, InstMap0),
@@ -1128,6 +1155,8 @@ modecheck_set_var_inst(Var0, InitialInst, FinalInst, Var, Goals,
 :- pred modecheck_set_var_inst(var, inst, mode_info, mode_info).
 :- mode modecheck_set_var_inst(in, in, mode_info_di, mode_info_uo) is det.
 
+% XXX this might need to be revisited to handle unique modes
+
 modecheck_set_var_inst(Var0, FinalInst, ModeInfo0, ModeInfo) :-
 	mode_info_get_instmap(ModeInfo0, InstMap0),
 	( InstMap0 = reachable(InstMapping0) ->
@@ -1158,6 +1187,7 @@ modecheck_set_var_inst(Var0, FinalInst, ModeInfo0, ModeInfo) :-
 			% or bound part of the var.  The call to
 			% inst_matches_final will fail iff we have
 			% bound part of a var.
+			% XXX bug - what if we just lost some uniqueness?
 			inst_matches_final(Inst, Inst0, ModuleInfo)
 		->
 			% We've just added some information
@@ -1352,18 +1382,39 @@ inst_merge_2(InstA, InstB, ModuleInfo0, Inst, ModuleInfo) :-
 :- inst_merge_3(A, B, _, _, _) when A and B.
 
 inst_merge_3(free, free, M, free, M).
-inst_merge_3(bound(ListA), bound(ListB), ModuleInfo0, bound(List), ModuleInfo)
-		:-
+inst_merge_3(bound(UniqA, ListA), bound(UniqB, ListB), ModuleInfo0,
+		bound(Uniq, List), ModuleInfo) :-
+	merge_uniq(UniqA, UniqB, Uniq),
 	bound_inst_list_merge(ListA, ListB, ModuleInfo0, List, ModuleInfo).
-inst_merge_3(bound(ListA), ground, ModuleInfo, ground, ModuleInfo) :-
+inst_merge_3(bound(UniqA, ListA), ground(UniqB), ModuleInfo,
+		ground(Uniq), ModuleInfo) :-
+	merge_uniq(UniqA, UniqB, Uniq),
 	bound_inst_list_is_ground(ListA, ModuleInfo).
-inst_merge_3(ground, bound(ListB), ModuleInfo, ground, ModuleInfo) :-
+inst_merge_3(ground(UniqA), bound(UniqB, ListB), ModuleInfo,
+		ground(Uniq), ModuleInfo) :-
+	merge_uniq(UniqA, UniqB, Uniq),
 	bound_inst_list_is_ground(ListB, ModuleInfo).
-inst_merge_3(ground, ground, M, ground, M).
+inst_merge_3(ground(UniqA), ground(UniqB), M, ground(Uniq), M) :-
+	merge_uniq(UniqA, UniqB, Uniq).
 inst_merge_3(abstract_inst(Name, ArgsA), abstract_inst(Name, ArgsB),
 		ModuleInfo0, abstract_inst(Name, Args), ModuleInfo) :-
 	inst_list_merge(ArgsA, ArgsB, ModuleInfo0, Args, ModuleInfo).
 inst_merge_3(not_reached, Inst, M, Inst, M).
+
+:- pred merge_uniq(uniqueness, uniqueness, uniqueness).
+:- mode merge_uniq(in, in, out) is det.
+
+	% if var was clobbered on either branch, the result is clobbered
+	% otherwise if var was shared on either branch, the result is shared
+	% otherwise var was unique on both branches and the result is unique
+
+merge_uniq(shared, shared, shared).
+merge_uniq(shared, unique, shared).
+merge_uniq(shared, clobbered, clobbered).
+merge_uniq(unique, shared, shared).
+merge_uniq(unique, unique, unique).
+merge_uniq(unique, clobbered, clobbered).
+merge_uniq(clobbered, _, clobbered).
 
 :- pred inst_list_merge(list(inst), list(inst), module_info, list(inst),
 			module_info).
@@ -1568,7 +1619,7 @@ modecheck_unification(X, functor(Name, ArgVars0), Unification0,
 	instmap_lookup_arg_list(ArgVars0, InstMap0, InstArgs),
 	mode_info_var_is_live(ModeInfo0, X, LiveX),
 	mode_info_var_list_is_live(ArgVars0, ModeInfo0, LiveArgs),
-	InstY = bound([functor(Name, InstArgs)]),
+	InstY = bound(unique, [functor(Name, InstArgs)]),
 	(
 		% The occur check: X = f(X) is considered a mode error
 		% unless X is ground.  (Actually it wouldn't be that
@@ -1807,9 +1858,9 @@ split_complicated_subunifies_2([Var0 | Vars0], [UniMode0 | UniModes0],
 		% until the code below marked "Loses information" get fixed.
 bind_args(not_reached, _) -->
 	mode_info_set_instmap(unreachable).
-bind_args(ground, Args) -->
-	ground_args(Args).
-bind_args(bound(List), Args) -->
+bind_args(ground(Uniq), Args) -->
+	ground_args(Uniq, Args).
+bind_args(bound(_Uniq, List), Args) -->
 	( { List = [] } ->
 		% the code is unreachable
 		mode_info_set_instmap(unreachable)
@@ -1826,13 +1877,13 @@ bind_args_2([Arg | Args], [Inst | Insts]) -->
 	modecheck_set_var_inst(Arg, Inst),
 	bind_args_2(Args, Insts).
 
-:- pred ground_args(list(var), mode_info, mode_info).
-:- mode ground_args(in, mode_info_di, mode_info_uo) is det.
+:- pred ground_args(uniqueness, list(var), mode_info, mode_info).
+:- mode ground_args(in, in, mode_info_di, mode_info_uo) is det.
 
-ground_args([]) --> [].
-ground_args([Arg | Args]) -->
-	modecheck_set_var_inst(Arg, ground),
-	ground_args(Args).
+ground_args(_Uniq, []) --> [].
+ground_args(Uniq, [Arg | Args]) -->
+	modecheck_set_var_inst(Arg, ground(Uniq)),
+	ground_args(Uniq, Args).
 
 %-----------------------------------------------------------------------------%
 
@@ -1841,9 +1892,9 @@ ground_args([Arg | Args]) -->
 
 get_mode_of_args(not_reached, ArgInsts, ArgModes) :-
 	mode_set_args(ArgInsts, not_reached, ArgModes).
-get_mode_of_args(ground, ArgInsts, ArgModes) :-
-	mode_set_args(ArgInsts, ground, ArgModes).
-get_mode_of_args(bound(List), ArgInstsA, ArgModes) :-
+get_mode_of_args(ground(Uniq), ArgInsts, ArgModes) :-
+	mode_set_args(ArgInsts, ground(Uniq), ArgModes).
+get_mode_of_args(bound(_Uniq, List), ArgInstsA, ArgModes) :-
 	( List = [] ->
 		% the code is unreachable
 		mode_set_args(ArgInstsA, not_reached, ArgModes)
@@ -1935,17 +1986,6 @@ abstractly_unify_inst_2(IsLive, InstA, InstB, ModuleInfo0, Inst, Det,
 		Inst = InstA,
 		Det = det,
 		ModuleInfo = ModuleInfo0
-/****************
-		% does this test improve efficiency??
-	; InstA = InstB ->
-		( IsLive = dead ->
-			true
-		;
-			inst_is_ground(ModuleInfo0, InstA)
-		),
-		Inst = InstA,
-		ModuleInfo = ModuleInfo0
-****************/
 	;
 		abstractly_unify_inst_3(IsLive, InstA, InstB, ModuleInfo0,
 			Inst, Det, ModuleInfo)
@@ -1953,6 +1993,8 @@ abstractly_unify_inst_2(IsLive, InstA, InstB, ModuleInfo0, Inst, Det,
 
 	% Abstractly unify two expanded insts.
 	% The is_live parameter is `live' iff *both* insts are live.
+	% Given the two insts to be unified, this produces
+	% a resulting inst and a determinism for the unification.
 
 :- pred abstractly_unify_inst_3(is_live, inst, inst, module_info,
 				inst, determinism, module_info).
@@ -1962,62 +2004,101 @@ abstractly_unify_inst_2(IsLive, InstA, InstB, ModuleInfo0, Inst, Det,
 
 abstractly_unify_inst_3(live, not_reached, _,		M, not_reached, det, M).
 
-abstractly_unify_inst_3(live, free,	free,		_, _, _, _) :- fail.
-abstractly_unify_inst_3(live, free,	bound(List),	M, bound(List), det,
-		M) :-
-	bound_inst_list_is_ground(List, M).
-abstractly_unify_inst_3(live, free,	ground,		M, ground, det, M).
-abstractly_unify_inst_3(live, free,	abstract_inst(_,_), _, _, _, _) :- fail.
-	
-abstractly_unify_inst_3(live, bound(List), free,	M, bound(List), det,
-		M) :-
-	bound_inst_list_is_ground(List, M).
-abstractly_unify_inst_3(live, bound(ListX), bound(ListY), M0, bound(List), Det,
-		M) :-
-	abstractly_unify_bound_inst_list(live, ListX, ListY, M0, List, Det, M).
-abstractly_unify_inst_3(live, bound(BoundInsts0),	ground,	M0,
-		bound(BoundInsts), semidet, M) :-
-	make_ground_bound_inst_list(BoundInsts0, M0, BoundInsts, M).
-abstractly_unify_inst_3(live, bound(List), abstract_inst(_,_), ModuleInfo,
-						ground, semidet, ModuleInfo) :-
-	bound_inst_list_is_ground(List, ModuleInfo).
+% abstractly_unify_inst_3(live, free,	free,		_, _, _, _) :- fail.
 
-abstractly_unify_inst_3(live, ground,	Inst0,		M0, Inst, Det, M) :-
+abstractly_unify_inst_3(live, free,	bound(UniqY, List0),	M0,
+					bound(Uniq, List), det, M) :-
+	unify_uniq(live, unique, UniqY, Uniq),
+	bound_inst_list_is_ground(List0, M),
+	( Uniq = unique ->
+		make_shared_bound_inst_list(List0, M0, List, M)
+	;
+		List = List0, M = M0
+	).
+
+abstractly_unify_inst_3(live, free,	ground(UniqY),	M,
+					ground(Uniq), det, M) :-
+	unify_uniq(live, unique, UniqY, Uniq).
+
+% abstractly_unify_inst_3(live, free,	abstract_inst(_,_), _, _, _, _) :- fail.
+	
+abstractly_unify_inst_3(live,		bound(UniqY, List0), free,	M0,
+					bound(Uniq, List), det,	 M) :-
+	unify_uniq(live, unique, UniqY, Uniq),
+	bound_inst_list_is_ground(List0, M0),
+	make_shared_bound_inst_list(List0, M0, List, M).
+
+abstractly_unify_inst_3(live, bound(UniqX, ListX), bound(UniqY, ListY), M0,
+				bound(Uniq, List), Det, M) :-
+	unify_uniq(live, UniqX, UniqY, Uniq),
+	abstractly_unify_bound_inst_list(live, ListX, ListY, M0, List, Det, M).
+
+abstractly_unify_inst_3(live, bound(UniqX, BoundInsts0), ground(UniqY),	M0,
+		bound(Uniq, BoundInsts), semidet, M) :-
+	unify_uniq(live, UniqX, UniqY, Uniq),
+	make_ground_bound_inst_list(BoundInsts0, live, UniqY, M0,
+			BoundInsts, M).
+
+/*** abstract insts not supported
+abstractly_unify_inst_3(live, bound(Uniq, List), abstract_inst(_,_), M,
+					ground(shared), semidet, M) :-
+	unify_uniq(live, unique, UniqY, Uniq),
+	bound_inst_list_is_ground(List, M).
+***/
+
+abstractly_unify_inst_3(live, ground(Uniq), Inst0, M0,
+				Inst, Det, M) :-
 	( inst_is_free(M0, Inst0) ->
 		Det = det
 	;
 		Det = semidet
 	),
-	make_ground_inst(Inst0, M0, Inst, M).
+	make_ground_inst(Inst0, live, Uniq, M0, Inst, M).
 
-abstractly_unify_inst_3(live, abstract_inst(_,_), free,	_, _, _, _) :- fail.
-abstractly_unify_inst_3(live, abstract_inst(_,_), bound(List), ModuleInfo,
-				ground, semidet, ModuleInfo) :-
+% abstractly_unify_inst_3(live, abstract_inst(_,_), free,	_, _, _, _)
+%	:- fail.
+
+/*** abstract insts not supported
+abstractly_unify_inst_3(live, abstract_inst(_,_), bound(Uniq, List), ModuleInfo,
+				ground(shared), semidet, ModuleInfo) :-
+	check_not_clobbered(Uniq),
 	bound_inst_list_is_ground(List, ModuleInfo).
-abstractly_unify_inst_3(live, abstract_inst(_,_), ground, M, ground, semidet,
-				M).
+
+abstractly_unify_inst_3(live, abstract_inst(_,_), ground(Uniq), M,
+				ground(shared), semidet, M) :-
+	check_not_clobbered(Uniq).
+
 abstractly_unify_inst_3(live, abstract_inst(Name, ArgsA),
 			abstract_inst(Name, ArgsB), ModuleInfo0,
 			abstract_inst(Name, Args), Det, ModuleInfo) :-
 	abstractly_unify_inst_list(ArgsA, ArgsB, live, ModuleInfo0,
 		Args, Det, ModuleInfo).
+***/
 
 abstractly_unify_inst_3(dead, not_reached, _, M, not_reached, det, M).
 
 abstractly_unify_inst_3(dead, free, Inst, M, Inst, det, M).
 	
-abstractly_unify_inst_3(dead, bound(List), free, M, bound(List), det, M).
+abstractly_unify_inst_3(dead, bound(UniqX, List), free, ModuleInfo,
+				bound(Uniq, List), det, ModuleInfo) :-
+	unify_uniq(dead, UniqX, unique, Uniq).
 
-abstractly_unify_inst_3(dead, bound(ListX), bound(ListY), M0, bound(List), Det,
-		M) :-
+abstractly_unify_inst_3(dead, bound(UniqX, ListX), bound(UniqY, ListY), M0,
+			bound(Uniq, List), Det, M) :-
+	unify_uniq(dead, UniqX, UniqY, Uniq),
 	abstractly_unify_bound_inst_list(dead, ListX, ListY, M0, List, Det, M).
-abstractly_unify_inst_3(dead, bound(BoundInsts0), ground, M0,
-			bound(BoundInsts), semidet, M) :-
-	make_ground_bound_inst_list(BoundInsts0, M0, BoundInsts, M).
-abstractly_unify_inst_3(dead, bound(List), abstract_inst(N,As), ModuleInfo,
-					Result, Det, ModuleInfo) :-
+
+abstractly_unify_inst_3(dead, bound(UniqX, BoundInsts0), ground(UniqY), M0,
+			bound(Uniq, BoundInsts), semidet, M) :-
+	unify_uniq(dead, UniqX, UniqY, Uniq),
+	make_ground_bound_inst_list(BoundInsts0, dead, UniqY, M0,
+					BoundInsts, M).
+
+/***** abstract insts aren't really supported
+abstractly_unify_inst_3(dead, bound(Uniq, List), abstract_inst(N,As),
+			ModuleInfo, Result, Det, ModuleInfo) :-
 	( bound_inst_list_is_ground(List, ModuleInfo) ->
-		Result = bound(List),
+		Result = bound(Uniq, List),
 		Det = semidet
 	; bound_inst_list_is_free(List, ModuleInfo) ->
 		Result = abstract_inst(N,As),
@@ -2025,15 +2106,17 @@ abstractly_unify_inst_3(dead, bound(List), abstract_inst(N,As), ModuleInfo,
 	;
 		fail
 	).
+*****/
 
-abstractly_unify_inst_3(dead, ground,		Inst0,	M0, Inst, Det, M) :-
+abstractly_unify_inst_3(dead, ground(Uniq),	Inst0,	M0, Inst, Det, M) :-
 	( inst_is_free(M0, Inst0) ->
 		Det = det
 	;
 		Det = semidet
 	),
-	make_ground_inst(Inst0, M0, Inst, M).
+	make_ground_inst(Inst0, dead, Uniq, M0, Inst, M).
 
+/***** abstract insts aren't really supported
 abstractly_unify_inst_3(dead, abstract_inst(N,As), bound(List), ModuleInfo, 
 						Result, Det, ModuleInfo) :-
 	( bound_inst_list_is_ground(List, ModuleInfo) ->
@@ -2045,13 +2128,45 @@ abstractly_unify_inst_3(dead, abstract_inst(N,As), bound(List), ModuleInfo,
 	;
 		fail
 	).
+
 abstractly_unify_inst_3(dead, abstract_inst(_,_), ground, ModuleInfo,
 		ground, semidet, ModuleInfo).
+
 abstractly_unify_inst_3(dead, abstract_inst(Name, ArgsA),
 			abstract_inst(Name, ArgsB), ModuleInfo0,
 			abstract_inst(Name, Args), Det, ModuleInfo) :-
 	abstractly_unify_inst_list(ArgsA, ArgsB, dead, ModuleInfo0,
 			Args, Det, ModuleInfo).
+
+*****/
+
+%-----------------------------------------------------------------------------%
+
+:- pred unify_uniq(is_live, uniqueness, uniqueness, uniqueness).
+:- mode unify_uniq(in, in, in, out) is det.
+
+unify_uniq(_, shared, shared, shared).
+unify_uniq(_, shared, unique, shared).
+unify_uniq(live, shared, clobbered, _) :- error("unify_uniq: clobbered").
+unify_uniq(dead, shared, clobbered, clobbered). % XXX needed for proc call
+unify_uniq(_, unique, shared, shared).
+unify_uniq(live, unique, unique, shared).
+unify_uniq(dead, unique, unique, unique).
+unify_uniq(live, unique, clobbered, _) :- error("unify_uniq: clobbered").
+unify_uniq(dead, unique, clobbered, clobbered). % XXX needed for proc call
+unify_uniq(live, clobbered, _, _) :- error("unify_uniq: clobbered").
+unify_uniq(dead, clobbered, _, clobbered). % XXX needed for proc call
+
+:- pred check_not_clobbered(uniqueness).
+:- mode check_not_clobbered(in) is det.
+
+	% sanity check
+check_not_clobbered(Uniq) :-
+	( Uniq = clobbered ->
+		error("abstractly_unify_inst_3: clobbered inst")
+	;
+		true
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -2096,74 +2211,100 @@ abstractly_unify_inst_functor(Live, InstA, Name, ArgInsts, ArgLives,
 	is semidet.
 
 abstractly_unify_inst_functor_2(live, not_reached, _, _, _, M, not_reached, M).
-abstractly_unify_inst_functor_2(live, free, Name, Args, ArgLives, ModuleInfo,
-			bound([functor(Name, Args)]), ModuleInfo) :-
-	inst_list_is_ground_or_dead(Args, ArgLives, ModuleInfo).
-abstractly_unify_inst_functor_2(live, bound(ListX), Name, Args, ArgLives, M0,
-		bound(List), M) :-
+
+abstractly_unify_inst_functor_2(live, free, Name, Args0, ArgLives, ModuleInfo0,
+			bound(unique, [functor(Name, Args)]), ModuleInfo) :-
+	inst_list_is_ground_or_dead(Args0, ArgLives, ModuleInfo0),
+	maybe_make_shared_inst_list(Args0, ArgLives, ModuleInfo0,
+			Args, ModuleInfo).
+
+abstractly_unify_inst_functor_2(live, bound(Uniq, ListX), Name, Args,
+				ArgLives, M0, bound(Uniq, List), M) :-
 	abstractly_unify_bound_inst_list_lives(ListX, Name, Args, ArgLives,
 						M0, List, M).
-abstractly_unify_inst_functor_2(live, ground, Name, ArgInsts, _ArgLives, M0,
-		Inst, M) :-
-	make_ground_inst_list(ArgInsts, M0, GroundArgInsts, M), 
-	Inst = bound([functor(Name, GroundArgInsts)]).
-abstractly_unify_inst_functor_2(live, abstract_inst(_,_), _, _, _, _, _, _) :-
-	fail.
+
+abstractly_unify_inst_functor_2(live, ground(Uniq), Name, ArgInsts, _ArgLives,
+		M0, Inst, M) :-
+	make_ground_inst_list(ArgInsts, live, Uniq, M0, GroundArgInsts, M), 
+	Inst = bound(Uniq, [functor(Name, GroundArgInsts)]).
+
+% abstractly_unify_inst_functor_2(live, abstract_inst(_,_), _, _, _, _, _, _) :-
+% 	fail.
 
 abstractly_unify_inst_functor_2(dead, not_reached, _, _, _, M, not_reached, M).
+
 abstractly_unify_inst_functor_2(dead, free, Name, Args, _ArgLives, M,
-			bound([functor(Name, Args)]), M).
-abstractly_unify_inst_functor_2(dead, bound(ListX), Name, Args, _ArgLives, M0,
-		bound(List), M) :-
+			bound(unique, [functor(Name, Args)]), M).
+
+abstractly_unify_inst_functor_2(dead, bound(Uniq, ListX), Name, Args,
+			_ArgLives, M0, bound(Uniq, List), M) :-
 	ListY = [functor(Name, Args)],
 	abstractly_unify_bound_inst_list(dead, ListX, ListY, M0, List, _, M). 
-abstractly_unify_inst_functor_2(dead, ground, Name, ArgInsts, _ArgLives, M0,
-		Inst, M) :-
-	make_ground_inst_list(ArgInsts, M0, GroundArgInsts, M),
-	Inst = bound([functor(Name, GroundArgInsts)]).
-abstractly_unify_inst_functor_2(dead, abstract_inst(_,_), _, _, _, _, _, _) :-
-	fail.
 
-:- pred make_ground_inst_list(list(inst), module_info, list(inst), module_info).
-:- mode make_ground_inst_list(in, in, out, out) is det.
+abstractly_unify_inst_functor_2(dead, ground(Uniq), Name, ArgInsts, _ArgLives,
+		M0, Inst, M) :-
+	make_ground_inst_list(ArgInsts, dead, Uniq, M0, GroundArgInsts, M),
+	Inst = bound(Uniq, [functor(Name, GroundArgInsts)]).
 
-make_ground_inst_list([], ModuleInfo, [], ModuleInfo).
-make_ground_inst_list([Inst0 | Insts0], ModuleInfo0,
+% abstractly_unify_inst_functor_2(dead, abstract_inst(_,_), _, _, _, _, _, _) :-
+% 	fail.
+
+%-----------------------------------------------------------------------------%
+
+:- pred make_ground_inst_list(list(inst), is_live, uniqueness, module_info,
+				list(inst), module_info).
+:- mode make_ground_inst_list(in, in, in, in, out, out) is det.
+
+make_ground_inst_list([], _, _, ModuleInfo, [], ModuleInfo).
+make_ground_inst_list([Inst0 | Insts0], Live, Uniq, ModuleInfo0,
 		[Inst | Insts], ModuleInfo) :-
-	make_ground_inst(Inst0, ModuleInfo0, Inst, ModuleInfo1),
-	make_ground_inst_list(Insts0, ModuleInfo1, Insts, ModuleInfo).
+	make_ground_inst(Inst0, Live, Uniq, ModuleInfo0, Inst, ModuleInfo1),
+	make_ground_inst_list(Insts0, Live, Uniq, ModuleInfo1, Insts,
+		ModuleInfo).
 
-% abstractly unify and inst with `ground' and calculate the new inst
+% abstractly unify an inst with `ground' and calculate the new inst
 % and the determinism of the unification.
 
-:- pred make_ground_inst(inst, module_info, inst, module_info).
-:- mode make_ground_inst(in, in, out, out) is det.
+:- pred make_ground_inst(inst, is_live, uniqueness, module_info,
+				inst, module_info).
+:- mode make_ground_inst(in, in, in, in, out, out) is det.
 
-make_ground_inst(not_reached, M, not_reached, M).
-make_ground_inst(free, M, ground, M).
-make_ground_inst(free(T), M, defined_inst(typed_ground(T)), M).
-make_ground_inst(bound(BoundInsts0), M0, bound(BoundInsts), M) :-
-	make_ground_bound_inst_list(BoundInsts0, M0, BoundInsts, M).
-make_ground_inst(ground, M, ground, M).
-make_ground_inst(inst_var(_), _, _, _) :-
+make_ground_inst(not_reached, _, _, M, not_reached, M).
+make_ground_inst(free, IsLive, Uniq0, M, ground(Uniq), M) :-
+	unify_uniq(IsLive, unique, Uniq0, Uniq).
+make_ground_inst(free(T), IsLive, Uniq0, M,
+		defined_inst(typed_ground(Uniq, T)), M) :-
+	unify_uniq(IsLive, unique, Uniq0, Uniq).
+make_ground_inst(bound(Uniq0, BoundInsts0), IsLive, Uniq1, M0,
+		bound(Uniq, BoundInsts), M) :-
+	unify_uniq(IsLive, Uniq0, Uniq1, Uniq),
+	make_ground_bound_inst_list(BoundInsts0, IsLive, Uniq1, M0,
+					BoundInsts, M).
+make_ground_inst(ground(Uniq0), IsLive, Uniq1, M, ground(Uniq), M) :-
+	unify_uniq(IsLive, Uniq0, Uniq1, Uniq).
+make_ground_inst(inst_var(_), _, _, _, _, _) :-
 	error("free inst var").
-make_ground_inst(abstract_inst(_,_), M, ground, M).
-make_ground_inst(defined_inst(InstName), ModuleInfo0, Inst, ModuleInfo) :-
+make_ground_inst(abstract_inst(_,_), _, _, M, ground(shared), M).
+make_ground_inst(defined_inst(InstName), IsLive, Uniq, ModuleInfo0,
+			Inst, ModuleInfo) :-
 		% check whether the inst name is already in the
 		% ground_inst table
 	module_info_insts(ModuleInfo0, InstTable0),
 	inst_table_get_ground_insts(InstTable0, GroundInsts0),
-	( map__search(GroundInsts0, InstName, Result) ->
+	GroundInstKey = ground_inst(InstName, IsLive, Uniq),
+	(
+		map__search(GroundInsts0, GroundInstKey, Result)
+	->
 		( Result = known(GroundInst) ->
 			Inst = GroundInst
 		;
-			Inst = defined_inst(ground_inst(InstName))
+			Inst = defined_inst(GroundInstKey)
 		),
 		ModuleInfo = ModuleInfo0
 	;
 		% insert the inst name in the ground_inst table, with
 		% value `unknown' for the moment
-		map__set(GroundInsts0, InstName, unknown, GroundInsts1),
+		map__set(GroundInsts0, GroundInstKey, unknown, GroundInsts1),
 		inst_table_set_ground_insts(InstTable0, GroundInsts1,
 			InstTable1),
 		module_info_set_insts(ModuleInfo0, InstTable1, ModuleInfo1),
@@ -2172,30 +2313,145 @@ make_ground_inst(defined_inst(InstName), ModuleInfo0, Inst, ModuleInfo) :-
 		% it's expansion
 		inst_lookup(ModuleInfo1, InstName, Inst0),
 		inst_expand(ModuleInfo1, Inst0, Inst1),
-		make_ground_inst(Inst1, ModuleInfo1, Inst, ModuleInfo2),
+		make_ground_inst(Inst1, IsLive, Uniq, ModuleInfo1,
+				Inst, ModuleInfo2),
 
 		% now that we have determined the resulting Inst, store
 		% the appropriate value `known(Inst)' in the ground_inst
 		% table
 		module_info_insts(ModuleInfo2, InstTable2),
 		inst_table_get_ground_insts(InstTable2, GroundInsts2),
-		map__set(GroundInsts2, InstName, known(Inst), GroundInsts),
+		map__set(GroundInsts2, GroundInstKey, known(Inst), GroundInsts),
 		inst_table_set_ground_insts(InstTable2, GroundInsts,
 			InstTable),
 		module_info_set_insts(ModuleInfo2, InstTable, ModuleInfo)
 	).
 
-:- pred make_ground_bound_inst_list(list(bound_inst), module_info,
-					list(bound_inst), module_info).
-:- mode make_ground_bound_inst_list(in, in, out, out) is det.
+:- pred make_ground_bound_inst_list(list(bound_inst), is_live, uniqueness,
+				module_info, list(bound_inst), module_info).
+:- mode make_ground_bound_inst_list(in, in, in, in, out, out) is det.
 
-make_ground_bound_inst_list([], ModuleInfo, [], ModuleInfo).
-make_ground_bound_inst_list([Bound0 | Bounds0], ModuleInfo0,
+make_ground_bound_inst_list([], _, _, ModuleInfo, [], ModuleInfo).
+make_ground_bound_inst_list([Bound0 | Bounds0], IsLive, Uniq, ModuleInfo0,
 			[Bound | Bounds], ModuleInfo) :-
 	Bound0 = functor(Name, ArgInsts0),
-	make_ground_inst_list(ArgInsts0, ModuleInfo0, ArgInsts, ModuleInfo1),
+	make_ground_inst_list(ArgInsts0, IsLive, Uniq, ModuleInfo0,
+				ArgInsts, ModuleInfo1),
 	Bound = functor(Name, ArgInsts),
-	make_ground_bound_inst_list(Bounds0, ModuleInfo1, Bounds, ModuleInfo).
+	make_ground_bound_inst_list(Bounds0, IsLive, Uniq, ModuleInfo1,
+				Bounds, ModuleInfo).
+
+%-----------------------------------------------------------------------------%
+
+:- pred maybe_make_shared_inst_list(list(inst), list(is_live), module_info,
+				list(inst), module_info).
+:- mode maybe_make_shared_inst_list(in, in, in, out, out) is det.
+
+maybe_make_shared_inst_list([], [], ModuleInfo, [], ModuleInfo).
+maybe_make_shared_inst_list([Inst0 | Insts0], [IsLive | IsLives], ModuleInfo0,
+		[Inst | Insts], ModuleInfo) :-
+	( IsLive = live ->
+		make_shared_inst(Inst0, ModuleInfo0, Inst, ModuleInfo1)
+	;	
+		Inst = Inst0,
+		ModuleInfo1 = ModuleInfo0
+	),
+	maybe_make_shared_inst_list(Insts0, IsLives, ModuleInfo1,
+		Insts, ModuleInfo).
+maybe_make_shared_inst_list([], [_|_], _, _, _) :-
+	error("maybe_make_shared_inst_list: length mismatch").
+maybe_make_shared_inst_list([_|_], [], _, _, _) :-
+	error("maybe_make_shared_inst_list: length mismatch").
+
+:- pred make_shared_inst_list(list(inst), module_info,
+				list(inst), module_info).
+:- mode make_shared_inst_list(in, in, out, out) is det.
+
+make_shared_inst_list([], ModuleInfo, [], ModuleInfo).
+make_shared_inst_list([Inst0 | Insts0], ModuleInfo0,
+		[Inst | Insts], ModuleInfo) :-
+	make_shared_inst(Inst0, ModuleInfo0, Inst, ModuleInfo1),
+	make_shared_inst_list(Insts0, ModuleInfo1, Insts, ModuleInfo).
+
+% make an inst shared; replace all occurrences of `unique' in the
+% inst with `shared'.
+
+:- pred make_shared_inst(inst, module_info, inst, module_info).
+:- mode make_shared_inst(in, in, out, out) is det.
+
+make_shared_inst(not_reached, M, not_reached, M).
+make_shared_inst(free, M, free, M).
+make_shared_inst(free(T), M, free(T), M).
+make_shared_inst(bound(Uniq0, BoundInsts0), M0, bound(Uniq, BoundInsts), M) :-
+	make_shared(Uniq0, Uniq),
+	make_shared_bound_inst_list(BoundInsts0, M0, BoundInsts, M).
+make_shared_inst(ground(Uniq0), M, ground(Uniq), M) :-
+	make_shared(Uniq0, Uniq).
+make_shared_inst(inst_var(_), _, _, _) :-
+	error("free inst var").
+make_shared_inst(abstract_inst(_,_), M, _, M) :-
+	error("make_shared_inst(abstract_inst)").
+make_shared_inst(defined_inst(InstName), ModuleInfo0, Inst, ModuleInfo) :-
+		% check whether the inst name is already in the
+		% shared_inst table
+	module_info_insts(ModuleInfo0, InstTable0),
+	inst_table_get_shared_insts(InstTable0, SharedInsts0),
+	(
+		map__search(SharedInsts0, InstName, Result)
+	->
+		( Result = known(SharedInst) ->
+			Inst = SharedInst
+		;
+			Inst = defined_inst(InstName)
+		),
+		ModuleInfo = ModuleInfo0
+	;
+		% insert the inst name in the shared_inst table, with
+		% value `unknown' for the moment
+		map__set(SharedInsts0, InstName, unknown, SharedInsts1),
+		inst_table_set_shared_insts(InstTable0, SharedInsts1,
+			InstTable1),
+		module_info_set_insts(ModuleInfo0, InstTable1, ModuleInfo1),
+
+		% expand the inst name, and invoke ourself recursively on
+		% it's expansion
+		inst_lookup(ModuleInfo1, InstName, Inst0),
+		inst_expand(ModuleInfo1, Inst0, Inst1),
+		make_shared_inst(Inst1, ModuleInfo1, Inst, ModuleInfo2),
+
+		% now that we have determined the resulting Inst, store
+		% the appropriate value `known(Inst)' in the shared_inst
+		% table
+		module_info_insts(ModuleInfo2, InstTable2),
+		inst_table_get_shared_insts(InstTable2, SharedInsts2),
+		map__set(SharedInsts2, InstName, known(Inst), SharedInsts),
+		inst_table_set_shared_insts(InstTable2, SharedInsts,
+			InstTable),
+		module_info_set_insts(ModuleInfo2, InstTable, ModuleInfo)
+	).
+
+:- pred make_shared(uniqueness, uniqueness).
+:- mode make_shared(in, out) is det.
+
+make_shared(unique, shared).
+make_shared(shared, shared).
+make_shared(clobbered, clobbered).
+
+:- pred make_shared_bound_inst_list(list(bound_inst), module_info,
+					list(bound_inst), module_info).
+:- mode make_shared_bound_inst_list(in, in, out, out) is det.
+
+make_shared_bound_inst_list([], ModuleInfo, [], ModuleInfo).
+make_shared_bound_inst_list([Bound0 | Bounds0], ModuleInfo0,
+				[Bound | Bounds], ModuleInfo) :-
+	Bound0 = functor(Name, ArgInsts0),
+	make_shared_inst_list(ArgInsts0, ModuleInfo0,
+				ArgInsts, ModuleInfo1),
+	Bound = functor(Name, ArgInsts),
+	make_shared_bound_inst_list(Bounds0, ModuleInfo1,
+				Bounds, ModuleInfo).
+
+%-----------------------------------------------------------------------------%
 
 	% Given a list of insts, and a corresponding list of livenesses,
 	% return true iff for every element in the list of insts, either
@@ -2429,8 +2685,8 @@ categorize_unify_var_functor(ModeX, ArgModes0, X, Name, ArgVars, VarTypes,
 					InitialInst0, FinalInst0),
 			inst_expand(ModuleInfo, InitialInst0, InitialInst),
 			inst_expand(ModuleInfo, FinalInst0, FinalInst),
-			InitialInst = bound([_]),
-			FinalInst = bound([_])
+			InitialInst = bound(_, [_]),
+			FinalInst = bound(_, [_])
 		->
 			CanFail = cannot_fail,
 			ModeInfo = ModeInfo0
@@ -2474,7 +2730,7 @@ check_circular_modes(Module0, Module) -->
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-	% record a mode error (and associated context _info) in the mode_info.
+	% record a mode error (and associated context info) in the mode_info.
 
 :- pred mode_info_error(set(var), mode_error, mode_info, mode_info).
 :- mode mode_info_error(in, in, mode_info_di, mode_info_uo) is det.

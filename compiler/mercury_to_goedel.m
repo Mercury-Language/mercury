@@ -896,8 +896,6 @@ goedel_infix_pred("is").
 
 	% Convert a Mercury functor name into a Goedel functor name.
 
-	% XXX handle non-alphanumeric functors
-
 :- pred convert_functor_name(string, string).
 :- mode convert_functor_name(in, out) is det.
 
@@ -905,7 +903,7 @@ convert_functor_name(Name, GoedelName) :-
 	(
 		string__first_char(Name, Char, Rest),
 		char__is_lower(Char),
-		valid_functor_tail(Rest)
+		string__is_alnum_or_underscore(Rest)
 	->
 		string__capitalize_first(Name, GoedelName0),
 		(
@@ -917,24 +915,6 @@ convert_functor_name(Name, GoedelName) :-
 		)
 	;
 		convert_to_valid_functor_name(Name, GoedelName)
-	).
-
-:- pred valid_functor_tail(string).
-:- mode valid_functor_tail(in) is semidet.
-
-valid_functor_tail(String) :-
-	( string__first_char(String, Char, Rest) ->
-		(
-			char__is_alpha(Char) ;
-			char__is_digit(Char) ;
-			Char = '_'
-		->
-			valid_functor_tail(Rest)
-		;
-			fail
-		)
-	;
-		true
 	).
 
 :- pred convert_to_valid_functor_name(string, string).

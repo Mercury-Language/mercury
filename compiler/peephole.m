@@ -40,7 +40,8 @@ peephole__main(Instrs0, Instrs, Mod) :-
 
 :- pred peephole__build_procmaps(list(instruction), tailmap, tailmap,
 	succmap, succmap).
-:- mode peephole__build_procmaps(in, di, uo, di, uo) is det.
+% :- mode peephole__build_procmaps(in, di, uo, di, uo) is det.
+:- mode peephole__build_procmaps(in, in, out, in, out) is det.
 
 peephole__build_procmaps([], Procmap, Procmap, Succmap, Succmap).
 peephole__build_procmaps([Instr - _Comment|Instrs], Procmap0, Procmap,
@@ -68,7 +69,8 @@ peephole__build_procmaps([Instr - _Comment|Instrs], Procmap0, Procmap,
 
 :- pred peephole__build_forkmap(list(instruction), succmap,
 	tailmap, tailmap).
-:- mode peephole__build_forkmap(in, in, di, uo) is det.
+% :- mode peephole__build_forkmap(in, in, di, uo) is det.
+:- mode peephole__build_forkmap(in, in, in, out) is det.
 
 peephole__build_forkmap([], _Succmap, Forkmap, Forkmap).
 peephole__build_forkmap([Instr - _Comment|Instrs], Succmap,

@@ -332,7 +332,8 @@ det_infer_goal(Goal0 - GoalInfo0, InstMap0, MiscInfo,
 	).
 
 :- pred det__disj_to_ite(list(hlds__goal), hlds__goal_info, hlds__goal_expr).
-:- mode det__disj_to_ite(di, in, uo) is det.
+% :- mode det__disj_to_ite(di, in, uo) is det.
+:- mode det__disj_to_ite(in, in, out) is det.
 
 	% det_disj_to_ite is used to transform disjunctions that occur
 	% in prunable contexts into if-then-elses.

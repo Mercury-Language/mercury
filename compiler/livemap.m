@@ -41,7 +41,8 @@ livemap__build(Instrs, Ccode, Livemap) :-
 	livemap__build_2(BackInstrs, Livemap0, Ccode, Livemap).
 
 :- pred livemap__build_2(list(instruction), livemap, bool, livemap).
-:- mode livemap__build_2(in, di, out, uo) is det.
+% :- mode livemap__build_2(in, di, out, uo) is det.
+:- mode livemap__build_2(in, in, out, out) is det.
 
 livemap__build_2(Backinstrs, Livemap0, Ccode, Livemap) :-
 	set__init(Livevals0),
@@ -82,7 +83,8 @@ livemap__equal_livemaps_keys([Label | Labels], Livemap1, Livemap2) :-
 
 :- pred livemap__build_livemap(list(instruction), lvalset, bool, bool,
 	livemap, livemap).
-:- mode livemap__build_livemap(in, in, in, out, di, uo) is det.
+% :- mode livemap__build_livemap(in, in, in, out, di, uo) is det.
+:- mode livemap__build_livemap(in, in, in, out, in, out) is det.
 
 livemap__build_livemap([], _, Ccode, Ccode, Livemap, Livemap).
 livemap__build_livemap([Instr0 | Instrs0], Livevals0, Ccode0, Ccode,
@@ -94,7 +96,9 @@ livemap__build_livemap([Instr0 | Instrs0], Livevals0, Ccode0, Ccode,
 
 :- pred livemap__build_livemap_instr(instruction, list(instruction),
 	list(instruction), lvalset, lvalset, bool, bool, livemap, livemap).
-:- mode livemap__build_livemap_instr(in, di, uo, di, uo, in, out, di, uo)
+% :- mode livemap__build_livemap_instr(in, di, uo, di, uo, in, out, di, uo)
+%	is det.
+:- mode livemap__build_livemap_instr(in, in, out, in, out, in, out, in, out)
 	is det.
 
 livemap__build_livemap_instr(Instr0, Instrs0, Instrs,
@@ -255,7 +259,8 @@ livemap__build_livemap_instr(Instr0, Instrs0, Instrs,
 
 :- pred livemap__look_for_livevals(list(instruction), list(instruction),
 	lvalset, lvalset, string, bool, bool).
-:- mode livemap__look_for_livevals(di, uo, di, uo, in, in, out) is det.
+% :- mode livemap__look_for_livevals(di, uo, di, uo, in, in, out) is det.
+:- mode livemap__look_for_livevals(in, out, in, out, in, in, out) is det.
 
 livemap__look_for_livevals(Instrs0, Instrs, Livevals0, Livevals,
 		Site, Compulsory, Found) :-
@@ -281,7 +286,8 @@ livemap__look_for_livevals(Instrs0, Instrs, Livevals0, Livevals,
 	% them to be live even if they are not explicitly in the live set).
 
 :- pred livemap__make_live(list(rval), lvalset, lvalset).
-:- mode livemap__make_live(in, di, uo) is det.
+% :- mode livemap__make_live(in, di, uo) is det.
+:- mode livemap__make_live(in, in, out) is det.
 
 livemap__make_live([], Livevals, Livevals).
 livemap__make_live([Rval | Rvals], Livevals0, Livevals) :-
@@ -290,7 +296,8 @@ livemap__make_live([Rval | Rvals], Livevals0, Livevals) :-
 		( Lval = field(_, Rval1, Rval2) ->
 			livemap__make_live([Rval1, Rval2], Livevals0, Livevals1)
 		;
-			set__insert(Livevals0, Lval, Livevals1)
+			copy(Lval, Lval1),
+			set__insert(Livevals0, Lval1, Livevals1)
 		)
 	;
 		Rval = create(_, _, _),
@@ -325,7 +332,8 @@ livemap__filter_livevals(Livevals0, Livevals) :-
 	livemap__insert_proper_livevals(Livelist, Livevals1, Livevals).
 
 :- pred livemap__insert_label_livevals(list(label), livemap, lvalset, lvalset).
-:- mode livemap__insert_label_livevals(in, in, di, uo) is det.
+% :- mode livemap__insert_label_livevals(in, in, di, uo) is det.
+:- mode livemap__insert_label_livevals(in, in, in, out) is det.
 
 livemap__insert_label_livevals([], _, Livevals, Livevals).
 livemap__insert_label_livevals([Label | Labels], Livemap, Livevals0, Livevals) :-
@@ -338,7 +346,8 @@ livemap__insert_label_livevals([Label | Labels], Livemap, Livevals0, Livevals) :
 	livemap__insert_label_livevals(Labels, Livemap, Livevals1, Livevals).
 
 :- pred livemap__insert_proper_livevals(list(lval), lvalset, lvalset).
-:- mode livemap__insert_proper_livevals(in, di, uo) is det.
+% :- mode livemap__insert_proper_livevals(in, di, uo) is det.
+:- mode livemap__insert_proper_livevals(in, in, out) is det.
 
 livemap__insert_proper_livevals([], Livevals, Livevals).
 livemap__insert_proper_livevals([Live | Livelist], Livevals0, Livevals) :-
@@ -348,15 +357,19 @@ livemap__insert_proper_livevals([Live | Livelist], Livevals0, Livevals) :-
 	% Make sure that we insert general register and stack references only.
 
 :- pred livemap__insert_proper_liveval(lval, lvalset, lvalset).
-:- mode livemap__insert_proper_liveval(in, di, uo) is det.
+% :- mode livemap__insert_proper_liveval(in, di, uo) is det.
+:- mode livemap__insert_proper_liveval(in, in, out) is det.
 
 livemap__insert_proper_liveval(Live, Livevals0, Livevals) :-
 	( Live = reg(_) ->
-		set__insert(Livevals0, Live, Livevals)
+		copy(Live, Live1),
+		set__insert(Livevals0, Live1, Livevals)
 	; Live = stackvar(_) ->
-		set__insert(Livevals0, Live, Livevals)
+		copy(Live, Live1),
+		set__insert(Livevals0, Live1, Livevals)
 	; Live = framevar(_) ->
-		set__insert(Livevals0, Live, Livevals)
+		copy(Live, Live1),
+		set__insert(Livevals0, Live1, Livevals)
 	;
 		Livevals = Livevals0
 	).

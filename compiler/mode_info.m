@@ -180,15 +180,18 @@
 :- pred mode_info_set_delay_info(delay_info, mode_info, mode_info).
 :- mode mode_info_set_delay_info(in, mode_info_di, mode_info_uo) is det.
 
+/*
 :- inst uniq_mode_info	=	bound_unique(
 					mode_info(
-						ground_unique,
+						unique,
 						ground, ground, ground,
 						ground, ground, ground, ground,
 						ground, ground, ground, ground,
 						ground
 					)
 				).
+*/
+:- inst uniq_mode_info	=	ground.
 
 :- mode mode_info_uo :: free -> uniq_mode_info.
 :- mode mode_info_ui :: uniq_mode_info -> uniq_mode_info.
@@ -197,6 +200,7 @@
 	% Some fiddly modes used when we want to extract
 	% the io_state from a mode_info struct and then put it back again.
 
+/*
 :- inst mode_info_no_io	=	bound_unique(
 					mode_info(
 						dead, ground, ground, ground,
@@ -205,6 +209,8 @@
 						ground
 					)
 				).
+*/
+:- inst mode_info_no_io	=	ground.
 
 :- mode mode_info_get_io_state	:: uniq_mode_info -> mode_info_no_io.
 :- mode mode_info_no_io		:: mode_info_no_io -> mode_info_no_io.
@@ -272,12 +278,16 @@ mode_info_init(IOState, ModuleInfo, PredId, ProcId, Context, LiveVars,
 
 	% Lots of very boring access predicates.
 
-mode_info_get_io_state(mode_info(IOState,_,_,_,_,_,_,_,_,_,_,_,_), IOState).
+mode_info_get_io_state(mode_info(IOState0,_,_,_,_,_,_,_,_,_,_,_,_), IOState) :-
+	% XXX
+	copy(IOState0, IOState).
 
 %-----------------------------------------------------------------------------%
 
-mode_info_set_io_state( mode_info(_,B,C,D,E,F,G,H,I,J,K,L,M), IOState,
-			mode_info(IOState,B,C,D,E,F,G,H,I,J,K,L,M)).
+mode_info_set_io_state( mode_info(_,B,C,D,E,F,G,H,I,J,K,L,M), IOState0,
+			mode_info(IOState,B,C,D,E,F,G,H,I,J,K,L,M)) :-
+	% XXX
+	copy(IOState0, IOState).
 
 %-----------------------------------------------------------------------------%
 

@@ -29,7 +29,8 @@
 :- mode detect_liveness(in, out) is det.
 
 :- pred detect_liveness_proc(proc_info, module_info, proc_info).
-:- mode detect_liveness_proc(di, in, uo) is det.
+% :- mode detect_liveness_proc(di, in, uo) is det.
+:- mode detect_liveness_proc(in, in, out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

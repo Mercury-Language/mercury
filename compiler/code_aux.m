@@ -38,7 +38,8 @@
 :- mode code_aux__explain_call_info(in, in, out) is det.
 
 :- pred code_aux__lookup_type_defn(type, hlds__type_defn, code_info, code_info).
-:- mode code_aux__lookup_type_defn(in, out, di, uo) is det.
+% :- mode code_aux__lookup_type_defn(in, out, di, uo) is det.
+:- mode code_aux__lookup_type_defn(in, out, in, out) is det.
 
 %---------------------------------------------------------------------------%
 

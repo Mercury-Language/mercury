@@ -101,22 +101,39 @@ inst_matches_initial_2(InstA, InstB, ModuleInfo, Expansions) :-
 	% occur in Expansions.
 
 inst_matches_initial_3(free, free, _, _).
-inst_matches_initial_3(bound(_List), free, _, _).
-inst_matches_initial_3(bound(ListA), bound(ListB), ModuleInfo, Expansions) :-
+inst_matches_initial_3(bound(_Uniq, _List), free, _, _).
+inst_matches_initial_3(bound(UniqA, ListA), bound(UniqB, ListB), ModuleInfo,
+		Expansions) :-
+	unique_matches_initial(UniqA, UniqB),
 	bound_inst_list_matches_initial(ListA, ListB, ModuleInfo, Expansions).
-inst_matches_initial_3(bound(List), ground, ModuleInfo, _) :-
-	bound_inst_list_is_ground(List, ModuleInfo).
-inst_matches_initial_3(bound(List), abstract_inst(_,_), ModuleInfo, _) :-
-	bound_inst_list_is_ground(List, ModuleInfo).
-inst_matches_initial_3(ground, free, _, _).
-inst_matches_initial_3(ground, bound(_List), _, _ModuleInfo) :-
+inst_matches_initial_3(bound(UniqA, List), ground(UniqB), ModuleInfo, _) :-
+	unique_matches_initial(UniqA, UniqB),
+	bound_inst_list_is_ground(List, ModuleInfo),
+	( UniqB = unique ->
+		bound_inst_list_is_unique(List, ModuleInfo)
+	;
+		true
+	).
+inst_matches_initial_3(bound(Uniq, List), abstract_inst(_,_), ModuleInfo, _) :-
+	Uniq = unique,
+	bound_inst_list_is_ground(List, ModuleInfo),
+	bound_inst_list_is_unique(List, ModuleInfo).
+inst_matches_initial_3(ground(_Uniq), free, _, _).
+inst_matches_initial_3(ground(UniqA), bound(UniqB, List), ModuleInfo, _) :-
+	unique_matches_initial(UniqA, UniqB),
+	( UniqA = shared ->
+		bound_inst_list_is_shared(List, ModuleInfo)
+	;
+		true
+	),
 	fail.	% XXX BUG! should fail only if 
 		% List does not include all the constructors for the type,
 		% or if List contains some not_reached insts.
 		% Should succeed if List contains all the constructors
 		% for the type.  Problem is we don't know what the type was :-(
-inst_matches_initial_3(ground, ground, _, _).
-inst_matches_initial_3(ground, abstract_inst(_,_), _, _) :-
+inst_matches_initial_3(ground(UniqA), ground(UniqB), _, _) :-
+	unique_matches_initial(UniqA, UniqB).
+inst_matches_initial_3(ground(_UniqA), abstract_inst(_,_), _, _) :-
 		% I don't know what this should do.
 	error("inst_matches_initial(ground, abstract_inst) == ??").
 inst_matches_initial_3(abstract_inst(_,_), free, _, _).
@@ -124,6 +141,14 @@ inst_matches_initial_3(abstract_inst(Name, ArgsA), abstract_inst(Name, ArgsB),
 				ModuleInfo, Expansions) :-
 	inst_list_matches_initial(ArgsA, ArgsB, ModuleInfo, Expansions).
 inst_matches_initial_3(not_reached, _, _, _).
+
+:- pred unique_matches_initial(uniqueness, uniqueness).
+:- mode unique_matches_initial(in, in) is semidet.
+
+unique_matches_initial(unique, unique).
+unique_matches_initial(unique, shared).
+unique_matches_initial(shared, shared).
+unique_matches_initial(_, clobbered).
 
 	% Here we check that the functors in the first list are a
 	% subset of the functors in the second list. 
@@ -206,21 +231,44 @@ inst_matches_final_2(InstA, InstB, ModuleInfo, Expansions) :-
 :- inst_matches_final_3(A, B, _, _) when A and B.
 
 inst_matches_final_3(free, free, _, _).
-inst_matches_final_3(bound(ListA), bound(ListB), ModuleInfo, Expansions) :-
+inst_matches_final_3(bound(UniqA, ListA), bound(UniqB, ListB), ModuleInfo,
+		Expansions) :-
+	unique_matches_final(UniqA, UniqB),
 	bound_inst_list_matches_final(ListA, ListB, ModuleInfo, Expansions).
-inst_matches_final_3(bound(ListA), ground, ModuleInfo, _Expansions) :-
-	bound_inst_list_is_ground(ListA, ModuleInfo).
-inst_matches_final_3(ground, bound(ListB), ModuleInfo, _Expansions) :-
-	bound_inst_list_is_ground(ListB, ModuleInfo).
+inst_matches_final_3(bound(UniqA, ListA), ground(UniqB), ModuleInfo, _Exps) :-
+	unique_matches_final(UniqA, UniqB),
+	bound_inst_list_is_ground(ListA, ModuleInfo),
+	( UniqB = unique ->
+		bound_inst_list_is_unique(ListA, ModuleInfo)
+	;
+		true
+	).
+inst_matches_final_3(ground(UniqA), bound(UniqB, ListB), ModuleInfo, _Exps) :-
+	unique_matches_final(UniqA, UniqB),
+	bound_inst_list_is_ground(ListB, ModuleInfo),
+	( UniqA = shared ->
+		bound_inst_list_is_shared(ListB, ModuleInfo)
+	;
+		true
+	).
 		% XXX BUG! Should fail if there are not_reached
 		% insts in ListB, or if ListB does not contain a complete list
 		% of all the constructors for the type in question.
 	%%% error("not implemented: `ground' matches_final `bound(...)'").
-inst_matches_final_3(ground, ground, _, _).
+inst_matches_final_3(ground(UniqA), ground(UniqB), _, _) :-
+	unique_matches_final(UniqA, UniqB).
 inst_matches_final_3(abstract_inst(Name, ArgsA), abstract_inst(Name, ArgsB),
 		ModuleInfo, Expansions) :-
 	inst_list_matches_final(ArgsA, ArgsB, ModuleInfo, Expansions).
 inst_matches_final_3(not_reached, _, _, _).
+
+:- pred unique_matches_final(uniqueness, uniqueness).
+:- mode unique_matches_final(in, in) is semidet.
+
+unique_matches_final(unique, unique).
+unique_matches_final(unique, shared).
+unique_matches_final(shared, shared).
+unique_matches_final(_, clobbered).
 
 :- pred inst_list_matches_final(list(inst), list(inst), module_info,
 				expansions).

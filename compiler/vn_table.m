@@ -74,28 +74,36 @@
 :- mode vn__get_vnlval_vn_list(in, out) is det.
 
 :- pred vn__add_new_use(vn, vn_src, vn_tables, vn_tables).
-:- mode vn__add_new_use(in, in, di, uo) is det.
+% :- mode vn__add_new_use(in, in, di, uo) is det.
+:- mode vn__add_new_use(in, in, in, out) is det.
 
 :- pred vn__del_old_use(vn, vn_src, vn_tables, vn_tables).
-:- mode vn__del_old_use(in, in, di, uo) is det.
+% :- mode vn__del_old_use(in, in, di, uo) is det.
+:- mode vn__del_old_use(in, in, in, out) is det.
 
 :- pred vn__del_old_uses(list(vn), vn_src, vn_tables, vn_tables).
-:- mode vn__del_old_uses(in, in, di, uo) is det.
+% :- mode vn__del_old_uses(in, in, di, uo) is det.
+:- mode vn__del_old_uses(in, in, in, out) is det.
 
 :- pred vn__record_first_vnrval(vnrval, vn, vn_tables, vn_tables).
-:- mode vn__record_first_vnrval(in, out, di, uo) is det.
+% :- mode vn__record_first_vnrval(in, out, di, uo) is det.
+:- mode vn__record_first_vnrval(in, out, in, out) is det.
 
 :- pred vn__record_first_vnlval(vnlval, vn, vn_tables, vn_tables).
-:- mode vn__record_first_vnlval(in, out, di, uo) is det.
+% :- mode vn__record_first_vnlval(in, out, di, uo) is det.
+:- mode vn__record_first_vnlval(in, out, in, out) is det.
 
 :- pred vn__set_desired_value(vnlval, vn, vn_tables, vn_tables).
-:- mode vn__set_desired_value(in, in, di, uo) is det.
+% :- mode vn__set_desired_value(in, in, di, uo) is det.
+:- mode vn__set_desired_value(in, in, in, out) is det.
 
 :- pred vn__set_current_value(vnlval, vn, vn_tables, vn_tables).
-:- mode vn__set_current_value(in, in, di, uo) is det.
+% :- mode vn__set_current_value(in, in, di, uo) is det.
+:- mode vn__set_current_value(in, in, in, out) is det.
 
 :- pred vn__set_parallel_value(vnlval, vn, vn_tables, vn_tables).
-:- mode vn__set_parallel_value(in, in, di, uo) is det.
+% :- mode vn__set_parallel_value(in, in, di, uo) is det.
+:- mode vn__set_parallel_value(in, in, in, out) is det.
 
 :- pred vn__get_all_vnrvals(list(vnrval), vn_tables).
 :- mode vn__get_all_vnrvals(out, in) is det.

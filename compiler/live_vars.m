@@ -23,7 +23,8 @@
 :- mode detect_live_vars(in, out) is det.
 
 :- pred detect_live_vars_in_proc(proc_info, module_info, proc_info).
-:- mode detect_live_vars_in_proc(di, in, uo) is det.
+% :- mode detect_live_vars_in_proc(di, in, uo) is det.
+:- mode detect_live_vars_in_proc(in, in, out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

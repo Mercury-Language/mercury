@@ -230,12 +230,30 @@ mercury_output_inst(free, _) -->
 	io__write_string("free").
 mercury_output_inst(free(_T), _) -->
 	io__write_string("free(with some type)").
-mercury_output_inst(bound(BoundInsts), VarSet) -->
-	io__write_string("bound("),
+mercury_output_inst(bound(Uniq, BoundInsts), VarSet) -->
+	(	
+		{ Uniq = shared },
+		io__write_string("bound(")
+	;
+		{ Uniq = unique },
+		io__write_string("unique(")
+	;
+		{ Uniq = clobbered },
+		io__write_string("clobbered(")
+	),
 	mercury_output_bound_insts(BoundInsts, VarSet),
 	io__write_string(")").
-mercury_output_inst(ground, _) -->
-	io__write_string("ground").
+mercury_output_inst(ground(Uniq), _) -->
+	(	
+		{ Uniq = shared },
+		io__write_string("ground")
+	;
+		{ Uniq = unique },
+		io__write_string("unique")
+	;
+		{ Uniq = clobbered },
+		io__write_string("clobbered")
+	).
 mercury_output_inst(inst_var(Var), VarSet) -->
 	mercury_output_var(Var, VarSet).
 mercury_output_inst(abstract_inst(Name, Args), VarSet) -->
@@ -261,6 +279,10 @@ mercury_output_inst_name(merge_inst(InstA, InstB), VarSet) -->
 	io__write_string("$merge_inst("),
 	mercury_output_inst_list([InstA, InstB], VarSet),
 	io__write_string(")").
+mercury_output_inst_name(shared_inst(InstName), VarSet) -->
+	io__write_string("$shared_inst("),
+	mercury_output_inst_name(InstName, VarSet),
+	io__write_string(")").
 mercury_output_inst_name(unify_inst(Liveness, InstA, InstB), VarSet) -->
 	io__write_string("$unify("),
 	( { Liveness = live } ->
@@ -270,12 +292,21 @@ mercury_output_inst_name(unify_inst(Liveness, InstA, InstB), VarSet) -->
 	),
 	mercury_output_inst_list([InstA, InstB], VarSet),
 	io__write_string(")").
-mercury_output_inst_name(ground_inst(InstName), VarSet) -->
+mercury_output_inst_name(ground_inst(InstName, IsLive, Uniq), VarSet) -->
 	io__write_string("$ground("),
 	mercury_output_inst_name(InstName, VarSet),
+	io__write_string(", "),
+	( { IsLive = live } ->
+		io__write_string("live, ")
+	;
+		io__write_string("dead, ")
+	),
+	mercury_output_uniqueness(Uniq),
 	io__write_string(")").
-mercury_output_inst_name(typed_ground(Type), _VarSet) -->
+mercury_output_inst_name(typed_ground(Uniqueness, Type), _VarSet) -->
 	io__write_string("$typed_ground("),
+	mercury_output_uniqueness(Uniqueness),
+	io__write_string(", "),
 	{ varset__init(TypeVarSet) },
 	mercury_output_term(Type, TypeVarSet),
 	io__write_string(")").
@@ -286,6 +317,13 @@ mercury_output_inst_name(typed_inst(Type, InstName), VarSet) -->
 	io__write_string(", "),
 	mercury_output_inst_name(InstName, VarSet),
 	io__write_string(")").
+
+:- pred mercury_output_uniqueness(uniqueness, io__state, io__state).
+:- mode mercury_output_uniqueness(in, di, uo) is det.
+
+mercury_output_uniqueness(shared) --> io__write_string("shared").
+mercury_output_uniqueness(unique) --> io__write_string("unique").
+mercury_output_uniqueness(clobbered) --> io__write_string("clobbered").
 
 :- pred mercury_output_bound_insts(list(bound_inst), varset, io__state,
 		io__state).

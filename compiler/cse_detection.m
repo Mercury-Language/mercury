@@ -55,7 +55,7 @@ detect_cse_in_preds([PredId | PredIds], ModuleInfo0, ModuleInfo) -->
 
 :- pred detect_cse_in_pred(pred_id, pred_info, module_info, module_info,
 	io__state, io__state).
-:- mode detect_cse_in_pred(in, in, di, uo, di, uo) is det.
+:- mode detect_cse_in_pred(in, in, in, out, di, uo) is det.
 
 detect_cse_in_pred(PredId, PredInfo0, ModuleInfo0, ModuleInfo) -->
 	{ pred_info_non_imported_procids(PredInfo0, ProcIds) },
@@ -110,7 +110,8 @@ detect_cse_in_pred(PredId, PredInfo0, ModuleInfo0, ModuleInfo) -->
 
 :- pred detect_cse_in_procs(list(proc_id), pred_id, bool, bool,
 	module_info, module_info, io__state, io__state).
-:- mode detect_cse_in_procs(in, in, in, out, di, uo, di, uo) is det.
+% :- mode detect_cse_in_procs(in, in, in, out, di, uo, di, uo) is det.
+:- mode detect_cse_in_procs(in, in, in, out, in, out, di, uo) is det.
 
 detect_cse_in_procs([], _PredId, Redo, Redo, ModuleInfo, ModuleInfo,
 	IOstate, IOstate).
