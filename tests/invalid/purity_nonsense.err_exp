@@ -9,7 +9,7 @@ purity_nonsense.m:013: Error: clause for predicate `purity_nonsense:e13/0'
 purity_nonsense.m:013:   without preceding `pred' declaration.
 purity_nonsense.m:018: Warning: unnecessary `impure' marker.
 purity_nonsense.m:018:   Higher-order goals are always pure.
-purity_nonsense.m:008: Error: no clauses for predicate `purity_nonsense:undefined/0'
+purity_nonsense.m:008: Error: no clauses for predicate `purity_nonsense:undefined/0'.
 purity_nonsense.m:012: In clause for predicate `purity_nonsense:e12/0':
 purity_nonsense.m:012:   in argument 1 of call to predicate `impure/1':
 purity_nonsense.m:012:   error: the language construct \+/1 should be
