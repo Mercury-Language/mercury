@@ -15,6 +15,11 @@ AGC_SOURCES= \
 	agc_unbound_typevars2.m \
 	agc_unused_in.m 
 
+TYPECLASS_SOURCES= \
+	func_method.m \
+	instance_superclass.m \
+	instance_unconstrained_tvar.m
+
 OTHER_SOURCES= \
 	compl_unify_bug.m \
 	complicated_unify.m \
@@ -33,7 +38,6 @@ OTHER_SOURCES= \
 	fail_ite.m \
 	followcode_det_problem.m \
 	func_int_bug_main.m \
-	func_method.m \
 	headvar_not_found.m \
 	higher_order.m \
 	higher_order2.m \
@@ -45,8 +49,6 @@ OTHER_SOURCES= \
 	indexing.m \
 	inhibit_warn_test.m \
 	inlining_bug.m \
-	instance_superclass.m \
-	instance_unconstrained_tvar.m \
 	intermod_lambda.m \
 	intermod_test.m \
 	lambda_inference.m\
@@ -106,10 +108,10 @@ OTHER_SOURCES= \
 
 
 # Base grades `jump' and `fast'
-# cannot be used with accurate GC
+# cannot be used with accurate GC or type classes
 
 ifneq "$(findstring asm_,$(GRADE))" ""
-    SOURCES=$(AGC_SOURCES) $(OTHER_SOURCES)
+    SOURCES=$(AGC_SOURCES) $(TYPECLASS_SOURCES) $(OTHER_SOURCES)
 else
     ifneq "$(findstring jump,$(GRADE))" ""
         SOURCES=$(OTHER_SOURCES)
@@ -117,7 +119,7 @@ else
         ifneq "$(findstring fast,$(GRADE))" ""
             SOURCES=$(OTHER_SOURCES)
         else
-            SOURCES=$(AGC_SOURCES) $(OTHER_SOURCES)
+            SOURCES=$(AGC_SOURCES) $(TYPECLASS_SOURCES) $(OTHER_SOURCES)
         endif
     endif
 endif
