@@ -769,14 +769,10 @@ mlds_output_pragma_export_defn_body(ModuleName, FuncName, Signature) -->
 		Type = mlds__ptr_type(mlds__foreign_type(c(_)))) },
 	{ CForeignTypeInputs = list__filter(IsCForeignType, Parameters) },
 	{ CForeignTypeOutputs = list__filter(IsCForeignTypePtr, Parameters) },
-	io__write_list(CForeignTypeInputs ++ CForeignTypeOutputs, "",
-		(pred(Arg::in, di, uo) is det -->
-			{ Arg = mlds__argument(Name, Type, _GC_TraceCode) },
-			io__write_string("\t"),
-			mlds_output_data_decl_ho(mlds_output_type_prefix,
-				mlds_output_type_suffix,
-				qual(ModuleName, boxed_name(Name)), Type),
-			io__write_string(";\n"))),
+	io__write_list(CForeignTypeInputs, "",
+		mlds_output_pragma_export_input_defns(ModuleName)),
+	io__write_list(CForeignTypeOutputs, "",
+		mlds_output_pragma_export_output_defns(ModuleName)),
 
 	% Declare a local variable or two for the return value, if needed
 	( { RetTypes = [RetType1] } ->
@@ -846,7 +842,7 @@ mlds_output_pragma_export_defn_body(ModuleName, FuncName, Signature) -->
 			{ QualName = qual(ModuleName, Name) },
 			{ BoxedQualName = qual(ModuleName, boxed_name(Name)) },
 			io__write_string("\tMR_MAYBE_UNBOX_FOREIGN_TYPE("),
-			mlds_output_pragma_export_type(Type),
+			mlds_output_pragma_export_type(pointed_to_type(Type)),
 			io__write_string(", "),
 			mlds_output_fully_qualified_name(BoxedQualName),
 			io__write_string(", *"),
@@ -866,6 +862,37 @@ mlds_output_pragma_export_defn_body(ModuleName, FuncName, Signature) -->
 		io__write_string("\treturn ret_value;\n")
 	;
 		[]
+	).
+
+:- pred mlds_output_pragma_export_input_defns(mlds_module_name::in,
+	mlds__argument::in, io__state::di, io__state::uo) is det.
+
+mlds_output_pragma_export_input_defns(ModuleName, Arg) -->
+	{ Arg = mlds__argument(Name, Type, _GC_TraceCode) },
+	io__write_string("\t"),
+	mlds_output_data_decl_ho(mlds_output_type_prefix,
+		mlds_output_type_suffix,
+		qual(ModuleName, boxed_name(Name)), Type),
+	io__write_string(";\n").
+
+:- pred mlds_output_pragma_export_output_defns(mlds_module_name::in,
+	mlds__argument::in, io__state::di, io__state::uo) is det.
+
+mlds_output_pragma_export_output_defns(ModuleName, Arg) -->
+	{ Arg = mlds__argument(Name, Type, _GC_TraceCode) },
+	io__write_string("\t"),
+	mlds_output_data_decl_ho(mlds_output_type_prefix,
+		mlds_output_type_suffix,
+		qual(ModuleName, boxed_name(Name)), pointed_to_type(Type)),
+	io__write_string(";\n").
+
+:- func pointed_to_type(mlds__type) = mlds__type.
+
+pointed_to_type(PtrType) =
+	( PtrType = mlds__ptr_type(Type) ->
+		Type
+	;
+		func_error("pointed_to_type: not pointer")
 	).
 
 :- func boxed_name(mlds__entity_name) = mlds__entity_name.
