@@ -78,11 +78,9 @@ detect_switches_in_procs([ProcId | ProcIds], PredId, ModuleInfo0,
 
 %-----------------------------------------------------------------------------%
 
-:- type instmapping == map(var, inst).
-	
 	% This version doesn't return the resulting instmap
 
-:- pred detect_switches_in_goal(hlds__goal, instmapping, module_info,
+:- pred detect_switches_in_goal(hlds__goal, instmap, module_info,
 				hlds__goal).
 :- mode detect_switches_in_goal(in, in, in, out) is det.
 
@@ -96,8 +94,8 @@ detect_switches_in_goal(Goal0 - GoalInfo, InstMap0, ModuleInfo,
 	% does return the resulting instmap, which is computed
 	% by applying the instmap delta specified in the goal's goalinfo.
 
-:- pred detect_switches_in_goal(hlds__goal, instmapping, module_info,
-				hlds__goal, instmapping).
+:- pred detect_switches_in_goal(hlds__goal, instmap, module_info,
+				hlds__goal, instmap).
 :- mode detect_switches_in_goal(in, in, in, out, out) is det.
 
 detect_switches_in_goal(Goal0 - GoalInfo, InstMap0, ModuleInfo,
@@ -105,12 +103,12 @@ detect_switches_in_goal(Goal0 - GoalInfo, InstMap0, ModuleInfo,
 	goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
 	detect_switches_in_goal_2(Goal0, GoalInfo, InstMap0, InstMapDelta,
 		ModuleInfo, Goal),
-	map_overlay(InstMap0, InstMapDelta, InstMap).
+	apply_instmap_delta(InstMap0, InstMapDelta, InstMap).
 
 	% Here we process each of the different sorts of goals.
 
-:- pred detect_switches_in_goal_2(hlds__goal_expr, hlds__goal_info, instmapping,
-		instmapping, module_info, hlds__goal_expr).
+:- pred detect_switches_in_goal_2(hlds__goal_expr, hlds__goal_info, instmap,
+		instmap, module_info, hlds__goal_expr).
 :- mode detect_switches_in_goal_2(in, in, in, in, in, out) is det.
 
 detect_switches_in_goal_2(conj(Goals0), _GoalInfo, InstMap0, _InstMapDelta,
@@ -158,7 +156,7 @@ detect_switches_in_goal_2(unify(A,B,C,D,E), _, _, _, _, unify(A,B,C,D,E)).
 	% the instantiatedness of the variable after the disjunction.
 
 :- pred detect_switches_in_disj(list(var), list(hlds__goal), hlds__goal_info,
-		instmapping, instmapping, module_info, hlds__goal_expr).
+		instmap, instmap, module_info, hlds__goal_expr).
 :- mode detect_switches_in_disj(in, in, in, in, in, in, out) is det.
 
 detect_switches_in_disj([], Goals0, _, InstMap, _, ModuleInfo, disj(Goals)) :-
@@ -167,7 +165,7 @@ detect_switches_in_disj([], Goals0, _, InstMap, _, ModuleInfo, disj(Goals)) :-
 detect_switches_in_disj([Var | Vars], Goals0, GoalInfo, InstMap, InstMapDelta,
 		ModuleInfo, Goal) :-
 	(
-		map__search(InstMap, Var, VarInst0),
+		instmap_lookup_var(InstMap, Var, VarInst0),
 		inst_is_bound(ModuleInfo, VarInst0),
 		partition_disj(Goals0, Var, GoalInfo, Cases0)
 	->
@@ -251,7 +249,7 @@ disj_list_to_goal(DisjList, GoalInfo, Goal) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred detect_switches_in_disj_2(list(hlds__goal), instmapping, module_info,
+:- pred detect_switches_in_disj_2(list(hlds__goal), instmap, module_info,
 				list(hlds__goal)).
 :- mode detect_switches_in_disj_2(in, in, in, out) is det.
 
@@ -263,7 +261,7 @@ detect_switches_in_disj_2([Goal0 | Goals0], InstMap0, ModuleInfo,
 
 %-----------------------------------------------------------------------------%
 
-:- pred detect_switches_in_cases(list(case), instmapping, module_info,
+:- pred detect_switches_in_cases(list(case), instmap, module_info,
 				list(case)).
 :- mode detect_switches_in_cases(in, in, in, out) is det.
 
@@ -277,7 +275,7 @@ detect_switches_in_cases([Case0 | Cases0], InstMap, ModuleInfo,
 
 %-----------------------------------------------------------------------------%
 
-:- pred detect_switches_in_conj(list(hlds__goal), instmapping, module_info,
+:- pred detect_switches_in_conj(list(hlds__goal), instmap, module_info,
 				list(hlds__goal)).
 :- mode detect_switches_in_conj(in, in, in, out) is det.
 
@@ -287,26 +285,5 @@ detect_switches_in_conj([Goal0 | Goals0], InstMap0, ModuleInfo,
 	detect_switches_in_goal(Goal0, InstMap0, ModuleInfo, Goal, InstMap1),
 	detect_switches_in_conj(Goals0, InstMap1, ModuleInfo, Goals).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-
-	% Given two maps, overlay the entries in the second map 
-	% on top of those in the first map to produce a new map.
-
-:- pred map_overlay(map(K,V), map(K,V), map(K,V)).
-:- mode map_overlay(in, in, out) is det.
-
-map_overlay(Map0, Map1, Map) :-
-	map__to_assoc_list(Map1, AssocList),
-	map_overlay_2(AssocList, Map0, Map).
-
-:- pred map_overlay_2(assoc_list(K,V), map(K,V), map(K,V)).
-:- mode map_overlay_2(in, in, out) is det.
-
-map_overlay_2([], Map, Map).
-map_overlay_2([K - V | AssocList], Map0, Map) :-
-	map__set(Map0, K, V, Map1),
-	map_overlay_2(AssocList, Map1, Map).
-	
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -1125,7 +1125,7 @@ pred_info_is_imported(PredInfo) :-
 :- pred proc_info_set_arg_info(proc_info, list(arg_info), proc_info).
 :- mode proc_info_set_arg_info(in, in, out) is det.
 
-:- pred proc_info_get_initial_instmap(proc_info, module_info, map(var, inst)).
+:- pred proc_info_get_initial_instmap(proc_info, module_info, instmap).
 :- mode proc_info_get_initial_instmap(in, in, out) is det.
 
 :- pred proc_info_set_liveness_info(proc_info, liveness_info, proc_info).
@@ -1212,11 +1212,11 @@ proc_info_set_liveness_info(ProcInfo0, K, ProcInfo) :-
 	ProcInfo0 = procedure(A, B, C, D, E, F, G, H, I, J, _),
 	ProcInfo = procedure(A, B, C, D, E, F, G, H, I, J, K).
 
-proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap) :-
+proc_info_get_initial_instmap(ProcInfo, ModuleInfo, reachable(InstMapping)) :-
 	proc_info_headvars(ProcInfo, HeadVars),
 	proc_info_argmodes(ProcInfo, ArgModes),
 	mode_list_get_initial_insts(ArgModes, ModuleInfo, InitialInsts),
-	map__from_corresponding_lists(HeadVars, InitialInsts, InstMap).
+	map__from_corresponding_lists(HeadVars, InitialInsts, InstMapping).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1265,7 +1265,13 @@ proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap) :-
 	% of the non-local variables whose instantiatedness
 	% changed.
 
-:- type instmap_delta == map(var, inst).
+:- type instmap_delta == instmap.
+
+:- type instmap
+	--->	reachable(instmapping)
+	;	unreachable.
+
+:- type instmapping == map(var, inst).
 
 :- pred goal_info_get_instmap_delta(hlds__goal_info, instmap_delta).
 :- mode goal_info_get_instmap_delta(in, out) is det.
@@ -1296,7 +1302,7 @@ goal_info_init(GoalInfo) :-
 	set__init(Births),
 	set__init(Deaths),
 	DeltaLiveness = Births - Deaths,
-	map__init(InstMapDelta),
+	InstMapDelta = unreachable,
 	set__init(NonLocals),
 	term__context_init("", 0, Context),
 	GoalInfo = goal_info(DeltaLiveness, DeclaredDet, InferredDet,

@@ -5,14 +5,11 @@
 % This file provides a straight-forward binary search tree implementation of
 % a map (dictionary).
 %
-% bintree__insert, bintree__search_insert, bintree__update, and
+% bintree__insert, bintree__update, and
 % bintree__set differ only in how they handle the case where the value
 % being inserted already exists in the tree.  `insert' will only insert
 % new keys, and will fail if you attempt to insert an existing key into
-% the tree.  `search_insert' will fail if you attempt to insert an
-% existing key into the key unless the data you are inserting is exactly
-% the same as (i.e. unifies with) the existing data associated with that
-% key.  `update' will only allow you to modify the data for existing
+% the tree. `update' will only allow you to modify the data for existing
 % keys, and will fail if the key isn't already in the tree.  `set' will
 % always succeed; it will replace the old value for that key if the key
 % was already in the tree, or insert a new node into the tree if the key
@@ -37,9 +34,6 @@
 
 :- pred bintree__set(bintree(K,V), K, V, bintree(K,V)).
 :- mode bintree__set(in, in, in, out) is det.
-
-:- pred bintree__search_insert(bintree(K,V), K, V, bintree(K,V)).
-:- mode bintree__search_insert(in, in, in, out) is semidet.
 
 :- pred bintree__search(bintree(K,V), K, V).
 :- mode bintree__search(in, in, out) is semidet.
@@ -118,31 +112,6 @@ bintree__insert(tree(Key0, Value0, Left, Right), Key, Value, Tree) :-
 		Tree = tree(Key0, Value0, Left, NewRight)
 	;
 		bintree__insert(Left, Key, Value, NewLeft),
-		Tree = tree(Key0, Value0, NewLeft, Right)
-	).
-
-%-----------------------------------------------------------------------------%
-
-bintree__search_insert(empty, Key, Value, tree(Key, Value, empty, empty)).
-bintree__search_insert(tree(Key0, Value0, Left, Right), Key, Value, Tree) :-
-	compare(Result, Key0, Key),
-	(
-		Result = (=)
-	->
-		(
-			Value = Value0
-		->
-			Tree = tree(Key0, Value0, Left, Right)
-		;
-			fail
-		)
-	;
-		Result = (<)
-	->
-		bintree__search_insert(Right, Key, Value, NewRight),
-		Tree = tree(Key0, Value0, Left, NewRight)
-	;
-		bintree__search_insert(Left, Key, Value, NewLeft),
 		Tree = tree(Key0, Value0, NewLeft, Right)
 	).
 
@@ -330,8 +299,12 @@ bintree__from_list(List, Tree) :-
 
 bintree__from_list_2([], Tree, Tree).
 bintree__from_list_2([K - V | List], Tree0, Tree) :-
-	bintree__insert(Tree0, K, V, Tree1),
-	bintree__from_list_2(List, Tree1, Tree).
+	( bintree__insert(Tree0, K, V, Tree1) ->
+		Tree2 = Tree1
+	;
+		error("bintree__from_list: duplicate key")
+	),
+	bintree__from_list_2(List, Tree2, Tree).
 
 %-----------------------------------------------------------------------------%
 

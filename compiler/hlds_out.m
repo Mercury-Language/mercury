@@ -343,8 +343,8 @@ hlds_out__write_clause_head(ModuleInfo, PredId, VarSet, HeadVars) -->
 	mercury_output_term(Term, VarSet).
 
 hlds_out__write_goal(Goal - GoalInfo, ModuleInfo, VarSet, Indent) -->
-	globals__lookup_option(very_verbose, bool(VeryVerbose)),
-	( { VeryVerbose = yes } ->
+	globals__lookup_option(verbose_dump_hlds, bool(Verbose)),
+	( { Verbose = yes } ->
 		{ goal_info_get_nonlocals(GoalInfo, NonLocalsSet) },
 		{ set__to_sorted_list(NonLocalsSet, NonLocalsList) },
 		io__write_string("% nonlocals: "),
@@ -362,6 +362,10 @@ hlds_out__write_goal(Goal - GoalInfo, ModuleInfo, VarSet, Indent) -->
 		io__write_string("% determinism: "),
 		{ goal_info_inferred_determinism(GoalInfo, Category) },
 		hlds_out__write_category(Category),
+		mercury_output_newline(Indent),
+		io__write_string("% new insts: "),
+		{ goal_info_get_instmap_delta(GoalInfo, InstMapDelta) },
+		hlds_out__write_instmap(InstMapDelta, VarSet),
 		mercury_output_newline(Indent)
 	;
 		[]
@@ -392,9 +396,9 @@ hlds_out__write_goal_2(some(Vars, Goal), ModuleInfo, VarSet, Indent) -->
 	( { Vars = [] } ->
 		hlds_out__write_goal(Goal, ModuleInfo, VarSet, Indent)
 	;
-		io__write_string("(some ["),
+		io__write_string("some ["),
 		mercury_output_vars(Vars, VarSet),
-		io__write_string("] "),
+		io__write_string("] ("),
 		{ Indent1 is Indent + 1 },
 		mercury_output_newline(Indent1),
 		hlds_out__write_goal(Goal, ModuleInfo, VarSet, Indent1),
@@ -432,8 +436,20 @@ hlds_out__write_goal_2(not(Vars, Goal), ModuleInfo, VarSet, Indent) -->
 
 hlds_out__write_goal_2(conj(List), ModuleInfo, VarSet, Indent) -->
 	( { List = [Goal | Goals] } ->
-		hlds_out__write_goal(Goal, ModuleInfo, VarSet, Indent),
-		hlds_out__write_conj(Goals, ModuleInfo, VarSet, Indent)
+		globals__lookup_option(verbose_dump_hlds, bool(Verbose)),
+		( { Verbose = yes } ->
+			{ Indent1 is Indent + 1 },
+			io__write_string("( % conjunction"),
+			mercury_output_newline(Indent1),
+			hlds_out__write_goal(Goal, ModuleInfo, VarSet, Indent1),
+			hlds_out__write_conj(Goals, ModuleInfo, VarSet,
+				Indent1),
+			io__write_string(")"),
+			mercury_output_newline(Indent)
+		;
+			hlds_out__write_goal(Goal, ModuleInfo, VarSet, Indent),
+			hlds_out__write_conj(Goals, ModuleInfo, VarSet, Indent)
+		)
 	;
 		io__write_string("true")
 	).
@@ -542,6 +558,32 @@ hlds_out__write_builtin(is_builtin) -->
 	io__write_string("is_builtin").
 hlds_out__write_builtin(not_builtin) -->
 	io__write_string("not_builtin").
+
+:- pred hlds_out__write_instmap(instmap, varset, io__state, io__state).
+:- mode hlds_out__write_instmap(in, in, di, uo) is det.
+
+hlds_out__write_instmap(unreachable, _) -->
+	io__write_string("unreachable").
+hlds_out__write_instmap(reachable(InstMapping), VarSet) -->
+	{ map__to_assoc_list(InstMapping, AssocList) },
+	hlds_out__write_instmap_2(AssocList, VarSet).
+
+:- pred hlds_out__write_instmap_2(assoc_list(var, inst), varset,
+					io__state, io__state).
+:- mode hlds_out__write_instmap_2(in, in, di, uo) is det.
+
+hlds_out__write_instmap_2([], _) --> [].
+hlds_out__write_instmap_2([Var - Inst | Rest], VarSet) -->
+	mercury_output_var(Var, VarSet),
+	io__write_string(" -> "),
+	{ varset__init(InstVarSet) },
+	mercury_output_inst(Inst, InstVarSet),
+	( { Rest = [] } ->
+		[]
+	;
+		io__write_string(", "),
+		hlds_out__write_instmap_2(Rest, VarSet)
+	).
 
 :- pred hlds_out__write_var_types(int, varset, map(var, type), varset,
 					io__state, io__state).

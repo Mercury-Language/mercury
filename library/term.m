@@ -400,7 +400,7 @@ term__unify(term__functor(F, AsX, _), term__functor(F, AsY, _)) -->
 	term__unify_list(AsX, AsY).
 
 :- pred term__unify_list(list(term), list(term), substitution, substitution).
-:- mode term__unify_list(in, in, in, out).
+:- mode term__unify_list(in, in, in, out) is semidet.
 
 term__unify_list([], []) --> [].
 term__unify_list([X | Xs], [Y | Ys]) -->
@@ -459,12 +459,15 @@ term__substitute_list([Term0 | Terms0], Var, Replacement, [Term | Terms]) :-
 
 term__substitute_corresponding(Ss, Rs, Term0, Term) :-
 	map__init(Subst0),
-	term__substitute_corresponding_2(Ss, Rs, Subst0, Subst),
-	term__apply_substitution(Term0, Subst, Term).
+	( term__substitute_corresponding_2(Ss, Rs, Subst0, Subst) ->
+		term__apply_substitution(Term0, Subst, Term)
+	;
+		error("term__substitute_corresponding: different length lists")
+	).
 
 :- pred term__substitute_corresponding_2(list(var), list(term),
 					substitution, substitution).
-:- mode term__substitute_corresponding_2(in, in, in, out).
+:- mode term__substitute_corresponding_2(in, in, in, out) is det.
 
 term__substitute_corresponding_2([], [], Subst, Subst).
 term__substitute_corresponding_2([S | Ss], [R | Rs], Subst0, Subst) :-
@@ -489,7 +492,7 @@ term__apply_rec_substitution(term__functor(Name, Args0, Context), Substitution,
 
 :- pred term__apply_rec_substitution_to_list(list(term), substitution,
 						list(term)).
-:- mode term__apply_rec_substitution_to_list(in, in, out).
+:- mode term__apply_rec_substitution_to_list(in, in, out) is det.
 
 term__apply_rec_substitution_to_list([], _Substitution, []).
 term__apply_rec_substitution_to_list([Term0 | Terms0], Substitution,
@@ -556,7 +559,7 @@ term__relabel_variables([Term0|Terms0], OldVar, NewVar, [Term|Terms]):-
 
 %-----------------------------------------------------------------------------%
 
-:- term_list_to_var_list(Terms, Vars) when Terms or Vars. % Indexing
+:- term__term_list_to_var_list(Terms, Vars) when Terms or Vars. % Indexing
 
 term__term_list_to_var_list(Terms, Vars) :-
 	( term__var_list_to_term_list(Vars0, Terms) ->
@@ -580,7 +583,7 @@ term__is_ground(term__functor(_, Args, _), Bindings) :-
 	term__is_ground_2(Args, Bindings).
 
 :- pred term__is_ground_2(list(term), substitution).
-:- mode term__is_ground_2(in, in).
+:- mode term__is_ground_2(in, in) is semidet.
 
 term__is_ground_2([], _Bindings).
 term__is_ground_2([Term|Terms], Bindings) :-

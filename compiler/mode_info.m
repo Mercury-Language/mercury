@@ -36,10 +36,6 @@
 	--->	unify(unify_context)
 	;	call(pred_call_id).
 
-:- type instmap
-	--->	reachable(map(var, inst))
-	;	unreachable.
-
 :- type mode_info.
 
 :- pred mode_info_init(io__state, module_info, pred_id, proc_id,

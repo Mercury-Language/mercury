@@ -9,6 +9,12 @@
 :- interface.
 :- import_module hlds, int, string, list, prog_io.
 
+	% mode_get_insts returns the initial instantiatedness and
+	% the final instantiatedness for a given mode.
+
+:- pred mode_get_insts(module_info, mode, inst, inst).
+:- mode mode_get_insts(in, in, out, out) is det.
+
 	% XXX how should these predicates handle abstract insts?
 	% In that case, we don't _know_ whether the mode is input
 	% or not!
@@ -56,8 +62,26 @@
 :- pred mode_list_get_initial_insts(list(mode), module_info, list(inst)).
 :- mode mode_list_get_initial_insts(in, in, out) is det.
 
+	% Given a user-defined or compiler-defined inst name,
+	% lookup the corresponding inst in the inst table.
+
 :- pred inst_lookup(module_info, inst_name, inst).
 :- mode inst_lookup(in, in, out) is det.
+
+	% Given an instmap and an instmap_delta, apply the instmap_delta
+	% to the instmap to produce a new instmap.
+
+:- pred apply_instmap_delta(instmap, instmap_delta, instmap).
+:- mode apply_instmap_delta(in, in, out) is det.
+
+	% Given an instmap and a variable, determine the inst of
+	% that variable.
+
+:- pred instmap_lookup_var(instmap, var, inst).
+:- mode instmap_lookup_var(in, in, out) is det.
+
+:- pred instmapping_lookup_var(instmapping, var, inst).
+:- mode instmapping_lookup_var(in, in, out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -266,9 +290,6 @@ inst_lookup_subst_args(abstract_inst, _Params, Name, Args,
 	% mode_get_insts returns the initial instantiatedness and
 	% the final instantiatedness for a given mode.
 
-:- pred mode_get_insts(module_info, mode, inst, inst).
-:- mode mode_get_insts(in, in, out, out) is det.
-
 mode_get_insts(_ModuleInfo, InitialInst -> FinalInst, InitialInst, FinalInst).
 mode_get_insts(ModuleInfo, user_defined_mode(Name, Args), Initial, Final) :-
 	list__length(Args, Arity),
@@ -400,4 +421,30 @@ alt_list_apply_substitution([Alt0|Alts0], Subst, [Alt|Alts]) :-
 mode_id_to_int(_ - X, X).
 
 %-----------------------------------------------------------------------------%
+
+	% Given an instmap and a variable, determine the inst of
+	% that variable.
+
+instmap_lookup_var(unreachable, _Var, not_reached).
+instmap_lookup_var(reachable(InstMap), Var, Inst) :-
+	instmapping_lookup_var(InstMap, Var, Inst).
+
+instmapping_lookup_var(InstMap, Var, Inst) :-
+	( map__search(InstMap, Var, VarInst) ->
+		Inst = VarInst
+	;
+		Inst = free
+	).
+
+%-----------------------------------------------------------------------------%
+
+apply_instmap_delta(unreachable, _, unreachable).
+apply_instmap_delta(reachable(_), unreachable, unreachable).
+apply_instmap_delta(reachable(InstMapping0), reachable(InstMappingDelta), 
+			reachable(InstMapping)) :-
+	map__overlay(InstMapping0, InstMappingDelta, InstMapping).
+
+	% Given two maps, overlay the entries in the second map 
+	% on top of those in the first map to produce a new map.
+
 %-----------------------------------------------------------------------------%

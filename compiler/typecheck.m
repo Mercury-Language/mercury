@@ -882,7 +882,7 @@ type_assign_term_has_type(term__functor(F, Args, _Context), Type, TypeAssign,
 
 checkpoint(Msg, T0, T) :-
 	type_info_get_io_state(T0, I0),
-	globals__lookup_option(debug, bool(DoCheckPoint), I0, I1),
+	globals__lookup_option(debug_types, bool(DoCheckPoint), I0, I1),
 	( DoCheckPoint = yes ->
 		checkpoint_2(Msg, T0, I1, I)
 	;	
@@ -1434,7 +1434,7 @@ type_unify_list([X | Xs], [Y | Ys], HeadTypeParams) -->
 
 :- pred type_unify_head_type_param(var, var, headtypes, substitution,
 				substitution).
-:- mode type_unify_head_type_param(in, in, in, in, out).
+:- mode type_unify_head_type_param(in, in, in, in, out) is semidet.
 
 type_unify_head_type_param(Var, HeadVar, HeadTypeParams, Bindings0,
 		Bindings) :-
@@ -1461,7 +1461,7 @@ type_unify_head_type_param(Var, HeadVar, HeadTypeParams, Bindings0,
 	% an infinite loop).
 
 :- pred check_circular_types(module_info, module_info, io__state, io__state).
-:- mode check_circular_types(in, out, di, uo).
+:- mode check_circular_types(in, out, di, uo) is det.
 
 check_circular_types(Module0, Module) -->
 	{ Module = Module0 }.
@@ -2096,7 +2096,7 @@ write_argument_name(VarSet, VarId) -->
 	).
 
 :- pred write_functor_name(const, int, io__state, io__state).
-:- mode write_functor_name(in, in, di, uo).
+:- mode write_functor_name(in, in, di, uo) is det.
 
 write_functor_name(Functor, Arity) -->
 	( { Arity = 0 } ->
@@ -2153,7 +2153,7 @@ write_type_of_functor(Functor, Arity, Context, ConsDefnList) -->
 		
 :- pred write_cons_type(cons_type_info, const, term__context,
 			io__state, io__state).
-:- mode write_cons_type(in, in, in, di, uo).
+:- mode write_cons_type(in, in, in, di, uo) is det.
 
 write_cons_type(cons_type_info(TVarSet, ConsType, ArgTypes), Functor, Context)
 		-->
@@ -2437,7 +2437,7 @@ write_type_info_context(TypeInfo) -->
 	prog_out__write_context(Context).
 
 :- pred write_context_and_pred_id(type_info, io__state, io__state).
-:- mode write_context_and_pred_id(type_info_no_io, di, uo).
+:- mode write_context_and_pred_id(type_info_no_io, di, uo) is det.
 
 write_context_and_pred_id(TypeInfo) -->
 	{ type_info_get_module_info(TypeInfo, ModuleInfo) },

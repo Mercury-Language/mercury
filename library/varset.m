@@ -57,6 +57,7 @@
 :- mode varset__lookup_name(in, out, in) is semidet.
 
 	% bind a value to a variable
+	% (will overwrite any existing binding).
 :- pred varset__bind_var(varset, var, term, varset).
 :- mode varset__bind_var(in, in, in, out) is det.
 
@@ -169,7 +170,7 @@ varset__lookup_name(varset(_, Names, _), Id, Name) :-
 
 varset__bind_var(varset(MaxId, Names, Vals0), Id, Val,
 		varset(MaxId, Names, Vals)) :-
-	map__search_insert(Vals0, Id, Val, Vals).
+	map__set(Vals0, Id, Val, Vals).
 
 %-----------------------------------------------------------------------------%
 

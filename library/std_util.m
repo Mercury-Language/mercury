@@ -43,6 +43,12 @@
 
 %-----------------------------------------------------------------------------%
 
+% The "maybe" type.
+
+:- type maybe(T) ---> yes(T) ; no.
+
+%-----------------------------------------------------------------------------%
+
 % compare/3 is not possible in a strictly parametric polymorphic type
 % system such as that of Goedel.
 

@@ -310,7 +310,7 @@ module_add_type_defn(Module0, VarSet, TypeDefn, Cond, Context, Module) -->
 			io__set_output_stream(StdErr, OldStream),
 			prog_out__write_context(Context),
 			io__write_string(
-		"warning: undiscriminated union types not yet implemented.\n"),
+		"warning: undiscriminated union types not implemented.\n"),
 			io__set_output_stream(OldStream, _)
 		;
 			[]
@@ -431,7 +431,11 @@ module_add_mode(ModuleInfo0, _VarSet, PredName, Modes, Det, _Cond, MContext,
 		% check that the determinism was specified
 		%
 	{ list__length(Modes, Arity) },
-	( { Det = unspecified } ->
+	globals__lookup_option(warn_missing_det_decls, bool(ShouldWarn)),
+	(
+		{ Det = unspecified },
+		{ ShouldWarn = yes }
+	->
 		unspecified_det_warning(PredName, Arity, MContext)
 	;
 		[]

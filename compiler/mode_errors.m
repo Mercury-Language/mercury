@@ -127,8 +127,8 @@ report_mode_error_conj(ModeInfo, Errors) -->
 	{ mode_info_get_context(ModeInfo, Context) },
 	{ mode_info_get_varset(ModeInfo, VarSet) },
 	{ find_important_errors(Errors, ImportantErrors, OtherErrors) },
-	globals__lookup_option(very_verbose, bool(VeryVerbose)),
-	( { VeryVerbose = yes } ->
+	globals__lookup_option(verbose_errors, bool(VerboseErrors)),
+	( { VerboseErrors = yes } ->
 		mode_info_write_context(ModeInfo),
 		prog_out__write_context(Context),
 		io__write_string("  mode error in conjunction. The next "),
@@ -152,7 +152,8 @@ report_mode_error_conj(ModeInfo, Errors) -->
 		report_mode_error_conj_2([FirstOtherError], VarSet, Context,
 			ModeInfo)
 	;
-		{ error("report_mode_error_conj: impossible") }
+		% There wasn't any error to report!  This can't happen.
+		{ error("report_mode_error_conj") }
 	).
 
 :- pred find_important_errors(list(delayed_goal), list(delayed_goal),
@@ -185,7 +186,7 @@ find_important_errors([Error | Errors], ImportantErrors, OtherErrors) :-
 report_mode_error_conj_2([], _, _, _) --> [].
 report_mode_error_conj_2([delayed_goal(Vars, Error, Goal) | Rest],
 			VarSet, Context, ModeInfo) -->
-	globals__lookup_option(debug, bool(Debug)),
+	globals__lookup_option(debug_modes, bool(Debug)),
 	( { Debug = yes } ->
 		prog_out__write_context(Context),
 		io__write_string("Floundered goal, waiting on { "),
@@ -195,8 +196,8 @@ report_mode_error_conj_2([delayed_goal(Vars, Error, Goal) | Rest],
 	;
 		[]
 	),
-	globals__lookup_option(verbose_errors, bool(VerboseErrors)),
-	( { VerboseErrors = yes } ->
+	globals__lookup_option(very_verbose, bool(VeryVerbose)),
+	( { VeryVerbose = yes } ->
 		io__write_string("\t\t"),
 		{ mode_info_get_module_info(ModeInfo, ModuleInfo) },
 		hlds_out__write_goal(Goal, ModuleInfo, VarSet, 2),

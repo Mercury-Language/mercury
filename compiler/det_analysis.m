@@ -265,8 +265,15 @@ global_checking_pass_2([PredId - ModeId | Rest], ModuleInfo) -->
 	;
 		{ max_category(DeclaredCategory, InferredCategory, Category) },
 		( { Category = DeclaredCategory } ->
-			report_determinism_warning(PredId, ModeId,
-				InferredCategory, DeclaredCategory, ModuleInfo)
+			globals__lookup_option(warn_det_decls_too_lax,
+				bool(ShouldIssueWarning)),
+			( { ShouldIssueWarning = yes } ->
+				report_determinism_warning(PredId, ModeId,
+					InferredCategory, DeclaredCategory,
+					ModuleInfo)
+			;
+				[]
+			)
 		;
 			report_determinism_error(PredId, ModeId,
 				InferredCategory, DeclaredCategory, ModuleInfo)
@@ -436,11 +443,12 @@ det_infer_goal_2(some(Vars, Goal0), MiscInfo, _, _, some(Vars, Goal), D) :-
 :- pred no_output_vars(set(var), instmap_delta, misc_info).
 :- mode no_output_vars(in, in, in) is semidet.
 
-no_output_vars(Vars, InstMapDelta, _MiscInfo) :-
+no_output_vars(_, unreachable, _).
+no_output_vars(Vars, reachable(InstMapDelta), _MiscInfo) :-
 	set__to_sorted_list(Vars, VarList),
 	no_output_vars_2(VarList, InstMapDelta).
 
-:- pred no_output_vars_2(list(var), instmap_delta).
+:- pred no_output_vars_2(list(var), instmapping).
 :- mode no_output_vars_2(in, in) is semidet.
 
 no_output_vars_2([], _).

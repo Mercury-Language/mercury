@@ -53,11 +53,6 @@
 :- pred map__insert(map(K,V), K, V, map(K,V)).
 :- mode map__insert(in, in, in, out) is semidet.
 
-	% Insert a new key and corresponding value into a map,
-	% or unify value with existing value in map.
-:- pred map__search_insert(map(K,V), K, V, map(K,V)).
-:- mode map__search_insert(in, in, in, out) is semidet.
-
 	% Update the value corresponding to a given key
 :- pred map__update(map(K,V), K, V, map(K,V)).
 :- mode map__update(in, in, in, out) is semidet.
@@ -97,8 +92,19 @@
 :- pred map__from_corresponding_lists(list(K), list(V), map(K, V)).
 :- mode map__from_corresponding_lists(in, in, out) is det.
 
+	% For map__merge(MapA, MapB, Map), MapA and MapB must
+	% not both contain the same key.
+
 :- pred map__merge(map(K, V), map(K, V), map(K, V)).
 :- mode map__merge(in, in, out) is det.
+
+	% For map__overlay(MapA, MapB, Map), if MapA and MapB both
+	% contain the same key, then Map will map that key to
+	% the value from MapB.  In otherwords, MapB takes precedence
+	% over MapA.
+
+:- pred map__overlay(map(K,V), map(K,V), map(K,V)).
+:- mode map__overlay(in, in, out) is det.
 
 :- pred map__optimize(map(K, V), map(K, V)).
 :- mode map__optimize(in, out) is det.
@@ -143,9 +149,6 @@ map__lookup(Map, K, V) :-
 map__insert(Map0, K, V, Map) :-
 	bintree__insert(Map0, K, V, Map).
  
-map__search_insert(Map0, K, V, Map) :-
-	bintree__search_insert(Map0, K, V, Map).
-
 map__update(Map0, K, V, Map) :-
 	bintree__update(Map0, K, V, Map).
 
@@ -214,5 +217,19 @@ map__merge(M0, M1, M) :-
 map__optimize(Map0, Map) :-
 	bintree__balance(Map0, Map).
 
+%-----------------------------------------------------------------------------%
+
+map__overlay(Map0, Map1, Map) :-
+	map__to_assoc_list(Map1, AssocList),
+	map__overlay_2(AssocList, Map0, Map).
+
+:- pred map__overlay_2(assoc_list(K,V), map(K,V), map(K,V)).
+:- mode map__overlay_2(in, in, out) is det.
+
+map__overlay_2([], Map, Map).
+map__overlay_2([K - V | AssocList], Map0, Map) :-
+	map__set(Map0, K, V, Map1),
+	map__overlay_2(AssocList, Map1, Map).
+	
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

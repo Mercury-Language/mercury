@@ -220,11 +220,11 @@ output_instruction(assign(Lval, Rval)) -->
 	output_rval(Rval),
 	io__write_string(";").
 
-output_instruction(call(local(Label), ContLabel)) -->
+output_instruction(call(CodeAddress, ContLabel)) -->
 	io__write_string("\t"),
-	io__write_string("call(LABEL("),
-	output_label(Label),
-	io__write_string("), LABEL("),
+	io__write_string("call("),
+	output_code_address(CodeAddress),
+	io__write_string(", LABEL("),
 	output_label(ContLabel),
 	io__write_string("));").
 
@@ -236,27 +236,12 @@ output_instruction(unicall(Label, ContLabel)) -->
 	output_label(ContLabel),
 	io__write_string("));").
 
-	% XXX we need to do something with the module name and arity.
-output_instruction(call(nonlocal(_Module, _Pred, _Arity, _Mode),
-							_ContLabel)) -->
-	{ error("Non-local calls not implemented") }.
-	
-output_instruction(tailcall(local(Label))) -->
+output_instruction(tailcall(CodeAddress)) -->
 	io__write_string("\t"),
-	io__write_string("tailcall(LABEL("),
-	output_label(Label),
-	io__write_string("));").
-
-	% XXX we need to do something with the module name and arity.
-
-output_instruction(tailcall(nonlocal(_Module, Pred, _Arity, Mode))) -->
-	io__write_string("\t"),
-	io__write_string("tailcallentry("),
-	io__write_string(Pred),
-	io__write_string("_"),
-	io__write_int(Mode),
+	io__write_string("tailcall("),
+	output_code_address(CodeAddress),
 	io__write_string(");").
-	
+
 output_instruction(proceed) -->
 	io__write_string("\t"),
 	io__write_string("proceed();").
@@ -267,9 +252,9 @@ output_instruction(label(Label)) -->
 	
 output_instruction(goto(Label)) -->
 	io__write_string("\t"),
-	io__write_string("GOTO(LABEL("),
+	io__write_string("GOTO_LABEL("),
 	output_label(Label),
-	io__write_string("));").
+	io__write_string(");").
 
 output_instruction(test(Rval1, Rval2, Label)) -->
 	io__write_string("\t"),
@@ -277,9 +262,9 @@ output_instruction(test(Rval1, Rval2, Label)) -->
 	output_rval(Rval1),
 	io__write_string(") != ("),
 	output_rval(Rval2),
-	io__write_string("))\n\t\tGOTO(LABEL("),
+	io__write_string("))\n\t\tGOTO_LABEL("),
 	output_label(Label),
-	io__write_string("));").
+	io__write_string(");").
 
 output_instruction(if_tag(Reg, Tag, Label)) -->
 	io__write_string("\t"),
@@ -287,23 +272,23 @@ output_instruction(if_tag(Reg, Tag, Label)) -->
 	output_lval(Reg),
 	io__write_string(") != "),
 	output_tag(Tag),
-	io__write_string(") GOTO(LABEL("),
+	io__write_string(") GOTO_LABEL("),
 	output_label(Label),
-	io__write_string("));").
+	io__write_string(");").
 
 output_instruction(if_val(Rval, Label)) -->
 	io__write_string("\t"),
 	io__write_string("if( "),
 	output_rval(Rval),
-	io__write_string(" ) \n\t\tGOTO(LABEL("),
+	io__write_string(" ) \n\t\tGOTO_LABEL("),
 	output_label(Label),
-	io__write_string("));").
+	io__write_string(");").
 
 output_instruction(if_not_val(Rval, Label)) -->
 	io__write_string("\t"),
 	io__write_string("if(!( "),
 	output_rval(Rval),
-	io__write_string(" )) \n\t\tGOTO(LABEL("),
+	io__write_string(" )) \n\t\tGOTO_LABEL("),
 	output_label(Label),
 	io__write_string("));").
 
@@ -323,6 +308,29 @@ output_instruction(incr_hp(N)) -->
 	io__write_string("incr_hp("),
 	io__write_int(N),
 	io__write_string(");").
+
+:- pred output_code_address(code_addr, io__state, io__state).
+:- mode output_code_address(in, di, uo) is det.
+
+output_code_address(local(Label)) -->
+	io__write_string("LABEL("),
+	output_label(Label),
+	io__write_string(")").
+
+	% XXX we need to do something with the module name.
+
+output_code_address(nonlocal(_Module, Pred, Arity, Mode)) -->
+	io__write_string("\t"),
+	io__write_string("ENTRY("),
+	%%% io__write_string(Module),
+	io__write_string("mercury"),
+	io__write_string("__"),
+	io__write_string(Pred),
+	io__write_string("_"),
+	io__write_int(Arity),
+	io__write_string("_"),
+	io__write_int(Mode),
+	io__write_string(")").
 
 :- pred output_label(label, io__state, io__state).
 :- mode output_label(in, di, uo) is det.

@@ -494,19 +494,22 @@ goal_get_nonlocals(_Goal - GoalInfo, NonLocals) :-
 :- pred compute_instmap_delta(instmap, instmap, set(var), instmap_delta).
 :- mode compute_instmap_delta(in, in, in, out) is det.
 
-compute_instmap_delta(InstMapA, InstMapB, NonLocals, DeltaInstMap) :-
+compute_instmap_delta(unreachable, _, _, unreachable).
+compute_instmap_delta(reachable(_), unreachable, _, unreachable).
+compute_instmap_delta(reachable(InstMapA), reachable(InstMapB), NonLocals,
+			reachable(DeltaInstMap)) :-
 	set__to_sorted_list(NonLocals, NonLocalsList),
 	compute_instmap_delta_2(NonLocalsList, InstMapA, InstMapB, AssocList),
 	map__from_sorted_assoc_list(AssocList, DeltaInstMap).
 
-:- pred compute_instmap_delta_2(list(var), instmap, instmap,
+:- pred compute_instmap_delta_2(list(var), instmapping, instmapping,
 					assoc_list(var, inst)).
 :- mode compute_instmap_delta_2(in, in, in, out) is det.
 
 compute_instmap_delta_2([], _, _, []).
 compute_instmap_delta_2([Var | Vars], InstMapA, InstMapB, AssocList) :-
-	instmap_lookup_var(InstMapA, Var, InstA),
-	instmap_lookup_var(InstMapB, Var, InstB),
+	instmapping_lookup_var(InstMapA, Var, InstA),
+	instmapping_lookup_var(InstMapB, Var, InstB),
 	( InstA = InstB ->
 		AssocList1 = AssocList
 	;
@@ -514,24 +517,12 @@ compute_instmap_delta_2([Var | Vars], InstMapA, InstMapB, AssocList) :-
 	),
 	compute_instmap_delta_2(Vars, InstMapA, InstMapB, AssocList1).
 
-:- pred instmap_lookup_var(instmap, var, inst).
-:- mode instmap_lookup_var(in, in, out) is det.
-
-instmap_lookup_var(unreachable, _Var, not_reached).
-instmap_lookup_var(reachable(InstMap), Var, Inst) :-
-	( map__search(InstMap, Var, VarInst) ->
-		Inst = VarInst
-	;
-		Inst = free
-	).
-
-:- pred instmap_lookup_arg_list(list(term), instmap, list(inst)).
-:- mode instmap_lookup_arg_list(in, in, out).
+:- pred instmap_lookup_arg_list(list(var), instmap, list(inst)).
+:- mode instmap_lookup_arg_list(in, in, out) is det.
 
 instmap_lookup_arg_list([], _InstMap, []).
 instmap_lookup_arg_list([Arg|Args], InstMap, [Inst|Insts]) :-
-	Arg = term__variable(Var),
-	instmap_lookup_var(InstMap, Var, Inst),
+	instmap_lookup_var(InstMap, Arg, Inst),
 	instmap_lookup_arg_list(Args, InstMap, Insts).
 
 %-----------------------------------------------------------------------------%
@@ -571,7 +562,7 @@ modecheck_conj_list(Goals0, Goals) -->
 	).
 
 :- pred mode_info_add_goals_live_vars(list(hlds__goal), mode_info, mode_info).
-:- mode mode_info_add_goals_live_vars(in, mode_info_di, mode_info_uo).
+:- mode mode_info_add_goals_live_vars(in, mode_info_di, mode_info_uo) is det.
 
 mode_info_add_goals_live_vars([]) --> [].
 mode_info_add_goals_live_vars([Goal | Goals]) -->
@@ -632,7 +623,7 @@ modecheck_conj_list_2([Goal0 | Goals0], Goals) -->
 	modecheck_conj_list_2(Goals1, Goals2).
 
 :- pred dcg_set_state(T, T, T).
-:- mode dcg_set_state(in, in, out).
+:- mode dcg_set_state(in, in, out) is det.
 
 dcg_set_state(Val, _OldVal, Val).
 
@@ -640,14 +631,14 @@ dcg_set_state(Val, _OldVal, Val).
 	% combine all the Vars together into a single set.
 
 :- pred get_all_waiting_vars(list(delayed_goal), set(var)).
-:- mode get_all_waiting_vars(in, out).
+:- mode get_all_waiting_vars(in, out) is det.
 
 get_all_waiting_vars(DelayedGoals, Vars) :-
 	set__init(Vars0),
 	get_all_waiting_vars_2(DelayedGoals, Vars0, Vars).
 
 :- pred get_all_waiting_vars_2(list(delayed_goal), set(var), set(var)).
-:- mode get_all_waiting_vars_2(in, in, out).
+:- mode get_all_waiting_vars_2(in, in, out) is det.
 
 get_all_waiting_vars_2([], Vars, Vars).
 get_all_waiting_vars_2([delayed_goal(Vars1, _, _) | Rest], Vars0, Vars) :-
@@ -665,7 +656,7 @@ get_all_waiting_vars_2([delayed_goal(Vars1, _, _) | Rest], Vars0, Vars) :-
 
 :- pred modecheck_disj_list(list(hlds__goal), list(hlds__goal), list(instmap),
 				mode_info, mode_info).
-:- mode modecheck_disj_list(in, out, out, mode_info_di, mode_info_uo).
+:- mode modecheck_disj_list(in, out, out, mode_info_di, mode_info_uo) is det.
 
 modecheck_disj_list([], [], []) --> [].
 modecheck_disj_list([Goal0 | Goals0], [Goal | Goals], [InstMap | InstMaps]) -->
@@ -683,7 +674,7 @@ modecheck_disj_list([Goal0 | Goals0], [Goal | Goals], [InstMap | InstMaps]) -->
 
 :- pred instmap_merge(set(var), list(instmap), merge_context,
 		mode_info, mode_info).
-:- mode instmap_merge(in, in, in, mode_info_di, mode_info_uo).
+:- mode instmap_merge(in, in, in, mode_info_di, mode_info_uo) is det.
 
 instmap_merge(NonLocals, InstMapList, MergeContext, ModeInfo0, ModeInfo) :-
 	mode_info_get_instmap(ModeInfo0, InstMap0),
@@ -890,7 +881,7 @@ modecheck_call_pred_2([ProcId | ProcIds], PredId, Procs, ArgVars, WaitingVars,
 	).
 
 :- pred get_var_insts(list(var), instmap, list(inst)).
-:- mode get_var_insts(in, in, out).
+:- mode get_var_insts(in, in, out) is det.
 
 get_var_insts([], _, []).
 get_var_insts([Var | Vars], InstMap, [Inst | Insts]) :-
@@ -1384,11 +1375,12 @@ bound_inst_list_matches_final([X|Xs], [Y|Ys], ModuleInfo, Expansions) :-
 	;	wakeup.
 
 :- pred mode_checkpoint(port, string, mode_info, mode_info).
-:- mode mode_checkpoint(in, in, mode_info_di, mode_info_uo).
+:- mode mode_checkpoint(in, in, mode_info_di, mode_info_uo) is det.
 
 mode_checkpoint(Port, Msg, ModeInfo0, ModeInfo) :-
 	mode_info_get_io_state(ModeInfo0, IOState0),
-        globals__lookup_option(debug, bool(DoCheckPoint), IOState0, IOState1),
+        globals__lookup_option(debug_modes, bool(DoCheckPoint),
+		IOState0, IOState1),
 	( DoCheckPoint = yes ->
 		mode_checkpoint_2(Port, Msg, ModeInfo0, IOState1, IOState)
 	;
@@ -1397,7 +1389,7 @@ mode_checkpoint(Port, Msg, ModeInfo0, ModeInfo) :-
 	mode_info_set_io_state(ModeInfo0, IOState, ModeInfo).
 
 :- pred mode_checkpoint_2(port, string, mode_info, io__state, io__state).
-:- mode mode_checkpoint_2(in, in, mode_info_ui, di, uo).
+:- mode mode_checkpoint_2(in, in, mode_info_ui, di, uo) is det.
 
 mode_checkpoint_2(Port, Msg, ModeInfo) -->
 	{ mode_info_get_errors(ModeInfo, Errors) },
@@ -1435,7 +1427,7 @@ mode_checkpoint_2(Port, Msg, ModeInfo) -->
 
 :- pred write_var_insts(assoc_list(var, inst), varset, varset,
 			io__state, io__state).
-:- mode write_var_insts(in, in, in, di, uo).
+:- mode write_var_insts(in, in, in, di, uo) is det.
 
 write_var_insts([], _, _) --> [].
 write_var_insts([Var - Inst | VarInsts], VarSet, InstVarSet) -->
@@ -1456,7 +1448,8 @@ write_var_insts([Var - Inst | VarInsts], VarSet, InstVarSet) -->
 
 :- pred modecheck_unification(term, term, pair(mode, mode), unification,
 				mode_info, mode_info).
-:- mode modecheck_unification(in, in, out, out, mode_info_di, mode_info_uo).
+:- mode modecheck_unification(in, in, out, out, mode_info_di, mode_info_uo)
+	is det.
 
 modecheck_unification(term__variable(X), term__variable(Y), Modes, Unification,
 			ModeInfo0, ModeInfo) :-
@@ -1501,9 +1494,9 @@ modecheck_unification(term__variable(X), term__functor(Name, Args, _),
 	mode_info_get_module_info(ModeInfo0, ModuleInfo0),
 	mode_info_get_instmap(ModeInfo0, InstMap0),
 	instmap_lookup_var(InstMap0, X, InstX),
-	instmap_lookup_arg_list(Args, InstMap0, InstArgs),
-	mode_info_var_is_live(ModeInfo0, X, LiveX),
 	term__term_list_to_var_list(Args, ArgVars),
+	instmap_lookup_arg_list(ArgVars, InstMap0, InstArgs),
+	mode_info_var_is_live(ModeInfo0, X, LiveX),
 	mode_info_var_list_is_live(ArgVars, ModeInfo0, LiveArgs),
 	InstY = bound([functor(Name, InstArgs)]),
 	(
@@ -1530,7 +1523,7 @@ modecheck_unification(term__variable(X), term__functor(Name, Args, _),
 		Inst = not_reached
 	),
 	modecheck_set_var_inst(X, Inst, ModeInfo1, ModeInfo2),
-	bind_args(Inst, Args, ModeInfo2, ModeInfo),
+	bind_args(Inst, ArgVars, ModeInfo2, ModeInfo),
 	ModeX = (InstX -> Inst),
 	ModeY = (InstY -> Inst),
 	Mode = ModeX - ModeY,
@@ -1550,7 +1543,7 @@ modecheck_unification(term__functor(_, _, _), term__functor(_, _, _),
 
 %-----------------------------------------------------------------------------%
 
-:- pred bind_args(inst, list(term), mode_info, mode_info).
+:- pred bind_args(inst, list(var), mode_info, mode_info).
 :- mode bind_args(in, in, mode_info_di, mode_info_uo) is det.
 
 		% This first clause shouldn't be necessary, but it is
@@ -1568,22 +1561,20 @@ bind_args(bound(List), Args) -->
 		bind_args_2(Args, InstList)
 	).
 
-:- pred bind_args_2(list(term), list(inst), mode_info, mode_info).
-:- mode bind_args_2(in, in, mode_info_di, mode_info_uo).
+:- pred bind_args_2(list(var), list(inst), mode_info, mode_info).
+:- mode bind_args_2(in, in, mode_info_di, mode_info_uo) is det.
 
 bind_args_2([], []) --> [].
 bind_args_2([Arg | Args], [Inst | Insts]) -->
-	{ Arg = term__variable(Var) },
-	modecheck_set_var_inst(Var, Inst),
+	modecheck_set_var_inst(Arg, Inst),
 	bind_args_2(Args, Insts).
 
-:- pred ground_args(list(term), mode_info, mode_info).
-:- mode ground_args(in, mode_info_di, mode_info_uo).
+:- pred ground_args(list(var), mode_info, mode_info).
+:- mode ground_args(in, mode_info_di, mode_info_uo) is det.
 
 ground_args([]) --> [].
 ground_args([Arg | Args]) -->
-	{ Arg = term__variable(Var) },
-	modecheck_set_var_inst(Var, ground),
+	modecheck_set_var_inst(Arg, ground),
 	ground_args(Args).
 
 %-----------------------------------------------------------------------------%
@@ -1605,7 +1596,7 @@ get_mode_of_args(bound(List), ArgInstsA, ArgModes) :-
 	).
 
 :- pred get_mode_of_args_2(list(inst), list(inst), list(mode)).
-:- mode get_mode_of_args_2(in, in, out).
+:- mode get_mode_of_args_2(in, in, out) is det.
 
 get_mode_of_args_2([], [], []).
 get_mode_of_args_2([InstA | InstsA], [InstB | InstsB], [Mode | Modes]) :-
@@ -1762,7 +1753,7 @@ abstractly_unify_inst_3(dead, abstract_inst(Name, ArgsA),
 
 :- pred abstractly_unify_inst_list(list(inst), list(inst), is_live, module_info,
 					list(inst), module_info).
-:- mode abstractly_unify_inst_list(in, in, in, in, out, out).
+:- mode abstractly_unify_inst_list(in, in, in, in, out, out) is semidet.
 
 abstractly_unify_inst_list([], [], _, M, [], M).
 abstractly_unify_inst_list([X|Xs], [Y|Ys], Live, ModuleInfo0,
@@ -1990,7 +1981,7 @@ abstractly_unify_inst_list_lives([X|Xs], [Y|Ys], [Live|Lives], ModuleInfo0,
 
 :- pred categorize_unify_var_var(mode, mode, var, var, map(var, type), 
 				module_info, unification).
-:- mode categorize_unify_var_var(in, in, in, in, in, in, out).
+:- mode categorize_unify_var_var(in, in, in, in, in, in, out) is det.
 
 categorize_unify_var_var(ModeX, ModeY, X, Y, VarTypes, ModuleInfo,
 		Unification) :-
@@ -2012,7 +2003,7 @@ categorize_unify_var_var(ModeX, ModeY, X, Y, VarTypes, ModuleInfo,
 
 :- pred categorize_unify_var_functor(mode, list(mode), var, const,
 				list(var), module_info, unification).
-:- mode categorize_unify_var_functor(in, in, in, in, in, in, out).
+:- mode categorize_unify_var_functor(in, in, in, in, in, in, out) is det.
 
 categorize_unify_var_functor(ModeX, ArgModes0, X, Name, ArgVars, ModuleInfo,
 		Unification) :-
@@ -2025,6 +2016,11 @@ categorize_unify_var_functor(ModeX, ArgModes0, X, Name, ArgVars, ModuleInfo,
 	->
 		Unification = construct(X, ConsId, ArgVars, ArgModes)
 	; 
+		% XXXXX
+		% module_info_get_insts(ModuleInfo, ModeX, InitialInst0, _Final),
+		% inst_expand(ModuleInfo, InitialInst0, InitialInst),
+		% ( InitialInst = bound([SingleFunctor]) ->
+		
 		Unification = deconstruct(X, ConsId, ArgVars, ArgModes)
 	).
 
@@ -2037,7 +2033,7 @@ categorize_unify_var_functor(ModeX, ArgModes0, X, Name, ArgVars, ModuleInfo,
 	% an infinite loop).
 
 :- pred check_circular_modes(module_info, module_info, io__state, io__state).
-:- mode check_circular_modes(in, out, di, uo).
+:- mode check_circular_modes(in, out, di, uo) is det.
 
 check_circular_modes(Module0, Module) -->
 	{ Module = Module0 }.
@@ -2048,7 +2044,7 @@ check_circular_modes(Module0, Module) -->
 	% record a mode error (and associated context _info) in the mode_info.
 
 :- pred mode_info_error(set(var), mode_error, mode_info, mode_info).
-:- mode mode_info_error(in, in, mode_info_di, mode_info_uo).
+:- mode mode_info_error(in, in, mode_info_di, mode_info_uo) is det.
 
 mode_info_error(Vars, ModeError, ModeInfo0, ModeInfo) :-
 	mode_info_get_context(ModeInfo0, Context),
@@ -2057,7 +2053,7 @@ mode_info_error(Vars, ModeError, ModeInfo0, ModeInfo) :-
 	mode_info_add_error(ModeErrorInfo, ModeInfo0, ModeInfo).
 
 :- pred mode_info_add_error(mode_error_info, mode_info, mode_info).
-:- mode mode_info_add_error(in, mode_info_di, mode_info_uo).
+:- mode mode_info_add_error(in, mode_info_di, mode_info_uo) is det.
 
 mode_info_add_error(ModeErrorInfo, ModeInfo0, ModeInfo) :-
 	mode_info_get_errors(ModeInfo0, Errors0),
@@ -2070,7 +2066,7 @@ mode_info_add_error(ModeErrorInfo, ModeInfo0, ModeInfo) :-
 	% report them to the user now.
 
 :- pred modecheck_report_errors(mode_info, mode_info).
-:- mode modecheck_report_errors(mode_info_di, mode_info_uo).
+:- mode modecheck_report_errors(mode_info_di, mode_info_uo) is det.
 
 modecheck_report_errors(ModeInfo0, ModeInfo) :-
 	mode_info_get_errors(ModeInfo0, Errors),
