@@ -82,7 +82,7 @@ make_interface(ModuleName, Items0) -->
 	write_interface_file(ModuleName, ".int", InterfaceItems),
 	{ get_short_interface(InterfaceItems, ShortInterfaceItems) },
 	write_interface_file(ModuleName, ".int2", ShortInterfaceItems),
-	check_for_no_exports(ModuleName, InterfaceItems, ShortInterfaceItems),
+	check_for_no_exports(InterfaceItems, ModuleName),
 	touch_interface_datestamp(ModuleName).
 
 %-----------------------------------------------------------------------------%
@@ -102,16 +102,21 @@ check_for_clauses_in_interface([Item0 | Items0], Items) -->
 		check_for_clauses_in_interface(Items0, Items1)
 	).
 
-:- pred check_for_no_exports(string, item_list, item_list,
-					io__state, io__state).
-:- mode check_for_no_exports(in, in, in, di, uo) is det.
+:- pred check_for_no_exports(item_list, string, io__state, io__state).
+:- mode check_for_no_exports(in, in, di, uo) is det.
 
-check_for_no_exports(ModuleName, InterfaceItems, ShortInterfaceItems) -->
+check_for_no_exports([], ModuleName) -->
+	warn_no_exports(ModuleName).
+check_for_no_exports([Item - _Context | Items], ModuleName) -->
 	(
-		{ InterfaceItems = ShortInterfaceItems }	% ???
+		{ Item = nothing
+		; Item = module_defn(_,_)
+		}
 	->
-		warn_no_exports(ModuleName)
+		% nothing useful - keep searching
+		check_for_no_exports(Items, ModuleName)
 	;
+		% we found something useful - don't issue the warning
 		[]
 	).
 
@@ -209,7 +214,7 @@ touch_interface_datestamp(ModuleName) -->
 %-----------------------------------------------------------------------------%
 
 grab_imported_modules(ModuleName, Items0, Module, Error) -->
-	get_dependencies(ModuleName, Items0, ImportedModules),
+	{ get_dependencies(Items0, ImportedModules) },
 
 		% Note that the module `mercury_builtin' is always
 		% automatically imported.  (Well, the actual name
@@ -778,16 +783,6 @@ process_module_short_interfaces([Import | Imports], Module0, Module) -->
 	% Given a module (well, a list of items),
 	% determine all the modules that it depends upon
 	% (both interface dependencies and also implementation dependencies).
-	%
-	% As this predicate does a full traversal of the module, I've bolted 
-	% on a function to check that there is something exported in the 
-	% interface section.
-	%
-	% The /2 predicate is the original, and the /5 has the warnings.
-	% If the /5 predicate were called from some/too many places, there 
-	% would be many repeated and/or inaccurate warnings.
-	%
-	% This does sacrifice some flexibility for speed.
 
 :- pred get_dependencies(item_list, list(string)).
 :- mode get_dependencies(in, out) is det.
@@ -806,75 +801,6 @@ get_dependencies_2([Item - _Context | Items], Deps0, Deps) :-
 		Deps1 = Deps0
 	),
 	get_dependencies_2(Items, Deps1, Deps).
-
-%-----------------------------------------------------------------------------%
-
-:- pred get_dependencies(string, item_list, list(string), io__state, io__state).
-:- mode get_dependencies(in, in, out, di, uo) is det.
-
-get_dependencies(ModuleName, Items, Deps) -->
-	{ get_dependencies_2_imp(Items, [], Deps, no, Found_useful_interface) },
-	( 	
-		{ Found_useful_interface = no }
-	->
-		warn_no_exports(ModuleName)
-	;
-		[]
-	).
-
-:- pred get_dependencies_2_imp(item_list, list(string), list(string), bool, bool).
-:- mode get_dependencies_2_imp(in, in, out, in, out) is det.
-
-get_dependencies_2_imp([], Deps, Deps, UsefulIntf, UsefulIntf).
-get_dependencies_2_imp([Item - _Context | Items], Deps0, Deps, 
-			UsefulIntf0, UsefulIntf) :-
-	( 
-		Item = module_defn(_VarSet, import(module(Modules))) 
-	->
-		list__append(Deps0, Modules, Deps1)
-	;
-		Deps1 = Deps0
-	),
-	( 
-		Item = module_defn(_Varset, interface)
-	->
-		get_dependencies_2_int(Items, Deps1, Deps, UsefulIntf0,
-				UsefulIntf)
-	;
-		get_dependencies_2_imp(Items, Deps1, Deps, UsefulIntf0, 
-				UsefulIntf)
-	).
-
-:- pred get_dependencies_2_int(item_list, list(string), list(string),
-				bool, bool).
-:- mode get_dependencies_2_int(in, in, out, in, out) is det.
-
-get_dependencies_2_int([], Deps, Deps, UsefulIntf, UsefulIntf).
-get_dependencies_2_int([Item - _Context | Items], Deps0, Deps, 
-			UsefulIntf0, UsefulIntf) :-
-	(
-		Item = module_defn(_VarSet, import(module(Modules)))
-	->
-		list__append(Deps0, Modules, Deps1),
-		UsefulIntf1 = UsefulIntf0
-	;
-		Item = nothing
-	->
-		Deps1 = Deps0,
-		UsefulIntf1 = UsefulIntf0
-	;
-		Deps1 = Deps0,
-		UsefulIntf1 = yes 
-	),
-	( 
-		Item = module_defn(_Varset, implementation)
-	->
-		get_dependencies_2_imp(Items, Deps1, Deps, UsefulIntf1,
-				UsefulIntf)
-	;
-		get_dependencies_2_int(Items, Deps1, Deps, UsefulIntf1,
-				UsefulIntf)
-	).
 
 %-----------------------------------------------------------------------------%
 
