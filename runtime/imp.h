@@ -150,7 +150,19 @@ static Word deref(Word p) {
 
 #include "regs.h"
 
-#include "modules.h"
+/* DEFINITIONS FOR THE "PORTABLE ASSEMBLER" CONSTRUCTS */
+
+#ifdef __GNUC__
+
+#define LABEL(label)		(&&label)
+#define GOTO(label)		goto *(label)
+
+#else
+
+#define LABEL(label)		(label)
+#define GOTO(label)		return (label)
+
+#endif
 
 /* DEFINITIONS FOR CALLS AND RETURNS */
 
