@@ -86,11 +86,15 @@ then
 	echo last 10 lines of log file:
 	tail -10 $logfile
 	echo
-	cd /home/mercury/public/mercury-latest/$FULLARCH/lib/mercury/bin/$FULLARCH
+	case $HOST in
+		hg) base=/home/hg ;;
+		*) base=/home/mercury ;;
+	esac
+	cd $base/public/mercury-latest/$FULLARCH/lib/mercury/bin/$FULLARCH
 	ls -l mercury_compile
 	size mercury_compile
 	{
-		echo $FULLARCH
+		echo $FULLARCH $HOST
 		ls -l mercury_compile
 		size mercury_compile
 		echo

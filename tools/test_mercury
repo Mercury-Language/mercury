@@ -18,6 +18,7 @@ esac
 PATH="$HOME/bin/$ARCH`awk '/^[^#]/{printf ":%s",$0;}' /home/pgrad/fjh/.path`"
 PATH="/home/mercury/public/mercury-0.8/$FULLARCH/bin:$PATH"
 PATH="/home/mercury/public/mercury-latest/$FULLARCH/bin:$PATH"
+PATH="/home/$HOST/public/mercury-latest/$FULLARCH/bin:$PATH"
 PATH="/home/mercury/public/nuprolog/$FULLARCH/bin:$PATH"
 PATH="/home/mercury/public/gcc-2.7.2/$FULLARCH/bin:$PATH"
 PATH="/home/mercury/public/egcs-1.1b/$FULLARCH/bin:$PATH"
@@ -73,6 +74,21 @@ esac
 TEST_MCFLAGS="$OPTIMIZE --opt-space"
 TEST_CFLAGS=""
 
+case $FULLARCH in
+	i?86-*-linux*)
+		# On x86 Linux, we need to set the following flags to enable
+		# shared libraries (and we need to use shared libraries to
+		# avoid running out of disk space...)
+		TEST_MGNUCFLAGS=--pic-reg
+		TEST_MLFLAGS=--shared
+		;;
+	*)
+		# On other platforms shared libraries is the default
+		TEST_MGNUCFLAGS=""
+		TEST_MLFLAGS=""
+		;;
+esac
+
 # directories to use
 
 TESTDIR=/home/mercury/public/test_mercury
@@ -105,7 +121,7 @@ PATH="$INSTALL_DIR/bin:$PATH"
 # $PARALLEL: flag to pass to GNU make for parallel make
 PARALLEL=
 case $HOST in
-	kryten) 	PARALLEL=-j3 ;; # out of four CPUs
+	kryten) 	PARALLEL=-j2 ;; # out of three CPUs
 	rimmer) 	PARALLEL=-j2 ;; # out of two CPUs
 	muse)		PARALLEL=-j2 ;; # out of four CPUs
 	munta)		PARALLEL=-j2 ;; # out of four CPUs
@@ -118,7 +134,14 @@ case $HOST in
 esac
 
 # version of the mercury compiler to use for bootstrapping
-BOOTSTRAP_MERCURY_COMPILER=/home/mercury/public/mercury-latest/$FULLARCH/lib/mercury/bin/$FULLARCH/mercury_compile
+case $HOST in
+	hg)
+		BOOTSTRAP_MERCURY_COMPILER=/home/$HOST/public/mercury-latest/$FULLARCH/lib/mercury/bin/$FULLARCH/mercury_compile
+		;;
+	*)
+		BOOTSTRAP_MERCURY_COMPILER=/home/mercury/public/mercury-latest/$FULLARCH/lib/mercury/bin/$FULLARCH/mercury_compile
+		;;
+esac
 
 # df (disk free) command
 DF=df
@@ -167,20 +190,24 @@ status=0
 
 case $HOST in
 	murlibobo)
-		CONFIG_OPTS=--enable-all-grades ;;
+		CONFIG_OPTS="--enable-all-grades" ;;
 	kryten)		
-		CONFIG_OPTS=--enable-all-grades ;;
+		# On kryten & taifun, there is a bug in readline which causes
+		# it to go into an infinite loop when reading from a file.
+		CONFIG_OPTS="--enable-all-grades --without-readline" ;;
 	taifun)		
-		# On taifun, there is a bug in readline which causes
-		# it to go into an infinite loop when reading from
-		# a file.
-		CONFIG_OPTS=--without-readline ;;
+		# On kryten & taifun, there is a bug in readline which causes
+		# it to go into an infinite loop when reading from a file.
+		CONFIG_OPTS="--without-readline" ;;
 	munta)		
 		# On munta, we need to disable the external debugger,
 		# because it uses sockets, and munta doesn't have
 		# the static versions of the socket libraries
-		# installed.
-		CONFIG_OPTS=--disable-extern-debug ;;
+		# installed.  Likewise for the -non_shared version
+		# of the dl library.  Unfortunately our configure script
+		# doesn't detect these problems, so we need to pass these
+		# options manually.
+		CONFIG_OPTS="--disable-extern-debug --disable-dynamic-link" ;;
 	*)	
 		CONFIG_OPTS="" ;;
 esac
@@ -283,7 +310,7 @@ case $status in 0)
 		#
 		(cd library && \
 		\
-		PATH=../scripts:../util:$PATH 
+		PATH=../scripts:../util:$PATH \
 		MMAKE_VPATH=. MMAKE_DIR=../scripts \
 		../scripts/mmake EXTRA_CFLAGS="$TEST_CFLAGS -O1" \
 		int.dir/*.o && \
@@ -470,6 +497,7 @@ for grade in $GRADES
 do
 	echo "test_mercury starting tests for grade $grade at `date`" 1>&2
 	./runtests -f "$TEST_MCFLAGS" -c "$TEST_CFLAGS" -g "$grade" \
+		-m "$TEST_MGNUCFLAGS" -l "$TEST_MLFLAGS" \
 		$PARALLEL || status=1
 	case $grade in
 		*.memprof*)
@@ -513,24 +541,42 @@ esac
 
 : build the binary distribution
 
+# For the Linux systems, we need to distinguish them based
+# on the version of GNU libc.
+case $HOST in
+	hg)	
+		fullname=i686-pc-linux-libc2.1-gnu
+		;;
+	quicksilver)	
+		fullname=i586-pc-linux-libc2.0-gnu
+		;;
+	hydra)	
+		fullname=i686-pc-linux-libc2.0-gnu
+		;;
+	*)
+		fullname=$fullarch
+		;;
+esac
+
 {
 	cd $DIR/mercury &&
 	mmake bindist &&
 	cd .. &&
 	( [ -d $UNSTABLE ] || mkdir $UNSTABLE ) &&
-	rm -f $UNSTABLE/mercury-*.$fullarch.tar.gz &&
-	mv mercury/mercury-$version.$fullarch.tar.gz $UNSTABLE
+	rm -f $UNSTABLE/mercury-*.$fullname.tar.gz &&
+	mv mercury/mercury-$version.$fullarch.tar.gz \
+		$UNSTABLE/mercury-$version.$fullname.tar.gz
 } || status=1
 
 case $status in
     0) {
     	cd $DIR &&
 	( [ -d $STABLE ] || mkdir $STABLE ) &&
-	rm -f $STABLE/mercury-*.$fullarch.tar.gz &&
-	$LN $UNSTABLE/mercury-$version.$fullarch.tar.gz $STABLE &&
-	rsh $BETA_FTPHOST "rm -f $BETA_FTPDIR/mercury-*.$fullarch.tar.gz" &&
-	rcp $STABLE/mercury-$version.$fullarch.tar.gz \
-		$BETA_FTPHOST:$BETA_FTPDIR 
+	rm -f $STABLE/mercury-*.$fullname.tar.gz &&
+	$LN $UNSTABLE/mercury-$version.$fullname.tar.gz $STABLE &&
+	rsh $BETA_FTPHOST "rm -f $BETA_FTPDIR/mercury-*.$fullname.tar.gz" &&
+	rcp $STABLE/mercury-$version.$fullname.tar.gz \
+		$BETA_FTPHOST:$BETA_FTPDIR
        } || status=1
     ;;
 esac
