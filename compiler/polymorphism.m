@@ -665,7 +665,7 @@ polymorphism__process_case_list([Case0 | Cases0], [Case | Cases]) -->
 polymorphism__process_call(PredId, _ProcId, ArgVars0, ArgVars,
 				ExtraVars, ExtraGoals, Info0, Info) :-
 	Info0 = poly_info(VarSet0, VarTypes0, TypeVarSet0,
-				TypeInfoMap, ModuleInfo),
+				TypeInfoMap0, ModuleInfo),
 	module_info_pred_info(ModuleInfo, PredId, PredInfo),
 	pred_info_arg_types(PredInfo, PredTypeVarSet, PredArgTypes0),
 		% rename apart
@@ -691,9 +691,10 @@ polymorphism__process_call(PredId, _ProcId, ArgVars0, ArgVars,
 		term__var_list_to_term_list(PredTypeVars, PredTypes0),
 		term__apply_rec_substitution_to_list(PredTypes0, TypeSubst,
 			PredTypes),
-		polymorphism__make_vars(PredTypes, ModuleInfo, TypeInfoMap,
+		polymorphism__make_vars(PredTypes, ModuleInfo, TypeInfoMap0,
 				VarSet0, VarTypes0,
-				ExtraVars, ExtraGoals, VarSet, VarTypes),
+				ExtraVars, TypeInfoMap, ExtraGoals, VarSet, 
+				VarTypes),
 		list__append(ExtraVars, ArgVars0, ArgVars),
 		Info = poly_info(VarSet, VarTypes, TypeVarSet,
 				TypeInfoMap, ModuleInfo)
@@ -749,27 +750,33 @@ polymorphism__process_lambda(PredOrFunc, Vars, Modes, Det, OrigNonLocals,
 % Update the varset and vartypes accordingly.
 
 :- pred polymorphism__make_vars(list(type), module_info, map(tvar, var),
-	varset, map(var, type), list(var), list(hlds_goal),
+	varset, map(var, type), list(var), map(tvar, var), list(hlds_goal),
 	varset, map(var, type)).
-:- mode polymorphism__make_vars(in, in, in, in, in, out, out, out, out) is det.
+:- mode polymorphism__make_vars(in, in, in, in, in, out, out, out, out, 
+	out) is det.
 
-polymorphism__make_vars([], _, _, VarSet, VarTypes, [], [], VarSet, VarTypes).
-polymorphism__make_vars([Type | Types], ModuleInfo, TypeInfoMap,
-		VarSet0, VarTypes0, ExtraVars, ExtraGoals, VarSet, VarTypes) :-
-	polymorphism__make_var(Type, ModuleInfo, TypeInfoMap,
-		VarSet0, VarTypes0, Var, ExtraGoals1, VarSet1, VarTypes1),
-	polymorphism__make_vars(Types, ModuleInfo, TypeInfoMap,
-		VarSet1, VarTypes1, ExtraVars2, ExtraGoals2, VarSet, VarTypes),
+polymorphism__make_vars([], _, TypeInfoMap, VarSet, VarTypes, [], TypeInfoMap,
+		[], VarSet, VarTypes).
+polymorphism__make_vars([Type | Types], ModuleInfo, TypeInfoMap0,
+		VarSet0, VarTypes0, ExtraVars, TypeInfoMap, ExtraGoals, 
+		VarSet, VarTypes) :-
+	polymorphism__make_var(Type, ModuleInfo, TypeInfoMap0,
+		VarSet0, VarTypes0, Var, TypeInfoMap1, ExtraGoals1, VarSet1,
+		VarTypes1),
+	polymorphism__make_vars(Types, ModuleInfo, TypeInfoMap1,
+		VarSet1, VarTypes1, ExtraVars2, TypeInfoMap, ExtraGoals2, 
+		VarSet, VarTypes),
 	ExtraVars = [Var | ExtraVars2],
 	list__append(ExtraGoals1, ExtraGoals2, ExtraGoals).
 
-:- pred polymorphism__make_var(type, module_info, map(tvar, var),
-	varset, map(var, type), var, list(hlds_goal),
+:- pred polymorphism__make_var(type, module_info, map(tvar, var), 
+	varset, map(var, type), var, map(tvar, var), list(hlds_goal),
 	varset, map(var, type)).
-:- mode polymorphism__make_var(in, in, in, in, in, out, out, out, out) is det.
+:- mode polymorphism__make_var(in, in, in, in, in, out, out, out, out, out) 
+	is det.
 
-polymorphism__make_var(Type, ModuleInfo, TypeInfoMap,
-		VarSet0, VarTypes0, Var, ExtraGoals, VarSet, VarTypes) :-
+polymorphism__make_var(Type, ModuleInfo, TypeInfoMap0, VarSet0, VarTypes0, 
+		Var, TypeInfoMap, ExtraGoals, VarSet, VarTypes) :-
 	(
 		type_is_higher_order(Type, _PredOrFunc, TypeArgs)
 	->
@@ -785,8 +792,8 @@ polymorphism__make_var(Type, ModuleInfo, TypeInfoMap,
 		% the type_info of higher-order types.
 		TypeId = unqualified("pred") - 0,
 		polymorphism__construct_type_info(Type, TypeId, TypeArgs,
-			yes, ModuleInfo, TypeInfoMap, VarSet0, VarTypes0,
-			Var, ExtraGoals, VarSet, VarTypes)
+			yes, ModuleInfo, TypeInfoMap0, VarSet0, VarTypes0,
+			Var, TypeInfoMap, ExtraGoals, VarSet, VarTypes)
 	;
 		type_to_type_id(Type, TypeId, TypeArgs)
 	->
@@ -796,11 +803,11 @@ polymorphism__make_var(Type, ModuleInfo, TypeInfoMap,
 		% at the top of the module.
 
 		polymorphism__construct_type_info(Type, TypeId, TypeArgs,
-			no, ModuleInfo, TypeInfoMap, VarSet0, VarTypes0,
-			Var, ExtraGoals, VarSet, VarTypes)
+			no, ModuleInfo, TypeInfoMap0, VarSet0, VarTypes0,
+			Var, TypeInfoMap, ExtraGoals, VarSet, VarTypes)
 	;
 		Type = term__variable(TypeVar1),
-		map__search(TypeInfoMap, TypeVar1, TypeInfoVar)
+		map__search(TypeInfoMap0, TypeVar1, TypeInfoVar)
 	->
 		% This occurs for code where a predicate calls a polymorphic
 		% predicate with a bound but unknown value of the type variable.
@@ -821,8 +828,11 @@ polymorphism__make_var(Type, ModuleInfo, TypeInfoMap,
 		Var = TypeInfoVar,
 		ExtraGoals = [],
 		VarSet = VarSet0,
-		VarTypes = VarTypes0
+		VarTypes = VarTypes0,
+		TypeInfoMap = TypeInfoMap0
 	;
+		Type = term__variable(TypeVar1)
+	->
 		% This occurs for code where a predicate calls a polymorphic
 		% predicate with an unbound type variable, for example
 		%
@@ -854,24 +864,27 @@ polymorphism__make_var(Type, ModuleInfo, TypeInfoMap,
 		% variable to zero
 		TypeId = unqualified("void") - 0,
 		polymorphism__construct_type_info(Type, TypeId, [],
-			no, ModuleInfo, TypeInfoMap, VarSet0, VarTypes0,
-			Var, ExtraGoals, VarSet, VarTypes)
+			no, ModuleInfo, TypeInfoMap0, VarSet0, VarTypes0,
+			Var, TypeInfoMap1, ExtraGoals, VarSet, VarTypes),
+		map__det_insert(TypeInfoMap1, TypeVar1, Var, TypeInfoMap)
+	;
+		error("polymorphism__make_var: unknown type")
 	).
 
 :- pred polymorphism__construct_type_info(type, type_id, list(type),
 	bool, module_info, map(tvar, var), varset, map(var, type),
-	var, list(hlds_goal), varset, map(var, type)).
+	var, map(tvar, var), list(hlds_goal), varset, map(var, type)).
 :- mode polymorphism__construct_type_info(in, in, in, in, in, in, in, in,
-	out, out, out, out) is det.
+	out, out, out, out, out) is det.
 
 polymorphism__construct_type_info(Type, TypeId, TypeArgs, IsHigherOrder, 
-		ModuleInfo, TypeInfoMap, VarSet0, VarTypes0,
-		Var, ExtraGoals, VarSet, VarTypes) :-
+		ModuleInfo, TypeInfoMap0, VarSet0, VarTypes0,
+		Var, TypeInfoMap, ExtraGoals, VarSet, VarTypes) :-
 
 	% Create the typeinfo vars for the arguments
-	polymorphism__make_vars(TypeArgs, ModuleInfo, TypeInfoMap,
-		VarSet0, VarTypes0, ArgTypeInfoVars, ArgTypeInfoGoals,
-		VarSet1, VarTypes1),
+	polymorphism__make_vars(TypeArgs, ModuleInfo, TypeInfoMap0,
+		VarSet0, VarTypes0, ArgTypeInfoVars, TypeInfoMap, 
+		ArgTypeInfoGoals, VarSet1, VarTypes1),
 
 	module_info_globals(ModuleInfo, Globals),
 	globals__get_type_info_method(Globals, TypeInfoMethod),
