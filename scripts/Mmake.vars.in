@@ -476,7 +476,7 @@ LIBGRADES		= @LIBGRADES@
 
 #-----------------------------------------------------------------------------#
 
-OBJFILE_OPT=@OBJFILE_OPT@
+OBJFILE_OPT="@OBJFILE_OPT@"
 
 O=@OBJ_SUFFIX@
 A=@LIB_SUFFIX@

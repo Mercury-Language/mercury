@@ -273,7 +273,7 @@ else
 	LINK_LIB="-l"
 	LINK_OPT_SEP=""
 
-	OBJFILE_OPT="-o"
+	OBJFILE_OPT="-o "
 	AR="ar"
 	ARFLAGS="cr"
 	AR_LIBFILE_OPT=""
