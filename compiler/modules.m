@@ -2074,8 +2074,13 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 
 			io__write_strings(DepStream, [
 				ForeignDllFileName, " : ", DllFileName]),
+			% XXX This change doesn't work correctly because
+			% mmake can't find the dlls which don't reside
+			% in the current directory.
+			/*
 			write_dll_dependencies_list(ModuleName,
 					AllDeps, DepStream),
+			*/
 			io__nl(DepStream),
 
 			io__write_strings(DepStream, [
