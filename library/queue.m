@@ -112,7 +112,13 @@ queue__put_list(Q0, [X | Xs], Q1) :-
 	queue__put(Q0, X, Q2),
 	queue__put_list(Q2, Xs, Q1).
 
-queue__first(_On - [Elem | _Off], Elem).
+queue__first(On - Off, Elem) :-
+	(	Off = [Elem | _]
+	;	Off = [],
+		% XXX efficiency could be improved
+		list__reverse(On, NewOff),
+		NewOff = [Elem | _]
+	).
 
 queue__get(On0 - Off0, Elem, On - Off) :-
 	queue__get_2(On0, Off0, Elem, On, Off).
