@@ -1306,6 +1306,19 @@ output_instr(box(Type), Info0, Info) -->
 	output_type(Type, Info0, Info).
 
 output_instr(castclass(Type), Info0, Info) -->
+	(
+		{ Type = type(_, '[]'(ElementType, _)) },
+		{ ElementType = type(_, class(Name)) },
+		{ Name = structured_name(assembly("mscorlib"),
+				["System", "Type"], _) }
+	->
+		% XXX There is bug where castclass to System.Type[]
+		% sometimes erroneously fails, so we comment out these
+		% castclass's.
+		io__write_string("// ")
+	;
+		[]
+	),
 	io__write_string("castclass\t"),
 	output_type(Type, Info0, Info).
 
