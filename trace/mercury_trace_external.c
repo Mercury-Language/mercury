@@ -622,7 +622,7 @@ MR_trace_event_external(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 						"REQUEST_RETRY\n");
 				}
 				retry_result = MR_trace_retry(event_info, 
-					&event_details, 0, &message,
+					&event_details, 0, MR_FALSE, &message,
 					NULL, NULL, &jumpaddr);
 				if (retry_result == MR_RETRY_OK_DIRECT) {
 					MR_send_message_to_socket("ok");

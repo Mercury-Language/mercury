@@ -152,4 +152,15 @@ extern	MR_bool	MR_get_type_base(const MR_Label_Layout *label_layout, int var,
 
 extern	void	MR_write_variable(MR_TypeInfo type_info, MR_Word value);
 
+/*
+** Return the name of a procedure specified by the given proc layout in three
+** pieces: the name of the procedure in *proc_name_ptr, its arity in
+** *arity_ptr, and a boolean that is true iff procedure is a function
+** in *is_func_ptr,
+*/
+
+extern	void	MR_generate_proc_name_from_layout(const MR_Proc_Layout
+			*proc_layout, MR_ConstString *proc_name_ptr,
+			int *arity_ptr, MR_Word *is_func_ptr);
+
 #endif	/* MERCURY_LAYOUT_UTIL_H */

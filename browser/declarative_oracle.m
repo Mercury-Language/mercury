@@ -154,27 +154,29 @@ set_oracle_user(oracle(KB, _), UI, oracle(KB, UI)).
 		% case that the user supplies a truth value for a
 		% "wrong answer" node.
 		%
-		map_cc(decl_atom, decl_truth),
+		kb_ground_map :: map_cc(final_decl_atom, decl_truth),
 
 		% Mapping from call atoms to their solution sets.
 		% The sets in this map are all complete---but they may
 		% contain wrong answers.
 		%
-		map_cc(decl_atom, set(decl_atom)),
+		kb_complete_map :: map_cc(init_decl_atom, final_decl_atoms),
 
 		% Mapping from call atoms to their solution sets.
 		% The sets in this map are all incomplete---there
 		% exists a correct solution which is not in the set.
 		%
-		map_cc(decl_atom, set(decl_atom)),
+		kb_incomplete_map :: map_cc(init_decl_atom, final_decl_atoms),
 
 		% Mapping from call atoms to information about which
 		% exceptions are possible or impossible.
 		%
-		map_cc(decl_atom, known_exceptions)
+		kb_exceptions_map :: map_cc(init_decl_atom, known_exceptions)
 	).
 
 :- type map_cc(K, V) == tree234_cc(K, V).
+
+:- type final_decl_atoms	== set(final_decl_atom).
 
 :- type known_exceptions
 	--->	known_excp(
@@ -191,45 +193,49 @@ oracle_kb_init(oracle_kb(G, Y, N, X)) :-
 	tree234_cc__init(N),
 	tree234_cc__init(X).
 
-:- pred get_kb_ground_map(oracle_kb, map_cc(decl_atom, decl_truth)).
+:- pred get_kb_ground_map(oracle_kb, map_cc(final_decl_atom, decl_truth)).
 :- mode get_kb_ground_map(in, out) is det.
 
 get_kb_ground_map(oracle_kb(Map, _, _, _), Map).
 
-:- pred set_kb_ground_map(oracle_kb, map_cc(decl_atom, decl_truth), oracle_kb).
+:- pred set_kb_ground_map(oracle_kb, map_cc(final_decl_atom, decl_truth),
+	oracle_kb).
 :- mode set_kb_ground_map(in, in, out) is det.
 
 set_kb_ground_map(oracle_kb(_, Y, N, X), G, oracle_kb(G, Y, N, X)).
 
-:- pred get_kb_complete_map(oracle_kb, map_cc(decl_atom, set(decl_atom))).
+:- pred get_kb_complete_map(oracle_kb,
+	map_cc(init_decl_atom, final_decl_atoms)).
 :- mode get_kb_complete_map(in, out) is det.
 
 get_kb_complete_map(oracle_kb(_, Map, _, _), Map).
 
-:- pred set_kb_complete_map(oracle_kb, map_cc(decl_atom, set(decl_atom)),
-		oracle_kb).
+:- pred set_kb_complete_map(oracle_kb,
+	map_cc(init_decl_atom, final_decl_atoms), oracle_kb).
 :- mode set_kb_complete_map(in, in, out) is det.
 
 set_kb_complete_map(oracle_kb(G, _, N, X), Y, oracle_kb(G, Y, N, X)).
 
-:- pred get_kb_incomplete_map(oracle_kb, map_cc(decl_atom, set(decl_atom))).
+:- pred get_kb_incomplete_map(oracle_kb,
+	map_cc(init_decl_atom, final_decl_atoms)).
 :- mode get_kb_incomplete_map(in, out) is det.
 
 get_kb_incomplete_map(oracle_kb(_, _, Map, _), Map).
 
-:- pred set_kb_incomplete_map(oracle_kb, map_cc(decl_atom, set(decl_atom)),
-		oracle_kb).
+:- pred set_kb_incomplete_map(oracle_kb,
+	map_cc(init_decl_atom, final_decl_atoms), oracle_kb).
 :- mode set_kb_incomplete_map(in, in, out) is det.
 
 set_kb_incomplete_map(oracle_kb(G, Y, _, X), N, oracle_kb(G, Y, N, X)).
 
-:- pred get_kb_exceptions_map(oracle_kb, map_cc(decl_atom, known_exceptions)).
+:- pred get_kb_exceptions_map(oracle_kb,
+	map_cc(init_decl_atom, known_exceptions)).
 :- mode get_kb_exceptions_map(in, out) is det.
 
 get_kb_exceptions_map(oracle_kb(_, _, _, Map), Map).
 
-:- pred set_kb_exceptions_map(oracle_kb, map_cc(decl_atom, known_exceptions),
-		oracle_kb).
+:- pred set_kb_exceptions_map(oracle_kb,
+	map_cc(init_decl_atom, known_exceptions), oracle_kb).
 :- mode set_kb_exceptions_map(in, in, out) is det.
 
 set_kb_exceptions_map(oracle_kb(G, Y, N, _), X, oracle_kb(G, Y, N, X)).

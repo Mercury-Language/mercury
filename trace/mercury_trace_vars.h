@@ -141,6 +141,8 @@ extern	const char	*MR_trace_headvar_num(int n, int *num);
 **
 ** The goal is printed to the given file if the file pointer is non-NULL.
 ** The goal is printed by giving it to the specified browser.
+**
+** XXX Actually, the "out" parameter is currently ignored.
 */
 
 extern	const char	*MR_trace_browse_one_goal(FILE *out,
@@ -153,6 +155,8 @@ extern	const char	*MR_trace_browse_one_goal(FILE *out,
 **
 ** The goal is printed to the given file if the file pointer is non-NULL.
 ** The goal is printed by giving it to the specified browser.
+**
+** XXX Actually, the "out" parameter is currently ignored.
 */
 
 extern	const char	*MR_trace_browse_action(FILE *out, int action_number,
@@ -170,6 +174,8 @@ extern	const char	*MR_trace_browse_action(FILE *out, int action_number,
 ** The values are printed by giving them to the specified browser.
 ** The last argument governs whether this function returns an error
 ** if the given variable specification is ambiguous.
+**
+** XXX Actually, the "out" parameter is currently ignored by the browser.
 */
 
 extern	const char	*MR_trace_parse_browse_one(FILE *out, char *word_spec,
@@ -184,6 +190,8 @@ extern	const char	*MR_trace_parse_browse_one(FILE *out, char *word_spec,
 ** The values are printed by giving them to the specified browser.
 ** The last argument governs whether this function returns an error
 ** if the given variable specification is ambiguous.
+**
+** XXX Actually, the "out" parameter is currently ignored by the browser.
 */
 
 extern	const char	*MR_trace_browse_one(FILE *out, MR_Var_Spec var_spec,
@@ -197,6 +205,8 @@ extern	const char	*MR_trace_browse_one(FILE *out, MR_Var_Spec var_spec,
 ** point. The variables names are printed directly to the given file, but
 ** only if the given file pointer is not NULL; the variable values are
 ** printed by calling the given browser function on them.
+**
+** XXX Actually, the "out" parameter is currently ignored by the browser.
 */
 
 extern	const char 	*MR_trace_browse_all(FILE *out, MR_Browser browser,
@@ -206,6 +216,8 @@ extern	const char 	*MR_trace_browse_all(FILE *out, MR_Browser browser,
 ** Sets the current set of variables to be ones live at the program point
 ** referred to by level_layout, base_sp and base_curfr arguments, and then
 ** prints them all.
+**
+** XXX Actually, the "out" parameter is currently ignored by the browser.
 */
 
 extern	const char	*MR_trace_browse_all_on_level(FILE *out,

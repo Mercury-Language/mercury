@@ -44,6 +44,7 @@ DECLARATIVE_PROGS=		\
 	queens			\
 	small			\
 	special_term_dep	\
+	tabled_read_decl	\
 	throw
 
 # The following should not be run in `debug' grades.
@@ -62,6 +63,7 @@ MCFLAGS-dependency2=--trace rep
 MCFLAGS-input_term_dep=--trace rep
 MCFLAGS-output_term_dep=--trace rep
 MCFLAGS-special_term_dep=--trace rep
+MCFLAGS-tabled_read_decl=--trace rep --trace-table-io-decl
 MCFLAGS-untraced_subgoal_sub=--trace minimum
 
 ifneq "$(findstring .debug,$(GRADE))" ""
@@ -192,6 +194,10 @@ solutions.out: solutions solutions.inp
 special_term_dep.out: special_term_dep special_term_dep.inp
 	$(MDB) ./special_term_dep < special_term_dep.inp \
 			> special_term_dep.out 2>&1
+
+tabled_read_decl.out: tabled_read_decl tabled_read_decl.inp
+	$(MDB) ./tabled_read_decl < tabled_read_decl.inp \
+			> tabled_read_decl.out 2>&1
 
 # We need to pipe the output through sed to avoid hard-coding dependencies on
 # particular line numbers in the standard library source code.

@@ -22,6 +22,7 @@ ENDINIT
 #include "mercury_engine.h"
 #include "mercury_wrapper.h"
 #include "mercury_misc.h"
+#include "mercury_layout_util.h" /* for MR_generate_proc_name_from_layout */
 #include "mercury_runtime_util.h"	/* for strerror() on some systems */
 #include "mercury_signal.h"	/* for MR_setup_signal() */
 #include <signal.h>		/* for SIGINT */
@@ -336,6 +337,66 @@ MR_trace_report_raw(int fd)
 			(long) MR_trace_event_number);
 		write(fd, buf, strlen(buf));
 	}
+}
+
+const char *
+MR_trace_get_action(int action_number, MR_ConstString *proc_name_ptr,
+	MR_Word *is_func_ptr, MR_Word *arg_list_ptr)
+{
+	const MR_Table_Io_Decl	*table_io_decl;
+	const MR_Proc_Layout	*proc_layout;
+	MR_ConstString		proc_name;
+	MR_Word			is_func;
+	MR_Word			arg_list;
+	MR_Word			arg;
+	int			filtered_arity;
+	int			arity;
+	int			hv;
+	MR_TrieNode		answer_block_trie;
+	MR_Word			*answer_block;
+	MR_TypeInfo		*type_params;
+	MR_TypeInfo		type_info;
+
+	if (! (MR_io_tabling_start <= action_number
+		&& action_number < MR_io_tabling_counter_hwm))
+	{
+		return "I/O action number not in range";
+	}
+
+	MR_DEBUG_NEW_TABLE_START_INT(answer_block_trie,
+		(MR_TrieNode) &MR_io_tabling_pointer,
+		MR_io_tabling_start, action_number);
+	answer_block = answer_block_trie->MR_answerblock;
+
+	if (answer_block == NULL) {
+		return "I/O action number not in range";
+	}
+
+	table_io_decl = (const MR_Table_Io_Decl *) answer_block[0];
+	proc_layout = table_io_decl->MR_table_io_decl_proc;
+	filtered_arity = table_io_decl->MR_table_io_decl_filtered_arity;
+
+	MR_generate_proc_name_from_layout(proc_layout, &proc_name, &arity,
+		&is_func);
+
+	type_params = MR_materialize_answer_block_type_params(
+			table_io_decl->MR_table_io_decl_type_params,
+			answer_block, filtered_arity);
+
+	arg_list = MR_list_empty();
+	for (hv = filtered_arity; hv >= 1; hv--) {
+		type_info = MR_create_type_info(type_params,
+			table_io_decl->MR_table_io_decl_ptis[hv - 1]);
+		MR_new_univ_on_hp(arg, type_info, answer_block[hv]);
+		arg_list = MR_list_cons(arg, arg_list);
+	}
+
+	MR_free(type_params);
+
+	*proc_name_ptr = proc_name;
+	*is_func_ptr = is_func;
+	*arg_list_ptr = arg_list;
+	return NULL;
 }
 
 static	MR_Word		MR_trace_exception_value = (MR_Word) NULL;

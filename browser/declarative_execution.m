@@ -16,8 +16,8 @@
 
 :- module mdb__declarative_execution.
 :- interface.
+:- import_module mdb__program_representation, mdb__util.
 :- import_module list, std_util, string, io, bool.
-:- import_module mdb__util, mdb__program_representation.
 
 	% This type represents a port in the annotated trace.
 	% The type R is the type of references to other nodes
@@ -43,9 +43,13 @@
 						% At the maximum depth?
 			call_proc_rep		:: maybe(proc_rep),
 						% Body of the called procedure.
-			call_goal_path		:: goal_path_string
+			call_goal_path		:: goal_path_string,
 						% Path for this event *in the
 						% caller*.
+			call_io_seq_num		:: int
+						% The I/O action sequence
+						% number at the time of the
+						% call.
 		)
 	;	exit(
 			exit_preceding		:: R,
@@ -56,8 +60,12 @@
 						% Previous REDO event, if any.
 			exit_atom		:: trace_atom,
 						% Atom in its final state.
-			exit_event		:: event_number
+			exit_event		:: event_number,
 						% Trace event number.
+			exit_io_seq_num		:: int
+						% The I/O action sequence
+						% number at the time of the
+						% exit.
 		)
 	;	redo(
 			redo_preceding		:: R,
@@ -241,9 +249,8 @@
 :- pred det_trace_node_from_id(S, R, trace_node(R)) <= annotated_trace(S, R).
 :- mode det_trace_node_from_id(in, in, out) is det.
 
-:- inst trace_node_call =
-		bound(call(ground, ground, ground, ground, ground, ground,
-				ground, ground)).
+:- inst trace_node_call = bound(call(ground, ground, ground, ground,
+	ground, ground, ground, ground, ground)).
 
 :- pred call_node_from_id(S, R, trace_node(R)) <= annotated_trace(S, R).
 :- mode call_node_from_id(in, in, out(trace_node_call)) is det.
@@ -256,7 +263,8 @@
 :- pred maybe_redo_node_from_id(S, R, trace_node(R)) <= annotated_trace(S, R).
 :- mode maybe_redo_node_from_id(in, in, out(trace_node_redo)) is semidet.
 
-:- inst trace_node_exit = bound(exit(ground, ground, ground, ground, ground)).
+:- inst trace_node_exit = bound(exit(ground, ground, ground, ground,
+	ground, ground)).
 
 :- pred exit_node_from_id(S, R, trace_node(R)) <= annotated_trace(S, R).
 :- mode exit_node_from_id(in, in, out(trace_node_exit)) is det.
@@ -341,10 +349,12 @@
 
 %-----------------------------------------------------------------------------%
 
-step_left_in_contour(Store, exit(_, Call, _, _, _)) = Prec :-
-	call_node_from_id(Store, Call, call(Prec, _, _, _, _, _, _, _)).
+step_left_in_contour(Store, exit(_, Call, _, _, _, _)) = Prec :-
+	call_node_from_id(Store, Call, CallNode),
+	Prec = CallNode ^ call_preceding.
 step_left_in_contour(Store, excp(_, Call, _, _, _)) = Prec :-
-	call_node_from_id(Store, Call, call(Prec, _, _, _, _, _, _, _)).
+	call_node_from_id(Store, Call, CallNode),
+	Prec = CallNode ^ call_preceding.
 step_left_in_contour(_, switch(Prec, _)) = Prec.
 step_left_in_contour(_, first_disj(Prec, _)) = Prec.
 step_left_in_contour(Store, later_disj(_, _, FirstDisj)) = Prec :-
@@ -366,7 +376,7 @@ step_left_in_contour(Store, neg_succ(_, Neg)) = Prec :-
 	% The following cases are possibly at the left end of a contour,
 	% where we cannot step any further.
 	%
-step_left_in_contour(_, call(_, _, _, _, _, _, _, _)) = _ :-
+step_left_in_contour(_, call(_, _, _, _, _, _, _, _, _)) = _ :-
 	error("step_left_in_contour: unexpected CALL node").
 step_left_in_contour(_, neg(Prec, _, Status)) = Next :-
 	(
@@ -408,30 +418,33 @@ step_left_in_contour(Store, Node) = Prec :-
 	;	neg_fail(ground, ground)).
 
 find_prev_contour(Store, fail(_, Call, _, _), OnContour) :-
-	call_node_from_id(Store, Call, call(OnContour, _, _, _, _, _, _, _)).
+	call_node_from_id(Store, Call, CallNode),
+	OnContour = CallNode ^ call_preceding.
 find_prev_contour(Store, redo(_, Exit), OnContour) :-
-	exit_node_from_id(Store, Exit, exit(OnContour, _, _, _, _)).
+	exit_node_from_id(Store, Exit, ExitNode),
+	OnContour = ExitNode ^ exit_preceding.
 find_prev_contour(Store, neg_fail(_, Neg), OnContour) :-
 	neg_node_from_id(Store, Neg, neg(OnContour, _, _)).
 	%
 	% The following cases are at the left end of a contour,
 	% so there are no previous contours in the same stratum.
 	%
-find_prev_contour(_, call(_, _, _, _, _, _, _, _), _) :-
+find_prev_contour(_, call(_, _, _, _, _, _, _, _, _), _) :-
 	error("find_prev_contour: reached CALL node").
 find_prev_contour(_, cond(_, _, _), _) :-
 	error("find_prev_contour: reached COND node").
 find_prev_contour(_, neg(_, _, _), _) :-
 	error("find_prev_contour: reached NEGE node").
 
-step_in_stratum(Store, exit(_, Call, MaybeRedo, _, _)) =
+step_in_stratum(Store, exit(_, Call, MaybeRedo, _, _, _)) =
 	step_over_redo_or_call(Store, Call, MaybeRedo).
 step_in_stratum(Store, fail(_, Call, MaybeRedo, _)) =
 	step_over_redo_or_call(Store, Call, MaybeRedo).
 step_in_stratum(Store, excp(_, Call, MaybeRedo, _, _)) =
 	step_over_redo_or_call(Store, Call, MaybeRedo).
 step_in_stratum(Store, redo(_, Exit)) = Next :-
-	exit_node_from_id(Store, Exit, exit(Next, _, _, _, _)).
+	exit_node_from_id(Store, Exit, ExitNode),
+	Next = ExitNode ^ exit_preceding.
 step_in_stratum(_, switch(Next, _)) = Next.
 step_in_stratum(_, first_disj(Next, _)) = Next.
 step_in_stratum(_, later_disj(Next, _, _)) = Next.
@@ -454,7 +467,7 @@ step_in_stratum(Store, neg_fail(_, Neg)) = Next :-
 	% The following cases mark the boundary of the stratum,
 	% so we cannot step any further.
 	%
-step_in_stratum(_, call(_, _, _, _, _, _, _, _)) = _ :-
+step_in_stratum(_, call(_, _, _, _, _, _, _, _, _)) = _ :-
 	error("step_in_stratum: unexpected CALL node").
 step_in_stratum(_, neg(_, _, _)) = _ :-
 	error("step_in_stratum: unexpected NEGE node").
@@ -467,7 +480,8 @@ step_over_redo_or_call(Store, Call, MaybeRedo) = Next :-
 	->
 		Redo = redo(Next, _)
 	;
-		call_node_from_id(Store, Call, call(Next, _, _, _, _, _, _, _))
+		call_node_from_id(Store, Call, CallNode),
+		Next = CallNode ^ call_preceding
 	).
 
 det_trace_node_from_id(Store, NodeId, Node) :-
@@ -482,7 +496,7 @@ det_trace_node_from_id(Store, NodeId, Node) :-
 call_node_from_id(Store, NodeId, Node) :-
 	(
 		trace_node_from_id(Store, NodeId, Node0),
-		Node0 = call(_, _, _, _, _, _, _, _)
+		Node0 = call(_, _, _, _, _, _, _, _, _)
 	->
 		Node = Node0
 	;
@@ -502,7 +516,7 @@ maybe_redo_node_from_id(Store, NodeId, Node) :-
 exit_node_from_id(Store, NodeId, Node) :-
 	(
 		trace_node_from_id(Store, NodeId, Node0),
-		Node0 = exit(_, _, _, _, _)
+		Node0 = exit(_, _, _, _, _, _)
 	->
 		Node = Node0
 	;
@@ -596,7 +610,7 @@ disj_node_from_id(Store, NodeId, Node) :-
 
 call_node_get_last_interface(Call) = Last :-
 	(
-		Call = call(_, Last0, _, _, _, _, _, _)
+		Call = call(_, Last0, _, _, _, _, _, _, _)
 	->
 		Last = Last0
 	;
@@ -611,7 +625,7 @@ call_node_get_last_interface(Call) = Last :-
 
 call_node_set_last_interface(Call0, Last) = Call :-
 	(
-		Call0 = call(_, _, _, _, _, _, _, _)
+		Call0 = call(_, _, _, _, _, _, _, _, _)
 	->
 		Call1 = Call0
 	;
@@ -675,8 +689,8 @@ set_trace_node_arg(Node0, FieldNum, Val, Node) :-
 :- pragma export(trace_node_port(in) = out,
 		"MR_DD_trace_node_port").
 
-trace_node_port(call(_, _, _, _, _, _, _, _)) = call.
-trace_node_port(exit(_, _, _, _, _))	= exit.
+trace_node_port(call(_, _, _, _, _, _, _, _, _)) = call.
+trace_node_port(exit(_, _, _, _, _, _))	= exit.
 trace_node_port(redo(_, _))		= redo.
 trace_node_port(fail(_, _, _, _))	= fail.
 trace_node_port(excp(_, _, _, _, _))	= exception.
@@ -697,8 +711,8 @@ trace_node_port(neg_fail(_, _))		= neg_failure.
 
 % XXX fix the returned path for interface events other than calls.
 
-trace_node_path(_, call(_, _, _, _, _, _, _, P)) = P.
-trace_node_path(_, exit(_, _, _, _, _)) = "".
+trace_node_path(_, call(_, _, _, _, _, _, _, P, _)) = P.
+trace_node_path(_, exit(_, _, _, _, _, _)) = "".
 trace_node_path(_, redo(_, _)) = "".
 trace_node_path(_, fail(_, _, _, _)) = "".
 trace_node_path(_, excp(_, _, _, _, _)) = "".
@@ -724,12 +738,13 @@ trace_node_path(S, neg_fail(_, Neg)) = P :-
 
 trace_node_seqno(S, Node, SeqNo) :-
 	(
-		Node = call(_, _, _, SeqNo0, _, _, _, _)
+		SeqNo0 = Node ^ call_seq
 	->
 		SeqNo = SeqNo0
 	;
 		trace_node_call(S, Node, Call),
-		call_node_from_id(S, Call, call(_, _, _, SeqNo, _, _, _, _))
+		call_node_from_id(S, Call, CallNode),
+		SeqNo = CallNode ^ call_seq
 	).
 
 :- pred trace_node_call(trace_node_store, trace_node(trace_node_id),
@@ -738,9 +753,10 @@ trace_node_seqno(S, Node, SeqNo) :-
 
 :- pragma export(trace_node_call(in, in, out), "MR_DD_trace_node_call").
 
-trace_node_call(_, exit(_, Call, _, _, _), Call).
+trace_node_call(_, exit(_, Call, _, _, _, _), Call).
 trace_node_call(S, redo(_, Exit), Call) :-
-	exit_node_from_id(S, Exit, exit(_, Call, _, _, _)).
+	exit_node_from_id(S, Exit, ExitNode),
+	Call = ExitNode ^ exit_call.
 trace_node_call(_, fail(_, Call, _, _), Call).
 trace_node_call(_, excp(_, Call, _, _, _), Call).
 
@@ -806,34 +822,35 @@ print_trace_node(OutStr, Node) -->
 	%
 
 :- func construct_call_node(trace_node_id, trace_atom, sequence_number,
-		event_number, bool, string) = trace_node(trace_node_id).
-:- pragma export(construct_call_node(in, in, in, in, in, in) = out,
+		event_number, bool, string, int) = trace_node(trace_node_id).
+:- pragma export(construct_call_node(in, in, in, in, in, in, in) = out,
 		"MR_DD_construct_call_node").
 
-construct_call_node(Preceding, Atom, SeqNo, EventNo, MaxDepth, Path) = Call :-
+construct_call_node(Preceding, Atom, SeqNo, EventNo, MaxDepth, Path, IoSeqNum)
+		= Call :-
 	Call = call(Preceding, Answer, Atom, SeqNo, EventNo, MaxDepth,
-		no, Path),
+		no, Path, IoSeqNum),
 	null_trace_node_id(Answer).
 
 :- func construct_call_node_with_goal(trace_node_id, trace_atom,
-		sequence_number, event_number, bool, proc_rep, string)
+		sequence_number, event_number, bool, proc_rep, string, int)
 		= trace_node(trace_node_id).
-:- pragma export(construct_call_node_with_goal(in, in, in, in, in, in, in)
+:- pragma export(construct_call_node_with_goal(in, in, in, in, in, in, in, in)
 		= out, "MR_DD_construct_call_node_with_goal").
 
 construct_call_node_with_goal(Preceding, Atom, SeqNo, EventNo, MaxDepth,
-		ProcRep, Path) = Call :-
+		ProcRep, Path, IoSeqNum) = Call :-
 	Call = call(Preceding, Answer, Atom, SeqNo, EventNo, MaxDepth,
-		yes(ProcRep), Path),
+		yes(ProcRep), Path, IoSeqNum),
 	null_trace_node_id(Answer).
 
 :- func construct_exit_node(trace_node_id, trace_node_id, trace_node_id,
-		trace_atom, event_number) = trace_node(trace_node_id).
-:- pragma export(construct_exit_node(in, in, in, in, in) = out,
+		trace_atom, event_number, int) = trace_node(trace_node_id).
+:- pragma export(construct_exit_node(in, in, in, in, in, in) = out,
 		"MR_DD_construct_exit_node").
 
-construct_exit_node(Preceding, Call, MaybeRedo, Atom, EventNo)
-		= exit(Preceding, Call, MaybeRedo, Atom, EventNo).
+construct_exit_node(Preceding, Call, MaybeRedo, Atom, EventNo, IoSeqNum)
+	= exit(Preceding, Call, MaybeRedo, Atom, EventNo, IoSeqNum).
 
 :- func construct_redo_node(trace_node_id, trace_node_id)
 		= trace_node(trace_node_id).
@@ -1087,8 +1104,8 @@ node_map(Store, NodeId, map(Map0), Map) :-
 	%
 :- func preceding_node(trace_node(T)) = T.
 
-preceding_node(call(P, _, _, _, _, _, _, _)) = P.
-preceding_node(exit(P, _, _, _, _))	= P.
+preceding_node(call(P, _, _, _, _, _, _, _, _)) = P.
+preceding_node(exit(P, _, _, _, _, _))	= P.
 preceding_node(redo(P, _))		= P.
 preceding_node(fail(P, _, _, _))	= P.
 preceding_node(excp(P, _, _, _, _))	= P.

@@ -13,6 +13,7 @@
 :- module mdb__declarative_analyser.
 :- interface.
 :- import_module mdb__declarative_debugger, mdb__program_representation.
+:- import_module mdb__io_action.
 :- import_module list, std_util.
 
 	% This typeclass defines how EDTs may be accessed by this module.
@@ -38,13 +39,13 @@
 		
 		% Gives the root node of an EDT.
 		%
-	pred edt_root_question(S, T, decl_question(T)),
-	mode edt_root_question(in, in, out) is det,
+	pred edt_root_question(io_action_map, S, T, decl_question(T)),
+	mode edt_root_question(in, in, in, out) is det,
 	
 		% If this node is an e_bug, then find the bug.
 		%
-	pred edt_root_e_bug(S, T, decl_e_bug),
-	mode edt_root_e_bug(in, in, out) is det,
+	pred edt_root_e_bug(io_action_map, S, T, decl_e_bug),
+	mode edt_root_e_bug(in, in, in, out) is det,
 
 		% Gives the list of children of a tree.  If the tree is
 		% represented implicitly, then the procedure fails.
@@ -115,23 +116,25 @@
 
 :- type analyser_state(T).
 
-:- pred analyser_state_init(analyser_state(T)).
-:- mode analyser_state_init(out) is det.
+:- pred analyser_state_init(io_action_map::in, analyser_state(T)::out) is det.
+
+:- pred analyser_state_replace_io_map(io_action_map::in,
+	analyser_state(T)::in, analyser_state(T)::out) is det.
 
 	% Perform analysis on the given EDT, which may be a new tree
 	% to diagnose, or a sub-tree that was required to be made
 	% explicit.
 	%
-:- pred start_analysis(S, T, analyser_response(T), analyser_state(T),
-		analyser_state(T)) <= mercury_edt(S, T).
-:- mode start_analysis(in, in, out, in, out) is det.
+:- pred start_analysis(S::in, T::in, analyser_response(T)::out,
+	analyser_state(T)::in, analyser_state(T)::out) is det
+	<= mercury_edt(S, T).
 
 	% Continue analysis after the oracle has responded with some
 	% answers.
 	%
-:- pred continue_analysis(S, list(decl_answer(T)), analyser_response(T),
-		analyser_state(T), analyser_state(T)) <= mercury_edt(S, T).
-:- mode continue_analysis(in, in, out, in, out) is det.
+:- pred continue_analysis(S::in, list(decl_answer(T))::in,
+	analyser_response(T)::out, analyser_state(T)::in,
+	analyser_state(T)::out) is det <= mercury_edt(S, T).
 
 	% Return information within the analyser state that is intended for
 	% debugging the declarative debugger itself.
@@ -188,6 +191,10 @@
 				%
 			priority_suspects	:: list(decl_question(T)),
 
+				% This field allows us to map I/O action
+				% numbers to the actions themselves.
+			io_action_map		:: io_action_map,
+
 				% This field is present only to make it easier
 				% to debug the dependency tracking algorithm;
 				% if bound to yes, it records the result of
@@ -197,14 +204,20 @@
 			debug_origin		:: maybe(subterm_origin(T))
 	).
 
-analyser_state_init(analyser(no, [], [], [], [], no)).
+analyser_state_init(IoActionMap,
+	analyser(no, [], [], [], [], IoActionMap, no)).
+
+analyser_state_replace_io_map(IoActionMap, Analyser0, Analyser) :-
+	Analyser = Analyser0 ^ io_action_map := IoActionMap.
 
 debug_analyser_state(Analyser, Analyser ^ debug_origin).
 
 start_analysis(Store, Tree, Response, Analyser0, Analyser) :-
 	get_all_prime_suspects(Analyser0, OldPrimes),
-	edt_root_question(Store, Tree, Question),
-	Analyser = analyser(no, OldPrimes, [Question], [], [], no),
+	IoActionMap = Analyser0 ^ io_action_map,
+	edt_root_question(IoActionMap, Store, Tree, Question),
+	Analyser = analyser(no, OldPrimes, [Question], [], [], IoActionMap,
+		no),
 	decide_analyser_response(Store, Analyser, Response).
 
 continue_analysis(Store, Answers, Response, Analyser0, Analyser) :-
@@ -256,7 +269,9 @@ process_answer(Store, Answer, Analyser0, Analyser) :-
 			OriginSuspect = get_decl_question_node(S)
 		)
 	->
-		edt_root_question(Store, OriginSuspect, OriginQuestion),
+		IoActionMap = Analyser2 ^ io_action_map,
+		edt_root_question(IoActionMap, Store, OriginSuspect,
+			OriginQuestion),
 		Analyser = Analyser2 ^ priority_suspects := [OriginQuestion]
 	;
 		Analyser = Analyser2
@@ -285,7 +300,9 @@ assert_suspect_is_wrong(Store, Suspect, Analyser0, Analyser) :-
 	->
 		create_prime_suspect(Suspect, Prime),
 		MaybePrime = yes(Prime),
-		list__map(edt_root_question(Store), Children, SuspectRoots),
+		IoActionMap = Analyser0 ^ io_action_map,
+		list__map(edt_root_question(IoActionMap, Store), Children,
+			SuspectRoots),
 		SuspectParents = []
 	;
 			% The real suspects cannot be found, so we are
@@ -299,7 +316,7 @@ assert_suspect_is_wrong(Store, Suspect, Analyser0, Analyser) :-
 		SuspectParents = [Suspect]
 	),
 	Analyser = analyser(MaybePrime, OldPrimes, SuspectRoots,
-			SuspectParents, [], no).
+			SuspectParents, [], Analyser0 ^ io_action_map, no).
 
 :- pred decide_analyser_response(S::in, analyser_state(T)::in,
 	analyser_response(T)::out) is det <= mercury_edt(S, T).
@@ -329,7 +346,9 @@ decide_analyser_response(Store, Analyser, Response) :-
 		(
 			Analyser ^ maybe_prime = yes(Prime)
 		->
-			prime_suspect_get_e_bug(Store, Prime, EBug),
+			IoActionMap = Analyser ^ io_action_map,
+			prime_suspect_get_e_bug(IoActionMap, Store, Prime,
+				EBug),
 			Response = bug_found(e_bug(EBug))
 		;
 			Response = no_suspects
@@ -399,13 +418,12 @@ create_prime_suspect(Suspect, Prime) :-
 
 prime_suspect_get_suspect(prime_suspect(Suspect, _, _), Suspect).
 
-:- pred prime_suspect_get_e_bug(S, prime_suspect(T), decl_e_bug)
-	<= mercury_edt(S, T).
-:- mode prime_suspect_get_e_bug(in, in, out) is det.
+:- pred prime_suspect_get_e_bug(io_action_map::in, S::in, prime_suspect(T)::in,
+	decl_e_bug::out) is det <= mercury_edt(S, T).
 
-prime_suspect_get_e_bug(Store, Prime, EBug) :-
+prime_suspect_get_e_bug(IoActionMap, Store, Prime, EBug) :-
 	prime_suspect_get_suspect(Prime, Suspect),
-	edt_root_e_bug(Store, Suspect, EBug).
+	edt_root_e_bug(IoActionMap, Store, Suspect, EBug).
 
 	% Get all the suspects who are children of the prime suspect,
 	% and who are deemed correct or inadmissible.  Maybe get

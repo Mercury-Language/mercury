@@ -1596,7 +1596,7 @@ MR_trace_cmd_retry(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	}
 
 	result = MR_trace_retry(event_info, event_details,
-			ancestor_level, &problem,
+			ancestor_level, MR_FALSE, &problem,
 			MR_mdb_in, MR_mdb_out, jumpaddr);
 	switch (result) {
 

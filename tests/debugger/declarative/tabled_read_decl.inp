@@ -1,0 +1,13 @@
+echo on
+register --quiet
+context none
+table_io start
+break tabled_read_decl__test
+continue
+finish -n
+print
+dd
+no
+yes
+yes
+c -n -S

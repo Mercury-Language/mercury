@@ -22,7 +22,8 @@
 :- module mdb__declarative_debugger.
 :- interface.
 :- import_module mdb__declarative_execution, mdb__program_representation.
-:- import_module io, list, bool, std_util.
+:- import_module mdb__io_action.
+:- import_module io, bool, list, std_util.
 
 	% This type represents the possible truth values for nodes
 	% in the EDT.
@@ -54,18 +55,18 @@
 
 :- type decl_e_bug
 	--->	incorrect_contour(
-			decl_atom,	% The head of the clause, in its
+			final_decl_atom,% The head of the clause, in its
 					% final state of instantiation.
 			decl_contour,	% The path taken through the body.
 			event_number	% The exit event.
 		)
 	;	partially_uncovered_atom(
-			decl_atom,	% The called atom, in its initial
+			init_decl_atom,	% The called atom, in its initial
 					% state.
 			event_number	% The fail event.
 		)
 	;	unhandled_exception(
-			decl_atom,	% The called atom, in its initial
+			init_decl_atom,	% The called atom, in its initial
 					% state.
 			decl_exception, % The exception thrown.
 			event_number	% The excp event.
@@ -73,11 +74,11 @@
 
 :- type decl_i_bug
 	--->	inadmissible_call(
-			decl_atom,	% The parent atom, in its initial
+			init_decl_atom,	% The parent atom, in its initial
 					% state.
 			decl_position,	% The location of the call in the
 					% parent's body.
-			decl_atom,	% The inadmissible child, in its
+			init_decl_atom,	% The inadmissible child, in its
 					% initial state.
 			event_number	% The call event.
 		).
@@ -101,7 +102,7 @@
 			% The second argument is the atom in its final
 			% state of instantiatedness (ie. at the EXIT event).
 			%
-	--->	wrong_answer(T, decl_atom)
+	--->	wrong_answer(T, final_decl_atom)
 
 			% The node is a suspected missing answer.  The
 			% first argument is the EDT node the question came
@@ -110,7 +111,7 @@
 			% CALL event), and the third argument is the list
 			% of solutions.
 			%
-	;	missing_answer(T, decl_atom, list(decl_atom))
+	;	missing_answer(T, init_decl_atom, list(final_decl_atom))
 
 			% The node is a possibly unexpected exception.
 			% The first argument is the EDT node the question
@@ -118,7 +119,7 @@
 			% its initial state of instantiation, and the third
 			% argument is the exception thrown.
 			%
-	;	unexpected_exception(T, decl_atom, decl_exception).
+	;	unexpected_exception(T, init_decl_atom, decl_exception).
 
 :- type decl_answer(T)
 			% The oracle knows the truth value of this node.
@@ -135,7 +136,20 @@
 	%
 :- func get_decl_question_node(decl_question(T)) = T.
 
-:- type decl_atom == trace_atom.
+:- type some_decl_atom
+	--->	init(init_decl_atom)
+	;	final(final_decl_atom).
+
+:- type init_decl_atom
+	--->	init_decl_atom(
+			init_atom		:: trace_atom
+		).
+
+:- type final_decl_atom
+	--->	final_decl_atom(
+			final_atom		:: trace_atom,
+			final_io_actions	:: list(io_action)
+		).
 
 :- type decl_exception == univ.
 
@@ -167,19 +181,30 @@
 
 :- type diagnoser_state(R).
 
-:- pred diagnoser_state_init(io__input_stream, io__output_stream,
-		diagnoser_state(R)).
-:- mode diagnoser_state_init(in, in, out) is det.
+:- pred diagnoser_state_init(io_action_map::in, io__input_stream::in,
+	io__output_stream::in, diagnoser_state(R)::out) is det.
 
-:- pred diagnosis(S::in, R::in, diagnoser_response::out,
+:- pred diagnosis(S::in, R::in, int::in, int::in, int::in,
+	diagnoser_response::out,
 	diagnoser_state(R)::in, diagnoser_state(R)::out,
 	io__state::di, io__state::uo) is cc_multi <= annotated_trace(S, R).
+
+:- pred unravel_decl_atom(some_decl_atom::in, trace_atom::out,
+	list(io_action)::out) is det.
 
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 :- import_module mdb__declarative_analyser, mdb__declarative_oracle.
-:- import_module require, int, char, string, assoc_list.
+:- import_module require, int, char, string, assoc_list, map.
+
+unravel_decl_atom(DeclAtom, TraceAtom, IoActions) :-
+	(
+		DeclAtom = init(init_decl_atom(TraceAtom)),
+		IoActions = []
+	;
+		DeclAtom = final(final_decl_atom(TraceAtom, IoActions))
+	).
 
 get_decl_question_node(wrong_answer(Node, _)) = Node.
 get_decl_question_node(missing_answer(Node, _, _)) = Node.
@@ -216,19 +241,29 @@ diagnoser_get_oracle(diagnoser(_, Oracle), Oracle).
 
 diagnoser_set_oracle(diagnoser(A, _), B, diagnoser(A, B)).
 
-diagnoser_state_init(InStr, OutStr, Diagnoser) :-
-	analyser_state_init(Analyser),
+diagnoser_state_init(IoActionMap, InStr, OutStr, Diagnoser) :-
+	analyser_state_init(IoActionMap, Analyser),
 	oracle_state_init(InStr, OutStr, Oracle),
 	Diagnoser = diagnoser(Analyser, Oracle).
 
-diagnosis(Store, NodeId, Response, Diagnoser0, Diagnoser) -->
-	{ diagnoser_get_analyser(Diagnoser0, Analyser0) },
+diagnosis(Store, NodeId, UseOldIoActionMap, IoActionStart, IoActionEnd,
+		Response, Diagnoser0, Diagnoser) -->
+	( { UseOldIoActionMap > 0 } ->
+		{ Diagnoser1 = Diagnoser0 },
+		{ diagnoser_get_analyser(Diagnoser1, Analyser1) }
+	;
+		make_io_action_map(IoActionStart, IoActionEnd, IoActionMap),
+		{ Analyser0 = Diagnoser0 ^ analyser_state },
+		{ analyser_state_replace_io_map(IoActionMap,
+			Analyser0, Analyser1) },
+		{ Diagnoser1 = Diagnoser0 ^ analyser_state := Analyser1 }
+	),
 	{ start_analysis(wrap(Store), dynamic(NodeId), AnalyserResponse,
-		Analyser0, Analyser) },
-	{ diagnoser_set_analyser(Diagnoser0, Analyser, Diagnoser1) },
+		Analyser1, Analyser) },
+	{ diagnoser_set_analyser(Diagnoser1, Analyser, Diagnoser2) },
 	{ debug_analyser_state(Analyser, MaybeOrigin) },
 	handle_analyser_response(Store, AnalyserResponse, MaybeOrigin,
-		Response, Diagnoser1, Diagnoser).
+		Response, Diagnoser2, Diagnoser).
 
 :- pred handle_analyser_response(S::in, analyser_response(edt_node(R))::in,
 	maybe(subterm_origin(edt_node(R)))::in, diagnoser_response::out,
@@ -321,21 +356,24 @@ confirm_bug(Bug, Response, Diagnoser0, Diagnoser) -->
 		"MR_DD_decl_diagnosis_state_init").
 
 diagnoser_state_init_store(InStr, OutStr, Diagnoser) :-
-	diagnoser_state_init(InStr, OutStr, Diagnoser).
+	diagnoser_state_init(map__init, InStr, OutStr, Diagnoser).
 
-	% Export a monomorphic version of diagnosis/9, to make it
+	% Export a monomorphic version of diagnosis/10, to make it
 	% easier to call from C code.
 	%
 :- pred diagnosis_store(trace_node_store::in, trace_node_id::in,
-	diagnoser_response::out, diagnoser_state(trace_node_id)::in,
+	int::in, int::in, int::in, diagnoser_response::out,
+	diagnoser_state(trace_node_id)::in,
 	diagnoser_state(trace_node_id)::out, io__state::di, io__state::uo)
 	is cc_multi.
 
-:- pragma export(diagnosis_store(in, in, out, in, out, di, uo),
+:- pragma export(diagnosis_store(in, in, in, in, in, out, in, out, di, uo),
 		"MR_DD_decl_diagnosis").
 
-diagnosis_store(Store, Node, Response, State0, State) -->
-	diagnosis(Store, Node, Response, State0, State).
+diagnosis_store(Store, Node, UseOldIoActionMap, IoActionStart, IoActionEnd,
+		Response, State0, State) -->
+	diagnosis(Store, Node, UseOldIoActionMap, IoActionStart, IoActionEnd,
+		Response, State0, State).
 
 	% Export some predicates so that C code can interpret the
 	% diagnoser response.
@@ -374,8 +412,8 @@ diagnoser_require_subtree(require_subtree(Event, SeqNo), Event, SeqNo).
 
 :- instance mercury_edt(wrap(S), edt_node(R)) <= annotated_trace(S, R)
 	where [
-		pred(edt_root_question/3) is trace_root_question,
-		pred(edt_root_e_bug/3) is trace_root_e_bug,
+		pred(edt_root_question/4) is trace_root_question,
+		pred(edt_root_e_bug/4) is trace_root_e_bug,
 		pred(edt_children/3) is trace_children,
 		pred(edt_dependency/6) is trace_dependency
 	].
@@ -385,61 +423,94 @@ diagnoser_require_subtree(require_subtree(Event, SeqNo), Event, SeqNo).
 	%
 :- type wrap(S) ---> wrap(S).
 
-:- pred trace_root_question(wrap(S), edt_node(R), decl_question(edt_node(R)))
-		<= annotated_trace(S, R).
-:- mode trace_root_question(in, in, out) is det.
+%-----------------------------------------------------------------------------%
 
-trace_root_question(wrap(Store), dynamic(Ref), Root) :-
+:- func exit_node_decl_atom(io_action_map::in, S::in,
+	trace_node(R)::in(trace_node_exit)) = (final_decl_atom::out) is det
+	<= annotated_trace(S, R).
+
+exit_node_decl_atom(IoActionMap, Store, ExitNode) = DeclAtom :-
+	ExitAtom = ExitNode ^ exit_atom,
+	CallId = ExitNode ^ exit_call,
+	call_node_from_id(Store, CallId, Call),
+	CallIoSeq = Call ^ call_io_seq_num,
+	ExitIoSeq = ExitNode ^ exit_io_seq_num,
+	IoActions = make_io_actions(IoActionMap, CallIoSeq, ExitIoSeq),
+	DeclAtom = final_decl_atom(ExitAtom, IoActions).
+
+:- func call_node_decl_atom(S, R) = init_decl_atom <= annotated_trace(S, R).
+
+call_node_decl_atom(Store, CallId) = DeclAtom :-
+	call_node_from_id(Store, CallId, CallNode),
+	CallAtom = CallNode ^ call_atom,
+	DeclAtom = init_decl_atom(CallAtom).
+
+:- func make_io_actions(io_action_map, int, int) = list(io_action).
+
+make_io_actions(IoActionMap, InitIoSeq, ExitIoSeq) =
+	( InitIoSeq = ExitIoSeq ->
+		[]
+	;
+		[map__lookup(IoActionMap, InitIoSeq) |
+			make_io_actions(IoActionMap, InitIoSeq + 1, ExitIoSeq)]
+	).
+
+%-----------------------------------------------------------------------------%
+
+:- pred trace_root_question(io_action_map::in, wrap(S)::in, edt_node(R)::in,
+	decl_question(edt_node(R))::out) is det <= annotated_trace(S, R).
+
+trace_root_question(IoActionMap, wrap(Store), dynamic(Ref), Root) :-
 	det_edt_return_node_from_id(Store, Ref, Node),
 	(
 		Node = fail(_, CallId, RedoId, _),
-		call_node_from_id(Store, CallId, Call),
-		Call = call(_, _, CallAtom, _, _, _, _, _),
-		get_answers(Store, RedoId, [], Answers),
-		Root = missing_answer(dynamic(Ref), CallAtom, Answers)
+		DeclAtom = call_node_decl_atom(Store, CallId),
+		get_answers(IoActionMap, Store, RedoId, [], Answers),
+		Root = missing_answer(dynamic(Ref), DeclAtom, Answers)
 	;
-		Node = exit(_, _, _, ExitAtom, _),
-		Root = wrong_answer(dynamic(Ref), ExitAtom)
+		Node = exit(_, _, _, _, _, _),
+		DeclAtom = exit_node_decl_atom(IoActionMap, Store, Node),
+		Root = wrong_answer(dynamic(Ref), DeclAtom)
 	;
 		Node = excp(_, CallId, _, Exception, _),
-		call_node_from_id(Store, CallId, Call),
-		Call = call(_, _, CallAtom, _, _, _, _, _),
-		Root = unexpected_exception(dynamic(Ref), CallAtom, Exception)
+		DeclAtom = call_node_decl_atom(Store, CallId),
+		Root = unexpected_exception(dynamic(Ref), DeclAtom, Exception)
 	).
 
-:- pred get_answers(S, R, list(decl_atom), list(decl_atom))
-		<= annotated_trace(S, R).
-:- mode get_answers(in, in, in, out) is det.
+:- pred get_answers(io_action_map::in, S::in, R::in,
+	list(final_decl_atom)::in, list(final_decl_atom)::out) is det
+	<= annotated_trace(S, R).
 
-get_answers(Store, RedoId, As0, As) :-
+get_answers(IoActionMap, Store, RedoId, DeclAtoms0, DeclAtoms) :-
 	(
 		maybe_redo_node_from_id(Store, RedoId, redo(_, ExitId))
 	->
-		exit_node_from_id(Store, ExitId, exit(_, _, NextId, Atom, _)),
-		get_answers(Store, NextId, [Atom | As0], As)
+		exit_node_from_id(Store, ExitId, ExitNode),
+		NextId = ExitNode ^ exit_prev_redo,
+		DeclAtom = exit_node_decl_atom(IoActionMap, Store, ExitNode),
+		get_answers(IoActionMap, Store, NextId,
+			[DeclAtom | DeclAtoms0], DeclAtoms)
 	;
-		As = As0
+		DeclAtoms = DeclAtoms0
 	).
 
-:- pred trace_root_e_bug(wrap(S), edt_node(R), decl_e_bug)
-		<= annotated_trace(S, R).
-:- mode trace_root_e_bug(in, in, out) is det.
+:- pred trace_root_e_bug(io_action_map::in, wrap(S)::in, edt_node(R)::in,
+	decl_e_bug::out) is det <= annotated_trace(S, R).
 
-trace_root_e_bug(wrap(S), dynamic(Ref), Bug) :-
-	det_edt_return_node_from_id(S, Ref, Node),
+trace_root_e_bug(IoActionMap, wrap(Store), dynamic(Ref), Bug) :-
+	det_edt_return_node_from_id(Store, Ref, Node),
 	(
-		Node = exit(_, _, _, Atom, Event),
-		Bug = incorrect_contour(Atom, unit, Event)
+		Node = exit(_, _, _, _, Event, _),
+		DeclAtom = exit_node_decl_atom(IoActionMap, Store, Node),
+		Bug = incorrect_contour(DeclAtom, unit, Event)
 	;
 		Node = fail(_, CallId, _, Event),
-		call_node_from_id(S, CallId, Call),
-		Call = call(_, _, CallAtom, _, _, _, _, _),
-		Bug = partially_uncovered_atom(CallAtom, Event)
+		DeclAtom = call_node_decl_atom(Store, CallId),
+		Bug = partially_uncovered_atom(DeclAtom, Event)
 	;
 		Node = excp(_, CallId, _, Exception, Event),
-		call_node_from_id(S, CallId, Call),
-		Call = call(_, _, CallAtom, _, _, _, _, _),
-		Bug = unhandled_exception(CallAtom, Exception, Event)
+		DeclAtom = call_node_decl_atom(Store, CallId),
+		Bug = unhandled_exception(DeclAtom, Exception, Event)
 	).
 
 :- pred trace_children(wrap(S), edt_node(R), list(edt_node(R)))
@@ -453,7 +524,7 @@ trace_children(wrap(Store), dynamic(Ref), Children) :-
 		not_at_depth_limit(Store, CallId),
 		missing_answer_children(Store, PrecId, [], Children)
 	;
-		Node = exit(PrecId, CallId, _, _, _),
+		Node = exit(PrecId, CallId, _, _, _, _),
 		not_at_depth_limit(Store, CallId),
 		wrong_answer_children(Store, PrecId, [], Children)
 	;
@@ -466,7 +537,8 @@ trace_children(wrap(Store), dynamic(Ref), Children) :-
 :- mode not_at_depth_limit(in, in) is semidet.
 
 not_at_depth_limit(Store, Ref) :-
-	call_node_from_id(Store, Ref, call(_, _, _, _, _, no, _, _)).
+	call_node_from_id(Store, Ref, CallNode),
+	CallNode ^ call_at_max_depth = no.
 
 :- pred wrong_answer_children(S, R, list(edt_node(R)), list(edt_node(R)))
 		<= annotated_trace(S, R).
@@ -475,7 +547,7 @@ not_at_depth_limit(Store, Ref) :-
 wrong_answer_children(Store, NodeId, Ns0, Ns) :-
 	det_trace_node_from_id(Store, NodeId, Node),
 	(
-		( Node = call(_, _, _, _, _, _, _, _)
+		( Node = call(_, _, _, _, _, _, _, _, _)
 		; Node = neg(_, _, _)
 		; Node = cond(_, _, failed)
 		)
@@ -490,7 +562,7 @@ wrong_answer_children(Store, NodeId, Ns0, Ns) :-
 		error("wrong_answer_children: exception handling not supported")
 	;
 		(
-			Node = exit(_, _, _, _, _)
+			Node = exit(_, _, _, _, _, _)
 		->
 				%
 				% Add a child for this node.
@@ -519,7 +591,7 @@ wrong_answer_children(Store, NodeId, Ns0, Ns) :-
 missing_answer_children(Store, NodeId, Ns0, Ns) :-
 	det_trace_node_from_id(Store, NodeId, Node),
 	(
-		( Node = call(_, _, _, _, _, _, _, _)
+		( Node = call(_, _, _, _, _, _, _, _, _)
 		; Node = neg(_, _, _)
 		; Node = cond(_, _, failed)
 		)
@@ -535,7 +607,7 @@ missing_answer_children(Store, NodeId, Ns0, Ns) :-
 		    "missing_answer_children: exception handling not supported")
 	;
 		(
-			( Node = exit(_, _, _, _, _)
+			( Node = exit(_, _, _, _, _, _)
 			; Node = fail(_, _, _, _)
 			)
 		->
@@ -573,7 +645,7 @@ missing_answer_children(Store, NodeId, Ns0, Ns) :-
 unexpected_exception_children(Store, NodeId, Ns0, Ns) :-
 	det_trace_node_from_id(Store, NodeId, Node),
 	(
-		( Node = call(_, _, _, _, _, _, _, _)
+		( Node = call(_, _, _, _, _, _, _, _, _)
 		; Node = neg(_, _, failed)
 		; Node = cond(_, _, failed)
 		)
@@ -584,7 +656,7 @@ unexpected_exception_children(Store, NodeId, Ns0, Ns) :-
 		Ns = Ns0
 	;
 		(
-			( Node = exit(_, _, _, _, _)
+			( Node = exit(_, _, _, _, _, _)
 			; Node = excp(_, _, _, _, _)
 			)
 		->
@@ -726,7 +798,7 @@ trace_dependency(wrap(Store), dynamic(Ref), ArgPos, TermPath, Mode, Origin) :-
 find_chain_start(Store, Ref, ArgPos, TermPath, ChainStart) :-
 	det_edt_return_node_from_id(Store, Ref, Node),
 	(
-		Node = exit(_, CallId, _, ExitAtom, _),
+		Node = exit(_, CallId, _, ExitAtom, _, _),
 		call_node_from_id(Store, CallId, CallNode),
 		CallAtom = CallNode ^ call_atom,
 		( trace_atom_subterm_is_ground(CallAtom, ArgPos, TermPath) ->
@@ -768,7 +840,9 @@ find_chain_start(Store, Ref, ArgPos, TermPath, ChainStart) :-
 	dependency_chain_start(R)::out) is det <= annotated_trace(S, R).
 
 find_chain_start_inside(Store, CallId, CallNode, ArgPos, ChainStart) :-
-	CallNode = call(CallPrecId, _, CallAtom, _, _, _, _, CallPathStr),
+	CallPrecId = CallNode ^ call_preceding,
+	CallAtom = CallNode ^ call_atom,
+	CallPathStr = CallNode ^ call_goal_path,
 	path_from_string_det(CallPathStr, CallPath),
 	StartLoc = parent_goal(CallId, CallNode),
 	absolute_arg_num(ArgPos, CallAtom, ArgNum),
@@ -797,7 +871,7 @@ find_chain_start_outside(CallNode, ExitNode, ArgPos, ChainStart) :-
 
 parent_proc_rep(Store, CallId, ProcRep) :-
 	call_node_from_id(Store, CallId, Call),
-	Call = call(CallPrecId, _, _, _, _, _, _, _),
+	CallPrecId = Call ^ call_preceding,
 	( trace_node_from_id(Store, CallPrecId, CallPrecNode) ->
 		step_left_to_call(Store, CallPrecNode, ParentCallNode),
 		ProcRep = ParentCallNode ^ call_proc_rep
@@ -810,7 +884,7 @@ parent_proc_rep(Store, CallId, ProcRep) :-
 	trace_node(R)::out(trace_node_call)) is det <= annotated_trace(S, R).
 
 step_left_to_call(Store, Node, ParentCallNode) :-
-	( Node = call(_, _, _, _, _, _, _, _) ->
+	( Node = call(_, _, _, _, _, _, _, _, _) ->
 		ParentCallNode = Node
 	;
 		( Node = neg(NegPrec, _, _) ->
@@ -827,7 +901,7 @@ step_left_to_call(Store, Node, ParentCallNode) :-
 	is det <= annotated_trace(S, R).
 
 materialize_contour(Store, NodeId, Node, Nodes0, Nodes) :-
-	( Node = call(_, _, _, _, _, _, _, _) ->
+	( Node = call(_, _, _, _, _, _, _, _, _) ->
 		Nodes = Nodes0
 	;
 		( Node = neg(NegPrec, _, _) ->
@@ -971,9 +1045,9 @@ make_primitive_list(Store, [goal_and_path(Goal, Path) | GoalPaths],
 			(
 				Contour = [ContourHeadId - ContourHeadNode
 					| ContourTail],
-				ContourHeadNode = exit(_, CallId, _, _, _),
+				CallId = ContourHeadNode ^ exit_call,
 				call_node_from_id(Store, CallId, CallNode),
-				CallNode = call(_,_,_,_,_,_,_, CallPathStr),
+				CallPathStr = CallNode ^ call_goal_path,
 				path_from_string_det(CallPathStr, CallPath),
 				CallPath = Path,
 				\+ (
@@ -989,8 +1063,7 @@ make_primitive_list(Store, [goal_and_path(Goal, Path) | GoalPaths],
 					HeadVars, Var, Primitives1, Primitives)
 			;
 				Contour = [_ContourHeadId - ContourHeadNode],
-				ContourHeadNode =
-					call(_,_,_,_,_,_,_, CallPathStr),
+				CallPathStr = ContourHeadNode ^ call_goal_path,
 				path_from_string_det(CallPathStr, CallPath),
 				CallPath = Path,
 				MaybeEnd = yes(EndPath),
@@ -1190,16 +1263,17 @@ find_arg_pos_2([HeadVar | HeadVars], Var, Pos, ArgPos) :-
 edt_subtree_details(Store, dynamic(Ref), Event, SeqNo) :-
 	det_edt_return_node_from_id(Store, Ref, Node),
 	(
-		Node = exit(_, Call, _, _, Event)
+		Node = exit(_, Call, _, _, Event, _)
 	;
 		Node = fail(_, Call, _, Event)
 	;
 		Node = excp(_, Call, _, _, Event)
 	),
-	call_node_from_id(Store, Call, call(_, _, _, SeqNo, _, _, _, _)).
+	call_node_from_id(Store, Call, CallNode),
+	SeqNo = CallNode ^ call_seq.
 
 :- inst edt_return_node =
-		bound(	exit(ground, ground, ground, ground, ground)
+		bound(	exit(ground, ground, ground, ground, ground, ground)
 		;	fail(ground, ground, ground, ground)
 		;	excp(ground, ground, ground, ground, ground)).
 
@@ -1210,7 +1284,7 @@ det_edt_return_node_from_id(Store, Ref, Node) :-
 	(
 		trace_node_from_id(Store, Ref, Node0),
 		(
-			Node0 = exit(_, _, _, _, _)
+			Node0 = exit(_, _, _, _, _, _)
 		;
 			Node0 = fail(_, _, _, _)
 		;

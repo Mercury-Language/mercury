@@ -706,3 +706,28 @@ MR_write_variable(MR_TypeInfo type_info, MR_Word value)
 	(*MR_io_stdout_stream)(&stdout_stream);
 	(*MR_io_print_to_stream)((MR_Word) type_info, stdout_stream, value);
 }
+
+void
+MR_generate_proc_name_from_layout(const MR_Proc_Layout *proc_layout,
+	MR_ConstString *proc_name_ptr, int *arity_ptr, MR_Word *is_func_ptr)
+{
+	if (MR_PROC_LAYOUT_COMPILER_GENERATED(proc_layout)) {
+		*proc_name_ptr = proc_layout->MR_sle_proc_id.
+			MR_proc_comp.MR_comp_pred_name;
+		*arity_ptr = proc_layout->MR_sle_proc_id.
+			MR_proc_comp.MR_comp_arity;
+		*is_func_ptr = MR_BOOL_NO;
+	} else {
+		*proc_name_ptr = proc_layout->MR_sle_proc_id.
+			MR_proc_user.MR_user_name;
+		*arity_ptr = proc_layout->MR_sle_proc_id.
+			MR_proc_user.MR_user_arity;
+		if (proc_layout->MR_sle_proc_id.MR_proc_user.
+				MR_user_pred_or_func == MR_FUNCTION)
+		{
+			*is_func_ptr = MR_BOOL_YES;
+		} else {
+			*is_func_ptr = MR_BOOL_NO;
+		}
+	}
+}

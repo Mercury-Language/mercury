@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-2001 The University of Melbourne.
+** Copyright (C) 1997-2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -108,8 +108,11 @@ typedef struct MR_Event_Details_Struct {
 ** information.
 **
 ** Retry across I/O is unsafe in general, at least for now. It is therefore
-** only allowed if in_fp and out_fp are both non-NULL, and if the user, when
-** asked whether he/she wants to perform the retry anyway, says yes.
+** allowed only
+**
+** - if unconditional_allow_io is TRUE, or
+** - if in_fp and out_fp are both non-NULL, and the user, when asked whether
+**   he/she wants to perform the retry anyway, says yes.
 */
 
 typedef	enum {
@@ -121,7 +124,9 @@ typedef	enum {
 
 extern	MR_Retry_Result	MR_trace_retry(MR_Event_Info *event_info,
 				MR_Event_Details *event_details,
-				int ancestor_level, const char **problem,
+				int ancestor_level,
+				MR_bool unconditional_allow_io,
+				const char **problem,
 				FILE *in_fp, FILE *out_fp,
 				MR_Code **jumpaddr);
 

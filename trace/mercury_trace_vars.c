@@ -112,9 +112,6 @@ static	MR_bool		MR_trace_type_is_ignored(
 				MR_bool print_optionals);
 static	int		MR_trace_compare_var_details(const void *arg1,
 				const void *arg2);
-static	void		MR_generate_proc_name_from_layout(const MR_Proc_Layout
-				*proc_layout, MR_ConstString *proc_name_ptr,
-				int *arity_ptr, MR_Word *is_func_ptr);
 static	const char *	MR_trace_browse_one_path(FILE *out,
 				MR_Var_Spec var_spec, char *path,
 				MR_Browser browser,
@@ -730,31 +727,6 @@ MR_trace_headvar_num(int var_number, int *arg_pos)
 	return NULL;
 }
 
-static void
-MR_generate_proc_name_from_layout(const MR_Proc_Layout *proc_layout,
-	MR_ConstString *proc_name_ptr, int *arity_ptr, MR_Word *is_func_ptr)
-{
-	if (MR_PROC_LAYOUT_COMPILER_GENERATED(proc_layout)) {
-		*proc_name_ptr = proc_layout->MR_sle_proc_id.
-			MR_proc_comp.MR_comp_pred_name;
-		*arity_ptr = proc_layout->MR_sle_proc_id.
-			MR_proc_comp.MR_comp_arity;
-		*is_func_ptr = MR_BOOL_NO;
-	} else {
-		*proc_name_ptr = proc_layout->MR_sle_proc_id.
-			MR_proc_user.MR_user_name;
-		*arity_ptr = proc_layout->MR_sle_proc_id.
-			MR_proc_user.MR_user_arity;
-		if (proc_layout->MR_sle_proc_id.MR_proc_user.
-				MR_user_pred_or_func == MR_FUNCTION)
-		{
-			*is_func_ptr = MR_BOOL_YES;
-		} else {
-			*is_func_ptr = MR_BOOL_NO;
-		}
-	}
-}
-
 /*
 ** The following declaration allocates a cell to a typeinfo even if though
 ** its arity is zero. This wastes a word of space but avoids depending on the
@@ -821,55 +793,17 @@ const char *
 MR_trace_browse_action(FILE *out, int action_number, MR_GoalBrowser browser,
 	MR_Browse_Caller_Type caller, MR_Browse_Format format)
 {
-	const MR_Table_Io_Decl	*table_io_decl;
-	const MR_Proc_Layout	*proc_layout;
-	MR_ConstString		proc_name;
-	MR_Word			is_func;
-	MR_Word			arg_list;
-	MR_Word			arg;
-	int			filtered_arity;
-	int			arity;
-	int			hv;
-	MR_TrieNode		answer_block_trie;
-	MR_Word			*answer_block;
-	MR_TypeInfo		*type_params;
-	MR_TypeInfo		type_info;
+	MR_ConstString	proc_name;
+	MR_Word		is_func;
+	MR_Word		arg_list;
+	const char	*problem;
 
-	if (! (MR_io_tabling_start <= action_number
-		&& action_number < MR_io_tabling_counter_hwm))
-	{
-		return "I/O action number not in range";
+	problem = MR_trace_get_action(action_number, &proc_name,
+		&is_func, &arg_list);
+	if (problem != NULL) {
+		return problem;
 	}
 
-	MR_DEBUG_NEW_TABLE_START_INT(answer_block_trie,
-		(MR_TrieNode) &MR_io_tabling_pointer,
-		MR_io_tabling_start, action_number);
-	answer_block = answer_block_trie->MR_answerblock;
-
-	if (answer_block == NULL) {
-		return "I/O action number not in range";
-	}
-
-	table_io_decl = (const MR_Table_Io_Decl *) answer_block[0];
-	proc_layout = table_io_decl->MR_table_io_decl_proc;
-	filtered_arity = table_io_decl->MR_table_io_decl_filtered_arity;
-
-	MR_generate_proc_name_from_layout(proc_layout, &proc_name, &arity,
-		&is_func);
-
-	type_params = MR_materialize_answer_block_type_params(
-			table_io_decl->MR_table_io_decl_type_params,
-			answer_block, filtered_arity);
-
-	arg_list = MR_list_empty();
-	for (hv = filtered_arity; hv >= 1; hv--) {
-		type_info = MR_create_type_info(type_params,
-			table_io_decl->MR_table_io_decl_ptis[hv - 1]);
-		MR_new_univ_on_hp(arg, type_info, answer_block[hv]);
-		arg_list = MR_list_cons(arg, arg_list);
-	}
-
-	MR_free(type_params);
 	(*browser)(proc_name, arg_list, is_func, caller, format);
 	return NULL;
 }

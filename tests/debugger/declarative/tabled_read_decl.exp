@@ -1,0 +1,57 @@
+       1:      1  1 CALL pred tabled_read_decl:main/2-0 (det) tabled_read_decl.m:17
+mdb> echo on
+Command echo enabled.
+mdb> register --quiet
+mdb> context none
+Contexts will not be printed.
+mdb> table_io start
+io tabling started
+mdb> break tabled_read_decl__test
+ 0: + stop  interface pred tabled_read_decl:test/4-0 (det)
+mdb> continue
+      11:      4  3 CALL pred tabled_read_decl:test/4-0 (det)
+mdb> finish -n
+      52:      4  3 EXIT pred tabled_read_decl:test/4-0 (det)
+mdb> print
+test('<<c_pointer>>', 1123, '_', state('<<c_pointer>>'))
+mdb> dd
+pred test
+	'<<c_pointer>>'
+	1123
+	_
+	state('<<c_pointer>>')
+4 io actions:
+read_char_code('<<c_pointer>>', 49)
+read_char_code('<<c_pointer>>', 50)
+read_char_code('<<c_pointer>>', 51)
+read_char_code('<<c_pointer>>', 10)
+Valid? no
+pred test_2
+	'<<c_pointer>>'
+	1
+	1123
+	_
+	state('<<c_pointer>>')
+4 io actions:
+read_char_code('<<c_pointer>>', 49)
+read_char_code('<<c_pointer>>', 50)
+read_char_code('<<c_pointer>>', 51)
+read_char_code('<<c_pointer>>', 10)
+Valid? yes
+Found incorrect contour:
+pred test
+	'<<c_pointer>>'
+	1123
+	_
+	state('<<c_pointer>>')
+4 io actions:
+read_char_code('<<c_pointer>>', 49)
+read_char_code('<<c_pointer>>', 50)
+read_char_code('<<c_pointer>>', 51)
+read_char_code('<<c_pointer>>', 10)
+Is this a bug? yes
+      52:      4  3 EXIT pred tabled_read_decl:test/4-0 (det)
+mdb> c -n -S
+1123
+1456
+1789
