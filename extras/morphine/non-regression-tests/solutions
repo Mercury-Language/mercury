@@ -12,7 +12,7 @@
 
 initialize([]).
 
-filter(Event, AccIn, AccOut, continue) :-
+filter(Event, AccIn, AccOut) :-
 	( 
 		port(Event) = exit,
 		not(member(sol(proc(Event), arguments(Event)), AccIn))
