@@ -44,6 +44,7 @@ SOURCES= \
 	lambda_struct_bug.m \
 	lambda_switch.m \
 	lambda_type.m \
+	lazy_list.m \
 	loop.m \
 	loop_in_disj.m \
 	middle_rec_labels.m \
