@@ -971,8 +971,13 @@ get_subterm(_::in, _::in, _::in, _::in) = (42::out) :-
 :- pragma foreign_proc("C#",
 	get_subterm(TypeInfo::in, Term::in, Index::in,
 		TagOffset::in) = (Arg::out), [promise_pure], "
-	// XXX This will not work for high level data.
-	Arg = ((object[]) Term)[Index + TagOffset];
+	try {
+		// try low level data
+		Arg = ((object[]) Term)[Index + TagOffset];
+	} catch (System.InvalidCastException) {
+		// try high level data
+		Arg = Term.GetType().GetFields()[Index].GetValue(Term);
+	}
 	TypeInfo_for_T = TypeInfo;
 ").
 
@@ -1133,8 +1138,14 @@ get_remote_secondary_tag(_::in) = (0::out) :-
 
 :- pragma foreign_proc("C#",
 	get_remote_secondary_tag(X::in) = (Tag::out), [promise_pure], "
-	object[] data = (object[]) X;
-	Tag = (int) data[0];
+	try {
+		// try the low-level data representation
+		object[] data = (object[]) X;
+		Tag = (int) data[0];
+	} catch (System.InvalidCastException) {
+		// try the high-level data representation
+		Tag = (int) X.GetType().GetField(""data_tag"").GetValue(X);
+	}
 ").
 
 :- type sectag_locn ---> none ; local ; remote ; variable.

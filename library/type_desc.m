@@ -591,11 +591,11 @@ make_type(_TypeCtorDesc::out, _ArgTypes::out) = (_TypeDesc::in) :-
         }
 }").
 
-type_ctor_name_and_arity(_TypeCtorDesc::in, _ModuleName::out,
-		_TypeCtorName::out, _TypeCtorArity::out) :-
-	% This version is only used for back-ends for which there is no
-	% matching foreign_proc version.
-	private_builtin__sorry("type_ctor_name_and_arity/4").
+type_ctor_name_and_arity(TypeCtorDesc::in, ModuleName::out,
+		TypeCtorName::out, TypeCtorArity::out) :-
+	rtti_implementation__type_ctor_name_and_arity(
+		rtti_implementation__unsafe_cast(TypeCtorDesc),
+		ModuleName, TypeCtorName, TypeCtorArity).
 
 %-----------------------------------------------------------------------------%
 
