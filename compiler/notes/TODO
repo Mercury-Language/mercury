@@ -41,6 +41,9 @@ general
   of the same variable; warning about variables which occur in
   overlapping scopes.
 
+- warn about non-underscore variables which occur only once in any given
+  branch, even if they occur in other branches.
+
 mercury_to_goedel.m
 -------------------
 
@@ -107,19 +110,6 @@ general
 
 - improve efficiency of the module import handling (currently O(N^2))
 
-- if-then-else and quantification: currently in
-	(if
-		some [V] P
-	then
-		Q
-	else
-		R
-	)
-   the scope of V is P and Q, not just P.  This is counter-intuitive.
-   We should probably require people to write `if_some' rather than
-   `if some' to get that effect.  (No obvious similar solution for
-   `(some [V] P -> Q ; R)', unfortunately.)
-
 - more work on module system, separate compilation, and the multiple
   specialization problem
 
@@ -148,6 +138,11 @@ general
   should result in
 
 	Warning: redundant call to `q(InA, InB, _, _)'
+
+- give a better error message for the use of if-then without else.
+
+- give a better error message for type errors involving higher-order pred
+  constants
 
 - issue a warning if the only use of an argument is in a recursive call
 
