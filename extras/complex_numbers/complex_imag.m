@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1997-1998 The University of Melbourne.
+% Copyright (C) 1997-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -22,26 +22,18 @@
 	% addition
 :- func complex + imag = complex.
 :- mode in   + in   = uo  is det.
-:- mode uo   + in   = in  is det.
-:- mode in   + uo   = in  is semidet.
 
 	% subtraction
 :- func complex - imag = complex.
 :- mode in   - in   = uo  is det.
-:- mode uo   - in   = in  is det.
-:- mode in   - uo   = in  is semidet.
 
 	% multiplication
 :- func complex * imag = complex.
 :- mode in   * in   = uo  is det.
-:- mode uo   * in   = in  is det.
-:- mode in   * out   = in  is semidet.
 
 	% division
 :- func complex / imag = complex.
 :- mode in   / in   = uo  is det.
-:- mode uo   / in   = in  is det.
-:- mode in   / out   = in  is semidet.
 
 %---------------------------------------------------------------------------%
 

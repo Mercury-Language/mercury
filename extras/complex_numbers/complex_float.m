@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1997-1998 The University of Melbourne.
+% Copyright (C) 1997-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -22,26 +22,18 @@
 	% addition
 :- func complex + float = complex.
 :- mode in   + in   = uo  is det.
-:- mode uo   + in   = in  is det.
-:- mode in   + uo   = in  is det.
 
 	% subtraction
 :- func complex - float = complex.
 :- mode in   - in   = uo  is det.
-:- mode uo   - in   = in  is det.
-:- mode in   - uo   = in  is det.
 
 	% multiplication
 :- func complex * float = complex.
 :- mode in   * in   = uo  is det.
-:- mode uo   * in   = in  is det.
-:- mode in   * uo   = in  is det.
 
 	% division
 :- func complex / float = complex.
 :- mode in   / in   = uo  is det.
-:- mode uo   / in   = in  is det.
-:- mode in   / uo   = in  is det.
 
 	% exponentiation
 :- func pow(complex, float) = complex.
@@ -50,18 +42,18 @@
 %---------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module complex_numbers:complex_float.
+:- import_module math.
 
-cmplx(XR, XI) + YR = cmplx(XR + YR, XI).
-cmplx(XR, XI) - YR = cmplx(XR - YR, XI).
+cmplx(XR, XI) + YR = cmplx(XR + YR, + XI).
+cmplx(XR, XI) - YR = cmplx(XR - YR, + XI).
 cmplx(XR, XI) * YR = cmplx(XR * YR, XI * YR).
 cmplx(XR, XI) / YR = cmplx(XR / YR, XI / YR).
 
-pow(cmplx(Re0, Im0), P) = cmplx(Re, Im) :-
-	cartesian_to_polar(Re0, Im0, L0, Th0),
-	L = pow(L0, P),
+pow(Z0, P) = Z :-
+	complex_to_polar(Z0, L0, Th0),
+	L = math__pow(L0, P),
 	Th = Th0 * P,
-	polar_to_cartesian(L, Th, Re, Im).
+	Z = polar_to_complex(L, Th).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

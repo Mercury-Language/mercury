@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1997-1998 The University of Melbourne.
+% Copyright (C) 1997-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -22,33 +22,25 @@
 	% addition
 :- func float + complex = complex.
 :- mode in   + in   = uo  is det.
-:- mode uo   + in   = in  is det.
-:- mode in   + uo   = in  is det.
 
 	% subtraction
 :- func float - complex = complex.
 :- mode in   - in   = uo  is det.
-:- mode uo   - in   = in  is det.
-:- mode in   - uo   = in  is det.
 
 	% multiplication
 :- func float * complex = complex.
 :- mode in   * in   = uo  is det.
-:- mode uo   * in   = in  is det.
-:- mode in   * uo   = in  is det.
 
 	% division
 :- func float / complex = complex.
 :- mode in   / in   = uo  is det.
-:- mode uo   / in   = in  is det.
-:- mode in   / uo   = in  is det.
 
 %---------------------------------------------------------------------------%
 
 :- implementation.
 :- import_module complex_numbers:complex_float.
 
-XR + cmplx(YR, YI) = cmplx(XR + YR, + XI).
+XR + cmplx(YR, YI) = cmplx(XR + YR, + YI).
 XR - cmplx(YR, YI) = cmplx(XR - YR, - YI).
 XR * cmplx(YR, YI) = cmplx(XR * YR, XR * YI).
 XR / cmplx(YR, YI) = cmplx(XR * YR / Div, - XR * YI / Div) :-
