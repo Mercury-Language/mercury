@@ -236,6 +236,14 @@ extern	int	hash_string(const char *);
 
 #else
 
+#define	tag_incr_hp(dest,tag,count)	(			\
+				(dest) = mkword(tag, (Word)hp),	\
+				debugincrhp(count, hp),		\
+				hp += (count),			\
+				heap_overflow_check(),		\
+				(void)0				\
+			)
+
 #define	incr_hp(dest,count)	(				\
 				(dest) = (Word)hp,		\
 				debugincrhp(count, hp),		\
