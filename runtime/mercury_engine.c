@@ -142,7 +142,13 @@ create_engine(void)
 {
 	MercuryEngine *eng;
 
-	eng = MR_GC_NEW(MercuryEngine);
+	/*
+	** We need to use MR_GC_NEW_UNCOLLECTABLE() here,
+	** rather than MR_GC_NEW(), since the engine pointer
+	** will normally be stored in thread-local storage, which is
+	** not traced by the conservative garbage collector.
+	*/
+	eng = MR_GC_NEW_UNCOLLECTABLE(MercuryEngine);
 	init_engine(eng);
 	return eng;
 }

@@ -292,6 +292,10 @@ MR_copy_string(const char *s)
 /*
 ** These routines allocate memory that will be scanned by the
 ** conservative garbage collector.
+**
+** XXX This is inefficient.  If CONSERVATIVE_GC is enabled,
+** we should set `GC_oom_fn' (see boehm_gc/gc.h) rather than
+** testing the return value from GC_MALLOC() or GC_MALLOC_UNCOLLECTABLE().
 */
 
 void *
@@ -301,6 +305,24 @@ MR_GC_malloc(size_t num_bytes)
 
 #ifdef	CONSERVATIVE_GC
 	ptr = GC_MALLOC(num_bytes);
+#else
+	ptr = malloc(num_bytes);
+#endif
+	
+	if (ptr == NULL && num_bytes != 0) {
+		fatal_error("could not allocate memory");
+	}
+
+	return ptr;
+}
+
+void *
+MR_GC_malloc_uncollectable(size_t num_bytes)
+{
+	void	*ptr;
+
+#ifdef	CONSERVATIVE_GC
+	ptr = GC_MALLOC_UNCOLLECTABLE(num_bytes);
 #else
 	ptr = malloc(num_bytes);
 #endif

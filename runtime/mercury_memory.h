@@ -63,7 +63,7 @@ extern	void	init_heap(void);
 ** Structures allocated with MR_malloc() and MR_realloc()
 ** must NOT contain pointers into GC'ed memory, because those
 ** pointers will never be traced by the conservative GC.
-** Use MR_GC_malloc() for that.
+** Use MR_GC_malloc() or MR_GC_malloc_uncollectable() for that.
 **
 ** MR_NEW(type):
 **	allocates space for an object of the specified type.
@@ -103,7 +103,18 @@ void	*MR_realloc(void *old, size_t n);
 ** so the caller need not check.
 **
 ** MR_GC_NEW(type):
+**	Allocates space for an object of the specified type.
+**	If conservative GC is enabled, the object will be garbage collected
+**	when it is no longer referenced from GC-traced memory.
+**	Memory allocated with malloc() (or MR_malloc() or MR_NEW())
+**	is not GC-traced.  Nor is thread-local storage.
+**
+** MR_GC_NEW_UNCOLLECTABLE(type):
 **	allocates space for an object of the specified type.
+**	The object will not be garbage collected even if it is
+**	not reference or only referenced from thread-local
+**	storage or storage allocated with malloc().
+**	It should be explicitly deallocated with MR_GC_free().
 **
 ** MR_GC_NEW_ARRAY(type, num):
 **	allocates space for an array of objects of the specified type.
@@ -113,16 +124,27 @@ void	*MR_realloc(void *old, size_t n);
 **
 ** MR_GC_malloc(bytes):
 **	allocates the given number of bytes.
+**	If conservative GC is enabled, the memory will be garbage collected
+**	when it is no longer referenced from GC-traced memory (see above).
+**
+** MR_GC_malloc_uncollectable(bytes):
+**	allocates the given number of bytes.
+**	The memory will not be garbage collected, and so
+**	it should be explicitly deallocated using MR_GC_free().
 **
 ** MR_GC_free(ptr):
 **	deallocates the memory.
 */
 
 extern	void	*MR_GC_malloc(size_t num_bytes);
+extern	void	*MR_GC_malloc_uncollectable(size_t num_bytes);
 extern	void	*MR_GC_realloc(void *ptr, size_t num_bytes);
 
 #define MR_GC_NEW(type) \
 	((type *) MR_GC_malloc(sizeof(type)))
+
+#define MR_GC_NEW_UNCOLLECTABLE(type) \
+	((type *) MR_GC_malloc_uncollectable(sizeof(type)))
 
 #define MR_GC_NEW_ARRAY(type, num) \
 	((type *) MR_GC_malloc((num) * sizeof(type)))
