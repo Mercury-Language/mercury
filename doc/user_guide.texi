@@ -69,19 +69,10 @@ into another language, under the above conditions for modified versions.
 @iftex
 @chapter Getting Started
 @end iftex
-
 @node Top,,, (DIR)
 @ifinfo
 @chapter The Mercury User's Guide - BETA TEST version, July 1995
 @end ifinfo
-@menu
-* Filenames::       File naming conventions
-* Using mc::        Compiling and linking programs with the Mercury compiler
-* Using Prolog::    Building and debugging Mercury programs with Prolog
-* Using Mmake::     ``Mercury Make'', a tool for building Mercury programs
-* Invocation::      List of options for the Mercury compiler
-* Environment::     Environment variables used by the compiler and utilities.
-@end menu
 
 This document describes the compilation environment of Mercury.
 It describes how to use @samp{mc}, the Mercury compiler,
@@ -102,6 +93,15 @@ being written in the intersection of the Prolog and Mercury languages,
 which is possible because the two languages have almost the same syntax.
 This guide therefore also documents how to run a Mercury program
 using NU-Prolog or SICStus Prolog.
+
+@menu
+* Filenames::       File naming conventions
+* Using mc::        Compiling and linking programs with the Mercury compiler
+* Using Prolog::    Building and debugging Mercury programs with Prolog
+* Using Mmake::     ``Mercury Make'', a tool for building Mercury programs
+* Invocation::      List of options for the Mercury compiler
+* Environment::     Environment variables used by the compiler and utilities.
+@end menu
 
 @node Filenames, Using mc,, Top
 @section File naming conventions
