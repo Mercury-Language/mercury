@@ -65,11 +65,13 @@ MR_trace_browse(MR_Word type_info, MR_Word value)
 			(MR_Word) &mdb_in, (MR_Word) &mdb_out,
 			MR_trace_browser_state, &MR_trace_browser_state);
 	);
-	MR_trace_browser_state = MR_make_permanent(MR_trace_browser_state,
-				MR_trace_browser_state_type);
+
+	MR_TRACE_USE_HP(
+		MR_trace_browser_state = MR_make_permanent(
+			MR_trace_browser_state, MR_trace_browser_state_type);
+	);
 }
 
-	
 /*
 ** MR_trace_browse_external() is the same as MR_trace_browse() except it 
 ** uses debugger_socket_in and debugger_socket_out to read program-readable 
@@ -90,8 +92,11 @@ MR_trace_browse_external(MR_Word type_info, MR_Word value)
 			(MR_Word) &MR_debugger_socket_out,
 			MR_trace_browser_state, &MR_trace_browser_state);
 	);
-	MR_trace_browser_state = MR_make_permanent(MR_trace_browser_state,
-				MR_trace_browser_state_type);
+
+	MR_TRACE_USE_HP(
+		MR_trace_browser_state = MR_make_permanent(
+			MR_trace_browser_state, MR_trace_browser_state_type);
+	);
 }
 
 #endif
@@ -128,12 +133,17 @@ MR_trace_browse_ensure_init(void)
 			ML_BROWSE_init_state(&MR_trace_browser_state);
 		);
 
-		MR_trace_browser_state_type = (MR_TypeInfo) MR_make_permanent(
+		MR_TRACE_USE_HP(
+			MR_trace_browser_state_type = (MR_TypeInfo)
+				MR_make_permanent(
 					(MR_Word) MR_trace_browser_state_type,
 					(MR_TypeInfo) typeinfo_type_word);
-		MR_trace_browser_state = MR_make_permanent(
+			MR_trace_browser_state =
+				MR_make_permanent(
 					MR_trace_browser_state,
 					MR_trace_browser_state_type);
+		);
+
 		done = TRUE;
 	}
 }
