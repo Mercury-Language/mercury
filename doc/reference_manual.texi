@@ -85,7 +85,7 @@ into another language, under the above conditions for modified versions.
 * Higher-order::      Mercury supports higher-order predicates, closures,
                       lambda expressions, and currying
 * Modules::           Modules allow you to divide a program into smaller parts
-* Semantics::         An informal semantics for Mercury programs
+* Semantics::         Declarative and operational semantics of Mercury programs
 * Pragmas::           Pragma declarations give information to the Mercury 
                       compiler allowing a Mercury-C interface, and the ability 
                       to inline predicates.
@@ -2212,13 +2212,16 @@ must satisfy with respect to completeness.
 There is an operational semantics of Mercury programs called the
 @dfn{strict sequential} operational semantics.  In this semantics,
 the program is executed top-down, starting from @samp{main/2},
-and conjunctions and disjunctions are executed left-to-right. 
-Conjunctions are ``minimally'' reordered as required by the modes:
-the order is determined by selecting the first mode-correct conjunct,
-executing that, then selecting the first of the remaining conjuncts
+and function calls within a goal, conjunctions and disjunctions are all
+executed in depth-first left-to-right order. 
+Conjunctions and function calls are ``minimally'' reordered as required
+by the modes:
+the order is determined by selecting the first mode-correct sub-goal
+(conjunct or function call),
+executing that, then selecting the first of the remaining sub-goals
 which is now mode-correct, executing that, and so on. 
-(There is no interleaving of different individual conjuncts,
-however; the conjuncts are reordered, not split and interleaved.)
+(There is no interleaving of different individual conjuncts or function calls,
+however; the sub-goals are reordered, not split and interleaved.)
 Function application is strict, not lazy.
 
 Mercury implementations are required to provide a method of processing
@@ -2228,10 +2231,10 @@ operational semantics.
 There is another operational semantics of Mercury programs called
 the @dfn{strict commutative} operational semantics.  This semantics
 is equivalent to the strict sequential operation semantics except
-that there is no requirement that conjunctions and disjunctions 
+that there is no requirement that function calls, conjunctions and disjunctions 
 be executed left-to-right; they may be executed in any order.
-(The order may even be different each time a particular conjunct
-or disjunct is entered.)
+(The order may even be different each time a particular goal
+is entered.)
 
 As well as providing the strict sequential operational semantics,
 Mercury implementations may optionally provide additional
@@ -2251,18 +2254,18 @@ semantics for Mercury.  In one of them, the strict sequential semantics, there
 is no nondeterminism -- the behaviour is always specified exactly.
 Programs are executed top-down using SLDNF (or something equivalent),
 mode analysis does "minimal" reordering (in a precisely defined sense),
-conjunctions and disjunctions are executed left-to-right, and function
-evaluation is strict.  All implementations are required to support the
-strict sequential
-semantics, so that a program which works on one implementation using
-this semantics will be guaranteed to work on any other implementation.
-However, implementations are also allowed to support other operational
+function calls, conjunctions and disjunctions are executed depth-first
+left-to-right, and function evaluation is strict.  All implementations
+are required to support the strict sequential semantics, so that a
+program which works on one implementation using this semantics will be
+guaranteed to work on any other implementation.  However,
+implementations are also allowed to support other operational
 semantics, which may have non-determinism, so long as they are sound
 with respect to the declarative semantics, and so long as they meet a
 mimimum level of completeness (they must be at least as complete as the
 strict commutative semantics, in the sense that every program which
-terminates for all possible orderings must must also terminate
-in any implementation-defined operational semantics).
+terminates for all possible orderings must must also terminate in any
+implementation-defined operational semantics).
 
 This compromise allows Mercury to be used in several different ways.
 Programmers who care more about ease of programming and portability
@@ -2300,7 +2303,7 @@ the strict sequential semantics.  Enabling just some of them will give
 you a semantics somewhere in between.  (At the time of writing, however,
 these options had not been implemented.)
 
-Future implementations of Mercury may wish to offer other semantics.
+Future implementations of Mercury may wish to offer other operational semantics.
 For example, they may wish to provide semantics in which function
 evaluation is lazy, rather than strict; semantics with a guaranteed
 fair search rule; and so forth.
