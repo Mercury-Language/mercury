@@ -40,7 +40,6 @@ MGNUCFLAGS-mb_disasm = --no-ansi
 
 MCFLAGS		= --trace shallow --generate-bytecode -O 0
 
-C2INITFLAGS	= --trace
 MLFLAGS		= --trace
 
 #-----------------------------------------------------------------------------#

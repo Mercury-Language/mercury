@@ -18,7 +18,6 @@ DEBUGGER_PROGS=	\
 
 MCFLAGS = --trace deep
 MLFLAGS = --trace
-C2INITFLAGS = --trace
 
 # We need to use shared libraries for collect to work.
 # The following is necessary for shared libraries to work on Linux.

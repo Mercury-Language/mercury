@@ -33,12 +33,10 @@ CFLAGS = $(ADITI_API_EXTRA_CFLAGS) -Wno-strict-prototypes
 # The RPC headers on Linux don't like it when `-ansi' is passed to gcc.
 MGNUCFLAGS = --no-ansi
 
-MLFLAGS = --use-thread-libs $(ADITI_API_EXTRA_LDFLAGS)
+MLFLAGS = --aditi --use-thread-libs $(ADITI_API_EXTRA_LDFLAGS)
 MLLIBS = $(ADITI_API_EXTRA_LIBS)
 
 MCFLAGS = --no-infer-all --aditi --aditi-user guest
-
-C2INITFLAGS = --aditi
 
 #-----------------------------------------------------------------------------%
 

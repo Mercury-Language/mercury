@@ -258,13 +258,11 @@ MCFLAGS-unused_float_box_test =	--infer-all
 # tracking it down.
 MLFLAGS-mode_choice = --no-strip
 
-C2INITFLAGS-parse		= 	--trace
 MLFLAGS-parse			=	--trace --static
 
-C2INITFLAGS-split-c-files	= 	--trace
 MLFLAGS-split-c-files		=	--trace
 
-C2INITFLAGS-needs_init		= 	--include-initialization-code --extra-inits
+MLFLAGS-needs_init		= 	--include-initialization-code --extra-inits
 
 # no_fully_strict is expected to fail (it calls error/1).
 # We also need to pipe the output through sed to avoid hard-coding

@@ -52,7 +52,6 @@ NONWORKING_DECLARATIVE_PROGS=	\
 
 MCFLAGS = --trace decl
 MLFLAGS = --trace
-C2INITFLAGS = --trace
 
 MCFLAGS-deep_sub=--trace deep
 MCFLAGS-input_term_dep=--trace rep

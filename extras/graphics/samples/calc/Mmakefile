@@ -17,7 +17,7 @@ MCFLAGS 	= -I$(MERCURY_TCLTK_DIR) $(EXTRA_MCFLAGS)
 MLFLAGS 	= -R$(MERCURY_TCLTK_DIR) $(EXTRA_MLFLAGS) \
           	  -L$(MERCURY_TCLTK_DIR) 
 MLLIBS 		= -lmercury_tcltk $(EXTRA_MLLIBS)
-C2INITFLAGS 	= $(MERCURY_TCLTK_DIR)/mercury_tcltk.init 
+C2INITARGS 	= $(MERCURY_TCLTK_DIR)/mercury_tcltk.init 
 
 default_target : calc
 

@@ -9,7 +9,7 @@ include ../Mmake.common
 
 # uncomment the following line to test the performance
 # of the benchmarks (with I/O suppressed)
-# C2INITFLAGS=-w "`extract $(*:_init=) '' BenchEntry`"
+# MLFLAGS=-w "`extract $(*:_init=) '' BenchEntry`"
 
 #-----------------------------------------------------------------------------#
 

@@ -33,7 +33,7 @@ MLFLAGS=-g
 
 # tell Mercury that this the Mercury stuff we're building is a library,
 # not a main program
-C2INITFLAGS=--library
+MLFLAGS=--no-main
 
 OBJECTS = cpp_main.o mercury_lib_init.o $(mercury_lib.os)
 

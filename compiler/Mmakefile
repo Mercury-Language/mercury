@@ -57,9 +57,8 @@ MGNUC	=	$(M_ENV) $(SCRIPTS_DIR)/mgnuc
 C2INIT =	MERCURY_MOD_LIB_MODS="$(LIBRARY_DIR)/$(STD_LIB_NAME).init $(RUNTIME_DIR)/$(RT_LIB_NAME).init" \
 		MERCURY_TRACE_LIB_MODS="$(BROWSER_DIR)/$(BROWSER_LIB_NAME).init" \
 		MERCURY_MKINIT=$(UTIL_DIR)/mkinit $(SCRIPTS_DIR)/c2init
-C2INITFLAGS =	--library
 ML	=	MERCURY_C_LIB_DIR=. $(SCRIPTS_DIR)/ml
-MLFLAGS =	--shared --mercury-libs none
+MLFLAGS =	--shared --no-main --mercury-libs none
 MLLIBS  =	../main.$O \
 		$(TRACE_DIR)/lib$(TRACE_LIB_NAME).$A \
 		$(BROWSER_DIR)/lib$(BROWSER_LIB_NAME).$A \

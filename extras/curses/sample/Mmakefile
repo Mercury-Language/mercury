@@ -10,7 +10,7 @@ MLFLAGS = 	-R$(MCURSES_DIR) $(EXTRA_MLFLAGS) \
 # Note that you have to tell the linker to use the mcurses library
 # AND the ncurses library (which mcurses is an interface for)
 MLLIBS =	-lmcurses -lncurses $(EXTRA_MLLIBS)
-C2INITFLAGS =	$(MCURSES_DIR)/mcurses.init
+C2INITARGS =	$(MCURSES_DIR)/mcurses.init
 
 default_target:	smalltest
 depend:		smalltest.depend

@@ -18,7 +18,7 @@ MLFLAGS         = -R$(MERCURY_TCLTK_DIR) -R$(MERCURY_OPENGL_DIR) \
 			$(EXTRA_MLFLAGS) -L$(MERCURY_TCLTK_DIR)  \
 			-L$(MERCURY_OPENGL_DIR)
 MLLIBS          = -lmercury_opengl -lmercury_tcltk $(EXTRA_MLLIBS)
-C2INITFLAGS     = $(MERCURY_TCLTK_DIR)/mercury_tcltk.init \
+C2INITARGS      = $(MERCURY_TCLTK_DIR)/mercury_tcltk.init \
 		  $(MERCURY_OPENGL_DIR)/mercury_opengl.init
 
 default_target : pent
