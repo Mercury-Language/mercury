@@ -24,7 +24,6 @@ ORDINARY_PROGS=	\
 	comparison \
 	contains_char \
 	constant_prop_1 \
-	constant_prop_2 \
 	constraint \
 	constraint_order \
 	construct_test \
@@ -269,6 +268,23 @@ else
 	BROKEN_FOR_PROFDEEP =
 endif
 
+# constant_prop_2 fails in hl*prof* grades, due to a complicated phase
+# ordering problem.  The first simplify pass eliminates a call to
+# private_builtin.typed_unify, but does not yet simplify the if-then-else
+# which contains it; then at the end of that pass determinism analysis
+# is rerun, and the condition is inferred to be det.  Then dead proc
+# elimination is run, and it does not eliminate link_error, since there
+# is still a call to it.  The second simplify pass notices that the
+# condition is det, and simplifies the if-then-else, deleting the else part,
+# so link_error is now dead.  But dead proc elimination doesn't get run
+# again, so we go ahead and emit a declaration for link_error, and in
+# MLDS profiling grades also a reference, which causes the test case to fail.
+ifeq "$(findstring hl,$(GRADE))$(findstring prof,$(GRADE))" "hlprof"
+	NONHLPROF_PROGS =
+else
+	NONHLPROF_PROGS = constant_prop_2
+endif
+
 # These tests trigger a bug in lcc
 ifeq "$(findstring lcc,$(shell $(MGNUC) -v 2>&1))" "lcc"
   BROKEN_FOR_LCC_PROGS =
@@ -367,7 +383,7 @@ endif
 # These tests are also not supported in IL and Java grades,
 # since those back-ends don't support the C interface at all.
 # (XXX perhaps we should add analagous tests of the nondet IL, C#, MC++,
-# and [evenetually] Java interfaces?)
+# and [eventually] Java interfaces?)
 ifneq "$(filter il% java%,$(GRADE))" ""
 	NONDET_C_PROGS =
 else
@@ -412,7 +428,7 @@ endif
 ifneq "$(findstring java,$(GRADE))" ""
 	PROGS = $(JAVA_PROGS) $(JAVA_PASS_PROGS)
 else
-	PROGS = $(ORDINARY_PROGS) $(BROKEN_FOR_LCC_PROGS) \
+	PROGS = $(ORDINARY_PROGS) $(NONHLPROF_PROGS) $(BROKEN_FOR_LCC_PROGS) \
 		$(CLOSURE_LAYOUT_PROGS) $(EXCEPTION_PROGS) \
 		$(BACKEND_PROGS) $(NONDET_C_PROGS) \
 		$(C_AND_GC_ONLY_PROGS) $(STATIC_LINK_PROGS) \
