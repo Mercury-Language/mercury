@@ -447,10 +447,9 @@ ml_gen_mlds_call(Signature, ObjectRval, FuncRval, ArgRvals0, RetLvals0,
 	%
 	% build the MLDS call statement
 	%
-	% if the called procedure has determinism `erroneous' or `failure',
+	% if the called procedure has determinism `erroneous'
 	% then it's always safe to make this call a tail call.
-	{ determinism_components(Detism, _, NumSolns) },
-	{ NumSolns = at_most_zero ->
+	{ Detism = erroneous ->
 		CallOrTailcall = tail_call
 	;
 		CallOrTailcall = call

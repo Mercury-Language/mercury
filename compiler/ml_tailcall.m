@@ -45,7 +45,7 @@
 % any backend support for them.
 %
 % Note that ml_call_gen.m will also mark calls to procedures with determinism
-% `erroneous' or `failure' as tail calls when it generates them.
+% `erroneous' as tail calls when it generates them.
 
 %-----------------------------------------------------------------------------%
 
