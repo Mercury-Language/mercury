@@ -28,17 +28,17 @@
 			;	nondeterministic
 			;	commit.
 
-:- pred garbage_out__get_det(list(liveinfo), maybe(det), det).
-:- mode garbage_out__get_det(in, in, out) is det.
+:- pred garbage_out_get_det(list(liveinfo), maybe(det), det).
+:- mode garbage_out_get_det(in, in, out) is det.
 
 :- implementation.
 
-garbage_out__get_det([], no, nondeterministic).
-garbage_out__get_det([], yes(commit), commit).
-garbage_out__get_det([], yes(nondeterministic), nondeterministic).
-garbage_out__get_det([], yes(deterministic), deterministic).
+garbage_out_get_det([], no, nondeterministic).
+garbage_out_get_det([], yes(commit), commit).
+garbage_out_get_det([], yes(nondeterministic), nondeterministic).
+garbage_out_get_det([], yes(deterministic), deterministic).
 
-garbage_out__get_det([L | Ls], OldD, NewDet) :-
+garbage_out_get_det([L | Ls], OldD, NewDet) :-
 	(
 		L = live_lvalue(stackvar(_), _, _)
 	->
@@ -74,4 +74,4 @@ garbage_out__get_det([L | Ls], OldD, NewDet) :-
 	;
 		Det = OldD
 	),
-	garbage_out__get_det(Ls, Det, NewDet).
+	garbage_out_get_det(Ls, Det, NewDet).

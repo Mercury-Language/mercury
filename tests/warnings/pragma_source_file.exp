@@ -1,4 +1,4 @@
-foo.m:002: In clause for predicate `pragma_source_file:append/3':
+foo.m:002: In clause for predicate `pragma_source_file:my_append/3':
 foo.m:002:   Warning: variables `L1, L2' occur only once in this scope.
-foo.m:011: In clause for predicate `pragma_source_file:append/3':
+foo.m:011: In clause for predicate `pragma_source_file:my_append/3':
 foo.m:011:   Warning: variables `X, Y' occur only once in this scope.

@@ -20,12 +20,8 @@ main -->
 
 :- pred show(t::in, io__state::di, io__state::uo) is det.
 
-show(f1(S)) --> io__write_string("f1: "), io__write_string(S), nl.
-show(f2(S)) --> io__write_string("f2: "), io__write_string(S), nl.
-show(f3(S)) --> io__write_string("f3: "), io__write_string(S), nl.
-show(f4(S)) --> io__write_string("f4: "), io__write_string(S), nl.
-
-:- pred nl(io__state::di, io__state::uo) is det.
-
-nl --> io__write_string("\n").
+show(f1(S)) --> io__write_string("f1: "), io__write_string(S), io__nl.
+show(f2(S)) --> io__write_string("f2: "), io__write_string(S), io__nl.
+show(f3(S)) --> io__write_string("f3: "), io__write_string(S), io__nl.
+show(f4(S)) --> io__write_string("f4: "), io__write_string(S), io__nl.
 
