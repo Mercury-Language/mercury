@@ -237,6 +237,7 @@ tar: README INSTALL
 		mv $$ROOTNAME/trial	stuff-to-exclude;		\
 		mv $$ROOTNAME/bytecode	stuff-to-exclude;		\
 		mv $$ROOTNAME/lp_solve	stuff-to-exclude;		\
+		mv $$ROOTNAME/trax	stuff-to-exclude;		\
 		mv $$ROOTNAME/extras/opium_m	stuff-to-exclude;	\
 		mv $$ROOTNAME/extras/aditi stuff-to-exclude;		\
 		mv $$ROOTNAME/extras	mercury-extras-$(VERSION);	\
