@@ -320,7 +320,8 @@ case $status in 0)
 	|| status=1
 
 	# If you want to add extra grades to install on specific hosts,
-	# do it here.
+	# do it here.  Any grade which is tested later, but which is not
+	# installed above, should be installed here.
     case $HOST in
     	hg)	mmake install_grades LIBGRADES="asm_fast.par.gc" || status=1
 		;;
@@ -430,6 +431,9 @@ unset MERCURY_COMPILER
 
 #MERCURY_COMPILER=$DIR/mercury/stage2/compiler/mercury_compile
 #export MERCURY_COMPILER
+
+# Any grade here that is not installed by default needs to be explicitly
+# installed above, before the tests are run.
 case $HOST in
 	mundook|murlibobo)
 		GRADES="none none.gc
