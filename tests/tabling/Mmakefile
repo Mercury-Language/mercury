@@ -19,6 +19,7 @@ SIMPLE_NONLOOP_PROGS = \
 	memo_non \
 	oota \
 	table_foreign_output \
+	test_enum \
 	unused_args
 
 SIMPLE_LOOP_PROGS = \

@@ -2170,7 +2170,7 @@ gen_lookup_call_for_type(TypeCat, Type, ArgVar, Prefix, VarSeqNum, Context,
 				cur_table_node_name ++ ", " ++
 				int_to_string(EnumRange) ++ ", " ++
 				ArgName ++ ", " ++
-				next_table_node_name ++ ", " ++ ");\n"
+				next_table_node_name ++ ");\n"
 		;
 			error("gen_lookup_call_for_type: unexpected enum type")
 		)
