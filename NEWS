@@ -123,6 +123,9 @@ Changes to the Mercury standard library:
 * We've added function versions of `ops__init_op_table'
   and `ops__max_priority'.
 
+* We've added a version of `getopt__process_options' which returns
+  the option arguments.
+
 * We've added some functions to the term_io module to return printable
   representations of term components as strings.
 
