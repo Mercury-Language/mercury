@@ -66,7 +66,7 @@
 :- import_module error_util.
 
 :- import_module string, char, int, set, bintree, map, multi_map, require.
-:- import_module term, varset, getopt, assoc_list, term_io.
+:- import_module bag, term, varset, getopt, assoc_list, term_io.
 
 parse_tree_to_hlds(module(Name, Items), MQInfo0, EqvMap, Module, 
 		UndefTypes, UndefModes) -->
@@ -3223,6 +3223,8 @@ pred_add_pragma_import(PredInfo0, PredId, ProcId, Attributes, C_Function,
 	% lookup some information we need from the pred_info and proc_info
 	%
 	{ pred_info_get_is_pred_or_func(PredInfo0, PredOrFunc) },
+	{ pred_info_module(PredInfo0, PredModule) },
+	{ pred_info_name(PredInfo0, PredName) },
 	{ pred_info_clauses_info(PredInfo0, Clauses0) },
 	{ pred_info_arg_types(PredInfo0, ArgTypes) },
 	{ pred_info_get_purity(PredInfo0, Purity) },
@@ -3264,7 +3266,8 @@ pred_add_pragma_import(PredInfo0, PredId, ProcId, Attributes, C_Function,
 	{ PragmaImpl = ordinary(C_Code, no) },
 	clauses_info_add_pragma_c_code(Clauses0, Purity, Attributes,
 		PredId, ProcId, VarSet, PragmaVars, ArgTypes, PragmaImpl,
-		Context, PredOrFunc, Arity, Clauses, Info0, Info),
+		Context, PredOrFunc, qualified(PredModule, PredName),
+		Arity, Clauses, Info0, Info),
 
 	%
 	% Store the clauses_info etc. back into the pred_info
@@ -3492,7 +3495,8 @@ module_add_pragma_c_code(Attributes, PredName, PredOrFunc, PVars, VarSet,
 			clauses_info_add_pragma_c_code(Clauses0, Purity,
 				Attributes, PredId, ProcId, VarSet,
 				PVars, ArgTypes, PragmaImpl, Context,
-				PredOrFunc, Arity, Clauses, Info0, Info),
+				PredOrFunc, PredName, Arity,
+				Clauses, Info0, Info),
 			{ pred_info_set_clauses_info(PredInfo1, Clauses, 
 				PredInfo2) },
 			{ pred_info_set_goal_type(PredInfo2, pragmas, 
@@ -4485,48 +4489,94 @@ clauses_info_add_clause(ClausesInfo0, PredId, ModeIds, CVarSet, TVarSet0,
 :- pred clauses_info_add_pragma_c_code(clauses_info, purity,
 	pragma_c_code_attributes, pred_id, proc_id, prog_varset,
 	list(pragma_var), list(type), pragma_c_code_impl, prog_context,
-	pred_or_func, arity, clauses_info, qual_info,
+	pred_or_func, sym_name, arity, clauses_info, qual_info,
 	qual_info, io__state, io__state) is det.
 :- mode clauses_info_add_pragma_c_code(in, in, in, in, in, in, in, in, in, in,
-	in, in, out, in, out, di, uo) is det.
+	in, in, in, out, in, out, di, uo) is det.
 
 clauses_info_add_pragma_c_code(ClausesInfo0, Purity, Attributes, PredId,
 		ModeId, PVarSet, PVars, OrigArgTypes, PragmaImpl, Context,
-		PredOrFunc, Arity, ClausesInfo, Info0, Info) -->
+		PredOrFunc, PredName, Arity, ClausesInfo, Info0, Info) -->
 	{
 	ClausesInfo0 = clauses_info(VarSet0, VarTypes, VarTypes1,
 				 HeadVars, ClauseList, TI_VarMap, TCI_VarMap),
 	pragma_get_vars(PVars, Args0),
 	pragma_get_var_infos(PVars, ArgInfo),
 
-		% merge the varsets of the proc and the new pragma_c_code
-	varset__merge_subst(VarSet0, PVarSet, VarSet1, Subst),
-	map__apply_to_list(Args0, Subst, TermArgs),
-	term__term_list_to_var_list(TermArgs, Args),
+	%
+	% Check for arguments occurring multiple times.
+	%
+	bag__init(ArgBag0),
+	bag__insert_list(ArgBag0, Args0, ArgBag),
+	bag__to_assoc_list(ArgBag, ArgBagAL0),
+	list__filter(
+		(pred(Arg::in) is semidet :-
+			Arg = _ - Occurrences,
+			Occurrences > 1
+		), ArgBagAL0, ArgBagAL),
+	assoc_list__keys(ArgBagAL, MultipleArgs)
+	},
 
-		% build the pragma_c_code
-	goal_info_init(GoalInfo0),
-	goal_info_set_context(GoalInfo0, Context, GoalInfo1),
-	% Put the purity in the goal_info in case this c code is inlined
-	add_goal_info_purity_feature(GoalInfo1, Purity, GoalInfo),
-	HldsGoal0 = pragma_c_code(Attributes, PredId, ModeId, Args,
-		ArgInfo, OrigArgTypes, PragmaImpl) - GoalInfo
-	}, 
-		% Apply unifications with the head args.
-		% Since the set of head vars and the set vars in the
-		% pragma C code are disjoint, the unifications can be
-		% implemented as substitutions, and they will be.
-	insert_arg_unifications(HeadVars, TermArgs, Context,
-		head(PredOrFunc, Arity), yes, HldsGoal0, VarSet1,
-		HldsGoal1, VarSet2, Info0, Info),
-	{
-	map__init(Empty),
-	implicitly_quantify_clause_body(HeadVars, HldsGoal1, VarSet2, Empty,
-		HldsGoal, VarSet, _, _Warnings),
-	NewClause = clause([ModeId], HldsGoal, Context),
-	ClausesInfo =  clauses_info(VarSet, VarTypes, VarTypes1, HeadVars, 
-		[NewClause|ClauseList], TI_VarMap, TCI_VarMap)
-	}.
+	( { MultipleArgs = [_ | _] } ->
+		{ ClausesInfo = ClausesInfo0 },
+		{ Info = Info0 },
+		prog_out__write_context(Context),
+		io__write_string("In `:- pragma c_code' declaration for "),
+		{ adjust_func_arity(PredOrFunc, OrigArity, Arity) },
+		hlds_out__write_simple_call_id(
+			PredOrFunc - PredName/OrigArity),
+		io__write_string(":\n"),
+		prog_out__write_context(Context),
+		io__write_string("  error: "),
+		(
+			{ MultipleArgs = [MultipleArg] },
+			io__write_string("variable `"),
+			mercury_output_var(MultipleArg, PVarSet, no),
+			io__write_string("' occurs multiple times\n")
+		;
+			{ MultipleArgs = [_, _ | _] },
+			io__write_string("variables `"),
+			mercury_output_vars(MultipleArgs, PVarSet, no),
+			io__write_string(
+				"' occur multiple times\n")
+		),
+		prog_out__write_context(Context),
+		io__write_string("  in the argument list.\n"),
+		io__set_exit_status(1)
+	;
+		% merge the varsets of the proc and the new pragma_c_code
+		{
+		varset__merge_subst(VarSet0, PVarSet, VarSet1, Subst),
+		map__apply_to_list(Args0, Subst, TermArgs),
+		term__term_list_to_var_list(TermArgs, Args),
+
+			% build the pragma_c_code
+		goal_info_init(GoalInfo0),
+		goal_info_set_context(GoalInfo0, Context, GoalInfo1),
+		% Put the purity in the goal_info in case
+		% this c code is inlined
+		add_goal_info_purity_feature(GoalInfo1, Purity, GoalInfo),
+		HldsGoal0 = pragma_c_code(Attributes, PredId, ModeId, Args,
+			ArgInfo, OrigArgTypes, PragmaImpl) - GoalInfo
+		}, 
+			% Apply unifications with the head args.
+			% Since the set of head vars and the set vars in the
+			% pragma C code are disjoint, the unifications can be
+			% implemented as substitutions, and they will be.
+		insert_arg_unifications(HeadVars, TermArgs, Context,
+			head(PredOrFunc, Arity), yes, HldsGoal0, VarSet1,
+			HldsGoal1, VarSet2, Info0, Info),
+		{
+		map__init(Empty),
+		implicitly_quantify_clause_body(HeadVars, HldsGoal1,
+			VarSet2, Empty, HldsGoal, VarSet, _, _Warnings),
+		NewClause = clause([ModeId], HldsGoal, Context),
+		ClausesInfo =  clauses_info(VarSet, VarTypes, VarTypes1,
+			HeadVars, [NewClause|ClauseList],
+			TI_VarMap, TCI_VarMap)
+		}
+	).
+
 
 :- pred allocate_vars_for_saved_vars(list(string), list(pair(prog_var, string)),
 	prog_varset, prog_varset).

@@ -4054,7 +4054,8 @@ The C code fragment may refer to the specified variables
 (@var{Var1}, @var{Var2}, @dots{}, and @var{Var})
 directly by name.  These variables will have C types corresponding
 to their Mercury types, as determined by the rules specified in
-@ref{Passing data to and from C}.
+@ref{Passing data to and from C}.  It is an error for a variable
+to occur more than once in the argument list.
 
 The C code fragment may declare local variables, but it should not
 declare any labels or static variables unless there is also a Mercury
