@@ -279,7 +279,8 @@ output_single_c_file(c_file(ModuleName, C_HeaderLines, Modules), SplitFiles,
 		io__write_string("\n"),
 		{ gather_c_file_labels(Modules, Labels) },
 		{ bintree_set__init(DeclSet0) },
-		output_c_label_decl_list(Labels, DeclSet0, DeclSet),
+		output_c_label_decl_list(Labels, DeclSet0, DeclSet1),
+		output_c_data_def_list(Modules, DeclSet1, DeclSet),
 		output_c_module_list(Modules, StackLayoutLabels, DeclSet),
 		( { SplitFiles = yes(_) } ->
 			[]
@@ -449,6 +450,7 @@ llds_out__make_init_name(ModuleName, InitName) :-
 	string__append_list(["mercury__", MangledModuleName, "__init"],
 		InitName).
 
+
 :- pred output_bunch_name(module_name, int, io__state, io__state).
 :- mode output_bunch_name(in, in, di, uo) is det.
 
@@ -458,6 +460,60 @@ output_bunch_name(ModuleName, Number) -->
 	io__write_string(MangledModuleName),
 	io__write_string("_bunch_"),
 	io__write_int(Number).
+
+	%
+	% output_c_data_def_list outputs all the type definitions of
+	% the module.  This is needed because some compilers need the
+	% data definition to appear before any use of the type in
+	% forward declarations of static constants.
+	%
+:- pred output_c_data_def_list(list(c_module), decl_set, decl_set, 
+		io__state, io__state).
+:- mode output_c_data_def_list(in, in, out, di, uo) is det.
+
+output_c_data_def_list([], DeclSet, DeclSet) --> [].
+output_c_data_def_list([M | Ms], DeclSet0, DeclSet) -->
+	output_c_data_def(M, DeclSet0, DeclSet1),
+	output_c_data_def_list(Ms, DeclSet1, DeclSet).
+
+:- pred output_c_data_def(c_module, decl_set, decl_set, io__state, io__state).
+:- mode output_c_data_def(in, in, out, di, uo) is det.
+
+output_c_data_def(c_module(_, _), DeclSet, DeclSet) --> [].
+output_c_data_def(c_code(_, _), DeclSet, DeclSet) --> [].
+output_c_data_def(c_export(_), DeclSet, DeclSet) --> [].
+output_c_data_def(c_data(ModuleName, VarName, ExportedFromModule, ArgVals,
+		_Refs), DeclSet0, DeclSet) -->
+	io__write_string("\n"),
+	{ DataAddr = data_addr(data_addr(ModuleName, VarName)) },
+
+	{ linkage(VarName, Linkage) },
+	{
+		( Linkage = extern, ExportedFromModule = yes
+		; Linkage = static, ExportedFromModule = no
+		)
+	->
+		true
+	;
+		error("linkage mismatch")
+	},
+
+		% The code for data local to a Mercury module
+		% should normally be visible only within the C file
+		% generated for that module. However, if we generate
+		% multiple C files, the code in each C file must be
+		% visible to the other C files for that Mercury module.
+	( { ExportedFromModule = yes } ->
+		{ ExportedFromFile = yes }
+	;
+		globals__io_lookup_bool_option(split_c_files, SplitFiles),
+		{ ExportedFromFile = SplitFiles }
+	),
+
+	output_const_term_decl(ArgVals, DataAddr, ExportedFromFile, 
+			yes, yes, no, "", "", 0, _),
+	{ bintree_set__insert(DeclSet0, DataAddr, DeclSet) }.
+
 
 :- pred output_c_module_list(list(c_module), set_bbbtree(label), decl_set,
 	io__state, io__state).
@@ -523,8 +579,8 @@ output_c_module(c_data(ModuleName, VarName, ExportedFromModule, ArgVals,
 		globals__io_lookup_bool_option(split_c_files, SplitFiles),
 		{ ExportedFromFile = SplitFiles }
 	),
-	output_const_term_decl(ArgVals, DataAddr, ExportedFromFile, "", "",
-		0, _),
+	output_const_term_decl(ArgVals, DataAddr, ExportedFromFile, no, yes,
+		yes, "", "", 0, _),
 	{ bintree_set__insert(DeclSet1, DataAddr, DeclSet) }.
 
 output_c_module(c_code(C_Code, Context), _, DeclSet, DeclSet) -->
@@ -1725,8 +1781,8 @@ output_rval_decls(create(_Tag, ArgVals, _, Label, _), FirstIndent, LaterIndent,
 		{ bintree_set__insert(DeclSet0, CreateLabel, DeclSet1) },
 		output_cons_arg_decls(ArgVals, FirstIndent, LaterIndent, N0, N1,
 			DeclSet1, DeclSet),
-		output_const_term_decl(ArgVals, CreateLabel, no, FirstIndent,
-			LaterIndent, N1, N)
+		output_const_term_decl(ArgVals, CreateLabel, no, yes, yes, yes,
+			FirstIndent, LaterIndent, N1, N)
 	).
 output_rval_decls(mem_addr(MemRef), FirstIndent, LaterIndent,
 		N0, N, DeclSet0, DeclSet) -->
@@ -1815,11 +1871,13 @@ llds_out__float_op_name(float_divide, "divide").
 	% We output constant terms as follows:
 	%
 	%	static const struct <foo>_struct {
-	%		Word field1;
-	%		Float field2;
+	%		Word field1;			// Def
+	%		Float field2;			
 	%		Word * field3;
 	%		...
-	%	} <foo> = {
+	%	} 
+	%	<foo> 					// Decl
+	%	= {					// Init
 	%		...
 	%	};
 	%
@@ -1827,40 +1885,84 @@ llds_out__float_op_name(float_divide, "divide").
 	% static code addresses available, in which case we'll have
 	% to initialize them dynamically, so we must omit `const'
 	% from the above structure.
+	%
+	% Also we now conditionally output some parts.  The parts that
+	% are conditionally output are Def, Decl and Init.  It is an
+	% error for Init to be yes and Decl to be no.
 
-:- pred output_const_term_decl(list(maybe(rval)), decl_id, bool, string, string,
-	int, int, io__state, io__state).
-:- mode output_const_term_decl(in, in, in, in, in, in, out, di, uo) is det.
+:- pred output_const_term_decl(list(maybe(rval)), decl_id, bool, bool, bool, 
+		bool, string, string, int, int, io__state, io__state).
+:- mode output_const_term_decl(in, in, in, in, in,
+		in, in, in, in, out, di, uo) is det.
 
-output_const_term_decl(ArgVals, DeclId, Exported, FirstIndent, LaterIndent,
-		N1, N) -->
+output_const_term_decl(ArgVals, DeclId, Exported, Def, Decl, Init, FirstIndent, 
+		LaterIndent, N1, N) -->
+	(
+		{ Init = yes }, { Decl = no }
+	->
+		{ error("output_const_term_decl: Inconsistent Decl and Init") }
+	;
+		[]
+	),
 	output_indent(FirstIndent, LaterIndent, N1),
 	{ N is N1 + 1 },
-	( { Exported = yes } ->
-		[]
-	;
-		io__write_string("static ")
-	),
-	globals__io_get_globals(Globals),
-	{ globals__have_static_code_addresses(Globals, StaticCode) },
 	(
-		{ StaticCode = no },
-		{ DeclId = data_addr(data_addr(_, base_type(info, _, _))) }
+		{ Decl = yes }
 	->
-		[]
+		(
+			{ Exported = yes }
+		->
+			[]
+		;
+			io__write_string("static ")
+		),
+		globals__io_get_globals(Globals),
+		{ globals__have_static_code_addresses(Globals, StaticCode) },
+		(
+				% Don't make decls of base_type_infos `const' 
+				% if we don't have static code addresses.
+			{ StaticCode = no },
+			{ DeclId = data_addr(
+					data_addr(_, base_type(info, _, _))) }
+		->
+			[]
+		;
+			io__write_string("const ")
+		)
 	;
-		io__write_string("const ")
+		[]
 	),
 	io__write_string("struct "),
 	output_decl_id(DeclId),
-	io__write_string("_struct {\n"),
-	output_cons_arg_types(ArgVals, "\t", 1),
-	io__write_string("} "),
-	output_decl_id(DeclId),
-	io__write_string(" = {\n"),
-	output_cons_args(ArgVals, "\t"),
-	io__write_string(LaterIndent),
-	io__write_string("};\n").
+	io__write_string("_struct"),
+	(
+		{ Def = yes }
+	->
+		io__write_string(" {\n"),
+		output_cons_arg_types(ArgVals, "\t", 1),
+		io__write_string("} ")
+	;
+		[]
+	),
+	(
+		{ Decl = yes }
+	->
+		io__write_string(" "),
+		output_decl_id(DeclId),
+		(
+			{ Init = yes }
+		->
+			io__write_string(" = {\n"),
+			output_cons_args(ArgVals, "\t"),
+			io__write_string(LaterIndent),
+			io__write_string("};\n")
+		;
+			io__write_string(";\n")
+		)
+	;
+		io__write_string(";\n")
+	).
+
 
 :- pred output_decl_id(decl_id, io__state, io__state).
 :- mode output_decl_id(in, di, uo) is det.
@@ -1922,7 +2024,7 @@ output_llds_type(integer)  --> io__write_string("Integer").
 output_llds_type(unsigned) --> io__write_string("Unsigned").
 output_llds_type(float)    --> io__write_string("Float").
 output_llds_type(word)     --> io__write_string("Word").
-output_llds_type(data_ptr) --> io__write_string("const Word *").
+output_llds_type(data_ptr) --> io__write_string("Word *").
 output_llds_type(code_ptr) --> io__write_string("Code *").
 
 :- pred output_cons_arg_decls(list(maybe(rval)), string, string, int, int,
@@ -2934,7 +3036,7 @@ output_rval(mkword(Tag, Exprn)) -->
 	io__write_string("mkword("),
 	output_tag(Tag),
 	io__write_string(", "),
-	output_rval_as_type(Exprn, word),
+	output_rval_as_type(Exprn, data_ptr),
 	io__write_string(")").
 output_rval(lval(Lval)) -->
 	% if a field is used as an rval, then we need to use
@@ -3057,9 +3159,7 @@ output_rval_const(float_const(FloatVal)) -->
 	io__write_string("(Float) "),
 	io__write_float(FloatVal).
 output_rval_const(string_const(String)) -->
-		% XXX we should change the definition of `string_const'
-		% so that this cast is not necessary
-	io__write_string("(const Word *) string_const("""),
+	io__write_string("string_const("""),
 	output_c_quoted_string(String),
 	{ string__length(String, StringLength) },
 	io__write_string(""", "),
@@ -3074,7 +3174,8 @@ output_rval_const(code_addr_const(CodeAddress)) -->
 output_rval_const(data_addr_const(data_addr(ModuleName, VarName))) -->
 	% data addresses are all assumed to be of type `Word *';
 	% we need to cast them here to avoid type errors
-	io__write_string("(const Word *) &"),
+	% XXX No we don't to make lcc accept it.
+	io__write_string("(Word *) &"),
 	output_data_addr(ModuleName, VarName).
 output_rval_const(label_entry(Label)) -->
 	io__write_string("ENTRY("),

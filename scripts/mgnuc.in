@@ -69,7 +69,7 @@ case "$CC" in
     *gcc*)
 	ANSI_OPTS="" # --no-ansi to avoid syntax errors in Solaris pthread.h
 	CHECK_OPTS="
-	      -Wall -Wwrite-strings -Wpointer-arith -Wcast-qual -Wtraditional
+	      -Wall -Wwrite-strings -Wpointer-arith -Wtraditional
 	      -Wshadow -Wstrict-prototypes -Wmissing-prototypes -Wno-unused"
 
 # Note: we do not enable the following gcc warnings:
@@ -77,6 +77,7 @@ case "$CC" in
 # -Wconversion		really only intended to help people using \`unprotoize'
 # -Waggregate-return	not useful, IMHO
 
+# -Wcast-qual		causes LOTS of redundant warnings
 # -Wcast-align 		causes redundant warnings in memory.c
 # -pedantic		causes unsuppressable warnings about LVALUE_CAST()
 # -Wnested-externs	causes unsuppressable warnings about callentry()

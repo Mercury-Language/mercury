@@ -36,7 +36,7 @@
 ** string_const("...", len):
 **	Given a C string literal and its length, returns a Mercury string.
 */
-#define string_const(string, len) ((Word)string)
+#define string_const(string, len) ((Word *) string)
 
 /*
 ** bool string_equal(ConstString s1, ConstString s2):
