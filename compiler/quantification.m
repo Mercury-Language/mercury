@@ -58,23 +58,16 @@ implicitly_quantify_goal(Goal0 - GoalInfo0, OutsideVars,
 				   hlds__goal_expr, set(var)).
 :- mode implicitly_quantify_goal_2(in, in, out, out) is det.
 
+	% we retain explicit existential quantifiers in the source code,
+	% even though they are redundant with the goal_info non_locals,
+	% so that we can easily recalculate the goal_info non_locals
+	% if necessary after program transformation.
+
 implicitly_quantify_goal_2(some(Vars, Goal0), OutsideVars,
 			   some(Vars, Goal), NonLocals) :-
 	set__insert_list(OutsideVars, Vars, OutsideVars1),
 	implicitly_quantify_goal(Goal0, OutsideVars1, Goal, NonLocals0),
 	set__remove_list(NonLocals0, Vars, NonLocals).
-
-/********
-	% perhaps we should instead remove explicit quantifiers
-	% as follows (and also for not/2):
-implicitly_quantify_goal_2(some(Vars, Goal0), OutsideVars, Goal, NonLocals) :-
-	set__remove_list(OutsideVars, Vars, OutsideVars1),
-	implicitly_quantify_goal(Goal0, OutsideVars1, Goal1, NonLocals0),
-	set__remove_list(NonLocals0, Vars, NonLocals),
-	Goal1 = G - GoalInfo1,
-	goal_info_set_nonlocals(GoalInfo1, NonLocals, GoalInfo).
-	Goal = G - GoalInfo.
-*********/
 
 implicitly_quantify_goal_2(conj(List0), OutsideVars,
 			   conj(List), NonLocalVars) :-
@@ -88,11 +81,9 @@ implicitly_quantify_goal_2(switch(Var, Det, Cases0), OutsideVars,
 			   switch(Var, Det, Cases), NonLocalVars) :-
 	implicitly_quantify_cases(Cases0, OutsideVars, Cases, NonLocalVars).
 
-implicitly_quantify_goal_2(not(Vars, Goal0), OutsideVars,
-		    not(Vars, Goal), NonLocals) :-
-	set__insert_list(OutsideVars, Vars, OutsideVars1),
-	implicitly_quantify_goal(Goal0, OutsideVars1, Goal, NonLocals0),
-	set__remove_list(NonLocals0, Vars, NonLocals).
+implicitly_quantify_goal_2(not(Goal0), OutsideVars,
+		    not(Goal), NonLocals) :-
+	implicitly_quantify_goal(Goal0, OutsideVars, Goal, NonLocals).
 
 implicitly_quantify_goal_2(if_then_else(Vars, A0, B0, C0), OutsideVars,
 		if_then_else(Vars, A, B, C), NonLocals) :-
@@ -262,10 +253,8 @@ goal_vars_2(some(Vars, Goal), Set0, Set) :-
 	set__remove_list(Set1, Vars, Set2),
 	set__union(Set0, Set2, Set).
 
-goal_vars_2(not(Vars, Goal), Set0, Set) :-
-	goal_vars(Goal, Set1),
-	set__remove_list(Set1, Vars, Set2),
-	set__union(Set0, Set2, Set).
+goal_vars_2(not(Goal - _GoalInfo), Set0, Set) :-
+	goal_vars_2(Goal, Set0, Set).
 
 goal_vars_2(if_then_else(Vars, A, B, C), Set0, Set) :-
 		% This code does the following:

@@ -184,7 +184,7 @@ code_util__goal_may_allocate_heap_2(unify(_, _, _, construct(_,_,Args,_), _)) :-
 	Args = [_|_].
 code_util__goal_may_allocate_heap_2(some(_Vars, Goal)) :-
 	code_util__goal_may_allocate_heap(Goal).
-code_util__goal_may_allocate_heap_2(not(_Vars, Goal)) :-
+code_util__goal_may_allocate_heap_2(not(Goal)) :-
 	code_util__goal_may_allocate_heap(Goal).
 code_util__goal_may_allocate_heap_2(conj(Goals)) :-
 	code_util__goal_list_may_allocate_heap(Goals).

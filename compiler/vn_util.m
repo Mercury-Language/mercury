@@ -539,6 +539,9 @@ vn__deep_unuse_vn_except(Vn, Except, Vn_tables0, Vn_tables) :-
 				Vnrval = vn_create(_Tag3, _Args, _Label),
 				Sub_vns = []
 			;
+				Vnrval = vn_heap_alloc(Sub_vn),
+				Sub_vns = [Sub_vn]
+			;
 				Vnrval = vn_unop(_Unop, Sub_vn),
 				Sub_vns = [Sub_vn]
 			;
@@ -860,6 +863,12 @@ vn__from_rval_find_vn(Rval, Use, Vn, Vn_tables0, Vn_tables) :-
 		Rval = create(Tag, Args, Label),
 		vn__from_vnrval_find_vn(vn_create(Tag, Args, Label), Use,
 			Vn, Vn_tables0, Vn_tables)
+	;
+		Rval = heap_alloc(Rval1),
+		vn__from_rval_find_vn(Rval1, Use,
+			Sub_vn, Vn_tables0, Vn_tables1),
+		vn__from_vnrval_find_vn(vn_heap_alloc(Sub_vn), Use,
+			Vn, Vn_tables1, Vn_tables)
 	;
 		Rval = mkword(Tag, Rval1),
 		vn__from_rval_find_vn(Rval1, Use,

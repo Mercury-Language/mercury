@@ -647,10 +647,8 @@ mercury_output_goal(if_then(Vars, A, B), VarSet, Indent) -->
 	mercury_output_newline(Indent),
 	io__write_string(")").
 
-mercury_output_goal(not(Vars, Goal), VarSet, Indent) -->
-	io__write_string("\\+"),
-	mercury_output_some(Vars, VarSet),
-	io__write_string(" ("),
+mercury_output_goal(not(Goal), VarSet, Indent) -->
+	io__write_string("\\+ ("),
 	{ Indent1 is Indent + 1 },
 	mercury_output_newline(Indent1),
 	mercury_output_goal(Goal, VarSet, Indent1),

@@ -125,7 +125,7 @@ detect_live_vars_in_goal_2(disj(Goals0), Liveness0, CallInfo0,
 	detect_live_vars_in_disj(Goals0, Liveness0, CallInfo1,
 					Misc, Liveness, CallInfo).
 
-detect_live_vars_in_goal_2(not(_Vars, Goal0), Liveness0, CallInfo0, Misc,
+detect_live_vars_in_goal_2(not(Goal0), Liveness0, CallInfo0, Misc,
 					Liveness, CallInfo) :-
 	detect_live_vars_in_goal(Goal0, Liveness0, CallInfo0,
 					Misc, Liveness, CallInfo).

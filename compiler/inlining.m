@@ -118,8 +118,8 @@ inlining__inlining_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0), Varset0,
 	inlining__inlining_in_goal(Else0, Varset2, VarTypes2, ModuleInfo,
 		Else, Varset, VarTypes).
 
-inlining__inlining_in_goal_2(not(Vars, Goal0), Varset0, VarTypes0, ModuleInfo,
-		not(Vars, Goal), Varset, VarTypes) :-
+inlining__inlining_in_goal_2(not(Goal0), Varset0, VarTypes0, ModuleInfo,
+		not(Goal), Varset, VarTypes) :-
 	inlining__inlining_in_goal(Goal0, Varset0, VarTypes0, ModuleInfo,
 		Goal, Varset, VarTypes).
 
@@ -300,8 +300,7 @@ inlining__name_apart_2(if_then_else(Vars0, Cond0, Then0, Else0), Subn,
 	inlining__name_apart(Then0, Subn, Then),
 	inlining__name_apart(Else0, Subn, Else).
 
-inlining__name_apart_2(not(Vars0, Goal0), Subn, not(Vars, Goal)) :-
-	inlining__rename_var_list(Vars0, Subn, Vars),
+inlining__name_apart_2(not(Goal0), Subn, not(Goal)) :-
 	inlining__name_apart(Goal0, Subn, Goal).
 
 inlining__name_apart_2(some(Vars0, Goal0), Subn, some(Vars, Goal)) :-

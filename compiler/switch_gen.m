@@ -62,7 +62,8 @@
 :- type switch_category
 	--->	atomic_switch
 	;	string_switch
-	;	tag_switch.
+	;	tag_switch
+	;	pred_switch.
 
 %---------------------------------------------------------------------------%
 
@@ -74,14 +75,17 @@ switch_gen__generate_switch(Det, CaseVar, LocalDet, Cases, Code) -->
 	switch_gen__lookup_tags(Cases, CaseVar, TaggedCases0),
 	{ list__sort(TaggedCases0, TaggedCases) },
 	code_info__get_globals(Globals),
-	{ globals__lookup_bool_option(Globals, smart_indexing, Indexing) },
 	(
+		{ globals__lookup_bool_option(Globals, smart_indexing,
+			Indexing) },
 		{ Indexing = yes },
 		{ SwitchCategory = atomic_switch },
 		{ list__length(TaggedCases, NumCases) },
-		{ globals__lookup_int_option(Globals, dense_switch_size, DenseSize) },
+		{ globals__lookup_int_option(Globals, dense_switch_size,
+			DenseSize) },
 		{ NumCases > DenseSize },
-		{ globals__lookup_int_option(Globals, req_density, ReqDensity) },
+		{ globals__lookup_int_option(Globals, req_density,
+			ReqDensity) },
 		dense_switch__is_dense_switch(CaseVar, TaggedCases, LocalDet,
 			ReqDensity, FirstVal, LastVal, LocalDet1)
 	->
@@ -92,7 +96,8 @@ switch_gen__generate_switch(Det, CaseVar, LocalDet, Cases, Code) -->
 		{ Indexing = yes },
 		{ SwitchCategory = string_switch },
 		{ list__length(TaggedCases, NumCases) },
-		{ globals__lookup_int_option(Globals, string_switch_size, StringSize) },
+		{ globals__lookup_int_option(Globals, string_switch_size,
+			StringSize) },
 		{ NumCases > StringSize }
 	->
 		string_switch__generate(TaggedCases, CaseVar, Det,
@@ -101,7 +106,8 @@ switch_gen__generate_switch(Det, CaseVar, LocalDet, Cases, Code) -->
 		{ Indexing = yes },
 		{ SwitchCategory = tag_switch },
 		{ list__length(TaggedCases, NumCases) },
-		{ globals__lookup_int_option(Globals, tag_switch_size, TagSize) },
+		{ globals__lookup_int_option(Globals, tag_switch_size,
+			TagSize) },
 		{ NumCases > TagSize }
 	->
 		tag_switch__generate(TaggedCases,
@@ -139,6 +145,7 @@ switch_gen__type_cat_to_switch_cat(enumtype, atomic_switch).
 switch_gen__type_cat_to_switch_cat(inttype,  atomic_switch).
 switch_gen__type_cat_to_switch_cat(chartype, atomic_switch).
 switch_gen__type_cat_to_switch_cat(strtype,  string_switch).
+switch_gen__type_cat_to_switch_cat(predtype, pred_switch).
 switch_gen__type_cat_to_switch_cat(usertype(_), tag_switch).
 
 %---------------------------------------------------------------------------%

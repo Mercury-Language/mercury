@@ -968,6 +968,7 @@ vn__flush_node(Node, Ctrlmap, Vn_tables0, Vn_tables, Templocs0, Templocs,
 :- pred vn__choose_best_location(vn, vnlval, vn_tables, templocs, templocs).
 :- mode vn__choose_best_location(in, out, in, di, uo) is det.
 
+:- external(vn__choose_best_location/5). % XXX suppress "no clauses" error
 % vn__choose_best_location(Vn, Vnlval, Vn_tables0).
 
 :- pred vn__store_in_best_location(vn, vn_tables, vn_tables,

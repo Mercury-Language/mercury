@@ -461,7 +461,7 @@ typecheck_goal_2(if_then_else(Vs, A0, B0, C0), if_then_else(Vs, A, B, C)) -->
 	typecheck_goal(B0, B),
 	checkpoint("else"),
 	typecheck_goal(C0, C).
-typecheck_goal_2(not(Vs, A0), not(Vs, A)) -->
+typecheck_goal_2(not(A0), not(A)) -->
 	checkpoint("not"),
 	typecheck_goal(A0, A).
 typecheck_goal_2(some(Vs, G0), some(Vs, G)) -->

@@ -294,7 +294,7 @@ inst_table_set_ground_insts(inst_table(A, B, C, _), GroundInsts,
 			;	disj(hlds__goals)
 
 				% A negation
-			;	not(list(var), hlds__goal)
+			;	not(hlds__goal)
 
 				% An explicit quantification.
 				% Quantification is stored in the goal_info,

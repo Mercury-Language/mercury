@@ -52,7 +52,7 @@ code_aux__contains_only_builtins_2(disj(Goals)) :-
 	code_aux__contains_only_builtins_list(Goals).
 code_aux__contains_only_builtins_2(switch(_Var, _Category, Cases)) :-
 	code_aux__contains_only_builtins_cases(Cases).
-code_aux__contains_only_builtins_2(not(_Vars, Goal)) :-
+code_aux__contains_only_builtins_2(not(Goal)) :-
 	code_aux__contains_only_builtins(Goal).
 code_aux__contains_only_builtins_2(some(_Vars, Goal)) :-
 	code_aux__contains_only_builtins(Goal).
@@ -101,7 +101,7 @@ code_aux__goal_is_flat(Goal - _GoalInfo) :-
 
 code_aux__goal_is_flat_2(conj(Goals)) :-
 	code_aux__goal_is_flat_list(Goals).
-code_aux__goal_is_flat_2(not(_Vars, Goal)) :-
+code_aux__goal_is_flat_2(not(Goal)) :-
 	code_aux__goal_is_flat(Goal).
 code_aux__goal_is_flat_2(some(_Vars, Goal)) :-
 	code_aux__goal_is_flat(Goal).

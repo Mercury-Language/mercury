@@ -203,16 +203,17 @@ unify_gen__generate_construction_2(complicated_constant_tag(Bits1, Num1),
 		mkword(Bits1, unop(mkbody, const(int_const(Num1))))).
 unify_gen__generate_construction_2(pred_constant(PredId, ProcId),
 		Var, Args, _Modes, Code) -->
-
-		% XXX we need to handle the special case where
-		% the predicate is "call"
-
 	code_info__get_module_info(ModuleInfo),
 	{ module_info_preds(ModuleInfo, Preds) },
 	{ map__lookup(Preds, PredId, PredInfo) },
 	{ list__length(Args, NumArgs) },
 	{ pred_info_name(PredInfo, PredName) },
 	( { PredName = "call", Args = [CallPred | CallArgs] } ->
+		%
+		% We need to handle
+		%	P = call(P0, ...)
+		% as a special case.
+		%
 		code_info__get_next_label(LoopEnd),
 		code_info__get_next_label(LoopStart),
 		code_info__get_free_register(LoopCounter),

@@ -129,8 +129,8 @@ store_alloc_in_goal_2(disj(Goals0), Liveness0, Follow0, ModuleInfo,
 	store_alloc_in_disj(Goals0, Liveness0, Follow0, ModuleInfo,
 					Goals, Liveness, Follow).
 
-store_alloc_in_goal_2(not(Vars, Goal0), Liveness0, Follow0, ModuleInfo,
-					not(Vars, Goal), Liveness, Follow) :-
+store_alloc_in_goal_2(not(Goal0), Liveness0, Follow0, ModuleInfo,
+					not(Goal), Liveness, Follow) :-
 	store_alloc_in_goal(Goal0, Liveness0, Follow0, ModuleInfo,
 					Goal, Liveness, Follow).
 

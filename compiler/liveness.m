@@ -173,8 +173,8 @@ detect_liveness_in_goal_2(disj(Goals0), Liveness0, ModuleInfo,
 							Union0, Union, Goals),
 	set__union(Liveness0, Union, Liveness).
 
-detect_liveness_in_goal_2(not(Vars, Goal0), Liveness0, ModuleInfo,
-		Liveness, not(Vars, Goal)) :-
+detect_liveness_in_goal_2(not(Goal0), Liveness0, ModuleInfo,
+		Liveness, not(Goal)) :-
 	detect_liveness_in_goal(Goal0, Liveness0, ModuleInfo, Liveness, Goal).
 
 detect_liveness_in_goal_2(switch(Var, Det, Cases0), Liveness0,
@@ -322,8 +322,8 @@ detect_deadness_in_goal_2(disj(Goals0), Deadness0,
 								Union, Goals),
 	set__union(Deadness0, Union, Deadness).
 
-detect_deadness_in_goal_2(not(Vars, Goal0), Deadness0, ModuleInfo,
-		Deadness, not(Vars, Goal)) :-
+detect_deadness_in_goal_2(not(Goal0), Deadness0, ModuleInfo,
+		Deadness, not(Goal)) :-
 	detect_deadness_in_goal(Goal0, Deadness0, ModuleInfo, Deadness, Goal).
 
 detect_deadness_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0), Deadness0,

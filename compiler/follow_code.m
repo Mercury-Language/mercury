@@ -101,7 +101,7 @@ move_follow_code_in_goal_2(conj(Goals0), ModuleInfo, conj(Goals), R0, R) :-
 move_follow_code_in_goal_2(disj(Goals0), ModuleInfo, disj(Goals), R0, R) :-
 	move_follow_code_in_disj(Goals0, ModuleInfo, Goals, R0, R).
 
-move_follow_code_in_goal_2(not(Vars, Goal0), ModuleInfo, not(Vars, Goal), R0, R) :-
+move_follow_code_in_goal_2(not(Goal0), ModuleInfo, not(Goal), R0, R) :-
 	move_follow_code_in_goal(Goal0, ModuleInfo, Goal, R0, R).
 
 move_follow_code_in_goal_2(switch(Var, Det, Cases0), 

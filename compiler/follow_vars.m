@@ -146,8 +146,8 @@ find_follow_vars_in_goal_2(disj(Goals0), ModuleInfo, FollowVars0,
 	find_follow_vars_in_disj(Goals0, ModuleInfo, FollowVars0, Goals,
 			FollowVars).
 
-find_follow_vars_in_goal_2(not(Vars, Goal0), ModuleInfo, FollowVars0,
-						not(Vars, Goal), FollowVars) :-
+find_follow_vars_in_goal_2(not(Goal0), ModuleInfo, FollowVars0,
+						not(Goal), FollowVars) :-
 	find_follow_vars_in_goal(Goal0, ModuleInfo, FollowVars0, Goal,
 			FollowVars).
 

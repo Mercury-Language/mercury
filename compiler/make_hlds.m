@@ -774,8 +774,7 @@ vars_in_goal((A,B)) -->
 vars_in_goal((A;B)) -->
 	vars_in_goal(A),
 	vars_in_goal(B).
-vars_in_goal(not(Vs, G)) -->
-	list__append(Vs),
+vars_in_goal(not(G)) -->
 	vars_in_goal(G).
 vars_in_goal(some(Vs, G)) -->
 	list__append(Vs),
@@ -867,7 +866,8 @@ transform_goal(true, VarSet, _, conj([]) - GoalInfo, VarSet) :-
 	% Convert `all [Vars] Goal' into `not some [Vars] not Goal'.
 
 transform_goal(all(Vars0, Goal0), VarSet0, Subst,
-		not(Vars, not([], Goal) - GoalInfo) - GoalInfo, VarSet) :-
+		not(some(Vars, not(Goal) - GoalInfo) - GoalInfo) - GoalInfo,
+		VarSet) :-
 	substitute_vars(Vars0, Subst, Vars),
 	transform_goal(Goal0, VarSet0, Subst, Goal, VarSet),
 	goal_info_init(GoalInfo).
@@ -890,9 +890,8 @@ transform_goal(if_then(Vars0, A0, B0), Subst, VarSet0, Goal, VarSet) :-
 	transform_goal(if_then_else(Vars0, A0, B0, true), Subst, VarSet0,
 		Goal, VarSet).
 
-transform_goal(not(Vars0, A0), VarSet0, Subst,
-		not(Vars, A) - GoalInfo, VarSet) :-
-	substitute_vars(Vars0, Subst, Vars),
+transform_goal(not(A0), VarSet0, Subst,
+		not(A) - GoalInfo, VarSet) :-
 	transform_goal(A0, VarSet0, Subst, A, VarSet),
 	goal_info_init(GoalInfo).
 
@@ -921,7 +920,7 @@ transform_goal(call(Goal0), VarSet0, Subst, Goal, VarSet) :-
 	% As a special case, transform `A \= B' into `not (A = B)'.
 
 	( Goal0 = term__functor(term__atom("\\="), [LHS, RHS], _Context) ->
-		transform_goal(not([], unify(LHS, RHS)), VarSet0, Subst, Goal,
+		transform_goal(not(unify(LHS, RHS)), VarSet0, Subst, Goal,
 			VarSet)
 	;
 		% fill unused slots with any old junk 

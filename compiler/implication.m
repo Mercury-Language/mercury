@@ -146,7 +146,7 @@ implication__transform_item(Item_In, Item_Out) :-
 implication__transform_goal(implies(P, Q), Goal_Out) :-
 	implication__transform_goal(P, P1),
 	implication__transform_goal(Q, Q1),
-	Goal_Out = not([], (P1, not([], Q1))).
+	Goal_Out = not((P1, not(Q1))).
 
 	% Equivalence
 implication__transform_goal(equivalent(P, Q), Goal_Out) :-
@@ -161,12 +161,12 @@ implication__transform_goal(some(Vars, P), Goal_Out) :-
 	% Universal Quantification
 implication__transform_goal(all(Vars, P), Goal_Out) :-
 	implication__transform_goal(P, P1),
-	Goal_Out = not([], some(Vars, not([], P1))).
+	Goal_Out = not(some(Vars, not(P1))).
 
 	% Negation
-implication__transform_goal(not(Vars, P), Goal_Out) :-
+implication__transform_goal(not(P), Goal_Out) :-
 	implication__transform_goal(P, P1),
-	Goal_Out = not(Vars, P1).
+	Goal_Out = not(P1).
 
 	% Conjunction
 implication__transform_goal((P, Q), Goal_Out) :-

@@ -815,7 +815,7 @@ recompute_instmap_delta_2(conj(Goals0), conj(Goals), InstMapDelta) :-
 recompute_instmap_delta_2(disj(Goals0), disj(Goals), InstMapDelta) :-
 	recompute_instmap_delta_disj(Goals0, Goals, InstMapDelta).
 
-recompute_instmap_delta_2(not(Vars,Goal0), not(Vars,Goal), InstMapDelta) :-
+recompute_instmap_delta_2(not(Goal0), not(Goal), InstMapDelta) :-
 	instmap_init(InstMapDelta),
 	recompute_instmap_delta(Goal0, Goal).
 

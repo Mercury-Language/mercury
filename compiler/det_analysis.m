@@ -466,8 +466,8 @@ det_infer_goal_2(if_then_else(Vars, Cond0, Then0, Else0), InstMap0, MiscInfo,
 	% deterministic goal (which will always fail) here?
 	% Answer: yes, probably, but it's not a high priority.
 
-det_infer_goal_2(not(Vars, Goal0), InstMap0, MiscInfo, _, _,
-		not(Vars, Goal), Det) :-
+det_infer_goal_2(not(Goal0), InstMap0, MiscInfo, _, _,
+		not(Goal), Det) :-
 	det_infer_goal(Goal0, InstMap0, MiscInfo, Goal, _InstMap, _Det1),
 	Det = semideterministic.
 

@@ -471,7 +471,7 @@ modecheck_goal_2(if_then_else(Vs, A0, B0, C0), NonLocals,
 	instmap_merge(NonLocals, [InstMapB, InstMapC], if_then_else),
 	mode_checkpoint(exit, "if-then-else").
 
-modecheck_goal_2(not(Vs, A0), NonLocals, not(Vs, A)) -->
+modecheck_goal_2(not(A0), NonLocals, not(A)) -->
 	mode_checkpoint(enter, "not"),
 	mode_info_lock_vars(NonLocals),
 	modecheck_goal(A0, A),

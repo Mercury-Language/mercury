@@ -124,9 +124,7 @@
 			;	{goal;goal}	% {...} quotes ';'/2.
 			;	fail	
 					% could use disj(goals) instead
-			;	not(vars,goal)
-					% means `not some vars goal'
-					% (the vars currently not used)
+			;	not(goal)
 			;	some(vars,goal)
 			;	all(vars,goal)
 			;	implies(goal,goal)
@@ -713,9 +711,9 @@ parse_goal_2("else",[
 	parse_some_vars_goal(A0, Vars, A),
 	parse_goal(B0, B),
 	parse_goal(C0, C).
-parse_goal_2("not", [A0], not([],A) ) :-
+parse_goal_2("not", [A0], not(A) ) :-
 	parse_goal(A0, A).
-parse_goal_2("\\+", [A0], not([],A) ) :-
+parse_goal_2("\\+", [A0], not(A) ) :-
 	parse_goal(A0, A).
 parse_goal_2("all", [Vars0,A0], all(Vars,A) ):-
 	term__vars(Vars0, Vars),
@@ -1008,13 +1006,13 @@ parse_dcg_goal_2( "else", [
 
 	% Negation (NU-Prolog syntax).
 parse_dcg_goal_2( "not", [A0], _, VarSet0, N0, Var0,
-		not([],A), VarSet, N, Var ) :-
+		not(A), VarSet, N, Var ) :-
 	parse_dcg_goal(A0, VarSet0, N0, Var0, A, VarSet, N, _),
 	Var = Var0.
 
 	% Negation (Prolog syntax).
 parse_dcg_goal_2( "\\+", [A0], _, VarSet0, N0, Var0,
-		not([],A), VarSet, N, Var ) :-
+		not(A), VarSet, N, Var ) :-
 	parse_dcg_goal(A0, VarSet0, N0, Var0, A, VarSet, N, _),
 	Var = Var0.
 

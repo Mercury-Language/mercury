@@ -238,7 +238,7 @@ prog_out__write_goal((P ; Q), I, T, VarSet) -->
 		io__write_string(")")
 	).
 
-prog_out__write_goal(not(_Vars, A), I, _, VarSet) -->	% XXX
+prog_out__write_goal(not(A), I, _, VarSet) -->
 	io__write_string("not("),
 	prog_out__write_goal(A, I, '(', VarSet),
 	io__write_string(")").

@@ -129,8 +129,8 @@ detect_switches_in_goal_2(disj(Goals0), GoalInfo, InstMap0, InstMapDelta,
 			InstMap0, InstMapDelta, VarTypes, ModuleInfo, Goal)
 	).
 
-detect_switches_in_goal_2(not(Vars, Goal0), _GoalInfo, InstMap0, _InstMapDelta,
-		VarTypes, ModuleInfo, not(Vars, Goal)) :-
+detect_switches_in_goal_2(not(Goal0), _GoalInfo, InstMap0, _InstMapDelta,
+		VarTypes, ModuleInfo, not(Goal)) :-
 	detect_switches_in_goal(Goal0, InstMap0, VarTypes, ModuleInfo, Goal).
 
 detect_switches_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0), _GoalInfo,

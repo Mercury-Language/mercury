@@ -363,7 +363,7 @@ code_gen__generate_det_goal_2(some(_Vars, Goal), _GoalInfo, Instr) -->
 	code_gen__generate_det_goal(Goal, Instr).
 code_gen__generate_det_goal_2(disj(_Goals), _GoalInfo, _Instr) -->
 	{ error("Disjuction cannot occur in deterministic code.") }.
-code_gen__generate_det_goal_2(not(_, _), _GoalInfo, _Instr) -->
+code_gen__generate_det_goal_2(not(_), _GoalInfo, _Instr) -->
 	{ error("Negation cannot occur in deterministic code.") }.
 code_gen__generate_det_goal_2(
 		call(PredId, ProcId, Args0, Builtin, _, _Follow),
@@ -772,7 +772,7 @@ code_gen__generate_semi_goal_2(disj(Goals), GoalInfo, Code) -->
 	;
 		disj_gen__generate_semi_disj(Goals, Code)
 	).
-code_gen__generate_semi_goal_2(not(_Vars, Goal), _GoalInfo, Code) -->
+code_gen__generate_semi_goal_2(not(Goal), _GoalInfo, Code) -->
 	code_gen__generate_negation(Goal, Code).
 code_gen__generate_semi_goal_2(
 		call(PredId, ProcId, Args0, Builtin, _, _Follow),
@@ -946,7 +946,7 @@ code_gen__generate_non_goal_2(disj(Goals), GoalInfo, Code) -->
 	;
 		disj_gen__generate_non_disj(Goals, Code)
 	).
-code_gen__generate_non_goal_2(not(_Vars, _Goal), _GoalInfo, _Code) -->
+code_gen__generate_non_goal_2(not(_Goal), _GoalInfo, _Code) -->
 	{ error("Cannot have a nondet negation.") }.
 code_gen__generate_non_goal_2(
 		call(PredId, ProcId, Args0, Builtin, _, _Follow),

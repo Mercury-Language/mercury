@@ -474,9 +474,8 @@ goedel_output_goal(if_then(Vars, A, B), VarSet, Indent) -->
 	goedel_output_newline(Indent),
 	io__write_string(")").
 
-goedel_output_goal(not(Vars, Goal), VarSet, Indent) -->
+goedel_output_goal(not(Goal), VarSet, Indent) -->
 	io__write_string("(~"),
-	goedel_output_some(Vars, VarSet),
 	{ Indent1 is Indent + 1 },
 	goedel_output_newline(Indent1),
 	goedel_output_goal(Goal, VarSet, Indent),

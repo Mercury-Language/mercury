@@ -35,6 +35,7 @@
 			;	chartype
 			;	strtype
 			;	enumtype
+			;	predtype
 			;	usertype(type).
 
 %-----------------------------------------------------------------------------%
@@ -76,9 +77,8 @@ type_util__type_id_arity(_ModuleInfo, _Name - Arity, Arity).
 
 type_is_atomic(Type, ModuleInfo) :-
 	classify_type(Type, ModuleInfo, BuiltinType),
-		% XXX we can't use \= until the compiler handles
-		% scopes for \= properly.
-	\+ BuiltinType = usertype(_).
+	BuiltinType \= predtype,
+	BuiltinType \= usertype(_).
 
 %-----------------------------------------------------------------------------%
 
@@ -97,6 +97,10 @@ classify_type(VarType, ModuleInfo, Type) :-
 		VarType = term__functor(term__atom("string"), [], _)
 	->
 		Type = strtype
+	;
+		VarType = term__functor(term__atom("pred"), _ArgTypes, _)
+	->
+		Type = predtype
 	;
 		type_is_enumeration(VarType, ModuleInfo)
 	->

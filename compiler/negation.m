@@ -113,10 +113,10 @@ negation__transform_item(Item_In, Item_Out) :-
 
 % The transformations we actually want...
 
-negation__transform_goal(not(Vars, Goal), Goal_Out) :-
+negation__transform_goal(not(Goal), Goal_Out) :-
 	(
 	% Eliminate double negatives
-		Goal = not(_, Goal1)
+		Goal = not(Goal1)
 	->
 		negation__transform_goal(Goal1, Goal_Out)
 	;
@@ -130,7 +130,7 @@ negation__transform_goal(not(Vars, Goal), Goal_Out) :-
 	
 % clip from here --------------------------------------
 	% (1)   ~(~P ^ ~Q) ----> (P v Q)
-		Goal = (not(_, P), not(_, Q))
+		Goal = (not(P), not(Q))
 	->
 		(
 		negation__transform_goal(P, P1),
@@ -140,7 +140,7 @@ negation__transform_goal(not(Vars, Goal), Goal_Out) :-
 	;
 	% (2)   ~(~P v ~Q) ----> (P ^ Q)
 
-		Goal = (not(_, P); not(_, Q))
+		Goal = (not(P); not(Q))
 	->
 		(
 		negation__transform_goal(P, P1),
@@ -154,8 +154,8 @@ negation__transform_goal(not(Vars, Goal), Goal_Out) :-
 %		Goal = (P, Q)
 %	->
 %		(
-%		negation__transform_goal(not(Vars,P), Not_P),
-%		negation__transform_goal(not(Vars,Q), Not_Q),
+%		negation__transform_goal(not(P), Not_P),
+%		negation__transform_goal(not(Q), Not_Q),
 %		Goal_Out = (Not_P ; Not_Q)
 %		)
 %	;
@@ -163,8 +163,8 @@ negation__transform_goal(not(Vars, Goal), Goal_Out) :-
 		Goal = (P ; Q)
 	->
 		(
-		negation__transform_goal(not(Vars,P), Not_P),
-		negation__transform_goal(not(Vars,Q), Not_Q),
+		negation__transform_goal(not(P), Not_P),
+		negation__transform_goal(not(Q), Not_Q),
 		Goal_Out = (Not_P , Not_Q)
 		)
 	;
@@ -172,7 +172,7 @@ negation__transform_goal(not(Vars, Goal), Goal_Out) :-
 	% transformation recursively
 		(
 		negation__transform_goal(Goal, Goal1),
-		Goal_Out = not(Vars, Goal1)
+		Goal_Out = not(Goal1)
 		)
 	).
 

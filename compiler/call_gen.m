@@ -246,7 +246,7 @@ call_gen__generate_det_builtin(PredId, _ProcId, Args, Code) -->
 			{ Args = [PredTerm] }
 		->
 			call_gen__generate_higher_call(deterministic,
-								PredTerm, Code)
+				deterministic, PredTerm, Code)
 		;
 			{ error("call_gen__generate_det_builtin: call/N, N > 1, unimplemented") }
 		)
@@ -283,7 +283,7 @@ call_gen__generate_semidet_builtin(PredId, _ProcId, Args, Code) -->
 			{ Args = [PredTerm] }
 		->
 			call_gen__generate_higher_call(semideterministic,
-								PredTerm, Code)
+				semideterministic, PredTerm, Code)
 		;
 			{ error("call_gen__generate_semi_builtin: call/N, N > 1, unimplemented") }
 		)
@@ -303,7 +303,7 @@ call_gen__generate_nondet_builtin(PredId, _ProcId, Args, Code) -->
 			{ Args = [PredTerm] }
 		->
 			call_gen__generate_higher_call(nondeterministic,
-								PredTerm, Code)
+				nondeterministic, PredTerm, Code)
 		;
 			{ error("call_gen__generate_non_builtin: call/N, N > 1, unimplemented") }
 		)
@@ -464,13 +464,14 @@ call_gen__insert_arg_livelvals([L|As], LiveVals0, LiveVals) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred call_gen__generate_higher_call(category, var, code_tree,
+:- pred call_gen__generate_higher_call(category, category, var, code_tree,
 						code_info, code_info).
-:- mode call_gen__generate_higher_call(in, in, out, in, out) is det.
+:- mode call_gen__generate_higher_call(in, in, in, out, in, out) is det.
 
-call_gen__generate_higher_call(Det, Var, Code) -->
+call_gen__generate_higher_call(ContextDet, PredDet, Var, Code) -->
 	call_gen__save_variables(SaveCode),
 	code_info__clear_reserved_registers,
+	call_gen__generate_return_livevals([], OutLiveVals),
 	code_info__produce_variable(Var, VarCode, RVal),
 	(
 		{ RVal = lval(reg(r(1))) }
@@ -483,42 +484,51 @@ call_gen__generate_higher_call(Det, Var, Code) -->
 	),
 	code_info__get_next_label(ReturnLabel),
 	(
-		{ Det = deterministic },
+		{ PredDet = deterministic },
 		{ CallCode = node([
-			call_closure(no, label(ReturnLabel)) - "setup and call higher order pred",
+			call_closure(no, label(ReturnLabel), OutLiveVals) -
+				"setup and call higher order pred",
 			label(ReturnLabel) - "Continuation label"
 		]) }
 	;
-		{ Det = semideterministic },
-		{ CallCode = node([
-			call_closure(yes, label(ReturnLabel)) - "setup and call higher order pred",
+		{ PredDet = semideterministic },
+		{ TryCallCode = node([
+			call_closure(yes, label(ReturnLabel), OutLiveVals) -
+				"setup and call higher order pred",
 			label(ReturnLabel) - "Continuation label"
-		]) }
-	;
-		{ Det = nondeterministic },
-		{ CallCode = node([
-			call_closure(no, label(ReturnLabel)) - "setup and call higher order pred",
-			label(ReturnLabel) - "Continuation label"
-		]) }
-	),
-	(
-		{ Det = deterministic },
-		{ ReturnCode = empty }
-	;
-		{ Det = semideterministic },
+		]) },
 		code_info__generate_failure(FailCode),
 		code_info__get_next_label(ContLab),
-		{ ReturnCode = tree(node([
+		{ CheckReturnCode = tree(node([
 			if_val(lval(reg(r(1))), label(ContLab)) -
 				"Test for success"
-			]), tree(FailCode, node([ label(ContLab) - "" ]))) }
+			]), tree(FailCode, node([ label(ContLab) - "" ]))) },
+		{ CallCode = tree(TryCallCode, CheckReturnCode) }
 	;
-		{ Det = nondeterministic },
-		{ ReturnCode = empty }
-		% XXX we don't handle commits across nondet calls
+		{ PredDet = nondeterministic },
+		(
+			{ ContextDet = semideterministic }
+		->
+			code_info__generate_pre_commit(PreCommit, FailLabel),
+			{ DoCall = node([
+				call_closure(no, label(ReturnLabel),
+							OutLiveVals)
+					- "setup and call higher order pred",
+				label(ReturnLabel) - "Continuation label"
+			]) },
+			code_info__generate_commit(FailLabel, Commit),
+			{ CallCode = tree(PreCommit, tree(DoCall, Commit)) }
+		;
+			{ CallCode = node([
+				call_closure(no, label(ReturnLabel),
+							OutLiveVals)
+					- "setup and call higher order pred",
+				label(ReturnLabel) - "Continuation label"
+			]) }
+		)
 	),
 	{ Code = tree(tree(SaveCode, VarCode),
-		tree(CopyCode, tree(CallCode, ReturnCode))) },
+		tree(CopyCode, CallCode)) },
 	call_gen__rebuild_registers([]).
 
 %---------------------------------------------------------------------------%
