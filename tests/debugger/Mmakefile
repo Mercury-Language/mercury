@@ -36,8 +36,7 @@ NONRETRY_PROGS = \
 	print_table			\
 	queens_rep			\
 	resume_typeinfos		\
-	type_desc_test			\
-	uci
+	type_desc_test
 
 # This test is currently not useful.
 #	output_term_dep
@@ -114,9 +113,17 @@ else
 	DEBUG_GRADE_PROGS =
 endif
 
+# The uci test matches its expected output only if the grade supports
+# enumerated types. Reserved tag grades do not.
+ifeq "$(findstring .rt,$(GRADE))" ""
+	ENUM_PROGS = uci
+else 
+	ENUM_PROGS =
+endif
+
 ALL_RETRY_PROGS = $(RETRY_PROGS) $(INTERACTIVE_PROGS)
 ALL_NONRETRY_PROGS = $(NONRETRY_PROGS) $(SENSITIVE_PROGS) \
-			$(SHALLOW_PROGS) $(DEBUG_GRADE_PROGS)
+			$(SHALLOW_PROGS) $(DEBUG_GRADE_PROGS) $(ENUM_PROGS)
 
 # Debugging doesn't yet don't work in MLDS grades (hl*, il*, and java),
 # and the retry command doesn't and will not work in deep profiling
