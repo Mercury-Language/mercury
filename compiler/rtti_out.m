@@ -27,8 +27,14 @@
 :- import_module backend_libs__rtti, ll_backend__llds_out.
 :- import_module bool, io.
 
-	% output a C expression holding the address of the C name of
-	% the specified rtti_data
+	% Output a C expression holding the address of the C name of
+	% the specified rtti_data, preceded by the string in the first
+	% argument (that string will usually be a C cast).
+:- pred output_cast_addr_of_rtti_data(string::in, rtti_data::in,
+	io__state::di, io__state::uo) is det.
+
+	% Output a C expression holding the address of the C name of
+	% the specified rtti_data.
 :- pred output_addr_of_rtti_data(rtti_data::in, io__state::di, io__state::uo)
 	is det.
 
@@ -153,7 +159,7 @@ output_rtti_data_defn(field_types(RttiTypeCtor, Ordinal, Types),
 		io__write_string("= { NULL };\n")
 	;
 		io__write_string(" = {\n"),
-		output_addr_of_rtti_datas(Types),
+		output_cast_addr_of_rtti_datas("(MR_PseudoTypeInfo) ", Types),
 		io__write_string("};\n")
 	).
 output_rtti_data_defn(reserved_addrs(RttiTypeCtor, ReservedAddrs),
@@ -205,7 +211,7 @@ output_rtti_data_defn(notag_functor_desc(RttiTypeCtor, FunctorName, ArgType,
 	io__write_string(" = {\n\t"""),
 	c_util__output_quoted_string(FunctorName),
 	io__write_string(""",\n\t "),
-	output_addr_of_rtti_data(ArgType),
+	output_cast_addr_of_rtti_data("(MR_PseudoTypeInfo) ", ArgType),
 	io__write_string(",\n\t"),
 	(
 		{ MaybeArgName = yes(ArgName) },
@@ -534,7 +540,7 @@ output_type_info_defn(TypeInfo, DeclSet0, DeclSet) -->
 	io__write_string(" = {\n\t&"),
 	output_rtti_addr(RttiTypeCtor, type_ctor_info),
 	io__write_string(",\n{"),
-	output_addr_of_rtti_datas(ArgRttiDatas),
+	output_cast_addr_of_rtti_datas("(MR_TypeInfo) ", ArgRttiDatas),
 	io__write_string("}};\n").
 output_type_info_defn(TypeInfo, DeclSet0, DeclSet) -->
 	{ TypeInfo = var_arity_type_info(RttiVarArityId, Args) },
@@ -554,7 +560,7 @@ output_type_info_defn(TypeInfo, DeclSet0, DeclSet) -->
 	{ list__length(Args, Arity) },
 	io__write_int(Arity),
 	io__write_string(",\n{"),
-	output_addr_of_rtti_datas(ArgRttiDatas),
+	output_cast_addr_of_rtti_datas("(MR_TypeInfo) ", ArgRttiDatas),
 	io__write_string("}};\n").
 
 :- pred output_pseudo_type_info_defn(rtti_pseudo_type_info::in,
@@ -576,7 +582,7 @@ output_pseudo_type_info_defn(PseudoTypeInfo, DeclSet0, DeclSet) -->
 	io__write_string(" = {\n\t&"),
 	output_rtti_addr(RttiTypeCtor, type_ctor_info),
 	io__write_string(",\n{"),
-	output_addr_of_rtti_datas(ArgRttiDatas),
+	output_cast_addr_of_rtti_datas("(MR_PseudoTypeInfo) ", ArgRttiDatas),
 	io__write_string("}};\n").
 output_pseudo_type_info_defn(PseudoTypeInfo, DeclSet0, DeclSet) -->
 	{ PseudoTypeInfo = var_arity_pseudo_type_info(RttiVarArityId, Args) },
@@ -596,7 +602,7 @@ output_pseudo_type_info_defn(PseudoTypeInfo, DeclSet0, DeclSet) -->
 	{ list__length(Args, Arity) },
 	io__write_int(Arity),
 	io__write_string(",\n{"),
-	output_addr_of_rtti_datas(ArgRttiDatas),
+	output_cast_addr_of_rtti_datas("(MR_PseudoTypeInfo) ", ArgRttiDatas),
 	io__write_string("}};\n").
 output_pseudo_type_info_defn(type_var(_), DeclSet, DeclSet) --> [].
 
@@ -1051,6 +1057,16 @@ output_addr_of_rtti_addrs(RttiTypeCtor, [RttiName | RttiNames]) -->
 		output_addr_of_rtti_addr(RttiTypeCtor)),
 	io__write_string("\n").
 
+:- pred output_cast_addr_of_rtti_datas(string::in, list(rtti_data)::in,
+	io__state::di, io__state::uo) is det.
+
+output_cast_addr_of_rtti_datas(_, []) --> [].
+output_cast_addr_of_rtti_datas(Cast, [RttiData | RttiDatas]) -->
+	io__write_string("\t"),
+	io__write_list([RttiData | RttiDatas], ",\n\t",
+		output_cast_addr_of_rtti_data(Cast)),
+	io__write_string("\n").
+
 :- pred output_addr_of_rtti_datas(list(rtti_data)::in,
 	io__state::di, io__state::uo) is det.
 
@@ -1061,10 +1077,15 @@ output_addr_of_rtti_datas([RttiData | RttiDatas]) -->
 		output_addr_of_rtti_data),
 	io__write_string("\n").
 
+output_cast_addr_of_rtti_data(Cast, RttiData) -->
+	io__write_string(Cast),
+	output_addr_of_rtti_data(RttiData).
+
 output_addr_of_rtti_data(RttiData) -->
-	( { RttiData = pseudo_type_info(type_var(VarNum)) } ->
+	(
+		{ RttiData = pseudo_type_info(type_var(VarNum)) }
+	->
 		% rtti_data_to_name/3 does not handle this case
-		io__write_string("(MR_PseudoTypeInfo) "),
 		io__write_int(VarNum)
 	;
 		{ RttiData = base_typeclass_info(_InstanceModuleName, ClassId,
@@ -1082,20 +1103,6 @@ output_addr_of_rtti_data(RttiData) -->
 	io__state::di, io__state::uo) is det.
 
 output_addr_of_rtti_addr(RttiTypeCtor, RttiName) -->
-	%
-	% The various different kinds of pseudotypeinfos
-	% each have different types, but really we treat
-	% them like a union rather than as separate types,
-	% so here we need to cast all such constants to
-	% a single type MR_PseudoTypeInfo.
-	%
-	(
-		{ RttiName = pseudo_type_info(_) }
-	->
-		io__write_string("(MR_PseudoTypeInfo) ")
-	;
-		[]
-	),
 	%
 	% If the RttiName is not an array, then
 	% we need to use `&' to take its address
