@@ -2804,28 +2804,29 @@ new_list(Num, Mode, !IO) :-
 
 %------------------------------------------------------------------------------%
 
-:- func control_flag_to_int(control_flag) = int.
+:- pred control_flag_to_int_and_offset(control_flag::in, int::out, int::out)
+	is det.
 
-control_flag_to_int(normalize)       = 0.
-control_flag_to_int(clip_plane(_))   = 1.
-control_flag_to_int(lighting)        = 2.
-control_flag_to_int(light(_))        = 3.
-control_flag_to_int(color_material)  = 4.
-control_flag_to_int(line_stipple)    = 5.
-control_flag_to_int(cull_face)       = 6.
-control_flag_to_int(polygon_stipple) = 7.
-control_flag_to_int(polygon_offset_point) = 8.
-control_flag_to_int(polygon_offset_line)  = 9.
-control_flag_to_int(polygon_offset_fill)  = 10.
-control_flag_to_int(fog)            = 11.
-control_flag_to_int(scissor_test)   = 12.
-control_flag_to_int(alpha_test)     = 13.
-control_flag_to_int(stencil_test)   = 14.
-control_flag_to_int(depth_test)     = 15.
-control_flag_to_int(blend)          = 16.
-control_flag_to_int(dither)         = 17.
-control_flag_to_int(index_logic_op) = 18.
-control_flag_to_int(color_logic_op) = 19.
+control_flag_to_int_and_offset(normalize, 0, 0).
+control_flag_to_int_and_offset(clip_plane(Plane), 1, Plane).
+control_flag_to_int_and_offset(lighting, 2, 0).
+control_flag_to_int_and_offset(light(LightNumber), 3, LightNumber).
+control_flag_to_int_and_offset(color_material, 4, 0).
+control_flag_to_int_and_offset(line_stipple, 5, 0).
+control_flag_to_int_and_offset(cull_face, 6, 0).
+control_flag_to_int_and_offset(polygon_stipple, 7, 0).
+control_flag_to_int_and_offset(polygon_offset_point, 8, 0).
+control_flag_to_int_and_offset(polygon_offset_line, 9, 0).
+control_flag_to_int_and_offset(polygon_offset_fill, 10, 0).
+control_flag_to_int_and_offset(fog, 11, 0).
+control_flag_to_int_and_offset(scissor_test, 12, 0).
+control_flag_to_int_and_offset(alpha_test, 13, 0).
+control_flag_to_int_and_offset(stencil_test, 14, 0).
+control_flag_to_int_and_offset(depth_test, 15, 0).
+control_flag_to_int_and_offset(blend, 16, 0).
+control_flag_to_int_and_offset(dither, 17, 0).
+control_flag_to_int_and_offset(index_logic_op, 18, 0).
+control_flag_to_int_and_offset(color_logic_op, 19, 0).
 
 :- pragma foreign_decl("C", "
 	extern const GLenum control_flag_flags[];
@@ -2857,99 +2858,47 @@ control_flag_to_int(color_logic_op) = 19.
 ").
 
 enable(Flag, !IO) :-
-	( Flag = clip_plane(I) ->
-	  	enable3(control_flag_to_int(Flag), I, !IO)
-	; Flag = light(I) ->
-	  	enable3(control_flag_to_int(Flag), I, !IO)
-	;	
-		enable2(control_flag_to_int(Flag), !IO)
-	).
+	control_flag_to_int_and_offset(Flag, Int, Offset),
+	enable_2(Int, Offset, !IO).
 
-:- pred enable2(int, io, io).
-:- mode enable2(in, di, uo) is det.
-
+:- pred enable_2(int::in, int::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-	enable2(I::in, IO0::di, IO::uo), 
+	enable_2(FlagVal::in, Offset::in, IO0::di, IO::uo), 
 	[will_not_call_mercury, promise_pure],
 "
-	glEnable(control_flag_flags[I]);
-	IO = IO0;
-").
-
-:- pred enable3(int, int, io, io).
-:- mode enable3(in, in, di, uo) is det.
-
-:- pragma foreign_proc("C",
-	enable3(I::in, J::in, IO0::di, IO::uo), 
-	[will_not_call_mercury, promise_pure],
-"
-	glEnable(control_flag_flags[I]+J);
+	glEnable(control_flag_flags[FlagVal] + Offset);
 	IO = IO0;
 ").
 
 disable(Flag, !IO) :-
-	( Flag = clip_plane(I)  ->
-		disable3(control_flag_to_int(Flag), I, !IO)
-	; Flag = light(I) ->
-		disable3(control_flag_to_int(Flag), I, !IO)
-	;
-		disable2(control_flag_to_int(Flag), !IO)
-	).
+	control_flag_to_int_and_offset(Flag, Int, Offset),
+	disable_2(Int, Offset, !IO).
 
-:- pred disable2(int, io, io).
-:- mode disable2(in, di, uo) is det.
-
+:- pred disable_2(int::in, int::in, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-	disable2(I::in, IO0::di, IO::uo), 
+	disable_2(FlagVal::in, Offset::in, IO0::di, IO::uo), 
 	[will_not_call_mercury, promise_pure],
 "
-	glDisable(control_flag_flags[I]);
-	IO = IO0;
-").
-
-:- pred disable3(int, int, io, io).
-:- mode disable3(in, in, di, uo) is det.
-
-:- pragma foreign_proc("C",
-	disable3(I::in, J::in, IO0::di, IO::uo), 
-	[will_not_call_mercury, promise_pure],
-"
-	glDisable(control_flag_flags[I]+J);
+	glDisable(control_flag_flags[FlagVal] + Offset);
 	IO = IO0;
 ").
 
 is_enabled(Flag, IsEnabled, !IO) :-
-	( Flag = clip_plane(I) ->
-	  	is_enabled_3(control_flag_to_int(Flag), I, IsEnabled, !IO)
-	; Flag = light(I) ->
-	  	is_enabled_3(control_flag_to_int(Flag), I, IsEnabled, !IO)
-	;	
-		is_enabled_2(control_flag_to_int(Flag), IsEnabled, !IO)
-	).
+	control_flag_to_int_and_offset(Flag, Int, Offset),
+	is_enabled_2(Int, Offset, IsEnabled, !IO).
 
-:- pred is_enabled_2(int::in, bool::out, io::di, io::uo) is det.
+:- pred is_enabled_2(int::in, int::in, bool::out, io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-	is_enabled_2(I::in, R::out, IO0::di, IO::uo), 
+	is_enabled_2(FlagVal::in, Offset::in, R::out, IO0::di, IO::uo), 
 	[may_call_mercury, promise_pure],
 "
-	if(glIsEnabled(control_flag_flags[I]))
+	if(glIsEnabled(control_flag_flags[FlagVal] + Offset))
 		R = ML_bool_return_yes();
 	else
 		R = ML_bool_return_no();
 	IO = IO0;
 ").
 
-:- pred is_enabled_3(int::in, int::in, bool::out, io::di, io::uo) is det.
-:- pragma foreign_proc("C",
-	is_enabled_3(I::in, J::in, R::out, IO0::di, IO::uo), 
-	[may_call_mercury, promise_pure],
-"
-	if(glIsEnabled(control_flag_flags[I] + J))
-		R = ML_bool_return_yes();
-	else
-		R = ML_bool_return_no();
-	IO = IO0;
-").
 %------------------------------------------------------------------------------%
 %
 % Hints.
