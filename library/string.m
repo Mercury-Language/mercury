@@ -51,7 +51,7 @@
 :- pred string__remove_suffix(string, string, string).
 :- mode string__remove_suffix(in, in, out) is semidet.
 %	string__remove_suffix(String, Suffix, Prefix):
-%       The same as string__append(Prefix, Suffix, List) except that
+%       The same as string__append(Prefix, Suffix, String) except that
 %       this is semidet whereas string__append(out, in, in) is nondet.
 
 :- pred string__prefix(string, string).
