@@ -164,7 +164,14 @@ MC_PROG = top_level
 .PHONY: depend
 depend:		$(MC_PROG).depend
 
-$(MC_PROG).depend: regenerate_preprocessed_files
+$(MC_PROG).depend: regenerate_preprocessed_files Mercury.modules
+
+# This directory contains source files for which the module
+# name doesn't match the file name, so smart recompilation
+# won't work without the Mercury.modules file.
+.PHONY: Mercury.modules
+Mercury.modules:
+	$(MC) -f *.m
 
 .PHONY: all
 all:		mercury
@@ -267,7 +274,7 @@ clean_local:
 	rm -f ../main.$O $(PREPROCESSED_M_FILES) $(PP_DATE_FILES)
 
 realclean_local:
-	rm -f tags $(MC_PROG).stats
+	rm -f tags $(MC_PROG).stats Mercury.modules
 
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#

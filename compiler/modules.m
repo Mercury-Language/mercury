@@ -1875,7 +1875,7 @@ warn_if_duplicate_use_import_decls(ModuleName,
 %-----------------------------------------------------------------------------%
 
 write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
-	{ Module = module_imports(SourceFileName, _SourceFileModuleName,
+	{ Module = module_imports(SourceFileName, SourceFileModuleName,
 			ModuleName, ParentDeps, IntDeps, ImplDeps,
 			IndirectDeps, _Children, InclDeps, _NestDeps,
 			FactDeps0, ContainsForeignCode, ForeignImports0,
@@ -2410,47 +2410,64 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 			% changes to scripts/Mmake.rules.  See that
 			% file for documentation on these rules.
 			%
+
+			%
+			% If we can pass the module name rather than the
+			% file name then do so. `--smart-recompilation'
+			% doesn't work if the file name is passed and the
+			% module name doesn't match the file name.
+			%
+			have_source_file_map(HaveMap),
+			{ HaveMap = yes,
+				prog_out__sym_name_to_string(
+					SourceFileModuleName, ".", ModuleArg)
+			; HaveMap = no,
+				ModuleArg = SourceFileName
+			},
+
 			io__write_strings(DepStream, [
 				"\n",
 				Date0FileName, " : ", SourceFileName, "\n",
-				"\t$(MCPI) $(ALL_MCPIFLAGS) $<\n",
+				"\t$(MCPI) $(ALL_MCPIFLAGS) ", ModuleArg, "\n",
 				DateFileName, " : ", SourceFileName, "\n",
-				"\t$(MCI) $(ALL_MCIFLAGS) $<\n",
+				"\t$(MCI) $(ALL_MCIFLAGS) ", ModuleArg, "\n",
 				Date3FileName, " : ", SourceFileName, "\n",
-				"\t$(MCSI) $(ALL_MCSIFLAGS) $<\n",
+				"\t$(MCSI) $(ALL_MCSIFLAGS) ", ModuleArg, "\n",
 				OptDateFileName, " : ", SourceFileName, "\n",
-				"\t$(MCOI) $(ALL_MCOIFLAGS) $<\n",
+				"\t$(MCOI) $(ALL_MCOIFLAGS) ", ModuleArg, "\n",
 				TransOptDateFileName, " : ", SourceFileName,
 					"\n",
-				"\t$(MCTOI) $(ALL_MCTOIFLAGS) $<\n",
+				"\t$(MCTOI) $(ALL_MCTOIFLAGS) ", ModuleArg,
+					"\n",
 				CDateFileName, " : ", SourceFileName, "\n",
 				"\t$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) ",
-					"$< > ", ErrFileName, " 2>&1\n",
+					ModuleArg, " > ", ErrFileName,
+					" 2>&1\n",
 				"ifeq ($(TARGET_ASM),yes)\n",
 				AsmDateFileName, " : ", SourceFileName, "\n",
 				"\t$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) ",
-					"--target-code-only $< > ", ErrFileName,
-					" 2>&1\n",
+					"--target-code-only ", ModuleArg,
+					" > ", ErrFileName, " 2>&1\n",
 				PicAsmDateFileName, " : ", SourceFileName, "\n",
 				"\t$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) ",
 					"--target-code-only --pic ",
 					"\\\n",
 				"\t\t--cflags ""$(GCCFLAGS_FOR_PIC)"" ",
-					"$< > ", ErrFileName,
+					ModuleArg, " > ", ErrFileName,
 					" 2>&1\n",
 				"endif # TARGET_ASM\n",
 				ILDateFileName, " : ", SourceFileName, "\n",
 				"\t$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) ",
-					"--il-only $< > ", ErrFileName,
-					" 2>&1\n",
+					"--il-only ", ModuleArg, " > ",
+					ErrFileName, " 2>&1\n",
 				JavaDateFileName, " : ", SourceFileName, "\n",
 				"\t$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) ",
-					"--java-only $< > ", ErrFileName,
-					" 2>&1\n",
+					"--java-only ", ModuleArg, " > ",
+					ErrFileName, " 2>&1\n",
 				RLOFileName, " : ", SourceFileName, "\n",
 				"\t$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) ",
-					"--aditi-only $< > ", ErrFileName,
-					" 2>&1\n"
+					"--aditi-only ", ModuleArg, " > ",
+					ErrFileName, " 2>&1\n"
 			])
 		;
 			[]

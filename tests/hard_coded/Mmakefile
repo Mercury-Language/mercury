@@ -317,7 +317,7 @@ OUTS=	$(PROGS:%=%.out) $(SPLIT_PROGS:%=%.split.out)
 RESS=	$(PROGS:%=%.res) $(SPLIT_PROGS:%=%.split.res)
 
 dep_local:	$(DEPS)
-depend_local:	$(SUBDIR)/Mercury.modules $(DEPENDS)
+depend_local:	Mercury.modules $(DEPENDS)
 check_local:	$(OUTS) $(RESS)
 all_local:	$(PROGS) $(SPLIT_PROGS:%=%.split)
 
@@ -325,13 +325,14 @@ clean_local:
 	rm -f target_mlobjs_c.o		
 
 realclean_local:
-	rm -f $(SUBDIR)/Mercury.modules
+	rm -f Mercury.modules
 
 #-----------------------------------------------------------------------------#
 
 SUBDIRS = typeclasses sub-modules exceptions purity
 
-$(SUBDIR)/Mercury.modules:
+.PHONY: Mercury.modules
+Mercury.modules:
 	$(MC) -f $(ALL_MCFLAGS) source_file_map.m
 
 dep_subdirs:

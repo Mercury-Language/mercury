@@ -73,8 +73,15 @@ endif
 all : library browse_test declarative_test
 
 .PHONY: depend
-depend		: $(BROWSER_LIB_NAME).depend \
+depend		: Mercury.modules $(BROWSER_LIB_NAME).depend \
 			browse_test.depend declarative_test.depend
+
+# This directory contains source files for which the module
+# name doesn't match the file name, so smart recompilation
+# won't work without the Mercury.modules file.
+.PHONY: Mercury.modules
+Mercury.modules:
+	$(MC) -f *.m
 
 .PHONY: check
 check		: $(BROWSER_LIB_NAME).check
@@ -128,7 +135,7 @@ $(os_subdir)mdb.pic_o \
 # libmer_browser.* to the files.
 realclean_local:
 	rm -rf libmdb.so libmdb.a mdb.init
-	rm -f tags
+	rm -f Mercury.modules tags
 
 #-----------------------------------------------------------------------------#
 

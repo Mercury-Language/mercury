@@ -648,7 +648,9 @@ read_module(file(FileName), ReturnTimestamp, ModuleName, SourceFileName,
 				prog_out__write_sym_name(ModuleName),	
 				io__write_string(".\n"),
 				io__write_string(
-		"  Smart recompilation will not work with this module.\n"),
+		"  Smart recompilation will not work unless a module name\n"),
+				io__write_string(
+		"  to file name mapping is created using `mmc -f *.m'.\n"),
 				( { Halt = yes } ->
 					io__set_exit_status(1)
 				;
