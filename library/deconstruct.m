@@ -122,8 +122,6 @@
 :- some [ArgT] pred arg(T, noncanon_handling, int, ArgT).
 :- mode arg(in, in(do_not_allow), in, out) is semidet.
 :- mode arg(in, in(canonicalize), in, out) is semidet.
-:- mode arg(in, in(include_details_cc), in, out) is erroneous.
-:- mode arg(in, in, in, out) is semidet.
 
 	% See the documentation of std_util__arg_cc
 :- pred arg_cc(T, int, std_util__maybe_arg).
@@ -150,7 +148,7 @@
 :- mode det_arg(in, in(do_not_allow), in, out) is det.
 :- mode det_arg(in, in(canonicalize), in, out) is det.
 :- mode det_arg(in, in(include_details_cc), in, out) is cc_multi.
-:- mode det_arg(in, in, in, out) is det.
+:- mode det_arg(in, in, in, out) is cc_multi.
 
 	% det_named_arg(Data, NonCanon, Name, Argument)
 	%
@@ -201,9 +199,6 @@
 	is semidet.
 :- mode limited_deconstruct(in, in(canonicalize), in, out, out, out)
 	is semidet.
-:- mode limited_deconstruct(in, in(include_details_cc), in, out, out, out)
-	is erroneous.
-:- mode limited_deconstruct(in, in, in, out, out, out) is semidet.
 
 	% See the documentation of std_util__limited_deconstruct_cc.
 :- pred limited_deconstruct_cc(T, int, maybe({string, int, list(univ)})).
@@ -314,20 +309,24 @@ named_arg(Term, NonCanon, Name, Argument) :-
 	Argument = univ_value(Univ).
 
 det_arg(Term, NonCanon, Index, Argument) :-
-	(
-		(
-			NonCanon = do_not_allow,
-			univ_arg_dna(Term, Index, Univ)
+	( NonCanon = do_not_allow,
+		( univ_arg_dna(Term, Index, Univ) ->
+			MaybeArg = yes(Univ)
 		;
-			NonCanon = canonicalize,
-			univ_arg_can(Term, Index, Univ)
-		;
-			NonCanon = include_details_cc,
-			error("deconstruct__arg called with include_details_cc")
+			MaybeArg = no
 		)
-	->
-		Argument = univ_value(Univ)
-	;
+	; NonCanon = canonicalize,
+		( univ_arg_can(Term, Index, Univ) ->
+			MaybeArg = yes(Univ)
+		;
+			MaybeArg = no
+		)
+	; NonCanon = include_details_cc,
+		univ_arg_idcc(Term, Index, MaybeArg)
+	),
+	( MaybeArg = yes(UnivArg),
+		Argument = univ_value(UnivArg)
+	; MaybeArg = no,
 		error("det_arg: argument number out of range")
 	).
 

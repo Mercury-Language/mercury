@@ -631,14 +631,14 @@
 	% equality predicate.)
 	%
 	% arg_cc and argument_cc succeed even if the first argument is
-	% of a non-canonical type.  arg_cc encodes the possible
+	% of a non-canonical type.  They both encode the possible
 	% non-existence of an argument at the requested location by using
 	% a maybe type.
 	%
 :- func arg(T::in, int::in) = (ArgT::out) is semidet.
 :- pred arg_cc(T::in, int::in, maybe_arg::out) is cc_multi.
 :- func argument(T::in, int::in) = (univ::out) is semidet.
-:- pred argument_cc(T::in, int::in, univ::out) is cc_nondet.
+:- pred argument_cc(T::in, int::in, maybe(univ)::out) is cc_multi.
 
 	% named_argument(Data, ArgumentName) = ArgumentUniv
 	%
@@ -1629,9 +1629,14 @@ argument(Term, Index) = ArgumentUniv :-
 	deconstruct__arg(Term, canonicalize, Index, Argument),
 	type_to_univ(Argument, ArgumentUniv).
 
-argument_cc(Term, Index, ArgumentUniv) :-
-	deconstruct__arg(Term, include_details_cc, Index, Argument),
-	type_to_univ(Argument, ArgumentUniv).
+argument_cc(Term, Index, MaybeArgumentUniv) :-
+	deconstruct__arg_cc(Term, Index, MaybeArgument),
+	( MaybeArgument = arg(Argument),
+		type_to_univ(Argument, ArgumentUniv),
+		MaybeArgumentUniv = yes(ArgumentUniv)
+	; MaybeArgument = no_arg,
+		MaybeArgumentUniv = no
+	).
 
 named_argument(Term, Name) = ArgumentUniv :-
 	deconstruct__named_arg(Term, canonicalize, Name, Argument),
