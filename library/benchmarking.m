@@ -156,7 +156,7 @@ ML_report_stats(void)
 	time_at_prev_stat = time_at_last_stat;
 	time_at_last_stat = MR_get_user_cpu_miliseconds();
 
-#ifdef MR_HIGHLEVEL_CODE
+#ifndef MR_HIGHLEVEL_CODE
 	eng = MR_get_engine();
 #endif
 
