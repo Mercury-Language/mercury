@@ -206,7 +206,7 @@ if test "$BOOTSTRAP_MC" != ""; then
 		:- pred return_rtti_version(int::out) is det.
 
 		:- pragma foreign_proc("C", return_rtti_version(Version::out),
-			[[will_not_call_mercury, promise_pure]], "
+			[[may_call_mercury, promise_pure, terminates]], "
 			Version = MR_RTTI_VERSION;
 		").
 EOF

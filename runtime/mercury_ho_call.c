@@ -352,56 +352,36 @@ static	MR_Word	MR_compare_closures(MR_Closure *x, MR_Closure *y);
 ** provided by the higher-order call may be input or output, and may appear
 ** in any order.
 **
-** The input arguments to do_call_closure are the closure in MR_r1,
-** the number of additional input arguments in MR_r2, the number of output
-** arguments to expect in MR_r3, and the additional input arguments themselves
-** in MR_r4, MR_r5, etc. The output arguments are returned in registers MR_r1,
-** MR_r2, etc for det and nondet calls or registers MR_r2, MR_r3, etc for
-** semidet calls.
+** The input arguments to do_call_closure_compact are the closure in MR_r1,
+** the number of additional input arguments in MR_r2, and the additional input
+** arguments themselves in MR_r3, MR_r4, etc. The output arguments are
+** returned in registers MR_r1, MR_r2, etc for det and nondet calls or
+** registers MR_r2, MR_r3, etc for semidet calls.
 **
-** The placement of the extra input arguments into MR_r4, MR_r5 etc is done by
+** The placement of the extra input arguments into MR_r3, MR_r4 etc is done by
 ** the code generator, as is the movement of the output arguments to their
 ** eventual destinations.
-**
-** do_call_closure_compact is like do_call_closure, but it doesn't use MR_r3
-** for the number of output arguments. Instead, the extra input arguments start
-** in MR_r3, not MR_r4. The code generator now calls do_call_closure_compact;
-** do_call_closure is for backward compatibility.
-** 
-** do_call_class_method_compact has the equivalent relationship to
-** do_call_class_method.
-**
-** After bootstrapping is complete, we should delete the existing
-** implementations of do_call_closure and do_call_class_method, and
-** rename do_call_closure_compact as do_call_closure and
-** do_call_class_method_compact as do_call_class_method.
 */
 
 	/*
-	** Number of input arguments to do_call_*_closure,
+	** Number of input arguments to do_call_*_closure_compact,
 	** MR_r1 -> closure
 	** MR_r2 -> number of immediate input arguments.
-	** MR_r3 -> number of output arguments (unused).
 	*/
-#define MR_HO_CALL_INPUTS		3
 #define MR_HO_CALL_INPUTS_COMPACT	2
 
 	/*
-	** Number of input arguments to do_call_*_class_method,
+	** Number of input arguments to do_call_*_class_method_compact,
 	** MR_r1 -> typeclass info
 	** MR_r2 -> index of method in typeclass info
 	** MR_r3 -> number of immediate input arguments.
-	** MR_r4 -> number of output arguments (unused).
 	*/
-#define MR_CLASS_METHOD_CALL_INPUTS		4
 #define MR_CLASS_METHOD_CALL_INPUTS_COMPACT	3
 
 /*
 ** These are the real implementations of higher order calls and method calls.
 */
 
-MR_define_extern_entry(mercury__do_call_closure);
-MR_define_extern_entry(mercury__do_call_class_method);
 MR_define_extern_entry(mercury__do_call_closure_compact);
 MR_define_extern_entry(mercury__do_call_class_method_compact);
 
@@ -418,9 +398,7 @@ MR_declare_label(mercury__builtin__compare_3_0_i1);
 MR_define_extern_entry(mercury__builtin__compare_representation_3_0);
 
 MR_BEGIN_MODULE(call_module)
-	MR_init_entry_an(mercury__do_call_closure);
 	MR_init_entry_an(mercury__do_call_closure_compact);
-	MR_init_entry_an(mercury__do_call_class_method);
 	MR_init_entry_an(mercury__do_call_class_method_compact);
 
 	MR_init_entry_an(mercury__builtin__unify_2_0);
@@ -430,59 +408,6 @@ MR_BEGIN_MODULE(call_module)
 	MR_init_entry_an(mercury__builtin__compare_3_3);
 	MR_init_entry_an(mercury__builtin__compare_representation_3_0);
 MR_BEGIN_CODE
-
-/*
-** Note: this routine gets ignored for profiling.
-** That means it should be called using noprof_call()
-** rather than call().  See comment in output_call in
-** compiler/llds_out for explanation.
-*/
-MR_define_entry(mercury__do_call_closure);
-{
-	MR_Closure	*closure;
-	int		num_extra_args;	/* # of args provided by our caller */
-	int		num_hidden_args;/* # of args hidden in the closure  */
-	int		i;
-
-	/*
-	** These assignments to local variables allow the values
-	** of the relevant registers to be printed in gdb without
-	** worrying about which machine registers, if any, hold them.
-	*/
-
-	closure = (MR_Closure *) MR_r1;
-	num_extra_args = MR_r2;
-	num_hidden_args = closure->MR_closure_num_hidden_args;
-
-	MR_save_registers();
-
-	if (num_hidden_args < MR_HO_CALL_INPUTS) {
-		/* copy to the left, from the left */
-		for (i = 1; i <= num_extra_args; i++) {
-			MR_virtual_reg(i + num_hidden_args) =
-				MR_virtual_reg(i + MR_HO_CALL_INPUTS);
-		}
-	} else if (num_hidden_args > MR_HO_CALL_INPUTS) {
-		/* copy to the right, from the right */
-		for (i = num_extra_args; i > 0; i--) {
-			MR_virtual_reg(i + num_hidden_args) =
-				MR_virtual_reg(i + MR_HO_CALL_INPUTS);
-		}
-	} /* else the new args are in the right place */
-
-	for (i = 1; i <= num_hidden_args; i++) {
-		MR_virtual_reg(i) = closure->MR_closure_hidden_args(i);
-	}
-
-	MR_restore_registers();
-
-	/*
-	** Note that we pass MR_prof_ho_caller_proc rather than
-	** MR_LABEL(mercury__do_call_closure), so that the call gets recorded
-	** as having come from our caller.
-	*/
-	MR_tailcall(closure->MR_closure_code, MR_prof_ho_caller_proc);
-}
 
 /*
 ** Note: this routine gets ignored for profiling.
@@ -531,90 +456,11 @@ MR_define_entry(mercury__do_call_closure_compact);
 
 	/*
 	** Note that we pass MR_prof_ho_caller_proc rather than
-	** MR_LABEL(mercury__do_call_closure), so that the call gets recorded
-	** as having come from our caller.
+	** MR_LABEL(mercury__do_call_closure_compact), so that the call
+	** gets recorded as having come from our caller.
 	*/
 	MR_tailcall(closure->MR_closure_code, MR_prof_ho_caller_proc);
 }
-
-	/*
-	** MR_r1: the typeclass_info
-	** MR_r2: index of class method
-	** MR_r3: number of immediate input arguments
-	** MR_r4: number of output arguments
-	** MR_r5+:input args
-	*/
-
-/*
-** Note: this routine gets ignored for profiling.
-** That means it should be called using noprof_call()
-** rather than call().  See comment in output_call in
-** compiler/llds_out for explanation.
-*/
-MR_define_entry(mercury__do_call_class_method);
-{
-	MR_Word		type_class_info;
-	MR_Integer	method_index;
-	MR_Integer	num_input_args;
-	MR_Code 	*destination;
-	MR_Integer	num_extra_instance_args;
-	int		i;
-
-	/*
-	** These assignments to local variables allow the values
-	** of the relevant registers to be printed in gdb without
-	** worrying about which machine registers, if any, hold them.
-	*/
-
-	type_class_info = MR_r1;
-	method_index = (MR_Integer) MR_r2;
-	num_input_args = MR_r3;
-
-	destination = MR_typeclass_info_class_method(type_class_info,
-		method_index);
-	num_extra_instance_args = (MR_Integer)
-		MR_typeclass_info_num_extra_instance_args(type_class_info);
-
-	MR_save_registers();
-
-	if (num_extra_instance_args < MR_CLASS_METHOD_CALL_INPUTS) {
-		/* copy to the left, from the left */
-		for (i = 1; i <= num_input_args; i++) {
-			MR_virtual_reg(i + num_extra_instance_args) =
-				MR_virtual_reg(i +
-					MR_CLASS_METHOD_CALL_INPUTS);
-		}
-	} else if (num_extra_instance_args > MR_CLASS_METHOD_CALL_INPUTS) {
-		/* copy to the right, from the right */
-		for (i = num_input_args; i > 0; i--) {
-			MR_virtual_reg(i + num_extra_instance_args) =
-				MR_virtual_reg(i +
-					MR_CLASS_METHOD_CALL_INPUTS);
-		}
-	} /* else the new args are in the right place */
-
-	for (i = num_extra_instance_args; i > 0; i--) {
-		MR_virtual_reg(i) = 
-			MR_typeclass_info_extra_instance_arg(MR_virtual_reg(1),
-				i);
-	}
-
-	MR_restore_registers();
-
-	/*
-	** Note that we pass MR_prof_ho_caller_proc rather than
-	** MR_LABEL(mercury__do_call_class_method), so that the call gets
-	** recorded as having come from our caller.
-	*/
-	MR_tailcall(destination, MR_prof_ho_caller_proc);
-}
-
-	/*
-	** MR_r1: the typeclass_info
-	** MR_r2: index of class method
-	** MR_r3: number of immediate input arguments
-	** MR_r4+:input args
-	*/
 
 /*
 ** Note: this routine gets ignored for profiling.
@@ -676,8 +522,8 @@ MR_define_entry(mercury__do_call_class_method_compact);
 
 	/*
 	** Note that we pass MR_prof_ho_caller_proc rather than
-	** MR_LABEL(mercury__do_call_class_method), so that the call gets
-	** recorded as having come from our caller.
+	** MR_LABEL(mercury__do_call_class_method_compact), so that
+	** the call gets recorded as having come from our caller.
 	*/
 	MR_tailcall(destination, MR_prof_ho_caller_proc);
 }
