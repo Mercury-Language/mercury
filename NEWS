@@ -227,6 +227,11 @@ NEWS since release 0.7.3:
   `MGNUCFLAGS=-DML_OMIT_ARRAY_BOUNDS_CHECKS' in your Mmake file). 
   [XXX we also need to fix problems with intermodule inlining heuristics.]
 
+* We've added a new type of option data: maybe_int(maybe(int)), to
+  allow optional arguments with integer values.  There is also a new
+  corresponding lookup predicate, getopt__lookup_maybe_string_option/3.
+  See library/getopt.m for details.
+
 * The support for debugging using Prolog now includes support for
   detailed control over how terms are printed out during debugging.
 

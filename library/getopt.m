@@ -114,6 +114,7 @@
 	--->	bool(bool)
 	;	int(int)
 	;	string(string)
+	;	maybe_int(maybe(int))
 	;	maybe_string(maybe(string))
 	;	accumulating(list(string))
 	;	special
@@ -146,6 +147,10 @@
 
 :- pred getopt__lookup_string_option(option_table(Option), Option, string).
 :- mode getopt__lookup_string_option(in, in, out) is det.
+
+:- pred getopt__lookup_maybe_int_option(option_table(Option), Option,
+		maybe(int)).
+:- mode getopt__lookup_maybe_int_option(in, in, out) is det.
 
 :- pred getopt__lookup_maybe_string_option(option_table(Option), Option,
 		maybe(string)).
@@ -417,6 +422,19 @@ getopt__process_option(string(_), _Option, Flag, MaybeArg, _OptionOps,
 	;
 		error("string argument expected in getopt__process_option")
 	).
+getopt__process_option(maybe_int(_), Option, Flag, MaybeArg, _OptionOps,
+		OptionTable0, Result) :-
+	( MaybeArg = yes(Arg) ->
+		( string__to_int(Arg, IntArg) ->
+			map__set(OptionTable0, Flag, maybe_int(yes(IntArg)),
+					OptionTable),
+			Result = ok(OptionTable)
+		;
+			getopt__numeric_argument(Option, Arg, Result)
+		)
+	;
+		error("integer argument expected in getopt__process_option")
+	).
 getopt__process_option(maybe_string(_), _Option, Flag, MaybeArg, _OptionOps,
 		OptionTable0, Result) :-
 	( MaybeArg = yes(Arg) ->
@@ -482,6 +500,10 @@ process_negated_option(Option, Flag, OptionOps, OptionTable0, Result) :-
 		( OptionData = bool(_) ->
 			map__set(OptionTable0, Flag, bool(no), OptionTable),
 			Result = ok(OptionTable)
+		; OptionData = maybe_int(_) ->
+			map__set(OptionTable0, Flag, maybe_int(no),
+					OptionTable),
+			Result = ok(OptionTable)
 		; OptionData = maybe_string(_) ->
 			map__set(OptionTable0, Flag, maybe_string(no),
 					OptionTable),
@@ -532,6 +554,7 @@ getopt__process_special(Option, Flag, OptionData, OptionOps,
 getopt__need_arg(bool(_), no).
 getopt__need_arg(int(_), yes).
 getopt__need_arg(string(_), yes).
+getopt__need_arg(maybe_int(_), yes).
 getopt__need_arg(maybe_string(_), yes).
 getopt__need_arg(accumulating(_), yes).
 getopt__need_arg(special, no).
@@ -596,6 +619,13 @@ getopt__lookup_string_option(OptionTable, Opt, Val) :-
 		Val = Val0
 	;
 		error("Expected string option and didn't get one.")
+	).
+
+getopt__lookup_maybe_int_option(OptionTable, Opt, Val) :-
+	( map__lookup(OptionTable, Opt, maybe_int(Val0)) ->
+		Val = Val0
+	;
+		error("Expected maybe_int option and didn't get one.")
 	).
 
 getopt__lookup_maybe_string_option(OptionTable, Opt, Val) :-
