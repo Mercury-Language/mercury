@@ -142,7 +142,7 @@ compile_times=false
 write_out_profile_data=false
 type_stats=""
 
-if test -e .KEEP_OBJS
+if test -r .KEEP_OBJS
 then
 	keep_objs=true
 fi
