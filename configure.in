@@ -247,7 +247,15 @@ if test "$HAVE_DLFCN_H" = 1; then
 fi
 AC_CHECK_LIB(dl,dlopen,DL_LIBRARY="-ldl",DL_LIBRARY="")
 AC_SUBST(DL_LIBRARY)
+
+# temporarily add $DL_LIBRARY to LIBS while we check for dlopen etc.
+save_LIBS="$LIBS"
+LIBS="$LIBS $DL_LIBRARY"
+
 AC_HAVE_FUNCS(dlopen dlclose dlsym dlerror)
+
+# restore old value of LIBS
+LIBS="$save_LIBS"
 #-----------------------------------------------------------------------------#
 #
 # check the basics of sigaction
