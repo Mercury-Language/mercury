@@ -41,6 +41,8 @@
 % :- op(1199, fx, (use_op)).
 
 % :- op(1199, fx, (rule)).
+% :- op(1199, fx, (pred)).
+:- op(1199, fx, (func)).
 
 :- op(1199, fx, (mode)).
 :- op(1199, fx, (inst)).
@@ -64,6 +66,13 @@
 :- $setOpField((:), []).
 :- op(600, xfy, (:)).
 
+% In ISO Prolog, `is' has precedence 700, but
+% in Mercury we want `is' to have a higher precedence, so that
+% `:- func foo(int) = int is det.' doesn't need parentheses.
+
+:- $setOpField((is), []).
+:- op(701, xfx, (is)).
+
 % Prevent warnings about undefined predicates
 % when the interpreter tries to execute the new declarations.
 % We replace all Mercury declarations with `:- fail',
@@ -72,6 +81,7 @@
 % termExpansion((:- rule(_)), (:- fail)).
 
 termExpansion((:- type(_)), (:- fail)).
+termExpansion((:- func(_)), (:- fail)).
 termExpansion((:- pred(_)), (:- fail)).
 termExpansion((:- mode(_)), (:- fail)).
 termExpansion((:- inst(_)), (:- fail)).

@@ -47,6 +47,7 @@
 
 :- op(1199, fx, (type)).
 :- op(1199, fx, (pred)).
+:- op(1199, fx, (func)).
 :- op(1199, fx, (mode)).
 :- op(1199, fx, (inst)).
 :- op(1179, xfy, (--->)).
@@ -63,6 +64,8 @@
 :- op(740, xfy, (or)).
 :- op(720, xfy, (and)).
 
+:- op(701, xfx, (is)).
+
 % Use term_expansion/2 to prevent warnings about undefined predicates
 % when the interpreter tries to execute the new declarations.
 
@@ -70,6 +73,7 @@ mercury_declaration(rule(_)).
 
 mercury_declaration(type(_)).
 mercury_declaration(pred(_)).
+mercury_declaration(func(_)).
 mercury_declaration(mode(_)).
 mercury_declaration(inst(_)).
 

@@ -171,6 +171,7 @@ ops__op_table("export_op", before, fx, 1199).
 ops__op_table("export_pred", before, fx, 1199).
 ops__op_table("export_sym", before, fx, 1199).
 ops__op_table("export_type", before, fx, 1199).
+ops__op_table("func", before, fx, 1180).
 % ops__op_table("gAll", before, fxy, 950).
 % ops__op_table("gSome", before, fxy, 950).
 ops__op_table("if", before, fx, 1160).
@@ -184,7 +185,7 @@ ops__op_table("import_type", before, fx, 1199).
 % ops__op_table("in", after, xfx, 1172).
 % ops__op_table("insert", before, fy, 1175).
 ops__op_table("inst", before, fx, 1199).
-ops__op_table("is", after, xfx, 700).
+ops__op_table("is", after, xfx, 701).
 ops__op_table("lambda", before, fxy, 950).
 % ops__op_table("lib", before, fy, 900).
 % ops__op_table("listing", before, fy, 900).
