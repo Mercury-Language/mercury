@@ -508,13 +508,13 @@ is_nan_or_inf(Float) :-
 	% Maximum floating-point number
 :- pragma foreign_proc("C",
 	float__max = (Max::out),
-		[will_not_call_mercury, promise_pure, thread_safe],
+	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	Max = ML_FLOAT_MAX;
 ").
 :- pragma foreign_proc("C#",
 	float__max = (Max::out),
-		[will_not_call_mercury, promise_pure, thread_safe],
+	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	Max = System.Double.MaxValue;
 ").
@@ -522,13 +522,13 @@ is_nan_or_inf(Float) :-
 	% Minimum normalised floating-point number */
 :- pragma foreign_proc("C",
 	float__min = (Min::out),
-		[will_not_call_mercury, promise_pure, thread_safe],
+	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	Min = ML_FLOAT_MIN;
 ").
 :- pragma foreign_proc("C#",
 	float__min = (Min::out),
-		[will_not_call_mercury, promise_pure, thread_safe],
+	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	% We can't use System.Double.MinValue, because in v1 of the .NET CLR,
 	% that means something completely different: the negative number
@@ -542,13 +542,13 @@ is_nan_or_inf(Float) :-
 	% Smallest x such that x \= 1.0 + x
 :- pragma foreign_proc("C",
 	float__epsilon = (Eps::out),
-		[will_not_call_mercury, promise_pure, thread_safe],
+	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	Eps = ML_FLOAT_EPSILON;
 ").
 :- pragma foreign_proc("C#",
 	float__epsilon = (Eps::out),
-		[will_not_call_mercury, promise_pure, thread_safe],
+	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	% We can't use System.Double.Epsilon, because in v1 of the .NET CLR,
 	% that means something completely different: the smallest (denormal)
@@ -564,13 +564,13 @@ is_nan_or_inf(Float) :-
 	% Radix of the floating-point representation.
 :- pragma foreign_proc("C",
 	float__radix = (Radix::out),
-		[will_not_call_mercury, promise_pure, thread_safe],
+	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	Radix = ML_FLOAT_RADIX;
 ").
 :- pragma foreign_proc("C#",
 	float__radix = (Radix::out),
-		[will_not_call_mercury, promise_pure, thread_safe],
+	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	% The ECMA specification requires that double be 64-bit IEEE.
 	% I think that implies that it must have Radix = 2.
@@ -581,13 +581,13 @@ is_nan_or_inf(Float) :-
 	% The number of base-radix digits in the mantissa.
 :- pragma foreign_proc("C",
 	float__mantissa_digits = (MantDig::out),
-		[will_not_call_mercury, promise_pure, thread_safe],
+	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	MantDig = ML_FLOAT_MANT_DIG;
 ").
 :- pragma foreign_proc("C#",
 	float__mantissa_digits = (MantDig::out),
-		[will_not_call_mercury, promise_pure, thread_safe],
+	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	% ECMA specifies that System.Double is 64-bit IEEE float
 	MantDig = 53;
@@ -598,13 +598,13 @@ is_nan_or_inf(Float) :-
 	% is a normalised floating-point number.
 :- pragma foreign_proc("C",
 	float__min_exponent = (MinExp::out),
-		[will_not_call_mercury, promise_pure, thread_safe],
+	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	MinExp = ML_FLOAT_MIN_EXP;
 ").
 :- pragma foreign_proc("C#",
 	float__min_exponent = (MinExp::out),
-		[will_not_call_mercury, promise_pure, thread_safe],
+	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	% ECMA specifies that System.Double is 64-bit IEEE float
 	MinExp = -1021;
@@ -615,13 +615,13 @@ is_nan_or_inf(Float) :-
 	% is a normalised floating-point number.
 :- pragma foreign_proc("C",
 	float__max_exponent = (MaxExp::out),
-		[will_not_call_mercury, promise_pure, thread_safe],
+	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	MaxExp = ML_FLOAT_MAX_EXP;
 ").
 :- pragma foreign_proc("C#",
 	float__max_exponent = (MaxExp::out),
-		[will_not_call_mercury, promise_pure, thread_safe],
+	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	% ECMA specifies that System.Double is 64-bit IEEE float
 	MaxExp = 1024;

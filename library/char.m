@@ -484,16 +484,16 @@ char__min_char_value(0).
 
 :- pragma foreign_decl("C", "#include <limits.h>").
 :- pragma foreign_proc("C",
-		char__max_char_value(Max::out),
+	char__max_char_value(Max::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	Max = UCHAR_MAX;
 ").
 :- pragma foreign_proc("C#",
-		char__max_char_value(Max::out),
+	char__max_char_value(Max::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
-	// .NET uses 16-bit 'Unicode'.  This might be either UCS-2,
+	// .NET uses 16-bit 'Unicode'. This might be either UCS-2,
 	// where Unicode characters that don't fit in 16 bits are encoded
 	// in two 16 bit characters, or it might be just the 16-bit subset,
 	// i.e. only the Unicode characters that fit in 16 bits.
@@ -501,11 +501,10 @@ char__min_char_value(0).
 	Max = 0xffff;
 ").
 
-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 % Ralph Becket <rwab1@cl.cam.ac.uk> 27/04/99
-%       Functional forms added.
+%	Functional forms added.
 
 char__to_int(C) = N :-
 	char__to_int(C, N).

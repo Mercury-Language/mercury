@@ -505,13 +505,13 @@ is(X, X).
 */
 :- pragma foreign_proc("C",
 	int__to_float(IntVal::in, FloatVal::out),
-		[will_not_call_mercury, promise_pure],
+	[will_not_call_mercury, promise_pure],
 "
 	FloatVal = IntVal;
 ").
 :- pragma foreign_proc("MC++",
 	int__to_float(IntVal::in, FloatVal::out),
-		[will_not_call_mercury, promise_pure],
+	[will_not_call_mercury, promise_pure],
 "
 	FloatVal = (MR_Float) IntVal;
 ").
