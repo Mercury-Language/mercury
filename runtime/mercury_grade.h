@@ -250,6 +250,22 @@
 #endif
 
 /*
+** Native gc needs to be able to redirect pointers to the heap. Minimal model
+** tabling takes snapshots of stack segments that may contain pointers to the
+** heap, but there is currently no mechanism implemented to trace and redirect
+** such pointers.
+**
+** Minimal model tabling has no problems with conservative gc or with no gc,
+** since in those grades pointers are stable, and conservative gc looks for
+** roots in stack segments copies the same way as in the rest of the address
+** space.
+*/
+
+#if defined(MR_USE_MINIMAL_MODEL) && defined(MR_NATIVE_GC)
+    #error "minimal model tabling and native gc are not compatible"
+#endif
+
+/*
 ** Parts 9-10 (i.e. tag bits, and (un)boxed float) are documented as
 ** "not for general use", and can't be set via the `--grade' option;
 ** we therefore can't make them part of the grade option string.

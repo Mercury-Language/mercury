@@ -8431,10 +8431,9 @@ required by (minimal model) tabling.
 the current implementation of tabling does not support all the
 possible compilation grades (see the ``Compilation model options''
 section of the Mercury User's Guide) allowed by the Mercury
-implementation.  In particular, if you enable the use of trailing,
-or if you select a garbage collection method other than the default
-(conservative), then any use of tabling will result in a
-``Sorry, not implemented'' error at runtime.
+implementation.  In particular, minimal model tabling
+is incompatible high level code, the use of trailing,
+and accurate garbage collection.
 
 @c XXX we should fix this bug...
 @strong{Reminder}: the current implementation of
