@@ -176,13 +176,13 @@ simplify__goal_2(if_then_else(Vars, Cond0, Then0, Else0, FV), GoalInfo0,
 		simplify__goal(conj(List) - GoalInfo0, InstMap0, DetInfo,
 			Goal - _, Msgs1),
 		Msgs = [ite_cond_cannot_succeed(GoalInfo0) | Msgs1]
-%	; Else0 = disj([], _) - _ ->
-%		% (A -> C ; fail) is equivalent to (A, C)
-%		goal_to_conj_list(Cond0, CondList),
-%		goal_to_conj_list(Then0, ThenList),
-%		list__append(CondList, ThenList, List),
-%		simplify__goal(conj(List) - GoalInfo0, InstMap0, DetInfo,
-%			Goal - _, Msgs)
+	; Else0 = disj([], _) - _ ->
+		% (A -> C ; fail) is equivalent to (A, C)
+		goal_to_conj_list(Cond0, CondList),
+		goal_to_conj_list(Then0, ThenList),
+		list__append(CondList, ThenList, List),
+		simplify__goal(conj(List) - GoalInfo0, InstMap0, DetInfo,
+			Goal - _, Msgs)
 	;
 		update_instmap(Cond0, InstMap0, InstMap1),
 		simplify__goal(Cond0, InstMap0, DetInfo, Cond, CondMsgs),
@@ -321,7 +321,7 @@ simplify__switch([Case0 | Cases0], InstMap0, DetInfo, [Case | Cases], Msgs) :-
 	%
 	% For locally nondet disjunctions without output vars, which are
 	% semidet from outside, we replace them with an if-then-else.
-	% (Is there any good reason for this?  Why not just leave them
+	% (Is there any good reason for this? Why not just leave them
 	% as semidet disjunctions?)
 	%
 	% For locally semidet disjunctions with or without output var(s),
@@ -372,9 +372,9 @@ simplify__fixup_disj(Disjuncts, cc_nondet, OutputVars, GoalInfo, FV,
 		IfThenElse = Goal - _
 	;
 		% This is the case of a nondet disjunction in a
-		% single-solution context.  We can't replace it with
+		% single-solution context. We can't replace it with
 		% an if-then-else, because the disjuncts may bind output
-		% variables.  We just leave it as a model_semi disjunction;
+		% variables. We just leave it as a model_semi disjunction;
 		% the code generator will generate similar code to what
 		% it would for an if-then-else.
 		Goal = disj(Disjuncts, FV)
@@ -387,9 +387,9 @@ simplify__fixup_disj(Disjuncts, nondet, OutputVars, GoalInfo, FV,
 		IfThenElse = Goal - _
 	;
 		% This is the case of a nondet disjunction in a
-		% single-solution context.  We can't replace it with
+		% single-solution context. We can't replace it with
 		% an if-then-else, because the disjuncts may bind output
-		% variables.  We just leave it as a model_semi disjunction;
+		% variables. We just leave it as a model_semi disjunction;
 		% the code generator will generate similar code to what
 		% it would for an if-then-else.
 		Goal = disj(Disjuncts, FV)
