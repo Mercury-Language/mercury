@@ -9,13 +9,17 @@
 #include "mercury_imp.h"
 #include "mercury_string.h"
 
+#if defined(HAVE__VSNPRINTF) && ! defined(HAVE_VSNPRINTF)
+  #define vsnprintf	_vsnprintf
+#endif
+
 MR_String
 MR_make_string(MR_Code *proclabel, const char *fmt, ...) {
 	va_list		ap;
 	MR_String	result;
 	int 		n;
 
-#ifdef HAVE_VSNPRINTF
+#if defined(HAVE_VSNPRINTF) || defined(HAVE__VSNPRINTF)
 	/* Guess that 100 bytes should be sufficient */
 	int 		size = 100;
 	char		*p;
