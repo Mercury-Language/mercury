@@ -60,7 +60,7 @@
 	% Given a cons_id, convert it into a const (from term.m) and
 	% an integer arity.  Fails if the cons_id is not representable
 	% as a const (for example, if it is a higher-order pred constant
-	% or an address constant).
+	% or an address constant or has a module qualifier).
 
 :- pred cons_id_to_const(cons_id, const, arity).
 :- mode cons_id_to_const(in, out, out) is semidet.
@@ -84,6 +84,7 @@
 
 :- import_module require.
 
+	% Module qualified cons_ids can't be converted to consts.
 cons_id_to_const(cons(unqualified(Name), Arity), term__atom(Name), Arity).
 cons_id_to_const(int_const(Int), term__integer(Int), 0).
 cons_id_to_const(string_const(String), term__string(String), 0).

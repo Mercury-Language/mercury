@@ -1,4 +1,4 @@
-%-----------------------------------------------------------------------------%
+%----------------------------------------------------------------------------%
 % Copyright (C) 1995 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
@@ -65,28 +65,32 @@ convert_to_goedel(ProgName, Items0) -->
 	io__write_string(StdErr, "% Expanding equivalence types..."),
 	io__flush_output(StdErr),
 	{ goedel_replace_int_integer(IntEquivTypeDefn) },
-	{ equiv_type__expand_eqv_types([IntEquivTypeDefn | Items0],
-					Items, _) },
+	equiv_type__expand_eqv_types([IntEquivTypeDefn | Items0],
+					Items, Error,  _),
 	io__write_string(StdErr, " done\n"),
-	{ convert_functor_name(ProgName, GoedelName) },
-	{ string__append(GoedelName, ".loc", OutputFileName) },
-	io__tell(OutputFileName, Res),
-	( { Res = ok } ->
-		io__write_string(StdErr, "% Writing output to "),
-		io__write_string(StdErr, OutputFileName),
-		io__write_string(StdErr, "...\n"),
-		io__write_string("MODULE       "),
-		io__write_string(GoedelName),
-		io__write_string(".\n"),
-		io__write_string("IMPORT       MercuryCompat.\n"),
-		io__write_string("\n"),
-		goedel_output_item_list(Items),
-		io__write_string(StdErr, "% done\n"),
-		io__told
+	( { Error = no } ->
+		{ convert_functor_name(ProgName, GoedelName) },
+		{ string__append(GoedelName, ".loc", OutputFileName) },
+		io__tell(OutputFileName, Res),
+		( { Res = ok } ->
+			io__write_string(StdErr, "% Writing output to "),
+			io__write_string(StdErr, OutputFileName),
+			io__write_string(StdErr, "...\n"),
+			io__write_string("MODULE       "),
+			io__write_string(GoedelName),
+			io__write_string(".\n"),
+			io__write_string("IMPORT       MercuryCompat.\n"),
+			io__write_string("\n"),
+			goedel_output_item_list(Items),
+			io__write_string(StdErr, "% done\n"),
+			io__told
+		;
+			io__write_string(StdErr, "Error: couldn't open file `"),
+			io__write_string(StdErr, OutputFileName),
+			io__write_string(StdErr, "' for output.\n")
+		)
 	;
-		io__write_string(StdErr, "Error: couldn't open file `"),
-		io__write_string(StdErr, OutputFileName),
-		io__write_string(StdErr, "' for output.\n")
+		[]
 	).
 
 %-----------------------------------------------------------------------------%

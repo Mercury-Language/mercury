@@ -816,9 +816,10 @@ polymorphism__get_special_proc_list([Id | Ids],
 
 	Term = functor(cons(PredName2, 0), []),
 
-		% XXX should this be:
-		% Inst = bound(unique, [functor(ConsId, [])]) ?
-	Inst = bound(unique, [functor(cons(PredName2, 0), [])]),
+		% Since constructors in bound insts cannot be module
+		% qualified, remove the qualifier here.
+	unqualify_name(PredName2, PredName3),
+	Inst = bound(unique, [functor(cons(unqualified(PredName3), 0), [])]),
 	UnifyMode = (free -> Inst) - (Inst -> Inst),
 	UnifyContext = unify_context(explicit, []),
 		% XXX the UnifyContext is wrong

@@ -41,15 +41,16 @@
 :- import_module prog_data, hlds_data, globals.
 :- import_module bool.
 
-% assign_constructor_tags(Constructors, Globals, TagValues, IsEnum):
+% assign_constructor_tags(TypeName, TypeArity, Constructors,
+%		 Globals, TagValues, IsEnum):
 %	Assign a constructor tag to each constructor for a discriminated
 %	union type, and determine whether the type is an enumeration
 %	type or not.  (`Globals' is passed because exact way in which
 %	this is done is dependent on a compilation option.)
 
-:- pred assign_constructor_tags(list(constructor), globals,
+:- pred assign_constructor_tags(sym_name, arity, list(constructor), globals,
 				cons_tag_values, bool).
-:- mode assign_constructor_tags(in, in, out, out) is det.
+:- mode assign_constructor_tags(in, in, in, in, out, out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -61,7 +62,8 @@
 
 %-----------------------------------------------------------------------------%
 
-assign_constructor_tags(Ctors, Globals, CtorTags, IsEnum) :-
+assign_constructor_tags(TypeName, TypeArity,
+		Ctors, Globals, CtorTags, IsEnum) :-
 
 		% work out how many tag bits there are
 	globals__lookup_int_option(Globals, num_tag_bits, NumTagBits),
@@ -80,7 +82,11 @@ assign_constructor_tags(Ctors, Globals, CtorTags, IsEnum) :-
 			% (unless it is type_info/1)
 			Ctors = [SingleFunc - [SingleArg]],
 			create_cons_id(SingleFunc, [SingleArg], SingleConsId),
-			SingleConsId \= cons(unqualified("type_info"), 1)
+			\+ (
+			    TypeName =
+				 qualified("mercury_builtin", "type_info"),
+			    TypeArity = 1
+			)
 		->
 			map__set(CtorTags0, SingleConsId, no_tag, CtorTags)
 		; NumTagBits = 0 ->

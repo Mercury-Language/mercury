@@ -185,12 +185,31 @@ inlining__mark_predproc(PredProcId, NeededMap, Params, ModuleInfo,
 
 inlining__simple_goal(Goal, GoalThreshold) :-
 	(
-		code_aux__contains_only_builtins(Goal),
-		code_aux__goal_is_flat(Goal)
+		inlining__simple_goal_2(Goal)
 	;
 		goal_size(Goal, Size),
 		Size < GoalThreshold
 	).
+
+:- pred inlining__simple_goal_2(hlds__goal::in) is semidet.
+
+inlining__simple_goal_2(conj(Goals) - _) :-
+	inlining__simple_goal_list(Goals).
+inlining__simple_goal_2(not(Goal) - _) :-
+	inlining__simple_goal_2(Goal).
+inlining__simple_goal_2(some(_, Goal) - _) :-
+	inlining__simple_goal_2(Goal).
+inlining__simple_goal_2(call(_, _, _, Builtin, _, _, _) - _) :-
+	hlds__is_builtin_is_inline(Builtin).
+inlining__simple_goal_2(unify(_, _, _, _, _) - _).
+
+:- pred inlining__simple_goal_list(hlds__goals::in) is semidet.
+
+inlining__simple_goal_list([]).
+inlining__simple_goal_list([Goal | Goals]) :-
+	inlining__simple_goal_2(Goal),
+	inlining__simple_goal_list(Goals).
+
 
 :- pred inlining__mark_proc_as_inlined(pred_proc_id, module_info,
 	set(pred_proc_id), set(pred_proc_id), io__state, io__state).

@@ -2793,11 +2793,16 @@ write_argument_name(VarSet, VarId) -->
 
 write_functor_name(Functor, Arity) -->
 	( { Arity = 0 } ->
-		io__write_string("constant `")
+		io__write_string("constant `"),
+		( { Functor = cons(Name, _) } ->
+			prog_out__write_sym_name(Name)
+		;
+			hlds_out__write_cons_id(Functor)
+		)
 	;
-		io__write_string("functor `")
+		io__write_string("functor `"),
+		hlds_out__write_cons_id(Functor)
 	),
-	hlds_out__write_cons_id(Functor),
 	io__write_string("'").
 
 :- pred write_type_of_var(type_info, type_assign_set, var,
@@ -3312,8 +3317,6 @@ report_error_undef_cons(TypeInfo, Functor, Arity) -->
 	->
 		io__write_string("  error: the language construct "),
 		hlds_out__write_cons_id(Functor),
-		io__write_string("/"),
-		io__write_int(Arity),
 		io__write_string(" should be\n"),
 		prog_out__write_context(Context),
 		io__write_string("  used as a goal, not as an expression.\n"),

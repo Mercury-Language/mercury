@@ -277,7 +277,7 @@ mercury_compile__pre_hlds_pass(ModuleImports0, HLDS1, UndefTypes, UndefModes,
 					ShortDeps, Items0, _) },
 	write_dependency_file(Module, LongDeps, ShortDeps),
 	mercury_compile__module_qualify_items(Items0, Items1, Module, Verbose,
-					Stats, _, UndefTypes, UndefModes),
+					Stats, _, UndefTypes0, UndefModes),
 		% Items from optimization interfaces are needed before
 		% equivalence types are expanded, but after module
 		% qualification.
@@ -288,7 +288,8 @@ mercury_compile__pre_hlds_pass(ModuleImports0, HLDS1, UndefTypes, UndefModes,
 						 ModuleImports2),
 	{ ModuleImports2 = module_imports(_, _, _, Items2, _) },
 	mercury_compile__expand_equiv_types(Items2, Verbose, Stats,
-					Items, EqvMap),
+					Items, CircularTypes, EqvMap),
+	{ bool__or(UndefTypes0, CircularTypes, UndefTypes) },
 	mercury_compile__make_hlds(Module, Items, EqvMap, Verbose, Stats,
 					HLDS0, FoundError),
 	mercury_compile__maybe_dump_hlds(HLDS0, "1", "initial"),
@@ -338,14 +339,15 @@ mercury_compile__maybe_grab_optfiles(Imports0, Verbose, Imports) -->
 	).
 
 :- pred mercury_compile__expand_equiv_types(item_list, bool, bool, item_list,
-	eqv_map, io__state, io__state).
+	bool, eqv_map, io__state, io__state).
 :- mode mercury_compile__expand_equiv_types(in, in, in, out,
-	out, di, uo) is det.
+	out, out, di, uo) is det.
 
-mercury_compile__expand_equiv_types(Items0, Verbose, Stats, Items, EqvMap) -->
+mercury_compile__expand_equiv_types(Items0, Verbose, Stats,
+		Items, CircularTypes, EqvMap) -->
 	maybe_write_string(Verbose, "% Expanding equivalence types..."),
 	maybe_flush_output(Verbose),
-	{ equiv_type__expand_eqv_types(Items0, Items, EqvMap) },
+	equiv_type__expand_eqv_types(Items0, Items, CircularTypes, EqvMap),
 	maybe_write_string(Verbose, " done.\n"),
 	maybe_report_stats(Stats).
 
