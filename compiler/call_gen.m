@@ -557,7 +557,8 @@ call_gen__insert_arg_livevals([L|As], LiveVals0, LiveVals) :-
 					list(liveinfo), code_info, code_info).
 :- mode call_gen__generate_return_livevals(in, in, out, in, out) is det.
 
-call_gen__generate_return_livevals(OutArgs, OutputArgs, LiveVals, Code0, Code) :-
+call_gen__generate_return_livevals(OutArgs, OutputArgs, LiveVals, Code0, Code)
+		:-
 	code_info__generate_stack_livelvals(OutArgs, LiveVals0, Code0, Code1),
 	code_info__get_module_info(Module, Code1, Code2),
 	code_info__get_shapes(S_Tab0, Code2, Code3),
