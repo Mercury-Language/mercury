@@ -1584,6 +1584,10 @@ By default, the debugger will stop at such events.
 However, if the debugger is executing a strict command,
 it will not stop at an event
 just because a break point in the stop state applies to it.
+
+If the debugger receives an interrupt (e.g. if the user presses control-C),
+it will stop at the next event regardless of what command it is executing
+at the time.
 @sp 1
 @item print level
 When a debugger command steps over some events
@@ -1645,11 +1649,6 @@ An optional suffix of the form @samp{-@var{modenum}}
 that specifies the mode number of the procedure
 within the predicate or function to which the procedure belongs.
 @end itemize
-@c @sp 1
-@c XXX interrupts:
-@c If the debugger receives an interrupt, it will stop at the next event
-@c regardless of what command it is executing at the time.
-@c (INTERRUPT HANDLING IS NOT YET IMPLEMENTED.)
 @end table
 
 @node Debugger commands
