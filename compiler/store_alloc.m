@@ -69,7 +69,7 @@ store_alloc_in_proc(ProcInfo0, PredId, ModuleInfo, ProcInfo) :-
 	),
 	initial_liveness(ProcInfo0, PredId, ModuleInfo, Liveness0),
 	globals__get_trace_level(Globals, TraceLevel),
-	( ( TraceLevel = interface ; TraceLevel = full ) ->
+	( trace_level_trace_interface(TraceLevel, yes) ->
 		trace__fail_vars(ModuleInfo, ProcInfo0, ResumeVars0)
 	;
 		set__init(ResumeVars0)

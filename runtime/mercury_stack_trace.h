@@ -55,6 +55,11 @@ extern	const char	*MR_dump_stack_from_layout(FILE *fp,
 				MR_Stack_Layout_Entry *entry_layout,
 				Word *det_stack_pointer, Word *current_frame);
 
+extern	const MR_Stack_Layout_Label *MR_find_nth_ancestor(
+				const MR_Stack_Layout_Label *label_layout,
+				int ancestor_level, Word **stack_trace_sp,
+				Word **stack_trace_curfr, const char **problem);
+
 /*
 ** MR_stack_trace_bottom should be set to the address of global_success,
 ** the label main/2 goes to on success. Stack dumps terminate when they

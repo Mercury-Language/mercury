@@ -73,6 +73,14 @@ MR_copy_saved_regs_to_regs(int max_mr_num)
 Word *
 MR_trace_materialize_typeinfos(const MR_Stack_Layout_Vars *vars)
 {
+	return MR_trace_materialize_typeinfos_base(vars, TRUE,
+		MR_saved_sp(MR_saved_regs), MR_saved_curfr(MR_saved_regs));
+}
+
+Word *
+MR_trace_materialize_typeinfos_base(const MR_Stack_Layout_Vars *vars,
+	bool saved_regs_valid, Word *base_sp, Word *base_curfr)
+{
 	Word	*type_params;
 	bool	succeeded;
 	int	count;
@@ -88,10 +96,12 @@ MR_trace_materialize_typeinfos(const MR_Stack_Layout_Vars *vars)
 		*/
 		for (i = 1; i <= count; i++) {
 			if (vars->MR_slvs_tvars[i] != 0) {
-				type_params[i] = MR_trace_lookup_live_lval(
-					vars->MR_slvs_tvars[i], &succeeded);
+				type_params[i] = MR_trace_lookup_live_lval_base(
+					vars->MR_slvs_tvars[i],
+					saved_regs_valid, base_sp, base_curfr,
+					&succeeded);
 				if (!succeeded) {
-					fatal_error("missing type param in MR_trace_browse");
+					fatal_error("missing type param in MR_trace_materialize_typeinfos_base");
 				}
 			}
 		}
@@ -180,6 +190,15 @@ static	bool	MR_trace_print_locn = FALSE;
 Word
 MR_trace_lookup_live_lval(MR_Live_Lval locn, bool *succeeded)
 {
+	return MR_trace_lookup_live_lval_base(locn, TRUE,
+		MR_saved_sp(MR_saved_regs), MR_saved_curfr(MR_saved_regs),
+		succeeded);
+}
+
+Word
+MR_trace_lookup_live_lval_base(MR_Live_Lval locn, bool saved_regs_valid,
+	Word *base_sp, Word *base_curfr, bool *succeeded)
+{
 	int	locn_num;
 	Word	value;
 
@@ -189,64 +208,77 @@ MR_trace_lookup_live_lval(MR_Live_Lval locn, bool *succeeded)
 	locn_num = (int) MR_LIVE_LVAL_NUMBER(locn);
 	switch (MR_LIVE_LVAL_TYPE(locn)) {
 		case MR_LVAL_TYPE_R:
-			if (MR_trace_print_locn)
+			if (MR_trace_print_locn) {
 				printf("r%d", locn_num);
-			value = saved_reg(MR_saved_regs, locn_num);
-			*succeeded = TRUE;
+			}
+			if (saved_regs_valid) {
+				value = saved_reg(MR_saved_regs, locn_num);
+				*succeeded = TRUE;
+			}
 			break;
 
 		case MR_LVAL_TYPE_F:
-			if (MR_trace_print_locn)
+			if (MR_trace_print_locn) {
 				printf("f%d", locn_num);
+			}
 			break;
 
 		case MR_LVAL_TYPE_STACKVAR:
-			if (MR_trace_print_locn)
+			if (MR_trace_print_locn) {
 				printf("stackvar%d", locn_num);
-			value = saved_detstackvar(MR_saved_regs, locn_num);
+			}
+			value = based_detstackvar(base_sp, locn_num);
 			*succeeded = TRUE;
 			break;
 
 		case MR_LVAL_TYPE_FRAMEVAR:
-			if (MR_trace_print_locn)
+			if (MR_trace_print_locn) {
 				printf("framevar%d", locn_num);
-			value = saved_framevar(MR_saved_regs, locn_num);
+			}
+			value = based_framevar(base_curfr, locn_num);
 			*succeeded = TRUE;
 			break;
 
 		case MR_LVAL_TYPE_SUCCIP:
-			if (MR_trace_print_locn)
+			if (MR_trace_print_locn) {
 				printf("succip");
+			}
 			break;
 
 		case MR_LVAL_TYPE_MAXFR:
-			if (MR_trace_print_locn)
+			if (MR_trace_print_locn) {
 				printf("maxfr");
+			}
 			break;
 
 		case MR_LVAL_TYPE_CURFR:
-			if (MR_trace_print_locn)
+			if (MR_trace_print_locn) {
 				printf("curfr");
+			}
 			break;
 
 		case MR_LVAL_TYPE_HP:
-			if (MR_trace_print_locn)
+			if (MR_trace_print_locn) {
 				printf("hp");
+			}
 			break;
 
 		case MR_LVAL_TYPE_SP:
-			if (MR_trace_print_locn)
+			if (MR_trace_print_locn) {
 				printf("sp");
+			}
 			break;
 
 		case MR_LVAL_TYPE_UNKNOWN:
-			if (MR_trace_print_locn)
+			if (MR_trace_print_locn) {
 				printf("unknown");
+			}
 			break;
 
 		default:
-			if (MR_trace_print_locn)
+			if (MR_trace_print_locn) {
 				printf("DEFAULT");
+			}
 			break;
 	}
 
@@ -255,6 +287,16 @@ MR_trace_lookup_live_lval(MR_Live_Lval locn, bool *succeeded)
 
 bool
 MR_trace_get_type_and_value(const MR_Stack_Layout_Var *var,
+	Word *type_params, Word *type_info, Word *value)
+{
+	return MR_trace_get_type_and_value_base(var, TRUE,
+		MR_saved_sp(MR_saved_regs), MR_saved_curfr(MR_saved_regs),
+		type_params, type_info, value);
+}
+
+bool
+MR_trace_get_type_and_value_base(const MR_Stack_Layout_Var *var,
+	bool saved_regs_valid, Word *base_sp, Word *base_curfr,
 	Word *type_params, Word *type_info, Word *value)
 {
 	bool	succeeded;
@@ -267,6 +309,7 @@ MR_trace_get_type_and_value(const MR_Stack_Layout_Var *var,
 
 	pseudo_type_info = MR_LIVE_TYPE_GET_VAR_TYPE(var->MR_slv_live_type);
 	*type_info = (Word) MR_create_type_info(type_params, pseudo_type_info);
-	*value = MR_trace_lookup_live_lval(var->MR_slv_locn, &succeeded);
+	*value = MR_trace_lookup_live_lval_base(var->MR_slv_locn,
+		saved_regs_valid, base_sp, base_curfr, &succeeded);
 	return succeeded;
 }

@@ -15,22 +15,22 @@
 %
 % Information is collected in several passes. 
 %
-% 	- Before we start generating code for a procedure,
+% 	1 Before we start generating code for a procedure,
 %	  we initialize the set of internal labels for which we have
 %	  layout information to the empty set. This set is stored in
 %	  the code generator state.
 %
-%	- During code generation for the procedure, provided the option
+%	2 During code generation for the procedure, provided the option
 %	  trace_stack_layouts is set, we add layout information for labels
 %	  that represent trace ports to the code generator state.
 %
-% 	- After we finish generating code for a procedure, we record
+% 	3 After we finish generating code for a procedure, we record
 %	  all the static information about the procedure (some of which
 %	  is available only after code generation), together with the
 %	  info about internal labels accumulated in the code generator state,
 %	  in the continuation_info structure (which is part of HLDS).
 %
-% 	- If agc_stack_layouts is set, we make a pass over the
+% 	4 If agc_stack_layouts is set, we make a pass over the
 % 	  optimized code recorded in the final LLDS instructions.
 %	  In this pass, we collect information from call instructions
 %	  about the internal labels to which calls can return.
@@ -83,22 +83,70 @@
 :- type proc_label_layout_info	==	map(label, internal_layout_info).
 
 	%
-	% Information for any internal label.
-	% At some labels, we are interested in the layout of live data;
-	% at others, we are not. The layout_label_info will be present
-	% only for labels of the first kind.
+	% Information for an internal label.
 	%
-:- type internal_layout_info	==	maybe(layout_label_info).
+	% There are two ways for the compiler to generate labels for
+	% which layouts may be required:
+	%
+	% (a) as the label associated with a trace port, and
+	% (b) as the return label of some kind of call (plain, method or h-o).
+	%
+	% Label optimizations may redirect a call return away from the
+	% originally generated label to another label, possibly one
+	% that is associated with a trace port. This optimization may
+	% also direct returns from more than one call to the same label.
+	%
+	% We may be interested in the layout of things at a label for three
+	% different reasons: for stack tracing, for accurate gc, and for
+	% execution tracing (which may include up-level printing from the
+	% debugger).
+	%
+	% - For stack tracing, we are interested only in call return labels.
+	%   Even for these, we need only the pointer to the procedure layout
+	%   info; we do not need any information about variables.
+	%
+	% - For accurate gc, we are interested only in call return labels.
+	%   We need to know about all the variables that can be accessed
+	%   after the label; this is the intersection of all the variables
+	%   denoted as live in the call instructions. (Variables which
+	%   are not in the intersection are not guaranteed to have a
+	%   meaningful value on all execution paths that lead to the label.)
+	%
+	% - For execution tracing, our primary interest is in trace port
+	%   labels. At these labels we only want info about named variables,
+	%   but we may want this info even if the variable will never be
+	%   referred to again.
+	%
+	%   When the trace level requires support for up-level printing,
+	%   execution tracing also requires information about return labels.
+	%   The variables about which we want info at these labels is a subset
+	%   of the variables agc is interested in (the named subset).
+	%   We do not collect this set explicitly. Instead, if we are doing
+	%   execution tracing, we collect agc layout info as usual, and
+	%   (if we not really doing agc) remove the unnamed variables
+	%   in stack_layout.m.
+	%
+	% For labels which correspond to a trace port (part (a) above),
+	% we record information in the first field. Since trace.m generates
+	% a unique label for each trace port, this field is never updated
+	% once it is set in pass 2. For labels which correspond to a call
+	% return, we record information in the second field during pass 4.
+	% Since a label can serve as the return label for more than once call,
+	% this field can be updated (by taking the intersection of the live
+	% variables) after it is set. Since a call may return to the label
+	% of an internal port, it is possible for both fields to be set.
+	% In this case, stack_layout.m will take the union of the relevant
+	% info. If neither field is set, then the label's layout is required
+	% only for stack tracing.
+	%
+:- type internal_layout_info
+	--->	internal_layout_info(
+			maybe(layout_label_info),
+			maybe(layout_label_info)
+		).
 
 	%
 	% Information about the layout of live data for a label.
-	%
-	% Different calls can assign slightly
-	% different liveness annotations to the labels after the call.
-	% (Two different paths of computation can leave different
-	% information live).
-	% We take the intersection of these annotations.  Intersecting
-	% is easy if we represent the live values and type infos as sets.
 	%
 :- type layout_label_info
 	--->	layout_label_info(
@@ -140,10 +188,12 @@
 
 	%
 	% Add the information for all the continuation labels within a proc.
+	% The bool says whether we want information about the variables
+	% live at continuation labels.
 	%
 :- pred continuation_info__process_instructions(pred_proc_id::in,
-	list(instruction)::in, bool::in, continuation_info::in,
-	continuation_info::out) is det.
+	list(instruction)::in, bool::in,
+	continuation_info::in, continuation_info::out) is det.
 
 	%
 	% Get the finished list of proc_layout_infos.
@@ -194,18 +244,18 @@ continuation_info__get_all_proc_layouts(ContInfo, Entries) :-
 	map__values(ContInfo, Entries).
 
 continuation_info__process_llds([], _) --> [].
-continuation_info__process_llds([Proc | Procs], WantAgcInfo) -->
+continuation_info__process_llds([Proc | Procs], WantReturnInfo) -->
 	{ Proc = c_procedure(_, _, PredProcId, Instrs) },
 	continuation_info__process_instructions(PredProcId, Instrs,
-		WantAgcInfo),
-	continuation_info__process_llds(Procs, WantAgcInfo).
+		WantReturnInfo),
+	continuation_info__process_llds(Procs, WantReturnInfo).
 
 	%
 	% Process the list of instructions for this proc, adding
 	% all internal label information to the continuation_info.
 	%
 continuation_info__process_instructions(PredProcId, Instructions,
-		WantAgcInfo, ContInfo0, ContInfo) :-
+		WantReturnInfo, ContInfo0, ContInfo) :-
 
 		% Get all the continuation info from the call instructions.
 	map__lookup(ContInfo0, PredProcId, ProcLayoutInfo0),
@@ -217,7 +267,7 @@ continuation_info__process_instructions(PredProcId, Instructions,
 	list__filter_map(GetCallLivevals, Instructions, Calls),
 
 		% Process the continuation label info.
-	list__foldl(continuation_info__process_continuation(WantAgcInfo),
+	list__foldl(continuation_info__process_continuation(WantReturnInfo),
 		Calls, Internals0, Internals),
 
 	ProcLayoutInfo = proc_layout_info(A, B, C, D, E, Internals),
@@ -226,96 +276,76 @@ continuation_info__process_instructions(PredProcId, Instructions,
 %-----------------------------------------------------------------------------%
 
 	%
-	% Collect the liveness information from a single label and add
-	% it to the internals.
+	% Collect the liveness information from a single return label
+	% and add it to the internals.
 	%
 :- pred continuation_info__process_continuation(bool::in,
 	pair(label, list(liveinfo))::in, 
 	proc_label_layout_info::in, proc_label_layout_info::out) is det.
 
-continuation_info__process_continuation(WantAgcInfo, Label - LiveInfoList,
+continuation_info__process_continuation(WantReturnInfo, Label - LiveInfoList,
 		Internals0, Internals) :-
-	( WantAgcInfo = yes ->
-		GetVarInfo = lambda([LiveLval::in, VarInfo::out] is det, (
-			LiveLval = live_lvalue(Lval, LiveValueType, Name, _),
-			VarInfo = var_info(Lval, LiveValueType, Name)
-		)),
-		list__map(GetVarInfo, LiveInfoList, VarInfoList),
-		GetTypeInfo = lambda([LiveLval::in, TypeInfos::out] is det, (
-			LiveLval = live_lvalue(_, _, _, TypeInfos)
-		)),
-		list__map(GetTypeInfo, LiveInfoList, TypeInfoListList),
-		list__condense(TypeInfoListList, TypeInfoList),
-		list__sort_and_remove_dups(TypeInfoList, SortedTypeInfoList),
-		set__sorted_list_to_set(SortedTypeInfoList, TypeInfoSet),
-		set__list_to_set(VarInfoList, VarInfoSet),
-		NewInternal = yes(layout_label_info(VarInfoSet, TypeInfoSet))
+	( map__search(Internals0, Label, Internal0) ->
+		Internal0 = internal_layout_info(Port0, Return0)
 	;
-		NewInternal = no
+		Port0 = no,
+		Return0 = no
 	),
-	continuation_info__add_internal_info(Label, NewInternal,
-		Internals0, Internals).
-
-:- pred continuation_info__ensure_label_is_present(label::in,
-	proc_label_layout_info::in, proc_label_layout_info::out) is det.
-
-continuation_info__ensure_label_is_present(Label, InternalMap0, InternalMap) :-
-	( map__contains(InternalMap0, Label) ->
-		InternalMap = InternalMap0
+	( WantReturnInfo = yes ->
+		continuation_info__convert_return_data(LiveInfoList,
+			VarInfoSet, TypeInfoSet),
+		(
+			Return0 = no,
+			Return = yes(layout_label_info(VarInfoSet,
+				TypeInfoSet))
+		;
+				% If a var is known to be dead
+				% on return from one call, it
+				% cannot be accessed on returning
+				% from the other calls that reach
+				% the same return address either.
+			Return0 = yes(layout_label_info(LV0, TV0)),
+			set__intersect(LV0, VarInfoSet, LV),
+			set__intersect(TV0, TypeInfoSet, TV),
+			Return = yes(layout_label_info(LV, TV))
+		)
 	;
-		map__det_insert(InternalMap0, Label, no, InternalMap)
-	).
+		Return = Return0
+	),
+	Internal = internal_layout_info(Port0, Return),
+	map__set(Internals0, Label, Internal, Internals).
 
-%-----------------------------------------------------------------------------%
+:- pred continuation_info__convert_return_data(list(liveinfo)::in,
+	set(var_info)::out, set(pair(tvar, lval))::out) is det.
 
-	%
-	% Add an internal info to the list of internal infos.
-	%
-:- pred continuation_info__add_internal_info(label::in,
-	internal_layout_info::in,
-	proc_label_layout_info::in, proc_label_layout_info::out) is det.
+continuation_info__convert_return_data(LiveInfos, VarInfoSet, TypeInfoSet) :-
+	GetVarInfo = lambda([LiveLval::in, VarInfo::out] is det, (
+		LiveLval = live_lvalue(Lval, LiveValueType, Name, _),
+		VarInfo = var_info(Lval, LiveValueType, Name)
+	)),
+	list__map(GetVarInfo, LiveInfos, VarInfoList),
+	GetTypeInfo = lambda([LiveLval::in, TypeInfos::out] is det, (
+		LiveLval = live_lvalue(_, _, _, TypeInfos)
+	)),
+	list__map(GetTypeInfo, LiveInfos, TypeInfoListList),
+	list__condense(TypeInfoListList, TypeInfoList),
+	list__sort_and_remove_dups(TypeInfoList, SortedTypeInfoList),
+	set__sorted_list_to_set(SortedTypeInfoList, TypeInfoSet),
+	set__list_to_set(VarInfoList, VarInfoSet).
 
-continuation_info__add_internal_info(Label, Internal1,
-		Internals0, Internals) :-
+:- pred continuation_info__filter_named_vars(list(liveinfo)::in,
+	list(liveinfo)::out) is det.
+
+continuation_info__filter_named_vars([], []).
+continuation_info__filter_named_vars([LiveInfo | LiveInfos], Filtered) :-
+	continuation_info__filter_named_vars(LiveInfos, Filtered1),
 	(
-		map__search(Internals0, Label, Internal0)
+		LiveInfo = live_lvalue(_, _, Name, _),
+		Name \= ""
 	->
-		continuation_info__merge_internal_labels(Internal0, Internal1,
-			Internal),
-		map__set(Internals0, Label, Internal, Internals)
+		Filtered = [LiveInfo | Filtered1]
 	;
-		map__det_insert(Internals0, Label, Internal1, Internals)
+		Filtered = Filtered1
 	).
 
-	%
-	% Merge the continuation label information of two labels.
-	%
-	% If there are two continuation infos to be merged, we take
-	% the intersection.
-	%
-	% The reason why taking the intersection is correct is that if
-	% something is not live on one path, the code following the
-	% label is guaranteed not to depend on it.
-	% XXX Is this true for non-det code?
-
-:- pred continuation_info__merge_internal_labels(
-	maybe(layout_label_info)::in, maybe(layout_label_info)::in,
-	maybe(layout_label_info)::out) is det.
-
-continuation_info__merge_internal_labels(no, no, no).
-continuation_info__merge_internal_labels(no,
-		yes(layout_label_info(LV0, TV0)),
-		yes(layout_label_info(LV0, TV0))).
-continuation_info__merge_internal_labels(
-		yes(layout_label_info(LV0, TV0)),
-		no,
-		yes(layout_label_info(LV0, TV0))).
-continuation_info__merge_internal_labels(
-		yes(layout_label_info(LV0, TV0)),
-		yes(layout_label_info(LV1, TV1)),
-		yes(layout_label_info(LV, TV))) :-
-	set__intersect(LV0, LV1, LV),
-	set__intersect(TV0, TV1, TV).
-
-%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

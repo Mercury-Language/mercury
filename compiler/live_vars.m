@@ -50,7 +50,7 @@ allocate_stack_slots_in_proc(ProcInfo0, PredId, ModuleInfo, ProcInfo) :-
 	set__init(LiveSets0),
 	module_info_globals(ModuleInfo, Globals),
 	globals__get_trace_level(Globals, TraceLevel),
-	( ( TraceLevel = interface ; TraceLevel = full ) ->
+	( trace_level_trace_interface(TraceLevel, yes) ->
 		trace__fail_vars(ModuleInfo, ProcInfo0, ResumeVars0),
 		set__insert(LiveSets0, ResumeVars0, LiveSets1)
 	;

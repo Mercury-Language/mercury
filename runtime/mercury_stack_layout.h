@@ -300,7 +300,7 @@ typedef	struct MR_Stack_Layout_Entry_Struct {
 
 typedef	struct MR_Stack_Layout_Label_Struct {
 	MR_Stack_Layout_Entry	*MR_sll_entry;
-#ifdef	NATIVE_GC
+#if 0
 	Integer			MR_sll_label_num;
 #endif
 	Integer			MR_sll_var_count;
