@@ -2377,7 +2377,8 @@ case "$host" in
 		# actually do the fixups at runtime for non-PIC code.
 		# (The code is mapped copy-on-write, and when the linker
 		# does the fixups, it gets copied.  Hence the lack of
-		# runtime sharing.)  We need to link with `gcc -G'
+		# runtime sharing.) 
+		# We need to link with `gcc -shared -mimpure-text'
 		# rather than `gcc -shared', because `gcc -shared'
 		# passes `-z text' to the linker, which causes it to
 		# report an error if any runtime fixups would be needed.
