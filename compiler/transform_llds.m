@@ -43,7 +43,13 @@
 :- import_module mdbcomp__prim_data.
 :- import_module parse_tree__prog_data.
 
-:- import_module bool, int, string, list, require, std_util, counter.
+:- import_module bool.
+:- import_module counter.
+:- import_module int.
+:- import_module list.
+:- import_module require.
+:- import_module std_util.
+:- import_module string.
 
 transform_llds(LLDS0, LLDS, !IO) :-
 	globals__io_get_globals(Globals, !IO),

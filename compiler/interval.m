@@ -37,7 +37,13 @@
 :- import_module hlds__hlds_pred.
 :- import_module parse_tree__prog_data.
 
-:- import_module bool, counter, io, list, map, set, std_util.
+:- import_module bool.
+:- import_module counter.
+:- import_module io.
+:- import_module list.
+:- import_module map.
+:- import_module set.
+:- import_module std_util.
 
 :- type save_point_type
 	--->	call_site
@@ -189,7 +195,13 @@
 :- import_module parse_tree__mercury_to_mercury.
 :- import_module parse_tree__prog_type.
 
-:- import_module assoc_list, require, svmap, svset, svvarset, term, varset.
+:- import_module assoc_list.
+:- import_module require.
+:- import_module svmap.
+:- import_module svset.
+:- import_module svvarset.
+:- import_module term.
+:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 

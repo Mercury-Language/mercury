@@ -26,7 +26,10 @@
 :- import_module mdbcomp__prim_data.
 :- import_module parse_tree__prog_data.
 
-:- import_module list, map, std_util, term.
+:- import_module list.
+:- import_module map.
+:- import_module std_util.
+:- import_module term.
 
 :- type maybe2(T1, T2)
 	--->	error(string, term)
@@ -146,7 +149,11 @@
 :- import_module parse_tree__prog_io_goal.
 :- import_module parse_tree__prog_util.
 
-:- import_module bool, string, std_util, term, set.
+:- import_module bool.
+:- import_module set.
+:- import_module std_util.
+:- import_module string.
+:- import_module term.
 
 add_context(error(M, T), _, error(M, T)).
 add_context(ok(Item), Context, ok(Item, Context)).

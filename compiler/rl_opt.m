@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-1999, 2003-2004 The University of Melbourne.
+% Copyright (C) 1998-1999, 2003-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -15,7 +15,8 @@
 :- import_module aditi_backend__rl.
 :- import_module hlds__hlds_module.
 
-:- import_module io, list.
+:- import_module io.
+:- import_module list.
 
 :- pred rl_opt__procs(module_info, list(rl_proc), list(rl_proc),
 		io__state, io__state).
@@ -35,7 +36,7 @@
 :- import_module libs__options.
 :- import_module parse_tree__prog_out.
 
-:- import_module bool, list.
+:- import_module bool.
 
 rl_opt__procs(ModuleInfo, Procs0, Procs) -->
 	list__map_foldl(rl_opt__proc(ModuleInfo), Procs0, Procs).

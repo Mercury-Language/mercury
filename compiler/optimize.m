@@ -17,7 +17,8 @@
 :- import_module ll_backend__global_data.
 :- import_module ll_backend__llds.
 
-:- import_module io, list.
+:- import_module io.
+:- import_module list.
 
 :- pred optimize_main(global_data::in,
 	list(c_procedure)::in, list(c_procedure)::out, io::di, io::uo) is det.
@@ -52,8 +53,14 @@
 :- import_module parse_tree__prog_foreign.
 :- import_module parse_tree__prog_out.
 
-:- import_module bool, int, string.
-:- import_module map, set, std_util, require, counter.
+:- import_module bool.
+:- import_module counter.
+:- import_module int.
+:- import_module map.
+:- import_module require.
+:- import_module set.
+:- import_module std_util.
+:- import_module string.
 
 optimize_main(GlobalData, !Procs, !IO) :-
 	list__map_foldl(optimize__proc(GlobalData), !Procs, !IO).

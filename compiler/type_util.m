@@ -25,8 +25,11 @@
 :- import_module mdbcomp__prim_data.
 :- import_module parse_tree__prog_data.
 
+:- import_module bool.
+:- import_module list.
+:- import_module map.
+:- import_module std_util.
 :- import_module term.
-:- import_module bool, std_util, list, map.
 
 %-----------------------------------------------------------------------------%
 
@@ -492,8 +495,13 @@
 :- import_module parse_tree__prog_util.
 :- import_module parse_tree__prog_type.
 
-:- import_module bool, char, int, string.
-:- import_module assoc_list, require, varset.
+:- import_module assoc_list.
+:- import_module bool.
+:- import_module char.
+:- import_module int.
+:- import_module require.
+:- import_module string.
+:- import_module varset.
 
 type_util__type_ctor_module(_ModuleInfo, TypeName - _Arity, ModuleName) :-
 	sym_name_get_module_name(TypeName, unqualified(""), ModuleName).

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2004 The University of Melbourne.
+% Copyright (C) 2001-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -19,7 +19,9 @@
 
 :- import_module parse_tree__prog_data.
 
-:- import_module bool, list, set.
+:- import_module bool.
+:- import_module list.
+:- import_module set.
 
 %-----------------------------------------------------------------------------%
 
@@ -83,8 +85,15 @@
 % Uncomment if you want to dump performance information into the .err file.
 % :- import_module unsafe.
 
-:- import_module int, string, assoc_list, map, queue.
-:- import_module term, std_util, require, io.
+:- import_module assoc_list.
+:- import_module int.
+:- import_module io.
+:- import_module map.
+:- import_module queue.
+:- import_module require.
+:- import_module std_util.
+:- import_module string.
+:- import_module term.
 
 % The stack optimization graph is a bipartite graph, whose two node types
 % are cost nodes and benefit nodes. Each node represents a copy of an

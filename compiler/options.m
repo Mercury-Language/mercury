@@ -19,7 +19,9 @@
 :- module libs__options.
 :- interface.
 
-:- import_module char, io, getopt_io.
+:- import_module char.
+:- import_module getopt_io.
+:- import_module io.
 
 :- pred short_option(char::in, option::out) is semidet.
 :- pred long_option(string::in, option::out) is semidet.
@@ -715,8 +717,15 @@
 
 :- import_module libs__handle_options.
 
-:- import_module string, bool, int, map, std_util, assoc_list, require, list.
+:- import_module assoc_list.
+:- import_module bool.
 :- import_module dir.
+:- import_module int.
+:- import_module list.
+:- import_module map.
+:- import_module require.
+:- import_module std_util.
+:- import_module string.
 
 :- type option_category
 	--->	warning_option

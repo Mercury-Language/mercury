@@ -26,7 +26,9 @@
 :- import_module backend_libs__rtti.
 :- import_module ll_backend__llds_out.
 
-:- import_module bool, list, io.
+:- import_module bool.
+:- import_module io.
+:- import_module list.
 
 	% Output a C expression holding the address of the C name of
 	% the specified rtti_data, preceded by the string in the first
@@ -99,8 +101,14 @@
 :- import_module parse_tree__prog_foreign.
 :- import_module parse_tree__prog_out.
 
-:- import_module int, string, assoc_list, map, multi_map.
-:- import_module counter, require, std_util.
+:- import_module assoc_list.
+:- import_module counter.
+:- import_module int.
+:- import_module map.
+:- import_module multi_map.
+:- import_module require.
+:- import_module std_util.
+:- import_module string.
 
 %-----------------------------------------------------------------------------%
 

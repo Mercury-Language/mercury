@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2002, 2004 The University of Melbourne.
+% Copyright (C) 2001-2002, 2004-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -8,6 +8,7 @@
 %
 % Timestamp representation for smart recompilation.
 %-----------------------------------------------------------------------------%
+
 :- module libs__timestamp.
 
 :- interface.
@@ -50,7 +51,9 @@
 
 :- implementation.
 
-:- import_module int, std_util, string.
+:- import_module int.
+:- import_module std_util.
+:- import_module string.
 
 	% A timestamp is a string formatted as "yyyy-mm-dd hh:mm:ss"
 	% representing a time expressed as UTC (Universal Coordinated Time).
@@ -72,7 +75,7 @@ gmtime_to_timestamp(tm(Year, Month, MD, Hrs, Min, Sec, YD, WD, DST)) =
 		YD, WD, maybe_dst_to_int(DST))).
 
 :- func gmtime_to_timestamp_2(int, int, int, int,
-		int, int, int, int, int) = string.
+	int, int, int, int, int) = string.
 
 :- pragma foreign_decl("C", "
 	#include ""mercury_string.h""

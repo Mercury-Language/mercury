@@ -22,7 +22,9 @@
 :- import_module parse_tree__prog_data.
 :- import_module parse_tree__error_util.
 
-:- import_module assoc_list, list, std_util.
+:- import_module assoc_list.
+:- import_module list.
+:- import_module std_util.
 
 	% Predicates to convert a predicate and procedure names to strings.
 
@@ -64,7 +66,11 @@
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_util.
 
-:- import_module int, string, list, term, require.
+:- import_module int.
+:- import_module string.
+:- import_module list.
+:- import_module term.
+:- import_module require.
 
 %-----------------------------------------------------------------------------%
 

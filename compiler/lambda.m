@@ -104,29 +104,36 @@
 :- import_module mdbcomp__prim_data.
 
 % Standard library modules
-:- import_module list, map, set.
-:- import_module term, varset, bool, string, std_util, require.
+:- import_module bool.
+:- import_module list.
+:- import_module map.
+:- import_module require.
+:- import_module set.
+:- import_module std_util.
+:- import_module string.
+:- import_module term.
+:- import_module varset.
 
 :- type lambda_info --->
-		lambda_info(
-			prog_varset,		% from the proc_info
-			map(prog_var, type),	% from the proc_info
-			class_constraints,	% from the pred_info
-			tvarset,		% from the proc_info
-			inst_varset,		% from the proc_info
-			map(tvar, type_info_locn),
-						% from the proc_info
-						% (typeinfos)
-			map(class_constraint, prog_var),
-						% from the proc_info
-						% (typeclass_infos)
-			pred_markers,		% from the pred_info
-			pred_or_func,
-			string,			% pred/func name
-			aditi_owner,
-			module_info,
-			bool	% true iff we need to recompute the nonlocals
-		).
+	lambda_info(
+		prog_varset,		% from the proc_info
+		map(prog_var, type),	% from the proc_info
+		class_constraints,	% from the pred_info
+		tvarset,		% from the proc_info
+		inst_varset,		% from the proc_info
+		map(tvar, type_info_locn),
+					% from the proc_info
+					% (typeinfos)
+		map(class_constraint, prog_var),
+					% from the proc_info
+					% (typeclass_infos)
+		pred_markers,		% from the pred_info
+		pred_or_func,
+		string,			% pred/func name
+		aditi_owner,
+		module_info,
+		bool	% true iff we need to recompute the nonlocals
+	).
 
 %-----------------------------------------------------------------------------%
 

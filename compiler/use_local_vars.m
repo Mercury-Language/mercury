@@ -64,7 +64,8 @@
 :- import_module ll_backend__llds.
 :- import_module mdbcomp__prim_data.
 
-:- import_module list, counter.
+:- import_module counter.
+:- import_module list.
 
 :- pred use_local_vars__main(list(instruction)::in, list(instruction)::out,
 	proc_label::in, int::in, int::in, counter::in, counter::out) is det.
@@ -77,7 +78,11 @@
 :- import_module ll_backend__livemap.
 :- import_module ll_backend__opt_util.
 
-:- import_module int, set, map, std_util, require.
+:- import_module int.
+:- import_module map.
+:- import_module require.
+:- import_module set.
+:- import_module std_util.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -22,7 +22,8 @@
 :- import_module hlds__hlds_module.
 :- import_module parse_tree__prog_data.
 
-:- import_module list, map.
+:- import_module list.
+:- import_module map.
 
 	% Work out the upper and lower bounds for the inputs to an
 	% goal which could result in the goal succeeding.
@@ -63,7 +64,12 @@
 :- import_module parse_tree__prog_util.
 :- import_module parse_tree__prog_type.
 
-:- import_module assoc_list, bool, int, require, set, std_util.
+:- import_module assoc_list.
+:- import_module bool.
+:- import_module int.
+:- import_module require.
+:- import_module set.
+:- import_module std_util.
 
 rl_key__extract_indexing(no_inputs, _, _, _, []).
 rl_key__extract_indexing(one_input(Args), Goals, ModuleInfo, VarTypes,

@@ -64,8 +64,16 @@
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_util.
 
-:- import_module bool, string, int, list, assoc_list, map.
-:- import_module std_util, term, counter, require.
+:- import_module assoc_list.
+:- import_module bool.
+:- import_module counter.
+:- import_module int.
+:- import_module list.
+:- import_module map.
+:- import_module require.
+:- import_module std_util.
+:- import_module string.
+:- import_module term.
 
 rtti_data_list_to_mlds(ModuleInfo, RttiDatas) = MLDS_Defns :-
 	RealRttiDatas = list__filter(real_rtti_data, RttiDatas),

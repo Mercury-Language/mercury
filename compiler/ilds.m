@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2004 The University of Melbourne.
+% Copyright (C) 1999-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -21,7 +21,10 @@
 
 :- interface.
 
-:- import_module list, std_util, bool, assoc_list.
+:- import_module assoc_list.
+:- import_module bool.
+:- import_module list.
+:- import_module std_util.
 
 	% Returns the maximum stack usage of a list of IL instructions.
 :- func calculate_max_stack(list(ilds__instr)) = int.
@@ -54,25 +57,25 @@
 :- type fieldref
 	---> fieldref(ilds__type, class_member_name).
 
-
 % -------------------------------------------------------------------------
 
 	% if an assembly name is empty it is a reference to a local type
 	% in the same assembly.
 
 :- type structured_name --->
-		structured_name(
-			assembly_name,		% the name of the assembly
-			namespace_qual_name,	% the name of the top-level class
-						% (i.e. the namespace name
-						% and the outermost class name),
-						% or just the namespace name,
-						% if this structured_name is
-						% a namespace
-			nested_class_name).	% the name of the nested class
-						% within the top-level class,
-						% or the empty list if it is
-						% not a nested class
+	structured_name(
+		assembly_name,		% the name of the assembly
+		namespace_qual_name,	% the name of the top-level class
+					% (i.e. the namespace name
+					% and the outermost class name),
+					% or just the namespace name,
+					% if this structured_name is
+					% a namespace
+		nested_class_name	% the name of the nested class
+					% within the top-level class,
+					% or the empty list if it is
+					% not a nested class
+	).
 
 	% If we are referencing a sub-module, then we need to record two
 	% names.  One is the sub-module name, which is used for
@@ -89,7 +92,6 @@
 
 :- type namespace_qual_name == list(ilds__id).
 :- type nested_class_name == list(ilds__id).
-
 
 	% An assembly- and namespace-qualified class name is a structured name.
 	% E.g. the ILASM name [Foo]Bar1.Bar2.Baz1/Baz2/Quux is
@@ -134,7 +136,6 @@
 	;	unmanaged_stdcall
 	;	unmanaged_thiscall
 	;	unmanaged_fastcall.
-
 
 	% XXX types have changed significantly in the spec since this
 	% was written, we should update this section (indeed, we should
@@ -240,7 +241,6 @@
 :- type blockid == int.
 
 :- type instr
-
 
 	% NOT INSTRUCTIONS AT ALL
 	% These are just added to the IL instructions to make it easy to
@@ -359,7 +359,6 @@
 
 :- type label == string.
 
-
 	% Utility functions and predicates.
 
 	% Get the namespace portion of a class name.
@@ -388,7 +387,8 @@
 
 :- import_module parse_tree__error_util.
 
-:- import_module int, require.
+:- import_module int.
+:- import_module require.
 
 get_class_suffix(structured_name(_, OuterClassFullName, NestedClass))
 		= SuffixName :-
@@ -458,6 +458,7 @@ calculate_max_stack_2([I | Instrs], Current, Max) =
 	% Stack height is measured in stack items (each item can be a
 	% different size in bits).
 :- func get_stack_difference(ilds__instr) = int.
+
 get_stack_difference(end_block(_, _)) 				= 0.
 get_stack_difference(comment(_)) 				= 0.
 get_stack_difference(start_block(scope(_), _)) 			= 0.
@@ -559,12 +560,12 @@ get_stack_difference(stsfld(_FieldRef)) 			= -1.
 get_stack_difference(throw)					= -1.
 get_stack_difference(unbox(_Type)) 				= 0.
 
-
 	% Count the stack size difference for a call.
 	% A call will remove the params, and remove "this" if it is an
 	% instance method, but will put the return type (if there is one)
 	% on the stack.
 :- func get_call_stack_difference(methodref) = int.
+
 get_call_stack_difference(MethodRef) = Diff :-
 	(
 		MethodRef = methoddef(CallConv, RetType, _, Params)
@@ -575,17 +576,18 @@ get_call_stack_difference(MethodRef) = Diff :-
 	RetDiff = ( RetType = void -> 0 ; 1),
 	Diff = -(length(Params)) + InstanceDiff + RetDiff.
 
-
 	% A calli will remove the function pointer, the params, and
 	% remove "this" if it is an instance method, but puts the return
 	% type (if there is one) on the stack.
 :- func get_calli_stack_difference(signature) = int.
+
 get_calli_stack_difference(signature(CallConv, RetType, Params)) = Diff :-
 	InstanceDiff = ( CallConv = call_conv(yes, _) -> -1 ; 0 ),
 	RetDiff = ( RetType = void -> 0 ; 1),
 	Diff = -(length(Params)) + InstanceDiff + RetDiff - 1.
 
 :- func this_file = string.
+
 this_file = "ilds.m".
 
 :- end_module ilds.

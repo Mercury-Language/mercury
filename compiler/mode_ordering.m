@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2004 The University of Melbourne.
+% Copyright (C) 2001-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -17,7 +17,9 @@
 :- import_module hlds__hlds_pred.
 :- import_module hlds__inst_graph.
 
-:- import_module io, list, map.
+:- import_module io.
+:- import_module list.
+:- import_module map.
 
 :- type pred_constraint_info --->
 	pci(		% pci: pred_constrain_info
@@ -48,7 +50,12 @@
 :- import_module mode_robdd__tfeirn.
 :- import_module parse_tree__prog_data.
 
-:- import_module set, stack, std_util, require, relation, assoc_list.
+:- import_module assoc_list.
+:- import_module relation.
+:- import_module require.
+:- import_module set.
+:- import_module stack.
+:- import_module std_util.
 
 mode_ordering(PredConstraintMap, SCCs, !ModuleInfo, !IO) :-
 	list__foldl(mode_ordering__scc(PredConstraintMap), SCCs, !ModuleInfo),

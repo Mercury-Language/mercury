@@ -102,7 +102,14 @@
 :- import_module ml_backend__ml_unify_gen.
 :- import_module ml_backend__rtti_to_mlds.
 
-:- import_module assoc_list, bool, int, map, set, std_util, string, term.
+:- import_module assoc_list.
+:- import_module bool.
+:- import_module int.
+:- import_module map.
+:- import_module set.
+:- import_module std_util.
+:- import_module string.
+:- import_module term.
 
 ml_gen_closure(PredId, ProcId, EvalMethod, Var, ArgVars, ArgModes,
 		HowToConstruct, Context, Decls, Statements, !Info) :-

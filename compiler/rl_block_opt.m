@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2000, 2003-2004 The University of Melbourne.
+% Copyright (C) 1998-2000, 2003-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -26,7 +26,9 @@
 :- interface.
 
 :- import_module aditi_backend__rl_block.
-:- import_module io, list.
+
+:- import_module io.
+:- import_module list.
 
 :- pred rl_block_opt(list(opt_flag)::in, rl_opt_info::in, rl_opt_info::out,
 		io__state::di, io__state::uo) is det.
@@ -50,8 +52,16 @@
 :- import_module parse_tree__prog_data.
 :- import_module transform_hlds__inlining.
 
-:- import_module assoc_list, bool, int, map, multi_map.
-:- import_module relation, require, set, std_util, string.
+:- import_module assoc_list.
+:- import_module bool.
+:- import_module int.
+:- import_module map.
+:- import_module multi_map.
+:- import_module relation.
+:- import_module require.
+:- import_module set.
+:- import_module std_util.
+:- import_module string.
 
 rl_block_opt(Flags, Info0, Info, IO0, IO) :-
 	rl_block_opt_2(Flags, IO0, IO, Info0, Info).

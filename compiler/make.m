@@ -29,7 +29,8 @@
 :- import_module parse_tree__modules.
 :- import_module parse_tree__prog_io.
 
-:- import_module io, list.
+:- import_module io.
+:- import_module list.
 
 	% make__process_args(OptionArgs, NonOptionArgs).
 :- pred make__process_args(options_variables::in, list(string)::in,
@@ -43,6 +44,7 @@
 :- type make_info.
 
 %-----------------------------------------------------------------------------%
+
 :- implementation.
 
 :- include_module make__dependencies.
@@ -77,26 +79,42 @@
 :- import_module parse_tree__prog_out.
 :- import_module top_level__mercury_compile. % XXX unwanted dependency
 
-:- import_module assoc_list, bool, char, dir, exception, getopt_io, int, list.
-:- import_module map, parser, require, set, std_util, string, term, term_io.
+:- import_module assoc_list.
+:- import_module bool.
+:- import_module char.
+:- import_module dir.
+:- import_module exception.
+:- import_module getopt_io.
+:- import_module int.
+:- import_module list.
+:- import_module map.
+:- import_module parser.
+:- import_module require.
+:- import_module set.
+:- import_module std_util.
+:- import_module string.
+:- import_module term.
+:- import_module term_io.
 
-:- type make_info
-	---> make_info(
+:- type make_info --->
+	make_info(
 			% The items field of each module_imports
 			% structure should be empty -- we're not
 			% trying to cache the items here.
-		module_dependencies :: map(module_name, maybe(module_imports)),
+		module_dependencies		:: map(module_name,
+							maybe(module_imports)),
 
-		file_timestamps :: file_timestamps,
+		file_timestamps			:: file_timestamps,
 
 			% The original set of options passed to mmc,
 			% not including the targets to be made.
-		option_args :: list(string),
+		option_args			:: list(string),
 
 			% The contents of the Mercury.options file.
-		options_variables :: options_variables,
+		options_variables		:: options_variables,
 
-		dependency_status :: map(dependency_file, dependency_status),
+		dependency_status		:: map(dependency_file,
+							dependency_status),
 
 			% For each module, the set of modules for
 			% which the `.int' files are read, excluding
@@ -104,29 +122,30 @@
 			% The bool records whether there was an error
 			% in the dependencies.
 			% XXX Use a better representation for the sets.
-		cached_direct_imports :: cached_direct_imports,
+		cached_direct_imports		:: cached_direct_imports,
 
 			% The boolean is `yes' if the result is complete.
 			% XXX Use a better representation for the sets.
-		cached_transitive_dependencies ::
-				cached_transitive_dependencies,
+		cached_transitive_dependencies	::
+					cached_transitive_dependencies,
 
 			% Should the `.module_dep' files be rebuilt.
 			% Set to `no' for `mmc --make clean'.
-		rebuild_dependencies :: bool,
+		rebuild_dependencies		:: bool,
 
-		keep_going :: bool,
+		keep_going			:: bool,
 
 			% Modules for which we have redirected output
 			% to a `.err' file during this invocation of mmc.
-		error_file_modules :: set(module_name),
+		error_file_modules		:: set(module_name),
 
 			% Used for reporting which module imported
 			% a nonexistent module.
-		importing_module :: maybe(module_name),
+		importing_module		:: maybe(module_name),
 
 			% Targets specified on the command line.
-		command_line_targets :: set(pair(module_name, target_type))
+		command_line_targets		:: set(pair(module_name,
+							target_type))
 
 	).
 

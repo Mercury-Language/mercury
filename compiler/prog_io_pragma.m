@@ -19,7 +19,9 @@
 :- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_io_util.
 
-:- import_module list, varset, term.
+:- import_module list.
+:- import_module term.
+:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 
@@ -38,7 +40,13 @@
 :- import_module parse_tree__prog_io_goal.
 :- import_module parse_tree__prog_util.
 
-:- import_module int, map, string, std_util, bool, require, set.
+:- import_module bool.
+:- import_module int.
+:- import_module map.
+:- import_module require.
+:- import_module set.
+:- import_module std_util.
+:- import_module string.
 
 %-----------------------------------------------------------------------------%
 

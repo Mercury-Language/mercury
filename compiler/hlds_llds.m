@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2004 The University of Melbourne.
+% Copyright (C) 2002-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -16,7 +16,10 @@
 :- import_module hlds__hlds_goal.
 :- import_module parse_tree__prog_data.
 
-:- import_module bool, map, set, std_util.
+:- import_module bool.
+:- import_module map.
+:- import_module set.
+:- import_module std_util.
 
 %
 % The following types are annotations on the HLDS
@@ -270,7 +273,10 @@
 
 :- import_module hlds__goal_util.
 
-:- import_module string, list, assoc_list, require.
+:- import_module assoc_list.
+:- import_module list.
+:- import_module require.
+:- import_module string.
 
 	% For the meaning of this type, see the documentation of the
 	% maybe_need field of llds_code_gen_details below.

@@ -22,7 +22,9 @@
 :- import_module mdbcomp__prim_data.
 :- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_io_util.
-:- import_module varset, term.
+
+:- import_module term.
+:- import_module varset.
 
 :- pred parse_dcg_clause(module_name::in, varset::in, term::in, term::in,
 	prog_context::in, maybe_item_and_context::out) is det.
@@ -43,7 +45,12 @@
 :- import_module parse_tree__prog_util.
 :- import_module parse_tree__prog_out.
 
-:- import_module int, map, string, std_util, list, counter.
+:- import_module counter.
+:- import_module int.
+:- import_module list.
+:- import_module map.
+:- import_module std_util.
+:- import_module string.
 
 %-----------------------------------------------------------------------------%
 

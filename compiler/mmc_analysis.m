@@ -37,7 +37,9 @@
 :- import_module parse_tree__prog_util.
 :- import_module transform_hlds__unused_args.
 
-:- import_module bool, std_util, string.
+:- import_module bool.
+:- import_module std_util.
+:- import_module string.
 
 :- instance compiler(mmc) where [
 	compiler_name(mmc) = "mmc",

@@ -37,7 +37,11 @@
 :- import_module mdbcomp__prim_data.
 :- import_module parse_tree__prog_data.
 
-:- import_module list, io, bool, std_util, term.
+:- import_module bool.
+:- import_module io.
+:- import_module list.
+:- import_module std_util.
+:- import_module term.
 
 	% post_typecheck__finish_preds(PredIds, ReportTypeErrors,
 	%	NumErrors, FoundTypeError, Module0, Module)
@@ -137,8 +141,14 @@
 :- import_module parse_tree__prog_util.
 :- import_module parse_tree__prog_type.
 
-:- import_module map, set, assoc_list, term, require, int.
-:- import_module string, varset.
+:- import_module assoc_list.
+:- import_module int.
+:- import_module map.
+:- import_module require.
+:- import_module set.
+:- import_module string.
+:- import_module term.
+:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 

@@ -44,7 +44,8 @@
 :- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_io.
 
-:- import_module io, bool.
+:- import_module bool.
+:- import_module io.
 
 :- pred intermod__write_optfile(module_info::in, module_info::out,
 	io::di, io::uo) is det.
@@ -109,10 +110,19 @@
 :- import_module parse_tree__prog_util.
 :- import_module transform_hlds__inlining.
 
-:- import_module int, string, list, assoc_list.
-:- import_module map, multi_map, set.
-:- import_module dir, getopt_io, require.
-:- import_module std_util, term, varset.
+:- import_module assoc_list.
+:- import_module dir.
+:- import_module getopt_io.
+:- import_module int.
+:- import_module list.
+:- import_module map.
+:- import_module multi_map.
+:- import_module require.
+:- import_module set.
+:- import_module std_util.
+:- import_module string.
+:- import_module term.
+:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 

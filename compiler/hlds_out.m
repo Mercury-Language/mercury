@@ -45,7 +45,10 @@
 % mdbcomp modules.
 :- import_module mdbcomp__prim_data.
 
-:- import_module io, bool, list, term.
+:- import_module bool.
+:- import_module io.
+:- import_module list.
+:- import_module term.
 
 %-----------------------------------------------------------------------------%
 
@@ -279,8 +282,17 @@
 :- import_module libs__options.
 
 % Standard library modules
-:- import_module int, string, set, assoc_list, map, multi_map.
-:- import_module require, getopt_io, std_util, term_io, varset.
+:- import_module assoc_list.
+:- import_module getopt_io.
+:- import_module int.
+:- import_module map.
+:- import_module multi_map.
+:- import_module require.
+:- import_module set.
+:- import_module std_util.
+:- import_module string.
+:- import_module term_io.
+:- import_module varset.
 
 hlds_out__write_type_ctor(Name - Arity, !IO) :-
 	prog_out__write_sym_name_and_arity(Name / Arity, !IO).

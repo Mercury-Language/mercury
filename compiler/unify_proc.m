@@ -55,7 +55,10 @@
 :- import_module mdbcomp__prim_data.
 :- import_module parse_tree__prog_data.
 
-:- import_module bool, std_util, io, list.
+:- import_module bool.
+:- import_module io.
+:- import_module list.
+:- import_module std_util.
 
 :- type proc_requests.
 
@@ -160,9 +163,15 @@
 :- import_module parse_tree__prog_type.
 :- import_module recompilation.
 
+:- import_module assoc_list.
+:- import_module int.
+:- import_module map.
+:- import_module queue.
+:- import_module require.
+:- import_module set.
+:- import_module string.
 :- import_module term.
 :- import_module varset.
-:- import_module map, set, queue, int, string, require, assoc_list.
 
 	% We keep track of all the complicated unification procs we need
 	% by storing them in the proc_requests structure.

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001, 2003 The University of Melbourne.
+% Copyright (C) 2001, 2003, 2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -32,7 +32,10 @@
 
 :- import_module ll_backend__opt_util.
 
-:- import_module bool, int, std_util, require.
+:- import_module bool.
+:- import_module int.
+:- import_module require.
+:- import_module std_util.
 
 wrap_blocks(Instrs0, Instrs) :-
 	wrap_instrs(Instrs0, 0, 0, [], Instrs).

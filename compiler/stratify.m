@@ -61,9 +61,15 @@
 :- import_module parse_tree__prog_type.
 :- import_module transform_hlds__dependency_graph.
 
-:- import_module assoc_list, map, list, set, bool, std_util, relation, require.
+:- import_module assoc_list.
+:- import_module bool.
+:- import_module list.
+:- import_module map.
+:- import_module relation.
+:- import_module require.
+:- import_module set.
+:- import_module std_util.
 :- import_module string.
-
 
 stratify__check_stratification(!ModuleInfo, !IO) :-
 	module_info_ensure_dependency_info(!ModuleInfo),

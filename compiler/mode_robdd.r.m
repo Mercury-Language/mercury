@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 2001-2004 The University of Melbourne.
+% Copyright (C) 2001-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -15,7 +15,8 @@
 
 :- interface.
 
-:- import_module term, robdd.
+:- import_module robdd.
+:- import_module term.
 
 :- type r(T).
 :- type r == r(generic).
@@ -123,7 +124,8 @@
 
 :- implementation.
 
-:- import_module robdd, sparse_bitset.
+:- import_module robdd.
+:- import_module sparse_bitset.
 
 % T - true vars, F - False Vars, E - equivalent vars, N -
 % non-equivalent vars, R - ROBDD.

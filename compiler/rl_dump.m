@@ -33,8 +33,15 @@
 :- import_module parse_tree__mercury_to_mercury.
 :- import_module parse_tree__prog_data.
 
-:- import_module bool, list, map, require, set, std_util.
-:- import_module term, term_io, varset.
+:- import_module bool.
+:- import_module list.
+:- import_module map.
+:- import_module require.
+:- import_module set.
+:- import_module std_util.
+:- import_module term.
+:- import_module term_io.
+:- import_module varset.
 
 rl_dump__write_procedure(ModuleInfo, Proc) -->
 	{ Proc = rl_proc(Name, Inputs, Outputs, MemoedRels,

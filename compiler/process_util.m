@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2004 University of Melbourne.
+% Copyright (C) 2002-2005 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -13,7 +13,8 @@
 
 :- interface.
 
-:- import_module bool, io.
+:- import_module bool.
+:- import_module io.
 
 %-----------------------------------------------------------------------------%
 
@@ -79,7 +80,8 @@
 :- import_module libs__globals.
 :- import_module libs__options.
 
-:- import_module std_util, require.
+:- import_module require.
+:- import_module std_util.
 
 build_with_check_for_interrupt(Build, Cleanup, Succeeded, !Info, !IO) :-
 	setup_signal_handlers(MaybeSigIntHandler, !IO),

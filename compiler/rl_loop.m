@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998, 2003-2004 The University of Melbourne.
+% Copyright (C) 1998, 2003-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -28,8 +28,17 @@
 
 :- import_module aditi_backend__rl.
 
-:- import_module assoc_list, bool, int, list, map, queue, relation.
-:- import_module string, require, set, std_util.
+:- import_module assoc_list.
+:- import_module bool.
+:- import_module int.
+:- import_module list.
+:- import_module map.
+:- import_module queue.
+:- import_module relation.
+:- import_module require.
+:- import_module set.
+:- import_module std_util.
+:- import_module string.
 
 rl_loop__shift_invariants -->
 	rl_opt_info_get_loops(Loops0),

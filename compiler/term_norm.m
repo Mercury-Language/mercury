@@ -20,7 +20,8 @@
 :- import_module libs__globals.
 :- import_module parse_tree__prog_data.
 
-:- import_module int, list.
+:- import_module int.
+:- import_module list.
 
 %-----------------------------------------------------------------------------%
 
@@ -60,7 +61,11 @@
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_type.
 
-:- import_module assoc_list, bool, map, require, std_util.
+:- import_module assoc_list.
+:- import_module bool.
+:- import_module map.
+:- import_module require.
+:- import_module std_util.
 
 %-----------------------------------------------------------------------------%
 

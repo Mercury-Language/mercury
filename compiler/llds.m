@@ -28,7 +28,14 @@
 :- import_module mdbcomp__prim_data.
 :- import_module parse_tree__prog_data.
 
-:- import_module bool, list, assoc_list, map, set, std_util, counter, term.
+:- import_module bool.
+:- import_module list.
+:- import_module assoc_list.
+:- import_module map.
+:- import_module set.
+:- import_module std_util.
+:- import_module counter.
+:- import_module term.
 
 %-----------------------------------------------------------------------------%
 

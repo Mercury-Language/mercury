@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2001, 2003-2004 The University of Melbourne.
+% Copyright (C) 2000-2001, 2003-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -36,7 +36,8 @@
 
 :- import_module ml_backend__ilasm.
 
-:- import_module bool, list.
+:- import_module bool.
+:- import_module list.
 
 	% il_peephole__optimize(VerifyOnly, IL0, IL)
 	% Peephole optimize a list of instructions, possibly only doing
@@ -51,7 +52,13 @@
 
 :- import_module ml_backend__ilds.
 
-:- import_module assoc_list, bool, map, string, std_util, int, require.
+:- import_module assoc_list.
+:- import_module bool.
+:- import_module int.
+:- import_module map.
+:- import_module require.
+:- import_module std_util.
+:- import_module string.
 
 	% We zip down to the end of the instruction list, and start attempting
 	% to optimize instruction sequences. As long as we can continue
@@ -66,7 +73,9 @@ optimize(VerifyOnly, Decls0, Decls) :-
 	% result of the optimization (that is, whether Decl \= Decl0).
 	% This can be used to decide whether to keep repeat the
 	% optimizations.
-:- pred optimize_decl(bool::in, decl::in, decl::out, bool::in, bool::out) is det.
+:- pred optimize_decl(bool::in, decl::in, decl::out, bool::in, bool::out)
+	is det.
+
 optimize_decl(VerifyOnly, Decl0, Decl, Mod0, Mod) :-
 	( Decl0 = class(A, B, C, D, ClassMembers0) ->
 		list__map_foldl(optimize_class_member(VerifyOnly),

@@ -84,7 +84,10 @@
 :- import_module mdbcomp__prim_data.
 :- import_module parse_tree__prog_data.
 
-:- import_module bool, io, list, map.
+:- import_module bool.
+:- import_module io.
+:- import_module list.
+:- import_module map.
 
 	% typecheck(Module0, Module, FoundError,
 	%		ExceededIterationLimit, IO0, IO)
@@ -152,9 +155,17 @@
 :- import_module parse_tree__prog_util.
 :- import_module parse_tree__prog_type.
 
+:- import_module assoc_list.
 :- import_module getopt_io.
-:- import_module int, set, string, require, multi_map.
-:- import_module assoc_list, std_util, term, varset, term_io.
+:- import_module int.
+:- import_module multi_map.
+:- import_module require.
+:- import_module set.
+:- import_module std_util.
+:- import_module string.
+:- import_module term.
+:- import_module term_io.
+:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 

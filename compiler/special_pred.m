@@ -22,7 +22,9 @@
 :- import_module mdbcomp__prim_data.
 :- import_module parse_tree__prog_data.
 
-:- import_module list, map, std_util.
+:- import_module list.
+:- import_module map.
+:- import_module std_util.
 
 :- type special_pred_map	==	map(special_pred, pred_id).
 
@@ -110,7 +112,9 @@
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_util.
 
-:- import_module bool, require, string.
+:- import_module bool.
+:- import_module require.
+:- import_module string.
 
 special_pred_list([unify, index, compare]).
 

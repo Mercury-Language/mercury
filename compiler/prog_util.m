@@ -16,7 +16,10 @@
 :- import_module mdbcomp__prim_data.
 :- import_module parse_tree__prog_data.
 
-:- import_module std_util, list, varset, term.
+:- import_module list.
+:- import_module std_util.
+:- import_module term.
+:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 
@@ -287,7 +290,12 @@
 :- import_module parse_tree__prog_io.
 :- import_module parse_tree__prog_out.
 
-:- import_module bool, require, string, int, map, varset.
+:- import_module bool.
+:- import_module int.
+:- import_module map.
+:- import_module require.
+:- import_module string.
+:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

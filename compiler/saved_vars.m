@@ -49,17 +49,21 @@
 :- import_module hlds__quantification.
 :- import_module parse_tree__prog_data.
 
-:- import_module term, varset.
-:- import_module bool, list, set, map, std_util, require.
+:- import_module bool.
+:- import_module list.
+:- import_module map.
+:- import_module require.
+:- import_module set.
+:- import_module std_util.
+:- import_module term.
+:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 
-saved_vars_proc(PredId, ProcId, ProcInfo0, ProcInfo,
-		ModuleInfo0, ModuleInfo) -->
+saved_vars_proc(PredId, ProcId, ProcInfo0, ProcInfo, !ModuleInfo, !IO) :-
 	write_proc_progress_message("% Minimizing saved vars in ",
-		PredId, ProcId, ModuleInfo0),
-	{ saved_vars_proc_no_io(ProcInfo0, ProcInfo,
-		ModuleInfo0, ModuleInfo) }.
+		PredId, ProcId, !.ModuleInfo, !IO),
+	saved_vars_proc_no_io(ProcInfo0, ProcInfo, !ModuleInfo).
 
 saved_vars_proc_no_io(!ProcInfo, !ModuleInfo) :-
 	proc_info_goal(!.ProcInfo, Goal0),

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 2000,2002-2003 The University of Melbourne.
+% Copyright (C) 2000,2002-2003, 2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -59,7 +59,10 @@
 :- import_module backend_libs__pseudo_type_info.
 :- import_module backend_libs__rtti.
 
-:- import_module std_util, list, bool, int.
+:- import_module bool.
+:- import_module int.
+:- import_module list.
+:- import_module std_util.
 
 ll_pseudo_type_info__construct_llds_pseudo_type_info(Type, NumUnivQTvars,
 		ExistQTvars, !StaticCellInfo, Pseudo) :-

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2004 The University of Melbourne.
+% Copyright (C) 2001-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -24,7 +24,13 @@
 :- import_module hlds__hlds_pred.
 :- import_module mode_robdd.
 
-:- import_module stack, set, map, bool, robdd, term, io.
+:- import_module bool.
+:- import_module io.
+:- import_module map.
+:- import_module robdd.
+:- import_module set.
+:- import_module stack.
+:- import_module term.
 
 :- type mc_type.
 
@@ -135,8 +141,20 @@
 :- import_module mode_robdd__tfeirn.
 % :- import_module mode_robdd__check.
 
-:- import_module std_util, bool, list, term, varset, map, require, term_io.
-:- import_module bimap, assoc_list, string, stack, sparse_bitset, robdd.
+:- import_module assoc_list.
+:- import_module bimap.
+:- import_module bool.
+:- import_module list.
+:- import_module map.
+:- import_module require.
+:- import_module robdd.
+:- import_module sparse_bitset.
+:- import_module stack.
+:- import_module std_util.
+:- import_module string.
+:- import_module term.
+:- import_module term_io.
+:- import_module varset.
 
 :- type mc_type ---> mc_type.
 

@@ -88,7 +88,10 @@
 :- import_module hlds__hlds_pred.
 :- import_module parse_tree__prog_data.
 
-:- import_module bool, io, list, map.
+:- import_module bool.
+:- import_module io.
+:- import_module list.
+:- import_module map.
 
 :- pred inlining(module_info::in, module_info::out, io::di, io::uo) is det.
 
@@ -164,8 +167,15 @@
 :- import_module mdbcomp__prim_data.
 
 % Standard library modules
-:- import_module bool, int, list, assoc_list, set, std_util, require.
-:- import_module term, varset.
+:- import_module assoc_list.
+:- import_module bool.
+:- import_module int.
+:- import_module list.
+:- import_module require.
+:- import_module set.
+:- import_module std_util.
+:- import_module term.
+:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 

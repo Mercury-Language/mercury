@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2004 The University of Melbourne.
+% Copyright (C) 2001-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -16,7 +16,9 @@
 :- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_io_util.
 
-:- import_module io, std_util, term.
+:- import_module io.
+:- import_module std_util.
+:- import_module term.
 
 	% recompilation__version__compute_version_numbers(SourceFileModTime,
 	%	NewItems, MaybeOldItems, VersionNumbers).
@@ -44,7 +46,13 @@
 :- import_module parse_tree__prog_io.
 :- import_module parse_tree__prog_util.
 
-:- import_module assoc_list, bool, list, map, require, string, varset.
+:- import_module assoc_list.
+:- import_module bool.
+:- import_module list.
+:- import_module map.
+:- import_module require.
+:- import_module string.
+:- import_module varset.
 
 recompilation__version__compute_version_numbers(SourceFileTime, Items,
 		MaybeOldItems,

@@ -27,7 +27,8 @@
 :- import_module aditi_backend__rl_file.
 :- import_module ml_backend__mlds.
 
-:- import_module io, std_util.
+:- import_module io.
+:- import_module std_util.
 
 	% output_mlds(MLDS, MaybeRLFile, Suffix):
 	%	Output C code the the appropriate C file and
@@ -88,8 +89,16 @@
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_type.
 
-:- import_module bool, int, string, library, list, map.
-:- import_module assoc_list, term, std_util, require.
+:- import_module assoc_list.
+:- import_module bool.
+:- import_module int.
+:- import_module library.
+:- import_module list.
+:- import_module map.
+:- import_module require.
+:- import_module std_util.
+:- import_module string.
+:- import_module term.
 
 %-----------------------------------------------------------------------------%
 

@@ -27,7 +27,12 @@
 :- import_module ll_backend__llds.
 :- import_module libs__options.
 
-:- import_module bool, list, assoc_list, map, set, std_util.
+:- import_module assoc_list.
+:- import_module bool.
+:- import_module list.
+:- import_module map.
+:- import_module set.
+:- import_module std_util.
 
 :- type var_locn_info.
 
@@ -333,7 +338,13 @@
 :- import_module ll_backend__exprn_aux.
 :- import_module parse_tree__error_util.
 
-:- import_module int, string, bag, require, getopt_io, varset, term.
+:- import_module bag.
+:- import_module getopt_io.
+:- import_module int.
+:- import_module require.
+:- import_module string.
+:- import_module term.
+:- import_module varset.
 
 :- type dead_or_alive	--->	dead ; alive.
 

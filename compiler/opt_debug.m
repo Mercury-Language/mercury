@@ -22,7 +22,11 @@
 :- import_module ll_backend__llds.
 :- import_module mdbcomp__prim_data.
 
-:- import_module io, bool, list, assoc_list, std_util.
+:- import_module assoc_list.
+:- import_module bool.
+:- import_module io.
+:- import_module list.
+:- import_module std_util.
 
 :- pred msg(bool::in, int::in, string::in, io::di, io::uo) is det.
 
@@ -112,7 +116,10 @@
 :- import_module parse_tree__prog_foreign.
 :- import_module parse_tree__prog_out.
 
-:- import_module int, set, map, string.
+:- import_module int.
+:- import_module map.
+:- import_module set.
+:- import_module string.
 
 msg(OptDebug, LabelNo, Msg, !IO) :-
 	(

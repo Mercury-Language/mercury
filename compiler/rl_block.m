@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2000, 2003-2004 The University of Melbourne.
+% Copyright (C) 1998-2000, 2003-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -19,7 +19,14 @@
 :- import_module hlds__hlds_pred.
 :- import_module parse_tree__prog_data.
 
-:- import_module bool, io, int, list, map, relation, set, std_util.
+:- import_module bool.
+:- import_module int.
+:- import_module io.
+:- import_module list.
+:- import_module map.
+:- import_module relation.
+:- import_module set.
+:- import_module std_util.
 
 :- pred rl_block__create_flow_graph(bool::in, module_info::in,
 		rl_proc::in, rl_opt_info::out,
@@ -43,7 +50,9 @@
 :- import_module aditi_backend__rl_dump.
 :- import_module hlds__hlds_module.
 
-:- import_module queue, require, string.
+:- import_module queue.
+:- import_module require.
+:- import_module string.
 
 rl_block__create_flow_graph(Debug, ModuleInfo, Proc, Info) -->
 	{ rl_block__build_maps(ModuleInfo, Proc, Info1) },

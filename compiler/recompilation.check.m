@@ -16,7 +16,8 @@
 :- import_module parse_tree__modules.
 :- import_module parse_tree__prog_io.
 
-:- import_module list, io.
+:- import_module io.
+:- import_module list.
 
 :- type modules_to_recompile
 	--->	(all)
@@ -67,8 +68,19 @@
 :- import_module recompilation__usage.
 :- import_module recompilation__version.
 
-:- import_module assoc_list, bool, exception, int, map, parser, require.
-:- import_module svmap, set, std_util, string, term, term_io.
+:- import_module assoc_list.
+:- import_module bool.
+:- import_module exception.
+:- import_module int.
+:- import_module map.
+:- import_module parser.
+:- import_module require.
+:- import_module set.
+:- import_module std_util.
+:- import_module string.
+:- import_module svmap.
+:- import_module term.
+:- import_module term_io.
 
 recompilation__check__should_recompile(ModuleName, FindTargetFiles,
 		FindTimestampFiles, Info ^ modules_to_recompile,

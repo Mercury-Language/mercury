@@ -52,7 +52,11 @@
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 
-:- import_module bool, list, map, std_util, string.
+:- import_module bool.
+:- import_module list.
+:- import_module map.
+:- import_module std_util.
+:- import_module string.
 
 %----------------------------------------------------------------------------%
 

@@ -20,8 +20,13 @@
 :- import_module parse_tree__prog_data.
 :- import_module transform_hlds__pd_term.
 
-:- import_module bool, map, list, io, set, std_util.
+:- import_module bool.
 :- import_module counter.
+:- import_module io.
+:- import_module list.
+:- import_module map.
+:- import_module set.
+:- import_module std_util.
 
 :- type pd_info --->
 	pd_info(
@@ -112,8 +117,12 @@
 :- import_module transform_hlds__pd_debug.
 :- import_module transform_hlds__pd_util.
 
+:- import_module assoc_list.
+:- import_module bool.
+:- import_module int.
+:- import_module require.
+:- import_module string.
 :- import_module term.
-:- import_module assoc_list, bool, int, require, string.
 
 pd_info_init(ModuleInfo, ProcArgInfos, PDInfo) :-
 	map__init(GoalVersionIndex),

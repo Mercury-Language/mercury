@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1998,2002-2004 The University of Melbourne.
+% Copyright (C) 1994-1998,2002-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -17,7 +17,8 @@
 :- import_module ll_backend__llds.
 :- import_module libs__globals.
 
-:- import_module bool, list.
+:- import_module bool.
+:- import_module list.
 
 	% Peephole optimize a list of instructions.
 
@@ -31,7 +32,10 @@
 :- import_module ll_backend__opt_debug.
 :- import_module ll_backend__opt_util.
 
-:- import_module int, map, string, std_util.
+:- import_module int.
+:- import_module map.
+:- import_module std_util.
+:- import_module string.
 
 	% Patterns that can be switched off.
 

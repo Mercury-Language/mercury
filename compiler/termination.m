@@ -93,10 +93,20 @@
 :- import_module transform_hlds__term_pass2.
 :- import_module transform_hlds__term_util.
 
-:- import_module bool, std_util, list.
-:- import_module map, int, char, string, relation.
-:- import_module require, bag, set, term.
-:- import_module varset, svmap.
+:- import_module bag.
+:- import_module bool.
+:- import_module char.
+:- import_module int.
+:- import_module list.
+:- import_module map.
+:- import_module relation.
+:- import_module require.
+:- import_module set.
+:- import_module std_util.
+:- import_module string.
+:- import_module svmap.
+:- import_module term.
+:- import_module varset.
 
 %----------------------------------------------------------------------------%
 

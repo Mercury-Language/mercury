@@ -22,7 +22,9 @@
 :- import_module mdbcomp__prim_data.
 :- import_module parse_tree__prog_data.
 
-:- import_module bool, list, io.
+:- import_module bool.
+:- import_module io.
+:- import_module list.
 
 :- pred maybe_report_stats(bool::in, io::di, io::uo) is det.
 :- pred maybe_write_string(bool::in, string::in, io::di, io::uo) is det.
@@ -107,10 +109,15 @@
 
 :- implementation.
 
-:- import_module term, varset, term_io.
-:- import_module require, string, std_util, term, term_io, varset, int.
-
 :- import_module mdbcomp__prim_data.
+
+:- import_module int.
+:- import_module require.
+:- import_module std_util.
+:- import_module string.
+:- import_module term.
+:- import_module term_io.
+:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

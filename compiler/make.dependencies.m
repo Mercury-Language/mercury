@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2004 The University of Melbourne.
+% Copyright (C) 2002-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -50,8 +50,8 @@
 	% Find all modules in the current directory which are
 	% reachable (by import) from the given module.
 :- pred find_reachable_local_modules(module_name::in, bool::out,
-		set(module_name)::out, make_info::in, make_info::out,
-		io::di, io::uo) is det.
+	set(module_name)::out, make_info::in, make_info::out,
+	io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -63,8 +63,7 @@
 :- type dependencies_result
 	--->	up_to_date
 	;	out_of_date
-	;	error
-	.
+	;	error.
 
 	% check_dependencies(TargetFileName, TargetFileTimestamp,
 	%	BuildDepsSucceeded, Dependencies, Result)

@@ -23,7 +23,14 @@
 :- import_module mdbcomp__prim_data.
 :- import_module recompilation.
 
-:- import_module bool, list, assoc_list, map, set, varset, term, std_util.
+:- import_module assoc_list.
+:- import_module bool.
+:- import_module list.
+:- import_module map.
+:- import_module set.
+:- import_module std_util.
+:- import_module term.
+:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 

@@ -26,7 +26,8 @@
 :- import_module ll_backend__llds_out.
 :- import_module mdbcomp__prim_data.
 
-:- import_module bool, io.
+:- import_module bool.
+:- import_module io.
 
 	% Given a Mercury representation of a layout structure, output its
 	% definition in the appropriate C global variable.
@@ -99,7 +100,13 @@
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__mercury_to_mercury.
 
-:- import_module int, char, string, require, std_util, list, varset.
+:- import_module char.
+:- import_module int.
+:- import_module list.
+:- import_module require.
+:- import_module std_util.
+:- import_module string.
+:- import_module varset.
 
 output_layout_data_defn(label_layout_data(ProcLabel, LabelNum, ProcLayoutAddr,
 		MaybePort, MaybeIsHidden, LabelNumber, MaybeGoalPath,

@@ -20,7 +20,13 @@
 :- import_module mdbcomp__prim_data.
 :- import_module parse_tree__prog_data.
 
-:- import_module bool, io, list, map, set, std_util, term.
+:- import_module bool.
+:- import_module io.
+:- import_module list.
+:- import_module map.
+:- import_module set.
+:- import_module std_util.
+:- import_module term.
 
 	% Check that the argument types and modes are legal for
 	% an Aditi relation.
@@ -136,7 +142,12 @@
 :- import_module parse_tree__prog_util.
 :- import_module parse_tree__prog_type.
 
-:- import_module assoc_list, int, require, string, term, varset.
+:- import_module assoc_list.
+:- import_module int.
+:- import_module require.
+:- import_module string.
+:- import_module term.
+:- import_module varset.
 
 magic_util__db_call_nonlocals(
 		db_call(MaybeClosures, Call, _, _, _, _, MaybeNegGoals),

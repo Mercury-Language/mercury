@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 2001-2004 The University of Melbourne.
+% Copyright (C) 2001-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -13,7 +13,9 @@
 
 :- interface.
 
-:- import_module robdd, bool, term.
+:- import_module bool.
+:- import_module robdd.
+:- import_module term.
 
 :- func init_imp_vars = imp_vars(T).
 
@@ -60,7 +62,14 @@
 :- implementation.
 
 :- import_module mode_robdd__equiv_vars.
-:- import_module map, require, assoc_list, std_util, term, list, sparse_bitset.
+
+:- import_module assoc_list.
+:- import_module list.
+:- import_module map.
+:- import_module require.
+:- import_module sparse_bitset.
+:- import_module std_util.
+:- import_module term.
 
 % Uncomment these for debugging.
 % :- import_module unsafe, io.

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2004 The University of Melbourne.
+% Copyright (C) 1994-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -109,7 +109,13 @@
 :- import_module ml_backend__ml_tag_switch.
 :- import_module ml_backend__ml_unify_gen.
 
-:- import_module bool, int, string, map, libs__tree, std_util, require.
+:- import_module bool.
+:- import_module int.
+:- import_module libs__tree.
+:- import_module map.
+:- import_module require.
+:- import_module std_util.
+:- import_module string.
 
 %-----------------------------------------------------------------------------%
 

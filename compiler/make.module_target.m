@@ -27,8 +27,7 @@
 	% in building the target are recomputed next time they are needed.
 	% Exported for use by make__module_dep_file__write_module_dep_file.
 :- pred record_made_target(target_file::in, compilation_task_type::in,
-	bool::in, make_info::in, make_info::out,
-	io::di, io::uo) is det.
+	bool::in, make_info::in, make_info::out, io::di, io::uo) is det.
 
 :- type foreign_code_file
 	--->	foreign_code_file(
@@ -49,6 +48,7 @@
 	list(foreign_code_file)::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module hlds__passes_aux.
@@ -57,8 +57,8 @@
 	make_info::in, make_info::out, io::di, io::uo) is det.
 
 make_module_target(TargetFile, Succeeded1, Succeeded1 `and` Succeeded2,
-		Info0, Info) -->
-	make_module_target(TargetFile, Succeeded2, Info0, Info).
+		!Info, !IO) :-
+	make_module_target(TargetFile, Succeeded2, !Info, !IO).
 
 make_module_target(file(_, _) @ Dep, Succeeded, Info0, Info) -->
     dependency_status(Dep, Status, Info0, Info),

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2001, 2003-2004 The University of Melbourne.
+% Copyright (C) 1998-2001, 2003-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -42,7 +42,8 @@
 :- import_module hlds__instmap.
 :- import_module transform_hlds__pd_info.
 
-:- import_module list, std_util.
+:- import_module list.
+:- import_module std_util.
 
 	% pd_term__global_check(Module, CallGoal1, BetweenGoals, CallGoal2,
 	% 	InstMap, Versions, Info0, Info, Result)
@@ -96,7 +97,12 @@
 :- import_module parse_tree__prog_data.
 :- import_module transform_hlds__pd_util.
 
-:- import_module assoc_list, bool, int, map, require, set.
+:- import_module assoc_list.
+:- import_module bool.
+:- import_module int.
+:- import_module map.
+:- import_module require.
+:- import_module set.
 
 :- type global_term_info --->
 	global_term_info(

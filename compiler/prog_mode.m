@@ -130,7 +130,12 @@
 :- import_module mdbcomp__prim_data. 
 :- import_module parse_tree__prog_util.
 
-:- import_module map, set, require, std_util, varset, term.
+:- import_module map.
+:- import_module require.
+:- import_module set.
+:- import_module std_util.
+:- import_module term.
+:- import_module varset.
 
 in_mode(in_mode).
 out_mode(out_mode).

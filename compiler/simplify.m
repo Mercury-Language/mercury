@@ -38,7 +38,10 @@
 :- import_module hlds__instmap.
 :- import_module libs__globals.
 
-:- import_module io, bool, list, map.
+:- import_module bool.
+:- import_module io.
+:- import_module list.
+:- import_module map.
 
 :- pred simplify__pred(list(simplification)::in, pred_id::in,
 	module_info::in, module_info::out, pred_info::in, pred_info::out,
@@ -105,7 +108,13 @@
 :- import_module transform_hlds__const_prop.
 :- import_module transform_hlds__pd_cost.
 
-:- import_module int, set, require, std_util, string, varset, term.
+:- import_module int.
+:- import_module require.
+:- import_module set.
+:- import_module std_util.
+:- import_module string.
+:- import_module term.
+:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 

@@ -20,7 +20,11 @@
 :- import_module hlds__hlds_pred.
 :- import_module parse_tree__prog_data.
 
-:- import_module io, bag, std_util, list, assoc_list.
+:- import_module assoc_list.
+:- import_module bag.
+:- import_module io.
+:- import_module list.
+:- import_module std_util.
 
 :- type termination_error
 	--->	pragma_foreign_code

@@ -48,7 +48,12 @@
 :- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_io.
 
-:- import_module std_util, bool, list, map, set, io.
+:- import_module bool.
+:- import_module io.
+:- import_module list.
+:- import_module map.
+:- import_module set.
+:- import_module std_util.
 
 %-----------------------------------------------------------------------------%
 

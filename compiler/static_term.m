@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 2000,2002-2003 The University of Melbourne.
+% Copyright (C) 2000,2002-2003, 2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -33,7 +33,9 @@
 
 :- import_module backend_libs__builtin_ops.
 
-:- import_module deconstruct, list, require.
+:- import_module deconstruct.
+:- import_module list.
+:- import_module require.
 
 static_term__term_to_rval(Univ, Rval, !StaticCellInfo) :-
 	( deconstruct__get_functor_info(Univ, FunctorInfo) ->

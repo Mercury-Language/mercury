@@ -30,7 +30,11 @@
 :- import_module mdbcomp__prim_data.
 :- import_module parse_tree__prog_data.
 
-:- import_module bool, list, set, map, std_util.
+:- import_module bool.
+:- import_module list.
+:- import_module set.
+:- import_module map.
+:- import_module std_util.
 
 %-----------------------------------------------------------------------------%
 %
@@ -794,7 +798,10 @@
 :- import_module parse_tree__prog_util.	% for mercury_public_builtin_module
 :- import_module parse_tree__prog_out.
 
-:- import_module int, string, require, varset.
+:- import_module int.
+:- import_module require.
+:- import_module string.
+:- import_module varset.
 
 encode_type_ctor_flags(FlagSet) =
 		list__foldl(encode_type_ctor_flag, FlagList, 0) :-

@@ -21,7 +21,10 @@
 :- import_module libs__globals.
 :- import_module libs__options.
 
-:- import_module list, bool, getopt_io, io.
+:- import_module bool.
+:- import_module getopt_io.
+:- import_module io.
+:- import_module list.
 
 	% handle_options(Args, Errors, OptionArgs, NonOptionArgs, Link).
 :- pred handle_options(list(string)::in, list(string)::out, list(string)::out,
@@ -72,7 +75,14 @@
 :- import_module parse_tree__error_util.
 :- import_module parse_tree__prog_io_util.
 
-:- import_module char, dir, int, string, map, set, std_util, library.
+:- import_module char.
+:- import_module dir.
+:- import_module int.
+:- import_module library.
+:- import_module map.
+:- import_module set.
+:- import_module std_util.
+:- import_module string.
 
 handle_options(Args0, Errors, OptionArgs, Args, Link) -->
 	% io__write_string("original arguments\n"),

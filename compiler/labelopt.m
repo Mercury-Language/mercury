@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1999, 2003-2004 The University of Melbourne.
+% Copyright (C) 1994-1999, 2003-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -16,7 +16,9 @@
 
 :- import_module ll_backend__llds.
 
-:- import_module bool, list, set.
+:- import_module bool.
+:- import_module list.
+:- import_module set.
 
 	% Build up a set showing which labels are branched to,
 	% then traverse the instruction list removing unnecessary labels.

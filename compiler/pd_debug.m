@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2004 University of Melbourne.
+% Copyright (C) 1998-2005 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -18,7 +18,9 @@
 :- import_module parse_tree__prog_data.
 :- import_module transform_hlds__pd_info.
 
-:- import_module io, list, string.
+:- import_module io.
+:- import_module list.
+:- import_module string.
 
 :- pred pd_debug__do_io(pred(io, io)::pred(di, uo) is det,
 	io::di, io::uo) is det.
@@ -59,7 +61,9 @@
 :- import_module parse_tree__mercury_to_mercury.
 :- import_module parse_tree__prog_out.
 
-:- import_module bool, set, std_util.
+:- import_module bool.
+:- import_module set.
+:- import_module std_util.
 
 pd_debug__do_io(Pred, !IO) :-
 	globals__io_lookup_bool_option(debug_pd, DoDebug, !IO),

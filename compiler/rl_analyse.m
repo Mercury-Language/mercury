@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998,2002-2004 University of Melbourne.
+% Copyright (C) 1998,2002-2005 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -15,7 +15,11 @@
 
 :- import_module aditi_backend__rl_block.
 
-:- import_module io, list, map, set, std_util.
+:- import_module io.
+:- import_module list.
+:- import_module map.
+:- import_module set.
+:- import_module std_util.
 
 	% rl_analyse(Blocks, Direction, Init, Confluence, Update, Results,
 	% 	Globals0, Globals, IO0, IO).
@@ -110,7 +114,11 @@
 :- import_module libs__globals.
 :- import_module libs__options.
 
-:- import_module assoc_list, bool, relation, require, string.
+:- import_module assoc_list.
+:- import_module bool.
+:- import_module relation.
+:- import_module require.
+:- import_module string.
 
 rl_analyse(Blocks, Analysis, BlockDataMap0, BlockDataMap,
 		Globals0, Globals, IO0, IO) -->

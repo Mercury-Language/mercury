@@ -26,7 +26,13 @@
 :- import_module mdbcomp__prim_data.
 :- import_module parse_tree__prog_data.
 
-:- import_module map, list, set, bag, bool, assoc_list, std_util.
+:- import_module assoc_list.
+:- import_module bag.
+:- import_module bool.
+:- import_module list.
+:- import_module map.
+:- import_module set.
+:- import_module std_util.
 
 :- interface.
 
@@ -235,8 +241,14 @@
 :- import_module libs__globals.
 :- import_module libs__options.
 
-:- import_module svbag, int, string, term, varset.
-:- import_module require, std_util, queue.
+:- import_module int.
+:- import_module queue.
+:- import_module require.
+:- import_module std_util.
+:- import_module string.
+:- import_module svbag.
+:- import_module term.
+:- import_module varset.
 
 :- type mode_sub_info --->
 	mode_sub_info(

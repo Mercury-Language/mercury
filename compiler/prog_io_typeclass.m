@@ -18,7 +18,9 @@
 :- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_io_util.
 
-:- import_module list, varset, term.
+:- import_module list.
+:- import_module term.
+:- import_module varset.
 
 	% parse a typeclass declaration.
 :- pred parse_typeclass(module_name::in, varset::in, list(term)::in,
@@ -46,8 +48,14 @@
 :- import_module parse_tree__prog_util.
 :- import_module parse_tree__prog_type.
 
-:- import_module term, varset.
-:- import_module int, string, std_util, require, set, map.
+:- import_module int.
+:- import_module map.
+:- import_module require.
+:- import_module set.
+:- import_module std_util.
+:- import_module string.
+:- import_module term.
+:- import_module varset.
 
 parse_typeclass(ModuleName, VarSet, TypeClassTerm, Result) :-
 		%XXX should return an error if we get more than one arg,

@@ -27,7 +27,9 @@
 :- import_module backend_libs__rtti.
 :- import_module mdbcomp__prim_data.
 
-:- import_module io, bool, string.
+:- import_module bool.
+:- import_module io.
+:- import_module string.
 
 %-----------------------------------------------------------------------------%
 
@@ -98,7 +100,10 @@
 :- import_module parse_tree__prog_foreign.
 :- import_module parse_tree__prog_util.
 
-:- import_module char, int, list, std_util.
+:- import_module char.
+:- import_module int.
+:- import_module list.
+:- import_module std_util.
 
 %-----------------------------------------------------------------------------%
 

@@ -49,8 +49,20 @@
 :- import_module transform_hlds__inlining.
 :- import_module mdbcomp__prim_data.
 
-:- import_module assoc_list, bool, char, int, list, map, queue.
-:- import_module relation, require, set, std_util, string, term, varset.
+:- import_module assoc_list.
+:- import_module bool.
+:- import_module char.
+:- import_module int.
+:- import_module list.
+:- import_module map.
+:- import_module queue.
+:- import_module relation.
+:- import_module require.
+:- import_module set.
+:- import_module std_util.
+:- import_module string.
+:- import_module term.
+:- import_module varset.
 
 rl_gen__module(ModuleInfo0, RLProcs) -->
 	{ module_info_ensure_aditi_dependency_info(ModuleInfo0, ModuleInfo) },

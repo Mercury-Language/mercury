@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001, 2003-2004 The University of Melbourne.
+% Copyright (C) 2001, 2003-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -20,7 +20,8 @@
 :- import_module aditi_backend__rl_file.
 :- import_module ml_backend__mlds.
 
-:- import_module bool, std_util.
+:- import_module bool.
+:- import_module std_util.
 :- use_module io.
 
 :- type frontend_callback(T) == pred(T, io__state, io__state).
@@ -29,18 +30,16 @@
 	% Invoke the callback either via gcc__run_backend, or directly,
 	% depending on whether the gcc back-end interface has
 	% been enabled.
-:- pred maybe_mlds_to_gcc__run_gcc_backend(mercury_module_name,
-		frontend_callback(T), T, io__state, io__state).
-:- mode maybe_mlds_to_gcc__run_gcc_backend(in, in(frontend_callback), out,
-		di, uo) is det.
+:- pred maybe_mlds_to_gcc__run_gcc_backend(mercury_module_name::in,
+	frontend_callback(T)::in(frontend_callback), T::out,
+	io__state::di, io__state::uo) is det.
 
 	% Either invoke mlds_to_gcc__compile_to_asm, or report an error
 	% message, depending on whether the gcc back-end interface has
 	% been enabled.  In the former case,
 	% the bool returned is `yes' iff the module contained C code.
-:- pred maybe_mlds_to_gcc__compile_to_asm(mlds__mlds, maybe(rl_file), bool,
-		io__state, io__state).
-:- mode maybe_mlds_to_gcc__compile_to_asm(in, in, out, di, uo) is det.
+:- pred maybe_mlds_to_gcc__compile_to_asm(mlds__mlds::in, maybe(rl_file)::in,
+	bool::out, io__state::di, io__state::uo) is det.
 
 %-----------------------------------------------------------------------------%
 

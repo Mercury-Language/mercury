@@ -114,8 +114,18 @@
 :- import_module parse_tree__prog_type.
 :- import_module parse_tree__prog_util.
 
-:- import_module bool, counter, int, list, map, require, std_util, string.
-:- import_module svmap, svvarset, term, varset.
+:- import_module bool.
+:- import_module counter.
+:- import_module int.
+:- import_module list.
+:- import_module map.
+:- import_module require.
+:- import_module std_util.
+:- import_module string.
+:- import_module svmap.
+:- import_module svvarset.
+:- import_module term.
+:- import_module varset.
 
 	% The transform_map structure records which procedures were
 	% transformed into what procedures during the first pass.

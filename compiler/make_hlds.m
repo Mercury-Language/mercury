@@ -32,7 +32,11 @@
 :- import_module parse_tree__module_qual.
 :- import_module parse_tree__prog_data.
 
-:- import_module bool, list, io, std_util, term.
+:- import_module bool.
+:- import_module io.
+:- import_module list.
+:- import_module std_util.
+:- import_module term.
 
     % parse_tree_to_hlds(ParseTree, MQInfo, EqvMap, HLDS, QualInfo,
     %   InvalidTypes, InvalidModes):

@@ -1,6 +1,6 @@
 % vim:ts=4 sw=4 expandtab
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2004 The University of Melbourne.
+% Copyright (C) 2002-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -17,7 +17,8 @@
 
 :- import_module parse_tree__modules.
 
-:- import_module std_util, io.
+:- import_module io.
+:- import_module std_util.
 
     % Get the dependencies for a given module.
     % Dependencies are generated on demand, not by a `mmc --make depend'

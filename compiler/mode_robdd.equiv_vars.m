@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 2001-2004 The University of Melbourne.
+% Copyright (C) 2001-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -13,7 +13,10 @@
 
 :- import_module check_hlds.
 :- import_module check_hlds__mode_constraint_robdd.
-:- import_module robdd, bool, term.
+
+:- import_module bool.
+:- import_module robdd.
+:- import_module term.
 
 :- func init_equiv_vars = equiv_vars(T).
 
@@ -62,7 +65,13 @@
 
 :- implementation.
 
-:- import_module map, list, set, assoc_list, std_util, require, sparse_bitset.
+:- import_module assoc_list.
+:- import_module list.
+:- import_module map.
+:- import_module require.
+:- import_module set.
+:- import_module sparse_bitset.
+:- import_module std_util.
 
 init_equiv_vars = equiv_vars(map__init).
 

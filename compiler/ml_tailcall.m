@@ -83,7 +83,10 @@
 :- import_module parse_tree__error_util.
 :- import_module parse_tree__prog_data.
 
-:- import_module string, int, list, std_util.
+:- import_module int.
+:- import_module list.
+:- import_module std_util.
+:- import_module string.
 
 ml_mark_tailcalls(MLDS0, MLDS, !IO) :-
 	MLDS0 = mlds(ModuleName, ForeignCode, Imports, Defns0),

@@ -125,9 +125,24 @@
 :- import_module parse_tree__prog_util.
 :- import_module transform_hlds__dependency_graph.
 
-:- import_module assoc_list, bool, counter, float, int, list, map, multi_map.
-:- import_module relation, require, set, std_util, string, svmap, svset.
-:- import_module svvarset, term, varset.
+:- import_module assoc_list.
+:- import_module bool.
+:- import_module counter.
+:- import_module float.
+:- import_module int.
+:- import_module list.
+:- import_module map.
+:- import_module multi_map.
+:- import_module relation.
+:- import_module require.
+:- import_module set.
+:- import_module std_util.
+:- import_module string.
+:- import_module svmap.
+:- import_module svset.
+:- import_module svvarset.
+:- import_module term.
+:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 %

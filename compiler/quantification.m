@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2004 The University of Melbourne.
+% Copyright (C) 1994-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -37,7 +37,8 @@
 :- import_module hlds__hlds_pred.
 :- import_module parse_tree__prog_data.
 
-:- import_module list, set.
+:- import_module list.
+:- import_module set.
 
 	%
 	% When the compiler performs structure reuse, using
@@ -118,9 +119,14 @@
 :- import_module hlds__goal_util.
 :- import_module hlds__instmap.
 
-:- import_module map, term, varset.
-:- import_module std_util, bool, require.
-:- import_module enum, sparse_bitset.
+:- import_module bool.
+:- import_module enum.
+:- import_module map.
+:- import_module require.
+:- import_module sparse_bitset.
+:- import_module std_util.
+:- import_module term.
+:- import_module varset.
 
 	% The `outside vars', `lambda outside vars', and `quant vars'
 	% fields are inputs; the `nonlocals' field is output; and

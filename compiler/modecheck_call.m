@@ -29,7 +29,8 @@
 :- import_module mdbcomp__prim_data.
 :- import_module parse_tree__prog_data.
 
-:- import_module list, std_util.
+:- import_module list.
+:- import_module std_util.
 
 :- pred modecheck_call_pred(pred_id::in, maybe(determinism)::in,
 	proc_id::in, proc_id::out, list(prog_var)::in, list(prog_var)::out,
@@ -93,7 +94,13 @@
 :- import_module parse_tree__prog_mode.
 :- import_module parse_tree__prog_type.
 
-:- import_module int, map, bool, set, require, term, varset.
+:- import_module bool.
+:- import_module int.
+:- import_module map.
+:- import_module require.
+:- import_module set.
+:- import_module term.
+:- import_module varset.
 
 modecheck_call_pred(PredId, DeterminismKnown, ProcId0, TheProcId,
 		ArgVars0, ArgVars, ExtraGoals, !ModeInfo) :-

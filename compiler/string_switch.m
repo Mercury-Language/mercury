@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2004 The University of Melbourne.
+% Copyright (C) 1994-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -41,7 +41,14 @@
 :- import_module ll_backend__code_gen.
 :- import_module ll_backend__trace.
 
-:- import_module bool, int, string, list, map, std_util, assoc_list, require.
+:- import_module assoc_list.
+:- import_module bool.
+:- import_module int.
+:- import_module list.
+:- import_module map.
+:- import_module require.
+:- import_module std_util.
+:- import_module string.
 
 string_switch__generate(Cases, Var, CodeModel, _CanFail, SwitchGoalInfo,
 		EndLabel, !MaybeEnd, Code, !CI) :-

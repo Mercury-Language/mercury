@@ -309,7 +309,15 @@
 :- import_module mdbcomp__prim_data.
 :- import_module parse_tree__prog_data.
 
-:- import_module int, list, set, svset, map, term, std_util, require, bool.
+:- import_module bool.
+:- import_module int.
+:- import_module list.
+:- import_module map.
+:- import_module require.
+:- import_module set.
+:- import_module std_util.
+:- import_module svset.
+:- import_module term.
 
 inst_matches_initial(InstA, InstB, Type, ModuleInfo) :-
 	inst_matches_initial_1(InstA, InstB, Type, ModuleInfo, _, no, _).

@@ -41,7 +41,8 @@
 :- import_module hlds__hlds_module.
 :- import_module parse_tree__prog_data.
 
-:- import_module list, std_util.
+:- import_module list.
+:- import_module std_util.
 
 	% Mode checking is like abstract interpretation.
 	% The predicates below define the abstract unification operation
@@ -135,7 +136,15 @@
 :- import_module mdbcomp__prim_data.
 :- import_module parse_tree__prog_mode.
 
-:- import_module bool, int, std_util, require, list, set, svset, map, svmap.
+:- import_module bool.
+:- import_module int.
+:- import_module list.
+:- import_module map.
+:- import_module require.
+:- import_module set.
+:- import_module std_util.
+:- import_module svmap.
+:- import_module svset.
 
 	% Abstractly unify two insts.
 

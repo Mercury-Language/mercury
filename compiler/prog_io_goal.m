@@ -15,7 +15,8 @@
 
 :- import_module parse_tree__prog_data.
 
-:- import_module list, term.
+:- import_module list.
+:- import_module term.
 
 	% Convert a single term into a goal.
 	%
@@ -99,8 +100,11 @@
 :- import_module parse_tree__prog_mode.
 :- import_module parse_tree__prog_out.
 
+:- import_module int.
+:- import_module map.
+:- import_module std_util.
+:- import_module string.
 :- import_module term.
-:- import_module int, map, string, std_util.
 
 	% Parse a goal.
 	%

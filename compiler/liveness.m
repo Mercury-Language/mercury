@@ -159,7 +159,8 @@
 :- import_module hlds__hlds_pred.
 :- import_module parse_tree__prog_data.
 
-:- import_module set, io.
+:- import_module io.
+:- import_module set.
 
 	% Add liveness annotations to the goal of the procedure.
 	% This consists of the {pre,post}{birth,death} sets and
@@ -205,8 +206,15 @@
 :- import_module libs__trace_params.
 
 % Standard library modules
-:- import_module bool, string, map, std_util, list, assoc_list, require.
-:- import_module term, varset.
+:- import_module assoc_list.
+:- import_module bool.
+:- import_module list.
+:- import_module map.
+:- import_module require.
+:- import_module std_util.
+:- import_module string.
+:- import_module term.
+:- import_module varset.
 
 detect_liveness_proc(PredId, _ProcId, ModuleInfo, !ProcInfo, !IO) :-
 	requantify_proc(!ProcInfo),

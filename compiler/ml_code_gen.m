@@ -728,7 +728,8 @@
 :- import_module ml_backend__mlds.
 :- import_module parse_tree__prog_data.
 
-:- import_module io, map.
+:- import_module io.
+:- import_module map.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -801,8 +802,15 @@
 :- import_module parse_tree__prog_util.
 :- import_module parse_tree__prog_type.
 
-:- import_module assoc_list, bool, string, list.
-:- import_module int, set, term, require, std_util.
+:- import_module assoc_list.
+:- import_module bool.
+:- import_module int.
+:- import_module list.
+:- import_module require.
+:- import_module set.
+:- import_module std_util.
+:- import_module string.
+:- import_module term.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

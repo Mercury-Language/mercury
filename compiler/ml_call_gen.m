@@ -23,7 +23,8 @@
 :- import_module ml_backend__mlds.
 :- import_module parse_tree__prog_data.
 
-:- import_module list, bool.
+:- import_module bool.
+:- import_module list.
 
 	% Generate MLDS code for an HLDS generic_call goal.
 	% This includes boxing/unboxing the arguments if necessary.
@@ -134,7 +135,14 @@
 :- import_module parse_tree__error_util.
 :- import_module parse_tree__prog_type.
 
-:- import_module bool, int, string, std_util, term, varset, require, map.
+:- import_module bool.
+:- import_module int.
+:- import_module map.
+:- import_module require.
+:- import_module std_util.
+:- import_module string.
+:- import_module term.
+:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 %

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997,2002-2004 The University of Melbourne.
+% Copyright (C) 1997,2002-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -34,7 +34,13 @@
 
 %------------------------------------------------------------------------------%
 
-:- import_module float, io, list, map, std_util, term, varset.
+:- import_module float.
+:- import_module io.
+:- import_module list.
+:- import_module map.
+:- import_module std_util.
+:- import_module term.
+:- import_module varset.
 
 :- type coeff	==	pair(var, float).
 
@@ -80,10 +86,14 @@
 
 :- implementation.
 
-:- import_module bool, int, require, set, string.
+:- import_module bool.
+:- import_module int.
+:- import_module require.
+:- import_module set.
+:- import_module string.
 
-:- type lp_info
-	---> lp(
+:- type lp_info --->
+	lp(
 		varset,
 		map(var, pair(var)),	% map from variables with URS to
 					% the corresponding pair of variables

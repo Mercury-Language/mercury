@@ -45,7 +45,10 @@
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_util.
 
-:- import_module bool, require, int, string.
+:- import_module bool.
+:- import_module int.
+:- import_module require.
+:- import_module string.
 
 %-----------------------------------------------------------------------------%
 

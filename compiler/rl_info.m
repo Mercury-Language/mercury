@@ -18,7 +18,13 @@
 :- import_module libs__tree.
 :- import_module parse_tree__prog_data.
 
-:- import_module bool, io, list, map, set, std_util, string.
+:- import_module bool.
+:- import_module io.
+:- import_module list.
+:- import_module map.
+:- import_module set.
+:- import_module std_util.
+:- import_module string.
 
 :- type rl_info.
 
@@ -249,7 +255,8 @@
 :- import_module parse_tree__prog_out.
 :- import_module mdbcomp__prim_data.
 
-:- import_module int, require.
+:- import_module int.
+:- import_module require.
 
 :- type rl_info
 	--->	rl_info(

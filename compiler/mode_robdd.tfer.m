@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 2001-2004 The University of Melbourne.
+% Copyright (C) 2001-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -14,7 +14,8 @@
 
 :- interface.
 
-:- import_module term, robdd.
+:- import_module robdd.
+:- import_module term.
 
 :- type tfer(T).
 :- type tfer == tfer(generic).
@@ -36,11 +37,9 @@
 
 %-----------------------------------------------------------------------------%
 
-:- func var(var(T)::in, tfer(T)::in(tfer)) = (tfer(T)::out(tfer))
-		is det.
+:- func var(var(T)::in, tfer(T)::in(tfer)) = (tfer(T)::out(tfer)) is det.
 
-:- func not_var(var(T)::in, tfer(T)::in(tfer)) = (tfer(T)::out(tfer))
-		is det.
+:- func not_var(var(T)::in, tfer(T)::in(tfer)) = (tfer(T)::out(tfer)) is det.
 
 :- func eq_vars(var(T)::in, var(T)::in, tfer(T)::di_tfer) =
 		(tfer(T)::uo_tfer) is det.
@@ -139,7 +138,13 @@
 :- implementation.
 
 :- import_module mode_robdd__equiv_vars.
-:- import_module robdd, sparse_bitset, bool, int, list, map.
+
+:- import_module bool.
+:- import_module int.
+:- import_module list.
+:- import_module map.
+:- import_module robdd.
+:- import_module sparse_bitset.
 
 % T - true vars, F - False Vars, E - equivalent vars, N -
 % non-equivalent vars, R - ROBDD.

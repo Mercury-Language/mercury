@@ -25,7 +25,12 @@
 :- import_module transform_hlds__term_errors.
 :- import_module transform_hlds__term_norm.
 
-:- import_module std_util, bool, int, list, map, bag.
+:- import_module bag.
+:- import_module bool.
+:- import_module int.
+:- import_module list.
+:- import_module map.
+:- import_module std_util.
 
 %-----------------------------------------------------------------------------%
 %

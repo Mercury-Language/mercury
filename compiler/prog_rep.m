@@ -27,7 +27,9 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp__program_representation.
 
-:- import_module list, map, std_util.
+:- import_module list.
+:- import_module map.
+:- import_module std_util.
 
 % A var_num_map maps each variable that occurs in any of a procedure's layout
 % structures to a number that uniquely identifies that variable, and to its
@@ -51,7 +53,11 @@
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_util.
 
-:- import_module string, set, std_util, require, term.
+:- import_module require.
+:- import_module set.
+:- import_module std_util.
+:- import_module string.
+:- import_module term.
 
 :- type prog_rep__info
 	--->	info(

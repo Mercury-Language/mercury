@@ -46,7 +46,13 @@
 :- import_module mdbcomp__prim_data.
 :- import_module parse_tree__prog_data.
 
-:- import_module bool, char, std_util, list, io, varset, term.
+:- import_module bool.
+:- import_module char.
+:- import_module io.
+:- import_module list.
+:- import_module std_util.
+:- import_module term.
+:- import_module varset.
 
 :- type needs_brackets
 	--->	needs_brackets		% needs brackets, if it is an op
@@ -366,8 +372,16 @@
 :- import_module parse_tree__prog_util.
 :- import_module recompilation__version.
 
-:- import_module assoc_list, int, string, set, lexer, ops, require.
-:- import_module term, term_io, varset.
+:- import_module assoc_list.
+:- import_module int.
+:- import_module lexer.
+:- import_module ops.
+:- import_module require.
+:- import_module set.
+:- import_module string.
+:- import_module term.
+:- import_module term_io.
+:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 

@@ -16,7 +16,10 @@
 
 :- import_module ll_backend__llds.
 
-:- import_module bool, map, list, std_util.
+:- import_module bool.
+:- import_module list.
+:- import_module map.
+:- import_module std_util.
 
 :- type instrmap == map(label, instruction).
 :- type lvalmap == map(label, maybe(instruction)).
@@ -297,7 +300,10 @@
 :- import_module mdbcomp__prim_data.
 :- import_module parse_tree__prog_data.
 
-:- import_module int, string, set, require.
+:- import_module int.
+:- import_module require.
+:- import_module set.
+:- import_module string.
 
 get_prologue(Instrs0, LabelInstr, Comments, Instrs) :-
 	gather_comments(Instrs0, Comments1, Instrs1),

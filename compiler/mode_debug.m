@@ -46,8 +46,13 @@
 :- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_out.
 
-:- import_module std_util, list, assoc_list, bool, map.
-:- import_module term, varset.
+:- import_module assoc_list.
+:- import_module bool.
+:- import_module list.
+:- import_module map.
+:- import_module std_util.
+:- import_module term.
+:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 

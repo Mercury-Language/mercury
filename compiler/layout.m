@@ -38,7 +38,10 @@
 :- import_module mdbcomp__prim_data.
 :- import_module parse_tree__prog_data.
 
-:- import_module bool, std_util, list, assoc_list.
+:- import_module assoc_list.
+:- import_module bool.
+:- import_module list.
+:- import_module std_util.
 
 	% This type is for strings which may contain embedded null characters.
 :- type string_with_0s ---> string_with_0s(string).

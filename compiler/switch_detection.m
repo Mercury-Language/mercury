@@ -21,7 +21,9 @@
 :- import_module hlds__hlds_pred.
 :- import_module parse_tree__prog_data.
 
-:- import_module bool, io, list.
+:- import_module bool.
+:- import_module io.
+:- import_module list.
 
 :- pred detect_switches(module_info::in, module_info::out,
 	io::di, io::uo) is det.
@@ -61,8 +63,14 @@
 :- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_mode.
 
+:- import_module assoc_list.
+:- import_module char.
+:- import_module int.
+:- import_module map.
+:- import_module require.
+:- import_module set.
+:- import_module std_util.
 :- import_module term.
-:- import_module char, int, assoc_list, map, set, std_util, require.
 
 %-----------------------------------------------------------------------------%
 

@@ -158,6 +158,7 @@
 % not need to handle them.
 %
 %-----------------------------------------------------------------------------%
+
 :- module aditi_backend__magic.
 
 :- interface.
@@ -170,6 +171,7 @@
 	io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module aditi_backend__aditi_builtin_ops.
@@ -179,6 +181,7 @@
 :- import_module aditi_backend__rl_gen.
 :- import_module check_hlds__mode_util.
 :- import_module check_hlds__polymorphism.
+:- import_module check_hlds__simplify.
 :- import_module check_hlds__type_util.
 :- import_module hlds__goal_util.
 :- import_module hlds__hlds_data.
@@ -200,8 +203,17 @@
 :- import_module transform_hlds__dead_proc_elim.
 :- import_module transform_hlds__dependency_graph.
 
-:- import_module int, list, map, require, set, std_util, string, term, varset.
-:- import_module assoc_list, bool, check_hlds__simplify.
+:- import_module assoc_list.
+:- import_module bool.
+:- import_module int.
+:- import_module list.
+:- import_module map.
+:- import_module require.
+:- import_module set.
+:- import_module std_util.
+:- import_module string.
+:- import_module term.
+:- import_module varset.
 
 magic__process_module(ModuleInfo0, ModuleInfo) -->
 

@@ -24,7 +24,8 @@
 :- import_module hlds__hlds_module.
 :- import_module parse_tree__prog_data.
 
-:- import_module bool, list.
+:- import_module bool.
+:- import_module list.
 
 :- pred type_class_info__generate_rtti(module_info::in, bool::in,
 	list(rtti_data)::out) is det.
@@ -47,8 +48,14 @@
 :- import_module backend_libs__pseudo_type_info.
 :- import_module backend_libs__base_typeclass_info.
 
-:- import_module int, string, assoc_list, map.
-:- import_module std_util, require, term, varset.
+:- import_module assoc_list.
+:- import_module int.
+:- import_module map.
+:- import_module require.
+:- import_module std_util.
+:- import_module string.
+:- import_module term.
+:- import_module varset.
 
 %---------------------------------------------------------------------------%
 

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000, 2003-2004 The University of Melbourne.
+% Copyright (C) 2000, 2003-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -42,7 +42,12 @@
 :- import_module ml_backend__ml_switch_gen.
 :- import_module ml_backend__ml_unify_gen.
 
-:- import_module assoc_list, map, int, string, require, std_util.
+:- import_module assoc_list.
+:- import_module int.
+:- import_module map.
+:- import_module require.
+:- import_module std_util.
+:- import_module string.
 
 %-----------------------------------------------------------------------------%
 

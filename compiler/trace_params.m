@@ -39,7 +39,8 @@
 :- import_module hlds__hlds_pred.
 :- import_module mdbcomp__prim_data.
 
-:- import_module bool, std_util.
+:- import_module bool.
+:- import_module std_util.
 
 :- type trace_level.
 :- type trace_suppress_items.
@@ -108,7 +109,11 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp__prim_data.
 
-:- import_module int, char, string, list, set.
+:- import_module char.
+:- import_module int.
+:- import_module list.
+:- import_module set.
+:- import_module string.
 
 :- type trace_level
 	--->	none

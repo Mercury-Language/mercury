@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 2001-2004 The University of Melbourne.
+% Copyright (C) 2001-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -14,8 +14,11 @@
 
 :- interface.
 
-:- import_module check_hlds, check_hlds__mode_constraint_robdd.
-:- import_module term, robdd.
+:- import_module check_hlds.
+:- import_module check_hlds__mode_constraint_robdd.
+
+:- import_module robdd.
+:- import_module term.
 
 :- type tfeir(T).
 :- type tfeir == tfeir(generic).
@@ -163,7 +166,13 @@
 
 :- import_module mode_robdd__equiv_vars.
 :- import_module mode_robdd__implications.
-:- import_module robdd, sparse_bitset, bool, int, list, map.
+
+:- import_module bool.
+:- import_module int.
+:- import_module list.
+:- import_module map.
+:- import_module robdd.
+:- import_module sparse_bitset.
 
 % T - true vars, F - False Vars, E - equivalent vars, N -
 % non-equivalent vars, I - implications, R - ROBDD.

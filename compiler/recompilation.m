@@ -34,7 +34,11 @@
 :- import_module mdbcomp__prim_data.
 :- import_module parse_tree__prog_data.
 
-:- import_module io, map, set, std_util, term.
+:- import_module io.
+:- import_module map.
+:- import_module set.
+:- import_module std_util.
+:- import_module term.
 
 :- include_module recompilation__check.
 :- include_module recompilation__usage.

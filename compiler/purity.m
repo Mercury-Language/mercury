@@ -119,7 +119,8 @@
 :- import_module hlds__hlds_pred.
 :- import_module parse_tree__prog_data.
 
-:- import_module io, bool.
+:- import_module bool.
+:- import_module io.
 
 % The purity type itself is defined in prog_data.m as follows:
 % :- type purity	--->	pure
@@ -190,8 +191,17 @@
 :- import_module parse_tree__prog_util.
 :- import_module parse_tree__prog_type.
 
-:- import_module map, varset, term, string, require, std_util.
-:- import_module assoc_list, bool, int, list, set.
+:- import_module assoc_list.
+:- import_module bool.
+:- import_module int.
+:- import_module list.
+:- import_module map.
+:- import_module require.
+:- import_module set.
+:- import_module std_util.
+:- import_module string.
+:- import_module term.
+:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 %

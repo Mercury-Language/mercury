@@ -17,7 +17,10 @@
 :- import_module ll_backend__llds.
 :- import_module mdbcomp__prim_data.
 
-:- import_module list, set, bool, counter.
+:- import_module bool.
+:- import_module counter.
+:- import_module list.
+:- import_module set.
 
 	% jumpopt_main(LayoutLabels, MayAlterRtti, ProcLabel, Fulljumpopt,
 	%	Recjump, PessimizeTailCalls, CheckedNondetTailCall,
@@ -58,7 +61,11 @@
 :- import_module ll_backend__code_util.
 :- import_module ll_backend__opt_util.
 
-:- import_module int, std_util, map, string, require.
+:- import_module int.
+:- import_module map.
+:- import_module require.
+:- import_module std_util.
+:- import_module string.
 
 % We first build up a bunch of tables giving information about labels.
 % We then traverse the instruction list, using the information in the

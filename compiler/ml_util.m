@@ -18,7 +18,8 @@
 :- import_module ml_backend__mlds.
 :- import_module parse_tree__prog_data.
 
-:- import_module list, std_util.
+:- import_module list.
+:- import_module std_util.
 
 %-----------------------------------------------------------------------------%
 	% succeeds iff the definitions contain the entry point to
@@ -154,7 +155,9 @@
 :- import_module parse_tree__prog_util.
 :- import_module parse_tree__prog_type.
 
-:- import_module bool, list, std_util.
+:- import_module bool.
+:- import_module list.
+:- import_module std_util.
 
 %-----------------------------------------------------------------------------%
 

@@ -19,7 +19,11 @@
 :- import_module mdbcomp__prim_data.
 :- import_module parse_tree__prog_data.
 
-:- import_module bool, char, list, set, std_util.
+:- import_module bool.
+:- import_module char.
+:- import_module list.
+:- import_module set.
+:- import_module std_util.
 
 %-----------------------------------------------------------------------------%
 
@@ -1199,7 +1203,12 @@
 :- import_module parse_tree__prog_mode.
 :- import_module parse_tree__prog_util.
 
-:- import_module assoc_list, map, require, string, term, varset.
+:- import_module assoc_list.
+:- import_module map.
+:- import_module require.
+:- import_module string.
+:- import_module term.
+:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 

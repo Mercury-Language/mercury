@@ -60,7 +60,8 @@
 
 % MLDS->Assembler back-end
 :- include_module maybe_mlds_to_gcc.
-% :- include_module mlds_to_gcc, gcc.
+% :- include_module mlds_to_gcc
+% :- include_module gcc.
 
 % MLDS->Java back-end
 :- include_module mlds_to_java.

@@ -17,10 +17,20 @@
 :- import_module mdbcomp__prim_data.
 :- import_module parse_tree__prog_data.
 
-:- import_module bool, list, map, std_util.
+:- import_module bool.
+:- import_module list.
+:- import_module map.
+:- import_module multi_map.
+:- import_module std_util.
+
+:- implementation.
+
+:- import_module int.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
+
+:- interface.
 
 	% The symbol table for constructors.
 	% This table is used by the type-checker to look
@@ -878,8 +888,6 @@ determinism_components(failure,     can_fail,    at_most_zero).
 					% the names of these vars
 	).
 
-:- import_module multi_map.
-
 	% I'm sure there's a very clever way of
 	% doing this with graphs or relations...
 :- type superclass_table == multi_map(class_id, subclass_details).
@@ -915,8 +923,6 @@ determinism_components(failure,     can_fail,    at_most_zero).
 	list(pred_id)::out) is det.
 
 :- implementation.
-
-:- import_module int.
 
 :- type assert_id == int.
 :- type assertion_table
@@ -992,8 +998,6 @@ assertion_table_pred_ids(assertion_table(_, AssertionMap), PredIds) :-
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-
-:- import_module multi_map.
 
 :- type exclusive_table		==	multi_map(pred_id, exclusive_id).
 

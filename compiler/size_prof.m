@@ -122,8 +122,17 @@
 :- import_module parse_tree__prog_type.
 :- import_module transform_hlds__term_norm.
 
-:- import_module bool, int, string, list, assoc_list, map, set, std_util.
-:- import_module varset, term, require.
+:- import_module assoc_list.
+:- import_module bool.
+:- import_module int.
+:- import_module list.
+:- import_module map.
+:- import_module require.
+:- import_module set.
+:- import_module std_util.
+:- import_module string.
+:- import_module term.
+:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 

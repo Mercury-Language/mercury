@@ -18,7 +18,8 @@
 :- import_module hlds__hlds_module.
 :- import_module hlds__inst_graph.
 
-:- import_module io, bool.
+:- import_module bool.
+:- import_module io.
 
 :- pred hhf__process_pred(bool::in, pred_id::in, module_info::in,
 	module_info::out, io__state::di, io__state::uo) is det.
@@ -37,7 +38,13 @@
 :- import_module parse_tree__prog_util.
 :- import_module parse_tree__prog_type.
 
-:- import_module term, varset, map, list, set, std_util, require.
+:- import_module list.
+:- import_module map.
+:- import_module require.
+:- import_module set.
+:- import_module std_util.
+:- import_module term.
+:- import_module varset.
 
 hhf__process_pred(Simple, PredId, !ModuleInfo, !IO) :-
 	module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),

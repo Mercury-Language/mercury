@@ -24,7 +24,11 @@
 :- import_module ll_backend__llds.
 :- import_module mdbcomp__prim_data.
 
-:- import_module bool, std_util, list, map, io.
+:- import_module bool.
+:- import_module io.
+:- import_module list.
+:- import_module map.
+:- import_module std_util.
 
 	% Given a 'c_file' structure, output the LLDS code inside it
 	% into one or more .c files, depending on the setting of the
@@ -185,10 +189,20 @@
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_util.
 
-:- import_module dir, int, char, string, std_util, require.
-:- import_module multi_map, set, set_tree234, bintree_set, assoc_list.
-:- import_module varset, term.
+:- import_module assoc_list.
+:- import_module bintree_set.
+:- import_module char.
+:- import_module dir.
+:- import_module int.
 :- import_module library.	% for the version number.
+:- import_module multi_map.
+:- import_module require.
+:- import_module set.
+:- import_module set_tree234.
+:- import_module std_util.
+:- import_module string.
+:- import_module term.
+:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 

@@ -65,7 +65,11 @@
 :- import_module parse_tree__prog_util.
 :- import_module parse_tree__prog_type.
 
-:- import_module int, list, term, std_util, require.
+:- import_module int.
+:- import_module list.
+:- import_module require.
+:- import_module std_util.
+:- import_module term.
 
 %---------------------------------------------------------------------------%
 

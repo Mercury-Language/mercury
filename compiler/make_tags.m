@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1996, 1998-2004 The University of Melbourne.
+% Copyright (C) 1994-1996, 1998-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -62,7 +62,8 @@
 :- import_module libs__globals.
 :- import_module parse_tree__prog_data.
 
-:- import_module bool, list.
+:- import_module bool.
+:- import_module list.
 
 % assign_constructor_tags(Constructors, TypeCtor, ReservedTagPragma, Globals,
 %		TagValues, IsEnum):
@@ -85,7 +86,10 @@
 :- import_module parse_tree__error_util.
 :- import_module parse_tree__prog_util.
 
-:- import_module int, map, std_util, require.
+:- import_module int.
+:- import_module map.
+:- import_module require.
+:- import_module std_util.
 
 %-----------------------------------------------------------------------------%
 

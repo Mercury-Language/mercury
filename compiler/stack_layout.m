@@ -34,7 +34,9 @@
 :- import_module mdbcomp__prim_data.
 :- import_module parse_tree__prog_data.
 
-:- import_module list, assoc_list, map.
+:- import_module assoc_list.
+:- import_module list.
+:- import_module map.
 
 :- pred stack_layout__generate_llds(module_info::in,
 	global_data::in, global_data::out,
@@ -53,7 +55,7 @@
 	% Construct a representation of the interface determinism of a
 	% procedure.
 :- pred stack_layout__represent_determinism_rval(determinism::in,
-		rval::out) is det.
+	rval::out) is det.
 
 :- implementation.
 
@@ -79,8 +81,17 @@
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_util.
 
-:- import_module std_util, bool, char, string, int, require.
-:- import_module map, term, set, counter, varset.
+:- import_module bool.
+:- import_module char.
+:- import_module counter.
+:- import_module int.
+:- import_module map.
+:- import_module require.
+:- import_module set.
+:- import_module std_util.
+:- import_module string.
+:- import_module term.
+:- import_module varset.
 
 %---------------------------------------------------------------------------%
 

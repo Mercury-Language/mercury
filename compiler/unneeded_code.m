@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2004 The University of Melbourne.
+% Copyright (C) 2000-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -84,7 +84,14 @@
 :- import_module libs__options.
 :- import_module parse_tree__prog_data.
 
-:- import_module bool, int, list, assoc_list, map, set, std_util, require.
+:- import_module assoc_list.
+:- import_module bool.
+:- import_module int.
+:- import_module list.
+:- import_module map.
+:- import_module require.
+:- import_module set.
+:- import_module std_util.
 
 	% The branch_alts and branch_point types record the information the
 	% transform needs to know about a particular branched control

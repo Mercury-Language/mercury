@@ -41,7 +41,8 @@
 :- import_module hlds__hlds_module.
 :- import_module hlds__hlds_pred.
 
-:- import_module io, bool.
+:- import_module bool.
+:- import_module io.
 
 	% check every predicate in a module
 :- pred unique_modes__check_module(module_info::in, module_info::out,
@@ -79,9 +80,17 @@
 :- import_module parse_tree__prog_out.
 :- import_module mdbcomp__prim_data.
 
-:- import_module term, varset.
-:- import_module assoc_list, bag, int, list, map.
-:- import_module require, set, std_util, string.
+:- import_module assoc_list.
+:- import_module bag.
+:- import_module int.
+:- import_module list.
+:- import_module map.
+:- import_module require.
+:- import_module set.
+:- import_module std_util.
+:- import_module string.
+:- import_module term.
+:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2004 The University of Melbourne.
+% Copyright (C) 1994-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -32,7 +32,8 @@
 :- import_module hlds__hlds_pred.
 
 % Standard library modules
-:- import_module bool, set.
+:- import_module bool.
+:- import_module set.
 
 :- type alloc_data
 	--->	alloc_data(
@@ -72,7 +73,12 @@
 :- import_module ll_backend__liveness.
 :- import_module ll_backend__llds.
 
-:- import_module int, list, assoc_list, map, std_util, require.
+:- import_module assoc_list.
+:- import_module int.
+:- import_module list.
+:- import_module map.
+:- import_module require.
+:- import_module std_util.
 
 %-----------------------------------------------------------------------------%
 

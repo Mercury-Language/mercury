@@ -54,7 +54,9 @@
 :- import_module ll_backend__llds.
 :- import_module parse_tree__prog_data.
 
-:- import_module map, std_util, set.
+:- import_module map.
+:- import_module set.
+:- import_module std_util.
 
 	% The kinds of external ports for which the code we generate will
 	% call MR_trace. The redo port is not on this list, because for that
@@ -227,7 +229,15 @@
 :- import_module ll_backend__llds_out.
 :- import_module mdbcomp__prim_data.
 
-:- import_module list, bool, int, string, map, std_util, require, term, varset.
+:- import_module bool.
+:- import_module int.
+:- import_module list.
+:- import_module map.
+:- import_module require.
+:- import_module std_util.
+:- import_module string.
+:- import_module term.
+:- import_module varset.
 
 	% Information specific to a trace port.
 :- type trace_port_info

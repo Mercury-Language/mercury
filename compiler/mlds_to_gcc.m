@@ -97,7 +97,8 @@
 :- import_module ml_backend__maybe_mlds_to_gcc.
 :- import_module ml_backend__mlds.
 
-:- import_module bool, std_util.
+:- import_module bool.
+:- import_module std_util.
 :- use_module io.
 
 	% run_gcc_backend(ModuleName, CallBack, CallBackOutput):
@@ -181,8 +182,14 @@
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_util.
 
-:- import_module int, string, library, list, map.
-:- import_module assoc_list, term, require.
+:- import_module assoc_list.
+:- import_module int.
+:- import_module library.
+:- import_module list.
+:- import_module map.
+:- import_module require.
+:- import_module string.
+:- import_module term.
 
 %-----------------------------------------------------------------------------%
 

@@ -18,7 +18,10 @@
 :- import_module mdbcomp__prim_data.
 :- import_module parse_tree__prog_data.
 
-:- import_module io, std_util, list, bool.
+:- import_module bool.
+:- import_module io.
+:- import_module list.
+:- import_module std_util.
 
 %-----------------------------------------------------------------------------%
 
@@ -241,7 +244,11 @@
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_util.
 
-:- import_module int, string, map, require, varset.
+:- import_module int.
+:- import_module map.
+:- import_module require.
+:- import_module string.
+:- import_module varset.
 
 process_all_nonimported_procs(Task, ModuleInfo0, ModuleInfo) -->
 	{ True = (pred(_PredInfo::in) is semidet :- true) },

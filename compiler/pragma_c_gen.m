@@ -64,8 +64,15 @@
 :- import_module parse_tree__prog_foreign.
 :- import_module parse_tree__prog_type.
 
-:- import_module bool, string, int, assoc_list, set, map.
-:- import_module std_util, require, term.
+:- import_module assoc_list.
+:- import_module bool.
+:- import_module int.
+:- import_module map.
+:- import_module require.
+:- import_module set.
+:- import_module std_util.
+:- import_module string.
+:- import_module term.
 
 % The code we generate for an ordinary (model_det or model_semi) pragma_c_code
 % must be able to fit into the middle of a procedure, since such

@@ -28,7 +28,11 @@
 :- import_module transform_hlds__term_norm.
 :- import_module transform_hlds__term_util.
 
-:- import_module list, bag, map, std_util, set.
+:- import_module bag.
+:- import_module list.
+:- import_module map.
+:- import_module set.
+:- import_module std_util.
 
 :- type traversal_info
 	--->	ok(
@@ -110,7 +114,11 @@
 :- import_module parse_tree__error_util.
 :- import_module parse_tree__prog_type.
 
-:- import_module assoc_list, bool, int, require, string.
+:- import_module assoc_list.
+:- import_module bool.
+:- import_module int.
+:- import_module require.
+:- import_module string.
 
 traverse_goal(Goal, Params, !Info) :-
 	Goal = GoalExpr - GoalInfo,

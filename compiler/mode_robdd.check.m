@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 2001-2004 The University of Melbourne.
+% Copyright (C) 2001-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -22,7 +22,9 @@
 :- interface.
 
 :- import_module mode_robdd__tfeirn.
-:- import_module term, robdd.
+
+:- import_module robdd.
+:- import_module term.
 
 :- type check_robdd(T).
 :- type check_robdd == check_robdd(generic).
@@ -147,7 +149,7 @@ check_robdd(T)::di_check_robdd)
 %-----------------------------------------------------------------------------%
 
 :- func ensure_normalised(check_robdd(T)::in) =
-		(check_robdd(T)::no_check_robdd) is det.
+	(check_robdd(T)::no_check_robdd) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -164,7 +166,9 @@ check_robdd(T)::di_check_robdd)
 :- import_module mode_robdd__tfeir.
 :- import_module mode_robdd__tfeirn.
 
-:- import_module robdd, sparse_bitset, require.
+:- import_module require.
+:- import_module robdd.
+:- import_module sparse_bitset.
 
 % Uncomment these for debugging.
 % :- import_module io, pprint.

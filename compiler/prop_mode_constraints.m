@@ -82,10 +82,21 @@
 :- import_module parse_tree.modules.
 :- import_module transform_hlds.dependency_graph.
 
-:- import_module std_util, bool, set, multi_map, require, int.
-:- import_module robdd, term, string, assoc_list, sparse_bitset.
-:- import_module bimap, varset, term_io.
+:- import_module assoc_list.
+:- import_module bimap.
+:- import_module bool.
+:- import_module int.
+:- import_module multi_map.
+:- import_module require.
+:- import_module robdd.
+:- import_module set.
+:- import_module sparse_bitset.
+:- import_module std_util.
+:- import_module string.
 :- import_module svmap.
+:- import_module term.
+:- import_module term_io.
+:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 

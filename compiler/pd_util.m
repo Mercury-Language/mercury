@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2004 University of Melbourne.
+% Copyright (C) 1998-2005 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -21,7 +21,12 @@
 :- import_module parse_tree__prog_data.
 :- import_module transform_hlds__pd_info.
 
-:- import_module bool, list, map, set, std_util, io.
+:- import_module bool.
+:- import_module io.
+:- import_module list.
+:- import_module map.
+:- import_module set.
+:- import_module std_util.
 
 	% Pick out the pred_proc_ids of the calls in a list of atomic goals.
 :- pred pd_util__goal_get_calls(hlds_goal::in, list(pred_proc_id)::out) is det.
@@ -154,7 +159,11 @@
 :- import_module transform_hlds__pd_debug.
 :- import_module transform_hlds__unused_args.
 
-:- import_module assoc_list, int, require, set, term.
+:- import_module assoc_list.
+:- import_module int.
+:- import_module require.
+:- import_module set.
+:- import_module term.
 
 pd_util__goal_get_calls(Goal0, CalledPreds) :-
 	goal_to_conj_list(Goal0, GoalList),

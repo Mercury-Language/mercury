@@ -1,12 +1,12 @@
 %-----------------------------------------------------------------------------%
-% loop_inv.m
-% Main author: rafe
 % vim: ft=mercury ts=4 sw=4 et tw=0 wm=0
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2002-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %------------------------------------------------------------------------------%
+% loop_inv.m
+% Main author: rafe
 %
 % CONSERVATIVE LOOP INVARIANT HOISTING.
 %
@@ -109,9 +109,9 @@
     % appropriate, split it into two applying the loop invariant
     % hoisting optimization.
     %
-:- pred hoist_loop_invariants(pred_id, proc_id, pred_info,
-            proc_info, proc_info, module_info, module_info).
-:- mode hoist_loop_invariants(in, in, in, in, out, in, out) is det.
+:- pred hoist_loop_invariants(pred_id::in, proc_id::in, pred_info::in,
+        proc_info::in, proc_info::out, module_info::in, module_info::out)
+        is det.
 
 %------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%
@@ -133,7 +133,14 @@
 :- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_util.
 
-:- import_module list, assoc_list, std_util, require, set, term, string, bool.
+:- import_module assoc_list.
+:- import_module bool.
+:- import_module list.
+:- import_module require.
+:- import_module set.
+:- import_module std_util.
+:- import_module string.
+:- import_module term.
 
 :- func this_file = string.
 
@@ -161,7 +168,7 @@ hoist_loop_invariants(PredId, ProcId, PredInfo, ProcInfo0, ProcInfo,
         hlds_pred__proc_info_headvars(ProcInfo0, HeadVars),
         hlds_pred__proc_info_argmodes(ProcInfo0, HeadVarModes),
         hlds_pred__proc_info_get_initial_instmap(ProcInfo0, ModuleInfo0,
-                InitialInstMap),
+            InitialInstMap),
 
             % Find the set of variables that are used as (partly) unique
             % inputs to calls.  These variables are not safe candidates
@@ -192,7 +199,7 @@ hoist_loop_invariants(PredId, ProcId, PredInfo, ProcInfo0, ProcInfo,
             % of invariant goals and vars.
             %
         inv_goals_vars(ModuleInfo0, UniquelyUsedVars,
-                InvGoals0, InvGoals1, InvArgs, InvVars1),
+            InvGoals0, InvGoals1, InvArgs, InvVars1),
 
             % We don't want to hoist out unifications with constants (i.e.
             % constructions where the RHS has no arguments) or deconstructions
@@ -234,7 +241,7 @@ hoist_loop_invariants(PredId, ProcId, PredInfo, ProcInfo0, ProcInfo,
             % to InitialInstMap.
             %
         InitialAuxInstMap =
-                compute_initial_aux_instmap(InvGoals, InitialInstMap),
+            compute_initial_aux_instmap(InvGoals, InitialInstMap),
 
             % Create the pred for the aux proc.  This is initially a
             % copy of the in proc with the head vars extended with the
@@ -242,9 +249,8 @@ hoist_loop_invariants(PredId, ProcId, PredInfo, ProcInfo0, ProcInfo,
             % appropriately in the next step.
             %
         create_aux_pred(PredProcId, HeadVars, ComputedInvVars,
-                InitialAuxInstMap,
-                AuxPredProcId, CallAux, AuxPredInfo, AuxProcInfo,
-                ModuleInfo0, ModuleInfo1),
+            InitialAuxInstMap, AuxPredProcId, CallAux,
+            AuxPredInfo, AuxProcInfo, ModuleInfo0, ModuleInfo1),
 
             % We update the body of AuxProc by replacing adding the
             % set of computed invariant vars to the argument list,
@@ -253,15 +259,15 @@ hoist_loop_invariants(PredId, ProcId, PredInfo, ProcInfo0, ProcInfo,
             % calls to the auxiliary procedure.
             %
         gen_aux_proc(InvGoals, PredProcId,
-                AuxPredProcId, CallAux, Body, AuxPredInfo, AuxProcInfo,
-                ModuleInfo1, ModuleInfo2),
+            AuxPredProcId, CallAux, Body, AuxPredInfo, AuxProcInfo,
+            ModuleInfo1, ModuleInfo2),
 
             % We construct OutProc by replacing recursive calls to
             % the InProc at the end of recursive paths with calls
             % to the auxiliary procedure.
             %
         gen_out_proc(PredProcId, PredInfo, ProcInfo0, ProcInfo, CallAux,
-                Body, ModuleInfo2, ModuleInfo)
+            Body, ModuleInfo2, ModuleInfo)
 
       else
 
@@ -301,9 +307,8 @@ hoist_loop_invariants(PredId, ProcId, PredInfo, ProcInfo0, ProcInfo,
     % invariant atomic goals in Body and the set of recursive calls
     % in Body identified via PredProcId.
     %
-:- pred invariant_goal_candidates(pred_proc_id, hlds_goal,
-            hlds_goals, hlds_goals).
-:- mode invariant_goal_candidates(in, in, out, out) is det.
+:- pred invariant_goal_candidates(pred_proc_id::in, hlds_goal::in,
+    hlds_goals::out, hlds_goals::out) is det.
 
 invariant_goal_candidates(PredProcId, Body,
         CandidateInvGoals, RecCallGoals) :-
@@ -439,8 +444,7 @@ invariant_goal_candidates_handle_non_recursive_call(
 
 %------------------------------------------------------------------------------%
 
-:- pred model_non(hlds_goal_info).
-:- mode model_non(in) is semidet.
+:- pred model_non(hlds_goal_info::in) is semidet.
 
 model_non(GoalInfo) :-
     hlds_goal__goal_info_get_determinism(GoalInfo, Detism),
@@ -457,8 +461,7 @@ intersect_candidate_inv_goals([Goals | Goalss]) =
 
 %------------------------------------------------------------------------------%
 
-:- pred common_goal(list(hlds_goals), hlds_goal).
-:- mode common_goal(in, in) is semidet.
+:- pred common_goal(list(hlds_goals)::in, hlds_goal::in) is semidet.
 
 common_goal(Goalss, Goal) :-
     all [Gs] (
@@ -472,8 +475,7 @@ common_goal(Goalss, Goal) :-
 
 %------------------------------------------------------------------------------%
 
-:- pred equivalent_goals(hlds_goal, hlds_goal).
-:- mode equivalent_goals(in, in) is semidet.
+:- pred equivalent_goals(hlds_goal::in, hlds_goal::in) is semidet.
 
 equivalent_goals(GoalExprX - _GoalInfoX, GoalExprY - _GoalInfoY) :-
     (
@@ -522,10 +524,8 @@ refine_candidate_inv_args(RecCall - _RecCallInfo, MaybeInvArgs) =
 found in argument 1")
     ).
 
-
-
 :- func refine_candidate_inv_args_2(maybe(prog_var), prog_var) =
-            maybe(prog_var).
+    maybe(prog_var).
 
 refine_candidate_inv_args_2(no,     _) = no.
 refine_candidate_inv_args_2(yes(X), Y) = ( if X = Y then yes(X) else no ).
@@ -543,9 +543,8 @@ refine_candidate_inv_args_2(yes(X), Y) = ( if X = Y then yes(X) else no ).
     % The list returned will not contain duplicate goals judged
     % to be the same by equivalent_goals/2.
     %
-:- pred inv_goals_vars(module_info, prog_vars,
-            hlds_goals, hlds_goals, prog_vars, prog_vars).
-:- mode inv_goals_vars(in, in, in, out, in, out) is det.
+:- pred inv_goals_vars(module_info::in, prog_vars::in,
+        hlds_goals::in, hlds_goals::out, prog_vars::in, prog_vars::out) is det.
 
 inv_goals_vars(ModuleInfo, UniquelyUsedVars,
         InvGoals0, InvGoals, InvVars0, InvVars) :-
@@ -558,9 +557,8 @@ inv_goals_vars(ModuleInfo, UniquelyUsedVars,
 
 %------------------------------------------------------------------------------%
 
-:- pred inv_goals_vars_2(module_info, prog_vars, hlds_goal,
-            hlds_goals, hlds_goals, prog_vars, prog_vars).
-:- mode inv_goals_vars_2(in, in, in, in, out, in, out) is det.
+:- pred inv_goals_vars_2(module_info::in, prog_vars::in, hlds_goal::in,
+    hlds_goals::in, hlds_goals::out, prog_vars::in, prog_vars::out) is det.
 
 inv_goals_vars_2(MI, UUVs, Goal, IGs0, IGs, IVs0, IVs) :-
     ( if
@@ -576,8 +574,7 @@ inv_goals_vars_2(MI, UUVs, Goal, IGs0, IGs, IVs0, IVs) :-
 
 %------------------------------------------------------------------------------%
 
-:- pred invariant_goal(hlds_goals, hlds_goal).
-:- mode invariant_goal(in, in) is semidet.
+:- pred invariant_goal(hlds_goals::in, hlds_goal::in) is semidet.
 
 invariant_goal(InvariantGoals, Goal) :-
     list__member(InvariantGoal, InvariantGoals),
@@ -585,8 +582,8 @@ invariant_goal(InvariantGoals, Goal) :-
 
 %------------------------------------------------------------------------------%
 
-:- pred input_args_are_invariant(module_info, prog_vars, hlds_goal, prog_vars).
-:- mode input_args_are_invariant(in, in, in, in) is semidet.
+:- pred input_args_are_invariant(module_info::in, prog_vars::in,
+    hlds_goal::in, prog_vars::in) is semidet.
 
 input_args_are_invariant(ModuleInfo, UniquelyUsedVars, Goal, InvVars) :-
     Inputs = goal_inputs(ModuleInfo, Goal),
@@ -601,17 +598,15 @@ input_args_are_invariant(ModuleInfo, UniquelyUsedVars, Goal, InvVars) :-
 
 %------------------------------------------------------------------------------%
 
-:- pred dont_hoist(module_info, hlds_goals, hlds_goals, prog_vars).
-:- mode dont_hoist(in, in, out, out) is det.
+:- pred dont_hoist(module_info::in, hlds_goals::in,
+    hlds_goals::out, prog_vars::out) is det.
 
 dont_hoist(MI, InvGoals, DontHoistGoals, DontHoistVars) :-
     list__foldl2(dont_hoist_2(MI), InvGoals,
         [], DontHoistGoals, [], DontHoistVars).
 
-
-:- pred dont_hoist_2(module_info, hlds_goal,
-            hlds_goals, hlds_goals, prog_vars, prog_vars).
-:- mode dont_hoist_2(in, in, in, out, in, out) is det.
+:- pred dont_hoist_2(module_info::in, hlds_goal::in,
+    hlds_goals::in, hlds_goals::out, prog_vars::in, prog_vars::out) is det.
 
 dont_hoist_2(MI, Goal, DHGs0, DHGs, DHVs0, DHVs) :-
     ( if
@@ -634,8 +629,7 @@ dont_hoist_2(MI, Goal, DHGs0, DHGs, DHVs0, DHVs) :-
     % arguments or which is constructed from a statically initialized
     % constant.
     %
-:- pred const_construction(hlds_goal).
-:- mode const_construction(in) is semidet.
+:- pred const_construction(hlds_goal::in) is semidet.
 
 const_construction(GoalExpr - _GoalInfo) :-
     Construction = GoalExpr ^ unify_kind,
@@ -645,24 +639,21 @@ const_construction(GoalExpr - _GoalInfo) :-
 
 %------------------------------------------------------------------------------%
 
-:- pred deconstruction(hlds_goal).
-:- mode deconstruction(in) is semidet.
+:- pred deconstruction(hlds_goal::in) is semidet.
 
 deconstruction(GoalExpr - _GoalInfo) :-
     GoalExpr ^ unify_kind = deconstruct(_, _, _, _, _, _).
 
 %------------------------------------------------------------------------------%
 
-:- pred impure_goal(hlds_goal).
-:- mode impure_goal(in) is semidet.
+:- pred impure_goal(hlds_goal::in) is semidet.
 
 impure_goal(_GoalExpr - GoalInfo) :-
     goal_info_is_impure(GoalInfo).
 
 %------------------------------------------------------------------------------%
 
-:- pred cannot_succeed(hlds_goal).
-:- mode cannot_succeed(in) is semidet.
+:- pred cannot_succeed(hlds_goal::in) is semidet.
 
 cannot_succeed(_GoalExpr - GoalInfo) :-
     goal_info_get_determinism(GoalInfo, Detism),
@@ -673,8 +664,7 @@ cannot_succeed(_GoalExpr - GoalInfo) :-
 
 :- type inst_info == {module_info, instmap}.
 
-:- pred arg_is_input(inst_info, prog_var).
-:- mode arg_is_input(in, in) is semidet.
+:- pred arg_is_input(inst_info::in, prog_var::in) is semidet.
 
 arg_is_input(InstInfo, Arg) :-
     InstInfo = {_ModuleInfo, InstMap},
@@ -686,8 +676,7 @@ arg_is_input(InstInfo, Arg) :-
     % We take an initial inst to be an input if it is fully ground
     % and not unique.
     %
-:- pred inst_is_input(inst_info, inst).
-:- mode inst_is_input(in, in) is semidet.
+:- pred inst_is_input(inst_info::in, (inst)::in) is semidet.
 
 inst_is_input({ModuleInfo, _InstMap}, Inst) :-
     inst_match__inst_is_ground(ModuleInfo, Inst),
@@ -703,12 +692,10 @@ update_inst_info(Goal, {ModuleInfo, InstMap0}) = {ModuleInfo, InstMap} :-
 %------------------------------------------------------------------------------%
 
 :- func add_outputs(module_info, prog_vars, hlds_goal, prog_vars) =
-            prog_vars.
+    prog_vars.
 
 add_outputs(ModuleInfo, UUVs, Goal, InvVars) =
     list__foldl(add_output(UUVs), goal_outputs(ModuleInfo, Goal), InvVars).
-
-
 
 :- func add_output(prog_vars, prog_var, prog_vars) = prog_vars.
 
@@ -723,9 +710,7 @@ add_output(UniquelyUsedVars, X, InvVars) =
 
 :- func compute_initial_aux_instmap(hlds_goals, instmap) = instmap.
 
-compute_initial_aux_instmap(Gs, IM) =
-    list__foldl(ApplyGoalInstMap, Gs, IM)
- :-
+compute_initial_aux_instmap(Gs, IM) = list__foldl(ApplyGoalInstMap, Gs, IM) :-
     ApplyGoalInstMap =
         ( func(_GoalExpr - GoalInfo, IM0) = IM1 :-
             hlds_goal__goal_info_get_instmap_delta(GoalInfo, IMD),
@@ -734,14 +719,9 @@ compute_initial_aux_instmap(Gs, IM) =
 
 %------------------------------------------------------------------------------%
 
-:- pred create_aux_pred(
-            pred_proc_id, prog_vars, prog_vars, instmap,
-            pred_proc_id, hlds_goal, pred_info, proc_info,
-            module_info, module_info).
-:- mode create_aux_pred(
-            in, in, in, in,
-            out, out, out, out,
-            in, out) is det.
+:- pred create_aux_pred(pred_proc_id::in, prog_vars::in, prog_vars::in,
+    instmap::in, pred_proc_id::out, hlds_goal::out, pred_info::out,
+    proc_info::out, module_info::in, module_info::out) is det.
 
 create_aux_pred(PredProcId, HeadVars, ComputedInvArgs,
         InitialAuxInstMap, AuxPredProcId, CallAux,
@@ -834,14 +814,9 @@ create_aux_pred(PredProcId, HeadVars, ComputedInvArgs,
     % Replace the invariant goals in the original Body
     % with just `true' in the new AuxBody.
     %
-:- pred gen_aux_proc(hlds_goals, pred_proc_id,
-            pred_proc_id, hlds_goal, hlds_goal,
-            pred_info, proc_info,
-            module_info, module_info).
-:- mode gen_aux_proc(in, in,
-            in, in, in,
-            in, in,
-            in, out) is det.
+:- pred gen_aux_proc(hlds_goals::in, pred_proc_id::in, pred_proc_id::in,
+    hlds_goal::in, hlds_goal::in, pred_info::in, proc_info::in,
+    module_info::in, module_info::out) is det.
 
 gen_aux_proc(InvGoals, PredProcId, AuxPredProcId, CallAux, Body,
         AuxPredInfo, !.AuxProcInfo, !ModuleInfo) :-
@@ -929,7 +904,7 @@ gen_aux_proc_switch(Info, Cases) =
 %------------------------------------------------------------------------------%
 
 :- func gen_aux_proc_handle_non_recursive_call(gen_aux_proc_info, hlds_goal) =
-            hlds_goal.
+    hlds_goal.
 
 gen_aux_proc_handle_non_recursive_call(Info, Goal0) = Goal :-
     ( if   invariant_goal(Info ^ inv_goals, Goal0)
@@ -943,10 +918,9 @@ gen_aux_proc_handle_non_recursive_call(Info, Goal0) = Goal :-
     % the InProc at the end of recursive paths with calls
     % to the auxiliary procedure.
     %
-:- pred gen_out_proc(pred_proc_id, pred_info, proc_info, proc_info,
-            hlds_goal, hlds_goal,
-            module_info, module_info).
-:- mode gen_out_proc(in, in, in, out, in, in, in, out) is det.
+:- pred gen_out_proc(pred_proc_id::in, pred_info::in,
+    proc_info::in, proc_info::out, hlds_goal::in, hlds_goal::in,
+    module_info::in, module_info::out) is det.
 
 gen_out_proc(PredProcId, PredInfo0, ProcInfo0, ProcInfo, CallAux, Body0,
         ModuleInfo0, ModuleInfo) :-

@@ -16,7 +16,9 @@
 :- import_module mdbcomp__prim_data.
 :- import_module parse_tree__prog_io.
 
-:- import_module bool, io, list.
+:- import_module bool.
+:- import_module io.
+:- import_module list.
 
 	% lookup_module_source_file(ModuleName, FileName, FileNameIsMapped).
 	%
@@ -44,7 +46,11 @@
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_util.
 
-:- import_module char, dir, map, std_util, string.
+:- import_module char.
+:- import_module dir.
+:- import_module map.
+:- import_module std_util.
+:- import_module string.
 
 lookup_module_source_file(ModuleName, FileName, !IO) :-
 	get_source_file_map(SourceFileMap, !IO),

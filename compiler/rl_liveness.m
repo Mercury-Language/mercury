@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-1999, 2003-2004 The University of Melbourne.
+% Copyright (C) 1998-1999, 2003-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -31,7 +31,14 @@
 :- import_module aditi_backend__rl.
 :- import_module aditi_backend__rl_analyse.
 
-:- import_module bool, int, list, map, relation, require, set, std_util.
+:- import_module bool.
+:- import_module int.
+:- import_module list.
+:- import_module map.
+:- import_module relation.
+:- import_module require.
+:- import_module set.
+:- import_module std_util.
 
 rl_liveness(Opt0, Opt, IO0, IO) :-
 	rl_liveness_2(IO0, IO, Opt0, Opt).

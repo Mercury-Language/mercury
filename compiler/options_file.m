@@ -16,7 +16,9 @@
 
 :- import_module mdbcomp__prim_data.
 
-:- import_module list, io, std_util.
+:- import_module io.
+:- import_module list.
+:- import_module std_util.
 
 :- type options_variables.
 
@@ -68,8 +70,15 @@
 :- import_module parse_tree__prog_io.
 :- import_module parse_tree__prog_out.
 
-:- import_module assoc_list, bool, char, dir, exception, map.
-:- import_module require, string, term.
+:- import_module assoc_list.
+:- import_module bool.
+:- import_module char.
+:- import_module dir.
+:- import_module exception.
+:- import_module map.
+:- import_module require.
+:- import_module string.
+:- import_module term.
 
 :- type options_variable == string.
 

@@ -339,7 +339,10 @@
 :- import_module mdbcomp__prim_data.
 :- import_module parse_tree__prog_data.
 
-:- import_module bool, list, std_util, map.
+:- import_module bool.
+:- import_module list.
+:- import_module map.
+:- import_module std_util.
 
 %-----------------------------------------------------------------------------%
 
@@ -1742,7 +1745,12 @@ XXX Full exception handling support is not yet implemented.
 :- import_module parse_tree__modules.
 :- import_module parse_tree__prog_type.
 
-:- import_module char, int, term, string, require, library.
+:- import_module char.
+:- import_module int.
+:- import_module library.
+:- import_module require.
+:- import_module string.
+:- import_module term.
 
 %-----------------------------------------------------------------------------%
 

@@ -18,7 +18,8 @@
 :- module top_level__mercury_compile.
 :- interface.
 
-:- import_module io, list.
+:- import_module io.
+:- import_module list.
 
 	% This is the main entry point for the Mercury compiler.
 	% It is called from top_level.main.
@@ -170,10 +171,23 @@
 :- import_module transform_hlds__mmc_analysis.
 
 	% library modules
-:- import_module int, list, map, set, std_util, require, string, bool, dir.
-:- import_module library, getopt_io, term, varset, assoc_list.
-:- import_module gc, benchmarking.
+:- import_module assoc_list.
+:- import_module benchmarking.
+:- import_module bool.
+:- import_module dir.
+:- import_module gc.
+:- import_module getopt_io.
+:- import_module int.
+:- import_module library.
+:- import_module list.
+:- import_module map.
 :- import_module pprint.
+:- import_module require.
+:- import_module set.
+:- import_module std_util.
+:- import_module string.
+:- import_module term.
+:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 

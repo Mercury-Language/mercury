@@ -55,7 +55,9 @@
 :- import_module mdbcomp__prim_data.
 :- import_module parse_tree__modules.
 
-:- import_module io, bool, list.
+:- import_module bool.
+:- import_module io.
+:- import_module list.
 
 :- pred trans_opt__write_optfile(module_info::in, io::di, io::uo) is det.
 
@@ -84,7 +86,13 @@
 :- import_module transform_hlds__termination.
 :- import_module transform_hlds__exception_analysis.
 
-:- import_module set, string, list, map, varset, term, std_util.
+:- import_module list.
+:- import_module map.
+:- import_module set.
+:- import_module std_util.
+:- import_module string.
+:- import_module term.
+:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 

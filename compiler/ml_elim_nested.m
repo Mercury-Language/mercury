@@ -468,7 +468,13 @@
 :- import_module libs__globals.
 :- import_module libs__options.
 
-:- import_module bool, counter, int, list, std_util, string, require.
+:- import_module bool.
+:- import_module counter.
+:- import_module int.
+:- import_module list.
+:- import_module require.
+:- import_module std_util.
+:- import_module string.
 
 	% Perform the specified action on the whole MLDS.
 	%

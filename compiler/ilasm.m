@@ -26,7 +26,12 @@
 
 :- import_module ml_backend__ilds.
 
-:- import_module io, list, term, std_util, bool, integer.
+:- import_module bool.
+:- import_module integer.
+:- import_module io.
+:- import_module list.
+:- import_module std_util.
+:- import_module term.
 
 :- pred ilasm__output(list(decl)::in, io::di, io::uo) is det.
 
@@ -276,8 +281,15 @@
 :- import_module libs__options.
 :- import_module parse_tree__error_util.
 
-:- import_module char, string, pprint, getopt_io.
-:- import_module require, int, term_io, varset, bool.
+:- import_module bool.
+:- import_module char.
+:- import_module getopt_io.
+:- import_module int.
+:- import_module pprint.
+:- import_module require.
+:- import_module string.
+:- import_module term_io.
+:- import_module varset.
 
 	% Some versions of the IL assembler enforce a rule that if you output
 	% 	.assembly foo { }

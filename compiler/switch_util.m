@@ -21,7 +21,10 @@
 :- import_module hlds__hlds_module.
 :- import_module parse_tree__prog_data.
 
-:- import_module list, assoc_list, map, std_util.
+:- import_module assoc_list.
+:- import_module list.
+:- import_module map.
+:- import_module std_util.
 
 %-----------------------------------------------------------------------------%
 %
@@ -140,8 +143,13 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
+
 :- import_module parse_tree__prog_type.
-:- import_module char, int, string, require.
+
+:- import_module char.
+:- import_module int.
+:- import_module require.
+:- import_module string.
 
 %-----------------------------------------------------------------------------%
 

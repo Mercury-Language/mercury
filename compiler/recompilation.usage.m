@@ -17,7 +17,12 @@
 :- import_module parse_tree__modules.
 :- import_module parse_tree__prog_data.
 
-:- import_module assoc_list, io, list, map, set, std_util.
+:- import_module assoc_list.
+:- import_module io.
+:- import_module list.
+:- import_module map.
+:- import_module set.
+:- import_module std_util.
 
 	%
 	% The resolved_used_items records the possible matches
@@ -95,8 +100,14 @@
 :- import_module parse_tree__prog_type.
 :- import_module recompilation__version.
 
-:- import_module assoc_list, bool, int, require, svmap.
-:- import_module queue, std_util, string.
+:- import_module assoc_list.
+:- import_module bool.
+:- import_module int.
+:- import_module queue.
+:- import_module require.
+:- import_module std_util.
+:- import_module string.
+:- import_module svmap.
 
 recompilation__usage__write_usage_file(ModuleInfo, NestedSubModules,
 		MaybeTimestamps, !IO) :-
