@@ -2189,7 +2189,7 @@ case "$host" in
 	# installed to test this, we currently restrict ourselves to the
 	# powerpc architecture.
 	*powerpc*apple*darwin*)
-		CFLAGS_FOR_THREADS="-DMR_THREAD_SAFE -DGC_MACOSX_THREADS"
+		CFLAGS_FOR_THREADS="-DMR_THREAD_SAFE -DGC_DARWIN_THREADS"
 		THREAD_LIBS=""
 		;;
 
