@@ -1,6 +1,5 @@
 /*
-** Copyright (C) 1995 University of Melbourne.
-** This file may only be copied under the terms of the GNU Library General
+** Copyright (C) 1995 University of Melbourne.  ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
 
@@ -10,6 +9,7 @@
 **	Main Author : petdr
 */
 
+#include	"prof_mem.h"
 #include        "imp.h"
 #include        "std.h"
 
@@ -280,7 +280,7 @@ prof_call_profile(Code *Callee, Code *Caller)
 		}
 	}
 
-	new_node = make(prof_call_node);
+	new_node = prof_make(prof_call_node);
 	new_node->Callee = Callee;
 	new_node->Caller = Caller;
 	new_node->count  = 1;
@@ -332,7 +332,7 @@ prof_time_profile(int signum)
 		}
 	}
 
-	new_node = make(prof_time_node);
+	new_node = prof_make(prof_time_node);
 	new_node->Addr  = prof_current_proc;
 	new_node->count = 1;
 	new_node->left  = NULL;
