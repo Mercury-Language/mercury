@@ -1165,8 +1165,8 @@ Specify whether or not to use GNU C's ``labels as values'' extension.
 @sp 1
 @item @code{--asm-labels} (grades: asm_jump, asm_fast)
 @itemx @code{--no-asm-labels} (grades: debug, none, reg, jump, fast)
-Specify whether or not to use GNU C's asm extensions for inline assembler
-labels.
+Specify whether or not to use GNU C's asm extensions
+for inline assembler labels.
 
 @sp 1
 @item @code{--gc @{none, conservative, accurate@}}
@@ -1317,8 +1317,17 @@ These optimizations are high-level transformations on our HLDS (high-level
 data structure).
 
 @table @code
-@item --no-inlining
+@item --no-inline-simple
 Disable the inlining of simple procedures.
+
+@item --no-inline-single-use
+Disable the inlining of procedures called only once.
+
+@item --inline-threshold @var{threshold}
+Inline a procedure if its size
+(measured roughly in terms of the number of connectives in its internal form),
+multiplied by the number of times it is called,
+is below the given threshold.
 
 @sp 1
 @item --no-common-struct
