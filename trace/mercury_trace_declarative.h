@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2002 The University of Melbourne.
+** Copyright (C) 1998-2002, 2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -48,6 +48,15 @@ extern	MR_bool	MR_trace_start_decl_debug(MR_Trace_Mode trace_mode,
 */
 
 extern	MR_bool	MR_trace_decl_assume_all_io_is_tabled;
+
+/*
+** This function adds a module to the set of trusted modules in the 
+** oracle_state inside the current diagnoser_state.  It will call 
+** MR_trace_decl_ensure_init to ensure the diagnoser_state is initialised 
+** first.
+*/
+
+extern	void	MR_decl_add_trusted_module(const char *module_name);
 
 /*
 ** The following macros are provided to help C code manipulate the

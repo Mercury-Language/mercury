@@ -1,0 +1,10 @@
+context none
+echo on
+trust trust_1
+trust trust_2
+step
+finish
+dd
+n
+y
+continue

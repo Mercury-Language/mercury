@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2003 The University of Melbourne.
+% Copyright (C) 1999-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -161,6 +161,10 @@
 	%
 :- func get_decl_question_node(decl_question(T)) = T.
 
+	% Get the atom the question relates to.
+	%
+:- func get_decl_question_atom(decl_question(_)) = trace_atom.
+
 :- type some_decl_atom
 	--->	init(init_decl_atom)
 	;	final(final_decl_atom).
@@ -262,6 +266,11 @@ unravel_decl_atom(DeclAtom, TraceAtom, IoActions) :-
 get_decl_question_node(wrong_answer(Node, _)) = Node.
 get_decl_question_node(missing_answer(Node, _, _)) = Node.
 get_decl_question_node(unexpected_exception(Node, _, _)) = Node.
+
+get_decl_question_atom(wrong_answer(_, final_decl_atom(Atom, _))) = Atom.
+get_decl_question_atom(missing_answer(_, init_decl_atom(Atom), _)) = Atom.
+get_decl_question_atom(unexpected_exception(_, init_decl_atom(Atom), _)) = 
+	Atom.
 
 %-----------------------------------------------------------------------------%
 
@@ -502,6 +511,22 @@ diagnoser_no_bug_found(no_bug_found).
 		"MR_DD_diagnoser_require_subtree").
 
 diagnoser_require_subtree(require_subtree(Event, SeqNo), Event, SeqNo).
+
+%-----------------------------------------------------------------------------%
+
+	% Adds a trusted module to the given diagnoser.
+	%  
+:- pred add_trusted_module(string::in, diagnoser_state(trace_node_id)::in, 
+		diagnoser_state(trace_node_id)::out) is det.
+
+:- pragma export(add_trusted_module(in, in, out),
+		"MR_DD_decl_add_trusted_module").
+		
+add_trusted_module(ModuleName, OldDiagnoserState,
+	OldDiagnoserState ^ oracle_state := 
+		mdb.declarative_oracle.add_trusted_module(ModuleName, 
+			OldDiagnoserState ^ oracle_state)
+).
 
 %-----------------------------------------------------------------------------%
 

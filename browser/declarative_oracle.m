@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2003 The University of Melbourne.
+% Copyright (C) 1999-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -49,6 +49,10 @@
 :- pred oracle_state_init(io__input_stream, io__output_stream, oracle_state).
 :- mode oracle_state_init(in, in, out) is det.
 
+	% Add a module to the set of modules trusted by the oracle
+	%
+:- func add_trusted_module(string, oracle_state) = oracle_state. 
+
 	% Query the oracle about the program being debugged.  The first
 	% argument is a queue of nodes in the evaluation tree, the second
 	% argument is the oracle response to any of these.  The oracle
@@ -71,6 +75,7 @@
 
 :- implementation.
 
+:- import_module mdb__declarative_execution.
 :- import_module mdb__declarative_user.
 :- import_module mdb__tree234_cc.
 :- import_module mdb__set_cc.
@@ -79,7 +84,7 @@
 :- import_module bool, std_util, set.
 
 query_oracle(Questions, Response, Oracle0, Oracle) -->
-	{ query_oracle_kb_list(Oracle0 ^ kb_current, Questions, Answers) },
+	{ query_oracle_list(Oracle0, Questions, Answers) },
 	(
 		{ Answers = [] }
 	->
@@ -182,15 +187,26 @@ revise_oracle(Question, Oracle0, Oracle) :-
 				% and subsequently revised, but new answers
 				% to the questions have not yet been given.
 
-			user_state	:: user_state
+			user_state	:: user_state,
 				% User interface.
+				
+			trusted_modules :: set(string)
+				% If a module name is in this set then the 
+				% oracle will report any calls to predicates 
+				% or functions in that module as valid.
+		
 		).
 
 oracle_state_init(InStr, OutStr, Oracle) :-
 	oracle_kb_init(Current),
 	oracle_kb_init(Old),
 	user_state_init(InStr, OutStr, User),
-	Oracle = oracle(Current, Old, User).
+	set.init(TrustedModules),
+	Oracle = oracle(Current, Old, User, TrustedModules).
+	
+add_trusted_module(ModuleName, OracleState) = 
+	OracleState ^ trusted_modules := 
+		insert(OracleState ^ trusted_modules, ModuleName). 
 
 %-----------------------------------------------------------------------------%
 
@@ -282,21 +298,28 @@ set_kb_exceptions_map(KB, M, KB ^ kb_exceptions_map := M).
 
 %-----------------------------------------------------------------------------%
 
-:- pred query_oracle_kb_list(oracle_kb, list(decl_question(T)),
-		list(decl_answer(T))).
-:- mode query_oracle_kb_list(in, in, out) is cc_multi.
+:- pred query_oracle_list(oracle_state::in, list(decl_question(T))::in,
+		list(decl_answer(T))::out) is cc_multi.
 
-query_oracle_kb_list(_, [], []).
-query_oracle_kb_list(KB, [Q | Qs0], As) :-
-	query_oracle_kb_list(KB, Qs0, As0),
-	query_oracle_kb(KB, Q, MaybeA),
-	(
-		MaybeA = yes(A),
-		As = [A | As0]
+query_oracle_list(_, [], []).
+query_oracle_list(OS, [Q | Qs0], As) :-
+	query_oracle_list(OS, Qs0, As0),
+	Atom = get_decl_question_atom(Q),
+	(	
+		% is the atom in a trusted module?
+		member(Atom ^ module_name, OS ^ trusted_modules)
+	->
+		As = [truth_value(get_decl_question_node(Q), yes) | As0]
 	;
-		MaybeA = no,
-		As = As0
-	).
+		query_oracle_kb(OS ^ kb_current, Q, MaybeA),
+		(
+			MaybeA = yes(A),
+			As = [A | As0]
+		;
+			MaybeA = no,
+			As = As0
+		)
+	).	
 
 :- pred query_oracle_kb(oracle_kb, decl_question(T), maybe(decl_answer(T))).
 :- mode query_oracle_kb(in, in, out) is cc_multi.

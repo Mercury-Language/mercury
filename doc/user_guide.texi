@@ -3256,6 +3256,13 @@ Starts declarative debugging
 using the current event as the initial symptom.
 For details, see @ref{Declarative debugging}.
 @sp 1
+@item trust @var{module-name}
+@kindex trust (mdb command)
+The declarative debugger will assume that all predicates and functions in the
+given module are correct.  Use this command with modules you are confident do
+not contain any bugs to reduce the number of questions the declarative
+debugger needs to ask to find a bug.
+@sp 1
 @item quit [-y]
 @kindex quit (mdb command)
 Quits the debugger and aborts the execution of the program.

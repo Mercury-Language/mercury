@@ -198,7 +198,10 @@ static	MR_bool		MR_trace_same_construct(const char *p1,
 static	MR_bool		MR_trace_single_component(const char *path);
 static	MR_Word		MR_decl_make_atom(const MR_Label_Layout *layout,
 				MR_Word *saved_regs, MR_Trace_Port port);
-static	MR_ConstString	MR_decl_atom_name(const MR_Proc_Layout *entry);
+static	void		MR_decl_atom_name_and_module(
+				const MR_Proc_Layout *entry, 
+				MR_ConstString *proc_name, 
+				MR_ConstString *module_name);
 static	MR_Word		MR_decl_atom_args(const MR_Label_Layout *layout,
 				MR_Word *saved_regs);
 static	const char	*MR_trace_start_collecting(MR_Unsigned event,
@@ -940,6 +943,7 @@ MR_decl_make_atom(const MR_Label_Layout *layout, MR_Word *saved_regs,
 {
 	MR_PredFunc			pred_or_func;
 	MR_ConstString			name;
+	MR_ConstString			module_name;
 	int				arity;
 	MR_Word				atom;
 	int				hv;   /* any head variable */
@@ -949,13 +953,15 @@ MR_decl_make_atom(const MR_Label_Layout *layout, MR_Word *saved_regs,
 
 	MR_trace_init_point_vars(layout, saved_regs, port, MR_TRUE);
 
-	name = MR_decl_atom_name(entry);
+	MR_decl_atom_name_and_module(entry, &name, &module_name);
+	
 	MR_proc_id_arity_addedargs_predfunc(entry, &arity, &num_added_args,
 		&pred_or_func);
 
 	MR_TRACE_CALL_MERCURY(
 		atom = MR_DD_construct_trace_atom(
 				(MR_Word) pred_or_func,
+				(MR_String) module_name,
 				(MR_String) name,
 				(MR_Word) entry->MR_sle_num_head_vars);
 	);
@@ -999,26 +1005,37 @@ MR_decl_make_atom(const MR_Label_Layout *layout, MR_Word *saved_regs,
 	return atom;
 }
 
-static	MR_ConstString
-MR_decl_atom_name(const MR_Proc_Layout *entry)
+static	void
+MR_decl_atom_name_and_module(const MR_Proc_Layout *entry, 
+	MR_ConstString *proc_name, MR_ConstString *module_name)
 {
-	MR_ConstString		name;
-
 	if (MR_PROC_LAYOUT_HAS_PROC_ID(entry)) {
 		if (MR_PROC_LAYOUT_IS_UCI(entry)) {
 			MR_TRACE_USE_HP(
-				MR_make_aligned_string(name, "<<internal>>");
+				MR_make_aligned_string(*proc_name, 
+					entry->MR_sle_proc_id.MR_proc_uci.\
+					MR_uci_type_name);
+				MR_make_aligned_string(*module_name, 
+					entry->MR_sle_proc_id.MR_proc_uci.\
+					MR_uci_def_module);
 			);
 		} else {
-			name = entry->MR_sle_proc_id.MR_proc_user.MR_user_name;
+			MR_TRACE_USE_HP(
+				MR_make_aligned_string(*proc_name, 
+					entry->MR_sle_proc_id.MR_proc_user.\
+					MR_user_name);
+				MR_make_aligned_string(*module_name, 
+					entry->MR_sle_proc_id.MR_proc_user.\
+					MR_user_decl_module);
+			);
 		}
 	} else {
+		/* XXX Should maybe raise an exception? */
 		MR_TRACE_USE_HP(
-			MR_make_aligned_string(name, "<<unknown>>");
+			MR_make_aligned_string(*proc_name, "<<unknown>>");
+			MR_make_aligned_string(*module_name, "<<unknown>>");
 		);
 	}
-
-	return name;
 }
 
 static	void
@@ -1039,6 +1056,22 @@ MR_trace_decl_ensure_init(void)
 		);
 		done = MR_TRUE;
 	}
+}
+
+void
+MR_decl_add_trusted_module(const char *module_name)
+{
+	MR_ConstString aligned_module_name;
+	
+	MR_TRACE_USE_HP(
+		MR_make_aligned_string(aligned_module_name, module_name);
+	);
+	MR_trace_decl_ensure_init();
+	MR_TRACE_CALL_MERCURY(
+		MR_DD_decl_add_trusted_module(aligned_module_name,
+			MR_trace_front_end_state,
+			&MR_trace_front_end_state);
+	);
 }
 
 MR_bool

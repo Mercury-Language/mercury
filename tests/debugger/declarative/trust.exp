@@ -1,0 +1,20 @@
+       1:      1  1 CALL pred trust.main/2-0 (cc_multi) trust.m:13
+mdb> Contexts will not be printed.
+mdb> echo on
+Command echo enabled.
+mdb> trust trust_1
+mdb> trust trust_2
+mdb> step
+       2:      2  2 CALL pred trust.dostuff/2-0 (cc_multi)
+mdb> finish
+      11:      2  2 EXIT pred trust.dostuff/2-0 (cc_multi)
+mdb> dd
+dostuff(w("aaabbb"), '=')
+Valid? n
+Found incorrect contour:
+dostuff(w("aaabbb"), '=')
+Is this a bug? y
+      11:      2  2 EXIT pred trust.dostuff/2-0 (cc_multi)
+mdb> continue
+aaabbb
+'='

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2003 The University of Melbourne.
+% Copyright (C) 1999-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -177,6 +177,10 @@
 	--->	atom(
 			pred_or_func		:: pred_or_func,
 
+			module_name		::string,
+						% The module in which the 
+						% procedure was declared.
+			
 			proc_name		:: string,
 						% Procedure name.
 						%
@@ -975,12 +979,12 @@ null_trace_node_id(_) :-
 	private_builtin__sorry("null_trace_node_id").
 
 
-:- func construct_trace_atom(pred_or_func, string, int) = trace_atom.
-:- pragma export(construct_trace_atom(in, in, in) = out,
+:- func construct_trace_atom(pred_or_func, string, string, int) = trace_atom.
+:- pragma export(construct_trace_atom(in, in, in, in) = out,
 		"MR_DD_construct_trace_atom").
 
-construct_trace_atom(PredOrFunc, Functor, Arity) = Atom :-
-	Atom = atom(PredOrFunc, Functor, Args),
+construct_trace_atom(PredOrFunc, ModuleName, Functor, Arity) = Atom :-
+	Atom = atom(PredOrFunc, ModuleName, Functor, Args),
 	list__duplicate(Arity, dummy_arg_info, Args).
 
 	% add_trace_atom_arg_value(Atom0, ArgNum, HldsNum, ProgVis, Val):
@@ -992,8 +996,8 @@ construct_trace_atom(PredOrFunc, Functor, Arity) = Atom :-
 :- pragma export(add_trace_atom_arg_value(in, in, in, in, in) = out,
 		"MR_DD_add_trace_atom_arg_value").
 
-add_trace_atom_arg_value(atom(C, F, Args0), ArgNum, HldsNum, ProgVis, Val)
-		= atom(C, F, Args) :-
+add_trace_atom_arg_value(atom(C, M, F, Args0), ArgNum, HldsNum, ProgVis, Val)
+		= atom(C, M, F, Args) :-
 	Arg = arg_info(c_bool_to_merc_bool(ProgVis), HldsNum, yes(Val)),
 	list__replace_nth_det(Args0, ArgNum, Arg, Args).
 
@@ -1003,8 +1007,8 @@ add_trace_atom_arg_value(atom(C, F, Args0), ArgNum, HldsNum, ProgVis, Val)
 :- pragma export(add_trace_atom_arg_no_value(in, in, in, in) = out,
 		"MR_DD_add_trace_atom_arg_no_value").
 
-add_trace_atom_arg_no_value(atom(C, F, Args0), ArgNum, HldsNum, ProgVis)
-		= atom(C, F, Args) :-
+add_trace_atom_arg_no_value(atom(C, M, F, Args0), ArgNum, HldsNum, ProgVis)
+		= atom(C, M, F, Args) :-
 	Arg = arg_info(c_bool_to_merc_bool(ProgVis), HldsNum, no),
 	list__replace_nth_det(Args0, ArgNum, Arg, Args).
 
@@ -1170,7 +1174,7 @@ select_arg_at_pos(ArgPos, Args0, Arg) :-
 	list__index1_det(Args, N, Arg).
 
 absolute_arg_num(any_head_var(ArgNum), _, ArgNum).
-absolute_arg_num(user_head_var(N), atom(_, _, Args), ArgNum) :-
+absolute_arg_num(user_head_var(N), atom(_, _, _, Args), ArgNum) :-
 	head_var_num_to_arg_num(Args, N, 1, ArgNum).
 
 :- pred head_var_num_to_arg_num(list(trace_atom_arg)::in, int::in, int::in,

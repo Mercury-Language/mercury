@@ -469,6 +469,7 @@ static	MR_TraceCmdFunc	MR_trace_cmd_save;
 static	MR_TraceCmdFunc	MR_trace_cmd_quit;
 static	MR_TraceCmdFunc	MR_trace_cmd_dd;
 static	MR_TraceCmdFunc	MR_trace_cmd_dd_dd;
+static	MR_TraceCmdFunc	MR_trace_cmd_trust;
 
 static	void	MR_maybe_print_spy_point(int slot, const char *problem);
 static	void	MR_print_unsigned_var(FILE *fp, const char *var,
@@ -5318,6 +5319,20 @@ MR_trace_cmd_dd_dd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	return KEEP_INTERACTING;
 }
 
+static MR_Next
+MR_trace_cmd_trust(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
+	MR_Event_Info *event_info, MR_Event_Details *event_details,
+	MR_Code **jumpaddr)
+{	
+	if (word_count == 2) {
+		MR_decl_add_trusted_module(words[1]);
+	} else {
+		MR_trace_usage("dd", "trust");
+	}
+	return KEEP_INTERACTING;
+}
+
+
 static void
 MR_maybe_print_spy_point(int slot, const char *problem)
 {
@@ -7103,6 +7118,8 @@ static const MR_Trace_Command_Info	MR_trace_command_infos[] =
 		NULL, MR_trace_null_completer },
 	{ "misc", "quit", MR_trace_cmd_quit,
 		MR_trace_quit_cmd_args, NULL },
+	{ "misc", "trust", MR_trace_cmd_trust, NULL, 
+		MR_trace_null_completer },
 
 	{ "exp", "histogram_all", MR_trace_cmd_histogram_all,
 		NULL, MR_trace_filename_completer },

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2003 The University of Melbourne.
+% Copyright (C) 1999-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -337,7 +337,7 @@ browse_decl_bug_arg(Bug, ArgNum, User0, User) -->
 	is cc_multi.
 
 browse_atom_argument(Atom, ArgNum, MaybeMark, User0, User) -->
-	{ Atom = atom(_, _, Args0) },
+	{ Atom = atom(_, _, _, Args0) },
 	{ maybe_filter_headvars(chosen_head_vars_presentation, Args0, Args) },
 	(
 		{ list__index1(Args, ArgNum, ArgInfo) },
@@ -369,7 +369,7 @@ print_atom_arguments(Atom, From, To, User0) -->
 	io__state::di, io__state::uo) is cc_multi.
 
 print_atom_argument(Atom, ArgNum, User0, OK) -->
-	{ Atom = atom(_, _, Args0) },
+	{ Atom = atom(_, _, _, Args0) },
 	{ maybe_filter_headvars(chosen_head_vars_presentation, Args0, Args) },
 	(
 		{ list__index1(Args, ArgNum, ArgInfo) },
@@ -679,7 +679,7 @@ write_decl_final_atom(User, Indent, CallerType, FinalAtom) -->
 write_decl_atom(User, Indent, CallerType, DeclAtom) -->
 	io__write_string(User ^ outstr, Indent),
 	{ unravel_decl_atom(DeclAtom, TraceAtom, IoActions) },
-	{ TraceAtom = atom(PredOrFunc, Functor, Args0) },
+	{ TraceAtom = atom(PredOrFunc, _, Functor, Args0) },
 	{ Which = chosen_head_vars_presentation },
 	{ maybe_filter_headvars(Which, Args0, Args1) },
 	{ list__map(trace_atom_arg_to_univ, Args1, Args) },
