@@ -433,6 +433,7 @@ esac
 merc_libdir_opts="\
 	-L$LIBDIR/$GRADE/$FULLARCH
 	-L$LIBDIR/$FULLARCH
+	-L/usr/local/lib
 "
 LIBDIR_OPTS="$user_libdir_opts $merc_libdir_opts"
 

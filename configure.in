@@ -193,6 +193,15 @@ CFLAGS="-O"
 # we also need to add the appropriate `-I' options so that the test programs
 # can #include various Mercury runtime headers.
 CFLAGS="-I runtime -I runtime/machdeps $CFLAGS"
+
+# Make sure we search /usr/local/include and /usr/local/lib for
+# header files and libraries.  GNU C normally searches /usr/local/include
+# by default, but (inconsistently) it does _not_ search /usr/local/lib;
+# and in any case the user might be using a different C compiler that
+# doesn't search either of those by default.
+CFLAGS="-I /usr/local/include $CFLAGS"
+LIBS="-L/usr/local/lib $LIBS"
+
 AC_PROG_CPP
 AC_C_CROSS
 AC_PROG_RANLIB
