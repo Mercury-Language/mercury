@@ -74,8 +74,9 @@ typedef enum {
 				 = 14,/* wait for a cc interactive query      */
 	MR_REQUEST_INTERACTIVE_QUERY_IO	 
 				 = 15,/* wait for a io interactive query      */
-	MR_REQUEST_MMC_OPTIONS	 = 16 /* pass down new options to compile
+	MR_REQUEST_MMC_OPTIONS	 = 16,/* pass down new options to compile
 					 queries with			      */
+	MR_REQUEST_BROWSE	 = 17 /* call the term browser	              */
 
 } MR_debugger_request_type;
 
@@ -129,6 +130,15 @@ static void	MR_get_list_modules_to_import(Word debugger_request,
 			Integer *modules_list_length_ptr, Word *modules_list_ptr);
 static void	MR_get_mmc_options(Word debugger_request, 
 			String *mmc_options_ptr);
+static void	MR_get_variable_name(Word debugger_request, String *var_name_ptr);
+static void	MR_trace_browse_one_external(
+			const MR_Stack_Layout_Label *top_layout,
+			Word *saved_regs, int ancestor_level,
+			MR_Var_Spec which_var);
+static void	MR_trace_browse_var_external(const char *name, 
+			const MR_Stack_Layout_Vars *vars, int i, 
+			Word *saved_regs, Word *base_sp, Word *base_curfr, 
+			Word *type_params);
 
 #if 0
 This pseudocode should go in the debugger process:
@@ -390,13 +400,17 @@ MR_trace_event_external(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 	Word		*saved_regs = event_info->MR_saved_regs;
 	Integer		modules_list_length;
 	Word		modules_list;
+	int		ancestor_level;
 
-/* 
-** MR_mmc_options contains the options to pass to mmc when compiling queries.
-** We initialise it to the String "".
-*/
+	/* 
+	** MR_mmc_options contains the options to pass to mmc when compiling 
+	** queries. We initialise it to the String "".
+	*/
 	static String	MR_mmc_options;
 	MR_TRACE_CALL_MERCURY(ML_DI_init_mercury_string(&MR_mmc_options));
+
+	/* by default, print variables from the current call */
+	ancestor_level = 0;
 
 	event_details.MR_call_seqno = MR_trace_call_seqno;
 	event_details.MR_call_depth = MR_trace_call_depth;
@@ -605,6 +619,24 @@ MR_trace_event_external(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 				MR_send_message_to_socket("mmc_options_ok");
 				break;
 
+			case MR_REQUEST_BROWSE:
+			  {
+				char		*var_name;
+				MR_Var_Spec	var_spec;
+
+				if (MR_debug_socket) {
+					fprintf(stderr, "\nMercury runtime: "
+						"REQUEST_BROWSE\n");
+				}
+				MR_get_variable_name(debugger_request, 
+					&var_name);
+				var_spec.MR_var_spec_kind = VAR_NAME;
+				var_spec.MR_var_spec_name = var_name;
+				MR_trace_browse_one_external(layout, saved_regs,
+					ancestor_level, var_spec);
+				MR_send_message_to_socket("browser_end");
+				break;
+			  }
 			case MR_REQUEST_NO_TRACE:
 				cmd->MR_trace_cmd = MR_CMD_TO_END;
 				return jumpaddr;
@@ -1146,5 +1178,105 @@ MR_get_mmc_options(Word debugger_request, String *mmc_options_ptr)
 			mmc_options_ptr);
 		);
 }
+
+static void
+MR_get_variable_name(Word debugger_request, String *var_name_ptr)
+{
+	MR_TRACE_CALL_MERCURY(
+		ML_DI_get_variable_name(
+			debugger_request, 
+			var_name_ptr);
+		);
+}
+
+
+/*
+** This function does the same thing as MR_trace_browse_one() defined in 
+** mercury_trace_internal.c except it sends/receives program-readable terms
+** from/to the socket instead of sending human-readable strings from/to 
+** mdb_in/mdb_out.
+*/
+
+static void
+MR_trace_browse_one_external(const MR_Stack_Layout_Label *top_layout,
+	Word *saved_regs, int ancestor_level, MR_Var_Spec var_spec)
+{
+	const MR_Stack_Layout_Label	*level_layout;
+	Word				*base_sp;
+	Word				*base_curfr;
+	Word				*type_params;
+	Word				*valid_saved_regs;
+	int				which_var;
+	const MR_Stack_Layout_Vars	*vars;
+	const char 			*problem;
+
+	base_sp = MR_saved_sp(saved_regs);
+	base_curfr = MR_saved_curfr(saved_regs);
+	level_layout = MR_find_nth_ancestor(top_layout, ancestor_level,
+				&base_sp, &base_curfr, &problem);
+
+	if (level_layout == NULL) {
+		MR_send_message_to_socket_format("error(\"%s\").\n", problem);
+		return;
+	}
+
+	problem = MR_trace_find_var(level_layout, var_spec, &which_var);
+	if (problem != NULL) {
+		MR_send_message_to_socket_format("error(\"%s\").\n", problem);
+		return;
+	}
+
+	if (ancestor_level == 0) {
+		valid_saved_regs = saved_regs;
+	} else {
+		valid_saved_regs = NULL;
+	}
+	vars = &level_layout->MR_sll_var_info;
+	type_params = MR_materialize_typeinfos_base(vars,
+				valid_saved_regs, base_sp, base_curfr);
+	MR_trace_browse_var_external(MR_name_if_present(vars, which_var),
+		vars, which_var, valid_saved_regs,
+		base_sp, base_curfr, type_params);
+	free(type_params);
+}
+
+
+/*
+** This function does the same thing as MR_trace_browse_var() defined in 
+** mercury_trace_internal.c except it always calls the term browser and it  
+** calls MR_trace_browse_external() instead of MR_trace_browse().
+*/
+
+static void
+MR_trace_browse_var_external(const char *name, const MR_Stack_Layout_Vars *vars,
+	int i, Word *saved_regs, Word *base_sp, Word *base_curfr, 
+	Word *type_params)
+{
+	Word	value;
+	Word	type_info;
+	bool	print_value;
+
+	/*
+	** XXX The printing of type_infos is buggy at the moment
+	** due to the fake arity of the type private_builtin:typeinfo/1.
+	*/
+
+	if ((strncmp(name, "TypeInfo", 8) == 0)
+	|| (strncmp(name, "TypeClassInfo", 13) == 0))
+		return;
+
+	/*
+	** "variables" representing the saved values of succip, hp etc,
+	** which are the "variables" for which get_type_and_value fails,
+	** are not of interest to the user.
+	*/
+
+	print_value = MR_get_type_and_value_base(vars, i, saved_regs,
+			base_sp, base_curfr, type_params, &type_info, &value);
+	if (print_value) {
+		MR_trace_browse_external(type_info, value);		
+	}
+}
+
 
 #endif /* MR_USE_EXTERNAL_DEBUGGER */

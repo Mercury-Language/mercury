@@ -8,7 +8,7 @@
 ** mercury_trace_browse.h
 **
 ** Defines the interface of the term browser and the interactive query
-** facility for the internal debugger.
+** facility for the internal and external debuggers.
 */
 
 #ifndef	MERCURY_TRACE_BROWSE_H
@@ -18,6 +18,7 @@
 ** Interactively browse a term.
 */
 extern 	void	MR_trace_browse(Word type_info, Word value);
+extern 	void	MR_trace_browse_external(Word type_info, Word value);
 
 /*
 ** Display a term (non-interactively).

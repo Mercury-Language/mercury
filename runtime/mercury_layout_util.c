@@ -517,3 +517,75 @@ MR_write_variable(Word type_info, Word value)
 	(*MR_io_stdout_stream)(&stdout_stream);
 	(*MR_io_print_to_stream)(type_info, stdout_stream, value);
 }
+
+/*
+** Find and validate the number of a variable given by a variable
+** specification in the given layout. If successful, store the
+** number of the variable in *which_var_ptr, and return a NULL 
+** string; otherwise return a string containing an error message.
+*/
+
+const char *
+MR_trace_find_var(const MR_Stack_Layout_Label *layout,
+	MR_Var_Spec var_spec, int *which_var_ptr)
+{
+	int		var_count;
+	const char 	*problem;
+
+	problem = MR_trace_validate_var_count(layout, &var_count);
+	if (problem != NULL) {
+		return problem;
+	}
+
+	if (var_spec.MR_var_spec_kind == VAR_NUMBER) {
+		*which_var_ptr = var_spec.MR_var_spec_number;
+		if (*which_var_ptr >= var_count) {
+			return "there is no such variable";
+		} else {
+			return NULL;	/* represents success */
+		}
+	} else if (var_spec.MR_var_spec_kind == VAR_NAME) {
+		const MR_Stack_Layout_Vars	*vars;
+		const char 			*name;
+		bool				collision = FALSE;
+		int				i;
+
+		vars = &layout->MR_sll_var_info;
+		*which_var_ptr = -1;
+		name = var_spec.MR_var_spec_name;
+		for (i = 0; i < var_count; i++) {
+			if (streq(name, MR_name_if_present(vars, i))) {
+				if (*which_var_ptr >= 0) {
+					collision = TRUE;
+				}
+
+				*which_var_ptr = i;
+			}
+		}
+
+		if (*which_var_ptr < 0) {
+			return "there is no variable with that name";
+		} else if (collision) {
+			return "variable name is not unique";
+		} else {
+			return NULL;	/* represents success */
+		}
+	} else {
+		return "internal error: bad var_spec kind";
+	}
+}
+
+const char *
+MR_trace_validate_var_count(const MR_Stack_Layout_Label *layout,
+	int *var_count_ptr)
+{
+	if (! MR_has_valid_var_count(&layout->MR_sll_var_info)) {
+		return "there is no information about live variables";
+	} else if (! MR_has_valid_var_info(&layout->MR_sll_var_info)) {
+		return "there are no live variables";
+	} else {
+		*var_count_ptr =
+			MR_all_desc_var_count(&layout->MR_sll_var_info);
+		return NULL;
+	}
+}

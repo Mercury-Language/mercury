@@ -63,6 +63,29 @@ MR_trace_browse(Word type_info, Word value)
 				(Word *) MR_trace_browser_state_type);
 }
 
+	
+/*
+** MR_trace_browse_external() is the same as MR_trace_browse() except it 
+** uses debugger_socket_in and debugger_socket_out to read program-readable 
+** terms, whereas MR_trace_browse() uses mdb_in and mdb_out to read
+** human-readable strings.
+*/
+
+void
+MR_trace_browse_external(Word type_info, Word value)
+{
+	MR_trace_browse_ensure_init();
+
+	MR_TRACE_CALL_MERCURY(
+		ML_BROWSE_browse_external(type_info, value,
+			(Word) &MR_debugger_socket_in, 
+			(Word) &MR_debugger_socket_out,
+			MR_trace_browser_state, &MR_trace_browser_state);
+	);
+	MR_trace_browser_state = MR_make_permanent(MR_trace_browser_state,
+				(Word *) MR_trace_browser_state_type);
+}
+
 void
 MR_trace_print(Word type_info, Word value)
 {

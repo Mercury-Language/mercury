@@ -150,4 +150,32 @@ extern	bool	MR_get_type_filtered(const MR_Stack_Layout_Vars *vars, int var,
 
 extern	void	MR_write_variable(Word type_info, Word value);
 
+/*
+** Type used in the term browser call
+*/
+
+typedef	enum {
+	VAR_NUMBER,
+	VAR_NAME
+} MR_Var_Spec_Kind;
+
+typedef struct {
+	MR_Var_Spec_Kind	MR_var_spec_kind;
+	int			MR_var_spec_number; /* valid if VAR_NUMBER */
+	const char		*MR_var_spec_name;  /* valid if VAR_NAME   */
+} MR_Var_Spec;
+
+/*
+** Find and validate the number of a variable given by a variable
+** specification in the given layout. If successful, store the
+** number of the variable in *which_var_ptr, and return a NULL 
+** string; otherwise return a string containing an error message.
+*/
+
+extern	const char *MR_trace_find_var(const MR_Stack_Layout_Label *layout,
+			MR_Var_Spec var_spec, int *which_var_ptr);
+
+extern	const char *MR_trace_validate_var_count(const MR_Stack_Layout_Label
+			*layout, int *var_count_ptr);
+
 #endif	/* MERCURY_LAYOUT_UTIL_H */

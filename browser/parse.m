@@ -7,9 +7,12 @@
 % file: parse.m:
 % author: aet
 
-% This file contains the parser for the mdb browser command language.
-% This parses the stuff you type at the "browser> " prompt after
-% typing "browse" from the mdb prompt.
+% This file contains the parser for the term browser command language.
+% If the term browser is called from mdb, it parses the stuff you type 
+% at the "browser> " prompt after typing "browse" from the mdb prompt.
+% If it is called from the external debugger, then it parses the stuff
+% contained in a term `external_request(<string to parse>)' send by the
+% external debugger.
 
 %---------------------------------------------------------------------------%
 
@@ -99,8 +102,16 @@
 	;	pretty
 	;	verbose.
 
+% If the term browser is called from the external debugger, the term browser
+% commands are send through the socket via terms of type external_request.
+:- type external_request 
+	---> external_request(string).
+
 :- pred parse__read_command(string, command, io__state, io__state).
 :- mode parse__read_command(in, out, di, uo) is det.
+
+:- pred parse__read_command_external(command, io__state, io__state).
+:- mode parse__read_command_external(out, di, uo) is det.
 
 :- pred default_depth(int).
 :- mode default_depth(out) is det.
@@ -127,6 +138,24 @@
 parse__read_command(Prompt, Comm) -->
 	util__trace_getline(Prompt, Result),
 	( { Result = ok(Cs) } ->
+		{ lexer(Cs, Tokens) },
+		( { parse(Tokens, Comm2) } ->
+			{ Comm = Comm2 }
+		;
+			{ Comm = unknown }
+		)
+	; { Result = eof } ->
+		{ Comm = quit }
+	;
+		{ Comm = unknown }
+	).
+
+parse__read_command_external(Comm) -->
+	io__read(Result),
+	( 
+		{ Result = ok(external_request(StringToParse)) }
+	->
+		{ string__to_char_list(StringToParse, Cs) },
 		{ lexer(Cs, Tokens) },
 		( { parse(Tokens, Comm2) } ->
 			{ Comm = Comm2 }

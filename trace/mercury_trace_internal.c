@@ -122,17 +122,6 @@ typedef enum {
 	STOP_INTERACTING
 } MR_Next;
 
-typedef	enum {
-	VAR_NUMBER,
-	VAR_NAME
-} MR_Var_Spec_Kind;
-
-typedef struct {
-	MR_Var_Spec_Kind	MR_var_spec_kind;
-	int			MR_var_spec_number; /* valid if VAR_NUMBER */
-	const char		*MR_var_spec_name;  /* valid if VAR_NAME   */
-} MR_Var_Spec;
-
 #ifdef	MR_USE_DECLARATIVE_DEBUGGER
 
 MR_Trace_Mode MR_trace_decl_mode = MR_TRACE_INTERACTIVE;
@@ -186,10 +175,6 @@ static	void	MR_trace_browse_var(const char *name,
 			const MR_Stack_Layout_Vars *vars, int i,
 			Word *saved_regs, Word *base_sp, Word *base_curfr,
 			Word *type_params, bool browse);
-static	const char *MR_trace_validate_var_count(const MR_Stack_Layout_Label
-			*layout, int *var_count_ptr);
-static	const char *MR_trace_find_var(const MR_Stack_Layout_Label *layout,
-			MR_Var_Spec var_spec, int *which_var_ptr);
 static	void	MR_trace_do_noop(void);
 
 static	const char *MR_trace_read_help_text(void);
@@ -1866,78 +1851,6 @@ MR_trace_browse_var(const char *name, const MR_Stack_Layout_Vars *vars, int i,
 			/* XXX should use MR_mdb_out */
 			MR_trace_print(type_info, value);
 		}
-	}
-}
-
-static const char *
-MR_trace_validate_var_count(const MR_Stack_Layout_Label *layout,
-	int *var_count_ptr)
-{
-	if (! MR_has_valid_var_count(&layout->MR_sll_var_info)) {
-		return "there is no information about live variables";
-	} else if (! MR_has_valid_var_info(&layout->MR_sll_var_info)) {
-		return "there are no live variables";
-	} else {
-		*var_count_ptr =
-			MR_all_desc_var_count(&layout->MR_sll_var_info);
-		return NULL;
-	}
-}
-
-/*
-** Find and validate the number of a variable given by a variable
-** specification in the given layout. If successful, return the
-** number of the variable in *which_var_ptr, and a NULL string;
-** otherwise return a string containing an error message.
-*/
-
-static const char *
-MR_trace_find_var(const MR_Stack_Layout_Label *layout,
-	MR_Var_Spec var_spec, int *which_var_ptr)
-{
-	int		var_count;
-	const char 	*problem;
-
-	problem = MR_trace_validate_var_count(layout, &var_count);
-	if (problem != NULL) {
-		return problem;
-	}
-
-	if (var_spec.MR_var_spec_kind == VAR_NUMBER) {
-		*which_var_ptr = var_spec.MR_var_spec_number;
-		if (*which_var_ptr >= var_count) {
-			return "there is no such variable";
-		} else {
-			return NULL;	/* represents success */
-		}
-	} else if (var_spec.MR_var_spec_kind == VAR_NAME) {
-		const MR_Stack_Layout_Vars	*vars;
-		const char 			*name;
-		bool				collision = FALSE;
-		int				i;
-
-		vars = &layout->MR_sll_var_info;
-		*which_var_ptr = -1;
-		name = var_spec.MR_var_spec_name;
-		for (i = 0; i < var_count; i++) {
-			if (streq(name, MR_name_if_present(vars, i))) {
-				if (*which_var_ptr >= 0) {
-					collision = TRUE;
-				}
-
-				*which_var_ptr = i;
-			}
-		}
-
-		if (*which_var_ptr < 0) {
-			return "there is no variable with that name";
-		} else if (collision) {
-			return "variable name is not unique";
-		} else {
-			return NULL;	/* represents success */
-		}
-	} else {
-		return "internal error: bad var_spec kind";
 	}
 }
 
