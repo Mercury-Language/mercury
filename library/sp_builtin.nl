@@ -45,6 +45,8 @@
 
 :- op(1199, fx, (rule)).
 
+:- op(1199, fx, (pragma)).
+
 :- op(1199, fx, (type)).
 :- op(1199, fx, (pred)).
 :- op(1199, fx, (func)).

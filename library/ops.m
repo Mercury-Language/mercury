@@ -197,6 +197,7 @@ ops__op_table("module", before, fx, 1199).
 ops__op_table("not", before, fy, 900).
 % ops__op_table("once", before, fy, 900).
 ops__op_table("or", after, xfy, 740).
+ops__op_table("pragma", before, fx, 1199).
 ops__op_table("pred", before, fx, 1180).
 % ops__op_table("pure", before, fy, 1150).
 ops__op_table("rule", before, fx, 1199).

@@ -44,6 +44,7 @@
 % :- op(1199, fx, (pred)).
 :- op(1199, fx, (func)).
 
+:- op(1199, fx, (pragma)).
 :- op(1199, fx, (mode)).
 :- op(1199, fx, (inst)).
 :- op(1179, xfy, (--->)).
