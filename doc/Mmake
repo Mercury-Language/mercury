@@ -38,10 +38,13 @@ DVIPS=dvips
 %_1.html: %.texi
 	$(TEXI2HTML_SPLIT) $<
 
+%.1: ../scripts/% make_manpage
+	./make_manpage $< > $@
+
 #-----------------------------------------------------------------------------#
 
 .PHONY: all
-all: info dvi html
+all: info dvi html manpages # ps text
 
 #-----------------------------------------------------------------------------#
 
@@ -67,6 +70,9 @@ text: user_guide.text reference_manual.text library.text faq.text \
 .PHONY: split_html
 split_html: mercury.html user_guide_1.html reference_manual_1.html \
 	library_1.html faq_1.html transition_guide_1.html
+
+.PHONY: manpages
+manpages: c2init.1 mc.1 mgnuc.1 ml.1 mmake.1 msc.1 mprof.1
 
 #-----------------------------------------------------------------------------#
 
@@ -146,6 +152,22 @@ install_html: html
 install_dvi: dvi
 	-[ -d $(INSTALL_DVI_DIR) ] || mkdir -p $(INSTALL_DVI_DIR)
 	cp *.dvi $(INSTALL_DVI_DIR)
+
+.PHONY: install_text
+install_text: text
+	-[ -d $(INSTALL_TEXT_DIR) ] || mkdir -p $(INSTALL_TEXT_DIR)
+	cp *.txt $(INSTALL_TEXT_DIR)
+
+.PHONY: install_ps
+install_ps: ps
+	-[ -d $(INSTALL_PS_DIR) ] || mkdir -p $(INSTALL_PS_DIR)
+	cp *.ps $(INSTALL_PS_DIR)
+
+.PHONY: install_manpages
+install_manpages: manpages
+	-[ -d $(INSTALL_MAN_DIR)/man1 ] || \
+		mkdir -p $(INSTALL_MAN_DIR)/man1
+	cp *.1 $(INSTALL_MAN_DIR)/man1
 
 # The uninstall rule here only removes the info files; the others
 # are removed by the top-level uninstall rule.
