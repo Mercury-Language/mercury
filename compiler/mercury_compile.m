@@ -2577,6 +2577,13 @@ mercury_compile__single_c_to_obj(C_File, O_File, Succeeded) -->
 	;
 		AsmOpt = ""
 	},
+	globals__io_lookup_bool_option(parallel, Parallel),
+	( { Parallel = yes } ->
+		globals__io_lookup_string_option(cflags_for_threads,
+			CFLAGS_FOR_THREADS)
+	;
+		{ CFLAGS_FOR_THREADS = "" }
+	),
 	globals__io_get_gc_method(GC_Method),
 	{ GC_Method = conservative ->
 		GC_Opt = "-DCONSERVATIVE_GC "
@@ -2708,6 +2715,7 @@ mercury_compile__single_c_to_obj(C_File, O_File, Succeeded) -->
 		HighLevelCodeOpt, NestedFunctionsOpt, HighLevelDataOpt,
 		RegOpt, GotoOpt, AsmOpt,
 		CFLAGS_FOR_REGS, " ", CFLAGS_FOR_GOTOS, " ",
+		CFLAGS_FOR_THREADS, " ",
 		GC_Opt, ProfileCallsOpt, ProfileTimeOpt, ProfileMemoryOpt,
 		PIC_Reg_Opt, TagsOpt, NumTagBitsOpt,
 		C_DebugOpt, LL_DebugOpt,

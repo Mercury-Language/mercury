@@ -23,6 +23,7 @@ DEFAULT_GRADE=${MERCURY_DEFAULT_GRADE=@DEFAULT_GRADE@}
 CC=${MERCURY_C_COMPILER="@CC@"}
 CFLAGS_FOR_REGS="@CFLAGS_FOR_REGS@"
 CFLAGS_FOR_GOTOS="@CFLAGS_FOR_GOTOS@"
+CFLAGS_FOR_THREADS="@CFLAGS_FOR_THREADS@"
 CFLAG_TO_NAME_OBJECT_FILE="@OBJFILE_OPT@"
 OBJECT_FILE_EXTENSION="@OBJ_SUFFIX@"
 LOW_TAG_BITS=@LOW_TAG_BITS@
@@ -43,6 +44,7 @@ case $# in
 		--cc "$CC" --grade "$DEFAULT_GRADE" \
 		--cflags-for-regs "$CFLAGS_FOR_REGS" \
 		--cflags-for-gotos "$CFLAGS_FOR_GOTOS" \
+		--cflags-for-threads "$CFLAGS_FOR_THREADS" \
 		--c-flag-to-name-object-file "$CFLAG_TO_NAME_OBJECT_FILE" \
 		--object-file-extension "$OBJECT_FILE_EXTENSION" \
 		--num-real-r-regs "$NUM_REAL_R_REGS" \
@@ -60,6 +62,7 @@ case $# in
 		--cc "$CC" --grade "$DEFAULT_GRADE" \
 		--cflags-for-regs "$CFLAGS_FOR_REGS" \
 		--cflags-for-gotos "$CFLAGS_FOR_GOTOS" \
+		--cflags-for-threads "$CFLAGS_FOR_THREADS" \
 		--c-flag-to-name-object-file "$CFLAG_TO_NAME_OBJECT_FILE" \
 		--object-file-extension "$OBJECT_FILE_EXTENSION" \
 		--num-real-r-regs "$NUM_REAL_R_REGS" \

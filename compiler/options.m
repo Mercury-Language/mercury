@@ -267,6 +267,7 @@
 		;	cflags
 		;	cflags_for_regs
 		;	cflags_for_gotos
+		;	cflags_for_threads
 		;	c_debug
 		;	c_include_directory
 		;	c_flag_to_name_object_file
@@ -613,8 +614,9 @@ option_defaults_2(code_gen_option, [
 	cflags			-	accumulating([]),
 	cflags_for_regs		-	string(""),
 	cflags_for_gotos	-	string(""),
+	cflags_for_threads	-	string(""),
 					% the `mmc' script will override the
-					% above two defaults with values
+					% above three defaults with values
 					% determined at configuration time
 	c_debug			-	bool(no),
 	c_include_directory	-	accumulating([]),
@@ -991,6 +993,7 @@ long_option("cc",			cc).
 long_option("cflags",			cflags).
 long_option("cflags-for-regs",		cflags_for_regs).
 long_option("cflags-for-gotos",		cflags_for_gotos).
+long_option("cflags-for-threads",	cflags_for_threads).
 long_option("c-debug",			c_debug).
 long_option("c-include-directory",	c_include_directory).
 long_option("c-flag-to-name-object-file", c_flag_to_name_object_file).
@@ -2063,7 +2066,8 @@ options_help_code_generation -->
 
 		"--cflags <options>",
 		"\tSpecify options to be passed to the C compiler.",
-		% The --cflags-for-regs and --cflags-for-gotos options
+		% The --cflags-for-regs, --cflags-for-gotos,
+		% and --cflags-for-threads options
 		% are reserved for use by the `mmc' script;
 		% they are deliberately not documented.
 

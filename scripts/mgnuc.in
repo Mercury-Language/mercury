@@ -26,6 +26,7 @@ DEFAULT_GRADE=${MERCURY_DEFAULT_GRADE=@DEFAULT_GRADE@}
 CC=${MERCURY_C_COMPILER="@CC@"}
 CFLAGS_FOR_REGS="@CFLAGS_FOR_REGS@"
 CFLAGS_FOR_GOTOS="@CFLAGS_FOR_GOTOS@"
+CFLAGS_FOR_THREADS="@CFLAGS_FOR_THREADS@"
 AS="@AS@"
 
 case "$CC" in
@@ -256,29 +257,16 @@ case $global_regs in
 esac
 
 case $thread_safe in
-	true)
-	case $FULLARCH in
-		*solaris*) THREAD_OPTS="-DMR_THREAD_SAFE -DSOLARIS_THREADS \
-				-D_SOLARIS_PTHREADS -D_REENTRANT"
-			;;
-
-		*linux*) THREAD_OPTS="-DMR_THREAD_SAFE -DLINUX_THREADS \
-				-D_THREAD_SAFE -D_REENTRANT"
-				# Don't use -ansi under Linux or we get
-				# parse errors at sigset_t in the pthreads
-				# headers.
-			ANSI_OPTS=""
-			;;
-
-		*cygwin32*)
-			case $COMPILER in
-				cl) THREAD_OPTS="-DMR_THREAD_SAFE /MD"
-				;;
-			esac
-			;;
-		*)		THREAD_OPTS=""
-			;;
-	esac ;;
+	true)		THREAD_OPTS="$CFLAGS_FOR_THREADS"
+			case $FULLARCH in *linux*) 
+				# Don't use -ansi under Linux or we get parse
+				# errors at sigset_t in the pthreads headers.
+				# This doesn't seem to be necessary for recent
+				# versions of Linux/glibc (e.g. glibc 2.1.2),
+				# but I've left it in so we can remain
+				# compatible with older versions.
+				ANSI_OPTS=""
+			esac ;;
 	false)		THREAD_OPTS="" ;;
 esac
 

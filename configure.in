@@ -1631,6 +1631,59 @@ if test $mercury_cv_use_digital_unix_threads = yes; then
 	AC_DEFINE(MR_DIGITAL_UNIX_PTHREADS)
 fi
 
+# Figure out what options we need to pass to the C compiler
+# for multithreading.   We may need to pass different
+# options to tell (a) the Mercury runtime & library
+# (b) the boehm collector and (c) the C library
+# that they need to be thread-safe.
+case "$host" in
+	*solaris*)
+		CFLAGS_FOR_THREADS="-DMR_THREAD_SAFE -DSOLARIS_THREADS \
+			-D_SOLARIS_PTHREADS -D_REENTRANT"
+		;;
+
+	*linux*)
+		CFLAGS_FOR_THREADS="-DMR_THREAD_SAFE -DLINUX_THREADS \
+			-D_THREAD_SAFE -D_REENTRANT"
+		# Note that for old versions of Linux / glibc,
+		# you may also need to make sure that you don't
+		# pass -ansi to gcc.
+		;;
+
+	*cygwin*)
+		case "$CC" in
+			*cl*)	# cl is the Microsoft C compiler
+				CFLAGS_FOR_THREADS="-DMR_THREAD_SAFE -DWIN32_THREADS /MD" ;;
+			*)
+				CFLAGS_FOR_THREADS="" ;;
+		esac
+		;;
+
+###	# The threads stuff on Digital Unix (OSF) is not yet enabled because
+###	# the Boehm garbage collector doesn't support threads on that platform
+###	# XXX probably we should enable it but report an error if you try to
+###	#     use an *.par.gc* grade
+###	*-osf*)
+###		CFLAGS_FOR_THREADS="-DMR_THREAD_SAFE"
+###		;;
+
+###	# The threads stuff on IRIX is not yet enabled because
+###	# we don't have an IRIX box to test it on.
+###	# (XXX perhaps we should enable it anyway, so it is easier to test?)
+###	*irix*)
+###		CFLAGS_FOR_THREADS="-DMR_THREAD_SAFE -DIRIX_THREADS"
+###		;;
+
+	*)	
+		# Multithreading not (yet) supported on other architectures.
+		# For multithreading, we need (1) Posix threads and
+		# (2) a port of the Boehm gc for that architecture
+		# that works with threads.
+		CFLAGS_FOR_THREADS=""
+		;;
+esac
+AC_SUBST(CFLAGS_FOR_THREADS)
+
 #-----------------------------------------------------------------------------#
 
 #
