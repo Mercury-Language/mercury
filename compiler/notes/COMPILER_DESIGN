@@ -8,8 +8,8 @@ OUTLINE
 
 The main job of the compiler is to translate Mercury into C, although it
 can also translate (subsets of) Mercury to some other languages (Goedel,
-the bytecode of a debugger currently under development, and possibly in
-the future the Aditi Relational Language).
+the bytecode of a debugger currently under development, and in the future
+the Aditi Relational Language).
 
 The top-level of the compiler is in the file mercury_compile.m.
 The basic design is that compilation is broken into the following
@@ -86,6 +86,17 @@ stored in the io__state, using the type globals defined in globals.m.
 	are written. This also checks whether imports are really needed
 	in the interface.
 
+	Notes on module qualification:
+	- all types, insts and modes occuring in pred, func, type and
+	  mode declarations are module qualified by module_qual.m.
+	- all types, insts and modes occuring in lambda expressions and
+	  explicit type qualifications are module qualified in
+	  make_hlds.m.
+	- constructors occuring in predicate and function mode declarations
+	  are module qualified during type checking.
+	- predicate and function calls and constructors within goals 
+	  are module qualified during mode analysis.
+
 * reading and writing of optimization interfaces (intermod.m).
 	
 	<module>.opt contains clauses for exported preds suitable for
@@ -154,8 +165,7 @@ in an HLDS goal.
 	  variable over that goal.
 	- modecheck_unify.m is the sub-module which analyses
 	  unification goals. It also converts higher-order pred terms
-	  into lambda expressions.  Modes of lambda expressions are
-	  module qualified during this pass.
+	  into lambda expressions and module qualifies data constructors.
 	- modecheck_call.m is the sub-module which analyses calls.
 	  It also converts function calls into predicate calls, and
 	  does the final step of figuring out which pred_id to use
