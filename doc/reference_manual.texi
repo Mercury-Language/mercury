@@ -89,6 +89,7 @@ into another language, under the above conditions for modified versions.
 * Semantics::         Declarative and operational semantics of Mercury programs
 * Pragmas::           Various compiler directives, used for the C interface
                       and to control optimization.
+* Bibliography::      References for further reading.
 @end menu
 
 @node Introduction
@@ -3137,10 +3138,6 @@ There are several uses for @code{pragma} declarations:
 * Implementation-dependent pragmas::
                                 Implementations may support additional pragmas.
 @end menu
-@c * Tabling::                     Mercury predicates can be evaluated
-@c                                 using a three different forms of tabled
-@c                                 evaluation.
-@c
 
 @node C interface
 @section C interface
@@ -4071,21 +4068,6 @@ simply for performance concerns (inlining can cause unwanted code bloat
 in some cases) or to prevent possibly dangerous inlining when using
 low-level C code.
 
-
-@c @node Tabling
-@c @section Tabling
-@c 
-@c A declaration of the form
-@c 
-@c @example
-@c :- pragma memo(@var{Name}/@var{Arity}).
-@c @end example
-@c 
-@c @noindent
-@c is a hint to the compiler that the predicate(s) or function(s)
-@c with name @var{Name} and arity @var{Arity} should be evaluated using
-@c memoing.
-
 @node Obsolescence
 @section Obsolescence
 
@@ -4171,13 +4153,10 @@ additional pragmas:
 
 @menu
 * Fact tables::         	Support for very large tables of facts.
-* Termination analysis::	Information about the termination properties 
-				of a predicate or function can be given
-				to the compiler.  Pragmas are also
-				available to require the compiler to prove
-				termination of a given predicate or
-				function, or to give an error message if
-				it cannot do so.
+* Tabled evaluation::		Support for automatically recording previously
+				calculated results and detecting or avoiding
+				certain kinds of infinite loops.
+* Termination analysis::	Support for automatic proofs of termination.
 @end menu
 
 @node Fact tables
@@ -4215,28 +4194,115 @@ The main limitation of the @samp{fact_table} pragma is that
 predicates or functions defined as fact tables can only have
 arguments of types @samp{string}, @samp{int} or @samp{float}.
 
+@node Tabled evaluation
+@subsection Tabled evaluation
+
+(Note: ``Tabled evaluation'' has no relation to the ``fact tables''
+described above.)
+
+Ordinarily, the results of each procedure call are not recorded;
+if the same procedure is called with the same arguments,
+then the answer(s) must be recomputed again.
+For some procedures, this recomputation can be very wasteful.
+
+With tabled evaluation, the implementation keeps a table containing the
+previously computed results of the specified procedure; at each
+procedure call, the implementation will search the table to check
+whether the answer(s) have already been computed and if so, the answers
+will be returned directly from the tables rather than being recomputed.
+This can result in much faster execution, at the cost of additional
+space to record answers in the table.
+
+The implementation can optionally also check at runtime for the situation
+where a procedure calls itself recursively with the same arguments,
+which would normally result in a infinite loop; if this situation is
+encountered, it can (at the programmer's option) either report a
+run-time error, or avoid the infinite loop by computing solutions
+using the ``minimal model'' semantics.
+
+The current Mercury implementation thus supports three different
+pragmas for tabling, to cover these three cases: @samp{pragma memo}
+does no loop checking, @samp{pragma loopcheck} checks for loops
+and reports runtime errors, while @samp{pragma minimal_model}
+computes the ``minimal model'' semantics.
+
+The syntax for each of these declarations is
+
+@example
+:- pragma memo(@var{Name}/@var{Arity}).
+:- pragma loopcheck(@var{Name}/@var{Arity}).
+:- pragma minimal_model(@var{Name}/@var{Arity}).
+@end example
+
+@noindent
+where @var{Name}/@var{Arity} specifies the predicate or
+function to which the declaration applies.  The declaration
+applies to all modes of the predicate and/or function named.
+At most one of these declarations may be specified
+for any given predicate or function.
+
+Note that a @samp{pragma minimal_model} declaration
+changes the declarative semantics of the specified predicate or
+function: instead of using the completion of the clauses
+as the basis for the semantics, as is normally the case
+in Mercury, the declarative semantics that is used is
+the ``minimal model'' semantics.  Anything which is
+true or false in the completion semantics is also true
+or false (respectively) in the minimal model semantics,
+but there are goals for which the minimal model specifies
+that the result is true or false, wheres the completion semantics
+leaves the result unspecified. 
+For these goals, the usual Mercury semantics requires the
+implementation to either loop or report an error message,
+but the minimal model semantics requires a particular
+answer to be returned.
+In particular, the minimal model semantics says that any
+call that is not true in @emph{all} models is false.
+
+Programmers should therefore use a @samp{pragma minimal_model}
+declaration only in cases where their intended interpretation for a
+procedure coincides with the minimal model for that procedure.
+Fortunately, however, this is usually what programmers intend.
+
+@c XXX give an example
+
+For more information on tabling, see K. Sagonas's PhD thesis
+@cite{The SLG-WAM: A Search-Efficient Engine for Well-Founded Evaluation
+of Normal Logic Programs.} @ref{[4]}.
+The operational semantics of procedures with a @samp{pragma minimal_model}
+declaration corresponds to what Sagonas calls ``SLGd resolution''.
+
+In the general case, the execution mechanism required by
+minimal model tabling is quite complicated, requiring
+the ability to delay goals and then wake them up again.
+The Mercury implementation uses a technique based on copying
+relevant parts of the stack to the heap when delaying goals,
+similar to the one described in
+@cite{CAT: the copying approach to tabling},
+by B. Demoen and K. Sagonas @ref{[5]}.
+This ensures that code which does not use tabling does not pay any
+runtime overheads from the more complicated execution mechanism
+required by (minimal model) tabling.
+
 @node Termination analysis
 @subsection Termination analysis
 
 The compiler includes a termination analyser which can be used to prove 
 termination of predicates and functions.  Details of the analysis is
-available in "Termination Analysis for Mercury" by Chris Speirs, Zoltan
-Somogyi and Harald Sondergaard. In P. Van Hentenryck, editor, "Static
-Analysis: Proceedings of the 4th International Symposium", Lecture Notes
-in Computer Science. Springer, 1997.  A longer version is available for
-download from http://www.cs.mu.oz.au/publications/tr_db/mu_97_09.ps.gz
+available in ``Termination Analysis for Mercury'' by Chris Speirs, Zoltan
+Somogyi and Harald Sondergaard @ref{[1]}.
 
 The analysis is based around an algorithm proposed by Gerhard Groger
-and Lutz Plumer in their paper "Handling of mutual recursion in
-automatic termination proofs for logic programs." in K. Apt, editor,
-The Proceedings of the Joint International Conference and Symposium on
-Logic Programming, pager 336-350. MIT Press, 1992.
+and Lutz Plumer in their paper ``Handling of mutual recursion in
+automatic termination proofs for logic programs.'' @ref{[2]}.
 
 For an introduction to termination analysis for logic programs, please
-refer to "Termination Analysis for Logic Programs" by Chris Speirs.
-Technical Report 97/23, Department of Computer Science, The University
-of Melbourne, Melbourne, Australia, 1997.  Available from
-http://www.cs.mu.oz.au/mercury/papers/mu_97_23.ps.gz
+refer to ``Termination Analysis for Logic Programs'' by Chris Speirs @ref{[3]}.
+
+Information about the termination properties of a predicate or function
+can be given to the compiler.  Pragmas are also available to require
+the compiler to prove termination of a given predicate or function, or
+to give an error message if it cannot do so.
 
 The analyser is enabled by the option @samp{--enable-termination}, which
 can be abbreviated to @samp{--enable-term}.  When termination analysis
@@ -4296,6 +4362,55 @@ default.
 This pragma forces the compiler to prove termination of this predicate.
 If it cannot prove the termination of the specified predicate or
 function then the compiler will quit with an error message.
+
+@node Bibliography
+@chapter Bibliography
+
+@menu
+* [1]::		Spiers, Somogyi, and Sondergaard,
+		@cite{Termination Analysis for Mercury}.
+* [2]::		Groger and Plumer, @cite{Handling of mutual recursion in
+		automatic termination proofs for logic programs}.
+* [3]::		Spiers, @cite{Termination Analysis for logic programs}.
+* [4]::		Sagonas, @cite{The SLG-WAM: A Search-Efficient Engine
+		for Well-Founded Evaluation of Normal Logic Programs}.
+* [5]::		Demoen and Sagonas, @cite{CAT: the copying approach to tabling}.
+@end menu
+
+@node [1]
+@unnumberedsec [1]
+Chris Speirs, Zoltan Somogyi and Harald Sondergaard, @cite{Termination
+Analysis for Mercury}.  In P. Van Hentenryck, editor, @cite{Static
+Analysis: Proceedings of the 4th International Symposium}, Lecture
+Notes in Computer Science. Springer, 1997.  A longer version is
+available for download from
+<http://www.cs.mu.oz.au/publications/tr_db/mu_97_09.ps.gz>.
+
+@node [2]
+@unnumberedsec [2]
+Gerhard Groger and Lutz Plumer, @cite{Handling of mutual recursion in
+automatic termination proofs for logic programs.}  In K. Apt, editor,
+@cite{The Proceedings of the Joint International Conference and Symposium on
+Logic Programming}, pages 336--350.  MIT Press, 1992.
+
+@node [3]
+@unnumberedsec [3]
+Chris Speirs, @cite{Termination Analysis for Logic Programs},
+Technical Report 97/23, Department of Computer Science, The University
+of Melbourne, Melbourne, Australia, 1997.  Available from
+<http://www.cs.mu.oz.au/mercury/papers/mu_97_23.ps.gz>.
+
+@node [4]
+@unnumberedsec [4]
+K. Sagonas, @cite{The SLG-WAM: A Search-Efficient Engine
+for Well-Founded Evaluation of Normal Logic Programs},
+PhD thesis, SUNY at Stony Brook, 1996.
+
+@node [5]
+@unnumberedsec [5]
+B. Demoen and K. Sagonas, @cite{CAT: the copying approach to tabling},
+submitted for publication,
+Katholieke Universiteit Leuven, 1998.
 
 @contents
 @bye
