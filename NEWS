@@ -10,3 +10,8 @@ NEWS since Mercury release 0.8:
   which are supported by most modern Unix systems.
   See the files in extras/dynamic_linking for details.
 
+* The debugger now includes support for interactive queries.
+
+  See the "Interactive query commands" subsection of the "Debugger commands"
+  section of the "Debugging" chapter of the Mercury User's Guide for details.
+
