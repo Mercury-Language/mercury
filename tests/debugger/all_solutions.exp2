@@ -3,9 +3,8 @@ mdb> echo on
 Command echo enabled.
 mdb> context none
 Contexts will not be printed.
+mdb> register --quiet
 mdb> break hello
-Registering debuggable procedures... done.
-There are 73 debuggable modules, with a total of 3511 procedures.
  0: + stop  interface pred all_solutions:hello/1-0 (multi)
 mdb> continue
        3:      3  3 CALL pred all_solutions:hello/1-0 (multi)

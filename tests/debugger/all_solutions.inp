@@ -1,5 +1,6 @@
 echo on
 context none
+register --quiet
 break hello
 continue
 stack
