@@ -65,7 +65,7 @@
 :- import_module hlds_module, hlds_goal, hlds_data, (inst), inst_match.
 :- import_module globals, options, passes_aux, prog_data, mode_util, type_util.
 :- import_module code_util, quantification, modes.
-:- import_module bool, list, set, map, require, std_util, term, varset.
+:- import_module bool, list, set, map, require, std_util, term, varset, int.
 
 %-----------------------------------------------------------------------------%
 
@@ -462,6 +462,12 @@ simplify__goal_2(Goal0, GoalInfo, Goal, GoalInfo, Info0, Info) :-
 		IsBuiltin \= inline_builtin,
 
 		%
+		% Don't warn if we're inside a lambda goal, because the
+		% recursive call may not be executed.
+		%
+		\+ simplify_info_inside_lambda(Info1),
+
+		%
 		% Are the input arguments the same (or equivalent)?
 		%
 		simplify_info_get_module_info(Info1, ModuleInfo1),
@@ -503,25 +509,27 @@ simplify__goal_2(Goal0, GoalInfo0, Goal, GoalInfo, Info0, Info) :-
 		RT0 = lambda_goal(PredOrFunc, Vars, Modes, LambdaDeclaredDet,
 			LambdaGoal0)
 	->
-		simplify_info_get_common_info(Info0, Common0),
-		simplify_info_get_module_info(Info0, ModuleInfo),
-		simplify_info_get_instmap(Info0, InstMap0),
+		simplify_info_enter_lambda(Info0, Info1),
+		simplify_info_get_common_info(Info1, Common1),
+		simplify_info_get_module_info(Info1, ModuleInfo),
+		simplify_info_get_instmap(Info1, InstMap1),
 		instmap__pre_lambda_update(ModuleInfo, Vars, Modes,
-			InstMap0, InstMap1),
-		simplify_info_set_instmap(Info0, InstMap1, Info1),
+			InstMap1, InstMap2),
+		simplify_info_set_instmap(Info1, InstMap2, Info2),
 
 		% Don't attempt to pass structs into lambda_goals,
 		% since that could change the curried non-locals of the 
 		% lambda_goal, and that would be difficult to fix up.
-		common_info_init(Common1),
-		simplify_info_set_common_info(Info1, Common1, Info2),
+		common_info_init(Common2),
+		simplify_info_set_common_info(Info2, Common2, Info3),
 
 		% Don't attempt to pass structs out of lambda_goals.
-		simplify__goal(LambdaGoal0, LambdaGoal, Info2, Info3),
-		simplify_info_set_common_info(Info3, Common0, Info4),
-		simplify_info_set_instmap(Info4, InstMap0, Info),
+		simplify__goal(LambdaGoal0, LambdaGoal, Info3, Info4),
+		simplify_info_set_common_info(Info4, Common1, Info5),
+		simplify_info_set_instmap(Info5, InstMap1, Info6),
 		RT = lambda_goal(PredOrFunc, Vars, Modes, LambdaDeclaredDet,
 			LambdaGoal),
+		simplify_info_leave_lambda(Info6, Info),
 		Goal = unify(LT0, RT, M, U0, C),
 		GoalInfo = GoalInfo0
 	;
@@ -1265,9 +1273,11 @@ simplify__contains_multisoln_goal(Goals) :-
 			bool,		% Does the goal need requantification.
 			bool,		% Does mode analysis need rerunning
 					% rather than recompute_instmap_delta.
-			maybe(branch_info)	% Final instmaps at the end
+			maybe(branch_info),	% Final instmaps at the end
 					% of each branch of the last 
 					% branching goal
+			int		% Count of the number of lambdas
+					% which enclose the current goal.
 		).
 
 	% info used to merge adjacent switches and prepare for rerunning
@@ -1283,7 +1293,7 @@ simplify_info_init(DetInfo, Simplify, InstMap, VarSet, VarTypes, Info) :-
 	common_info_init(CommonInfo),
 	set__init(Msgs),
 	Info = simplify_info(DetInfo, Msgs, Simplify, CommonInfo,
-			InstMap, VarSet, VarTypes, no, no, no). 
+			InstMap, VarSet, VarTypes, no, no, no, 0). 
 
 	% exported for common.m
 :- interface.
@@ -1307,19 +1317,20 @@ simplify_info_init(DetInfo, Simplify, InstMap, VarSet, VarTypes, Info) :-
 
 :- implementation.
 
-simplify_info_get_det_info(simplify_info(Det, _,_,_,_,_,_,_,_,_), Det). 
-simplify_info_get_msgs(simplify_info(_, Msgs, _,_,_,_,_,_,_,_), Msgs).
-simplify_info_get_simplify(simplify_info(_,_,Simplify,_,_,_,_,_,_,_),
+simplify_info_get_det_info(simplify_info(Det, _,_,_,_,_,_,_,_,_,_), Det). 
+simplify_info_get_msgs(simplify_info(_, Msgs, _,_,_,_,_,_,_,_,_), Msgs).
+simplify_info_get_simplify(simplify_info(_,_,Simplify,_,_,_,_,_,_,_,_),
 	Simplify). 
-simplify_info_get_common_info(simplify_info(_,_,_,Common, _,_,_,_,_,_),
+simplify_info_get_common_info(simplify_info(_,_,_,Common, _,_,_,_,_,_,_),
 	Common).
-simplify_info_get_instmap(simplify_info(_,_,_,_, InstMap,_,_,_,_,_), InstMap). 
-simplify_info_get_varset(simplify_info(_,_,_,_,_, VarSet, _,_,_,_), VarSet). 
-simplify_info_get_var_types(simplify_info(_,_,_,_,_,_, VarTypes, _,_,_),
+simplify_info_get_instmap(simplify_info(_,_,_,_, InstMap,_,_,_,_,_,_),
+	InstMap).
+simplify_info_get_varset(simplify_info(_,_,_,_,_, VarSet, _,_,_,_,_), VarSet). 
+simplify_info_get_var_types(simplify_info(_,_,_,_,_,_, VarTypes, _,_,_,_),
 	VarTypes). 
-simplify_info_requantify(simplify_info(_,_,_,_,_,_,_, yes, _,_)).
-simplify_info_recompute_atomic(simplify_info(_,_,_,_,_,_,_,_, yes,_)).
-simplify_info_get_branch_info(simplify_info(_,_,_,_,_,_,_,_,_, BranchInfo),
+simplify_info_requantify(simplify_info(_,_,_,_,_,_,_, yes, _,_,_)).
+simplify_info_recompute_atomic(simplify_info(_,_,_,_,_,_,_,_, yes,_,_)).
+simplify_info_get_branch_info(simplify_info(_,_,_,_,_,_,_,_,_, BranchInfo, _),
 	BranchInfo).
 
 simplify_info_get_module_info(Info, ModuleInfo) :-
@@ -1354,34 +1365,41 @@ simplify_info_get_module_info(Info, ModuleInfo) :-
 		maybe(branch_info)::in, simplify_info::out) is det.
 :- pred simplify_info_add_msg(simplify_info::in, det_msg::in,
 		simplify_info::out) is det.
+:- pred simplify_info_enter_lambda(simplify_info::in, simplify_info::out)
+		is det.
+:- pred simplify_info_leave_lambda(simplify_info::in, simplify_info::out)
+		is det.
+:- pred simplify_info_inside_lambda(simplify_info::in) is semidet.
 
 :- pred simplify_info_set_module_info(simplify_info::in,
 		module_info::in, simplify_info::out) is det.
 
 :- implementation.
 
-simplify_info_set_det_info(simplify_info(_, B, C, D, E, F, G, H, I,J), Det,
-		simplify_info(Det, B, C, D, E, F, G, H, I,J)).
-simplify_info_set_msgs(simplify_info(A, _, C, D, E, F, G, H, I,J), Msgs,
-		simplify_info(A, Msgs, C, D, E, F, G, H, I, J)). 
-simplify_info_set_simplify(simplify_info(A, B, _, D, E, F, G, H, I,J), Simp,
-		simplify_info(A, B, Simp, D, E, F, G, H, I,J)).
-simplify_info_set_instmap(simplify_info(A, B, C, D, _, F, G, H, I, J), InstMap,
-		simplify_info(A, B, C, D, InstMap, F, G, H, I, J)). 
-simplify_info_set_common_info(simplify_info(A, B, C, _, E, F, G, H, I, J),
-		Common, simplify_info(A, B, C, Common, E, F, G, H, I, J)). 
-simplify_info_set_varset(simplify_info(A, B, C, D, E, _, G, H, I, J), VarSet,
-		simplify_info(A, B, C, D, E, VarSet, G, H, I, J)). 
-simplify_info_set_var_types(simplify_info(A, B, C, D, E, F, _, H, I, J),
-		VarTypes, simplify_info(A, B, C, D, E, F, VarTypes, H, I, J)). 
-simplify_info_set_requantify(simplify_info(A, B, C, D, E, F, G, _, I, J),
-		simplify_info(A, B, C, D, E, F, G, yes, I, J)). 
-simplify_info_set_recompute_atomic(simplify_info(A, B, C, D, E, F, G, H, _, J),
-		simplify_info(A, B, C, D, E, F, G, H, yes, J)). 
-simplify_info_reset_branch_info(simplify_info(A, B, C, D, E, F, G, H, I, Info),
-		simplify_info(A, B, C, D, E, F, G, H, I, no), Info). 
-simplify_info_set_branch_info(simplify_info(A, B, C, D, E, F, G, H, I, _),
-		Info, simplify_info(A, B, C, D, E, F, G, H, I, Info)). 
+simplify_info_set_det_info(simplify_info(_, B, C, D, E, F, G, H, I, J, K), Det,
+		simplify_info(Det, B, C, D, E, F, G, H, I, J, K)).
+simplify_info_set_msgs(simplify_info(A, _, C, D, E, F, G, H, I, J, K), Msgs,
+		simplify_info(A, Msgs, C, D, E, F, G, H, I, J, K)). 
+simplify_info_set_simplify(simplify_info(A, B, _, D, E, F, G, H, I, J, K), Simp,
+		simplify_info(A, B, Simp, D, E, F, G, H, I, J, K)).
+simplify_info_set_instmap(simplify_info(A, B, C, D, _, F, G, H, I, J, K),
+		InstMap, simplify_info(A, B, C, D, InstMap, F, G, H, I, J, K)). 
+simplify_info_set_common_info(simplify_info(A, B, C, _, E, F, G, H, I, J, K),
+		Common, simplify_info(A, B, C, Common, E, F, G, H, I, J, K)). 
+simplify_info_set_varset(simplify_info(A, B, C, D, E, _, G, H, I, J, K), VarSet,
+		simplify_info(A, B, C, D, E, VarSet, G, H, I, J, K)). 
+simplify_info_set_var_types(simplify_info(A, B, C, D, E, F, _, H, I, J, K),
+		VarTypes, simplify_info(A, B, C, D, E, F, VarTypes, H, I, J, K)). 
+simplify_info_set_requantify(simplify_info(A, B, C, D, E, F, G, _, I, J, K),
+		simplify_info(A, B, C, D, E, F, G, yes, I, J, K)). 
+simplify_info_set_recompute_atomic(
+		simplify_info(A, B, C, D, E, F, G, H, _, J, K),
+		simplify_info(A, B, C, D, E, F, G, H, yes, J, K)). 
+simplify_info_reset_branch_info(
+		simplify_info(A, B, C, D, E, F, G, H, I, Info, K),
+		simplify_info(A, B, C, D, E, F, G, H, I, no, K), Info). 
+simplify_info_set_branch_info(simplify_info(A, B, C, D, E, F, G, H, I, _, K),
+		Info, simplify_info(A, B, C, D, E, F, G, H, I, Info, K)). 
 
 simplify_info_add_msg(Info0, Msg, Info) :-
 	( simplify_do_warn(Info0) ->
@@ -1391,6 +1409,25 @@ simplify_info_add_msg(Info0, Msg, Info) :-
 	;
 		Info = Info0
 	).
+
+simplify_info_enter_lambda(
+		simplify_info(A, B, C, D, E, F, G, H, I, J, LambdaCount0),
+		simplify_info(A, B, C, D, E, F, G, H, I, J, LambdaCount)) :-
+	LambdaCount is LambdaCount0 + 1.
+simplify_info_leave_lambda(
+		simplify_info(A, B, C, D, E, F, G, H, I, J, LambdaCount0),
+		simplify_info(A, B, C, D, E, F, G, H, I, J, LambdaCount)) :-
+	LambdaCount1 is LambdaCount0 - 1,
+	(
+		LambdaCount1 >= 0
+	->
+		LambdaCount = LambdaCount1
+	;
+		error("simplify_info_leave_lambda: Left too many lambdas")
+	).
+simplify_info_inside_lambda(
+		simplify_info(_,_,_,_,_,_,_,_,_,_,LambdaCount)) :-
+	LambdaCount > 0.
 
 simplify_info_set_module_info(Info0, ModuleInfo, Info) :-
 	simplify_info_get_det_info(Info0, DetInfo0),
@@ -1435,8 +1472,8 @@ simplify_do_calls(Info) :-
 		simplify_info::out) is det.
 
 simplify_info_update_instmap(
-		simplify_info(A, B, C, D, InstMap0, F, G, H, I, J), Goal,
-		simplify_info(A, B, C, D, InstMap, F, G, H, I, J)) :-
+		simplify_info(A, B, C, D, InstMap0, F, G, H, I, J, K), Goal,
+		simplify_info(A, B, C, D, InstMap, F, G, H, I, J, K)) :-
 	update_instmap(Goal, InstMap0, InstMap).
 
 :- type before_after
