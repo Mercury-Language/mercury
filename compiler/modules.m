@@ -258,17 +258,22 @@ write_dependency_file(ModuleName, LongDeps0, ShortDeps0) -->
 		{ list__delete_elems(ShortDeps1, LongDeps, ShortDeps2) },
 		{ list__delete_all(ShortDeps2, ModuleName, ShortDeps) },
 
-		io__write_string(DepStream, ModuleName),
-		io__write_string(DepStream, ".c "),
-		io__write_string(DepStream, ModuleName),
-		io__write_string(DepStream, ".err "),
-		io__write_string(DepStream, ModuleName),
-		io__write_string(DepStream, ".o : "),
-		io__write_string(DepStream, ModuleName),
-		io__write_string(DepStream, ".m"),
+		io__write_strings(DepStream, [
+			ModuleName, ".c ",
+			ModuleName, ".err ",
+			ModuleName, ".o : ",
+			ModuleName, ".m"
+		] ),
 		write_dependencies_list(LongDeps, ".int", DepStream),
 		write_dependencies_list(ShortDeps, ".int2", DepStream),
-		io__write_string(DepStream, "\n"),
+
+		io__write_strings(DepStream, [
+			"\n\n",
+			ModuleName, ".dir/", ModuleName, "_000.o: ",
+				ModuleName, ".m\n",
+			"\trm -rf ", ModuleName, ".dir\n",
+			"\t$(MCS) -s$(GRADE) $(MCSFLAGS) ", ModuleName, ".m\n"
+		]),
 
 		io__close_output(DepStream),
 		maybe_write_string(Verbose, " done.\n")
@@ -412,6 +417,16 @@ generate_dep_file(ModuleName, DepsMap, DepStream) -->
 	io__write_string(DepStream, "\n"),
 
 	io__write_string(DepStream, ModuleName),
+	io__write_string(DepStream, ".pic_os = "),
+	write_dependencies_list(Modules, ".$(EXT_FOR_PIC_OBJECTS)", DepStream),
+	io__write_string(DepStream, "\n"),
+
+	io__write_string(DepStream, ModuleName),
+	io__write_string(DepStream, ".dir_os = "),
+	write_dependencies_list(Modules, ".dir/*.o", DepStream),
+	io__write_string(DepStream, "\n"),
+
+	io__write_string(DepStream, ModuleName),
 	io__write_string(DepStream, ".ss = "),
 	write_dependencies_list(Modules, ".s", DepStream),
 	io__write_string(DepStream, "\n"),
@@ -447,8 +462,46 @@ generate_dep_file(ModuleName, DepsMap, DepStream) -->
 				ModuleName, "_init.o\n",
 		"\t$(ML) -s $(GRADE) $(MLFLAGS) -o ", ModuleName, " ",
 			ModuleName, "_init.o \\\n",
-			"\t$(", ModuleName, ".os) $(MLLIBS)\n\n",
+			"\t$(", ModuleName, ".os) $(MLLIBS)\n\n"
+	]),
 
+	io__write_strings(DepStream, [
+		ModuleName, ".split : ", ModuleName, ".split.a ",
+				ModuleName, "_init.o\n",
+		"\t$(ML) -s $(GRADE) $(MLFLAGS) -o ", ModuleName, ".split ",
+			ModuleName, "_init.o \\\n",
+			"\t", ModuleName, ".split.a $(MLLIBS)\n\n"
+	]),
+
+	io__write_strings(DepStream, [
+		ModuleName, ".split.a : $(", ModuleName, ".dir_os)\n",
+		"\trm -f ", ModuleName, ".split.a\n",
+		"\tar cr ", ModuleName, ".split.a ",
+			"$(", ModuleName, ".dir_os)\n",
+		"\tranlib ", ModuleName, ".split.a\n\n"
+	]),
+
+/************
+% I decided to leave the rules for `foo.so' and `foo.a' out,
+% mainly because the rule for `foo.so' is hard to make portable.
+% The rules here would conflict with the one in library/Mmake.
+
+	io__write_strings(DepStream, [
+		ModuleName, ".so : $(", ModuleName, ".pic_os)\n",
+		"\t$(LINK_SHARED_LIB) -o ", ModuleName, ".so ",
+			"$(", ModuleName, ".pic_os)\n\n"
+	]),
+
+	io__write_strings(DepStream, [
+		ModuleName, ".a : $(", ModuleName, ".os)\n",
+		"\trm -f ", ModuleName, ".a\n",
+		"\tar cr ", ModuleName, ".a ",
+			"$(", ModuleName, ".os)\n",
+		"\tranlib ", ModuleName, ".a\n\n"
+	]),
+************/
+
+	io__write_strings(DepStream, [
 		ModuleName, "_init.c :\n",
 		"\t$(C2INIT) $(C2INITFLAGS) $(", ModuleName, ".ms) > ",
 			ModuleName, "_init.c\n\n"
@@ -486,6 +539,7 @@ generate_dep_file(ModuleName, DepsMap, DepStream) -->
 
 	io__write_strings(DepStream, [
 		ModuleName, ".clean :\n",
+		"\t-rm -rf ", ModuleName, ".dir\n",
 		"\t-rm -f $(", ModuleName, ".cs) ", ModuleName, "_init.c\n",
 		"\t-rm -f $(", ModuleName, ".ss) ", ModuleName, "_init.s\n",
 		"\t-rm -f $(", ModuleName, ".os) ", ModuleName, "_init.o\n",
@@ -508,6 +562,8 @@ generate_dep_file(ModuleName, DepsMap, DepStream) -->
 	io__write_strings(DepStream, [
 		"\t-rm -f ",
 			ModuleName, " ",
+			ModuleName, ".split ",
+			ModuleName, ".split.a ",
 			ModuleName, ".nu ",
 			ModuleName, ".nu.save ",
 			ModuleName, ".nu.debug.save ",
