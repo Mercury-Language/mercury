@@ -741,3 +741,4 @@ convert_dump_alias("ALL", "abcdfgilmnprstuvCIMPTU").
 convert_dump_alias("all", "abcdfgilmnprstuvCMPT").
 convert_dump_alias("codegen", "dfnprsu").
 convert_dump_alias("vanessa", "ltuCIU").
+convert_dump_alias("paths", "cP").
