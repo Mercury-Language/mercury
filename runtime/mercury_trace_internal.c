@@ -311,7 +311,7 @@ MR_trace_debug_cmd(MR_trace_cmd_info *cmd, const MR_Stack_Layout_Label *layout,
 			result = MR_dump_stack_from_layout(stdout,
 					layout->MR_sll_entry,
 					MR_saved_sp(MR_saved_regs),
-					MR_saved_maxfr(MR_saved_regs));
+					MR_saved_curfr(MR_saved_regs));
 			if (result != NULL) {
 				printf("%s\n", result);
 			}
