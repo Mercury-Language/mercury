@@ -68,8 +68,18 @@
 
 /* DEFINITIONS FOR MANIPULATING THE DET STACK */
 
-/* Stack slots start numbering at 1 */
-#define	MR_based_stackvar(base_sp, n)	((base_sp)[-(n)])
+/*
+** The first stack slot in each stack frame is MR_stackvar(1) while MR_sp
+** points to the topmost used word on the stack: this is why we need to add 1.
+** In compiler-generated code, the value of n is always known, so the C
+** compiler will be able to compute 1-n at compile time. The debugger will
+** need to perform the addition at runtime after it gets the value of n from
+** a layout structure, but this is not performance critical. It is useful
+** to have MR_sp and MR_maxfr both point to the topmost used words on their
+** stacks when moving stack segments around in minimal model tabling.
+*/
+
+#define	MR_based_stackvar(base_sp, n)	((base_sp)[1 - (n)])
 #define	MR_stackvar(n)			MR_based_stackvar(MR_sp, (n))
 
 #define	MR_incr_sp_push_msg(n, msg)				\
