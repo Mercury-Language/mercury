@@ -79,11 +79,14 @@
 	% If the first argument is `unique_mode_check',
 	% then also go on and do full determinism analysis and unique mode
 	% analysis on them as well.
+	% The pred_table arguments are used to store copies of the
+	% procedure bodies before unique mode analysis, so that
+	% we can restore them before doing the next analysis pass.
 
-:- pred modecheck_queued_procs(how_to_check_goal, module_info, module_info,
-				bool,
+:- pred modecheck_queued_procs(how_to_check_goal, pred_table, module_info,
+				pred_table, module_info, bool,
 				io__state, io__state).
-:- mode modecheck_queued_procs(in, in, out, out, di, uo) is det.
+:- mode modecheck_queued_procs(in, in, in, out, out, out, di, uo) is det.
 
 	% Given the type and mode of a unification, look up the
 	% mode number for the unification proc.
@@ -298,7 +301,8 @@ unify_proc__request_proc(PredId, ArgModes, ArgLives, MaybeDet, Context,
 
 	% XXX these belong in modes.m
 
-modecheck_queued_procs(HowToCheckGoal, ModuleInfo0, ModuleInfo, Changed) -->
+modecheck_queued_procs(HowToCheckGoal, OldPredTable0, ModuleInfo0,
+		OldPredTable, ModuleInfo, Changed) -->
 	{ module_info_get_proc_requests(ModuleInfo0, Requests0) },
 	{ unify_proc__get_req_queue(Requests0, RequestQueue0) },
 	(
@@ -321,15 +325,18 @@ modecheck_queued_procs(HowToCheckGoal, ModuleInfo0, ModuleInfo, Changed) -->
 			queued_proc_progress_message(PredProcId,
 				HowToCheckGoal, ModuleInfo1),
 			modecheck_queued_proc(HowToCheckGoal, PredProcId,
-				ModuleInfo1, ModuleInfo2, Changed1)
+				OldPredTable0, ModuleInfo1, 
+				OldPredTable2, ModuleInfo2, Changed1)
 		;
+			{ OldPredTable2 = OldPredTable0 },
 			{ ModuleInfo2 = ModuleInfo1 },
 			{ Changed1 = no }
 		),
-		modecheck_queued_procs(HowToCheckGoal, ModuleInfo2, ModuleInfo,
-			Changed2),
+		modecheck_queued_procs(HowToCheckGoal, OldPredTable2,
+			ModuleInfo2, OldPredTable, ModuleInfo, Changed2),
 		{ bool__or(Changed1, Changed2, Changed) }
 	;
+		{ OldPredTable = OldPredTable0 },
 		{ ModuleInfo = ModuleInfo0 },
 		{ Changed = no }
 	).
@@ -366,13 +373,13 @@ queued_proc_progress_message(PredProcId, HowToCheckGoal, ModuleInfo) -->
 		[]
 	).
 
-:- pred modecheck_queued_proc(how_to_check_goal, pred_proc_id,
-				module_info, module_info, bool,
+:- pred modecheck_queued_proc(how_to_check_goal, pred_proc_id, pred_table,
+				module_info, pred_table, module_info, bool,
 				io__state, io__state).
-:- mode modecheck_queued_proc(in, in, in, out, out, di, uo) is det.
+:- mode modecheck_queued_proc(in, in, in, in, out, out, out, di, uo) is det.
 
-modecheck_queued_proc(HowToCheckGoal, PredProcId, ModuleInfo0, ModuleInfo,
-			Changed) -->
+modecheck_queued_proc(HowToCheckGoal, PredProcId, OldPredTable0, ModuleInfo0,
+			OldPredTable, ModuleInfo, Changed) -->
 	{
 	%
 	% mark the procedure as ready to be processed
@@ -398,6 +405,7 @@ modecheck_queued_proc(HowToCheckGoal, PredProcId, ModuleInfo0, ModuleInfo,
 		{ NumErrors \= 0 }
 	->
 		io__set_exit_status(1),
+		{ OldPredTable = OldPredTable0 },
 		{ ModuleInfo = ModuleInfo2 },
 		{ Changed = Changed1 }
 	;
@@ -408,15 +416,34 @@ modecheck_queued_proc(HowToCheckGoal, PredProcId, ModuleInfo0, ModuleInfo,
 						ModuleInfo3, ModuleInfo4),
 			determinism_check_proc(ProcId, PredId,
 						ModuleInfo4, ModuleInfo5),
+			{ save_proc_info(ProcId, PredId, ModuleInfo5,
+				OldPredTable0, OldPredTable) },
 			unique_modes__check_proc(ProcId, PredId,
 						ModuleInfo5, ModuleInfo,
 						Changed2),
 			{ bool__or(Changed1, Changed2, Changed) }
 		;	
+			{ OldPredTable = OldPredTable0 },
 			{ ModuleInfo = ModuleInfo2 },
 			{ Changed = Changed1 }
 		)
 	).
+
+%
+% save a copy of the proc info for the specified procedure in OldProcTable0,
+% giving OldProcTable.
+%
+:- pred save_proc_info(proc_id, pred_id, module_info, pred_table, pred_table).
+:- mode save_proc_info(in, in, in, in, out) is det.
+
+save_proc_info(ProcId, PredId, ModuleInfo, OldPredTable0, OldPredTable) :-
+	module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
+		_PredInfo, ProcInfo),
+	map__lookup(OldPredTable0, PredId, OldPredInfo0),
+	pred_info_procedures(OldPredInfo0, OldProcTable0),
+	map__set(OldProcTable0, ProcId, ProcInfo, OldProcTable),
+	pred_info_set_procedures(OldPredInfo0, OldProcTable, OldPredInfo),
+	map__det_update(OldPredTable0, PredId, OldPredInfo, OldPredTable).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

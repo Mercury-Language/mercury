@@ -104,6 +104,7 @@ OTHER_SOURCES= \
 	unbound_tvar_in_lambda.m \
 	undead_proc.m \
 	uniq_unify.m \
+	uniq_mode_inf_bug.m \
 	unreachable_code.m \
 	unused_args_test2.m \
 	vn_float.m
@@ -161,6 +162,7 @@ MCFLAGS-semi_fail_in_non_ite	= --use-trail
 MCFLAGS-simplify_bug		= -O-1
 MCFLAGS-two_way_unif		= -O-1
 MCFLAGS-type_inf_ambig_test	= --infer-all
+MCFLAGS-uniq_mode_inf_bug	= --infer-all
 MCFLAGS-vn_float		= -O5
 
 # intermod_lambda.m needs inter-module optimization
