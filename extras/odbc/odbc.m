@@ -311,8 +311,8 @@
 	** after an exception a bit simpler.
 	*/	
 #ifndef CONSERVATIVE_GC
-#error The OBDC interface requires conservative garbage collection. \\
-		Use a compilation grade containing .gc.
+#error ""The OBDC interface requires conservative garbage collection. \\
+		Use a compilation grade containing .gc.""
 #endif /* ! CONSERVATIVE_GC */
 
 #ifdef MODBC_IODBC
