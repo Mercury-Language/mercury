@@ -78,9 +78,6 @@ check		: mercury_compile.check
 .PHONY: ints 
 ints		: mercury_compile.ints
 
-.PHONY: mods 
-mods		: $(mercury_compile.mods)
-
 #-----------------------------------------------------------------------------#
 
 tags		: $(mercury_compile.srcs)
