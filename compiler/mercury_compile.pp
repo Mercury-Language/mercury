@@ -30,7 +30,7 @@
 :- import_module arg_info, store_alloc, code_gen, optimize, llds, inlining.
 :- import_module prog_out, prog_util, hlds_out.
 :- import_module mercury_to_c, mercury_to_mercury, mercury_to_goedel.
-:- import_module conf, getopt, options, globals.
+:- import_module getopt, options, globals.
 :- import_module int, map, set, std_util, dir, tree234, term, varset, hlds.
 :- import_module dependency_graph, constraint.
 :- import_module common, require, library.
@@ -119,11 +119,13 @@ postprocess_options_2(OptionTable, GC_Method, Tags_Method) -->
 
 	% if --tags low but --num-tag-bits not specified, 
 	% use the autoconf-determined value for --num-tag-bits
+	% (the autoconf-determined value is passed from the `mc' script
+	% using the undocumented --conf-low-tag-bits option)
 	(
 		{ Tags_Method = low },
 		{ NumTagBits0 = -1 }
 	->
-		{ conf__low_tag_bits(NumTagBits1) }
+		globals__io_lookup_int_option(conf_low_tag_bits, NumTagBits1)
 	;	
 		{ NumTagBits1 = NumTagBits0 }
 	),

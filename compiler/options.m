@@ -97,7 +97,18 @@
 		;	simple_neg
 		;	tags
 		;	num_tag_bits
-		;	num_real_regs
+		;	conf_low_tag_bits
+				% The undocumented conf_low_tag_bits option
+				% is used by the `mc' script to pass the
+				% default value for num_tag_bits,
+				% assuming --tags low.
+				% The reason that `mc' doesn't just
+				% pass a default value for --num-tag-bits
+				% is that we want to be able to give an
+				% error message if the user specifies
+				% `--tags high' and doesn't specify
+				% `--num-tag-bits'.
+		;	num_real_r_regs
 		;	excess_assign
 		;	prev_code
 		;	follow_code
@@ -235,13 +246,26 @@ option_defaults_2(code_gen_option, [
 	simple_neg		-	bool(yes),
 	num_tag_bits		-	int(-1),
 					% -1 is a special value which means
-					% use the autoconf-determined value
+					% use the value of conf_low_tag_bits
 					% instead
-	num_real_regs		-	int(5),
+	conf_low_tag_bits	-	int(2),
+					% the `mc' script will override the
+					% above default with a value determined
+					% at configuration time
+	num_real_r_regs		-	int(5),
+					% the `mc' script will override the
+					% above default with a value determined
+					% at configuration time
 	gc			-	string("conservative"),
 	cc			-	string("gcc"),
+					% the `mc' script will override the
+					% above default with a value determined
+					% at configuration time
 	cflags			-	string(""),
 	c_include_directory	-	string(""),
+					% the `mc' script will override the
+					% above default with a value determined
+					% at configuration time
 	link_flags		-	string(""),
 	gcc_non_local_gotos	-	bool(yes),
 	gcc_global_registers	-	bool(yes),
@@ -253,10 +277,9 @@ option_defaults_2(optimization_option, [
 	debug			-	bool(no),
 	c_optimize		-	bool(yes),
 	grade			-	string("asm_fast.gc"),
-					% this default grade always gets
-					% overridden by the `mc' script,
-					% which uses the value determined
-					% by autoconf
+					% the `mc' script will override the
+					% above default with a value determined
+					% at configuration time
 	optimize		-	bool(yes),
 	optimize_peep		-	bool(yes),
 	optimize_jumps		-	bool(yes),
@@ -379,7 +402,8 @@ long_option("reclaim-heap-on-nondet-failure",
 long_option("use-macro-for-redo-fail",	use_macro_for_redo_fail).
 long_option("simple_neg",		simple_neg).
 long_option("num-tag-bits",		num_tag_bits).
-long_option("num-real-regs",		num_real_regs).
+long_option("conf-low-tag-bits",	conf_low_tag_bits).
+long_option("num-real-r-regs",		num_real_r_regs).
 long_option("gc",			gc).
 long_option("garbage-collection",	gc).
 long_option("compile-to-c",		compile_to_c).
@@ -583,7 +607,11 @@ options_help -->
 	io__write_string("\t--num-tag-bits <n>\t"),
 	io__write_string("\t(This option is not for general use.)\n"),
 	io__write_string("\t\tUse <n> tag bits.\n"),
-	io__write_string("\t--num-real-regs <n>\t"),
+		%
+		% The --conf-low-tag-bits option is reserved for use
+		% by the `mc' script; it is deliberately not documented.
+		%
+	io__write_string("\t--num-real-r-regs <n>\t"),
 	io__write_string("\t(This option is not for general use.)\n"),
 	io__write_string("\t\tAssume registers r1 up to r<n> are real machine registers.\n"),
 	io__write_string("\t--profiling\t\t"),

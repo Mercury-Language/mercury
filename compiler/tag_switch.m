@@ -89,7 +89,8 @@ tag_switch__generate(Cases, Var, CodeModel, CanFail, EndLabel, Code) -->
 	code_info__get_globals(Globals),
 	{
 		TagCaseList = [_, _ | _],	% at least two primary tags
-		globals__lookup_int_option(Globals, num_real_regs, NumRealRegs),
+		globals__lookup_int_option(Globals, num_real_r_regs,
+			NumRealRegs),
 		(
 			NumRealRegs = 0
 		;

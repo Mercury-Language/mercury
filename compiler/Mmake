@@ -51,7 +51,7 @@ depend : mercury_compile.depend
 
 # we need to make sure the .pp and .in files get converted to .m before
 # we do the make depend
-mercury_compile.depend: mercury_compile.m optimize.m code_gen.m conf.m
+mercury_compile.depend: mercury_compile.m optimize.m code_gen.m
 
 .PHONY: all
 all : mercury nuprolog sicstus
@@ -75,13 +75,6 @@ mercury_compile: $(RUNTIME_DIR)/libmer.a $(LIBRARY_DIR)/libmercury.a \
 
 mercury_compile.sicstus: $(LIBRARY_DIR)/library.sicstus.debug
 mercury_compile.sicstus.debug: $(LIBRARY_DIR)/library.sicstus.debug
-
-#-----------------------------------------------------------------------------#
-
-# XXX conf.m shold depend on $(MERCURY_DIR)/config.status,
-# but that causes problems with bootstrapping
-conf.m: conf.m.in
-	CONFIG_FILES=conf.m CONFIG_HEADERS= $(MERCURY_DIR)/config.status
 
 #-----------------------------------------------------------------------------#
 
