@@ -24,6 +24,7 @@ PROGS=	\
 	implied_instance_poly \
 	impure_methods \
 	instance_unconstrained_tvar \
+	instance_unconstrained_tvar_dup \
 	inference_test \
 	inference_test_2 \
 	intermod_typeclass_bug \
@@ -67,6 +68,7 @@ MCFLAGS-unqualified_method3 = --intermodule-optimization
 NO_TYPE_SPEC_FLAGS = --no-user-guided-type-specialisation \
 				--no-type-specialisation
 MCFLAGS-instance_unconstrained_tvar = $(NO_TYPE_SPEC_FLAGS)
+MCFLAGS-instance_unconstrained_tvar_dup = $(NO_TYPE_SPEC_FLAGS)
 MCFLAGS-typeclass_exist_method_2 = $(NO_TYPE_SPEC_FLAGS)
 
 #-----------------------------------------------------------------------------#

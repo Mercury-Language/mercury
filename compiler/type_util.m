@@ -1423,6 +1423,7 @@ constraint_get_tvars(constraint(_Name, Args), TVars) :-
 
 get_unconstrained_tvars(Tvars, Constraints, Unconstrained) :-
 	constraint_list_get_tvars(Constraints, ConstrainedTvars),
-	list__delete_elems(Tvars, ConstrainedTvars, Unconstrained).
+	list__delete_elems(Tvars, ConstrainedTvars, Unconstrained0),
+	list__remove_dups(Unconstrained0, Unconstrained).
 
 %-----------------------------------------------------------------------------%
