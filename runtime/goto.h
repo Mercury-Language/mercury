@@ -25,7 +25,12 @@
 #define make_local(n, a)	make_entry(n, a)
 #endif
 
+#if defined(SPEED) && !defined(DEBUG_LABELS) && !defined(DEBUG_GOTOS) \
+			&& !defined(PROFILE_CALLS)
+#define make_entry(n, a)	/* nothing */
+#else
 #define make_entry(n, a)	insert_entry(n, a)
+#endif
 
 #define paste(a,b) a##b
 #define stringify(string) #string
