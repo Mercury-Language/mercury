@@ -67,70 +67,58 @@ np_builtin__split_env_string([C | Cs], Var, Rest) :-
 	    np_builtin__split_env_string(Cs, Var0, Rest)
 	).
 
-lambda(LambdaVars0, Goal0, Arg1) :-
-	duplicate([LambdaVars0|Goal0], [LambdaVars|Goal]),
-	( LambdaVars = Var1, var(Var1) ->
-		Var1 = Arg1
-	; LambdaVars = [Var1], var(Var1) ->
-		Var1 = Arg1
-	; LambdaVars = (Var1::_Mode1) ->
-		Var1 = Arg1
-	; LambdaVars = [Var1::_Mode1] ->
-		Var1 = Arg1
+lambda(LambdaExpression, Goal0, Arg1) :-
+	( LambdaExpression = ([Var1::_Mode1] is _Det), var(Var1) ->
+		duplicate([Var1|Goal0], [Arg1|Goal])
 	;
 		error("error in use of `lambda'")
 	),
 	call(Goal).
 
-lambda(LambdaVars0, Goal0, Arg1, Arg2) :-
-	duplicate([LambdaVars0|Goal0], [LambdaVars|Goal]),
-	( LambdaVars = [Var1, Var2], var(Var1), var(Var2) ->
-		Var1 = Arg1, Var2 = Arg2
-	; LambdaVars = [Var1::_Mode1, Var2::_Mode2] ->
-		Var1 = Arg1, Var2 = Arg2
-	;
-		error("error in use of `lambda'")
-	),
-	call(Goal).
-
-lambda(LambdaVars0, Goal0, Arg1, Arg2, Arg3) :-
-	duplicate([LambdaVars0|Goal0], [LambdaVars|Goal]),
-	( LambdaVars = [Var1, Var2, Var3], var(Var1), var(Var2), var(Var3) ->
-		Var1 = Arg1, Var2 = Arg2, Var3 = Arg3
-	; LambdaVars = [Var1::_Mode1, Var2::_Mode2, Var3::_Mode3] ->
-		Var1 = Arg1, Var2 = Arg2, Var3 = Arg3
-	;
-		error("error in use of `lambda'")
-	),
-	call(Goal).
-
-lambda(LambdaVars0, Goal0, Arg1, Arg2, Arg3, Arg4) :-
-	duplicate([LambdaVars0|Goal0], [LambdaVars|Goal]),
+lambda(LambdaExpression, Goal0, Arg1, Arg2) :-
 	(
-		LambdaVars = [Var1, Var2, Var3, Var4],
+		LambdaExpression = ([Var1::_Mode1, Var2::_Mode2] is _Det),
+		var(Var1), var(Var2)
+	->
+		duplicate([Var1, Var2 | Goal0], [Arg1, Arg2 | Goal])
+	;
+		error("error in use of `lambda'")
+	),
+	call(Goal).
+
+lambda(LambdaExpression, Goal0, Arg1, Arg2, Arg3) :-
+	(
+		LambdaExpression = ([Var1::_Mode1, Var2::_Mode2, Var3::_Mode3]
+			is _Det),
+		var(Var1), var(Var2), var(Var3)
+	->
+		duplicate([Var1, Var2, Var3 | Goal0], [Arg1, Arg2, Arg3 | Goal])
+	;
+		error("error in use of `lambda'")
+	),
+	call(Goal).
+
+lambda(LambdaExpression, Goal0, Arg1, Arg2, Arg3, Arg4) :-
+	(
+		LambdaExpression = ([Var1::_Mode1, Var2::_Mode2, Var3::_Mode3,
+			Var4::_Mode4] is _Det),
 		var(Var1), var(Var2), var(Var3), var(Var4)
 	->
-		Var1 = Arg1, Var2 = Arg2, Var3 = Arg3, Var4 = Arg4
-	;
-		LambdaVars = [Var1::_, Var2::_, Var3::_, Var4::_]
-	->
-		Var1 = Arg1, Var2 = Arg2, Var3 = Arg3, Var4 = Arg4
+		duplicate([Var1, Var2, Var3, Var4 | Goal0],
+			[Arg1, Arg2, Arg3, Arg4 | Goal])
 	;
 		error("error in use of `lambda'")
 	),
 	call(Goal).
 
-lambda(LambdaVars0, Goal0, Arg1, Arg2, Arg3, Arg4, Arg5) :-
-	duplicate([LambdaVars0|Goal0], [LambdaVars|Goal]),
-	(	
-		LambdaVars = [Var1, Var2, Var3, Var4, Var5],
-	  	var(Var1), var(Var2), var(Var3), var(Var4), var(Var5)
+lambda(LambdaExpression, Goal0, Arg1, Arg2, Arg3, Arg4, Arg5) :-
+	(
+		LambdaExpression = ([Var1::_Mode1, Var2::_Mode2, Var3::_Mode3,
+			Var4::_Mode4, Var5::_Mode5] is _Det),
+		var(Var1), var(Var2), var(Var3), var(Var4), var(Var5)
 	->
-		Var1 = Arg1, Var2 = Arg2, Var3 = Arg3, Var4 = Arg4, Var5 = Arg5
-	;
-		LambdaVars = [Var1::_, Var2::_, Var3::_, Var4::_, Var5::_]
-	->
-		Var1 = Arg1, Var2 = Arg2, Var3 = Arg3, Var4 = Arg4, Var5 = Arg5
+		duplicate([Var1, Var2, Var3, Var4, Var5 | Goal0],
+			[Arg1, Arg2, Arg3, Arg4, Arg5 | Goal])
 	;
 		error("error in use of `lambda'")
 	),
