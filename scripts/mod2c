@@ -25,6 +25,8 @@ sub printlines {
 
 $decl = $code = $init = $special_init = $gnudecl = $gnuinit = "";
 $in_module = $in_code = 0;
+$init_funcs = "";
+$output_init = 0;
 
 unshift(@ARGV, '-') if $#ARGV < $[;
 FILE:
@@ -40,7 +42,17 @@ while ($ARGV = shift) {
   LINE:
   while (<F>) {
     $target = $ARGV;
-    $target =~ s/\.mod/\.c/;
+    $target =~ s/\.mod//;
+    $target =~ s/.*\///;
+
+    if ($output_init == 0) {
+	do println("/*");
+	do println("INIT mercury_sys_init_$target");
+	do println("ENDINIT");
+	do println("*/");
+	$output_init = 1;
+    }
+
     if (/^BEGIN_MODULE\((\w+)\)/) {
         $module = $1;
         $in_module = 1;
@@ -59,6 +71,7 @@ while ($ARGV = shift) {
 	do println("BEGIN_CODE");
         do printlines($code);
         do println("END_MODULE");
+	$init_funcs .= "\t$module();\n";
 	$decl = $code = $init = $special_init = "";
         $in_module = $in_code = 0;
         next LINE;
@@ -121,3 +134,7 @@ while ($ARGV = shift) {
     }
   }
 }
+do println("void mercury_sys_init_$target(void); /* suppress gcc warning */");
+do println("void mercury_sys_init_$target(void) {");
+do printlines($init_funcs);
+do println("}");
