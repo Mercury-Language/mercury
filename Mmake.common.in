@@ -179,6 +179,7 @@ PERL=@PERL@
 #-----------------------------------------------------------------------------#
 
 # Extensions to use
+O=@OBJ_SUFFIX@
 A=@LIB_SUFFIX@
 
 # Which makefile to use when compiling the garbage collector.
