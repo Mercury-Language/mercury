@@ -1720,6 +1720,8 @@ string__special_precision_and_width(-1).
 
 Define_extern_entry(mercury__string__append_3_3_xx);
 Declare_label(mercury__string__append_3_3_xx_i1);
+MR_MAKE_STACK_LAYOUT_ENTRY(mercury__string__append_3_3_xx);
+MR_MAKE_STACK_LAYOUT_INTERNAL(mercury__string__append_3_3_xx, 1);
 
 BEGIN_MODULE(string_append_module)
 	init_entry(mercury__string__append_3_3_xx);

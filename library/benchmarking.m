@@ -130,6 +130,9 @@ ENDINIT
 Define_extern_entry(mercury__benchmarking__benchmark_nondet_5_0);
 Declare_label(mercury__benchmarking__benchmark_nondet_5_0_i1);
 Declare_label(mercury__benchmarking__benchmark_nondet_5_0_i2);
+MR_MAKE_STACK_LAYOUT_ENTRY(mercury__benchmarking__benchmark_nondet_5_0);
+MR_MAKE_STACK_LAYOUT_INTERNAL(mercury__benchmarking__benchmark_nondet_5_0, 1);
+MR_MAKE_STACK_LAYOUT_INTERNAL(mercury__benchmarking__benchmark_nondet_5_0, 2);
 
 BEGIN_MODULE(benchmark_nondet_module)
 	init_entry(mercury__benchmarking__benchmark_nondet_5_0);
@@ -216,6 +219,8 @@ END_MODULE
 
 Define_extern_entry(mercury__benchmarking__benchmark_det_5_0);
 Declare_label(mercury__benchmarking__benchmark_det_5_0_i1);
+MR_MAKE_STACK_LAYOUT_ENTRY(mercury__benchmarking__benchmark_det_5_0);
+MR_MAKE_STACK_LAYOUT_INTERNAL(mercury__benchmarking__benchmark_det_5_0, 1);
 
 BEGIN_MODULE(benchmark_det_module)
 	init_entry(mercury__benchmarking__benchmark_det_5_0);

@@ -24,7 +24,7 @@
 % 	number of stack slots	(Integer) 
 % 	code_model		(Integer) actually, type MR_Code_Model 
 % 					0 = DET, 1 = NONDET
-% 	succip stack location	(Integer) actually, type MR_LIVE_LVAL
+% 	succip stack location	(Integer) actually, type MR_Live_Lval
 % 					(the location will be set to -1
 % 					if there is no succip available).
 %
@@ -35,9 +35,9 @@
 %	procedure info		(Word *) - pointer to procedure stack layout
 %	number of live vars	(Integer)
 %	live data locations and (Word *) - pointer to vector of 
-%		types			MR_LIVE_LVAL and MR_LIVE_TYPE pairs
+%		types			MR_Live_Lval and MR_Live_Type pairs
 %	type parameters		(Word *) - pointer to vector of 
-%					MR_LIVE_LVAL
+%					MR_Live_Lval
 %
 % If the number of live vars is 0, there could be two explanations. The
 % continuation label might actually have no live data, or (more likely)

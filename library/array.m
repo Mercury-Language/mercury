@@ -255,6 +255,9 @@ lower bounds other than zero are not supported
 Define_extern_entry(mercury____Unify___array__array_1_0);
 Define_extern_entry(mercury____Index___array__array_1_0);
 Define_extern_entry(mercury____Compare___array__array_1_0);
+MR_MAKE_STACK_LAYOUT_ENTRY(mercury____Unify___array__array_1_0);
+MR_MAKE_STACK_LAYOUT_ENTRY(mercury____Index___array__array_1_0);
+MR_MAKE_STACK_LAYOUT_ENTRY(mercury____Compare___array__array_1_0);
 
 #ifdef  USE_TYPE_LAYOUT
 

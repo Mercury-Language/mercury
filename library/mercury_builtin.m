@@ -719,6 +719,8 @@ aliasing, and in particular the lack of support for `ui' modes.
 :- pragma c_code("
 Define_extern_entry(mercury__copy_2_0);
 Define_extern_entry(mercury__copy_2_1);
+MR_MAKE_STACK_LAYOUT_ENTRY(mercury__copy_2_0);
+MR_MAKE_STACK_LAYOUT_ENTRY(mercury__copy_2_1);
 
 BEGIN_MODULE(copy_module)
 	init_entry(mercury__copy_2_0);
@@ -799,6 +801,9 @@ mercury_data_mercury_builtin__base_type_functors_c_pointer_0_struct {
 Define_extern_entry(mercury____Unify___mercury_builtin__c_pointer_0_0);
 Define_extern_entry(mercury____Index___mercury_builtin__c_pointer_0_0);
 Define_extern_entry(mercury____Compare___mercury_builtin__c_pointer_0_0);
+MR_MAKE_STACK_LAYOUT_ENTRY(mercury____Unify___mercury_builtin__c_pointer_0_0);
+MR_MAKE_STACK_LAYOUT_ENTRY(mercury____Index___mercury_builtin__c_pointer_0_0);
+MR_MAKE_STACK_LAYOUT_ENTRY(mercury____Compare___mercury_builtin__c_pointer_0_0);
 
 BEGIN_MODULE(unify_c_pointer_module)
 	init_entry(mercury____Unify___mercury_builtin__c_pointer_0_0);
