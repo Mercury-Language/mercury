@@ -487,6 +487,11 @@ definitions into DNF, introducing auxiliary predicates as necessary.
 			<dd>
 			Some miscellaneous preds which, unlike those in
 			code_util, use code_info
+		<dt> continuation_info.m
+			<dd>
+			For accurate garbage collection, collects
+			information about each live value after calls,
+			and saves information about procedures.
 		</dl>
 
 </dl>
@@ -722,15 +727,11 @@ Some of them are obsolete; other are work-in-progress.
 		code generator.  When finished, it will convert HLDS
 		to high-level C code (without going via LLDS).
 
-	<dt> shapes.m, garbage_out.m:
-		<dd>
-		These two modules generate information for the
-		native garbage collector.
 	</dl>
 
 <hr>
 <!-------------------------->
 
-Last update was $Date: 1997-07-24 01:33:04 $ by $Author: bromage $@cs.mu.oz.au. <br>
+Last update was $Date: 1997-07-24 03:41:14 $ by $Author: trd $@cs.mu.oz.au. <br>
 </body>
 </html>
