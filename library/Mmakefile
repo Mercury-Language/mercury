@@ -208,10 +208,8 @@ ifeq ($(findstring il,$(GRADE)),il)
 
 lib_std: mercury.dll
 
-# Instead of generating UNIX style libraries, we general a bunch of
-# DLLs.  We have to hardcode the names of the C code files and the
-# runtime files.
-RUNTIME_DLLS=../runtime/mercury_mcpp.dll ../runtime/mercury_il.dll
+# We have to hardcode the names of the runtime DLL files.
+RUNTIME_DLLS=mercury_mcpp.dll mercury_il.dll
 
 # Turn this on if you wish to enable .NET debugging.
 DEBUG_MS_ILASMFLAGS=
@@ -233,10 +231,20 @@ MS_ILASMFLAGS=$(DEBUG_MS_ILASMFLAGS)
 library_strong_name.sn:
 	sn -k library_strong_name.sn
 
-mercury.dll: $(library.dlls) $(library.foreign_dlls) library_strong_name.sn
-	cp $(RUNTIME_DLLS) .
+mercury.dll: copy_runtime_dlls $(library.dlls) $(library.foreign_dlls) library_strong_name.sn
 	$(MS_AL) -v:0.0.0.0 -keyf:library_strong_name.sn -out:mercury.dll \
 		$(library.dlls) $(library.foreign_dlls) $(RUNTIME_DLLS) 
+
+# The runtime DLLs must be copied into this directory from the runtime
+# directory so they can be installed properly.
+.PHONY: copy_runtime_dlls
+copy_runtime_dlls: $(RUNTIME_DLLS)
+
+mercury_il.dll: ../runtime/mercury_il.dll
+	cp ../runtime/mercury_il.dll .
+
+mercury_mcpp.dll: ../runtime/mercury_mcpp.dll
+	cp ../runtime/mercury_mcpp.dll .
 
 else
 
