@@ -1081,7 +1081,16 @@ XXX Full exception handling support is not yet implemented.
 			% first null character.
 	;	multi_string_const(int, string)
 	;	code_addr_const(mlds__code_addr)
-	;	data_addr_const(mlds__data_addr).
+	;	data_addr_const(mlds__data_addr)
+		% A null value, of the given type. 
+		% Usually the type will be a pointer (mlds__ptr_type)
+		% but it could also be string or a func_type.
+		% (Null is not a valid value of type string
+		% or func_type, but null values of those types
+		% may be useful as placeholders in cases where the
+		% value will never be used.)
+	; 	null(mlds__type).
+
 
 :- type mlds__code_addr
 	--->	proc(mlds__qualified_proc_label, mlds__func_signature)

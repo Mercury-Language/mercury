@@ -409,12 +409,12 @@ ml_gen_closure(PredId, ProcId, EvalMethod, Var, ArgVars, ArgModes,
 	% (we do this just to match the structure used
 	% by the LLDS closure representation)
 	%
-	{ ClosureLayoutRval = const(int_const(0)) },
 	{ mercury_private_builtin_module(PrivateBuiltinModule) },
 	{ MLDS_PrivateBuiltinModule = mercury_module_name_to_mlds(
 		PrivateBuiltinModule) },
 	{ ClosureLayoutType = mlds__class_type(qual(MLDS_PrivateBuiltinModule,
 			"closure_layout"), 0, mlds__struct) },
+	{ ClosureLayoutRval = const(null(ClosureLayoutType)) },
 
 	%
 	% Generate a wrapper function which just unboxes the
@@ -1070,8 +1070,7 @@ ml_gen_cons_args(Lvals, Types, Modes, ModuleInfo, Rvals) :-
 	% for a construction unification.  For each argument which
 	% is input to the construction unification, we produce the
 	% corresponding lval, but if the argument is free,
-	% we just produce `0', meaning initialize that field to a
-	% null value.  (XXX perhaps we should have a special `null' rval.)
+	% we produce a null value.
 
 :- pred ml_gen_cons_args_2(list(mlds__lval), list(prog_type),
 		list(uni_mode), module_info, list(mlds__rval)).
@@ -1084,8 +1083,7 @@ ml_gen_cons_args_2([Lval|Lvals], [Type|Types], [UniMode|UniModes],
 	( mode_to_arg_mode(ModuleInfo, (RI -> RF), Type, top_in) ->
 		Rval = lval(Lval)
 	;
-		% XXX perhaps we should have a special `null' rval.
-		Rval = const(int_const(0))
+		Rval = const(null(mercury_type_to_mlds_type(ModuleInfo, Type)))
 	),
 	ml_gen_cons_args_2(Lvals, Types, UniModes, ModuleInfo, Rvals).
 

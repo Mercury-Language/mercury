@@ -2746,6 +2746,8 @@ mlds_output_rval_const(code_addr_const(CodeAddr)) -->
 	mlds_output_code_addr(CodeAddr).
 mlds_output_rval_const(data_addr_const(DataAddr)) -->
 	mlds_output_data_addr(DataAddr).
+mlds_output_rval_const(null(_)) -->
+       io__write_string("NULL").
 
 %-----------------------------------------------------------------------------%
 
