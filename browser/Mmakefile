@@ -126,6 +126,13 @@ $(BROWSER_LIB_NAME).dep $(BROWSER_LIB_NAME).depend:
 
 lib$(BROWSER_LIB_NAME).so: lib$(MDBCOMP_LIB_NAME).so
 lib$(BROWSER_LIB_NAME): lib$(MDBCOMP_LIB_NAME)
+lib$(BROWSER_LIB_NAME).int3s: lib$(MDBCOMP_LIB_NAME).int3s
+lib$(BROWSER_LIB_NAME).ints: lib$(MDBCOMP_LIB_NAME).ints
+lib$(BROWSER_LIB_NAME).cs: lib$(MDBCOMP_LIB_NAME).cs
+lib$(BROWSER_LIB_NAME).ss: lib$(MDBCOMP_LIB_NAME).ss
+lib$(BROWSER_LIB_NAME).ils: lib$(MDBCOMP_LIB_NAME).ils
+lib$(BROWSER_LIB_NAME).javas: lib$(MDBCOMP_LIB_NAME).javas
+lib$(BROWSER_LIB_NAME).check: lib$(MDBCOMP_LIB_NAME).check
 
 # This directory contains source files for which the module
 # name doesn't match the file name, so smart recompilation
