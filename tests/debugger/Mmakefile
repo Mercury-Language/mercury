@@ -48,6 +48,17 @@ SHALLOW_PROGS = \
 # this means it won't work properly if the static libraries are linked
 # (as is done by tools/bootcheck and tools/lmc).
 # So we only enable it if LINK_STATIC is not set.
+#
+# The value of LINK_STATIC is normally in set in ../Mmake.common. However,
+# we include ./Mmake.common only later on in this file, because
+# ../Mmake.commmon depends on the value of the TESTS make variable, and hence
+# on the value of PROGS, part of which we are trying to compute here.
+# We resolve this circularity by repeating the critical test of WORKSPACE from
+# ../Mmake.common here,
+
+ifneq ($(origin WORKSPACE),undefined)
+LINK_STATIC = yes
+endif
 ifeq ($(origin LINK_STATIC),undefined)
 LINK_STATIC = no
 endif
