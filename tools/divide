@@ -23,7 +23,7 @@ i=0
 while test $i -lt $2
 do
 	ed - tmp > /dev/null << END
-	/^END_MODULE/
+	/^MR_END_MODULE/
 	1,.w $1.part.$i
 	1,.d
 	w

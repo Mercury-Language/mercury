@@ -245,6 +245,7 @@ wait
 $RMSTAGECMD $trueroot/stage2/* < /dev/null
 echo linking stage 2... 1>&2
 cd stage2
+ln -s $root/main.c .
 mkdir compiler
 cd compiler
 ln -s $root/compiler/[a-h]*.m .
@@ -324,6 +325,7 @@ then
 	$RMSTAGECMD $trueroot/stage3/* < /dev/null
 	echo linking stage 3... 1>&2
 	cd stage3
+	ln -s $root/main.c
 	mkdir compiler
 	cd compiler
 	# Break up the links into several chunks.
@@ -373,6 +375,7 @@ then
 	fi
 fi
 
+cp stage2.ok/main.o stage2
 if test "$alldirs" = ""
 then
 	echo testing whether the stage2.bad library works
@@ -538,8 +541,8 @@ fi
 echo "there is a problem in $testeddir/$module"
 echo
 
-basecnt=`egrep '^END_MODULE' stage2.$base/$testeddir/$module.c | wc -l`
-trialcnt=`egrep '^END_MODULE' stage2.$trial/$testeddir/$module.c | wc -l`
+basecnt=`egrep '^MR_END_MODULE' stage2.$base/$testeddir/$module.c | wc -l`
+trialcnt=`egrep '^MR_END_MODULE' stage2.$trial/$testeddir/$module.c | wc -l`
 
 if test $basecnt -ne $trialcnt
 then

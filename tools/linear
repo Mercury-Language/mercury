@@ -254,8 +254,8 @@ do
 		else
 			unusual="$unusual $testeddir/$testedmodule"
 
-			basecnt=`egrep '^END_MODULE' stage2.$base/$testeddir/$testedmodule.c | wc -l`
-			trialcnt=`egrep '^END_MODULE' stage2.$trial/$testeddir/$testedmodule.c | wc -l`
+			basecnt=`egrep '^MR_END_MODULE' stage2.$base/$testeddir/$testedmodule.c | wc -l`
+			trialcnt=`egrep '^MR_END_MODULE' stage2.$trial/$testeddir/$testedmodule.c | wc -l`
 
 			if test $basecnt -ne $trialcnt
 			then
