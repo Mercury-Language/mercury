@@ -269,7 +269,7 @@ output_instruction(goto(Label)) -->
 	io__write_string("\t"),
 	io__write_string("GOTO(LABEL("),
 	output_label(Label),
-	io__write_string("))").
+	io__write_string("));").
 
 output_instruction(test(Rval1, Rval2, Label)) -->
 	io__write_string("\t"),
