@@ -373,6 +373,10 @@ MR_schedule_agc(MR_Code *pc_at_signal, MR_Word *sp_at_signal,
 		/*
 		** Save the old succip and its location.
 		*/
+		/*
+		** XXX The code below is wrong for temp frames,
+		**     which do not have the succip or succfr slots!
+		*/
 		assert(location == -1); /* succip is saved in succip_slot */
 		saved_success_location = MR_succip_slot_addr(curfr_at_signal);
 		saved_success = *saved_success_location;
@@ -550,6 +554,7 @@ garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer,
 	** This should be OK, because none of the values used by a procedure
 	** will be stored in registers across a call, since we have no
 	** caller-save registers (they are all callee-save).
+	** XXX except for the topmost frame!
 	*/
         type_params = MR_materialize_type_params_base(label_layout,
             NULL, stack_pointer, current_frame);
@@ -598,17 +603,21 @@ garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer,
 		int                     number;
 
 		location = proc_layout->MR_sle_succip_locn;
-		type = MR_LONG_LVAL_TYPE(location);
-		number = MR_LONG_LVAL_NUMBER(location);
-		if (type != MR_LONG_LVAL_TYPE_STACKVAR) {
-			MR_fatal_error("can only handle stackvars");
-		}
 		if (MR_DETISM_DET_STACK(proc_layout->MR_sle_detism)) {
+			type = MR_LONG_LVAL_TYPE(location);
+			number = MR_LONG_LVAL_NUMBER(location);
+			if (type != MR_LONG_LVAL_TYPE_STACKVAR) {
+				MR_fatal_error("can only handle stackvars");
+			}
 			success_ip = (MR_Code *)
 				MR_based_stackvar(stack_pointer, number);
 			stack_pointer = stack_pointer - 
 				proc_layout->MR_sle_stack_slots;
 		} else {
+			/*
+			** XXX The code below is wrong for temp frames,
+			**     which do not have the succip or succfr slots!
+			*/
 			/* succip is saved in succip_slot */
 			assert(location == -1);
 			success_ip = MR_succip_slot(current_frame);
@@ -687,7 +696,9 @@ garbage_collect(MR_Code *success_ip, MR_Word *stack_pointer,
 		** saved; This should be OK, because none of the values used
 		** by a procedure will be stored in registers across a call,
 		** since we have no caller-save registers (they are all
-		** callee-save).
+		** callee-save).  XXX except for frame which was active
+		** when we entered the garbage collector!
+		**
 		** XXX Is it right to pass MR_redofr_slot(max_frame) here?
 		**     Why not just max_frame?
 		*/
