@@ -1052,17 +1052,12 @@ mercury_compile__maybe_polymorphism(HLDS0, Verbose, Stats, HLDS) -->
 :- mode mercury_compile__maybe_base_type_infos(in, in, in, out, di, uo) is det.
 
 mercury_compile__maybe_base_type_infos(HLDS0, Verbose, Stats, HLDS) -->
-	globals__io_get_type_info_method(TypeInfoMethod),
-	( { TypeInfoMethod = shared_one_or_two_cell } ->
-		maybe_write_string(Verbose,
-			"% Generating base_type_info structures..."),
-		maybe_flush_output(Verbose),
-		{ base_type_info__generate_hlds(HLDS0, HLDS) },
-		maybe_write_string(Verbose, " done.\n"),
-		maybe_report_stats(Stats)
-	;
-		{ HLDS = HLDS0 }
-	).
+	maybe_write_string(Verbose,
+		"% Generating base_type_info structures..."),
+	maybe_flush_output(Verbose),
+	{ base_type_info__generate_hlds(HLDS0, HLDS) },
+	maybe_write_string(Verbose, " done.\n"),
+	maybe_report_stats(Stats).
 
 	% We only add base_type_layouts if shared-one-or-two-cell
 	% type_infos are being used (the layouts refer to the

@@ -18,7 +18,7 @@
 :- module instmap.
 
 :- interface.
-:- import_module hlds_module, prog_data, mode_info.
+:- import_module prog_data, mode_info.
 :- import_module set.
 
 :- type instmap.

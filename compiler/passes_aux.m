@@ -167,7 +167,7 @@ process_nonimported_procs([ProcId | ProcIds], PredId, Task0, Task,
 		call(Closure, PredId, ProcId, ModuleInfo0, ModuleInfo1,
 			Proc0, Proc, WarnCnt, ErrCnt, State0, State1),
 		globals__io_lookup_bool_option(halt_at_warn, HaltAtWarn,
-			State1, State9),
+			State1, State2),
 		Task1 = Task0,
 		(
 			(
@@ -177,9 +177,11 @@ process_nonimported_procs([ProcId | ProcIds], PredId, Task0, Task,
 				HaltAtWarn = yes
 			)
 		->
+			io__set_exit_status(1, State2, State9),
 			module_info_incr_errors(ModuleInfo1, ModuleInfo8)
 		;
-			ModuleInfo8 = ModuleInfo1
+			ModuleInfo8 = ModuleInfo1,
+			State9 = State2
 		)
 	;
 		Task0 = update_module_cookie(Closure, Cookie0),
