@@ -49,6 +49,48 @@ Changes to the standard library:
   are now deprecated; the new existentially typed predicate
   `store__new/1' should be used instead.
 
+Changes to the Mercury implementation:
+
+* We've implemented a new back-end for the Mercury compiler.
+
+  The new back-end, which is enabled by using the `--high-level-code'
+  (or `-H') option or the `hlc.gc' grade, generates much higher-level
+  C code that does not require the use of GNU C extensions such as
+  global register variables or non-local gotos.  It is also simpler
+  and more portable than the old back-end.
+  
+  The main drawback of the new back-end is that for tail calls it only
+  optimizes direct tail recursion; loops written using tail calls
+  between two or more mutually recursive procedures are not guaranteed
+  to use constant stack space.
+
+  Preliminary benchmarking suggests that compilation speed is probably
+  about 20% better with the new back-end, and the generated executables
+  are likely to be smaller (though this will depend on the platform,
+  optimization options, etc.).  Speed of the generated code varies:
+  sometimes it is better than the old back-end, sometimes it is worse.
+  There are a few important optimizations that we have not yet
+  implemented for the new back-end that would make a significant
+  difference for some applications.  But we encourage those for whom
+  performance is important to try their application with both the old
+  and new back-ends and compare for themselves.
+
+  The new back-end is not yet as mature or complete as the old back-end.
+  It does not yet support the following standard Mercury features:
+  	- `pragma export'
+  	- abstractly exported equivalence types defined as `float'
+	- the `in = in' mode of unification for certain standard library
+	  types such as arrays and `univ'
+  It also does not support the following implemention-specific
+  features that the old back-end supports:
+	- trailing
+	- fact tables
+  	- the Mercury debugger (mdb)
+  	- the Morphine trace analysis system
+	- the Aditi deductive database interface
+  	- the `--split-c-files' option
+  	- the `--introduce-accumulators' option
+
 NEWS for Mercury release 0.9.1:
 -------------------------------
 

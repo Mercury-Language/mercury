@@ -1199,3 +1199,12 @@ Mercury 0.8.1
 This release just corrected some bugs in the binary
 distribution for 0.8.
 
+
+MLDS back-end history
+---------------------
+
+We started working on a new back-end for the Mercury compiler in July
+1999.  This new back-end, called the MLDS back-end, generates much
+higher level C code than original back-end.  The first prototype
+compiled "hello world" in September 1999.  The compiler successfully
+compiled itself using the MLDS back-end on 12 May 2000.
