@@ -84,6 +84,7 @@ static void demangle(char *name) {
 	int internal = -1;
 	enum { ORDINARY, UNIFY, COMPARE, INDEX } category;
 
+	if (*start == '_') start++;
 	if (strncmp(start, entry, sizeof(entry) - 1) == 0) {
 		start += sizeof(entry) - 1;
 	}
