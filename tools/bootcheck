@@ -99,6 +99,8 @@ export MERCURY_INT_DIR
 
 [ -d stage2 ] || mkdir stage2
 $keep_stage_2 || /bin/rm -fr stage2/*
+set +x
+echo linking stage 2... 1>&2
 cd stage2
 mkdir compiler
 cd compiler
@@ -122,7 +124,7 @@ ln -s ../Mmake* .
 ln -s ../conf* .
 rm -f config*.log
 cd ..
-
+set -x
 if (cd stage2 ; mmake $mmake_opts depend)
 then
 	echo "building of stage 2 dependencies successful"
@@ -174,6 +176,8 @@ export MERCURY_INT_DIR
 
 [ -d stage3 ] || mkdir stage3
 $keep_stage_3 || /bin/rm -fr stage3/*
+echo linking stage 3... 1>&2
+set +x
 cd stage3
 mkdir compiler
 cd compiler
@@ -197,6 +201,7 @@ ln -s ../Mmake* .
 ln -s ../conf* .
 rm -f config*.log
 cd ..
+set -x
 
 if (cd stage3 ; mmake $mmake_opts depend)
 then
