@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-1999 The University of Melbourne.
+% Copyright (C) 1993-1999, 2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -92,6 +92,10 @@ report_lookup_error(Msg, K, V) :-
 
 % Hopefully error/1 won't be called often (!), so no point inlining it.
 :- pragma no_inline(error/1). 
+
+% We declare error/1 to be terminating so that all of the standard library
+% will treat it as terminating.
+:- pragma terminates(error/1).
 
 error(Message) :- 
 	throw(software_error(Message)).

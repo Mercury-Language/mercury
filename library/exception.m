@@ -293,6 +293,12 @@ get_determinism_2(
 :- pragma no_inline(throw/1).
 :- pragma no_inline(rethrow/1).
 
+% The termination analyzer can infer termination
+% of throw/1 itself but declaring it to be terminating
+% here means that all of the standard library will
+% treat it as terminating as well. 
+:- pragma terminates(throw/1).
+
 throw(Exception) :-
 	type_to_univ(Exception, Univ),
 	throw_impl(Univ).
@@ -608,6 +614,7 @@ catch_impl(Pred::(pred(out) is nondet), Handler::in(handler), T::out) :-
 % builtin_throw and builtin_catch are implemented below using
 % hand-coded low-level C code.
 %
+:- pragma terminates(builtin_throw/1).
 :- pred builtin_throw(univ).
 :- mode builtin_throw(in) is erroneous.
 
