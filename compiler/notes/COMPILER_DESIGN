@@ -80,8 +80,18 @@ stored in the io__state, using the type globals defined in globals.m.
 	representation for each discriminated union type by
 	assigning tags to each functor.
 
+The result at this stage is the High Level Data Structure,
+which is defined in four files:
 
-The result at this stage is the High Level Data Structure (hlds.m).
+	- hlds_data.m defines the parts of the HLDS concerned with
+	  function symbols, types, insts, modes and determinisms;
+	- hlds_goal.m defines the part of the HLDS concerned with the
+	  structure of goals, including the annotations on goals;
+	- hlds_pred.m defines the part of the HLDS concerning
+	  predicates and procedures;
+	- hlds_module.m defines the top-level parts of the HLDS,
+	  including the type module_info.
+
 The module hlds_out.m contains predicates to dump the HLDS to a file.
 The module goal_util.m contains predicates for renaming variables
 in an HLDS goal.
