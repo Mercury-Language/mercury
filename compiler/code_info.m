@@ -144,19 +144,6 @@
 							code_info, code_info).
 :- mode code_info__save_variable_on_stack(in, out, in, out) is det.
 
-		% Save a variable. If there is a known register for
-		% this variable, save it there. Else, if there is a
-		% stack slot for it, save it there. Else error.
-:- pred code_info__save_variable_somewhere_definite(var, code_tree,
-							code_info, code_info).
-:- mode code_info__save_variable_somewhere_definite(in, out, in, out) is det.
-
-		% Save a variable. Use a known reg if one exists, else use
-		% J. Random register.
-:- pred code_info__save_variable_somewhere(var, code_tree,
-							code_info, code_info).
-:- mode code_info__save_variable_somewhere(in, out, in, out) is det.
-
 		% Succeed if the given variable is live at the
 		% end of this goal.
 :- pred code_info__variable_is_live(var, code_info, code_info).
@@ -210,9 +197,6 @@
 
 :- pred code_info__generate_forced_saves(code_tree, code_info, code_info).
 :- mode code_info__generate_forced_saves(out, in, out) is det.
-
-:- pred code_info__generate_eager_flush(code_tree, code_info, code_info).
-:- mode code_info__generate_eager_flush(out, in, out) is det.
 
 :- pred code_info__grab_code_info(code_info, code_info, code_info).
 :- mode code_info__grab_code_info(out, in, out) is det.
@@ -2573,9 +2557,6 @@ code_info__request_unify(TypeId, UniMode) -->
 
 :- pred code_info__get_proc_category(category, code_info, code_info).
 :- mode code_info__get_proc_category(out, in, out) is det.
-
-:- pred code_info__set_proc_category(category, code_info, code_info).
-:- mode code_info__set_proc_category(in, in, out) is det.
 
 :- pred code_info__set_requests(unify_requests, code_info, code_info).
 :- mode code_info__set_requests(in, in, out) is det.
