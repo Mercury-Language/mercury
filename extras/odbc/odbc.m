@@ -1,6 +1,6 @@
 %---------------------------------------------------------------------------%
 % Copyright (C) 1997 Mission Critical.
-% Copyright (C) 1997-2000 The University of Melbourne.
+% Copyright (C) 1997-2000, 2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -332,6 +332,22 @@
 
 #endif /* MODBC_IODBC */
 
+	/*
+	** For interfacing directly with ODBC driver bypassing driver manager
+	** such as iODBC
+	*/
+#ifdef MODBC_ODBC
+
+#include ""sql.h""
+#include ""sqlext.h""
+#include ""sqltypes.h""
+
+#ifndef SQL_NO_DATA
+#define SQL_NO_DATA SQL_NO_DATA_FOUND
+#endif
+
+#endif /* MODBC_ODBC */
+
 #ifdef MODBC_MS
 
 	/*
@@ -409,7 +425,7 @@ static SQLRETURN odbc_ret_code = SQL_SUCCESS;
 	** The list of accumulated warnings and errors for the transaction 
 	** in reverse order.
 	*/
-static Word	odbc_message_list;
+static MR_Word	odbc_message_list;
 
 static void odbc_transaction_c_code(Word type_info, Word Connection, 
 			Word Closure, Word *Results, Word *GotMercuryException,
@@ -484,26 +500,27 @@ odbc__transaction(Source, User, Password, Closure, Result) -->
 	** declared as 'may_call_mercury', so the compiler assumes that it 
 	** is allowed to clobber those registers.
 	*/
-	save_transient_registers();
+	MR_save_transient_registers();
 	odbc_transaction_c_code(TypeInfo_for_T, Connection, Closure, 
 			&Results, &GotMercuryException, &Exception, 
 			&Status, &Msgs, IO0, &IO);
-	restore_transient_registers();
+	MR_restore_transient_registers();
 ").
 
 
 :- pragma c_code(
 "
 static void 
-odbc_transaction_c_code(Word TypeInfo_for_T, Word Connection, 
-		Word Closure, Word *Results, Word *GotMercuryException,
-		Word *Exception, Word *Status, Word *Msgs, Word IO0, Word *IO)
+odbc_transaction_c_code(MR_Word TypeInfo_for_T, MR_Word Connection, 
+		MR_Word Closure, MR_Word *Results, MR_Word *GotMercuryException,
+		MR_Word *Exception, MR_Word *Status, MR_Word *Msgs,
+		MR_Word IO0, MR_Word *IO)
 {
-	Word DB0 = (Word) 0;
-	Word DB = (Word) 0;
+	MR_Word DB0 = (MR_Word) 0;
+	MR_Word DB = (MR_Word) 0;
 	SQLRETURN rc;
 
-	restore_transient_registers();
+	MR_restore_transient_registers();
 
 	/*
 	** Mercury state to restore on rollback. 
@@ -547,7 +564,7 @@ odbc_transaction_c_code(Word TypeInfo_for_T, Word Connection,
 		** ignored because the caller won't look at the result --
 		** it will just rethrow the exception.
 		*/
-		DEBUG(printf(
+		MR_DEBUG(printf(
 			""Mercury exception in transaction: aborting\\n""));
 		(void) SQLTransact(odbc_env_handle,
 				odbc_connection, SQL_ROLLBACK);
@@ -582,7 +599,7 @@ transaction_done:
 	odbc_ret_code = SQL_SUCCESS;
 	*IO = IO0;
 
-	save_transient_registers();
+	MR_save_transient_registers();
 }
 ").
 
@@ -711,14 +728,14 @@ odbc__open_connection(Source, User, Password, Result - Messages) -->
 		Status = SQL_SUCCESS;
 	}
 
-	DEBUG(printf(""SQLAllocEnv status: %d\\n"", (int) Status));
+	MR_DEBUG(printf(""SQLAllocEnv status: %d\\n"", (int) Status));
 
 	if (odbc_check(odbc_env_handle, SQL_NULL_HDBC, 
 			SQL_NULL_HSTMT, Status)) {
 
 		Status = SQLAllocConnect(odbc_env_handle, &connect_handle);
 
-		DEBUG(printf(""SQLAllocConnect status: %d\\n"", (int) Status));
+		MR_DEBUG(printf(""SQLAllocConnect status: %d\\n"", (int) Status));
 
 		if (odbc_check(odbc_env_handle, connect_handle,
 				SQL_NULL_HSTMT, Status)) {
@@ -726,7 +743,7 @@ odbc__open_connection(Source, User, Password, Result - Messages) -->
 			Status = SQLSetConnectOption(connect_handle,
 				SQL_AUTOCOMMIT, SQL_AUTOCOMMIT_OFF);
 
-			DEBUG(printf(""manual commit status: %d\\n"", 
+			MR_DEBUG(printf(""manual commit status: %d\\n"", 
 					(int) Status));
 
 			odbc_check(odbc_env_handle, connect_handle,
@@ -739,14 +756,14 @@ odbc__open_connection(Source, User, Password, Result - Messages) -->
 			(UCHAR *)User, strlen(User),
 			(UCHAR *)Password, strlen(Password));
 
-	DEBUG(printf(""connect status: %d\\n"", (int) Status));
+	MR_DEBUG(printf(""connect status: %d\\n"", (int) Status));
 
 	odbc_check(odbc_env_handle, connect_handle, SQL_NULL_HSTMT, Status);
 
 	Messages = odbc_message_list;
 	odbc_message_list = MR_list_empty();
 
-	Handle = (Word) connect_handle;
+	Handle = (MR_Word) connect_handle;
 	odbc_connection = SQL_NULL_HDBC;
 	IO = IO0;
 }
@@ -961,8 +978,9 @@ odbc__int_to_attribute_type_2(5, null).
 	** using SQLFreeStmt.
 	**
 	** Variable length data types are collected in chunks allocated on
-	** the Mercury heap using incr_hp_atomic. The chunks are then condensed
-	** into memory allocated on the Mercury heap using string__append_list.
+	** the Mercury heap using MR_incr_hp_atomic. The chunks are then
+	** condensed into memory allocated on the Mercury heap using
+	** string__append_list.
 	** XXX this may need revisiting when accurate garbage collection 
 	** is implemented to make sure the collector can see the data when
 	** it is stored within a MODBC_Column.
@@ -974,10 +992,10 @@ odbc__int_to_attribute_type_2(5, null).
 	/*
 	** If the driver can't work out how much data is in a blob in advance,
 	** get the data in chunks. The chunk size is fairly arbitrary.
-	** MODBC_CHUNK_SIZE must be a multiple of sizeof(Word).
+	** MODBC_CHUNK_SIZE must be a multiple of sizeof(MR_Word).
 	*/
 #define MODBC_CHUNK_WORDS	1024
-#define MODBC_CHUNK_SIZE	(MODBC_CHUNK_WORDS * sizeof(Word))
+#define MODBC_CHUNK_SIZE	(MODBC_CHUNK_WORDS * sizeof(MR_Word))
 
 typedef enum {
 	MODBC_INT	= 0,	/* Word-sized Integer */
@@ -1007,7 +1025,7 @@ typedef struct {
 						** size of returned data,
 						** or SQL_NULL_DATA
 						*/
-		Word 		*data;
+		MR_Word 		*data;
 } MODBC_Column;
 
 
@@ -1069,7 +1087,7 @@ void odbc_get_data_in_one_go(MODBC_Statement *stat, int column_id);
 	MR_assert(statement->stat_handle != SQL_NULL_HSTMT);
 
 	DB = DB0;
-	Statement = (Word) statement;
+	Statement = (MR_Word) statement;
 
 }
 ").
@@ -1090,7 +1108,7 @@ void odbc_get_data_in_one_go(MODBC_Statement *stat, int column_id);
 	SQLRETURN rc;
 	SQLHSTMT stat_handle = statement->stat_handle;
 
-	DEBUG(printf(""executing SQL string: %s\\n"", SQLString));
+	MR_DEBUG(printf(""executing SQL string: %s\\n"", SQLString));
 
 	rc = SQLPrepare(stat_handle, SQLString, strlen(SQLString));
 
@@ -1113,9 +1131,9 @@ void odbc_get_data_in_one_go(MODBC_Statement *stat, int column_id);
 		/* not reached */
 	}
 
-	DEBUG(printf(""execution succeeded\\n""));
+	MR_DEBUG(printf(""execution succeeded\\n""));
 
-	Statement = (Word) statement;
+	Statement = (MR_Word) statement;
 	DB = DB0;
 
 }").
@@ -1241,7 +1259,7 @@ void odbc_get_data_in_one_go(MODBC_Statement *stat, int column_id);
 		column->conversion_type =
 			attribute_type_to_sql_c_type(column->attr_type);
 
-		DEBUG(printf(""Column %i: size %i - sql_type %i - attr_type %i - conversion_type %i\\n"",
+		MR_DEBUG(printf(""Column %i: size %i - sql_type %i - attr_type %i - conversion_type %i\\n"",
 			column_no, column->size, column->sql_type,
 			column->attr_type, column->conversion_type));
 			
@@ -1262,7 +1280,7 @@ void odbc_get_data_in_one_go(MODBC_Statement *stat, int column_id);
 		for (column_no = 1; column_no <= statement->num_columns; 
 				column_no++) {
 
-			DEBUG(printf(""Binding column %d/%d\\n"", 
+			MR_DEBUG(printf(""Binding column %d/%d\\n"", 
 					column_no, statement->num_columns));
 			column = &(statement->row[column_no]);
 
@@ -1280,7 +1298,7 @@ void odbc_get_data_in_one_go(MODBC_Statement *stat, int column_id);
 		}
 	}
 
-	Statement = (Word) statement;
+	Statement = (MR_Word) statement;
 	DB = DB0;
 
 } /* odbc__bind_columns */
@@ -1304,7 +1322,7 @@ void odbc_get_data_in_one_go(MODBC_Statement *stat, int column_id);
 	MR_assert(stat != NULL);
 
 	if (stat->num_rows == 0 ) {
-		DEBUG(printf(""Fetching rows...\\n""));
+		MR_DEBUG(printf(""Fetching rows...\\n""));
 	}
 
 	/* Fetching new row */
@@ -1325,10 +1343,10 @@ void odbc_get_data_in_one_go(MODBC_Statement *stat, int column_id);
 	}
 
 	if (Status == SQL_NO_DATA_FOUND) {
-		DEBUG(printf(""Fetched %d rows\\n"", stat->num_rows));
+		MR_DEBUG(printf(""Fetched %d rows\\n"", stat->num_rows));
 	}
 
-	Statement = (Word) stat;
+	Statement = (MR_Word) stat;
 	DB = DB0;
 
 }").
@@ -1375,7 +1393,7 @@ void odbc_get_data_in_one_go(MODBC_Statement *stat, int column_id);
 	MR_assert(stat != NULL);
 	MR_assert(stat->row != NULL);
 
-	DEBUG(printf(""Getting column %i\n"", (int) Column));
+	MR_DEBUG(printf(""Getting column %i\n"", (int) Column));
 
 	if (stat->binding_type == MODBC_GET_DATA) {
 
@@ -1402,11 +1420,11 @@ void odbc_get_data_in_one_go(MODBC_Statement *stat, int column_id);
 
 		Int = (Integer) data;
 
-		DEBUG(printf(""got integer %ld\\n"", (long) Int));
+		MR_DEBUG(printf(""got integer %ld\\n"", (long) Int));
 
 			/* Check for overflow */
 		if (Int != data) {
-			Word overflow_message;
+			MR_Word overflow_message;
 			MODBC_overflow_message(&overflow_message);
 			odbc_message_list =
 				MR_list_cons(overflow_message,
@@ -1421,7 +1439,7 @@ void odbc_get_data_in_one_go(MODBC_Statement *stat, int column_id);
 
 		Flt = (Float) *(MODBC_C_FLOAT *)(col->data);
 
-		DEBUG(printf(""got float %f\\n"", Flt));
+		MR_DEBUG(printf(""got float %f\\n"", Flt));
 
 		break;
 
@@ -1429,9 +1447,9 @@ void odbc_get_data_in_one_go(MODBC_Statement *stat, int column_id);
 	    case MODBC_TIME:
 
 		MR_assert(col->data);
-		make_aligned_string_copy(Str, (char *) col->data);
+		MR_make_aligned_string_copy(Str, (char *) col->data);
 
-		DEBUG(printf(""got string %s\\n"", (char *) Str));
+		MR_DEBUG(printf(""got string %s\\n"", (char *) Str));
 
 		break;
 	
@@ -1440,9 +1458,9 @@ void odbc_get_data_in_one_go(MODBC_Statement *stat, int column_id);
 		** The data was allocated on the Mercury heap, 
 		** get it then kill the pointer so it can be GC'ed.
 		*/
-		make_aligned_string(Str, (char *) col->data);
+		MR_make_aligned_string(Str, (char *) col->data);
 
-		DEBUG(printf(""got var string %s\\n"", (char *) col->data));
+		MR_DEBUG(printf(""got var string %s\\n"", (char *) col->data));
 
 		col->data = NULL;
 
@@ -1456,7 +1474,7 @@ void odbc_get_data_in_one_go(MODBC_Statement *stat, int column_id);
 		break;
 	} /* end switch (Type) */
 
-	Statement = (Word) stat;
+	Statement = (MR_Word) stat;
 	DB = DB0;
 
 } /* end odbc__get_data() */
@@ -1518,14 +1536,14 @@ odbc_do_get_data(MODBC_Statement *stat, int column_id)
 			*/
 			odbc_get_data_in_chunks(stat, column_id);
 		} else { 
-			Word data;
+			MR_Word data;
 
 			/* 
 			** column->value_info == length of data 
 			*/
 			column->size = column->value_info + 1;
-			incr_hp_atomic(LVALUE_CAST(Word, column->data), 
-				(column->size + sizeof(Word)) / sizeof(Word));
+			MR_incr_hp_atomic(MR_LVALUE_CAST(MR_Word, column->data), 
+				(column->size + sizeof(MR_Word)) / sizeof(MR_Word));
 			odbc_get_data_in_one_go(stat, column_id);
 		}
 	} else {
@@ -1543,7 +1561,7 @@ odbc_get_data_in_one_go(MODBC_Statement *stat, int column_id)
 	MODBC_Column 	*col;
 	SQLRETURN 	rc;
 
-	DEBUG(printf(""getting column %i in one go\n"", column_id));
+	MR_DEBUG(printf(""getting column %i in one go\n"", column_id));
 
 	col = &(stat->row[column_id]);
 
@@ -1563,11 +1581,11 @@ odbc_get_data_in_chunks(MODBC_Statement *stat, int column_id)
 {
 	MODBC_Column 	*col;
 	SQLRETURN 	rc;
-	Word		this_bit;
-	Word 		chunk_list;
+	MR_Word		this_bit;
+	MR_Word 		chunk_list;
 	String		result;
 
-	DEBUG(printf(""getting column %i in chunks\n"", column_id));
+	MR_DEBUG(printf(""getting column %i in chunks\n"", column_id));
 
 	chunk_list = MR_list_empty();
 
@@ -1575,7 +1593,7 @@ odbc_get_data_in_chunks(MODBC_Statement *stat, int column_id)
 
 	rc = SQL_SUCCESS_WITH_INFO;
 
-	incr_hp_atomic(this_bit, MODBC_CHUNK_WORDS);
+	MR_incr_hp_atomic(this_bit, MODBC_CHUNK_WORDS);
 
 		/*
 		** Keep collecting chunks until we run out.
@@ -1599,11 +1617,11 @@ odbc_get_data_in_chunks(MODBC_Statement *stat, int column_id)
 		}
 
 		chunk_list = MR_list_cons(this_bit, chunk_list);
-		incr_hp_atomic(this_bit, MODBC_CHUNK_WORDS);
+		MR_incr_hp_atomic(this_bit, MODBC_CHUNK_WORDS);
 	}
 
 	MODBC_odbc_condense_chunks(chunk_list, &result);
-	col->data = (Word *) result;
+	col->data = (MR_Word *) result;
 }
 ").
 
@@ -1659,7 +1677,7 @@ odbc_do_cleanup_statement(MODBC_Statement *stat)
 	SQLRETURN rc;
 
 	if (stat != NULL) {
-		DEBUG(printf(""cleaning up statement\\n""));
+		MR_DEBUG(printf(""cleaning up statement\\n""));
 		if (stat->row != NULL) {
 		    for (i = 1; i <= stat->num_columns; i++) {
 			    /*
@@ -1984,14 +2002,15 @@ odbc__data_sources(MaybeSources - Messages) -->
 
 :- pragma c_header_code("
 
-SQLRETURN odbc_do_get_data_sources(Word *SourceNames, 
-		Word *SourceDescs, Word *Messages);
+SQLRETURN odbc_do_get_data_sources(MR_Word *SourceNames, 
+		MR_Word *SourceDescs, MR_Word *Messages);
 ").
 
 :- pragma c_code("
 
 SQLRETURN
-odbc_do_get_data_sources(Word *SourceNames, Word *SourceDescs, Word *Messages)
+odbc_do_get_data_sources(MR_Word *SourceNames, MR_Word *SourceDescs,
+		MR_Word *Messages)
 {
 	char dsn[SQL_MAX_DSN_LENGTH];
 	char desc[128];	/*
@@ -2014,7 +2033,7 @@ odbc_do_get_data_sources(Word *SourceNames, Word *SourceDescs, Word *Messages)
 		rc = SQL_SUCCESS;
 	}
 
-	DEBUG(printf(""SQLAllocEnv status: %d\\n"", rc));
+	MR_DEBUG(printf(""SQLAllocEnv status: %d\\n"", rc));
 
 	if (odbc_check(odbc_env_handle, SQL_NULL_HDBC, 
 			SQL_NULL_HSTMT, rc)) {
@@ -2036,9 +2055,9 @@ odbc_do_get_data_sources(Word *SourceNames, Word *SourceDescs, Word *Messages)
 			/* 
 			** Copy the new data onto the Mercury heap
 			*/
-			make_aligned_string_copy(new_dsn, dsn);
+			MR_make_aligned_string_copy(new_dsn, dsn);
 			*SourceNames = MR_list_cons(new_dsn, *SourceNames);
-			make_aligned_string_copy(new_desc, desc);
+			MR_make_aligned_string_copy(new_desc, desc);
 			*SourceDescs = MR_list_cons(new_desc, *SourceDescs);
 	
 			rc = SQLDataSources(odbc_env_handle,
@@ -2154,7 +2173,7 @@ odbc__convert_pattern_argument(pattern(Str), Str, 1).
 	}
 
 	DB = DB0;
-	Statement = (Word) statement;
+	Statement = (MR_Word) statement;
 }").
 
 %-----------------------------------------------------------------------------%
@@ -2339,7 +2358,7 @@ odbc_check(SQLHENV env_handle, SQLHDBC connection_handle,
 	UCHAR		message[SQL_MAX_MESSAGE_LENGTH];
 	UCHAR		sql_state[SQL_SQLSTATE_SIZE + 1];
 	String 		mercury_message;
-	Word		new_message;
+	MR_Word		new_message;
 
 	MR_ASSERT_IMPLY(connection_handle == SQL_NULL_HDBC, 
 			statement_handle == SQL_NULL_HSTMT);
@@ -2351,7 +2370,7 @@ odbc_check(SQLHENV env_handle, SQLHDBC connection_handle,
 		return MR_TRUE;
 	} else {
 
-		DEBUG(printf(""getting error message for status %i\\n"", rc));
+		MR_DEBUG(printf(""getting error message for status %i\\n"", rc));
 
 		while (1) {
 
@@ -2359,9 +2378,9 @@ odbc_check(SQLHENV env_handle, SQLHDBC connection_handle,
 				statement_handle, sql_state, &native_error, 
 				message, SQL_MAX_MESSAGE_LENGTH - 1, &msg_len);
 
-			DEBUG(printf(""SQLError status: %i\\n"", status));
-			DEBUG(printf(""SQL_STATE: %s\\n"", sql_state));
-			DEBUG(printf(""Error: %s\\n"", message));
+			MR_DEBUG(printf(""SQLError status: %i\\n"", status));
+			MR_DEBUG(printf(""SQL_STATE: %s\\n"", sql_state));
+			MR_DEBUG(printf(""Error: %s\\n"", message));
 
 			if (status != SQL_SUCCESS) {
 				break;
@@ -2369,7 +2388,7 @@ odbc_check(SQLHENV env_handle, SQLHDBC connection_handle,
 
 
 			/* Copy the error string to the Mercury heap. */
-			make_aligned_string_copy(mercury_message, message);
+			MR_make_aligned_string_copy(mercury_message, message);
 
 			/* Convert the SQL state to an odbc__message. */
 			MODBC_odbc_sql_state_to_message(sql_state,
