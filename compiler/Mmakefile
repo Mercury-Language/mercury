@@ -197,6 +197,7 @@ $(PREPROCESSED_M_FILES): %.m: $(dates_subdir)%.pp_date
 .PHONY: depend
 depend:		mercury_compile.depend
 
+.PHONY: mercury_compile.depend
 mercury_compile.depend: regenerate_preprocessed_files
 
 .PHONY: all
@@ -207,6 +208,23 @@ mercury:	mercury_compile
 
 .PHONY: libmmc
 libmmc:		libmercury_compile.a mercury_compile_init.$O
+
+#-----------------------------------------------------------------------------#
+
+# The GCC back-end stuff is conditionally compiled out of maybe_mlds_to_gcc.m.
+# But we want to make sure that the GCC back-end continues to compile,
+# even when the compiler was configured without the GCC back-end.
+# So we include the following rules, which tell Mmake to build the
+# dependencies for mlds_to_gcc and to build mlds_to_gcc.err and gcc.err.
+
+.PHONY: depend
+depend:		mlds_to_gcc.depend
+
+.PHONY: mlds_to_gcc.depend
+mlds_to_gcc.depend: regenerate_preprocessed_files
+
+.PHONY: mercury
+mercury:	mlds_to_gcc.err gcc.err
 
 #-----------------------------------------------------------------------------#
 
