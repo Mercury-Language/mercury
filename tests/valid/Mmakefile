@@ -30,6 +30,7 @@ OTHER_SOURCES= \
 	compl_unify_bug.m \
 	complicated_unify.m \
 	constructor_arg_names.m \
+	context_anc.m \
 	dcg_test.m \
 	deforest_loop.m \
 	deforest_rerun_det.m \
@@ -181,6 +182,7 @@ GRADEFLAGS-semi_fail_in_non_ite	= --use-trail
 
 MCFLAGS-aditi_update		= --aditi
 MCFLAGS-compl_unify_bug		= -O3
+MCFLAGS-context_anc		= --aditi
 MCFLAGS-deforest_loop		= -O3 --intermodule-optimization
 MCFLAGS-deforest_rerun_det	= -O3 --check-termination
 MCFLAGS-double_vn		= -O4

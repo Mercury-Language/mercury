@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998 University of Melbourne.
+% Copyright (C) 1998-2000 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -66,7 +66,7 @@ context__process_disjuncts(OldPredProcId, Inputs, Outputs,
 		pair(context_rule, hlds_goal_info)::out,
 		magic_info::in, magic_info::out) is det.
 
-context__categorize_rule(PredProcId, InputArgs, OutputArgs, Goal,
+context__categorize_rule(OldPredProcId, InputArgs, OutputArgs, Goal,
 		ContextRule - GoalInfo) -->
 	{ goal_to_conj_list(Goal, GoalList) },
 	magic_info_get_module_info(ModuleInfo),
@@ -75,7 +75,7 @@ context__categorize_rule(PredProcId, InputArgs, OutputArgs, Goal,
 	magic_info_get_pred_map(PredMap),
 	{ context__get_db_calls(ModuleInfo, PredMap, GoalList,
 		[], [], CallList, AfterGoals) },
-	{ context__categorize_call_list(Context, PredProcId, InputArgs,
+	{ context__categorize_call_list(Context, OldPredProcId, InputArgs,
 		OutputArgs, CallList, AfterGoals, ContextRule) }.
 
 %-----------------------------------------------------------------------------%
@@ -299,9 +299,9 @@ context__check_goal_nonlocals(Inputs, _ - GoalInfo, Errors0, Errors) :-
 context__check_nonlocals(Context, Inputs, NonLocals, Errors0, Errors) :-
 	set__intersect(Inputs, NonLocals, Intersection),
 	( set__empty(Intersection) ->
-		Errors = [inputs_occur_in_other_goals - Context | Errors0]
-	;
 		Errors = Errors0
+	;
+		Errors = [inputs_occur_in_other_goals - Context | Errors0]
 	).
 
 %-----------------------------------------------------------------------------%
@@ -350,7 +350,17 @@ context__transform_rule(PredProcId,
 		Inputs, Outputs, Disjuncts0, [Disjunct | Disjuncts0]) -->
 	% For a left-linear rule, just factor the rule into 
 	% a form that rl_gen.m can handle.
-	{ Call = db_call(_, CallGoal, _, _, _, _, _) },
+
+	{ Call = db_call(_, _ - RecGoalInfo, _, Args0, _, _, _) },
+	magic_info_get_magic_vars(MagicVars),
+	{ list__append(MagicVars, Args0, Args) },
+	magic_info_get_pred_info(PredInfo),
+	{ pred_info_module(PredInfo, PredModule) },
+	{ pred_info_name(PredInfo, PredName) },
+	magic_info_get_curr_pred_proc_id(proc(PredId, ProcId)),
+	{ CallGoal = call(PredId, ProcId, Args, not_builtin, no, 
+			qualified(PredModule, PredName)) - RecGoalInfo },
+
 	magic_info_get_magic_vars(Vars),
 	{ list__condense([Vars, Inputs, Outputs], NonLocals0) },
 	{ set__list_to_set(NonLocals0, NonLocals) },
@@ -371,11 +381,11 @@ context__transform_rule(PredProcId, right_linear(CallList, Goals, Call) - _,
 	{ set__insert_list(CallNonLocals, NonLocals, NonLocals1) },
 	{ set__insert_list(NonLocals1, MagicInputArgs, NonLocals2) },
 	{ set__union(NonLocals2, GoalNonLocals, NonLocals3) },
-	magic_util__restrict_nonlocals(NonLocals3, NonLocals4),
+	magic_util__restrict_nonlocals(NonLocals3, AllNonLocals),
 
 	% Put the goal into a form that rl_gen.m can handle.
 	context__factor_goal_list(PredProcId, MagicCall, CallList,
-		NonLocals4, FactoredGoal),
+		AllNonLocals, FactoredGoal),
 
 	% Add the rule to the context magic predicate.
 	{ magic_util__db_call_input_args(Call, CallInputs) },
@@ -384,7 +394,7 @@ context__transform_rule(PredProcId, right_linear(CallList, Goals, Call) - _,
 	{ list__append(FactoredGoal, Goals, AllGoals) },
 	{ goal_list_instmap_delta(AllGoals, Delta) },
 	{ goal_list_determinism(AllGoals, Det) },
-	{ goal_info_init(NonLocals3, Delta, Det, MagicRuleInfo) },
+	{ goal_info_init(AllNonLocals, Delta, Det, MagicRuleInfo) },
 	{ conj_list_to_goal(AllGoals, MagicRuleInfo, MagicGoal) },
 	magic_util__add_to_magic_predicate(PredProcId1, MagicGoal, MagicArgs).
 
@@ -495,7 +505,11 @@ context__factor_goal_list(PredProcId, FirstCall,
 		{ ThisProcInfo = magic_proc_info(OldArgModes, _, _, _, _) },
 		magic_util__create_input_test_unifications(Args, InputArgs,
 			OldArgModes, NewArgs, [], Tests,
-			GoalInfo0, GoalInfo),
+			GoalInfo0, GoalInfo1),
+		{ goal_info_get_nonlocals(GoalInfo1, GoalNonLocals1) },
+		magic_util__restrict_nonlocals(GoalNonLocals1, GoalNonLocals),
+		{ goal_info_set_nonlocals(GoalInfo1,
+			GoalNonLocals, GoalInfo) },
 		magic_info_get_pred_info(PredInfo),
 		{ pred_info_module(PredInfo, PredModule) },
 		{ pred_info_name(PredInfo, PredName) },

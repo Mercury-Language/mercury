@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-1999 University of Melbourne.
+% Copyright (C) 1998-2000 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -379,10 +379,15 @@ magic_util__setup_call(PrevGoals, DBCall1, NonLocals, Goals) -->
 			{ proc_info_argmodes(ProcInfo, ArgModes) },
 			magic_util__create_input_test_unifications(Args,
 				InputArgs, ArgModes, NewArgs, [], Tests,
-				CallGoalInfo0, CallGoalInfo),
+				CallGoalInfo0, CallGoalInfo1),
+			{ goal_info_get_nonlocals(CallGoalInfo1,
+				CallNonLocals1) },
+			magic_util__restrict_nonlocals(CallNonLocals1,
+				CallNonLocals),
+			{ goal_info_set_nonlocals(CallGoalInfo1, CallNonLocals,
+				CallGoalInfo) },
 			{ CallGoal = call(PredId, ProcId, NewArgs,
-				not_builtin, no, Name)
-					- CallGoalInfo }
+				not_builtin, no, Name) - CallGoalInfo }
 		;	
 			% Transform away the input arguments. 
 			magic_util__handle_input_args(PredProcId0, PredProcId,
@@ -1633,15 +1638,11 @@ magic_info_set_bad_types(Types, Info0, Info) :-
 			% and for the internal recursive calls in
 			% a multi-linear rule, the inputs must be the
 			% inputs to the procedure. 
-			% The lists of variables are the list of inputs
-			% to the procedure and to the erroneous call.
 
 	;	outputs_of_recursive_call
 			% for the last recursive call in a right- or
 			% multi-linear rule, the outputs must be the
 			% outputs of the procedure. 
-			% The lists of variables are the list of inputs
-			% to the procedure and to the erroneous call.
 
 	;	inputs_occur_in_other_goals
 			% For left-linear rules, the inputs to the procedure
