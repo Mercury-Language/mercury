@@ -10,6 +10,9 @@
 % just before the parse-tree is converted to the hlds.
 % Immediately after this transformation is performed, negation is
 % pushed inwards by the transformations in the file negation.nl.
+%
+% This transformation also has the effect of converting all
+% occurrences of all(X,p(X)) to not(some(X, p(X))).
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -145,21 +148,21 @@ implication__transform_goal(Goal_In, Goal_Out) :-
 		)
 	;
 	% Implication with explicit existential quantification
-		Goal_In  = some(_, implies(P, Q))
+		Goal_In  = some(Vars, implies(P, Q))
 	->
 		(
 		implication__transform_goal(P, P1),
 		implication__transform_goal(Q, Q1),
-		Goal_Out = not([], (P1, not([], Q1)))
+		Goal_Out = some(Vars, not([], (P1, not([], Q1))))
 		)
 	;
 	% Implication with explicit universal quantification
-		Goal_In  = all(_, implies(P, Q))
+		Goal_In  = all(Vars, implies(P, Q))
 	->
 		(
 		implication__transform_goal(P, P1),
 		implication__transform_goal(Q, Q1),
-		Goal_Out = not([], (P1, not([], Q1)))
+		Goal_Out = not([], some(Vars, (P1, not([], Q1))))
 		)
 	;
 
@@ -209,6 +212,16 @@ implication__transform_goal(Goal_In, Goal_Out) :-
 		Goal_Out = ((P1, not([], Q1)) ; (Q1, not([], P1)))
 		)
 	;
+
+% Convert universal quantification to existential...
+	Goal_In  = all(Vars, P)
+	->
+		(
+		implication__transform_goal(not([], P), Not_P1),
+		Goal_Out = not([], some(Vars, Not_P1))
+		)
+	;
+
 % If all else fails let the goal fall through without change...
 		Goal_Out = Goal_In
 	).
