@@ -1,6 +1,6 @@
 <html>
 <head>
-<title>Mercury Coding Standard for the Mercury Project</title>
+<title>Release Checklist for the Mercury Project</title>
 </head>
 
 <body bgcolor="#ffffff" text="#000000">
@@ -40,7 +40,9 @@ taken when releasing a new version of Mercury.
      releases.
      The HISTORY file should include the NEWS files from previous releases.
 
-<li> Update the WWW documentation in the `www' directory.
+<li> Update the WWW documentation in the `w3' directory.
+     Note that the sources for these HTML documents are in the files named
+     include/*.inc files.
      <ul>
      <li> For minor releases, update release.html with a new entry about
 	  this release (put it at the top of the page), and provide a
@@ -94,7 +96,7 @@ taken when releasing a new version of Mercury.
 
     If it passes all the tests, it should put the resulting tar file in
     /home/mercury/public/test_mercury/test_dirs/mercury-latest-stable and
-    ftp://turiel.cs.mu.oz.au/pub/mercury/beta-releases.
+    ftp://ftp.mercury.cs.mu.oz.au/pub/mercury/beta-releases.
 
 <li>  Test it on lots of architectures. <br>
 
@@ -103,14 +105,32 @@ taken when releasing a new version of Mercury.
     directories.
 
 <li>  Build binary distributions for those architectures.
+      This step is now automated as part of tools/test_mercury,
+      with the resulting binaries going in
+      /home/mercury/public/test_mercury/test_dirs/$HOST/mercury-latest-{un,}stable.
 
 <li>  Move the gzipped tar files from the /pub/mercury/beta-releases directory
-      to the main /pub/mercury directory on the turiel ftp site
-      ftp://turiel.cs.mu.oz.au/pub/mercury. <br>
-    Email kostis@cs.sunysb.edu (Konstantinos Sagonas) to tell him
-    to make copies of it on ftp://ftp.cs.sunysb.edu/pub/XSB/mercury
-    respectively. XXX Kostis is now at Leuven, so this won't work. <br>
-    The mirror on ftp://ftp.csd.uu.se/pub/Mercury is supposedly automated.
+      to the main /pub/mercury directory on the Mercury ftp site
+      ftp://ftp.mercury.cs.mu.oz.au/pub/mercury.
+      Copy the binary distributions to the same place.
+      <p>
+
+    The mirror at ftp://ftp.ntua.gr/pub/lang/mercury is automated; it should
+    automatically mirror the Mercury ftp site at ftp.mercury.cs.mu.oz.au
+    on a nightly basis (or thereabouts).  But in case
+    anything should need changing, the person to contact there is
+    Yiorgos Adamopoulos <adamo@dblab.ece.ntua.gr> and/or <ftpam@ntua.gr>). <p>
+
+    For the Stonybrook mirror, email Konstantinos Sagonas <Kostis.Sagonas@cs.kuleuven.ac.be>
+    to tell him to copy them to <ftp://ftp.cs.sunysb.edu/pub/XSB/mercury>. <p>
+    Unfortunately this mirror is not automated, so don't worry about it except for
+    major releases or important bug fixes. <p>
+
+    The mirror at ftp://ftp.csd.uu.se/pub/Mercury is also supposedly automated;
+    however, it seems to be often quite out-of-date (due to the connection
+    dropping and/or timing out over the rather slow link to Sweden?).
+    The person to contact regarding this one is Thomas Lindgren <thomasl@csd.uu.se>.
+    XXX Currently it is mirroring turiel, not ftp.mercury.
 
 <li> Prepare a new "mercury-VERSION.lsm" file for this Mercury release
      (use the one already uploaded to
@@ -118,7 +138,7 @@ taken when releasing a new version of Mercury.
      version number, date, file sizes, and file names need to be updated
      for a new release.
 
-<li> Upload "mercury-VERSION-core.tar.gz" and "mercury-VERSION.lsm" to
+<li> Upload "mercury-VERSION-compiler.tar.gz" and "mercury-VERSION.lsm" to
      ftp://sunsite.unc.edu/incoming/Linux. They will be moved to
      /pub/Linux/Incoming fairly quickly, and eventually should be moved
      to /pub/linux/devel/lang/mercury.
@@ -132,7 +152,7 @@ taken when releasing a new version of Mercury.
     comp.lang.misc, comp.lang.prolog, comp.lang.functional, comp.object.logic,
     and for major releases also to comp.compilers and gnu.announce.
 
-<li>  Update the Mercury WWW home page (/local/dept/www/mercury/mercury.html)
+<li>  Update the Mercury WWW home page (/local/dept/w3/unsupported/docs/mercury/*)
       by commiting the changes you made earlier.
 
 </ol>
@@ -141,6 +161,6 @@ taken when releasing a new version of Mercury.
 <hr>
 <!-------------------------->
 
-Last update was $Date: 1998-07-20 10:02:51 $ by $Author: zs $@cs.mu.oz.au. <br>
+Last update was $Date: 1999-02-28 17:51:03 $ by $Author: fjh $@cs.mu.oz.au. <br>
 </body>
 </html>
