@@ -438,7 +438,7 @@ MR_print_heapptr(FILE *fp, const MR_Word *s)
 	fprintf(fp, "heap %ld", (long) s);
 #else
 	fprintf(fp, "heap %3ld",
-		(long) (MR_Integer) (s - MR_ENGINE(MR_eng_heap_zone)->min)),
+		(long) (MR_Integer) (s - MR_ENGINE(MR_eng_heap_zone)->min));
 #endif
 
 	if (MR_print_raw_addrs) {
