@@ -69,7 +69,7 @@ If goal is
 		see whether we should wake up a delayed goal,
 		and if so, wake it up next time we get back to
 		the conjunction.  If there are still delayed goals
-		hanging around at the end of the conjunction, 
+		hanging around at the end of the conjunction,
 		report a mode error.
 	(c) a negation
 		Mode-check the sub-goal.
@@ -116,7 +116,7 @@ a variable live if its value will be used later on in the computation.
 ******************************************/
 
 % XXX we ought to allow unification of free with free even when both
-%     *variables* are live, if one of the particular *sub-nodes* is 
+%     *variables* are live, if one of the particular *sub-nodes* is
 %     dead (causes problems handling e.g. `list__same_length').
 
 % XXX we ought to break unifications into "micro-unifications", because
@@ -147,30 +147,28 @@ a variable live if its value will be used later on in the computation.
 	% we should therefore not perform determinism-checking, because we
 	% might get internal errors.
 
-:- pred modecheck(module_info, module_info, bool, io__state, io__state).
-:- mode modecheck(in, out, out, di, uo) is det.
+:- pred modecheck(module_info::in, module_info::out, bool::out,
+	io::di, io::uo) is det.
 
 	% Mode-check or unique-mode-check the code for all the predicates
 	% in a module.
-:- pred check_pred_modes(how_to_check_goal, may_change_called_proc,
-		module_info, module_info, bool, io__state, io__state).
-:- mode check_pred_modes(in, in, in, out, out, di, uo) is det.
+:- pred check_pred_modes(how_to_check_goal::in, may_change_called_proc::in,
+	module_info::in, module_info::out, bool::out, io::di, io::uo) is det.
 
 	% Mode-check or unique-mode-check the code for single predicate.
 
-:- pred modecheck_pred_mode(pred_id, pred_info, how_to_check_goal,
-		may_change_called_proc, module_info, module_info,
-		int, io__state, io__state).
-:- mode modecheck_pred_mode(in, in, in, in, in, out, out, di, uo) is det.
+:- pred modecheck_pred_mode(pred_id::in, pred_info::in, how_to_check_goal::in,
+	may_change_called_proc::in, module_info::in, module_info::out,
+	int::out, io::di, io::uo) is det.
 
 	% Mode-check the code for predicate in a given mode.
 	% Returns the number of errs found and a bool `Changed'
 	% which is true iff another pass of fixpoint analysis
 	% may be needed.
 
-:- pred modecheck_proc(proc_id, pred_id, module_info, module_info, int, bool,
-			io__state, io__state).
-:- mode modecheck_proc(in, in, in, out, out, out, di, uo) is det.
+:- pred modecheck_proc(proc_id::in, pred_id::in,
+	module_info::in, module_info::out, int::out, bool::out,
+	io::di, io::uo) is det.
 
 	% Mode-check or unique-mode-check the code for predicate in a
 	% given mode.
@@ -178,16 +176,15 @@ a variable live if its value will be used later on in the computation.
 	% which is true iff another pass of fixpoint analysis
 	% may be needed.
 
-:- pred modecheck_proc(proc_id, pred_id, how_to_check_goal,
-		may_change_called_proc, module_info, module_info, int, bool,
-		io__state, io__state).
-:- mode modecheck_proc(in, in, in, in, in, out, out, out, di, uo) is det.
+:- pred modecheck_proc(proc_id::in, pred_id::in, how_to_check_goal::in,
+	may_change_called_proc::in, module_info::in, module_info::out,
+	int::out, bool::out, io::di, io::uo) is det.
 
 	% Mode-check the code for predicate in a given mode.
 
-:- pred modecheck_proc_info(proc_id, pred_id, module_info, proc_info,
-		module_info, proc_info, int, io__state, io__state).
-:- mode modecheck_proc_info(in, in, in, in, out, out, out, di, uo) is det.
+:- pred modecheck_proc_info(proc_id::in, pred_id::in,
+	module_info::in, module_info::out, proc_info::in, proc_info::out,
+	int::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -200,8 +197,8 @@ a variable live if its value will be used later on in the computation.
 	% Given a list of variables, and a list of livenesses,
 	% select the live variables.
 	%
-:- pred get_live_vars(list(prog_var), list(is_live), list(prog_var)).
-:- mode get_live_vars(in, in, out) is det.
+:- pred get_live_vars(list(prog_var)::in, list(is_live)::in,
+	list(prog_var)::out) is det.
 
 	%
 	% calculate the argument number offset that needs to be passed to
@@ -210,18 +207,15 @@ a variable live if its value will be used later on in the computation.
 	% so that real arguments get positive argument numbers and
 	% type_info arguments get argument numbers less than or equal to 0.
 	%
-:- pred compute_arg_offset(pred_info, int).
-:- mode compute_arg_offset(in, out) is det.
+:- pred compute_arg_offset(pred_info::in, int::out) is det.
 
 	% Given a list of variables and a list of expected liveness, ensure
 	% that the inst of each variable satisfies the corresponding expected
 	% liveness.  If the bool argument is `yes', then require an exact
 	% match.
 	%
-:- pred modecheck_var_list_is_live(list(prog_var), list(is_live), bool, int,
-		mode_info, mode_info).
-:- mode modecheck_var_list_is_live(in, in, in, in, mode_info_di, mode_info_uo)
-	is det.
+:- pred modecheck_var_list_is_live(list(prog_var)::in, list(is_live)::in,
+	bool::in, int::in, mode_info::in, mode_info::out) is det.
 
 	% Given a list of variables and a list of initial insts, ensure
 	% that the inst of each variable matches the corresponding initial
@@ -229,10 +223,9 @@ a variable live if its value will be used later on in the computation.
 	% match (using inst_matches_final), otherwise we allow the var
 	% to be more instantiated than the inst (using inst_matches_initial).
 	%
-:- pred modecheck_var_has_inst_list(list(prog_var), list(inst), bool, int,
-		inst_var_sub, mode_info, mode_info).
-:- mode modecheck_var_has_inst_list(in, in, in, in, out, mode_info_di, mode_info_uo)
-	is det.
+:- pred modecheck_var_has_inst_list(list(prog_var)::in, list(inst)::in,
+	bool::in, int::in, inst_var_sub::out,
+	mode_info::in, mode_info::out) is det.
 
 	% modecheck_set_var_inst(Var, Inst, MaybeUInst, ModeInfo0, ModeInfo).
 	% 	Assign the given Inst to the given Var, after checking that
@@ -245,95 +238,94 @@ a variable live if its value will be used later on in the computation.
 	% 	a negated context).  Where the inst is not the result of an
 	% 	abstract unification then MaybeUInst should be `no'.
 
-:- pred modecheck_set_var_inst(prog_var, inst, maybe(inst),
-			mode_info, mode_info).
-:- mode modecheck_set_var_inst(in, in, in, mode_info_di, mode_info_uo) is det.
+:- pred modecheck_set_var_inst(prog_var::in, (inst)::in, maybe(inst)::in,
+	mode_info::in, mode_info::out) is det.
 
-:- pred modecheck_set_var_inst_list(list(prog_var), list(inst), list(inst),
-		int, list(prog_var), extra_goals, mode_info, mode_info).
-:- mode modecheck_set_var_inst_list(in, in, in, in, out, out,
-					mode_info_di, mode_info_uo) is det.
+:- pred modecheck_set_var_inst_list(list(prog_var)::in, list(inst)::in,
+	list(inst)::in, int::in, list(prog_var)::out, extra_goals::out,
+	mode_info::in, mode_info::out) is det.
 
 	% check that the final insts of the head vars of a lambda
 	% goal matches their expected insts
 	%
-:- pred modecheck_final_insts(list(prog_var), list(inst), mode_info, mode_info).
-:- mode modecheck_final_insts(in, in, mode_info_di, mode_info_uo) is det.
+:- pred modecheck_final_insts(list(prog_var)::in, list(inst)::in,
+	mode_info::in, mode_info::out) is det.
 
-:- pred mode_info_add_goals_live_vars(list(hlds_goal), mode_info, mode_info).
-:- mode mode_info_add_goals_live_vars(in, mode_info_di, mode_info_uo) is det.
+:- pred mode_info_add_goals_live_vars(list(hlds_goal)::in,
+	mode_info::in, mode_info::out) is det.
 
-:- pred mode_info_remove_goals_live_vars(list(hlds_goal), mode_info,
-					mode_info).
-:- mode mode_info_remove_goals_live_vars(in, mode_info_di, mode_info_uo) is det.
+:- pred mode_info_remove_goals_live_vars(list(hlds_goal)::in,
+	mode_info::in, mode_info::out) is det.
 
 	% modecheck_functor_test(ConsId, Var):
 	%	update the instmap to reflect the fact that
-	%	Var was bound to ConsId. 
+	%	Var was bound to ConsId.
 	% This is used for the functor tests in `switch' statements.
 	%
-:- pred modecheck_functor_test(prog_var, cons_id, mode_info, mode_info).
-:- mode modecheck_functor_test(in, in, mode_info_di, mode_info_uo) is det.
+:- pred modecheck_functor_test(prog_var::in, cons_id::in,
+	mode_info::in, mode_info::out) is det.
 
 	% compute_goal_instmap_delta(InstMap0, Goal,
 	%	GoalInfo0, GoalInfo, ModeInfo0, ModeInfo).
 	%
 	% Work out the instmap_delta for a goal from
 	% the instmaps before and after the goal.
-:- pred compute_goal_instmap_delta(instmap, hlds_goal_expr,
-		hlds_goal_info, hlds_goal_info, mode_info, mode_info).
-:- mode compute_goal_instmap_delta(in, in, in, out,
-		mode_info_di, mode_info_uo) is det.
+:- pred compute_goal_instmap_delta(instmap::in, hlds_goal_expr::in,
+	hlds_goal_info::in, hlds_goal_info::out,
+	mode_info::in, mode_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 
 % The following predicates are used by modecheck_unify.m.
 
-:- pred modecheck_goal(hlds_goal, hlds_goal, mode_info, mode_info).
-:- mode modecheck_goal(in, out, mode_info_di, mode_info_uo) is det.
+:- pred modecheck_goal(hlds_goal::in, hlds_goal::out,
+	mode_info::in, mode_info::out, io::di, io::uo) is det.
 
 	% Mode-check a single goal-expression.
 
-:- pred modecheck_goal_expr(hlds_goal_expr, hlds_goal_info, hlds_goal_expr,
-			mode_info, mode_info).
-:- mode modecheck_goal_expr(in, in, out, mode_info_di, mode_info_uo) is det.
-
+:- pred modecheck_goal_expr(hlds_goal_expr::in, hlds_goal_info::in,
+	hlds_goal_expr::out, mode_info::in, mode_info::out,
+	io::di, io::uo) is det.
 
 :- type extra_goals
 	--->	no_extra_goals
 	;	extra_goals(
-			list(hlds_goal),	% goals to insert before
+			extra_before_main	:: list(hlds_goal),
+						% goals to insert before
 						% the main goal
-			list(hlds_goal)		% goals to append after
+			extra_after_main	:: list(hlds_goal)
+						% goals to append after
 						% the main goal
-				
+
 		).
+
 :- type after_goals
 	--->	no_after_goals
 	;	after_goals(
-			instmap,		% instmap at end of main goal
-			list(hlds_goal)		% goals to append after
+			after_instmap		:: instmap,
+						% instmap at end of main goal
+			after_goals		:: list(hlds_goal)
+						% goals to append after
 						% the main goal
 		).
 
 	% append_extra_goals inserts adds some goals to the
 	% list of goals to insert before/after the main goal.
 	%
-:- pred append_extra_goals(extra_goals, extra_goals, extra_goals).
-:- mode append_extra_goals(in, in, out) is det.
+:- pred append_extra_goals(extra_goals::in, extra_goals::in,
+	extra_goals::out) is det.
 
 	% handle_extra_goals combines MainGoal and ExtraGoals into a single
 	% hlds_goal_expr, rerunning mode analysis on the entire
 	% conjunction if ExtraGoals is not empty.
 	%
-:- pred handle_extra_goals(hlds_goal_expr, extra_goals,
-		hlds_goal_info, list(prog_var), list(prog_var),
-		instmap, hlds_goal_expr, mode_info, mode_info).
-:- mode handle_extra_goals(in, in, in, in, in, in, out,
-		mode_info_di, mode_info_uo) is det.
+:- pred handle_extra_goals(hlds_goal_expr::in, extra_goals::in,
+	hlds_goal_info::in, list(prog_var)::in, list(prog_var)::in,
+	instmap::in, hlds_goal_expr::out, mode_info::in, mode_info::out,
+	io::di, io::uo) is det.
 
-:- pred mode_context_to_unify_context(mode_context, mode_info, unify_context).
-:- mode mode_context_to_unify_context(in, mode_info_ui, out) is det.
+:- pred mode_context_to_unify_context(mode_info::in, mode_context::in,
+	unify_context::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -373,84 +365,83 @@ a variable live if its value will be used later on in the computation.
 
 %-----------------------------------------------------------------------------%
 
-modecheck(Module0, Module, UnsafeToContinue) -->
-	globals__io_lookup_bool_option(statistics, Statistics),
-	globals__io_lookup_bool_option(verbose, Verbose),
+modecheck(!Module, UnsafeToContinue, !IO) :-
+	globals__io_lookup_bool_option(statistics, Statistics, !IO),
+	globals__io_lookup_bool_option(verbose, Verbose, !IO),
 
-	maybe_write_string(Verbose, "% Mode-checking clauses...\n"),
+	maybe_write_string(Verbose, "% Mode-checking clauses...\n", !IO),
 	check_pred_modes(check_modes, may_change_called_proc,
-		Module0, Module, UnsafeToContinue),
-	maybe_report_stats(Statistics).
+		!Module, UnsafeToContinue, !IO),
+	maybe_report_stats(Statistics, !IO).
 
 %-----------------------------------------------------------------------------%
-	
+
 	% Mode-check the code for all the predicates in a module.
 
 check_pred_modes(WhatToCheck, MayChangeCalledProc,
-		ModuleInfo0, ModuleInfo, UnsafeToContinue) -->
-	{ module_info_predids(ModuleInfo0, PredIds) },
+		!ModuleInfo, UnsafeToContinue, !IO) :-
+	module_info_predids(!.ModuleInfo, PredIds),
 	globals__io_lookup_int_option(mode_inference_iteration_limit,
-		MaxIterations),
+		MaxIterations, !IO),
 	modecheck_to_fixpoint(PredIds, MaxIterations, WhatToCheck,
-		MayChangeCalledProc, ModuleInfo0, ModuleInfo1,
-		UnsafeToContinue),
-	( { WhatToCheck = check_unique_modes },
-		write_mode_inference_messages(PredIds, yes, ModuleInfo1),
-		check_eval_methods(ModuleInfo1, ModuleInfo2)
-	; { WhatToCheck = check_modes },
-		( { UnsafeToContinue = yes } ->
-			write_mode_inference_messages(PredIds, no, ModuleInfo1)
+		MayChangeCalledProc, !ModuleInfo, UnsafeToContinue, !IO),
+	(
+		WhatToCheck = check_unique_modes,
+		write_mode_inference_messages(PredIds, yes, !.ModuleInfo, !IO),
+		check_eval_methods(!ModuleInfo, !IO)
+	;
+		WhatToCheck = check_modes,
+		(
+			UnsafeToContinue = yes,
+			write_mode_inference_messages(PredIds, no,
+				!.ModuleInfo, !IO)
 		;
-			[]
-		),
-		{ ModuleInfo2 = ModuleInfo1 }
-	),
-	{ ModuleInfo = ModuleInfo2 }.
+			UnsafeToContinue = no
+		)
+	).
 
 	% Iterate over the list of pred_ids in a module.
 
-:- pred modecheck_to_fixpoint(list(pred_id), int, how_to_check_goal,
-		may_change_called_proc, module_info, module_info,
-		bool, io__state, io__state).
-:- mode modecheck_to_fixpoint(in, in, in, in, in, out, out, di, uo) is det.
+:- pred modecheck_to_fixpoint(list(pred_id)::in, int::in,
+	how_to_check_goal::in, may_change_called_proc::in,
+	module_info::in, module_info::out, bool::out,
+	io__state::di, io__state::uo) is det.
 
 modecheck_to_fixpoint(PredIds, MaxIterations, WhatToCheck, MayChangeCalledProc,
-		ModuleInfo0, ModuleInfo, UnsafeToContinue) -->
-	{ ModuleInfo1 = ModuleInfo0 },
-
+		!ModuleInfo, UnsafeToContinue, !IO) :-
 	% save the old procedure bodies so that we can restore them for the
 	% next pass
-	{ module_info_preds(ModuleInfo0, OldPredTable0) },
+	module_info_preds(!.ModuleInfo, OldPredTable0),
 
 	% analyze everything which has the "can-process" flag set to `yes'
-	modecheck_pred_modes_2(PredIds, WhatToCheck, MayChangeCalledProc,
-		ModuleInfo1, ModuleInfo2, no, Changed1, 0, NumErrors),
+	list__foldl4(maybe_modecheck_pred(WhatToCheck, MayChangeCalledProc),
+		PredIds, !ModuleInfo, no, Changed1, 0, NumErrors, !IO),
 
 	% analyze the procedures whose "can-process" flag was no;
 	% those procedures were inserted into the unify requests queue.
 	modecheck_queued_procs(WhatToCheck, OldPredTable0, OldPredTable,
-		ModuleInfo2, ModuleInfo3, Changed2),
-	io__get_exit_status(ExitStatus),
+		!ModuleInfo, Changed2, !IO),
+	io__get_exit_status(ExitStatus, !IO),
 
-	{ bool__or(Changed1, Changed2, Changed) },
+	bool__or(Changed1, Changed2, Changed),
 
 	% stop if we have reached a fixpoint or found any errors
-	( { Changed = no ; NumErrors > 0 ; ExitStatus \= 0 } ->
-		{ ModuleInfo = ModuleInfo3 },
-		{ UnsafeToContinue = Changed }
+	( ( Changed = no ; NumErrors > 0 ; ExitStatus \= 0 ) ->
+		UnsafeToContinue = Changed
 	;
 		% stop if we exceed the iteration limit
-		( { MaxIterations =< 1 } ->
-			report_max_iterations_exceeded,
-			{ ModuleInfo = ModuleInfo3 },
-			{ UnsafeToContinue = yes }
+		( MaxIterations =< 1 ->
+			report_max_iterations_exceeded(!IO),
+			UnsafeToContinue = yes
 		;
-			globals__io_lookup_bool_option(debug_modes, DebugModes),
-			( { DebugModes = yes } ->
+			globals__io_lookup_bool_option(debug_modes, DebugModes,
+				!IO),
+			(
+				DebugModes = yes,
 				write_mode_inference_messages(PredIds, no,
-						ModuleInfo3)
+					!.ModuleInfo, !IO)
 			;
-				[]
+				DebugModes = no
 			),
 
 			%
@@ -464,45 +455,47 @@ modecheck_to_fixpoint(PredIds, MaxIterations, WhatToCheck, MayChangeCalledProc,
 			% Thus we need to restore the old procedure bodies.
 			%
 
-			( { WhatToCheck = check_modes } ->
+			(
+				WhatToCheck = check_modes,
 				% restore the proc_info goals from the
 				% clauses in the pred_info
-				{ copy_module_clauses_to_procs(PredIds,
-					ModuleInfo3, ModuleInfo4) }
+				copy_module_clauses_to_procs(PredIds,
+					!ModuleInfo)
 			;
+				WhatToCheck = check_unique_modes,
 				% restore the proc_info goals from the
 				% proc_infos in the old module_info
-				{ copy_pred_bodies(OldPredTable, PredIds,
-					ModuleInfo3, ModuleInfo4) }
+				copy_pred_bodies(OldPredTable, PredIds,
+					!ModuleInfo)
 			),
 
-			{ MaxIterations1 = MaxIterations - 1 },
+			MaxIterations1 = MaxIterations - 1,
 			modecheck_to_fixpoint(PredIds, MaxIterations1,
 				WhatToCheck, MayChangeCalledProc,
-				ModuleInfo4, ModuleInfo, UnsafeToContinue)
+				!ModuleInfo, UnsafeToContinue, !IO)
 		)
 	).
 
-:- pred report_max_iterations_exceeded(io__state, io__state).
-:- mode report_max_iterations_exceeded(di, uo) is det.
+:- pred report_max_iterations_exceeded(io::di, io::uo) is det.
 
-report_max_iterations_exceeded -->
-	io__set_exit_status(1),
+report_max_iterations_exceeded(!IO) :-
+	io__set_exit_status(1, !IO),
 	io__write_strings([
 	   "Mode analysis iteration limit exceeded.\n",
 	   "You may need to declare the modes explicitly, or use the\n",
 	   "`--mode-inference-iteration-limit' option to increase the limit.\n"
-	]),
+	], !IO),
 	globals__io_lookup_int_option(mode_inference_iteration_limit,
-		MaxIterations),
+		MaxIterations, !IO),
 	io__format("(The current limit is %d iterations.)\n",
-		[i(MaxIterations)]).
+		[i(MaxIterations)], !IO).
 
 % copy_pred_bodies(OldPredTable, ProcId, ModuleInfo0, ModuleInfo):
 %	copy the procedure bodies for all procedures of the specified
 %	PredIds from OldPredTable into ModuleInfo0, giving ModuleInfo.
 :- pred copy_pred_bodies(pred_table, list(pred_id), module_info, module_info).
 :- mode copy_pred_bodies(in, in, in, out) is det.
+
 copy_pred_bodies(OldPredTable, PredIds, !ModuleInfo) :-
 	module_info_preds(!.ModuleInfo, PredTable0),
 	list__foldl(copy_pred_body(OldPredTable), PredIds,
@@ -514,6 +507,7 @@ copy_pred_bodies(OldPredTable, PredIds, !ModuleInfo) :-
 %	PredId from OldPredTable into PredTable0, giving PredTable.
 :- pred copy_pred_body(pred_table, pred_id, pred_table, pred_table).
 :- mode copy_pred_body(in, in, in, out) is det.
+
 copy_pred_body(OldPredTable, PredId, PredTable0, PredTable) :-
 	map__lookup(PredTable0, PredId, PredInfo0),
 	(
@@ -539,8 +533,9 @@ copy_pred_body(OldPredTable, PredId, PredTable0, PredTable) :-
 % copy_proc_body(OldProcTable, ProcId, ProcTable0, ProcTable):
 %	copy the body of the specified ProcId from OldProcTable
 %	into ProcTable0, giving ProcTable.
-:- pred copy_proc_body(proc_table, proc_id, proc_table, proc_table).
-:- mode copy_proc_body(in, in, in, out) is det.
+:- pred copy_proc_body(proc_table::in, proc_id::in,
+	proc_table::in, proc_table::out) is det.
+
 copy_proc_body(OldProcTable, ProcId, ProcTable0, ProcTable) :-
 	map__lookup(OldProcTable, ProcId, OldProcInfo),
 	proc_info_goal(OldProcInfo, OldProcBody),
@@ -548,24 +543,16 @@ copy_proc_body(OldProcTable, ProcId, ProcTable0, ProcTable) :-
 	proc_info_set_goal(OldProcBody, ProcInfo0, ProcInfo),
 	map__set(ProcTable0, ProcId, ProcInfo, ProcTable).
 
-:- pred modecheck_pred_modes_2(list(pred_id), how_to_check_goal,
-		may_change_called_proc, module_info, module_info,
-		bool, bool, int, int, io__state, io__state).
-:- mode modecheck_pred_modes_2(in, in, in, in, out, in, out, in, out, di, uo)
-			is det.
+:- func should_modecheck_pred(pred_info) = bool.
 
-modecheck_pred_modes_2([], _, _, !ModuleInfo, !Changed, !NumErrors, !IO).
-modecheck_pred_modes_2([PredId | PredIds], WhatToCheck, MayChangeCalledProc,
-		!ModuleInfo, !Changed, !NumErrors, !IO) :-
-	module_info_preds(!.ModuleInfo, Preds0),
-	map__lookup(Preds0, PredId, PredInfo0),
+should_modecheck_pred(PredInfo) = ShouldModeCheck :-
 	(
 		(
 			%
 			% don't modecheck imported predicates
 			%
-			( pred_info_is_imported(PredInfo0)
-			; pred_info_is_pseudo_imported(PredInfo0)
+			( pred_info_is_imported(PredInfo)
+			; pred_info_is_pseudo_imported(PredInfo)
 			)
 		;
 			%
@@ -573,12 +560,28 @@ modecheck_pred_modes_2([PredId | PredIds], WhatToCheck, MayChangeCalledProc,
 			% are generated already mode-correct and with
 			% correct instmap deltas.
 			%
-			pred_info_get_markers(PredInfo0, PredMarkers),
+			pred_info_get_markers(PredInfo, PredMarkers),
 			check_marker(PredMarkers, class_method)
 		)
 	->
-		true
+		ShouldModeCheck = no
 	;
+		ShouldModeCheck = yes
+	).
+
+:- pred maybe_modecheck_pred(how_to_check_goal::in, may_change_called_proc::in,
+	pred_id::in, module_info::in, module_info::out, bool::in, bool::out,
+	int::in, int::out, io::di, io::uo) is det.
+
+maybe_modecheck_pred(WhatToCheck, MayChangeCalledProc, PredId,
+		!ModuleInfo, !Changed, !NumErrors, !IO) :-
+	module_info_preds(!.ModuleInfo, Preds0),
+	map__lookup(Preds0, PredId, PredInfo0),
+	ShouldModeCheck = should_modecheck_pred(PredInfo0),
+	(
+		ShouldModeCheck = no
+	;
+		ShouldModeCheck = yes,
 		write_modes_progress_message(PredId, PredInfo0, !.ModuleInfo,
 			WhatToCheck, !IO),
 		modecheck_pred_mode_2(PredId, PredInfo0, WhatToCheck,
@@ -594,31 +597,28 @@ modecheck_pred_modes_2([PredId | PredIds], WhatToCheck, MayChangeCalledProc,
 			module_info_remove_predid(PredId, !ModuleInfo)
 		),
 		!:NumErrors = !.NumErrors + ErrsInThisPred
-	),
-	modecheck_pred_modes_2(PredIds, WhatToCheck, MayChangeCalledProc,
-		!ModuleInfo, !Changed, !NumErrors, !IO).
+	).
 
-:- pred write_modes_progress_message(pred_id, pred_info, module_info,
-			how_to_check_goal, io__state, io__state).
-:- mode write_modes_progress_message(in, in, in, in, di, uo) is det.
-	
-write_modes_progress_message(PredId, PredInfo, ModuleInfo, WhatToCheck) -->
-	{ pred_info_get_markers(PredInfo, Markers) },
-	( { check_marker(Markers, infer_modes) } ->
-		(	{ WhatToCheck = check_modes },
+:- pred write_modes_progress_message(pred_id::in, pred_info::in,
+	module_info::in, how_to_check_goal::in, io::di, io::uo) is det.
+
+write_modes_progress_message(PredId, PredInfo, ModuleInfo, WhatToCheck, !IO) :-
+	pred_info_get_markers(PredInfo, Markers),
+	( check_marker(Markers, infer_modes) ->
+		(	WhatToCheck = check_modes,
 			write_pred_progress_message("% Mode-analysing ",
-				PredId, ModuleInfo)
-		;	{ WhatToCheck = check_unique_modes },
+				PredId, ModuleInfo, !IO)
+		;	WhatToCheck = check_unique_modes,
 			write_pred_progress_message("% Unique-mode-analysing ",
-				PredId, ModuleInfo)
+				PredId, ModuleInfo, !IO)
 		)
 	;
-		(	{ WhatToCheck = check_modes },
+		(	WhatToCheck = check_modes,
 			write_pred_progress_message("% Mode-checking ",
-				PredId, ModuleInfo)
-		;	{ WhatToCheck = check_unique_modes },
+				PredId, ModuleInfo, !IO)
+		;	WhatToCheck = check_unique_modes,
 			write_pred_progress_message("% Unique-mode-checking ",
-				PredId, ModuleInfo)
+				PredId, ModuleInfo, !IO)
 		)
 	).
 
@@ -627,9 +627,9 @@ write_modes_progress_message(PredId, PredInfo, ModuleInfo, WhatToCheck) -->
 	% Mode-check the code for single predicate.
 
 modecheck_pred_mode(PredId, PredInfo0, WhatToCheck, MayChangeCalledProc,
-		!ModuleInfo, NumErrors) -->
+		!ModuleInfo, NumErrors, !IO) :-
 	modecheck_pred_mode_2(PredId, PredInfo0, WhatToCheck,
-		MayChangeCalledProc, !ModuleInfo, no, _Changed, NumErrors).
+		MayChangeCalledProc, !ModuleInfo, no, _, NumErrors, !IO).
 
 :- pred modecheck_pred_mode_2(pred_id::in, pred_info::in,
 	how_to_check_goal::in, may_change_called_proc::in,
@@ -638,7 +638,8 @@ modecheck_pred_mode(PredId, PredInfo0, WhatToCheck, MayChangeCalledProc,
 
 modecheck_pred_mode_2(PredId, PredInfo0, WhatToCheck, MayChangeCalledProc,
 		!ModuleInfo, !Changed, NumErrors, !IO) :-
-	( WhatToCheck = check_modes ->
+	(
+		WhatToCheck = check_modes,
 		pred_info_procedures(PredInfo0, ProcTable),
 		(
 			some [ProcInfo] (
@@ -656,7 +657,7 @@ modecheck_pred_mode_2(PredId, PredInfo0, WhatToCheck, MayChangeCalledProc,
 				!.ModuleInfo, !IO)
 		)
 	;
-		true
+		WhatToCheck = check_unique_modes
 	),
 	% Note that we use pred_info_procids rather than
 	% pred_info_all_procids here, which means that we
@@ -688,14 +689,14 @@ modecheck_procs([ProcId|ProcIds], PredId, WhatToCheck, MayChangeCalledProc,
 
 	% Mode-check the code for predicate in a given mode.
 
-modecheck_proc(ProcId, PredId, !ModuleInfo, NumErrors, Changed) -->
+modecheck_proc(ProcId, PredId, !ModuleInfo, NumErrors, Changed, !IO) :-
 	modecheck_proc(ProcId, PredId, check_modes, may_change_called_proc,
-		!ModuleInfo, NumErrors, Changed).
+		!ModuleInfo, NumErrors, Changed, !IO).
 
 modecheck_proc(ProcId, PredId, WhatToCheck, MayChangeCalledProc, !ModuleInfo,
-		NumErrors, Changed) -->
+		NumErrors, Changed, !IO) :-
 	modecheck_proc_2(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
-		!ModuleInfo, no, Changed, NumErrors).
+		!ModuleInfo, no, Changed, NumErrors, !IO).
 
 :- pred modecheck_proc_2(proc_id::in, pred_id::in, how_to_check_goal::in,
 	may_change_called_proc::in, module_info::in, module_info::out,
@@ -724,12 +725,10 @@ modecheck_proc_2(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
 		module_info_set_preds(Preds, !ModuleInfo)
 	).
 
-modecheck_proc_info(ProcId, PredId, ModuleInfo0, ProcInfo0,
-		ModuleInfo, ProcInfo, NumErrors) -->
-	{ WhatToCheck = check_modes },
+modecheck_proc_info(ProcId, PredId, !ModuleInfo, !ProcInfo, NumErrors, !IO) :-
+	WhatToCheck = check_modes,
 	modecheck_proc_3(ProcId, PredId, WhatToCheck, may_change_called_proc,
-		ModuleInfo0, ModuleInfo, ProcInfo0, ProcInfo, no, _Changed,
-		NumErrors).
+		!ModuleInfo, !ProcInfo, no, _Changed, NumErrors, !IO).
 
 :- pred modecheck_proc_3(proc_id::in, pred_id::in, how_to_check_goal::in,
 	may_change_called_proc::in, module_info::in, module_info::out,
@@ -775,16 +774,16 @@ modecheck_proc_3(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
 	set__list_to_set(LiveVarsList, LiveVars),
 
 		% initialize the mode info
-	mode_info_init(!.IO, !.ModuleInfo, PredId, ProcId, Context,
-		LiveVars, InstMap0, WhatToCheck,
-		MayChangeCalledProc, ModeInfo0),
+	mode_info_init(!.ModuleInfo, PredId, ProcId, Context, LiveVars,
+		InstMap0, WhatToCheck, MayChangeCalledProc, ModeInfo0),
 	mode_info_set_changed_flag(!.Changed, ModeInfo0, ModeInfo1),
 
 		% modecheck the procedure body
 	( WhatToCheck = check_unique_modes ->
-		unique_modes__check_goal(Body0, Body, ModeInfo1, ModeInfo2)
+		unique_modes__check_goal(Body0, Body, ModeInfo1, ModeInfo2,
+			!IO)
 	;
-		modecheck_goal(Body0, Body, ModeInfo1, ModeInfo2)
+		modecheck_goal(Body0, Body, ModeInfo1, ModeInfo2, !IO)
 	),
 
 		% check that final insts match those specified in the
@@ -796,8 +795,8 @@ modecheck_proc_3(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
 	;
 		InferModes = no
 	),
-	modecheck_final_insts_2(HeadVars, ArgFinalInsts0, ModeInfo2,
-			InferModes, ArgFinalInsts, ModeInfo3),
+	modecheck_final_insts_2(HeadVars, ArgFinalInsts0, InferModes,
+		ArgFinalInsts, ModeInfo2, ModeInfo3),
 
 	( InferModes = yes ->
 		% For inferred predicates, we don't report the
@@ -811,14 +810,13 @@ modecheck_proc_3(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
 		NumErrors = 0
 	;
 		% report any errors we found
-		report_mode_errors(ModeInfo3, ModeInfo),
+		report_mode_errors(ModeInfo3, ModeInfo, !IO),
 		mode_info_get_num_errors(ModeInfo, NumErrors)
 	),
 	% save away the results
 	inst_lists_to_mode_list(ArgInitialInsts, ArgFinalInsts, ArgModes),
 	mode_info_get_changed_flag(ModeInfo, !:Changed),
 	mode_info_get_module_info(ModeInfo, !:ModuleInfo),
-	mode_info_get_io_state(ModeInfo, !:IO),
 	mode_info_get_varset(ModeInfo, VarSet),
 	mode_info_get_var_types(ModeInfo, VarTypes),
 	proc_info_set_goal(Body, !ProcInfo),
@@ -827,25 +825,23 @@ modecheck_proc_3(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
 	proc_info_set_argmodes(ArgModes, !ProcInfo).
 
 	% modecheck_final_insts for a lambda expression
-modecheck_final_insts(HeadVars, ArgFinalInsts, ModeInfo0, ModeInfo) :-
+modecheck_final_insts(HeadVars, ArgFinalInsts, !ModeInfo) :-
 		% for lambda expressions, modes must always be
 		% declared, we never infer them.
 	InferModes = no,
-	modecheck_final_insts_2(HeadVars, ArgFinalInsts, ModeInfo0,
-			InferModes, _NewFinalInsts, ModeInfo).
+	modecheck_final_insts_2(HeadVars, ArgFinalInsts, InferModes,
+		_NewFinalInsts, !ModeInfo).
 
-:- pred modecheck_final_insts_2(list(prog_var), list(inst), mode_info, bool,
-					list(inst), mode_info).
-:- mode modecheck_final_insts_2(in, in, mode_info_di, in,
-					out, mode_info_uo) is det.
+:- pred modecheck_final_insts_2(list(prog_var)::in, list(inst)::in, bool::in,
+	list(inst)::out, mode_info::in, mode_info::out) is det.
 
 	% check that the final insts of the head vars matches their
 	% expected insts
 	%
-modecheck_final_insts_2(HeadVars, FinalInsts0, ModeInfo0, InferModes,
-			FinalInsts, ModeInfo) :-
-	mode_info_get_module_info(ModeInfo0, ModuleInfo),
-	mode_info_get_errors(ModeInfo0, Errors),
+modecheck_final_insts_2(HeadVars, FinalInsts0, InferModes, FinalInsts,
+		!ModeInfo) :-
+	mode_info_get_module_info(!.ModeInfo, ModuleInfo),
+	mode_info_get_errors(!.ModeInfo, Errors),
 	% If there were any mode errors, use an unreachable instmap.
 	% This ensures that we don't get unwanted flow-on errors.
 	% This is not strictly necessary, since we only report the
@@ -861,9 +857,9 @@ modecheck_final_insts_2(HeadVars, FinalInsts0, ModeInfo0, InferModes,
 		instmap__init_unreachable(InstMap)
 	;
 		Changed0 = no,
-		mode_info_get_instmap(ModeInfo0, InstMap)
+		mode_info_get_instmap(!.ModeInfo, InstMap)
 	),
-	mode_info_get_var_types(ModeInfo0, VarTypes),
+	mode_info_get_var_types(!.ModeInfo, VarTypes),
 	instmap__lookup_vars(HeadVars, InstMap, VarFinalInsts1),
 	map__apply_to_list(HeadVars, VarTypes, ArgTypes),
 
@@ -874,29 +870,27 @@ modecheck_final_insts_2(HeadVars, FinalInsts0, ModeInfo0, InferModes,
 		% make sure we set the final insts of any variables which
 		% we assumed were dead to `clobbered'.
 		%
-		mode_info_get_preds(ModeInfo0, Preds),
-		mode_info_get_predid(ModeInfo0, PredId),
+		mode_info_get_preds(!.ModeInfo, Preds),
+		mode_info_get_predid(!.ModeInfo, PredId),
 		map__lookup(Preds, PredId, PredInfo),
 		pred_info_procedures(PredInfo, Procs),
-		mode_info_get_procid(ModeInfo0, ProcId),
+		mode_info_get_procid(!.ModeInfo, ProcId),
 		map__lookup(Procs, ProcId, ProcInfo),
 		proc_info_arglives(ProcInfo, ModuleInfo, ArgLives),
 		maybe_clobber_insts(VarFinalInsts2, ArgLives, FinalInsts),
 		check_final_insts(HeadVars, FinalInsts0, FinalInsts,
-			InferModes, 1, ModuleInfo, no, Changed1,
-			ModeInfo0, ModeInfo1),
-		mode_info_get_changed_flag(ModeInfo1, Changed2),
+			InferModes, 1, ModuleInfo, no, Changed1, !ModeInfo),
+		mode_info_get_changed_flag(!.ModeInfo, Changed2),
 		bool__or_list([Changed0, Changed1, Changed2], Changed),
-		mode_info_set_changed_flag(Changed, ModeInfo1, ModeInfo)
+		mode_info_set_changed_flag(Changed, !ModeInfo)
 	;
 		check_final_insts(HeadVars, FinalInsts0, VarFinalInsts1,
-			InferModes, 1, ModuleInfo, no, _Changed1,
-			ModeInfo0, ModeInfo),
+			InferModes, 1, ModuleInfo, no, _Changed1, !ModeInfo),
 		FinalInsts = FinalInsts0
 	).
 
-:- pred maybe_clobber_insts(list(inst), list(is_live), list(inst)).
-:- mode maybe_clobber_insts(in, in, out) is det.
+:- pred maybe_clobber_insts(list(inst)::in, list(is_live)::in,
+	list(inst)::out) is det.
 
 maybe_clobber_insts([], [_|_], _) :-
 	error("maybe_clobber_insts: length mismatch").
@@ -911,54 +905,66 @@ maybe_clobber_insts([Inst0 | Insts0], [IsLive | IsLives], [Inst | Insts]) :-
 	),
 	maybe_clobber_insts(Insts0, IsLives, Insts).
 
-:- pred check_final_insts(list(prog_var), list(inst), list(inst), bool, int,
-				module_info, bool, bool, mode_info, mode_info).
-:- mode check_final_insts(in, in, in, in, in, in, in, out, mode_info_di,
-				mode_info_uo) is det.
+:- pred check_final_insts(list(prog_var)::in, list(inst)::in, list(inst)::in,
+	bool::in, int::in, module_info::in, bool::in, bool::out,
+	mode_info::in, mode_info::out) is det.
 
 check_final_insts(Vars, Insts, VarInsts, InferModes, ArgNum, ModuleInfo,
-		Changed0, Changed) -->
-	( { Vars = [], Insts = [], VarInsts = [] } ->
-		{ Changed = Changed0 }
-	; { Vars = [Var|Vars1], Insts = [Inst|Insts1],
-	    VarInsts = [VarInst|VarInsts1] } ->
-		=(ModeInfo),
-		{ mode_info_get_var_types(ModeInfo, VarTypes) },
-		{ map__lookup(VarTypes, Var, Type) },
-		( { inst_matches_final(VarInst, Inst, Type, ModuleInfo) } ->
-			{ Changed1 = Changed0 }
+		!Changed, !ModeInfo) :-
+	(
+		Vars = [],
+		Insts = [],
+		VarInsts = []
+	->
+		true
+	;
+		Vars = [Var | VarsTail],
+		Insts = [Inst | InstsTail],
+		VarInsts = [VarInst | VarInstsTail]
+	->
+		mode_info_get_var_types(!.ModeInfo, VarTypes),
+		map__lookup(VarTypes, Var, Type),
+		( inst_matches_final(VarInst, Inst, Type, ModuleInfo) ->
+			true
 		;
-			{ Changed1 = yes },
-			( { InferModes = yes } ->
-				% if we're inferring the mode, then don't report
-				% an error, just set changed to yes to make sure
-				% that we will do another fixpoint pass
-				[]
+			!:Changed = yes,
+			(
+				% If we're inferring the mode, then don't
+				% report an error, just set changed to yes
+				% to make sure that we will do another
+				% fixpoint pass.
+				InferModes = yes
 			;
+				InferModes = no,
 				% XXX this might need to be reconsidered now
 				% we have unique modes
-				( { inst_matches_initial(VarInst, Inst,
-					    Type, ModuleInfo) } ->
-					{ Reason = too_instantiated }
-				; { inst_matches_initial(Inst, VarInst,
-					    Type, ModuleInfo) } ->
-					{ Reason = not_instantiated_enough }
+				(
+					inst_matches_initial(VarInst, Inst,
+						Type, ModuleInfo)
+				->
+					Reason = too_instantiated
 				;
-					% I don't think this can happen. 
+					inst_matches_initial(Inst, VarInst,
+						Type, ModuleInfo)
+				->
+					Reason = not_instantiated_enough
+				;
+					% I don't think this can happen.
 					% But just in case...
-					{ Reason = wrongly_instantiated }
+					Reason = wrongly_instantiated
 				),
-				{ set__init(WaitingVars) },
+				set__init(WaitingVars),
 				mode_info_error(WaitingVars,
 					mode_error_final_inst(ArgNum,
-					Var, VarInst, Inst, Reason))
+						Var, VarInst, Inst, Reason),
+					!ModeInfo)
 			)
 		),
-		{ ArgNum1 = ArgNum + 1 },
-		check_final_insts(Vars1, Insts1, VarInsts1, InferModes, ArgNum1,
-			ModuleInfo, Changed1, Changed)
+		check_final_insts(VarsTail, InstsTail, VarInstsTail,
+			InferModes, ArgNum + 1, ModuleInfo,
+			!Changed, !ModeInfo)
 	;
-		{ error("check_final_insts: length mismatch") }
+		error("check_final_insts: length mismatch")
 	).
 
 %-----------------------------------------------------------------------------%
@@ -980,31 +986,28 @@ check_final_insts(Vars, Insts, VarInsts, InferModes, ArgNum, ModuleInfo,
 % Output only:	Error Message(s)
 %			- Output directly to stdout.
 
-modecheck_goal(Goal0 - GoalInfo0, Goal - GoalInfo, ModeInfo0, ModeInfo) :-
+modecheck_goal(Goal0 - GoalInfo0, Goal - GoalInfo, !ModeInfo, !IO) :-
 		%
 		% store the current context in the mode_info
 		%
 	goal_info_get_context(GoalInfo0, Context),
 	term__context_init(EmptyContext),
 	( Context = EmptyContext ->
-		ModeInfo1 = ModeInfo0
+		true
 	;
-		mode_info_set_context(Context, ModeInfo0, ModeInfo1)
+		mode_info_set_context(Context, !ModeInfo)
 	),
 		%
 		% modecheck the goal, and then store the changes in
 		% instantiation of the vars in the delta_instmap
 		% in the goal's goal_info.
 		%
-	mode_info_get_instmap(ModeInfo1, InstMap0),
-
-	modecheck_goal_expr(Goal0, GoalInfo0, Goal, ModeInfo1, ModeInfo2),
-
+	mode_info_get_instmap(!.ModeInfo, InstMap0),
+	modecheck_goal_expr(Goal0, GoalInfo0, Goal, !ModeInfo, !IO),
 	compute_goal_instmap_delta(InstMap0, Goal, GoalInfo0, GoalInfo,
-		ModeInfo2, ModeInfo).
+		!ModeInfo).
 
-compute_goal_instmap_delta(InstMap0, Goal,
-		GoalInfo0, GoalInfo, ModeInfo0, ModeInfo) :-
+compute_goal_instmap_delta(InstMap0, Goal, GoalInfo0, GoalInfo, !ModeInfo) :-
 	( Goal = conj([]) ->
 		%
 		% When modecheck_unify.m replaces a unification with a
@@ -1015,25 +1018,24 @@ compute_goal_instmap_delta(InstMap0, Goal,
 		% resulting in calls to error/1.
 		%
 		instmap_delta_init_reachable(DeltaInstMap),
-		mode_info_set_instmap(InstMap0, ModeInfo0, ModeInfo)
+		mode_info_set_instmap(InstMap0, !ModeInfo)
 	;
-		ModeInfo = ModeInfo0,
 		goal_info_get_nonlocals(GoalInfo0, NonLocals),
-		mode_info_get_instmap(ModeInfo, InstMap),
+		mode_info_get_instmap(!.ModeInfo, InstMap),
 		compute_instmap_delta(InstMap0, InstMap,
 			NonLocals, DeltaInstMap)
 	),
 	goal_info_set_instmap_delta(GoalInfo0, DeltaInstMap, GoalInfo).
 
-modecheck_goal_expr(conj(List0), GoalInfo0, Goal) -->
-	mode_checkpoint(enter, "conj"),
-	( { List0 = [] } ->	% for efficiency, optimize common case
-		{ Goal = conj([]) }
+modecheck_goal_expr(conj(List0), GoalInfo0, Goal, !ModeInfo, !IO) :-
+	mode_checkpoint(enter, "conj", !ModeInfo, !IO),
+	( List0 = [] ->	% for efficiency, optimize common case
+		Goal = conj([])
 	;
-		modecheck_conj_list(List0, List),
-		{ conj_list_to_goal(List, GoalInfo0, Goal - _GoalInfo) }
+		modecheck_conj_list(List0, List, !ModeInfo, !IO),
+		conj_list_to_goal(List, GoalInfo0, Goal - _GoalInfo)
 	),
-	mode_checkpoint(exit, "conj").
+	mode_checkpoint(exit, "conj", !ModeInfo, !IO).
 
 	% To modecheck a parallel conjunction, we modecheck each
 	% conjunct independently (just like for disjunctions).
@@ -1055,64 +1057,68 @@ modecheck_goal_expr(conj(List0), GoalInfo0, Goal) -->
 	% empty.
 	% A stack of these structures is maintained to handle nested parallel
 	% conjunctions properly.
-modecheck_goal_expr(par_conj(List0), GoalInfo0, par_conj(List)) -->
-	mode_checkpoint(enter, "par_conj"),
-	{ goal_info_get_nonlocals(GoalInfo0, NonLocals) },
-	modecheck_par_conj_list(List0, List, NonLocals, InstMapNonlocalList),
-	instmap__unify(NonLocals, InstMapNonlocalList),
-	mode_checkpoint(exit, "par_conj").
+modecheck_goal_expr(par_conj(List0), GoalInfo0, par_conj(List), !ModeInfo,
+		!IO) :-
+	mode_checkpoint(enter, "par_conj", !ModeInfo, !IO),
+	goal_info_get_nonlocals(GoalInfo0, NonLocals),
+	modecheck_par_conj_list(List0, List, NonLocals, InstMapNonlocalList,
+		!ModeInfo, !IO),
+	instmap__unify(NonLocals, InstMapNonlocalList, !ModeInfo),
+	mode_checkpoint(exit, "par_conj", !ModeInfo, !IO).
 
-modecheck_goal_expr(disj(List0), GoalInfo0, Goal) -->
-	mode_checkpoint(enter, "disj"),
-	( { List0 = [] } ->	% for efficiency, optimize common case
-		{ Goal = disj(List0) },
-		{ instmap__init_unreachable(InstMap) },
-		mode_info_set_instmap(InstMap)
+modecheck_goal_expr(disj(List0), GoalInfo0, Goal, !ModeInfo, !IO) :-
+	mode_checkpoint(enter, "disj", !ModeInfo, !IO),
+	( List0 = [] ->	% for efficiency, optimize common case
+		Goal = disj(List0),
+		instmap__init_unreachable(InstMap),
+		mode_info_set_instmap(InstMap, !ModeInfo)
 	;
-		{ goal_info_get_nonlocals(GoalInfo0, NonLocals) },
-		modecheck_disj_list(List0, List, InstMapList),
-		instmap__merge(NonLocals, InstMapList, disj),
-		{ disj_list_to_goal(List, GoalInfo0, Goal - _GoalInfo) }
+		goal_info_get_nonlocals(GoalInfo0, NonLocals),
+		modecheck_disj_list(List0, List, InstMapList, !ModeInfo, !IO),
+		instmap__merge(NonLocals, InstMapList, disj, !ModeInfo),
+		disj_list_to_goal(List, GoalInfo0, Goal - _GoalInfo)
 	),
-	mode_checkpoint(exit, "disj").
+	mode_checkpoint(exit, "disj", !ModeInfo, !IO).
 
-modecheck_goal_expr(if_then_else(Vs, A0, B0, C0), GoalInfo0, Goal) -->
-	mode_checkpoint(enter, "if-then-else"),
-	{ goal_info_get_nonlocals(GoalInfo0, NonLocals) },
-	{ goal_get_nonlocals(B0, B_Vars) },
-	mode_info_dcg_get_instmap(InstMap0),
+modecheck_goal_expr(if_then_else(Vars, Cond0, Then0, Else0), GoalInfo0, Goal,
+		!ModeInfo, !IO) :-
+	mode_checkpoint(enter, "if-then-else", !ModeInfo, !IO),
+	goal_info_get_nonlocals(GoalInfo0, NonLocals),
+	goal_get_nonlocals(Then0, ThenVars),
+	mode_info_get_instmap(!.ModeInfo, InstMap0),
 	%
 	% We need to lock the non-local variables, to ensure
 	% that the condition of the if-then-else does not bind them.
 	%
-	mode_info_lock_vars(if_then_else, NonLocals),
-	mode_info_add_live_vars(B_Vars),
-	modecheck_goal(A0, A),
-	mode_info_dcg_get_instmap(InstMapA),
-	mode_info_remove_live_vars(B_Vars),
-	mode_info_unlock_vars(if_then_else, NonLocals),
-	( { instmap__is_reachable(InstMapA) } ->
-		modecheck_goal(B0, B),
-		mode_info_dcg_get_instmap(InstMapB)
+	mode_info_lock_vars(if_then_else, NonLocals, !ModeInfo),
+	mode_info_add_live_vars(ThenVars, !ModeInfo),
+	modecheck_goal(Cond0, Cond, !ModeInfo, !IO),
+	mode_info_get_instmap(!.ModeInfo, InstMapCond),
+	mode_info_remove_live_vars(ThenVars, !ModeInfo),
+	mode_info_unlock_vars(if_then_else, NonLocals, !ModeInfo),
+	( instmap__is_reachable(InstMapCond) ->
+		modecheck_goal(Then0, Then, !ModeInfo, !IO),
+		mode_info_get_instmap(!.ModeInfo, InstMapThen)
 	;
 		% We should not mode-analyse the goal, since it is unreachable.
 		% Instead we optimize the goal away, so that later passes
 		% won't complain about it not having mode information.
-		{ true_goal(B) },
-		{ InstMapB = InstMapA }
+		true_goal(Then),
+		InstMapThen = InstMapCond
 	),
-	mode_info_set_instmap(InstMap0),
-	modecheck_goal(C0, C),
-	mode_info_dcg_get_instmap(InstMapC),
-	mode_info_set_instmap(InstMap0),
-	instmap__merge(NonLocals, [InstMapB, InstMapC], if_then_else),
-	{ Goal = if_then_else(Vs, A, B, C) },
-	mode_checkpoint(exit, "if-then-else").
+	mode_info_set_instmap(InstMap0, !ModeInfo),
+	modecheck_goal(Else0, Else, !ModeInfo, !IO),
+	mode_info_get_instmap(!.ModeInfo, InstMapElse),
+	mode_info_set_instmap(InstMap0, !ModeInfo),
+	instmap__merge(NonLocals, [InstMapThen, InstMapElse], if_then_else,
+		!ModeInfo),
+	Goal = if_then_else(Vars, Cond, Then, Else),
+	mode_checkpoint(exit, "if-then-else", !ModeInfo, !IO).
 
-modecheck_goal_expr(not(A0), GoalInfo0, not(A)) -->
-	mode_checkpoint(enter, "not"),
-	{ goal_info_get_nonlocals(GoalInfo0, NonLocals) },
-	mode_info_dcg_get_instmap(InstMap0),
+modecheck_goal_expr(not(SubGoal0), GoalInfo0, not(SubGoal), !ModeInfo, !IO) :-
+	mode_checkpoint(enter, "not", !ModeInfo, !IO),
+	goal_info_get_nonlocals(GoalInfo0, NonLocals),
+	mode_info_get_instmap(!.ModeInfo, InstMap0),
 	%
 	% when analyzing a negated goal, nothing is forward-live
 	% (live on forward executution after that goal), because
@@ -1123,143 +1129,139 @@ modecheck_goal_expr(not(A0), GoalInfo0, not(A)) -->
 	% destructive update on such a variable, it will be caught
 	% later on by unique_modes.m.)
 	%
-	=(ModeInfo),
-	{ mode_info_get_live_vars(ModeInfo, LiveVars0) },
-	mode_info_set_live_vars([]),
+	mode_info_get_live_vars(!.ModeInfo, LiveVars0),
+	mode_info_set_live_vars([], !ModeInfo),
 	%
 	% We need to lock the non-local variables, to ensure
 	% that the negation does not bind them.
 	%
-	mode_info_lock_vars(negation, NonLocals),
-	modecheck_goal(A0, A),
-	mode_info_set_live_vars(LiveVars0),
-	mode_info_unlock_vars(negation, NonLocals),
-	mode_info_set_instmap(InstMap0),
-	mode_checkpoint(exit, "not").
+	mode_info_lock_vars(negation, NonLocals, !ModeInfo),
+	modecheck_goal(SubGoal0, SubGoal, !ModeInfo, !IO),
+	mode_info_set_live_vars(LiveVars0, !ModeInfo),
+	mode_info_unlock_vars(negation, NonLocals, !ModeInfo),
+	mode_info_set_instmap(InstMap0, !ModeInfo),
+	mode_checkpoint(exit, "not", !ModeInfo, !IO).
 
-modecheck_goal_expr(some(Vs, CanRemove, G0), _, some(Vs, CanRemove, G)) -->
-	mode_checkpoint(enter, "some"),
-	modecheck_goal(G0, G),
-	mode_checkpoint(exit, "some").
+modecheck_goal_expr(some(Vs, CanRemove, SubGoal0), _,
+		some(Vs, CanRemove, SubGoal), !ModeInfo, !IO) :-
+	mode_checkpoint(enter, "some", !ModeInfo, !IO),
+	modecheck_goal(SubGoal0, SubGoal, !ModeInfo, !IO),
+	mode_checkpoint(exit, "some", !ModeInfo, !IO).
 
 modecheck_goal_expr(call(PredId, ProcId0, Args0, _, Context, PredName),
-		GoalInfo0, Goal) -->
-	{ prog_out__sym_name_to_string(PredName, PredNameString) },
-	{ string__append("call ", PredNameString, CallString) },
-	mode_checkpoint(enter, CallString),
+		GoalInfo0, Goal, !ModeInfo, !IO) :-
+	prog_out__sym_name_to_string(PredName, PredNameString),
+	string__append("call ", PredNameString, CallString),
+	mode_checkpoint(enter, CallString, !ModeInfo, !IO),
 
-	=(ModeInfo0),
-	{ mode_info_get_call_id(ModeInfo0, PredId, CallId) },
-	mode_info_set_call_context(call(call(CallId))),
+	mode_info_get_call_id(!.ModeInfo, PredId, CallId),
+	mode_info_set_call_context(call(call(CallId)), !ModeInfo),
 
-	=(ModeInfo1),
-	{ mode_info_get_instmap(ModeInfo1, InstMap0) },
-	{ DeterminismKnown = no },
+	mode_info_get_instmap(!.ModeInfo, InstMap0),
+	DeterminismKnown = no,
 	modecheck_call_pred(PredId, ProcId0, Args0, DeterminismKnown,
-				Mode, Args, ExtraGoals),
+		Mode, Args, ExtraGoals, !ModeInfo),
 
-	=(ModeInfo),
-	{ mode_info_get_module_info(ModeInfo, ModuleInfo) },
-	{ mode_info_get_predid(ModeInfo, CallerPredId) },
-	{ Builtin = builtin_state(ModuleInfo, CallerPredId, PredId, Mode) },
-	{ Call = call(PredId, Mode, Args, Builtin, Context, PredName) },
+	mode_info_get_module_info(!.ModeInfo, ModuleInfo),
+	mode_info_get_predid(!.ModeInfo, CallerPredId),
+	Builtin = builtin_state(ModuleInfo, CallerPredId, PredId, Mode),
+	Call = call(PredId, Mode, Args, Builtin, Context, PredName),
 	handle_extra_goals(Call, ExtraGoals, GoalInfo0, Args0, Args,
-				InstMap0, Goal),
+		InstMap0, Goal, !ModeInfo, !IO),
 
-	mode_info_unset_call_context,
-	mode_checkpoint(exit, CallString).
+	mode_info_unset_call_context(!ModeInfo),
+	mode_checkpoint(exit, CallString, !ModeInfo, !IO).
 
 modecheck_goal_expr(generic_call(GenericCall, Args0, Modes0, _),
-		GoalInfo0, Goal) -->
-	mode_checkpoint(enter, "generic_call"),
-	mode_info_dcg_get_instmap(InstMap0),
+		GoalInfo0, Goal, !ModeInfo, !IO) :-
+	mode_checkpoint(enter, "generic_call", !ModeInfo, !IO),
+	mode_info_get_instmap(!.ModeInfo, InstMap0),
 
-	{ hlds_goal__generic_call_id(GenericCall, CallId) },
-	mode_info_set_call_context(call(CallId)),
+	hlds_goal__generic_call_id(GenericCall, CallId),
+	mode_info_set_call_context(call(CallId), !ModeInfo),
 	(
-		{ GenericCall = higher_order(PredVar, _, PredOrFunc, _) },
+		GenericCall = higher_order(PredVar, _, PredOrFunc, _),
 		modecheck_higher_order_call(PredOrFunc, PredVar,
-			Args0, Modes, Det, Args, ExtraGoals),
-		{ AllArgs0 = [PredVar | Args0] },
-		{ AllArgs = [PredVar | Args] }
+			Args0, Modes, Det, Args, ExtraGoals, !ModeInfo),
+		AllArgs0 = [PredVar | Args0],
+		AllArgs = [PredVar | Args]
 	;
 		% Class method calls are added by polymorphism.m.
 		% XXX We should probably fill this in so that
 		% rerunning mode analysis works on code with typeclasses.
-		{ GenericCall = class_method(_, _, _, _) },
-		{ error("modecheck_goal_expr: class_method_call") }
+		GenericCall = class_method(_, _, _, _),
+		error("modecheck_goal_expr: class_method_call")
 	;
-		{ GenericCall = unsafe_cast },
-		modecheck_builtin_cast(Args0, Modes0, Det, Args, ExtraGoals),
-		{ Modes = Modes0 },
-		{ AllArgs0 = Args0 },
-		{ AllArgs = Args }
+		GenericCall = unsafe_cast,
+		modecheck_builtin_cast(Args0, Modes0, Det, Args, ExtraGoals,
+			!ModeInfo),
+		Modes = Modes0,
+		AllArgs0 = Args0,
+		AllArgs = Args
 	;
-		{ GenericCall = aditi_builtin(AditiBuiltin, UpdatedCallId) },
+		GenericCall = aditi_builtin(AditiBuiltin, UpdatedCallId),
 		modecheck_aditi_builtin(AditiBuiltin, UpdatedCallId,
-			Args0, Modes0, Det, Args, ExtraGoals),
-		{ Modes = Modes0 },
-		{ AllArgs0 = Args0 },
-		{ AllArgs = Args }
+			Args0, Modes0, Det, Args, ExtraGoals, !ModeInfo),
+		Modes = Modes0,
+		AllArgs0 = Args0,
+		AllArgs = Args
 	),
 
-	{ Goal1 = generic_call(GenericCall, Args, Modes, Det) },
+	Goal1 = generic_call(GenericCall, Args, Modes, Det),
 	handle_extra_goals(Goal1, ExtraGoals, GoalInfo0, AllArgs0, AllArgs,
-		InstMap0, Goal),
-		
-	mode_info_unset_call_context,
-	mode_checkpoint(exit, "generic_call").
+		InstMap0, Goal, !ModeInfo, !IO),
 
-modecheck_goal_expr(unify(A0, B0, _, UnifyInfo0, UnifyContext), GoalInfo0, Goal)
-		-->
-	mode_checkpoint(enter, "unify"),
-	mode_info_set_call_context(unify(UnifyContext)),
-	modecheck_unification(A0, B0, UnifyInfo0, UnifyContext, GoalInfo0,
-		Goal),
-	mode_info_unset_call_context,
-	mode_checkpoint(exit, "unify").
+	mode_info_unset_call_context(!ModeInfo),
+	mode_checkpoint(exit, "generic_call", !ModeInfo, !IO).
+
+modecheck_goal_expr(unify(LHS0, RHS0, _, UnifyInfo0, UnifyContext), GoalInfo0,
+		Goal, !ModeInfo, !IO) :-
+	mode_checkpoint(enter, "unify", !ModeInfo, !IO),
+	mode_info_set_call_context(unify(UnifyContext), !ModeInfo),
+	modecheck_unification(LHS0, RHS0, UnifyInfo0, UnifyContext, GoalInfo0,
+		Goal, !ModeInfo, !IO),
+	mode_info_unset_call_context(!ModeInfo),
+	mode_checkpoint(exit, "unify", !ModeInfo, !IO).
 
 modecheck_goal_expr(switch(Var, CanFail, Cases0), GoalInfo0,
-		switch(Var, CanFail, Cases)) -->
-	mode_checkpoint(enter, "switch"),
-	( { Cases0 = [] } ->
-		{ Cases = [] },
-		{ instmap__init_unreachable(InstMap) },
-		mode_info_set_instmap(InstMap)
+		switch(Var, CanFail, Cases), !ModeInfo, !IO) :-
+	mode_checkpoint(enter, "switch", !ModeInfo, !IO),
+	( Cases0 = [] ->
+		Cases = [],
+		instmap__init_unreachable(InstMap),
+		mode_info_set_instmap(InstMap, !ModeInfo)
 	;
-		{ goal_info_get_nonlocals(GoalInfo0, NonLocals) },
-		modecheck_case_list(Cases0, Var, Cases, InstMapList),
-		instmap__merge(NonLocals, InstMapList, disj)
+		goal_info_get_nonlocals(GoalInfo0, NonLocals),
+		modecheck_case_list(Cases0, Var, Cases, InstMapList,
+			!ModeInfo, !IO),
+		instmap__merge(NonLocals, InstMapList, disj, !ModeInfo)
 	),
-	mode_checkpoint(exit, "switch").
+	mode_checkpoint(exit, "switch", !ModeInfo, !IO).
 
-	% to modecheck a pragma_c_code, we just modecheck the proc for 
+	% to modecheck a pragma_c_code, we just modecheck the proc for
 	% which it is the goal.
 modecheck_goal_expr(foreign_proc(Attributes, PredId, ProcId0,
 		Args0, ArgNameMap, OrigArgTypes, PragmaCode),
-		GoalInfo, Goal) -->
-	mode_checkpoint(enter, "pragma_foreign_code"),
-
-	=(ModeInfo0),
-	{ mode_info_get_call_id(ModeInfo0, PredId, CallId) },
-
-	{ mode_info_get_instmap(ModeInfo0, InstMap0) },
-	{ DeterminismKnown = no },
-	mode_info_set_call_context(call(call(CallId))),
+		GoalInfo, Goal, !ModeInfo, !IO) :-
+	mode_checkpoint(enter, "pragma_foreign_code", !ModeInfo, !IO),
+	mode_info_get_call_id(!.ModeInfo, PredId, CallId),
+	mode_info_get_instmap(!.ModeInfo, InstMap0),
+	DeterminismKnown = no,
+	mode_info_set_call_context(call(call(CallId)), !ModeInfo),
 	modecheck_call_pred(PredId, ProcId0, Args0, DeterminismKnown,
-				ProcId, Args, ExtraGoals),
+		ProcId, Args, ExtraGoals, !ModeInfo),
 
-	{ Pragma = foreign_proc(Attributes, PredId, ProcId,
-			Args0, ArgNameMap, OrigArgTypes, PragmaCode) },
+	Pragma = foreign_proc(Attributes, PredId, ProcId, Args0, ArgNameMap,
+		OrigArgTypes, PragmaCode),
 	handle_extra_goals(Pragma, ExtraGoals, GoalInfo, Args0, Args,
-			InstMap0, Goal),
+		InstMap0, Goal, !ModeInfo, !IO),
 
-	mode_info_unset_call_context,
-	mode_checkpoint(exit, "pragma_foreign_code").
+	mode_info_unset_call_context(!ModeInfo),
+	mode_checkpoint(exit, "pragma_foreign_code", !ModeInfo, !IO).
 
-modecheck_goal_expr(shorthand(_), _, _) -->
+modecheck_goal_expr(shorthand(_), _, _, !ModeInfo, !IO) :-
 	% these should have been expanded out by now
-	{ error("modecheck_goal_expr: unexpected shorthand") }.
+	error("modecheck_goal_expr: unexpected shorthand").
 
 append_extra_goals(no_extra_goals, ExtraGoals, ExtraGoals).
 append_extra_goals(extra_goals(BeforeGoals, AfterGoals),
@@ -1271,10 +1273,10 @@ append_extra_goals(extra_goals(BeforeGoals0, AfterGoals0),
 	list__append(AfterGoals0, AfterGoals1, AfterGoals).
 
 handle_extra_goals(MainGoal, no_extra_goals, _GoalInfo0, _Args0, _Args,
-		_InstMap0, MainGoal, ModeInfo, ModeInfo).
+		_InstMap0, MainGoal, !ModeInfo, !IO).
 handle_extra_goals(MainGoal, extra_goals(BeforeGoals0, AfterGoals0),
-		GoalInfo0, Args0, Args, InstMap0, Goal, ModeInfo0, ModeInfo) :-
-	mode_info_get_errors(ModeInfo0, Errors),
+		GoalInfo0, Args0, Args, InstMap0, Goal, !ModeInfo, !IO) :-
+	mode_info_get_errors(!.ModeInfo, Errors),
 	(
 		% There's no point adding extra goals if the code is
 		% unreachable anyway.
@@ -1315,19 +1317,19 @@ handle_extra_goals(MainGoal, extra_goals(BeforeGoals0, AfterGoals0),
 		handle_extra_goals_contexts(AfterGoals0, Context, AfterGoals),
 		list__append(BeforeGoals, [Goal0 | AfterGoals], GoalList0),
 
-		mode_info_get_may_change_called_proc(ModeInfo0,
+		mode_info_get_may_change_called_proc(!.ModeInfo,
 			MayChangeCalledProc0),
 
 		% Make sure we don't go into an infinite loop if
 		% there is a bug in the code to add extra goals.
-		mode_info_set_checking_extra_goals(yes, ModeInfo0, ModeInfo1),
+		mode_info_set_checking_extra_goals(yes, !ModeInfo),
 
 		% We've already worked out which procedure should be called,
 		% we don't need to do it again.
 		mode_info_set_may_change_called_proc(
-			may_not_change_called_proc, ModeInfo1, ModeInfo2),
+			may_not_change_called_proc, !ModeInfo),
 
-		mode_info_set_instmap(InstMap0, ModeInfo2, ModeInfo3),
+		mode_info_set_instmap(InstMap0, !ModeInfo),
 
 		% Recheck the goals to compute the instmap_deltas.
 		%
@@ -1341,21 +1343,19 @@ handle_extra_goals(MainGoal, extra_goals(BeforeGoals0, AfterGoals0),
 		% is not, the main unification will be delayed until after the
 		% argument unifications, which turns them into assignments,
 		% and we end up repeating the process forever.
-		mode_info_add_goals_live_vars(GoalList0, ModeInfo3, ModeInfo4),
+		mode_info_add_goals_live_vars(GoalList0, !ModeInfo),
 		modecheck_conj_list_no_delay(GoalList0, GoalList,
-			ModeInfo4, ModeInfo5),
+			!ModeInfo, !IO),
 		Goal = conj(GoalList),
-		mode_info_set_checking_extra_goals(no, ModeInfo5, ModeInfo6),
+		mode_info_set_checking_extra_goals(no, !ModeInfo),
 		mode_info_set_may_change_called_proc(MayChangeCalledProc0,
-			ModeInfo6, ModeInfo)
+			!ModeInfo)
 	;
-		Goal = MainGoal,
-		ModeInfo = ModeInfo0
+		Goal = MainGoal
 	).
 
-:- pred handle_extra_goals_contexts(list(hlds_goal), prog_context,
-	list(hlds_goal)).
-:- mode handle_extra_goals_contexts(in, in, out) is det.
+:- pred handle_extra_goals_contexts(list(hlds_goal)::in, prog_context::in,
+	list(hlds_goal)::out) is det.
 
 handle_extra_goals_contexts([], _Context, []).
 handle_extra_goals_contexts([Goal0 | Goals0], Context, [Goal | Goals]) :-
@@ -1368,87 +1368,82 @@ handle_extra_goals_contexts([Goal0 | Goals0], Context, [Goal | Goals]) :-
 
 	% Modecheck a conjunction without doing any reordering.
 	% This is used by handle_extra_goals above.
-:- pred modecheck_conj_list_no_delay(list(hlds_goal), list(hlds_goal),
-				mode_info, mode_info).
-:- mode modecheck_conj_list_no_delay(in, out,
-				mode_info_di, mode_info_uo) is det.
+:- pred modecheck_conj_list_no_delay(list(hlds_goal)::in, list(hlds_goal)::out,
+	mode_info::in, mode_info::out, io::di, io::uo) is det.
 
-modecheck_conj_list_no_delay([], []) --> [].
-modecheck_conj_list_no_delay([Goal0 | Goals0], [Goal | Goals]) -->
-	{ goal_get_nonlocals(Goal0, NonLocals) },
-	mode_info_remove_live_vars(NonLocals),
-	modecheck_goal(Goal0, Goal),
-	mode_info_dcg_get_instmap(InstMap),
-	( { instmap__is_unreachable(InstMap) } ->
+modecheck_conj_list_no_delay([], [], !ModeInfo, !IO).
+modecheck_conj_list_no_delay([Goal0 | Goals0], [Goal | Goals], !ModeInfo,
+		!IO) :-
+	goal_get_nonlocals(Goal0, NonLocals),
+	mode_info_remove_live_vars(NonLocals, !ModeInfo),
+	modecheck_goal(Goal0, Goal, !ModeInfo, !IO),
+	mode_info_get_instmap(!.ModeInfo, InstMap),
+	( instmap__is_unreachable(InstMap) ->
 		% We should not mode-analyse the remaining goals, since they
 		% are unreachable.  Instead we optimize them away, so that
 		% later passes won't complain about them not having mode
 		% information.
-		mode_info_remove_goals_live_vars(Goals0),
-		{ Goals  = [] }
+		mode_info_remove_goals_live_vars(Goals0, !ModeInfo),
+		Goals  = []
 	;
-		modecheck_conj_list_no_delay(Goals0, Goals)
+		modecheck_conj_list_no_delay(Goals0, Goals, !ModeInfo, !IO)
 	).
 
 %-----------------------------------------------------------------------------%
 
-:- pred modecheck_conj_list(list(hlds_goal), list(hlds_goal),
-				mode_info, mode_info).
-:- mode modecheck_conj_list(in, out, mode_info_di, mode_info_uo) is det.
+:- pred modecheck_conj_list(list(hlds_goal)::in, list(hlds_goal)::out,
+	mode_info::in, mode_info::out, io::di, io::uo) is det.
 
-modecheck_conj_list(Goals0, Goals) -->
-	=(ModeInfo0),
-	{ mode_info_get_errors(ModeInfo0, OldErrors) },
-	mode_info_set_errors([]),
+modecheck_conj_list(Goals0, Goals, !ModeInfo, !IO) :-
+	mode_info_get_errors(!.ModeInfo, OldErrors),
+	mode_info_set_errors([], !ModeInfo),
 
-	=(ModeInfo1),
-	{ mode_info_get_live_vars(ModeInfo1, LiveVars1) },
-	{ mode_info_get_delay_info(ModeInfo1, DelayInfo1) },
-	{ delay_info__enter_conj(DelayInfo1, DelayInfo2) },
-	mode_info_set_delay_info(DelayInfo2),
-	mode_info_add_goals_live_vars(Goals0),
+	mode_info_get_live_vars(!.ModeInfo, LiveVars1),
+	mode_info_get_delay_info(!.ModeInfo, DelayInfo1),
+	delay_info__enter_conj(DelayInfo1, DelayInfo2),
+	mode_info_set_delay_info(DelayInfo2, !ModeInfo),
+	mode_info_add_goals_live_vars(Goals0, !ModeInfo),
 
-	modecheck_conj_list_2(Goals0, [], Goals, RevImpurityErrors),
+	modecheck_conj_list_2(Goals0, Goals, [], RevImpurityErrors,
+		!ModeInfo, !IO),
 
-	=(ModeInfo3),
-	{ mode_info_get_errors(ModeInfo3, NewErrors) },
-	{ list__append(OldErrors, NewErrors, Errors) },
-	mode_info_set_errors(Errors),
+	mode_info_get_errors(!.ModeInfo, NewErrors),
+	list__append(OldErrors, NewErrors, Errors),
+	mode_info_set_errors(Errors, !ModeInfo),
 
-	=(ModeInfo4),
-	{ mode_info_get_delay_info(ModeInfo4, DelayInfo4) },
-	{ delay_info__leave_conj(DelayInfo4, DelayedGoals, DelayInfo5) },
-	mode_info_set_delay_info(DelayInfo5),
+	mode_info_get_delay_info(!.ModeInfo, DelayInfo4),
+	delay_info__leave_conj(DelayInfo4, DelayedGoals, DelayInfo5),
+	mode_info_set_delay_info(DelayInfo5, !ModeInfo),
 
-	( { DelayedGoals \= [] } ->
+	( DelayedGoals \= [] ->
 		% the variables in the delayed goals should not longer
 		% be considered live (the conjunction itself will
 		% delay, and its nonlocals will be made live)
-		mode_info_set_live_vars(LiveVars1)
+		mode_info_set_live_vars(LiveVars1, !ModeInfo)
 	;
-		[]
+		true
 	),
 	% we only report impurity errors if there were no other errors
-	( { DelayedGoals = [] } ->
+	( DelayedGoals = [] ->
 		%
 		% report all the impurity errors
 		% (making sure we report the errors in the correct order)
 		%
-		{ list__reverse(RevImpurityErrors, ImpurityErrors) },
-		=(ModeInfo5),
-		{ mode_info_get_errors(ModeInfo5, Errors5) },
-		{ list__append(Errors5, ImpurityErrors, Errors6) },
-		mode_info_set_errors(Errors6)
-	; { DelayedGoals = [delayed_goal(_DVars, Error, _DGoal)] } ->
-		mode_info_add_error(Error)
+		list__reverse(RevImpurityErrors, ImpurityErrors),
+		mode_info_get_errors(!.ModeInfo, Errors5),
+		list__append(Errors5, ImpurityErrors, Errors6),
+		mode_info_set_errors(Errors6, !ModeInfo)
+	; DelayedGoals = [delayed_goal(_DVars, Error, _DGoal)] ->
+		mode_info_add_error(Error, !ModeInfo)
 	;
-		{ get_all_waiting_vars(DelayedGoals, Vars) },
+		get_all_waiting_vars(DelayedGoals, Vars),
 		mode_info_error(Vars,
-			mode_error_conj(DelayedGoals, conj_floundered))
+			mode_error_conj(DelayedGoals, conj_floundered),
+			!ModeInfo)
 	).
 
-mode_info_add_goals_live_vars([]) --> [].
-mode_info_add_goals_live_vars([Goal | Goals]) -->
+mode_info_add_goals_live_vars([], !ModeInfo).
+mode_info_add_goals_live_vars([Goal | Goals], !ModeInfo) :-
 	% We add the live vars for the goals in the goal list
 	% in reverse order, because this ensures that in the
 	% common case (where there is no delaying), when we come
@@ -1456,23 +1451,21 @@ mode_info_add_goals_live_vars([Goal | Goals]) -->
 	% they will have been added last and will thus be
 	% at the start of the list of live vars sets, which
 	% makes them cheaper to remove.
-	mode_info_add_goals_live_vars(Goals),
-	{ goal_get_nonlocals(Goal, NonLocals) },
-	mode_info_add_live_vars(NonLocals).
+	mode_info_add_goals_live_vars(Goals, !ModeInfo),
+	goal_get_nonlocals(Goal, NonLocals),
+	mode_info_add_live_vars(NonLocals, !ModeInfo).
 
-mode_info_remove_goals_live_vars([]) --> [].
-mode_info_remove_goals_live_vars([Goal | Goals]) -->
-	{ goal_get_nonlocals(Goal, NonLocals) },
-	mode_info_remove_live_vars(NonLocals),
-	mode_info_remove_goals_live_vars(Goals).
+mode_info_remove_goals_live_vars([], !ModeInfo).
+mode_info_remove_goals_live_vars([Goal | Goals], !ModeInfo) :-
+	goal_get_nonlocals(Goal, NonLocals),
+	mode_info_remove_live_vars(NonLocals, !ModeInfo),
+	mode_info_remove_goals_live_vars(Goals, !ModeInfo).
 
 :- type impurity_errors == list(mode_error_info).
 
-:- pred modecheck_conj_list_2(list(hlds_goal), impurity_errors,
-			list(hlds_goal), impurity_errors,
-			mode_info, mode_info).
-:- mode modecheck_conj_list_2(in, in, out, out, mode_info_di, mode_info_uo)
-	is det.
+:- pred modecheck_conj_list_2(list(hlds_goal)::in, list(hlds_goal)::out,
+	impurity_errors::in, impurity_errors::out,
+	mode_info::in, mode_info::out, io::di, io::uo) is det.
 
 	% Schedule a conjunction.
 	% If it's empty, then there is nothing to do.
@@ -1481,97 +1474,90 @@ mode_info_remove_goals_live_vars([Goal | Goals]) -->
 	% pending goal (if any), and if not, we delay the goal.  Then we
 	% continue attempting to schedule all the rest of the goals.
 
-modecheck_conj_list_2([], ImpurityErrors, [], ImpurityErrors) --> [].
-modecheck_conj_list_2([Goal0 | Goals0], ImpurityErrors0,
-		Goals, ImpurityErrors) -->
-
-	{ Goal0 = _GoalExpr - GoalInfo0 },
-	( { goal_info_is_impure(GoalInfo0) } ->
-		{ Impure = yes },
-		check_for_impurity_error(Goal0, ImpurityErrors0,
-					 ImpurityErrors1)
+modecheck_conj_list_2([], [], !ImpurityErrors, !ModeInfo, !IO).
+modecheck_conj_list_2([Goal0 | Goals0], Goals, !ImpurityErrors, !ModeInfo,
+		!IO) :-
+	Goal0 = _GoalExpr - GoalInfo0,
+	( goal_info_is_impure(GoalInfo0) ->
+		Impure = yes,
+		check_for_impurity_error(Goal0, !ImpurityErrors, !ModeInfo)
 	;
-		{ Impure = no },
-		{ ImpurityErrors1 = ImpurityErrors0 }
+		Impure = no
 	),
 
 		% Hang onto the original instmap, delay_info, and live_vars
-	mode_info_dcg_get_instmap(InstMap0),
-	=(ModeInfo0),
-	{ mode_info_get_delay_info(ModeInfo0, DelayInfo0) },
+	mode_info_get_instmap(!.ModeInfo, InstMap0),
+	mode_info_get_delay_info(!.ModeInfo, DelayInfo0),
 
 		% Modecheck the goal, noting first that the non-locals
 		% which occur in the goal might not be live anymore.
-	{ goal_get_nonlocals(Goal0, NonLocalVars) },
-	mode_info_remove_live_vars(NonLocalVars),
-	modecheck_goal(Goal0, Goal),
+	goal_get_nonlocals(Goal0, NonLocalVars),
+	mode_info_remove_live_vars(NonLocalVars, !ModeInfo),
+	modecheck_goal(Goal0, Goal, !ModeInfo, !IO),
 
 		% Now see whether the goal was successfully scheduled.
 		% If we didn't manage to schedule the goal, then we
 		% restore the original instmap, delay_info and livevars
 		% here, and delay the goal.
-	=(ModeInfo1),
-	{ mode_info_get_errors(ModeInfo1, Errors) },
-	(   { Errors = [ FirstErrorInfo | _] } ->
-		mode_info_set_errors([]),
-		mode_info_set_instmap(InstMap0),
-		mode_info_add_live_vars(NonLocalVars),
-		{ delay_info__delay_goal(DelayInfo0, FirstErrorInfo,
-					 Goal0, DelayInfo1) },
+	mode_info_get_errors(!.ModeInfo, Errors),
+	(
+		Errors = [FirstErrorInfo | _],
+		mode_info_set_errors([], !ModeInfo),
+		mode_info_set_instmap(InstMap0, !ModeInfo),
+		mode_info_add_live_vars(NonLocalVars, !ModeInfo),
+		delay_info__delay_goal(DelayInfo0, FirstErrorInfo,
+			Goal0, DelayInfo1),
 		%  delaying an impure goal is an impurity error
-		( { Impure = yes } ->
-			{ FirstErrorInfo = mode_error_info(Vars, _, _, _) },
-			{ ImpureError = mode_error_conj(
+		( Impure = yes ->
+			FirstErrorInfo = mode_error_info(Vars, _, _, _),
+			ImpureError = mode_error_conj(
 				[delayed_goal(Vars, FirstErrorInfo, Goal0)],
-				goal_itself_was_impure) },
-			=(ModeInfo2),
-			{ mode_info_get_context(ModeInfo2, Context) },
-			{ mode_info_get_mode_context(ModeInfo2, ModeContext) },
-			{ ImpureErrorInfo = mode_error_info( Vars, ImpureError,
-						Context, ModeContext) },
-			{ ImpurityErrors2 = [ImpureErrorInfo |
-						ImpurityErrors1] }
-		;   
-			{ ImpurityErrors2 = ImpurityErrors1 }
+				goal_itself_was_impure),
+			mode_info_get_context(!.ModeInfo, Context),
+			mode_info_get_mode_context(!.ModeInfo, ModeContext),
+			ImpureErrorInfo = mode_error_info(Vars, ImpureError,
+				Context, ModeContext),
+			!:ImpurityErrors = [ImpureErrorInfo | !.ImpurityErrors]
+		;
+			true
 		)
-	;   
-		{ mode_info_get_delay_info(ModeInfo1, DelayInfo1) },
-		{ ImpurityErrors2 = ImpurityErrors1 }
+	;
+		Errors = [],
+		mode_info_get_delay_info(!.ModeInfo, DelayInfo1)
 	),
 
 		% Next, we attempt to wake up any pending goals,
 		% and then continue scheduling the rest of the goal.
-	{ delay_info__wakeup_goals(DelayInfo1, WokenGoals, DelayInfo) },
-	{ list__append(WokenGoals, Goals0, Goals1) },
-	( { WokenGoals = [] } ->
-		[]
-	; { WokenGoals = [_] } ->
-		mode_checkpoint(wakeup, "goal")
+	delay_info__wakeup_goals(DelayInfo1, WokenGoals, DelayInfo),
+	list__append(WokenGoals, Goals0, Goals1),
+	( WokenGoals = [] ->
+		true
+	; WokenGoals = [_] ->
+		mode_checkpoint(wakeup, "goal", !ModeInfo, !IO)
 	;
-		mode_checkpoint(wakeup, "goals")
+		mode_checkpoint(wakeup, "goals", !ModeInfo, !IO)
 	),
-	mode_info_set_delay_info(DelayInfo),
-	mode_info_dcg_get_instmap(InstMap),
-	( { instmap__is_unreachable(InstMap) } ->
+	mode_info_set_delay_info(DelayInfo, !ModeInfo),
+	mode_info_get_instmap(!.ModeInfo, InstMap),
+	( instmap__is_unreachable(InstMap) ->
 		% We should not mode-analyse the remaining goals, since they
 		% are unreachable.  Instead we optimize them away, so that
 		% later passes won't complain about them not having mode
 		% information.
-		mode_info_remove_goals_live_vars(Goals1),
-		{ Goals2  = [] },
-		{ ImpurityErrors = ImpurityErrors2 }
+		mode_info_remove_goals_live_vars(Goals1, !ModeInfo),
+		Goals2  = []
 	;
-		modecheck_conj_list_2(Goals1, ImpurityErrors2,
-				      Goals2, ImpurityErrors)
+		modecheck_conj_list_2(Goals1, Goals2, !ImpurityErrors,
+			!ModeInfo, !IO)
 	),
 
-	( { Errors = [] } ->
+	( Errors = [] ->
 		% we successfully scheduled this goal, so insert
 		% it in the list of successfully scheduled goals
-		{ Goals = [Goal | Goals2] }
+		Goals = [Goal | Goals2]
 	;
 		% we delayed this goal -- it will be stored in the delay_info
-		{ Goals = Goals2 }
+		Goals = Goals2
 	).
 
 %  check whether there are any delayed goals (other than headvar unifications)
@@ -1580,42 +1566,40 @@ modecheck_conj_list_2([Goal0 | Goals0], ImpurityErrors0,
 %  case of output arguments, they cannot be scheduled until the variable value
 %  is known.  If headvar unifications couldn't be delayed past impure goals,
 %  impure predicates wouldn't be able to have outputs!
-:- pred check_for_impurity_error(hlds_goal, impurity_errors, impurity_errors,
-		mode_info, mode_info).
-:- mode check_for_impurity_error(in, in, out, mode_info_di, mode_info_uo)
-	is det.
-check_for_impurity_error(Goal, ImpurityErrors0, ImpurityErrors) -->
-	=(ModeInfo0),
-	{ mode_info_get_delay_info(ModeInfo0, DelayInfo0) },
-	{ delay_info__leave_conj(DelayInfo0, DelayedGoals,
-				 DelayInfo1) },
-	{ delay_info__enter_conj(DelayInfo1, DelayInfo) },
-	{ mode_info_get_module_info(ModeInfo0, ModuleInfo) },
-	{ mode_info_get_predid(ModeInfo0, PredId) },
-	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
-	{ pred_info_clauses_info(PredInfo, ClausesInfo) },
-	{ clauses_info_headvars(ClausesInfo, HeadVars) },
-	(   { no_non_headvar_unification_goals(DelayedGoals, HeadVars) } ->
-		{ ImpurityErrors = ImpurityErrors0 }
+
+:- pred check_for_impurity_error(hlds_goal::in,
+	impurity_errors::in, impurity_errors::out,
+	mode_info::in, mode_info::out) is det.
+
+check_for_impurity_error(Goal, !ImpurityErrors, !ModeInfo) :-
+	mode_info_get_delay_info(!.ModeInfo, DelayInfo0),
+	delay_info__leave_conj(DelayInfo0, DelayedGoals, DelayInfo1),
+	delay_info__enter_conj(DelayInfo1, DelayInfo),
+	mode_info_get_module_info(!.ModeInfo, ModuleInfo),
+	mode_info_get_predid(!.ModeInfo, PredId),
+	module_info_pred_info(ModuleInfo, PredId, PredInfo),
+	pred_info_clauses_info(PredInfo, ClausesInfo),
+	clauses_info_headvars(ClausesInfo, HeadVars),
+	( no_non_headvar_unification_goals(DelayedGoals, HeadVars) ->
+		true
 	;
-		mode_info_set_delay_info(DelayInfo),
-		{ get_all_waiting_vars(DelayedGoals, Vars) },
-		{ ModeError = mode_error_conj(DelayedGoals,
-					goals_followed_by_impure_goal(Goal)) },
-		=(ModeInfo1),
-		{ mode_info_get_context(ModeInfo1, Context) },
-		{ mode_info_get_mode_context(ModeInfo1, ModeContext) },
-		{ ImpurityError = mode_error_info(Vars, ModeError,
-					Context, ModeContext) },
-		{ ImpurityErrors = [ImpurityError | ImpurityErrors0] }
+		mode_info_set_delay_info(DelayInfo, !ModeInfo),
+		get_all_waiting_vars(DelayedGoals, Vars),
+		ModeError = mode_error_conj(DelayedGoals,
+			goals_followed_by_impure_goal(Goal)),
+		mode_info_get_context(!.ModeInfo, Context),
+		mode_info_get_mode_context(!.ModeInfo, ModeContext),
+		ImpurityError = mode_error_info(Vars, ModeError,
+			Context, ModeContext),
+		!:ImpurityErrors = [ImpurityError | !.ImpurityErrors]
 	).
 
-	
-:- pred no_non_headvar_unification_goals(list(delayed_goal), list(prog_var)).
-:- mode no_non_headvar_unification_goals(in, in) is semidet.
+:- pred no_non_headvar_unification_goals(list(delayed_goal)::in,
+	list(prog_var)::in) is semidet.
 
 no_non_headvar_unification_goals([], _).
-no_non_headvar_unification_goals([delayed_goal(_,_,Goal-_)|Goals], HeadVars) :-
+no_non_headvar_unification_goals([delayed_goal(_, _, Goal - _) | Goals],
+		HeadVars) :-
 	Goal = unify(Var,Rhs,_,_,_),
 	(   list__member(Var, HeadVars)
 	;   Rhs = var(OtherVar),
@@ -1623,24 +1607,17 @@ no_non_headvar_unification_goals([delayed_goal(_,_,Goal-_)|Goals], HeadVars) :-
 	),
 	no_non_headvar_unification_goals(Goals, HeadVars).
 
-:- pred dcg_set_state(T, T, T).
-:- mode dcg_set_state(in, in, out) is det.
-
-dcg_set_state(Val, _OldVal, Val).
-
 	% Given an association list of Vars - Goals,
 	% combine all the Vars together into a single set.
 
-:- pred get_all_waiting_vars(list(delayed_goal), set(prog_var)).
-:- mode get_all_waiting_vars(in, out) is det.
+:- pred get_all_waiting_vars(list(delayed_goal)::in, set(prog_var)::out)
+	is det.
 
 get_all_waiting_vars(DelayedGoals, Vars) :-
-	set__init(Vars0),
-	get_all_waiting_vars_2(DelayedGoals, Vars0, Vars).
+	get_all_waiting_vars_2(DelayedGoals, set__init, Vars).
 
-:- pred get_all_waiting_vars_2(list(delayed_goal), set(prog_var),
-		set(prog_var)).
-:- mode get_all_waiting_vars_2(in, in, out) is det.
+:- pred get_all_waiting_vars_2(list(delayed_goal)::in,
+	set(prog_var)::in, set(prog_var)::out) is det.
 
 get_all_waiting_vars_2([], Vars, Vars).
 get_all_waiting_vars_2([delayed_goal(Vars1, _, _) | Rest], Vars0, Vars) :-
@@ -1649,121 +1626,119 @@ get_all_waiting_vars_2([delayed_goal(Vars1, _, _) | Rest], Vars0, Vars) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred modecheck_disj_list(list(hlds_goal), list(hlds_goal), list(instmap),
-				mode_info, mode_info).
-:- mode modecheck_disj_list(in, out, out, mode_info_di, mode_info_uo) is det.
+:- pred modecheck_disj_list(list(hlds_goal)::in, list(hlds_goal)::out,
+	list(instmap)::out, mode_info::in, mode_info::out,
+	io::di, io::uo) is det.
 
-modecheck_disj_list([], [], []) --> [].
-modecheck_disj_list([Goal0 | Goals0], Goals, [InstMap | InstMaps]) -->
-	mode_info_dcg_get_instmap(InstMap0),
-	modecheck_goal(Goal0, Goal),
-	mode_info_dcg_get_instmap(InstMap),
-	mode_info_set_instmap(InstMap0),
-	modecheck_disj_list(Goals0, Goals1, InstMaps),
+modecheck_disj_list([], [], [], !ModeInfo, !IO).
+modecheck_disj_list([Goal0 | Goals0], Goals, [InstMap | InstMaps],
+		!ModeInfo, !IO) :-
+	mode_info_get_instmap(!.ModeInfo, InstMap0),
+	modecheck_goal(Goal0, Goal, !ModeInfo, !IO),
+	mode_info_get_instmap(!.ModeInfo, InstMap),
+	mode_info_set_instmap(InstMap0, !ModeInfo),
+	modecheck_disj_list(Goals0, Goals1, InstMaps, !ModeInfo, !IO),
 	%
 	% If Goal is a nested disjunction,
 	% then merge it with the outer disjunction.
 	% If Goal is `fail', this will delete it.
 	%
-	{ goal_to_disj_list(Goal, DisjList) },
-	{ list__append(DisjList, Goals1, Goals) }.
+	goal_to_disj_list(Goal, DisjList),
+	list__append(DisjList, Goals1, Goals).
 
-:- pred modecheck_case_list(list(case), prog_var, list(case), list(instmap),
-				mode_info, mode_info).
-:- mode modecheck_case_list(in, in, out, out, mode_info_di, mode_info_uo)
-	is det.
+:- pred modecheck_case_list(list(case)::in, prog_var::in, list(case)::out,
+	list(instmap)::out, mode_info::in, mode_info::out,
+	io::di, io::uo) is det.
 
-modecheck_case_list([], _Var, [], []) --> [].
-modecheck_case_list([Case0 | Cases0], Var,
-			[Case | Cases], [InstMap | InstMaps]) -->
-	{ Case0 = case(ConsId, Goal0) },
-	{ Case = case(ConsId, Goal) },
-	mode_info_dcg_get_instmap(InstMap0),
+modecheck_case_list([], _Var, [], [], !ModeInfo, !IO).
+modecheck_case_list([Case0 | Cases0], Var, [Case | Cases],
+		[InstMap | InstMaps], !ModeInfo, !IO) :-
+	Case0 = case(ConsId, Goal0),
+	Case = case(ConsId, Goal),
+	mode_info_get_instmap(!.ModeInfo, InstMap0),
 
 	% record the fact that Var was bound to ConsId in the
 	% instmap before processing this case
-	modecheck_functor_test(Var, ConsId),
+	modecheck_functor_test(Var, ConsId, !ModeInfo),
 
 	% modecheck this case (if it is reachable)
-	mode_info_dcg_get_instmap(InstMap1),
-	( { instmap__is_reachable(InstMap1) } ->
-		modecheck_goal(Goal0, Goal1),
-		mode_info_dcg_get_instmap(InstMap)
+	mode_info_get_instmap(!.ModeInfo, InstMap1),
+	( instmap__is_reachable(InstMap1) ->
+		modecheck_goal(Goal0, Goal1, !ModeInfo, !IO),
+		mode_info_get_instmap(!.ModeInfo, InstMap)
 	;
 		% We should not mode-analyse the goal, since it is unreachable.
 		% Instead we optimize the goal away, so that later passes
 		% won't complain about it not having mode information.
-		{ true_goal(Goal1) },
-		{ InstMap = InstMap1 }
+		true_goal(Goal1),
+		InstMap = InstMap1
 	),
 
 	% Don't lose the information added by the functor test above.
-	{ fixup_switch_var(Var, InstMap0, InstMap, Goal1, Goal) },
+	fixup_switch_var(Var, InstMap0, InstMap, Goal1, Goal),
 
-	mode_info_set_instmap(InstMap0),
-	modecheck_case_list(Cases0, Var, Cases, InstMaps).
+	mode_info_set_instmap(InstMap0, !ModeInfo),
+	modecheck_case_list(Cases0, Var, Cases, InstMaps, !ModeInfo, !IO).
 
 	% modecheck_functor_test(ConsId, Var):
 	%	update the instmap to reflect the fact that
-	%	Var was bound to ConsId. 
+	%	Var was bound to ConsId.
 	% This is used for the functor tests in `switch' statements.
 	%
-modecheck_functor_test(Var, ConsId) -->
+modecheck_functor_test(Var, ConsId, !ModeInfo) :-
 		% figure out the arity of this constructor,
 		% _including_ any type-infos or typeclass-infos
 		% inserted for existential data types.
-	=(ModeInfo0),
-	{ mode_info_get_module_info(ModeInfo0, ModuleInfo) },
-	{ mode_info_get_var_types(ModeInfo0, VarTypes) },
-	{ map__lookup(VarTypes, Var, Type) },
-	{ AdjustedArity = cons_id_adjusted_arity(ModuleInfo, Type, ConsId) },
+	mode_info_get_module_info(!.ModeInfo, ModuleInfo),
+	mode_info_get_var_types(!.ModeInfo, VarTypes),
+	map__lookup(VarTypes, Var, Type),
+	AdjustedArity = cons_id_adjusted_arity(ModuleInfo, Type, ConsId),
 
 		% record the fact that Var was bound to ConsId in the instmap
-	{ list__duplicate(AdjustedArity, free, ArgInsts) },
-	modecheck_set_var_inst(Var,
-		bound(unique, [functor(ConsId, ArgInsts)]), no).
+	list__duplicate(AdjustedArity, free, ArgInsts),
+	modecheck_set_var_inst(Var, bound(unique, [functor(ConsId, ArgInsts)]),
+		no, !ModeInfo).
 
 %-----------------------------------------------------------------------------%
 
-:- pred modecheck_par_conj_list(list(hlds_goal), list(hlds_goal),
-		set(prog_var), list(pair(instmap, set(prog_var))),
-		mode_info, mode_info).
-:- mode modecheck_par_conj_list(in, out, in, out,
-		mode_info_di, mode_info_uo) is det.
+:- pred modecheck_par_conj_list(list(hlds_goal)::in, list(hlds_goal)::out,
+	set(prog_var)::in, list(pair(instmap, set(prog_var)))::out,
+	mode_info::in, mode_info::out, io::di, io::uo) is det.
 
-modecheck_par_conj_list([], [], _NonLocals, []) --> [].
-modecheck_par_conj_list([Goal0 | Goals0], [Goal|Goals], NonLocals, 
-		[InstMap - GoalNonLocals | InstMaps]) -->
-	mode_info_dcg_get_instmap(InstMap0),
-	{ Goal0 = _ - GoalInfo },
-	{ goal_info_get_nonlocals(GoalInfo, GoalNonLocals) },
-	mode_info_get_parallel_vars(PVars0),
-	{ set__init(Bound0) },
-	mode_info_set_parallel_vars([NonLocals - Bound0|PVars0]),
+modecheck_par_conj_list([], [], _NonLocals, [], !ModeInfo, !IO).
+modecheck_par_conj_list([Goal0 | Goals0], [Goal|Goals], NonLocals,
+		[InstMap - GoalNonLocals | InstMaps], !ModeInfo, !IO) :-
+	mode_info_get_instmap(!.ModeInfo, InstMap0),
+	Goal0 = _ - GoalInfo,
+	goal_info_get_nonlocals(GoalInfo, GoalNonLocals),
+	mode_info_get_parallel_vars(!.ModeInfo, PVars0),
+	set__init(Bound0),
+	mode_info_set_parallel_vars([NonLocals - Bound0 | PVars0], !ModeInfo),
 
-	modecheck_goal(Goal0, Goal),
-	mode_info_get_parallel_vars(PVars1),
+	modecheck_goal(Goal0, Goal, !ModeInfo, !IO),
+	mode_info_get_parallel_vars(!.ModeInfo, PVars1),
 	(
-		{ PVars1 = [_ - Bound1|PVars2] },
+		PVars1 = [_ - Bound1 | PVars2],
 		(
-			{ PVars2 = [OuterNonLocals - OuterBound0|PVars3] },
-			{ set__intersect(OuterNonLocals, Bound1, Bound) },
-			{ set__union(OuterBound0, Bound, OuterBound) },
-			{ PVars = [OuterNonLocals - OuterBound|PVars3] },
-			mode_info_set_parallel_vars(PVars)
+			PVars2 = [OuterNonLocals - OuterBound0|PVars3],
+			set__intersect(OuterNonLocals, Bound1, Bound),
+			set__union(OuterBound0, Bound, OuterBound),
+			PVars = [OuterNonLocals - OuterBound|PVars3],
+			mode_info_set_parallel_vars(PVars, !ModeInfo)
 		;
-			{ PVars2 = [] },
-			mode_info_set_parallel_vars(PVars2)
+			PVars2 = [],
+			mode_info_set_parallel_vars(PVars2, !ModeInfo)
 		)
 	;
-		{ PVars1 = [] },
-		{ error("lost parallel vars") }
+		PVars1 = [],
+		error("lost parallel vars")
 	),
-	mode_info_dcg_get_instmap(InstMap),
-	mode_info_set_instmap(InstMap0),
-	mode_info_lock_vars(par_conj, Bound1),
-	modecheck_par_conj_list(Goals0, Goals, NonLocals, InstMaps),
-	mode_info_unlock_vars(par_conj, Bound1).
+	mode_info_get_instmap(!.ModeInfo, InstMap),
+	mode_info_set_instmap(InstMap0, !ModeInfo),
+	mode_info_lock_vars(par_conj, Bound1, !ModeInfo),
+	modecheck_par_conj_list(Goals0, Goals, NonLocals, InstMaps,
+		!ModeInfo, !IO),
+	mode_info_unlock_vars(par_conj, Bound1, !ModeInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -1786,20 +1761,21 @@ compute_arg_offset(PredInfo, ArgOffset) :-
 	% ensure the liveness of each variable satisfies the corresponding
 	% expected liveness.
 
-modecheck_var_list_is_live([_|_], [], _, _) -->
-	{ error("modecheck_var_list_is_live: length mismatch") }.
-modecheck_var_list_is_live([], [_|_], _, _) -->
-	{ error("modecheck_var_list_is_live: length mismatch") }.
-modecheck_var_list_is_live([], [], _NeedExactMatch, _ArgNum) --> [].
-modecheck_var_list_is_live([Var|Vars], [IsLive|IsLives], NeedExactMatch,
-		ArgNum0) -->
-	{ ArgNum = ArgNum0 + 1 },
-	mode_info_set_call_arg_context(ArgNum),
-	modecheck_var_is_live(Var, IsLive, NeedExactMatch),
-	modecheck_var_list_is_live(Vars, IsLives, NeedExactMatch, ArgNum).
+modecheck_var_list_is_live([_|_], [], _, _, !ModeInfo) :-
+	error("modecheck_var_list_is_live: length mismatch").
+modecheck_var_list_is_live([], [_|_], _, _, !ModeInfo) :-
+	error("modecheck_var_list_is_live: length mismatch").
+modecheck_var_list_is_live([], [], _NeedExactMatch, _ArgNum, !ModeInfo).
+modecheck_var_list_is_live([Var | Vars], [IsLive | IsLives], NeedExactMatch,
+		ArgNum0, !ModeInfo) :-
+	ArgNum = ArgNum0 + 1,
+	mode_info_set_call_arg_context(ArgNum, !ModeInfo),
+	modecheck_var_is_live(Var, IsLive, NeedExactMatch, !ModeInfo),
+	modecheck_var_list_is_live(Vars, IsLives, NeedExactMatch, ArgNum,
+		!ModeInfo).
 
-:- pred modecheck_var_is_live(prog_var, is_live, bool, mode_info, mode_info).
-:- mode modecheck_var_is_live(in, in, in, mode_info_di, mode_info_uo) is det.
+:- pred modecheck_var_is_live(prog_var::in, is_live::in, bool::in,
+	mode_info::in, mode_info::out) is det.
 
 	% `live' means possibly used later on, and
 	% `dead' means definitely not used later on.
@@ -1809,19 +1785,18 @@ modecheck_var_list_is_live([Var|Vars], [IsLive|IsLives], NeedExactMatch,
 	% be dead; the predicate may use destructive update to clobber
 	% the variable, so we must be sure that it is dead after the call.
 
-modecheck_var_is_live(VarId, ExpectedIsLive, NeedExactMatch,
-		ModeInfo0, ModeInfo) :-
-	mode_info_var_is_live(ModeInfo0, VarId, VarIsLive),
-	( 
+modecheck_var_is_live(VarId, ExpectedIsLive, NeedExactMatch, !ModeInfo) :-
+	mode_info_var_is_live(!.ModeInfo, VarId, VarIsLive),
+	(
 		( ExpectedIsLive = dead, VarIsLive = live
 		; NeedExactMatch = yes, VarIsLive \= ExpectedIsLive
 		)
 	->
 		set__singleton_set(WaitingVars, VarId),
 		mode_info_error(WaitingVars, mode_error_var_is_live(VarId),
-			ModeInfo0, ModeInfo)
-	; 
-		ModeInfo = ModeInfo0
+			!ModeInfo)
+	;
+		true
 	).
 
 %-----------------------------------------------------------------------------%
@@ -1830,120 +1805,108 @@ modecheck_var_is_live(VarId, ExpectedIsLive, NeedExactMatch,
 	% that the inst of each variable matches the corresponding initial
 	% inst.
 
-modecheck_var_has_inst_list(Vars, Insts, NeedEaxctMatch, ArgNum, Subst) -->
-	{ map__init(Subst0) },
+modecheck_var_has_inst_list(Vars, Insts, NeedEaxctMatch, ArgNum, Subst,
+		!ModeInfo) :-
 	modecheck_var_has_inst_list_2(Vars, Insts, NeedEaxctMatch, ArgNum,
-		Subst0, Subst).
+		map__init, Subst, !ModeInfo).
 
-:- pred modecheck_var_has_inst_list_2(list(prog_var), list(inst), bool, int,
-		inst_var_sub, inst_var_sub, mode_info, mode_info).
-:- mode modecheck_var_has_inst_list_2(in, in, in, in, in, out,
-		mode_info_di, mode_info_uo) is det.
+:- pred modecheck_var_has_inst_list_2(list(prog_var)::in, list(inst)::in,
+	bool::in, int::in, inst_var_sub::in, inst_var_sub::out,
+	mode_info::in, mode_info::out) is det.
 
-modecheck_var_has_inst_list_2([_|_], [], _, _, _, _) -->
-	{ error("modecheck_var_has_inst_list: length mismatch") }.
-modecheck_var_has_inst_list_2([], [_|_], _, _, _, _) -->
-	{ error("modecheck_var_has_inst_list: length mismatch") }.
-modecheck_var_has_inst_list_2([], [], _Exact, _ArgNum, Subst, Subst) --> [].
-modecheck_var_has_inst_list_2([Var|Vars], [Inst|Insts],
-		NeedExactMatch, ArgNum0, Subst0, Subst) -->
-	{ ArgNum = ArgNum0 + 1 },
-	mode_info_set_call_arg_context(ArgNum),
-	modecheck_var_has_inst(Var, Inst, NeedExactMatch, Subst0, Subst1),
-	modecheck_var_has_inst_list_2(Vars, Insts,
-		NeedExactMatch, ArgNum, Subst1, Subst).
+modecheck_var_has_inst_list_2([_|_], [], _, _, !Subst, !ModeInfo) :-
+	error("modecheck_var_has_inst_list: length mismatch").
+modecheck_var_has_inst_list_2([], [_|_], _, _, !Subst, !ModeInfo) :-
+	error("modecheck_var_has_inst_list: length mismatch").
+modecheck_var_has_inst_list_2([], [], _Exact, _ArgNum, !Subst, !ModeInfo).
+modecheck_var_has_inst_list_2([Var | Vars], [Inst | Insts], NeedExactMatch,
+		ArgNum0, !Subst, !ModeInfo) :-
+	ArgNum = ArgNum0 + 1,
+	mode_info_set_call_arg_context(ArgNum, !ModeInfo),
+	modecheck_var_has_inst(Var, Inst, NeedExactMatch, !Subst, !ModeInfo),
+	modecheck_var_has_inst_list_2(Vars, Insts, NeedExactMatch, ArgNum,
+		!Subst, !ModeInfo).
 
-:- pred modecheck_var_has_inst(prog_var, inst, bool,
-		inst_var_sub, inst_var_sub, mode_info, mode_info).
-:- mode modecheck_var_has_inst(in, in, in,
-		in, out, mode_info_di, mode_info_uo) is det.
+:- pred modecheck_var_has_inst(prog_var::in, (inst)::in, bool::in,
+	inst_var_sub::in, inst_var_sub::out,
+	mode_info::in, mode_info::out) is det.
 
-modecheck_var_has_inst(VarId, Inst, NeedExactMatch, Subst0, Subst,
-		ModeInfo0, ModeInfo) :-
-	mode_info_get_instmap(ModeInfo0, InstMap),
+modecheck_var_has_inst(VarId, Inst, NeedExactMatch, !Subst, !ModeInfo) :-
+	mode_info_get_instmap(!.ModeInfo, InstMap),
 	instmap__lookup_var(InstMap, VarId, VarInst),
-	mode_info_get_var_types(ModeInfo0, VarTypes),
+	mode_info_get_var_types(!.ModeInfo, VarTypes),
 	map__lookup(VarTypes, VarId, Type),
-
-	mode_info_get_module_info(ModeInfo0, ModuleInfo0),
+	mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
 	(
 		(
 			NeedExactMatch = no,
 			inst_matches_initial(VarInst, Inst, Type, ModuleInfo0,
-				ModuleInfo, Subst0, Subst1)
+				ModuleInfo, !Subst)
 		;
 			NeedExactMatch = yes,
 			inst_matches_initial_no_implied_modes(VarInst, Inst,
-				Type, ModuleInfo0, ModuleInfo, Subst0, Subst1)
+				Type, ModuleInfo0, ModuleInfo, !Subst)
 		)
 	->
-		Subst = Subst1,
-		mode_info_set_module_info(ModeInfo0, ModuleInfo, ModeInfo)
+		mode_info_set_module_info(ModuleInfo, !ModeInfo)
 	;
-		Subst = Subst0,
 		set__singleton_set(WaitingVars, VarId),
 		mode_info_error(WaitingVars,
 			mode_error_var_has_inst(VarId, VarInst, Inst),
-			ModeInfo0, ModeInfo)
+			!ModeInfo)
 	).
 
 %-----------------------------------------------------------------------------%
 
 modecheck_set_var_inst_list(Vars0, InitialInsts, FinalInsts, ArgOffset,
-		Vars, Goals) -->
+		Vars, Goals, !ModeInfo) :-
 	(
 		modecheck_set_var_inst_list_2(Vars0, InitialInsts, FinalInsts,
-			no_extra_goals, ArgOffset, Vars1, Goals1)
+			ArgOffset, Vars1, no_extra_goals, Goals1, !ModeInfo)
 	->
-		{ Vars = Vars1, Goals = Goals1 }
+		Vars = Vars1,
+		Goals = Goals1
 	;
-		{ error("modecheck_set_var_inst_list: length mismatch") }
+		error("modecheck_set_var_inst_list: length mismatch")
 	).
 
-:- pred modecheck_set_var_inst_list_2(list(prog_var), list(inst), list(inst),
-		extra_goals, int, list(prog_var), extra_goals,
-		mode_info, mode_info).
-:- mode modecheck_set_var_inst_list_2(in, in, in, in, in, out, out,
-					mode_info_di, mode_info_uo) is semidet.
+:- pred modecheck_set_var_inst_list_2(list(prog_var)::in, list(inst)::in,
+	list(inst)::in, int::in, list(prog_var)::out,
+	extra_goals::in, extra_goals::out,
+	mode_info::in, mode_info::out) is semidet.
 
-modecheck_set_var_inst_list_2([], [], [], ExtraGoals, _, [], ExtraGoals) -->
-	[].
+modecheck_set_var_inst_list_2([], [], [], _, [], !ExtraGoals, !ModeInfo).
 modecheck_set_var_inst_list_2([Var0 | Vars0], [InitialInst | InitialInsts],
-			[FinalInst | FinalInsts], ExtraGoals0, ArgNum0,
-			[Var | Vars], ExtraGoals) -->
-	{ ArgNum = ArgNum0 + 1 },
-	mode_info_set_call_arg_context(ArgNum),
+		[FinalInst | FinalInsts], ArgNum0, [Var | Vars],
+		!ExtraGoals, !ModeInfo) :-
+	ArgNum = ArgNum0 + 1,
+	mode_info_set_call_arg_context(ArgNum, !ModeInfo),
 	modecheck_set_var_inst(Var0, InitialInst, FinalInst,
-				Var, ExtraGoals0, ExtraGoals1),
-	modecheck_set_var_inst_list_2(Vars0, InitialInsts, FinalInsts,
- 				ExtraGoals1, ArgNum, Vars, ExtraGoals).
+		Var, !ExtraGoals, !ModeInfo),
+	modecheck_set_var_inst_list_2(Vars0, InitialInsts, FinalInsts, ArgNum,
+		Vars, !ExtraGoals, !ModeInfo).
 
-:- pred modecheck_set_var_inst(prog_var, inst, inst, prog_var, extra_goals,
-		extra_goals, mode_info, mode_info).
-:- mode modecheck_set_var_inst(in, in, in, out, in, out,
-				mode_info_di, mode_info_uo) is det.
+:- pred modecheck_set_var_inst(prog_var::in, (inst)::in, (inst)::in,
+	prog_var::out, extra_goals::in, extra_goals::out,
+	mode_info::in, mode_info::out) is det.
 
-modecheck_set_var_inst(Var0, InitialInst, FinalInst, Var,
-		ExtraGoals0, ExtraGoals, ModeInfo0, ModeInfo) :-
-	mode_info_get_instmap(ModeInfo0, InstMap0),
+modecheck_set_var_inst(Var0, InitialInst, FinalInst, Var, !ExtraGoals,
+		!ModeInfo) :-
+	mode_info_get_instmap(!.ModeInfo, InstMap0),
 	( instmap__is_reachable(InstMap0) ->
 		% The new inst must be computed by unifying the
 		% old inst and the proc's final inst
 		instmap__lookup_var(InstMap0, Var0, VarInst0),
-		handle_implied_mode(Var0, VarInst0, InitialInst,
-		 	Var, ExtraGoals0, ExtraGoals, ModeInfo0, ModeInfo1),
-		modecheck_set_var_inst(Var0, FinalInst, no,
-			ModeInfo1, ModeInfo2),
+		handle_implied_mode(Var0, VarInst0, InitialInst, Var,
+			!ExtraGoals, !ModeInfo),
+		modecheck_set_var_inst(Var0, FinalInst, no, !ModeInfo),
 		( Var = Var0 ->
-			ModeInfo = ModeInfo2
+			true
 		;
-			modecheck_set_var_inst(Var, FinalInst, no,
-				ModeInfo2, ModeInfo)
+			modecheck_set_var_inst(Var, FinalInst, no, !ModeInfo)
 		)
 	;
-		Var = Var0,
-		ExtraGoals = ExtraGoals0,
-		ModeInfo = ModeInfo0
+		Var = Var0
 	).
 
 	% Note that there are two versions of modecheck_set_var_inst,
@@ -1951,14 +1914,14 @@ modecheck_set_var_inst(Var0, InitialInst, FinalInst, Var,
 	% The former is used for predicate calls, where we may need
 	% to introduce unifications to handle calls to implied modes.
 
-modecheck_set_var_inst(Var0, FinalInst, MaybeUInst, ModeInfo00, ModeInfo) :-
-	mode_info_get_instmap(ModeInfo0, InstMap0),
-	mode_info_get_parallel_vars(PVars0, ModeInfo00, ModeInfo0),
+modecheck_set_var_inst(Var0, FinalInst, MaybeUInst, !ModeInfo) :-
+	mode_info_get_parallel_vars(!.ModeInfo, PVars0),
+	mode_info_get_instmap(!.ModeInfo, InstMap0),
 	( instmap__is_reachable(InstMap0) ->
 		% The new inst must be computed by unifying the
 		% old inst and the proc's final inst
 		instmap__lookup_var(InstMap0, Var0, Inst0),
-		mode_info_get_module_info(ModeInfo0, ModuleInfo0),
+		mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
 		(
 			abstractly_unify_inst(dead, Inst0, FinalInst,
 				fake_unify, ModuleInfo0,
@@ -1969,8 +1932,8 @@ modecheck_set_var_inst(Var0, FinalInst, MaybeUInst, ModeInfo00, ModeInfo) :-
 		;
 			error("modecheck_set_var_inst: unify_inst failed")
 		),
-		mode_info_set_module_info(ModeInfo0, ModuleInfo, ModeInfo1),
-		mode_info_get_var_types(ModeInfo1, VarTypes),
+		mode_info_set_module_info(ModuleInfo, !ModeInfo),
+		mode_info_get_var_types(!.ModeInfo, VarTypes),
 		map__lookup(VarTypes, Var0, Type),
 		(
 			% if the top-level inst of the variable is not_reached,
@@ -1978,7 +1941,7 @@ modecheck_set_var_inst(Var0, FinalInst, MaybeUInst, ModeInfo00, ModeInfo) :-
 			inst_expand(ModuleInfo, Inst, not_reached)
 		->
 			instmap__init_unreachable(InstMap),
-			mode_info_set_instmap(InstMap, ModeInfo1, ModeInfo3)
+			mode_info_set_instmap(InstMap, !ModeInfo)
 		;
 			% If we haven't added any information and
 			% we haven't bound any part of the var, then
@@ -1986,7 +1949,7 @@ modecheck_set_var_inst(Var0, FinalInst, MaybeUInst, ModeInfo00, ModeInfo) :-
 			inst_matches_initial(Inst0, Inst, Type, ModuleInfo)
 		->
 			instmap__set(InstMap0, Var0, Inst, InstMap),
-			mode_info_set_instmap(InstMap, ModeInfo1, ModeInfo3)
+			mode_info_set_instmap(InstMap, !ModeInfo)
 		;
 			% We must have either added some information,
 			% lost some uniqueness, or bound part of the var.
@@ -1996,7 +1959,7 @@ modecheck_set_var_inst(Var0, FinalInst, MaybeUInst, ModeInfo00, ModeInfo) :-
 
 			% We've bound part of the var.  If the var was locked,
 			% then we need to report an error...
-			mode_info_var_is_locked(ModeInfo1, Var0, Reason0),
+			mode_info_var_is_locked(!.ModeInfo, Var0, Reason0),
 			\+ (
 				% ...unless the goal is a unification and the
 				% var was unified with something no more
@@ -2017,22 +1980,20 @@ modecheck_set_var_inst(Var0, FinalInst, MaybeUInst, ModeInfo00, ModeInfo) :-
 			set__singleton_set(WaitingVars, Var0),
 			mode_info_error(WaitingVars,
 				mode_error_bind_var(Reason0, Var0, Inst0, Inst),
-				ModeInfo1, ModeInfo3
+				!ModeInfo
 			)
 		;
 			instmap__set(InstMap0, Var0, Inst, InstMap),
-			mode_info_set_instmap(InstMap, ModeInfo1, ModeInfo2),
-			mode_info_get_delay_info(ModeInfo2, DelayInfo0),
+			mode_info_set_instmap(InstMap, !ModeInfo),
+			mode_info_get_delay_info(!.ModeInfo, DelayInfo0),
 			delay_info__bind_var(DelayInfo0, Var0, DelayInfo),
-			mode_info_set_delay_info(DelayInfo,
-						ModeInfo2, ModeInfo3)
+			mode_info_set_delay_info(DelayInfo, !ModeInfo)
 		)
 	;
-		ModeInfo3 = ModeInfo0
+		true
 	),
 	(
-		PVars0 = [],
-		ModeInfo = ModeInfo3
+		PVars0 = []
 	;
 		PVars0 = [NonLocals - Bound0|PVars1],
 		( set__member(Var0, NonLocals) ->
@@ -2041,25 +2002,23 @@ modecheck_set_var_inst(Var0, FinalInst, MaybeUInst, ModeInfo00, ModeInfo) :-
 		;
 			PVars = PVars0
 		),
-		mode_info_set_parallel_vars(PVars, ModeInfo3, ModeInfo)
+		mode_info_set_parallel_vars(PVars, !ModeInfo)
 	).
-
 
 % If this was a call to an implied mode for that variable, then we need to
 % introduce a fresh variable.
 
-:- pred handle_implied_mode(prog_var, inst, inst, prog_var,
-		extra_goals, extra_goals, mode_info, mode_info).
-:- mode handle_implied_mode(in, in, in, out, in, out,
-		mode_info_di, mode_info_uo) is det.
+:- pred handle_implied_mode(prog_var::in, (inst)::in, (inst)::in,
+	prog_var::out, extra_goals::in, extra_goals::out,
+	mode_info::in, mode_info::out) is det.
 
-handle_implied_mode(Var0, VarInst0, InitialInst0, Var,
-		ExtraGoals0, ExtraGoals, ModeInfo0, ModeInfo) :-
-	mode_info_get_module_info(ModeInfo0, ModuleInfo0),
+handle_implied_mode(Var0, VarInst0, InitialInst0, Var, !ExtraGoals,
+		!ModeInfo) :-
+	mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
 	inst_expand(ModuleInfo0, InitialInst0, InitialInst),
 	inst_expand(ModuleInfo0, VarInst0, VarInst1),
 
-	mode_info_get_var_types(ModeInfo0, VarTypes0),
+	mode_info_get_var_types(!.ModeInfo, VarTypes0),
 	map__lookup(VarTypes0, Var0, VarType),
 	(
 		% If the initial inst of the variable matches_final
@@ -2069,9 +2028,7 @@ handle_implied_mode(Var0, VarInst0, InitialInst0, Var,
 		inst_matches_initial_no_implied_modes(VarInst1, InitialInst,
 			VarType, ModuleInfo0)
 	->
-		Var = Var0,
-		ExtraGoals = ExtraGoals0,
-		ModeInfo = ModeInfo0
+		Var = Var0
 	;
 		% This is the implied mode case.
 		% We do not yet handle implied modes for partially
@@ -2085,7 +2042,7 @@ handle_implied_mode(Var0, VarInst0, InitialInst0, Var,
 			% This is the simple case of implied `any' modes,
 			% where the declared mode was `any -> ...'
 			% and the argument passed was `free'
-			
+
 			Var = Var0,
 
 			% Create code to initialize the variable to
@@ -2094,16 +2051,17 @@ handle_implied_mode(Var0, VarInst0, InitialInst0, Var,
 			% XXX We ought to use a more elegant method
 			% XXX than hard-coding the name `<foo>_init_any'.
 
-			mode_info_get_context(ModeInfo0, Context),
-			mode_info_get_mode_context(ModeInfo0, ModeContext),
-			mode_context_to_unify_context(ModeContext, ModeInfo0,
-				UnifyContext),
+			mode_info_get_context(!.ModeInfo, Context),
+			mode_info_get_mode_context(!.ModeInfo, ModeContext),
+			mode_context_to_unify_context(!.ModeInfo,
+				ModeContext, UnifyContext),
 			CallUnifyContext = yes(call_unify_context(
-						Var, var(Var), UnifyContext)),
-			( 
-				type_to_ctor_and_args(VarType, TypeCtor, _TypeArgs),
+				Var, var(Var), UnifyContext)),
+			(
+				type_to_ctor_and_args(VarType, TypeCtor,
+					_TypeArgs),
 				TypeCtor = qualified(TypeModule, TypeName) -
-						_TypeArity,
+					_TypeArity,
 				string__append(TypeName, "_init_any", PredName),
 				modes__build_call(TypeModule, PredName, [Var],
 					Context, CallUnifyContext, ModuleInfo0,
@@ -2119,19 +2077,17 @@ handle_implied_mode(Var0, VarInst0, InitialInst0, Var,
 					InstmapDelta, GoalInfo),
 				NewExtraGoal = extra_goals(
 					[BeforeGoal - GoalInfo], []),
-				append_extra_goals(ExtraGoals0, NewExtraGoal,
-					ExtraGoals),
-				ModeInfo0 = ModeInfo
+				append_extra_goals(!.ExtraGoals, NewExtraGoal,
+					!:ExtraGoals)
 			;
 				% If the type is a type variable,
 				% or there isn't any <mod>:<type>_init_any/1
 				% predicate, then give up.
-				ExtraGoals = ExtraGoals0,
 				set__singleton_set(WaitingVars, Var0),
 				mode_info_error(WaitingVars,
 					mode_error_implied_mode(Var0, VarInst0,
-					InitialInst),
-					ModeInfo0, ModeInfo
+						InitialInst),
+					!ModeInfo
 				)
 			)
 		;
@@ -2139,40 +2095,38 @@ handle_implied_mode(Var0, VarInst0, InitialInst0, Var,
 		->
 			% This is the case we can't handle
 			Var = Var0,
-			ExtraGoals = ExtraGoals0,
 			set__singleton_set(WaitingVars, Var0),
 			mode_info_error(WaitingVars,
 				mode_error_implied_mode(Var0, VarInst0,
-				InitialInst),
-				ModeInfo0, ModeInfo
+					InitialInst),
+				!ModeInfo
 			)
 		;
 			% This is the simple case of implied modes,
 			% where the declared mode was free -> ...
 
 			% Introduce a new variable
-			mode_info_get_varset(ModeInfo0, VarSet0),
+			mode_info_get_varset(!.ModeInfo, VarSet0),
 			varset__new_var(VarSet0, Var, VarSet),
 			map__set(VarTypes0, Var, VarType, VarTypes),
-			mode_info_set_varset(VarSet, ModeInfo0, ModeInfo1),
-			mode_info_set_var_types(VarTypes, ModeInfo1, ModeInfo),
+			mode_info_set_varset(VarSet, !ModeInfo),
+			mode_info_set_var_types(VarTypes, !ModeInfo),
 
 			% Construct the code to do the unification
 			modecheck_unify__create_var_var_unification(Var0, Var,
-				VarType, ModeInfo, ExtraGoal),
+				VarType, !.ModeInfo, ExtraGoal),
 
 			% append the goals together in the appropriate order:
 			% ExtraGoals0, then NewUnify
 			NewUnifyExtraGoal = extra_goals([], [ExtraGoal]),
-			append_extra_goals(ExtraGoals0, NewUnifyExtraGoal,
-				ExtraGoals)
+			append_extra_goals(!.ExtraGoals, NewUnifyExtraGoal,
+				!:ExtraGoals)
 		)
 	).
 
-:- pred modes__build_call(module_name, string, list(prog_var),
-		prog_context, maybe(call_unify_context), module_info,
-		hlds_goal).
-:- mode modes__build_call(in, in, in, in, in, in, out) is semidet.
+:- pred modes__build_call(module_name::in, string::in, list(prog_var)::in,
+	prog_context::in, maybe(call_unify_context)::in, module_info::in,
+	hlds_goal::out) is semidet.
 
 modes__build_call(Module, Name, ArgVars, Context, CallUnifyContext, ModuleInfo,
 		Goal) :-
@@ -2189,10 +2143,10 @@ modes__build_call(Module, Name, ArgVars, Context, CallUnifyContext, ModuleInfo,
 
 %-----------------------------------------------------------------------------%
 
-mode_context_to_unify_context(unify(UnifyContext, _), _, UnifyContext).
-mode_context_to_unify_context(call(CallId, Arg), _ModeInfo,
+mode_context_to_unify_context(_, unify(UnifyContext, _), UnifyContext).
+mode_context_to_unify_context(_, call(CallId, Arg),
 		unify_context(call(CallId, Arg), [])).
-mode_context_to_unify_context(uninitialized, _, _) :-
+mode_context_to_unify_context(_, uninitialized, _) :-
 	error("mode_context_to_unify_context: uninitialized context").
 
 %-----------------------------------------------------------------------------%
@@ -2201,68 +2155,66 @@ mode_context_to_unify_context(uninitialized, _, _) :-
 % check that the evaluation method is OK for the given mode(s).
 % we also check the mode of main/2 here.
 
-:- pred check_eval_methods(module_info, module_info, io__state, io__state).
-:- mode check_eval_methods(in, out, di, uo) is det.
+:- pred check_eval_methods(module_info::in, module_info::out,
+	io__state::di, io__state::uo) is det.
 
-check_eval_methods(ModuleInfo0, ModuleInfo) -->
-	{ module_info_predids(ModuleInfo0, PredIds) },
-	pred_check_eval_methods(PredIds, ModuleInfo0, ModuleInfo).
+check_eval_methods(!ModuleInfo, !IO) :-
+	module_info_predids(!.ModuleInfo, PredIds),
+	pred_check_eval_methods(PredIds, !ModuleInfo, !IO).
 
-:- pred pred_check_eval_methods(list(pred_id), module_info, module_info,
-		io__state, io__state).
-:- mode pred_check_eval_methods(in, in, out, di, uo) is det.
+:- pred pred_check_eval_methods(list(pred_id)::in,
+	module_info::in, module_info::out,
+	io__state::di, io__state::uo) is det.
 
-pred_check_eval_methods([], M, M) --> [].
-pred_check_eval_methods([PredId|Rest], ModuleInfo0, ModuleInfo) --> 
-	{ module_info_preds(ModuleInfo0, Preds) },
-	{ map__lookup(Preds, PredId, PredInfo) },
-	{ ProcIds = pred_info_procids(PredInfo) },
-	proc_check_eval_methods(ProcIds, PredId, ModuleInfo0, ModuleInfo1),
-	pred_check_eval_methods(Rest, ModuleInfo1, ModuleInfo).	
+pred_check_eval_methods([], !ModuleInfo, !IO).
+pred_check_eval_methods([PredId|Rest], !ModuleInfo, !IO) :-
+	module_info_preds(!.ModuleInfo, Preds),
+	map__lookup(Preds, PredId, PredInfo),
+	ProcIds = pred_info_procids(PredInfo),
+	proc_check_eval_methods(ProcIds, PredId, !ModuleInfo, !IO),
+	pred_check_eval_methods(Rest, !ModuleInfo, !IO).
 
-:- pred proc_check_eval_methods(list(proc_id), pred_id, module_info, 
-		module_info, io__state, io__state).
-:- mode proc_check_eval_methods(in, in, in, out, di, uo) is det.
+:- pred proc_check_eval_methods(list(proc_id)::in, pred_id::in,
+	module_info::in, module_info::out,
+	io__state::di, io__state::uo) is det.
 
-proc_check_eval_methods([], _, M, M) --> [].
-proc_check_eval_methods([ProcId|Rest], PredId, ModuleInfo0, ModuleInfo) --> 
-	{ module_info_pred_proc_info(ModuleInfo0, PredId, ProcId, 
-		PredInfo, ProcInfo) },
-	{ proc_info_eval_method(ProcInfo, EvalMethod) },
-	{ proc_info_argmodes(ProcInfo, Modes) },
-	( 
-		{ eval_method_requires_ground_args(EvalMethod) = yes },
-		\+ { only_fully_in_out_modes(Modes, ModuleInfo0) } 
+proc_check_eval_methods([], _, !ModuleInfo, !IO).
+proc_check_eval_methods([ProcId|Rest], PredId, !ModuleInfo, !IO) :-
+	module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId,
+		PredInfo, ProcInfo),
+	proc_info_eval_method(ProcInfo, EvalMethod),
+	proc_info_argmodes(ProcInfo, Modes),
+	(
+		eval_method_requires_ground_args(EvalMethod) = yes,
+		\+ only_fully_in_out_modes(Modes, !.ModuleInfo)
 	->
 		report_eval_method_requires_ground_args(ProcInfo,
-			ModuleInfo0, ModuleInfo1)
+			!ModuleInfo, !IO)
 	;
-		{ ModuleInfo1 = ModuleInfo0 }	
-	),	
-	( 
-		{ eval_method_destroys_uniqueness(EvalMethod) = yes },
-		\+ { only_nonunique_modes(Modes, ModuleInfo1) } 
-	->
-		report_eval_method_destroys_uniqueness(ProcInfo,
-			ModuleInfo1, ModuleInfo2)
-	;
-		{ ModuleInfo2 = ModuleInfo1 }	
+		true
 	),
 	(
-		{ pred_info_name(PredInfo) = "main" },
-		{ pred_info_arity(PredInfo) = 2 },
-		{ pred_info_is_exported(PredInfo) },
-		{ \+ check_mode_of_main(Modes, ModuleInfo2) }
+		eval_method_destroys_uniqueness(EvalMethod) = yes,
+		\+ only_nonunique_modes(Modes, !.ModuleInfo)
 	->
-		report_wrong_mode_for_main(ProcInfo,
-			ModuleInfo2, ModuleInfo3)
+		report_eval_method_destroys_uniqueness(ProcInfo,
+			!ModuleInfo, !IO)
 	;
-		{ ModuleInfo3 = ModuleInfo2 }
+		true
 	),
-	proc_check_eval_methods(Rest, PredId, ModuleInfo3, ModuleInfo).
+	(
+		pred_info_name(PredInfo) = "main",
+		pred_info_arity(PredInfo) = 2,
+		pred_info_is_exported(PredInfo),
+		\+ check_mode_of_main(Modes, !.ModuleInfo)
+	->
+		report_wrong_mode_for_main(ProcInfo, !ModuleInfo, !IO)
+	;
+		true
+	),
+	proc_check_eval_methods(Rest, PredId, !ModuleInfo, !IO).
 
-:- pred only_fully_in_out_modes(list(mode), module_info).
-:- mode only_fully_in_out_modes(in, in) is semidet.
+:- pred only_fully_in_out_modes(list(mode)::in, module_info::in) is semidet.
 
 only_fully_in_out_modes([], _).
 only_fully_in_out_modes([Mode|Rest], ModuleInfo) :-
@@ -2279,8 +2231,7 @@ only_fully_in_out_modes([Mode|Rest], ModuleInfo) :-
 	),
 	only_fully_in_out_modes(Rest, ModuleInfo).
 
-:- pred only_nonunique_modes(list(mode), module_info).
-:- mode only_nonunique_modes(in, in) is semidet.
+:- pred only_nonunique_modes(list(mode)::in, module_info::in) is semidet.
 
 only_nonunique_modes([], _).
 only_nonunique_modes([Mode|Rest], ModuleInfo) :-
@@ -2289,8 +2240,7 @@ only_nonunique_modes([Mode|Rest], ModuleInfo) :-
 	inst_is_not_partly_unique(ModuleInfo, FinalInst),
 	only_nonunique_modes(Rest, ModuleInfo).
 
-:- pred check_mode_of_main(list(mode), module_info).
-:- mode check_mode_of_main(in, in) is semidet.
+:- pred check_mode_of_main(list(mode)::in, module_info::in) is semidet.
 
 check_mode_of_main([Di, Uo], ModuleInfo) :-
 	mode_get_insts(ModuleInfo, Di, DiInitialInst, DiFinalInst),
@@ -2309,71 +2259,72 @@ check_mode_of_main([Di, Uo], ModuleInfo) :-
 	( Free = free ; Free = free(_Type) ),
 	inst_expand(ModuleInfo, UoFinalInst, ground(unique, none)).
 
-:- pred report_eval_method_requires_ground_args(proc_info,
-		module_info, module_info, io__state, io__state).
-:- mode report_eval_method_requires_ground_args(in, in, out, di, uo) is det.
+:- pred report_eval_method_requires_ground_args(proc_info::in,
+	module_info::in, module_info::out,
+	io__state::di, io__state::uo) is det.
 
-report_eval_method_requires_ground_args(ProcInfo, ModuleInfo0, ModuleInfo) -->
-	{ proc_info_eval_method(ProcInfo, EvalMethod) },
-	{ proc_info_context(ProcInfo, Context) },
-	{ EvalMethodS = eval_method_to_string(EvalMethod) },
-	globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
-	prog_out__write_context(Context),
-	io__write_string("Sorry, not implemented: `pragma "),
-	io__write_string(EvalMethodS),
-	io__write_string("'\n"),
-	prog_out__write_context(Context),
-	io__write_string(
-	    "  declaration not allowed for procedure with\n"),
-	prog_out__write_context(Context),
-	io__write_string(
-	    "  partially instantiated modes.\n"), 
-	( { VerboseErrors = yes } ->
+report_eval_method_requires_ground_args(ProcInfo, !ModuleInfo, !IO) :-
+	proc_info_eval_method(ProcInfo, EvalMethod),
+	proc_info_context(ProcInfo, Context),
+	EvalMethodS = eval_method_to_string(EvalMethod),
+	globals__io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
+	prog_out__write_context(Context, !IO),
+	io__write_string("Sorry, not implemented: `pragma ", !IO),
+	io__write_string(EvalMethodS, !IO),
+	io__write_string("'\n", !IO),
+	prog_out__write_context(Context, !IO),
+	io__write_string("  declaration not allowed for procedure with\n",
+		!IO),
+	prog_out__write_context(Context, !IO),
+	io__write_string("  partially instantiated modes.\n", !IO),
+	(
+		VerboseErrors = yes,
 		io__write_string(
 "	Tabling of predicates/functions with partially instantiated modes
-	is not currently implemented.\n")
+	is not currently implemented.\n", !IO)
 	;
-		[]
+		VerboseErrors = no
 	),
-	{ module_info_incr_errors(ModuleInfo0, ModuleInfo) }.
+	module_info_incr_errors(!ModuleInfo).
 
-:- pred report_eval_method_destroys_uniqueness(proc_info,
-		module_info, module_info, io__state, io__state).
-:- mode report_eval_method_destroys_uniqueness(in, in, out, di, uo) is det.
+:- pred report_eval_method_destroys_uniqueness(proc_info::in,
+	module_info::in, module_info::out,
+	io__state::di, io__state::uo) is det.
 
-report_eval_method_destroys_uniqueness(ProcInfo, ModuleInfo0, ModuleInfo) -->
-	{ proc_info_eval_method(ProcInfo, EvalMethod) },
-	{ proc_info_context(ProcInfo, Context) },
-	{ EvalMethodS = eval_method_to_string(EvalMethod) },
-	globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
-	prog_out__write_context(Context),
-	io__write_string("Error: `pragma "),
-	io__write_string(EvalMethodS),
-	io__write_string("'\n"),
-	prog_out__write_context(Context),
+report_eval_method_destroys_uniqueness(ProcInfo, !ModuleInfo, !IO) :-
+	proc_info_eval_method(ProcInfo, EvalMethod),
+	proc_info_context(ProcInfo, Context),
+	EvalMethodS = eval_method_to_string(EvalMethod),
+	globals__io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
+	prog_out__write_context(Context, !IO),
+	io__write_string("Error: `pragma ", !IO),
+	io__write_string(EvalMethodS, !IO),
+	io__write_string("'\n", !IO),
+	prog_out__write_context(Context, !IO),
 	io__write_string(
-	    "  declaration not allowed for procedure with\n"),
-	prog_out__write_context(Context),
-	io__write_string("  unique modes.\n"), 
-	( { VerboseErrors = yes } ->
+	    "  declaration not allowed for procedure with\n", !IO),
+	prog_out__write_context(Context, !IO),
+	io__write_string("  unique modes.\n", !IO),
+	(
+		VerboseErrors = yes,
 		io__write_string(
 "	Tabling of predicates/functions with unique modes is not allowed
-	as this would lead to a copying of the unique arguments which 
-	would result in them no longer being unique.\n")
+	as this would lead to a copying of the unique arguments which
+	would result in them no longer being unique.\n", !IO)
 	;
-		[]
+		VerboseErrors = no
 	),
-	{ module_info_incr_errors(ModuleInfo0, ModuleInfo) }.
+	module_info_incr_errors(!ModuleInfo).
 
-:- pred report_wrong_mode_for_main(proc_info,
-		module_info, module_info, io__state, io__state).
-:- mode report_wrong_mode_for_main(in, in, out, di, uo) is det.
+:- pred report_wrong_mode_for_main(proc_info::in,
+	module_info::in, module_info::out,
+	io__state::di, io__state::uo) is det.
 
-report_wrong_mode_for_main(ProcInfo, ModuleInfo0, ModuleInfo) -->
-	{ proc_info_context(ProcInfo, Context) },
-	prog_out__write_context(Context),
-	io__write_string("Error: main/2 must have mode `(di, uo)'.\n"),
-	{ module_info_incr_errors(ModuleInfo0, ModuleInfo) }.
+report_wrong_mode_for_main(ProcInfo, !ModuleInfo, !IO) :-
+	proc_info_context(ProcInfo, Context),
+	prog_out__write_context(Context, !IO),
+	io__write_string("Error: main/2 must have mode `(di, uo)'.\n", !IO),
+	module_info_incr_errors(!ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -2400,11 +2351,10 @@ get_live_vars([Var|Vars], [IsLive|IsLives], LiveVars) :-
 	% detect the error; if they are, it will probably go into
 	% an infinite loop).
 
-:- pred check_circular_modes(module_info, module_info, io__state, io__state).
-:- mode check_circular_modes(in, out, di, uo) is det.
+:- pred check_circular_modes(module_info::in, module_info::out,
+	io__state::di, io__state::uo) is det.
 
-check_circular_modes(Module0, Module) -->
-	{ Module = Module0 }.
+check_circular_modes(!Module, !IO).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

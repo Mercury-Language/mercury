@@ -216,7 +216,7 @@
 	%
 :- pred instmap__merge(set(prog_var), list(instmap), merge_context,
 		mode_info, mode_info).
-:- mode instmap__merge(in, in, in, mode_info_di, mode_info_uo) is det.
+:- mode instmap__merge(in, in, in, in, out) is det.
 
 	% instmap__unify(NonLocalVars, InstMapNonlocalvarPairss):
 	%       Unify the `InstMaps' in the list of pairs resulting
@@ -228,7 +228,7 @@
 	%
 :- pred instmap__unify(set(prog_var), list(pair(instmap, set(prog_var))),
 		mode_info, mode_info).
-:- mode instmap__unify(in, in, mode_info_di, mode_info_uo) is det.
+:- mode instmap__unify(in, in, in, out) is det.
 
 	% instmap__restrict takes an instmap and a set of vars and
 	% returns an instmap with its domain restricted to those
@@ -626,7 +626,7 @@ instmap__merge(NonLocals, InstMapList, MergeContext, ModeInfo0, ModeInfo) :-
 		instmap__merge_2(NonLocalsList, InstMapList, VarTypes,	
 			ModuleInfo0, InstMapping0, ModuleInfo, InstMapping,
 			ErrorList),
-		mode_info_set_module_info(ModeInfo0, ModuleInfo, ModeInfo1),
+		mode_info_set_module_info(ModuleInfo, ModeInfo0, ModeInfo1),
 		( ErrorList = [FirstError | _] ->
 			FirstError = Var - _,
 			set__singleton_set(WaitingVars, Var),
@@ -767,7 +767,7 @@ instmap__unify(NonLocals, InstMapList, ModeInfo0, ModeInfo) :-
 		instmap__unify_2(NonLocalsList, InstMap0, InstMapList1,
 			ModuleInfo0, InstMapping0, ModuleInfo,
 			InstMapping, ErrorList),
-		mode_info_set_module_info(ModeInfo0, ModuleInfo, ModeInfo1),
+		mode_info_set_module_info(ModuleInfo, ModeInfo0, ModeInfo1),
 			
 			% If there were any errors, then add the error
 			% to the list of possible errors in the mode_info.

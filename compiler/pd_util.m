@@ -292,16 +292,18 @@ pd_util__unique_modecheck_goal(LiveVars, Goal0, Goal, Errors) -->
 	% procedures, since that could cause a less efficient version to
 	% be chosen.
 	{ MayChangeCalledProc = may_not_change_called_proc },
-	{ mode_info_init(IO0, ModuleInfo1, PredId, ProcId, Context,
+	{ mode_info_init(ModuleInfo1, PredId, ProcId, Context,
 		LiveVars, InstMap0, check_unique_modes,
 		MayChangeCalledProc, ModeInfo0) },
 
-	{ unique_modes__check_goal(Goal0, Goal, ModeInfo0, ModeInfo1) },
+	{ unique_modes__check_goal(Goal0, Goal, ModeInfo0, ModeInfo1,
+		IO0, IO1) },
 	pd_info_lookup_bool_option(debug_pd, Debug),
 	{ Debug = yes ->
-		report_mode_errors(ModeInfo1, ModeInfo)
+		report_mode_errors(ModeInfo1, ModeInfo, IO1, IO)
 	;
-		ModeInfo = ModeInfo1
+		ModeInfo = ModeInfo1,
+		IO = IO1
 	},
 	{ mode_info_get_errors(ModeInfo, Errors) },
 
@@ -309,7 +311,6 @@ pd_util__unique_modecheck_goal(LiveVars, Goal0, Goal, Errors) -->
 	% Deconstruct the mode_info.
 	%
 	{ mode_info_get_module_info(ModeInfo, ModuleInfo) },
-	{ mode_info_get_io_state(ModeInfo, IO) },
 	{ mode_info_get_varset(ModeInfo, VarSet) },
 	{ mode_info_get_var_types(ModeInfo, VarTypes) },
 	pd_info_set_module_info(ModuleInfo),

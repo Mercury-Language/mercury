@@ -34,24 +34,24 @@
 		maybe(determinism), proc_id, list(prog_var),
 		extra_goals, mode_info, mode_info).
 :- mode modecheck_call_pred(in, in, in, in, out, out, out,
-		mode_info_di, mode_info_uo) is det.
+		in, out) is det.
 
 :- pred modecheck_higher_order_call(pred_or_func, prog_var, list(prog_var),
 		list(mode), determinism, list(prog_var),
 		extra_goals, mode_info, mode_info).
 :- mode modecheck_higher_order_call(in, in, in, out, out, out, out,
-		mode_info_di, mode_info_uo) is det.
+		in, out) is det.
 
 :- pred modecheck_aditi_builtin(aditi_builtin, simple_call_id,
 		list(prog_var), list(mode), determinism,
 		list(prog_var), extra_goals, mode_info, mode_info).
 :- mode modecheck_aditi_builtin(in, in, in, in, out, out, out,
-		mode_info_di, mode_info_uo) is det.
+		in, out) is det.
 
 :- pred modecheck_builtin_cast(list(prog_var), list(mode), determinism,
 		list(prog_var), extra_goals, mode_info, mode_info).
 :- mode modecheck_builtin_cast(in, in, out, out, out,
-		mode_info_di, mode_info_uo) is det.
+		in, out) is det.
 
 	%
 	% Given two modes of a predicate, figure out whether
@@ -177,7 +177,7 @@ modecheck_builtin_cast(Args0, Modes, Det, Args, ExtraGoals) -->
 :- pred modecheck_arg_list(int, list(mode), extra_goals,
 		list(prog_var), list(prog_var), mode_info, mode_info).
 :- mode modecheck_arg_list(in, in, out, in, out,
-		mode_info_di, mode_info_uo) is det.
+		in, out) is det.
 
 modecheck_arg_list(ArgOffset, Modes, ExtraGoals, Args0, Args,
 		ModeInfo0, ModeInfo) :-
@@ -340,7 +340,7 @@ modecheck_call_pred(PredId, ProcId0, ArgVars0, DeterminismKnown,
 
 :- pred no_matching_modes(pred_id, list(prog_var), maybe(determinism),
 		set(prog_var), proc_id, mode_info, mode_info).
-:- mode no_matching_modes(in, in, in, in, out, mode_info_di, mode_info_uo)
+:- mode no_matching_modes(in, in, in, in, out, in, out)
 	is det.
 
 no_matching_modes(PredId, ArgVars, DeterminismKnown, WaitingVars, TheProcId,
@@ -379,7 +379,7 @@ no_matching_modes(PredId, ArgVars, DeterminismKnown, WaitingVars, TheProcId,
 		list(prog_var), list(proc_mode), list(proc_mode), set(prog_var),
 		set(prog_var), mode_info, mode_info).
 :- mode modecheck_find_matching_modes(in, in, in, in,
-			in, out, in, out, mode_info_di, mode_info_uo) is det.
+			in, out, in, out, in, out) is det.
 
 modecheck_find_matching_modes([], _PredId, _Procs, _ArgVars,
 			MatchingProcIds, MatchingProcIds,
@@ -456,7 +456,7 @@ modecheck_find_matching_modes([ProcId | ProcIds], PredId, Procs, ArgVars0,
 :- pred modecheck_end_of_call(proc_info, list(mode), list(prog_var), int,
 	inst_var_sub, list(prog_var), extra_goals, mode_info, mode_info).
 :- mode modecheck_end_of_call(in, in, in, in, in, out, out,
-				mode_info_di, mode_info_uo) is det.
+				in, out) is det.
 
 modecheck_end_of_call(ProcInfo, ProcArgModes, ArgVars0, ArgOffset, InstVarSub,
 			ArgVars, ExtraGoals, ModeInfo0, ModeInfo) :-
@@ -477,7 +477,7 @@ modecheck_end_of_call(ProcInfo, ProcArgModes, ArgVars0, ArgOffset, InstVarSub,
 
 :- pred insert_new_mode(pred_id, list(prog_var), maybe(determinism), proc_id,
 			mode_info, mode_info).
-:- mode insert_new_mode(in, in, in, out, mode_info_di, mode_info_uo) is det.
+:- mode insert_new_mode(in, in, in, out, in, out) is det.
 
 	% Insert a new inferred mode for a predicate.
 	% The initial insts are determined by using a normalised
@@ -506,7 +506,7 @@ insert_new_mode(PredId, ArgVars, MaybeDet, ProcId, ModeInfo0, ModeInfo) :-
 	unify_proc__request_proc(PredId, Modes, InstVarSet, yes(ArgLives),
 		MaybeDet, Context, ProcId, ModuleInfo0, ModuleInfo),
 
-	mode_info_set_module_info(ModeInfo0, ModuleInfo, ModeInfo1),
+	mode_info_set_module_info(ModuleInfo, ModeInfo0, ModeInfo1),
 
 	% Since we've created a new inferred mode for this predicate,
 	% things have changed, so we will need to do at least one more
@@ -515,7 +515,7 @@ insert_new_mode(PredId, ArgVars, MaybeDet, ProcId, ModeInfo0, ModeInfo) :-
 
 :- pred get_var_insts_and_lives(list(prog_var), mode_info,
 				list(inst), list(is_live)).
-:- mode get_var_insts_and_lives(in, mode_info_ui, out, out) is det.
+:- mode get_var_insts_and_lives(in, in, out, out) is det.
 
 get_var_insts_and_lives([], _, [], []).
 get_var_insts_and_lives([Var | Vars], ModeInfo,
@@ -703,7 +703,7 @@ to the following specification:
 :- pred choose_best_match(list(proc_mode), pred_id,
 		proc_table, list(prog_var), proc_id, inst_var_sub, list(mode),
 		mode_info).
-:- mode choose_best_match(in, in, in, in, out, out, out, mode_info_ui) is det.
+:- mode choose_best_match(in, in, in, in, out, out, out, in) is det.
 
 choose_best_match([], _, _, _, _, _, _, _) :-
 	error("choose_best_match: no best match").
@@ -739,7 +739,7 @@ choose_best_match([proc_mode(ProcId, InstVarSub, ArgModes) | ProcIds], PredId,
 	%
 :- pred compare_proc(proc_id, proc_id, list(prog_var), match, proc_table,
 		mode_info).
-:- mode compare_proc(in, in, in, out, in, mode_info_ui) is det.
+:- mode compare_proc(in, in, in, out, in, in) is det.
 
 compare_proc(ProcId, OtherProcId, ArgVars, Compare, Procs, ModeInfo) :-
 	map__lookup(Procs, ProcId, ProcInfo),
