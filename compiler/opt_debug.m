@@ -13,9 +13,6 @@
 :- import_module vn_type, vn_table, vn_util, opt_util.
 :- import_module llds, atsort, list, std_util, int.
 
-:- pred opt_debug__write(string).
-:- mode opt_debug__write(in) is det.
-
 :- pred opt_debug__dump_node_relmap(relmap(vn_node), string).
 :- mode opt_debug__dump_node_relmap(in, out) is det.
 
@@ -136,15 +133,6 @@
 :- pred opt_debug__dump_maybe_rvals(list(maybe(rval)), int, string).
 :- mode opt_debug__dump_maybe_rvals(in, in, out) is det.
 
-:- pred opt_debug__print_tailmap(tailmap).
-:- mode opt_debug__print_tailmap(in) is det.
-
-:- pred opt_debug__print_instrmap(tailmap).
-:- mode opt_debug__print_instrmap(in) is det.
-
-:- pred opt_debug__print_proclist(list(pair(label, list(instruction)))).
-:- mode opt_debug__print_proclist(in) is det.
-
 :- pred opt_debug__dump_code_addr(code_addr, string).
 :- mode opt_debug__dump_code_addr(in, out) is det.
 
@@ -167,11 +155,6 @@
 
 :- implementation.
 :- import_module bintree_set, map, string.
-
-:- external(opt_debug__write/1).
-:- external(opt_debug__print_tailmap/1).
-:- external(opt_debug__print_instrmap/1).
-:- external(opt_debug__print_proclist/1).
 
 opt_debug__dump_node_relmap(Relmap, Str) :-
 	map__to_assoc_list(Relmap, Nodemap),

@@ -32,10 +32,6 @@ jumpopt__main(Instrs0, Instrs, Mod) :-
 	map__init(Succmap0),
 	jumpopt__build_maps(Instrs0, Instrmap0, Instrmap, Lvalmap0, Lvalmap,
 		Procmap0, Procmap, Sdprocmap0, Sdprocmap, Succmap0, Succmap),
-	% opt_debug__print_instrmap(Instrmap),
-	% opt_debug__print_tailmap(Procmap),
-	% opt_debug__print_tailmap(Sdprocmap),
-	% opt_debug__print_tailmap(Succmap),
 	jumpopt__instr_list(Instrs0, comment(""),
 		Instrmap, Lvalmap, Procmap, Sdprocmap, Succmap, Instrs, Mod).
 

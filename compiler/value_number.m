@@ -19,15 +19,12 @@
 	io__state, io__state).
 :- mode value_number__main(in, out, di, uo) is det.
 
-	% If an extended basic block is ended by a label, the main value
-	% numbering pass puts a goto to this label at the end of the block
-	% instruction it creates for the basic block. This is necessary to
-	% maintain the invariant that block instructions cannot fall through,
-	% which considerably simplifies the implementation of frameopt.
-	% However, it also slows down the code, so after frameopt we should
-	% get rid of this jump. Local peepholing cannot do it because the
-	% block boundary prevents it from seeming the goto and the label
-	% at the same time.
+	% The main value numbering pass introduces references to temporary
+	% variables whose values need be preserved only within an extended
+	% basic block. The post_main pass looks for references to temporaries
+	% and introduces block instructions whenever it sees them. These
+	% block instructions go from the first reference to a temporary
+	% to the end of its extended basic block.
 
 :- pred value_number__post_main(list(instruction), list(instruction)).
 :- mode value_number__post_main(in, out) is det.
@@ -119,8 +116,9 @@ vn__optimize_block(Instrs0, Livemap, LabelNo0, LabelNo, Instrs,
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-	% Optimize a tail fragment of a block. We do this if there is a
-	% conflict that prevents us from optimizing the whole block together.
+	% Optimize a tail fragment of a block. This may be the entire block,
+	% or it may be a part of the block; we optimize parts of blocks if
+	% a conflict prevents us from optimizing the whole block together.
 
 :- pred vn__optimize_fragment(list(instruction), livemap, int, vn_ctrl_tuple,
 	list(instruction), io__state, io__state).

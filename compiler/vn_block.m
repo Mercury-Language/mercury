@@ -618,9 +618,22 @@ vn__find_cheaper_copies_2([Vnlval | Vnlvals], OldCost, Rvals) :-
 		vn__lval_cost(Lval, LvalCost),
 		LvalCost < OldCost
 	->
-		Rvals = [lval(Lval) | Rvals0]
+		vn__insert_into_copy_list(Lval, LvalCost, Rvals0, Rvals) 
 	;
 		Rvals = Rvals0
+	).
+
+:- pred vn__insert_into_copy_list(lval, int, list(rval), list(rval)).
+:- mode vn__insert_into_copy_list(in, in, di, uo) is det.
+
+vn__insert_into_copy_list(Lval, _, [], [lval(Lval)]).
+vn__insert_into_copy_list(Lval, LvalCost, [Rval0 | Rvals0], Rvals) :-
+	vn__rval_cost(Rval0, RvalCost),
+	( LvalCost < RvalCost ->
+		Rvals = [lval(Lval) | Rvals0]
+	;
+		vn__insert_into_copy_list(Lval, LvalCost, Rvals0, Rvals1),
+		Rvals = [Rval0 | Rvals1]
 	).
 
 %-----------------------------------------------------------------------------%

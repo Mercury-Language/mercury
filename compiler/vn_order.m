@@ -392,10 +392,6 @@ vn__use_sink_before_redef(Sink, VnTables, Liveset,
 vn__find_access_users([], _VnTables, _Succmap, []).
 vn__find_access_users([Src | Srcs], VnTables, Succmap, Users) :-
 	vn__find_access_users(Srcs, VnTables, Succmap, Users1),
-	% opt_debug__write("access users of "),
-	% opt_debug__dump_use(Src, S_str),
-	% opt_debug__write(S_str),
-	% opt_debug__write("\n"),
 	(
 		Src = src_access(Vnlval),
 		Vnlval = vn_field(_, _, _)
@@ -407,8 +403,6 @@ vn__find_access_users([Src | Srcs], VnTables, Succmap, Users) :-
 		;
 			Users2 = []
 		),
-		% opt_debug__dump_nodelist(Users2, U2_str),
-		% opt_debug__write(U2_str),
 		% opt_debug__write(" and "),
 		(
 			vn__lookup_current_value(Vnlval, OldVn, VnTables),
@@ -420,9 +414,6 @@ vn__find_access_users([Src | Srcs], VnTables, Succmap, Users) :-
 		;
 			Users3 = []
 		),
-		% opt_debug__dump_nodelist(Users3, U3_str),
-		% opt_debug__write(U3_str),
-		% opt_debug__write("\n"),
 		list__condense([Users1, Users2, Users3], Users)
 	;
 		Users = Users1
