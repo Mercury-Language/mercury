@@ -10,7 +10,9 @@ Changes to the Mercury language:
   declarations and in the head of a clause for a user-defined field access
   function.
 * We now support impure higher-order code.
-* We now allow user-defined comparison routines.
+* We now allow user-defined comparison predicates.
+* User-defined equality and comparison predicates for a type are now
+  required to be defined in the same module as the type.
 
 Changes to the Mercury compiler:
 * Better support for incremental program development:
@@ -42,11 +44,14 @@ DETAILED LISTING
 
 Changes to the Mercury language:
 
-* We now allow user-defined comparison routines, using the syntax
+* We now allow user-defined comparison predicates, using the syntax
   :- type t ---> t where equality is unify_t, comparison is compare_t.
 
   See the "User-defined equality and comparison" chapter of the
   Mercury Language Reference Manual for details.
+
+* User-defined equality and comparison predicates for a type are now
+  required to be defined in the same module as the type.
 
 * Infix `.' is now accepted as a module name separator.  Hence it is
   now possible to write io.write_string and list.member to mean the

@@ -1024,6 +1024,7 @@ hlds_out__marker_name(naive, "naive").
 hlds_out__marker_name(psn, "psn").
 hlds_out__marker_name(supp_magic, "supp_magic").
 hlds_out__marker_name(context, "context").
+hlds_out__marker_name(calls_are_fully_qualified, "calls_are_fully_qualified").
 hlds_out__marker_name(not_accessible_by_unqualifed_name,
 		"not_accessible_by_unqualifed_name").
 hlds_out__marker_name(not_accessible_by_partially_qualified_names,

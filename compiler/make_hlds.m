@@ -1310,7 +1310,8 @@ add_pragma_type_spec_2(Pragma0, Context, PredId,
 		Clauses = clauses_info(ArgVarSet, VarTypes0, TVarNameMap,
 			VarTypes0, Args, [Clause], TI_VarMap, TCI_VarMap,
 			HasForeignClauses),
-		pred_info_get_markers(PredInfo0, Markers),
+		pred_info_get_markers(PredInfo0, Markers0),
+		add_marker(Markers0, calls_are_fully_qualified, Markers),
 		map__init(Proofs),
 
 		( pred_info_is_imported(PredInfo0) ->
@@ -3837,7 +3838,10 @@ add_special_pred_for_real(SpecialPredId,
 	),
 	unify_proc__generate_clause_info(SpecialPredId, Type, TypeBody,
 		Context, Module1, ClausesInfo),
-	pred_info_set_clauses_info(PredInfo1, ClausesInfo, PredInfo),
+	pred_info_set_clauses_info(PredInfo1, ClausesInfo, PredInfo2),
+	pred_info_get_markers(PredInfo2, Markers2),
+	add_marker(Markers2, calls_are_fully_qualified, Markers),
+	pred_info_set_markers(PredInfo2, Markers, PredInfo),
 	map__det_update(Preds0, PredId, PredInfo, Preds),
 	module_info_set_preds(Module1, Preds, Module).
 
@@ -4274,7 +4278,11 @@ module_add_clause(ModuleInfo0, ClauseVarSet, PredOrFunc, PredName, Args0, Body,
 	% opt_imported preds are initially tagged as imported and are
 	% tagged as opt_imported only if/when we see a clause for them
 	{ Status = opt_imported ->
-		pred_info_set_import_status(PredInfo0, opt_imported, PredInfo1)
+		pred_info_set_import_status(PredInfo0,
+			opt_imported, PredInfo0a),
+		pred_info_get_markers(PredInfo0a, Markers0),
+		add_marker(Markers0, calls_are_fully_qualified, Markers1),
+		pred_info_set_markers(PredInfo0a, Markers1, PredInfo1)
 	;
 		PredInfo1 = PredInfo0
 	},
@@ -4375,8 +4383,8 @@ module_add_clause(ModuleInfo0, ClauseVarSet, PredOrFunc, PredName, Args0, Body,
 		%
 		pred_info_all_procids(PredInfo6, ProcIds),
 		( ProcIds = [] ->
-			pred_info_get_markers(PredInfo6, Markers0),
-			add_marker(Markers0, infer_modes, Markers),
+			pred_info_get_markers(PredInfo6, Markers6),
+			add_marker(Markers6, infer_modes, Markers),
 			pred_info_set_markers(PredInfo6, Markers, PredInfo)
 		;
 			PredInfo = PredInfo6

@@ -37,7 +37,7 @@ parse_pragma(ModuleName, VarSet, PragmaTerms, Result) :-
 	(
 		% new syntax: `:- pragma foo(...).'
 		PragmaTerms = [SinglePragmaTerm0],
-		get_maybe_equality_compare_preds(SinglePragmaTerm0,
+		get_maybe_equality_compare_preds(ModuleName, SinglePragmaTerm0,
 				SinglePragmaTerm, UnifyCompareResult),
 		SinglePragmaTerm = term__functor(term__atom(PragmaType), 
 					PragmaArgs, _),

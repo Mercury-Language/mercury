@@ -922,7 +922,8 @@ intermod__qualify_instance_method(ModuleInfo,
 	;
 		InstanceMethodDefn0 = name(InstanceMethodName0),
 		PredOrFunc = predicate,
-		typecheck__resolve_pred_overloading(ModuleInfo, local,
+		init_markers(Markers),
+		typecheck__resolve_pred_overloading(ModuleInfo, Markers,
 			MethodCallArgTypes, MethodCallTVarSet,
 			InstanceMethodName0, InstanceMethodName, PredId),
 		PredIds = [PredId | PredIds0],
@@ -1123,7 +1124,9 @@ intermod__resolve_user_special_pred_overloading(ModuleInfo, SpecialId,
 	map__lookup(SpecialPreds, SpecialId - TypeCtor, UnifyPredId),
 	module_info_pred_info(ModuleInfo, UnifyPredId, UnifyPredInfo),
 	pred_info_arg_types(UnifyPredInfo, TVarSet, _, ArgTypes),
-	typecheck__resolve_pred_overloading(ModuleInfo, local, ArgTypes,
+	init_markers(Markers0),
+	add_marker(Markers0, calls_are_fully_qualified, Markers),
+	typecheck__resolve_pred_overloading(ModuleInfo, Markers, ArgTypes,
 		TVarSet, Pred0, Pred, UserEqPredId),
 	intermod__add_proc(UserEqPredId, _, Info0, Info).
 
@@ -1837,6 +1840,7 @@ intermod__should_output_marker(check_termination, no).
 intermod__should_output_marker(generate_inline, _) :-
 	% This marker should only occur after the magic sets transformation.
 	error("intermod__should_output_marker: generate_inline").
+intermod__should_output_marker(calls_are_fully_qualified, no).
 intermod__should_output_marker(not_accessible_by_unqualifed_name, no).
 intermod__should_output_marker(not_accessible_by_partially_qualified_names, no).
 

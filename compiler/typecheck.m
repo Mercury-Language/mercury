@@ -127,7 +127,7 @@
 	% Abort if there is no matching pred.
 	% Abort if there are multiple matching preds.
 
-:- pred typecheck__resolve_pred_overloading(module_info, import_status,
+:- pred typecheck__resolve_pred_overloading(module_info, pred_markers,
 		list(type), tvarset, sym_name, sym_name, pred_id).
 :- mode typecheck__resolve_pred_overloading(in,
 		in, in, in, in, out, out) is det.
@@ -471,10 +471,11 @@ typecheck_pred_type(Iteration, PredId, !PredInfo,
 		;
 			IsFieldAccessFunction = no
 		),
+		pred_info_get_markers(!.PredInfo, Markers),
 		typecheck_info_init(!.IOState, ModuleInfo, PredId,
 				IsFieldAccessFunction, TypeVarSet0, VarSet,
 				ExplicitVarTypes0, HeadTypeParams1,
-				Constraints, Status, TypeCheckInfo1),
+				Constraints, Status, Markers, TypeCheckInfo1),
 		typecheck_info_get_type_assign_set(TypeCheckInfo1,
 				OrigTypeAssignSet),
 		typecheck_clause_list(Clauses1, HeadVars, ArgTypes0, Clauses,
@@ -927,7 +928,10 @@ maybe_add_field_access_function_clause(ModuleInfo, PredInfo0, PredInfo) :-
 		Clause = clause(ProcIds, Goal, mercury, Context),
 		clauses_info_set_clauses(ClausesInfo0, [Clause], ClausesInfo),
 		pred_info_update_goal_type(PredInfo0, clauses, PredInfo1),
-		pred_info_set_clauses_info(PredInfo1, ClausesInfo, PredInfo)
+		pred_info_set_clauses_info(PredInfo1, ClausesInfo, PredInfo2),
+		pred_info_get_markers(PredInfo2, Markers0),
+		add_marker(Markers0, calls_are_fully_qualified, Markers),
+		pred_info_set_markers(PredInfo2, Markers, PredInfo)
 	;
 		PredInfo = PredInfo0
 	).
@@ -1703,7 +1707,7 @@ typecheck_call_pred_adjust_arg_types(CallId, Args, AdjustArgTypes,
 		CallId = PorF - SymName/Arity,
 		predicate_table_search_pf_sym_arity(PredicateTable,
 			calls_are_fully_qualified(
-				TypeCheckInfo1 ^ import_status),
+				TypeCheckInfo1 ^ pred_markers),
 			PorF, SymName, Arity, PredIdList)
 	->
 		% handle the case of a non-overloaded predicate specially
@@ -1806,7 +1810,7 @@ report_pred_call_error(PredCallId, TypeCheckInfo1, TypeCheckInfo) :-
 	(
 		predicate_table_search_pf_sym(PredicateTable,
 			calls_are_fully_qualified(
-				TypeCheckInfo1 ^ import_status),
+				TypeCheckInfo1 ^ pred_markers),
 			PredOrFunc0, SymName, OtherIds),
 		predicate_table_get_preds(PredicateTable, Preds),
 		OtherIds \= []
@@ -1820,7 +1824,7 @@ report_pred_call_error(PredCallId, TypeCheckInfo1, TypeCheckInfo) :-
 		),
 		predicate_table_search_pf_sym(PredicateTable,
 			calls_are_fully_qualified(
-				TypeCheckInfo1 ^ import_status),
+				TypeCheckInfo1 ^ pred_markers),
 			PredOrFunc, SymName, OtherIds),
 		OtherIds \= []
 	->
@@ -1895,12 +1899,13 @@ get_overloaded_pred_arg_types([PredId | PredIds], Preds, AdjustArgTypes,
 	% module qualified, so they should not be considered
 	% when resolving overloading.
 
-typecheck__resolve_pred_overloading(ModuleInfo, Status, ArgTypes, TVarSet,
-		 PredName0, PredName, PredId) :-
+typecheck__resolve_pred_overloading(ModuleInfo, CallerMarkers,
+		ArgTypes, TVarSet, PredName0, PredName, PredId) :-
 	module_info_get_predicate_table(ModuleInfo, PredTable),
 	(
 		predicate_table_search_pred_sym(PredTable,
-			calls_are_fully_qualified(Status), PredName0, PredIds0)
+			calls_are_fully_qualified(CallerMarkers),
+			PredName0, PredIds0)
 	->
 		PredIds = PredIds0
 	;
@@ -3058,7 +3063,7 @@ builtin_pred_type(TypeCheckInfo, Functor, Arity, PredConsInfoList) :-
 	(
 		predicate_table_search_sym(PredicateTable,
 			calls_are_fully_qualified(
-				TypeCheckInfo ^ import_status),
+				TypeCheckInfo ^ pred_markers),
 			SymName, PredIdList)
 	->
 		predicate_table_get_preds(PredicateTable, Preds),
@@ -3536,6 +3541,9 @@ project_rename_flip_class_constraints(CallTVars, TVarRenaming,
 					% Import status of the pred
 					% being checked
 
+			pred_markers ::	pred_markers,
+					% Markers of the pred being checked
+
 			is_field_access_function :: bool,
 					% Is the pred we're checking
 					% a field access function?
@@ -3577,7 +3585,7 @@ project_rename_flip_class_constraints(CallTVars, TVarRenaming,
 /*
 :- inst uniq_typecheck_info	=	bound_unique(
 					typecheck_info(
-						unique, ground,
+						unique, ground, ground,
 						ground, ground, ground, ground,
 						ground, ground, ground, ground,
 						ground, ground, ground
@@ -3596,7 +3604,7 @@ project_rename_flip_class_constraints(CallTVars, TVarRenaming,
 /*
 :- inst typecheck_info_no_io	=	bound_unique(
 					typecheck_info(
-						dead, ground,
+						dead, ground, ground,
 						ground, ground, ground, ground,
 						ground, ground, ground, ground,
 						ground, ground, ground
@@ -3615,14 +3623,14 @@ project_rename_flip_class_constraints(CallTVars, TVarRenaming,
 
 :- pred typecheck_info_init(io__state, module_info, pred_id, bool, tvarset,
 	prog_varset, map(prog_var, type), headtypes, class_constraints,
-	import_status, typecheck_info).
-:- mode typecheck_info_init(di, in, in, in, in, in, in, in, in, in,
+	import_status, pred_markers, typecheck_info).
+:- mode typecheck_info_init(di, in, in, in, in, in, in, in, in, in, in,
 	typecheck_info_uo)
 	is det.
 
 typecheck_info_init(IOState0, ModuleInfo, PredId, IsFieldAccessFunction,
 		TypeVarSet, VarSet, VarTypes, HeadTypeParams,
-		Constraints, Status, TypeCheckInfo) :-
+		Constraints, Status, Markers, TypeCheckInfo) :-
 	CallPredId = call(predicate - unqualified("") / 0),
 	term__context_init(Context),
 	map__init(TypeBindings),
@@ -3631,7 +3639,7 @@ typecheck_info_init(IOState0, ModuleInfo, PredId, IsFieldAccessFunction,
 	WarnedAboutOverloading = no,
 	unsafe_promise_unique(IOState0, IOState),	% XXX
 	TypeCheckInfo = typecheck_info(
-		IOState, ModuleInfo, CallPredId, 0, PredId, Status,
+		IOState, ModuleInfo, CallPredId, 0, PredId, Status, Markers,
 		IsFieldAccessFunction, Context,
 		unify_context(explicit, []), VarSet, 
 		[type_assign(VarTypes, TypeVarSet, HeadTypeParams,

@@ -3466,6 +3466,12 @@ could be any of @samp{det}, @samp{failure} or @samp{erroneous}).
 The equality predicate must be ``pure'' (@pxref{Impurity}).
 
 @item
+The equality predicate must be defined in the same module as the type.
+
+@item
+If the type is exported the equality predicate must also be exported.
+
+@item
 @var{equalitypred} should be an equivalence relation; that is, it must be
 symmetric, reflexive, and transitive.  However, the compiler is not required
 to check this@footnote{If @var{equalitypred} is not an equivalence relation,
@@ -3534,6 +3540,12 @@ determinism to be more permissive.
 
 @item
 The comparison predicate must also be ``pure'' (@pxref{Impurity}).
+
+@item
+The comparison predicate must be defined in the same module as the type.
+
+@item
+If the type is exported the comparison predicate must also be exported.
 
 @item
 The relation

@@ -185,7 +185,8 @@
 :- pred parse_type_defn_head(module_name, term, term, maybe_functor).
 :- mode parse_type_defn_head(in, in, in, out) is det.
 
-	% get_maybe_equality_compare_preds(Body0, Body, MaybeEqualPred):
+	% get_maybe_equality_compare_preds(ModuleName,
+	%		Body0, Body, MaybeEqualPred):
 	%	Checks if `Body0' is a term of the form
 	%		`<body> where equality is <symname>'
 	%		`<body> where comparison is <symname>'
@@ -195,9 +196,9 @@
 	%	MaybeEqualPred.  If not, returns Body = Body0 
 	%	and `no' in MaybeEqualPred.
 
-:- pred get_maybe_equality_compare_preds(term, term,
+:- pred get_maybe_equality_compare_preds(module_name, term, term,
 		maybe1(maybe(unify_compare))).
-:- mode get_maybe_equality_compare_preds(in, out, out) is det.
+:- mode get_maybe_equality_compare_preds(in, in, out, out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -1522,7 +1523,7 @@ add_error(Error, Term, Msgs, [Msg - Term | Msgs]) :-
 parse_type_decl_type(ModuleName, "--->", [H, B], Condition, R) :-
 	/* get_condition(...), */
 	Condition = true,
-	get_maybe_equality_compare_preds(B, Body, EqCompare),
+	get_maybe_equality_compare_preds(ModuleName, B, Body, EqCompare),
 	process_du_type(ModuleName, H, Body, EqCompare, R).
 
 parse_type_decl_type(ModuleName, "==", [H, B], Condition, R) :-
@@ -1645,7 +1646,7 @@ parse_mode_decl_pred(ModuleName, VarSet, Pred, Attributes, Result) :-
 
 %-----------------------------------------------------------------------------%
 
-get_maybe_equality_compare_preds(B, Body, MaybeEqComp) :-
+get_maybe_equality_compare_preds(ModuleName, B, Body, MaybeEqComp) :-
 	( 
 		B = term__functor(term__atom("where"), Args, _Context1),
 		Args = [Body1, EqCompTerm]
@@ -1655,14 +1656,16 @@ get_maybe_equality_compare_preds(B, Body, MaybeEqComp) :-
 			parse_equality_or_comparison_pred_term("equality",
 				EqCompTerm, PredName)
 		->
-			parse_symbol_name(PredName, MaybeEqComp0),
+			parse_implicitly_qualified_symbol_name(ModuleName,
+				PredName, MaybeEqComp0),
 			process_maybe1(make_equality, MaybeEqComp0,
 				MaybeEqComp)
 		;
 			parse_equality_or_comparison_pred_term("comparison",
 				EqCompTerm, PredName)
 		->
-			parse_symbol_name(PredName, MaybeEqComp0),
+			parse_implicitly_qualified_symbol_name(ModuleName,
+				PredName, MaybeEqComp0),
 			process_maybe1(make_comparison, MaybeEqComp0,
 				MaybeEqComp)
 		;
@@ -1673,9 +1676,10 @@ get_maybe_equality_compare_preds(B, Body, MaybeEqComp) :-
 			parse_equality_or_comparison_pred_term("comparison",
 				CompTerm, CompPredNameTerm)
 		->
-			parse_symbol_name(EqPredNameTerm, EqPredNameResult),
-			parse_symbol_name(CompPredNameTerm,
-				CompPredNameResult),
+			parse_implicitly_qualified_symbol_name(ModuleName,
+				EqPredNameTerm, EqPredNameResult),
+			parse_implicitly_qualified_symbol_name(ModuleName,
+				CompPredNameTerm, CompPredNameResult),
 			(
 				EqPredNameResult = ok(EqPredName),
 				CompPredNameResult = ok(CompPredName),

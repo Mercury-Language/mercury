@@ -373,7 +373,7 @@
 	% always fully qualified. For calls occurring in `.opt' files
 	% this will return `is_fully_qualified', otherwise
 	% `may_be_partially_qualified'.
-:- func calls_are_fully_qualified(import_status) = is_fully_qualified.
+:- func calls_are_fully_qualified(pred_markers) = is_fully_qualified.
 
 	% Predicates can be marked with various boolean flags, called
 	% "markers".
@@ -507,6 +507,12 @@
 				% the termination of this predicate.
 				% If the compiler cannot guarantee termination
 				% then it must give an error message.
+
+	;	calls_are_fully_qualified
+				% All calls in this predicate are
+				% fully qualified. This occurs for
+				% predicates read from `.opt' files
+				% and compiler-generated predicates.
 
 	;	not_accessible_by_unqualifed_name
 				% This predicate is not accessible by its
@@ -969,8 +975,8 @@ status_defined_in_this_module(pseudo_exported,		yes).
 status_defined_in_this_module(exported_to_submodules,	yes).
 status_defined_in_this_module(local,			yes).
 
-calls_are_fully_qualified(Status) =
-	( Status = opt_imported ->
+calls_are_fully_qualified(Markers) =
+	( check_marker(Markers, calls_are_fully_qualified) ->
 	  is_fully_qualified
 	; may_be_partially_qualified
 	).
