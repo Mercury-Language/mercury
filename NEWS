@@ -82,6 +82,9 @@ DRAFT NEWS for Mercury release 0.7
   We now allow a function of arity N to coexist with a predicate of
   arity N+1.
 
+  The Mercury `char' type is now 8-bit clean (previously, "for
+  compatibility with NU-Prolog" we only supported 7-bit characters).
+
 * We've improved the compiler's diagnostics a bit.
 
   Some of the compiler's error messages are a bit more informative, and
@@ -116,14 +119,19 @@ DRAFT NEWS for Mercury release 0.7
 
   - set__subset XXX
 
-  - Made some extensive additions to bag.m to include the standard set
+  - We made some extensive additions to bag.m to include the standard set
     operations (union, intersection, subtraction), and some other predicates
-    for manipulating bags.  Also changed bag__contains/2 (swapped the 
-    arguments), and bag__remove (now semidet) to match the standard in set.m 
+    for manipulating bags.  We also changed bag__contains/2 (swapped the 
+    arguments), and bag__remove (now semidet) to be consistent with set.m 
     and map.m. 
 
-  - Added io__tmpnam, and io__remove_file to io.m.  Their functions are 
-    the same as the C functions tmpnam() and remove().
+  - There are two new predicates `io__tmpnam' and `io__remove_file',
+    with semantics similar to the ANSI C functions tmpnam() and remove().
+
+  - There are new predicates `int__max_int', `int__min_int', 
+    `int__bits_per_int', `char__min_char_value', `char__max_char_value',
+    with semantics similar to INT_MAX, INT_MIN, (CHAR_BIT * sizeof(int)),
+    CHAR_MIN, and CHAR_MAX in ANSI C (respectively).
 
   - Added list__merge_and_remove_dups/4 and list__sort_and_remove_dups/4
     to complete the set of list__merge and list__sort operations.
