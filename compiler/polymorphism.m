@@ -539,7 +539,7 @@ polymorphism__make_vars([Type|Types], ModuleInfo, TypeInfoMap,
 		%
 		% In this case T is unbound, so there cannot be any objects
 		% of type T, and so q/1 cannot possibly use the unification
-		% predicate for type T.  We just pass a dummy value (zero).
+		% predicate for type T.  We just pass a dummy value (0).
 		%
 		%	:- pred p.
 		%	:- pred q(T, pred(T, T)).
@@ -757,7 +757,7 @@ polymorphism__init_type_info_var(Type, ArgVars, VarSet0, VarTypes0,
 
 	term__var_list_to_term_list(ArgVars, ArgTerms),
 	TypeInfoFunctor = term__atom("type_info"),
-	ConsId = cons("type_info", 0),
+	ConsId = cons("type_info", 1),
 	term__context_init(Context),
 	TypeInfoTerm = term__functor(TypeInfoFunctor, ArgTerms,
 		Context),

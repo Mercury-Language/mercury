@@ -162,7 +162,7 @@
 
 :- pred compare_error is erroneous.
 
-:- type type_info(T) ---> type_info.
+:- type type_info(T) ---> type_info(int /*, ... */).
 
 % These should be defined in int.nl, but we define them here since
 % they're need for the implementation of compare/3.
