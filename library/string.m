@@ -1782,11 +1782,11 @@ string__special_precision_and_width(-1).
 		S2 = (String) temp;
 		strcpy(S2, LOCALS->s + LOCALS->count);
 
-	if (LOCALS->count < LOCALS->len) {
-		SUCCEED;
-	} else {
-		SUCCEED_LAST;
-	}
+		if (LOCALS->count < LOCALS->len) {
+			SUCCEED;
+		} else {
+			SUCCEED_LAST;
+		}
 	")
 ).
 
