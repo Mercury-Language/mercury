@@ -1,36 +1,20 @@
 
+We have not been able to test the Irix 5 port since March 2000,
+due to lack of access to an Irix 5 machine.
+
 On Irix 5, it is not possible to use both gcc's non-local gotos and
-position-independent code (which is required for shared libraries)
-The Mercury auto-configuration script will usually resolve this problem
-by disabling the use of gcc's non-local gotos.  That works fine, but
-the resulting `reg.gc' grade compiler is considerably less efficient
-that the `asm_fast.gc' grade compiler that uses non-local gotos. 
-It's about 30% larger (3.3M vs 2.5M stripped), and probably about
-20-100% slower (at a very rough guess).
+position-independent code (which is required for shared libraries).
+The Mercury auto-configuration script should resolve this problem
+by disabling the use of gcc's non-local gotos (e.g. the `asm_fast.gc'
+grade).
 
-To use non-local gotos, your Irix machine needs to have the nonshared
-versions of the C standard library installed in /usr/lib/nonshared,
-and you need also need a version of `libgcc.a' that has been compiled
-with `-mno-abicalls' in /usr/lib/nonshared.  To create that, you need
-to obtain a copy of the gcc source distribution, replace the `-g1' with
-`-mno-abicalls' in the definition of LIBGCC2_CFLAGS in the Makefile in
-the gcc source directory, type `make libgcc.a', and then copy libgcc.a
-to /usr/lib/nonshared.  (To use a directory other than
-/usr/lib/nonshared for libgcc.a, you must set the environment
-variable MERCURY_NONSHARED_LIB_DIR to the appropriate directory before
-running `configure'.)
+Use of non-local gotos on Irix 5 was supported in previous releases of
+Mercury, but now we recommend using the hlc.gc grade instead.
 
-Once you have done that, you can reinstall Mercury;
-`configure' should detect that using gcc labels now works. 
-(If it doesn't, examine config.log to work out what went wrong.) 
-`configure' will also disable shared libraries, so that
-the installation process doesn't attempt to build shared
-versions of the `asm_fast.gc' grade libraries (and others).
-However, the linker will still pick up the shared libraries
-for `reg.gc' and the other grades installed initially
-(before creating a nonshared libgcc.a).
-The default grade will be set to `reg.gc', since shared libraries
-give you small executables and short link times.  But for
-large programs, you should set GRADE=asm_fast.gc in your Mmake file
-for considerably improved performance.
+If you install from the source distribution, the initial version of the
+compiler will use grade reg.gc.  You can get a faster compiler by
+adding the directory for the installed mmc to your PATH and then
+reinstalling from the source distribution.  The second time around,
+the configure script will detect that a working mmc is in your PATH
+and will build the compiler in grade hlc.gc rather than grade reg.gc.
 
