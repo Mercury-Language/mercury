@@ -416,7 +416,7 @@ output_label(label(_Module, Pred, Arity, Mode, Num)) -->
 	io__write_int(Arity),
 	io__write_string("_"),
 	io__write_int(Mode),
-	io__write_string("_"),
+	io__write_string("_i"),		% i for "internal" (not Intel ;-)
 	io__write_int(Num).
 
 :- pred output_unilabel(unilabel, io__state, io__state).
