@@ -78,9 +78,9 @@
 
 :- import_module backend_libs.
 :- import_module libs.
-:- import_module check_hlds.	 % is this needed?
+:- import_module check_hlds.	% needed for type_util, mode_util,
+				% and polymorphism.
 :- import_module mdbcomp.
-:- import_module transform_hlds. % is this needed?
 :- import_module aditi_backend. % need aditi_backend.rl_file
 
 :- end_module ml_backend.
