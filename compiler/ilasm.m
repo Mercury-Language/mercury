@@ -675,9 +675,9 @@ output_simple_type_opcode(float32) --> io__write_string("r4").
 output_simple_type_opcode(float64) --> io__write_string("r8").
 output_simple_type_opcode(native_float) --> 
 	{ error("unable to create opcode for native_float") }.
-		% XXX should i4 be used for bool and char? 
+		% XXX should i4 be used for bool? 
 output_simple_type_opcode(bool) --> io__write_string("i4").
-output_simple_type_opcode(char) --> io__write_string("i4").
+output_simple_type_opcode(char) --> io__write_string("i2").
 
 	% all reference types use "ref" as their opcode.
 output_simple_type_opcode(refany) --> io__write_string("ref").
