@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1999 The University of Melbourne.
+** Copyright (C) 1999-2000 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 **
@@ -7,7 +7,7 @@
 ** that are live at a given program point.
 **
 ** When execution arrives at an event, the debugger should call the function
-** MR_trace_point_init_vars to initialize this module's data structures
+** MR_trace_init_point_vars to initialize this module's data structures
 ** to reflect the variables that are live at that event. During the processing
 ** of the various debugger commands while at that event, the debugger may
 ** call MR_trace_set_level zero or more times to change this module's notion
@@ -78,7 +78,8 @@ extern	const char	*MR_trace_list_vars(FILE *out);
 
 /*
 ** Return the name, type and value of the specified variable in the specified
-** locations, except those which are NULL.
+** locations, except those which are NULL.  Variable number n must be
+** in the range 1..MR_trace_var_count().
 */
 
 extern	const char	*MR_trace_return_var_info(int n, const char **name_ptr,
