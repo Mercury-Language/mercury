@@ -594,7 +594,7 @@
 	--->	% Mercury data types
 		mercury_type(
 			prog_data__type,	% the exact Mercury type
-			builtin_type,		% what kind of type it is:
+			type_category,		% what kind of type it is:
 						% enum, float, etc.
 			exported_type		% a representation of the type
 						% which can be used to
@@ -1759,7 +1759,7 @@ mercury_type_to_mlds_type(ModuleInfo, Type) = MLDSType :-
 		),
 		MLDSType = mlds__foreign_type(ForeignType)
 	;
-		classify_type(Type, ModuleInfo, Category),
+		classify_type(ModuleInfo, Type) = Category,
 		ExportedType = to_exported_type(ModuleInfo, Type),
 		MLDSType = mercury_type(Type, Category, ExportedType)
 	).

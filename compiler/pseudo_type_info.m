@@ -236,26 +236,6 @@ pseudo_type_info__generate_plain_args(TypeArgs,
 
 %---------------------------------------------------------------------------%
 
-:- pred canonicalize_type_args(type_ctor::in, list(type)::in, list(type)::out)
-	is det.
-
-canonicalize_type_args(TypeCtor, TypeArgs0, TypeArgs) :-
-	(
-		% The argument to typeclass_info types is not
-		% a type - it encodes the class constraint.
-		% So we replace the argument with type `void'.
-		mercury_private_builtin_module(PrivateBuiltin),
-		TypeCtor = qualified(PrivateBuiltin, TypeName) - 1,
-		( TypeName = "typeclass_info"
-		; TypeName = "base_typeclass_info"
-		)
-	->
-		construct_type(unqualified("void") - 0, [], ArgType),
-		TypeArgs = [ArgType]
-	;
-		TypeArgs = TypeArgs0
-	).
-
 	% Type_infos and pseudo_type_infos whose principal type
 	% constructor is a variable arity type constructor
 	% must be handled specially, in that they must include

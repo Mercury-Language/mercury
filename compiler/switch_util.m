@@ -39,7 +39,7 @@
 	;	tag_switch
 	;	other_switch.
 
-:- pred switch_util__type_cat_to_switch_cat(builtin_type, switch_category).
+:- pred switch_util__type_cat_to_switch_cat(type_category, switch_category).
 :- mode switch_util__type_cat_to_switch_cat(in, out) is det.
 
 	% Return the priority of a constructor test.
@@ -55,7 +55,7 @@
 	% Fail if the type isn't the sort of type that has a range
 	% or if the type's range is too big to switch on (e.g. int).
 	%
-:- pred switch_util__type_range(builtin_type, type, module_info, int, int).
+:- pred switch_util__type_range(type_category, type, module_info, int, int).
 :- mode switch_util__type_range(in, in, in, out, out) is semidet.
 
 %-----------------------------------------------------------------------------%
@@ -270,10 +270,20 @@ switch_util__type_cat_to_switch_cat(int_type,  atomic_switch).
 switch_util__type_cat_to_switch_cat(char_type, atomic_switch).
 switch_util__type_cat_to_switch_cat(float_type, other_switch).
 switch_util__type_cat_to_switch_cat(str_type,  string_switch).
-switch_util__type_cat_to_switch_cat(pred_type, other_switch).
-switch_util__type_cat_to_switch_cat(user_type, tag_switch).
-switch_util__type_cat_to_switch_cat(polymorphic_type, other_switch).
+switch_util__type_cat_to_switch_cat(higher_order_type, other_switch).
+switch_util__type_cat_to_switch_cat(user_ctor_type, tag_switch).
+switch_util__type_cat_to_switch_cat(variable_type, other_switch).
 switch_util__type_cat_to_switch_cat(tuple_type, other_switch).
+switch_util__type_cat_to_switch_cat(void_type, _) :-
+	error("switch_util__type_cat_to_switch_cat: void").
+switch_util__type_cat_to_switch_cat(type_info_type, _) :-
+	error("switch_util__type_cat_to_switch_cat: type_info").
+switch_util__type_cat_to_switch_cat(type_ctor_info_type, _) :-
+	error("switch_util__type_cat_to_switch_cat: type_ctor_info").
+switch_util__type_cat_to_switch_cat(typeclass_info_type, _) :-
+	error("switch_util__type_cat_to_switch_cat: typeclass_info").
+switch_util__type_cat_to_switch_cat(base_typeclass_info_type, _) :-
+	error("switch_util__type_cat_to_switch_cat: base_typeclass_info").
 
 	% Return the priority of a constructor test.
 	% A low number here indicates a high priority.

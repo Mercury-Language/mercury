@@ -240,7 +240,7 @@ livemap__build_livemap_instr(Instr0, Instrs0, Instrs,
 		Livemap = Livemap0,
 		DontValueNumber = DontValueNumber0
 	;
-		Uinstr0 = incr_hp(Lval, _, Rval, _),
+		Uinstr0 = incr_hp(Lval, _, _, Rval, _),
 
 		% Make dead the variable assigned, but make any variables
 		% needed to access it live. Make the variables in the size

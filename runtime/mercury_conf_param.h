@@ -175,6 +175,12 @@
 **	Causes the generated code to become bigger and less efficient.
 **	Slows down compilation.
 **
+** MR_DEBUG_HEAP_ALLOC
+**	(Implied by MR_LOWLEVEL_DEBUG.)
+**	Uses functions to do memory allocation. These functions can generate
+**	diagnostic output, enforce invariants, and one can put breakpoints
+**	on them.
+**
 ** MR_DEBUG_AGC_SCHEDULING
 **	Display debugging information while scheduling accurate garbage
 **	collection (for the low-level back-end).
@@ -294,6 +300,16 @@
 ** MR_DEEP_PROFILING
 ** Enables deep profiling.
 **
+** MR_RECORD_TERM_SIZES
+** Augments heap cells with an extra word recording the size of the term.
+** For implementors only.
+**
+** MR_RECORD_TERM_SIZES_AS_CELLS
+** Record the size of the term as the number of heap cells it occupies.
+** If MR_RECORD_TERM_SIZES_AS_CELLS is not defined, the default is
+** to record term sizes as the number of heap words. Meaningful only if
+** MR_RECORD_TERM_SIZES is defined. For implementors only.
+**
 ** MR_DEEP_PROFILING_PERF_TEST
 ** Allows the selective performance testing of various aspects of deep
 ** profiling. For implementors only.
@@ -303,6 +319,19 @@
 ** save/restore approach (the two approaches are documented in the deep
 ** profiling paper). For implementors only.
 */
+
+#ifdef MR_HIGHLEVEL_CODE
+  /*
+  ** Neither deep profiling nor term size profiling are supported on the
+  ** high level C backend (yet).
+  */
+  #ifdef MR_DEEP_PROFILING
+     #error "MR_HIGHLEVEL_CODE and MR_DEEP_PROFILING both defined"
+  #endif
+  #ifdef MR_RECORD_TERM_SIZES
+     #error "MR_HIGHLEVEL_CODE and MR_RECORD_TERM_SIZES both defined"
+  #endif
+#endif
 
 /*
 ** Experimental options:

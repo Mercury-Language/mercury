@@ -43,7 +43,7 @@ will_not_call_mercury, "{
 	MR_Word tmp;
 	len_1 = strlen(S1);
 	len_2 = strlen(S2);
-	MR_incr_hp_atomic(tmp, (len_1 + len_2 + sizeof(MR_Word))
+	MR_offset_incr_hp_atomic(tmp, 0, (len_1 + len_2 + sizeof(MR_Word))
 		/ sizeof(MR_Word));
 	S3 = (char *) tmp;
 	strcpy(S3, S1);

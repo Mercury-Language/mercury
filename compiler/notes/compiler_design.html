@@ -798,10 +798,12 @@ for high-level optimizations (but which is not yet used).
 
 <p>
 
-The last HLDS-to-HLDS transformation implements deep profiling
-(deep_profiling.m, in the ll_backend.m package).
-This pass inserts calls to impure procedures that record profiling
-information.
+The last two HLDS-to-HLDS transformations implement
+term size profiling (size_prof.m) and
+deep profiling (deep_profiling.m, in the ll_backend.m package).
+Both passes insert into procedure bodies, among other things,
+calls to procedures (some of which are impure)
+that record profiling information.
 
 <hr>
 <!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
@@ -1499,6 +1501,6 @@ The following modules are part of the libs.m package.
 <hr>
 <!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
 
-Last update was $Date: 2003-09-23 04:28:21 $ by $Author: zs $@cs.mu.oz.au. <br>
+Last update was $Date: 2003-10-20 07:29:18 $ by $Author: zs $@cs.mu.oz.au. <br>
 </body>
 </html>

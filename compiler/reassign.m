@@ -222,7 +222,7 @@ remove_reassign_loop([Instr0 | Instrs0], KnownContentsMap0, DepLvalMap0,
 		KnownContentsMap = KnownContentsMap0,
 		DepLvalMap = DepLvalMap0
 	;
-		Uinstr0 = incr_hp(Target, _, _, _),
+		Uinstr0 = incr_hp(Target, _, _, _, _),
 		RevInstrs1 = [Instr0 | RevInstrs0],
 		clobber_dependents(Target,
 			KnownContentsMap0, KnownContentsMap1,

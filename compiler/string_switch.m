@@ -97,10 +97,11 @@ string_switch__generate(Cases, Var, CodeModel, _CanFail, SwitchGoalInfo,
 	(
 		add_static_cell_natural_types(NextSlots, NextSlotsTableAddr,
 			!CodeInfo),
-		NextSlotsTable = const(data_addr_const(NextSlotsTableAddr)),
+		NextSlotsTable = const(
+			data_addr_const(NextSlotsTableAddr, no)),
 		add_static_cell_natural_types(Strings, StringTableAddr,
 			!CodeInfo),
-		StringTable = const(data_addr_const(StringTableAddr)),
+		StringTable = const(data_addr_const(StringTableAddr, no)),
 		HashLookupCode = node([
 			comment("hashed string switch") -
 			  "",

@@ -284,9 +284,6 @@ extern	void		MR_print_answerblock(FILE *fp,
   #define MR_table_free(pointer)					\
 	MR_GC_free((pointer))
 
-  #define MR_table_list_cons(h, t)					\
-	MR_list_cons((h), (t))
-
 #else /* MR_NATIVE_GC */
 
   #define MR_TABLE_NATIVE_GC_MSG					\
@@ -326,9 +323,6 @@ extern	void		MR_print_answerblock(FILE *fp,
 	(void *) NULL)
   #define MR_table_free(pointer)					\
 	MR_fatal_error(MR_TABLE_NATIVE_GC_MSG)
-  #define MR_table_list_cons(h, t)					\
-	(MR_fatal_error(MR_TABLE_NATIVE_GC_MSG),			\
-	(MR_Word) 0)
 
 #endif /* MR_NATIVE_GC */
 

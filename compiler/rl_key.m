@@ -131,9 +131,9 @@ rl_key__remove_useless_info(ModuleInfo,
 			list__member(ArgBound, ArgBounds),
 			ArgBound \= var - _
 		),
-		classify_type(Type, ModuleInfo, TypeClass),
-		( TypeClass = user_type
-		; TypeClass = enum_type
+		TypeCategory = classify_type(ModuleInfo, Type),
+		( TypeCategory = user_ctor_type
+		; TypeCategory = enum_type
 		),
 		module_info_types(ModuleInfo, Types),
 		type_to_ctor_and_args(Type, TypeCtor, _),

@@ -78,7 +78,7 @@ extern	int	mercury_terminate(void);
 
 #include "mercury_regs.h"	/* must come before system headers */
 #include "mercury_goto.h"	/* for MR_declare_entry */
-#include "mercury_types.h"	/* for MR_Word */
+#include "mercury_types.h"	/* for MR_Word etc */
 #include "mercury_wrapper.h"	/* for MR_do_init_modules,
 				   mercury_runtime_init(),
 				   mercury_runtime_main(),
@@ -125,6 +125,15 @@ extern	void	ML_io_stdin_stream(MercuryFilePtr *);
 
 extern	void	ML_io_print_to_stream(MR_Word, MercuryFilePtr, MR_Word);
 extern	void	ML_io_print_to_cur_stream(MR_Word, MR_Word);
+
+/* in library/private_builtin.m */
+extern	const MR_TypeCtorInfo		ML_type_ctor_info_for_univ;
+extern	const MR_FA_TypeInfo_Struct1	ML_type_info_for_type_info;
+extern	const MR_FA_TypeInfo_Struct1	ML_type_info_for_list_of_univ;
+extern	const MR_FA_TypeInfo_Struct1	ML_type_info_for_list_of_int;
+extern	const MR_FA_TypeInfo_Struct1	ML_type_info_for_list_of_char;
+extern	const MR_FA_TypeInfo_Struct1	ML_type_info_for_list_of_string;
+extern	const MR_FA_TypeInfo_Struct1	ML_type_info_for_list_of_type_info;
 
 /* in trace/mercury_trace_internal.h */
 extern	char	*MR_trace_getline(const char *, FILE *mdb_in, FILE *mdb_out);

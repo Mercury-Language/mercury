@@ -1293,7 +1293,7 @@ generate_call_table_lookup_goals(Var, Vars, Context, TableVar0, TableTipVar,
 		[Step | Steps]) :-
 	ModuleInfo = !.TableInfo ^ table_module_info,
 	map__lookup(!.VarTypes, Var, VarType),
-	classify_type(VarType, ModuleInfo, TypeCat),
+	classify_type(ModuleInfo, VarType) = TypeCat,
 	gen_lookup_call_for_type(TypeCat, VarType, TableVar0, Var, Context,
 		!VarTypes, !VarSet, !TableInfo, TableVar1, Goal0, Step),
 	(
@@ -1330,14 +1330,14 @@ generate_answer_table_lookup_goals([Var | Vars], Context, TableVar0,
 		[Goal | RestGoals]) :-
 	ModuleInfo = !.TableInfo ^ table_module_info,
 	map__lookup(!.VarTypes, Var, VarType),
-	classify_type(VarType, ModuleInfo, TypeCat),
+	classify_type(ModuleInfo, VarType) = TypeCat,
 	gen_lookup_call_for_type(TypeCat, VarType, TableVar0, Var, Context,
 		!VarTypes, !VarSet, !TableInfo, TableVar1, Goal, _),
 	generate_answer_table_lookup_goals(Vars, Context,
 		TableVar1, TableTipVar, !VarTypes, !VarSet,
 		!TableInfo, RestGoals).
 
-:- pred gen_lookup_call_for_type(builtin_type::in, (type)::in,
+:- pred gen_lookup_call_for_type(type_category::in, (type)::in,
 	prog_var::in, prog_var::in, term__context::in,
 	map(prog_var, type)::in, map(prog_var, type)::out,
 	prog_varset::in, prog_varset::out, table_info::in, table_info::out,
@@ -1386,12 +1386,9 @@ gen_lookup_call_for_type(TypeCat, Type, TableVar, ArgVar, Context,
 		generate_new_table_var("TableNodeVar", trie_node_type,
 			!VarTypes, !VarSet, NextTableVar),
 		InstMapAL = [NextTableVar - ground(unique, none)],
+		lookup_tabling_category(TypeCat, MaybeCatStringStep),
 		(
-			( TypeCat = pred_type
-			; TypeCat = polymorphic_type
-			; TypeCat = user_type
-			)
-		->
+			MaybeCatStringStep = no,
 			( type_util__vars(Type, []) ->
 				LookupPredName = "table_lookup_insert_user",
 				Step = table_trie_step_user(Type)
@@ -1409,7 +1406,7 @@ gen_lookup_call_for_type(TypeCat, Type, TableVar, ArgVar, Context,
 			CallGoal = _ - GoalInfo,
 			conj_list_to_goal(ConjList, GoalInfo, Goal)
 		;
-			builtin_type_lookup_category(TypeCat, CatString, Step),
+			MaybeCatStringStep = yes(CatString - Step),
 			string__append("table_lookup_insert_", CatString,
 				LookupPredName),
 			generate_call(LookupPredName,
@@ -1519,14 +1516,14 @@ generate_save_goals([NumberedVar | NumberedRest], TableVar, Context,
 		!VarSet, OffsetVar, OffsetUnifyGoal),
 	ModuleInfo = !.TableInfo ^ table_module_info,
 	map__lookup(!.VarTypes, Var, VarType),
-	classify_type(VarType, ModuleInfo, TypeCat),
+	classify_type(ModuleInfo, VarType) = TypeCat,
 	gen_save_call_for_type(TypeCat, VarType, TableVar, Var, OffsetVar,
 		Context, !VarTypes, !VarSet, !TableInfo, CallGoal),
 	generate_save_goals(NumberedRest, TableVar, Context,
 		!VarTypes, !VarSet, !TableInfo, RestGoals),
 	Goals =	[OffsetUnifyGoal, CallGoal | RestGoals].
 
-:- pred gen_save_call_for_type(builtin_type::in, (type)::in,
+:- pred gen_save_call_for_type(type_category::in, (type)::in,
 	prog_var::in, prog_var::in, prog_var::in, term__context::in,
 	map(prog_var, type)::in, map(prog_var, type)::out,
 	prog_varset::in, prog_varset::out, table_info::in, table_info::out,
@@ -1539,7 +1536,7 @@ gen_save_call_for_type(TypeCat, Type, TableVar, Var, OffsetVar, Context,
 		LookupPredName = "table_save_io_state_ans",
 		generate_call(LookupPredName, [TableVar, OffsetVar, Var],
 			det, yes(impure), [], ModuleInfo, Context, Goal)
-	; not_builtin_type(TypeCat) ->
+	; builtin_type(TypeCat) = no ->
 		make_type_info_var(Type, Context, !VarTypes, !VarSet,
 			!TableInfo, TypeInfoVar, ExtraGoals),
 
@@ -1632,13 +1629,13 @@ generate_restore_goals([NumberedVar | NumberedRest], AnswerBlockVar,
 	gen_int_construction("OffsetVar", Offset, !VarTypes, !VarSet,
 		OffsetVar, OffsetUnifyGoal),
 	map__lookup(!.VarTypes, Var, VarType),
-	classify_type(VarType, ModuleInfo, TypeCat),
+	classify_type(ModuleInfo, VarType) = TypeCat,
 	gen_restore_call_for_type(TypeCat, VarType, AnswerBlockVar, Var,
 		OffsetVar, ModuleInfo, Context, CallGoal),
 	generate_restore_goals(NumberedRest, AnswerBlockVar, ModuleInfo,
 		Context, !VarTypes, !VarSet, RestGoals).
 
-:- pred gen_restore_call_for_type(builtin_type::in, (type)::in,
+:- pred gen_restore_call_for_type(type_category::in, (type)::in,
 	prog_var::in, prog_var::in, prog_var::in, module_info::in,
 	term__context::in, hlds_goal::out) is det.
 
@@ -1646,7 +1643,7 @@ gen_restore_call_for_type(TypeCat, Type, TableVar, Var, OffsetVar,
 		ModuleInfo, Context, Goal) :-
 	( type_util__type_is_io_state(Type) ->
 		LookupPredName = "table_restore_io_state_ans"
-	; not_builtin_type(TypeCat) ->
+	; builtin_type(TypeCat) = no ->
 		LookupPredName = "table_restore_any_ans"
 	;
 		type_save_category(TypeCat, CatString),
@@ -1832,51 +1829,77 @@ create_instmap_delta([Goal | Rest], IMD) :-
 	create_instmap_delta(Rest, IMD1),
 	instmap_delta_apply_instmap_delta(IMD0, IMD1, IMD).
 
-:- pred not_builtin_type(builtin_type::in) is semidet.
+:- func builtin_type(type_category) = bool.
 
-not_builtin_type(pred_type).
-not_builtin_type(enum_type).
-not_builtin_type(polymorphic_type).
-not_builtin_type(tuple_type).
-not_builtin_type(user_type).
+% For backward compatibility, we treat type_info_type as user_type. However,
+% this makes the tabling of type_infos more expensive than necessary, since
+% we essentially table the information in the type_info twice, once by tabling
+% the type represented by the type_info (since this is the value of the type
+% argument of the type constructor private_builtin.type_info/1, and then
+% tabling the type_info itself.
+
+builtin_type(int_type) = yes.
+builtin_type(char_type) = yes.
+builtin_type(str_type) = yes.
+builtin_type(float_type) = yes.
+builtin_type(void_type) = yes.
+builtin_type(type_info_type) = no.
+builtin_type(type_ctor_info_type) = yes.
+builtin_type(typeclass_info_type) = yes.
+builtin_type(base_typeclass_info_type) = yes.
+builtin_type(higher_order_type) = no.
+builtin_type(enum_type) = no.
+builtin_type(variable_type) = no.
+builtin_type(tuple_type) = no.
+builtin_type(user_ctor_type) = no.
 
 % Figure out what kind of data structure implements the lookup table for values
 % of a given builtin type.
 
-:- pred builtin_type_lookup_category(builtin_type::in, string::out,
-	table_trie_step::out) is det.
+:- pred lookup_tabling_category(type_category::in,
+	maybe(pair(string, table_trie_step))::out) is det.
 
-builtin_type_lookup_category(int_type, 	 "int",    table_trie_step_int).
-builtin_type_lookup_category(char_type,  "char",   table_trie_step_char).
-builtin_type_lookup_category(str_type, 	 "string", table_trie_step_string).
-builtin_type_lookup_category(float_type, "float",  table_trie_step_float).
-builtin_type_lookup_category(enum_type,  _, _) :-
-	error("builtin_type_lookup_category: non-builtin-type").
-builtin_type_lookup_category(pred_type, _, _) :-
-	error("builtin_type_lookup_category: non-builtin-type").
-builtin_type_lookup_category(tuple_type,_, _) :-
-	error("builtin_type_lookup_category: non-builtin-type").
-builtin_type_lookup_category(polymorphic_type, _, _) :-
-	error("builtin_type_lookup_category: non-builtin-type").
-builtin_type_lookup_category(user_type, _, _) :-
-	error("builtin_type_lookup_category: non-builtin-type").
+lookup_tabling_category(int_type,   yes("int" -    table_trie_step_int)).
+lookup_tabling_category(char_type,  yes("char" -   table_trie_step_char)).
+lookup_tabling_category(str_type,   yes("string" - table_trie_step_string)).
+lookup_tabling_category(float_type, yes("float" -  table_trie_step_float)).
+lookup_tabling_category(void_type, _) :-
+	error("lookup_tabling_category: void").
+lookup_tabling_category(type_info_type, no).
+lookup_tabling_category(type_ctor_info_type, no).
+lookup_tabling_category(typeclass_info_type, no).
+lookup_tabling_category(base_typeclass_info_type, no).
+lookup_tabling_category(enum_type, no).
+lookup_tabling_category(higher_order_type, no).
+lookup_tabling_category(tuple_type, no).
+lookup_tabling_category(variable_type, no).
+lookup_tabling_category(user_ctor_type, no).
 
 % Figure out which save and restore predicates in library/table_builtin.m
 % we need to use for values of types belonging the type category given by
 % the first argument. The returned value replaces CAT in table_save_CAT_ans
 % and table_restore_CAT_ans.
 
-:- pred type_save_category(builtin_type::in, string::out) is det.
+:- pred type_save_category(type_category::in, string::out) is det.
 
-type_save_category(enum_type, 	 "enum").
-type_save_category(int_type, 	 "int").
-type_save_category(char_type, 	 "char").
-type_save_category(str_type, 	 "string").
-type_save_category(float_type, 	 "float").
-type_save_category(pred_type, 	 "pred").
-type_save_category(tuple_type,	 "any").
-type_save_category(polymorphic_type,  "any").
-type_save_category(user_type, 	 "any").
+type_save_category(enum_type,		"enum").
+type_save_category(int_type,		"int").
+type_save_category(char_type,		"char").
+type_save_category(str_type,		"string").
+type_save_category(float_type,		"float").
+type_save_category(higher_order_type,	"pred").
+type_save_category(tuple_type,		"any").
+type_save_category(user_ctor_type,	"any").		% could do better
+type_save_category(variable_type,	"any").		% could do better
+type_save_category(void_type, _) :-
+	error("type_save_category: void").
+type_save_category(type_info_type, "any").		% could do better
+type_save_category(type_ctor_info_type, _) :-
+	error("type_save_category: type_ctor_info").
+type_save_category(typeclass_info_type, _) :-
+	error("type_save_category: typeclass_info").
+type_save_category(base_typeclass_info_type, _) :-
+	error("type_save_category: base_typeclass_info").
 
 %-----------------------------------------------------------------------------%
 

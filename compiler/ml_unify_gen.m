@@ -147,15 +147,12 @@ ml_gen_unification(simple_test(Var1, Var2), CodeModel, Context,
 	ml_gen_set_success(Test, Context, MLDS_Statement).
 
 ml_gen_unification(construct(Var, ConsId, Args, ArgModes,
-		HowToConstruct, _CellIsUnique, MaybeAditiRLExprnID),
+		HowToConstruct, _CellIsUnique, MaybeSizeProfInfo),
 		CodeModel, Context, MLDS_Decls, MLDS_Statements) -->
 	{ require(unify(CodeModel, model_det),
 		"ml_code_gen: construct not det") },
-	{ MaybeAditiRLExprnID = yes(_) ->
-		sorry(this_file, "Aditi closures")
-	;
-		true
-	},
+	{ require(unify(MaybeSizeProfInfo, no),
+		"ml_code_gen: term size profiling not yet supported") },
 	ml_gen_construct(Var, ConsId, Args, ArgModes, HowToConstruct, Context,
 		MLDS_Decls, MLDS_Statements).
 
@@ -827,8 +824,12 @@ get_type_for_cons_id(MLDS_Type, UsesBaseClass, MaybeConsId, HighLevelData)
 			% Check for type_infos and typeclass_infos,
 			% since these need to be handled specially;
 			% their Mercury type definitions are lies.
-			MLDS_Type = mercury_type(MercuryType, user_type, _),
-			type_util__is_introduced_type_info_type(MercuryType)
+			MLDS_Type = mercury_type(_, TypeCategory, _),
+			( TypeCategory = type_info_type
+			; TypeCategory = type_ctor_info_type
+			; TypeCategory = typeclass_info_type
+			; TypeCategory = base_typeclass_info_type
+			)
 		->
 			ConstType = mlds__array_type(mlds__generic_type)
 		;
@@ -845,7 +846,7 @@ get_type_for_cons_id(MLDS_Type, UsesBaseClass, MaybeConsId, HighLevelData)
 					TypeArity, _)
 			;
 				MLDS_Type = mercury_type(MercuryType,
-					user_type, _),
+					user_ctor_type, _),
 				type_to_ctor_and_args(MercuryType, TypeCtor,
 					_ArgsTypes),
 				ml_gen_type_name(TypeCtor, QualTypeName,
@@ -870,7 +871,8 @@ get_type_for_cons_id(MLDS_Type, UsesBaseClass, MaybeConsId, HighLevelData)
 			% `mlds__ptr_type(mlds__class_type(...))', but when
 			% declarating static constants we want just the
 			% class type, not the pointer type.
-			MLDS_Type = mercury_type(MercuryType, user_type, _),
+			MLDS_Type = mercury_type(MercuryType,
+				user_ctor_type, _),
 			type_to_ctor_and_args(MercuryType, TypeCtor, _ArgsTypes)
 		->
 			ml_gen_type_name(TypeCtor, ClassName, ClassArity),
@@ -889,7 +891,7 @@ get_type_for_cons_id(MLDS_Type, UsesBaseClass, MaybeConsId, HighLevelData)
 			% Note that we're still using a low-level data
 			% representation for closures, even when
 			% --high-level-data is enabled.
-			MLDS_Type = mercury_type(_, pred_type, _)
+			MLDS_Type = mercury_type(_, higher_order_type, _)
 		->
 			ConstType = mlds__array_type(mlds__generic_type)
 		;
@@ -970,7 +972,7 @@ constructor_arg_types(CtorId, ArgTypes, Type, ModuleInfo) = ConsArgTypes :-
 			% happens: the type for a ctor_id should never
 			% be a free type variable
 			unexpected(this_file,
-				"cons_id_to_arg_types: invalid type")
+				"constructor_arg_types: invalid type")
 		),
 
 		% Given the type_ctor, lookup up the constructor

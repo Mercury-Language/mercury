@@ -154,11 +154,25 @@ type_is_enum(Type) :-
 :- mode type_is_object(in) is semidet.
 
 type_is_object(Type) :-
-	Type = mercury_type(_, Builtin, _),
-	( Builtin = enum_type 
-	; Builtin = polymorphic_type
-	; Builtin = user_type 
-	).
+	Type = mercury_type(_, TypeCategory, _),
+	type_category_is_object(TypeCategory) = yes.
+
+:- func type_category_is_object(type_category) = bool.
+
+type_category_is_object(int_type) = no.
+type_category_is_object(char_type) = no.
+type_category_is_object(str_type) = no.
+type_category_is_object(float_type) = no.
+type_category_is_object(higher_order_type) = no.
+type_category_is_object(tuple_type) = no.
+type_category_is_object(enum_type) = yes.
+type_category_is_object(variable_type) = yes.
+type_category_is_object(type_info_type) = yes.
+type_category_is_object(type_ctor_info_type) = yes.
+type_category_is_object(typeclass_info_type) = yes.
+type_category_is_object(base_typeclass_info_type) = yes.
+type_category_is_object(void_type) = no.
+type_category_is_object(user_ctor_type) = yes.
 
 	% Given an lval, return its type.
 	% 
@@ -1328,11 +1342,17 @@ get_java_type_initializer(mercury_type(_, int_type, _)) = "0".
 get_java_type_initializer(mercury_type(_, char_type, _)) = "0".
 get_java_type_initializer(mercury_type(_, float_type, _)) = "0".
 get_java_type_initializer(mercury_type(_, str_type, _)) = "null".
-get_java_type_initializer(mercury_type(_, pred_type, _)) = "null".
+get_java_type_initializer(mercury_type(_, void_type, _)) = "0".
+get_java_type_initializer(mercury_type(_, type_info_type, _)) = "null".
+get_java_type_initializer(mercury_type(_, type_ctor_info_type, _)) = "null".
+get_java_type_initializer(mercury_type(_, typeclass_info_type, _)) = "null".
+get_java_type_initializer(mercury_type(_, base_typeclass_info_type, _))
+	= "null".
+get_java_type_initializer(mercury_type(_, higher_order_type, _)) = "null".
 get_java_type_initializer(mercury_type(_, tuple_type, _)) = "null".
 get_java_type_initializer(mercury_type(_, enum_type, _)) = "null".
-get_java_type_initializer(mercury_type(_, polymorphic_type, _)) = "null".
-get_java_type_initializer(mercury_type(_, user_type, _)) = "null".
+get_java_type_initializer(mercury_type(_, variable_type, _)) = "null".
+get_java_type_initializer(mercury_type(_, user_ctor_type, _)) = "null".
 get_java_type_initializer(mlds__mercury_array_type(_)) = "null".
 get_java_type_initializer(mlds__cont_type(_)) = "null".
 get_java_type_initializer(mlds__commit_type) = "null".
@@ -1745,7 +1765,7 @@ output_type(mercury_type(Type, TypeCategory, _)) -->
 	).
 
 output_type(mercury_array_type(ElementType)) -->
-	( { ElementType = mlds__mercury_type(_, polymorphic_type, _) } ->
+	( { ElementType = mlds__mercury_type(_, variable_type, _) } ->
 		% We can't use `java.lang.Object []', since we want
 		% a generic type that is capable of holding any kind
 		% of array, including e.g. `int []'.
@@ -1812,8 +1832,8 @@ output_type(mlds__rtti_type(RttiId)) -->
 output_type(mlds__unknown_type) -->
 	{ unexpected(this_file, "output_type: unknown type") }.
 
-:- pred output_mercury_type(mercury_type, builtin_type,
-		io__state, io__state).
+:- pred output_mercury_type(mercury_type, type_category,
+	io__state, io__state).
 :- mode output_mercury_type(in, in, di, uo) is det.
 
 output_mercury_type(Type, TypeCategory) -->
@@ -1830,24 +1850,40 @@ output_mercury_type(Type, TypeCategory) -->
 		{ TypeCategory = float_type }, 
 		io__write_string("double")
 	;
-		{ TypeCategory = polymorphic_type }, 
+		{ TypeCategory = void_type }, 
+		% Shouldn't matter what we put here.
+		io__write_string("int")
+	;
+		{ TypeCategory = type_info_type },
+		output_mercury_user_type(Type, user_ctor_type)
+	;
+		{ TypeCategory = type_ctor_info_type },
+		output_mercury_user_type(Type, user_ctor_type)
+	;
+		{ TypeCategory = typeclass_info_type },
+		output_mercury_user_type(Type, user_ctor_type)
+	;
+		{ TypeCategory = base_typeclass_info_type },
+		output_mercury_user_type(Type, user_ctor_type)
+	;
+		{ TypeCategory = variable_type }, 
 		io__write_string("java.lang.Object")
 	;
 		{ TypeCategory = tuple_type }, 
 		io__write_string("/* Tuple */ java.lang.Object")
 	;
-		{ TypeCategory = pred_type },
+		{ TypeCategory = higher_order_type },
 		io__write_string("/* closure */ java.lang.Object[]")
 	;
 		{ TypeCategory = enum_type },
 		output_mercury_user_type(Type, TypeCategory)
 	;
-		{ TypeCategory = user_type },
+		{ TypeCategory = user_ctor_type },
 		output_mercury_user_type(Type, TypeCategory)
 	).
 
-:- pred output_mercury_user_type(mercury_type, builtin_type, 
-		io__state, io__state).
+:- pred output_mercury_user_type(mercury_type, type_category, 
+	io__state, io__state).
 :- mode output_mercury_user_type(in, in, di, uo) is det.
 
 output_mercury_user_type(Type, TypeCategory) -->
@@ -2671,7 +2707,7 @@ output_atomic_stmt(Indent, FuncInfo, NewObject, Context) -->
 	),
 	(
 		{ Type = mlds__array_type(_Type)
-		; Type = mlds__mercury_type(_Type, pred_type, _)
+		; Type = mlds__mercury_type(_Type, higher_order_type, _)
 		; Type = mlds__mercury_type(MercType, _, _),
 		  hand_defined_type(MercType, _, yes)
 		} 

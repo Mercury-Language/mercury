@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1999-2002 The University of Melbourne.
+** Copyright (C) 1999-2003 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -43,7 +43,7 @@ MR_Word mercury__private_builtin__dummy_var;
 
 MR_OUTLINE_DEFN(
 	MR_Word
-	MR_create1(MR_Word w1) 
+	MR_create1_func(MR_Word w1) 
 ,
 	{
 		MR_Word *p = (MR_Word *) MR_new_object(MR_Word,
@@ -55,7 +55,7 @@ MR_OUTLINE_DEFN(
 
 MR_OUTLINE_DEFN(
 	MR_Word
-	MR_create2(MR_Word w1, MR_Word w2) 
+	MR_create2_func(MR_Word w1, MR_Word w2) 
 ,
 	{
 		MR_Word *p = (MR_Word *) MR_new_object(MR_Word,
@@ -68,7 +68,7 @@ MR_OUTLINE_DEFN(
 
 MR_OUTLINE_DEFN(
 	MR_Word
-	MR_create3(MR_Word w1, MR_Word w2, MR_Word w3) 
+	MR_create3_func(MR_Word w1, MR_Word w2, MR_Word w3) 
 ,
 	{
 		MR_Word *p = (MR_Word *) MR_new_object(MR_Word,

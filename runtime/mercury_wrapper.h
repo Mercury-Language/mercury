@@ -99,6 +99,14 @@ extern	void		(*MR_address_of_init_modules_debugger)(void);
 extern	void		(*MR_address_of_write_out_proc_statics)(FILE *fp);
 #endif
 
+extern	MR_TypeCtorInfo	MR_type_ctor_info_for_univ;
+extern	MR_TypeInfo	MR_type_info_for_type_info;
+extern	MR_TypeInfo	MR_type_info_for_list_of_univ;
+extern	MR_TypeInfo	MR_type_info_for_list_of_int;
+extern	MR_TypeInfo	MR_type_info_for_list_of_char;
+extern	MR_TypeInfo	MR_type_info_for_list_of_string;
+extern	MR_TypeInfo	MR_type_info_for_list_of_type_info;
+
 #ifdef MR_CONSERVATIVE_GC
 extern	void		(*MR_address_of_init_gc)(void);
 #endif

@@ -227,9 +227,11 @@
 		;	use_zeroing_for_ho_cycles
 		;	use_lots_of_ho_specialization
 				% We should always handle tail recursion
-				% specially in deep profiling; the options is
+				% specially in deep profiling; the option is
 				% only for benchmarks for the paper.
 		;	deep_profile_tail_recursion
+		;	record_term_sizes_as_words
+		;	record_term_sizes_as_cells
 
 		%   (c) Miscellaneous
 		;	gc
@@ -866,6 +868,8 @@ option_defaults_2(compilation_model_option, [
 				-	bool(no),
 	deep_profile_tail_recursion
 				-	bool(yes),
+	record_term_sizes_as_words -	bool(no),
+	record_term_sizes_as_cells -	bool(no),
 		% (c) Miscellaneous optional features
 	gc			-	string("boehm"),
 	parallel		-	bool(no),
@@ -1503,6 +1507,8 @@ long_option("use-lots-of-ho-specialization",
 					use_lots_of_ho_specialization).
 long_option("deep-profile-tail-recursion",
 					deep_profile_tail_recursion).
+long_option("record-term-sizes-as-words", record_term_sizes_as_words).
+long_option("record-term-sizes-as-cells", record_term_sizes_as_cells).
 	% (c) miscellanous optional features
 long_option("gc",			gc).
 long_option("garbage-collection",	gc).
@@ -3051,6 +3057,10 @@ your program compiled with different options.
 		"--profile-memory\t\t(grade modifier: `.profmem')",
 		"\tSimilar to `--memory-profiling', except that it only gathers",
 		"\tmemory usage information, not call counts.",
+%		"--record-term-sizes-as-words\t\t(grade modifier: `.tsw')",
+%		"\tAugment each heap cells with its size in words.",
+%		"--record-term-sizes-as-cells\t\t(grade modifier: `.tsc')",
+%		"\tAugment each heap cells with its size in cells.",
 ********************/
 	]),
 	io__write_string("      Miscellaneous optional features\n"),

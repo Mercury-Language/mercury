@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2000,2002 The University of Melbourne.
+** Copyright (C) 1998-2000,2002-2003 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -81,7 +81,7 @@ MR_trace_add_item(const char *category, const char *item, int slot,
 	MR_TRACE_USE_HP(
 		MR_make_aligned_string_copy(category_on_heap, category);
 		path = MR_list_empty();
-		path = MR_list_cons((MR_Word) category_on_heap, path);
+		path = MR_string_list_cons((MR_Word) category_on_heap, path);
 	);
 
 	return MR_trace_help_add_node(path, item, slot, text);
@@ -164,8 +164,8 @@ MR_trace_help_cat_item(const char *category, const char *item)
 		MR_make_aligned_string_copy(category_on_heap, category);
 		MR_make_aligned_string_copy(item_on_heap, item);
 		path = MR_list_empty();
-		path = MR_list_cons((MR_Word) item_on_heap, path);
-		path = MR_list_cons((MR_Word) category_on_heap, path);
+		path = MR_string_list_cons((MR_Word) item_on_heap, path);
+		path = MR_string_list_cons((MR_Word) category_on_heap, path);
 	);
 
 	MR_c_file_to_mercury_file(MR_mdb_out, &mdb_out);

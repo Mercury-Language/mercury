@@ -158,7 +158,7 @@ par_conj_gen__generate_par_conj(Goals, GoalInfo, CodeModel, Code) -->
 	{ MakeTerm = node([
 		assign(SpSlot, lval(sp))
 			- "save the parent stack pointer",
-		incr_hp(RegLval, no, const(int_const(STSize)),
+		incr_hp(RegLval, no, no, const(int_const(STSize)),
 			"synchronization vector")
 			- "allocate a synchronization vector",
 		init_sync_term(RegLval, NumGoals)

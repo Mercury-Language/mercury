@@ -1,0 +1,49 @@
+      E1:     C1  1 CALL pred term_size_words.main/2-0 (det) term_size_words.m:18
+mdb> echo on
+Command echo enabled.
+mdb> register --quiet
+mdb> context none
+Contexts will not be printed.
+mdb> break static
+ 0: + stop  interface pred term_size_words.static/3-0 (det)
+mdb> continue
+      E2:     C2  2 CALL pred term_size_words.static/3-0 (det)
+mdb> finish
+      E3:     C2  2 EXIT pred term_size_words.static/3-0 (det)
+mdb> print *
+       IntList (arg 1)        	[1, 2, 3]
+       StringList (arg 2)     	["a", "bb", "ccc"]
+       Tree (arg 3)           	node(leaf, "one", 1, node(leaf, "two", 2, leaf))
+mdb> term_size *
+IntList                   6
+StringList                6
+Tree                      8
+mdb> break dynamic
+ 1: + stop  interface pred term_size_words.dynamic/6-0 (det)
+mdb> continue
+      E4:     C3  2 CALL pred term_size_words.dynamic/6-0 (det)
+mdb> finish
+      E5:     C3  2 EXIT pred term_size_words.dynamic/6-0 (det)
+mdb> print *
+       IntList (arg 1)        	[1, 2, 3]
+       DoubleIntList (arg 2)  	[1, 2, 3, 1, 2, 3]
+       FloatList (arg 3)      	[1.00000000000000, 2.00000000000000, 3.00000000000000]
+       PairList (arg 4)       	[-(1, 1.00000000000000), -(2, 2.00000000000000), -(3, 3.00000000000000)]
+       UnivList (arg 5)       	[univ_cons(1), univ_cons(2), univ_cons(3)]
+       Univ (arg 6)           	univ_cons(node(node(leaf, 2, -/2, leaf), 1, -(1.00000000000000, "one"), leaf))
+mdb> term_size *
+IntList                   6
+DoubleIntList            12
+FloatList                 6
+PairList                 12
+UnivList                 12
+Univ                     14
+mdb> continue -n -S
+[1, 2, 3]
+["a", "bb", "ccc"]
+node(leaf, "one", 1, node(leaf, "two", 2, leaf))
+[1, 2, 3, 1, 2, 3]
+[1.00000000000000, 2.00000000000000, 3.00000000000000]
+[1 - 1.00000000000000, 2 - 2.00000000000000, 3 - 3.00000000000000]
+[univ_cons(1), univ_cons(2), univ_cons(3)]
+univ_cons(node(node(leaf, 2, 2.00000000000000 - "two", leaf), 1, 1.00000000000000 - "one", leaf))

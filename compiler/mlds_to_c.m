@@ -1111,8 +1111,9 @@ mlds_output_type_forward_decl(Indent, Type) -->
 			Kind \= mlds__enum,
 			ClassType = Type
 		;
-			Type = mercury_type(MercuryType, user_type, _),
-			type_to_ctor_and_args(MercuryType, TypeCtor, _ArgsTypes),
+			Type = mercury_type(MercuryType, user_ctor_type, _),
+			type_to_ctor_and_args(MercuryType, TypeCtor,
+				_ArgsTypes),
 			ml_gen_type_name(TypeCtor, ClassName, ClassArity),
 			ClassType = mlds__class_type(ClassName, ClassArity,
 				mlds__class)
@@ -1824,7 +1825,7 @@ mlds_output_type_prefix(mercury_array_type(_ElemType)) -->
 	( { HighLevelData = yes } ->
 		mlds_output_mercury_user_type_name(
 			qualified(unqualified("array"), "array") - 1,
-			user_type)
+			user_ctor_type)
 	;
 		io__write_string("MR_ArrayPtr")
 	).
@@ -1906,8 +1907,8 @@ mlds_output_type_prefix(mlds__rtti_type(RttiId)) -->
 mlds_output_type_prefix(mlds__unknown_type) -->
 	{ error("mlds_to_c.m: prefix has unknown type") }.
 
-:- pred mlds_output_mercury_type_prefix(mercury_type, builtin_type,
-		io__state, io__state).
+:- pred mlds_output_mercury_type_prefix(mercury_type, type_category,
+	io__state, io__state).
 :- mode mlds_output_mercury_type_prefix(in, in, di, uo) is det.
 
 mlds_output_mercury_type_prefix(Type, TypeCategory) -->
@@ -1924,13 +1925,36 @@ mlds_output_mercury_type_prefix(Type, TypeCategory) -->
 		{ TypeCategory = float_type },
 		io__write_string("MR_Float")
 	;
-		{ TypeCategory = polymorphic_type },
+		{ TypeCategory = void_type },
+		io__write_string("MR_Word")
+	;
+		{ TypeCategory = variable_type },
 		io__write_string("MR_Box")
+	;
+		{ TypeCategory = type_info_type },
+		% runtime/mercury_hlc_types requires typeclass_infos
+		% to be treated as user defined types.
+		mlds_output_mercury_user_type_prefix(Type, user_ctor_type)
+	;
+		{ TypeCategory = type_ctor_info_type },
+		% runtime/mercury_hlc_types requires typeclass_infos
+		% to be treated as user defined types.
+		mlds_output_mercury_user_type_prefix(Type, user_ctor_type)
+	;
+		{ TypeCategory = typeclass_info_type },
+		% runtime/mercury_hlc_types requires typeclass_infos
+		% to be treated as user defined types.
+		mlds_output_mercury_user_type_prefix(Type, user_ctor_type)
+	;
+		{ TypeCategory = base_typeclass_info_type },
+		% runtime/mercury_hlc_types requires typeclass_infos
+		% to be treated as user defined types.
+		mlds_output_mercury_user_type_prefix(Type, user_ctor_type)
 	;
 		{ TypeCategory = tuple_type },
 		io__write_string("MR_Tuple")
 	;
-		{ TypeCategory = pred_type },
+		{ TypeCategory = higher_order_type },
 		globals__io_lookup_bool_option(highlevel_data, HighLevelData),
 		( { HighLevelData = yes } ->
 			io__write_string("MR_ClosurePtr")
@@ -1941,12 +1965,12 @@ mlds_output_mercury_type_prefix(Type, TypeCategory) -->
 		{ TypeCategory = enum_type },
 		mlds_output_mercury_user_type_prefix(Type, TypeCategory)
 	;
-		{ TypeCategory = user_type },
+		{ TypeCategory = user_ctor_type },
 		mlds_output_mercury_user_type_prefix(Type, TypeCategory)
 	).
 
-:- pred mlds_output_mercury_user_type_prefix(mercury_type, builtin_type,
-		io__state, io__state).
+:- pred mlds_output_mercury_user_type_prefix(mercury_type, type_category,
+	io__state, io__state).
 :- mode mlds_output_mercury_user_type_prefix(in, in, di, uo) is det.
 
 mlds_output_mercury_user_type_prefix(Type, TypeCategory) -->
@@ -1964,8 +1988,8 @@ mlds_output_mercury_user_type_prefix(Type, TypeCategory) -->
 		io__write_string("MR_Word")
 	).
 
-:- pred mlds_output_mercury_user_type_name(type_ctor, builtin_type,
-		io__state, io__state).
+:- pred mlds_output_mercury_user_type_name(type_ctor, type_category,
+	io__state, io__state).
 :- mode mlds_output_mercury_user_type_name(in, in, di, uo) is det.
 
 mlds_output_mercury_user_type_name(TypeCtor, TypeCategory) -->
@@ -2946,8 +2970,8 @@ mlds_output_target_code_component(_Context, name(Name)) -->
 :- func type_needs_forwarding_pointer_space(mlds__type) = bool.
 type_needs_forwarding_pointer_space(mlds__type_info_type) = yes.
 type_needs_forwarding_pointer_space(mlds__pseudo_type_info_type) = yes.
-type_needs_forwarding_pointer_space(mercury_type(Type, _, _)) =
-	(if is_introduced_type_info_type(Type) then yes else no).
+type_needs_forwarding_pointer_space(mercury_type(_, TypeCategory, _)) =
+	is_introduced_type_info_type_category(TypeCategory).
 type_needs_forwarding_pointer_space(mercury_array_type(_)) = no.
 type_needs_forwarding_pointer_space(mlds__cont_type(_)) = no.
 type_needs_forwarding_pointer_space(mlds__commit_type) = no.
@@ -2970,7 +2994,6 @@ type_needs_forwarding_pointer_space(mlds__rtti_type(_)) = _ :-
 type_needs_forwarding_pointer_space(mlds__unknown_type) = _ :-
 	unexpected(this_file,
 		"type_needs_forwarding_pointer_space: unknown_type"). 
-
 
 :- pred mlds_output_init_args(list(mlds__rval), list(mlds__type), mlds__context,
 		int, mlds__lval, mlds__tag, indent, io__state, io__state).
@@ -3228,7 +3251,7 @@ mlds_output_cast(Type) -->
 mlds_output_boxed_rval(Type, Exprn) -->
 	(
 		{ Type = mlds__generic_type
-		; Type = mlds__mercury_type(_, polymorphic_type, _)
+		; Type = mlds__mercury_type(_, variable_type, _)
 		}
 	->
 		% It already has type MR_Box, so no cast is needed

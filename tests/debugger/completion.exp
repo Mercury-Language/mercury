@@ -3,27 +3,27 @@ mdb> echo on
 Command echo enabled.
 mdb> register --quiet
 mdb> 
-?                  document_category  level              s
-P                  down               maxdepth           save
-alias              e                  mindepth           scope
-all_regs           echo               mmc_options        scroll
-b                  enable             modules            set
-break              exception          next               source
-browse             excp               nondet_stack       stack
-c                  f                  p                  stack_regs
-cc_query           finish             pneg_stack         step
-clear_histogram    flag               print              subgoal
-consumer           forward            print_optionals    table
-context            g                  printlevel         table_io
-continue           gen_stack          proc_body          unalias
-current            goto               proc_stats         unhide_events
-cut_stack          h                  procedures         up
-d                  help               query              v
-dd                 histogram_all      quit               vars
-dd_dd              histogram_exp      r                  view
-delete             ignore             register           
-disable            io_query           retry              
-document           label_stats        return             
+?                  document_category  level              save
+P                  down               maxdepth           scope
+alias              e                  mindepth           scroll
+all_regs           echo               mmc_options        set
+b                  enable             modules            source
+break              exception          next               stack
+browse             excp               nondet_stack       stack_regs
+c                  f                  p                  step
+cc_query           finish             pneg_stack         subgoal
+clear_histogram    flag               print              table
+consumer           forward            print_optionals    table_io
+context            g                  printlevel         term_size
+continue           gen_stack          proc_stats         unalias
+current            goto               procedures         unhide_events
+cut_stack          h                  query              up
+d                  help               quit               v
+dd                 histogram_all      r                  vars
+dd_dd              histogram_exp      register           view
+delete             ignore             retry              
+disable            io_query           return             
+document           label_stats        s                  
 h              help           histogram_all  histogram_exp  
 vars  view  
 help vars 
@@ -40,7 +40,7 @@ stack       stack_regs
 stack --detailed 
    0       1       1    1 pred completion.main/2-0 (det) (completion.m:13) (empty)
 mdb> 
-proc_body   proc_stats  procedures  
+proc_stats  procedures  
 completion            completion.sub2       
 completion.sub1       completion.sub2.sub3  
 completion.sub1       completion.sub2       completion.sub2.sub3

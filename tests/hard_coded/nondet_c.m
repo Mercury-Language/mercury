@@ -79,12 +79,12 @@ shared_code("
 	MR_Word	temp;
 
 	/* this code gets executed for both calls and retries */
-	MR_incr_hp_atomic(temp,
+	MR_offset_incr_hp_atomic(temp, 0,
 		(LOCALS->count + sizeof(MR_Word)) / sizeof(MR_Word));
 	LeftHalf = (MR_String) temp;
 	memcpy(LeftHalf, LOCALS->s, LOCALS->count);
 	LeftHalf[LOCALS->count] = '\\0';
-	MR_incr_hp_atomic(temp,
+	MR_offset_incr_hp_atomic(temp, 0,
 		(LOCALS->len - LOCALS->count + sizeof(MR_Word))
 		/ sizeof(MR_Word));
 	RightHalf = (MR_String) temp;
@@ -122,12 +122,12 @@ duplicated_code("
 	MR_Word	temp;
 
 	/* this code gets executed for both calls and retries */
-	MR_incr_hp_atomic(temp,
+	MR_offset_incr_hp_atomic(temp, 0,
 		(LOCALS->count + sizeof(MR_Word)) / sizeof(MR_Word));
 	LeftHalf = (MR_String) temp;
 	memcpy(LeftHalf, LOCALS->s, LOCALS->count);
 	LeftHalf[LOCALS->count] = '\\0';
-	MR_incr_hp_atomic(temp,
+	MR_offset_incr_hp_atomic(temp, 0,
 		(LOCALS->len - LOCALS->count + sizeof(MR_Word))
 		/ sizeof(MR_Word));
 	RightHalf = (MR_String) temp;
@@ -165,12 +165,12 @@ common_code("
 	MR_Word	temp;
 
 	/* this code gets executed for both calls and retries */
-	MR_incr_hp_atomic(temp,
+	MR_offset_incr_hp_atomic(temp, 0,
 		(LOCALS->count + sizeof(MR_Word)) / sizeof(MR_Word));
 	LeftHalf = (MR_String) temp;
 	memcpy(LeftHalf, LOCALS->s, LOCALS->count);
 	LeftHalf[LOCALS->count] = '\\0';
-	MR_incr_hp_atomic(temp,
+	MR_offset_incr_hp_atomic(temp, 0,
 		(LOCALS->len - LOCALS->count + sizeof(MR_Word))
 		/ sizeof(MR_Word));
 	RightHalf = (MR_String) temp;

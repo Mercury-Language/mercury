@@ -53,6 +53,7 @@ HDRS		=	\
 			mercury_minimal_model.h	\
 			mercury_misc.h		\
 			mercury_overflow.h	\
+			mercury_proc_id.h	\
 			mercury_prof.h		\
 			mercury_prof_mem.h	\
 			mercury_prof_time.h	\
@@ -70,6 +71,7 @@ HDRS		=	\
 			mercury_tabling.h	\
 			mercury_tabling_macros.h	\
 			mercury_tags.h		\
+			mercury_term_size.h	\
 			mercury_thread.h	\
 			mercury_timing.h	\
 			mercury_trace_base.h	\
@@ -78,6 +80,7 @@ HDRS		=	\
 			mercury_type_info.h	\
 			mercury_type_tables.h	\
 			mercury_types.h		\
+			mercury_univ.h		\
 			mercury_wrapper.h	\
 			$(LIB_DLL_H)
 
@@ -161,6 +164,7 @@ CFILES		= 	\
 			mercury_stacks.c	\
 			mercury_string.c	\
 			mercury_tabling.c	\
+			mercury_term_size.c	\
 			mercury_thread.c	\
 			mercury_timing.c	\
 			mercury_trace_base.c	\

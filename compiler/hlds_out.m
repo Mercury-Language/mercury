@@ -2167,14 +2167,40 @@ hlds_out__write_unification(simple_test(X, Y), _, ProgVarSet, _, AppendVarnums,
 	mercury_output_var(Y, ProgVarSet, AppendVarnums),
 	io__write_string("\n").
 
-hlds_out__write_unification(construct(Var, ConsId, ArgVars, ArgModes, _, _, _),
+hlds_out__write_unification(construct(Var, ConsId, ArgVars, ArgModes,
+		_ConstructHow, Uniqueness, Size),
 		ModuleInfo, ProgVarSet, InstVarSet, AppendVarnums, Indent) -->
 	hlds_out__write_indent(Indent),
 	io__write_string("% "),
 	mercury_output_var(Var, ProgVarSet, AppendVarnums),
 	io__write_string(" := "),
 	hlds_out_write_functor_and_submodes(ConsId, ArgVars, ArgModes,
-		ModuleInfo, ProgVarSet, InstVarSet, AppendVarnums, Indent).
+		ModuleInfo, ProgVarSet, InstVarSet, AppendVarnums, Indent),
+	(
+		{ Uniqueness = cell_is_unique },
+		hlds_out__write_indent(Indent),
+		io__write_string("% cell_is_unique\n")
+	;
+		{ Uniqueness = cell_is_shared }
+	),
+	(
+		{ Size = yes(SizeSource) },
+		hlds_out__write_indent(Indent),
+		io__write_string("% term size "),
+		(
+			{ SizeSource = known_size(KnownSize) },
+			io__write_string("const "),
+			io__write_int(KnownSize),
+			io__write_string("\n")
+		;
+			{ SizeSource = dynamic_size(SizeVar) },
+			io__write_string("var "),
+			mercury_output_var(SizeVar, ProgVarSet, AppendVarnums),
+			io__write_string("\n")
+		)
+	;
+		{ Size = no }
+	).
 
 hlds_out__write_unification(deconstruct(Var, ConsId, ArgVars, ArgModes,
 		CanFail, CanCGC),

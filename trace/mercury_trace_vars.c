@@ -20,6 +20,7 @@
 #include "mercury_memory.h"
 #include "mercury_layout_util.h"
 #include "mercury_deconstruct.h"
+#include "mercury_term_size.h"
 #include "mercury_stack_layout.h"
 #include "mercury_trace_util.h"
 #include "mercury_trace_vars.h"
@@ -119,15 +120,20 @@ static  MR_bool         MR_trace_type_is_ignored(
                             MR_bool print_optionals);
 static  int             MR_trace_compare_var_details(const void *arg1,
                             const void *arg2);
+static  int             MR_compare_slots_on_headvar_num(const void *p1,
+                            const void *p2);
 static  const char *    MR_trace_browse_one_path(FILE *out,
-                            MR_Var_Spec var_spec, char *path,
-                            MR_Browser browser, MR_Browse_Caller_Type caller,
-                            MR_Browse_Format format, MR_bool must_be_unique);
-static  char *          MR_trace_browse_var(FILE *out, MR_Var_Details *var,
+                            MR_bool print_var_name, MR_Var_Spec var_spec,
                             char *path, MR_Browser browser,
                             MR_Browse_Caller_Type caller,
+                            MR_Browse_Format format, MR_bool must_be_unique);
+static  char *          MR_trace_browse_var(FILE *out, MR_bool print_var_name,
+                            MR_Var_Details *var, char *path,
+                            MR_Browser browser, MR_Browse_Caller_Type caller,
                             MR_Browse_Format format);
-static char *           MR_trace_var_completer_next(const char *word,
+static  const char *    MR_lookup_var_spec(MR_Var_Spec var_spec,
+                            int *var_index_ptr, MR_bool *is_ambiguous_ptr);
+static  char *          MR_trace_var_completer_next(const char *word,
                             size_t word_len, MR_Completer_Data *data);
 static  const char *    MR_trace_bad_path(const char *path);
 static  int             MR_trace_print_var_name(FILE *out,
@@ -741,6 +747,49 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(unbound_ctor_name);
 static
 MR_static_type_info_arity_0(MR_unbound_typeinfo_struct, &unbound_ctor_name);
 
+void
+MR_convert_arg_to_var_spec(const char *word_spec, MR_Var_Spec *var_spec)
+{
+    int n;
+
+    if (MR_trace_is_natural_number(word_spec, &n)) {
+        var_spec->MR_var_spec_kind = MR_VAR_SPEC_NUMBER;
+        var_spec->MR_var_spec_number = n;
+        var_spec->MR_var_spec_name = NULL; /* unused */
+    } else {
+        var_spec->MR_var_spec_kind = MR_VAR_SPEC_NAME;
+        var_spec->MR_var_spec_name = word_spec;
+        var_spec->MR_var_spec_number = -1; /* unused */
+    }
+}
+
+static int
+MR_compare_slots_on_headvar_num(const void *p1, const void *p2)
+{
+    MR_Var_Details  *vars;
+    int             s1;
+    int             s2;
+
+    vars = MR_point.MR_point_vars;
+    s1 = * (int *) p1;
+    s2 = * (int *) p2;
+
+    if (! vars[s1].MR_var_is_headvar) {
+        MR_fatal_error("MR_compare_slots_on_headvar_num: s1");
+    }
+    if (! vars[s2].MR_var_is_headvar) {
+        MR_fatal_error("MR_compare_slots_on_headvar_num: s2");
+    }
+
+    if (vars[s1].MR_var_is_headvar < vars[s2].MR_var_is_headvar) {
+        return -1;
+    } else if (vars[s1].MR_var_is_headvar > vars[s2].MR_var_is_headvar) {
+        return 1;
+    } else {
+        return 0;
+    }
+}
+
 const char *
 MR_trace_browse_one_goal(FILE *out, MR_GoalBrowser browser,
     MR_Browse_Caller_Type caller, MR_Browse_Format format)
@@ -749,45 +798,38 @@ MR_trace_browse_one_goal(FILE *out, MR_GoalBrowser browser,
     MR_ConstString          proc_name;
     MR_Word                 is_func;
     MR_Word                 arg_list;
-    MR_Word                 prev;
-    MR_Word                 cur;
     MR_Word                 arg;
     MR_TypeInfo             arg_list_typeinfo;
     MR_Var_Details          *vars;
     int                     headvar_num;
     int                     arity;
     int                     slot;
+    int                     var_count;
+    int                     next;
+    int                     i;
+    int                     *var_slot_array;
     MR_bool                 saved_io_tabling_enabled;
 
     proc_layout = MR_point.MR_point_level_entry;
     MR_generate_proc_name_from_layout(proc_layout, &proc_name, &arity,
-            &is_func);
+        &is_func);
+
+    vars = MR_point.MR_point_vars;
+    var_count = MR_point.MR_point_var_count;
+    var_slot_array = MR_malloc(sizeof(int) * var_count);
+
+    next = 0;
+    for (slot = MR_point.MR_point_var_count - 1; slot >= 0; slot--) {
+        headvar_num = vars[slot].MR_var_is_headvar;
+        if (headvar_num) {
+            var_slot_array[next] = slot;
+            next++;
+        }
+    }
+
+    qsort(var_slot_array, next, sizeof(int), MR_compare_slots_on_headvar_num);
 
     MR_TRACE_USE_HP(
-
-        vars = MR_point.MR_point_vars;
-        arg_list = MR_list_empty();
-        for (slot = MR_point.MR_point_var_count - 1; slot >= 0; slot--) {
-            headvar_num = vars[slot].MR_var_is_headvar;
-            if (headvar_num) {
-                /*
-                ** Insert the slot into the list sorted by argument number.
-                */
-                prev = MR_list_empty();
-                cur = arg_list;
-                while (! MR_list_is_empty(cur) &&
-                       headvar_num > vars[MR_list_head(cur)].MR_var_is_headvar)
-                {
-                    prev = cur;
-                    cur = MR_list_tail(cur);
-                }
-                if (MR_list_is_empty(prev)) {
-                    arg_list = MR_list_cons(slot, cur);
-                } else {
-                    MR_list_tail(prev) = MR_list_cons(slot, cur);
-                }
-            }
-        }
 
         /*
         ** Replace the slot numbers in the argument list
@@ -795,29 +837,22 @@ MR_trace_browse_one_goal(FILE *out, MR_GoalBrowser browser,
         ** any unbound arguments (they will be printed
         ** as `_').
         */
-        prev = MR_list_empty();
-        cur = arg_list;
-        for (headvar_num = 1; headvar_num <= arity; headvar_num++) {
-            if (!MR_list_is_empty(cur) && 
-                vars[MR_list_head(cur)].MR_var_is_headvar == headvar_num)
+        arg_list = MR_list_empty();
+        i = next - 1;
+        for (headvar_num = arity; headvar_num > 0; headvar_num--) {
+            if (i >= 0 && vars[var_slot_array[i]].MR_var_is_headvar
+                == headvar_num)
             {
-                slot = MR_list_head(cur);
+                slot = var_slot_array[i];
+                i--;
                 MR_new_univ_on_hp(arg, vars[slot].MR_var_type,
-                        vars[slot].MR_var_value);
-                MR_list_head(cur) = arg;
-                prev = cur;
-                cur = MR_list_tail(cur);
+                    vars[slot].MR_var_value);
             } else {
-                MR_new_univ_on_hp(arg, &MR_unbound_typeinfo_struct,
-                        MR_UNBOUND);
-                if (MR_list_is_empty(prev)) {
-                        arg_list = MR_list_cons(arg, cur);
-                        prev = arg_list;
-                } else {
-                        MR_list_tail(prev) = MR_list_cons(arg, cur);
-                        prev = MR_list_tail(prev);
-                }
+                MR_new_univ_on_hp(arg,
+                    (MR_TypeInfo) &MR_unbound_typeinfo_struct, MR_UNBOUND);
             }
+
+            arg_list = MR_univ_list_cons(arg, arg_list);
         }
     );
 
@@ -852,8 +887,8 @@ MR_trace_browse_action(FILE *out, int action_number, MR_GoalBrowser browser,
 }
 
 const char *
-MR_trace_parse_browse_one(FILE *out, char *word_spec, MR_Browser browser,
-    MR_Browse_Caller_Type caller, MR_Browse_Format format,
+MR_trace_parse_browse_one(FILE *out, MR_bool print_var_name, char *word_spec,
+    MR_Browser browser, MR_Browse_Caller_Type caller, MR_Browse_Format format,
     MR_bool must_be_unique)
 {
     MR_Var_Spec var_spec;
@@ -894,111 +929,136 @@ MR_trace_parse_browse_one(FILE *out, char *word_spec, MR_Browser browser,
         path++;
     }
 
-    if (MR_trace_is_natural_number(word_spec, &n)) {
-        var_spec.MR_var_spec_kind = MR_VAR_SPEC_NUMBER;
-        var_spec.MR_var_spec_number = n;
-        var_spec.MR_var_spec_name = NULL; /* unused */
-        return MR_trace_browse_one_path(out, var_spec, path,
-            browser, caller, format, must_be_unique);
-    } else {
-        var_spec.MR_var_spec_kind = MR_VAR_SPEC_NAME;
-        var_spec.MR_var_spec_name = word_spec;
-        var_spec.MR_var_spec_number = -1; /* unused */
-        return MR_trace_browse_one_path(out, var_spec, path,
-            browser, caller, format, must_be_unique);
-    }
-}
+    MR_convert_arg_to_var_spec(word_spec, &var_spec);
 
+    return MR_trace_browse_one_path(out, print_var_name, var_spec, path,
+        browser, caller, format, must_be_unique);
+}
+ 
 const char *
-MR_trace_browse_one(FILE *out, MR_Var_Spec var_spec, MR_Browser browser,
-    MR_Browse_Caller_Type caller, MR_Browse_Format format,
+MR_trace_browse_one(FILE *out, MR_bool print_var_name, MR_Var_Spec var_spec,
+    MR_Browser browser, MR_Browse_Caller_Type caller, MR_Browse_Format format,
     MR_bool must_be_unique)
 {
-    return MR_trace_browse_one_path(out, var_spec, NULL, browser,
-        caller, format, must_be_unique);
+    return MR_trace_browse_one_path(out, print_var_name, var_spec, NULL,
+        browser, caller, format, must_be_unique);
 }
 
 static const char *
-MR_trace_browse_one_path(FILE *out, MR_Var_Spec var_spec, char *path,
-    MR_Browser browser, MR_Browse_Caller_Type caller,
-    MR_Browse_Format format, MR_bool must_be_unique)
+MR_trace_browse_one_path(FILE *out, MR_bool print_var_name,
+    MR_Var_Spec var_spec, char *path, MR_Browser browser,
+    MR_Browse_Caller_Type caller, MR_Browse_Format format,
+    MR_bool must_be_unique)
 {
     int         i;
-    MR_bool     found;
+    MR_bool     is_ambiguous;
     const char  *problem;
     char        *bad_path;
+
+    problem = MR_lookup_var_spec(var_spec, &i, &is_ambiguous);
+    if (problem != NULL) {
+        return problem;
+    }
+
+    if (! is_ambiguous) {
+        bad_path = MR_trace_browse_var(out, print_var_name,
+            &MR_point.MR_point_vars[i], path, browser, caller, format);
+        if (bad_path != NULL) {
+            return MR_trace_bad_path(bad_path);
+        }
+    } else {
+        int success_count;
+
+        if (must_be_unique) {
+            return "variable name is not unique";
+        }
+
+        success_count = 0;
+        do {
+            bad_path = MR_trace_browse_var(out, print_var_name,
+                &MR_point.MR_point_vars[i], path, browser, caller, format);
+
+            if (bad_path == NULL) {
+                success_count++;
+            }
+
+            i++;
+        } while (i < MR_point.MR_point_var_count &&
+            MR_streq(var_spec.MR_var_spec_name,
+            MR_point.MR_point_vars[i].MR_var_fullname));
+
+        if (success_count == 0) {
+            return "the selected path does not exist in any of the variables with that name";
+        }
+    }
+
+    return NULL;
+}
+
+const char *
+MR_trace_print_size_one(FILE *out, char *word_spec)
+{
+#ifndef MR_RECORD_TERM_SIZES
+
+    return "term sizes not available in this grade";
+
+#else
+
+    int         i;
+    MR_bool     is_ambiguous;
+    const char  *problem;
+    MR_Var_Spec var_spec;
+
+    MR_convert_arg_to_var_spec(word_spec, &var_spec);
+    problem = MR_lookup_var_spec(var_spec, &i, &is_ambiguous);
+    if (problem != NULL) {
+        return problem;
+    }
+
+    if (is_ambiguous) {
+        do {
+            fprintf(out, "%20s: %6u\n",
+                MR_point.MR_point_vars[i].MR_var_fullname,
+                MR_term_size(MR_point.MR_point_vars[i].MR_var_type,
+                    MR_point.MR_point_vars[i].MR_var_value));
+            i++;
+        } while (i < MR_point.MR_point_var_count &&
+            MR_streq(var_spec.MR_var_spec_name,
+            MR_point.MR_point_vars[i].MR_var_fullname));
+    } else {
+        fprintf(out, "%20s: %6u\n",
+            MR_point.MR_point_vars[i].MR_var_fullname,
+            MR_term_size(MR_point.MR_point_vars[i].MR_var_type,
+                MR_point.MR_point_vars[i].MR_var_value));
+    }
+
+    return NULL;
+
+#endif
+}
+
+const char *
+MR_trace_print_size_all(FILE *out)
+{
+#ifndef MR_RECORD_TERM_SIZES
+    return "term sizes not available in this grade";
+#else
+    int         i;
+    const char  *problem;
 
     if (MR_point.MR_point_problem != NULL) {
         return MR_point.MR_point_problem;
     }
 
-    if (var_spec.MR_var_spec_kind == MR_VAR_SPEC_NUMBER) {
-        int varno;
-
-        problem = MR_trace_valid_var_number(
-                    var_spec.MR_var_spec_number);
-        if (problem != NULL) {
-            return problem;
-        }
-
-        varno = var_spec.MR_var_spec_number - 1;
-        bad_path = MR_trace_browse_var(out,
-                &MR_point.MR_point_vars[varno],
-                path, browser, caller, format);
-        if (bad_path != NULL) {
-            return MR_trace_bad_path(bad_path);
-        }
-    } else if (var_spec.MR_var_spec_kind == MR_VAR_SPEC_NAME) {
-        found = MR_FALSE;
-        for (i = 0; i < MR_point.MR_point_var_count; i++) {
-            if (MR_streq(var_spec.MR_var_spec_name,
-                MR_point.MR_point_vars[i].MR_var_fullname))
-            {
-                found = MR_TRUE;
-                break;
-            }
-        }
-
-        if (!found) {
-            return "there is no such variable";
-        }
-
-        if (MR_point.MR_point_vars[i].MR_var_is_ambiguous) {
-            int success_count;
-
-            if (must_be_unique) {
-                return "variable name is not unique";
-            }
-
-            success_count = 0;
-            do {
-                bad_path = MR_trace_browse_var(out, &MR_point.MR_point_vars[i],
-                    path, browser, caller, format);
-
-                if (bad_path == NULL) {
-                    success_count++;
-                }
-
-                i++;
-            } while (i < MR_point.MR_point_var_count &&
-                MR_streq(var_spec.MR_var_spec_name,
-                MR_point.MR_point_vars[i].MR_var_fullname));
-
-            if (success_count == 0) {
-                return "the selected path does not exist in any of the variables with that name";
-            }
-        } else {
-            bad_path = MR_trace_browse_var(out, &MR_point.MR_point_vars[i],
-                path, browser, caller, format);
-            if (bad_path != NULL) {
-                return MR_trace_bad_path(bad_path);
-            }
-        }
-    } else {
-        MR_fatal_error("internal error: bad var_spec kind");
+    for (i = 0; i < MR_point.MR_point_var_count; i++) {
+        fprintf(out, "%-20s %6u\n",
+            MR_point.MR_point_vars[i].MR_var_fullname,
+            MR_term_size(MR_point.MR_point_vars[i].MR_var_type,
+                MR_point.MR_point_vars[i].MR_var_value));
     }
 
     return NULL;
+#endif
 }
 
 #define BAD_PATH_BUFFER_SIZE    128
@@ -1035,7 +1095,7 @@ MR_trace_browse_all(FILE *out, MR_Browser browser, MR_Browse_Format format)
     }
 
     for (i = 0; i < MR_point.MR_point_var_count; i++) {
-        (void) MR_trace_browse_var(out, &MR_point.MR_point_vars[i],
+        (void) MR_trace_browse_var(out, MR_TRUE, &MR_point.MR_point_vars[i],
             NULL, browser, MR_BROWSE_CALLER_PRINT_ALL, format);
     }
 
@@ -1059,8 +1119,8 @@ MR_trace_browse_all_on_level(FILE *out, const MR_Label_Layout *level_layout,
 }
 
 static char *
-MR_trace_browse_var(FILE *out, MR_Var_Details *var, char *path,
-    MR_Browser browser, MR_Browse_Caller_Type caller,
+MR_trace_browse_var(FILE *out, MR_bool print_var_name, MR_Var_Details *var,
+    char *path, MR_Browser browser, MR_Browse_Caller_Type caller,
     MR_Browse_Format format)
 {
     MR_TypeInfo typeinfo;
@@ -1126,7 +1186,11 @@ MR_trace_browse_var(FILE *out, MR_Var_Details *var, char *path,
         }
     }
 
-    if (out != NULL) {
+    if (print_var_name) {
+        if (out == NULL) {
+            MR_fatal_error("MR_trace_browse_var: out == NULL");
+        }
+
         /*
         ** The initial blanks are to visually separate
         ** the variable names from the prompt.
@@ -1152,6 +1216,71 @@ MR_trace_browse_var(FILE *out, MR_Var_Details *var, char *path,
     (*browser)((MR_Word) typeinfo, *value, caller, format);
     MR_io_tabling_enabled = saved_io_tabling_enabled;
     return NULL;
+}
+
+/*
+** Look up the specified variable. If the specified variable exists among the
+** variables of the current program point, return NULL, and set *var_index_ptr
+** to point to the index of the variable in the MR_point_vars array. If the
+** specification matches exactly than one variable in the array, then
+** *is_ambiguous_ptr will be set to false. If it matches more than one, then
+** *is_ambiguous_ptr will be set to true, and *var_index_ptr will be set
+** to the index of the lowest matching variable. You can then increment index
+** until the name no longer matches to find all the matching variables.
+** (Ambiguity is not possible if the variable is specified by number.)
+**
+** If the specified variable does not exist, the return value will point to an
+** error message.
+*/
+
+static const char *
+MR_lookup_var_spec(MR_Var_Spec var_spec, int *var_index_ptr,
+    MR_bool *is_ambiguous_ptr)
+{
+    int         i;
+    MR_bool     found;
+    const char  *problem;
+
+    if (MR_point.MR_point_problem != NULL) {
+        return MR_point.MR_point_problem;
+    }
+
+    if (var_spec.MR_var_spec_kind == MR_VAR_SPEC_NUMBER) {
+        problem = MR_trace_valid_var_number(var_spec.MR_var_spec_number);
+        if (problem != NULL) {
+            return problem;
+        }
+
+        *var_index_ptr = var_spec.MR_var_spec_number - 1;
+        *is_ambiguous_ptr = MR_FALSE;
+        return NULL;
+    } else if (var_spec.MR_var_spec_kind == MR_VAR_SPEC_NAME) {
+        found = MR_FALSE;
+        for (i = 0; i < MR_point.MR_point_var_count; i++) {
+            if (MR_streq(var_spec.MR_var_spec_name,
+                MR_point.MR_point_vars[i].MR_var_fullname))
+            {
+                found = MR_TRUE;
+                break;
+            }
+        }
+
+        if (! found) {
+            return "there is no such variable";
+        }
+
+        *var_index_ptr = i;
+        if (MR_point.MR_point_vars[i].MR_var_is_ambiguous) {
+            *is_ambiguous_ptr = MR_TRUE;
+        } else {
+            *is_ambiguous_ptr = MR_FALSE;
+        }
+
+        return NULL;
+    } else {
+        MR_fatal_error("internal error: bad var_spec kind");
+        return NULL;
+    }
 }
 
 MR_ConstString
@@ -1266,9 +1395,16 @@ MR_trace_check_integrity_on_cur_level(void)
         ** closely by a call or an exit, this should be sufficient to catch
         ** most misconstructed terms.
         */
-        (void) MR_trace_browse_var(stdout, &MR_point.MR_point_vars[i],
+        (void) MR_trace_browse_var(stdout, MR_TRUE, &MR_point.MR_point_vars[i],
                 (MR_String) (MR_Integer) "", MR_trace_print,
                 MR_BROWSE_CALLER_PRINT, MR_BROWSE_DEFAULT_FORMAT);
+
+        /*
+        ** Looking up the term size can lead to a crash if the term has a
+        ** memory cell that should have but doesn't have a size slot.
+        */
+        (void) MR_term_size(MR_point.MR_point_vars[i].MR_var_type,
+            MR_point.MR_point_vars[i].MR_var_value);
     }
 }
 
@@ -1307,8 +1443,8 @@ MR_trace_check_integrity(const MR_Label_Layout *layout, MR_Trace_Port port)
 #if 0
         /* enable this code if necessary for debugging */
         fprintf(stdout, "%s", buf);
-#endif
         fflush(stdout);
+#endif
         MR_trace_check_integrity_on_cur_level();
         level++;
         problem = MR_trace_set_level(level, MR_TRUE);

@@ -595,21 +595,26 @@ horder_vars([Arg | Args], VarType) :-
 	).
 
 zero_size_type(Type, Module) :-
-	classify_type(Type, Module, TypeCategory),
-	zero_size_type_category(TypeCategory, Type, Module, yes).
+	classify_type(Module, Type) = TypeCategory,
+	zero_size_type_category(TypeCategory, yes).
 
-:- pred zero_size_type_category(builtin_type, type, module_info, bool).
-:- mode zero_size_type_category(in, in, in, out) is det.
+:- pred zero_size_type_category(type_category, bool).
+:- mode zero_size_type_category(in, out) is det.
 
-zero_size_type_category(int_type, _, _, yes).
-zero_size_type_category(char_type, _, _, yes).
-zero_size_type_category(str_type, _, _, yes).
-zero_size_type_category(float_type, _, _, yes).
-zero_size_type_category(pred_type, _, _, no).
-zero_size_type_category(tuple_type, _, _, no).
-zero_size_type_category(enum_type, _, _, yes).
-zero_size_type_category(polymorphic_type, _, _, no).
-zero_size_type_category(user_type, _, _, no).
+zero_size_type_category(int_type, yes).
+zero_size_type_category(char_type, yes).
+zero_size_type_category(str_type, yes).
+zero_size_type_category(float_type, yes).
+zero_size_type_category(void_type, yes).
+zero_size_type_category(type_info_type, yes).
+zero_size_type_category(type_ctor_info_type, yes).
+zero_size_type_category(typeclass_info_type, yes).
+zero_size_type_category(base_typeclass_info_type, yes).
+zero_size_type_category(higher_order_type, no).
+zero_size_type_category(tuple_type, no).
+zero_size_type_category(enum_type, yes).
+zero_size_type_category(variable_type, no).
+zero_size_type_category(user_ctor_type, no).
 
 %-----------------------------------------------------------------------------%
 

@@ -74,6 +74,14 @@ typedef struct {
 } MR_Var_Spec;
 
 /*
+** This function converts a variable name or variable number to MR_Var_Spec
+** format.
+*/
+
+extern	void		MR_convert_arg_to_var_spec(const char *word_spec,
+				MR_Var_Spec *var_spec);
+
+/*
 ** These functions are documented near the top of this file.
 */
 
@@ -170,7 +178,8 @@ extern	const char	*MR_trace_browse_action(FILE *out, int action_number,
 ** number in the set of live variables at the current point; the desired part
 ** is specified by zero or more suffixes of the form ^argnum or /argnum.
 **
-** The names are printed to the given file if the file pointer is non-NULL.
+** The names are printed to the file specified by the out parameter if
+** print_var_name is set, which requires out to be non-NULL.
 ** The values are printed by giving them to the specified browser.
 ** The last argument governs whether this function returns an error
 ** if the given variable specification is ambiguous.
@@ -178,15 +187,16 @@ extern	const char	*MR_trace_browse_action(FILE *out, int action_number,
 ** XXX Actually, the "out" parameter is currently ignored by the browser.
 */
 
-extern	const char	*MR_trace_parse_browse_one(FILE *out, char *word_spec,
+extern	const char	*MR_trace_parse_browse_one(FILE *out,
+				MR_bool print_var_name, char *word_spec,
 				MR_Browser browser,
 				MR_Browse_Caller_Type caller,
 				MR_Browse_Format format,
 				MR_bool must_be_unique);
 
 /*
-** Print the (names and) values of the specified variables.
-** The names are printed to the given file if the file pointer is non-NULL.
+** Print the (name and) value of the specified variable.
+** The name is printed to the given file if print_var_name is set.
 ** The values are printed by giving them to the specified browser.
 ** The last argument governs whether this function returns an error
 ** if the given variable specification is ambiguous.
@@ -194,8 +204,8 @@ extern	const char	*MR_trace_parse_browse_one(FILE *out, char *word_spec,
 ** XXX Actually, the "out" parameter is currently ignored by the browser.
 */
 
-extern	const char	*MR_trace_browse_one(FILE *out, MR_Var_Spec var_spec,
-				MR_Browser browser,
+extern	const char	*MR_trace_browse_one(FILE *out, MR_bool print_var_name,
+				MR_Var_Spec var_spec, MR_Browser browser,
 				MR_Browse_Caller_Type caller,
 				MR_Browse_Format format,
 				MR_bool must_be_unique);
@@ -224,6 +234,21 @@ extern	const char	*MR_trace_browse_all_on_level(FILE *out,
 				const MR_Label_Layout *level_layout,
 				MR_Word *base_sp, MR_Word *base_curfr,
 				int ancestor_level, MR_bool print_optionals);
+
+/*
+** Print the size of the specified variable(s) to the specified file.
+** Return a non-NULL error message if this is not possible.
+*/
+
+extern	const char *	MR_trace_print_size_one(FILE *out,
+				char *word_spec);
+
+/*
+** Print the size of all the variables at the current program point to the
+** specified file. Return a non-NULL error message if this is not possible.
+*/
+
+extern	const char *	MR_trace_print_size_all(FILE *out);
 
 /*
 ** Return the name (if any) of the variable with the given HLDS variable number

@@ -4418,8 +4418,10 @@ module_add_clause(ModuleInfo0, ClauseVarSet, PredOrFunc, PredName, Args0, Body,
 		% easier when redefining builtins to use normal Mercury code.
 		{ pred_info_is_builtin(PredInfo1) }
 	->
-		prog_out__write_context(Context),
-		report_warning("Warning: clause for builtin.\n"),
+		% XXX commented out while the change to builtin_ops
+		% to add term_size_prof_builtin.term_size_plus is bootstrapped
+		% prog_out__write_context(Context),
+		% report_warning("Warning: clause for builtin.\n"),
 		{ ModuleInfo = ModuleInfo1 },
 		{ Info = Info0 }
 	;

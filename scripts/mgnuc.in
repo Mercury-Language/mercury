@@ -368,6 +368,15 @@ case $profile_deep in
 	false)		PROF_DEEP_OPTS="" ;;
 esac
 
+case $record_term_sizes_as_words,$record_term_sizes_as_cells in
+	true,true)	progname=`basename $0`
+			echo "$progname: we can't record both cell and word sizes"
+			exit 1 ;;
+	true,false)	RECORD_TERM_SIZE_OPTS="-DMR_RECORD_TERM_SIZES" ;;
+	false,true)	RECORD_TERM_SIZE_OPTS="-DMR_RECORD_TERM_SIZES -DMR_RECORD_TERM_SIZES_AS_CELLS" ;;
+	false,false)	RECORD_TERM_SIZE_OPTS="" ;;
+esac
+
 case $use_trail in
 	true)		TRAIL_OPTS="-DMR_USE_TRAIL" ;;
 	false)		TRAIL_OPTS="" ;;
@@ -411,8 +420,9 @@ case $COMPILER in
 		;;
 	*)	case "$GCC_OPTS" in
 			*USE_GCC*)
-		echo "$0: For compilers other than GNU C, the only" 1>&2
-		echo "$0: base grade allowed is \`none'" 1>&2
+		progname=`basename $0`
+		echo "$progname: For compilers other than GNU C, the only" 1>&2
+		echo "$progname: base grade allowed is \`none'" 1>&2
 					;;
 		esac
 		;;
@@ -562,6 +572,7 @@ ALL_CC_OPTS="$MERC_ALL_C_INCL_DIRS $ANSI_OPTS $CHECK_OPTS $OPT_OPTS \
 		$LLDEBUG_OPTS $C_DEBUG_OPTS \
 		$PROF_TIME_OPTS $PROF_CALLS_OPTS $PROF_MEMORY_OPTS \
 		$PROF_DEEP_OPTS $INLINE_ALLOC_OPTS $TRAIL_OPTS \
+		$RECORD_TERM_SIZE_OPTS \
 		$RESERVE_TAG_OPTS $MINIMAL_MODEL_OPTS \
 		$SPLIT_OPTS $THREAD_OPTS $PICREG_OPTS $ARCH_OPTS $ARG_OPTS"
 

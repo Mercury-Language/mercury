@@ -826,7 +826,7 @@ jumpopt__short_labels_const(code_addr_const(CodeAddr0), Instrmap,
 	;
 		CodeAddr = CodeAddr0
 	).
-jumpopt__short_labels_const(data_addr_const(D), _, data_addr_const(D)).
+jumpopt__short_labels_const(data_addr_const(D, O), _, data_addr_const(D, O)).
 
 :- pred jumpopt__short_labels_maybe_rvals(list(maybe(rval)), instrmap,
 	list(maybe(rval))).

@@ -1087,7 +1087,7 @@ maybe_specialize_pred_const(Goal0 - GoalInfo, Goal - GoalInfo) -->
 	( 
 		{ Goal0 = unify(_, _, UniMode, Unify0, Context) },
 		{ Unify0 = construct(LVar, ConsId0, Args0, _,
-				HowToConstruct, CellIsUnique, MaybeExprn) },
+			HowToConstruct, CellIsUnique, no) },
 		{ ConsId0 = pred_const(PredId, ProcId, EvalMethod) },
 		{ map__contains(NewPreds, proc(PredId, ProcId)) },
 		{ proc_info_vartypes(ProcInfo0, VarTypes0) },
@@ -1154,10 +1154,9 @@ maybe_specialize_pred_const(Goal0 - GoalInfo, Goal - GoalInfo) -->
 			^ proc_info := ProcInfo,
 
 			{ NewConsId = pred_const(NewPredId, NewProcId,
-					EvalMethod) },
-			{ Unify = construct(LVar, NewConsId,
-				NewArgs, UniModes, HowToConstruct,
-				CellIsUnique, MaybeExprn) },
+				EvalMethod) },
+			{ Unify = construct(LVar, NewConsId, NewArgs, UniModes,
+				HowToConstruct, CellIsUnique, no) },
 			{ Goal2 = unify(LVar, functor(NewConsId, no, NewArgs),
 				UniMode, Unify, Context) },
 
@@ -1556,7 +1555,7 @@ compute_extra_typeinfos(Info, Args1, ExtraTypeInfoTVars) :-
 
 arg_type_contains_type_info_for_tvar(TypeInfoType, TVars0, TVars) :-
 	(
-		polymorphism__type_info_type(TypeInfoType, Type),
+		polymorphism__type_info_or_ctor_type(TypeInfoType, Type),
 		Type = term__variable(TVar)
 	->
 		TVars = [TVar | TVars0]
@@ -2151,7 +2150,7 @@ find_special_proc(Type, SpecialId, SymName, PredId, ProcId, Info0, Info) :-
 
 find_builtin_type_with_equivalent_compare(ModuleInfo, Type, EqvType,
 		NeedIntCast) :-
-	classify_type(Type, ModuleInfo, TypeCategory),
+	TypeCategory = classify_type(ModuleInfo, Type),
 	(
 		TypeCategory = int_type,
 		EqvType = Type,
@@ -2169,8 +2168,11 @@ find_builtin_type_with_equivalent_compare(ModuleInfo, Type, EqvType,
 		EqvType = Type,
 		NeedIntCast = no
 	;
-		TypeCategory = pred_type,
-		error("pred type in find_builtin_type_with_equivalent_compare")
+		TypeCategory = void_type,
+		error("void type in find_builtin_type_with_equivalent_compare")
+	;
+		TypeCategory = higher_order_type,
+		error("higher_order type in find_builtin_type_with_equivalent_compare")
 	;
 		TypeCategory = tuple_type,
 		error("tuple type in find_builtin_type_with_equivalent_compare")
@@ -2179,11 +2181,23 @@ find_builtin_type_with_equivalent_compare(ModuleInfo, Type, EqvType,
 		construct_type(unqualified("int") - 0, [], EqvType),
 		NeedIntCast = yes
 	;
-		TypeCategory = polymorphic_type,
-		error("poly type in find_builtin_type_with_equivalent_compare")
+		TypeCategory = variable_type,
+		error("var type in find_builtin_type_with_equivalent_compare")
 	;
-		TypeCategory = user_type,
+		TypeCategory = user_ctor_type,
 		error("user type in find_builtin_type_with_equivalent_compare")
+	;
+		TypeCategory = type_info_type,
+		error("type_info type in find_builtin_type_with_equivalent_compare")
+	;
+		TypeCategory = type_ctor_info_type,
+		error("type_ctor_info type in find_builtin_type_with_equivalent_compare")
+	;
+		TypeCategory = typeclass_info_type,
+		error("typeclass_info type in find_builtin_type_with_equivalent_compare")
+	;
+		TypeCategory = base_typeclass_info_type,
+		error("base_typeclass_info type in find_builtin_type_with_equivalent_compare")
 	).
 
 :- pred specializeable_special_call(special_pred_id::in, proc_id::in)
@@ -3041,7 +3055,7 @@ construct_higher_order_terms(ModuleInfo, HeadVars0, NewHeadVars, ArgModes0,
 
 add_rtti_info(Var - VarType, !ProcInfo) :-
 	(
-		polymorphism__type_info_type(VarType, Type),
+		polymorphism__type_info_or_ctor_type(VarType, Type),
 		Type = term__variable(TVar)
 	->
 		maybe_set_typeinfo_locn(TVar, type_info(Var), !ProcInfo)

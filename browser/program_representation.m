@@ -233,9 +233,15 @@ atomic_goal_generates_event(plain_call_rep(ModuleName, PredName, Args)) =
 	).
 
 call_is_primitive(ModuleName, PredName) :-
-	ModuleName = "builtin",
-	( PredName = "unify"
-	; PredName = "compare"
+	(
+		ModuleName = "builtin",
+		( PredName = "unify"
+		; PredName = "compare"
+		)
+	;
+		ModuleName = "profiling_builtin"
+	;
+		ModuleName = "term_size_prof_builtin"
 	).
 
 convert_dirs_to_term_path([], []).

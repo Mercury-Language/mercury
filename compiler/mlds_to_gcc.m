@@ -1838,11 +1838,11 @@ build_type(mlds__rtti_type(RttiName), InitializerSize, _GlobalInfo,
 build_type(mlds__unknown_type, _, _, _) -->
 	{ unexpected(this_file, "build_type: unknown type") }.
 
-:- pred build_mercury_type(mercury_type, builtin_type, gcc__type,
-		io__state, io__state).
+:- pred build_mercury_type(mercury_type, type_category, gcc__type,
+	io__state, io__state).
 :- mode build_mercury_type(in, in, out, di, uo) is det.
 
-build_mercury_type(_Type, TypeCategory, GCC_Type) -->
+build_mercury_type(Type, TypeCategory, GCC_Type) -->
 	(
 		{ TypeCategory = char_type },
 		{ GCC_Type = 'MR_Char' }
@@ -1856,7 +1856,34 @@ build_mercury_type(_Type, TypeCategory, GCC_Type) -->
 		{ TypeCategory = float_type },
 		{ GCC_Type = 'MR_Float' }
 	;
-		{ TypeCategory = polymorphic_type },
+		{ TypeCategory = void_type },
+		{ GCC_Type = 'MR_Word' }
+	;
+		{ TypeCategory = type_info_type },
+		build_mercury_type(Type, user_ctor_type, GCC_Type)
+	;
+		{ TypeCategory = type_ctor_info_type },
+		build_mercury_type(Type, user_ctor_type, GCC_Type)
+	;
+		{ TypeCategory = typeclass_info_type },
+		globals__io_lookup_bool_option(highlevel_data, HighLevelData),
+		( { HighLevelData = yes } ->
+			{ sorry(this_file,
+				"--high-level-data (typeclass_info_type)") }
+		;
+			{ GCC_Type = 'MR_Word' }
+		)
+	;
+		{ TypeCategory = base_typeclass_info_type },
+		globals__io_lookup_bool_option(highlevel_data, HighLevelData),
+		( { HighLevelData = yes } ->
+			{ sorry(this_file,
+				"--high-level-data (base_typeclass_info_type)") }
+		;
+			{ GCC_Type = 'MR_Word' }
+		)
+	;
+		{ TypeCategory = variable_type },
 		{ GCC_Type = 'MR_Box' }
 	;
 		{ TypeCategory = tuple_type },
@@ -1865,7 +1892,7 @@ build_mercury_type(_Type, TypeCategory, GCC_Type) -->
 		gcc__build_pointer_type('MR_Box', MR_Tuple),
 		{ GCC_Type = MR_Tuple }
 	;
-		{ TypeCategory = pred_type },
+		{ TypeCategory = higher_order_type },
 		globals__io_lookup_bool_option(highlevel_data, HighLevelData),
 		( { HighLevelData = yes } ->
 			{ sorry(this_file, "--high-level-data (pred_type)") }
@@ -1882,7 +1909,7 @@ build_mercury_type(_Type, TypeCategory, GCC_Type) -->
 		% XXX for --high-level-data, we should use a real enum type
 		{ GCC_Type = 'MR_Integer' }
 	;
-		{ TypeCategory = user_type },
+		{ TypeCategory = user_ctor_type },
 		globals__io_lookup_bool_option(highlevel_data, HighLevelData),
 		( { HighLevelData = yes } ->
 			{ sorry(this_file, "--high-level-data (user_type)") }
@@ -3550,6 +3577,7 @@ gen_context(MLDS_Context) -->
 :- func 'MR_Word'		= gcc__type.
 :- func 'MR_bool'		= gcc__type.
 :- func 'MR_TypeInfo'		= gcc__type.
+:- func 'MR_TypeCtorInfo'	= gcc__type.
 :- func 'MR_PseudoTypeInfo'	= gcc__type.
 :- func 'MR_Sectag_Locn'	= gcc__type.
 :- func 'MR_TypeCtorRep'	= gcc__type.
@@ -3572,6 +3600,7 @@ gen_context(MLDS_Context) -->
 'MR_bool'		= gcc__integer_type_node. % i.e. typedef int MR_bool
 
 'MR_TypeInfo'		= gcc__ptr_type_node.
+'MR_TypeCtorInfo'	= gcc__ptr_type_node.
 'MR_PseudoTypeInfo'	= gcc__ptr_type_node.
 
 	% XXX MR_Sectag_Locn and MR_TypeCtorRep are actually enums

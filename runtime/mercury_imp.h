@@ -84,6 +84,9 @@
 #include	"mercury_minimal_model.h"
 #endif
 
+#include	"mercury_univ.h"
+#include	"mercury_term_size.h"
+
 #include	"mercury_grade.h"
 
 #endif /* not MERCURY_IMP_H */

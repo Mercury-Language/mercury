@@ -474,9 +474,9 @@ goal_util__rename_unify_rhs(
 :- mode goal_util__rename_unify(in, in, in, out) is det.
 
 goal_util__rename_unify(
-		construct(Var0, ConsId, Vars0, Modes, How0, Uniq, Aditi),
+		construct(Var0, ConsId, Vars0, Modes, How0, Uniq, Size),
 		Must, Subn,
-		construct(Var, ConsId, Vars, Modes, How, Uniq, Aditi)) :-
+		construct(Var, ConsId, Vars, Modes, How, Uniq, Size)) :-
 	goal_util__rename_var(Var0, Must, Subn, Var),
 	goal_util__rename_var_list(Vars0, Must, Subn, Vars),
 	(

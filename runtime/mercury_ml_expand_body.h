@@ -648,9 +648,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
 
                 data_word = *data_word_ptr;
                 sprintf(buf, "%ld", (long) data_word);
-                MR_incr_saved_hp_atomic(MR_LVALUE_CAST(MR_Word, str),
-                    (strlen(buf) + sizeof(MR_Word)) / sizeof(MR_Word));
-                strcpy(str, buf);
+                MR_make_aligned_string_copy_saved_hp(str, buf);
                 expand_info->EXPAND_FUNCTOR_FIELD = str;
             }
 #endif  /* EXPAND_FUNCTOR_FIELD */
@@ -662,13 +660,13 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
 #ifdef  EXPAND_FUNCTOR_FIELD
             {
                 /* XXX should escape characters correctly */
+                char    buf[8];
                 MR_Word data_word;
                 char    *str;
 
                 data_word = *data_word_ptr;
-                MR_incr_saved_hp_atomic(MR_LVALUE_CAST(MR_Word, str),
-                    (3 + sizeof(MR_Word)) / sizeof(MR_Word));
-                    sprintf(str, "\'%c\'", (char) data_word);
+                sprintf(buf, "\'%c\'", (char) data_word);
+                MR_make_aligned_string_copy_saved_hp(str, buf);
                 expand_info->EXPAND_FUNCTOR_FIELD = str;
             }
 #endif  /* EXPAND_FUNCTOR_FIELD */
@@ -687,9 +685,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                 data_word = *data_word_ptr;
                 f = MR_word_to_float(data_word);
                 MR_sprintf_float(buf, f);
-                MR_incr_saved_hp_atomic(MR_LVALUE_CAST(MR_Word, str),
-                    (strlen(buf) + sizeof(MR_Word)) / sizeof(MR_Word));
-                strcpy(str, buf);
+                MR_make_aligned_string_copy_saved_hp(str, buf);
                 expand_info->EXPAND_FUNCTOR_FIELD = str;
             }
 #endif  /* EXPAND_FUNCTOR_FIELD */
@@ -705,10 +701,8 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                 char    *str;
 
                 data_word = *data_word_ptr;
-                MR_incr_saved_hp_atomic(MR_LVALUE_CAST(MR_Word, str),
-                    (strlen((MR_String) data_word) + 2 + sizeof(MR_Word))
-                    / sizeof(MR_Word));
-                sprintf(str, "%c%s%c", '"', (MR_String) data_word, '"');
+                MR_make_aligned_string_copy_saved_hp_quote(str,
+                        (MR_String) data_word);
                 expand_info->EXPAND_FUNCTOR_FIELD = str;
             }
 #endif  /* EXPAND_FUNCTOR_FIELD */

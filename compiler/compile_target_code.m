@@ -496,7 +496,28 @@ compile_c_file(ErrorStream, PIC, C_File, O_File, Succeeded) -->
 	;
 		ProfileDeepOpt = ""
 	},
-
+	globals__io_lookup_bool_option(record_term_sizes_as_words,
+		RecordTermSizesAsWords),
+	globals__io_lookup_bool_option(record_term_sizes_as_cells,
+		RecordTermSizesAsCells),
+	{
+		RecordTermSizesAsWords = yes,
+		RecordTermSizesAsCells = yes,
+		% this should have been caught in handle_options
+		error("compile_c_file: inconsistent record term size options")
+	;
+		RecordTermSizesAsWords = yes,
+		RecordTermSizesAsCells = no,
+		RecordTermSizesOpt = "-DMR_RECORD_TERM_SIZES "
+	;
+		RecordTermSizesAsWords = no,
+		RecordTermSizesAsCells = yes,
+		RecordTermSizesOpt = "-DMR_RECORD_TERM_SIZES -DMR_RECORD_TERM_SIZES_AS_CELLS "
+	;
+		RecordTermSizesAsWords = no,
+		RecordTermSizesAsCells = no,
+		RecordTermSizesOpt = ""
+	},
 	(
 		{ PIC = pic },
 		globals__io_lookup_string_option(cflags_for_pic,
@@ -624,8 +645,8 @@ compile_c_file(ErrorStream, PIC, C_File, O_File, Succeeded) -->
 		CFLAGS_FOR_REGS, " ", CFLAGS_FOR_GOTOS, " ",
 		CFLAGS_FOR_THREADS, " ", CFLAGS_FOR_PIC, " ",
 		GC_Opt, ProfileCallsOpt, ProfileTimeOpt, ProfileMemoryOpt,
-		ProfileDeepOpt, PIC_Reg_Opt, TagsOpt, NumTagBitsOpt,
-		Target_DebugOpt, LL_DebugOpt,
+		ProfileDeepOpt, RecordTermSizesOpt, PIC_Reg_Opt, TagsOpt,
+		NumTagBitsOpt, Target_DebugOpt, LL_DebugOpt,
 		DeclDebugOpt, RequireTracingOpt, StackTraceOpt,
 		UseTrailOpt, ReserveTagOpt, MinimalModelOpt, TypeLayoutOpt,
 		InlineAllocOpt, " ", AnsiOpt, " ", WarningOpt, " ", CFLAGS,

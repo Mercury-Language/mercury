@@ -1023,7 +1023,8 @@ MR_make_closure(MR_Code *proc_addr)
 #else
 	num_hidden_args = 0;
 #endif
-	MR_incr_hp(MR_LVALUE_CAST(MR_Word, closure), 3 + num_hidden_args);
+	MR_offset_incr_hp(MR_LVALUE_CAST(MR_Word, closure), 0,
+		3 + num_hidden_args);
 
 	closure->MR_closure_layout = (MR_Closure_Layout *) closure_layout;
 	closure->MR_closure_code = proc_addr;

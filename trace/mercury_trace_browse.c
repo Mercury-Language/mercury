@@ -322,10 +322,11 @@ void
 MR_trace_query(MR_Query_Type type, const char *options, int num_imports,
 	char *imports[])
 {
-	MR_ConstString options_on_heap;
-	MR_Word imports_list;
-	MercuryFile mdb_in, mdb_out;
-	int i;
+	MR_ConstString	options_on_heap;
+	MR_Word		imports_list;
+	MercuryFile	mdb_in;
+	MercuryFile	mdb_out;
+	int		i;
 
 	MR_c_file_to_mercury_file(MR_mdb_in, &mdb_in);
 	MR_c_file_to_mercury_file(MR_mdb_out, &mdb_out);
@@ -339,8 +340,8 @@ MR_trace_query(MR_Query_Type type, const char *options, int num_imports,
 		for (i = num_imports; i > 0; i--) {
 			MR_ConstString this_import;
 			MR_make_aligned_string(this_import, imports[i - 1]);
-			imports_list = MR_list_cons((MR_Word) this_import,
-				imports_list);
+			imports_list = MR_string_list_cons(
+				(MR_Word) this_import, imports_list);
 		}
 	);
 

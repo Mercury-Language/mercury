@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2001-2002 The University of Melbourne.
+** Copyright (C) 2001-2003 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -11,7 +11,8 @@
 #ifndef MERCURY_DEEP_PROFILING_H
 #define MERCURY_DEEP_PROFILING_H
 
-#include "mercury_stack_layout.h"
+#include "mercury_types.h"		/* for MR_ConstString etc */
+#include "mercury_proc_id.h"		/* for MR_Proc_Id */
 #include "mercury_ho_call.h"
 #include <stdio.h>
 

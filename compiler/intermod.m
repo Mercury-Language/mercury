@@ -430,14 +430,14 @@ has_ho_input(ModuleInfo, ProcInfo) :-
 		list(mode)::in, map(prog_var, type)::in) is semidet.
 
 check_for_ho_input_args(ModuleInfo, [HeadVar | HeadVars],
-			[ArgMode | ArgModes], VarTypes) :-
+		[ArgMode | ArgModes], VarTypes) :-
 	(
 		mode_is_input(ModuleInfo, ArgMode),
 		map__lookup(VarTypes, HeadVar, Type),
-		classify_type(Type, ModuleInfo, pred_type)
+		classify_type(ModuleInfo, Type) = higher_order_type
 	;
 		check_for_ho_input_args(ModuleInfo, HeadVars,
-							ArgModes, VarTypes)
+			ArgModes, VarTypes)
 	).
 
 	% Rough guess: a goal is deforestable if it contains a single

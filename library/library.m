@@ -97,6 +97,7 @@
 :- import_module profiling_builtin.
 :- import_module rtti_implementation.
 :- import_module table_builtin.
+:- import_module term_size_prof_builtin.
 
 % library__version must be implemented using pragma foreign_proc,
 % so we can get at the MR_VERSION and MR_FULLARCH configuration

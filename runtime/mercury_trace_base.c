@@ -25,8 +25,9 @@ ENDINIT
 #include "mercury_hash_table.h"
 #include "mercury_layout_util.h" /* for MR_generate_proc_name_from_layout */
 #include "mercury_runtime_util.h"	/* for strerror() on some systems */
-#include "mercury_signal.h"	/* for MR_setup_signal() */
-#include <signal.h>		/* for SIGINT */
+#include "mercury_signal.h"		/* for MR_setup_signal() */
+#include "mercury_builtin_types.h"	/* for type_ctor_infos */
+#include <signal.h>			/* for SIGINT */
 #include <stdio.h>
 #include <errno.h>
 
@@ -452,7 +453,7 @@ MR_trace_get_action(int action_number, MR_ConstString *proc_name_ptr,
 			table_io_decl->MR_table_io_decl_ptis[hv - 1]);
 		MR_restore_transient_hp();
 		MR_new_univ_on_hp(arg, type_info, answer_block[hv]);
-		arg_list = MR_list_cons(arg, arg_list);
+		arg_list = MR_univ_list_cons(arg, arg_list);
 		MR_save_transient_hp();
 	}
 

@@ -79,6 +79,7 @@
 :- import_module transform_hlds__unused_args.
 :- import_module transform_hlds__unneeded_code.
 :- import_module transform_hlds__lco.
+:- import_module transform_hlds__size_prof.
 :- import_module ll_backend__deep_profiling.
 
 	% the LLDS back-end
@@ -2179,8 +2180,14 @@ mercury_compile__middle_pass(ModuleName, HLDS24, HLDS50,
 	mercury_compile__maybe_dump_hlds(HLDS47, "47", "magic"),
 
 	mercury_compile__maybe_eliminate_dead_procs(HLDS47, Verbose, Stats,
-		HLDS49),
-	mercury_compile__maybe_dump_hlds(HLDS49, "49", "dead_procs"),
+		HLDS48),
+	mercury_compile__maybe_dump_hlds(HLDS48, "48", "dead_procs"),
+
+	% The term size profiling transformation should be after all
+	% transformations that construct terms of non-zero size. (Deep
+	% profiling does not construct non-zero size terms.)
+	mercury_compile__maybe_term_size_prof(HLDS48, Verbose, Stats, HLDS49),
+	mercury_compile__maybe_dump_hlds(HLDS49, "49", "term_size_prof"),
 
 	% Deep profiling transformation should be done late in the piece
 	% since it munges the code a fair amount and introduces strange
@@ -3259,6 +3266,47 @@ mercury_compile__maybe_eliminate_dead_procs(HLDS0, Verbose, Stats, HLDS) -->
 		{ HLDS0 = HLDS }
 	).
 
+:- pred mercury_compile__maybe_term_size_prof(module_info::in,
+	bool::in, bool::in, module_info::out, io__state::di, io__state::uo)
+	is det.
+
+mercury_compile__maybe_term_size_prof(HLDS0, Verbose, Stats, HLDS) -->
+	globals__io_lookup_bool_option(record_term_sizes_as_words, AsWords),
+	globals__io_lookup_bool_option(record_term_sizes_as_cells, AsCells),
+	{
+		AsWords = yes,
+		AsCells = yes,
+		error("mercury_compile__maybe_term_size_prof: "
+			++ "as_words and as_cells")
+	;
+		AsWords = yes,
+		AsCells = no,
+		MaybeTransform = yes(term_words)
+	;
+		AsWords = no,
+		AsCells = yes,
+		MaybeTransform = yes(term_cells)
+	;
+		AsWords = no,
+		AsCells = no,
+		MaybeTransform = no
+	},
+	(
+		{ MaybeTransform = yes(Transform) },
+		maybe_write_string(Verbose,
+			"% Applying term size profiling transformation...\n"),
+		maybe_flush_output(Verbose),
+		process_all_nonimported_nonaditi_procs(
+			update_module_io(
+				size_prof__process_proc_msg(Transform)),
+			HLDS0, HLDS),
+		maybe_write_string(Verbose, "% done.\n"),
+		maybe_report_stats(Stats)
+	;
+		{ MaybeTransform = no },
+		{ HLDS0 = HLDS }
+	).
+
 :- pred mercury_compile__maybe_deep_profiling(module_info, bool, bool,
 	module_info, list(layout_data), io__state, io__state).
 :- mode mercury_compile__maybe_deep_profiling(in, in, in, out, out, di, uo)
@@ -4048,7 +4096,7 @@ should_dump_stage(StageNum, StageName, DumpStages) :-
 		string__append(From, "+", DumpStage),
 		string__to_int(From, FromInt),
 		(
-		string__append("0", StrippedStageNum, StageNum),
+			string__append("0", StrippedStageNum, StageNum),
 			string__to_int(StrippedStageNum, StageInt)
 		;
 			string__to_int(StageNum, StageInt)

@@ -2,7 +2,7 @@
 ** vim:ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2002 The University of Melbourne.
+** Copyright (C) 2002-2003 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -62,7 +62,7 @@
                     (ei).args_field.num_extra_args]);               \
                                                                     \
                 /* Join the argument to the front of the list */    \
-            var = MR_list_cons_msg(arg, var, MR_PROC_LABEL);        \
+            var = MR_univ_list_cons_msg(arg, var, MR_PROC_LABEL);   \
         }                                                           \
     } while (0)
 

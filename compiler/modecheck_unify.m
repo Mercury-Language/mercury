@@ -1034,16 +1034,20 @@ categorize_unify_var_lambda(ModeOfX, ArgModes0, X, ArgVars,
 		Unification, ModeInfo) :-
 	% if we are re-doing mode analysis, preserve the existing cons_id
 	list__length(ArgVars, Arity),
-	( Unification0 = construct(_, ConsId0, _, _, _, _, AditiInfo0) ->
-		AditiInfo = AditiInfo0,
+	(
+		Unification0 = construct(_, ConsId0, _, _, _, _, MaybeSize0)
+	->
+		MaybeSize = MaybeSize0,
 		ConsId = ConsId0
-	; Unification0 = deconstruct(_, ConsId1, _, _, _, _) ->
-		AditiInfo = no,
+	;
+		Unification0 = deconstruct(_, ConsId1, _, _, _, _)
+	->
+		MaybeSize = no,
 		ConsId = ConsId1
 	;
 		% the real cons_id will be computed by lambda.m;
 		% we just put in a dummy one for now
-		AditiInfo = no,
+		MaybeSize = no,
 		ConsId = cons(unqualified("__LambdaGoal__"), Arity)
 	),
 	mode_info_get_module_info(ModeInfo0, ModuleInfo),
@@ -1090,7 +1094,7 @@ categorize_unify_var_lambda(ModeOfX, ArgModes0, X, ArgVars,
 			RHS = RHS0
 		),
 		Unification = construct(X, ConsId, ArgVars, ArgModes,
-			construct_dynamically, cell_is_unique, AditiInfo),
+			construct_dynamically, cell_is_unique, MaybeSize),
 		ModeInfo = ModeInfo0
 	;
 		instmap__is_reachable(InstMap)
@@ -1132,22 +1136,24 @@ categorize_unify_var_functor(ModeOfX, ModeOfXArgs, ArgModes0,
 	mode_info_get_module_info(ModeInfo0, ModuleInfo),
 	map__lookup(VarTypes, X, TypeOfX),
 	% if we are re-doing mode analysis, preserve the existing cons_id
-	( Unification0 = construct(_, ConsId0, _, _, _, _, _) ->
+	( Unification0 = construct(_, ConsId0, _, _, _, _, MaybeSize0) ->
+		MaybeSize = MaybeSize0,
 		ConsId = ConsId0
 	; Unification0 = deconstruct(_, ConsId1, _, _, _, _) ->
+		MaybeSize = no,
 		ConsId = ConsId1
 	;
+		MaybeSize = no,
 		ConsId = NewConsId
 	),
 	mode_util__modes_to_uni_modes(ModeOfXArgs, ArgModes0,
-						ModuleInfo, ArgModes),
+		ModuleInfo, ArgModes),
 	(
 		mode_is_output(ModuleInfo, ModeOfX)
 	->
 		% It's a construction.
-		RLExprnId = no,
 		Unification = construct(X, ConsId, ArgVars, ArgModes,
-			construct_dynamically, cell_is_unique, RLExprnId),
+			construct_dynamically, cell_is_unique, MaybeSize),
 
 		% For existentially quantified data types,
 		% check that any type_info or type_class_info variables in the

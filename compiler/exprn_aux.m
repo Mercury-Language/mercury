@@ -142,7 +142,7 @@ exprn_aux__const_is_constant(string_const(_), _, yes).
 exprn_aux__const_is_constant(multi_string_const(_, _), _, yes).
 exprn_aux__const_is_constant(code_addr_const(CodeAddr), ExprnOpts, IsConst) :-
 	exprn_aux__addr_is_constant(CodeAddr, ExprnOpts, IsConst).
-exprn_aux__const_is_constant(data_addr_const(_), _, yes).
+exprn_aux__const_is_constant(data_addr_const(_, _), _, yes).
 exprn_aux__const_is_constant(label_entry(Label), ExprnOpts, IsConst) :-
 	exprn_aux__addr_is_constant(label(Label), ExprnOpts, IsConst).
 
@@ -387,12 +387,12 @@ exprn_aux__substitute_lval_in_uinstr(OldLval, NewLval, Uinstr0, Uinstr, N0, N)
 			Rval0, Rval, N0, N),
 		Uinstr = if_val(Rval, CodeAddr)
 	;
-		Uinstr0 = incr_hp(Lval0, MaybeTag, Rval0, TypeCtor),
+		Uinstr0 = incr_hp(Lval0, MaybeTag, MO, Rval0, TypeCtor),
 		exprn_aux__substitute_lval_in_lval_count(OldLval, NewLval,
 			Lval0, Lval, N0, N1),
 		exprn_aux__substitute_lval_in_rval_count(OldLval, NewLval,
 			Rval0, Rval, N1, N),
-		Uinstr = incr_hp(Lval, MaybeTag, Rval, TypeCtor)
+		Uinstr = incr_hp(Lval, MaybeTag, MO, Rval, TypeCtor)
 	;
 		Uinstr0 = mark_hp(Lval0),
 		exprn_aux__substitute_lval_in_lval_count(OldLval, NewLval,
@@ -996,7 +996,7 @@ exprn_aux__rval_addrs(const(Const), CodeAddrs, DataAddrs) :-
 	( Const = code_addr_const(CodeAddress) ->
 		CodeAddrs = [CodeAddress],
 		DataAddrs = []
-	; Const = data_addr_const(DataAddress) ->
+	; Const = data_addr_const(DataAddress, _) ->
 		CodeAddrs = [],
 		DataAddrs = [DataAddress]
 	;

@@ -11,6 +11,8 @@
 % into rvals we can give to llds_out.m in order to make those terms available
 % at runtime in the program being compiled.
 %
+% XXX At the moment, the constructed term never has term_size slots.
+%
 %---------------------------------------------------------------------------%
 
 :- module ll_backend__static_term.
@@ -68,14 +70,14 @@ static_term__functor_info_to_rval(FunctorInfo, Rval, !StaticCellInfo) :-
 			!StaticCellInfo),
 		add_static_cell_natural_types([SectagRval | ArgRvals],
 			DataAddr, !StaticCellInfo),
-		Rval = mkword(Ptag, const(data_addr_const(DataAddr)))
+		Rval = mkword(Ptag, const(data_addr_const(DataAddr, no)))
 	;
 		FunctorInfo = functor_unshared(Ptag, Args),
 		list__map_foldl(static_term__term_to_rval, Args, ArgRvals,
 			!StaticCellInfo),
 		add_static_cell_natural_types(ArgRvals, DataAddr,
 			!StaticCellInfo),
-		Rval = mkword(Ptag, const(data_addr_const(DataAddr)))
+		Rval = mkword(Ptag, const(data_addr_const(DataAddr, no)))
 	;
 		FunctorInfo = functor_notag(Univ),
 		static_term__term_to_rval(Univ, Rval, !StaticCellInfo)

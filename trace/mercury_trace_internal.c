@@ -440,6 +440,7 @@ static	MR_TraceCmdFunc	MR_trace_cmd_help;
 static	MR_TraceCmdFunc	MR_trace_cmd_histogram_all;
 static	MR_TraceCmdFunc	MR_trace_cmd_histogram_exp;
 static	MR_TraceCmdFunc	MR_trace_cmd_clear_histogram;
+static	MR_TraceCmdFunc	MR_trace_cmd_term_size;
 static	MR_TraceCmdFunc	MR_trace_cmd_flag;
 static	MR_TraceCmdFunc	MR_trace_cmd_subgoal;
 static	MR_TraceCmdFunc	MR_trace_cmd_consumer;
@@ -588,6 +589,9 @@ static	void	MR_trace_browse_goal_internal(MR_ConstString name,
 			MR_Word arg_list, MR_Word is_func,
 			MR_Browse_Caller_Type caller, MR_Browse_Format format);
 static	const char *MR_trace_browse_exception(MR_Event_Info *event_info,
+			MR_Browser browser, MR_Browse_Caller_Type caller,
+			MR_Browse_Format format);
+static	const char *MR_trace_browse_proc_body(MR_Event_Info *event_info,
 			MR_Browser browser, MR_Browse_Caller_Type caller,
 			MR_Browse_Format format);
 
@@ -1184,7 +1188,7 @@ MR_trace_browse_goal_internal(MR_ConstString name, MR_Word arg_list,
 
 static const char *
 MR_trace_browse_exception(MR_Event_Info *event_info, MR_Browser browser,
-		MR_Browse_Caller_Type caller, MR_Browse_Format format)
+	MR_Browse_Caller_Type caller, MR_Browse_Format format)
 {
 	MR_TypeInfo	type_info;
 	MR_Word		value;
@@ -1201,7 +1205,24 @@ MR_trace_browse_exception(MR_Event_Info *event_info, MR_Browser browser,
 
 	MR_unravel_univ(exception, type_info, value);
 
-	(*browser)((MR_Word)type_info, value, caller, format);
+	(*browser)((MR_Word) type_info, value, caller, format);
+
+	return (const char *) NULL;
+}
+
+static const char *
+MR_trace_browse_proc_body(MR_Event_Info *event_info, MR_Browser browser,
+	MR_Browse_Caller_Type caller, MR_Browse_Format format)
+{
+	const MR_Proc_Layout	*entry;
+
+	entry = event_info->MR_event_sll->MR_sll_entry;
+	if (entry->MR_sle_proc_rep == NULL) {
+		return "current procedure has no body info";
+	}
+
+	(*browser)(ML_proc_rep_type(), (MR_Word) entry->MR_sle_proc_rep,
+		caller, format);
 
 	return (const char *) NULL;
 }
@@ -1914,9 +1935,13 @@ MR_trace_cmd_print(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 			problem = MR_trace_browse_exception(event_info,
 				MR_trace_browse_internal,
 				MR_BROWSE_CALLER_PRINT, format);
+		} else if (MR_streq(words[1], "proc_body")) {
+			problem = MR_trace_browse_proc_body(event_info,
+				MR_trace_browse_internal,
+				MR_BROWSE_CALLER_PRINT, format);
 		} else {
 			problem = MR_trace_parse_browse_one(MR_mdb_out,
-				words[1], MR_trace_browse_internal,
+				MR_TRUE, words[1], MR_trace_browse_internal,
 				MR_BROWSE_CALLER_PRINT, format,
 				MR_FALSE);
 		}
@@ -1979,9 +2004,13 @@ MR_trace_cmd_browse(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 			problem = MR_trace_browse_exception(event_info,
 				MR_trace_browse_internal,
 				MR_BROWSE_CALLER_BROWSE, format);
+		} else if (MR_streq(words[1], "proc_body")) {
+			problem = MR_trace_browse_proc_body(event_info,
+				MR_trace_browse_internal,
+				MR_BROWSE_CALLER_BROWSE, format);
 		} else {
-			problem = MR_trace_parse_browse_one(NULL,
-				words[1], MR_trace_browse_internal,
+			problem = MR_trace_parse_browse_one(MR_mdb_out,
+				MR_FALSE, words[1], MR_trace_browse_internal,
 				MR_BROWSE_CALLER_BROWSE, format,
 				MR_TRUE);
 		}
@@ -3182,6 +3211,34 @@ MR_trace_cmd_clear_histogram(char **words, int word_count,
 }
 
 static MR_Next
+MR_trace_cmd_term_size(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
+	MR_Event_Info *event_info, MR_Event_Details *event_details,
+	MR_Code **jumpaddr)
+{
+	int	n;
+
+	if (word_count == 2) {
+		const char	*problem;
+
+		if (MR_streq(words[1], "*")) {
+			problem = MR_trace_print_size_all(MR_mdb_out);
+		} else {
+			problem = MR_trace_print_size_one(MR_mdb_out,
+				words[1]);
+		}
+
+		if (problem != NULL) {
+			fflush(MR_mdb_out);
+			fprintf(MR_mdb_err, "mdb: %s.\n", problem);
+		}
+	} else {
+		MR_trace_usage("developer", "term_size");
+	}
+
+	return KEEP_INTERACTING;
+}
+
+static MR_Next
 MR_trace_cmd_flag(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	MR_Event_Info *event_info, MR_Event_Details *event_details,
 	MR_Code **jumpaddr)
@@ -3672,28 +3729,6 @@ MR_trace_cmd_label_stats(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 		(void) fclose(fp);
 	} else {
 		MR_trace_usage("developer", "label_stats");
-	}
-
-	return KEEP_INTERACTING;
-}
-
-static MR_Next
-MR_trace_cmd_proc_body(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
-	MR_Event_Info *event_info, MR_Event_Details *event_details,
-	MR_Code **jumpaddr)
-{
-	const MR_Proc_Layout	*entry;
-
-	entry = event_info->MR_event_sll->MR_sll_entry;
-	if (entry->MR_sle_proc_rep == NULL) {
-		fprintf(MR_mdb_out,
-			"current procedure has no body info\n");
-	} else {
-		MR_trace_browse_internal(
-			ML_proc_rep_type(),
-			(MR_Word) entry->MR_sle_proc_rep,
-			MR_BROWSE_CALLER_PRINT,
-			MR_BROWSE_DEFAULT_FORMAT);
 	}
 
 	return KEEP_INTERACTING;
@@ -6063,7 +6098,7 @@ MR_trace_continue_line(char *ptr, MR_bool *quoted)
 
 MR_Code *
 MR_trace_event_internal_report(MR_Trace_Cmd_Info *cmd,
-		MR_Event_Info *event_info)
+	MR_Event_Info *event_info)
 {
 	char	*buf;
 	int	i;
@@ -6381,6 +6416,8 @@ static const MR_Trace_Command_Info	MR_trace_command_infos[] =
 	{ "exp", "clear_histogram", MR_trace_cmd_clear_histogram,
 		NULL, MR_trace_null_completer },
 
+	{ "developer", "term_size", MR_trace_cmd_term_size,
+		NULL, MR_trace_null_completer },
 	{ "developer", "flag", MR_trace_cmd_flag,
 		NULL, MR_trace_null_completer },
 	{ "developer", "subgoal", MR_trace_cmd_subgoal,
@@ -6403,8 +6440,6 @@ static const MR_Trace_Command_Info	MR_trace_command_infos[] =
 		NULL, MR_trace_filename_completer },
 	{ "developer", "label_stats", MR_trace_cmd_label_stats,
 		NULL, MR_trace_filename_completer },
-	{ "developer", "proc_body", MR_trace_cmd_proc_body,
-		NULL, MR_trace_null_completer },
 	{ "developer", "print_optionals", MR_trace_cmd_print_optionals,
 		MR_trace_on_off_args, MR_trace_null_completer },
 	{ "developer", "unhide_events", MR_trace_cmd_unhide_events,

@@ -160,11 +160,11 @@ special_pred_description(compare, "comparison predicate").
 special_pred_description(index, "indexing predicate").
 
 special_pred_is_generated_lazily(ModuleInfo, TypeCtor) :-
-	classify_type_ctor(ModuleInfo, TypeCtor, Class),
+	TypeCategory = classify_type_ctor(ModuleInfo, TypeCtor),
 	(
-		Class = tuple_type
+		TypeCategory = tuple_type
 	;
-		( Class = user_type ; Class = enum_type ),
+		( TypeCategory = user_ctor_type ; TypeCategory = enum_type ),
 		module_info_types(ModuleInfo, Types),
 		map__search(Types, TypeCtor, TypeDefn),
 		hlds_data__get_type_defn_body(TypeDefn, Body),
@@ -174,17 +174,17 @@ special_pred_is_generated_lazily(ModuleInfo, TypeCtor) :-
 	).
 
 special_pred_is_generated_lazily(ModuleInfo, TypeCtor, Body, Status) :-
-	classify_type_ctor(ModuleInfo, TypeCtor, Class),
+	TypeCategory = classify_type_ctor(ModuleInfo, TypeCtor),
 	(
-		Class = tuple_type
+		TypeCategory = tuple_type
 	;
-		( Class = user_type ; Class = enum_type ),
+		( TypeCategory = user_ctor_type ; TypeCategory = enum_type ),
 		special_pred_is_generated_lazily_2(ModuleInfo,
 			TypeCtor, Body, Status)
 	).
 
 :- pred special_pred_is_generated_lazily_2(module_info,
-		type_ctor, hlds_type_body, import_status).
+	type_ctor, hlds_type_body, import_status).
 :- mode special_pred_is_generated_lazily_2(in, in, in, in) is semidet.
 
 special_pred_is_generated_lazily_2(ModuleInfo, _TypeCtor, Body, Status) :-

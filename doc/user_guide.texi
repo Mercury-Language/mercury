@@ -2474,6 +2474,13 @@ of the @var{num}'th I/O action executed by the program.
 @sp 1
 The options @samp{-f} or @samp{--flat}, @samp{-p} or @samp{--pretty},
 and @samp{-v} or @samp{--verbose} specify the format to use for printing.
+@c @sp 1
+@c @item print [-fpv] proc_body
+@c Prints a representation of the body of the current procedure,
+@c if it is available.
+@c @sp 1
+@c The options @samp{-f} or @samp{--flat}, @samp{-p} or @samp{--pretty},
+@c and @samp{-v} or @samp{--verbose} specify the format to use for printing.
 @sp 1
 @item browse [-fpv] @var{name}
 @itemx browse [-fpv] @var{num}
@@ -2518,6 +2525,13 @@ of the @var{num}'th I/O action executed by the program.
 @sp 1
 The options @samp{-f} or @samp{--flat}, @samp{-p} or @samp{--pretty},
 and @samp{-v} or @samp{--verbose} specify the format to use for browsing.
+@c @sp 1
+@c @item browse [-fpv] proc_body
+@c Invokes an interactive term browser to browse a representation
+@c of the body of the current procedure, if it is available.
+@c @sp 1
+@c The options @samp{-f} or @samp{--flat}, @samp{-p} or @samp{--pretty},
+@c and @samp{-v} or @samp{--verbose} specify the format to use for browsing.
 @sp 1
 @item stack [-d] [@var{num}]
 @kindex stack (mdb command)
@@ -3185,6 +3199,14 @@ The following commands are intended for use by the developers
 of the Mercury implementation.
 @sp 1
 @table @code
+@c @item term_size @var{name}
+@c @itemx term_size @var{num}
+@c @itemx term_size *
+@c @kindex term_size (mdb command)
+@c In term size profiling grades, prints the size of the term
+@c bound to the specified variable(s).
+@c In other grades, reports an error.
+@c @sp 1
 @item flag @var{flagname}
 @kindex flag (mdb command)
 Prints the value of the specified runtime lowlevel debugging flag.
@@ -4702,7 +4724,7 @@ p - pre-birth, post-birth, pre-death and post-death sets of goals,
 r - resume points of goals,
 s - store maps of goals,
 t - results of termination analysis,
-u - unification categories,
+u - unification categories and other implementation details of unifications,
 v - variable numbers in variable names,
 A - argument passing information,
 C - clause information,
@@ -5090,6 +5112,10 @@ and grade modifier; they are followed by descriptions of those options.
 @findex --profiling
 @findex --memory-profiling
 @findex --deep-profiling
+@c The following are undocumented because they are not yet useful,
+@c and thus are not yet for public consumption.
+@c @findex --record-term-sizes-as-words
+@c @findex --record-term-sizes-as-cells
 
 @item @samp{none}
 @code{--target c --no-gcc-global-registers --no-gcc-nonlocal-gotos --no-asm-labels}.
@@ -5156,6 +5182,14 @@ and grade modifier; they are followed by descriptions of those options.
 @c 
 @item @samp{.tr}
 @code{--use-trail}.
+
+@c The following are undocumented because they are not yet useful,
+@c and thus are not yet for public consumption.
+@c @item @samp{.tsw}
+@c @code{--record-term-sizes-as-words}.
+@c 
+@c @item @samp{.tsc}
+@c @code{--record-term-sizes-as-cells}.
 
 @item @samp{.rt}
 @code{--reserve-tag}.
@@ -5372,6 +5406,21 @@ rather than just using @samp{--profiling} to gather them both at once,
 is that the former method can give slightly more accurate timing results.
 because with the latter method the code inserted to record call counts
 has a small effect on the execution speed.
+
+@end ignore
+
+@ignore
+	The following are not yet useful, and hence undocumented.
+
+@sp 1
+@item @code{--record-term-sizes-as-words} (grades: any grade containing @samp{.tsw})
+@findex --record-term-sizes-as-words
+Record the sizes of terms, using one word as the unit of memory.
+
+@sp 1
+@item @code{--record-term-sizes-as-cells} (grades: any grade containing @samp{.tsc})
+@findex --record-term-sizes-as-cells
+Record the sizes of terms, using one cell as the unit of memory.
 
 @end ignore
 

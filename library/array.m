@@ -473,9 +473,22 @@ array__compare_elements(N, Size, Array1, Array2, Result) :-
 #include ""mercury_heap.h""		/* for MR_maybe_record_allocation() */
 #include ""mercury_library_types.h""	/* for MR_ArrayPtr */
 
+/*
+** We do not yet record term sizes for arrays in term size profiling
+** grades. Doing so would require
+**
+** - modifying ML_alloc_array to allocate an extra word for the size;
+** - modifying all the predicates that call ML_alloc_array to compute the
+**   size of the array (the sum of the sizes of the elements and the size of
+**   the array itself);
+** - modifying all the predicates that update array elements to compute the
+**   difference between the sizes of the terms being added to and deleted from
+**   the array, and updating the array size accordingly.
+*/
+
 #define	ML_alloc_array(newarray, arraysize, proclabel)	\
-	MR_incr_hp_msg(MR_LVALUE_CAST(MR_Word, (newarray)), (arraysize), \
-		proclabel, ""array:array/1"")
+	MR_offset_incr_hp_msg(MR_LVALUE_CAST(MR_Word, (newarray)), \
+		0, (arraysize), proclabel, ""array:array/1"")
 ").
 
 :- pragma foreign_decl("C", "

@@ -745,9 +745,12 @@ repeat(N) :-
 :- impure pred new_int_reference(int::in, int_reference::out) is det.
 :- pragma inline(new_int_reference/2).
 :- pragma foreign_proc("C",
-	new_int_reference(X::in, Ref::out), [will_not_call_mercury],
+	new_int_reference(X::in, Ref::out),
+	[will_not_call_mercury],
 "
-	MR_incr_hp(Ref, 1);
+	MR_offset_incr_hp_msg(Ref, MR_SIZE_SLOT_SIZE, MR_SIZE_SLOT_SIZE + 1,
+		MR_PROC_LABEL, ""benchmarking:int_reference/1"");
+	MR_define_size_slot(0, Ref, 1);
 	* (MR_Integer *) Ref = X;
 ").
 
@@ -759,8 +762,9 @@ incr_ref(Ref) :-
 :- semipure pred ref_value(int_reference::in, int::out) is det.
 :- pragma inline(ref_value/2).
 :- pragma promise_semipure(ref_value/2).
-:- pragma foreign_proc("C", ref_value(Ref::in, X::out),
-		[will_not_call_mercury],
+:- pragma foreign_proc("C",
+	ref_value(Ref::in, X::out),
+	[will_not_call_mercury],
 "
 	X = * (MR_Integer *) Ref;
 ").
@@ -768,7 +772,9 @@ incr_ref(Ref) :-
 :- impure pred update_ref(int_reference::in, T::in) is det.
 :- pragma inline(update_ref/2).
 :- pragma foreign_proc("C",
-	update_ref(Ref::in, X::in), [will_not_call_mercury], "
+	update_ref(Ref::in, X::in),
+	[will_not_call_mercury],
+"
 	* (MR_Integer *) Ref = X;
 ").
 

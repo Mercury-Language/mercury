@@ -824,6 +824,7 @@ mercury_std_library_module("string").
 mercury_std_library_module("table_builtin").
 mercury_std_library_module("term").
 mercury_std_library_module("term_io").
+mercury_std_library_module("term_size_prof_builtin").
 mercury_std_library_module("time").
 mercury_std_library_module("tree234").
 mercury_std_library_module("type_desc").
@@ -1893,8 +1894,8 @@ grab_imported_modules(SourceFileName, SourceFileModuleName, ModuleName,
 		% list of imported modules
 	globals__io_get_globals(Globals),
 	{ add_implicit_imports(Items1, Globals,
-			IntImportedModules1, IntUsedModules1,
-			IntImportedModules2, IntUsedModules2) },
+		IntImportedModules1, IntImportedModules2,
+		IntUsedModules1, IntUsedModules2) },
 
 		% We add a pseudo-declaration `:- imported(ancestor)' at the
 		% end of the item list. Uses of the items with declarations 
@@ -1977,8 +1978,8 @@ grab_unqual_imported_modules(SourceFileName, SourceFileModuleName, ModuleName,
 
 		% Add `builtin' and `private_builtin' to the imported modules.
 	globals__io_get_globals(Globals),
-	{ add_implicit_imports(Items0, Globals, IntImportDeps0, IntUseDeps0,
-			IntImportDeps1, IntUseDeps1) },
+	{ add_implicit_imports(Items0, Globals,
+		IntImportDeps0, IntImportDeps1, IntUseDeps0, IntUseDeps1) },
 
 		%
 		% Get the .int3s and .int0s that the current module depends on.
@@ -2089,22 +2090,21 @@ make_pseudo_decl(PseudoDecl, Item) :-
 %-----------------------------------------------------------------------------%
 
 get_implicit_dependencies(Items, Globals, ImportDeps, UseDeps) :-
-	add_implicit_imports(Items, Globals, [], [], ImportDeps, UseDeps).
+	add_implicit_imports(Items, Globals, [], ImportDeps, [], UseDeps).
 
-:- pred add_implicit_imports(item_list, globals,
-			list(module_name), list(module_name),
-			list(module_name), list(module_name)).
-:- mode add_implicit_imports(in, in, in, in, out, out) is det.
+:- pred add_implicit_imports(item_list::in, globals::in,
+	list(module_name)::in, list(module_name)::out,
+	list(module_name)::in, list(module_name)::out) is det.
 
-add_implicit_imports(Items, Globals, ImportDeps0, UseDeps0,
-		ImportDeps, UseDeps) :-
+add_implicit_imports(Items, Globals, !ImportDeps, !UseDeps) :-
 	mercury_public_builtin_module(MercuryPublicBuiltin),
 	mercury_private_builtin_module(MercuryPrivateBuiltin),
 	mercury_table_builtin_module(MercuryTableBuiltin),
 	mercury_profiling_builtin_module(MercuryProfilingBuiltin),
+	mercury_term_size_prof_builtin_module(MercuryTermSizeProfBuiltin),
 	aditi_private_builtin_module(AditiPrivateBuiltin),
-	ImportDeps = [MercuryPublicBuiltin | ImportDeps0],
-	UseDeps1 = [MercuryPrivateBuiltin | UseDeps0],
+	!:ImportDeps = [MercuryPublicBuiltin | !.ImportDeps],
+	!:UseDeps = [MercuryPrivateBuiltin | !.UseDeps],
 	(
 		%
 		% We should include MercuryTableBuiltin if the Items contain
@@ -2116,19 +2116,32 @@ add_implicit_imports(Items, Globals, ImportDeps0, UseDeps0,
 		; globals__lookup_bool_option(Globals, trace_table_io, yes)
 		)
 	->
-		UseDeps2 = [MercuryTableBuiltin | UseDeps1]
+		!:UseDeps = [MercuryTableBuiltin | !.UseDeps]
 	;
-		UseDeps2 = UseDeps1
+		true
 	),
 	( globals__lookup_bool_option(Globals, profile_deep, yes) ->
-		UseDeps3 = [MercuryProfilingBuiltin | UseDeps2]
+		!:UseDeps = [MercuryProfilingBuiltin | !.UseDeps]
 	;
-		UseDeps3 = UseDeps2
+		true
+	),
+	(
+		(
+			globals__lookup_bool_option(Globals,
+				record_term_sizes_as_words, yes)
+		;
+			globals__lookup_bool_option(Globals,
+				record_term_sizes_as_cells, yes)
+		)
+	->
+		!:UseDeps = [MercuryTermSizeProfBuiltin | !.UseDeps]
+	;
+		true
 	),
 	( globals__lookup_bool_option(Globals, aditi, yes) ->
-		UseDeps = [AditiPrivateBuiltin | UseDeps3]
+		!:UseDeps = [AditiPrivateBuiltin | !.UseDeps]
 	;
-		UseDeps = UseDeps3
+		true
 	).
 
 :- pred contains_tabling_pragma(item_list::in) is semidet.
@@ -5320,16 +5333,16 @@ init_dependencies(FileName, SourceFileModuleName, NestedModuleNames,
 	ParentDeps = get_ancestors(ModuleName),
 
 	get_dependencies(Items, ImplImportDeps0, ImplUseDeps0),
-	add_implicit_imports(Items, Globals, ImplImportDeps0, ImplUseDeps0,
-		ImplImportDeps, ImplUseDeps),
+	add_implicit_imports(Items, Globals, ImplImportDeps0, ImplImportDeps,
+		ImplUseDeps0, ImplUseDeps),
 	list__append(ImplImportDeps, ImplUseDeps, ImplementationDeps),
 
 	get_interface(Items, InterfaceItems),
 	get_dependencies(InterfaceItems, InterfaceImportDeps0,
 		InterfaceUseDeps0),
 	add_implicit_imports(InterfaceItems, Globals,
-		InterfaceImportDeps0, InterfaceUseDeps0,
-		InterfaceImportDeps, InterfaceUseDeps),
+		InterfaceImportDeps0, InterfaceImportDeps,
+		InterfaceUseDeps0, InterfaceUseDeps),
 	list__append(InterfaceImportDeps, InterfaceUseDeps, 
 		InterfaceDeps),
 

@@ -1109,9 +1109,8 @@ get_functor_info(Univ, FunctorInfo) :-
                                 functor_desc->MR_du_functor_arg_types[i]);
                         }
 
-                        MR_new_univ_on_hp(arg,
-                            arg_type_info, arg_vector[i]);
-                        Args = MR_list_cons_msg(arg, Args, MR_PROC_LABEL);
+                        MR_new_univ_on_hp(arg, arg_type_info, arg_vector[i]);
+                        Args = MR_univ_list_cons_msg(arg, Args, MR_PROC_LABEL);
                     }
                     break;
 

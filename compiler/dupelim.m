@@ -342,10 +342,10 @@ standardize_instr(Instr1, Instr) :-
 		standardize_rval(Rval1, Rval),
 		Instr = if_val(Rval, CodeAddr)
 	;
-		Instr1 = incr_hp(Lval1, MaybeTag, Rval1, Msg),
+		Instr1 = incr_hp(Lval1, MaybeTag, MaybeOffset, Rval1, Msg),
 		standardize_lval(Lval1, Lval),
 		standardize_rval(Rval1, Rval),
-		Instr = incr_hp(Lval, MaybeTag, Rval, Msg)
+		Instr = incr_hp(Lval, MaybeTag, MaybeOffset, Rval, Msg)
 	;
 		Instr1 = mark_hp(Lval1),
 		standardize_lval(Lval1, Lval),
@@ -649,11 +649,11 @@ most_specific_instr(Instr1, Instr2, Instr) :-
 		most_specific_rval(Rval1, Rval2, Rval),
 		Instr = if_val(Rval, CodeAddr)
 	;
-		Instr1 = incr_hp(Lval1, MaybeTag, Rval1, Msg),
-		Instr2 = incr_hp(Lval2, MaybeTag, Rval2, Msg),
+		Instr1 = incr_hp(Lval1, MaybeTag, MaybeOffset, Rval1, Msg),
+		Instr2 = incr_hp(Lval2, MaybeTag, MaybeOffset, Rval2, Msg),
 		most_specific_lval(Lval1, Lval2, Lval),
 		most_specific_rval(Rval1, Rval2, Rval),
-		Instr = incr_hp(Lval, MaybeTag, Rval, Msg)
+		Instr = incr_hp(Lval, MaybeTag, MaybeOffset, Rval, Msg)
 	;
 		Instr1 = mark_hp(Lval1),
 		Instr2 = mark_hp(Lval2),

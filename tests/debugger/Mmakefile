@@ -103,6 +103,12 @@ endif
 ifneq "$(findstring mm,$(GRADE))" ""
     SENSITIVE_PROGS :=
 endif
+ifneq "$(findstring tsw,$(GRADE))" ""
+    SENSITIVE_PROGS :=
+endif
+ifneq "$(findstring tsc,$(GRADE))" ""
+    SENSITIVE_PROGS :=
+endif
 
 # The no_inline_builtins test only works if the library is
 # built with execution tracing enabled. Adding a `.exp2' file
@@ -123,9 +129,22 @@ else
 	ENUM_PROGS =
 endif
 
+# The tests term_size_words and term_size_cells are each meant to be used
+# in their respective grades only.
+ifneq "$(findstring .tsw,$(GRADE))" ""
+	TERM_SIZE_PROGS = term_size_words
+else 
+    ifneq "$(findstring .tsc,$(GRADE))" ""
+	    TERM_SIZE_PROGS = term_size_cells
+    else 
+	    TERM_SIZE_PROGS =
+    endif
+endif
+
 ALL_RETRY_PROGS = $(RETRY_PROGS) $(INTERACTIVE_PROGS)
 ALL_NONRETRY_PROGS = $(NONRETRY_PROGS) $(SENSITIVE_PROGS) \
-			$(SHALLOW_PROGS) $(DEBUG_GRADE_PROGS) $(ENUM_PROGS)
+			$(SHALLOW_PROGS) $(DEBUG_GRADE_PROGS) $(ENUM_PROGS) \
+			$(TERM_SIZE_PROGS)
 
 # Debugging doesn't yet don't work in MLDS grades (hl*, il*, and java),
 # and the retry command doesn't and will not work in deep profiling
@@ -384,6 +403,14 @@ tabled_read_unitize.out: tabled_read_unitize tabled_read_unitize.inp
 tabled_read_decl.out: tabled_read_decl tabled_read_decl.inp tabled_read_decl.data
 	$(MDB_STD) ./tabled_read_decl < tabled_read_decl.inp \
 		> tabled_read_decl.out 2>&1
+
+term_size_cells.out: term_size_cells term_size_cells.inp
+	$(MDB_STD) ./term_size_cells < term_size_cells.inp \
+		> term_size_cells.out 2>&1
+
+term_size_words.out: term_size_words term_size_words.inp
+	$(MDB_STD) ./term_size_words < term_size_words.inp \
+		> term_size_words.out 2>&1
 
 type_desc_test.out: type_desc_test type_desc_test.inp
 	$(MDB_STD) ./type_desc_test < type_desc_test.inp \

@@ -1769,10 +1769,25 @@ ml_gen_field_name(MaybeFieldName, ArgNum) = FieldName :-
 	% back-ends that don't need it, e.g. the .NET and Java back-ends.
 	% This routine should be modified to check the target.
 ml_must_box_field_type(Type, ModuleInfo) :-
-	classify_type(Type, ModuleInfo, Category),
-	( Category = float_type
-	; Category = char_type
-	).
+	classify_type(ModuleInfo, Type) = Category,
+	ml_must_box_field_type_category(Category) = yes.
+
+:- func ml_must_box_field_type_category(type_category) = bool.
+
+ml_must_box_field_type_category(int_type) = no.
+ml_must_box_field_type_category(char_type) = yes.
+ml_must_box_field_type_category(str_type) = no.
+ml_must_box_field_type_category(float_type) = yes.
+ml_must_box_field_type_category(higher_order_type) = no.
+ml_must_box_field_type_category(tuple_type) = no.
+ml_must_box_field_type_category(enum_type) = no.
+ml_must_box_field_type_category(variable_type) = no.
+ml_must_box_field_type_category(type_info_type) = no.
+ml_must_box_field_type_category(type_ctor_info_type) = no.
+ml_must_box_field_type_category(typeclass_info_type) = no.
+ml_must_box_field_type_category(base_typeclass_info_type) = no.
+ml_must_box_field_type_category(void_type) = no.
+ml_must_box_field_type_category(user_ctor_type) = no.
 
 %-----------------------------------------------------------------------------%
 %
@@ -2170,6 +2185,10 @@ ml_gen_maybe_gc_trace_code_2(VarName, DeclType, HowToGetTypeInfo, Context,
 	% to the heap, so we don't need to trace them
 	% for accurate GC.
 	% Hence we can return `no' here for mlds__cont_type.
+	%
+	% Similarly, the only pointers in type_ctor_infos and
+	% base_typeclass_infos are to static code and/or static data,
+	% which do not need to be traced.
 
 :- func ml_type_might_contain_pointers(mlds__type) = bool.
 
@@ -2197,16 +2216,21 @@ ml_type_might_contain_pointers(mlds__commit_type) = no.
 ml_type_might_contain_pointers(mlds__rtti_type(_)) = yes.
 ml_type_might_contain_pointers(mlds__unknown_type) = yes.
 
-:- func ml_type_category_might_contain_pointers(builtin_type) = bool.
+:- func ml_type_category_might_contain_pointers(type_category) = bool.
 ml_type_category_might_contain_pointers(int_type) = no.
 ml_type_category_might_contain_pointers(char_type) = no.
 ml_type_category_might_contain_pointers(str_type) = yes.
 ml_type_category_might_contain_pointers(float_type) = no.
-ml_type_category_might_contain_pointers(pred_type) = yes.
+ml_type_category_might_contain_pointers(void_type) = no.
+ml_type_category_might_contain_pointers(type_info_type) = yes.
+ml_type_category_might_contain_pointers(type_ctor_info_type) = no.
+ml_type_category_might_contain_pointers(typeclass_info_type) = yes.
+ml_type_category_might_contain_pointers(base_typeclass_info_type) = no.
+ml_type_category_might_contain_pointers(higher_order_type) = yes.
 ml_type_category_might_contain_pointers(tuple_type) = yes.
 ml_type_category_might_contain_pointers(enum_type) = no.
-ml_type_category_might_contain_pointers(polymorphic_type) = yes.
-ml_type_category_might_contain_pointers(user_type) = yes.
+ml_type_category_might_contain_pointers(variable_type) = yes.
+ml_type_category_might_contain_pointers(user_ctor_type) = yes.
 
 	% trace_type_info_type(Type, RealType):
 	%	Succeed iff Type is a type_info-related type
@@ -2321,8 +2345,8 @@ ml_gen_trace_var(VarName, Type, TypeInfoRval, Context, MLDS_TraceStatement) -->
 	{ mercury_private_builtin_module(PredModule) },
 	{ MLDS_Module = mercury_module_name_to_mlds(PredModule) },
 	{ Proc = qual(MLDS_Module, Pred - ProcId) },
-	{ CPointerType = mercury_type(c_pointer_type, user_type,
-			non_foreign_type(c_pointer_type)) },
+	{ CPointerType = mercury_type(c_pointer_type, user_ctor_type,
+		non_foreign_type(c_pointer_type)) },
 	{ ArgTypes = [mlds__pseudo_type_info_type, CPointerType] },
 	{ Signature = mlds__func_signature(ArgTypes, []) },
 	{ FuncAddr = const(code_addr_const(proc(Proc, Signature))) },

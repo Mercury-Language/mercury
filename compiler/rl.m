@@ -1250,9 +1250,9 @@ rl__gather_types(ModuleInfo, Parents, [Type | Types], GatheredTypes0,
 
 rl__gather_type(ModuleInfo, Parents, Type, GatheredTypes0, GatheredTypes, 
 		RecursiveTypes0, RecursiveTypes, Decls0, Decls, ThisType) :-
-	classify_type(Type, ModuleInfo, ClassifiedType0),
+	ClassifiedType0 = classify_type(ModuleInfo, Type),
 	( ClassifiedType0 = enum_type ->
-		ClassifiedType = user_type
+		ClassifiedType = user_ctor_type
 	;
 		ClassifiedType = ClassifiedType0
 	),
@@ -1261,8 +1261,8 @@ rl__gather_type(ModuleInfo, Parents, Type, GatheredTypes0, GatheredTypes,
 			% this is converted to user_type above
 		error("rl__gather_type: enum type")
 	;
-		ClassifiedType = polymorphic_type,
-		error("rl__gather_type: polymorphic type")
+		ClassifiedType = variable_type,
+		error("rl__gather_type: variable type")
 	;
 		ClassifiedType = char_type,
 		GatheredTypes = GatheredTypes0,
@@ -1293,10 +1293,25 @@ rl__gather_type(ModuleInfo, Parents, Type, GatheredTypes0, GatheredTypes,
 			GatheredTypes, RecursiveTypes0, RecursiveTypes,
 			Decls0, Decls, ThisType)
 	;
-		ClassifiedType = pred_type,
-		error("rl__gather_type: pred type")
+		ClassifiedType = void_type,
+		error("rl__gather_type: void type")
 	;
-		ClassifiedType = user_type,
+		ClassifiedType = type_info_type,
+		error("rl__gather_type: type_info type")
+	;
+		ClassifiedType = type_ctor_info_type,
+		error("rl__gather_type: type_ctor_info type")
+	;
+		ClassifiedType = typeclass_info_type,
+		error("rl__gather_type: typeclass_info type")
+	;
+		ClassifiedType = base_typeclass_info_type,
+		error("rl__gather_type: base_typeclass_info type")
+	;
+		ClassifiedType = higher_order_type,
+		error("rl__gather_type: higher_order type")
+	;
+		ClassifiedType = user_ctor_type,
 		% We can't handle abstract types here. magic_util.m
 		% checks that there are none.
 		rl__gather_du_type(ModuleInfo, Parents, Type, GatheredTypes0,

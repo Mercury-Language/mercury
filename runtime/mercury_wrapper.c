@@ -267,6 +267,14 @@ void	(*MR_address_of_init_modules_debugger)(void);
 void	(*MR_address_of_write_out_proc_statics)(FILE *fp);
 #endif
 
+MR_TypeCtorInfo	MR_type_ctor_info_for_univ;
+MR_TypeInfo	MR_type_info_for_type_info;
+MR_TypeInfo	MR_type_info_for_list_of_univ;
+MR_TypeInfo	MR_type_info_for_list_of_int;
+MR_TypeInfo	MR_type_info_for_list_of_char;
+MR_TypeInfo	MR_type_info_for_list_of_string;
+MR_TypeInfo	MR_type_info_for_list_of_type_info;
+
 MR_Box	(*MR_address_of_do_load_aditi_rl_code)(MR_Box, MR_Box);
 
 char	*(*MR_address_of_trace_getline)(const char *, FILE *, FILE *);
@@ -542,6 +550,11 @@ mercury_runtime_init(int argc, char **argv)
     MR_bool GC_quiet = MR_TRUE;
   #endif
 
+  #ifdef MR_HIGHTAGS
+    /* MR_HIGHTAGS disguises pointers and hides them from gc */
+    #error "MR_HIGHTAGS is incompatible with MR_CONSERVATIVE_GC"
+  #endif
+
 void
 MR_init_conservative_GC(void)
 {
@@ -583,12 +596,26 @@ MR_init_conservative_GC(void)
 	*/
 	GC_is_visible(&MR_runqueue_head);
 
-	/* The following code is necessary to tell the conservative */
-	/* garbage collector that we are using tagged pointers */
+	/*
+	** The following code is necessary to tell the conservative
+	** garbage collector that we are using tagged pointers.
+	**
+	** With MR_RECORD_TERM_SIZES, we not only add tags in the bottom
+	** MR_LOW_TAG_BITS bits of the word, we add the tag to a pointer
+	** not just to the first MR_Word in the block, but also to a pointer
+	** to the second MR_Word.
+	*/
 	{
 		int i;
+		int limit;
 
-		for (i = 1; i < (1 << MR_TAGBITS); i++) {
+		limit = (1 << MR_LOW_TAG_BITS);
+
+    #ifdef MR_RECORD_TERM_SIZES
+		limit += sizeof(MR_Word);
+    #endif
+
+		for (i = 1; i < limit; i++) {
 			GC_REGISTER_DISPLACEMENT(i);
 		}
 	}

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-2002 The University of Melbourne.
+** Copyright (C) 1995-2003 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -9,7 +9,7 @@
 #ifndef MERCURY_STRING_H
 #define MERCURY_STRING_H
 
-#include "mercury_heap.h"	/* for MR_incr_hp_atomic */
+#include "mercury_heap.h"	/* for MR_offset_incr_hp_atomic */
 
 #include <string.h>	/* for strcmp() etc. */
 #include <stdarg.h>
@@ -74,8 +74,9 @@
 	    }								\
 	} while(0)
 
-/* void MR_make_aligned_string_copy(MR_ConstString &ptr, const char * string);
-**	Same as make_aligned_string(ptr, string), except that the string
+/*
+** void MR_make_aligned_string_copy(MR_ConstString &ptr, const char * string);
+**	Same as MR_make_aligned_string(ptr, string), except that the string
 **	is guaranteed to be copied. This is useful for copying C strings
 **	onto the Mercury heap.
 **
@@ -89,7 +90,7 @@
 		MR_Word make_aligned_string_tmp;			\
 		char * make_aligned_string_ptr;				\
 									\
-	  	MR_incr_hp_atomic(make_aligned_string_tmp,		\
+	  	MR_offset_incr_hp_atomic(make_aligned_string_tmp, 0,	\
 	    	    (strlen(string) + sizeof(MR_Word)) / sizeof(MR_Word)); \
 	    	make_aligned_string_ptr =				\
 		    (char *) make_aligned_string_tmp;			\
@@ -97,8 +98,46 @@
 	    	(ptr) = make_aligned_string_ptr;			\
 	} while(0)
 
+/*
+** void MR_make_aligned_string_copy_saved_hp(MR_ConstString &ptr,
+** 		const char * string);
+**	Same as MR_make_aligned_string_copy(ptr, string), except that it uses
+**	MR_offset_incr_saved_hp_atomic instead of MR_offset_incr_hp_atomic.
+*/
+#define MR_make_aligned_string_copy_saved_hp(ptr, string) 		\
+	do {								\
+		MR_Word make_aligned_string_tmp;			\
+		char * make_aligned_string_ptr;				\
+									\
+	  	MR_offset_incr_saved_hp_atomic(make_aligned_string_tmp,	0, \
+	    	    (strlen(string) + sizeof(MR_Word)) / sizeof(MR_Word)); \
+	    	make_aligned_string_ptr =				\
+		    (char *) make_aligned_string_tmp;			\
+	    	strcpy(make_aligned_string_ptr, (string));		\
+	    	(ptr) = make_aligned_string_ptr;			\
+	} while(0)
 
-/* void MR_allocate_aligned_string_msg(MR_ConstString &ptr, size_t len,
+/*
+** void MR_make_aligned_string_copy_saved_hp_quote(MR_ConstString &ptr,
+** 		const char * string);
+**	Same as MR_make_aligned_string_copy_saved_hp(ptr, string), except that
+**	it puts double quote marks at the start and end of the string.
+*/
+#define MR_make_aligned_string_copy_saved_hp_quote(ptr, string)		\
+	do {								\
+		MR_Word make_aligned_string_tmp;			\
+		char * make_aligned_string_ptr;				\
+									\
+	  	MR_offset_incr_saved_hp_atomic(make_aligned_string_tmp,	0, \
+	    	    (strlen(string) + 2 + sizeof(MR_Word)) / sizeof(MR_Word)); \
+	    	make_aligned_string_ptr =				\
+		    (char *) make_aligned_string_tmp;			\
+                sprintf(make_aligned_string_ptr, "%c%s%c", '"', string, '"'); \
+	    	(ptr) = make_aligned_string_ptr;			\
+	} while(0)
+
+/*
+** void MR_allocate_aligned_string_msg(MR_ConstString &ptr, size_t len,
 **		MR_Code *proclabel, const char *type);
 ** Allocate enough word aligned memory to hold len characters.  Also
 ** record for memory profiling purposes the location, proclabel, of the
@@ -114,7 +153,7 @@
 		MR_Word make_aligned_string_tmp;			\
 		char * make_aligned_string_ptr;				\
 									\
-	  	MR_incr_hp_atomic_msg(make_aligned_string_tmp,		\
+	  	MR_offset_incr_hp_atomic_msg(make_aligned_string_tmp, 0,\
 	    	    ((len) + sizeof(MR_Word)) / sizeof(MR_Word),	\
 		    proclabel, "string:string/0");			\
 	    	make_aligned_string_ptr =				\

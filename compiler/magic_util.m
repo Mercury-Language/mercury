@@ -502,9 +502,8 @@ magic_util__setup_aggregate_input(Closure, InputAndClosure) -->
 		{ Rhs = functor(cons(qualified(PredModule, PredName), Arity),
 				no, InputVars) },
 
-		{ RLExprnId = no },
 		{ Uni = construct(Var, ConsId, InputVars, Modes,
-			construct_dynamically, cell_is_unique, RLExprnId) },
+			construct_dynamically, cell_is_unique, no) },
 		{ Goal1 = unify(Var, Rhs, UniMode, Uni, Context) - Info },
 
 		{ list__append(InputGoals, [Goal1], InputAndClosure) }
@@ -841,11 +840,10 @@ magic_util__create_closure(_CurrVar, InputVar, InputMode, LambdaGoal,
 		{ Rhs = functor(cons(qualified(SuppModule, SuppName), 
 				SuppArity), no, LambdaInputs) },
 
-		{ RLExprnId = no },
 		{ Unify = construct(InputVar, 
 			pred_const(SuppPredId, SuppProcId, (aditi_bottom_up)), 
 			LambdaInputs, UniModes, construct_dynamically,
-			cell_is_unique, RLExprnId) },
+			cell_is_unique, no) },
 		{ UnifyContext = unify_context(explicit, []) },
 
 		% Construct a goal_info.
@@ -1292,7 +1290,7 @@ magic_util__check_type(ArgType, Errors, MaybeRtti) -->
 	% Polymorphic types are not allowed.
 	% Errors for type_infos and typeclass_infos are only reported
 	% if there are no other polymorphic arguments.
-	( { polymorphism__type_info_type(ArgType, _) } ->
+	( { polymorphism__type_info_or_ctor_type(ArgType, _) } ->
 		{ set__init(Errors) },
 		{ MaybeRtti = yes(type_info) }
 	; { polymorphism__typeclass_info_class_constraint(ArgType, _) } ->

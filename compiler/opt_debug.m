@@ -319,10 +319,19 @@ opt_debug__dump_const(multi_string_const(L, _S), Str) :-
 opt_debug__dump_const(code_addr_const(CodeAddr), Str) :-
 	opt_debug__dump_code_addr(CodeAddr, C_str),
 	string__append_list(["code_addr_const(", C_str, ")"], Str).
-opt_debug__dump_const(data_addr_const(DataAddr), Str) :-
+opt_debug__dump_const(data_addr_const(DataAddr, MaybeOffset), Str) :-
 	opt_debug__dump_data_addr(DataAddr, DataAddr_str),
-	string__append_list(
-		["data_addr_const(", DataAddr_str, ")"], Str).
+	(
+		MaybeOffset = no,
+		string__append_list(
+			["data_addr_const(", DataAddr_str, ")"], Str)
+	;
+		MaybeOffset = yes(Offset),
+		string__int_to_string(Offset, Offset_str),
+		string__append_list(
+			["data_addr_const(", DataAddr_str, ", ",
+			Offset_str, ")"], Str)
+	).
 opt_debug__dump_const(label_entry(Label), Str) :-
 	opt_debug__dump_label(Label, LabelStr),
 	string__append_list(["label_entry(", LabelStr, ")"], Str).
@@ -677,7 +686,7 @@ opt_debug__dump_instr(if_val(Rval, CodeAddr), Str) :-
 	opt_debug__dump_rval(Rval, R_str),
 	opt_debug__dump_code_addr(CodeAddr, C_str),
 	string__append_list(["if_val(", R_str, ", ", C_str, ")"], Str).
-opt_debug__dump_instr(incr_hp(Lval, MaybeTag, Size, _), Str) :-
+opt_debug__dump_instr(incr_hp(Lval, MaybeTag, MaybeOffset, Size, _), Str) :-
 	opt_debug__dump_lval(Lval, L_str),
 	(
 		MaybeTag = no,
@@ -686,9 +695,16 @@ opt_debug__dump_instr(incr_hp(Lval, MaybeTag, Size, _), Str) :-
 		MaybeTag = yes(Tag),
 		string__int_to_string(Tag, T_str)
 	),
+	(
+		MaybeOffset = no,
+		O_str = "no"
+	;
+		MaybeOffset = yes(Offset),
+		string__int_to_string(Offset, O_str)
+	),
 	opt_debug__dump_rval(Size, S_str),
-	string__append_list(["incr_hp(", L_str, ", ", T_str, ", ", S_str, ")"],
-		Str).
+	string__append_list(["incr_hp(", L_str, ", ", T_str, ", ", O_str,
+		", ", S_str, ")"], Str).
 opt_debug__dump_instr(mark_hp(Lval), Str) :-
 	opt_debug__dump_lval(Lval, L_str),
 	string__append_list(["mark_hp(", L_str, ")"], Str).

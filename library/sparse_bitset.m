@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2002 The University of Melbourne.
+% Copyright (C) 2000-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -760,7 +760,8 @@ mask(N) = \ unchecked_left_shift(\ 0, N).
 %make_bitset_elem(A, B) = bitset_elem(A, B).
 
 :- pragma foreign_decl("C", "
-	#include ""mercury_heap.h""	/* for MR_incr_hp_atomic_msg() */
+	#include ""mercury_heap.h""
+		/* for MR_tag_offset_incr_hp_atomic_msg() */
 ").
 
 	% The bit pattern will often look like a pointer,
@@ -768,14 +769,17 @@ mask(N) = \ unchecked_left_shift(\ 0, N).
 	% to avoid unnecessary memory retention.
 	% Doing this slows down the compiler by about 1%,
 	% but in a library module it's better to be safe.
-:- pragma foreign_proc("C", make_bitset_elem(A::in, B::in) = (Pair::out),
-		[will_not_call_mercury, promise_pure, thread_safe],
+:- pragma foreign_proc("C",
+	make_bitset_elem(A::in, B::in) = (Pair::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
 "{
 
 #define ML_BITSET_TAG MR_FIRST_UNRESERVED_RAW_TAG
 
-	MR_tag_incr_hp_atomic_msg(Pair, MR_mktag(ML_BITSET_TAG), 
-			2, MR_PROC_LABEL, ""sparse_bitset:bitset_elem/0"");
+	MR_tag_offset_incr_hp_atomic_msg(Pair, MR_mktag(ML_BITSET_TAG),
+		MR_SIZE_SLOT_SIZE, MR_SIZE_SLOT_SIZE + 2,
+		MR_PROC_LABEL, ""sparse_bitset:bitset_elem/0"");
+	MR_define_size_slot(MR_mktag(ML_BITSET_TAG), Pair, 1);
 	MR_field(MR_mktag(ML_BITSET_TAG), Pair, 0) = A;
 	MR_field(MR_mktag(ML_BITSET_TAG), Pair, 1) = B;
 }").

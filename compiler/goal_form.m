@@ -266,7 +266,7 @@ goal_may_allocate_heap_2(call(_, _, _, Builtin, _, _), May) :-
 		May = yes
 	).
 goal_may_allocate_heap_2(unify(_, _, _, Unification, _), May) :-
-	( Unification = construct(_,_,Args,_,_,_,_), Args = [_|_] ->
+	( Unification = construct(_, _, Args, _, _, _, _), Args = [_|_] ->
 		May = yes
 	;
 		May = no

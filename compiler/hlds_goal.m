@@ -375,7 +375,22 @@
 			construct_is_unique	:: cell_is_unique,
 					% Can the cell be allocated
 					% in shared data.
-			maybe(unit)	% Unused.
+			term_size_slot	:: maybe(term_size_value)
+					% The value `yes' tells the code
+					% generator to reserve an extra slot,
+					% at offset -1, to hold an integer
+					% giving the size of the term.
+					% The argument specifies the value
+					% to be put into this slot, either
+					% as an integer constant or as the
+					% value of a given variable.
+					%
+					% The value `no' means there is no
+					% extra slot, and is the default.
+					%
+					% The content of this slot is not
+					% meaningful before the size_prof pass
+					% has been run.
 		)
 
 		% A deconstruction unification is a unification with a functor
@@ -459,6 +474,15 @@
 					% The type_info variables needed
 					% by this unification, if it ends up
 					% being a complicated unify.
+		).
+
+:- type term_size_value
+	--->	known_size(
+			int		% The cell being created has this size.
+		)
+	;	dynamic_size(
+			prog_var	% This variable contains the size of
+					% the cell being created.
 		).
 
 	% `yes' iff the cell is available for compile time garbage collection.
@@ -1812,9 +1836,8 @@ make_const_construction(Var, ConsId, Goal - GoalInfo) :-
 	RHS = functor(ConsId, no, []),
 	Inst = bound(unique, [functor(ConsId, [])]),
 	Mode = (free -> Inst) - (Inst -> Inst),
-	RLExprnId = no,
 	Unification = construct(Var, ConsId, [], [],
-		construct_dynamically, cell_is_unique, RLExprnId),
+		construct_dynamically, cell_is_unique, no),
 	Context = unify_context(explicit, []),
 	Goal = unify(Var, RHS, Mode, Unification, Context),
 	set__singleton_set(NonLocals, Var),
@@ -1829,9 +1852,8 @@ construct_tuple(Tuple, Args, Goal) :-
 	UnifyMode = (free_inst -> ground_inst) - (ground_inst -> ground_inst),
 	UniMode = ((free_inst - ground_inst) -> (ground_inst - ground_inst)),
 	list__duplicate(Arity, UniMode, UniModes),
-	ExprnId = no,
 	Unification = construct(Tuple, ConsId, Args, UniModes,
-			construct_dynamically, cell_is_unique, ExprnId),
+		construct_dynamically, cell_is_unique, no),
 	UnifyContext = unify_context(explicit, []),
 	Unify = unify(Tuple, Rhs, UnifyMode, Unification, UnifyContext),
 	set__list_to_set([Tuple | Args], NonLocals),
@@ -1849,7 +1871,7 @@ deconstruct_tuple(Tuple, Args, Goal) :-
 	UnifyContext = unify_context(explicit, []),
 	CanGC = no,
 	Unification = deconstruct(Tuple, ConsId, Args,
-			UniModes, cannot_fail, CanGC),
+		UniModes, cannot_fail, CanGC),
 	Unify = unify(Tuple, Rhs, UnifyMode, Unification, UnifyContext),
 	set__list_to_set([Tuple | Args], NonLocals),
 	list__duplicate(Arity, ground_inst, DeltaValues),

@@ -33,16 +33,7 @@
 #include "mercury_std.h"			/* for MR_VARIABLE_SIZED */
 #include "mercury_tags.h"
 #include "mercury_type_info.h"			/* for MR_PseudoTypeInfo */
-#include "mercury_tabling.h"			/* for MR_TableNodeUnion,
-					           needed for MR_TrieNode */
-
-/*-------------------------------------------------------------------------*/
-/*
-** Definitions for MR_PredFunc. This enum should EXACTLY match the definition
-** of the `pred_or_func' type in browser/util.m.
-*/
-
-typedef	enum { MR_PREDICATE, MR_FUNCTION } MR_PredFunc;
+#include "mercury_proc_id.h"			/* for MR_Proc_Id */
 
 /*-------------------------------------------------------------------------*/
 /*
@@ -100,18 +91,18 @@ typedef	MR_int_least16_t	MR_Determinism;
 ** describes the different tag values. The interpretation of the rest of
 ** the word depends on the location type:
 **
-**  Locn		Tag	Rest
-**  MR_r(Num)		 0	Num (register number)
-**  MR_f(Num)		 1	Num (register number)
-**  MR_stackvar(Num)	 2	Num (stack slot number)
-**  MR_framevar(Num)	 3	Num (stack slot number)
-**  MR_succip		 4
-**  MR_maxfr		 5
-**  MR_curfr		 6
-**  MR_hp		 7
-**  MR_sp		 8
-**  indirect(Base, N)	 9	See below
-**  unknown		10	(The location is not known)
+** Locn			Tag	Rest
+** MR_r(Num)		 0	Num (register number)
+** MR_f(Num)		 1	Num (register number)
+** MR_stackvar(Num)	 2	Num (stack slot number)
+** MR_framevar(Num)	 3	Num (stack slot number)
+** MR_succip		 4
+** MR_maxfr		 5
+** MR_curfr		 6
+** MR_hp		 7
+** MR_sp		 8
+** indirect(Base, N)	 9	See below
+** unknown		10	(The location is not known)
 **
 ** For indirect references, the word exclusive of the tag consists of
 ** (a) an integer with MR_LONG_LVAL_OFFSETBITS bits giving the index of
@@ -119,7 +110,7 @@ typedef	MR_int_least16_t	MR_Determinism;
 ** MR_typeclass_info_type_info or the predicate
 ** private_builtin:type_info_from_typeclass_info, which calls it) and
 ** (b) a MR_Long_Lval value giving the location of the pointer to the
-** type class info.  This MR_Long_Lval value will *not* have an indirect
+** type class info. This MR_Long_Lval value will *not* have an indirect
 ** tag.
 **
 ** This data is generated in stack_layout__represent_locn_as_int,
@@ -180,11 +171,11 @@ typedef enum {
 ** the different tag values. The interpretation of the rest of the word
 ** depends on the location type:
 **
-**  Locn		Tag	Rest
-**  MR_r(Num)		 0	Num (register number)
-**  MR_stackvar(Num)	 1	Num (stack slot number)
-**  MR_framevar(Num)	 2	Num (stack slot number)
-**  special reg		 3	MR_Long_Lval_Type
+** Locn			Tag	Rest
+** MR_r(Num)		 0	Num (register number)
+** MR_stackvar(Num)	 1	Num (stack slot number)
+** MR_framevar(Num)	 2	Num (stack slot number)
+** special reg		 3	MR_Long_Lval_Type
 **
 ** This data is generated in stack_layout__represent_locn_as_byte,
 ** which must be kept in sync with the constants and macros defined here.
@@ -352,38 +343,38 @@ typedef	struct MR_Label_Layout_No_Var_Info_Struct {
 	MR_Integer			MR_sll_var_count; /* < 0 */
 } MR_Label_Layout_No_Var_Info;
 
-#define	MR_label_goal_path(layout)					    \
-	((MR_PROC_LAYOUT_HAS_EXEC_TRACE((layout)->MR_sll_entry)) ?	    \
-		((layout)->MR_sll_entry->MR_sle_module_layout		    \
-		 	->MR_ml_string_table				    \
-		+ (layout)->MR_sll_goal_path)				    \
+#define	MR_label_goal_path(layout)					\
+	((MR_PROC_LAYOUT_HAS_EXEC_TRACE((layout)->MR_sll_entry)) ?	\
+		((layout)->MR_sll_entry->MR_sle_module_layout		\
+		 	->MR_ml_string_table				\
+		+ (layout)->MR_sll_goal_path)				\
 	: "")
 
 #define	MR_SHORT_COUNT_BITS	10
 #define	MR_SHORT_COUNT_MASK	((1 << MR_SHORT_COUNT_BITS) - 1)
 
-#define	MR_has_valid_var_count(sll)					    \
+#define	MR_has_valid_var_count(sll)					\
 		(((sll)->MR_sll_var_count) >= 0)
-#define	MR_has_valid_var_info(sll)					    \
+#define	MR_has_valid_var_info(sll)					\
 		(((sll)->MR_sll_var_count) > 0)
-#define	MR_long_desc_var_count(sll)					    \
+#define	MR_long_desc_var_count(sll)					\
 		(((sll)->MR_sll_var_count) >> MR_SHORT_COUNT_BITS)
-#define	MR_short_desc_var_count(sll)					    \
+#define	MR_short_desc_var_count(sll)					\
 		(((sll)->MR_sll_var_count) & MR_SHORT_COUNT_MASK)
-#define	MR_all_desc_var_count(sll)					    \
+#define	MR_all_desc_var_count(sll)					\
 		(MR_long_desc_var_count(sll) + MR_short_desc_var_count(sll))
 
-#define	MR_var_pti(sll, i)						    \
+#define	MR_var_pti(sll, i)						\
 		(((MR_PseudoTypeInfo *) ((sll)->MR_sll_locns_types))[(i)])
-#define	MR_end_of_var_ptis(sll)						    \
+#define	MR_end_of_var_ptis(sll)						\
 		(&MR_var_pti((sll), MR_all_desc_var_count(sll)))
-#define	MR_long_desc_var_locn(sll, i)					    \
+#define	MR_long_desc_var_locn(sll, i)					\
 		(((MR_uint_least32_t *) MR_end_of_var_ptis(sll))[(i)])
-#define	MR_end_of_long_desc_var_locns(sll)				    \
+#define	MR_end_of_long_desc_var_locns(sll)				\
 		(&MR_long_desc_var_locn((sll), MR_long_desc_var_count(sll)))
-#define	MR_short_desc_var_locn(sll, i)					    \
-		(((MR_uint_least8_t *)					    \
-			MR_end_of_long_desc_var_locns(sll))		    \
+#define	MR_short_desc_var_locn(sll, i)					\
+		(((MR_uint_least8_t *)					\
+			MR_end_of_long_desc_var_locns(sll))		\
 		 		[((i) - MR_long_desc_var_count(sll))])
 
 /*
@@ -533,53 +524,8 @@ typedef struct MR_Stack_Traversal_Struct {
 	MR_Determinism		MR_trav_detism;
 } MR_Stack_Traversal;
 
-/*
-** MR_Proc_Id is a union. The usual alternative identifies ordinary
-** procedures, while the other alternative identifies automatically generated
-** unification, comparison and index procedures. The meanings of the fields
-** in both forms are the same as in procedure labels. The runtime system
-** can figure out which form is present by using the macro
-** MR_PROC_LAYOUT_COMPILER_GENERATED, which will return true only if
-** the procedure is of the second type.
-**
-** The compiler generates MR_User_Proc_Id and MR_Compiler_Proc_Id structures
-** in order to avoid having to initialize the MR_Proc_Id union through the
-** inapplicable alternative, since the C standard in widespread use now
-** doesn't support that.
-**
-** The places that know about the structure of procedure ids include
-** browser/dl.m and besides all the places that refer to the C types below.
-*/
-
-struct MR_User_Proc_Id_Struct {
-	MR_PredFunc		MR_user_pred_or_func;
-	MR_ConstString		MR_user_decl_module;
-	MR_ConstString		MR_user_def_module;
-	MR_ConstString		MR_user_name;
-	MR_int_least16_t	MR_user_arity;
-	MR_int_least16_t	MR_user_mode;
-};
-
-struct MR_Compiler_Proc_Id_Struct {
-	MR_ConstString		MR_comp_type_name;
-	MR_ConstString		MR_comp_type_module;
-	MR_ConstString		MR_comp_def_module;
-	MR_ConstString		MR_comp_pred_name;
-	MR_int_least16_t	MR_comp_type_arity;
-	MR_int_least16_t	MR_comp_mode;
-};
-
-union MR_Proc_Id_Union {
-	MR_User_Proc_Id		MR_proc_user;
-	MR_Compiler_Proc_Id	MR_proc_comp;
-};
-
 #define	MR_PROC_LAYOUT_COMPILER_GENERATED(entry)			\
 	MR_PROC_ID_COMPILER_GENERATED(entry->MR_sle_proc_id)
-
-#define	MR_PROC_ID_COMPILER_GENERATED(proc_id)				\
-	((MR_Unsigned) (proc_id).MR_proc_user.MR_user_pred_or_func	\
-	 	> MR_FUNCTION)
 
 /*
 ** The MR_Exec_Trace structure contains the following fields.
@@ -819,8 +765,9 @@ typedef	struct MR_Proc_Layout_Compiler_Exec_Struct {
 
 	/* Adjust the arity of functions for printing. */
 #define MR_sle_user_adjusted_arity(entry)				\
-    ((entry)->MR_sle_user.MR_user_arity -				\
-        (((entry)->MR_sle_user.MR_user_pred_or_func == MR_FUNCTION) ? 1 : 0))
+	((entry)->MR_sle_user.MR_user_arity -				\
+		(((entry)->MR_sle_user.MR_user_pred_or_func == MR_FUNCTION) \
+		? 1 : 0))
 
 /*
 ** Define a layout structure for a procedure, containing information
@@ -957,7 +904,7 @@ typedef	struct MR_Proc_Layout_Compiler_Exec_Struct {
 ** require padding.) The labels are sorted on line number.
 **
 ** The MR_ml_trace_level field gives the trace level that the module was
-** compiled with.  If the MR_Trace_Level enum is modified, then the
+** compiled with. If the MR_Trace_Level enum is modified, then the
 ** corresponding function in compiler/trace_params.m must also be updated.
 **
 ** The MR_ml_suppressed_events events field encodes the set of event types

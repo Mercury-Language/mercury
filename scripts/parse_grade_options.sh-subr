@@ -1,5 +1,5 @@
 #---------------------------------------------------------------------------#
-# Copyright (C) 1997-2002 The University of Melbourne.
+# Copyright (C) 1997-2003 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -126,6 +126,15 @@
 	--no-profile-deep)
 		profile_deep=false ;;
 
+	--record-term-sizes-as-words)
+		record_term_sizes_as_words=true ;;
+	--no-record-term-sizes-as-words)
+		record_term_sizes_as_words=false ;;
+	--record-term-sizes-as-cells)
+		record_term_sizes_as_cells=true ;;
+	--no-record-term-sizes-as-cells)
+		record_term_sizes_as_cells=false ;;
+
 	--use-trail)
 		use_trail=true ;;
 	--no-use-trail)
@@ -192,6 +201,8 @@
 		profile_calls=false
 		profile_memory=false
 		profile_deep=false
+		record_term_sizes_as_words=false
+		record_term_sizes_as_cells=false
 		use_trail=false
 		reserve_tag=false
 		use_minimal_model=false
@@ -370,6 +381,16 @@
 					profile_calls=false
 					profile_memory=false
 					profile_deep=true
+					;;
+
+				tsw)
+					record_term_sizes_as_words=true
+					record_term_sizes_as_cells=false
+					;;
+
+				tsc)
+					record_term_sizes_as_words=false
+					record_term_sizes_as_cells=true
 					;;
 
 				tr)

@@ -1097,6 +1097,54 @@ do_compare__ref_1_0(
 
 %-----------------------------------------------------------------------------%
 
+:- pragma foreign_decl("C", "
+
+#include ""mercury_builtin_types.h""
+
+MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_NAME(list, list, 1));
+MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_NAME(std_util, univ, 0));
+
+").
+
+:- pragma foreign_code("C", "
+
+const MR_TypeCtorInfo ML_type_ctor_info_for_univ =
+	&MR_TYPE_CTOR_INFO_NAME(std_util, univ, 0);
+
+const MR_FA_TypeInfo_Struct1 ML_type_info_for_type_info = {
+	&MR_TYPE_CTOR_INFO_NAME(private_builtin, type_info, 1),
+	{ (MR_TypeInfo) &MR_TYPE_CTOR_INFO_NAME(builtin, void, 0) }
+};
+
+const MR_FA_TypeInfo_Struct1 ML_type_info_for_list_of_univ = {
+	&MR_TYPE_CTOR_INFO_NAME(list, list, 1),
+	{ (MR_TypeInfo) &MR_TYPE_CTOR_INFO_NAME(std_util, univ, 0) }
+};
+
+const MR_FA_TypeInfo_Struct1 ML_type_info_for_list_of_int = {
+	&MR_TYPE_CTOR_INFO_NAME(list, list, 1),
+	{ (MR_TypeInfo) &MR_TYPE_CTOR_INFO_NAME(builtin, int, 0) }
+};
+
+const MR_FA_TypeInfo_Struct1 ML_type_info_for_list_of_char = {
+	&MR_TYPE_CTOR_INFO_NAME(list, list, 1),
+	{ (MR_TypeInfo) &MR_TYPE_CTOR_INFO_NAME(builtin, character, 0) }
+};
+
+const MR_FA_TypeInfo_Struct1 ML_type_info_for_list_of_string = {
+	&MR_TYPE_CTOR_INFO_NAME(list, list, 1),
+	{ (MR_TypeInfo) &MR_TYPE_CTOR_INFO_NAME(builtin, string, 0) }
+};
+
+const MR_FA_TypeInfo_Struct1 ML_type_info_for_list_of_type_info = {
+	&MR_TYPE_CTOR_INFO_NAME(list, list, 1),
+	{ (MR_TypeInfo) &ML_type_info_for_type_info }
+};
+
+").
+
+%-----------------------------------------------------------------------------%
+
 :- interface.
 
 	% This section of the module is for miscellaneous predicates

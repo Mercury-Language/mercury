@@ -20,6 +20,7 @@
 :- interface.
 
 :- import_module parse_tree__prog_data.
+:- import_module hlds__hlds_goal.
 :- import_module hlds__hlds_llds.
 :- import_module ll_backend__global_data.
 :- import_module ll_backend__llds.
@@ -159,8 +160,8 @@
 %		and updates the state of VarLocnInfo0 accordingly.
 
 :- pred var_locn__assign_cell_to_var(prog_var::in, tag::in,
-	list(maybe(rval))::in, string::in, code_tree::out,
-	static_cell_info::in, static_cell_info::out,
+	list(maybe(rval))::in, maybe(term_size_value)::in, string::in,
+	code_tree::out, static_cell_info::in, static_cell_info::out,
 	var_locn_info::in, var_locn_info::out) is det.
 
 %	var_locn__place_var(Var, Lval, Code, VarLocnInfo0, VarLocnInfo)
@@ -678,7 +679,11 @@ var_locn__assign_lval_to_var(Var, Lval0, StaticCellInfo, Code) -->
 		(
 			{ MaybeConstBaseVarRval = yes(BaseVarRval) },
 			{ BaseVarRval = mkword(Ptag, BaseConst) },
-			{ BaseConst = const(data_addr_const(DataAddr)) },
+			{ BaseConst = const(data_addr_const(DataAddr,
+				MaybeBaseOffset)) },
+			% XXX We could drop the MaybeBaseOffset = no condition,
+			% but this would require more complex code below.
+			{ MaybeBaseOffset = no },
 			{ search_static_cell(StaticCellInfo, DataAddr,
 				StaticCellArgsTypes) }
 		->
@@ -790,8 +795,24 @@ var_locn__add_use_ref(ContainedVar, UsingVar, VarStateMap0, VarStateMap) :-
 
 %----------------------------------------------------------------------------%
 
-var_locn__assign_cell_to_var(Var, Ptag, MaybeRvals, TypeMsg, Code,
+var_locn__assign_cell_to_var(Var, Ptag, MaybeRvals0, SizeInfo, TypeMsg, Code,
 		!StaticCellInfo, !VarLocn) :-
+	(
+		SizeInfo = yes(SizeSource),
+		(
+			SizeSource = known_size(Size),
+			SizeRval = const(int_const(Size))
+		;
+			SizeSource = dynamic_size(SizeVar),
+			SizeRval = var(SizeVar)
+		),
+		MaybeRvals = [yes(SizeRval) | MaybeRvals0],
+		MaybeOffset = yes(1)
+	;
+		SizeInfo = no,
+		MaybeRvals = MaybeRvals0,
+		MaybeOffset = no
+	),
 	var_locn__get_var_state_map(VarStateMap, !VarLocn),
 	var_locn__get_exprn_opts(ExprnOpts, !VarLocn),
 	(
@@ -799,30 +820,41 @@ var_locn__assign_cell_to_var(Var, Ptag, MaybeRvals, TypeMsg, Code,
 			MaybeRvals, RvalsTypes)
 	->
 		add_static_cell(RvalsTypes, DataAddr, !StaticCellInfo),
-		CellRval = mkword(Ptag, const(data_addr_const(DataAddr))),
-		var_locn__assign_const_to_var(Var, CellRval, !VarLocn),
+		CellPtrRval = mkword(Ptag, const(
+			data_addr_const(DataAddr, MaybeOffset))),
+		var_locn__assign_const_to_var(Var, CellPtrRval, !VarLocn),
 		Code = empty
 	;
 		var_locn__assign_dynamic_cell_to_var(Var, Ptag, MaybeRvals,
-			TypeMsg, Code, !VarLocn)
+			MaybeOffset, TypeMsg, Code, !VarLocn)
 	).
 
 :- pred var_locn__assign_dynamic_cell_to_var(prog_var::in, tag::in,
-	list(maybe(rval))::in, string::in, code_tree::out,
+	list(maybe(rval))::in, maybe(int)::in, string::in, code_tree::out,
 	var_locn_info::in, var_locn_info::out) is det.
 
-var_locn__assign_dynamic_cell_to_var(Var, Ptag, Vector, TypeMsg, Code) -->
+var_locn__assign_dynamic_cell_to_var(Var, Ptag, Vector, MaybeOffset,
+		TypeMsg, Code) -->
 	var_locn__check_var_is_unknown(Var),
 
 	var_locn__select_preferred_reg_or_stack(Var, Lval),
 	var_locn__get_var_name(Var, VarName),
 	{ list__length(Vector, Size) },
 	{ CellCode = node([
-		incr_hp(Lval, yes(Ptag), const(int_const(Size)), TypeMsg)
+		incr_hp(Lval, yes(Ptag), MaybeOffset, const(int_const(Size)),
+			TypeMsg)
 			- string__append("Allocating heap for ", VarName)
 	]) },
 	var_locn__set_magic_var_location(Var, Lval),
-	var_locn__assign_cell_args(Vector, yes(Ptag), lval(Lval), 0, ArgsCode),
+	{
+		MaybeOffset = yes(Offset),
+		StartOffset = -Offset
+	;
+		MaybeOffset = no,
+		StartOffset = 0
+	},
+	var_locn__assign_cell_args(Vector, yes(Ptag), lval(Lval), StartOffset,
+		ArgsCode),
 	{ Code = tree(CellCode, ArgsCode) }.
 
 :- pred var_locn__assign_cell_args(list(maybe(rval))::in,

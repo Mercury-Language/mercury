@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1999-2002 The University of Melbourne.
+** Copyright (C) 1999-2003 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -303,8 +303,10 @@ MR_Box MR_asm_box_float(MR_Float f);
 ** The #include of mercury_heap.h needs to come *after* the definition
 ** of MR_new_object(), because mercury_heap.h defines some inline
 ** functions that reference MR_new_object().
+** mercury_univ.h includes mercury_heap.h.
 */
 #include "mercury_heap.h"	/* for MR_MAYBE_(UN)BOX_FOREIGN_TYPE() */
+#include "mercury_univ.h"
 
 #endif /* MR_HIGHLEVEL_CODE */
 

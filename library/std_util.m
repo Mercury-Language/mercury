@@ -1276,15 +1276,19 @@ XXX `ui' modes don't work yet
 	new_mutvar(X::in, Ref::out),
 	[will_not_call_mercury, thread_safe],
 "
-	MR_incr_hp_msg(Ref, 1, MR_PROC_LABEL, ""std_util:mutvar/1"");
-	*(MR_Word *) Ref = X;
+	MR_offset_incr_hp_msg(Ref, MR_SIZE_SLOT_SIZE, MR_SIZE_SLOT_SIZE + 1,
+		MR_PROC_LABEL, ""std_util:mutvar/1"");
+	MR_define_size_slot(0, Ref, 1);
+	* (MR_Word *) Ref = X;
 ").
 :- pragma foreign_proc("C",
 	new_mutvar(X::di, Ref::uo),
 	[will_not_call_mercury, thread_safe],
 "
-	MR_incr_hp_msg(Ref, 1, MR_PROC_LABEL, ""std_util:mutvar/1"");
-	*(MR_Word *) Ref = X;
+	MR_offset_incr_hp_msg(Ref, MR_SIZE_SLOT_SIZE, MR_SIZE_SLOT_SIZE + 1,
+		MR_PROC_LABEL, ""std_util:mutvar/1"");
+	MR_define_size_slot(0, Ref, 1);
+	* (MR_Word *) Ref = X;
 ").
 
 :- pragma inline(get_mutvar/2).
@@ -1293,7 +1297,7 @@ XXX `ui' modes don't work yet
 	get_mutvar(Ref::in, X::uo),
 	[will_not_call_mercury, thread_safe],
 "
-	X = *(MR_Word *) Ref;
+	X = * (MR_Word *) Ref;
 ").
 
 :- pragma inline(set_mutvar/2).

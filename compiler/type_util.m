@@ -52,6 +52,13 @@
 :- pred type_is_tuple(type, list(type)).
 :- mode type_is_tuple(in, out) is semidet.
 
+	% type_has_variable_arity_ctor(Type, TypeCtor, TypeArgs)
+	% Check if the principal type constructor of Type is of variable arity.
+	% If yes, return the type constructor as TypeCtor and its args as
+	% TypeArgs. If not, fail.
+:- pred type_has_variable_arity_ctor((type)::in, type_ctor::out,
+	list(type)::out) is semidet.
+
 	% type_ctor_is_higher_order(TypeCtor, PredOrFunc) succeeds iff
 	% TypeCtor is a higher-order predicate or function type.
 :- pred type_ctor_is_higher_order(type_ctor, purity, pred_or_func,
@@ -128,6 +135,11 @@
 :- pred is_introduced_type_info_type(type).
 :- mode is_introduced_type_info_type(in) is semidet.
 
+:- pred is_introduced_type_info_type_ctor(type_ctor).
+:- mode is_introduced_type_info_type_ctor(in) is semidet.
+
+:- func is_introduced_type_info_type_category(type_category) = bool.
+
 	% Given a list of variables, return the permutation
 	% of that list which has all the type_info-related variables
 	% preceding the non-type_info-related variables (with the relative
@@ -145,23 +157,28 @@
 :- mode remove_new_prefix(in, out) is semidet.
 :- mode remove_new_prefix(out, in) is det.
 
-	% Given a type, determine what sort of type it is.
-:- pred classify_type(type, module_info, builtin_type).
-:- mode classify_type(in, in, out) is det.
+	% Given a type, determine what category its principal constructor
+	% falls into.
+:- func classify_type(module_info, type) = type_category.
 
-	% Given a type_ctor, determine what sort of type it is.
-:- pred classify_type_ctor(module_info, type_ctor, builtin_type).
-:- mode classify_type_ctor(in, in, out) is det.
+	% Given a type_ctor, determine what sort it is.
+:- func classify_type_ctor(module_info, type_ctor) = type_category.
 
-:- type builtin_type	--->	int_type
-			;	char_type
-			;	str_type
-			;	float_type
-			;	pred_type
-			;	tuple_type
-			;	enum_type
-			;	polymorphic_type
-			;	user_type.
+:- type type_category
+	--->	int_type
+	;	char_type
+	;	str_type
+	;	float_type
+	;	higher_order_type
+	;	tuple_type
+	;	enum_type
+	;	variable_type
+	;	type_info_type
+	;	type_ctor_info_type
+	;	typeclass_info_type
+	;	base_typeclass_info_type
+	;	void_type
+	;	user_ctor_type.
 
 	% Given a non-variable type, return its type-id and argument types.
 
@@ -173,6 +190,9 @@
 :- pred type_util__var(type, tvar).
 :- mode type_util__var(in, out) is semidet.
 :- mode type_util__var(out, in) is det.
+
+:- pred canonicalize_type_args(type_ctor::in, list(type)::in, list(type)::out)
+	is det.
 
 	% Given a type_ctor and a list of argument types, 
 	% construct a type.
@@ -197,12 +217,17 @@
 :- func string_type = (type).
 :- func float_type = (type).
 :- func char_type = (type).
+:- func void_type = (type).
 :- func c_pointer_type = (type).
 :- func heap_pointer_type = (type).
 :- func sample_type_info_type = (type).
 :- func sample_typeclass_info_type = (type).
 :- func comparison_result_type = (type).
 :- func aditi_state_type = (type).
+
+	% Construct type_infos and type_ctor_infos for the given types.
+:- func type_info_type(type) = (type).
+:- func type_ctor_info_type(type) = (type).
 
 	% Given a constant and an arity, return a type_ctor.
 	% Fails if the constant is not an atom.
@@ -533,6 +558,7 @@
 
 :- import_module backend_libs__foreign.
 :- import_module check_hlds__purity.
+:- import_module hlds__hlds_out.
 :- import_module libs__globals.
 :- import_module libs__options.
 :- import_module parse_tree__prog_io.
@@ -555,11 +581,25 @@ type_is_atomic(Type, ModuleInfo) :-
 	type_ctor_is_atomic(TypeCtor, ModuleInfo).
 
 type_ctor_is_atomic(TypeCtor, ModuleInfo) :-
-	classify_type_ctor(ModuleInfo, TypeCtor, BuiltinType),
-	BuiltinType \= polymorphic_type,
-	BuiltinType \= tuple_type,
-	BuiltinType \= pred_type,
-	BuiltinType \= user_type.
+	TypeCategory = classify_type_ctor(ModuleInfo, TypeCtor),
+	type_category_is_atomic(TypeCategory) = yes.
+
+:- func type_category_is_atomic(type_category) = bool.
+
+type_category_is_atomic(int_type) = yes.
+type_category_is_atomic(char_type) = yes.
+type_category_is_atomic(str_type) = yes.
+type_category_is_atomic(float_type) = yes.
+type_category_is_atomic(higher_order_type) = no.
+type_category_is_atomic(tuple_type) = no.
+type_category_is_atomic(enum_type) = yes.
+type_category_is_atomic(variable_type) = no.
+type_category_is_atomic(type_info_type) = no.
+type_category_is_atomic(type_ctor_info_type) = no.
+type_category_is_atomic(typeclass_info_type) = no.
+type_category_is_atomic(base_typeclass_info_type) = no.
+type_category_is_atomic(void_type) = yes.
+type_category_is_atomic(user_ctor_type) = no.
 
 type_ctor_is_array(qualified(unqualified("array"), "array") - 1).
 
@@ -576,14 +616,32 @@ type_ctor_has_hand_defined_rtti(Type, Body) :-
 		; Body = foreign_type(_, _) ).
 
 is_introduced_type_info_type(Type) :-
-	sym_name_and_args(Type, TypeName, _),
-	TypeName = qualified(PrivateBuiltin, Name),
+	type_to_ctor_and_args(Type, TypeCtor, _),
+	is_introduced_type_info_type_ctor(TypeCtor).
+
+is_introduced_type_info_type_ctor(TypeCtor) :-
+	TypeCtor = qualified(PrivateBuiltin, Name) - 1,
+	mercury_private_builtin_module(PrivateBuiltin),
 	( Name = "type_info"
 	; Name = "type_ctor_info"
 	; Name = "typeclass_info"
 	; Name = "base_typeclass_info"
-	),
-	mercury_private_builtin_module(PrivateBuiltin).
+	).
+
+is_introduced_type_info_type_category(int_type) = no.
+is_introduced_type_info_type_category(char_type) = no.
+is_introduced_type_info_type_category(str_type) = no.
+is_introduced_type_info_type_category(float_type) = no.
+is_introduced_type_info_type_category(higher_order_type) = no.
+is_introduced_type_info_type_category(tuple_type) = no.
+is_introduced_type_info_type_category(enum_type) = no.
+is_introduced_type_info_type_category(variable_type) = no.
+is_introduced_type_info_type_category(type_info_type) = yes.
+is_introduced_type_info_type_category(type_ctor_info_type) = yes.
+is_introduced_type_info_type_category(typeclass_info_type) = yes.
+is_introduced_type_info_type_category(base_typeclass_info_type) = yes.
+is_introduced_type_info_type_category(void_type) = no.
+is_introduced_type_info_type_category(user_ctor_type) = no.
 
 put_typeinfo_vars_first(VarsList, VarTypes) =
 		TypeInfoVarsList ++ NonTypeInfoVarsList :-
@@ -601,30 +659,41 @@ remove_new_prefix(qualified(Module, Name0), qualified(Module, Name)) :-
 
 	% Given a type, determine what sort of type it is.
 
-classify_type(VarType, ModuleInfo, Type) :-
+classify_type(ModuleInfo, VarType) = TypeCategory :-
 	( type_to_ctor_and_args(VarType, TypeCtor, _) ->
-		classify_type_ctor(ModuleInfo, TypeCtor, Type)
+		TypeCategory = classify_type_ctor(ModuleInfo, TypeCtor)
 	;
-		Type = polymorphic_type
+		TypeCategory = variable_type
 	).
 
-classify_type_ctor(ModuleInfo, TypeCtor, Type) :-
+classify_type_ctor(ModuleInfo, TypeCtor) = TypeCategory :-
+	PrivateBuiltin = mercury_private_builtin_module,
 	( TypeCtor = unqualified("character") - 0 ->
-		Type = char_type
+		TypeCategory = char_type
 	; TypeCtor = unqualified("int") - 0 ->
-		Type = int_type
+		TypeCategory = int_type
 	; TypeCtor = unqualified("float") - 0 ->
-		Type = float_type
+		TypeCategory = float_type
 	; TypeCtor = unqualified("string") - 0 ->
-		Type = str_type
+		TypeCategory = str_type
+	; TypeCtor = unqualified("void") - 0 ->
+		TypeCategory = void_type
+	; TypeCtor = qualified(PrivateBuiltin, "type_info") - 1 ->
+		TypeCategory = type_info_type
+	; TypeCtor = qualified(PrivateBuiltin, "type_ctor_info") - 1 ->
+		TypeCategory = type_ctor_info_type
+	; TypeCtor = qualified(PrivateBuiltin, "typeclass_info") - 1 ->
+		TypeCategory = typeclass_info_type
+	; TypeCtor = qualified(PrivateBuiltin, "base_typeclass_info") - 1 ->
+		TypeCategory = base_typeclass_info_type
 	; type_ctor_is_higher_order(TypeCtor, _, _, _) ->
-		Type = pred_type
+		TypeCategory = higher_order_type
 	; type_ctor_is_tuple(TypeCtor) ->
-		Type = tuple_type
+		TypeCategory = tuple_type
 	; type_ctor_is_enumeration(TypeCtor, ModuleInfo) ->
-		Type = enum_type
+		TypeCategory = enum_type
 	;
-		Type = user_type
+		TypeCategory = user_ctor_type
 	).
 
 type_is_higher_order(Type, Purity, PredOrFunc, EvalMethod, PredArgTypes) :-
@@ -679,6 +748,24 @@ get_lambda_eval_method_and_args(PorFStr, Type0, EvalMethod, ArgTypes) :-
 		Type1 = term__functor(term__atom(PorFStr), ArgTypes, _),
 		Functor = "aditi_bottom_up",
 		EvalMethod = (aditi_bottom_up)
+	).
+
+type_has_variable_arity_ctor(Type, TypeCtor, TypeArgs) :-
+	(
+		type_is_higher_order(Type, _Purity, PredOrFunc, _,
+			TypeArgs0)
+	->
+		TypeArgs = TypeArgs0,
+		hlds_out__pred_or_func_to_str(PredOrFunc,
+			PredOrFuncStr),
+		TypeCtor = unqualified(PredOrFuncStr) - 0
+	;
+		type_is_tuple(Type, TypeArgs1)
+	->
+		TypeArgs = TypeArgs1,
+		TypeCtor = unqualified("tuple") - 0
+	;
+		fail
 	).
 
 type_ctor_is_higher_order(SymName - _Arity, Purity, PredOrFunc, EvalMethod) :-
@@ -893,6 +980,22 @@ type_to_ctor_and_args(Type, SymName - Arity, Args) :-
 		list__length(Args, Arity)
 	).
 
+canonicalize_type_args(TypeCtor, TypeArgs0, TypeArgs) :-
+	(
+		% The arguments of typeclass_info/base_typeclass_info types
+		% are not a type - they encode class constraints.
+		% The arguments of type_ctor_info types are not types;
+		% they are type constructors.
+		% The arguments of type_info types are not true arguments:
+		% they specify the type the type_info represents.
+		% So we replace all these arguments with type `void'.
+		is_introduced_type_info_type_ctor(TypeCtor)
+	->
+		TypeArgs = [void_type]
+	;
+		TypeArgs = TypeArgs0
+	).
+
 construct_type(TypeCtor, Args, Type) :-
 	(
 		type_ctor_is_higher_order(TypeCtor, Purity, PredOrFunc,
@@ -965,6 +1068,9 @@ float_type = Type :-
 char_type = Type :-
 	construct_type(unqualified("character") - 0, [], Type).
 
+void_type = Type :-
+	construct_type(unqualified("void") - 0, [], Type).
+
 c_pointer_type = Type :-
 	mercury_public_builtin_module(BuiltinModule),
 	construct_type(qualified(BuiltinModule, "c_pointer") - 0, [], Type).
@@ -988,10 +1094,19 @@ comparison_result_type = Type :-
 	construct_type(qualified(BuiltinModule,
 		"comparison_result") - 0, [], Type).
 
+type_info_type(ForType) = Type :-
+	mercury_private_builtin_module(BuiltinModule),
+	construct_type(qualified(BuiltinModule, "type_info") - 1,
+		[ForType], Type).
+
+type_ctor_info_type(ForType) = Type :-
+	mercury_private_builtin_module(BuiltinModule),
+	construct_type(qualified(BuiltinModule, "type_ctor_info") - 1,
+		[ForType], Type).
+
 aditi_state_type = Type :-
 	aditi_public_builtin_module(BuiltinModule),
-	construct_type(qualified(BuiltinModule,
-		"state") - 0, [], Type).
+	construct_type(qualified(BuiltinModule, "state") - 0, [], Type).
 
 %-----------------------------------------------------------------------------%
 
@@ -1132,7 +1247,6 @@ type_util__cons_id_arg_types(ModuleInfo, VarType, ConsId, ArgTypes) :-
 	map__from_corresponding_lists(TypeDefnVars, TypeArgs, TSubst),
 	assoc_list__values(Args, ArgTypes0),
 	term__apply_substitution_to_list(ArgTypes0, TSubst, ArgTypes).
-
 
 type_util__is_existq_cons(ModuleInfo, VarType, ConsId) :-
 	type_util__is_existq_cons(ModuleInfo, VarType, ConsId, _). 
@@ -1373,7 +1487,6 @@ type_list_subsumes(TypesA, TypesB, TypeSubst) :-
 	term__vars_list(TypesB, TypesBVars),
 	map__init(TypeSubst0),
 	type_unify_list(TypesA, TypesB, TypesBVars, TypeSubst0, TypeSubst).
-
 
 arg_type_list_subsumes(TVarSet, ArgTypes, CalleeTVarSet,
 		CalleeExistQVars0, CalleeArgTypes0) :-
@@ -1660,7 +1773,6 @@ apply_substitutions_to_var_map(VarMap0, TRenaming, TSubst, Subst, VarMap) :-
 		apply_substitutions_to_var_map_2(TVars, VarMap0,
 			TRenaming, TSubst, Subst, NewVarMap, VarMap)
 	).
-
 
 :- pred apply_substitutions_to_var_map_2(list(tvar)::in, map(tvar,
 		type_info_locn)::in, tsubst::in, map(tvar, type)::in,

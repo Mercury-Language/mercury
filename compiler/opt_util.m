@@ -754,7 +754,7 @@ opt_util__no_stackvars_til_decr_sp([Instr0 | Instrs0], FrameSize,
 			Between = [Instr0 | Between0]
 		)
 	;
-		Uinstr0 = incr_hp(Lval, _, Rval, _),
+		Uinstr0 = incr_hp(Lval, _, _, Rval, _),
 		opt_util__lval_refers_stackvars(Lval, no),
 		opt_util__rval_refers_stackvars(Rval, no),
 		opt_util__no_stackvars_til_decr_sp(Instrs0, FrameSize,
@@ -819,7 +819,7 @@ opt_util__block_refers_stackvars([Uinstr0 - _ | Instrs0], Need) :-
 			Need = no
 		)
 	;
-		Uinstr0 = incr_hp(Lval, _, Rval, _),
+		Uinstr0 = incr_hp(Lval, _, _, Rval, _),
 		opt_util__lval_refers_stackvars(Lval, Use1),
 		opt_util__rval_refers_stackvars(Rval, Use2),
 		bool__or(Use1, Use2, Use),
@@ -998,7 +998,7 @@ opt_util__can_instr_branch_away(goto(_), yes).
 opt_util__can_instr_branch_away(computed_goto(_, _), yes).
 opt_util__can_instr_branch_away(c_code(_, _), no).
 opt_util__can_instr_branch_away(if_val(_, _), yes).
-opt_util__can_instr_branch_away(incr_hp(_, _, _, _), no).
+opt_util__can_instr_branch_away(incr_hp(_, _, _, _, _), no).
 opt_util__can_instr_branch_away(mark_hp(_), no).
 opt_util__can_instr_branch_away(restore_hp(_), no).
 opt_util__can_instr_branch_away(free_heap(_), no).
@@ -1066,7 +1066,7 @@ opt_util__can_instr_fall_through(goto(_), no).
 opt_util__can_instr_fall_through(computed_goto(_, _), no).
 opt_util__can_instr_fall_through(c_code(_, _), yes).
 opt_util__can_instr_fall_through(if_val(_, _), yes).
-opt_util__can_instr_fall_through(incr_hp(_, _, _, _), yes).
+opt_util__can_instr_fall_through(incr_hp(_, _, _, _, _), yes).
 opt_util__can_instr_fall_through(mark_hp(_), yes).
 opt_util__can_instr_fall_through(restore_hp(_), yes).
 opt_util__can_instr_fall_through(free_heap(_), yes).
@@ -1112,7 +1112,7 @@ opt_util__can_use_livevals(goto(_), yes).
 opt_util__can_use_livevals(computed_goto(_, _), no).
 opt_util__can_use_livevals(c_code(_, _), no).
 opt_util__can_use_livevals(if_val(_, _), yes).
-opt_util__can_use_livevals(incr_hp(_, _, _, _), no).
+opt_util__can_use_livevals(incr_hp(_, _, _, _, _), no).
 opt_util__can_use_livevals(mark_hp(_), no).
 opt_util__can_use_livevals(restore_hp(_), no).
 opt_util__can_use_livevals(free_heap(_), no).
@@ -1175,7 +1175,7 @@ opt_util__instr_labels_2(goto(Addr), [], [Addr]).
 opt_util__instr_labels_2(computed_goto(_, Labels), Labels, []).
 opt_util__instr_labels_2(c_code(_, _), [], []).
 opt_util__instr_labels_2(if_val(_, Addr), [], [Addr]).
-opt_util__instr_labels_2(incr_hp(_, _, _, _), [], []).
+opt_util__instr_labels_2(incr_hp(_, _, _, _, _), [], []).
 opt_util__instr_labels_2(mark_hp(_), [], []).
 opt_util__instr_labels_2(restore_hp(_), [], []).
 opt_util__instr_labels_2(free_heap(_), [], []).
@@ -1223,7 +1223,7 @@ opt_util__possible_targets(if_val(_, CodeAddr), Targets) :-
 	;
 		Targets = []
 	).
-opt_util__possible_targets(incr_hp(_, _, _, _), []).
+opt_util__possible_targets(incr_hp(_, _, _, _, _), []).
 opt_util__possible_targets(mark_hp(_), []).
 opt_util__possible_targets(restore_hp(_), []).
 opt_util__possible_targets(free_heap(_), []).
@@ -1288,7 +1288,7 @@ opt_util__instr_rvals_and_lvals(goto(_), [], []).
 opt_util__instr_rvals_and_lvals(computed_goto(Rval, _), [Rval], []).
 opt_util__instr_rvals_and_lvals(c_code(_, _), [], []).
 opt_util__instr_rvals_and_lvals(if_val(Rval, _), [Rval], []).
-opt_util__instr_rvals_and_lvals(incr_hp(Lval, _, Rval, _), [Rval], [Lval]).
+opt_util__instr_rvals_and_lvals(incr_hp(Lval, _, _, Rval, _), [Rval], [Lval]).
 opt_util__instr_rvals_and_lvals(mark_hp(Lval), [], [Lval]).
 opt_util__instr_rvals_and_lvals(restore_hp(Rval), [Rval], []).
 opt_util__instr_rvals_and_lvals(free_heap(Rval), [Rval], []).
@@ -1417,7 +1417,7 @@ opt_util__count_temps_instr(computed_goto(Rval, _), R0, R, F0, F) :-
 opt_util__count_temps_instr(if_val(Rval, _), R0, R, F0, F) :-
 	opt_util__count_temps_rval(Rval, R0, R, F0, F).
 opt_util__count_temps_instr(c_code(_, _), R, R, F, F).
-opt_util__count_temps_instr(incr_hp(Lval, _, Rval, _), R0, R, F0, F) :-
+opt_util__count_temps_instr(incr_hp(Lval, _, _, Rval, _), R0, R, F0, F) :-
 	opt_util__count_temps_lval(Lval, R0, R1, F0, F1),
 	opt_util__count_temps_rval(Rval, R1, R, F1, F).
 opt_util__count_temps_instr(mark_hp(Lval), R0, R, F0, F) :-
@@ -1546,7 +1546,7 @@ opt_util__touches_nondet_ctrl_instr(Uinstr, Touch) :-
 		opt_util__touches_nondet_ctrl_lval(Lval, TouchLval),
 		opt_util__touches_nondet_ctrl_rval(Rval, TouchRval),
 		bool__or(TouchLval, TouchRval, Touch)
-	; Uinstr = incr_hp(Lval, _, Rval, _) ->
+	; Uinstr = incr_hp(Lval, _, _, Rval, _) ->
 		opt_util__touches_nondet_ctrl_lval(Lval, TouchLval),
 		opt_util__touches_nondet_ctrl_rval(Rval, TouchRval),
 		bool__or(TouchLval, TouchRval, Touch)
@@ -1691,7 +1691,7 @@ opt_util__count_incr_hp(Instrs, N) :-
 
 opt_util__count_incr_hp_2([], N, N).
 opt_util__count_incr_hp_2([Uinstr0 - _ | Instrs], N0, N) :-
-	( Uinstr0 = incr_hp(_, _, _, _) ->
+	( Uinstr0 = incr_hp(_, _, _, _, _) ->
 		N1 = N0 + 1
 	;
 		N1 = N0
@@ -1807,8 +1807,8 @@ opt_util__replace_labels_instr(if_val(Rval0, Target0), ReplMap, ReplData,
 		Rval = Rval0
 	),
 	opt_util__replace_labels_code_addr(Target0, ReplMap, Target).
-opt_util__replace_labels_instr(incr_hp(Lval0, MaybeTag, Rval0, Msg), ReplMap,
-		ReplData, incr_hp(Lval, MaybeTag, Rval, Msg)) :-
+opt_util__replace_labels_instr(incr_hp(Lval0, MaybeTag, MO, Rval0, Msg),
+		ReplMap, ReplData, incr_hp(Lval, MaybeTag, MO, Rval, Msg)) :-
 	(
 		ReplData = yes,
 		opt_util__replace_labels_lval(Lval0, ReplMap, Lval),
@@ -2041,8 +2041,8 @@ opt_util__replace_labels_rval_const(multi_string_const(L, S), _,
 opt_util__replace_labels_rval_const(code_addr_const(Addr0), ReplMap,
 		code_addr_const(Addr)) :-
 	opt_util__replace_labels_code_addr(Addr0, ReplMap, Addr).
-opt_util__replace_labels_rval_const(data_addr_const(DataAddr), _,
-		data_addr_const(DataAddr)).
+opt_util__replace_labels_rval_const(data_addr_const(DataAddr, MaybeOffset), _,
+		data_addr_const(DataAddr, MaybeOffset)).
 opt_util__replace_labels_rval_const(label_entry(Label), _, label_entry(Label)).
 
 :- pred opt_util__replace_labels_code_addr(code_addr::in, map(label, label)::in,

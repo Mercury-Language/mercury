@@ -2472,6 +2472,17 @@ non_special_interface_should_use_typeinfo_liveness(Status, IsAddressTaken,
 			% follows that it must be exported somewhere.
 			Status \= local
 		;
+			% If term size profiling (of either form) is enabled,
+			% then we may need to access the typeinfo of any
+			% variable bound to a heap cell argument. The only way
+			% to ensure that this is possible is to preserve the
+			% ability to access the typeinfo of any variable.
+			globals__lookup_bool_option(Globals,
+				record_term_sizes_as_words, yes)
+		;
+			globals__lookup_bool_option(Globals,
+				record_term_sizes_as_cells, yes)
+		;
 			non_special_body_should_use_typeinfo_liveness(Globals,
 				yes)
 		)
@@ -2507,9 +2518,16 @@ no_type_info_builtin(ModuleName, PredName, Arity) :-
 	;
 		ModuleNameType = table_builtin,
 		mercury_table_builtin_module(ModuleName)
+	;
+		ModuleNameType = term_size_prof_builtin,
+		mercury_term_size_prof_builtin_module(ModuleName)
 	).
 
-:- type builtin_mod ---> builtin ; private_builtin ; table_builtin.
+:- type builtin_mod
+	--->	builtin
+	;	private_builtin
+	;	table_builtin
+	;	term_size_prof_builtin.
 
 :- pred no_type_info_builtin_2(builtin_mod::out, string::in, int::in)
 	is semidet.
@@ -2524,6 +2542,7 @@ no_type_info_builtin_2(private_builtin,
 			"unconstrained_type_info_from_typeclass_info", 3).
 no_type_info_builtin_2(table_builtin, "table_restore_any_ans", 3).
 no_type_info_builtin_2(table_builtin, "table_lookup_insert_enum", 4).
+no_type_info_builtin_2(term_size_prof_builtin, "increment_size", 2).
 
 proc_info_has_io_state_pair(ModuleInfo, ProcInfo, InArgNum, OutArgNum) :-
 	proc_info_headvars(ProcInfo, HeadVars),

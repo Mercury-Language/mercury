@@ -79,8 +79,6 @@ static  MR_Word         copy_typeclass_info(MR_Word typeclass_info,
                 return (rettype) (pointer)[offset]);                    \
         } while (0)
 
-            
-
 MR_Word
 copy(MR_Word data, MR_TypeInfo type_info,
     const MR_Word *lower_limit, const MR_Word *upper_limit)
@@ -132,7 +130,7 @@ try_again:
                    return new_data;
                 }
             }
-                
+
             /*
             ** Otherwise, it is not one of the reserved addresses,
             ** so handle it like a normal DU type.
@@ -226,13 +224,14 @@ try_again:
                     } else {                                                \
                         cell_size = 1 + arity;                              \
                     }                                                       \
+                    cell_size += MR_SIZE_SLOT_SIZE;                         \
                                                                             \
                     if (exist_info == NULL) {                               \
+                        MR_offset_incr_saved_hp(new_data, MR_SIZE_SLOT_SIZE, \
+                                cell_size);                                 \
                                                                             \
-                        MR_incr_saved_hp(new_data, cell_size);              \
-                                                                            \
+                        MR_copy_size_slot(0, new_data, ptag, data);         \
                         MR_get_first_slot(have_sectag);                     \
-                                                                            \
                     } else {                                                \
                         int                 num_ti_plain;                   \
                         int                 num_tci;                        \
@@ -241,8 +240,10 @@ try_again:
                         num_tci = exist_info->MR_exist_tcis;                \
                         cell_size += num_ti_plain + num_tci;                \
                                                                             \
-                        MR_incr_saved_hp(new_data, cell_size);              \
+                        MR_offset_incr_saved_hp(new_data, MR_SIZE_SLOT_SIZE, \
+                                cell_size);                                 \
                                                                             \
+                        MR_copy_size_slot(0, new_data, ptag, data);         \
                         MR_get_first_slot(have_sectag);                     \
                                                                             \
                         for (i = 0; i < num_ti_plain; i++) {                \
@@ -383,10 +384,9 @@ try_again:
             RETURN_IF_OUT_OF_RANGE(data, (MR_Word *) data, 0, MR_Word);
 
             {
-                MR_incr_saved_hp_atomic(new_data,
-                    (strlen((MR_String) data) + sizeof(MR_Word)) / 
-                        sizeof(MR_Word));
-                strcpy((MR_String) new_data, (MR_String) data);
+                MR_make_aligned_string_copy_saved_hp(
+                        (MR_LVALUE_CAST(MR_String, new_data)),
+                        (MR_String) data);
                 leave_forwarding_pointer(data, 0, new_data);
             }
         }
@@ -422,14 +422,14 @@ try_again:
                 args = old_closure->MR_closure_num_hidden_args;
 
                 /* create new closure */
-                MR_incr_saved_hp(MR_LVALUE_CAST(MR_Word, new_closure),
-                    args + 3);
+                MR_offset_incr_saved_hp(MR_LVALUE_CAST(MR_Word, new_closure),
+                    0, args + 3);
 
                 /* copy the fixed fields */
                 new_closure->MR_closure_layout = closure_layout;
                 new_closure->MR_closure_num_hidden_args = args;
                 new_closure->MR_closure_code = old_closure->MR_closure_code;
-                        
+
                 /*
                 ** Fill in the pseudo_typeinfos in the closure layout
                 ** with the values from the closure.
@@ -470,7 +470,7 @@ try_again:
             data_value = (MR_Word *) MR_body(data, MR_mktag(0));
 
             RETURN_IF_OUT_OF_RANGE(data, data_value, 0, MR_Word);
-            
+
             {
                 MR_Word *new_data_ptr;
                 MR_TypeInfo *arg_typeinfo_vector;
@@ -481,7 +481,9 @@ try_again:
                     new_data = (MR_Word) NULL;
                 } else {
                     /* allocate space for the new tuple */
-                    MR_incr_saved_hp(new_data, arity);
+                    MR_offset_incr_saved_hp(new_data, MR_SIZE_SLOT_SIZE,
+                        MR_SIZE_SLOT_SIZE + arity);
+                    MR_copy_size_slot(0, new_data, 0, data);
                     new_data_ptr = (MR_Word *) new_data;
 
                     arg_typeinfo_vector =
@@ -513,7 +515,7 @@ try_again:
             data_value = (MR_Word *) MR_body(data, MR_mktag(0));
 
             RETURN_IF_OUT_OF_RANGE(data, data_value, 0, MR_Word);
-            
+
             {
                 MR_ArrayType *new_array;
                 MR_ArrayType *old_array;
@@ -521,7 +523,7 @@ try_again:
 
                 old_array = (MR_ArrayType *) data_value;
                 array_size = old_array->size;
-                MR_incr_saved_hp(new_data, array_size + 1);
+                MR_offset_incr_saved_hp(new_data, 0, array_size + 1);
                 new_array = (MR_ArrayType *) new_data;
                 new_array->size = array_size;
                 for (i = 0; i < array_size; i++) {
@@ -617,8 +619,8 @@ try_again:
             ref = (MR_Word *) MR_body(data, MR_mktag(0));
 
             RETURN_IF_OUT_OF_RANGE(data, ref, 0, MR_Word);
-            
-            MR_incr_saved_hp(new_data, 1);
+
+            MR_offset_incr_saved_hp(new_data, 0, 1);
             new_ref = (MR_Word *) new_data;
             *new_ref = copy_arg(NULL, *ref, NULL,
                         MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(type_info),
@@ -749,14 +751,16 @@ copy_type_info(MR_TypeInfo type_info,
             arity = MR_TYPEINFO_GET_VAR_ARITY_ARITY(type_info);
             type_info_args =
                 MR_TYPEINFO_GET_VAR_ARITY_ARG_VECTOR(type_info);
-            MR_incr_saved_hp(MR_LVALUE_CAST(MR_Word, new_type_info_arena),
+            MR_offset_incr_saved_hp(
+                MR_LVALUE_CAST(MR_Word, new_type_info_arena), 0,
                 MR_var_arity_type_info_size(arity));
             MR_fill_in_var_arity_type_info(new_type_info_arena,
                 type_ctor_info, arity, new_type_info_args);
         } else {
             arity = type_ctor_info->MR_type_ctor_arity;
             type_info_args = MR_TYPEINFO_GET_FIXED_ARITY_ARG_VECTOR(type_info);
-            MR_incr_saved_hp(MR_LVALUE_CAST(MR_Word, new_type_info_arena),
+            MR_offset_incr_saved_hp(
+                MR_LVALUE_CAST(MR_Word, new_type_info_arena), 0,
                 MR_fixed_arity_type_info_size(arity));
             MR_fill_in_fixed_arity_type_info(new_type_info_arena,
                 type_ctor_info, new_type_info_args);
@@ -798,21 +802,21 @@ copy_typeclass_info(MR_Word typeclass_info_param,
 
         base_typeclass_info = (MR_Word *) *typeclass_info;
 
-        num_instance_constraints = 
+        num_instance_constraints =
             MR_typeclass_info_num_instance_constraints(typeclass_info);
-        num_unconstrained = 
-            MR_typeclass_info_num_extra_instance_args(typeclass_info) 
+        num_unconstrained =
+            MR_typeclass_info_num_extra_instance_args(typeclass_info)
                 - num_instance_constraints;
         num_super = MR_typeclass_info_num_superclasses(typeclass_info);
         num_arg_typeinfos = MR_typeclass_info_num_type_infos(typeclass_info);
-        MR_incr_saved_hp(MR_LVALUE_CAST(MR_Word, new_typeclass_info),
+        MR_offset_incr_saved_hp(MR_LVALUE_CAST(MR_Word, new_typeclass_info), 0,
             num_instance_constraints + num_super + num_arg_typeinfos + 1);
 
         new_typeclass_info[0] = (MR_Word) base_typeclass_info;
 
-            /* 
+            /*
             ** First, copy typeinfos for unconstrained tvars from
-            ** the instance declaration 
+            ** the instance declaration
             */
         for (i = 1; i < num_unconstrained + 1; i++) {
             new_typeclass_info[i] = (MR_Word) copy_type_info(
@@ -822,11 +826,11 @@ copy_typeclass_info(MR_Word typeclass_info_param,
             ** Next, copy all the typeclass infos: both the ones for
             ** constraints on the instance declaration (instance
             ** constraints), and the ones for constraints on the
-            ** typeclass declaration (superclass constraints).  
+            ** typeclass declaration (superclass constraints).
             */
-        for (i = num_unconstrained + 1; 
-            i <= num_unconstrained + num_instance_constraints + num_super; 
-            i++) 
+        for (i = num_unconstrained + 1;
+            i <= num_unconstrained + num_instance_constraints + num_super;
+            i++)
         {
             new_typeclass_info[i] = (MR_Word) copy_typeclass_info(
                 typeclass_info[i], lower_limit, upper_limit);

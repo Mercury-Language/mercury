@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1993-2001 The University of Melbourne.
+** Copyright (C) 1993-2001, 2003 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -141,27 +141,27 @@
     */
     extern const struct mercury__list__list_1_s
     	mercury__list__list_1__f_111_98_106_95_91_93_95_48;
-    #define MR_list_empty()
+    #define MR_list_empty()						\
 	((MR_Word) (& mercury__list__list_1__f_111_98_106_95_91_93_95_48))
     #define MR_list_is_empty(list)	((list) == MR_list_empty())
   #else
     /*
     ** We use the primary tag to distinguish between empty and non-empty lists.
     */
-    #define MR_list_is_empty(list) (MR_tag(list) == MR_TAG_NIL)
-    #define MR_list_empty()	((MR_Word) MR_mkword(MR_TAG_NIL, MR_mkbody(0)))
+    #define MR_list_empty()		((MR_Word) MR_mkword(MR_TAG_NIL,\
+			    			MR_mkbody(0)))
+    #define MR_list_is_empty(list) 	(MR_tag(list) == MR_TAG_NIL)
   #endif
-  #define MR_list_head(list)	MR_field(MR_TAG_CONS, (list), 0)
-  #define MR_list_tail(list)	MR_field(MR_TAG_CONS, (list), 1)
-  #define MR_list_cons(head,tail) ((MR_Word) MR_mkword(MR_TAG_CONS, \
-					  MR_create2((head),(tail))))
-  #define MR_list_empty_msg(proclabel)	\
-				MR_list_empty()
-  #define MR_list_cons_msg(head,tail,proclabel) \
-				((MR_Word) MR_mkword(MR_TAG_CONS, \
-					MR_create2_msg((head),(tail), \
-						proclabel, "list:list/1")))
-
+  #define MR_list_head(list)		MR_field(MR_TAG_CONS, (list), 0)
+  #define MR_list_tail(list)		MR_field(MR_TAG_CONS, (list), 1)
+  #define MR_typed_list_cons(ti_head, head, ti_tail, tail)		\
+	((MR_Word) MR_mkword(MR_TAG_CONS,				\
+		MR_create2((ti_head), (head), (ti_tail), (tail))))
+  #define MR_list_empty_msg(proclabel)	MR_list_empty()
+  #define MR_typed_list_cons_msg(ti_head, head, ti_tail, tail, proclabel) \
+	((MR_Word) MR_mkword(MR_TAG_CONS,				\
+		MR_create2_msg((ti_head), (head), (ti_tail), (tail),	\
+			 proclabel, "list.list/1")))
 #else
   /*
   ** MR_TAGBITS == 0 && 
@@ -173,26 +173,104 @@
   ** empty and non-empty lists.
   */
 
-  #define	MR_list_is_empty(list)	(MR_field(MR_mktag(0), (list), 0) \
+  #define MR_list_is_empty(list)	(MR_field(MR_mktag(0), (list), 0) \
 					== MR_RAW_TAG_NIL)
-  #define	MR_list_head(list)	MR_field(MR_mktag(0), (list), 1)
-  #define	MR_list_tail(list)	MR_field(MR_mktag(0), (list), 2)
-  #define	MR_list_empty()		((MR_Word) MR_mkword(MR_mktag(0), \
-					MR_create1(MR_RAW_TAG_NIL)))
-  #define	MR_list_cons(head,tail)	((MR_Word) MR_mkword(MR_mktag(0), \
-					MR_create3(MR_RAW_TAG_CONS, \
-						(head), (tail))))
-  #define	MR_list_empty_msg(proclabel) \
-				((MR_Word) MR_mkword(MR_mktag(0), \
-					MR_create1_msg(MR_RAW_TAG_NIL, \
-						proclabel, "list:list/1")))
-  #define	MR_list_cons_msg(head,tail,proclabel) \
-				((MR_Word) MR_mkword(MR_mktag(0), \
-					MR_create3_msg(MR_RAW_TAG_CONS, \
-						(head), (tail), \
-						proclabel, "list:list/1")))
+  #define MR_list_head(list)		MR_field(MR_mktag(0), (list), 1)
+  #define MR_list_tail(list)		MR_field(MR_mktag(0), (list), 2)
+  #define MR_list_empty()						\
+	((MR_Word) MR_mkword(MR_mktag(0),				\
+		MR_create1((MR_TypeInfo)				\
+			&MR_TYPE_CTOR_INFO_NAME(builtin, void, 0),	\
+			MR_RAW_TAG_NIL)))
 
+  #define MR_typed_list_cons(ti_head, head, ti_tail, tail)		\
+	((MR_Word) MR_mkword(MR_mktag(0), 				\
+		MR_create3((MR_TypeInfo)				\
+			&MR_TYPE_CTOR_INFO_NAME(builtin, void, 0),	\
+			MR_RAW_TAG_CONS, (ti_head), (head), (ti_tail), (tail))))
+
+  #define MR_list_empty_msg(proclabel) 					\
+	((MR_Word) MR_mkword(MR_mktag(0),				\
+		MR_create1_msg((MR_TypeInfo)				\
+			&MR_TYPE_CTOR_INFO_NAME(builtin, void, 0),\
+			MR_RAW_TAG_NIL, proclabel, "list:list/1")))
+  #define MR_typed_list_cons_msg(ti_head, head, ti_tail, tail, proclabel) \
+	((MR_Word) MR_mkword(MR_mktag(0),				\
+		MR_create3((MR_TypeInfo)				\
+			&MR_TYPE_CTOR_INFO_NAME(builtin, void, 0),	\
+			MR_RAW_TAG_CONS, (ti_head), (head), (ti_tail), (tail), \
+			proclabel, "list:list/1")))
 #endif
+
+/*
+** Since these macros are not defined in term size profiling grades,
+** their use in those grades will cause errors from the C compiler.
+** This is what we want: no visible change for existing users, and
+** no incorrect sizes in term profiling grades caused by the lack of
+** type information in these macros.
+*/
+
+#ifndef	MR_RECORD_TERM_SIZES
+  #define MR_list_cons(head, tail)					 \
+	MR_typed_list_cons(						 \
+		(MR_TypeInfo) &MR_TYPE_CTOR_INFO_NAME(builtin, void, 0), \
+		(head),							 \
+		(MR_TypeInfo) &MR_TYPE_CTOR_INFO_NAME(builtin, void, 0), \
+		(tail))
+  #define MR_list_cons_msg(head, tail, proclabel)			 \
+	MR_typed_list_cons_msg(						 \
+		(MR_TypeInfo) &MR_TYPE_CTOR_INFO_NAME(builtin, void, 0), \
+		(head),							 \
+		(MR_TypeInfo) &MR_TYPE_CTOR_INFO_NAME(builtin, void, 0), \
+		(tail), proclabel)
+#endif
+
+#define MR_univ_list_cons(head, tail)					\
+	MR_typed_list_cons((MR_TypeInfo) MR_type_ctor_info_for_univ, (head), \
+		MR_type_info_for_list_of_univ, (tail))
+
+#define MR_univ_list_cons_msg(head, tail, proclabel)			\
+	MR_typed_list_cons_msg(						\
+		(MR_TypeInfo) MR_type_ctor_info_for_univ, (head), 	\
+		MR_type_info_for_list_of_univ, (tail), proclabel)
+
+#define MR_int_list_cons(head, tail)					\
+	MR_typed_list_cons(						\
+		(MR_TypeInfo) &MR_TYPE_CTOR_INFO_NAME(builtin, int, 0), \
+		(head), MR_type_info_for_list_of_int, (tail))
+
+#define MR_int_list_cons_msg(head, tail, proclabel)			\
+	MR_typed_list_cons_msg(						\
+		(MR_TypeInfo) &MR_TYPE_CTOR_INFO_NAME(builtin, int, 0),	\
+		(head), MR_type_info_for_list_of_int, (tail), proclabel)
+
+#define MR_char_list_cons(head, tail)					\
+	MR_typed_list_cons(						\
+		(MR_TypeInfo) &MR_TYPE_CTOR_INFO_NAME(builtin, character, 0), \
+		(head), MR_type_info_for_list_of_char, (tail))
+
+#define MR_char_list_cons_msg(head, tail, proclabel)			\
+	MR_typed_list_cons_msg(						\
+		(MR_TypeInfo) &MR_TYPE_CTOR_INFO_NAME(builtin, character, 0), \
+		(head), MR_type_info_for_list_of_char, (tail), proclabel)
+
+#define MR_string_list_cons(head, tail)					\
+	MR_typed_list_cons(						\
+		(MR_TypeInfo) &MR_TYPE_CTOR_INFO_NAME(builtin, string, 0), \
+		(head), MR_type_info_for_list_of_string, (tail))
+
+#define MR_string_list_cons_msg(head, tail, proclabel)			\
+	MR_typed_list_cons_msg(						\
+		(MR_TypeInfo) &MR_TYPE_CTOR_INFO_NAME(builtin, string, 0), \
+		(head), MR_type_info_for_list_of_string, (tail), proclabel)
+
+#define MR_type_info_list_cons(head, tail)				\
+	MR_typed_list_cons(MR_type_info_for_type_info, (head),		\
+		MR_type_info_for_list_of_type_info, (tail))
+
+#define MR_type_info_list_cons_msg(head, tail, proclabel)		\
+	MR_typed_list_cons_msg(MR_type_info_for_type_info, (head),	\
+		MR_type_info_for_list_of_type_info, (tail), proclabel)
 
 /*
 ** Convert an enumeration declaration into one which assigns the same
@@ -228,6 +306,5 @@
 	#define MR_DEFINE_MERCURY_ENUM_CONST(x)	x
 
 #endif
-
 
 #endif	/* not MERCURY_TAGS_H */

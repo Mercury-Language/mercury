@@ -51,6 +51,13 @@
 :- pred mercury_profiling_builtin_module(sym_name::out) is det.
 :- func mercury_profiling_builtin_module = sym_name.
 
+	% Returns the name of the module containing the builtins for
+	% term size profiling.
+	% This module is automatically imported iff term size profiling is
+	% enabled.
+:- pred mercury_term_size_prof_builtin_module(sym_name::out) is det.
+:- func mercury_term_size_prof_builtin_module = sym_name.
+
 	% Returns the name of the module containing the public builtins
 	% used by the Aditi transaction interface, currently "aditi".
 	% This module is not automatically imported (XXX should it be?).
@@ -238,6 +245,8 @@ mercury_table_builtin_module = unqualified("table_builtin").
 mercury_table_builtin_module(mercury_table_builtin_module).
 mercury_profiling_builtin_module = unqualified("profiling_builtin").
 mercury_profiling_builtin_module(mercury_profiling_builtin_module).
+mercury_term_size_prof_builtin_module = unqualified("term_size_prof_builtin").
+mercury_term_size_prof_builtin_module(mercury_term_size_prof_builtin_module).
 aditi_public_builtin_module = unqualified("aditi").
 aditi_public_builtin_module(aditi_public_builtin_module).
 aditi_private_builtin_module = unqualified("aditi_private_builtin").
@@ -248,6 +257,7 @@ any_mercury_builtin_module(Module) :-
 	;	mercury_private_builtin_module(Module)
 	;	mercury_table_builtin_module(Module)
 	;	mercury_profiling_builtin_module(Module)
+	;	mercury_term_size_prof_builtin_module(Module)
 	;	aditi_private_builtin_module(Module)
 	).
 

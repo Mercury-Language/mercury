@@ -10,6 +10,7 @@
 #define MERCURY_DEBUG_H
 
 #include "mercury_types.h"		/* for MR_Word and MR_Code */
+#include "mercury_type_info.h"		/* for MR_TypeInfo */
 #include <stdio.h>			/* for FILE */
 
 /*---------------------------------------------------------------------------*/
@@ -38,43 +39,70 @@
 
 #endif
 
-#ifndef MR_LOWLEVEL_DEBUG
+#ifndef MR_DEBUG_HEAP_ALLOC
 
-#define	MR_debugcr1(val0, hp)			((void)0)
-#define	MR_debugcr2(val0, val1, hp)		((void)0)
-#define	MR_debugincrhp(val, hp)			((void)0)
-#define	MR_debugincrsp(val, sp)			((void)0)
-#define	MR_debugdecrsp(val, sp)			((void)0)
-#define	MR_debugregs(msg)			((void)0)
-#define	MR_debugframe(msg)			((void)0)
-#define	MR_debugmkframe(predname)		((void)0)
-#define	MR_debugmktempframe()			((void)0)
-#define	MR_debugmkdettempframe()		((void)0)
-#define	MR_debugsucceed()			((void)0)
-#define	MR_debugsucceeddiscard()		((void)0)
-#define	MR_debugfail()				((void)0)
-#define	MR_debugredo()				((void)0)
-#define	MR_debugcall(proc, succ_cont)		((void)0)
-#define	MR_debugtailcall(proc)			((void)0)
-#define	MR_debugproceed()			((void)0)
-#define	MR_debugmsg0(msg)			((void)0)
-#define	MR_debugmsg1(msg, arg1)			((void)0)
-#define	MR_debugmsg2(msg, arg1, arg2)		((void)0)
-#define	MR_debugmsg3(msg, arg1, arg2, arg3)	((void)0)
+#define	MR_debug_unravel_univ(univ, typeinfo, value)		((void)0)
+#define	MR_debug_new_univ_on_hp(univ, typeinfo, value)		((void)0)
+#define	MR_debug_tag_offset_incr_hp_base(ptr, tag, offset, count, is_atomic) \
+								((void)0)
 
 #else
 
-#define	MR_debugcr1(val0, hp) \
-	MR_IF (MR_heapdebug, \
-		(MR_save_transient_registers(), MR_cr1_msg(val0, hp)))
+#define	MR_debug_unravel_univ(univ, typeinfo, value) \
+	 MR_unravel_univ_msg((univ), (typeinfo), (value))
 
-#define	MR_debugcr2(val0, val1, hp) \
+#define	MR_debug_new_univ_on_hp(univ, typeinfo, value) \
+	 MR_new_univ_on_hp_msg((univ), (typeinfo), (value))
+
+#define	MR_debug_tag_offset_incr_hp_base(ptr, tag, offset, count, is_atomic) \
+	 MR_debug_tag_offset_incr_hp_base_msg((ptr), (tag), \
+		 (offset), (count), (is_atomic))
+
+#endif
+
+#ifndef MR_LOWLEVEL_DEBUG
+
+#define	MR_debugcr1(hp)						((void)0)
+#define	MR_debugcr2(hp)						((void)0)
+#define	MR_debugcr3(hp)						((void)0)
+#define	MR_debugincrhp(val, hp)					((void)0)
+#define	MR_debugincrsp(val, sp)					((void)0)
+#define	MR_debugdecrsp(val, sp)					((void)0)
+#define	MR_debugregs(msg)					((void)0)
+#define	MR_debugframe(msg)					((void)0)
+#define	MR_debugmkframe(predname)				((void)0)
+#define	MR_debugmktempframe()					((void)0)
+#define	MR_debugmkdettempframe()				((void)0)
+#define	MR_debugsucceed()					((void)0)
+#define	MR_debugsucceeddiscard()				((void)0)
+#define	MR_debugfail()						((void)0)
+#define	MR_debugredo()						((void)0)
+#define	MR_debugcall(proc, succ_cont)				((void)0)
+#define	MR_debugtailcall(proc)					((void)0)
+#define	MR_debugproceed()					((void)0)
+#define	MR_debugmsg0(msg)					((void)0)
+#define	MR_debugmsg1(msg, arg1)					((void)0)
+#define	MR_debugmsg2(msg, arg1, arg2)				((void)0)
+#define	MR_debugmsg3(msg, arg1, arg2, arg3)			((void)0)
+
+#else
+
+#define	MR_debugcr1(hp) \
 	MR_IF (MR_heapdebug, \
-		(MR_save_transient_registers(), MR_cr2_msg(val0, val1, hp)))
+		(MR_save_transient_registers(), MR_cr1_msg(hp)))
+
+#define	MR_debugcr2(hp) \
+	MR_IF (MR_heapdebug, \
+		(MR_save_transient_registers(), MR_cr2_msg(hp)))
+
+#define	MR_debugcr3(hp) \
+	MR_IF (MR_heapdebug, \
+		(MR_save_transient_registers(), MR_cr3_msg(hp)))
 
 #define	MR_debugincrhp(val, hp) \
 	MR_IF (MR_heapdebug, \
-		(MR_save_transient_registers(), MR_incr_hp_debug_msg((val), (hp))))
+		(MR_save_transient_registers(), \
+		 MR_incr_hp_debug_msg((val), (hp))))
 
 #define	MR_debugincrsp(val, sp) \
 	MR_IF (MR_detstackdebug, \
@@ -85,7 +113,8 @@
 		(MR_save_transient_registers(), MR_decr_sp_msg((val), (sp))))
 
 #define	MR_debugregs(msg) \
-	MR_IF (MR_progdebug, (MR_save_transient_registers(), MR_printregs(msg)))
+	MR_IF (MR_progdebug, \
+		(MR_save_transient_registers(), MR_printregs(msg)))
 
 #define	MR_debugframe(msg)	 \
 	MR_IF (MR_progdebug, \
@@ -155,6 +184,15 @@
 
 /*---------------------------------------------------------------------------*/
 
+#ifdef MR_DEBUG_HEAP_ALLOC
+extern	void	MR_unravel_univ_msg(MR_Word univ, MR_TypeInfo type_info,
+			MR_Word value);
+extern	void	MR_new_univ_on_hp_msg(MR_Word univ, MR_TypeInfo type_info,
+			MR_Word value);
+extern	void	MR_debug_tag_offset_incr_hp_base_msg(MR_Word ptr, int tag,
+			int offset, int count, int is_atomic);
+#endif
+
 #ifdef MR_LOWLEVEL_DEBUG
 extern	void	MR_mkframe_msg(const char *);
 extern	void	MR_mktempframe_msg(void);
@@ -167,8 +205,9 @@ extern	void	MR_call_msg(/* const */ MR_Code *proc,
 			/* const */ MR_Code *succcont);
 extern	void	MR_tailcall_msg(/* const */ MR_Code *proc);
 extern	void	MR_proceed_msg(void);
-extern	void	MR_cr1_msg(MR_Word val0, const MR_Word *addr);
-extern	void	MR_cr2_msg(MR_Word val0, MR_Word val1, const MR_Word *addr);
+extern	void	MR_cr1_msg(const MR_Word *addr);
+extern	void	MR_cr2_msg(const MR_Word *addr);
+extern	void	MR_cr3_msg(const MR_Word *addr);
 extern	void	MR_incr_hp_debug_msg(MR_Word val, const MR_Word *addr);
 extern	void	MR_incr_sp_msg(MR_Word val, const MR_Word *addr);
 extern	void	MR_decr_sp_msg(MR_Word val, const MR_Word *addr);

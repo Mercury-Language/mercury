@@ -174,7 +174,7 @@ concat_string_list(Strings, Len, string_with_0s(Result)) :-
 
 :- pragma c_header_code("
 	#include ""mercury_tags.h""	/* for MR_list_*() */
-	#include ""mercury_heap.h""	/* for MR_incr_hp_atomic*() */
+	#include ""mercury_heap.h""	/* for MR_offset_incr_hp_atomic*() */
 	#include ""mercury_misc.h""	/* for MR_fatal_error() */
 ").
 
@@ -187,7 +187,7 @@ concat_string_list(Strings, Len, string_with_0s(Result)) :-
 	MR_Integer	cur_offset;
 	MR_Word		tmp;
 
-	MR_incr_hp_atomic(tmp,
+	MR_offset_incr_hp_atomic(tmp, 0,
 		(ArenaSize + sizeof(MR_Word)) / sizeof(MR_Word));
 	Arena = (char *) tmp;
 
@@ -793,7 +793,7 @@ stack_layout__construct_tvar_vector(TVarLocnMap, TypeParamRval,
 	;
 		stack_layout__construct_tvar_rvals(TVarLocnMap, Vector),
 		add_static_cell(Vector, DataAddr, !StaticCellInfo),
-		TypeParamRval = const(data_addr_const(DataAddr))
+		TypeParamRval = const(data_addr_const(DataAddr, no))
 	).
 
 :- pred stack_layout__construct_tvar_rvals(map(tvar, set(layout_locn))::in,
@@ -972,7 +972,7 @@ stack_layout__construct_liveval_arrays(VarInfos, EncodedLength,
 	stack_layout__get_static_cell_info(StaticCellInfo0),
 	{ add_static_cell(TypeLocnVectorRvalsTypes, TypeLocnVectorAddr,
 		StaticCellInfo0, StaticCellInfo1) },
-	{ TypeLocnVector = const(data_addr_const(TypeLocnVectorAddr)) },
+	{ TypeLocnVector = const(data_addr_const(TypeLocnVectorAddr, no)) },
 	stack_layout__set_static_cell_info(StaticCellInfo1),
 
 	stack_layout__get_trace_stack_layout(TraceStackLayout),
@@ -986,7 +986,7 @@ stack_layout__construct_liveval_arrays(VarInfos, EncodedLength,
 		{ add_static_cell(VarNumRvalsTypes, NumVectorAddr,
 			StaticCellInfo2, StaticCellInfo) },
 		stack_layout__set_static_cell_info(StaticCellInfo),
-		{ NumVector = const(data_addr_const(NumVectorAddr)) }
+		{ NumVector = const(data_addr_const(NumVectorAddr, no)) }
 	;
 		{ NumVector = const(int_const(0)) }
 	).
@@ -1081,7 +1081,7 @@ stack_layout__construct_closure_layout(CallerProcLabel, SeqNo,
 		closure_proc_id(CallerProcLabel, SeqNo, ClosureProcLabel)),
 	Data = layout_data(closure_proc_id_data(CallerProcLabel, SeqNo,
 		ClosureProcLabel, ModuleName, FileName, LineNumber, GoalPath)),
-	ProcIdRvalType = const(data_addr_const(DataAddr)) - data_ptr,
+	ProcIdRvalType = const(data_addr_const(DataAddr, no)) - data_ptr,
 	ClosureLayoutInfo = closure_layout_info(ClosureArgs, TVarLocnMap),
 	stack_layout__construct_closure_arg_rvals(ClosureArgs,
 		ClosureArgRvalsTypes, !StaticCellInfo),
@@ -1160,7 +1160,7 @@ stack_layout__convert_table_arg_info(TableArgInfos, NumPTIs,
 	list__map_foldl(stack_layout__construct_table_arg_pti_rval,
 		Args, PTIRvalsTypes, !StaticCellInfo),
 	add_static_cell(PTIRvalsTypes, PTIVectorAddr, !StaticCellInfo),
-	PTIVectorRval = const(data_addr_const(PTIVectorAddr)),
+	PTIVectorRval = const(data_addr_const(PTIVectorAddr, no)),
 	map__map_values(stack_layout__convert_slot_to_locn_map,
 		TVarSlotMap, TVarLocnMap),
 	stack_layout__construct_tvar_vector(TVarLocnMap, TVarVectorRval,
@@ -1247,7 +1247,7 @@ stack_layout__represent_live_value_type(var(_, _, Type, _), Rval, LldsType,
 stack_layout__represent_special_live_value_type(SpecialTypeName, Rval) :-
 	RttiTypeCtor = rtti_type_ctor(unqualified(""), SpecialTypeName, 0),
 	DataAddr = rtti_addr(ctor_rtti_id(RttiTypeCtor, type_ctor_info)),
-	Rval = const(data_addr_const(DataAddr)).
+	Rval = const(data_addr_const(DataAddr, no)).
 
 %---------------------------------------------------------------------------%
 

@@ -213,7 +213,7 @@ opt_assign([Instr0 | TailInstrs0], Instrs,
 	Instr0 = Uinstr0 - _Comment0,
 	(
 		( Uinstr0 = assign(ToLval, _FromRval)
-		; Uinstr0 = incr_hp(ToLval, _MaybeTag, _SizeRval, _Type)
+		; Uinstr0 = incr_hp(ToLval, _MaybeTag, _SizeRval, _MO, _Type)
 		),
 		base_lval_worth_replacing(NumRealRRegs, ToLval)
 	->
@@ -359,10 +359,10 @@ substitute_lval_in_defn(OldLval, NewLval, Instr0, Instr) :-
 		require(unify(ToLval, OldLval),
 			"substitute_lval_in_defn: mismatch in assign"),
 		Uinstr = assign(NewLval, FromRval)
-	; Uinstr0 = incr_hp(ToLval, MaybeTag, SizeRval, Type) ->
+	; Uinstr0 = incr_hp(ToLval, MaybeTag, SizeRval, MO, Type) ->
 		require(unify(ToLval, OldLval),
 			"substitute_lval_in_defn: mismatch in incr_hp"),
-		Uinstr = incr_hp(NewLval, MaybeTag, SizeRval, Type)
+		Uinstr = incr_hp(NewLval, MaybeTag, SizeRval, MO, Type)
 	;
 		error("substitute_lval_in_defn: unexpected instruction")
 	),
@@ -461,7 +461,7 @@ substitute_lval_in_instr_until_defn(OldLval, NewLval,
 			Instr0, Instr, N0, N),
 		Instrs = Instrs0
 	;
-		Uinstr0 = incr_hp(Lval, _, _, _),
+		Uinstr0 = incr_hp(Lval, _, _, _, _),
 		( Lval = OldLval ->
 				% If we alter any lval that occurs in OldLval,
 				% we must stop the substitutions. At the

@@ -291,7 +291,9 @@ I wonder whether it is worth it?  Hmm, probably not.
 	new_mutvar(Val::in, Mutvar::out, S0::di, S::uo),
 	[will_not_call_mercury, promise_pure],
 "
-	MR_incr_hp_msg(Mutvar, 1, MR_PROC_LABEL, ""store:mutvar/2"");
+	MR_offset_incr_hp_msg(Mutvar, MR_SIZE_SLOT_SIZE, MR_SIZE_SLOT_SIZE + 1,
+		MR_PROC_LABEL, ""store:mutvar/2"");
+	MR_define_size_slot(0, Mutvar, 1);
 	* (MR_Word *) Mutvar = Val;
 	S = S0;
 ").
@@ -324,7 +326,9 @@ copy_mutvar(Mutvar, Copy) -->
 	unsafe_new_uninitialized_mutvar(Mutvar::out, S0::di, S::uo),
 	[will_not_call_mercury, promise_pure],
 "
-	MR_incr_hp_msg(Mutvar, 1, MR_PROC_LABEL, ""store:mutvar/2"");
+	MR_offset_incr_hp_msg(Mutvar, MR_SIZE_SLOT_SIZE, MR_SIZE_SLOT_SIZE + 1,
+		MR_PROC_LABEL, ""store:mutvar/2"");
+	MR_define_size_slot(0, Mutvar, 1);
 	S = S0;
 ").
 
@@ -339,7 +343,9 @@ store__new_cyclic_mutvar(Func, MutVar) -->
 	new_ref(Val::di, Ref::out, S0::di, S::uo),
 	[will_not_call_mercury, promise_pure],
 "
-	MR_incr_hp_msg(Ref, 1, MR_PROC_LABEL, ""store:ref/2"");
+	MR_offset_incr_hp_msg(Ref, MR_SIZE_SLOT_SIZE, MR_SIZE_SLOT_SIZE + 1,
+		MR_PROC_LABEL, ""store:ref/2"");
+	MR_define_size_slot(0, Ref, 1);
 	* (MR_Word *) Ref = Val;
 	S = S0;
 ").
@@ -446,7 +452,9 @@ ref_functor(Ref, Functor, Arity) -->
 	*/
 
 	if (arg_ref == &Val) {
-		MR_incr_hp_msg(ArgRef, 1, MR_PROC_LABEL, ""store:ref/2"");
+		MR_offset_incr_hp_msg(ArgRef, MR_SIZE_SLOT_SIZE,
+			MR_SIZE_SLOT_SIZE + 1, MR_PROC_LABEL, ""store:ref/2"");
+		MR_define_size_slot(0, ArgRef, 1);
 		* (MR_Word *) ArgRef = Val;
 	} else {
 		ArgRef = (MR_Word) arg_ref;

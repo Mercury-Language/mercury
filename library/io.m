@@ -1927,8 +1927,8 @@ io__read_line_as_string(Stream, Result, IO0, IO) :-
 		}
 	}
 	if (Res == 0) {
-		MR_incr_hp_atomic_msg(MR_LVALUE_CAST(MR_Word, RetString),
-			ML_IO_BYTES_TO_WORDS((i + 1) * sizeof(MR_Char)),
+		MR_offset_incr_hp_atomic_msg(MR_LVALUE_CAST(MR_Word, RetString),
+			0, ML_IO_BYTES_TO_WORDS((i + 1) * sizeof(MR_Char)),
 			MR_PROC_LABEL, ""string:string/0"");
 		memcpy(RetString, read_buffer, i * sizeof(MR_Char));
 		RetString[i] = '\\0';
@@ -3025,7 +3025,7 @@ have_file_ids :- semidet_fail.
 	[will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "{
 	MR_Word buf;
-	MR_incr_hp_atomic_msg(buf,
+	MR_offset_incr_hp_atomic_msg(buf, 0,
 		(Size * sizeof(MR_Char) + sizeof(MR_Word) - 1)
 			/ sizeof(MR_Word),
 		MR_PROC_LABEL, ""io:buffer/0"");
@@ -3052,17 +3052,16 @@ io__alloc_buffer(Size, buffer(Array)) :-
 #else
 	if (Buffer0 + OldSize == (MR_Char *) MR_hp) {
 		MR_Word next;
-		MR_incr_hp_atomic_msg(next, 
+		MR_offset_incr_hp_atomic_msg(next, 0,
 		   (NewSize * sizeof(MR_Char) + sizeof(MR_Word) - 1)
 		   	/ sizeof(MR_Word),
-		   MR_PROC_LABEL,
-		   ""io:buffer/0"");
+		   MR_PROC_LABEL, ""io:buffer/0"");
 		assert(Buffer0 + OldSize == (MR_Char *) next);
 	    	Buffer = Buffer0;
 	} else {
 		/* just have to alloc and copy */
 		MR_Word buf;
-		MR_incr_hp_atomic_msg(buf,
+		MR_offset_incr_hp_atomic_msg(buf, 0,
 		   (NewSize * sizeof(MR_Char) + sizeof(MR_Word) - 1)
 		   	/ sizeof(MR_Word),
 		   MR_PROC_LABEL, ""io:buffer/0"");
@@ -6285,17 +6284,18 @@ io__close_binary_output(Stream) -->
 :- pragma foreign_proc("C",
 	io__command_line_arguments(Args::out, IO0::di, IO::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
-"
+"{
+	int	i;
+
 	/* convert mercury_argv from a vector to a list */
-	{ int i = mercury_argc;
-	  Args = MR_list_empty_msg(MR_PROC_LABEL);
-	  while (--i >= 0) {
-		Args = MR_list_cons_msg((MR_Word) mercury_argv[i], Args,
+	i = mercury_argc;
+	Args = MR_list_empty_msg(MR_PROC_LABEL);
+	while (--i >= 0) {
+		Args = MR_string_list_cons_msg((MR_Word) mercury_argv[i], Args,
 			MR_PROC_LABEL);
-	  }
 	}
 	MR_update_io(IO0, IO);
-").
+}").
 
 :- pragma foreign_proc("C",
 	io__get_exit_status(ExitStatus::out, IO0::di, IO::uo),
@@ -6401,7 +6401,7 @@ io__handle_system_command_exit_code(Status0::in) = (Status::out) :-
 	MR_list_nil(Args);
 		// We don't get the 0th argument: it is the executable name
 	while (--i > 0) {
-		MR_list_cons(Args, arg_vector[i], Args);
+		MR_string_list_cons(Args, arg_vector[i], Args);
 	}
 	MR_update_io(IO0, IO);
 ").
@@ -6621,7 +6621,7 @@ io__make_temp(Dir, Prefix, Name) -->
 
 	len = strlen(Dir) + 1 + 5 + 3 + 1 + 3 + 1;
 		/* Dir + / + Prefix + counter_high + . + counter_low + \\0 */
-	MR_incr_hp_atomic_msg(MR_LVALUE_CAST(MR_Word, FileName),
+	MR_offset_incr_hp_atomic_msg(MR_LVALUE_CAST(MR_Word, FileName), 0,
 		(len + sizeof(MR_Word)) / sizeof(MR_Word),
 		MR_PROC_LABEL, ""string:string/0"");
 	if (ML_io_tempnam_counter == 0) {
@@ -6736,7 +6736,7 @@ io__make_temp(Dir, Prefix, Name) -->
 ** This is defined as a macro rather than a C function
 ** to avoid worrying about the `hp' register being
 ** invalidated by the function call.
-** It also needs to be a macro because MR_incr_hp_atomic_msg()
+** It also needs to be a macro because MR_offset_incr_hp_atomic_msg()
 ** stringizes the procname argument.
 */
 #define ML_maybe_make_err_msg(was_error, error, msg, procname, error_msg) \\
@@ -6748,7 +6748,7 @@ io__make_temp(Dir, Prefix, Name) -->
 		if (was_error) {					\\
 			errno_msg = strerror(error);			\\
 			total_len = strlen(msg) + strlen(errno_msg);	\\
-			MR_incr_hp_atomic_msg(tmp,			\\
+			MR_offset_incr_hp_atomic_msg(tmp, 0,		\\
 				(total_len + sizeof(MR_Word))		\\
 					/ sizeof(MR_Word),		\\
 				procname,				\\

@@ -16,7 +16,7 @@
 #endif
 #include "mercury_type_info.h"
 #include "mercury_misc.h"		/* for MR_fatal_error() */
-#include "mercury_heap.h"		/* for incr_saved_hp() */
+#include "mercury_heap.h"		/* for MR_incr_saved_hp() */
 #include "mercury_builtin_types.h"	/* for void/0's type_ctor_info */
 
 /*---------------------------------------------------------------------------*/
@@ -62,13 +62,16 @@ MR_get_arg_type_info(const MR_TypeInfoParams type_info_params,
 	do {								     \
 		/* reserve one extra word for GC forwarding pointer */	     \
 		/* (see comments in compiler/mlds_to_c.m for details) */     \
-		MR_incr_saved_hp(MR_LVALUE_CAST(MR_Word, (target)), 1);      \
-		MR_incr_saved_hp(MR_LVALUE_CAST(MR_Word, (target)), (size)); \
+		MR_offset_incr_saved_hp(MR_LVALUE_CAST(MR_Word, (target)),   \
+			0, 1);      					     \
+		MR_offset_incr_saved_hp(MR_LVALUE_CAST(MR_Word, (target)),   \
+			0, (size));					     \
 	} while (0)
 #else /* !MR_NATIVE_GC */
   #define ALLOCATE_WORDS(target, size)					     \
 	do {								     \
-		MR_incr_saved_hp(MR_LVALUE_CAST(MR_Word, (target)), (size)); \
+		MR_offset_incr_saved_hp(MR_LVALUE_CAST(MR_Word, (target)),   \
+			0, (size));					     \
 	} while (0)
 #endif /* !MR_NATIVE_GC */
 
@@ -415,8 +418,8 @@ MR_type_params_vector_to_list(int arity, MR_TypeInfoParams type_params)
 	MR_restore_transient_registers();
 	type_info_list = MR_list_empty();
 	while (arity > 0) {
-		type_info_list = MR_list_cons((MR_Word) type_params[arity],
-			type_info_list);
+		type_info_list = MR_type_info_list_cons(
+			(MR_Word) type_params[arity], type_info_list);
 		--arity;
 	}
 
@@ -427,7 +430,6 @@ MR_type_params_vector_to_list(int arity, MR_TypeInfoParams type_params)
 MR_Word
 MR_arg_name_vector_to_list(int arity, const MR_ConstString *arg_names)
 {
-	MR_TypeInfo	arg_type;
 	MR_Word		arg_names_list;
 
 	MR_restore_transient_registers();
@@ -437,15 +439,14 @@ MR_arg_name_vector_to_list(int arity, const MR_ConstString *arg_names)
 		/* No arguments have names. */
 		while (arity > 0) {
 			--arity;
-			arg_names_list =
-				MR_list_cons((MR_Word) NULL, arg_names_list);
+			arg_names_list = MR_string_list_cons(
+				(MR_Word) NULL, arg_names_list);
 		}
 	} else {
 		while (arity > 0) {
 			--arity;
-			arg_names_list =
-				MR_list_cons((MR_Word) arg_names[arity],
-					arg_names_list);
+			arg_names_list = MR_string_list_cons(
+				(MR_Word) arg_names[arity], arg_names_list);
 		}
 	}
 
@@ -476,8 +477,8 @@ MR_pseudo_type_info_vector_to_type_info_list(int arity,
 		arg_type_info = MR_collapse_equivalences(arg_type_info);
 		MR_restore_transient_registers();
 
-		type_info_list = MR_list_cons((MR_Word) arg_type_info,
-			type_info_list);
+		type_info_list = MR_type_info_list_cons(
+			(MR_Word) arg_type_info, type_info_list);
 	}
 
 	MR_save_transient_registers();

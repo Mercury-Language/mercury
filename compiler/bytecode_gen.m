@@ -536,36 +536,50 @@ bytecode_gen__unify(simple_test(Var1, Var2), _, _, ByteInfo, Code) :-
 
 	ByteInfo = byte_info(_, _, ModuleInfo, _, _),
 
-	classify_type_ctor(ModuleInfo, TypeCtor, BuiltinType),
+	TypeCategory = classify_type_ctor(ModuleInfo, TypeCtor),
 
 	(
-		BuiltinType = int_type,
+		TypeCategory = int_type,
 		TestId = int_test
-	
-	;	BuiltinType = char_type,
+	;
+		TypeCategory = char_type,
 		TestId = char_test
-	
-	;	BuiltinType = str_type,
+	;
+		TypeCategory = str_type,
 		TestId = string_test
-	
-	;	BuiltinType = float_type,
+	;
+		TypeCategory = float_type,
 		TestId = float_test 
-	
-	;	BuiltinType = enum_type,
+	;
+		TypeCategory = enum_type,
 		TestId = enum_test 
-
-	;	BuiltinType = pred_type,
-		unexpected(this_file, "pred_type in simple_test")
-	
-	;	BuiltinType = tuple_type,
+	;
+		TypeCategory = higher_order_type,
+		unexpected(this_file, "higher_order_type in simple_test")
+	;
+		TypeCategory = tuple_type,
 		unexpected(this_file, "tuple_type in simple_test")
-
-	;	BuiltinType = user_type,
-		unexpected(this_file, "user_type in simple_test")
-
-	;	BuiltinType = polymorphic_type,
-		unexpected(this_file, "polymorphic_type in simple_test")
-
+	;
+		TypeCategory = user_ctor_type,
+		unexpected(this_file, "user_ctor_type in simple_test")
+	;
+		TypeCategory = variable_type,
+		unexpected(this_file, "variable_type in simple_test")
+	;
+		TypeCategory = void_type,
+		unexpected(this_file, "void_type in simple_test")
+	;
+		TypeCategory = type_info_type,
+		unexpected(this_file, "type_info_type in simple_test")
+	;
+		TypeCategory = type_ctor_info_type,
+		unexpected(this_file, "type_ctor_info_type in simple_test")
+	;
+		TypeCategory = typeclass_info_type,
+		unexpected(this_file, "typeclass_info_type in simple_test")
+	;
+		TypeCategory = base_typeclass_info_type,
+		unexpected(this_file, "base_typeclass_info_type in simple_test")
 	),
 	Code = node([test(ByteVar1, ByteVar2, TestId)]).
 bytecode_gen__unify(complicated_unify(_,_,_), _Var, _RHS, _ByteInfo, _Code) :-

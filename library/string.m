@@ -928,7 +928,7 @@ string__from_char_list(CharList, Str) :-
 	CharList = MR_list_empty_msg(MR_PROC_LABEL);
 	while (p > Str) {
 		p--;
-		CharList = MR_list_cons_msg((MR_UnsignedChar) *p, CharList,
+		CharList = MR_char_list_cons_msg((MR_UnsignedChar) *p, CharList,
 			MR_PROC_LABEL);
 	}
 }").
@@ -1263,8 +1263,7 @@ string__combine_hash(H0, X, H) :-
 %-----------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C", 
-	string__sub_string_search(WholeString::in, SubString::in,
-		Index::out),
+	string__sub_string_search(WholeString::in, SubString::in, Index::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "{
 	char *match;
@@ -1278,8 +1277,7 @@ string__combine_hash(H0, X, H) :-
 }").
 
 :- pragma foreign_proc("MC++", 
-	string__sub_string_search(WholeString::in, SubString::in,
-		Index::out),
+	string__sub_string_search(WholeString::in, SubString::in, Index::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "{
 	Index = WholeString->IndexOf(SubString);
@@ -1756,11 +1754,13 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) =
 :- pred using_sprintf is semidet.
 
 :- pragma foreign_proc("C", using_sprintf,
-	[will_not_call_mercury, promise_pure, thread_safe], "
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	SUCCESS_INDICATOR = MR_TRUE;
 ").
 :- pragma foreign_proc("MC++", using_sprintf,
-	[will_not_call_mercury, promise_pure, thread_safe], "
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
 	SUCCESS_INDICATOR = MR_FALSE;
 ").
 
@@ -2849,7 +2849,6 @@ max_precision = min_precision + 2.
 	string__lowlevel_float_to_string(FloatVal::in, FloatString::uo),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
-
 		// The R format string prints the double out such that it
 		// can be round-tripped.
 		// XXX According to the documentation it tries the 15 digits of

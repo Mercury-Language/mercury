@@ -2030,20 +2030,24 @@ maybe_any_to_bound(yes(Type), ModuleInfo, Uniq, Inst) :-
 :- mode type_may_contain_solver_type(in, in) is semidet.
 
 type_may_contain_solver_type(Type, ModuleInfo) :-
-	classify_type(Type, ModuleInfo, Category),
-	type_may_contain_solver_type_2(Category) = yes.
+	type_may_contain_solver_type_2(classify_type(ModuleInfo, Type)) = yes.
 
-:- func type_may_contain_solver_type_2(builtin_type) = bool.
+:- func type_may_contain_solver_type_2(type_category) = bool.
 
 type_may_contain_solver_type_2(int_type) = no.
 type_may_contain_solver_type_2(char_type) = no.
 type_may_contain_solver_type_2(str_type) = no.
 type_may_contain_solver_type_2(float_type) = no.
-type_may_contain_solver_type_2(pred_type) = no.
+type_may_contain_solver_type_2(higher_order_type) = no.
 type_may_contain_solver_type_2(tuple_type) = yes.
 type_may_contain_solver_type_2(enum_type) = no.
-type_may_contain_solver_type_2(polymorphic_type) = yes.
-type_may_contain_solver_type_2(user_type) = yes.
+type_may_contain_solver_type_2(variable_type) = yes.
+type_may_contain_solver_type_2(type_info_type) = no.
+type_may_contain_solver_type_2(type_ctor_info_type) = no.
+type_may_contain_solver_type_2(typeclass_info_type) = no.
+type_may_contain_solver_type_2(base_typeclass_info_type) = no.
+type_may_contain_solver_type_2(void_type) = no.
+type_may_contain_solver_type_2(user_ctor_type) = yes.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

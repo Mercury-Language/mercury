@@ -9,7 +9,7 @@ finish
 set depth 20
 set size 201
 set format pretty
-proc_body
+p proc_body
 dd
 browse 1
 ^1

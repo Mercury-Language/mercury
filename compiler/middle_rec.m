@@ -397,55 +397,55 @@ middle_rec__find_used_registers([Instr - _ | Instrs], Used0, Used) :-
 :- pred middle_rec__find_used_registers_instr(instr, set(int), set(int)).
 :- mode middle_rec__find_used_registers_instr(in, di, uo) is det.
 
-middle_rec__find_used_registers_instr(comment(_), Used, Used).
-middle_rec__find_used_registers_instr(livevals(LvalSet), Used0, Used) :-
+middle_rec__find_used_registers_instr(comment(_), !Used).
+middle_rec__find_used_registers_instr(livevals(LvalSet), !Used) :-
 	set__to_sorted_list(LvalSet, LvalList),
-	middle_rec__find_used_registers_lvals(LvalList, Used0, Used).
-middle_rec__find_used_registers_instr(block(_, _, Instrs), Used0, Used) :-
-	middle_rec__find_used_registers(Instrs, Used0, Used).
-middle_rec__find_used_registers_instr(assign(Lval, Rval), Used0, Used) :-
-	middle_rec__find_used_registers_lval(Lval, Used0, Used1),
-	middle_rec__find_used_registers_rval(Rval, Used1, Used).
-middle_rec__find_used_registers_instr(call(_, _, _, _, _, _), Used, Used).
-middle_rec__find_used_registers_instr(mkframe(_, _), Used, Used).
-middle_rec__find_used_registers_instr(label(_), Used, Used).
-middle_rec__find_used_registers_instr(goto(_), Used, Used).
-middle_rec__find_used_registers_instr(computed_goto(Rval, _), Used0, Used) :-
-	middle_rec__find_used_registers_rval(Rval, Used0, Used).
-middle_rec__find_used_registers_instr(c_code(_, _), Used, Used).
-middle_rec__find_used_registers_instr(if_val(Rval, _), Used0, Used) :-
-	middle_rec__find_used_registers_rval(Rval, Used0, Used).
-middle_rec__find_used_registers_instr(incr_hp(Lval, _, Rval, _), Used0, Used) :-
-	middle_rec__find_used_registers_lval(Lval, Used0, Used1),
-	middle_rec__find_used_registers_rval(Rval, Used1, Used).
-middle_rec__find_used_registers_instr(mark_hp(Lval), Used0, Used) :-
-	middle_rec__find_used_registers_lval(Lval, Used0, Used).
-middle_rec__find_used_registers_instr(restore_hp(Rval), Used0, Used) :-
-	middle_rec__find_used_registers_rval(Rval, Used0, Used).
-middle_rec__find_used_registers_instr(free_heap(Rval), Used0, Used) :-
-	middle_rec__find_used_registers_rval(Rval, Used0, Used).
-middle_rec__find_used_registers_instr(store_ticket(Lval), Used0, Used) :-
-	middle_rec__find_used_registers_lval(Lval, Used0, Used).
-middle_rec__find_used_registers_instr(reset_ticket(Rval, _Rsn), Used0, Used) :-
-	middle_rec__find_used_registers_rval(Rval, Used0, Used).
-middle_rec__find_used_registers_instr(discard_ticket, Used, Used).
-middle_rec__find_used_registers_instr(prune_ticket, Used, Used).
-middle_rec__find_used_registers_instr(mark_ticket_stack(Lval), Used0, Used) :-
-	middle_rec__find_used_registers_lval(Lval, Used0, Used).
-middle_rec__find_used_registers_instr(prune_tickets_to(Rval), Used0, Used) :-
-	middle_rec__find_used_registers_rval(Rval, Used0, Used).
-middle_rec__find_used_registers_instr(incr_sp(_, _), Used, Used).
-middle_rec__find_used_registers_instr(decr_sp(_), Used, Used).
+	middle_rec__find_used_registers_lvals(LvalList, !Used).
+middle_rec__find_used_registers_instr(block(_, _, Instrs), !Used) :-
+	middle_rec__find_used_registers(Instrs, !Used).
+middle_rec__find_used_registers_instr(assign(Lval, Rval), !Used) :-
+	middle_rec__find_used_registers_lval(Lval, !Used),
+	middle_rec__find_used_registers_rval(Rval, !Used).
+middle_rec__find_used_registers_instr(call(_, _, _, _, _, _), !Used).
+middle_rec__find_used_registers_instr(mkframe(_, _), !Used).
+middle_rec__find_used_registers_instr(label(_), !Used).
+middle_rec__find_used_registers_instr(goto(_), !Used).
+middle_rec__find_used_registers_instr(computed_goto(Rval, _), !Used) :-
+	middle_rec__find_used_registers_rval(Rval, !Used).
+middle_rec__find_used_registers_instr(c_code(_, _), !Used).
+middle_rec__find_used_registers_instr(if_val(Rval, _), !Used) :-
+	middle_rec__find_used_registers_rval(Rval, !Used).
+middle_rec__find_used_registers_instr(incr_hp(Lval, _, _, Rval, _), !Used) :-
+	middle_rec__find_used_registers_lval(Lval, !Used),
+	middle_rec__find_used_registers_rval(Rval, !Used).
+middle_rec__find_used_registers_instr(mark_hp(Lval), !Used) :-
+	middle_rec__find_used_registers_lval(Lval, !Used).
+middle_rec__find_used_registers_instr(restore_hp(Rval), !Used) :-
+	middle_rec__find_used_registers_rval(Rval, !Used).
+middle_rec__find_used_registers_instr(free_heap(Rval), !Used) :-
+	middle_rec__find_used_registers_rval(Rval, !Used).
+middle_rec__find_used_registers_instr(store_ticket(Lval), !Used) :-
+	middle_rec__find_used_registers_lval(Lval, !Used).
+middle_rec__find_used_registers_instr(reset_ticket(Rval, _Rsn), !Used) :-
+	middle_rec__find_used_registers_rval(Rval, !Used).
+middle_rec__find_used_registers_instr(discard_ticket, !Used).
+middle_rec__find_used_registers_instr(prune_ticket, !Used).
+middle_rec__find_used_registers_instr(mark_ticket_stack(Lval), !Used) :-
+	middle_rec__find_used_registers_lval(Lval, !Used).
+middle_rec__find_used_registers_instr(prune_tickets_to(Rval), !Used) :-
+	middle_rec__find_used_registers_rval(Rval, !Used).
+middle_rec__find_used_registers_instr(incr_sp(_, _), !Used).
+middle_rec__find_used_registers_instr(decr_sp(_), !Used).
 middle_rec__find_used_registers_instr(pragma_c(_, Components,
-		_, _, _, _, _, _), Used0, Used) :-
-	middle_rec__find_used_registers_components(Components, Used0, Used).
-middle_rec__find_used_registers_instr(init_sync_term(Lval, _), Used0, Used) :-
-	middle_rec__find_used_registers_lval(Lval, Used0, Used).
-middle_rec__find_used_registers_instr(fork(_, _, _), Used, Used).
-middle_rec__find_used_registers_instr(join_and_terminate(Lval), Used0, Used) :-
-	middle_rec__find_used_registers_lval(Lval, Used0, Used).
-middle_rec__find_used_registers_instr(join_and_continue(Lval,_), Used0, Used) :-
-	middle_rec__find_used_registers_lval(Lval, Used0, Used).
+		_, _, _, _, _, _), !Used) :-
+	middle_rec__find_used_registers_components(Components, !Used).
+middle_rec__find_used_registers_instr(init_sync_term(Lval, _), !Used) :-
+	middle_rec__find_used_registers_lval(Lval, !Used).
+middle_rec__find_used_registers_instr(fork(_, _, _), !Used).
+middle_rec__find_used_registers_instr(join_and_terminate(Lval), !Used) :-
+	middle_rec__find_used_registers_lval(Lval, !Used).
+middle_rec__find_used_registers_instr(join_and_continue(Lval,_), !Used) :-
+	middle_rec__find_used_registers_lval(Lval, !Used).
 
 :- pred middle_rec__find_used_registers_components(list(pragma_c_component),
 	set(int), set(int)).

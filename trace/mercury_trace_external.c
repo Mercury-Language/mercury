@@ -1135,7 +1135,7 @@ MR_trace_make_var_list(void)
 		);
 
 		MR_TRACE_USE_HP(
-			var_list = MR_list_cons(univ, var_list);
+			var_list = MR_univ_list_cons(univ, var_list);
 		);
 	}
 
@@ -1173,7 +1173,7 @@ MR_trace_make_var_names_list(void)
 		}
 
 		MR_TRACE_USE_HP(
-			var_names_list = MR_list_cons((MR_Word) name,
+			var_names_list = MR_string_list_cons((MR_Word) name,
 				var_names_list);
 		);
 	}
@@ -1215,8 +1215,8 @@ MR_trace_make_type_list(void)
 			type_info_string = ML_type_name((MR_Word) type_info);
 		);
 	        MR_TRACE_USE_HP(
-			type_list = MR_list_cons((MR_Word) type_info_string,
-				type_list);
+			type_list = MR_string_list_cons(
+				(MR_Word) type_info_string, type_list);
 	        );
 	}
 
@@ -1473,15 +1473,14 @@ MR_trace_browse_one_external(MR_Var_Spec var_spec)
 {
 	const char	*problem;
 
-	problem = MR_trace_browse_one(NULL, var_spec, MR_trace_browse_external,
-			MR_BROWSE_CALLER_BROWSE, MR_BROWSE_DEFAULT_FORMAT,
-			MR_TRUE);
+	problem = MR_trace_browse_one(NULL, MR_FALSE, var_spec,
+			MR_trace_browse_external, MR_BROWSE_CALLER_BROWSE,
+			MR_BROWSE_DEFAULT_FORMAT, MR_TRUE);
 
 	if (problem != NULL) {
 		MR_send_message_to_socket_format("error(\"%s\").\n", problem);
 	}
 }
-
 
 /*
 ** This function calls the collect filtering predicate defined by the user
@@ -1545,7 +1544,6 @@ MR_get_line_number(MR_Word *saved_regs, const MR_Label_Layout *layout,
 	int			lineno = 0;
 	MR_Word			*base_sp, *base_curfr;
 
-	
 	if MR_port_is_interface(port)
 	/* 
 	** At external events, we want the line number 

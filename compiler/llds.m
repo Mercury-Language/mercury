@@ -235,10 +235,12 @@
 	;	if_val(rval, code_addr)
 			% If rval is true, then goto code_addr.
 
-	;	incr_hp(lval, maybe(tag), rval, string)
+	;	incr_hp(lval, maybe(tag), maybe(int), rval, string)
 			% Get a memory block of a size given by an rval
 			% and put its address in the given lval,
-			% possibly after tagging it with a given tag.
+			% possibly after incrementing it by N words
+			% (if the maybe(int) is bound to `yes(N)')
+			% and/or after tagging it with a given tag.
 			% The string gives the name of the type constructor
 			% of the memory cell for use in memory profiling.
 
@@ -756,7 +758,9 @@
 			% whose real length is given by the integer,
 			% and not the location of the first NULL
 	;	code_addr_const(code_addr)
-	;	data_addr_const(data_addr)
+	;	data_addr_const(data_addr, maybe(int))
+			% if the second arg is yes(Offset), then increment the
+			% address of the first by Offset words
 	;	label_entry(label).
 			% the address of the label (uses MR_ENTRY macro).
 
@@ -967,7 +971,7 @@ llds__const_type(float_const(_), float).
 llds__const_type(string_const(_), string).
 llds__const_type(multi_string_const(_, _), string).
 llds__const_type(code_addr_const(_), code_ptr).
-llds__const_type(data_addr_const(_), data_ptr).
+llds__const_type(data_addr_const(_, _), data_ptr).
 llds__const_type(label_entry(_), code_ptr).
 
 llds__unop_return_type(mktag, word).

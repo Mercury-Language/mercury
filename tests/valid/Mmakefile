@@ -222,37 +222,38 @@ endif
 # cannot be used with `--no-special-preds'
 
 ifneq "$(findstring asm_,$(GRADE))" ""
-    PROGS1=$(NO_SPECIAL_PREDS_PROGS) $(PROGS0)
+	PROGS1=$(NO_SPECIAL_PREDS_PROGS) $(PROGS0)
 else
-    ifneq "$(findstring jump,$(GRADE))" ""
-        PROGS1=$(PROGS0)
-    else
-        ifneq "$(findstring fast,$(GRADE))" ""
-            PROGS1=$(PROGS0)
-        else
-	    PROGS1=$(NO_SPECIAL_PREDS_PROGS) $(PROGS0)
-        endif
-    endif
+	ifneq "$(findstring jump,$(GRADE))" ""
+		PROGS1=$(PROGS0)
+	else
+		ifneq "$(findstring fast,$(GRADE))" ""
+			PROGS1=$(PROGS0)
+		else
+			PROGS1=$(NO_SPECIAL_PREDS_PROGS) $(PROGS0)
+		endif
+	endif
 endif
 
 ifneq "$(findstring .mm,$(GRADE))" ""
-    PROGS2=$(PROGS1)
+	PROGS2=$(PROGS1)
 else
-    PROGS2=$(PROGS1) $(TRAIL_PROGS)
+	PROGS2=$(PROGS1) $(TRAIL_PROGS)
 endif
 
 # Aditi is not yet implemented for the MLDS back-end
 # (i.e. grades hl* java* il*).
-# It will never be implemented for deep profiling grades.
+# It will never be implemented for deep profiling and
+# term size profiling grades.
 ifneq "$(filter hl% java% il%,$(GRADE))$(findstring profdeep,$(GRADE))" ""
-    # We currently don't do any testing in grade java on this directory.
-    ifneq "$(findstring java,$(GRADE))$" ""
-        OBJ_PROGS=
-    else
-        OBJ_PROGS=$(PROGS2)
-    endif
+	# We currently don't do any testing in grade java on this directory.
+	ifneq "$(findstring java,$(GRADE))$" ""
+		OBJ_PROGS=
+	else
+		OBJ_PROGS=$(PROGS2)
+	endif
 else
-    OBJ_PROGS=$(PROGS2) $(ADITI_PROGS)
+	OBJ_PROGS=$(PROGS2) $(ADITI_PROGS)
 endif
 
 ifneq "$(findstring profdeep,$(GRADE))$(findstring java,$(GRADE))" ""
@@ -261,7 +262,11 @@ else
 	ALL_RLO_PROGS = $(RLO_PROGS)
 endif
 
-PROGS = $(OBJ_PROGS) $(ALL_RLO_PROGS) $(IL_PROGS)
+ifneq "$(findstring tsw,$(GRADE))$(findstring tsc,$(GRADE))" ""
+	PROGS = $(OBJ_PROGS) $(ALL_RLO_PROGS)
+else
+	PROGS = $(OBJ_PROGS) $(ALL_RLO_PROGS) $(IL_PROGS)
+endif
 
 # `mmc --make' doesn't expect subdirectories to appear in targets.
 ifeq ($(MMAKE_USE_MMC_MAKE),yes)

@@ -334,9 +334,7 @@ bind_type_vars_to_void(UnboundTypeVarsSet,
 	%
 	set__to_sorted_list(UnboundTypeVarsSet, UnboundTypeVars),
 	list__length(UnboundTypeVars, Length),
-	term__context_init(InitContext),
-	Void = term__functor(term__atom("void"), [], InitContext),
-	list__duplicate(Length, Void, Voids),
+	list__duplicate(Length, void_type, Voids),
 
 	%
 	% then create a *substitution* that maps the 

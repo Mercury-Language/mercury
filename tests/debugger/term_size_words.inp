@@ -1,0 +1,14 @@
+echo on
+register --quiet
+context none
+break static
+continue
+finish
+print *
+term_size *
+break dynamic
+continue
+finish
+print *
+term_size *
+continue -n -S

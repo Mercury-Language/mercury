@@ -1347,7 +1347,7 @@ output_instruction_decls(computed_goto(Rval, _Labels), _,
 output_instruction_decls(if_val(Rval, Target), _, DeclSet0, DeclSet) -->
 	output_rval_decls(Rval, "", "", 0, _, DeclSet0, DeclSet1),
 	output_code_addr_decls(Target, "", "", 0, _, DeclSet1, DeclSet).
-output_instruction_decls(incr_hp(Lval, _Tag, Rval, _), _,
+output_instruction_decls(incr_hp(Lval, _Tag, _, Rval, _), _,
 		DeclSet0, DeclSet) -->
 	output_lval_decls(Lval, "", "", 0, _, DeclSet0, DeclSet1),
 	output_rval_decls(Rval, "", "", 0, _, DeclSet1, DeclSet).
@@ -1643,19 +1643,28 @@ output_instruction(if_val(Rval, Target), ProfInfo) -->
 	output_goto(Target, CallerLabel),
 	io__write_string("\t}\n").
 
-output_instruction(incr_hp(Lval, MaybeTag, Rval, TypeMsg), ProfInfo) -->
+output_instruction(incr_hp(Lval, MaybeTag, MaybeOffset, Rval, TypeMsg),
+		ProfInfo) -->
 	(
 		{ MaybeTag = no },
-		io__write_string("\tMR_incr_hp_msg("),
+		io__write_string("\tMR_offset_incr_hp_msg("),
 		output_lval_as_word(Lval)
 	;
 		{ MaybeTag = yes(Tag) },
-		io__write_string("\tMR_tag_incr_hp_msg("),
+		io__write_string("\tMR_tag_offset_incr_hp_msg("),
 		output_lval_as_word(Lval),
 		io__write_string(", "),
 		output_tag(Tag)
 	),
 	io__write_string(", "),
+	(
+		{ MaybeOffset = no },
+		io__write_string("0, ")
+	;
+		{ MaybeOffset = yes(Offset) },
+		io__write_int(Offset),
+		io__write_string(", ")
+	),
 	output_rval_as_type(Rval, word),
 	io__write_string(", "),
 	{ ProfInfo = CallerLabel - _ },
@@ -2103,7 +2112,7 @@ output_rval_decls(const(Const), FirstIndent, LaterIndent, N0, N,
 	( { Const = code_addr_const(CodeAddress) } ->
 		output_code_addr_decls(CodeAddress, FirstIndent, LaterIndent,
 			N0, N, DeclSet0, DeclSet)
-	; { Const = data_addr_const(DataAddr) } ->
+	; { Const = data_addr_const(DataAddr, _) } ->
 		output_data_addr_decls(DataAddr,
 			FirstIndent, LaterIndent, N0, N, DeclSet0, DeclSet)
 	; { Const = float_const(FloatVal) } ->
@@ -3468,12 +3477,25 @@ output_rval_const(false) -->
 	io__write_string("MR_FALSE").
 output_rval_const(code_addr_const(CodeAddress)) -->
 	output_code_addr(CodeAddress).
-output_rval_const(data_addr_const(DataAddr)) -->
-	% data addresses are all assumed to be of type `MR_Word *';
-	% we need to cast them here to avoid type errors
-	output_llds_type_cast(data_ptr),
-	io__write_string("&"),
-	output_data_addr(DataAddr).
+output_rval_const(data_addr_const(DataAddr, MaybeOffset)) -->
+	% Data addresses are all assumed to be of type `MR_Word *';
+	% we need to cast them here to avoid type errors. The offset
+	% is also in MR_Words.
+	(
+		{ MaybeOffset = no },
+		output_llds_type_cast(data_ptr),
+		io__write_string("&"),
+		output_data_addr(DataAddr)
+	;
+		{ MaybeOffset = yes(Offset) },
+		io__write_string("(("),
+		output_llds_type_cast(data_ptr),
+		io__write_string("&"),
+		output_data_addr(DataAddr),
+		io__write_string(") + "),
+		io__write_int(Offset),
+		io__write_string(")")
+	).
 output_rval_const(label_entry(Label)) -->
 	io__write_string("MR_ENTRY("),
 	output_label(Label),

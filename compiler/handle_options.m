@@ -596,7 +596,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 	option_implies(aditi_only, smart_recompilation, bool(no)),
 
 	% We never use version number information in `.int3',
-	% `.opt' or `.trans_opt'  files.
+	% `.opt' or `.trans_opt' files.
 	option_implies(make_short_interface, generate_item_version_numbers,
 		bool(no)),
 
@@ -816,6 +816,27 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 		;
 			[]
 		)
+	;
+		[]
+	),
+
+	globals__io_lookup_bool_option(record_term_sizes_as_words,
+		RecordTermSizesAsWords),
+	globals__io_lookup_bool_option(record_term_sizes_as_cells,
+		RecordTermSizesAsCells),
+	(
+		{ RecordTermSizesAsWords = yes },
+		{ RecordTermSizesAsCells = yes }
+	->
+		usage_error("we can't record term size as both words and cells")
+	;
+		{ RecordTermSizesAsWords = yes
+		; RecordTermSizesAsCells = yes
+		},
+		{ HighLevel = yes }
+	->
+		usage_error("term size profiling is incompatible "
+			++ "with high level code")
 	;
 		[]
 	),
@@ -1443,12 +1464,13 @@ long_usage -->
 	;	par		% parallelism / multithreading
 	;	gc		% the kind of GC to use
 	;	prof		% what profiling options to use
+	;	term_size	% whether or not to record term sizes
 	;	trail		% whether or not to use trailing
-	;       tag             % whether or not to reserve a tag
+	;	tag		% whether or not to reserve a tag
 	;	minimal_model	% whether we set up for minimal model tabling
 	;	pic		% Do we need to reserve a register for
 				% PIC (position independent code)?
-	;	trace           % tracing/debugging options
+	;	trace		% tracing/debugging options
 	.
 
 convert_grade_option(GradeString, Options0, Options) :-
@@ -1703,6 +1725,14 @@ grade_component_table("profdeep", prof,
 	[profile_time - bool(no), profile_calls - bool(no),
 	profile_memory - bool(no), profile_deep - bool(yes)], no).
 
+	% Term size components
+grade_component_table("tsw", term_size,
+	[record_term_sizes_as_words - bool(yes),
+	record_term_sizes_as_cells - bool(no)], no).
+grade_component_table("tsc", term_size,
+	[record_term_sizes_as_words - bool(no),
+	record_term_sizes_as_cells - bool(yes)], no).
+
 	% Trailing components
 grade_component_table("tr", trail, [use_trail - bool(yes)], no).
 
@@ -1808,6 +1838,7 @@ char_is_not(A, B) :-
 convert_dump_alias("ALL", "abcdfgilmnprstuvCDIMPTU").
 convert_dump_alias("all", "abcdfgilmnprstuvCMPT").
 convert_dump_alias("most", "bcdfgilmnprstuvP").
+convert_dump_alias("trans", "bcdglmnstuv").
 convert_dump_alias("codegen", "dfnprsu").
 convert_dump_alias("vanessa", "ltuCIU").
 convert_dump_alias("paths", "cP").

@@ -189,7 +189,7 @@ switch_gen__generate_switch(CodeModel, CaseVar, CanFail, Cases, GoalInfo,
 switch_gen__determine_category(CaseVar, SwitchCategory) -->
 	code_info__variable_type(CaseVar, Type),
 	code_info__get_module_info(ModuleInfo),
-	{ classify_type(Type, ModuleInfo, TypeCategory) },
+	{ classify_type(ModuleInfo, Type) = TypeCategory },
 	{ switch_util__type_cat_to_switch_cat(TypeCategory, SwitchCategory) }.
 
 %---------------------------------------------------------------------------%

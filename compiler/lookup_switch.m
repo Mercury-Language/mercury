@@ -142,7 +142,7 @@ lookup_switch__is_lookup_switch(CaseVar, TaggedCases, GoalInfo, SwitchCanFail,
 		% bitvector test.
 		code_info__variable_type(CaseVar, Type),
 		code_info__get_module_info(ModuleInfo),
-		{ classify_type(Type, ModuleInfo, TypeCategory) },
+		{ classify_type(ModuleInfo, Type) = TypeCategory },
 		(
 			dense_switch__type_range(TypeCategory, Type,
 				TypeRange),
@@ -419,7 +419,7 @@ generate_bit_vec(CaseVals, Start, WordBits, Args, BitVec, !CodeInfo) :-
 	map__to_assoc_list(BitMap, WordVals),
 	generate_bit_vec_args(WordVals, 0, Args),
 	add_static_cell_natural_types(Args, DataAddr, !CodeInfo),
-	BitVec = const(data_addr_const(DataAddr)).
+	BitVec = const(data_addr_const(DataAddr, no)).
 
 :- pred generate_bit_vec_2(case_consts::in, int::in, int::in,
 	map(int, int)::in, map(int, int)::out) is det.
@@ -478,7 +478,7 @@ lookup_switch__generate_terms_2(Index, [Var | Vars], Map) -->
 	{ list__sort(Vals0, Vals) },
 	{ construct_args(Vals, 0, Args) },
 	code_info__add_static_cell_natural_types(Args, DataAddr),
-	{ ArrayTerm = const(data_addr_const(DataAddr)) },
+	{ ArrayTerm = const(data_addr_const(DataAddr, no)) },
 	{ LookupLval = field(yes(0), ArrayTerm, Index) },
 	code_info__assign_lval_to_var(Var, LookupLval, Code),
 	{ require(tree__is_empty(Code),

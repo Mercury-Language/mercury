@@ -15,7 +15,7 @@
 #endif
 #include "mercury_type_info.h"
 #include "mercury_type_desc.h"
-#include "mercury_heap.h"	/* for MR_incr_hp_atomic_msg() */
+#include "mercury_heap.h"	/* for MR_offset_incr_hp_atomic_msg() */
 #include "mercury_misc.h"	/* for MR_fatal_error() */
 
 MR_TypeCtorDesc
@@ -96,9 +96,9 @@ MR_make_type(int arity, MR_TypeCtorDesc type_ctor_desc, MR_Word arg_types_list)
 			type_ctor_desc);
 
 		MR_restore_transient_registers();
-		MR_incr_hp_atomic_msg(
+		MR_offset_incr_hp_atomic_msg(
 			MR_LVALUE_CAST(MR_Word, new_type_info_arena),
-			MR_var_arity_type_info_size(arity),
+			0, MR_var_arity_type_info_size(arity),
 			"MR_make_type", "type_info");
 		MR_save_transient_registers();
 		MR_fill_in_var_arity_type_info(new_type_info_arena,
@@ -113,9 +113,9 @@ MR_make_type(int arity, MR_TypeCtorDesc type_ctor_desc, MR_Word arg_types_list)
 		}
 
 		MR_restore_transient_registers();
-		MR_incr_hp_atomic_msg(
+		MR_offset_incr_hp_atomic_msg(
 			MR_LVALUE_CAST(MR_Word, new_type_info_arena),
-			MR_fixed_arity_type_info_size(arity),
+			0, MR_fixed_arity_type_info_size(arity),
 			"MR_make_type", "type_info");
 		MR_save_transient_registers();
 		MR_fill_in_fixed_arity_type_info(new_type_info_arena,

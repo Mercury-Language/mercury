@@ -40,6 +40,43 @@ static	MR_bool	MR_print_raw_addrs = MR_PRINT_RAW_ADDRS;
 
 /* debugging messages */
 
+#ifdef MR_DEBUG_HEAP_ALLOC
+
+void
+MR_unravel_univ_msg(MR_Word univ, MR_TypeInfo type_info, MR_Word value)
+{
+	if (MR_lld_print_enabled && MR_heapdebug) {
+		printf("unravel univ %p: typeinfo %p, value %p\n",
+			(void *) univ, (void *) type_info, (void *) value);
+		fflush(stdout);
+	}
+}
+
+void
+MR_new_univ_on_hp_msg(MR_Word univ, MR_TypeInfo type_info, MR_Word value)
+{
+	if (MR_lld_print_enabled && MR_heapdebug) {
+		printf("new univ on hp: typeinfo %p, value %p => %p\n",
+			(void *) type_info, (void *) value, (void *) univ);
+		fflush(stdout);
+	}
+}
+
+void
+MR_debug_tag_offset_incr_hp_base_msg(MR_Word ptr, int tag, int offset,
+	int count, int is_atomic)
+{
+	if (MR_lld_print_enabled && MR_heapdebug) {
+		printf("tag_offset_incr_hp: "
+			"tag %d, offset %d, count %d%s => %p\n",
+			tag, offset, count, (is_atomic ? ", atomic" : ""),
+				(void *) ptr);
+		fflush(stdout);
+	}
+}
+
+#endif /* MR_DEBUG_HEAP_ALLOC */
+
 #ifdef MR_LOWLEVEL_DEBUG
 
 void 
@@ -265,25 +302,62 @@ MR_proceed_msg(void)
 }
 
 void 
-MR_cr1_msg(MR_Word val0, const MR_Word *addr)
+MR_cr1_msg(const MR_Word *addr)
 {
 	if (!MR_lld_print_enabled) {
 		return;
 	}
 
-	printf("put value %9lx at ", (long) (MR_Integer) val0);
+#ifdef	MR_RECORD_TERM_SIZES
+	printf("create1: put size %ld, value %9lx at ",
+		(long) (MR_Integer) addr[-2],
+		(long) (MR_Integer) addr[-1]);
+#else
+	printf("create1: put value %9lx at ",
+		(long) (MR_Integer) addr[-1]);
+#endif
 	MR_printheap(addr);
 }
 
 void 
-MR_cr2_msg(MR_Word val0, MR_Word val1, const MR_Word *addr)
+MR_cr2_msg(const MR_Word *addr)
 {
 	if (!MR_lld_print_enabled) {
 		return;
 	}
 
-	printf("put values %9lx,%9lx at ",	
-		(long) (MR_Integer) val0, (long) (MR_Integer) val1);
+#ifdef	MR_RECORD_TERM_SIZES
+	printf("create2: put size %ld, values %9lx,%9lx at ",	
+		(long) (MR_Integer) addr[-3],
+		(long) (MR_Integer) addr[-2],
+		(long) (MR_Integer) addr[-1]);
+#else
+	printf("create2: put values %9lx,%9lx at ",	
+		(long) (MR_Integer) addr[-2],
+		(long) (MR_Integer) addr[-1]);
+#endif
+	MR_printheap(addr);
+}
+
+void 
+MR_cr3_msg(const MR_Word *addr)
+{
+	if (!MR_lld_print_enabled) {
+		return;
+	}
+
+#ifdef	MR_RECORD_TERM_SIZES
+	printf("create3: put size %ld, values %9lx,%9lx,%9lx at ",	
+		(long) (MR_Integer) addr[-4],
+		(long) (MR_Integer) addr[-3],
+		(long) (MR_Integer) addr[-2],
+		(long) (MR_Integer) addr[-1]);
+#else
+	printf("create3: put values %9lx,%9lx,%9lx at ",	
+		(long) (MR_Integer) addr[-3],
+		(long) (MR_Integer) addr[-2],
+		(long) (MR_Integer) addr[-1]);
+#endif
 	MR_printheap(addr);
 }
 

@@ -19,7 +19,7 @@ mdb> finish
 mdb> set depth 20
 mdb> set size 201
 mdb> set format pretty
-mdb> proc_body
+mdb> p proc_body
 	
 proc_rep(
   [|](2, []), 

@@ -176,6 +176,9 @@ builtin_translation("private_builtin", "builtin_int_gt", 0, [X, Y],
 builtin_translation("private_builtin", "builtin_int_lt", 0, [X, Y],
 	test(binary((<), leaf(X), leaf(Y)))).
 
+builtin_translation("term_size_prof_builtin", "term_size_plus", 0, [X, Y, Z],
+	assign(Z, binary((+), leaf(X), leaf(Y)))).
+
 builtin_translation("int", "+", 0, [X, Y, Z],
 	assign(Z, binary((+), leaf(X), leaf(Y)))).
 builtin_translation("int", "+", 1, [X, Y, Z],

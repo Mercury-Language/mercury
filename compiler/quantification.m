@@ -451,25 +451,41 @@ implicitly_quantify_goal_2(
 	quantification__get_lambda_outside(LambdaOutsideVars),
 	{ quantification__get_unify_typeinfos(Unification0, TypeInfoVars) },
 
-	{
-		Unification0 = construct(_, _, _, _,
-			reuse_cell(CellToReuse0), _, _)
-	->
-		CellToReuse = yes(CellToReuse0)
+	{ Unification0 = construct(_, _, _, _, How, _, MaybeSize) ->
+		( How = reuse_cell(cell_to_reuse(ReuseVar0, _, SetArgs)) ->
+			MaybeSetArgs = yes(SetArgs),
+			MaybeReuseVar = yes(ReuseVar0)
+		;
+			MaybeSetArgs = no,
+			MaybeReuseVar = no
+		),
+		( MaybeSize = yes(dynamic_size(SizeVar0)) ->
+			MaybeSizeVar = yes(SizeVar0)
+		;
+			MaybeSizeVar = no
+		)
 	;
-		CellToReuse = no
+		MaybeSetArgs = no,
+		MaybeReuseVar = no,
+		MaybeSizeVar = no
 	},
 
-	implicitly_quantify_unify_rhs(UnifyRHS0, CellToReuse,
+	implicitly_quantify_unify_rhs(UnifyRHS0, MaybeSetArgs,
 		Unification0, Context, UnifyRHS, Unification),
 	quantification__get_nonlocals(VarsUnifyRHS),
 	{ insert(VarsUnifyRHS, Var, GoalVars0) },
 	{ insert_list(GoalVars0, TypeInfoVars, GoalVars1) },
 
-	{ CellToReuse = yes(cell_to_reuse(ReuseVar, _, _)) ->
-		insert(GoalVars1, ReuseVar, GoalVars)
+	{ MaybeReuseVar = yes(ReuseVar) ->
+		insert(GoalVars1, ReuseVar, GoalVars2)
 	;
-		GoalVars = GoalVars1
+		GoalVars2 = GoalVars1
+	},
+
+	{ MaybeSizeVar = yes(SizeVar) ->
+		insert(GoalVars2, SizeVar, GoalVars)
+	;
+		GoalVars = GoalVars2
 	},
 
 	quantification__update_seen_vars(GoalVars),
@@ -599,7 +615,7 @@ implicitly_quantify_atomic_goal(HeadVars) -->
 	{ union(NonLocals1, NonLocals2, NonLocals) },
 	quantification__set_nonlocals(NonLocals).
 
-:- pred implicitly_quantify_unify_rhs(unify_rhs, maybe(cell_to_reuse),
+:- pred implicitly_quantify_unify_rhs(unify_rhs, maybe(list(bool)),
 		unification, prog_context, unify_rhs, unification,
 		quant_info, quant_info).
 :- mode implicitly_quantify_unify_rhs(in, in, in, in,
@@ -609,12 +625,12 @@ implicitly_quantify_unify_rhs(var(X), _, Unification, _,
 		var(X), Unification) -->
 	{ singleton_set(Vars, X) },
 	quantification__set_nonlocals(Vars).
-implicitly_quantify_unify_rhs(functor(_, _, ArgVars) @ RHS, Reuse,
+implicitly_quantify_unify_rhs(functor(_, _, ArgVars) @ RHS, ReuseArgs,
 		Unification, _, RHS, Unification) -->
 	quantification__get_nonlocals_to_recompute(NonLocalsToRecompute),
 	{
 		NonLocalsToRecompute = code_gen_nonlocals,
-		Reuse = yes(cell_to_reuse(_, _, SetArgs))
+		ReuseArgs = yes(SetArgs)
 	->
 		% The fields taken from the reused cell aren't
 		% counted as code-gen nonlocals.
@@ -713,13 +729,14 @@ implicitly_quantify_unify_rhs(
 	%
 	{
 		Unification0 = construct(ConstructVar, ConsId, Args0,
-			ArgModes0, HowToConstruct, Uniq, AditiInfo)
+			ArgModes0, HowToConstruct, Uniq, Size)
 	->
+		require(unify(Size, no), "lambda term has size info"),
 		map__from_corresponding_lists(Args0, ArgModes0, ArgModesMap),
 		to_sorted_list(NonLocals, Args),
 		map__apply_to_list(Args, ArgModesMap, ArgModes),
 		Unification = construct(ConstructVar, ConsId, Args,
-			ArgModes, HowToConstruct, Uniq, AditiInfo)
+			ArgModes, HowToConstruct, Uniq, Size)
 	;
 		% after mode analysis, unifications with lambda variables
 		% should always be construction unifications, but
@@ -919,24 +936,28 @@ quantification__goal_vars_2(NonLocalsToRecompute,
 		unify(A, B, _, Unification, _), Set0, LambdaSet0,
 		Set, LambdaSet) :-
 	insert(Set0, A, Set1),
-	( Unification = construct(_, _, _, _, reuse_cell(Reuse0), _, _) ->
-		Reuse = yes(Reuse0)
+	( Unification = construct(_, _, _, _, How, _, Size) ->
+		( How = reuse_cell(cell_to_reuse(ReuseVar, _, SetArgs)) ->
+			MaybeSetArgs = yes(SetArgs),
+			insert(Set1, ReuseVar, Set2)
+		;
+			MaybeSetArgs = no,
+			Set2 = Set1
+		),
+		( Size = yes(dynamic_size(SizeVar)) ->
+			insert(Set2, SizeVar, Set3)
+		;
+			Set3 = Set2
+		)
+	; Unification = complicated_unify(_, _, TypeInfoVars) ->
+		MaybeSetArgs = no,
+		insert_list(Set1, TypeInfoVars, Set3)
 	;
-		Reuse = no
+		MaybeSetArgs = no,
+		Set3 = Set1
 	),
-	(
-		Reuse = yes(cell_to_reuse(ReuseVar, _, _))
-	->
-		insert(Set1, ReuseVar, Set2)
-	;
-		Unification = complicated_unify(_, _, TypeInfoVars)
-	->
-		insert_list(Set1, TypeInfoVars, Set2)
-	;
-		Set2 = Set1
-	),
-	quantification__unify_rhs_vars(NonLocalsToRecompute, B, Reuse,
-		Set2, LambdaSet0, Set, LambdaSet).
+	quantification__unify_rhs_vars(NonLocalsToRecompute, B, MaybeSetArgs,
+		Set3, LambdaSet0, Set, LambdaSet).
 
 quantification__goal_vars_2(_, generic_call(GenericCall, ArgVars1, _, _),
 		Set0, LambdaSet, Set, LambdaSet) :-
@@ -1025,7 +1046,7 @@ quantification__goal_vars_2_shorthand(NonLocalsToRecompute,
 
 
 :- pred quantification__unify_rhs_vars(nonlocals_to_recompute,
-		unify_rhs, maybe(cell_to_reuse), set_of_var, set_of_var,
+		unify_rhs, maybe(list(bool)), set_of_var, set_of_var,
 		set_of_var, set_of_var).
 :- mode quantification__unify_rhs_vars(in, in, in, in, in, out, out) is det.
 
@@ -1033,11 +1054,11 @@ quantification__unify_rhs_vars(_, var(Y), _,
 		Set0, LambdaSet, Set, LambdaSet) :-
 	insert(Set0, Y, Set).
 quantification__unify_rhs_vars(NonLocalsToRecompute,
-		functor(_Functor, _, ArgVars), Reuse,
+		functor(_Functor, _, ArgVars), MaybeSetArgs,
 		Set0, LambdaSet, Set, LambdaSet) :-
 	(
 		NonLocalsToRecompute = code_gen_nonlocals,
-		Reuse = yes(cell_to_reuse(_, _, SetArgs))
+		MaybeSetArgs = yes(SetArgs)
 	->
 		% Ignore the fields taken from the reused cell.
 		quantification__get_updated_fields(SetArgs, ArgVars,

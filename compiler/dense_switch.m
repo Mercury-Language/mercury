@@ -49,7 +49,8 @@
 :- mode dense_switch__calc_density(in, in, out) is det.
 
 	% also used by lookup_switch
-:- pred dense_switch__type_range(builtin_type, type, int, code_info, code_info).
+:- pred dense_switch__type_range(type_category, type, int,
+	code_info, code_info).
 :- mode dense_switch__type_range(in, in, out, in, out) is semidet.
 
 %-----------------------------------------------------------------------------%
@@ -87,7 +88,7 @@ dense_switch__is_dense_switch(CaseVar, TaggedCases, CanFail0, ReqDensity,
 		% of the values for the type.
 		code_info__variable_type(CaseVar, Type),
 		code_info__get_module_info(ModuleInfo),
-		{ classify_type(Type, ModuleInfo, TypeCategory) },
+		{ classify_type(ModuleInfo, Type) = TypeCategory },
 		(
 			dense_switch__type_range(TypeCategory, Type, TypeRange),
 			{ dense_switch__calc_density(NumCases, TypeRange,

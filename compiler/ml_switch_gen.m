@@ -324,7 +324,7 @@ ml_switch_gen__determine_category(CaseVar, SwitchCategory) -->
 	ml_variable_type(CaseVar, Type),
 	=(MLGenInfo),
 	{ ml_gen_info_get_module_info(MLGenInfo, ModuleInfo) },
-	{ type_util__classify_type(Type, ModuleInfo, TypeCategory) },
+	{ type_util__classify_type(ModuleInfo, Type) = TypeCategory },
 	{ switch_util__type_cat_to_switch_cat(TypeCategory, SwitchCategory) }.
 
 %-----------------------------------------------------------------------------%
