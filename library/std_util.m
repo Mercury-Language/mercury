@@ -1,8 +1,8 @@
-%---------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 % Copyright (C) 1994-1997 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
-%---------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 % File: std_util.m.
 % Main author: fjh.
@@ -366,32 +366,32 @@
 	%
 :- pred functor(T::in, string::out, int::out) is det.
 
-	% argument(Data, ArgumentIndex) = Argument
+	% arg(Data, ArgumentIndex) = Argument
+	% argument(Data, ArgumentIndex) = ArgumentUniv
 	% 
 	% Given a data item (Data) and an argument index
 	% (ArgumentIndex), starting at 0 for the first argument, binds
 	% Argument to that argument of the functor of the data item. If
 	% the argument index is out of range -- that is, greater than or
 	% equal to the arity of the functor or lower than 0 -- then
-	% argument/2 fails.  The argument returned has the type univ. 
-	% (Also aborts if the type of Data is a type with a non-canonical
+	% the call fails.  For argument/1 the argument returned has the
+	% type univ, which can store any type.  For arg/1, if the
+	% argument has the wrong type, then the call fails.
+	% (Both abort if the type of Data is a type with a non-canonical
 	% representation, i.e. one for which there is a user-defined
 	% equality predicate.)
 	%
+:- func arg(T::in, int::in) = (ArgT::out) is semidet.
 :- func argument(T::in, int::in) = (univ::out) is semidet.
 
-	% det_argument(ArgumentIndex, Data, Argument)
+	% det_arg(Data, ArgumentIndex) = Argument
+	% det_argument(Data, ArgumentIndex) = ArgumentUniv
 	% 
-	% Given a data item (Data) and an argument index
-	% (ArgumentIndex), starting at 0 for the first argument, binds
-	% Argument to that argument of the functor of the data item. If
-	% the argument index is out of range -- that is, greater than or
-	% equal to the arity of the functor or lower than 0 -- then
-	% det_argument/2 aborts. 
-	% (Also aborts if the type of Data is a type with a non-canonical
-	% representation, i.e. one for which there is a user-defined
-	% equality predicate.)
+	% Same as arg/2 and argument/2 respectively, except that
+	% for cases where arg/2 or argument/2 would fail,
+	% det_arg/2 or det_argument/2 will abort.
 	%
+:- func det_arg(T::in, int::in) = (ArgT::out) is det.
 :- func det_argument(T::in, int::in) = (univ::out) is det.
 
 	% deconstruct(Data, Functor, Arity, Arguments) 
@@ -2041,9 +2041,13 @@ typedef struct ML_Expand_Info_Struct {
 
 	/* Prototypes */
 
-void ML_expand(Word* type_info, Word data_word, ML_Expand_Info *info);
+void ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info);
 
 Word * ML_create_type_info(Word *term_type_info, Word *arg_pseudo_type_info);
+
+	/* NB. ML_arg() is also used by store__arg_ref in store.m */
+bool ML_arg(Word term_type_info, Word *term, Word argument_index,
+		Word *arg_type_info, Word **argument_ptr);
 
 ").
 
@@ -2088,12 +2092,13 @@ Declare_entry(mercury__builtin_compare_non_canonical_type_3_0);
 */
 
 void 
-ML_expand(Word* type_info, Word data_word, ML_Expand_Info *info)
+ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
 {
 	Code *compare_pred;
 	Word *base_type_info, *arg_type_info;
 	Word data_value, entry_value, base_type_layout_entry;
 	int entry_tag, data_tag; 
+	Word data_word;
 
 	base_type_info = MR_TYPEINFO_GET_BASE_TYPEINFO(type_info);
 
@@ -2101,6 +2106,7 @@ ML_expand(Word* type_info, Word data_word, ML_Expand_Info *info)
 	info->non_canonical_type = ( compare_pred ==
 		ENTRY(mercury__builtin_compare_non_canonical_type_3_0) );
 
+	data_word = *data_word_ptr;
 	data_tag = tag(data_word);
 	data_value = body(data_word, data_tag);
 	
@@ -2159,16 +2165,13 @@ ML_expand(Word* type_info, Word data_word, ML_Expand_Info *info)
 		if (TYPEINFO_IS_VARIABLE(entry_value)) {
 			arg_type_info = ML_create_type_info(type_info, 
 				(Word *) entry_value);
-			ML_expand(arg_type_info, data_word, info);
+			ML_expand(arg_type_info, data_word_ptr, info);
 		}
 			/* 
 			** is it a no_tag type?
 			*/
 		else if (MR_TYPELAYOUT_NO_TAG_VECTOR_IS_NO_TAG(entry_value)) {
-			Word new_arg_vector; 
-			incr_saved_hp(new_arg_vector, 1);
-			field(0, new_arg_vector, 0) = data_word;
-			ML_expand_simple(new_arg_vector, 
+			ML_expand_simple(data_word_ptr,
 				(Word *) entry_value, type_info, info);
 		}
 			/* 
@@ -2178,7 +2181,7 @@ ML_expand(Word* type_info, Word data_word, ML_Expand_Info *info)
 			arg_type_info = ML_create_type_info(type_info, 
 				(Word *) MR_TYPELAYOUT_EQUIV_TYPE(
 					entry_value));
-			ML_expand(arg_type_info, data_word, info);
+			ML_expand(arg_type_info, data_word_ptr, info);
 		}
 
 		break;
@@ -2387,7 +2390,7 @@ ML_expand_builtin(Word data_value, Word entry_value, ML_Expand_Info *info)
 
 		ML_expand((Word *) 
 			((Word *) data_value)[UNIV_OFFSET_FOR_TYPEINFO], 
-			((Word *) data_value)[UNIV_OFFSET_FOR_DATA], info);
+			&((Word *) data_value)[UNIV_OFFSET_FOR_DATA], info);
 		break;
 
 	case TYPELAYOUT_PREDICATE_VALUE:
@@ -2540,13 +2543,69 @@ ML_create_type_info(Word *term_type_info, Word *arg_pseudo_type_info)
 	}
 }
 
+/*
+** ML_arg() is a subroutine used to implement arg/2, argument/2,
+** and also store__arg_ref/5 in store.m.
+** It takes a term (& its type), and an argument index,
+** and returns a
+*/
+bool
+ML_arg(Word term_type_info, Word *term_ptr, Word argument_index,
+	Word *arg_type_info, Word **argument_ptr)
+{
+	ML_Expand_Info info;
+	Word arg_pseudo_type_info;
+	bool success;
+
+	info.need_functor = FALSE;
+	info.need_args = TRUE;
+
+	ML_expand((Word *) term_type_info, term_ptr, &info);
+
+		/*
+		** Check for attempts to deconstruct a non-canonical type:
+		** such deconstructions must be cc_multi, and since
+		** arg/2 is det, we must treat violations of this
+		** as runtime errors.
+		** (There ought to be a cc_multi version of arg/2
+		** that allows this.)
+		*/
+	if (info.non_canonical_type) {
+		fatal_error(""called argument/2 for a type with a ""
+			""user-defined equality predicate"");
+	}
+
+		/* Check range */
+	success = (argument_index >= 0 && argument_index < info.arity);
+	if (success) {
+			/* figure out the type of the argument */
+		arg_pseudo_type_info = info.type_info_vector[argument_index];
+		if (TYPEINFO_IS_VARIABLE(arg_pseudo_type_info)) {
+			*arg_type_info =
+				((Word *) term_type_info)[arg_pseudo_type_info];
+		} else {
+			*arg_type_info = arg_pseudo_type_info;
+		}
+
+		*argument_ptr = &info.argument_vector[argument_index];
+	}
+
+	/*
+	** Free the allocated type_info_vector, since we just copied
+	** the stuff we want out of it.
+	*/
+	free(info.type_info_vector);
+
+	return success;
+}
+
 ").
 
 %-----------------------------------------------------------------------------%
 
 	% Code for functor, arg and deconstruct.
 
-:- pragma c_code(functor(Type::in, Functor::out, Arity::out),
+:- pragma c_code(functor(Term::in, Functor::out, Arity::out),
 		will_not_call_mercury, " 
 {
 	ML_Expand_Info info;
@@ -2556,7 +2615,7 @@ ML_create_type_info(Word *term_type_info, Word *arg_pseudo_type_info)
 
 	save_transient_registers();
 
-	ML_expand((Word *) TypeInfo_for_T, Type, &info);
+	ML_expand((Word *) TypeInfo_for_T, &Term, &info);
 
 	restore_transient_registers();
 
@@ -2579,63 +2638,78 @@ ML_create_type_info(Word *term_type_info, Word *arg_pseudo_type_info)
 	Arity = info.arity;
 }").
 
-:- pragma c_code(argument(Type::in, ArgumentIndex::in) = (Argument::out),
+/*
+** N.B. any modifications to arg/2 might also require similar
+** changes to store__arg_ref in store.m.
+*/
+
+:- pragma c_code(arg(Term::in, ArgumentIndex::in) = (Argument::out),
 		will_not_call_mercury, " 
 {
-	ML_Expand_Info info;
-	Word arg_pseudo_type_info;
+	Word arg_type_info;
+	Word *argument_ptr;
 	bool success;
-
-	info.need_functor = FALSE;
-	info.need_args = TRUE;
+	int comparison_result;
 
 	save_transient_registers();
 
-	ML_expand((Word *) TypeInfo_for_T, Type, &info);
+	success = ML_arg(TypeInfo_for_T, &Term, ArgumentIndex, &arg_type_info,
+			&argument_ptr);
+
+	if (success) {
+		/* compare the actual type with the expected type */
+		comparison_result =
+			ML_compare_type_info(arg_type_info, TypeInfo_for_ArgT);
+		success = (comparison_result == COMPARE_EQUAL);
+
+		if (success) {
+			Argument = *argument_ptr;
+		}
+	}
 
 	restore_transient_registers();
 
-		/*
-		** Check for attempts to deconstruct a non-canonical type:
-		** such deconstructions must be cc_multi, and since
-		** argument/2 is det, we must treat violations of this
-		** as runtime errors.
-		** (There ought to be a cc_multi version of argument/2
-		** that allows this.)
-		*/
-	if (info.non_canonical_type) {
-		fatal_error(""called argument/2 for a type with a ""
-			""user-defined equality predicate"");
-	}
+	SUCCESS_INDICATOR = success;
+}").
 
-		/* Check range */
-	success = (ArgumentIndex >= 0 && ArgumentIndex < info.arity);
+:- pragma c_code(argument(Term::in, ArgumentIndex::in) = (ArgumentUniv::out),
+		will_not_call_mercury, " 
+{
+	Word arg_type_info;
+	Word *argument_ptr;
+	bool success;
+
+	save_transient_registers();
+
+	success = ML_arg(TypeInfo_for_T, &Term, ArgumentIndex, &arg_type_info,
+			&argument_ptr);
+
+	restore_transient_registers();
+
 	if (success) {
-
-			/* Allocate enough room for a univ */
-		incr_hp(Argument, 2);
-		arg_pseudo_type_info = info.type_info_vector[ArgumentIndex];
-		if (TYPEINFO_IS_VARIABLE(arg_pseudo_type_info)) {
-			field(0, Argument, UNIV_OFFSET_FOR_TYPEINFO) = 
-				((Word *) TypeInfo_for_T)[arg_pseudo_type_info];
-		}
-		else {
-			field(0, Argument, UNIV_OFFSET_FOR_TYPEINFO) = 
-				arg_pseudo_type_info;
-		}
-		field(0, Argument, UNIV_OFFSET_FOR_DATA) = 
-			info.argument_vector[ArgumentIndex];
+		/* Allocate enough room for a univ */
+		incr_hp(ArgumentUniv, 2);
+		field(0, ArgumentUniv, UNIV_OFFSET_FOR_TYPEINFO) =
+			arg_type_info;
+		field(0, ArgumentUniv, UNIV_OFFSET_FOR_DATA) = *argument_ptr;
 	}
-
-	/* Free the allocated type_info_vector, since we just copied
-	 * the argument we want onto the heap. 
-	 */
-
-	free(info.type_info_vector);
 
 	SUCCESS_INDICATOR = success;
 
 }").
+
+det_arg(Type, ArgumentIndex) = Argument :-
+	(
+		arg(Type, ArgumentIndex) = Argument0
+	->
+		Argument = Argument0
+	;
+		( argument(Type, ArgumentIndex) = _ArgumentUniv ->
+			error("det_arg: argument number out of range")
+		;
+			error("det_arg: argument had wrong type")
+		)
+	).
 
 det_argument(Type, ArgumentIndex) = Argument :-
 	(
@@ -2646,7 +2720,7 @@ det_argument(Type, ArgumentIndex) = Argument :-
 		error("det_argument: argument out of range")
 	).
 
-:- pragma c_code(deconstruct(Type::in, Functor::out, Arity::out, 
+:- pragma c_code(deconstruct(Term::in, Functor::out, Arity::out, 
 		Arguments::out), will_not_call_mercury, " 
 {
 	ML_Expand_Info info;
@@ -2659,7 +2733,7 @@ det_argument(Type, ArgumentIndex) = Argument :-
 
 	save_transient_registers();
 
-	ML_expand((Word *) TypeInfo_for_T, Type, &info);
+	ML_expand((Word *) TypeInfo_for_T, &Term, &info);
 	
 	restore_transient_registers();
 
