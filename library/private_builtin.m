@@ -1106,16 +1106,11 @@ gc_trace(_::in) :-
 % default (Mercury) implementation for free_heap/1
 % This should be overridden by the appropriate foreign language implementation.
 free_heap(_::di) :-
-	error("private_builtin__free_heap/1").
+	sorry("private_builtin__free_heap/1").
 
 :- pragma foreign_proc("C", free_heap(Val::di),
 	[will_not_call_mercury, promise_pure, thread_safe],
 	"MR_free_heap((void *) Val);").
-
-:- pragma foreign_proc("MC++", free_heap(_Val::di),
-	[will_not_call_mercury, promise_pure, thread_safe], "
-	mercury::runtime::Errors::SORRY(""foreign code for free_heap/1"");
-").
 
 % default (Mercury) implementations for mark_hp/1 and restore_hp/1.
 % This should be overridden by the appropriate foreign language implementation.
