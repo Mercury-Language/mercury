@@ -2286,16 +2286,10 @@ mercury_compile__single_c_to_obj(C_File, O_File, Succeeded) -->
 	;
 		SubDirInclOpt = ""
 	},
-	globals__io_lookup_string_option(c_include_directory, C_INCL),
-	{ C_INCL = "" ->
-		InclOpt = ""
-	;
-		string__append_list(["-I", C_INCL, " "], InclOpt)
-	},
 	globals__io_lookup_accumulating_option(c_include_directory,
-		C_Incl_Dirs),
+	 	C_Incl_Dirs),
 	{ InclOpt = string__append_list(list__condense(list__map(
-		(func(C_INCL) = ["-I", C_INCL, " "]), C_Incl_Dirs))) },
+	 	(func(C_INCL) = ["-I", C_INCL, " "]), C_Incl_Dirs))) },
 	globals__io_lookup_bool_option(split_c_files, Split_C_Files),
 	{ Split_C_Files = yes ->
 		SplitOpt = "-DSPLIT_C_FILES "
