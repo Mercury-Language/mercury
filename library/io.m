@@ -2125,11 +2125,12 @@ io__file_modification_time_2(_, _, _, _) -->
 	io__alloc_buffer(Size::in, Buffer::buffer_uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "{
-	MR_maybe_record_allocation(
+	MR_Word buf;
+	MR_incr_hp_atomic_msg(buf,
 		(Size * sizeof(MR_Char) + sizeof(MR_Word) - 1)
 			/ sizeof(MR_Word),
 		MR_PROC_LABEL, ""io:buffer/0"");
-	Buffer = MR_GC_NEW_ARRAY(MR_Char, Size);
+	Buffer = (MR_Char *) buf;
 }").
 
 io__alloc_buffer(Size, buffer(Array)) :-
@@ -2144,37 +2145,36 @@ io__alloc_buffer(Size, buffer(Array)) :-
 		NewSize::in, Buffer::buffer_uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "{
-	MR_Char *buffer0 = (MR_Char *) Buffer0;
-	MR_Char *buffer;
+	MR_CHECK_EXPR_TYPE(Buffer0, MR_Char *);
+	MR_CHECK_EXPR_TYPE(Buffer, MR_Char *);
 
 #ifdef MR_CONSERVATIVE_GC
-	buffer = GC_REALLOC(buffer0, NewSize * sizeof(MR_Char));
+	Buffer = MR_GC_realloc(Buffer0, NewSize * sizeof(MR_Char));
 #else
-	if (buffer0 + OldSize == (MR_Char *) MR_hp) {
+	if (Buffer0 + OldSize == (MR_Char *) MR_hp) {
 		MR_Word next;
 		MR_incr_hp_atomic_msg(next, 
 		   (NewSize * sizeof(MR_Char) + sizeof(MR_Word) - 1)
 		   	/ sizeof(MR_Word),
 		   MR_PROC_LABEL,
 		   ""io:buffer/0"");
-		assert(buffer0 + OldSize == (MR_Char *) next);
-	    	buffer = buffer0;
+		assert(Buffer0 + OldSize == (MR_Char *) next);
+	    	Buffer = Buffer0;
 	} else {
 		/* just have to alloc and copy */
-		MR_incr_hp_atomic_msg(Buffer,
+		MR_Word buf;
+		MR_incr_hp_atomic_msg(buf,
 		   (NewSize * sizeof(MR_Char) + sizeof(MR_Word) - 1)
 		   	/ sizeof(MR_Word),
 		   MR_PROC_LABEL, ""io:buffer/0"");
-		buffer = (MR_Char *) Buffer;
+		Buffer = (MR_Char *) buf;
 		if (OldSize > NewSize) {
-			memcpy(buffer, buffer0, NewSize);
+			memcpy(Buffer, Buffer0, NewSize);
 		} else {
-			memcpy(buffer, buffer0, OldSize);
+			memcpy(Buffer, Buffer0, OldSize);
 		}
 	}
 #endif
-
-	Buffer = buffer;
 }").
 
 io__resize_buffer(buffer(Array0), _OldSize, NewSize, buffer(Array)) :-
@@ -2187,7 +2187,7 @@ io__resize_buffer(buffer(Array0), _OldSize, NewSize, buffer(Array)) :-
 	io__buffer_to_string(Buffer::buffer_di, Len::in, Str::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "{
-	Str = (MR_String) Buffer;
+	Str = Buffer;
 	Str[Len] = '\\0';
 }").
 
@@ -2199,7 +2199,7 @@ io__buffer_to_string(buffer(Array), Len, from_char_list(List)) :-
 	io__buffer_to_string(Buffer::buffer_di, Str::uo),
 	[will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "{
-	Str = (MR_String) Buffer;
+	Str = Buffer;
 }").
 
 io__buffer_to_string(buffer(Array), from_char_list(List)) :-
@@ -2216,12 +2216,14 @@ io__buffer_to_string(buffer(Array), from_char_list(List)) :-
 			thread_safe],
 "{
 	MercuryFile *f = (MercuryFile *) Stream;
-	char *buffer = (MR_Char *) Buffer0;
 	int items_read;
 
-	items_read = MR_READ(*f, buffer + Pos0, Size - Pos0);
+	MR_CHECK_EXPR_TYPE(Buffer0, MR_Char *);
+	MR_CHECK_EXPR_TYPE(Buffer, MR_Char *);
 
-	Buffer = buffer;
+	items_read = MR_READ(*f, Buffer0 + Pos0, Size - Pos0);
+
+	Buffer = Buffer0;
 	Pos = Pos0 + items_read;
 	MR_update_io(IO0, IO);
 }").
