@@ -57,15 +57,25 @@ wrap_instrs([Instr0 | Instrs0], R0, F0, RevSofar, Instrs) :-
 	Instr0 = Uinstr0 - _Comment0,
 	opt_util__count_temps_instr(Uinstr0, R0, R1, F0, F1),
 	( ( R1 > 0 ; F1 > 0) ->
-		( opt_util__can_instr_fall_through(Uinstr0, no) ->
-			list__reverse([Instr0 | RevSofar], BlockInstrs),
-			wrap_instrs(Instrs0, 0, 0, [], Instrs1),
-			Instrs = [block(R1, F1, BlockInstrs) - "" | Instrs1]
-		; Uinstr0 = label(_) ->
+		% We must close the block before a label, since you can jump
+		% to a label from other blocks.
+		%
+		% Call instructions cannot fall through, but they cannot refer
+		% to the temp variables declared by the block either, so we
+		% close the block either just before or just after the call
+		% instruction. We close the block before the call instruction,
+		% because including it in the block causes the test case
+		% debugger/all_solutions to fail.
+
+		( ( Uinstr0 = label(_) ; Uinstr0 = call(_, _, _, _, _, _) ) ->
 			list__reverse(RevSofar, BlockInstrs),
 			wrap_instrs(Instrs0, 0, 0, [], Instrs1),
 			Instrs = [block(R1, F1, BlockInstrs) - "", Instr0
 				| Instrs1]
+		; opt_util__can_instr_fall_through(Uinstr0, no) ->
+			list__reverse([Instr0 | RevSofar], BlockInstrs),
+			wrap_instrs(Instrs0, 0, 0, [], Instrs1),
+			Instrs = [block(R1, F1, BlockInstrs) - "" | Instrs1]
 		;
 			wrap_instrs(Instrs0, R1, F1,
 				[Instr0 | RevSofar], Instrs)
