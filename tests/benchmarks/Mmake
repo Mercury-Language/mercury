@@ -15,6 +15,7 @@ include ../Mmake
 
 PROGS=	cqueens crypt deriv deriv2 nrev poly primes qsort queens \
 	tak query
+
 DEPENDS=$(PROGS:%=%.depend)
 DEPS=	$(PROGS:%=%.dep)
 OUTS=	$(PROGS:%=%.out)
@@ -23,23 +24,28 @@ RESS=	$(PROGS:%=%.res)
 SS=	$(PROGS:%=%.s)
 CS=	$(PROGS:%=%.c)
 
-dep: $(DEPS)
+dep:	$(DEPS)
 
-depend: $(DEPENDS)
+depend:	$(DEPENDS)
 
-check: $(EXPS) $(OUTS) $(RESS)
+exp:	$(EXPS)
 
-outs: $(OUTS)
+check:	$(OUTS) $(RESS)
 
-cs: $(CS)
+outs:	$(OUTS)
 
-ss: $(SS)
+cs:	$(CS)
 
-all: $(PROGS)
+ss:	$(SS)
 
-dir.%: $(PROGS) $(SS)
+all:	$(PROGS)
+
+dir.%:	$(PROGS) $(SS)
 	-mkdir $@
 	cp $(PROGS) $(SS) $@
 	cp BenchEntry $@
+
+clean:
+	rm -f *.c *.o *.err2 *.d *.dep *.nu *.nu.save
 
 #-----------------------------------------------------------------------------#
