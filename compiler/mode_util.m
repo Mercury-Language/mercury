@@ -42,8 +42,17 @@
 ** all of these predicates except inst_is_clobbered.
 */
 
+	% succeed if the inst is fully ground (i.e. contains only
+	% `ground', `bound', and `not_reached' insts, with no `free'
+	% or `any' insts).
 :- pred inst_is_ground(module_info, inst).
 :- mode inst_is_ground(in, in) is semidet.
+
+	% succeed if the inst is not partly free (i.e. contains only
+	% `any', `ground', `bound', and `not_reached' insts, with no
+	% `free' insts).
+:- pred inst_is_ground_or_any(module_info, inst).
+:- mode inst_is_ground_or_any(in, in) is semidet.
 
 	% succeed if the inst is `mostly_unique' or `unique'
 :- pred inst_is_mostly_unique(module_info, inst).
@@ -53,7 +62,7 @@
 :- pred inst_is_unique(module_info, inst).
 :- mode inst_is_unique(in, in) is semidet.
 
-	% succeed if the inst is not `mostly_unique' or unique'
+	% succeed if the inst is not `mostly_unique' or `unique'
 :- pred inst_is_not_partly_unique(module_info, inst).
 :- mode inst_is_not_partly_unique(in, in) is semidet.
 
@@ -66,6 +75,9 @@
 
 :- pred inst_list_is_ground(list(inst), module_info).
 :- mode inst_list_is_ground(in, in) is semidet.
+
+:- pred inst_list_is_ground_or_any(list(inst), module_info).
+:- mode inst_list_is_ground_or_any(in, in) is semidet.
 
 :- pred inst_list_is_unique(list(inst), module_info).
 :- mode inst_list_is_unique(in, in) is semidet.
@@ -81,6 +93,9 @@
 
 :- pred bound_inst_list_is_ground(list(bound_inst), module_info).
 :- mode bound_inst_list_is_ground(in, in) is semidet.
+
+:- pred bound_inst_list_is_ground_or_any(list(bound_inst), module_info).
+:- mode bound_inst_list_is_ground_or_any(in, in) is semidet.
 
 :- pred bound_inst_list_is_unique(list(bound_inst), module_info).
 :- mode bound_inst_list_is_unique(in, in) is semidet.
@@ -400,6 +415,39 @@ inst_is_ground_2(ModuleInfo, defined_inst(InstName), Inst, Expansions) :-
 		inst_is_ground_2(ModuleInfo, Inst2, Inst2, Expansions2)
 	).
 
+	% inst_is_ground_or_any succeeds iff the inst passed is `ground',
+	% `any', or the equivalent.  Fails for abstract insts.
+
+inst_is_ground_or_any(ModuleInfo, Inst) :-
+	set__init(Expansions),
+	inst_is_ground_or_any_2(ModuleInfo, Inst, Inst, Expansions).
+
+	% The third argument must be the same as the second.
+	% The fourth arg is the set of insts which have already
+	% been expanded - we use this to avoid going into an
+	% infinite loop.
+
+:- pred inst_is_ground_or_any_2(module_info, inst, inst, set(inst)).
+:- mode inst_is_ground_or_any_2(in, in, in, in) is semidet.
+
+:- inst_is_ground_or_any_2(_, X, _, _) when X.		% NU-Prolog indexing.
+
+inst_is_ground_or_any_2(_, not_reached, _, _).
+inst_is_ground_or_any_2(ModuleInfo, bound(_, List), _, Expansions) :-
+	bound_inst_list_is_ground_or_any_2(List, ModuleInfo, Expansions).
+inst_is_ground_or_any_2(_, ground(_, _), _, _).
+inst_is_ground_or_any_2(_, any(_), _, _).
+inst_is_ground_or_any_2(_, inst_var(_), _, _) :-
+	error("internal error: uninstantiated inst parameter").
+inst_is_ground_or_any_2(ModuleInfo, defined_inst(InstName), Inst, Expansions) :-
+	( set__member(Inst, Expansions) ->
+		true
+	;
+		set__insert(Expansions, Inst, Expansions2),
+		inst_lookup(ModuleInfo, InstName, Inst2),
+		inst_is_ground_or_any_2(ModuleInfo, Inst2, Inst2, Expansions2)
+	).
+
 	% inst_is_unique succeeds iff the inst passed is unique
 	% or free.  Abstract insts are not considered unique.
 
@@ -560,6 +608,12 @@ bound_inst_list_is_ground([functor(_Name, Args)|BoundInsts], ModuleInfo) :-
 	inst_list_is_ground(Args, ModuleInfo),
 	bound_inst_list_is_ground(BoundInsts, ModuleInfo).
 
+bound_inst_list_is_ground_or_any([], _).
+bound_inst_list_is_ground_or_any([functor(_Name, Args)|BoundInsts],
+		ModuleInfo) :-
+	inst_list_is_ground_or_any(Args, ModuleInfo),
+	bound_inst_list_is_ground_or_any(BoundInsts, ModuleInfo).
+
 bound_inst_list_is_unique([], _).
 bound_inst_list_is_unique([functor(_Name, Args)|BoundInsts], ModuleInfo) :-
 	inst_list_is_unique(Args, ModuleInfo),
@@ -593,6 +647,15 @@ bound_inst_list_is_ground_2([functor(_Name, Args)|BoundInsts], ModuleInfo,
 		Expansions) :-
 	inst_list_is_ground_2(Args, ModuleInfo, Expansions),
 	bound_inst_list_is_ground_2(BoundInsts, ModuleInfo, Expansions).
+
+:- pred bound_inst_list_is_ground_or_any_2(list(bound_inst), module_info, set(inst)).
+:- mode bound_inst_list_is_ground_or_any_2(in, in, in) is semidet.
+
+bound_inst_list_is_ground_or_any_2([], _, _).
+bound_inst_list_is_ground_or_any_2([functor(_Name, Args)|BoundInsts],
+		ModuleInfo, Expansions) :-
+	inst_list_is_ground_or_any_2(Args, ModuleInfo, Expansions),
+	bound_inst_list_is_ground_or_any_2(BoundInsts, ModuleInfo, Expansions).
 
 :- pred bound_inst_list_is_unique_2(list(bound_inst), module_info, set(inst)).
 :- mode bound_inst_list_is_unique_2(in, in, in) is semidet.
@@ -642,6 +705,11 @@ inst_list_is_ground([Inst | Insts], ModuleInfo) :-
 	inst_is_ground(ModuleInfo, Inst),
 	inst_list_is_ground(Insts, ModuleInfo).
 
+inst_list_is_ground_or_any([], _).
+inst_list_is_ground_or_any([Inst | Insts], ModuleInfo) :-
+	inst_is_ground_or_any(ModuleInfo, Inst),
+	inst_list_is_ground_or_any(Insts, ModuleInfo).
+
 inst_list_is_unique([], _).
 inst_list_is_unique([Inst | Insts], ModuleInfo) :-
 	inst_is_unique(ModuleInfo, Inst),
@@ -671,6 +739,14 @@ inst_list_is_ground_2([], _, _).
 inst_list_is_ground_2([Inst | Insts], ModuleInfo, Expansions) :-
 	inst_is_ground_2(ModuleInfo, Inst, Inst, Expansions),
 	inst_list_is_ground_2(Insts, ModuleInfo, Expansions).
+
+:- pred inst_list_is_ground_or_any_2(list(inst), module_info, set(inst)).
+:- mode inst_list_is_ground_or_any_2(in, in, in) is semidet.
+
+inst_list_is_ground_or_any_2([], _, _).
+inst_list_is_ground_or_any_2([Inst | Insts], ModuleInfo, Expansions) :-
+	inst_is_ground_or_any_2(ModuleInfo, Inst, Inst, Expansions),
+	inst_list_is_ground_or_any_2(Insts, ModuleInfo, Expansions).
 
 :- pred inst_list_is_unique_2(list(inst), module_info, set(inst)).
 :- mode inst_list_is_unique_2(in, in, in) is semidet.
@@ -1393,7 +1469,7 @@ strip_builtin_qualifiers_from_mode_list(Modes0, Modes) :-
 
 :- pred strip_builtin_qualifiers_from_mode((mode)::in, (mode)::out) is det.
 
-strip_builtin_qualifiers_from_mode(Initial0 -> Final0, Initial -> Final) :-
+strip_builtin_qualifiers_from_mode((Initial0 -> Final0), (Initial -> Final)) :-
 	strip_builtin_qualifiers_from_inst(Initial0, Initial),
 	strip_builtin_qualifiers_from_inst(Final0, Final).
 

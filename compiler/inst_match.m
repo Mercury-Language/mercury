@@ -939,7 +939,8 @@ abstractly_unify_inst_3(live, free, any(UniqY), Real, M,
 abstractly_unify_inst_3(live, free,	bound(UniqY, List0), Real, M0,
 					bound(Uniq, List), det, M) :-
 	unify_uniq(live, Real, unique, UniqY, Uniq),
-	bound_inst_list_is_ground(List0, M),
+		% since both are live, we must disallow free-free unifications
+	bound_inst_list_is_ground_or_any(List0, M),
 	( ( Uniq = unique ; Uniq = mostly_unique ) ->
 		make_shared_bound_inst_list(List0, M0, List, M)
 	;
@@ -955,7 +956,8 @@ abstractly_unify_inst_3(live, free,	ground(UniqY, PredInst), Real, M,
 abstractly_unify_inst_3(live,		bound(UniqY, List0), free, Real, M0,
 					bound(Uniq, List), det,	 M) :-
 	unify_uniq(live, Real, unique, UniqY, Uniq),
-	bound_inst_list_is_ground(List0, M0),
+		% since both are live, we must disallow free-free unifications
+	bound_inst_list_is_ground_or_any(List0, M0),
 	make_shared_bound_inst_list(List0, M0, List, M).
 
 abstractly_unify_inst_3(live, bound(UniqX, ListX), bound(UniqY, ListY), Real,
@@ -1250,7 +1252,7 @@ abstractly_unify_inst_functor_2(live, not_reached, _, _, _, _, M,
 abstractly_unify_inst_functor_2(live, free, ConsId, Args0, ArgLives, _Real,
 			ModuleInfo0,
 			bound(unique, [functor(ConsId, Args)]), ModuleInfo) :-
-	inst_list_is_ground_or_dead(Args0, ArgLives, ModuleInfo0),
+	inst_list_is_ground_or_any_or_dead(Args0, ArgLives, ModuleInfo0),
 	maybe_make_shared_inst_list(Args0, ArgLives, ModuleInfo0,
 			Args, ModuleInfo).
 
@@ -1450,10 +1452,14 @@ make_shared_inst_list([Inst0 | Insts0], ModuleInfo0,
 :- mode make_shared_inst(in, in, out, out) is det.
 
 make_shared_inst(not_reached, M, not_reached, M).
-make_shared_inst(any(Uniq0), M, ground(Uniq, no), M) :-
+make_shared_inst(any(Uniq0), M, any(Uniq), M) :-
 	make_shared(Uniq0, Uniq).
-make_shared_inst(free, M, free, M).
-make_shared_inst(free(T), M, free(T), M).
+make_shared_inst(free, M, free, M) :-
+	% the caller should ensure that this never happens
+	error("make_shared_inst: cannot make shared version of `free'").
+make_shared_inst(free(T), M, free(T), M) :-
+	% the caller should ensure that this never happens
+	error("make_shared_inst: cannot make shared version of `free(T)'").
 make_shared_inst(bound(Uniq0, BoundInsts0), M0, bound(Uniq, BoundInsts), M) :-
 	make_shared(Uniq0, Uniq),
 	make_shared_bound_inst_list(BoundInsts0, M0, BoundInsts, M).
@@ -1652,6 +1658,25 @@ inst_list_is_ground_or_dead([Inst | Insts], [Live | Lives], ModuleInfo) :-
 		true
 	),
 	inst_list_is_ground_or_dead(Insts, Lives, ModuleInfo).
+
+	% Given a list of insts, and a corresponding list of livenesses,
+	% return true iff for every element in the list of insts, either
+	% the elemement is ground or any, or the corresponding element
+	% in the liveness list is dead.
+
+:- pred inst_list_is_ground_or_any_or_dead(list(inst), list(is_live),
+					module_info).
+:- mode inst_list_is_ground_or_any_or_dead(in, in, in) is semidet.
+
+inst_list_is_ground_or_any_or_dead([], [], _).
+inst_list_is_ground_or_any_or_dead([Inst | Insts], [Live | Lives],
+		ModuleInfo) :-
+	( Live = live ->
+		inst_is_ground_or_any(ModuleInfo, Inst)
+	;
+		true
+	),
+	inst_list_is_ground_or_any_or_dead(Insts, Lives, ModuleInfo).
 
 %-----------------------------------------------------------------------------%
 
