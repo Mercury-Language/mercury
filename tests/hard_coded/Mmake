@@ -17,15 +17,11 @@ PROGS=	qual_basic_test qual_basic_test2 qual_is_test qual_adv_test \
 
 #-----------------------------------------------------------------------------#
 
-# we need to pass `--infer-all' when compiling func_test.m
-func_test.c: func_test.m
-	$(MCG) --grade $(GRADE) $(MCGFLAGS) --infer-all func_test.m \
-		> func_test.err 2>&1
+# some tests need to be compiled with particular options
 
-# we need to pass `--no-fully-strict' when compiling no_fully_strict.m
-no_fully_strict.c: no_fully_strict.m
-	$(MCG) --grade $(GRADE) $(MCGFLAGS) --no-fully-strict \
-		no_fully_strict.m > no_fully_strict.err 2>&1
+MCFLAGS			=	$(MCFLAGS-$*) $(EXTRA_MCFLAGS)
+MCFLAGS-func_test	=	--infer-all
+MCFLAGS-no_fully_strict	=	--no-fully-strict
 
 # no_fully_strict is expected to fail (it calls error/1)
 # so we need to ignore the exit status (hence the leading `-')
