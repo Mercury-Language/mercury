@@ -295,10 +295,14 @@ vn_cost__rval_cost(Rval, Params, Cost) :-
 		Rval = const(_),
 		Cost = 0
 	;
-		Rval = unop(_, Rval1),
+		Rval = unop(Unop, Rval1),
 		vn_cost__rval_cost(Rval1, Params, RvalCost),
-		vn_type__costof_intops(Params, OpsCost),
-		Cost is RvalCost + OpsCost
+		( vn_cost__zero_cost_unop(Unop) ->
+			Cost is RvalCost
+		;
+			vn_type__costof_intops(Params, OpsCost),
+			Cost is RvalCost + OpsCost
+		)
 	;
 		Rval = binop(_, Rval1, Rval2),
 		vn_cost__rval_cost(Rval1, Params, RvalCost1),
@@ -327,6 +331,9 @@ vn_cost__mem_ref_cost(MemRef, Params, Cost) :-
 		Cost is RvalCost + OpsCost
 	).
 
+% The instructions implementing these unary operations
+% can include an assignment with no extra cost.
+
 :- pred vn_cost__assign_cost_unop(unary_op).
 :- mode vn_cost__assign_cost_unop(in) is semidet.
 
@@ -337,6 +344,9 @@ vn_cost__assign_cost_unop(mkbody).
 vn_cost__assign_cost_unop(body).
 vn_cost__assign_cost_unop(unmkbody).
 vn_cost__assign_cost_unop(bitwise_complement).
+
+% The instructions implementing these binary operations
+% can include an assignment with no extra cost.
 
 :- pred vn_cost__assign_cost_binop(binary_op).
 :- mode vn_cost__assign_cost_binop(in) is semidet.
@@ -352,6 +362,13 @@ vn_cost__assign_cost_binop(&).
 vn_cost__assign_cost_binop('|').
 vn_cost__assign_cost_binop(and).
 vn_cost__assign_cost_binop(or).
+
+% These unary operations cost zero instructions.
+
+:- pred vn_cost__zero_cost_unop(unary_op).
+:- mode vn_cost__zero_cost_unop(in) is semidet.
+
+vn_cost__zero_cost_unop(cast_to_unsigned).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
