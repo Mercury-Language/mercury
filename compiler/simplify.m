@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1999 The University of Melbourne.
+% Copyright (C) 1996-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -927,7 +927,15 @@ simplify__goal_2(if_then_else(Vars, Cond0, Then0, Else0, SM),
 	; CondSolns0 = at_most_zero ->
 		% Optimize away the condition and the `then' part.
 		det_negation_det(CondDetism0, MaybeNegDetism),
-		( Cond0 = not(NegCond) - _ ->
+		(
+			Cond0 = not(NegCond) - _,
+			% XXX BUG! This optimization is only safe if it
+			% preserves mode correctness, which means in particular
+			% that the the negated goal must not clobber any
+			% variables.
+			% For now I've just disabled the optimization.
+			semidet_fail
+		->
 			Cond = NegCond
 		;
 			(
@@ -1050,7 +1058,12 @@ simplify__goal_2(not(Goal0), GoalInfo0, Goal, GoalInfo, Info0, Info) :-
 		Info = Info3
 	;
 		% remove double negation
-		Goal1 = not(SubGoal - SubGoalInfo) - _
+		Goal1 = not(SubGoal - SubGoalInfo) - _,
+		% XXX BUG! This optimization is only safe if it preserves
+		% mode correctness, which means in particular that the
+		% the negated goal must not clobber any variables.
+		% For now I've just disabled the optimization.
+		semidet_fail
 	->
 		simplify__maybe_wrap_goal(GoalInfo0, SubGoalInfo, SubGoal,
 			Goal, GoalInfo, Info3, Info)
