@@ -71,6 +71,11 @@ module system
   (currently we get this right for predicates, constants, and functors,
   but wrong for types, insts, and modes).
 
+- produce warnings for imports that are not needed
+
+- produce warnings for imports that are in the wrong place
+  (in the interface instead of the implementation, and vice versa)
+
 C interface
 -----------
 
