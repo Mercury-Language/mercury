@@ -807,29 +807,29 @@ struct MR_TypeCtorInfo_Struct {
 
 #ifndef MR_STATIC_CODE_ADDRESSES
 
-  #define MR_MAYBE_STATIC_CODE(X)   ((Integer) 0)
+  #define MR_MAYBE_STATIC_CODE(X)   NULL
 
   #define MR_STATIC_CODE_CONST
 
-  #define   MR_INIT_BUILTIN_TYPE_CTOR_INFO(B, T)            \
-  do {                                                      \
-    B->unify_pred = mercury__builtin_unify##T##2_0;         \
-    B->index_pred = mercury__builtin_index##T##2_0;         \
-    B->compare_pred = mercury__builtin_compare##T##3_0;     \
+  #define   MR_INIT_BUILTIN_TYPE_CTOR_INFO(B, T)            		\
+  do {                                                      		\
+    (B).unify_pred = ENTRY(mercury__builtin_unify##T##2_0);		\
+    (B).index_pred = ENTRY(mercury__builtin_index##T##2_0);		\
+    (B).compare_pred = ENTRY(mercury__builtin_compare##T##3_0);		\
   } while (0)
 
   #define   MR_INIT_TYPE_CTOR_INFO_WITH_PRED(B, P)          \
   do {                                                      \
-    B->unify_pred = P;                                      \
-    B->index_pred = P;                                      \
-    B->compare_pred = P;                                    \
+    (B).unify_pred = ENTRY(P);                              \
+    (B).index_pred = ENTRY(P);                              \
+    (B).compare_pred = ENTRY(P);                            \
   } while (0)
 
   #define   MR_INIT_TYPE_CTOR_INFO(B, T)                    \
   do {                                                      \
-    B->unify_pred = mercury____##Unify##___##T;             \
-    B->index_pred = mercury____##Index##___##T;             \
-    B->compare_pred = mercury____##Compare##___##T;         \
+    (B).unify_pred = ENTRY(mercury____##Unify##___##T);     \
+    (B).index_pred = ENTRY(mercury____##Index##___##T);     \
+    (B).compare_pred = ENTRY(mercury____##Compare##___##T); \
   } while (0)
 
 #else   /* MR_STATIC_CODE_ADDRESSES */

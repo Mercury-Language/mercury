@@ -217,18 +217,18 @@ output_rtti_data_defn(type_ctor_info(RttiTypeId, Unify, Index, Compare,
 	{ RttiTypeId = rtti_type_id(Module, Type, TypeArity) },
 	io__write_int(TypeArity),
 	io__write_string(",\n\t"),
-	output_maybe_code_addr(Unify),
+	output_maybe_static_code_addr(Unify),
 	io__write_string(",\n\t"),
-	output_maybe_code_addr(Index),
+	output_maybe_static_code_addr(Index),
 	io__write_string(",\n\t"),
-	output_maybe_code_addr(Compare),
+	output_maybe_static_code_addr(Compare),
 	io__write_string(",\n\t"),
 	{ rtti__type_ctor_rep_to_string(CtorRep, CtorRepStr) },
 	io__write_string(CtorRepStr),
 	io__write_string(",\n\t"),
-	output_maybe_code_addr(Solver),
+	output_maybe_static_code_addr(Solver),
 	io__write_string(",\n\t"),
-	output_maybe_code_addr(Init),
+	output_maybe_static_code_addr(Init),
 	io__write_string(",\n\t"""),
 	{ prog_out__sym_name_to_string(Module, ModuleName) },
 	c_util__output_quoted_string(ModuleName),
@@ -298,7 +298,7 @@ output_rtti_data_defn(type_ctor_info(RttiTypeId, Unify, Index, Compare,
 %		io__write_string("NULL")
 %	),
 %	io__write_string(",\n\t"),
-%	output_maybe_code_addr(Prettyprinter),
+%	output_maybe_static_code_addr(Prettyprinter),
 	io__write_string("\n};\n").
 
 :- pred output_functors_info_decl(rtti_type_id::in,
@@ -602,12 +602,14 @@ output_exist_locns(Locns) -->
 	io__write_list(Locns, ",\n\t", output_exist_locn),
 	io__write_string("\n").
 
-:- pred output_maybe_code_addr(maybe(code_addr)::in,
+:- pred output_maybe_static_code_addr(maybe(code_addr)::in,
 	io__state::di, io__state::uo) is det.
 
-output_maybe_code_addr(yes(CodeAddr)) -->
-	output_code_addr(CodeAddr).
-output_maybe_code_addr(no) -->
+output_maybe_static_code_addr(yes(CodeAddr)) -->
+	io__write_string("MR_MAYBE_STATIC_CODE("),
+	output_code_addr(CodeAddr),
+	io__write_string(")").
+output_maybe_static_code_addr(no) -->
 	io__write_string("NULL").
 
 :- pred rtti_name_would_include_code_addr(rtti_name::in, bool::out) is det.
