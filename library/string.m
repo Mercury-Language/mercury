@@ -1150,66 +1150,73 @@ specifier_to_string(conv(Flags, Width, Prec, Spec)) = String :-
 			% valid int conversion specifiers
 		Spec = d(Int),
 		String = format_int(
-				make_format(Flags, Width, Prec, "ld"), Int)
+				make_format(Flags, Width,
+					Prec, int_length_modifer, "d"), Int)
 	;
 		Spec = i(Int),
 		String = format_int(
-				make_format(Flags, Width, Prec, "li"), Int)
+				make_format(Flags, Width,
+					Prec, int_length_modifer, "i"), Int)
 	;
 		Spec = o(Int),
 		String = format_int(
-				make_format(Flags, Width, Prec, "lo"), Int)
+				make_format(Flags, Width,
+					Prec, int_length_modifer, "o"), Int)
 	;
 		Spec = u(Int),
 		String = format_int(
-				make_format(Flags, Width, Prec, "lu"), Int)
+				make_format(Flags, Width,
+					Prec, int_length_modifer, "u"), Int)
 	;
 		Spec = x(Int),
 		String = format_int(
-				make_format(Flags, Width, Prec, "lx"), Int)
+				make_format(Flags, Width,
+					Prec, int_length_modifer, "x"), Int)
 	;
 		Spec = cX(Int),
 		String = format_int(
-				make_format(Flags, Width, Prec, "lX"), Int)
+				make_format(Flags, Width,
+					Prec, int_length_modifer, "X"), Int)
 	;
 		Spec = p(Int),
 		String = format_int(
-				make_format(Flags, Width, Prec, "lp"), Int)
+				make_format(Flags, Width,
+					Prec, int_length_modifer, "p"), Int)
 	;
 			% valid float conversion specifiers
 		Spec = e(Float),
 		String = format_float(
-				make_format(Flags, Width, Prec, "Le"), Float)
+			make_format(Flags, Width, Prec, "L", "e"), Float)
 	;
 		Spec = cE(Float),
 		String = format_float(
-				make_format(Flags, Width, Prec, "LE"), Float)
+			make_format(Flags, Width, Prec, "L", "E"), Float)
 	;
 		Spec = f(Float),
 		String = format_float(
-				make_format(Flags, Width, Prec, "Lf"), Float)
+			make_format(Flags, Width, Prec, "L", "f"), Float)
 	;
 		Spec = cF(Float),
 		String = format_float(
-				make_format(Flags, Width, Prec, "LF"), Float)
+			make_format(Flags, Width, Prec, "L", "F"), Float)
 	;
 		Spec = g(Float),
 		String = format_float(
-				make_format(Flags, Width, Prec, "Lg"), Float)
+			make_format(Flags, Width, Prec, "L", "g"), Float)
 	;
 		Spec = cG(Float),
 		String = format_float(
-				make_format(Flags, Width, Prec, "LG"), Float)
+			make_format(Flags, Width, Prec, "L", "G"), Float)
 	;
 			% valid char conversion Specifiers
 		Spec = c(Char),
 		String = format_char(
-				make_format(Flags, Width, Prec, "c"), Char)
+				make_format(Flags, Width, Prec, "", "c"), Char)
 	;
 			% valid string conversion Spec = ifiers
 		Spec = s(Str),
 		String = format_string(
-				make_format(Flags, Width, Prec, "s"), Str)
+				make_format(Flags, Width, Prec, "", "s"), Str)
 	;
 			% conversion specifier representing the "%" sign
 		Spec = percent,
@@ -1219,9 +1226,9 @@ specifier_to_string(string(Chars)) = from_char_list(Chars).
 
 	% Construct a format string suitable to passing to sprintf.
 :- func make_format(list(char), maybe(list(char)),
-		maybe(list(char)), string) = string.
+		maybe(list(char)), string, string) = string.
 
-make_format(Flags, MaybeWidth, MaybePrec, Spec) = String :-
+make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
 	(
 		MaybeWidth = yes(Width)
 	;
@@ -1237,7 +1244,14 @@ make_format(Flags, MaybeWidth, MaybePrec, Spec) = String :-
 	),
 	String = string__append_list(["%", from_char_list(Flags),
 				from_char_list(Width),
-				from_char_list(Prec), Spec]).
+				from_char_list(Prec), LengthMod, Spec]).
+
+:- func int_length_modifer = string.
+:- pragma c_code(int_length_modifer = (LengthModifier::out),
+		[will_not_call_mercury, thread_safe], "{
+	MR_make_aligned_string(LengthModifier, MR_INTEGER_LENGTH_MODIFIER);
+}").
+
 
 	% Create a string from a float using the format string.
 	% Note is is the responsibility of the caller to ensure that the
@@ -1254,13 +1268,7 @@ make_format(Flags, MaybeWidth, MaybePrec, Spec) = String :-
 :- func format_int(string, int) = string.
 :- pragma c_code(format_int(FormatStr::in, Val::in) = (Str::out),
 		[will_not_call_mercury, thread_safe], "{
-		/*
-		** XXX this cast to long may not be sufficient.
-		** For example on Win64 MR_Integer may be 64 bits and long
-		** only 32 bits.  However not all systems support long
-		** long, so this will have to do for the moment.
-		*/
-	Str = MR_make_string(MR_PROC_LABEL, FormatStr, (long) Val);
+	Str = MR_make_string(MR_PROC_LABEL, FormatStr, Val);
 }").
 
 	% Create a string from a string using the format string.

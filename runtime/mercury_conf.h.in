@@ -45,6 +45,11 @@
 */
 #undef	MR_WORD_TYPE
 
+/* 
+** MR_INTEGER_LENGTH_MODIFIER: the printf() length modifier for a MR_Integer.
+*/
+#undef MR_INTEGER_LENGTH_MODIFIER
+
 /*
 ** MR_INT_LEAST64_TYPE:
 ** This must be a C integral type (e.g. int, long, long long)

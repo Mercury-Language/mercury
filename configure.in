@@ -836,6 +836,21 @@ AC_MSG_RESULT($mercury_cv_word_type)
 AC_DEFINE_UNQUOTED(MR_WORD_TYPE, $mercury_cv_word_type)
 MR_WORD_TYPE=$mercury_cv_word_type
 AC_SUBST(MR_WORD_TYPE)
+
+AC_DEFINE_UNQUOTED(MR_INT_LEAST16_TYPE, $mercury_cv_int_least16_type)
+MR_INT_LEAST16_TYPE=$mercury_cv_int_least16_type
+
+if test "$mercury_cv_word_type" = int; then
+	AC_DEFINE_UNQUOTED(MR_INTEGER_LENGTH_MODIFIER, "")
+elif test "$mercury_cv_word_type" = long; then
+	AC_DEFINE_UNQUOTED(MR_INTEGER_LENGTH_MODIFIER, "l")
+elif test "$mercury_cv_word_type" = "long long"; then
+	AC_DEFINE_UNQUOTED(MR_INTEGER_LENGTH_MODIFIER, "ll")
+else
+	AC_MSG_ERROR("Cannot determine the length modifier for the MR_Integer type.")
+fi
+AC_SUBST(MR_INTEGER_LENGTH_MODIFIER)
+
 #-----------------------------------------------------------------------------#
 AC_MSG_CHECKING(for an integer type of at least 64 bits)
 AC_CACHE_VAL(mercury_cv_int_least64_type,
