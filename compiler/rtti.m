@@ -851,9 +851,17 @@ rtti__addr_to_string(RttiTypeCtor, RttiName, Str) :-
 	string::out, string::out, string::out) is det.
 
 rtti__mangle_rtti_type_ctor(RttiTypeCtor, ModuleName, TypeName, ArityStr) :-
-	RttiTypeCtor = rtti_type_ctor(ModuleName0, TypeName0, TypeArity),
-	llds_out__sym_name_mangle(ModuleName0, ModuleName),
-	llds_out__name_mangle(TypeName0, TypeName),
+	RttiTypeCtor = rtti_type_ctor(ModuleNameSym0, TypeName0, TypeArity),
+	% This predicate will be invoked only at stages of compilation
+	% that are after everything has been module qualified. The only
+	% things with an empty module name should be the builtins,
+	( ModuleNameSym0 = unqualified("") ->
+		mercury_public_builtin_module(ModuleNameSym)
+	;
+		ModuleNameSym = ModuleNameSym0
+	),
+	sym_name_mangle(ModuleNameSym, ModuleName),
+	name_mangle(TypeName0, TypeName),
 	string__int_to_string(TypeArity, ArityStr).
 
 %-----------------------------------------------------------------------------%
