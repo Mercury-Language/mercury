@@ -98,38 +98,38 @@ main_target: $(MAIN_TARGET)
 
 .m.c:
 	rm -f $*.c
-	$(MCG) -s $(GRADE) $(MCGFLAGS) $< > $*.err2 2>&1
+	$(MCG) --grade $(GRADE) $(MCGFLAGS) $< > $*.err2 2>&1
 
-# the next rule should be needed only in runtime in a short while
+# the next rule is need only for a few files in the `runtime' directory
 
 .mod.c:
-	[ -f $< ] && $(MOD2C) -s$(GRADE) $(MOD2CFLAGS) $< > $@
+	[ -f $< ] && $(MOD2C) -s $(GRADE) $(MOD2CFLAGS) $< > $@
 
 .c.o:
-	$(MGNUC) -s$(GRADE) $(MGNUCFLAGS) -c $< -o $@
+	$(MGNUC) --grade $(GRADE) $(MGNUCFLAGS) -c $< -o $@
 
 # .c.pic_o:
-# 	$(MGNUC) -s$(GRADE) $(MGNUCFLAGS) $(CFLAGS_FOR_PIC) -c $< -o $@
+# 	$(MGNUC) --grade $(GRADE) $(MGNUCFLAGS) $(CFLAGS_FOR_PIC) -c $< -o $@
 
 .c.s:
-	$(MGNUC) -s$(GRADE) $(MGNUCFLAGS) -S $< -o $@
+	$(MGNUC) --grade $(GRADE) $(MGNUCFLAGS) -S $< -o $@
 
 .c.i:
-	$(MGNUC) -s$(GRADE) $(MGNUCFLAGS) -E $< > $@
+	$(MGNUC) --grade $(GRADE) $(MGNUCFLAGS) -E $< > $@
 
 .m.o:
 	$(MMAKE_MAKE_CMD) $(MAKEOVERRIDES) $*.c
-	$(MGNUC) -s$(GRADE) $(MGNUCFLAGS) -c $*.c -o $@
+	$(MGNUC) --grade $(GRADE) $(MGNUCFLAGS) -c $*.c -o $@
 	$(RM_C) $*.c
 
 .o.pic_o:
 	$(MMAKE_MAKE_CMD) $(MAKEOVERRIDES) $*.c
-	$(MGNUC) -s$(GRADE) $(MGNUCFLAGS) $(CFLAGS_FOR_PIC) -c $*.c -o $@
+	$(MGNUC) --grade $(GRADE) $(MGNUCFLAGS) $(CFLAGS_FOR_PIC) -c $*.c -o $@
 	$(RM_C) $*.c
 
 %.dir/*.o: %.m
 	rm -f $@
-	$(MCS) -s$(GRADE) $(MCSFLAGS) $<
+	$(MCS) --grade $(GRADE) $(MCSFLAGS) $<
 
 #-----------------------------------------------------------------------------#
 
@@ -137,6 +137,10 @@ main_target: $(MAIN_TARGET)
 
 .PHONY: clean realclean clean_nu clean_sicstus
 
-realclean: clean
+realclean: clean clean_prof_files
+
+clean_prof_files:
+	-rm -f Prof.CallPair Prof.Counts Prof.Decl
+	-rm -f *.prof
 
 #-----------------------------------------------------------------------------#
