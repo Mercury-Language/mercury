@@ -1,14 +1,17 @@
 #-----------------------------------------------------------------------------#
 
+# Mmake - Mmake file for the Mercury runtime library
+
 MAIN_TARGET=lib
+
+MERCURY_DIR=..
+include ../Mmake.common
 
 #-----------------------------------------------------------------------------#
 
 CFLAGS		= -I. -I.. `sed 's/\#.*//' CFLAGSFILE`
 MGNUC		= MERCURY_C_INCL_DIR=. mgnuc
 MGNUCFLAGS	= $(CFLAGS)
-
-include ../Mmake.common
 
 #-----------------------------------------------------------------------------#
 
@@ -22,6 +25,10 @@ MODS		= engine.mod io.mod wrapper.mod call.mod
 OBJS		= engine.o io.o wrapper.o call.o \
 		  access.o aux.o dummy.o label.o \
 		  list.o memory.o table.o timing.o
+
+#-----------------------------------------------------------------------------#
+
+$(OBJS): $(HDRS)
 
 #-----------------------------------------------------------------------------#
 
