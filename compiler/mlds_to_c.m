@@ -450,9 +450,9 @@ mlds_output_func(Indent, Name, Context, Signature, MaybeBody) -->
 		% so that we can use `continue;' inside the function body
 		% to optimize tail recursive calls.
 		%
-		% XXX tail recursion optimization should be disable-able
-		%
+		globals__io_lookup_bool_option(emit_c_loops, Emit_C_Loops),
 		(
+			{ Emit_C_Loops = yes },
 			{ statement_contains_statement(Body, Call) },
 			{ Call = mlds__statement(CallStmt, _) },
 			{ can_optimize_tailcall(FuncInfo, CallStmt) }
@@ -942,10 +942,11 @@ mlds_output_stmt(Indent, CallerFuncInfo, Call, Context) -->
 		Results, IsTailCall) },
 	%
 	% Optimize directly-recursive tail calls
-	% XXX tail recursion optimization should be disable-able
 	%
 	{ CallerFuncInfo = func_info(Name, Params) },
+	globals__io_lookup_bool_option(emit_c_loops, Emit_C_Loops),
 	(
+		{ Emit_C_Loops = yes },
 		{ can_optimize_tailcall(CallerFuncInfo, Call) }
 	->
 		mlds_indent(Indent),
@@ -974,6 +975,7 @@ mlds_output_stmt(Indent, CallerFuncInfo, Call, Context) -->
 		% Optimize general tail calls.
 		% We can't really do much here except to insert `return'
 		% as an extra hint to the C compiler.
+		% XXX these optimizations should be disable-able
 		%
 		% If Results = [], i.e. the function has `void' return type,
 		% then this would result in code that is not legal ANSI C
