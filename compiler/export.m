@@ -56,6 +56,12 @@ export__get_pragma_exported_procs(Module, ExportedProcsCode) :-
 	% <function name>(Word Mercury__Argument1, Word *Mercury__Argument2...)
 	%			/* Word for input, Word* for output */
 	% {
+	% #if NUM_REAL_REGS > 0
+	%	Word c_regs[NUM_REAL_REGS];
+	% #endif
+	%		/* save the registers that our C caller may be using */
+	%	save_regs_to_mem(c_regs);
+	%
 	%		/* restore Mercury's registers that were saved as */
 	%		/* we entered C from Mercury (the process must    */
 	%		/* always start in Mercury so that we can 	  */
@@ -74,9 +80,13 @@ export__get_pragma_exported_procs(Module, ExportedProcsCode) :-
 	%		/* call_engine()				  */
 	%	restore_transient_registers();
 	% #if SEMIDET
-	%	if (!r1) return FALSE;
+	%	if (!r1) {
+	%		restore_regs_from_mem(c_regs);
+	%		return FALSE;
+	%	}
 	% #endif
 	%	<copy output args from registers into *Mercury__Arguments>
+	%	restore_regs_from_mem(c_regs);
 	% #if SEMIDET
 	%	return TRUE;
 	% #endif
@@ -101,11 +111,12 @@ export__to_c(Preds, [E|ExportedProcs], Module, ExportedProcsCode) :-
 	get_proc_label(ProcLabel, ProcLabelString),
 
 	string__append_list([	"\n",
-				C_RetType, " ", 
-				C_Function, 
-				"(", 
-				ArgDecls, 
-				")\n{\n",
+				C_RetType, "\n", 
+				C_Function, "(", ArgDecls, ")\n{\n",
+				"#if NUM_REAL_REGS > 0\n",
+				"\tWord c_regs[NUM_REAL_REGS];\n",
+				"#endif\n\n",
+				"\tsave_regs_to_mem(c_regs);\n", 
 				"\trestore_registers();\n", 
 				InputArgs,
 				"\tsave_transient_registers();\n",
@@ -118,6 +129,7 @@ export__to_c(Preds, [E|ExportedProcs], Module, ExportedProcsCode) :-
 				"\trestore_transient_registers();\n",
 				MaybeFail,
 				OutputArgs,
+				"\trestore_regs_from_mem(c_regs);\n", 
 				MaybeSucceed,
 				"}\n\n"],
 				Code),
@@ -190,7 +202,12 @@ get_export_info(Preds, PredId, ProcId,
 		% value becomes the last argument, and the C return value
 		% is a bool that is used to indicate success or failure.
 		C_RetType = "bool",
-		MaybeFail = "\tif (!r1) return FALSE;\n",
+		string__append_list([
+			"\tif (!r1) {\n",
+			"\t\trestore_regs_from_mem(c_regs);\n",
+			"\treturn FALSE;\n",
+			"\t}\n"
+				], MaybeFail),
 		MaybeSucceed = "\treturn TRUE;\n",
 		ArgInfoTypes = ArgInfoTypes0
 	; CodeModel = model_non,
