@@ -281,7 +281,7 @@ main_2(no, Args) -->
 	).
 
 	% Process a list of module names.
-	% Remove any `.nl' or `.m' extension extension before processing
+	% Remove any `.m' extension extension before processing
 	% the module name.
 
 :- pred strip_module_suffixes(list(string), list(string)).
@@ -293,10 +293,6 @@ strip_module_suffixes([Module0 | Modules0], [Module | Modules]) :-
 		string__remove_suffix(Module0, ".m", Module1)
 	->
 		Module = Module1
-	;
-		string__remove_suffix(Module0, ".nl", Module2)
-	->
-		Module = Module2
 	;
 		Module = Module0
 	),
@@ -333,15 +329,8 @@ process_module(Module) -->
 process_module_2(ModuleName) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
 	maybe_write_string(Verbose, "% Parsing...\n"),
-	io__gc_call(read_mod_ignore_errors(ModuleName, ".m", "Reading module",
-			_ItemsM, ErrorM)),
-	( { ErrorM = fatal } ->
-		io__gc_call(read_mod(ModuleName, ".nl", "Reading module",
-				Items0, Error))
-	;
-		io__gc_call(read_mod(ModuleName, ".m", "Reading module",
-				Items0, Error))
-	),
+	io__gc_call(read_mod(ModuleName, ".m", "Reading module",
+			Items0, Error)),
 	globals__io_lookup_bool_option(statistics, Statistics),
 	maybe_report_stats(Statistics),
 
@@ -798,14 +787,7 @@ lookup_dependencies(Module, DepsMap0, Done, Error, IntDeps, ImplDeps, DepsMap)
 
 read_dependencies(Module, InterfaceDeps, ImplementationDeps, Error) -->
 	io__gc_call(read_mod_ignore_errors(Module, ".m",
-			"Getting dependencies for module", ItemsM, ErrorM)),
-	( { ErrorM = fatal } ->
-		io__gc_call(read_mod_ignore_errors(Module, ".nl",
-			"Getting dependencies for module", Items, Error))
-	;
-		{ Error = ErrorM },
-		{ Items = ItemsM }
-	),
+			"Getting dependencies for module", Items, Error)),
 	{ get_dependencies(Items, ImplementationDeps0) },
 	{ get_interface(Items, InterfaceItems) },
 	{ get_dependencies(InterfaceItems, InterfaceDeps) },
