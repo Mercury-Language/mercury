@@ -240,6 +240,13 @@ NEWS since release 0.7.3:
   time is still not supported on Windows, because to the best of our
   knowledge Windows doesn't provide the necessary system calls.
 
+* Mmake has a new variable GRADEFLAGS for specifying options that
+  affect the grade (compilation model).
+
+  This means that for example to enable profiling, you can build with
+  `GRADEFLAGS = --profiling' in your Mmakefile, rather than having to
+  use the more obscure incantation `GRADE = asm_fast.gc.prof'.
+
 * Ported to Linux/PPC.
 
 * We've updated to version 4.12 of the Boehm garbage collector.
