@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1997 University of Melbourne.
+% Copyright (C) 1997-1998 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -31,7 +31,6 @@
 % For each continuation label in a procedure
 % 	mercury_data__stack_layout__mercury__<proc_label>_i<label number>
 % containing:
-%	code address		(Code *) - address of label
 %	procedure info		(Word *) - pointer to procedure stack layout
 %	number of live vars	(Integer)
 %	live data locations and (Word *) - pointer to vector of 
@@ -153,6 +152,7 @@ stack_layout__construct_proc_layout(ProcLabel, StackSlots, CodeModel,
 	{ stack_layout__represent_lval(SuccipLval, SuccipRval) },
 	{ StackSlotsRval = const(int_const(StackSlots)) },
 	{ CodeAddrRval = const(code_addr_const(label(Label))) },
+
 	stack_layout__represent_code_model(CodeModel, CodeModelRval),
 	{ MaybeRvals = [yes(CodeAddrRval), yes(StackSlotsRval), 
 		yes(CodeModelRval), yes(SuccipRval)] },
@@ -190,8 +190,6 @@ stack_layout__construct_internal_layout(ProcLabel, Label - Internal) -->
 	{ set__to_sorted_list(LiveLvalSet, LiveLvals) },
 	
 		% generate the required rvals
-	{ CodeAddrRval = const(label_entry(Label)) },
-
 	stack_layout__get_module_name(ModuleName),
 	{ EntryAddrRval = const(data_addr_const(data_addr(ModuleName,
 		stack_layout(local(ProcLabel))))) },
@@ -199,7 +197,7 @@ stack_layout__construct_internal_layout(ProcLabel, Label - Internal) -->
 	{ LengthRval = const(int_const(Length)) },
 	stack_layout__construct_liveval_pairs(LiveLvals, LiveValRval),
 
-	{ MaybeRvals = [yes(CodeAddrRval), yes(EntryAddrRval), 
+	{ MaybeRvals = [yes(EntryAddrRval), 
 		yes(LengthRval), yes(LiveValRval)]  },
 
 	{ CModule = c_data(ModuleName, stack_layout(Label), yes, 
