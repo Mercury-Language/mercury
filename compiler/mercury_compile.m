@@ -221,34 +221,37 @@ process_all_args(Args, ModulesToLink) -->
 		% Now we know what the real module name was, so we
 		% can rename the assembler file if needed (see above).
 		( { ModulesToLink = [Module | _] } ->
-			{ file_name_to_module_name(Module, ModuleName) }
-		;
-			{ error("main_2: no modules") }
-		),
-		globals__io_lookup_bool_option(pic, Pic),
-		{ AsmExt = (Pic = yes -> ".pic_s" ; ".s") },
-		module_name_to_file_name(ModuleName, AsmExt, no, AsmFile),
-		(
-			{ ModuleName \= FirstModuleName }
-		->
-			module_name_to_file_name(FirstModuleName, AsmExt,
-				no, FirstAsmFile),
-			do_rename_file(FirstAsmFile, AsmFile, Result)
-		;
-			{ Result = ok }
-		),
+			{ file_name_to_module_name(Module, ModuleName) },
+			globals__io_lookup_bool_option(pic, Pic),
+			{ AsmExt = (Pic = yes -> ".pic_s" ; ".s") },
+			module_name_to_file_name(ModuleName, AsmExt, no,
+				AsmFile),
+			(
+				{ ModuleName \= FirstModuleName }
+			->
+				module_name_to_file_name(FirstModuleName,
+					AsmExt, no, FirstAsmFile),
+				do_rename_file(FirstAsmFile, AsmFile, Result)
+			;
+				{ Result = ok }
+			),
 
-		% Invoke the assembler to produce an object file,
-		% if needed.
-		globals__io_lookup_bool_option(target_code_only, 
-				TargetCodeOnly),
-		( { Result = ok, TargetCodeOnly = no } ->
-			object_extension(Obj),
-			module_name_to_file_name(ModuleName, Obj,
-				yes, O_File),
-			mercury_compile__asm_to_obj(
-				AsmFile, O_File, _AssembleOK)
+			% Invoke the assembler to produce an object file,
+			% if needed.
+			globals__io_lookup_bool_option(target_code_only, 
+					TargetCodeOnly),
+			( { Result = ok, TargetCodeOnly = no } ->
+				object_extension(Obj),
+				module_name_to_file_name(ModuleName, Obj,
+					yes, O_File),
+				mercury_compile__asm_to_obj(
+					AsmFile, O_File, _AssembleOK)
+			;
+				[]
+			)
 		;
+			% This can happen if smart recompilation decided
+			% that nothing needed to be compiled.
 			[]
 		)
 	;
@@ -616,7 +619,7 @@ process_module(FileOrModule, ModulesToLink) -->
 			},
 
 			globals__io_get_globals(Globals),
-			{ find_smart_recompilation_target_files(
+			{ find_smart_recompilation_target_files(ModuleName,
 				Globals, FindTargetFiles) },
 			recompilation_check__should_recompile(ModuleName,
 				FindTargetFiles, ModulesToRecompile0,
@@ -780,12 +783,13 @@ module_to_link(ModuleName - _Items, ModuleToLink) -->
 	% without using mmake is not a sensible thing to do.
 	% handle_options.m will disable smart recompilation if
 	% `--target-code-only' is not set.
-:- pred find_smart_recompilation_target_files(globals,
+:- pred find_smart_recompilation_target_files(module_name, globals,
 		find_target_file_names).
-:- mode find_smart_recompilation_target_files(in,
+:- mode find_smart_recompilation_target_files(in, in,
 		out(find_target_file_names)) is det.
 
-find_smart_recompilation_target_files(Globals, FindTargetFiles) :-
+find_smart_recompilation_target_files(TopLevelModuleName,
+		Globals, FindTargetFiles) :-
 	globals__get_target(Globals, CompilationTarget),
 	(
 		CompilationTarget = c,
@@ -807,10 +811,21 @@ find_smart_recompilation_target_files(Globals, FindTargetFiles) :-
 		; CompilationTarget = asm, TargetSuffix = ".s"
 		),
 		FindTargetFiles =
-		    (pred(ModuleName::in, [FileName]::out, di, uo) is det -->
+		    (pred(ModuleName::in, TargetFiles::out, di, uo) is det -->
 			% XXX Should we check the generated header files?
-			module_name_to_file_name(ModuleName, TargetSuffix,
-				no, FileName)
+			(
+				{ CompilationTarget = asm },
+				{ ModuleName \= TopLevelModuleName }
+			->
+				% With `--target asm' all the nested
+				% sub-modules are placed in the `.s' file
+				% of the top-level module.
+				{ TargetFiles = [] }
+			;
+				module_name_to_file_name(ModuleName,
+					TargetSuffix, no, FileName),
+				{ TargetFiles = [FileName] }
+			)
 		    )
 	).
 
