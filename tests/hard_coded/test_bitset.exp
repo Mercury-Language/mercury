@@ -2,6 +2,7 @@ List1: -59, -34, -19, -15, 2, 7, 19, 22, 25, 28, 29, 31, 32, 36, 38, 39, 40, 42,
 
 List2: -64, -61, -58, -56, -51, -49, -48, -46, -44, -40, -38, -37, -31, -30, -23, -18, -13, -4, -2, 4, 9, 11, 12, 14, 17, 21, 23, 37, 39, 42, 43, 50, 52, 53, 54, 55, 56, 57, 61, 63
 
+testing count
 count: 22 40
 testing foldl
 Sum of List1 = 471
@@ -17,70 +18,70 @@ testing remove_least_element
 [-34, -19, -15, 2, 7, 19, 22, 25, 28, 29, 31, 32, 36, 38, 39, 40, 42, 44, 47, 58, 59]
 testing delete_list
 [-59, -34, -19, -15, 2, 7, 19, 22, 25, 28, 29, 31, 32, 36, 38, 40, 44, 47, 58, 59]
-count: 20 40
+testing count
 testing foldl
 testing union
 testing intersection
 testing difference
 testing remove_least_element
 testing delete_list
-count: 20 40
+testing count
 testing foldl
 testing union
 testing intersection
 testing difference
 testing remove_least_element
 testing delete_list
-count: 20 40
+testing count
 testing foldl
 testing union
 testing intersection
 testing difference
 testing remove_least_element
 testing delete_list
-count: 20 40
+testing count
 testing foldl
 testing union
 testing intersection
 testing difference
 testing remove_least_element
 testing delete_list
-count: 20 40
+testing count
 testing foldl
 testing union
 testing intersection
 testing difference
 testing remove_least_element
 testing delete_list
-count: 20 40
+testing count
 testing foldl
 testing union
 testing intersection
 testing difference
 testing remove_least_element
 testing delete_list
-count: 20 40
+testing count
 testing foldl
 testing union
 testing intersection
 testing difference
 testing remove_least_element
 testing delete_list
-count: 20 40
+testing count
 testing foldl
 testing union
 testing intersection
 testing difference
 testing remove_least_element
 testing delete_list
-count: 20 40
+testing count
 testing foldl
 testing union
 testing intersection
 testing difference
 testing remove_least_element
 testing delete_list
-count: 20 40
+testing count
 testing foldl
 testing union
 testing intersection

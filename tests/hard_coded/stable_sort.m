@@ -11,6 +11,8 @@ main -->
 	{ generate_random_list(42, List) },
 	% io__write(List),
 	% io__nl,
+	% io__write(sort(List) `with_type` list({int, int})),
+	% io__nl,
 	{ sort_is_stable(List, Stable) },
 	(
 		{ Stable = yes },
@@ -41,19 +43,12 @@ generate_random_list_2(Count, List0, List) -->
 	(
 		{ Count > 0 }
 	->
-		rnd_mod_10(R1),
-		rnd_mod_10(R2),
+		random(0, 10, R1),
+		random(0, 10, R2),
 		generate_random_list_2(Count - 1, [{R1, R2} | List0], List)
 	;
 		{ List = List0 }
 	).
-
-:- pred rnd_mod_10(int, random__supply, random__supply).
-:- mode rnd_mod_10(out, mdi, muo) is det.
-
-rnd_mod_10(N) -->
-	random__random(R),
-	{ N = R mod 10 }.
 
 :- pred sort_is_stable(list({int, int}), bool).
 :- mode sort_is_stable(in, out) is det.

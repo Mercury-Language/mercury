@@ -114,6 +114,8 @@ ORDINARY_PROGS=	\
 	quantifier \
 	quantifier2 \
 	quoting_bug_test \
+	random_permutation \
+	random_simple \
 	rational_test \
 	redoip_clobber \
 	relation_test \

@@ -60,8 +60,8 @@ get_random_numbers(Num, List0, List, Supply0, Supply) :-
 		List = List0,
 		Supply = Supply0
 	;
-		random__random(N, Supply0, Supply1),
-		RN = N rem 128 - 64,	% test negative numbers
+		% Test negative as well as positive numbers.
+		random__random(-64, 128, RN, Supply0, Supply1),
 		get_random_numbers(Num - 1, [RN | List0], List,
 			Supply1, Supply)
 	).
@@ -83,11 +83,18 @@ run_test(Write, List1, List2) -->
 	{ Set1 = bitset_tester__list_to_set(List1) },
 	{ Set2 = bitset_tester__list_to_set(List2) },
 
-	io__write_string("count: "),
-	io__write_int(count(Set1)),
-	io__write_string(" "),
-	io__write_int(count(Set2)),
-	io__nl,
+	io__write_string("testing count\n"),
+	{ Count1 = count(Set1) },
+	{ Count2 = count(Set2) },
+	( { Write = yes } ->
+		io__write_string("count: "),
+		io__write_int(Count1),
+		io__write_string(" "),
+		io__write_int(Count2),
+		io__nl
+	;
+		[]
+	),
 
 	io__write_string("testing foldl\n"),
 	{ Sum = (func(Elem, Acc) = Elem + Acc) },

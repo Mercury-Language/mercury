@@ -275,6 +275,10 @@ Changes to the Mercury standard library:
   `io__write_anything', and `io__print_anything', which were long ago
   renamed as `io__read', `io__write', and `io__print' respectively.
 
+* We've added random__random/5, which produces a random integer in a
+  given range, and random__randcount/3, which returns the number of
+  distinct random numbers that can be generated.
+
 Changes to the extras distribution:
 
 * The interface to Moose has been changed in a non-backwards compatible
