@@ -641,11 +641,11 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 			cmd->MR_trace_stop_depth = stop_depth;
 			return STOP_INTERACTING;
 		}
-	} else if (streq(words[0], "excp")) {
+	} else if (streq(words[0], "exception")) {
 		cmd->MR_trace_strict = TRUE;
 		cmd->MR_trace_print_level = MR_default_print_level;
 		if (! MR_trace_options_strict_print(cmd, &words, &word_count,
-				"forward", "excp"))
+				"forward", "exception"))
 		{
 			; /* the usage message has already been printed */
 		} else if (word_count == 1) {
@@ -2450,7 +2450,7 @@ static	MR_trace_cmd_cat_item MR_trace_valid_command_list[] =
 	{ "forward", "step" },
 	{ "forward", "goto" },
 	{ "forward", "finish" },
-	{ "forward", "excp" },
+	{ "forward", "exception" },
 	{ "forward", "return" },
 	{ "forward", "forward" },
 	{ "forward", "mindepth" },

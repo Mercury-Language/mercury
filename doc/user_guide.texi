@@ -1834,7 +1834,7 @@ the strictness of the command.
 @sp 1
 By default, this command is strict, and it uses the default print level.
 @sp 1
-@item excp [-NSans]
+@item exception [-NSans]
 Continues the program until execution reaches an exception event.
 Reports an error if the current event is already an exception event.
 @sp 1
