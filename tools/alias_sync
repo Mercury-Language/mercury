@@ -1,0 +1,25 @@
+#!/bin/sh
+# This script merges changes to the trunk into the alias branch of the
+# compiler.  It should be executed from within the mercury/compiler/
+# directory in a checked-out version of the alias branch.
+
+sync_tag_file=.alias_trunk_sync_tag
+
+if [ ! -f $sync_tag_file ]
+then
+    echo $sync_tag_file: file not found
+    exit 1
+fi
+
+old_tag=`cat $sync_tag_file`
+new_tag=trunk_snapshot_`date +%Y%m%d%H%M%S`
+source_dir=mercury/compiler
+
+echo old tag: $old_tag
+echo new tag: $new_tag
+
+cvs rtag $new_tag $source_dir
+cvs update -j$old_tag -j$new_tag
+
+rm -f $sync_tag_file
+echo $new_tag >$sync_tag_file
