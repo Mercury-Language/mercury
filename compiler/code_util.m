@@ -151,7 +151,7 @@
 
 :- implementation.
 :- import_module prog_data, type_util, special_pred.
-:- import_module bool, char, int, string, map, varset, require, std_util.
+:- import_module bool, char, int, string, map, term, varset, require, std_util.
 
 %---------------------------------------------------------------------------%
 
@@ -530,8 +530,6 @@ code_util__compiler_generated(PredInfo) :-
 	( PredName = "__Unify__", PredArity = 2
 	; PredName = "__Compare__", PredArity = 3
 	; PredName = "__Index__", PredArity = 2
-	; PredName = "__Term_To_Type__", PredArity = 2
-	; PredName = "__Type_To_Term__", PredArity = 2
 	).
 
 %-----------------------------------------------------------------------------%

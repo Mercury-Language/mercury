@@ -25,11 +25,7 @@
 	%	of type `list(T)', denoted `[Head | Tail]'.
 	%	
 
-% :- type list(T) ---> [] ; [T | list(T)].
-
-	% The definition of `list(T)' is actually in mercury_builtin.m because
-	% the implementation of type_to_term/3 and term_to_type/3 means
-	% that it has to be.
+:- type list(T) ---> [] ; [T | list(T)].
 
 %-----------------------------------------------------------------------------%
 

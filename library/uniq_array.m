@@ -17,7 +17,7 @@
 
 :- module uniq_array.
 :- interface.
-:- import_module int, list.
+:- import_module int, list, term.
 
 :- type uniq_array(T).
 
@@ -187,7 +187,7 @@
 :- pred uniq_array_to_term(uniq_array(T), term).
 :- mode uniq_array_to_term(in, out) is det.
 
-	% term_to_type/3 for uniq_arrays
+	% term_to_type/2 for uniq_arrays
 
 :- pred uniq_array_from_term(term, uniq_array(T)).
 :- mode uniq_array_from_term(in, out) is semidet.

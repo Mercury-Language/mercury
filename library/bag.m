@@ -16,6 +16,8 @@
 
 :- interface.
 
+:- import_module list.
+
 :- type bag(T).
 
 	% create an empty bag

@@ -15,7 +15,7 @@
 :- interface.
 
 :- import_module hlds_module, bytecode.
-:- import_module io.
+:- import_module io, list.
 
 :- pred bytecode_gen__module(module_info::in, list(byte_code)::out,
 	io__state::di, io__state::uo) is det.
@@ -29,7 +29,7 @@
 :- import_module globals, tree.
 
 :- import_module bool, int, string, list, assoc_list, set, map, varset.
-:- import_module std_util, require.
+:- import_module std_util, require, term.
 
 bytecode_gen__module(ModuleInfo, Code) -->
 	{ module_info_predids(ModuleInfo, PredIds) },

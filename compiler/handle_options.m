@@ -146,7 +146,7 @@ postprocess_options(ok(OptionTable0), Error) -->
                                 { Error = yes("Invalid prolog-dialect option (must be `sicstus', `nu', or `default')") }
                             )
                         ;
-                            { Error = yes("Invalid type-info option (must be `one-cell', `one-or-two-cell', `shared-one-or-two-cell' or `default')") }
+                            { Error = yes("Invalid type-info option (must be `shared-one-or-two-cell' or `default')") }
                         )
                     ;
                         { Error = yes("Invalid args option (must be `simple' or `compact')") }

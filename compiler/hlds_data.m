@@ -88,7 +88,7 @@
 :- implementation.
 
 :- import_module prog_util.
-:- import_module require, std_util.
+:- import_module require, std_util, term.
 
 cons_id_and_args_to_term(int_const(Int), [], Term) :-
 	term__context_init(Context),

@@ -20,7 +20,7 @@
 
 :- module queue.
 :- interface.
-:- import_module int.
+:- import_module int, list.
 
 :- type queue(T).
 

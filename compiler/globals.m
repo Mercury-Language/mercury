@@ -35,10 +35,10 @@
 	--->	simple
 	;	compact.
 
+	% Once upon a time, there were more type_info options than this.
+
 :- type type_info_method
-	--->	one_cell
-	;	one_or_two_cell
-	;	shared_one_or_two_cell.
+	--->	shared_one_or_two_cell.
 
 :- type prolog_dialect
 	--->	default
@@ -175,8 +175,6 @@ convert_tags_method("high", high).
 convert_args_method("simple", simple).
 convert_args_method("compact", compact).
 
-convert_type_info_method("one-cell", one_cell).
-convert_type_info_method("one-or-two-cell", one_or_two_cell).
 convert_type_info_method("shared-one-or-two-cell", shared_one_or_two_cell).
 convert_type_info_method("default", shared_one_or_two_cell).
 

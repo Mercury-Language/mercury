@@ -24,9 +24,7 @@
 :- type special_pred_id
 	--->	unify
 	;	index
-	;	compare
-	;	term_to_type
-	;	type_to_term.
+	;	compare.
 
 :- pred special_pred_info(special_pred_id, type, string, list(type),
 			list(mode), determinism).
@@ -53,23 +51,15 @@
 
 special_pred_list([unify, index, compare]).
 
-% **** Replace the above definition of special_pred_list with the following ****
-% **** to have term_to_type and type_to_term as special preds also.	    ****
-% special_pred_list([unify, index, compare, term_to_type, type_to_term]).
-
 special_pred_name_arity(unify, "unify", "__Unify__", 2).
 special_pred_name_arity(index, "index", "__Index__", 2).
 special_pred_name_arity(compare, "compare", "__Compare__", 3).
-special_pred_name_arity(type_to_term, "type_to_term", "__Type_To_Term__", 2).
-special_pred_name_arity(term_to_type, "term_to_type", "__Term_To_Type__", 2).
 
 	% mode num is 0 for semidet, 10000 for det
 	% see make_hlds.m
 special_pred_mode_num(unify, 0).
 special_pred_mode_num(index, 10000).
 special_pred_mode_num(compare, 10000).
-special_pred_mode_num(type_to_term, 10000).
-special_pred_mode_num(term_to_type, 0).
 
 special_pred_info(unify, Type, "__Unify__", [Type, Type], [In, In], semidet) :-
 	in_mode(In).
@@ -83,18 +73,6 @@ special_pred_info(compare, Type,
 		 "__Compare__", [ResType, Type, Type], [Out, In, In], det) :-
 	construct_type(qualified("mercury_builtin", "comparison_result") - 0,
 							[], ResType),
-	in_mode(In),
-	out_mode(Out).
-
-special_pred_info(term_to_type, Type,
-		"__Term_To_Type__", [TermType, Type], [In, Out], semidet) :-
-	construct_type(qualified("mercury_builtin", "term") - 0, [], TermType),
-	in_mode(In),
-	out_mode(Out).
-
-special_pred_info(type_to_term, Type,
-		"__Type_To_Term__", [Type, TermType], [In, Out], det) :-
-	construct_type(qualified("mercury_builtin", "term") - 0, [], TermType),
 	in_mode(In),
 	out_mode(Out).
 
@@ -114,19 +92,15 @@ out_mode(user_defined_mode(qualified("mercury_builtin", "out"), [])).
 	% find the type at a known position from the end of the list
 	% (by using list__reverse).
 
-	% Currently for most of the special predicates the type variable can be
-	% found in the last type argument, except for index and type_to_term,
-	% for which it is the second-last argument.
+	% Currently for most of the special predicates the type variable
+	% can be found in the last type argument, except for index, for
+	% which it is the second-last argument.
 
 special_pred_get_type("__Unify__", Types, T) :-
 	list__reverse(Types, [T | _]).
 special_pred_get_type("__Index__", Types, T) :-
 	list__reverse(Types, [_, T | _]).
 special_pred_get_type("__Compare__", Types, T) :-
-	list__reverse(Types, [T | _]).
-special_pred_get_type("__Type_To_Term__", Types, T) :-
-	list__reverse(Types, [_, T | _]).
-special_pred_get_type("__Term_To_Type__", Types, T) :-
 	list__reverse(Types, [T | _]).
 
 %-----------------------------------------------------------------------------%

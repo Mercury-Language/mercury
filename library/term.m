@@ -19,9 +19,6 @@
 
 %-----------------------------------------------------------------------------%
 
-% The term type is actually defined in mercury_builtin.m.
-
-/*
 :- type term		--->	term__functor(const, list(term), term__context)
 			;	term__variable(var).
 :- type const		--->	term__atom(string)
@@ -29,10 +26,26 @@
 			;	term__string(string)
 			;	term__float(float).
 
+:- type term__context   --->    term__context(string, int).
+				% file name, line number.
+
 :- type var.
 :- type var_supply.
 
-*/
+%-----------------------------------------------------------------------------%
+
+	% The following three predicates can convert values of (almost)
+	% any type to the type `term' and back again.
+
+:- pred term__term_to_type(term, T).
+:- mode term__term_to_type(in, out) is semidet.
+
+:- pred term__det_term_to_type(term, T).
+:- mode term__det_term_to_type(in, out) is det.
+
+:- pred term__type_to_term(T, term).
+:- mode term__type_to_term(in, out) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- pred term__vars(term, list(var)).
@@ -175,11 +188,6 @@
 %		the bindings in Bindings).
 
 %-----------------------------------------------------------------------------%
-/*
-
-These are now in mercury_builtin.m to avoid module qualification
-conflicts with type var.
-
 
 	% To manage a supply of variables, use the following 2 predicates.
 	% (We might want to give these a unique mode later.)
@@ -201,7 +209,6 @@ conflicts with type var.
 %		Convert a variable to an int.
 %		Different variables map to different ints.
 %		Other than that, the mapping is unspecified.
-*/
 	
 %-----------------------------------------------------------------------------%
 
@@ -217,14 +224,9 @@ conflicts with type var.
 
 	% Used to initialize the term context when reading in
 	% (or otherwise constructing) a term.
-	% Unify_proc__generate_du_type_to_term_clauses
-	% requires the use of an initialized term__context. It
-	% directly constructs an initialized term__context
-	% without calling term__context_init to avoid the
-	% prob of including the term module in everything.
 
-% :- pred term__context_init(term__context).
-% :- mode term__context_init(out) is det.
+:- pred term__context_init(term__context).
+:- mode term__context_init(out) is det.
 
 :- pred term__context_init(string, int, term__context).
 :- mode term__context_init(in, in, out) is det.
@@ -247,14 +249,110 @@ conflicts with type var.
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module std_util, require.
+:- import_module std_util, require, uniq_array.
 
 %-----------------------------------------------------------------------------%
-/* In mercury_builtin.m 
 
 :- type var_supply	==	int.
 :- type var		==	int.
-*/
+
+%-----------------------------------------------------------------------------%
+
+term__term_to_type(Term, Val) :-
+	term__term_to_type_2(Term, type_of(Val), Univ),
+	univ_to_type(Univ, Val).
+
+:- pred term__term_to_type_2(term::in, type_info::in, univ::out) is semidet.
+
+term__term_to_type_2(term__variable(_), _Val, _) :-
+	fail.
+term__term_to_type_2(term__functor(term__integer(Int), _, _), _Type, Value) :-
+	type_to_univ(Int, Value).
+term__term_to_type_2(term__functor(term__float(Float), _, _), _Type, Value) :-
+	type_to_univ(Float, Value).
+term__term_to_type_2(term__functor(term__string(String), _, _), _Type, Value) :-
+	type_to_univ(String, Value).
+term__term_to_type_2(term__functor(term__atom(Functor), ArgTerms, _), Type,
+		Value) :-
+	list__length(ArgTerms, Arity),
+	find_functor(Type, Functor, Arity, FunctorNumber, ArgTypes),
+	term__term_list_to_type_list(ArgTerms, ArgTypes, Args),
+	Value = construct(Type, FunctorNumber, Args).
+
+:- pred term__term_list_to_type_list(list(term)::in, list(type_info)::in,
+				list(univ)::out) is semidet.
+
+term__term_list_to_type_list([], [], []).
+term__term_list_to_type_list([Term|Terms], [Type|Types], [Value|Values]) :-
+	term__term_to_type_2(Term, Type, Value),
+	term__term_list_to_type_list(Terms, Types, Values).
+
+:- pred term__find_functor(type_info::in, string::in, int::in, int::out,
+		list(type_info)::out) is semidet.
+term__find_functor(Type, Functor, Arity, FunctorNumber, ArgTypes) :-
+	N = num_functors(Type),
+	term__find_functor_2(Type, Functor, Arity, N, FunctorNumber, ArgTypes).
+        
+:- pred term__find_functor_2(type_info::in, string::in, int::in, int::in, 
+	int::out, list(type_info)::out) is semidet.
+term__find_functor_2(TypeInfo, Functor, Arity, Num, FunctorNumber, ArgTypes) :-
+	Num >= 0,
+	Num1 = Num - 1,
+	(
+		get_functor(TypeInfo, Num1, Functor, Arity, ArgTypes1)
+	->
+		ArgTypes = ArgTypes1,
+		FunctorNumber = Num1
+	;
+		term__find_functor_2(TypeInfo, Functor, Arity, Num1,
+			FunctorNumber, ArgTypes)
+	).
+
+term__det_term_to_type(Term, X) :-
+	( term__term_to_type(Term, X1) ->
+		X = X1
+	;
+		error("term__det_term_to_type failed as term doesn't represent a valid ground value of the appropriate type")
+	).
+
+term__type_to_term(Val, Term) :-
+	type_to_univ(Val, Univ),
+	term__type_to_term_2(Univ, Term).
+
+:- pred type_to_term_2(univ::in, term::out) is det.
+
+term__type_to_term_2(Univ, Term) :-
+	term__context_init(Context),
+	(
+		num_functors(univ_type(Univ)) < 0
+	->
+		( univ_to_type(Univ, Int) ->
+			Term = term__functor(term__integer(Int), [], Context)
+		; univ_to_type(Univ, Float) ->
+			Term = term__functor(term__float(Float), [], Context)
+		; univ_to_type(Univ, String) ->
+			Term = term__functor(term__string(String), [], Context)
+		; univ_to_type(Univ, Character) ->
+			string__char_to_string(Character, String),
+			Term = term__functor(term__string(String), [], Context)
+		;
+			error("term__type_to_term: unknown type")
+		)
+	;
+		expand(Univ, FunctorString, _FunctorArity, FunctorArgs),
+		term__type_list_to_term_list(FunctorArgs, TermArgs),
+		Term = term__functor(term__atom(FunctorString), TermArgs,
+			Context)
+	).
+
+:- pred term__type_list_to_term_list(list(univ)::in, 
+				list(term)::out) is det.
+
+term__type_list_to_term_list([], []).
+term__type_list_to_term_list([Value|Values], [Term|Terms]) :-
+	term__type_to_term_2(Value, Term),
+	term__type_list_to_term_list(Values, Terms).
+
 %-----------------------------------------------------------------------------%
 
 	% term__vars(Term, Vars) is true if Vars is the list of variables
@@ -339,7 +437,7 @@ term__context_file(term__context(FileName, _), FileName).
 	% Used to initialize the term context when reading in
 	% (or otherwise constructing) a term.
 
-% term__context_init(term__context("", 0)).
+term__context_init(term__context("", 0)).
 
 term__context_init(File, LineNumber, term__context(File, LineNumber)).
 
@@ -552,7 +650,6 @@ term__apply_substitution_to_list([Term0 | Terms0], Substitution,
 	term__apply_substitution_to_list(Terms0, Substitution, Terms).
 
 %-----------------------------------------------------------------------------%
-/* In mercury_builtin.m 
 
 	% create a new supply of variables
 term__init_var_supply(0).
@@ -564,11 +661,8 @@ term__create_var(VarSupply0, VarSupply, VarSupply) :-
 
 %-----------------------------------------------------------------------------%
 
-	% To convert a variable to an int, we want to undo the bit-reversal.
-
 term__var_to_int(Var, Var).
 
-*/
 %-----------------------------------------------------------------------------%
 
 	% substitute a variable name in a term.

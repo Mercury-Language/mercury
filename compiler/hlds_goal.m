@@ -603,7 +603,7 @@ get_pragma_c_var_names_2([MaybeName | MaybeNames], Names0, Names) :-
 
 :- implementation.
 
-:- import_module require.
+:- import_module require, term.
 
 goal_info_init(GoalInfo) :-
 	Detism = erroneous,

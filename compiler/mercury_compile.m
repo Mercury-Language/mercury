@@ -1688,12 +1688,9 @@ mercury_compile__single_c_to_obj(ModuleName, Succeeded) -->
 		ArgsOpt = ""
 	},
 	globals__io_get_type_info_method(TypeInfoMethod),
-	{ TypeInfoMethod = one_cell,
-		TypeInfoOpt = "-DONE_CELL_TYPE_INFO "
-	; TypeInfoMethod = shared_one_or_two_cell,
+	{ 
+		TypeInfoMethod = shared_one_or_two_cell,
 		TypeInfoOpt = "-DSHARED_ONE_OR_TWO_CELL_TYPEINFO "
-	; TypeInfoMethod = one_or_two_cell,
-		TypeInfoOpt = "-DONE_OR_TWO_CELL_TYPEINFO "
 	},
 	globals__io_lookup_bool_option(type_layout, TypeLayoutOption),
 	{ TypeLayoutOption = no ->

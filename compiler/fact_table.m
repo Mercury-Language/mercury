@@ -87,7 +87,7 @@
 :- implementation.
 
 :- import_module int, map, std_util, assoc_list, char, require, library, bool.
-:- import_module float, math, getopt.
+:- import_module float, math, getopt, term.
 :- import_module parser, prog_out, term_io, llds_out, hlds_out, hlds_data.
 :- import_module globals, options, passes_aux, arg_info, llds, mode_util.
 :- import_module code_util, export.

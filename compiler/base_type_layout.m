@@ -230,6 +230,7 @@
 :- import_module prog_data, hlds_data, hlds_pred, hlds_out, type_util.
 :- import_module llds, code_util, globals, options, special_pred, prog_util.
 :- import_module assoc_list, bool, string, int, list, map, std_util, require.
+:- import_module term.
 
 :- type layout_info 	--->	
 	layout_info(

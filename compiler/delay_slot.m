@@ -48,7 +48,7 @@
 
 :- interface.
 
-:- import_module llds.
+:- import_module llds, list.
 
 	% Delay the construction of det stack frames as long as possible,
 	% in order to avoid the construction in as many cases as possible.
