@@ -168,7 +168,7 @@ detect_cse_in_procs([ProcId | ProcIds], PredId, Redo0, Redo,
 		IOstate1 = IOstate0
 	),
 
-	bool__or(Redo0, Redo1, Redo2),
+	std_util__bool_or(Redo0, Redo1, Redo2),
 	detect_cse_in_procs(ProcIds, PredId, Redo2, Redo,
 		ModuleInfo1, ModuleInfo, IOstate1, IOstate).
 
@@ -275,7 +275,7 @@ detect_cse_in_conj([Goal0 | Goals0], InstMap0, CseInfo0, CseInfo,
 	;
 		Goals = [Goal1 | Goals1]
 	),
-	bool__or(Redo1, Redo2, Redo).
+	std_util__bool_or(Redo1, Redo2, Redo).
 
 %-----------------------------------------------------------------------------%
 
@@ -319,7 +319,7 @@ detect_cse_in_disj_2([Goal0 | Goals0], InstMap0, CseInfo0, CseInfo, Redo,
 		[Goal | Goals]) :-
 	detect_cse_in_goal(Goal0, InstMap0, CseInfo0, CseInfo1, Redo1, Goal),
 	detect_cse_in_disj_2(Goals0, InstMap0, CseInfo1, CseInfo, Redo2, Goals),
-	bool__or(Redo1, Redo2, Redo).
+	std_util__bool_or(Redo1, Redo2, Redo).
 
 :- pred detect_cse_in_cases(list(var), var, can_fail, list(case),
 	hlds__goal_info, instmap, cse_info, cse_info, bool, hlds__goal_expr).
@@ -360,7 +360,7 @@ detect_cse_in_cases_2([Case0 | Cases0], InstMap, CseInfo0, CseInfo, Redo,
 	detect_cse_in_goal(Goal0, InstMap, CseInfo0, CseInfo1, Redo1, Goal),
 	Case = case(Functor, Goal),
 	detect_cse_in_cases_2(Cases0, InstMap, CseInfo1, CseInfo, Redo2, Cases),
-	bool__or(Redo1, Redo2, Redo).
+	std_util__bool_or(Redo1, Redo2, Redo).
 
 :- pred detect_cse_in_ite(list(var), list(var),
 	hlds__goal, hlds__goal, hlds__goal, hlds__goal_info,
@@ -402,8 +402,8 @@ detect_cse_in_ite_2(Cond0, Then0, Else0, InstMap0, CseInfo0, CseInfo, Redo,
 		InstMap1),
 	detect_cse_in_goal(Then0, InstMap1, CseInfo1, CseInfo2, Redo2, Then),
 	detect_cse_in_goal(Else0, InstMap0, CseInfo2, CseInfo, Redo3, Else),
-	bool__or(Redo1, Redo2, Redo12),
-	bool__or(Redo12, Redo3, Redo).
+	std_util__bool_or(Redo1, Redo2, Redo12),
+	std_util__bool_or(Redo12, Redo3, Redo).
 
 %-----------------------------------------------------------------------------%
 
@@ -529,10 +529,10 @@ find_bind_var_for_cse([GoalPair0 | Goals0], Substitution0, Var, MaybeUnify0,
 			Substitution2 = Substitution0
 		),
 			% check whether the var was bound
-		term__apply_rec_substitution(term__variable(Var),
+		term__apply_rec_substitution(term_variable(Var),
 			Substitution2, Term),
 		(
-			Term = term__functor(_, _, _),
+			Term = term_functor(_, _, _),
 			UnifyInfo0 = deconstruct(_, _, _, _, _),
 			MaybeUnify0 = no
 		->
@@ -545,7 +545,7 @@ find_bind_var_for_cse([GoalPair0 | Goals0], Substitution0, Var, MaybeUnify0,
 			list__append(Replacements, Goals0, Goals),
 			Substitution = Substitution2
 		;
-			Term = term__functor(_, _, _),
+			Term = term_functor(_, _, _),
 			UnifyInfo0 = deconstruct(_, _, _, _, _),
 			MaybeUnify0 = yes(OldUnifyGoal),
 			goal_info_context(GoalInfo, Context),
@@ -593,7 +593,7 @@ construct_common_unify(Var, GoalExpr0 - GoalInfo, Goal, Varset0, Varset,
 		error("unexpected goal in construct_common_unify")
 	).
 
-:- pred create_parallel_subterms(list(var), term__context, unify_context,
+:- pred create_parallel_subterms(list(var), term_context, unify_context,
 	varset, varset, map(var, type), map(var, type), map(var, var),
 	list(hlds__goal)).
 :- mode create_parallel_subterms(in, in, in, in, out, in, out, out, out) is det.
@@ -615,7 +615,7 @@ create_parallel_subterms([OFV | OFV0], Context, UnifyContext, Varset0, Varset,
 
 %-----------------------------------------------------------------------------%
 
-:- pred find_similar_deconstruct(hlds__goal, unification, term__context,
+:- pred find_similar_deconstruct(hlds__goal, unification, term_context,
 	list(hlds__goal)).
 :- mode find_similar_deconstruct(in, in, in, out) is semidet.
 
@@ -634,7 +634,7 @@ find_similar_deconstruct(OldUnifyGoal, NewUnifyInfo, Context, Replacements) :-
 		error("find_similar_deconstruct: non-deconstruct unify")
 	).
 
-:- pred pair_subterms(list(var), list(var), term__context, unify_context,
+:- pred pair_subterms(list(var), list(var), term_context, unify_context,
 	list(hlds__goal)).
 :- mode pair_subterms(in, in, in, in, out) is det.
 

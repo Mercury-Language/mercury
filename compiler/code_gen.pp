@@ -694,7 +694,7 @@ code_gen__generate_det_goal_2(
 		call(PredId, ProcId, Args, Builtin, _, _, _Follow),
 							_GoalInfo, Instr) -->
 	(
-		{ is_builtin__is_internal(Builtin) }
+		{ hlds__is_builtin_is_internal(Builtin) }
 	->
 		call_gen__generate_det_builtin(PredId, ProcId, Args, Instr)
 	;
@@ -944,7 +944,7 @@ code_gen__generate_semi_goal_2(
 		call(PredId, ProcId, Args, Builtin, _, _, _Follow),
 							_GoalInfo, Code) -->
 	(
-		{ is_builtin__is_internal(Builtin) }
+		{ hlds__is_builtin_is_internal(Builtin) }
 	->
 		call_gen__generate_semidet_builtin(PredId, ProcId, Args, Code)
 	;
@@ -1033,9 +1033,9 @@ code_gen__generate_negation(Goal, Code) -->
 		code_info__produce_variable(R, Code1, ValB),
 		code_aux__post_goal_update(GoalInfo),
 		code_info__variable_type(L, Type),
-		{ Type = term__functor(term__atom("string"), [], _) ->
+		{ Type = term_functor(term_atom("string"), [], _) ->
 			Op = str_eq
-		; Type = term__functor(term__atom("float"), [], _) ->
+		; Type = term_functor(term_atom("float"), [], _) ->
 			Op = float_eq
 		;
 			Op = eq
@@ -1131,7 +1131,7 @@ code_gen__generate_non_goal_2(
 		call(PredId, ProcId, Args, Builtin, _, _, _Follow),
 							_GoalInfo, Code) -->
 	(
-		{ is_builtin__is_internal(Builtin) }
+		{ hlds__is_builtin_is_internal(Builtin) }
 	->
 		call_gen__generate_nondet_builtin(PredId, ProcId, Args, Code)
 	;

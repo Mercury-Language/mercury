@@ -470,7 +470,7 @@ process_module_2(ModuleName) -->
 			% of the item list, so that make_hlds knows which items
 			% are imported and which are defined in the main module
 		{ varset__init(VarSet) },
-		{ term__context_init(ModuleName, 0, Context) },
+		{ term_context_init(ModuleName, 0, Context) },
 		{ list__append(Items0,
 			[module_defn(VarSet, imported) - Context], Items1) },
 		{ dir__basename(ModuleName, BaseModuleName) },
@@ -1031,7 +1031,7 @@ process_module_interfaces([Import | Imports], IndirectImports0, Module0, Module)
 		( { ModuleName = BuiltinModule } ->
 			[]
 		;
-			{ term__context_init(ModuleName, 1, Context) },
+			{ term_context_init(ModuleName, 1, Context) },
 			prog_out__write_context(Context),
 			io__write_string("Warning: module imports itself!\n")
 		),
@@ -1465,19 +1465,19 @@ mercury_compile__semantic_pass_by_phases(HLDS1, HLDS8, Proceed0, Proceed) -->
 	mercury_compile__typecheck(HLDS1, HLDS2, FoundTypeError),
 	maybe_report_stats(Statistics),
 	mercury_compile__maybe_dump_hlds(HLDS2, "2", "typecheck"),
-	{ bool__not(FoundTypeError, Proceed1) },
+	{ std_util__bool_not(FoundTypeError, Proceed1) },
 
 	globals__io_lookup_bool_option(typecheck_only, TypecheckOnly),
 	( { TypecheckOnly = no, FoundTypeError = no } ->
 		mercury_compile__modecheck(HLDS2, HLDS3, FoundModeError),
 		maybe_report_stats(Statistics),
 		mercury_compile__maybe_dump_hlds(HLDS3, "3", "modecheck"),
-		{ bool__not(FoundModeError, Proceed2) },
+		{ std_util__bool_not(FoundModeError, Proceed2) },
 
 		mercury_compile__maybe_write_dependency_graph(HLDS3, HLDS3a),
 		mercury_compile__maybe_output_prof_call_graph(HLDS3a, HLDS3b),
 
-		{ bool__and_list([Proceed0, Proceed1, Proceed2], Proceed) },
+		{ std_util__bool_and_list([Proceed0, Proceed1, Proceed2], Proceed) },
 		( { Proceed = yes } ->
 			mercury_compile__maybe_polymorphism(HLDS3b, HLDS4),
 			maybe_report_stats(Statistics),
@@ -1794,7 +1794,7 @@ mercury_compile__middle_pass_by_phases(HLDS8, HLDS12, ErrorcheckOnly, Proceed)
 	;
 		{ HLDS12 = HLDS9 }
 	),
-	{ bool__not(FoundError, Proceed) }.
+	{ std_util__bool_not(FoundError, Proceed) }.
 
 :- pred mercury_compile__check_determinism(module_info, module_info, bool,
 	io__state, io__state).
@@ -2186,7 +2186,7 @@ mercury_compile__output_pass(HLDS16, LLDS2, ModuleName, CompileErrors) -->
 	( { CompileToC = no } ->
 		{ string__append(ModuleName, ".c", C_File) },
 		mercury_compile__c_to_obj(C_File, CompileOK),
-		{ bool__not(CompileOK, CompileErrors) }
+		{ std_util__bool_not(CompileOK, CompileErrors) }
 	;
 		{ CompileErrors = no }
 	).
@@ -2582,7 +2582,7 @@ mercury_compile__gen_hlds(DumpFile, HLDS) -->
 	maybe_flush_output(Verbose),
 	io__tell(DumpFile, Res),
 	( { Res = ok } ->
-		io__gc_call(c__gen_hlds(0, HLDS)),
+		io__gc_call(mercury_to_c__gen_hlds(0, HLDS)),
 		io__told,
 		maybe_write_string(Verbose, " done.\n"),
 		maybe_report_stats(Statistics)

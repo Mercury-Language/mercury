@@ -23,7 +23,7 @@
 :- pred prog_out__write_messages(message_list, io__state, io__state).
 :- mode prog_out__write_messages(in, di, uo) is det.
 
-:- pred prog_out__write_context(term__context, io__state, io__state).
+:- pred prog_out__write_context(term_context, io__state, io__state).
 :- mode prog_out__write_context(in, di, uo) is det.
 
 :- pred prog_out__write_sym_name(sym_name, io__state, io__state).
@@ -54,7 +54,7 @@ prog_out__write_messages([Message | Messages]) -->
 
 prog_out__write_message(Msg - Term) -->
 	(
-		{ Term = term__functor(_Functor, _Args, Context) }
+		{ Term = term_functor(_Functor, _Args, Context) }
 	->
 		prog_out__write_context(Context)
 	;
@@ -62,7 +62,7 @@ prog_out__write_message(Msg - Term) -->
 	),
 	io__write_string(Msg),
 	(
-		{ Term = term__functor(term__atom(""), [], _Context2) }
+		{ Term = term_functor(term_atom(""), [], _Context2) }
 	->
 		io__write_string(".\n")
 	;
@@ -78,8 +78,8 @@ prog_out__write_message(Msg - Term) -->
 	% error message.
 
 prog_out__write_context(Context) -->
-	{ term__context_file(Context, FileName) },
-	{ term__context_line(Context, LineNumber) },
+	{ term_context_file(Context, FileName) },
+	{ term_context_line(Context, LineNumber) },
 	( { FileName = "" } ->
 		[]
 	;

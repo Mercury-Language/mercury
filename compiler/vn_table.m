@@ -31,82 +31,82 @@
 				vn_to_rval_table, vn_to_uses_table,
 				vn_to_locs_table, loc_to_vn_table).
 
-:- pred vn__init_tables(vn_tables).
-:- mode vn__init_tables(out) is det.
+:- pred vn_table__init_tables(vn_tables).
+:- mode vn_table__init_tables(out) is det.
 
-:- pred vn__lookup_desired_value(vnlval, vn, string, vn_tables).
-:- mode vn__lookup_desired_value(in, out, in, in) is det.
+:- pred vn_table__lookup_desired_value(vnlval, vn, string, vn_tables).
+:- mode vn_table__lookup_desired_value(in, out, in, in) is det.
 
-:- pred vn__lookup_assigned_vn(vnrval, vn, string, vn_tables).
-:- mode vn__lookup_assigned_vn(in, out, in, in) is det.
+:- pred vn_table__lookup_assigned_vn(vnrval, vn, string, vn_tables).
+:- mode vn_table__lookup_assigned_vn(in, out, in, in) is det.
 
-:- pred vn__lookup_defn(vn, vnrval, string, vn_tables).
-:- mode vn__lookup_defn(in, out, in, in) is det.
+:- pred vn_table__lookup_defn(vn, vnrval, string, vn_tables).
+:- mode vn_table__lookup_defn(in, out, in, in) is det.
 
-:- pred vn__lookup_uses(vn, list(vn_src), string, vn_tables).
-:- mode vn__lookup_uses(in, out, in, in) is det.
+:- pred vn_table__lookup_uses(vn, list(vn_src), string, vn_tables).
+:- mode vn_table__lookup_uses(in, out, in, in) is det.
 
-:- pred vn__lookup_current_locs(vn, list(vnlval), string, vn_tables).
-:- mode vn__lookup_current_locs(in, out, in, in) is det.
+:- pred vn_table__lookup_current_locs(vn, list(vnlval), string, vn_tables).
+:- mode vn_table__lookup_current_locs(in, out, in, in) is det.
 
-:- pred vn__lookup_current_value(vnlval, vn, string, vn_tables).
-:- mode vn__lookup_current_value(in, out, in, in) is det.
+:- pred vn_table__lookup_current_value(vnlval, vn, string, vn_tables).
+:- mode vn_table__lookup_current_value(in, out, in, in) is det.
 
-:- pred vn__search_desired_value(vnlval, vn, vn_tables).
-:- mode vn__search_desired_value(in, out, in) is semidet.
+:- pred vn_table__search_desired_value(vnlval, vn, vn_tables).
+:- mode vn_table__search_desired_value(in, out, in) is semidet.
 
-:- pred vn__search_assigned_vn(vnrval, vn, vn_tables).
-:- mode vn__search_assigned_vn(in, out, in) is semidet.
+:- pred vn_table__search_assigned_vn(vnrval, vn, vn_tables).
+:- mode vn_table__search_assigned_vn(in, out, in) is semidet.
 
-:- pred vn__search_defn(vn, vnrval, vn_tables).
-:- mode vn__search_defn(in, out, in) is semidet.
+:- pred vn_table__search_defn(vn, vnrval, vn_tables).
+:- mode vn_table__search_defn(in, out, in) is semidet.
 
-:- pred vn__search_uses(vn, list(vn_src), vn_tables).
-:- mode vn__search_uses(in, out, in) is semidet.
+:- pred vn_table__search_uses(vn, list(vn_src), vn_tables).
+:- mode vn_table__search_uses(in, out, in) is semidet.
 
-:- pred vn__search_current_locs(vn, list(vnlval), vn_tables).
-:- mode vn__search_current_locs(in, out, in) is semidet.
+:- pred vn_table__search_current_locs(vn, list(vnlval), vn_tables).
+:- mode vn_table__search_current_locs(in, out, in) is semidet.
 
-:- pred vn__search_current_value(vnlval, vn, vn_tables).
-:- mode vn__search_current_value(in, out, in) is semidet.
+:- pred vn_table__search_current_value(vnlval, vn, vn_tables).
+:- mode vn_table__search_current_value(in, out, in) is semidet.
 
-:- pred vn__get_vnlval_vn_list(vn_tables, assoc_list(vnlval, vn)).
-:- mode vn__get_vnlval_vn_list(in, out) is det.
+:- pred vn_table__get_vnlval_vn_list(vn_tables, assoc_list(vnlval, vn)).
+:- mode vn_table__get_vnlval_vn_list(in, out) is det.
 
-:- pred vn__add_new_use(vn, vn_src, vn_tables, vn_tables).
-% :- mode vn__add_new_use(in, in, di, uo) is det.
-:- mode vn__add_new_use(in, in, in, out) is det.
+:- pred vn_table__add_new_use(vn, vn_src, vn_tables, vn_tables).
+% :- mode vn_table__add_new_use(in, in, di, uo) is det.
+:- mode vn_table__add_new_use(in, in, in, out) is det.
 
-:- pred vn__del_old_use(vn, vn_src, vn_tables, vn_tables).
-% :- mode vn__del_old_use(in, in, di, uo) is det.
-:- mode vn__del_old_use(in, in, in, out) is det.
+:- pred vn_table__del_old_use(vn, vn_src, vn_tables, vn_tables).
+% :- mode vn_table__del_old_use(in, in, di, uo) is det.
+:- mode vn_table__del_old_use(in, in, in, out) is det.
 
-:- pred vn__del_old_uses(list(vn), vn_src, vn_tables, vn_tables).
-% :- mode vn__del_old_uses(in, in, di, uo) is det.
-:- mode vn__del_old_uses(in, in, in, out) is det.
+:- pred vn_table__del_old_uses(list(vn), vn_src, vn_tables, vn_tables).
+% :- mode vn_table__del_old_uses(in, in, di, uo) is det.
+:- mode vn_table__del_old_uses(in, in, in, out) is det.
 
-:- pred vn__record_first_vnrval(vnrval, vn, vn_tables, vn_tables).
-% :- mode vn__record_first_vnrval(in, out, di, uo) is det.
-:- mode vn__record_first_vnrval(in, out, in, out) is det.
+:- pred vn_table__record_first_vnrval(vnrval, vn, vn_tables, vn_tables).
+% :- mode vn_table__record_first_vnrval(in, out, di, uo) is det.
+:- mode vn_table__record_first_vnrval(in, out, in, out) is det.
 
-:- pred vn__record_first_vnlval(vnlval, vn, vn_tables, vn_tables).
-% :- mode vn__record_first_vnlval(in, out, di, uo) is det.
-:- mode vn__record_first_vnlval(in, out, in, out) is det.
+:- pred vn_table__record_first_vnlval(vnlval, vn, vn_tables, vn_tables).
+% :- mode vn_table__record_first_vnlval(in, out, di, uo) is det.
+:- mode vn_table__record_first_vnlval(in, out, in, out) is det.
 
-:- pred vn__set_desired_value(vnlval, vn, vn_tables, vn_tables).
-% :- mode vn__set_desired_value(in, in, di, uo) is det.
-:- mode vn__set_desired_value(in, in, in, out) is det.
+:- pred vn_table__set_desired_value(vnlval, vn, vn_tables, vn_tables).
+% :- mode vn_table__set_desired_value(in, in, di, uo) is det.
+:- mode vn_table__set_desired_value(in, in, in, out) is det.
 
-:- pred vn__set_current_value(vnlval, vn, vn_tables, vn_tables).
-% :- mode vn__set_current_value(in, in, di, uo) is det.
-:- mode vn__set_current_value(in, in, in, out) is det.
+:- pred vn_table__set_current_value(vnlval, vn, vn_tables, vn_tables).
+% :- mode vn_table__set_current_value(in, in, di, uo) is det.
+:- mode vn_table__set_current_value(in, in, in, out) is det.
 
-:- pred vn__set_parallel_value(vnlval, vn, vn_tables, vn_tables).
-% :- mode vn__set_parallel_value(in, in, di, uo) is det.
-:- mode vn__set_parallel_value(in, in, in, out) is det.
+:- pred vn_table__set_parallel_value(vnlval, vn, vn_tables, vn_tables).
+% :- mode vn_table__set_parallel_value(in, in, di, uo) is det.
+:- mode vn_table__set_parallel_value(in, in, in, out) is det.
 
-:- pred vn__get_all_vnrvals(list(vnrval), vn_tables).
-:- mode vn__get_all_vnrvals(out, in) is det.
+:- pred vn_table__get_all_vnrvals(list(vnrval), vn_tables).
+:- mode vn_table__get_all_vnrvals(out, in) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -115,7 +115,7 @@
 :- import_module opt_debug.
 :- import_module int, string, require.
 
-vn__init_tables(VnTables) :-
+vn_table__init_tables(VnTables) :-
 	map__init(Lval_to_vn_table0),
 	map__init(Rval_to_vn_table0),
 	map__init(Vn_to_rval_table0),
@@ -127,7 +127,7 @@ vn__init_tables(VnTables) :-
 		Vn_to_rval_table0, Vn_to_uses_table0,
 		Vn_to_locs_table0, Loc_to_vn_table0).
 
-vn__lookup_desired_value(Vnlval, Vn, From, VnTables) :-
+vn_table__lookup_desired_value(Vnlval, Vn, From, VnTables) :-
 	VnTables = vn_tables(_NextVn,
 		Lval_to_vn_table,  _Rval_to_vn_table,
 		_Vn_to_rval_table, _Vn_to_uses_table,
@@ -140,7 +140,7 @@ vn__lookup_desired_value(Vnlval, Vn, From, VnTables) :-
 		error(Error)
 	).
 
-vn__lookup_assigned_vn(Vnrval, Vn, From, VnTables) :-
+vn_table__lookup_assigned_vn(Vnrval, Vn, From, VnTables) :-
 	VnTables = vn_tables(_NextVn,
 		_Lval_to_vn_table,  Rval_to_vn_table,
 		_Vn_to_rval_table, _Vn_to_uses_table,
@@ -153,7 +153,7 @@ vn__lookup_assigned_vn(Vnrval, Vn, From, VnTables) :-
 		error(Error)
 	).
 
-vn__lookup_defn(Vn, Vnrval, From, VnTables) :-
+vn_table__lookup_defn(Vn, Vnrval, From, VnTables) :-
 	VnTables = vn_tables(_NextVn,
 		_Lval_to_vn_table,  _Rval_to_vn_table,
 		Vn_to_rval_table, _Vn_to_uses_table,
@@ -166,7 +166,7 @@ vn__lookup_defn(Vn, Vnrval, From, VnTables) :-
 		error(Error)
 	).
 
-vn__lookup_uses(Vn, Uses, From, VnTables) :-
+vn_table__lookup_uses(Vn, Uses, From, VnTables) :-
 	VnTables = vn_tables(_NextVn,
 		_Lval_to_vn_table,  _Rval_to_vn_table,
 		_Vn_to_rval_table, Vn_to_uses_table,
@@ -179,7 +179,7 @@ vn__lookup_uses(Vn, Uses, From, VnTables) :-
 		error(Error)
 	).
 
-vn__lookup_current_locs(Vn, Locs, From, VnTables) :-
+vn_table__lookup_current_locs(Vn, Locs, From, VnTables) :-
 	VnTables = vn_tables(_NextVn,
 		_Lval_to_vn_table,  _Rval_to_vn_table,
 		_Vn_to_rval_table, _Vn_to_uses_table,
@@ -192,7 +192,7 @@ vn__lookup_current_locs(Vn, Locs, From, VnTables) :-
 		error(Error)
 	).
 
-vn__lookup_current_value(Vnlval, Vn, From, VnTables) :-
+vn_table__lookup_current_value(Vnlval, Vn, From, VnTables) :-
 	VnTables = vn_tables(_NextVn,
 		_Lval_to_vn_table,  _Rval_to_vn_table,
 		_Vn_to_rval_table, _Vn_to_uses_table,
@@ -207,49 +207,49 @@ vn__lookup_current_value(Vnlval, Vn, From, VnTables) :-
 
 %-----------------------------------------------------------------------------%
 
-vn__search_desired_value(Vnlval, Vn, VnTables) :-
+vn_table__search_desired_value(Vnlval, Vn, VnTables) :-
 	VnTables = vn_tables(_NextVn,
 		Lval_to_vn_table,  _Rval_to_vn_table,
 		_Vn_to_rval_table, _Vn_to_uses_table,
 		_Vn_to_locs_table, _Loc_to_vn_table),
 	map__search(Lval_to_vn_table, Vnlval, Vn).
 
-vn__search_assigned_vn(Vnrval, Vn, VnTables) :-
+vn_table__search_assigned_vn(Vnrval, Vn, VnTables) :-
 	VnTables = vn_tables(_NextVn,
 		_Lval_to_vn_table,  Rval_to_vn_table,
 		_Vn_to_rval_table, _Vn_to_uses_table,
 		_Vn_to_locs_table, _Loc_to_vn_table),
 	map__search(Rval_to_vn_table, Vnrval, Vn).
 
-vn__search_defn(Vn, Vnrval, VnTables) :-
+vn_table__search_defn(Vn, Vnrval, VnTables) :-
 	VnTables = vn_tables(_NextVn,
 		_Lval_to_vn_table,  _Rval_to_vn_table,
 		Vn_to_rval_table, _Vn_to_uses_table,
 		_Vn_to_locs_table, _Loc_to_vn_table),
 	map__search(Vn_to_rval_table, Vn, Vnrval).
 
-vn__search_uses(Vn, Uses, VnTables) :-
+vn_table__search_uses(Vn, Uses, VnTables) :-
 	VnTables = vn_tables(_NextVn,
 		_Lval_to_vn_table,  _Rval_to_vn_table,
 		_Vn_to_rval_table, Vn_to_uses_table,
 		_Vn_to_locs_table, _Loc_to_vn_table),
 	map__search(Vn_to_uses_table, Vn, Uses).
 
-vn__search_current_locs(Vn, Locs, VnTables) :-
+vn_table__search_current_locs(Vn, Locs, VnTables) :-
 	VnTables = vn_tables(_NextVn,
 		_Lval_to_vn_table,  _Rval_to_vn_table,
 		_Vn_to_rval_table, _Vn_to_uses_table,
 		Vn_to_locs_table, _Loc_to_vn_table),
 	map__search(Vn_to_locs_table, Vn, Locs).
 
-vn__search_current_value(Vnlval, Vn, VnTables) :-
+vn_table__search_current_value(Vnlval, Vn, VnTables) :-
 	VnTables = vn_tables(_NextVn,
 		_Lval_to_vn_table,  _Rval_to_vn_table,
 		_Vn_to_rval_table, _Vn_to_uses_table,
 		_Vn_to_locs_table, Loc_to_vn_table),
 	map__search(Loc_to_vn_table, Vnlval, Vn).
 
-vn__get_vnlval_vn_list(VnTables, Lval_vn_list) :-
+vn_table__get_vnlval_vn_list(VnTables, Lval_vn_list) :-
 	VnTables = vn_tables(_NextVn,
 		Lval_to_vn_table, _Rval_to_vn_table,
 		_Vn_to_rval_table, _Vn_to_uses_table,
@@ -258,7 +258,7 @@ vn__get_vnlval_vn_list(VnTables, Lval_vn_list) :-
 
 %-----------------------------------------------------------------------------%
 
-vn__add_new_use(Vn, NewUse, VnTables0, VnTables) :-
+vn_table__add_new_use(Vn, NewUse, VnTables0, VnTables) :-
 	VnTables0 = vn_tables(NextVn0,
 		Lval_to_vn_table0, Rval_to_vn_table0,
 		Vn_to_rval_table0, Vn_to_uses_table0,
@@ -288,7 +288,7 @@ vn__add_new_use(Vn, NewUse, VnTables0, VnTables) :-
 		Vn_to_rval_table0, Vn_to_uses_table1,
 		Vn_to_locs_table0, Loc_to_vn_table0).
 
-vn__del_old_use(Vn, OldUse, VnTables0, VnTables) :-
+vn_table__del_old_use(Vn, OldUse, VnTables0, VnTables) :-
 	VnTables0 = vn_tables(NextVn0,
 		Lval_to_vn_table0, Rval_to_vn_table0,
 		Vn_to_rval_table0, Vn_to_uses_table0,
@@ -313,12 +313,12 @@ vn__del_old_use(Vn, OldUse, VnTables0, VnTables) :-
 		Vn_to_rval_table0, Vn_to_uses_table1,
 		Vn_to_locs_table0, Loc_to_vn_table0).
 
-vn__del_old_uses([], _OldUse, VnTables, VnTables).
-vn__del_old_uses([Vn | Vns], OldUse, VnTables0, VnTables) :-
-	vn__del_old_use(Vn, OldUse, VnTables0, VnTables1),
-	vn__del_old_uses(Vns, OldUse, VnTables1, VnTables).
+vn_table__del_old_uses([], _OldUse, VnTables, VnTables).
+vn_table__del_old_uses([Vn | Vns], OldUse, VnTables0, VnTables) :-
+	vn_table__del_old_use(Vn, OldUse, VnTables0, VnTables1),
+	vn_table__del_old_uses(Vns, OldUse, VnTables1, VnTables).
 
-vn__record_first_vnrval(Vnrval, Vn, VnTables0, VnTables) :-
+vn_table__record_first_vnrval(Vnrval, Vn, VnTables0, VnTables) :-
 	VnTables0 = vn_tables(NextVn0,
 		Lval_to_vn_table0, Rval_to_vn_table0,
 		Vn_to_rval_table0, Vn_to_uses_table0,
@@ -334,7 +334,7 @@ vn__record_first_vnrval(Vnrval, Vn, VnTables0, VnTables) :-
 		Vn_to_rval_table1, Vn_to_uses_table1,
 		Vn_to_locs_table1, Loc_to_vn_table0).
 
-vn__record_first_vnlval(Vnlval, Vn, VnTables0, VnTables) :-
+vn_table__record_first_vnlval(Vnlval, Vn, VnTables0, VnTables) :-
 	VnTables0 = vn_tables(NextVn0,
 		Lval_to_vn_table0, Rval_to_vn_table0,
 		Vn_to_rval_table0, Vn_to_uses_table0,
@@ -352,7 +352,7 @@ vn__record_first_vnlval(Vnlval, Vn, VnTables0, VnTables) :-
 		Vn_to_rval_table1, Vn_to_uses_table1,
 		Vn_to_locs_table1, Loc_to_vn_table1).
 
-vn__set_desired_value(Vnlval, Vn, VnTables0, VnTables) :-
+vn_table__set_desired_value(Vnlval, Vn, VnTables0, VnTables) :-
 	VnTables0 = vn_tables(NextVn0,
 		Lval_to_vn_table0, Rval_to_vn_table0,
 		Vn_to_rval_table0, Vn_to_uses_table0,
@@ -364,7 +364,7 @@ vn__set_desired_value(Vnlval, Vn, VnTables0, VnTables) :-
 			Vn_to_rval_table0, Vn_to_uses_table0,
 			Vn_to_locs_table0, Loc_to_vn_table0)
 	;
-		vn__record_first_vnlval(Vnlval, _, VnTables0, VnTables1),
+		vn_table__record_first_vnlval(Vnlval, _, VnTables0, VnTables1),
 		VnTables1 = vn_tables(NextVn1,
 			Lval_to_vn_table1, Rval_to_vn_table1,
 			Vn_to_rval_table1, Vn_to_uses_table1,
@@ -382,7 +382,7 @@ vn__set_desired_value(Vnlval, Vn, VnTables0, VnTables) :-
 	% machines it is better not to use a register immediately after
 	% its definition.
 
-vn__set_current_value(Vnlval, Vn, VnTables0, VnTables) :-
+vn_table__set_current_value(Vnlval, Vn, VnTables0, VnTables) :-
 	VnTables0 = vn_tables(NextVn0,
 		Lval_to_vn_table0, Rval_to_vn_table0,
 		Vn_to_rval_table0, Vn_to_uses_table0,
@@ -417,11 +417,11 @@ vn__set_current_value(Vnlval, Vn, VnTables0, VnTables) :-
 		Vn_to_rval_table0, Vn_to_uses_table0,
 		Vn_to_locs_table2, Loc_to_vn_table1).
 
-vn__set_parallel_value(Vnlval, Vn, VnTables0, VnTables) :-
-	vn__set_desired_value(Vnlval, Vn, VnTables0, VnTables1),
-	vn__set_current_value(Vnlval, Vn, VnTables1, VnTables).
+vn_table__set_parallel_value(Vnlval, Vn, VnTables0, VnTables) :-
+	vn_table__set_desired_value(Vnlval, Vn, VnTables0, VnTables1),
+	vn_table__set_current_value(Vnlval, Vn, VnTables1, VnTables).
 
-vn__get_all_vnrvals(Vnrvals, VnTables) :-
+vn_table__get_all_vnrvals(Vnrvals, VnTables) :-
 	VnTables = vn_tables(_NextVn,
 		_Lval_to_vn_table,  Rval_to_vn_table,
 		_Vn_to_rval_table, _Vn_to_uses_table,

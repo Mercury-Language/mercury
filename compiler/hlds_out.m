@@ -49,7 +49,7 @@
 :- pred hlds_out__write_pred_call_id(pred_call_id, io__state, io__state).
 :- mode hlds_out__write_pred_call_id(in, di, uo) is det.
 
-:- pred hlds_out__write_unify_context(unify_context, term__context,
+:- pred hlds_out__write_unify_context(unify_context, term_context,
 				io__state, io__state).
 :- mode hlds_out__write_unify_context(in, in, di, uo) is det.
 
@@ -142,8 +142,8 @@ hlds_out__write_pred_id(ModuleInfo, PredId) -->
 		{ module_info_preds(ModuleInfo, Preds) },
 		{ map__lookup(Preds, PredId, PredInfo) },
 		{ pred_info_arg_types(PredInfo, TVarSet, ArgTypes) },
-		{ term__context_init(Context) },
-		mercury_output_term(term__functor(term__atom(Name),
+		{ term_context_init(Context) },
+		mercury_output_term(term_functor(term_atom(Name),
 				ArgTypes, Context), TVarSet)
 	;
 		{ predicate_arity(ModuleInfo, PredId, Arity) },
@@ -172,7 +172,7 @@ hlds_out__write_unify_context(unify_context(MainContext, RevSubContexts),
 	{ list__reverse(RevSubContexts, SubContexts) },
 	hlds_out__write_unify_sub_contexts(SubContexts, Context).
 
-:- pred hlds_out__write_unify_main_context(unify_main_context, term__context,
+:- pred hlds_out__write_unify_main_context(unify_main_context, term_context,
 						io__state, io__state).
 :- mode hlds_out__write_unify_main_context(in, in, di, uo) is det.
 
@@ -191,7 +191,7 @@ hlds_out__write_unify_main_context(call(PredId, ArgNum), Context) -->
 	hlds_out__write_pred_call_id(PredId),
 	io__write_string("':\n").
 
-:- pred hlds_out__write_unify_sub_contexts(unify_sub_contexts, term__context,
+:- pred hlds_out__write_unify_sub_contexts(unify_sub_contexts, term_context,
 				io__state, io__state).
 :- mode hlds_out__write_unify_sub_contexts(in, in, di, uo) is det.
 
@@ -399,15 +399,15 @@ hlds_out__write_intlist_2(Ns0) -->
 hlds_out__write_clause_head(ModuleInfo, PredId, VarSet, HeadVars) -->
 	{ predicate_name(ModuleInfo, PredId, PredName) },
 	{ predicate_module(ModuleInfo, PredId, ModuleName) },
-	hlds_out__write_qualified_functor(ModuleName, term__atom(PredName),
+	hlds_out__write_qualified_functor(ModuleName, term_atom(PredName),
 				HeadVars, VarSet).
 
 hlds_out__write_goal(Goal - GoalInfo, ModuleInfo, VarSet, Indent) -->
 	globals__io_lookup_bool_option(verbose_dump_hlds, Verbose),
 	( { Verbose = yes } ->
 		{ goal_info_context(GoalInfo, Context) },
-		{ term__context_file(Context, FileName) },
-		{ term__context_line(Context, LineNumber) },
+		{ term_context_file(Context, FileName) },
+		{ term_context_line(Context, LineNumber) },
 		( { FileName \= "" } ->
 			io__write_string("% context: file `"),
 			io__write_string(FileName),
@@ -607,10 +607,10 @@ hlds_out__write_goal_2(call(_PredId, _ProcId, ArgVars, _, _, PredName, _Follow),
 					_ModuleInfo, VarSet, _Indent) -->
 		% XXX we should print more info here
 	(	{ PredName = qualified(ModuleName, Name) }, 
-		hlds_out__write_qualified_functor(ModuleName, term__atom(Name), ArgVars, VarSet)
+		hlds_out__write_qualified_functor(ModuleName, term_atom(Name), ArgVars, VarSet)
 	;
 		{ PredName = unqualified(Name) },
-		hlds_out__write_functor(term__atom(Name), ArgVars, VarSet)
+		hlds_out__write_functor(term_atom(Name), ArgVars, VarSet)
 	).
 
 hlds_out__write_goal_2(unify(A, B, _, Unification, _), ModuleInfo, VarSet,
@@ -670,9 +670,9 @@ hlds_out__write_unify_rhs(lambda_goal(Vars, Modes, Det, Goal),
 	io__write_string("))").
 
 hlds_out__write_functor(Functor, ArgVars, VarSet) -->
-	{ term__context_init(Context) },
+	{ term_context_init(Context) },
 	{ term__var_list_to_term_list(ArgVars, ArgTerms) },
-	{ Term = term__functor(Functor, ArgTerms, Context) },
+	{ Term = term_functor(Functor, ArgTerms, Context) },
 	mercury_output_term(Term, VarSet).
 
 :- pred hlds_out__write_qualified_functor(string, const, list(var), varset,
@@ -780,7 +780,7 @@ hlds_out__write_some(_Vars, _VarSet) --> [].
 
 hlds_out__write_builtin(Builtin) -->
 	(
-		{ is_builtin__is_inline(Builtin) }
+		{ hlds__is_builtin_is_inline(Builtin) }
 	->
 		io__write_string("is inline")
 	;

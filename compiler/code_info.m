@@ -631,14 +631,14 @@ code_info__cons_id_to_tag(Var, cons(Name, Arity), Tag) -->
 	code_info__variable_type(Var, Type),
 	(
 		% handle the `character' type specially
-		{ Type = term__functor(term__atom("character"), [], _) },
+		{ Type = term_functor(term_atom("character"), [], _) },
 	 	{ string__char_to_string(Char, Name) }
 	->
 		{ char__to_int(Char, CharCode) },
 		{ Tag = int_constant(CharCode) }
 	;
 		% handle higher-order pred types specially
-		{ Type = term__functor(term__atom("pred"), PredArgTypes, _) }
+		{ Type = term_functor(term_atom("pred"), PredArgTypes, _) }
 	->
 		{ list__length(PredArgTypes, PredArity) },
 		code_info__get_module_info(ModuleInfo),
@@ -836,7 +836,7 @@ code_info__setup_call([V - arg_info(Loc,Mode)|Rest], Direction, Code) -->
 		(
 				% We can't simply use a disj here
 				% because of bugs in modes/det_analysis
-			{ bool__or(Occurs, IsLive, yes) }
+			{ std_util__bool_or(Occurs, IsLive, yes) }
 		->
 			{ code_exprn__lock_reg(Reg, Exprn1, Exprn2) },
 			code_info__set_exprn_info(Exprn2),

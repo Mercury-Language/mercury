@@ -376,10 +376,10 @@ find_bind_var_for_switch([Goal0 - GoalInfo | Goals0], Substitution0, Var,
 			Substitution2 = Substitution0
 		),
 			% check whether the var was bound
-		term__apply_rec_substitution(term__variable(Var), Substitution2,
+		term__apply_rec_substitution(term_variable(Var), Substitution2,
 			Term),
 		(
-			Term = term__functor(_Name, _Args, _Context),
+			Term = term_functor(_Name, _Args, _Context),
 			UnifyInfo0 = deconstruct(Var1, Functor, F, G, _)
 		->
 			MaybeFunctor = yes(Functor),
@@ -404,12 +404,12 @@ find_bind_var_for_switch([Goal0 - GoalInfo | Goals0], Substitution0, Var,
 	).
 
 interpret_unify(X, var(Y), Subst0, Subst) :-
-	term__unify(term__variable(X), term__variable(Y), Subst0, Subst).
+	term__unify(term_variable(X), term_variable(Y), Subst0, Subst).
 interpret_unify(X, functor(Functor, ArgVars), Subst0, Subst) :-
-	term__context_init(Context),
+	term_context_init(Context),
 	term__var_list_to_term_list(ArgVars, ArgTerms),
-	term__unify(term__variable(X),
-		term__functor(Functor, ArgTerms, Context),
+	term__unify(term_variable(X),
+		term_functor(Functor, ArgTerms, Context),
 		Subst0, Subst).
 interpret_unify(_X, lambda_goal(_LambdaVars, _Modes, _Det, _Goal),
 		Subst0, Subst) :-
@@ -491,7 +491,7 @@ functors_to_cons_ids([Functor|Functors], [ConsId|ConsIds]) :-
 :- mode switch_covers_all_cases(in, in, in) is semidet.
 
 switch_covers_all_cases(CasesList, Type, _ModuleInfo) :-
-	Type = term__functor(term__atom("character"), [], _),
+	Type = term_functor(term_atom("character"), [], _),
 	list__length(CasesList, 127).	% XXX should be 256
 		% NU-Prolog only allows chars '\001' .. '\0177'.
 		% Currently we assume the same set.

@@ -49,7 +49,7 @@
 	% overlapping scopes.
 
 :- type quant_warning
-	--->	warn_overlap(list(var), term__context).
+	--->	warn_overlap(list(var), term_context).
 
 :- pred goal_vars(hlds__goal, set(var)).
 :- mode goal_vars(in, out) is det.
@@ -135,7 +135,7 @@ implicitly_quantify_goal(Goal0 - GoalInfo0, Goal - GoalInfo) -->
 	),
 	{ goal_info_set_nonlocals(GoalInfo1, NonLocalVars, GoalInfo) }.
 
-:- pred implicitly_quantify_goal_2(hlds__goal_expr, term__context,
+:- pred implicitly_quantify_goal_2(hlds__goal_expr, term_context,
 				hlds__goal_expr, quant_info, quant_info).
 :- mode implicitly_quantify_goal_2(in, in, out, in, out) is det.
 
@@ -276,7 +276,7 @@ implicitly_quantify_goal_2(pragma_c_code(A,B,C,Vars,E), _,
 	{ set__intersect(GoalVars, OutsideVars, NonLocals) },
 	quantification__set_nonlocals(NonLocals).
 
-:- pred implicitly_quantify_unify_rhs(unify_rhs, term__context, unify_rhs,
+:- pred implicitly_quantify_unify_rhs(unify_rhs, term_context, unify_rhs,
 					quant_info, quant_info).
 :- mode implicitly_quantify_unify_rhs(in, in, out, in, out) is det.
 
@@ -520,7 +520,7 @@ unify_rhs_vars(lambda_goal(LambdaVars, _Modes, _Detism, Goal), Set0, Set) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred quantification__warn_overlapping_scope(set(var), term__context,
+:- pred quantification__warn_overlapping_scope(set(var), term_context,
 					quant_info, quant_info).
 :- mode quantification__warn_overlapping_scope(in, in, in, out) is det.
 

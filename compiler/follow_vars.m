@@ -185,7 +185,7 @@ find_follow_vars_in_goal_2(some(Vars, Goal0), ModuleInfo, FollowVars0,
 find_follow_vars_in_goal_2(call(A,B,C,D,E,F,_), ModuleInfo, FollowVars0,
 				call(A,B,C,D,E,F, FollowVars0), FollowVars) :-
 	(
-		is_builtin__is_inline(D)
+		hlds__is_builtin_is_inline(D)
 	->
 		FollowVars = FollowVars0
 	;

@@ -338,7 +338,7 @@ XXX this optimization temporarily disabled, see comment above
 		module_info_set_predicate_table(ModuleInfo1, PredicateTable,
 			ModuleInfo)
 	),
-	Functor = functor(term__atom(PName), ArgVars),
+	Functor = functor(term_atom(PName), ArgVars),
 	ConsId = pred_const(PredId, ModeId),
 	(
 		Unification0 = construct(Var, _, _, ArgModes)

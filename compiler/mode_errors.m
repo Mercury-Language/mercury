@@ -87,7 +87,7 @@
 				% if the one of these variables becomes
 				% more instantiated)
 		mode_error,	% the nature of the error
-		term__context,	% where the error occurred
+		term_context,	% where the error occurred
 		mode_context	% where the error occurred
 	).
 
@@ -208,7 +208,7 @@ find_important_errors([Error | Errors], ImportantErrors, OtherErrors) :-
 	),
 	find_important_errors(Errors, ImportantErrors1, OtherErrors1).
 
-:- pred report_mode_error_conj_2(list(delayed_goal), varset, term__context,
+:- pred report_mode_error_conj_2(list(delayed_goal), varset, term_context,
 				mode_info, io__state, io__state).
 :- mode report_mode_error_conj_2(in, in, in, mode_info_no_io, di, uo) is det.
 
@@ -594,7 +594,7 @@ mode_context_init(uninitialized).
 
 	% XXX some parts of the mode context never get set up
 
-:- pred write_mode_context(mode_context, term__context, io__state, io__state).
+:- pred write_mode_context(mode_context, term_context, io__state, io__state).
 :- mode write_mode_context(in, in, di, uo) is det.
 
 write_mode_context(uninitialized, _Context) -->

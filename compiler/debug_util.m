@@ -47,7 +47,7 @@
 %:- pred do_termvar2termconst(varset,term,term).
 %:- mode do_termvar2termconst(in,in,out) is det.
 do_termvar2termconst(VarSet,Tin,Tout) :-
-	( Tin = term__variable(Var),
+	( Tin = term_variable(Var),
 	  ( varset__lookup_var(VarSet,Var,TermValue) ->
 	    do_termvar2termconst(VarSet,TermValue,Tout)
 	  ;
@@ -56,10 +56,10 @@ do_termvar2termconst(VarSet,Tin,Tout) :-
 	    ;
 	      string__append("","Var have no name and not in varset",Str)
 	    ),
-	    term__context_init(Dummy),
-	    Tout = term__functor(term__string(Str),[],Dummy)
+	    term_context_init(Dummy),
+	    Tout = term_functor(term_string(Str),[],Dummy)
 	  )
-	; Tin = term__functor(_,_,_),
+	; Tin = term_functor(_,_,_),
 	  do_termvar2termconst2(VarSet,Tin,Tout)
 	).
 
@@ -67,22 +67,22 @@ do_termvar2termconst(VarSet,Tin,Tout) :-
 %:- pred do_termvar2termconst2(varset,term,term).
 %:- mode do_termvar2termconst2(in,in,out) is det.
 do_termvar2termconst2(VarSet,Tin,Tout) :-
-	( Tin = term__functor(A,B,C),
-	  ( A = term__atom(_),
+	( Tin = term_functor(A,B,C),
+	  ( A = term_atom(_),
 	    do_termvar2termconst3(VarSet,B,Bout),
-	    Tout = term__functor(A,Bout,C)
+	    Tout = term_functor(A,Bout,C)
 	  ;
-	    A = term__integer(_),
+	    A = term_integer(_),
 	    Tout = Tin
 	  ;
-	    A = term__string(_),
+	    A = term_string(_),
 	    Tout = Tin
 	  ;
-	    A = term__float(_),
+	    A = term_float(_),
 	    Tout = Tin
 	  )
 	;
-	  Tin = term__variable(_),
+	  Tin = term_variable(_),
 	  error("Error in do_termvar2termconst2. got in impossible area\n")
 	).
 
@@ -99,28 +99,28 @@ do_termvar2termconst3(VarSet,[A|As],Lout) :-
 %:- pred what_term(term,io__state,io__state).
 %:- mode what_term(in,di,uo) is det.
 what_term(Term) -->
-	( { Term = term__variable(Var) },
-	  io__write_string("term__variable\n")
+	( { Term = term_variable(Var) },
+	  io__write_string("term_variable\n")
 	;
-	  { Term = term__functor(A,_B,_C) },
-	  io__write_string("term__functor\n"),
-	  ( { A = term__atom(AS) },
-	    io__write_string("term__atom("),
+	  { Term = term_functor(A,_B,_C) },
+	  io__write_string("term_functor\n"),
+	  ( { A = term_atom(AS) },
+	    io__write_string("term_atom("),
 	    io__write_string(AS),
 	    io__write_string(")\n")
 	  ;
-	    { A = term__integer(I) },
-	    io__write_string("term__integer("),
+	    { A = term_integer(I) },
+	    io__write_string("term_integer("),
 	    io__write_int(I),
 	    io__write_string(")/n")
 	  ;
-	    { A = term__string(S) },
-	    io__write_string("term__string("),
+	    { A = term_string(S) },
+	    io__write_string("term_string("),
 	    io__write_string(S),
 	    io__write_string(")/n")
 	  ;
-	    { A = term__float(F) },
-	    io__write_string("term__float("),
+	    { A = term_float(F) },
+	    io__write_string("term_float("),
 	    io__write_float(F),
 	    io__write_string(")/n")
 	  ) 
@@ -129,14 +129,14 @@ what_term(Term) -->
 %:- pred do_lookup_termvarname(varset,term,string).
 %:- mode do_lookup_termvarname(in,in,out) is det.
 do_lookup_termvarname(VarSet,Tin,Name) :-
-	( Tin = term__variable(Var),
+	( Tin = term_variable(Var),
 	  ( varset__lookup_name(VarSet,Var,Name0) ->
 	    Name = Name0
 	  ;
 	    Name = "noname"
 	  )
 	;
-	  Tin = term__functor(_,_,_),
+	  Tin = term_functor(_,_,_),
 	  Name = "not a var"
 	).
 
@@ -156,15 +156,15 @@ do_lookup_var(VarSet,Var,Term) :-
 	( varset__lookup_var(VarSet,Var,T) ->
 	  Term = T
 	;
-	  term__context_init(Dummy),
-	  Term = term__functor(term__integer(1),[],Dummy),
+	  term_context_init(Dummy),
+	  Term = term_functor(term_integer(1),[],Dummy),
 	  error("do_lookup_var: No such var in varset\n")
 	).
 
 %:- pred termvar2termfunctor(varset,term,term).
 %:- mode termvar2termfunctor(in,in,out) is det.
 termvar2termfunctor(VarSet,Tin,Tout) :-
-	( Tin = term__variable(Var),
+	( Tin = term_variable(Var),
 	  ( varset__lookup_var(VarSet,Var,TermValue) ->
 	    termvar2termfunctor(VarSet,TermValue,Tout)
 	  ;
@@ -173,9 +173,9 @@ termvar2termfunctor(VarSet,Tin,Tout) :-
 	    ;
 	      string__append("","Var have no name and not in varset",Str)
 	    ),
-	    term__context_init(Dummy),
-	    Tout = term__functor(term__string(Str),[],Dummy)
+	    term_context_init(Dummy),
+	    Tout = term_functor(term_string(Str),[],Dummy)
 	  )
-	; Tin = term__functor(_,_,_),
+	; Tin = term_functor(_,_,_),
 	  Tout = Tin
 	).

@@ -660,7 +660,7 @@ opt_util__lval_refers_stackvars(sp, no).
 opt_util__lval_refers_stackvars(field(_, Rval, FieldNum), Refers) :-
 	opt_util__rval_refers_stackvars(Rval, Refers1),
 	opt_util__rval_refers_stackvars(FieldNum, Refers2),
-	bool__or(Refers1, Refers2, Refers).
+	std_util__bool_or(Refers1, Refers2, Refers).
 opt_util__lval_refers_stackvars(lvar(_), _) :-
 	error("found lvar in lval_refers_stackvars").
 opt_util__lval_refers_stackvars(temp(_), no).
@@ -679,7 +679,7 @@ opt_util__rval_refers_stackvars(unop(_, Baserval), Refers) :-
 opt_util__rval_refers_stackvars(binop(_, Baserval1, Baserval2), Refers) :-
 	opt_util__rval_refers_stackvars(Baserval1, Refers1),
 	opt_util__rval_refers_stackvars(Baserval2, Refers2),
-	bool__or(Refers1, Refers2, Refers).
+	std_util__bool_or(Refers1, Refers2, Refers).
 
 opt_util__rvals_refer_stackvars([], no).
 opt_util__rvals_refer_stackvars([MaybeRval | Tail], Refers) :-
@@ -760,7 +760,7 @@ opt_util__block_refers_stackvars([Uinstr0 - _ | Instrs0], Need) :-
 		Uinstr0 = assign(Lval, Rval),
 		opt_util__lval_refers_stackvars(Lval, Use1),
 		opt_util__rval_refers_stackvars(Rval, Use2),
-		bool__or(Use1, Use2, Use),
+		std_util__bool_or(Use1, Use2, Use),
 		( Use = yes ->
 			Need = yes
 		;
@@ -807,7 +807,7 @@ opt_util__block_refers_stackvars([Uinstr0 - _ | Instrs0], Need) :-
 		Uinstr0 = incr_hp(Lval, _, Rval),
 		opt_util__lval_refers_stackvars(Lval, Use1),
 		opt_util__rval_refers_stackvars(Rval, Use2),
-		bool__or(Use1, Use2, Use),
+		std_util__bool_or(Use1, Use2, Use),
 		( Use = yes ->
 			Need = yes
 		;
@@ -898,7 +898,7 @@ opt_util__is_const_condition(const(Const), Taken) :-
 opt_util__is_const_condition(unop(Op, Rval1), Taken) :-
 	Op = (not),
 	opt_util__is_const_condition(Rval1, Taken1),
-	bool__not(Taken1, Taken).
+	std_util__bool_not(Taken1, Taken).
 opt_util__is_const_condition(binop(Op, Rval1, Rval2), Taken) :-
 	Op = eq,
 	Rval1 = Rval2,
@@ -1224,11 +1224,11 @@ opt_util__touches_nondet_ctrl_instr(Uinstr, Touch) :-
 	( Uinstr = assign(Lval, Rval) ->
 		opt_util__touches_nondet_ctrl_lval(Lval, TouchLval),
 		opt_util__touches_nondet_ctrl_rval(Rval, TouchRval),
-		bool__or(TouchLval, TouchRval, Touch)
+		std_util__bool_or(TouchLval, TouchRval, Touch)
 	; Uinstr = incr_hp(Lval, _, Rval) ->
 		opt_util__touches_nondet_ctrl_lval(Lval, TouchLval),
 		opt_util__touches_nondet_ctrl_rval(Rval, TouchRval),
-		bool__or(TouchLval, TouchRval, Touch)
+		std_util__bool_or(TouchLval, TouchRval, Touch)
 	; Uinstr = mark_hp(Lval) ->
 		opt_util__touches_nondet_ctrl_lval(Lval, Touch)
 	; Uinstr = restore_hp(Rval) ->
@@ -1255,7 +1255,7 @@ opt_util__touches_nondet_ctrl_lval(sp, no).
 opt_util__touches_nondet_ctrl_lval(field(_, Rval1, Rval2), Touch) :-
 	opt_util__touches_nondet_ctrl_rval(Rval1, Touch1),
 	opt_util__touches_nondet_ctrl_rval(Rval2, Touch2),
-	bool__or(Touch1, Touch2, Touch).
+	std_util__bool_or(Touch1, Touch2, Touch).
 opt_util__touches_nondet_ctrl_lval(lvar(_), no).
 opt_util__touches_nondet_ctrl_lval(temp(_), no).
 
@@ -1274,7 +1274,7 @@ opt_util__touches_nondet_ctrl_rval(unop(_, Rval), Touch) :-
 opt_util__touches_nondet_ctrl_rval(binop(_, Rval1, Rval2), Touch) :-
 	opt_util__touches_nondet_ctrl_rval(Rval1, Touch1),
 	opt_util__touches_nondet_ctrl_rval(Rval2, Touch2),
-	bool__or(Touch1, Touch2, Touch).
+	std_util__bool_or(Touch1, Touch2, Touch).
 
 %-----------------------------------------------------------------------------%
 

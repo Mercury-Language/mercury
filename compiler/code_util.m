@@ -158,13 +158,13 @@ code_util__is_builtin(ModuleInfo, PredId0, _PredMode0, IsBuiltin) :-
 			code_util__builtin_unop(PredName, Arity, _)
 		)
 	->
-		is_builtin__make_builtin(yes, yes, IsBuiltin)
+		hlds__is_builtin_make_builtin(yes, yes, IsBuiltin)
 	;
 		PredName = "call"
 	->
-		is_builtin__make_builtin(yes, no, IsBuiltin)
+		hlds__is_builtin_make_builtin(yes, no, IsBuiltin)
 	;
-		is_builtin__make_builtin(no, no, IsBuiltin)
+		hlds__is_builtin_make_builtin(no, no, IsBuiltin)
 	).
 
 	% XXX module qualifiers
@@ -231,7 +231,7 @@ code_util__goal_may_allocate_heap(Goal - _GoalInfo) :-
 :- mode code_util__goal_may_allocate_heap_2(in) is semidet.
 
 code_util__goal_may_allocate_heap_2(call(_, _, _, Builtin, _, _, _)) :-
-	\+ is_builtin__is_inline(Builtin).
+	\+ hlds__is_builtin_is_inline(Builtin).
 code_util__goal_may_allocate_heap_2(unify(_, _, _, construct(_,_,Args,_), _)) :-
 	Args = [_|_].
 code_util__goal_may_allocate_heap_2(some(_Vars, Goal)) :-

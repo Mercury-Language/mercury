@@ -95,12 +95,12 @@
 					list(proc_id),	% modes for which
 							% this clause applies
 					hlds__goal,	% Body
-					term__context
+					term_context
 				).
 
 :- type c_header_info 	==	list(c_header_lines).
 
-:- type c_header_lines	--->	string  - term__context.
+:- type c_header_lines	--->	string  - term_context.
 
 :- implementation.
 
@@ -111,7 +111,7 @@
 					list(var),	% head vars
 					list(mode), 	% modes of args
 					hlds__goal,	% Body
-					term__context,	% The context of
+					term_context,	% The context of
 							% the :- mode decl,
 							% not the clause.
 					call_info,	% stack allocations
@@ -624,7 +624,7 @@ inst_table_set_shared_insts(inst_table(A, B, C, D, _), SharedInsts,
 		unit,		% was the `local' determinism of the goal
 		determinism, 	% the overall determinism of the goal
 		instmap_delta,
-		term__context,
+		term_context,
 		set(var),	% the non-local vars in the goal
 		delta_liveness,	% the changes in liveness before goal
 		maybe(map(var, lval)),
@@ -685,7 +685,7 @@ inst_table_set_shared_insts(inst_table(A, B, C, D, _), SharedInsts,
 				% :- type sorted_list(T) == list(T)
 				%	where sorted.
 
-			term__context		% the location of this type
+			term_context		% the location of this type
 						% definition in the original
 						% source code
 		).
@@ -785,7 +785,7 @@ inst_table_set_shared_insts(inst_table(A, B, C, D, _), SharedInsts,
 			condition,		% Unused (reserved for
 						% holding a user-defined 
 						% invariant).
-			term__context		% The location in the source
+			term_context		% The location in the source
 						% code of this inst definition.
 		).
 
@@ -818,7 +818,7 @@ inst_table_set_shared_insts(inst_table(A, B, C, D, _), SharedInsts,
 			condition,		% Unused (reserved for
 						% holding a user-defined
 						% invariant).
-			term__context		% The location of this mode
+			term_context		% The location of this mode
 						% definition in the original
 						% source code.
 		).
@@ -839,7 +839,7 @@ inst_table_set_shared_insts(inst_table(A, B, C, D, _), SharedInsts,
 			type_id,		% The result type, i.e. the
 						% type to which this
 						% cons_defn belongs.
-			term__context		% The location of this
+			term_context		% The location of this
 						% ctor definition in the
 						% original source code
 		).
@@ -1536,15 +1536,15 @@ invalid_pred_id(-1).
 
 :- implementation.
 
-cons_id_to_const(cons(Name, Arity), term__atom(Name), Arity).
-cons_id_to_const(int_const(Int), term__integer(Int), 0).
-cons_id_to_const(string_const(String), term__string(String), 0).
-cons_id_to_const(float_const(Float), term__float(Float), 0).
+cons_id_to_const(cons(Name, Arity), term_atom(Name), Arity).
+cons_id_to_const(int_const(Int), term_integer(Int), 0).
+cons_id_to_const(string_const(String), term_string(String), 0).
+cons_id_to_const(float_const(Float), term_float(Float), 0).
 
-make_functor_cons_id(term__atom(Name), Arity, cons(Name, Arity)).
-make_functor_cons_id(term__integer(Int), _, int_const(Int)).
-make_functor_cons_id(term__string(String), _, string_const(String)).
-make_functor_cons_id(term__float(Float), _, float_const(Float)).
+make_functor_cons_id(term_atom(Name), Arity, cons(Name, Arity)).
+make_functor_cons_id(term_integer(Int), _, int_const(Int)).
+make_functor_cons_id(term_string(String), _, string_const(String)).
+make_functor_cons_id(term_float(Float), _, float_const(Float)).
 
 make_cons_id(qualified(_Module, Name), Args, _TypeId, cons(Name, Arity)) :-
 	list__length(Args, Arity).
@@ -1587,7 +1587,7 @@ make_cons_id(unqualified(Name), Args, _TypeId, cons(Name, Arity)) :-
 :- mode predicate_arity(in, in, out) is det.
 
 :- pred pred_info_init(module_name, sym_name, arity, tvarset, list(type),
-			condition, term__context, clauses_info, import_status,
+			condition, term_context, clauses_info, import_status,
 			bool, goal_type, pred_info).
 :- mode pred_info_init(in, in, in, in, in, in, in, in, in, in, in, out) is det.
 
@@ -1628,7 +1628,7 @@ make_cons_id(unqualified(Name), Args, _TypeId, cons(Name, Arity)) :-
 :- pred pred_info_set_procedures(pred_info, proc_table, pred_info).
 :- mode pred_info_set_procedures(in, in, out) is det.
 
-:- pred pred_info_context(pred_info, term__context).
+:- pred pred_info_context(pred_info, term_context).
 :- mode pred_info_context(in, out) is det.
 
 :- pred pred_info_import_status(pred_info::in, import_status::out) is det.
@@ -1703,7 +1703,7 @@ predicate_arity(ModuleInfo, PredId, Arity) :-
 
 			proc_table,
 
-			term__context,	% the location (line #)
+			term_context,	% the location (line #)
 					% of the :- pred decl.
 
 			module_name,	% module in which pred occurs
@@ -1834,7 +1834,7 @@ pred_info_set_goal_type(PredInfo0, GoalType, PredInfo) :-
 
 :- interface.
 
-:- pred proc_info_init(int, list(mode), maybe(determinism), term__context,
+:- pred proc_info_init(int, list(mode), maybe(determinism), term_context,
 	proc_info).
 :- mode proc_info_init(in, in, in, in, out) is det.
 
@@ -1880,7 +1880,7 @@ pred_info_set_goal_type(PredInfo0, GoalType, PredInfo) :-
 :- pred proc_info_goal(proc_info, hlds__goal).
 :- mode proc_info_goal(in, out) is det.
 
-:- pred proc_info_context(proc_info, term__context).
+:- pred proc_info_context(proc_info, term_context).
 :- mode proc_info_context(in, out) is det.
 
 :- pred proc_info_call_info(proc_info, call_info).
@@ -1994,7 +1994,7 @@ proc_info_follow_vars(ProcInfo, Follow) :-
 % 				D	list(var),	% head vars
 % 				E	list(mode), 	% modes of args
 % 				F	hlds__goal,	% Body
-% 				G	term__context,	% The context of
+% 				G	term_context,	% The context of
 % 							% the :- mode decl,
 % 							% not the clause.
 % 				H	call_info,	% stack allocations
@@ -2156,10 +2156,10 @@ proc_info_set_vartypes(ProcInfo0, Vars, ProcInfo) :-
 				hlds__goal_info).
 :- mode goal_info_set_instmap_delta(in, in, out) is det.
 
-:- pred goal_info_context(hlds__goal_info, term__context).
+:- pred goal_info_context(hlds__goal_info, term_context).
 :- mode goal_info_context(in, out) is det.
 
-:- pred goal_info_set_context(hlds__goal_info, term__context, hlds__goal_info).
+:- pred goal_info_set_context(hlds__goal_info, term_context, hlds__goal_info).
 :- mode goal_info_set_context(in, in, out) is det.
 
 :- pred goal_info_store_map(hlds__goal_info, maybe(map(var, lval))).
@@ -2233,7 +2233,7 @@ goal_info_init(GoalInfo) :-
 	DeltaLiveness = Births - Deaths,
 	InstMapDelta = unreachable,
 	set__init(NonLocals),
-	term__context_init(Context),
+	term_context_init(Context),
 	set__init(Features),
 	GoalInfo = goal_info(DeltaLiveness, unit, ExternalDetism,
 		InstMapDelta, Context, NonLocals, DeltaLiveness, no, no,
@@ -2395,24 +2395,24 @@ goal_is_atomic(pragma_c_code(_,_,_,_,_)).
 	% are still "internal", but for which we generate a call to an
 	% out-of-line procedure (e.g. call/N).
 
-:- pred is_builtin__is_internal(is_builtin).
-:- mode is_builtin__is_internal(in) is semidet.
+:- pred hlds__is_builtin_is_internal(is_builtin).
+:- mode hlds__is_builtin_is_internal(in) is semidet.
 
-:- pred is_builtin__is_inline(is_builtin).
-:- mode is_builtin__is_inline(in) is semidet.
+:- pred hlds__is_builtin_is_inline(is_builtin).
+:- mode hlds__is_builtin_is_inline(in) is semidet.
 
-:- pred is_builtin__make_builtin(bool, bool, is_builtin).
-:- mode is_builtin__make_builtin(in, in, out) is det.
+:- pred hlds__is_builtin_make_builtin(bool, bool, is_builtin).
+:- mode hlds__is_builtin_make_builtin(in, in, out) is det.
 
 :- implementation.
 
 :- type is_builtin	== pair(bool).
 
-is_builtin__is_internal(yes - _).
+hlds__is_builtin_is_internal(yes - _).
 
-is_builtin__is_inline(_ - yes).
+hlds__is_builtin_is_inline(_ - yes).
 
-is_builtin__make_builtin(IsInternal, IsInline, IsInternal - IsInline).
+hlds__is_builtin_make_builtin(IsInternal, IsInline, IsInternal - IsInline).
 
 %-----------------------------------------------------------------------------%
 
@@ -2455,24 +2455,24 @@ make_n_fresh_vars_2(N, Max, VarSet0, Vars, VarSet) :-
 :- type dependency_graph	== relation(pred_proc_id).
 :- type dependency_info.
 
-:- pred dependency_info__init(dependency_info).
-:- mode dependency_info__init(out) is det.
+:- pred hlds__dependency_info_init(dependency_info).
+:- mode hlds__dependency_info_init(out) is det.
 
-:- pred dependency_info__get_dependency_graph(dependency_info, 
+:- pred hlds__dependency_info_get_dependency_graph(dependency_info, 
 				dependency_graph).
-:- mode dependency_info__get_dependency_graph(in, out) is det.
+:- mode hlds__dependency_info_get_dependency_graph(in, out) is det.
 
-:- pred dependency_info__get_dependency_ordering(dependency_info, 
+:- pred hlds__dependency_info_get_dependency_ordering(dependency_info, 
 				dependency_ordering).
-:- mode dependency_info__get_dependency_ordering(in, out) is det.
+:- mode hlds__dependency_info_get_dependency_ordering(in, out) is det.
 
-:- pred dependency_info__set_dependency_graph(dependency_info,
+:- pred hlds__dependency_info_set_dependency_graph(dependency_info,
 			dependency_graph, dependency_info).
-:- mode dependency_info__set_dependency_graph(in, in, out) is det.
+:- mode hlds__dependency_info_set_dependency_graph(in, in, out) is det.
 
-:- pred dependency_info__set_dependency_ordering(dependency_info,
+:- pred hlds__dependency_info_set_dependency_ordering(dependency_info,
 			dependency_ordering, dependency_info).
-:- mode dependency_info__set_dependency_ordering(in, in, out) is det.
+:- mode hlds__dependency_info_set_dependency_ordering(in, in, out) is det.
 
 :- implementation.
 
@@ -2486,23 +2486,23 @@ make_n_fresh_vars_2(N, Max, VarSet0, Vars, VarSet) :-
 			unit
 		).
 
-dependency_info__init(DepInfo) :-
+hlds__dependency_info_init(DepInfo) :-
 	DepInfo = dependency_info(DepRel, DepOrd, Unused, unit, unit, unit),
 	relation__init(DepRel),
 	DepOrd = [],
 	set__init(Unused).
 
-dependency_info__get_dependency_graph(DepInfo, DepRel) :-
+hlds__dependency_info_get_dependency_graph(DepInfo, DepRel) :-
 	DepInfo = dependency_info(DepRel, _, _, _, _, _).
 
-dependency_info__get_dependency_ordering(DepInfo, DepOrd) :-
+hlds__dependency_info_get_dependency_ordering(DepInfo, DepOrd) :-
 	DepInfo = dependency_info(_, DepOrd, _, _, _, _).
 
-dependency_info__set_dependency_graph(DepInfo0, DepRel, DepInfo) :-
+hlds__dependency_info_set_dependency_graph(DepInfo0, DepRel, DepInfo) :-
 	DepInfo0 = dependency_info(_, B, C, D, E, F),
 	DepInfo = dependency_info(DepRel, B, C, D, E, F).
 
-dependency_info__set_dependency_ordering(DepInfo0, DepRel, DepInfo) :-
+hlds__dependency_info_set_dependency_ordering(DepInfo0, DepRel, DepInfo) :-
 	DepInfo0 = dependency_info(A, _, C, D, E, F),
 	DepInfo = dependency_info(A, DepRel, C, D, E, F).
 

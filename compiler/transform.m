@@ -36,9 +36,9 @@
 %			mode_info, mode_info).
 %:- mode unfold__in_proc(in, in, out, mode_info_di, module_info_uo) is det.
 
-:- pred reschedule__conj(list(hlds__goal), list(hlds__goal), 
+:- pred transform__reschedule_conj(list(hlds__goal), list(hlds__goal), 
 			mode_info, mode_info).
-:- mode reschedule__conj(in, out, mode_info_di, mode_info_uo) is det.
+:- mode transform__reschedule_conj(in, out, mode_info_di, mode_info_uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -54,8 +54,8 @@
 
 %-----------------------------------------------------------------------------%
 
-reschedule__conj([], []) --> [].
-reschedule__conj([Goal0 | Goals0], Goals) -->
+transform__reschedule_conj([], []) --> [].
+transform__reschedule_conj([Goal0 | Goals0], Goals) -->
 	=(ModeInfo0),
 	{ mode_info_get_instmap(ModeInfo0, InstMap0) },
 	{ mode_info_get_delay_info(ModeInfo0, DelayInfo0) },
@@ -64,13 +64,13 @@ reschedule__conj([Goal0 | Goals0], Goals) -->
 	mode_info_set_delay_info(DelayInfo1),
 	( { WokenGoals \= [] } ->
 	    { list__append(WokenGoals, [Goal0 | Goals0], Goals1) },
-	    reschedule__conj(Goals1, Goals)
+	    transform__reschedule_conj(Goals1, Goals)
 	;
 	    { Goal0 = _Goal0Goal - Goal0Info },
 	    { goal_info_get_instmap_delta(Goal0Info, InstMapDelta) },
 	    { apply_instmap_delta(InstMap0, InstMapDelta, InstMap1) },
 	    mode_info_set_instmap(InstMap1),
-	    reschedule__conj(Goals0, Goals1),
+	    transform__reschedule_conj(Goals0, Goals1),
 	    { Goals = [Goal0 | Goals1] }
 	).
 

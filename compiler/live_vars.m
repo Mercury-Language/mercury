@@ -214,7 +214,7 @@ detect_live_vars_in_goal_2(
 		Liveness, LiveSets0,
 		_CodeModel, ModuleInfo, Liveness, LiveSets) :-
 	(
-		is_builtin__is_inline(Builtin)
+		hlds__is_builtin_is_inline(Builtin)
 	->
 		LiveSets = LiveSets0
 	;

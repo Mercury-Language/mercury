@@ -31,7 +31,7 @@
 %		- an io_state, which is modified if we need to
 %		  to write out an error message
 %		- various semi-global info which doesn't change often,
-%		  namely the pred_id and term__context of the clause
+%		  namely the pred_id and term_context of the clause
 %		  we are type-checking
 %		- a type_assign_set which stores the set of possible
 %		  type assignments and is modified as we traverse through
@@ -480,7 +480,7 @@ END JUNK ***************************/
 
 typecheck_goal(Goal0 - GoalInfo0, Goal - GoalInfo, TypeInfo0, TypeInfo) :-
 	goal_info_context(GoalInfo0, Context),
-	term__context_init(EmptyContext),
+	term_context_init(EmptyContext),
 	( Context = EmptyContext ->
 		type_info_get_context(TypeInfo0, EnclosingContext),
 		goal_info_set_context(GoalInfo0, EnclosingContext, GoalInfo),
@@ -858,8 +858,8 @@ get_type_stuff([TypeAssign | TypeAssigns], VarId, L) :-
 		% this shouldn't happen - how can a variable which has
 		% not yet been assigned a type variable fail to have
 		% the correct type?
-		term__context_init(Context),
-		Type = term__functor(term__atom("<any>"), [], Context)
+		term_context_init(Context),
+		Type = term_functor(term_atom("<any>"), [], Context)
 	),
 	TypeStuff = type_stuff(Type, TVarSet, TypeBindings),
 	(
@@ -892,8 +892,8 @@ get_arg_type_stuff([TypeAssign - ArgTypes | ArgTypeAssigns], VarId, L) :-
 		% this shouldn't happen - how can a variable which has
 		% not yet been assigned a type variable fail to have
 		% the correct type?
-		term__context_init(Context),
-		VarType = term__functor(term__atom("<any>"), [], Context)
+		term_context_init(Context),
+		VarType = term_functor(term_atom("<any>"), [], Context)
 	),
 	list__index0_det(ArgTypes, 0, ArgType),
 	term__apply_rec_substitution(ArgType, TypeBindings, ArgType2),
@@ -1350,7 +1350,7 @@ type_assign_unify_var_var(X, Y, TypeAssign0, TypeInfo, TypeAssignSet0,
 			varset__new_var(TypeVarSet0, TypeVar, TypeVarSet),
 			type_assign_set_typevarset(TypeAssign0, TypeVarSet,
 				TypeAssign1),
-			Type = term__variable(TypeVar),
+			Type = term_variable(TypeVar),
 			map__set(VarTypes0, X, Type, VarTypes1),
 			map__set(VarTypes1, Y, Type, VarTypes),
 			type_assign_set_var_types(TypeAssign1, VarTypes,
@@ -1411,7 +1411,7 @@ get_cons_stuff(ConsDefn, TypeAssign0, _TypeInfo, ConsType, ArgTypes,
 	% and the types of its arguments.
 	% (Optimize the common case of a non-polymorphic type)
 
-	( ConsType0 = term__functor(_, [], _) ->
+	( ConsType0 = term_functor(_, [], _) ->
 		ConsType = ConsType0,
 		ArgTypes = ArgTypes0,
 		TypeAssign = TypeAssign0
@@ -1466,8 +1466,8 @@ typecheck_lambda_var_has_type_2([TypeAssign0 | TypeAssignSet0],
 				HeadTypeParams, Var, ArgVars) -->
 	{ type_assign_get_types_of_vars(ArgVars, TypeAssign0, ArgVarTypes,
 					TypeAssign1) },
-	{ term__context_init(Context) },
-	{ LambdaType = term__functor(term__atom("pred"), ArgVarTypes,
+	{ term_context_init(Context) },
+	{ LambdaType = term_functor(term_atom("pred"), ArgVarTypes,
 					Context) },
 	type_assign_var_has_type(TypeAssign1, HeadTypeParams, Var, LambdaType),
 	typecheck_lambda_var_has_type_2(TypeAssignSet0, HeadTypeParams,
@@ -1493,7 +1493,7 @@ type_assign_get_types_of_vars([Var|Vars], TypeAssign0,
 		varset__new_var(TypeVarSet0, TypeVar, TypeVarSet),
 		type_assign_set_typevarset(TypeAssign0, TypeVarSet,
 						TypeAssign1),
-		Type = term__variable(TypeVar),
+		Type = term_variable(TypeVar),
 		map__det_insert(VarTypes0, Var, Type, VarTypes1),
 		type_assign_set_var_types(TypeAssign1, VarTypes1, TypeAssign2)
 	),
@@ -1549,10 +1549,10 @@ JUNK ****/
 :- pred builtin_atomic_type(const, string).
 :- mode builtin_atomic_type(in, out) is semidet.
 
-builtin_atomic_type(term__integer(_), "int").
-builtin_atomic_type(term__float(_), "float").
-builtin_atomic_type(term__string(_), "string").
-builtin_atomic_type(term__atom(String), "character") :-
+builtin_atomic_type(term_integer(_), "int").
+builtin_atomic_type(term_float(_), "float").
+builtin_atomic_type(term_string(_), "string").
+builtin_atomic_type(term_atom(String), "character") :-
 	string__char_to_string(_, String).
 
 	% builtin_pred_type(TypeInfo, Functor, Arity, PredConsInfoList) :
@@ -1572,7 +1572,7 @@ builtin_atomic_type(term__atom(String), "character") :-
 	is semidet.
 
 builtin_pred_type(TypeInfo, Functor, Arity, PredConsInfoList) :-
-	Functor = term__atom(Name),
+	Functor = term_atom(Name),
 	type_info_get_module_info(TypeInfo, ModuleInfo),
 	module_info_get_predicate_table(ModuleInfo, PredicateTable),
 	( predicate_table_search_name(PredicateTable, Name, PredIdList) ->
@@ -1610,8 +1610,8 @@ make_pred_cons_info(PredId, PredTable, FuncArity, ModuleInfo, L0, L) :-
 			list__split_list(FuncArity, CompleteArgTypes,
 				ArgTypes, PredTypeParams)
 		->
-			term__context_init("<builtin>", 0, Context),
-			PredType = term__functor(term__atom("pred"),
+			term_context_init("<builtin>", 0, Context),
+			PredType = term_functor(term_atom("pred"),
 					PredTypeParams, Context),
 			ConsInfo = cons_type_info(PredTypeVarSet, PredType,
 					ArgTypes),
@@ -1642,7 +1642,7 @@ make_pred_cons_info(PredId, PredTable, FuncArity, ModuleInfo, L0, L) :-
 
 			pred_id,	% The pred we're checking
 
-			term__context,	% The context of the goal
+			term_context,	% The context of the goal
 					% we're checking
 
 			unify_context,	% The original source of the
@@ -1712,7 +1712,7 @@ make_pred_cons_info(PredId, PredTable, FuncArity, ModuleInfo, L0, L) :-
 type_info_init(IOState0, ModuleInfo, PredId, TypeVarSet, VarSet,
 		VarTypes, HeadTypeParams, TypeInfo) :-
 	CallPredId = unqualified("") / 0,
-	term__context_init(Context),
+	term_context_init(Context),
 	map__init(TypeBindings),
 	FoundTypeError = no,
 	WarnedAboutOverloading = no,
@@ -1820,14 +1820,14 @@ type_info_get_predid(type_info(_,_,_,_,PredId,_,_,_,_,_,_,_), PredId).
 
 %-----------------------------------------------------------------------------%
 
-:- pred type_info_get_context(type_info, term__context).
+:- pred type_info_get_context(type_info, term_context).
 :- mode type_info_get_context(in, out) is det.
 
 type_info_get_context(type_info(_,_,_,_,_,Context,_,_,_,_,_,_), Context).
 
 %-----------------------------------------------------------------------------%
 
-:- pred type_info_set_context(term__context, type_info, type_info).
+:- pred type_info_set_context(term_context, type_info, type_info).
 :- mode type_info_set_context(in, type_info_di, type_info_uo) is det.
 
 type_info_set_context(Context, type_info(A,B,C,D,E,_,G,H,I,J,K,L),
@@ -1964,7 +1964,7 @@ type_info_get_ctor_list(TypeInfo, Functor, Arity, ConsInfoList) :-
 	% us a list of possible cons_type_infos.
 	type_info_get_ctors(TypeInfo, Ctors),
 	(
-		Functor = term__atom(Name),
+		Functor = term_atom(Name),
 		map__search(Ctors, cons(Name, Arity), HLDS_ConsDefnList)
 	->
 		convert_cons_defn_list(TypeInfo, HLDS_ConsDefnList,
@@ -1979,8 +1979,8 @@ type_info_get_ctor_list(TypeInfo, Functor, Arity, ConsInfoList) :-
 		Arity = 0,
 		builtin_atomic_type(Functor, BuiltInTypeName)
 	->
-		term__context_init("<builtin>", 0, Context),
-		ConsType = term__functor(term__atom(BuiltInTypeName), [],
+		term_context_init("<builtin>", 0, Context),
+		ConsType = term_functor(term_atom(BuiltInTypeName), [],
 				Context),
 		varset__init(ConsTypeVarSet),
 		ConsInfo = cons_type_info(ConsTypeVarSet, ConsType, []),
@@ -2020,7 +2020,7 @@ convert_cons_defn(TypeInfo, HLDS_ConsDefn, ConsTypeInfo) :-
 	TypeDefn = hlds__type_defn(ConsTypeVarSet, ConsTypeParams, _, _, _),
 	TypeId = QualifiedName - _Arity,
 	unqualify_name(QualifiedName, Name),
-	ConsType = term__functor(term__atom(Name), ConsTypeParams, Context),
+	ConsType = term_functor(term_atom(Name), ConsTypeParams, Context),
 	ConsTypeInfo = cons_type_info(ConsTypeVarSet, ConsType, ArgTypes).
 
 %-----------------------------------------------------------------------------%
@@ -2291,7 +2291,7 @@ report_error_functor_arg_types(TypeInfo, Var, ConsDefnList, Functor, Args,
 
 	write_type_assign_set_msg(TypeAssignSet, VarSet).
 
-:- pred write_types_of_vars(list(var), varset, term__context, type_info,
+:- pred write_types_of_vars(list(var), varset, term_context, type_info,
 				type_assign_set, io__state, io__state).
 :- mode write_types_of_vars(in, in, in, type_info_ui, in, di, uo) is det.
 
@@ -2349,7 +2349,7 @@ write_type_of_var(_TypeInfo, TypeAssignSet, Var) -->
 		io__write_string(" }")
 	).
 
-:- pred write_type_of_functor(const, int, term__context, list(cons_type_info),
+:- pred write_type_of_functor(const, int, term_context, list(cons_type_info),
 				io__state, io__state).
 :- mode write_type_of_functor(in, in, in, in, di, uo) is det.
 
@@ -2373,14 +2373,14 @@ write_type_of_functor(Functor, Arity, Context, ConsDefnList) -->
 		io__write_string(" }")
 	).
 
-:- pred write_cons_type(cons_type_info, const, term__context,
+:- pred write_cons_type(cons_type_info, const, term_context,
 			io__state, io__state).
 :- mode write_cons_type(in, in, in, di, uo) is det.
 
 write_cons_type(cons_type_info(TVarSet, ConsType, ArgTypes), Functor, Context)
 		-->
 	( { ArgTypes \= [] } ->
-		{ Term = term__functor(Functor, ArgTypes, Context) },
+		{ Term = term_functor(Functor, ArgTypes, Context) },
 		mercury_output_term(Term, TVarSet),
 		io__write_string(" :: ")
 	;
@@ -2388,7 +2388,7 @@ write_cons_type(cons_type_info(TVarSet, ConsType, ArgTypes), Functor, Context)
 	),
 	mercury_output_term(ConsType, TVarSet).
 
-:- pred write_cons_type_list(list(cons_type_info), const, int, term__context,
+:- pred write_cons_type_list(list(cons_type_info), const, int, term_context,
 				io__state, io__state).
 :- mode write_cons_type_list(in, in, in, in, di, uo) is det.
 
@@ -2735,7 +2735,7 @@ report_error_undef_cons(TypeInfo, Functor, Arity) -->
 	io__write_int(Arity),
 	io__write_string("'.\n").
 
-:- pred write_call_context(term__context, pred_call_id, int, unify_context,
+:- pred write_call_context(term_context, pred_call_id, int, unify_context,
 				io__state, io__state).
 :- mode write_call_context(in, in, in, in, di, uo) is det.
 

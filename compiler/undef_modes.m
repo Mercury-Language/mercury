@@ -256,7 +256,7 @@ find_undef_bound_insts([functor(_Name, Args) | BoundInsts], ErrorContext,
 
 %-----------------------------------------------------------------------------%
 
-:- type mode_error_context == pair(mode_error_context_2, term__context).
+:- type mode_error_context == pair(mode_error_context_2, term_context).
 :- type mode_error_context_2	--->	inst(inst_id)
 				;	mode(mode_id)
 				;	pred(pred_id).

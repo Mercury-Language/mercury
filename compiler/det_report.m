@@ -334,7 +334,7 @@ det_diagnose_goal_2(switch(Var, SwitchCanFail, Cases), GoalInfo,
 	),
 	det_diagnose_switch(Var, Cases, Desired, SwitchContext, MiscInfo,
 		Diagnosed2),
-	{ bool__or(Diagnosed1, Diagnosed2, Diagnosed) }.
+	{ std_util__bool_or(Diagnosed1, Diagnosed2, Diagnosed) }.
 
 det_diagnose_goal_2(call(PredId, ModeId, _, _, CallContext, _, _), GoalInfo,
 		Desired, Actual, _, MiscInfo, yes) -->
@@ -364,7 +364,7 @@ det_diagnose_goal_2(call(PredId, ModeId, _, _, CallContext, _, _), GoalInfo,
 	;
 		{ Diagnosed2 = no }
 	),
-	{ bool__or(Diagnosed1, Diagnosed2, Diagnosed) },
+	{ std_util__bool_or(Diagnosed1, Diagnosed2, Diagnosed) },
 	(
 		{ Diagnosed = yes }
 	;
@@ -421,8 +421,8 @@ det_diagnose_goal_2(if_then_else(_Vars, Cond, Then, Else), _GoalInfo,
 	),
 	det_diagnose_goal(Then, Desired, SwitchContext, MiscInfo, Diagnosed2),
 	det_diagnose_goal(Else, Desired, SwitchContext, MiscInfo, Diagnosed3),
-	{ bool__or(Diagnosed2, Diagnosed3, Diagnosed23) },
-	{ bool__or(Diagnosed1, Diagnosed23, Diagnosed) }.
+	{ std_util__bool_or(Diagnosed2, Diagnosed3, Diagnosed23) },
+	{ std_util__bool_or(Diagnosed1, Diagnosed23, Diagnosed) }.
 
 det_diagnose_goal_2(not(_), GoalInfo, Desired, Actual, _, _, Diagnosed) -->
 	{ determinism_components(Desired, DesiredCanFail, DesiredSolns) },
@@ -485,7 +485,7 @@ det_diagnose_conj([Goal | Goals], Desired, SwitchContext, MiscInfo,
 		Diagnosed) -->
 	det_diagnose_goal(Goal, Desired, SwitchContext, MiscInfo, Diagnosed1),
 	det_diagnose_conj(Goals, Desired, SwitchContext, MiscInfo, Diagnosed2),
-	{ bool__or(Diagnosed1, Diagnosed2, Diagnosed) }.
+	{ std_util__bool_or(Diagnosed1, Diagnosed2, Diagnosed) }.
 
 :- pred det_diagnose_disj(list(hlds__goal), determinism,
 	list(switch_context), misc_info, int, int, bool, io__state, io__state).
@@ -502,7 +502,7 @@ det_diagnose_disj([Goal | Goals], Desired, SwitchContext, MiscInfo,
 	{ Clauses1 is Clauses0 + 1 },
 	det_diagnose_disj(Goals, Desired, SwitchContext, MiscInfo,
 		Clauses1, Clauses, Diagnosed2),
-	{ bool__or(Diagnosed1, Diagnosed2, Diagnosed) }.
+	{ std_util__bool_or(Diagnosed1, Diagnosed2, Diagnosed) }.
 
 :- pred det_diagnose_switch(var, list(case), determinism,
 	list(switch_context), misc_info, bool, io__state, io__state).
@@ -515,7 +515,7 @@ det_diagnose_switch(Var, [case(ConsId, Goal) | Cases], Desired,
 	det_diagnose_goal(Goal, Desired, SwitchContext1, MiscInfo, Diagnosed1),
 	det_diagnose_switch(Var, Cases, Desired, SwitchContext0, MiscInfo,
 		Diagnosed2),
-	{ bool__or(Diagnosed1, Diagnosed2, Diagnosed) }.
+	{ std_util__bool_or(Diagnosed1, Diagnosed2, Diagnosed) }.
 
 %-----------------------------------------------------------------------------%
 
@@ -553,7 +553,7 @@ det_output_consid_list([ConsId | ConsIds], First) -->
 
 :- type switch_context --->	switch_context(var, cons_id).
 
-:- pred det_diagnose_write_switch_context(term__context, list(switch_context),
+:- pred det_diagnose_write_switch_context(term_context, list(switch_context),
 	misc_info, io__state, io__state).
 :- mode det_diagnose_write_switch_context(in, in, in, di, uo) is det.
 
@@ -573,7 +573,7 @@ det_diagnose_write_switch_context(Context, [SwitchContext | SwitchContexts],
 
 %-----------------------------------------------------------------------------%
 
-:- pred det_report_call_context(term__context, maybe(call_unify_context),
+:- pred det_report_call_context(term_context, maybe(call_unify_context),
 	misc_info, pred_id, proc_id, io__state, io__state).
 :- mode det_report_call_context(in, in, in, in, in, di, uo) is det.
 
@@ -598,7 +598,7 @@ det_report_call_context(Context, CallUnifyContext, MiscInfo, PredId, ModeId) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred det_report_unify_context(term__context, unify_context,
+:- pred det_report_unify_context(term_context, unify_context,
 	misc_info, var, unify_rhs, io__state, io__state).
 :- mode det_report_unify_context(in, in, in, in, in, di, uo) is det.
 
@@ -716,10 +716,10 @@ det_report_insert_context_line([], Goal, [Goal]).
 det_report_insert_context_line([Goal0 | Goals0], Goal, Goals) :-
 	Goal0 = _ - GoalInfo0,
 	goal_info_context(GoalInfo0, Context0),
-	term__context_line(Context0, Line0),
+	term_context_line(Context0, Line0),
 	Goal = _ - GoalInfo,
 	goal_info_context(GoalInfo, Context),
-	term__context_line(Context, Line),
+	term_context_line(Context, Line),
 	( Line < Line0 ->
 		Goals = [Goal, Goal0 | Goals0]
 	;
@@ -735,7 +735,7 @@ det_report_insert_context_line([Goal0 | Goals0], Goal, Goals) :-
 det_report_context_lines([], _) --> [].
 det_report_context_lines([_ - GoalInfo | Goals], First) -->
 	{ goal_info_context(GoalInfo, Context) },
-	{ term__context_line(Context, Line) },
+	{ term_context_line(Context, Line) },
 	( { First = yes } ->
 		[]
 	; { Goals = [] } ->

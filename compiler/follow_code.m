@@ -345,13 +345,13 @@ move_follow_code_is_branched(disj(_) - _GoalInfo).
 move_follow_code_is_builtin(unify(_,_,_,Unification,_) - _GoalInfo) :-
 	Unification \= complicated_unify(_, _, _).
 move_follow_code_is_builtin(call(_,_,_,Builtin, _, _, _) - _GoalInfo) :-
-	is_builtin__is_inline(Builtin).
+	hlds__is_builtin_is_inline(Builtin).
 
 :- pred move_follow_code_is_call(hlds__goal).
 :- mode move_follow_code_is_call(in) is semidet.
 
 move_follow_code_is_call(call(_,_,_,Builtin, _, _, _) - _GoalInfo) :-
-	\+ is_builtin__is_inline(Builtin).
+	\+ hlds__is_builtin_is_inline(Builtin).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

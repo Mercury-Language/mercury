@@ -51,7 +51,7 @@
 :- type mode_info.
 
 :- pred mode_info_init(io__state, module_info, pred_id, proc_id,
-			term__context, set(var), instmap, mode_info).
+			term_context, set(var), instmap, mode_info).
 :- mode mode_info_init(di, in, in, in, in, in, in, mode_info_uo) is det.
 
 :- pred mode_info_get_io_state(mode_info, io__state).
@@ -81,10 +81,10 @@
 :- pred mode_info_get_procid(mode_info, proc_id).
 :- mode mode_info_get_procid(mode_info_ui, out) is det.
 
-:- pred mode_info_get_context(mode_info, term__context).
+:- pred mode_info_get_context(mode_info, term_context).
 :- mode mode_info_get_context(mode_info_ui, out) is det.
 
-:- pred mode_info_set_context(term__context, mode_info, mode_info).
+:- pred mode_info_set_context(term_context, mode_info, mode_info).
 :- mode mode_info_set_context(in, mode_info_di, mode_info_uo) is det.
 
 :- pred mode_info_get_mode_context(mode_info, mode_context).
@@ -233,7 +233,7 @@
 			proc_id,	% The mode which we are checking
 			varset,		% The variables in the current proc
 			map(var, type),	% The types of the variables
-			term__context,	% The line number of the subgoal we
+			term_context,	% The line number of the subgoal we
 					% are currently checking
 			mode_context,	% A description of where in the
 					% goal the error occurred

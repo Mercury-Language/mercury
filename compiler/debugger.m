@@ -181,7 +181,7 @@ det_match_cons_id(Term,Cons_id,VarSet,VarSetOut) -->
 	  io__write_string("cons\n"),
 	  io__write_string("Var = "),
 	  what_term(Term),
-	  { Term = term__functor(TermS,_,_) },
+	  { Term = term_functor(TermS,_,_) },
 	  io__write_string(" S= "),
 	  io__write_string(String),
 	  io__write_string(" arity= "),
@@ -191,8 +191,8 @@ det_match_cons_id(Term,Cons_id,VarSet,VarSetOut) -->
 	;
 	  { Cons_id = int_const(Int) },
 	  io__write_string("Int\n"),
-	  { Term = term__functor(Const,[],_) }, 
-	  { Const = term__integer(INT) },
+	  { Term = term_functor(Const,[],_) }, 
+	  { Const = term_integer(INT) },
 	  { INT = Int },
 	  { VarSetOut = VarSet } 
 	;
@@ -316,9 +316,9 @@ do_goal2_det(call(PredId,ProcId,Vars,_isbuiltin,PredName,_followvars)
 do_goal2_det(unify(A,B,_,Unification,_),INFO,VarSet,VarSetOut,Result) -->
 	{ INFO = highinfo(_HLDS,Headinlist) },
 	( { Unification = assign(_,_) },
-	  ( { A= term__variable(Var) } ->
+	  ( { A= term_variable(Var) } ->
 	    ( { list__member(Var,Headinlist) } ->
-	      ( { B= term__variable(VarB) },
+	      ( { B= term_variable(VarB) },
 		{ do_termvar2termconst(VarSet,A,Aconst) },
 		{ varset__bind_var(VarSet,VarB,Aconst,VarSetOut) },
 		{ Result = yes },
@@ -329,8 +329,8 @@ do_goal2_det(unify(A,B,_,Unification,_),INFO,VarSet,VarSetOut,Result) -->
 		mercury_output_term(Aconst,VarSet),
 		io__write_string("\n")
 	      ;
-		{ B= term__functor(_,_,_) },
-		io__write_string("A is a headvar but B is a term__functor\n"),
+		{ B= term_functor(_,_,_) },
+		io__write_string("A is a headvar but B is a term_functor\n"),
 		{ Result = yes },
 		{ VarSetOut = VarSet }
 	      ) 
@@ -357,7 +357,7 @@ do_goal2_det(unify(A,B,_,Unification,_),INFO,VarSet,VarSetOut,Result) -->
 	  { VarSetOut = VarSet }
 	;  
 	  { Unification = construct(_,_,_,_) },
-	  ( { A= term__variable(Var) } ->
+	  ( { A= term_variable(Var) } ->
 	    { do_termvar2termconst(VarSet,B,Bconst) },
 	    { varset__bind_var(VarSet,Var,Bconst,VarSetOut) },
 	    { Result = yes },
@@ -621,9 +621,9 @@ do_goal2_semidet(call(PredId,ProcId,Vars,_isbuiltin,PredName,_followvars)
 do_goal2_semidet(unify(A,B,_,Unification,_),INFO,VarSet,VarSetOut,Result) -->
 	{ INFO = highinfo(_HLDS,Headinlist) },
 	( { Unification = assign(_,_) },
-	  ( { A= term__variable(Var) } ->
+	  ( { A= term_variable(Var) } ->
 	    ( { list__member(Var,Headinlist) } ->
-	      ( { B= term__variable(VarB) },
+	      ( { B= term_variable(VarB) },
 		{ do_termvar2termconst(VarSet,A,Aconst) },
 		{ varset__bind_var(VarSet,VarB,Aconst,VarSetOut) },
 		mercury_output_var(VarB,VarSet),
@@ -633,9 +633,9 @@ do_goal2_semidet(unify(A,B,_,Unification,_),INFO,VarSet,VarSetOut,Result) -->
 		mercury_output_term(Aconst,VarSet),
 		io__write_string("\n"),
 		{ Result = yes }
-	      ; % A is term_var, var is mode in, b is term__functor
-		{ B= term__functor(_,_,_) },
-		io__write_string("A is a headvar but B is a term__functor\n"),
+	      ; % A is term_var, var is mode in, b is term_functor
+		{ B= term_functor(_,_,_) },
+		io__write_string("A is a headvar but B is a term_functor\n"),
 	        { Result = no },
 		{ VarSetOut = VarSet }
 	      ) 
@@ -662,7 +662,7 @@ do_goal2_semidet(unify(A,B,_,Unification,_),INFO,VarSet,VarSetOut,Result) -->
 	  { VarSetOut = VarSet }
 	;  
 	  { Unification = construct(_,_,_,_) },
-	  ( { A= term__variable(Var) } ->
+	  ( { A= term_variable(Var) } ->
 	    { do_termvar2termconst(VarSet,B,Bconst) },
 	    { varset__bind_var(VarSet,Var,Bconst,VarSetOut) },
 	    mercury_output_var(Var,VarSet),
@@ -678,13 +678,13 @@ do_goal2_semidet(unify(A,B,_,Unification,_),INFO,VarSet,VarSetOut,Result) -->
 	;
 	  { Unification = deconstruct(_,_,_,_,_) },
 	  % io__write_string("deconstruct\n"),
-	  ( { A= term__variable(Var) },
+	  ( { A= term_variable(Var) },
 	    { termvar2termfunctor(VarSet,A,Afunctor) },
-	    ( { B= term__variable(_) },
+	    ( { B= term_variable(_) },
 	      { error("In semidet B must be a functor\n") }
 	    ; % A is a functor and B is a functor
-	      { B = term__functor(B1,Blist,_) },
-	      ( { Afunctor = term__functor(A1,Alist,_) },
+	      { B = term_functor(B1,Blist,_) },
+	      ( { Afunctor = term_functor(A1,Alist,_) },
 		mercury_output_term(Afunctor,VarSet),
 		io__write_string(" =: "),
 		mercury_output_term(B,VarSet),
@@ -710,12 +710,12 @@ do_goal2_semidet(unify(A,B,_,Unification,_),INFO,VarSet,VarSetOut,Result) -->
 	          { VarSetOut = VarSet }
 	        )
 	      ; % Afunctor is not a functor
-	  	{ Afunctor = term__variable(_) },
+	  	{ Afunctor = term_variable(_) },
 		{ error("\nAfunctor must be a functor") }
 	      )
 	    )
 	  ; % A is a term functor which it shouldn't be
-	    { A = term__functor(_,_,_) },
+	    { A = term_functor(_,_,_) },
 	    io__write_string("A is a term_func\n"),
 	    { Result = yes },
 	    { VarSetOut = VarSet }
@@ -749,8 +749,8 @@ do_goal2_semidet_conj([Goal|Goals],INFO,VarSet,VarSetOut,Result) -->
 semidet_deconstruct([],V,V,yes) --> [].
 semidet_deconstruct([P|Ps],VarSet,VarSetOut,Result) -->
 	{ P = A - B },
-	( { B = term__variable(Var) } ->
-	  ( { A = term__variable(VarA) } ->
+	( { B = term_variable(Var) } ->
+	  ( { A = term_variable(VarA) } ->
 	    io__write_string("\n Error! Apair is a var "),
 	    mercury_output_var(VarA,VarSet),
 	    { error("Error in semidet_deconstruct\n") }

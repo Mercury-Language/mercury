@@ -16,30 +16,30 @@
 
 :- import_module llds, list, int, io.
 
-:- pred vn__block_cost(list(instruction), bool, int, io__state, io__state).
-:- mode vn__block_cost(in, in, out, di, uo) is det.
+:- pred vn_cost__block_cost(list(instruction), bool, int, io__state, io__state).
+:- mode vn_cost__block_cost(in, in, out, di, uo) is det.
 
-:- pred vn__lval_cost(lval, int).
-:- mode vn__lval_cost(in, out) is det.
+:- pred vn_cost__lval_cost(lval, int).
+:- mode vn_cost__lval_cost(in, out) is det.
 
-:- pred vn__rval_cost(rval, int).
-:- mode vn__rval_cost(in, out) is det.
+:- pred vn_cost__rval_cost(rval, int).
+:- mode vn_cost__rval_cost(in, out) is det.
 
 :- implementation.
 
 :- import_module vn_debug, require, string, std_util.
 
-vn__block_cost(Instr, Flag, Cost) -->
-	vn__block_cost_2(Instr, Flag, 0, Cost).
+vn_cost__block_cost(Instr, Flag, Cost) -->
+	vn_cost__block_cost_2(Instr, Flag, 0, Cost).
 
-:- pred vn__block_cost_2(list(instruction), bool, int, int,
+:- pred vn_cost__block_cost_2(list(instruction), bool, int, int,
 	io__state, io__state).
-:- mode vn__block_cost_2(in, in, in, out, di, uo) is det.
+:- mode vn_cost__block_cost_2(in, in, in, out, di, uo) is det.
 
-vn__block_cost_2([], _, Cost, Cost) --> [].
-vn__block_cost_2([Instr | Instrs], Flag, CostBefore, Cost) -->
+vn_cost__block_cost_2([], _, Cost, Cost) --> [].
+vn_cost__block_cost_2([Instr | Instrs], Flag, CostBefore, Cost) -->
 	{ Instr = Uinstr - _ },
-	{ vn__instr_cost(Uinstr, InstrCost) },
+	{ vn_cost__instr_cost(Uinstr, InstrCost) },
 	{ Uinstr = if_val(_, _) ->
 		% We can now count earlier instructions twice
 		% to favor code sequences that move code after ifs.
@@ -52,17 +52,17 @@ vn__block_cost_2([Instr | Instrs], Flag, CostBefore, Cost) -->
 	},
 	(
 		{ Flag = yes },
-		vn__cost_detail_msg(Uinstr, InstrCost, CostNow)
+		vn_debug__cost_detail_msg(Uinstr, InstrCost, CostNow)
 	;
 		{ Flag = no }
 	),
-	vn__block_cost_2(Instrs, Flag, CostNow, Cost).
+	vn_cost__block_cost_2(Instrs, Flag, CostNow, Cost).
 
-:- pred vn__instr_cost(instr, int).
-:- mode vn__instr_cost(in, out) is det.
+:- pred vn_cost__instr_cost(instr, int).
+:- mode vn_cost__instr_cost(in, out) is det.
 
-vn__instr_cost(Uinstr, Cost) :-
-	vn__costof_assign(AssignCost),
+vn_cost__instr_cost(Uinstr, Cost) :-
+	vn_cost__costof_assign(AssignCost),
 	(
 		Uinstr = comment(_),
 		Cost = 0
@@ -74,8 +74,8 @@ vn__instr_cost(Uinstr, Cost) :-
 		error("block found in vn_block_cost")
 	;
 		Uinstr = assign(Lval, Rval),
-		vn__lval_cost(Lval, LvalCost),
-		vn__rval_cost(Rval, RvalCost),
+		vn_cost__lval_cost(Lval, LvalCost),
+		vn_cost__rval_cost(Rval, RvalCost),
 		(
 			% Is this an assignment that speeds up future accesses?
 			% If yes, do not count a cost for the assignment.
@@ -116,19 +116,19 @@ vn__instr_cost(Uinstr, Cost) :-
 		Cost = 0
 	;
 		Uinstr = computed_goto(Rval, _),
-		vn__rval_cost(Rval, RvalCost),
+		vn_cost__rval_cost(Rval, RvalCost),
 		Cost = RvalCost
 	;
 		Uinstr = c_code(_),
 		error("c_code found in vn_block_cost")
 	;
 		Uinstr = if_val(Rval, _),
-		vn__rval_cost(Rval, RvalCost),
+		vn_cost__rval_cost(Rval, RvalCost),
 		Cost = RvalCost
 	;
 		Uinstr = incr_hp(Lval, MaybeTag, Rval),
-		vn__lval_cost(Lval, LvalCost),
-		vn__rval_cost(Rval, RvalCost),
+		vn_cost__lval_cost(Lval, LvalCost),
+		vn_cost__rval_cost(Rval, RvalCost),
 		Cost1 is RvalCost + LvalCost,
 		Cost2 is 3 * AssignCost,
 		Cost12 is Cost1 + Cost2,
@@ -142,11 +142,11 @@ vn__instr_cost(Uinstr, Cost) :-
 		Cost is Cost12 + Cost3
 	;
 		Uinstr = mark_hp(Lval),
-		vn__lval_cost(Lval, LvalCost),
+		vn_cost__lval_cost(Lval, LvalCost),
 		Cost = LvalCost
 	;
 		Uinstr = restore_hp(Rval),
-		vn__rval_cost(Rval, RvalCost),
+		vn_cost__rval_cost(Rval, RvalCost),
 		Cost = RvalCost
 	;
 		Uinstr = incr_sp(_),
@@ -159,9 +159,9 @@ vn__instr_cost(Uinstr, Cost) :-
 		error("pragma_c found in vn_block_cost")
 	).
 
-vn__lval_cost(Lval, Cost) :-
-	vn__costof_stackref(StackrefCost),
-	vn__costof_heapref(HeaprefCost),
+vn_cost__lval_cost(Lval, Cost) :-
+	vn_cost__costof_stackref(StackrefCost),
+	vn_cost__costof_heapref(HeaprefCost),
 	(
 		Lval = reg(_),
 		Cost = 0
@@ -173,19 +173,19 @@ vn__lval_cost(Lval, Cost) :-
 		Cost = StackrefCost
 	;
 		Lval = succfr(Rval1),
-		vn__rval_cost(Rval1, RvalCost1),
+		vn_cost__rval_cost(Rval1, RvalCost1),
 		Cost is RvalCost1 + StackrefCost
 	;
 		Lval = prevfr(Rval1),
-		vn__rval_cost(Rval1, RvalCost1),
+		vn_cost__rval_cost(Rval1, RvalCost1),
 		Cost is RvalCost1 + StackrefCost
 	;
 		Lval = redoip(Rval1),
-		vn__rval_cost(Rval1, RvalCost1),
+		vn_cost__rval_cost(Rval1, RvalCost1),
 		Cost is RvalCost1 + StackrefCost
 	;
 		Lval = succip(Rval1),
-		vn__rval_cost(Rval1, RvalCost1),
+		vn_cost__rval_cost(Rval1, RvalCost1),
 		Cost is RvalCost1 + StackrefCost
 	;
 		Lval = succip,
@@ -204,8 +204,8 @@ vn__lval_cost(Lval, Cost) :-
 		Cost = 0
 	;
 		Lval = field(_, Rval1, Rval2),
-		vn__rval_cost(Rval1, RvalCost1),
-		vn__rval_cost(Rval2, RvalCost2),
+		vn_cost__rval_cost(Rval1, RvalCost1),
+		vn_cost__rval_cost(Rval2, RvalCost2),
 		Cost1 is RvalCost1 + RvalCost2,
 		Cost is Cost1 + HeaprefCost
 	;
@@ -216,11 +216,11 @@ vn__lval_cost(Lval, Cost) :-
 		Cost = 0
 	).
 
-vn__rval_cost(Rval, Cost) :-
-	vn__costof_ops(OpsCost),
+vn_cost__rval_cost(Rval, Cost) :-
+	vn_cost__costof_ops(OpsCost),
 	(
 		Rval = lval(Lval),
-		vn__lval_cost(Lval, LvalCost),
+		vn_cost__lval_cost(Lval, LvalCost),
 		Cost = LvalCost
 	;
 		Rval = var(_),
@@ -230,39 +230,39 @@ vn__rval_cost(Rval, Cost) :-
 		Cost = 0
 	;
 		Rval = mkword(_, Rval1),
-		vn__rval_cost(Rval1, RvalCost1),
+		vn_cost__rval_cost(Rval1, RvalCost1),
 		Cost is RvalCost1 + OpsCost
 	;
 		Rval = const(_),
 		Cost = 0
 	;
 		Rval = unop(_, Rval1),
-		vn__rval_cost(Rval1, RvalCost1),
+		vn_cost__rval_cost(Rval1, RvalCost1),
 		Cost is RvalCost1 + OpsCost
 	;
 		Rval = binop(_, Rval1, Rval2),
-		vn__rval_cost(Rval1, RvalCost1),
-		vn__rval_cost(Rval2, RvalCost2),
+		vn_cost__rval_cost(Rval1, RvalCost1),
+		vn_cost__rval_cost(Rval2, RvalCost2),
 		Cost1 is RvalCost1 + RvalCost2,
 		Cost is Cost1 + OpsCost
 	).
 
-:- pred vn__costof_assign(int).
-:- mode vn__costof_assign(out) is det.
+:- pred vn_cost__costof_assign(int).
+:- mode vn_cost__costof_assign(out) is det.
 
-:- pred vn__costof_ops(int).
-:- mode vn__costof_ops(out) is det.
+:- pred vn_cost__costof_ops(int).
+:- mode vn_cost__costof_ops(out) is det.
 
-:- pred vn__costof_stackref(int).
-:- mode vn__costof_stackref(out) is det.
+:- pred vn_cost__costof_stackref(int).
+:- mode vn_cost__costof_stackref(out) is det.
 
-:- pred vn__costof_heapref(int).
-:- mode vn__costof_heapref(out) is det.
+:- pred vn_cost__costof_heapref(int).
+:- mode vn_cost__costof_heapref(out) is det.
 
-vn__costof_assign(1).
-vn__costof_ops(1).
-vn__costof_stackref(2).
-vn__costof_heapref(2).
+vn_cost__costof_assign(1).
+vn_cost__costof_ops(1).
+vn_cost__costof_stackref(2).
+vn_cost__costof_heapref(2).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

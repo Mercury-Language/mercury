@@ -36,7 +36,7 @@
 constraint_propagation(ModuleInfo0, ModuleInfo) -->
 	{ module_info_ensure_dependency_info(ModuleInfo0, ModuleInfo1) },
 	{ module_info_dependency_info(ModuleInfo1, DepInfo) },
-	{ dependency_info__get_dependency_ordering(DepInfo, DepOrd) },
+	{ hlds__dependency_info_get_dependency_ordering(DepInfo, DepOrd) },
 	constraint_propagation2(DepOrd, ModuleInfo1, ModuleInfo).
 
 :- pred constraint_propagation2(dependency_ordering, module_info, module_info,
@@ -239,7 +239,7 @@ constraint__propagate_conj(Goals0, Goals) -->
 	mode_info_set_instmap(InstMap0),
 %	constraint__distribute_constraints(Constraints1, Goals1, Goals),
 	{ list__append(Constraints1, Goals1, Goals2) },
-	reschedule__conj(Goals2, Goals),
+	transform__reschedule_conj(Goals2, Goals),
 
 	=(ModeInfo1),
 	{ mode_info_get_delay_info(ModeInfo1, DelayInfo2) },
