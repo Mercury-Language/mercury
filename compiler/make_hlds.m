@@ -27,15 +27,18 @@
 
 :- import_module io, std_util, list, bool.
 
-% parse_tree_to_hlds(ParseTree, MQInfo, EqvMap, HLDS, UndefTypes, UndefModes):
+% parse_tree_to_hlds(ParseTree, MQInfo, EqvMap, HLDS, QualInfo,
+%		UndefTypes, UndefModes):
 %	Given MQInfo (returned by module_qual.m) and EqvMap (returned by
 %	equiv_type.m), converts ParseTree to HLDS.
 %	Any errors found are recorded in the HLDS num_errors field.
 %	Returns UndefTypes = yes if undefined types found.
 %	Returns UndefModes = yes if undefined modes found.
+%	QualInfo is an abstract type that is then passed back to
+%	produce_instance_method_clauses (see below).	
 :- pred parse_tree_to_hlds(compilation_unit, mq_info, eqv_map, module_info,
-			bool, bool, io__state, io__state).
-:- mode parse_tree_to_hlds(in, in, in, out, out, out, di, uo) is det.
+			qual_info, bool, bool, io__state, io__state).
+:- mode parse_tree_to_hlds(in, in, in, out, out, out, out, di, uo) is det.
 
 :- pred add_new_proc(pred_info, arity, list(mode), maybe(list(mode)),
 		maybe(list(is_live)), maybe(determinism),
@@ -43,6 +46,18 @@
 :- mode add_new_proc(in, in, in, in, in, in, in, in, out, out) is det.
 
 :- pred clauses_info_init(int::in, clauses_info::out) is det.
+
+:- type qual_info.
+
+	% Given the definition for a predicate or function from a
+	% type class instance declaration, produce the clauses_info
+	% for that definition.
+:- pred produce_instance_method_clauses(instance_proc_def::in,
+		pred_or_func::in, arity::in, list(type)::in, pred_markers::in,
+		term__context::in, clauses_info::out,
+		module_info::in, module_info::out,
+		qual_info::in, qual_info::out,
+		io__state::di, io__state::uo) is det.
 
 :- pred next_mode_id(proc_table, maybe(determinism), proc_id).
 :- mode next_mode_id(in, in, out) is det.
@@ -64,7 +79,7 @@
 :- import_module string, char, int, set, bintree, map, multi_map, require.
 :- import_module bag, term, varset, getopt, assoc_list, term_io.
 
-parse_tree_to_hlds(module(Name, Items), MQInfo0, EqvMap, Module, 
+parse_tree_to_hlds(module(Name, Items), MQInfo0, EqvMap, Module, QualInfo,
 		UndefTypes, UndefModes) -->
 	globals__io_get_globals(Globals),
 	{ mq_info_get_partial_qualifier_info(MQInfo0, PQInfo) },
@@ -79,10 +94,10 @@ parse_tree_to_hlds(module(Name, Items), MQInfo0, EqvMap, Module,
 		% balance the binary trees
 	{ module_info_optimize(Module2, Module3) },
 	maybe_report_stats(Statistics),
-	{ init_qual_info(MQInfo0, EqvMap, Info0) },
+	{ init_qual_info(MQInfo0, EqvMap, QualInfo0) },
 	add_item_list_clauses(Items, local, Module3, Module4,
-				Info0, Info),
-	{ qual_info_get_mq_info(Info, MQInfo) },
+				QualInfo0, QualInfo),
+	{ qual_info_get_mq_info(QualInfo, MQInfo) },
 	{ mq_info_get_type_error_flag(MQInfo, UndefTypes) },
 	{ mq_info_get_mode_error_flag(MQInfo, UndefModes) },
 	{ mq_info_get_num_errors(MQInfo, MQ_NumErrors) },
@@ -3579,6 +3594,122 @@ module_add_clause(ModuleInfo0, ClauseVarSet, PredName, Args, Body, Status,
 		;
 			[]
 		)
+	).
+
+%-----------------------------------------------------------------------------%
+%
+% Generate the clauses_info for the introduced predicate that we generate
+% for each method in a type class instance declaration.
+%
+
+	% handle the `pred(<MethodName>/<Arity>) is <ImplName>' syntax
+produce_instance_method_clauses(name(InstancePredName), PredOrFunc, PredArity,
+		ArgTypes, Markers, Context, ClausesInfo,
+		ModuleInfo, ModuleInfo, QualInfo, QualInfo, IO, IO) :-
+
+		% Add the body of the introduced pred
+
+		% First the goal info
+	goal_info_init(GoalInfo0),
+	goal_info_set_context(GoalInfo0, Context, GoalInfo1),
+	set__list_to_set(HeadVars, NonLocals),
+	goal_info_set_nonlocals(GoalInfo1, NonLocals, GoalInfo2),
+	(
+		check_marker(Markers, (impure))
+	->
+		goal_info_add_feature(GoalInfo2, (impure), GoalInfo)
+	;
+		check_marker(Markers, (semipure))
+	->
+		goal_info_add_feature(GoalInfo2, (semipure), GoalInfo)
+	;
+		GoalInfo = GoalInfo2
+	),
+
+		% Then the goal itself
+	varset__init(VarSet0),
+	make_n_fresh_vars("HeadVar__", PredArity, VarSet0, HeadVars, VarSet), 
+	invalid_pred_id(InvalidPredId),
+	invalid_proc_id(InvalidProcId),
+	(
+		PredOrFunc = predicate,
+		Call = call(InvalidPredId, InvalidProcId, HeadVars, not_builtin,
+			no, InstancePredName),
+		IntroducedGoal = Call - GoalInfo
+	;
+		PredOrFunc = function,
+		pred_args_to_func_args(HeadVars, RealHeadVars, ReturnVar),
+		create_atomic_unification(ReturnVar, 
+			functor(cons(InstancePredName, PredArity),
+				RealHeadVars), 
+			Context, explicit, [], IntroducedGoal0),
+		% set the goal_info
+		IntroducedGoal0 = IntroducedGoalExpr - _,
+		IntroducedGoal = IntroducedGoalExpr - GoalInfo
+	),
+	IntroducedClause = clause([], IntroducedGoal, Context),
+
+	map__from_corresponding_lists(HeadVars, ArgTypes, VarTypes),
+	map__init(TI_VarMap),
+	map__init(TCI_VarMap),
+	ClausesInfo = clauses_info(VarSet, VarTypes, VarTypes, HeadVars,
+		[IntroducedClause], TI_VarMap, TCI_VarMap).
+
+	% handle the arbitrary clauses syntax
+produce_instance_method_clauses(clauses(InstanceClauses), PredOrFunc,
+		PredArity, _ArgTypes, _Markers, Context, ClausesInfo,
+		ModuleInfo0, ModuleInfo, QualInfo0, QualInfo, IO0, IO) :-
+	clauses_info_init(PredArity, ClausesInfo0),
+	list__foldl2(produce_instance_method_clause(PredOrFunc, Context),
+		InstanceClauses, ModuleInfo0 - QualInfo0 - ClausesInfo0,
+		ModuleInfo - QualInfo - ClausesInfo, IO0, IO).
+
+:- pred produce_instance_method_clause(pred_or_func::in,
+		prog_context::in, item::in,
+		pair(pair(module_info, qual_info), clauses_info)::in,
+		pair(pair(module_info, qual_info), clauses_info)::out,
+		io__state::di, io__state::uo) is det.
+produce_instance_method_clause(PredOrFunc, Context, InstanceClause,
+		ModuleInfo0 - QualInfo0 - ClausesInfo0,
+		ModuleInfo - QualInfo - ClausesInfo) -->
+	(
+		{
+			PredOrFunc = predicate,
+			InstanceClause = pred_clause(CVarSet, PredName,
+				HeadTerms, Body),
+			Arity = list__length(HeadTerms)
+		;
+			PredOrFunc = function,
+			InstanceClause = func_clause(CVarSet, PredName,
+				ArgTerms, ResultTerm, Body),
+			HeadTerms = list__append(ArgTerms, [ResultTerm]),
+			Arity = list__length(ArgTerms)
+		}
+	->
+		% currently these two arguments are not used
+		% in any important way, I think, so I think
+		% we can safely set them to dummy values
+		{ invalid_pred_id(PredId) },
+		{ varset__init(TVarSet0) },
+
+		{ ModeIds = [] }, % means this clause applies to _every_
+				  % mode of the procedure
+		{ IsAssertion = no },
+		clauses_info_add_clause(ClausesInfo0, PredId, ModeIds,
+			CVarSet, TVarSet0, HeadTerms, Body, Context,
+			PredOrFunc, Arity, IsAssertion, Goal,
+			VarSet, _TVarSet, ClausesInfo, Warnings,
+			ModuleInfo0, ModuleInfo, QualInfo0, QualInfo),
+
+		% warn about singleton variables 
+		maybe_warn_singletons(VarSet,
+			PredOrFunc - PredName/Arity, ModuleInfo, Goal),
+
+		% warn about variables with overlapping scopes
+		maybe_warn_overlap(Warnings, VarSet,
+			PredOrFunc - PredName/Arity)
+	;
+		{ error("produce_clause: invalid instance item") }
 	).
 
 %-----------------------------------------------------------------------------%

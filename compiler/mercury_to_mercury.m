@@ -31,6 +31,8 @@
 				io__state, io__state).
 :- mode convert_to_mercury(in, in, in, di, uo) is det.
 
+%	mercury_output_item(Item, Context)
+%		output the specified item, followed by ".\n"
 :- pred mercury_output_item(item, prog_context, io__state, io__state).
 :- mode mercury_output_item(in, in, di, uo) is det.
 
@@ -305,13 +307,15 @@ mercury_output_item(module_defn(VarSet, ModuleDefn), Context) -->
 
 mercury_output_item(pred_clause(VarSet, PredName, Args, Body), Context) -->
 	maybe_output_line_number(Context),
-	mercury_output_pred_clause(VarSet, PredName, Args, Body, Context).
+	mercury_output_pred_clause(VarSet, PredName, Args, Body, Context),
+	io__write_string(".\n").
 
 mercury_output_item(func_clause(VarSet, FuncName, Args, Result, Body),
 		Context) -->
 	maybe_output_line_number(Context),
 	mercury_output_func_clause(VarSet, FuncName, Args, Result, Body,
-		Context).
+		Context),
+	io__write_string(".\n").
 
 mercury_output_item(pragma(Pragma), Context) -->
 	maybe_output_line_number(Context),
@@ -533,20 +537,57 @@ mercury_output_instance_methods(Methods) -->
 :- mode output_instance_method(in, di, uo) is det.
 
 output_instance_method(Method) -->
-	io__write_char('\t'),
-	{ Method = instance_method(PredOrFunc, Name1, Name2, Arity, _Context) },
+	{ Method = instance_method(PredOrFunc, Name1, Defn, Arity, Context) },
 	(
-		{ PredOrFunc = function },
-		io__write_string("func(")
+		{ Defn = name(Name2) },
+		io__write_char('\t'),
+		(
+			{ PredOrFunc = function },
+			io__write_string("func(")
+		;
+			{ PredOrFunc = predicate },
+			io__write_string("pred(")
+		),
+		mercury_output_bracketed_sym_name(Name1, next_to_graphic_token),
+		io__write_string("/"),
+		io__write_int(Arity),
+		io__write_string(") is "),
+		mercury_output_bracketed_sym_name(Name2)
 	;
-		{ PredOrFunc = predicate },
-		io__write_string("pred(")
-	),
-	mercury_output_bracketed_sym_name(Name1, next_to_graphic_token),
-	io__write_string("/"),
-	io__write_int(Arity),
-	io__write_string(") is "),
-	mercury_output_bracketed_sym_name(Name2).
+		{ Defn = clauses(ItemList) },
+		% XXX should we output the term contexts?
+		io__write_string("\t("),
+		(	
+			{ PredOrFunc = predicate },
+			{ WriteOneItem = (pred(Item::in, di, uo) is det -->
+				(
+					{ Item = pred_clause(VarSet, _PredName,
+						HeadTerms, Body) }
+				->
+					mercury_output_pred_clause(VarSet,
+						Name1, HeadTerms, Body,
+						Context)
+				;
+					{ error("invalid instance item") }
+				)) },
+			io__write_list(ItemList, "),\n\t(", WriteOneItem)
+		;
+			{ PredOrFunc = function },
+			{ WriteOneItem = (pred(Item::in, di, uo) is det -->
+				(
+					{ Item = func_clause(VarSet, _PredName,
+						ArgTerms, ResultTerm, Body) }
+				->
+					mercury_output_func_clause(VarSet,
+						Name1, ArgTerms, ResultTerm,
+						Body, Context)
+				;
+					{ error("invalid instance item") }
+				)) },
+			io__write_list(ItemList, "),\n\t(", WriteOneItem)
+		),
+		io__write_string(")")
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -1723,8 +1764,7 @@ mercury_output_pred_clause(VarSet, PredName, Args, Body, _Context) -->
 	;
 		io__write_string(" :-\n\t"),
 		mercury_output_goal(Body, VarSet, 1)
-	),
-	io__write_string(".\n").
+	).
 
 	% Output an equation.
 
@@ -1753,8 +1793,7 @@ mercury_output_func_clause(VarSet, PredName, Args, Result, Body, _Context) -->
 		mercury_output_term(Result, VarSet, no),
 		io__write_string(" :-\n\t"),
 		mercury_output_goal(Body, VarSet, 1)
-	),
-	io__write_string(".\n").
+	).
 
 :- pred mercury_output_goal(goal, prog_varset, int, io__state, io__state).
 :- mode mercury_output_goal(in, in, in, di, uo) is det.

@@ -49,11 +49,11 @@
 
 :- interface.
 
-:- import_module hlds_module, bool, io.
+:- import_module hlds_module, make_hlds, bool, io.
 
-:- pred check_typeclass__check_instance_decls(module_info, module_info, bool,
-	io__state, io__state).
-:- mode check_typeclass__check_instance_decls(in, out, out, di, uo) is det.
+:- pred check_typeclass__check_instance_decls(module_info, qual_info,
+	module_info, bool, io__state, io__state).
+:- mode check_typeclass__check_instance_decls(in, in, out, out, di, uo) is det.
 
 :- implementation.
 
@@ -66,20 +66,22 @@
 :- type error_message == pair(prog_context, list(format_component)).
 :- type error_messages == list(error_message).
 
-check_typeclass__check_instance_decls(ModuleInfo0, ModuleInfo, FoundError, 
-		IO0, IO) :-
+check_typeclass__check_instance_decls(ModuleInfo0, QualInfo0,
+		ModuleInfo, FoundError, IO0, IO) :-
 	module_info_classes(ModuleInfo0, ClassTable),
 	module_info_instances(ModuleInfo0, InstanceTable0),
 	map__to_assoc_list(InstanceTable0, InstanceList0),
-	list__map_foldl(check_one_class(ClassTable), InstanceList0,
-		InstanceList, [] - ModuleInfo0, Errors - ModuleInfo1),
+	list_map_foldl2(check_one_class(ClassTable), InstanceList0,
+		InstanceList, check_tc_info([], ModuleInfo0, QualInfo0),
+		check_tc_info(Errors, ModuleInfo1, _QualInfo),
+		IO0, IO1),
 	(
 		Errors = []
 	->
 		map__from_assoc_list(InstanceList, InstanceTable),
 		module_info_set_instances(ModuleInfo1, InstanceTable,
 			ModuleInfo),
-		IO = IO0,
+		IO = IO1,
 		FoundError = no
 	;
 		ModuleInfo = ModuleInfo1,
@@ -90,21 +92,40 @@ check_typeclass__check_instance_decls(ModuleInfo0, ModuleInfo, FoundError,
 				write_error_pieces(ErrorContext, 0, 
 					ErrorPieces, TheIO0, TheIO)
 			)),
-		list__foldl(WriteError, ErrorList, IO0, IO1),
-		io__set_exit_status(1, IO1, IO),
+		list__foldl(WriteError, ErrorList, IO1, IO2),
+		io__set_exit_status(1, IO2, IO),
 		FoundError = yes
 	).  
+
+:- type check_tc_info
+	--->	check_tc_info(error_messages, module_info, qual_info).
+
+	% list__map_foldl2(Pred, InList, OutList, StartA, EndA, StartB, EndB)
+	% calls Pred with two accumulator (with the initial values of
+	% StartA and StartB respectively) on each element of InList
+	% (working left-to-right) to transform InList into OutList.
+	% The final values of the accumulators are returned in EndA
+	% and EndB respectively.
+:- pred list_map_foldl2(pred(X, Y, Z, Z, W, W), list(X), list(Y), Z, Z, W, W).
+:- mode list_map_foldl2(pred(in, out, in, out, di, uo) is det,
+			     in, out, in, out, di, uo) is det.
+
+list_map_foldl2(_, [],  [], A, A) -->
+        [].
+list_map_foldl2(P, [H0|T0], [H|T], A0, A) -->
+        call(P, H0, H, A0, A1),
+        list_map_foldl2(P, T0, T, A1, A).
 		
 	% check all the instances of one class.
 :- pred check_one_class(class_table,
 	pair(class_id, list(hlds_instance_defn)), 
 	pair(class_id, list(hlds_instance_defn)), 
-	pair(error_messages, module_info), 
-	pair(error_messages, module_info)).
-:- mode check_one_class(in, in, out, in, out) is det.
+	check_tc_info, check_tc_info,
+	io__state, io__state).
+:- mode check_one_class(in, in, out, in, out, di, uo) is det.
 
 check_one_class(ClassTable, ClassId - InstanceDefns0, 
-	ClassId - InstanceDefns, ModuleInfo0, ModuleInfo) :-
+	ClassId - InstanceDefns, CheckTCInfo0, CheckTCInfo, IO0, IO) :-
 
 	map__lookup(ClassTable, ClassId, ClassDefn),
 	ClassDefn = hlds_class_defn(_, SuperClasses, ClassVars, _,
@@ -116,23 +137,27 @@ check_one_class(ClassTable, ClassId - InstanceDefns0,
 				ClassProc = hlds_class_proc(PredId, _)
 			)),
 		PredIds),
-	list__map_foldl(check_class_instance(ClassId, SuperClasses, ClassVars,
+	list_map_foldl2(check_class_instance(ClassId, SuperClasses, ClassVars,
 				ClassInterface, ClassVarSet,
 				PredIds),
 		InstanceDefns0, InstanceDefns, 
-		ModuleInfo0, ModuleInfo).
+		CheckTCInfo0, CheckTCInfo,
+		IO0, IO).
 
 	% check one instance of one class
 :- pred check_class_instance(class_id, list(class_constraint), list(tvar),
 	hlds_class_interface, tvarset, list(pred_id), 
 	hlds_instance_defn, hlds_instance_defn, 
-	pair(error_messages, module_info), 
-	pair(error_messages, module_info)).
-:- mode check_class_instance(in, in, in, in, in, in, in, out, in, out) is det.
+	check_tc_info, check_tc_info, 
+	io__state, io__state).
+:- mode check_class_instance(in, in, in, in, in, in, in, out, in, out,
+	di, uo) is det.
 
 check_class_instance(ClassId, SuperClasses, Vars, ClassInterface, ClassVarSet,
 		PredIds, InstanceDefn0, InstanceDefn, 
-		Errors0 - ModuleInfo0, Errors - ModuleInfo):-
+		check_tc_info(Errors0, ModuleInfo0, QualInfo0),
+		check_tc_info(Errors, ModuleInfo, QualInfo),
+		IO0, IO):-
 		
 		% check conformance of the instance body
 	InstanceDefn0 = hlds_instance_defn(_, _, _, _, InstanceBody, _, _, _),
@@ -140,16 +165,20 @@ check_class_instance(ClassId, SuperClasses, Vars, ClassInterface, ClassVarSet,
 		InstanceBody = abstract,
 		InstanceDefn2 = InstanceDefn0,
 		ModuleInfo1 = ModuleInfo0,
-		Errors2 = Errors0
+		QualInfo = QualInfo0,
+		Errors2 = Errors0,
+		IO = IO0
 	;
 		InstanceBody = concrete(InstanceMethods),
 		InstanceCheckInfo0 = instance_check_info(InstanceDefn0,
-				[], Errors0, ModuleInfo0),
-		list__foldl(
+				[], Errors0, ModuleInfo0, QualInfo0),
+		list__foldl2(
 			check_instance_pred(ClassId, Vars, ClassInterface), 
-			PredIds, InstanceCheckInfo0, InstanceCheckInfo),
+			PredIds, InstanceCheckInfo0, InstanceCheckInfo,
+			IO0, IO),
 		InstanceCheckInfo = instance_check_info(InstanceDefn1,
-				RevInstanceMethods, Errors1, ModuleInfo1), 
+				RevInstanceMethods, Errors1, ModuleInfo1,
+				QualInfo), 
 			
 		%
 		% We need to make sure that the MaybePredProcs field is
@@ -238,13 +267,15 @@ check_class_instance(ClassId, SuperClasses, Vars, ClassInterface, ClassVarSet,
 					% order of the methods in the class
 					% declaration.
 		error_messages,
-		module_info
+		module_info,
+		qual_info
 	).
 
 	% This structure holds the information about a particular instance
 	% method
 :- type instance_method_info ---> instance_method_info(
 		module_info,
+		qual_info,
 		sym_name,				% Name that the
 							% introduced pred
 							% should be given.
@@ -272,14 +303,16 @@ check_class_instance(ClassId, SuperClasses, Vars, ClassInterface, ClassVarSet,
 
 	% check one pred in one instance of one class
 :- pred check_instance_pred(class_id, list(tvar), hlds_class_interface, 
-	pred_id, instance_check_info, instance_check_info).
-:- mode check_instance_pred(in,in, in, in, in, out) is det.
+	pred_id, instance_check_info, instance_check_info,
+	io__state, io__state).
+:- mode check_instance_pred(in,in, in, in, in, out, di, uo) is det.
 
 check_instance_pred(ClassId, ClassVars, ClassInterface, PredId,
-		InstanceCheckInfo0, InstanceCheckInfo) :-
+		InstanceCheckInfo0, InstanceCheckInfo, IO0, IO) :-
 
 	InstanceCheckInfo0 = instance_check_info(InstanceDefn0,
-				OrderedMethods0, Errors0, ModuleInfo0),
+				OrderedMethods0, Errors0, ModuleInfo0,
+				QualInfo0),
 	solutions(
 		lambda([ProcId::out] is nondet, 
 			(
@@ -332,36 +365,37 @@ check_instance_pred(ClassId, ClassVars, ClassInterface, PredId,
 	make_introduced_pred_name(ClassId, MethodName, PredArity, 
 		InstanceTypes, PredName),
 	
-	Info0 = instance_method_info(ModuleInfo0, PredName, PredArity, 
-		ExistQVars, ArgTypes, ClassContext, ArgModes, Errors0,
-		ArgTypeVars, Status, PredOrFunc),
+	Info0 = instance_method_info(ModuleInfo0, QualInfo0, PredName,
+		PredArity, ExistQVars, ArgTypes, ClassContext, ArgModes,
+		Errors0, ArgTypeVars, Status, PredOrFunc),
 
 	check_instance_pred_procs(ClassId, ClassVars, MethodName, Markers,
 		InstanceDefn0, InstanceDefn, OrderedMethods0, OrderedMethods,
-		Info0, Info),
+		Info0, Info, IO0, IO),
 
-	Info = instance_method_info(ModuleInfo, _PredName, _PredArity, 
-		_ExistQVars, _ArgTypes, _ClassContext, _ArgModes, Errors,
-		_ArgTypeVars, _Status, _PredOrFunc),
+	Info = instance_method_info(ModuleInfo, QualInfo, _PredName,
+		_PredArity, _ExistQVars, _ArgTypes, _ClassContext, _ArgModes,
+		Errors, _ArgTypeVars, _Status, _PredOrFunc),
 
 	InstanceCheckInfo = instance_check_info(InstanceDefn,
-				OrderedMethods, Errors, ModuleInfo).
+				OrderedMethods, Errors, ModuleInfo, QualInfo).
 
 :- pred check_instance_pred_procs(class_id, list(tvar), sym_name, pred_markers,
 	hlds_instance_defn, hlds_instance_defn, 
 	instance_methods, instance_methods,
-	instance_method_info, instance_method_info).
+	instance_method_info, instance_method_info,
+	io__state, io__state).
 :- mode check_instance_pred_procs(in, in, in, in, in, out,
-	in, out, in, out) is det.
+	in, out, in, out, di, uo) is det.
 
 check_instance_pred_procs(ClassId, ClassVars, MethodName, Markers,
 		InstanceDefn0, InstanceDefn, OrderedInstanceMethods0,
-		OrderedInstanceMethods, Info0, Info) :-
+		OrderedInstanceMethods, Info0, Info, IO0, IO) :-
 	InstanceDefn0 = hlds_instance_defn(A, InstanceContext, 
 				InstanceConstraints, InstanceTypes,
 				InstanceBody, MaybeInstancePredProcs,
 				InstanceVarSet, H),
-	Info0 = instance_method_info(ModuleInfo, PredName, PredArity, 
+	Info0 = instance_method_info(ModuleInfo, QualInfo, PredName, PredArity,
 		ExistQVars, ArgTypes, ClassContext, ArgModes, Errors0,
 		ArgTypeVars, Status, PredOrFunc),
 	get_matching_instance_names(InstanceBody, PredOrFunc, MethodName,
@@ -371,13 +405,14 @@ check_instance_pred_procs(ClassId, ClassVars, MethodName, Markers,
 	->
 		OrderedInstanceMethods =
 			[InstanceMethod | OrderedInstanceMethods0],
-		InstanceMethod = instance_method(_, _, InstancePredName,
+		InstanceMethod = instance_method(_, _, InstancePredDefn,
 					_, Context),
 		produce_auxiliary_procs(ClassVars, Markers,
 			InstanceTypes, InstanceConstraints, 
 			InstanceVarSet, 
-			InstancePredName, Context,
-			InstancePredId, InstanceProcIds, Info0, Info),
+			InstancePredDefn, Context,
+			InstancePredId, InstanceProcIds, Info0, Info,
+			IO0, IO),
 
 		MakeClassProc = 
 			lambda([TheProcId::in, PredProcId::out] is det,
@@ -439,9 +474,10 @@ check_instance_pred_procs(ClassId, ClassVars, MethodName, Markers,
 			% errors are built up in reverse.
 		list__append(SubsequentErrors, Heading, NewErrors),
 		list__append(NewErrors, Errors0, Errors),
-		Info = instance_method_info(ModuleInfo, PredName, PredArity,
-			ExistQVars, ArgTypes, ClassContext, ArgModes, Errors,
-			ArgTypeVars, Status, PredOrFunc)
+		Info = instance_method_info(ModuleInfo, QualInfo, PredName,
+			PredArity, ExistQVars, ArgTypes, ClassContext,
+			ArgModes, Errors, ArgTypeVars, Status, PredOrFunc),
+		IO = IO0
 	;
 			% another kind of error
 		OrderedInstanceMethods = OrderedInstanceMethods0,
@@ -469,9 +505,11 @@ check_instance_pred_procs(ClassId, ClassVars, MethodName, Markers,
 			MethodNameString, "/", PredArityString, "'."],
 			NewError),
 		Errors = [InstanceContext - [words(NewError)] | Errors0],
-		Info = instance_method_info(ModuleInfo, PredName, PredArity,
-			ExistQVars, ArgTypes, ClassContext, ArgModes, Errors,
-			ArgTypeVars, Status, PredOrFunc)
+		Info = instance_method_info(ModuleInfo, QualInfo, PredName,
+			PredArity, ExistQVars, ArgTypes, ClassContext,
+			ArgModes, Errors,
+			ArgTypeVars, Status, PredOrFunc),
+		IO = IO0
 	).
 
 :- pred get_matching_instance_names(instance_body, pred_or_func,
@@ -486,7 +524,7 @@ get_matching_instance_names(InstanceBody, PredOrFunc, MethodName,
 			InstanceBody = concrete(InstanceMethods),
 			list__member(Method, InstanceMethods),
 			Method = instance_method(PredOrFunc,
-				MethodName, _InstanceMethodName,
+				MethodName, _InstanceMethodDefn,
 				MethodArity, _Context)
 	    ),
 	    MatchingInstanceMethods).
@@ -494,20 +532,21 @@ get_matching_instance_names(InstanceBody, PredOrFunc, MethodName,
 	% Just a bit simpler than using a pair of pairs
 :- type triple(T1, T2, T3) ---> triple(T1, T2, T3).
 
-:- pred produce_auxiliary_procs(list(tvar), pred_markers,
-	list(type), list(class_constraint), tvarset, sym_name, prog_context,
-	pred_id, list(proc_id), instance_method_info, instance_method_info).
+:- pred produce_auxiliary_procs(list(tvar), pred_markers, list(type),
+	list(class_constraint), tvarset, instance_proc_def, prog_context,
+	pred_id, list(proc_id), instance_method_info, instance_method_info,
+	io__state, io__state).
 :- mode produce_auxiliary_procs(in, in, in, in, in, in, in, out, out, 
-	in, out) is det.
+	in, out, di, uo) is det.
 
 produce_auxiliary_procs(ClassVars, Markers0,
 		InstanceTypes0, InstanceConstraints0, InstanceVarSet,
-		InstancePredName, Context, PredId,
-		InstanceProcIds, Info0, Info) :-
+		InstancePredDefn, Context, PredId,
+		InstanceProcIds, Info0, Info, IO0, IO) :-
 
-	Info0 = instance_method_info(ModuleInfo0, PredName, PredArity, 
-		ExistQVars0, ArgTypes0, ClassContext0, ArgModes, Errors,
-		ArgTypeVars0, Status0, PredOrFunc),
+	Info0 = instance_method_info(ModuleInfo0, QualInfo0, PredName,
+		PredArity, ExistQVars0, ArgTypes0, ClassContext0, ArgModes,
+		Errors, ArgTypeVars0, Status0, PredOrFunc),
 
 		% Rename the instance variables apart from the class variables
 	varset__merge_subst(ArgTypeVars0, InstanceVarSet, ArgTypeVars1,
@@ -551,17 +590,11 @@ produce_auxiliary_procs(ClassVars, Markers0,
 	module_info_globals(ModuleInfo0, Globals),
 	globals__lookup_string_option(Globals, aditi_user, User),
 
-		% We have to add the actual clause after we have added the
-		% procs because we need a list of proc numbers for which the
-		% clauses holds.
-	DummyClause = [],
-	varset__init(VarSet0),
-	make_n_fresh_vars("HeadVar__", PredArity, VarSet0, HeadVars, VarSet), 
-	map__from_corresponding_lists(HeadVars, ArgTypes, VarTypes),
-	map__init(TI_VarMap),
-	map__init(TCI_VarMap),
-	ClausesInfo0 = clauses_info(VarSet, VarTypes, VarTypes, HeadVars,
-		DummyClause, TI_VarMap, TCI_VarMap),
+	produce_instance_method_clauses(InstancePredDefn, PredOrFunc,
+		PredArity, ArgTypes, Markers, Context, ClausesInfo,
+		ModuleInfo0, ModuleInfo1, QualInfo0, QualInfo, IO0, IO),
+
+	pred_info_set_clauses_info(PredInfo1, ClausesInfo, PredInfo),
 
 	( status_is_imported(Status0, yes) ->
 		Status = opt_imported
@@ -570,7 +603,7 @@ produce_auxiliary_procs(ClassVars, Markers0,
 	),
 
 	pred_info_init(ModuleName, PredName, PredArity, ArgTypeVars, 
-		ExistQVars, ArgTypes, Cond, Context, ClausesInfo0, Status,
+		ExistQVars, ArgTypes, Cond, Context, ClausesInfo, Status,
 		Markers, none, PredOrFunc, ClassContext, Proofs, User,
 		PredInfo0),
 
@@ -586,58 +619,17 @@ produce_auxiliary_procs(ClassVars, Markers0,
 	list__map_foldl(AddProc, ArgModes, InstanceProcIds, 
 		PredInfo0, PredInfo1),
 
-		% Add the body of the introduced pred
 
-		% First the goal info
-	goal_info_init(GoalInfo0),
-	goal_info_set_context(GoalInfo0, Context, GoalInfo1),
-	set__list_to_set(HeadVars, NonLocals),
-	goal_info_set_nonlocals(GoalInfo1, NonLocals, GoalInfo2),
-	(
-		check_marker(Markers, (impure))
-	->
-		goal_info_add_feature(GoalInfo2, (impure), GoalInfo)
-	;
-		check_marker(Markers, (semipure))
-	->
-		goal_info_add_feature(GoalInfo2, (semipure), GoalInfo)
-	;
-		GoalInfo = GoalInfo2
-	),
-
-		% Then the goal itself
-	invalid_pred_id(InvalidPredId),
-	invalid_proc_id(InvalidProcId),
-	(
-		PredOrFunc = predicate,
-		Call = call(InvalidPredId, InvalidProcId, HeadVars, not_builtin,
-			no, InstancePredName),
-		IntroducedGoal = Call - GoalInfo
-	;
-		PredOrFunc = function,
-		pred_args_to_func_args(HeadVars, RealHeadVars, ReturnVar),
-		create_atomic_unification(ReturnVar, 
-			functor(cons(InstancePredName, PredArity),
-				RealHeadVars), 
-			Context, explicit, [], IntroducedGoal0),
-		% set the goal_info
-		IntroducedGoal0 = IntroducedGoalExpr - _,
-		IntroducedGoal = IntroducedGoalExpr - GoalInfo
-	),
-	IntroducedClause = clause(InstanceProcIds, IntroducedGoal, Context),
-	clauses_info_set_clauses(ClausesInfo0, [IntroducedClause], ClausesInfo),
-	pred_info_set_clauses_info(PredInfo1, ClausesInfo, PredInfo),
-
-	module_info_get_predicate_table(ModuleInfo0, PredicateTable0),
-	module_info_get_partial_qualifier_info(ModuleInfo0, PQInfo),
+	module_info_get_predicate_table(ModuleInfo1, PredicateTable1),
+	module_info_get_partial_qualifier_info(ModuleInfo1, PQInfo),
 	% XXX why do we need to pass may_be_unqualified here,
 	%     rather than passing must_be_qualified or calling the /4 version?
-	predicate_table_insert(PredicateTable0, PredInfo,
+	predicate_table_insert(PredicateTable1, PredInfo,
 		may_be_unqualified, PQInfo, PredId, PredicateTable),
-	module_info_set_predicate_table(ModuleInfo0, PredicateTable,
+	module_info_set_predicate_table(ModuleInfo1, PredicateTable,
 		ModuleInfo),
 
-	Info = instance_method_info(ModuleInfo, PredName, PredArity,
+	Info = instance_method_info(ModuleInfo, QualInfo, PredName, PredArity,
 		ExistQVars, ArgTypes, ClassContext, ArgModes, Errors,
 		ArgTypeVars, Status, PredOrFunc).
 

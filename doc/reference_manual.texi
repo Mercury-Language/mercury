@@ -3393,9 +3393,7 @@ An instance declaration has the form
 
 @example
 :- instance @var{classname}(@var{typename}(@var{typevar}, @dots{}), @dots{})
-        where [pred(@var{methodname}/@var{arity}) is @var{predname},
-               func(@var{methodname}/@var{arity}) is @var{funcname},
-               @dots{}].
+        where [@var{methoddefinition}, @var{methoddefinition}, @dots{}].
 @end example
 
 An @samp{instance} declaration gives a type for each parameter of the
@@ -3411,9 +3409,19 @@ type class).  These restrictions ensure that there are no overlapping instance
 declarations, ie. there is at most one instance declaration that may be 
 applied to any type (or sequence of types).
 
-Each entry in the @samp{where [@dots{}]} part of an @code{instance}
-declaration defines the implementation of one of the class methods
-for this instance.
+Each @var{methoddefinition} entry in the @samp{where [@dots{}]} part
+of an @code{instance} declaration defines the implementation of one of
+the class methods for this instance.  There are two ways of defining
+methods.  The first way is to define a method by giving the name of
+the predicate or function which implements that method.  In this
+case, the @var{methoddefinition} must have one of the following forms:
+
+@example
+pred(@var{methodname}/@var{arity}) is @var{predname}
+func(@var{methodname}/@var{arity}) is @var{funcname}
+@end example
+
+@noindent
 The @var{predname} or @var{funcname} must name a function or
 predicate of the specified arity whose type, modes, determinism, and
 purity are at least as permissive as the declared type, modes,
@@ -3421,6 +3429,46 @@ determinism, and purity of the class method with the specified
 @var{methodname} and @var{arity}, after the types of the arguments
 in the instance declaration have been substituted in place of the
 parameters in the type class declaration.
+
+The second way of defining methods is by listing the clauses for the
+definition inside the instance declaration.  A @var{methoddefinition}
+can be a clause.  These clauses are just like the clauses used to
+define ordinary predicates or functions (@pxref{Items}), and so they
+can be facts, rules, or DCG rules.  The only difference is that in instance
+declarations, clauses are separated by commas rather than being terminated
+by periods, and so rules and DCG rules in instance declarations must
+normally be enclosed in parentheses.
+
+Currently, each method must be defined by a single clause;
+we do not permit using more than than one clause per method.
+(We hope to lift this restriction at some point in the future.)
+
+Here's an example of an instance declaration and the different kinds
+of method definitions that it can contain:
+
+@example
+:- typeclass foo(T) where [
+	func method1(T, T) = int,
+	func method2(T) = int,
+	pred method3(T::in, int::out) is det
+	pred method4(T::in, io__state::di, io__state::uo) is det
+].
+
+:- instance foo(int) where [
+	% method defined by naming the implementation
+	func(method1/1) is (+),
+
+	% method defined by a fact
+	method2(X) = X + 1,
+
+	% method defined by a rule
+	(method3(X, Y) :- Y = X + 2),
+
+	% method defined by a DCG rule
+	(method4(X) --> io__print(X), io__nl)
+].
+@end example
+	
 Each @samp{instance} declaration must define an implementation for
 every method declared in the corresponding @samp{typeclass} declaration.
 It is an error to define more than one implementation for the same

@@ -24,6 +24,7 @@ PROGS=	\
 	implied_instance_missing_constraint \
 	implied_instance_poly \
 	impure_methods \
+	instance_clauses \
 	instance_unconstrained_tvar \
 	instance_unconstrained_tvar_dup \
 	instance_unconstrained_tvar_type_spec \

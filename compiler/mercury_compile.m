@@ -398,9 +398,9 @@ mercury_compile(Module) -->
 	% If we are only typechecking or error checking, then we should not
 	% modify any files, this includes writing to .d files.
 	mercury_compile__pre_hlds_pass(Module, DontWriteDFile,
-		HLDS1, UndefTypes, UndefModes, Errors1),
-	mercury_compile__frontend_pass(HLDS1, HLDS20, UndefTypes,
-		UndefModes, Errors2),
+		HLDS1, QualInfo, UndefTypes, UndefModes, Errors1),
+	mercury_compile__frontend_pass(HLDS1, QualInfo, UndefTypes,
+		UndefModes, HLDS20, Errors2),
 	( { Errors1 = no }, { Errors2 = no } ->
 	    globals__io_lookup_bool_option(verbose, Verbose),
 	    globals__io_lookup_bool_option(statistics, Stats),
@@ -482,12 +482,13 @@ mercury_compile(Module) -->
 %-----------------------------------------------------------------------------%
 
 :- pred mercury_compile__pre_hlds_pass(module_imports, bool,
-		module_info, bool, bool, bool, io__state, io__state).
-:- mode mercury_compile__pre_hlds_pass(in, in, out, out, out, out,
+		module_info, qual_info, bool, bool, bool,
+		io__state, io__state).
+:- mode mercury_compile__pre_hlds_pass(in, in, out, out, out, out, out,
 		di, uo) is det.
 
 mercury_compile__pre_hlds_pass(ModuleImports0, DontWriteDFile,
-		HLDS1, UndefTypes, UndefModes, FoundError) -->
+		HLDS1, QualInfo, UndefTypes, UndefModes, FoundError) -->
 	globals__io_lookup_bool_option(statistics, Stats),
 	globals__io_lookup_bool_option(verbose, Verbose),
 
@@ -516,7 +517,8 @@ mercury_compile__pre_hlds_pass(ModuleImports0, DontWriteDFile,
 	{ bool__or(UndefTypes0, CircularTypes, UndefTypes1) },
 
 	mercury_compile__make_hlds(Module, Items, MQInfo, EqvMap, Verbose, 
-			Stats, HLDS0, UndefTypes2, UndefModes2, FoundError),
+			Stats, HLDS0, QualInfo,
+			UndefTypes2, UndefModes2, FoundError),
 
 	{ bool__or(UndefTypes1, UndefTypes2, UndefTypes) },
 	{ bool__or(UndefModes0, UndefModes2, UndefModes) },
@@ -646,15 +648,17 @@ mercury_compile__expand_equiv_types(Items0, Verbose, Stats,
 	maybe_report_stats(Stats).
 
 :- pred mercury_compile__make_hlds(module_name, item_list, mq_info, eqv_map, 
-	bool, bool, module_info, bool, bool, bool, io__state, io__state).
+	bool, bool, module_info, qual_info, bool, bool, bool,
+	io__state, io__state).
 :- mode mercury_compile__make_hlds(in, in, in, in, in, in,
-	out, out, out, out, di, uo) is det.
+	out, out, out, out, out, di, uo) is det.
 
 mercury_compile__make_hlds(Module, Items, MQInfo, EqvMap, Verbose, Stats,
-		HLDS, UndefTypes, UndefModes, FoundSemanticError) -->
+		HLDS, QualInfo, UndefTypes, UndefModes, FoundSemanticError) -->
 	maybe_write_string(Verbose, "% Converting parse tree to hlds...\n"),
 	{ Prog = module(Module, Items) },
-	parse_tree_to_hlds(Prog, MQInfo, EqvMap, HLDS, UndefTypes, UndefModes),
+	parse_tree_to_hlds(Prog, MQInfo, EqvMap, HLDS, QualInfo,
+		UndefTypes, UndefModes),
 	{ module_info_num_errors(HLDS, NumErrors) },
 	( { NumErrors > 0 } ->
 		{ FoundSemanticError = yes },
@@ -668,13 +672,15 @@ mercury_compile__make_hlds(Module, Items, MQInfo, EqvMap, Verbose, Stats,
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- pred mercury_compile__frontend_pass(module_info, module_info, bool,
-					bool, bool, io__state, io__state).
-% :- mode mercury_compile__frontend_pass(di, uo, in, in, out, di, uo) is det.
-:- mode mercury_compile__frontend_pass(in, out, in, in, out, di, uo) is det.
+:- pred mercury_compile__frontend_pass(module_info, qual_info, bool, bool,
+		module_info, bool, io__state, io__state).
+% :- mode mercury_compile__frontend_pass(di, in, in, in, uo, out, di, uo)
+%	is det.
+:- mode mercury_compile__frontend_pass(in, in, in, in, out, out, di, uo)
+	is det.
 
-mercury_compile__frontend_pass(HLDS1, HLDS, FoundUndefTypeError,
-		FoundUndefModeError, FoundError) -->
+mercury_compile__frontend_pass(HLDS1, QualInfo, FoundUndefTypeError,
+		FoundUndefModeError, HLDS, FoundError) -->
 	%
 	% We can't continue after an undefined type error, since
 	% typecheck would get internal errors
@@ -692,7 +698,7 @@ mercury_compile__frontend_pass(HLDS1, HLDS, FoundUndefTypeError,
 		
 	    maybe_write_string(Verbose, 
 		"% Checking typeclass instances...\n"),
-	    check_typeclass__check_instance_decls(HLDS1, HLDS2,
+	    check_typeclass__check_instance_decls(HLDS1, QualInfo, HLDS2,
 		FoundTypeclassError),
 	    mercury_compile__maybe_dump_hlds(HLDS2, "02", "typeclass"),
 
