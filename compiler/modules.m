@@ -1229,16 +1229,14 @@ write_dependency_file(Module, MaybeTransOptDeps) -->
 			io__nl(DepStream),
 			globals__io_lookup_bool_option(assume_gmake,
 				AssumeGmake),
-			globals__io_lookup_bool_option(use_subdirs,
-				UseSubdirs),
-			( { AssumeGmake = yes, UseSubdirs = no } ->
+			( { AssumeGmake = yes } ->
 				io__write_strings(DepStream, [
 					"\n\n", MakeVarName,
 					".fact_tables.os = $(", MakeVarName,
-					".fact_tables:%=%.o)\n\n",
+					".fact_tables:%=$(os_subdir)%.o)\n\n",
 					MakeVarName,
 					".fact_tables.cs = $(", MakeVarName,
-					".fact_tables:%=%.c)\n\n"
+					".fact_tables:%=$(cs_subdir)%.c)\n\n"
 				])
 			;
 				io__write_strings(DepStream,
@@ -1793,8 +1791,7 @@ generate_dep_file(ModuleName, DepsMap, DepStream) -->
 	io__write_string(DepStream, "\n\n"),
 
 	globals__io_lookup_bool_option(assume_gmake, Gmake),
-	globals__io_lookup_bool_option(use_subdirs, UseSubdirs),
-	( { Gmake = yes }, { UseSubdirs = no } ->
+	( { Gmake = yes } ->
 		{ string__append(MakeVarName, ".ms", VarName) },
 		{ Basis = yes(VarName - ".m") }
 	;
@@ -1805,119 +1802,140 @@ generate_dep_file(ModuleName, DepsMap, DepStream) -->
 
 	io__write_string(DepStream, MakeVarName),
 	io__write_string(DepStream, ".nos = "),
-	write_compact_dependencies_list(Modules, ".no", Basis, DepStream),
+	write_compact_dependencies_list(Modules, "$(nos_subdir)", ".no",
+					Basis, DepStream),
 	io__write_string(DepStream, "\n"),
 
 	io__write_string(DepStream, MakeVarName),
 	io__write_string(DepStream, ".qls = "),
-	write_compact_dependencies_list(Modules, ".ql", Basis, DepStream),
+	write_compact_dependencies_list(Modules, "$(qls_subdir)", ".ql",
+					Basis, DepStream),
 	io__write_string(DepStream, "\n"),
 
 	io__write_string(DepStream, MakeVarName),
 	io__write_string(DepStream, ".cs = "),
-	write_compact_dependencies_list(Modules, ".c", Basis, DepStream),
+	write_compact_dependencies_list(Modules, "$(cs_subdir)", ".c",
+					Basis, DepStream),
 	write_file_dependencies_list(ExtraLinkObjs, ".c", DepStream),
 	io__write_string(DepStream, "\n"),
 
 	io__write_string(DepStream, MakeVarName),
 	io__write_string(DepStream, ".os = "),
-	write_compact_dependencies_list(Modules, ".o", Basis, DepStream),
+	write_compact_dependencies_list(Modules, "$(os_subdir)", ".o",
+					Basis, DepStream),
 	write_file_dependencies_list(ExtraLinkObjs, ".o", DepStream),
 	io__write_string(DepStream, "\n"),
 
 	io__write_string(DepStream, MakeVarName),
 	io__write_string(DepStream, ".pic_os = "),
-	write_compact_dependencies_list(Modules, ".$(EXT_FOR_PIC_OBJECTS)",
-		Basis, DepStream),
+	write_compact_dependencies_list(Modules, "$(os_subdir)",
+					".$(EXT_FOR_PIC_OBJECTS)",
+					Basis, DepStream),
 	io__write_string(DepStream, "\n"),
 
 	io__write_string(DepStream, MakeVarName),
 	io__write_string(DepStream, ".dirs = "),
-	write_compact_dependencies_list(Modules, ".dir", Basis, DepStream),
+	write_compact_dependencies_list(Modules, "$(dirs_subdir)", ".dir",
+					Basis, DepStream),
 	io__write_string(DepStream, "\n"),
 
 	io__write_string(DepStream, MakeVarName),
 	io__write_string(DepStream, ".dir_os = "),
-	write_compact_dependencies_list(Modules, ".dir/*.o", Basis, DepStream),
+	write_compact_dependencies_list(Modules, "$(dirs_subdir)", ".dir/*.o",
+					Basis, DepStream),
 	io__write_string(DepStream, "\n"),
 
 	io__write_string(DepStream, MakeVarName),
 	io__write_string(DepStream, ".ss = "),
-	write_compact_dependencies_list(Modules, ".s", Basis, DepStream),
+	write_compact_dependencies_list(Modules, "", ".s", Basis, DepStream),
 	io__write_string(DepStream, "\n"),
 
 	io__write_string(DepStream, MakeVarName),
 	io__write_string(DepStream, ".errs = "),
-	write_compact_dependencies_list(Modules, ".err", Basis, DepStream),
+	write_compact_dependencies_list(Modules, "", ".err", Basis, DepStream),
 	io__write_string(DepStream, "\n"),
 
 	io__write_string(DepStream, MakeVarName),
 	io__write_string(DepStream, ".dates = "),
-	write_compact_dependencies_list(Modules, ".date", Basis, DepStream),
+	write_compact_dependencies_list(Modules, "$(dates_subdir)", ".date",
+					Basis, DepStream),
 	io__write_string(DepStream, "\n"),
 
 	io__write_string(DepStream, MakeVarName),
 	io__write_string(DepStream, ".date0s = "),
-	write_compact_dependencies_list(Modules, ".date0", Basis, DepStream),
+	write_compact_dependencies_list(Modules, "$(date0s_subdir)", ".date0",
+					Basis, DepStream),
 	io__write_string(DepStream, "\n"),
 
 	io__write_string(DepStream, MakeVarName),
 	io__write_string(DepStream, ".date3s = "),
-	write_compact_dependencies_list(Modules, ".date3", Basis, DepStream),
+	write_compact_dependencies_list(Modules, "$(date3s_subdir)", ".date3",
+					Basis, DepStream),
 	io__write_string(DepStream, "\n"),
 
 	io__write_string(DepStream, MakeVarName),
 	io__write_string(DepStream, ".optdates = "),
-	write_compact_dependencies_list(Modules, ".optdate", Basis, DepStream),
+	write_compact_dependencies_list(Modules, "$(optdates_subdir)",
+					".optdate", Basis, DepStream),
 	io__write_string(DepStream, "\n"),
 
 	io__write_string(DepStream, MakeVarName),
 	io__write_string(DepStream, ".trans_opt_dates = "),
-	write_compact_dependencies_list(Modules, ".trans_opt_date", Basis,
-								DepStream),
+	write_compact_dependencies_list(Modules, "$(trans_opt_dates_subdir)",
+					".trans_opt_date", Basis, DepStream),
 	io__write_string(DepStream, "\n"),
 
 	io__write_string(DepStream, MakeVarName),
 	io__write_string(DepStream, ".ds = "),
-	write_compact_dependencies_list(Modules, ".d", Basis, DepStream),
+	write_compact_dependencies_list(Modules, "$(ds_subdir)", ".d",
+					Basis, DepStream),
 	io__write_string(DepStream, "\n"),
 
 	io__write_string(DepStream, MakeVarName),
 	io__write_string(DepStream, ".hs = "),
-	write_compact_dependencies_list(Modules, ".h", Basis, DepStream),
+	write_compact_dependencies_list(Modules, "", ".h", Basis, DepStream),
 	io__write_string(DepStream, "\n"),
 
 	io__write_string(DepStream, MakeVarName),
 	io__write_string(DepStream, ".ints = "),
-	write_compact_dependencies_list(Modules, ".int", Basis, DepStream),
+	write_compact_dependencies_list(Modules, "$(ints_subdir)", ".int",
+					Basis, DepStream),
 	write_compact_dependencies_separator(Basis, DepStream),
-	write_compact_dependencies_list(Modules, ".int2", Basis, DepStream),
+	write_compact_dependencies_list(Modules, "$(int2s_subdir)", ".int2",
+					Basis, DepStream),
 	io__write_string(DepStream, "\n"),
 
+	% The .int0s list should really only include modules that
+	% contain sub-modules.  But currently it's only used for
+	% the `mmake clean' rule, so it doesn't matter.
 	io__write_string(DepStream, MakeVarName),
 	io__write_string(DepStream, ".int0s = "),
-	write_compact_dependencies_list(Modules, ".int0", Basis, DepStream),
+	write_compact_dependencies_list(Modules, "$(int0s_subdir)", ".int0",
+					Basis, DepStream),
 	io__write_string(DepStream, "\n"),
 
 	io__write_string(DepStream, MakeVarName),
 	io__write_string(DepStream, ".int3s = "),
-	write_compact_dependencies_list(Modules, ".int3", Basis, DepStream),
+	write_compact_dependencies_list(Modules, "$(int3s_subdir)", ".int3",
+					Basis, DepStream),
 	io__write_string(DepStream, "\n"),
 
 	io__write_string(DepStream, MakeVarName),
 	io__write_string(DepStream, ".opts = "),
-	write_compact_dependencies_list(Modules, ".opt", Basis, DepStream),
+	write_compact_dependencies_list(Modules, "$(opts_subdir)", ".opt",
+					Basis, DepStream),
 	io__write_string(DepStream, "\n"),
 
 	io__write_string(DepStream, MakeVarName),
 	io__write_string(DepStream, ".trans_opts = "),
-	write_compact_dependencies_list(Modules, ".trans_opt", Basis,
-								DepStream),
+	write_compact_dependencies_list(Modules, "$(trans_opts_subdir)",
+					".trans_opt", Basis, DepStream),
 	io__write_string(DepStream, "\n"),
 
 	io__write_string(DepStream, MakeVarName),
 	io__write_string(DepStream, ".profs = "),
-	write_compact_dependencies_list(Modules, ".prof", Basis, DepStream),
+	write_compact_dependencies_list(Modules, "", ".prof",
+					Basis, DepStream),
 	io__write_string(DepStream, "\n\n"),
 
 	module_name_to_file_name(ModuleName, ".init", yes, InitFileName),
@@ -2241,19 +2259,21 @@ write_file_dependencies_list([FileName | FileNames], Suffix, DepStream) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred write_compact_dependencies_list(list(module_name), string,
+:- pred write_compact_dependencies_list(list(module_name), string, string,
 	maybe(pair(string)), io__output_stream, io__state, io__state).
-:- mode write_compact_dependencies_list(in, in, in, in, di, uo) is det.
+:- mode write_compact_dependencies_list(in, in, in, in, in, di, uo) is det.
 
-write_compact_dependencies_list(Modules, Suffix, no, DepStream) -->
+write_compact_dependencies_list(Modules, _Prefix, Suffix, no, DepStream) -->
 	write_dependencies_list(Modules, Suffix, DepStream).
-write_compact_dependencies_list(_Modules, Suffix, yes(VarName - OldSuffix),
-		DepStream) -->
+write_compact_dependencies_list(_Modules, Prefix, Suffix,
+		yes(VarName - OldSuffix), DepStream) -->
 	io__write_string(DepStream, "$("),
 	io__write_string(DepStream, VarName),
-	io__write_string(DepStream, ":"),
+	io__write_string(DepStream, ":%"),
 	io__write_string(DepStream, OldSuffix),
 	io__write_string(DepStream, "="),
+	io__write_string(DepStream, Prefix),
+	io__write_string(DepStream, "%"),
 	io__write_string(DepStream, Suffix),
 	io__write_string(DepStream, ")").
 
