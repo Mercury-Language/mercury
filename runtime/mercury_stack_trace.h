@@ -137,5 +137,35 @@ Code	*MR_stack_trace_bottom;
 
 Word	*MR_nondet_stack_trace_bottom;
 
+/*
+** The different Mercury determinisms are internally represented by integers. 
+** This array gives the correspondance with the internal representation and 
+** the names that are usually used to denote determinisms.
+*/
+
+extern const char * MR_detism_names[];
+
+/*
+** MR_print_proc_id prints an identification of the given procedure,
+** consisting of "pred" or "func", module name, pred or func name, arity,
+** mode number and determinism, followed by an optional extra string,
+** and a newline.
+**
+** If the procedure has trace layout information and the relevant one of
+** base_sp and base_curfr is not NULL, it also prints the call event number,
+** call sequence number and call depth of the call.
+*/
+
+void	MR_print_proc_id(FILE *fp, const MR_Stack_Layout_Entry *entry,
+			const char *extra, Word *base_sp, Word *base_curfr);
+
+/*
+** MR_dump_stack_record_print() simply wraps the call of MR_print_proc_id() with
+** the printing of an adequate number of blank lines.
+*/
+
+void	MR_dump_stack_record_print(FILE *fp, 
+			const MR_Stack_Layout_Entry *entry_layout, int count, 
+			int start_level, Word *base_sp, Word *base_curfr);
 
 #endif /* MERCURY_STACK_TRACE_H */
