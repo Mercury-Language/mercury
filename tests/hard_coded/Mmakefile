@@ -51,6 +51,9 @@ PROGS=	\
 	minint_bug \
 	mode_choice \
 	name_mangling \
+	nested \
+	nested2 \
+	nested3 \
 	no_fully_strict \
 	no_inline \
 	nullary_ho_func \
@@ -83,7 +86,11 @@ PROGS=	\
 # Not working:
 # 	cycles - loops when compiled in a non-GC grade with --deforestation.
 # 	cycles2 - loops when compiled in a non-GC grade.
-#	nested, nested2 - sometimes fail if using parallel makes
+
+# The following is required to make the test cases
+#	nested, nested2, and nested3
+# work reliabily with parallel makes -- without this they occaisionally fail.
+RM_C = :
 
 #-----------------------------------------------------------------------------#
 
