@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2000 The University of Melbourne.
+** Copyright (C) 1998-2000,2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -25,6 +25,9 @@ static	int		MR_alias_record_next = 0;
 
 static	void		MR_trace_print_alias_num(FILE *fp, int slot,
 				MR_bool mdb_command_format);
+static	char *		MR_trace_get_alias_slot_name(int slot);
+static	MR_bool		MR_trace_filter_alias_completions(const char *word,
+				MR_Completer_Data *data);
 
 void
 MR_trace_add_alias(char *name, char **words, int word_count)
@@ -154,3 +157,28 @@ MR_trace_print_alias_num(FILE *fp, int slot, MR_bool mdb_command_format)
 
 	fprintf(fp, "\n");
 }
+
+MR_Completer_List *
+MR_trace_alias_completer(const char *word, size_t word_length)
+{
+	/*
+	** Remove "EMPTY" and "NUMBER" from the possible matches.
+	*/
+	return MR_trace_filter_completer(MR_trace_filter_alias_completions,
+		NULL, MR_trace_no_free,
+		MR_trace_sorted_array_completer(word, word_length,
+			MR_alias_record_next, MR_trace_get_alias_slot_name));
+}
+
+static char *
+MR_trace_get_alias_slot_name(int slot)
+{
+	return MR_alias_records[slot].MR_alias_name;
+}
+
+static MR_bool
+MR_trace_filter_alias_completions(const char *word, MR_Completer_Data *data)
+{
+	return (MR_strdiff(word, "EMPTY") && MR_strdiff(word, "NUMBER"));
+}
+

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998 The University of Melbourne.
+** Copyright (C) 1998,2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -12,6 +12,8 @@
 
 #ifndef	MERCURY_TRACE_HELP_H
 #define MERCURY_TRACE_HELP_H
+
+#include "mercury_trace_completion.h"
 
 /*
 ** These function add a help node, which must a category or an item
@@ -39,5 +41,9 @@ extern	void		MR_trace_help_word(const char *word);
 
 extern	void		MR_trace_help_cat_item(const char *cat,
 				const char *item);
+
+/* A Readline completer for help topics. */
+extern  MR_Completer_List *MR_trace_help_completer(const char *word,
+				size_t word_len);
 
 #endif	/* MERCURY_TRACE_HELP_H */

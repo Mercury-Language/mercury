@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2001 The University of Melbourne.
+** Copyright (C) 1998-2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -17,15 +17,21 @@
 #include "mercury_array_macros.h"
 #include "mercury_memory.h"
 #include "mercury_std.h"
+#include "mercury_wrapper.h"
 
 #include "mercury_trace_readline.h"
+#include "mercury_trace_completion.h"
 
 #ifndef MR_NO_USE_READLINE
   #ifdef MR_HAVE_READLINE_READLINE_H
     #include "readline/readline.h"
   #else
-    FILE *rl_instream;
-    FILE *rl_outstream;
+    extern FILE *rl_instream;
+    extern FILE *rl_outstream;
+    extern char (*rl_completion_entry_function)(const char *, int);
+    extern const char *rl_readline_name;
+    extern void (*rl_prep_term_function)(int);
+    extern void (*rl_deprep_term_function)(void);
   #endif
   #ifdef MR_HAVE_READLINE_HISTORY_H
     #include "readline/history.h"
@@ -41,6 +47,9 @@
 /* The initial size of the array of characters used to hold the line. */
 #define	MR_INIT_BUF_LEN		80
 
+static	void	MR_dummy_prep_term_function(int ignored);
+static	void	MR_dummy_deprep_term_function(void);
+
 /*
 ** Print the prompt to the `out' file, read a line from the `in' file,
 ** and return it in a MR_malloc'd buffer holding the line (without the
@@ -54,12 +63,38 @@ MR_trace_readline(const char *prompt, FILE *in, FILE *out)
 #if (defined(isatty) || defined(MR_HAVE_ISATTY)) \
  && (defined(fileno) || defined(MR_HAVE_FILENO)) \
  && !defined(MR_NO_USE_READLINE)
-	/* use readline, if the input file is a terminal */
-	if (isatty(fileno(in))) {
-		char	*line;
+	char	*line;
+ 	MR_bool	in_isatty;
+
+	in_isatty = isatty(fileno(in));
+	if (in_isatty || MR_force_readline) {
 
 		rl_instream = in;
 		rl_outstream = out;
+
+		/*
+		** The cast to (void *) silences a spurious "assignment from
+		** incompatible pointer type" warning (old versions of
+		** readline are very sloppy about declaring the types of
+		** function pointers).
+		*/
+		rl_completion_entry_function =
+			(void *) &MR_trace_line_completer;
+		rl_readline_name = "mdb";
+
+		if (!in_isatty) {
+			/*
+			** This is necessary for tests/debugger/completion,
+			** otherwise we get lots of messages about readline
+			** not being able to get the terminal settings.
+			** This is possibly a bit flaky, but it's only
+			** used by our tests.
+			*/
+			rl_prep_term_function =
+				(void *) MR_dummy_prep_term_function;
+			rl_deprep_term_function =
+				(void *) MR_dummy_deprep_term_function;
+		}	
 
 		line = readline((char *) prompt);
 
@@ -123,4 +158,14 @@ MR_trace_readline_raw(FILE *fp)
 		MR_free(contents);
 		return NULL;
 	}
+}
+
+static void
+MR_dummy_prep_term_function(int ignored)
+{
+}
+
+static void
+MR_dummy_deprep_term_function(void)
+{
 }

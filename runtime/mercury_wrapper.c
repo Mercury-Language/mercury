@@ -103,6 +103,9 @@ const char	*MR_mdb_out_filename = NULL;
 const char	*MR_mdb_err_filename = NULL;
 MR_bool		MR_mdb_in_window = MR_FALSE;
 
+/* use readline() in the debugger even if the input stream is not a tty */
+MR_bool		MR_force_readline = MR_FALSE;
+
 /* other options */
 
 MR_bool		MR_check_space = MR_FALSE;
@@ -753,6 +756,7 @@ enum MR_long_option {
 	MR_MDB_OUT,
 	MR_MDB_ERR,
 	MR_MDB_IN_WINDOW,
+	MR_FORCE_READLINE,
 	MR_NUM_OUTPUT_ARGS
 };
 
@@ -773,6 +777,7 @@ struct MR_option MR_long_opts[] = {
 	{ "mdb-out", 			1, 0, MR_MDB_OUT },
 	{ "mdb-err", 			1, 0, MR_MDB_ERR },
 	{ "mdb-in-window",		0, 0, MR_MDB_IN_WINDOW },
+	{ "force-readline",		0, 0, MR_FORCE_READLINE },
 	{ "num-output-args", 		1, 0, MR_NUM_OUTPUT_ARGS }
 };
 
@@ -899,6 +904,18 @@ process_options(int argc, char **argv)
 		case 'w':
 		case MR_MDB_IN_WINDOW:
 			MR_mdb_in_window = MR_TRUE;
+			break;
+
+		case MR_FORCE_READLINE:
+			MR_force_readline = MR_TRUE;
+#ifdef MR_NO_USE_READLINE
+			printf(
+"Mercury runtime: `--force-readline' is specified in MERCURY_OPTIONS\n");
+			printf(
+"but readline() is not available.\n");	
+			fflush(stdout);
+			exit(1);
+#endif
 			break;
 
 		case 'a':
@@ -1092,7 +1109,7 @@ process_options(int argc, char **argv)
 			"the word `%s'\n"
 			"which is not an option. Please refer to the "
 			"Environment Variables section\n"
-			"of the Mercury user's guide for details.\n",
+			"of the Mercury User's Guide for details.\n",
 			argv[MR_optind]);
 		fflush(stdout);
 		exit(1);
@@ -1105,7 +1122,7 @@ usage(void)
 	printf("The MERCURY_OPTIONS environment variable "
 		"contains an invalid option.\n"
 		"Please refer to the Environment Variables section of "
-		"the Mercury\nuser's guide for details.\n");
+		"the Mercury\nUser's Guide for details.\n");
 	fflush(stdout);
 	exit(1);
 } /* end usage() */

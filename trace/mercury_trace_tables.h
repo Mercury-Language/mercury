@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2001 The University of Melbourne.
+** Copyright (C) 1998-2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -15,6 +15,7 @@
 #define	MERCURY_TRACE_TABLES_H
 
 #include	"mercury_stack_layout.h"
+#include	"mercury_trace_completion.h"
 #include	<stdio.h>
 
 /*
@@ -158,5 +159,11 @@ extern	void	MR_proc_layout_stats(FILE *fp);
 */
 
 extern	void	MR_label_layout_stats(FILE *fp);
+
+/* A Readline completer for module names. */
+extern  MR_Completer_List *MR_trace_module_completer(const char *, size_t);
+
+/* A Readline completer for breakpoint specifications. */
+extern  MR_Completer_List *MR_trace_breakpoint_completer(const char *, size_t);
 
 #endif	/* not MERCURY_TRACE_TABLES_H */

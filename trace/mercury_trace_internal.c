@@ -215,6 +215,31 @@ typedef enum {
 	MR_MULTIMATCH_ASK, MR_MULTIMATCH_ALL, MR_MULTIMATCH_ONE
 } MR_MultiMatch;
 
+/*
+** A list of the available commands.
+*/
+typedef struct
+{
+		/* The category of command, e.g. "browsing". */
+	const char		*MR_trace_command_category;
+
+		/* The command name. */
+	const char		*MR_trace_command_name;
+
+		/*
+		** Some commands take fixed strings as arguments.
+		** This field is a NULL terminated array of those strings,
+		** or NULL if there are no fixed strings.
+		*/
+	const char *const	*MR_trace_command_arg_strings;
+
+		/*
+		** A function for more arbitrary completion,
+		** e.g. on predicate names.
+		*/
+	const MR_Make_Completer	MR_trace_command_arg_completer;
+} MR_Trace_Command_Info;
+
 static	void	MR_trace_internal_ensure_init(void);
 static	MR_bool	MR_trace_internal_create_mdb_window(void);
 static	void	MR_trace_internal_init_from_env(void);
@@ -302,7 +327,12 @@ static	void	MR_insert_line_at_tail(const char *line);
 static	void	MR_trace_event_print_internal_report(
 			MR_Event_Info *event_info);
 
-static	MR_bool	MR_trace_valid_command(const char *word);
+static	const MR_Trace_Command_Info	MR_trace_valid_command_list[];
+static	const MR_Trace_Command_Info	*MR_trace_valid_command(
+						const char *command);
+
+static	char	*MR_trace_command_completer_next(const char *word,
+			size_t word_len, MR_Completer_Data *data);
 
 MR_Code *
 MR_trace_event_internal(MR_Trace_Cmd_Info *cmd, MR_bool interactive,
@@ -4102,100 +4132,247 @@ MR_trace_event_print_internal_report(MR_Event_Info *event_info)
 		parent_filename, parent_lineno, indent);
 }
 
-typedef struct
-{
-	const char	*cat;
-	const char	*item;
-} MR_trace_cmd_cat_item;
+static const char *const	MR_trace_movement_cmd_args[] =
+		{"-N", "-S", "-a", "-n", "-s",
+		"--none", "--some", "--all", "--strict", "--no-strict", NULL};
 
-static	MR_trace_cmd_cat_item MR_trace_valid_command_list[] =
+static const char *const	MR_trace_print_cmd_args[] =
+		{"-f", "-p", "-v", "--flat", "--pretty", "--verbose",
+		"exception", "goal", "*", NULL};
+
+		/*
+		** It's better to have a single completion where possible,
+		** so don't include `-d' here.
+		*/
+static const char *const	MR_trace_stack_cmd_args[] =
+		{"--detailed", NULL};
+
+static const char *const	MR_trace_set_cmd_args[] =
+		{"-A", "-B", "-P", "-f", "-p", "-v",
+		"--print-all", "--print", "--browse",
+		"--flat", "--pretty", "--verbose",
+		"format", "depth", "size", "width", "lines",
+		"flat", "pretty", "verbose", NULL};
+
+static const char *const	MR_trace_view_cmd_args[] =
+		{"-c", "-f", "-n", "-s", "-t", "-v", "-w", "-2",
+		"--close", "--verbose", "--force", "--split-screen",
+		"--window-command", "--server-command", "--server-name",
+		"--timeout", NULL};
+
+static const char *const	MR_trace_break_cmd_args[] =
+		{"-A", "-E", "-I", "-O", "-P", "-S", "-a", "-e", "-i",
+		"--all", "--entry", "--ignore-entry", "--ignore-interface",
+		"--interface", "--print", "--select-all", "--select-one",
+		"--stop", "here", "info", NULL};
+
+static const char *const	MR_trace_ignore_cmd_args[] =
+		{"-E", "-I", "--ignore-entry", "--ignore-interface", NULL};
+
+static const char *const	MR_trace_printlevel_cmd_args[] =
+		{"none", "some", "all", NULL};
+
+static const char *const	MR_trace_on_off_args[] =
+		{"on", "off", NULL};
+
+static const char *const	MR_trace_context_cmd_args[] =
+		{"none", "before", "after", "prevline", "nextline", NULL};
+
+static const char *const	MR_trace_scope_cmd_args[] =
+		{"all", "interface", "entry", NULL};
+
+static const char *const	MR_trace_table_io_cmd_args[] =
+		{"stats", "start", "end", NULL};
+
+		/*
+		** It's better to have a single completion where possible,
+		** so don't include `-i' here.
+		*/
+static const char *const	MR_trace_source_cmd_args[] =
+		{"--ignore-errors", NULL};
+
+static const char *const	MR_trace_quit_cmd_args[] =
+		{"-y", NULL};
+
+static const MR_Trace_Command_Info	MR_trace_valid_command_list[] =
 {
 	/*
-	** The following block is mostly a verbatim copy of the file
-	** doc/mdb_command_list. We do not use a #include to avoid
-	** adding a dependency, and because we want to #ifdef the
-	** experimental commands.
+	** The first two fields of this block should be the same
+	** as in the file doc/mdb_command_list.
 	*/
 
-	{ "queries", "query" },
-	{ "queries", "cc_query" },
-	{ "queries", "io_query" },
-	{ "forward", "step" },
-	{ "forward", "goto" },
-	{ "forward", "next" },
-	{ "forward", "finish" },
-	{ "forward", "exception" },
-	{ "forward", "return" },
-	{ "forward", "forward" },
-	{ "forward", "mindepth" },
-	{ "forward", "maxdepth" },
-	{ "forward", "continue" },
-	{ "backward", "retry" },
-	{ "browsing", "vars" },
-	{ "browsing", "print" },
-	{ "browsing", "browse" },
-	{ "browsing", "stack" },
-	{ "browsing", "up" },
-	{ "browsing", "down" },
-	{ "browsing", "level" },
-	{ "browsing", "current" },
-	{ "browsing", "set" },
-	{ "browsing", "view" },
-	{ "breakpoint", "break" },
-	{ "breakpoint", "ignore" },
-	{ "breakpoint", "enable" },
-	{ "breakpoint", "disable" },
-	{ "breakpoint", "delete" },
-	{ "breakpoint", "modules" },
-	{ "breakpoint", "procedures" },
-	{ "breakpoint", "register" },
-	{ "parameter", "mmc_options" },
-	{ "parameter", "printlevel" },
-	{ "parameter", "echo" },
-	{ "parameter", "scroll" },
-	{ "parameter", "context" },
-	{ "parameter", "scope" },
-	{ "parameter", "alias" },
-	{ "parameter", "unalias" },
-	{ "help", "document_category" },
-	{ "help", "document" },
-	{ "help", "help" },
+	/*
+	** XXX For queries we should complete on all modules, not
+	** just those that were compiled with tracing enabled.
+	*/
+	{ "queries", "query", NULL, MR_trace_module_completer },
+	{ "queries", "cc_query", NULL, MR_trace_module_completer },
+	{ "queries", "io_query", NULL, MR_trace_module_completer },
+	{ "forward", "step", MR_trace_movement_cmd_args,
+					MR_trace_null_completer },
+	{ "forward", "goto", MR_trace_movement_cmd_args,
+					MR_trace_null_completer },
+	{ "forward", "next", MR_trace_movement_cmd_args,
+					MR_trace_null_completer },
+	{ "forward", "finish", MR_trace_movement_cmd_args,
+					MR_trace_null_completer },
+	{ "forward", "exception", MR_trace_movement_cmd_args,
+					MR_trace_null_completer },
+	{ "forward", "return", MR_trace_movement_cmd_args,
+					MR_trace_null_completer },
+	{ "forward", "forward", MR_trace_movement_cmd_args,
+					MR_trace_null_completer },
+	{ "forward", "mindepth", MR_trace_movement_cmd_args,
+					MR_trace_null_completer },
+	{ "forward", "maxdepth", MR_trace_movement_cmd_args,
+					MR_trace_null_completer },
+	{ "forward", "continue", MR_trace_movement_cmd_args,
+					MR_trace_null_completer },
+	{ "backward", "retry", NULL, MR_trace_null_completer },
+	{ "browsing", "vars", NULL, MR_trace_null_completer },
+	{ "browsing", "print", MR_trace_print_cmd_args,
+					MR_trace_var_completer },
+	{ "browsing", "browse", MR_trace_print_cmd_args,
+					MR_trace_var_completer },
+	{ "browsing", "stack", MR_trace_stack_cmd_args,
+					MR_trace_null_completer },
+	{ "browsing", "up", MR_trace_stack_cmd_args,
+					MR_trace_null_completer },
+	{ "browsing", "down", MR_trace_stack_cmd_args,
+					MR_trace_null_completer },
+	{ "browsing", "level", MR_trace_stack_cmd_args,
+					MR_trace_null_completer },
+	{ "browsing", "current", NULL, MR_trace_null_completer },
+	{ "browsing", "set", MR_trace_set_cmd_args, MR_trace_null_completer },
+	{ "browsing", "view", MR_trace_view_cmd_args,
+					MR_trace_null_completer },
+	{ "breakpoint", "break", MR_trace_break_cmd_args,
+					MR_trace_breakpoint_completer },
+	{ "breakpoint", "ignore", MR_trace_ignore_cmd_args,
+					MR_trace_null_completer },
+	{ "breakpoint", "enable", NULL, MR_trace_null_completer },
+	{ "breakpoint", "disable", NULL, MR_trace_null_completer },
+	{ "breakpoint", "delete", NULL, MR_trace_null_completer },
+	{ "breakpoint", "modules", NULL, MR_trace_null_completer },
+	{ "breakpoint", "procedures", NULL, MR_trace_module_completer },
+	{ "breakpoint", "register", NULL, MR_trace_null_completer },
+	{ "parameter", "mmc_options", NULL, MR_trace_null_completer },
+	{ "parameter", "printlevel", MR_trace_printlevel_cmd_args,
+					MR_trace_null_completer },
+	{ "parameter", "echo", MR_trace_on_off_args, MR_trace_null_completer },
+	{ "parameter", "scroll", MR_trace_on_off_args,
+					MR_trace_null_completer },
+	{ "parameter", "context", MR_trace_context_cmd_args,
+					MR_trace_null_completer },
+	{ "parameter", "scope", MR_trace_scope_cmd_args,
+					MR_trace_null_completer },
+	{ "parameter", "alias", NULL, MR_trace_command_completer },
+	{ "parameter", "unalias", NULL, MR_trace_alias_completer },
+	{ "help", "document_category", NULL, MR_trace_null_completer },
+	{ "help", "document", NULL, MR_trace_null_completer },
+	{ "help", "help", NULL, MR_trace_help_completer },
 #ifdef	MR_TRACE_HISTOGRAM
-	{ "exp", "histogram_all" },
-	{ "exp", "histogram_exp" },
-	{ "exp", "clear_histogram" },
+	{ "exp", "histogram_all", NULL, MR_trace_filename_completer },
+	{ "exp", "histogram_exp", NULL, MR_trace_filename_completer },
+	{ "exp", "clear_histogram", NULL, MR_trace_null_completer },
 #endif
-	{ "developer", "nondet_stack" },
+	{ "developer", "nondet_stack", MR_trace_stack_cmd_args,
+					MR_trace_null_completer },
 #ifdef	MR_USE_MINIMAL_MODEL
-	{ "developer", "gen_stack" },
+	{ "developer", "gen_stack", NULL, MR_trace_null_completer },
 #endif
-	{ "developer", "stack_regs" },
-	{ "developer", "all_regs" },
-	{ "developer", "table_io" },
-	{ "developer", "proc_stats" },
-	{ "developer", "label_stats" },
-	{ "developer", "print_optionals" },
-	{ "misc", "source" },
-	{ "misc", "save" },
-	{ "misc", "quit" },
+	{ "developer", "stack_regs", NULL, MR_trace_null_completer },
+	{ "developer", "all_regs", NULL, MR_trace_null_completer },
+	{ "developer", "table_io", MR_trace_table_io_cmd_args,
+					MR_trace_null_completer },
+	{ "developer", "proc_stats", NULL, MR_trace_filename_completer },
+	{ "developer", "label_stats", NULL, MR_trace_filename_completer },
+	{ "developer", "print_optionals", MR_trace_on_off_args,
+					MR_trace_null_completer },
+	{ "misc", "source", MR_trace_source_cmd_args,
+					MR_trace_filename_completer },
+	{ "misc", "save", NULL, MR_trace_filename_completer },
+	{ "misc", "quit", MR_trace_quit_cmd_args, NULL},
 	/* End of doc/mdb_command_list. */
-	{ NULL, "NUMBER" },
-	{ NULL, "EMPTY" },
-	{ NULL, NULL },
+	{ NULL, "NUMBER", NULL, MR_trace_null_completer },
+	{ NULL, "EMPTY", NULL, MR_trace_null_completer },
+	{ NULL, NULL, NULL, MR_trace_null_completer },
 };
 
-static MR_bool
+bool 
+MR_trace_command_completion_info(const char *word,
+	MR_Make_Completer *completer, const char *const **fixed_args)
+{
+	const MR_Trace_Command_Info *command_info;
+
+	command_info = MR_trace_valid_command(word);
+	if (!command_info) {
+		return FALSE;
+	} else {
+		*completer = command_info->MR_trace_command_arg_completer;
+		*fixed_args = command_info->MR_trace_command_arg_strings;
+		return TRUE;
+	}
+}
+
+static const MR_Trace_Command_Info *
 MR_trace_valid_command(const char *word)
 {
 	int	i;
 
-	for (i = 0; MR_trace_valid_command_list[i].item != NULL; i++) {
-		if (MR_streq(MR_trace_valid_command_list[i].item, word)) {
-			return MR_TRUE;
+	for (i = 0;
+		MR_trace_valid_command_list[i].MR_trace_command_name != NULL;
+		i++)
+	{
+		if (MR_streq(
+			MR_trace_valid_command_list[i].MR_trace_command_name,
+			word))
+		{
+			return &MR_trace_valid_command_list[i];
 		}
 	}
 
-	return MR_FALSE;
+	return NULL;
+}
+
+MR_Completer_List *
+MR_trace_command_completer(const char *word, size_t word_len)
+{
+	return MR_new_completer_elem(&MR_trace_command_completer_next,
+		(MR_Completer_Data) 0, MR_trace_no_free);
+}
+
+static char *
+MR_trace_command_completer_next(const char *word, size_t word_len,
+		MR_Completer_Data *data)
+{
+	int command_index;
+
+	command_index = (int) *data;
+	while (1) {
+		const char *command;
+		const char *category;
+
+		category = MR_trace_valid_command_list[command_index].
+					MR_trace_command_category;
+		command = MR_trace_valid_command_list[command_index].
+					MR_trace_command_name;
+		command_index++;
+		*data = (void *) command_index;
+
+		/*
+		** We don't complete on the "EMPTY" and "NUMBER" entries
+		** in the list of commands (they have a category entry
+		** of NULL).
+		*/
+		if (command == NULL) {
+			return NULL;
+		} else if (category != NULL &&
+				MR_strneq(word, command, word_len))
+		{
+			return MR_copy_string(command);
+		}	
+	}
 }
 
 void

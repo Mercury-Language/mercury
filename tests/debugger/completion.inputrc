@@ -1,0 +1,9 @@
+# Don't query the user if there are too many completions.
+set completion-query-items 100000
+
+# Display all completions immediately, without
+# requiring multiple `complete' commands.
+set show-all-if-ambiguous on
+
+# Make the completion requests show up in the input file.
+@: complete

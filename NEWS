@@ -202,6 +202,9 @@ Changes to the Mercury implementation:
 
 * The debugger can now print higher order values.
 
+* The debugger can now perform command line completion when compiled
+  with GNU Readline support enabled.
+
 * We've added a 'view' command to `mdb', which opens a `vim' window and
   in it displays the current source location, updated at each event.  This
   requires X11 and a version of `vim' with the `clientserver' feature

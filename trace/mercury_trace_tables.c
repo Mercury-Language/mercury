@@ -17,6 +17,7 @@
 #include "mercury_stack_trace.h"
 
 #include "mercury_trace_tables.h"
+#include "mercury_trace_internal.h"
 #include "mercury_trace.h"
 
 #include <stdio.h>
@@ -39,7 +40,48 @@ static	void	MR_process_line_layouts(const MR_Module_File_Layout
 			*file_layout, int line,
 			MR_file_line_callback callback_func, int callback_arg);
 
-static MR_bool MR_parse_trailing_number(char *start, char **end, int *number);
+static	MR_bool	MR_parse_trailing_number(char *start, char **end, int *number);
+static	void	MR_translate_double_underscores(char *str);
+static	char	*MR_get_module_info_name(int slot);
+
+typedef struct {
+	MR_PredFunc	MR_complete_pf;
+
+			/*
+			** The word to complete, with `__'
+			** translated into ':'.
+			*/
+	char		*MR_complete_name;
+	int		MR_complete_name_len;
+	MR_bool		MR_complete_name_is_qualified;
+
+			/*
+			** Slot number of a module for which we should
+			** return all procedures as completions, -1 if
+			** there is none.
+			*/
+	int		MR_unambiguous_matching_module;
+
+			/*
+			** Length of the part of the word to skip
+			** when testing for module qualified completions
+			** in the current module, zero if we shouldn't
+			** test for module qualified completions in
+			** the current module.
+			*/
+	int		MR_complete_word_matches_module;
+	int		MR_complete_current_module;
+	int		MR_complete_current_proc;
+} MR_Proc_Completer_Data;
+
+static	char	*MR_trace_breakpoint_completer_next(const char *word,
+			size_t word_len, MR_Completer_Data *completer_data);
+static	void	MR_trace_breakpoint_completer_init_module(
+			MR_Proc_Completer_Data *data);
+static	char	*MR_trace_complete_proc(MR_Proc_Completer_Data *data);
+static	char	*MR_format_breakpoint_completion(MR_PredFunc pred_or_func,
+			const char *module, const char *name);
+static	void	MR_free_proc_completer_data(MR_Completer_Data completer_data);
 
 void
 MR_register_all_modules_and_procs(FILE *fp, MR_bool verbose)
@@ -224,7 +266,6 @@ MR_parse_proc_spec(char *str, MR_Proc_Spec *spec)
 	char	*end;
 	int	n;
 	int	len;
-	int	double_underscores;
 	MR_bool	found;
 
 	spec->MR_proc_module = NULL;
@@ -302,17 +343,8 @@ MR_parse_proc_spec(char *str, MR_Proc_Spec *spec)
 			/*
 			** Convert all occurences of '__' to ':'.
 			*/
-			double_underscores = 0;
-			for (start = str; start < end; start++) {
-				if (*start == '_' && *(start + 1) == '_') {
-					*(start - double_underscores) = ':';
-					double_underscores++;
-					start++;
-				} else {
-					*(start - double_underscores) = *start;
-				}
-			}
-			*(end - double_underscores) = '\0';
+			*end = '\0';
+			MR_translate_double_underscores(str);
 
 			spec->MR_proc_module = str;
 
@@ -325,6 +357,29 @@ MR_parse_proc_spec(char *str, MR_Proc_Spec *spec)
 	/* There was no module qualifier. */
 	spec->MR_proc_name = str;
 	return MR_TRUE;
+}
+
+/*
+** Convert all occurrences of `__' to `:'.
+*/
+static void
+MR_translate_double_underscores(char *start)
+{
+	int	double_underscores = 0;
+	char	*str;
+
+	str = start;
+	while (*str) {
+		if (*str == '_' && *(str + 1) == '_') {
+			*(str - double_underscores) = ':';
+			double_underscores++;
+			str++;
+		} else {
+			*(str - double_underscores) = *str;
+		}
+		str++;
+	}
+	*(str - double_underscores) = '\0';
 }
 
 /* 
@@ -472,6 +527,334 @@ MR_process_matching_procedures_in_module(const MR_Module_Layout *module,
 			f(data, cur_entry);
 		}
 	}
+}
+
+MR_Completer_List *
+MR_trace_module_completer(const char *word, size_t word_len)
+{
+	return MR_trace_sorted_array_completer(word, word_len,
+			MR_module_info_next, MR_get_module_info_name);
+}
+
+static char *
+MR_get_module_info_name(int slot)
+{
+	return (char *) MR_module_infos[slot]->MR_ml_name;
+}
+
+MR_Completer_List *
+MR_trace_breakpoint_completer(const char *word, size_t word_len)
+{
+	MR_Proc_Completer_Data	*data;
+	int			slot;
+	MR_bool			found;
+
+	MR_register_all_modules_and_procs(MR_mdb_out, MR_FALSE);
+
+	data = MR_NEW(MR_Proc_Completer_Data);
+
+	if (MR_strneq(word, "pred*", 5)) {
+		data->MR_complete_pf = MR_PREDICATE;
+		word += 5;
+	} else if (MR_strneq(word, "func*", 5)) {
+		data->MR_complete_pf = MR_FUNCTION;
+		word += 5;
+	} else {
+		data->MR_complete_pf = -1;
+	}
+	data->MR_complete_name = MR_copy_string(word);
+	MR_translate_double_underscores(data->MR_complete_name);
+	data->MR_complete_name_len = strlen(data->MR_complete_name);
+	data->MR_complete_name_is_qualified =
+			strchr(data->MR_complete_name, ':') != NULL;
+	data->MR_complete_word_matches_module = 0;
+	data->MR_complete_current_module = -1;
+	data->MR_complete_current_proc= -1;
+
+	/*
+	** Handle the case where the word matches the first part of
+	** a module name. If the word unambiguously determines the
+	** module name we want to return module qualified completions
+	** for all the procedures in that module. Otherwise, we just
+	** complete on the names of all of the matching modules and
+	** unqualified procedure names.
+	**
+	** For example, given word to complete `f' and modules `foo'
+	** and `bar', we want to return all the procedures in module
+	** `foo' as completions, as well as all procedures whose
+	** unqualified names begin with `f'. 
+	** Given word to complete `foo:' and modules `foo' and `foo:bar'
+	** we want to return `foo:bar:' and all the procedures in
+	** module `foo' as completions. 
+	*/ 
+	MR_bsearch(MR_module_info_next, slot, found,
+		strncmp(MR_module_infos[slot]->MR_ml_name,
+			data->MR_complete_name, data->MR_complete_name_len));
+	if (found) {
+		data->MR_unambiguous_matching_module = slot;
+		if (slot > 0 &&
+			MR_strneq(MR_module_infos[slot - 1]->MR_ml_name,
+				data->MR_complete_name,
+				data->MR_complete_name_len))
+		{
+			data->MR_unambiguous_matching_module = -1;
+		}
+		if (slot < MR_module_info_next - 1 &&
+			MR_strneq(MR_module_infos[slot + 1]->MR_ml_name,
+				data->MR_complete_name,
+				data->MR_complete_name_len))
+		{
+			data->MR_unambiguous_matching_module = -1;
+		}
+	} else {
+		data->MR_unambiguous_matching_module = -1;
+	}
+
+	return MR_new_completer_elem(MR_trace_breakpoint_completer_next,
+			(MR_Completer_Data) data,
+			MR_free_proc_completer_data);
+}
+
+static char *
+MR_trace_breakpoint_completer_next(const char *dont_use_this_word,
+		size_t dont_use_this_len, MR_Completer_Data *completer_data)
+{
+	MR_Proc_Completer_Data	*data;
+	char			*name;
+	size_t			name_len;
+	const char		*module_name;
+	int			module_name_len;
+	char			*completion;
+
+	data = (MR_Proc_Completer_Data *) *completer_data;
+
+	name = data->MR_complete_name;
+	name_len = data->MR_complete_name_len;
+	
+try_completion:
+	if (data->MR_complete_current_module == -1 ||
+			data->MR_complete_current_proc == -1 ||
+			data->MR_complete_current_proc >=
+			    MR_module_infos[data->MR_complete_current_module]
+				->MR_ml_proc_count)
+	{
+		/*
+		** Move on to the next module.
+		*/
+		data->MR_complete_current_module++;
+		if (data->MR_complete_current_module >= MR_module_info_next) {
+			return NULL;
+		}
+		MR_trace_breakpoint_completer_init_module(data);
+
+		/*
+		** Complete on the module name if we aren't finding
+		** qualified completions in this module.
+		*/
+		module_name = MR_module_infos[data->MR_complete_current_module]
+				->MR_ml_name;
+		if (data->MR_complete_word_matches_module == 0 &&
+				MR_strneq(name, module_name, name_len))
+		{
+			return MR_format_breakpoint_completion(
+				data->MR_complete_pf, module_name, "");
+		} else {
+			goto try_completion;
+		}
+	} else {
+		/*
+		** Complete on the next procedure in the current module.
+		*/
+		completion = MR_trace_complete_proc(data);
+
+		if (completion != NULL) {
+			return completion;
+		} else {
+			goto try_completion;
+		}
+	}
+}
+
+/*
+** Set up the completer data for processing a module.
+*/
+static void
+MR_trace_breakpoint_completer_init_module(MR_Proc_Completer_Data *data)
+{
+	char	*name;
+	size_t	name_len;
+	char	*module_name;
+	int	module_name_len;
+
+	name = data->MR_complete_name;
+	name_len = data->MR_complete_name_len;
+
+	module_name = (char *)
+		MR_module_infos[data->MR_complete_current_module]->MR_ml_name;
+	module_name_len = strlen(module_name);
+
+	/*
+	** Work out whether we should find qualified completions
+	** for procedures in this module.
+	*/
+	if (MR_strneq(module_name, name, module_name_len)
+			&& name_len > module_name_len
+			&& name[module_name_len] == ':'
+			&& strchr(name + module_name_len + 1, ':') == NULL)
+	{
+		/*
+		** The name to complete matches the module name completely.
+		** When searching for qualified completions skip past
+		** the module name and the trailing ':'.
+		*/
+		data->MR_complete_word_matches_module = module_name_len + 1;
+	} else if (data->MR_complete_current_module ==
+			data->MR_unambiguous_matching_module)
+	{
+		/*
+		** The name to complete matches the module name partially,
+		** and does not match any other module name. We will be
+		** matching all procedures, use the empty string as the
+		** name to match against.
+		*/
+		data->MR_complete_word_matches_module = name_len;
+	} else {
+		data->MR_complete_word_matches_module = 0;
+	}
+
+	/*
+	** If the name to complete is qualified, we should only
+	** complete on procedures if the module name matches.
+	*/
+	if (data->MR_complete_name_is_qualified &&
+			data->MR_complete_word_matches_module == 0)
+	{
+		data->MR_complete_current_proc = -1;
+	} else {
+		data->MR_complete_current_proc = 0;
+	}
+}
+
+/*
+** Check whether the current procedure matches the word to be completed.
+** To do: complete on arity and mode number.
+*/
+static char *
+MR_trace_complete_proc(MR_Proc_Completer_Data *data)
+{
+	char			*completion;
+	char			*name;
+	int			name_len;
+	char			*unqualified_name;
+	int			unqualified_name_len;
+	char			*complete_module;
+	const MR_Module_Layout	*module_layout;
+	const MR_Proc_Layout	*proc_layout;
+
+	name = data->MR_complete_name;
+	name_len = data->MR_complete_name_len;
+
+	unqualified_name = name + data->MR_complete_word_matches_module;
+	unqualified_name_len =
+			name_len - data->MR_complete_word_matches_module;
+
+	module_layout = MR_module_infos[data->MR_complete_current_module];
+	proc_layout =
+		module_layout->MR_ml_procs[data->MR_complete_current_proc];
+
+	if (
+		! MR_PROC_LAYOUT_COMPILER_GENERATED(proc_layout) &&
+		( data->MR_complete_pf == -1 ||
+		  proc_layout->MR_sle_user.MR_user_pred_or_func ==
+				data->MR_complete_pf
+		) && 
+		MR_strneq(proc_layout->MR_sle_user.MR_user_name,
+			unqualified_name, unqualified_name_len))
+	{
+		if (data->MR_complete_word_matches_module != 0) {
+			complete_module = (char *) module_layout->MR_ml_name;
+		} else {
+			complete_module = NULL;
+		}
+		completion = MR_format_breakpoint_completion(
+			data->MR_complete_pf, complete_module,
+			proc_layout->MR_sle_user.MR_user_name);
+	} else {
+		completion = NULL;
+	}
+
+	/*
+	** Move on to the next procedure in the current module.
+	*/
+	data->MR_complete_current_proc++;
+
+	if (data->MR_complete_word_matches_module != 0
+		&& data->MR_complete_current_proc >=
+			module_layout->MR_ml_proc_count
+		&& ! data->MR_complete_name_is_qualified)
+	{
+		/*
+		** We've finished checking for module qualified completions
+		** in this module, now check for unqualified completions
+		** if the word to complete doesn't contain a qualifier.
+		*/
+		data->MR_complete_word_matches_module = 0; 
+		data->MR_complete_current_proc = 0; 
+	}
+
+	return completion;
+}
+
+static char *
+MR_format_breakpoint_completion(MR_PredFunc pred_or_func,
+		const char *module, const char *name)
+{
+	int	size;
+	int	module_len;
+	int	offset;
+	char	*completion;
+
+	size = strlen(name);
+	if (pred_or_func != -1) {
+		size += 5;
+	}
+	if (module != NULL) {
+		/* +1 for the ':' */
+		module_len = strlen(module);
+		size += module_len + 1;
+	}
+	completion = MR_malloc(size + 1);
+
+	offset = 0;
+	if (pred_or_func == MR_PREDICATE) {
+		strcpy(completion, "pred*");
+		offset += 5;
+	} else if (pred_or_func == MR_FUNCTION) {
+		strcpy(completion, "func*");
+		offset += 5;
+	}
+
+	if (module != NULL) {
+		strcpy(completion + offset, module);
+		offset += module_len;
+		completion[offset] = ':';
+		offset++;
+	}
+
+	strcpy(completion + offset, name);
+
+	return completion;
+}
+
+static void
+MR_free_proc_completer_data(MR_Completer_Data completer_data)
+{
+	MR_Proc_Completer_Data *data;
+
+	data = (MR_Proc_Completer_Data *) completer_data;
+
+	MR_free(data->MR_complete_name);
+	MR_free(data);
 }
 
 void

@@ -220,6 +220,9 @@ extern	const char	*MR_mdb_err_filename;
 /* should mdb be started in a window */
 extern	MR_bool		MR_mdb_in_window;
 
+/* use readline() in the debugger even if the input stream is not a tty */
+extern	MR_bool		MR_force_readline;
+
 /* size of the primary cache */
 extern	size_t		MR_pcache_size;
 

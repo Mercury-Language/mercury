@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998,2000-2001 The University of Melbourne.
+** Copyright (C) 1998,2000-2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -15,6 +15,8 @@
 
 #include "mercury_std.h"	/* for MR_bool */
 #include <stdio.h>
+
+#include "mercury_trace_completion.h"
 
 typedef struct {
 	char		*MR_alias_name;
@@ -68,5 +70,8 @@ extern	void		MR_trace_print_alias(FILE *fp, const char *name);
 extern	void		MR_trace_print_all_aliases(FILE *fp,
 				MR_bool mdb_command_format);
 
+/* A Readline completer for aliases. */ 
+extern	MR_Completer_List *MR_trace_alias_completer(const char *word,
+				size_t word_length);
 
 #endif	/* MERCURY_TRACE_ALIAS_H */

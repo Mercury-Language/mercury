@@ -28,6 +28,7 @@ NONRETRY_PROGS = \
 	breakpoints			\
 	browse_pretty			\
 	cmd_quote			\
+	completion			\
 	debugger_regs			\
 	exception_cmd			\
 	exception_value			\
@@ -45,6 +46,10 @@ NONRETRY_PROGS = \
 	polymorphic_output		\
 	resume_typeinfos		\
 	shallow
+
+# The completion test requires mdb to use readline, even though
+# the input is not a terminal.
+MLFLAGS-completion = --runtime-flags --force-readline
 
 MCFLAGS-shallow = --trace shallow
 MCFLAGS-tabled_read = --trace-table-io
@@ -128,6 +133,11 @@ browser_test.out: browser_test browser_test.inp
 cmd_quote.out: cmd_quote cmd_quote.inp
 	$(MDB) ./cmd_quote < cmd_quote.inp 2>&1 | \
 		sed 's/io.m:[0-9]*/io.m:NNNN/g' > cmd_quote.out 2>&1
+
+# Set up readline to make it easier to use completion non-interactively.
+completion.out: completion completion.inp
+	INPUTRC=completion.inputrc $(MDB) ./completion \
+		< completion.inp > completion.out 2>&1
 
 debugger_regs.out: debugger_regs debugger_regs.inp
 	$(MDB) ./debugger_regs < debugger_regs.inp > debugger_regs.out 2>&1

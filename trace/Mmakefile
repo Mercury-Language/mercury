@@ -41,6 +41,7 @@ HDRS		=	\
 			mercury_trace.h			\
 			mercury_trace_alias.h		\
 			mercury_trace_browse.h		\
+			mercury_trace_completion.h	\
 			mercury_trace_declarative.h	\
 			mercury_trace_external.h 	\
 			mercury_trace_help.h		\
@@ -57,6 +58,7 @@ CFILES		= 	\
 			mercury_trace.c			\
 			mercury_trace_alias.c		\
 			mercury_trace_browse.c		\
+			mercury_trace_completion.c	\
 			mercury_trace_declarative.c	\
 			mercury_trace_external.c 	\
 			mercury_trace_help.c		\

@@ -49,6 +49,7 @@
 #include "mercury_type_info.h"		/* for MR_TypeInfo         */
 #include "mercury_trace_base.h"		/* for MR_Trace_Port       */
 #include "mercury_trace_browse.h"	/* for MR_Browser          */
+#include "mercury_trace_completion.h"	/* for MR_Completer_List   */
 
 typedef	void	(*MR_Browser)(MR_Word type_info, MR_Word value,
 			MR_Browse_Caller_Type caller, MR_Browse_Format format);
@@ -191,5 +192,9 @@ extern	const char	*MR_trace_browse_all_on_level(FILE *out,
 				const MR_Label_Layout *level_layout,
 				MR_Word *base_sp, MR_Word *base_curfr,
 				int ancestor_level, MR_bool print_optionals);
+
+/* A Readline completer for variable names. */
+extern	MR_Completer_List *MR_trace_var_completer(const char *word,
+				size_t word_len);
 
 #endif	/* MERCURY_TRACE_VARS_H */

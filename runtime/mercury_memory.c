@@ -269,10 +269,14 @@ MR_copy_string(const char *s)
 	int	len;
 	char	*copy;
 
-	len = strlen(s);
-	copy = MR_malloc(len + 1);
-	strcpy(copy, s);
-	return copy;
+	if (s == NULL) {
+		return NULL;
+	} else {
+		len = strlen(s);
+		copy = MR_malloc(len + 1);
+		strcpy(copy, s);
+		return copy;
+	}
 }
 
 /*---------------------------------------------------------------------------*/

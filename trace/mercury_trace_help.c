@@ -49,12 +49,22 @@ static	const char	*MR_trace_help_add_node(MR_Word path, const char *name,
 				int slot, const char *text);
 static	void		MR_trace_help_ensure_init(void);
 
+/* Used for completion of arguments of the `help' command. */
+static  char		**MR_help_words = NULL;
+static  int             MR_help_word_max = 0;
+static  int             MR_help_word_next = 0;
+
+static	void		MR_trace_add_help_word(const char *word);
+static	char *		MR_trace_get_help_word(int slot);
+
 const char *
 MR_trace_add_cat(const char *category, int slot, const char *text)
 {
 	MR_Word	path;
 
 	MR_trace_help_ensure_init();
+	MR_trace_add_help_word(category);
+
 	MR_TRACE_USE_HP(
 		path = MR_list_empty();
 	);
@@ -70,6 +80,7 @@ MR_trace_add_item(const char *category, const char *item, int slot,
 	const char 	*result;
 
 	MR_trace_help_ensure_init();
+	MR_trace_add_help_word(item);
 
 	MR_TRACE_USE_HP(
 		MR_make_aligned_string_copy(category_on_heap, category);
@@ -197,4 +208,37 @@ MR_trace_help_ensure_init(void)
 					MR_trace_help_system_type);
 		done = MR_TRUE;
 	}
+}
+
+/*
+** Add the help categories and items to a sorted array for use in completion.
+*/
+static void
+MR_trace_add_help_word(const char *word)
+{
+	MR_bool	found;
+	int	slot;
+
+	MR_bsearch(MR_help_word_next, slot, found,
+		strcmp(MR_help_words[slot], word));
+	if (!found) {
+		MR_ensure_room_for_next(MR_help_word, char *, 100);
+		MR_prepare_insert_into_sorted(MR_help_words,
+			MR_help_word_next, slot,
+			strcmp(MR_help_words[slot], word));
+		MR_help_words[slot] = MR_copy_string(word);
+	}
+}
+
+MR_Completer_List *
+MR_trace_help_completer(const char *word, size_t word_len)
+{
+	return MR_trace_sorted_array_completer(word, word_len,
+		MR_help_word_next, MR_trace_get_help_word);
+}
+
+static char *
+MR_trace_get_help_word(int slot)
+{
+	return MR_help_words[slot];
 }

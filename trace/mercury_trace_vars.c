@@ -125,6 +125,8 @@ static	char *		MR_trace_browse_var(FILE *out, MR_Var_Details *var,
 				char *path, MR_Browser browser,
 				MR_Browse_Caller_Type caller,
 				MR_Browse_Format format);
+static char *		MR_trace_var_completer_next(const char *word,
+				size_t word_len, MR_Completer_Data *data);
 static	const char *	MR_trace_bad_path(const char *path);
 static	int		MR_trace_print_var_name(FILE *out, MR_Var_Details *var);
 static	const char *	MR_trace_valid_var_number(int var_number);
@@ -1150,6 +1152,32 @@ MR_trace_browse_var(FILE *out, MR_Var_Details *var, char *path,
 	}
 
 	(*browser)((MR_Word) typeinfo, *value, caller, format);
+	return NULL;
+}
+
+MR_Completer_List *
+MR_trace_var_completer(const char *word, size_t word_len)
+{
+	return MR_new_completer_elem(&MR_trace_var_completer_next,
+			(MR_Completer_Data) 0, MR_trace_no_free);
+}
+
+static char *
+MR_trace_var_completer_next(const char *word, size_t word_len,
+			MR_Completer_Data *data)
+{
+	int slot;
+	const char *var_name;
+
+	slot = (int) *data;
+	while (slot < MR_point.MR_point_var_count) {
+		var_name = MR_point.MR_point_vars[slot].MR_var_fullname;
+		slot++;
+		if (MR_strneq(var_name, word, word_len)) {
+			*data = (MR_Completer_Data) slot; 
+			return MR_copy_string(var_name);
+		}
+	}
 	return NULL;
 }
 

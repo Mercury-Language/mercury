@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1994-2000 The University of Melbourne.
+** Copyright (C) 1994-2000,2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -80,6 +80,7 @@ extern	void	*MR_malloc(size_t n);
 extern	void	*MR_realloc(void *old, size_t n);
 
 #define MR_free(ptr) free(ptr)
+#define MR_free_func free
 
 #define MR_NEW(type) \
 	((type *) MR_malloc(sizeof(type)))

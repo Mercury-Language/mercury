@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2001 The University of Melbourne.
+** Copyright (C) 1998-2002 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -11,6 +11,7 @@
 #include "mercury_types.h"	/* for MR_Code */
 #include "mercury_trace.h"	/* for MR_Event_Info, etc. */
 #include "mercury_std.h"	/* for MR_bool */
+#include "mercury_trace_completion.h"	/* for MR_Make_Completer */
 
 #include <stdio.h>		/* for FILE */
 
@@ -73,5 +74,17 @@ extern	char	*MR_trace_getline(const char *prompt, FILE *mdb_in,
 				FILE *mdb_out);
 extern	char	*MR_trace_get_command(const char *prompt, FILE *mdb_in,
 				FILE *mdb_out);
+
+/*
+** If word is a valid command, return information about the
+** completer for the command.
+*/
+extern	MR_bool	MR_trace_command_completion_info(const char *word,
+				MR_Make_Completer *completer,
+				const char *const **fixed_args);
+
+/* A Readline completer for command names. */
+extern  MR_Completer_List *MR_trace_command_completer(const char *word,
+				size_t word_len);
 
 #endif	/* MERCURY_TRACE_INTERNAL_H */
