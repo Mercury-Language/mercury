@@ -1,4 +1,4 @@
-       1:      1  1 CALL pred existential_type_classes:main/2-0 (det) existential_type_classes.m:57
+       1:      1  1 CALL pred existential_type_classes:main/2-0 (det) existential_type_classes.m:49
 mdb> echo on
 Command echo enabled.
 mdb> alias P print *

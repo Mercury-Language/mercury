@@ -38,7 +38,7 @@ mdb> break nodiag
 mdb> continue
        5:      4  3 CALL pred breakpoints:qperm/2-0 (nondet) breakpoints.m:45 (breakpoints.m:42)
 mdb> continue
-       6:      4  3 SWTC pred breakpoints:qperm/2-0 (nondet) s1; breakpoints.m:47
+       6:      4  3 SWTC pred breakpoints:qperm/2-0 (nondet) s1; breakpoints.m:46
 mdb> finish -N
       10:      6  4 CALL pred breakpoints:qperm/2-0 (nondet) breakpoints.m:45 (breakpoints.m:49)
 mdb> finish -n
@@ -49,7 +49,8 @@ mdb> continue
       38:     15  3 CALL pred breakpoints:safe/1-0 (semidet) breakpoints.m:55 (breakpoints.m:43)
 mdb> finish
       40:     16  4 CALL pred breakpoints:nodiag/3-0 (semidet) breakpoints.m:60 (breakpoints.m:57)
-      44:     15  3 FAIL pred breakpoints:safe/1-0 (semidet) breakpoints.m:55
+      43:     16  4 FAIL pred breakpoints:nodiag/3-0 (semidet) breakpoints.m:60 (breakpoints.m:57)
+      44:     15  3 FAIL pred breakpoints:safe/1-0 (semidet) breakpoints.m:55 (breakpoints.m:43)
 mdb> delete *
  0: E stop  interface pred breakpoints:nodiag/3-0 (semidet)
  1: E stop  interface pred breakpoints:qperm/2-0 (nondet)

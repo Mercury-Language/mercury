@@ -1,4 +1,4 @@
-       1:      1  1 CALL pred interpreter:main/2-0 (det) interpreter.m:35
+       1:      1  1 CALL pred interpreter:main/2-0 (det) interpreter.m:34
 mdb> echo on
 Command echo enabled.
 mdb> context none

@@ -1,4 +1,4 @@
-       1:      1  1 CALL pred debugger_regs:main/2-0 (det) debugger_regs.m:32
+       1:      1  1 CALL pred debugger_regs:main/2-0 (det) debugger_regs.m:19
 mdb> echo on
 Command echo enabled.
 mdb> 
