@@ -69,7 +69,7 @@
 **	MR_succip, MR_hp, MR_sp, MR_curfr, MR_maxfr and
 **	r1, ..., r32, r(33), ..., r(MAX_VIRTUAL_REG)
 **
-** to the set mr0..mr36, mr(37), mr(38), ..., mr(MAX_FAKE_REG-1)
+** to the set mr0..mr37, mr(38), mr(39), ..., mr(MAX_FAKE_REG-1)
 ** which were provided by the hardware abstraction layer.
 ** It also provides MR_virtual_r(), MR_virtual_succip, MR_virtual_hp, etc.,
 ** which are similar to mr<N>, MR_succip, MR_hp, etc. except that they
@@ -114,9 +114,9 @@
 ** Extra stuff for the hardware abstraction layer
 */
 
-/* The machdeps header defines mr0 .. mr36; now define mr(n) for n > 36 */
+/* The machdeps header defines mr0 .. mr37; now define mr(n) for n > 37 */
 
-#define mr(n) LVALUE_SEQ(MR_assert((n) >= MAX_REAL_REG + NUM_SPECIAL_REG && \
+#define mr(n) LVALUE_SEQ(MR_assert((n) > 37 && \
 				(n) < MAX_FAKE_REG),\
 		MR_fake_reg[n])
 
@@ -182,7 +182,7 @@
 
 /* mercury_regorder.h defines r1 .. r32; now define r(n) for n > 32 */
 
-#define r(n) mr((n) + NUM_SPECIAL_REG - 1)
+#define r(n) mr((n) + MR_NUM_SPECIAL_REG - 1)
 
 /*
 ** saved_reg(save_area, n) accesses the underlying slot in save_area
@@ -190,7 +190,7 @@
 */
 #define saved_reg(save_area, n)						\
 	LVALUE_COND((n) > MAX_REAL_REG,					\
-		save_area[(n) + NUM_SPECIAL_REG - 1],			\
+		save_area[(n) + MR_NUM_SPECIAL_REG - 1],		\
 		save_area[virtual_reg_map[(n) - 1]])
 
 /* virtual_reg(n) accesses the underlying fake_reg for register n */

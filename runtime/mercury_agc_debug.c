@@ -44,7 +44,8 @@ MR_agc_dump_roots(MR_RootList roots)
 		** the saved registers).
 		*/
 		restore_registers();
-		MR_copy_regs_to_saved_regs(MAX_REAL_REG + NUM_SPECIAL_REG,
+		/* XXX this is unsafe -- should use MAX_FAKE_REG */
+		MR_copy_regs_to_saved_regs(MAX_REAL_REG + MR_NUM_SPECIAL_REG,
 			saved_regs);
 
 		MR_hp = MR_ENGINE(debug_heap_zone->min);
@@ -55,7 +56,8 @@ MR_agc_dump_roots(MR_RootList roots)
 		fflush(NULL);
 		fprintf(stderr, "\n");
 
-		MR_copy_saved_regs_to_regs(MAX_REAL_REG + NUM_SPECIAL_REG,
+		/* XXX this is unsafe -- should use MAX_FAKE_REG */
+		MR_copy_saved_regs_to_regs(MAX_REAL_REG + MR_NUM_SPECIAL_REG,
 			saved_regs);
 		save_registers();
 		roots = roots->next;
@@ -126,8 +128,9 @@ MR_agc_dump_stack_frames(MR_Internal *label, MemoryZone *heap_zone,
 			** registers).
 			*/
 			restore_registers();
+			/* XXX this is unsafe -- should use MAX_FAKE_REG */
 			MR_copy_regs_to_saved_regs(MAX_REAL_REG +
-				NUM_SPECIAL_REG, saved_regs);
+				MR_NUM_SPECIAL_REG, saved_regs);
 
 			MR_hp = MR_ENGINE(debug_heap_zone->min);
 			MR_virtual_hp = MR_ENGINE(debug_heap_zone->min);
@@ -146,8 +149,9 @@ MR_agc_dump_stack_frames(MR_Internal *label, MemoryZone *heap_zone,
 				printf("\n");
 			}
 
+			/* XXX this is unsafe -- should use MAX_FAKE_REG */
 			MR_copy_saved_regs_to_regs(MAX_REAL_REG +
-				NUM_SPECIAL_REG, saved_regs);
+				MR_NUM_SPECIAL_REG, saved_regs);
 			save_registers();
 #endif	/* MR_DEBUG_AGC_PRINT_VARS */
 

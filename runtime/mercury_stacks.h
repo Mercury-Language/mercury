@@ -123,7 +123,6 @@
 #define	curprednm		bt_prednm(MR_curfr)
 
 #define	MR_framevar(n)		MR_based_framevar(MR_curfr, n)
-#define	framevar(n)		MR_framevar((n) + 1)
 
 /* DEFINITIONS FOR MANIPULATING THE NONDET STACK */
 

@@ -26,15 +26,6 @@
 #include "mercury_std.h"		/* for bool */
 
 
-/* these cannot be changed without lots of modifications elsewhere */
-#define MAX_REAL_REG 32		/* r1 .. r32 */
-#define NUM_SPECIAL_REG 5	/* succip, sp, hp, maxfr, curfr */
-
-/* this can be changed at will, including by -D options to the C compiler */
-#ifndef MAX_VIRTUAL_REG
-#define MAX_VIRTUAL_REG	1024
-#endif
-
 #ifdef	MR_LOWLEVEL_DEBUG
 extern	MemoryZone	*dumpstack_zone;
 extern	int		dumpindex;

@@ -15,6 +15,9 @@ do
 	g/\<optopt/s//MR_optopt/g
 	g/\<option/s//MR_option/g
 	g/\<_getopt/s//MR__getopt/g
+	g/\<_GETOPT/s//MERCURY_GETOPT/g
+	g/no_argument/s//MR_no_argument/g
+	g/required_argument/s//MR_required_argument/g
 	g/#ifndef/s/ELIDE_CODE/XXXELIDE_CODEXXX/
 	w
 	q

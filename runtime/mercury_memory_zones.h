@@ -28,7 +28,6 @@
 
 /* these cannot be changed without lots of modifications elsewhere */
 #define MAX_REAL_REG 32		/* r1 .. r32 */
-#define NUM_SPECIAL_REG 5	/* succip, sp, hp, maxfr, curfr */
 
 /* this can be changed at will, including by -D options to the C compiler */
 #ifndef MAX_VIRTUAL_REG
@@ -37,8 +36,8 @@
 
 /* allocate enough fake_regs to hold both the special regs */
 /* and all the virtual registers */
-#define MAX_FAKE_REG	(NUM_SPECIAL_REG + MAX_VIRTUAL_REG)
-				/* mr0 .. mr36, mr(37) ... mr(1028) */
+#define MAX_FAKE_REG	(MR_NUM_SPECIAL_REG + MAX_VIRTUAL_REG)
+				/* mr0 .. mr37, mr(38) ... mr(1000) ... */
 
 /* used to lookup the fake_reg for a given real reg */
 extern	Word	virtual_reg_map[MAX_REAL_REG];
