@@ -118,19 +118,12 @@
 	Version = (MR_String) (MR_Word) version_string;
 ").
 
-:- pragma foreign_code("MC++", "
-	#include ""mercury_conf.h""
-").
-
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 	library__version(Version::out),
 	[will_not_call_mercury, promise_pure],
 "
-	// MR_VERSION and MR_FULLARCH are C string literals.
-	// We need to paste 'S' to the front of them to make them into .NET
-	// string literals.
-	Version = MR_PASTE2(S, MR_VERSION) S"", configured for ""
-		  MR_PASTE2(S, MR_FULLARCH);
+	Version = mercury.runtime.Constants.MR_VERSION + "" configured for ""
+			+ mercury.runtime.Constants.MR_FULLARCH;
 ").
 
 %---------------------------------------------------------------------------%

@@ -5129,7 +5129,7 @@ referenced_dlls(Module, DepModules0) = Modules :-
 			% In the standard library we need to add the
 			% runtime dlls.
 		Modules = list__remove_dups(
-			[unqualified("mercury_mcpp"),
+			[unqualified("mercury_dotnet"),
 				unqualified("mercury_il") | DepModules])
 	;
 		F = (func(M) =

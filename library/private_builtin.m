@@ -392,15 +392,15 @@ MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(private_builtin, typeclass_info, 1,
 	MR_TYPECTOR_REP_TYPECLASSINFO) 
 
 	// XXX These static constants are duplicated both here and in
-	// mercury_mcpp.cpp.
+	// mercury_dotnet.cs.in.
 
 	// This is because other library modules reference them
 	// from MC++ code (so they depend on the versions in the runtime to
 	// make the dependencies simple) whereas the compiler generates
 	// references to the ones here. 
 
-	// See runtime/mercury_mcpp.cpp for discussion of why we aren't using
-	// enums or const static ints here.
+	// See runtime/mercury_dotnet.cs.in for discussion of why we aren't
+	// using enums or const static ints here.
 
 static int MR_TYPECTOR_REP_ENUM 		= MR_TYPECTOR_REP_ENUM_val;
 static int MR_TYPECTOR_REP_ENUM_USEREQ 		= MR_TYPECTOR_REP_ENUM_USEREQ_val;

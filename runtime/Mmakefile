@@ -289,14 +289,14 @@ MS_CL_NOASM=:noAssembly
 MS_CSCFLAGS=/t:module
 
 # We need to build the following DLLs for the .NET runtime
-DOTNET_DLLS=mercury_il.dll mercury_mcpp.dll
+DOTNET_DLLS=mercury_il.dll mercury_dotnet.dll
 
 clean_local:
 	rm -f $(DOTNET_DLLS)
 	
 runtime: $(DOTNET_DLLS)
 
-mercury_mcpp.dll: mercury_il.dll $(MCPP_HDRS)
+mercury_dotnet.dll: mercury_il.dll $(MCPP_HDRS)
 
 # Uncomment the following rule if you want to build Mercury in a form
 # that will work with ROTOR.
@@ -424,6 +424,13 @@ endif
 
 #-----------------------------------------------------------------------------#
 
+mercury_dotnet.cs : mercury_dotnet.cs.in
+	CONFIG_FILES=$@ CONFIG_HEADERS= $(MERCURY_DIR)/config.status
+	# check to ensure there were no mispelt autoconf variable names
+	if grep -n '[^$$]@.*@' $@; then false; else true; fi
+
+#-----------------------------------------------------------------------------#
+
 clean_local: clean_o clean_check
 
 .PHONY: clean_o
@@ -433,7 +440,7 @@ clean_o:
 .PHONY: realclean_local
 realclean_local:
 	rm -f lib$(RT_LIB_NAME).$A lib$(RT_LIB_NAME).so $(RT_LIB_NAME).init
-	rm -f mercury_conf.h mercury_conf.h.date
+	rm -f mercury_conf.h mercury_conf.h.date mercury_dotnet.cs
 	rm -f mercury_profiling_builtin.c mercury_profiling_builtin.h
 
 #-----------------------------------------------------------------------------#

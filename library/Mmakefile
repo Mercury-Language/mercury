@@ -239,7 +239,7 @@ ifeq ($(findstring il,$(GRADE)),il)
 lib_std: mercury.dll lib$(STD_LIB_NAME)
 
 # We have to hardcode the names of the runtime DLL files.
-RUNTIME_DLLS=mercury_mcpp.dll mercury_il.dll
+RUNTIME_DLLS=mercury_dotnet.dll mercury_il.dll
 
 	# -AI sets the assembly search path (just like -I for assemblies)
 MS_CLFLAGS  =	-AI`$(FIX_PATH_FOR_CL) $(RUNTIME_DIR)` -I`$(FIX_PATH_FOR_CL) $(RUNTIME_DIR)`
@@ -281,8 +281,8 @@ copy_runtime_dlls: $(RUNTIME_DLLS)
 mercury_il.dll: ../runtime/mercury_il.dll
 	cp ../runtime/mercury_il.dll .
 
-mercury_mcpp.dll: ../runtime/mercury_mcpp.dll
-	cp ../runtime/mercury_mcpp.dll .
+mercury_dotnet.dll: ../runtime/mercury_dotnet.dll
+	cp ../runtime/mercury_dotnet.dll .
 
 CSHARP_MODULES = array builtin char exception float io math \
 	rtti_implementation string type_desc

@@ -3678,7 +3678,7 @@ scripts/c2init scripts/mmake scripts/mdb scripts/mdbrc scripts/mdprof
 scripts/canonical_grade
 scripts/mkfifo_using_mknod bindist/bindist.INSTALL bindist/bindist.Makefile
 scripts/mercury_config scripts/Mercury.config scripts/Mercury.config.bootstrap
-tools/lmc tools/dotime
+tools/lmc tools/dotime runtime/mercury_dotnet.cs
 ,
 [
 # Only do this when compiling the source, not when reconfiguring
