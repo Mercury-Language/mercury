@@ -66,14 +66,15 @@ fill_branch_delay_slot([], []).
 fill_branch_delay_slot([Instr0 | Instrs0], Instrs) :-
 	(
 		Instr0 = label(_) - _,
-		Instrs0 = [Instr1, Instr2 | Tail0],
-		Instr1 = incr_sp(Size, _) - _,
-		Instr2 = assign(stackvar(Size), lval(succip)) - C2
+		Instrs0 = [Instr1, Instr2, Instr3 | Tail0],
+		Instr1 = if_val(_, _) - _,
+		Instr2 = incr_sp(Size, _) - _,
+		Instr3 = assign(stackvar(Size), lval(succip)) - C2
 	->
 		fill_branch_delay_slot(Tail0, Tail1),
 		string__append(C2, " (early save in delay slot)", NewC2),
 		EarlySave = assign(stackvar(0), lval(succip)) - NewC2,
-		Instrs = [EarlySave, Instr0, Instr1 | Tail1]
+		Instrs = [Instr0, EarlySave, Instr1, Instr2 | Tail1]
 	;
 		fill_branch_delay_slot(Instrs0, Instrs1),
 		Instrs = [Instr0 | Instrs1]
