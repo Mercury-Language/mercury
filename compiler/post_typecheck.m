@@ -453,10 +453,11 @@ post_typecheck__resolve_pred_overloading(PredId0, Args0, CallerPredInfo,
 		% have the specified name and arity
 		% 
 		pred_info_typevarset(CallerPredInfo, TVarSet),
+		pred_info_import_status(CallerPredInfo, Status),
 		pred_info_clauses_info(CallerPredInfo, ClausesInfo),
 		clauses_info_vartypes(ClausesInfo, VarTypes),
 		map__apply_to_list(Args0, VarTypes, ArgTypes),
-		typecheck__resolve_pred_overloading(ModuleInfo,
+		typecheck__resolve_pred_overloading(ModuleInfo, Status,
 			ArgTypes, TVarSet, PredName0, PredName, PredId)
         ;
 		PredId = PredId0,
@@ -628,7 +629,8 @@ resolve_aditi_builtin_overloading(ModuleInfo, CallerPredInfo, Args,
 			EvalMethod \= normal
 		->
 			call(AdjustArgTypes, ArgTypes0, ArgTypes),
-			typecheck__resolve_pred_overloading(ModuleInfo,
+			pred_info_import_status(CallerPredInfo, Status),
+			typecheck__resolve_pred_overloading(ModuleInfo, Status,
 				ArgTypes, TVarSet, SymName0, SymName, PredId)
 		;
 			error(
@@ -1228,8 +1230,10 @@ post_typecheck__resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0,
 		%
 		\+ pred_info_is_field_access_function(ModuleInfo, PredInfo0),
 
+		pred_info_import_status(PredInfo0, Status),
 		module_info_get_predicate_table(ModuleInfo, PredTable),
 		predicate_table_search_func_sym_arity(PredTable,
+			calls_are_fully_qualified(Status),
 			PredName, Arity, PredIds),
 
 		% Check if any of the candidate functions have
@@ -1280,8 +1284,9 @@ post_typecheck__resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0,
 		map__apply_to_list(ArgVars0, VarTypes0, ArgTypes0),
 		AllArgTypes = ArgTypes0 ++ HOArgTypes,
 		pred_info_typevarset(PredInfo0, TVarSet),
-		get_pred_id(Name, PredOrFunc, TVarSet, AllArgTypes,
-			ModuleInfo, PredId)
+		pred_info_import_status(PredInfo0, Status),
+		get_pred_id(calls_are_fully_qualified(Status), Name,
+			PredOrFunc, TVarSet, AllArgTypes, ModuleInfo, PredId)
 	->
 		get_proc_id(ModuleInfo, PredId, ProcId),
 		ConsId = pred_const(PredId, ProcId, EvalMethod),

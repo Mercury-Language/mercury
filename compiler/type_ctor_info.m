@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-2002 The University of Melbourne.
+% Copyright (C) 1996-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -148,20 +148,12 @@ type_ctor_info__gen_type_ctor_gen_info(TypeCtor, TypeName, TypeArity, TypeDefn,
 		proc_id_to_int(CompareProcId, CompareProcInt),
 		Compare = proc(ComparePredId, CompareProcId)
 	;
-		module_info_get_predicate_table(ModuleInfo, PredTable),
-		mercury_private_builtin_module(PrivateBuiltin),
-		(
-			predicate_table_search_pred_m_n_a(PredTable,
-				PrivateBuiltin, "unused", 0, PredIds),
-			PredIds = [PredId]
-		->
-			get_proc_id(ModuleInfo, PredId, ProcId),
-			Unused = proc(PredId, ProcId),
-			Unify = Unused,
-			Compare = Unused
-		;
-			error("type_ctor_info__gen_type_ctor_gen_info: no unique unused predicate")
-		)
+		lookup_builtin_pred_proc_id(ModuleInfo,
+			mercury_private_builtin_module, "unused", 0,
+			only_mode, PredId, ProcId),
+		Unused = proc(PredId, ProcId),
+		Unify = Unused,
+		Compare = Unused
 	),
 	TypeCtorGenInfo = type_ctor_gen_info(TypeCtor, ModuleName, TypeName,
 		TypeArity, Status, TypeDefn, Unify, Compare).

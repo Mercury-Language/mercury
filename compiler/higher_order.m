@@ -929,23 +929,12 @@ get_unconstrained_instance_type_infos(ModuleInfo, TypeClassInfoVar,
 
 get_typeclass_info_args(ModuleInfo, TypeClassInfoVar, PredName, MakeResultType,
 		Args, Index, Goals, Vars, ProcInfo0, ProcInfo) :-
-	mercury_private_builtin_module(PrivateBuiltin),
-	SymName = qualified(PrivateBuiltin, PredName),
-	module_info_get_predicate_table(ModuleInfo, PredTable),
-	(
-		predicate_table_search_pred_sym_arity(PredTable,
-			SymName, 3, [ExtractArgPredId0])
-	->
-		ExtractArgPredId = ExtractArgPredId0
-	;
-		string__append("higher_order.m: can't find private_builtin__",
-			PredName, Msg),
-		error(Msg)
-	),
-	hlds_pred__initial_proc_id(ExtractArgProcId),
+	lookup_builtin_pred_proc_id(ModuleInfo, mercury_private_builtin_module,
+		PredName, 3, only_mode, ExtractArgPredId, ExtractArgProcId),
 	get_typeclass_info_args_2(TypeClassInfoVar, ExtractArgPredId,
-		ExtractArgProcId, SymName, MakeResultType,
-		Args, Index, Goals, Vars, ProcInfo0, ProcInfo).
+		ExtractArgProcId,
+		qualified(mercury_private_builtin_module, PredName),
+		MakeResultType, Args, Index, Goals, Vars, ProcInfo0, ProcInfo).
 
 :- pred get_typeclass_info_args_2(prog_var::in, pred_id::in, proc_id::in,
 		sym_name::in, pred(T, type)::(pred(in, out) is det),
@@ -2203,7 +2192,8 @@ generate_unsafe_type_cast(ModuleInfo, Context, ToType, Arg, CastArg, Goal,
 	mercury_private_builtin_module(MercuryBuiltin),
 	(
 		predicate_table_search_pred_m_n_a(PredicateTable,
-			MercuryBuiltin, "unsafe_type_cast", 2, [PredIdPrime])
+			is_fully_qualified, MercuryBuiltin,
+			"unsafe_type_cast", 2, [PredIdPrime])
 	->
 		PredId = PredIdPrime
 	;

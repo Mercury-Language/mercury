@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2002 The University of Melbourne.
+% Copyright (C) 1994-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -2160,8 +2160,8 @@ modes__build_call(Module, Name, ArgVars, Context, CallUnifyContext, ModuleInfo,
 		Goal) :-
 	module_info_get_predicate_table(ModuleInfo, PredicateTable),
 	list__length(ArgVars, Arity),
-	predicate_table_search_pred_m_n_a(PredicateTable, Module, Name, Arity,
-		[PredId]),
+	predicate_table_search_pred_m_n_a(PredicateTable, is_fully_qualified,
+		Module, Name, Arity, [PredId]),
 	hlds_pred__proc_id_to_int(ModeId, 0), % first mode
 	Call = call(PredId, ModeId, ArgVars, not_builtin, CallUnifyContext,
 		qualified(Module, Name)),

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2002 The University of Melbourne.
+% Copyright (C) 1994-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1469,7 +1469,6 @@ unify_proc__compare_args_2([_Name - Type|ArgTypes], ExistQTVars, [X|Xs], [Y|Ys],
 
 unify_proc__build_call(Name, ArgVars, Context, Goal) -->
 	unify_proc__info_get_module_info(ModuleInfo),
-	{ module_info_get_predicate_table(ModuleInfo, PredicateTable) },
 	{ list__length(ArgVars, Arity) },
 	%
 	% We assume that the special preds compare/3, index/2, and unify/2
@@ -1477,31 +1476,12 @@ unify_proc__build_call(Name, ArgVars, Context, Goal) -->
 	% by this module.
 	%
 	{ special_pred_name_arity(_, Name, _, Arity) ->
-		mercury_public_builtin_module(MercuryBuiltin)
+		MercuryBuiltin = mercury_public_builtin_module
 	;
-		mercury_private_builtin_module(MercuryBuiltin)
+		MercuryBuiltin = mercury_private_builtin_module
 	},
-	{
-		predicate_table_search_pred_m_n_a(PredicateTable,
-			MercuryBuiltin, Name, Arity, [PredIdPrime])
-	->
-		PredId = PredIdPrime
-	;
-		prog_out__sym_name_to_string(qualified(MercuryBuiltin, Name),
-			QualName),
-		string__int_to_string(Arity, ArityString),
-		string__append_list(["unify_proc__build_call: ",
-			"invalid/ambiguous pred `",
-			QualName, "/", ArityString, "'"],
-			ErrorMessage),
-		error(ErrorMessage)
-	},
-	{ hlds_pred__initial_proc_id(ProcId) },
-	{ Call = call(PredId, ProcId, ArgVars, not_builtin,
-			no, qualified(MercuryBuiltin, Name)) },
-	{ goal_info_init(GoalInfo0) },
-	{ goal_info_set_context(GoalInfo0, Context, GoalInfo) },
-	{ Goal = Call - GoalInfo }.
+	{ goal_util__generate_simple_call(MercuryBuiltin, Name, ArgVars,
+		mode_no(0), erroneous, no, [], ModuleInfo, Context, Goal) }.
 
 :- pred unify_proc__build_specific_call((type)::in, special_pred_id::in,
 	list(prog_var)::in, instmap_delta::in, determinism::in,

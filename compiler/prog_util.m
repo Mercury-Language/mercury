@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2001 The University of Melbourne.
+% Copyright (C) 1994-2001, 2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -23,8 +23,8 @@
 	% just "builtin", and it may eventually be renamed "std:builtin".
 	% This module is automatically imported, as if via `import_module'.
 
-:- pred mercury_public_builtin_module(sym_name).
-:- mode mercury_public_builtin_module(out) is det.
+:- pred mercury_public_builtin_module(sym_name::out) is det.
+:- func mercury_public_builtin_module = sym_name.
 
 	% Returns the name of the module containing private builtins;
 	% traditionally this was "mercury_builtin", but it later became
@@ -32,23 +32,23 @@
 	% "std:private_builtin".
 	% This module is automatically imported, as if via `use_module'.
 
-:- pred mercury_private_builtin_module(sym_name).
-:- mode mercury_private_builtin_module(out) is det.
+:- pred mercury_private_builtin_module(sym_name::out) is det.
+:- func mercury_private_builtin_module = sym_name.
 
 	% Returns the name of the module containing builtins for tabling;
 	% originally these were in "private_builtin", but they
 	% may soon be moved into a separate module.
 	% This module is automatically imported iff tabling is enabled.
 
-:- pred mercury_table_builtin_module(sym_name).
-:- mode mercury_table_builtin_module(out) is det.
+:- pred mercury_table_builtin_module(sym_name::out) is det.
+:- func mercury_table_builtin_module = sym_name.
 
 	% Returns the name of the module containing the builtins for
 	% deep profiling.
 	% This module is automatically imported iff deep profiling is
 	% enabled.
-:- pred mercury_profiling_builtin_module(sym_name).
-:- mode mercury_profiling_builtin_module(out) is det.
+:- pred mercury_profiling_builtin_module(sym_name::out) is det.
+:- func mercury_profiling_builtin_module = sym_name.
 
 	% Succeeds iff the specified module is one of the three
 	% builtin modules listed above which are automatically imported.
@@ -67,7 +67,7 @@
 	% Given a symbol name, return the module qualifier(s).
 	% If the symbol is unqualified, then return the specified default
 	% module name.
-
+	%
 :- pred sym_name_get_module_name(sym_name, module_name, module_name).
 :- mode sym_name_get_module_name(in, in, out) is det.
 
@@ -200,20 +200,23 @@
 
 :- implementation.
 :- import_module parse_tree__mercury_to_mercury, (parse_tree__inst).
-:- import_module bool, string, int, map, varset.
+:- import_module bool, require, string, int, map, varset.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 % We may eventually want to put the standard library into a package "std":
-%	mercury_public_builtin_module(M) :-
-% 		M = qualified(unqualified("std"), "builtin"))).
-%	mercury_private_builtin_module(M) :-
-% 		M = qualified(unqualified("std"), "private_builtin"))).
-mercury_public_builtin_module(unqualified("builtin")).
-mercury_private_builtin_module(unqualified("private_builtin")).
-mercury_table_builtin_module(unqualified("table_builtin")).
-mercury_profiling_builtin_module(unqualified("profiling_builtin")).
+%    mercury_public_builtin_module = qualified(unqualified("std"), "builtin").
+%    mercury_private_builtin_module(M) =
+%		qualified(unqualified("std"), "private_builtin"))).
+mercury_public_builtin_module = unqualified("builtin").
+mercury_public_builtin_module(mercury_public_builtin_module).
+mercury_private_builtin_module = unqualified("private_builtin").
+mercury_private_builtin_module(mercury_private_builtin_module).
+mercury_table_builtin_module = unqualified("table_builtin").
+mercury_table_builtin_module(mercury_table_builtin_module).
+mercury_profiling_builtin_module = unqualified("profiling_builtin").
+mercury_profiling_builtin_module(mercury_profiling_builtin_module).
 
 any_mercury_builtin_module(Module) :-
 	(	mercury_public_builtin_module(Module)

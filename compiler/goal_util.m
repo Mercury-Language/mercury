@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2002 The University of Melbourne.
+% Copyright (C) 1995-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -234,10 +234,6 @@
 	maybe(goal_feature)::in, assoc_list(prog_var, inst)::in,
 	module_info::in, term__context::in, hlds_goal::out) is det.
 
-:- type mode_no
-	--->	only_mode		% The pred must have exactly one mode.
-	;	mode_no(int).		% The Nth mode, counting from 0.
-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -248,6 +244,9 @@
 :- import_module check_hlds__purity, check_hlds__det_analysis.
 :- import_module check_hlds__inst_match, check_hlds__mode_util.
 :- import_module check_hlds__type_util.
+
+		%  XXX for code_util__builtin_state.
+:- import_module ll_backend, ll_backend__code_util.
 
 :- import_module int, string, require, varset.
 
@@ -1216,54 +1215,12 @@ goal_depends_on_earlier_goal(_ - LaterGoalInfo, _ - EarlierGoalInfo,
 goal_util__generate_simple_call(ModuleName, PredName, Args, ModeNo, Detism,
 		MaybeFeature, InstMap, Module, Context, CallGoal) :-
 	list__length(Args, Arity),
-	module_info_get_predicate_table(Module, PredTable),
-	(
-		predicate_table_search_pred_m_n_a(PredTable,
-			ModuleName, PredName, Arity,
-			[PredId0])
-	->
-		PredId = PredId0
-	;
-		% Some of the table builtins are polymorphic,
-		% and for them we need to subtract one from the arity
-		% to take into account the type_info argument.
-		predicate_table_search_pred_m_n_a(PredTable,
-			ModuleName, PredName, Arity - 1,
-			[PredId0])
-	->
-		PredId = PredId0
-	;
-		string__int_to_string(Arity, ArityS),
-		string__append_list(["can't locate ", PredName,
-			"/", ArityS], ErrorMessage),
-		error(ErrorMessage)
-	),
-	module_info_pred_info(Module, PredId, PredInfo),
-	pred_info_procids(PredInfo, ProcIds),
-	(
-		ModeNo = only_mode,
-		(
-			ProcIds = [ProcId0]
-		->
-			ProcId = ProcId0
-		;
-			error(string__format( 
-				"expected single mode for %s/%d",
-				[s(PredName), i(Arity)]))
-		)
-	;
-		ModeNo = mode_no(N),
-		(	       
-			list__index0(ProcIds, N, ProcId0)
-		->
-			ProcId = ProcId0
-		;
-			error(string__format(
-				"there is no mode %d for %s/%d",
-				[i(N), s(PredName), i(Arity)]))
-		)
-	),
-	Call = call(PredId, ProcId, Args, not_builtin, no,
+	lookup_builtin_pred_proc_id(Module, ModuleName, PredName, 
+		Arity, ModeNo, PredId, ProcId),
+
+	code_util__builtin_state(Module, PredId, ProcId, BuiltinState),
+
+	Call = call(PredId, ProcId, Args, BuiltinState, no,
 		qualified(ModuleName, PredName)),
 	set__init(NonLocals0),
 	set__insert_list(NonLocals0, Args, NonLocals),

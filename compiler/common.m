@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1995-2002 The University of Melbourne.
+% Copyright (C) 1995-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -86,8 +86,9 @@
 :- import_module check_hlds__det_util, check_hlds__det_report, libs__globals.
 :- import_module libs__options, check_hlds__inst_match, hlds__instmap.
 :- import_module hlds__hlds_data, hlds__hlds_module, (parse_tree__inst).
-:- import_module transform_hlds__pd_cost, term.
-:- import_module bool, map, set, eqvclass, require, std_util, string.
+:- import_module transform_hlds__pd_cost.
+:- import_module hlds__goal_util.
+:- import_module bool, map, set, eqvclass, require, std_util, string, term.
 
 :- type structure
 	--->	structure(prog_var, type, cons_id, list(prog_var)).
@@ -678,20 +679,10 @@ common__generate_assign(ToVar, FromVar, UniMode,
 		% since the call to the type cast hides the equivalence of
 		% the input and output.
 		simplify_info_get_module_info(Info0, ModuleInfo),
-		module_info_get_predicate_table(ModuleInfo, PredTable),
-		mercury_private_builtin_module(MercuryBuiltin),
-		TypeCast = qualified(MercuryBuiltin, "unsafe_type_cast"),
-		(
-			predicate_table_search_pred_sym_arity(
-				PredTable, TypeCast, 2, [PredId])
-		->
-			hlds_pred__initial_proc_id(ProcId),
-			GoalExpr = call(PredId, ProcId, [FromVar, ToVar],
-				inline_builtin, no, TypeCast)
-		;
-			error("common__generate_assign: \
-				can't find unsafe_type_cast")
-		),
+		goal_info_get_context(GoalInfo0, Context),
+		goal_util__generate_simple_call(mercury_private_builtin_module,
+			"unsafe_type_cast", [FromVar, ToVar], only_mode,
+			det, no, [], ModuleInfo, Context, GoalExpr - _),
 		instmap_delta_restrict(InstMapDelta0, NonLocals, InstMapDelta)
 	),
 	goal_info_init(NonLocals, InstMapDelta, det, GoalInfo),
