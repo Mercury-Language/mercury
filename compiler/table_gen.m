@@ -177,7 +177,8 @@
 :- import_module hlds_module, hlds_goal, hlds_data, (inst), inst_match.
 :- import_module globals, options, passes_aux, prog_data, mode_util, type_util.
 :- import_module code_util, quantification, modes, purity, prog_util.
-:- import_module bool, list, set, map, require, std_util, term, varset, int.
+:- import_module term, varset.
+:- import_module bool, list, set, map, require, std_util, int.
 :- import_module assoc_list, string, llds.
 
 %-----------------------------------------------------------------------------%
@@ -288,8 +289,9 @@ table_gen__process_proc(EvalMethod, PredId, ProcId, ProcInfo0, PredInfo0,
 		% Transform deterministic procedures.
 		%
 :- pred table_gen__create_new_det_goal(eval_method, hlds_goal, pred_info, 
-		inst_table, module_info, instmap, list(var), argument_modes,
-		map(var, type), map(var, type), varset, varset, hlds_goal).
+		inst_table, module_info, instmap, list(prog_var),
+		argument_modes, map(prog_var, type), map(prog_var, type),
+		prog_varset, prog_varset, hlds_goal).
 :- mode table_gen__create_new_det_goal(in, in, in, in, in, in, in, in,
 		in, out, in, out, out) is det.
 
@@ -371,8 +373,9 @@ table_gen__create_new_det_goal(EvalMethod, OrigGoal, PredInfo, InstTable,
 		% Transform semi deterministic procedures
 		%
 :- pred table_gen__create_new_semi_goal(eval_method, hlds_goal, pred_info, 
-		inst_table, module_info, instmap, list(var), argument_modes,
-		map(var, type), map(var, type), varset, varset, hlds_goal).
+		inst_table, module_info, instmap, list(prog_var),
+		argument_modes, map(prog_var, type), map(prog_var, type),
+		prog_varset, prog_varset, hlds_goal).
 :- mode table_gen__create_new_semi_goal(in, in, in, in, in, in, in, in,
 		in, out, in, out, out) is det.
 
@@ -503,8 +506,9 @@ table_gen__create_new_semi_goal(EvalMethod, OrigGoal, PredInfo, InstTable,
 		% Transform non deterministic procedures
 		%
 :- pred table_gen__create_new_non_goal(eval_method, hlds_goal, pred_info, 
-		inst_table, module_info, instmap, list(var), argument_modes,
-		map(var, type), map(var, type), varset, varset, hlds_goal).
+		inst_table, module_info, instmap, list(prog_var),
+		argument_modes, map(prog_var, type), map(prog_var, type),
+		prog_varset, prog_varset, hlds_goal).
 :- mode table_gen__create_new_non_goal(in, in, in, in, in, in, in, in,
 		in, out, in, out, out) is det.
 
@@ -606,8 +610,8 @@ table_gen__create_new_non_goal(EvalMethod, OrigGoal, PredInfo, InstTable,
 %------------------------------------------------------------------------------%
 
 	
-:- pred generate_get_table_goals(map(var, type), map(var, type), varset,
-		varset, inst_table, module_info, var, hlds_goal).
+:- pred generate_get_table_goals(map(prog_var, type), map(prog_var, type),
+	prog_varset, prog_varset, inst_table, module_info, prog_var, hlds_goal).
 :- mode generate_get_table_goals(in, out, in, out, in, in, out, out) is det.
 
 generate_get_table_goals(VarTypes0, VarTypes, VarSet0, VarSet, InstTable,
@@ -666,8 +670,9 @@ generate_get_table_goals(VarTypes0, VarTypes, VarSet0, VarSet, InstTable,
 
 %------------------------------------------------------------------------------%
 	
-:- pred generate_det_lookup_goal(list(var), inst_table, module_info,
-		map(var, type), map(var, type), varset, varset, var, hlds_goal).
+:- pred generate_det_lookup_goal(list(prog_var), inst_table, module_info,
+		map(prog_var, type), map(prog_var, type), prog_varset,
+		prog_varset, prog_var, hlds_goal).
 :- mode generate_det_lookup_goal(in, in, in, in, out, in, out, out, out) is det.
 
 generate_det_lookup_goal(Vars, InstTable, Module, VarTypes0, VarTypes,
@@ -685,8 +690,9 @@ generate_det_lookup_goal(Vars, InstTable, Module, VarTypes0, VarTypes,
 	goal_info_init(NonLocals, InstMapDelta, det, GoalInfo),
 	Goal = GoalEx - GoalInfo.
 	
-:- pred generate_non_lookup_goal(list(var), inst_table, module_info,
-		map(var, type), map(var, type), varset, varset, var, hlds_goal).
+:- pred generate_non_lookup_goal(list(prog_var), inst_table, module_info,
+		map(prog_var, type), map(prog_var, type), prog_varset,
+		prog_varset, prog_var, hlds_goal).
 :- mode generate_non_lookup_goal(in, in, in, in, out, in, out, out, out) is det.
 
 generate_non_lookup_goal(Vars, InstTable, Module, VarTypes0, VarTypes,
@@ -710,9 +716,9 @@ generate_non_lookup_goal(Vars, InstTable, Module, VarTypes0, VarTypes,
 	Goal = GoalEx - GoalInfo.
 
 		
-:- pred generate_lookup_goals(list(var), var, var, module_info, 
-		map(var, type), map(var, type), varset, varset, 
-		list(hlds_goal)).
+:- pred generate_lookup_goals(list(prog_var), prog_var, prog_var, module_info, 
+		map(prog_var, type), map(prog_var, type), prog_varset,
+		prog_varset, list(hlds_goal)).
 :- mode generate_lookup_goals(in, in, out, in, in, out, in, out, out) is det.
 
 
@@ -730,9 +736,9 @@ generate_lookup_goals([Var|Rest], TableVar0, TableVar, Module, VarTypes0,
 		VarTypes1, VarTypes, VarSet1, VarSet, RestGoals).
 
 
-:- pred gen_lookup_call_for_type(builtin_type, type, var, var, module_info, 
-		map(var, type), map(var, type), varset, varset, var, 
-		hlds_goal).
+:- pred gen_lookup_call_for_type(builtin_type, type, prog_var, prog_var,
+		module_info, map(prog_var, type), map(prog_var, type),
+		prog_varset, prog_varset, prog_var, hlds_goal).
 :- mode gen_lookup_call_for_type(in, in, in, in, in, in, out, in, 
 		out, out, out) is det.
 
@@ -806,8 +812,9 @@ gen_lookup_call_for_type(TypeCat, Type, TableVar, ArgVar, Module, VarTypes0,
 
 %------------------------------------------------------------------------------%
 
-:- pred generate_save_goal(list(var), var, map(var, type), map(var, type),
-		varset, varset, module_info, hlds_goal).
+:- pred generate_save_goal(list(prog_var), prog_var, map(prog_var, type),
+		map(prog_var, type), prog_varset, prog_varset,
+		module_info, hlds_goal).
 :- mode generate_save_goal(in, in, in, out, in, out, in, out) is det.
 
 generate_save_goal(AnsList, TableVar, VarTypes0, VarTypes, VarSet0,
@@ -847,8 +854,9 @@ generate_save_goal(AnsList, TableVar, VarTypes0, VarTypes, VarSet0,
 			impure, [], Module, Goal)
 	).
 	
-:- pred generate_non_save_goal(list(var), var, map(var, type), map(var, type),
-		varset, varset, module_info, hlds_goal).
+:- pred generate_non_save_goal(list(prog_var), prog_var, map(prog_var, type),
+		map(prog_var, type), prog_varset, prog_varset,
+		module_info, hlds_goal).
 :- mode generate_non_save_goal(in, in, in, out, in, out, in, out) is det.
 
 generate_non_save_goal(AnsList, TableVar, VarTypes0, VarTypes, VarSet0,
@@ -897,8 +905,9 @@ generate_non_save_goal(AnsList, TableVar, VarTypes0, VarTypes, VarSet0,
 	Goal = GoalEx - GoalInfo.
 
 
-:- pred generate_save_goals(list(var), var, int, module_info, map(var, type),
-		map(var, type), varset, varset, list(hlds_goal)).
+:- pred generate_save_goals(list(prog_var), prog_var, int, module_info,
+		map(prog_var, type), map(prog_var, type), prog_varset,
+		prog_varset, list(hlds_goal)).
 :- mode generate_save_goals(in, in, in, in, in, out, in, out, out) is det.
 
 generate_save_goals([], _TableVar, _Offset, _Module, VarTypes, VarTypes,
@@ -921,8 +930,8 @@ generate_save_goals([Var|Rest], TableVar, Offset0, Module, VarTypes0,
 		VarTypes, VarSet1, VarSet, RestGoals).
 
 
-:- pred gen_save_call_for_type(builtin_type, type, var, var, var, module_info, 
-		hlds_goal).
+:- pred gen_save_call_for_type(builtin_type, type, prog_var, prog_var,
+		prog_var, module_info, hlds_goal).
 :- mode gen_save_call_for_type(in, in, in, in, in, in, out) is det.
 
 gen_save_call_for_type(TypeCat, _Type, TableVar, Var, OffsetVar, Module, 
@@ -943,8 +952,9 @@ gen_save_call_for_type(TypeCat, _Type, TableVar, Var, OffsetVar, Module,
 %------------------------------------------------------------------------------%
 
 
-:- pred generate_restore_goal(list(var), var, module_info, map(var, type),
-		map(var, type), varset, varset, hlds_goal).
+:- pred generate_restore_goal(list(prog_var), prog_var, module_info,
+		map(prog_var, type), map(prog_var, type), prog_varset,
+		prog_varset, hlds_goal).
 :- mode generate_restore_goal(in, in, in, in, out, in, out, out) is det.
 
 generate_restore_goal(OutputVars, TableVar, Module, VarTypes0, VarTypes, 
@@ -961,8 +971,9 @@ generate_restore_goal(OutputVars, TableVar, Module, VarTypes0, VarTypes,
 		GoalInfo),
 	Goal = GoalEx - GoalInfo.
 	
-:- pred generate_restore_all_goal(list(var), var, module_info, map(var, type),
-		map(var, type), varset, varset, hlds_goal).
+:- pred generate_restore_all_goal(list(prog_var), prog_var, module_info,
+		map(prog_var, type), map(prog_var, type), prog_varset,
+		prog_varset, hlds_goal).
 :- mode generate_restore_all_goal(in, in, in, in, out, in, out, out) is det.
 
 generate_restore_all_goal(OutputVars, TableVar, Module, VarTypes0, VarTypes, 
@@ -986,8 +997,9 @@ generate_restore_all_goal(OutputVars, TableVar, Module, VarTypes0, VarTypes,
 		GoalInfo),
 	Goal = GoalEx - GoalInfo.
 	
-:- pred generate_restore_goals(list(var), var, int, module_info, map(var, type),
-		map(var, type), varset, varset, list(hlds_goal)).
+:- pred generate_restore_goals(list(prog_var), prog_var, int, module_info,
+		map(prog_var, type), map(prog_var, type), prog_varset,
+		prog_varset, list(hlds_goal)).
 :- mode generate_restore_goals(in, in, in, in, in, out, in, out, out) is det.
 
 generate_restore_goals([], _TableVar, _Offset, _Module, VarTypes, VarTypes,
@@ -1010,8 +1022,8 @@ generate_restore_goals([Var|Rest], TableVar, Offset0, Module, VarTypes0,
 		VarTypes, VarSet1, VarSet, RestGoals).
 
 
-:- pred gen_restore_call_for_type(builtin_type, type, var, var, var, 
-		module_info, hlds_goal).
+:- pred gen_restore_call_for_type(builtin_type, type, prog_var, prog_var,
+		prog_var, module_info, hlds_goal).
 :- mode gen_restore_call_for_type(in, in, in, in, in, in, out) is det.
 
 gen_restore_call_for_type(TypeCat, _Type, TableVar, Var, OffsetVar, Module, 
@@ -1030,8 +1042,9 @@ gen_restore_call_for_type(TypeCat, _Type, TableVar, Var, OffsetVar, Module,
 
 %------------------------------------------------------------------------------%
 
-:- pred generate_suspend_goal(list(var), var, module_info, map(var, type),
-		map(var, type), varset, varset, hlds_goal).
+:- pred generate_suspend_goal(list(prog_var), prog_var, module_info,
+		map(prog_var, type), map(prog_var, type), prog_varset,
+		prog_varset, hlds_goal).
 :- mode generate_suspend_goal(in, in, in, in, out, in, out, out) is det.
 
 generate_suspend_goal(OutputVars, TableVar, Module, VarTypes0, VarTypes, 
@@ -1057,8 +1070,8 @@ generate_suspend_goal(OutputVars, TableVar, Module, VarTypes0, VarTypes,
 
 %------------------------------------------------------------------------------%
 
-:- pred generate_loop_error_goal(pred_info, module_info, map(var, type), 
-		map(var, type), varset, varset, hlds_goal).
+:- pred generate_loop_error_goal(pred_info, module_info, map(prog_var, type), 
+		map(prog_var, type), prog_varset, prog_varset, hlds_goal).
 :- mode generate_loop_error_goal(in, in, in, out, in, out, out) is det.
 
 generate_loop_error_goal(PredInfo, ModuleInfo, VarTypes0, VarTypes,
@@ -1089,8 +1102,8 @@ generate_loop_error_goal(PredInfo, ModuleInfo, VarTypes0, VarTypes,
 			
 %------------------------------------------------------------------------------%
 
-:- pred generate_new_table_var(map(var, type), map(var, type), varset, varset,
-		var).
+:- pred generate_new_table_var(map(prog_var, type), map(prog_var, type),
+		prog_varset, prog_varset, prog_var).
 :- mode generate_new_table_var(in, out, in, out, out) is det.
 
 generate_new_table_var(VarTypes0, VarTypes, VarSet0, VarSet, Var) :-
@@ -1098,8 +1111,8 @@ generate_new_table_var(VarTypes0, VarTypes, VarSet0, VarSet, Var) :-
 	get_table_var_type(Type),
 	map__set(VarTypes0, Var, Type, VarTypes).
 
-:- pred generate_call(string, list(var), determinism, goal_feature,
-		assoc_list(var, inst), module_info, hlds_goal).
+:- pred generate_call(string, list(prog_var), determinism, goal_feature,
+		assoc_list(prog_var, inst), module_info, hlds_goal).
 :- mode generate_call(in, in, in, in, in, in, out) is det.
 
 generate_call(PredName, Args, Detism0, Feature, InstMap, Module, Goal) :-
@@ -1166,8 +1179,9 @@ generate_call(PredName, Args, Detism0, Feature, InstMap, Module, Goal) :-
 	).
 
 
-:- pred gen_int_construction(string, int, map(var, type), map(var, type),
-		varset, varset, var, hlds_goal).
+:- pred gen_int_construction(string, int, map(prog_var, type),
+		map(prog_var, type), prog_varset, prog_varset, prog_var,
+		hlds_goal).
 :- mode gen_int_construction(in, in, in, out, in, out, out, out) is det.
 
 gen_int_construction(VarName, VarValue, VarTypes0, VarTypes, VarSet0, VarSet,
@@ -1190,8 +1204,9 @@ gen_int_construction(VarName, VarValue, VarTypes0, VarTypes, VarSet0, VarSet,
 		VarGoalInfo),
 	Goal = VarUnify - VarGoalInfo.
 	
-:- pred gen_string_construction(string, string, map(var, type), map(var, type),
-		varset, varset, var, hlds_goal).
+:- pred gen_string_construction(string, string, map(prog_var, type),
+		map(prog_var, type), prog_varset, prog_varset, prog_var,
+		hlds_goal).
 :- mode gen_string_construction(in, in, in, out, in, out, out, out) is det.
 
 gen_string_construction(VarName, VarValue, VarTypes0, VarTypes, VarSet0, VarSet,
@@ -1221,8 +1236,8 @@ get_table_var_type(Type) :-
 	mercury_public_builtin_module(BuiltinModule),
 	construct_type(qualified(BuiltinModule, "c_pointer") - 0, [], Type).	
 
-:- pred get_input_output_vars(list(var), list(mode), instmap, inst_table,
-		module_info, list(var), list(var)).
+:- pred get_input_output_vars(list(prog_var), list(mode), instmap, inst_table,
+		module_info, list(prog_var), list(prog_var)).
 :- mode get_input_output_vars(in, in, in, in, in, out, out) is det.
 
 get_input_output_vars([], [], _, _, _, [], []).

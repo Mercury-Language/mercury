@@ -29,8 +29,8 @@
 
 :- import_module hlds_goal, passes_aux, hlds_out, (inst), instmap, inst_match.
 :- import_module mode_util, hlds_data, prog_data, type_util, globals, options.
-:- import_module list, std_util, map, assoc_list, term, varset, require.
-:- import_module bool, set, int.
+:- import_module list, std_util, map, assoc_list, require.
+:- import_module bool, set, int, varset.
 
 %-----------------------------------------------------------------------------%
 
@@ -342,7 +342,7 @@ goal_is_no_tag_construction(Module, Proc, Goal) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred check_only_one_ref_per_var(list(hlds_goal), list(var),
+:- pred check_only_one_ref_per_var(list(hlds_goal), list(prog_var),
 	module_info, proc_info, proc_info).
 :- mode check_only_one_ref_per_var(in, in, in, in, in) is semidet.
 
@@ -380,9 +380,9 @@ check_only_one_ref_per_var(Unifies, CallVars, Module, CalledProcInfo,
 		CalledInstTable, Module, Types, CallingHeadVarModes,
 		CallingInstMap, CallingInstTable).
 
-:- pred check_only_one_ref_per_var_2(assoc_list(var, mode),
-	list(pair(int, list(var))), instmap, inst_table, module_info,
-	map(var, type), assoc_list(var, mode), instmap, inst_table).
+:- pred check_only_one_ref_per_var_2(assoc_list(prog_var, mode),
+	list(pair(int, list(prog_var))), instmap, inst_table, module_info,
+	map(prog_var, type), assoc_list(prog_var, mode), instmap, inst_table).
 :- mode check_only_one_ref_per_var_2(in, in, in, in, in, in, in, in, in)
 	is semidet.
 
@@ -438,7 +438,7 @@ check_only_one_ref_per_var_2([Var - Mode | VarModes], UnifVars, CalledInstMap,
 % some of the output variables.  See if the required proc already exists
 % and if it doesn't, create it.
 
-:- pred maybe_create_new_proc(set(var), module_info, module_info,
+:- pred maybe_create_new_proc(set(prog_var), module_info, module_info,
 		hlds_goal, hlds_goal).
 :- mode maybe_create_new_proc(in, in, out, in, out) is det.
 
@@ -534,8 +534,8 @@ get_unused_proc_id(ProcId0, ProcTable, ProcId) :-
 
 % If Var is in the set of variables that need their modes changed and mode
 % is (free(unique) -> I), then change mode to (free(alias) -> I).
-:- pred change_arg_mode(set(var), module_info, instmap, inst_table,
-		pair(var, mode), mode).
+:- pred change_arg_mode(set(prog_var), module_info, instmap, inst_table,
+		pair(prog_var, mode), mode).
 :- mode change_arg_mode(in, in, in, in, in, out) is det.
 
 change_arg_mode(VarSet, Module, InstMap, InstTable, Var - Mode0, Mode) :-
@@ -609,7 +609,12 @@ create_new_proc(ProcTable0, OldProcId, ArgModes, InstTable, ProcTable,
 %-----------------------------------------------------------------------------%
 
 :- type fix_modes_info 
-	--->	fix_modes_info(varset, map(var, type), inst_table, instmap).
+	--->	fix_modes_info(
+			prog_varset,
+			map(prog_var, type),
+			inst_table,
+			instmap
+		).
 
 :- pred fix_modes_info_apply_instmap_delta(fix_modes_info, instmap_delta, 
 	fix_modes_info).
@@ -636,7 +641,7 @@ fix_modes_info_set_instmap(fix_modes_info(A, B, C, _), InstMap,
 % arguments.  If the arguments are bound in a call then an assignment
 % may need to be added after the call.
 
-:- pred fix_modes_of_binding_goal(module_info, set(var), var,
+:- pred fix_modes_of_binding_goal(module_info, set(prog_var), prog_var,
 		hlds_goal, hlds_goal, fix_modes_info, fix_modes_info).
 :- mode fix_modes_of_binding_goal(in, in, in, in, out, in, out) is det.
 
@@ -662,7 +667,7 @@ fix_modes_of_binding_goal(Module, AliasedVars, Var,
 	fix_modes_info_set_instmap(FMI1, InstMap, FMI).
 
 :- pred fix_modes_of_binding_goal_2(hlds_goal_expr, fix_modes_info,
-		hlds_goal_info, module_info, set(var), var,
+		hlds_goal_info, module_info, set(prog_var), prog_var,
 		hlds_goal_expr, fix_modes_info).
 :- mode fix_modes_of_binding_goal_2(in, in, in, in, in, in, out, out) is det.
 
@@ -782,9 +787,9 @@ fix_modes_of_binding_goal_2(class_method_call(A, B, Vars0, D, E, F), FMI0,
 	ClassMethodCall = class_method_call(A, B, Vars, D, E, F) - GoalInfo,
 	Goal = conj([ClassMethodCall, Assign]).
 
-:- pred add_unification_to_goal(list(var), fix_modes_info, hlds_goal_info,
-		module_info, var, list(var), fix_modes_info, hlds_goal_info,
-		hlds_goal).
+:- pred add_unification_to_goal(list(prog_var), fix_modes_info, hlds_goal_info,
+		module_info, prog_var, list(prog_var), fix_modes_info,
+		hlds_goal_info, hlds_goal).
 :- mode add_unification_to_goal(in, in, in, in, in, out, out, out, out) is det.
 
 add_unification_to_goal(Vars0, FMI0, GoalInfo0, Module, Var,
@@ -825,7 +830,7 @@ add_unification_to_goal(Vars0, FMI0, GoalInfo0, Module, Var,
 		FMI1, FMI).
 
 :- pred fix_modes_of_unify(unification, unify_rhs, unify_mode, fix_modes_info,
-		hlds_goal_info, module_info, var, unification, unify_rhs,
+		hlds_goal_info, module_info, prog_var, unification, unify_rhs,
 		unify_mode, fix_modes_info, hlds_goal_info, maybe(hlds_goal)).
 :- mode fix_modes_of_unify(in, in, in, in, in, in, in, out, out, out, out,
 		out, out) is det.
@@ -899,7 +904,8 @@ fix_uni_mode(Module, InstMap0, UniMode0, UniMode, InstTable0, InstTable) :-
 % mode in both procedures.
 
 :- pred replace_call_proc_with_aliased_version(pred_id, proc_id,
-	fix_modes_info, module_info, var, set(var), list(var), proc_id).
+	fix_modes_info, module_info, prog_var, set(prog_var), list(prog_var),
+	proc_id).
 :- mode replace_call_proc_with_aliased_version(in, in, in, in, in, in, in, out)
 	is semidet.
 

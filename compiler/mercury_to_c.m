@@ -56,9 +56,9 @@
 :- import_module hlds_pred, hlds_goal, hlds_data, prog_data, instmap, (inst).
 :- import_module llds, llds_out, prog_out, prog_io, mercury_to_mercury.
 :- import_module prog_util, mode_util, hlds_out, stack, quantification.
-:- import_module globals, options.
-:- import_module string, map, list, require, std_util, term, term_io, getopt.
-:- import_module bool, set, varset, int.
+:- import_module globals, options, varset, term.
+:- import_module string, map, list, require, std_util, term_io, getopt.
+:- import_module bool, set, int.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -70,8 +70,8 @@
 			pred_id,
 			proc_id,
 			proc_info,
-			varset,
-			list(var), % output variables
+			prog_varset,
+			list(prog_var), % output variables
 				% these must be prefixed with `*', since they
 				% are pointers
 			stack(c_failure_cont),
@@ -408,8 +408,8 @@ c_gen_proc_name(ModuleInfo, PredId, ProcId) -->
 	{ proc_id_to_int(ProcId, ModeNum) },
 	io__write_int(ModeNum).
 
-:- pred c_gen_select_output_vars(instmap, inst_table, module_info, list(var),
-		list(mode), list(var)).
+:- pred c_gen_select_output_vars(instmap, inst_table, module_info,
+		list(prog_var), list(mode), list(prog_var)).
 :- mode c_gen_select_output_vars(in, in, in, in, in, out) is det.
 
 c_gen_select_output_vars(InstMap, IT, ModuleInfo, HeadVars, HeadModes,
@@ -434,8 +434,8 @@ c_gen_select_output_vars(InstMap, IT, ModuleInfo, HeadVars, HeadModes,
 		error("c_gen_select_output_vars: length mismatch")
 	).
 
-:- pred c_gen_arg_decls(instmap, inst_table, module_info, list(var), list(type),
-			list(mode), varset, io__state, io__state).
+:- pred c_gen_arg_decls(instmap, inst_table, module_info, list(prog_var),
+		list(type), list(mode), prog_varset, io__state, io__state).
 :- mode c_gen_arg_decls(in, in, in, in, in, in, in, di, uo) is det.
 
 c_gen_arg_decls(InstMap, IT, ModuleInfo, HeadVars, HeadTypes, HeadModes,
@@ -462,8 +462,8 @@ c_gen_arg_decls(InstMap, IT, ModuleInfo, HeadVars, HeadTypes, HeadModes,
 		{ error("c_gen_arg_decls: length mismatch") }
 	).
 
-:- pred c_gen_arg_decl(instmap, inst_table, module_info, var, type, mode,
-			varset, io__state, io__state).
+:- pred c_gen_arg_decl(instmap, inst_table, module_info, prog_var, type, mode,
+			prog_varset, io__state, io__state).
 :- mode c_gen_arg_decl(in, in, in, in, in, in, in, di, uo) is det.
 
 c_gen_arg_decl(InstMap, IT, ModuleInfo, Var, Type, Mode, VarSet) -->
@@ -475,9 +475,8 @@ c_gen_arg_decl(InstMap, IT, ModuleInfo, Var, Type, Mode, VarSet) -->
 	),
 	mercury_output_var(Var, VarSet, no).
 
-:- pred c_gen_local_var_decls(int, hlds_goal, varset, map(var, type),
-				list(var),
-				io__state, io__state).
+:- pred c_gen_local_var_decls(int, hlds_goal, prog_varset, map(prog_var, type),
+				list(prog_var), io__state, io__state).
 :- mode c_gen_local_var_decls(in, in, in, in, in, di, uo) is det.
 
 c_gen_local_var_decls(Indent, Goal, VarSet, VarTypes, HeadVars) -->
@@ -486,8 +485,8 @@ c_gen_local_var_decls(Indent, Goal, VarSet, VarTypes, HeadVars) -->
 	{ list__delete_elems(Vars, HeadVars, LocalVars) },
 	c_gen_local_var_decls_2(LocalVars, VarSet, VarTypes, Indent).
 
-:- pred c_gen_local_var_decls_2(list(var), varset, map(var, type), int,
-				io__state, io__state).
+:- pred c_gen_local_var_decls_2(list(prog_var), prog_varset, map(prog_var, type),
+		int, io__state, io__state).
 :- mode c_gen_local_var_decls_2(in, in, in, in, di, uo) is det.
 
 c_gen_local_var_decls_2([], _, _, _) --> [].
@@ -743,7 +742,7 @@ c_gen_unification(complicated_unify(_, _), _Indent, CGenInfo, CGenInfo) -->
 	{ sorry(3) },
 	io__write_string(" = ").
 
-:- pred c_gen_arg_list(list(var), instmap, inst_table, list(mode),
+:- pred c_gen_arg_list(list(prog_var), instmap, inst_table, list(mode),
 			c_gen_info, c_gen_info, io__state, io__state).
 :- mode c_gen_arg_list(in, in, in, in, in, out, di, uo) is det.
 
@@ -779,7 +778,7 @@ c_gen_arg_list(Vars, InstMap, ArgIT, ArgModes, CGenInfo0, CGenInfo) -->
 		{ error("c_gen_arg_list: length mismatch") }
 	).
 
-:- pred c_gen_var(var, c_gen_info, c_gen_info, io__state, io__state).
+:- pred c_gen_var(prog_var, c_gen_info, c_gen_info, io__state, io__state).
 :- mode c_gen_var(in, in, out, di, uo) is det.
 
 c_gen_var(Var, CGenInfo, CGenInfo) -->
@@ -798,24 +797,25 @@ sorry(N) :-
 	string__format("Sorry, not implemented [%d]", [i(N)], ErrorMessage),
 	error(ErrorMessage).
 
-:- pred c_gen_var_modes(list(var), list(mode), varset, inst_table,
-					io__state, io__state).
-:- mode c_gen_var_modes(in, in, in, in, di, uo) is det.
+:- pred c_gen_var_modes(list(prog_var), list(mode), prog_varset, inst_varset,
+		inst_table, io__state, io__state).
+:- mode c_gen_var_modes(in, in, in, in, in, di, uo) is det.
 
-c_gen_var_modes([], [], _, _) --> [].
-c_gen_var_modes([Var|Vars], [Mode|Modes], VarSet, InstTable) -->
-	mercury_output_var(Var, VarSet, no),
+c_gen_var_modes([], [], _, _, _) --> [].
+c_gen_var_modes([Var|Vars], [Mode|Modes], ProgVarSet, InstVarSet, InstTable)
+		-->
+	mercury_output_var(Var, ProgVarSet, no),
 	io__write_string("::"),
-	mercury_output_mode(Mode, VarSet, InstTable),
+	mercury_output_mode(Mode, InstVarSet, InstTable),
 	( { Vars \= [] } ->
 		io__write_string(", ")
 	;
 		[]
 	),
-	c_gen_var_modes(Vars, Modes, VarSet, InstTable).
-c_gen_var_modes([], [_|_], _, _) -->
+	c_gen_var_modes(Vars, Modes, ProgVarSet, InstVarSet, InstTable).
+c_gen_var_modes([], [_|_], _, _, _) -->
 	{ error("c_gen_var_modes: length mis-match") }.
-c_gen_var_modes([_|_], [], _, _) -->
+c_gen_var_modes([_|_], [], _, _, _) -->
 	{ error("c_gen_var_modes: length mis-match") }.
 
 :- pred c_gen_conj(list(hlds_goal), int, c_gen_info, c_gen_info,
@@ -839,7 +839,7 @@ c_gen_disj([Goal|Goals], Label, Indent, CGenInfo0, CGenInfo) -->
 	io__write_string("();\n"),
 	c_gen_disj(Goals, Label, Indent, CGenInfo1, CGenInfo).
 
-:- pred c_gen_case(case, var, int, c_gen_info, c_gen_info,
+:- pred c_gen_case(case, prog_var, int, c_gen_info, c_gen_info,
 				io__state, io__state).
 :- mode c_gen_case(in, in, in, in, out, di, uo) is erroneous.
 
@@ -852,7 +852,7 @@ c_gen_case(case(_ConsId, _, Goal), Var, Indent, CGenInfo0, CGenInfo) -->
 	mercury_output_newline(Indent),
 	c_gen_goal(Goal, Indent, CGenInfo0, CGenInfo).
 
-:- pred c_gen_cases(list(case), var, int, c_gen_info, c_gen_info,
+:- pred c_gen_cases(list(case), prog_var, int, c_gen_info, c_gen_info,
 				io__state, io__state).
 :- mode c_gen_cases(in, in, in, in, out, di, uo) is erroneous.
 
@@ -871,7 +871,7 @@ c_gen_cases(CasesList, Var, Indent, CGenInfo0, CGenInfo) -->
 		[]
 	).
 
-:- pred c_gen_var_types(int, varset, map(var, type), varset,
+:- pred c_gen_var_types(int, prog_varset, map(prog_var, type), tvarset,
 					io__state, io__state).
 :- mode c_gen_var_types(in, in, in, in, di, uo) is det.
 
@@ -879,8 +879,8 @@ c_gen_var_types(Indent, VarSet, VarTypes, TVarSet) -->
 	{ map__keys(VarTypes, Vars) },
 	c_gen_var_types_2(Vars, Indent, VarSet, VarTypes, TVarSet).
 
-:- pred c_gen_var_types_2(list(var), int, varset, map(var, type),
-					varset, io__state, io__state).
+:- pred c_gen_var_types_2(list(prog_var), int, prog_varset,
+		map(prog_var, type), tvarset, io__state, io__state).
 :- mode c_gen_var_types_2(in, in, in, in, in, di, uo) is det.
 
 c_gen_var_types_2([], _, _, _, _) --> [].
@@ -960,8 +960,8 @@ c_gen_failure_2(call(Label)) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred c_gen_info_init(module_info, pred_id, proc_id, proc_info, varset,
-			code_model, list(var), c_gen_info).
+:- pred c_gen_info_init(module_info, pred_id, proc_id, proc_info, prog_varset,
+			code_model, list(prog_var), c_gen_info).
 :- mode c_gen_info_init(in, in, in, in, in, in, in, out) is det.
 
 c_gen_info_init(ModuleInfo, PredId, ProcId, ProcInfo, VarSet, CodeModel,
@@ -1007,12 +1007,12 @@ c_gen_info_get_module_info(c_gen_info(_, ModuleInfo, _, _, _, _, _, _, _, _),
 c_gen_info_get_proc_info(c_gen_info(_, _, _, _, ProcInfo, _, _, _, _, _),
 	ProcInfo).
 
-:- pred c_gen_info_get_varset(c_gen_info, varset).
+:- pred c_gen_info_get_varset(c_gen_info, prog_varset).
 :- mode c_gen_info_get_varset(in, out) is det.
 
 c_gen_info_get_varset(c_gen_info(_, _, _, _, _, VarSet, _, _, _, _), VarSet).
 
-:- pred c_gen_info_get_output_vars(c_gen_info, list(var)).
+:- pred c_gen_info_get_output_vars(c_gen_info, list(prog_var)).
 :- mode c_gen_info_get_output_vars(in, out) is det.
 
 c_gen_info_get_output_vars(c_gen_info(_, _, _, _, _, _, OutputVars, _, _, _),

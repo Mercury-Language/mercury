@@ -16,7 +16,7 @@
 
 :- import_module hlds_module, hlds_pred, hlds_goal, hlds_data, prog_data.
 :- import_module instmap, (inst).
-:- import_module bool, list, term, map, assoc_list.
+:- import_module bool, list, map, assoc_list.
 
 	% mode_get_insts returns the initial instantiatedness and
 	% the final instantiatedness for a given mode, aborting
@@ -134,9 +134,9 @@
 	% may need to insert new merge_insts into the merge_inst table.
 	% If the first argument is yes, the instmap_deltas for calls
 	% and deconstruction unifications are also recomputed.
-:- pred recompute_instmap_delta(list(var), list(is_live), map(var, type),
-		hlds_goal, hlds_goal, instmap, inst_table, inst_table,
-		bool, module_info, module_info).
+:- pred recompute_instmap_delta(list(prog_var), list(is_live),
+		map(prog_var, type), hlds_goal, hlds_goal, instmap, inst_table,
+		inst_table, bool, module_info, module_info).
 :- mode recompute_instmap_delta(in, in, in, in, out, in, in, out, out, in, out)
 		is det.
 
@@ -181,7 +181,7 @@
 	% Given the switched on variable and the instmaps before the switch
 	% and after a branch make sure that any information added by the
 	% functor test gets added to the instmap for the case.
-% :- pred fixup_switch_var(var, instmap, instmap, hlds_goal, hlds_goal). 
+% :- pred fixup_switch_var(prog_var, instmap, instmap, hlds_goal, hlds_goal). 
 % :- mode fixup_switch_var(in, in, in, in, out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -209,7 +209,7 @@
 	% Given a list of variables, and a list of livenesses,
 	% select the live variables.
 	%
-:- pred get_live_vars(list(var), list(is_live), list(var)).
+:- pred get_live_vars(list(prog_var), list(is_live), list(prog_var)).
 :- mode get_live_vars(in, in, out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -226,7 +226,7 @@
 :- implementation.
 :- import_module require, int, map, set, std_util, assoc_list, bag.
 :- import_module prog_util, type_util, unify_proc.
-:- import_module inst_match, inst_util, det_analysis.
+:- import_module inst_match, inst_util, det_analysis, term.
 
 %-----------------------------------------------------------------------------%
 
@@ -1246,8 +1246,9 @@ mode_list_apply_substitution([A0 | As0], Subst, [A | As]) :-
 	mode_list_apply_substitution(As0, Subst, As).
 
 :- pred recompute_instmap_delta_par_conj(list(hlds_goal), list(hlds_goal),
-		instmap, list(pair(instmap, set(var))),
-		list(pair(instmap, set(var))), recompute_info, recompute_info).
+		instmap, list(pair(instmap, set(prog_var))),
+		list(pair(instmap, set(prog_var))), recompute_info,
+		recompute_info).
 :- mode recompute_instmap_delta_par_conj(in, out, in, in, out, in, out) is det.
 
 recompute_instmap_delta_par_conj([], [], _, IMNonLocals, IMNonLocals) --> [].
@@ -1292,10 +1293,10 @@ mode_id_to_int(_ - X, X).
 
 :- type recompute_info --->
 		recompute_info(
-			map(var, type),
+			map(prog_var, type),
 			module_info,
 			inst_table,
-			bag(var),
+			bag(prog_var),
 			bool
 		).
 
@@ -1304,7 +1305,7 @@ mode_id_to_int(_ - X, X).
 
 slap_recompute_info(RI, _, RI).
 
-:- pred recompute_info_get_vartypes(recompute_info, map(var, type)).
+:- pred recompute_info_get_vartypes(recompute_info, map(prog_var, type)).
 :- mode recompute_info_get_vartypes(in, out) is det.
 
 recompute_info_get_vartypes(recompute_info(VarTypes, _, _, _, _), VarTypes).
@@ -1334,13 +1335,14 @@ recompute_info_get_inst_table(recompute_info(_, _, InstTable, _, _), InstTable).
 recompute_info_set_inst_table(InstTable, recompute_info(A, B, _, D, E),
 		recompute_info(A, B, InstTable, D, E)).
 
-:- pred recompute_info_set_live_vars(bag(var), recompute_info, recompute_info).
+:- pred recompute_info_set_live_vars(bag(prog_var), recompute_info,
+		recompute_info).
 :- mode recompute_info_set_live_vars(in, in, out) is det.
 
 recompute_info_set_live_vars(LiveVars, recompute_info(A, B, C, _, E),
 		recompute_info(A, B, C, LiveVars, E)).
 
-:- pred recompute_info_get_live_vars(recompute_info, bag(var)).
+:- pred recompute_info_get_live_vars(recompute_info, bag(prog_var)).
 :- mode recompute_info_get_live_vars(in, out) is det.
 
 recompute_info_get_live_vars(recompute_info(_, _, _, LiveVars, _), LiveVars).
@@ -1352,14 +1354,15 @@ recompute_info_set_goal_changed(recompute_info(A, B, C, D, _),
 		recompute_info(A, B, C, D, yes)).
 
 
-:- pred recompute_info_add_live_vars(set(var), recompute_info, recompute_info).
+:- pred recompute_info_add_live_vars(set(prog_var), recompute_info,
+		recompute_info).
 :- mode recompute_info_add_live_vars(in, in, out) is det.
 
 recompute_info_add_live_vars(VarsSet, RI0, RI) :-
 	set__to_sorted_list(VarsSet, VarsList),
 	recompute_info_add_live_vars_list(VarsList, RI0, RI).
 
-:- pred recompute_info_add_live_vars_list(list(var),
+:- pred recompute_info_add_live_vars_list(list(prog_var),
 				recompute_info, recompute_info).
 :- mode recompute_info_add_live_vars_list(in, in, out) is det.
 
@@ -1368,7 +1371,7 @@ recompute_info_add_live_vars_list(Vars, RI0, RI) :-
 	bag__insert_list(LiveVars0, Vars, LiveVars),
 	recompute_info_set_live_vars(LiveVars, RI0, RI).
 
-:- pred recompute_info_remove_live_vars(set(var),
+:- pred recompute_info_remove_live_vars(set(prog_var),
 				recompute_info, recompute_info).
 :- mode recompute_info_remove_live_vars(in, in, out) is det.
 
@@ -1376,7 +1379,7 @@ recompute_info_remove_live_vars(VarsSet, RI0, RI) :-
 	set__to_sorted_list(VarsSet, VarsList),
 	recompute_info_remove_live_vars_list(VarsList, RI0, RI).
 
-:- pred recompute_info_remove_live_vars_list(list(var),
+:- pred recompute_info_remove_live_vars_list(list(prog_var),
 				recompute_info, recompute_info).
 :- mode recompute_info_remove_live_vars_list(in, in, out) is det.
 
@@ -1385,7 +1388,7 @@ recompute_info_remove_live_vars_list(Vars, RI0, RI) :-
 	bag__det_remove_list(LiveVars0, Vars, LiveVars),
 	recompute_info_set_live_vars(LiveVars, RI0, RI).
 
-:- pred recompute_info_var_is_live(recompute_info, var, is_live).
+:- pred recompute_info_var_is_live(recompute_info, prog_var, is_live).
 :- mode recompute_info_var_is_live(in, in, out) is det.
 
 recompute_info_var_is_live(RI, Var, IsLive) :-
@@ -1662,7 +1665,7 @@ recompute_instmap_delta_conj([Goal0 | Goals0], [Goal | Goals],
 %-----------------------------------------------------------------------------%
 
 :- pred recompute_instmap_delta_disj(list(hlds_goal), list(hlds_goal), instmap,
-		set(var), instmap, recompute_info, recompute_info).
+		set(prog_var), instmap, recompute_info, recompute_info).
 :- mode recompute_instmap_delta_disj(in, out, in, in, out, in, out) is det.
 
 recompute_instmap_delta_disj([], [], _, _, InstMap) -->
@@ -1692,8 +1695,8 @@ recompute_instmap_delta_disj([Goal0 | Goals0], [Goal | Goals],
 
 %-----------------------------------------------------------------------------%
 
-:- pred recompute_instmap_delta_cases(var, list(case), list(case), instmap,
-		set(var), instmap, recompute_info, recompute_info).
+:- pred recompute_instmap_delta_cases(prog_var, list(case), list(case), instmap,
+		set(prog_var), instmap, recompute_info, recompute_info).
 :- mode recompute_instmap_delta_cases(in, in, out, in, in, out, in, out) is det.
 
 recompute_instmap_delta_cases(_, [], [], _, _, InstMap) -->
@@ -1729,7 +1732,7 @@ recompute_instmap_delta_cases(Var, [Case0 | Cases0], [Case | Cases],
 
 %-----------------------------------------------------------------------------%
 
-:- pred recompute_instmap_delta_call(pred_id, proc_id, list(var), instmap,
+:- pred recompute_instmap_delta_call(pred_id, proc_id, list(prog_var), instmap,
 		instmap_delta, recompute_info, recompute_info).
 :- mode recompute_instmap_delta_call(in, in, in, in, out, in, out) is det.
 
@@ -1753,7 +1756,7 @@ recompute_instmap_delta_call(PredId, ProcId, Args, InstMap0,
 		compute_instmap_delta(InstMap0, InstMap, InstMapDelta)
 	).
 
-:- pred recompute_instmap_delta_call_2(list(var), instmap, list(mode),
+:- pred recompute_instmap_delta_call_2(list(prog_var), instmap, list(mode),
 		instmap, recompute_info, recompute_info).
 :- mode recompute_instmap_delta_call_2(in, in, in, out, in, out) is det.
 
@@ -1790,9 +1793,9 @@ recompute_instmap_delta_call_2([Arg | Args], InstMap0, [Mode | Modes],
 		RI = RI0
 	).
 
-:- pred recompute_instmap_delta_unify(var, unify_rhs, unify_mode, unification,
-	unify_context, hlds_goal_info, hlds_goal_expr, determinism, instmap,
-	instmap_delta, recompute_info, recompute_info).
+:- pred recompute_instmap_delta_unify(prog_var, unify_rhs, unify_mode,
+	unification, unify_context, hlds_goal_info, hlds_goal_expr,
+	determinism, instmap, instmap_delta, recompute_info, recompute_info).
 :- mode recompute_instmap_delta_unify(in, in, in, in, in, in, out, out, in, out,
 	in, out) is det.
 
@@ -2107,7 +2110,7 @@ recompute_instmap_delta_unify(Var, var(VarY), _UniMode0, Unification0,
 
 %-----------------------------------------------------------------------------%
 
-:- pred make_var_alias(var, is_live, instmap, instmap,
+:- pred make_var_alias(prog_var, is_live, instmap, instmap,
 		inst_key_table, inst_key_table).
 :- mode make_var_alias(in, in, in, out, in, out) is det.
 
@@ -2121,7 +2124,7 @@ make_var_alias(Var, _Live, InstMap0, InstMap, IKT0, IKT) :-
 		instmap__set(InstMap0, Var, alias(InstKey), InstMap)
 	).
 
-:- pred make_var_aliases(list(var), list(is_live), instmap, instmap,
+:- pred make_var_aliases(list(prog_var), list(is_live), instmap, instmap,
 		inst_key_table, inst_key_table).
 :- mode make_var_aliases(in, in, in, out, in, out) is det.
 

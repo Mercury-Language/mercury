@@ -19,7 +19,8 @@
 :- interface.
 
 :- import_module hlds_data, hlds_pred, (inst), purity, term_util.
-:- import_module list, map, varset, term, std_util.
+:- import_module varset, term.
+:- import_module list, map, term, std_util.
 
 %-----------------------------------------------------------------------------%
 
@@ -37,54 +38,56 @@
 
 :- type item_list	==	list(item_and_context).
 
-:- type item_and_context ==	pair(item, term__context).
+:- type item_and_context ==	pair(item, prog_context).
 
 :- type item		
-	--->	pred_clause(varset, sym_name, list(term), goal)
+	--->	pred_clause(prog_varset, sym_name, list(prog_term), goal)
 		%      VarNames, PredName, HeadArgs, ClauseBody
 
-	;	func_clause(varset, sym_name, list(term), term, goal)
+	;	func_clause(prog_varset, sym_name, list(prog_term),
+			prog_term, goal)
 		%      VarNames, PredName, HeadArgs, Result, ClauseBody
 
-	; 	type_defn(varset, type_defn, condition)
-	; 	inst_defn(varset, inst_defn, condition)
-	; 	mode_defn(varset, mode_defn, condition)
-	; 	module_defn(varset, module_defn)
+	; 	type_defn(tvarset, type_defn, condition)
+	; 	inst_defn(inst_varset, inst_defn, condition)
+	; 	mode_defn(inst_varset, mode_defn, condition)
+	; 	module_defn(prog_varset, module_defn)
 
-	; 	pred(varset, existq_tvars, sym_name, types_and_modes,
-			maybe(determinism), condition, purity,
+	; 	pred(tvarset, inst_varset, existq_tvars, sym_name,
+			types_and_modes, maybe(determinism), condition, purity,
 			class_constraints)
-		%       VarNames, ExistentiallyQuantifiedTypeVars,
-		%	PredName, ArgTypes, Deterministicness, Cond,
-		%	Purity, TypeClassContext
+		%       TypeVarNames, InstVarNames,
+		%       ExistentiallyQuantifiedTypeVars, PredName,
+		%       ArgTypes, Deterministicness, Cond, Purity,
+		%       TypeClassContext
 
-	; 	func(tvarset, existq_tvars, sym_name, types_and_modes,
-			type_and_mode, maybe(determinism), condition, purity,
-			class_constraints)
-		%       VarNames, ExistentiallyQuantifiedTypeVars,
-		%       PredName, ArgTypes, ReturnType,
-		%       Deterministicness, Cond,
-		%	Purity, TypeClassContext
+	; 	func(tvarset, inst_varset, existq_tvars, sym_name,
+			types_and_modes, type_and_mode, maybe(determinism),
+			condition, purity, class_constraints)
+		%       TypeVarNames, InstVarNames,
+		%       ExistentiallyQuantifiedTypeVars, PredName,
+		%       ArgTypes, ReturnType, Deterministicness, Cond, 
+		%       Purity, TypeClassContext
 
-	; 	pred_mode(varset, sym_name, argument_modes, maybe(determinism),
-			condition)
+	; 	pred_mode(inst_varset, sym_name, argument_modes,
+			maybe(determinism), condition)
 		%       VarNames, PredName, ArgModes, Deterministicness,
 		%       Cond
 
-	; 	func_mode(varset, sym_name, argument_modes, mode,
+	; 	func_mode(inst_varset, sym_name, argument_modes, mode,
 			maybe(determinism), condition)
 		%       VarNames, PredName, ArgModes, ReturnValueMode,
 		%       Deterministicness, Cond
 
 	;	pragma(pragma_type)
 
-	;	typeclass(list(class_constraint), class_name, list(var),
-			class_interface, varset)
+	;	typeclass(list(class_constraint), class_name, list(tvar),
+			class_interface, tvarset)
 		%	Constraints, ClassName, ClassParams, 
 		%	ClassMethods, VarNames
 
 	;	instance(list(class_constraint), class_name, list(type),
-			instance_interface, varset)
+			instance_interface, tvarset)
 		%	DerivingClass, ClassName, Types, 
 		%	MethodInstances, VarNames
 
@@ -106,7 +109,7 @@
 	;	c_code(string)
 
 	;	c_code(pragma_c_code_attributes, sym_name, pred_or_func,
-			list(pragma_var), varset, pragma_c_code_impl)
+			list(pragma_var), prog_varset, pragma_c_code_impl)
 			% Set of C code attributes, eg.:
 			%	whether or not the C code may call Mercury,
 			%	whether or not the C code is thread-safe
@@ -193,26 +196,26 @@
 					% had time to adapt to the new way
 					% of handling model_non pragmas.)
 			string,		% The C code of the procedure.
-			maybe(term__context)
+			maybe(prog_context)
 		)
 	;	nondet(			% This is a C definition of a model_non
 					% procedure.
 			string,
-			maybe(term__context),
+			maybe(prog_context),
 					% The info saved for the time when
 					% backtracking reenters this procedure
 					% is stored in a C struct. This arg
 					% contains the field declarations.
 
 			string,
-			maybe(term__context),
+			maybe(prog_context),
 					% Gives the code to be executed when
 					% the procedure is called for the first 
 					% time. This code may access the input
 					% variables.
 
 			string,	
-			maybe(term__context),
+			maybe(prog_context),
 					% Gives the code to be executed when
 					% control backtracks into the procedure.
 					% This code may not access the input
@@ -222,7 +225,7 @@
 					% How should the shared code be
 					% treated during code generation.
 			string,	
-			maybe(term__context)
+			maybe(prog_context)
 					% Shared code that is executed after
 					% both the previous code fragments.
 					% May not access the input variables.
@@ -239,7 +242,7 @@
 	% list of types is a member of the specified type class.
 	% It is an invariant of this data structure that
 	% the types in a class constraint do not contain any
-	% information in their term__context fields.
+	% information in their prog_context fields.
 	% This invariant is needed to ensure that we can do
 	% unifications, map__lookups, etc., and get the
 	% expected semantics.
@@ -260,43 +263,45 @@
 :- type class_interface  == list(class_method).	
 
 :- type class_method
-	--->	pred(tvarset, existq_tvars, sym_name, types_and_modes,
-			maybe(determinism), condition,
+	--->	pred(tvarset, inst_varset, existq_tvars, sym_name,
+			types_and_modes, maybe(determinism), condition,
 			class_constraints, term__context)
-		%       VarNames, ExistentiallyQuantifiedTypeVars,
+		%       TypeVarNames, InstVarNames,
+		%	ExistentiallyQuantifiedTypeVars,
 		%	PredName, ArgTypes, Determinism, Cond
 		%	ClassContext, Context
 
-	; 	func(tvarset, existq_tvars, sym_name, types_and_modes,
-			type_and_mode,
+	; 	func(tvarset, inst_varset, existq_tvars, sym_name,
+			types_and_modes, type_and_mode,
 			maybe(determinism), condition,
-			class_constraints, term__context)
-		%       VarNames, ExistentiallyQuantfiedTypeVars,
+			class_constraints, prog_context)
+		%       TypeVarNames, InstVarNames,
+		%	ExistentiallyQuantfiedTypeVars,
 		%	PredName, ArgTypes, ReturnType,
 		%	Determinism, Cond
 		%	ClassContext, Context
 
-	; 	pred_mode(varset, sym_name, argument_modes,
+	; 	pred_mode(inst_varset, sym_name, argument_modes,
 			maybe(determinism), condition,
-			term__context)
-		%       VarNames, PredName, ArgModes,
+			prog_context)
+		%       InstVarNames, PredName, ArgModes,
 		%	Determinism, Cond
 		%	Context
 
-	; 	func_mode(varset, sym_name, argument_modes, mode,
+	; 	func_mode(inst_varset, sym_name, argument_modes, mode,
 			maybe(determinism), condition,
-			term__context)
-		%       VarNames, PredName, ArgModes,
+			prog_context)
+		%       InstVarNames, PredName, ArgModes,
 		%	ReturnValueMode,
 		%	Determinism, Cond
 		%	Context
 	.
 
 :- type instance_method	
-	--->	func_instance(sym_name, sym_name, arity, term__context)
+	--->	func_instance(sym_name, sym_name, arity, prog_context)
 				% Method, Instance, Arity, 
 				% Line number of declaration
-	;	pred_instance(sym_name, sym_name, arity, term__context)
+	;	pred_instance(sym_name, sym_name, arity, prog_context)
 				% Method, Instance, Arity, 
 				% Line number of declaration
 	.
@@ -340,7 +345,7 @@
 	;	thread_safe.
 
 :- type pragma_var    
-	--->	pragma_var(var, string, mode).
+	--->	pragma_var(prog_var, string, mode).
 	  	% variable, name, mode
 		% we explicitly store the name because we need the real
 		% name in code_gen
@@ -354,7 +359,7 @@
 
 % clause/4 defined above
 
-:- type goal		==	pair(goal_expr, term__context).
+:- type goal		==	pair(goal_expr, prog_context).
 
 :- type goal_expr	
 
@@ -370,26 +375,40 @@
 	;	fail		% empty disjunction
 
 	% quantifiers
-	;	{ some(vars,goal) }
+	;	{ some(prog_vars, goal) }
 				% existential quantification
 				% (The curly braces just quote the 'some'/2.)
-	;	all(vars,goal)	% universal quantification
+	;	all(prog_vars, goal)	% universal quantification
 
 	% implications
-	;	implies(goal,goal)	% A => B
-	;	equivalent(goal,goal)	% A <=> B
+	;	implies(goal, goal)	% A => B
+	;	equivalent(goal, goal)	% A <=> B
 
 	% negation and if-then-else
 	;	not(goal)
-	;	if_then(vars,goal,goal)
-	;	if_then_else(vars,goal,goal,goal)
+	;	if_then(prog_vars, goal, goal)
+	;	if_then_else(prog_vars, goal, goal, goal)
 
 	% atomic goals
-	;	call(sym_name, list(term), purity)
-	;	unify(term, term).
+	;	call(sym_name, list(prog_term), purity)
+	;	unify(prog_term, prog_term).
+
+
+	% These type equivalences are for the type of program variables
+	% and associated structures.
+
+:- type prog_var_type	--->	prog_var_type.
+:- type prog_var	==	var(prog_var_type).
+:- type prog_varset	==	varset(prog_var_type).
+:- type prog_substitution ==	substitution(prog_var_type).
+:- type prog_term	==	term(prog_var_type).
+:- type prog_vars	==	list(prog_var).
+
+	% A prog_context is just a term__context.
+
+:- type prog_context	==	term__context.
 
 :- type goals		==	list(goal).
-:- type vars		==	list(var).
 
 %-----------------------------------------------------------------------------%
 
@@ -424,17 +443,21 @@
 :- type equality_pred	==	sym_name.
 
 	% probably type parameters should be variables not terms.
-:- type type_param	==	term.
+:- type type_param	==	term(tvar_type).
 
 	% Module qualified types are represented as ':'/2 terms.
 	% Use type_util:type_to_type_id to convert a type to a qualified
 	% type_id and a list of arguments.
 	% type_util:construct_type to construct a type from a type_id 
 	% and a list of arguments.
-:- type (type)		==	term.
+:- type (type)		==	term(tvar_type).
+:- type type_term	==	term(tvar_type).
 
-:- type tvar		==	var.	% used for type variables
-:- type tvarset		==	varset. % used for sets of type variables
+:- type tvar_type	--->	type_var.
+:- type tvar		==	var(tvar_type).
+					% used for type variables
+:- type tvarset		==	varset(tvar_type).
+					% used for sets of type variables
 :- type tsubst		==	map(tvar, type). % used for type substitutions
 
 	% existq_tvars is used to record the set of type variables which are
@@ -458,6 +481,11 @@
 	% type terms (see above), we need a separate data structure for inst 
 	% terms.
 
+:- type inst_var_type	--->	inst_var_type.
+:- type inst_var	==	var(inst_var_type).
+:- type inst_term	==	term(inst_var_type).
+:- type inst_varset	==	varset(inst_var_type).
+
 % inst_defn/3 defined above
 
 :- type inst_defn	
@@ -465,7 +493,7 @@
 	;	abstract_inst(sym_name, list(inst_param)).
 
 	% probably inst parameters should be variables not terms
-:- type inst_param	==	term.
+:- type inst_param	==	inst_term.
 
 	% An `inst_name' is used as a key for the inst_table.
 	% It is either a user-defined inst `user_inst(Name, Args)',

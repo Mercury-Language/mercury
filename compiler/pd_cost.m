@@ -36,7 +36,7 @@
 :- implementation.
 
 :- import_module hlds_data, prog_data.
-:- import_module int, list, set, std_util, term.
+:- import_module int, list, set, std_util.
 
 %-----------------------------------------------------------------------------%
 
@@ -111,7 +111,7 @@ pd_cost__goal(pragma_c_code(Attributes, _, _, Args, _, _, _) - _, Cost) :-
 	pd_cost__reg_assign(AssignCost),
 	Cost is Cost1 + Cost2 + AssignCost * InputArgs.
 
-:- pred pd_cost__unify(set(var)::in, unification::in, int::out) is det.
+:- pred pd_cost__unify(set(prog_var)::in, unification::in, int::out) is det.
 
 pd_cost__unify(_, assign(_, _), 0).
 

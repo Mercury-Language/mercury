@@ -219,8 +219,8 @@ par_conj_gen__generate_det_par_conj_2([Goal|Goals], N, SyncTerm, SpSlot,
 			Initial, MaybeEnd, RestCode),
 	{ Code = tree(ThisCode, RestCode) }.
 
-:- pred par_conj_gen__find_outputs(list(var), instmap, instmap, inst_table,
-		module_info, list(var), list(var)).
+:- pred par_conj_gen__find_outputs(list(prog_var), instmap, instmap, inst_table,
+		module_info, list(prog_var), list(prog_var)).
 :- mode par_conj_gen__find_outputs(in, in, in, in, in, in, out) is det.
 
 par_conj_gen__find_outputs([], _Initial, _Final, _InstTable, _ModuleInfo,
@@ -240,7 +240,7 @@ par_conj_gen__find_outputs([Var|Vars],  Initial, Final, InstTable, ModuleInfo,
 	par_conj_gen__find_outputs(Vars, Initial, Final, InstTable, ModuleInfo,
 			Outputs1, Outputs).
 
-:- pred par_conj_gen__copy_outputs(list(var), lval, code_tree,
+:- pred par_conj_gen__copy_outputs(list(prog_var), lval, code_tree,
 		code_info, code_info).
 :- mode par_conj_gen__copy_outputs(in, in, out, in, out) is det.
 
@@ -263,7 +263,7 @@ par_conj_gen__copy_outputs([Var|Vars], SpSlot, Code) -->
 	{ Code = tree(ThisCode, RestCode) },
 	par_conj_gen__copy_outputs(Vars, SpSlot, RestCode).
 
-:- pred par_conj_gen__place_all_outputs(list(var), code_info, code_info).
+:- pred par_conj_gen__place_all_outputs(list(prog_var), code_info, code_info).
 :- mode par_conj_gen__place_all_outputs(in, in, out) is det.
 
 par_conj_gen__place_all_outputs([]) --> [].

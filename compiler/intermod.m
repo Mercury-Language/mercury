@@ -61,9 +61,9 @@
 :- implementation.
 
 :- import_module assoc_list, dir, getopt, int, list, map, require, set.
-:- import_module std_util, string, term, varset.
+:- import_module std_util, string.
 
-:- import_module code_util, globals, goal_util, instmap.
+:- import_module code_util, globals, goal_util, instmap, term, varset.
 :- import_module hlds_data, hlds_goal, hlds_pred, hlds_out, inlining, llds.
 :- import_module mercury_to_mercury, mode_util, modules.
 :- import_module options, passes_aux, prog_data, prog_io, prog_out, prog_util.
@@ -136,7 +136,7 @@ intermod__write_optfile(ModuleInfo0, ModuleInfo) -->
 			bool,			% do the c_header_codes for
 				% the module need writing, yes if there
 				% are pragma_c_code procs being exported
-			map(var, type),		% Vartypes and tvarset for the
+			map(prog_var, type),	% Vartypes and tvarset for the
 			tvarset			% current pred
 		).
 
@@ -278,7 +278,8 @@ has_ho_input(ModuleInfo, ProcInfo) :-
 		ArgModes, VarTypes).
 
 :- pred check_for_ho_input_args(instmap::in, inst_table::in, module_info::in,
-		list(var)::in, list(mode)::in, map(var, type)::in) is semidet.
+		list(prog_var)::in, list(mode)::in,
+		map(prog_var, type)::in) is semidet.
 
 check_for_ho_input_args(InstMap, InstTable, ModuleInfo, [HeadVar | HeadVars],
 			[ArgMode | ArgModes], VarTypes) :-
@@ -614,7 +615,7 @@ intermod_info_add_proc(PredId, DoWrite) -->
 	).
 
 	% Resolve overloading and module qualify everything in a unify_rhs.
-:- pred intermod__module_qualify_unify_rhs(var::in, unify_rhs::in,
+:- pred intermod__module_qualify_unify_rhs(prog_var::in, unify_rhs::in,
 		unify_rhs::out, bool::out, intermod_info::in,
 		intermod_info::out) is det.
 
@@ -1112,7 +1113,7 @@ intermod__write_pragmas(SymName, Arity, [Marker | Markers], PredOrFunc) -->
 
 	% Some pretty kludgy stuff to get c code written correctly.
 :- pred intermod__write_c_code(sym_name::in, pred_or_func::in, 
-	list(var)::in, varset::in, list(clause)::in, proc_table::in,
+	list(prog_var)::in, prog_varset::in, list(clause)::in, proc_table::in,
 	inst_table::in, io__state::di, io__state::uo) is det.
 
 intermod__write_c_code(_, _, _, _, [], _, _) --> [].
@@ -1147,9 +1148,10 @@ intermod__write_c_code(SymName, PredOrFunc, HeadVars, Varset,
 
 :- pred intermod__write_c_clauses(proc_table::in, list(proc_id)::in, 
 		pred_or_func::in, pragma_c_code_impl::in,
-		pragma_c_code_attributes::in, list(var)::in, varset::in,
-		list(maybe(pair(string, mode)))::in, sym_name::in,
-		inst_table::in, io__state::di, io__state::uo) is det.
+		pragma_c_code_attributes::in, list(prog_var)::in,
+		prog_varset::in, list(maybe(pair(string, mode)))::in,
+		sym_name::in, inst_table::in, io__state::di, io__state::uo)
+		is det.
 
 intermod__write_c_clauses(_, [], _, _, _, _, _, _, _, _) --> [].
 intermod__write_c_clauses(Procs, [ProcId | ProcIds], PredOrFunc,
@@ -1171,9 +1173,9 @@ intermod__write_c_clauses(Procs, [ProcId | ProcIds], PredOrFunc,
 		{ error("intermod__write_c_clauses: no mode declaration") }
 	).
 
-:- pred get_pragma_c_code_vars(list(var)::in,
-		list(maybe(pair(string, mode)))::in, varset::in, list(mode)::in,
-		varset::out, list(pragma_var)::out) is det.
+:- pred get_pragma_c_code_vars(list(prog_var)::in,
+		list(maybe(pair(string, mode)))::in, prog_varset::in,
+		list(mode)::in, prog_varset::out, list(pragma_var)::out) is det.
 
 get_pragma_c_code_vars(HeadVars, VarNames, VarSet0, ArgModes,
 		VarSet, PragmaVars) :- 
@@ -1223,7 +1225,7 @@ get_pragma_c_code_vars(HeadVars, VarNames, VarSet0, ArgModes,
 			intermod_info::in, intermod_info::out) is det.
 :- pred intermod_info_get_write_c_header(bool::out,
 			intermod_info::in, intermod_info::out) is det.
-:- pred intermod_info_get_var_types(map(var, type)::out,
+:- pred intermod_info_get_var_types(map(prog_var, type)::out,
 			intermod_info::in, intermod_info::out) is det.
 :- pred intermod_info_get_tvarset(tvarset::out, intermod_info::in,
 			intermod_info::out) is det.
@@ -1256,7 +1258,7 @@ intermod_info_get_tvarset(TVarSet)	--> =(info(_,_,_,_,_,_,_,_,_,TVarSet)).
 			intermod_info::in, intermod_info::out) is det.
 :- pred intermod_info_set_write_header(intermod_info::in,
 			intermod_info::out) is det.
-:- pred intermod_info_set_var_types(map(var, type)::in, intermod_info::in, 
+:- pred intermod_info_set_var_types(map(prog_var, type)::in, intermod_info::in, 
 			intermod_info::out) is det.
 :- pred intermod_info_set_tvarset(tvarset::in, intermod_info::in,
 			intermod_info::out) is det.

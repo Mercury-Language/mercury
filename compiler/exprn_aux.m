@@ -8,8 +8,8 @@
 
 :- interface.
 
-:- import_module llds, options.
-:- import_module list, std_util, bool, assoc_list, term.
+:- import_module llds, options, prog_data.
+:- import_module list, std_util, bool, assoc_list.
 
 :- type exprn_opts
 	--->	nlg_asm_sgt_ubf(
@@ -54,7 +54,8 @@
 :- pred exprn_aux__substitute_rval_in_rval(rval, rval, rval, rval).
 :- mode exprn_aux__substitute_rval_in_rval(in, in, in, out) is det.
 
-:- pred exprn_aux__substitute_vars_in_rval(assoc_list(var, rval), rval, rval).
+:- pred exprn_aux__substitute_vars_in_rval(assoc_list(prog_var, rval),
+		rval, rval).
 :- mode exprn_aux__substitute_vars_in_rval(in, in, out) is det.
 
 :- pred exprn_aux__substitute_rvals_in_rval(assoc_list(rval, rval), rval, rval).
@@ -63,10 +64,10 @@
 :- pred exprn_aux__substitute_lval_in_lval(lval, lval, lval, lval).
 :- mode exprn_aux__substitute_lval_in_lval(in, in, in, out) is det.
 
-:- pred exprn_aux__vars_in_lval(lval, list(var)).
+:- pred exprn_aux__vars_in_lval(lval, list(prog_var)).
 :- mode exprn_aux__vars_in_lval(in, out) is det.
 
-:- pred exprn_aux__vars_in_rval(rval, list(var)).
+:- pred exprn_aux__vars_in_rval(rval, list(prog_var)).
 :- mode exprn_aux__vars_in_rval(in, out) is det.
 
 :- pred exprn_aux__simplify_rval(rval, rval).
@@ -337,7 +338,7 @@ exprn_aux__vars_in_lval(mem_ref(Rval), Vars) :-
 	exprn_aux__vars_in_rval(Rval, Vars).
 exprn_aux__vars_in_lval(lvar(Var), [Var]).
 
-:- pred exprn_aux__vars_in_mem_ref(mem_ref, list(var)).
+:- pred exprn_aux__vars_in_mem_ref(mem_ref, list(prog_var)).
 :- mode exprn_aux__vars_in_mem_ref(in, out) is det.
 
 exprn_aux__vars_in_mem_ref(stackvar_ref(_), []).
@@ -345,7 +346,7 @@ exprn_aux__vars_in_mem_ref(framevar_ref(_), []).
 exprn_aux__vars_in_mem_ref(heap_ref(Rval, _, _), Vars) :-
 	exprn_aux__vars_in_rval(Rval, Vars).
 
-:- pred exprn_aux__vars_in_args(list(maybe(rval)), list(var)).
+:- pred exprn_aux__vars_in_args(list(maybe(rval)), list(prog_var)).
 :- mode exprn_aux__vars_in_args(in, out) is det.
 
 exprn_aux__vars_in_args([], []).

@@ -15,7 +15,7 @@
 
 :- import_module pd_info, hlds_goal, hlds_module, hlds_pred, mode_errors.
 :- import_module prog_data, simplify, (inst), hlds_data, instmap.
-:- import_module bool, list, map, set, std_util, term.
+:- import_module bool, list, map, set, std_util.
 
 	% Pick out the pred_proc_ids of the calls in a list of atomic goals.
 :- pred pd_util__goal_get_calls(hlds_goal::in,
@@ -29,7 +29,7 @@
 		list(mode_error_info)::out, pd_info::pd_info_di, 
 		pd_info::pd_info_uo) is det.
 
-:- pred pd_util__unique_modecheck_goal(set(var)::in, hlds_goal::in, 
+:- pred pd_util__unique_modecheck_goal(set(prog_var)::in, hlds_goal::in, 
 		hlds_goal::out, list(mode_error_info)::out, 
 		pd_info::pd_info_di, pd_info::pd_info_uo) is det.
 
@@ -42,19 +42,20 @@
 	% Find out which variables of the goal are interesting
 	% for deforestation.
 :- pred pd_util__get_branch_vars_goal(hlds_goal::in, 
-		maybe(pd_branch_info(var))::out, pd_info::pd_info_di,
+		maybe(pd_branch_info(prog_var))::out, pd_info::pd_info_di,
 		pd_info::pd_info_uo) is det.
 
-:- pred pd_util__requantify_goal(hlds_goal::in, set(var)::in, hlds_goal::out,
-		pd_info::pd_info_di, pd_info::pd_info_uo) is det.
+:- pred pd_util__requantify_goal(hlds_goal::in, set(prog_var)::in,
+		hlds_goal::out, pd_info::pd_info_di, pd_info::pd_info_uo)
+		is det.
 
 :- pred pd_util__recompute_instmap_delta(hlds_goal::in, hlds_goal::out, 
 		pd_info::pd_info_di, pd_info::pd_info_uo) is det.
 
 	% Convert from information about the argument positions to 
 	% information about the argument variables.
-:- pred pd_util__convert_branch_info(pd_branch_info(int)::in, list(var)::in,
-		pd_branch_info(var)::out) is det.	
+:- pred pd_util__convert_branch_info(pd_branch_info(int)::in,
+		list(prog_var)::in, pd_branch_info(prog_var)::out) is det.	
 
 	% inst_MSG(InstA, InstB, InstC):
 	% 	Take the most specific generalisation of two insts.
@@ -102,9 +103,9 @@
 	% attempts to match `simple' lists of goals, which contain
 	% only conj, some, not and atomic goals, since deforest.m
 	% only attempts to optimize those types of conjunctions.
-:- pred pd_util__goals_match(module_info::in, hlds_goal::in, list(var)::in,
-		list(type)::in, hlds_goal::in, map(var, type)::in,
-		map(var, var)::out, tsubst::out) is semidet.
+:- pred pd_util__goals_match(module_info::in, hlds_goal::in, list(prog_var)::in,
+		list(type)::in, hlds_goal::in, map(prog_var, type)::in,
+		map(prog_var, prog_var)::out, tsubst::out) is semidet.
 
 	% pd_util__can_reorder_goals(ModuleInfo, FullyStrict, Goal1, Goal2).
 	%
@@ -130,9 +131,9 @@
 
 :- import_module pd_cost, hlds_data, mode_util.
 :- import_module unused_args, inst_match, (inst), quantification, mode_util.
-:- import_module code_aux, purity, mode_info, unique_modes.
+:- import_module code_aux, purity, mode_info, unique_modes, term.
 :- import_module type_util, det_util, options.
-:- import_module assoc_list, int, require, set, term.
+:- import_module assoc_list, int, require, set.
 
 pd_util__goal_get_calls(Goal0, CalledPreds) :-
 	goal_to_conj_list(Goal0, GoalList),
@@ -244,7 +245,7 @@ pd_util__unique_modecheck_goal(LiveVars, Goal0, Goal, Errors) -->
 
 	% Work out which vars are live later in the computation based
 	% on which of the non-local variables are not clobbered by the goal.
-:- pred pd_util__get_goal_live_vars(hlds_goal::in, set(var)::out, 
+:- pred pd_util__get_goal_live_vars(hlds_goal::in, set(prog_var)::out, 
 		pd_info::pd_info_di, pd_info::pd_info_uo) is det.
 
 pd_util__get_goal_live_vars(_ - GoalInfo, Vars) -->
@@ -262,8 +263,8 @@ pd_util__get_goal_live_vars(_ - GoalInfo, Vars) -->
 		InstMapAfter, Vars0, Vars) }.
 
 :- pred pd_util__get_goal_live_vars_2(inst_table::in, module_info::in,
-	list(var)::in, instmap::in, set(var)::in,
-	set(var)::out) is det.
+	list(prog_var)::in, instmap::in, set(prog_var)::in,
+	set(prog_var)::out) is det.
 
 pd_util__get_goal_live_vars_2(_, _, [], _, Vars, Vars).
 pd_util__get_goal_live_vars_2(InstTable, ModuleInfo, [NonLocal | NonLocals], 
@@ -297,7 +298,7 @@ pd_util__convert_branch_info(ArgInfo, Args, VarInfo) :-
 	VarInfo = pd_branch_info(BranchVarMap, LeftVars, OpaqueVars).
 
 :- pred pd_util__convert_branch_info_2(assoc_list(int, set(int))::in, 
-		list(var)::in, pd_var_info::in, pd_var_info::out) is det.
+		list(prog_var)::in, pd_var_info::in, pd_var_info::out) is det.
 
 pd_util__convert_branch_info_2([], _, Info, Info).
 pd_util__convert_branch_info_2([ArgNo - Branches | ArgInfos], Args, 
@@ -308,7 +309,7 @@ pd_util__convert_branch_info_2([ArgNo - Branches | ArgInfos], Args,
 
 %-----------------------------------------------------------------------------%
 
-:- type pd_var_info 	==	branch_info_map(var).
+:- type pd_var_info 	==	branch_info_map(prog_var).
 
 	% Find out which arguments of the procedure are interesting
 	% for deforestation.
@@ -383,8 +384,8 @@ pd_util__get_opaque_args(InstMap, InstTable, ModuleInfo, ArgNo,
 	% From the information about variables for which we have extra
 	% information in the branches, compute the argument numbers
 	% for which we have extra information.
-:- pred pd_util__get_extra_info_headvars(list(var)::in, int::in,
-		set(var)::in, pd_var_info::in, 
+:- pred pd_util__get_extra_info_headvars(list(prog_var)::in, int::in,
+		set(prog_var)::in, pd_var_info::in, 
 		branch_info_map(int)::in, branch_info_map(int)::out, 
 		set(int)::in, set(int)::out) is det.
 
@@ -439,8 +440,8 @@ pd_util__get_branch_vars_goal(Goal, MaybeBranchInfo) -->
 
 :- pred pd_util__get_branch_vars_goal_2(instmap::in, inst_table::in,
 	module_info::in, list(hlds_goal)::in, bool::in, instmap::in,
-	set(var)::in, set(var)::out, pd_var_info::in, pd_var_info::out)
-	is semidet.
+	set(prog_var)::in, set(prog_var)::out, pd_var_info::in,
+	pd_var_info::out) is semidet.
 
 pd_util__get_branch_vars_goal_2(_, _, _, [], yes, _, LeftVars, LeftVars,
 		Vars, Vars).
@@ -500,7 +501,7 @@ pd_util__get_branch_instmap_deltas(disj(Disjuncts, _) - _, InstMapDeltas) :-
 	% the left supply the top-level functor. Eventually this should
 	% also check for if-then-elses with simple conditions.
 :- pred pd_util__get_left_vars(hlds_goal::in, 
-		set(var)::in, set(var)::out) is det.
+		set(prog_var)::in, set(prog_var)::out) is det.
 
 pd_util__get_left_vars(Goal, Vars0, Vars) :-
 	( Goal = switch(Var, _, _, _) - _ ->
@@ -563,7 +564,7 @@ pd_util__get_branch_vars(InstMapBefore, InstTable, ModuleInfo, Goal,
 	% Look at the goals in the branches for extra information.
 :- pred pd_util__get_sub_branch_vars_goal(inst_table::in, module_info::in,
 		pd_arg_info::in, list(hlds_goal)::in, instmap::in,
-		branch_info_map(var)::in, branch_info_map(var)::out,
+		branch_info_map(prog_var)::in, branch_info_map(prog_var)::out,
 		module_info::out) is det.
 
 pd_util__get_sub_branch_vars_goal(_, Module, _, [], _, Vars, Vars, Module).
@@ -599,7 +600,7 @@ pd_util__get_sub_branch_vars_goal(InstTable, ModuleInfo0, ProcArgInfo,
 
 :- pred pd_util__examine_branch_list(inst_table::in, module_info::in,
 	pd_arg_info::in, int::in, list(hlds_goal)::in, instmap::in,
-	branch_info_map(var)::in, branch_info_map(var)::out) is det.
+	branch_info_map(prog_var)::in, branch_info_map(prog_var)::out) is det.
 
 pd_util__examine_branch_list(_, _, _, _, [], _, Vars, Vars).
 pd_util__examine_branch_list(InstTable, ModuleInfo, ProcArgInfo, BranchNo,
@@ -612,9 +613,9 @@ pd_util__examine_branch_list(InstTable, ModuleInfo, ProcArgInfo, BranchNo,
 		NextBranch, Goals, InstMap, Vars1, Vars).
 
 :- pred pd_util__examine_case_list(inst_table::in, module_info::in,
-	pd_arg_info::in, int::in, var::in, list(case)::in, instmap::in,
-	branch_info_map(var)::in, branch_info_map(var)::out, module_info::out)
-	is det.
+	pd_arg_info::in, int::in, prog_var::in, list(case)::in, instmap::in,
+	branch_info_map(prog_var)::in, branch_info_map(prog_var)::out,
+	module_info::out) is det.
 
 pd_util__examine_case_list(_, Module, _, _, _, [], _, Vars, Vars, Module).
 pd_util__examine_case_list(InstTable, ModuleInfo0, ProcArgInfo, BranchNo, Var,
@@ -631,7 +632,8 @@ pd_util__examine_case_list(InstTable, ModuleInfo0, ProcArgInfo, BranchNo, Var,
 
 :- pred pd_util__examine_branch(inst_table::in, module_info::in,
 		pd_arg_info::in, int::in, list(hlds_goal)::in, instmap::in,
-		branch_info_map(var)::in, branch_info_map(var)::out) is det.
+		branch_info_map(prog_var)::in, branch_info_map(prog_var)::out)
+		is det.
 
 pd_util__examine_branch(_, _, _, _, [], _, Vars, Vars).
 pd_util__examine_branch(InstTable, ModuleInfo, ProcArgInfo, BranchNo, 
@@ -666,8 +668,8 @@ pd_util__examine_branch(InstTable, ModuleInfo, ProcArgInfo, BranchNo,
 	pd_util__examine_branch(InstTable, ModuleInfo, ProcArgInfo, BranchNo,
 		Goals, InstMap1, Vars3, Vars).
 
-:- pred combine_vars(branch_info_map(var)::in, int::in, list(var)::in,
-		branch_info_map(var)::out) is det.
+:- pred combine_vars(branch_info_map(prog_var)::in, int::in, list(prog_var)::in,
+		branch_info_map(prog_var)::out) is det.
 
 combine_vars(Vars, _, [], Vars).
 combine_vars(Vars0, BranchNo, [ExtraVar | ExtraVars], Vars) :-
@@ -932,8 +934,9 @@ pd_util__goals_match(_ModuleInfo, OldGoal, OldArgs, OldArgTypes,
 	map__apply_to_list(NewArgs, NewVarTypes, NewArgTypes),
 	type_list_subsumes(MatchingArgTypes, NewArgTypes, TypeSubn).
 
-:- pred pd_util__collect_matching_arg_types(list(var)::in, list(type)::in,
-		map(var, var)::in, list(type)::in, list(type)::out) is det.
+:- pred pd_util__collect_matching_arg_types(list(prog_var)::in, list(type)::in,
+		map(prog_var, prog_var)::in,
+		list(type)::in, list(type)::out) is det.
 
 pd_util__collect_matching_arg_types([], [], _, Types0, Types) :-
 	list__reverse(Types0, Types).
@@ -952,8 +955,8 @@ pd_util__collect_matching_arg_types([Arg | Args], [Type | Types],
 		Renaming, MatchingTypes1, MatchingTypes).
 
 :- pred pd_util__goals_match_2(list(hlds_goal)::in,
-		list(hlds_goal)::in, map(var, var)::in,
-		map(var, var)::out) is semidet.
+		list(hlds_goal)::in, map(prog_var, prog_var)::in,
+		map(prog_var, prog_var)::out) is semidet.
 
 pd_util__goals_match_2([], [], R, R).
 pd_util__goals_match_2([OldGoal | OldGoals], [NewGoal | NewGoals],

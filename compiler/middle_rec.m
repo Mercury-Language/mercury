@@ -25,11 +25,11 @@
 
 :- implementation.
 
-:- import_module hlds_module, hlds_data, prog_out.
+:- import_module hlds_module, hlds_data, prog_data, prog_out.
 :- import_module code_gen, unify_gen, code_util, code_aux, opt_util.
 
 :- import_module bool, set, int, std_util, tree, list, assoc_list, require.
-:- import_module string, term.
+:- import_module string.
 
 %---------------------------------------------------------------------------%
 
@@ -87,7 +87,7 @@ middle_rec__match_and_generate(Goal, Instrs, CodeInfo0, CodeInfo) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred middle_rec__generate_ite(list(var), hlds_goal, hlds_goal,
+:- pred middle_rec__generate_ite(list(prog_var), hlds_goal, hlds_goal,
 	hlds_goal, ite_rec, store_map, hlds_goal_info,
 	code_tree, code_info, code_info).
 :- mode middle_rec__generate_ite(in, in, in, in, in, in, in, out, in, out)
@@ -103,7 +103,7 @@ middle_rec__generate_ite(_Vars, _Cond, _Then, _Else, _Rec, _IteGoalInfo, _SM,
 
 %---------------------------------------------------------------------------%
 
-:- pred middle_rec__generate_switch(var, cons_id, hlds_goal, hlds_goal,
+:- pred middle_rec__generate_switch(prog_var, cons_id, hlds_goal, hlds_goal,
 	store_map, hlds_goal_info, code_tree, code_info, code_info).
 :- mode middle_rec__generate_switch(in, in, in, in, in, in, out, in, out)
 	is semidet.

@@ -40,9 +40,9 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module bool, int, char, std_util, varset, term, require, string.
+:- import_module bool, int, char, std_util, require, string.
 :- import_module prog_io, prog_out, prog_util, equiv_type, purity.
-:- import_module globals, options, hlds_data.
+:- import_module globals, options, hlds_data, term, varset.
 %-----------------------------------------------------------------------------%
 
 	% The following is a hard-coded hack.
@@ -128,7 +128,7 @@ goedel_output_item_list([Item - Context | Items]) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred goedel_output_item(item, term__context, io__state, io__state).
+:- pred goedel_output_item(item, prog_context, io__state, io__state).
 :- mode goedel_output_item(in, in, di, uo) is det.
 
 	% dispatch on the different types of items
@@ -145,8 +145,8 @@ goedel_output_item(mode_defn(VarSet, ModeDefn, _Cond), Context) -->
 
 	% XXX Should we ignore ClassContext and ExistQVars,
 	% or give an error if they're non-empty?
-goedel_output_item(pred(VarSet, _ExistQVars, PredName, TypesAndModes,
-		_Det, _Cond, Purity, _ClassContext), Context) -->
+goedel_output_item(pred(TypeVarSet, InstVarSet, _ExistQVars, PredName,
+		TypesAndModes, _Det, _Cond, Purity, _ClassContext), Context) -->
 	io__write_string("\n"),
 	maybe_write_line_number(Context),
 	(   { Purity = pure } ->
@@ -156,11 +156,12 @@ goedel_output_item(pred(VarSet, _ExistQVars, PredName, TypesAndModes,
 		write_purity(Purity),
 		io__write_string(" */ ")
 	),
-	goedel_output_pred(VarSet, PredName, TypesAndModes, Context).
+	goedel_output_pred(TypeVarSet, InstVarSet, PredName, TypesAndModes,
+		Context).
 
 	% XXX Should we ignore ClassContext and ExistQVars,
 	% or give an error if they're non-empty?
-goedel_output_item(func(VarSet, _ExistQVars, PredName,
+goedel_output_item(func(TypeVarSet, InstVarSet, _ExistQVars, PredName,
 		TypesAndModes, RetTypeAndMode, _Det,
 		_Cond, Purity, _ClassContext), Context) -->
 	io__write_string("\n"),
@@ -172,8 +173,8 @@ goedel_output_item(func(VarSet, _ExistQVars, PredName,
 		write_purity(Purity),
 		io__write_string(" */ ")
 	),
-	goedel_output_func(VarSet, PredName, TypesAndModes, RetTypeAndMode,
-		Context).
+	goedel_output_func(TypeVarSet, InstVarSet, PredName, TypesAndModes,
+		RetTypeAndMode, Context).
 
 goedel_output_item(pred_mode(VarSet, PredName, Modes, _Det, _Cond), Context) -->
 	{ Modes = argument_modes(ArgInstTable, ArgModes) },
@@ -218,7 +219,7 @@ goedel_output_item(instance(_, _, _, _, _), _) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred goedel_output_inst_defn(varset, inst_defn, term__context,
+:- pred goedel_output_inst_defn(inst_varset, inst_defn, prog_context,
 			io__state, io__state).
 :- mode goedel_output_inst_defn(in, in, in, di, uo) is det.
 
@@ -226,7 +227,7 @@ goedel_output_inst_defn(_VarSet, _InstDefn, _Context) -->
 	% io__write_string("% inst definitions not supported\n"),
 	[].
 
-:- pred goedel_output_mode_defn(varset, mode_defn, term__context,
+:- pred goedel_output_mode_defn(inst_varset, mode_defn, prog_context,
 			io__state, io__state).
 :- mode goedel_output_mode_defn(in, in, in, di, uo) is det.
 
@@ -236,14 +237,14 @@ goedel_output_mode_defn(_VarSet, _ModeDefn, _Context) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred goedel_output_type_defn(varset, type_defn, term__context,
+:- pred goedel_output_type_defn(tvarset, type_defn, prog_context,
 			io__state, io__state).
 :- mode goedel_output_type_defn(in, in, in, di, uo) is det.
 
 goedel_output_type_defn(VarSet, TypeDefn, Context) -->
 	goedel_output_type_defn_2(TypeDefn, VarSet, Context).
 
-:- pred goedel_output_type_defn_2(type_defn, varset, term__context,
+:- pred goedel_output_type_defn_2(type_defn, tvarset, prog_context,
 			io__state, io__state).
 :- mode goedel_output_type_defn_2(in, in, in, di, uo) is det.
 
@@ -309,8 +310,8 @@ goedel_output_type_defn_2(du_type(Name, Args, Ctors, EqualityPred),
 				Context)
 	).
 
-:- pred goedel_output_type_defn_3(string, string, list(term), list(constructor),
-			varset, term__context, io__state, io__state).
+:- pred goedel_output_type_defn_3(string, string, list(type), list(constructor),
+			tvarset, prog_context, io__state, io__state).
 :- mode goedel_output_type_defn_3(in, in, in, in, in, in, di, uo) is det.
 
 goedel_output_type_defn_3(Name2, Name3, Args, Ctors, VarSet, Context) -->
@@ -329,9 +330,10 @@ goedel_output_type_defn_3(Name2, Name3, Args, Ctors, VarSet, Context) -->
 	),
 	io__write_string(".\n"),
 	goedel_output_ctors(Ctors,
-		term__functor(term__atom(Name2), Args, Context), VarSet).
+		term__functor(term__atom(Name2), Args, Context),
+		VarSet).
 
-:- pred goedel_output_ctors(list(constructor), type, varset,
+:- pred goedel_output_ctors(list(constructor), type, tvarset,
 				io__state, io__state).
 :- mode goedel_output_ctors(in, in, in, di, uo) is det.
 
@@ -374,7 +376,7 @@ goedel_output_ctors([Ctor | Ctors], Type, VarSet) -->
 	io__write_string(".\n"),
 	goedel_output_ctors(Ctors, Type, VarSet).
 
-:- pred goedel_output_remaining_ctor_args(list(constructor_arg), varset,
+:- pred goedel_output_remaining_ctor_args(list(constructor_arg), tvarset,
 		io__state, io__state).
 :- mode goedel_output_remaining_ctor_args(in, in, di, uo) is det.
 
@@ -386,25 +388,25 @@ goedel_output_remaining_ctor_args([_Name - Type | Args], VarSet) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred goedel_output_pred(varset, sym_name, types_and_modes,
-		term__context, io__state, io__state).
-:- mode goedel_output_pred(in, in, in, in, di, uo) is det.
+:- pred goedel_output_pred(tvarset, inst_varset, sym_name, types_and_modes,
+		prog_context, io__state, io__state).
+:- mode goedel_output_pred(in, in, in, in, in, di, uo) is det.
 
-goedel_output_pred(VarSet, PredName, TypesAndModes, Context) -->
+goedel_output_pred(TypeVarSet, InstVarSet, PredName, TypesAndModes, Context) -->
 	{ TypesAndModes = types_and_modes(InstTable, TMs) },
 	{ split_types_and_modes(TMs, Types, MaybeModes) },
-	goedel_output_pred_type(VarSet, PredName, Types, Context),
+	goedel_output_pred_type(TypeVarSet, PredName, Types, Context),
 	(
 		{ MaybeModes = yes(Modes) }
 	->
-		goedel_output_pred_mode(VarSet, PredName, Modes, Context,
+		goedel_output_pred_mode(InstVarSet, PredName, Modes, Context,
 				InstTable)
 	;
 		[]
 	).
 
-:- pred goedel_output_pred_type(varset, sym_name, list(type),
-		term__context, io__state, io__state).
+:- pred goedel_output_pred_type(tvarset, sym_name, list(type),
+		prog_context, io__state, io__state).
 :- mode goedel_output_pred_type(in, in, in, in, di, uo) is det.
 
 goedel_output_pred_type(VarSet, PredName, Types, _Context) -->
@@ -432,7 +434,8 @@ goedel_output_pred_type(VarSet, PredName, Types, _Context) -->
 	),
 	io__write_string(".\n").
 
-:- pred goedel_output_remaining_types(list(type), varset, io__state, io__state).
+:- pred goedel_output_remaining_types(list(type), tvarset,
+		io__state, io__state).
 :- mode goedel_output_remaining_types(in, in, di, uo) is det.
 
 goedel_output_remaining_types([], _VarSet) --> [].
@@ -443,27 +446,28 @@ goedel_output_remaining_types([Type | Types], VarSet) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred goedel_output_func(varset, sym_name, types_and_modes, type_and_mode,
-		term__context, io__state, io__state).
-:- mode goedel_output_func(in, in, in, in, in, di, uo) is det.
+:- pred goedel_output_func(tvarset, inst_varset, sym_name, types_and_modes,
+		type_and_mode, prog_context, io__state, io__state).
+:- mode goedel_output_func(in, in, in, in, in, in, di, uo) is det.
 
-goedel_output_func(VarSet, PredName, TypesAndModes, RetTypeAndMode, Context) -->
+goedel_output_func(TypeVarSet, InstVarSet, PredName, TypesAndModes,
+		RetTypeAndMode, Context) -->
 	{ TypesAndModes = types_and_modes(InstTable, TMs) },
 	{ split_types_and_modes(TMs, Types, MaybeModes) },
 	{ split_type_and_mode(RetTypeAndMode, RetType, MaybeRetMode) },
-	goedel_output_func_type(VarSet, PredName, Types, RetType, Context),
+	goedel_output_func_type(TypeVarSet, PredName, Types, RetType, Context),
 	(
 		{ MaybeModes = yes(Modes) },
 		{ MaybeRetMode = yes(RetMode) }
 	->
-		goedel_output_func_mode(VarSet, PredName, Modes, RetMode,
+		goedel_output_func_mode(InstVarSet, PredName, Modes, RetMode,
 			Context, InstTable)
 	;
 		[]
 	).
 
-:- pred goedel_output_func_type(varset, sym_name, list(type), type,
-		term__context, io__state, io__state).
+:- pred goedel_output_func_type(tvarset, sym_name, list(type), type,
+		prog_context, io__state, io__state).
 :- mode goedel_output_func_type(in, in, in, in, in, di, uo) is det.
 
 goedel_output_func_type(VarSet, FuncName, Types, RetType, _Context) -->
@@ -475,8 +479,8 @@ goedel_output_func_type(VarSet, FuncName, Types, RetType, _Context) -->
 
 	% Output a mode declaration for a predicate.
 
-:- pred goedel_output_pred_mode(varset, sym_name, list(mode), term__context,
-			inst_table, io__state, io__state).
+:- pred goedel_output_pred_mode(inst_varset, sym_name, list(mode),
+		prog_context, inst_table, io__state, io__state).
 :- mode goedel_output_pred_mode(in, in, in, in, in, di, uo) is det.
 
 goedel_output_pred_mode(_VarSet, _PredName, _Modes, _Context, _InstTable) -->
@@ -487,8 +491,8 @@ goedel_output_pred_mode(_VarSet, _PredName, _Modes, _Context, _InstTable) -->
 
 	% Output a mode declaration for a function.
 
-:- pred goedel_output_func_mode(varset, sym_name, list(mode), mode,
-			term__context, inst_table, io__state, io__state).
+:- pred goedel_output_func_mode(inst_varset, sym_name, list(mode), mode,
+			prog_context, inst_table, io__state, io__state).
 :- mode goedel_output_func_mode(in, in, in, in, in, in, di, uo) is det.
 
 goedel_output_func_mode(_VarSet, _PredName, _Modes, _RetMode, _InstTable,
@@ -500,14 +504,14 @@ goedel_output_func_mode(_VarSet, _PredName, _Modes, _RetMode, _InstTable,
 
 	% Output a clause.
 
-:- pred goedel_output_pred_clause(varset, sym_name, list(term), goal,
-			term__context, io__state, io__state).
+:- pred goedel_output_pred_clause(prog_varset, sym_name, list(prog_term), goal,
+			prog_context, io__state, io__state).
 :- mode goedel_output_pred_clause(in, in, in, in, in, di, uo) is det.
 
 goedel_output_pred_clause(VarSet, PredName, Args, Body, Context) -->
 	{ unqualify_name(PredName, PredName2) },
-	goedel_output_term(term__functor(term__atom(PredName2), Args, Context),
-			VarSet),
+	goedel_output_term(term__functor(
+		term__atom(PredName2), Args, Context), VarSet),
 	(
 		{ Body = true - Context }
 	->
@@ -520,16 +524,16 @@ goedel_output_pred_clause(VarSet, PredName, Args, Body, Context) -->
 
 	% Output an equation.
 
-:- pred goedel_output_func_clause(varset, sym_name, list(term), term, goal,
-			term__context, io__state, io__state).
+:- pred goedel_output_func_clause(prog_varset, sym_name, list(prog_term),
+		prog_term, goal, prog_context, io__state, io__state).
 :- mode goedel_output_func_clause(in, in, in, in, in, in, di, uo) is det.
 
 goedel_output_func_clause(VarSet, PredName, Args, Result, Body, Context) -->
 	{ unqualify_name(PredName, PredName2) },
 	goedel_output_term(
 		term__functor(term__atom("="), [
-			term__functor(term__atom(PredName2), Args, Context),
-			Result], Context),
+			term__functor(term__atom(PredName2), Args,
+			Context), Result], Context),
 		VarSet),
 	(
 		{ Body = true - Context }
@@ -541,13 +545,13 @@ goedel_output_func_clause(VarSet, PredName, Args, Result, Body, Context) -->
 	),
 	io__write_string(".\n").
 
-:- pred goedel_output_goal(goal, varset, int, io__state, io__state).
+:- pred goedel_output_goal(goal, prog_varset, int, io__state, io__state).
 :- mode goedel_output_goal(in, in, in, di, uo) is det.
 
 goedel_output_goal(Goal - _Context, VarSet, Indent) -->
 	goedel_output_goal_2(Goal, VarSet, Indent).
 
-:- pred goedel_output_goal_2(goal_expr, varset, int, io__state, io__state).
+:- pred goedel_output_goal_2(goal_expr, prog_varset, int, io__state, io__state).
 :- mode goedel_output_goal_2(in, in, in, di, uo) is det.
 
 goedel_output_goal_2(fail, _, _) -->
@@ -664,7 +668,8 @@ goedel_output_goal_2(call(Name, Term, Purity), VarSet, Indent) -->
 	),
 	{ unqualify_name(Name, Name0) },
 	{ term__context_init(Context0) },
-	goedel_output_call(term__functor(term__atom(Name0), Term, Context0), VarSet, Indent).
+	goedel_output_call(term__functor(term__atom(Name0), Term,
+		Context0), VarSet, Indent).
 
 goedel_output_goal_2(unify(A, B), VarSet, _Indent) -->
 	goedel_output_term(A, VarSet),
@@ -672,13 +677,14 @@ goedel_output_goal_2(unify(A, B), VarSet, _Indent) -->
 	goedel_output_term(B, VarSet).
 
 
-:- pred goedel_output_call(term, varset, int, io__state, io__state).
+:- pred goedel_output_call(prog_term, prog_varset, int, io__state, io__state).
 :- mode goedel_output_call(in, in, in, di, uo) is det.
 
 goedel_output_call(term__variable(Var), VarSet, _Indent) -->
 	goedel_output_var(Var, VarSet).
 
-goedel_output_call(term__functor(Functor, Args, _Context), VarSet, _Indent) -->
+goedel_output_call(term__functor(Functor, Args, _Context), VarSet,
+		_Indent) -->
 	(
 		{ Args = [Arg1, Arg2],
 		  Functor = term__atom("is")
@@ -714,7 +720,7 @@ goedel_output_call(term__functor(Functor, Args, _Context), VarSet, _Indent) -->
 		)
 	).
 
-:- pred goedel_output_disj(goal, varset, int, io__state, io__state).
+:- pred goedel_output_disj(goal, prog_varset, int, io__state, io__state).
 :- mode goedel_output_disj(in, in, in, di, uo) is det.
 
 goedel_output_disj(Goal, VarSet, Indent) -->
@@ -731,7 +737,7 @@ goedel_output_disj(Goal, VarSet, Indent) -->
 		goedel_output_goal(Goal, VarSet, Indent1)
 	).
 
-:- pred goedel_output_some(list(var), varset, io__state, io__state).
+:- pred goedel_output_some(list(prog_var), prog_varset, io__state, io__state).
 :- mode goedel_output_some(in, in, di, uo) is det.
 
 goedel_output_some(Vars, VarSet) -->
@@ -745,7 +751,7 @@ goedel_output_some(Vars, VarSet) -->
 		io__write_string("]")
 	).
 
-:- pred goedel_convert_expression(term, term).
+:- pred goedel_convert_expression(term(T), term(T)).
 :- mode goedel_convert_expression(in, out) is det.
 
 goedel_convert_expression(Term0, Term) :-
@@ -787,7 +793,7 @@ goedel_output_tabs(Indent) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred goedel_output_list_args(term, varset, io__state, io__state).
+:- pred goedel_output_list_args(term(T), varset(T), io__state, io__state).
 :- mode goedel_output_list_args(in, in, di, uo) is det.
 
 goedel_output_list_args(Term, VarSet) -->
@@ -810,7 +816,7 @@ goedel_output_list_args(Term, VarSet) -->
 
 	% write a term to standard output.
 
-:- pred goedel_output_term(term, varset, io__state, io__state).
+:- pred goedel_output_term(term(T), varset(T), io__state, io__state).
 :- mode goedel_output_term(in, in, di, uo) is det.
 
 goedel_output_term(term__variable(Var), VarSet) -->
@@ -876,7 +882,7 @@ goedel_output_term(term__functor(Functor, Args, _), VarSet) -->
 
 	% output the remaining arguments
 
-:- pred goedel_output_term_args(list(term), varset, io__state, io__state).
+:- pred goedel_output_term_args(list(term(T)), varset(T), io__state, io__state).
 :- mode goedel_output_term_args(in, in, di, uo) is det.
 
 goedel_output_term_args([], _VarSet) --> [].
@@ -929,7 +935,7 @@ goedel_quote_char('\b', 'b').
 
 	% output a comma-separated list of variables
 
-:- pred goedel_output_vars(list(var), varset, io__state, io__state).
+:- pred goedel_output_vars(list(var(T)), varset(T), io__state, io__state).
 :- mode goedel_output_vars(in, in, di, uo) is det.
 
 goedel_output_vars([], _VarSet) --> [].
@@ -937,7 +943,7 @@ goedel_output_vars([Var | Vars], VarSet) -->
 	goedel_output_var(Var, VarSet),
 	goedel_output_vars_2(Vars, VarSet).
 
-:- pred goedel_output_vars_2(list(var), varset, io__state, io__state).
+:- pred goedel_output_vars_2(list(var(T)), varset(T), io__state, io__state).
 :- mode goedel_output_vars_2(in, in, di, uo) is det.
 
 goedel_output_vars_2([], _VarSet) --> [].
@@ -952,7 +958,7 @@ goedel_output_vars_2([Var | Vars], VarSet) -->
 	% Variables whose name originally started with `v_' have their
 	% name changed to start with `v__' to avoid name clashes.
 
-:- pred goedel_output_var(var, varset, io__state, io__state).
+:- pred goedel_output_var(var(T), varset(T), io__state, io__state).
 :- mode goedel_output_var(in, in, di, uo) is det.
 
 goedel_output_var(Var, VarSet) -->
@@ -973,7 +979,7 @@ goedel_output_var(Var, VarSet) -->
 
 	% write a type to standard output.
 
-:- pred goedel_output_type(term, varset, io__state, io__state).
+:- pred goedel_output_type((type), tvarset, io__state, io__state).
 :- mode goedel_output_type(in, in, di, uo) is det.
 
 goedel_output_type(term__variable(Var), VarSet) -->
@@ -993,7 +999,7 @@ goedel_output_type(term__functor(Functor, Args, _), VarSet) -->
 
 	% output the remaining arguments
 
-:- pred goedel_output_type_args(list(type), varset, io__state, io__state).
+:- pred goedel_output_type_args(list(type), tvarset, io__state, io__state).
 :- mode goedel_output_type_args(in, in, di, uo) is det.
 
 goedel_output_type_args([], _VarSet) --> [].
@@ -1185,7 +1191,7 @@ convert_var_name(Name, GoedelName) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred maybe_write_line_number(term__context, io__state, io__state).
+:- pred maybe_write_line_number(prog_context, io__state, io__state).
 :- mode maybe_write_line_number(in, di, uo) is det.
 
 maybe_write_line_number(Context) -->

@@ -202,7 +202,7 @@ generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo, Globals,
 		% execution tracing.
 	code_info__init(VarSet, Liveness, StackSlots, SaveSuccip, Globals,
 		PredId, ProcId, ProcInfo, InitialInst, FollowVars,
-		ModuleInfo, CellCount0, OutsideResumePoint, MaybeFromFullSlot,
+		ModuleInfo, CellCount0, OutsideResumePoint, TraceSlotInfo,
 		CodeInfo0),
 
 		% Generate code for the procedure.
@@ -235,7 +235,7 @@ generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo, Globals,
 			no, EntryLabel),
 		continuation_info__add_proc_info(proc(PredId, ProcId),
 			EntryLabel, TotalSlots, Detism, MaybeSuccipSlot,
-			MaybeTraceCallLabel, MaybeFromFullSlot,
+			MaybeTraceCallLabel, TraceSlotInfo,
 			ForceProcId, LayoutInfo, ContInfo0, ContInfo)
 	;
 		ContInfo = ContInfo0
@@ -858,8 +858,8 @@ code_gen__generate_goals([Goal | Goals], CodeModel, Instr) -->
 
 %---------------------------------------------------------------------------%
 
-:- pred code_gen__select_args_with_mode(assoc_list(var, arg_info)::in,
-	arg_mode::in, list(var)::out, list(lval)::out) is det.
+:- pred code_gen__select_args_with_mode(assoc_list(prog_var, arg_info)::in,
+	arg_mode::in, list(prog_var)::out, list(lval)::out) is det.
 
 code_gen__select_args_with_mode([], _, [], []).
 code_gen__select_args_with_mode([Var - ArgInfo | Args], DesiredMode, Vs, Ls) :-

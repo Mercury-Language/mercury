@@ -55,8 +55,8 @@
 :- import_module mode_util, prog_out, hlds_out, mercury_to_mercury, passes_aux.
 :- import_module modes, prog_data, mode_errors, llds, unify_proc.
 :- import_module (inst), instmap, inst_match, inst_util.
-:- import_module int, list, map, set, std_util, require, term, varset.
-:- import_module assoc_list.
+:- import_module term, varset.
+:- import_module int, list, map, set, std_util, require, assoc_list.
 
 %-----------------------------------------------------------------------------%
 
@@ -150,7 +150,7 @@ make_all_nondet_live_vars_mostly_uniq(ModeInfo0, ModeInfo) :-
 		ModeInfo = ModeInfo0
 	).
 
-:- pred select_live_vars(list(var), mode_info, list(var)).
+:- pred select_live_vars(list(prog_var), mode_info, list(prog_var)).
 :- mode select_live_vars(in, mode_info_ui, out) is det.
 
 select_live_vars([], _, []).
@@ -162,7 +162,7 @@ select_live_vars([Var|Vars], ModeInfo, LiveVars) :-
 		select_live_vars(Vars, ModeInfo, LiveVars)
 	).
 
-:- pred select_nondet_live_vars(list(var), mode_info, list(var)).
+:- pred select_nondet_live_vars(list(prog_var), mode_info, list(prog_var)).
 :- mode select_nondet_live_vars(in, mode_info_ui, out) is det.
 
 select_nondet_live_vars([], _, []).
@@ -179,8 +179,8 @@ select_nondet_live_vars([Var|Vars], ModeInfo, NondetLiveVars) :-
 	% (other than changes which just add information,
 	% e.g. `ground -> bound(42)'.)
 	%
-:- pred select_changed_inst_vars(list(var), instmap, instmap, mode_info,
-				list(var)).
+:- pred select_changed_inst_vars(list(prog_var), instmap, instmap, mode_info,
+				list(prog_var)).
 :- mode select_changed_inst_vars(in, in, in, mode_info_ui, out) is det.
 
 select_changed_inst_vars([], _InstMapBefore, _InstMapAfter, _ModeInfo, []).
@@ -202,7 +202,7 @@ select_changed_inst_vars([Var | Vars], InstMapBefore, InstMapAfter,
 			ModeInfo, ChangedVars)
 	).
 
-:- pred make_var_list_mostly_uniq(list(var), mode_info, mode_info).
+:- pred make_var_list_mostly_uniq(list(prog_var), mode_info, mode_info).
 :- mode make_var_list_mostly_uniq(in, mode_info_di, mode_info_uo) is det.
 
 make_var_list_mostly_uniq([], ModeInfo, ModeInfo).
@@ -210,7 +210,7 @@ make_var_list_mostly_uniq([Var | Vars], ModeInfo0, ModeInfo) :-
 	make_var_mostly_uniq(Var, ModeInfo0, ModeInfo1),
 	make_var_list_mostly_uniq(Vars, ModeInfo1, ModeInfo).
 
-:- pred make_var_mostly_uniq(var, mode_info, mode_info).
+:- pred make_var_mostly_uniq(prog_var, mode_info, mode_info).
 :- mode make_var_mostly_uniq(in, mode_info_di, mode_info_uo) is det.
 
 make_var_mostly_uniq(Var, ModeInfo0, ModeInfo) :-
@@ -471,7 +471,7 @@ unique_modes__check_goal_2(pragma_c_code(IsRecursive, PredId, ProcId0,
 	mode_info_unset_call_context,
 	mode_checkpoint(exit, "pragma_c_code", GoalInfo).
 
-:- pred unique_modes__check_call(pred_id, proc_id, list(var), proc_id, 
+:- pred unique_modes__check_call(pred_id, proc_id, list(prog_var), proc_id, 
 			mode_info, mode_info).
 :- mode unique_modes__check_call(in, in, in, out,
 			mode_info_di, mode_info_uo) is det.
@@ -557,8 +557,8 @@ unique_modes__check_call(PredId, ProcId0, ArgVars, ProcId,
 	% argument if the variable is nondet-live and the required initial
 	% inst was unique.
 
-:- pred unique_modes__check_call_modes(list(var), list(mode), code_model, bool,
-			mode_info, mode_info).
+:- pred unique_modes__check_call_modes(list(prog_var), list(mode), code_model,
+		bool, mode_info, mode_info).
 :- mode unique_modes__check_call_modes(in, in, in, in,
 			mode_info_di, mode_info_uo) is det.
 
@@ -615,7 +615,7 @@ unique_modes__check_conj([Goal0 | Goals0], [Goal | Goals]) -->
 %-----------------------------------------------------------------------------%
 
 :- pred unique_modes__check_par_conj(list(hlds_goal), list(hlds_goal),
-		list(pair(instmap, set(var))), mode_info, mode_info).
+		list(pair(instmap, set(prog_var))), mode_info, mode_info).
 :- mode unique_modes__check_par_conj(in, out, out,
 		mode_info_di, mode_info_uo) is det.
 
@@ -656,7 +656,7 @@ unique_modes__check_disj([Goal0 | Goals0], [Goal | Goals],
 
 %-----------------------------------------------------------------------------%
 
-:- pred unique_modes__check_case_list(list(case), var, list(case),
+:- pred unique_modes__check_case_list(list(case), prog_var, list(case),
 		list(instmap), mode_info, mode_info).
 :- mode unique_modes__check_case_list(in, in, out, out,
 		mode_info_di, mode_info_uo) is det.
@@ -684,7 +684,7 @@ unique_modes__check_case_list([Case0 | Cases0], Var,
 
 %-----------------------------------------------------------------------------%
 
-:- pred unique_modes__goal_get_nonlocals(hlds_goal, set(var)).
+:- pred unique_modes__goal_get_nonlocals(hlds_goal, set(prog_var)).
 :- mode unique_modes__goal_get_nonlocals(in, out) is det.
 
 unique_modes__goal_get_nonlocals(_Goal - GoalInfo, NonLocals) :-

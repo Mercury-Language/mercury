@@ -47,7 +47,7 @@
 
 :- import_module hlds_goal, hlds_pred, hlds_module.
 :- import_module globals, prog_data, llds, code_info.
-:- import_module map, std_util, set, term.
+:- import_module map, std_util, set.
 
 	% The kinds of external ports for which the code we generate will
 	% call MR_trace. The redo port is not on this list, because for that
@@ -64,30 +64,40 @@
 
 :- type trace_info.
 
+:- type trace_slot_info
+	--->	trace_slot_info(
+			maybe(int),	% If the procedure is shallow traced,
+					% this will be yes(N), where stack
+					% slot N is the slot that holds the
+					% value of the from-full flag at call.
+					% Otherwise, it will be no.
+
+			maybe(int)	% If --trace-decl is set, this will
+					% be yes(M), where stack slots M
+					% and M+1 are reserved for the runtime
+					% system to use in building proof
+					% trees for the declarative debugger.
+		).
+
 	% Return the set of input variables whose values should be preserved
 	% until the exit and fail ports. This will be all the input variables,
 	% except those that can be totally clobbered during the evaluation
 	% of the procedure (those partially clobbered may still be of interest,
 	% although to handle them properly we need to record insts in stack
 	% layouts).
-:- pred trace__fail_vars(module_info::in, proc_info::in, set(var)::out) is det.
+:- pred trace__fail_vars(module_info::in, proc_info::in,
+		set(prog_var)::out) is det.
 
 	% Return the number of slots reserved for tracing information.
 	% If there are N slots, the reserved slots will be 1 through N.
 :- pred trace__reserved_slots(proc_info::in, globals::in, int::out) is det.
 
-	% Reserve the non-fixed stack slots needed for tracing.
-	% The fixed slots for the event number, call number, call depth and
-	% (for trace levels that specify redo events) the stack layout of
-	% the redo event are reserved in live_vars.m; this predicate reserves
-	% only the slots that do not need to be in fixed slots. At the moment
-	% the only such slot is the flag that says whether this call should be
-	% traced, which is required only for shallow tracing.
-	%
-	% The predicate returns the number of this slot if it is used,
-	% and an abstract struct that represents the tracing-specific part
-	% of the code generator state.
-:- pred trace__setup(globals::in, maybe(int)::out, trace_info::out,
+	% Construct and return an abstract struct that represents the
+	% tracing-specific part of the code generator state. Return also
+	% info about the non-fixed slots used by the tracing system,
+	% for eventual use in the constructing the procedure's layout
+	% structure.
+:- pred trace__setup(globals::in, trace_slot_info::out, trace_info::out,
 	code_info::in, code_info::out) is det.
 
 	% Generate code to fill in the reserevd stack slots.
@@ -132,8 +142,9 @@
 :- implementation.
 
 :- import_module continuation_info, type_util, llds_out, tree, hlds_data.
+:- import_module varset.
 :- import_module (inst), instmap, inst_match, mode_util, options.
-:- import_module list, bool, int, string, map, std_util, varset, require.
+:- import_module list, bool, int, string, map, std_util, require.
 
 	% The redo port is not included in this type; see the comment
 	% on the type external_trace_port above.
@@ -154,7 +165,7 @@
 	;	internal(
 			goal_path,	% The path of the goal whose start
 					% this port represents.
-			set(var)	% The pre-death set of this goal.
+			set(prog_var)	% The pre-death set of this goal.
 		)
 	;	nondet_pragma.
 
@@ -199,6 +210,39 @@ trace__fail_vars(ModuleInfo, ProcInfo, FailVars) :-
 		error("length mismatch in trace__fail_vars")
 	).
 
+	% trace__reserved_slots and trace__setup cooperate in the allocation
+	% of stack slots for tracing purposes. The allocation is done in four
+	% stages.
+	%
+	% stage 1:	Allocate the fixed slots, slots 1, 2 and 3, to hold
+	%		the event number of call, the call sequence number
+	%		and the call depth respectively.
+	%
+	% stage 2:	If the procedure is model_non and --trace-redo is set,
+	%		allocate the next available slot (which must be slot 4)
+	%		to hold the address of the redo layout structure.
+	%
+	% stage 3:	If the procedure is shallow traced, allocate the
+	%		next available slot to the saved copy of the
+	%		from-full flag.
+	%
+	% stage 4:	If --trace-decl is given, allocate the next two
+	%		available slots to hold the pointers to the proof tree
+	%		node of the parent and of this call respectively.
+	%
+	% The runtime system cannot know whether the stack frame has a slot
+	% that holds the saved from-full flag and whether it has the slots
+	% for the proof tree. This is why trace__setup returns TraceSlotInfo,
+	% which answers these questions, for later inclusion in the
+	% procedure's layout structure.
+	%
+	% The procedure's layout structure does not need to include
+	% information about the presence or absence of the slot holding
+	% the address of the redo layout structure. If we generate redo
+	% trace events, the runtime will know that this slot exists and
+	% what its number must be; if we do not, the runtime will never
+	% refer to such a slot.
+
 trace__reserved_slots(ProcInfo, Globals, ReservedSlots) :-
 	globals__get_trace_level(Globals, TraceLevel),
 	(
@@ -206,28 +250,30 @@ trace__reserved_slots(ProcInfo, Globals, ReservedSlots) :-
 	->
 		ReservedSlots = 0
 	;
-		globals__lookup_bool_option(Globals, trace_redo, yes),
-		proc_info_interface_code_model(ProcInfo, model_non)
-	->
-		( TraceLevel = deep ->
-			% event#, call#, call depth, redo layout
-			ReservedSlots = 4
+		Fixed = 3, % event#, call#, call depth
+		(
+			globals__lookup_bool_option(Globals, trace_redo, yes),
+			proc_info_interface_code_model(ProcInfo, model_non)
+		->
+			RedoLayout = 1
 		;
-			% event#, call#, call depth, redo layout, from full
-			ReservedSlots = 5
-		)
-	;
+			RedoLayout = 0
+		),
 		( TraceLevel = deep ->
-			% event#, call#, call depth
-			ReservedSlots = 3
+			FromFull = 0
 		;
-			% event#, call#, call depth, from full
-			ReservedSlots = 4
-		)
+			FromFull = 1
+		),
+		globals__lookup_bool_option(Globals, trace_decl, TraceDecl),
+		( TraceDecl = yes ->
+			DeclDebug = 2
+		;
+			DeclDebug = 0
+		),
+		ReservedSlots is Fixed + RedoLayout + FromFull + DeclDebug
 	).
 
-trace__setup(Globals, MaybeFromFullSlot, TraceInfo) -->
-	% These slots were reserved by allocate_stack_slots in live_vars.m.
+trace__setup(Globals, TraceSlotInfo, TraceInfo) -->
 	code_info__get_proc_model(CodeModel),
 	{ globals__lookup_bool_option(Globals, trace_return, TraceReturn) },
 	{ globals__lookup_bool_option(Globals, trace_redo, TraceRedo) },
@@ -236,42 +282,39 @@ trace__setup(Globals, MaybeFromFullSlot, TraceInfo) -->
 		{ CodeModel = model_non }
 	->
 		code_info__get_next_label(RedoLayoutLabel),
-		{ MaybeRedoLayoutSlot = yes(RedoLayoutLabel) }
+		{ MaybeRedoLayout = yes(RedoLayoutLabel) },
+		{ NextSlotAfterRedoLayout = 5 }
 	;
-		{ MaybeRedoLayoutSlot = no }
+		{ MaybeRedoLayout = no },
+		{ NextSlotAfterRedoLayout = 4 }
 	),
 	{ globals__get_trace_level(Globals, deep) ->
 		TraceType = deep_trace,
+		MaybeFromFullSlot = no,
+		NextSlotAfterFromFull = NextSlotAfterRedoLayout,
 		globals__lookup_bool_option(Globals, trace_internal,
-			TraceInternal),
-		MaybeFromFullSlot = no
+			TraceInternal)
 	;
 		% Trace level must be shallow.
-		%
-		% Debugger code in the runtime is not interested in the
-		% call-from-full flag, so does not have to be in a fixed slot.
-		% Even if we put it in a fixed slot, the runtime won't know
-		% whether a procedure has interface or full tracing, and so it
-		% wouldn't know whether the slot was used for this purpose
-		% or not.
+		MaybeFromFullSlot = yes(NextSlotAfterRedoLayout),
 		( CodeModel = model_non ->
-			( TraceRedo = yes ->
-				CallFromFullSlot = framevar(5),
-				MaybeFromFullSlot = yes(5)
-			;
-				CallFromFullSlot = framevar(4),
-				MaybeFromFullSlot = yes(4)
-			)
+			CallFromFullSlot = framevar(NextSlotAfterRedoLayout)
 		;
-			CallFromFullSlot = stackvar(4),
-			MaybeFromFullSlot = yes(4)
+			CallFromFullSlot = stackvar(NextSlotAfterRedoLayout)
 		),
 		TraceType = shallow_trace(CallFromFullSlot),
+		NextSlotAfterFromFull is NextSlotAfterRedoLayout + 1,
 		% Shallow traced procs never generate internal events.
 		TraceInternal = no
 	},
+	{ globals__lookup_bool_option(Globals, trace_decl, yes) ->
+		MaybeDeclSlots = yes(NextSlotAfterFromFull)
+	;
+		MaybeDeclSlots = no
+	},
+	{ TraceSlotInfo = trace_slot_info(MaybeFromFullSlot, MaybeDeclSlots) },
 	{ TraceInfo = trace_info(TraceType, TraceInternal, TraceReturn,
-		MaybeRedoLayoutSlot) }.
+		MaybeRedoLayout) }.
 
 trace__generate_slot_fill_code(TraceInfo, TraceCode) -->
 	code_info__get_proc_model(CodeModel),
@@ -503,7 +546,7 @@ trace__maybe_setup_redo_event(TraceInfo, Code) :-
 		Code = empty
 	).
 
-:- pred trace__produce_vars(list(var)::in, varset::in, instmap::in,
+:- pred trace__produce_vars(list(prog_var)::in, prog_varset::in, instmap::in,
 	set(tvar)::in, set(tvar)::out, list(var_info)::out, code_tree::out,
 	code_info::in, code_info::out) is det.
 
@@ -535,9 +578,9 @@ trace__produce_vars([Var | Vars], VarSet, InstMap, Tvars0, Tvars,
 
 %-----------------------------------------------------------------------------%
 
-:- pred trace__build_fail_vars(list(var)::in, list(inst)::in,
+:- pred trace__build_fail_vars(list(prog_var)::in, list(inst)::in,
 	list(arg_info)::in, instmap::in, inst_table::in, module_info::in,
-	list(var)::out) is semidet.
+	list(prog_var)::out) is semidet.
 
 trace__build_fail_vars([], [], [], _, _, _, []).
 trace__build_fail_vars([Var | Vars], [Inst | Insts], [Info | Infos],

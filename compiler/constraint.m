@@ -37,7 +37,7 @@
 :- import_module hlds_pred, hlds_goal, hlds_data.
 :- import_module mode_util, passes_aux, code_aux, prog_data, instmap.
 :- import_module delay_info, mode_info, inst_match, modes, mode_debug.
-:- import_module transform, options, globals.
+:- import_module transform, options, globals, varset, term.
 :- import_module mercury_to_mercury, hlds_out, dependency_graph.
 
 :- import_module bool, list, map, set, std_util, assoc_list, string.

@@ -47,7 +47,7 @@
 
 :- type mode_debug_info
 	--->	mode_debug_info(
-			assoc_list(var, inst),	% Last checkpoint insts
+			assoc_list(prog_var, inst),	% Last checkpoint insts
 			inst_key_table_mark
 		).
 
@@ -79,9 +79,9 @@ mode_checkpoint(Port, Msg, GoalInfo, ModeInfo0, ModeInfo) :-
 	),
 	mode_info_set_io_state(ModeInfo1, IOState, ModeInfo).
 
-:- pred mode_checkpoint_2(port, string, hlds_goal_info, assoc_list(var, inst),
-	assoc_list(var, inst), inst_key_table_mark, mode_info,
-	io__state, io__state).
+:- pred mode_checkpoint_2(port, string, hlds_goal_info,
+	assoc_list(prog_var, inst), assoc_list(prog_var, inst),
+	inst_key_table_mark, mode_info, io__state, io__state).
 :- mode mode_checkpoint_2(in, in, in, in, out, in, mode_info_ui, di, uo) is det.
 
 mode_checkpoint_2(Port, Msg, GoalInfo, OldInstList, NewInstList, Mark,
@@ -147,8 +147,9 @@ mode_checkpoint_2(Port, Msg, GoalInfo, OldInstList, NewInstList, Mark,
 	io__flush_output.
 
 :- pred write_var_insts(expand_inst_alias,
-		assoc_list(var, inst), assoc_list(var, inst),
-		varset, varset, instmap, inst_table, io__state, io__state).
+		assoc_list(prog_var, inst), assoc_list(prog_var, inst),
+		prog_varset, inst_varset, instmap, inst_table,
+		io__state, io__state).
 :- mode write_var_insts(in, in, in, in, in, in, in, di, uo) is det.
 
 write_var_insts(_, [], _, _, _, _, _) --> [].

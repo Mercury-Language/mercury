@@ -15,7 +15,7 @@
 
 :- import_module pd_term, hlds_module, hlds_pred, options, instmap.
 :- import_module hlds_goal, prog_data.
-:- import_module bool, map, list, io, set, std_util, term, getopt.
+:- import_module bool, map, list, io, set, std_util, getopt.
 
 :- type pd_info 
 	---> pd_info(
@@ -161,7 +161,7 @@
 :- implementation.
 
 :- import_module hlds_pred, prog_data, pd_debug, pd_util, det_util, globals.
-:- import_module inst_match, hlds_goal, prog_util, hlds_data.
+:- import_module inst_match, hlds_goal, prog_util, hlds_data, term.
 :- import_module assoc_list, bool, int, require, string.
 
 pd_info_init(ModuleInfo, ProcArgInfos, IO, PdInfo) :-
@@ -523,7 +523,8 @@ pd_info_incr_size_delta(Delta1) -->
 			version_is_exact, 
 			pred_proc_id, 
 			version_info,
-			map(var, var),	% renaming of the version info
+			map(prog_var, prog_var),
+					% renaming of the version info
 			tsubst		% var types substitution
 		).
 
@@ -535,7 +536,7 @@ pd_info_incr_size_delta(Delta1) -->
 	---> version_info(
 		hlds_goal,		% goal before unfolding.
 		list(pred_proc_id),	% calls being deforested. 
-		list(var),		% arguments.
+		list(prog_var),		% arguments.
 		list(type),		% argument types.
 		instmap,		% initial insts of the nonlocals.
 		int,			% cost of the original goal.
@@ -574,7 +575,7 @@ pd_info__search_version(Goal, MaybeVersion) -->
 %-----------------------------------------------------------------------------%
 
 :- pred pd_info__get_matching_version(inst_table::in, module_info::in,
-		hlds_goal::in, instmap::in, map(var, type)::in,
+		hlds_goal::in, instmap::in, map(prog_var, type)::in,
 		list(pred_proc_id)::in, version_index::in, maybe_version::out)
 		is semidet.
 
@@ -619,7 +620,7 @@ pd_info__get_matching_version(InstTable, ModuleInfo, ThisGoal, ThisInstMap,
 
 	% Choose between two versions.
 :- pred pd_info__pick_version(module_info::in, pred_proc_id::in, 
-		map(var, var)::in, tsubst::in, version_info::in, 
+		map(prog_var, prog_var)::in, tsubst::in, version_info::in, 
 		maybe_version::in, maybe_version::out) is det.
 
 pd_info__pick_version(_, PredProcId, Renaming, TSubn, VersionInfo, no_version,
@@ -660,8 +661,8 @@ pd_info__pick_version(_ModuleInfo, PredProcId1, Renaming1, TSubn1, Version1,
 	% 	new one, i.e inst_matches_initial(FirstInst, SecondInst) (?)
 	% 
 :- pred pd_info__goal_is_more_general(inst_table::in, module_info::in,
-	hlds_goal::in, instmap::in, list(var)::in, list(type)::in,
-	hlds_goal::in, instmap::in, map(var, type)::in, pred_proc_id::in, 
+	hlds_goal::in, instmap::in, list(prog_var)::in, list(type)::in,
+	hlds_goal::in, instmap::in, map(prog_var, type)::in, pred_proc_id::in, 
 	version_info::in, maybe_version::out) is semidet.
 
 pd_info__goal_is_more_general(InstTable, ModuleInfo, OldGoal, OldInstMap,
@@ -682,9 +683,10 @@ pd_info__goal_is_more_general(InstTable, ModuleInfo, OldGoal, OldInstMap,
 
 	% Check that all the insts in the old version are at least as
 	% general as the insts in the new version.
-:- pred pd_info__check_insts(inst_table::in, module_info::in, list(var)::in,
-		map(var, var)::in, instmap::in, instmap::in,
-		version_is_exact::in, version_is_exact::out) is semidet.
+:- pred pd_info__check_insts(inst_table::in, module_info::in,
+		list(prog_var)::in, map(prog_var, prog_var)::in, instmap::in,
+		instmap::in, version_is_exact::in, version_is_exact::out)
+		is semidet.
 
 pd_info__check_insts(_, _, [], _, _, _, Exact, Exact).
 pd_info__check_insts(InstTable, ModuleInfo, [OldVar | Vars], VarRenaming,

@@ -13,8 +13,8 @@
 
 :- interface.
 
-:- import_module hlds_pred, llds, prog_data, (inst).
-:- import_module bool, list, map, varset, term, std_util.
+:- import_module hlds_pred, llds, prog_data, (inst), term.
+:- import_module bool, list, map, std_util.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -61,7 +61,7 @@
 			type_id,		% The result type, i.e. the
 						% type to which this
 						% cons_defn belongs.
-			term__context		% The location of this
+			prog_context		% The location of this
 						% ctor definition in the
 						% original source code
 		).
@@ -74,7 +74,7 @@
 	% term. Fails if the cons_id is a pred_const, code_addr_const or
 	% base_type_info_const.
 
-:- pred cons_id_and_args_to_term(cons_id, list(term), term).
+:- pred cons_id_and_args_to_term(cons_id, list(term(T)), term(T)).
 :- mode cons_id_and_args_to_term(in, in, out) is semidet.
 
 	% Get the arity of a cons_id, aborting on pred_const, code_addr_const
@@ -100,7 +100,7 @@
 
 :- implementation.
 
-:- import_module prog_util.
+:- import_module prog_util, varset.
 :- import_module require.
 
 cons_id_and_args_to_term(int_const(Int), [], Term) :-
@@ -128,7 +128,8 @@ cons_id_arity(base_type_info_const(_, _, _), _) :-
 cons_id_arity(base_typeclass_info_const(_, _, _, _), _) :-
 	error("cons_id_arity: can't get arity of base_typeclass_info_const").
 
-make_functor_cons_id(term__atom(Name), Arity, cons(unqualified(Name), Arity)).
+make_functor_cons_id(term__atom(Name), Arity,
+		cons(unqualified(Name), Arity)).
 make_functor_cons_id(term__integer(Int), _, int_const(Int)).
 make_functor_cons_id(term__string(String), _, string_const(String)).
 make_functor_cons_id(term__float(Float), _, float_const(Float)).
@@ -175,7 +176,7 @@ make_cons_id(SymName0, Args, TypeId, cons(SymName, Arity)) :-
 :- type hlds_type_defn.
 
 :- pred hlds_data__set_type_defn(tvarset, list(type_param),
-	hlds_type_body, import_status, term__context, hlds_type_defn).
+	hlds_type_body, import_status, prog_context, hlds_type_defn).
 :- mode hlds_data__set_type_defn(in, in, in, in, in, out) is det.
 
 :- pred hlds_data__get_type_defn_tvarset(hlds_type_defn, tvarset).
@@ -190,7 +191,7 @@ make_cons_id(SymName0, Args, TypeId, cons(SymName, Arity)) :-
 :- pred hlds_data__get_type_defn_status(hlds_type_defn, import_status).
 :- mode hlds_data__get_type_defn_status(in, out) is det.
 
-:- pred hlds_data__get_type_defn_context(hlds_type_defn, term__context).
+:- pred hlds_data__get_type_defn_context(hlds_type_defn, prog_context).
 :- mode hlds_data__get_type_defn_context(in, out) is det.
 
 :- pred hlds_data__set_type_defn_status(hlds_type_defn, import_status,
@@ -319,7 +320,7 @@ make_cons_id(SymName0, Args, TypeId, cons(SymName, Arity)) :-
 %				% :- type sorted_list(T) == list(T)
 %				%	where sorted.
 
-			term__context		% The location of this type
+			prog_context		% The location of this type
 						% definition in the original
 						% source code
 		).
@@ -378,7 +379,7 @@ hlds_data__set_type_defn_status(hlds_type_defn(A, B, C, _, E), Status,
 
 :- type hlds_inst_defn
 	--->	hlds_inst_defn(
-			varset,			% The names of the inst
+			inst_varset,		% The names of the inst
 						% parameters (if any).
 			list(inst_param),	% The inst parameters (if any).
 						% ([I] in the above example.)
@@ -386,7 +387,7 @@ hlds_data__set_type_defn_status(hlds_type_defn(A, B, C, _, E), Status,
 			condition,		% Unused (reserved for
 						% holding a user-defined 
 						% invariant).
-			term__context,		% The location in the source
+			prog_context,		% The location in the source
 						% code of this inst definition.
 
 			import_status		% So intermod.m can tell 
@@ -606,7 +607,7 @@ user_inst_table_optimize(user_inst_table(InstDefns0, InstIds0),
 
 :- type hlds_mode_defn
 	--->	hlds_mode_defn(
-			varset,			% The names of the inst
+			inst_varset,		% The names of the inst
 						% parameters (if any).
 			list(inst_param),	% The list of the inst
 						% parameters (if any).
@@ -616,7 +617,7 @@ user_inst_table_optimize(user_inst_table(InstDefns0, InstIds0),
 			condition,		% Unused (reserved for
 						% holding a user-defined
 						% invariant).
-			term__context,		% The location of this mode
+			prog_context,		% The location of this mode
 						% definition in the original
 						% source code.
 			import_status		% So intermod.m can tell 
@@ -746,10 +747,10 @@ determinism_to_code_model(failure,     model_semi).
 :- type hlds_class_defn 
 	--->	hlds_class_defn(
 			list(class_constraint), % SuperClasses
-			list(var), 		% ClassVars 
+			list(tvar),		% ClassVars 
 			hlds_class_interface, 	% Methods
-			varset,			% VarNames
-			term__context		% Location of declaration
+			tvarset,		% VarNames
+			prog_context		% Location of declaration
 		).
 
 :- type hlds_class_interface	==	list(hlds_class_proc).	
@@ -768,7 +769,7 @@ determinism_to_code_model(failure,     model_semi).
 	--->	hlds_instance_defn(
 			import_status,		% import status of the instance
 						% declaration
-			term__context,		% context of declaration
+			prog_context,		% context of declaration
 			list(class_constraint), % Constraints
 			list(type), 		% ClassTypes 
 			instance_interface, 	% Methods
@@ -776,7 +777,7 @@ determinism_to_code_model(failure,     model_semi).
 						% After check_typeclass, we 
 						% will know the pred_ids and
 						% proc_ids of all the methods
-			varset,			% VarNames
+			tvarset,		% VarNames
 			map(class_constraint, constraint_proof)
 						% "Proofs" of how to build the
 						% typeclass_infos for the
@@ -810,9 +811,9 @@ determinism_to_code_model(failure,     model_semi).
 
 :- type subclass_details 
 	--->	subclass_details(
-			list(var),		% variables of the superclass
+			list(tvar),		% variables of the superclass
 			class_id,		% name of the subclass
-			list(var),		% variables of the subclass
+			list(tvar),		% variables of the subclass
 			tvarset			% the names of these vars
 		).
 

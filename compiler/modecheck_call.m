@@ -23,27 +23,26 @@
 
 :- import_module hlds_goal, hlds_pred, hlds_module, hlds_data.
 :- import_module prog_data, modes, mode_info.
-:- import_module term, list, std_util.
+:- import_module list, std_util.
 
-:- pred modecheck_call_pred(pred_id, list(var), maybe(determinism),
-				proc_id, list(var), extra_goals,
-				mode_info, mode_info).
+:- pred modecheck_call_pred(pred_id, list(prog_var), maybe(determinism),
+		proc_id, list(prog_var), extra_goals, mode_info, mode_info).
 :- mode modecheck_call_pred(in, in, in, out, out, out,
 				mode_info_di, mode_info_uo) is det.
 
-:- pred modecheck_higher_order_call(pred_or_func, var, list(var),
-				list(type), argument_modes, determinism,
-				list(var), extra_goals, mode_info, mode_info).
+:- pred modecheck_higher_order_call(pred_or_func, prog_var, list(prog_var),
+		list(type), argument_modes, determinism, list(prog_var),
+		extra_goals, mode_info, mode_info).
 :- mode modecheck_higher_order_call(in, in, in, out, out, out, out, out,
 				mode_info_di, mode_info_uo) is det.
 
-:- pred modecheck_higher_order_pred_call(var, list(var), pred_or_func,
+:- pred modecheck_higher_order_pred_call(prog_var, list(prog_var), pred_or_func,
 		hlds_goal_info, hlds_goal_expr, mode_info, mode_info).
 :- mode modecheck_higher_order_pred_call(in, in, in, in, out,
 		mode_info_di, mode_info_uo) is det.
 
-:- pred modecheck_higher_order_func_call(var, list(var), var, hlds_goal_info,
-		hlds_goal_expr, mode_info, mode_info).
+:- pred modecheck_higher_order_func_call(prog_var, list(prog_var), prog_var,
+		hlds_goal_info, hlds_goal_expr, mode_info, mode_info).
 :- mode modecheck_higher_order_func_call(in, in, in, in, out,
 		mode_info_di, mode_info_uo) is det.
 
@@ -303,8 +302,8 @@ modecheck_call_pred(PredId, ArgVars0, DeterminismKnown,
 		mode_info_set_errors(Errors, ModeInfo99, ModeInfo)
 	).
 
-:- pred no_matching_modes(pred_id, list(var), maybe(determinism), set(var),
-				proc_id, mode_info, mode_info).
+:- pred no_matching_modes(pred_id, list(prog_var), maybe(determinism),
+		set(prog_var), proc_id, mode_info, mode_info).
 :- mode no_matching_modes(in, in, in, in, out, mode_info_di, mode_info_uo)
 	is det.
 
@@ -339,9 +338,9 @@ no_matching_modes(PredId, ArgVars, DeterminismKnown, WaitingVars, TheProcId,
 	).
 
 :- pred modecheck_find_matching_modes(
-			list(proc_id), pred_id, proc_table, list(var),
-			list(proc_id), list(proc_id), set(var), set(var),
-			mode_info, mode_info).
+		list(proc_id), pred_id, proc_table, list(prog_var),
+		list(proc_id), list(proc_id), set(prog_var), set(prog_var),
+		mode_info, mode_info).
 :- mode modecheck_find_matching_modes(in, in, in, in,
 			in, out, in, out, mode_info_di, mode_info_uo) is det.
 
@@ -399,8 +398,8 @@ modecheck_find_matching_modes([ProcId | ProcIds], PredId, Procs, ArgVars0,
 			MatchingProcIds1, MatchingProcIds,
 			WaitingVars1, WaitingVars, ModeInfo4, ModeInfo).
 
-:- pred modecheck_end_of_call(proc_info, list(var), list(var), extra_goals,
-				mode_info, mode_info).
+:- pred modecheck_end_of_call(proc_info, list(prog_var), list(prog_var),
+		extra_goals, mode_info, mode_info).
 :- mode modecheck_end_of_call(in, in, out, out,
 				mode_info_di, mode_info_uo) is det.
 
@@ -420,7 +419,7 @@ modecheck_end_of_call(ProcInfo, ArgVars0, ArgVars, ExtraGoals,
 		ModeInfo = ModeInfo1
 	).
 
-:- pred insert_new_mode(pred_id, list(var), maybe(determinism), proc_id,
+:- pred insert_new_mode(pred_id, list(prog_var), maybe(determinism), proc_id,
 			mode_info, mode_info).
 :- mode insert_new_mode(in, in, in, out, mode_info_di, mode_info_uo) is det.
 
@@ -460,7 +459,7 @@ insert_new_mode(PredId, ArgVars, MaybeDet, ProcId, ModeInfo0, ModeInfo) :-
 	% pass of the fixpoint analysis.
 	mode_info_set_changed_flag(yes, ModeInfo1, ModeInfo).
 
-:- pred get_var_insts_and_lives(list(var), mode_info,
+:- pred get_var_insts_and_lives(list(prog_var), mode_info,
 				list(inst), list(is_live)).
 :- mode get_var_insts_and_lives(in, mode_info_ui, out, out) is det.
 
@@ -668,7 +667,7 @@ to the following specification:
 	;	same
 	;	incomparable.
 
-:- pred choose_best_match(list(proc_id), pred_id, proc_table, list(var),
+:- pred choose_best_match(list(proc_id), pred_id, proc_table, list(prog_var),
 				proc_id, mode_info).
 :- mode choose_best_match(in, in, in, in, out,
 				mode_info_ui) is det.
@@ -702,7 +701,8 @@ choose_best_match([ProcId | ProcIds], PredId, Procs, ArgVars, TheProcId,
 	% modes_are_indistinguishable/4 and
 	% modes_are_identical_bar_cc/4 above.
 	%
-:- pred compare_proc(proc_id, proc_id, list(var), match, proc_table, mode_info).
+:- pred compare_proc(proc_id, proc_id, list(prog_var), match, proc_table,
+		mode_info).
 :- mode compare_proc(in, in, in, out, in, mode_info_ui) is det.
 
 compare_proc(ProcId, OtherProcId, ArgVars, Compare, Procs, ModeInfo) :-

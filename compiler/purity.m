@@ -612,7 +612,7 @@ error_inferred_impure(ModuleInfo, PredInfo, PredId, Purity) -->
 
 
 :- pred error_missing_body_impurity_decl(module_info, pred_info, pred_id,
-				  context, purity, io__state, io__state).
+				  prog_context, purity, io__state, io__state).
 :- mode error_missing_body_impurity_decl(in, in, in, in, in, di, uo) is det.
 
 error_missing_body_impurity_decl(ModuleInfo, _, PredId, Context,
@@ -630,7 +630,7 @@ error_missing_body_impurity_decl(ModuleInfo, _, PredId, Context,
 
 
 :- pred warn_unnecessary_body_impurity_decl(module_info, pred_info, pred_id,
-	context, purity, purity, io__state, io__state).
+	prog_context, purity, purity, io__state, io__state).
 :- mode warn_unnecessary_body_impurity_decl(in, in, in, in, in, in, di, uo)
 	is det.
 

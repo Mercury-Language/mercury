@@ -45,7 +45,7 @@
 
 :- import_module hlds_data, llds, mode_util, prog_data, instmap.
 :- import_module code_util, quantification, arg_info, globals.
-:- import_module bool, list, map, set, std_util, term, require.
+:- import_module bool, list, map, set, std_util, require.
 
 :- type follow_vars_info
 	--->	follow_vars_info(
@@ -65,7 +65,7 @@ find_final_follow_vars(ProcInfo, Follow) :-
 		error("find_final_follow_vars: failed")
 	).
 
-:- pred find_final_follow_vars_2(list(arg_info), list(var),
+:- pred find_final_follow_vars_2(list(arg_info), list(prog_var),
 						follow_vars, follow_vars).
 :- mode find_final_follow_vars_2(in, in, in, out) is semidet.
 
@@ -250,7 +250,7 @@ find_follow_vars_in_goal_expr(pragma_c_code(A,B,C,D,E,F,G), _FVInfo,
 
 %-----------------------------------------------------------------------------%
 
-:- pred find_follow_vars_in_call(pred_id, proc_id, list(var), module_info,
+:- pred find_follow_vars_in_call(pred_id, proc_id, list(prog_var), module_info,
 						follow_vars).
 :- mode find_follow_vars_in_call(in, in, in, in, out) is det.
 
@@ -262,7 +262,8 @@ find_follow_vars_in_call(PredId, ProcId, Args, ModuleInfo, Follow) :-
 	proc_info_arg_info(ProcInfo, ArgInfo),
 	find_follow_vars_from_arginfo(ArgInfo, Args, Follow).
 
-:- pred find_follow_vars_from_arginfo(list(arg_info), list(var), follow_vars).
+:- pred find_follow_vars_from_arginfo(list(arg_info), list(prog_var),
+		follow_vars).
 :- mode find_follow_vars_from_arginfo(in, in, out) is det.
 
 find_follow_vars_from_arginfo(ArgInfo, Args, Follow) :-
@@ -275,7 +276,7 @@ find_follow_vars_from_arginfo(ArgInfo, Args, Follow) :-
 		error("find_follow_vars_from_arginfo: failed")
 	).
 
-:- pred find_follow_vars_from_arginfo_2(list(arg_info), list(var),
+:- pred find_follow_vars_from_arginfo_2(list(arg_info), list(prog_var),
 						follow_vars, follow_vars).
 :- mode find_follow_vars_from_arginfo_2(in, in, in, out) is semidet.
 

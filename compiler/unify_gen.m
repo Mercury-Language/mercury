@@ -19,7 +19,7 @@
 :- interface.
 
 :- import_module hlds_goal, hlds_data, llds, code_info, instmap.
-:- import_module term.
+:- import_module prog_data.
 
 :- type test_sense
 	--->	branch_on_success
@@ -29,7 +29,7 @@
 	code_tree, code_info, code_info).
 :- mode unify_gen__generate_unification(in, in, in, out, in, out) is det.
 
-:- pred unify_gen__generate_tag_test(var, cons_id, test_sense, label,
+:- pred unify_gen__generate_tag_test(prog_var, cons_id, test_sense, label,
 	code_tree, code_info, code_info).
 :- mode unify_gen__generate_tag_test(in, in, in, out, out, in, out) is det.
 
@@ -40,9 +40,9 @@
 :- import_module hlds_module, hlds_pred, prog_data, prog_out, code_util.
 :- import_module mode_util, type_util, code_aux, hlds_out, tree, arg_info.
 :- import_module inst_match.
-:- import_module bool, string, list, int, map, require, std_util.
+:- import_module term, bool, string, list, int, map, require, std_util.
 
-:- type uni_val		--->	ref(var)
+:- type uni_val		--->	ref(prog_var)
 			;	lval(lval).
 
 %---------------------------------------------------------------------------%
@@ -89,7 +89,7 @@ unify_gen__generate_unification(CodeModel, Uni, IMD, Code) -->
 	% bound variable as the expression that generates the free
 	% variable. No immediate code is generated.
 
-:- pred unify_gen__generate_assignment(var, var, code_tree,
+:- pred unify_gen__generate_assignment(prog_var, prog_var, code_tree,
 	code_info, code_info).
 :- mode unify_gen__generate_assignment(in, in, out, in, out) is det.
 
@@ -119,7 +119,8 @@ unify_gen__generate_assignment(VarA, VarB, Code) -->
 	% Simple tests are in-in unifications on enumerations, integers,
 	% strings and floats.
 
-:- pred unify_gen__generate_test(var, var, code_tree, code_info, code_info).
+:- pred unify_gen__generate_test(prog_var, prog_var, code_tree,
+		code_info, code_info).
 :- mode unify_gen__generate_test(in, in, out, in, out) is det.
 
 unify_gen__generate_test(VarA, VarB, Code) -->
@@ -205,7 +206,7 @@ unify_gen__generate_tag_test(Var, ConsId, Sense, ElseLab, Code) -->
 
 %---------------------------------------------------------------------------%
 
-:- pred unify_gen__generate_tag_rval(var, cons_id, rval, code_tree,
+:- pred unify_gen__generate_tag_rval(prog_var, cons_id, rval, code_tree,
 	code_info, code_info).
 :- mode unify_gen__generate_tag_rval(in, in, out, out, in, out) is det.
 
@@ -259,8 +260,8 @@ unify_gen__generate_tag_rval_2(complicated_constant_tag(Bits, Num), Rval,
 	% create a term, and a series of [optional] assignments to
 	% instantiate the arguments of that term.
 
-:- pred unify_gen__generate_construction(var, cons_id,
-	list(var), list(uni_mode), instmap_delta, code_tree,
+:- pred unify_gen__generate_construction(prog_var, cons_id,
+	list(prog_var), list(uni_mode), instmap_delta, code_tree,
 	code_info, code_info).
 :- mode unify_gen__generate_construction(in, in, in, in, in, out, in, out)
 	is det.
@@ -270,7 +271,7 @@ unify_gen__generate_construction(Var, Cons, Args, Modes, InstMapDelta, Code) -->
 	unify_gen__generate_construction_2(Tag, Var, Args, Modes,
 			InstMapDelta, Code).
 
-:- pred unify_gen__generate_construction_2(cons_tag, var, list(var),
+:- pred unify_gen__generate_construction_2(cons_tag, prog_var, list(prog_var),
 	list(uni_mode), instmap_delta, code_tree, code_info, code_info).
 :- mode unify_gen__generate_construction_2(in, in, in, in, in, out,
 	in, out) is det.
@@ -523,7 +524,7 @@ unify_gen__generate_construction_2(pred_closure_tag(PredId, ProcId),
 % Cache a unification.  If the mode of the LHS variable is ref_in then
 % produce code to place it's value in the required locations.
 
-:- pred unify_gen__cache_unification(var, rval, code_tree,
+:- pred unify_gen__cache_unification(prog_var, rval, code_tree,
 	code_info, code_info).
 :- mode unify_gen__cache_unification(in, in, out, in, out) is det.
 
@@ -531,7 +532,7 @@ unify_gen__cache_unification(Var, Rval, Code) -->
 	code_info__cache_expression(Var, Rval),
 	unify_gen__maybe_place_refs(Var, Code).
 
-:- pred unify_gen__maybe_place_refs(var, code_tree, code_info, code_info).
+:- pred unify_gen__maybe_place_refs(prog_var, code_tree, code_info, code_info).
 :- mode unify_gen__maybe_place_refs(in, out, in, out) is det.
 
 unify_gen__maybe_place_refs(Var, Code) -->
@@ -541,10 +542,9 @@ unify_gen__maybe_place_refs(Var, Code) -->
 		{ Code = empty }
 	).
 
-:- pred unify_gen__generate_extra_closure_args(list(var), lval, lval,
-					code_tree, code_info, code_info).
-:- mode unify_gen__generate_extra_closure_args(in, in, in,
-					out, in, out) is det.
+:- pred unify_gen__generate_extra_closure_args(list(prog_var), lval, lval,
+		code_tree, code_info, code_info).
+:- mode unify_gen__generate_extra_closure_args(in, in, in, out, in, out) is det.
 
 unify_gen__generate_extra_closure_args([], _, _, empty) --> [].
 unify_gen__generate_extra_closure_args([Var | Vars], LoopCounter,
@@ -563,7 +563,7 @@ unify_gen__generate_extra_closure_args([Var | Vars], LoopCounter,
 	unify_gen__generate_extra_closure_args(Vars, LoopCounter,
 		NewClosure, Code2).
 
-:- pred unify_gen__generate_pred_args(list(var), list(arg_info),
+:- pred unify_gen__generate_pred_args(list(prog_var), list(arg_info),
 					list(maybe(rval))).
 :- mode unify_gen__generate_pred_args(in, in, out) is det.
 
@@ -579,8 +579,9 @@ unify_gen__generate_pred_args([Var|Vars], [ArgInfo|ArgInfos], [Rval|Rvals]) :-
 	),
 	unify_gen__generate_pred_args(Vars, ArgInfos, Rvals).
 
-:- pred unify_gen__generate_cons_args(list(var), list(type), list(uni_mode),
-		instmap, instmap, inst_table, module_info, list(maybe(rval))).
+:- pred unify_gen__generate_cons_args(list(prog_var), list(type),
+	list(uni_mode), instmap, instmap, inst_table, module_info,
+	list(maybe(rval))).
 :- mode unify_gen__generate_cons_args(in, in, in, in, in, in, in, out) is det.
 
 unify_gen__generate_cons_args(Vars, Types, Modes, InstMapBefore, InstMapAfter,
@@ -601,8 +602,9 @@ unify_gen__generate_cons_args(Vars, Types, Modes, InstMapBefore, InstMapAfter,
 	% but if the argument is free, we just produce `no', meaning don't
 	% generate an assignment to that field.
 
-:- pred unify_gen__generate_cons_args_2(list(var), list(type), list(uni_mode),
-		instmap, instmap, inst_table, module_info, list(maybe(rval))).
+:- pred unify_gen__generate_cons_args_2(list(prog_var), list(type),
+	list(uni_mode), instmap, instmap, inst_table, module_info,
+	list(maybe(rval))).
 :- mode unify_gen__generate_cons_args_2(in, in, in, in, in, in, in, out)
 		is semidet.
 
@@ -622,9 +624,9 @@ unify_gen__generate_cons_args_2([Var|Vars], [Type|Types], [UniMode|UniModes],
 	unify_gen__generate_cons_args_2(Vars, Types, UniModes, InstMapBefore,
 		InstMapAfter, InstTable, ModuleInfo, RVals).
 
-:- pred unify_gen__aliased_vars_set_location(list(var), list(type),
+:- pred unify_gen__aliased_vars_set_location(list(prog_var), list(type),
 		list(uni_mode), instmap, instmap, inst_table, module_info,
-		var, tag, int, code_tree, code_info, code_info).
+		prog_var, tag, int, code_tree, code_info, code_info).
 :- mode unify_gen__aliased_vars_set_location(in, in, in, in, in, in, in,
 		in, in, in, out, in, out) is det.
 
@@ -640,9 +642,9 @@ unify_gen__aliased_vars_set_location(Args, Types, Modes, InstMap0, InstMap,
 		{ error("unify_gen__aliased_vars_set_location: length mismatch") }
 	).
 
-:- pred unify_gen__aliased_vars_set_location_2(list(var), list(type),
+:- pred unify_gen__aliased_vars_set_location_2(list(prog_var), list(type),
 		list(uni_mode), instmap, instmap, inst_table, module_info,
-		var, tag, int, code_tree, code_info, code_info).
+		prog_var, tag, int, code_tree, code_info, code_info).
 :- mode unify_gen__aliased_vars_set_location_2(in, in, in, in, in, in, in,
 		in, in, in, out, in, out) is semidet.
 
@@ -674,7 +676,7 @@ unify_gen__aliased_vars_set_location_2([Var | Vars], [Type | Types],
 
 %---------------------------------------------------------------------------%
 
-:- pred unify_gen__var_types(list(var), list(type), code_info, code_info).
+:- pred unify_gen__var_types(list(prog_var), list(type), code_info, code_info).
 :- mode unify_gen__var_types(in, out, in, out) is det.
 
 unify_gen__var_types(Vars, Types) -->
@@ -684,8 +686,8 @@ unify_gen__var_types(Vars, Types) -->
 
 %---------------------------------------------------------------------------%
 
-:- pred unify_gen__make_fields_and_argvars(list(var), rval, int, int,
-						list(uni_val), list(uni_val)).
+:- pred unify_gen__make_fields_and_argvars(list(prog_var), rval, int, int,
+		list(uni_val), list(uni_val)).
 :- mode unify_gen__make_fields_and_argvars(in, in, in, in, out, out) is det.
 
 	% Construct a pair of lists that associates the fields of
@@ -709,8 +711,8 @@ unify_gen__make_fields_and_argvars([Var | Vars], Rval, Field0, TagNum,
 	% unifications are generated eagerly (they _must_ be), but
 	% assignment unifications are cached.
 
-:- pred unify_gen__generate_det_deconstruction(var, cons_id,
-	list(var), list(uni_mode), instmap_delta, code_tree,
+:- pred unify_gen__generate_det_deconstruction(prog_var, cons_id,
+	list(prog_var), list(uni_mode), instmap_delta, code_tree,
 	code_info, code_info).
 :- mode unify_gen__generate_det_deconstruction(in, in, in, in, in, out,
 	in, out) is det.
@@ -777,8 +779,8 @@ unify_gen__generate_det_deconstruction(Var, Cons, Args, Modes, IMDelta,
 	% A semideterministic deconstruction unification is tag-test
 	% followed by a deterministic deconstruction.
 
-:- pred unify_gen__generate_semi_deconstruction(var, cons_id,
-	list(var), list(uni_mode), instmap_delta, code_tree,
+:- pred unify_gen__generate_semi_deconstruction(prog_var, cons_id,
+	list(prog_var), list(uni_mode), instmap_delta, code_tree,
 	code_info, code_info).
 :- mode unify_gen__generate_semi_deconstruction(in, in, in, in, in, out,
 	in, out) is det.

@@ -234,8 +234,8 @@ find_arg_sizes_pred(PPId, Module, PassInfo, OutputSupplierMap0, Result,
 		Result = error(Errors)
 	).
 
-:- pred update_output_suppliers(list(var)::in, bag(var)::in,
-	list(bool)::in, list(bool)::out) is det.
+:- pred update_output_suppliers(list(prog_var)::in, bag(prog_var)::in,
+		list(bool)::in, list(bool)::out) is det.
 
 update_output_suppliers([], _ActiveVars, [], []).
 update_output_suppliers([_ | _], _ActiveVars, [], []) :-

@@ -82,7 +82,7 @@
 :- implementation.
 
 :- import_module hlds_pred, (inst), mode_util, prog_data, pd_util.
-:- import_module assoc_list, bool, int, map, require, set, term.
+:- import_module assoc_list, bool, int, map, require, set.
 
 :- type global_term_info
 	--->	global_term_info(
@@ -218,7 +218,7 @@ pd_term__local_check(InstTable, ModuleInfo, Goal1, InstMap, Cover0, Cover) :-
 	).
 
 :- pred pd_term__do_local_check(inst_table::in, module_info::in, instmap::in, 
-		list(var)::in, assoc_list(int, int)::in, 
+		list(prog_var)::in, assoc_list(int, int)::in, 
 		assoc_list(int, int)::out) is semidet.
 
 pd_term__do_local_check(InstTable, ModuleInfo, InstMap, Args, OldSizes,
@@ -243,7 +243,7 @@ pd_term__update_global_term_info(TermInfo0, ProcPair,
 %-----------------------------------------------------------------------------%
 
 :- pred pd_term__initial_sizes(inst_table::in, module_info::in, instmap::in,
-		list(var)::in, int::in, assoc_list(int, int)::out) is det.
+		list(prog_var)::in, int::in, assoc_list(int, int)::out) is det.
 
 pd_term__initial_sizes(_, _, _, [], _, []).
 pd_term__initial_sizes(InstTable, ModuleInfo, InstMap, [Arg | Args], ArgNo, 
@@ -257,7 +257,7 @@ pd_term__initial_sizes(InstTable, ModuleInfo, InstMap, [Arg | Args], ArgNo,
 %-----------------------------------------------------------------------------%
 
 :- pred pd_term__get_matching_sizes(inst_table::in, module_info::in,
-		instmap::in, list(var)::in, assoc_list(int, int)::in, 
+		instmap::in, list(prog_var)::in, assoc_list(int, int)::in, 
 		assoc_list(int, int)::out, int::out, int::out) is det.
 
 pd_term__get_matching_sizes(_, _, _, _, [], [], 0, 0).

@@ -31,7 +31,7 @@
 
 :- implementation.
 
-:- import_module hlds_data, goal_util, mode_util.
+:- import_module hlds_data, goal_util, mode_util, prog_data.
 :- import_module globals, options, det_analysis, quantification.
 :- import_module bool, map, set, term, std_util, require.
 
@@ -321,7 +321,7 @@ move_follow_code_is_builtin(call(_, _, _, Builtin, _, _) - _GoalInfo) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- pred move_prev_code(hlds_goal, hlds_goal, set(var),
+:- pred move_prev_code(hlds_goal, hlds_goal, set(prog_var),
 	list(hlds_goal), list(hlds_goal), bool, bool).
 % :- mode move_prev_code(di, uo, in, di, uo, in, out) is det.
 :- mode move_prev_code(in, out, in, in, out, in, out) is det.
@@ -359,7 +359,7 @@ move_prev_code(Goal, Goal, _, RevPrevGoals, RevPrevGoals, R, R).
 % 	hlds_goal).
 % :- mode move_prev_code_breakup_branched(in, out, out, out) is semidet.
 
-:- pred move_prev_code_forbidden_vars(list(hlds_goal), set(var)).
+:- pred move_prev_code_forbidden_vars(list(hlds_goal), set(prog_var)).
 :- mode move_prev_code_forbidden_vars(in, out) is det.
 
 move_prev_code_forbidden_vars([], Empty) :-
@@ -371,11 +371,11 @@ move_prev_code_forbidden_vars([_Goal - GoalInfo | Goals], Varset) :-
 
 % 
 % :- pred move_prev_code_new_forbidden_vars(hlds_goal, hlds_goal,
-% 	set(var), set(var)).
+% 	set(prog_var), set(prog_var)).
 % :- mode move_prev_code_new_forbidden_vars(in, in, in, out) is det.
 % 
 % :- pred move_prev_code_vars_difference(hlds_goal, hlds_goal, hlds_goal,
-% 	set(var), set(var)).
+% 	set(prog_var), set(prog_var)).
 % :- mode move_prev_code_vars_difference(in, in, in, in, out) is det.
 % 
 % move_prev_code_vars_difference(Cond, First, Rest, ForbiddenVars, LocalVars) :-
@@ -389,7 +389,7 @@ move_prev_code_forbidden_vars([_Goal - GoalInfo | Goals], Varset) :-
 % 	set__difference(ThisBranchVars, RestVars, LocalVars0),
 % 	set__difference(LocalVars0, ForbiddenVars, LocalVars).
 % 
-% :- pred move_prev_code_can_pull_producer(set(var), list(hlds_goal),
+% :- pred move_prev_code_can_pull_producer(set(prog_var), list(hlds_goal),
 % 	list(hlds_goal), list(hlds_goal)).
 % :- mode move_prev_code_can_pull_producer(in, in, di, uo) is det.
 % 

@@ -26,7 +26,7 @@
 
 :- import_module hlds_pred, hlds_goal, hlds_data, prog_data, llds, arg_info.
 :- import_module passes_aux, call_gen, mode_util, code_util, goal_util.
-:- import_module globals, tree, (inst), instmap.
+:- import_module globals, tree, (inst), instmap, varset, term.
 
 :- import_module bool, int, string, list, assoc_list, set, map, varset.
 :- import_module std_util, require, term.
@@ -262,8 +262,8 @@ bytecode_gen__goal_expr(GoalExpr, GoalInfo, ByteInfo0, ByteInfo, Code) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred bytecode_gen__gen_places(list(pair(var, arg_loc))::in, byte_info::in,
-	byte_tree::out) is det.
+:- pred bytecode_gen__gen_places(list(pair(prog_var, arg_loc))::in,
+		byte_info::in, byte_tree::out) is det.
 
 bytecode_gen__gen_places([], _, empty).
 bytecode_gen__gen_places([Var - Loc | OutputArgs], ByteInfo, Code) :-
@@ -271,8 +271,8 @@ bytecode_gen__gen_places([Var - Loc | OutputArgs], ByteInfo, Code) :-
 	bytecode_gen__map_var(ByteInfo, Var, ByteVar),
 	Code = tree(node([place_arg(r, Loc, ByteVar)]), OtherCode).
 
-:- pred bytecode_gen__gen_pickups(list(pair(var, arg_loc))::in, byte_info::in,
-	byte_tree::out) is det.
+:- pred bytecode_gen__gen_pickups(list(pair(prog_var, arg_loc))::in,
+		byte_info::in, byte_tree::out) is det.
 
 bytecode_gen__gen_pickups([], _, empty).
 bytecode_gen__gen_pickups([Var - Loc | OutputArgs], ByteInfo, Code) :-
@@ -284,9 +284,9 @@ bytecode_gen__gen_pickups([Var - Loc | OutputArgs], ByteInfo, Code) :-
 
 	% Generate bytecode for a higher order call.
 
-:- pred bytecode_gen__higher_order_call(var::in, list(var)::in, list(type)::in,
-	argument_modes::in, determinism::in, byte_info::in, byte_tree::out)
-	is det.
+:- pred bytecode_gen__higher_order_call(prog_var::in, list(prog_var)::in,
+	list(type)::in, argument_modes::in, determinism::in, byte_info::in,
+	byte_tree::out) is det.
 
 bytecode_gen__higher_order_call(PredVar, ArgVars, ArgTypes, ArgModes, Detism,
 		ByteInfo, Code) :-
@@ -322,7 +322,7 @@ bytecode_gen__higher_order_call(PredVar, ArgVars, ArgTypes, ArgModes, Detism,
 
 	% Generate bytecode for an ordinary call.
 
-:- pred bytecode_gen__call(pred_id::in, proc_id::in, list(var)::in,
+:- pred bytecode_gen__call(pred_id::in, proc_id::in, list(prog_var)::in,
 	determinism::in, byte_info::in, byte_tree::out) is det.
 
 bytecode_gen__call(PredId, ProcId, ArgVars, Detism, ByteInfo, Code) :-
@@ -350,7 +350,7 @@ bytecode_gen__call(PredId, ProcId, ArgVars, Detism, ByteInfo, Code) :-
 
 	% Generate bytecode for a call to a builtin.
 
-:- pred bytecode_gen__builtin(pred_id::in, proc_id::in, list(var)::in,
+:- pred bytecode_gen__builtin(pred_id::in, proc_id::in, list(prog_var)::in,
 	byte_info::in, byte_tree::out) is det.
 
 bytecode_gen__builtin(PredId, ProcId, Args, ByteInfo, Code) :-
@@ -392,7 +392,7 @@ bytecode_gen__map_test(ByteInfo, Rval, Code) :-
 		error("builtin test is not in a recognized form")
 	).
 
-:- pred bytecode_gen__map_assign(byte_info::in, var::in, rval::in,
+:- pred bytecode_gen__map_assign(byte_info::in, prog_var::in, rval::in,
 	byte_tree::out) is det.
 
 bytecode_gen__map_assign(ByteInfo, Var, Rval, Code) :-
@@ -431,7 +431,7 @@ bytecode_gen__map_arg(ByteInfo, Rval, ByteArg) :-
 
 	% Generate bytecode for a unification.
 
-:- pred bytecode_gen__unify(unification::in, var::in, unify_rhs::in,
+:- pred bytecode_gen__unify(unification::in, prog_var::in, unify_rhs::in,
 	byte_info::in, byte_tree::out) is det.
 
 bytecode_gen__unify(construct(Var, ConsId, Args, UniModes), _, _, ByteInfo,
@@ -484,7 +484,7 @@ bytecode_gen__unify(simple_test(Var1, Var2), _, _, ByteInfo, Code) :-
 bytecode_gen__unify(complicated_unify(_, _), _Var, _RHS, _ByteInfo, _Code) :-
 	error("complicated unifications should have been handled by polymorphism.m").
 
-:- pred bytecode_gen__map_uni_modes(list(uni_mode)::in, list(var)::in,
+:- pred bytecode_gen__map_uni_modes(list(uni_mode)::in, list(prog_var)::in,
 	byte_info::in, list(byte_dir)::out) is det.
 
 bytecode_gen__map_uni_modes([], [], _, []).
@@ -578,7 +578,7 @@ bytecode_gen__disj([Disjunct | Disjuncts], ByteInfo0, InstMap0, EndLabel,
 
 	% Generate bytecode for each arm of a switch.
 
-:- pred bytecode_gen__switch(list(case)::in, var::in, byte_info::in,
+:- pred bytecode_gen__switch(list(case)::in, prog_var::in, byte_info::in,
 	instmap::in, int::in, byte_info::out, byte_tree::out) is det.
 
 bytecode_gen__switch([], _, ByteInfo, _, _, ByteInfo, empty).
@@ -597,7 +597,7 @@ bytecode_gen__switch([case(ConsId, IMDelta, Goal) | Cases], Var, ByteInfo0,
 
 %---------------------------------------------------------------------------%
 
-:- pred bytecode_gen__map_cons_id(byte_info::in, var::in, cons_id::in,
+:- pred bytecode_gen__map_cons_id(byte_info::in, prog_var::in, cons_id::in,
 	byte_cons_id::out) is det.
 
 bytecode_gen__map_cons_id(ByteInfo, Var, ConsId, ByteConsId) :-
@@ -678,9 +678,9 @@ bytecode_gen__map_cons_tag(base_typeclass_info_constant(_, _, _), _) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred bytecode_gen__create_varmap(list(var)::in, varset::in,
-	map(var, type)::in, int::in, map(var, byte_var)::in,
-	map(var, byte_var)::out, list(byte_var_info)::out) is det.
+:- pred bytecode_gen__create_varmap(list(prog_var)::in, prog_varset::in,
+	map(prog_var, type)::in, int::in, map(prog_var, byte_var)::in,
+	map(prog_var, byte_var)::out, list(byte_var_info)::out) is det.
 
 bytecode_gen__create_varmap([], _, _, _, VarMap, VarMap, []).
 bytecode_gen__create_varmap([Var | VarList], VarSet, VarTypes, N0,
@@ -697,8 +697,8 @@ bytecode_gen__create_varmap([Var | VarList], VarSet, VarTypes, N0,
 
 :- type byte_info
 	--->	byte_info(
-			map(var, byte_var),
-			map(var, type),
+			map(prog_var, byte_var),
+			map(prog_var, type),
 			module_info,
 			int,		% next label number to use
 			int,		% next temp number to use
@@ -706,8 +706,9 @@ bytecode_gen__create_varmap([Var | VarList], VarSet, VarTypes, N0,
 			instmap
 		).
 
-:- pred bytecode_gen__init_byte_info(module_info::in, map(var, byte_var)::in,
-	map(var, type)::in, inst_table::in, instmap::in, byte_info::out) is det.
+:- pred bytecode_gen__init_byte_info(module_info::in, 
+	map(prog_var, byte_var)::in, map(prog_var, type)::in, inst_table::in,
+	instmap::in, byte_info::out) is det.
 
 bytecode_gen__init_byte_info(ModuleInfo, VarMap, VarTypes, InstTable, InstMap,
 		ByteInfo) :-
@@ -720,25 +721,27 @@ bytecode_gen__get_module_info(byte_info(_, _, ModuleInfo, _, _, _, _),
 		ModuleInfo).
 
 :- pred bytecode_gen__map_vars(byte_info::in,
-	list(var)::in, list(byte_var)::out) is det.
+	list(prog_var)::in, list(byte_var)::out) is det.
 
 bytecode_gen__map_vars(byte_info(VarMap, _, _, _, _, _, _), Vars, ByteVars) :-
 	bytecode_gen__map_vars_2(VarMap, Vars, ByteVars).
 
-:- pred bytecode_gen__map_vars_2(map(var, byte_var)::in,
-	list(var)::in, list(byte_var)::out) is det.
+:- pred bytecode_gen__map_vars_2(map(prog_var, byte_var)::in,
+	list(prog_var)::in, list(byte_var)::out) is det.
 
 bytecode_gen__map_vars_2(_VarMap, [], []).
 bytecode_gen__map_vars_2(VarMap, [Var | Vars], [ByteVar | ByteVars]) :-
 	map__lookup(VarMap, Var, ByteVar),
 	bytecode_gen__map_vars_2(VarMap, Vars, ByteVars).
 
-:- pred bytecode_gen__map_var(byte_info::in, var::in, byte_var::out) is det.
+:- pred bytecode_gen__map_var(byte_info::in, prog_var::in,
+	byte_var::out) is det.
 
 bytecode_gen__map_var(byte_info(VarMap, _, _, _, _, _, _), Var, ByteVar) :-
 	map__lookup(VarMap, Var, ByteVar).
 
-:- pred bytecode_gen__get_var_type(byte_info::in, var::in, (type)::out) is det.
+:- pred bytecode_gen__get_var_type(byte_info::in, prog_var::in,
+	(type)::out) is det.
 
 bytecode_gen__get_var_type(byte_info(_, VarTypes, _, _, _, _, _), Var, Type) :-
 	map__lookup(VarTypes, Var, Type).

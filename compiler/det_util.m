@@ -17,8 +17,8 @@
 :- interface.
 
 :- import_module hlds_module, hlds_pred, hlds_goal, hlds_data, globals.
-:- import_module instmap.
-:- import_module bool, set, list, term.
+:- import_module instmap, prog_data.
+:- import_module bool, set, list.
 
 :- type maybe_changed	--->	changed ; unchanged.
 
@@ -43,7 +43,8 @@
 	% Update the current substitution to account for the effects
 	% of the given unification.
 
-:- pred interpret_unify(var, unify_rhs, substitution, substitution).
+:- pred interpret_unify(prog_var, unify_rhs, prog_substitution,
+		prog_substitution).
 :- mode interpret_unify(in, in, in, out) is semidet.
 
 	% Look up the determinism of a procedure.
@@ -54,10 +55,10 @@
 :- pred det_get_proc_info(det_info, proc_info).
 :- mode det_get_proc_info(in, out) is det.
 
-:- pred det_lookup_var_type(module_info, proc_info, var, hlds_type_defn).
+:- pred det_lookup_var_type(module_info, proc_info, prog_var, hlds_type_defn).
 :- mode det_lookup_var_type(in, in, in, out) is semidet.
 
-:- pred det_no_output_vars(set(var), instmap, instmap_delta, det_info).
+:- pred det_no_output_vars(set(prog_var), instmap, instmap_delta, det_info).
 :- mode det_no_output_vars(in, in, in, in) is semidet.
 
 :- pred det_info_init(module_info, pred_id, proc_id, inst_table,
@@ -95,7 +96,7 @@
 
 :- implementation.
 
-:- import_module inst_match, mode_util, type_util, options.
+:- import_module inst_match, mode_util, type_util, options, term.
 :- import_module map, require, std_util.
 
 update_instmap(_Goal0 - GoalInfo0, InstMap0, InstMap) :-
@@ -116,7 +117,8 @@ delete_unreachable_cases([Case | Cases0], [ConsId | ConsIds], Cases) :-
 	).
 
 interpret_unify(X, var(Y), Subst0, Subst) :-
-	term__unify(term__variable(X), term__variable(Y), Subst0, Subst).
+	term__unify(term__variable(X), term__variable(Y),
+		Subst0, Subst).
 interpret_unify(X, functor(ConsId, ArgVars), Subst0, Subst) :-
 	term__var_list_to_term_list(ArgVars, ArgTerms),
 	cons_id_and_args_to_term(ConsId, ArgTerms, RhsTerm),

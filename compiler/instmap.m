@@ -22,7 +22,7 @@
 :- import_module hlds_module, prog_data, mode_info, (inst), mode_errors.
 :- import_module hlds_data.
 
-:- import_module map, bool, set, term, list, assoc_list, std_util.
+:- import_module map, bool, set, list, assoc_list, std_util.
 
 :- type instmap.
 :- type instmap_delta.
@@ -77,17 +77,18 @@
 
 	% Construct an instmap from an assoc_list.
 	% NOTE: The assoc_list in argument 1 must not contain alias/1.
-:- pred instmap__from_assoc_list(assoc_list(var, inst), instmap).
+:- pred instmap__from_assoc_list(assoc_list(prog_var, inst), instmap).
 :- mode instmap__from_assoc_list(in, out) is det.
 
 	% Construct an instmap_delta from an assoc_list.
 	% NOTE: The assoc_list in argument 1 must not contain alias/1.
-:- pred instmap_delta_from_assoc_list(assoc_list(var, inst), instmap_delta).
+:- pred instmap_delta_from_assoc_list(assoc_list(prog_var, inst),
+		instmap_delta).
 :- mode instmap_delta_from_assoc_list(in, out) is det.
 
 	% Construct an instmap from a list of modes.
 	% NOTE: The assoc_list in argument 2 must not contain alias/1.
-% :- pred instmap_delta_from_mode_list(list(var), list(mode),
+% :- pred instmap_delta_from_mode_list(list(prog_var), list(mode),
 % 		module_info, instmap_delta).
 % :- mode instmap_delta_from_mode_list(in, in, in, out) is det.
 
@@ -95,12 +96,12 @@
 
 	% Return the set of variables in an instmap.
 	%
-:- pred instmap__vars(instmap, set(var)).
+:- pred instmap__vars(instmap, set(prog_var)).
 :- mode instmap__vars(in, out) is det.
 
 	% Return the list of variables in an instmap.
 	%
-:- pred instmap__vars_list(instmap, list(var)).
+:- pred instmap__vars_list(instmap, list(prog_var)).
 :- mode instmap__vars_list(in, out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -108,23 +109,23 @@
 	% Given an instmap and a variable, determine the inst of
 	% that variable.
 	%
-:- pred instmap__lookup_var(instmap, var, inst).
+:- pred instmap__lookup_var(instmap, prog_var, inst).
 :- mode instmap__lookup_var(in, in, out) is det.
 
 	% Given an instmap and a list of variables, return a list
 	% containing the insts of those variable.
 	%
-:- pred instmap__lookup_vars(list(var), instmap, list(inst)).
+:- pred instmap__lookup_vars(list(prog_var), instmap, list(inst)).
 :- mode instmap__lookup_vars(in, in, out) is det.
 
 	% Set an entry in an instmap.
 	%
-:- pred instmap__set(instmap, var, inst, instmap).
+:- pred instmap__set(instmap, prog_var, inst, instmap).
 :- mode instmap__set(in, in, in, out) is det.
 
 	% Set multiple entries in an instmap.
 	%
-:- pred instmap__set_vars(instmap, list(var), list(inst), instmap).
+:- pred instmap__set_vars(instmap, list(prog_var), list(inst), instmap).
 :- mode instmap__set_vars(in, in, in, out) is det.
 
 :- pred instmap__add_alias(instmap, inst_key, inst_key, instmap).
@@ -132,7 +133,7 @@
 
 	% Update the given instmap to include the initial insts of the
 	% lambda variables.
-:- pred instmap__pre_lambda_update(module_info, list(var), argument_modes,
+:- pred instmap__pre_lambda_update(module_info, list(prog_var), argument_modes,
 	instmap_delta, inst_table, inst_table, instmap, instmap).
 :- mode instmap__pre_lambda_update(in, in, in, out, in, out, in, out) is det.
 
@@ -164,7 +165,7 @@
 	%       instantiatedness of all the nonlocal variables,
 	%       checking that it is the same for every branch.
 	%
-:- pred instmap__merge(set(var), list(instmap),
+:- pred instmap__merge(set(prog_var), list(instmap),
 		instmap, instmap, module_info, inst_table,
 		module_info, inst_table, merge_errors).
 :- mode instmap__merge(in, in, in, out, in, in, out, out, out) is det.
@@ -175,7 +176,7 @@
 	%       instantiatedness of all the nonlocal variables,
 	%       checking that it is the same for every branch.
 	%
-:- pred instmap__merge(set(var), list(instmap), merge_context,
+:- pred instmap__merge(set(prog_var), list(instmap), merge_context,
 		mode_info, mode_info).
 :- mode instmap__merge(in, in, in, mode_info_di, mode_info_uo) is det.
 
@@ -183,17 +184,18 @@
 	% returns an instmap with its domain restricted to those
 	% vars.
 	%
-:- pred instmap__restrict(instmap, set(var), instmap).
+:- pred instmap__restrict(instmap, set(prog_var), instmap).
 :- mode instmap__restrict(in, in, out) is det.
 
-:- pred instmap_delta_delete_vars(instmap_delta, list(var), instmap_delta).
+:- pred instmap_delta_delete_vars(instmap_delta, list(prog_var),
+		instmap_delta).
 :- mode instmap_delta_delete_vars(in, in, out) is det.
 
 	% `instmap__no_output_vars(Instmap, InstmapDelta, Vars, InstTable,
 	%  ModuleInfo)'
 	% is true if none of the vars in the set Vars could have become more
 	% instantiated when InstmapDelta is applied to Instmap.
-:- pred instmap__no_output_vars(instmap, instmap_delta, set(var),
+:- pred instmap__no_output_vars(instmap, instmap_delta, set(prog_var),
 		inst_table, module_info).
 :- mode instmap__no_output_vars(in, in, in, in, in) is semidet.
 
@@ -203,7 +205,7 @@
 	% of a case in a switch.
 	% (note: cons_id_to_const must succeed given the cons_id).
 
-:- pred instmap__bind_var_to_functor(var, cons_id, instmap, instmap,
+:- pred instmap__bind_var_to_functor(prog_var, cons_id, instmap, instmap,
 		inst_table, inst_table, module_info, module_info).
 :- mode instmap__bind_var_to_functor(in, in, in, out, in, out, in, out) is det.
 
@@ -217,8 +219,8 @@
 	%	the individual conjuncts ensures that variables have
 	%	at most one producer.
 	%
-:- pred instmap__unify(set(var), instmap, list(pair(instmap, set(var))),
-		mode_info, mode_info).
+:- pred instmap__unify(set(prog_var), instmap,
+		list(pair(instmap, set(prog_var))), mode_info, mode_info).
 :- mode instmap__unify(in, in, in, mode_info_di, mode_info_uo) is det.
 
 	% instmap__unify(NonLocals, InstMapBefore, InstMapNonlocalvarsPairs,
@@ -226,9 +228,9 @@
 	%	MergeErrors)
 	% Unify the instmap_deltas of different branches of a parallel
 	% conjunction.
-:- pred instmap__unify(list(var), instmap, list(pair(instmap, set(var))),
-		inst_table, inst_table, module_info, module_info, instmap,
-		merge_errors).
+:- pred instmap__unify(list(prog_var), instmap,
+		list(pair(instmap, set(prog_var))), inst_table, inst_table,
+		module_info, module_info, instmap, merge_errors).
 :- mode instmap__unify(in, in, in, in, out, in, out, out, out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -239,19 +241,19 @@
 	% InstmapDelta0 which does not appear in Sub, it is ignored if
 	% Must is set to no, otherwise it is an error.
 	%
-:- pred instmap_delta_apply_sub(instmap_delta, bool, map(var, var),
+:- pred instmap_delta_apply_sub(instmap_delta, bool, map(prog_var, prog_var),
 		instmap_delta).
 :- mode instmap_delta_apply_sub(in, in, in, out) is det.
 
-:- pred instmap__apply_sub(instmap, bool, map(var, var), instmap).
+:- pred instmap__apply_sub(instmap, bool, map(prog_var, prog_var), instmap).
 :- mode instmap__apply_sub(in, in, in, out) is det.
 
 %-----------------------------------------------------------------------------%
 
-:- pred instmap__to_assoc_list(instmap, assoc_list(var, inst)).
+:- pred instmap__to_assoc_list(instmap, assoc_list(prog_var, inst)).
 :- mode instmap__to_assoc_list(in, out) is det.
 
-:- pred instmap_delta_to_assoc_list(instmap_delta, assoc_list(var, inst)).
+:- pred instmap_delta_to_assoc_list(instmap_delta, assoc_list(prog_var, inst)).
 :- mode instmap_delta_to_assoc_list(in, out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -277,7 +279,7 @@
 :- implementation.
 
 :- import_module mode_util, inst_match, prog_data, goal_util.
-:- import_module hlds_data, inst_util.
+:- import_module hlds_data, inst_util, term.
 
 :- import_module std_util, require, multi_map, set_bbbtree, string.
 
@@ -287,7 +289,7 @@
 		reachable(instmapping, inst_key_sub)
 	;	unreachable.
 
-:- type instmapping	==	map(var, inst).
+:- type instmapping	==	map(prog_var, inst).
 
 %-----------------------------------------------------------------------------%
 
@@ -332,7 +334,7 @@ instmap_delta_from_assoc_list(AL, reachable(Instmapping, AliasMap)) :-
 % 	instmap_delta_from_mode_list_2(Vars, Modes, ModuleInfo,
 % 		InstMapDelta0, InstMapDelta).
 % 	
-% :- pred instmap_delta_from_mode_list_2(list(var), list(mode),
+% :- pred instmap_delta_from_mode_list_2(list(prog_var), list(mode),
 % 		module_info, instmap_delta, instmap_delta).
 % :- mode instmap_delta_from_mode_list_2(in, in, in, in, out) is det.
 % 
@@ -373,7 +375,7 @@ instmap__lookup_var(reachable(InstMap, Sub), Var, Inst) :-
 	instmapping_lookup_var(InstMap, Var, Inst0),
 	inst_apply_sub(Sub, Inst0, Inst).
 
-:- pred instmapping_lookup_var(instmapping, var, inst).
+:- pred instmapping_lookup_var(instmapping, prog_var, inst).
 :- mode instmapping_lookup_var(in, in, out) is det.
 
 instmapping_lookup_var(InstMap, Var, Inst) :-
@@ -475,7 +477,8 @@ instmap_delta_delete_vars(reachable(InstMapping0, AliasMap), Vars,
 		reachable(InstMapping, AliasMap)) :-
 	instmap_delta_delete_vars_2(Vars, InstMapping0, InstMapping).
 
-:- pred instmap_delta_delete_vars_2(list(var), map(var, inst), map(var, inst)).
+:- pred instmap_delta_delete_vars_2(list(prog_var), map(prog_var, inst),
+		map(prog_var, inst)).
 :- mode instmap_delta_delete_vars_2(in, in, out) is det.
 
 instmap_delta_delete_vars_2([], IM, IM).
@@ -550,7 +553,7 @@ instmap__merge(NonLocals, InstMapList, InstMap0,
 	).
 
 :- pred get_reachable_instmaps(list(instmap),
-		list(pair(map(var, inst), inst_key_sub))).
+		list(pair(map(prog_var, inst), inst_key_sub))).
 :- mode get_reachable_instmaps(in, out) is det.
 
 get_reachable_instmaps([], []).
@@ -569,8 +572,8 @@ get_reachable_instmaps([InstMap | InstMaps], Reachables) :-
 	%	Return a set of all inst_keys which appear more than
 	%	once in the instmaps.
 
-:- pred instmap__get_relevant_inst_keys(list(var), list(instmap), module_info,
-			inst_table, set_bbbtree(inst_key)).
+:- pred instmap__get_relevant_inst_keys(list(prog_var), list(instmap),
+		module_info, inst_table, set_bbbtree(inst_key)).
 :- mode instmap__get_relevant_inst_keys(in, in, in, in, out) is det.
 
 instmap__get_relevant_inst_keys(Vars, InstMaps, ModuleInfo, InstTable,
@@ -582,9 +585,10 @@ instmap__get_relevant_inst_keys(Vars, InstMaps, ModuleInfo, InstTable,
 		InstMaps, Seen0, _Seen, Duplicate0, Duplicate),
 	RelevantIKs = Duplicate.
 
-:- pred instmap__get_relevant_inst_keys_2(list(var), module_info, inst_table,
-		instmap, set_bbbtree(inst_key), set_bbbtree(inst_key),
-		set_bbbtree(inst_key), set_bbbtree(inst_key)).
+:- pred instmap__get_relevant_inst_keys_2(list(prog_var), module_info,
+		inst_table, instmap, set_bbbtree(inst_key),
+		set_bbbtree(inst_key), set_bbbtree(inst_key),
+		set_bbbtree(inst_key)).
 :- mode instmap__get_relevant_inst_keys_2(in, in, in, in,
 		in, out, in, out) is det.
 
@@ -673,9 +677,9 @@ instmap__get_relevant_inst_keys_in_inst(abstract_inst(_, Insts), Rec,
 	%       there are two instmaps in `InstMaps' for which the inst
 	%       the variable is incompatible.
 
-:- pred instmap__merge_2(list(var), list(instmap), inst_table, module_info,
-			map(var, inst), inst_table, module_info,
-			map(var, inst), merge_errors).
+:- pred instmap__merge_2(list(prog_var), list(instmap), inst_table, module_info,
+			map(prog_var, inst), inst_table, module_info,
+			map(prog_var, inst), merge_errors).
 :- mode instmap__merge_2(in, in, in, in, in, out, out, out, out) is det.
 
 instmap__merge_2([], _, InstTable, ModuleInfo, InstMap, InstTable, ModuleInfo,
@@ -700,7 +704,7 @@ instmap__merge_2([Var|Vars], InstMapList, InstTable0, ModuleInfo0, InstMap0,
 	%       there are two instmaps for which the inst of `Var'
 	%       is incompatible.
 
-:- pred instmap__merge_var(list(instmap), var, inst_table, module_info,
+:- pred instmap__merge_var(list(instmap), prog_var, inst_table, module_info,
 			list(inst), inst, inst_table, module_info, bool).
 :- mode instmap__merge_var(in, in, in, in, out, out, out, out, out) is det.
 
@@ -796,7 +800,8 @@ instmap__unify(_NonLocals, InstMapBefore, InstMapList,
 % 	%       Let `ErrorList' be the list of variables in `Vars' for
 % 	%       which there are two instmaps in `InstMaps' for which the insts
 % 	%       of the variable is incompatible.
-% :- pred instmap__unify_2(list(var), instmap, list(pair(instmap, set(var))),
+% :- pred instmap__unify_2(list(prog_var), instmap,
+%		list(pair(instmap, set(prog_var))),
 % 		inst_table, module_info, instmap,
 % 		inst_table, module_info, instmap,
 % 		merge_errors).
@@ -829,7 +834,7 @@ instmap__unify(_NonLocals, InstMapBefore, InstMapList,
 % 	%	iff there are two instmaps for which the inst of `Var'
 % 	%       is incompatible.
 % 
-% :- pred instmap__unify_var(list(pair(instmap, set(var))), var,
+% :- pred instmap__unify_var(list(pair(instmap, set(prog_var))), prog_var,
 % 		list(inst), list(inst), inst, inst, inst_table, inst_table,
 % 		module_info, module_info, bool, bool).
 % :- mode instmap__unify_var(in, in, in, out, in, out, in, out, in, out,
@@ -921,7 +926,7 @@ instmap__no_output_vars(InstMap0, InstMapDelta, Vars, InstTable, ModuleInfo) :-
 	instmap__no_output_vars_2(VarList, InstMap0, InstMap,
 		InstTable, ModuleInfo).
 
-:- pred instmap__no_output_vars_2(list(var), instmap, instmap,
+:- pred instmap__no_output_vars_2(list(prog_var), instmap, instmap,
 		inst_table, module_info).
 :- mode instmap__no_output_vars_2(in, in, in, in, in) is semidet.
 
@@ -946,8 +951,9 @@ instmap__no_output_vars_2([Var | Vars], InstMap0, InstMap,
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- pred merge_instmapping_delta(instmap, set(var), instmapping, instmapping,
-		instmapping, inst_table, inst_table, module_info, module_info).
+:- pred merge_instmapping_delta(instmap, set(prog_var), instmapping,
+		instmapping, instmapping, inst_table, inst_table,
+		module_info, module_info).
 :- mode merge_instmapping_delta(in, in, in, in, out, in, out, in, out) is det.
 
 merge_instmapping_delta(InstMap, NonLocals, InstMappingA,
@@ -962,11 +968,11 @@ merge_instmapping_delta(InstMap, NonLocals, InstMappingA,
 	merge_instmapping_delta_2(ListofVars, InstMap, InstMappingA,
 		InstMappingB, InstMapping0, InstMapping, InstTable0, InstTable).
 
-:- pred merge_instmapping_delta_2(list(var), instmap, instmapping, instmapping,
-		instmapping, instmapping, inst_table, inst_table,
+:- pred merge_instmapping_delta_2(list(prog_var), instmap, instmapping,
+		instmapping, instmapping, instmapping, inst_table, inst_table,
 		module_info, module_info).
-:- mode merge_instmapping_delta_2(in, in, in, in,
-		in, out, in, out, in, out) is det.
+:- mode merge_instmapping_delta_2(in, in, in, in, in, out, in, out, in, out)
+		is det.
 
 merge_instmapping_delta_2([], _, _, _, InstMapping, InstMapping,
 			InstTable, InstTable, ModInfo, ModInfo).
@@ -1055,8 +1061,8 @@ instmap_delta_apply_sub(reachable(OldInstMapping, Alias), Must, Sub,
 instmap__apply_sub(InstMap0, Must, Sub, InstMap) :-
 	instmap_delta_apply_sub(InstMap0, Must, Sub, InstMap).
 
-:- pred instmap_delta_apply_sub_2(assoc_list(var, inst), bool, map(var, var),
-		instmapping, instmapping).
+:- pred instmap_delta_apply_sub_2(assoc_list(prog_var, inst), bool,
+		map(prog_var, prog_var), instmapping, instmapping).
 :- mode instmap_delta_apply_sub_2(in, in, in, in, out) is det.
 
 instmap_delta_apply_sub_2([], _Must, _Sub, IM, IM).

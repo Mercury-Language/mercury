@@ -36,8 +36,8 @@
 
 :- interface.
 
-:- import_module hlds_goal, llds, options.
-:- import_module map, set, list, term, varset, assoc_list.
+:- import_module prog_data, hlds_goal, llds, options.
+:- import_module map, set, list, assoc_list.
 
 :- type exprn_info.
 
@@ -55,8 +55,8 @@
 %		the table of options; this is used to decide what expressions
 %		are considered constants.
 
-:- pred code_exprn__init_state(assoc_list(var, val_or_ref), varset, stack_slots,
-	follow_vars, option_table, exprn_info).
+:- pred code_exprn__init_state(assoc_list(prog_var, val_or_ref), prog_varset,
+	stack_slots, follow_vars, option_table, exprn_info).
 :- mode code_exprn__init_state(in, in, in, in, in, out) is det.
 
 %	code_exprn__reinit_state(VarLocs, ExprnInfo0, ExprnInfo)
@@ -68,7 +68,7 @@
 %		of variables and lvalues. The new state places the given
 %		variables at their corresponding locations.
 
-:- pred code_exprn__reinit_state(assoc_list(var, val_or_ref), exprn_info,
+:- pred code_exprn__reinit_state(assoc_list(prog_var, val_or_ref), exprn_info,
 		exprn_info).
 :- mode code_exprn__reinit_state(in, in, out) is det.
 
@@ -79,24 +79,25 @@
 %		registers, and are not stored on the stack, then this
 %		predicate will abort.
 
-:- pred code_exprn__clobber_regs(list(var), exprn_info, exprn_info).
+:- pred code_exprn__clobber_regs(list(prog_var), exprn_info, exprn_info).
 :- mode code_exprn__clobber_regs(in, in, out) is det.
 
 %	code_exprn__set_var_location(Var, Lval, ExprnInfo0, ExprnInfo)
 %		Modifies ExprnInfo0 to produce ExprnInfo in which
 %		Var is *magically* stored in Lval.
 
-:- pred code_exprn__set_var_location(var, lval, exprn_info, exprn_info).
+:- pred code_exprn__set_var_location(prog_var, lval, exprn_info, exprn_info).
 :- mode code_exprn__set_var_location(in, in, in, out) is det.
 
-:- pred code_exprn__maybe_set_var_location(var, lval, exprn_info, exprn_info).
+:- pred code_exprn__maybe_set_var_location(prog_var, lval, exprn_info,
+		exprn_info).
 :- mode code_exprn__maybe_set_var_location(in, in, in, out) is det.
 
 %      code_exprn__set_var_reference_location(Var, Lval, ExprnInfo0, ExprnInfo)
 %		Modifies ExprnInfo0 to record that Lval holds an address
 %		where the value of Var will be placed.
 
-:- pred code_exprn__set_var_reference_location(var, lval,
+:- pred code_exprn__set_var_reference_location(prog_var, lval,
 		exprn_info, exprn_info).
 :- mode code_exprn__set_var_reference_location(in, in, in, out) is det.
 
@@ -109,7 +110,7 @@
 %		any cached expressions which still need those resources
 %		will inherit them appropriately).
 
-:- pred code_exprn__var_becomes_dead(var, exprn_info, exprn_info).
+:- pred code_exprn__var_becomes_dead(prog_var, exprn_info, exprn_info).
 :- mode code_exprn__var_becomes_dead(in, in, out) is det.
 
 %	code_exprn__cache_exprn(Var, Rval, ExprnInfo0, ExprnInfo)
@@ -117,14 +118,15 @@
 %		which indicates that when a value of Var is needed,
 %		code to evaluate Rval should be produced.
 
-:- pred code_exprn__cache_exprn(var, rval, exprn_info, exprn_info).
+:- pred code_exprn__cache_exprn(prog_var, rval, exprn_info, exprn_info).
 :- mode code_exprn__cache_exprn(in, in, in, out) is det.
 
 %	code_exprn__place_var(Var, Lval, Code, ExprnInfo0, ExprnInfo)
 %		Produces Code and a modified version of ExprnInfo0,
 %		ExprnInfo which places the value of Var in Lval.
 
-:- pred code_exprn__place_var(var, lval, code_tree, exprn_info, exprn_info).
+:- pred code_exprn__place_var(prog_var, lval, code_tree,
+		exprn_info, exprn_info).
 :- mode code_exprn__place_var(in, in, out, in, out) is det.
 
 %	code_exprn__place_vars(StoreMap, Code, ExprnInfo0, ExprnInfo)
@@ -132,7 +134,7 @@
 %		ExprnInfo which places the value of each variable
 %		mentioned in the store map into the corresponding location.
 
-:- pred code_exprn__place_vars(assoc_list(var, store_info), code_tree,
+:- pred code_exprn__place_vars(assoc_list(prog_var, store_info), code_tree,
 	exprn_info, exprn_info).
 :- mode code_exprn__place_vars(in, out, in, out) is det.
 
@@ -140,7 +142,7 @@
 % 		If the Var has a set of reference locations associated with
 %		it, place it in these locations and remove them from the
 %		locations set.
-:- pred code_exprn__place_var_in_references(var, code_tree,
+:- pred code_exprn__place_var_in_references(prog_var, code_tree,
 		exprn_info, exprn_info).
 :- mode code_exprn__place_var_in_references(in, out, in, out) is det.
 
@@ -149,7 +151,7 @@
 %		Produces code to place the reference to Var's location
 %		in Lval, if it isn't already there.
 
-:- pred code_exprn__place_var_reference(var, lval, code_tree, exprn_info,
+:- pred code_exprn__place_var_reference(prog_var, lval, code_tree, exprn_info,
 	exprn_info).
 :- mode code_exprn__place_var_reference(in, in, out, in, out) is det.
 
@@ -157,14 +159,15 @@
 %		Produces a code fragment Code to evaluate Var and
 %		provide it as Rval (which may be a const, etc, or an lval).
 
-:- pred code_exprn__produce_var(var, rval, code_tree, exprn_info, exprn_info).
+:- pred code_exprn__produce_var(prog_var, rval, code_tree,
+		exprn_info, exprn_info).
 :- mode code_exprn__produce_var(in, out, out, in, out) is det.
 
 %	code_exprn__produce_var_in_reg(Var, Rval, Code, ExprnInfo0, ExprnInfo)
 %		Produces a code fragment Code to evaluate Var and
 %		provide it as an Rval of the form lval(reg(_)).
 
-:- pred code_exprn__produce_var_in_reg(var, rval, code_tree,
+:- pred code_exprn__produce_var_in_reg(prog_var, rval, code_tree,
 	exprn_info, exprn_info).
 :- mode code_exprn__produce_var_in_reg(in, out, out, in, out) is det.
 
@@ -174,11 +177,11 @@
 %		provide it as an Rval of the form lval(reg(_)),
 %		lval(stackvar(_)), or lval(framevar(_)).
 
-:- pred code_exprn__produce_var_in_reg_or_stack(var, rval, code_tree,
+:- pred code_exprn__produce_var_in_reg_or_stack(prog_var, rval, code_tree,
 	exprn_info, exprn_info).
 :- mode code_exprn__produce_var_in_reg_or_stack(in, out, out, in, out) is det.
 
-:- pred code_exprn__produce_ref_in_reg_or_stack(var, lval, code_tree,
+:- pred code_exprn__produce_ref_in_reg_or_stack(prog_var, lval, code_tree,
 	exprn_info, exprn_info).
 :- mode code_exprn__produce_ref_in_reg_or_stack(in, out, out, in, out) is det.
 
@@ -245,7 +248,7 @@
 %		Returns a map from each variable that occurs in ExprnInfo to
 %		the set of locations (really rvals) in which it may be found.
 
-:- pred code_exprn__get_varlocs(exprn_info, map(var, set(rval))).
+:- pred code_exprn__get_varlocs(exprn_info, map(prog_var, set(rval))).
 :- mode code_exprn__get_varlocs(in, out) is det.
 
 %	code_exprn__get_stack_slots(StackSlots)
@@ -284,8 +287,8 @@
 
 :- implementation.
 
-:- import_module code_util, exprn_aux, tree.
-:- import_module bool, bag, require, int, term, string, std_util.
+:- import_module code_util, exprn_aux, tree, varset, term.
+:- import_module bool, bag, require, int, string, std_util.
 
 :- type var_stat	--->	evaled(set(rval))
 			;	cached(rval)
@@ -308,11 +311,11 @@
 % value is already in this location, otherwise it is no.
 :- type var_refs == set(pair(bool, set(lval))).
 
-:- type var_map	==	map(var, var_info).
+:- type var_map	==	map(prog_var, var_info).
 
 :- type exprn_info	--->
 		exprn_info(
-			varset,		% all the variables and their names
+			prog_varset,	% all the variables and their names
 			var_map,	% what each variable stands for
 			bag(lval),	% the 'in use' markers for regs
 			set(lval),	% extra markers for acquired regs
@@ -343,8 +346,8 @@ code_exprn__reinit_state(VarLocs, ExprnInfo0, ExprnInfo) :-
 	ExprnInfo = exprn_info(Varset, Vars, Regs, Acqu,
 		StackSlots, FollowVars, ExprnOpts).
 
-:- pred code_exprn__init_state_2(assoc_list(var, val_or_ref), var_map, var_map,
-	bag(lval), bag(lval)).
+:- pred code_exprn__init_state_2(assoc_list(prog_var, val_or_ref),
+	var_map, var_map, bag(lval), bag(lval)).
 :- mode code_exprn__init_state_2(in, in, out, in, out) is det.
 
 code_exprn__init_state_2([], Vars, Vars, Regs, Regs).
@@ -400,8 +403,8 @@ code_exprn__get_varlocs(ExprnInfo, Locations) :-
 	map__init(Locations0),
 	code_exprn__repackage_locations(VarList, Locations0, Locations).
 
-:- pred code_exprn__repackage_locations(assoc_list(var, var_info),
-			map(var, set(rval)), map(var, set(rval))).
+:- pred code_exprn__repackage_locations(assoc_list(prog_var, var_info),
+			map(prog_var, set(rval)), map(prog_var, set(rval))).
 :- mode code_exprn__repackage_locations(in, in, out) is det.
 
 code_exprn__repackage_locations([], Loc, Loc).
@@ -434,8 +437,8 @@ code_exprn__clobber_regs(CriticalVars) -->
 	{ set__init(Acqu) },
 	code_exprn__set_acquired(Acqu).
 
-:- pred code_exprn__clobber_regs_2(assoc_list(var, var_info), list(var),
-						var_map, var_map, var_map).
+:- pred code_exprn__clobber_regs_2(assoc_list(prog_var, var_info),
+		list(prog_var), var_map, var_map, var_map).
 :- mode code_exprn__clobber_regs_2(in, in, in, in, out) is det.
 
 code_exprn__clobber_regs_2([], _Critical, _OldVars, Vars, Vars).
@@ -655,7 +658,7 @@ code_exprn__lval_in_use(Lval) -->
 		{ code_exprn__lval_in_use_by_vars(Lval, VarStatList) }
 	).
 
-:- pred code_exprn__lval_in_use_by_vars(lval, assoc_list(var, var_info)).
+:- pred code_exprn__lval_in_use_by_vars(lval, assoc_list(prog_var, var_info)).
 :- mode code_exprn__lval_in_use_by_vars(in, in) is semidet.
 
 code_exprn__lval_in_use_by_vars(Lval, VarInfoList) :-
@@ -684,8 +687,8 @@ code_exprn__clear_lval_of_synonyms(Lval) -->
 	{ map__to_assoc_list(Vars, VarInfoList) },
 	code_exprn__clear_lval_of_synonyms_1(VarInfoList, Lval).
 
-:- pred code_exprn__clear_lval_of_synonyms_1(assoc_list(var, var_info), lval,
-	exprn_info, exprn_info).
+:- pred code_exprn__clear_lval_of_synonyms_1(assoc_list(prog_var, var_info),
+	lval, exprn_info, exprn_info).
 :- mode code_exprn__clear_lval_of_synonyms_1(in, in, in, out) is det.
 
 code_exprn__clear_lval_of_synonyms_1([], _) --> [].
@@ -919,7 +922,8 @@ code_exprn__var_becomes_dead(Var) -->
 
 %------------------------------------------------------------------------------%
 
-:- pred code_exprn__update_dependent_vars(var, rval, exprn_info, exprn_info).
+:- pred code_exprn__update_dependent_vars(prog_var, rval,
+		exprn_info, exprn_info).
 :- mode code_exprn__update_dependent_vars(in, in, in, out) is det.
 
 code_exprn__update_dependent_vars(Var, Rval) -->
@@ -929,8 +933,9 @@ code_exprn__update_dependent_vars(Var, Rval) -->
 	{ map__from_assoc_list(VarList, Vars) },
 	code_exprn__set_vars(Vars).
 
-:- pred code_exprn__update_dependent_vars_2(assoc_list(var, var_info),
-		var, rval, assoc_list(var, var_info), exprn_info, exprn_info).
+:- pred code_exprn__update_dependent_vars_2(assoc_list(prog_var, var_info),
+		prog_var, rval, assoc_list(prog_var, var_info),
+		exprn_info, exprn_info).
 :- mode code_exprn__update_dependent_vars_2(in, in, in, out, in, out) is det.
 
 code_exprn__update_dependent_vars_2([], _Var, _Rval, []) --> [].
@@ -966,8 +971,8 @@ code_exprn__update_dependent_vars_2([V - var_info(Locs, Stat0) | Rest0], Var,
 	),
 	code_exprn__update_dependent_vars_2(Rest0, Var, Rval, Rest).
 
-:- pred code_exprn__update_dependent_vars_3(list(rval), var, rval, list(rval),
-					exprn_info, exprn_info).
+:- pred code_exprn__update_dependent_vars_3(list(rval), prog_var, rval,
+		list(rval), exprn_info, exprn_info).
 :- mode code_exprn__update_dependent_vars_3(in, in, in, out, in, out) is det.
 
 code_exprn__update_dependent_vars_3([], _Var, _Rval, []) --> [].
@@ -1195,7 +1200,7 @@ code_exprn__place_var(Var, Lval, Code) -->
 		{ error(Msg) }
 	).
 
-:- pred code_exprn__place_cached(rval, var, lval, code_tree,
+:- pred code_exprn__place_cached(rval, prog_var, lval, code_tree,
 						exprn_info, exprn_info).
 :- mode code_exprn__place_cached(in, in, in, out, in, out) is det.
 
@@ -1281,7 +1286,7 @@ get_next_ref_to_place(Refs0, Lvals, Refs) :-
 	set__sorted_list_to_set(RefList, Refs).
 		
 
-:- pred code_exprn__place_evaled(set(rval), var, lval, code_tree,
+:- pred code_exprn__place_evaled(set(rval), prog_var, lval, code_tree,
 	exprn_info, exprn_info).
 :- mode code_exprn__place_evaled(in, in, in, out, in, out) is det.
 
@@ -1368,7 +1373,7 @@ code_exprn__place_arg(Rval0, MaybeLval, Lval, Code) -->
 			Code)
 	).
 
-:- pred code_exprn__place_exprn(maybe(lval), maybe(var), rval, bool, bool,
+:- pred code_exprn__place_exprn(maybe(lval), maybe(prog_var), rval, bool, bool,
 	lval, code_tree, exprn_info, exprn_info).
 :- mode code_exprn__place_exprn(in, in, in, in, in, out, out, in, out) is det.
 
@@ -1632,8 +1637,8 @@ code_exprn__free_arg_dependenciess([Target | Targets]) -->
 
 %------------------------------------------------------------------------------%
 
-:- pred code_exprn__produce_vars(list(var), assoc_list(var, rval), code_tree,
-	exprn_info, exprn_info).
+:- pred code_exprn__produce_vars(list(prog_var), assoc_list(prog_var, rval),
+		code_tree, exprn_info, exprn_info).
 :- mode code_exprn__produce_vars(in, out, out, in, out) is det.
 
 code_exprn__produce_vars([], [], empty) --> [].
@@ -1768,7 +1773,8 @@ code_exprn__select_reg_or_stack_lval([Lval0 | Lvals0], Lval) :-
 
 %------------------------------------------------------------------------------%
 
-:- pred code_exprn__select_preferred_lval(var, lval, exprn_info, exprn_info).
+:- pred code_exprn__select_preferred_lval(prog_var, lval,
+		exprn_info, exprn_info).
 :- mode code_exprn__select_preferred_lval(in, out, in, out) is det.
 
 code_exprn__select_preferred_lval(Var, Lval) -->
@@ -1788,7 +1794,8 @@ code_exprn__select_preferred_lval(Var, Lval) -->
 		code_exprn__get_spare_reg(r, Lval)
 	).
 
-:- pred code_exprn__select_preferred_reg(var, lval, exprn_info, exprn_info).
+:- pred code_exprn__select_preferred_reg(prog_var, lval,
+		exprn_info, exprn_info).
 :- mode code_exprn__select_preferred_reg(in, out, in, out) is det.
 
 code_exprn__select_preferred_reg(Var, Lval) -->
@@ -1897,8 +1904,8 @@ code_exprn__clear_lval_return_shuffle(Lval, MaybeShuffle, Code) -->
 		{ Code = empty }
 	).
 
-:- pred code_exprn__relocate_lval(assoc_list(var, var_info), lval, lval,
-	assoc_list(var, var_info), exprn_info, exprn_info).
+:- pred code_exprn__relocate_lval(assoc_list(prog_var, var_info), lval, lval,
+	assoc_list(prog_var, var_info), exprn_info, exprn_info).
 :- mode code_exprn__relocate_lval(in, in, in, out, in, out) is det.
 
 code_exprn__relocate_lval([], _OldVal, _NewVal, []) --> [].
@@ -1972,7 +1979,7 @@ code_exprn__relocate_lval_in_refs(Old, New, Refs0, Refs) -->
 
 %------------------------------------------------------------------------------%
 
-:- pred code_exprn__get_var_status(var, var_stat, exprn_info, exprn_info).
+:- pred code_exprn__get_var_status(prog_var, var_stat, exprn_info, exprn_info).
 :- mode code_exprn__get_var_status(in, out, in, out) is det.
 
 code_exprn__get_var_status(Var, Stat) -->
@@ -1990,7 +1997,7 @@ code_exprn__get_var_status(Var, Stat) -->
 		{ error(Msg) }
 	).
 
-:- pred code_exprn__maybe_set_evaled(maybe(var), list(rval),
+:- pred code_exprn__maybe_set_evaled(maybe(prog_var), list(rval),
 	exprn_info, exprn_info).
 :- mode code_exprn__maybe_set_evaled(in, in, in, out) is det.
 
@@ -2007,7 +2014,7 @@ code_exprn__maybe_set_evaled(yes(Var), RvalList) -->
 	{ map__set(Vars0, Var, var_info(Refs, Stat), Vars) },
 	code_exprn__set_vars(Vars).
 
-:- pred code_exprn__maybe_add_evaled(maybe(var), rval, exprn_info, exprn_info).
+:- pred code_exprn__maybe_add_evaled(maybe(prog_var), rval, exprn_info, exprn_info).
 :- mode code_exprn__maybe_add_evaled(in, in, in, out) is det.
 
 code_exprn__maybe_add_evaled(no, _) --> [].
@@ -2111,7 +2118,7 @@ code_exprn__unlock_reg(Reg) -->
 
 %------------------------------------------------------------------------------%
 
-:- pred code_exprn__maybe_get_var_name(maybe(var), string,
+:- pred code_exprn__maybe_get_var_name(maybe(prog_var), string,
 	exprn_info, exprn_info).
 :- mode code_exprn__maybe_get_var_name(in, out, in, out) is det.
 
@@ -2119,7 +2126,7 @@ code_exprn__maybe_get_var_name(no, "unknown variable") --> [].
 code_exprn__maybe_get_var_name(yes(Var), Name) -->
 	code_exprn__get_var_name(Var, Name).
 
-:- pred code_exprn__get_var_name(var, string, exprn_info, exprn_info).
+:- pred code_exprn__get_var_name(prog_var, string, exprn_info, exprn_info).
 :- mode code_exprn__get_var_name(in, out, in, out) is det.
 
 code_exprn__get_var_name(Var, Name) -->
@@ -2193,10 +2200,10 @@ code_exprn__max_reg_in_use_refs(Refs, Max0, Max) :-
 
 %------------------------------------------------------------------------------%
 
-:- pred code_exprn__get_varset(varset, exprn_info, exprn_info).
+:- pred code_exprn__get_varset(prog_varset, exprn_info, exprn_info).
 :- mode code_exprn__get_varset(out, in, out) is det.
 
-:- pred code_exprn__set_varset(varset, exprn_info, exprn_info).
+:- pred code_exprn__set_varset(prog_varset, exprn_info, exprn_info).
 :- mode code_exprn__set_varset(in, in, out) is det.
 
 :- pred code_exprn__get_vars(var_map, exprn_info, exprn_info).

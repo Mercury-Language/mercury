@@ -13,8 +13,8 @@
 
 :- interface.
 
-:- import_module std_util, list, term.
-:- import_module hlds_pred, prog_data.
+:- import_module hlds_pred, prog_data, term.
+:- import_module std_util, list.
 
 %-----------------------------------------------------------------------------%
 
@@ -65,10 +65,10 @@
 	% argument types and a context, construct a term. This is
 	% used to construct types. 
 
-:- pred construct_qualified_term(sym_name, list(term), term).
+:- pred construct_qualified_term(sym_name, list(term(T)), term(T)).
 :- mode construct_qualified_term(in, in, out) is det.
 
-:- pred construct_qualified_term(sym_name, list(term), term__context, term).
+:- pred construct_qualified_term(sym_name, list(term(T)), prog_context, term(T)).
 :- mode construct_qualified_term(in, in, in, out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -106,7 +106,7 @@
 
 	% Perform a substitution on a goal.
 
-:- pred prog_util__rename_in_goal(goal, var, var, goal).
+:- pred prog_util__rename_in_goal(goal, prog_var, prog_var, goal).
 :- mode prog_util__rename_in_goal(in, in, in, out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -136,8 +136,8 @@ sym_name_get_module_name(qualified(ModuleName, _PredName), _, ModuleName).
 construct_qualified_term(qualified(Module, Name), Args, Context, Term) :-
 	construct_qualified_term(Module, [], Context, ModuleTerm),
 	UnqualifiedTerm = term__functor(term__atom(Name), Args, Context),
-	Term = term__functor(term__atom(":"), [ModuleTerm, UnqualifiedTerm],
-							Context).
+	Term = term__functor(term__atom(":"),
+		[ModuleTerm, UnqualifiedTerm], Context).
 construct_qualified_term(unqualified(Name), Args, Context, Term) :-
 	Term = term__functor(term__atom(Name), Args, Context).
 
@@ -187,7 +187,8 @@ split_type_and_mode(type_and_mode(T,M), T, yes(M)).
 prog_util__rename_in_goal(Goal0 - Context, OldVar, NewVar, Goal - Context) :-
 	prog_util__rename_in_goal_expr(Goal0, OldVar, NewVar, Goal).
 
-:- pred prog_util__rename_in_goal_expr(goal_expr, var, var, goal_expr).
+:- pred prog_util__rename_in_goal_expr(goal_expr, prog_var, prog_var,
+		goal_expr).
 :- mode prog_util__rename_in_goal_expr(in, in, in, out) is det.
 
 prog_util__rename_in_goal_expr((GoalA0, GoalB0), OldVar, NewVar,
@@ -235,13 +236,17 @@ prog_util__rename_in_goal_expr(if_then_else(Vars0, Cond0, Then0, Else0),
 	prog_util__rename_in_goal(Else0, OldVar, NewVar, Else).
 prog_util__rename_in_goal_expr(call(SymName, Terms0, Purity), OldVar, NewVar,
 		call(SymName, Terms, Purity)) :-
-	term__substitute_list(Terms0, OldVar, term__variable(NewVar), Terms).
+	term__substitute_list(Terms0, OldVar, term__variable(NewVar),
+		Terms).
 prog_util__rename_in_goal_expr(unify(TermA0, TermB0), OldVar, NewVar,
 		unify(TermA, TermB)) :-
-	term__substitute(TermA0, OldVar, term__variable(NewVar), TermA),
-	term__substitute(TermB0, OldVar, term__variable(NewVar), TermB).
+	term__substitute(TermA0, OldVar, term__variable(NewVar),
+		TermA),
+	term__substitute(TermB0, OldVar, term__variable(NewVar),
+		TermB).
 
-:- pred prog_util__rename_in_vars(list(var), var, var, list(var)).
+:- pred prog_util__rename_in_vars(list(prog_var), prog_var, prog_var,
+		list(prog_var)).
 :- mode prog_util__rename_in_vars(in, in, in, out) is det.
 
 prog_util__rename_in_vars([], _, _, []).
