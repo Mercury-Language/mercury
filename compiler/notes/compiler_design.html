@@ -898,6 +898,17 @@ code, suitable for generating Java, high-level C, etc.
 This back-end uses the Medium Level Data Structure (mlds.m) as its
 intermediate representation.
 
+<h4> 3b. pre-passes to annotate the HLDS </h4>
+
+Before code generation there is a pass which annotates the HLDS with
+information used for code generation:
+
+<ul>
+<li> mark_static_terms.m marks construction unifications
+     which can be implemented using static constants rather
+     than heap allocation.
+</ul>
+
 <h4> 4b. MLDS code generation </h4>
 <ul>
 <li> ml_code_gen.m converts HLDS code to MLDS.
@@ -1109,6 +1120,6 @@ Some of them are obsolete; other are work-in-progress.
 <hr>
 <!---------------------------------------------------------------------------->
 
-Last update was $Date: 2000-05-10 18:09:36 $ by $Author: fjh $@cs.mu.oz.au. <br>
+Last update was $Date: 2000-05-22 20:31:05 $ by $Author: fjh $@cs.mu.oz.au. <br>
 </body>
 </html>
