@@ -325,14 +325,14 @@ Define_label(mercury__std_util__builtin_solutions_2_0_i1);
 	/* set heap to solutions heap */
 	hp = (Word) solutions_heap_pointer;
 
-	/* to be safe, save the registers before the call */
+	/*
+	** deep_copy() it to the solutions heap, up to the saved_hp.
+	** Note that we need to save/restore the hp register, if it
+	** is transient, before/after calling deep_copy().
+	*/
 	save_transient_registers();
-
-	/* deep copy it to the solutions heap, up to the saved_hp */
 	r3 = deep_copy(r1, (Word *) type_info_fv, (Word *) saved_hp_fv, 
 		heap_zone->top);
-
-	/* restore the registers */
 	restore_transient_registers();
 
 	/* create a cons cell on the solutions heap */
@@ -364,12 +364,17 @@ Define_label(mercury__std_util__builtin_solutions_2_0_i2);
 	  	&mercury_data_mercury_builtin__base_type_info_list_1;
 	  new_type_info[1] = (Word *) type_info_fv;
 
-		/* deep_copy the list to the mercury heap, copying
-		 * everything between where we started on the solutions
-		 * heap, and the top of the solutions heap 
-		 */
+	  /*
+	  ** deep_copy() the list to the mercury heap, copying
+	  ** everything between where we started on the solutions
+	  ** heap, and the top of the solutions heap.
+	  ** Note that we need to save/restore the hp register, if it
+	  ** is transient, before/after calling deep_copy().
+	  */
+	  save_transient_registers();
 	  solutions_output = deep_copy(list_fv, (Word *) new_type_info,
 		(Word *) saved_solhp_fv, solutions_heap_zone->top);
+	  restore_transient_registers();
 	}
 
 	/* reset solutions heap to where it was before call to solutions  */
