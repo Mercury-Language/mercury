@@ -27,57 +27,57 @@
 :- type bintree(_K, _V).
 
 :- pred bintree__init(bintree(_K,_V)).
-:- mode bintree__init(out).
+:- mode bintree__init(out) is det.
 
 :- pred bintree__insert(bintree(K,V), K, V, bintree(K,V)).
-:- mode bintree__insert(in, in, in, out).
+:- mode bintree__insert(in, in, in, out) is semidet.
 
 :- pred bintree__update(bintree(K,V), K, V, bintree(K,V)).
-:- mode bintree__update(in, in, in, out).
+:- mode bintree__update(in, in, in, out) is semidet.
 
 :- pred bintree__set(bintree(K,V), K, V, bintree(K,V)).
-:- mode bintree__set(in, in, in, out).
+:- mode bintree__set(in, in, in, out) is det.
 
 :- pred bintree__search_insert(bintree(K,V), K, V, bintree(K,V)).
-:- mode bintree__search_insert(in, in, in, out).
+:- mode bintree__search_insert(in, in, in, out) is semidet.
 
 :- pred bintree__search(bintree(K,V), K, V).
-:- mode bintree__search(in, in, out).
+:- mode bintree__search(in, in, out) is semidet.
 
 :- pred bintree__delete(bintree(K,V), K, bintree(K,V)).
 :- mode bintree__delete(in, in, out).
 
 :- pred bintree__keys(bintree(K,_V), list(K)).
-:- mode bintree__keys(in, out).
+:- mode bintree__keys(in, out) is det.
 
 :- pred bintree__values(bintree(_K,V), list(V)).
-:- mode bintree__values(in, out).
+:- mode bintree__values(in, out) is det.
 
 :- pred bintree__from_list(assoc_list(K,V), bintree(K,V)).
-:- mode bintree__from_list(in, out).
+:- mode bintree__from_list(in, out) is det.
 
 :- pred bintree__from_sorted_list(assoc_list(K,V), bintree(K,V)).
-:- mode bintree__from_sorted_list(in, out).
+:- mode bintree__from_sorted_list(in, out) is det.
 
 :- pred bintree__from_corresponding_lists(list(K), list(V), bintree(K,V)).
 :- mode bintree__from_corresponding_lists(in, in, out).
 
 :- pred bintree__to_list(bintree(K,V), assoc_list(K,V)).
-:- mode bintree__to_list(in, out).
+:- mode bintree__to_list(in, out) is det.
 
 	% count the number of elements in a tree
 :- pred bintree__count(bintree(_K,_V), int).
-:- mode bintree__count(in, out).
+:- mode bintree__count(in, out) is det.
 
 	% count the depth of a tree
 :- pred bintree__depth(bintree(_K,_V), int).
-:- mode bintree__depth(in, out).
+:- mode bintree__depth(in, out) is det.
 
 :- pred bintree__branching_factor(bintree(_K,_V), int, int).
-:- mode bintree__branching_factor(in, out, out).
+:- mode bintree__branching_factor(in, out, out) is det.
 
 :- pred bintree__balance(bintree(K, V), bintree(K, V)).
-:- mode bintree__balance(in, out).
+:- mode bintree__balance(in, out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -216,7 +216,7 @@ bintree__delete(tree(K0, V0, Left, Right), K, Tree) :-
 	).
 
 :- pred bintree__fixup(bintree(K,V), bintree(K,V), bintree(K,V)).
-:- mode bintree__fixup(in, in, out).
+:- mode bintree__fixup(in, in, out) is det.
 
 bintree__fixup(Left, Right, Tree) :-
 	(
@@ -243,7 +243,7 @@ bintree__fixup(Left, Right, Tree) :-
 	).
 
 :- pred bintree__right_depth(bintree(_K,_V), int).
-:- mode bintree__right_depth(in, out).
+:- mode bintree__right_depth(in, out) is det.
 
 bintree__right_depth(empty, 0).
 bintree__right_depth(tree(_K, _V, _Left, Right), N) :-
@@ -251,7 +251,7 @@ bintree__right_depth(tree(_K, _V, _Left, Right), N) :-
 	N is M + 1.
 
 :- pred bintree__left_depth(bintree(_K,_V), int).
-:- mode bintree__left_depth(in, out).
+:- mode bintree__left_depth(in, out) is det.
 
 bintree__left_depth(empty, 0).
 bintree__left_depth(tree(_K, _V, Left, _Right), N) :-
@@ -259,7 +259,7 @@ bintree__left_depth(tree(_K, _V, Left, _Right), N) :-
 	N is M + 1.
 
 :- pred bintree__knock_left(bintree(K,V), K, V, bintree(K, V)).
-:- mode bintree__knock_left(in, in, in, out).
+:- mode bintree__knock_left(in, out, out, out) is det.
 
 bintree__knock_left(tree(K0, V0, Left, Right), K, V, Tree) :-
 	(
@@ -274,7 +274,7 @@ bintree__knock_left(tree(K0, V0, Left, Right), K, V, Tree) :-
 	).
 
 :- pred bintree__knock_right(bintree(K,V), K, V, bintree(K, V)).
-:- mode bintree__knock_right(in, in, in, out).
+:- mode bintree__knock_right(in, out, out, out) is det.
 
 bintree__knock_right(tree(K0, V0, Left, Right), K, V, Tree) :-
 	(
@@ -294,7 +294,7 @@ bintree__from_list(List, Tree) :-
 	bintree__from_list_2(List, empty, Tree).
 
 :- pred bintree__from_list_2(assoc_list(K,V), bintree(K,V), bintree(K,V)).
-:- mode bintree__from_list_2(in, in, out).
+:- mode bintree__from_list_2(in, in, out) is det.
 
 bintree__from_list_2([], Tree, Tree).
 bintree__from_list_2([K - V | List], Tree0, Tree) :-
@@ -309,7 +309,7 @@ bintree__from_sorted_list(List, Tree) :-
 
 :- pred bintree__from_sorted_list_2(int, assoc_list(K,V),
 				bintree(K,V), assoc_list(K, V)).
-:- mode bintree__from_sorted_list_2(in, in, out, out).
+:- mode bintree__from_sorted_list_2(in, in, out, out) is det.
 
 bintree__from_sorted_list_2(Num, List0, Tree, List) :-
 	( Num = 0 ->
@@ -352,7 +352,7 @@ bintree__to_list(Tree, List) :-
 	bintree__to_list_2(Tree, [], List).
 
 :- pred bintree__to_list_2(bintree(K,V), assoc_list(K,V), assoc_list(K,V)).
-:- mode bintree__to_list_2(in, in, out).
+:- mode bintree__to_list_2(in, in, out) is det.
 
 bintree__to_list_2(empty, List, List).
 bintree__to_list_2(tree(K, V, Left, Right), List0, List) :-
@@ -365,7 +365,7 @@ bintree__keys(Tree, List) :-
 	bintree__keys_2(Tree, [], List).
 
 :- pred bintree__keys_2(bintree(K, _V), list(K), list(K)).
-:- mode bintree__keys_2(in, in, out).
+:- mode bintree__keys_2(in, in, out) is det.
 
 bintree__keys_2(empty, List, List).
 bintree__keys_2(tree(K, _V, Left, Right), List0, List) :-
@@ -378,7 +378,7 @@ bintree__values(Tree, List) :-
 	bintree__values_2(Tree, [], List).
 
 :- pred bintree__values_2(bintree(_K, V), list(V), list(V)).
-:- mode bintree__values_2(in, in, out).
+:- mode bintree__values_2(in, in, out) is det.
 
 bintree__values_2(empty, List, List).
 bintree__values_2(tree(_K, V, Left, Right), List0, List) :-
