@@ -2242,7 +2242,7 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
     data_value = body(data_word, data_tag);
 
     layout_for_tag = type_ctor_layout[data_tag];
-    layout_vector_for_tag = (Word *) strip_tag(layout_for_tag);
+    layout_vector_for_tag = strip_tag(layout_for_tag);
 	
     switch(type_ctor_info->type_ctor_rep) {
 
