@@ -1,9 +1,11 @@
 *.c
 *.d
 *.date
+*.date3
 *.err2
 *.int
 *.int2
+*.int3
 *.prof
 mercury_profile
 mercury_profile.dep
