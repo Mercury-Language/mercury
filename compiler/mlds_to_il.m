@@ -471,33 +471,17 @@ generate_other_decls(ModuleName, MLDSDefn, Decls) :-
 		( 
 			Entity = mlds__class(ClassDefn) 
 		->
-			ClassDefn = mlds__class_defn(ClassType, _Imports, 
-				_Inherits, _Implements, Defns),
-			( 
-				ClassType = mlds__class
-			->
-				list__map(defn_to_class_decl, Defns, ILDefns),
-				make_constructor(FullClassName, ClassDefn, 
-					ConstructorILDefn),
-				Decls = [comment_term(MLDSDefnTerm),
-					class([public], TypeName,
-					extends_nothing, implements([]),
-					[ConstructorILDefn | ILDefns])]
-			; 
-				ClassType = mlds__struct
-			->
-				list__map(defn_to_class_decl, Defns, ILDefns),
-				make_constructor(FullClassName, ClassDefn, 
-					ConstructorILDefn),
-				Decls = [comment_term(MLDSDefnTerm),
-					class([public], TypeName, 
-					extends(il_envptr_class_name), 
-					implements([]), 
-					[ConstructorILDefn | ILDefns])]
-			;
-				Decls = [comment_term(MLDSDefnTerm),
-					comment("This type unimplemented.")]
-			)
+			ClassDefn = mlds__class_defn(_ClassType, _Imports, 
+				Inherits, _Implements, Defns),
+			Extends = mlds_inherits_to_ilds_inherits(Inherits),
+			list__map(defn_to_class_decl, Defns, ILDefns),
+			make_constructor(FullClassName, ClassDefn, 
+				ConstructorILDefn),
+				% XXX we assume public here
+			Decls = [comment_term(MLDSDefnTerm),
+				class([public], TypeName,
+				Extends, implements([]),
+				[ConstructorILDefn | ILDefns])]
 		;
 			Decls = [comment_term(MLDSDefnTerm),
 				comment("This type unimplemented.")]
@@ -510,6 +494,7 @@ generate_other_decls(ModuleName, MLDSDefn, Decls) :-
 	; EntityName = data(_),
 		Decls = []
 	).
+
 
 %-----------------------------------------------------------------------------
 
@@ -663,12 +648,20 @@ defn_to_class_decl(mlds__defn(_Name, _Context, _DeclFlags,
 	mlds__function(_PredProcId, _Params, _MaybeStatements)), ILClassDecl) :-
 		ILClassDecl = comment("unimplemented: functions in classes").
 
-	% XXX this might not need to be implemented (nested classes)
-	% since it will probably be flattened earlier.
-defn_to_class_decl(mlds__defn(_Name, _Context, _DeclFlags,
-		mlds__class(_)), _ILClassDecl) :-
-	error("nested data definition not expected here").
-
+defn_to_class_decl(mlds__defn(EntityName, _Context, _DeclFlags,
+		mlds__class(ClassDefn)), ILClassDecl) :-
+	( EntityName = type(TypeName, _Arity) ->
+		ClassDefn = mlds__class_defn(_ClassType, _Imports, 
+			Inherits, _Implements, Defns),
+		FullClassName = structured_name("", [TypeName]),
+		list__map(defn_to_class_decl, Defns, ILDefns),
+		make_constructor(FullClassName, ClassDefn, ConstructorILDefn),
+		Extends = mlds_inherits_to_ilds_inherits(Inherits),
+		ILClassDecl = nested_class([public], TypeName, Extends,
+			implements([]), [ConstructorILDefn | ILDefns])
+	;
+		error("expected type entity name for a nested class")
+	).
 
 %-----------------------------------------------------------------------------%
 %
@@ -891,12 +884,7 @@ statement_to_il(statement(try_commit(Ref, GoalToTry, CommitHandlerGoal),
 	il_info_make_next_label(DoneLabel),
 
 	rval_to_type(lval(Ref), MLDSRefType),
-	{ RefType = mlds_type_to_ilds_type(MLDSRefType) },
-	{ RefType = ilds__type(_, class(ClassName0)) ->
-			ClassName = ClassName0
-		;
-			unexpected(this_file, "non-class for commit ref")
-	},	
+	{ ClassName = mlds_type_to_ilds_class_name(MLDSRefType) },
 	{ Instrs = tree__list([
 		context_node(Context),
 		comment_node("try_commit/3"),
@@ -1021,14 +1009,7 @@ atomic_statement_to_il(new_object(Target, _MaybeTag, Type, Size, _CtorName,
 			%	call ClassName::.ctor
 			%	... store to memory reference ...
 			%
-		{ ILType = mlds_type_to_ilds_type(Type) },
-		{ 
-			ILType = ilds__type(_, class(ClassName0))
-		->
-			ClassName = ClassName0
-		;
-			unexpected(this_file, "non-class for new_object")
-		},	
+		{ ClassName = mlds_type_to_ilds_class_name(Type) },
 		list__map_foldl(load, Args, ArgsLoadInstrsTrees),
 		{ ArgsLoadInstrs = tree__list(ArgsLoadInstrsTrees) },
 		get_load_store_lval_instrs(Target, LoadMemRefInstrs,
@@ -1709,6 +1690,17 @@ generate_rtti_initialization_field(ClassName, AllocDoneFieldRef,
 %
 % Conversion of MLDS types to IL types.
 
+:- func mlds_inherits_to_ilds_inherits(list(mlds__type)) = ilasm__extends.
+mlds_inherits_to_ilds_inherits(Inherits) = Extends :-
+	( Inherits = [],
+		Extends = extends_nothing
+	; Inherits = [InheritType],
+		Extends = extends(mlds_type_to_ilds_class_name(
+			InheritType))
+	; Inherits = [_, _ | _],
+		error("multiple inheritance not supported")
+	).
+
 :- pred mlds_signature_to_ilds_type_params(mlds__func_signature, list(ilds__type)).
 :- mode mlds_signature_to_ilds_type_params(in, out) is det.
 mlds_signature_to_ilds_type_params(func_signature(Args, _Returns), Params) :-
@@ -1780,13 +1772,8 @@ mlds_type_to_ilds_type(mlds__generic_type) = il_generic_type.
 	% see comments about function types above.
 mlds_type_to_ilds_type(mlds__cont_type(_ArgTypes)) = ilds__type([], int32).
 
-mlds_type_to_ilds_type(mlds__class_type(Class, _Arity, _Kind)) = ILType :-
-	Class = qual(MldsModuleName, MldsClassName),
-	structured_name(Assembly, ClassName) = 
-		mlds_module_name_to_class_name(MldsModuleName),
-	list__append(ClassName, [MldsClassName], FullClassName),
-	ILType = ilds__type([], class(
-		structured_name(Assembly, FullClassName))).
+mlds_type_to_ilds_type(mlds__class_type(Class, _Arity, _Kind)) = 
+	ilds__type([], class(mlds_class_name_to_ilds_class_name(Class))).
 
 mlds_type_to_ilds_type(mlds__commit_type) = il_commit_type.
 
@@ -1842,6 +1829,30 @@ mlds_type_to_ilds_type(mercury_type(Type, _Classification)) = ILType :-
 
 mlds_type_to_ilds_type(mlds__unknown_type) = _ :-
 	unexpected(this_file, "mlds_type_to_ilds_type: unknown_type").
+
+
+:- func mlds_class_name_to_ilds_class_name(mlds__class) = ilds__class_name.
+
+mlds_class_name_to_ilds_class_name(qual(MldsModuleName, MldsClassName)) = 
+	append_class_name(mlds_module_name_to_class_name(MldsModuleName),
+		[MldsClassName]).
+
+:- func mlds_type_to_ilds_class_name(mlds__type) = ilds__class_name.
+mlds_type_to_ilds_class_name(MldsType) = 
+	get_ilds_type_class_name(mlds_type_to_ilds_type(MldsType)).
+
+:- func get_ilds_type_class_name(ilds__type) = ilds__class_name.
+get_ilds_type_class_name(ILType) = ClassName :-
+	( 
+		ILType = ilds__type(_, class(ClassName0))
+	->
+		ClassName = ClassName0
+	;
+		unexpected(this_file,
+			"get_ilds_type_class_name: type not a class")
+	).	
+
+
 %-----------------------------------------------------------------------------
 %
 % Name mangling.
@@ -2466,12 +2477,11 @@ make_method_defn(InstrTree) = MethodDecls :-
 :- mode make_constructor(in, in, out) is det.
 make_constructor(ClassName, mlds__class_defn(_,  _Imports, Inherits, 
 		_Implements, Defns), ILDecl) :-
-	( Inherits = [] ->
+	Extends = mlds_inherits_to_ilds_inherits(Inherits),
+	( Extends = extends_nothing,
 		CtorMemberName = il_generic_class_name
-	;
-		% XXX this needs to be calculated correctly
-		% (i.e. according to the value of inherits)
-		CtorMemberName = il_envptr_class_name
+	; Extends = extends(CtorMemberName0),
+		CtorMemberName = CtorMemberName0
 	),
 	list__map(call_field_constructor(ClassName), Defns, 
 		FieldConstrInstrsLists),

@@ -117,6 +117,15 @@
 			maybe(int32),		% offset for explicit layout
 			field_initializer	% initializer
 		)
+		% .class (a nested class)
+	;	nested_class(
+			list(classattr),	% attributes for the class
+			ilds__id,		% name of the class
+			extends,		% what is the parent class
+			implements, 		% what interfaces are 
+						% implemented
+			list(classdecl)		% methods and fields
+		)
 		% comments
 	;	comment_term(term)
 	;	comment(string)
@@ -417,6 +426,11 @@ ilasm__output_classdecl(
 	io__write_string(" "),
 	output_id(IlId),
 	output_field_initializer(Initializer).
+
+ilasm__output_classdecl(nested_class(Attrs, Id, Extends, Implements, Contents),
+		Info0, Info) --> 
+	ilasm__output_decl(class(Attrs, Id, Extends, Implements, Contents),
+		Info0, Info).
 
 ilasm__output_classdecl(comment(CommentStr), Info, Info) --> 
 	globals__io_lookup_bool_option(auto_comments, PrintComments),
