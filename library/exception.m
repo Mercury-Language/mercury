@@ -406,14 +406,24 @@ try_io(cc_multi, IO_Goal, Result) -->
 :- pred very_unsafe_perform_io(pred(T, io__state, io__state), T).
 :- mode very_unsafe_perform_io(pred(out, di, uo) is det, out) is det.
 :- mode very_unsafe_perform_io(pred(out, di, uo) is cc_multi, out)
-								is det.
+								is cc_multi.
 % Mercury doesn't support impure higher-order pred terms, so if we want
 % to form a closure from unsafe_perform_io, as we need to do above,
 % then we must (falsely!) promise that it is pure.
 :- pragma promise_pure(very_unsafe_perform_io/2). % XXX this is a lie
 
 very_unsafe_perform_io(Goal, Result) :-
-	impure unsafe_perform_io(Goal, Result).
+	impure make_io_state(IOState0),
+	Goal(Result, IOState0, IOState),
+	impure consume_io_state(IOState).
+
+:- impure pred make_io_state(io__state::uo) is det.
+:- pragma c_code(make_io_state(_IO::uo),
+		[will_not_call_mercury, thread_safe], "").
+
+:- impure pred consume_io_state(io__state::di) is det.
+:- pragma c_code(consume_io_state(_IO::di),
+		[will_not_call_mercury, thread_safe], "").
 
 :- pred wrap_exception(univ::in, exception_result(T)::out) is det.
 wrap_exception(Exception, exception(Exception)).
@@ -1469,38 +1479,5 @@ report_uncaught_exception_2(Exception, unit) -->
 		io__write(StdErr, univ_value(Exception)),
 		io__nl(StdErr)
 	).
-
-/*
-** unsafe_perform_io/2 is the same as unsafe_perform_io/1
-** (see extras/trailed_update/unsafe.m)
-** except that it also allows the predicate to return an output argument.
-*/
-:- impure pred unsafe_perform_io(pred(T, io__state, io__state), T).
-:- mode unsafe_perform_io(pred(out, di, uo) is det, out) is det.
-:- mode unsafe_perform_io(pred(out, di, uo) is cc_multi, out) is det.
-
-:- pragma c_code(
-unsafe_perform_io(P::(pred(out, di, uo) is det), X::out),
-	may_call_mercury,
-"{
-	ML_exception_call_io_pred_det(TypeInfo_for_T, P, &X);
-}").
-:- pragma c_code(
-unsafe_perform_io(P::(pred(out, di, uo) is cc_multi), X::out),
-	may_call_mercury,
-"{
-	ML_exception_call_io_pred_cc_multi(TypeInfo_for_T, P, &X);
-}").
-
-:- pred call_io_pred(pred(T, io__state, io__state), T, io__state, io__state).
-:- mode call_io_pred(pred(out, di, uo) is det, out, di, uo) is det.
-:- mode call_io_pred(pred(out, di, uo) is cc_multi, out, di, uo) is cc_multi.
-
-:- pragma export(call_io_pred(pred(out, di, uo) is det, out, di, uo),
-		"ML_exception_call_io_pred_det").
-:- pragma export(call_io_pred(pred(out, di, uo) is cc_multi, out, di, uo),
-		"ML_exception_call_io_pred_cc_multi").
-
-call_io_pred(P, X) --> P(X).
 
 %-----------------------------------------------------------------------------%
