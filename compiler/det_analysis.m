@@ -592,16 +592,13 @@ det_infer_disj([Goal0 | Goals0], InstMap0, MiscInfo, CanFail0, MaxSolns0,
 		Goals, Detism) :-
 	det_infer_goal(Goal0, InstMap0, MiscInfo, Goal, _InstMap, Detism1),
 	determinism_components(Detism1, CanFail1, MaxSolns1),
-	( MaxSolns1 = at_most_zero ->
-		det_infer_disj(Goals0, InstMap0, MiscInfo, CanFail0, MaxSolns0,
-			Goals, Detism)
-	;
-		det_disjunction_canfail(CanFail0, CanFail1, CanFail2),
-		det_disjunction_maxsoln(MaxSolns0, MaxSolns1, MaxSolns2),
-		det_infer_disj(Goals0, InstMap0, MiscInfo, CanFail2, MaxSolns2,
-			Goals1, Detism),
-		Goals = [Goal | Goals1]
-	).
+	% if Goal0 has at_most_zero solutions and can't throw exceptions,
+	% we could optimize it away.
+	det_disjunction_canfail(CanFail0, CanFail1, CanFail2),
+	det_disjunction_maxsoln(MaxSolns0, MaxSolns1, MaxSolns2),
+	det_infer_disj(Goals0, InstMap0, MiscInfo, CanFail2, MaxSolns2,
+		Goals1, Detism),
+	Goals = [Goal | Goals1].
 
 :- pred det_infer_switch(list(case), instmap, misc_info,
 	can_fail, soln_count, list(case), determinism).
