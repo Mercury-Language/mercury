@@ -2883,17 +2883,20 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 				echo \"$$target unchanged\"; \\
 			else \\
 				echo \"installing $$target\"; \\
-				cp ""$$file"" ""$$target""; \\
+				$(INSTALL) ""$$file"" ""$$target""; \\
 			fi; \\
 		done
 		# The following is needed to support the `--use-subdirs' option
-		# We try using `ln -s', but if that fails, then we just use `cp'.
+		# We try using `ln -s', but if that fails, then we just use
+		# `$(INSTALL)'.
 		for ext in int int2 int3 opt trans_opt; do \\
 			dir=""$(INSTALL_INT_DIR)/Mercury/$${ext}s""; \\
 			rm -f ""$$dir""; \\
 			ln -s .. ""$$dir"" || { \\
-				{ [ -d ""$$dir"" ] || mkdir ""$$dir""; } && \\
-				cp ""$(INSTALL_INT_DIR)""/*.$$ext ""$$dir""; \\
+				{ [ -d ""$$dir"" ] || \\
+					$(INSTALL_MKDIR) ""$$dir""; } && \\
+				$(INSTALL) ""$(INSTALL_INT_DIR)""/*.$$ext \\
+					""$$dir""; \\
 			} || exit 1; \\
 		done\n\n" },
 

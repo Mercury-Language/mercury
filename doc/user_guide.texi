@@ -433,8 +433,11 @@ Builds and installs a library whose top-level module is @var{main-module}.
 This target will build and install a static object library and
 (for platforms that support it) a shared object library,
 for the default grade and also for the additional grades specified
-in the LIBGRADES variable.  It will also build and install the
-necessary interface files.
+in the @code{LIBGRADES} variable.  It will also build and install the
+necessary interface files. The variable @code{INSTALL} specifies
+the name of the command to use to install each file, by default
+@samp{cp}. The variable @code{INSTALL_MKDIR} specifies the command to use
+to create directories, by default @samp{mkdir -p}.
 For more information, see @ref{Supporting multiple grades and architectures}.
 
 @item @var{main-module}.clean
@@ -570,6 +573,16 @@ looking for extra libraries.
 The path to the root of the directory hierarchy where the libraries,
 etc. you are building should be installed.  The default is to install in
 the same location as the Mercury compiler being used to do the install.
+
+@item INSTALL
+The command used to install each file in a library. The command should
+take a list of files to install and the location to install them.
+The default command is @samp{cp}.
+
+@item INSTALL_MKDIR
+The command used to create each directory in the directory hierarchy
+where the libraries are to be installed. The default command is
+@samp{mkdir -p}.
 
 @item LIBGRADES
 A list of additional grades which should be built when installing libraries.
@@ -869,6 +882,12 @@ optimisation is enabled) the relevant intermodule optimisation files.
 One can override the list of grades to install for a given library
 @samp{lib@var{foo}} by setting the @samp{LIBGRADES-@var{foo}} variable,
 or add to it by setting @samp{EXTRA_LIBGRADES-@var{foo}}.
+
+The command used to install each file is specified by @samp{INSTALL}.
+If @samp{INSTALL} is not specified, @samp{cp} will be used.
+
+The command used to create directories is specified by @samp{INSTALL_MKDIR}.
+If @samp{INSTALL_MKDIR} is not specified, @samp{mkdir -p} will be used.
 
 Note that currently it is not possible to set the installation prefix
 on a library-by-library basis.
