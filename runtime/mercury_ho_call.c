@@ -3,7 +3,7 @@ INIT mercury_sys_init_call
 ENDINIT
 */
 /*
-** Copyright (C) 1995-2002 The University of Melbourne.
+** Copyright (C) 1995-2003 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -94,6 +94,7 @@ ENDINIT
   MR_define_unify_compare_proc_statics(float);
   MR_define_unify_compare_proc_statics(string);
   MR_define_unify_compare_proc_statics(c_pointer);
+  MR_define_unify_compare_proc_statics(reference);
   MR_define_unify_compare_proc_statics(typeinfo);
   MR_define_unify_compare_proc_statics(typectorinfo);
   MR_define_unify_compare_proc_statics(typedesc);
@@ -978,6 +979,10 @@ void mercury_sys_init_call_write_out_proc_statics(FILE *fp)
 		&MR_proc_static_user_builtin_name(c_pointer_unify, 2, 0));
 	MR_write_out_proc_static(fp, (MR_ProcStatic *)
 		&MR_proc_static_user_builtin_name(c_pointer_compare, 3, 0));
+	MR_write_out_proc_static(fp, (MR_ProcStatic *)
+		&MR_proc_static_user_builtin_name(reference_unify, 2, 0));
+	MR_write_out_proc_static(fp, (MR_ProcStatic *)
+		&MR_proc_static_user_builtin_name(reference_compare, 3, 0));
 	MR_write_out_proc_static(fp, (MR_ProcStatic *)
 		&MR_proc_static_user_builtin_name(typeinfo_unify, 2, 0));
 	MR_write_out_proc_static(fp, (MR_ProcStatic *)

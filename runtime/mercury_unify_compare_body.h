@@ -683,10 +683,6 @@ start_label:
             */
             MR_fatal_error(attempt_msg "terms of a reference type");
 #else
-            /*
-            ** XXX what should the first argument to return_unify_answer()
-            ** be here?
-            */
             return_unify_answer(reference, (void *) x == (void *) y);
 #endif
 
