@@ -444,10 +444,38 @@ make_cons_id_from_qualified_sym_name(SymName, Args, cons(SymName, Arity)) :-
 :- type no_tag_type_table == map(type_id, no_tag_type).
 
 
+	% Return the primary tag, if any, for a cons_tag.
+	% A return value of `no' means the primary tag is unknown.
+	% A return value of `yes(0)' means the primary tag is always zero.
+:- func get_primary_tag(cons_tag) = maybe(int).
+
 	% Return the secondary tag, if any, for a cons_tag.
+	% A return value of `no' means there is no secondary tag.
 :- func get_secondary_tag(cons_tag) = maybe(int).
 
 :- implementation.
+
+% In some of the cases where we return `no' here,
+% it would probably be OK to return `yes(0)'.
+% But it's safe to be conservative...
+get_primary_tag(string_constant(_)) = no.
+get_primary_tag(float_constant(_)) = no.
+get_primary_tag(int_constant(_)) = no.
+get_primary_tag(pred_closure_tag(_, _, _)) = no.
+get_primary_tag(code_addr_constant(_, _)) = no.
+get_primary_tag(type_ctor_info_constant(_, _, _)) = no.
+get_primary_tag(base_typeclass_info_constant(_, _, _)) = no.
+get_primary_tag(tabling_pointer_constant(_, _)) = no.
+get_primary_tag(deep_profiling_proc_static_tag(_)) = no.
+get_primary_tag(single_functor) = yes(0).
+get_primary_tag(unshared_tag(PrimaryTag)) = yes(PrimaryTag).
+get_primary_tag(shared_remote_tag(PrimaryTag, _SecondaryTag)) =
+		yes(PrimaryTag).
+get_primary_tag(shared_local_tag(PrimaryTag, _)) = yes(PrimaryTag).
+get_primary_tag(no_tag) = no.
+get_primary_tag(reserved_address(_)) = no.
+get_primary_tag(shared_with_reserved_addresses(_ReservedAddresses, TagValue))
+		= get_primary_tag(TagValue).
 
 get_secondary_tag(string_constant(_)) = no.
 get_secondary_tag(float_constant(_)) = no.

@@ -65,6 +65,11 @@
 :- pred ml_uses_secondary_tag(cons_tag_values, constructor, int).
 :- mode ml_uses_secondary_tag(in, in, out) is semidet.
 
+% A constructor is represented using the base class rather than a derived
+% class if there is only a single functor, or if there is a single
+% functor and some constants represented using reserved addresses.
+:- pred ml_tag_uses_base_class(cons_tag::in) is semidet.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -214,8 +219,6 @@ ml_gen_enum_constant(Context, ConsTagValues, Ctor) = MLDS_Defn :-
 %
 % Discriminated union types.
 %
-% XXX we ought to optimize the case where there is only one alternative.
-%
 
 	%
 	% For each discriminated union type, we generate an MLDS type of the
@@ -295,6 +298,11 @@ ml_gen_enum_constant(Context, ConsTagValues, Ctor) = MLDS_Defn :-
 	%
 	%	};
 	%
+	% If there is only one constructor which is not represented
+	% as a reserved_object, then we don't generate a nested derived
+	% class for that constructor, instead we just allocate the fields
+	% in the base class.
+	%
 :- pred ml_gen_du_parent_type(module_info, type_id, hlds_type_defn,
 		list(constructor), cons_tag_values, mlds__defns,
 		mlds__defns, mlds__defns).
@@ -363,10 +371,11 @@ ml_gen_du_parent_type(ModuleInfo, TypeId, TypeDefn, Ctors, TagValues,
 
 	% generate the nested derived classes for the constructors,
 	% or static (one_copy) member objects for constructors with
-	% reserved_object representations.
-	list__foldl(ml_gen_du_ctor_member(ModuleInfo, BaseClassId,
+	% reserved_object representations,
+	% or fields and a constructor method for the single_functor case.
+	list__foldl2(ml_gen_du_ctor_member(ModuleInfo, BaseClassId,
 		BaseClassQualifier, TagClassId, TypeDefn, TagValues),
-		Ctors, [], CtorMembers),
+		Ctors, [], CtorMembers, [], BaseClassCtorMethods),
 
 	% the base class doesn't import or inherit anything
 	Imports = [],
@@ -379,7 +388,7 @@ ml_gen_du_parent_type(ModuleInfo, TypeId, TypeDefn, Ctors, TagValues,
 	MLDS_TypeName = type(BaseClassName, BaseClassArity),
 	MLDS_TypeFlags = ml_gen_type_decl_flags,
 	MLDS_TypeDefnBody = mlds__class(mlds__class_defn(mlds__class,
-		Imports, Inherits, Implements, [], Members)),
+		Imports, Inherits, Implements, BaseClassCtorMethods, Members)),
 	MLDS_TypeDefn = mlds__defn(MLDS_TypeName, MLDS_Context, MLDS_TypeFlags,
 		MLDS_TypeDefnBody),
 	
@@ -516,19 +525,24 @@ ml_gen_secondary_tag_class(MLDS_Context, BaseClassQualifier, BaseClassId,
 		MLDS_TypeDefnBody).
 	
 	%
-	% Generate a definition corresponding to
+	% Generate definitions corresponding to
 	% a constructor of a discriminated union type.
-	% This will be either a class definition
-	% or (for reserved_object) a one_copy (static) member object.
+	% This will be one of the following:
+	% - (in the usual case) a nested derived class definition
+	% - (for reserved_object) a one_copy (static) member object
+	% - (for the single_functor case) a bunch of fields and
+	%   a constructor method.
 	%
 :- pred ml_gen_du_ctor_member(module_info, mlds__class_id, mlds_module_name,
 		mlds__class_id, hlds_type_defn, cons_tag_values, constructor,
-		mlds__defns, mlds__defns).
-:- mode ml_gen_du_ctor_member(in, in, in, in, in, in, in, in, out) is det.
+		mlds__defns, mlds__defns, mlds__defns, mlds__defns).
+:- mode ml_gen_du_ctor_member(in, in, in, in, in, in, in, in, out, in, out)
+		is det.
 
 ml_gen_du_ctor_member(ModuleInfo, BaseClassId, BaseClassQualifier,
 		SecondaryTagClassId, TypeDefn, ConsTagValues, Ctor,
-		MLDS_Defns0, MLDS_Defns) :-
+		MLDS_Members0, MLDS_Members,
+		MLDS_CtorMethods0, MLDS_CtorMethods) :-
 	Ctor = ctor(ExistQTVars, Constraints, CtorName, Args),
 
 	% XXX we should keep a context for the constructor,
@@ -558,15 +572,16 @@ ml_gen_du_ctor_member(ModuleInfo, BaseClassId, BaseClassQualifier,
 			MLDS_ReservedObjDefn = ml_gen_static_const_defn(
 				MLDS_ReservedObjName, SecondaryTagClassId,
 				public, no_initializer, Context),
-			MLDS_Defns = [MLDS_ReservedObjDefn | MLDS_Defns0]
+			MLDS_Members = [MLDS_ReservedObjDefn | MLDS_Members0]
 		;
 			% for reserved numeric addresses, we don't need
 			% to generate any objects or types
-			MLDS_Defns = MLDS_Defns0
-		)
+			MLDS_Members = MLDS_Members0
+		),
+		MLDS_CtorMethods = MLDS_CtorMethods0
 	;
 		%
-		% Generate a type for this constructor
+		% Generate the members for this constructor
 		%
 
 		% number any unnamed fields starting from 1
@@ -602,49 +617,98 @@ ml_gen_du_ctor_member(ModuleInfo, BaseClassId, BaseClassQualifier,
 
 		list__append(ExtraMembers, OrdinaryMembers, Members),
 
-		% we inherit either the base class for this type,
-		% or the secondary tag class, depending on whether
-		% we need a secondary tag
-		( get_secondary_tag(TagVal) = yes(SecondaryTag) ->
-			ParentClassId = SecondaryTagClassId,
-			MaybeSecTagVal = yes(SecondaryTag)
-		;
-			ParentClassId = BaseClassId,
-			MaybeSecTagVal = no
-		),
-		Imports = [],
-		Inherits = [ParentClassId],
-		Implements = [],
-
-		% generate a constructor function to initialize the fields,
-		% if needed (not all back-ends use constructor functions)
-		%
+		% generate a constructor function to initialize the
+		% fields, if needed (not all back-ends use constructor
+		% functions)
+		MaybeSecTagVal = get_secondary_tag(TagVal),
 		module_info_globals(ModuleInfo, Globals),
 		globals__get_target(Globals, Target),
 		( target_uses_constructors(Target) = yes ->
-			CtorClassType = mlds__class_type(
-				qual(BaseClassQualifier, UnqualCtorName),
-				CtorArity, mlds__class),
-			CtorClassQualifier = mlds__append_class_qualifier(
-				BaseClassQualifier, UnqualCtorName, CtorArity),
-			CtorFunction = gen_constructor_function(BaseClassId,
-				CtorClassType, CtorClassQualifier,
+			( ml_tag_uses_base_class(TagVal) ->
+				CtorClassType = BaseClassId,
+				CtorClassQualifier = BaseClassQualifier
+			;
+				CtorClassType = mlds__class_type(qual(
+					BaseClassQualifier, UnqualCtorName),
+					CtorArity, mlds__class),
+				CtorClassQualifier =
+				    mlds__append_class_qualifier(
+					BaseClassQualifier, UnqualCtorName,
+					CtorArity)
+			),
+			CtorFunction = gen_constructor_function(
+				BaseClassId, CtorClassType, CtorClassQualifier,
 				SecondaryTagClassId, MaybeSecTagVal, Members,
 				MLDS_Context),
-			Ctors = [CtorFunction]
+			% If this constructor is going to go in the base class,
+			% then we may also need to generate an additional
+			% zero-argument constructor, which is used to
+			% construct the class that is used for reserved_objects
+			(
+				TagVal = shared_with_reserved_addresses(RAs,
+					single_functor),
+				some [RA] (
+					list__member(RA, RAs),
+					RA = reserved_object(_, _, _)
+				),
+				Members \= []
+			->
+				ZeroArgCtor = gen_constructor_function(
+					BaseClassId, CtorClassType,
+					CtorClassQualifier,
+					SecondaryTagClassId, no, [],
+					MLDS_Context),
+				Ctors = [ZeroArgCtor, CtorFunction]
+			;
+				Ctors = [CtorFunction]
+			)
 		;
 			Ctors = []
 		),
 
-		% put it all together
-		MLDS_TypeName = type(UnqualCtorName, CtorArity),
-		MLDS_TypeFlags = ml_gen_type_decl_flags,
-		MLDS_TypeDefnBody = mlds__class(mlds__class_defn(mlds__class,
-			Imports, Inherits, Implements, Ctors, Members)),
-		MLDS_TypeDefn = mlds__defn(MLDS_TypeName, MLDS_Context,
-			MLDS_TypeFlags, MLDS_TypeDefnBody),
-		MLDS_Defns = [MLDS_TypeDefn | MLDS_Defns0]
+		( ml_tag_uses_base_class(TagVal) ->
+			% put the members for this constructor directly
+			% in the base class
+			MLDS_Members = Members ++ MLDS_Members0,
+			MLDS_CtorMethods = Ctors ++ MLDS_CtorMethods0
+		;
+			%
+			% Generate a nested derived class for this constructor,
+			% and put the members for this constructor in that
+			% class
+			%
+
+			% we inherit either the base class for this type,
+			% or the secondary tag class, depending on whether
+			% we need a secondary tag
+			( MaybeSecTagVal = yes(_) ->
+				ParentClassId = SecondaryTagClassId
+			;
+				ParentClassId = BaseClassId
+			),
+			Imports = [],
+			Inherits = [ParentClassId],
+			Implements = [],
+
+			% put it all together
+			MLDS_TypeName = type(UnqualCtorName, CtorArity),
+			MLDS_TypeFlags = ml_gen_type_decl_flags,
+			MLDS_TypeDefnBody = mlds__class(mlds__class_defn(
+				mlds__class, Imports, Inherits, Implements,
+				Ctors, Members)),
+			MLDS_TypeDefn = mlds__defn(MLDS_TypeName, MLDS_Context,
+				MLDS_TypeFlags, MLDS_TypeDefnBody),
+			MLDS_Members = [MLDS_TypeDefn | MLDS_Members0],
+			MLDS_CtorMethods = MLDS_CtorMethods0
+		)
 	).
+
+% A constructor is represented using the base class rather than a derived
+% class if there is only a single functor, or if there is a single
+% functor and some constants represented using reserved addresses.
+ml_tag_uses_base_class(single_functor).
+ml_tag_uses_base_class(shared_with_reserved_addresses(_RAs, Tag)) :-
+	ml_tag_uses_base_class(Tag).
 
 :- func target_uses_constructors(compilation_target) = bool.
 target_uses_constructors(c)	= no.

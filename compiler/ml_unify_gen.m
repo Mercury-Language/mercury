@@ -261,15 +261,12 @@ ml_gen_construct_2(Tag, Type, Var, ConsId, Args, ArgModes, HowToConstruct,
 		%
 		% ordinary compound terms
 		%
-		{ Tag = single_functor, TagVal = 0,
-		  MaybeSecondaryTag = no
-		; Tag = unshared_tag(TagVal),
-		  MaybeSecondaryTag = no
-		; Tag = shared_remote_tag(TagVal, SecondaryTag),
-		  MaybeSecondaryTag = yes(SecondaryTag)
+		{ Tag = single_functor
+		; Tag = unshared_tag(_TagVal)
+		; Tag = shared_remote_tag(_PrimaryTag, _SecondaryTag)
 		}
 	->
-		ml_gen_compound(TagVal, MaybeSecondaryTag, ConsId, Var, Args,
+		ml_gen_compound(Tag, ConsId, Var, Args,
 			ArgModes, HowToConstruct, Context,
 			MLDS_Decls, MLDS_Statements)
 	;
@@ -590,9 +587,10 @@ ml_gen_closure(PredId, ProcId, EvalMethod, Var, ArgVars, ArgModes,
 	%
 	% the pointer will not be tagged (i.e. the tag will be zero)
 	%
-	{ Tag = 0 },
-	{ CtorDefn = ctor_id("<closure>", 0) },
-	{ QualifiedCtorId = qual(MLDS_PrivateBuiltinModule, CtorDefn) },
+	{ MaybeConsId = no },
+	{ MaybeConsName = no },
+	{ PrimaryTag = 0 },
+	{ MaybeSecondaryTag = no },
 
 	%
 	% put all the extra arguments of the closure together
@@ -604,8 +602,9 @@ ml_gen_closure(PredId, ProcId, EvalMethod, Var, ArgVars, ArgModes,
 	% generate a `new_object' statement (or static constant)
 	% for the closure
 	%
-	ml_gen_new_object(no, Tag, no, QualifiedCtorId, Var, ExtraArgRvals, 
-		ExtraArgTypes, ArgVars, ArgModes, HowToConstruct, Context,
+	ml_gen_new_object(MaybeConsId, PrimaryTag, MaybeSecondaryTag,
+		MaybeConsName, Var, ExtraArgRvals, ExtraArgTypes, ArgVars,
+		ArgModes, HowToConstruct, Context,
 		MLDS_Decls, MLDS_Statements).
 
 	%
@@ -1028,15 +1027,34 @@ ml_cons_id_to_tag(ConsId, Type, Tag) -->
 	{ code_util__cons_id_to_tag(ConsId, Type, ModuleInfo, Tag) }.
 
 	% generate code to construct a new object
-:- pred ml_gen_compound(mlds__tag, maybe(int), cons_id, prog_var, prog_vars,
+:- pred ml_gen_compound(cons_tag, cons_id, prog_var, prog_vars,
 		list(uni_mode), how_to_construct, prog_context,
 		mlds__defns, mlds__statements, ml_gen_info, ml_gen_info).
-:- mode ml_gen_compound(in, in, in, in, in, in, in, in, out, out, in, out)
+:- mode ml_gen_compound(in, in, in, in, in, in, in, out, out, in, out)
 		is det.
 
-ml_gen_compound(Tag, MaybeSecondaryTag, ConsId, Var, ArgVars, ArgModes,
+ml_gen_compound(Tag, ConsId, Var, ArgVars, ArgModes,
 		HowToConstruct, Context, MLDS_Decls, MLDS_Statements) -->
-	ml_cons_name(ConsId, CtorName),
+	%
+	% get the primary and secondary tags
+	%
+	{ get_primary_tag(Tag) = yes(PrimaryTag0) ->
+		PrimaryTag = PrimaryTag0
+	;
+		unexpected(this_file, "ml_gen_compound: primary tag unknown")
+	},
+	{ MaybeSecondaryTag = get_secondary_tag(Tag) },
+
+	%
+	% figure out which class name to construct
+	%
+	( { ml_tag_uses_base_class(Tag) } ->
+		{ MaybeCtorName = no }
+	;
+		ml_cons_name(ConsId, CtorName),
+		{ MaybeCtorName = yes(CtorName) }
+	),
+
 	% 
 	% If there is a secondary tag, it goes in the first field
 	%
@@ -1051,8 +1069,8 @@ ml_gen_compound(Tag, MaybeSecondaryTag, ConsId, Var, ArgVars, ArgModes,
 		ExtraRvals = [],
 		ExtraArgTypes = []
 	},
-	ml_gen_new_object(yes(ConsId), Tag, HasSecTag, CtorName, Var,
-			ExtraRvals, ExtraArgTypes, ArgVars, ArgModes,
+	ml_gen_new_object(yes(ConsId), PrimaryTag, HasSecTag, MaybeCtorName,
+			Var, ExtraRvals, ExtraArgTypes, ArgVars, ArgModes,
 			HowToConstruct, Context, MLDS_Decls, MLDS_Statements).
 
 	%
@@ -1063,15 +1081,15 @@ ml_gen_compound(Tag, MaybeSecondaryTag, ConsId, Var, ArgVars, ArgModes,
 	%	additional constants to insert at the start of the
 	%	argument list.
 	%
-:- pred ml_gen_new_object(maybe(cons_id), mlds__tag, bool, ctor_name, prog_var,
-		list(mlds__rval), list(mlds__type), prog_vars,
+:- pred ml_gen_new_object(maybe(cons_id), mlds__tag, bool, maybe(ctor_name),
+		prog_var, list(mlds__rval), list(mlds__type), prog_vars,
 		list(uni_mode), how_to_construct,
 		prog_context, mlds__defns, mlds__statements,
 		ml_gen_info, ml_gen_info).
 :- mode ml_gen_new_object(in, in, in, in, in, in, in, in, in, in, in, out, out,
 		in, out) is det.
 
-ml_gen_new_object(MaybeConsId, Tag, HasSecTag, CtorName, Var,
+ml_gen_new_object(MaybeConsId, Tag, HasSecTag, MaybeCtorName, Var,
 		ExtraRvals, ExtraTypes, ArgVars, ArgModes, HowToConstruct,
 		Context, MLDS_Decls, MLDS_Statements) -->
 	%
@@ -1112,7 +1130,7 @@ ml_gen_new_object(MaybeConsId, Tag, HasSecTag, CtorName, Var,
 		%
 		{ list__length(ArgRvals, NumArgs) },
 		{ SizeInWordsRval = const(int_const(NumArgs)) },
-		
+
 		%
 		% Generate a `new_object' statement to dynamically allocate
 		% the memory for this term from the heap.  The `new_object'
@@ -1120,7 +1138,7 @@ ml_gen_new_object(MaybeConsId, Tag, HasSecTag, CtorName, Var,
 		% with boxed versions of the specified arguments.
 		%
 		{ MakeNewObject = new_object(VarLval, MaybeTag, HasSecTag,
-			MLDS_Type, yes(SizeInWordsRval), yes(CtorName),
+			MLDS_Type, yes(SizeInWordsRval), MaybeCtorName,
 			ArgRvals, MLDS_ArgTypes) },
 		{ MLDS_Stmt = atomic(MakeNewObject) },
 		{ MLDS_Statement = mlds__statement(MLDS_Stmt,
@@ -1226,12 +1244,12 @@ ml_gen_new_object(MaybeConsId, Tag, HasSecTag, CtorName, Var,
 		%
 		% For each field in the construction unification we need
 		% to generate an rval.
-		% XXX we do more work then we need to here, as some of
+		% XXX we do more work than we need to here, as some of
 		% the cells may already contain the correct values.
 		%
 		ml_gen_unify_args(ConsId, ArgVars, ArgModes, ArgTypes,
-				Fields, Type, VarLval, OffSet,
-				ArgNum, PrimaryTag, Context, MLDS_Statements0),
+				Fields, Type, VarLval, OffSet, ArgNum,
+				ConsIdTag, Context, MLDS_Statements0),
 
 		{ MLDS_Decls = [] },
 		{ MLDS_Statements = [MLDS_Statement | MLDS_Statements0] }
@@ -1485,27 +1503,31 @@ ml_gen_det_deconstruct_2(Tag, Type, Var, ConsId, Args, Modes, Context,
 		)
 	;
 		{ Tag = single_functor },
-		% treat single_functor the same as unshared_tag(0)
-		ml_gen_det_deconstruct_2(unshared_tag(0), Type, Var, ConsId,
-			Args, Modes, Context, MLDS_Statements)
-	;
-		{ Tag = unshared_tag(UnsharedTag) },
 		ml_gen_var(Var, VarLval),
 		ml_variable_types(Args, ArgTypes),
 		ml_field_names_and_types(Type, ConsId, ArgTypes, Fields),
 		{ ml_tag_offset_and_argnum(Tag, _, OffSet, ArgNum) },
 		ml_gen_unify_args(ConsId, Args, Modes, ArgTypes, Fields, Type,
 				VarLval, OffSet, ArgNum,
-				UnsharedTag, Context, MLDS_Statements)
+				Tag, Context, MLDS_Statements)
 	;
-		{ Tag = shared_remote_tag(PrimaryTag, _SecondaryTag) },
+		{ Tag = unshared_tag(_UnsharedTag) },
 		ml_gen_var(Var, VarLval),
 		ml_variable_types(Args, ArgTypes),
 		ml_field_names_and_types(Type, ConsId, ArgTypes, Fields),
 		{ ml_tag_offset_and_argnum(Tag, _, OffSet, ArgNum) },
 		ml_gen_unify_args(ConsId, Args, Modes, ArgTypes, Fields, Type,
 				VarLval, OffSet, ArgNum,
-				PrimaryTag, Context, MLDS_Statements)
+				Tag, Context, MLDS_Statements)
+	;
+		{ Tag = shared_remote_tag(_PrimaryTag, _SecondaryTag) },
+		ml_gen_var(Var, VarLval),
+		ml_variable_types(Args, ArgTypes),
+		ml_field_names_and_types(Type, ConsId, ArgTypes, Fields),
+		{ ml_tag_offset_and_argnum(Tag, _, OffSet, ArgNum) },
+		ml_gen_unify_args(ConsId, Args, Modes, ArgTypes, Fields, Type,
+				VarLval, OffSet, ArgNum,
+				Tag, Context, MLDS_Statements)
 	;
 		% For constants, if the deconstruction is det, then we already
 		% know the value of the constant, so MLDS_Statements = [].
@@ -1640,16 +1662,16 @@ ml_field_names_and_types(Type, ConsId, ArgTypes, Fields) -->
 
 :- pred ml_gen_unify_args(cons_id, prog_vars, list(uni_mode), list(prog_type),
 		list(constructor_arg), prog_type, mlds__lval, int, int,
-		mlds__tag, prog_context, mlds__statements,
+		cons_tag, prog_context, mlds__statements,
 		ml_gen_info, ml_gen_info).
 :- mode ml_gen_unify_args(in, in, in, in, in, in, in, in, in, in, in, out,
 		in, out) is det.
 
 ml_gen_unify_args(ConsId, Args, Modes, ArgTypes, Fields, VarType, VarLval,
-		Offset, ArgNum, PrimaryTag, Context, MLDS_Statements) -->
+		Offset, ArgNum, Tag, Context, MLDS_Statements) -->
 	(
 		ml_gen_unify_args_2(ConsId, Args, Modes, ArgTypes, Fields,
-			VarType, VarLval, Offset, ArgNum, PrimaryTag, Context,
+			VarType, VarLval, Offset, ArgNum, Tag, Context,
 			[], MLDS_Statements0)
 	->
 		{ MLDS_Statements = MLDS_Statements0 }
@@ -1659,7 +1681,7 @@ ml_gen_unify_args(ConsId, Args, Modes, ArgTypes, Fields, VarType, VarLval,
 
 :- pred ml_gen_unify_args_2(cons_id, prog_vars, list(uni_mode), list(prog_type),
 		list(constructor_arg), prog_type, mlds__lval, int, int,
-		mlds__tag, prog_context, mlds__statements, mlds__statements,
+		cons_tag, prog_context, mlds__statements, mlds__statements,
 		ml_gen_info, ml_gen_info).
 :- mode ml_gen_unify_args_2(in, in, in, in, in, in, in, in, in, in, in, in, out,
 		in, out) is semidet.
@@ -1667,26 +1689,26 @@ ml_gen_unify_args(ConsId, Args, Modes, ArgTypes, Fields, VarType, VarLval,
 ml_gen_unify_args_2(_, [], [], [], _, _, _, _, _, _, _, Statements, Statements)
 		--> [].
 ml_gen_unify_args_2(ConsId, [Arg|Args], [Mode|Modes], [ArgType|ArgTypes],
-		[Field|Fields], VarType, VarLval, Offset, ArgNum, PrimaryTag,
+		[Field|Fields], VarType, VarLval, Offset, ArgNum, Tag,
 		Context, MLDS_Statements0, MLDS_Statements) -->
 	{ Offset1 = Offset + 1 },
 	{ ArgNum1 = ArgNum + 1 },
 	ml_gen_unify_args_2(ConsId, Args, Modes, ArgTypes, Fields, VarType,
-		VarLval, Offset1, ArgNum1, PrimaryTag, Context,
+		VarLval, Offset1, ArgNum1, Tag, Context,
 		MLDS_Statements0, MLDS_Statements1),
 	ml_gen_unify_arg(ConsId, Arg, Mode, ArgType, Field, VarType, VarLval,
-		Offset, ArgNum, PrimaryTag, Context,
+		Offset, ArgNum, Tag, Context,
 		MLDS_Statements1, MLDS_Statements).
 
 :- pred ml_gen_unify_arg(cons_id, prog_var, uni_mode, prog_type,
-		constructor_arg, prog_type, mlds__lval, int, int, mlds__tag,
+		constructor_arg, prog_type, mlds__lval, int, int, cons_tag,
 		prog_context, mlds__statements, mlds__statements,
 		ml_gen_info, ml_gen_info).
 :- mode ml_gen_unify_arg(in, in, in, in, in, in, in, in, in, in, in, in, out,
 		in, out) is det.
 
 ml_gen_unify_arg(ConsId, Arg, Mode, ArgType, Field, VarType, VarLval,
-		Offset, ArgNum, PrimaryTag, Context,
+		Offset, ArgNum, Tag, Context,
 		MLDS_Statements0, MLDS_Statements) -->
 	{ Field = MaybeFieldName - FieldType },
 	=(Info),
@@ -1716,7 +1738,7 @@ ml_gen_unify_arg(ConsId, Arg, Mode, ArgType, Field, VarType, VarLval,
 				ConsId = cons(ConsName, ConsArity)
 			->
 				unqualify_name(ConsName, UnqualConsName),
-				FieldId = ml_gen_field_id(VarType,
+				FieldId = ml_gen_field_id(VarType, Tag,
 					UnqualConsName, ConsArity, FieldName)
 			;
 				error("ml_gen_unify_args: invalid cons_id")
@@ -1757,7 +1779,8 @@ ml_gen_unify_arg(ConsId, Arg, Mode, ArgType, Field, VarType, VarLval,
 		%
 	ml_gen_type(VarType, MLDS_VarType),
 	ml_gen_type(BoxedFieldType, MLDS_BoxedFieldType),
-	{ FieldLval = field(yes(PrimaryTag), lval(VarLval), FieldId,
+	{ MaybePrimaryTag = get_primary_tag(Tag) },
+	{ FieldLval = field(MaybePrimaryTag, lval(VarLval), FieldId,
 		MLDS_BoxedFieldType, MLDS_VarType) },
 	ml_gen_var(Arg, ArgLval),
 
@@ -2064,27 +2087,39 @@ ml_gen_hl_tag_field_id(Type, ModuleInfo) = FieldId :-
 	QualifiedFieldName = qual(FieldQualifier, FieldName),
 	FieldId = named_field(QualifiedFieldName, ClassPtrType).
 
-:- func ml_gen_field_id(prog_type, mlds__class_name, arity, mlds__field_name) =
-	mlds__field_id.
+:- func ml_gen_field_id(prog_type, cons_tag, mlds__class_name, arity,
+		mlds__field_name) = mlds__field_id.
 
-ml_gen_field_id(Type, ClassName, ClassArity, FieldName) = FieldId :-
+ml_gen_field_id(Type, Tag, ConsName, ConsArity, FieldName) = FieldId :-
 	(
 		type_to_type_id(Type, TypeId, _)
 	->
-		ml_gen_type_name(TypeId, qual(MLDS_Module, TypeName), TypeArity),
-		ClassQualifier = mlds__append_class_qualifier(
+		ml_gen_type_name(TypeId, QualTypeName, TypeArity),
+		QualTypeName = qual(MLDS_Module, TypeName),
+		TypeQualifier = mlds__append_class_qualifier(
 			MLDS_Module, TypeName, TypeArity),
-		QualClassName = qual(ClassQualifier, ClassName),
-		ClassPtrType = mlds__ptr_type(mlds__class_type(
-			QualClassName, ClassArity, mlds__class)),
-		FieldQualifier = mlds__append_class_qualifier(
-			ClassQualifier, ClassName, ClassArity),
-		QualifiedFieldName = qual(FieldQualifier, FieldName),
+		
+		( ml_tag_uses_base_class(Tag) ->
+			% in this case, there's only one functor for the type
+			% (other than reserved_address constants),
+			% and so the class name is determined by the type name
+			ClassPtrType = mlds__ptr_type(mlds__class_type(
+				QualTypeName, TypeArity, mlds__class)),
+			QualifiedFieldName = qual(TypeQualifier, FieldName)
+		;
+			% in this case, the class name is determined by the
+			% constructor
+			QualConsName = qual(TypeQualifier, ConsName),
+			ClassPtrType = mlds__ptr_type(mlds__class_type(
+				QualConsName, ConsArity, mlds__class)),
+			FieldQualifier = mlds__append_class_qualifier(
+				TypeQualifier, ConsName, ConsArity),
+			QualifiedFieldName = qual(FieldQualifier, FieldName)
+		),
 		FieldId = named_field(QualifiedFieldName, ClassPtrType)
 	;
 		error("ml_gen_field_id: invalid type")
 	).
-
 
 :- func this_file = string.
 this_file = "ml_unify_gen.m".
