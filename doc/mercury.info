@@ -6,9 +6,9 @@ Mercury Documentation
 
 * Menu:
 
-* Mercury Language Reference Manual: (mercury_ref)
-* Mercury User's Guide: (mercury_user_guide)
-* Mercury Library Reference Manual: (mercury_library)
+* Language Reference Manual: (mercury_ref)
+* User's Guide: (mercury_user_guide)
+* Library Reference Manual: (mercury_library)
 
 See also the Mercury WWW home page,
 http://www.cs.mu.oz.au/~zs/mercury.html.
