@@ -1842,7 +1842,8 @@ but this value can be overridden by the user.
 @item current environment
 Whenever execution stops at an event, the current environment
 is reset to refer to the stack frame of the call specified by the event.
-However, the @samp{up}, @samp{down} and @samp{level} commands can set the current environment
+However, the @samp{up}, @samp{down} and @samp{level} commands
+can set the current environment
 to refer to one of the ancestors of the current call.
 This will then be the current environment until another of these commands
 changes the environment yet again or execution continues to another event.
@@ -2271,9 +2272,9 @@ and @samp{-v} or @samp{--verbose} specify the format to use for printing.
 @item browse [-fpv] @var{name}
 @itemx browse [-fpv] @var{num}
 @kindex browse (mdb command)
-Invokes an interactive term browser to browse the value of the
-variable in the current environment with the given ordinal number or
-with the given name.
+Invokes an interactive term browser to browse
+the value of the variable in the current environment
+with the given ordinal number or with the given name.
 @sp 1
 The interactive term browser allows you
 to selectively examine particular subterms. 
