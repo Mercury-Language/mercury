@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2000 The University of Melbourne.
+% Copyright (C) 1994-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -30,7 +30,10 @@
 
 :- interface.
 
-:- import_module hlds_module, hlds_pred, hlds_goal, llds, code_info.
+:- import_module hlds_module, hlds_pred, hlds_goal.
+:- import_module code_model.
+:- import_module llds, code_info.
+
 :- import_module list, io, counter.
 
 		% Translate a HLDS module to LLDS.
@@ -59,12 +62,23 @@
 
 :- implementation.
 
+% Parse tree modules
+:- import_module prog_data, prog_out, prog_util.
+
+% HLDS modules
+:- import_module hlds_out, instmap, type_util, mode_util, goal_util.
+
+% LLDS code generator modules.
 :- import_module call_gen, unify_gen, ite_gen, switch_gen, disj_gen.
 :- import_module par_conj_gen, pragma_c_gen, commit_gen.
-:- import_module continuation_info, trace, trace_params, options, hlds_out.
-:- import_module code_aux, middle_rec, passes_aux, llds_out.
-:- import_module code_util, type_util, mode_util, goal_util.
-:- import_module prog_data, prog_out, prog_util, instmap, globals.
+:- import_module continuation_info, trace, trace_params.
+:- import_module code_aux, code_util, middle_rec, llds_out.
+
+% Misc compiler modules
+:- import_module builtin_ops, passes_aux.
+:- import_module globals, options.
+
+% Standard library modules
 :- import_module bool, char, int, string.
 :- import_module map, assoc_list, set, term, tree, std_util, require, varset.
 
@@ -318,9 +332,9 @@ generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo,
 		GlobalData1 = GlobalData0
 	),
 
-	code_info__get_non_common_static_data(NonCommonStatics, CodeInfo, _),
-	global_data_add_new_non_common_static_datas(GlobalData1,
-		NonCommonStatics, GlobalData2),
+	code_info__get_closure_layouts(ClosureLayouts, CodeInfo, _),
+	global_data_add_new_closure_layouts(GlobalData1, ClosureLayouts,
+		GlobalData2),
 	code_util__make_proc_label(ModuleInfo, PredId, ProcId, ProcLabel),
 	maybe_add_tabling_pointer_var(ModuleInfo, PredId, ProcId, ProcInfo,
 		ProcLabel, GlobalData2, GlobalData),
@@ -562,13 +576,34 @@ generate_category_code(model_non, Goal, ResumePoint, TraceSlotInfo, Code,
 			MaybeFailExternalInfo = no,
 			TraceFailCode = empty
 		},
-		{ TraceSlotInfo ^ slot_trail = yes(_) ->
-			DiscardTraceTicketCode = node([
-				discard_ticket - "discard retry ticket"
-			])
+		( { TraceSlotInfo ^ slot_trail = yes(_) } ->
+			( { TraceSlotInfo ^ slot_from_full =
+				yes(FromFullSlot) }
+			->
+				%
+				% Generate code which discards the ticket
+				% only if it was allocated, i.e. only if
+				% MR_trace_from_full was true on entry.
+				%
+				{ FromFullSlotLval =
+					llds__stack_slot_num_to_lval(
+						model_non, FromFullSlot) },
+				code_info__get_next_label(SkipLabel),
+				{ DiscardTraceTicketCode = node([
+					if_val(unop(not,
+						lval(FromFullSlotLval)),
+						label(SkipLabel)) - "",
+					discard_ticket - "discard retry ticket",
+					label(SkipLabel) - ""
+				]) }
+			;
+				{ DiscardTraceTicketCode = node([
+					discard_ticket - "discard retry ticket"
+				]) }
+			)
 		;
-			DiscardTraceTicketCode = empty
-		},
+			{ DiscardTraceTicketCode = empty }
+		),
 		{ FailCode = node([
 			goto(do_fail) - "fail after fail trace port"
 		]) },
@@ -678,7 +713,7 @@ code_gen__generate_entry(CodeModel, Goal, OutsideResumePoint, FrameInfo,
 		{ code_info__resume_point_stack_addr(OutsideResumePoint,
 			OutsideResumeAddress) },
 		(
-			{ Goal = pragma_foreign_code(_, _, _, _, _, _, _,
+			{ Goal = pragma_foreign_code(_, _, _, _, _, _,
 				PragmaCode) - _},
 			{ PragmaCode = nondet(Fields, FieldsContext,
 				_,_,_,_,_,_,_) }
@@ -825,21 +860,65 @@ code_gen__generate_exit(CodeModel, FrameInfo, TraceSlotInfo, BodyContext,
 				decr_sp(TotalSlots) - "Deallocate stack frame"
 			])
 		},
-		{
-			TraceSlotInfo ^ slot_trail = yes(_),
-			CodeModel \= model_non
+		(
+			{ TraceSlotInfo ^ slot_trail = yes(_) },
+			{ CodeModel \= model_non }
 		->
-			PruneTraceTicketCode = node([
-				prune_ticket - "prune retry ticket"
-			])
+			(
+				{ TraceSlotInfo ^ slot_from_full =
+					yes(FromFullSlot) }
+			->
+				%
+				% Generate code which prunes the ticket
+				% only if it was allocated, i.e. only if
+				% MR_trace_from_full was true on entry.
+				%
+				% Note that to avoid duplicating label names,
+				% we need to generate two different copies
+				% of this with different labels; this is
+				% needed for semidet code, which will get one
+				% copy in the success epilogue and one copy
+				% in the failure epilogue
+				%
+				{ FromFullSlotLval =
+					llds__stack_slot_num_to_lval(
+						CodeModel, FromFullSlot) },
+				code_info__get_next_label(SkipLabel),
+				code_info__get_next_label(SkipLabelCopy),
+				{ PruneTraceTicketCode = node([
+					if_val(unop(not,
+						lval(FromFullSlotLval)),
+						label(SkipLabel)) - "",
+					prune_ticket - "prune retry ticket",
+					label(SkipLabel) - ""
+				]) },
+				{ PruneTraceTicketCodeCopy = node([
+					if_val(unop(not,
+						lval(FromFullSlotLval)),
+						label(SkipLabelCopy)) - "",
+					prune_ticket - "prune retry ticket",
+					label(SkipLabelCopy) - ""
+				]) }
+			;
+				{ PruneTraceTicketCode = node([
+					prune_ticket - "prune retry ticket"
+				]) },
+				{ PruneTraceTicketCodeCopy = PruneTraceTicketCode }
+			)
 		;
-			PruneTraceTicketCode = empty
-		},
+			{ PruneTraceTicketCode = empty },
+			{ PruneTraceTicketCodeCopy = empty }
+		),
 
 		{ RestoreDeallocCode =
 			tree(RestoreSuccipCode,
-			tree(DeallocCode,
-			     PruneTraceTicketCode))
+			tree(PruneTraceTicketCode,
+			     DeallocCode))
+		},
+		{ RestoreDeallocCodeCopy =
+			tree(RestoreSuccipCode,
+			tree(PruneTraceTicketCodeCopy,
+			     DeallocCode))
 		},
 
 		code_info__get_maybe_trace_info(MaybeTraceInfo),
@@ -884,7 +963,7 @@ code_gen__generate_exit(CodeModel, FrameInfo, TraceSlotInfo, BodyContext,
 			]) },
 			{ AllSuccessCode =
 				tree(TraceExitCode,
-				tree(RestoreDeallocCode,
+				tree(RestoreDeallocCodeCopy,
 				     SuccessCode))
 			}
 		;
@@ -897,7 +976,7 @@ code_gen__generate_exit(CodeModel, FrameInfo, TraceSlotInfo, BodyContext,
 			]) },
 			{ AllSuccessCode =
 				tree(TraceExitCode,
-				tree(RestoreDeallocCode,
+				tree(RestoreDeallocCodeCopy,
 				     SuccessCode))
 			}
 		;
@@ -1007,8 +1086,9 @@ code_gen__generate_goal(ContextModel, Goal - GoalInfo, Code) -->
 :- pred code_gen__generate_goal_2(hlds_goal_expr::in, hlds_goal_info::in,
 	code_model::in, code_tree::out, code_info::in, code_info::out) is det.
 
-code_gen__generate_goal_2(unify(_, _, _, Uni, _), _, CodeModel, Code) -->
-	unify_gen__generate_unification(CodeModel, Uni, Code).
+code_gen__generate_goal_2(unify(_, _, _, Uni, _), GoalInfo, CodeModel, Code)
+		-->
+	unify_gen__generate_unification(CodeModel, Uni, GoalInfo, Code).
 code_gen__generate_goal_2(conj(Goals), _GoalInfo, CodeModel, Code) -->
 	code_gen__generate_goals(Goals, CodeModel, Code).
 code_gen__generate_goal_2(par_conj(Goals, _SM), GoalInfo, CodeModel, Code) -->
@@ -1042,12 +1122,18 @@ code_gen__generate_goal_2(call(PredId, ProcId, Args, BuiltinState, _, _),
 		call_gen__generate_builtin(CodeModel, PredId, ProcId, Args,
 			Code)
 	).
-code_gen__generate_goal_2(pragma_foreign_code(c, Attributes,
+code_gen__generate_goal_2(pragma_foreign_code(Attributes,
 		PredId, ModeId, Args, ArgNames, OrigArgTypes, PragmaCode),
 		GoalInfo, CodeModel, Instr) -->
-	pragma_c_gen__generate_pragma_c_code(CodeModel, Attributes,
-		PredId, ModeId, Args, ArgNames, OrigArgTypes, GoalInfo,
-		PragmaCode, Instr).
+	( 
+		{ foreign_language(Attributes, c) } 
+	->
+		pragma_c_gen__generate_pragma_c_code(CodeModel, Attributes,
+			PredId, ModeId, Args, ArgNames, OrigArgTypes,
+			GoalInfo, PragmaCode, Instr)
+	;
+		{ error("code_gen__generate_goal_2: foreign code other than C unexpected") }
+	).
 code_gen__generate_goal_2(bi_implication(_, _), _, _, _) -->
 	% these should have been expanded out by now
 	{ error("code_gen__generate_goal_2: unexpected bi_implication") }.

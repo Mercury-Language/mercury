@@ -17,7 +17,7 @@
 
 :- interface.
 
-:- import_module hlds_goal, llds, code_info.
+:- import_module hlds_goal, code_model, llds, code_info.
 :- import_module list.
 
 :- pred disj_gen__generate_disj(code_model::in, list(hlds_goal)::in,
@@ -29,6 +29,7 @@
 
 :- import_module prog_data, hlds_data, code_gen, code_util, trace.
 :- import_module options, globals, tree.
+
 :- import_module bool, set, tree, map, std_util, term, require.
 
 disj_gen__generate_disj(CodeModel, Goals, StoreMap, Code) -->

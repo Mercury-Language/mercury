@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2000 The University of Melbourne.
+% Copyright (C) 1999-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -51,7 +51,7 @@
 
 output_mlds(MLDS) -->
 	{ ModuleName = mlds__get_module_name(MLDS) },
-	module_name_to_file_name(ModuleName, ".il", no, ILAsmFile),
+	module_name_to_file_name(ModuleName, ".il", yes, ILAsmFile),
 	output_to_file(ILAsmFile, output_assembler(MLDS), Result),
 
 		% Put the pragma C code into a C++ file.
@@ -59,7 +59,7 @@ output_mlds(MLDS) -->
 		% we should just put managed C++ foreign code into
 		% this file.
 	( { Result = yes } ->
-		module_name_to_file_name(ModuleName, "__c_code.cpp", no, 
+		module_name_to_file_name(ModuleName, "__c_code.cpp", yes, 
 			CPPFile),
 		output_to_file(CPPFile, output_c_code(MLDS),
 			_Result)
@@ -178,11 +178,17 @@ generate_c_code(MLDS) -->
 	io__nl,
 	io__write_strings([
 		"#using <mscorlib.dll>\n",
-		"using namespace System;\n",
-		"#include ""mercury_cpp.h""\n",
-		"using namespace mercury;\n",
-		"#using ""mercury_cpp.dll""\n",
+		"#include ""mercury_mcpp.h""\n",
+		"#using ""mercury_mcpp.dll""\n",
+		"#using ""mercury_il.dll""\n",
 		"#using """, ModuleNameStr, ".dll""\n",
+
+		% XXX We have to use the mercury namespace, as
+		% llds_out still generates some of the code used in the
+		% MC++ interface, and so it doesn't have "mercury::"
+		% namespace qualifiers.
+		"using namespace mercury;\n",
+
 		% XXX this supresses problems caused by references to 
 		% float.  If you don't do this, you'll get link errors.
 		% Revisit this when the .NET implementation has matured.
@@ -201,7 +207,7 @@ generate_c_code(MLDS) -->
 		ForeignCode),
 
 	io__write_strings([
-		"__gc public class ", ModuleNameStr, "__c_code\n",
+		"\n__gc public class ", ModuleNameStr, "__c_code\n",
 		"{\n",
 		"public:\n"]),
 
@@ -237,10 +243,15 @@ generate_foreign_code(_ModuleName,
 			_ExportDefns)) -->
 	{ BodyCode = list__reverse(RevBodyCode) },
 	io__write_list(BodyCode, "\n", 
-		(pred(llds__user_foreign_code(c, Code, _Context)::in,
+		(pred(llds__user_foreign_code(Lang, Code, _Context)::in,
 				di, uo) is det -->
-			io__write_string(Code))
-			).
+			( { Lang = managed_cplusplus } ->
+				io__write_string(Code)
+			;
+				{ sorry(this_file, 
+					"foreign code other than MC++") }
+			)					
+	)).
 
 	% XXX we don't handle export decls.
 :- pred generate_foreign_header_code(mlds_module_name, mlds__foreign_code,
@@ -251,10 +262,15 @@ generate_foreign_header_code(_ModuleName,
 			_ExportDefns)) -->
 	{ HeaderCode = list__reverse(RevHeaderCode) },
 	io__write_list(HeaderCode, "\n", 
-		(pred(Code - _Context::in, di, uo) is det -->
-			io__write_string(Code))
-			).
-
+		(pred(llds__foreign_decl_code(Lang, Code, _Context)::in,
+			di, uo) is det -->
+			( { Lang = managed_cplusplus } ->
+				io__write_string(Code)
+			;
+				{ sorry(this_file, 
+					"foreign code other than MC++") }
+			)					
+	)).
 
 :- pred generate_method_c_code(mlds_module_name, mlds__defn,
 		io__state, io__state).
@@ -439,6 +455,14 @@ write_managed_cpp_rval(const(RvalConst)) -->
 	write_managed_cpp_rval_const(RvalConst).
 write_managed_cpp_rval(unop(Unop, Rval)) -->
 	( 
+		{ Unop = std_unop(StdUnop) },
+		{ c_util__unary_prefix_op(StdUnop, UnopStr) }
+	->
+		io__write_string(UnopStr),
+		io__write_string("("),
+		write_managed_cpp_rval(Rval),
+		io__write_string(")")
+	;
 		{ Unop = cast(Type) }
 	->
 		io__write_string("("),
@@ -446,10 +470,24 @@ write_managed_cpp_rval(unop(Unop, Rval)) -->
 		io__write_string(") "),
 		write_managed_cpp_rval(Rval)
 	;
-		io__write_string(" /* unop rval -- unimplemented */ ")
+		io__write_string(" /* XXX box or unbox unop -- unimplemented */ "),
+		write_managed_cpp_rval(Rval)
 	).
-write_managed_cpp_rval(binop(_, _, _)) -->
-	io__write_string(" /* binop rval -- unimplemented */ ").
+write_managed_cpp_rval(binop(Binop, Rval1, Rval2)) -->
+	( 
+		{ c_util__binary_infix_op(Binop, BinopStr) }
+	->
+		io__write_string("("),
+		write_managed_cpp_rval(Rval1),
+		io__write_string(") "),
+		io__write_string(BinopStr),
+		io__write_string(" ("),
+		write_managed_cpp_rval(Rval2),
+		io__write_string(")")
+	;
+		io__write_string(" /* binop rval -- unimplemented */ ")
+	).
+
 write_managed_cpp_rval(mem_addr(_)) -->
 	io__write_string(" /* mem_addr rval -- unimplemented */ ").
 	
@@ -501,8 +539,14 @@ write_managed_cpp_lval(field(_, Rval, named_field(FieldId, _Type), _, _)) -->
 	{ FieldId = qual(_, FieldName) },
 	io__write_string(FieldName).
 
-write_managed_cpp_lval(field(_, _, offset(_), _, _)) -->
-	io__write_string(" /* offset field lval -- unimplemented */ ").
+write_managed_cpp_lval(field(_, Rval, offset(OffSet), _, _)) -->
+	io__write_string("("),
+	write_managed_cpp_rval(Rval),
+	io__write_string(")"),
+	io__write_string("["),
+	write_managed_cpp_rval(OffSet),
+	io__write_string("]").
+
 write_managed_cpp_lval(mem_ref(Rval, _)) -->
 	io__write_string("*"),
 	write_managed_cpp_rval(Rval).
@@ -553,13 +597,13 @@ write_il_ret_type_as_managed_cpp_type(simple_type(T)) -->
 :- pred write_il_simple_type_as_managed_cpp_type(simple_type::in,
 	io__state::di, io__state::uo) is det.
 write_il_simple_type_as_managed_cpp_type(int8) --> 
-	io__write_string("MR_Integer8").
+	io__write_string("mercury::MR_Integer8").
 write_il_simple_type_as_managed_cpp_type(int16) --> 
-	io__write_string("MR_Integer16").
+	io__write_string("mercury::MR_Integer16").
 write_il_simple_type_as_managed_cpp_type(int32) --> 
-	io__write_string("MR_Integer").
+	io__write_string("mercury::MR_Integer").
 write_il_simple_type_as_managed_cpp_type(int64) --> 
-	io__write_string("MR_Integer64").
+	io__write_string("mercury::MR_Integer64").
 write_il_simple_type_as_managed_cpp_type(uint8) --> 
 	io__write_string("unsigned int").
 write_il_simple_type_as_managed_cpp_type(uint16) --> 
@@ -569,26 +613,26 @@ write_il_simple_type_as_managed_cpp_type(uint32) -->
 write_il_simple_type_as_managed_cpp_type(uint64) --> 
 	io__write_string("unsigned int").
 write_il_simple_type_as_managed_cpp_type(native_int) --> 
-	io__write_string("MR_Integer").
+	io__write_string("mercury::MR_Integer").
 write_il_simple_type_as_managed_cpp_type(native_uint) --> 
 	io__write_string("unsigned int").
 write_il_simple_type_as_managed_cpp_type(float32) --> 
 	io__write_string("float").
 write_il_simple_type_as_managed_cpp_type(float64) --> 
-	io__write_string("MR_Float").
+	io__write_string("mercury::MR_Float").
 write_il_simple_type_as_managed_cpp_type(native_float) --> 
-	io__write_string("MR_Float").
+	io__write_string("mercury::MR_Float").
 write_il_simple_type_as_managed_cpp_type(bool) --> 
-	io__write_string("MR_Integer").
+	io__write_string("mercury::MR_Integer").
 write_il_simple_type_as_managed_cpp_type(char) --> 
-	io__write_string("MR_Char").
+	io__write_string("mercury::MR_Char").
 write_il_simple_type_as_managed_cpp_type(refany) --> 
-	io__write_string("MR_RefAny").
+	io__write_string("mercury::MR_RefAny").
 write_il_simple_type_as_managed_cpp_type(class(ClassName)) --> 
 	( { ClassName = il_generic_class_name } ->
-		io__write_string("MR_Box")
+		io__write_string("mercury::MR_Box")
 	;
-		io__write_string("class "),
+		io__write_string("public class "),
 		write_managed_cpp_class_name(ClassName),
 		io__write_string(" *")
 	).
@@ -604,7 +648,7 @@ write_il_simple_type_as_managed_cpp_type(interface(ClassName)) -->
 	io__write_string(" *").
 		% XXX this needs more work
 write_il_simple_type_as_managed_cpp_type('[]'(_Type, _Bounds)) --> 
-	io__write_string("MR_Word").
+	io__write_string("mercury::MR_Word").
 write_il_simple_type_as_managed_cpp_type('&'(Type)) --> 
 	io__write_string("MR_Ref("),
 	write_il_type_as_managed_cpp_type(Type),

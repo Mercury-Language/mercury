@@ -146,7 +146,8 @@ a variable live if its value will be used later on in the computation.
 
 	% Mode-check or unique-mode-check the code for all the predicates
 	% in a module.
-:- pred check_pred_modes(how_to_check_goal, may_change_called_proc,				module_info, module_info, bool, io__state, io__state).
+:- pred check_pred_modes(how_to_check_goal, may_change_called_proc,
+		module_info, module_info, bool, io__state, io__state).
 :- mode check_pred_modes(in, in, in, out, out, di, uo) is det.
 
 	% Mode-check or unique-mode-check the code for single predicate.
@@ -208,20 +209,23 @@ a variable live if its value will be used later on in the computation.
 
 	% Given a list of variables and a list of expected liveness, ensure
 	% that the inst of each variable satisfies the corresponding expected
-	% liveness.
+	% liveness.  If the bool argument is `yes', then require an exact
+	% match.
 	%
-:- pred modecheck_var_list_is_live(list(prog_var), list(is_live), int,
+:- pred modecheck_var_list_is_live(list(prog_var), list(is_live), bool, int,
 		mode_info, mode_info).
-:- mode modecheck_var_list_is_live(in, in, in, mode_info_di, mode_info_uo)
+:- mode modecheck_var_list_is_live(in, in, in, in, mode_info_di, mode_info_uo)
 	is det.
 
 	% Given a list of variables and a list of initial insts, ensure
 	% that the inst of each variable matches the corresponding initial
-	% inst.
+	% inst.  If the bool argument is `yes', then we require an exact
+	% match (using inst_matches_final), otherwise we allow the var
+	% to be more instantiated than the inst (using inst_matches_initial).
 	%
-:- pred modecheck_var_has_inst_list(list(prog_var), list(inst), int,
+:- pred modecheck_var_has_inst_list(list(prog_var), list(inst), bool, int,
 		inst_var_sub, mode_info, mode_info).
-:- mode modecheck_var_has_inst_list(in, in, in, out, mode_info_di, mode_info_uo)
+:- mode modecheck_var_has_inst_list(in, in, in, in, out, mode_info_di, mode_info_uo)
 	is det.
 
 :- pred modecheck_set_var_inst(prog_var, inst, mode_info, mode_info).
@@ -608,8 +612,11 @@ modecheck_pred_mode(PredId, PredInfo0, WhatToCheck, MayChangeCalledProc,
 
 modecheck_pred_mode_2(PredId, PredInfo0, WhatToCheck, MayChangeCalledProc,
 		ModuleInfo0, ModuleInfo, Changed0, Changed, NumErrors) -->
-	{ pred_info_procedures(PredInfo0, Procs0) },
-	{ map__keys(Procs0, ProcIds) },
+	% Note that we use pred_info_procids rather than
+	% pred_info_all_procids here, which means that we
+	% don't process modes that have already been inferred
+	% as invalid.
+	{ pred_info_procids(PredInfo0, ProcIds) },
 	( { WhatToCheck = check_modes } ->
 		(
 			{ ProcIds = [] }
@@ -832,19 +839,33 @@ modecheck_proc_3(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
 	modecheck_final_insts_2(HeadVars, ArgFinalInsts0, ModeInfo2,
 			InferModes, ArgFinalInsts, ModeInfo3),
 
-		% report any errors we found, and save away the results
-	report_mode_errors(ModeInfo3, ModeInfo),
+	( InferModes = yes ->
+		% For inferred predicates, we don't report the
+		% error(s) here; instead we just save them in the
+		% proc_info, thus marking that procedure as invalid.
+		ModeInfo = ModeInfo3,
+		% This is sometimes handy for debugging:
+		% report_mode_errors(ModeInfo3, ModeInfo),
+		mode_info_get_errors(ModeInfo, ModeErrors),
+		ProcInfo1 = ProcInfo0 ^ mode_errors := ModeErrors,
+		NumErrors = 0
+	;
+		% report any errors we found
+		report_mode_errors(ModeInfo3, ModeInfo),
+		mode_info_get_num_errors(ModeInfo, NumErrors),
+		ProcInfo1 = ProcInfo0
+	),
+	% save away the results
 	inst_lists_to_mode_list(ArgInitialInsts, ArgFinalInsts, ArgModes),
 	mode_info_get_changed_flag(ModeInfo, Changed),
 	mode_info_get_module_info(ModeInfo, ModuleInfo),
-	mode_info_get_num_errors(ModeInfo, NumErrors),
 	mode_info_get_io_state(ModeInfo, IOState),
 	mode_info_get_varset(ModeInfo, VarSet),
 	mode_info_get_var_types(ModeInfo, VarTypes),
-	proc_info_set_goal(ProcInfo0, Body, ProcInfo1),
-	proc_info_set_varset(ProcInfo1, VarSet, ProcInfo2),
-	proc_info_set_vartypes(ProcInfo2, VarTypes, ProcInfo3),
-	proc_info_set_argmodes(ProcInfo3, ArgModes, ProcInfo).
+	proc_info_set_goal(ProcInfo1, Body, ProcInfo2),
+	proc_info_set_varset(ProcInfo2, VarSet, ProcInfo3),
+	proc_info_set_vartypes(ProcInfo3, VarTypes, ProcInfo4),
+	proc_info_set_argmodes(ProcInfo4, ArgModes, ProcInfo).
 
 	% modecheck_final_insts for a lambda expression
 modecheck_final_insts(HeadVars, ArgFinalInsts, ModeInfo0, ModeInfo) :-
@@ -865,7 +886,24 @@ modecheck_final_insts(HeadVars, ArgFinalInsts, ModeInfo0, ModeInfo) :-
 modecheck_final_insts_2(HeadVars, FinalInsts0, ModeInfo0, InferModes,
 			FinalInsts, ModeInfo) :-
 	mode_info_get_module_info(ModeInfo0, ModuleInfo),
-	mode_info_get_instmap(ModeInfo0, InstMap),
+	mode_info_get_errors(ModeInfo0, Errors),
+	% If there were any mode errors, use an unreachable instmap.
+	% This ensures that we don't get unwanted flow-on errors.
+	% This is not strictly necessary, since we only report the
+	% first mode error anyway, and the resulting FinalInsts
+	% will not be used; but it improves the readability of the
+	% rejected modes.
+	( Errors \= [] ->
+		% If there were any mode errors, something must have
+		% changed, since if the procedure had mode errors
+		% in a previous pass then it wouldn't have been
+		% processed at all in this pass.
+		Changed0 = yes,
+		instmap__init_unreachable(InstMap)
+	;
+		Changed0 = no,
+		mode_info_get_instmap(ModeInfo0, InstMap)
+	),
 	mode_info_get_var_types(ModeInfo0, VarTypes),
 	instmap__lookup_vars(HeadVars, InstMap, VarFinalInsts1),
 	map__apply_to_list(HeadVars, VarTypes, ArgTypes),
@@ -888,8 +926,8 @@ modecheck_final_insts_2(HeadVars, FinalInsts0, ModeInfo0, InferModes,
 		check_final_insts(HeadVars, FinalInsts0, FinalInsts,
 			InferModes, 1, ModuleInfo, no, Changed1,
 			ModeInfo0, ModeInfo1),
-		mode_info_get_changed_flag(ModeInfo1, Changed0),
-		bool__or(Changed0, Changed1, Changed),
+		mode_info_get_changed_flag(ModeInfo1, Changed2),
+		bool__or_list([Changed0, Changed1, Changed2], Changed),
 		mode_info_set_changed_flag(Changed, ModeInfo1, ModeInfo)
 	;
 		check_final_insts(HeadVars, FinalInsts0, VarFinalInsts1,
@@ -1231,7 +1269,7 @@ modecheck_goal_expr(switch(Var, CanFail, Cases0, SM), GoalInfo0,
 
 	% to modecheck a pragma_c_code, we just modecheck the proc for 
 	% which it is the goal.
-modecheck_goal_expr(pragma_foreign_code(Language, Attributes, PredId, ProcId0,
+modecheck_goal_expr(pragma_foreign_code(Attributes, PredId, ProcId0,
 		Args0, ArgNameMap, OrigArgTypes, PragmaCode),
 		GoalInfo, Goal) -->
 	mode_checkpoint(enter, "pragma_foreign_code"),
@@ -1245,7 +1283,7 @@ modecheck_goal_expr(pragma_foreign_code(Language, Attributes, PredId, ProcId0,
 	modecheck_call_pred(PredId, ProcId0, Args0, DeterminismKnown,
 				ProcId, Args, ExtraGoals),
 
-	{ Pragma = pragma_foreign_code(Language, Attributes, PredId, ProcId,
+	{ Pragma = pragma_foreign_code(Attributes, PredId, ProcId,
 			Args0, ArgNameMap, OrigArgTypes, PragmaCode) },
 	handle_extra_goals(Pragma, ExtraGoals, GoalInfo, Args0, Args,
 			InstMap0, Goal),
@@ -1782,34 +1820,41 @@ compute_arg_offset(PredInfo, ArgOffset) :-
 	% ensure the liveness of each variable satisfies the corresponding
 	% expected liveness.
 
-modecheck_var_list_is_live([_|_], [], _) -->
+modecheck_var_list_is_live([_|_], [], _, _) -->
 	{ error("modecheck_var_list_is_live: length mismatch") }.
-modecheck_var_list_is_live([], [_|_], _) -->
+modecheck_var_list_is_live([], [_|_], _, _) -->
 	{ error("modecheck_var_list_is_live: length mismatch") }.
-modecheck_var_list_is_live([], [], _ArgNum) --> [].
-modecheck_var_list_is_live([Var|Vars], [IsLive|IsLives], ArgNum0) -->
+modecheck_var_list_is_live([], [], _NeedExactMatch, _ArgNum) --> [].
+modecheck_var_list_is_live([Var|Vars], [IsLive|IsLives], NeedExactMatch,
+		ArgNum0) -->
 	{ ArgNum is ArgNum0 + 1 },
 	mode_info_set_call_arg_context(ArgNum),
-	modecheck_var_is_live(Var, IsLive),
-	modecheck_var_list_is_live(Vars, IsLives, ArgNum).
+	modecheck_var_is_live(Var, IsLive, NeedExactMatch),
+	modecheck_var_list_is_live(Vars, IsLives, NeedExactMatch, ArgNum).
 
-:- pred modecheck_var_is_live(prog_var, is_live, mode_info, mode_info).
-:- mode modecheck_var_is_live(in, in, mode_info_di, mode_info_uo) is det.
+:- pred modecheck_var_is_live(prog_var, is_live, bool, mode_info, mode_info).
+:- mode modecheck_var_is_live(in, in, in, mode_info_di, mode_info_uo) is det.
 
 	% `live' means possibly used later on, and
 	% `dead' means definitely not used later on.
-	% The only time you get an error is if you pass a variable
+	% If you don't need an exact match, then
+	% the only time you get an error is if you pass a variable
 	% which is live to a predicate that expects the variable to
 	% be dead; the predicate may use destructive update to clobber
 	% the variable, so we must be sure that it is dead after the call.
 
-modecheck_var_is_live(VarId, ExpectedIsLive, ModeInfo0, ModeInfo) :-
+modecheck_var_is_live(VarId, ExpectedIsLive, NeedExactMatch,
+		ModeInfo0, ModeInfo) :-
 	mode_info_var_is_live(ModeInfo0, VarId, VarIsLive),
-	( ExpectedIsLive = dead, VarIsLive = live ->
+	( 
+		( ExpectedIsLive = dead, VarIsLive = live
+		; NeedExactMatch = yes, VarIsLive \= ExpectedIsLive
+		)
+	->
 		set__singleton_set(WaitingVars, VarId),
 		mode_info_error(WaitingVars, mode_error_var_is_live(VarId),
 			ModeInfo0, ModeInfo)
-	;
+	; 
 		ModeInfo = ModeInfo0
 	).
 
@@ -1819,33 +1864,36 @@ modecheck_var_is_live(VarId, ExpectedIsLive, ModeInfo0, ModeInfo) :-
 	% that the inst of each variable matches the corresponding initial
 	% inst.
 
-modecheck_var_has_inst_list(Vars, Insts, ArgNum, Subst) -->
+modecheck_var_has_inst_list(Vars, Insts, NeedEaxctMatch, ArgNum, Subst) -->
 	{ map__init(Subst0) },
-	modecheck_var_has_inst_list_2(Vars, Insts, ArgNum, Subst0, Subst).
+	modecheck_var_has_inst_list_2(Vars, Insts, NeedEaxctMatch, ArgNum,
+		Subst0, Subst).
 
-:- pred modecheck_var_has_inst_list_2(list(prog_var), list(inst), int,
+:- pred modecheck_var_has_inst_list_2(list(prog_var), list(inst), bool, int,
 		inst_var_sub, inst_var_sub, mode_info, mode_info).
-:- mode modecheck_var_has_inst_list_2(in, in, in, in, out,
+:- mode modecheck_var_has_inst_list_2(in, in, in, in, in, out,
 		mode_info_di, mode_info_uo) is det.
 
-modecheck_var_has_inst_list_2([_|_], [], _, _, _) -->
+modecheck_var_has_inst_list_2([_|_], [], _, _, _, _) -->
 	{ error("modecheck_var_has_inst_list: length mismatch") }.
-modecheck_var_has_inst_list_2([], [_|_], _, _, _) -->
+modecheck_var_has_inst_list_2([], [_|_], _, _, _, _) -->
 	{ error("modecheck_var_has_inst_list: length mismatch") }.
-modecheck_var_has_inst_list_2([], [], _ArgNum, Subst, Subst) --> [].
-modecheck_var_has_inst_list_2([Var|Vars], [Inst|Insts], ArgNum0, Subst0, Subst)
-		-->
+modecheck_var_has_inst_list_2([], [], _Exact, _ArgNum, Subst, Subst) --> [].
+modecheck_var_has_inst_list_2([Var|Vars], [Inst|Insts],
+		NeedExactMatch, ArgNum0, Subst0, Subst) -->
 	{ ArgNum is ArgNum0 + 1 },
 	mode_info_set_call_arg_context(ArgNum),
-	modecheck_var_has_inst(Var, Inst, Subst0, Subst1),
-	modecheck_var_has_inst_list_2(Vars, Insts, ArgNum, Subst1, Subst).
+	modecheck_var_has_inst(Var, Inst, NeedExactMatch, Subst0, Subst1),
+	modecheck_var_has_inst_list_2(Vars, Insts,
+		NeedExactMatch, ArgNum, Subst1, Subst).
 
-:- pred modecheck_var_has_inst(prog_var, inst, inst_var_sub, inst_var_sub,
-		mode_info, mode_info).
-:- mode modecheck_var_has_inst(in, in, in, out, mode_info_di, mode_info_uo)
-		is det.
+:- pred modecheck_var_has_inst(prog_var, inst, bool,
+		inst_var_sub, inst_var_sub, mode_info, mode_info).
+:- mode modecheck_var_has_inst(in, in, in,
+		in, out, mode_info_di, mode_info_uo) is det.
 
-modecheck_var_has_inst(VarId, Inst, Subst0, Subst, ModeInfo0, ModeInfo) :-
+modecheck_var_has_inst(VarId, Inst, NeedExactMatch, Subst0, Subst,
+		ModeInfo0, ModeInfo) :-
 	mode_info_get_instmap(ModeInfo0, InstMap),
 	instmap__lookup_var(InstMap, VarId, VarInst),
 	mode_info_get_var_types(ModeInfo0, VarTypes),
@@ -1853,8 +1901,28 @@ modecheck_var_has_inst(VarId, Inst, Subst0, Subst, ModeInfo0, ModeInfo) :-
 
 	mode_info_get_module_info(ModeInfo0, ModuleInfo0),
 	(
-		inst_matches_initial(VarInst, Inst, Type, ModuleInfo0,
-			ModuleInfo, Subst0, Subst1)
+		(
+			NeedExactMatch = no,
+			inst_matches_initial(VarInst, Inst, Type, ModuleInfo0,
+				ModuleInfo, Subst0, Subst1)
+		;
+			NeedExactMatch = yes,
+			inst_matches_final(VarInst, Inst, Type, ModuleInfo0),
+			ModuleInfo = ModuleInfo0,
+			Subst1 = Subst0
+			% WARNING:
+			% The code above (Subst1 = Subst0) assumes that there
+			% are no inst variables in the mode of the callee.
+			% Currently this will always true, since
+			% `NeedExactMatch' will be `yes' only if we are
+			% doing mode inference on the callee, and mode
+			% inference currently will not infer polymorphic modes.
+			% But that assumption might not always hold in future.
+			% An alternative would be to call inst_matches_initial
+			% here too, just to calculate the inst substitution.
+			% But that would be less efficient, so (at least
+			% for now) we don't do it.
+		)
 	->
 		Subst = Subst1,
 		mode_info_set_module_info(ModeInfo0, ModuleInfo, ModeInfo)

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2000 The University of Melbourne.
+% Copyright (C) 1998-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -393,8 +393,8 @@ var__rep_is_ground(VarPtr, Result) :-
 :- pragma c_header_code("
 	/* Warning: the layout of this type must match its layout in Mercury */
 	typedef struct ML_var_delayed_conj_struct {
-		Word goal;
-		Word woken;
+		MR_Word goal;
+		MR_Word woken;
 		struct ML_var_delayed_conj_struct *prev;
 		struct ML_var_delayed_conj_struct *next;
 	} ML_var_delayed_conj;
@@ -422,7 +422,7 @@ var__rep_is_ground(VarPtr, Result) :-
 :- pragma c_code(get_last_delayed_goal(Ptr::out(delayed_goal_list)),
 	will_not_call_mercury,
 "
-	Ptr = (Word) &ML_var_last_goal;
+	Ptr = (MR_Word) &ML_var_last_goal;
 ").
 
 :- impure
@@ -474,6 +474,8 @@ wakeup_delayed_goals((GoalsX, GoalsY), Value) :-
 %-----------------------------------------------------------------------------%
 
 :- pragma c_header_code("
+	#include ""mercury_trail.h""
+
 	void ML_var_untrail_func(
 		ML_var_delayed_conj *old_delayed_goals,
 		MR_untrail_reason reason);
@@ -637,7 +639,7 @@ var__rep_freeze_in(VarPtr, Pred) :-
 	freeze(X::in, Pred::(pred(in, out) is det), Y::out), % det
 	may_call_mercury,
 "{
-	Word XVal, YVal;
+	MR_Word XVal, YVal;
 
 	/* don't delay, just call the pred */
 	ML_var_get_value(TypeInfo_for_T1, X, &XVal);
@@ -649,7 +651,7 @@ var__rep_freeze_in(VarPtr, Pred) :-
 	freeze(X::in, Pred::(pred(in, out) is semidet), Y::out), % semidet
 	may_call_mercury,
 "{
-	Word XVal, YVal;
+	MR_Word XVal, YVal;
 
 	/* don't delay, just call the pred */
 	ML_var_get_value(TypeInfo_for_T1, X, &XVal);
@@ -667,7 +669,7 @@ var__rep_freeze_in(VarPtr, Pred) :-
 		% semidet
 	may_call_mercury,
 "{
-	Word p;
+	MR_Word p;
 
 	Y = ML_var_alias(TypeInfo_for_T2, ML_var_free(TypeInfo_for_T2));
 	p = ML_var_binary_det_pred(TypeInfo_for_T1, Pred, TypeInfo_for_T2, Y);
@@ -679,7 +681,7 @@ var__rep_freeze_in(VarPtr, Pred) :-
 		% semidet
 	may_call_mercury,
 "{
-	Word p;
+	MR_Word p;
 
 	Y = ML_var_alias(TypeInfo_for_T2, ML_var_free(TypeInfo_for_T2));
 	p = ML_var_binary_semidet_pred(TypeInfo_for_T1,
@@ -693,7 +695,7 @@ var__rep_freeze_in(VarPtr, Pred) :-
 		Y::out(any)), % semidet
 	may_call_mercury,
 "{
-	Word p;
+	MR_Word p;
 
 	Y = ML_var_alias(TypeInfo_for_T2, ML_var_free(TypeInfo_for_T2));
 	p = ML_var_binary_semidet_pred_any(TypeInfo_for_T1,
@@ -908,7 +910,8 @@ destructively_update_binding(VarPtr, NewBinding) :-
 	setarg(MercuryTerm::in(any), ArgNum::in, NewValue::in(any)),
 	will_not_call_mercury,
 "{
-	Word *ptr = (Word *) MR_strip_tag(MercuryTerm); /* strip off tag bits */
+	/* strip off tag bits */
+	MR_Word *ptr = (MR_Word *) MR_strip_tag(MercuryTerm);
 	MR_trail_current_value(&ptr[ArgNum - 1]);
 	ptr[ArgNum - 1] = NewValue;
 }").
@@ -922,7 +925,8 @@ destructively_update_binding(VarPtr, NewBinding) :-
 	untrailed_setarg(MercuryTerm::in(any), ArgNum::in, NewValue::in(any)),
 	will_not_call_mercury,
 "{
-	Word *ptr = (Word *) MR_strip_tag(MercuryTerm); /* strip off tag bits */
+	/* strip off tag bits */
+	MR_Word *ptr = (MR_Word *) MR_strip_tag(MercuryTerm);
 	ptr[ArgNum - 1] = NewValue;
 }").
 

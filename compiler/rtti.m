@@ -24,9 +24,9 @@
 
 :- interface.
 
-:- import_module llds.	% XXX for code_model
+:- import_module prog_data.
 :- import_module hlds_module, hlds_pred, hlds_data.
-:- import_module prog_data, pseudo_type_info.
+:- import_module pseudo_type_info, code_model.
 
 :- import_module bool, list, std_util.
 
@@ -194,9 +194,10 @@
 			% the MR_NotagFunctorDesc C type.
 
 			string,			% functor name
-			rtti_data		% pseudo typeinfo of argument
+			rtti_data,		% pseudo typeinfo of argument
 						% (as a pseudo_type_info
 						% rtti_data)
+			maybe(string)		% the argument's name, if any
 		)
 	;	du_functor_desc(
 			rtti_type_id,		% identifies the type
@@ -220,9 +221,10 @@
 						% contains variables (assuming
 						% that arguments are numbered
 						% from zero)
-			rtti_name,		% a vector of length arity
+			maybe(rtti_name),	% a vector of length arity
 						% containing the pseudo
-						% typeinfos of the arguments
+						% typeinfos of the arguments,
+						% if any
 						% (a field_types rtti_name)
 			maybe(rtti_name),	% possibly a vector of length
 						% arity containing the names
@@ -300,6 +302,7 @@
 		)
 	;	pseudo_type_info(pseudo_type_info)
 	;	base_typeclass_info(
+			module_name,	% module containing instance decl.
 			class_id,	% specifies class name & class arity
 			string,		% encodes the names and arities of the
 					% types in the instance declaration
@@ -324,6 +327,7 @@
 	;	type_ctor_info
 	;	pseudo_type_info(pseudo_type_info)
 	;	base_typeclass_info(
+			module_name,	% module containing instance decl.
 			class_id,	% specifies class name & class arity
 			string		% encodes the names and arities of the
 					% types in the instance declaration
@@ -445,7 +449,7 @@ rtti_data_to_name(field_types(RttiTypeId, Ordinal, _),
 	RttiTypeId, field_types(Ordinal)).
 rtti_data_to_name(enum_functor_desc(RttiTypeId, _, Ordinal),
 	RttiTypeId, enum_functor_desc(Ordinal)).
-rtti_data_to_name(notag_functor_desc(RttiTypeId, _, _),
+rtti_data_to_name(notag_functor_desc(RttiTypeId, _, _, _),
 	RttiTypeId, notag_functor_desc).
 rtti_data_to_name(du_functor_desc(RttiTypeId, _,_,_,_, Ordinal, _,_,_,_,_),
 	RttiTypeId, du_functor_desc(Ordinal)).
@@ -461,7 +465,7 @@ rtti_data_to_name(du_ptag_ordered_table(RttiTypeId, _),
 	RttiTypeId, du_ptag_ordered_table).
 rtti_data_to_name(type_ctor_info(RttiTypeId, _,_,_,_,_,_,_,_,_,_,_,_),
 	RttiTypeId, type_ctor_info).
-rtti_data_to_name(base_typeclass_info(_, _, _), _, _) :-
+rtti_data_to_name(base_typeclass_info(_, _, _, _), _, _) :-
 	% there's no rtti_type_id associated with a base_typeclass_info
 	error("rtti_data_to_name: base_typeclass_info").
 rtti_data_to_name(pseudo_type_info(PseudoTypeInfo), RttiTypeId,
@@ -490,7 +494,7 @@ rtti_name_has_array_type(du_stag_ordered_table(_))	= yes.
 rtti_name_has_array_type(du_ptag_ordered_table)		= yes.
 rtti_name_has_array_type(type_ctor_info)		= no.
 rtti_name_has_array_type(pseudo_type_info(_))		= no.
-rtti_name_has_array_type(base_typeclass_info(_, _))	= yes.
+rtti_name_has_array_type(base_typeclass_info(_, _, _))	= yes.
 rtti_name_has_array_type(type_hashcons_pointer)		= no.
 
 rtti_name_is_exported(exist_locns(_))		= no.
@@ -508,7 +512,7 @@ rtti_name_is_exported(du_ptag_ordered_table)    = no.
 rtti_name_is_exported(type_ctor_info)           = yes.
 rtti_name_is_exported(pseudo_type_info(Pseudo)) =
 	pseudo_type_info_is_exported(Pseudo).
-rtti_name_is_exported(base_typeclass_info(_, _)) = yes.
+rtti_name_is_exported(base_typeclass_info(_, _, _)) = yes.
 rtti_name_is_exported(type_hashcons_pointer)    = no.
 
 :- func pseudo_type_info_is_exported(pseudo_type_info) = bool.
@@ -606,7 +610,8 @@ rtti__addr_to_string(RttiTypeId, RttiName, Str) :-
 		RttiName = pseudo_type_info(PseudoTypeInfo),
 		rtti__pseudo_type_info_to_string(PseudoTypeInfo, Str)
 	;
-		RttiName = base_typeclass_info(ClassId, InstanceStr),
+		RttiName = base_typeclass_info(_ModuleName, ClassId,
+			InstanceStr),
 		ClassId = class_id(ClassSym, ClassArity),
 		llds_out__sym_name_mangle(ClassSym, MangledClassString),
 		string__int_to_string(ClassArity, ArityString),

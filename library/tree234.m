@@ -17,11 +17,14 @@
 :- interface.
 
 :- import_module list, assoc_list.
+:- import_module term.	% for var/1.
 
 :- type tree234(K, V).
 
 :- pred tree234__init(tree234(K, V)).
 :- mode tree234__init(uo) is det.
+
+:- func tree234__init = tree234(K, V).
 
 :- pred tree234__is_empty(tree234(K, V)).
 :- mode tree234__is_empty(in) is semidet.
@@ -34,6 +37,8 @@
 
 :- pred tree234__lookup(tree234(K, V), K, V).
 :- mode tree234__lookup(in, in, out) is det.
+
+:- func tree234__lookup(tree234(K, V), K) = V.
 
 :- pred tree234__lower_bound_search(tree234(K, V), K, K, V).
 :- mode tree234__lower_bound_search(in, in, out, out) is semidet.
@@ -57,10 +62,14 @@
 % :- mode tree234__set(di_tree234, in, in, uo_tree234) is det.
 :- mode tree234__set(in, in, in, out) is det.
 
+:- func tree234__set(tree234(K, V), K, V) = tree234(K, V).
+
 :- pred tree234__delete(tree234(K, V), K, tree234(K, V)).
 :- mode tree234__delete(di, in, uo) is det.
 % :- mode tree234__delete(di_tree234, in, uo_tree234) is det.
 :- mode tree234__delete(in, in, out) is det.
+
+:- func tree234__delete(tree234(K, V), K) = tree234(K, V).
 
 :- pred tree234__remove(tree234(K, V), K, V, tree234(K, V)).
 :- mode tree234__remove(di, in, uo, uo) is semidet.
@@ -78,8 +87,12 @@
 :- pred tree234__keys(tree234(K, V), list(K)).
 :- mode tree234__keys(in, out) is det.
 
+:- func tree234__keys(tree234(K, V)) = list(K).
+
 :- pred tree234__values(tree234(K, V), list(V)).
 :- mode tree234__values(in, out) is det.
+
+:- func tree234__values(tree234(K, V)) = list(V).
 
 :- pred tree234__update(tree234(K, V), K, V, tree234(K, V)).
 :- mode tree234__update(in, in, in, out) is semidet.
@@ -90,8 +103,12 @@
 :- pred tree234__count(tree234(K, V), int).
 :- mode tree234__count(in, out) is det.
 
+:- func tree234__count(tree234(K, V)) = int.
+
 :- pred tree234__assoc_list_to_tree234(assoc_list(K, V), tree234(K, V)).
 :- mode tree234__assoc_list_to_tree234(in, out) is det.
+
+:- func tree234__assoc_list_to_tree234(assoc_list(K, V)) = tree234(K, V).
 
 	% Given a tree234, return an association list of all the
 	% keys and values in the tree.  The association list that
@@ -99,11 +116,15 @@
 :- pred tree234__tree234_to_assoc_list(tree234(K, V), assoc_list(K, V)).
 :- mode tree234__tree234_to_assoc_list(in, out) is det.
 
+:- func tree234__tree234_to_assoc_list(tree234(K, V)) = assoc_list(K, V).
+
 :- pred tree234__foldl(pred(K, V, T, T), tree234(K, V), T, T).
 :- mode tree234__foldl(pred(in, in, in, out) is det, in, in, out) is det.
 :- mode tree234__foldl(pred(in, in, in, out) is semidet, in, in, out)
 		is semidet.
 :- mode tree234__foldl(pred(in, in, di, uo) is det, in, di, uo) is det.
+
+:- func tree234__foldl(func(K, V, T) = T, tree234(K, V), T) = T.
 
 :- pred tree234__foldl2(pred(K, V, T, T, U, U), tree234(K, V), T, T, U, U).
 :- mode tree234__foldl2(pred(in, in, in, out, in, out) is det, 
@@ -120,6 +141,8 @@
 :- mode tree234__map_values(pred(in, in, out) is det, in, out) is det.
 :- mode tree234__map_values(pred(in, in, out) is semidet, in, out) is semidet.
 
+:- func tree234__map_values(func(K, V) = W, tree234(K, V)) = tree234(K, W).
+
 :- pred tree234__map_foldl(pred(K, V, W, A, A), tree234(K, V), tree234(K, W),
 	A, A).
 :- mode tree234__map_foldl(pred(in, in, out, in, out) is det,
@@ -129,6 +152,22 @@
 
 %------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%
+
+:- implementation.
+
+% Everything below here is not intended to be part of the public interface,
+% and will not be included in the Mercury library reference manual.
+
+:- interface.
+
+:- pragma type_spec(tree234__search/3, K = var(_)).
+:- pragma type_spec(tree234__search/3, K = int).
+
+:- pragma type_spec(tree234__lookup/3, K = var(_)).
+
+:- pragma type_spec(tree234__set(in, in, in, out), K = var(_)).
+
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -1170,6 +1209,7 @@ tree234__set(Tin, K, V, Tout) :-
 :- mode tree234__set2(di_two, di, di, uo) is det.
 % :- mode tree234__set2(sdi_two, in, in, uo_tree234) is det.
 :- mode tree234__set2(in_two, in, in, out) is det.
+:- pragma type_spec(tree234__set2(in_two, in, in, out), K = var(_)).
 
 tree234__set2(two(K0, V0, T0, T1), K, V, Tout) :-
 	(
@@ -1267,6 +1307,7 @@ tree234__set2(two(K0, V0, T0, T1), K, V, Tout) :-
 :- mode tree234__set3(di_three, di, di, uo) is det.
 % :- mode tree234__set3(sdi_three, in, in, uo_tree234) is det.
 :- mode tree234__set3(in_three, in, in, out) is det.
+:- pragma type_spec(tree234__set3(in_three, in, in, out), K = var(_)).
 
 tree234__set3(three(K0, V0, K1, V1, T0, T1, T2), K, V, Tout) :-
 	(
@@ -2547,39 +2588,10 @@ tree234__count(four(_, _, _, _, _, _, T0, T1, T2, T3), N) :-
 	tree234__count(T3, N3),
 	N is 3 + N0 + N1 + N2 + N3.
 
-%------------------------------------------------------------------------------%
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 % Ralph Becket <rwab1@cl.cam.ac.uk> 30/04/99
 %       Function forms added.
-
-:- interface.
-
-:- func tree234__init = tree234(K, V).
-
-:- func tree234__lookup(tree234(K, V), K) = V.
-
-:- func tree234__set(tree234(K, V), K, V) = tree234(K, V).
-
-:- func tree234__delete(tree234(K, V), K) = tree234(K, V).
-
-:- func tree234__keys(tree234(K, V)) = list(K).
-
-:- func tree234__values(tree234(K, V)) = list(V).
-
-:- func tree234__count(tree234(K, V)) = int.
-
-:- func tree234__assoc_list_to_tree234(assoc_list(K, V)) = tree234(K, V).
-
-:- func tree234__tree234_to_assoc_list(tree234(K, V)) = assoc_list(K, V).
-
-:- func tree234__foldl(func(K, V, T) = T, tree234(K, V), T) = T.
-
-:- func tree234__map_values(func(K, V) = W, tree234(K, V)) = tree234(K, W).
-
-% ---------------------------------------------------------------------------- %
-% ---------------------------------------------------------------------------- %
-
-:- implementation.
 
 tree234__init = T :-
 	tree234__init(T).

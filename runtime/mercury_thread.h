@@ -6,11 +6,12 @@
 #ifndef MERCURY_THREAD_H
 #define MERCURY_THREAD_H
 
+#include "mercury_std.h"
+
 #ifdef	MR_THREAD_SAFE
 
   #include <signal.h>	/* for sigset_t on the SPARC */
   #include <pthread.h>
-  #include "mercury_std.h"
 
   #if defined(MR_DIGITAL_UNIX_PTHREADS)
     #define MR_MUTEX_ATTR		pthread_mutexattr_default
@@ -85,8 +86,8 @@
   ** structure containing a function and an argument. The function will
   ** be called with the given argument in the new thread.
   */
-  MercuryThread	*create_thread(MR_ThreadGoal *);
-  void		destroy_thread(void *eng);
+  MercuryThread	*MR_create_thread(MR_ThreadGoal *);
+  void		MR_destroy_thread(void *eng);
   extern bool	MR_exit_now;
 
 	/*
@@ -140,13 +141,16 @@ typedef enum { MR_use_now, MR_use_later } MR_when_to_use;
 ** intended that the caller can store the return value and call
 ** finalize_thread_engine if it is true).
 */
-MR_Bool	init_thread(MR_when_to_use);
+
+extern	bool	MR_init_thread(MR_when_to_use);
+
 /*
 ** Finalize the thread engine running in the current POSIX thread.
 ** This will release the resources used by this thread -- this is very
 ** important because the memory used for the det stack for each thread
 ** can be re-used by the next init_thread.
 */
-void    finalize_thread_engine(void);
+
+extern	void    MR_finalize_thread_engine(void);
 
 #endif

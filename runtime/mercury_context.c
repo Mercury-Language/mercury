@@ -40,10 +40,10 @@ MR_PendingContext	*MR_pending_contexts;
 
 /*
 ** free_context_list is a global linked list of unused context
-** structures. If the MemoryZone pointers are not NULL,
-** then they point to allocated MemoryZones, which will
+** structures. If the MR_MemoryZone pointers are not NULL,
+** then they point to allocated MR_MemoryZones, which will
 ** need to be reinitialized, but have space allocated to
-** them. (see comments in mercury_memory.h about reset_zone())
+** them. (see comments in mercury_memory.h about MR_reset_zone())
 */
 static MR_Context *free_context_list = NULL;
 #ifdef	MR_THREAD_SAFE
@@ -51,7 +51,7 @@ static MR_Context *free_context_list = NULL;
 #endif
 
 void
-init_thread_stuff(void)
+MR_init_thread_stuff(void)
 {
 #ifdef	MR_THREAD_SAFE
 
@@ -75,7 +75,7 @@ init_thread_stuff(void)
 }
 
 void
-finalize_runqueue(void)
+MR_finalize_runqueue(void)
 {
 #ifdef	MR_THREAD_SAFE
 	pthread_mutex_destroy(MR_runqueue_lock);
@@ -85,30 +85,30 @@ finalize_runqueue(void)
 }
 
 void 
-init_context(MR_Context *c)
+MR_init_context(MR_Context *c)
 {
 	c->next = NULL;
 	c->resume = NULL;
 #ifdef	MR_THREAD_SAFE
 	c->owner_thread = (MercuryThread) NULL;
 #endif
-	c->context_succip = ENTRY(do_not_reached);
+	c->context_succip = MR_ENTRY(MR_do_not_reached);
 
 	if (c->detstack_zone != NULL) {
-		reset_redzone(c->detstack_zone);
+		MR_reset_redzone(c->detstack_zone);
 	} else {
-		c->detstack_zone = create_zone("detstack", 0,
-			detstack_size, next_offset(), detstack_zone_size, 
-			default_handler);
+		c->detstack_zone = MR_create_zone("detstack", 0,
+			MR_detstack_size, MR_next_offset(),
+			MR_detstack_zone_size, MR_default_handler);
 	}
 	c->context_sp = c->detstack_zone->min;
 
 	if (c->nondetstack_zone != NULL) {
-		reset_redzone(c->nondetstack_zone);
+		MR_reset_redzone(c->nondetstack_zone);
 	} else {
-		c->nondetstack_zone = create_zone("nondetstack", 0,
-			nondstack_size, next_offset(), nondstack_zone_size,
-			default_handler);
+		c->nondetstack_zone = MR_create_zone("nondetstack", 0,
+			MR_nondstack_size, MR_next_offset(),
+			MR_nondstack_zone_size, MR_default_handler);
 	}
 	/*
 	** Note that maxfr and curfr point to the last word in the frame,
@@ -118,39 +118,39 @@ init_context(MR_Context *c)
 	*/
 	c->context_maxfr = c->nondetstack_zone->min + MR_NONDET_FIXED_SIZE - 1;
 	c->context_curfr = c->context_maxfr;
-	MR_redoip_slot(c->context_curfr) = ENTRY(do_not_reached);
+	MR_redoip_slot(c->context_curfr) = MR_ENTRY(MR_do_not_reached);
 	MR_redofr_slot(c->context_curfr) = NULL;
 	MR_prevfr_slot(c->context_curfr) = NULL;
-	MR_succip_slot(c->context_curfr) = ENTRY(do_not_reached);
+	MR_succip_slot(c->context_curfr) = MR_ENTRY(MR_do_not_reached);
 	MR_succfr_slot(c->context_curfr) = NULL;
 
 #ifdef	MR_USE_MINIMAL_MODEL
 	if (c->generatorstack_zone != NULL) {
-		reset_redzone(c->generatorstack_zone);
+		MR_reset_redzone(c->generatorstack_zone);
 	} else {
-		c->generatorstack_zone = create_zone("generatorstack", 0,
-			generatorstack_size, next_offset(),
-			generatorstack_zone_size, default_handler);
+		c->generatorstack_zone = MR_create_zone("generatorstack", 0,
+			MR_generatorstack_size, MR_next_offset(),
+			MR_generatorstack_zone_size, MR_default_handler);
 	}
 	c->context_gen_next = 0;
 
 	if (c->cutstack_zone != NULL) {
-		reset_redzone(c->cutstack_zone);
+		MR_reset_redzone(c->cutstack_zone);
 	} else {
-		c->cutstack_zone = create_zone("cutstack", 0,
-			cutstack_size, next_offset(),
-			cutstack_zone_size, default_handler);
+		c->cutstack_zone = MR_create_zone("cutstack", 0,
+			MR_cutstack_size, MR_next_offset(),
+			MR_cutstack_zone_size, MR_default_handler);
 	}
 	c->context_cut_next = 0;
 #endif
 
 #ifdef MR_USE_TRAIL
 	if (c->trail_zone != NULL) {
-		reset_redzone(c->trail_zone);
+		MR_reset_redzone(c->trail_zone);
 	} else {
-		c->trail_zone = create_zone("trail", 0,
-			trail_size, next_offset(), trail_zone_size, 
-			default_handler);
+		c->trail_zone = MR_create_zone("trail", 0,
+			MR_trail_size, MR_next_offset(),
+			MR_trail_zone_size, MR_default_handler);
 	}
 	c->context_trail_ptr = (MR_TrailEntry *) c->trail_zone->min;
 	c->context_ticket_counter = 1;
@@ -161,7 +161,7 @@ init_context(MR_Context *c)
 }
 
 MR_Context *
-create_context(void)
+MR_create_context(void)
 {
 	MR_Context *c;
 
@@ -180,13 +180,13 @@ create_context(void)
 		MR_UNLOCK(free_context_list_lock, "create_context ii");
 	}
 
-	init_context(c);
+	MR_init_context(c);
 
 	return c;
 }
 
 void 
-destroy_context(MR_Context *c)
+MR_destroy_context(MR_Context *c)
 {
 	MR_LOCK(free_context_list_lock, "destroy_context");
 	c->next = free_context_list;
@@ -195,7 +195,7 @@ destroy_context(MR_Context *c)
 }
 
 void 
-flounder(void)
+MR_flounder(void)
 {
 	MR_fatal_error("computation floundered");
 }
@@ -207,7 +207,7 @@ flounder(void)
 ** block or not.
 */
 static int
-check_pending_contexts(MR_Bool block)
+MR_check_pending_contexts(bool block)
 {
 #ifdef	MR_CAN_DO_PENDING_IO
 
@@ -224,15 +224,21 @@ check_pending_contexts(MR_Bool block)
 	max_id = -1;
 	for (pctxt = MR_pending_contexts ; pctxt ; pctxt = pctxt -> next) {
 		if (pctxt->waiting_mode & MR_PENDING_READ) {
-			if (max_id > pctxt->fd) max_id = pctxt->fd;
+			if (max_id > pctxt->fd) {
+				max_id = pctxt->fd;
+			}
 			FD_SET(pctxt->fd, &rd_set);
 		}
 		if (pctxt->waiting_mode & MR_PENDING_WRITE) {
-			if (max_id > pctxt->fd) max_id = pctxt->fd;
+			if (max_id > pctxt->fd) {
+				max_id = pctxt->fd;
+			}
 			FD_SET(pctxt->fd, &wr_set);
 		}
 		if (pctxt->waiting_mode & MR_PENDING_EXEC) {
-			if (max_id > pctxt->fd) max_id = pctxt->fd;
+			if (max_id > pctxt->fd) {
+				max_id = pctxt->fd;
+			}
 			FD_SET(pctxt->fd, &ex_set);
 		}
 	}
@@ -265,7 +271,7 @@ check_pending_contexts(MR_Bool block)
 				&& FD_ISSET(pctxt->fd, &ex_set))
 		    )
 		{
-			schedule(pctxt->context);
+			MR_schedule(pctxt->context);
 		}
 	}
 
@@ -278,9 +284,8 @@ check_pending_contexts(MR_Bool block)
 #endif
 }
 
-
 void
-schedule(MR_Context *ctxt)
+MR_schedule(MR_Context *ctxt)
 {
 	ctxt->next = NULL;
 	MR_LOCK(MR_runqueue_lock, "schedule");
@@ -295,13 +300,13 @@ schedule(MR_Context *ctxt)
 	MR_UNLOCK(MR_runqueue_lock, "schedule");
 }
 
-Define_extern_entry(do_runnext);
+MR_define_extern_entry(MR_do_runnext);
 
-BEGIN_MODULE(scheduler_module)
-	init_entry_ai(do_runnext);
-BEGIN_CODE
+MR_BEGIN_MODULE(scheduler_module)
+	MR_init_entry_ai(MR_do_runnext);
+MR_BEGIN_CODE
 
-Define_entry(do_runnext);
+MR_define_entry(MR_do_runnext);
 #ifdef MR_THREAD_SAFE
 {
 	MR_Context *tmp, *prev;
@@ -311,12 +316,12 @@ Define_entry(do_runnext);
 	depth = MR_ENGINE(c_depth);
 	thd = MR_ENGINE(owner_thread);
 
-	MR_LOCK(MR_runqueue_lock, "do_runnext (i)");
+	MR_LOCK(MR_runqueue_lock, "MR_do_runnext (i)");
 
 	while (1) {
 		if (MR_exit_now == TRUE) {
-			MR_UNLOCK(MR_runqueue_lock, "do_runnext (ii)");
-			destroy_thread(MR_cur_engine());
+			MR_UNLOCK(MR_runqueue_lock, "MR_do_runnext (ii)");
+			MR_destroy_thread(MR_cur_engine());
 		}
 		tmp = MR_runqueue_head;
 		/* XXX check pending io */
@@ -343,9 +348,9 @@ Define_entry(do_runnext);
 	if (MR_runqueue_tail == tmp) {
 		MR_runqueue_tail = prev;
 	}
-	MR_UNLOCK(MR_runqueue_lock, "do_runnext (iii)");
-	load_context(MR_ENGINE(this_context));
-	GOTO(MR_ENGINE(this_context)->resume);
+	MR_UNLOCK(MR_runqueue_lock, "MR_do_runnext (iii)");
+	MR_load_context(MR_ENGINE(this_context));
+	MR_GOTO(MR_ENGINE(this_context)->resume);
 }
 #else /* !MR_THREAD_SAFE */
 {
@@ -354,7 +359,7 @@ Define_entry(do_runnext);
 	}
 
 	while (MR_runqueue_head == NULL) {
-		check_pending_contexts(TRUE); /* block */
+		MR_check_pending_contexts(TRUE); /* block */
 	}
 
 	MR_ENGINE(this_context) = MR_runqueue_head;
@@ -363,12 +368,12 @@ Define_entry(do_runnext);
 		MR_runqueue_tail = NULL;
 	}
 
-	load_context(MR_ENGINE(this_context));
-	GOTO(MR_ENGINE(this_context)->resume);
+	MR_load_context(MR_ENGINE(this_context));
+	MR_GOTO(MR_ENGINE(this_context)->resume);
 }
 #endif
 
-END_MODULE
+MR_END_MODULE
 
 void mercury_sys_init_scheduler_wrapper(void); /* suppress gcc warning */
 void mercury_sys_init_scheduler_wrapper(void) {

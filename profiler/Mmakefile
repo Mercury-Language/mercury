@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-2000 The University of Melbourne. 
+# Copyright (C) 1995-2001 The University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -40,7 +40,7 @@ C2INIT  =	MERCURY_MOD_LIB_MODS="$(LIBRARY_DIR)/$(STD_LIB_NAME).init $(RUNTIME_DI
 		MERCURY_TRACE_LIB_MODS="$(BROWSER_DIR)/$(BROWSER_LIB_NAME).init" \
                 MERCURY_MKINIT=$(UTIL_DIR)/mkinit $(SCRIPTS_DIR)/c2init
 ML	=	MERCURY_C_LIB_DIR=. $(SCRIPTS_DIR)/ml
-MLFLAGS =	--mercury-libs none
+MLFLAGS =	--shared --mercury-libs none
 MLLIBS  =	$(TRACE_DIR)/lib$(TRACE_LIB_NAME).$A \
 		$(BROWSER_DIR)/lib$(BROWSER_LIB_NAME).$A \
 		$(LIBRARY_DIR)/lib$(STD_LIB_NAME).$A \

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2000 The University of Melbourne.
+** Copyright (C) 1998-2001 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -44,8 +44,7 @@ extern	void		MR_register_module_layout_real(const MR_Module_Layout
 ** with the supplied integer callback argument.
 */
 
-typedef	void		(*MR_file_line_callback)(const MR_Stack_Layout_Label *,
-				int);
+typedef	void		(*MR_file_line_callback)(const MR_Label_Layout *, int);
 
 extern	void		MR_process_file_line_layouts(const char *file,
 				int line, MR_file_line_callback callback_func,
@@ -112,7 +111,7 @@ extern	bool	MR_parse_proc_spec(char *str, MR_Proc_Spec *spec);
 ** and set *unique to FALSE.
 */
 
-extern	const MR_Stack_Layout_Entry *MR_search_for_matching_procedure(
+extern	const MR_Proc_Layout *MR_search_for_matching_procedure(
 					MR_Proc_Spec *spec, bool *unique);
 
 /*
@@ -124,7 +123,7 @@ extern	const MR_Stack_Layout_Entry *MR_search_for_matching_procedure(
 */
 
 typedef struct {
-	const MR_Stack_Layout_Entry	**match_procs;
+	const MR_Proc_Layout	**match_procs;
 	int	 			match_proc_max;
 	int	 			match_proc_next;
 } MR_Matches_Info;
@@ -140,10 +139,24 @@ extern	MR_Matches_Info	MR_search_for_matching_procedures(MR_Proc_Spec *spec);
 */
 
 extern	void	MR_process_matching_procedures(MR_Proc_Spec *spec,
-			void f(void *, const MR_Stack_Layout_Entry *), 
+			void f(void *, const MR_Proc_Layout *), 
 			void *data);
 
 extern	void	MR_print_proc_id_for_debugger(FILE *fp,
-			const MR_Stack_Layout_Entry *entry);
+			const MR_Proc_Layout *entry);
+
+/*
+** MR_proc_layout_stats(fp):
+**	Prints statistics about the proc layout structures of the program.
+*/
+
+extern	void	MR_proc_layout_stats(FILE *fp);
+
+/*
+** MR_label_layout_stats(fp):
+**	Prints statistics about the label layout structures of the program.
+*/
+
+extern	void	MR_label_layout_stats(FILE *fp);
 
 #endif	/* not MERCURY_TRACE_TABLES_H */

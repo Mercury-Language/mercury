@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1998-2000 The University of Melbourne.
+% Copyright (C) 1998-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -409,7 +409,7 @@ term_size_left_from_max(Univ, MaxSize, RemainingSize) :-
 	( MaxSize < 0 ->
 		RemainingSize = MaxSize
 	;
-		deconstruct(Univ, Functor, Arity, Args),
+		deconstruct(univ_value(Univ), Functor, Arity, Args),
 		string__length(Functor, FunctorSize),
 		PrincipalSize = FunctorSize + Arity * 2,
 		MaxArgsSize = MaxSize - PrincipalSize,
@@ -441,7 +441,7 @@ term_to_string_2(Univ, MaxSize, CurSize, NewSize, MaxDepth, CurDepth, Str) :-
 		term_compress(Univ, Str),
 		NewSize = CurSize
 	;
-		deconstruct(Univ, Functor, _Arity, Args),
+		deconstruct(univ_value(Univ), Functor, _Arity, Args),
 		CurSize1 is CurSize + 1,
 		CurDepth1 is CurDepth + 1,
 		term_to_string_list(Args, MaxSize, CurSize1, NewSize,
@@ -493,7 +493,7 @@ comma_args(Args, Str) :-
 :- pred term_compress(univ, string).
 :- mode term_compress(in, out) is det.
 term_compress(Univ, Str) :-
-	deconstruct(Univ, Functor, Arity, _Args),
+	deconstruct(univ_value(Univ), Functor, Arity, _Args),
 	( Arity = 0 ->
 		Str = Functor
 	;
@@ -542,7 +542,7 @@ term_to_string_verbose_2(Univ, MaxSize, CurSize, NewSize,
 		Frame = [Line],
 		NewSize = CurSize
 	;
-		deconstruct(Univ, Functor, _Arity, Args),
+		deconstruct(univ_value(Univ), Functor, _Arity, Args),
 		CurSize1 is CurSize + 1,
 		CurDepth1 is CurDepth + 1,
 		ArgNum = 1,
@@ -670,7 +670,7 @@ deref_subterm_2(Univ, Path, SubUniv) :-
 		Univ = SubUniv
 	; 
 		Path = [N | Ns],
-		deconstruct(Univ, _Functor, _Arity, Args),
+		deconstruct(univ_value(Univ), _Functor, _Arity, Args),
 		list__index1(Args, N, ArgN),
 		deref_subterm_2(ArgN, Ns, SubUniv)
 	).

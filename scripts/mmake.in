@@ -1,7 +1,7 @@
 #! /bin/sh
 # @configure_input@
 #---------------------------------------------------------------------------#
-# Copyright (C) 1995-2000 The University of Melbourne.
+# Copyright (C) 1995-1999, 2001 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -24,6 +24,16 @@ Options:
 		rather than in the current directory.
 		(If the current directory already contains a \`Mercury'
 		subdirectory, then this option is the default.)
+	--target asm:
+		Compile directly to assembler, rather than going via C.
+	--target c:
+		Compile via C, rather than going directly to assembler.
+		This is the default."
+	# XXX `--target il' is not documented because it is not yet
+	#     supported.
+	#--target il:
+	#	Compile via IL, rather than going via C or assembler.
+Help="$Help\
 	-s, --save-makefile:
 		Save the generated makefile to \`Mmake.makefile'.
 		This is useful for tracking down syntax errors in
@@ -80,6 +90,7 @@ else
 	use_subdirs=${MMAKE_USE_SUBDIRS=no}
 fi
 warn_undefined_vars=true
+target_asm=${MMAKE_TARGET_ASM=default}
 
 while [ $# -gt 0 ]; do
 	case "$1" in
@@ -90,6 +101,25 @@ while [ $# -gt 0 ]; do
 		--use-subdirs)
 			use_subdirs=yes
 			shift
+			;;
+		--no-use-subdirs)
+			use_subdirs=no
+			shift
+			;;
+		--target)
+			case "$2" in
+				asm)	target_asm=yes ;;
+				c)	target_asm=no ;;
+				il)	# XXX we should do something
+					# sensible for `--target il'
+					echo "$0: warning: \`--target il'"
+						"option not supported." 1>&2
+					target_asm=no ;;
+				*)	echo "$0: invalid argument to" \
+						"\`--target' option" 1>&2
+					exit 1 ;;
+			esac
+			shift; shift
 			;;
 		--no-use-subdirs)
 			use_subdirs=no
@@ -218,6 +248,12 @@ else
 	esac
 fi
 
+case $target_asm in
+	yes)		set_target_asm="TARGET_ASM=yes" ;;
+	no)		set_target_asm="TARGET_ASM=no" ;;
+	default)	set_target_asm="" ;;
+esac
+
 MMAKE_MAKE_CMD="${MMAKE_MAKE} -f $tmp -r"
 
 # Enable checking for undefined variables -- but not when making the
@@ -255,7 +291,7 @@ if $verbose; then
 	echo MERCURY_DEFAULT_GRADE=$MERCURY_DEFAULT_GRADE
 	echo export MERCURY_DEFAULT_GRADE
 	echo cat ${MMAKE_VARS} $dvs $ds $include_makefile $mmake $deps ${MMAKE_RULES} ">>" $tmp
-	echo ${MMAKE_MAKE} ${MMAKE_MAKE_OPTS} -f $tmp -r "$@"
+	echo ${MMAKE_MAKE} ${MMAKE_MAKE_OPTS} -f $tmp -r ${set_target_asm} "$@"
 fi
 export MMAKE
 export MMAKE_MAKE_CMD
@@ -266,6 +302,6 @@ cat ${MMAKE_VARS} $dvs $ds $include_makefile $mmake $deps ${MMAKE_RULES} > $tmp
 case $# in
 	# Note that we can't use `exec' here, because if we did that,
 	# that `trap' code which removes $tmp would never get executed.
-	0) ${MMAKE_MAKE} ${MMAKE_MAKE_OPTS} -f $tmp -r ;;
-	*) ${MMAKE_MAKE} ${MMAKE_MAKE_OPTS} -f $tmp -r "$@" ;;
+	0) ${MMAKE_MAKE} ${MMAKE_MAKE_OPTS} -f $tmp -r ${set_target_asm} ;;
+	*) ${MMAKE_MAKE} ${MMAKE_MAKE_OPTS} -f $tmp -r ${set_target_asm} "$@" ;;
 esac

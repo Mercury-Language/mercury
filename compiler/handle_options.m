@@ -45,7 +45,8 @@
 
 :- implementation.
 
-:- import_module options, globals, prog_io_util, trace_params.
+:- import_module options, globals, prog_io_util, trace_params, unify_proc.
+:- import_module prog_data.
 :- import_module char, int, string, map, set, getopt, library.
 
 handle_options(MaybeError, Args, Link) -->
@@ -293,6 +294,23 @@ postprocess_options_2(OptionTable, Target, GC_Method, TagsMethod,
 		[]
 	),
 
+	% Generating assembler via the gcc back-end requires
+	% using high-level code.
+	( { Target = asm } ->
+		globals__io_set_option(highlevel_code, bool(yes))
+	;
+		[]
+	),
+
+	% Generating high-level C or asm code requires putting each commit
+	% in its own function, to avoid problems with setjmp() and
+	% non-volatile local variables.
+	( { Target = c ; Target = asm } ->
+		option_implies(highlevel_code, put_commit_in_own_func, bool(yes))
+	;
+		[]
+	),
+
 	% --high-level-code disables the use of low-level gcc extensions
 	option_implies(highlevel_code, gcc_non_local_gotos, bool(no)),
 	option_implies(highlevel_code, gcc_global_registers, bool(no)),
@@ -320,6 +338,16 @@ postprocess_options_2(OptionTable, Target, GC_Method, TagsMethod,
 
 	% --split-c-files implies --procs-per-c-function 1
 	option_implies(split_c_files, procs_per_c_function, int(1)),
+
+	% make_hlds contains an optimization which requires the value of the
+	% compare_specialization option to accurately specify the max number
+	% of constructors in a type whose comparison procedure is specialized
+	% and which therefore don't need index functions.
+	globals__io_lookup_int_option(compare_specialization, CompareSpec0),
+	{ int__min(unify_proc__max_exploited_compare_spec_value,
+		CompareSpec0, CompareSpec) },
+	globals__io_set_option(compare_specialization, int(CompareSpec)),
+
 
 	% Minimal model tabling is not compatible with trailing;
 	% see the comment in runtime/mercury_tabling.c.
@@ -557,6 +585,48 @@ postprocess_options_2(OptionTable, Target, GC_Method, TagsMethod,
 	% --use-opt-files implies --no-warn-missing-opt-files since
 	% we are expecting some to be missing.
 	option_implies(use_opt_files, warn_missing_opt_files, bool(no)),
+
+
+	% The preferred backend foreign language depends on the target.
+	( 	
+		{ Target = c },
+		{ BackendForeignLanguage = foreign_language_string(c) }
+	;
+		{ Target = il },
+		{ BackendForeignLanguage =
+			foreign_language_string(managed_cplusplus) }
+	;
+		{ Target = asm },
+		% XXX This is wrong!  It should be asm.
+		{ BackendForeignLanguage = foreign_language_string(c) }
+	;
+		% XXX We don't generate java or handle it as a foreign
+		% language just yet, but if we did, we should fix this
+		{ Target = java },
+		{ BackendForeignLanguage = foreign_language_string(c) }
+	),
+	globals__io_set_option(backend_foreign_language,
+		string(BackendForeignLanguage)),
+	% The default foreign language we use is the same as the backend.
+	globals__io_lookup_string_option(use_foreign_language,
+		UseForeignLanguage),
+	( 
+		{ UseForeignLanguage = "" }
+	->
+		globals__io_set_option(use_foreign_language, 
+			string(BackendForeignLanguage))
+	; 
+		{ convert_foreign_language(UseForeignLanguage, FL) }
+	->
+		{ CanonicalLangName = foreign_language_string(FL) },
+		globals__io_set_option(use_foreign_language, 
+			string(CanonicalLangName))
+	;
+		usage_error(
+			string__format(
+			"unrecognized foreign language argument `%s' for --use-foreign-language",
+			[s(UseForeignLanguage)]))
+	),
 
 	globals__io_lookup_bool_option(highlevel_code, HighLevel),
 	( { HighLevel = no } ->
@@ -823,32 +893,36 @@ grade_component_table("hl", gcc_ext, [
 		gcc_global_registers	- bool(no),
 		highlevel_code		- bool(yes),
 		gcc_nested_functions	- bool(no),
-		highlevel_data		- bool(yes),
-		target			- string("c")]).
+		highlevel_data		- bool(yes)
+		% target can be either c or asm
+		]).
 grade_component_table("hlc", gcc_ext, [
 		asm_labels		- bool(no),
 		gcc_non_local_gotos	- bool(no),
 		gcc_global_registers	- bool(no),
 		highlevel_code		- bool(yes),
 		gcc_nested_functions	- bool(no),
-		highlevel_data		- bool(no),
-		target			- string("c")]).
+		highlevel_data		- bool(no)
+		% target can be either c or asm
+		]).
 grade_component_table("hl_nest", gcc_ext, [
 		asm_labels		- bool(no),
 		gcc_non_local_gotos	- bool(no),
 		gcc_global_registers	- bool(no),
 		highlevel_code		- bool(yes),
 		gcc_nested_functions	- bool(yes),
-		highlevel_data		- bool(yes),
-		target			- string("c")]).
+		highlevel_data		- bool(yes)
+		% target can be either c or asm
+		]).
 grade_component_table("hlc_nest", gcc_ext, [
 		asm_labels		- bool(no),
 		gcc_non_local_gotos	- bool(no),
 		gcc_global_registers	- bool(no),
 		highlevel_code		- bool(yes),
 		gcc_nested_functions	- bool(yes),
-		highlevel_data		- bool(no),
-		target			- string("c")]).
+		highlevel_data		- bool(no)
+		% target can be either c or asm
+		]).
 grade_component_table("il", gcc_ext, [
 		asm_labels		- bool(no),
 		gcc_non_local_gotos	- bool(no),

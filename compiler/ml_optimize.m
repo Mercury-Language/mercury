@@ -134,6 +134,11 @@ optimize_in_stmt(OptInfo, Stmt0) = Stmt :-
 			optimize_in_statement(OptInfo, Then), 
 			maybe_apply(optimize_in_statement(OptInfo), MaybeElse))
 	;
+		Stmt0 = switch(Type, Rval, Range, Cases0, Default0),
+		Stmt = switch(Type, Rval, Range,
+			list__map(optimize_in_case(OptInfo), Cases0), 
+			optimize_in_default(OptInfo, Default0))
+	;
 		Stmt0 = do_commit(_),
 		Stmt = Stmt0
 	;
@@ -157,6 +162,22 @@ optimize_in_stmt(OptInfo, Stmt0) = Stmt :-
 		Stmt0 = atomic(_Atomic),
 		Stmt = Stmt0
 	).
+
+:- func optimize_in_case(opt_info, mlds__switch_case) = mlds__switch_case.
+
+optimize_in_case(OptInfo, Conds - Statement0) = Conds - Statement :-
+	Statement = optimize_in_statement(OptInfo, Statement0).
+
+:- func optimize_in_default(opt_info, mlds__switch_default) =
+	mlds__switch_default.
+
+optimize_in_default(_OptInfo, default_is_unreachable) = default_is_unreachable.
+optimize_in_default(_OptInfo, default_do_nothing) = default_do_nothing.
+optimize_in_default(OptInfo, default_case(Statement0)) =
+		default_case(Statement) :-
+	Statement = optimize_in_statement(OptInfo, Statement0).
+
+%-----------------------------------------------------------------------------%
 
 :- func optimize_in_call_stmt(opt_info, mlds__stmt) = mlds__stmt.
 
@@ -292,7 +313,7 @@ optimize_func_stmt(OptInfo, mlds__statement(Stmt0, Context)) =
 		Stmt = Stmt0
 	).
 
-
+%-----------------------------------------------------------------------------%
 
         % Maps T into V, inside a maybe .  
 :- func maybe_apply(func(T) = V, maybe(T)) = maybe(V).
@@ -300,5 +321,4 @@ optimize_func_stmt(OptInfo, mlds__statement(Stmt0, Context)) =
 maybe_apply(_, no) = no.
 maybe_apply(F, yes(T)) = yes(F(T)).
 
-
-
+%-----------------------------------------------------------------------------%

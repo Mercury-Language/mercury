@@ -37,7 +37,7 @@
 */
 
 /*
-** MR_Code generation options:
+** Code generation options:
 **
 ** MR_HIGHLEVEL_CODE
 ** MR_HIGHLEVEL_DATA
@@ -69,6 +69,18 @@
 ** USE_SINGLE_PREC_FLOAT:
 **	Use C's `float' rather than C's `double' for the
 **	Mercury floating point type (`MR_Float').
+**
+** MR_USE_REGPARM:
+**	For the MLDS back-end (i.e. MR_HIGHLEVEL_CODE),
+**	on x86, use a different (more efficient) calling convention.
+**	This requires the use of a very recent version of gcc --
+**	more recent that gcc 2.95.2.
+**	For details, see the definition of the MR_CALL macro in
+**	runtime/mercury_std.h.
+**
+** MR_AVOID_MACROS:
+**	For the MLDS back-end (i.e. MR_HIGHLEVEL_CODE),
+**	use inline functions rather than macros for a few builtins.
 **
 ** PARALLEL
 **	Enable support for parallelism [not yet working].
@@ -148,7 +160,10 @@
 **	Display the values of live variables during accurate garbage
 **	collection.
 **
-** MR_DEBUG_AGC
+** MR_DEBUG_AGC_SMALL_HEAP
+**	Use a small heap to trigger garbage collection more often.
+**
+** MR_DEBUG_AGC_ALL
 ** 	Turn on all debugging information for accurate garbage
 ** 	collection.  (Equivalent to all MR_DEBUG_AGC_* macros above).
 **
@@ -160,11 +175,12 @@
 ** 	code handling exceptions.
 */
 
-#if MR_DEBUG_AGC
+#if MR_DEBUG_AGC_ALL
   #define MR_DEBUG_AGC_SCHEDULING
   #define MR_DEBUG_AGC_COLLECTION
   #define MR_DEBUG_AGC_FORWARDING
   #define MR_DEBUG_AGC_PRINT_VARS
+  #define MR_DEBUG_AGC_SMALL_HEAP
 #endif
 
 /*
@@ -215,6 +231,15 @@
 ** the command line, but which are also implied by other parameters.
 */
 
+/*
+** MR_HIGHLEVEL_CODE implies BOXED_FLOAT,
+** since unboxed float is currently not yet implemented for the MLDS back-end.
+** XXX we really ought to fix that...
+*/
+#ifdef MR_HIGHLEVEL_CODE
+  #define BOXED_FLOAT 1
+#endif
+
 /* MR_LOWLEVEL_DEBUG implies MR_DEBUG_GOTOS and MR_CHECK_FOR_OVERFLOW */
 #ifdef MR_LOWLEVEL_DEBUG
   #define MR_DEBUG_GOTOS
@@ -248,6 +273,13 @@
 **			   (this also means the initialization code needs
 **			   to be run some time before the first use of the
 **			   label table).
+**
+** Note that for the MLDS back-end, the calls to MR_init_entry()
+** that insert the function addresses in the label table are only
+** output if the right compiler options are enabled.  So if you change
+** the condition of this `#ifdef', and you want your changes to apply
+** to the MLDS back-end too, you may also need to change the
+** `need_to_init_entries' predicate in compiler/mlds_to_c.m.
 */
 
 #ifdef MR_INSERT_LABELS

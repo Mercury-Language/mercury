@@ -148,7 +148,7 @@
 
 	% parse_qualified_term/4 takes a term (and also the containing
 	% term, and a string describing the context from which it
-	% was called [e.g. "clause head"] and the containing term)
+	% was called [e.g. "clause head"])
 	% and returns a sym_name and a list of argument terms.
 	% Returns an error on ill-formed input.
 	% See also parse_implicitly_qualified_term/5 (below).

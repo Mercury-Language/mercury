@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 2000 University of Melbourne.
+% Copyright (C) 2000-2001 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -142,8 +142,7 @@ prog_rep__represent_goal_expr(unify(_, _, _, Uni, _), GoalInfo, InstMap0,
 		AtomicGoalRep).
 prog_rep__represent_goal_expr(conj(Goals), _, InstMap0, Info, Rep) :-
 	prog_rep__represent_conj(Goals, InstMap0, Info, Reps),
-	list__reverse(Reps, ReverseReps),
-	Rep = conj_rep(ReverseReps).
+	Rep = conj_rep(Reps).
 prog_rep__represent_goal_expr(par_conj(_, _), _, _, _, _) :-
 	error("Sorry, not yet implemented:\n\
 	parallel conjunctions and declarative debugging").
@@ -202,7 +201,7 @@ prog_rep__represent_goal_expr(call(PredId, _, Args, _, _, _),
 		DetismRep, FilenameRep, LinenoRep, ChangedVarsRep),
 	Rep = atomic_goal_rep(DetismRep, FilenameRep, LinenoRep,
 		ChangedVarsRep, AtomicGoalRep).
-prog_rep__represent_goal_expr(pragma_foreign_code(_, _,
+prog_rep__represent_goal_expr(pragma_foreign_code(_,
 		_PredId, _, Args, _, _, _),
 		GoalInfo, InstMap0, Info, Rep) :-
 	list__map(term__var_to_int, Args, ArgsRep),

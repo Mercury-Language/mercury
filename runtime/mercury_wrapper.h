@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1994-2000 The University of Melbourne.
+** Copyright (C) 1994-2001 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -12,9 +12,10 @@
 #ifndef	MERCURY_WRAPPER_H
 #define	MERCURY_WRAPPER_H
 
+#include "mercury_regs.h"		/* needs to come first */
 #include <stddef.h>			/* for `size_t' */
 #include "mercury_std.h"		/* for `bool' */
-#include "mercury_stack_layout.h"	/* for `MR_Stack_Layout_Label' etc */
+#include "mercury_stack_layout.h"	/* for `MR_Label_Layout' etc */
 #include "mercury_trace_base.h"		/* for `MR_trace_port' */
 #include "mercury_stacks.h"		/* for `MR_{Cut,Generator}StackFrame' */
 
@@ -65,9 +66,11 @@ extern	int	MR_load_aditi_rl_code(void);
 */
 
 #ifdef MR_HIGHLEVEL_CODE
-extern	void		(*program_entry_point)(void); /* normally main_2_p_0 */
+extern	void MR_CALL	(*MR_program_entry_point)(void);
+			/* normally main_2_p_0 */
 #else
-extern	MR_Code 		*program_entry_point; /* normally mercury__main_2_0; */
+extern	MR_Code 	*MR_program_entry_point;
+			/* normally mercury__main_2_0; */
 #endif
 
 extern	void		(*MR_library_initializer)(void);
@@ -76,16 +79,16 @@ extern	void		(*MR_library_finalizer)(void);
 extern	void		(*MR_io_stderr_stream)(MR_Word *);
 extern	void		(*MR_io_stdout_stream)(MR_Word *);
 extern	void		(*MR_io_stdin_stream)(MR_Word *);
-extern	void		(*MR_io_print_to_cur_stream)(MR_Word, MR_Box);
-extern	void		(*MR_io_print_to_stream)(MR_Word, MR_Word, MR_Box);
+extern	void		(*MR_io_print_to_cur_stream)(MR_Word, MR_Word);
+extern	void		(*MR_io_print_to_stream)(MR_Word, MR_Word, MR_Word);
 
-extern	void		(*address_of_mercury_init_io)(void);
-extern	void		(*address_of_init_modules)(void);
-extern	void		(*address_of_init_modules_type_tables)(void);
-extern	void		(*address_of_init_modules_debugger)(void);
+extern	void		(*MR_address_of_mercury_init_io)(void);
+extern	void		(*MR_address_of_init_modules)(void);
+extern	void		(*MR_address_of_init_modules_type_tables)(void);
+extern	void		(*MR_address_of_init_modules_debugger)(void);
 
 #ifdef CONSERVATIVE_GC
-extern	void		(*address_of_init_gc)(void);
+extern	void		(*MR_address_of_init_gc)(void);
 #endif
 
 extern	int		(*MR_address_of_do_load_aditi_rl_code)(void);
@@ -137,7 +140,7 @@ extern	MR_Code		*MR_library_trace_browser;
 */
 
 extern	MR_Code		*(*volatile MR_trace_func_ptr)(
-				const MR_Stack_Layout_Label *);
+				const MR_Label_Layout *);
 
 /*
 ** If the init file was built with tracing enabled, then
@@ -153,36 +156,36 @@ extern	void		(*MR_address_of_trace_interrupt_handler)(void);
 */
 extern	void		(*MR_register_module_layout)(const MR_Module_Layout *);
 
-extern	void		do_init_modules(void);
-extern	void		do_init_modules_type_tables(void);
-extern	void		do_init_modules_debugger(void);
+extern	void		MR_do_init_modules(void);
+extern	void		MR_do_init_modules_type_tables(void);
+extern	void		MR_do_init_modules_debugger(void);
 
-extern	const char	*progname;
+extern	const char	*MR_progname;
 extern	int		mercury_argc;
 extern	char		**mercury_argv;
 extern	int		mercury_exit_status;
 
 /* sizes of the data areas, *including* the red zone size */
-extern	size_t		heap_size;
-extern	size_t		detstack_size;
-extern	size_t		nondstack_size;
-extern	size_t		solutions_heap_size;
-extern	size_t		trail_size;
-extern	size_t		global_heap_size;
-extern	size_t		debug_heap_size;
-extern	size_t		generatorstack_size;
-extern	size_t		cutstack_size;
+extern	size_t		MR_heap_size;
+extern	size_t		MR_detstack_size;
+extern	size_t		MR_nondstack_size;
+extern	size_t		MR_solutions_heap_size;
+extern	size_t		MR_trail_size;
+extern	size_t		MR_global_heap_size;
+extern	size_t		MR_debug_heap_size;
+extern	size_t		MR_generatorstack_size;
+extern	size_t		MR_cutstack_size;
 
 /* sizes of the red zones */
-extern	size_t		heap_zone_size;
-extern	size_t		detstack_zone_size;
-extern	size_t		nondstack_zone_size;
-extern	size_t		solutions_heap_zone_size;
-extern	size_t		trail_zone_size;
-extern	size_t		global_heap_zone_size;
-extern	size_t		debug_heap_zone_size;
-extern	size_t		generatorstack_zone_size;
-extern	size_t		cutstack_zone_size;
+extern	size_t		MR_heap_zone_size;
+extern	size_t		MR_detstack_zone_size;
+extern	size_t		MR_nondstack_zone_size;
+extern	size_t		MR_solutions_heap_zone_size;
+extern	size_t		MR_trail_zone_size;
+extern	size_t		MR_global_heap_zone_size;
+extern	size_t		MR_debug_heap_zone_size;
+extern	size_t		MR_generatorstack_zone_size;
+extern	size_t		MR_cutstack_zone_size;
 
 /* file names for the mdb debugging streams */
 extern	const char	*MR_mdb_in_filename;
@@ -190,13 +193,13 @@ extern	const char	*MR_mdb_out_filename;
 extern	const char	*MR_mdb_err_filename;
 
 /* size of the primary cache */
-extern	size_t		pcache_size;
+extern	size_t		MR_pcache_size;
 
-extern	bool		check_space;
+extern	bool		MR_check_space;
 
 /* timing */
-extern	int		time_at_start;
-extern	int		time_at_last_stat;
+extern	int		MR_time_at_start;
+extern	int		MR_time_at_last_stat;
 
 /* time profiling */
 enum MR_TimeProfileMethod {
@@ -222,5 +225,8 @@ extern	void		MR_register_type_ctor_stat(MR_TypeStat *type_stat,
 				MR_TypeCtorInfo type_ctor_info);
 
 #endif
+
+/* This is used by compiler/mlds_to_gcc.m. */
+const char *MR_make_argv(const char *, char **, char ***, int *);
 
 #endif /* not MERCURY_WRAPPER_H */

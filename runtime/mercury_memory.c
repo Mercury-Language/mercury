@@ -126,33 +126,25 @@
 /*
 ** Define the memory zones used by the Mercury runtime.
 ** (The trail zone is declared in mercury_trail.c.)
+** XXX All the zones should be in mercury_engine.h
 */
-MemoryZone *detstack_zone;
-MemoryZone *nondetstack_zone;
-#ifndef CONSERVATIVE_GC
-  MemoryZone *heap_zone;
-  MemoryZone *solutions_heap_zone;
-#endif
+
 #ifdef	MR_USE_MINIMAL_MODEL
-  MemoryZone *generatorstack_zone;
-  MemoryZone *cutstack_zone;
+  MR_MemoryZone *MR_generatorstack_zone;
+  MR_MemoryZone *MR_cutstack_zone;
 #endif
 
-#ifdef	MR_LOWLEVEL_DEBUG
-  MemoryZone *dumpstack_zone;
-  int	dumpindex;
-#endif
-
-size_t		unit;
-size_t		page_size;
+size_t		MR_unit;
+size_t		MR_page_size;
 
 void 
-init_memory(void)
+MR_init_memory(void)
 {
 	static bool already_initialized = FALSE;
 
 	if (already_initialized != FALSE)
 		return;
+
 	already_initialized = TRUE;
 
 	/*
@@ -160,47 +152,65 @@ init_memory(void)
 	** make sure they are multiples of the page and cache sizes.
 	*/
 
-	page_size = getpagesize();
-	unit = max(page_size, pcache_size);
+	MR_page_size = getpagesize();
+	MR_unit = max(MR_page_size, MR_pcache_size);
 
 #ifdef CONSERVATIVE_GC
-	heap_size		 = 0;
-	heap_zone_size		 = 0;
-	solutions_heap_size	 = 0;
-	solutions_heap_zone_size = 0;
-	global_heap_size	 = 0;
-	global_heap_zone_size	 = 0;
-	debug_heap_size		 = 0;
-	debug_heap_zone_size	 = 0;
+	MR_heap_size		 = 0;
+	MR_heap_zone_size	 = 0;
+	MR_solutions_heap_size	 = 0;
+	MR_solutions_heap_zone_size = 0;
+	MR_global_heap_size	 = 0;
+	MR_global_heap_zone_size = 0;
+	MR_debug_heap_size	 = 0;
+	MR_debug_heap_zone_size	 = 0;
 #else
-	heap_size		 = round_up(heap_size * 1024, unit);
-	heap_zone_size		 = round_up(heap_zone_size * 1024, unit);
-	solutions_heap_size	 = round_up(solutions_heap_size * 1024, unit);
-	solutions_heap_zone_size = round_up(solutions_heap_zone_size * 1024, 
-					unit);
-	global_heap_size	 = round_up(global_heap_size * 1024, unit);
-	global_heap_zone_size	 = round_up(global_heap_zone_size * 1024, unit);
-	debug_heap_size		 = round_up(debug_heap_size * 1024, unit);
-	debug_heap_zone_size	 = round_up(debug_heap_zone_size * 1024, unit);
+	MR_heap_size		 = MR_round_up(MR_heap_size * 1024,
+					MR_unit);
+	MR_heap_zone_size	 = MR_round_up(MR_heap_zone_size * 1024,
+					MR_unit);
+	MR_solutions_heap_size	 = MR_round_up(MR_solutions_heap_size * 1024,
+					MR_unit);
+	MR_solutions_heap_zone_size = MR_round_up(
+					MR_solutions_heap_zone_size * 1024, 
+					MR_unit);
+	MR_global_heap_size	 = MR_round_up(MR_global_heap_size * 1024,
+					MR_unit);
+	MR_global_heap_zone_size = MR_round_up(MR_global_heap_zone_size * 1024,
+					MR_unit);
+	MR_debug_heap_size	 = MR_round_up(MR_debug_heap_size * 1024,
+					MR_unit);
+	MR_debug_heap_zone_size	 = MR_round_up(MR_debug_heap_zone_size * 1024,
+					MR_unit);
 #endif
-	detstack_size		 = round_up(detstack_size * 1024, unit);
-	detstack_zone_size	 = round_up(detstack_zone_size * 1024, unit);
-	nondstack_size		 = round_up(nondstack_size * 1024, unit);
-	nondstack_zone_size	 = round_up(nondstack_zone_size * 1024, unit);
+	MR_detstack_size	 = MR_round_up(MR_detstack_size * 1024,
+					MR_unit);
+	MR_detstack_zone_size	 = MR_round_up(MR_detstack_zone_size * 1024,
+					MR_unit);
+	MR_nondstack_size	 = MR_round_up(MR_nondstack_size * 1024,
+					MR_unit);
+	MR_nondstack_zone_size	 = MR_round_up(MR_nondstack_zone_size * 1024,
+					MR_unit);
 #ifdef	MR_USE_MINIMAL_MODEL
-	generatorstack_size	 = round_up(generatorstack_size * 1024, unit);
-	generatorstack_zone_size = round_up(generatorstack_zone_size * 1024,
-					unit);
-	cutstack_size		 = round_up(cutstack_size * 1024, unit);
-	cutstack_zone_size	 = round_up(cutstack_zone_size * 1024, unit);
+	MR_generatorstack_size	 = MR_round_up(MR_generatorstack_size * 1024,
+					MR_unit);
+	MR_generatorstack_zone_size = MR_round_up(
+					MR_generatorstack_zone_size * 1024,
+					MR_unit);
+	MR_cutstack_size	 = MR_round_up(MR_cutstack_size * 1024,
+					MR_unit);
+	MR_cutstack_zone_size	 = MR_round_up(MR_cutstack_zone_size * 1024,
+					MR_unit);
 #endif
 
 #ifdef	MR_USE_TRAIL
-	trail_size		 = round_up(trail_size * 1024, unit);
-	trail_zone_size		 = round_up(trail_zone_size * 1024, unit);
+	MR_trail_size		 = MR_round_up(MR_trail_size * 1024,
+					MR_unit);
+	MR_trail_zone_size	 = MR_round_up(MR_trail_zone_size * 1024,
+					MR_unit);
 #else
-	trail_size		 = 0;
-	trail_zone_size		 = 0;
+	MR_trail_size		 = 0;
+	MR_trail_zone_size	 = 0;
 #endif
 
 	/*
@@ -209,36 +219,38 @@ init_memory(void)
 	*/
 
 #ifndef CONSERVATIVE_GC
-	if (heap_zone_size >= heap_size) {
-		heap_zone_size = unit;
+	if (MR_heap_zone_size >= MR_heap_size) {
+		MR_heap_zone_size = MR_unit;
 	}
-	if (solutions_heap_zone_size >= solutions_heap_size) {
-		solutions_heap_zone_size = unit;
+	if (MR_solutions_heap_zone_size >= MR_solutions_heap_size) {
+		MR_solutions_heap_zone_size = MR_unit;
 	}
-	if (global_heap_zone_size >= global_heap_size) {
-		global_heap_zone_size = unit;
+	if (MR_global_heap_zone_size >= MR_global_heap_size) {
+		MR_global_heap_zone_size = MR_unit;
 	}
 #endif
 
-	if (detstack_zone_size >= detstack_size) {
-		detstack_zone_size = unit;
+	if (MR_detstack_zone_size >= MR_detstack_size) {
+		MR_detstack_zone_size = MR_unit;
 	}
 
-	if (nondstack_zone_size >= nondstack_size) {
-		nondstack_zone_size = unit;
+	if (MR_nondstack_zone_size >= MR_nondstack_size) {
+		MR_nondstack_zone_size = MR_unit;
 	}
 
 #ifdef MR_USE_TRAIL
-	if (trail_zone_size >= trail_size) {
-		trail_zone_size = unit;
+	if (MR_trail_zone_size >= MR_trail_size) {
+		MR_trail_zone_size = MR_unit;
 	}
 #endif
 
-	init_zones();
-	setup_signals();
+	MR_init_zones();
+	MR_setup_signals();
 
-	if (MR_memdebug) debug_memory();
-} /* end init_memory() */
+	if (MR_memdebug) {
+		MR_debug_memory();
+	}
+} /* end MR_init_memory() */
 
 /*---------------------------------------------------------------------------*/
 

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000 The University of Melbourne.
+% Copyright (C) 2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -33,18 +33,17 @@
 
 :- interface.
 
-:- import_module list.
+:- import_module list, std_util.
 
 	% A representation of the goal we execute.  These need to be
 	% generated statically and stored inside the executable.
 	%
 	% Each element of this structure will correspond one-to-one
-	% to the original stage 90 HLDS, with the exception of conj
-	% goal_reps, which are stored in reversed order.
+	% to the original stage 90 HLDS.
 
 :- type goal_rep
 	--->	conj_rep(
-			list(goal_rep)		% The conjuncts in reverse
+			list(goal_rep)		% The conjuncts in the original
 						% order.
 		)
 	;	disj_rep(
@@ -125,6 +124,81 @@
 	;	cc_multidet_rep
 	;	erroneous_rep
 	;	failure_rep.
+
+:- pred atomic_goal_rep_is_call(atomic_goal_rep, list(var_rep)).
+:- mode atomic_goal_rep_is_call(in, out) is semidet.
+
+%-----------------------------------------------------------------------------%
+
+	% The following three types are derived from compiler/hlds_goal.m.
+
+:- type goal_path == list(goal_path_step).
+
+:- type goal_path_step  --->    conj(int)
+                        ;       disj(int)
+                        ;       switch(int)
+                        ;       ite_cond
+                        ;       ite_then
+                        ;       ite_else
+                        ;       neg
+                        ;       exist(maybe_cut)
+                        ;       first
+                        ;       later.
+
+:- type maybe_cut       --->    cut ; no_cut.
+
+:- pred path_step_from_string(string, goal_path_step).
+:- mode path_step_from_string(in, out) is semidet.
+
+	% Head variables are represented by a number from 1..N,
+	% where N is the arity.
+	
+:- type arg_pos ==	var_rep.
+
+	% A particular subterm within a term is represented by a term_path.
+	% This is the list of argument positions that need to be followed
+	% in order to travel from the root to the subterm.  In contrast to
+	% goal_paths, this list is in top-down order.
+
+:- type term_path ==	list(arg_pos).
+
+	% Returns type_of(_ `with_type` goal_rep), for use in C code.
+:- func goal_rep_type = type_desc.
+
+%-----------------------------------------------------------------------------%
+
+:- implementation.
+:- import_module string, char.
+
+atomic_goal_rep_is_call(pragma_foreign_code_rep(Args), Args).
+atomic_goal_rep_is_call(higher_order_call_rep(_, Args), Args).
+atomic_goal_rep_is_call(method_call_rep(_, _, Args), Args).
+atomic_goal_rep_is_call(plain_call_rep(_, Args), Args).
+
+path_step_from_string(String, Step) :-
+	string__first_char(String, First, Rest),
+	path_step_from_string_2(First, Rest, Step).
+
+:- pred path_step_from_string_2(char, string, goal_path_step).
+:- mode path_step_from_string_2(in, in, out) is semidet.
+
+path_step_from_string_2('c', NStr, conj(N)) :-
+	string__to_int(NStr, N).
+path_step_from_string_2('d', NStr, disj(N)) :-
+	string__to_int(NStr, N).
+path_step_from_string_2('s', NStr, switch(N)) :-
+	string__to_int(NStr, N).
+path_step_from_string_2('?', "", ite_cond).
+path_step_from_string_2('t', "", ite_then).
+path_step_from_string_2('e', "", ite_else).
+path_step_from_string_2('~', "", neg).
+path_step_from_string_2('q', "!", exist(cut)).
+path_step_from_string_2('q', "", exist(no_cut)).
+path_step_from_string_2('f', "", first).
+path_step_from_string_2('l', "", later).
+
+:- pragma export(goal_rep_type = out, "ML_goal_rep_type").
+goal_rep_type = type_of(_ `with_type` goal_rep).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

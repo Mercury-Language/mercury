@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 2000 The University of Melbourne.
+% Copyright (C) 2000, 2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -17,7 +17,7 @@
 
 :- implementation.
 
-:- import_module parsing, xml, xml:cat, xml:encoding, xml:parse.
+:- import_module parsing, xml, xml:cat, xml:encoding, xml:parse, xml:ns.
 :- import_module char, list, map, std_util, string.
 
 main -->
@@ -29,7 +29,7 @@ main -->
 
 main([]) --> [].
 main([File|Files]) -->
-    see(File, Res0),
+    see(File, Res0),		
     ( { Res0 = ok } ->
 	    io__read_file_as_string(_, Text),
 	    pstate(mkEntity(Text), mkEncoding(utf8), init),
@@ -69,13 +69,20 @@ main([File|Files]) -->
 	    document,
 	    finish(Res),
 	    (
-	    	{ Res = ok(_) }
+	      	{ Res = ok((DTD, Doc)) },
+	    	{ nsTranslate(Doc, NsDoc) }, 
+		{ New = cat:ok((DTD, NsDoc)) },
+		write(New)
+	    	% if don't want to turn the doc to namespace awared, 
+		% change the above three lines to  
+	  	% write(Res) 
 	    ;
-	    	{ Res = error(Err) },
-		stderr_stream(StdErr),
-		format(StdErr, "%s: %s\n", [s(File), s(Err)])
+	      	{ Res = error(Err) },
+ 	    	stderr_stream(StdErr),
+	    	format(StdErr, "%s: %s\n", [s(File), s(Err)]),
+	        write(Res)
 	    ),
-	    %write(Res), nl,
+	    nl,
 	    []
     ;
 	[]

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2000 The University of Melbourne.
+% Copyright (C) 1993-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -146,12 +146,11 @@
 	% the instance rules or superclass rules, building up proofs for
 	% redundant constraints
 :- pred typecheck__reduce_context_by_rule_application(instance_table,
-	superclass_table, list(class_constraint), list(tvar),
-	tsubst, tvarset, tvarset, 
+	superclass_table, list(class_constraint), tsubst, tvarset, tvarset, 
 	map(class_constraint, constraint_proof), 
 	map(class_constraint, constraint_proof),
 	list(class_constraint), list(class_constraint)).
-:- mode typecheck__reduce_context_by_rule_application(in, in, in, in, in, 
+:- mode typecheck__reduce_context_by_rule_application(in, in, in, in,
 	in, out, in, out, in, out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -528,6 +527,8 @@ typecheck_pred_type(PredId, PredInfo0, ModuleInfo, PredInfo, Error, Changed,
 		; % Inferring = no
 			pred_info_set_head_type_params(PredInfo5,
 				HeadTypeParams2, PredInfo6),
+			pred_info_get_maybe_instance_method_constraints(
+				PredInfo6, MaybeInstanceMethodConstraints0),
 
 			%
 			% leave the original argtypes etc., but 
@@ -545,7 +546,9 @@ typecheck_pred_type(PredId, PredInfo0, ModuleInfo, PredInfo, Error, Changed,
 				% optimize common case
 				ExistQVars1 = [],
 				ArgTypes1 = ArgTypes0,
-				PredConstraints1 = PredConstraints
+				PredConstraints1 = PredConstraints,
+				MaybeInstanceMethodConstraints1 = 
+					MaybeInstanceMethodConstraints0
 			;
 				apply_var_renaming_to_var_list(ExistQVars0,
 					ExistTypeRenaming, ExistQVars1),
@@ -554,7 +557,11 @@ typecheck_pred_type(PredId, PredInfo0, ModuleInfo, PredInfo, Error, Changed,
 					ArgTypes1),
 				apply_variable_renaming_to_constraints(
 					ExistTypeRenaming,
-					PredConstraints, PredConstraints1)
+					PredConstraints, PredConstraints1),
+				rename_instance_method_constraints(
+					ExistTypeRenaming,
+					MaybeInstanceMethodConstraints0,
+					MaybeInstanceMethodConstraints1)
 			),
 
 			% rename them all to match the new typevarset
@@ -564,12 +571,18 @@ typecheck_pred_type(PredId, PredInfo0, ModuleInfo, PredInfo, Error, Changed,
 				TVarRenaming, RenamedOldArgTypes),
 			apply_variable_renaming_to_constraints(TVarRenaming,
 				PredConstraints1, RenamedOldConstraints),
+			rename_instance_method_constraints(TVarRenaming,
+				MaybeInstanceMethodConstraints1,
+				MaybeInstanceMethodConstraints),
 
 			% save the results in the pred_info
 			pred_info_set_arg_types(PredInfo6, TypeVarSet,
 				ExistQVars, RenamedOldArgTypes, PredInfo7),
 			pred_info_set_class_context(PredInfo7,
-				RenamedOldConstraints, PredInfo),
+				RenamedOldConstraints, PredInfo8),
+			pred_info_set_maybe_instance_method_constraints(
+				PredInfo8, MaybeInstanceMethodConstraints,
+				PredInfo),
 
 			Changed = no
 		),
@@ -581,6 +594,27 @@ typecheck_pred_type(PredId, PredInfo0, ModuleInfo, PredInfo, Error, Changed,
 % is_bool/1 is used to avoid a type ambiguity
 :- pred is_bool(bool::in) is det.
 is_bool(_).
+
+:- pred rename_instance_method_constraints(map(tvar, tvar),
+		maybe(instance_method_constraints),
+		maybe(instance_method_constraints)).
+:- mode rename_instance_method_constraints(in, in, out) is det.
+
+rename_instance_method_constraints(_, no, no).
+rename_instance_method_constraints(Renaming,
+		yes(Constraints0), yes(Constraints)) :-
+	Constraints0 = instance_method_constraints(ClassId,
+		InstanceTypes0, InstanceConstraints0,
+		ClassMethodClassContext0),
+	term__apply_variable_renaming_to_list(InstanceTypes0,
+		Renaming, InstanceTypes),
+	apply_variable_renaming_to_constraint_list(Renaming,
+		InstanceConstraints0, InstanceConstraints),
+	apply_variable_renaming_to_constraints(Renaming,
+		ClassMethodClassContext0, ClassMethodClassContext),
+	Constraints = instance_method_constraints(ClassId,
+		InstanceTypes, InstanceConstraints,
+		ClassMethodClassContext).
 
 	%
 	% infer which of the head variable
@@ -761,7 +795,7 @@ special_pred_needs_typecheck(PredInfo, ModuleInfo) :-
 	%
 	% For a field access function for which the user has supplied
 	% a declaration but no clauses, add a clause
-	% 'foo:='(X, Y) = 'foo:='(X, Y).
+	% 'foo :='(X, Y) = 'foo :='(X, Y).
 	% As for the default clauses added for builtins, this is not a
 	% recursive call -- post_typecheck.m will expand the body into
 	% unifications.
@@ -1040,8 +1074,8 @@ typecheck_goal_2(unify(A, B0, Mode, Info, UnifyContext),
 	typecheck_unification(A, B0, B).
 typecheck_goal_2(switch(_, _, _, _), _) -->
 	{ error("unexpected switch") }.
-typecheck_goal_2(pragma_foreign_code(A, B, PredId, D, Args, F, G, H), 
-		pragma_foreign_code(A, B, PredId, D, Args, F, G, H)) -->
+typecheck_goal_2(pragma_foreign_code(A, PredId, C, Args, E, F, G), 
+		pragma_foreign_code(A, PredId, C, Args, E, F, G)) -->
 	% pragma_foreign_codes are automatically generated, so they
 	% will always be type-correct, but we need to do
 	% the type analysis in order to correctly compute the
@@ -2034,14 +2068,16 @@ check_warn_too_much_overloading(TypeCheckInfo0, TypeCheckInfo) :-
 :- mode checkpoint(in, typecheck_info_di, typecheck_info_uo) is det.
 
 checkpoint(Msg, T0, T) :-
-	typecheck_info_get_io_state(T0, I0),
-	globals__io_lookup_bool_option(debug_types, DoCheckPoint, I0, I1),
+	typecheck_info_get_module_info(T0, ModuleInfo),
+	module_info_globals(ModuleInfo, Globals),
+	globals__lookup_bool_option(Globals, debug_types, DoCheckPoint),
 	( DoCheckPoint = yes ->
-		checkpoint_2(Msg, T0, I1, I)
+		typecheck_info_get_io_state(T0, I0),
+		checkpoint_2(Msg, T0, I0, I),
+		typecheck_info_set_io_state(T0, I, T)
 	;
-		I = I1
-	),
-	typecheck_info_set_io_state(T0, I, T).
+		T = T0
+	).
 
 :- pred checkpoint_2(string, typecheck_info, io__state, io__state).
 :- mode checkpoint_2(in, typecheck_info_no_io, di, uo) is det.
@@ -2705,12 +2741,16 @@ make_pred_cons_info(_TypeCheckInfo, PredId, PredTable, FuncArity,
 	pred_info_arity(PredInfo, PredArity),
 	pred_info_get_is_pred_or_func(PredInfo, IsPredOrFunc),
 	pred_info_get_class_context(PredInfo, ClassContext),
+	pred_info_arg_types(PredInfo, PredTypeVarSet, PredExistQVars,
+			CompleteArgTypes),
 	(
 		IsPredOrFunc = predicate,
-		PredArity >= FuncArity
+		PredArity >= FuncArity,
+		% we don't support first-class polymorphism,
+		% so you can't take the address of an existentially
+		% quantified predicate
+		PredExistQVars = []
 	->
-		pred_info_arg_types(PredInfo, PredTypeVarSet, PredExistQVars,
-			CompleteArgTypes),
 		(
 			list__split_list(FuncArity, CompleteArgTypes,
 				ArgTypes, PredTypeParams)
@@ -2744,10 +2784,13 @@ make_pred_cons_info(_TypeCheckInfo, PredId, PredTable, FuncArity,
 	;
 		IsPredOrFunc = function,
 		PredAsFuncArity is PredArity - 1,
-		PredAsFuncArity >= FuncArity
+		PredAsFuncArity >= FuncArity,
+		% We don't support first-class polymorphism,
+		% so you can't take the address of an existentially
+		% quantified function.  You can however call such
+		% a function, so long as you pass *all* the parameters.
+		( PredExistQVars = [] ; PredAsFuncArity = FuncArity )
 	->
-		pred_info_arg_types(PredInfo, PredTypeVarSet, PredExistQVars,
-					CompleteArgTypes),
 		(
 			list__split_list(FuncArity, CompleteArgTypes,
 				FuncArgTypes, FuncTypeParams),
@@ -2796,7 +2839,7 @@ builtin_apply_type(_TypeCheckInfo, Functor, Arity, ConsTypeInfos) :-
 	% builtin_field_access_function_type(TypeCheckInfo, Functor,
 	%	Arity, ConsTypeInfos):
 	% Succeed if Functor is the name of one the automatically
-	% generated field access functions (fieldname, '<fieldname>:=').
+	% generated field access functions (fieldname, '<fieldname> :=').
 :- pred builtin_field_access_function_type(typecheck_info, cons_id, arity,
 		list(cons_type_info), list(invalid_field_update)).
 :- mode builtin_field_access_function_type(typecheck_info_ui, in, in,
@@ -2916,7 +2959,7 @@ convert_field_access_cons_type_info(AccessType, FieldName, FieldDefn,
 	AccessType = set,
 
 	%
-	% A `'field:='/2' function has no existentially
+	% A `'field :='/2' function has no existentially
 	% quantified type variables - the values of all
 	% type variables in the field are supplied by
 	% the caller, all the others are supplied by
@@ -3011,7 +3054,7 @@ convert_field_access_cons_type_info(AccessType, FieldName, FieldDefn,
 			% Rename the class constraints, projecting
 			% the constraints onto the set of type variables
 			% occuring in the types of the arguments of
-			% the call to `'field:='/2'. 
+			% the call to `'field :='/2'. 
 			%
 			term__vars_list([FunctorType, FieldType],
 				CallTVars0),
@@ -3292,6 +3335,17 @@ typecheck_info_get_ctors(TypeCheckInfo, Ctors) :-
 :- mode typecheck_info_get_called_predid(in, out) is det.
 
 typecheck_info_get_called_predid(TypeCheckInfo, TypeCheckInfo ^ call_id).
+
+%-----------------------------------------------------------------------------%
+
+:- pred typecheck_info_get_pred_markers(typecheck_info, pred_markers).
+:- mode typecheck_info_get_pred_markers(in, out) is det.
+
+typecheck_info_get_pred_markers(TypeCheckInfo, PredMarkers) :-
+	typecheck_info_get_module_info(TypeCheckInfo, ModuleInfo),
+	typecheck_info_get_predid(TypeCheckInfo, PredId),
+	module_info_pred_info(ModuleInfo, PredId, PredInfo),
+	pred_info_get_markers(PredInfo, PredMarkers).
 
 %-----------------------------------------------------------------------------%
 
@@ -3629,21 +3683,17 @@ typecheck_info_set_pred_import_status(TypeCheckInfo, Status,
 typecheck_info_get_ctor_list(TypeCheckInfo, Functor, Arity,
 		ConsInfoList, InvalidFieldUpdates) :-
 	(
-		builtin_apply_type(TypeCheckInfo, Functor, Arity,
-			ApplyConsInfoList)
-	->
-		ConsInfoList = ApplyConsInfoList,
-		InvalidFieldUpdates = []
-	;
 		%
 		% If we're typechecking the clause added for
 		% a field access function for which the user
 		% has supplied type or mode declarations, the
 		% goal should only contain an application of the
 		% field access function, not constructor applications
-		% or function calls.
+		% or function calls. The clauses in `.opt' files will
+		% already have been expanded into unifications.
 		%
-		TypeCheckInfo ^ is_field_access_function = yes
+		TypeCheckInfo ^ is_field_access_function = yes,
+		TypeCheckInfo ^ import_status \= opt_imported
 	->
 		(
 			builtin_field_access_function_type(TypeCheckInfo,
@@ -3784,11 +3834,23 @@ typecheck_info_get_ctor_list_2(TypeCheckInfo, Functor, Arity,
 			InvalidFieldUpdates0)
 	->
 		list__append(FieldAccessConsInfoList,
-			ConsInfoList4, ConsInfoList),
+			ConsInfoList4, ConsInfoList5),
 		InvalidFieldUpdates = InvalidFieldUpdates0
 	;
 		InvalidFieldUpdates = [],
-		ConsInfoList = ConsInfoList4
+		ConsInfoList5 = ConsInfoList4
+	),
+
+	%
+	% Check for higher-order function calls
+	%
+	(
+		builtin_apply_type(TypeCheckInfo, Functor, Arity,
+			ApplyConsInfoList)
+	->
+		ConsInfoList = list__append(ConsInfoList5, ApplyConsInfoList)
+	;
+		ConsInfoList = ConsInfoList5
 	).
 
 :- pred flip_quantifiers(cons_type_info, cons_type_info).
@@ -3949,7 +4011,7 @@ reduce_type_assign_context(SuperClassTable, InstanceTable,
 	Constraints0 = constraints(UnprovenConstraints0, AssumedConstraints),
 
 	typecheck__reduce_context_by_rule_application(InstanceTable, 
-		SuperClassTable, AssumedConstraints, HeadTypeParams,
+		SuperClassTable, AssumedConstraints,
 		Bindings, Tvarset0, Tvarset, Proofs0, Proofs,
 		UnprovenConstraints0, UnprovenConstraints),
 
@@ -3964,7 +4026,7 @@ reduce_type_assign_context(SuperClassTable, InstanceTable,
 
 
 typecheck__reduce_context_by_rule_application(InstanceTable, SuperClassTable, 
-		AssumedConstraints, HeadTypeParams, Bindings, Tvarset0, Tvarset,
+		AssumedConstraints, Bindings, Tvarset0, Tvarset,
 		Proofs0, Proofs, Constraints0, Constraints) :-
 	apply_rec_subst_to_constraint_list(Bindings, Constraints0,
 		Constraints1),
@@ -3972,7 +4034,8 @@ typecheck__reduce_context_by_rule_application(InstanceTable, SuperClassTable,
 		Constraints2, Changed1),
 	apply_instance_rules(Constraints2, InstanceTable, 
 		Tvarset0, Tvarset1, Proofs0, Proofs1, Constraints3, Changed2),
-	apply_class_rules(Constraints3, AssumedConstraints, HeadTypeParams,
+	varset__vars(Tvarset1, Tvars),
+	apply_class_rules(Constraints3, AssumedConstraints, Tvars,
 		SuperClassTable, Tvarset0, Proofs1, Proofs2, Constraints4,
 		Changed3),
 	(
@@ -3984,7 +4047,7 @@ typecheck__reduce_context_by_rule_application(InstanceTable, SuperClassTable,
 		Proofs = Proofs2
 	;
 		typecheck__reduce_context_by_rule_application(InstanceTable,
-			SuperClassTable, AssumedConstraints, HeadTypeParams,
+			SuperClassTable, AssumedConstraints,
 			Bindings, Tvarset1, Tvarset, Proofs2, Proofs, 
 			Constraints4, Constraints)
 	).
@@ -4071,9 +4134,9 @@ find_matching_instance_rule(Instances, ClassName, Types, TVarSet,
 
 find_matching_instance_rule_2([I|Is], N0, ClassName, Types, TVarSet,
 		NewTVarSet, Proofs0, Proofs, NewConstraints) :-
-	I = hlds_instance_defn(_Status, _Context, NewConstraints0, 
-		InstanceTypes0, _Interface, _PredProcIds, InstanceNames,
-		_SuperClassProofs),
+	I = hlds_instance_defn(_InstanceModule, _Status, _Context,
+		NewConstraints0, InstanceTypes0, _Interface, _PredProcIds,
+		InstanceNames, _SuperClassProofs),
 	(
 		varset__merge_subst(TVarSet, InstanceNames, NewTVarSet0,
 			RenameSubst),
@@ -5186,6 +5249,7 @@ write_type_b(Type, TypeVarSet, TypeBindings) -->
 :- mode report_error_var(typecheck_info_no_io, in, in, in, di, uo) is det.
 
 report_error_var(TypeCheckInfo, VarId, Type, TypeAssignSet0) -->
+	{ typecheck_info_get_pred_markers(TypeCheckInfo, PredMarkers) },
 	{ typecheck_info_get_called_predid(TypeCheckInfo, CalledPredId) },
 	{ typecheck_info_get_arg_num(TypeCheckInfo, ArgNum) },
 	{ typecheck_info_get_context(TypeCheckInfo, Context) },
@@ -5193,7 +5257,8 @@ report_error_var(TypeCheckInfo, VarId, Type, TypeAssignSet0) -->
 	{ get_type_stuff(TypeAssignSet0, VarId, TypeStuffList) },
 	{ typecheck_info_get_varset(TypeCheckInfo, VarSet) },
 	write_context_and_pred_id(TypeCheckInfo),
-	write_call_context(Context, CalledPredId, ArgNum, UnifyContext),
+	write_call_context(Context, PredMarkers,
+		CalledPredId, ArgNum, UnifyContext),
 	prog_out__write_context(Context),
 	io__write_string("  type error: "),
 	( { TypeStuffList = [SingleTypeStuff] } ->
@@ -5231,6 +5296,7 @@ report_error_var(TypeCheckInfo, VarId, Type, TypeAssignSet0) -->
 :- mode report_error_arg_var(typecheck_info_no_io, in, in, di, uo) is det.
 
 report_error_arg_var(TypeCheckInfo, VarId, ArgTypeAssignSet0) -->
+	{ typecheck_info_get_pred_markers(TypeCheckInfo, PredMarkers) },
 	{ typecheck_info_get_called_predid(TypeCheckInfo, CalledPredId) },
 	{ typecheck_info_get_arg_num(TypeCheckInfo, ArgNum) },
 	{ typecheck_info_get_context(TypeCheckInfo, Context) },
@@ -5238,7 +5304,8 @@ report_error_arg_var(TypeCheckInfo, VarId, ArgTypeAssignSet0) -->
 	{ get_arg_type_stuff(ArgTypeAssignSet0, VarId, ArgTypeStuffList) },
 	{ typecheck_info_get_varset(TypeCheckInfo, VarSet) },
 	write_context_and_pred_id(TypeCheckInfo),
-	write_call_context(Context, CalledPredId, ArgNum, UnifyContext),
+	write_call_context(Context, PredMarkers,
+		CalledPredId, ArgNum, UnifyContext),
 	prog_out__write_context(Context),
 	io__write_string("  type error: "),
 	( { ArgTypeStuffList = [SingleArgTypeStuff] } ->
@@ -5531,12 +5598,14 @@ report_error_pred_num_args(TypeCheckInfo,
 			in, in, di, uo) is det.
 
 report_error_undef_cons(TypeCheckInfo, InvalidFieldUpdates, Functor, Arity) -->
+	{ typecheck_info_get_pred_markers(TypeCheckInfo, PredMarkers) },
 	{ typecheck_info_get_called_predid(TypeCheckInfo, CalledPredId) },
 	{ typecheck_info_get_arg_num(TypeCheckInfo, ArgNum) },
 	{ typecheck_info_get_context(TypeCheckInfo, Context) },
 	{ typecheck_info_get_unify_context(TypeCheckInfo, UnifyContext) },
 	write_context_and_pred_id(TypeCheckInfo),
-	write_call_context(Context, CalledPredId, ArgNum, UnifyContext),
+	write_call_context(Context, PredMarkers,
+		CalledPredId, ArgNum, UnifyContext),
 	prog_out__write_context(Context),
 	%
 	% check for some special cases, so that we can give
@@ -5779,17 +5848,17 @@ language_builtin("aditi_bulk_delete", 4).
 language_builtin("aditi_bulk_modify", 3).
 language_builtin("aditi_bulk_modify", 4).
 
-:- pred write_call_context(prog_context, call_id, int, unify_context,
-				io__state, io__state).
-:- mode write_call_context(in, in, in, in, di, uo) is det.
+:- pred write_call_context(prog_context, pred_markers,
+		call_id, int, unify_context, io__state, io__state).
+:- mode write_call_context(in, in, in, in, in, di, uo) is det.
 
-write_call_context(Context, CallId, ArgNum, UnifyContext) -->
+write_call_context(Context, PredMarkers, CallId, ArgNum, UnifyContext) -->
 	( { ArgNum = 0 } ->
 		hlds_out__write_unify_context(UnifyContext, Context)
 	;
 		prog_out__write_context(Context),
 		io__write_string("  in "),
-		hlds_out__write_call_arg_id(CallId, ArgNum),
+		hlds_out__write_call_arg_id(CallId, ArgNum, PredMarkers),
 		io__write_string(":\n")
 	).
 

@@ -882,9 +882,11 @@ modecheck_complicated_unify(X, Y, Type, ModeOfX, ModeOfY, Det, UnifyContext,
 			ExpectedInsts),
 		mode_info_set_call_context(unify(UnifyContext),
 			ModeInfo0, ModeInfo1),
+		NeedExactMatch = no,
 		InitialArgNum = 0,
 		modecheck_var_has_inst_list(UnifyTypeInfoVars, ExpectedInsts,
-			InitialArgNum, _InstVarSub, ModeInfo1, ModeInfo2)
+			NeedExactMatch, InitialArgNum, _InstVarSub,
+			ModeInfo1, ModeInfo2)
 			% We can ignore _InstVarSub since type_info variables
 			% should not have variable insts.
 	),
@@ -1171,9 +1173,10 @@ check_type_info_args_are_ground([ArgVar | ArgVars], VarTypes, UnifyContext)
 		{ is_introduced_type_info_type(ArgType) }
 	->
 		mode_info_set_call_context(unify(UnifyContext)),
+		{ NeedExactMatch = no },
 		{ InitialArgNum = 0 },
 		modecheck_var_has_inst_list([ArgVar], [ground(shared, none)],
-			InitialArgNum, _InstVarSub),
+			NeedExactMatch, InitialArgNum, _InstVarSub),
 		check_type_info_args_are_ground(ArgVars, VarTypes,
 			UnifyContext)
 	;

@@ -3,7 +3,7 @@ INIT mercury_sys_init_engine
 ENDINIT
 */
 /*
-** Copyright (C) 1993-2000 The University of Melbourne.
+** Copyright (C) 1993-2001 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -15,8 +15,8 @@ ENDINIT
 #include	<setjmp.h>
 
 #include	"mercury_engine.h"
-#include	"mercury_memory_zones.h"	/* for create_zone() */
-#include	"mercury_memory_handlers.h"	/* for default_handler() */
+#include	"mercury_memory_zones.h"	/* for MR_create_zone() */
+#include	"mercury_memory_handlers.h"	/* for MR_default_handler() */
 
 #include	"mercury_dummy.h"
 
@@ -49,20 +49,20 @@ bool	MR_debugflag[MR_MAXFLAG];
 ** the zone structures and context structures).
 */
 void 
-init_engine(MercuryEngine *eng)
+MR_init_engine(MercuryEngine *eng)
 {
 	/*
 	** First, ensure that the truly global stuff has been initialized
 	** (if it was already initialized, this does nothing).
 	*/
 
-	init_memory();
+	MR_init_memory();
 
 #ifndef USE_GCC_NONLOCAL_GOTOS
 	{
 		static bool made_engine_done_label = FALSE;
 		if (!made_engine_done_label) {
-			make_label("engine_done", LABEL(engine_done),
+			MR_make_label("engine_done", MR_LABEL(engine_done),
 				engine_done);
 			made_engine_done_label = TRUE;
 		}
@@ -75,40 +75,32 @@ init_engine(MercuryEngine *eng)
 	*/
 
 #ifndef	CONSERVATIVE_GC
-	eng->heap_zone = create_zone("heap", 1, heap_size, next_offset(),
-			heap_zone_size, default_handler);
+	eng->heap_zone = MR_create_zone("heap", 1, MR_heap_size,
+			MR_next_offset(), MR_heap_zone_size,
+			MR_default_handler);
 	eng->e_hp = eng->heap_zone->min;
 
 #ifdef	NATIVE_GC
-	eng->heap_zone2 = create_zone("heap2", 1, heap_size, next_offset(),
-			heap_zone_size, default_handler);
+	eng->heap_zone2 = MR_create_zone("heap2", 1, MR_heap_size,
+			MR_next_offset(), MR_heap_zone_size,
+			MR_default_handler);
 
   #ifdef MR_DEBUG_AGC_PRINT_VARS
-	eng->debug_heap_zone = create_zone("debug_heap", 1, debug_heap_size,
-			next_offset(), debug_heap_zone_size, default_handler);
+	eng->debug_heap_zone = MR_create_zone("debug_heap", 1,
+			MR_debug_heap_size, MR_next_offset(),
+			MR_debug_heap_zone_size, MR_default_handler);
   #endif
 #endif
 
-	eng->solutions_heap_zone = create_zone("solutions_heap", 1,
-			solutions_heap_size, next_offset(),
-			solutions_heap_zone_size, default_handler);
+	eng->solutions_heap_zone = MR_create_zone("solutions_heap", 1,
+			MR_solutions_heap_size, MR_next_offset(),
+			MR_solutions_heap_zone_size, MR_default_handler);
 	eng->e_sol_hp = eng->solutions_heap_zone->min;
 
-	eng->global_heap_zone = create_zone("global_heap", 1,
-			global_heap_size, next_offset(),
-			global_heap_zone_size, default_handler);
+	eng->global_heap_zone = MR_create_zone("global_heap", 1,
+			MR_global_heap_size, MR_next_offset(),
+			MR_global_heap_zone_size, MR_default_handler);
 	eng->e_global_hp = eng->global_heap_zone->min;
-#endif
-
-#ifdef MR_LOWLEVEL_DEBUG
-	/*
-	** Create the dumpstack, used for debugging stack traces.
-	** Note that we can just make the dumpstack the same size as
-	** the detstack and we never have to worry about the dumpstack
-	** overflowing.
-	*/
-	dumpstack_zone = create_zone("dumpstack", 1, detstack_size,
-		next_offset(), detstack_zone_size, default_handler);
 #endif
 
 #ifdef	MR_THREAD_SAFE
@@ -121,24 +113,24 @@ init_engine(MercuryEngine *eng)
 	** Finally, allocate an initialize context (Mercury thread)
 	** in the engine and initialize the per-context stuff.
 	*/
-	eng->this_context = create_context();
+	eng->this_context = MR_create_context();
 }
 
 /*---------------------------------------------------------------------------*/
 
-void finalize_engine(MercuryEngine *eng)
+void MR_finalize_engine(MercuryEngine *eng)
 {
 	/*
 	** XXX there are lots of other resources in MercuryEngine that
 	** might need to be finalized.  
 	*/
-	destroy_context(eng->this_context);
+	MR_destroy_context(eng->this_context);
 }
 
 /*---------------------------------------------------------------------------*/
 
 MercuryEngine *
-create_engine(void)
+MR_create_engine(void)
 {
 	MercuryEngine *eng;
 
@@ -149,14 +141,14 @@ create_engine(void)
 	** not traced by the conservative garbage collector.
 	*/
 	eng = MR_GC_NEW_UNCOLLECTABLE(MercuryEngine);
-	init_engine(eng);
+	MR_init_engine(eng);
 	return eng;
 }
 
 void
-destroy_engine(MercuryEngine *eng)
+MR_destroy_engine(MercuryEngine *eng)
 {
-	finalize_engine(eng);
+	MR_finalize_engine(eng);
 	MR_GC_free(eng);
 }
 
@@ -171,7 +163,7 @@ destroy_engine(MercuryEngine *eng)
 **	The called routine should be det/semidet/cc_multi/cc_nondet.
 **
 **	If the called routine returns normally (this includes the case of a
-**	semidet/cc_nondet routine failing, i.e. returning with r1 = FALSE),
+**	semidet/cc_nondet routine failing, i.e. returning with MR_r1 = FALSE),
 **	then MR_call_engine() will return NULL.
 **
 **	If the called routine exits by throwing an exception, then the
@@ -186,14 +178,14 @@ destroy_engine(MercuryEngine *eng)
 **	to MR_call_engine().  Specifically, the non-transient real registers
 **	must have valid values, and the fake_reg copies of the transient
 **	(register window) registers must have valid values; call_engine()
-**	will call restore_transient_registers() and will then assume that
+**	will call MR_restore_transient_registers() and will then assume that
 **	all the registers have been correctly set up.
 **
-**	call_engine() will call save_registers() before returning.
+**	call_engine() will call MR_save_registers() before returning.
 **	That will copy the real registers we use to the fake_reg array.
 **
-**	Beware, however, that if you are planning to return to C code
-**	that did not #include "mercury_regs.h" (directly or via e.g. "mercury_imp.h"),
+**	Beware, however, that if you are planning to return to C code that did
+**	not #include "mercury_regs.h" (directly or via e.g. "mercury_imp.h"),
 **	and you have fiddled with the Mercury registers or invoked
 **	call_engine() or anything like that, then you will need to
 **	save the real registers that C is using before modifying the
@@ -207,9 +199,9 @@ destroy_engine(MercuryEngine *eng)
 **	invoke call_engine() to invoke invoke Mercury routines (which
 **	in turn invoke C functions which ... etc. ad infinitum.)
 **
-**	call_engine() calls setjmp() and then invokes call_engine_inner()
+**	MR_call_engine() calls setjmp() and then invokes call_engine_inner()
 **	which does the real work.  call_engine_inner() exits by calling
-**	longjmp() to return to call_engine().  There are two 
+**	longjmp() to return to MR_call_engine().  There are two 
 **	different implementations of call_engine_inner(), one for gcc,
 **	and another portable version that works on standard ANSI C compilers.
 */
@@ -230,7 +222,7 @@ MR_call_engine(MR_Code *entry_point, bool catch_exceptions)
 	** will work.
 	*/
 
-	restore_transient_registers();
+	MR_restore_transient_registers();
 
 	prev_jmp_buf = MR_ENGINE(e_jmp_buf);
 	MR_ENGINE(e_jmp_buf) = &curr_jmp_buf;
@@ -241,7 +233,7 @@ MR_call_engine(MR_Code *entry_point, bool catch_exceptions)
 	*/
 	if (catch_exceptions) {
 		MR_create_exception_handler("call_engine",
-			MR_C_LONGJMP_HANDLER, 0, ENTRY(do_fail));
+			MR_C_LONGJMP_HANDLER, 0, MR_ENTRY(MR_do_fail));
 	}
 
 	/*
@@ -261,7 +253,7 @@ MR_call_engine(MR_Code *entry_point, bool catch_exceptions)
 			prev_jmp_buf, MR_ENGINE(e_jmp_buf));
 #endif
 
-		debugmsg0("...caught longjmp\n");
+		MR_debugmsg0("...caught longjmp\n");
 		/*
 		** On return,
 		** set MR_prof_current_proc to be the caller proc again
@@ -269,8 +261,8 @@ MR_call_engine(MR_Code *entry_point, bool catch_exceptions)
 		** restore the registers (since longjmp may clobber them),
 		** and restore the saved value of MR_ENGINE(e_jmp_buf).
 		*/
-		update_prof_current_proc(prev_proc);
-		restore_registers();
+		MR_update_prof_current_proc(prev_proc);
+		MR_restore_registers();
 		MR_ENGINE(e_jmp_buf) = prev_jmp_buf;
 		if (catch_exceptions) {
 			/*
@@ -313,7 +305,7 @@ MR_call_engine(MR_Code *entry_point, bool catch_exceptions)
 #ifdef PROFILE_CALLS
   #ifdef PROFILE_TIME
 	if (MR_prof_current_proc != NULL) {
-		PROFILE(entry_point, MR_prof_current_proc);
+		MR_PROFILE(entry_point, MR_prof_current_proc);
 	}
   #else
 	/*
@@ -343,7 +335,7 @@ MR_call_engine(MR_Code *entry_point, bool catch_exceptions)
 	*/
 #ifdef PROFILE_TIME
 	prev_proc = MR_prof_current_proc;
-	set_prof_current_proc(entry_point);
+	MR_set_prof_current_proc(entry_point);
 #endif
 
 	call_engine_inner(entry_point);
@@ -389,7 +381,8 @@ call_engine_inner(MR_Code *entry_point)
 
 	if (!initialized)
 	{
-		make_label("engine_done", LABEL(engine_done), engine_done);
+		MR_make_label("engine_done", MR_LABEL(engine_done),
+			engine_done);
 		initialized = TRUE;
 	}
 }
@@ -400,19 +393,19 @@ call_engine_inner(MR_Code *entry_point)
 	** call mechanism
 	*/
 
-	restore_transient_registers();
+	MR_restore_transient_registers();
 
 	/*
 	** We save the address of the locals in a global pointer to make
 	** sure that gcc can't optimize them away.
 	*/
 
-	global_pointer = locals;
+	MR_global_pointer = locals;
 
 #ifdef MR_LOWLEVEL_DEBUG
 	memset((void *)locals, MAGIC_MARKER, LOCALS_SIZE);
 #endif
-	debugmsg1("in `call_engine_inner', locals at %p\n", (void *)locals);
+	MR_debugmsg1("in `call_engine_inner', locals at %p\n", (void *)locals);
 
 	/*
 	** We need to ensure that there is at least one
@@ -429,7 +422,7 @@ call_engine_inner(MR_Code *entry_point)
 	** Also for gcc versions >= egcs1.1, we need to ensure that
 	** there is at least one jump to an unknown label.
 	*/
-	goto *dummy_identify_function(&&dummy_label);
+	goto *MR_dummy_identify_function(&&dummy_label);
 dummy_label:
 
 	/*
@@ -456,9 +449,9 @@ dummy_label:
 	** Now just call the entry point
 	*/
 
-	noprof_call(entry_point, LABEL(engine_done));
+	MR_noprof_call(entry_point, MR_LABEL(engine_done));
 
-Define_label(engine_done);
+MR_define_label(engine_done);
 
 	/*
 	** Decrement the number of times we've entered this
@@ -487,7 +480,7 @@ Define_label(engine_done);
 }
 #endif
 
-	debugmsg1("in label `engine_done', locals at %p\n", locals);
+	MR_debugmsg1("in label `engine_done', locals at %p\n", locals);
 
 #ifdef MR_LOWLEVEL_DEBUG
 	/*
@@ -495,7 +488,7 @@ Define_label(engine_done);
 	** was actually used.
 	*/
 
-	if (check_space) {
+	if (MR_check_space) {
 		int	low = 0, high = LOCALS_SIZE;
 		int	used_low, used_high;
 
@@ -524,19 +517,19 @@ Define_label(engine_done);
 	** save them first.
 	*/
 	MR_ENGINE(e_exception) = NULL;
-	save_registers();
+	MR_save_registers();
 
 #ifdef	MR_DEBUG_JMPBUFS
 	printf("engine longjmp %p\n", MR_ENGINE(e_jmp_buf));
 #endif
 
-	debugmsg0("longjmping out...\n");
+	MR_debugmsg0("longjmping out...\n");
 	longjmp(*(MR_ENGINE(e_jmp_buf)), 1);
 }} /* end call_engine_inner() */
 
 /* with nonlocal gotos, we don't save the previous locations */
 void 
-dump_prev_locations(void) {}
+MR_dump_prev_locations(void) {}
 
 #else /* not USE_GCC_NONLOCAL_GOTOS */
 
@@ -559,15 +552,15 @@ static MR_Code *
 engine_done(void)
 {
 	MR_ENGINE(e_exception) = NULL;
-	save_registers();
-	debugmsg0("longjmping out...\n");
+	MR_save_registers();
+	MR_debugmsg0("longjmping out...\n");
 	longjmp(*(MR_ENGINE(e_jmp_buf)), 1);
 }
 
 static MR_Code *
 engine_init_registers(void)
 {
-	restore_transient_registers();
+	MR_restore_transient_registers();
 	MR_succip = (MR_Code *) engine_done;
 	return NULL;
 }
@@ -587,7 +580,7 @@ static MR_Code 	*prev_fps[NUM_PREV_FPS];
 static int	prev_fp_index = 0;
 
 void 
-dump_prev_locations(void)
+MR_dump_prev_locations(void)
 {
 	int i, pos;
 
@@ -598,7 +591,7 @@ dump_prev_locations(void)
 		printf("previous %d locations:\n", NUM_PREV_FPS);
 		for (i = 0; i < NUM_PREV_FPS; i++) {
 			pos = (i + prev_fp_index) % NUM_PREV_FPS;
-			printlabel(prev_fps[pos]);
+			MR_printlabel(stdout, prev_fps[pos]);
 		}
 	}
 }
@@ -606,7 +599,7 @@ dump_prev_locations(void)
 static void 
 call_engine_inner(MR_Code *entry_point)
 {
-	reg	Func	*fp;
+	register Func	*fp;
 
 	/*
 	** Start up the actual engine.
@@ -639,8 +632,8 @@ if (!MR_tracedebug) {
 		if (++prev_fp_index >= NUM_PREV_FPS)
 			prev_fp_index = 0;
 
-		debuggoto(fp);
-		debugsreg();
+		MR_debuggoto(fp);
+		MR_debugsreg();
 		fp = (Func *) (*fp)();
 	}
 } /* end call_engine_inner() */
@@ -649,7 +642,7 @@ if (!MR_tracedebug) {
 /*---------------------------------------------------------------------------*/
 
 void
-terminate_engine(void)
+MR_terminate_engine(void)
 {
 	/*
 	** we don't bother to deallocate memory...
@@ -659,48 +652,48 @@ terminate_engine(void)
 
 /*---------------------------------------------------------------------------*/
 
-Define_extern_entry(do_redo);
-Define_extern_entry(do_fail);
-Define_extern_entry(do_succeed);
-Define_extern_entry(do_last_succeed);
-Define_extern_entry(do_not_reached);
-Define_extern_entry(exception_handler_do_fail);
+MR_define_extern_entry(MR_do_redo);
+MR_define_extern_entry(MR_do_fail);
+MR_define_extern_entry(MR_do_succeed);
+MR_define_extern_entry(MR_do_last_succeed);
+MR_define_extern_entry(MR_do_not_reached);
+MR_define_extern_entry(MR_exception_handler_do_fail);
 
-BEGIN_MODULE(special_labels_module)
-	init_entry_ai(do_redo);
-	init_entry_ai(do_fail);
-	init_entry_ai(do_succeed);
-	init_entry_ai(do_last_succeed);
-	init_entry_ai(do_not_reached);
-	init_entry_ai(exception_handler_do_fail);
-BEGIN_CODE
+MR_BEGIN_MODULE(special_labels_module)
+	MR_init_entry_ai(MR_do_redo);
+	MR_init_entry_ai(MR_do_fail);
+	MR_init_entry_ai(MR_do_succeed);
+	MR_init_entry_ai(MR_do_last_succeed);
+	MR_init_entry_ai(MR_do_not_reached);
+	MR_init_entry_ai(MR_exception_handler_do_fail);
+MR_BEGIN_CODE
 
-Define_entry(do_redo);
+MR_define_entry(MR_do_redo);
 	MR_redo();
 
-Define_entry(do_fail);
+MR_define_entry(MR_do_fail);
 	MR_fail();
 
-Define_entry(do_succeed);
+MR_define_entry(MR_do_succeed);
 	MR_succeed();
 
-Define_entry(do_last_succeed);
+MR_define_entry(MR_do_last_succeed);
 	MR_succeed_discard();
 
-Define_entry(do_not_reached);
+MR_define_entry(MR_do_not_reached);
 	MR_fatal_error("reached not_reached\n");
 
-Define_entry(exception_handler_do_fail);
+MR_define_entry(MR_exception_handler_do_fail);
 	/*
-	** `exception_handler_do_fail' is the same as `do_fail':
-	** it just invokes fail().  The reason we don't just use
-	** `do_fail' for this is that when unwinding the stack we
-	** check for a redoip of `exception_handler_do_fail' and
+	** `MR_exception_handler_do_fail' is the same as `MR_do_fail':
+	** it just invokes MR_fail().  The reason we don't just use
+	** `MR_do_fail' for this is that when unwinding the stack we
+	** check for a redoip of `MR_exception_handler_do_fail' and
 	** handle it specially.
 	*/
 	MR_fail();
 
-END_MODULE
+MR_END_MODULE
 
 void mercury_sys_init_engine(void); /* suppress gcc warning */
 void mercury_sys_init_engine(void) {

@@ -2,7 +2,7 @@
 % Originally written in 1999 by Tomas By <T.By@dcs.shef.ac.uk>
 % "Feel free to use this code or parts of it any way you want."
 %
-% Some portions are Copyright (C) 1999-2000 The University of Melbourne.
+% Some portions are Copyright (C) 1999-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -179,12 +179,18 @@ time__clock(Result, IO0, IO) :-
 :- pred time__c_clock(int, io__state, io__state).
 :- mode time__c_clock(out, di, uo) is det.
 
-:- pragma c_code(time__c_clock(Ret::out, IO0::di, IO::uo),
+:- pragma foreign_code("C", time__c_clock(Ret::out, IO0::di, IO::uo),
 	[will_not_call_mercury],
 "{
 	Ret = (MR_Integer) clock();
 	update_io(IO0, IO);
 }").
+:- pragma foreign_code("MC++", time__c_clock(_Ret::out, _IO0::di, _IO::uo),
+	[will_not_call_mercury],
+"{
+	mercury::runtime::Errors::SORRY(""foreign code for this function"");
+}").
+
 
 %-----------------------------------------------------------------------------%
 
@@ -196,10 +202,15 @@ time__clocks_per_sec = Val :-
 :- pred time__c_clocks_per_sec(int).
 :- mode time__c_clocks_per_sec(out) is det.
 
-:- pragma c_code(time__c_clocks_per_sec(Ret::out),
+:- pragma foreign_code("C", time__c_clocks_per_sec(Ret::out),
 	[will_not_call_mercury],
 "{
 	Ret = (MR_Integer) CLOCKS_PER_SEC;
+}").
+:- pragma foreign_code("MC++", time__c_clocks_per_sec(_Ret::out),
+	[will_not_call_mercury],
+"{
+	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 }").
 
 %-----------------------------------------------------------------------------%
@@ -219,7 +230,8 @@ time__times(Tms, Result, IO0, IO) :-
 :- pred time__c_times(int, int, int, int, int, io__state, io__state).
 :- mode time__c_times(out, out, out, out, out, di, uo) is det.
 
-:- pragma c_code(time__c_times(Ret::out, Ut::out, St::out, CUt::out,
+:- pragma foreign_code("C",
+	time__c_times(Ret::out, Ut::out, St::out, CUt::out,
                                CSt::out, IO0::di, IO::uo),
 	[will_not_call_mercury],
 "{
@@ -237,6 +249,14 @@ time__times(Tms, Result, IO0, IO) :-
 #endif
 	update_io(IO0, IO);
 }").
+:- pragma foreign_code("MC++",
+	time__c_times(_Ret::out, _Ut::out, _St::out, _CUt::out,
+                               _CSt::out, _IO0::di, _IO::uo),
+	[will_not_call_mercury],
+"{
+	mercury::runtime::Errors::SORRY(""foreign code for this function"");
+}").
+
 
 %-----------------------------------------------------------------------------%
 
@@ -254,11 +274,18 @@ time__time(Result, IO0, IO) :-
 :- pred time__c_time(int, io__state, io__state).
 :- mode time__c_time(out, di, uo) is det.
 
-:- pragma c_code(time__c_time(Ret::out, IO0::di, IO::uo),
+:- pragma foreign_code("C",
+	time__c_time(Ret::out, IO0::di, IO::uo),
 	[will_not_call_mercury],
 "{
 	Ret = (MR_Integer) time(NULL);
 	update_io(IO0, IO);
+}").
+:- pragma foreign_code("MC++",
+	time__c_time(_Ret::out, _IO0::di, _IO::uo),
+	[will_not_call_mercury],
+"{
+	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 }").
 
 %-----------------------------------------------------------------------------%
@@ -271,10 +298,17 @@ time__difftime(T1, T0) = Diff :-
 :- pred time__c_difftime(int, int, float).
 :- mode time__c_difftime(in, in, out) is det.
 
-:- pragma c_code(time__c_difftime(T1::in, T0::in, Diff::out),
+:- pragma foreign_code("C",
+	time__c_difftime(T1::in, T0::in, Diff::out),
 	[will_not_call_mercury],
 "{
 	Diff = (MR_Float) difftime((time_t) T1, (time_t) T0);
+}").
+:- pragma foreign_code("MC++",
+	time__c_difftime(_T1::in, _T0::in, _Diff::out),
+	[will_not_call_mercury],
+"{
+	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 }").
 
 %-----------------------------------------------------------------------------%
@@ -295,7 +329,8 @@ time__localtime(Time) = TM :-
 :- pred time__c_localtime(int, int, int, int, int, int, int, int, int).
 :- mode time__c_localtime(in, out, out, out, out, out, out, out, out) is det.
 
-:- pragma c_code(time__c_localtime(Time::in, Sec::out, Min::out, Hrs::out,
+:- pragma foreign_code("C",
+	time__c_localtime(Time::in, Sec::out, Min::out, Hrs::out,
                                    WD::out, YD::out, Mnt::out,
                                    Yr::out, N::out),
 	[will_not_call_mercury],
@@ -319,6 +354,16 @@ time__localtime(Time) = TM :-
 	N = (MR_Integer) p->tm_isdst;
 }").
 
+:- pragma foreign_code("MC++",
+	time__c_localtime(_Time::in, _Sec::out, _Min::out, _Hrs::out,
+                                   _WD::out, _YD::out, _Mnt::out,
+                                   _Yr::out, _N::out),
+	[will_not_call_mercury],
+"{
+	mercury::runtime::Errors::SORRY(""foreign code for this function"");
+}").
+
+
 %:- func time__gmtime(time_t) = tm.
 
 time__gmtime(Time) = TM :-
@@ -335,7 +380,8 @@ time__gmtime(Time) = TM :-
 :- pred time__c_gmtime(int, int, int, int, int, int, int, int, int).
 :- mode time__c_gmtime(in, out, out, out, out, out, out, out, out) is det.
 
-:- pragma c_code(time__c_gmtime(Time::in, Sec::out, Min::out, Hrs::out,
+:- pragma foreign_code("C",
+	time__c_gmtime(Time::in, Sec::out, Min::out, Hrs::out,
                                    WD::out, YD::out, Mnt::out,
                                    Yr::out, N::out),
 	[will_not_call_mercury],
@@ -359,6 +405,16 @@ time__gmtime(Time) = TM :-
 	N = (MR_Integer) p->tm_isdst;
 }").
 
+:- pragma foreign_code("MC++",
+	time__c_gmtime(_Time::in, _Sec::out, _Min::out, _Hrs::out,
+                                   _WD::out, _YD::out, _Mnt::out,
+                                   _Yr::out, _N::out),
+	[will_not_call_mercury],
+"{
+	mercury::runtime::Errors::SORRY(""foreign code for this function"");
+}").
+
+
 %-----------------------------------------------------------------------------%
 
 %:- func time__mktime(tm) = time_t.
@@ -377,7 +433,8 @@ time__mktime(TM) = Time :-
 :- pred time__c_mktime(int, int, int, int, int, int, int, int, int).
 :- mode time__c_mktime(in, in, in, in, in, in, in, in, out) is det.
 
-:- pragma c_code(time__c_mktime(Sec::in, Min::in, Hrs::in, WD::in,
+:- pragma foreign_code("C",
+	time__c_mktime(Sec::in, Min::in, Hrs::in, WD::in,
                                 YD::in, Mnt::in, Yr::in,
                                 N::in, Time::out),
 	[will_not_call_mercury],
@@ -395,6 +452,16 @@ time__mktime(TM) = Time :-
 
 	Time = (MR_Integer) mktime(&t);
 }").
+
+:- pragma foreign_code("MC++",
+	time__c_mktime(_Sec::in, _Min::in, _Hrs::in, _WD::in,
+                                _YD::in, _Mnt::in, _Yr::in,
+                                _N::in, _Time::out),
+	[will_not_call_mercury],
+"{
+	mercury::runtime::Errors::SORRY(""foreign code for this function"");
+}").
+
 
 %-----------------------------------------------------------------------------%
 
@@ -414,7 +481,8 @@ time__asctime(TM) = Str :-
 :- pred time__c_asctime(int, int, int, int, int, int, int, int, string).
 :- mode time__c_asctime(in, in, in, in, in, in, in, in, out) is det.
 
-:- pragma c_code(time__c_asctime(Sec::in, Min::in, Hrs::in, WD::in,
+:- pragma foreign_code("C",
+	time__c_asctime(Sec::in, Min::in, Hrs::in, WD::in,
                                  YD::in, Mnt::in, Yr::in, N::in, Str::out),
 	[will_not_call_mercury],
 "{
@@ -435,6 +503,15 @@ time__asctime(TM) = Str :-
 	MR_make_aligned_string_copy(Str, s);
 }").
 
+:- pragma foreign_code("MC++",
+	time__c_asctime(_Sec::in, _Min::in, _Hrs::in, _WD::in,
+                                 _YD::in, _Mnt::in, _Yr::in, _N::in,
+				 _Str::out),
+	[will_not_call_mercury],
+"{
+	mercury::runtime::Errors::SORRY(""foreign code for this function"");
+}").
+
 %-----------------------------------------------------------------------------%
 
 %:- func time__ctime(time_t) = string.
@@ -445,7 +522,8 @@ time__ctime(Time) = Str :-
 :- pred time__c_ctime(int, string).
 :- mode time__c_ctime(in, out) is det.
 
-:- pragma c_code(time__c_ctime(Time::in, Str::out),
+:- pragma foreign_code("C",
+	time__c_ctime(Time::in, Str::out),
 	[will_not_call_mercury],
 "{
 	char *s;
@@ -457,6 +535,14 @@ time__ctime(Time) = Str :-
 
 	MR_make_aligned_string_copy(Str, s);
 }").
+
+:- pragma foreign_code("MC++",
+	time__c_ctime(_Time::in, _Str::out),
+	[will_not_call_mercury],
+"{
+	mercury::runtime::Errors::SORRY(""foreign code for this function"");
+}").
+
 
 %-----------------------------------------------------------------------------%
 :- end_module time.

@@ -484,6 +484,9 @@ so that the compiler does the right thing for options such as
 The first pass of this stage does tabling transformations (table_gen.m). 
 This involves the insertion of several calls to tabling predicates 
 defined in mercury_builtin.m and the addition of some scaffolding structure.
+Note that this pass can change the evaluation methods of some procedures to
+eval_table_io, so it should come before any passes that require definitive
+evaluation methods (e.g. inlining).
 
 <p>
 
@@ -579,6 +582,12 @@ Most of the remaining HLDS-to-HLDS transformations are optimizations:
   specialized versions without them (unused_args.m); type_infos are
   often unused.
 
+<li> unneeded_code.m looks for goals whose results are either not needed
+  at all, or needed in some branches of computation but not others. Provided
+  that the goal in question satisfies some requirements (e.g. it is pure,
+  it cannot fail etc), it either deletes the goal or moves it to the
+  computation branches where its output is needed.
+
 <li> elimination of dead procedures (dead_proc_elim.m). Inlining, higher-order
   specialization and the elimination of unused args can make procedures dead
   even the user doesn't, and automatically constructed unification and
@@ -669,7 +678,11 @@ for high-level optimizations (but which is not yet used).
 <dt> code generation
 
 	<dd>
-	For code generation itself, the main module is code_gen.m. 
+	Code generation converts HLDS into LLDS.
+	For the LLDS back-end, this is also the point at which we
+	insert code to handle debugging and trailing, and to do
+	heap reclamation on failure.
+	The main code generation module is code_gen.m. 
 	It handles conjunctions and negations, but calls sub-modules
 	to do most of the other work:
 
@@ -686,6 +699,7 @@ for high-level optimizations (but which is not yet used).
 			<li> lookup_switch.m
 			<li> string_switch.m
 			<li> tag_switch.m
+			<li> switch_util.m (also used by MLDS back-end)
 			</ul>
 		<li> commit_gen.m (commits)
 		<li> pragma_c_gen.m (embedded C code)
@@ -906,7 +920,7 @@ code, suitable for generating Java, high-level C, etc.
 This back-end uses the Medium Level Data Structure (mlds.m) as its
 intermediate representation.
 
-<h4> 3b. pre-passes to annotate the HLDS </h4>
+<h4> 3b. pre-passes to annotate/transform the HLDS </h4>
 
 Before code generation there is a pass which annotates the HLDS with
 information used for code generation:
@@ -917,9 +931,38 @@ information used for code generation:
      than heap allocation.
 </ul>
 
+For the MLDS back-end, we've tried to keep the code generator simple.
+So we prefer to do things as HLDS to HLDS transformations where possible,
+rather than complicating the HLDS to MLDS code generator.
+So we have a pass which transforms the HLDS to handle trailing:
+
+<ul>
+<li> add_trail_ops.m inserts code to manipulate the trail,
+     in particular ensuring that we apply the appropriate
+     trail operations before each choice point, when execution
+     resumes after backtracking, and whenever we do a commit.
+     The trail operations are represented as (and implemented as)
+     calls to impure procedures defined in library/private_builtin.m. 
+</ul>
+
 <h4> 4b. MLDS code generation </h4>
 <ul>
 <li> ml_code_gen.m converts HLDS code to MLDS.
+	  The following sub-modules are used to handle different constructs:
+		<dl>
+		<dt> ml_unify_gen.m
+		<dt> ml_call_gen.m
+		<dt> ml_switch_gen.m, which in turn has sub-modules
+			<ul>
+			<li> ml_dense_switch.m
+			<li> ml_string_switch.m
+			<li> ml_tag_switch.m
+			<li> switch_util.m (also used by MLDS back-end)
+			</ul>
+		<dl>
+	  The module ml_code_util.m provides utility routines for
+	  MLDS code generation.  The module ml_util.m provides some
+	  general utility routines for the MLDS.
 <li> ml_type_gen.m converts HLDS types to MLDS.
 <li> type_ctor_info.m and base_typeclass_info.m generate
      the RTTI data structures defined in rtti.m and pseudo_type_info.m
@@ -1147,6 +1190,6 @@ Some of them are obsolete; other are work-in-progress.
 <hr>
 <!---------------------------------------------------------------------------->
 
-Last update was $Date: 2000-11-02 01:02:17 $ by $Author: dgj $@cs.mu.oz.au. <br>
+Last update was $Date: 2001-02-05 05:36:22 $ by $Author: dgj $@cs.mu.oz.au. <br>
 </body>
 </html>

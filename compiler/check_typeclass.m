@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-2000 The University of Melbourne.
+% Copyright (C) 1996-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -166,7 +166,8 @@ check_class_instance(ClassId, SuperClasses, Vars, ClassInterface, ClassVarSet,
 		IO0, IO):-
 		
 		% check conformance of the instance body
-	InstanceDefn0 = hlds_instance_defn(_, _, _, _, InstanceBody, _, _, _),
+	InstanceDefn0 = hlds_instance_defn(_, _, _, _, _, InstanceBody,
+		_, _, _),
 	(
 		InstanceBody = abstract,
 		InstanceDefn2 = InstanceDefn0,
@@ -192,8 +193,8 @@ check_class_instance(ClassId, SuperClasses, Vars, ClassInterface, ClassVarSet,
 		% handled by check_instance_pred, but we also need to handle
 		% it below, in case the class has no methods.
 		%
-		InstanceDefn1 = hlds_instance_defn(A, B, C, D, _, 
-				MaybePredProcs1, G, H),
+		InstanceDefn1 = hlds_instance_defn(A, B, C, D, E, _, 
+				MaybePredProcs1, H, I),
 		(
 			MaybePredProcs1 = yes(_),
 			MaybePredProcs = MaybePredProcs1
@@ -208,16 +209,16 @@ check_class_instance(ClassId, SuperClasses, Vars, ClassInterface, ClassVarSet,
 		% relies on this
 		OrderedInstanceMethods = list__reverse(RevInstanceMethods),
 
-		InstanceDefn2 = hlds_instance_defn(A, B, C, D,
+		InstanceDefn2 = hlds_instance_defn(A, B, C, D, E,
 				concrete(OrderedInstanceMethods),
-				MaybePredProcs, G, H),
+				MaybePredProcs, H, I),
 
 		%
 		% Check if there are any instance methods left over,
 		% which did not match any of the methods from the
 		% class interface.
 		%
-		InstanceDefn2 = hlds_instance_defn(_, Context,
+		InstanceDefn2 = hlds_instance_defn(_, _, Context,
 			_, _, _, _, _, _),
 		check_for_bogus_methods(InstanceMethods, ClassId, PredIds,
 			Context, ModuleInfo1, Errors1, Errors2)
@@ -403,7 +404,7 @@ check_instance_pred(ClassId, ClassVars, ClassInterface, PredId,
 		ProcIds, 
 		ArgModes),
 	
-	InstanceDefn0 = hlds_instance_defn(Status, _, _, InstanceTypes, 
+	InstanceDefn0 = hlds_instance_defn(_, Status, _, _, InstanceTypes, 
 		_, _, _, _),
 
 		% Work out the name of the predicate that we will generate
@@ -440,10 +441,10 @@ check_instance_pred(ClassId, ClassVars, ClassInterface, PredId,
 check_instance_pred_procs(ClassId, ClassVars, MethodName, Markers,
 		InstanceDefn0, InstanceDefn, OrderedInstanceMethods0,
 		OrderedInstanceMethods, Info0, Info, IO0, IO) :-
-	InstanceDefn0 = hlds_instance_defn(A, InstanceContext, 
+	InstanceDefn0 = hlds_instance_defn(A, B, InstanceContext, 
 				InstanceConstraints, InstanceTypes,
 				InstanceBody, MaybeInstancePredProcs,
-				InstanceVarSet, H),
+				InstanceVarSet, I),
 	Info0 = instance_method_info(ModuleInfo, QualInfo, PredName, Arity,
 		ExistQVars, ArgTypes, ClassContext, ArgModes, Errors0,
 		ArgTypeVars, Status, PredOrFunc),
@@ -456,7 +457,7 @@ check_instance_pred_procs(ClassId, ClassVars, MethodName, Markers,
 			[InstanceMethod | OrderedInstanceMethods0],
 		InstanceMethod = instance_method(_, _, InstancePredDefn,
 					_, Context),
-		produce_auxiliary_procs(ClassVars, Markers,
+		produce_auxiliary_procs(ClassId, ClassVars, Markers,
 			InstanceTypes, InstanceConstraints, 
 			InstanceVarSet, 
 			InstancePredDefn, Context,
@@ -478,9 +479,9 @@ check_instance_pred_procs(ClassId, ClassVars, MethodName, Markers,
 			MaybeInstancePredProcs = no,
 			InstancePredProcs = InstancePredProcs1
 		),
-		InstanceDefn = hlds_instance_defn(A, Context, 
+		InstanceDefn = hlds_instance_defn(A, B, Context, 
 			InstanceConstraints, InstanceTypes, InstanceBody,
-			yes(InstancePredProcs), InstanceVarSet, H)
+			yes(InstancePredProcs), InstanceVarSet, I)
 	;
 		MatchingInstanceMethods = [I1, I2 | Is]
 	->
@@ -608,43 +609,36 @@ get_matching_instance_defns(concrete(InstanceMethods), PredOrFunc, MethodName,
 pred_or_func_to_string(predicate, "predicate").
 pred_or_func_to_string(function, "function").
 
-:- pred produce_auxiliary_procs(list(tvar), pred_markers, list(type),
+:- pred produce_auxiliary_procs(class_id, list(tvar), pred_markers, list(type),
 	list(class_constraint), tvarset, instance_proc_def, prog_context,
 	pred_id, list(proc_id), instance_method_info, instance_method_info,
 	io__state, io__state).
-:- mode produce_auxiliary_procs(in, in, in, in, in, in, in, out, out, 
+:- mode produce_auxiliary_procs(in, in, in, in, in, in, in, in, out, out, 
 	in, out, di, uo) is det.
 
-produce_auxiliary_procs(ClassVars, Markers0,
+produce_auxiliary_procs(ClassId, ClassVars, Markers0,
 		InstanceTypes0, InstanceConstraints0, InstanceVarSet,
 		InstancePredDefn, Context, PredId,
 		InstanceProcIds, Info0, Info, IO0, IO) :-
 
 	Info0 = instance_method_info(ModuleInfo0, QualInfo0, PredName,
-		Arity, ExistQVars0, ArgTypes0, ClassContext0, ArgModes,
-		Errors, ArgTypeVars0, Status0, PredOrFunc),
+		Arity, ExistQVars0, ArgTypes0, ClassMethodClassContext0,
+		ArgModes, Errors, ArgTypeVars0, Status0, PredOrFunc),
 
 		% Rename the instance variables apart from the class variables
 	varset__merge_subst(ArgTypeVars0, InstanceVarSet, ArgTypeVars1,
 		RenameSubst),
 	term__apply_substitution_to_list(InstanceTypes0, RenameSubst,
-		InstanceTypes),
+		InstanceTypes1),
 	apply_subst_to_constraint_list(RenameSubst, InstanceConstraints0,
-		InstanceConstraints),
+		InstanceConstraints1),
 
 		% Work out what the type variables are bound to for this
 		% instance, and update the class types appropriately.
-	map__from_corresponding_lists(ClassVars, InstanceTypes, TypeSubst),
+	map__from_corresponding_lists(ClassVars, InstanceTypes1, TypeSubst),
 	term__apply_substitution_to_list(ArgTypes0, TypeSubst, ArgTypes1),
-	apply_subst_to_constraints(TypeSubst, ClassContext0, ClassContext1),
-
-		% Add the constraints from the instance declaration to the 
-		% constraints from the class method. This allows an instance
-		% method to have constraints on it which are not part of the
-		% instance declaration as a whole.
-	ClassContext1 = constraints(UnivConstraints1, ExistConstraints),
-	list__append(InstanceConstraints, UnivConstraints1, UnivConstraints),
-	ClassContext2 = constraints(UnivConstraints, ExistConstraints),
+	apply_subst_to_constraints(TypeSubst, ClassMethodClassContext0,
+		ClassMethodClassContext1),
 
 		% Get rid of any unwanted type variables
 	term__vars_list(ArgTypes1, VarsToKeep0),
@@ -653,8 +647,21 @@ produce_auxiliary_procs(ClassVars, Markers0,
 	term__apply_variable_renaming_to_list(ArgTypes1, SquashSubst, 
 		ArgTypes),
 	apply_variable_renaming_to_constraints(SquashSubst,
-		ClassContext2, ClassContext),
+		ClassMethodClassContext1, ClassMethodClassContext),
 	apply_partial_map_to_list(ExistQVars0, SquashSubst, ExistQVars),
+	apply_variable_renaming_to_list(InstanceTypes1, SquashSubst,
+		InstanceTypes),
+	apply_variable_renaming_to_constraint_list(SquashSubst,
+		InstanceConstraints1, InstanceConstraints),
+
+		% Add the constraints from the instance declaration to the 
+		% constraints from the class method. This allows an instance
+		% method to have constraints on it which are not part of the
+		% instance declaration as a whole.
+	ClassMethodClassContext = constraints(UnivConstraints1,
+					ExistConstraints),
+	list__append(InstanceConstraints, UnivConstraints1, UnivConstraints),
+	ClassContext = constraints(UnivConstraints, ExistConstraints),
 
 		% Introduce a new predicate which calls the implementation
 		% given in the instance declaration.
@@ -662,7 +669,17 @@ produce_auxiliary_procs(ClassVars, Markers0,
 
 	Cond = true,
 	map__init(Proofs),
-	add_marker(Markers0, class_instance_method, Markers),
+	add_marker(Markers0, class_instance_method, Markers1),
+	( InstancePredDefn = name(_) ->
+		% For instance methods which are defined using the named
+		% syntax (e.g. "pred(...) is ...") rather than the clauses
+		% syntax, we record an additional marker; the only effect
+		% of this marker is that we output slightly different
+		% error messages for such predicates.
+		add_marker(Markers1, named_class_instance_method, Markers)
+	;
+		Markers = Markers1
+	),
 	module_info_globals(ModuleInfo0, Globals),
 	globals__lookup_string_option(Globals, aditi_user, User),
 
@@ -670,8 +687,6 @@ produce_auxiliary_procs(ClassVars, Markers0,
 	produce_instance_method_clauses(InstancePredDefn, PredOrFunc,
 		PredArity, ArgTypes, Markers, Context, ClausesInfo,
 		ModuleInfo0, ModuleInfo1, QualInfo0, QualInfo, IO0, IO),
-
-	pred_info_set_clauses_info(PredInfo1, ClausesInfo, PredInfo),
 
 	( status_is_imported(Status0, yes) ->
 		Status = opt_imported
@@ -683,6 +698,16 @@ produce_auxiliary_procs(ClassVars, Markers0,
 		ExistQVars, ArgTypes, Cond, Context, ClausesInfo, Status,
 		Markers, none, PredOrFunc, ClassContext, Proofs, User,
 		PredInfo0),
+	pred_info_set_clauses_info(PredInfo0, ClausesInfo, PredInfo1),
+
+	% Fill in some information in the pred_info which is
+	% used by polymorphism to make sure the type-infos
+	% and typeclass-infos are added in the correct order.
+	MethodConstraints = instance_method_constraints(ClassId,
+			InstanceTypes, InstanceConstraints,
+			ClassMethodClassContext),
+	pred_info_set_maybe_instance_method_constraints(PredInfo1,
+		yes(MethodConstraints), PredInfo2),
 
 		% Add procs with the expected modes and determinisms
 	AddProc = lambda([ModeAndDet::in, NewProcId::out,
@@ -694,8 +719,7 @@ produce_auxiliary_procs(ClassVars, Markers0,
 			NewPredInfo, NewProcId)
 	)),
 	list__map_foldl(AddProc, ArgModes, InstanceProcIds, 
-		PredInfo0, PredInfo1),
-
+		PredInfo2, PredInfo),
 
 	module_info_get_predicate_table(ModuleInfo1, PredicateTable1),
 	module_info_get_partial_qualifier_info(ModuleInfo1, PQInfo),
@@ -767,8 +791,8 @@ check_superclass_conformance(ClassId, SuperClasses0, ClassVars0, ClassVarSet,
 		InstanceDefn0, InstanceDefn, 
 		Errors0 - ModuleInfo, Errors - ModuleInfo) :-
 
-	InstanceDefn0 = hlds_instance_defn(A, Context, InstanceConstraints,
-		InstanceTypes, E, F, InstanceVarSet0, Proofs0),
+	InstanceDefn0 = hlds_instance_defn(A, B, Context, InstanceConstraints,
+		InstanceTypes, F, G, InstanceVarSet0, Proofs0),
 	varset__merge_subst(InstanceVarSet0, ClassVarSet, InstanceVarSet1,
 		Subst),
 
@@ -791,13 +815,11 @@ check_superclass_conformance(ClassId, SuperClasses0, ClassVars0, ClassVarSet,
 	module_info_instances(ModuleInfo, InstanceTable),
 	module_info_superclasses(ModuleInfo, SuperClassTable),
 
-	term__vars_list(InstanceTypes, UnivTvars),
-
 		% Try to reduce the superclass constraints,
 		% using the declared instance constraints
 		% and the usual context reduction rules.
 	typecheck__reduce_context_by_rule_application(InstanceTable, 
-		SuperClassTable, InstanceConstraints, UnivTvars, TypeSubst,
+		SuperClassTable, InstanceConstraints, TypeSubst,
 		InstanceVarSet1, InstanceVarSet2, Proofs0, Proofs1,
 		SuperClasses, UnprovenConstraints),
 
@@ -805,8 +827,8 @@ check_superclass_conformance(ClassId, SuperClasses0, ClassVars0, ClassVarSet,
 		UnprovenConstraints = []
 	->
 		Errors = Errors0,
-		InstanceDefn = hlds_instance_defn(A, Context, 
-			InstanceConstraints, InstanceTypes, E, F, 
+		InstanceDefn = hlds_instance_defn(A, B, Context, 
+			InstanceConstraints, InstanceTypes, F, G,
 			InstanceVarSet2, Proofs1)
 	;
 		ClassId = class_id(ClassName, _ClassArity),

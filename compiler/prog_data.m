@@ -91,9 +91,9 @@
 		%	ClassMethods, VarNames
 
 	;	instance(list(class_constraint), class_name, list(type),
-			instance_body, tvarset)
+			instance_body, tvarset, module_name)
 		%	DerivingClass, ClassName, Types, 
-		%	MethodInstances, VarNames
+		%	MethodInstances, VarNames, ModuleContainingInstance
 
 	;	nothing.
 		% used for items that should be ignored (currently only
@@ -104,12 +104,11 @@
 	--->	type_only(type)
 	;	type_and_mode(type, mode).
 
-	% We only support C right now.
 :- type foreign_language
 	--->	c
 % 	;	cplusplus
 % 	;	csharp
-% 	;	managedcplusplus
+ 	;	managed_cplusplus
 % 	;	java
 % 	;	il
 	.
@@ -144,18 +143,21 @@
 %
 
 :- type pragma_type 
-	--->	c_header_code(string)
+			% a foreign language declaration, such as C
+			% header code.
+	--->	foreign_decl(foreign_language, string)
 
 	;	foreign(foreign_language, string)
 
-	;	foreign(foreign_language, pragma_foreign_code_attributes,
+	;	foreign(pragma_foreign_code_attributes,
 			sym_name, pred_or_func, list(pragma_var),
 			prog_varset, pragma_foreign_code_impl)
-			% Set of C code attributes, eg.:
+			% Set of foreign code attributes, eg.:
+			%	what language this code is in
 			%	whether or not the code may call Mercury,
 			%	whether or not the code is thread-safe
 			% PredName, Predicate or Function, Vars/Mode, 
-			% VarNames, C Code Implementation Info
+			% VarNames, Foreign Code Implementation Info
 	
 	;	type_spec(sym_name, sym_name, arity, maybe(pred_or_func),
 			maybe(list(mode)), type_subst, tvarset)
@@ -280,6 +282,7 @@
 					% evaluation
 	;	eval_loop_check		% loop check only
 	;	eval_memo		% memoing + loop check 
+	;	eval_table_io		% memoing I/O actions for debugging
 	;	eval_minimal.		% minimal model 
 					% evaluation 
 %
@@ -518,8 +521,8 @@
 		% `pragma_c_code_attribute's.
 :- type pragma_foreign_code_attributes.
 
-:- pred default_attributes(pragma_foreign_code_attributes).
-:- mode default_attributes(out) is det.
+:- pred default_attributes(foreign_language, pragma_foreign_code_attributes).
+:- mode default_attributes(in, out) is det.
 
 :- pred may_call_mercury(pragma_foreign_code_attributes, may_call_mercury).
 :- mode may_call_mercury(in, out) is det.
@@ -534,6 +537,13 @@
 :- pred set_thread_safe(pragma_foreign_code_attributes, thread_safe,
 		pragma_foreign_code_attributes).
 :- mode set_thread_safe(in, in, out) is det.
+
+:- pred foreign_language(pragma_foreign_code_attributes, foreign_language).
+:- mode foreign_language(in, out) is det.
+
+:- pred set_foreign_language(pragma_foreign_code_attributes, foreign_language,
+		pragma_foreign_code_attributes).
+:- mode set_foreign_language(in, in, out) is det.
 
 :- pred tabled_for_io(pragma_foreign_code_attributes, tabled_for_io).
 :- mode tabled_for_io(in, out) is det.
@@ -928,6 +938,14 @@
 	--->	must_be_qualified
 	;	may_be_unqualified.
 
+	% Convert the foreign code attributes to their source code
+	% representations suitable for placing in the attributes list of
+	% the pragma (not all attributes have one).
+	% In particular, the foreign language attribute needs to be
+	% handled separately as it belongs at the start of the pragma.
+:- pred attributes_to_strings(pragma_foreign_code_attributes::in,
+		list(string)::out) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -935,22 +953,23 @@
 
 :- type pragma_foreign_code_attributes
 	--->	attributes(
+			foreign_language 	:: foreign_language,
 			may_call_mercury	:: may_call_mercury,
 			thread_safe		:: thread_safe,
 			tabled_for_io		:: tabled_for_io
 		).
 
-default_attributes(attributes(may_call_mercury, not_thread_safe,
-	not_tabled_for_io)).
+default_attributes(Language, 
+	attributes(Language, may_call_mercury, not_thread_safe, 
+		not_tabled_for_io)).
 
-may_call_mercury(Attrs, MayCallMercury) :-
-	MayCallMercury = Attrs ^ may_call_mercury.
+may_call_mercury(Attrs, Attrs ^ may_call_mercury).
 
-thread_safe(Attrs, ThreadSafe) :-
-	ThreadSafe = Attrs ^ thread_safe.
+thread_safe(Attrs, Attrs ^ thread_safe).
 
-tabled_for_io(Attrs, TabledForIo) :-
-	TabledForIo = Attrs ^ tabled_for_io.
+foreign_language(Attrs, Attrs ^ foreign_language).
+
+tabled_for_io(Attrs, Attrs ^ tabled_for_io).
 
 set_may_call_mercury(Attrs0, MayCallMercury, Attrs) :-
 	Attrs = Attrs0 ^ may_call_mercury := MayCallMercury.
@@ -958,7 +977,38 @@ set_may_call_mercury(Attrs0, MayCallMercury, Attrs) :-
 set_thread_safe(Attrs0, ThreadSafe, Attrs) :-
 	Attrs = Attrs0 ^ thread_safe := ThreadSafe.
 
+set_foreign_language(Attrs0, ForeignLanguage, Attrs) :-
+	Attrs = Attrs0 ^ foreign_language := ForeignLanguage.
+
 set_tabled_for_io(Attrs0, TabledForIo, Attrs) :-
 	Attrs = Attrs0 ^ tabled_for_io := TabledForIo.
+
+attributes_to_strings(Attrs, StringList) :-
+	% We ignore Lang because it isn't an attribute that you can put
+	% in the attribute list -- the foreign language specifier string
+	% is at the start of the pragma.
+	Attrs = attributes(_Lang, MayCallMercury, ThreadSafe, TabledForIO),
+	(
+		MayCallMercury = may_call_mercury,
+		MayCallMercuryStr = "may_call_mercury"
+	;
+		MayCallMercury = will_not_call_mercury,
+		MayCallMercuryStr = "will_not_call_mercury"
+	),
+	(
+		ThreadSafe = not_thread_safe,
+		ThreadSafeStr = "not_thread_safe"
+	;
+		ThreadSafe = thread_safe,
+		ThreadSafeStr = "thread_safe"
+	),
+	(
+		TabledForIO = tabled_for_io,
+		TabledForIOStr = "tabled_for_io"
+	;
+		TabledForIO = not_tabled_for_io,
+		TabledForIOStr = "not_tabled_for_io"
+	),
+	StringList = [MayCallMercuryStr, ThreadSafeStr, TabledForIOStr].
 
 %-----------------------------------------------------------------------------%

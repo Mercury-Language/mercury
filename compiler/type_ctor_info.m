@@ -130,21 +130,31 @@ type_ctor_info__gen_type_ctor_gen_info(TypeId, TypeName, TypeArity, TypeDefn,
 		map__lookup(SpecMap, compare - TypeId, ComparePredId),
 		special_pred_mode_num(compare, CompareProcInt),
 		proc_id_to_int(CompareProcId, CompareProcInt),
-		MaybeCompare = yes(proc(ComparePredId, CompareProcId)),
-
+		MaybeCompare = yes(proc(ComparePredId, CompareProcId))
+	;
+		MaybeUnify = no,
+		MaybeCompare = no
+	),
+	globals__lookup_bool_option(Globals, use_solve_equal, UseSolveEqual),
+	(
+		UseSolveEqual = yes
+	->
 		map__lookup(SpecMap, solve_equal - TypeId, SolveEqualPredId),
 		special_pred_mode_num(solve_equal, SolveEqualProcInt),
 		proc_id_to_int(SolveEqualProcId, SolveEqualProcInt),
-		MaybeSolveEqual = yes(proc(SolveEqualPredId, SolveEqualProcId)),
-
+		MaybeSolveEqual = yes(proc(SolveEqualPredId, SolveEqualProcId))
+	;
+		MaybeSolveEqual = no
+	),
+	globals__lookup_bool_option(Globals, use_init, UseInit),
+	(
+		UseInit = yes
+	->
 		map__lookup(SpecMap, init - TypeId, InitPredId),
 		special_pred_mode_num(init, InitProcInt),
 		proc_id_to_int(InitProcId, InitProcInt),
 		MaybeInit = yes(proc(InitPredId, InitProcId))
 	;
-		MaybeUnify = no,
-		MaybeCompare = no,
-		MaybeSolveEqual = no,
 		MaybeInit = no
 	),
 	TypeCtorGenInfo = type_ctor_gen_info(TypeId, ModuleName,
@@ -313,9 +323,11 @@ type_ctor_info__gen_layout_info(ModuleName, TypeName, TypeArity, HldsDefn,
 			Enum = no,
 			globals__lookup_bool_option(Globals,
 				unboxed_no_tag_types, NoTagOption),
-			( NoTagOption = yes, ReserveTag = no,
-			  type_constructors_are_no_tag_type(Ctors, Name,
-			  	ArgType) ->
+			(
+				NoTagOption = yes, ReserveTag = no,
+				type_constructors_are_no_tag_type(Ctors,
+					Name, ArgType, MaybeArgName)
+			->
 				( term__is_ground(ArgType) ->
 					Inst = equiv_type_is_ground
 				;
@@ -323,7 +335,7 @@ type_ctor_info__gen_layout_info(ModuleName, TypeName, TypeArity, HldsDefn,
 				),
 				TypeCtorRep = notag(EqualityAxioms, Inst),
 				type_ctor_info__make_notag_tables(Name,
-					ArgType, RttiTypeId,
+					ArgType, MaybeArgName, RttiTypeId,
 					TypeTables, FunctorsInfo, LayoutInfo),
 				NumPtags = -1
 			;
@@ -382,10 +394,10 @@ make_pseudo_type_info_tables(HO_TypeInfo, Tables0, Tables) :-
 % Make the functor and notag tables for a notag type.
 
 :- pred type_ctor_info__make_notag_tables(sym_name::in, (type)::in,
-	rtti_type_id::in, list(rtti_data)::out,
+	maybe(string)::in, rtti_type_id::in, list(rtti_data)::out,
 	type_ctor_functors_info::out, type_ctor_layout_info::out) is det.
 
-type_ctor_info__make_notag_tables(SymName, ArgType, RttiTypeId,
+type_ctor_info__make_notag_tables(SymName, ArgType, MaybeArgName, RttiTypeId,
 		TypeTables, FunctorsInfo, LayoutInfo) :-
 	unqualify_name(SymName, FunctorName),
 	RttiTypeId = rtti_type_id(_, _, UnivTvars),
@@ -394,7 +406,8 @@ type_ctor_info__make_notag_tables(SymName, ArgType, RttiTypeId,
 	ExistTvars = [],
 	make_pseudo_type_info_and_tables(ArgType, UnivTvars, ExistTvars,
 		RttiData, [], Tables0),
-	FunctorDesc = notag_functor_desc(RttiTypeId, FunctorName, RttiData),
+	FunctorDesc = notag_functor_desc(RttiTypeId, FunctorName, RttiData,
+		MaybeArgName),
 	FunctorRttiName = notag_functor_desc,
 
 	FunctorsInfo = notag_functors(FunctorRttiName),
@@ -595,21 +608,29 @@ type_ctor_info__make_du_functor_tables([Functor | Functors], Ordinal,
 
 :- pred type_ctor_info__generate_arg_info_tables(module_info::in,
 	rtti_type_id::in, int::in, list(constructor_arg)::in, existq_tvars::in,
-	maybe(rtti_name)::out, rtti_name::out, list(rtti_data)::out, int::out)
-	is det.
+	maybe(rtti_name)::out, maybe(rtti_name)::out, list(rtti_data)::out,
+	int::out) is det.
 
 type_ctor_info__generate_arg_info_tables(
 		ModuleInfo, RttiTypeId, Ordinal, Args, ExistTvars,
-		MaybeFieldNamesRttiName, FieldTypesRttiName, Tables,
+		MaybeFieldNamesRttiName, MaybeFieldTypesRttiName, Tables,
 		ContainsVarBitVector) :-
 	RttiTypeId = rtti_type_id(_TypeModule, _TypeName, TypeArity),
 	type_ctor_info__generate_arg_infos(Args, TypeArity, ExistTvars,
 		ModuleInfo, MaybeArgNames, PseudoTypeInfos,
 		0, 0, ContainsVarBitVector, [], Tables0),
-	FieldTypesRttiName = field_types(Ordinal),
-	FieldTypesTable = field_types(RttiTypeId, Ordinal,
+	(
+		PseudoTypeInfos = [],
+		MaybeFieldTypesRttiName = no,
+		Tables1 = Tables0
+	;
+		PseudoTypeInfos = [_|_],
+		FieldTypesTable = field_types(RttiTypeId, Ordinal,
 			PseudoTypeInfos),
-	Tables1 = [FieldTypesTable | Tables0],
+		FieldTypesRttiName = field_types(Ordinal),
+		MaybeFieldTypesRttiName = yes(FieldTypesRttiName),
+		Tables1 = [FieldTypesTable | Tables0]
+	),
 	list__filter((lambda([MaybeName::in] is semidet, MaybeName = yes(_))),
 		MaybeArgNames, FieldNames),
 	(
@@ -736,7 +757,7 @@ find_type_info_index(Constraints, ClassTable, StartSlot, Tvar,
 	class_constraint::out, int::in, int::out, int::out) is det.
 
 first_matching_type_class_info([], _, _, _, _, _) :-
-	error("base_type_layout: constrained type info not found").
+	error("first_matching_type_class_info: not found").
 first_matching_type_class_info([C|Cs], Tvar, MatchingConstraint, N0, N,
 		TypeInfoIndex) :-
 	C = constraint(_, Ts),

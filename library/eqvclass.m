@@ -25,6 +25,8 @@
 :- pred eqvclass__init(eqvclass(T)).
 :- mode eqvclass__init(out) is det.
 
+:- func eqvclass__init = eqvclass(T).
+
 	% Is this item known to the equivalence class?
 
 :- pred eqvclass__is_member(eqvclass(T), T).
@@ -37,6 +39,8 @@
 :- pred eqvclass__ensure_element(eqvclass(T), T, eqvclass(T)).
 :- mode eqvclass__ensure_element(in, in, out) is det.
 
+:- func eqvclass__ensure_element(eqvclass(T), T) = eqvclass(T).
+
 	% Make an element known to the equivalence class.
 	% The element must not already be known to the class;
 	% it is created without any equivalence relationships.
@@ -44,17 +48,23 @@
 :- pred eqvclass__new_element(eqvclass(T), T, eqvclass(T)).
 :- mode eqvclass__new_element(in, in, out) is det.
 
+:- func eqvclass__new_element(eqvclass(T), T) = eqvclass(T).
+
 	% Make two elements of the equivalence class equivalent.
 	% It is ok if they already are.
 
 :- pred eqvclass__ensure_equivalence(eqvclass(T), T, T, eqvclass(T)).
 :- mode eqvclass__ensure_equivalence(in, in, in, out) is det.
 
+:- func eqvclass__ensure_equivalence(eqvclass(T), T, T) = eqvclass(T).
+
 	% Make two elements of the equivalence class equivalent.
 	% It is an error if they are already equivalent.
 
 :- pred eqvclass__new_equivalence(eqvclass(T), T, T, eqvclass(T)).
 :- mode eqvclass__new_equivalence(in, in, in, out) is det.
+
+:- func eqvclass__new_equivalence(eqvclass(T), T, T) = eqvclass(T).
 
 	% Test if two elements are equivalent.
 
@@ -71,10 +81,14 @@
 :- pred eqvclass__partition_set(eqvclass(T), set(set(T))).
 :- mode eqvclass__partition_set(in, out) is det.
 
+:- func eqvclass__partition_set(eqvclass(T)) = set(set(T)).
+
 	% Return a list of the partitions of the equivalence class.
 
 :- pred eqvclass__partition_list(eqvclass(T), list(set(T))).
 :- mode eqvclass__partition_list(in, out) is det.
+
+:- func eqvclass__partition_list(eqvclass(T)) = list(set(T)).
 
 	% Create an equivalence class from a partition set.
 	% It is an error if the sets are not disjoint.
@@ -82,11 +96,15 @@
 :- pred eqvclass__partition_set_to_eqvclass(set(set(T)), eqvclass(T)).
 :- mode eqvclass__partition_set_to_eqvclass(in, out) is det.
 
+:- func eqvclass__partition_set_to_eqvclass(set(set(T))) = eqvclass(T).
+
 	% Create an equivalence class from a list of partitions.
 	% It is an error if the sets are not disjoint.
 
 :- pred eqvclass__partition_list_to_eqvclass(list(set(T)), eqvclass(T)).
 :- mode eqvclass__partition_list_to_eqvclass(in, out) is det.
+
+:- func eqvclass__partition_list_to_eqvclass(list(set(T))) = eqvclass(T).
 
 %---------------------------------------------------------------------------%
 
@@ -300,31 +318,6 @@ eqvclass__make_partition([Element | Elements], Id, ElementMap0, ElementMap) :-
 %---------------------------------------------------------------------------%
 % Ralph Becket <rwab1@cl.cam.ac.uk> 29/04/99
 % 	Function forms added.
-
-:- interface.
-
-:- func eqvclass__init = eqvclass(T).
-
-:- func eqvclass__ensure_element(eqvclass(T), T) = eqvclass(T).
-
-:- func eqvclass__new_element(eqvclass(T), T) = eqvclass(T).
-
-:- func eqvclass__ensure_equivalence(eqvclass(T), T, T) = eqvclass(T).
-
-:- func eqvclass__new_equivalence(eqvclass(T), T, T) = eqvclass(T).
-
-:- func eqvclass__partition_set(eqvclass(T)) = set(set(T)).
-
-:- func eqvclass__partition_list(eqvclass(T)) = list(set(T)).
-
-:- func eqvclass__partition_set_to_eqvclass(set(set(T))) = eqvclass(T).
-
-:- func eqvclass__partition_list_to_eqvclass(list(set(T))) = eqvclass(T).
-
-% ---------------------------------------------------------------------------- %
-% ---------------------------------------------------------------------------- %
-
-:- implementation.
 
 eqvclass__init = EC :-
 	eqvclass__init(EC).

@@ -178,7 +178,7 @@ first_order_check_goal(not(Goal - GoalInfo), _GoalInfo, _Negated,
 		WholeScc, ThisPredProcId, Error, Module0, Module) -->
 	first_order_check_goal(Goal, GoalInfo, yes, WholeScc, ThisPredProcId,
 		Error, Module0, Module).
-first_order_check_goal(pragma_foreign_code(_Language, _Attributes, CPred,
+first_order_check_goal(pragma_foreign_code(_Attributes, CPred,
 			CProc, _, _, _, _), 
 		GoalInfo, Negated, WholeScc, ThisPredProcId, 
 		Error, Module0, Module) -->
@@ -335,7 +335,7 @@ higher_order_check_goal(not(Goal - GoalInfo), _GoalInfo, _Negated, WholeScc,
 		ThisPredProcId, HighOrderLoops, Error, Module0, Module) -->
 	higher_order_check_goal(Goal, GoalInfo, yes, WholeScc, ThisPredProcId,
 		HighOrderLoops, Error, Module0, Module).
-higher_order_check_goal(pragma_foreign_code(_, _IsRec, _, _, _, _, _, _),
+higher_order_check_goal(pragma_foreign_code(_IsRec, _, _, _, _, _, _),
 	_GoalInfo, _Negated, _WholeScc, _ThisPredProcId, _HighOrderLoops, 
 	_, Module, Module) --> [].
 higher_order_check_goal(unify(_Var, _RHS, _Mode, _Uni, _Context), _GoalInfo,
@@ -822,7 +822,7 @@ check_goal1(not(Goal - _GoalInfo), Calls0, Calls, HasAT0, HasAT, CallsHO0,
 		CallsHO) :- 
 	check_goal1(Goal, Calls0, Calls, HasAT0, HasAT, CallsHO0, CallsHO).
 
-check_goal1(pragma_foreign_code(_Lang, _Attrib, _CPred, _CProc, _, _, _, _),
+check_goal1(pragma_foreign_code(_Attrib, _CPred, _CProc, _, _, _, _),
 		Calls, Calls, HasAT, HasAT, CallsHO, CallsHO).
 
 check_goal1(bi_implication(_, _), _, _, _, _, _, _) :-
@@ -913,7 +913,7 @@ get_called_procs(some(_Vars, _, Goal - _GoalInfo), Calls0, Calls) :-
 	get_called_procs(Goal, Calls0, Calls).
 get_called_procs(not(Goal - _GoalInfo), Calls0, Calls) :-
 	get_called_procs(Goal, Calls0, Calls).
-get_called_procs(pragma_foreign_code(_Lang, _Attrib, _CPred, _CProc,
+get_called_procs(pragma_foreign_code(_Attrib, _CPred, _CProc,
 		_, _, _, _), Calls, Calls).
 get_called_procs(bi_implication(_, _), _, _) :-
 	% these should have been expanded out by now

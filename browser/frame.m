@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1998-2000 The University of Melbourne.
+% Copyright (C) 1998-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -97,7 +97,7 @@ frame__hglue(LeftFrame, RightFrame, GluedFrame) :-
 :- pred frame_right_pad(frame, frame).
 :- mode frame_right_pad(in, out) is det.
 frame_right_pad(Frame, PaddedFrame) :-
-	list__map(string__length, Frame, Lengths),
+	Lengths = list__map((func(Str) = string__length(Str)), Frame),
 	list__foldl(int__max, Lengths, 0, MaxLen),
 	list__map(subtract(MaxLen), Lengths, Paddings),
 	add_right_padding(Frame, Paddings, PaddedFrame).
@@ -134,7 +134,7 @@ frame_lower_pad(Frame, PadLines, PaddedFrame) :-
 
 	% Horizontal size (width) of a frame
 frame__hsize(Frame, HSize) :-
-	list__map(string__length, Frame, Lengths),
+	Lengths = list__map(func(Str) = string__length(Str), Frame),
 	list__foldl(int__max, Lengths, 0, MaxLen),
 	HSize = MaxLen.
 

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2000 The University of Melbourne.
+% Copyright (C) 1997-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -150,23 +150,23 @@
 :- pragma c_code(new_mutvar(Val::in, Mutvar::out, S0::mdi, S::muo),
 		will_not_call_mercury,
 "
-	incr_hp(Mutvar, 1);
-	*(Word *)Mutvar = Val;
+	MR_incr_hp(Mutvar, 1);
+	*(MR_Word *)Mutvar = Val;
 	S = S0;
 ").
 
 :- pragma c_code(get_mutvar(Mutvar::in, Val::out, S0::mdi, S::muo),
 		will_not_call_mercury,
 "
-	Val = *(Word *)Mutvar;
+	Val = *(MR_Word *)Mutvar;
 	S = S0;
 ").
 
 :- pragma c_code(set_mutvar(Mutvar::in, Val::in, S0::mdi, S::muo),
 		will_not_call_mercury,
 "
-	MR_trail_current_value((Word *) Mutvar);
-	*(Word *)Mutvar = Val;
+	MR_trail_current_value((MR_Word *) Mutvar);
+	*(MR_Word *)Mutvar = Val;
 	S = S0;
 ").
 
@@ -175,8 +175,8 @@
 :- pragma c_code(new_ref(Val::mdi, Ref::out, S0::mdi, S::muo),
 		will_not_call_mercury,
 "
-	incr_hp(Ref, 1);
-	*(Word *)Ref = Val;
+	MR_incr_hp(Ref, 1);
+	*(MR_Word *)Ref = Val;
 	S = S0;
 ").
 
@@ -193,7 +193,7 @@ copy_ref_value(Ref, Val) -->
 :- pragma c_code(unsafe_ref_value(Ref::in, Val::uo, S0::mdi, S::muo),
 		will_not_call_mercury,
 "
-	Val = *(Word *)Ref;
+	Val = *(MR_Word *)Ref;
 	S = S0;
 ").
 
@@ -203,19 +203,19 @@ ref_functor(Ref, Functor, Arity) -->
 
 :- pragma c_header_code("
 	/* ML_arg() is defined in std_util.m */
-extern  bool    ML_arg(MR_TypeInfo type_info, Word *term, int arg_index,
-		    MR_TypeInfo *arg_type_info_ptr, Word **argument_ptr);
+extern  bool    ML_arg(MR_TypeInfo type_info, MR_Word *term, int arg_index,
+		    MR_TypeInfo *arg_type_info_ptr, MR_Word **argument_ptr);
 ").
 
 :- pragma c_code(arg_ref(Ref::in, ArgNum::in, ArgRef::out, S0::mdi, S::muo),
 		will_not_call_mercury,
 "{
 	MR_TypeInfo arg_type_info;
-	Word* arg_ref;
+	MR_Word* arg_ref;
 
-	save_transient_registers();
+	MR_save_transient_registers();
 
-	if (!ML_arg((MR_TypeInfo) TypeInfo_for_T, (Word *) Ref, ArgNum,
+	if (!ML_arg((MR_TypeInfo) TypeInfo_for_T, (MR_Word *) Ref, ArgNum,
 			&arg_type_info, &arg_ref))
 	{
 		MR_fatal_error(""tr_store__arg_ref: ""
@@ -223,14 +223,14 @@ extern  bool    ML_arg(MR_TypeInfo type_info, Word *term, int arg_index,
 	}
 
 	if (MR_compare_type_info(arg_type_info,
-		(MR_TypeInfo) TypeInfo_for_ArgT) != COMPARE_EQUAL)
+		(MR_TypeInfo) TypeInfo_for_ArgT) != MR_COMPARE_EQUAL)
 	{
 		MR_fatal_error(""tr_store__arg_ref: argument has wrong type"");
 	}
 
-	restore_transient_registers();
+	MR_restore_transient_registers();
 
-	ArgRef = (Word) arg_ref;
+	ArgRef = (MR_Word) arg_ref;
 	S = S0;
 }").
 
@@ -238,11 +238,11 @@ extern  bool    ML_arg(MR_TypeInfo type_info, Word *term, int arg_index,
 		will_not_call_mercury,
 "{
 	MR_TypeInfo arg_type_info;
-	Word* arg_ref;
+	MR_Word* arg_ref;
 
-	save_transient_registers();
+	MR_save_transient_registers();
 
-	if (!ML_arg((MR_TypeInfo) TypeInfo_for_T, (Word *) &Val, ArgNum,
+	if (!ML_arg((MR_TypeInfo) TypeInfo_for_T, (MR_Word *) &Val, ArgNum,
 			&arg_type_info, &arg_ref))
 	{
 		MR_fatal_error(""tr_store__new_arg_ref: ""
@@ -250,13 +250,13 @@ extern  bool    ML_arg(MR_TypeInfo type_info, Word *term, int arg_index,
 	}
 
 	if (MR_compare_type_info(arg_type_info,
-		(MR_TypeInfo) TypeInfo_for_ArgT) != COMPARE_EQUAL)
+		(MR_TypeInfo) TypeInfo_for_ArgT) != MR_COMPARE_EQUAL)
 	{
 		MR_fatal_error(""tr_store__new_arg_ref: ""
 			""argument has wrong type"");
 	}
 
-	restore_transient_registers();
+	MR_restore_transient_registers();
 
 	/*
 	** For no_tag types, the argument may have the same address as the
@@ -265,10 +265,10 @@ extern  bool    ML_arg(MR_TypeInfo type_info, Word *term, int arg_index,
 	** to copy it to the heap before returning.
 	*/
 	if (arg_ref == &Val) {
-		incr_hp(ArgRef, 1);
-		*(Word *)ArgRef = Val;
+		MR_incr_hp(ArgRef, 1);
+		*(MR_Word *)ArgRef = Val;
 	} else {
-		ArgRef = (Word) arg_ref;
+		ArgRef = (MR_Word) arg_ref;
 	}
 	S = S0;
 }").
@@ -276,23 +276,23 @@ extern  bool    ML_arg(MR_TypeInfo type_info, Word *term, int arg_index,
 :- pragma c_code(set_ref(Ref::in, ValRef::in, S0::mdi, S::muo),
 		will_not_call_mercury,
 "
-	MR_trail_current_value((Word *) Ref);
-	*(Word *)Ref = *(Word *)ValRef;
+	MR_trail_current_value((MR_Word *) Ref);
+	*(MR_Word *)Ref = *(MR_Word *)ValRef;
 	S = S0;
 ").
 
 :- pragma c_code(set_ref_value(Ref::in, Val::mdi, S0::mdi, S::muo),
 		will_not_call_mercury,
 "
-	MR_trail_current_value((Word *) Ref);
-	*(Word *)Ref = Val;
+	MR_trail_current_value((MR_Word *) Ref);
+	*(MR_Word *)Ref = Val;
 	S = S0;
 ").
 
 :- pragma c_code(extract_ref_value(_S::mdi, Ref::in, Val::out),
 		will_not_call_mercury,
 "
-	Val = *(Word *)Ref;
+	Val = *(MR_Word *)Ref;
 ").
 
 %-----------------------------------------------------------------------------%
@@ -301,8 +301,8 @@ extern  bool    ML_arg(MR_TypeInfo type_info, Word *term, int arg_index,
 		will_not_call_mercury,
 "{
 	/* unsafe - does not check type & arity, won't handle no_tag types */
-	Word *Ptr = (Word *) MR_strip_tag(Ref);
-	ArgRef = (Word) &Ptr[Arg];
+	MR_Word *Ptr = (MR_Word *) MR_strip_tag(Ref);
+	ArgRef = (MR_Word) &Ptr[Arg];
 	S = S0;
 }").
 
@@ -310,8 +310,8 @@ extern  bool    ML_arg(MR_TypeInfo type_info, Word *term, int arg_index,
 				S0::mdi, S::muo), will_not_call_mercury,
 "{
 	/* unsafe - does not check type & arity, won't handle no_tag types */
-	Word *Ptr = (Word *) MR_strip_tag(Val);
-	ArgRef = (Word) &Ptr[Arg];
+	MR_Word *Ptr = (MR_Word *) MR_strip_tag(Val);
+	ArgRef = (MR_Word) &Ptr[Arg];
 	S = S0;
 }").
 

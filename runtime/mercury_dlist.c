@@ -20,7 +20,7 @@
 MR_Dlist *
 MR_dlist_makelist0(void)
 {
-	reg	MR_Dlist	*list;
+	MR_Dlist	*list;
 
 	list = MR_GC_NEW(MR_Dlist);
 	MR_dlist_data(list) = NULL;
@@ -37,7 +37,7 @@ MR_dlist_makelist0(void)
 MR_Dlist *
 MR_dlist_makelist(const void *data)
 {
-	reg	MR_Dlist	*list;
+	MR_Dlist	*list;
 
 	MR_assert(data != NULL);
 	list = MR_dlist_makelist0();
@@ -52,7 +52,7 @@ MR_dlist_makelist(const void *data)
 MR_Dlist *
 MR_dlist_addhead(MR_Dlist *list, const void *data)
 {
-	reg	MR_Dlist	*item;
+	MR_Dlist	*item;
 
 	if (list == NULL) {
 		list = MR_dlist_makelist0();
@@ -79,7 +79,7 @@ MR_dlist_addhead(MR_Dlist *list, const void *data)
 MR_Dlist *
 MR_dlist_addtail(MR_Dlist *list, const void *data)
 {
-	reg	MR_Dlist	*item;
+	MR_Dlist	*item;
 
 	if (list == NULL) {
 		list = MR_dlist_makelist0();
@@ -151,7 +151,7 @@ MR_dlist_addlist(MR_Dlist *list1, MR_Dlist *list2)
 MR_Dlist *
 MR_dlist_addndlist(MR_Dlist *list1, MR_Dlist *list2)
 {
-	reg	MR_Dlist	*ptr;
+	MR_Dlist	*ptr;
 
 	if (list1 == NULL) {
 		list1 = MR_dlist_makelist0();
@@ -175,7 +175,7 @@ MR_dlist_addndlist(MR_Dlist *list1, MR_Dlist *list2)
 void 
 MR_dlist_insert_before(MR_Dlist *list, MR_Dlist *where, const void *data)
 {
-	reg	MR_Dlist	*item;
+	MR_Dlist	*item;
 
 	item = MR_GC_NEW(MR_Dlist);
 	MR_dlist_data(item) = data;
@@ -196,7 +196,7 @@ MR_dlist_insert_before(MR_Dlist *list, MR_Dlist *where, const void *data)
 void 
 MR_dlist_insert_after(MR_Dlist *list, MR_Dlist *where, const void *data)
 {
-	reg	MR_Dlist	*item;
+	MR_Dlist	*item;
 
 	item = MR_GC_NEW(MR_Dlist);
 	MR_dlist_data(item) = data;
@@ -264,8 +264,8 @@ MR_dlist_delete(MR_Dlist *list, MR_Dlist *item, void (* func)(const void *))
 void 
 MR_dlist_oldlist(MR_Dlist *list, void (* func)(const void *))
 {
-	reg	MR_Dlist	*ptr;
-	reg	MR_Dlist	*item;
+	MR_Dlist	*ptr;
+	MR_Dlist	*item;
 
 	if (list == NULL) {
 		return;

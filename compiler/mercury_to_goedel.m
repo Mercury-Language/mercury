@@ -213,7 +213,7 @@ goedel_output_item(typeclass(_, _, _, _, _), _) -->
 	io__write_string(Stderr, 
 			"warning: typeclass declarations not allowed. Ignoring\n").
 
-goedel_output_item(instance(_, _, _, _, _), _) -->
+goedel_output_item(instance(_, _, _, _, _, _), _) -->
 	io__stderr_stream(Stderr),
 	io__write_string(Stderr, 
 			"warning: instance declarations not allowed. Ignoring\n").

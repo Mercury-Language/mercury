@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2000 The University of Melbourne.
+% Copyright (C) 1999-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -38,10 +38,41 @@
 :- pred stmt_contains_statement(mlds__stmt, mlds__statement).
 :- mode stmt_contains_statement(in, out) is nondet.
 
+	% defn_contains_foreign_code(NativeTargetLang, Defn):
+	%	Succeeds iff this definition contains target_code
+	%	statements in a target language other than the
+	%	specified native target language.
+:- pred defn_contains_foreign_code(target_lang, mlds__defn).
+:- mode defn_contains_foreign_code(in, in) is semidet.
+
+	% Succeeds iff this definition is a type definition.
+:- pred defn_is_type(mlds__defn).
+:- mode defn_is_type(in) is semidet.
+
+	% Succeeds iff this definition is a function definition.
+:- pred defn_is_function(mlds__defn).
+:- mode defn_is_function(in) is semidet.
+
+	% Succeeds iff this definition is a data definition which
+	% defines a type_ctor_info constant.
+:- pred defn_is_type_ctor_info(mlds__defn).
+:- mode defn_is_type_ctor_info(in) is semidet.
+
+	% Succeeds iff this definition is a data definition which
+	% defines a variable whose type is mlds__commit_type.
+:- pred defn_is_commit_type_var(mlds__defn).
+:- mode defn_is_commit_type_var(in) is semidet.
+
+	% Succeeds iff this definition has `public' in the access
+	% field in its decl_flags.
+:- pred defn_is_public(mlds__defn).
+:- mode defn_is_public(in) is semidet.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
+:- import_module rtti.
 :- import_module bool, list, std_util.
 
 can_optimize_tailcall(Name, Call) :-
@@ -78,13 +109,14 @@ can_optimize_tailcall(Name, Call) :-
 	%
 	MaybeObject = no.
 
-
+%-----------------------------------------------------------------------------%
 
 statements_contains_statement(Statements, SubStatement) :-
 	list__member(Statement, Statements),
 	statement_contains_statement(Statement, SubStatement).
 
-:- pred maybe_statement_contains_statement(maybe(mlds__statement), mlds__statement).
+:- pred maybe_statement_contains_statement(maybe(mlds__statement),
+		mlds__statement).
 :- mode maybe_statement_contains_statement(in, out) is nondet.
 
 maybe_statement_contains_statement(no, _Statement) :- fail.
@@ -109,6 +141,11 @@ stmt_contains_statement(Stmt, SubStatement) :-
 		Stmt = if_then_else(_Cond, Then, MaybeElse),
 		( statement_contains_statement(Then, SubStatement)
 		; maybe_statement_contains_statement(MaybeElse, SubStatement)
+		)
+	;
+		Stmt = switch(_Type, _Val, _Range, Cases, Default),
+		( cases_contains_statement(Cases, SubStatement)
+		; default_contains_statement(Default, SubStatement)
 		)
 	;
 		Stmt = label(_Label),
@@ -137,5 +174,54 @@ stmt_contains_statement(Stmt, SubStatement) :-
 		Stmt = atomic(_AtomicStmt),
 		fail
 	).
+
+:- pred cases_contains_statement(list(mlds__switch_case), mlds__statement).
+:- mode cases_contains_statement(in, out) is nondet.
+
+cases_contains_statement(Cases, SubStatement) :-
+	list__member(Case, Cases),
+	Case = _MatchCond - Statement,
+	statement_contains_statement(Statement, SubStatement).
+
+:- pred default_contains_statement(mlds__switch_default, mlds__statement).
+:- mode default_contains_statement(in, out) is nondet.
+
+default_contains_statement(default_do_nothing, _) :- fail.
+default_contains_statement(default_is_unreachable, _) :- fail.
+default_contains_statement(default_case(Statement), SubStatement) :-
+	statement_contains_statement(Statement, SubStatement).
+
+%-----------------------------------------------------------------------------%
+
+defn_contains_foreign_code(NativeTargetLang, Defn) :-
+	Defn = mlds__defn(_Name, _Context, _Flags, Body),
+	Body = function(_, _, yes(FunctionBody)),
+	statement_contains_statement(FunctionBody, Statement),
+	Statement = mlds__statement(Stmt, _),
+	Stmt = atomic(target_code(TargetLang, _)),
+	TargetLang \= NativeTargetLang.
+
+defn_is_type(Defn) :-
+	Defn = mlds__defn(Name, _Context, _Flags, _Body),
+	Name = type(_, _).
+
+defn_is_function(Defn) :-
+	Defn = mlds__defn(Name, _Context, _Flags, _Body),
+	Name = function(_, _, _, _).
+
+defn_is_type_ctor_info(Defn) :-
+	Defn = mlds__defn(_Name, _Context, _Flags, Body),
+	Body = mlds__data(Type, _),
+	Type = mlds__rtti_type(RttiName),
+	RttiName = type_ctor_info.
+
+defn_is_commit_type_var(Defn) :-
+	Defn = mlds__defn(_Name, _Context, _Flags, Body),
+	Body = mlds__data(Type, _),
+	Type = mlds__commit_type.
+
+defn_is_public(Defn) :-
+	Defn = mlds__defn(_Name, _Context, Flags, _Body),
+	access(Flags) \= private.
 
 %-----------------------------------------------------------------------------%

@@ -1,6 +1,6 @@
 %-----------------------------------------------------------------------------%
 %
-% Copyright (C) 1997-1999 The University of Melbourne.
+% Copyright (C) 1997-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %
@@ -42,6 +42,7 @@
 	--->	(lambda)
 	;	deforestation
 	;	accumulator
+	;	type_spec(string)
 	.
 
 :- type data_category
@@ -210,16 +211,19 @@ demangle_proc -->
 	( { Category0 \= ordinary } ->
 		remove_prefix("_"),
 		remove_maybe_module_prefix(MaybeModule,
-			["IntroducedFrom__", "DeforestationIn__", "AccFrom__"]),
+			["IntroducedFrom__", "DeforestationIn__",
+			"AccFrom__", "TypeSpecOf__"]),
 		{ MaybeModule \= yes("") }
 	;
 		remove_maybe_module_prefix(MaybeModule,
-			["IntroducedFrom__", "DeforestationIn__", "AccFrom__"])
+			["IntroducedFrom__", "DeforestationIn__",
+			"AccFrom__", "TypeSpecOf__"])
 	),
 
 	%
 	% Now we need to look at the pred name and see if it is an
 	% introduced lambda predicate.
+	% XXX handle multiple prefixes
 	%
 
 	=(PredName0),
@@ -228,30 +232,62 @@ demangle_proc -->
 		( 
 			remove_prefix("IntroducedFrom__") 
 		->
-			{ IntroducedPredType = (lambda) }
+			{ IntroducedPredType0 = (lambda) }
 		;
 			remove_prefix("DeforestationIn__")
 		->
-			{ IntroducedPredType = deforestation }
+			{ IntroducedPredType0 = deforestation }
 		;
-			remove_prefix("AccFrom__"),
-			{ IntroducedPredType = accumulator }
+			remove_prefix("AccFrom__")
+		->
+			{ IntroducedPredType0 = accumulator }
+		;
+			remove_prefix("TypeSpecOf__"),
+			{ IntroducedPredType0 = type_spec("") }
 		)
 	->
-		( remove_prefix("pred__") ->
+		(
+			remove_prefix("pred__")
+		->
 			{ LambdaPredOrFunc = "pred" }
-		; remove_prefix("func__") ->
+		;
+			remove_prefix("func__")
+		->
 			{ LambdaPredOrFunc = "func" }
+		;
+			{ IntroducedPredType0 = type_spec(_) },
+			remove_prefix("pred_or_func__")
+		->
+			{ LambdaPredOrFunc = "" }
 		;
 			{ fail }
 		),
-		remove_maybe_pred_name(MPredName),
-		{ MPredName = yes(PredName) },
-		remove_int(Line),
-		remove_prefix("__"),
-		remove_int(Seq),
-		{ Category = introduced(IntroducedPredType, Line,
-			Seq, LambdaPredOrFunc) }
+		(
+			remove_maybe_pred_name(MPredName),
+			{ MPredName = yes(PredName1) },
+			( { IntroducedPredType0 = type_spec(_) } ->
+				remove_type_spec(TypeSpec),
+				{ IntroducedPredType = type_spec(TypeSpec) },
+				{ Seq = 0 },
+				{ Line = 0 }
+			;
+				{ IntroducedPredType = IntroducedPredType0 },
+				remove_int(Line),
+				remove_prefix("__"),
+				remove_int(Seq)
+			)
+		->
+			{ PredName = PredName1 },
+			{ Category = introduced(IntroducedPredType, Line,
+				Seq, LambdaPredOrFunc) }
+		;
+			% If we get here it usually means that there
+			% were multiple prefixes, which aren't dealt
+			% with properly yet. Just treat it as an
+			% ordinary name for now.
+			{ Category = ordinary },
+			{ PredName = PredName0 }
+		)
 	;
 		{ Category = Category0 },
 		{ PredName = PredName0 }
@@ -276,41 +312,49 @@ format_proc(Category, MaybeModule, PredOrFunc, PredName, Arity, ModeNum,
 	{ format_maybe_module(MaybeModule, PredName, QualifiedName) },
 	{
 		Category = unify,
-		string__format("unification predicate for type %s/%d mode %d",
+		string__format(
+			"unification predicate for type `%s/%d' mode %d",
 			[s(QualifiedName), i(Arity), i(ModeNum)],
 			MainPart)
 	;
 		Category = compare,
-		string__format("compare/3 predicate for type %s/%d",
+		string__format("compare/3 predicate for type `%s/%d'",
 			[s(QualifiedName), i(Arity)],
 			MainPart)
 	;
 		Category = index,
-		string__format("index/2 predicate for type %s/%d",
+		string__format("index/2 predicate for type `%s/%d'",
 			[s(QualifiedName), i(Arity)],
 			MainPart)
 	;
 		Category = ordinary,
-		string__format("%s %s/%d mode %d",
+		string__format("%s `%s/%d' mode %d",
 			[s(PredOrFunc), s(QualifiedName), i(Arity), i(ModeNum)],
 			MainPart)
 	;
 		Category = introduced(Type, Line, Seq, IntroPredOrFunc),
 		(
 			Type = (lambda),
-			string__format("%s goal (#%d) from %s line %d",
+			string__format("%s goal (#%d) from `%s' line %d",
 				[s(IntroPredOrFunc), i(Seq), s(QualifiedName),
 				i(Line)], MainPart)
 		;
 			Type = deforestation,
 			string__format(
-				"deforestation procedure (#%d) from %s line %d",
+			"deforestation procedure (#%d) from `%s' line %d",
 				[i(Seq), s(QualifiedName), i(Line)], MainPart)
 		;
 			Type = accumulator,
 			string__format(
-				"accumulator procedure from %s line %d",
+				"accumulator procedure from `%s' line %d",
 				[s(QualifiedName), i(Line)], MainPart)
+		;
+			Type = type_spec(TypeSpec),
+			string__format(
+				"%s `%s/%d' mode %d (type specialized %s)",
+				[s(PredOrFunc), s(QualifiedName),
+				i(Arity), i(ModeNum), s(TypeSpec)],
+				MainPart)
 		)
 	},
 	[MainPart],
@@ -379,26 +423,26 @@ demangle_data -->
 :- mode format_data(in, in, in, in, out) is semidet.
 format_data(info, MaybeModule, Name, Arity, Result) :-
 	( MaybeModule = yes(Module) ->
-		string__format("<base type_info for type '%s:%s'/%d>",
+		string__format("<type_ctor_info for type `%s:%s/%d'>",
 			[s(Module), s(Name), i(Arity)], Result)
 	;
-		string__format("<base type_info for type '%s'/%d>",
+		string__format("<type_ctor_info for type `%s/%d'>",
 			[s(Name), i(Arity)], Result)
 	).
 format_data(layout, MaybeModule, Name, Arity, Result) :-
 	( MaybeModule = yes(Module) ->
-		string__format("<type layout for type '%s:%s'/%d>",
+		string__format("<type_ctor_layout for type `%s:%s/%d'>",
 			[s(Module), s(Name), i(Arity)], Result)
 	;
-		string__format("<type layout for type '%s'/%d>",
+		string__format("<type_ctor_layout for type `%s/%d'>",
 			[s(Name), i(Arity)], Result)
 	).
 format_data(functors, MaybeModule, Name, Arity, Result) :-
 	( MaybeModule = yes(Module) ->
-		string__format("<type functors for type '%s:%s'/%d>",
+		string__format("<type_ctor_functors for type `%s:%s/%d'>",
 			[s(Module), s(Name), i(Arity)], Result)
 	;
-		string__format("<type functors for type '%s'/%d>",
+		string__format("<type_ctor_functors for type `%s/%d'>",
 			[s(Name), i(Arity)], Result)
 	).
 format_data(common, MaybeModule, _Name, Arity, Result) :-
@@ -598,6 +642,39 @@ remove_maybe_pred_name(MaybePredName, String0, String) :-
 		MaybePredName = no
 	).
 
+:- pred remove_type_spec(string, string, string) is det.
+:- mode remove_type_spec(out, in, out) is semidet.
+
+remove_type_spec(TypeSpec, String0, String) :-
+	string__length(String0, Length),
+	Length > 2,
+	string__unsafe_index(String0, 0, '['),
+	NumBrackets = 0,
+	find_matching_close_bracket(NumBrackets, Length,
+		String0, 1, Index),
+	string__split(String0, Index + 1, TypeSpec, String).
+
+:- pred find_matching_close_bracket(int, int, string, int, int). 
+:- mode find_matching_close_bracket(in, in, in, in, out) is semidet.
+
+find_matching_close_bracket(NumBrackets0, Length, String, Index0, Index) :-
+	Index0 < Length,
+	string__unsafe_index(String, Index0, Char),
+	( Char = ']', NumBrackets0 = 0 ->
+		Index = Index0
+	;
+		% Handle matching brackets in type names.
+		( Char = '[' ->
+			NumBrackets = NumBrackets0 + 1
+		; Char = ']' ->
+			NumBrackets = NumBrackets0 - 1
+		;
+			NumBrackets = NumBrackets0
+		),
+		find_matching_close_bracket(NumBrackets, Length,
+			String, Index0 + 1, Index)
+	).
+
 :- pred maybe_remove_prefix(string, string, string).
 :- mode maybe_remove_prefix(in, in, out) is det.
 maybe_remove_prefix(Prefix) -->
@@ -630,9 +707,9 @@ dcg_set(X, _, X).
 :- pred format_maybe_module(maybe(string), string, string).
 :- mode format_maybe_module(in, in, out) is det.
 format_maybe_module(no, Name, QualifiedName) :-
-	string__format("'%s'", [s(Name)], QualifiedName).
+	string__format("%s", [s(Name)], QualifiedName).
 format_maybe_module(yes(Module), Name, QualifiedName) :-
-	string__format("%s:'%s'", [s(Module), s(Name)], QualifiedName).
+	string__format("%s:%s", [s(Module), s(Name)], QualifiedName).
 
 :- pred remove_trailing_int(int, string, string).
 :- mode remove_trailing_int(out, in, out) is semidet.

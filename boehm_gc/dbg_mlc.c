@@ -98,10 +98,14 @@ ptr_t p;
   /* Generate a random heap address.		*/
   /* The resulting address is in the heap, but	*/
   /* not necessarily inside a valid object.	*/
+  #ifdef _MSC_VER
+    #define random()	rand()
+  #endif
   void *GC_generate_random_heap_address(void)
   {
     int i;
     int heap_offset = random() % GC_heapsize;
+
     for (i = 0; i < GC_n_heap_sects; ++ i) {
 	int size = GC_heap_sects[i].hs_bytes;
 	if (heap_offset < size) {

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2000 The University of Melbourne.
+% Copyright (C) 1996-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -30,7 +30,7 @@
 
 :- implementation.
 
-:- import_module rtti, llds_out.
+:- import_module rtti, layout, llds_out.
 :- import_module bool, int, assoc_list, map, std_util, require.
 
 :- type cell_info
@@ -74,7 +74,18 @@ llds_common__cell_pairs_to_modules([], _, []).
 llds_common__cell_pairs_to_modules([CellContent - CellInfo | CellPairs],
 		BaseName, [Common | Commons]) :-
 	CellInfo = cell_info(VarNum),
-	CellContent = Args - ArgTypes,
+	CellContent = Args0 - ArgTypes0,
+		
+		% If we have an empty data structure place a dummy field
+		% in it, so that the generated C structure isn't empty.
+	( Args0 = [] ->
+		Args = [yes(const(int_const(-1)))],
+		ArgTypes = uniform(yes(integer))
+	;
+		Args = Args0,
+		ArgTypes = ArgTypes0
+	),
+
 	Common = comp_gen_c_data(BaseName, common(VarNum), no,
 		Args, ArgTypes, []),
 	llds_common__cell_pairs_to_modules(CellPairs, BaseName, Commons).
@@ -125,6 +136,73 @@ llds_common__process_data(
 	llds_common__process_maybe_rvals(Args0, Args, Info0, Info).
 llds_common__process_data(rtti_data(RttiData), rtti_data(RttiData),
 		Info, Info).
+llds_common__process_data(layout_data(LayoutData0), layout_data(LayoutData),
+		Info0, Info) :-
+	llds_common__process_layout_data(LayoutData0, LayoutData, Info0, Info).
+
+:- pred llds_common__process_layout_data(layout_data::in, layout_data::out,
+	common_info::in, common_info::out) is det.
+
+llds_common__process_layout_data(LayoutData0, LayoutData, Info0, Info) :-
+	LayoutData0 = label_layout_data(Label, ProcLayoutName,
+		MaybePort, MaybeGoalPath, MaybeVarInfo0),
+	(
+		MaybeVarInfo0 = no,
+		LayoutData = LayoutData0,
+		Info = Info0
+	;
+		MaybeVarInfo0 = yes(VarInfo0),
+		VarInfo0 = label_var_info(EncodedCount,
+			LocnsTypes0, VarNums0, TypeParams0),
+		llds_common__process_rval(LocnsTypes0, LocnsTypes,
+			Info0, Info1),
+		llds_common__process_rval(VarNums0, VarNums,
+			Info1, Info2),
+		llds_common__process_rval(TypeParams0, TypeParams,
+			Info2, Info),
+		VarInfo = label_var_info(EncodedCount,
+			LocnsTypes, VarNums, TypeParams),
+		MaybeVarInfo = yes(VarInfo),
+		LayoutData = label_layout_data(Label, ProcLayoutName,
+			MaybePort, MaybeGoalPath, MaybeVarInfo)
+	).
+llds_common__process_layout_data(LayoutData0, LayoutData, Info0, Info) :-
+	LayoutData0 = proc_layout_data(ProcLabel, Traversal, MaybeRest0),
+	(
+		MaybeRest0 = no_proc_id,
+		LayoutData = LayoutData0,
+		Info = Info0
+	;
+		MaybeRest0 = proc_id_only,
+		LayoutData = LayoutData0,
+		Info = Info0
+	;
+		MaybeRest0 = proc_id_and_exec_trace(Exec0),
+		llds_common__process_exec_trace(Exec0, Exec, Info0, Info),
+		MaybeRest = proc_id_and_exec_trace(Exec),
+		LayoutData = proc_layout_data(ProcLabel, Traversal, MaybeRest)
+	).
+llds_common__process_layout_data(LayoutData0, LayoutData, Info, Info) :-
+	LayoutData0 = closure_proc_id_data(_, _, _, _, _, _, _),
+	LayoutData = LayoutData0.
+llds_common__process_layout_data(LayoutData0, LayoutData, Info, Info) :-
+	LayoutData0 = module_layout_data(_, _, _, _, _, _),
+	LayoutData = LayoutData0.
+
+:- pred llds_common__process_exec_trace(proc_layout_exec_trace::in,
+	proc_layout_exec_trace::out, common_info::in, common_info::out) is det.
+
+llds_common__process_exec_trace(ExecTrace0, ExecTrace, Info0, Info) :-
+	ExecTrace0 = proc_layout_exec_trace(CallLabel, MaybeProcBody0,
+		VarNames, MaxVarNum, MaxReg, MaybeFromFullSlot, MaybeIoSeqSlot,
+		MaybeTrailSlot, MaybeMaxfrSlot, EvalMethod, MaybeCallTableSlot,
+		MaybeDeclDebugSlot),
+	llds_common__process_maybe_rval(MaybeProcBody0, MaybeProcBody,
+		Info0, Info),
+	ExecTrace = proc_layout_exec_trace(CallLabel, MaybeProcBody,
+		VarNames, MaxVarNum, MaxReg, MaybeFromFullSlot, MaybeIoSeqSlot,
+		MaybeTrailSlot, MaybeMaxfrSlot, EvalMethod, MaybeCallTableSlot,
+		MaybeDeclDebugSlot).
 
 :- pred llds_common__process_procs(list(c_procedure)::in,
 	list(c_procedure)::out, common_info::in, common_info::out) is det.

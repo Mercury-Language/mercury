@@ -3,7 +3,7 @@ INIT mercury_sys_init_trace
 ENDINIT
 */
 /*
-** Copyright (C) 1997-2000 The University of Melbourne.
+** Copyright (C) 1997-2001 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -83,10 +83,10 @@ MR_Unsigned	MR_trace_event_number = 0;
 
 /*
 ** MR_trace_from_full is a boolean that is set before every call;
-** it states whether the caller is being fully traced, or only interface
-** traced. If the called code is interface traced, it will generate
-** call, exit and fail trace events only if MR_trace_from_full is true.
-** (It will never generate internal events.) If the called code is fully
+** it states whether the caller is being deep traced, or only shallow
+** traced. If the called code is shallow traced, it will generate
+** interface trace events only if MR_trace_from_full is true.
+** (It will never generate internal events.) If the called code is deep
 ** traced, it will always generate all trace events, external and internal,
 ** regardless of the setting of this variable on entry.
 **
@@ -95,6 +95,18 @@ MR_Unsigned	MR_trace_event_number = 0;
 */
 
 MR_Bool		MR_trace_from_full = TRUE;
+
+/*
+** I/O tabling is documented in library/table_builtin.m
+*/
+
+MR_IoTablingPhase	MR_io_tabling_phase = MR_IO_TABLING_UNINIT;
+bool			MR_io_tabling_enabled = FALSE;
+MR_TableNode		MR_io_tabling_pointer = { 0 };
+MR_Unsigned		MR_io_tabling_counter = 0;
+MR_Unsigned		MR_io_tabling_counter_hwm = 0;
+MR_Unsigned		MR_io_tabling_start = 0;
+MR_Unsigned		MR_io_tabling_end = 0;
 
 #ifdef	MR_TRACE_HISTOGRAM
 
@@ -127,7 +139,7 @@ const char	*MR_port_names[] =
 };
 
 MR_Code *
-MR_trace(const MR_Stack_Layout_Label *layout)
+MR_trace(const MR_Label_Layout *layout)
 {
 	if (! MR_trace_enabled) {
 		return NULL;
@@ -152,7 +164,7 @@ MR_tracing_not_enabled(void)
 }
 
 MR_Code *
-MR_trace_fake(const MR_Stack_Layout_Label *layout)
+MR_trace_fake(const MR_Label_Layout *layout)
 {
 	MR_tracing_not_enabled();
 	/*NOTREACHED*/
@@ -334,15 +346,15 @@ MR_trace_print_histogram(FILE *fp, const char *which, int *histogram, int max)
 
 #endif	/* MR_TRACE_HISTOGRAM */
 
-Define_extern_entry(MR_do_trace_redo_fail_shallow);
-Define_extern_entry(MR_do_trace_redo_fail_deep);
+MR_define_extern_entry(MR_do_trace_redo_fail_shallow);
+MR_define_extern_entry(MR_do_trace_redo_fail_deep);
 
-BEGIN_MODULE(MR_trace_labels_module)
-	init_entry_ai(MR_do_trace_redo_fail_shallow);
-	init_entry_ai(MR_do_trace_redo_fail_deep);
-BEGIN_CODE
+MR_BEGIN_MODULE(MR_trace_labels_module)
+	MR_init_entry_ai(MR_do_trace_redo_fail_shallow);
+	MR_init_entry_ai(MR_do_trace_redo_fail_deep);
+MR_BEGIN_CODE
 
-Define_entry(MR_do_trace_redo_fail_shallow);
+MR_define_entry(MR_do_trace_redo_fail_shallow);
 	/*
 	** If this code ever needs changing, you may also need to change
 	** the code in extras/exceptions/exception.m similarly.
@@ -350,17 +362,17 @@ Define_entry(MR_do_trace_redo_fail_shallow);
 	if (MR_redo_fromfull_framevar(MR_redofr_slot(MR_curfr)))
 	{
 		MR_Code	*MR_jumpaddr;
-		save_transient_registers();
-		MR_jumpaddr = MR_trace((const MR_Stack_Layout_Label *)
+		MR_save_transient_registers();
+		MR_jumpaddr = MR_trace((const MR_Label_Layout *)
 			MR_redo_layout_framevar(MR_redofr_slot(MR_curfr)));
-		restore_transient_registers();
+		MR_restore_transient_registers();
 		if (MR_jumpaddr != NULL) {
-			GOTO(MR_jumpaddr);
+			MR_GOTO(MR_jumpaddr);
 		}
 	}
 	MR_fail();
 
-Define_entry(MR_do_trace_redo_fail_deep);
+MR_define_entry(MR_do_trace_redo_fail_deep);
 #if 0
 	/* For use in case this ever needs to be debugged again. */
 	printf("MR_curfr = %p\n", MR_curfr);
@@ -376,17 +388,17 @@ Define_entry(MR_do_trace_redo_fail_deep);
 	*/
 	{
 		MR_Code	*MR_jumpaddr;
-		save_transient_registers();
-		MR_jumpaddr = MR_trace((const MR_Stack_Layout_Label *)
+		MR_save_transient_registers();
+		MR_jumpaddr = MR_trace((const MR_Label_Layout *)
 			MR_redo_layout_framevar(MR_redofr_slot(MR_curfr)));
-		restore_transient_registers();
+		MR_restore_transient_registers();
 		if (MR_jumpaddr != NULL) {
-			GOTO(MR_jumpaddr);
+			MR_GOTO(MR_jumpaddr);
 		}
 	}
 	MR_fail();
 
-END_MODULE
+MR_END_MODULE
 
 void mercury_sys_init_trace(void); /* suppress gcc warning */
 void mercury_sys_init_trace(void) {

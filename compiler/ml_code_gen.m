@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2000 The University of Melbourne.
+% Copyright (C) 1999-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -14,8 +14,20 @@
 % very low-level code.  This code generator instead compiles to MLDS,
 % generating much higher-level code than the original code generator.
 
-% For nondeterministic predicates, we generate code using an explicit
-% continuation passing style.  Each nondeterministic predicate gets
+% One of the aims of the MLDS is to be able to generated human-readable
+% code in languages like C or Java.  This means that unlike the LLDS back-end,
+% we do not want to rely on macros or conditional compilation.  If the
+% final code is going to depend on the setting of some compilation option,
+% our philosophy is to reflect that change in the generated MLDS and C code
+% where possible, rather than generating C code which calls macros that do
+% different things in different grades.  This is important both for
+% readability of the generated code, and to make sure that we can easily
+% adapt the MLDS code generator to target languages like Java that don't
+% support macros or conditional compilation.
+
+% A big challenge in generating MLDS code is handling nondeterminism.
+% For nondeterministic procedures, we generate code using an explicit
+% continuation passing style.  Each nondeterministic procedures gets
 % translated into a function which takes an extra parameter which is a
 % function pointer that points to the success continuation.  On success,
 % the function calls its success continuation, and on failure it returns.
@@ -138,6 +150,7 @@
 % There's several different ways of handling commits:
 %	- using catch/throw
 %	- using setjmp/longjmp
+%	- using GCC's __builtin_setjmp/__builtin_longjmp
 %	- exiting nested functions via gotos to
 %	  their containing functions
 %
@@ -146,6 +159,17 @@
 % The comments below show the MLDS try_commit/do_commit version first,
 % but for clarity I've also included sample code using each of the three
 % different techniques.
+%
+% Note that if we're using GCC's __builtin_longjmp(),
+% then it is important that the call to __builtin_longjmp() be
+% put in its own function, to ensure that it is not in the same
+% function as the __builtin_setjmp().
+% The code generation schema below does that automatically.
+% We will need to be careful with MLDS optimizations to
+% ensure that we preserve that invariant, though.
+% (Alternatively, we could just call a function that
+% calls __builtin_longjmp() rather than calling it directly.
+% But that would be a little less efficient.)
 %
 % If those methods turn out to be too inefficient,
 % another alternative would be to change the generated
@@ -621,11 +645,11 @@
 %-----------------------------------------------------------------------------%
 
 
-% XXX This back-end is still not yet complete.
+% This back-end is still not yet 100% complete.
 %
 % Done:
 %	- function prototypes
-%	- code generation for det, semidet, and nondet predicates:
+%	- code generation for det, semidet, and nondet predicates/functions:
 %		- conjunctions
 %		- disjunctions
 %		- negation
@@ -647,12 +671,9 @@
 % BUGS:
 %	- XXX parameter passing problem for abstract equivalence types
 %         that are defined as float (or anything which doesn't map to `Word')
-%	- XXX setjmp() and volatile: local variables in functions that
-%	      call setjmp() need to be declared volatile
-%	- XXX problem with unboxed float on DEC Alphas.
 %
 % TODO:
-%	- XXX define compare & unify preds for array and RTTI types
+%	- XXX define compare & unify preds RTTI types
 %	- XXX need to generate correct layout information for closures
 %	      so that tests/hard_coded/copy_pred works.
 %	- XXX fix ANSI/ISO C conformance of the generated code (i.e. port to lcc)
@@ -670,12 +691,19 @@
 %	- support accurate GC
 %
 % POTENTIAL EFFICIENCY IMPROVEMENTS:
-%	- generate better code for switches
-%	- allow inlining of `pragma c_code' goals (see inlining.m)
+%	- optimize unboxed float on DEC Alphas.
+%	- generate better code for switches:
+%		- optimize switches so that the recursive case comes first
+%		  (see switch_gen.m).
+%		- apply the reverse tag test optimization
+%		  for types with two functors (see unify_gen.m)
+%		- binary search switches
+%		- lookup switches
 %	- generate local declarations for the `succeeded' variable;
 %	  this would help in nondet code, because it would avoid
 %	  the need to access the outermost function's `succeeded'
 %	  variable via the environment pointer
+%	  (be careful about the interaction with setjmp(), though)
 
 %-----------------------------------------------------------------------------%
 
@@ -683,7 +711,10 @@
 
 :- interface.
 
-:- import_module hlds_module, mlds.
+:- import_module prog_data.
+:- import_module hlds_module, hlds_goal.
+:- import_module code_model.
+:- import_module mlds, ml_code_util.
 :- import_module io.
 
 %-----------------------------------------------------------------------------%
@@ -694,15 +725,48 @@
 :- pred ml_code_gen(module_info, mlds, io__state, io__state).
 :- mode ml_code_gen(in, out, di, uo) is det.
 
+	% Generate MLDS code for the specified goal in the
+	% specified code model.  Return the result as a single statement
+	% (which may be a block statement containing nested declarations).
+	%
+:- pred ml_gen_goal(code_model, hlds_goal, mlds__statement,
+			ml_gen_info, ml_gen_info).
+:- mode ml_gen_goal(in, in, out, in, out) is det.
+
+	% Generate MLDS code for the specified goal in the
+	% specified code model.  Return the result as two lists,
+	% one containing the necessary declarations and the other
+	% containing the generated statements.
+	%
+:- pred ml_gen_goal(code_model, hlds_goal, mlds__defns, mlds__statements,
+			ml_gen_info, ml_gen_info).
+:- mode ml_gen_goal(in, in, out, out, in, out) is det.
+
+	% ml_gen_wrap_goal(OuterCodeModel, InnerCodeModel, Context,
+	%		MLDS_Statements0, MLDS_Statements):
+	%
+	%	OuterCodeModel is the code model expected by the
+	%	context in which a goal is called. InnerCodeModel
+	%	is the code model which the goal actually has.
+	%	This predicate converts the code generated for
+	%	the goal using InnerCodeModel into code that uses
+	%	the calling convention appropriate for OuterCodeModel.
+	%
+:- pred ml_gen_wrap_goal(code_model, code_model, prog_context,
+		mlds__statements, mlds__statements,
+		ml_gen_info, ml_gen_info).
+:- mode ml_gen_wrap_goal(in, in, in, in, out, in, out) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module ml_type_gen, ml_call_gen, ml_unify_gen, ml_code_util.
-:- import_module llds. % XXX needed for `code_model'.
-:- import_module arg_info, export, llds_out. % XXX needed for pragma C code
-:- import_module hlds_pred, hlds_goal, hlds_data, prog_data.
+:- import_module ml_type_gen, ml_call_gen, ml_unify_gen, ml_switch_gen.
+:- import_module ml_code_util.
+:- import_module arg_info, llds, llds_out. % XXX needed for pragma foreign code
+:- import_module export, foreign. % XXX needed for pragma foreign code
+:- import_module hlds_pred, hlds_data.
 :- import_module goal_util, type_util, mode_util, builtin_ops.
 :- import_module passes_aux, modules.
 :- import_module globals, options.
@@ -727,14 +791,20 @@ ml_code_gen(ModuleInfo, MLDS) -->
 :- mode ml_gen_foreign_code(in, out, di, uo) is det.
 
 ml_gen_foreign_code(ModuleInfo, MLDS_ForeignCode) -->
-	{ module_info_get_foreign_header(ModuleInfo, C_Header_Info) },
-	{ module_info_get_foreign_body_code(ModuleInfo, C_Body_Info) },
-		% XXX This assumes the language is C.
-	{ ConvBody = (func(S - C) = user_foreign_code(c, S, C)) },
-	{ User_C_Code = list__map(ConvBody, C_Body_Info) },
+	{ module_info_get_foreign_decl(ModuleInfo, ForeignDecls) },
+	{ module_info_get_foreign_body_code(ModuleInfo, ForeignBodys) },
+	globals__io_lookup_foreign_language_option(use_foreign_language,
+		UseForeignLanguage),
+	{ foreign__filter_decls(UseForeignLanguage, ForeignDecls,
+		WantedForeignDecls, _OtherForeignDecls) },
+	{ foreign__filter_bodys(UseForeignLanguage, ForeignBodys,
+		WantedForeignBodys, _OtherForeignBodys) },
+	{ ConvBody = (func(foreign_body_code(L, S, C)) = 
+		user_foreign_code(L, S, C)) },
+	{ MLDSWantedForeignBodys = list__map(ConvBody, WantedForeignBodys) },
 	{ ml_gen_pragma_export(ModuleInfo, MLDS_PragmaExports) },
-	{ MLDS_ForeignCode = mlds__foreign_code(C_Header_Info, User_C_Code,
-			MLDS_PragmaExports) }.
+	{ MLDS_ForeignCode = mlds__foreign_code(WantedForeignDecls,
+			MLDSWantedForeignBodys, MLDS_PragmaExports) }.
 
 :- pred ml_gen_imports(module_info, mlds__imports).
 :- mode ml_gen_imports(in, out) is det.
@@ -838,10 +908,11 @@ ml_gen_preds_2(ModuleInfo, PredIds0, PredTable, MLDS_Defns0, MLDS_Defns) -->
 		{ PredIds0 = [PredId|PredIds] }
 	->
 		{ map__lookup(PredTable, PredId, PredInfo) },
-		( { pred_info_is_imported(PredInfo) } ->
+		{ pred_info_import_status(PredInfo, ImportStatus) },
+		( { ImportStatus = imported(_) } ->
 			{ MLDS_Defns1 = MLDS_Defns0 }
 		;
-			ml_gen_pred(ModuleInfo, PredId, PredInfo,
+			ml_gen_pred(ModuleInfo, PredId, PredInfo, ImportStatus,
 				MLDS_Defns0, MLDS_Defns1)
 		),
 		ml_gen_preds_2(ModuleInfo, PredIds, PredTable,
@@ -853,12 +924,17 @@ ml_gen_preds_2(ModuleInfo, PredIds0, PredTable, MLDS_Defns0, MLDS_Defns) -->
 	% Generate MLDS definitions for all the non-imported
 	% procedures of a given predicate (or function).
 	%
-:- pred ml_gen_pred(module_info, pred_id, pred_info,
-				mlds__defns, mlds__defns, io__state, io__state).
-:- mode ml_gen_pred(in, in, in, in, out, di, uo) is det.
+:- pred ml_gen_pred(module_info, pred_id, pred_info, import_status,
+			mlds__defns, mlds__defns, io__state, io__state).
+:- mode ml_gen_pred(in, in, in, in, in, out, di, uo) is det.
 
-ml_gen_pred(ModuleInfo, PredId, PredInfo, MLDS_Defns0, MLDS_Defns) -->
-	{ pred_info_non_imported_procids(PredInfo, ProcIds) },
+ml_gen_pred(ModuleInfo, PredId, PredInfo, ImportStatus,
+		MLDS_Defns0, MLDS_Defns) -->
+	( { ImportStatus = external(_) } ->
+		{ pred_info_procids(PredInfo, ProcIds) }
+	;
+		{ pred_info_non_imported_procids(PredInfo, ProcIds) }
+	),
 	( { ProcIds = [] } ->
 		{ MLDS_Defns = MLDS_Defns0 }
 	;
@@ -955,6 +1031,7 @@ ml_gen_proc_decl_flags(ModuleInfo, PredId, ProcId) = MLDS_DeclFlags :-
 ml_gen_proc_defn(ModuleInfo, PredId, ProcId, MLDS_ProcDefnBody, ExtraDefns) :-
 	module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
 			PredInfo, ProcInfo),
+	pred_info_import_status(PredInfo, ImportStatus),
 	pred_info_arg_types(PredInfo, ArgTypes),
 	proc_info_interface_code_model(ProcInfo, CodeModel),
 	proc_info_headvars(ProcInfo, HeadVars),
@@ -980,65 +1057,82 @@ ml_gen_proc_defn(ModuleInfo, PredId, ProcId, MLDS_ProcDefnBody, ExtraDefns) :-
 	MLDSGenInfo0 = ml_gen_info_init(ModuleInfo, PredId, ProcId),
 	MLDS_Params = ml_gen_proc_params(ModuleInfo, PredId, ProcId),
 
-	% Set up the initial success continuation, if any.
-	% Also figure out which output variables are returned by
-	% value (rather than being passed by reference) and remove
-	% them from the byref_output_vars field in the ml_gen_info.
-	( CodeModel = model_non ->
-		ml_set_up_initial_succ_cont(ModuleInfo, CopiedOutputVars,
-			MLDSGenInfo0, MLDSGenInfo1)
+	( ImportStatus = external(_) ->
+		%
+		% For Mercury procedures declared `:- external', we generate 
+		% an MLDS definition for them with no function body.
+		% The MLDS -> target code pass can treat this accordingly,
+		% e.g. for C it outputs a function declaration with no
+		% corresponding definition, making sure that the function
+		% is declared as `extern' rather than `static'.
+		%
+		MaybeStatement = no,
+		ExtraDefns = []
 	;
-		(
-			is_output_det_function(ModuleInfo, PredId, ProcId,
-				ResultVar)
-		->
-			CopiedOutputVars = [ResultVar],
-			ml_gen_info_get_byref_output_vars(MLDSGenInfo0,
-				ByRefOutputVars0),
-			list__delete_all(ByRefOutputVars0,
-				ResultVar, ByRefOutputVars),
-			ml_gen_info_set_byref_output_vars(ByRefOutputVars,	
-				MLDSGenInfo0, MLDSGenInfo1)
+		% Set up the initial success continuation, if any.
+		% Also figure out which output variables are returned by
+		% value (rather than being passed by reference) and remove
+		% them from the byref_output_vars field in the ml_gen_info.
+		( CodeModel = model_non ->
+			ml_set_up_initial_succ_cont(ModuleInfo,
+				CopiedOutputVars, MLDSGenInfo0, MLDSGenInfo1)
 		;
-			CopiedOutputVars = [],
-			MLDSGenInfo1 = MLDSGenInfo0
-		)
-	),
+			(
+				is_output_det_function(ModuleInfo, PredId,
+					ProcId, ResultVar)
+			->
+				CopiedOutputVars = [ResultVar],
+				ml_gen_info_get_byref_output_vars(MLDSGenInfo0,
+					ByRefOutputVars0),
+				list__delete_all(ByRefOutputVars0,
+					ResultVar, ByRefOutputVars),
+				ml_gen_info_set_byref_output_vars(
+					ByRefOutputVars,
+					MLDSGenInfo0, MLDSGenInfo1)
+			;
+				CopiedOutputVars = [],
+				MLDSGenInfo1 = MLDSGenInfo0
+			)
+		),
 
-	% This would generate all the local variables at the top of the
-	% function:
-	%	MLDS_LocalVars = ml_gen_all_local_var_decls(Goal, VarSet,
-	% 		VarTypes, HeadVars, ModuleInfo),
-	% But instead we now generate them locally for each goal.
-	% We just declare the `succeeded' var here,
-	% plus locals for any output arguments that are returned by value
-	% (e.g. if --nondet-copy-out is enabled, or for det function return
-	% values).
-	MLDS_Context = mlds__make_context(Context),
-	( CopiedOutputVars = [] ->
-		% optimize common case
-		OutputVarLocals = []
-	;
-		proc_info_varset(ProcInfo, VarSet),
-		proc_info_vartypes(ProcInfo, VarTypes),
-		% note that for headvars we must use the types from
-		% the procedure interface, not from the procedure body
-		HeadVarTypes = map__from_corresponding_lists(HeadVars,
-			ArgTypes),
-		OutputVarLocals = ml_gen_local_var_decls(VarSet,
-			map__overlay(VarTypes, HeadVarTypes),
-			MLDS_Context, ModuleInfo, CopiedOutputVars)
+		% This would generate all the local variables at the top of
+		% the function:
+		%	MLDS_LocalVars = ml_gen_all_local_var_decls(Goal,
+		% 		VarSet, VarTypes, HeadVars, ModuleInfo),
+		% But instead we now generate them locally for each goal.
+		% We just declare the `succeeded' var here, plus locals
+		% for any output arguments that are returned by value
+		% (e.g. if --nondet-copy-out is enabled, or for det function
+		% return values).
+		MLDS_Context = mlds__make_context(Context),
+		( CopiedOutputVars = [] ->
+			% optimize common case
+			OutputVarLocals = []
+		;
+			proc_info_varset(ProcInfo, VarSet),
+			proc_info_vartypes(ProcInfo, VarTypes),
+			% note that for headvars we must use the types from
+			% the procedure interface, not from the procedure body
+			HeadVarTypes = map__from_corresponding_lists(HeadVars,
+				ArgTypes),
+			OutputVarLocals = ml_gen_local_var_decls(VarSet,
+				map__overlay(VarTypes, HeadVarTypes),
+				MLDS_Context, ModuleInfo, CopiedOutputVars)
+		),
+		MLDS_LocalVars = [ml_gen_succeeded_var_decl(MLDS_Context) |
+				OutputVarLocals],
+		ml_gen_proc_body(CodeModel, HeadVars, ArgTypes,
+				CopiedOutputVars, Goal,
+				MLDS_Decls0, MLDS_Statements,
+				MLDSGenInfo1, MLDSGenInfo),
+		ml_gen_info_get_extra_defns(MLDSGenInfo, ExtraDefns),
+		MLDS_Decls = list__append(MLDS_LocalVars, MLDS_Decls0),
+		MLDS_Statement = ml_gen_block(MLDS_Decls, MLDS_Statements,
+			Context),
+		MaybeStatement = yes(MLDS_Statement)
 	),
-	MLDS_LocalVars = [ml_gen_succeeded_var_decl(MLDS_Context) |
-			OutputVarLocals],
-	ml_gen_proc_body(CodeModel, HeadVars, ArgTypes, CopiedOutputVars, Goal,
-			MLDS_Decls0, MLDS_Statements,
-			MLDSGenInfo1, MLDSGenInfo),
-	ml_gen_info_get_extra_defns(MLDSGenInfo, ExtraDefns),
-	MLDS_Decls = list__append(MLDS_LocalVars, MLDS_Decls0),
-	MLDS_Statement = ml_gen_block(MLDS_Decls, MLDS_Statements, Context),
 	MLDS_ProcDefnBody = mlds__function(yes(proc(PredId, ProcId)),
-			MLDS_Params, yes(MLDS_Statement)).
+			MLDS_Params, MaybeStatement).
 
 :- pred ml_set_up_initial_succ_cont(module_info, list(prog_var),
 		ml_gen_info, ml_gen_info).
@@ -1263,10 +1357,6 @@ ml_gen_convert_headvars([_|_], [], _, _, _, _, _) -->
 	% specified code model.  Return the result as a single statement
 	% (which may be a block statement containing nested declarations).
 	%
-:- pred ml_gen_goal(code_model, hlds_goal, mlds__statement,
-			ml_gen_info, ml_gen_info).
-:- mode ml_gen_goal(in, in, out, in, out) is det.
-
 ml_gen_goal(CodeModel, Goal, MLDS_Statement) -->
 	ml_gen_goal(CodeModel, Goal, MLDS_Decls, MLDS_Statements),
 	{ Goal = _ - GoalInfo },
@@ -1279,10 +1369,6 @@ ml_gen_goal(CodeModel, Goal, MLDS_Statement) -->
 	% one containing the necessary declarations and the other
 	% containing the generated statements.
 	%
-:- pred ml_gen_goal(code_model, hlds_goal, mlds__defns, mlds__statements,
-			ml_gen_info, ml_gen_info).
-:- mode ml_gen_goal(in, in, out, out, in, out) is det.
-
 ml_gen_goal(CodeModel, Goal, MLDS_Decls, MLDS_Statements) -->
 	{ Goal = GoalExpr - GoalInfo },
 	%
@@ -1358,12 +1444,8 @@ union_subgoal_locals(SubGoal, UnionOfSubGoalLocals0, UnionOfSubGoalLocals) :-
 	%	This predicate converts the code generated for
 	%	the goal using InnerCodeModel into code that uses
 	%	the calling convention appropriate for OuterCodeModel.
-	%
-:- pred ml_gen_wrap_goal(code_model, code_model, prog_context,
-		mlds__statements, mlds__statements,
-		ml_gen_info, ml_gen_info).
-:- mode ml_gen_wrap_goal(in, in, in, in, out, in, out) is det.
 
+	%
 	% If the inner and outer code models are equal,
 	% we don't need to do anything special.
 
@@ -1449,14 +1531,22 @@ ml_gen_commit(Goal, CodeModel, Context, MLDS_Decls, MLDS_Statements) -->
 		%		<succeeded = Goal>
 		% 	===>
 		%		bool succeeded;
-		%		MR_COMMIT_TYPE ref;
-		%		void success() {
-		%			succeeded = TRUE;
-		%			MR_DO_COMMIT(ref);
-		%		}
 		%	#ifdef NONDET_COPY_OUT
 		%		<local var decls>
 		%	#endif
+		%	#ifdef PUT_COMMIT_IN_OWN_FUNC
+		%	    /*
+		%	    ** to avoid problems with setjmp() and non-volatile
+		%	    ** local variables, we need to put the call to
+		%	    ** setjmp() in its own nested function
+		%	    */
+		%	    void commit_func()
+		%	    {
+		%       #endif
+		%		MR_COMMIT_TYPE ref;
+		%		void success() {
+		%			MR_DO_COMMIT(ref);
+		%		}
 		%		MR_TRY_COMMIT(ref, {
 		%			<Goal && success()>
 		%			succeeded = FALSE;
@@ -1466,6 +1556,10 @@ ml_gen_commit(Goal, CodeModel, Context, MLDS_Decls, MLDS_Statements) -->
 		%	#endif
 		%			succeeded = TRUE;
 		%		})
+		%	#ifdef PUT_COMMIT_IN_OWN_FUNC
+		%	    }
+		%	    commit_func();
+		%       #endif
 
 		ml_gen_maybe_make_locals_for_output_args(GoalInfo,
 			LocalVarDecls, CopyLocalsToOutputArgs,
@@ -1510,10 +1604,12 @@ ml_gen_commit(Goal, CodeModel, Context, MLDS_Decls, MLDS_Statements) -->
 				[SetSuccessTrue]), Context)) },
 		{ TryCommitStatement = mlds__statement(TryCommitStmt,
 			MLDS_Context) },
-
-		{ MLDS_Decls = list__append([CommitRefDecl,
-			SuccessFunc | LocalVarDecls], GoalStaticDecls) },
-		{ MLDS_Statements = [TryCommitStatement] },
+		{ CommitFuncLocalDecls = [CommitRefDecl, SuccessFunc |
+			GoalStaticDecls] },
+		maybe_put_commit_in_own_func(CommitFuncLocalDecls,
+			[TryCommitStatement], Context,
+			CommitFuncDecls, MLDS_Statements),
+		{ MLDS_Decls = LocalVarDecls ++ CommitFuncDecls },
 
 		ml_gen_info_set_var_lvals(OrigVarLvalMap)
 
@@ -1522,19 +1618,33 @@ ml_gen_commit(Goal, CodeModel, Context, MLDS_Decls, MLDS_Statements) -->
 		%	model_non in det context: (using try_commit/do_commit)
 		%		<do Goal>
 		%	===>
+		%	#ifdef NONDET_COPY_OUT
+		%		<local var decls>
+		%	#endif
+		%	#ifdef PUT_COMMIT_IN_NESTED_FUNC
+		%	    /*
+		%	    ** to avoid problems with setjmp() and non-volatile
+		%	    ** local variables, we need to put the call to
+		%	    ** setjmp() in its own nested functions
+		%	    */
+		%	    void commit_func()
+		%	    {
+		%       #endif
 		%		MR_COMMIT_TYPE ref;
 		%		void success() {
 		%			MR_DO_COMMIT(ref);
 		%		}
-		%	#ifdef NONDET_COPY_OUT
-		%		<local var decls>
-		%	#endif
 		%		MR_TRY_COMMIT(ref, {
+		%			<Goal && success()>
+		%		}, {
 		%	#ifdef NONDET_COPY_OUT
 		%			<copy local vars to output args>
 		%	#endif
-		%			<Goal && success()>
-		%		}, {})
+		%		})
+		%	#ifdef PUT_COMMIT_IN_NESTED_FUNC
+		%	    }
+		%	    commit_func();
+		%       #endif
 
 		ml_gen_maybe_make_locals_for_output_args(GoalInfo,
 			LocalVarDecls, CopyLocalsToOutputArgs,
@@ -1575,15 +1685,99 @@ ml_gen_commit(Goal, CodeModel, Context, MLDS_Decls, MLDS_Statements) -->
 			ml_gen_block([], CopyLocalsToOutputArgs, Context)) },
 		{ TryCommitStatement = mlds__statement(TryCommitStmt,
 			MLDS_Context) },
-
-		{ MLDS_Decls = list__append([CommitRefDecl,
-			SuccessFunc | LocalVarDecls], GoalStaticDecls) },
-		{ MLDS_Statements = [TryCommitStatement] },
+		{ CommitFuncLocalDecls = [CommitRefDecl, SuccessFunc |
+			GoalStaticDecls] },
+		maybe_put_commit_in_own_func(CommitFuncLocalDecls,
+			[TryCommitStatement], Context,
+			CommitFuncDecls, MLDS_Statements),
+		{ MLDS_Decls = LocalVarDecls ++ CommitFuncDecls },
 
 		ml_gen_info_set_var_lvals(OrigVarLvalMap)
 	;
 		% no commit required
 		ml_gen_goal(CodeModel, Goal, MLDS_Decls, MLDS_Statements)
+	).
+
+	% maybe_put_commit_in_own_func(Defns0, Stmts0, Defns, Stmts):
+	% if the --put-commit-in-own-func option is set, put
+	% the commit in its own function.  This is needed for
+	% the high-level C back-end, to handle problems with
+	% setjmp()/longjmp() clobbering non-volatile local variables.
+	%
+	% Detailed explanation:
+	%   For the high-level C back-end, we implement commits using
+	%   setjmp()/longjmp().  Unfortunately for us, ANSI/ISO C says
+	%   that longjmp() is allowed to clobber the values of any
+	%   non-volatile local variables in the function that called
+	%   setjmp() which have been modified between the setjmp()
+	%   and the longjmp().
+	%
+	%   To avoid this, whenever we generate a commit, we put
+	%   it in its own nested function, with the local variables
+	%   (e.g. `succeeded', plus any outputs from the goal that
+	%   we're committing over) remaining in the containing function.
+	%   This ensures that none of the variables which get modified
+	%   between the setjmp() and the longjmp() and which get
+	%   referenced after the longjmp() are local variables in the
+	%   function containing the setjmp().
+	%
+	%   [The obvious alternative of declaring the local variables in
+	%   the function containing setjmp() as `volatile' doesn't work,
+	%   since the assignments to those output variables may be deep
+	%   in some function called indirectly from the goal that we're
+	%   committing across, and assigning to a volatile-qualified
+	%   variable via a non-volatile pointer is undefined behaviour.
+	%   The only way to make it work would be to be to declare
+	%   *every* output argument that we pass by reference as
+	%   `volatile T *'.  But that would impose distributed fat and
+	%   would make interoperability difficult.]
+	%
+:- pred maybe_put_commit_in_own_func(mlds__defns, mlds__statements,
+		prog_context, mlds__defns, mlds__statements,
+		ml_gen_info, ml_gen_info).
+:- mode maybe_put_commit_in_own_func(in, in, in, out, out, in, out) is det.
+
+maybe_put_commit_in_own_func(CommitFuncLocalDecls, TryCommitStatements,
+		Context, MLDS_Decls, MLDS_Statements) -->
+	ml_gen_info_put_commit_in_own_func(PutCommitInOwnFunc),
+	( { PutCommitInOwnFunc = yes } ->
+		%
+		% Generate the `void commit_func() { ... }' wrapper
+		% around the main body that we generated above
+		%
+		ml_gen_new_func_label(no, CommitFuncLabel, 
+			CommitFuncLabelRval),
+		/* push nesting level */
+		{ CommitFuncBody = ml_gen_block(CommitFuncLocalDecls,
+			TryCommitStatements, Context) },
+		/* pop nesting level */
+		ml_gen_nondet_label_func(CommitFuncLabel, Context,
+			CommitFuncBody, CommitFunc),
+		%
+		% Generate the call to `commit_func();'
+		%
+		ml_gen_info_use_gcc_nested_functions(UseNestedFuncs),
+		( { UseNestedFuncs = yes } ->
+			{ ArgRvals = [] },
+			{ ArgTypes = [] }
+		;
+			ml_get_env_ptr(EnvPtrRval),
+			{ ArgRvals = [EnvPtrRval] },
+			{ ArgTypes = [mlds__generic_env_ptr_type] }
+		),
+		{ RetTypes = [] },
+		{ Signature = mlds__func_signature(ArgTypes, RetTypes) },
+		{ CallOrTailcall = call },
+		{ CallStmt = call(Signature, CommitFuncLabelRval, no,
+			ArgRvals, [], CallOrTailcall) },
+		{ CallStatement = mlds__statement(CallStmt,
+			mlds__make_context(Context)) },
+		% Package it all up
+		{ MLDS_Statements = [CallStatement] },
+		{ MLDS_Decls = [CommitFunc] }
+	;
+		{ MLDS_Statements = TryCommitStatements },
+		{ MLDS_Decls = CommitFuncLocalDecls }
 	).
 
 	%
@@ -1737,19 +1931,7 @@ ml_gen_goal_expr(generic_call(GenericCall, Vars, Modes, Detism), CodeModel,
 ml_gen_goal_expr(call(PredId, ProcId, ArgVars, BuiltinState, _, PredName),
 		CodeModel, Context, MLDS_Decls, MLDS_Statements) -->
 	(
-		{
-			BuiltinState = not_builtin
-		;
-			% For the MLDS back-end, we can't treat
-			% private_builtin:unsafe_type_cast as an
-			% inline builtin, since the code that
-			% builtin_ops__translate_builtin generates
-			% for it is not type-correct.  Instead,
-			% we treat it as an ordinary polymorphic
-			% procedure; ml_gen_call will then generate
-			% the proper type conversions automatically.
-			PredName = qualified(_, "unsafe_type_cast")
-		}
+		{ BuiltinState = not_builtin }
 	->
 		ml_gen_var_list(ArgVars, ArgLvals),
 		=(MLDSGenInfo),
@@ -1758,6 +1940,30 @@ ml_gen_goal_expr(call(PredId, ProcId, ArgVars, BuiltinState, _, PredName),
 		ml_variable_types(ArgVars, ActualArgTypes),
 		ml_gen_call(PredId, ProcId, ArgNames, ArgLvals, ActualArgTypes,
 			CodeModel, Context, MLDS_Decls, MLDS_Statements)
+	;
+		% For the MLDS back-end, we can't treat
+		% private_builtin:unsafe_type_cast as an
+		% ordinary builtin, since the code that
+		% builtin_ops__translate_builtin generates
+		% for it is not type-correct.  Instead,
+		% we handle it separately here.
+		{ PredName = qualified(_, "unsafe_type_cast") }
+	->
+		ml_gen_var_list(ArgVars, ArgLvals),
+		ml_variable_types(ArgVars, ArgTypes),
+		(
+			{ ArgLvals = [SrcLval, DestLval] },
+			{ ArgTypes = [SrcType, DestType] }
+		->
+			ml_gen_box_or_unbox_rval(SrcType, DestType,
+				lval(SrcLval), CastRval),
+			{ Assign = ml_gen_assign(DestLval, CastRval,
+				Context) },
+			{ MLDS_Statements = [Assign] },
+			{ MLDS_Decls = [] }
+		;
+			{ error("wrong number of args for unsafe_type_cast") }
+		)
 	;
 		ml_gen_builtin(PredId, ProcId, ArgVars, CodeModel, Context,
 			MLDS_Decls, MLDS_Statements)
@@ -1768,7 +1974,7 @@ ml_gen_goal_expr(unify(_A, _B, _, Unification, _), CodeModel, Context,
 	ml_gen_unification(Unification, CodeModel, Context,
 		MLDS_Decls, MLDS_Statements).
 
-ml_gen_goal_expr(pragma_foreign_code(_Lang, Attributes,
+ml_gen_goal_expr(pragma_foreign_code(Attributes,
                 PredId, ProcId, ArgVars, ArgDatas, OrigArgTypes, PragmaImpl),
 		CodeModel, OuterContext, MLDS_Decls, MLDS_Statements) -->
         (
@@ -1860,7 +2066,7 @@ ml_gen_goal_expr(bi_implication(_, _), _, _, _, _) -->
 	% #undef it afterwards.
 	%		
 ml_gen_nondet_pragma_c_code(CodeModel, Attributes,
-		PredId, ProcId, ArgVars, ArgDatas, OrigArgTypes, Context,
+		PredId, _ProcId, ArgVars, ArgDatas, OrigArgTypes, Context,
 		LocalVarsDecls, LocalVarsContext, FirstCode, FirstContext,
 		LaterCode, LaterContext, SharedCode, SharedContext,
 		MLDS_Decls, MLDS_Statements) -->
@@ -1913,7 +2119,7 @@ ml_gen_nondet_pragma_c_code(CodeModel, Attributes,
 	%
 	% Generate the MR_PROC_LABEL #define
 	%
-	ml_gen_hash_define_mr_proc_label(PredId, ProcId, HashDefine),
+	ml_gen_hash_define_mr_proc_label(HashDefine),
 
 	%
 	% Put it all together
@@ -2063,7 +2269,7 @@ ml_gen_nondet_pragma_c_code(CodeModel, Attributes,
 	% Java.
 	%
 ml_gen_ordinary_pragma_c_code(CodeModel, Attributes,
-		PredId, ProcId, ArgVars, ArgDatas, OrigArgTypes,
+		PredId, _ProcId, ArgVars, ArgDatas, OrigArgTypes,
 		C_Code, Context, MLDS_Decls, MLDS_Statements) -->
 	%
 	% Combine all the information about the each arg
@@ -2097,7 +2303,7 @@ ml_gen_ordinary_pragma_c_code(CodeModel, Attributes,
 	%
 	% Generate the MR_PROC_LABEL #define
 	%
-	ml_gen_hash_define_mr_proc_label(PredId, ProcId, HashDefine),
+	ml_gen_hash_define_mr_proc_label(HashDefine),
 
 	%
 	% Put it all together
@@ -2188,16 +2394,22 @@ ml_gen_obtain_release_global_lock(ThreadSafe, PredId,
 		ReleaseLock = ""
 	}.
 
-:- pred ml_gen_hash_define_mr_proc_label(pred_id::in, proc_id::in,
-		list(target_code_component)::out,
+:- pred ml_gen_hash_define_mr_proc_label(list(target_code_component)::out,
 		ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_hash_define_mr_proc_label(PredId, ProcId, HashDefine) -->
+ml_gen_hash_define_mr_proc_label(HashDefine) -->
 	=(MLDSGenInfo),
 	{ ml_gen_info_get_module_info(MLDSGenInfo, ModuleInfo) },
-	{ ml_gen_proc_label(ModuleInfo, PredId, ProcId, MLDS_Name, _Module) },
+	% Note that we use the pred_id and proc_id of the current procedure,
+	% not the one that the pragma foreign_code originally came from.
+	% There may not be any function address for the latter, e.g. if it
+	% has been inlined and the original definition optimized away.
+	{ ml_gen_info_get_pred_id(MLDSGenInfo, PredId) },
+	{ ml_gen_info_get_proc_id(MLDSGenInfo, ProcId) },
+	{ ml_gen_proc_label(ModuleInfo, PredId, ProcId, MLDS_Name,
+			MLDS_Module) },
 	{ HashDefine = [raw_target_code("#define MR_PROC_LABEL "),
-			name(MLDS_Name),
+			name(qual(MLDS_Module, MLDS_Name)),
 			raw_target_code("\n")] }.
 
 
@@ -2440,123 +2652,6 @@ ml_gen_pragma_c_output_arg(ml_c_arg(Var, MaybeNameAndMode, OrigType),
 		{ AssignOutput = [] },
 		{ ConvDecls = [] },
 		{ ConvOutputStatements = [] }
-	).
-
-%-----------------------------------------------------------------------------%
-%
-% Code for switches
-%
-
-	% Generate MLDS code for a switch.
-	%
-:- pred ml_gen_switch(prog_var, can_fail, list(case), code_model, prog_context,
-			mlds__defns, mlds__statements,
-			ml_gen_info, ml_gen_info).
-:- mode ml_gen_switch(in, in, in, in, in, out, out, in, out) is det.
-
-
-:- type extended_case ---> case(int, cons_tag, cons_id, hlds_goal).
-:- type cases_list == list(extended_case).
-
-	% TODO: optimize various different special kinds of switches,
-	% such as string switches, dense switches, lookup switches,
-	% etc. (see switch_gen.m, etc.).
-	% TODO: optimize switches so that the recursive case comes
-	% first (see switch_gen.m).
-
-ml_gen_switch(Var, CanFail, Cases, CodeModel, Context,
-		MLDS_Decls, MLDS_Statements) -->
-	%
-	% Lookup the representation of the constructors for the tag tests
-	% and their corresponding priorities.
-	%
-	ml_switch_lookup_tags(Cases, Var, TaggedCases0),
-	%
-	% Sort the cases according to the priority of their tag tests.
-	%
-	{ list__sort_and_remove_dups(TaggedCases0, TaggedCases) },
-	%
-	% Generate an if-then-else chain which tests each of the cases
-	% in turn.
-	%
-	ml_switch_generate_cases(TaggedCases, Var,
-		CodeModel, CanFail, Context,
-		MLDS_Decls, MLDS_Statements).
-
-	% Look up the representation (tag) for the cons_id in each case.
-	% Also look up the priority of each tag test.
-	%
-:- pred ml_switch_lookup_tags(list(case), prog_var, cases_list,
-				ml_gen_info, ml_gen_info).
-:- mode ml_switch_lookup_tags(in, in, out, in, out) is det.
-
-ml_switch_lookup_tags([], _, []) --> [].
-ml_switch_lookup_tags([Case | Cases], Var, [TaggedCase | TaggedCases]) -->
-	{ Case = case(ConsId, Goal) },
-	ml_variable_type(Var, Type),
-	ml_cons_id_to_tag(ConsId, Type, Tag),
-	{ ml_switch_priority(Tag, Priority) },
-	{ TaggedCase = case(Priority, Tag, ConsId, Goal) },
-	ml_switch_lookup_tags(Cases, Var, TaggedCases).
-
-	% Return the priority of a tag test.
-	% A low number here indicates a high priority.
-	% We prioritize the tag tests so that the cheapest
-	% (most efficient) ones come first.
-	%
-:- pred ml_switch_priority(cons_tag, int).
-:- mode ml_switch_priority(in, out) is det.
-
-ml_switch_priority(no_tag, 0).			% should never occur
-ml_switch_priority(int_constant(_), 1).
-ml_switch_priority(shared_local_tag(_, _), 1).
-ml_switch_priority(unshared_tag(_), 2).
-ml_switch_priority(float_constant(_), 3).
-ml_switch_priority(shared_remote_tag(_, _), 4).
-ml_switch_priority(string_constant(_), 5).
-	% The following tags should all never occur in switches.
-ml_switch_priority(pred_closure_tag(_, _, _), 6).
-ml_switch_priority(code_addr_constant(_, _), 6).
-ml_switch_priority(type_ctor_info_constant(_, _, _), 6).
-ml_switch_priority(base_typeclass_info_constant(_, _, _), 6).
-ml_switch_priority(tabling_pointer_constant(_, _), 6).
-
-	% Generate a chain of if-then-elses to test each case in turn.
-	%
-:- pred ml_switch_generate_cases(list(extended_case), prog_var,
-	code_model, can_fail, prog_context, mlds__defns, mlds__statements,
-	ml_gen_info, ml_gen_info).
-:- mode ml_switch_generate_cases(in, in, in, in, in, out, out,
-	in, out) is det.
-
-ml_switch_generate_cases([], _Var, CodeModel, CanFail, Context,
-		[], MLDS_Statements) -->
-	( { CanFail = can_fail } ->
-		ml_gen_failure(CodeModel, Context, MLDS_Statements)
-	;
-		{ error("switch failure") }
-	).
-ml_switch_generate_cases([Case | Cases], Var, CodeModel, CanFail, Context,
-		MLDS_Decls, MLDS_Statements) -->
-	{ Case = case(_, _Tag, ConsId, Goal) },
-	(
-		{ Cases = [], CanFail = cannot_fail }
-	->
-		ml_gen_goal(CodeModel, Goal, MLDS_Decls, MLDS_Statements)
-	;
-		ml_gen_tag_test(Var, ConsId, TagTestDecls, TagTestStatements,
-			TagTestExpression),
-		ml_gen_goal(CodeModel, Goal, GoalStatement),
-		ml_switch_generate_cases(Cases, Var, CodeModel, CanFail,
-			Context, RestDecls, RestStatements),
-		{ Rest = ml_gen_block(RestDecls, RestStatements, Context) },
-		{ IfStmt = if_then_else(TagTestExpression,
-				GoalStatement, yes(Rest)) },
-		{ IfStatement = mlds__statement(IfStmt,
-			mlds__make_context(Context)) },
-		{ MLDS_Decls = TagTestDecls },
-		{ MLDS_Statements = list__append(TagTestStatements,
-			[IfStatement]) }
 	).
 
 %-----------------------------------------------------------------------------%

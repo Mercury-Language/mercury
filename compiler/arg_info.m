@@ -17,7 +17,7 @@
 
 :- module arg_info.
 :- interface. 
-:- import_module hlds_module, hlds_pred, llds, prog_data.
+:- import_module prog_data, hlds_module, hlds_pred, code_model, llds.
 :- import_module list, assoc_list.
 
 	% Annotate every non-aditi procedure in the module with information

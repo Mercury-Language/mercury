@@ -32,10 +32,14 @@
 :- pred pqueue__init(pqueue(_K, _V)).
 :- mode pqueue__init(out) is det.
 
+:- func pqueue__init = pqueue(_K, _V).
+
 	% Insert a value V with key K into a priority queue
 	% and return the new priority queue.
 :- pred pqueue__insert(pqueue(K, V), K, V, pqueue(K, V)).
 :- mode pqueue__insert(in, in, in, out) is det.
+
+:- func pqueue__insert(pqueue(K, V), K, V) = pqueue(K, V).
 
 	% Remove the smallest item from the priority queue.
 :- pred pqueue__remove(pqueue(K, V), K, V, pqueue(K, V)).
@@ -47,10 +51,14 @@
 :- pred pqueue__to_assoc_list(pqueue(K, V), assoc_list(K, V)).
 :- mode pqueue__to_assoc_list(in, out) is det.
 
+:- func pqueue__to_assoc_list(pqueue(K, V)) = assoc_list(K, V).
+
 	% Insert all the key-value pairs in an association list
 	% into a priority queue.
 :- pred pqueue__assoc_list_to_pqueue(assoc_list(K, V), pqueue(K, V)).
 :- mode pqueue__assoc_list_to_pqueue(in, out) is det.
+
+:- func pqueue__assoc_list_to_pqueue(assoc_list(K, V)) = pqueue(K, V).
 
 %---------------------------------------------------------------------------%
 
@@ -156,21 +164,6 @@ pqueue__assoc_list_to_pqueue([K - V | L], Q) :-
 % Ralph Becket <rwab1@cl.cam.ac.uk> 29/04/99
 % 	Functional forms added.
 
-:- interface.
-
-:- func pqueue__init = pqueue(_K, _V).
-
-:- func pqueue__insert(pqueue(K, V), K, V) = pqueue(K, V).
-
-:- func pqueue__to_assoc_list(pqueue(K, V)) = assoc_list(K, V).
-
-:- func pqueue__assoc_list_to_pqueue(assoc_list(K, V)) = pqueue(K, V).
-
-% ---------------------------------------------------------------------------- %
-% ---------------------------------------------------------------------------- %
-
-:- implementation.
-
 pqueue__init = PQ :-
 	pqueue__init(PQ).
 
@@ -182,5 +175,4 @@ pqueue__to_assoc_list(PQ) = AL :-
 
 pqueue__assoc_list_to_pqueue(AL) = PQ2 :-
 	pqueue__assoc_list_to_pqueue(AL, PQ2).
-
 

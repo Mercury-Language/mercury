@@ -1,0 +1,12 @@
+CVS
+getopt.h
+info_to_mdb.c
+mdemangle.c
+mkinit.c
+Mmakefile
+.
+..
+.cvsignore
+.#mdemangle.c.1.31.2.2.2.2
+.#mkinit.c.1.40.2.4.2.4
+.nocopyright

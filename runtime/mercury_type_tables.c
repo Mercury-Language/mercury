@@ -20,6 +20,8 @@
 #include "mercury_type_info.h"
 #include "mercury_type_tables.h"
 #include "mercury_tabling.h"
+#include "mercury_misc.h"
+#include <string.h>
 
 static	MR_TableNode	MR_type_ctor_table = { 0 };
 

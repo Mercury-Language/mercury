@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1997 The University of Melbourne.
+% Copyright (C) 1995-1997,2000-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -51,7 +51,7 @@ process_file__main(Prof, DynamicCallGraph) -->
 	maybe_write_string(VVerbose, "\n\t% Processing "),
 	maybe_write_string(VVerbose, DeclFile),
 	maybe_write_string(VVerbose, "..."),
-	process_addr_decl(AddrDeclMap, ProfNodeMap0),
+	process_addr_decl(AddrDeclMap0, ProfNodeMap0),
 	maybe_write_string(VVerbose, " done.\n"),
 
 	% process the timing counts file
@@ -66,7 +66,8 @@ process_file__main(Prof, DynamicCallGraph) -->
 	maybe_write_string(VVerbose, "\t% Processing "),
 	maybe_write_string(VVerbose, PairFile),
 	maybe_write_string(VVerbose, "..."),
-	process_addr_pair(ProfNodeMap1, DynamicCallGraph, ProfNodeMap),
+	process_addr_pair(ProfNodeMap1, AddrDeclMap0, DynamicCallGraph,
+			ProfNodeMap, AddrDeclMap),
 	maybe_write_string(VVerbose, " done.\n"),
 
 	{ map__init(CycleMap) },
@@ -144,15 +145,17 @@ process_addr_decl_2(AddrDecl0, ProfNodeMap0, AddrDecl, ProfNodeMap) -->
 			{ map__insert(ProfNodeMap0, LabelAddr, ProfNode, 
 								ProfNodeMap1) }
 		->
+			{ AddrDecl2 = AddrDecl1 },
 			{ ProfNodeMap2 = ProfNodeMap1 }
 		;
-			lookup_addr(ProfNodeMap0, LabelAddr, ProfNode0),
+			{ lookup_addr(ProfNodeMap0, AddrDecl1, LabelAddr,
+					ProfNode0, ProfNodeMap1, AddrDecl2) },
 			{ prof_node_concat_to_name_list(LabelName, ProfNode0,
 								NewProfNode) },
-			{ map__det_update(ProfNodeMap0, LabelAddr, NewProfNode,
+			{ map__det_update(ProfNodeMap1, LabelAddr, NewProfNode,
 								ProfNodeMap2) }
 		),
-		process_addr_decl_2(AddrDecl1, ProfNodeMap2, AddrDecl, 
+		process_addr_decl_2(AddrDecl2, ProfNodeMap2, AddrDecl, 
 								ProfNodeMap)
 	;
 		{ MaybeLabelAddr = no },
@@ -249,19 +252,21 @@ process_addr_2(TotalCounts0, ProfNodeMap0, TotalCounts, ProfNodeMap) -->
 %	lists of the prof_node structure.  Also calculates the number of times
 %	a predicate is called.
 %
-:- pred process_addr_pair(prof_node_map, relation(string), prof_node_map, 
-							io__state, io__state).
-:- mode process_addr_pair(in, out, out, di, uo) is det.
+:- pred process_addr_pair(prof_node_map, addrdecl, relation(string),
+		prof_node_map, addrdecl, io__state, io__state).
+:- mode process_addr_pair(in, in, out, out, out, di, uo) is det.
 
-process_addr_pair(ProfNodeMap0, DynamicCallGraph, ProfNodeMap) -->
+process_addr_pair(ProfNodeMap0, AddrDecl0, DynamicCallGraph,
+		ProfNodeMap, AddrDecl) -->
 	{ relation__init(DynamicCallGraph0) },
 	globals__io_lookup_bool_option(dynamic_cg, Dynamic),
 	globals__io_lookup_string_option(pairfile, PairFile),
 	io__see(PairFile, Result),
 	(
 		{ Result = ok },
-		process_addr_pair_2(DynamicCallGraph0, ProfNodeMap0, Dynamic,
-						DynamicCallGraph, ProfNodeMap),
+		process_addr_pair_2(DynamicCallGraph0, ProfNodeMap0, AddrDecl0,
+				Dynamic, DynamicCallGraph,
+				ProfNodeMap, AddrDecl),
 		io__seen
 	;
 		{ Result = error(Error) },
@@ -274,12 +279,13 @@ process_addr_pair(ProfNodeMap0, DynamicCallGraph, ProfNodeMap) -->
 		{ error(ErrorStr) }
 	).
 
-:- pred process_addr_pair_2(relation(string), prof_node_map, bool, 
-			relation(string), prof_node_map, io__state, io__state).
-:- mode process_addr_pair_2(in, in, in, out, out, di, uo) is det.
+:- pred process_addr_pair_2(relation(string), prof_node_map, addrdecl, bool, 
+			relation(string), prof_node_map, addrdecl,
+			io__state, io__state).
+:- mode process_addr_pair_2(in, in, in, in, out, out, out, di, uo) is det.
 
-process_addr_pair_2(DynamicCallGraph0, ProfNodeMap0, Dynamic, DynamicCallGraph,
-								ProfNodeMap) -->
+process_addr_pair_2(DynamicCallGraph0, ProfNodeMap0, AddrDecl0,
+		Dynamic, DynamicCallGraph, ProfNodeMap, AddrDecl) -->
 	maybe_read_label_addr(MaybeLabelAddr),
 	(
 		{ MaybeLabelAddr = yes(CallerAddr) },
@@ -287,8 +293,10 @@ process_addr_pair_2(DynamicCallGraph0, ProfNodeMap0, Dynamic, DynamicCallGraph,
 		read_int(Count),
 
 		% Get child and parent information
-		lookup_addr(ProfNodeMap0, CallerAddr, CallerProfNode0),
-		lookup_addr(ProfNodeMap0, CalleeAddr, CalleeProfNode0),
+		{ lookup_addr(ProfNodeMap0, AddrDecl0, CallerAddr,
+				CallerProfNode0, ProfNodeMap0a, AddrDecl1) },
+		{ lookup_addr(ProfNodeMap0a, AddrDecl1, CalleeAddr,
+				CalleeProfNode0, ProfNodeMap0b, AddrDecl2) },
 		{ prof_node_get_pred_name(CallerProfNode0, CallerName) },
 		{ prof_node_get_pred_name(CalleeProfNode0, CalleeName) },
 
@@ -296,7 +304,8 @@ process_addr_pair_2(DynamicCallGraph0, ProfNodeMap0, Dynamic, DynamicCallGraph,
 
 		{ prof_node_concat_to_child(CalleeName, Count, CallerProfNode0,
 							CallerProfNode) },
-		{map__set(ProfNodeMap0, CallerAddr, CallerProfNode, PNodeMap1)},
+		{map__set(ProfNodeMap0b, CallerAddr, CallerProfNode,
+				PNodeMap1)},
 
 		% Update the total calls field if not self recursive
 		({
@@ -330,12 +339,14 @@ process_addr_pair_2(DynamicCallGraph0, ProfNodeMap0, Dynamic, DynamicCallGraph,
 			DynamicCallGraph99 = DynamicCallGraph0
 		}),
 			
-		process_addr_pair_2(DynamicCallGraph99, PNodeMap2, Dynamic,
-						DynamicCallGraph, ProfNodeMap)
+		process_addr_pair_2(DynamicCallGraph99, PNodeMap2, AddrDecl2,
+				Dynamic, DynamicCallGraph, ProfNodeMap,
+				AddrDecl)
 	;
 		{ MaybeLabelAddr = no },
 		{ DynamicCallGraph = DynamicCallGraph0 },
-		{ ProfNodeMap = ProfNodeMap0 }
+		{ ProfNodeMap = ProfNodeMap0 },
+		{ AddrDecl = AddrDecl0 }
 	).
 
 
@@ -390,18 +401,25 @@ process_library_callgraph_2(LibATSort0, LibATSort, LibPredMap0, LibPredMap) -->
 
 %-----------------------------------------------------------------------------%
 
-% Utility functions so as to replace the lookup functions 
 
-:- pred lookup_addr(prof_node_map, int, prof_node, io__state, io__state).
-:- mode lookup_addr(in, in, out, di, uo) is det.
+% Attempt to lookup the addr in the prof_node_map, if it doesn't exist
+% record the name as unknown__<address> in the relevant data structures.
 
-lookup_addr(ProfNodeMap, Addr, ProfNode) -->
+:- pred lookup_addr(prof_node_map, addrdecl, int, prof_node,
+		prof_node_map, addrdecl).
+:- mode lookup_addr(in, in, in, out, out, out) is det.
+
+lookup_addr(ProfNodeMap0, AddrDeclMap0, Addr, ProfNode,
+		ProfNodeMap, AddrDeclMap) :-
 	(
-		{ map__search(ProfNodeMap, Addr, ProfNode0) }
+		map__search(ProfNodeMap0, Addr, ProfNode0)
 	->
-		{ ProfNode = ProfNode0 }
+		ProfNodeMap = ProfNodeMap0,
+		AddrDeclMap = AddrDeclMap0,
+		ProfNode = ProfNode0
 	;
-		{ string__format("\nKey = %d\n", [ i(Addr) ], String) },
-		io__write_string(String),
-		{ error("map__lookup: key not found\n") }
+		Str = string__format("unknown__%d", [i(Addr)]),
+		prof_node_init(Str, ProfNode),
+		map__det_insert(ProfNodeMap0, Addr, ProfNode, ProfNodeMap),
+		map__det_insert(AddrDeclMap0, Str, Addr, AddrDeclMap)
 	).

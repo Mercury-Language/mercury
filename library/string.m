@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-2000 The University of Melbourne.
+% Copyright (C) 1993-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -21,11 +21,15 @@
 :- interface.
 :- import_module list, char.
 
+:- func string__length(string) = int.
+:- mode string__length(in) = uo is det.
 :- pred string__length(string, int).
 :- mode string__length(in, uo) is det.
+:- mode string__length(ui, uo) is det.
 	% Determine the length of a string.
 	% An empty string has length zero.
 
+:- func string__append(string, string) = string.
 :- pred string__append(string, string, string).
 :- mode string__append(in, in, in) is semidet.	% implied
 :- mode string__append(in, out, in) is semidet.
@@ -47,7 +51,7 @@
 :- pred string__remove_suffix(string, string, string).
 :- mode string__remove_suffix(in, in, out) is semidet.
 %	string__remove_suffix(String, Suffix, Prefix):
-%       The same as string__append(Prefix, Suffix, List) except that
+%       The same as string__append(Prefix, Suffix, String) except that
 %       this is semidet whereas string__append(out, in, in) is nondet.
 
 :- pred string__prefix(string, string).
@@ -56,6 +60,7 @@
 	% string__prefix(String, Prefix) is true iff Prefix is a
 	% prefix of String.  Same as string__append(Prefix, _, String).
 
+:- func string__char_to_string(char) = string.
 :- pred string__char_to_string(char, string).
 :- mode string__char_to_string(in, out) is det.
 :- mode string__char_to_string(out, in) is semidet.
@@ -63,15 +68,18 @@
 %		Converts a character (single-character atom) to a string
 %		or vice versa.
 
+:- func string__int_to_string(int) = string.
 :- pred string__int_to_string(int, string).
 :- mode string__int_to_string(in, out) is det.
 %	Convert an integer to a string.
 
+:- func string__int_to_base_string(int, int) = string.
 :- pred string__int_to_base_string(int, int, string).
 :- mode string__int_to_base_string(in, in, out) is det.
 %	string__int_to_base_string(Int, Base, String):
 %	Convert an integer to a string in a given Base (between 2 and 36).
 
+:- func string__float_to_string(float) = string.
 :- pred string__float_to_string(float, string).
 :- mode string__float_to_string(in, out) is det.
 %	Convert an float to a string.
@@ -100,42 +108,55 @@
 % 	the first string with the third string to give the fourth string.
 % 	It fails if the second string does not occur in the first.
 
+:- func string__replace_all(string, string, string) = string.
 :- pred string__replace_all(string, string, string, string).
 :- mode string__replace_all(in, in, in, out) is det.
 % string__replace_all(String0, Search, Replace, String):
 % 	string__replace_all replaces any occurences of the second string in 
 % 	the first string with the third string to give the fourth string.
 
+:- func string__to_lower(string) = string.
 :- pred string__to_lower(string, string).
 :- mode string__to_lower(in, out) is det.
 :- mode string__to_lower(in, in) is semidet.		% implied
 %	Converts a string to lowercase.
 
+:- func string__to_upper(string) = string.
 :- pred string__to_upper(string, string).
 :- mode string__to_upper(in, out) is det.
 :- mode string__to_upper(in, in) is semidet.		% implied
 %	Converts a string to uppercase.
 
+:- func string__capitalize_first(string) = string.
 :- pred string__capitalize_first(string, string).
 :- mode string__capitalize_first(in, out) is det.
 %	Convert the first character (if any) of a string to uppercase.
 
+:- func string__uncapitalize_first(string) = string.
 :- pred string__uncapitalize_first(string, string).
 :- mode string__uncapitalize_first(in, out) is det.
 %	Convert the first character (if any) of a string to lowercase.
 
+:- func string__to_char_list(string) = list(char).
 :- pred string__to_char_list(string, list(char)).
 :- mode string__to_char_list(in, out) is det.
 :- mode string__to_char_list(out, in) is det.
 
+:- func string__from_char_list(list(char)) = string.
 :- pred string__from_char_list(list(char), string).
 :- mode string__from_char_list(in, out) is det.
 :- mode string__from_char_list(out, in) is det.
 
+:- func string__from_rev_char_list(list(char)) = string.
 :- pred string__from_rev_char_list(list(char), string).
 :- mode string__from_rev_char_list(in, out) is det.
 %	Same as string__from_char_list, except that it reverses the order
 %	of the characters.
+
+:- func string__det_to_int(string) = int.
+%	Converts a signed base 10 string to an int;
+%	throws an exception if the string argument
+%	does not match the regexp [+-]?[0-9]+
 
 :- pred string__to_int(string, int).
 :- mode string__to_int(in, out) is semidet.
@@ -150,6 +171,12 @@
 % 	preceded by a plus or minus sign.  For bases > 10, digits 10 to 35
 % 	are repesented by the letters A-Z or a-z.  If the string does not
 % 	match this syntax, the predicate fails.
+
+:- func string__det_base_string_to_int(int, string) = int.
+%	Converts a signed base N string to an int;
+%	throws an exception if the string argument
+%	is not precisely an optional sign followed
+%	by a non-empty string of base N digits.
 
 :- pred string__to_float(string, float).
 :- mode string__to_float(in, out) is semidet.
@@ -168,18 +195,21 @@
 :- mode string__is_alnum_or_underscore(in) is semidet.
 	% True if string contains only letters, digits, and underscores.
 
+:- func string__pad_left(string, char, int) = string.
 :- pred string__pad_left(string, char, int, string).
 :- mode string__pad_left(in, in, in, out) is det.
 %	string__pad_left(String0, PadChar, Width, String):
 %	insert `PadChar's at the left of `String0' until it is at least
 %	as long as `Width', giving `String'.
 
+:- func string__pad_right(string, char, int) = string.
 :- pred string__pad_right(string, char, int, string).
 :- mode string__pad_right(in, in, in, out) is det.
 %	string__pad_right(String0, PadChar, Width, String):
 %	insert `PadChar's at the right of `String0' until it is at least
 %	as long as `Width', giving `String'.
 
+:- func string__duplicate_char(char, int) = string.
 :- pred string__duplicate_char(char, int, string).
 :- mode string__duplicate_char(in, in, out) is det.
 %	string__duplicate_char(Char, Count, String):
@@ -198,6 +228,7 @@
 %	Fails if `Index' is out of range (negative, or greater than or
 %	equal to the length of `String').
 
+:- func string__index_det(string, int) = char.
 :- pred string__index_det(string, int, char).
 :- mode string__index_det(in, in, out) is det.
 %	string__index_det(String, Index, Char):
@@ -205,6 +236,7 @@
 %	Calls error/1 if `Index' is out of range (negative, or greater than or
 %	equal to the length of `String').
 
+:- func string__unsafe_index(string, int) = char.
 :- pred string__unsafe_index(string, int, char).
 :- mode string__unsafe_index(in, in, out) is det.
 %	string__unsafe_index(String, Index, Char):
@@ -215,6 +247,41 @@
 %	may be linear in the length of the string.
 %	Use with care!
 
+:- pred string__set_char(char, int, string, string).
+:- mode string__set_char(in, in, in, out) is semidet.
+:- mode string__set_char(in, in, di, uo) is semidet.
+%	string__set_char(Char, Index, String0, String):
+%	`String' is `String0' with the (`Index' + 1)-th character
+%	set to `Char'.
+%	Fails if `Index' is out of range (negative, or greater than or
+%	equal to the length of `String0').
+
+:- func string__set_char_det(char, int, string) = string.
+:- pred string__set_char_det(char, int, string, string).
+:- mode string__set_char_det(in, in, in, out) is det.
+:- mode string__set_char_det(in, in, di, uo) is det.
+%	string__set_char_det(Char, Index, String0, String):
+%	`String' is `String0' with the (`Index' + 1)-th character
+%	set to `Char'.
+%	Calls error/1 if `Index' is out of range (negative, or greater than or
+%	equal to the length of `String0').
+
+:- func string__unsafe_set_char(char, int, string) = string.
+:- mode string__unsafe_set_char(in, in, in) = out is det.
+:- mode string__unsafe_set_char(in, in, di) = uo is det.
+:- pred string__unsafe_set_char(char, int, string, string).
+:- mode string__unsafe_set_char(in, in, in, out) is det.
+:- mode string__unsafe_set_char(in, in, di, uo) is det.
+%	string__unsafe_set_char(Char, Index, String0, String):
+%	`String' is `String0' with the (`Index' + 1)-th character
+%	set to `Char'.
+%	WARNING: behavior is UNDEFINED if `Index' is out of range
+%	(negative, or greater than or equal to the length of `String0').
+%	This version is constant time, whereas string__set_char_det
+%	may be linear in the length of the string.
+%	Use with care!
+
+:- func string__foldl(func(char, T) = T, string, T) = T.
 :- pred string__foldl(pred(char, T, T), string, T, T).
 :- mode string__foldl(pred(in, in, out) is det, in, in, out) is det.
 :- mode string__foldl(pred(in, di, uo) is det, in, di, uo) is det.
@@ -248,6 +315,7 @@
 %	(If `Count' is out of the range [0, length of `String'], it is
 %	treated as if it were the nearest end-point of that range.)
 
+:- func string__left(string, int) = string.
 :- pred string__left(string, int, string).
 :- mode string__left(in, in, out) is det.
 %	string__left(String, Count, LeftSubstring):
@@ -255,6 +323,7 @@
 %	(If `Count' is out of the range [0, length of `String'], it is
 %	treated as if it were the nearest end-point of that range.)
 
+:- func string__right(string, int) = string.
 :- pred string__right(string, int, string).
 :- mode string__right(in, in, out) is det.
 %	string__right(String, Count, RightSubstring):
@@ -262,6 +331,7 @@
 %	(If `Count' is out of the range [0, length of `String'], it is
 %	treated as if it were the nearest end-point of that range.)
 
+:- func string__substring(string, int, int) = string.
 :- pred string__substring(string, int, int, string).
 :- mode string__substring(in, in, in, out) is det.
 %	string__substring(String, Start, Count, Substring):
@@ -273,6 +343,7 @@
 %	If `Count' is out of the range [0, length of `String' - `Start'], it is
 %	treated as if it were the nearest end-point of that range.)
 
+:- func string__unsafe_substring(string, int, int) = string.
 :- pred string__unsafe_substring(string, int, int, string).
 :- mode string__unsafe_substring(in, in, in, out) is det.
 %	string__unsafe_substring(String, Start, Count, Substring):
@@ -287,10 +358,12 @@
 %	substring, whereas string__substring may take time proportional
 %	to the length of the whole string.
 
+:- func string__append_list(list(string)) = string.
 :- pred string__append_list(list(string), string).
 :- mode string__append_list(in, out) is det.
 %	Append a list of strings together.
 
+:- func string__hash(string) = int.
 :- pred string__hash(string, int).
 :- mode string__hash(in, out) is det.
 %	Compute a hash value for a string.
@@ -301,6 +374,7 @@
 %	`Index' is the position in `String' where the first occurrence of
 %	`SubString' begins.
 
+:- func string__format(string, list(string__poly_type)) = string.
 :- pred string__format(string, list(string__poly_type), string).
 :- mode string__format(in, in, out) is det.
 %
@@ -489,6 +563,13 @@ string__index_det(String, Int, Char) :-
 		error("string__index_det: index out of range")
 	).
 
+string__set_char_det(Char, Int, String0, String) :-
+	( string__set_char(Char, Int, String0, String1) ->
+		String = String1
+	;
+		error("string__set_char_det: index out of range")
+	).
+
 string__foldl(Closure, String, Acc0, Acc) :-
 	string__length(String, Length),
 	string__foldl2(Closure, String, 0, Length, Acc0, Acc).
@@ -597,7 +678,7 @@ string__from_char_list(CharList, Str) :-
 :- mode string__to_char_list(out, in) is det.
 */
 
-:- pragma c_code(string__to_char_list(Str::in, CharList::out),
+:- pragma foreign_code("C", string__to_char_list(Str::in, CharList::out),
 		[will_not_call_mercury, thread_safe], "{
 	MR_ConstString p = Str + strlen(Str);
 	CharList = MR_list_empty_msg(MR_PROC_LABEL);
@@ -608,7 +689,7 @@ string__from_char_list(CharList, Str) :-
 	}
 }").
 
-:- pragma c_code(string__to_char_list(Str::out, CharList::in),
+:- pragma foreign_code("C", string__to_char_list(Str::out, CharList::in),
 		[will_not_call_mercury, thread_safe], "{
 		/* mode (out, in) is det */
 	MR_Word char_list_ptr;
@@ -651,7 +732,7 @@ string__from_char_list(CharList, Str) :-
 % but the optimized implementation in C below is there for efficiency since
 % it improves the overall speed of parsing by about 7%.
 %
-:- pragma c_code(string__from_rev_char_list(Chars::in, Str::out),
+:- pragma foreign_code("C", string__from_rev_char_list(Chars::in, Str::out),
 		[will_not_call_mercury, thread_safe], "
 {
 	MR_Word list_ptr;
@@ -688,6 +769,49 @@ string__from_char_list(CharList, Str) :-
 		Str[--len] = (MR_Char) MR_list_head(list_ptr);
 		list_ptr = MR_list_tail(list_ptr);
 	}
+}").
+
+:- pragma foreign_code("MC++", string__to_char_list(Str::in, CharList::out),
+		[will_not_call_mercury, thread_safe], "{
+        MR_Integer length, i; 
+        MR_Word tmp;
+        MR_Word prev;
+
+        length = Str->get_Length();
+      
+        MR_list_nil(prev);
+
+        for (i = length - 1; i >= 0; i--) {
+		MR_list_cons(tmp,
+			mercury::runtime::Convert::ToObject(Str->get_Chars(i)),
+			prev);
+		prev = tmp;
+        }
+        CharList = tmp;
+}").
+
+:- pragma foreign_code("MC++", string__to_char_list(Str::out, CharList::in),
+		[will_not_call_mercury, thread_safe], "{
+        System::Text::StringBuilder *tmp;
+	MR_Char c;
+       
+        tmp = new System::Text::StringBuilder();
+        while (1) {
+            if (MR_list_is_cons(CharList)) {
+		c = mercury::runtime::Convert::ToChar(MR_list_head(CharList));
+                tmp->Append(c);
+                CharList = MR_list_tail(CharList);
+            } else {
+                break;
+            }
+        }
+        Str = tmp->ToString();
+}").
+
+:- pragma foreign_code("MC++", string__from_rev_char_list(_Chars::in,
+		_Str::out), [will_not_call_mercury, thread_safe], "
+{
+	mercury::runtime::Errors::SORRY(""c code for this function"");
 }").
 
 :- pred string__int_list_to_char_list(list(int), list(char)).
@@ -812,7 +936,7 @@ string__append_list(Lists, string__append_list(Lists)).
 
 	% Implementation of append_list that uses C as this minimises the
 	% amount of garbage created.
-:- pragma c_code(string__append_list(Strs::in) = (Str::out),
+:- pragma foreign_code("C", string__append_list(Strs::in) = (Str::out),
 		[will_not_call_mercury, thread_safe], "{
 	MR_Word	list = Strs;
 	MR_Word	tmp;
@@ -839,6 +963,12 @@ string__append_list(Lists, string__append_list(Lists)).
 		/* Set the last character to the null char */
 	Str[len] = '\\0';
 }").
+
+:- pragma foreign_code("MC++", string__append_list(_Strs::in) = (_Str::out),
+		[will_not_call_mercury, thread_safe], "{
+	mercury::runtime::Errors::SORRY(""c code for this function"");
+}").
+
 
 %-----------------------------------------------------------------------------%
 
@@ -869,17 +999,25 @@ string__combine_hash(H0, X, H) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pragma c_code(string__sub_string_search(String::in, SubString::in,
+:- pragma foreign_code("C", 
+	string__sub_string_search(WholeString::in, SubString::in,
 			Index::out) , [will_not_call_mercury, thread_safe],
 "{
 	char *match;
-	match = strstr(String, SubString);
+	match = strstr(WholeString, SubString);
 	if (match) {
-		Index = match - String;
+		Index = match - WholeString;
 		SUCCESS_INDICATOR = TRUE;
 	} else {
 		SUCCESS_INDICATOR = FALSE;
 	}
+}").
+
+:- pragma foreign_code("MC++", 
+	string__sub_string_search(_WholeString::in, _SubString::in,
+			_Index::out) , [will_not_call_mercury, thread_safe],
+"{
+	mercury::runtime::Errors::SORRY(""c code for this function"");
 }").
 
 %-----------------------------------------------------------------------------%
@@ -1250,9 +1388,17 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
 				from_char_list(Prec), LengthMod, Spec]).
 
 :- func int_length_modifer = string.
-:- pragma c_code(int_length_modifer = (LengthModifier::out),
+:- pragma foreign_code("C", 
+	int_length_modifer = (LengthModifier::out),
 		[will_not_call_mercury, thread_safe], "{
-	MR_make_aligned_string(LengthModifier, MR_INTEGER_LENGTH_MODIFIER);
+	MR_make_aligned_string(LengthModifier,
+		(MR_String) (MR_Word) MR_INTEGER_LENGTH_MODIFIER);
+}").
+
+:- pragma foreign_code("MC++", 
+	int_length_modifer = (_LengthModifier::out),
+		[will_not_call_mercury, thread_safe], "{
+	mercury::runtime::Errors::SORRY(""c code for this function"");
 }").
 
 
@@ -1260,43 +1406,68 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
 	% Note is is the responsibility of the caller to ensure that the
 	% format string is valid.
 :- func format_float(string, float) = string.
-:- pragma c_code(format_float(FormatStr::in, Val::in) = (Str::out),
+:- pragma foreign_code("C",
+	format_float(FormatStr::in, Val::in) = (Str::out),
 		[will_not_call_mercury, thread_safe], "{
-	save_transient_hp();
+	MR_save_transient_hp();
 	Str = MR_make_string(MR_PROC_LABEL, FormatStr, (long double) Val);
-	restore_transient_hp();
+	MR_restore_transient_hp();
+}").
+:- pragma foreign_code("MC++",
+	format_float(_FormatStr::in, _Val::in) = (_Str::out),
+		[will_not_call_mercury, thread_safe], "{
+	mercury::runtime::Errors::SORRY(""c code for this function"");
 }").
 
 	% Create a string from a int using the format string.
 	% Note is is the responsibility of the caller to ensure that the
 	% format string is valid.
 :- func format_int(string, int) = string.
-:- pragma c_code(format_int(FormatStr::in, Val::in) = (Str::out),
+:- pragma foreign_code("C",
+	format_int(FormatStr::in, Val::in) = (Str::out),
 		[will_not_call_mercury, thread_safe], "{
-	save_transient_hp();
+	MR_save_transient_hp();
 	Str = MR_make_string(MR_PROC_LABEL, FormatStr, Val);
-	restore_transient_hp();
+	MR_restore_transient_hp();
+}").
+:- pragma foreign_code("MC++",
+	format_int(_FormatStr::in, _Val::in) = (_Str::out),
+		[will_not_call_mercury, thread_safe], "{
+	mercury::runtime::Errors::SORRY(""c code for this function"");
 }").
 
 	% Create a string from a string using the format string.
 	% Note is is the responsibility of the caller to ensure that the
 	% format string is valid.
 :- func format_string(string, string) = string.
-:- pragma c_code(format_string(FormatStr::in, Val::in) = (Str::out),
+:- pragma foreign_code("C", 
+	format_string(FormatStr::in, Val::in) = (Str::out),
 		[will_not_call_mercury, thread_safe], "{
 	Str = MR_make_string(MR_PROC_LABEL, FormatStr, Val);
+}").
+:- pragma foreign_code("MC++", 
+	format_string(_FormatStr::in, _Val::in) = (_Str::out),
+		[will_not_call_mercury, thread_safe], "{
+	mercury::runtime::Errors::SORRY(""c code for this function"");
 }").
 
 	% Create a string from a char using the format string.
 	% Note is is the responsibility of the caller to ensure that the
 	% format string is valid.
 :- func format_char(string, char) = string.
-:- pragma c_code(format_char(FormatStr::in, Val::in) = (Str::out),
+:- pragma foreign_code("C", 
+	format_char(FormatStr::in, Val::in) = (Str::out),
 		[will_not_call_mercury, thread_safe], "{
-	save_transient_hp();
+	MR_save_transient_hp();
 	Str = MR_make_string(MR_PROC_LABEL, FormatStr, Val);
-	restore_transient_hp();
+	MR_restore_transient_hp();
 }").
+:- pragma foreign_code("MC++", 
+	format_char(_FormatStr::in, _Val::in) = (_Str::out),
+		[will_not_call_mercury, thread_safe], "{
+	mercury::runtime::Errors::SORRY(""c code for this function"");
+}").
+
 
 %-----------------------------------------------------------------------------%
 
@@ -1309,12 +1480,18 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
 
 %-----------------------------------------------------------------------------%
 
-:- pragma c_code(string__float_to_string(FloatVal::in, FloatString::out),
+:- pragma foreign_code("C",
+	string__float_to_string(FloatVal::in, FloatString::out),
 		[will_not_call_mercury, thread_safe], "{
 	char buf[500];
 	sprintf(buf, ""%#.15g"", FloatVal);
 	MR_allocate_aligned_string_msg(FloatString, strlen(buf), MR_PROC_LABEL);
 	strcpy(FloatString, buf);
+}").
+:- pragma foreign_code("MC++",
+	string__float_to_string(_FloatVal::in, _FloatString::out),
+		[will_not_call_mercury, thread_safe], "{
+	mercury::runtime::Errors::SORRY(""c code for this function"");
 }").
 
 	% Beware that the implementation of string__format depends
@@ -1322,7 +1499,8 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
 
 :- pred string__float_to_f_string(float::in, string::out) is det.
 
-:- pragma c_code(string__float_to_f_string(FloatVal::in, FloatString::out),
+:- pragma foreign_code("C",
+	string__float_to_f_string(FloatVal::in, FloatString::out),
 		[will_not_call_mercury, thread_safe], "{
 	char buf[500];
 	sprintf(buf, ""%.15f"", FloatVal);
@@ -1330,7 +1508,8 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
 	strcpy(FloatString, buf);
 }").
 
-:- pragma c_code(string__to_float(FloatString::in, FloatVal::out),
+:- pragma foreign_code("C",
+	string__to_float(FloatString::in, FloatVal::out),
 		[will_not_call_mercury, thread_safe], "{
 	/* use a temporary, since we can't don't know whether FloatVal
 	   is a double or float */
@@ -1338,6 +1517,18 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
 	SUCCESS_INDICATOR = (sscanf(FloatString, ""%lf"", &tmp) == 1);
 		/* TRUE if sscanf succeeds, FALSE otherwise */
 	FloatVal = tmp;
+}").
+
+:- pragma foreign_code("MC++",
+	string__float_to_f_string(_FloatVal::in, _FloatString::out),
+		[will_not_call_mercury, thread_safe], "{
+	mercury::runtime::Errors::SORRY(""c code for this function"");
+}").
+
+:- pragma foreign_code("MC++",
+	string__to_float(_FloatString::in, _FloatVal::out),
+		[will_not_call_mercury, thread_safe], "{
+	mercury::runtime::Errors::SORRY(""c code for this function"");
 }").
 
 /*-----------------------------------------------------------------------*/
@@ -1348,7 +1539,8 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
 :- mode string__to_int_list(out, in) is det.
 */
 
-:- pragma c_code(string__to_int_list(Str::in, IntList::out),
+:- pragma foreign_code("C",
+	string__to_int_list(Str::in, IntList::out),
 		[will_not_call_mercury, thread_safe], "{
 	MR_ConstString p = Str + strlen(Str);
 	IntList = MR_list_empty_msg(MR_PROC_LABEL);
@@ -1359,7 +1551,8 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
 	}
 }").
 
-:- pragma c_code(string__to_int_list(Str::out, IntList::in),
+:- pragma foreign_code("C",
+	string__to_int_list(Str::out, IntList::in),
 		[will_not_call_mercury, thread_safe], "{
 		/* mode (out, in) is det */
 	MR_Word int_list_ptr;
@@ -1396,15 +1589,58 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
 	Str[size] = '\\0';
 }").
 
+:- pragma foreign_code("MC++",
+	string__to_int_list(Str::in, IntList::out),
+		[will_not_call_mercury, thread_safe], "{
+        MR_Integer length, i; 
+        MR_Word tmp;
+        MR_Word prev;
+
+        length = Str->get_Length();
+      
+        MR_list_nil(prev);
+
+        for (i = length - 1; i >= 0; i--) {
+		MR_list_cons(tmp,
+			mercury::runtime::Convert::ToObject(Str->get_Chars(i)),
+			prev);
+		prev = tmp;
+        }
+        IntList = tmp;
+}").
+
+:- pragma foreign_code("MC++",
+	string__to_int_list(Str::out, IntList::in),
+		[will_not_call_mercury, thread_safe], "{
+        System::Text::StringBuilder *tmp;
+       
+        tmp = new System::Text::StringBuilder();
+        while (1) {
+            if (mercury::runtime::Convert::ToInt32(IntList->GetValue(0))) {
+                tmp->Append(mercury::runtime::Convert::ToChar(
+			IntList->GetValue(1)));
+                IntList = dynamic_cast<MR_Word>(IntList->GetValue(2));
+            } else {
+                break;
+            }
+        }
+        Str = tmp->ToString();
+}").
+
+
 /*-----------------------------------------------------------------------*/
 
 /*
 :- pred string__contains_char(string, char).
 :- mode string__contains_char(in, in) is semidet.
 */
-:- pragma c_code(string__contains_char(Str::in, Ch::in),
+:- pragma foreign_code("C", string__contains_char(Str::in, Ch::in),
 		[will_not_call_mercury, thread_safe], "
 	SUCCESS_INDICATOR = (strchr(Str, Ch) != NULL);
+").
+:- pragma foreign_code("MC++", string__contains_char(_Str::in, _Ch::in),
+		[will_not_call_mercury, thread_safe], "
+	mercury::runtime::Errors::SORRY(""c code for this function"");
 ").
 
 /*-----------------------------------------------------------------------*/
@@ -1413,7 +1649,7 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
 :- pred string__index(string, int, char).
 :- mode string__index(in, in, out) is semidet.
 */
-:- pragma c_code(string__index(Str::in, Index::in, Ch::out),
+:- pragma foreign_code("C", string__index(Str::in, Index::in, Ch::out),
 		[will_not_call_mercury, thread_safe], "
 
                 /*
@@ -1426,30 +1662,165 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
                 ** get an integer overflow error in this case).
                 */
 
-	if ((MR_Word) Index >= strlen(Str)) {
+	if ((MR_Unsigned) Index >= strlen(Str)) {
 		SUCCESS_INDICATOR = FALSE;
 	} else {
 		SUCCESS_INDICATOR = TRUE;
 		Ch = Str[Index];
 	}
 ").
+:- pragma foreign_code("MC++", string__index(Str::in, Index::in, Ch::out),
+		[will_not_call_mercury, thread_safe], "
+	if (Index < 0 || Index >= Str->get_Length()) {
+		SUCCESS_INDICATOR = FALSE;
+	} else {
+		SUCCESS_INDICATOR = TRUE;
+		Ch = Str->get_Chars(Index);
+	}
+").
 
 /*-----------------------------------------------------------------------*/
 
-:- pragma c_code(string__unsafe_index(Str::in, Index::in, Ch::out),
+:- pragma foreign_code("C", 
+	string__unsafe_index(Str::in, Index::in, Ch::out),
 		[will_not_call_mercury, thread_safe], "
 	Ch = Str[Index];
+").
+:- pragma foreign_code("MC++", 
+	string__unsafe_index(Str::in, Index::in, Ch::out),
+		[will_not_call_mercury, thread_safe], "
+	Ch = Str->get_Chars(Index);
+").
+
+/*-----------------------------------------------------------------------*/
+
+:- pragma c_header_code("
+#ifdef USE_GCC_GLOBAL_REGISTERS
+	/*
+	** GNU C version egcs-1.1.2 crashes with `fixed or forbidden
+	** register spilled' in grade asm_fast.gc.tr.debug
+	** if we write this inline.
+	*/
+	static void MR_set_char(MR_String str, MR_Integer ind, MR_Char ch)
+	{
+		str[ind] = ch;
+	}
+#else
+	#define MR_set_char(str, ind, ch) \\
+		((str)[ind] = (ch))
+#endif
+").
+
+/*
+:- pred string__set_char(char, int, string, string).
+:- mode string__set_char(in, in, in, out) is semidet.
+*/
+:- pragma foreign_code("C",
+	string__set_char(Ch::in, Index::in, Str0::in, Str::out),
+		[will_not_call_mercury, thread_safe], "
+	size_t len = strlen(Str0);
+	if ((MR_Unsigned) Index >= len) {
+		SUCCESS_INDICATOR = FALSE;
+	} else {
+		SUCCESS_INDICATOR = TRUE;
+		MR_allocate_aligned_string_msg(Str, len, MR_PROC_LABEL);
+		strcpy(Str, Str0);
+		MR_set_char(Str, Index, Ch);
+	}
+").
+:- pragma foreign_code("MC++",
+	string__set_char(_Ch::in, _Index::in, _Str0::in, _Str::out),
+		[will_not_call_mercury, thread_safe], "
+	mercury::runtime::Errors::SORRY(""c code for this function"");
+").
+
+/*
+:- pred string__set_char(char, int, string, string).
+:- mode string__set_char(in, in, di, uo) is semidet.
+*/
+:- pragma foreign_code("C",
+	string__set_char(Ch::in, Index::in, Str0::di, Str::uo),
+		[will_not_call_mercury, thread_safe], "
+	if ((MR_Unsigned) Index >= strlen(Str0)) {
+		SUCCESS_INDICATOR = FALSE;
+	} else {
+		SUCCESS_INDICATOR = TRUE;
+		Str = Str0;
+		MR_set_char(Str, Index, Ch);
+	}
+").
+:- pragma foreign_code("MC++",
+	string__set_char(_Ch::in, _Index::in, _Str0::di, _Str::uo),
+		[will_not_call_mercury, thread_safe], "
+	mercury::runtime::Errors::SORRY(""c code for this function"");
+").
+
+/*-----------------------------------------------------------------------*/
+
+/*
+:- pred string__unsafe_set_char(char, int, string, string).
+:- mode string__unsafe_set_char(in, in, in, out) is det.
+*/
+:- pragma foreign_code("C",
+	string__unsafe_set_char(Ch::in, Index::in, Str0::in, Str::out),
+		[will_not_call_mercury, thread_safe], "
+	size_t len = strlen(Str0);
+	MR_allocate_aligned_string_msg(Str, len, MR_PROC_LABEL);
+	strcpy(Str, Str0);
+	MR_set_char(Str, Index, Ch);
+").
+:- pragma foreign_code("MC++",
+	string__unsafe_set_char(_Ch::in, _Index::in, _Str0::in, _Str::out),
+		[will_not_call_mercury, thread_safe], "
+	mercury::runtime::Errors::SORRY(""c code for this function"");
+").
+
+/*
+:- pred string__unsafe_set_char(char, int, string, string).
+:- mode string__unsafe_set_char(in, in, di, uo) is det.
+*/
+:- pragma foreign_code("C",
+	string__unsafe_set_char(Ch::in, Index::in, Str0::di, Str::uo),
+		[will_not_call_mercury, thread_safe], "
+	Str = Str0;
+	MR_set_char(Str, Index, Ch);
+").
+:- pragma foreign_code("MC++",
+	string__unsafe_set_char(_Ch::in, _Index::in, _Str0::di, _Str::uo),
+		[will_not_call_mercury, thread_safe], "
+	mercury::runtime::Errors::SORRY(""c code for this function"");
 ").
 
 /*-----------------------------------------------------------------------*/
 
 /*
 :- pred string__length(string, int).
-:- mode string__length(in, out) is det.
+:- mode string__length(in, uo) is det.
 */
-:- pragma c_code(string__length(Str::in, Length::uo),
+:- pragma foreign_code("C",
+	string__length(Str::in, Length::uo),
 		[will_not_call_mercury, thread_safe], "
 	Length = strlen(Str);
+").
+:- pragma foreign_code("MC++",
+	string__length(Str::in, Length::uo),
+		[will_not_call_mercury, thread_safe], "
+	Length = Str->get_Length();
+").
+
+/*
+:- pred string__length(string, int).
+:- mode string__length(ui, uo) is det.
+*/
+:- pragma foreign_code("C",
+	string__length(Str::ui, Length::uo),
+		[will_not_call_mercury, thread_safe], "
+	Length = strlen(Str);
+").
+:- pragma foreign_code("MC++",
+	string__length(Str::ui, Length::uo),
+		[will_not_call_mercury, thread_safe], "
+	Length = Str->get_Length();
 ").
 
 /*-----------------------------------------------------------------------*/
@@ -1465,7 +1836,8 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
 /*
 :- mode string__append(in, in, in) is semidet.
 */
-:- pragma c_code(string__append(S1::in, S2::in, S3::in),
+:- pragma foreign_code("C",
+	string__append(S1::in, S2::in, S3::in),
 		[will_not_call_mercury, thread_safe], "{
 	size_t len_1 = strlen(S1);
 	SUCCESS_INDICATOR = (
@@ -1473,11 +1845,17 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
 		strcmp(S2, S3 + len_1) == 0
 	);
 }").
+:- pragma foreign_code("MC++",
+	string__append(_S1::in, _S2::in, _S3::in),
+		[will_not_call_mercury, thread_safe], "{
+	mercury::runtime::Errors::SORRY(""c code for this function"");
+}").
 
 /*
 :- mode string__append(in, out, in) is semidet.
 */
-:- pragma c_code(string__append(S1::in, S2::out, S3::in),
+:- pragma foreign_code("C",
+	string__append(S1::in, S2::out,S3::in),
 		[will_not_call_mercury, thread_safe], "{
 	size_t len_1, len_2, len_3;
 
@@ -1496,11 +1874,17 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
 		SUCCESS_INDICATOR = TRUE;
 	}
 }").
+:- pragma foreign_code("MC++",
+	string__append(_S1::in, _S2::out, _S3::in),
+		[will_not_call_mercury, thread_safe], "{
+	mercury::runtime::Errors::SORRY(""c code for this function"");
+}").
 
 /*
 :- mode string__append(in, in, out) is det.
 */
-:- pragma c_code(string__append(S1::in, S2::in, S3::out),
+:- pragma foreign_code("C",
+	string__append(S1::in, S2::in, S3::out),
 		[will_not_call_mercury, thread_safe], "{
 	size_t len_1, len_2;
 	len_1 = strlen(S1);
@@ -1509,8 +1893,14 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
 	strcpy(S3, S1);
 	strcpy(S3 + len_1, S2);
 }").
+:- pragma foreign_code("MC++",
+	string__append(S1::in, S2::in, S3::out),
+		[will_not_call_mercury, thread_safe], "{
+	S3 = System::String::Concat(S1, S2);
+}").
 
-:- pragma c_code(string__append(S1::out, S2::out, S3::in),
+:- pragma foreign_code("C",
+	string__append(S1::out, S2::out, S3::in),
 		[will_not_call_mercury, thread_safe],
 	local_vars("
 		MR_String s;
@@ -1541,6 +1931,20 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
 		}
 	")
 ).
+:- pragma foreign_code("MC++",
+	string__append(_S1::out, _S2::out, _S3::in),
+		[will_not_call_mercury, thread_safe],
+	local_vars("
+	"),
+	first_code("
+	"),
+	retry_code("
+	"),
+	common_code("
+		mercury::runtime::Errors::SORRY(""c code for this function"");
+	")
+).
+
 
 /*-----------------------------------------------------------------------*/
 
@@ -1550,7 +1954,8 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
 %	string__substring(String, Start, Count, Substring):
 */
 
-:- pragma c_code(string__substring(Str::in, Start::in, Count::in,
+:- pragma foreign_code("C",
+	string__substring(Str::in, Start::in, Count::in,
 		SubString::out),
 		[will_not_call_mercury, thread_safe],
 "{
@@ -1558,7 +1963,8 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
 	MR_Word tmp;
 	if (Start < 0) Start = 0;
 	if (Count <= 0) {
-		MR_make_aligned_string(LVALUE_CAST(MR_ConstString, SubString),
+		MR_make_aligned_string(
+			MR_LVALUE_CAST(MR_ConstString, SubString),
 			"""");
 	} else {
 		len = strlen(Str);
@@ -1569,6 +1975,13 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
 		SubString[Count] = '\\0';
 	}
 }").
+:- pragma foreign_code("MC++",
+	string__substring(_Str::in, _Start::in, _Count::in,
+		_SubString::out),
+		[will_not_call_mercury, thread_safe],
+"{
+	mercury::runtime::Errors::SORRY(""c code for this function"");
+}").
 
 
 /*
@@ -1577,7 +1990,8 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
 %	string__unsafe_substring(String, Start, Count, Substring):
 */
 
-:- pragma c_code(string__unsafe_substring(Str::in, Start::in, Count::in,
+:- pragma foreign_code("C",
+	string__unsafe_substring(Str::in, Start::in, Count::in,
 		SubString::out),
 		[will_not_call_mercury, thread_safe],
 "{
@@ -1586,6 +2000,14 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
 	memcpy(SubString, Str + Start, Count);
 	SubString[Count] = '\\0';
 }").
+:- pragma foreign_code("MC++",
+	string__unsafe_substring(_Str::in, _Start::in, _Count::in,
+		_SubString::out),
+		[will_not_call_mercury, thread_safe],
+"{
+	mercury::runtime::Errors::SORRY(""c code for this function"");
+}").
+
 
 
 /*
@@ -1598,12 +2020,13 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
 %	treated as if it were the nearest end-point of that range.)
 */
 
-:- pragma c_code(string__split(Str::in, Count::in, Left::out, Right::out),
+:- pragma foreign_code("C",
+	string__split(Str::in, Count::in, Left::out, Right::out),
 		[will_not_call_mercury, thread_safe], "{
 	MR_Integer len;
 	MR_Word tmp;
 	if (Count <= 0) {
-		MR_make_aligned_string(LVALUE_CAST(MR_ConstString, Left),
+		MR_make_aligned_string(MR_LVALUE_CAST(MR_ConstString, Left),
 			"""");
 		Right = Str;
 	} else {
@@ -1622,6 +2045,25 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
 	}
 }").
 
+:- pragma foreign_code("MC++",
+	string__split(Str::in, Count::in, Left::out, Right::out),
+		[will_not_call_mercury, thread_safe], "{
+	MR_Integer len;
+	MR_Word tmp;
+	if (Count <= 0) {
+		Left = """";
+		Right = Str;
+	} else {
+		len = Str->get_Length();
+		if (Count > len) {
+			Count = len;
+		}
+		Left = Str->Substring(0, Count);
+		Right = Str->Substring(Count);
+	}
+}").
+
+
 /*-----------------------------------------------------------------------*/
 
 /*
@@ -1639,7 +2081,8 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
 /*
 :- mode string__first_char(in, in, in) is semidet.	% implied
 */
-:- pragma c_code(string__first_char(Str::in, First::in, Rest::in),
+:- pragma foreign_code("C",
+	string__first_char(Str::in, First::in, Rest::in),
 		[will_not_call_mercury, thread_safe], "
 	SUCCESS_INDICATOR = (
 		Str[0] == First &&
@@ -1647,20 +2090,44 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
 		strcmp(Str + 1, Rest) == 0
 	);
 ").
+:- pragma foreign_code("MC++",
+	string__first_char(Str::in, First::in, Rest::in),
+		[will_not_call_mercury, thread_safe], "
+	MR_Integer len = Str->get_Length();
+	SUCCESS_INDICATOR = (
+		len > 0 &&
+		Str->get_Chars(0) == First &&
+		System::String::Compare(Str, 1, Rest, 0, len) == 0
+	);
+").
 
 /*
 :- mode string__first_char(in, out, in) is semidet.	% implied
 */
-:- pragma c_code(string__first_char(Str::in, First::out, Rest::in),
+:- pragma foreign_code("C",
+	string__first_char(Str::in, First::out, Rest::in),
 		[will_not_call_mercury, thread_safe], "
 	First = Str[0];
 	SUCCESS_INDICATOR = (First != '\\0' && strcmp(Str + 1, Rest) == 0);
+").
+:- pragma foreign_code("MC++",
+	string__first_char(Str::in, First::out, Rest::in),
+		[will_not_call_mercury, thread_safe], "
+	MR_Integer len = Str->get_Length();
+	if (len > 0) {
+		SUCCESS_INDICATOR = 
+			(System::String::Compare(Str, 1, Rest, 0, len) == 0);
+		First = Str->get_Chars(0);
+	} else {
+		SUCCESS_INDICATOR = FALSE;
+	}
 ").
 
 /*
 :- mode string__first_char(in, in, out) is semidet.	% implied
 */
-:- pragma c_code(string__first_char(Str::in, First::in, Rest::out),
+:- pragma foreign_code("C",
+	string__first_char(Str::in, First::in, Rest::out),
 		[will_not_call_mercury, thread_safe], "{
 	if (Str[0] != First || First == '\\0') {
 		SUCCESS_INDICATOR = FALSE;
@@ -1676,11 +2143,24 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
 		SUCCESS_INDICATOR = TRUE;
 	}
 }").
+:- pragma foreign_code("MC++",
+	string__first_char(Str::in, First::in, Rest::out),
+		[will_not_call_mercury, thread_safe], "{
+	MR_Integer len = Str->get_Length();
+	if (len > 0) {
+		SUCCESS_INDICATOR = (First == Str->get_Chars(0) &&
+			System::String::Compare(Str, 1, Rest, 0, len) == 0);
+		Rest = (Str)->Substring(1);
+	} else {
+		SUCCESS_INDICATOR = FALSE;
+	}
+}").
 
 /*
 :- mode string__first_char(in, out, out) is semidet.
 */
-:- pragma c_code(string__first_char(Str::in, First::out, Rest::out),
+:- pragma foreign_code("C", 
+	string__first_char(Str::in, First::out, Rest::out),
 		[will_not_call_mercury, thread_safe], "{
 	First = Str[0];
 	if (First == '\\0') {
@@ -1697,96 +2177,43 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
 		SUCCESS_INDICATOR = TRUE;
 	}
 }").
+:- pragma foreign_code("MC++", 
+	string__first_char(Str::in, First::out, Rest::out),
+		[will_not_call_mercury, thread_safe], "{
+	if (Str->get_Length() == 0) {
+		SUCCESS_INDICATOR = FALSE;
+	} else {
+		First = Str->get_Chars(0);
+		Rest = (Str)->Substring(1);
+		SUCCESS_INDICATOR = TRUE;
+        }
+}").
+
 
 /*
 :- mode string__first_char(out, in, in) is det.
 */
-:- pragma c_code(string__first_char(Str::out, First::in, Rest::in),
+:- pragma foreign_code("C",
+	string__first_char(Str::out, First::in, Rest::in),
 		[will_not_call_mercury, thread_safe], "{
 	size_t len = strlen(Rest) + 1;
 	MR_allocate_aligned_string_msg(Str, len, MR_PROC_LABEL);
 	Str[0] = First;
 	strcpy(Str + 1, Rest);
 }").
+:- pragma foreign_code("MC++",
+	string__first_char(Str::out, First::in, Rest::in),
+		[will_not_call_mercury, thread_safe], "{
+	MR_String FirstStr;
+	FirstStr = new System::String(First, 1);
+	Str = System::String::Concat(FirstStr, Rest);
+}").
+
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 % Ralph Becket <rwab1@cl.cam.ac.uk> 27/04/99
 %       Functional forms added.
-
-:- interface.
-
-:- func string__length(string) = int.
-
-:- func string__append(string, string) = string.
-
-:- func string__char_to_string(char) = string.
-
-:- func string__int_to_string(int) = string.
-
-:- func string__int_to_base_string(int, int) = string.
-
-:- func string__float_to_string(float) = string.
-
-:- func string__replace_all(string, string, string) = string.
-
-:- func string__to_lower(string) = string.
-
-:- func string__to_upper(string) = string.
-
-:- func string__capitalize_first(string) = string.
-
-:- func string__uncapitalize_first(string) = string.
-
-:- func string__to_char_list(string) = list(char).
-
-:- func string__from_char_list(list(char)) = string.
-
-:- func string__from_rev_char_list(list(char)) = string.
-
-:- func string__pad_left(string, char, int) = string.
-
-:- func string__pad_right(string, char, int) = string.
-
-:- func string__duplicate_char(char, int) = string.
-
-:- func string__index_det(string, int) = char.
-
-:- func string__unsafe_index(string, int) = char.
-
-:- func string__foldl(func(char, T) = T, string, T) = T.
-
-:- func string__left(string, int) = string.
-
-:- func string__right(string, int) = string.
-
-:- func string__substring(string, int, int) = string.
-
-:- func string__unsafe_substring(string, int, int) = string.
-
-:- func string__append_list(list(string)) = string.
-
-:- func string__hash(string) = int.
-
-:- func string__format(string, list(string__poly_type)) = string.
-
-	% Converts a signed base 10 string to an int;
-	% throws an exception if the string argument
-	% does not match the regexp [+-]?[0-9]+
-	%
-:- func string__det_to_int(string) = int.
-
-	% Converts a signed base N string to an int;
-	% throws an exception if the string argument
-	% is not precisely an optional sign followed
-	% by a non-empty string of base N digits.
-	%
-:- func string__det_base_string_to_int(int, string) = int.
-
-% ---------------------------------------------------------------------------- %
-% ---------------------------------------------------------------------------- %
-
-:- implementation.
 
 string__length(S) = L :-
 	string__length(S, L).
@@ -1844,6 +2271,12 @@ string__index_det(S, N) = C :-
 
 string__unsafe_index(S, N) = C :-
 	string__unsafe_index(S, N, C).
+
+string__set_char_det(C, N, S0) = S :-
+	string__set_char_det(C, N, S0, S).
+
+string__unsafe_set_char(C, N, S0) = S :-
+	string__unsafe_set_char(C, N, S0, S).
 
 string__foldl(F, S, A) = B :-
 	P = ( pred(X::in, Y::in, Z::out) is det :- Z = F(X, Y) ),

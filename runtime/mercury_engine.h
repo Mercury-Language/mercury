@@ -18,13 +18,13 @@
 	** any function prototypes before the global register
 	** declarations.
 	*/
-#include "mercury_regs.h"		/* for NUM_REAL_REGS */
+#include "mercury_regs.h"		/* for MR_NUM_REAL_REGS */
 
 #include <setjmp.h>
 
 #include "mercury_std.h"		/* for `bool' */
 #include "mercury_types.h"		/* for `MR_Code *' */
-#include "mercury_goto.h"		/* for `Define_entry()' */
+#include "mercury_goto.h"		/* for `MR_define_entry()' */
 #include "mercury_thread.h"		/* for pthread types */
 #include "mercury_context.h"		/* for MR_Context, MR_IF_USE_TRAIL */
 
@@ -92,9 +92,9 @@ typedef struct {
 		MR_IF_USE_TRAIL(MR_Unsigned saved_ticket_counter;)
 		MR_IF_USE_TRAIL(MR_Unsigned saved_ticket_high_water;)
 
-#if NUM_REAL_REGS > 0
-		MR_Word regs[NUM_REAL_REGS];
-#endif /* NUM_REAL_REGS > 0 */
+#if MR_NUM_REAL_REGS > 0
+		MR_Word regs[MR_NUM_REAL_REGS];
+#endif /* MR_NUM_REAL_REGS > 0 */
 
 	} MR_jmp_buf;
 
@@ -116,8 +116,8 @@ typedef struct {
 	**
 	** Notes:
 	** - The Mercury registers must be valid before the call to MR_setjmp.
-	** - The general-purpose registers r1, r2... are not restored and must
-	** be saved by the caller.
+	** - The general-purpose registers MR_r1, MR_r2... are not restored
+	** and must be saved by the caller.
 	** - In grades without conservative garbage collection, the caller
 	** must save and restore hp, sol_hp, heap_zone 
 	** and solutions_heap_zone.
@@ -125,7 +125,7 @@ typedef struct {
 #define MR_setjmp(setjmp_env, longjmp_label)				\
 	    do {							\
 		(setjmp_env)->mercury_env = MR_ENGINE(e_jmp_buf);	\
-		save_regs_to_mem((setjmp_env)->regs);			\
+		MR_save_regs_to_mem((setjmp_env)->regs);		\
 		(setjmp_env)->saved_succip = MR_succip;			\
 		(setjmp_env)->saved_sp = MR_sp;				\
 		(setjmp_env)->saved_curfr = MR_curfr;			\
@@ -138,7 +138,7 @@ typedef struct {
 				MR_ticket_high_water);			\
 		if (setjmp((setjmp_env)->env)) {			\
 			MR_ENGINE(e_jmp_buf) = (setjmp_env)->mercury_env; \
-			restore_regs_from_mem((setjmp_env)->regs);	\
+			MR_restore_regs_from_mem((setjmp_env)->regs);	\
 			MR_succip = (setjmp_env)->saved_succip;		\
 			MR_sp = (setjmp_env)->saved_sp;			\
 			MR_curfr = (setjmp_env)->saved_curfr;		\
@@ -164,7 +164,7 @@ typedef struct {
 
 #ifdef	MR_THREAD_SAFE
 typedef struct MR_mercury_thread_list_struct {
-	MercuryThread			thread;
+	MercuryThread				thread;
 	struct MR_mercury_thread_list_struct	*next;
 } MercuryThreadList;
 #endif
@@ -175,7 +175,7 @@ typedef struct MR_mercury_thread_list_struct {
 */
 
 typedef struct MR_mercury_engine_struct {
-	MR_Word		fake_reg[MAX_FAKE_REG];
+	MR_Word		fake_reg[MR_MAX_FAKE_REG];
 		/* The fake reg vector for this engine. */
 #ifndef CONSERVATIVE_GC
 	MR_Word		*e_hp;
@@ -221,19 +221,15 @@ typedef struct MR_mercury_engine_struct {
 	jmp_buf		*e_jmp_buf;
 	MR_Word		*e_exception;
 #ifndef	CONSERVATIVE_GC
-	MemoryZone	*heap_zone;
-	MemoryZone	*solutions_heap_zone;
-	MemoryZone	*global_heap_zone;
+	MR_MemoryZone	*heap_zone;
+	MR_MemoryZone	*solutions_heap_zone;
+	MR_MemoryZone	*global_heap_zone;
 #endif
 #ifdef	NATIVE_GC
-	MemoryZone	*heap_zone2;
+	MR_MemoryZone	*heap_zone2;
   #ifdef MR_DEBUG_AGC_PRINT_VARS
-	MemoryZone	*debug_heap_zone;
+	MR_MemoryZone	*debug_heap_zone;
   #endif
-#endif
-#ifdef	MR_LOWLEVEL_DEBUG
-	MemoryZone	*dumpstack_zone;
-	int		dumpindex;
 #endif
 } MercuryEngine;
 
@@ -254,7 +250,7 @@ typedef struct MR_mercury_engine_struct {
   #define MR_thread_engine_base \
 	((MercuryEngine *) MR_GETSPECIFIC(MR_engine_base_key))
 
-  #if NUM_REAL_REGS > 0
+  #if MR_NUM_REAL_REGS > 0
     #define	MR_ENGINE_BASE_REGISTER
   	/*
 	** MR_engine_base is defined in machdeps/{arch}.h
@@ -279,68 +275,60 @@ typedef struct MR_mercury_engine_struct {
 #define	MR_CONTEXT(x)		(MR_ENGINE(context).x)
 
 #ifndef CONSERVATIVE_GC
-  #define IF_NOT_CONSERVATIVE_GC(x)	x
+  #define MR_IF_NOT_CONSERVATIVE_GC(x)	x
 #else
-  #define IF_NOT_CONSERVATIVE_GC(x)
+  #define MR_IF_NOT_CONSERVATIVE_GC(x)
 #endif
 
-#define load_engine_regs(eng)						\
+#define MR_load_engine_regs(eng)					\
   	do {								\
-		IF_NOT_CONSERVATIVE_GC(MR_hp = (eng)->e_hp;)		\
-		IF_NOT_CONSERVATIVE_GC(MR_sol_hp = (eng)->e_sol_hp;)	\
-		IF_NOT_CONSERVATIVE_GC(MR_global_hp = (eng)->e_global_hp;) \
+		MR_IF_NOT_CONSERVATIVE_GC(MR_hp = (eng)->e_hp;)		\
+		MR_IF_NOT_CONSERVATIVE_GC(MR_sol_hp = (eng)->e_sol_hp;)	\
+		MR_IF_NOT_CONSERVATIVE_GC(MR_global_hp = (eng)->e_global_hp;) \
 	} while (0)
 
-#define save_engine_regs(eng)						\
+#define MR_save_engine_regs(eng)					\
   	do {								\
-		IF_NOT_CONSERVATIVE_GC((eng)->e_hp = MR_hp;)		\
-		IF_NOT_CONSERVATIVE_GC((eng)->e_sol_hp = MR_sol_hp;)	\
-		IF_NOT_CONSERVATIVE_GC((eng)->e_global_hp = MR_global_hp;) \
+		MR_IF_NOT_CONSERVATIVE_GC((eng)->e_hp = MR_hp;)		\
+		MR_IF_NOT_CONSERVATIVE_GC((eng)->e_sol_hp = MR_sol_hp;)	\
+		MR_IF_NOT_CONSERVATIVE_GC((eng)->e_global_hp = MR_global_hp;) \
 	} while (0)
-
-/*
-** Macros for easy access to heap zones
-*/
-#ifndef	CONSERVATIVE_GC
-  #define MR_heap_zone			MR_ENGINE(heap_zone)
-  #define MR_solutions_heap_zone	MR_ENGINE(solutions_heap_zone)
-  #define MR_global_heap_zone		MR_ENGINE(global_heap_zone)
-#endif
 
 /*
 ** Functions for creating/destroying a MercuryEngine.
 */
-extern	MercuryEngine	*create_engine(void);
-extern	void		destroy_engine(MercuryEngine *engine);
+extern	MercuryEngine	*MR_create_engine(void);
+extern	void		MR_destroy_engine(MercuryEngine *engine);
 
 /*
 ** Functions for initializing/finalizing a MercuryEngine.
 ** These are like create/destroy except that they don't allocate/deallocate
 ** the MercuryEngine structure.
 */
-extern	void	init_engine(MercuryEngine *engine);
-extern	void	finalize_engine(MercuryEngine *engine);
+extern	void		MR_init_engine(MercuryEngine *engine);
+extern	void		MR_finalize_engine(MercuryEngine *engine);
 
 /*
 ** Functions that act on the current Mercury engine.
 ** See the comments in mercury_engine.c for documentation on MR_call_engine().
 */
-extern	MR_Word *	MR_call_engine(MR_Code *entry_point, bool catch_exceptions);
-extern	void	terminate_engine(void);
-extern	void	dump_prev_locations(void);
+extern	MR_Word		*MR_call_engine(MR_Code *entry_point,
+				bool catch_exceptions);
+extern	void		MR_terminate_engine(void);
+extern	void		MR_dump_prev_locations(void);
 
 /*---------------------------------------------------------------------------*/
 
 /*
-** Builtin labels that point to commonly used code fragments
+** Builtin labels that point to commonly used code fragments.
 */
 
-Declare_entry(do_redo);
-Declare_entry(do_fail);
-Declare_entry(do_reset_hp_fail);
-Declare_entry(do_reset_framevar0_fail);
-Declare_entry(do_succeed);
-Declare_entry(do_not_reached);
-Declare_entry(exception_handler_do_fail);
+MR_declare_entry(MR_do_redo);
+MR_declare_entry(MR_do_fail);
+MR_declare_entry(MR_do_reset_hp_fail);
+MR_declare_entry(MR_do_reset_framevar0_fail);
+MR_declare_entry(MR_do_succeed);
+MR_declare_entry(MR_do_not_reached);
+MR_declare_entry(MR_exception_handler_do_fail);
 
 #endif /* not MERCURY_ENGINE_H */

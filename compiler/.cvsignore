@@ -11,6 +11,7 @@
 *.date
 *.date3
 rl_file.m rl_out.m
+maybe_mlds_to_gcc.m
 *.pp_date
 mercury_compile.stats
 mercury_compile

@@ -97,7 +97,7 @@
 :- import_module code_util, unify_proc, type_util, mode_util.
 :- import_module mercury_to_mercury, passes_aux, clause_to_proc, inst_match.
 :- import_module fact_table, purity, goal_util, term_util, export, llds.
-:- import_module error_util.
+:- import_module error_util, foreign.
 
 :- import_module string, char, int, set, bintree, map, multi_map, require.
 :- import_module bag, term, varset, getopt, assoc_list, term_io.
@@ -352,7 +352,7 @@ add_item_decl_pass_1(typeclass(Constraints, Name, Vars, Interface, VarSet),
 
 	% We add instance declarations on the second pass so that we don't add
 	% an instance declaration before its class declaration.
-add_item_decl_pass_1(instance(_, _, _, _, _), _, Status, Module, Status,
+add_item_decl_pass_1(instance(_, _, _, _, _, _), _, Status, Module, Status,
 	Module) --> [].
 
 %-----------------------------------------------------------------------------%
@@ -400,16 +400,17 @@ add_item_decl_pass_2(pragma(Pragma), Context, Status, Module0, Status, Module)
 		{ Pragma = source_file(_) },
 		{ Module = Module0 }
 	;
-		{ Pragma = foreign(_Lang, Body_Code) },
-		{ module_add_c_body_code(Body_Code, Context,
+		{ Pragma = foreign(Lang, Body_Code) },
+		{ module_add_foreign_body_code(Lang, Body_Code, Context,
 			Module0, Module) }
 	;
-		{ Pragma  = c_header_code(C_Header) },
-		{ module_add_c_header(C_Header, Context, Module0, Module) }
+		{ Pragma  = foreign_decl(Lang, C_Header) },
+		{ module_add_foreign_decl(Lang, C_Header, Context,
+			Module0, Module) }
 	;
-		% Handle pragma c_code decls later on (when we process
+		% Handle pragma foreign decls later on (when we process
 		% clauses).
-		{ Pragma = foreign(_, _, _, _, _, _, _) },
+		{ Pragma = foreign(_, _, _, _, _, _) },
 		{ Module = Module0 }
 	;	
 		% Handle pragma tabled decls later on (when we process
@@ -577,16 +578,17 @@ add_item_decl_pass_2(func_mode(_, _, _, _, _, _), _, Status, Module, Status,
 add_item_decl_pass_2(nothing, _, Status, Module, Status, Module) --> [].
 add_item_decl_pass_2(typeclass(_, _, _, _, _)
 	, _, Status, Module, Status, Module) --> [].
-add_item_decl_pass_2(instance(Constraints, Name, Types, Body, VarSet), 
-		Context, Status, Module0, Status, Module) -->
+add_item_decl_pass_2(instance(Constraints, Name, Types, Body, VarSet,
+		InstanceModuleName), Context,
+		Status, Module0, Status, Module) -->
 	{ Status = item_status(ImportStatus, _) },
 	{ Body = abstract ->
 		make_status_abstract(ImportStatus, BodyStatus)
 	;
 		BodyStatus = ImportStatus
 	},
-	module_add_instance_defn(Module0, Constraints, Name, Types, Body,
-		VarSet, BodyStatus, Context, Module).
+	module_add_instance_defn(Module0, InstanceModuleName, Constraints,
+		Name, Types, Body, VarSet, BodyStatus, Context, Module).
 
 %------------------------------------------------------------------------------
 
@@ -687,13 +689,12 @@ add_item_clause(module_defn(_, Defn), Status0, Status, _,
 add_item_clause(pragma(Pragma), Status, Status, Context,
 		Module0, Module, Info0, Info) -->
 	(
-		{ Pragma = foreign(Language, Attributes, Pred, PredOrFunc,
+		{ Pragma = foreign(Attributes, Pred, PredOrFunc,
 			Vars, VarSet, PragmaImpl) }
 	->
-		{ Language = c },
-		module_add_pragma_c_code(Attributes, Pred, PredOrFunc,
-			Vars, VarSet, PragmaImpl, Status, Context,
-			Module0, Module, Info0, Info)
+		module_add_pragma_foreign_code(Attributes, 
+			Pred, PredOrFunc, Vars, VarSet, PragmaImpl,
+			Status, Context, Module0, Module, Info0, Info)
 	;
 		{ Pragma = import(Name, PredOrFunc, Modes, Attributes,
 			C_Function) }
@@ -779,7 +780,7 @@ add_item_clause(assertion(Goal0, VarSet),
 add_item_clause(nothing, Status, Status, _, Module, Module, Info, Info) --> [].
 add_item_clause(typeclass(_, _, _, _, _),
 	Status, Status, _, Module, Module, Info, Info) --> [].
-add_item_clause(instance(_, _, _, _, _),
+add_item_clause(instance(_, _, _, _, _, _),
 	Status, Status, _, Module, Module, Info, Info) --> [].
 
 %-----------------------------------------------------------------------------%
@@ -1821,7 +1822,7 @@ module_add_type_defn(Module0, TVarSet, TypeDefn, _Cond, Context,
 			{
 				AllowNoTagTypes = yes,
 				type_constructors_are_no_tag_type(ConsList,
-					Name, CtorArgType)
+					Name, CtorArgType, _)
 			->
 				NoTagType = no_tag_type(Args,
 					Name, CtorArgType),
@@ -1910,7 +1911,7 @@ combine_status(StatusA, StatusB, Status) :-
 	( combine_status_2(StatusA, StatusB, CombinedStatus) ->
 		Status = CombinedStatus
 	;
-		error("pseudo_imported or pseudo_exported type definition")
+		error("unexpected status for type definition")
 	).
 
 :- pred combine_status_2(import_status, import_status, import_status).
@@ -2504,14 +2505,15 @@ add_default_class_method_func_modes([M|Ms], PredProcIds0, PredProcIds,
 	add_default_class_method_func_modes(Ms, PredProcIds1, PredProcIds,
 		Module1, Module).
 
-:- pred module_add_instance_defn(module_info, list(class_constraint), sym_name,
-	list(type), instance_body, tvarset, import_status, prog_context, 
-	module_info, io__state, io__state).
-:- mode module_add_instance_defn(in, in, in, in, in, in, in, in, out, 
-	di, uo) is det.
+:- pred module_add_instance_defn(module_info, module_name,
+		list(class_constraint), sym_name, list(type), instance_body,
+		tvarset, import_status, prog_context, module_info,
+		io__state, io__state).
+:- mode module_add_instance_defn(in, in, in, in, in, in, in, in, in, out, 
+		di, uo) is det.
 
-module_add_instance_defn(Module0, Constraints, ClassName, Types, Body, VarSet,
-		Status, Context, Module) -->
+module_add_instance_defn(Module0, InstanceModuleName, Constraints, ClassName,
+		Types, Body, VarSet, Status, Context, Module) -->
 	{ module_info_classes(Module0, Classes) },
 	{ module_info_instances(Module0, Instances0) },
 	{ list__length(Types, ClassArity) },
@@ -2520,8 +2522,9 @@ module_add_instance_defn(Module0, Constraints, ClassName, Types, Body, VarSet,
 		{ map__search(Classes, ClassId, _) }
 	->
 		{ map__init(Empty) },
-		{ NewInstanceDefn = hlds_instance_defn(Status, Context,
-			Constraints, Types, Body, no, VarSet, Empty) },
+		{ NewInstanceDefn = hlds_instance_defn(InstanceModuleName,
+			Status, Context, Constraints, Types, Body, no,
+			VarSet, Empty) },
 		{ map__lookup(Instances0, ClassId, InstanceDefns) },
 		check_for_overlapping_instances(NewInstanceDefn, InstanceDefns,
 			ClassId),
@@ -2540,11 +2543,11 @@ module_add_instance_defn(Module0, Constraints, ClassName, Types, Body, VarSet,
 
 check_for_overlapping_instances(NewInstanceDefn, InstanceDefns, ClassId) -->
 	{ IsOverlapping = lambda([(Context - OtherContext)::out] is nondet, (
-		NewInstanceDefn = hlds_instance_defn(_Status, Context,
+		NewInstanceDefn = hlds_instance_defn(_, _Status, Context,
 				_, Types, Body, _, VarSet, _),
 		Body \= abstract, % XXX
 		list__member(OtherInstanceDefn, InstanceDefns),
-		OtherInstanceDefn = hlds_instance_defn(_OtherStatus,
+		OtherInstanceDefn = hlds_instance_defn(_, _OtherStatus,
 				OtherContext, _, OtherTypes, OtherBody,
 				_, OtherVarSet, _),
 		OtherBody \= abstract, % XXX
@@ -2957,7 +2960,11 @@ add_special_preds(Module0, TVarSet, Type, TypeId,
 						UserDefinedEquality),
 				IsEnum = no,
 				UserDefinedEquality = no,
-				Ctors = [_, _|_]
+				module_info_globals(Module0, Globals),
+				globals__lookup_int_option(Globals,
+					compare_specialization, CompareSpec),
+				list__length(Ctors, CtorCount),
+				CtorCount > CompareSpec
 			->
 				SpecialPredIds = [index, compare]
 			;
@@ -3625,9 +3632,8 @@ module_add_clause(ModuleInfo0, ClauseVarSet, PredName, Args, Body, Status,
 		{ pred_info_clauses_info(PredInfo1, Clauses0) },
 		{ pred_info_typevarset(PredInfo1, TVarSet0) },
 		{ maybe_add_default_func_mode(PredInfo1, PredInfo2, _) },
-		{ pred_info_procedures(PredInfo2, Procs) },
-		{ map__keys(Procs, ModeIds) },
-		clauses_info_add_clause(Clauses0, ModeIds,
+		{ pred_info_all_procids(PredInfo2, ProcIds) },
+		clauses_info_add_clause(Clauses0, ProcIds,
 			ClauseVarSet, TVarSet0, Args, Body, Context,
 			PredOrFunc, Arity, IsAssertion, Goal,
 			VarSet, TVarSet, Clauses, Warnings,
@@ -3651,7 +3657,7 @@ module_add_clause(ModuleInfo0, ClauseVarSet, PredName, Args, Body, Status,
 		% check if there are still no modes for the predicate,
 		% and if so, set the `infer_modes' flag for that predicate
 		%
-		( ModeIds = [] ->
+		( ProcIds = [] ->
 			pred_info_get_markers(PredInfo6, Markers0),
 			add_marker(Markers0, infer_modes, Markers),
 			pred_info_set_markers(PredInfo6, Markers, PredInfo)
@@ -3757,10 +3763,10 @@ produce_instance_method_clause(PredOrFunc, Context, InstanceClause,
 		% so it is set to a dummy value.
 		{ varset__init(TVarSet0) },
 
-		{ ModeIds = [] }, % means this clause applies to _every_
+		{ ProcIds = [] }, % means this clause applies to _every_
 				  % mode of the procedure
 		{ IsAssertion = no },
-		clauses_info_add_clause(ClausesInfo0, ModeIds,
+		clauses_info_add_clause(ClausesInfo0, ProcIds,
 			CVarSet, TVarSet0, HeadTerms, Body, Context,
 			PredOrFunc, Arity, IsAssertion, Goal,
 			VarSet, _TVarSet, ClausesInfo, Warnings,
@@ -3777,28 +3783,6 @@ produce_instance_method_clause(PredOrFunc, Context, InstanceClause,
 		{ error("produce_clause: invalid instance item") }
 	).
 
-%-----------------------------------------------------------------------------%
-
-:- pred module_add_c_header(string, prog_context, module_info, module_info).
-:- mode module_add_c_header(in, in, in, out) is det.
-
-module_add_c_header(C_Header, Context, Module0, Module) :-
-	module_info_get_foreign_header(Module0, C_HeaderIndex0),
-		% store the c headers in reverse order and reverse them later
-		% for efficiency
-	C_HeaderIndex1 = [C_Header - Context|C_HeaderIndex0],
-	module_info_set_foreign_header(Module0, C_HeaderIndex1, Module).
-	
-:- pred module_add_c_body_code(string, prog_context, module_info, module_info).
-:- mode module_add_c_body_code(in, in, in, out) is det.
-
-module_add_c_body_code(C_Body_Code, Context, Module0, Module) :-
-	module_info_get_foreign_body_code(Module0, C_Body_List0),
-		% store the c headers in reverse order and reverse them later
-		% for efficiency
-	C_Body_List = [C_Body_Code - Context | C_Body_List0],
-	module_info_set_foreign_body_code(Module0, C_Body_List, Module).
-	
 %-----------------------------------------------------------------------------%
 %
 % module_add_pragma_import:
@@ -3940,53 +3924,24 @@ module_add_pragma_import(PredName, PredOrFunc, Modes, Attributes,
 		di, uo) is det.
 pred_add_pragma_import(PredInfo0, PredId, ProcId, Attributes, C_Function,
 		Context, PredInfo, ModuleInfo0, ModuleInfo, Info0, Info) -->
+	{ pred_info_procedures(PredInfo0, Procs) },
+	{ map__lookup(Procs, ProcId, ProcInfo) },
+	{ foreign__make_pragma_import(PredInfo0, ProcInfo, C_Function, Context,
+		ModuleInfo0, PragmaImpl, VarSet, PragmaVars, ArgTypes,
+		Arity, PredOrFunc) },
+
 	%
 	% lookup some information we need from the pred_info and proc_info
 	%
-	{ pred_info_get_is_pred_or_func(PredInfo0, PredOrFunc) },
-	{ pred_info_module(PredInfo0, PredModule) },
 	{ pred_info_name(PredInfo0, PredName) },
+	{ pred_info_module(PredInfo0, PredModule) },
 	{ pred_info_clauses_info(PredInfo0, Clauses0) },
-	{ pred_info_arg_types(PredInfo0, ArgTypes) },
 	{ pred_info_get_purity(PredInfo0, Purity) },
-	{ pred_info_procedures(PredInfo0, Procs) },
-	{ map__lookup(Procs, ProcId, ProcInfo) },
-	{ proc_info_argmodes(ProcInfo, Modes) },
-	{ proc_info_interface_code_model(ProcInfo, CodeModel) },
 
 	%
-	% Build a list of argument variables, together with their
-	% names, modes, and types.
+	% Add the code for this `pragma import' to the clauses_info
 	%
-	{ varset__init(VarSet0) },
-	{ list__length(Modes, Arity) },
-	{ varset__new_vars(VarSet0, Arity, Vars, VarSet) },
-	{ create_pragma_vars(Vars, Modes, 0, PragmaVars) },
-	{ assoc_list__from_corresponding_lists(PragmaVars, ArgTypes,
-			PragmaVarsAndTypes) },
-
-	%
-	% Construct parts of the C_Code string for calling C_Function.
-	% This C code fragment invokes the specified C function
-	% with the appropriate arguments from the list constructed
-	% above, passed in the appropriate manner (by value, or by
-	% passing the address to simulate pass-by-reference), and
-	% assigns the return value (if any) to the appropriate place.
-	% As this phase occurs before polymorphism, we don't know about
-	% the type-infos yet.  polymorphism.m is responsible for adding
-	% the type-info arguments to the list of variables.
-	%
-	{ handle_return_value(CodeModel, PredOrFunc, PragmaVarsAndTypes,
-			ModuleInfo0, ArgPragmaVarsAndTypes, Return) },
-	{ assoc_list__keys(ArgPragmaVarsAndTypes, ArgPragmaVars) },
-	{ create_pragma_import_c_code(ArgPragmaVars, ModuleInfo0,
-			"", Variables) },
-
-	%
-	% Add the C_Code for this `pragma import' to the clauses_info
-	%
-	{ PragmaImpl = import(C_Function, Return, Variables, yes(Context)) },
-	clauses_info_add_pragma_c_code(Clauses0, Purity, Attributes,
+	clauses_info_add_pragma_foreign_code(Clauses0, Purity, Attributes,
 		PredId, ProcId, VarSet, PragmaVars, ArgTypes, PragmaImpl,
 		Context, PredOrFunc, qualified(PredModule, PredName),
 		Arity, Clauses, ModuleInfo0, ModuleInfo, Info0, Info),
@@ -3996,159 +3951,36 @@ pred_add_pragma_import(PredInfo0, PredId, ProcId, Attributes, C_Function,
 	%
 	{ pred_info_set_clauses_info(PredInfo0, Clauses, PredInfo) }.
 
-%
-% handle_return_value(CodeModel, PredOrFunc, Args0, M, Args, C_Code0):
-%	Figures out what to do with the C function's return value,
-%	based on Mercury procedure's code model, whether it is a predicate
-%	or a function, and (if it is a function) the type and mode of the
-%	function result.  Constructs a C code fragment `C_Code0' which
-%	is a string of the form "<Something> =" that assigns the return
-%	value to the appropriate place, if there is a return value,
-%	or is an empty string, if there is no return value.
-%	Returns in Args all of Args0 that must be passed as arguments
-%	(i.e. all of them, or all of them except the return value).
-%
-:- pred handle_return_value(code_model, pred_or_func,
-		assoc_list(pragma_var, type), module_info,
-		assoc_list(pragma_var, type), string).
-:- mode handle_return_value(in, in, in, in, out, out) is det.
-
-handle_return_value(CodeModel, PredOrFunc, Args0, ModuleInfo, Args, C_Code0) :-
-	( CodeModel = model_det,
-		(
-			PredOrFunc = function,
-			pred_args_to_func_args(Args0, Args1, RetArg),
-			RetArg = pragma_var(_, RetArgName, RetMode) - RetType,
-			mode_to_arg_mode(ModuleInfo, RetMode, RetType,
-				RetArgMode),
-			RetArgMode = top_out,
-			\+ type_util__is_dummy_argument_type(RetType)
-		->
-			string__append(RetArgName, " = ", C_Code0),
-			Args2 = Args1
-		;
-			C_Code0 = "",
-			Args2 = Args0
-		)
-	; CodeModel = model_semi,
-		% we treat semidet functions the same as semidet predicates,
-		% which means that for Mercury functions the Mercury return
-		% value becomes the last argument, and the C return value
-		% is a bool that is used to indicate success or failure.
-		C_Code0 = "SUCCESS_INDICATOR = ",
-		Args2 = Args0
-	; CodeModel = model_non,
-		% XXX we should report an error here, rather than generating
-		% C code with `#error'...
-		C_Code0 = "\n#error ""cannot import nondet procedure""\n",
-		Args2 = Args0
-	),
-	list__filter(include_import_arg(ModuleInfo), Args2, Args).
-
-%
-% include_import_arg(M, Arg):
-%	Succeeds iff Arg should be included in the arguments of the C
-%	function.  Fails if `Arg' has a type such as `io__state' that
-%	is just a dummy argument that should not be passed to C.
-%
-:- pred include_import_arg(module_info, pair(pragma_var, type)).
-:- mode include_import_arg(in, in) is semidet.
-
-include_import_arg(ModuleInfo, pragma_var(_Var, _Name, Mode) - Type) :-
-	mode_to_arg_mode(ModuleInfo, Mode, Type, ArgMode),
-	ArgMode \= top_unused,
-	\+ type_util__is_dummy_argument_type(Type).
-
-%
-% create_pragma_vars(Vars, Modes, ArgNum0, PragmaVars):
-%	given list of vars and modes, and an initial argument number,
-%	allocate names to all the variables, and
-%	construct a single list containing the variables, names, and modes.
-%
-:- pred create_pragma_vars(list(prog_var), list(mode), int, list(pragma_var)).
-:- mode create_pragma_vars(in, in, in, out) is det.
-
-create_pragma_vars([], [], _Num, []).
-
-create_pragma_vars([Var|Vars], [Mode|Modes], ArgNum0,
-		[PragmaVar | PragmaVars]) :-
-	%
-	% Figure out a name for the C variable which will hold this argument
-	%
-	ArgNum is ArgNum0 + 1,
-	string__int_to_string(ArgNum, ArgNumString),
-	string__append("Arg", ArgNumString, ArgName),
-
-	PragmaVar = pragma_var(Var, ArgName, Mode),
-
-	create_pragma_vars(Vars, Modes, ArgNum, PragmaVars).
-
-create_pragma_vars([_|_], [], _, _) :-
-	error("create_pragma_vars: length mis-match").
-create_pragma_vars([], [_|_], _, _) :-
-	error("create_pragma_vars: length mis-match").
-
-%
-% create_pragma_import_c_code(PragmaVars, M, C_Code0, C_Code):
-%	This predicate creates the C code fragments for each argument
-%	in PragmaVars, and appends them to C_Code0, returning C_Code.
-%
-:- pred create_pragma_import_c_code(list(pragma_var), module_info,
-				string, string).
-:- mode create_pragma_import_c_code(in, in, in, out) is det.
-
-create_pragma_import_c_code([], _ModuleInfo, C_Code, C_Code).
-
-create_pragma_import_c_code([PragmaVar | PragmaVars], ModuleInfo,
-		C_Code0, C_Code) :-
-	PragmaVar = pragma_var(_Var, ArgName, Mode),
-
-	%
-	% Construct the C code fragment for passing this argument,
-	% and append it to C_Code0.
-	% Note that C handles output arguments by passing the variable'
-	% address, so if the mode is output, we need to put an `&' before
-	% the variable name.
-	%
-	( mode_is_output(ModuleInfo, Mode) ->
-		string__append(C_Code0, "&", C_Code1)
-	;
-		C_Code1 = C_Code0
-	),
-	string__append(C_Code1, ArgName, C_Code2),
-	( PragmaVars \= [] ->
-		string__append(C_Code2, ", ", C_Code3)
-	;
-		C_Code3 = C_Code2
-	),
-
-	create_pragma_import_c_code(PragmaVars, ModuleInfo, C_Code3, C_Code).
-
 %-----------------------------------------------------------------------------%
 
-:- pred module_add_pragma_c_code(pragma_foreign_code_attributes, sym_name,
-	pred_or_func, list(pragma_var), prog_varset, pragma_foreign_code_impl,
-	import_status, prog_context, module_info, module_info,
-	qual_info, qual_info, io__state, io__state).
-:- mode module_add_pragma_c_code(in, in, in, in, in, in, in, in, in, out,
-	in, out, di, uo) is det.  
+:- pred module_add_pragma_foreign_code(pragma_foreign_code_attributes,
+	sym_name, pred_or_func, list(pragma_var), prog_varset,
+	pragma_foreign_code_impl, import_status, prog_context,
+	module_info, module_info, qual_info, qual_info, io__state,
+	io__state).
+:- mode module_add_pragma_foreign_code(in, in, in, in, in, in, in, in,
+	in, out, in, out, di, uo) is det.  
 
-module_add_pragma_c_code(Attributes, PredName, PredOrFunc, PVars, VarSet, 
-		PragmaImpl, Status, Context, ModuleInfo0, ModuleInfo,
-		Info0, Info) --> 
+module_add_pragma_foreign_code(Attributes, PredName, PredOrFunc,
+		PVars, VarSet, PragmaImpl, Status, Context,
+		ModuleInfo0, ModuleInfo, Info0, Info) --> 
 	{ module_info_name(ModuleInfo0, ModuleName) },
+	{ foreign_language(Attributes, PragmaForeignLanguage) },
 	{ list__length(PVars, Arity) },
 		% print out a progress message
 	globals__io_lookup_bool_option(very_verbose, VeryVerbose),
 	( 
 		{ VeryVerbose = yes }
 	->
-		io__write_string("% Processing `:- pragma c_code' for "),
+		io__write_string("% Processing `:- pragma foreign_code' for "),
 		hlds_out__write_simple_call_id(PredOrFunc, PredName/Arity),
 		io__write_string("...\n")
 	;
 		[]
 	),
+
+	globals__io_lookup_foreign_language_option(use_foreign_language,
+		UseForeignLang),
 
 		% Lookup the pred declaration in the predicate table.
 		% (If it's not there, print an error message and insert
@@ -4163,7 +3995,7 @@ module_add_pragma_c_code(Attributes, PredName, PredOrFunc, PVars, VarSet,
 	;
 		preds_add_implicit_report_error(ModuleName,
 			PredOrFunc, PredName, Arity, Status, no, Context,
-			"`:- pragma c_code' declaration",
+			"`:- pragma foreign_code' declaration",
 			PredId, ModuleInfo0, ModuleInfo1)
 	),
 		% Lookup the pred_info for this pred,
@@ -4185,7 +4017,8 @@ module_add_pragma_c_code(Attributes, PredName, PredOrFunc, PVars, VarSet,
 	->
 		{ module_info_incr_errors(ModuleInfo1, ModuleInfo) },
 		prog_out__write_context(Context),
-		io__write_string("Error: `:- pragma c_code' "),
+		io__write_string("Error: `:- pragma foreign_code' (or `pragma c_code')\n"),
+		prog_out__write_context(Context),
 		io__write_string("declaration for imported "),
 		hlds_out__write_simple_call_id(PredOrFunc, PredName/Arity),
 		io__write_string(".\n"),
@@ -4195,14 +4028,22 @@ module_add_pragma_c_code(Attributes, PredName, PredOrFunc, PVars, VarSet,
 	->
 		{ module_info_incr_errors(ModuleInfo1, ModuleInfo) },
 		prog_out__write_context(Context),
-		io__write_string("Error: `:- pragma c_code' declaration "),
-		io__write_string("for "),
+		io__write_string("Error: `:- pragma foreign_code' (or `pragma c_code')\n"),
+		prog_out__write_context(Context),
+		io__write_string("declaration for "),
 		hlds_out__write_simple_call_id(PredOrFunc, PredName/Arity),
 		io__write_string("\n"),
 		prog_out__write_context(Context),
 		io__write_string("  with preceding clauses.\n"),
 		{ Info = Info0 }
 	;
+			% Don't add clauses for foreign languages other
+			% than the one we are using.
+		{ UseForeignLang \= PragmaForeignLanguage }
+	->
+		{ ModuleInfo = ModuleInfo1 },
+		{ Info = Info0 }
+	;		
 		% add the pragma declaration to the proc_info for this procedure
 		{ pred_info_procedures(PredInfo1, Procs) },
 		{ map__to_assoc_list(Procs, ExistingProcs) },
@@ -4214,11 +4055,12 @@ module_add_pragma_c_code(Attributes, PredName, PredOrFunc, PVars, VarSet,
 			{ pred_info_clauses_info(PredInfo1, Clauses0) },
 			{ pred_info_arg_types(PredInfo1, ArgTypes) },
 			{ pred_info_get_purity(PredInfo1, Purity) },
-			clauses_info_add_pragma_c_code(Clauses0, Purity,
-				Attributes, PredId, ProcId, VarSet,
-				PVars, ArgTypes, PragmaImpl, Context,
-				PredOrFunc, PredName, Arity,
-				Clauses, ModuleInfo1, ModuleInfo2, Info0, Info),
+			clauses_info_add_pragma_foreign_code(
+				Clauses0, Purity, Attributes, PredId,
+				ProcId, VarSet, PVars, ArgTypes,
+				PragmaImpl, Context, PredOrFunc,
+				PredName, Arity, Clauses, ModuleInfo1,
+				ModuleInfo2, Info0, Info),
 			{ pred_info_set_clauses_info(PredInfo1, Clauses, 
 				PredInfo2) },
 			{ pred_info_set_goal_type(PredInfo2, pragmas, 
@@ -4229,7 +4071,8 @@ module_add_pragma_c_code(Attributes, PredName, PredOrFunc, PVars, VarSet,
 			{ module_info_set_predicate_table(ModuleInfo2, 
 				PredicateTable, ModuleInfo) },
 			{ pragma_get_var_infos(PVars, ArgInfo) },
-			maybe_warn_pragma_singletons(PragmaImpl, ArgInfo,
+			maybe_warn_pragma_singletons(PragmaImpl, 
+				PragmaForeignLanguage, ArgInfo,
 				Context, PredOrFunc - PredName/Arity,
 				ModuleInfo)
 		;
@@ -4237,7 +4080,7 @@ module_add_pragma_c_code(Attributes, PredName, PredOrFunc, PVars, VarSet,
 			io__stderr_stream(StdErr),
 			io__set_output_stream(StdErr, OldStream),
 			prog_out__write_context(Context),
-			io__write_string("Error: `:- pragma c_code' "),
+			io__write_string("Error: `:- pragma foreign_code' "),
 			io__write_string("declaration for undeclared mode "),
 			io__write_string("of "),
 			hlds_out__write_simple_call_id(PredOrFunc,
@@ -4749,12 +4592,12 @@ warn_singletons_in_goal_2(unify(Var, RHS, _, _, _),
 	warn_singletons_in_unify(Var, RHS, GoalInfo, QuantVars, VarSet,
 		PredCallId, MI).
 
-warn_singletons_in_goal_2(pragma_foreign_code(_, _, _, _, _, ArgInfo, _,
+warn_singletons_in_goal_2(pragma_foreign_code(Attrs, _, _, _, ArgInfo, _,
 		PragmaImpl), GoalInfo, _QuantVars, _VarSet, PredCallId, MI) --> 
 	{ goal_info_get_context(GoalInfo, Context) },
-	% XXX not just C code
-	warn_singletons_in_pragma_c_code(PragmaImpl, ArgInfo, Context, 
-		PredCallId, MI).
+	{ foreign_language(Attrs, Lang) },
+	warn_singletons_in_pragma_foreign_code(PragmaImpl, Lang,
+		ArgInfo, Context, PredCallId, MI).
 
 warn_singletons_in_goal_2(bi_implication(LHS, RHS), _GoalInfo, QuantVars,
 		VarSet, PredCallId, MI) -->
@@ -4829,29 +4672,36 @@ warn_singletons_in_unify(X, lambda_goal(_PredOrFunc, _Eval, _Fix, _NonLocals,
 %-----------------------------------------------------------------------------%
 
 :- pred maybe_warn_pragma_singletons(pragma_foreign_code_impl,
-	list(maybe(pair(string, mode))), prog_context, simple_call_id,
-	module_info, io__state, io__state).
-:- mode maybe_warn_pragma_singletons(in, in, in, in, in, di, uo) is det.
+	foreign_language, list(maybe(pair(string, mode))), prog_context,
+	simple_call_id, module_info, io__state, io__state).
+:- mode maybe_warn_pragma_singletons(in, in, in, in, in, in, di, uo) is det.
 
-maybe_warn_pragma_singletons(PragmaImpl, ArgInfo, Context, CallId, MI) -->
+maybe_warn_pragma_singletons(PragmaImpl, Lang, ArgInfo, Context, CallId, MI) -->
 	globals__io_lookup_bool_option(warn_singleton_vars, WarnSingletonVars),
 	( { WarnSingletonVars = yes } ->
-		warn_singletons_in_pragma_c_code(PragmaImpl, ArgInfo,
-			Context, CallId, MI)
+		warn_singletons_in_pragma_foreign_code(PragmaImpl, Lang,
+			ArgInfo, Context, CallId, MI)
 	;	
 		[]
 	).
 
-	% warn_singletons_in_pragma_c_code checks to see if each variable is
-	% mentioned at least once in the c code fragments that ought to
-	% mention it. If not, it gives a warning.
-:- pred warn_singletons_in_pragma_c_code(pragma_foreign_code_impl,
-	list(maybe(pair(string, mode))), prog_context, simple_call_id,
-	module_info, io__state, io__state).
-:- mode warn_singletons_in_pragma_c_code(in, in, in, in, in, di, uo) is det.
+	% warn_singletons_in_pragma_foreign_code checks to see if each
+	% variable is mentioned at least once in the foreign code
+	% fragments that ought to mention it. If not, it gives a
+	% warning.
+	% (Note that for some foreign languages it might not be
+	% appropriate to do this check, or you may need to add a
+	% transformation to map Mercury variable names into identifiers
+	% for that foreign language).
+:- pred warn_singletons_in_pragma_foreign_code(pragma_foreign_code_impl,
+	foreign_language, list(maybe(pair(string, mode))), prog_context,
+	simple_call_id, module_info, io__state, io__state).
+:- mode warn_singletons_in_pragma_foreign_code(in, in, in, in, in, in,
+	di, uo) is det.
 
-warn_singletons_in_pragma_c_code(PragmaImpl, ArgInfo, 
+warn_singletons_in_pragma_foreign_code(PragmaImpl, Lang, ArgInfo, 
 		Context, PredOrFuncCallId, ModuleInfo) -->
+	{ LangStr = foreign_language_string(Lang) },
 	(
 		{ PragmaImpl = ordinary(C_Code, _) },
 		{ c_code_to_name_list(C_Code, C_CodeList) },
@@ -4866,19 +4716,13 @@ warn_singletons_in_pragma_c_code(PragmaImpl, ArgInfo,
 			io__stderr_stream(StdErr1),
 			io__set_output_stream(StdErr1, OldStream1),
 			prog_out__write_context(Context),
-			io__write_string("In `:- pragma c_code' for "),
+			io__write_string("In the " ++ LangStr ++ " code for "),
 			hlds_out__write_simple_call_id(PredOrFuncCallId),
 			io__write_string(":\n"),
 			prog_out__write_context(Context),
-			( { UnmentionedVars = [_] } ->
-				io__write_string("  warning: variable `"),
-				write_string_list(UnmentionedVars),
-				io__write_string("' does not occur in the C code.\n")
-			;
-				io__write_string("  warning: variables `"),
-				write_string_list(UnmentionedVars),
-				io__write_string("' do not occur in the C code.\n")
-			),
+			write_variable_warning_start(UnmentionedVars),
+			io__write_string("not occur in the " ++
+				LangStr ++ " code.\n"),
 			io__set_output_stream(OldStream1, _)
 		)
 	;
@@ -4899,19 +4743,13 @@ warn_singletons_in_pragma_c_code(PragmaImpl, ArgInfo,
 			io__stderr_stream(StdErr2),
 			io__set_output_stream(StdErr2, OldStream2),
 			prog_out__write_context(Context),
-			io__write_string("In `:- pragma c_code' for "),
+			io__write_string("In the " ++ LangStr ++ " code for "),
 			hlds_out__write_simple_call_id(PredOrFuncCallId),
 			io__write_string(":\n"),
 			prog_out__write_context(Context),
-			( { UnmentionedInputVars = [_] } ->
-				io__write_string("  warning: variable `"),
-				write_string_list(UnmentionedInputVars),
-				io__write_string("' does not occur in the first C code.\n")
-			;
-				io__write_string("  warning: variables `"),
-				write_string_list(UnmentionedInputVars),
-				io__write_string("' do not occur in the first C code.\n")
-			),
+			write_variable_warning_start(UnmentionedInputVars),
+			io__write_string("not occur in the first " ++
+				LangStr ++ " code.\n "),
 			io__set_output_stream(OldStream2, _)
 		),
 		{ solutions(lambda([Name::out] is nondet, (
@@ -4927,19 +4765,15 @@ warn_singletons_in_pragma_c_code(PragmaImpl, ArgInfo,
 			io__stderr_stream(StdErr3),
 			io__set_output_stream(StdErr3, OldStream3),
 			prog_out__write_context(Context),
-			io__write_string("In `:- pragma c_code' for "),
+			io__write_string("In the " ++ LangStr ++ " code for "),
 			hlds_out__write_simple_call_id(PredOrFuncCallId),
 			io__write_string(":\n"),
 			prog_out__write_context(Context),
-			( { UnmentionedFirstOutputVars = [_] } ->
-				io__write_string("  warning: variable `"),
-				write_string_list(UnmentionedFirstOutputVars),
-				io__write_string("' does not occur in the first C code or the shared C code.\n")
-			;
-				io__write_string("  warning: variables `"),
-				write_string_list(UnmentionedFirstOutputVars),
-				io__write_string("' do not occur in the first C code or the shared C code.\n")
-			),
+			write_variable_warning_start(
+				UnmentionedFirstOutputVars),
+			io__write_string("not occur in the first " ++
+				LangStr ++ " code or the shared " ++ LangStr ++
+				" code.\n "),
 			io__set_output_stream(OldStream3, _)
 		),
 		{ solutions(lambda([Name::out] is nondet, (
@@ -4955,23 +4789,32 @@ warn_singletons_in_pragma_c_code(PragmaImpl, ArgInfo,
 			io__stderr_stream(StdErr4),
 			io__set_output_stream(StdErr4, OldStream4),
 			prog_out__write_context(Context),
-			io__write_string("In `:- pragma c_code' for "),
+			io__write_string("In the " ++ LangStr ++ " code for "),
 			hlds_out__write_simple_call_id(PredOrFuncCallId),
 			io__write_string(":\n"),
 			prog_out__write_context(Context),
-			( { UnmentionedLaterOutputVars = [_] } ->
-				io__write_string("  warning: variable `"),
-				write_string_list(UnmentionedLaterOutputVars),
-				io__write_string("' does not occur in the retry C code or the shared C code.\n")
-			;
-				io__write_string("  warning: variables `"),
-				write_string_list(UnmentionedLaterOutputVars),
-				io__write_string("' do not occur in the retry C code or the shared C code.\n")
-			),
+			write_variable_warning_start(
+				UnmentionedLaterOutputVars),
+			io__write_string("not occur in the retry " ++
+				LangStr ++ " code or the shared " ++ LangStr ++
+				" code.\n "),
 			io__set_output_stream(OldStream4, _)
 		)
 	;
 		{ PragmaImpl = import(_, _, _, _) }
+	).
+
+:- pred write_variable_warning_start(list(string)::in, io__state::di,
+		io__state::uo) is det.
+write_variable_warning_start(UnmentionedVars) -->
+	( { UnmentionedVars = [_] } ->
+		io__write_string("  warning: variable `"),
+		write_string_list(UnmentionedVars),
+		io__write_string("' does ")
+	;
+		io__write_string("  warning: variables `"),
+		write_string_list(UnmentionedVars),
+		io__write_string("' do ")
 	).
 
 %-----------------------------------------------------------------------------%
@@ -5226,28 +5069,40 @@ clauses_info_add_clause(ClausesInfo0, ModeIds, CVarSet, TVarSet0,
 
 %-----------------------------------------------------------------------------
 
-% Add the pragma_c_code goal to the clauses_info for this procedure.
+% Add the pragma_foreign_code goal to the clauses_info for this procedure.
 % To do so, we must also insert unifications between the variables in the
-% pragma c_code declaration and the head vars of the pred. Also return the
-% hlds_goal.
+% pragma foreign_code declaration and the head vars of the pred. Also
+% return the hlds_goal.
 
-:- pred clauses_info_add_pragma_c_code(clauses_info, purity,
-	pragma_foreign_code_attributes, pred_id, proc_id, prog_varset,
-	list(pragma_var), list(type), pragma_foreign_code_impl, prog_context,
-	pred_or_func, sym_name, arity, clauses_info, module_info,
-	module_info, qual_info, qual_info, io__state, io__state) is det.
-:- mode clauses_info_add_pragma_c_code(in, in, in, in, in, in, in, in, in, in,
-	in, in, in, out, in, out, in, out, di, uo) is det.
+:- pred clauses_info_add_pragma_foreign_code(
+	clauses_info::in, purity::in, pragma_foreign_code_attributes::in,
+	pred_id::in, proc_id::in, prog_varset::in, list(pragma_var)::in,
+	list(type)::in, pragma_foreign_code_impl::in, prog_context::in,
+	pred_or_func::in, sym_name::in, arity::in, clauses_info::out,
+	module_info::in, module_info::out, qual_info::in,
+	qual_info::out, io__state::di, io__state::uo) is det.
 
-clauses_info_add_pragma_c_code(ClausesInfo0, Purity, Attributes, PredId,
-		ModeId, PVarSet, PVars, OrigArgTypes, PragmaImpl, Context,
+clauses_info_add_pragma_foreign_code(ClausesInfo0, Purity, Attributes0, PredId,
+		ModeId, PVarSet, PVars, OrigArgTypes, PragmaImpl0, Context,
 		PredOrFunc, PredName, Arity, ClausesInfo, ModuleInfo0,
 		ModuleInfo, Info0, Info) -->
+	globals__io_lookup_foreign_language_option(backend_foreign_language,
+		BackendForeignLanguage),
 	{
 	ClausesInfo0 = clauses_info(VarSet0, VarTypes, TVarNameMap, VarTypes1,
 				 HeadVars, ClauseList, TI_VarMap, TCI_VarMap),
 	pragma_get_vars(PVars, Args0),
 	pragma_get_var_infos(PVars, ArgInfo),
+
+	%
+	% If the foreign language is different to the backend 
+	% language, we will have to generate an interface to it in the
+	% backend language.
+	%
+	foreign__extrude_pragma_implementation(BackendForeignLanguage,
+		PVars, PredName, PredOrFunc, Context,
+		ModuleInfo0, Attributes0, PragmaImpl0,
+		ModuleInfo1, Attributes, PragmaImpl),
 
 	%
 	% Check for arguments occurring multiple times.
@@ -5265,10 +5120,11 @@ clauses_info_add_pragma_c_code(ClausesInfo0, Purity, Attributes, PredId,
 
 	( { MultipleArgs = [_ | _] } ->
 		{ ClausesInfo = ClausesInfo0 },
-		{ ModuleInfo = ModuleInfo0 },
+		{ ModuleInfo = ModuleInfo1 },
 		{ Info = Info0 },
 		prog_out__write_context(Context),
-		io__write_string("In `:- pragma c_code' declaration for "),
+		io__write_string(
+			"In `:- pragma foreign_code' declaration for "),
 		{ adjust_func_arity(PredOrFunc, OrigArity, Arity) },
 		hlds_out__write_simple_call_id(
 			PredOrFunc - PredName/OrigArity),
@@ -5301,20 +5157,20 @@ clauses_info_add_pragma_c_code(ClausesInfo0, Purity, Attributes, PredId,
 		goal_info_init(GoalInfo0),
 		goal_info_set_context(GoalInfo0, Context, GoalInfo1),
 		% Put the purity in the goal_info in case
-		% this c code is inlined
+		% this foreign code is inlined
 		add_goal_info_purity_feature(GoalInfo1, Purity, GoalInfo),
-		% XXX we assume C code
-		HldsGoal0 = pragma_foreign_code(c, Attributes, PredId, 
+		HldsGoal0 = pragma_foreign_code(Attributes, PredId, 
 			ModeId, Args, ArgInfo, OrigArgTypes, PragmaImpl)
 			- GoalInfo
 		}, 
 			% Apply unifications with the head args.
 			% Since the set of head vars and the set vars in the
-			% pragma C code are disjoint, the unifications can be
-			% implemented as substitutions, and they will be.
+			% pragma foreign code are disjoint, the
+			% unifications can be implemented as
+			% substitutions, and they will be.
 		insert_arg_unifications(HeadVars, TermArgs, Context,
 			head(PredOrFunc, Arity), yes, HldsGoal0, VarSet1,
-			HldsGoal1, VarSet2, transform_info(ModuleInfo0, Info0),
+			HldsGoal1, VarSet2, transform_info(ModuleInfo1, Info0),
 				transform_info(ModuleInfo, Info)),
 		{
 		map__init(EmptyVarTypes),
@@ -5620,7 +5476,7 @@ transform_dcg_record_syntax(Operator, ArgTerms0, Context, VarSet0,
 			FieldValueTerm = RHSTerm
 		}
 	->
-		{ parse_field_name_list(FieldNameTerm, MaybeFieldNames) },
+		{ parse_field_list(FieldNameTerm, MaybeFieldNames) },
 		(
 			{ MaybeFieldNames = ok(FieldNames) },
 			{ ArgTerms = [FieldValueTerm, TermInputTerm,
@@ -5671,7 +5527,7 @@ transform_dcg_record_syntax(Operator, ArgTerms0, Context, VarSet0,
 	).
 
 :- pred transform_dcg_record_syntax_2(field_access_type,
-		list(ctor_field_name), list(prog_term), prog_context,
+		field_list, list(prog_term), prog_context,
 		prog_varset, hlds_goal, prog_varset,
 		transform_info, transform_info, io__state, io__state).
 :- mode transform_dcg_record_syntax_2(in, in, in, in, in, out, out,
@@ -5686,7 +5542,8 @@ transform_dcg_record_syntax_2(AccessType, FieldNames, ArgTerms, Context,
 			expand_set_field_function_call(Context, explicit, [],
 				FieldNames, FieldValueVar, TermInputVar,
 				TermOutputVar, VarSet1, VarSet2, Functor,
-				InnermostFunctor - InnermostSubContext, Goal0),
+				InnermostFunctor - InnermostSubContext, Goal0,
+				Info0, Info1, IO0, IO1),
 
 
 			FieldArgNumber = 2,
@@ -5713,13 +5570,14 @@ transform_dcg_record_syntax_2(AccessType, FieldNames, ArgTerms, Context,
 			],
 			insert_arg_unifications_with_supplied_contexts(ArgVars,
 				ArgTerms, ArgContexts, Context, Goal0, VarSet2,
-				Goal, VarSet, Info0, Info, IO0, IO)
+				Goal, VarSet, Info1, Info, IO1, IO)
 		;
 			AccessType = get,
 			expand_dcg_field_extraction_goal(Context, explicit,
 				[], FieldNames, FieldValueVar, TermInputVar,
 				TermOutputVar, VarSet1, VarSet2, Functor,
-				InnermostFunctor - _InnerSubContext, Goal0),
+				InnermostFunctor - _InnerSubContext, Goal0,
+				Info0, Info1, IO0, IO1),
 			InputTermArgNumber = 1,
 			InputTermArgContext = functor(Functor, explicit, []),
 
@@ -5744,7 +5602,7 @@ transform_dcg_record_syntax_2(AccessType, FieldNames, ArgTerms, Context,
 			],
 			insert_arg_unifications_with_supplied_contexts(ArgVars,
 				ArgTerms, ArgContexts, Context, Goal0, VarSet2,
-				Goal, VarSet, Info0, Info, IO0, IO)
+				Goal, VarSet, Info1, Info, IO1, IO)
 		)
 	;
 		error("make_hlds__do_transform_dcg_record_syntax")
@@ -5762,69 +5620,86 @@ transform_dcg_record_syntax_2(AccessType, FieldNames, ArgTerms, Context,
 	%
 :- pred expand_set_field_function_call(prog_context,
 		unify_main_context, unify_sub_contexts,
-		list(ctor_field_name), prog_var, prog_var,
+		field_list, prog_var, prog_var,
 		prog_var, prog_varset, prog_varset, cons_id,
-		pair(cons_id, unify_sub_contexts), hlds_goal).
+		pair(cons_id, unify_sub_contexts), hlds_goal,
+		transform_info, transform_info, io__state, io__state).
 :- mode expand_set_field_function_call(in, in, in, in, in, in,
-		in, in, out, out, out, out) is det.
+		in, in, out, out, out, out, in, out, di, uo) is det.
 
 expand_set_field_function_call(Context, MainContext, SubContext0,
 		FieldNames, FieldValueVar, TermInputVar,
 		TermOutputVar, VarSet0, VarSet,
-		Functor, FieldSubContext, Goal) :-
+		Functor, FieldSubContext, Goal, Info0, Info) -->
 	expand_set_field_function_call_2(Context, MainContext,
 		SubContext0, FieldNames, FieldValueVar, TermInputVar,
 		TermOutputVar, VarSet0, VarSet,
-		Functor, FieldSubContext, Goals),
-	wrap_field_access_goals(Context, Goals, Goal).
+		Functor, FieldSubContext, Goals, Info0, Info),
+	{ goal_info_init(Context, GoalInfo) },
+	{ conj_list_to_goal(Goals, GoalInfo, Goal) }.
 
 :- pred expand_set_field_function_call_2(prog_context,
 		unify_main_context, unify_sub_contexts,
-		list(ctor_field_name), prog_var, prog_var,
+		field_list, prog_var, prog_var,
 		prog_var, prog_varset, prog_varset, cons_id,
-		pair(cons_id, unify_sub_contexts), list(hlds_goal)).
+		pair(cons_id, unify_sub_contexts), list(hlds_goal),
+		transform_info, transform_info, io__state, io__state).
 :- mode expand_set_field_function_call_2(in, in, in, in, in, in,
-		in, in, out, out, out, out) is det.
+		in, in, out, out, out, out, in, out, di, uo) is det.
 
-expand_set_field_function_call_2(_, _, _, [], _, _, _, _, _, _, _, _) :-
-	error("expand_set_field_function_call_2: empty list of field names").
+expand_set_field_function_call_2(_, _, _, [], _, _, _, _, _, _, _, _, _, _) -->
+	{ error(
+	"expand_set_field_function_call_2: empty list of field names") }.
 expand_set_field_function_call_2(Context, MainContext, SubContext0,
-		[FieldName | FieldNames], FieldValueVar, TermInputVar,
-		TermOutputVar, VarSet0, VarSet, Functor, FieldSubContext,
-		Goals) :-
-	( FieldNames = [_|_] ->
-		varset__new_var(VarSet0, SubTermInputVar, VarSet1),
-		varset__new_var(VarSet1, SubTermOutputVar, VarSet2),
-
-		construct_field_access_function_call(set, Context,
+		[FieldName - FieldArgs | FieldNames], FieldValueVar,
+		TermInputVar, TermOutputVar, VarSet0, VarSet, Functor,
+		FieldSubContext, Goals, Info0, Info) -->
+	{ make_fresh_arg_vars(FieldArgs, VarSet0, FieldArgVars, VarSet1) },
+	( { FieldNames = [_|_] } ->
+		{ varset__new_var(VarSet1, SubTermInputVar, VarSet2) },
+		{ varset__new_var(VarSet2, SubTermOutputVar, VarSet3) },
+		{ SetArgs = list__append(FieldArgVars,
+				[TermInputVar, SubTermOutputVar]) },
+		{ construct_field_access_function_call(set, Context,
 			MainContext, SubContext0, FieldName,
-			TermOutputVar, [TermInputVar, SubTermOutputVar],
-			Functor, UpdateGoal),
+			TermOutputVar, SetArgs,
+			Functor, UpdateGoal) },
 
 		% extract the field containing the field to update.
-		construct_field_access_function_call(get, Context, MainContext,
-			SubContext0, FieldName, SubTermInputVar,
-			[TermInputVar], _, GetSubFieldGoal),
+		{ construct_field_access_function_call(get, Context,
+			MainContext, SubContext0, FieldName, SubTermInputVar,
+			list__append(FieldArgVars, [TermInputVar]), _,
+			GetSubFieldGoal) },
 
 		% recursively update the field.
-		SubTermInputArgNumber = 2,
-		TermInputContext = Functor - SubTermInputArgNumber,
-		SubContext = [TermInputContext | SubContext0],
+		{ SubTermInputArgNumber = 2 + list__length(FieldArgs) },
+		{ TermInputContext = Functor - SubTermInputArgNumber },
+		{ SubContext = [TermInputContext | SubContext0] },
 		expand_set_field_function_call_2(Context, MainContext,
 			SubContext, FieldNames, FieldValueVar, SubTermInputVar,
-			SubTermOutputVar, VarSet2, VarSet, _,
-			FieldSubContext, Goals0),
+			SubTermOutputVar, VarSet3, VarSet4, _,
+			FieldSubContext, Goals0, Info0, Info1),
 
-		list__append([GetSubFieldGoal | Goals0], [UpdateGoal], Goals)
+		{ list__append([GetSubFieldGoal | Goals0],
+			[UpdateGoal], Goals1) }
 	;
-		VarSet = VarSet0,
-		construct_field_access_function_call(set, Context,
-			MainContext, SubContext0, FieldName,
-			TermOutputVar, [TermInputVar, FieldValueVar],
-			Functor, Goal),
-		FieldSubContext = Functor - SubContext0,
-		Goals = [Goal]
-	).
+		{ VarSet4 = VarSet1 },
+		{ SetArgs = list__append(FieldArgVars,
+				[TermInputVar, FieldValueVar]) },
+		{ construct_field_access_function_call(set, Context,
+			MainContext, SubContext0, FieldName, TermOutputVar,
+			SetArgs, Functor, Goal) },
+		{ FieldSubContext = Functor - SubContext0 },
+		{ Info1 = Info0 },
+		{ Goals1 = [Goal] }
+
+	),
+	{ ArgContext = functor(Functor, MainContext, SubContext0) },
+	{ goal_info_init(Context, GoalInfo) },
+	{ conj_list_to_goal(Goals1, GoalInfo, Conj0) },
+	append_arg_unifications(FieldArgVars, FieldArgs, Context, ArgContext,
+		Conj0, VarSet4, Conj, VarSet, Info1, Info),
+	{ goal_to_conj_list(Conj, Goals) }.
 
 	% Expand a field extraction goal into a list of goals which
 	% each get one level of the structure.
@@ -5839,26 +5714,29 @@ expand_set_field_function_call_2(Context, MainContext, SubContext0,
 	%	ModuleName = V_2 ^ module_name.
 	%
 :- pred expand_dcg_field_extraction_goal(prog_context, unify_main_context,
-		unify_sub_contexts, list(ctor_field_name), prog_var, prog_var,
+		unify_sub_contexts, field_list, prog_var, prog_var,
 		prog_var, prog_varset, prog_varset, cons_id,
-		pair(cons_id, unify_sub_contexts), hlds_goal).
+		pair(cons_id, unify_sub_contexts), hlds_goal,
+		transform_info, transform_info, io__state, io__state).
 :- mode expand_dcg_field_extraction_goal(in, in, in, in, in,
-		in, in, in, out, out, out, out) is det.
+		in, in, in, out, out, out, out, in, out, di, uo) is det.
 
 expand_dcg_field_extraction_goal(Context, MainContext, SubContext,
 		FieldNames, FieldValueVar, TermInputVar, TermOutputVar,
-		VarSet0, VarSet, Functor, FieldSubContext, Goal) :-
+		VarSet0, VarSet, Functor, FieldSubContext,
+		Goal, Info0, Info) -->
 	% unify the DCG input and output variables
-	create_atomic_unification(TermOutputVar, var(TermInputVar),
-			Context, MainContext, SubContext, UnifyDCG),
+	{ create_atomic_unification(TermOutputVar, var(TermInputVar),
+			Context, MainContext, SubContext, UnifyDCG) },
 
 	% process the access function as a get function on
 	% the output DCG variable
 	expand_get_field_function_call_2(Context, MainContext, SubContext,
-		FieldNames, FieldValueVar, TermOutputVar,
-		VarSet0, VarSet, Functor, FieldSubContext, Goals1),
-	Goals = [UnifyDCG | Goals1],
-	wrap_field_access_goals(Context, Goals, Goal).
+		FieldNames, FieldValueVar, TermOutputVar, VarSet0, VarSet,
+		Functor, FieldSubContext, Goals1, Info0, Info),
+	{ Goals = [UnifyDCG | Goals1] },
+	{ goal_info_init(Context, GoalInfo) },
+	{ conj_list_to_goal(Goals, GoalInfo, Goal) }.
 	
 	% Expand a field extraction function call into a list of goals which
 	% each get one level of the structure.
@@ -5871,54 +5749,69 @@ expand_dcg_field_extraction_goal(Context, MainContext, SubContext,
 	%	ModuleName = V_2 ^ module_name.
 	%
 :- pred expand_get_field_function_call(prog_context, unify_main_context,
-		unify_sub_contexts, list(ctor_field_name), prog_var,
+		unify_sub_contexts, field_list, prog_var,
 		prog_var, prog_varset, prog_varset, cons_id,
-		pair(cons_id, unify_sub_contexts), hlds_goal).
+		pair(cons_id, unify_sub_contexts), hlds_goal,
+		transform_info, transform_info, io__state, io__state).
 :- mode expand_get_field_function_call(in, in, in, in, in,
-		in, in, out, out, out, out) is det.
+		in, in, out, out, out, out, in, out, di, uo) is det.
 
 expand_get_field_function_call(Context, MainContext, SubContext0,
-		FieldNames, FieldValueVar, TermInputVar,
-		VarSet0, VarSet, Functor, FieldSubContext, Goal) :-
+		FieldNames, FieldValueVar, TermInputVar, VarSet0, VarSet,
+		Functor, FieldSubContext, Goal, Info0, Info) -->
 	expand_get_field_function_call_2(Context, MainContext, SubContext0,
 		FieldNames, FieldValueVar, TermInputVar,
-		VarSet0, VarSet, Functor, FieldSubContext, Goals),
-	wrap_field_access_goals(Context, Goals, Goal).
+		VarSet0, VarSet, Functor, FieldSubContext, Goals, Info0, Info),
+	{ goal_info_init(Context, GoalInfo) },
+	{ conj_list_to_goal(Goals, GoalInfo, Goal) }.
 
 :- pred expand_get_field_function_call_2(prog_context, unify_main_context,
-		unify_sub_contexts, list(ctor_field_name), prog_var,
+		unify_sub_contexts, field_list, prog_var,
 		prog_var, prog_varset, prog_varset, cons_id,
-		pair(cons_id, unify_sub_contexts), list(hlds_goal)).
+		pair(cons_id, unify_sub_contexts), list(hlds_goal),
+		transform_info, transform_info, io__state, io__state).
 :- mode expand_get_field_function_call_2(in, in, in, in, in,
-		in, in, out, out, out, out) is det.
+		in, in, out, out, out, out, in, out, di, uo) is det.
 
-expand_get_field_function_call_2(_, _, _, [], _, _, _, _, _, _, _) :-
-	error("expand_get_field_function_call_2: empty list of field names").
+expand_get_field_function_call_2(_, _, _, [], _, _, _, _, _, _, _, _, _) -->
+	{ error(
+	"expand_get_field_function_call_2: empty list of field names") }.
 expand_get_field_function_call_2(Context, MainContext, SubContext0,
-		[FieldName | FieldNames], FieldValueVar, TermInputVar,
-		VarSet0, VarSet, Functor, FieldSubContext, Goals) :-
-	( FieldNames = [_|_] ->
-		varset__new_var(VarSet0, SubTermInputVar, VarSet1),
-		construct_field_access_function_call(get, Context, MainContext,
-			SubContext0, FieldName, SubTermInputVar,
-			[TermInputVar], Functor, Goal),
+		[FieldName - FieldArgs | FieldNames], FieldValueVar,
+		TermInputVar, VarSet0, VarSet, Functor,
+		FieldSubContext, Goals, Info0, Info) -->
+	{ make_fresh_arg_vars(FieldArgs, VarSet0, FieldArgVars, VarSet1) },
+	{ GetArgVars = list__append(FieldArgVars, [TermInputVar]) },
+	( { FieldNames = [_|_] } ->
+		{ varset__new_var(VarSet1, SubTermInputVar, VarSet2) },
+		{ construct_field_access_function_call(get, Context,
+			MainContext, SubContext0, FieldName, SubTermInputVar,
+			GetArgVars, Functor, Goal) },
 
 		% recursively extract until we run out of field names
-		TermInputArgNumber = 1,
-		TermInputContext = Functor - TermInputArgNumber,
-		SubContext = [TermInputContext | SubContext0],
+		{ TermInputArgNumber = 1 + list__length(FieldArgVars) },
+		{ TermInputContext = Functor - TermInputArgNumber },
+		{ SubContext = [TermInputContext | SubContext0] },
 		expand_get_field_function_call_2(Context, MainContext,
 			SubContext, FieldNames, FieldValueVar, SubTermInputVar,
-			VarSet1, VarSet, _, FieldSubContext, Goals1),
-		Goals = [Goal | Goals1]
+			VarSet2, VarSet3, _, FieldSubContext,
+			Goals1, Info0, Info1),
+		{ Goals2 = [Goal | Goals1] }
 	;
-		VarSet = VarSet0,
-		FieldSubContext = Functor - SubContext0,
-		construct_field_access_function_call(get, Context, MainContext,
-			SubContext0, FieldName, FieldValueVar,
-			[TermInputVar], Functor, Goal),
-		Goals = [Goal]
-	).
+		{ VarSet3 = VarSet1 },
+		{ FieldSubContext = Functor - SubContext0 },
+		{ construct_field_access_function_call(get, Context,
+			MainContext, SubContext0, FieldName, FieldValueVar,
+			GetArgVars, Functor, Goal) },
+		{ Info1 = Info0 },
+		{ Goals2 = [Goal] }
+	),
+	{ ArgContext = functor(Functor, MainContext, SubContext0) },
+	{ goal_info_init(Context, GoalInfo) },
+	{ conj_list_to_goal(Goals2, GoalInfo, Conj0) },
+	append_arg_unifications(FieldArgVars, FieldArgs, Context, ArgContext,
+		Conj0, VarSet3, Conj, VarSet, Info1, Info),
+	{ goal_to_conj_list(Conj, Goals) }.
 
 :- pred construct_field_access_function_call(field_access_type, prog_context,
 		unify_main_context, unify_sub_contexts, ctor_field_name,
@@ -5935,29 +5828,13 @@ construct_field_access_function_call(AccessType, Context,
 	create_atomic_unification(RetArg, functor(Functor, Args),
 		Context, MainContext, SubContext, Goal).
 
-	% Wrap the list of goals for a record syntax expression
-	% so that mode analysis treats them as an atomic goal -- if
-	% the user writes an atomic goal which is expanded into multiple
-	% goals by the compiler, the mode correctness of the goal should
-	% not depend on the ability of mode analysis to interleave the
-	% expanded parts with other goals.
-:- pred wrap_field_access_goals(prog_context, list(hlds_goal), hlds_goal).
-:- mode wrap_field_access_goals(in, in, out) is det.
+:- type field_list == assoc_list(ctor_field_name, list(prog_term)).
 
-wrap_field_access_goals(Context, Goals, Goal) :-
-	( Goals = [Goal0] ->
-		Goal = Goal0
-	;
-		goal_info_init(Context, GoalInfo),
-		Conj = conj(Goals) - GoalInfo,
-		Goal = some([], can_remove, Conj) - GoalInfo
-	).
+:- pred parse_field_list(prog_term,
+		maybe1(field_list, prog_var_type)).
+:- mode parse_field_list(in, out) is det.
 
-:- pred parse_field_name_list(prog_term,
-		maybe1(list(ctor_field_name), prog_var_type)).
-:- mode parse_field_name_list(in, out) is det.
-
-parse_field_name_list(Term, MaybeFieldNames) :-
+parse_field_list(Term, MaybeFieldNames) :-
 	(
 		Term = term__functor(term__atom("^"),
 			[FieldNameTerm, OtherFieldNamesTerm], _)
@@ -5965,9 +5842,9 @@ parse_field_name_list(Term, MaybeFieldNames) :-
 		(
 			parse_qualified_term(FieldNameTerm, FieldNameTerm,
 				"field name", Result),
-			Result = ok(FieldName, [])
+			Result = ok(FieldName, Args)
 		->
-			parse_field_name_list(OtherFieldNamesTerm,
+			parse_field_list(OtherFieldNamesTerm,
 				MaybeFieldNames1),
 			(
 				MaybeFieldNames1 = error(_, _),
@@ -5975,7 +5852,7 @@ parse_field_name_list(Term, MaybeFieldNames) :-
 			;
 				MaybeFieldNames1 = ok(FieldNames1),
 				MaybeFieldNames =
-					ok([FieldName | FieldNames1])
+					ok([FieldName - Args | FieldNames1])
 			)
 		;
 			MaybeFieldNames = error("expected field name",
@@ -5984,9 +5861,9 @@ parse_field_name_list(Term, MaybeFieldNames) :-
 	;
 		(
 			parse_qualified_term(Term, Term, "field name", Result),
-			Result = ok(FieldName, [])
+			Result = ok(FieldName, Args)
 		->
-			MaybeFieldNames = ok([FieldName])
+			MaybeFieldNames = ok([FieldName - Args])
 		;	
 			MaybeFieldNames = error("expected field name",
 				Term)
@@ -7000,27 +6877,27 @@ unravel_unification(term__variable(X), RHS,
 		% handle field extraction expressions
 		{ F = term__atom("^") },
 		{ Args = [InputTerm, FieldNameTerm] },
-		{ parse_field_name_list(FieldNameTerm, FieldNameResult) },
+		{ parse_field_list(FieldNameTerm, FieldNameResult) },
 		{ FieldNameResult = ok(FieldNames) }
 	->
 		check_expr_purity(Purity, Context, Info0, Info1),
 		{ make_fresh_arg_var(InputTerm, InputTermVar, [],
 			VarSet0, VarSet1) },
-		{ expand_get_field_function_call(Context, MainContext,
+		expand_get_field_function_call(Context, MainContext,
 			SubContext, FieldNames, X, InputTermVar,
-			VarSet1, VarSet2, Functor, _, Goal0) },
+			VarSet1, VarSet2, Functor, _, Goal0, Info1, Info2),
 
 		{ ArgContext = functor(Functor, MainContext, SubContext) },
 		append_arg_unifications([InputTermVar], [InputTerm],
 			FunctorContext, ArgContext, Goal0,
-			VarSet2, Goal, VarSet, Info1, Info)
+			VarSet2, Goal, VarSet, Info2, Info)
 	;
 		% handle field update expressions
 		{ F = term__atom(":=") },
 		{ Args = [FieldDescrTerm, FieldValueTerm] },
 		{ FieldDescrTerm = term__functor(term__atom("^"),
 			[InputTerm, FieldNameTerm], _) },
-		{ parse_field_name_list(FieldNameTerm, FieldNameResult) },
+		{ parse_field_list(FieldNameTerm, FieldNameResult) },
 		{ FieldNameResult = ok(FieldNames) }
 	->
 		check_expr_purity(Purity, Context, Info0, Info1),
@@ -7029,23 +6906,23 @@ unravel_unification(term__variable(X), RHS,
 		{ make_fresh_arg_var(FieldValueTerm, FieldValueVar,
 			[InputTermVar], VarSet1, VarSet2) },
 
-		{ expand_set_field_function_call(Context, MainContext,
+		expand_set_field_function_call(Context, MainContext,
 			SubContext, FieldNames, FieldValueVar, InputTermVar, X,
 			VarSet2, VarSet3, Functor,
-			InnerFunctor - FieldSubContext, Goal0) },
+			InnerFunctor - FieldSubContext, Goal0, Info1, Info2),
 
 		{ TermArgContext = functor(Functor, MainContext, SubContext) },
 		{ TermArgNumber = 1 },
 		append_arg_unification(InputTermVar, InputTerm,
 			FunctorContext, TermArgContext, TermArgNumber,
-			TermUnifyConj, VarSet3, VarSet4, Info1, Info2),
+			TermUnifyConj, VarSet3, VarSet4, Info2, Info3),
 
 		{ FieldArgContext = functor(InnerFunctor,
 			MainContext, FieldSubContext) },
 		{ FieldArgNumber = 2 },
 		append_arg_unification(FieldValueVar, FieldValueTerm,
 			FunctorContext, FieldArgContext, FieldArgNumber,
-			FieldUnifyConj, VarSet4, VarSet, Info2, Info),
+			FieldUnifyConj, VarSet4, VarSet, Info3, Info),
 
 		{ Goal0 = _ - GoalInfo0 },
 		{ goal_to_conj_list(Goal0, GoalList0) },
@@ -7806,7 +7683,8 @@ module_add_pragma_fact_table(Pred, Arity, FileName, Status, Context,
 		{ adjust_func_arity(PredOrFunc, Arity, NumArgs) },
 
 		    % create pragma c_header_code to declare extern variables
-		{ module_add_c_header(C_HeaderCode, Context, Module1, Module2)},
+		{ module_add_foreign_decl(c, C_HeaderCode, Context,
+			Module1, Module2) },
 
 		io__get_exit_status(ExitStatus),
 		(
@@ -7882,10 +7760,10 @@ module_add_fact_table_proc(ProcID, PrimaryProcID, ProcTable, SymName,
 		ProcInfo, ArgTypes, Module0, C_ProcCode, C_ExtraCode),
 
 	% XXX this should be modified to use nondet pragma c_code.
-	{ default_attributes(Attrs0) },
+	{ default_attributes(c, Attrs0) },
 	{ set_may_call_mercury(Attrs0, will_not_call_mercury, Attrs1) },
 	{ set_thread_safe(Attrs1, thread_safe, Attrs) },
-	module_add_pragma_c_code(Attrs, SymName, PredOrFunc, 
+	module_add_pragma_foreign_code(Attrs, SymName, PredOrFunc, 
 		PragmaVars, VarSet, ordinary(C_ProcCode, no),
 		Status, Context, Module0, Module1, Info0, Info),
 	{
@@ -7893,7 +7771,8 @@ module_add_fact_table_proc(ProcID, PrimaryProcID, ProcTable, SymName,
 	->
 		Module2 = Module1
 	;
-		module_add_c_body_code(C_ExtraCode, Context, Module1, Module2)
+		module_add_foreign_body_code(c, C_ExtraCode, Context,
+			Module1, Module2)
 	},
 	%
 	% The C code for fact tables includes C labels;

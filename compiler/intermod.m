@@ -16,7 +16,8 @@
 % 	- Non-exported types, insts and modes used by the above.
 %	- :- import_module declarations to import stuff used by the above.
 %	- pragma declarations for the exported preds.
-%	- pragma c_header declarations if any pragma_c_code preds are written.
+%	- pragma foreign_header declarations if any pragma_foreign_code 
+%	  preds are written.
 % All these items should be module qualified.
 %
 % This module also contains predicates to read in the .opt files and
@@ -161,7 +162,7 @@ intermod__write_optfile(ModuleInfo0, ModuleInfo) -->
 			module_info,
 			bool,			% do the c_header_codes for
 				% the module need writing, yes if there
-				% are pragma_c_code procs being exported
+				% are pragma_foreign_code procs being exported
 			map(prog_var, type),	% Vartypes and tvarset for the
 			tvarset			% current pred
 		).
@@ -185,8 +186,44 @@ init_intermod_info(ModuleInfo, IntermodInfo) :-
 :- pred intermod__gather_preds(list(pred_id)::in, bool::in, int::in,
 	int::in, bool::in, intermod_info::in, intermod_info::out) is det.
 
-intermod__gather_preds([], _CollectTypes, _, _, _) --> [].
-intermod__gather_preds([PredId | PredIds], CollectTypes,
+intermod__gather_preds(AllPredIds, CollectTypes,
+		InlineThreshold, HigherOrderSizeLimit, Deforestation) -->
+	% first gather exported preds
+	{ ProcessLocalPreds = no },
+	intermod__gather_pred_list(AllPredIds, ProcessLocalPreds,
+		CollectTypes, InlineThreshold, HigherOrderSizeLimit,
+		Deforestation),
+
+	% then gather preds used by exported preds (recursively)
+	{ set__init(ExtraExportedPreds0) },
+	intermod__gather_preds_2(ExtraExportedPreds0, CollectTypes,
+		InlineThreshold, HigherOrderSizeLimit, Deforestation).
+
+:- pred intermod__gather_preds_2(set(pred_id)::in, bool::in, int::in,
+	int::in, bool::in, intermod_info::in, intermod_info::out) is det.
+
+intermod__gather_preds_2(ExtraExportedPreds0, CollectTypes,
+		InlineThreshold, HigherOrderSizeLimit, Deforestation) -->
+	intermod_info_get_pred_decls(ExtraExportedPreds),
+	{ NewlyExportedPreds = set__to_sorted_list(
+		ExtraExportedPreds `set__difference` ExtraExportedPreds0) },
+	( { NewlyExportedPreds = [] } ->
+		[]
+	;
+		{ ProcessLocalPreds = yes },
+		intermod__gather_pred_list(NewlyExportedPreds,
+			ProcessLocalPreds, CollectTypes,
+			InlineThreshold, HigherOrderSizeLimit, Deforestation),
+		intermod__gather_preds_2(ExtraExportedPreds, CollectTypes,
+			InlineThreshold, HigherOrderSizeLimit, Deforestation)
+	).
+
+:- pred intermod__gather_pred_list(list(pred_id)::in, bool::in, bool::in,
+	int::in, int::in, bool::in, intermod_info::in, intermod_info::out)
+	is det.
+
+intermod__gather_pred_list([], _, _, _, _, _) --> [].
+intermod__gather_pred_list([PredId | PredIds], ProcessLocalPreds, CollectTypes,
 		InlineThreshold, HigherOrderSizeLimit, Deforestation) -->
 	intermod_info_get_module_info(ModuleInfo0),
 	{ module_info_preds(ModuleInfo0, PredTable0) },
@@ -194,8 +231,8 @@ intermod__gather_preds([PredId | PredIds], CollectTypes,
 	{ module_info_type_spec_info(ModuleInfo0, TypeSpecInfo) },
 	{ TypeSpecInfo = type_spec_info(_, TypeSpecForcePreds, _, _) },
 	(
-		{ intermod__should_be_processed(PredId, PredInfo0,
-			TypeSpecForcePreds, InlineThreshold,
+		{ intermod__should_be_processed(ProcessLocalPreds, PredId,
+			PredInfo0, TypeSpecForcePreds, InlineThreshold,
 			HigherOrderSizeLimit, Deforestation, ModuleInfo0) }
 	->
 		=(IntermodInfo0),
@@ -218,7 +255,7 @@ intermod__gather_preds([PredId | PredIds], CollectTypes,
 			intermod_info_get_preds(Preds0),
 			( { pred_info_get_goal_type(PredInfo, pragmas) } ->
 				% The header code must be written since
-				% it could be used by the pragma_c_code.
+				% it could be used by the pragma_foreign_code.
 				intermod_info_set_write_header
 			;
 				[]
@@ -234,23 +271,29 @@ intermod__gather_preds([PredId | PredIds], CollectTypes,
 	;
 		[]
 	),
-	intermod__gather_preds(PredIds, CollectTypes,
+	intermod__gather_pred_list(PredIds, ProcessLocalPreds, CollectTypes,
 		InlineThreshold, HigherOrderSizeLimit, Deforestation).
 
 
-:- pred intermod__should_be_processed(pred_id::in, pred_info::in,
+:- pred intermod__should_be_processed(bool::in, pred_id::in, pred_info::in,
 		set(pred_id)::in, int::in, int::in, bool::in,
 		module_info::in) is semidet.
 
-intermod__should_be_processed(PredId, PredInfo, TypeSpecForcePreds,
-		InlineThreshold, HigherOrderSizeLimit,
+intermod__should_be_processed(ProcessLocalPreds, PredId, PredInfo,
+		TypeSpecForcePreds, InlineThreshold, HigherOrderSizeLimit,
 		Deforestation, ModuleInfo) :-
 	%
 	% note: we can't include exported_to_submodules predicates in
 	% the `.opt' file, for reasons explained in the comments for
 	% intermod__add_proc
 	%
-	pred_info_is_exported(PredInfo),
+	(
+		ProcessLocalPreds = no,
+		pred_info_is_exported(PredInfo)
+	;
+		ProcessLocalPreds = yes,
+		pred_info_import_status(PredInfo, local)
+	),
 	(
 		pred_info_clauses_info(PredInfo, ClauseInfo),
 		clauses_info_clauses(ClauseInfo, Clauses),
@@ -459,10 +502,10 @@ intermod__traverse_goal(if_then_else(Vars, Cond0, Then0, Else0, SM) - Info,
 	intermod__traverse_goal(Else0, Else, DoWrite3),
 	{ bool__and_list([DoWrite1, DoWrite2, DoWrite3], DoWrite) }.
 
-	% Inlineable exported pragma_c_code goals can't use any
+	% Inlineable exported pragma_foreign_code goals can't use any
 	% non-exported types, so we just write out the clauses. 
-intermod__traverse_goal(pragma_foreign_code(A,B,C,D,E,F,G,H) - Info,
-		pragma_foreign_code(A,B,C,D,E,F,G,H) - Info, yes) --> [].
+intermod__traverse_goal(pragma_foreign_code(A,B,C,D,E,F,G) - Info,
+		pragma_foreign_code(A,B,C,D,E,F,G) - Info, yes) --> [].
 
 intermod__traverse_goal(bi_implication(_, _) - _, _, _) -->
 	% these should have been expanded out by now
@@ -609,7 +652,7 @@ intermod__add_proc_2(PredId, DoWrite) -->
 		% calls a predicate which is exported, then we don't
 		% need to do anything special.
 		%
-		{ Status = exported }
+		{ Status = exported ; Status = external(interface) }
 	->
 		{ DoWrite = yes }
 	;
@@ -630,7 +673,7 @@ intermod__add_proc_2(PredId, DoWrite) -->
 		% we need to put the declaration for the called predicate
 		% in the `.opt' file.
 		%
-		{ Status = local }
+		{ Status = local ; Status = external(implementation) }
 	->
 		{ DoWrite = yes },
 		intermod_info_get_pred_decls(PredDecls0),
@@ -641,31 +684,14 @@ intermod__add_proc_2(PredId, DoWrite) -->
 		; Status = opt_imported
 		}
 	->
+		%
+		% imported pred - add import for module
+		%
 		{ DoWrite = yes },
-		{ module_info_name(ModuleInfo, ThisModule) },
 		{ pred_info_module(PredInfo, PredModule) },
-		(
-			{ PredModule = ThisModule }
-		->
-			%
-			% This can happen in the case of a local predicate
-			% which has been declared as external using a
-			% `:- external(Name/Arity)' declaration, e.g.
-			% because it is implemented as low-level C code.
-			%
-			% We treat these the same as local predicates.
-			%
-			intermod_info_get_pred_decls(PredDecls0),
-			{ set__insert(PredDecls0, PredId, PredDecls) },
-			intermod_info_set_pred_decls(PredDecls)
-		;	
-			%
-			% imported pred - add import for module
-			%
-			intermod_info_get_modules(Modules0),
-			{ set__insert(Modules0, PredModule, Modules) },
-			intermod_info_set_modules(Modules)
-		)
+		intermod_info_get_modules(Modules0),
+		{ set__insert(Modules0, PredModule, Modules) },
+		intermod_info_set_modules(Modules)
 	;
 		{ error("intermod__add_proc: unexpected status") }
 	).
@@ -819,8 +845,8 @@ intermod__gather_instances_2(ModuleInfo, ClassId, InstanceDefns) -->
 	hlds_instance_defn::in, intermod_info::in, intermod_info::out) is det.
 		
 intermod__gather_instances_3(ModuleInfo, ClassId, InstanceDefn) -->
-	{ InstanceDefn = hlds_instance_defn(Status, B, C, D, Interface0,
-				MaybePredProcIds, F, G) },
+	{ InstanceDefn = hlds_instance_defn(A, Status, C, D, E, Interface0,
+				MaybePredProcIds, H, I) },
 	(
 		%
 		% The bodies are always stripped from instance declarations
@@ -895,9 +921,9 @@ intermod__gather_instances_3(ModuleInfo, ClassId, InstanceDefn) -->
 				status_is_exported(Status, no)
 			}
 		->
-			{ InstanceDefnToWrite = hlds_instance_defn(Status,
-					B, C, D, Interface, MaybePredProcIds,
-					F, G) },
+			{ InstanceDefnToWrite = hlds_instance_defn(A, Status,
+					C, D, E, Interface, MaybePredProcIds,
+					H, I) },
 			intermod_info_get_instances(Instances0),
 			intermod_info_set_instances(
 				[ClassId - InstanceDefnToWrite | Instances0])
@@ -1098,8 +1124,8 @@ intermod__write_intermod_info_2(IntermodInfo) -->
 	globals__io_lookup_string_option(dump_hlds_options, VerboseDump),
 	globals__io_set_option(dump_hlds_options, string("")),
 	( { WriteHeader = yes } ->
-		{ module_info_get_foreign_header(ModuleInfo, CHeader) },
-		intermod__write_c_header(CHeader)
+		{ module_info_get_foreign_decl(ModuleInfo, ForeignDecl) },
+		intermod__write_foreign_decl(ForeignDecl)
 	;
 		[]
 	),
@@ -1122,13 +1148,14 @@ intermod__write_modules([Module | Rest]) -->
 		intermod__write_modules(Rest)
 	).
 
-:- pred intermod__write_c_header(list(foreign_header_code)::in,
+:- pred intermod__write_foreign_decl(list(foreign_decl_code)::in,
 				io__state::di, io__state::uo) is det.
 
-intermod__write_c_header([]) --> [].
-intermod__write_c_header([Header - _ | Headers]) -->
-        intermod__write_c_header(Headers),
-        mercury_output_pragma_c_header(Header).
+intermod__write_foreign_decl([]) --> [].
+intermod__write_foreign_decl(
+		[foreign_decl_code(Language, Header, _) | Headers]) -->
+        intermod__write_foreign_decl(Headers),
+        mercury_output_pragma_foreign_decl(Language, Header).
 
 :- pred intermod__write_types(assoc_list(type_id, hlds_type_defn)::in,
 		io__state::di, io__state::uo) is det.
@@ -1270,10 +1297,11 @@ intermod__write_instances(Instances) -->
 		io__state::di, io__state::uo) is det.
 
 intermod__write_instance(ClassId - InstanceDefn) -->
-	{ InstanceDefn = hlds_instance_defn(_, Context, Constraints,
-				Types, Body, _, TVarSet, _) },
+	{ InstanceDefn = hlds_instance_defn(ModuleName, _, Context,
+			Constraints, Types, Body, _, TVarSet, _) },
 	{ ClassId = class_id(ClassName, _) },
-	{ Item = instance(Constraints, ClassName, Types, Body, TVarSet) },
+	{ Item = instance(Constraints, ClassName, Types, Body, TVarSet,
+		ModuleName) },
 	mercury_output_item(Item, Context).
 
 	% We need to write all the declarations for local predicates so
@@ -1372,11 +1400,11 @@ intermod__write_preds(ModuleInfo, [PredId | PredIds]) -->
 	{ clauses_info_headvars(ClausesInfo, HeadVars) },
 	{ clauses_info_clauses(ClausesInfo, Clauses) },
 
-		% handle pragma c_code(...) separately
+		% handle pragma foreign_code(...) separately
 	( { pred_info_get_goal_type(PredInfo, pragmas) } ->
 		{ pred_info_procedures(PredInfo, Procs) },
-		intermod__write_c_code(SymName, PredOrFunc, HeadVars, VarSet,
-						Clauses, Procs)
+		intermod__write_foreign_code(SymName, PredOrFunc, HeadVars,
+			VarSet, Clauses, Procs)
 	;
 		{ pred_info_get_goal_type(PredInfo, assertion) }
 	->
@@ -1563,6 +1591,7 @@ intermod__should_output_marker((semipure), no).
 	% There is no pragma required for generated class methods.
 intermod__should_output_marker(class_method, no).
 intermod__should_output_marker(class_instance_method, no).
+intermod__should_output_marker(named_class_instance_method, no).
 	% The warning for calls to local obsolete predicates should appear
 	% once in the defining module, not in importing modules.
 intermod__should_output_marker(obsolete, no).
@@ -1591,13 +1620,13 @@ intermod__should_output_marker(generate_inline, _) :-
 	% This marker should only occur after the magic sets transformation.
 	error("intermod__should_output_marker: generate_inline").
 
-	% Some pretty kludgy stuff to get c code written correctly.
-:- pred intermod__write_c_code(sym_name::in, pred_or_func::in, 
+	% Some pretty kludgy stuff to get foreign code written correctly.
+:- pred intermod__write_foreign_code(sym_name::in, pred_or_func::in, 
 	list(prog_var)::in, prog_varset::in,
 	list(clause)::in, proc_table::in, io__state::di, io__state::uo) is det.
 
-intermod__write_c_code(_, _, _, _, [], _) --> [].
-intermod__write_c_code(SymName, PredOrFunc, HeadVars, Varset, 
+intermod__write_foreign_code(_, _, _, _, [], _) --> [].
+intermod__write_foreign_code(SymName, PredOrFunc, HeadVars, Varset, 
 		[Clause | Clauses], Procs) -->
 	{ Clause = clause(ProcIds, Goal, _) },
 	(
@@ -1606,53 +1635,54 @@ intermod__write_c_code(SymName, PredOrFunc, HeadVars, Varset,
 			{ Goal = conj(Goals) - _ },
 			{ list__filter(
 				lambda([X::in] is semidet, (
-				    X = pragma_foreign_code(_,_,_,_,_,_,_,_) - _
+				    X = pragma_foreign_code(_,_,_,_,_,_,_) - _
 				)),
-				Goals, [CCodeGoal]) },
-			{ CCodeGoal = pragma_foreign_code(c, Attributes,
+				Goals, [ForeignCodeGoal]) },
+			{ ForeignCodeGoal = pragma_foreign_code(Attributes,
 				_, _, Vars, Names, _, PragmaCode) - _ }
 		;
-			{ Goal = pragma_foreign_code(c, Attributes,
+			{ Goal = pragma_foreign_code(Attributes,
 				_, _, Vars, Names, _, PragmaCode) - _ }
 		)
 	->	
-		intermod__write_c_clauses(Procs, ProcIds, PredOrFunc,
+		intermod__write_foreign_clauses(Procs, ProcIds, PredOrFunc,
 			PragmaCode, Attributes, Vars, Varset, Names,
 			SymName)
 	;
-		{ error("intermod__write_c_code called with non c_code goal") }
+		{ error("intermod__write_foreign_code called with non foreign_code goal") }
 	),
-	intermod__write_c_code(SymName, PredOrFunc, HeadVars, Varset, 
+	intermod__write_foreign_code(SymName, PredOrFunc, HeadVars, Varset, 
 				Clauses, Procs).
 
-:- pred intermod__write_c_clauses(proc_table::in, list(proc_id)::in, 
+:- pred intermod__write_foreign_clauses(proc_table::in, list(proc_id)::in, 
 		pred_or_func::in, pragma_foreign_code_impl::in,
 		pragma_foreign_code_attributes::in, list(prog_var)::in,
 		prog_varset::in, list(maybe(pair(string, mode)))::in,
 		sym_name::in, io__state::di, io__state::uo) is det.
 
-intermod__write_c_clauses(_, [], _, _, _, _, _, _, _) --> [].
-intermod__write_c_clauses(Procs, [ProcId | ProcIds], PredOrFunc,
+intermod__write_foreign_clauses(_, [], _, _, _, _, _, _, _) --> [].
+intermod__write_foreign_clauses(Procs, [ProcId | ProcIds], PredOrFunc,
 		PragmaImpl, Attributes, Vars, Varset0, Names, SymName) -->
 	{ map__lookup(Procs, ProcId, ProcInfo) },
 	{ proc_info_maybe_declared_argmodes(ProcInfo, MaybeArgModes) },
 	( { MaybeArgModes = yes(ArgModes) } ->
-		{ get_pragma_c_code_vars(Vars, Names, Varset0, ArgModes,
+		{ get_pragma_foreign_code_vars(Vars, Names, Varset0, ArgModes,
 			Varset, PragmaVars) },
-		mercury_output_pragma_c_code(Attributes, SymName,
+		mercury_output_pragma_foreign_code(Attributes, SymName,
 			PredOrFunc, PragmaVars, Varset, PragmaImpl),
-		intermod__write_c_clauses(Procs, ProcIds, PredOrFunc,
+		intermod__write_foreign_clauses(Procs, ProcIds, PredOrFunc,
 			PragmaImpl, Attributes, Vars, Varset, Names,
 			SymName)
 	;
-		{ error("intermod__write_c_clauses: no mode declaration") }
+		{ error(
+			"intermod__write_foreign_clauses: no mode declaration") }
 	).
 
-:- pred get_pragma_c_code_vars(list(prog_var)::in,
+:- pred get_pragma_foreign_code_vars(list(prog_var)::in,
 		list(maybe(pair(string, mode)))::in, prog_varset::in,
 		list(mode)::in, prog_varset::out, list(pragma_var)::out) is det.
 
-get_pragma_c_code_vars(HeadVars, VarNames, VarSet0, ArgModes,
+get_pragma_foreign_code_vars(HeadVars, VarNames, VarSet0, ArgModes,
 		VarSet, PragmaVars) :- 
 	(
 		HeadVars = [Var | Vars],
@@ -1667,7 +1697,7 @@ get_pragma_c_code_vars(HeadVars, VarNames, VarSet0, ArgModes,
 		),
 		PragmaVar = pragma_var(Var, Name, Mode),
 		varset__name_var(VarSet0, Var, Name, VarSet1),
-		get_pragma_c_code_vars(Vars, Names, VarSet1, Modes,
+		get_pragma_foreign_code_vars(Vars, Names, VarSet1, Modes,
 			VarSet, PragmaVars1),
 		PragmaVars = [PragmaVar | PragmaVars1] 
 	;
@@ -1678,7 +1708,7 @@ get_pragma_c_code_vars(HeadVars, VarNames, VarSet0, ArgModes,
 		PragmaVars = [],
 		VarSet = VarSet0
 	;
-		error("intermod:get_pragma_c_code_vars")
+		error("intermod:get_pragma_foreign_code_vars")
 	).
 
 %-----------------------------------------------------------------------------%
@@ -1699,7 +1729,7 @@ get_pragma_c_code_vars(HeadVars, VarNames, VarSet0, ArgModes,
 %			intermod_info::in, intermod_info::out) is det.
 :- pred intermod_info_get_module_info(module_info::out,
 			intermod_info::in, intermod_info::out) is det.
-:- pred intermod_info_get_write_c_header(bool::out,
+:- pred intermod_info_get_write_foreign_header(bool::out,
 			intermod_info::in, intermod_info::out) is det.
 :- pred intermod_info_get_var_types(map(prog_var, type)::out,
 			intermod_info::in, intermod_info::out) is det.
@@ -1716,7 +1746,8 @@ intermod_info_get_types(Types)		--> =(info(_,_,_,_,Types,_,_,_,_,_)).
 %intermod_info_get_modes(Modes)		--> =(info(_,_,_,_,Modes,_,_,_,_,_)).
 %intermod_info_get_insts(Insts)		--> =(info(_,_,_,_,_,Insts,_,_,_,_)).
 intermod_info_get_module_info(Module)	--> =(info(_,_,_,_,_,_,Module,_,_,_)).
-intermod_info_get_write_c_header(Write)	--> =(info(_,_,_,_,_,_,_,Write,_,_)).
+intermod_info_get_write_foreign_header(Write)	--> 
+					    =(info(_,_,_,_,_,_,_,Write,_,_)).
 intermod_info_get_var_types(VarTypes)	--> =(info(_,_,_,_,_,_,_,_,VarTypes,_)).
 intermod_info_get_tvarset(TVarSet)	--> =(info(_,_,_,_,_,_,_,_,_,TVarSet)).
 
@@ -1915,16 +1946,17 @@ adjust_instance_status_2(ClassId - InstanceList0, ClassId - InstanceList,
 	hlds_instance_defn::out, module_info::in, module_info::out) is det.
 
 adjust_instance_status_3(Instance0, Instance, ModuleInfo0, ModuleInfo) :-
-	Instance0 = hlds_instance_defn(Status0, Context, Constraints, Types,
-			Body, HLDSClassInterface, TVarSet, ConstraintProofs),
+	Instance0 = hlds_instance_defn(InstanceModule, Status0, Context,
+			Constraints, Types, Body, HLDSClassInterface,
+			TVarSet, ConstraintProofs),
 	(
 		( Status0 = local
 		; Status0 = abstract_exported
 		)
 	->
-		Instance = hlds_instance_defn(exported, Context, Constraints,
-				Types, Body, HLDSClassInterface, TVarSet,
-				ConstraintProofs),
+		Instance = hlds_instance_defn(InstanceModule, exported,
+			Context, Constraints, Types, Body, HLDSClassInterface,
+			TVarSet, ConstraintProofs),
 		( HLDSClassInterface = yes(ClassInterface) ->
 			class_procs_to_pred_ids(ClassInterface, PredIds),
 			set_list_of_preds_exported(PredIds,

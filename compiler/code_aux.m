@@ -54,6 +54,7 @@
 	% set dependening on whether the recursive call is last in the
 	% conjunction or not.
 
+	% XXX should avoid the dependency on code_info here
 :- pred code_aux__contains_simple_recursive_call(hlds_goal, code_info, bool).
 :- mode code_aux__contains_simple_recursive_call(in, in, out) is semidet.
 
@@ -199,7 +200,7 @@ code_aux__goal_is_flat_2(some(_Vars, _, Goal)) :-
 code_aux__goal_is_flat_2(generic_call(_, _, _, _)).
 code_aux__goal_is_flat_2(call(_, _, _, _, _, _)).
 code_aux__goal_is_flat_2(unify(_, _, _, _, _)).
-code_aux__goal_is_flat_2(pragma_foreign_code(_, _, _, _, _, _, _, _)).
+code_aux__goal_is_flat_2(pragma_foreign_code(_, _, _, _, _, _, _)).
 
 %-----------------------------------------------------------------------------%
 

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997, 1999 The University of Melbourne.
+% Copyright (C) 1997, 1999-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -38,10 +38,14 @@
 :- pred bt_array__make_empty_array(int, bt_array(T)).
 :- mode bt_array__make_empty_array(in, out) is det.
 
+:- func bt_array__make_empty_array(int) = bt_array(T).
+
 	% bt_array__init creates a bt_array with bounds from Low to High,
 	% with each element initialized to Init.
 :- pred bt_array__init(int, int, T, bt_array(T)).
 :- mode bt_array__init(in, in, in, out) is det. % want a bt_array_skeleton?
+
+:- func bt_array__init(int, int, T) = bt_array(T).
 
 %-----------------------------------------------------------------------------%
 
@@ -49,14 +53,20 @@
 :- pred bt_array__min(bt_array(_T), int).
 :- mode bt_array__min(in, out) is det.
 
+:- func bt_array__min(bt_array(_T)) = int.
+
 	% array__max returns the upper bound of the array
 :- pred bt_array__max(bt_array(_T), int).
 :- mode bt_array__max(in, out) is det.
+
+:- func bt_array__max(bt_array(_T)) = int.
 
 	% array__size returns the length of the array,
 	% i.e. upper bound - lower bound + 1.
 :- pred bt_array__size(bt_array(_T), int).
 :- mode bt_array__size(in, out) is det.
+
+:- func bt_array__size(bt_array(_T)) = int.
 
 	% bt_array__bounds returns the upper and lower bounds of a bt_array.
 :- pred bt_array__bounds(bt_array(_T), int, int).
@@ -74,6 +84,8 @@
 :- pred bt_array__lookup(bt_array(T), int, T).
 :- mode bt_array__lookup(in, in, out) is det.
 
+:- func bt_array__lookup(bt_array(T), int) = T.
+
 	% bt_array__semidet_lookup is like bt_array__lookup except that
 	% it fails if the index is out of bounds.
 :- pred bt_array__semidet_lookup(bt_array(T), int, T).
@@ -84,6 +96,8 @@
 	% It is an error if the index is out of bounds.
 :- pred bt_array__set(bt_array(T), int, T, bt_array(T)).
 :- mode bt_array__set(in, in, in, out) is det.
+
+:- func bt_array__set(bt_array(T), int, T) = bt_array(T).
 
 	% bt_array__set sets the nth element of a bt_array, and returns the
 	% resulting bt_array (good opportunity for destructive update ;-).  
@@ -106,6 +120,8 @@
 :- pred bt_array__resize(bt_array(T), int, int, T, bt_array(T)).
 :- mode bt_array__resize(in, in, in, in, out) is det.
 
+:- func bt_array__resize(bt_array(T), int, int, T) = bt_array(T).
+
 	% `bt_array__shrink(BtArray0, Lo, Hi, Item, BtArray)' is true
 	% if BtArray is a bt_array created by shrinking BtArray0 to
 	% fit the bounds (Lo,Hi).  It is an error if the new bounds
@@ -120,6 +136,8 @@
 :- pred bt_array__shrink(bt_array(T), int, int, bt_array(T)).
 :- mode bt_array__shrink(in, in, in, out) is det.
 
+:- func bt_array__shrink(bt_array(T), int, int) = bt_array(T).
+
 	% `bt_array__from_list(Low, List, BtArray)' takes a list (of
 	% possibly zero length), and returns a bt_array containing
 	% those elements in the same order that they occured in the
@@ -127,11 +145,15 @@
 :- pred bt_array__from_list(int, list(T), bt_array(T)).
 :- mode bt_array__from_list(in, in, out) is det.
 
+:- func bt_array__from_list(int, list(T)) = bt_array(T).
+
 	% bt_array__to_list takes a bt_array and returns a list containing
 	% the elements of the bt_array in the same order that they
 	% occurred in the bt_array.
 :- pred bt_array__to_list(bt_array(T), list(T)).
 :- mode bt_array__to_list(in, out) is det.
+
+:- func bt_array__to_list(bt_array(T)) = list(T).
 
 	% bt_array__fetch_items takes a bt_array and a lower and upper
 	% index, and places those items in the bt_array between these
@@ -139,6 +161,8 @@
 	% out of bounds.
 :- pred bt_array__fetch_items(bt_array(T), int, int, list(T)).
 :- mode bt_array__fetch_items(in, in, in, out) is det.
+
+:- func bt_array__fetch_items(bt_array(T), int, int) = list(T).
 
 	% bt_array__bsearch takes a bt_array, an element to be found
 	% and a comparison predicate and returns the position of
@@ -148,6 +172,14 @@
 	% the first occurrence is returned.
 :- pred bt_array__bsearch(bt_array(T), T, pred(T, T, comparison_result), int).
 :- mode bt_array__bsearch(in, in, pred(in, in, out) is det, out) is semidet.
+
+	% Field selection for arrays.
+	% Array ^ elem(Index) = bt_array__lookup(Array, Index).
+:- func bt_array__elem(int, bt_array(T)) = T.
+
+	% Field update for arrays.
+	% (Array ^ elem(Index) := Value) = bt_array__set(Array, Index, Value).
+:- func 'bt_array__elem :='(int, bt_array(T), T) = bt_array(T).
 
 %-----------------------------------------------------------------------------%
 
@@ -630,37 +662,6 @@ ra_list_slow_drop(N, As, Bs) :-
 % Ralph Becket <rwab1@cl.cam.ac.uk> 29/04/99
 % 	Function forms added.
 
-:- interface.
-
-:- func bt_array__make_empty_array(int) = bt_array(T).
-
-:- func bt_array__init(int, int, T) = bt_array(T).
-
-:- func bt_array__min(bt_array(_T)) = int.
-
-:- func bt_array__max(bt_array(_T)) = int.
-
-:- func bt_array__size(bt_array(_T)) = int.
-
-:- func bt_array__lookup(bt_array(T), int) = T.
-
-:- func bt_array__set(bt_array(T), int, T) = bt_array(T).
-
-:- func bt_array__resize(bt_array(T), int, int, T) = bt_array(T).
-
-:- func bt_array__shrink(bt_array(T), int, int) = bt_array(T).
-
-:- func bt_array__from_list(int, list(T)) = bt_array(T).
-
-:- func bt_array__to_list(bt_array(T)) = list(T).
-
-:- func bt_array__fetch_items(bt_array(T), int, int) = list(T).
-
-% ---------------------------------------------------------------------------- %
-% ---------------------------------------------------------------------------- %
-
-:- implementation.
-
 bt_array__make_empty_array(N) = BTA :-
 	bt_array__make_empty_array(N, BTA).
 
@@ -697,3 +698,6 @@ bt_array__to_list(BTA) = Xs :-
 bt_array__fetch_items(BTA, N1, N2) = Xs :-
 	bt_array__fetch_items(BTA, N1, N2, Xs).
 
+bt_array__elem(Index, Array) = bt_array__lookup(Array, Index).
+
+'bt_array__elem :='(Index, Array, Value) = bt_array__set(Array, Index, Value).

@@ -24,6 +24,8 @@
 :- pred stack__init(stack(_T)).
 :- mode stack__init(out) is det.
 
+:- func stack__init = stack(T).
+
 	% `stack__is_empty(Stack)' is true iff `Stack' is an empty stack.
 
 :- pred stack__is_empty(stack(_T)).
@@ -43,12 +45,16 @@
 :- pred stack__push(stack(T), T, stack(T)).
 :- mode stack__push(in, in, out) is det.
 
+:- func stack__push(stack(T), T) = stack(T).
+
 	% `stack__push_list(Stack0, Elems, Stack)' is true iff `Stack' 
 	% is the stack which results from pushing the elements of the
 	% list `Elems' onto the top of `Stack0'.
 
 :- pred stack__push_list(stack(T), list(T), stack(T)).
 :- mode stack__push_list(in, in, out) is det.
+
+:- func stack__push_list(stack(T), list(T)) = stack(T).
 
 	% `stack__top(Stack, Elem)' is true iff `Stack' is a non-empty
 	% stack whose top element is `Elem'.
@@ -61,6 +67,8 @@
 
 :- pred stack__top_det(stack(T), T).
 :- mode stack__top_det(in, out) is det.
+
+:- func stack__top_det(stack(T)) = T.
 
 	% `stack__pop(Stack0, Elem, Stack)' is true iff `Stack0' is
 	% a non-empty stack whose top element is `Elem', and `Stack'
@@ -80,7 +88,8 @@
 
 :- pred stack__depth(stack(_T), int).
 :- mode stack__depth(in, out) is det.
-:- mode stack__depth(in, in) is semidet. % implied
+
+:- func stack__depth(stack(T)) = int.
 
 %--------------------------------------------------------------------------%
 
@@ -130,23 +139,6 @@ stack__depth(Stack, Depth) :-
 %--------------------------------------------------------------------------%
 % Ralph Becket <rwab1@cl.cam.ac.uk> 29/04/99
 % 	Function forms added.
-
-:- interface.
-
-:- func stack__init = stack(T).
-
-:- func stack__push(stack(T), T) = stack(T).
-
-:- func stack__push_list(stack(T), list(T)) = stack(T).
-
-:- func stack__top_det(stack(T)) = T.
-
-:- func stack__depth(stack(T)) = int.
-
-% ---------------------------------------------------------------------------- %
-% ---------------------------------------------------------------------------- %
-
-:- implementation.
 
 stack__init = S :-
 	stack__init(S).

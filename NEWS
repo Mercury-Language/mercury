@@ -1,3 +1,28 @@
+NEWS since Mercury release 0.10
+-------------------------------
+Note that Mercury 0.10 has not actually been released yet;
+this section documents changes in the development version of
+Mercury since we established a feature freeze for Mercury 0.10
+and split development of that version off onto a separate branch
+of our CVS repository.
+
+Changes to the standard library:
+
+* We've changed the semantics of deconstruct/4, in light of the introduction
+  of existentially quantified types. Previously, if deconstruct/4 was given
+  a value of type `univ' it automagically unwrapped it and gave back the
+  functor, arity and arguments of the unwrapped value. This behaviour was
+  not documented, but made sense because there was no way to unwrap a
+  univ without knowing (or guessing) its type. Now that univ is defined
+  as a normal (existentially quantified) type, this behaviour is unnecessary,
+  and a wart besides, so has been removed. If you have a univ and you want
+  to get the unwrapped value's functor, arity and arguments, then you can
+  call "univ_value(Univ)" to extract the value before calling deconstruct.
+  (Doing that also works in Mercury 0.9 and Mercury 0.10.)
+
+* We've addes some new library predicates: assoc_list__keys_and_values,
+  list__map2 and list__map3.
+
 NEWS since Mercury release 0.9:
 -------------------------------
 
@@ -14,6 +39,11 @@ Changes to the Mercury language:
   See the "Explicit type quantification" and "Variable scoping"
   sections of the language reference manual for details.
 
+* We've added support for tuple types, similar to those in most
+  other functional languages. Tuples use the syntax `{A, B, ...}'.
+  See the "Builtin types" section of the "Types" chapter of the
+  Mercury Language Reference Manual for details.
+
 * We've added support for record syntax, so that fields of
   constructors can be conveniently extracted and updated
   without writing lots of trivial access predicates.
@@ -23,17 +53,17 @@ Changes to the Mercury language:
   Note that the syntax has changed slightly since the version
   that appeared in the release of the day in early January 2000.
   `Value =^ field' is now the syntax for DCG field selection,
-  rather than `Value := ^ field'.
+  rather than `Value := ^ field'. Field update functions are
+  named 'field :=' rather than 'field:='. We also allow field
+  access functions to take extra arguments.
 
-* We've added support for tuple types, similar to those in most
-  other functional languages. Tuples use the syntax `{A, B, ...}'.
-  See the "Builtin types" section of the "Types" chapter of the
-  Mercury Language Reference Manual for details.
+* The behaviour of the Mercury parser (parser__read_term) applied
+  to terms with functor `{}/N' has been changed. The parser from
+  Mercury 0.9 parsed "{1, 2, 3}" as `{}(','(1, ','(2, 3)))'.
+  It is now parsed as `{}(1, 2, 3)'.
 
-* The behaviour of the parser__read_term applied to terms with
-  functor `{}/N' has been changed. The parser from Mercury 0.9
-  parsed "{1, 2, 3}" as `{}(','(1, ','(2, 3)))'. It is now
-  parsed as `{}(1, 2, 3)'.
+* The operator `^' is now used for record syntax, and cannot be
+  used for user-defined functions or constructors.
 
 * You can now declare functions by giving a determinism but without
   supplying the modes.  The default function modes will be assumed.
@@ -67,11 +97,18 @@ Changes to the Mercury language:
 Changes to the standard library:
 
 * We've added new predicates map__foldl2, tree234__foldl2 and
-  std_util__aggregate2.
+  std_util__aggregate2, and builtin__promise_only_solution_io.
 
 * We've added function versions of std_util__solutions,
   std_util__solutions_set, std_util__aggregate, map__search,
   map__insert and map__update.
+
+* We've added functions to allow record syntax to be used
+  with some of the types in the standard library:
+	array__elem/2, 'array__elem :='/3,
+	bt_array__elem/2, 'bt_array__elem :='/3,
+	map__elem/2, 'map__elem :='/3,
+	map__det_elem/2, 'map__det_elem :='/3.
 
 * We've added a pretty printing module, `pprint', to the standard library.
 
@@ -88,6 +125,12 @@ Changes to the standard library:
   computing a random permutation of a list.
 
 * There is a new library module `counter' for managing counters.
+
+* We've added a new library module `sparse_bitset', which implements
+  an abstract data type for storing sets of integers.
+
+* There is a new library module `enum' which contains a typeclass
+  describing types which can be converted to and from integers.
 
 * Four new parametric instantiations `maybe/1', `maybe_error/1',
   `pair/2' and `pair/1' have been added to the `std_util' library
@@ -124,6 +167,8 @@ Changes to the standard library:
 	  truncated to the specified precision, but for ISO C's
 	  printf(), they are rounded rather than being truncated.
 
+* We've added a new function, math__solve_quadratic/3.
+
 Changes to the Mercury implementation:
 
 * We've implemented a new back-end for the Mercury compiler.
@@ -144,26 +189,44 @@ Changes to the Mercury implementation:
   are likely to be smaller (though this will depend on the platform,
   optimization options, etc.).  Speed of the generated code varies:
   sometimes it is better than the old back-end, sometimes it is worse.
-  There are a few important optimizations that we have not yet
-  implemented for the new back-end that would make a significant
-  difference for some applications.  But we encourage those for whom
-  performance is important to try their application with both the old
-  and new back-ends and compare for themselves.
+  There are a few optimizations that we have not yet implemented for
+  the new back-end that might make a significant difference for some
+  applications.  But there are also some optimizations which we have
+  implemented for the new back-end that have not been implemented for
+  the old back-end.  We encourage those for whom performance is
+  important to try their application with both the old and new
+  back-ends and compare for themselves.
 
-  The new back-end is not yet as mature or complete as the old back-end.
+  The new back-end is not yet quite as mature or complete as the old back-end.
   It does not yet support the following standard Mercury features:
   	- abstractly exported equivalence types defined as `float'
-	- the `in = in' mode of unification for certain standard library
-	  types such as arrays and `univ'
+	- calling compare/3, or the `in = in' mode of unification,
+	  for certain standard library types (std_util__type_desc/0,
+	  and std_util__type_ctor_desc/0).
+	- calling copy/2 on higher-order terms
   It also does not support the following implemention-specific
   features that the old back-end supports:
-	- trailing
 	- fact tables
   	- the Mercury debugger (mdb)
   	- the Morphine trace analysis system
 	- the Aditi deductive database interface
   	- the `--split-c-files' option
   	- the `--introduce-accumulators' option
+	- dynamic linking (via the dl__mercury_sym procedure in
+	  extras/dynamic/dl.m in the mercury-extras distribution)
+	  for procedures with arguments of type `float' or `char'
+
+* The names of some of the `--enable-*' options to `configure' have changed.
+
+  See the output of `configure --help' for details.
+
+Changes to the development environment:
+
+* Several improvements have been made to `mtags' to make it easier to
+  find predicate/function definitions and to improve support for
+  enhanced features of Vim.  The command-line options to `mtags' have
+  changed and Vim-style tags files are now output as the default (but
+  will work with Vi as well).  Do `mtags --help' for more information.
 
 NEWS for Mercury release 0.9.1:
 -------------------------------

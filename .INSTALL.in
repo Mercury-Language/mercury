@@ -22,9 +22,15 @@
 #      files in /usr/local/bin, /usr/local/lib et cetera,
 #      *not* /usr/local/mercury/bin, /usr/local/mercury/lib.
 #
-#	   The output from this stage will be automatically saved in the
-#	   file `configure.log'.  Some debugging output is also saved to
-#	   the file `config.log'.
+#	   By default, the installation process will install the Mercury
+#	   standard library in a comprehensive set of grades, with each grade
+#	   supporting a given set of capabilities (debugging, profiling etc).
+#	   If you want to install a different set of grades, read the
+#	   "Finetuning" section below.
+#
+#	   The output from running configure will be automatically saved
+#	   in the file `configure.log'.  Some debugging output is also
+#	   saved to the file `config.log'.
 #
 # Step 2.  Run `make'.
 #	   This step will take a long time.
@@ -74,12 +80,36 @@ make install
 #
 #	   By default the `make install' step will install a reasonable
 #	   set of library grades which should be appropriate for most uses.
-#	   If you want to install all the possible library grades,
-#	   rather than just the most useful few, use the `--enable-all-grades'
-#	   option to configure.  Conversely, if you are very short
-#	   of disk space, you can add the line "LIBGRADES="
-#	   to the file Mmake.params before installing.  This tells it
-#	   to install only a single grade of the libraries.
+#
+#	   The option --enable-libgrades=<gradelist> allows you to specify
+#	   precisely the list of library grades to be installed. The argument
+#	   of this option should be a comma-separated list of grades.
+#	   An empty list of grades will cause the library to be installed
+#	   only in the default grade.
+#
+#	   The option --disable-most-grades reduces the set of installed grades
+#	   to a "minimum" level for developers (just the default grade and the
+#	   grades corresponding to the `--debug' and `--high-level-code'
+#	   options).
+#
+#	   The option --disable-nogc-grades prevents the installation
+#	   of grades without garbage collection.
+#
+#	   The option --disable-prof-grades prevents the installation
+#	   of grades that support profiling.
+#
+#	   The option --disable-trail-grades prevents the installation
+#	   of grades that support trailing.
+#
+#	   The option --disable-par-grades prevents the installation
+#	   of thread-safe grades.
+#
+#	   The option --enable-inefficient-grades causes the installation
+#	   of grades that do not exploit gcc extensions even when they are
+#	   available.
+#
+#	   The option --enable-hlc-prof-grades causes the installation
+#	   of profiling versions of the high level code grades.
 #
 #	   If you are short on RAM, you can add -DSMALL_CONFIG to the CFLAGS
 #          line in the file boehm_gc/Makefile.  (This tells the garbage

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-2000 The University of Melbourne.
+** Copyright (C) 1997-2001 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -342,7 +342,7 @@ static	MR_Unsigned	MR_table_hash_insert_probes = 0;
 			}						      \
 		}							      \
 									      \
-		table_free(table->hash_table);				      \
+		MR_table_free(table->hash_table);			      \
 		table->hash_table = new_hash_table;			      \
 		table->size = new_size;					      \
 		table->threshold = new_threshold;			      \
@@ -432,7 +432,7 @@ MR_float_hash_lookup_or_add(MR_TrieNode t, MR_Float key)
 #define	key_cast		double
 #define	table_type		MR_FloatHashTableSlot
 #define	table_field		float_slot_ptr
-#define	hash(key)		(hash_float(key))
+#define	hash(key)		(MR_hash_float(key))
 #define	equal_keys(k1, k2)	(memcmp(&(k1), &(k2), sizeof(MR_Float)) == 0)
 MR_GENERIC_HASH_LOOKUP_OR_ADD
 #undef	key_format
@@ -839,19 +839,6 @@ MR_table_type(MR_TrieNode table, MR_TypeInfo type_info, MR_Word data)
                 break;
             }
 
-        case MR_TYPECTOR_REP_UNIV:
-            {
-                MR_Word    *data_value;
-
-                data_value = (MR_Word *) data;
-                MR_DEBUG_TABLE_TYPEINFO(table,
-                    (MR_TypeInfo) data_value[UNIV_OFFSET_FOR_TYPEINFO]);
-                MR_DEBUG_TABLE_ANY(table,
-                    (MR_TypeInfo) data_value[UNIV_OFFSET_FOR_TYPEINFO],
-                    data_value[UNIV_OFFSET_FOR_DATA]);
-                break;
-            }
-
         case MR_TYPECTOR_REP_VOID:
             MR_fatal_error("Cannot table a void type");
             break;
@@ -991,7 +978,7 @@ save_state(MR_SavedState *saved_state,
 	MR_Word *generator_maxfr, MR_Word *generator_sp,
 	const char *who, const char *what)
 {
-	restore_transient_registers();
+	MR_restore_transient_registers();
 
   #ifdef MR_HIGHLEVEL_CODE
 	MR_fatal_error("sorry, not implemented: "
@@ -1006,8 +993,8 @@ save_state(MR_SavedState *saved_state,
 	if (MR_maxfr > generator_maxfr) {
 		saved_state->non_stack_block_size = MR_maxfr - generator_maxfr;
 		saved_state->non_stack_block =
-			table_allocate_words(saved_state->non_stack_block_size);
-		table_copy_words(saved_state->non_stack_block,
+			MR_table_allocate_words(saved_state->non_stack_block_size);
+		MR_table_copy_words(saved_state->non_stack_block,
 			saved_state->non_stack_block_start,
 			saved_state->non_stack_block_size);
 	} else {
@@ -1019,8 +1006,8 @@ save_state(MR_SavedState *saved_state,
 	if (MR_sp > generator_sp) {
 		saved_state->det_stack_block_size = (MR_sp - 1) - generator_sp;
 		saved_state->det_stack_block =
-			table_allocate_words(saved_state->det_stack_block_size);
-		table_copy_words(saved_state->det_stack_block,
+			MR_table_allocate_words(saved_state->det_stack_block_size);
+		MR_table_copy_words(saved_state->det_stack_block,
 			saved_state->det_stack_block_start,
 			saved_state->det_stack_block_size);
 	} else {
@@ -1031,15 +1018,15 @@ save_state(MR_SavedState *saved_state,
   #endif /* ! MR_HIGHLEVEL_CODE */
 
 	saved_state->gen_next = MR_gen_next;
-	saved_state->generator_stack_block = table_allocate_bytes(
+	saved_state->generator_stack_block = MR_table_allocate_bytes(
 			MR_gen_next * sizeof(MR_GeneratorStackFrame));
-	table_copy_bytes(saved_state->generator_stack_block,
+	MR_table_copy_bytes(saved_state->generator_stack_block,
 		MR_gen_stack, MR_gen_next * sizeof(MR_GeneratorStackFrame));
 
 	saved_state->cut_next = MR_cut_next;
-	saved_state->cut_stack_block = table_allocate_bytes(
+	saved_state->cut_stack_block = MR_table_allocate_bytes(
 			MR_cut_next * sizeof(MR_CutStackFrame));
-	table_copy_bytes(saved_state->cut_stack_block,
+	MR_table_copy_bytes(saved_state->cut_stack_block,
 		MR_cut_stack, MR_cut_next * sizeof(MR_CutStackFrame));
 
   #ifdef MR_USE_TRAIL
@@ -1120,7 +1107,7 @@ save_state(MR_SavedState *saved_state,
 	}
   #endif /* MR_TABLE_DEBUG */
 
-	save_transient_registers();
+	MR_save_transient_registers();
 }
 
 /*
@@ -1130,7 +1117,7 @@ save_state(MR_SavedState *saved_state,
 static void
 restore_state(MR_SavedState *saved_state, const char *who, const char *what)
 {
-	restore_transient_registers();
+	MR_restore_transient_registers();
 
   #ifdef MR_HIGHLEVEL_CODE
 
@@ -1144,22 +1131,22 @@ restore_state(MR_SavedState *saved_state, const char *who, const char *what)
 	MR_curfr = saved_state->cur_fr;
 	MR_maxfr = saved_state->max_fr;
 
-	table_copy_words(saved_state->non_stack_block_start,
+	MR_table_copy_words(saved_state->non_stack_block_start,
 		saved_state->non_stack_block,
 		saved_state->non_stack_block_size);
 
-	table_copy_words(saved_state->det_stack_block_start,
+	MR_table_copy_words(saved_state->det_stack_block_start,
 		saved_state->det_stack_block,
 		saved_state->det_stack_block_size);
 
   #endif
 
 	MR_gen_next = saved_state->gen_next;
-	table_copy_bytes(MR_gen_stack, saved_state->generator_stack_block,
+	MR_table_copy_bytes(MR_gen_stack, saved_state->generator_stack_block,
 		saved_state->gen_next * sizeof(MR_GeneratorStackFrame));
 
 	MR_cut_next = saved_state->cut_next;
-	table_copy_bytes(MR_cut_stack, saved_state->cut_stack_block,
+	MR_table_copy_bytes(MR_cut_stack, saved_state->cut_stack_block,
 		saved_state->cut_next * sizeof(MR_CutStackFrame));
 
   #ifdef MR_TABLE_DEBUG
@@ -1208,7 +1195,7 @@ restore_state(MR_SavedState *saved_state, const char *who, const char *what)
 	}
   #endif /* MR_table_debug */
 
-	save_transient_registers();
+	MR_save_transient_registers();
 }
 
 static void
@@ -1218,7 +1205,7 @@ print_saved_state_stacks(MR_SavedState *saved_state)
 
 	printf("saved state parameters:\n");
 	printf("succip:\t");
-	printlabel(saved_state->succ_ip);
+	MR_printlabel(stdout, saved_state->succ_ip);
 	printf("sp:\t");
 	MR_printdetstackptr(saved_state->s_p);
 	printf("\ncurfr:\t");
@@ -1254,7 +1241,7 @@ print_saved_state_stacks(MR_SavedState *saved_state)
 ** the parts of the stacks between the generator of B and the generator of A.
 */
 
-Declare_entry(mercury__table_nondet_resume_1_0);
+MR_declare_entry(mercury__table_builtin__table_nondet_resume_1_0);
 
 static void
 extend_consumer_stacks(MR_Subgoal *leader, MR_Consumer *suspension)
@@ -1285,10 +1272,10 @@ extend_consumer_stacks(MR_Subgoal *leader, MR_Consumer *suspension)
 				== suspension->saved_state.s_p - 1);
 	}
 
-	arena_block = table_allocate_words(arena_size);
+	arena_block = MR_table_allocate_words(arena_size);
 
-	table_copy_words(arena_block, arena_start, extension_size);
-	table_copy_words(arena_block + extension_size,
+	MR_table_copy_words(arena_block, arena_start, extension_size);
+	MR_table_copy_words(arena_block + extension_size,
 		suspension->saved_state.det_stack_block,
 		suspension->saved_state.det_stack_block_size);
 
@@ -1320,10 +1307,10 @@ extend_consumer_stacks(MR_Subgoal *leader, MR_Consumer *suspension)
 	assert(leader->generator_maxfr + arena_size
 			== suspension->saved_state.max_fr);
 
-	arena_block = table_allocate_words(arena_size);
+	arena_block = MR_table_allocate_words(arena_size);
 
-	table_copy_words(arena_block, arena_start, extension_size);
-	table_copy_words(arena_block + extension_size,
+	MR_table_copy_words(arena_block, arena_start, extension_size);
+	MR_table_copy_words(arena_block + extension_size,
 		suspension->saved_state.non_stack_block,
 		suspension->saved_state.non_stack_block_size);
 
@@ -1364,7 +1351,8 @@ extend_consumer_stacks(MR_Subgoal *leader, MR_Consumer *suspension)
 		if (saved_fr - frame_size
 			> suspension->saved_state.non_stack_block)
 		{
-			*MR_redoip_addr(saved_fr) = (MR_Word) ENTRY(do_fail);
+			*MR_redoip_addr(saved_fr) =
+				(MR_Word) MR_ENTRY(MR_do_fail);
 
 #ifdef	MR_TABLE_DEBUG
 			if (MR_tabledebug) {
@@ -1377,7 +1365,7 @@ extend_consumer_stacks(MR_Subgoal *leader, MR_Consumer *suspension)
 #endif
 		} else {
 			*MR_redoip_addr(saved_fr) = (MR_Word)
-				ENTRY(mercury__table_nondet_resume_1_0);
+				MR_ENTRY(mercury__table_builtin__table_nondet_resume_1_0);
 #ifdef	MR_TABLE_DEBUG
 			if (MR_tabledebug) {
 				printf("resume to redoip at %p (%d)\n",
@@ -1415,7 +1403,7 @@ make_subgoal_follow_leader(MR_Subgoal *this_follower, MR_Subgoal *leader)
 	MR_SubgoalList		sub_followers;
 	MR_ConsumerList		suspend_list;
 
-	restore_transient_registers();
+	MR_restore_transient_registers();
 
 #ifdef	MR_TABLE_DEBUG
 	if (MR_tabledebug) {
@@ -1430,9 +1418,9 @@ make_subgoal_follow_leader(MR_Subgoal *this_follower, MR_Subgoal *leader)
 			suspend_list != NULL;
 			suspend_list = suspend_list->next)
 		{
-			save_transient_registers();
+			MR_save_transient_registers();
 			extend_consumer_stacks(leader, suspend_list->item);
-			restore_transient_registers();
+			MR_restore_transient_registers();
 		}
 	}
 
@@ -1440,7 +1428,7 @@ make_subgoal_follow_leader(MR_Subgoal *this_follower, MR_Subgoal *leader)
 	*(leader->followers_tail) = this_follower->followers;
 	this_follower->followers = NULL;
 
-	save_transient_registers();
+	MR_save_transient_registers();
 }
 
 /*
@@ -1459,19 +1447,21 @@ make_subgoal_follow_leader(MR_Subgoal *this_follower, MR_Subgoal *leader)
 ** table_nondet_resume.
 */
 
-Declare_entry(mercury__table_nondet_resume_1_0);
-Declare_entry(MR_do_trace_redo_fail);
-Declare_entry(MR_table_nondet_commit);
-Define_extern_entry(mercury__table_nondet_suspend_2_0);
-MR_MAKE_PROC_LAYOUT(mercury__table_nondet_suspend_2_0,
-	MR_DETISM_NON, 0, MR_LONG_LVAL_TYPE_UNKNOWN,
-	MR_PREDICATE, "private_builtin", "table_nondet_suspend", 2, 0);
-BEGIN_MODULE(table_nondet_suspend_module)
-	init_entry_sl(mercury__table_nondet_suspend_2_0);
-	MR_INIT_PROC_LAYOUT_ADDR(mercury__table_nondet_suspend_2_0);
-BEGIN_CODE
+#ifndef MR_HIGHLEVEL_CODE
 
-Define_entry(mercury__table_nondet_suspend_2_0);
+MR_declare_entry(mercury__table_builtin__table_nondet_resume_1_0);
+MR_declare_entry(MR_do_trace_redo_fail);
+MR_declare_entry(MR_table_nondet_commit);
+MR_define_extern_entry(mercury__table_builtin__table_nondet_suspend_2_0);
+MR_MAKE_PROC_LAYOUT(mercury__table_builtin__table_nondet_suspend_2_0,
+	MR_DETISM_NON, 0, MR_LONG_LVAL_TYPE_UNKNOWN,
+	MR_PREDICATE, "table_builtin", "table_nondet_suspend", 2, 0);
+MR_BEGIN_MODULE(table_nondet_suspend_module)
+	MR_init_entry_sl(mercury__table_builtin__table_nondet_suspend_2_0);
+	MR_INIT_PROC_LAYOUT_ADDR(mercury__table_builtin__table_nondet_suspend_2_0);
+MR_BEGIN_CODE
+
+MR_define_entry(mercury__table_builtin__table_nondet_suspend_2_0);
 {
 	MR_TrieNode	table;
 	MR_Subgoal	*subgoal;
@@ -1492,18 +1482,19 @@ Define_entry(mercury__table_nondet_suspend_2_0);
 	** nondet stack fragment. The framevar slot is for use by
 	** table_nondet_resume.
 	*/
-	MR_mkframe("mercury__table_nondet_suspend", 1, ENTRY(do_fail));
+	MR_mkframe("mercury__table_builtin__table_nondet_suspend", 1,
+		MR_ENTRY(MR_do_fail));
 
-	table = (MR_TrieNode) r1;
+	table = (MR_TrieNode) MR_r1;
 	subgoal = table->MR_subgoal;
-	consumer = table_allocate_bytes(sizeof(MR_Consumer));
+	consumer = MR_table_allocate_bytes(sizeof(MR_Consumer));
 	consumer->remaining_answer_list_ptr = &subgoal->answer_list;
 
-	save_transient_registers();
+	MR_save_transient_registers();
 	save_state(&(consumer->saved_state),
 		subgoal->generator_maxfr, subgoal->generator_sp,
 		"suspension", "consumer");
-	restore_transient_registers();
+	MR_restore_transient_registers();
 
 	cur_gen = MR_gen_next - 1;
 	cur_cut = MR_cut_next - 1;
@@ -1533,7 +1524,7 @@ Define_entry(mercury__table_nondet_suspend_2_0);
 
 				assert(MR_prevfr_slot(fr) == (stop_addr - 1));
 				*clobber_addr = (MR_Word)
-					ENTRY(mercury__table_nondet_resume_1_0);
+					MR_ENTRY(mercury__table_builtin__table_nondet_resume_1_0);
 #ifdef	MR_TABLE_DEBUG
 				if (MR_tablestackdebug) {
 					printf("completing redoip "
@@ -1558,7 +1549,7 @@ Define_entry(mercury__table_nondet_suspend_2_0);
 
 				assert(MR_prevfr_slot(fr) != (stop_addr - 1));
 
-				*clobber_addr = (MR_Word) ENTRY(do_fail);
+				*clobber_addr = (MR_Word) MR_ENTRY(MR_do_fail);
 #ifdef	MR_TABLE_DEBUG
 				if (MR_tablestackdebug) {
 					printf("clobbering redoip "
@@ -1568,17 +1559,17 @@ Define_entry(mercury__table_nondet_suspend_2_0);
 				}
 #endif
 
-				save_transient_registers();
+				MR_save_transient_registers();
 				make_subgoal_follow_leader(
 					MR_gen_stack[cur_gen].
 						generator_table->MR_subgoal,
 					subgoal);
-				restore_transient_registers();
+				MR_restore_transient_registers();
 			}
 
 			cur_gen--;
 		} else if (cur_cut > 0 && fr == MR_cut_stack[cur_cut].frame) {
-			*clobber_addr = (MR_Word) ENTRY(MR_table_nondet_commit);
+			*clobber_addr = (MR_Word) MR_ENTRY(MR_table_nondet_commit);
 #ifdef	MR_TABLE_DEBUG
 			if (MR_tablestackdebug) {
 				printf("committing redoip of frame at ");
@@ -1589,7 +1580,7 @@ Define_entry(mercury__table_nondet_suspend_2_0);
 
 			cur_cut--;
 		} else {
-			*clobber_addr = (MR_Word) ENTRY(do_fail);
+			*clobber_addr = (MR_Word) MR_ENTRY(MR_do_fail);
 #ifdef	MR_TABLE_DEBUG
 			if (MR_tablestackdebug) {
 				printf("clobbering redoip of frame at ");
@@ -1609,14 +1600,14 @@ Define_entry(mercury__table_nondet_suspend_2_0);
 #endif
 
 	assert(*(subgoal->consumer_list_tail) == NULL);
-	listnode = table_allocate_bytes(sizeof(MR_ConsumerListNode));
+	listnode = MR_table_allocate_bytes(sizeof(MR_ConsumerListNode));
 	*(subgoal->consumer_list_tail) = listnode;
 	subgoal->consumer_list_tail = &(listnode->next);
 	listnode->item = consumer;
 	listnode->next = NULL;
 }
 	MR_fail();
-END_MODULE
+MR_END_MODULE
 
 MR_Subgoal	*MR_cur_leader;
 
@@ -1638,51 +1629,51 @@ MR_Subgoal	*MR_cur_leader;
 ** to it).
 */
 
-Define_extern_entry(mercury__table_nondet_resume_1_0);
-Declare_label(mercury__table_nondet_resume_1_0_ChangeLoop);
-Declare_label(mercury__table_nondet_resume_1_0_ReachedFixpoint);
-Declare_label(mercury__table_nondet_resume_1_0_LoopOverSuspensions);
-Declare_label(mercury__table_nondet_resume_1_0_ReturnAnswer);
-Declare_label(mercury__table_nondet_resume_1_0_RedoPoint);
+MR_define_extern_entry(mercury__table_builtin__table_nondet_resume_1_0);
+MR_declare_label(mercury__table_builtin__table_nondet_resume_1_0_ChangeLoop);
+MR_declare_label(mercury__table_builtin__table_nondet_resume_1_0_ReachedFixpoint);
+MR_declare_label(mercury__table_builtin__table_nondet_resume_1_0_LoopOverSuspensions);
+MR_declare_label(mercury__table_builtin__table_nondet_resume_1_0_ReturnAnswer);
+MR_declare_label(mercury__table_builtin__table_nondet_resume_1_0_RedoPoint);
 
-MR_MAKE_PROC_LAYOUT(mercury__table_nondet_resume_1_0,
+MR_MAKE_PROC_LAYOUT(mercury__table_builtin__table_nondet_resume_1_0,
 	MR_DETISM_NON, MR_ENTRY_NO_SLOT_COUNT, MR_LONG_LVAL_TYPE_UNKNOWN,
-	MR_PREDICATE, "private_builtin", "table_nondet_resume", 1, 0);
+	MR_PREDICATE, "table_builtin", "table_nondet_resume", 1, 0);
 MR_MAKE_INTERNAL_LAYOUT_WITH_ENTRY(
-	mercury__table_nondet_resume_1_0_ChangeLoop,
-	mercury__table_nondet_resume_1_0);
+	mercury__table_builtin__table_nondet_resume_1_0_ChangeLoop,
+	mercury__table_builtin__table_nondet_resume_1_0);
 MR_MAKE_INTERNAL_LAYOUT_WITH_ENTRY(
-	mercury__table_nondet_resume_1_0_ReachedFixpoint,
-	mercury__table_nondet_resume_1_0);
+	mercury__table_builtin__table_nondet_resume_1_0_ReachedFixpoint,
+	mercury__table_builtin__table_nondet_resume_1_0);
 MR_MAKE_INTERNAL_LAYOUT_WITH_ENTRY(
-	mercury__table_nondet_resume_1_0_LoopOverSubgoals,
-	mercury__table_nondet_resume_1_0);
+	mercury__table_builtin__table_nondet_resume_1_0_LoopOverSubgoals,
+	mercury__table_builtin__table_nondet_resume_1_0);
 MR_MAKE_INTERNAL_LAYOUT_WITH_ENTRY(
-	mercury__table_nondet_resume_1_0_LoopOverSuspensions,
-	mercury__table_nondet_resume_1_0);
+	mercury__table_builtin__table_nondet_resume_1_0_LoopOverSuspensions,
+	mercury__table_builtin__table_nondet_resume_1_0);
 MR_MAKE_INTERNAL_LAYOUT_WITH_ENTRY(
-	mercury__table_nondet_resume_1_0_ReturnAnswer,
-	mercury__table_nondet_resume_1_0);
+	mercury__table_builtin__table_nondet_resume_1_0_ReturnAnswer,
+	mercury__table_builtin__table_nondet_resume_1_0);
 MR_MAKE_INTERNAL_LAYOUT_WITH_ENTRY(
-	mercury__table_nondet_resume_1_0_RedoPoint,
-	mercury__table_nondet_resume_1_0);
+	mercury__table_builtin__table_nondet_resume_1_0_RedoPoint,
+	mercury__table_builtin__table_nondet_resume_1_0);
 MR_MAKE_INTERNAL_LAYOUT_WITH_ENTRY(
-	mercury__table_nondet_resume_1_0_RestartPoint,
-	mercury__table_nondet_resume_1_0);
+	mercury__table_builtin__table_nondet_resume_1_0_RestartPoint,
+	mercury__table_builtin__table_nondet_resume_1_0);
 
-BEGIN_MODULE(table_nondet_resume_module)
-	init_entry_sl(mercury__table_nondet_resume_1_0);
-	MR_INIT_PROC_LAYOUT_ADDR(mercury__table_nondet_resume_1_0);
-	init_label_sl(mercury__table_nondet_resume_1_0_ChangeLoop);
-	init_label_sl(mercury__table_nondet_resume_1_0_ReachedFixpoint);
-	init_label_sl(mercury__table_nondet_resume_1_0_LoopOverSubgoals);
-	init_label_sl(mercury__table_nondet_resume_1_0_LoopOverSuspensions);
-	init_label_sl(mercury__table_nondet_resume_1_0_ReturnAnswer);
-	init_label_sl(mercury__table_nondet_resume_1_0_RedoPoint);
-	init_label_sl(mercury__table_nondet_resume_1_0_RestartPoint);
-BEGIN_CODE
+MR_BEGIN_MODULE(table_nondet_resume_module)
+	MR_init_entry_sl(mercury__table_builtin__table_nondet_resume_1_0);
+	MR_INIT_PROC_LAYOUT_ADDR(mercury__table_builtin__table_nondet_resume_1_0);
+	MR_init_label_sl(mercury__table_builtin__table_nondet_resume_1_0_ChangeLoop);
+	MR_init_label_sl(mercury__table_builtin__table_nondet_resume_1_0_ReachedFixpoint);
+	MR_init_label_sl(mercury__table_builtin__table_nondet_resume_1_0_LoopOverSubgoals);
+	MR_init_label_sl(mercury__table_builtin__table_nondet_resume_1_0_LoopOverSuspensions);
+	MR_init_label_sl(mercury__table_builtin__table_nondet_resume_1_0_ReturnAnswer);
+	MR_init_label_sl(mercury__table_builtin__table_nondet_resume_1_0_RedoPoint);
+	MR_init_label_sl(mercury__table_builtin__table_nondet_resume_1_0_RestartPoint);
+MR_BEGIN_CODE
 
-Define_entry(mercury__table_nondet_resume_1_0);
+MR_define_entry(mercury__table_builtin__table_nondet_resume_1_0);
 	MR_cur_leader = MR_top_generator_table();
 
 	if (MR_cur_leader->leader != NULL) {
@@ -1720,12 +1711,12 @@ Define_entry(mercury__table_nondet_resume_1_0);
 	} else {
 		MR_cur_leader->resume_info = MR_TABLE_NEW(MR_ResumeInfo);
 
-		save_transient_registers();
+		MR_save_transient_registers();
 		save_state(&(MR_cur_leader->resume_info->leader_state),
 			MR_cur_leader->generator_maxfr,
 			MR_cur_leader->generator_sp,
 			"resumption", "generator");
-		restore_transient_registers();
+		MR_restore_transient_registers();
 
 #ifdef	MR_TABLE_DEBUG
 		if (MR_tabledebug) {
@@ -1737,7 +1728,7 @@ Define_entry(mercury__table_nondet_resume_1_0);
 
 	MR_cur_leader->resume_info->changed = TRUE;
 
-Define_label(mercury__table_nondet_resume_1_0_ChangeLoop);
+MR_define_label(mercury__table_builtin__table_nondet_resume_1_0_ChangeLoop);
 
 	if (MR_cur_leader->resume_info->changed) {
 #ifdef	MR_TABLE_DEBUG
@@ -1771,13 +1762,14 @@ Define_label(mercury__table_nondet_resume_1_0_ChangeLoop);
 			printf("no more changes\n");
 		}
 #endif
-		GOTO_LABEL(mercury__table_nondet_resume_1_0_ReachedFixpoint);
+		MR_GOTO_LABEL(
+			mercury__table_builtin__table_nondet_resume_1_0_ReachedFixpoint);
 	}
 
 	MR_cur_leader->resume_info->subgoal_list = MR_cur_leader->followers;
 
 	/* For each of the subgoals on our list of followers */
-Define_label(mercury__table_nondet_resume_1_0_LoopOverSubgoals);
+MR_define_label(mercury__table_builtin__table_nondet_resume_1_0_LoopOverSubgoals);
 
 	if (MR_cur_leader->resume_info->subgoal_list == NULL) {
 #ifdef	MR_TABLE_DEBUG
@@ -1786,7 +1778,7 @@ Define_label(mercury__table_nondet_resume_1_0_LoopOverSubgoals);
 		}
 #endif
 
-		GOTO_LABEL(mercury__table_nondet_resume_1_0_ChangeLoop);
+		MR_GOTO_LABEL(mercury__table_builtin__table_nondet_resume_1_0_ChangeLoop);
 	}
 
 	MR_cur_leader->resume_info->cur_subgoal =
@@ -1802,7 +1794,7 @@ Define_label(mercury__table_nondet_resume_1_0_LoopOverSubgoals);
 		MR_cur_leader->resume_info->cur_subgoal->num_ans;
 
 	/* For each of the suspended nodes for cur_subgoal */
-Define_label(mercury__table_nondet_resume_1_0_LoopOverSuspensions);
+MR_define_label(mercury__table_builtin__table_nondet_resume_1_0_LoopOverSuspensions);
 
 	if (MR_cur_leader->resume_info->consumer_list == NULL) {
 #ifdef	MR_TABLE_DEBUG
@@ -1810,7 +1802,8 @@ Define_label(mercury__table_nondet_resume_1_0_LoopOverSuspensions);
 			printf("no more suspensions for current subgoal\n");
 		}
 #endif
-		GOTO_LABEL(mercury__table_nondet_resume_1_0_LoopOverSubgoals);
+		MR_GOTO_LABEL(
+			mercury__table_builtin__table_nondet_resume_1_0_LoopOverSubgoals);
 	}
 
 	MR_cur_leader->resume_info->cur_consumer =
@@ -1828,7 +1821,8 @@ Define_label(mercury__table_nondet_resume_1_0_LoopOverSuspensions);
 			printf("no first answer for this suspension\n");
 		}
 #endif
-		GOTO_LABEL(mercury__table_nondet_resume_1_0_LoopOverSuspensions);
+		MR_GOTO_LABEL(
+			mercury__table_builtin__table_nondet_resume_1_0_LoopOverSuspensions);
 	}
 
 #ifdef	MR_TABLE_DEBUG
@@ -1839,11 +1833,11 @@ Define_label(mercury__table_nondet_resume_1_0_LoopOverSuspensions);
 	}
 #endif
 
-	save_transient_registers();
+	MR_save_transient_registers();
 	restore_state(
 		&(MR_cur_leader->resume_info->cur_consumer->saved_state),
 		"resumption", "consumer");
-	restore_transient_registers();
+	MR_restore_transient_registers();
 
 	/* check that there is room for exactly one framevar */
 	assert((MR_maxfr - MR_prevfr_slot(MR_maxfr)) ==
@@ -1851,11 +1845,11 @@ Define_label(mercury__table_nondet_resume_1_0_LoopOverSuspensions);
 
 	MR_gen_next = MR_cur_leader->resume_info->leader_state.gen_next;
 	MR_redoip_slot(MR_maxfr) =
-		LABEL(mercury__table_nondet_resume_1_0_RedoPoint);
+		MR_LABEL(mercury__table_builtin__table_nondet_resume_1_0_RedoPoint);
 	MR_redofr_slot(MR_maxfr) = MR_maxfr;
 	MR_based_framevar(MR_maxfr, 1) = (MR_Word) MR_cur_leader;
 
-Define_label(mercury__table_nondet_resume_1_0_ReturnAnswer);
+MR_define_label(mercury__table_builtin__table_nondet_resume_1_0_ReturnAnswer);
 
 	/*
 	** Return the next answer in MR_cur_leader->resume_info->
@@ -1865,8 +1859,8 @@ Define_label(mercury__table_nondet_resume_1_0_ReturnAnswer);
 	** since will not have changed in the meantime.
 	*/
 
-	r1 = (MR_Word) &MR_cur_leader->resume_info->cur_consumer_answer_list->
-		answer_data;
+	MR_r1 = (MR_Word) &MR_cur_leader->resume_info->
+		cur_consumer_answer_list->answer_data;
 
 	MR_cur_leader->resume_info->cur_consumer->remaining_answer_list_ptr =
 		&(MR_cur_leader->resume_info->cur_consumer_answer_list->
@@ -1883,8 +1877,8 @@ Define_label(mercury__table_nondet_resume_1_0_ReturnAnswer);
 	*/
 	MR_succeed();
 
-Define_label(mercury__table_nondet_resume_1_0_RedoPoint);
-	update_prof_current_proc(LABEL(mercury__table_nondet_resume_1_0));
+MR_define_label(mercury__table_builtin__table_nondet_resume_1_0_RedoPoint);
+	MR_update_prof_current_proc(MR_LABEL(mercury__table_builtin__table_nondet_resume_1_0));
 
 	/*
 	** This is where the current consumer suspension will go on
@@ -1896,7 +1890,7 @@ Define_label(mercury__table_nondet_resume_1_0_RedoPoint);
 
 	MR_cur_leader = (MR_Subgoal *) MR_based_framevar(MR_maxfr, 1);
 
-Define_label(mercury__table_nondet_resume_1_0_RestartPoint);
+MR_define_label(mercury__table_builtin__table_nondet_resume_1_0_RestartPoint);
 #ifdef	MR_TABLE_DEBUG
 	if (MR_tabledebug) {
 		printf("cur_consumer_answer_list: %p\n",
@@ -1908,7 +1902,7 @@ Define_label(mercury__table_nondet_resume_1_0_RestartPoint);
 #endif
 
 	if (MR_cur_leader->resume_info->cur_consumer_answer_list != NULL) {
-		GOTO_LABEL(mercury__table_nondet_resume_1_0_ReturnAnswer);
+		MR_GOTO_LABEL(mercury__table_builtin__table_nondet_resume_1_0_ReturnAnswer);
 	}
 
 #ifdef	MR_TABLE_DEBUG
@@ -1923,9 +1917,9 @@ Define_label(mercury__table_nondet_resume_1_0_RestartPoint);
 		MR_cur_leader->resume_info->changed = TRUE;
 	}
 
-	GOTO_LABEL(mercury__table_nondet_resume_1_0_LoopOverSuspensions);
+	MR_GOTO_LABEL(mercury__table_builtin__table_nondet_resume_1_0_LoopOverSuspensions);
 
-Define_label(mercury__table_nondet_resume_1_0_ReachedFixpoint);
+MR_define_label(mercury__table_builtin__table_nondet_resume_1_0_ReachedFixpoint);
 	{
 		MR_SubgoalList	table_list;
 
@@ -1945,10 +1939,10 @@ Define_label(mercury__table_nondet_resume_1_0_ReachedFixpoint);
 	}
 
 	/* Restore the state we had when table_nondet_resume was called */
-	save_transient_registers();
+	MR_save_transient_registers();
 	restore_state(&(MR_cur_leader->resume_info->leader_state),
 		"resumption", "generator");
-	restore_transient_registers();
+	MR_restore_transient_registers();
 
 	/* XXX we should free this cell and its components */
 	MR_cur_leader->resume_info = NULL;
@@ -1956,19 +1950,56 @@ Define_label(mercury__table_nondet_resume_1_0_ReachedFixpoint);
 	/* We are done with this generator */
 	(void) MR_pop_generator();
 
-	proceed();
-END_MODULE
+	MR_proceed();
+MR_END_MODULE
 
-Define_extern_entry(MR_table_nondet_commit);
-BEGIN_MODULE(table_nondet_commit_module)
-	init_entry_ai(MR_table_nondet_commit);
-BEGIN_CODE
-Define_entry(MR_table_nondet_commit);
+MR_define_extern_entry(MR_table_nondet_commit);
+MR_BEGIN_MODULE(table_nondet_commit_module)
+	MR_init_entry_ai(MR_table_nondet_commit);
+MR_BEGIN_CODE
+MR_define_entry(MR_table_nondet_commit);
 	MR_commit_cut();
 	MR_fail();
-END_MODULE
+MR_END_MODULE
+
+#endif /* ! MR_HIGHLEVEL_CODE */
 
 #endif	/* MR_USE_MINIMAL_MODEL */
+
+#ifdef MR_HIGHLEVEL_CODE
+
+/*
+** We need to define stubs for these, even if MR_USE_MINIMAL_MODEL
+** is not enabled, since they are declared as `:- external', and
+** hence for profiling grades the generated code will take their
+** address to store in the label table.
+*/
+
+/* Declare them first, to avoid warnings from gcc -Wmissing-decls */
+void MR_CALL mercury__table_builtin__table_nondet_resume_1_p_0(
+	MR_C_Pointer subgoal_table_node, MR_C_Pointer *answer_block,
+	MR_Cont cont, void *cont_env_ptr);
+void MR_CALL mercury__table_builtin__table_nondet_suspend_2_p_0(
+	MR_C_Pointer subgoal_table_node);
+
+void MR_CALL
+mercury__table_builtin__table_nondet_resume_1_p_0(
+	MR_C_Pointer subgoal_table_node, MR_C_Pointer *answer_block,
+	MR_Cont cont, void *cont_env_ptr)
+{
+	MR_fatal_error("sorry, not implemented: "
+		"minimal model tabling with --high-level-code");
+}
+
+void MR_CALL
+mercury__table_builtin__table_nondet_suspend_2_p_0(
+	MR_C_Pointer subgoal_table_node)
+{
+	MR_fatal_error("sorry, not implemented: "
+		"minimal model tabling with --high-level-code");
+}
+
+#endif /* MR_HIGHLEVEL_CODE */
 
 /* Ensure that the initialization code for the above modules gets to run. */
 /*
@@ -1976,9 +2007,9 @@ INIT mercury_sys_init_table_modules
 */
 
 #ifdef	MR_USE_MINIMAL_MODEL
-MR_MODULE_STATIC_OR_EXTERN ModuleFunc table_nondet_suspend_module;
-MR_MODULE_STATIC_OR_EXTERN ModuleFunc table_nondet_resume_module;
-MR_MODULE_STATIC_OR_EXTERN ModuleFunc table_nondet_commit_module;
+MR_MODULE_STATIC_OR_EXTERN MR_ModuleFunc table_nondet_suspend_module;
+MR_MODULE_STATIC_OR_EXTERN MR_ModuleFunc table_nondet_resume_module;
+MR_MODULE_STATIC_OR_EXTERN MR_ModuleFunc table_nondet_commit_module;
 #endif
 
 void mercury_sys_init_table_modules(void);

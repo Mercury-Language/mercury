@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2000 The University of Melbourne.
+% Copyright (C) 1996-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -527,6 +527,7 @@ mercury_std_library_module("builtin").
 mercury_std_library_module("char").
 mercury_std_library_module("counter").
 mercury_std_library_module("dir").
+mercury_std_library_module("enum").
 mercury_std_library_module("eqvclass").
 mercury_std_library_module("exception").
 mercury_std_library_module("float").
@@ -560,6 +561,7 @@ mercury_std_library_module("set").
 mercury_std_library_module("set_bbbtree").
 mercury_std_library_module("set_ordlist").
 mercury_std_library_module("set_unordlist").
+mercury_std_library_module("sparse_bitset").
 mercury_std_library_module("stack").
 mercury_std_library_module("std_util").
 mercury_std_library_module("store").
@@ -647,6 +649,8 @@ choose_file_name(ModuleName, BaseName, Ext, MkDir, FileName) -->
 		; Ext = ".check"
 		; Ext = ".ints"
 		; Ext = ".int3s"
+		; Ext = ".rlos"
+		; Ext = ".ils"
 		; Ext = ".opts"
 		; Ext = ".trans_opts"
 		% The current interface to `mercury_update_interface'
@@ -1001,9 +1005,9 @@ split_clauses_and_decls([ItemAndContext0 | Items0],
 % but if we do allow it, we should put it in the generated
 % header file, which currently we don't.
 
-pragma_allowed_in_interface(c_header_code(_), no).
+pragma_allowed_in_interface(foreign_decl(_, _), no).
 pragma_allowed_in_interface(foreign(_, _), no).
-pragma_allowed_in_interface(foreign(_, _, _, _, _, _, _), no).
+pragma_allowed_in_interface(foreign(_, _, _, _, _, _), no).
 pragma_allowed_in_interface(inline(_, _), no).
 pragma_allowed_in_interface(no_inline(_, _), no).
 pragma_allowed_in_interface(obsolete(_, _), yes).
@@ -1407,7 +1411,7 @@ get_implicit_dependencies(Items, Globals, ImportDeps, UseDeps) :-
 			list(module_name), list(module_name)).
 :- mode add_implicit_imports(in, in, in, in, out, out) is det.
 
-add_implicit_imports(Items, _Globals, ImportDeps0, UseDeps0,
+add_implicit_imports(Items, Globals, ImportDeps0, UseDeps0,
 		ImportDeps, UseDeps) :-
 	mercury_public_builtin_module(MercuryPublicBuiltin),
 	mercury_private_builtin_module(MercuryPrivateBuiltin),
@@ -1416,10 +1420,13 @@ add_implicit_imports(Items, _Globals, ImportDeps0, UseDeps0,
 	UseDeps1 = [MercuryPrivateBuiltin | UseDeps0],
 	(
 		%
-		% we should include MercuryTableBuiltin iff
-		% the Items contain a tabling pragma
+		% we should include MercuryTableBuiltin if
+		% the Items contain a tabling pragma, or if
+		% --trace-table-io is specified
 		%
-		contains_tabling_pragma(Items)
+		( contains_tabling_pragma(Items)
+		; globals__lookup_bool_option(Globals, trace_table_io, yes)
+		)
 	->
 		UseDeps = [MercuryTableBuiltin | UseDeps1]
 	;
@@ -1690,8 +1697,11 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 		module_name_to_file_name(ModuleName, ".optdate", no,
 					OptDateFileName),
 		module_name_to_file_name(ModuleName, ".c", no, CFileName),
+		module_name_to_file_name(ModuleName, ".s", no, AsmFileName),
+		module_name_to_file_name(ModuleName, ".pic_s", no, PicAsmFileName),
 		module_name_to_file_name(ModuleName, ".$O", no, ObjFileName),
 		module_name_to_file_name(ModuleName, ".rlo", no, RLOFileName),
+		module_name_to_file_name(ModuleName, ".il", no, ILFileName),
 		module_name_to_file_name(ModuleName, ".pic_o", no,
 							PicObjFileName),
 		module_name_to_split_c_file_pattern(ModuleName, ".$O",
@@ -1700,11 +1710,14 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 			OptDateFileName, " ",
 			TransOptDateFileName, " ",
 			CFileName, " ",
+			AsmFileName, " ",
+			PicAsmFileName, " ",
 			ErrFileName, " ",
 			PicObjFileName, " ",
 			ObjFileName, " ",
 			SplitObjPattern, " ",
-			RLOFileName, " : ",
+			RLOFileName, " ",
+			ILFileName, " : ",
 			SourceFileName
 		] ),
 		write_dependencies_list(ParentDeps, ".int0", DepStream),
@@ -1784,9 +1797,11 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 		),
 
 		globals__io_lookup_bool_option(highlevel_code, HighLevelCode),
-		( { HighLevelCode = yes } ->
+		globals__io_get_target(CompilationTarget),
+		( { HighLevelCode = yes, CompilationTarget = c } ->
 			%
-			% For --high-level-code, we need to make sure that we
+			% For --high-level-code with --target c,
+			% we need to make sure that we
 			% generate the header files for imported modules
 			% before compiling the C files, since the generated C
 			% files #include those header files.
@@ -1940,7 +1955,17 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 					"$(ALL_MGNUCFLAGS) $(CFLAGS_FOR_PIC) ",
 					"\\\n",
 				"\t\t-c ", CFileName, " -o $@\n",
-				"endif # RM_C != :\n"
+				"endif # RM_C != :\n",
+				ILFileName, " : ", SourceFileName, "\n",
+				"\trm -f ", ILFileName, "\n",
+				"\t$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) ",
+					"--il-only $< > ", ErrFileName,
+					" 2>&1\n",
+				RLOFileName, " : ", SourceFileName, "\n",
+				"\trm -f ", RLOFileName, "\n",
+				"\t$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) ",
+					"--aditi-only $< > ", ErrFileName,
+					" 2>&1\n"
 			])
 		;
 			[]
@@ -2661,6 +2686,12 @@ generate_dv_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 	io__write_string(DepStream, "\n"),
 
 	io__write_string(DepStream, MakeVarName),
+	io__write_string(DepStream, ".ils = "),
+	write_compact_dependencies_list(Modules, "$(ils_subdir)", ".il",
+					Basis, DepStream),
+	io__write_string(DepStream, "\n"),
+
+	io__write_string(DepStream, MakeVarName),
 	io__write_string(DepStream, ".pic_os = "),
 	write_compact_dependencies_list(Modules, "$(os_subdir)",
 					".$(EXT_FOR_PIC_OBJECTS)",
@@ -2681,7 +2712,8 @@ generate_dv_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 
 	io__write_string(DepStream, MakeVarName),
 	io__write_string(DepStream, ".ss = "),
-	write_compact_dependencies_list(Modules, "", ".s", Basis, DepStream),
+	write_compact_dependencies_list(Modules, "$(ss_subdir)", ".s",
+					Basis, DepStream),
 	io__write_string(DepStream, "\n"),
 
 	io__write_string(DepStream, MakeVarName),
@@ -2841,9 +2873,10 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 	},
 
 	%
-	% We include $(foo.cs) first in the dependency list, before $(foo.os).
+	% When compiling to C, we want to include $(foo.cs) first in
+	% the dependency list, before $(foo.os).
 	% This is not strictly necessary, since the .$O files themselves depend
-	% on the .c files, but we do it to ensure that Make will try to
+	% on the .c files, but want to do it to ensure that Make will try to
 	% create all the C files first, thus detecting errors early,
 	% rather than first spending time compiling C files to .$O,
 	% which could be a waste of time if the program contains errors.
@@ -2855,12 +2888,23 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 	% in the .dv file since it depends on the setting of the $(RM_C) file
 	% which can be overridden by the user's Mmakefile.
 	%
+	% When compiling to assembler, we want to do the same kind of
+	% thing, for the same reason, but with the `.s' files rather
+	% than the `.c' files.  So if TARGET_ASM=yes, we define
+	% $(foo.maybe_cs) to be $(foo.ss).
+	% XXX The name `.maybe_cs' is a bit misleading in this case.
+	%     Perhaps we should change it.
+	%
 	module_name_to_file_name(SourceModuleName, "", no, ExeFileName),
 	io__write_strings(DepStream, [
-		"ifeq ($(RM_C),:)\n",
-		MakeVarName, ".maybe_cs=$(", MakeVarName, ".cs)\n",
+		"ifeq ($(TARGET_ASM),yes)\n",
+		MakeVarName, ".maybe_cs=$(", MakeVarName, ".ss)\n",
 		"else\n",
+		"  ifeq ($(RM_C),:)\n",
+		MakeVarName, ".maybe_cs=$(", MakeVarName, ".cs)\n",
+		"  else\n",
 		MakeVarName, ".maybe_cs=\n",
+		"  endif\n\n",
 		"endif\n\n"
 	]),
 
@@ -3043,6 +3087,8 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 						TransOptsTargetName),
 	module_name_to_file_name(ModuleName, ".rlos", no,
 						RLOsTargetName),
+	module_name_to_file_name(ModuleName, ".ils", no,
+						ILsTargetName),
 
 	io__write_strings(DepStream, [
 		".PHONY : ", CheckTargetName, "\n",
@@ -3057,7 +3103,9 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 		TransOptsTargetName, " : $(", MakeVarName,
 						".trans_opt_dates)\n\n",
 		".PHONY : ", RLOsTargetName, "\n",
-		RLOsTargetName, " : $(", MakeVarName, ".rlos)\n\n"
+		RLOsTargetName, " : $(", MakeVarName, ".rlos)\n\n",
+		".PHONY : ", ILsTargetName, "\n",
+		ILsTargetName, " : $(", MakeVarName, ".ils)\n\n"
 	]),
 
 
@@ -3080,6 +3128,7 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 		"\t-rm -f $(", MakeVarName, ".os) ", InitObjFileName, "\n",
 		"\t-rm -f $(", MakeVarName, ".pic_os) ", InitPicObjFileName,
 									"\n",
+		"\t-rm -f $(", MakeVarName, ".ils)\n",
 		"\t-rm -f $(", MakeVarName, ".profs)\n",
 		"\t-rm -f $(", MakeVarName, ".errs)\n",
 		"\t-rm -f $(", MakeVarName, ".schemas)\n"
@@ -4334,10 +4383,12 @@ make_abstract_type_defn(type_defn(VarSet, abstract_type(Name, Args), Cond),
 :- pred make_abstract_instance(item, item).
 :- mode make_abstract_instance(in, out) is semidet.
 
-make_abstract_instance(Item, Item1) :-
-	Item = instance(Constraints, Class, ClassTypes, Body0, TVarSet),
+make_abstract_instance(Item0, Item) :-
+	Item0 = instance(Constraints, Class, ClassTypes, Body0, TVarSet,
+		ModName),
 	Body0 = concrete(_),
 	Body = abstract,
-	Item1 = instance(Constraints, Class, ClassTypes, Body, TVarSet).
+	Item = instance(Constraints, Class, ClassTypes, Body, TVarSet,
+		ModName).
 
 %-----------------------------------------------------------------------------%

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1997, 1999-2000 The University of Melbourne.
+% Copyright (C) 1994-1997, 1999-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -11,9 +11,6 @@
 % This module provides a set ADT. 
 % The implementation represents sets using ordered lists.
 % This file just calls the equivalent predicates in set_ordlist.
-
-% Ralph Becket <rwab1@cam.sri.com> 24/04/99
-%	Function forms added.
 
 %--------------------------------------------------------------------------%
 
@@ -99,6 +96,11 @@
 
 :- pred set__is_member(T, set(T), bool).
 :- mode set__is_member(in, in, out) is det.
+
+	% `set__contains(Set, X)' is true iff `X' is a member of `Set'.
+
+:- pred set__contains(set(T), T).
+:- mode set__contains(in, in) is semidet.
 
 	% `set__insert(Set0, X, Set)' is true iff `Set' is the union of
 	% `Set0' and the set containing only `X'.
@@ -243,7 +245,46 @@
 
 :- func set__fold(func(T1, T2) = T2, set(T1), T2) = T2.
 
+	% set__divide(Pred, Set, TruePart, FalsePart):
+	% TruePart consists of those elements of Set for which Pred succeeds;
+	% FalsePart consists of those elements of Set for which Pred fails.
+:- pred set__divide(pred(T1), set(T1), set(T1), set(T1)).
+:- mode set__divide(pred(in) is semidet, in, out, out) is det.
+
 %--------------------------------------------------------------------------%
+
+:- implementation.
+
+% Everything below here is not intended to be part of the public interface,
+% and will not be included in the Mercury library reference manual.
+
+:- interface.
+
+:- import_module term.	% for var/1.
+
+:- pragma type_spec(set__list_to_set/2, T = var(_)).
+:- pragma type_spec(set__list_to_set/1, T = var(_)).
+
+:- pragma type_spec(set__member(in, in), T = var(_)).
+
+:- pragma type_spec(set__contains(in, in), T = var(_)).
+
+:- pragma type_spec(set__insert/3, T = var(_)).
+:- pragma type_spec(set__insert/2, T = var(_)).
+
+:- pragma type_spec(set__insert_list/3, T = var(_)).
+:- pragma type_spec(set__insert_list/2, T = var(_)).
+
+:- pragma type_spec(set__union/3, T = var(_)).
+:- pragma type_spec(set__union/2, T = var(_)).
+
+:- pragma type_spec(set__intersect/3, T = var(_)).
+:- pragma type_spec(set__intersect/2, T = var(_)).
+
+:- pragma type_spec(set__difference/3, T = var(_)).
+:- pragma type_spec(set__difference/2, T = var(_)).
+
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -292,6 +333,9 @@ set__member(X, Set) :-
 
 set__is_member(X, Set, Result) :-
 	set_ordlist__is_member(X, Set, Result).
+
+set__contains(Set, X) :-
+	set_ordlist__contains(Set, X).
 
 set__delete_list(Set0, List, Set) :-
 	set_ordlist__delete_list(Set0, List, Set).
@@ -388,3 +432,5 @@ set__filter_map(PF, S1) = S2 :-
 set__fold(F, S, A) = B :-
 	B = list__foldl(F, set__to_sorted_list(S), A).
 
+set__divide(P, Set, TruePart, FalsePart) :-
+	set_ordlist__divide(P, Set, TruePart, FalsePart).

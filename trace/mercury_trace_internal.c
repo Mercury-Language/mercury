@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2000 The University of Melbourne.
+** Copyright (C) 1998-2001 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -28,6 +28,7 @@
 #include "mercury_trace_readline.h"
 
 #include "mdb.browse.h"
+#include "mdb.program_representation.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -154,6 +155,8 @@ static	MR_Next	MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 static	MR_Next	MR_trace_handle_cmd(char **words, int word_count,
 			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
 			MR_Event_Details *event_details, MR_Code **jumpaddr);
+static	void	MR_print_unsigned_var(FILE *fp, const char *var,
+			MR_Unsigned value);
 static	bool	MR_parse_source_locn(char *word, const char **file, int *line);
 static	bool	MR_trace_options_strict_print(MR_Trace_Cmd_Info *cmd,
 			char ***words, int *word_count,
@@ -207,6 +210,8 @@ static	void	MR_trace_event_print_internal_report(
 
 static	bool	MR_trace_valid_command(const char *word);
 
+bool		MR_saved_io_tabling_enabled;
+
 MR_Code *
 MR_trace_event_internal(MR_Trace_Cmd_Info *cmd, bool interactive,
 		MR_Event_Info *event_info)
@@ -225,17 +230,20 @@ MR_trace_event_internal(MR_Trace_Cmd_Info *cmd, bool interactive,
 	if (MR_trace_decl_mode != MR_TRACE_INTERACTIVE) {
 		return MR_trace_decl_debug(cmd, event_info);
 	}
-#endif	MR_USE_DECLARATIVE_DEBUGGER
+#endif	/* MR_USE_DECLARATIVE_DEBUGGER */
 
 	/*
 	** We want to make sure that the Mercury code used to implement some
 	** of the debugger's commands (a) doesn't generate any trace events,
-	** and (b) doesn't generate any unwanted debugging output.
+	** (b) doesn't generate any unwanted debugging output, and (c) doesn't
+	** do any I/O tabling.
 	*/
 
 	MR_trace_enabled = FALSE;
 	saved_tabledebug = MR_tabledebug;
 	MR_tabledebug = FALSE;
+	MR_saved_io_tabling_enabled = MR_io_tabling_enabled;
+	MR_io_tabling_enabled = FALSE;
 
 	MR_trace_internal_ensure_init();
 
@@ -275,6 +283,7 @@ MR_trace_event_internal(MR_Trace_Cmd_Info *cmd, bool interactive,
 	MR_scroll_next = 0;
 	MR_trace_enabled = TRUE;
 	MR_tabledebug = saved_tabledebug;
+	MR_io_tabling_enabled = MR_saved_io_tabling_enabled;
 	return jumpaddr;
 }
 
@@ -330,6 +339,11 @@ MR_trace_internal_ensure_init(void)
 		MR_trace_internal_init_from_env();
 		MR_trace_internal_init_from_local();
 		MR_trace_internal_init_from_home_dir();
+
+		MR_saved_io_tabling_enabled = TRUE;
+		MR_io_tabling_phase = MR_IO_TABLING_BEFORE;
+		MR_io_tabling_start = MR_IO_ACTION_MAX;
+		MR_io_tabling_end = MR_IO_ACTION_MAX;
 
 		MR_trace_internal_initialized = TRUE;
 	}
@@ -387,13 +401,13 @@ MR_trace_internal_init_from_home_dir(void)
 static void
 MR_trace_set_level_and_report(int ancestor_level, bool detailed)
 {
-	const char			*problem;
-	const MR_Stack_Layout_Entry	*entry;
-	MR_Word				*base_sp;
-	MR_Word				*base_curfr;
-	const char			*filename;
-	int				lineno;
-	int				indent;
+	const char		*problem;
+	const MR_Proc_Layout	*entry;
+	MR_Word			*base_sp;
+	MR_Word			*base_curfr;
+	const char		*filename;
+	int			lineno;
+	int			indent;
 
 	problem = MR_trace_set_level(ancestor_level);
 	if (problem == NULL) {
@@ -464,8 +478,10 @@ MR_trace_browse_exception(MR_Event_Info *event_info, MR_Browser browser,
 		return "missing exception value";
 	}
 
-	type_info = MR_field(MR_mktag(0), exception, UNIV_OFFSET_FOR_TYPEINFO);
-	value = MR_field(MR_mktag(0), exception, UNIV_OFFSET_FOR_DATA);
+	type_info = MR_field(MR_mktag(0), exception,
+			MR_UNIV_OFFSET_FOR_TYPEINFO);
+	value = MR_field(MR_mktag(0), exception,
+			MR_UNIV_OFFSET_FOR_DATA);
 
 	(*browser)(type_info, value, caller, format);
 
@@ -488,7 +504,7 @@ MR_trace_do_noop(void)
 */
 
 static void
-MR_mdb_print_proc_id(void *data, const MR_Stack_Layout_Entry *entry_layout)
+MR_mdb_print_proc_id(void *data, const MR_Proc_Layout *entry_layout)
 {
 	FILE	*fp = data;
 	MR_print_proc_id_for_debugger(fp, entry_layout);
@@ -561,11 +577,20 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	MR_Event_Info *event_info, MR_Event_Details *event_details,
 	MR_Code **jumpaddr)
 {
-	const MR_Stack_Layout_Label	*layout;
-	MR_Word 				*saved_regs;
+	const MR_Label_Layout	*layout;
+	MR_Word 		*saved_regs;
 
 	layout = event_info->MR_event_sll;
 	saved_regs = event_info->MR_saved_regs;
+
+	/*
+	** The code for many commands calls getopt, and getopt may print to
+	** stderr. We flush MR_mdb_out here to make sure that all normal output
+	** so far (including the echoed command, if echoing is turned on) gets
+	** output first.
+	*/
+
+	fflush(MR_mdb_out);
 
 	if (streq(words[0], "step")) {
 		int	n;
@@ -865,7 +890,8 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 		}
 
 		result = MR_trace_retry(event_info, event_details,
-				ancestor_level, &problem, jumpaddr);
+				ancestor_level, &problem,
+				MR_mdb_in, MR_mdb_out, jumpaddr);
 		switch (result) {
 
 		case MR_RETRY_OK_DIRECT:
@@ -1040,7 +1066,7 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 			; /* the usage message has already been printed */
 		} else if (word_count == 1) {
 			const char	*msg;
-			do_init_modules();
+			MR_do_init_modules();
 			msg = MR_dump_stack_from_layout(MR_mdb_out, layout,
 					MR_saved_sp(saved_regs),
 					MR_saved_curfr(saved_regs),
@@ -1362,8 +1388,9 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 			if (0 <= n && n < MR_spy_point_next
 					&& MR_spy_points[n]->spy_exists)
 			{
-				MR_delete_spy_point(n);
+				MR_spy_points[n]->spy_exists = FALSE;
 				MR_print_spy_point(MR_mdb_out, n);
+				MR_delete_spy_point(n);
 			} else {
 				fflush(MR_mdb_out);
 				fprintf(MR_mdb_err, "mdb: break point #%d "
@@ -1377,8 +1404,9 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 			count = 0;
 			for (i = 0; i < MR_spy_point_next; i++) {
 				if (MR_spy_points[i]->spy_exists) {
-					MR_delete_spy_point(i);
+					MR_spy_points[i]->spy_exists = FALSE;
 					MR_print_spy_point(MR_mdb_out, i);
+					MR_delete_spy_point(i);
 					count++;
 				}
 			}
@@ -1396,14 +1424,10 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 			{
 				int	slot;
 
-				/*
-				** MR_delete_spy_point() will clobber
-				** MR_most_recent_spy_point.
-				*/
-
 				slot = MR_most_recent_spy_point;
-				MR_delete_spy_point(slot);
+				MR_spy_points[slot]-> spy_exists = FALSE;
 				MR_print_spy_point(MR_mdb_out, slot);
+				MR_delete_spy_point(slot);
 			} else {
 				fflush(MR_mdb_out);
 				fprintf(MR_mdb_err, "mdb: there is no "
@@ -1732,9 +1756,7 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 			MR_trace_usage("help", "help");
 		}
 	} else if (streq(words[0], "proc_body")) {
-		extern const struct MR_TypeCtorInfo_Struct
-			mercury_data_mdb__program_representation__type_ctor_info_goal_rep_0;
-		const MR_Stack_Layout_Entry	*entry;
+		const MR_Proc_Layout	*entry;
 
 		entry = event_info->MR_event_sll->MR_sll_entry;
 		if (entry->MR_sle_proc_rep == 0) {
@@ -1742,7 +1764,7 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 				"current procedure has no body info\n");
 		} else {
 			MR_trace_browse_internal(
-				(MR_Word) &mercury_data_mdb__program_representation__type_ctor_info_goal_rep_0,
+				ML_goal_rep_type(),
 				entry->MR_sle_proc_rep,
 				MR_BROWSE_CALLER_PRINT,
 				MR_BROWSE_DEFAULT_FORMAT);
@@ -1812,7 +1834,7 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 #endif	/* MR_TRACE_HISTOGRAM */
 	} else if (streq(words[0], "nondet_stack")) {
 		if (word_count == 1) {
-			do_init_modules();
+			MR_do_init_modules();
 			MR_dump_nondet_stack_from_layout(MR_mdb_out,
 				MR_saved_maxfr(saved_regs));
 		} else {
@@ -1823,7 +1845,7 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 		if (word_count == 1) {
 			bool	saved_tabledebug;
 
-			do_init_modules();
+			MR_do_init_modules();
 			saved_tabledebug = MR_tabledebug;
 			MR_tabledebug = TRUE;
 			MR_print_gen_stack(MR_mdb_out);
@@ -1847,6 +1869,114 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 			MR_print_r_regs(MR_mdb_out, saved_regs);
 		} else {
 			MR_trace_usage("developer", "all_regs");
+		}
+	} else if (streq(words[0], "table_io")) {
+		if (word_count == 1) {
+			if (MR_io_tabling_phase == MR_IO_TABLING_BEFORE)
+			{
+				fprintf(MR_mdb_out,
+					"io tabling has not yet started\n");
+			} else if (MR_io_tabling_phase == MR_IO_TABLING_DURING)
+			{
+				fprintf(MR_mdb_out,
+					"io tabling has started\n");
+			} else if (MR_io_tabling_phase == MR_IO_TABLING_AFTER)
+			{
+				fprintf(MR_mdb_out,
+					"io tabling has finished\n");
+			} else {
+				MR_fatal_error(
+					"io tabling in impossible phase\n");
+			}
+		} else if (word_count == 2 && streq(words[1], "start")) {
+			if (MR_io_tabling_phase == MR_IO_TABLING_BEFORE) {
+				MR_io_tabling_phase = MR_IO_TABLING_DURING;
+				MR_io_tabling_start = MR_io_tabling_counter;
+				MR_io_tabling_end = MR_IO_ACTION_MAX;
+				fprintf(MR_mdb_out, "io tabling started\n");
+			} else if (MR_io_tabling_phase == MR_IO_TABLING_DURING)
+			{
+				fprintf(MR_mdb_out,
+					"io tabling has already started\n");
+			} else if (MR_io_tabling_phase == MR_IO_TABLING_AFTER)
+			{
+				fprintf(MR_mdb_out,
+					"io tabling has already ended\n");
+			} else {
+				MR_fatal_error(
+					"io tabling in impossible phase\n");
+			}
+		} else if (word_count == 2 && streq(words[1], "end")) {
+			if (MR_io_tabling_phase == MR_IO_TABLING_BEFORE)
+			{
+				fprintf(MR_mdb_out,
+					"io tabling has not yet started\n");
+			} else if (MR_io_tabling_phase == MR_IO_TABLING_DURING)
+			{
+				MR_io_tabling_phase = MR_IO_TABLING_AFTER;
+				MR_io_tabling_end = MR_io_tabling_counter_hwm;
+				fprintf(MR_mdb_out, "io tabling ended\n");
+			} else if (MR_io_tabling_phase == MR_IO_TABLING_AFTER)
+			{
+				fprintf(MR_mdb_out,
+					"io tabling has already ended\n");
+			} else {
+				MR_fatal_error(
+					"io tabling in impossible phase\n");
+			}
+		} else if (word_count == 2 && streq(words[1], "stats")) {
+			fprintf(MR_mdb_out, "phase = %d\n",
+				MR_io_tabling_phase);
+			MR_print_unsigned_var(MR_mdb_out, "counter",
+				MR_io_tabling_counter);
+			MR_print_unsigned_var(MR_mdb_out, "hwm",
+				MR_io_tabling_counter_hwm);
+			MR_print_unsigned_var(MR_mdb_out, "start",
+				MR_io_tabling_start);
+			MR_print_unsigned_var(MR_mdb_out, "end",
+				MR_io_tabling_end);
+		} else {
+			MR_trace_usage("developer", "table_io");
+		}
+	} else if (streq(words[0], "label_stats")) {
+		if (word_count == 1) {
+			MR_label_layout_stats(MR_mdb_out);
+		} else if (word_count == 2) {
+			FILE	*fp;
+
+			fp = fopen(words[1], "w");
+			if (fp == NULL) {
+				fflush(MR_mdb_out);
+				fprintf(MR_mdb_err,
+					"mdb: error opening `%s': %s.\n",
+					words[1], strerror(errno));
+				return KEEP_INTERACTING;
+			}
+
+			MR_label_layout_stats(fp);
+			(void) fclose(fp);
+		} else {
+			MR_trace_usage("developer", "label_stats");
+		}
+	} else if (streq(words[0], "proc_stats")) {
+		if (word_count == 1) {
+			MR_proc_layout_stats(MR_mdb_out);
+		} else if (word_count == 2) {
+			FILE	*fp;
+
+			fp = fopen(words[1], "w");
+			if (fp == NULL) {
+				fflush(MR_mdb_out);
+				fprintf(MR_mdb_err,
+					"mdb: error opening `%s': %s.\n",
+					words[1], strerror(errno));
+				return KEEP_INTERACTING;
+			}
+
+			MR_proc_layout_stats(fp);
+			(void) fclose(fp);
+		} else {
+			MR_trace_usage("developer", "label_stats");
 		}
 	} else if (streq(words[0], "source")) {
 		bool	ignore_errors;
@@ -1992,6 +2122,12 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 			"Give the command `help' for help.\n", words[0]);
 	}
 	return KEEP_INTERACTING;
+}
+
+static void
+MR_print_unsigned_var(FILE *fp, const char *var, MR_Unsigned value)
+{
+	fprintf(fp, "%s = %" MR_INTEGER_LENGTH_MODIFIER "u\n", var, value);
 }
 
 static bool
@@ -2831,12 +2967,12 @@ MR_trace_event_internal_report(MR_Trace_Cmd_Info *cmd,
 static void
 MR_trace_event_print_internal_report(MR_Event_Info *event_info)
 {
-	const MR_Stack_Layout_Label	*parent;
-	const char			*filename, *parent_filename;
-	int				lineno, parent_lineno;
-	const char			*problem; /* not used */
-	MR_Word				*base_sp, *base_curfr;
-	int				indent;
+	const MR_Label_Layout	*parent;
+	const char		*filename, *parent_filename;
+	int			lineno, parent_lineno;
+	const char		*problem; /* not used */
+	MR_Word			*base_sp, *base_curfr;
+	int			indent;
 
 	lineno = 0;
 	parent_lineno = 0;
@@ -2937,6 +3073,9 @@ static	MR_trace_cmd_cat_item MR_trace_valid_command_list[] =
 #endif
 	{ "developer", "stack_regs" },
 	{ "developer", "all_regs" },
+	{ "developer", "table_io" },
+	{ "developer", "proc_stats" },
+	{ "developer", "label_stats" },
 	{ "misc", "source" },
 	{ "misc", "save" },
 	{ "misc", "quit" },

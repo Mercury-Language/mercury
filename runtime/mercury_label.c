@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1994-2000 The University of Melbourne.
+** Copyright (C) 1994-2001 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -18,10 +18,10 @@
 
 #include	"mercury_label.h"
 
-#include	"mercury_hash_table.h"	/* for `MR_Hash_Table' and its ops */
+#include	"mercury_hash_table.h"	/* for MR_Hash_Table and its ops */
 #include	"mercury_prof.h"	/* for prof_output_addr_decl() */
-#include	"mercury_engine.h"	/* for `MR_progdebug' */
-#include	"mercury_wrapper.h"	/* for do_init_modules() */
+#include	"mercury_engine.h"	/* for MR_progdebug */
+#include	"mercury_wrapper.h"	/* for MR_do_init_modules() */
 
 /*
 ** We record information about entry labels in an array that
@@ -88,7 +88,7 @@ MR_do_init_label_tables(void)
 
 void
 MR_insert_entry_label(const char *name, MR_Code *addr,
-	const MR_Stack_Layout_Entry *entry_layout)
+	const MR_Proc_Layout *entry_layout)
 {
 	MR_do_init_label_tables();
 
@@ -119,7 +119,8 @@ MR_insert_entry_label(const char *name, MR_Code *addr,
 		entry_array = realloc(entry_array, 
 				entry_array_size * sizeof(MR_Entry));
 		if (entry_array == NULL) {
-			fatal_error("run out of memory for entry label array");
+			MR_fatal_error(
+				"run out of memory for entry label array");
 		}
 	}
 
@@ -164,7 +165,7 @@ MR_prev_entry_by_addr(const MR_Code *addr)
 	int	i;
 
 	MR_do_init_label_tables();
-	do_init_modules();
+	MR_do_init_modules();
 
 	if (!entry_array_sorted) {
 		qsort(entry_array, entry_array_next, sizeof(MR_Entry),
@@ -202,7 +203,7 @@ MR_prev_entry_by_addr(const MR_Code *addr)
 
 void
 MR_insert_internal_label(const char *name, MR_Code *addr,
-	const MR_Stack_Layout_Label *label_layout)
+	const MR_Label_Layout *label_layout)
 {
 	MR_Internal	*internal;
 
@@ -239,7 +240,7 @@ MR_Internal *
 MR_lookup_internal_by_addr(const MR_Code *addr)
 {
 	MR_do_init_label_tables();
-	do_init_modules();
+	MR_do_init_modules();
 
 #ifdef	MR_LOWLEVEL_DEBUG
 	if (MR_progdebug) {

@@ -84,7 +84,7 @@
   #if defined(HAVE_SIGCONTEXT_STRUCT)
     #if defined(HAVE_SIGCONTEXT_STRUCT_3ARG)
       static	void	complex_sighandler_3arg(int, int, 
-		      struct sigcontext_struct);
+			      struct sigcontext_struct);
     #else
       static	void	complex_sighandler(int, struct sigcontext_struct);
     #endif
@@ -130,9 +130,9 @@ static	bool	try_munprotect(void *address, void *context);
 static	char	*explain_context(void *context);
 static	MR_Code	*get_pc_from_context(void *the_context);
 static	MR_Word	*get_sp_from_context(void *the_context);
+static	MR_Word	*get_curfr_from_context(void *the_context);
 
 #define STDERR 2
-
 
 static bool 
 try_munprotect(void *addr, void *context)
@@ -141,11 +141,11 @@ try_munprotect(void *addr, void *context)
 	return FALSE;
 #else
 	MR_Word *    fault_addr;
-	MemoryZone *zone;
+	MR_MemoryZone *zone;
 
 	fault_addr = (MR_Word *) addr;
 
-	zone = get_used_memory_zones();
+	zone = MR_get_used_memory_zones();
 
 	if (MR_memdebug) {
 		fprintf(stderr, "caught fault at %p\n", (void *)addr);
@@ -179,19 +179,19 @@ try_munprotect(void *addr, void *context)
 } 
 
 bool 
-null_handler(MR_Word *fault_addr, MemoryZone *zone, void *context)
+MR_null_handler(MR_Word *fault_addr, MR_MemoryZone *zone, void *context)
 {
 	return FALSE;
 }
 
 /*
-** fatal_abort() prints an error message, possibly a stack dump, and then exits.
-** It is like fatal_error(), except that it is safe to call
+** MR_fatal_abort() prints an error message, possibly a stack dump,
+** and then exits. It is like MR_fatal_error(), except that it is safe to call
 ** from a signal handler.
 */
 
 static void 
-fatal_abort(void *context, const char *main_msg, int dump)
+MR_fatal_abort(void *context, const char *main_msg, int dump)
 {
 	char	*context_msg;
 
@@ -208,7 +208,7 @@ fatal_abort(void *context, const char *main_msg, int dump)
 }
 
 bool 
-default_handler(MR_Word *fault_addr, MemoryZone *zone, void *context)
+MR_default_handler(MR_Word *fault_addr, MR_MemoryZone *zone, void *context)
 {
 #ifndef MR_CHECK_OVERFLOW_VIA_MPROTECT
 	return FALSE;
@@ -216,7 +216,8 @@ default_handler(MR_Word *fault_addr, MemoryZone *zone, void *context)
     MR_Word *new_zone;
     size_t zone_size;
 
-    new_zone = (MR_Word *) round_up((MR_Unsigned) fault_addr + sizeof(MR_Word), unit);
+    new_zone = (MR_Word *) MR_round_up((MR_Unsigned) fault_addr
+		    + sizeof(MR_Word), MR_unit);
 
     if (new_zone <= zone->hardmax) {
 	zone_size = (char *)new_zone - (char *)zone->redzone;
@@ -245,7 +246,8 @@ default_handler(MR_Word *fault_addr, MemoryZone *zone, void *context)
 	}
   #ifdef NATIVE_GC
 	MR_schedule_agc(get_pc_from_context(context),
-		get_sp_from_context(context));
+		get_sp_from_context(context),
+		get_curfr_from_context(context));
   #endif
 	return TRUE;
     } else {
@@ -257,7 +259,7 @@ default_handler(MR_Word *fault_addr, MemoryZone *zone, void *context)
 	}
 	sprintf(buf, "\nMercury runtime: memory zone %s#%d overflowed\n",
 		zone->name, zone->id);
-	fatal_abort(context, buf, TRUE);
+	MR_fatal_abort(context, buf, TRUE);
     }
 
     return FALSE;
@@ -265,7 +267,7 @@ default_handler(MR_Word *fault_addr, MemoryZone *zone, void *context)
 } 
 
 void
-setup_signals(void)
+MR_setup_signals(void)
 {
 /*
 ** When using Microsoft Visual C structured exceptions don't set any
@@ -397,7 +399,7 @@ explain_context(void *the_context)
 
 	MR_trace_report(stderr);
 	print_dump_stack();
-	dump_prev_locations();
+	MR_dump_prev_locations();
 	fprintf(stderr, "exiting from signal handler\n");
 	exit(1);
 } /* end complex_sighandler() */
@@ -448,7 +450,7 @@ complex_bushandler(int sig, siginfo_t *info, void *context)
 
 	MR_trace_report(stderr);
 	print_dump_stack();
-	dump_prev_locations();
+	MR_dump_prev_locations();
 	fprintf(stderr, "exiting from signal handler\n");
 	exit(1);
 } /* end complex_bushandler() */
@@ -522,7 +524,7 @@ complex_segvhandler(int sig, siginfo_t *info, void *context)
 
 	MR_trace_report(stderr);
 	print_dump_stack();
-	dump_prev_locations();
+	MR_dump_prev_locations();
 	fprintf(stderr, "exiting from signal handler\n");
 	exit(1);
 } /* end complex_segvhandler */
@@ -553,7 +555,7 @@ simple_sighandler(int sig)
 	}
 
 	print_dump_stack();
-	dump_prev_locations();
+	MR_dump_prev_locations();
 	fprintf(stderr, "exiting from signal handler\n");
 	exit(1);
 }
@@ -649,7 +651,7 @@ MR_explain_exception_record(EXCEPTION_RECORD *rec)
 		if (MR_exception_record_is_access_violation(rec,
 					&address, &access_mode))
 		{
-			MemoryZone *zone;
+			MR_MemoryZone *zone;
 
 			/* Display AV address and access mode */
 			fprintf(stderr, "\n***   An access violation occured"
@@ -675,7 +677,7 @@ MR_explain_exception_record(EXCEPTION_RECORD *rec)
 			** Browse the mercury memory zones to see if the
 			** AV address references one of them.
 			*/
-			zone = get_used_memory_zones();
+			zone = MR_get_used_memory_zones();
 			while(zone != NULL) {
 				fprintf(stderr,
 						"\n***    Checking zone %s#%d: "
@@ -820,7 +822,7 @@ MR_filter_win32_exception(LPEXCEPTION_POINTERS exception_ptrs)
 
 	printf("\n");
 	print_dump_stack();
-	dump_prev_locations();
+	MR_dump_prev_locations();
 	
 	fprintf(stderr, "\n\n*** Now passing exception to default handler\n\n");
 	fflush(stderr);
@@ -944,55 +946,41 @@ get_sp_from_context(void *the_context)
 	return sp_at_signal;
 }
 
+/*
+** get_sp_from_context:
+** 	Given the signal context, return the Mercury register "MR_sp" at
+** 	the time of the signal, if available.  If it is unavailable,
+** 	return NULL.
+**
+** XXX We only define this function in accurate gc grades for the moment,
+** because it's unlikely to compile everywhere.  It relies on
+** MR_real_reg_number_sp being defined, which is the name/number of the
+** machine register that is used for MR_sp.
+** Need to fix this so it works when the register is in a fake reg too.
+*/
+static MR_Word *
+get_curfr_from_context(void *the_context)
+{
+	MR_Word *curfr_at_signal;
+	
+	/*
+	** XXX this is implementation dependent, need a better way
+	** to do register accesses at signals.
+	**
+	** It's in mr8 or mr9 which is in the fake regs on some architectures,
+	** and is a machine register on others.
+	** So don't run the garbage collector on those archs.
+	*/
+
+	curfr_at_signal = MR_curfr;
+
+	return curfr_at_signal;
+}
+
 static void 
 print_dump_stack(void)
 {
-
-#ifndef	MR_LOWLEVEL_DEBUG
-
 	const char *msg =
 		"This may have been caused by a stack overflow, due to unbounded recursion.\n";
 	write(STDERR, msg, strlen(msg));
-
-#else /* MR_LOWLEVEL_DEBUG */
-	int	i;
-	int	start;
-	int	count;
-	char	buf[2560];
-
-	strcpy(buf, "A dump of the det stack follows\n\n");
-	write(STDERR, buf, strlen(buf));
-
-	i = 0;
-	while (i < dumpindex) {
-		start = i;
-		count = 1;
-		i++;
-
-		while (i < dumpindex &&
-			strcmp(((char **)(dumpstack_zone->min))[i],
-				((char **)(dumpstack_zone->min))[start]) == 0)
-		{
-			count++;
-			i++;
-		}
-
-		if (count > 1) {
-			sprintf(buf, "%s * %d\n",
-				((char **)(dumpstack_zone->min))[start], count);
-		} else {
-			sprintf(buf, "%s\n",
-				((char **)(dumpstack_zone->min))[start]);
-		}
-
-		write(STDERR, buf, strlen(buf));
-	} /* end while */
-
-	strcpy(buf, "\nend of stack dump\n");
-	write(STDERR, buf, strlen(buf));
-
-#endif /* MR_LOWLEVEL_DEBUG */
-
-} /* end print_dump_stack() */
-
-
+}

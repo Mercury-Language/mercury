@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2000 The University of Melbourne.
+** Copyright (C) 1998-2001 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -35,15 +35,15 @@ extern	const char	*MR_spy_when_names[];
 typedef struct MR_Spy_Point_Struct MR_Spy_Point;
 
 struct MR_Spy_Point_Struct {
-	bool				spy_exists;	/* FALSE if deleted */
-	bool				spy_enabled;
-	MR_Spy_When			spy_when;
-	MR_Spy_Action			spy_action;
-	const MR_Stack_Layout_Entry	*spy_proc;      /* if not LINENO */
-	const MR_Stack_Layout_Label	*spy_label;	/* if SPECIFIC */
-	char				*spy_filename;  /* if LINENO */
-	int				spy_linenumber; /* if LINENO */
-	MR_Spy_Point			*spy_next;	/* if not LINENO */
+	bool			spy_exists;	/* FALSE if deleted */
+	bool			spy_enabled;
+	MR_Spy_When		spy_when;
+	MR_Spy_Action		spy_action;
+	const MR_Proc_Layout	*spy_proc;      /* if not LINENO */
+	const MR_Label_Layout	*spy_label;	/* if SPECIFIC */
+	char			*spy_filename;  /* if LINENO */
+	int			spy_linenumber; /* if LINENO */
+	MR_Spy_Point		*spy_next;	/* if not LINENO */
 };
 
 /*
@@ -63,7 +63,7 @@ extern	int		MR_most_recent_spy_point;
 ** action should be executed for the spy point.
 */
 
-extern	bool		MR_event_matches_spy_point(const MR_Stack_Layout_Label
+extern	bool		MR_event_matches_spy_point(const MR_Label_Layout
 				*layout, MR_Trace_Port port,
 				MR_Spy_Action *action);
 
@@ -74,8 +74,8 @@ extern	bool		MR_event_matches_spy_point(const MR_Stack_Layout_Label
 
 extern	int		MR_add_proc_spy_point(MR_Spy_When when,
 				MR_Spy_Action action,
-				const MR_Stack_Layout_Entry *entry,
-				const MR_Stack_Layout_Label *label);
+				const MR_Proc_Layout *entry,
+				const MR_Label_Layout *label);
 
 /*
 ** Add a new spy point on a line number (as opposed to on a procedure)

@@ -17,7 +17,9 @@
 
 :- interface.
 
-:- import_module hlds_data, hlds_goal, llds, switch_gen, code_info, prog_data.
+:- import_module prog_data, hlds_data, hlds_goal.
+:- import_module switch_util, code_model.
+:- import_module llds, code_info.
 
 :- pred string_switch__generate(cases_list, prog_var, code_model,
 	can_fail, store_map, label, branch_end, branch_end, code_tree,
@@ -56,9 +58,9 @@ string_switch__generate(Cases, Var, CodeModel, _CanFail, StoreMap,
 
 		% Compute the hash table
 		%
-		string_switch__hash_cases(Cases, HashMask, HashValsMap),
+		switch_util__string_hash_cases(Cases, HashMask, HashValsMap),
 		map__to_assoc_list(HashValsMap, HashValsList),
-		string_switch__calc_hash_slots(HashValsList, HashValsMap,
+		switch_util__calc_hash_slots(HashValsList, HashValsMap,
 			HashSlotsMap)
 	},
 		% Note that it is safe to release the registers now,
@@ -133,119 +135,6 @@ string_switch__generate(Cases, Var, CodeModel, _CanFail, StoreMap,
 		tree(JumpCode,
 		     SlotsCode))))
 	}.
-
-:- pred string_switch__hash_cases(cases_list, int, map(int, cases_list)).
-:- mode string_switch__hash_cases(in, in, out) is det.
-
-string_switch__hash_cases([], _, Map) :-
-	map__init(Map).
-string_switch__hash_cases([Case | Cases], HashMask, Map) :-
-	string_switch__hash_cases(Cases, HashMask, Map0),
-	( Case = case(_, string_constant(String0), _, _) ->
-		String = String0
-	;
-		error("string_switch__hash_cases: non-string case?")
-	),
-	string__hash(String, HashVal0),
-	HashVal is HashVal0 /\ HashMask,
-	( map__search(Map0, HashVal, CaseList0) ->
-		map__det_update(Map0, HashVal, [Case | CaseList0], Map)
-	;
-		map__det_insert(Map0, HashVal, [Case], Map)
-	).
-
-:- type hash_slot ---> hash_slot(extended_case, int).
-
-:- pred string_switch__calc_hash_slots(assoc_list(int, cases_list),
-	map(int, cases_list), map(int, hash_slot)).
-:- mode string_switch__calc_hash_slots(in, in, out) is det.
-
-	% string_switch__calc_hash_slots(AssocList, HashMap, Map) :-
-	%	For each (HashVal - Case) pair in AssocList,
-	%	allocate a hash slot in Map for the case, as follows.
-	%	If the hash slot corresponding to HashVal is not
-	%	already used, then use that one.  Otherwise, find
-	%	the next spare slot (making sure that we don't
-	%	use slots which can be used for a direct match with
-	%	the hash value for one of the other cases), and
-	%	use it instead.  Keep track of the hash chains
-	%	as we do this.
-
-string_switch__calc_hash_slots(HashValList, HashMap, Map) :-
-	map__init(Map0),
-	string_switch__calc_hash_slots_1(HashValList, HashMap, Map0, 0, Map, _).
-
-:- pred string_switch__calc_hash_slots_1(assoc_list(int, cases_list),
-	map(int, cases_list), map(int, hash_slot), int,
-	map(int, hash_slot), int).
-:- mode string_switch__calc_hash_slots_1(in, in, in, in, out, out) is det.
-
-string_switch__calc_hash_slots_1([], _, Map, LastUsed, Map, LastUsed).
-string_switch__calc_hash_slots_1([HashVal-Cases | Rest], HashMap, Map0,
-		LastUsed0, Map, LastUsed) :-
-	string_switch__calc_hash_slots_2(Cases, HashVal, HashMap, Map0,
-		LastUsed0, Map1, LastUsed1),
-	string_switch__calc_hash_slots_1(Rest, HashMap, Map1,
-		LastUsed1, Map, LastUsed).
-
-:- pred string_switch__calc_hash_slots_2(cases_list, int, map(int, cases_list),
-	map(int, hash_slot), int, map(int, hash_slot), int).
-:- mode string_switch__calc_hash_slots_2(in, in, in, in, in, out, out) is det.
-
-string_switch__calc_hash_slots_2([], _HashVal, _HashMap, Map, LastUsed,
-		Map, LastUsed).
-string_switch__calc_hash_slots_2([Case | Cases], HashVal, HashMap, Map0,
-		LastUsed0, Map, LastUsed) :-
-	string_switch__calc_hash_slots_2(Cases, HashVal, HashMap, Map0,
-		LastUsed0, Map1, LastUsed1),
-	( map__contains(Map1, HashVal) ->
-		string_switch__follow_hash_chain(Map1, HashVal, ChainEnd),
-		string_switch__next_free_hash_slot(Map1, HashMap, LastUsed1,
-			Next),
-		map__lookup(Map1, ChainEnd, hash_slot(PrevCase, _)),
-		map__det_update(Map1, ChainEnd, hash_slot(PrevCase, Next),
-			Map2),
-		map__det_insert(Map2, Next, hash_slot(Case, -1), Map),
-		LastUsed = Next
-	;
-		map__det_insert(Map1, HashVal, hash_slot(Case, -1), Map),
-		LastUsed = LastUsed1
-	).
-
-:- pred string_switch__follow_hash_chain(map(int, hash_slot), int, int).
-:- mode string_switch__follow_hash_chain(in, in, out) is det.
-
-string_switch__follow_hash_chain(Map, Slot, LastSlot) :-
-	map__lookup(Map, Slot, hash_slot(_, NextSlot)),
-	(
-		NextSlot >= 0,
-		map__contains(Map, NextSlot)
-	->
-		string_switch__follow_hash_chain(Map, NextSlot, LastSlot)
-	;
-		LastSlot = Slot
-	).
-
-	% next_free_hash_slot(M, H_M, LastUsed, FreeSlot) :-
-	%	Find the next available slot FreeSlot in the hash table
-	%	which is not already used (contained in M) and which is not
-	%	going to be used a primary slot (contained in H_M),
-	%	starting at the slot after LastUsed.
-
-:- pred string_switch__next_free_hash_slot(map(int, hash_slot),
-	map(int, cases_list), int, int).
-:- mode string_switch__next_free_hash_slot(in, in, in, out) is det.
-
-string_switch__next_free_hash_slot(Map, H_Map, LastUsed, FreeSlot) :-
-	NextSlot is LastUsed + 1,
-	(
-		\+ map__contains(Map, NextSlot),
-		\+ map__contains(H_Map, NextSlot)
-	->
-		FreeSlot = NextSlot
-	;
-		string_switch__next_free_hash_slot(Map, H_Map, NextSlot, FreeSlot)
-	).
 
 :- pred string_switch__gen_hash_slots(int, int, map(int, hash_slot),
 	code_model, store_map, label, label, branch_end, branch_end,
@@ -354,3 +243,4 @@ string_switch__this_is_last_case(Slot, TableSize, Table) :-
 		string_switch__this_is_last_case(Slot1, TableSize, Table)
 	).
 
+%-----------------------------------------------------------------------------%

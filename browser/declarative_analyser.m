@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2000 The University of Melbourne.
+% Copyright (C) 1999-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -13,7 +13,7 @@
 :- module mdb__declarative_analyser.
 :- interface.
 :- import_module list.
-:- import_module mdb__declarative_debugger.
+:- import_module mdb__declarative_debugger, mdb__program_representation.
 
 	% This typeclass defines how EDTs may be accessed by this module.
 	% An EDT is a tree of nodes, each of which contains a question
@@ -38,8 +38,40 @@
 		% represented implicitly, then the procedure fails.
 		%
 	pred edt_children(S, T, list(T)),
-	mode edt_children(in, in, out) is semidet
+	mode edt_children(in, in, out) is semidet,
+
+		% Given a subterm of a tree, find the mode of that subterm
+		% and the origin of it amongst the parent, siblings or
+		% children.
+		%
+	pred edt_dependency(S, T, arg_pos, term_path, subterm_mode,
+			subterm_origin(T)),
+	mode edt_dependency(in, in, in, in, out, out) is det
 ].
+
+:- type subterm_mode
+	--->	subterm_in
+	;	subterm_out.
+
+:- type subterm_origin(T)
+
+			% Subterm came from an output of a child or sibling.
+			%
+	--->	output(T, arg_pos, term_path)
+
+			% Subterm came from an input of the parent.
+			%
+	;	input(arg_pos, term_path)
+
+			% Subterm was constructed in the body.  We record
+			% the filename and line number of the unification.
+			%
+	;	unification(string, int)
+
+			% The origin could not be found due to missing
+			% information.
+			%
+	;	not_found.
 
 :- type analyser_response(T)
 

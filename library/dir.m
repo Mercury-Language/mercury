@@ -17,11 +17,13 @@
 
 	% predicates to isolate system dependencies 
 
+:- func dir__directory_separator = character.
 :- pred dir__directory_separator(character).
 :- mode dir__directory_separator(out) is det.
 :- mode dir__directory_separator(in) is semidet.
 	% Returns '/'.
 
+:- func dir__this_directory = string.
 :- pred dir__this_directory(string).
 :- mode dir__this_directory(out) is det.	
 :- mode dir__this_directory(in) is semidet.	 % Implied
@@ -32,7 +34,9 @@
 
 :- pred dir__split_name(string::in, string::out, string::out) is det.
 :- pred dir__basename(string::in, string::out) is det.
+:- func dir__basename(string) = string.
 :- pred dir__dirname(string::in, string::out) is det.
+:- func dir__dirname(string) = string.
 
 	% Given a directory name and a filename, return the pathname of that
 	% file in that directory.
@@ -95,21 +99,6 @@ dir__make_path_name(DirName, FileName) = PathName :-
 %-----------------------------------------------------------------------------%
 % Ralph Becket <rwab1@cl.cam.ac.uk> 27/04/99
 %       Functional forms added.
-
-:- interface.
-
-:- func dir__directory_separator = character.
-
-:- func dir__this_directory = string.
-
-:- func dir__basename(string) = string.
-
-:- func dir__dirname(string) = string.
-
-% ---------------------------------------------------------------------------- %
-% ---------------------------------------------------------------------------- %
-
-:- implementation.
 
 dir__directory_separator = C :-
 	dir__directory_separator(C).

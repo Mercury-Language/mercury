@@ -1,8 +1,10 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1997-2000 The University of Melbourne.
+# Copyright (C) 1997-2001 The University of Melbourne.
 # This file may only be copied under the terms of the GNU Library General
 # Public License - see the file COPYING.LIB in the Mercury distribution.
 #-----------------------------------------------------------------------------#
+
+-include ../Mmake.params
 
 GRADEFLAGS += --use-trail
 
@@ -17,19 +19,24 @@ MAIN_TARGET = libglobal
 MCFLAGS += --intermodule-optimisation
 MCFLAGS += --transitive-intermodule-optimisation
 
+.PHONY: depend
 depend: global.depend
 	cd samples && mmake $(MMAKEFLAGS) GRADEFLAGS="$(GRADEFLAGS)" depend
 	cd tests && mmake $(MMAKEFLAGS) GRADEFLAGS="$(GRADEFLAGS)" depend
 
+.PHONY: check
 check: libglobal
 	cd tests && mmake $(MMAKEFLAGS) GRADEFLAGS="$(GRADEFLAGS)" check
 
+.PHONY: install
 install: libglobal.install
 
+.PHONY: install_check
 install_check:
 	cd samples && mmake $(MMAKEFLAGS) GRADEFLAGS="$(GRADEFLAGS)" \
 		EXTRA_LIB_DIRS="$(INSTALL_PREFIX)/lib/mercury" check
 
+.PHONY: clean
 clean: clean_subdirs
 
 .PHONY: clean_subdirs
@@ -37,6 +44,7 @@ clean_subdirs:
 	cd samples && mmake $(MMAKEFLAGS) clean
 	cd tests && mmake $(MMAKEFLAGS) clean
 
+.PHONY: realclean
 realclean: realclean_subdirs
 
 .PHONY: realclean_subdirs

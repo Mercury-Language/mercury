@@ -96,7 +96,7 @@
 
 :- interface.
 
-:- import_module hlds_goal, llds, code_info.
+:- import_module hlds_goal, code_model, llds, code_info.
 :- import_module list.
 
 :- pred par_conj_gen__generate_par_conj(list(hlds_goal), hlds_goal_info,

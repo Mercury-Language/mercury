@@ -18,7 +18,7 @@
 @ifinfo
 This file documents the Mercury programming language.
 
-Copyright (C) 1995-2000 The University of Melbourne.
+Copyright (C) 1995-2001 The University of Melbourne.
 
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice
@@ -51,7 +51,7 @@ into another language, under the above conditions for modified versions.
 @author Chris Speirs
 @page
 @vskip 0pt plus 1filll
-Copyright @copyright{} 1995-2000 The University of Melbourne.
+Copyright @copyright{} 1995-2001 The University of Melbourne.
 
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice
@@ -353,9 +353,9 @@ closure term followed by the argument terms of the higher-order term.
 That is, a term such as @code{Term(Arg1, @dots{}, ArgN)} is
 parsed as @code{''(Term, Arg1, @dots{}, ArgN)}.
 Note that the closure term can be a parenthesized
-term; for example, @code{(Term^FieldName)(Arg1, Arg2)}
+term; for example, @code{(Term ^ FieldName)(Arg1, Arg2)}
 is a higher-order term, and so it gets parsed as
-if it were @code{''((Term^FieldName), Arg1, Arg2)}.
+if it were @code{''((Term ^ FieldName), Arg1, Arg2)}.
 
 @node Builtin Operators
 @section Builtin Operators
@@ -676,10 +676,10 @@ higher-order call using the @code{call/N} syntax, i.e.
 @ifset aditi
 
 @item @code{aditi_bulk_delete(@dots{})}
-@item @code{aditi_bulk_insert(@dots{})}
-@item @code{aditi_bulk_modify(@dots{})}
-@item @code{aditi_delete(@dots{})}
-@item @code{aditi_insert(@dots{})}
+@itemx @code{aditi_bulk_insert(@dots{})}
+@itemx @code{aditi_bulk_modify(@dots{})}
+@itemx @code{aditi_delete(@dots{})}
+@itemx @code{aditi_insert(@dots{})}
 
 These goal forms are used for the Aditi database interface.
 @xref{Aditi update syntax}.
@@ -855,33 +855,31 @@ Semantics:
 transform(V_in, V_out, :=(Term)) = (V_out = Term)
 @end example
 
-@item @var{Term} =^ @var{field1} ^ @dots{} ^ @var{fieldN}
+@item @var{Term} =^ @var{field_list}
 A DCG field selection.
-Unifies @var{Term} with the result of applying the functions
-@var{field1} @dots{} @var{fieldN} to the implicit DCG argument.
+Unifies @var{Term} with the result of applying the field
+selection @var{field_list} to the implicit DCG argument.
 @var{Term} must be a valid data-term.
-For each @var{field} in @w{@var{field1} @dots{} @var{fieldN}} there must be
-a visible function named @samp{@var{field}/1}.
+@var{field_list} must be a valid field list.
 @xref{Record syntax}.
 
 Semantics:
 @example
-transform(V_in, V_out, Term =^ field1 ^ @dots{} ^ fieldN) =
-        (Term = V_in ^ field1 ^ @dots{} ^ fieldN, V_out = V_in)
+transform(V_in, V_out, Term =^ field_list
+        (Term = V_in ^ field_list = V_in)
 @end example
 
-@item ^ @var{field} := @var{Term}
+@item ^ @var{field_list} := @var{Term}
 A DCG field update.
 Replaces a field in the implicit DCG argument. 
 @var{Term} must be a valid data-term.
-For each @var{field} in @w{@var{field1} @dots{} @var{fieldN}} there must be
-visible functions named @samp{@var{field}/1} and @samp{'@var{field}:='/2}.
+@var{field_list} must be a valid field list.
 @xref{Record syntax}.
 
 Semantics:
 @example
-transform(V_in, V_out, ^ field1 ^ @dots{} ^ fieldN := Term) =
-        (V_out = V_in ^ field1 ^ @dots{} ^ fieldN := Term)
+transform(V_in, V_out, ^ field_list := Term) =
+        (V_out = V_in ^ field_list := Term)
 @end example
 
 @item @var{DCG-call}
@@ -944,48 +942,82 @@ in the program or in the interface of an imported module.
 
 Record syntax provides a convenient way to select or update fields
 of data constructors, independent of the definition of the constructor.
-
 Record syntax expressions are transformed into sequences of calls
 to field selection or update functions (@pxref{Field access functions}).
 
-Record syntax expressions have one of the following forms:
+A field specifier is a name or a compound data-term.
+A field list is a list of field specifiers separated by @code{^}.
+@code{field}, @code{field1 ^ field2} and @code{field1(A) ^ field2(B, C)} are
+all valid field lists.
+
+If the top-level functor of a field specifier is @samp{@var{field}/N},
+there must be a visible selection function @samp{@var{field}/(N + 1)}. If the
+field specifier occurs in a field update expression, there must also be a
+visible update function named @samp{'@var{field} :='/(N + 2)}. 
+
+Record syntax expressions have one of the following forms.
+There are also record syntax DCG goals (@pxref{DCG-goals}),
+which provide similar functionality to record syntax expressions,
+except that they act on the DCG arguments of a DCG clause.
 
 @table @code
-@item @var{Term} ^ @var{field}
+@item @var{Term} ^ @var{field_list}
 
-A field selection, equivalent to @code{@var{field}(@var{Term})}.
-
-@var{Term} must be a valid data-term.
-@var{field} must be the name of a visible unary function, possibly a
-function generated for a labelled field of a data constructor.
-
-Field selections may be chained, as in @code{Term ^ field1 ^ field2},
-which is equivalent to @code{field2(field1(Term))}.
-
-@item @var{Term} ^ @var{field1} ^ @dots{} ^ @var{fieldN} := @var{FieldValue}
-
-A field update.
+A field selection. For each field specifier in @var{field_list}, apply
+the corresponding selection function in turn.
 
 @var{Term} must be a valid data-term.
-For each @var{field} in @w{@var{field1} @dots{} @var{fieldN}} there must be
-visible functions named @samp{@var{field}/1} and @samp{'@var{field}:='/2}.
-Typically, these functions will be automatically generated by the compiler
-for a labelled field of a data constructor, although they may be supplied
-by the user.
+@var{field_list} must be a valid field list.
 
-The term @code{Term ^ field := FieldValue} is equivalent
-to @code{'field:='(Term, FieldValue)}.
-
-The general case above is equivalent to the code:
+A field selection is transformed using the following rules:
 @example
-OldField1 = @var{field1}(Term),
-OldField2 = @var{field2}(OldField1),
-@dots{}
-OldField_N_Minus_1 = @var{field_N_Minus_2}(OldField_N_Minus_2),
-NewField_N_Minus_1 = '@var{fieldN}:='(OldField_N_Minus_1, FieldValue),
-@dots{}
-NewField1 = '@var{field2}:='(OldField1, NewField2),
-Result = '@var{field1}:='(Term, NewField1)
+transform(Term ^ Field(Arg1, @dots{})) = Field(Arg1, @dots{}, Term).
+transform(Term ^ Field(Arg1, @dots{}) ^ Rest) =
+                transform(Field(Arg1, @dots{}) ^ Rest).
+@end example
+
+Examples:
+
+@code{Term ^ field} is equivalent to @code{field(Term)}.
+
+@code{Term ^ field(Arg)} is equivalent to @code{field(Arg, Term)}.
+
+@w{@code{Term ^ field1(Arg1) ^ field2(Arg2, Arg3)}} is equivalent
+to @w{@code{field2(Arg2, Arg3, field1(Arg1, Term))}}.
+
+@item @var{Term} ^ @var{field_list} := @var{FieldValue}
+
+A field update, returning a copy of @var{Term} with the value of
+the field specified by @var{field_list} replaced with @var{FieldValue}.
+
+@var{Term} must be a valid data-term.
+@var{field_list} must be a valid field list.
+
+A field update is transformed using the following rules:
+@example
+transform(Term ^ Field(Arg1, @dots{}) := FieldValue) =
+                'Field :='(Arg1, @dots{}, Term, FieldValue)).
+
+transform(Term0 ^ Field(Arg1, @dots{}) ^ Rest := FieldValue) = Term :-
+        OldFieldValue = Field(Arg1, @dots{}, Term0),
+        NewFieldValue = transform(OldFieldValue ^ Rest := FieldValue),
+        Term = 'Field :='(Arg1, @dots{}, Term, NewFieldValue).
+@end example
+
+Examples:
+
+@w{@code{Term ^ field := FieldValue}} is equivalent
+to @w{@code{'field :='(Term, FieldValue)}}.
+
+@w{@code{Term ^ field(Arg) := FieldValue}} is equivalent
+to @w{@code{'field :='(Arg, Term, FieldValue)}}.
+
+@w{@code{Term ^ field1(Arg1) ^ field2(Arg2) := FieldValue}} is equivalent
+to the code 
+@example
+OldField1 = field1(Arg1, Term),
+NewField1 = 'field2 :='(Arg2, OldField1, FieldValue),
+Result = 'field1 :='(Arg1, OldField1, NewField1)
 @end example
 
 @end table
@@ -1566,16 +1598,16 @@ declaration is supplied for the field selection function.
 @subsection Field update
 
 @example
-'@var{field}:='(@var{Term}, @var{ValueTerm})
+'@var{field} :='(@var{Term}, @var{ValueTerm})
 @end example
 
 Each field label @samp{@var{field}} in a constructor causes generation
-of a field update function @samp{'@var{field}:='/2}.
+of a field update function @samp{'@var{field} :='/2}.
 The first argument of this function is a data-term of the same type as the
 constructor. The second argument is a data-term of the same type as the
 labelled field. The return value is a copy of the first argument with
 value of the labelled field replaced by the second argument.
-@samp{'@var{field}:='/2} fails if the top-level constructor of the
+@samp{'@var{field} :='/2} fails if the top-level constructor of the
 first argument is not the constructor containing the labelled field.
 
 If the declaration of the field is in the interface section of the module,
@@ -1623,6 +1655,17 @@ structures of a program change so that a value which was previously stored
 as part of a type is now computed each time it is requested. It also
 allows record syntax to be used for type class methods.
 
+User-declared field access functions may take extra arguments.
+For example, the Mercury standard library module @code{map} contains
+the following functions:
+@example
+:- func elem(K, map(K, V)) = V is semidet.
+:- func 'elem :='(K, map(K, V), V) = map(K, V).
+@end example
+
+The Mercury standard library modules @code{array} and @code{bt_array}
+define similar functions.
+
 @node Field access examples
 @subsection Field access examples
 
@@ -1650,8 +1693,8 @@ The functions generated for the other fields are similar.
 :- func field1(type1) = type2.
 field1(type1(Field1, _)) = Field1.
 
-:- func 'field1:='(type1, type2) = type1.
-'field1:='(type1(_, Field2), Field1) = type1(Field1, Field2).
+:- func 'field1 :='(type1, type2) = type1.
+'field1 :='(type1(_, Field2), Field1) = type1(Field1, Field2).
 @end example
 
 Using these functions and the syntactic sugar described in
@@ -1661,7 +1704,7 @@ Using these functions and the syntactic sugar described in
 :- func increment_field3(type1) = type1.
 
 increment_field3(Term0) =
-        Term0^field1^field3 := Term0^field1^field3 + 1.
+        Term0 ^ field1 ^ field3 := Term0 ^ field1 ^ field3 + 1.
 @end example
 
 The compiler expands this into
@@ -1671,8 +1714,19 @@ incremental_field3(Term0) = Term :-
         OldField3 = field3(field1(Term0)),
 
         OldField1 = field1(Term0),
-        NewField1 = 'field3:='(OldField1, OldField3 + 1),
-        Term = 'field1:='(Term0, NewField1).
+        NewField1 = 'field3 :='(OldField1, OldField3 + 1),
+        Term = 'field1 :='(Term0, NewField1).
+@end example
+
+The field access functions defined in the Mercury standard library
+module @samp{map} can be used as follows:
+
+@example
+:- func update_field_in_map(map(int, type1), int, string)
+                = map(int, type1) is semidet.
+
+update_field_in_map(Map, Index, Value) =
+                Map ^ elem(Index) ^ field2 := Value.
 @end example
 
 @node Modes
@@ -1814,8 +1868,8 @@ the instantiation state of a list of lists of free variables.
 The standard library provides the parametric modes
 
 @example
-:- mode in(Inst) :: Inst -> Inst.
-:- mode out(Inst) :: free -> Inst.
+:- mode in(Inst) == Inst >> Inst.
+:- mode out(Inst) == free >> Inst.
 @end example
 
 @noindent
@@ -1823,7 +1877,7 @@ so that for example the mode @samp{create_request} defined above
 could have be defined as
 
 @example
-:- mode create_request :: out(request).
+:- mode create_request == out(request).
 @end example
 
 There must not be more than one inst definition with the same name
@@ -1839,10 +1893,10 @@ Each mode of a predicate or function is called a @dfn{procedure}.
 For example, given the mode names defined by
 
 @example
-:- mode out_listskel ::
-        free -> listskel.
-:- mode in_listskel ::
-        listskel -> listskel.
+:- mode out_listskel ==
+        free >> listskel.
+:- mode in_listskel ==
+        listskel >> listskel.
 @end example
 
 the (type and) mode declarations of the function length and predicate append
@@ -2027,13 +2081,13 @@ There are three standard modes for manipulation unique values:
 
 @example
 % unique output
-:- mode uo :: free -> unique.
+:- mode uo == free >> unique.
 
 % unique input
-:- mode ui :: unique -> unique.
+:- mode ui == unique >> unique.
 
 % destructive input
-:- mode di :: unique -> dead.
+:- mode di == unique >> dead.
 @end example
 
 Mode @samp{uo} is used to create a unique value.
@@ -2079,13 +2133,13 @@ values, just as it does for unique values:
 
 @example
 % mostly unique output
-:- mode muo :: free -> mostly_unique.
+:- mode muo == free >> mostly_unique.
 
 % mostly unique input
-:- mode mui :: mostly_unique -> mostly_unique.
+:- mode mui == mostly_unique >> mostly_unique.
 
 % mostly destructive input
-:- mode mdi :: mostly_unique -> mostly_dead.
+:- mode mdi == mostly_unique >> mostly_dead.
 @end example
 
 @node Limitations of the current implementation
@@ -3170,8 +3224,8 @@ up to now).  These modes map from the corresponding @samp{inst} to
 itself.  It is as if they were defined by
 
 @example
-:- mode (pred is @var{Determinism}) :: in(pred is @var{Determinism}).
-:- mode (pred(@var{Inst}) is @var{Determinism}) ::
+:- mode (pred is @var{Determinism}) == in(pred is @var{Determinism}).
+:- mode (pred(@var{Inst}) is @var{Determinism}) ==
     in(pred(@var{Inst}) is @var{Determinism}).
 @dots{}
 @end example

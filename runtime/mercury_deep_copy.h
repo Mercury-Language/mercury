@@ -4,7 +4,7 @@
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
 
-/* deepcopy.h - declares the deep_copy() function. */
+/* deepcopy.h - declares the MR_deep_copy() function. */
 
 #ifndef	MERCURY_DEEP_COPY_H
 #define	MERCURY_DEEP_COPY_H
@@ -13,7 +13,7 @@
 #include "mercury_type_info.h"	/* for `MR_TypeInfo' */
 
 /*
-** deep_copy:
+** MR_deep_copy:
 **
 ** 	Copy a data item, completely.
 **
@@ -36,24 +36,24 @@
 **	or if the data is just a simple type like a constant
 **	or integer, it will be the constant or integer itself.
 **
-** 	Please note - deep_copy increments the heap pointer, 
+** 	Please note - MR_deep_copy increments the heap pointer, 
 ** 	however on some platforms (notably, SPARCs) the 
 ** 	register-windows mean the transient Mercury registers
-** 	may be lost. So before calling deep_copy, call
-** 		save_transient_hp();
+** 	may be lost. So before calling MR_deep_copy, call
+** 		MR_save_transient_hp();
 **
-**	deep_copy will use restore_transient_hp()
+**	MR_deep_copy will use MR_restore_transient_hp()
 **	to restore and modify the heap pointer, and
-**	then call save_transient_hp() to save it again.
+**	then call MR_save_transient_hp() to save it again.
 **	(This may also restore/save other registers in the process.)
 **
-**	After calling deep_copy, be sure to do a 
-**		restore_transient_hp();
+**	After calling MR_deep_copy, be sure to do a 
+**		MR_restore_transient_hp();
 **	so that the registers are restored.
 **
-**	If writing a C function that calls deep_copy, make sure
+**	If writing a C function that calls MR_deep_copy, make sure
 **	you document that around your function,
-**	save_transient_hp()/restore_transient_hp()
+**	MR_save_transient_hp()/MR_restore_transient_hp()
 **	need to be used.
 **
 **	Deep copy does not preserve sharing of subterms.  Each
@@ -61,16 +61,16 @@
 **	stored outside the heap limits. 
 **	XXX For some applications, sharing is useful.  For others we
 **	want a copy that is completely unique.  We should modify
-**	deep_copy to do both.
+**	MR_deep_copy to do both.
 */
 
-MR_Word deep_copy(const MR_Word *data_ptr, MR_TypeInfo type_info, 
+MR_Word MR_deep_copy(const MR_Word *data_ptr, MR_TypeInfo type_info, 
 	const MR_Word *lower_limit, const MR_Word *upper_limit);
 
 /*
-** agc_deep_copy:
+** MR_agc_deep_copy:
 **
-**	Just like deep_copy(), but it will leave forwarding pointers
+**	Just like MR_deep_copy(), but it will leave forwarding pointers
 **	in the old data (destructively).  lower_limit and upper_limit
 **	give the boundaries for copying data, and the boundaries for
 **	leaving forwarding pointers.
@@ -88,10 +88,11 @@ MR_Word deep_copy(const MR_Word *data_ptr, MR_TypeInfo type_info,
 **	heap (say to a constant data structure in the data segment of
 **	the program).
 **
-**	Note: You cannot pass NULL as the lower_limit to agc_deep_copy
-**	(which is possible with normal deep_copy).
+**	Note: You cannot pass NULL as the lower_limit to MR_agc_deep_copy
+**	(which is possible with normal MR_deep_copy).
 */
-MR_Word agc_deep_copy(MR_Word *data_ptr, MR_TypeInfo type_info, 
+
+MR_Word MR_agc_deep_copy(MR_Word *data_ptr, MR_TypeInfo type_info, 
 	const MR_Word *lower_limit, const MR_Word *upper_limit);
 
 /*
@@ -104,8 +105,8 @@ MR_Word agc_deep_copy(MR_Word *data_ptr, MR_TypeInfo type_info,
 **	Note that in conservative GC grades nothing needs to be done, and
 **	hence the term is just returned.
 **
-**	When not using a conservative GC grade, save_transient_hp()
-**	and restore_transient_hp() need to be used around this
+**	When not using a conservative GC grade, MR_save_transient_hp()
+**	and MR_restore_transient_hp() need to be used around this
 **	function.  (When using a conservative GC grade, these macros
 **	are harmless, so they can be used then too.)
 */
@@ -130,7 +131,8 @@ MR_Word agc_deep_copy(MR_Word *data_ptr, MR_TypeInfo type_info,
 #ifdef CONSERVATIVE_GC
   #define MR_make_long_lived(term, type_info, lower_limit) (term)
 #else
-  MR_Word MR_make_long_lived(MR_Word term, MR_TypeInfo type_info, MR_Word *lower_limit);
+  extern	MR_Word MR_make_long_lived(MR_Word term, MR_TypeInfo type_info,
+		  MR_Word *lower_limit);
 #endif
 
 #endif /* not MERCURY_DEEP_COPY_H */

@@ -54,6 +54,9 @@ case "$CC" in
     *cl* | *CL*)
 	COMPILER=cl
 	;;
+    cc* | */cc*)
+	COMPILER=cc
+	;;
     *)
 	COMPILER=unknown
 	;;
@@ -391,6 +394,10 @@ esac
 # Defaults have been set, now set options.
 
 case $all_libs in static)
+	case $COMPILER in gcc|lcc)
+		MAYBE_STATIC_OPT=-static
+		;;
+	esac
 	case $FULLARCH in
 		*-linux*)
 			# On Linux, if we're linking statically, we need to
@@ -399,104 +406,45 @@ case $all_libs in static)
 			# boehm_gc/dyn_load.c.
 			# (We might eventually need similar treatment
 			# for other OSs too)
-			MAYBE_STATIC_OPT="-static -Wl-defsym -Wl_DYNAMIC=0"
+			case $COMPILER in
+	 		gcc)
+				MAYBE_STATIC_OPT="-static \
+					-Wl-defsym -Wl_DYNAMIC=0"
+				;;
+			lcc)
+				MAYBE_STATIC_OPT="-static \
+					-Wl,-defsym -Wl,_DYNAMIC=0"
+				;;
+			esac
 			;;
-		*)
-			MAYBE_STATIC_OPT=-static
+		alpha*-dec-osf*)
+			case $COMPILER in cc)
+				MAYBE_STATIC_OPT=-non_shared
+				;;
+			esac
 			;;
+		*-sun-solaris*)
+			case $COMPILER in cc)
+				MAYBE_STATIC_OPT="-B static"
+				;;
+			esac
+			;;
+	esac
+	case "$MAYBE_STATIC_OPT" in "")
+		echo "ml: warning: \`--static' ignored, since I don't" 1>&2
+		echo "	know how to enable static linking with this" 1>&2
+		echo "	C compiler (\`$CC')." 1>&2
+		echo "	Using \`--mercury-libs static' instead." 1>&2
+		;;
 	esac
 esac
 
 #
-# compute the grade from the options settings
+# compute the canonical grade name from the options settings
 #
 
-case $non_local_gotos,$global_regs in
-	true,true) 	GRADE="fast" ;;
-	true,false)  	GRADE="jump" ;;
-	false,true)  	GRADE="reg" ;;
-	false,false)   	GRADE="none" ;;
-esac
-case $asm_labels in
-	true)		GRADE="asm_$GRADE" ;;
-	false)		;;
-esac
-case $highlevel_code,$highlevel_data,$GRADE in
-	true,true,none)		
-		GRADE="hl" ;;
-	true,false,none)	
-		GRADE="hlc" ;;
-	false,false,*)
-		# GRADE was set above
-		;;
-	false,true,*)
-		echo "\`--high-level-data' requires \`--high-level-code'" 1>&2
-		exit 1
-		;;
-	*)
-		echo "\`--high-level-code' is incompatible with the use of" 1>&2
-		echo "low-level gcc extensions implied by grade \`$GRADE'" 1>&2
-		exit 1
-		;;
-esac
-case $gcc_nested_functions,$highlevel_code in
-	true,true)	GRADE="${GRADE}_nest" ;;
-	*)		;;
-esac
-	
-case $thread_safe in
-	true)	GRADE="$GRADE.par" ;;
-	false)	;;
-esac
-case $gc_method in
-	conservative)	GRADE="$GRADE.gc" ;;
-	accurate)	GRADE="$GRADE.agc" ;;
-esac
-case $profile_time,$profile_calls,$profile_memory in
-	true,true,false)	GRADE="$GRADE.prof" ;;
-	true,false,false)	GRADE="$GRADE.proftime" ;;
-	false,true,false)	GRADE="$GRADE.profcalls" ;;
-	true,true,true)		GRADE="$GRADE.profall" ;;
-	false,true,true)	GRADE="$GRADE.memprof" ;;
-	false,false,false)	;;
-	*)			progname=`basename $0`
-				echo \
-	"$progname: Error: invalid combination of profiling options." 1>&2
-				exit 1
-			;;
-esac
-case $use_trail in
-	true)		GRADE="$GRADE.tr" ;;
-	false)		;;
-esac
-case $reserve_tag in
-	true)		GRADE="$GRADE.rt" ;;
-	false)		;;
-esac
-case $use_solve_equal in
-	true)		GRADE="$GRADE.se" ;;
-	false)		;;
-esac
-case $use_init in
-	true)		GRADE="$GRADE.init" ;;
-	false)		;;
-esac
-case $use_minimal_model in
-	true)	GRADE="$GRADE.mm" ;;
-	false)	;;
-esac
-# We ignore the value of $picreg in computing the name of the grade
-# that we will use as a directory name below.
-# case $picreg in
-# 	true)	GRADE="$GRADE.picreg" ;;
-# 	false)	;;
-# esac
-case $stack_trace,$require_tracing in
-	true,true)	GRADE="$GRADE.debug" ;;
-	false,true)	GRADE="$GRADE.trace" ;;
-	true,false)	GRADE="$GRADE.strce" ;;
-	false,false)	;;
-esac
+# include the file `canonical_grade.sh-subr'
+@CANONICAL_GRADE@
 
 # if the --print-grade option is specified,
 # then all we do is print the grade and then exit

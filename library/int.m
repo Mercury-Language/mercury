@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2000 The University of Melbourne.
+% Copyright (C) 1994-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -21,6 +21,10 @@
 :- module int.
 
 :- interface.
+
+:- import_module enum.
+
+:- instance enum(int).
 
 	% less than
 :- pred int < int.
@@ -72,6 +76,8 @@
 :- mode uo  + in  = in  is det.
 :- mode in  + uo  = in  is det.
 
+:- func int__plus(int, int) = int.
+
 	% multiplication
 :- func int * int = int.
 :- mode in  * in  = uo  is det.
@@ -82,11 +88,16 @@
 :- mode uo  * in  = in  is semidet.
 :- mode in  * uo  = in  is semidet.
 */
+
+:- func int__times(int, int) = int.
+
 	% subtraction
 :- func int - int = int.
 :- mode in  - in  = uo  is det.
 :- mode uo  - in  = in  is det.
 :- mode in  - uo  = in  is det.
+
+:- func int__minus(int, int) = int.
 
 	% flooring integer division
 	% truncates towards minus infinity, e.g. (-10) // 3 = (-4).
@@ -176,13 +187,19 @@
 	% on this machine.
 :- pred int__max_int(int::out) is det.
 
+:- func int__max_int = int.
+
 	% int__min_int(Max) binds Min to the minimum value of an int
 	% on this machine.
 :- pred int__min_int(int::out) is det.
 
+:- func int__min_int = int.
+
 	% int__bits_per_int(Bits) binds Bits to the number of bits in an int
 	% on this machine.
 :- pred int__bits_per_int(int::out) is det.
+
+:- func int__bits_per_int = int.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -202,6 +219,27 @@
 	% commutivity and associativity of *
 :- promise all [A,B,C] ( C = B * A <=> C = A * B ).
 :- promise all [A,B,C,ABC] ( ABC = (A * B) * C <=> ABC = A * (B * C) ).
+
+%-----------------------------------------------------------------------------%
+
+	% floor_to_multiple_of_bits_per_int(Int)
+	%
+	% Returns the largest multiple of bits_per_int which
+	% is less than or equal to `Int'.
+	%
+	% Used by sparse_bitset.m. Makes it clearer to gcc that parts
+	% of this operation can be optimized into shifts, without
+	% turning up the optimization level.
+:- func floor_to_multiple_of_bits_per_int(int) = int.
+
+	% Used by floor_to_multiple_of_bits_per_int, placed
+	% here to make sure they go in the `.opt' file.
+
+	% int__quot_bits_per_int(X) = X // bits_per_int.		
+:- func int__quot_bits_per_int(int) = int.
+
+	% int__times_bits_per_int(X) = X * bits_per_int.		
+:- func int__times_bits_per_int(int) = int.
 
 %-----------------------------------------------------------------------------%
 
@@ -267,7 +305,12 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module require.
+:- import_module require, std_util.
+
+:- instance enum(int) where [
+	to_int(X) = X,
+	from_int(X) = X
+].
 
 % Most of the arithmetic and comparison operators are recognized by
 % the compiler as builtins, so we don't need to define them here.
@@ -283,6 +326,16 @@ X div Y = Div :-
 		Div = Trunc
 	;
 		Div = Trunc - 1
+	).
+
+:- pragma inline(floor_to_multiple_of_bits_per_int/1).
+floor_to_multiple_of_bits_per_int(X) = Floor :-
+	Trunc = quot_bits_per_int(X),
+	Floor0 = times_bits_per_int(Trunc),
+	( Floor0 > X ->
+		Floor = Floor0 - bits_per_int
+	;
+		Floor = Floor0
 	).
 
 X mod Y = X - (X div Y) * Y.
@@ -400,20 +453,38 @@ is(X, X).
 :- pred int__to_float(int, float) is det.
 :- mode int__to_float(in, out) is det.
 */
-:- pragma c_code(int__to_float(IntVal::in, FloatVal::out),
+:- pragma foreign_code("C", int__to_float(IntVal::in, FloatVal::out),
 		will_not_call_mercury,
 "
 	FloatVal = IntVal;
 ").
+:- pragma foreign_code("MC++", int__to_float(IntVal::in, FloatVal::out),
+		will_not_call_mercury,
+"
+	FloatVal = (MR_Float) IntVal;
+").
 
 %-----------------------------------------------------------------------------%
 
-:- pragma c_header_code("
+:- pragma foreign_decl("C", "
 	#include <limits.h>
+
+	#define ML_BITS_PER_INT		(sizeof(MR_Integer) * CHAR_BIT)
+").
+
+:- pragma foreign_decl("MC++", "
+	#include <limits.h>
+
+	// XXX this should work, but it would be nice to have a more robust
+	// technique that used the fact we map to System.Int32 in the compiler.
+
+	#define ML_BITS_PER_INT		(sizeof(MR_Integer) * CHAR_BIT)
+
 ").
 
 
-:- pragma c_code(int__max_int(Max::out), will_not_call_mercury, "
+:- pragma foreign_code("C", int__max_int(Max::out),
+		[will_not_call_mercury, thread_safe], "
 	if (sizeof(MR_Integer) == sizeof(int))
 		Max = INT_MAX;
 	else if (sizeof(MR_Integer) == sizeof(long))
@@ -422,7 +493,8 @@ is(X, X).
 		MR_fatal_error(""Unable to figure out max integer size"");
 ").
 
-:- pragma c_code(int__min_int(Min::out), will_not_call_mercury, "
+:- pragma foreign_code("C", int__min_int(Min::out),
+		[will_not_call_mercury, thread_safe], "
 	if (sizeof(MR_Integer) == sizeof(int))
 		Min = INT_MIN;
 	else if (sizeof(MR_Integer) == sizeof(long))
@@ -431,33 +503,52 @@ is(X, X).
 		MR_fatal_error(""Unable to figure out min integer size"");
 ").
 
-:- pragma c_code(int__bits_per_int(Bits::out), will_not_call_mercury, "
-	Bits = sizeof(MR_Integer) * CHAR_BIT;
+:- pragma foreign_code("C", int__bits_per_int(Bits::out),
+		[will_not_call_mercury, thread_safe], "
+	Bits = ML_BITS_PER_INT;
 ").
+
+:- pragma foreign_code("C", int__quot_bits_per_int(Int::in) = (Div::out),
+		[will_not_call_mercury, thread_safe], "
+	Div = Int / ML_BITS_PER_INT;
+").
+
+:- pragma foreign_code("C", int__times_bits_per_int(Int::in) = (Result::out),
+		[will_not_call_mercury, thread_safe], "
+	Result = Int * ML_BITS_PER_INT;
+").
+
+
+:- pragma foreign_code("MC++", int__max_int(Max::out),
+		[will_not_call_mercury, thread_safe], "
+	Max = System::Int32::MaxValue;
+").
+
+:- pragma foreign_code("MC++", int__min_int(Min::out),
+		[will_not_call_mercury, thread_safe], "
+	Min = System::Int32::MinValue;
+").
+
+:- pragma foreign_code("MC++", int__bits_per_int(Bits::out),
+		[will_not_call_mercury, thread_safe], "
+	Bits = ML_BITS_PER_INT;
+").
+
+:- pragma foreign_code("MC++", int__quot_bits_per_int(Int::in) = (Div::out),
+		[will_not_call_mercury, thread_safe], "
+	Div = Int / ML_BITS_PER_INT;
+").
+
+:- pragma foreign_code("MC++", int__times_bits_per_int(Int::in) = (Result::out),
+		[will_not_call_mercury, thread_safe], "
+	Result = Int * ML_BITS_PER_INT;
+").
+
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 % Ralph Becket <rwab1@cl.cam.ac.uk> 27/04/99
 % 	Functional forms added.
-
-:- interface.
-
-:- func int__plus(int, int) = int.
-
-:- func int__times(int, int) = int.
-
-:- func int__minus(int, int) = int.
-
-:- func int__max_int = int.
-
-:- func int__min_int = int.
-
-:- func int__bits_per_int = int.
-
-% ---------------------------------------------------------------------------- %
-% ---------------------------------------------------------------------------- %
-
-:- implementation.
 
 int__plus(X, Y) = X + Y.
 

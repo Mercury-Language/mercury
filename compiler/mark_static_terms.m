@@ -103,8 +103,8 @@ goal_expr_mark_static_terms(unify(A,B,C, Unification0, E),
 	unification_mark_static_terms(Unification0, Unification,
 		SI0, SI).
 
-goal_expr_mark_static_terms(pragma_foreign_code(A,B,C,D,E,F,G,H),
-		pragma_foreign_code(A,B,C,D,E,F,G,H), SI, SI).
+goal_expr_mark_static_terms(pragma_foreign_code(A,B,C,D,E,F,G),
+		pragma_foreign_code(A,B,C,D,E,F,G), SI, SI).
 
 goal_expr_mark_static_terms(bi_implication(_, _), _, _, _) :-
 	% these should have been expanded out by now

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2000 The University of Melbourne.
+** Copyright (C) 1998-2001 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -119,6 +119,16 @@ static	bool		MR_edt_inside;
 static	MR_Unsigned	MR_edt_start_seqno;
 
 /*
+** The declarative debugger ignores modules that were not compiled with
+** the required information.  However, this may result in incorrect
+** assumptions being made about the code, so the debugger gives a warning
+** if this happens.  The following flag indicates whether a warning
+** should be printed before calling the front end.
+*/
+
+static	bool		MR_edt_compiler_flag_warning;
+
+/*
 ** This is used as the abstract map from node identifiers to nodes
 ** in the data structure passed to the front end.  It should be
 ** incremented each time the data structure is destructively
@@ -193,10 +203,10 @@ static	MR_Trace_Node
 MR_trace_decl_neg_failure(MR_Event_Info *event_info, MR_Trace_Node prev);
 
 static	MR_Trace_Node
-MR_trace_decl_get_slot(const MR_Stack_Layout_Entry *entry, MR_Word *saved_regs);
+MR_trace_decl_get_slot(const MR_Proc_Layout *entry, MR_Word *saved_regs);
 
 static	void
-MR_trace_decl_set_slot(const MR_Stack_Layout_Entry *entry, MR_Word *saved_regs,
+MR_trace_decl_set_slot(const MR_Proc_Layout *entry, MR_Word *saved_regs,
 		MR_Trace_Node node);
 
 static	MR_Trace_Node
@@ -221,14 +231,14 @@ static	bool
 MR_trace_single_component(const char *path);
 
 static	MR_Word
-MR_decl_make_atom(const MR_Stack_Layout_Label *layout, MR_Word *saved_regs,
+MR_decl_make_atom(const MR_Label_Layout *layout, MR_Word *saved_regs,
 		MR_Trace_Port port);
 
 static	MR_ConstString
-MR_decl_atom_name(const MR_Stack_Layout_Entry *entry);
+MR_decl_atom_name(const MR_Proc_Layout *entry);
 
 static	MR_Word
-MR_decl_atom_args(const MR_Stack_Layout_Label *layout, MR_Word *saved_regs);
+MR_decl_atom_args(const MR_Label_Layout *layout, MR_Word *saved_regs);
 
 static	const char *
 MR_trace_start_collecting(MR_Unsigned event, MR_Unsigned seqno,
@@ -279,10 +289,11 @@ MR_decl_checkpoint_loc(const char *str, MR_Trace_Node node);
 MR_Code *
 MR_trace_decl_debug(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 {
-	MR_Stack_Layout_Entry 	*entry;
+	const MR_Proc_Layout 	*entry;
 	MR_Unsigned		depth;
 	MR_Trace_Node		trace;
 	MR_Event_Details	event_details;
+	MR_Trace_Level		trace_level;
 
 	entry = event_info->MR_event_sll->MR_sll_entry;
 	depth = event_info->MR_call_depth;
@@ -344,13 +355,27 @@ MR_trace_decl_debug(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 		return NULL;
 	}
 
+	trace_level = entry->MR_sle_module_layout->MR_ml_trace_level;
+	if (trace_level == MR_TRACE_LEVEL_DEEP) {
+		/*
+		** We ignore events from modules that were not compiled
+		** with the necessary information.  Procedures in those
+		** modules are effectively assumed correct, so we give
+		** the user a warning.
+		*/
+		MR_edt_compiler_flag_warning = TRUE;
+		return NULL;
+	}
+
 #ifdef MR_USE_DECL_STACK_SLOT
 	if (entry->MR_sle_maybe_decl_debug < 1) {
 		/*
 		** If using reserved stack slots, we ignore any event
 		** for a procedure that does not have a slot reserved.
-		** Such procedures are effectively assumed correct.
+		** Such procedures are effectively assumed correct, so
+		** we give the user a warning.
 		*/
+		MR_edt_compiler_flag_warning = TRUE;
 		return NULL;
 	}
 #endif /* MR_USE_DECL_STACK_SLOT */
@@ -451,7 +476,8 @@ MR_trace_decl_call(MR_Event_Info *event_info, MR_Trace_Node prev)
 	MR_Trace_Node			node;
 	MR_Word				atom;
 	bool				at_depth_limit;
-	const MR_Stack_Layout_Label	*layout = event_info->MR_event_sll;
+	const MR_Label_Layout		*layout = event_info->MR_event_sll;
+	MR_Word				proc_rep;
 
 	if (event_info->MR_call_depth == MR_edt_max_depth) {
 		at_depth_limit = TRUE;
@@ -459,14 +485,24 @@ MR_trace_decl_call(MR_Event_Info *event_info, MR_Trace_Node prev)
 		at_depth_limit = FALSE;
 	}
 
+	proc_rep = layout->MR_sll_entry->MR_sle_proc_rep;
 	atom = MR_decl_make_atom(layout, event_info->MR_saved_regs,
 			MR_PORT_CALL);
 	MR_TRACE_CALL_MERCURY(
-		node = (MR_Trace_Node) MR_DD_construct_call_node(
+		if (proc_rep) {
+			node = (MR_Trace_Node)
+				MR_DD_construct_call_node_with_goal(
 					(MR_Word) prev, atom,
 					(MR_Word) event_info->MR_call_seqno,
 					(MR_Word) event_info->MR_event_number,
+					(MR_Word) at_depth_limit, proc_rep);
+		} else {
+			node = (MR_Trace_Node)
+				MR_DD_construct_call_node((MR_Word) prev, atom,
+					(MR_Word) event_info->MR_call_seqno,
+					(MR_Word) event_info->MR_event_number,
 					(MR_Word) at_depth_limit);
+		}
 	);
 
 #ifdef MR_USE_DECL_STACK_SLOT
@@ -846,7 +882,7 @@ MR_trace_decl_disj(MR_Event_Info *event_info, MR_Trace_Node prev)
 #ifdef MR_USE_DECL_STACK_SLOT
 
 static	MR_Trace_Node
-MR_trace_decl_get_slot(const MR_Stack_Layout_Entry *entry, MR_Word *saved_regs)
+MR_trace_decl_get_slot(const MR_Proc_Layout *entry, MR_Word *saved_regs)
 {
 	int			decl_slot;
 	MR_Word			*saved_sp;
@@ -868,7 +904,7 @@ MR_trace_decl_get_slot(const MR_Stack_Layout_Entry *entry, MR_Word *saved_regs)
 }
 
 static	void
-MR_trace_decl_set_slot(const MR_Stack_Layout_Entry *entry,
+MR_trace_decl_set_slot(const MR_Proc_Layout *entry,
 		MR_Word *saved_regs, MR_Trace_Node node)
 {
 	int			decl_slot;
@@ -1021,7 +1057,7 @@ MR_trace_single_component(const char *path)
 }
 
 static	MR_Word
-MR_decl_make_atom(const MR_Stack_Layout_Label *layout, MR_Word *saved_regs,
+MR_decl_make_atom(const MR_Label_Layout *layout, MR_Word *saved_regs,
 		MR_Trace_Port port)
 {
 	MR_PredFunc			pred_or_func;
@@ -1029,10 +1065,9 @@ MR_decl_make_atom(const MR_Stack_Layout_Label *layout, MR_Word *saved_regs,
 	MR_Word				arity;
 	MR_Word				atom;
 	int				i;
-	const MR_Stack_Layout_Vars	*vars;
 	int				arg_count;
 	MR_TypeInfoParams		type_params;
-	const MR_Stack_Layout_Entry	*entry = layout->MR_sll_entry;
+	const MR_Proc_Layout		*entry = layout->MR_sll_entry;
 
 	MR_trace_init_point_vars(layout, saved_regs, port);
 
@@ -1071,11 +1106,11 @@ MR_decl_make_atom(const MR_Stack_Layout_Label *layout, MR_Word *saved_regs,
 		}
 
 		MR_TRACE_USE_HP(
-			tag_incr_hp(arg, MR_mktag(0), 2);
+			MR_tag_incr_hp(arg, MR_mktag(0), 2);
 		);
-		MR_field(MR_mktag(0), arg, UNIV_OFFSET_FOR_TYPEINFO) =
+		MR_field(MR_mktag(0), arg, MR_UNIV_OFFSET_FOR_TYPEINFO) =
 				(MR_Word) arg_type;
-		MR_field(MR_mktag(0), arg, UNIV_OFFSET_FOR_DATA) =
+		MR_field(MR_mktag(0), arg, MR_UNIV_OFFSET_FOR_DATA) =
 				arg_value;
 
 		MR_TRACE_CALL_MERCURY(
@@ -1088,7 +1123,7 @@ MR_decl_make_atom(const MR_Stack_Layout_Label *layout, MR_Word *saved_regs,
 }
 
 static	MR_ConstString
-MR_decl_atom_name(const MR_Stack_Layout_Entry *entry)
+MR_decl_atom_name(const MR_Proc_Layout *entry)
 {
 	MR_ConstString		name;
 
@@ -1137,10 +1172,11 @@ MR_trace_start_decl_debug(const char *outfile, MR_Trace_Cmd_Info *cmd,
 		MR_Code **jumpaddr)
 {
 	MR_Retry_Result		result;
-	MR_Stack_Layout_Entry 	*entry;
+	const MR_Proc_Layout 	*entry;
 	FILE			*out;
 	MR_Unsigned		depth_limit;
 	const char		*message;
+	MR_Trace_Level		trace_level;
 
 	entry = event_info->MR_event_sll->MR_sll_entry;
 	if (!MR_ENTRY_LAYOUT_HAS_EXEC_TRACE(entry)) {
@@ -1155,6 +1191,17 @@ MR_trace_start_decl_debug(const char *outfile, MR_Trace_Cmd_Info *cmd,
 		fflush(MR_mdb_out);
 		fprintf(MR_mdb_err, "mdb: cannot start declarative debugging "
 				"at compiler generated procedures.\n");
+		return FALSE;
+	}
+
+	trace_level = entry->MR_sle_module_layout->MR_ml_trace_level;
+	if (trace_level != MR_TRACE_LEVEL_DECL &&
+		trace_level != MR_TRACE_LEVEL_DECL_REP)
+	{
+		fflush(MR_mdb_out);
+		fprintf(MR_mdb_err, "mdb: cannot start declarative debugging, "
+				"because this procedure was not\n"
+				"compiled with trace level `decl'.\n");
 		return FALSE;
 	}
 
@@ -1242,7 +1289,7 @@ MR_trace_start_collecting(MR_Unsigned event, MR_Unsigned seqno,
 	** Go back to an event before the topmost call.
 	*/
 	retry_result = MR_trace_retry(event_info, event_details, 0, &problem,
-			jumpaddr);
+			NULL, NULL, jumpaddr);
 	if (retry_result != MR_RETRY_OK_DIRECT) {
 		if (retry_result == MR_RETRY_ERROR) {
 			return problem;
@@ -1250,6 +1297,11 @@ MR_trace_start_collecting(MR_Unsigned event, MR_Unsigned seqno,
 			return "internal error: direct retry impossible";
 		}
 	}
+
+	/*
+	** Clear any warnings.
+	*/
+	MR_edt_compiler_flag_warning = FALSE;
 
 	/*
 	** Start collecting the trace from the desired call, with the
@@ -1298,6 +1350,13 @@ MR_decl_diagnosis(MR_Trace_Node root, MR_Trace_Cmd_Info *cmd,
 	*/
 	MR_trace_enabled = TRUE;
 #endif
+
+	if (MR_edt_compiler_flag_warning) {
+		fprintf(MR_mdb_err, "Warning: some modules were compiled with"
+				" a trace level lower than `decl'.\n"
+				"This may result in calls being omitted from"
+				" the debugging tree.\n");
+	}
 
 	MR_TRACE_CALL_MERCURY(
 		MR_DD_decl_diagnosis(MR_trace_node_store, root, &response,
@@ -1353,7 +1412,7 @@ MR_decl_handle_bug_found(MR_Unsigned bug_event, MR_Trace_Cmd_Info *cmd,
 	MR_print_succip_reg(stdout, event_info->MR_saved_regs);
 #endif
 	retry_result = MR_trace_retry(event_info, event_details, 0, &problem,
-			&jumpaddr);
+			NULL, NULL, &jumpaddr);
 #ifdef	MR_DEBUG_RETRY
 	MR_print_stack_regs(stdout, event_info->MR_saved_regs);
 	MR_print_succip_reg(stdout, event_info->MR_saved_regs);

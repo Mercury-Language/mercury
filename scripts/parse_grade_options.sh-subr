@@ -1,5 +1,5 @@
 #---------------------------------------------------------------------------#
-# Copyright (C) 1997-2000 The University of Melbourne.
+# Copyright (C) 1997-2001 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -22,6 +22,8 @@
 	--target)
 		shift
 		case "$1" in
+			asm)
+				target=asm ;;
 			c|C)
 				target=c ;;
 			il|IL)
@@ -33,7 +35,7 @@
 		esac
 		;;
 
-	--il|--IL)
+	--il|--IL|--il-only|--IL-only)
 		target=il ;;
 
 	--high-level-code|-H)
@@ -225,7 +227,6 @@
 					highlevel_data=false
 					;;
 				hl)
-					target=c
 					asm_labels=false
 					non_local_gotos=false
 					global_regs=false
@@ -234,7 +235,6 @@
 					highlevel_data=true
 					;;
 				hlc)
-					target=c
 					asm_labels=false
 					non_local_gotos=false
 					global_regs=false
@@ -243,7 +243,6 @@
 					highlevel_data=false
 					;;
 				hl_nest)
-					target=c
 					asm_labels=false
 					non_local_gotos=false
 					global_regs=false
@@ -252,7 +251,6 @@
 					highlevel_data=true
 					;;
 				hlc_nest)
-					target=c
 					asm_labels=false
 					non_local_gotos=false
 					global_regs=false

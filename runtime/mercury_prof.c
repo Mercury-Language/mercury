@@ -289,7 +289,7 @@ prof_init_time_profile_method(void)
 			break;
 #endif
 		default:
-			fatal_error("invalid time profile method");
+			MR_fatal_error("invalid time profile method");
 	}
 }
 #endif /* PROFILE_TIME */

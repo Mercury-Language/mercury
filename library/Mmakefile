@@ -1,5 +1,7 @@
+EXTRA_MGNUCFLAGS = -g
+EXTRA_MLFLAGS = --no-strip
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1997-2000 The University of Melbourne.
+# Copyright (C) 1997-2001 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -21,6 +23,16 @@ VPATH=.
 #
 
 MCFLAGS-int = --no-halt-at-warn
+
+# Modules which use user-guided type specialization need to be
+# compiled with these flags to make sure all calls
+# to the builtin comparison routines are inlined.
+TYPE_SPEC_FLAGS = --inline-vars-threshold 10000
+MCFLAGS-list = $(TYPE_SPEC_FLAGS)
+MCFLAGS-map = $(TYPE_SPEC_FLAGS)
+MCFLAGS-tree234 = $(TYPE_SPEC_FLAGS)
+MCFLAGS-set = $(TYPE_SPEC_FLAGS)
+MCFLAGS-set_ordlist = $(TYPE_SPEC_FLAGS)
 
 #-----------------------------------------------------------------------------#
 
@@ -76,6 +88,8 @@ MCS	=	$(M_ENV) $(MC) --split-c-files -c --cflags "$(ALL_CFLAGS)" \
 			$(INTERMODULE_OPTS) $(CHECK_TERM_OPTS)
 MGNUC	=	$(M_ENV) $(SCRIPTS_DIR)/mgnuc
 MGNUCFLAGS =	$(DLL_CFLAGS)
+MS_CLFLAGS  =	-I$(RUNTIME_DIR) 
+MS_CL_NOASM=:noAssembly
 LDFLAGS	=	-L$(BOEHM_GC_DIR) -L$(RUNTIME_DIR)
 ALL_LDFLAGS =	$(LDFLAGS) $(EXTRA_LDFLAGS)
 LDLIBS	=	-l$(RT_LIB_NAME) \
@@ -182,13 +196,68 @@ dates		:
 
 #-----------------------------------------------------------------------------#
 
-.PHONY: os cs
+.PHONY: os cs ils library.dlls dlls
 os: $(library.os)
 cs: $(library.cs)
+ils: $(library.ils)
+library.dlls = $(library.mods:%=%.dll)
+dlls: $(library.dlls)
 
 #-----------------------------------------------------------------------------#
 
 .PHONY: lib_std
+
+# The ilc and il grades target Microsoft's .NET frameworks.  
+ifneq (,$(findstring il,$(GRADE)))
+
+lib_std: dlls mercury.dll
+
+# Instead of generating UNIX style libraries, we general a bunch of
+# DLLs.  We have to hardcode the names of the C code files and the
+# runtime files.
+RUNTIME_DLLS=../runtime/mercury_mcpp.dll ../runtime/mercury_il.dll
+
+MODULES_CONTAINING_C_CODE=	\
+		array 		\
+		benchmarking	\
+		builtin		\
+		char		\
+		exception	\
+		float		\
+		gc		\
+		int		\
+		io		\
+		library		\
+		math		\
+		private_builtin	\
+		sparse_bitset	\
+		std_util	\
+		store		\
+		string		\
+		table_builtin	\
+		time
+
+CPP_DLLS=$(MODULES_CONTAINING_C_CODE:%=%__c_code.dll)
+
+ALL_DLLS=$(library.dlls) $(CPP_DLLS) $(RUNTIME_DLLS) 
+
+ALL_DLLS_BASE  = $(ALL_DLLS:%.dll=%)
+EMBED_ALL_DLLS = $(foreach dll_name,$(ALL_DLLS_BASE),$(EMBED_ONE_DLL))
+EMBED_ONE_DLL  = /embed:$(dll_name).dll,$(dll_name),Y
+
+# al is the assembly linker, it will create an assembly that references
+# all the modules (.dll files) in the library and runtime.
+mercury.dll: $(ALL_DLLS)
+	$(MS_AL) -out:mercury.dll $(ALL_DLLS)
+
+# This al command line will create a signed assembly that can be
+# installed into the assembly cache, but then you need to create a key
+# and actually start using the cache.  I haven't quite figured out how
+# this all works just yet.
+# al -v:1.0.0.0 -keyf:mercury.key -out:mercury.dll $(ALLDLLS)
+
+else
+
 # the following dependency is just there to improve compilation speed;
 # making tree234.$O first improves effective parallelism with parallel makes.
 lib_std: $(os_subdir)tree234.$O
@@ -210,6 +279,8 @@ lib$(STD_LIB_NAME).so : $(library.pic_os)
 		$(RPATH_1)$(RPATH_2)					\
 		$(ALL_LDFLAGS) $(ALL_LDLIBS)				\
 		$(SHARED_LIBS)
+
+endif
 
 $(STD_LIB_NAME).init: $(deps_subdir)library.dep
 	for file in $(library.ms); do \

@@ -158,9 +158,10 @@ pd_util__simplify_goal(Simplifications, Goal0, Goal) -->
 	pd_info_get_proc_info(ProcInfo0),
 	{ proc_info_varset(ProcInfo0, VarSet0) },
 	{ proc_info_inst_varset(ProcInfo0, InstVarSet0) },
-	{ proc_info_typeinfo_varmap(ProcInfo0, TVarMap) },
+	{ proc_info_typeinfo_varmap(ProcInfo0, TVarMap0) },
+	{ proc_info_typeclass_info_varmap(ProcInfo0, TCVarMap0) },
 	{ simplify_info_init(DetInfo0, Simplifications, InstMap0,
-		VarSet0, InstVarSet0, TVarMap, SimplifyInfo0) },
+		VarSet0, InstVarSet0, TVarMap0, TCVarMap0, SimplifyInfo0) },
 
 	{ simplify__process_goal(Goal0, Goal, SimplifyInfo0, SimplifyInfo) },
 
@@ -171,9 +172,13 @@ pd_util__simplify_goal(Simplifications, Goal0, Goal) -->
 	{ simplify_info_get_varset(SimplifyInfo, VarSet) },
 	{ simplify_info_get_var_types(SimplifyInfo, VarTypes) },
 	{ simplify_info_get_cost_delta(SimplifyInfo, CostDelta) },
+	{ simplify_info_get_type_info_varmap(SimplifyInfo, TVarMap) },
+	{ simplify_info_get_typeclass_info_varmap(SimplifyInfo, TCVarMap) },
 	pd_info_get_proc_info(ProcInfo1),
 	{ proc_info_set_varset(ProcInfo1, VarSet, ProcInfo2) },
-	{ proc_info_set_vartypes(ProcInfo2, VarTypes, ProcInfo) },
+	{ proc_info_set_vartypes(ProcInfo2, VarTypes, ProcInfo3) },
+	{ proc_info_set_typeinfo_varmap(ProcInfo3, TVarMap, ProcInfo4) },
+	{ proc_info_set_typeclass_info_varmap(ProcInfo4, TCVarMap, ProcInfo) },
 	pd_info_set_proc_info(ProcInfo),
 	pd_info_incr_cost_delta(CostDelta),
 	pd_info_set_module_info(ModuleInfo).

@@ -1,4 +1,16 @@
-README.debian
+changelog
 control
+copyright
+CVS
 dirs
+postinst
+postrm
+README.debian
 rules
+.
+..
+.#control.1.1
+.#dirs.1.1
+.nocopyright
+.#README.debian.1.1.4.1
+.#rules.1.1.2.1.2.1

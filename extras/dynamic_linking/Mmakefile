@@ -1,10 +1,70 @@
+#-----------------------------------------------------------------------------#
+# Copyright (C) 2000-2001 The University of Melbourne.
+# This file may only be copied under the terms of the GNU Library General
+# Public License - see the file COPYING.LIB in the Mercury distribution.
+#-----------------------------------------------------------------------------#
+
+-include ../Mmake.params
+
+# Use shared libraries, since they're needed for dynamic linking
+MGNUCFLAGS = --pic-reg
+MLFLAGS = --shared
+
+# Link in the `-ldl' library (this may not be needed on some systems)
+MLLIBS = -ldl
+
 # enable C-level debugging
 CFLAGS = -g
-MLFLAGS = --no-strip
+MLFLAGS += --no-strip
 
 main_target: libdl
-depend: dl.depend dl_test.depend hello.depend
+depend: dl.depend dl_test.depend dl_test2.depend hello.depend
 
-check: dl_test libhello.so
+#-----------------------------------------------------------------------------#
+#
+# Some simple regression tests
+#
+
+.PHONY: check
+check:	dl_test.res
+
+# The dl_test2 test case only works in non-hl* grades.
+ifeq "$(findstring hl,$(GRADE))" ""
+check: dl_test2.res
+endif
+
+dl_test.res: dl_test dl_test.exp libhello.so
 	./dl_test > dl_test.out
 	diff -c dl_test.out dl_test.exp
+
+dl_test2.res: dl_test2 dl_test2.exp libhello.so
+	./dl_test2 > dl_test2.out
+	diff -c dl_test2.out dl_test2.exp
+
+#-----------------------------------------------------------------------------#
+#
+# We want copies of name_mangling.m and dl.m in both
+# extras/dynamic_linking and in mercury/browser.
+# The master copy in our CVS repository is in mercury/browser.
+# The copy here is automatically generated from that copy.
+#
+
+dl.depend dl_test.depend dl_test2.depend: sources
+
+.PHONY: sources
+sources: dl.m name_mangle.m
+
+BROWSER_DIR = $(shell \
+	if [ -d ../../browser ]; then \
+		echo ../../browser; \
+	else \
+		echo ../../../mercury/browser; \
+	fi)
+
+name_mangle.m: $(BROWSER_DIR)/name_mangle.m
+	sed 's/mdb__//g' $< > $@
+
+dl.m: $(BROWSER_DIR)/dl.m
+	sed 's/mdb__//g' $< > $@
+
+#-----------------------------------------------------------------------------#

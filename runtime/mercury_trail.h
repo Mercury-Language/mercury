@@ -112,9 +112,9 @@
 		MR_TrailEntry *old_trail_ptr =  		\
 			(MR_TrailEntry *) (old);		\
 		if (MR_trail_ptr != old_trail_ptr) {		\
-			/* save_transient_registers(); */	\
+			/* MR_save_transient_registers(); */	\
 			MR_untrail_to(old_trail_ptr, (kind));	\
-			/* restore_transient_registers(); */	\
+			/* MR_restore_transient_registers(); */	\
 		}						\
 	} while(0)
 
@@ -244,7 +244,7 @@ typedef struct {
   */
   #define MR_get_trail_entry_untrail_func(entry)			\
 	((MR_untrail_func_type *)					\
-	    MR_body((MR_Word) (entry)->MR_union.MR_func.MR_untrail_func,	\
+	    MR_body((MR_Word) (entry)->MR_union.MR_func.MR_untrail_func,\
 		     MR_func_trail_tag))
 
   /*
@@ -254,7 +254,7 @@ typedef struct {
   #define MR_store_value_trail_entry(entry, address, value)		\
 	  do {								\
 		(entry)->MR_union.MR_val.MR_address =			\
-			(MR_Word *) (MR_Word)					\
+			(MR_Word *) (MR_Word)				\
 			  MR_mkword(MR_value_trail_tag, (address));	\
 		(entry)->MR_union.MR_val.MR_value = (value);		\
 	  } while (0)
@@ -266,7 +266,7 @@ typedef struct {
   #define MR_store_function_trail_entry(entry, func, datum)		\
 	  do {								\
 		(entry)->MR_union.MR_func.MR_untrail_func =		\
-			(MR_untrail_func_type *) (MR_Word)			\
+			(MR_untrail_func_type *) (MR_Word)		\
 			  MR_mkword(MR_func_trail_tag, (func));		\
 		(entry)->MR_union.MR_func.MR_datum = (datum);		\
 	  } while (0)
@@ -317,10 +317,13 @@ typedef struct {
 /*---------------------------------------------------------------------------*/
 
 /* The Mercury trail */
-extern MemoryZone *MR_trail_zone;
+extern MR_MemoryZone *MR_trail_zone;
 
 /* Pointer to the current top of the Mercury trail */
-/* N.B. Use `MR_trail_ptr', defined in mercury_regorder.h, not `MR_trail_ptr_var'. */
+/*
+** N.B. Use `MR_trail_ptr', defined in mercury_regorder.h,
+** not `MR_trail_ptr_var'.
+*/
 extern MR_TrailEntry *MR_trail_ptr_var;
 
 /*

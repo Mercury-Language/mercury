@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000 The University of Melbourne.
+% Copyright (C) 2000-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -34,12 +34,16 @@
 :- func trace_level_needs_fixed_slots(trace_level) = bool.
 :- func trace_level_needs_from_full_slot(trace_level) = bool.
 :- func trace_level_needs_decl_debug_slots(trace_level) = bool.
+:- func trace_level_allows_delay_death(trace_level) = bool.
 :- func trace_needs_return_info(trace_level, trace_suppress_items) = bool.
 :- func trace_needs_all_var_names(trace_level, trace_suppress_items) = bool.
 :- func trace_needs_proc_body_reps(trace_level, trace_suppress_items) = bool.
 :- func trace_needs_port(trace_level, trace_suppress_items, trace_port) = bool.
 
 :- func trace_level_none = trace_level.
+
+	% This is used to represent the trace level in the module layout.
+:- func trace_level_rep(trace_level) = string.
 
 :- implementation.
 
@@ -94,6 +98,12 @@ trace_level_needs_decl_debug_slots(shallow) = no.
 trace_level_needs_decl_debug_slots(deep) = no.
 trace_level_needs_decl_debug_slots(decl) = yes.
 trace_level_needs_decl_debug_slots(decl_rep) = yes.
+
+trace_level_allows_delay_death(none) = no.
+trace_level_allows_delay_death(shallow) = no.
+trace_level_allows_delay_death(deep) = yes.
+trace_level_allows_delay_death(decl) = yes.
+trace_level_allows_delay_death(decl_rep) = yes.
 
 trace_needs_return_info(TraceLevel, TraceSuppressItems) = Need :-
 	(
@@ -226,6 +236,14 @@ convert_item_name(String, Names) :-
 :- pred wrap_port(trace_port::in, trace_suppress_item::out) is det.
 
 wrap_port(Port, port(Port)).
+
+	% If this is modified, then the corresponding code in
+	% runtime/mercury_stack_layout.h needs to be updated.
+trace_level_rep(none)	  = "MR_TRACE_LEVEL_NONE".
+trace_level_rep(shallow)  = "MR_TRACE_LEVEL_SHALLOW".
+trace_level_rep(deep)	  = "MR_TRACE_LEVEL_DEEP".
+trace_level_rep(decl)	  = "MR_TRACE_LEVEL_DECL".
+trace_level_rep(decl_rep) = "MR_TRACE_LEVEL_DECL_REP".
 
 %-----------------------------------------------------------------------------%
 

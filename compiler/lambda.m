@@ -82,10 +82,17 @@
 
 :- implementation.
 
-:- import_module hlds_goal, prog_data, quantification.
-:- import_module hlds_data, globals, options, type_util.
-:- import_module goal_util, prog_util, mode_util, inst_match, llds, arg_info.
+:- import_module code_model. % XXX for some back-end dependent optimizations
 
+% Parse tree modules
+:- import_module prog_data, prog_util.
+% HLDS modules
+:- import_module hlds_goal, hlds_data, quantification.
+:- import_module type_util, goal_util, mode_util, inst_match.
+% Misc
+:- import_module globals, options.
+
+% Standard library modules
 :- import_module list, map, set.
 :- import_module term, varset, bool, string, std_util, require.
 
@@ -269,8 +276,8 @@ lambda__process_goal_2(generic_call(A,B,C,D), GoalInfo,
 lambda__process_goal_2(call(A,B,C,D,E,F), GoalInfo,
 			call(A,B,C,D,E,F) - GoalInfo) -->
 	[].
-lambda__process_goal_2(pragma_foreign_code(A,B,C,D,E,F,G,H), GoalInfo,
-			pragma_foreign_code(A,B,C,D,E,F,G,H) - GoalInfo) -->
+lambda__process_goal_2(pragma_foreign_code(A,B,C,D,E,F,G), GoalInfo,
+			pragma_foreign_code(A,B,C,D,E,F,G) - GoalInfo) -->
 	[].
 lambda__process_goal_2(bi_implication(_, _), _, _) -->
 	% these should have been expanded out by now

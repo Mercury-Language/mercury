@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2000 The University of Melbourne.
+% Copyright (C) 1999-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -16,9 +16,9 @@
 :- interface.
 
 :- import_module prog_data.
-:- import_module hlds_pred, hlds_data, hlds_goal.
+:- import_module hlds_module, hlds_pred, hlds_data, hlds_goal.
+:- import_module code_model.
 :- import_module mlds, ml_code_util.
-:- import_module llds. % XXX for `code_model'
 
 %-----------------------------------------------------------------------------%
 
@@ -47,6 +47,12 @@
 		mlds__rval, ml_gen_info, ml_gen_info).
 :- mode ml_gen_tag_test(in, in, out, out, out, in, out) is det.
 
+	% ml_gen_secondary_tag_rval(PrimaryTag, VarType, ModuleInfo, VarRval):
+	%	Return the rval for the secondary tag field of VarRval,
+	%	assuming that VarRval has the specified VarType and PrimaryTag.
+:- func ml_gen_secondary_tag_rval(tag_bits, prog_type, module_info, mlds__rval)
+	= mlds__rval.
+
 	%
 	% ml_gen_closure_wrapper(PredId, ProcId, Offset, NumClosureArgs,
 	%	Context, WrapperFuncRval, WrapperFuncType):
@@ -74,8 +80,9 @@
 
 :- implementation.
 
-:- import_module hlds_module, hlds_out, builtin_ops.
-:- import_module ml_call_gen, ml_type_gen, prog_util, type_util, mode_util.
+:- import_module hlds_out, builtin_ops.
+:- import_module ml_code_gen, ml_call_gen, ml_type_gen.
+:- import_module prog_util, type_util, mode_util.
 :- import_module rtti, error_util.
 :- import_module code_util. % XXX needed for `code_util__cons_id_to_tag'.
 :- import_module globals, options.
@@ -139,14 +146,12 @@ ml_gen_unification(deconstruct(Var, ConsId, Args, ArgModes, CanFail, CanCGC),
 		CodeModel, Context, MLDS_Decls, MLDS_Statements) -->
 	(
 		{ CanFail = can_fail },
-		{ require(unify(CodeModel, model_semi),
-			"ml_code_gen: can_fail deconstruct not semidet") },
+		{ ExpectedCodeModel = model_semi },
 		ml_gen_semi_deconstruct(Var, ConsId, Args, ArgModes, Context,
 			MLDS_Decls, MLDS_Unif_Statements)
 	;
 		{ CanFail = cannot_fail },
-		{ require(unify(CodeModel, model_det),
-			"ml_code_gen: cannot_fail deconstruct not det") },
+		{ ExpectedCodeModel = model_det },
 		ml_gen_det_deconstruct(Var, ConsId, Args, ArgModes, Context,
 			MLDS_Decls, MLDS_Unif_Statements)
 	),
@@ -165,8 +170,17 @@ ml_gen_unification(deconstruct(Var, ConsId, Args, ArgModes, CanFail, CanCGC),
 		{ CanCGC = no },
 		{ MLDS_CGC_Statements = [] }
 	),
-	{ MLDS_Statements = MLDS_Unif_Statements `list__append`
-			MLDS_CGC_Statements }.
+	{ MLDS_Statements0 = MLDS_Unif_Statements `list__append`
+			MLDS_CGC_Statements },
+	%
+	% We used to require that CodeModel = ExpectedCodeModel.
+	% But the determinism field in the goal_info is allowed to
+	% be a conservative approximation, so we need to handle
+	% the case were CodeModel is less precise than
+	% ExpectedCodeModel.
+	%
+	ml_gen_wrap_goal(CodeModel, ExpectedCodeModel, Context,
+		MLDS_Statements0, MLDS_Statements).
 
 ml_gen_unification(complicated_unify(_, _, _), _, _, [], []) -->
 	% simplify.m should convert these into procedure calls
@@ -1154,11 +1168,7 @@ ml_gen_static_const_arg_list([], [_|_], _) -->
 	{ error("ml_gen_static_const_arg_list: length mismatch") }.
 
 	% Generate the name of the local static constant
-	% for a given variable.  To ensure that the names
-	% are unique, we qualify them with the pred_id and
-	% proc_id numbers, as well as a sequence number.
-	% This is needed to allow ml_elim_nested.m to hoist
-	% such constants out to top level.
+	% for a given variable. 
 	%
 :- pred ml_gen_static_const_name(prog_var, mlds__var_name,
 		ml_gen_info, ml_gen_info).
@@ -1166,29 +1176,20 @@ ml_gen_static_const_arg_list([], [_|_], _) -->
 ml_gen_static_const_name(Var, ConstName) -->
 	ml_gen_info_new_const(SequenceNum),
 	ml_gen_info_set_const_num(Var, SequenceNum),
-	ml_format_static_const_name(Var, SequenceNum, ConstName).
+	=(MLDSGenInfo),
+	{ ml_gen_info_get_varset(MLDSGenInfo, VarSet) },
+	{ VarName = ml_gen_var_name(VarSet, Var) },
+	ml_format_static_const_name(VarName, SequenceNum, ConstName).
 
 :- pred ml_lookup_static_const_name(prog_var, mlds__var_name,
 		ml_gen_info, ml_gen_info).
 :- mode ml_lookup_static_const_name(in, out, in, out) is det.
 ml_lookup_static_const_name(Var, ConstName) -->
 	ml_gen_info_lookup_const_num(Var, SequenceNum),
-	ml_format_static_const_name(Var, SequenceNum, ConstName).
-
-:- pred ml_format_static_const_name(prog_var, const_seq, mlds__var_name,
-		ml_gen_info, ml_gen_info).
-:- mode ml_format_static_const_name(in, in, out, in, out) is det.
-
-ml_format_static_const_name(Var, SequenceNum, ConstName) -->
 	=(MLDSGenInfo),
-	{ ml_gen_info_get_pred_id(MLDSGenInfo, PredId) },
-	{ ml_gen_info_get_proc_id(MLDSGenInfo, ProcId) },
-	{ pred_id_to_int(PredId, PredIdNum) },
-	{ proc_id_to_int(ProcId, ProcIdNum) },
 	{ ml_gen_info_get_varset(MLDSGenInfo, VarSet) },
 	{ VarName = ml_gen_var_name(VarSet, Var) },
-	{ string__format("const_%d_%d_%d_%s", [i(PredIdNum), i(ProcIdNum),
-		i(SequenceNum), s(VarName)], ConstName) }.
+	ml_format_static_const_name(VarName, SequenceNum, ConstName).
 
 	% Generate an rval containing the address of the local static constant
 	% for a given variable.
@@ -1200,19 +1201,6 @@ ml_gen_static_const_addr(Var, ConstAddrRval) -->
 	ml_lookup_static_const_name(Var, ConstName),
 	ml_qualify_var(ConstName, ConstLval),
 	{ ConstAddrRval = mem_addr(ConstLval) }.
-
-	% Generate a definition of a local static constant,
-	% given the constant's name, type, and initializer.
-	%
-:- func ml_gen_static_const_defn(mlds__var_name, mlds__type, mlds__initializer,
-		prog_context) = mlds__defn.
-ml_gen_static_const_defn(ConstName, ConstType, Initializer, Context) =
-		MLDS_Defn :-
-	Name = data(var(ConstName)),
-	Defn = data(ConstType, Initializer),
-	DeclFlags = ml_static_const_decl_flags,
-	MLDS_Context = mlds__make_context(Context),
-	MLDS_Defn = mlds__defn(Name, MLDS_Context, DeclFlags, Defn).
 
 :- pred ml_cons_name(cons_id, ctor_name, ml_gen_info, ml_gen_info).
 :- mode ml_cons_name(in, out, in, out) is det.
@@ -1511,18 +1499,23 @@ ml_gen_unify_arg(ConsId, Arg, Mode, ArgType, Field, VarType, VarLval,
 	;
 		%
 		% With the high-level data representation,
-		% we always used named fields.
+		% we always used named fields, except for
+		% tuple types.
 		% 
 		HighLevelData = yes,
-		FieldName = ml_gen_field_name(MaybeFieldName, ArgNum),
-		(
-			ConsId = cons(ConsName, ConsArity)
-		->
-			unqualify_name(ConsName, UnqualConsName),
-			FieldId = ml_gen_field_id(VarType,
-				UnqualConsName, ConsArity, FieldName)
+		( type_is_tuple(VarType, _) ->
+			FieldId = offset(const(int_const(Offset)))
 		;
-			error("ml_gen_unify_args: invalid cons_id")
+			FieldName = ml_gen_field_name(MaybeFieldName, ArgNum),
+			(
+				ConsId = cons(ConsName, ConsArity)
+			->
+				unqualify_name(ConsName, UnqualConsName),
+				FieldId = ml_gen_field_id(VarType,
+					UnqualConsName, ConsArity, FieldName)
+			;
+				error("ml_gen_unify_args: invalid cons_id")
+			)
 		)
 	},
 	{
@@ -1734,6 +1727,34 @@ ml_gen_tag_test_rval(unshared_tag(UnsharedTag), _, _, Rval) =
 		  unop(std_unop(mktag), const(int_const(UnsharedTag)))).
 ml_gen_tag_test_rval(shared_remote_tag(PrimaryTagVal, SecondaryTagVal),
 		VarType, ModuleInfo, Rval) = TagTest :-
+	SecondaryTagField = ml_gen_secondary_tag_rval(PrimaryTagVal,
+		VarType, ModuleInfo, Rval),
+	SecondaryTagTest = binop(eq, SecondaryTagField,
+		const(int_const(SecondaryTagVal))),
+	module_info_globals(ModuleInfo, Globals),
+	globals__lookup_int_option(Globals, num_tag_bits, NumTagBits),
+	( NumTagBits = 0 ->
+		% no need to test the primary tag
+		TagTest = SecondaryTagTest
+	;
+		PrimaryTagTest = binop(eq,
+			unop(std_unop(tag), Rval),
+			unop(std_unop(mktag),
+				const(int_const(PrimaryTagVal)))), 
+		TagTest = binop(and, PrimaryTagTest, SecondaryTagTest)
+	).
+ml_gen_tag_test_rval(shared_local_tag(Bits, Num), VarType, ModuleInfo, Rval) =
+		TestRval :-
+	MLDS_VarType = mercury_type_to_mlds_type(ModuleInfo, VarType),
+	TestRval = binop(eq, Rval,
+		  unop(cast(MLDS_VarType), mkword(Bits,
+		  	unop(std_unop(mkbody), const(int_const(Num)))))).
+
+	% ml_gen_secondary_tag_rval(PrimaryTag, VarType, ModuleInfo, VarRval):
+	%	Return the rval for the secondary tag field of VarRval,
+	%	assuming that VarRval has the specified VarType and PrimaryTag.
+ml_gen_secondary_tag_rval(PrimaryTagVal, VarType, ModuleInfo, Rval) =
+		SecondaryTagField :-
 	MLDS_VarType = mercury_type_to_mlds_type(ModuleInfo, VarType),
 	module_info_globals(ModuleInfo, Globals),
 	globals__lookup_bool_option(Globals, highlevel_data, HighLevelData),
@@ -1752,26 +1773,7 @@ ml_gen_tag_test_rval(shared_remote_tag(PrimaryTagVal, SecondaryTagVal),
 			"data_tag"),
 		SecondaryTagField = lval(field(yes(PrimaryTagVal), Rval,
 			FieldId, mlds__native_int_type, MLDS_VarType))
-	),
-	SecondaryTagTest = binop(eq, SecondaryTagField,
-		const(int_const(SecondaryTagVal))),
-	globals__lookup_int_option(Globals, num_tag_bits, NumTagBits),
-	( NumTagBits = 0 ->
-		% no need to test the primary tag
-		TagTest = SecondaryTagTest
-	;
-		PrimaryTagTest = binop(eq,
-			unop(std_unop(tag), Rval),
-			unop(std_unop(mktag),
-				const(int_const(PrimaryTagVal)))), 
-		TagTest = binop(and, PrimaryTagTest, SecondaryTagTest)
 	).
-ml_gen_tag_test_rval(shared_local_tag(Bits, Num), VarType, ModuleInfo, Rval) =
-		TestRval :-
-	MLDS_VarType = mercury_type_to_mlds_type(ModuleInfo, VarType),
-	TestRval = binop(eq, Rval,
-		  unop(cast(MLDS_VarType), mkword(Bits,
-		  	unop(std_unop(mkbody), const(int_const(Num)))))).
 
 :- func ml_gen_field_id(prog_type, mlds__class_name, arity, mlds__field_name) =
 	mlds__field_id.

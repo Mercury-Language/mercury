@@ -548,8 +548,8 @@ equal_goals(if_then_else(VarsA, IfA, ThenA, ElseA, _) - _,
 	equal_goals(IfA, IfB, Subst1, Subst2),
 	equal_goals(ThenA, ThenB, Subst2, Subst3),
 	equal_goals(ElseA, ElseB, Subst3, Subst).
-equal_goals(pragma_foreign_code(Lang, Attribs, PredId, _, VarsA, _, _, _) - _,
-		pragma_foreign_code(Lang, Attribs, PredId, _, VarsB, _, _, _) -
+equal_goals(pragma_foreign_code(Attribs, PredId, _, VarsA, _, _, _) - _,
+		pragma_foreign_code(Attribs, PredId, _, VarsB, _, _, _) -
 			_, Subst0, Subst) :-
 	equal_vars(VarsA, VarsB, Subst0, Subst).
 equal_goals(par_conj(GoalAs, _) - _, par_conj(GoalBs, _) - _, Subst0, Subst) :-
@@ -652,8 +652,8 @@ update_pred_info(AssertId, PredId, Module0, Module) :-
 assertion__normalise_goal(call(A,B,C,D,E,F) - GI, call(A,B,C,D,E,F) - GI).
 assertion__normalise_goal(generic_call(A,B,C,D) - GI, generic_call(A,B,C,D)-GI).
 assertion__normalise_goal(unify(A,B,C,D,E) - GI, unify(A,B,C,D,E) - GI).
-assertion__normalise_goal(pragma_foreign_code(A,B,C,D,E,F,G,H) - GI,
-		pragma_foreign_code(A,B,C,D,E,F,G,H) - GI).
+assertion__normalise_goal(pragma_foreign_code(A,B,C,D,E,F,G) - GI,
+		pragma_foreign_code(A,B,C,D,E,F,G) - GI).
 assertion__normalise_goal(conj(Goals0) - GI, conj(Goals) - GI) :-
 	assertion__normalise_conj(Goals0, Goals).
 assertion__normalise_goal(switch(A,B,Case0s,D) - GI, switch(A,B,Cases,D)-GI) :-
@@ -728,7 +728,7 @@ assertion__in_interface_check(unify(Var,RHS,_,_,_) - GoalInfo,
 	{ goal_info_get_context(GoalInfo, Context) },
 	assertion__in_interface_check_unify_rhs(RHS, Var, Context,
 			PredInfo, Module0, Module).
-assertion__in_interface_check(pragma_foreign_code(_,_,PredId,_,_,_,_,_) - 
+assertion__in_interface_check(pragma_foreign_code(_,PredId,_,_,_,_,_) - 
 		GoalInfo, _PredInfo, Module0, Module) -->
 	{ module_info_pred_info(Module0, PredId, PragmaPredInfo) },
 	{ pred_info_import_status(PragmaPredInfo, ImportStatus) },
@@ -830,8 +830,10 @@ is_defined_in_implementation_section(abstract_exported, yes).
 is_defined_in_implementation_section(exported_to_submodules, yes).
 is_defined_in_implementation_section(local, yes).
 is_defined_in_implementation_section(imported(implementation), yes).
+is_defined_in_implementation_section(external(implementation), yes).
 
 is_defined_in_implementation_section(imported(interface), no).
+is_defined_in_implementation_section(external(interface), no).
 is_defined_in_implementation_section(opt_imported, no).
 is_defined_in_implementation_section(abstract_imported, no).
 is_defined_in_implementation_section(pseudo_imported, no).

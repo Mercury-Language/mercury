@@ -18,7 +18,7 @@
 
 :- interface.
 
-:- import_module hlds_goal, llds, code_info.
+:- import_module hlds_goal, code_model, llds, code_info.
 
 :- pred ite_gen__generate_ite(code_model::in, hlds_goal::in, hlds_goal::in,
 	hlds_goal::in, store_map::in, code_tree::out,

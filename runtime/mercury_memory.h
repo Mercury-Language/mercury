@@ -29,25 +29,20 @@
   #include "gc.h"		/* for GC_FREE */
 #endif
 
-#ifdef	MR_LOWLEVEL_DEBUG
-extern	MemoryZone	*dumpstack_zone;
-extern	int		dumpindex;
-#endif
-
 /*
-** round_up(amount, align) returns `amount' rounded up to the nearest
+** MR_round_up(amount, align) returns `amount' rounded up to the nearest
 ** alignment boundary.  `align' must be a power of 2.
 */
 
-#define round_up(amount, align)	((((amount) - 1) | ((align) - 1)) + 1)
+#define MR_round_up(amount, align)	((((amount) - 1) | ((align) - 1)) + 1)
 
 /* 
 ** For these functions, see the comments in mercury_memory.c and 
 ** mercury_engine.c 
 */
 
-extern	void	init_memory(void);
-extern	void	init_heap(void);
+extern	void	MR_init_memory(void);
+extern	void	MR_init_heap(void);
 
 #ifdef CONSERVATIVE_GC
   extern void	MR_init_conservative_GC(void);
@@ -81,8 +76,9 @@ extern	void	init_heap(void);
 **	deallocates the memory.
 */
 
-void	*MR_malloc(size_t n);
-void	*MR_realloc(void *old, size_t n);
+extern	void	*MR_malloc(size_t n);
+extern	void	*MR_realloc(void *old, size_t n);
+
 #define MR_free(ptr) free(ptr)
 
 #define MR_NEW(type) \
@@ -170,12 +166,12 @@ char	*MR_copy_string(const char *s);
 /*---------------------------------------------------------------------------*/
 
 /*
-** `unit' is the size of the minimum unit of memory we allocate (in bytes).
-** `page_size' is the size of a single page of memory.
+** `MR_unit' is the size of the minimum unit of memory we allocate (in bytes).
+** `MR_page_size' is the size of a single page of memory.
 */
 
-extern	size_t          unit;
-extern	size_t          page_size;
+extern	size_t          MR_unit;
+extern	size_t          MR_page_size;
 
 /*---------------------------------------------------------------------------*/
 

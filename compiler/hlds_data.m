@@ -13,7 +13,7 @@
 
 :- interface.
 
-:- import_module hlds_pred, llds, prog_data, (inst), term.
+:- import_module hlds_pred, prog_data, (inst), term.
 :- import_module bool, list, map, std_util.
 
 %-----------------------------------------------------------------------------%
@@ -289,13 +289,13 @@ make_cons_id_from_qualified_sym_name(SymName, Args, cons(SymName, Arity)) :-
 
 :- type cons_tag
 	--->	string_constant(string)
-			% Strings are represented using the string_const()
+			% Strings are represented using the MR_string_const()
 			% macro; in the current implementation, Mercury
 			% strings are represented just as C null-terminated
 			% strings.
 	;	float_constant(float)
-			% Floats are represented using the float_to_word(),
-			% word_to_float(), and float_const() macros.
+			% Floats are represented using the MR_float_to_word(),
+			% MR_word_to_float(), and MR_float_const() macros.
 			% The default implementation of these is to
 			% use boxed double-precision floats.
 	;	int_constant(int)
@@ -746,6 +746,7 @@ mode_table_optimize(mode_table(ModeDefns0, ModeIds0),
 
 %
 % Types and procedures for decomposing and analysing determinism.
+% See also the `code_model' type in code_model.m.
 % The `determinism' type itself is defined in prog_data.m.
 %
 
@@ -767,10 +768,6 @@ mode_table_optimize(mode_table(ModeDefns0, ModeIds0),
 :- mode determinism_components(in, out, out) is det.
 :- mode determinism_components(out, in, in) is det.
 
-:- pred determinism_to_code_model(determinism, code_model).
-:- mode determinism_to_code_model(in, out) is det.
-:- mode determinism_to_code_model(out, in) is multidet.
-
 :- implementation.
 
 determinism_components(det,         cannot_fail, at_most_one).
@@ -781,15 +778,6 @@ determinism_components(cc_multidet, cannot_fail, at_most_many_cc).
 determinism_components(cc_nondet,   can_fail,    at_most_many_cc).
 determinism_components(erroneous,   cannot_fail, at_most_zero).
 determinism_components(failure,     can_fail,    at_most_zero).
-
-determinism_to_code_model(det,         model_det).
-determinism_to_code_model(semidet,     model_semi).
-determinism_to_code_model(nondet,      model_non).
-determinism_to_code_model(multidet,    model_non).
-determinism_to_code_model(cc_nondet,   model_semi).
-determinism_to_code_model(cc_multidet, model_det).
-determinism_to_code_model(erroneous,   model_det).
-determinism_to_code_model(failure,     model_semi).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -831,6 +819,7 @@ determinism_to_code_model(failure,     model_semi).
 	% Information about a single `instance' declaration
 :- type hlds_instance_defn 
 	--->	hlds_instance_defn(
+			module_name,		% module of the instance decl
 			import_status,		% import status of the instance
 						% declaration
 			prog_context,		% context of declaration

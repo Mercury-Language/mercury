@@ -1,5 +1,3 @@
-CVS
-README
 alias_sync
 appears
 assemble
@@ -12,14 +10,15 @@ cleanint
 ctor_rep_stats
 cur_param
 cvdr
+CVS
 cvspatch
 divide
 dotime
 expand_params
 gdbrun
 generate_index_html
-hal_sync
 half
+hal_sync
 linear
 list.kryten
 list.mercury
@@ -31,6 +30,7 @@ makebatch
 next_param
 not
 optstages
+README
 restorerevisions
 run_all_tests_from_cron
 speed_summary
@@ -38,3 +38,9 @@ speedtest
 test_mercury
 type_ctor_stats
 typescript
+.
+..
+.#bootcheck.1.59.2.4.2.3
+.nocopyright
+.#run_all_tests_from_cron.1.12.2.2.2.4
+.#test_mercury.1.75.2.5.2.4

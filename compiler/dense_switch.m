@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1999 The University of Melbourne.
+% Copyright (C) 1994-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -16,8 +16,9 @@
 
 :- interface.
 
-:- import_module llds, prog_data, switch_gen, code_info, type_util.
-:- import_module hlds_data, hlds_goal.
+:- import_module prog_data, hlds_data, hlds_goal, code_model.
+:- import_module switch_util, type_util.
+:- import_module llds, code_info.
 
 	% Should this switch be implemented as a dense jump table?
 	% If so, we return the starting and ending values for the table,
@@ -79,7 +80,8 @@ dense_switch__is_dense_switch(CaseVar, TaggedCases, CanFail0, ReqDensity,
 		{ classify_type(Type, ModuleInfo, TypeCategory) },
 		(
 			dense_switch__type_range(TypeCategory, Type, TypeRange),
-			{ dense_switch__calc_density(NumCases, TypeRange, DetDensity) },
+			{ dense_switch__calc_density(NumCases, TypeRange,
+				DetDensity) },
 			{ DetDensity > ReqDensity }
 		->
 			{ CanFail = cannot_fail },
@@ -111,30 +113,11 @@ dense_switch__calc_density(NumCases, Range, Density) :-
 	% Fail if the type isn't the sort of type that has a range
 	% or if the type's range is to big to switch on (e.g. int).
 
-dense_switch__type_range(char_type, _, CharRange) -->
-	% XXX the following code uses the host's character size,
-	% not the target's, so it won't work if cross-compiling
-	% to a machine with a different character size.
-	% Note also that the code above in dense_switch.m and the code
-	% in lookup_switch.m assume that char__min_char_value is 0.
-	{ char__max_char_value(MaxChar) },
-	{ char__min_char_value(MinChar) },
-	{ CharRange is MaxChar - MinChar + 1 }.
-dense_switch__type_range(enum_type, Type, TypeRange) -->
-	{ type_to_type_id(Type, TypeId0, _) ->
-		TypeId = TypeId0
-	;
-		error("dense_switch__type_range: invalid enum type?")
-	},
+dense_switch__type_range(TypeCategory, Type, Range) -->
 	code_info__get_module_info(ModuleInfo),
-	{ module_info_types(ModuleInfo, TypeTable) },
-	{ map__lookup(TypeTable, TypeId, TypeDefn) },
-	{ hlds_data__get_type_defn_body(TypeDefn, TypeBody) },
-	{ TypeBody = du_type(_, ConsTable, _, _) ->
-		map__count(ConsTable, TypeRange)
-	;
-		error("dense_switch__type_range: enum type is not d.u. type?")
-	}.
+	{ switch_util__type_range(TypeCategory, Type, ModuleInfo,
+		Min, Max) },
+	{ Range = Max - Min + 1 }.
 
 %---------------------------------------------------------------------------%
 
@@ -156,7 +139,7 @@ dense_switch__generate(Cases, StartVal, EndVal, Var, CodeModel, CanFail,
 		{ CanFail = can_fail },
 		{ Difference is EndVal - StartVal },
 		code_info__fail_if_rval_is_false(
-			binop(<=, unop(cast_to_unsigned, Index),
+			binop(unsigned_le, Index,
 				const(int_const(Difference))), RangeCheck)
 	;
 		{ CanFail = cannot_fail },

@@ -86,8 +86,11 @@
 :- pred det_info_set_module_info(det_info, module_info, det_info).
 :- mode det_info_set_module_info(in, in, out) is det.
 
-:- func vartypes(det_info) = vartypes.
-:- func 'vartypes:='(det_info, vartypes) = det_info.
+:- pred det_info_get_vartypes(det_info, vartypes).
+:- mode det_info_get_vartypes(in, out) is det.
+
+:- pred det_info_set_vartypes(det_info, vartypes, det_info).
+:- mode det_info_set_vartypes(in, in, out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -185,6 +188,9 @@ det_info_get_proc_id(DetInfo, DetInfo^proc_id).
 det_info_get_reorder_conj(DetInfo, DetInfo^reorder_conj).
 det_info_get_reorder_disj(DetInfo, DetInfo^reorder_disj).
 det_info_get_fully_strict(DetInfo, DetInfo^fully_strict).
+det_info_get_vartypes(DetInfo, DetInfo^vartypes).
 
 det_info_set_module_info(DetInfo, ModuleInfo,
 		DetInfo^module_info := ModuleInfo).
+det_info_set_vartypes(DetInfo, VarTypes,
+		DetInfo^vartypes := VarTypes).

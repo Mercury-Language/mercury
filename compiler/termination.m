@@ -389,7 +389,7 @@ check_preds([PredId | PredIds] , Module0, Module, State0, State) :-
 	pred_info_context(PredInfo0, Context),
 	pred_info_procedures(PredInfo0, ProcTable0),
 	pred_info_get_markers(PredInfo0, Markers),
-	map__keys(ProcTable0, ProcIds),
+	pred_info_procids(PredInfo0, ProcIds),
 	( 
 		% It is possible for compiler generated/mercury builtin
 		% predicates to be imported or locally defined, so they

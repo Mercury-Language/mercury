@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-1998 The University of Melbourne.
+% Copyright (C) 1997-1998,2000-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1627,11 +1627,11 @@ command_wrapper(Closure, Interp, _Args, tcl_ok, "") -->
 	call(Closure, Interp).
 
 :- pragma c_header_code("
-	extern Integer	tk_direct_thingy_counter;
+	extern MR_Integer	tk_direct_thingy_counter;
 ").
 
 :- pragma c_code("
-	Integer	tk_direct_thingy_counter = 0;
+	MR_Integer	tk_direct_thingy_counter = 0;
 ").
 
 :- pred get_thingy_counter(int::out, io__state::di, io__state::uo) is det.

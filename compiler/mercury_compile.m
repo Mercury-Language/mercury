@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2000 The University of Melbourne.
+% Copyright (C) 1994-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -43,7 +43,7 @@
 	% the LLDS back-end
 :- import_module saved_vars, liveness.
 :- import_module follow_code, live_vars, arg_info, store_alloc, goal_path.
-:- import_module code_gen, optimize, export.
+:- import_module code_gen, optimize, foreign, export.
 :- import_module base_typeclass_info.
 :- import_module llds_common, transform_llds, llds_out.
 :- import_module continuation_info, stack_layout.
@@ -55,6 +55,7 @@
 :- import_module bytecode_gen, bytecode.
 
 	% the MLDS back-end
+:- import_module add_trail_ops.			% HLDS -> HLDS
 :- import_module mark_static_terms.		% HLDS -> HLDS
 :- import_module mlds.				% MLDS data structure
 :- import_module ml_code_gen, rtti_to_mlds.	% HLDS/RTTI -> MLDS
@@ -62,6 +63,7 @@
 :- import_module ml_optimize.			% MLDS -> MLDS
 :- import_module mlds_to_c.			% MLDS -> C
 :- import_module mlds_to_ilasm.			% MLDS -> IL assembler
+:- import_module maybe_mlds_to_gcc.		% MLDS -> GCC back-end
 
 
 	% miscellaneous compiler modules
@@ -78,8 +80,30 @@
 %-----------------------------------------------------------------------------%
 
 main -->
+	gc_init,
 	handle_options(MaybeError, Args, Link),
 	main_2(MaybeError, Args, Link).
+
+%-----------------------------------------------------------------------------%
+
+:- pred gc_init(io__state::di, io__state::uo) is det.
+
+:- pragma c_code(gc_init(_IO0::di, _IO::uo), [will_not_call_mercury], "
+#ifdef CONSERVATIVE_GC
+	/*
+	** Explicitly force the initial heap size to be at least 4 Mb.
+	**
+	** This works around a bug in the Boehm collector (for versions up
+	** to at least 6.2) where the collector would sometimes abort with
+	** the message `unexpected mark stack overflow' (e.g. in grade hlc.gc
+	** on dec-alpha-osf3.2).
+	**
+	** Doing this should also improve performance slightly by avoiding
+	** frequent garbage collection during start-up.
+	*/
+	GC_expand_hp(4 * 1024 * 1024);
+#endif
+").
 
 %-----------------------------------------------------------------------------%
 
@@ -460,6 +484,42 @@ mercury_compile(Module) -->
 				mercury_compile__mlds_to_il_assembler(MLDS),
 				mercury_compile__il_assemble(ModuleName,
 					HasMain)
+			)
+		    ; { Target = asm } ->
+		    	% compile directly assembler using the gcc back-end
+			mercury_compile__mlds_backend(HLDS50, MLDS),
+			mercury_compile__maybe_mlds_to_gcc(MLDS,
+				ContainsCCode),
+			( { TargetCodeOnly = yes } ->
+				[]
+			;
+				% Invoke the assembler to produce an
+				% object file
+				module_name_to_file_name(ModuleName, ".s", no,
+					AsmFile),
+				object_extension(Obj),
+				module_name_to_file_name(ModuleName, Obj, yes,
+					O_File),
+				mercury_compile__asm_to_obj(
+					AsmFile, O_File, _AssembleOK),
+				%
+				% If the module contained `pragma c_code',
+				% then we will have compiled that to a
+				% separate C file.  We need to invoke the
+				% C compiler on that.
+				%
+				( { ContainsCCode = yes } ->
+					module_name_to_file_name(ModuleName,
+						".c", no, CCode_C_File),
+					module_name_to_file_name(ModuleName,
+						"__c_code" ++ Obj,
+						yes, CCode_O_File),
+					mercury_compile__single_c_to_obj(
+						CCode_C_File, CCode_O_File,
+						_CompileOK)
+				;
+					[]
+				)
 			)
 		    ; { HighLevelCode = yes } ->
 			mercury_compile__mlds_backend(HLDS50, MLDS),
@@ -1632,6 +1692,27 @@ mercury_compile__maybe_mark_static_terms(HLDS0, Verbose, Stats, HLDS) -->
 
 %-----------------------------------------------------------------------------%
 
+:- pred mercury_compile__maybe_add_trail_ops(module_info, bool, bool,
+		module_info, io__state, io__state).
+:- mode mercury_compile__maybe_add_trail_ops(in, in, in, out, di, uo)
+		is det.
+
+mercury_compile__maybe_add_trail_ops(HLDS0, Verbose, Stats, HLDS) -->
+	globals__io_lookup_bool_option(use_trail, UseTrail),
+	( { UseTrail = yes } ->
+		maybe_write_string(Verbose,
+			"% Adding trailing operations...\n"),
+		maybe_flush_output(Verbose),
+		process_all_nonimported_procs(update_proc(add_trail_ops),
+			HLDS0, HLDS),
+		maybe_write_string(Verbose, "% done.\n"),
+		maybe_report_stats(Stats)
+	;
+		{ HLDS = HLDS0 }
+	).
+
+%-----------------------------------------------------------------------------%
+
 :- pred mercury_compile__maybe_write_dependency_graph(module_info, bool, bool,
 	module_info, io__state, io__state).
 :- mode mercury_compile__maybe_write_dependency_graph(in, in, in, out, di, uo)
@@ -2186,25 +2267,32 @@ mercury_compile__maybe_generate_stack_layouts(ModuleInfo0, GlobalData0, LLDS0,
 %-----------------------------------------------------------------------------%
 
 %
-% Gather together the information from the HLDS that is
-% used for the C interface.  This stuff mostly just gets
-% passed directly to the LLDS unchanged, but we do do
-% a bit of code generation -- for example, we call
-% export__get_c_export_{decls,defns} here, which do the
-% generation of C code for `pragma export' declarations.
+% Gather together the information from the HLDS, given the foreign
+% language we are going to use, that is used for the foreign language
+% interface.  
+% This stuff mostly just gets passed directly to the LLDS unchanged, but
+% we do do a bit of code generation -- for example, we call
+% export__get_foreign_export_{decls,defns} here, which do the generation
+% of C code for `pragma export' declarations.
 %
 
-:- pred get_c_interface_info(module_info, foreign_interface_info).
-:- mode get_c_interface_info(in, out) is det.
+:- pred get_c_interface_info(module_info, foreign_language, 
+		foreign_interface_info).
+:- mode get_c_interface_info(in, in, out) is det.
 
-get_c_interface_info(HLDS, C_InterfaceInfo) :-
+get_c_interface_info(HLDS, UseForeignLanguage, Foreign_InterfaceInfo) :-
 	module_info_name(HLDS, ModuleName),
-	module_info_get_foreign_header(HLDS, C_HeaderCode),
-	module_info_get_foreign_body_code(HLDS, C_BodyCode),
-	export__get_c_export_decls(HLDS, C_ExportDecls),
-	export__get_c_export_defns(HLDS, C_ExportDefns),
-	C_InterfaceInfo = foreign_interface_info(ModuleName,
-		C_HeaderCode, C_BodyCode, C_ExportDecls, C_ExportDefns).
+	module_info_get_foreign_decl(HLDS, ForeignDecls),
+	module_info_get_foreign_body_code(HLDS, ForeignBodyCode),
+	foreign__filter_decls(UseForeignLanguage, ForeignDecls, 
+		WantedForeignDecls, _OtherDecls),
+	foreign__filter_bodys(UseForeignLanguage, ForeignBodyCode,
+		WantedForeignBodys, _OtherBodys),
+	export__get_foreign_export_decls(HLDS, Foreign_ExportDecls),
+	export__get_foreign_export_defns(HLDS, Foreign_ExportDefns),
+	Foreign_InterfaceInfo = foreign_interface_info(ModuleName,
+		WantedForeignDecls, WantedForeignBodys,
+		Foreign_ExportDecls, Foreign_ExportDefns).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -2240,10 +2328,13 @@ mercury_compile__output_pass(HLDS0, GlobalData, Procs0, MaybeRLFile,
 	% XXX this should perhaps be part of backend_pass
 	% rather than output_pass.
 	%
-	{ get_c_interface_info(HLDS, C_InterfaceInfo) },
+	globals__io_lookup_foreign_language_option(use_foreign_language,
+		UseForeignLanguage),
+	{ get_c_interface_info(HLDS, UseForeignLanguage, C_InterfaceInfo) },
 	{ global_data_get_all_proc_vars(GlobalData, GlobalVars) },
 	{ global_data_get_all_non_common_static_data(GlobalData,
 		NonCommonStaticData) },
+	{ global_data_get_all_closure_layouts(GlobalData, ClosureLayouts) },
 	{ CommonableData0 = StaticLayouts },
 	( { CommonData = yes } ->
 		{ llds_common(Procs0, CommonableData0, ModuleName, Procs1,
@@ -2256,7 +2347,7 @@ mercury_compile__output_pass(HLDS0, GlobalData, Procs0, MaybeRLFile,
 	%
 	% Next we put it all together and output it to one or more C files.
 	%
-	{ list__condense([CommonableData, NonCommonStaticData,
+	{ list__condense([CommonableData, NonCommonStaticData, ClosureLayouts,
 		TypeCtorTables, TypeClassInfos, PossiblyDynamicLayouts],
 		AllData) },
 	mercury_compile__construct_c_file(C_InterfaceInfo, Procs1, GlobalVars,
@@ -2317,7 +2408,7 @@ mercury_compile__construct_c_file(C_InterfaceInfo, Procedures, GlobalVars,
 		+ CompGenVarCount + CompGenDataCount + CompGenCodeCount }.
 
 :- pred maybe_add_header_file_include(foreign_export_decls, module_name,
-	foreign_header_info, foreign_header_info, io__state, io__state).
+	foreign_decl_info, foreign_decl_info, io__state, io__state).
 :- mode maybe_add_header_file_include(in, in, in, out, di, uo) is det.
 
 maybe_add_header_file_include(C_ExportDecls, ModuleName, 
@@ -2333,16 +2424,16 @@ maybe_add_header_file_include(C_ExportDecls, ModuleName,
 			SplitFiles = yes,
                         string__append_list(
                                 ["#include ""../", HeaderFileName, """\n"],
-				Include0)
+				IncludeString)
                 ;
 			SplitFiles = no,
                         string__append_list(
 				["#include """, HeaderFileName, """\n"],
-				Include0)
+				IncludeString)
                 },
 
 		{ term__context_init(Context) },
-		{ Include = Include0 - Context },
+		{ Include = foreign_decl_code(c, IncludeString, Context) },
 
 			% We put the new include at the end since the list is
 			% stored in reverse, and we want this include to come
@@ -2354,8 +2445,8 @@ maybe_add_header_file_include(C_ExportDecls, ModuleName,
 :- mode get_c_body_code(in, out) is det.
 
 get_c_body_code([], []).
-get_c_body_code([Code - Context | CodesAndContexts],
-		[user_foreign_code(c, Code, Context) | C_Modules]) :-
+get_c_body_code([foreign_body_code(Lang, Code, Context) | CodesAndContexts],
+		[user_foreign_code(Lang, Code, Context) | C_Modules]) :-
 	get_c_body_code(CodesAndContexts, C_Modules).
 
 :- pred mercury_compile__combine_chunks(list(list(c_procedure)), string,
@@ -2379,7 +2470,7 @@ mercury_compile__combine_chunks_2([Chunk | Chunks], ModuleName, Num,
 	mercury_compile__combine_chunks_2(Chunks, ModuleName, Num1, Modules).
 
 :- pred mercury_compile__output_llds(module_name, c_file,
-	set_bbbtree(llds__label), maybe(rl_file), bool, bool,
+	map(llds__label, llds__data_addr), maybe(rl_file), bool, bool,
 	io__state, io__state).
 :- mode mercury_compile__output_llds(in, in, in, in, in, in, di, uo) is det.
 
@@ -2413,7 +2504,11 @@ mercury_compile__mlds_backend(HLDS51, MLDS) -->
 		process_all_nonimported_nonaditi_procs, HLDS53),
 	mercury_compile__maybe_dump_hlds(HLDS53, "53", "simplify2"),
 
-	mercury_compile__maybe_mark_static_terms(HLDS53, Verbose, Stats,
+	mercury_compile__maybe_add_trail_ops(HLDS53, Verbose, Stats,
+		HLDS55),
+	mercury_compile__maybe_dump_hlds(HLDS55, "55", "add_trail_ops"),
+
+	mercury_compile__maybe_mark_static_terms(HLDS55, Verbose, Stats,
 		HLDS60),
 	mercury_compile__maybe_dump_hlds(HLDS60, "60", "mark_static"),
 	{ HLDS = HLDS60 },
@@ -2490,6 +2585,19 @@ mercury_compile__mlds_to_high_level_c(MLDS) -->
 	maybe_write_string(Verbose, "% Converting MLDS to C...\n"),
 	mlds_to_c__output_mlds(MLDS),
 	maybe_write_string(Verbose, "% Finished converting MLDS to C.\n"),
+	maybe_report_stats(Stats).
+
+:- pred mercury_compile__maybe_mlds_to_gcc(mlds, bool, io__state, io__state).
+:- mode mercury_compile__maybe_mlds_to_gcc(in, out, di, uo) is det.
+
+mercury_compile__maybe_mlds_to_gcc(MLDS, ContainsCCode) -->
+	globals__io_lookup_bool_option(verbose, Verbose),
+	globals__io_lookup_bool_option(statistics, Stats),
+
+	maybe_write_string(Verbose,
+		"% Passing MLDS to GCC and compiling to assembler...\n"),
+	maybe_mlds_to_gcc__compile_to_asm(MLDS, ContainsCCode),
+	maybe_write_string(Verbose, "% Finished compiling to assembler.\n"),
 	maybe_report_stats(Stats).
 
 :- pred mercury_compile__mlds_to_il_assembler(mlds, io__state, io__state).
@@ -2803,9 +2911,9 @@ mercury_compile__single_c_to_obj(C_File, O_File, Succeeded) -->
 		% if --inline-alloc is enabled, don't enable missing-prototype
 		% warnings, since gc_inline.h is missing lots of prototypes
 		( InlineAlloc = yes ->
-			WarningOpt = "-Wall -Wwrite-strings -Wpointer-arith -Wtraditional -Wshadow -Wmissing-prototypes -Wno-unused -Wno-uninitialized "
+			WarningOpt = "-Wall -Wwrite-strings -Wpointer-arith -Wshadow -Wmissing-prototypes -Wno-unused -Wno-uninitialized "
 		;
-			WarningOpt = "-Wall -Wwrite-strings -Wpointer-arith -Wtraditional -Wshadow -Wmissing-prototypes -Wno-unused -Wno-uninitialized -Wstrict-prototypes "
+			WarningOpt = "-Wall -Wwrite-strings -Wpointer-arith -Wshadow -Wmissing-prototypes -Wno-unused -Wno-uninitialized -Wstrict-prototypes "
 		)
 	; CompilerType = lcc ->
 		WarningOpt = "-w "
@@ -2833,6 +2941,33 @@ mercury_compile__single_c_to_obj(C_File, O_File, Succeeded) -->
 	invoke_system_command(Command, Succeeded),
 	( { Succeeded = no } ->
 		report_error("problem compiling C file.")
+	;
+		[]
+	).
+
+:- pred mercury_compile__asm_to_obj(string, string, bool,
+					io__state, io__state).
+:- mode mercury_compile__asm_to_obj(in, in, out, di, uo) is det.
+
+mercury_compile__asm_to_obj(AsmFile, ObjFile, Succeeded) -->
+	globals__io_lookup_bool_option(verbose, Verbose),
+	maybe_write_string(Verbose, "% Assembling `"),
+	maybe_write_string(Verbose, AsmFile),
+	maybe_write_string(Verbose, "':\n"),
+	% XXX should we use new asm_* options rather than
+	% reusing cc, cflags, c_flag_to_name_object_file?
+	globals__io_lookup_string_option(cc, CC),
+	globals__io_lookup_string_option(c_flag_to_name_object_file,
+			NameObjectFile),
+	globals__io_lookup_accumulating_option(cflags, C_Flags_List),
+	{ join_string_list(C_Flags_List, "", "", " ", CFLAGS) },
+	% Be careful with the order here.
+	% Also be careful that each option is separated by spaces.
+	{ string__append_list([CC, " ", CFLAGS,
+		" -c ", AsmFile, " ", NameObjectFile, ObjFile], Command) },
+	invoke_system_command(Command, Succeeded),
+	( { Succeeded = no } ->
+		report_error("problem assembling the assembler file.")
 	;
 		[]
 	).

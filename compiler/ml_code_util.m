@@ -17,9 +17,8 @@
 
 :- import_module prog_data.
 :- import_module hlds_module, hlds_pred.
-:- import_module rtti.
+:- import_module rtti, code_model.
 :- import_module mlds.
-:- import_module llds. % XXX for `code_model'.
 :- import_module globals.
 
 :- import_module bool, int, list, map, std_util.
@@ -173,6 +172,11 @@
 		mlds__pred_label, mlds_module_name).
 :- mode ml_gen_pred_label_from_rtti(in, out, out) is det.
 
+	% Allocate a new label name, for use in label statements.
+	%
+:- pred ml_gen_new_label(mlds__label, ml_gen_info, ml_gen_info).
+:- mode ml_gen_new_label(out, in, out) is det.
+
 %-----------------------------------------------------------------------------%
 %
 % Routines for dealing with variables
@@ -243,6 +247,18 @@
 %
 % Routines for dealing with static constants
 %
+
+	% Generate a name for a local static constant.
+	%
+:- pred ml_format_static_const_name(string, const_seq, mlds__var_name,
+		ml_gen_info, ml_gen_info).
+:- mode ml_format_static_const_name(in, in, out, in, out) is det.
+
+	% Generate a definition of a local static constant,
+	% given the constant's name, type, and initializer.
+	%
+:- func ml_gen_static_const_defn(mlds__var_name, mlds__type, mlds__initializer,
+		prog_context) = mlds__defn.
 
 	% Return the declaration flags appropriate for an
 	% initialized local static constant.
@@ -474,8 +490,20 @@
 :- pred ml_gen_info_get_globals(globals, ml_gen_info, ml_gen_info).
 :- mode ml_gen_info_get_globals(out, in, out) is det.
 
+	% lookup the --gcc-nested-functions option
 :- pred ml_gen_info_use_gcc_nested_functions(bool, ml_gen_info, ml_gen_info).
 :- mode ml_gen_info_use_gcc_nested_functions(out, in, out) is det.
+
+	% lookup the --put-commit-in-nested-func option
+:- pred ml_gen_info_put_commit_in_own_func(bool, ml_gen_info, ml_gen_info).
+:- mode ml_gen_info_put_commit_in_own_func(out, in, out) is det.
+
+	% Generate a new label number for use in label statements.
+	% This is used to give unique names to the case labels generated
+	% for dense switch statements.
+:- type label_num == int.
+:- pred ml_gen_info_new_label(label_num, ml_gen_info, ml_gen_info).
+:- mode ml_gen_info_new_label(out, in, out) is det.
 
 	% A number corresponding to an MLDS nested function which serves as a
 	% label (i.e. a continuation function).
@@ -1200,6 +1228,10 @@ ml_gen_pred_label_from_rtti(RttiProcLabel, MLDS_PredLabel, MLDS_Module) :-
 	),
 	MLDS_Module = mercury_module_name_to_mlds(DefiningModule).
 
+ml_gen_new_label(Label) -->
+	ml_gen_info_new_label(LabelNum),
+	{ string__format("label_%d", [i(LabelNum)], Label) }.
+
 %-----------------------------------------------------------------------------%
 %
 % Code for dealing with variables
@@ -1288,6 +1320,24 @@ ml_gen_var_name(VarSet, Var) = UniqueVarName :-
 	term__var_to_int(Var, VarNumber),
 	string__format("%s_%d", [s(VarName), i(VarNumber)], UniqueVarName).
 
+	% Generate a name for a local static constant.
+	%
+	% To ensure that the names are unique, we qualify them with the
+	% pred_id and proc_id numbers, as well as a sequence number.
+	% This is needed to allow ml_elim_nested.m to hoist
+	% such constants out to top level.
+ml_format_static_const_name(BaseName, SequenceNum, ConstName) -->
+	=(MLDSGenInfo),
+	{ ml_gen_info_get_pred_id(MLDSGenInfo, PredId) },
+	{ ml_gen_info_get_proc_id(MLDSGenInfo, ProcId) },
+	{ pred_id_to_int(PredId, PredIdNum) },
+	{ proc_id_to_int(ProcId, ProcIdNum) },
+	{ string__format("const_%d_%d_%d_%s", [i(PredIdNum), i(ProcIdNum),
+		i(SequenceNum), s(BaseName)], ConstName) }.
+
+	% Qualify the name of the specified variable
+	% with the current module name.
+	%
 ml_qualify_var(VarName, QualifiedVarLval) -->
 	=(MLDSGenInfo),
 	{ ml_gen_info_get_module_name(MLDSGenInfo, ModuleName) },
@@ -1314,6 +1364,17 @@ ml_gen_mlds_var_decl(DataName, MLDS_Type, Initializer, Context) = MLDS_Defn :-
 	Defn = data(MLDS_Type, Initializer),
 	DeclFlags = ml_gen_var_decl_flags,
 	MLDS_Defn = mlds__defn(Name, Context, DeclFlags, Defn).
+
+	% Generate a definition of a local static constant,
+	% given the constant's name, type, and initializer.
+	%
+ml_gen_static_const_defn(ConstName, ConstType, Initializer, Context) =
+		MLDS_Defn :-
+	Name = data(var(ConstName)),
+	Defn = data(ConstType, Initializer),
+	DeclFlags = ml_static_const_decl_flags,
+	MLDS_Context = mlds__make_context(Context),
+	MLDS_Defn = mlds__defn(Name, MLDS_Context, DeclFlags, Defn).
 
 	% Return the declaration flags appropriate for a local variable.
 	%
@@ -1677,8 +1738,11 @@ ml_declare_env_ptr_arg(Name - mlds__generic_env_ptr_type) -->
 			% each procedure
 			%
 
+				% XXX we should use the standard library
+				% `counter' type here
 			func_label :: mlds__func_sequence_num,
 			commit_label :: commit_sequence_num,
+			label :: label_num,
 			cond_var :: cond_seq,
 			conv_var :: conv_seq,
 			const_num :: const_seq,
@@ -1705,6 +1769,7 @@ ml_gen_info_init(ModuleInfo, PredId, ProcId) = MLDSGenInfo :-
 	ByRefOutputVars = select_output_vars(ModuleInfo, HeadVars, HeadModes,
 		VarTypes),
 
+	LabelCounter = 0,
 	FuncLabelCounter = 0,
 	CommitLabelCounter = 0,
 	CondVarCounter = 0,
@@ -1722,6 +1787,7 @@ ml_gen_info_init(ModuleInfo, PredId, ProcId) = MLDSGenInfo :-
 			VarSet,
 			VarTypes,
 			ByRefOutputVars,
+			LabelCounter,
 			FuncLabelCounter,
 			CommitLabelCounter,
 			CondVarCounter,
@@ -1752,10 +1818,18 @@ ml_gen_info_use_gcc_nested_functions(UseNestedFuncs) -->
 	{ globals__lookup_bool_option(Globals, gcc_nested_functions,
 		UseNestedFuncs) }.
 
+ml_gen_info_put_commit_in_own_func(PutCommitInNestedFunc) -->
+	ml_gen_info_get_globals(Globals),
+	{ globals__lookup_bool_option(Globals, put_commit_in_own_func,
+		PutCommitInNestedFunc) }.
+
 ml_gen_info_get_globals(Globals) -->
 	=(Info),
 	{ ml_gen_info_get_module_info(Info, ModuleInfo) },
 	{ module_info_globals(ModuleInfo, Globals) }.
+
+ml_gen_info_new_label(Label, Info, Info^label := Label) :-
+	Label = Info^label + 1.
 
 ml_gen_info_new_func_label(Label, Info, Info^func_label := Label) :-
 	Label = Info^func_label + 1.

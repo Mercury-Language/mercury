@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-2000 The University of Melbourne. 
+# Copyright (C) 1995-2001 The University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -40,6 +40,11 @@ SUBDIR_MMAKE =	PATH=../scripts:../util:$$PATH \
 		MMAKE_VPATH=. \
 		MMAKE_DIR=../scripts \
 		../scripts/mmake $(MMAKEFLAGS)
+
+SUBSUBDIR_MMAKE = PATH=../../scripts:../../util:$$PATH \
+		MMAKE_VPATH=. \
+		MMAKE_DIR=../../scripts \
+		../../scripts/mmake $(MMAKEFLAGS)
 
 #-----------------------------------------------------------------------------#
 
@@ -136,6 +141,10 @@ trace: scripts boehm_gc runtime library browser
 compiler: dep_compiler scripts util boehm_gc runtime library browser trace
 	cd compiler && $(SUBDIR_MMAKE)
 
+.PHONY: libmmc
+libmmc: dep_compiler scripts util boehm_gc runtime library browser trace
+	cd compiler && $(SUBDIR_MMAKE) libmmc
+
 .PHONY: doc
 doc: scripts util
 	cd doc && $(SUBDIR_MMAKE)
@@ -213,8 +222,10 @@ tar: README INSTALL
 	cd bindist && $(SUBDIR_MMAKE) bindist.configure
 	# the following command might fail on Windows?
 	-cd bindist && $(SUBDIR_MMAKE) bindist.build_vars
+	cd extras/dynamic_linking && $(SUBSUBDIR_MMAKE) sources
 	# clean up
 	cd scripts && mmake realclean
+	cd scripts && mmake canonical_grade
 	cd util && mmake realclean
 	cd doc && mmake distclean
 	-rm -f errs errs2 update.log
@@ -237,6 +248,7 @@ tar: README INSTALL
 		mv $$ROOTNAME/trial	stuff-to-exclude;		\
 		mv $$ROOTNAME/bytecode	stuff-to-exclude;		\
 		mv $$ROOTNAME/lp_solve	stuff-to-exclude;		\
+		mv $$ROOTNAME/trax	stuff-to-exclude;		\
 		mv $$ROOTNAME/extras/opium_m	stuff-to-exclude;	\
 		mv $$ROOTNAME/extras/aditi stuff-to-exclude;		\
 		mv $$ROOTNAME/extras	mercury-extras-$(VERSION);	\
@@ -470,7 +482,7 @@ bindist:
 
 #-----------------------------------------------------------------------------#
 
-clean: clean_subdirs
+clean: clean_subdirs clean_tests
 
 .PHONY: clean_subdirs
 clean_subdirs:
@@ -480,7 +492,13 @@ clean_subdirs:
 		(cd $$dir; $(SUBDIR_MMAKE) clean) \
 	done
 
-realclean: realclean_subdirs realclean_local
+.PHONY: clean_tests
+clean_tests:
+	if test -d tests; then \
+		(cd tests; $(MMAKE) clean) \
+	fi
+
+realclean: realclean_subdirs realclean_local realclean_tests
 
 .PHONY: realclean_local
 realclean_local: realclean_config
@@ -497,5 +515,11 @@ realclean_subdirs: clean_subdirs
 .PHONY: realclean_config
 realclean_config:
 	rm -f config.cache config.status config.log configure.log
+
+.PHONY: realclean_tests
+realclean_tests:
+	if test -d tests; then \
+		(cd tests; $(MMAKE) realclean) \
+	fi
 
 #-----------------------------------------------------------------------------#

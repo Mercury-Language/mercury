@@ -21,8 +21,11 @@
 
 :- interface.
 
-:- import_module hlds_goal, hlds_pred, prog_data.
+:- import_module prog_data.
+:- import_module hlds_goal, hlds_pred.
+:- import_module code_model.
 :- import_module llds, code_info.
+
 :- import_module list, std_util.
 
 :- pred pragma_c_gen__generate_pragma_c_code(code_model::in,
@@ -53,11 +56,11 @@
 %	#define MR_PROC_LABEL <procedure label> /* see note (5) below */
 %
 %	<assignment of input values from registers to local variables>
-%	save_registers(); /* see notes (1) and (2) below */
+%	MR_save_registers(); /* see notes (1) and (2) below */
 %	{ <the c code itself> }
 %	<for semidet code, check of r1>
 %	#ifndef CONSERVATIVE_GC
-%	  restore_registers(); /* see notes (1) and (3) below */
+%	  MR_restore_registers(); /* see notes (1) and (3) below */
 %	#endif
 %	<assignment of the output values from local variables to registers>
 %
@@ -73,7 +76,7 @@
 %
 % and the <check of r1> is of the form
 %
-%	if (!r1) GOTO_LABEL(fail_label);
+%	if (!r1) MR_GOTO_LABEL(fail_label);
 %
 % The code we generate for nondet pragma_c_code assumes that this code is
 % the only thing between the procedure prolog and epilog; such pragma_c_codes
@@ -92,7 +95,7 @@
 %	<declaration of one local variable to point to save struct>
 %	<assignment of input values from registers to local variables>
 %	<assignment to save struct pointer>
-%	save_registers(); /* see notes (1) and (2) below */
+%	MR_save_registers(); /* see notes (1) and (2) below */
 %	#define MR_PROC_LABEL <procedure label> /* see note (5) below */
 %	#define SUCCEED()	goto callsuccesslabel
 %	#define SUCCEED_LAST()	goto calllastsuccesslabel
@@ -100,11 +103,11 @@
 %	{ <the user-written call c code> }
 %	{ <the user-written shared c code> }
 % callsuccesslabel:
-%	restore_registers(); /* see notes (1) and (3) below */
+%	MR_restore_registers(); /* see notes (1) and (3) below */
 %	<assignment of the output values from local variables to registers>
 %	succeed()
 % calllastsuccesslabel: /* see note (4) below) */
-%	restore_registers(); /* see notes (1) and (3) below */
+%	MR_restore_registers(); /* see notes (1) and (3) below */
 %	<assignment of the output values from local variables to registers>
 %	succeed_discard()
 % 	#undef SUCCEED
@@ -112,13 +115,13 @@
 % 	#undef FAIL
 %	#undef MR_PROC_LABEL /* see note (5) below */
 % }
-% Define_label(xxx_i1)
+% MR_define_label(xxx_i1)
 % <code for entry to a later disjunct>
 % {
 %	<declaration of one local variable for each output arg>
 %	<declaration of one local variable to point to save struct>
 %	<assignment to save struct pointer>
-%	save_registers(); /* see notes (1) and (2) below */
+%	MR_save_registers(); /* see notes (1) and (2) below */
 %	#define MR_PROC_LABEL <procedure label> /* see note (5) below */
 %	#define SUCCEED()	goto retrysuccesslabel
 %	#define SUCCEED_LAST()	goto retrylastsuccesslabel
@@ -126,11 +129,11 @@
 %	{ <the user-written retry c code> }
 %	{ <the user-written shared c code> }
 % retrysuccesslabel:
-%	restore_registers(); /* see notes (1) and (3) below */
+%	MR_restore_registers(); /* see notes (1) and (3) below */
 %	<assignment of the output values from local variables to registers>
 %	succeed()
 % retrylastsuccesslabel: /* see note (4) below) */
-%	restore_registers(); /* see notes (1) and (3) below */
+%	MR_restore_registers(); /* see notes (1) and (3) below */
 %	<assignment of the output values from local variables to registers>
 %	succeed_discard()
 % 	#undef SUCCEED
@@ -153,19 +156,19 @@
 %	<declaration of one local variable to point to save struct>
 %	<assignment of input values from registers to local variables>
 %	<assignment to save struct pointer>
-%	save_registers(); /* see notes (1) and (2) below */
+%	MR_save_registers(); /* see notes (1) and (2) below */
 %	#define MR_PROC_LABEL <procedure label> /* see note (5) below */
 %	#define SUCCEED()	goto callsuccesslabel
 %	#define SUCCEED_LAST()	goto calllastsuccesslabel
 %	#define FAIL()		fail()
 %	{ <the user-written call c code> }
-%	GOTO_LABEL(xxx_i2)
+%	MR_GOTO_LABEL(xxx_i2)
 % callsuccesslabel: /* see note (4) below */
-%	restore_registers(); /* see notes (1) and (3) below */
+%	MR_restore_registers(); /* see notes (1) and (3) below */
 %	<assignment of the output values from local variables to registers>
 %	succeed()
 % calllastsuccesslabel: /* see note (4) below */
-%	restore_registers(); /* see notes (1) and (3) below */
+%	MR_restore_registers(); /* see notes (1) and (3) below */
 %	<assignment of the output values from local variables to registers>
 %	succeed_discard()
 % 	#undef SUCCEED
@@ -173,25 +176,25 @@
 % 	#undef FAIL
 %	#undef MR_PROC_LABEL /* see note (5) below */
 % }
-% Define_label(xxx_i1)
+% MR_define_label(xxx_i1)
 % <code for entry to a later disjunct>
 % {
 %	<declaration of one local variable for each output arg>
 %	<declaration of one local variable to point to save struct>
 %	<assignment to save struct pointer>
-%	save_registers(); /* see notes (1) and (2) below */
+%	MR_save_registers(); /* see notes (1) and (2) below */
 %	#define MR_PROC_LABEL <procedure label> /* see note (5) below */
 %	#define SUCCEED()	goto retrysuccesslabel
 %	#define SUCCEED_LAST()	goto retrylastsuccesslabel
 %	#define FAIL()		fail()
 %	{ <the user-written retry c code> }
-%	GOTO_LABEL(xxx_i2)
+%	MR_GOTO_LABEL(xxx_i2)
 % retrysuccesslabel: /* see note (4) below */
-%	restore_registers(); /* see notes (1) and (3) below */
+%	MR_restore_registers(); /* see notes (1) and (3) below */
 %	<assignment of the output values from local variables to registers>
 %	succeed()
 % retrylastsuccesslabel: /* see note (4) below */
-%	restore_registers(); /* see notes (1) and (3) below */
+%	MR_restore_registers(); /* see notes (1) and (3) below */
 %	<assignment of the output values from local variables to registers>
 %	succeed_discard()
 % 	#undef SUCCEED
@@ -199,7 +202,7 @@
 % 	#undef FAIL
 %	#undef MR_PROC_LABEL /* see note (5) below */
 % }
-% Define_label(xxx_i2)
+% MR_define_label(xxx_i2)
 % {
 %	<declaration of one local variable for each output arg>
 %	<declaration of one local variable to point to save struct>
@@ -210,11 +213,11 @@
 %	#define FAIL()		fail()
 %	{ <the user-written shared c code> }
 % sharedsuccesslabel:
-%	restore_registers(); /* see notes (1) and (3) below */
+%	MR_restore_registers(); /* see notes (1) and (3) below */
 %	<assignment of the output values from local variables to registers>
 %	succeed()
 % sharedlastsuccesslabel: /* see note (4) below */
-%	restore_registers(); /* see notes (1) and (3) below */
+%	MR_restore_registers(); /* see notes (1) and (3) below */
 %	<assignment of the output values from local variables to registers>
 %	succeed_discard()
 % 	#undef SUCCEED
@@ -264,13 +267,13 @@
 %	If a pragma c_code(will_not_call_mercury, ...) declaration was used,
 %	they will not be emitted.
 %
-% (2)	The call to save_registers() is needed so that if the
-%	C code calls Mercury code, we can call restore_registers()
+% (2)	The call to MR_save_registers() is needed so that if the
+%	C code calls Mercury code, we can call MR_restore_registers()
 %	on entry to the Mercury code (see export.m) to get the
 %	right values of `sp', `hp', `curfr' and `maxfr' for the
 %	recursive invocation of Mercury.
 %
-% (3)	The call to restore_registers() is needed in case the
+% (3)	The call to MR_restore_registers() is needed in case the
 %	C code calls Mercury code which allocates some data
 %	on the heap, and this data is returned from Mercury
 %	through C back to Mercury.  In that case, we need to
@@ -281,7 +284,7 @@
 %	using conservative gc, there is nothing that needs restoring.
 %
 %	When calling nondet code, maxfr may be changed. This is why
-%	we must call restore_registers() from the code we generate for
+%	we must call MR_restore_registers() from the code we generate for
 %	nondet pragma C codes even if we are not using conservative gc.
 %
 % (4)	These labels and the code following them can be optimized away
@@ -435,13 +438,13 @@ pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes,
 	{ InputComp = pragma_c_inputs(InputDescs) },
 
 	%
-	% save_registers(); /* see notes (1) and (2) above */
+	% MR_save_registers(); /* see notes (1) and (2) above */
 	%
 	{ MayCallMercury = will_not_call_mercury ->
 		SaveRegsComp = pragma_c_raw_code("")
 	;
 		SaveRegsComp = pragma_c_raw_code(
-			"\tsave_registers();\n"
+			"\tMR_save_registers();\n"
 		)
 	},
 
@@ -482,14 +485,14 @@ pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes,
 
 	%
 	% #ifndef CONSERVATIVE_GC
-	%   restore_registers(); /* see notes (1) and (3) above */
+	%   MR_restore_registers(); /* see notes (1) and (3) above */
 	% #endif
 	%
 	{ MayCallMercury = will_not_call_mercury ->
 		RestoreRegsComp = pragma_c_noop
 	;
 		RestoreRegsComp = pragma_c_raw_code(
-		    "#ifndef CONSERVATIVE_GC\n\trestore_registers();\n#endif\n"
+		"#ifndef CONSERVATIVE_GC\n\tMR_restore_registers();\n#endif\n"
 		)
 	},
 
@@ -688,21 +691,21 @@ pragma_c_gen__nondet_pragma_c_code(CodeModel, Attributes,
 	},
 
 	%
-	% save_registers(); /* see notes (1) and (2) above */
+	% MR_save_registers(); /* see notes (1) and (2) above */
 	%
 	{ MayCallMercury = will_not_call_mercury ->
 		SaveRegs = ""
 	;
-		SaveRegs = "\tsave_registers();\n"
+		SaveRegs = "\tMR_save_registers();\n"
 	},
 
 	%
-	% restore_registers(); /* see notes (1) and (3) above */
+	% MR_restore_registers(); /* see notes (1) and (3) above */
 	%
 	{ MayCallMercury = will_not_call_mercury ->
 		RestoreRegs = ""
 	;
-		RestoreRegs = "\trestore_registers();\n"
+		RestoreRegs = "\tMR_restore_registers();\n"
 	},
 
 	{
@@ -844,7 +847,7 @@ pragma_c_gen__nondet_pragma_c_code(CodeModel, Attributes,
 		SharedLastSuccessLabel = "MR_shared_success_last:\n",
 
 		llds_out__get_label(SharedLabel, yes, LabelStr),
-		string__format("\tGOTO_LABEL(%s);\n", [s(LabelStr)],
+		string__format("\tMR_GOTO_LABEL(%s);\n", [s(LabelStr)],
 			GotoSharedLabel),
 
 		CallDecls = [SaveStructDecl | Decls],

@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-2000 The University of Melbourne.
+# Copyright (C) 1995-2001 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -21,7 +21,8 @@ main_target: $(MAIN_TARGET)
 		.c .nu .$O .pic_o \
 		.i .s .pic_s \
 		.ql .pl \
-		.rlo
+		.rlo \
+		.il .dll .exe .cpp
 
 #-----------------------------------------------------------------------------#
 #
@@ -167,13 +168,54 @@ $(trans_opts_subdir)%.trans_opt : $(trans_opt_dates_subdir)%.trans_opt_date
 # duplicated in compiler/modules.m.
 #
 
+ifeq ($(TARGET_ASM),yes)
+
+# `--target asm' back-end
+$(ss_subdir)%.s : %.m
+	$(MCG) $(ALL_GRADEFLAGS) --target-code-only $(ALL_MCGFLAGS) \
+		$< > $*.err 2>&1
+
+$(ss_subdir)%.pic_s : %.m
+	$(MCG) $(ALL_GRADEFLAGS) --target-code-only $(ALL_MCGFLAGS) \
+		--cflags "$(GCCFLAGS_FOR_PIC)" $< > $*.err 2>&1
+
+$(os_subdir)%.$O : $(ss_subdir)%.s
+	$(AS) $< $(OBJFILE_OPT)$@
+
+$(os_subdir)%.pic_o : $(ss_subdir)%.pic_s
+	$(AS) $< $(OBJFILE_OPT)$@
+
+endif
+
+# C back-end
 $(cs_subdir)%.c : %.m
 	rm -f $(cs_subdir)$*.c
 	$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) $< > $*.err 2>&1
 
+# Aditi-RL back-end
 $(rlos_subdir)%.rlo : %.m
-	rm -f $(rlos_subdir)$*.c
+	rm -f $(rlos_subdir)$*.rlo
 	$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) --aditi-only $< > $*.err 2>&1
+
+# .NET back-end
+$(ils_subdir)%.il : %.m
+	rm -f $(ils_subdir)$*.il
+	$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) --il-only $< > $*.err 2>&1
+
+# These rules are only available in *il* backends, because we'd like to avoid
+# processing user code that is in a .cpp file, and we'd like to avoid going via
+# IL to generate a DLL if we are in a non-IL grade.
+ifneq (,$(findstring il,$(GRADE)))
+$(os_subdir)%.dll : %.cpp
+	rm -f $(os_subdir)$*.dll
+	$(MS_CL) -com+$(MS_CL_NOASM) -I$(MERC_C_INCL_DIR) \
+		-I$(MERC_DLL_DIR) $(ALL_MS_CLFLAGS) $< -link -noentry \
+		-dll $(MS_CL_LIBS) -out:$@
+
+$(os_subdir)%.dll : %.il
+	rm -f $(os_subdir)$*.dll
+	$(MS_ILASM) $(ALL_MS_ILASMFLAGS) /dll /quiet /OUT=$@ $<
+endif
 
 # If we are removing the .c files, we need to tell Make that we're
 # generating the .$O files directly from the .m files, but
@@ -242,6 +284,7 @@ $(dirs_subdir)%.dir/*.$O: %.m
 .c.i:
 	$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) -E $< > $@
 
+
 #-----------------------------------------------------------------------------#
 #
 # Rules for compiling C files in a subdirectory.
@@ -270,6 +313,37 @@ $(os_subdir)%.pic_o : $(cs_subdir)%.c
 	$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) -E $< > $@
 
 endif # $(cs_subdir) != ""
+
+#-----------------------------------------------------------------------------#
+#
+# Rules for compiling IL files in the user's source directory.
+# Note that we need both these rules and the ones above,
+# since even if the compiler generates all of its files in subdirectories,
+# the user may have some il or cpp files of their own which need to be
+# compiled.
+#
+# To avoid possible problems with invoking these commands unintentionally,
+# we only activate these rules when in an IL grade.
+#
+
+ifneq (,$(findstring il,$(GRADE)))
+ifneq ("$(ils_subdir)","")
+
+.il.dll:
+	$(MS_ILASM) $(ALL_MS_ILASMFLAGS) /dll /quiet /OUT=$@ $<
+
+.il.exe:
+	$(MS_ILASM) $(ALL_MS_ILASMFLAGS) /quiet /OUT=$@ $< 
+	cp default.cfg $*.cfg
+
+.cpp.dll:
+	$(MS_CL) -com+($MS_CL_NOASM) -I$(MERCURY_LIBRARY_PATH) $< -link -noentry -dll $(MS_CL_LIBS) -out:$@
+
+.cpp.exe:
+	$(MS_CL) -com+($MS_CL_NOASM) -I$(MERCURY_LIBRARY_PATH) $< -link -entry:main $(MS_CL_LIBS) -out:$@
+
+endif # $(ils_subdir) != ""
+endif # $(findstring il,$(GRADE)) != ""
 
 #-----------------------------------------------------------------------------#
 #

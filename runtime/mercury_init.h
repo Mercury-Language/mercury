@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1993-2000 The University of Melbourne.
+** Copyright (C) 1993-2001 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -77,9 +77,9 @@ extern	int	mercury_terminate(void);
 */
 
 #include "mercury_regs.h"	/* must come before system headers */
-#include "mercury_goto.h"	/* for Declare_entry */
-#include "mercury_types.h"	/* for `MR_Word' */
-#include "mercury_wrapper.h"	/* for do_init_modules,
+#include "mercury_goto.h"	/* for MR_declare_entry */
+#include "mercury_types.h"	/* for MR_Word */
+#include "mercury_wrapper.h"	/* for MR_do_init_modules,
 				   mercury_runtime_init(),
 				   mercury_runtime_main(),
 				   mercury_runtime_terminate(),
@@ -116,8 +116,8 @@ extern	void	ML_io_stderr_stream(MR_Word *);
 extern	void	ML_io_stdout_stream(MR_Word *);
 extern	void	ML_io_stdin_stream(MR_Word *);
 
-extern	void	ML_io_print_to_stream(MR_Word, MR_Word, MR_Box);
-extern	void	ML_io_print_to_cur_stream(MR_Word, MR_Box);
+extern	void	ML_io_print_to_stream(MR_Word, MR_Word, MR_Word);
+extern	void	ML_io_print_to_cur_stream(MR_Word, MR_Word);
 
 /* in trace/mercury_trace_internal.h */
 extern	char	*MR_trace_getline(const char *, FILE *mdb_in, FILE *mdb_out);
@@ -134,23 +134,26 @@ extern	void	ML_DI_output_current_nth_var(MR_Word, MR_Word);
 		/* output_current_nth_var/3 */
 extern	void	ML_DI_output_current_live_var_names(MR_Word, MR_Word, MR_Word);
 		/* output_current_live_var_names/5 */
-extern	void	ML_DI_output_current_slots(MR_Integer, MR_Integer, MR_Integer, MR_Word,
-		MR_String, MR_String, MR_Integer, MR_Integer, MR_Integer, MR_String, MR_Word);
+extern	void	ML_DI_output_current_slots(MR_Integer, MR_Integer, MR_Integer,
+			MR_Word, MR_String, MR_String, MR_Integer, MR_Integer,
+			MR_Integer, MR_String, MR_Word);
 		/* output_current_slots/13 */
-extern	bool	ML_DI_found_match(MR_Integer, MR_Integer, MR_Integer, MR_Word, MR_String,
-		MR_String, MR_Integer, MR_Integer, MR_Integer, MR_Word, MR_String, MR_Word);
+extern	bool	ML_DI_found_match(MR_Integer, MR_Integer, MR_Integer, MR_Word,
+			MR_String, MR_String, MR_Integer, MR_Integer,
+			MR_Integer, MR_Word, MR_String, MR_Word);
 		/* found_match/12 */
-extern	void	ML_DI_read_request_from_socket(MR_Word, MR_Word *, MR_Integer *);
+extern	void	ML_DI_read_request_from_socket(MR_Word, MR_Word *,
+			MR_Integer *);
 extern	MR_Integer	ML_DI_get_var_number(MR_Word);
 
 /* in library/std_util.m  */
 extern	MR_String	ML_type_name(MR_Word);
 
 /* in runtime/mercury_trace_base.c */
-extern	MR_Code	*MR_trace_fake(const MR_Stack_Layout_Label *);
+extern	MR_Code	*MR_trace_fake(const MR_Label_Layout *);
 
 /* in trace/mercury_trace.c */
-extern	MR_Code	*MR_trace_real(const MR_Stack_Layout_Label *);
+extern	MR_Code	*MR_trace_real(const MR_Label_Layout *);
 extern	void	MR_trace_interrupt_handler(void);
 
 /* in trace/mercury_trace_tables.c */

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-1997, 1999 The University of Melbourne.
+% Copyright (C) 1996-1997, 1999-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -25,11 +25,15 @@
 :- pred set_ordlist__list_to_set(list(T), set_ordlist(T)).
 :- mode set_ordlist__list_to_set(in, out) is det.
 
+:- func set_ordlist__list_to_set(list(T)) = set_ordlist(T).
+
 	% `set_ordlist__sorted_list_to_set(List, Set)' is true iff `Set' is
 	% the set containing only the members of `List'.  `List' must be sorted.
 
 :- pred set_ordlist__sorted_list_to_set(list(T), set_ordlist(T)).
 :- mode set_ordlist__sorted_list_to_set(in, out) is det.
+
+:- func set_ordlist__sorted_list_to_set(list(T)) = set_ordlist(T).
 
 	% `set_ordlist__to_sorted_list(Set, List)' is true iff `List' is the
 	% list of all the members of `Set', in sorted order.
@@ -37,10 +41,14 @@
 :- pred set_ordlist__to_sorted_list(set_ordlist(T), list(T)).
 :- mode set_ordlist__to_sorted_list(in, out) is det.
 
+:- func set_ordlist__to_sorted_list(set_ordlist(T)) = list(T).
+
 	% `set_ordlist__init(Set)' is true iff `Set' is an empty set.
 
 :- pred set_ordlist__init(set_ordlist(_T)).
 :- mode set_ordlist__init(uo) is det.
+
+:- func set_ordlist__init = set_ordlist(T).
 
 	% `set_ordlist__singleton_set(Set, Elem)' is true iff `Set' is the set
 	% containing just the single element `Elem'.
@@ -48,6 +56,8 @@
 :- pred set_ordlist__singleton_set(set_ordlist(T), T).
 :- mode set_ordlist__singleton_set(in, out) is semidet.
 :- mode set_ordlist__singleton_set(out, in) is det.
+
+:- func set_ordlist__make_singleton_set(T) = set_ordlist(T).
 
 	% `set_ordlist__equal(SetA, SetB)' is true iff
 	% `SetA' and `SetB' contain the same elements.
@@ -84,6 +94,11 @@
 :- pred set_ordlist__is_member(T, set_ordlist(T), bool).
 :- mode set_ordlist__is_member(in, in, out) is det.
 
+	% `set_ordlist__contains(Set, X)' is true iff `X' is a member of `Set'.
+
+:- pred set_ordlist__contains(set_ordlist(T), T).
+:- mode set_ordlist__contains(in, in) is semidet.
+
 	% `set_ordlist__insert(Set0, X, Set)' is true iff `Set' is the union
 	% of `Set0' and the set containing only `X'.
 
@@ -91,11 +106,15 @@
 :- mode set_ordlist__insert(di, di, uo) is det.
 :- mode set_ordlist__insert(in, in, out) is det.
 
+:- func set_ordlist__insert(set_ordlist(T), T) = set_ordlist(T).
+
 	% `set_ordlist__insert_list(Set0, Xs, Set)' is true iff `Set' is the
 	% union of `Set0' and the set containing only the members of `Xs'.
 
 :- pred set_ordlist__insert_list(set_ordlist(T), list(T), set_ordlist(T)).
 :- mode set_ordlist__insert_list(in, in, out) is det.
+
+:- func set_ordlist__insert_list(set_ordlist(T), list(T)) = set_ordlist(T).
 
 	% `set_ordlist__delete(Set0, X, Set)' is true iff `Set' is the
 	% relative complement of `Set0' and the set containing only `X', i.e.
@@ -106,12 +125,16 @@
 % :- mode set_ordlist__delete(di, in, uo) is det.
 :- mode set_ordlist__delete(in, in, out) is det.
 
+:- func set_ordlist__delete(set_ordlist(T), T) = set_ordlist(T).
+
 	% `set_ordlist__delete_list(Set0, Xs, Set)' is true iff `Set' is the
 	% relative complement of `Set0' and the set containing only the members
 	% of `Xs'.
 
 :- pred set_ordlist__delete_list(set_ordlist(T), list(T), set_ordlist(T)).
 :- mode set_ordlist__delete_list(in, in, out) is det.
+
+:- func set_ordlist__delete_list(set_ordlist(T), list(T)) = set_ordlist(T).
 
 	% `set_ordlist__remove(Set0, X, Set)' is true iff `Set0' contains `X',
 	% and `Set' is the relative complement of `Set0' and the set
@@ -145,12 +168,16 @@
 							set_ordlist(T)).
 :- mode set_ordlist__union(in, in, out) is det.
 
+:- func set_ordlist__union(set_ordlist(T), set_ordlist(T)) = set_ordlist(T).
+
 	% `set_ordlist__power_union(A, B)' is true iff `B' is the union of
 	% all the sets in `A'
 
 :- pred set_ordlist__power_union(set_ordlist(set_ordlist(T)),
 							set_ordlist(T)).
 :- mode set_ordlist__power_union(in, out) is det.
+
+:- func set_ordlist__power_union(set_ordlist(set_ordlist(T))) = set_ordlist(T).
 
 	% `set_ordlist__intersect(SetA, SetB, Set)' is true iff `Set' is the
 	% intersection of `SetA' and `SetB'. The efficiency of the intersection
@@ -161,12 +188,18 @@
 :- mode set_ordlist__intersect(in, in, out) is det.
 :- mode set_ordlist__intersect(in, in, in) is semidet.
 
+:- func set_ordlist__intersect(set_ordlist(T), set_ordlist(T))
+		= set_ordlist(T).
+
 	% `set_ordlist__power_intersect(A, B)' is true iff `B' is the
 	% intersection of all the sets in `A'.
 
 :- pred set_ordlist__power_intersect(set_ordlist(set_ordlist(T)),
 							set_ordlist(T)).
 :- mode set_ordlist__power_intersect(in, out) is det.
+
+:- func set_ordlist__power_intersect(set_ordlist(set_ordlist(T)))
+		= set_ordlist(T).
 
 	% `set_ordlist__difference(SetA, SetB, Set)' is true iff `Set' is the
 	% set containing all the elements of `SetA' except those that
@@ -176,13 +209,62 @@
 							set_ordlist(T)).
 :- mode set_ordlist__difference(in, in, out) is det.
 
+:- func set_ordlist__difference(set_ordlist(T), set_ordlist(T))
+		= set_ordlist(T).
+
 	% `set_ordlist__count(Set, Count)' is true iff `Set' has
 	% `Count' elements.
 
 :- pred set_ordlist__count(set_ordlist(T), int).
 :- mode set_ordlist__count(in, out) is det.
 
+:- func set_ordlist__count(set_ordlist(T)) = int.
+
+
+:- func set_ordlist__map(func(T1) = T2, set_ordlist(T1)) = set_ordlist(T2).
+
+:- func set_ordlist__filter_map(func(T1) = T2, set_ordlist(T1))
+		= set_ordlist(T2).
+
+:- mode set_ordlist__filter_map(func(in) = out is semidet, in) = out is det.
+
+:- func set_ordlist__fold(func(T1, T2) = T2, set_ordlist(T1), T2) = T2.
+
+	% set_ordlist__divide(Pred, Set, TruePart, FalsePart):
+	% TruePart consists of those elements of Set for which Pred succeeds;
+	% FalsePart consists of those elements of Set for which Pred fails.
+:- pred set_ordlist__divide(pred(T1), set_ordlist(T1), set_ordlist(T1),
+	set_ordlist(T1)).
+:- mode set_ordlist__divide(pred(in) is semidet, in, out, out) is det.
+
 %--------------------------------------------------------------------------%
+
+:- implementation.
+
+% Everything below here is not intended to be part of the public interface,
+% and will not be included in the Mercury library reference manual.
+
+:- interface.
+
+:- import_module term.	% for var/1.
+
+:- pragma type_spec(set_ordlist__list_to_set/2, T = var(_)).
+
+:- pragma type_spec(set_ordlist__member(in, in), T = var(_)).
+
+:- pragma type_spec(set_ordlist__contains(in, in), T = var(_)).
+
+:- pragma type_spec(set_ordlist__insert/3, T = var(_)).
+
+:- pragma type_spec(set_ordlist__insert_list/3, T = var(_)).
+
+:- pragma type_spec(set_ordlist__union/3, T = var(_)).
+
+:- pragma type_spec(set_ordlist__intersect/3, T = var(_)).
+
+:- pragma type_spec(set_ordlist__difference/3, T = var(_)).
+
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -240,6 +322,9 @@ set_ordlist__is_member(E, S, R) :-
 	;
 		R = no
 	).
+
+set_ordlist__contains(S, E) :-
+	set_ordlist__member(E, S).
 
 set_ordlist__delete_list(S0, D, S) :-
 	list__sort_and_remove_dups(D, DS),
@@ -348,54 +433,10 @@ set_ordlist__difference([X|Xs], [Y|Ys], Set) :-
 set_ordlist__count(Set, Count) :-
 	list__length(Set, Count).
 
-%--------------------------------------------------------------------------%
-%--------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 % Ralph Becket <rwab1@cam.sri.com> 24/04/99
 %	Function forms added.
-
-:- interface.
-
-:- func set_ordlist__list_to_set(list(T)) = set_ordlist(T).
-
-:- func set_ordlist__sorted_list_to_set(list(T)) = set_ordlist(T).
-
-:- func set_ordlist__to_sorted_list(set_ordlist(T)) = list(T).
-
-:- func set_ordlist__init = set_ordlist(T).
-
-:- func set_ordlist__make_singleton_set(T) = set_ordlist(T).
-
-:- func set_ordlist__insert(set_ordlist(T), T) = set_ordlist(T).
-
-:- func set_ordlist__insert_list(set_ordlist(T), list(T)) = set_ordlist(T).
-
-:- func set_ordlist__delete(set_ordlist(T), T) = set_ordlist(T).
-
-:- func set_ordlist__delete_list(set_ordlist(T), list(T)) = set_ordlist(T).
-
-:- func set_ordlist__union(set_ordlist(T), set_ordlist(T)) = set_ordlist(T).
-
-:- func set_ordlist__power_union(set_ordlist(set_ordlist(T))) = set_ordlist(T).
-
-:- func set_ordlist__intersect(set_ordlist(T), set_ordlist(T)) = set_ordlist(T).
-
-:- func set_ordlist__power_intersect(set_ordlist(set_ordlist(T))) = set_ordlist(T).
-
-:- func set_ordlist__difference(set_ordlist(T), set_ordlist(T)) = set_ordlist(T).
-
-:- func set_ordlist__count(set_ordlist(T)) = int.
-
-:- func set_ordlist__map(func(T1) = T2, set_ordlist(T1)) = set_ordlist(T2).
-
-:- func set_ordlist__filter_map(func(T1) = T2, set_ordlist(T1)) = set_ordlist(T2).
-:- mode set_ordlist__filter_map(func(in) = out is semidet, in) = out is det.
-
-:- func set_ordlist__fold(func(T1, T2) = T2, set_ordlist(T1), T2) = T2.
-
-% ---------------------------------------------------------------------------- %
-% ---------------------------------------------------------------------------- %
-
-:- implementation.
 
 set_ordlist__list_to_set(Xs) = S :-
 	set_ordlist__list_to_set(Xs, S).
@@ -443,11 +484,37 @@ set_ordlist__count(S) = N :-
 	set_ordlist__count(S, N).
 
 set_ordlist__map(F, S1) = S2 :-
-	S2 = set_ordlist__list_to_set(list__map(F, set_ordlist__to_sorted_list(S1))).
+	S2 = set_ordlist__list_to_set(list__map(F,
+			set_ordlist__to_sorted_list(S1))).
 
 set_ordlist__filter_map(PF, S1) = S2 :-
-	S2 = set_ordlist__list_to_set(list__filter_map(PF, set_ordlist__to_sorted_list(S1))).
+	S2 = set_ordlist__list_to_set(list__filter_map(PF,
+			set_ordlist__to_sorted_list(S1))).
 
 set_ordlist__fold(F, S, A) = B :-
 	B = list__foldl(F, set_ordlist__to_sorted_list(S), A).
 
+	% The calls to reverse allow us to make set_ordlist__divide_2 tail
+	% recursive. This costs us a higher constant factor, but allows
+	% set_ordlist__divide to work in constant stack space.
+set_ordlist__divide(Pred, Set, TruePart, FalsePart) :-
+	set_ordlist__divide_2(Pred, Set, [], RevTruePart, [], RevFalsePart),
+	list__reverse(RevTruePart, TruePart),
+	list__reverse(RevFalsePart, FalsePart).
+
+:- pred set_ordlist__divide_2(pred(T1), set_ordlist(T1),
+	set_ordlist(T1), set_ordlist(T1),
+	set_ordlist(T1), set_ordlist(T1)).
+:- mode set_ordlist__divide_2(pred(in) is semidet, in, in, out, in, out)
+	is det.
+
+set_ordlist__divide_2(_Pred, [], RevTrue, RevTrue, RevFalse, RevFalse).
+set_ordlist__divide_2(Pred, [H | T], RevTrue0, RevTrue, RevFalse0, RevFalse) :-
+	( call(Pred, H) ->
+		RevTrue1 = [H | RevTrue0],
+		RevFalse1 = RevFalse0
+	;
+		RevTrue1 = RevTrue0,
+		RevFalse1 = [H | RevFalse0]
+	),
+	set_ordlist__divide_2(Pred, T, RevTrue1, RevTrue, RevFalse1, RevFalse).

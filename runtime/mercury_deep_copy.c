@@ -5,7 +5,7 @@
 */
 
 /*
-** This module defines the deep_copy() functions.
+** This module defines the MR_deep_copy() functions.
 **
 ** Deep copy is used for a number of different purposes.  Each variant
 ** has the same basic control structure, but differs in how memory
@@ -20,27 +20,30 @@
 
 
 /*
-** deep_copy(): see mercury_deep_copy.h for documentation.
+** MR_deep_copy(): see mercury_deep_copy.h for documentation.
 */
 
 #undef  in_range
 #define in_range(X)	(lower_limit == NULL || \
 				((X) >= lower_limit && (X) <= upper_limit))
 
+#undef  in_traverse_range
+#define in_traverse_range(X)	(FALSE)
+
 #undef	maybeconst
 #define	maybeconst	const
 
 #undef  copy
-#define copy		deep_copy
+#define copy		MR_deep_copy
 
 #undef  copy_arg
-#define copy_arg	deep_copy_arg
+#define copy_arg	MR_deep_copy_arg
 
 #undef  copy_type_info
-#define copy_type_info	deep_copy_type_info
+#define copy_type_info	MR_deep_copy_type_info
 
 #undef  copy_typeclass_info
-#define copy_typeclass_info	deep_copy_typeclass_info
+#define copy_typeclass_info	MR_deep_copy_typeclass_info
 
 #undef  leave_forwarding_pointer
 #define leave_forwarding_pointer(DataPtr, NewData)
@@ -54,24 +57,30 @@
 /*
 ** agc_deep_copy(): see mercury_deep_copy.h for documentation.
 */
+#ifdef NATIVE_GC
 
 #undef  in_range
 #define in_range(X)	((X) >= lower_limit && (X) <= upper_limit)
+
+#undef  in_traverse_range(X)
+#define in_traverse_range(X)	\
+		((X) >= MR_ENGINE(solutions_heap_zone)->min && \
+			(X) <= MR_ENGINE(solutions_heap_zone)->hardmax)
 
 #undef	maybeconst
 #define	maybeconst
 
 #undef  copy
-#define copy		agc_deep_copy
+#define copy		MR_agc_deep_copy
 
 #undef  copy_arg
-#define copy_arg	agc_deep_copy_arg
+#define copy_arg	MR_agc_deep_copy_arg
 
 #undef  copy_type_info
-#define copy_type_info	agc_deep_copy_type_info
+#define copy_type_info	MR_agc_deep_copy_type_info
 
 #undef  copy_typeclass_info
-#define copy_typeclass_info	agc_deep_copy_typeclass_info
+#define copy_typeclass_info	MR_agc_deep_copy_typeclass_info
 
 #ifdef MR_DEBUG_AGC_FORWARDING
   #define FORWARD_DEBUG_MSG(Msg, Data)	\
@@ -94,6 +103,8 @@
 
 #include "mercury_deep_copy_body.h"
 
+#endif
+
 /*---------------------------------------------------------------------------*/
 
 #define SWAP(val1, val2, type)		\
@@ -115,28 +126,30 @@ MR_make_long_lived(MR_Word term, MR_TypeInfo type_info, MR_Word *lower_limit)
 {
 	MR_Word result;
 
-	restore_transient_hp();	/* Because we play with MR_hp */
+	MR_restore_transient_hp();	/* Because we play with MR_hp */
 
-	if (lower_limit < MR_heap_zone->bottom ||
-			lower_limit > MR_heap_zone->top) {
-		lower_limit = MR_heap_zone->bottom;
+	if (lower_limit < MR_ENGINE(heap_zone)->bottom ||
+			lower_limit > MR_ENGINE(heap_zone)->top) {
+		lower_limit = MR_ENGINE(heap_zone)->bottom;
 	}
 
 	/* temporarily swap the heap with the global heap */
-	SWAP(MR_heap_zone, MR_global_heap_zone, MemoryZone *);
+	SWAP(MR_ENGINE(heap_zone), MR_ENGINE(global_heap_zone),
+		MR_MemoryZone *);
 	SWAP(MR_hp, MR_global_hp, MR_Word *);
 
 	/* copy values from the heap to the global heap */
-	save_transient_hp();
-	result = deep_copy(&term, type_info, lower_limit,
-			MR_global_heap_zone->top);
-	restore_transient_hp();
+	MR_save_transient_hp();
+	result = MR_deep_copy(&term, type_info, lower_limit,
+			MR_ENGINE(global_heap_zone)->top);
+	MR_restore_transient_hp();
 
 	/* swap the heap and global heap back again */
-	SWAP(MR_heap_zone, MR_global_heap_zone, MemoryZone *);
+	SWAP(MR_ENGINE(heap_zone), MR_ENGINE(global_heap_zone),
+		MR_MemoryZone *);
 	SWAP(MR_hp, MR_global_hp, MR_Word *);
 
-	save_transient_hp();	/* Because we played with MR_hp */
+	MR_save_transient_hp();	/* Because we played with MR_hp */
 
 	return result;
 }

@@ -20,13 +20,13 @@
 */
 
 #ifdef __GNUC__
-  #define LVALUE_CAST(type, lval)	((type)(lval))
-  #define LVALUE_SEQ(expr, lval)	((expr),(lval))
-  #define LVALUE_COND(expr, x, y)	((expr)?(x):(y))
+  #define MR_LVALUE_CAST(type, lval)	((type)(lval))
+  #define MR_LVALUE_SEQ(expr, lval)	((expr),(lval))
+  #define MR_LVALUE_COND(expr, x, y)	((expr)?(x):(y))
 #else
-  #define LVALUE_CAST(type, lval)	(*(type*)&(lval))
-  #define LVALUE_SEQ(expr, lval)	(*((expr),&(lval)))
-  #define LVALUE_COND(expr, x, y)	(*((expr)?&(x):&(y)))
+  #define MR_LVALUE_CAST(type, lval)	(*(type*)&(lval))
+  #define MR_LVALUE_SEQ(expr, lval)	(*((expr),&(lval)))
+  #define MR_LVALUE_COND(expr, x, y)	(*((expr)?&(x):&(y)))
 #endif
 
 #define MR_fake_reg	(MR_ENGINE(fake_reg))
@@ -39,39 +39,40 @@
 ** The bottom level is the hardware description layer. 
 ** This layer is defined separately for each architecture,
 ** in the header files in the machdeps subdirectory.
-** The hardware description layer defines the first NUM_REAL_REGS register
-** variables mr0, mr1, etc. as the physical machine registers, and defines an
-** array fake_regs[n] of pseudo registers, with the remaining "registers"
-** mr<NUM_REAL_REGS>, ..., mr36 defined as corresponding slots in
-** this fake_reg array. 
-** This level also provides the macros save_regs_to_mem(),
-** save_transient_regs_to_mem(), restore_regs_from_mem(),
-** and restore_transient_regs_from_mem().
+** The hardware description layer defines the first MR_NUM_REAL_REGS register
+** variables MR_mr0, MR_mr1, etc. as the physical machine registers, and
+** defines an array MR_fake_reg[n] of pseudo registers, with the remaining
+** "registers" MR_mr<MR_NUM_REAL_REGS>, ..., MR_mr36 defined as corresponding
+** slots in this MR_fake_reg array. 
+** This level also provides the macros MR_save_regs_to_mem(),
+** MR_save_transient_regs_to_mem(), MR_restore_regs_from_mem(),
+** and MR_restore_transient_regs_from_mem().
 **
 ** The next level is the hardware abstraction layer.
 ** The hardware abstraction layer is at a similar level to the
 ** hardware description layer, and includes that as a subset,
 ** but in addition it provides a few more conveniences.
-** This layer defines macros mr(n) for n>36, and the macros
-** save_registers(), restore_registers(),
-** save_transient_registers(), restore_transient_registers(),
-** save_transient_hp(), and restore_transient_hp().
+** This layer defines macros MR_mr(n) for n>36, and the macros
+** MR_save_registers(), MR_restore_registers(),
+** MR_save_transient_registers(), MR_restore_transient_registers(),
+** MR_save_transient_hp(), and MR_restore_transient_hp().
 ** This layer is defined here in mercury_regs.h.
 **
 ** The hardware abstraction layer thus provides a very large number
 ** of registers, which may be either real or fake.  The lower the number,
 ** the greater the probability that the storage referred to will be
 ** a real machine register, and not a simulated one. The number of
-** real machine registers is given by the macro NUM_REAL_REGS.
+** real machine registers is given by the macro MR_NUM_REAL_REGS.
 **
 ** The final level is the Mercury abstract machine registers layer.
 ** This layer maps the Mercury virtual machine registers
 **
 **	MR_succip, MR_hp, MR_sp, MR_curfr, MR_maxfr and
-**	r1, ..., r32, r(33), ..., r(MAX_VIRTUAL_REG)
+**	MR_r1, ..., MR_r32, MR_r(33), ..., MR_r(MR_MAX_VIRTUAL_REG)
 **
-** to the set mr0..mr37, mr(38), mr(39), ..., mr(MAX_FAKE_REG-1)
-** which were provided by the hardware abstraction layer.
+** to the set MR_mr0..MR_mr37, MR_mr(38), MR_mr(39), ...,
+** MR_mr(MR_MAX_FAKE_REG-1) which were provided by the hardware abstraction
+** layer.
 ** It also provides MR_virtual_r(), MR_virtual_succip, MR_virtual_hp, etc.,
 ** which are similar to mr<N>, MR_succip, MR_hp, etc. except that they
 ** always map to the underlying fake_reg rather than to the physical register.
@@ -115,76 +116,80 @@
 ** Extra stuff for the hardware abstraction layer
 */
 
-/* The machdeps header defines mr0 .. mr37; now define mr(n) for n > 37 */
+/*
+** The machdeps header defines MR_mr0 .. MR_mr37;
+** now define MR_mr(n) for n > 37
+*/
 
-#define mr(n) LVALUE_SEQ(MR_assert((n) > 37 && \
-				(n) < MAX_FAKE_REG),\
+#define MR_mr(n) MR_LVALUE_SEQ(MR_assert((n) > 37 && (n) < MR_MAX_FAKE_REG),\
 		MR_fake_reg[n])
 
 /* 
-** the save_registers() macro copies the physical machine registers
-** to their corresponding slots in the MR_fake_reg array 
+** The MR_save_registers() macro copies the physical machine registers
+** to their corresponding slots in the MR_fake_reg array.
 */
 
-#define save_registers() 	save_regs_to_mem(MR_fake_reg)
+#define MR_save_registers() 	MR_save_regs_to_mem(MR_fake_reg)
 
 /* 
-** the restore_registers() macro sets the physical machine registers
+** The MR_restore_registers() macro sets the physical machine registers
 ** to the values in their corresponding slots in the fake_reg array 
 ** If we're using a register for the engine base, then we'd better
 ** restore that from the thread specific data area, since the fake_reg
 ** array is accessed via that register.
 */
 
-#if defined(MR_THREAD_SAFE) && NUM_REAL_REGS > 0
-  #define restore_registers()					\
+#if defined(MR_THREAD_SAFE) && MR_NUM_REAL_REGS > 0
+  #define MR_restore_registers()					\
   	do {							\
 		MR_engine_base = MR_thread_engine_base;		\
-		MR_fake_reg[0] = (MR_Word) MR_engine_base;		\
-		restore_regs_from_mem(MR_fake_reg);		\
+		MR_fake_reg[0] = (MR_Word) MR_engine_base;	\
+		MR_restore_regs_from_mem(MR_fake_reg);		\
 	} while (0)
 #else
-  #define restore_registers() 	restore_regs_from_mem(MR_fake_reg)
+  #define MR_restore_registers() 	MR_restore_regs_from_mem(MR_fake_reg)
 #endif
 
 /* 
-** the save_transient_registers() and restore_transient_registers()
-** macros are similar to save_registers() and restore_registers()
+** The MR_save_transient_registers() and MR_restore_transient_registers()
+** macros are similar to MR_save_registers() and MR_restore_registers()
 ** except that they only save/restore registers which can be
 ** affected by calling or returning from a C function (e.g.
 ** by sliding register windows on SPARCs).
 */
 
-#define save_transient_registers()    save_transient_regs_to_mem(MR_fake_reg)
-#if defined(MR_THREAD_SAFE) && NUM_REAL_REGS > 0
-  #define restore_transient_registers()					\
+#define MR_save_transient_registers()    				\
+	MR_save_transient_regs_to_mem(MR_fake_reg)
+
+#if defined(MR_THREAD_SAFE) && MR_NUM_REAL_REGS > 0
+  #define MR_restore_transient_registers()				\
   	do {								\
 		MR_engine_base = MR_thread_engine_base;			\
 		MR_fake_reg[0] = (MR_Word) MR_engine_base;		\
-		restore_transient_regs_from_mem(MR_fake_reg);		\
+		MR_restore_transient_regs_from_mem(MR_fake_reg);	\
 	} while (0)
 #else
-  #define restore_transient_registers()	\
-		restore_transient_regs_from_mem(MR_fake_reg)
+  #define MR_restore_transient_registers()	\
+		MR_restore_transient_regs_from_mem(MR_fake_reg)
 #endif
 
 /*
-** The save_transient_hp() and restore_transient_hp() macros
-** are similar to save/restore_transient_regs(), except
-** that they only guarantee to save/restore the heap pointer,
+** The MR_save_transient_hp() and MR_restore_transient_hp() macros
+** are similar to MR_save_transient_regs()/MR_restore_transient_regs(),
+** except that they only guarantee to save/restore the heap pointer,
 ** if any.  (They might save/restore other regs too, though.)
 */
 #ifdef CONSERVATIVE_GC
-  #define save_transient_hp() /* nothing */
-  #define restore_transient_hp() /* nothing */
+  #define MR_save_transient_hp()	/* nothing */
+  #define MR_restore_transient_hp()	/* nothing */
 #else
   /*
   ** This code is suboptimal -- it would be more efficient to
   ** save/restore just a single register rather than all the
   ** transient registers.
   */
-  #define save_transient_hp() save_transient_registers()
-  #define restore_transient_hp() restore_transient_registers()
+  #define MR_save_transient_hp()	MR_save_transient_registers()
+  #define MR_restore_transient_hp() 	MR_restore_transient_registers()
 #endif
 
 /*---------------------------------------------------------------------------*/
@@ -193,30 +198,30 @@
 */
 
 #ifdef MEASURE_REGISTER_USAGE
-  #define count_usage(num,reg)		LVALUE_SEQ(num_uses[num]++, reg)
+  #define MR_count_usage(num,reg)	MR_LVALUE_SEQ(MR_num_uses[num]++, reg)
 #else
-  #define count_usage(num,reg)		(reg)
+  #define MR_count_usage(num,reg)	(reg)
 #endif
 
 #include "mercury_regorder.h"
 
-/* mercury_regorder.h defines r1 .. r32; now define r(n) for n > 32 */
+/* mercury_regorder.h defines MR_r1 .. MR_r32; now define MR_r(n) for n > 32 */
 
-#define r(n) mr((n) + MR_NUM_SPECIAL_REG - 1)
+#define MR_r(n) MR_mr((n) + MR_NUM_SPECIAL_REG - 1)
 
 /*
 ** saved_reg(save_area, n) accesses the underlying slot in save_area
 ** for register n
 */
-#define saved_reg(save_area, n)						\
-	LVALUE_COND((n) > MAX_REAL_REG,					\
-		save_area[(n) + MR_NUM_SPECIAL_REG - 1],		\
-		save_area[virtual_reg_map[(n) - 1]])
+#define MR_saved_reg(save_area, n)					\
+	MR_LVALUE_COND((n) > MR_MAX_REAL_REG,				\
+		(save_area)[(n) + MR_NUM_SPECIAL_REG - 1],		\
+		(save_area)[MR_virtual_reg_map[(n) - 1]])
 
-/* virtual_reg(n) accesses the underlying fake_reg for register n */
+/* MR_virtual_reg(n) accesses the underlying fake_reg for register n */
 /* similarly MR_virtual_foo access the underlying fake_reg slot for foo */
 
-#define virtual_reg(n) 			saved_reg(MR_fake_reg, n)
+#define MR_virtual_reg(n) 		MR_saved_reg(MR_fake_reg, n)
 #define MR_virtual_succip 		MR_saved_succip(MR_fake_reg)
 #define MR_virtual_hp 			MR_saved_hp(MR_fake_reg)
 #define MR_virtual_sp 			MR_saved_sp(MR_fake_reg)
@@ -234,30 +239,30 @@
 */
 #define MR_clear_regs_for_GC()						\
 	do {								\
-		save_registers();					\
+		MR_save_registers();					\
 		{ int i;						\
-		  for (i = 1; i <= MAX_VIRTUAL_REG; i++) {		\
-			virtual_reg(i) = 0;				\
+		  for (i = 1; i <= MR_MAX_VIRTUAL_REG; i++) {		\
+			MR_virtual_reg(i) = 0;				\
 		  }							\
 		}							\
-		restore_registers();					\
+		MR_restore_registers();					\
 	} while (0)
 
 /*
-** get_reg() and set_reg() provide a different way of addressing
-** the registers; unlike virtual_reg(), you don't need to wrap them
-** inside save_registers()/restore_regs() to copy the real regs to/from
+** MR_get_reg() and MR_set_reg() provide a different way of addressing
+** the registers; unlike MR_virtual_reg(), you don't need to wrap them
+** inside MR_save_registers()/MR_restore_regs() to copy the real regs to/from
 ** the MR_fake_reg, so they may perhaps be more efficient if you are just
 ** getting or setting one or two registers?
 ** Currently they're buggy for n>32 and are not used except for debugging.
 */
 
-extern	MR_Word	get_reg(int);
-extern	MR_Word	set_reg(int, MR_Word);
+extern	MR_Word	MR_get_reg(int);
+extern	MR_Word	MR_set_reg(int, MR_Word);
 
 /*
 ** the following macros define a mapping from registers to indices into the
-** num_uses array used for counting register usage
+** MR_num_uses array used for counting register usage
 **
 ** any changes to these will also require changes to
 ** print_register_usage_counts() in mercury_wrapper.c.
@@ -265,7 +270,7 @@ extern	MR_Word	set_reg(int, MR_Word);
 
 #define	MR_SI_RN		0
 #define MR_R_RN(n)		(n)
-#define MR_ORD_RN		MAX_REAL_REG
+#define MR_ORD_RN		MR_MAX_REAL_REG
 #define	MR_HP_RN		(MR_ORD_RN + 1)
 #define	MR_SP_RN		(MR_ORD_RN + 2)
 #define	MR_CF_RN		(MR_ORD_RN + 3)
@@ -281,6 +286,6 @@ extern	MR_Word	set_reg(int, MR_Word);
 #define	MR_GEN_NEXT_RN		(MR_ORD_RN + 13)
 #define	MR_CUT_STACK_RN		(MR_ORD_RN + 14)
 #define	MR_CUT_NEXT_RN		(MR_ORD_RN + 15)
-#define	MAX_RN			(MR_ORD_RN + 16)
+#define	MR_MAX_RN		(MR_ORD_RN + 16)
 
 #endif /* not MERCURY_REGS_H */

@@ -5,9 +5,13 @@ The compiler contains some code for the following features,
 which are not yet completed, but which we hope to complete
 at some time in the future:
 
-* There is a `--high-level-c' option, for a new back-end
-  that generates C code but at a much higher level than the
-  current back-end (e.g. no gotos).
+* There is a `--target il' option, which generates MSIL code
+  for Microsoft's new .NET common language runtime.
+  See <http://www.cs.mu.oz.au/mercury/dotnet.html> and/or
+  <http://www.cs.mu.oz.au/mercury/information/dotnet/mercury_and_dotnet.html>.
+
+* There is a `--target asm' option, which generates assembler by
+  interfacing directly with the GCC back-end, rather than going via C.
 
 * Thread-safe engine.
 
@@ -21,9 +25,6 @@ at some time in the future:
   which identifies opportunities for LCO where a call
   is followed only by some constructor invocations.
   However, these opportunities are not exploited yet.
-
-* We now allow programmers to give names to the arguments of constructor
-  function symbols.  (Disabled, due to lack of a suitable operator.)
 
 * There is a new garbage collector that does accurate garbage
   collection (.agc grade).  It is currently limited to deterministic
@@ -45,13 +46,33 @@ at some time in the future:
 * The Mercury debugger (mdb) now includes some support for declarative
   debugging.
 
+* There is a `--generate-bytecode' option, for a new back-end
+  that generates bytecode.  The bytecode generator is basically
+  complete, but we don't have a bytecode interpreter.
+
 We also have some code that goes at least some part of the way towards
 implementing the features below.   However, for these features, the
 code has not yet been committed and thus is not part of the standard
 distribution.
 
+* A bytecode interpreter, for use with the `--generate-bytecode' option.
+
+* A `--target java' option, which generates Java.
+
 * Support for aliasing in the mode system.
 
+* Support for automatic structure reuse (reusing old data
+  structures that are no longer live, rather than allocating
+  new memory on the heap) and compile time garbage collection
+
+* Sequence quantification (see the description in
+  http://www.cs.mu.oz.au/research/mercury/information/reports/minutes_15_12_00.html).
+
+* A SOAP interface.
+
+* A QuickCheck-style module for software testing.
+
+* Improvements to the debugger's pretty-printer.
 
 Work not in progress
 --------------------
@@ -61,10 +82,6 @@ but work on them has stopped, since finishing them off would be
 quite a bit more work, and our current priorities lie elsewhere.
 Still, these would make interesting and worthwhile projects
 if someone has the time for it.
-
-* There is a `--generate-bytecode' option, for a new back-end
-  that generates bytecode.  The bytecode generator is basically
-  complete, but we don't have a bytecode interpreter.
 
 * There is a `--generate-prolog' option for a new back-end
   that generates Prolog code.

@@ -33,30 +33,30 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module globals, std_util, list, assoc_list, io, bool, map.
+:- import_module std_util, list, assoc_list, io, bool, map.
 :- import_module term, varset.
-:- import_module modes, options, mercury_to_mercury, passes_aux.
-:- import_module hlds_goal, instmap, prog_data, (inst).
+:- import_module modes, globals, options, mercury_to_mercury, passes_aux.
+:- import_module hlds_goal, hlds_module, instmap, prog_data, (inst).
 
 %-----------------------------------------------------------------------------%
 
 	% This code is used to trace the actions of the mode checker.
 
 mode_checkpoint(Port, Msg, ModeInfo0, ModeInfo) :-
-	mode_info_get_io_state(ModeInfo0, IOState0),
-	globals__io_lookup_bool_option(debug_modes, DoCheckPoint,
-		IOState0, IOState1),
+	mode_info_get_module_info(ModeInfo0, ModuleInfo),
+	module_info_globals(ModuleInfo, Globals),
+	globals__lookup_bool_option(Globals, debug_modes, DoCheckPoint),
 	( DoCheckPoint = yes ->
+		mode_info_get_io_state(ModeInfo0, IOState0),
 		mode_info_get_last_checkpoint_insts(ModeInfo0, OldInsts),
 		mode_checkpoint_2(Port, Msg, OldInsts, NewInsts, ModeInfo0,
-			IOState1, IOState),
+			IOState0, IOState),
 		mode_info_set_last_checkpoint_insts(NewInsts, ModeInfo0,
-			ModeInfo1)
+			ModeInfo1),
+		mode_info_set_io_state(ModeInfo1, IOState, ModeInfo)
 	;
-		ModeInfo1 = ModeInfo0,
-		IOState = IOState1
-	),
-	mode_info_set_io_state(ModeInfo1, IOState, ModeInfo).
+		ModeInfo = ModeInfo0
+	).
 
 :- pred mode_checkpoint_2(port, string, assoc_list(prog_var, inst),
 	assoc_list(prog_var, inst), mode_info, io__state, io__state).

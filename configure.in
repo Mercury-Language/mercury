@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-2000 The University of Melbourne. 
+# Copyright (C) 1995-2001 The University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -84,16 +84,31 @@ if test "$BOOTSTRAP_MC" != ""; then
 		:- interface.
 		:- import_module io.
 		:- pred main(io__state::di, io__state::uo) is det.
+
 		:- implementation.
+	
+		% Check that we can declare foreign_code for C and MC++.
+		:- pred foo(int::out) is det.
+		:- pragma foreign_code("C",    foo(X::out),
+			[[will_not_call_mercury, thread_safe]],
+			" X = 42; ").
+		:- pragma foreign_code("MC++", foo(X::out),
+			[[will_not_call_mercury, thread_safe]],
+			" X = 42; ").
+
+		% Currently we test that mmc accepts the
+		% --fixed-user-guided-type-specialization flag.
 		main --> 
-				% Currently we test that mmc accepts
-				% the --object-file-extension flag.
-			print("Hello, world\n").
+			( { foo(42) } ->
+				print("Hello, world\n")
+			;
+				print("Nope.\n")
+			).
 EOF
 	if
 	 	 echo $BOOTSTRAP_MC conftest >&AC_FD_CC 2>&1 &&
-	 	 $BOOTSTRAP_MC --object-file-extension "o" \
-			 --link-flags "--static" conftest \
+	 	 $BOOTSTRAP_MC --fixed-user-guided-type-specialization \
+			 --halt-at-warn --link-flags "--static" conftest \
 		 	</dev/null >&AC_FD_CC 2>&1 &&
 		 test "`./conftest 2>&1 | tr -d '\015'`" = "Hello, world"
 	then
@@ -104,6 +119,100 @@ EOF
 	fi
 	rm -f conftest*
 fi
+#-----------------------------------------------------------------------------#
+# Let the user specify which C compiler to use.
+AC_ARG_WITH(cc,
+[  --with-cc=<program>     Specify which C compiler to use.],
+mercury_cv_with_cc="$withval", mercury_cv_with_cc="")
+case "$mercury_cv_with_cc" in
+	yes)	AC_MSG_ERROR(missing argument to --with-cc=... option)
+		exit 1
+		;;
+	no)	AC_MSG_ERROR(invalid option --without-cc)
+		exit 1
+		;;
+	"")
+		;;
+	*)
+		CC="$mercury_cv_with_cc"
+		;;
+esac
+#-----------------------------------------------------------------------------#
+#
+# Find the GCC source code
+# and determine whether or not to enable the GCC back-end interface.
+#
+AC_ARG_ENABLE(gcc-back-end,
+[  --enable-gcc-back-end   enable the Mercury compiler's GCC back-end interface],
+enable_gcc_back_end="$enableval",enable_gcc_back_end=default)
+AC_MSG_CHECKING(for GCC source directory)
+gcc_src_dir=not_found
+case $enable_gcc_back_end in
+	yes|no|default)
+		# Search for the gcc source code;
+		# first try in a subdirectory of this directory,
+		# then one parallel to this directory,
+		# and finally try one level up.
+		for dir in gcc ../gcc ..; do
+			if test -f $dir/gcc/tree.c; then
+				gcc_src_dir="$dir"
+				break
+			fi
+		done
+		;;
+	*)
+		# The user has specifies the gcc source directory via
+		# `--enable-gcc-back-end=<directory>'.  Check that
+		# they specified it correctly.
+		gcc_src_dir="$enable_gcc_back_end"
+		if test -f "$gcc_src_dir"/gcc/tree.c; then
+			enable_gcc_back_end=yes
+		else
+			AC_MSG_ERROR(--enable-gcc-back-end=$gcc_src_dir specified,)
+			AC_MSG_ERROR(but GCC source code not found in $gcc_src_dir)
+			exit 1
+		fi		
+		;;
+esac
+AC_MSG_RESULT($gcc_src_dir)
+AC_MSG_CHECKING(whether to enable the GCC back-end interface)
+case $enable_gcc_back_end in
+	yes|default)
+		if test "$gcc_src_dir" = not_found; then
+			case $enable_gcc_back_end in
+				yes)
+					AC_MSG_ERROR(--enable-gcc-back-end specified,)
+					AC_MSG_ERROR(but gcc source code not found)
+					exit 1
+					;;
+				default)
+					enable_gcc_back_end=no
+					;;
+			esac
+		else
+			enable_gcc_back_end=yes
+		fi
+		;;
+	no)
+		;;
+esac
+AC_MSG_RESULT($enable_gcc_back_end)
+ENABLE_GCC_BACK_END=$enable_gcc_back_end
+GCC_SRC_DIR=$gcc_src_dir
+AC_SUBST(ENABLE_GCC_BACK_END)
+AC_SUBST(GCC_SRC_DIR)
+#-----------------------------------------------------------------------------#
+#
+# Determine whether or not to enable the Aditi back-end.
+#
+AC_ARG_ENABLE(aditi-back-end,
+[  --disable-aditi-back-end
+                          disable the Mercury compiler's Aditi back-end],
+enable_aditi_back_end="$enableval",enable_aditi_back_end=yes)
+AC_MSG_CHECKING(whether to enable the Aditi back-end)
+AC_MSG_RESULT($enable_aditi_back_end)
+ENABLE_ADITI_BACK_END=$enable_aditi_back_end
+AC_SUBST(ENABLE_ADITI_BACK_END)
 #-----------------------------------------------------------------------------#
 MERCURY_MSG("looking for GNU Make...")
 AC_PROGRAMS_CHECK(GNU_MAKE,gmake make)
@@ -210,18 +319,17 @@ CFLAGS="-O"
 
 # we also need to add the appropriate `-I' options so that the test programs
 # can #include various Mercury runtime headers.
-CFLAGS="-I runtime -I runtime/machdeps $CFLAGS"
+CPPFLAGS="-Iruntime -Iruntime/machdeps $CPPFLAGS"
 
 # Make sure we search /usr/local/include and /usr/local/lib for
 # header files and libraries.  GNU C normally searches /usr/local/include
 # by default, but (inconsistently) it does _not_ search /usr/local/lib;
 # and in any case the user might be using a different C compiler that
 # doesn't search either of those by default.
-CFLAGS="-I /usr/local/include $CFLAGS"
+CPPFLAGS="-I/usr/local/include $CPPFLAGS"
 LIBS="-L/usr/local/lib $LIBS"
 
 AC_PROG_CPP
-AC_C_CROSS
 AC_RETSIGTYPE
 #-----------------------------------------------------------------------------#
 # Check for `-lm': some systems, e.g. MacOS X (Darwin), don't have it.
@@ -294,6 +402,29 @@ AC_SUBST(LINK_OPT_SEP)
 AC_SUBST(CYGPATH)
 
 #-----------------------------------------------------------------------------#
+# Microsoft.NET configuration
+# 
+AC_PATH_PROG(ILASM, ilasm)
+
+AC_MSG_CHECKING(for Microsoft.NET Framework SDK)
+AC_CACHE_VAL(mercury_cv_microsoft_dotnet, [
+if test "$ILASM" != ""; then
+	changequote(<<,>>) 
+	MS_DOTNET_SDK_DIR=`expr "$ILASM" : '\(.*\)[/\\]*[bB]in[/\\]*ilasm'`
+	changequote([,]) 
+	mercury_cv_microsoft_dotnet="yes"
+else
+	MS_DOTNET_SDK_DIR=""
+	mercury_cv_microsoft_dotnet="no"
+fi
+])
+AC_MSG_RESULT($mercury_cv_microsoft_dotnet)
+ILASM=`basename "$ILASM"`
+
+AC_SUBST(ILASM)
+AC_SUBST(MS_DOTNET_SDK_DIR)
+
+#-----------------------------------------------------------------------------#
 # Don't try to use mprotect() on gnu-win32, since it is broken
 # (at least for version b18, anyway) and trying it can crash Win95.
 case "$host" in
@@ -322,7 +453,6 @@ fi
 AC_CHECK_HEADER(ucontext.h, HAVE_UCONTEXT_H=1)
 if test "$HAVE_UCONTEXT_H" = 1; then
 	AC_DEFINE(HAVE_UCONTEXT)
-	CFLAGS="$CFLAGS -DHAVE_UCONTEXT"
 else
 	AC_CHECK_HEADER(sys/ucontext.h, HAVE_SYS_UCONTEXT_H=1)
 	if test "$HAVE_SYS_UCONTEXT_H" = 1; then
@@ -358,31 +488,6 @@ fi
 AC_CHECK_HEADER(sys/stat.h, HAVE_SYS_STAT_H=1)
 if test "$HAVE_SYS_STAT_H" = 1; then
 	AC_DEFINE(HAVE_SYS_STAT_H)
-fi
-#-----------------------------------------------------------------------------#
-#
-# Check for dynamic linking, unless the --disable-dynamic-link option
-# was specified.
-#
-AC_ARG_ENABLE(dynamic-link,
-[  --disable-dynamic-link  disable the use of dynamic linking],
-mercury_cv_enable_dynamic_link="$enableval",mercury_cv_enable_dynamic_link=yes)
-if test "$mercury_cv_enable_dynamic_link" = "yes"; then
-	AC_CHECK_HEADER(dlfcn.h, HAVE_DLFCN_H=1)
-	if test "$HAVE_DLFCN_H" = 1; then
-		AC_DEFINE(HAVE_DLFCN_H)
-	fi
-	AC_CHECK_LIB(dl, dlopen, DL_LIBRARY="-ldl", DL_LIBRARY="")
-	AC_SUBST(DL_LIBRARY)
-
-	# temporarily add $DL_LIBRARY to LIBS while we check for dlopen etc.
-	save_LIBS="$LIBS"
-	LIBS="$LIBS $DL_LIBRARY"
-
-	AC_HAVE_FUNCS(dlopen dlclose dlsym dlerror)
-
-	# restore old value of LIBS
-	LIBS="$save_LIBS"
 fi
 #-----------------------------------------------------------------------------#
 #
@@ -1317,27 +1422,6 @@ if test "$mercury_cv_normal_system_retval" = no; then
 	AC_MSG_WARN(Unable to interpret return values from system)
 fi
 #-----------------------------------------------------------------------------#
-AC_MSG_CHECKING(for tempnam)
-AC_CACHE_VAL(mercury_cv_has_tempnam,
-	AC_TRY_RUN([
-	#include <stdio.h>
-	int main() {
-		char	*name;
-
-		name = tempnam("/tmp", "foobie");
-
-		exit(name == NULL);
-	}],
-	[mercury_cv_has_tempnam=yes],
-	[mercury_cv_has_tempnam=no],
-	[mercury_cv_has_tempnam=no])
-)
-AC_MSG_RESULT($mercury_cv_has_tempnam)
-if test "$mercury_cv_has_tempnam" = yes; then
-	AC_DEFINE(IO_HAVE_TEMPNAM)
-fi
-AC_SUBST(IO_HAVE_TEMPNAM)
-#-----------------------------------------------------------------------------#
 AC_MSG_CHECKING(to see if we can handle contexts blocking on IO)
 AC_CACHE_VAL(mercury_cv_can_do_pending_io,
 	AC_TRY_RUN([
@@ -1392,29 +1476,25 @@ AC_SUBST(MR_CAN_DO_PENDING_IO)
 #
 # NB. Any changes here may also require changes to scripts/mgnuc.in.
 #
-save_CC="$CC"
-save_LIBRARY_PATH="$LIBRARY_PATH"
 CFLAGS_FOR_REGS=
+CFLAGS_FOR_GOTOS=
+LIBRARY_PATH_FOR_GOTOS=
 case $ac_cv_prog_gcc in yes)
     case "`$CC --version < /dev/null`" in
 	2.8*) CFLAGS_FOR_GOTOS="-fno-defer-pop -fno-function-cse" ;;
 	*)    CFLAGS_FOR_GOTOS="-fno-defer-pop -fno-function-cse -fno-gcse" ;;
-    esac ;;
-esac
-case "$host" in
+    esac
+    case "$host" in
 	mips-sgi-irix5.*)
-		CC="$CC -non_shared -mno-abicalls"
 		CFLAGS_FOR_GOTOS="$CFLAGS_FOR_GOTOS -non_shared -mno-abicalls"
-LIBRARY_PATH="$NONSHARED_LIB_DIR:/usr/lib/nonshared:$LIBRARY_PATH"
-		export LIBRARY_PATH
+		LIBRARY_PATH_FOR_GOTOS="$NONSHARED_LIB_DIR:/usr/lib/nonshared"
 		;;
-esac
-case "$host" in
+    esac
+    case "$host" in
 	mips-*)
 		CFLAGS_FOR_GOTOS="$CFLAGS_FOR_GOTOS -fomit-frame-pointer"
 		;;
 	i?86-*)
-		CC="$CC -fno-builtin -fno-omit-frame-pointer"
 		CFLAGS_FOR_REGS="-fno-builtin -fno-omit-frame-pointer"
 		;;
 	# We need a special-case hack here, because the auto-config 
@@ -1437,21 +1517,30 @@ case "$host" in
 		mercury_cv_gcc_labels=no
 		;;
 	sparc*)
-		case $ac_cv_prog_gcc in yes)
-		    case "`$CC --version < /dev/null`" in 2.8*)
+		case "`$CC --version < /dev/null`" in 2.8*)
 			AC_MSG_WARN(*** Mercury might not work with " \
 				"gcc 2.8 on sparc!)
 			AC_MSG_WARN(We advise using gcc 2.7.x or egcs.)
 			;;
-		    esac
-		    ;;
 		esac
 		;;
+    esac
+    ;;
 esac
 AC_SUBST(CFLAGS_FOR_REGS)
 AC_SUBST(CFLAGS_FOR_GOTOS)
 #-----------------------------------------------------------------------------#
 AC_MSG_CHECKING(whether we can use gcc labels)
+
+# Set env vars for compiling with gcc non-local gotos
+save_CC="$CC"
+save_LIBRARY_PATH="$LIBRARY_PATH"
+CC="$CC $CFLAGS_FOR_GOTOS"
+if test "$LIBRARY_PATH_FOR_GOTOS" != ""; then
+	LIBRARY_PATH="$LIBRARY_PATH_FOR_GOTOS:$LIBRARY_PATH"
+	export LIBRARY_PATH
+fi
+
 AC_CACHE_VAL(mercury_cv_gcc_labels,
 	AC_TRY_RUN([
 	void *entry_foo_1;
@@ -1500,9 +1589,10 @@ AC_MSG_RESULT($mercury_cv_gcc_labels)
 if test "$mercury_cv_gcc_labels" = yes; then
 	AC_DEFINE(HAVE_GCC_LABELS)
 fi
-#-----------------------------------------------------------------------------#
+
 if test $mercury_cv_gcc_labels = yes; then
 	AC_MSG_CHECKING(whether we can use asm labels)
+
 	AC_CACHE_VAL(mercury_cv_asm_labels,
 	AC_TRY_RUN([
 	void *volatile volatile_global_pointer;
@@ -1531,6 +1621,11 @@ AC_SUBST(HAVE_ASM_LABELS)
 if test $HAVE_ASM_LABELS = 1; then
 	AC_DEFINE(HAVE_ASM_LABELS)
 fi
+
+# Restore env vars modified above
+CC="$save_CC"
+LIBRARY_PATH="$save_LIBRARY_PATH"
+
 #-----------------------------------------------------------------------------#
 # We need to ensure that runtime/mercury_conf.h exists, since some of the
 # programs we attempt to compile below indirectly include it.
@@ -1542,6 +1637,16 @@ EOF
 #-----------------------------------------------------------------------------#
 if test $mercury_cv_gcc_labels = yes || test $mercury_cv_asm_labels = yes; then
 	AC_MSG_CHECKING(whether we can use gcc labels and global registers)
+
+	# Set env vars for compiling with gcc non-local gotos and registers
+	save_CC="$CC"
+	save_LIBRARY_PATH="$LIBRARY_PATH"
+	CC="$CC $CFLAGS_FOR_GOTOS $CFLAGS_FOR_REGS"
+	if test "$LIBRARY_PATH_FOR_GOTOS" != ""; then
+		LIBRARY_PATH="$LIBRARY_PATH_FOR_GOTOS:$LIBRARY_PATH"
+		export LIBRARY_PATH
+	fi
+
 	AC_CACHE_VAL(mercury_cv_gcc_model_fast,
 	AC_TRY_RUN([
 	#define USE_GCC_NONLOCAL_GOTOS
@@ -1551,19 +1656,53 @@ if test $mercury_cv_gcc_labels = yes || test $mercury_cv_asm_labels = yes; then
 	MercuryEngine MR_engine_base;
 	changequote([,]) 
 	main() {
-		mr0 = 20;
-		mr7 = 22;
-		if (mr0 + mr7 != 42)
+		MR_mr0 = 20;
+		MR_mr7 = 22;
+		if (MR_mr0 + MR_mr7 != 42)
 			exit(1);
 		exit(0);
 	}], [mercury_cv_gcc_model_fast=yes], [mercury_cv_gcc_model_fast=no],
 		[mercury_cv_gcc_model_fast=no])
 	)
 	AC_MSG_RESULT($mercury_cv_gcc_model_fast)
+
+	# Restore env vars modified above
+	CC="$save_CC"
+	LIBRARY_PATH="$save_LIBRARY_PATH"
 else
 	mercury_cv_gcc_model_fast=no
 fi
 #-----------------------------------------------------------------------------#
+
+AC_MSG_CHECKING(whether we can use global registers without gcc labels)
+
+# Set env vars for compiling with gcc registers
+save_CC="$CC"
+CC="$CC $CFLAGS_FOR_REGS"
+
+AC_CACHE_VAL(mercury_cv_gcc_model_reg,
+AC_TRY_RUN([
+#define USE_GCC_GLOBAL_REGISTERS
+#include "mercury_engine.h"
+changequote(<<,>>) 
+MercuryEngine MR_engine_base;
+changequote([,]) 
+main() {
+	MR_mr0 = 20;
+	MR_mr7 = 22;
+	if (MR_mr0 + MR_mr7 != 42)
+		exit(1);
+	exit(0);
+}], [mercury_cv_gcc_model_reg=yes], [mercury_cv_gcc_model_reg=no],
+	[mercury_cv_gcc_model_reg=no])
+)
+AC_MSG_RESULT($mercury_cv_gcc_model_reg)
+
+# Restore env vars modified above
+CC="$save_CC"
+
+#-----------------------------------------------------------------------------#
+
 AC_MSG_CHECKING(whether we can support profiling on this system)
 AC_CACHE_VAL(mercury_cv_profiling,
 AC_TRY_CPP([
@@ -1594,32 +1733,6 @@ AC_TRY_CPP([
 ], [mercury_cv_profiling=yes], [mercury_cv_profiling=no]))
 AC_MSG_RESULT($mercury_cv_profiling)
 
-#-----------------------------------------------------------------------------#
-#
-# Restore env vars modified by Irix 5 hack above
-#
-CC="$save_CC"
-LIBRARY_PATH="$save_LIBRARY_PATH"
-#-----------------------------------------------------------------------------#
-
-AC_MSG_CHECKING(whether we can use global registers without gcc labels)
-AC_CACHE_VAL(mercury_cv_gcc_model_reg,
-AC_TRY_RUN([
-#define USE_GCC_GLOBAL_REGISTERS
-#include "mercury_engine.h"
-changequote(<<,>>) 
-MercuryEngine MR_engine_base;
-changequote([,]) 
-main() {
-	mr0 = 20;
-	mr7 = 22;
-	if (mr0 + mr7 != 42)
-		exit(1);
-	exit(0);
-}], [mercury_cv_gcc_model_reg=yes], [mercury_cv_gcc_model_reg=no],
-	[mercury_cv_gcc_model_reg=no])
-)
-AC_MSG_RESULT($mercury_cv_gcc_model_reg)
 #-----------------------------------------------------------------------------#
 
 # Figure out which flavour of pthreads to use, since none of the
@@ -1755,15 +1868,17 @@ if test "$DEFAULT_GRADE" = ""; then
 	# For Irix 5.x, shared libraries are incompatible
 	# with gcc non-local gotos.
 	# We prefer to use shared libraries by default
-	case "$host" in
-		mips-sgi-irix5.*)
+	case "$host" in mips-sgi-irix5.*)
+		case $ac_cv_prog_gcc in yes)
 			DEFAULT_GRADE=reg.gc
 			;;
+		esac
+		;;
 	esac
 fi
 
 #
-# Figure out which grades to use if --enable-all-grades is specified.
+# Figure out which grades to use if --enable-inefficient-grades is specified.
 #
 ALL_LIBGRADES="none"
 if test $mercury_cv_gcc_model_reg = yes; then
@@ -1784,40 +1899,102 @@ if test $mercury_cv_asm_labels = yes; then
 	fi
 fi
 
-AC_ARG_ENABLE(all-grades,
-[  --enable-all-grades     install all the different versions of the library],
-enable_all_grades="$enableval",enable_all_grades=no)
+AC_ARG_ENABLE(inefficient-grades,
+[  --enable-inefficient-grades
+                          install inefficient versions of the library],
+enable_inefficient_grades="$enableval",enable_inefficient_grades=no)
 
-if test "$enable_all_grades" = yes; then
-	LIBGRADES="$ALL_LIBGRADES"
-else
-	LIBGRADES="$BEST_GRADE"
+AC_ARG_ENABLE(most-grades,
+[  --disable-most-grades   install only the essential versions of the library],
+enable_most_grades="$enableval",enable_most_grades=yes)
+
+AC_ARG_ENABLE(nogc-grades,
+[  --disable-nogc-grades   do not install no-gc versions of the library],
+enable_nogc_grades="$enableval",enable_nogc_grades=yes)
+
+AC_ARG_ENABLE(prof-grades,
+[  --disable-prof-grades   do not install profiling versions of the library],
+enable_prof_grades="$enableval",enable_prof_grades=yes)
+
+AC_ARG_ENABLE(trail-grades,
+[  --disable-trail-grades  do not install trailing versions of the library],
+enable_trail_grades="$enableval",enable_trail_grades=yes)
+
+AC_ARG_ENABLE(par-grades,
+[  --disable-par-grades    do not install thread-safe versions of the library],
+enable_par_grades="$enableval",enable_par_grades=yes)
+
+AC_ARG_ENABLE(hlc-prof-grades,
+[  --enable-hlc-prof-grades
+                          install profiling versions of the high level C grade],
+enable_hlc_prof_grades=yes,enable_hlc_prof_grades=no)
+
+AC_ARG_ENABLE(libgrades,
+[  --enable-libgrades=...  install exactly the given versions of the library],
+enable_libgrades_given=yes;enable_libgrades="$enableval",enable_libgrades_given=no)
+
+if test "$enable_most_grades" = no; then
+	enable_inefficient_grades=no
+	enable_nogc_grades=no
+	enable_prof_grades=no
+	enable_trail_grades=no
+	enable_hlc_prof_grades=no
+	enable_par_grades=no
 fi
 
-# add `.gc' (--conservative-gc) grades
-for grade in $LIBGRADES; do
-	LIBGRADES="$LIBGRADES $grade.gc"
+if test "$enable_inefficient_grades" = yes; then
+	BASE_LIBGRADES="$ALL_LIBGRADES"
+else
+	BASE_LIBGRADES="$BEST_GRADE"
+fi
+
+# find all `.gc' (--conservative-gc) grades
+GC_LIBGRADES=""
+for grade in $BASE_LIBGRADES; do
+	GC_LIBGRADES="$GC_LIBGRADES $grade.gc"
 done
 
-# add `.prof' (--profiling) grades, if time profiling is supported,
-# and a `.memprof' (--memory-profiling) grade.
-if test $mercury_cv_profiling = yes; then
-	DEFAULT_GRADE_NOGC="`echo $DEFAULT_GRADE | sed 's/\.gc$//'`"
-	LIBGRADES="$LIBGRADES $DEFAULT_GRADE.prof $DEFAULT_GRADE_NOGC.prof"
-	if test $GRADE != $DEFAULT_GRADE; then
-		GRADE_NOGC="`echo $GRADE | sed 's/\.gc$//'`"
-		LIBGRADES="$LIBGRADES $GRADE.prof $GRADE_NOGC.prof"
-	fi
+if test "$enable_nogc_grades" = yes; then
+	LIBGRADES="$BASE_LIBGRADES $GC_LIBGRADES"
+else
+	LIBGRADES="$GC_LIBGRADES"
 fi
-LIBGRADES="$LIBGRADES $DEFAULT_GRADE.memprof"
 
-# add `.tr' (--trailing) grades
-LIBGRADES="$LIBGRADES $DEFAULT_GRADE.tr"
-if test "$enable_all_grades" = yes; then
-	DEFAULT_GRADE_NOGC="`echo $DEFAULT_GRADE | sed 's/\.gc$//'`"
-	LIBGRADES="$LIBGRADES $DEFAULT_GRADE_NOGC.tr"
+if test "$enable_nogc_grades" = yes; then
+	# add `.prof' (--profiling) grades, if time profiling is supported,
+	# and a `.memprof' (--memory-profiling) grade.
 	if test $mercury_cv_profiling = yes; then
-		LIBGRADES="$LIBGRADES $DEFAULT_GRADE.prof.tr"
+		if test "$enable_prof_grades" = yes; then
+			DEFAULT_GRADE_NOGC="`echo $DEFAULT_GRADE | sed 's/\.gc$//'`"
+			LIBGRADES="$LIBGRADES $DEFAULT_GRADE.prof $DEFAULT_GRADE_NOGC.prof"
+		else
+			LIBGRADES="$LIBGRADES $DEFAULT_GRADE.prof"
+		fi
+		if test $GRADE != $DEFAULT_GRADE; then
+			if test "$enable_nogc_grades" = yes; then
+				GRADE_NOGC="`echo $GRADE | sed 's/\.gc$//'`"
+				LIBGRADES="$LIBGRADES $GRADE.prof $GRADE_NOGC.prof"
+			else
+				LIBGRADES="$LIBGRADES $GRADE.prof"
+			fi
+		fi
+	fi
+	LIBGRADES="$LIBGRADES $DEFAULT_GRADE.memprof"
+fi
+
+if test "$enable_trail_grades" = yes; then
+	# add `.tr' (--trailing) grades
+	LIBGRADES="$LIBGRADES $DEFAULT_GRADE.tr"
+	if test "$enable_inefficient_grades" = yes; then
+		if test "$enable_nogc_grades" = yes; then
+			DEFAULT_GRADE_NOGC="`echo $DEFAULT_GRADE | sed 's/\.gc$//'`"
+			LIBGRADES="$LIBGRADES $DEFAULT_GRADE_NOGC.tr"
+		else
+			LIBGRADES="$LIBGRADES"
+		fi
+		if test $mercury_cv_profiling = yes -a "$enable_prof_grades" = yes; then
+			LIBGRADES="$LIBGRADES $DEFAULT_GRADE.prof.tr"
+		fi
 	fi
 fi
 
@@ -1827,21 +2004,57 @@ LIBGRADES="$LIBGRADES $DEFAULT_GRADE.tr.debug"
 # add `hlc' (--high-level-code, i.e. MLDS back-end) grades
 LIBGRADES="$LIBGRADES hlc.gc"
 
-AC_ARG_ENABLE(all-hlc-grades,
-[  --enable-all-hlc-grades install all the hlc grades],
-enable_all_hlc_grades=yes,enable_all_hlc_grades=no)
-
-if test $enable_all_hlc_grades = "yes" -o $ac_microsoft = "yes"; then
+if test $enable_hlc_prof_grades = "yes" -o $ac_microsoft = "yes"; then
 	# add `.prof' (--profiling) grades, if time profiling is supported,
 	# and a `.memprof' (--memory-profiling) grade.
-	if test $mercury_cv_profiling = yes; then
+	if test $mercury_cv_profiling = yes -a "$enable_prof_grades" = yes; then
 		LIBGRADES="$LIBGRADES hlc.gc.prof"
 	fi
 	LIBGRADES="$LIBGRADES hlc.gc.memprof"
 fi
 
-# Add the .par grade
-LIBGRADES="$LIBGRADES hlc.par.gc"
+if test "$enable_par_grades" = yes; then
+	# Add the .par grade
+	LIBGRADES="$LIBGRADES hlc.par.gc"
+fi
+
+if test "$enable_libgrades_given" = yes; then
+	if test "$enable_libgrades" = no; then
+		MERCURY_MSG("--enable-libgrades requires a comma-separated list of grades as argument")
+		MERCURY_MSG("aborting configure")
+		exit 1
+	elif test "$enable_libgrades" = yes; then
+		MERCURY_MSG("--enable-libgrades requires a comma-separated list of grades as argument")
+		MERCURY_MSG("aborting configure")
+		exit 1
+	else
+		# Generate only the grades specified by the user.
+		raw_grades=`echo $enable_libgrades | sed 's/,/ /g'`
+		canonical_grades=""
+		grade_error=false
+		for raw_grade in $raw_grades
+		do
+			if scripts/canonical_grade --grade $raw_grade > .confgrade
+			then
+				canonical_grades="$canonical_grades `cat .confgrade`"
+			else
+				MERCURY_MSG("--enable-libgrades: $raw_grade is not a grade")
+				grade_error=true
+			fi
+		done
+
+		rm -f .confgrade > /dev/null 2>&1
+
+		if $grade_error
+		then
+			comma=","
+			MERCURY_MSG("invalid grade(s) specified for --enable-libgrades$comma aborting configure")
+			exit 1
+		fi
+
+		LIBGRADES=$canonical_grades
+	fi
+fi
 
 # If we are using the Microsoft compiler then use hlc.gc as the default
 # grade.
@@ -1861,6 +2074,7 @@ LIBGRADES=` echo " $LIBGRADES " | sed "s/ $GRADE / /" `
 MERCURY_MSG("using \`LIBGRADES=$LIBGRADES' as the set of library grades to install")
 
 AC_SUBST(LIBGRADES)
+
 #-----------------------------------------------------------------------------#
 #
 # Add an option that disables declarative debugging support in the internal
@@ -2036,8 +2250,15 @@ ERROR_UNDEFINED=""
 
 case "$host" in
 	i?86-*-linux|i?86-*-linux-gnu)
-		AC_MSG_RESULT(yes)
-		EXT_FOR_SHARED_LIB=so
+		case $ac_cv_prog_gcc in
+			yes)
+				AC_MSG_RESULT(yes)
+				EXT_FOR_SHARED_LIB=so
+				;;
+			*)
+				AC_MSG_RESULT(no)
+				;;
+		esac
 		;;
 	m68*-linux|m68*-linux-gnu)
 		AC_MSG_RESULT(yes)
@@ -2233,9 +2454,11 @@ top=`pwd`
 INIT_GRADE_OPTIONS=$top/scripts/init_grade_options.sh-subr
 PARSE_GRADE_OPTIONS=$top/scripts/parse_grade_options.sh-subr
 FINAL_GRADE_OPTIONS=$top/scripts/final_grade_options.sh-subr
+CANONICAL_GRADE=$top/scripts/canonical_grade.sh-subr
 AC_SUBST_FILE(INIT_GRADE_OPTIONS)
 AC_SUBST_FILE(PARSE_GRADE_OPTIONS)
 AC_SUBST_FILE(FINAL_GRADE_OPTIONS)
+AC_SUBST_FILE(CANONICAL_GRADE)
 
 #-----------------------------------------------------------------------------#
 #
@@ -2315,7 +2538,7 @@ AC_TRY_LINK([
 	#include <arpa/inet.h>
 	#include <netinet/in.h>
 	#include <netdb.h>
-],[
+
 	static int MR_debug_socket = 1;
 
 	void
@@ -2324,9 +2547,8 @@ AC_TRY_LINK([
 		fprintf(stderr, "", s);
 		exit(1);
 	}
-
-	void
-	MR_trace_init_external(void)
+],[
+	/* this is the body of the test function */
 	{
 		int fd;
 		int len;
@@ -2463,20 +2685,6 @@ fi
 LIBS="$save_LIBS"
 
 #-----------------------------------------------------------------------------#
-
-AC_MSG_CHECKING(whether to enable the new MercuryFile struct)
-AC_ARG_ENABLE(new-mercuryfile-struct,
-[  --enable-new-mercuryfile-struct   enable new MercuryFile struct.],
-ac_new_mercuryfile_struct=yes,ac_new_mercuryfile_struct=no)
-
-if test "$ac_new_mercuryfile_struct" = "yes"; then
-	AC_MSG_RESULT(yes)
-	AC_DEFINE(MR_NEW_MERCURYFILE_STRUCT)
-else
-	AC_MSG_RESULT(no)
-fi
-
-#-----------------------------------------------------------------------------#
 #
 # Add an option that enables the external debugger support.
 # By default, external debugger support is enabled if and only if
@@ -2513,13 +2721,55 @@ fi
 AC_SUBST(SOCKET_LIBRARY)
 AC_SUBST(NSL_LIBRARY)
 #-----------------------------------------------------------------------------#
+#
+# Check for dynamic linking, unless the --disable-dynamic-link option
+# was specified.
+#
+AC_ARG_ENABLE(dynamic-link,
+[  --disable-dynamic-link  disable the use of dynamic linking],
+mercury_cv_enable_dynamic_link="$enableval",mercury_cv_enable_dynamic_link=yes)
+if test "$mercury_cv_enable_dynamic_link" = "yes"; then
+	AC_CHECK_HEADER(dlfcn.h, HAVE_DLFCN_H=1)
+	if test "$HAVE_DLFCN_H" = 1; then
+		AC_DEFINE(HAVE_DLFCN_H)
+	fi
+	AC_CHECK_LIB(dl, dlopen, DL_LIBRARY="-ldl", DL_LIBRARY="")
+	AC_SUBST(DL_LIBRARY)
+
+	# temporarily add $DL_LIBRARY to LIBS while we check for dlopen etc.
+	save_LIBS="$LIBS"
+	LIBS="$LIBS $DL_LIBRARY"
+
+	AC_HAVE_FUNCS(dlopen dlclose dlsym dlerror)
+
+	# restore old value of LIBS
+	LIBS="$save_LIBS"
+fi
+#-----------------------------------------------------------------------------#
+
+AC_MSG_CHECKING(whether to enable the new MercuryFile struct)
+AC_ARG_ENABLE(new-mercuryfile-struct,
+[  --enable-new-mercuryfile-struct
+                          enable new MercuryFile struct.],
+ac_new_mercuryfile_struct=yes,ac_new_mercuryfile_struct=no)
+
+if test "$ac_new_mercuryfile_struct" = "yes"; then
+	AC_MSG_RESULT(yes)
+	AC_DEFINE(MR_NEW_MERCURYFILE_STRUCT)
+else
+	AC_MSG_RESULT(no)
+fi
+
+#-----------------------------------------------------------------------------#
 MERCURY_CHECK_READLINE
 #-----------------------------------------------------------------------------#
 to_keep=""
 to_delete=""
 if test "$BOOTSTRAP_MC" != "" ; then
     MERCURY_MSG("checking whether any C files need to be rebuilt...")
-    for c_file in library/*.c compiler/*.c browser/*.c profiler/*.c
+    for c_file in library/*.c compiler/*.c browser/*.c profiler/*.c \
+    		library/Mercury/cs/*.c compiler/Mercury/cs/*.c \
+		browser/Mercury/cs/*.c profiler/Mercury/cs/*.c 
     do
         case $c_file in
         */'*.c')

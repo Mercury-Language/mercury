@@ -75,9 +75,9 @@ base_typeclass_info__gen_infos_for_instance_list(ClassId - [InstanceDefn|Is],
 		ModuleName, ModuleInfo, RttiDataList) :-
 	base_typeclass_info__gen_infos_for_instance_list(ClassId - Is,
 		ModuleName, ModuleInfo, RttiDataList1),
-	InstanceDefn = hlds_instance_defn(ImportStatus, _TermContext,
-				InstanceConstraints, InstanceTypes, Body,
-				PredProcIds, _Varset, _SuperClassProofs),
+	InstanceDefn = hlds_instance_defn(InstanceModule, ImportStatus,
+			_TermContext, InstanceConstraints, InstanceTypes, Body,
+			PredProcIds, _Varset, _SuperClassProofs),
 	(
 		Body = concrete(_),
 			% Only make the base_typeclass_info if the instance
@@ -89,8 +89,8 @@ base_typeclass_info__gen_infos_for_instance_list(ClassId - [InstanceDefn|Is],
 		base_typeclass_info__gen_body(PredProcIds,
 			InstanceTypes, InstanceConstraints, ModuleInfo, 
 			ClassId, BaseTypeClassInfo),
-		RttiData = base_typeclass_info(ClassId, InstanceString,
-			BaseTypeClassInfo),
+		RttiData = base_typeclass_info(InstanceModule,
+			ClassId, InstanceString, BaseTypeClassInfo),
 		RttiDataList = [RttiData | RttiDataList1]
 	;
 			% The instance decl is from another module,

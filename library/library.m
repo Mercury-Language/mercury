@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-2000 The University of Melbourne.
+% Copyright (C) 1993-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -27,11 +27,13 @@
 
 :- import_module array, assoc_list, bag, benchmarking.
 :- import_module bimap, bintree, bintree_set, bool.
-:- import_module bt_array, char, counter, dir, eqvclass, float.
+:- import_module bt_array, char, counter, dir, enum, eqvclass, float.
 :- import_module math, getopt, graph, group, int.
-:- import_module io, list, map, multi_map, pqueue, queue, random, relation.
-:- import_module require, set, set_bbbtree, set_ordlist, set_unordlist, stack.
-:- import_module std_util, string, term, term_io, tree234, varset.
+%:- import_module io, list, map, multi_map, pqueue, queue, random, relation.
+:- import_module io, list, map, multi_map, pqueue, queue, relation.
+:- import_module require, set, set_bbbtree, set_ordlist, set_unordlist.
+:- import_module sparse_bitset, stack, std_util, string, term, term_io.
+:- import_module tree234, varset.
 :- import_module store, rbtree, parser, lexer, ops.
 :- import_module prolog.
 :- import_module integer, rational.
@@ -47,7 +49,9 @@
 % at configuration time, because that would cause bootstrapping problems --
 % might not have a Mercury compiler around to compile library.m with.
 
-:- pragma c_code(library__version(Version::out), will_not_call_mercury, "
+:- pragma foreign_code("C",
+	library__version(Version::out), will_not_call_mercury,
+"
 	MR_ConstString version_string = 
 		MR_VERSION "", configured for "" MR_FULLARCH;
 	/*
@@ -55,6 +59,18 @@
 	** with type String rather than MR_ConstString.
 	*/
 	Version = (MR_String) (MR_Word) version_string;
+").
+
+:- pragma foreign_code("MC++", "
+	#include ""mercury_conf.h""
+").
+
+:- pragma foreign_code("MC++",
+	library__version(Version::out), will_not_call_mercury,
+"
+	// XXX we should use string literals with an S at the start
+	// so this code uses just managed types.
+	Version = MR_VERSION "", configured for "" MR_FULLARCH;
 ").
 
 %---------------------------------------------------------------------------%

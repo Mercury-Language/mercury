@@ -280,13 +280,6 @@
 #undef	MR_LITTLE_ENDIAN
 
 /*
-** The following macro specifies whether the non-ANSI, non-POSIX,
-** but usually available standard library function `tempnam' is
-** available.
-*/
-#undef	IO_HAVE_TEMPNAM
-
-/*
 ** Which version of Mercury is this?  (Taken from the file ../VERSION.)
 */
 #define MR_VERSION "unknown"

@@ -44,6 +44,8 @@
 :- pred graph__init(graph(N, A)).
 :- mode graph__init(out) is det.
 
+:- func graph__init = graph(N, A).
+
 	% graph__set_node(OldGraph, NodeInfo, Node, NewGraph) takes
 	% OldGraph and NodeInfo which is the information to be stored
 	% in a new node, and returns a key "Node" which refers to that
@@ -89,12 +91,16 @@
 :- pred graph__find_matching_nodes(graph(N, A), N, set(node(N))).
 :- mode graph__find_matching_nodes(in, in, out) is det.
 
+:- func graph__find_matching_nodes(graph(N, A), N) = set(node(N)).
+
 	% graph__node_contents(Graph, Node, NodeInfo) takes Graph and
 	% Node and returns the information NodeInfo stored in Node.
 	%
 	% This operation is O(lgN) for a graph containing N nodes.
 :- pred graph__node_contents(graph(N, A), node(N), N).
 :- mode graph__node_contents(in, in, out) is det.
+
+:- func graph__node_contents(graph(N, A), node(N)) = N.
 
 	% graph__successors(Graph, Node, Nodes) takes a graph Graph and
 	% a node Node and returns the set of nodes Nodes that are reachable
@@ -104,9 +110,13 @@
 :- pred graph__successors(graph(N, A), node(N), set(node(N))).
 :- mode graph__successors(in, in, out) is det.
 
+:- func graph__successors(graph(N, A), node(N)) = set(node(N)).
+
 	% graph__nodes(Graph, Nodes) binds Nodes to the set of nodes in Graph.
 :- pred graph__nodes(graph(N, A), set(node(N))).
 :- mode graph__nodes(in, out) is det.
+
+:- func graph__nodes(graph(N, A)) = set(node(N)).
 
 	% graph__set_edge(OldGraph, Start, End, ArcInfo, Arc, NewGraph)
 	% takes a graph OldGraph and adds an arc from Start to End with
@@ -416,27 +426,10 @@ graph__set_edges(G0, E, G) :-
 	G0 = graph(NS, AS, N, A, _),
 	G = graph(NS, AS, N, A, E).
 
-%------------------------------------------------------------------------------%
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 % Ralph Becket <rwab1@cl.cam.ac.uk> 29/04/99
-%	Function forms added.
-
-:- interface.
-
-:- func graph__init = graph(N, A).
-
-:- func graph__find_matching_nodes(graph(N, A), N) = set(node(N)).
-
-:- func graph__node_contents(graph(N, A), node(N)) = N.
-
-:- func graph__successors(graph(N, A), node(N)) = set(node(N)).
-
-:- func graph__nodes(graph(N, A)) = set(node(N)).
-
-% ---------------------------------------------------------------------------- %
-% ---------------------------------------------------------------------------- %
-
-:- implementation.
+%       Functional forms added.
 
 graph__init = G :-
 	graph__init(G).

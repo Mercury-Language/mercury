@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1998-2000 University of Melbourne.
+% Copyright (C) 1998-2001 University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -599,7 +599,7 @@ Define_entry(do_semidet_aditi_call);
 {
 	MR_mkframe(""do_semidet_aditi_call"",
 		(MADITI_NUM_FRAME_VARS + MADITI_num_output_args),
-		ENTRY(do_not_reached));
+		ENTRY(MR_do_not_reached));
 
 	save_transient_registers();
 
@@ -629,7 +629,7 @@ Define_entry(do_det_aditi_call);
 {
 	MR_mkframe(""do_det_aditi_call"",
 		(MADITI_NUM_FRAME_VARS + MADITI_num_output_args),
-		ENTRY(do_not_reached));
+		ENTRY(MR_do_not_reached));
 
 	save_transient_registers();
 

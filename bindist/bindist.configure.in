@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1996-2000 The University of Melbourne. 
+# Copyright (C) 1996-2001 The University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -56,6 +56,7 @@ AC_SUBST(EXE_RPATH_OPT)
 AC_SUBST(EXE_RPATH_SEP)
 AC_SUBST(SHLIB_RPATH_OPT)
 AC_SUBST(SHLIB_RPATH_SEP)
+AC_SUBST(MATH_LIB)
 AC_SUBST(EXT_FOR_EXE)
 AC_SUBST(EXT_FOR_PIC_OBJECTS)
 AC_SUBST(EXT_FOR_SHARED_LIB)
@@ -81,6 +82,8 @@ AC_SUBST(LIB_LIBPATH)
 AC_SUBST(LINK_LIB)
 AC_SUBST(LINK_OPT_SEP)
 AC_SUBST(CYGPATH)
+AC_SUBST(MATH_LIB)
+AC_SUBST(SHARED_LIBS_SH)
 
 #-----------------------------------------------------------------------------#
 AC_PROG_RANLIB
@@ -204,9 +207,11 @@ top=`pwd`
 INIT_GRADE_OPTIONS=$top/scripts/init_grade_options.sh-subr
 PARSE_GRADE_OPTIONS=$top/scripts/parse_grade_options.sh-subr
 FINAL_GRADE_OPTIONS=$top/scripts/final_grade_options.sh-subr
+CANONICAL_GRADE=$top/scripts/canonical_grade.sh-subr
 AC_SUBST_FILE(INIT_GRADE_OPTIONS)
 AC_SUBST_FILE(PARSE_GRADE_OPTIONS)
 AC_SUBST_FILE(FINAL_GRADE_OPTIONS)
+AC_SUBST_FILE(CANONICAL_GRADE)
 
 #-----------------------------------------------------------------------------#
 MERCURY_CHECK_READLINE

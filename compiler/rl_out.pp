@@ -57,7 +57,7 @@
 :- implementation.
 
 :- import_module code_util, hlds_data, hlds_pred, prog_data, prog_out.
-:- import_module llds, globals, options, rl_code, tree, type_util, passes_aux.
+:- import_module llds, globals, options, tree, type_util, passes_aux.
 :- import_module rl_file, getopt, modules, prog_util, magic_util, hlds_goal.
 :- import_module code_aux, det_analysis, instmap.
 

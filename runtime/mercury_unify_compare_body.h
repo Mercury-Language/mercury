@@ -53,11 +53,11 @@ start_label:
 #ifdef  MR_COMPARE_BY_RTTI
 
         case MR_TYPECTOR_REP_EQUIV:
-            save_transient_hp();
+            MR_save_transient_hp();
             type_info = MR_create_type_info(
                 MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info),
                 type_ctor_info->type_layout.layout_equiv);
-            restore_transient_hp();
+            MR_restore_transient_hp();
             goto start_label;
 
         case MR_TYPECTOR_REP_EQUIV_GROUND:
@@ -68,12 +68,12 @@ start_label:
             MR_fatal_error("found type_ctor_rep MR_TYPECTOR_REP_EQUIV_VAR");
 
         case MR_TYPECTOR_REP_NOTAG:
-            save_transient_hp();
+            MR_save_transient_hp();
             type_info = MR_create_type_info(
                 MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info),
                 type_ctor_info->type_layout.layout_notag->
                 MR_notag_functor_arg_type);
-            restore_transient_hp();
+            MR_restore_transient_hp();
             goto start_label;
 
         case MR_TYPECTOR_REP_NOTAG_GROUND:
@@ -114,7 +114,7 @@ start_label:
                                                                               \
                     ptag = MR_tag(data);                                      \
                     ptaglayout = &type_ctor_info->type_layout.layout_du[ptag];\
-                    data_value = (MR_Word *) MR_body(data, ptag);                \
+                    data_value = (MR_Word *) MR_body(data, ptag);             \
                                                                               \
                     switch (ptaglayout->MR_sectag_locn) {                     \
                         case MR_SECTAG_LOCAL:                                 \
@@ -300,9 +300,9 @@ start_label:
             ** We call the type-specific compare routine as
             ** `CompPred(...ArgTypeInfos..., Result, X, Y)' is det.
             ** The ArgTypeInfo arguments are input, and are passed
-            ** in r1, r2, ... rN. The X and Y arguments are also
-            ** input, and are passed in rN+1 and rN+2.
-            ** The Result argument is output in r1.
+            ** in MR_r1, MR_r2, ... MR_rN. The X and Y arguments are also
+            ** input, and are passed in MR_rN+1 and MR_rN+2.
+            ** The Result argument is output in MR_r1.
             **
             ** We specialize the case where the type_ctor arity
             ** is zero, since in this case we don't need the loop.
@@ -311,8 +311,8 @@ start_label:
             */
 
             if (type_ctor_info->arity == 0) {
-                r1 = x;
-                r2 = y;
+                MR_r1 = x;
+                MR_r2 = y;
             }
 #ifdef  MR_UNIFY_COMPARE_BY_CTOR_REP_SPEC_1
             else if (type_ctor_info->arity == 1) {
@@ -320,9 +320,9 @@ start_label:
 
                 args_base = (MR_Word *)
                     MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info);
-                r1 = args_base[1];
-                r2 = x;
-                r3 = y;
+                MR_r1 = args_base[1];
+                MR_r2 = x;
+                MR_r3 = y;
             }
 #endif
 #ifdef  MR_UNIFY_COMPARE_BY_CTOR_REP_SPEC_2
@@ -331,30 +331,30 @@ start_label:
 
                 args_base = (MR_Word *)
                     MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info);
-                r1 = args_base[1];
-                r2 = args_base[2];
-                r3 = x;
-                r4 = y;
+                MR_r1 = args_base[1];
+                MR_r2 = args_base[2];
+                MR_r3 = x;
+                MR_r4 = y;
             }
 #endif
             else {
                 int     i;
                 int     type_arity;
-                MR_Word    *args_base;
+                MR_Word *args_base;
 
                 type_arity = type_ctor_info->arity;
                 args_base = (MR_Word *)
                     MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info);
-                save_registers();
+                MR_save_registers();
 
                 /* CompPred(...ArgTypeInfos..., Res, X, Y) * */
                 for (i = 1; i <= type_arity; i++) {
-                    virtual_reg(i) = args_base[i];
+                    MR_virtual_reg(i) = args_base[i];
                 }
-                virtual_reg(type_arity + 1) = x;
-                virtual_reg(type_arity + 2) = y;
+                MR_virtual_reg(type_arity + 1) = x;
+                MR_virtual_reg(type_arity + 2) = y;
 
-                restore_registers();
+                MR_restore_registers();
             }
 
             tailcall_user_pred();
@@ -414,8 +414,8 @@ start_label:
             {
                 MR_Float   fx, fy;
 
-                fx = word_to_float(x);
-                fy = word_to_float(y);
+                fx = MR_word_to_float(x);
+                fy = MR_word_to_float(y);
 #ifdef  select_compare_code
                 if (fx == fy) {
                     return_answer(MR_COMPARE_EQUAL);
@@ -448,38 +448,6 @@ start_label:
 #endif
             }
 
-        case MR_TYPECTOR_REP_UNIV:
-            {
-                MR_TypeInfo type_info_x, type_info_y;
-                int         result;
-
-                /* First compare the type_infos */
-                type_info_x = (MR_TypeInfo) MR_field(MR_mktag(0), x,
-                        UNIV_OFFSET_FOR_TYPEINFO);
-                type_info_y = (MR_TypeInfo) MR_field(MR_mktag(0), y,
-                        UNIV_OFFSET_FOR_TYPEINFO);
-                save_transient_registers();
-                result = MR_compare_type_info(type_info_x, type_info_y);
-                restore_transient_registers();
-                if (result != MR_COMPARE_EQUAL) {
-#ifdef  select_compare_code
-                    return_answer(result);
-#else
-                    return_answer(FALSE);
-#endif
-                }
-
-                /*
-                ** If the types are the same, then recurse on
-                ** the unwrapped args.
-                */
-
-                type_info = type_info_x;
-                x = MR_field(MR_mktag(0), x, UNIV_OFFSET_FOR_DATA);
-                y = MR_field(MR_mktag(0), y, UNIV_OFFSET_FOR_DATA);
-                goto start_label;
-            }
-
         case MR_TYPECTOR_REP_C_POINTER:
 #ifdef	select_compare_code
             if ((void *) x == (void *) y) {
@@ -497,10 +465,10 @@ start_label:
             {
                 int result;
 
-                save_transient_registers();
+                MR_save_transient_registers();
                 result = MR_compare_type_info(
                     (MR_TypeInfo) x, (MR_TypeInfo) y);
-                restore_transient_registers();
+                MR_restore_transient_registers();
 #ifdef	select_compare_code
                 return_answer(result);
 #else

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2000 The University of Melbourne.
+** Copyright (C) 2000-2001 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -13,6 +13,10 @@
   #define vsnprintf	_vsnprintf
 #endif
 
+#if defined(HAVE_VSNPRINTF) || defined(HAVE__VSNPRINTF)
+  #define MR_HAVE_A_VSNPRINTF
+#endif
+
 #define BUFFER_SIZE	4096
 
 MR_String
@@ -22,7 +26,7 @@ MR_make_string(MR_Code *proclabel, const char *fmt, ...) {
 	int 		n;
 	char		*p;
 
-#if defined(HAVE_VSNPRINTF) || defined(HAVE__VSNPRINTF)
+#ifdef MR_HAVE_A_VSNPRINTF
 	int 		size = BUFFER_SIZE;
 	char		fixed[BUFFER_SIZE];
 	bool		dynamically_allocated = FALSE;
@@ -74,13 +78,12 @@ MR_make_string(MR_Code *proclabel, const char *fmt, ...) {
 
 	p = fixed;
 #endif
-	restore_transient_hp();      
-	MR_allocate_aligned_string_msg(result, strlen(p),
-			proclabel);
-	save_transient_hp();
+	MR_restore_transient_hp();      
+	MR_allocate_aligned_string_msg(result, strlen(p), proclabel);
+	MR_save_transient_hp();
 	strcpy(result, p);
 
-#ifdef HAVE_VSNPRINTF
+#ifdef MR_HAVE_A_VSNPRINTF
 	if (dynamically_allocated) {
 		MR_free(p);
 	}

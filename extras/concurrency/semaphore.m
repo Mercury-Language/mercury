@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 2000 The University of Melbourne.
+% Copyright (C) 2000-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -10,8 +10,8 @@
 % This module implements a simple semaphore data type for allowing
 % coroutines to synchronise with one another.
 %
-% Note if you are compiling in a hlc grade, the grade component must
-% contain a `.par'.
+% The operations in this module are no-ops in the hlc grades which don't
+% contain a .par component.
 %
 %---------------------------------------------------------------------------%
 :- module semaphore.
@@ -54,10 +54,6 @@
 :- type semaphore	== c_pointer.
 
 :- pragma c_header_code("
-#if defined(MR_HIGHLEVEL_CODE) && !defined(MR_THREAD_SAFE)
-  #error Semaphores only work in the hlc.par.* or non-hlc grades.
-#endif
-
 	#include <stdio.h>
 	#include ""mercury_context.h""
 	#include ""mercury_thread.h""
@@ -67,7 +63,9 @@
 #ifndef MR_HIGHLEVEL_CODE
 		MR_Context	*suspended;
 #else
+  #ifdef MR_THREAD_SAFE
 		MercuryCond	cond;
+  #endif 
 #endif
 #ifdef MR_THREAD_SAFE
 		MercuryLock	lock;
@@ -86,13 +84,16 @@
 	MR_Word sem_mem;
 	ME_Semaphore	*sem;
 
-	incr_hp(sem_mem, round_up(sizeof(ME_Semaphore), sizeof(MR_Word)));
+	MR_incr_hp(sem_mem,
+		MR_round_up(sizeof(ME_Semaphore), sizeof(MR_Word)));
 	sem = (ME_Semaphore *) sem_mem;
 	sem->count = 0;
 #ifndef MR_HIGHLEVEL_CODE
 	sem->suspended = NULL;
 #else
+  #ifdef MR_THREAD_SAFE
 	pthread_cond_init(&(sem->cond), MR_COND_ATTR);
+  #endif
 #endif
 #ifdef MR_THREAD_SAFE
 	pthread_mutex_init(&(sem->lock), MR_MUTEX_ATTR);
@@ -119,10 +120,10 @@
 
 	sem = (ME_Semaphore *) obj;
 
-  #ifdef MR_HIGHLEVEL_CODE
-	pthread_cond_destroy(&(sem->cond));
-  #endif
   #ifdef MR_THREAD_SAFE
+    #ifdef MR_HIGHLEVEL_CODE
+	pthread_cond_destroy(&(sem->cond));
+    #endif
 	pthread_mutex_destroy(&(sem->lock));
   #endif
 
@@ -152,21 +153,21 @@
 		ctxt = sem->suspended;
 		sem->suspended = ctxt->next;
 		MR_UNLOCK(&(sem->lock), ""semaphore__signal"");
-		schedule(ctxt);
+		MR_schedule(ctxt);
 			/* yield() */
-		save_context(MR_ENGINE(this_context));
+		MR_save_context(MR_ENGINE(this_context));
 		MR_ENGINE(this_context)->resume = &&signal_skip_to_the_end_1;
-		schedule(MR_ENGINE(this_context));
-		runnext();
+		MR_schedule(MR_ENGINE(this_context));
+		MR_runnext();
 signal_skip_to_the_end_1:
 	} else {
 		sem->count++;
 		MR_UNLOCK(&(sem->lock), ""semaphore__signal"");
 			/* yield() */
-		save_context(MR_ENGINE(this_context));
+		MR_save_context(MR_ENGINE(this_context));
 		MR_ENGINE(this_context)->resume = &&signal_skip_to_the_end_2;
-		schedule(MR_ENGINE(this_context));
-		runnext();
+		MR_schedule(MR_ENGINE(this_context));
+		MR_runnext();
 signal_skip_to_the_end_2:
 	}
 #else
@@ -198,12 +199,12 @@ signal_skip_to_the_end_2:
 		sem->count--;
 		MR_UNLOCK(&(sem->lock), ""semaphore__wait"");
 	} else {
-		save_context(MR_ENGINE(this_context));
+		MR_save_context(MR_ENGINE(this_context));
 		MR_ENGINE(this_context)->resume = &&wait_skip_to_the_end;
 		MR_ENGINE(this_context)->next = sem->suspended;
 		sem->suspended = MR_ENGINE(this_context);
 		MR_UNLOCK(&(sem->lock), ""semaphore__wait"");
-		runnext();
+		MR_runnext();
 wait_skip_to_the_end:
 	}
 #else

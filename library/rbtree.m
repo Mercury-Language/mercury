@@ -46,6 +46,8 @@
 :- pred rbtree__init(rbtree(K, V)).
 :- mode rbtree__init(uo) is det.
 
+:- func rbtree__init = rbtree(K, V).
+
 	% Check whether a tree is empty.
 :- pred rbtree__is_empty(rbtree(K, V)).
 :- mode rbtree__is_empty(in) is semidet.
@@ -66,9 +68,13 @@
 :- mode rbtree__set(di, di, di, uo) is det.
 :- mode rbtree__set(in, in, in, out) is det.
 
+:- func rbtree__set(rbtree(K, V), K, V) = rbtree(K, V).
+
 	% Insert a duplicate key into the tree.  Never fails.
 :- pred rbtree__insert_duplicate(rbtree(K, V), K, V, rbtree(K, V)).
 :- mode rbtree__insert_duplicate(in, in, in, out) is det.
+
+:- func rbtree__insert_duplicate(rbtree(K, V), K, V) = rbtree(K, V).
 
 :- pred rbtree__member(rbtree(K, V), K, V).
 :- mode rbtree__member(in, out, out) is nondet.
@@ -82,6 +88,8 @@
 	% doesn't exist.
 :- pred rbtree__lookup(rbtree(K, V), K, V).
 :- mode rbtree__lookup(in, in, out) is det.
+
+:- func rbtree__lookup(rbtree(K, V), K) = V.
 
 	% Search for a key-value pair using the key.  If there is no entry
 	% for the given key, returns the pair for the next lower key instead.
@@ -113,6 +121,8 @@
 :- mode rbtree__delete(di, in, uo) is det.
 :- mode rbtree__delete(in, in, out) is det.
 
+:- func rbtree__delete(rbtree(K, V), K) = rbtree(K, V).
+
 	% Remove the key value pair associated with a key.  Fails
 	% if the key doesn't exist.
 :- pred rbtree__remove(rbtree(K, V), K, V, rbtree(K, V)).
@@ -141,20 +151,30 @@
 :- pred rbtree__keys(rbtree(K, V), list(K)).
 :- mode rbtree__keys(in, out) is det.
 
+:- func rbtree__keys(rbtree(K, V)) = list(K).
+
 	% Returns a list of values such that the keys associated with the
 	% values are in-order.
 :- pred rbtree__values(rbtree(K, V), list(V)).
 :- mode rbtree__values(in, out) is det.
 
+:- func rbtree__values(rbtree(K, V)) = list(V).
+
 	% Count the number of elements in the tree
 :- pred rbtree__count(rbtree(K, V), int).
 :- mode rbtree__count(in, out) is det.
 
+:- func rbtree__count(rbtree(K, V)) = int.
+
 :- pred rbtree__assoc_list_to_rbtree(assoc_list(K, V), rbtree(K, V)).
 :- mode rbtree__assoc_list_to_rbtree(in, out) is det.
 
+:- func rbtree__assoc_list_to_rbtree(assoc_list(K, V)) = rbtree(K, V).
+
 :- pred rbtree__rbtree_to_assoc_list(rbtree(K, V), assoc_list(K, V)).
 :- mode rbtree__rbtree_to_assoc_list(in, out) is det.
+
+:- func rbtree__rbtree_to_assoc_list(rbtree(K, V)) = assoc_list(K, V).
 
 :- pred rbtree__foldl(pred(K, V, T, T), rbtree(K, V), T, T).
 :- mode rbtree__foldl(pred(in, in, in, out) is det, in, in, out) is det.
@@ -162,9 +182,13 @@
 		is semidet.
 :- mode rbtree__foldl(pred(in, in, di, uo) is det, in, di, uo) is det.
 
+:- func rbtree__foldl(func(K, V, T) = T, rbtree(K, V), T) = T.
+
 :- pred rbtree__map_values(pred(K, V, W), rbtree(K, V), rbtree(K, W)).
 :- mode rbtree__map_values(pred(in, in, out) is det, in, out) is det.
 :- mode rbtree__map_values(pred(in, in, out) is semidet, in, out) is semidet.
+
+:- func rbtree__map_values(func(K, V) = W, rbtree(K, V)) = rbtree(K, W).
 
 %-----------------------------------------------------------------------------%
 
@@ -998,37 +1022,6 @@ rbtree__map_values(Pred, Tree0, Tree) :-
 %-----------------------------------------------------------------------------%
 % Ralph Becket <rwab1@cl.cam.ac.uk> 29/04/99
 % 	Function forms added.
-
-:- interface.
-
-:- func rbtree__init = rbtree(K, V).
-
-:- func rbtree__set(rbtree(K, V), K, V) = rbtree(K, V).
-
-:- func rbtree__insert_duplicate(rbtree(K, V), K, V) = rbtree(K, V).
-
-:- func rbtree__lookup(rbtree(K, V), K) = V.
-
-:- func rbtree__delete(rbtree(K, V), K) = rbtree(K, V).
-
-:- func rbtree__keys(rbtree(K, V)) = list(K).
-
-:- func rbtree__values(rbtree(K, V)) = list(V).
-
-:- func rbtree__count(rbtree(K, V)) = int.
-
-:- func rbtree__assoc_list_to_rbtree(assoc_list(K, V)) = rbtree(K, V).
-
-:- func rbtree__rbtree_to_assoc_list(rbtree(K, V)) = assoc_list(K, V).
-
-:- func rbtree__foldl(func(K, V, T) = T, rbtree(K, V), T) = T.
-
-:- func rbtree__map_values(func(K, V) = W, rbtree(K, V)) = rbtree(K, W).
-
-% ---------------------------------------------------------------------------- %
-% ---------------------------------------------------------------------------- %
-
-:- implementation.
 
 rbtree__init = RBT :-
 	rbtree__init(RBT).

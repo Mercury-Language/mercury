@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2000 The University of Melbourne.
+% Copyright (C) 1999-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -84,13 +84,19 @@
 :- pred c_util__float_compare_op(binary_op, string).
 :- mode c_util__float_compare_op(in, out) is semidet.
 
-	% The operator returned with be either a prefix operator
+	% The operator returned will be an infix operator.
+	% The arguments should be cast to MR_Unsigned,
+	% and the result will be a boolean.
+:- pred c_util__unsigned_compare_op(binary_op, string).
+:- mode c_util__unsigned_compare_op(in, out) is semidet.
+
+	% The operator returned will be either a prefix operator
 	% or a macro or function name.  The operand needs
 	% to be placed in parentheses after the operator name.
 :- pred c_util__unary_prefix_op(unary_op, string).
 :- mode c_util__unary_prefix_op(in, out) is det.
 
-	% The operator returned with be an infix operator.
+	% The operator returned will be an infix operator.
 	% The arguments should be integer or booleans
 	% and the result will be an integer or a boolean.
 :- pred c_util__binary_infix_op(binary_op, string).
@@ -208,7 +214,6 @@ c_util__unary_prefix_op(unmkbody,		"MR_unmkbody").
 c_util__unary_prefix_op(hash_string,		"MR_hash_string").
 c_util__unary_prefix_op(bitwise_complement,	"~").
 c_util__unary_prefix_op(not,			"!").
-c_util__unary_prefix_op(cast_to_unsigned,	"(MR_Unsigned)").
 
 c_util__string_compare_op(str_eq, "==").
 c_util__string_compare_op(str_ne, "!=").
@@ -216,6 +221,8 @@ c_util__string_compare_op(str_le, "<=").
 c_util__string_compare_op(str_ge, ">=").
 c_util__string_compare_op(str_lt, "<").
 c_util__string_compare_op(str_gt, ">").
+
+c_util__unsigned_compare_op(unsigned_le, "<=").
 
 c_util__float_op(float_plus, "+").
 c_util__float_op(float_minus, "-").
@@ -228,8 +235,6 @@ c_util__float_compare_op(float_le, "<=").
 c_util__float_compare_op(float_ge, ">=").
 c_util__float_compare_op(float_lt, "<").
 c_util__float_compare_op(float_gt, ">").
-
-%-----------------------------------------------------------------------------%
 
 c_util__binary_infix_op(+, "+").
 c_util__binary_infix_op(-, "-").

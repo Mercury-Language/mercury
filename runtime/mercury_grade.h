@@ -202,7 +202,9 @@
   #define MR_GRADE_PART_10	MR_GRADE_PART_9
 #endif
 
-#if defined(PIC_REG) && defined(USE_GCC_GLOBAL_REGISTERS) && defined(__i386__)
+#if defined(MR_USE_REGPARM) && defined(MR_HIGHLEVEL_CODE) && defined(__i386__)
+  #define MR_GRADE_PART_11	MR_PASTE2(MR_GRADE_PART_10, _regparm)
+#elif defined(PIC_REG) && defined(USE_GCC_GLOBAL_REGISTERS) && defined(__i386__)
   #define MR_GRADE_PART_11	MR_PASTE2(MR_GRADE_PART_10, _picreg)
 #else
   #define MR_GRADE_PART_11	MR_GRADE_PART_10
@@ -354,7 +356,9 @@ extern const char MR_GRADE_VAR;
 ** So we don't bother to pass it on.
 */
 
-#if defined(PIC_REG) && defined(USE_GCC_GLOBAL_REGISTERS) && defined(__i386__)
+#if defined(MR_USE_REGPARM) && defined(MR_HIGHLEVEL_CODE) && defined(__i386__)
+  #define MR_GRADE_OPT_PART_11	MR_GRADE_OPT_PART_7 ".regparm"
+#elif defined(PIC_REG) && defined(USE_GCC_GLOBAL_REGISTERS) && defined(__i386__)
   #define MR_GRADE_OPT_PART_11	MR_GRADE_OPT_PART_7 ".picreg"
 #else
   #define MR_GRADE_OPT_PART_11	MR_GRADE_OPT_PART_7

@@ -40,7 +40,7 @@
 
 :- type foreign_code_info
 	--->	foreign_code_info(
-			foreign_header_info,
+			foreign_decl_info,
 			foreign_body_info
 		).
 
@@ -245,18 +245,26 @@
 :- pred module_info_set_globals(module_info, globals, module_info).
 :- mode module_info_set_globals(in, in, out) is det.
 
-:- pred module_info_get_foreign_header(module_info, foreign_header_info).
-:- mode module_info_get_foreign_header(in, out) is det.
+:- pred module_info_get_foreign_decl(module_info, foreign_decl_info).
+:- mode module_info_get_foreign_decl(in, out) is det.
 
-:- pred module_info_set_foreign_header(module_info, 
-		foreign_header_info, module_info).
-:- mode module_info_set_foreign_header(in, in, out) is det.
+:- pred module_info_set_foreign_decl(module_info, 
+		foreign_decl_info, module_info).
+:- mode module_info_set_foreign_decl(in, in, out) is det.
 
 :- pred module_info_get_foreign_body_code(module_info, foreign_body_info).
 :- mode module_info_get_foreign_body_code(in, out) is det.
 
 :- pred module_info_set_foreign_body_code(module_info, foreign_body_info, module_info).
 :- mode module_info_set_foreign_body_code(in, in, out) is det.
+
+:- pred module_add_foreign_decl(foreign_language, string, prog_context,
+		module_info, module_info).
+:- mode module_add_foreign_decl(in, in, in, in, out) is det.
+
+:- pred module_add_foreign_body_code(foreign_language, string, prog_context,
+		module_info, module_info).
+:- mode module_add_foreign_body_code(in, in, in, in, out) is det.
 
 :- pred module_info_get_maybe_dependency_info(module_info,
 	maybe(dependency_info)).
@@ -475,7 +483,7 @@
 	module_sub(
 		module_name ::			module_name,
 		globals ::			globals,
-		foreign_header_info ::		foreign_header_info,
+		foreign_decl_info ::		foreign_decl_info,
 		foreign_body_info ::		foreign_body_info,
 		maybe_dependency_info ::	maybe(dependency_info),
 		num_errors ::			int,
@@ -604,7 +612,7 @@ module_info_set_cell_counter(MI, CC, MI ^ cell_counter := CC).
 
 module_info_name(MI, MI ^ sub_info ^ module_name).
 module_info_globals(MI, MI ^ sub_info ^ globals).
-module_info_get_foreign_header(MI, MI ^ sub_info ^ foreign_header_info).
+module_info_get_foreign_decl(MI, MI ^ sub_info ^ foreign_decl_info).
 module_info_get_foreign_body_code(MI, MI ^ sub_info ^ foreign_body_info).
 module_info_get_maybe_dependency_info(MI,
 	MI ^ sub_info ^ maybe_dependency_info).
@@ -633,8 +641,8 @@ module_info_no_tag_types(MI, MI ^ sub_info ^ no_tag_type_table).
 
 module_info_set_globals(MI, NewVal,
 	MI ^ sub_info ^ globals := NewVal).
-module_info_set_foreign_header(MI, NewVal,
-	MI ^ sub_info ^ foreign_header_info := NewVal).
+module_info_set_foreign_decl(MI, NewVal,
+	MI ^ sub_info ^ foreign_decl_info := NewVal).
 module_info_set_foreign_body_code(MI, NewVal,
 	MI ^ sub_info ^ foreign_body_info := NewVal).
 module_info_set_maybe_dependency_info(MI, NewVal,
@@ -830,6 +838,24 @@ module_info_get_all_deps(ModuleInfo, AllImports) :-
 		IndirectImports),
 	AllImports = (IndirectImports `set__union` DirectImports)
 			`set__union` set__list_to_set(Parents).
+
+module_add_foreign_decl(Lang, ForeignDecl, Context, Module0, Module) :-
+	module_info_get_foreign_decl(Module0, ForeignDeclIndex0),
+		% store the decls in reverse order and reverse them later
+		% for efficiency
+	ForeignDeclIndex1 = [foreign_decl_code(Lang, ForeignDecl, Context) |
+		ForeignDeclIndex0],
+	module_info_set_foreign_decl(Module0, ForeignDeclIndex1, Module).
+
+module_add_foreign_body_code(Lang, Foreign_Body_Code, Context,
+		Module0, Module) :-
+	module_info_get_foreign_body_code(Module0, Foreign_Body_List0),
+		% store the decls in reverse order and reverse them later
+		% for efficiency
+	Foreign_Body_List = 
+		[foreign_body_code(Lang, Foreign_Body_Code, Context) |
+			Foreign_Body_List0],
+	module_info_set_foreign_body_code(Module0, Foreign_Body_List, Module).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1736,8 +1762,7 @@ get_pred_id_and_proc_id(SymName, PredOrFunc, TVarSet, ArgTypes, ModuleInfo,
 get_proc_id(PredicateTable, PredId, ProcId) :-
 	predicate_table_get_preds(PredicateTable, Preds),
 	map__lookup(Preds, PredId, PredInfo),
-	pred_info_procedures(PredInfo, Procs),
-	map__keys(Procs, ProcIds),
+	pred_info_procids(PredInfo, ProcIds),
 	( ProcIds = [ProcId0] ->
 		ProcId = ProcId0
 	;

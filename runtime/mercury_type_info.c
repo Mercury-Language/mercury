@@ -56,9 +56,10 @@ MR_get_arg_type_info(const MR_TypeInfoParams type_info_params,
 #define	exist_func_string	"MR_create_type_info_maybe_existq"
 #define	MAYBE_DECLARE_ALLOC_ARG
 #define	MAYBE_PASS_ALLOC_ARG
-#define	ALLOCATE_WORDS(target, size)					      \
-				incr_saved_hp(LVALUE_CAST(MR_Word, (target)), \
-					(size))
+#define	ALLOCATE_WORDS(target, size)	MR_incr_saved_hp(		      \
+						MR_LVALUE_CAST(MR_Word,	      \
+							(target)),	      \
+						(size))
 #include "mercury_make_type_info_body.h"
 #undef	usual_func
 #undef	exist_func
@@ -116,7 +117,7 @@ MR_get_arg_type_info(const MR_TypeInfoParams type_info_params,
 ** (based on the addresses of the type_ctor_infos, or in
 ** the case of higher order types, the arity).
 **
-** You need to wrap save/restore_transient_hp() around
+** You need to wrap MR_{save/restore}_transient_hp() around
 ** calls to this function.
 */
 
@@ -239,7 +240,7 @@ MR_compare_type_info(MR_TypeInfo t1, MR_TypeInfo t2)
 	** This only looks past equivalences of the top level type, not
 	** the argument typeinfos.
 	** 
-	** You need to wrap save/restore_transient_hp() around
+	** You need to wrap MR_{save/restore}_transient_hp() around
 	** calls to this function.
 	*/
 

@@ -616,7 +616,7 @@ unneeded_code__process_goal_internal(Goal0, Goal, InstMap0, InstMap,
 		RefinedGoals = RefinedGoals0,
 		Changed = Changed0
 	;
-		GoalExpr0 = pragma_foreign_code(_, _, _, _, _, _, _, _),
+		GoalExpr0 = pragma_foreign_code(_, _, _, _, _, _, _),
 		Goal = Goal0,
 		unneeded_code__demand_inputs(Goal, ModuleInfo, InstMap0,
 			everywhere, WhereNeededMap0, WhereNeededMap),
@@ -963,7 +963,7 @@ unneeded_code__refine_goal(Goal0, RefinedGoals0, Goal, RefinedGoals) :-
 		Goal = Goal0,
 		RefinedGoals = RefinedGoals0
 	;
-		GoalExpr0 = pragma_foreign_code(_, _, _, _, _, _, _, _),
+		GoalExpr0 = pragma_foreign_code(_, _, _, _, _, _, _),
 		Goal = Goal0,
 		RefinedGoals = RefinedGoals0
 	;

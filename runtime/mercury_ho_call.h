@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1999, 2000 The University of Melbourne.
+** Copyright (C) 1999-2001 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -18,7 +18,7 @@
 #ifndef	MERCURY_HO_CALL_H
 #define	MERCURY_HO_CALL_H
 
-#include "mercury_stack_layout.h"
+#include "mercury_stack_layout.h"	/* for MR_Closure_Id etc */
 #include "mercury_type_info.h"		/* for MR_PseudoTypeInfo */
 
 /*
@@ -27,7 +27,7 @@
 ** in any closure that calls that procedure. It is represented as a
 ** vector of words containing
 **
-**	a MR_Stack_Layout_Proc_Id structure
+**	a pointer to an MR_Closure_Id structure
 **	a pointer to information about the locations of typeinfos
 **		for the type parameters of the procedure
 **		(NULL if there are no type parameters)
@@ -63,14 +63,27 @@
 ** will not have any layout information. This will be indicated by the value
 ** of num_all_args being negative, which says that the only field of this
 ** structure containing valid information is proc_id.
+**
+** The Dyn_Link variant is for closures created by browser/dl.m. The closure_id
+** field of such closures will contain an invalid proc_id (which you can tell
+** from the negative arity) and a creation context that is also different from
+** other closures: instead of specifying the source context where the closure
+** is created, it puts a sequence number into the field that normally contains
+** the line number.
 */
 
 typedef struct MR_Closure_Layout_Struct {
-	MR_Stack_Layout_Proc_Id	proc_id;
+	MR_Closure_Id		*closure_id;
 	MR_Type_Param_Locns	*type_params;
-	MR_Integer			num_all_args;
+	MR_Integer		num_all_args;
 	MR_PseudoTypeInfo	arg_pseudo_type_info[MR_VARIABLE_SIZED];
 } MR_Closure_Layout;
+
+typedef struct MR_Closure_Dyn_Link_Layout_Struct {
+	MR_Closure_Id		*closure_id;
+	MR_Type_Param_Locns	*type_params;
+	MR_Integer		num_all_args;
+} MR_Closure_Dyn_Link_Layout;
 
 /*
 ** A closure is a vector of words containing:
@@ -94,8 +107,8 @@ typedef struct MR_Closure_Layout_Struct {
 typedef struct MR_Closure_Struct {
 	MR_Closure_Layout	*MR_closure_layout;
 	MR_Code			*MR_closure_code;
-	MR_Unsigned                MR_closure_num_hidden_args;
-	MR_Word                    MR_closure_hidden_args_0[MR_VARIABLE_SIZED];
+	MR_Unsigned		MR_closure_num_hidden_args;
+	MR_Word			MR_closure_hidden_args_0[MR_VARIABLE_SIZED];
 } MR_Closure;
 
 #define	MR_closure_hidden_args(i)	MR_closure_hidden_args_0[(i) - 1]

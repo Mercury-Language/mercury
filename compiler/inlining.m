@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2000 The University of Melbourne.
+% Copyright (C) 1994-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -138,13 +138,20 @@
 
 :- implementation.
 
-:- import_module globals, options, llds.
-:- import_module term, varset.
-:- import_module dead_proc_elim, type_util, mode_util, goal_util.
-:- import_module passes_aux, code_aux, quantification, det_analysis, prog_data.
+% Parse tree modules
+:- import_module prog_data.
 
-:- import_module bool, int, list, assoc_list, set, std_util.
-:- import_module require, hlds_data, dependency_graph.
+% HLDS modules
+:- import_module hlds_data, type_util, mode_util, goal_util, det_analysis.
+:- import_module quantification, code_aux, dead_proc_elim, dependency_graph.
+:- import_module passes_aux.
+
+% Misc
+:- import_module globals, options.
+
+% Standard library modules
+:- import_module bool, int, list, assoc_list, set, std_util, require.
+:- import_module term, varset.
 
 %-----------------------------------------------------------------------------%
 
@@ -591,8 +598,8 @@ inlining__inlining_in_goal(unify(A, B, C, D, E) - GoalInfo,
 		unify(A, B, C, D, E) - GoalInfo) --> [].
 
 inlining__inlining_in_goal(
-		pragma_foreign_code(A, B, C, D, E, F, G, H) - GoalInfo,
-		pragma_foreign_code(A, B, C, D, E, F, G, H) - GoalInfo) --> [].
+		pragma_foreign_code(A, B, C, D, E, F, G) - GoalInfo,
+		pragma_foreign_code(A, B, C, D, E, F, G) - GoalInfo) --> [].
 
 inlining__inlining_in_goal(bi_implication(_, _) - _, _) -->
 	% these should have been expanded out by now
@@ -823,21 +830,23 @@ inlining__should_inline_proc(PredId, ProcId, BuiltinState, HighLevelCode,
 	proc_info_goal(ProcInfo, CalledGoal),
 	\+ (
 		HighLevelCode = no,
-		CalledGoal = pragma_foreign_code(_,_,_,_,_,_,_,_) - _,
-		proc_info_interface_code_model(ProcInfo, model_non)
+		CalledGoal = pragma_foreign_code(_,_,_,_,_,_,_) - _,
+		proc_info_interface_determinism(ProcInfo, Detism),
+		( Detism = nondet ; Detism = multidet )
 	),
 
-	% For the MLDS back-end, don't inline any pragma c codes.
-	% XXX This is a work-around needed because of some problems
-	% with the current MLDS back-end implementation of
-	% pragma c_code.  In particular, ml_elim_nested.m assumes
-	% that target_code instructions don't contain variables,
-	% but with the current implementation sometimes they do.
-	% Also ml_code_gen.m doesn't handle complicated pragma_c_code
-	% goals, which can result from inlining.
-	\+ (
-		HighLevelCode = yes,
-		CalledGoal = pragma_foreign_code(_,_,_,_,_,_,_,_) - _
+	% only inline foreign_code if it is appropriate for
+	% the target language
+	module_info_globals(ModuleInfo, Globals),
+	globals__get_target(Globals, Target),
+	(
+		(
+		CalledGoal = pragma_foreign_code(ForeignAttributes,
+			_,_,_,_,_,_) - _,
+		foreign_language(ForeignAttributes, ForeignLanguage)
+		)
+	=>
+		ok_to_inline_language(ForeignLanguage, Target)
 	),
 
 	% Don't inline memoed Aditi predicates.
@@ -862,6 +871,20 @@ inlining__should_inline_proc(PredId, ProcId, BuiltinState, HighLevelCode,
 	;
 		set__member(proc(PredId, ProcId), InlinedProcs)
 	).
+
+	% Succeed iff it is appropriate to inline `pragma foreign_code'
+	% in the specified language for the given compilation_target.
+	% Generally that will only be the case if the target directly
+	% supports inline code in that language.
+:- pred ok_to_inline_language(foreign_language::in, compilation_target::in)
+	is semidet.
+ok_to_inline_language(c, c).
+% ok_to_inline_language(java, java). % foreign_language = java not implemented
+% ok_to_inline_language(asm, asm).   % foreign_language = asm not implemented
+% We could define a language "C/C++" (c_slash_cplusplus) which was the
+% intersection of "C" and "C++", and then we'd have
+%	ok_to_inline_language(c_slash_cplusplus, c).
+%	ok_to_inline_language(c_slash_cplusplus, cplusplus).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

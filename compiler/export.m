@@ -5,7 +5,7 @@
 %-----------------------------------------------------------------------------%
 
 % This module defines predicates to produce the functions which are
-% exported to C via a `pragma export' declaration.
+% exported to a foreign language via a `pragma export' declaration.
 
 % Note: any changes here might also require similar changes to the handling
 % of `pragma import' declarations, which are handled in make_hlds.m.
@@ -18,30 +18,37 @@
 
 :- interface.
 
-:- import_module hlds_module, prog_data, llds.
+:- import_module prog_data, hlds_module, llds.
 :- import_module io.
 
-	% From the module_info, get a list of c_export_decls,
+	% From the module_info, get a list of foreign_export_decls,
 	% each of which holds information about the declaration
-	% of a C function named in a `pragma export' declaration,
+	% of a foreign function named in a `pragma export' declaration,
 	% which is used to allow a call to be made to a Mercury
-	% procedure from C.
-:- pred export__get_c_export_decls(module_info, foreign_export_decls).
-:- mode export__get_c_export_decls(in, out) is det.
+	% procedure from the foreign language.
+:- pred export__get_foreign_export_decls(module_info, foreign_export_decls).
+:- mode export__get_foreign_export_decls(in, out) is det.
 
-	% From the module_info, get a list of c_export_defns,
-	% each of which is a string containing the C code
-	% for defining a C function named in a `pragma export' decl.
-:- pred export__get_c_export_defns(module_info, foreign_export_defns).
-:- mode export__get_c_export_defns(in, out) is det.
+	% From the module_info, get a list of foreign_export_defns,
+	% each of which is a string containing the foreign code
+	% for defining a foreign function named in a `pragma export' decl.
+:- pred export__get_foreign_export_defns(module_info, foreign_export_defns).
+:- mode export__get_foreign_export_defns(in, out) is det.
 
-	% Produce a header file containing prototypes for the exported C
-	% functions
+	% Produce an interface file containing declarations for the
+	% exported foreign functions (if required in this foreign
+	% language).
 :- pred export__produce_header_file(foreign_export_decls, module_name,
 					io__state, io__state).
 :- mode export__produce_header_file(in, in, di, uo) is det.
 
-	% Convert the type, to a string corresponding to its C type.
+
+%-----------------------------------------------------------------------------%
+
+% Utilities for generating C code which interfaces with Mercury.  
+% The {MLDS,LLDS}->C backends and fact tables use this code.
+
+	% Convert the type to a string corresponding to its C type.
 	% (Defaults to MR_Word).
 :- pred export__type_to_type_string(type, string).
 :- mode export__type_to_type_string(in, out) is det.
@@ -63,8 +70,10 @@
 
 :- implementation.
 
-:- import_module code_gen, code_util, hlds_pred, llds_out, modules.
-:- import_module type_util.
+:- import_module modules.
+:- import_module hlds_pred, type_util.
+:- import_module code_model.
+:- import_module code_gen, code_util, llds_out.
 
 :- import_module term, varset.
 :- import_module library, map, int, string, std_util, assoc_list, require.
@@ -72,30 +81,31 @@
 
 %-----------------------------------------------------------------------------%
 
-export__get_c_export_decls(HLDS, C_ExportDecls) :-
+export__get_foreign_export_decls(HLDS, C_ExportDecls) :-
 	module_info_get_predicate_table(HLDS, PredicateTable),
 	predicate_table_get_preds(PredicateTable, Preds),
 	module_info_get_pragma_exported_procs(HLDS, ExportedProcs),
-	export__get_c_export_decls_2(Preds, ExportedProcs, C_ExportDecls).
+	export__get_foreign_export_decls_2(Preds, ExportedProcs, C_ExportDecls).
 
-:- pred export__get_c_export_decls_2(pred_table, list(pragma_exported_proc),
-	list(foreign_export_decl)).
-:- mode export__get_c_export_decls_2(in, in, out) is det.
+:- pred export__get_foreign_export_decls_2(pred_table,
+	list(pragma_exported_proc), list(foreign_export_decl)).
+:- mode export__get_foreign_export_decls_2(in, in, out) is det.
 
-export__get_c_export_decls_2(_Preds, [], []).
-export__get_c_export_decls_2(Preds, [E|ExportedProcs], C_ExportDecls) :-
+export__get_foreign_export_decls_2(_Preds, [], []).
+export__get_foreign_export_decls_2(Preds, [E|ExportedProcs], C_ExportDecls) :-
 	E = pragma_exported_proc(PredId, ProcId, C_Function, _Ctxt),
-	get_export_info(Preds, PredId, ProcId, _Exported, C_RetType,
+	get_export_info(Preds, PredId, ProcId, _HowToDeclare, C_RetType,
 		_DeclareReturnVal, _FailureAction, _SuccessAction,
 		HeadArgInfoTypes),
 	get_argument_declarations(HeadArgInfoTypes, no, ArgDecls),
 	C_ExportDecl = foreign_export_decl(c, C_RetType, C_Function, ArgDecls),
-	export__get_c_export_decls_2(Preds, ExportedProcs, C_ExportDecls0),
+	export__get_foreign_export_decls_2(Preds, ExportedProcs,
+		C_ExportDecls0),
 	C_ExportDecls = [C_ExportDecl | C_ExportDecls0].
 
 %-----------------------------------------------------------------------------%
 
-export__get_c_export_defns(Module, ExportedProcsCode) :-
+export__get_foreign_export_defns(Module, ExportedProcsCode) :-
 	module_info_get_pragma_exported_procs(Module, ExportedProcs),
 	module_info_get_predicate_table(Module, PredicateTable),
 	predicate_table_get_preds(PredicateTable, Preds),
@@ -104,7 +114,7 @@ export__get_c_export_defns(Module, ExportedProcsCode) :-
 	% For each exported procedure, produce a C function.
 	% The code we generate is in the form
 	%
-	% Declare_entry(<label of called proc>); /* or Declare_static */
+	% MR_declare_entry(<label of called proc>); /* or MR_declare_static */
 	%
 	% #if SEMIDET
 	%   bool
@@ -117,8 +127,8 @@ export__get_c_export_defns(Module, ExportedProcsCode) :-
 	%			MR_Word *Mercury__Argument2...)
 	%			/* Word for input, Word* for output */
 	% {
-	% #if NUM_REAL_REGS > 0
-	%	MR_Word c_regs[NUM_REAL_REGS];
+	% #if MR_NUM_REAL_REGS > 0
+	%	MR_Word c_regs[MR_NUM_REAL_REGS];
 	% #endif
 	% #if FUNCTION
 	%	MR_Word retval;
@@ -128,7 +138,7 @@ export__get_c_export_defns(Module, ExportedProcsCode) :-
 	% #endif 
 	%
 	%		/* save the registers that our C caller may be using */
-	%	save_regs_to_mem(c_regs);
+	%	MR_save_regs_to_mem(c_regs);
 	%
 	%		/* 
 	%		** start a new Mercury engine inside this POSIX 
@@ -137,32 +147,32 @@ export__get_c_export_defns(Module, ExportedProcsCode) :-
 	%		*/
 	%
 	% #if MR_THREAD_SAFE
-	% 	must_finalize_engine = init_thread(MR_use_now);
+	% 	must_finalize_engine = MR_init_thread(MR_use_now);
 	% #endif 
 	%
 	%		/* 
 	%		** restore Mercury's registers that were saved as
 	%		** we entered C from Mercury.  For single threaded
 	%		** programs the process must always start in Mercury
-	%		** so that we can init_engine() etc.  For
-	%		** multi-threaded init_thread (above) takes care
+	%		** so that we can MR_init_engine() etc.  For
+	%		** multi-threaded MR_init_thread (above) takes care
 	%		** of making a new engine if required.
 	%		*/
-	%	restore_registers();
+	%	MR_restore_registers();
 	%	<copy input arguments from Mercury__Arguments into registers>
 	%		/* save the registers which may be clobbered      */
 	%		/* by the C function call MR_call_engine().       */
-	%	save_transient_registers();
+	%	MR_save_transient_registers();
 	%
-	%	(void) MR_call_engine(ENTRY(<label of called proc>), FALSE);
+	%	(void) MR_call_engine(MR_ENTRY(<label of called proc>), FALSE);
 	%
 	%		/* restore the registers which may have been      */
 	%		/* clobbered by the return from the C function    */
 	%		/* MR_call_engine()				  */
-	%	restore_transient_registers();
+	%	MR_restore_transient_registers();
 	% #if SEMIDET
-	%	if (!r1) {
-	%		restore_regs_from_mem(c_regs);
+	%	if (!MR_r1) {
+	%		MR_restore_regs_from_mem(c_regs);
 	%		return FALSE;
 	%	}
 	% #elif FUNCTION
@@ -171,10 +181,10 @@ export__get_c_export_defns(Module, ExportedProcsCode) :-
 	%	<copy output args from registers into *Mercury__Arguments>
 	% #if MR_THREAD_SAFE
 	% 	if (must_finalize_engine) {
-	% 		finalize_thread_engine();
+	% 		MR_finalize_thread_engine();
 	% 	}
 	% #endif 
-	%	restore_regs_from_mem(c_regs);
+	%	MR_restore_regs_from_mem(c_regs);
 	% #if SEMIDET
 	%	return TRUE;
 	% #elif FUNCTION
@@ -188,7 +198,7 @@ export__get_c_export_defns(Module, ExportedProcsCode) :-
 export__to_c(_Preds, [], _Module, []).
 export__to_c(Preds, [E|ExportedProcs], Module, ExportedProcsCode) :-
 	E = pragma_exported_proc(PredId, ProcId, C_Function, _Ctxt),
-	get_export_info(Preds, PredId, ProcId, Exported,
+	get_export_info(Preds, PredId, ProcId, DeclareString,
 		C_RetType, MaybeDeclareRetval, MaybeFail, MaybeSucceed,
 		ArgInfoTypes),
 	get_argument_declarations(ArgInfoTypes, yes, ArgDecls),
@@ -201,43 +211,37 @@ export__to_c(Preds, [E|ExportedProcs], Module, ExportedProcsCode) :-
 	code_util__make_proc_label(Module, PredId, ProcId, ProcLabel),
 	llds_out__get_proc_label(ProcLabel, yes, ProcLabelString),
 
-	( Exported = yes ->
-		DeclareString = "Declare_entry"
-	;
-		DeclareString = "Declare_static"
-	),
-
 	string__append_list([	"\n",
 				DeclareString, "(", ProcLabelString, ");\n",
 				"\n",
 				C_RetType, "\n", 
 				C_Function, "(", ArgDecls, ")\n{\n",
-				"#if NUM_REAL_REGS > 0\n",
-				"\tMR_Word c_regs[NUM_REAL_REGS];\n",
+				"#if MR_NUM_REAL_REGS > 0\n",
+				"\tMR_Word c_regs[MR_NUM_REAL_REGS];\n",
 				"#endif\n",
 				"#if MR_THREAD_SAFE\n",
 				"\tMR_Bool must_finalize_engine;\n", 
 				"#endif\n",
 				MaybeDeclareRetval,
 				"\n",
-				"\tsave_regs_to_mem(c_regs);\n", 
+				"\tMR_save_regs_to_mem(c_regs);\n", 
 				"#if MR_THREAD_SAFE\n",
-				"\tmust_finalize_engine = init_thread(MR_use_now);\n", 
+				"\tmust_finalize_engine = MR_init_thread(MR_use_now);\n", 
 				"#endif\n",
-				"\trestore_registers();\n", 
+				"\tMR_restore_registers();\n", 
 				InputArgs,
-				"\tsave_transient_registers();\n",
-				"\t(void) MR_call_engine(ENTRY(",
+				"\tMR_save_transient_registers();\n",
+				"\t(void) MR_call_engine(MR_ENTRY(",
 					ProcLabelString, "), FALSE);\n",
-				"\trestore_transient_registers();\n",
+				"\tMR_restore_transient_registers();\n",
 				MaybeFail,
 				OutputArgs,
 				"#if MR_THREAD_SAFE\n",
 				"\tif (must_finalize_engine) {\n", 
-				"\t\t finalize_thread_engine();\n", 
+				"\t\t MR_finalize_thread_engine();\n", 
 				"\t}\n", 
 				"#endif\n",
-				"\trestore_regs_from_mem(c_regs);\n", 
+				"\tMR_restore_regs_from_mem(c_regs);\n", 
 				MaybeSucceed,
 				"}\n\n"],
 				Code),
@@ -246,24 +250,34 @@ export__to_c(Preds, [E|ExportedProcs], Module, ExportedProcsCode) :-
 	ExportedProcsCode = [Code|TheRest].
 
 
-	% get_export_info(Preds, PredId, ProcId,
+	% get_export_info(Preds, PredId, ProcId, DeclareString,
 	%		C_RetType, MaybeDeclareRetval, MaybeFail, MaybeSuccess,
 	%		ArgInfoTypes):
-	%	Figure out the C return type, the actions on success
-	%	and failure, and the argument locations/modes/types
-	%	for a given procedure.
-:- pred get_export_info(pred_table, pred_id, proc_id, bool,
+	%	For a given procedure, figure out the information about
+	%	that procedure that is needed to export it:
+	%	- how to declare the procedure's entry label,
+	%	- the C return type, and the C declaration for the variable
+	%	  holding the return value (if any),
+	%	- the actions on success and failure, and
+	%	- the argument locations/modes/types.
+
+:- pred get_export_info(pred_table, pred_id, proc_id, string,
 			string, string, string, string,
 			assoc_list(arg_info, type)).
 :- mode get_export_info(in, in, in, out, out, out, out, out, out) is det.
 
-get_export_info(Preds, PredId, ProcId, Exported, C_RetType,
+get_export_info(Preds, PredId, ProcId, HowToDeclareLabel, C_RetType,
 		MaybeDeclareRetval, MaybeFail, MaybeSucceed, ArgInfoTypes) :-
 	map__lookup(Preds, PredId, PredInfo),
-	( procedure_is_exported(PredInfo, ProcId) ->
-		Exported = yes
+	pred_info_import_status(PredInfo, Status),
+	(
+		( procedure_is_exported(PredInfo, ProcId)
+		; status_defined_in_this_module(Status, no)
+		)
+	->
+		HowToDeclareLabel = "MR_declare_entry"
 	;
-		Exported = no
+		HowToDeclareLabel = "MR_declare_static"
 	),
 	pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
 	pred_info_procedures(PredInfo, ProcTable),
@@ -311,8 +325,8 @@ get_export_info(Preds, PredId, ProcId, Exported, C_RetType,
 		C_RetType = "bool",
 		MaybeDeclareRetval = "",
 		string__append_list([
-			"\tif (!r1) {\n",
-			"\t\trestore_regs_from_mem(c_regs);\n",
+			"\tif (!MR_r1) {\n",
+			"\t\tMR_restore_regs_from_mem(c_regs);\n",
 			"\treturn FALSE;\n",
 			"\t}\n"
 				], MaybeFail),
@@ -458,9 +472,9 @@ argloc_to_string(RegNum, RegName) :-
 			% XXX This magic number can't be good
 		RegNum > 32 
 	->
-		string__append_list(["r(", RegNumString, ")"], RegName)
+		string__append_list(["MR_r(", RegNumString, ")"], RegName)
 	;
-		string__append("r", RegNumString, RegName)
+		string__append("MR_r", RegNumString, RegName)
 	).
 
 convert_type_to_mercury(Rval, Type, ConvertedRval) :-	
@@ -471,7 +485,7 @@ convert_type_to_mercury(Rval, Type, ConvertedRval) :-
 	;
         	Type = term__functor(term__atom("float"), [], _)
 	->
-		string__append_list(["float_to_word(", Rval, ")" ],
+		string__append_list(["MR_float_to_word(", Rval, ")" ],
 			ConvertedRval)
 	;
         	Type = term__functor(term__atom("character"), [], _)
@@ -492,7 +506,7 @@ convert_type_from_mercury(Rval, Type, ConvertedRval) :-
 	;
         	Type = term__functor(term__atom("float"), [], _)
 	->
-		string__append_list(["word_to_float(", Rval, ")" ],
+		string__append_list(["MR_word_to_float(", Rval, ")" ],
 			ConvertedRval)
 	;
 		ConvertedRval = Rval
@@ -555,16 +569,20 @@ export__produce_header_file(C_ExportDecls, ModuleName) -->
 :- mode export__produce_header_file_2(in, di, uo) is det.
 export__produce_header_file_2([]) --> [].
 export__produce_header_file_2([E|ExportedProcs]) -->
-	{ E = foreign_export_decl(c, C_RetType, C_Function, ArgDecls) },
-
-		% output the function header
-	io__write_string(C_RetType),
-	io__write_string(" "),
-	io__write_string(C_Function),
-	io__write_string("("),
-	io__write_string(ArgDecls),
-	io__write_string(");\n"),
-
+	{ E = foreign_export_decl(Lang, C_RetType, C_Function, ArgDecls) },
+	( 
+		{ Lang = c }
+	->
+			% output the function header
+		io__write_string(C_RetType),
+		io__write_string(" "),
+		io__write_string(C_Function),
+		io__write_string("("),
+		io__write_string(ArgDecls),
+		io__write_string(");\n")
+	;
+		{ error("export__produce_header_file_2: foreign languages other than C unimplemented") }
+	),
 	export__produce_header_file_2(ExportedProcs).
 
 	% Convert a term representation of a variable type to a string which
@@ -579,8 +597,6 @@ export__type_to_type_string(Type, Result) :-
 		Result = "MR_String"
 	; Type = term__functor(term__atom("character"), [], _) ->
 		Result = "MR_Char"
-	; Type = term__variable(_) ->
-		Result = "MR_Box"
 	;
 		Result = "MR_Word"
 	).

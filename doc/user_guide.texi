@@ -18,7 +18,7 @@
 @ifinfo
 This file documents the Mercury implementation.
 
-Copyright (C) 1995-2000 The University of Melbourne.
+Copyright (C) 1995-2001 The University of Melbourne.
 
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice
@@ -320,7 +320,7 @@ The most useful of these are the options that set the size of the stacks.
 
 The det stack and the nondet stack
 are allocated fixed sizes at program start-up.
-The default size is 512k for the det stack and 128k for the nondet stack,
+The default size is 4096k for the det stack and 128k for the nondet stack,
 but these can be overridden with the
 @samp{--detstack-size} and @samp{--nondetstack-size} options,
 whose arguments are the desired sizes of the det and nondet stacks
@@ -524,6 +524,16 @@ The executable that invokes the C compiler.
 
 @item MGNUCFLAGS and EXTRA_MGNUCFLAGS
 Options to pass to the C compiler.
+
+@item MS_CLFLAGS and EXTRA_MS_CLFLAGS
+Options to pass to the Microsoft command line C++ compiler (if you are
+using it).
+
+@item MS_CL_NOASM 
+The option to control whether the Microsoft command line C++ compile
+will generate assemblies from managed C++ files.  Set to
+@samp{:noAssembly} to turn off assembly generation, leave empty to turn
+on assembly generation.  The default is to leave this variable empty.
 
 @item ML
 The executable that invokes the linker.
@@ -2418,6 +2428,32 @@ that point to the det and nondet stacks.
 @sp 1
 @item all_regs
 Prints the contents of all the virtual machine registers.
+@sp 1
+@item table_io
+Reports which phase of I/O tabling we are in at the moment.
+@sp 1
+@item table_io stats
+Reports statistics about I/O tabling.
+@sp 1
+@item table_io start
+Tells the debugger to start tabling I/O actions.
+@sp 1
+@item table_io end
+Tells the debugger to stop tabling I/O actions.
+@sp 1
+@item proc_stats
+Prints statistics about proc layout structures in the program.
+@sp 1
+@item proc_stats @var{filename}
+Prints statistics about proc layout structures in the program
+to the file @var{filename}.
+@sp 1
+@item label_stats
+Prints statistics about label layout structures in the program.
+@sp 1
+@item label_stats @var{filename}
+Prints statistics about label layout structures in the program
+to the file @var{filename}.
 @end table
 @node Miscellaneous commands
 @subsection Miscellaneous commands
@@ -3130,10 +3166,12 @@ See @ref{Debugging}.
 @item --trace-optimized
 Do not disable optimizations that can change the trace.
 
-@c --trace-decl is commented out in the absence of runtime support
-@c @item --trace-decl
-@c Make the generated tracing code include support
-@c for an experimental declarative debugger.
+@item --no-delay-death
+When the trace level is `deep', the compiler normally
+preserves the values of variables as long as possible, even
+beyond the point of their last use, in order to make them
+accessible from as many debugger events as possible.
+However, it will not do this if this option is given.
 
 @item --stack-trace-higher-order
 Enable stack traces through predicates and functions with
@@ -3620,6 +3658,16 @@ Use @var{n} tag bits.  This option is required if you specify
 @samp{--tags high}.
 With @samp{--tags low}, the default number of tag bits to use
 is determined by the auto-configuration script.
+
+@sp 1
+@item @code{--use-foreign-language @var{foreign language}}
+Use the given foreign language to implement predicates
+written in foreign languages.  Any name that can be used
+to specify foreign languages in @samp{pragma foreign} declarations
+is valid, but not all foreign languages are implemented
+in all backends.
+Default value is `C' for the LLDS and MLDS->C backends,
+or `ManagedC++' for the .NET backend.
 
 @sp 1
 @item @code{--no-type-layout}
@@ -4314,11 +4362,11 @@ Specify options to be passed to @samp{ml}, the Mercury linker.
 
 @sp 1
 @item -L @var{directory}
-@item --library-directory @var{directory}
+@itemx --library-directory @var{directory}
 Append @var{dir} to the list of directories in which to search for libraries.
 
 @item -l @var{library}
-@item --library @var{library}
+@itemx --library @var{library}
 Link with the specified library.
 
 @item --link-object @var{object}
@@ -4545,7 +4593,7 @@ rather than from standard input.
 
 @sp 1
 @item -o @var{filename}
-@item --mdb-out @var{filename}
+@itemx --mdb-out @var{filename}
 Print debugger output to the file or device specified by @var{filename},
 rather than to standard output.
 

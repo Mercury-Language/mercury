@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2000 The University of Melbourne.
+** Copyright (C) 1998-2001 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -14,6 +14,7 @@
 #include "mercury_imp.h"
 #include "mercury_label.h"
 #include "mercury_array_macros.h"
+#include "mercury_stack_trace.h"
 
 #include "mercury_trace_tables.h"
 #include "mercury_trace.h"
@@ -33,11 +34,10 @@ static	const MR_Module_Layout	*MR_search_module_info(const char *name);
 static	void	MR_insert_module_info(const MR_Module_Layout *);
 static	void	MR_process_matching_procedures_in_module(
 			const MR_Module_Layout *module, MR_Proc_Spec *spec,
-			void f(void *, const MR_Stack_Layout_Entry *),
-			void *);
-static	void	MR_process_line_layouts(MR_Module_File_Layout *file_layout,
-			int line, MR_file_line_callback callback_func,
-			int callback_arg);
+			void f(void *, const MR_Proc_Layout *), void *);
+static	void	MR_process_line_layouts(const MR_Module_File_Layout
+			*file_layout, int line,
+			MR_file_line_callback callback_func, int callback_arg);
 
 void
 MR_register_all_modules_and_procs(FILE *fp, bool verbose)
@@ -50,7 +50,7 @@ MR_register_all_modules_and_procs(FILE *fp, bool verbose)
 			fflush(fp);
 		}
 
-		do_init_modules();
+		MR_do_init_modules();
 		done = TRUE;
 		if (verbose) {
 			fprintf(fp, "done.\n");
@@ -119,8 +119,8 @@ void
 MR_process_file_line_layouts(const char *file, int line,
 	MR_file_line_callback callback_func, int callback_arg)
 {
-	int			i, j;
-	MR_Module_File_Layout	*file_layout;
+	int				i, j;
+	const MR_Module_File_Layout	*file_layout;
 
 	for (i = 0; i < MR_module_info_next; i++) {
 		for (j = 0; j < MR_module_infos[i]->MR_ml_filename_count; j++)
@@ -136,7 +136,7 @@ MR_process_file_line_layouts(const char *file, int line,
 }
 
 static void
-MR_process_line_layouts(MR_Module_File_Layout *file_layout, int line,
+MR_process_line_layouts(const MR_Module_File_Layout *file_layout, int line,
 	MR_file_line_callback callback_func, int callback_arg)
 {
 	int			k;
@@ -312,12 +312,12 @@ MR_parse_proc_spec(char *str, MR_Proc_Spec *spec)
 #define	MR_INIT_MATCH_PROC_SIZE		8
 
 static void
-MR_register_matches(void *data, const MR_Stack_Layout_Entry *entry)
+MR_register_matches(void *data, const MR_Proc_Layout *entry)
 {
 	MR_Matches_Info	*m;
 
 	m = (MR_Matches_Info *) data;
-	MR_ensure_room_for_next(m->match_proc, const MR_Stack_Layout_Entry *,
+	MR_ensure_room_for_next(m->match_proc, const MR_Proc_Layout *,
 		MR_INIT_MATCH_PROC_SIZE);
 	m->match_procs[m->match_proc_next] = entry;
 	m->match_proc_next++;
@@ -341,12 +341,12 @@ MR_search_for_matching_procedures(MR_Proc_Spec *spec)
 */
 
 typedef struct {
-	const MR_Stack_Layout_Entry	*matching_entry;
-	bool	 			match_unique;
+	const MR_Proc_Layout	*matching_entry;
+	bool	 		match_unique;
 } MR_Match_Info;
 
 static void
-MR_register_match(void *data, const MR_Stack_Layout_Entry *entry)
+MR_register_match(void *data, const MR_Proc_Layout *entry)
 {
 	MR_Match_Info	*m;
 
@@ -358,7 +358,7 @@ MR_register_match(void *data, const MR_Stack_Layout_Entry *entry)
 	}
 }
 
-const MR_Stack_Layout_Entry *
+const MR_Proc_Layout *
 MR_search_for_matching_procedure(MR_Proc_Spec *spec, bool *unique)
 {
 	MR_Match_Info	m;
@@ -372,8 +372,7 @@ MR_search_for_matching_procedure(MR_Proc_Spec *spec, bool *unique)
 
 void
 MR_process_matching_procedures(MR_Proc_Spec *spec,
-	void f(void *, const MR_Stack_Layout_Entry *),
-	void *data)
+	void f(void *, const MR_Proc_Layout *), void *data)
 {
 	if (spec->MR_proc_module != NULL) {
 		const MR_Module_Layout	*module;
@@ -411,11 +410,10 @@ MR_process_matching_procedures(MR_Proc_Spec *spec,
 
 static void
 MR_process_matching_procedures_in_module(const MR_Module_Layout *module,
-	MR_Proc_Spec *spec, void f(void *, const MR_Stack_Layout_Entry *),
-	void *data)
+	MR_Proc_Spec *spec, void f(void *, const MR_Proc_Layout *), void *data)
 {
-	const MR_Stack_Layout_Entry	*cur_entry;
-	int				j;
+	const MR_Proc_Layout	*cur_entry;
+	int			j;
 
 	for (j = 0; j < module->MR_ml_proc_count; j++) {
 		cur_entry = module->MR_ml_procs[j];
@@ -430,10 +428,105 @@ MR_process_matching_procedures_in_module(const MR_Module_Layout *module,
 }
 
 void
-MR_print_proc_id_for_debugger(FILE *fp,
-	const MR_Stack_Layout_Entry *entry_layout)
+MR_print_proc_id_for_debugger(FILE *fp, const MR_Proc_Layout *entry_layout)
 {
 	MR_print_proc_id(fp, entry_layout);
 	fprintf(fp, "\n");
 }
 
+void
+MR_proc_layout_stats(FILE *fp)
+{
+	const MR_Module_Layout		*module_layout;
+	const MR_Proc_Layout		*proc_layout;
+	int				module_num, proc_num;
+	MR_Determinism			detism;
+	int				total;
+	int				histogram[MR_DETISM_MAX + 1];
+
+	total = 0;
+	for (detism = 0; detism <= MR_DETISM_MAX; detism++) {
+		histogram[detism] = 0;
+	}
+
+	for (module_num = 0; module_num < MR_module_info_next; module_num++) {
+		module_layout = MR_module_infos[module_num];
+
+		for (proc_num = 0;
+			proc_num < module_layout->MR_ml_proc_count;
+			proc_num++)
+		{
+			proc_layout = module_layout->MR_ml_procs[proc_num];
+
+			total++;
+			if (0 <= proc_layout->MR_sle_detism &&
+				proc_layout->MR_sle_detism <= MR_DETISM_MAX)
+			{
+				histogram[proc_layout->MR_sle_detism]++;
+			}
+		}
+	}
+
+	for (detism = 0; detism <= MR_DETISM_MAX; detism++) {
+		if (histogram[detism] > 0) {
+			fprintf(fp, "%-10s %10d (%5.2f%%)\n",
+				MR_detism_names[detism],
+				histogram[detism],
+				((float) 100 * histogram[detism]) / total);
+		}
+	}
+	fprintf(fp, "%-10s %10d\n", "all ", total);
+}
+
+void
+MR_label_layout_stats(FILE *fp)
+{
+	const MR_Module_Layout		*module_layout;
+	const MR_Module_File_Layout	*file_layout;
+	const MR_Label_Layout		*label_layout;
+	int				module_num, file_num, label_num;
+	MR_Trace_Port			port;
+	int				total;
+	int				histogram[MR_PORT_PRAGMA_LATER + 1];
+
+	total = 0;
+	for (port = 0; port < MR_PORT_NUM_PORTS; port++) {
+		histogram[port] = 0;
+	}
+
+	for (module_num = 0; module_num < MR_module_info_next; module_num++) {
+		module_layout = MR_module_infos[module_num];
+
+		for (file_num = 0;
+			file_num < module_layout->MR_ml_filename_count;
+			file_num++)
+		{
+			file_layout = module_layout->
+				MR_ml_module_file_layout[file_num];
+
+			for (label_num = 0;
+				label_num < file_layout->MR_mfl_label_count;
+				label_num++)
+			{
+				label_layout = file_layout->
+					MR_mfl_label_layout[label_num];
+
+				total++;
+				if (0 <= label_layout->MR_sll_port &&
+					label_layout->MR_sll_port
+					< MR_PORT_NUM_PORTS)
+				{
+					histogram[label_layout->MR_sll_port]++;
+				}
+			}
+		}
+	}
+
+	for (port = 0; port < MR_PORT_NUM_PORTS; port++) {
+		fprintf(fp, "%4s %10d (%5.2f%%)\n",
+			MR_port_names[port],
+			histogram[port],
+			((float) 100 * histogram[port]) / total);
+	}
+	fprintf(fp, "%s %10d\n", "all ", total);
+}

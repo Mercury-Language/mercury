@@ -33,24 +33,13 @@
 % is currently implemented using the C interface,
 % it will end up compiling everything via C.
 
-% See also gcc/mercury/README.
-
 % TODO:
 %	Fix configuration issues:
-%	- document installation procedure better
-%	  (there is some documentation in gcc/mercury/README,
-%	  but probably there should also be something in the INSTALL
-%	  file in the Mercury distribution)
-%	- set up nightly tests
+%	- mmake support for foreign code
+%	- document installation procedure
 %	- test more
-%
-%	Fix unimplemented standard Mercury features:
-%	- support nested modules
-%	  (They can be compiled using `gcc', but compiling them
-%	  with `mmc' doesn't work, see the XXX comment below.
-%	  Also Mmake support is broken.)
-%	- support modules containing foreign_decls but no
-%	  foreign_procs or foreign code
+%	- support in tools/bootcheck and check that it bootchecks
+%	- set up nightly tests
 %
 %	Implement implementation-specific features that are supported
 %	by other Mercury back-ends:
@@ -65,17 +54,14 @@
 %	- generate gcc trees rather than expanding as we go
 %		This should probably wait until the GCC back-end
 %		has a language-independent representation for switches.
-%	- support gdb (hard!):
+%	- support gdb
 %		- improve accuracy of line numbers (e.g. for decls).
 %		- make variable names match what's in the original source
 %		- use nested functions or something like that to hide
 %		  from the user the environment struct stuff that we
 %		  generate for nondet code
-%		- teach gdb to demangle Mercury symbol names
 %		- extend gdb to print Mercury data structures better
 %		- extend gdb to print Mercury stacks better
-%		- extend gdb to support mdb's `retry' command
-%		...
 %
 %	Improve efficiency of generated code:
 %	- implement annotation in gcc tree to force tailcalls
@@ -199,18 +185,8 @@ mlds_to_gcc__compile_to_asm(MLDS, ContainsCCode) -->
 		io__state::di, io__state::uo) is det.
 
 do_call_gcc_backend(ModuleName, Result) -->
-	% XXX should use new --pic option rather than
-	% reusing --pic-reg
-	globals__io_lookup_bool_option(pic_reg, Pic),
-	{ Pic = yes ->
-		PicExt = ".pic_s",
-		PicOpt = "-fpic "
-	;
-		PicExt = ".s",
-		PicOpt = ""
-	},
 	module_name_to_file_name(ModuleName, ".m", no, SourceFileName),
-	module_name_to_file_name(ModuleName, PicExt, yes, AsmFileName),
+	module_name_to_file_name(ModuleName, ".s", yes, AsmFileName),
 	% XXX should use new gcc_* options rather than
 	% reusing cflags, c_optimize
 	globals__io_lookup_bool_option(statistics, Statistics),
@@ -236,7 +212,7 @@ do_call_gcc_backend(ModuleName, Result) -->
 		C_Flags_List)) },
 	% Be careful with the order here.
 	% Also be careful that each option is separated by spaces.
-	{ string__append_list(["""<GCC back-end>"" ", PicOpt,
+	{ string__append_list(["""<GCC back-end>"" ",
 		QuietOption, OptimizeOpt, Target_DebugOpt, CFLAGS,
 		SourceFileName, " -o ", AsmFileName], CommandLine) },
 	globals__io_lookup_bool_option(verbose, Verbose),
@@ -269,8 +245,6 @@ void MC_call_gcc_backend(MR_String all_args, MR_Integer *result);
 void MC_continue_frontend(void);
 
 #include ""mercury_wrapper.h""		/* for MR_make_argv() */
-#include <stdio.h>			/* for fprintf() */
-#include <stdlib.h>			/* for exit() */
 ").
 
 :- pragma c_code("
@@ -310,49 +284,14 @@ MC_call_gcc_backend(MR_String all_args, MR_Integer *result)
 	char **argv;
 	int argc;
 	const char *error_msg;
-	static int num_calls = 0;
-
-	/*
-	** The gcc back-end cannot be called more than once.
-	** If you try, it uses up all available memory.
-	** So we need to abort nicely in that case.
-	**
-	** That case will happen if (a) there were nested
-	** sub-modules or (b) the user specified more than
-	** one module on the command line.
-	*/
-	num_calls++;
-	if (num_calls > 1) {
-		fprintf(stderr, ""Sorry, not implemented:\\n""
-			""compiling more than one module at a time ""
-			""with `--target asm'.\\n""
-			""Please use separate sub-modules ""
-			""rather than nested sub-modules,\\n""
-			""i.e. put each sub-module in its own file, ""
-			""and don't specify more\\n""
-			""than one module on the command line ""
-			""(use Mmake instead).\\n""
-			""Or alternatively, just use `--target c'.\\n"");
-		exit(EXIT_FAILURE);
-	}
 
 	error_msg = MR_make_argv(all_args, &args, &argv, &argc);
 	if (error_msg) {
-		fprintf(stderr,
-			""Error parsing GCC back-end arguments:\n%s\n"",
+		MR_fatal_error(""error parsing GCC back-end arguments:\n%s\n"",
 			error_msg);
-		exit(EXIT_FAILURE);
 	}
-
 	merc_continue_frontend = &MC_continue_frontend;
 	*result = toplev_main(argc, argv);
-
-	/*
-	** Reset GCC's progname after we return from toplev_main(),
-	** so that MC_in_gcc() knows that we're no longer in GCC. 
-	*/
-	progname = NULL;
-
 	MR_GC_free(args);
 	MR_GC_free(argv);
 }
@@ -404,30 +343,7 @@ mlds_to_gcc__compile_to_gcc(MLDS, ContainsCCode) -->
 	{ list__filter(defn_contains_foreign_code(lang_asm), Defns0,
 		ForeignDefns, Defns) },
 	(
-		% Check if there is any code from pragma foreign_code,
-		% pragma export, or pragma foreign_proc declarations.
-		%
-		% We don't call mlds_to_c to generate `.c' and `.h' files
-		% if the module contains only `pragma foreign_decls'.
-		% This is needed to avoid calling mlds_to_c when intermodule
-		% optimization is enabled and `pragma foreign_decls'
-		% declarations have been read in from the `.opt' files
-		% and have propagated through to the MLDS.
-		% Calling mlds_to_c when the module itself doesn't contain
-		% C code breaks things, since Mmake won't compile and link
-		% in the generated `.c' files, but those files contain the
-		% definition of the `*__init_type_tables()' functions that
-		% are referenced by `*_init.c'.
-		%
-		% XXX This is not quite right, since if the module itself
-		% contains `pragma foreign_decls', the `.h' file might
-		% be needed.  But the Mercury standard library needs
-		% intermodule optimization enabled for `make install'
-		% to work.  A better fix would be to ignore foreign_decls
-		% that were defined in other modules, but to call mlds_to_c
-		% for foreign_decls that were defined in the module that
-		% we're compiling.
-		{ ForeignCode = mlds__foreign_code(_Decls, [], []) },
+		{ ForeignCode = mlds__foreign_code([], [], []) },
 		{ ForeignDefns = [] }
 	->
 		{ ContainsCCode = no },
@@ -436,10 +352,9 @@ mlds_to_gcc__compile_to_gcc(MLDS, ContainsCCode) -->
 		{ NeedInitFn = yes }
 	;
 		% create a new MLDS containing just the foreign code
-		% (with all definitions made public, so we can use
-		% them from the asm file!) and pass that to mlds_to_c.m
+		% and pass that to mlds_to_c.m
 		{ ForeignMLDS = mlds(ModuleName, ForeignCode, Imports,
-			list__map(make_public, ForeignDefns)) },
+			ForeignDefns) },
 		mlds_to_c__output_mlds(ForeignMLDS),
 		% XXX currently the only foreign code we handle is C;
 		%     see comments above (at the declaration for
@@ -511,11 +426,6 @@ mlds_output_grade_var -->
 	io__write_string(
 		"static const void *const MR_grade = &MR_GRADE_VAR;\n").
 ******/
-
-:- func make_public(mlds__defn) = mlds__defn.
-make_public(mlds__defn(Name, Context, Flags0, Defn)) =
-	    mlds__defn(Name, Context, Flags, Defn) :-
-	Flags = mlds__set_access(Flags0, public).
 
 %-----------------------------------------------------------------------------%
 
@@ -871,8 +781,7 @@ gen_defns(ModuleName, [Defn | Defns], GlobalInfo0, GlobalInfo) -->
 :- mode build_local_defns(in, in, in, in, out, di, uo) is det.
 
 build_local_defns([], _, _, SymbolTable, SymbolTable) --> [].
-build_local_defns([Defn|Defns], DefnInfo, ModuleName,
-		SymbolTable0, SymbolTable) -->
+build_local_defns([Defn|Defns], DefnInfo, ModuleName, SymbolTable0, SymbolTable) -->
 	build_local_defn(Defn, DefnInfo, ModuleName, GCC_Defn),
 	% Insert the variable definition into our symbol table.
 	% The MLDS code that the MLDS code generator generates should
@@ -883,8 +792,7 @@ build_local_defns([Defn|Defns], DefnInfo, ModuleName,
 	{ Defn = mlds__defn(Name, _, _, _) },
 	{ SymbolTable1 = map__det_insert(SymbolTable0,
 		qual(ModuleName, Name), GCC_Defn) },
-	build_local_defns(Defns, DefnInfo, ModuleName,
-		SymbolTable1, SymbolTable).
+	build_local_defns(Defns, DefnInfo, ModuleName, SymbolTable1, SymbolTable).
 
 	% Handle MLDS definitions that are nested inside a type, 
 	% i.e. fields of that type.
@@ -1029,8 +937,7 @@ build_field_defn_body(Name, _Context, Flags, DefnBody, GlobalInfo, GCC_Defn) -->
 % decl flags for variables
 %
 
-:- pred add_var_decl_flags(mlds__decl_flags, gcc__var_decl,
-		io__state, io__state).
+:- pred add_var_decl_flags(mlds__decl_flags, gcc__var_decl, io__state, io__state).
 :- mode add_var_decl_flags(in, in, di, uo) is det.
 
 add_var_decl_flags(Flags, GCC_Defn) -->
@@ -1103,8 +1010,7 @@ add_var_abstractness_flag(abstract, _GCC_Defn) -->
 % decl flags for fields
 %
 
-:- pred add_field_decl_flags(mlds__decl_flags, gcc__field_decl,
-		io__state, io__state).
+:- pred add_field_decl_flags(mlds__decl_flags, gcc__field_decl, io__state, io__state).
 :- mode add_field_decl_flags(in, in, di, uo) is det.
 
 add_field_decl_flags(Flags, GCC_Defn) -->
@@ -1115,8 +1021,7 @@ add_field_decl_flags(Flags, GCC_Defn) -->
 	add_field_constness_flag(	constness(Flags),	GCC_Defn),
 	add_field_abstractness_flag(	abstractness(Flags),	GCC_Defn).
 
-:- pred add_field_access_flag(mlds__access, gcc__field_decl,
-		io__state, io__state).
+:- pred add_field_access_flag(mlds__access, gcc__field_decl, io__state, io__state).
 :- mode add_field_access_flag(in, in, di, uo) is det.
 
 add_field_access_flag(public, _GCC_Defn) -->
@@ -1306,8 +1211,6 @@ build_local_data_defn(Name, Flags, Type, Initializer, DefnInfo, GCC_Defn) -->
 			GCC_InitExpr),
 		gcc__build_static_var_decl(VarName, GCC_Type, GCC_InitExpr,
 			GCC_Defn),
-		{ llds_out__name_mangle(VarName, MangledVarName) },
-		gcc__set_var_decl_asm_name(GCC_Defn, MangledVarName),
 		add_var_decl_flags(Flags, GCC_Defn),
 		gcc__finish_static_var_decl(GCC_Defn)
 	).
@@ -1932,8 +1835,7 @@ build_type(mlds__cont_type(ArgTypes), _, _, GCC_Type) -->
 			"cont_type (`--nondet-copy-out' & `--target asm')") }
 	).
 build_type(mlds__commit_type, _, _, gcc__jmpbuf_type_node) --> [].
-build_type(mlds__rtti_type(RttiName), InitializerSize, _GlobalInfo,
-		GCC_Type) -->
+build_type(mlds__rtti_type(RttiName), InitializerSize, _GlobalInfo, GCC_Type) -->
 	build_rtti_type(RttiName, InitializerSize, GCC_Type).
 
 :- pred build_mercury_type(mercury_type, builtin_type, gcc__type,
@@ -2208,8 +2110,7 @@ build_pseudo_type_info_type(higher_order_type_info(_TypeId, _Arity,
 	build_struct_type(StructName,
 		[MR_TypeCtorInfo	- "MR_pti_type_ctor_info",
 		 'MR_Integer'		- "MR_pti_higher_order_arity",
-		 MR_PseudoTypeInfoArray	-
-		 		"MR_pti_higher_order_arg_pseudo_typeinfos"],
+		 MR_PseudoTypeInfoArray	- "MR_pti_higher_order_arg_pseudo_typeinfos"],
 		GCC_Type).
 
 :- pred build_du_exist_locn_type(gcc__type, io__state, io__state).
@@ -2506,8 +2407,7 @@ gen_stmt(DefnInfo0, block(Defns, Statements), _Context) -->
 	{ FuncName = DefnInfo0 ^ func_name },
 	{ FuncName = qual(ModuleName, _) },
 	{ SymbolTable0 = DefnInfo0 ^ local_vars },
-	build_local_defns(Defns, DefnInfo0, ModuleName,
-		SymbolTable0, SymbolTable),
+	build_local_defns(Defns, DefnInfo0, ModuleName, SymbolTable0, SymbolTable),
 	{ DefnInfo = DefnInfo0 ^ local_vars := SymbolTable },
 	gen_statements(DefnInfo, Statements),
 	gcc__end_block.
@@ -2622,8 +2522,7 @@ gen_stmt(DefnInfo, do_commit(Ref), _Context) -->
 	;
 		unexpected(this_file, "non-lval argument to do_commit")
 	},
-	build_call(gcc__longjmp_func_decl,
-		[mem_addr(RefLval), const(int_const(1))],
+	build_call(gcc__longjmp_func_decl, [mem_addr(RefLval), const(int_const(1))],
 		DefnInfo, GCC_CallLongjmp),
 	gcc__gen_expr_stmt(GCC_CallLongjmp).
 gen_stmt(DefnInfo, try_commit(Ref, Stmt, Handler), _) -->

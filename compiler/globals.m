@@ -16,17 +16,21 @@
 %-----------------------------------------------------------------------------%
 
 :- interface.
-:- import_module options, trace_params.
+:- import_module options, trace_params, prog_data.
 :- import_module bool, getopt, list.
 
 :- type globals.
 
 :- type compilation_target
-	--->	c	% Generate C code
+	--->	c	% Generate C code (including GNU C)
 	;	il	% Generate IL assembler code
 			% IL is the Microsoft .NET Intermediate Language
-	;	java.	% Generate Java
+	;	java	% Generate Java
 			% (this target is not yet implemented)
+	;	asm. 	% Compile directly to assembler via the GCC back-end.
+			% Do not go via C, instead generate GCC's internal
+			% `tree' data structure.
+			% (Work in progress.)
 
 :- type gc_method
 	--->	none
@@ -50,10 +54,13 @@
 	;	size_data_elems.
 
 :- pred convert_target(string::in, compilation_target::out) is semidet.
+:- pred convert_foreign_language(string::in, foreign_language::out) is semidet.
 :- pred convert_gc_method(string::in, gc_method::out) is semidet.
 :- pred convert_tags_method(string::in, tags_method::out) is semidet.
 :- pred convert_prolog_dialect(string::in, prolog_dialect::out) is semidet.
 :- pred convert_termination_norm(string::in, termination_norm::out) is semidet.
+
+:- func foreign_language_string(foreign_language) = string.
 
 %-----------------------------------------------------------------------------%
 
@@ -119,6 +126,9 @@
 
 :- pred globals__io_get_target(compilation_target::out,
 	io__state::di, io__state::uo) is det.
+	
+:- pred globals__io_lookup_foreign_language_option(option::in,
+	foreign_language::out, io__state::di, io__state::uo) is det.
 
 :- pred globals__io_get_gc_method(gc_method::out,
 	io__state::di, io__state::uo) is det.
@@ -176,16 +186,29 @@
 :- import_module exprn_aux.
 :- import_module map, std_util, io, require.
 
-	% XXX this should use the same language specification
-	% strings as parse_foreign_language.
-	% Also, we should probably just convert to lower case and then
+	% XXX we should probably just convert to lower case and then
 	% test against known strings.
 convert_target("java", java).
 convert_target("Java", java).
+convert_target("asm", asm).
+convert_target("Asm", asm).
+convert_target("ASM", asm).
 convert_target("il", il).
 convert_target("IL", il).
 convert_target("c", c).
 convert_target("C", c).
+
+	% XXX we should probably just convert to lower case and then
+	% test against known strings.
+convert_foreign_language("C", c).
+convert_foreign_language("c", c).
+convert_foreign_language("MC++", managed_cplusplus).
+convert_foreign_language("mc++", managed_cplusplus).
+convert_foreign_language("Managed C++", managed_cplusplus).
+convert_foreign_language("ManagedC++", managed_cplusplus).
+
+foreign_language_string(c) = "C".
+foreign_language_string(managed_cplusplus) = "ManagedC++".
 
 convert_gc_method("none", none).
 convert_gc_method("conservative", conservative).
@@ -411,6 +434,14 @@ globals__io_set_trace_level_none -->
 	globals__io_set_trace_level(trace_level_none).
 
 %-----------------------------------------------------------------------------%
+
+globals__io_lookup_foreign_language_option(Option, ForeignLang) -->
+	globals__io_lookup_string_option(Option, String),
+	{ convert_foreign_language(String, ForeignLang0) ->
+		ForeignLang = ForeignLang0
+	;
+		error("globals__io_lookup_foreign_language_option: invalid foreign_language option")
+	}.
 
 globals__io_lookup_bool_option(Option, Value) -->
 	globals__io_get_globals(Globals),

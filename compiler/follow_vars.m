@@ -43,8 +43,12 @@
 
 :- implementation.
 
-:- import_module hlds_data, llds, mode_util, prog_data, call_gen.
-:- import_module code_util, quantification, arg_info, globals.
+:- import_module prog_data.
+:- import_module hlds_data, quantification, mode_util.
+:- import_module code_model.
+:- import_module llds, call_gen, code_util, arg_info.
+:- import_module globals.
+
 :- import_module bool, int, list, assoc_list, map, set, std_util, require.
 
 %-----------------------------------------------------------------------------%
@@ -198,9 +202,9 @@ find_follow_vars_in_goal_expr(unify(A,B,C,D,E), _, _ModuleInfo,
 		FollowVarsMap = FollowVarsMap0
 	).
 
-find_follow_vars_in_goal_expr(pragma_foreign_code(A,B,C,D,E,F,G,H),
+find_follow_vars_in_goal_expr(pragma_foreign_code(A,B,C,D,E,F,G),
 		_, _ModuleInfo, FollowVarsMap, NextNonReserved,
-		pragma_foreign_code(A,B,C,D,E,F,G,H),
+		pragma_foreign_code(A,B,C,D,E,F,G),
 		FollowVarsMap, NextNonReserved).
 
 find_follow_vars_in_goal_expr(bi_implication(_,_), _, _, _, _, _, _, _) :-

@@ -96,7 +96,8 @@ ml_mark_tailcalls(MLDS0, MLDS) -->
 % mark_tailcalls_in_statements:
 % mark_tailcalls_in_statement:
 % mark_tailcalls_in_stmt:
-% mark_tailcalls_in_atomic_stmt:
+% mark_tailcalls_in_case:
+% mark_tailcalls_in_default:
 %	Recursively process the statement(s),
 %	marking each optimizable tail call in them as a tail call.
 %	The `AtTail' argument indicates whether or not this
@@ -228,6 +229,16 @@ mark_tailcalls_in_stmt(Stmt0, AtTail, Locals) = Stmt :-
 				AtTail, Locals),
 		Stmt = if_then_else(Cond, Then, MaybeElse)
 	;
+		%
+		% All of the cases of a switch (including the default)
+		% are in a tail position iff the switch is in a
+		% tail position.
+		%
+		Stmt0 = switch(Type, Val, Range, Cases0, Default0),
+		Cases = mark_tailcalls_in_cases(Cases0, AtTail, Locals),
+		Default = mark_tailcalls_in_default(Default0, AtTail, Locals),
+		Stmt = switch(Type, Val, Range, Cases, Default)
+	;
 		Stmt0 = label(_),
 		Stmt = Stmt0
 	;
@@ -288,6 +299,32 @@ mark_tailcalls_in_stmt(Stmt0, AtTail, Locals) = Stmt :-
 		Stmt0 = atomic(_),
 		Stmt = Stmt0
 	).
+
+:- func mark_tailcalls_in_cases(list(mlds__switch_case), at_tail, locals) =
+	list(mlds__switch_case).
+
+mark_tailcalls_in_cases([], _, _) = [].
+mark_tailcalls_in_cases([Case0 | Cases0], AtTail, Locals) =
+		[Case | Cases] :-
+	Case = mark_tailcalls_in_case(Case0, AtTail, Locals),
+	Cases = mark_tailcalls_in_cases(Cases0, AtTail, Locals).
+
+:- func mark_tailcalls_in_case(mlds__switch_case, at_tail, locals) =
+	mlds__switch_case.
+
+mark_tailcalls_in_case(Cond - Statement0, AtTail, Locals) =
+		Cond - Statement :-
+	Statement = mark_tailcalls_in_statement(Statement0, AtTail, Locals).
+
+:- func mark_tailcalls_in_default(mlds__switch_default, at_tail, locals) =
+	mlds__switch_default.
+
+mark_tailcalls_in_default(default_do_nothing, _, _) = default_do_nothing.
+mark_tailcalls_in_default(default_is_unreachable, _, _) =
+		default_is_unreachable.
+mark_tailcalls_in_default(default_case(Statement0), AtTail, Locals) =
+		default_case(Statement) :-
+	Statement = mark_tailcalls_in_statement(Statement0, AtTail, Locals).
 
 %-----------------------------------------------------------------------------%
 

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2000 The University of Melbourne.
+** Copyright (C) 1998-2001 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -27,16 +27,16 @@ MR_copy_regs_to_saved_regs(int max_mr_num, MR_Word *saved_regs)
 	**
 	** The call to MR_trace will clobber the transient registers
 	** on architectures that have them. The compiler generated code
-	** will therefore call save_transient_registers to save the transient
-	** registers in the fake_reg array. We here restore them to the
-	** real registers, save them with the other registers back in
+	** will therefore call MR_save_transient_registers to save the
+	** transient registers in the fake_reg array. We here restore them
+	** to the real registers, save them with the other registers back in
 	** fake_reg, and then copy all fake_reg entries to saved_regs.
 	*/
 
 	int i;
 
-	restore_transient_registers();
-	save_registers();
+	MR_restore_transient_registers();
+	MR_save_registers();
 
 	for (i = 0; i <= max_mr_num; i++) {
 		saved_regs[i] = MR_fake_reg[i];
@@ -48,8 +48,8 @@ MR_copy_saved_regs_to_regs(int max_mr_num, MR_Word *saved_regs)
 {
 	/*
 	** We execute the converse procedure to MR_copy_regs_to_saved_regs.
-	** The save_transient_registers is there so that a call to the
-	** restore_transient_registers macro after MR_trace will do the
+	** The MR_save_transient_registers is there so that a call to the
+	** MR_restore_transient_registers macro after MR_trace will do the
 	** right thing.
 	*/
 
@@ -59,37 +59,39 @@ MR_copy_saved_regs_to_regs(int max_mr_num, MR_Word *saved_regs)
 		MR_fake_reg[i] = saved_regs[i];
 	}
 
-	restore_registers();
-	save_transient_registers();
+	MR_restore_registers();
+	MR_save_transient_registers();
 }
 
 MR_TypeInfoParams
-MR_materialize_typeinfos(const MR_Stack_Layout_Vars *vars,
+MR_materialize_typeinfos(const MR_Label_Layout *label_layout,
 	MR_Word *saved_regs)
 {
-	return MR_materialize_typeinfos_base(vars, saved_regs,
+	return MR_materialize_typeinfos_base(label_layout, saved_regs,
 		MR_saved_sp(saved_regs), MR_saved_curfr(saved_regs));
 }
 
 MR_TypeInfoParams
-MR_materialize_typeinfos_base(const MR_Stack_Layout_Vars *vars,
+MR_materialize_typeinfos_base(const MR_Label_Layout *label_layout,
 	MR_Word *saved_regs, MR_Word *base_sp, MR_Word *base_curfr)
 {
 	MR_TypeInfoParams	type_params;
 	bool			succeeded;
-	MR_Integer			count;
+	MR_Integer		count;
 	int			i;
 
-	if (vars->MR_slvs_tvars != NULL) {
-		count = vars->MR_slvs_tvars->MR_tp_param_count;
+	if (label_layout->MR_sll_tvars != NULL) {
+		count = label_layout->MR_sll_tvars->MR_tp_param_count;
 		type_params = (MR_TypeInfoParams)
 			MR_NEW_ARRAY(MR_Word, count + 1);
 
 		for (i = 0; i < count; i++) {
-			if (vars->MR_slvs_tvars->MR_tp_param_locns[i] != 0) {
+			if (label_layout->MR_sll_tvars->MR_tp_param_locns[i]
+					!= 0)
+			{
 				type_params[i + 1] = (MR_TypeInfo)
 					MR_lookup_long_lval_base(
-						vars->MR_slvs_tvars->
+						label_layout->MR_sll_tvars->
 							MR_tp_param_locns[i],
 						saved_regs,
 						base_sp, base_curfr,
@@ -158,7 +160,7 @@ MR_lookup_long_lval_base(MR_Long_Lval locn, MR_Word *saved_regs,
 				printf("r%d", locn_num);
 			}
 			if (saved_regs != NULL) {
-				value = saved_reg(saved_regs, locn_num);
+				value = MR_saved_reg(saved_regs, locn_num);
 				*succeeded = TRUE;
 			}
 			break;
@@ -273,7 +275,7 @@ MR_lookup_short_lval_base(MR_Short_Lval locn, MR_Word *saved_regs,
 				printf("r%d", locn_num);
 			}
 			if (saved_regs != NULL) {
-				value = saved_reg(saved_regs, locn_num);
+				value = MR_saved_reg(saved_regs, locn_num);
 				*succeeded = TRUE;
 			}
 			break;
@@ -343,33 +345,33 @@ MR_lookup_short_lval_base(MR_Short_Lval locn, MR_Word *saved_regs,
 }
 
 bool
-MR_get_type_and_value(const MR_Stack_Layout_Vars *vars, int i,
+MR_get_type_and_value(const MR_Label_Layout *label_layout, int i,
 	MR_Word *saved_regs, MR_TypeInfo *type_params, MR_TypeInfo *type_info,
 	MR_Word *value)
 {
-	return MR_get_type_and_value_base(vars, i, saved_regs,
+	return MR_get_type_and_value_base(label_layout, i, saved_regs,
 		MR_saved_sp(saved_regs), MR_saved_curfr(saved_regs),
 		type_params, type_info, value);
 }
 
 bool
-MR_get_type_and_value_base(const MR_Stack_Layout_Vars *vars, int i,
+MR_get_type_and_value_base(const MR_Label_Layout *label_layout, int i,
 	MR_Word *saved_regs, MR_Word *base_sp, MR_Word *base_curfr,
 	MR_TypeInfo *type_params, MR_TypeInfo *type_info, MR_Word *value)
 {
 	MR_PseudoTypeInfo	pseudo_type_info;
 	bool			succeeded;
 
-	pseudo_type_info = MR_var_pti(vars, i);
+	pseudo_type_info = MR_var_pti(label_layout, i);
 	*type_info = MR_create_type_info(type_params, pseudo_type_info);
 
-	if (i < MR_long_desc_var_count(vars)) {
+	if (i < MR_long_desc_var_count(label_layout)) {
 		*value = MR_lookup_long_lval_base(
-			MR_long_desc_var_locn(vars, i),
+			MR_long_desc_var_locn(label_layout, i),
 			saved_regs, base_sp, base_curfr, &succeeded);
 	} else {
 		*value = MR_lookup_short_lval_base(
-			MR_short_desc_var_locn(vars, i),
+			MR_short_desc_var_locn(label_layout, i),
 			saved_regs, base_sp, base_curfr, &succeeded);
 	}
 
@@ -377,32 +379,32 @@ MR_get_type_and_value_base(const MR_Stack_Layout_Vars *vars, int i,
 }
 
 bool
-MR_get_type(const MR_Stack_Layout_Vars *vars, int i, MR_Word *saved_regs,
+MR_get_type(const MR_Label_Layout *label_layout, int i, MR_Word *saved_regs,
 	MR_TypeInfo *type_params, MR_TypeInfo *type_info)
 {
-	return MR_get_type_base(vars, i, saved_regs,
+	return MR_get_type_base(label_layout, i, saved_regs,
 		MR_saved_sp(saved_regs), MR_saved_curfr(saved_regs),
 		type_params, type_info);
 }
 
 bool
-MR_get_type_base(const MR_Stack_Layout_Vars *vars, int i,
+MR_get_type_base(const MR_Label_Layout *label_layout, int i,
 	MR_Word *saved_regs, MR_Word *base_sp, MR_Word *base_curfr,
 	MR_TypeInfo *type_params, MR_TypeInfo *type_info)
 {
 	MR_PseudoTypeInfo	pseudo_type_info;
 
-	pseudo_type_info = MR_var_pti(vars, i);
+	pseudo_type_info = MR_var_pti(label_layout, i);
 	*type_info = MR_create_type_info(type_params, pseudo_type_info);
 	
 	return TRUE;
 }
 
 void
-MR_write_variable(MR_Word type_info, MR_Word value)
+MR_write_variable(MR_TypeInfo type_info, MR_Word value)
 {
 	MR_Word	stdout_stream;
 
 	(*MR_io_stdout_stream)(&stdout_stream);
-	(*MR_io_print_to_stream)(type_info, stdout_stream, value);
+	(*MR_io_print_to_stream)((MR_Word) type_info, stdout_stream, value);
 }

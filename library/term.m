@@ -17,7 +17,7 @@
 
 :- module term.
 :- interface.
-:- import_module list, map, std_util.
+:- import_module enum, list, map, std_util.
 
 %-----------------------------------------------------------------------------%
 
@@ -55,6 +55,7 @@
 
 :- type term_to_type_result(T) == term_to_type_result(T, generic).
 
+:- func term__try_term_to_type(term(U)) = term_to_type_result(T, U).
 :- pred term__try_term_to_type(term(U), term_to_type_result(T, U)).
 :- mode term__try_term_to_type(in, out) is det.
 	% term__try_term_to_type(Term, Result):
@@ -89,14 +90,17 @@
 :- mode term__term_to_type(in, out) is semidet.
 	% term_to_type(Term, Type) :- try_term_to_type(Term, ok(Type)).
 
+:- func term__det_term_to_type(term(_)) = T.
 :- pred term__det_term_to_type(term(_), T).
 :- mode term__det_term_to_type(in, out) is det.
 	% like term_to_type, but calls error/1 rather than failing.
 
+:- func term__type_to_term(T) = term(_).
 :- pred term__type_to_term(T, term(_)).
 :- mode term__type_to_term(in, out) is det.
 	% converts a value to a term representation of that value
 
+:- func term__univ_to_term(univ) = term(_).
 :- pred term__univ_to_term(univ, term(_)).
 :- mode term__univ_to_term(in, out) is det.
 	% calls term__type_to_term on the value stored in the univ
@@ -104,16 +108,19 @@
 
 %-----------------------------------------------------------------------------%
 
+:- func term__vars(term(T)) = list(var(T)).
 :- pred term__vars(term(T), list(var(T))).
 :- mode term__vars(in, out) is det.
 %	term__vars(Term, Vars)
 %		Vars is the list of variables contained in Term, in the order 
 %		obtained by traversing the term depth first, left-to-right.
 
+:- func term__vars_2(term(T), list(var(T))) = list(var(T)).
 :- pred term__vars_2(term(T), list(var(T)), list(var(T))).
 :- mode term__vars_2(in, in, out) is det.
 %		As above, but with an accumulator.
 
+:- func term__vars_list(list(term(T))) = list(var(T)).
 :- pred term__vars_list(list(term(T)), list(var(T))).
 :- mode term__vars_list(in, out) is det.
 %	term__vars_list(TermList, Vars)
@@ -144,16 +151,20 @@
 %		unify (with occur check) two terms with respect to a set
 %	 	of bindings and possibly update the set of bindings
 
+:- func term__substitute(term(T), var(T), term(T)) = term(T).
 :- pred term__substitute(term(T), var(T), term(T), term(T)).
 :- mode term__substitute(in, in, in, out) is det.
 %	term__substitute(Term0, Var, Replacement, Term) :
 %		replace all occurrences of Var in Term0 with Replacement,
 %		and return the result in Term.
 
+:- func term__substitute_list(list(term(T)), var(T), term(T)) = list(term(T)).
 :- pred term__substitute_list(list(term(T)), var(T), term(T), list(term(T))).
 :- mode term__substitute_list(in, in, in, out) is det.
 %		as above, except for a list of terms rather than a single term
 
+:- func term__substitute_corresponding(list(var(T)),
+		list(term(T)), term(T)) = term(T).
 :- pred term__substitute_corresponding(list(var(T)), list(term(T)),
 		term(T), term(T)).
 :- mode term__substitute_corresponding(in, in, in, out) is det.
@@ -164,6 +175,8 @@
 %	        length as Repls, the behaviour is undefined and probably
 %		harmful.
 
+:- func term__substitute_corresponding_list(list(var(T)),
+		list(term(T)), list(term(T))) = list(term(T)).
 :- pred term__substitute_corresponding_list(list(var(T)), list(term(T)),
 		list(term(T)), list(term(T))).
 :- mode term__substitute_corresponding_list(in, in, in, out) is det.
@@ -171,6 +184,7 @@
 %		As above, except applies to a list of terms rather than a
 %		single term.
 
+:- func term__apply_rec_substitution(term(T), substitution(T)) = term(T).
 :- pred term__apply_rec_substitution(term(T), substitution(T), term(T)).
 :- mode term__apply_rec_substitution(in, in, out) is det.
 %	term__apply_rec_substitution(Term0, Substitution, Term) :
@@ -178,15 +192,20 @@
 %		no more substitions can be applied, and then
 %		return the result in Term.
 
+:- func term__apply_rec_substitution_to_list(list(term(T)),
+		substitution(T)) = list(term(T)).
 :- pred term__apply_rec_substitution_to_list(list(term(T)), substitution(T),
 						list(term(T))).
 :- mode term__apply_rec_substitution_to_list(in, in, out) is det.
 
+:- func term__apply_substitution(term(T), substitution(T)) = term(T).
 :- pred term__apply_substitution(term(T), substitution(T), term(T)).
 :- mode term__apply_substitution(in, in, out) is det.
 %	term__apply_substitution(Term0, Substitution, Term) :
 %		apply substitution to Term0 and return the result in Term.
 
+:- func term__apply_substitution_to_list(list(term(T)),
+		substitution(T)) = list(term(T)).
 :- pred term__apply_substitution_to_list(list(term(T)), substitution(T),
 						list(term(T))).
 :- mode term__apply_substitution_to_list(in, in, out) is det.
@@ -204,23 +223,28 @@
 :- mode term__occurs_list(in, in, in) is semidet.
 %		as above, except for a list of terms rather than a single term
 
+:- func term__relabel_variable(term(T), var(T), var(T)) = term(T).
 :- pred term__relabel_variable(term(T), var(T), var(T), term(T)).
 :- mode term__relabel_variable(in, in, in, out) is det.
 %	term__relabel_variable(Term0, OldVar, NewVar, Term) :
 %		replace all occurences of OldVar in Term0 with
 %		NewVar and put the result in Term.
 
+:- func term__relabel_variables(list(term(T)), var(T), var(T)) = list(term(T)).
 :- pred term__relabel_variables(list(term(T)), var(T), var(T), list(term(T))).
 :- mode term__relabel_variables(in, in, in, out) is det.
 %	term__relabel_variables(Terms0, OldVar, NewVar, Terms) :
 %		same as term__relabel_variable but for a list of terms.
 
+:- func term__apply_variable_renaming(term(T), map(var(T), var(T))) = term(T).
 :- pred term__apply_variable_renaming(term(T), map(var(T), var(T)), term(T)).
 :- mode term__apply_variable_renaming(in, in, out) is det.
 % 		same as term__relabel_variable, except relabels
 % 		multiple variables. If a variable is not in the
 % 		map, it is not replaced.
 
+:- func term__apply_variable_renaming_to_list(list(term(T)),
+		map(var(T), var(T))) = list(term(T)).
 :- pred term__apply_variable_renaming_to_list(list(term(T)),
 		map(var(T), var(T)), list(term(T))).
 :- mode term__apply_variable_renaming_to_list(in, in, out) is det.
@@ -241,6 +265,8 @@
 	% To manage a supply of variables, use the following 2 predicates.
 	% (We might want to give these a unique mode later.)
 
+
+:- func term__init_var_supply = var_supply(T).
 :- pred term__init_var_supply(var_supply(T)).
 :- mode term__init_var_supply(out) is det.
 :- mode term__init_var_supply(in) is semidet. % implied
@@ -253,6 +279,15 @@
 %		create a fresh variable (var) and return the
 %		updated var_supply.
 
+%-----------------------------------------------------------------------------%
+
+	% from_int/1 should only be applied to integers returned
+	% by to_int/1. This instance declaration is needed to
+	% allow sets of variables to be represented using
+	% sparse_bitset.m.
+:- instance enum(var(_)).
+
+:- func term__var_to_int(var(T)) = int.
 :- pred term__var_to_int(var(T), int).
 :- mode term__var_to_int(in, out) is det.
 %		Convert a variable to an int.
@@ -266,10 +301,14 @@
 :- pred term__context_line(term__context, int).
 :- mode term__context_line(in, out) is det.
 
+:- func term__context_line(term__context) = int.
+
 	% Given a term context, return the source file.
 
 :- pred term__context_file(term__context, string).
 :- mode term__context_file(in, out) is det.
+
+:- func term__context_file(term__context) = string.
 
 	% Used to initialize the term context when reading in
 	% (or otherwise constructing) a term.
@@ -277,8 +316,12 @@
 :- pred term__context_init(term__context).
 :- mode term__context_init(out) is det.
 
+:- func term__context_init = term__context.
+
 :- pred term__context_init(string, int, term__context).
 :- mode term__context_init(in, in, out) is det.
+
+:- func term__context_init(string, int) = term__context.
 
 	% Convert a list of terms which are all vars into a list
 	% of vars.  Abort (call error/1) if the list contains
@@ -287,12 +330,16 @@
 :- pred term__term_list_to_var_list(list(term(T)), list(var(T))).
 :- mode term__term_list_to_var_list(in, out) is det.
 
+:- func term__term_list_to_var_list(list(term(T))) = list(var(T)).
+
 	% Convert a list of terms which are all vars into a list
 	% of vars (or vice versa).
 
 :- pred term__var_list_to_term_list(list(var(T)), list(term(T))).
 :- mode term__var_list_to_term_list(in, out) is det.
 :- mode term__var_list_to_term_list(out, in) is semidet.
+
+:- func term__var_list_to_term_list(list(var(T))) = list(term(T)).
 
 %-----------------------------------------------------------------------------%
 	
@@ -308,13 +355,19 @@
 :- pred term__coerce(term(T), term(U)).
 :- mode term__coerce(in, out) is det.
 
+:- func term__coerce(term(T)) = term(U).
+
 	% Coerce a var of type `T' into a var of type `U'.
 :- pred term__coerce_var(var(T), var(U)).
 :- mode term__coerce_var(in, out) is det.
 
+:- func term__coerce_var(var(T)) = var(U).
+
 	% Coerce a var_supply of type `T' into a var_supply of type `U'.
 :- pred term__coerce_var_supply(var_supply(T), var_supply(U)).
 :- mode term__coerce_var_supply(in, out) is det.
+
+:- func term__coerce_var_supply(var_supply(T)) = var_supply(U).
 
 %-----------------------------------------------------------------------------%
 
@@ -605,6 +658,8 @@ term__det_term_to_type(Term, X) :-
 term__type_to_term(Val, Term) :- type_to_univ(Val, Univ),
 	term__univ_to_term(Univ, Term).
 
+	% convert the value stored in the univ (as distinct from
+	% the univ itself) to a term.
 term__univ_to_term(Univ, Term) :-
 	term__context_init(Context),
 	Type = univ_type(Univ),
@@ -627,7 +682,8 @@ term__univ_to_term(Univ, Term) :-
 			error(Message)
 		)
 	;
-		deconstruct(Univ, FunctorString, _FunctorArity, FunctorArgs),
+		deconstruct(univ_value(Univ), FunctorString, _FunctorArity,
+			FunctorArgs),
 		term__univ_list_to_term_list(FunctorArgs, TermArgs),
 		Term = term__functor(term__atom(FunctorString), TermArgs,
 			Context)
@@ -655,15 +711,16 @@ term__univ_to_term_special_case("std_util", "type_info", [], Univ, Context,
 	det_univ_to_type(Univ, TypeInfo),
 	type_info_to_term(Context, TypeInfo, Term).
 term__univ_to_term_special_case("std_util", "univ", [], Univ, Context, Term) :-
+	det_univ_to_type(Univ, NestedUniv),
 	Term = term__functor(term__atom("univ"),
 			% XXX what operator should we use for type
 			% qualification?
 			[term__functor(term__atom(":"),	 % TYPE_QUAL_OP
 				[ValueTerm, TypeTerm],
 				Context)], Context),
-	type_info_to_term(Context, univ_type(Univ), TypeTerm),
-	UnivValue = univ_value(Univ),
-	term__type_to_term(UnivValue, ValueTerm).
+	type_info_to_term(Context, univ_type(NestedUniv), TypeTerm),
+	NestedUnivValue = univ_value(NestedUniv),
+	term__type_to_term(NestedUnivValue, ValueTerm).
 
 term__univ_to_term_special_case("array", "array", [ElemType], Univ, Context, 
 		Term) :-
@@ -1019,7 +1076,16 @@ term__create_var(var_supply(V0), var(V), var_supply(V)) :-
 
 %-----------------------------------------------------------------------------%
 
+:- instance enum(var(_)) where [
+	to_int(X) = term__var_to_int(X),
+	from_int(X) = term__unsafe_int_to_var(X)
+].
+
 term__var_to_int(var(Var), Var).
+
+	% Cast an integer to a var(T), subverting the type-checking.
+:- func unsafe_int_to_var(int) = var(T).
+term__unsafe_int_to_var(Var) = var(Var).
 
 %-----------------------------------------------------------------------------%
 
@@ -1132,73 +1198,6 @@ term__coerce_var_supply(var_supply(Supply), var_supply(Supply)).
 % ---------------------------------------------------------------------------- %
 % Ralph Becket <rwab1@cl.cam.ac.uk> 30/04/99
 % 	Function forms added.
-
-:- interface.
-
-:- func term__context_init = term__context.
-
-:- func term__init_var_supply = var_supply(T).
-
-:- func term__try_term_to_type(term(U)) = term_to_type_result(T, U).
-
-:- func term__det_term_to_type(term(_)) = T.
-
-:- func term__type_to_term(T) = term(_).
-
-:- func term__univ_to_term(univ) = term(_).
-
-:- func term__vars(term(T)) = list(var(T)).
-
-:- func term__vars_2(term(T), list(var(T))) = list(var(T)).
-
-:- func term__vars_list(list(term(T))) = list(var(T)).
-
-:- func term__substitute(term(T), var(T), term(T)) = term(T).
-
-:- func term__substitute_list(list(term(T)), var(T), term(T)) = list(term(T)).
-
-:- func term__substitute_corresponding(list(var(T)), list(term(T)), term(T)) = term(T).
-
-:- func term__substitute_corresponding_list(list(var(T)), list(term(T)), list(term(T))) = list(term(T)).
-
-:- func term__apply_rec_substitution(term(T), substitution(T)) = term(T).
-
-:- func term__apply_rec_substitution_to_list(list(term(T)), substitution(T)) = list(term(T)).
-
-:- func term__apply_substitution(term(T), substitution(T)) = term(T).
-
-:- func term__apply_substitution_to_list(list(term(T)), substitution(T)) = list(term(T)).
-
-:- func term__relabel_variable(term(T), var(T), var(T)) = term(T).
-
-:- func term__relabel_variables(list(term(T)), var(T), var(T)) = list(term(T)).
-
-:- func term__apply_variable_renaming(term(T), map(var(T), var(T))) = term(T).
-
-:- func term__apply_variable_renaming_to_list(list(term(T)), map(var(T), var(T))) = list(term(T)).
-
-:- func term__var_to_int(var(T)) = int.
-
-:- func term__context_line(term__context) = int.
-
-:- func term__context_file(term__context) = string.
-
-:- func term__context_init(string, int) = term__context.
-
-:- func term__term_list_to_var_list(list(term(T))) = list(var(T)).
-
-:- func term__var_list_to_term_list(list(var(T))) = list(term(T)).
-
-:- func term__coerce(term(T)) = term(U).
-
-:- func term__coerce_var(var(T)) = var(U).
-
-:- func term__coerce_var_supply(var_supply(T)) = var_supply(U).
-
-% ---------------------------------------------------------------------------- %
-% ---------------------------------------------------------------------------- %
-
-:- implementation.
 
 term__context_init = C :-
 	term__context_init(C).

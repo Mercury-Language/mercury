@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2000 The University of Melbourne.
+% Copyright (C) 1996-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -41,7 +41,11 @@
 
 :- interface.
 
-:- import_module hlds_goal, hlds_data, llds, switch_gen, code_info, prog_data.
+:- import_module prog_data.
+:- import_module hlds_goal, hlds_data, switch_util.
+:- import_module code_model.
+:- import_module llds, code_info.
+
 :- import_module std_util, map, set, list.
 
 :- type case_consts == list(pair(int, list(rval))).
@@ -65,9 +69,11 @@
 
 :- implementation.
 
-:- import_module builtin_ops, code_gen, type_util, tree.
-:- import_module dense_switch, globals, options, mode_util.
-:- import_module exprn_aux, getopt, prog_data, instmap.
+:- import_module prog_data.
+:- import_module type_util, mode_util, instmap.
+:- import_module builtin_ops.
+:- import_module dense_switch, code_gen, exprn_aux.
+:- import_module globals, options, tree.
 
 :- import_module int, require, bool, assoc_list.
 
@@ -89,8 +95,7 @@ lookup_switch__is_lookup_switch(CaseVar, TaggedCases, GoalInfo, SwitchCanFail,
 		% heuristic to get it right, so, lets just use a simple
 		% one - no static ground terms, no lookup switch.
 	code_info__get_globals(Globals),
-	{ globals__get_options(Globals, Options) },
-	{ getopt__lookup_bool_option(Options, static_ground_terms, yes) },
+	{ globals__lookup_bool_option(Globals, static_ground_terms, yes) },
 	{
 		% We want to generate a lookup switch for any switch
 		% that is dense enough - we don't care how many cases
@@ -295,7 +300,7 @@ lookup_switch__generate(Var, OutVars, CaseValues,
 		{ NeedRangeCheck = can_fail },
 		{ Difference is EndVal - StartVal },
 		code_info__fail_if_rval_is_false(
-			binop(<=, unop(cast_to_unsigned, Index),
+			binop(unsigned_le, Index,
 				const(int_const(Difference))), RangeCheck)
 	;
 		{ NeedRangeCheck = cannot_fail },
@@ -346,10 +351,9 @@ lookup_switch__generate(Var, OutVars, CaseValues,
 	% iff we have a case for that tag value.
 lookup_switch__generate_bitvec_test(Index, CaseVals, Start, _End,
 		CheckCode) -->
-	lookup_switch__get_word_bits(WordBits),
+	lookup_switch__get_word_bits(WordBits, Log2WordBits),
 	generate_bit_vec(CaseVals, Start, WordBits, BitVec),
 
-	{ UIndex = unop(cast_to_unsigned, Index) },
 		%
 		% Optimize the single-word case:
 		% if all the cases fit into a single word, then
@@ -362,32 +366,48 @@ lookup_switch__generate_bitvec_test(Index, CaseVals, Start, _End,
 		BitVec = create(_, [yes(SingleWord)], _, _, _, _, _)
 	->
 		Word = SingleWord,
-		BitNum = UIndex
+		BitNum = Index
 	;
-		WordNum = binop(/, UIndex, const(int_const(WordBits))),
+		% This is the same as
+		% WordNum = binop(/, Index, const(int_const(WordBits)))
+		% except that it can generate more efficient code.
+		WordNum = binop(>>, Index, const(int_const(Log2WordBits))),
+
 		Word = lval(field(yes(0), BitVec, WordNum)),
-		BitNum = binop(mod, UIndex, const(int_const(WordBits)))
+
+		% This is the same as
+		% BitNum = binop(mod, Index, const(int_const(WordBits)))
+		% except that it can generate more efficient code.
+		BitNum = binop(&, Index, const(int_const(WordBits - 1)))
 	},
 	{ HasBit = binop((&),
 			binop((<<), const(int_const(1)), BitNum),
 			Word) },
 	code_info__fail_if_rval_is_false(HasBit, CheckCode).
 
-:- pred lookup_switch__get_word_bits(int::out, code_info::in, code_info::out)
-	is det.
+:- pred lookup_switch__get_word_bits(int::out, int::out,
+	code_info::in, code_info::out) is det.
 
 	% Prevent cross-compilation errors by making sure that
 	% the bitvector uses a number of bits that will fit both
 	% on this machine (so that we can correctly generate it),
 	% and on the target machine (so that it can be executed
-	% correctly)
+	% correctly).  Also make sure that the number of bits that
+	% we use is a power of 2, so that we implement division as
+	% right-shift (see above).
 
-lookup_switch__get_word_bits(WordBits) -->
+lookup_switch__get_word_bits(WordBits, Log2WordBits) -->
 	{ int__bits_per_int(HostWordBits) },
 	code_info__get_globals(Globals),
-	{ globals__get_options(Globals, Options) },
-	{ getopt__lookup_int_option(Options, bits_per_word, TargetWordBits) },
-	{ int__min(HostWordBits, TargetWordBits, WordBits) }.
+	{ globals__lookup_int_option(Globals, bits_per_word, TargetWordBits) },
+	{ int__min(HostWordBits, TargetWordBits, WordBits0) },
+	% round down to the nearest power of 2
+	{ Log2WordBits = log2_rounded_down(WordBits0) },
+	{ int__pow(2, Log2WordBits, WordBits) }.
+
+:- func log2_rounded_down(int) = int.
+log2_rounded_down(X) = Log :-
+	int__log2(X + 1, Log + 1).  % int__log2 rounds up
 
 :- pred generate_bit_vec(case_consts::in, int::in, int::in, rval::out,
 	code_info::in, code_info::out) is det.

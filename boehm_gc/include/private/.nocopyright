@@ -1,5 +1,9 @@
 config.h
 cord_pos.h
+CVS
+gcconfig.h
 gc_hdrs.h
 gc_priv.h
-gcconfig.h
+.
+..
+.nocopyright

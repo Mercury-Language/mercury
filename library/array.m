@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-1995, 1997-2000 The University of Melbourne.
+% Copyright (C) 1993-1995, 1997-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -27,9 +27,6 @@
 % application's source directory and link with it directly instead of as
 % part of the library.
 %
-
-% Ralph Becket <rwab1@cam.sri.com> 24/04/99
-%	Function forms added.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -75,10 +72,16 @@
 :- pred array__make_empty_array(array(T)).
 :- mode array__make_empty_array(array_uo) is det.
 
+:- func array__make_empty_array = array(T).
+:- mode array__make_empty_array = array_uo is det.
+
 	% array__init(Size, Init, Array) creates an array
 	% with bounds from 0 to Size-1, with each element initialized to Init.
 :- pred array__init(int, T, array(T)).
 :- mode array__init(in, in, array_uo) is det.
+
+:- func array__init(int, T) = array(T).
+:- mode array__init(in, in) = array_uo is det.
 
 	% array/1 is a function that constructs an array from a list.
 	% (It does the same thing as the predicate array__from_list/2.)
@@ -95,16 +98,28 @@
 :- mode array__min(array_ui, out) is det.
 :- mode array__min(in, out) is det.
 
+:- func array__min(array(_T)) = int.
+:- mode array__min(array_ui) = out is det.
+:- mode array__min(in) = out is det.
+
 	% array__max returns the upper bound of the array.
 :- pred array__max(array(_T), int).
 :- mode array__max(array_ui, out) is det.
 :- mode array__max(in, out) is det.
+
+:- func array__max(array(_T)) = int.
+:- mode array__max(array_ui) = out is det.
+:- mode array__max(in) = out is det.
 
 	% array__size returns the length of the array,
 	% i.e. upper bound - lower bound + 1.
 :- pred array__size(array(_T), int).
 :- mode array__size(array_ui, out) is det.
 :- mode array__size(in, out) is det.
+
+:- func array__size(array(_T)) = int.
+:- mode array__size(array_ui) = out is det.
+:- mode array__size(in) = out is det.
 
 	% array__bounds returns the upper and lower bounds of an array.
 	% Note: in this implementation, the lower bound is always zero.
@@ -126,6 +141,10 @@
 :- mode array__lookup(array_ui, in, out) is det.
 :- mode array__lookup(in, in, out) is det.
 
+:- func array__lookup(array(T), int) = T.
+:- mode array__lookup(array_ui, in) = out is det.
+:- mode array__lookup(in, in) = out is det.
+
 	% array__semidet_lookup returns the Nth element of an array.
 	% It fails if the index is out of bounds.
 :- pred array__semidet_lookup(array(T), int, T).
@@ -138,6 +157,8 @@
 :- pred array__set(array(T), int, T, array(T)).
 :- mode array__set(array_di, in, in, array_uo) is det.
 
+:- func array__set(array(T), int, T) = array(T).
+:- mode array__set(array_di, in, in) = array_uo is det.
 
 	% array__semidet_set sets the nth element of an array,
 	% and returns the resulting array.
@@ -154,6 +175,10 @@
 :- mode array__slow_set(array_ui, in, in, array_uo) is det.
 :- mode array__slow_set(in, in, in, array_uo) is det.
 
+:- func array__slow_set(array(T), int, T) = array(T).
+:- mode array__slow_set(array_ui, in, in) = array_uo is det.
+:- mode array__slow_set(in, in, in) = array_uo is det.
+
 	% array__semidet_slow_set sets the nth element of an array,
 	% and returns the resulting array.  The initial array is not
 	% required to be unique, so the implementation may not be able to use
@@ -163,11 +188,28 @@
 :- mode array__semidet_slow_set(array_ui, in, in, array_uo) is semidet.
 :- mode array__semidet_slow_set(in, in, in, array_uo) is semidet.
 
+	% Field selection for arrays.
+	% Array ^ elem(Index) = array__lookup(Array, Index).
+:- func array__elem(int, array(T)) = T.
+:- mode array__elem(in, array_ui) = out is det.
+:- mode array__elem(in, in) = out is det.
+
+	% Field update for arrays.
+	% (Array ^ elem(Index) := Value) = array__set(Array, Index, Value).
+:- func 'array__elem :='(int, array(T), T) = array(T).
+:- mode 'array__elem :='(in, array_ui, in) = array_uo is det.
+
+%-----------------------------------------------------------------------------%
+
 	% array__copy(Array0, Array):
 	% Makes a new unique copy of an array.
 :- pred array__copy(array(T), array(T)).
 :- mode array__copy(array_ui, array_uo) is det.
 :- mode array__copy(in, array_uo) is det.
+
+:- func array__copy(array(T)) = array(T).
+:- mode array__copy(array_ui) = array_uo is det.
+:- mode array__copy(in) = array_uo is det.
 
 	% array__resize(Array0, Size, Init, Array):
 	% The array is expanded or shrunk to make it fit
@@ -176,18 +218,26 @@
 :- pred array__resize(array(T), int, T, array(T)).
 :- mode array__resize(array_di, in, in, array_uo) is det.
 
+:- func array__resize(array(T), int, T) = array(T).
+:- mode array__resize(array_di, in, in) = array_uo is det.
+
 	% array__shrink(Array0, Size, Array):
 	% The array is shrunk to make it fit the new size `Size'.
 	% It is an error if `Size' is larger than the size of `Array0'.
 :- pred array__shrink(array(T), int, array(T)).
 :- mode array__shrink(array_di, in, array_uo) is det.
 
+:- func array__shrink(array(T), int) = array(T).
+:- mode array__shrink(array_di, in) = array_uo is det.
 
 	% array__from_list takes a list,
 	% and returns an array containing those elements in
 	% the same order that they occured in the list.
 :- pred array__from_list(list(T), array(T)).
 :- mode array__from_list(in, array_uo) is det.
+
+:- func array__from_list(list(T)) = array(T).
+:- mode array__from_list(in) = array_uo is det.
 
 	% array__to_list takes an array and returns a list containing
 	% the elements of the array in the same order that they
@@ -196,6 +246,10 @@
 :- mode array__to_list(array_ui, out) is det.
 :- mode array__to_list(in, out) is det.
 
+:- func array__to_list(array(T)) = list(T).
+:- mode array__to_list(array_ui) = out is det.
+:- mode array__to_list(in) = out is det.
+
 	% array__fetch_items takes an array and a lower and upper
 	% index, and places those items in the array between these
 	% indices into a list.  It is an error if either index is
@@ -203,6 +257,9 @@
 :- pred array__fetch_items(array(T), int, int, list(T)).
 :- mode array__fetch_items(in, in, in, out) is det.
 
+:- func array__fetch_items(array(T), int, int) = list(T).
+:- mode array__fetch_items(array_ui, in, in) = out is det.
+:- mode array__fetch_items(in, in, in) = out is det.
 
 	% array__bsearch takes an array, an element to be found
 	% and a comparison predicate and returns the position of
@@ -215,10 +272,20 @@
 :- mode array__bsearch(array_ui, in, pred(in, in, out) is det, out) is det.
 :- mode array__bsearch(in, in, pred(in, in, out) is det, out) is det.
 
+:- func array__bsearch(array(T), T, func(T,T) = comparison_result) = maybe(int).
+:- mode array__bsearch(array_ui, in, func(in,in) = out is det) = out is det.
+:- mode array__bsearch(in, in, func(in,in) = out is det) = out is det.
+
 	% array__map(Closure, OldArray, NewArray) applys `Closure' to
 	% each of the elements of `OldArray' to create `NewArray'.
 :- pred array__map(pred(T1, T2), array(T1), array(T2)).
 :- mode array__map(pred(in, out) is det, array_di, array_uo) is det.
+
+:- func array__map(func(T1) = T2, array(T1)) = array(T2).
+:- mode array__map(func(in) = out is det, array_di) = array_uo is det.
+
+:- func array_compare(array(T), array(T)) = comparison_result.
+:- mode array_compare(in, in) = out is det.
 
 %-----------------------------------------------------------------------------%
 :- implementation.
@@ -257,8 +324,6 @@
 :- implementation.
 :- import_module int.
 
-:- type array(T).
-
 /****
 lower bounds other than zero are not supported
 	% array__resize takes an array and new lower and upper bounds.
@@ -277,73 +342,96 @@ lower bounds other than zero are not supported
 
 %-----------------------------------------------------------------------------%
 
-:- pragma c_code("
+:- pragma foreign_decl("C", "
+#ifdef MR_HIGHLEVEL_CODE
+  #include ""mercury_goto.h""	/* for MR_init_entry */
 
-Define_extern_entry(mercury____Unify___array__array_1_0);
-Define_extern_entry(mercury____Index___array__array_1_0);
-Define_extern_entry(mercury____Compare___array__array_1_0);
-#ifdef MR_USE_SOLVE_EQUAL
-Define_extern_entry(mercury____SolveEqual___array__array_1_0);
+  bool MR_CALL mercury__array__do_unify__array_1_0(
+  	MR_Mercury_Type_Info type_info, MR_Box x, MR_Box y);
+  bool MR_CALL mercury__array____Unify____array_1_0(
+	MR_Mercury_Type_Info type_info, MR_Array x, MR_Array y);
+  void MR_CALL mercury__array__do_compare__array_1_0(MR_Mercury_Type_Info
+ 	 type_info, MR_Comparison_Result *result, MR_Box x, MR_Box y);
+  void MR_CALL mercury__array____Compare____array_1_0(MR_Mercury_Type_Info
+	type_info, MR_Comparison_Result *result, MR_Array x, MR_Array y);
 #endif
-#ifdef MR_USE_INIT
-Define_extern_entry(mercury____Init___array__array_1_0);
-#endif
+").
+
+:- pragma foreign_code("C", "
 
 #ifdef MR_HIGHLEVEL_CODE
+
+MR_define_type_ctor_info(array, array, 1, MR_TYPECTOR_REP_ARRAY);
+
 void sys_init_array_module_builtins(void);
 void sys_init_array_module_builtins(void) {
+	MR_init_entry(mercury__array____Unify____array_1_0);
+	MR_init_entry(mercury__array____Compare____array_1_0);
 	return;
 }
+
+bool MR_CALL
+mercury__array__do_unify__array_1_0(MR_Mercury_Type_Info type_info,
+	MR_Box x, MR_Box y)
+{
+	return mercury__array____Unify____array_1_0(
+		type_info, (MR_Array) x, (MR_Array) y);
+}
+
+bool MR_CALL
+mercury__array____Unify____array_1_0(MR_Mercury_Type_Info type_info,
+	MR_Array x, MR_Array y)
+{
+	return mercury__array__array_equal_2_p_0(type_info, x, y);
+}
+
+void MR_CALL
+mercury__array__do_compare__array_1_0(
+	MR_Mercury_Type_Info type_info, MR_Comparison_Result *result,
+	MR_Box x, MR_Box y)
+{
+	mercury__array____Compare____array_1_0(
+		type_info, result, (MR_Array) x, (MR_Array) y);
+}
+
+void MR_CALL
+mercury__array____Compare____array_1_0(
+	MR_Mercury_Type_Info type_info, MR_Comparison_Result *result,
+	MR_Array x, MR_Array y)
+{
+	mercury__array__array_compare_3_p_0(type_info, result, x, y);
+}
+
 #else
 
 MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(array, array, 1, MR_TYPECTOR_REP_ARRAY);
 
-Declare_entry(mercury__array__array_equal_2_0);
-Declare_entry(mercury__array__array_compare_3_0);
+MR_declare_entry(mercury__array__array_equal_2_0);
+MR_declare_entry(mercury__array__array_compare_3_0);
 
-BEGIN_MODULE(array_module_builtins)
-	init_entry(mercury____Unify___array__array_1_0);
-	init_entry(mercury____Compare___array__array_1_0);
-#ifdef MR_USE_SOLVE_EQUAL
-	init_entry(mercury____SolveEqual___array__array_1_0);
-#endif
-#ifdef MR_USE_INIT
-	init_entry(mercury____Init___array__array_1_0);
-#endif
-BEGIN_CODE
+MR_BEGIN_MODULE(array_module_builtins)
+	MR_init_entry(mercury____Unify___array__array_1_0);
+	MR_init_entry(mercury____Compare___array__array_1_0);
+MR_BEGIN_CODE
 
-Define_entry(mercury____Unify___array__array_1_0);
+MR_define_entry(mercury____Unify___array__array_1_0);
 	/* this is implemented in Mercury, not hand-coded low-level C */
-	tailcall(ENTRY(mercury__array__array_equal_2_0),
-		ENTRY(mercury____Unify___array__array_1_0));
+	MR_tailcall(MR_ENTRY(mercury__array__array_equal_2_0),
+		MR_ENTRY(mercury____Unify___array__array_1_0));
 
-Define_entry(mercury____Compare___array__array_1_0);
+MR_define_entry(mercury____Compare___array__array_1_0);
 	/* this is implemented in Mercury, not hand-coded low-level C */
-	tailcall(ENTRY(mercury__array__array_compare_3_0),
-		ENTRY(mercury____Compare___array__array_1_0));
+	MR_tailcall(MR_ENTRY(mercury__array__array_compare_3_0),
+		MR_ENTRY(mercury____Compare___array__array_1_0));
 
-#ifdef MR_USE_SOLVE_EQUAL
-Define_entry(mercury____SolveEqual___array__array_1_0);
-	fatal_error(""solve equal not defined for array:array/1"");
-	/* this is implemented in Mercury, not hand-coded low-level C */
-/*
-	tailcall(ENTRY(mercury__array__array_solve_equal_2_0),
-		ENTRY(mercury____SolveEqual___array__array_1_0));
-*/
-#endif
-
-#ifdef MR_USE_INIT
-Define_entry(mercury____Init___array__array_1_0);
-	fatal_error(""init not defined for array:array/1"");
-#endif
-END_MODULE
+MR_END_MODULE
 
 /* Ensure that the initialization code for the above module gets run. */
 /*
 INIT sys_init_array_module_builtins
 */
 
-MR_MODULE_STATIC_OR_EXTERN ModuleFunc array_module_builtins;
+MR_MODULE_STATIC_OR_EXTERN MR_ModuleFunc array_module_builtins;
 
 void sys_init_array_module_builtins(void);
 		/* suppress gcc -Wmissing-decl warning */
@@ -359,6 +447,45 @@ void sys_init_array_module_builtins(void) {
 #endif /* ! MR_HIGHLEVEL_CODE */
 
 ").
+
+:- pragma foreign_code("MC++", "
+    MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(array, array, 1, MR_TYPECTOR_REP_ARRAY)
+
+    static int
+    __Unify____array_1_0(MR_Word type_info, 
+		MR_Word x, MR_Word y)
+    {
+            mercury::runtime::Errors::SORRY(""unify for array"");
+            return 0;
+    }
+
+    static void
+    __Compare____array_1_0(
+            MR_Word type_info, MR_Word_Ref result, MR_Word x, MR_Word y)
+    {
+            mercury::runtime::Errors::SORRY(""compare for array"");
+    }
+
+    static int
+    do_unify__array_1_0(MR_Word type_info, MR_Box x, MR_Box y)
+    {
+            return mercury::array__c_code::__Unify____array_1_0(
+                    type_info, 
+                    dynamic_cast<MR_Array>(x),
+                    dynamic_cast<MR_Array>(y));
+    }
+
+    static void
+    do_compare__array_1_0(
+            MR_Word type_info, MR_Word_Ref result, MR_Box x, MR_Box y)
+    {
+            mercury::array__c_code::__Compare____array_1_0(
+                    type_info, result, 
+                    dynamic_cast<MR_Array>(x),
+                    dynamic_cast<MR_Array>(y));
+    }
+").
+
 
 %-----------------------------------------------------------------------------%
 
@@ -440,16 +567,16 @@ array__solve_equal_elements(N, Size, Array1, Array2) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pragma c_header_code("
+:- pragma foreign_decl("C", "
 #include ""mercury_library_types.h""	/* for MR_ArrayType */
 #include ""mercury_misc.h""		/* for MR_fatal_error() */
 ").
 
-:- pragma c_header_code("
+:- pragma foreign_decl("C", "
 MR_ArrayType *ML_make_array(MR_Integer size, MR_Word item);
 ").
 
-:- pragma c_code("
+:- pragma foreign_code("C", "
 MR_ArrayType *
 ML_make_array(MR_Integer size, MR_Word item)
 {
@@ -465,39 +592,92 @@ ML_make_array(MR_Integer size, MR_Word item)
 }
 ").
 
-:- pragma c_code(array__init(Size::in, Item::in, Array::array_uo),
+:- pragma foreign_code("C", 
+		array__init(Size::in, Item::in, Array::array_uo),
 		[will_not_call_mercury, thread_safe], "
 	MR_maybe_record_allocation(Size + 1, MR_PROC_LABEL, ""array:array/1"");
 	Array = (MR_Word) ML_make_array(Size, Item);
 ").
 
-:- pragma c_code(array__make_empty_array(Array::array_uo),
+:- pragma foreign_code("C",
+		array__make_empty_array(Array::array_uo),
 		[will_not_call_mercury, thread_safe], "
 	MR_maybe_record_allocation(1, MR_PROC_LABEL, ""array:array/1"");
 	Array = (MR_Word) ML_make_array(0, 0);
 ").
 
+:- pragma foreign_code("MC++", 
+		array__init(Size::in, Item::in, Array::array_uo),
+		[will_not_call_mercury, thread_safe], "
+        mercury::runtime::Errors::SORRY(""foreign code for this predicate"");
+		// XXX still need to do init
+	Array = (MR_Word) System::Array::CreateInstance(Item->GetType(), Size);
+").
+
+:- pragma foreign_code("MC++",
+		array__make_empty_array(Array::array_uo),
+		[will_not_call_mercury, thread_safe], "
+        mercury::runtime::Errors::SORRY(""foreign code for this predicate"");
+		// XXX this is inefficient.
+	Array = (MR_Word) 
+		System::Array::CreateInstance(
+			(new System::Object)->GetType(), 0);
+").
+
+
 %-----------------------------------------------------------------------------%
 
-:- pragma c_code(array__min(Array::array_ui, Min::out),
+:- pragma foreign_code("C",
+		array__min(Array::array_ui, Min::out),
 		[will_not_call_mercury, thread_safe], "
 	/* Array not used */
 	Min = 0;
 ").
-:- pragma c_code(array__min(Array::in, Min::out),
+:- pragma foreign_code("C", 
+		array__min(Array::in, Min::out),
 		[will_not_call_mercury, thread_safe], "
 	/* Array not used */
 	Min = 0;
 ").
 
-:- pragma c_code(array__max(Array::array_ui, Max::out), 
+:- pragma foreign_code("MC++",
+		array__min(Array::array_ui, Min::out),
+		[will_not_call_mercury, thread_safe], "
+        mercury::runtime::Errors::SORRY(""foreign code for this predicate"");
+	/* Array not used */
+	Min = 0;
+").
+:- pragma foreign_code("MC++", 
+		array__min(Array::in, Min::out),
+		[will_not_call_mercury, thread_safe], "
+        mercury::runtime::Errors::SORRY(""foreign code for this predicate"");
+	/* Array not used */
+	Min = 0;
+").
+
+:- pragma foreign_code("C", 
+		array__max(Array::array_ui, Max::out), 
 		[will_not_call_mercury, thread_safe], "
 	Max = ((MR_ArrayType *)Array)->size - 1;
 ").
-:- pragma c_code(array__max(Array::in, Max::out), 
+:- pragma foreign_code("C",
+		array__max(Array::in, Max::out), 
 		[will_not_call_mercury, thread_safe], "
 	Max = ((MR_ArrayType *)Array)->size - 1;
 ").
+:- pragma foreign_code("MC++", 
+		array__max(Array::array_ui, Max::out), 
+		[will_not_call_mercury, thread_safe], "
+        mercury::runtime::Errors::SORRY(""foreign code for this predicate"");
+	Max = Array->get_Length() - 1;
+").
+:- pragma foreign_code("MC++",
+		array__max(Array::in, Max::out), 
+		[will_not_call_mercury, thread_safe], "
+        mercury::runtime::Errors::SORRY(""foreign code for this predicate"");
+	Max = Array->get_Length() - 1;
+").
+
 
 array__bounds(Array, Min, Max) :-
 	array__min(Array, Min),
@@ -505,14 +685,30 @@ array__bounds(Array, Min, Max) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pragma c_code(array__size(Array::array_ui, Max::out),
+:- pragma foreign_code("C",
+		array__size(Array::array_ui, Max::out),
 		[will_not_call_mercury, thread_safe], "
 	Max = ((MR_ArrayType *)Array)->size;
 ").
-:- pragma c_code(array__size(Array::in, Max::out),
+:- pragma foreign_code("C",
+		array__size(Array::in, Max::out),
 		[will_not_call_mercury, thread_safe], "
 	Max = ((MR_ArrayType *)Array)->size;
 ").
+
+:- pragma foreign_code("MC++",
+		array__size(Array::array_ui, Max::out),
+		[will_not_call_mercury, thread_safe], "
+        mercury::runtime::Errors::SORRY(""foreign code for this predicate"");
+	Max = Array->get_Length() - 1;
+").
+:- pragma foreign_code("MC++",
+		array__size(Array::in, Max::out),
+		[will_not_call_mercury, thread_safe], "
+        mercury::runtime::Errors::SORRY(""foreign code for this predicate"");
+	Max = Array->get_Length() - 1;
+").
+
 
 %-----------------------------------------------------------------------------%
 
@@ -538,7 +734,8 @@ array__slow_set(Array0, Index, Item, Array) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pragma c_code(array__lookup(Array::array_ui, Index::in, Item::out),
+:- pragma foreign_code("C",
+		array__lookup(Array::array_ui, Index::in, Item::out),
 		[will_not_call_mercury, thread_safe], "{
 	MR_ArrayType *array = (MR_ArrayType *)Array;
 #ifndef ML_OMIT_ARRAY_BOUNDS_CHECKS
@@ -548,7 +745,8 @@ array__slow_set(Array0, Index, Item, Array) :-
 #endif
 	Item = array->elements[Index];
 }").
-:- pragma c_code(array__lookup(Array::in, Index::in, Item::out),
+:- pragma foreign_code("C",
+		array__lookup(Array::in, Index::in, Item::out),
 		[will_not_call_mercury, thread_safe], "{
 	MR_ArrayType *array = (MR_ArrayType *)Array;
 #ifndef ML_OMIT_ARRAY_BOUNDS_CHECKS
@@ -558,10 +756,25 @@ array__slow_set(Array0, Index, Item, Array) :-
 #endif
 	Item = array->elements[Index];
 }").
+
+:- pragma foreign_code("MC++",
+		array__lookup(Array::array_ui, Index::in, Item::out),
+		[will_not_call_mercury, thread_safe], "{
+        mercury::runtime::Errors::SORRY(""foreign code for this predicate"");
+	Item = Array->GetValue(Index);
+}").
+:- pragma foreign_code("MC++",
+		array__lookup(Array::in, Index::in, Item::out),
+		[will_not_call_mercury, thread_safe], "{
+        mercury::runtime::Errors::SORRY(""foreign code for this predicate"");
+	Item = Array->GetValue(Index);
+}").
+
 
 %-----------------------------------------------------------------------------%
 
-:- pragma c_code(array__set(Array0::array_di, Index::in,
+:- pragma foreign_code("C",
+		array__set(Array0::array_di, Index::in,
 		Item::in, Array::array_uo),
 		[will_not_call_mercury, thread_safe], "{
 	MR_ArrayType *array = (MR_ArrayType *)Array0;
@@ -574,14 +787,24 @@ array__slow_set(Array0, Index, Item, Array) :-
 	Array = Array0;
 }").
 
+:- pragma foreign_code("MC++",
+		array__set(Array0::array_di, Index::in,
+		Item::in, Array::array_uo),
+		[will_not_call_mercury, thread_safe], "{
+	Array0->SetValue(Item, Index);	/* destructive update! */
+	Array = Array0;
+        mercury::runtime::Errors::SORRY(""foreign code for this predicate"");
+}").
+
+
 %-----------------------------------------------------------------------------%
 
-:- pragma c_header_code("
+:- pragma foreign_decl("C", "
 MR_ArrayType * ML_resize_array(MR_ArrayType *old_array,
 					MR_Integer array_size, MR_Word item);
 ").
 
-:- pragma c_code("
+:- pragma foreign_code("C", "
 MR_ArrayType *
 ML_resize_array(MR_ArrayType *old_array, MR_Integer array_size,
 				MR_Word item)
@@ -615,21 +838,28 @@ ML_resize_array(MR_ArrayType *old_array, MR_Integer array_size,
 }
 ").
 
-:- pragma c_code(array__resize(Array0::array_di, Size::in, Item::in,
+:- pragma foreign_code("C",
+		array__resize(Array0::array_di, Size::in, Item::in,
 		Array::array_uo), [will_not_call_mercury, thread_safe], "
 	MR_maybe_record_allocation(Size + 1, MR_PROC_LABEL, ""array:array/1"");
 	Array = (MR_Word) ML_resize_array(
 				(MR_ArrayType *) Array0, Size, Item);
 ").
+:- pragma foreign_code("MC++",
+		array__resize(_Array0::array_di, _Size::in, _Item::in,
+		_Array::array_uo), [will_not_call_mercury, thread_safe], "
+	mercury::runtime::Errors::SORRY(""foreign code for this function"");
+").
+
 
 %-----------------------------------------------------------------------------%
 
-:- pragma c_header_code("
+:- pragma foreign_decl("C", "
 MR_ArrayType * ML_shrink_array(MR_ArrayType *old_array,
 					MR_Integer array_size);
 ").
 
-:- pragma c_code("
+:- pragma foreign_code("C", "
 MR_ArrayType *
 ML_shrink_array(MR_ArrayType *old_array, MR_Integer array_size)
 {
@@ -660,20 +890,27 @@ ML_shrink_array(MR_ArrayType *old_array, MR_Integer array_size)
 }
 ").
 
-:- pragma c_code(array__shrink(Array0::array_di, Size::in, Array::array_uo),
+:- pragma foreign_code("C",
+		array__shrink(Array0::array_di, Size::in, Array::array_uo),
 		[will_not_call_mercury, thread_safe], "
 	MR_maybe_record_allocation(Size + 1, MR_PROC_LABEL, ""array:array/1"");
 	Array = (MR_Word) ML_shrink_array(
 				(MR_ArrayType *) Array0, Size);
 ").
+:- pragma foreign_code("MC++",
+		array__shrink(_Array0::array_di, _Size::in, _Array::array_uo),
+		[will_not_call_mercury, thread_safe], "
+	mercury::runtime::Errors::SORRY(""foreign code for this function"");
+").
+
 
 %-----------------------------------------------------------------------------%
 
-:- pragma c_header_code("
+:- pragma foreign_decl("C", "
 MR_ArrayType *ML_copy_array(MR_ArrayType *old_array);
 ").
 
-:- pragma c_code("
+:- pragma foreign_code("C", "
 MR_ArrayType *
 ML_copy_array(MR_ArrayType *old_array)
 {
@@ -696,18 +933,37 @@ ML_copy_array(MR_ArrayType *old_array)
 }
 ").
 
-:- pragma c_code(array__copy(Array0::array_ui, Array::array_uo),
+:- pragma foreign_code("C",
+		array__copy(Array0::array_ui, Array::array_uo),
 		[will_not_call_mercury, thread_safe], "
 	MR_maybe_record_allocation((((MR_ArrayType *) Array0)->size) + 1,
 		MR_PROC_LABEL, ""array:array/1"");
 	Array = (MR_Word) ML_copy_array((MR_ArrayType *) Array0);
 ").
 
-:- pragma c_code(array__copy(Array0::in, Array::array_uo),
+:- pragma foreign_code("C",
+		array__copy(Array0::in, Array::array_uo),
 		[will_not_call_mercury, thread_safe], "
 	MR_maybe_record_allocation((((MR_ArrayType *) Array0)->size) + 1,
 		MR_PROC_LABEL, ""array:array/1"");
 	Array = (MR_Word) ML_copy_array((MR_ArrayType *) Array0);
+").
+
+:- pragma foreign_code("MC++",
+		array__copy(Array0::array_ui, Array::array_uo),
+		[will_not_call_mercury, thread_safe], "
+		// XXX need to deep copy it
+	mercury::runtime::Errors::SORRY(""foreign code for this function"");
+	Array = Array0;
+
+").
+
+:- pragma foreign_code("MC++",
+		array__copy(Array0::in, Array::array_uo),
+		[will_not_call_mercury, thread_safe], "
+	mercury::runtime::Errors::SORRY(""foreign code for this function"");
+		// XXX need to deep copy it
+	Array = Array0;
 ").
 
 %-----------------------------------------------------------------------------%
@@ -831,73 +1087,6 @@ array__map_2(N, Size, Closure, OldArray, NewArray0, NewArray) :-
 % Ralph Becket <rwab1@cam.sri.com> 24/04/99
 %	Function forms added.
 
-:- interface.
-
-:- func array__make_empty_array = array(T).
-:- mode array__make_empty_array = array_uo is det.
-
-:- func array__init(int, T) = array(T).
-:- mode array__init(in, in) = array_uo is det.
-
-:- func array__min(array(_T)) = int.
-:- mode array__min(array_ui) = out is det.
-:- mode array__min(in) = out is det.
-
-:- func array__max(array(_T)) = int.
-:- mode array__max(array_ui) = out is det.
-:- mode array__max(in) = out is det.
-
-:- func array__size(array(_T)) = int.
-:- mode array__size(array_ui) = out is det.
-:- mode array__size(in) = out is det.
-
-:- func array__lookup(array(T), int) = T.
-:- mode array__lookup(array_ui, in) = out is det.
-:- mode array__lookup(in, in) = out is det.
-
-:- func array__set(array(T), int, T) = array(T).
-:- mode array__set(array_di, in, in) = array_uo is det.
-
-:- func array__slow_set(array(T), int, T) = array(T).
-:- mode array__slow_set(array_ui, in, in) = array_uo is det.
-:- mode array__slow_set(in, in, in) = array_uo is det.
-
-:- func array__copy(array(T)) = array(T).
-:- mode array__copy(array_ui) = array_uo is det.
-:- mode array__copy(in) = array_uo is det.
-
-:- func array__resize(array(T), int, T) = array(T).
-:- mode array__resize(array_di, in, in) = array_uo is det.
-
-:- func array__shrink(array(T), int) = array(T).
-:- mode array__shrink(array_di, in) = array_uo is det.
-
-:- func array__from_list(list(T)) = array(T).
-:- mode array__from_list(in) = array_uo is det.
-
-:- func array__to_list(array(T)) = list(T).
-:- mode array__to_list(array_ui) = out is det.
-:- mode array__to_list(in) = out is det.
-
-:- func array__fetch_items(array(T), int, int) = list(T).
-:- mode array__fetch_items(array_ui, in, in) = out is det.
-:- mode array__fetch_items(in, in, in) = out is det.
-
-:- func array__bsearch(array(T), T, func(T,T) = comparison_result) = maybe(int).
-:- mode array__bsearch(array_ui, in, func(in,in) = out is det) = out is det.
-:- mode array__bsearch(in, in, func(in,in) = out is det) = out is det.
-
-:- func array__map(func(T1) = T2, array(T1)) = array(T2).
-:- mode array__map(func(in) = out is det, array_di) = array_uo is det.
-
-:- func array_compare(array(T), array(T)) = comparison_result.
-:- mode array_compare(in, in) = out is det.
-
-% ---------------------------------------------------------------------------- %
-% ---------------------------------------------------------------------------- %
-
-:- implementation.
-
 array__make_empty_array = A :-
 	array__make_empty_array(A).
 
@@ -951,3 +1140,6 @@ array__map(F, A1) = A2 :-
 array_compare(A1, A2) = C :-
 	array_compare(C, A1, A2).
 
+array__elem(Index, Array) = array__lookup(Array, Index).
+
+'array__elem :='(Index, Array, Value) = array__set(Array, Index, Value).

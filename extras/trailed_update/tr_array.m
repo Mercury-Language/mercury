@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-1995, 1997, 1999 The University of Melbourne.
+% Copyright (C) 1993-1995, 1997, 1999, 2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -173,7 +173,11 @@ lower bounds other than zero are not supported
 % Arrays are implemented in array.m using the C interface.
 
 % The C type which defines the representation of arrays is
-% MR_ArrayType; it is defined in runtime/type_info.h.
+% MR_ArrayType; it is defined in runtime/mercury_library_types.h.
+
+:- pragma c_header_code("
+	#include ""mercury_library_types.h""
+").
 
 %-----------------------------------------------------------------------------%
 
@@ -182,7 +186,7 @@ lower bounds other than zero are not supported
 	will_not_call_mercury,
 "{
 	MR_ArrayType *array = (MR_ArrayType *) Array0;
-	if ((Unsigned) Index >= (Unsigned) array->size) {
+	if ((MR_Unsigned) Index >= (MR_Unsigned) array->size) {
 		MR_fatal_error(""tr_array__set: array index out of bounds"");
 	}
 	MR_trail_current_value(&array->elements[Index]);
@@ -262,7 +266,7 @@ tr_array__slow_set(Array0, Index, Item, Array) :-
 	will_not_call_mercury,
 "{
 	MR_ArrayType *array = (MR_ArrayType *) Array;
-	if ((Unsigned) Index >= (Unsigned) array->size) {
+	if ((MR_Unsigned) Index >= (MR_Unsigned) array->size) {
 		MR_fatal_error(""tr_array__lookup: ""
 			""array index out of bounds"");
 	}
@@ -272,7 +276,7 @@ tr_array__slow_set(Array0, Index, Item, Array) :-
 	will_not_call_mercury,
 "{
 	MR_ArrayType *array = (MR_ArrayType *) Array;
-	if ((Unsigned) Index >= (Unsigned) array->size) {
+	if ((MR_Unsigned) Index >= (MR_Unsigned) array->size) {
 		MR_fatal_error(""tr_array__lookup: array index out of bounds"");
 	}
 	Item = array->elements[Index];
@@ -282,17 +286,17 @@ tr_array__slow_set(Array0, Index, Item, Array) :-
 
 :- pragma c_header_code("
 MR_ArrayType * ML_tr_resize_array(MR_ArrayType *old_array,
-					Integer array_size, Word item);
+					MR_Integer array_size, MR_Word item);
 ").
 
 :- pragma c_code("
 MR_ArrayType *
-ML_tr_resize_array(MR_ArrayType *old_array, Integer array_size,
-				Word item)
+ML_tr_resize_array(MR_ArrayType *old_array, MR_Integer array_size,
+				MR_Word item)
 {
-	Integer i;
+	MR_Integer i;
 	MR_ArrayType* array;
-	Integer elements_to_copy;
+	MR_Integer elements_to_copy;
 
 	elements_to_copy = old_array->size;
 	if (elements_to_copy == array_size) return old_array;
@@ -300,7 +304,7 @@ ML_tr_resize_array(MR_ArrayType *old_array, Integer array_size,
 		elements_to_copy = array_size;
 	}
 
-	array = (MR_ArrayType *) MR_GC_NEW_ARRAY(Word, array_size + 1);
+	array = (MR_ArrayType *) MR_GC_NEW_ARRAY(MR_Word, array_size + 1);
 	array->size = array_size;
 	for (i = 0; i < elements_to_copy; i++) {
 		array->elements[i] = old_array->elements[i];
@@ -323,7 +327,8 @@ ML_tr_resize_array(MR_ArrayType *old_array, Integer array_size,
 		Array::array_uo),
 	will_not_call_mercury,
 "
-	Array = (Word) ML_tr_resize_array((MR_ArrayType *) Array0, Size, Item);
+	Array = (MR_Word) ML_tr_resize_array((MR_ArrayType *) Array0,
+		Size, Item);
 ").
 
 :- pragma c_code(
@@ -331,7 +336,8 @@ ML_tr_resize_array(MR_ArrayType *old_array, Integer array_size,
 		Array::array_uo),
 	will_not_call_mercury,
 "
-	Array = (Word) ML_tr_resize_array((MR_ArrayType *) Array0, Size, Item);
+	Array = (MR_Word) ML_tr_resize_array((MR_ArrayType *) Array0,
+		Size, Item);
 ").
 
 
@@ -339,16 +345,16 @@ ML_tr_resize_array(MR_ArrayType *old_array, Integer array_size,
 
 :- pragma c_header_code("
 MR_ArrayType * ML_tr_shrink_array(MR_ArrayType *old_array,
-					Integer array_size);
+					MR_Integer array_size);
 ").
 
 :- pragma c_code("
 MR_ArrayType *
-ML_tr_shrink_array(MR_ArrayType *old_array, Integer array_size)
+ML_tr_shrink_array(MR_ArrayType *old_array, MR_Integer array_size)
 {
-	Integer i;
+	MR_Integer i;
 	MR_ArrayType* array;
-	Integer old_array_size;
+	MR_Integer old_array_size;
 
 	old_array_size = old_array->size;
 	if (old_array_size == array_size) return old_array;
@@ -357,7 +363,7 @@ ML_tr_shrink_array(MR_ArrayType *old_array, Integer array_size)
 			""tr_array__shrink: can't shrink to a larger size"");
 	}
 
-	array = (MR_ArrayType *) MR_GC_NEW_ARRAY(Word, array_size + 1);
+	array = (MR_ArrayType *) MR_GC_NEW_ARRAY(MR_Word, array_size + 1);
 	array->size = array_size;
 	for (i = 0; i < array_size; i++) {
 		array->elements[i] = old_array->elements[i];
@@ -376,7 +382,7 @@ ML_tr_shrink_array(MR_ArrayType *old_array, Integer array_size)
 	tr_array__shrink(Array0::array_mui, Size::in, Array::array_uo),
 	will_not_call_mercury,
 "
-	Array = (Word) ML_tr_shrink_array(
+	Array = (MR_Word) ML_tr_shrink_array(
 				(MR_ArrayType *) Array0, Size);
 ").
 
@@ -384,7 +390,7 @@ ML_tr_shrink_array(MR_ArrayType *old_array, Integer array_size)
 	tr_array__shrink(Array0::in, Size::in, Array::array_uo),
 	will_not_call_mercury,
 "
-	Array = (Word) ML_tr_shrink_array(
+	Array = (MR_Word) ML_tr_shrink_array(
 				(MR_ArrayType *) Array0, Size);
 ").
 
@@ -403,9 +409,9 @@ ML_tr_copy_array(MR_ArrayType *old_array)
 	** changes to deepcopy() in runtime/deep_copy.c.
 	*/
 
-	Integer i;
+	MR_Integer i;
 	MR_ArrayType* array;
-	Integer array_size;
+	MR_Integer array_size;
 
 	array_size = old_array->size;
 	array = MR_make_array(array_size);
@@ -421,14 +427,14 @@ ML_tr_copy_array(MR_ArrayType *old_array)
 	tr_array__copy(Array0::array_mui, Array::array_uo),
 	will_not_call_mercury,
 "
-	Array = (Word) ML_tr_copy_array((MR_ArrayType *) Array0);
+	Array = (MR_Word) ML_tr_copy_array((MR_ArrayType *) Array0);
 ").
 
 :- pragma c_code(
 	tr_array__copy(Array0::in, Array::array_uo),
 	will_not_call_mercury,
 "
-	Array = (Word) ML_tr_copy_array((MR_ArrayType *) Array0);
+	Array = (MR_Word) ML_tr_copy_array((MR_ArrayType *) Array0);
 ").
 
 %-----------------------------------------------------------------------------%

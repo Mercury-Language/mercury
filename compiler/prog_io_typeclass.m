@@ -389,10 +389,11 @@ parse_derived_instance(ModuleName, Decl, Constraints, TVarSet,
 		->
 			Result = Result0
 		;
-			Result0 = ok(instance(_, Name, Types, Body, VarSet0))
+			Result0 = ok(instance(_, Name, Types, Body, VarSet,
+				ModName))
 		->
 			Result = ok(instance(ConstraintList, Name, Types, Body,
-					VarSet0))
+					VarSet, ModName))
 		;
 				% if the item we get back isn't an instance, 
 				% something has gone wrong...
@@ -417,7 +418,7 @@ parse_instance_constraints(ModuleName, Constraints, Result) :-
 :- pred parse_underived_instance(module_name, term, tvarset, maybe1(item)).
 :- mode parse_underived_instance(in, in, in, out) is det.
 
-parse_underived_instance(_ModuleName, Name, TVarSet, Result) :-
+parse_underived_instance(ModuleName, Name, TVarSet, Result) :-
 		% We don't give a default module name here since the instance
 		% declaration could well be for a typeclass defined in another
 		% module
@@ -459,7 +460,7 @@ parse_underived_instance(_ModuleName, Name, TVarSet, Result) :-
 		(
 			ErroneousTypes = [],
 			Result = ok(instance([], ClassName,
-				TermTypes, abstract, TVarSet))
+				TermTypes, abstract, TVarSet, ModuleName))
 		;
 				% XXX We should report an error for _each_
 				% XXX erroneous type
@@ -488,10 +489,10 @@ parse_non_empty_instance(ModuleName, Name, Methods, VarSet, TVarSet, Result) :-
 			Result = error(String, Term)
 		;
 			ParsedNameAndTypes = ok(instance(Constraints,
-				NameString, Types, _, _))
+				NameString, Types, _, _, ModName))
 		->
 			Result0 = ok(instance(Constraints, NameString, Types,
-				concrete(MethodList), TVarSet)),
+				concrete(MethodList), TVarSet, ModName)),
 			check_tvars_in_instance_constraint(Result0, Name,
 				Result)
 		;
@@ -509,7 +510,10 @@ parse_non_empty_instance(ModuleName, Name, Methods, VarSet, TVarSet, Result) :-
 
 check_tvars_in_instance_constraint(error(M,E), _, error(M, E)).
 check_tvars_in_instance_constraint(ok(Item), InstanceTerm, Result) :-
-	( Item = instance(Constraints, _Name, Types, _Methods, _TVarSet) ->
+	(
+		Item = instance(Constraints, _Name, Types, _Methods, _TVarSet,
+			_ModName)
+	->
 		%
 		% check that all of the type variables in the constraints
 		% on the instance declaration also occur in the type class

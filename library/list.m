@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-2000 The University of Melbourne.
+% Copyright (C) 1993-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -72,6 +72,8 @@
 %	that it is semidet.  Use list__remove_suffix instead.
 % :- mode list__append(out, in, in) is semidet.
 
+:- func list__append(list(T), list(T)) = list(T).
+
 	% associativity of append
 :- promise all [A, B, C, ABC]
 	(
@@ -103,6 +105,8 @@
 :- pred list__merge(list(T), list(T), list(T)).
 :- mode list__merge(in, in, out) is det.
 
+:- func list__merge(list(T), list(T)) = list(T).
+
 	% list__merge_and_remove_dups(L1, L2, L):
 	%	L is the result of merging the elements of L1 and L2,
 	%	in ascending order, and eliminating any duplicates.
@@ -111,17 +115,23 @@
 :- pred list__merge_and_remove_dups(list(T), list(T), list(T)).
 :- mode list__merge_and_remove_dups(in, in, out) is det.
 
+:- func list__merge_and_remove_dups(list(T), list(T)) = list(T).
+
 	% list__remove_adjacent_dups(L0, L) :
 	%	L is the result of replacing every sequence of duplicate
 	%	elements in L0 with a single such element.
 :- pred list__remove_adjacent_dups(list(T), list(T)).
 :- mode list__remove_adjacent_dups(in, out) is det.
 
+:- func list__remove_adjacent_dups(list(T)) = list(T).
+
 	% list__remove_dups(L0, L) :
 	%	L is the result of deleting the second and subsequent
 	%	occurrences of every element that occurs twice in L.
 :- pred list__remove_dups(list(T), list(T)).
 :- mode list__remove_dups(in, out) is det.
+
+:- func list__remove_dups(list(T)) = list(T).
 
 	% list__member(Elem, List) :
 	%	True iff `List' contains `Elem'.
@@ -145,6 +155,8 @@
 :- mode list__length(in, out) is det.
 	% XXX The current mode checker can't handle this mode
 % :- mode list__length(input_list_skel, out) is det.
+
+:- func list__length(list(T)) = int.
 
 	% list__same_length(ListA, ListB) :
 	%	True iff `ListA' and `ListB' have the same length,
@@ -181,6 +193,8 @@
 :- pred list__take_upto(int, list(T), list(T)).
 :- mode list__take_upto(in, in, out) is det.
 
+:- func list__take_upto(int, list(T)) = list(T).
+
 	% list__drop(Len, List, End):
 	%	`End' is the remainder of `List' after removing the
 	%	first `Len' elements.
@@ -210,6 +224,8 @@
 :- mode list__delete(in, out, out) is nondet.
 :- mode list__delete(out, in, in) is multi.
 
+:- func list__delete_all(list(T), T) = list(T).
+
 	% list__delete_first(List0, Elem, List) is true iff Elem occurs in List0
 	% and List is List0 with the first occurence of Elem removed
 	%
@@ -228,6 +244,8 @@
 	%
 :- pred list__delete_elems(list(T), list(T), list(T)).
 :- mode list__delete_elems(in, in, out) is det.
+
+:- func list__delete_elems(list(T), list(T)) = list(T).
 
 	% list__replace(List0, D, R, List) is true iff List is List0 
 	% with an occurence of D replaced with R.
@@ -248,6 +266,8 @@
 :- pred list__replace_all(list(T), T, T, list(T)).
 :- mode list__replace_all(in, in, in, out) is det.
 
+:- func list__replace_all(list(T), T, T) = list(T).
+
 	% list__replace_nth(List0, N, R, List) is true iff List is List0 
 	% with Nth element replaced with R.
 	% Fails if N < 1 or if length of List0 < N.
@@ -264,11 +284,15 @@
 :- pred list__replace_nth_det(list(T), int, T, list(T)).
 :- mode list__replace_nth_det(in, in, in, out) is det.
 
+:- func list__replace_nth_det(list(T), int, T) = list(T).
+
 	% list__sort_and_remove_dups(List0, List):
 	%	List is List0 sorted with duplicates removed.
 	%
 :- pred list__sort_and_remove_dups(list(T), list(T)).
 :- mode list__sort_and_remove_dups(in, out) is det.
+
+:- func list__sort_and_remove_dups(list(T)) = list(T).
 
 	% list__sort(List0, List):
 	%	List is List0 sorted.
@@ -276,12 +300,16 @@
 :- pred list__sort(list(T), list(T)).
 :- mode list__sort(in, out) is det.
 
+:- func list__sort(list(T)) = list(T).
+
 	% list__reverse(List, Reverse):
 	%	`Reverse' is a list containing the same elements as `List'
 	%	but in reverse order.
 	%
 :- pred list__reverse(list(T), list(T)).
 :- mode list__reverse(in, out) is det.
+
+:- func list__reverse(list(T)) = list(T).
 
 	% list__perm(List0, List):
 	%	True iff `List' is a permutation of `List0'.
@@ -310,6 +338,9 @@
 :- pred list__index0_det(list(T)::in, int::in, T::out) is det.
 :- pred list__index1_det(list(T)::in, int::in, T::out) is det.
 
+:- func list__index0_det(list(T), int) = T.
+:- func list__index1_det(list(T), int) = T.
+
 	% list__zip(ListA, ListB, List):
 	%	List is the result of alternating the elements
 	%	of ListA and ListB, starting with the first element
@@ -322,11 +353,15 @@
 :- pred list__zip(list(T), list(T), list(T)).
 :- mode list__zip(in, in, out) is det.
 
+:- func list__zip(list(T), list(T)) = list(T).
+
 	% list__duplicate(Count, Elem, List) is true iff List is a list
 	% containing Count duplicate copies of Elem.
 	%
 :- pred list__duplicate(int, T, list(T)).
 :- mode list__duplicate(in, in, out) is det.
+
+:- func list__duplicate(int, T) = list(T).
 
 	% list__condense(ListOfLists, List):
 	%	`List' is the result of concatenating all the
@@ -334,6 +369,8 @@
 	%
 :- pred list__condense(list(list(T)), list(T)).
 :- mode list__condense(in, out) is det.
+
+:- func list__condense(list(list(T))) = list(T).
 
 	% list__chunk(List, ChunkSize, Chunks):
 	%	Takes a list `List' and breaks it into a list of lists `Chunks',
@@ -345,6 +382,8 @@
 	%
 :- pred list__chunk(list(T), int, list(list(T))).
 :- mode list__chunk(in, in, out) is det.
+
+:- func list__chunk(list(T), int) = list(list(T)).
 
 	% list__sublist(SubList, FullList) is true
 	%	if one can obtain SubList by starting with FullList
@@ -379,6 +418,29 @@
 :- mode list__map(pred(in, out) is nondet, in, out) is nondet.
 :- mode list__map(pred(in, in) is semidet, in, in) is semidet.
 
+:- func list__map(func(X) = Y, list(X)) = list(Y).
+
+	% list__map2(T, L, M1, M2) uses the closure T
+	% to transform the elements of L into the elements of M1 and M2.
+:- pred list__map2(pred(A, B, C), list(A), list(B), list(C)).
+:- mode list__map2(pred(in, out, out) is det, in, out, out) is det.
+:- mode list__map2(pred(in, out, out) is semidet, in, out, out) is semidet.
+:- mode list__map2(pred(in, out, out) is multi, in, out, out) is multi.
+:- mode list__map2(pred(in, out, out) is nondet, in, out, out) is nondet.
+:- mode list__map2(pred(in, in, in) is semidet, in, in, in) is semidet.
+
+	% list__map3(T, L, M1, M2, M3) uses the closure T
+	% to transform the elements of L into the elements of M1, M2 and M3.
+:- pred list__map3(pred(A, B, C, D), list(A), list(B), list(C), list(D)).
+:- mode list__map3(pred(in, out, out, out) is det, in, out, out, out) is det.
+:- mode list__map3(pred(in, out, out, out) is semidet, in, out, out, out)
+	is semidet.
+:- mode list__map3(pred(in, out, out, out) is multi, in, out, out, out)
+	is multi.
+:- mode list__map3(pred(in, out, out, out) is nondet, in, out, out, out)
+	is nondet.
+:- mode list__map3(pred(in, in, in, in) is semidet, in, in, in, in) is semidet.
+
 	% list__foldl(Pred, List, Start, End) calls Pred with each
 	% element of List (working left-to-right) and an accumulator
 	% (with the initial value of Start), and returns the final
@@ -389,6 +451,8 @@
 :- mode list__foldl(pred(in, in, out) is semidet, in, in, out) is semidet.
 :- mode list__foldl(pred(in, in, out) is nondet, in, in, out) is nondet.
 
+:- func list__foldl(func(X, Y) = Y, list(X), Y) = Y.
+
 	% list__foldr(Pred, List, Start, End) calls Pred with each
 	% element of List (working right-to-left) and an accumulator
 	% (with the initial value of Start), and returns the final
@@ -397,6 +461,8 @@
 :- mode list__foldr(pred(in, in, out) is det, in, in, out) is det.
 :- mode list__foldr(pred(in, in, out) is semidet, in, in, out) is semidet.
 :- mode list__foldr(pred(in, in, out) is nondet, in, in, out) is nondet.
+
+:- func list__foldr(func(X, Y) = Y, list(X), Y) = Y.
 
 	% list__foldl2(Pred, List, Start, End, Start2, End2) 
 	% calls Pred with each element of List (working left-to-right),
@@ -439,6 +505,9 @@
 :- pred list__filter(pred(X), list(X), list(X)).
 :- mode list__filter(pred(in) is semidet, in, out) is det.
 
+:- func list__filter(pred(X), list(X)) = list(X).
+:- mode list__filter(pred(in) is semidet, in) = out is det.
+
 	% list__filter(Pred, List, TrueList, FalseList) takes a closure with one
 	% input argument and for each member of List `X', calls the closure.
 	% Iff call(Pred, X) is true, then X is included in TrueList.
@@ -452,6 +521,9 @@
 	% included in TrueList.
 :- pred list__filter_map(pred(X, Y), list(X), list(Y)).
 :- mode list__filter_map(pred(in, out) is semidet, in, out) is det.
+
+:- func list__filter_map(func(X) = Y, list(X)) = list(Y).
+:- mode list__filter_map(func(in) = out is semidet, in) = out is det.
 
 	% list__filter_map(Transformer, List, TrueList, FalseList) takes
 	% a predicate with one input argument and one output argument.
@@ -479,6 +551,8 @@
 :- pred list__sort(pred(X, X, comparison_result), list(X), list(X)).
 :- mode list__sort(pred(in, in, out) is det, in, out) is det.
 
+:- func list__sort(func(X, X) = comparison_result, list(X)) = list(X).
+
 	% list__sort_and_remove_dups(Compare, Unsorted, Sorted) is true iff 
 	% Sorted is a list containing the same elements as Unsorted, but with
 	% any duplicates removed. Where Sorted is a sorted list, with respect  
@@ -494,6 +568,8 @@
 :- pred list__merge(pred(X, X, comparison_result), list(X), list(X), list(X)).
 :- mode list__merge(pred(in, in, out) is det, in, in, out) is det.
 
+:- func list__merge(func(X, X) = comparison_result, list(X), list(X)) = list(X).
+
 	% list__merge_and_remove_dups(P, As, Bs, Sorted) is true if and only if
 	% Sorted is a list containing the elements of As and Bs in the order 
 	% implied by their sorted merge. The ordering of elements is defined by
@@ -503,6 +579,8 @@
 	list(X), list(X), list(X)).
 :- mode list__merge_and_remove_dups(pred(in, in, out) is det,
 	in, in, out) is det.
+
+:- func list__merge_and_remove_dups(func(X, X) = comparison_result, list(X), list(X)) = list(X).
 
 %-----------------------------------------------------------------------------%
 
@@ -525,6 +603,43 @@
 :- func int `..` int = list(int).
 
 %-----------------------------------------------------------------------------%
+
+	% list__det_head(List) returns the first element of List,
+	% calling error/1 if List is empty.
+:- func list__det_head(list(T)) = T.
+
+	% list__det_head(List) returns the tail of List,
+	% calling error/1 if List is empty.
+:- func list__det_tail(list(T)) = list(T).
+
+% ---------------------------------------------------------------------------- %
+% ---------------------------------------------------------------------------- %
+
+:- implementation.
+
+% Everything below here is not intended to be part of the public interface,
+% and will not be included in the Mercury library reference manual.
+
+:- interface.
+
+:- import_module term.	% for var/1.
+
+:- pragma type_spec(list__merge(in, in, out), T = var(_)).
+
+:- pragma type_spec(list__merge_and_remove_dups(in, in, out), T = var(_)).
+:- pragma type_spec(list__merge_and_remove_dups/2, T = var(_)).
+
+:- pragma type_spec(list__remove_adjacent_dups/2, T = var(_)).
+:- pragma type_spec(list__remove_adjacent_dups/1, T = var(_)).
+
+:- pragma type_spec(list__member(in, in), T = var(_)).
+
+:- pragma type_spec(list__sort_and_remove_dups/2, T = var(_)).
+:- pragma type_spec(list__sort_and_remove_dups/1, T = var(_)).
+
+:- pragma type_spec(list__sort(in, out), T = var(_)).
+:- pragma type_spec(list__sort/1, T = var(_)).
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -798,6 +913,7 @@ list__partition([Head|Tail], Partition, Low, High) :-
 
 :- pred list__merge_sort(list(T), list(T)).
 :- mode list__merge_sort(in, out) is det.
+:- pragma type_spec(list__merge_sort(in, out), T = var(_)).
 
 list__merge_sort([], []).
 list__merge_sort([X], [X]).
@@ -842,6 +958,7 @@ list__remove_adjacent_dups([X|Xs], L) :-
 
 :- pred list__remove_adjacent_dups_2(list(T), T, list(T)).
 :- mode list__remove_adjacent_dups_2(in, in, out) is det.
+:- pragma type_spec(list__remove_adjacent_dups_2/3, T = var(_)).
 
 list__remove_adjacent_dups_2([], X, [X]).
 list__remove_adjacent_dups_2([X1|Xs], X0, L) :-
@@ -1008,9 +1125,19 @@ list__last([H|T], Last) :-
 %-----------------------------------------------------------------------------%
 
 list__map(_, [],  []).
-list__map(P, [H0|T0], [H|T]) :-
+list__map(P, [H0 | T0], [H | T]) :-
 	call(P, H0, H),
 	list__map(P, T0, T).
+
+list__map2(_, [],  [],  []).
+list__map2(P, [H0 | T0], [H1 | T1], [H2 | T2]) :-
+	call(P, H0, H1, H2),
+	list__map2(P, T0, T1, T2).
+
+list__map3(_, [],  [],  [],  []).
+list__map3(P, [H0 | T0], [H1 | T1], [H2 | T2], [H3 | T3]) :-
+	call(P, H0, H1, H2, H3),
+	list__map3(P, T0, T1, T2, T3).
 
 list__foldl(_, [], Acc, Acc).
 list__foldl(P, [H|T], Acc0, Acc) :-
@@ -1176,77 +1303,8 @@ list__merge_and_remove_dups(P, [H1|T1], [H2|T2], L) :-
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
-% Ralph Becket <rwab1@cl.cam.ac.uk> 27/04/99
-% 	Functional forms added.
-
-:- interface.
-
-:- func list__det_head(list(T)) = T.
-
-:- func list__det_tail(list(T)) = list(T).
-
-:- func list__append(list(T), list(T)) = list(T).
-
-:- func list__merge(list(T), list(T)) = list(T).
-
-:- func list__merge_and_remove_dups(list(T), list(T)) = list(T).
-
-:- func list__remove_adjacent_dups(list(T)) = list(T).
-
-:- func list__remove_dups(list(T)) = list(T).
-
-:- func list__length(list(T)) = int.
-
-:- func list__take_upto(int, list(T)) = list(T).
-
-:- func list__delete_all(list(T), T) = list(T).
-
-:- func list__delete_elems(list(T), list(T)) = list(T).
-
-:- func list__replace_all(list(T), T, T) = list(T).
-
-:- func list__replace_nth_det(list(T), int, T) = list(T).
-
-:- func list__sort_and_remove_dups(list(T)) = list(T).
-
-:- func list__sort(list(T)) = list(T).
-
-:- func list__reverse(list(T)) = list(T).
-
-:- func list__index0_det(list(T), int) = T.
-
-:- func list__index1_det(list(T), int) = T.
-
-:- func list__zip(list(T), list(T)) = list(T).
-
-:- func list__duplicate(int, T) = list(T).
-
-:- func list__condense(list(list(T))) = list(T).
-
-:- func list__chunk(list(T), int) = list(list(T)).
-
-:- func list__map(func(X) = Y, list(X)) = list(Y).
-
-:- func list__foldl(func(X, Y) = Y, list(X), Y) = Y.
-
-:- func list__foldr(func(X, Y) = Y, list(X), Y) = Y.
-
-:- func list__filter(pred(X), list(X)) = list(X).
-:- mode list__filter(pred(in) is semidet, in) = out is det.
-
-:- func list__filter_map(func(X) = Y, list(X)) = list(Y).
-:- mode list__filter_map(func(in) = out is semidet, in) = out is det.
-
-:- func list__sort(func(X, X) = comparison_result, list(X)) = list(X).
-
-:- func list__merge(func(X, X) = comparison_result, list(X), list(X)) = list(X).
-
-:- func list__merge_and_remove_dups(func(X, X) = comparison_result, list(X), list(X)) = list(X).
-
-% ---------------------------------------------------------------------------- %
-% ---------------------------------------------------------------------------- %
-
-:- implementation.
+% Ralph Becket <rwab1@cam.sri.com> 27/04/99
+%       Function forms added.
 
 list__det_head([]) = _ :- error("list__det_head/1: empty list as argument").
 list__det_head([X | _]) = X.

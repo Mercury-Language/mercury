@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2000 The University of Melbourne.
+% Copyright (C) 1999-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -404,6 +404,10 @@
 			mlds__func_params,	% the arguments & return types
 			maybe(mlds__statement)	% the function body, or `no'
 						% if the function is abstract
+						% or if the function is defined
+						% externally (i.e. the original
+						% Mercury procedure was declared
+						% `:- external').
 		)
 		% packages, classes, interfaces, structs, enums
 	;	mlds__class(
@@ -554,6 +558,9 @@
 :- type mlds__interface_id == mlds__type.
 
 %-----------------------------------------------------------------------------%
+%
+% Declaration flags
+%
 
 :- type mlds__decl_flags.
 
@@ -605,6 +612,9 @@
 		constness, abstractness) = mlds__decl_flags.
 
 %-----------------------------------------------------------------------------%
+%
+% Foreign code interfacing
+%
 
 	%
 	% Foreign code required for the foreign language interface.
@@ -614,7 +624,7 @@
 	%
 :- type mlds__foreign_code
 	---> mlds__foreign_code(
-		foreign_header_info,
+		foreign_decl_info,
 		list(user_foreign_code),
 		list(mlds__pragma_export)
 	).
@@ -633,6 +643,9 @@
 
 
 %-----------------------------------------------------------------------------%
+%
+% Contexts (i.e. source code locations)
+%
 
 	% mlds__context is probably == prog_context,
 	% but might also contain goal_path or other information.
@@ -643,6 +656,9 @@
 :- func mlds__get_prog_context(mlds__context) = prog_context.
 
 %-----------------------------------------------------------------------------%
+%
+% Statements
+%
 
 :- type mlds__statements == list(mlds__statement).
 
@@ -672,19 +688,37 @@
 	%
 	% selection (see also computed_goto)
 	%
+
 	;	if_then_else(mlds__rval, mlds__statement,
 			maybe(mlds__statement))
 
-/******
-	% Is it worth including this?  We already have `computed_goto'...
+		% This representation for switches is very general:
+		% it allows switching on any type, and cases can match
+		% on ranges as well as on values.
+		% Many target languages only allow switches on ints or enums.
+		% Some (e.g. C#) also allow switches on strings.
+		% Most target languages only allow matching on values;
+		% only some (e.g. GNU C) allow matching on ranges.
+		% The MLDS code generator should only generate switches
+		% that the target will support.
+		%
+		% Note that unlike C, MLDS cases do NOT fall through; if you
+		% want to achieve that effect, you need to use an explicit goto.
 	;	switch(
+			% The value to switch on
+			mlds__type,
 			mlds__rval,
 
-			% other representations might be better...
-			assoc_list(mlds__rval, mlds__statement),
-			mlds__statement		% the default case
+			% The range of possible values which the
+			% value might take (if known)
+			mlds__switch_range,
+
+			% The different cases
+			mlds__switch_cases,
+
+			% What to do if none of the cases match
+			mlds__switch_default
 		)
-******/
 
 	%
 	% transfer of control
@@ -745,6 +779,16 @@
 		% do_commit(Ref) instructions should only be used
 		% in goals called from the GoalToTry goal in the
 		% try_commit instruction with the same Ref.
+		%
+		% The C and GCC back-ends require each try_commit
+		% to be put in its own nested function, to avoid
+		% problems with setjmp() and local vars not declared
+		% volatile.  They also require each do_commit
+		% to be put in its own function -- this is needed when
+		% using __builtin_setjmp()/__builtin_longjmp() to
+		% ensure that the call to __builtin_longjmp() is
+		% not in the same function as the call to
+		% __builtin_setjmp().
 		%	
 	;	try_commit(mlds__lval, mlds__statement, mlds__statement)
 	;	do_commit(mlds__rval)
@@ -786,14 +830,79 @@ XXX Full exception handling support is not yet implemented.
 	
 	.
 
+%-----------------------------------------------------------------------------%
+%
+% Extra info for switches
+%
+	% The range of possible values which the
+	% switch variable might take (if known)
+:- type mlds__switch_range
+	--->	range_unknown
+	;	range(range_min::int, range_max::int).
+			% From range_min to range_max, inclusive.
+
+	% Each switch case consists of the conditions to match against,
+	% and the statement to execute if the match succeeds.
+	% Unlike C, cases do NOT fall through; if you want to achieve that
+	% effect, you need to use an explicit goto.
+:- type mlds__switch_cases == list(mlds__switch_case).
+:- type mlds__switch_case == pair(mlds__case_match_conds, mlds__statement).
+
+	% case_match_conds should be a _non-empty_ list of conditions;
+	% if _any_ of the conditions match, this case will be selected.
+:- type mlds__case_match_conds == list(mlds__case_match_cond).
+
+	% A case_match_cond specifies when a switch case will be selected
+:- type mlds__case_match_cond
+	--->	match_value(mlds__rval)		% match_value(Val) matches if
+						% the switch value is equal to
+						% the specified Val
+
+	;	match_range(mlds__rval, mlds__rval).  % match_range(Min, Max)
+						% matches if the switch value
+						% is between Min and Max,
+						% inclusive.
+						% Note that this should only be
+						% used if the target supports
+						% it; currently the C back-end
+						% supports this only if you're
+						% using the GNU C compiler.
+
+	% The switch_default specifies what to do if none of the switch
+	% conditions match.
+:- type mlds__switch_default
+	--->	default_is_unreachable		% The switch is exhaustive,
+						% so the default case should
+						% never be reached.
+
+	;	default_do_nothing		% The default action is to
+						% just fall through to the
+						% statement after the switch.
+
+	;	default_case(mlds__statement).	% The default is to execute
+						% the specified statement.
+
+%-----------------------------------------------------------------------------%
+%
+% Extra info for labels
+%
 
 :- type mlds__label == string.
+
+%-----------------------------------------------------------------------------%
+%
+% Extra info for calls
+%
 
 :- type is_tail_call
 	--->	tail_call	% a tail call
 	;	call		% just an ordinary call
 	.
 
+%-----------------------------------------------------------------------------%
+%
+% Extra info for exception handling
+%
 
 	% XXX This is tentative -- the current definition may be
 	% a bit too specific to C++-style exceptions.
@@ -810,6 +919,7 @@ XXX Full exception handling support is not yet implemented.
 				% if `no', then exception value will not be used
 		).
 
+%-----------------------------------------------------------------------------%
 
 	%
 	% atomic statements
@@ -939,7 +1049,7 @@ XXX Full exception handling support is not yet implemented.
 			% output #line directives.
 	;	target_code_input(mlds__rval)
 	;	target_code_output(mlds__lval)
-	;	name(mlds__entity_name)
+	;	name(mlds__qualified_entity_name)
 	.
 
 	% XXX I'm not sure what representation we should use here
@@ -1126,9 +1236,13 @@ XXX Full exception handling support is not yet implemented.
 	% Stuff for handling polymorphism/RTTI and type classes.
 	%
 	;	rtti(rtti_type_id, rtti_name)
-	;	base_typeclass_info(hlds_data__class_id, string)
-			% class name & class arity, names and arities of the
-			% types
+	;	base_typeclass_info(
+			hlds_data__class_id,	% class name & class arity,
+			string			% a mangled string that encodes
+						% the names and arities of the
+						% types in the instance
+						% declaration
+		)
 	%
 	% Stuff for handling debugging and accurate garbage collection.
 	% (Those features are not yet implemented for the MLDS back-end,

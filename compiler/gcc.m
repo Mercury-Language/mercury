@@ -170,15 +170,9 @@
 	% This can be used for either global variables
 	% or local static variables.
 	%
-	% After calling this, the caller should call set_var_decl_public,
-	% set_var_decl_readonly, and/or set_var_asm_name, if appropriate,
+	% After calling this, the caller should call set_var_decl_public
+	% and/or set_var_decl_readonly, if appropriate,
 	% and then finish_static_var_decl.
-	%
-	% The name passed in here should be the source level name.
-	% By default, this is also used as the assembler name.
-	% If that name contains special characters that might confuse
-	% the assembler, the caller needs call set_var_asm_name with
-	% a mangled name that is free of such characters.
 :- pred build_static_var_decl(var_name::in, gcc__type::in, gcc__expr::in,
 		gcc__var_decl::out, io__state::di, io__state::uo) is det.
 
@@ -194,16 +188,10 @@
 
 	% mark a variable as being accessible from outside this
 	% translation unit
-:- pred set_var_decl_public(gcc__var_decl::in, io__state::di, io__state::uo)
-		is det.
+:- pred set_var_decl_public(gcc__var_decl::in, io__state::di, io__state::uo) is det.
 
 	% mark a variable as read-only
-:- pred set_var_decl_readonly(gcc__var_decl::in, io__state::di, io__state::uo)
-		is det.
-
-	% set the assembler name to use for a variable.
-:- pred set_var_decl_asm_name(gcc__var_decl::in, gcc__var_name::in,
-		io__state::di, io__state::uo) is det.
+:- pred set_var_decl_readonly(gcc__var_decl::in, io__state::di, io__state::uo) is det.
 
 %
 % Routines to start/end a block.
@@ -445,8 +433,7 @@
 :- pred empty_arg_list(gcc__arg_list, io__state, io__state).
 :- mode empty_arg_list(out, di, uo) is det.
 
-:- pred cons_arg_list(gcc__expr, gcc__arg_list, gcc__arg_list,
-		io__state, io__state).
+:- pred cons_arg_list(gcc__expr, gcc__arg_list, gcc__arg_list, io__state, io__state).
 :- mode cons_arg_list(in, in, out, di, uo) is det.
 
 	% build an expression for a function call
@@ -832,12 +819,6 @@
 	TREE_READONLY((tree) Decl) = 1;
 ").
 
-:- pragma c_code(set_var_decl_asm_name(Decl::in, AsmName::in,
-	_IO0::di, _IO::uo), [will_not_call_mercury],
-"
-	DECL_ASSEMBLER_NAME((tree) Decl) = get_identifier(AsmName);
-").
-
 %
 % Stuff for function declarations
 %
@@ -1084,7 +1065,12 @@ build_float(Val, Expr) -->
 :- pragma c_code(build_real(Type::in, Value::in, Expr::out, _IO0::di, _IO::uo),
 	[will_not_call_mercury],
 "
-	Expr = (MR_Word) merc_build_real((tree) Type, Value);
+	/* XXX should move to mercury-gcc.c */
+	/* XXX this won't work if cross-compiling */
+	union { double dbl; HOST_WIDE_INT ints[20]; } u;
+	u.dbl = Value;
+	Expr = (MR_Word) build_real((tree) Type,
+		REAL_VALUE_FROM_TARGET_DOUBLE(u.ints));
 ").
 
 build_string(String, Expr) -->
@@ -1235,9 +1221,8 @@ gcc__struct_field_initializer(FieldDecl, FieldDecl) --> [].
 	InitList = (MR_Word) merc_empty_init_list();
 ").
 
-:- pragma c_code(cons_init_list(Elem::in, Init::in,
-	InitList0::in, InitList::out, _IO0::di, _IO::uo),
-	[will_not_call_mercury],
+:- pragma c_code(cons_init_list(Elem::in, Init::in, InitList0::in, InitList::out,
+	_IO0::di, _IO::uo), [will_not_call_mercury],
 "
 	InitList = (MR_Word)
 		merc_cons_init_list((tree) Elem, (tree) Init, (tree) InitList0);

@@ -18,7 +18,7 @@
 #ifndef	MERCURY_MEMORY_ZONES_H
 #define	MERCURY_MEMORY_ZONES_H
 
-#include "mercury_regs.h"		/* for NUM_REAL_REGS */
+#include "mercury_regs.h"		/* for MR_NUM_REAL_REGS */
 
 #include <stdlib.h>		/* for size_t */
 
@@ -27,23 +27,23 @@
 
 
 /* these cannot be changed without lots of modifications elsewhere */
-#define MAX_REAL_REG 32		/* r1 .. r32 */
+#define MR_MAX_REAL_REG 32		/* MR_r1 .. MR_r32 */
 
 /* this can be changed at will, including by -D options to the C compiler */
-#ifndef MAX_VIRTUAL_REG
-#define MAX_VIRTUAL_REG	1024
+#ifndef MR_MAX_VIRTUAL_REG
+#define MR_MAX_VIRTUAL_REG	1024
 #endif
 
 /* allocate enough fake_regs to hold both the special regs */
 /* and all the virtual registers */
-#define MAX_FAKE_REG	(MR_NUM_SPECIAL_REG + MAX_VIRTUAL_REG)
-				/* mr0 .. mr37, mr(38) ... mr(1000) ... */
+#define MR_MAX_FAKE_REG	(MR_NUM_SPECIAL_REG + MR_MAX_VIRTUAL_REG)
+			/* MR_mr0 .. MR_mr37, MR_mr(38) ... MR_mr(1000) ... */
 
 /* used to lookup the fake_reg for a given real reg */
-extern	MR_Word	virtual_reg_map[MAX_REAL_REG];
+extern	MR_Word		MR_virtual_reg_map[MR_MAX_REAL_REG];
 
 /* used for counting register usage */
-extern	unsigned long 	num_uses[MAX_RN];
+extern	unsigned long 	MR_num_uses[MR_MAX_RN];
 
 /*
 ** The Mercury runtime uses a number of memory areas or *zones*. These
@@ -82,12 +82,14 @@ extern	unsigned long 	num_uses[MAX_RN];
 **			available with MR_CHECK_OVERFLOW_VIA_MPROTECT.
 */
 
-typedef struct MEMORY_ZONE	MemoryZone;
+typedef struct MR_MemoryZone_Struct	MR_MemoryZone;
 
-typedef bool ZoneHandler(MR_Word *addr, struct MEMORY_ZONE *zone, void *context);
+typedef bool	MR_ZoneHandler(MR_Word *addr, MR_MemoryZone *zone,
+			void *context);
 
-struct MEMORY_ZONE {
-	struct MEMORY_ZONE *next; /* the memory zones are organized as a
+struct MR_MemoryZone_Struct {
+	MR_MemoryZone *next;
+				  /* the memory zones are organized as a
 				  ** linked list of free zones and linked
 				  ** list of used zones. The next field
 				  ** is NULL or a pointer to the next memory
@@ -108,7 +110,7 @@ struct MEMORY_ZONE {
 #ifdef MR_CHECK_OVERFLOW_VIA_MPROTECT
 	MR_Word	*redzone_base;	/* beginning of the original redzone */
 	MR_Word	*redzone;	/* beginning of the current redzone */
-	ZoneHandler *handler;   /* handler for page faults in the redzone */
+	MR_ZoneHandler *handler;   /* handler for page faults in the redzone */
 #endif /* MR_CHECK_OVERFLOW_VIA_MPROTECT */
 
 	/*
@@ -126,7 +128,7 @@ struct MEMORY_ZONE {
 };
 
 /*
-** MR_clear_zone_for_GC(MemoryZone *zone, void *start_address):
+** MR_clear_zone_for_GC(MR_MemoryZone *zone, void *start_address):
 **	Zero out the (hopefully unused) portion of the zone
 **	from the specified `start_address' to the end of the zone.
 **	This is used to avoid unwanted memory retition due to 
@@ -158,24 +160,26 @@ int MR_protect_pages(void *addr, size_t size, int prot_flags);
 #endif
 
 /*
-** init_memory_arena() allocates (if necessary) the top-level memory pool
+** MR_init_memory_arena() allocates (if necessary) the top-level memory pool
 ** from which all allocations should come. If PARALLEL is defined, then
 ** this pool should be shared memory. In the absence of PARALLEL, it
 ** doesn't need to do anything, since with CONSERVATIVE_GC, the collector
 ** manages the heap, and without GC, we can allocate memory using memalign
 ** or malloc.
 */
-void init_memory_arena(void);
+
+extern	void		MR_init_memory_arena(void);
 
 /*
-** init_zones() initializes the memory zone pool and the offset
+** MR_init_zones() initializes the memory zone pool and the offset
 ** generator.  It should be used before any zones are created or
 ** offsets requested.
 */
-void init_zones(void);
+
+extern	void 		MR_init_zones(void);
 
 /*
-** create_zone(Name, Id, Size, Offset, RedZoneSize, FaultHandler)
+** MR_create_zone(Name, Id, Size, Offset, RedZoneSize, FaultHandler)
 ** allocates a new memory zone with name Name, and number Id, size
 ** Size (in bytes - which gets rounded up to the nearest multiple of
 ** the page size), an offset Offset from the page boundary at which
@@ -188,13 +192,13 @@ void init_zones(void);
 ** arguments are ignored.
 */
 
-MemoryZone	*create_zone(const char *name, int id,
-			size_t size, size_t offset, size_t redsize,
-			ZoneHandler *handler);
+extern	MR_MemoryZone	*MR_create_zone(const char *name, int id,
+				size_t size, size_t offset, size_t redsize,
+				MR_ZoneHandler *handler);
 
 /*
-** construct_zone(Name, Id, Base, Size, Offset, RedZoneSize, FaultHandler)
-** has the same behaviour as create_zone, except instread of allocating
+** MR_construct_zone(Name, Id, Base, Size, Offset, RedZoneSize, FaultHandler)
+** has the same behaviour as MR_create_zone, except instread of allocating
 ** the memory, it takes a pointer to a region of memory that must be at
 ** least Size + unit[*] bytes, or if MR_PROTECTPAGE is defined, then it
 ** must be at least Size + 2 * unit[*] bytes.
@@ -205,34 +209,38 @@ MemoryZone	*create_zone(const char *name, int id,
 ** [*] unit is a global variable containing the page size in bytes
 */
 
-MemoryZone	*construct_zone(const char *name, int Id, MR_Word *base,
-			size_t size, size_t offset, size_t redsize,
-			ZoneHandler *handler);
+extern	MR_MemoryZone	*MR_construct_zone(const char *name, int Id,
+				MR_Word *base, size_t size, size_t offset,
+				size_t redsize, MR_ZoneHandler *handler);
 
 /*
-** reset_redzone(Zone) resets the redzone on the given MemoryZone to the
+** MR_reset_redzone(Zone) resets the redzone on the given MR_MemoryZone to the
 ** original zone specified in the call to {create,construct}_zone() if
 ** MR_CHECK_OVERFLOW_VIA_MPROTECT is defined.  Otherwise it does
 ** nothing.
 */
-void	reset_redzone(MemoryZone *zone);
+
+extern	void		MR_reset_redzone(MR_MemoryZone *zone);
 
 /*
-** get_used_memory_zones() returns a pointer to the linked list of
+** MR_get_used_memory_zones() returns a pointer to the linked list of
 ** used memory zones.
 */
-MemoryZone	*get_used_memory_zones(void);
+
+extern	MR_MemoryZone	*MR_get_used_memory_zones(void);
 
 /*
-** debug_memory() prints out debugging information about the current
+** MR_debug_memory() prints out debugging information about the current
 ** memory zones.
 */
-void	debug_memory(void);
+
+extern	void		MR_debug_memory(void);
 
 /*
-** next_offset() returns sucessive offsets across the primary cache. Useful
+** MR_next_offset() returns sucessive offsets across the primary cache. Useful
 ** when calling {create,construct}_zone().
 */
-extern	size_t	next_offset(void);
+
+extern	size_t		MR_next_offset(void);
 
 #endif /* not MERCURY_MEMORY_ZONES_H */

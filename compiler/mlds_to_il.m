@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000 The University of Melbourne.
+% Copyright (C) 2000-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -288,17 +288,26 @@ generate_method_defn(FunctionDefn) -->
 		( { MaybeStatement = yes(Statement) } -> 
 			statement_to_il(Statement, InstrsTree0)
 		;
-			{ InstrsTree0 = empty }
+				% If there is no function body,
+				% generate forwarding code instead.
+				% This can happen with :- external
+			atomic_statement_to_il(target_code(lang_C, []),
+				InstrsTree0),
+				% The code might reference locals...
+			il_info_add_locals(["succeeded" - 
+				mlds__native_bool_type])
 		),
 
-			% If this is main, add the entrypoint and set a
-			% flag.
+			% If this is main, add the entrypoint, set a
+			% flag, and call the initialization instructions
+			% in the cctor of this module.
 		( { PredLabel = pred(predicate, no, "main", 2) },
 		  { MaybeSeqNum = no }
 		->
 			{ EntryPoint = [entrypoint] },
-			=(Info10),
-			dcg_set(Info10 ^ has_main := yes)
+			il_info_add_init_instructions(
+				runtime_initialization_instrs),
+			^ has_main := yes
 		;
 			{ EntryPoint = [] }
 		),
@@ -758,6 +767,13 @@ statement_to_il(statement(if_then_else(Condition, ThenCase, ElseCase),
 		instr_node(label(DoneLabel))
 		]) }.
 
+statement_to_il(statement(switch(_Type, _Val, _Range, _Cases, _Default),
+		_Context), _Instrs) -->
+	% The IL back-end only supports computed_gotos and if-then-else chains;
+	% the MLDS code generator should either avoid generating MLDS switches,
+	% or should transform them into computed_gotos or if-then-else chains.
+	{ error("mlds_to_il.m: `switch' not supported") }.
+
 statement_to_il(statement(while(Condition, Body, AtLeastOnce), 
 		_Context), Instrs) -->
 	generate_condition(Condition, ConditionInstrs, EndLabel),
@@ -876,15 +892,11 @@ statement_to_il(statement(try_commit(Ref, GoalToTry, CommitHandlerGoal),
 statement_to_il(statement(computed_goto(Rval, MLDSLabels), _Context), 
 		Instrs) -->
 	load(Rval, RvalLoadInstrs),
-	list__map_foldl(
-		(pred(_A::in, X::out, in, out) is det 
-			--> il_info_make_next_label(X)), MLDSLabels, Labels),
-	{ Targets = list__map(func(L) = label_target(L), Labels) },
-	{ LabelInstrs = list__map(func(L) = label(L), Labels) },
+	{ Targets = list__map(func(L) = label_target(L), MLDSLabels) },
 	{ Instrs = tree__list([
 		comment_node("computed goto"),
 		RvalLoadInstrs,
-		node([switch(Targets) | LabelInstrs])
+		instr_node(switch(Targets))
 		]) }.
 
 
@@ -902,19 +914,18 @@ atomic_statement_to_il(restore_hp(_), node(Instrs)) -->
 
 atomic_statement_to_il(target_code(_Lang, _Code), node(Instrs)) --> 
 	il_info_get_module_name(ModuleName),
-	=(Info),
-	( { Info ^ method_c_code = no } ->
-		dcg_set(Info ^ method_c_code := yes),
+	( no =^ method_c_code  ->
+		^ method_c_code := yes,
 		{ mangle_dataname_module(no, ModuleName, NewModuleName) },
 		{ ClassName = mlds_module_name_to_class_name(NewModuleName) },
-		{ Info ^ signature = signature(_, RetType, Params) }, 
+		signature(_, RetType, Params) =^ signature, 
 			% If there is a return value, put it in succeeded.
 		{ RetType = void ->
 			StoreReturnInstr = []
 		;
 			StoreReturnInstr = [stloc(name("succeeded"))]
 		},
-		{ Info ^ method_name = MethodName },
+		MethodName =^ method_name,
 		{ assoc_list__keys(Params, TypeParams) },
 		{ list__map_foldl((pred(_::in, Instr::out,
 			Num::in, Num + 1::out) is det :-
@@ -1293,8 +1304,6 @@ unaryop_to_il(std_unop(unmktag), _, comment_node("unmktag (a no-op)")) --> [].
 unaryop_to_il(std_unop(mkbody),	_, comment_node("mkbody (a no-op)")) --> [].
 unaryop_to_il(std_unop(unmkbody), _, comment_node("unmkbody (a no-op)")) --> [].
 
-unaryop_to_il(std_unop(cast_to_unsigned), _,
-	throw_unimplemented("unimplemented cast_to_unsigned unop")) --> [].
 		% XXX implement this using string__hash
 unaryop_to_il(std_unop(hash_string), _,
 	throw_unimplemented("unimplemented hash_string unop")) --> [].
@@ -1451,19 +1460,30 @@ binaryop_to_il((<), node([clt(signed)])) --> [].
 binaryop_to_il((>), node([cgt(signed)])) --> [].
 binaryop_to_il((<=), node([cgt(signed), ldc(int32, i(0)), ceq])) --> [].
 binaryop_to_il((>=), node([clt(signed), ldc(int32, i(0)), ceq])) --> [].
+binaryop_to_il(unsigned_le, node([cgt(unsigned), ldc(int32, i(0)), ceq])) -->
+	[].
 
 	% Floating pointer operations.
-binaryop_to_il(float_plus, throw_unimplemented("floating point")) --> [].
-binaryop_to_il(float_minus, throw_unimplemented("floating point")) --> [].
-binaryop_to_il(float_times, throw_unimplemented("floating point")) --> [].
-binaryop_to_il(float_divide, throw_unimplemented("floating point")) --> [].
-binaryop_to_il(float_eq, throw_unimplemented("floating point")) --> [].
-binaryop_to_il(float_ne, throw_unimplemented("floating point")) --> [].
-binaryop_to_il(float_lt, throw_unimplemented("floating point")) --> [].
-binaryop_to_il(float_gt, throw_unimplemented("floating point")) --> [].
-binaryop_to_il(float_le, throw_unimplemented("floating point")) --> [].
-binaryop_to_il(float_ge, throw_unimplemented("floating point")) --> [].
-
+binaryop_to_il(float_plus, instr_node(I)) -->
+	{ I = add(nocheckoverflow, signed) }.
+binaryop_to_il(float_minus, instr_node(I)) -->
+	{ I = sub(nocheckoverflow, signed) }.
+binaryop_to_il(float_times, instr_node(I)) -->
+	{ I = mul(nocheckoverflow, signed) }.
+binaryop_to_il(float_divide, instr_node(I)) -->
+	{ I = div(signed) }.
+binaryop_to_il(float_eq, instr_node(I)) -->
+	{ I = ceq }.
+binaryop_to_il(float_ne, node(Instrs)) --> 
+	{ Instrs = [
+		ceq, 
+		ldc(int32, i(0)),
+		ceq
+	] }.
+binaryop_to_il(float_lt, node([clt(signed)])) --> [].
+binaryop_to_il(float_gt, node([cgt(signed)])) --> [].
+binaryop_to_il(float_le, node([cgt(signed), ldc(int32, i(0)), ceq])) --> [].
+binaryop_to_il(float_ge, node([clt(signed), ldc(int32, i(0)), ceq])) --> [].
 
 %-----------------------------------------------------------------------------%
 %
@@ -1741,7 +1761,7 @@ mlds_type_to_ilds_type(mlds__class_type(Class, _Arity, _Kind)) = ILType :-
 	ILType = ilds__type([], class(FullClassName)).
 
 mlds_type_to_ilds_type(mlds__commit_type) =
-	ilds__type([], class(["mercury", "commit"])).
+	ilds__type([], class(["mercury", "runtime", "Commit"])).
 
 mlds_type_to_ilds_type(mlds__generic_env_ptr_type) = il_envptr_type.
 
@@ -1888,8 +1908,7 @@ mangle_dataname_module(yes(DataName), ModuleName0, ModuleName) :-
 			)
 		; LibModuleName0 = "std_util",
 			( 
-			  Name = "univ", Arity = 0
-			; Name = "type_desc", Arity = 0
+			  Name = "type_desc", Arity = 0
 			)
 		; LibModuleName0 = "private_builtin",
 			( 
@@ -2166,7 +2185,7 @@ defn_to_local(ModuleName,
 		mangle_mlds_var(qual(ModuleName, MangledDataName), Id),
 		MLDSType0 = MLDSType
 	;
-		error("definintion name was not data/1")
+		error("definition name was not data/1")
 	).
 
 %-----------------------------------------------------------------------------%
@@ -2178,22 +2197,22 @@ defn_to_local(ModuleName,
 
 convert_to_object(Type) = methoddef(call_conv(no, default), 
 		simple_type(il_generic_simple_type),
-		class_member_name(ConvertClass, id("ToObject")), [Type]) :-
-	ConvertClass = ["mercury", "mr_convert"].
+		class_member_name(il_conversion_class_name, id("ToObject")),
+		[Type]).
 
 :- func convert_from_object(ilds__type) = methodref.
 
 convert_from_object(Type) = 
 	methoddef(call_conv(no, default), simple_type(SimpleType),
-		class_member_name(ConvertClass, id(Id)), [il_generic_type]) :-
-	ConvertClass = ["mercury", "mr_convert"],
+		class_member_name(il_conversion_class_name, id(Id)),
+			[il_generic_type]) :-
 	Type = ilds__type(_, SimpleType),
 	ValueClassName = simple_type_to_value_class_name(SimpleType),
 	string__append("To", ValueClassName, Id).
 
 
 	% XXX String and Array should be converted to/from Object using a
-	% cast, not a call to mr_convert.  When that is done they can be
+	% cast, not a call to runtime convert.  When that is done they can be
 	% removed from this list
 :- func simple_type_to_value_class_name(simple_type) = string.
 simple_type_to_value_class_name(int8) = "Int8".
@@ -2278,6 +2297,28 @@ il_array_type = ilds__type([], '[]'(il_generic_type, [])).
 
 %-----------------------------------------------------------------------------%
 %
+% The class that performs conversion operations
+%
+
+:- func il_conversion_class_name = ilds__class_name.
+il_conversion_class_name = ["mercury", "runtime", "Convert"].
+
+%-----------------------------------------------------------------------------%
+%
+% The mapping to the exception type.
+%
+
+:- func il_exception_type = ilds__type.
+il_exception_type = ilds__type([], il_exception_simple_type).
+
+:- func il_exception_simple_type = simple_type.
+il_exception_simple_type = class(il_exception_class_name).
+
+:- func il_exception_class_name = ilds__class_name.
+il_exception_class_name = ["mercury", "runtime", "Exception"].
+
+%-----------------------------------------------------------------------------%
+%
 % The mapping to the environment type.
 %
 
@@ -2288,7 +2329,7 @@ il_envptr_type = ilds__type([], il_envptr_simple_type).
 il_envptr_simple_type = class(il_envptr_class_name).
 
 :- func il_envptr_class_name = ilds__class_name.
-il_envptr_class_name = ["mercury", "envptr"].
+il_envptr_class_name = ["mercury", "runtime", "Environment"].
 
 
 %-----------------------------------------------------------------------------%
@@ -2303,7 +2344,7 @@ il_commit_type = ilds__type([], il_commit_simple_type).
 il_commit_simple_type = class(il_commit_class_name).
 
 :- func il_commit_class_name = ilds__class_name.
-il_commit_class_name = ["mercury", "commit"].
+il_commit_class_name = ["mercury", "runtime", "Commit"].
 
 %-----------------------------------------------------------------------------
 
@@ -2433,7 +2474,7 @@ call_constructor(CtorMemberName) =
 throw_unimplemented(String) = 
 	node([
 		ldstr(String),
-		newobj(get_instance_methodref(["mercury", "mercury_exception"],
+		newobj(get_instance_methodref(il_exception_class_name,
 			ctor, void, [il_string_type])),
 		throw]
 	).
@@ -2466,6 +2507,20 @@ make_constructor_classdecl(MethodDecls) = method(
 :- func make_fieldref(ilds__type, ilds__class_name, ilds__id) = fieldref.
 make_fieldref(ILType, ClassName, Id) = 
 	fieldref(ILType, class_member_name(ClassName, id(Id))).
+
+
+
+:- func runtime_initialization_instrs = list(instr).
+runtime_initialization_instrs = [
+	call(get_static_methodref(runtime_init_module_name, 
+			runtime_init_method_name, void, []))
+	].
+
+:- func runtime_init_module_name = ilds__class_name.
+runtime_init_module_name = ["mercury", "private_builtin__c_code"].
+
+:- func runtime_init_method_name = ilds__member_name.
+runtime_init_method_name = id("init_runtime").
 
 %-----------------------------------------------------------------------------%
 %

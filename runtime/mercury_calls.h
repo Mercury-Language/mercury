@@ -14,11 +14,11 @@
 #include "mercury_debug.h"	/* we need to debug them */
 #include "mercury_prof.h"	/* we need to profile them */
 
-#define	noprof_localcall(label, succ_cont)			\
+#define	MR_noprof_localcall(label, succ_cont)			\
 		do {						\
-			debugcall(LABEL(label), (succ_cont));	\
-			MR_succip = (succ_cont);			\
-			GOTO_LABEL(label);			\
+			MR_debugcall(MR_LABEL(label), (succ_cont));\
+			MR_succip = (succ_cont);		\
+			MR_GOTO_LABEL(label);			\
 		} while (0)
 
 /*
@@ -40,87 +40,87 @@
 ** So it is simpler (and more efficient) to just comment it out.
 */
 #if 0
-  #define	noprof_call(proc, succ_cont)			\
+  #define	MR_noprof_call(proc, succ_cont)			\
 		({						\
 			__label__ fixup_gp;			\
-			debugcall((proc), (succ_cont));		\
+			MR_debugcall((proc), (succ_cont));	\
 			MR_succip = (&&fixup_gp);		\
-			GOTO(proc);				\
+			MR_GOTO(proc);				\
 		fixup_gp:					\
 			ASM_FIXUP_REGS				\
-			GOTO(succ_cont); 			\
+			MR_GOTO(succ_cont); 			\
 		})
-	/* same as above, but with GOTO_LABEL rather than GOTO */
-  #define	noprof_call_localret(proc, succ_cont)		\
+	/* same as above, but with MR_GOTO_LABEL rather than MR_GOTO */
+  #define	MR_noprof_call_localret(proc, succ_cont)	\
 		({						\
 			__label__ fixup_gp;			\
-			debugcall((proc), (succ_cont));		\
+			MR_debugcall((proc), (succ_cont));	\
 			MR_succip = (&&fixup_gp);		\
-			GOTO(proc);				\
+			MR_GOTO(proc);				\
 		fixup_gp:					\
 			ASM_FIXUP_REGS				\
-			GOTO_LABEL(succ_cont); 			\
+			MR_GOTO_LABEL(succ_cont); 		\
 		})
 #else
-  #define	noprof_call(proc, succ_cont)			\
+  #define	MR_noprof_call(proc, succ_cont)			\
 		do {						\
-			debugcall((proc), (succ_cont));		\
+			MR_debugcall((proc), (succ_cont));	\
 			MR_succip = (succ_cont);		\
-			GOTO(proc);				\
+			MR_GOTO(proc);				\
 		} while (0)
-  #define noprof_call_localret(proc, succ_cont) 		\
-		noprof_call((proc), LABEL(succ_cont))
+  #define 	MR_noprof_call_localret(proc, succ_cont) 	\
+		MR_noprof_call((proc), MR_LABEL(succ_cont))
 #endif
 
-#define	localcall(label, succ_cont, current_label)		\
+#define	MR_localcall(label, succ_cont, current_label)		\
 		do {						\
-			debugcall(LABEL(label), (succ_cont));	\
+			MR_debugcall(MR_LABEL(label), (succ_cont)); \
 			MR_succip = (succ_cont);		\
-			PROFILE(LABEL(label), (current_label));	\
-			set_prof_current_proc(LABEL(label));	\
-			GOTO_LABEL(label);			\
+			MR_PROFILE(MR_LABEL(label), (current_label)); \
+			MR_set_prof_current_proc(MR_LABEL(label)); \
+			MR_GOTO_LABEL(label);			\
 		} while (0)
 
-#define	call(proc, succ_cont, current_label)			\
+#define	MR_call(proc, succ_cont, current_label)			\
 		do {						\
-			PROFILE((proc), (current_label));	\
-			set_prof_current_proc(proc);		\
-			noprof_call((proc), (succ_cont));	\
+			MR_PROFILE((proc), (current_label));	\
+			MR_set_prof_current_proc(proc);		\
+			MR_noprof_call((proc), (succ_cont));	\
 		} while (0)
 
-#define	call_localret(proc, succ_cont, current_label)		\
+#define	MR_call_localret(proc, succ_cont, current_label)	\
 		do {						\
-			PROFILE((proc), (current_label));	\
-			set_prof_current_proc(proc);		\
-			noprof_call_localret(proc, succ_cont);	\
+			MR_PROFILE((proc), (current_label));	\
+			MR_set_prof_current_proc(proc);		\
+			MR_noprof_call_localret(proc, succ_cont);\
 		} while (0)
 
-#define	localtailcall(label, current_label)			\
+#define	MR_localtailcall(label, current_label)			\
 		do {						\
-			debugtailcall(LABEL(label));		\
-			PROFILE(LABEL(label), (current_label)); \
-			set_prof_current_proc(LABEL(label));	\
-			GOTO_LABEL(label);			\
+			MR_debugtailcall(MR_LABEL(label));	\
+			MR_PROFILE(MR_LABEL(label), (current_label)); \
+			MR_set_prof_current_proc(MR_LABEL(label)); \
+			MR_GOTO_LABEL(label);			\
 		} while (0)
 
-#define	tailcall(proc, current_label)				\
+#define	MR_tailcall(proc, current_label)			\
 		do {						\
-			debugtailcall(proc);			\
-			PROFILE((proc), (current_label));	\
-			set_prof_current_proc(proc);		\
-			GOTO(proc);				\
+			MR_debugtailcall(proc);			\
+			MR_PROFILE((proc), (current_label));	\
+			MR_set_prof_current_proc(proc);		\
+			MR_GOTO(proc);				\
 		} while (0)
 
-#define	noprof_tailcall(proc)					\
+#define	MR_noprof_tailcall(proc)				\
 		do {						\
-			debugtailcall(proc);			\
-			GOTO(proc);				\
+			MR_debugtailcall(proc);			\
+			MR_GOTO(proc);				\
 		} while (0)
 
-#define	proceed()						\
+#define	MR_proceed()						\
 		do {						\
-			debugproceed();				\
-			GOTO(MR_succip);			\
+			MR_debugproceed();			\
+			MR_GOTO(MR_succip);			\
 		} while (0)
 
 #endif /* not MERCURY_CALLS_H */

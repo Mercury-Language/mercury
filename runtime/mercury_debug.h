@@ -14,178 +14,168 @@
 
 /*---------------------------------------------------------------------------*/
 
-#ifdef DEBUG_ON
-	#define DEBUG(X) X
+#ifdef MR_DEBUG_ON
+	#define MR_DEBUG(X) X
 #else
-	#define DEBUG(X)
+	#define MR_DEBUG(X)
 #endif
 
 #if !defined(MR_DEBUG_GOTOS)
 
-#define	debuggoto(label)			((void)0)
-#define	debugsreg()				((void)0)
+#define	MR_debuggoto(label)			((void)0)
+#define	MR_debugsreg()				((void)0)
 
 #else
 
-#define	debuggoto(label) \
+#define	MR_debuggoto(label) \
 	(MR_assert(label), \
-	IF (MR_gotodebug, (save_transient_registers(), goto_msg(label))))
+	MR_IF (MR_gotodebug, \
+		(MR_save_transient_registers(), MR_goto_msg(label))))
 
-#define	debugsreg() \
-	IF (MR_sregdebug, (save_transient_registers(), reg_msg()))
+#define	MR_debugsreg() \
+	MR_IF (MR_sregdebug, \
+		(MR_save_transient_registers(), MR_reg_msg()))
 
 #endif
 
 #ifndef MR_LOWLEVEL_DEBUG
 
-#define	dump_push_msg(msg)			((void)0)
-#define	dump_pop_msg()				((void)0)
-
-#define	debugcr1(val0, hp)			((void)0)
-#define	debugcr2(val0, val1, hp)		((void)0)
-#define	debugincrhp(val, hp)			((void)0)
-#define	debugincrsp(val, sp)			((void)0)
-#define	debugdecrsp(val, sp)			((void)0)
-#define	debugpush(val, sp)			((void)0)
-#define	debugpop(val, sp)			((void)0)
-#define	debugregs(msg)				((void)0)
-#define	debugframe(msg)				((void)0)
-#define	debugmkframe(predname)			((void)0)
-#define	debugsucceed()				((void)0)
-#define	debugsucceeddiscard()			((void)0)
-#define	debugfail()				((void)0)
-#define	debugredo()				((void)0)
-#define	debugcall(proc, succ_cont)		((void)0)
-#define	debugtailcall(proc)			((void)0)
-#define	debugproceed()				((void)0)
-#define	debugmsg0(msg)				((void)0)
-#define	debugmsg1(msg, arg1)			((void)0)
-#define	debugmsg2(msg, arg1, arg2)		((void)0)
-#define	debugmsg3(msg, arg1, arg2, arg3)	((void)0)
+#define	MR_debugcr1(val0, hp)			((void)0)
+#define	MR_debugcr2(val0, val1, hp)		((void)0)
+#define	MR_debugincrhp(val, hp)			((void)0)
+#define	MR_debugincrsp(val, sp)			((void)0)
+#define	MR_debugdecrsp(val, sp)			((void)0)
+#define	MR_debugregs(msg)			((void)0)
+#define	MR_debugframe(msg)			((void)0)
+#define	MR_debugmkframe(predname)		((void)0)
+#define	MR_debugsucceed()			((void)0)
+#define	MR_debugsucceeddiscard()		((void)0)
+#define	MR_debugfail()				((void)0)
+#define	MR_debugredo()				((void)0)
+#define	MR_debugcall(proc, succ_cont)		((void)0)
+#define	MR_debugtailcall(proc)			((void)0)
+#define	MR_debugproceed()			((void)0)
+#define	MR_debugmsg0(msg)			((void)0)
+#define	MR_debugmsg1(msg, arg1)			((void)0)
+#define	MR_debugmsg2(msg, arg1, arg2)		((void)0)
+#define	MR_debugmsg3(msg, arg1, arg2, arg3)	((void)0)
 
 #else
 
-#define	dump_push_msg(msg)	\
-	(((const char **)dumpstack_zone->min)[dumpindex++] = msg)
-#define	dump_pop_msg()				(--dumpindex)
+#define	MR_debugcr1(val0, hp) \
+	MR_IF (MR_heapdebug, \
+		(MR_save_transient_registers(), MR_cr1_msg(val0, hp)))
 
-#define	debugcr1(val0, hp) \
-	IF (MR_heapdebug, (save_transient_registers(), cr1_msg(val0, hp)))
+#define	MR_debugcr2(val0, val1, hp) \
+	MR_IF (MR_heapdebug, \
+		(MR_save_transient_registers(), MR_cr2_msg(val0, val1, hp)))
 
-#define	debugcr2(val0, val1, hp) \
-	IF (MR_heapdebug, (save_transient_registers(), cr2_msg(val0, val1, hp)))
+#define	MR_debugincrhp(val, hp) \
+	MR_IF (MR_heapdebug, \
+		(MR_save_transient_registers(), MR_incr_hp_debug_msg((val), (hp))))
 
-#define	debugincrhp(val, hp) \
-	IF (MR_heapdebug, \
-		(save_transient_registers(), incr_hp_debug_msg((val), (hp))))
+#define	MR_debugincrsp(val, sp) \
+	MR_IF (MR_detstackdebug, \
+		(MR_save_transient_registers(), MR_incr_sp_msg((val), (sp))))
 
-#define	debugincrsp(val, sp) \
-	IF (MR_detstackdebug, \
-		(save_transient_registers(), incr_sp_msg((val), (sp))))
+#define	MR_debugdecrsp(val, sp) \
+	MR_IF (MR_detstackdebug, \
+		(MR_save_transient_registers(), MR_decr_sp_msg((val), (sp))))
 
-#define	debugdecrsp(val, sp) \
-	IF (MR_detstackdebug, \
-		(save_transient_registers(), decr_sp_msg((val), (sp))))
+#define	MR_debugregs(msg) \
+	MR_IF (MR_progdebug, (MR_save_transient_registers(), MR_printregs(msg)))
 
-#define	debugpush(val, sp) \
-	IF (MR_detstackdebug, \
-		(save_transient_registers(), push_msg((val), (sp))))
+#define	MR_debugmkframe(predname) \
+	MR_IF (MR_nondstackdebug, \
+		(MR_save_transient_registers(), MR_mkframe_msg(predname)))
 
-#define	debugpop(val, sp) \
-	IF (MR_detstackdebug, (save_transient_registers(), pop_msg(val, sp)))
+#define	MR_debugframe(msg)	 \
+	MR_IF (MR_progdebug, \
+		(MR_save_transient_registers(), MR_printframe(msg)))
 
-#define	debugregs(msg) \
-	IF (MR_progdebug, (save_transient_registers(), printregs(msg)))
+#define	MR_debugsucceed() \
+	MR_IF (MR_nondstackdebug, \
+		(MR_save_transient_registers(), MR_succeed_msg()))
 
-#define	debugmkframe(predname) \
-	IF (MR_nondstackdebug, \
-		(save_transient_registers(), mkframe_msg(predname)))
+#define	MR_debugsucceeddiscard() \
+	MR_IF (MR_nondstackdebug, \
+		(MR_save_transient_registers(), MR_succeeddiscard_msg()))
 
-#define	debugframe(msg)	 \
-	IF (MR_progdebug, (save_transient_registers(), printframe(msg)))
+#define	MR_debugfail() \
+	IF (MR_nondstackdebug, (MR_save_transient_registers(), MR_fail_msg()))
 
-#define	debugsucceed() \
-	IF (MR_nondstackdebug, (save_transient_registers(), succeed_msg()))
+#define	MR_debugredo() \
+	MR_IF (MR_nondstackdebug, \
+		(MR_save_transient_registers(), MR_redo_msg()))
 
-#define	debugsucceeddiscard() \
-	IF (MR_nondstackdebug, \
-		(save_transient_registers(), succeeddiscard_msg()))
+#define	MR_debugcall(proc, succ_cont) \
+	MR_IF (MR_calldebug, \
+		(MR_save_transient_registers(), MR_call_msg(proc, succ_cont)))
 
-#define	debugfail() \
-	IF (MR_nondstackdebug, (save_transient_registers(), fail_msg()))
+#define	MR_debugtailcall(proc) \
+	MR_IF (MR_calldebug, \
+		(MR_save_transient_registers(), MR_tailcall_msg(proc)))
 
-#define	debugredo() \
-	IF (MR_nondstackdebug, (save_transient_registers(), redo_msg()))
+#define	MR_debugproceed() \
+	MR_IF (MR_calldebug, (MR_save_transient_registers(), MR_proceed_msg()))
 
-#define	debugcall(proc, succ_cont) \
-	IF (MR_calldebug, \
-		(save_transient_registers(), call_msg(proc, succ_cont)))
+#define	MR_debugmsg0(msg) \
+	MR_IF (MR_progdebug, (printf(msg)))
 
-#define	debugtailcall(proc) \
-	IF (MR_calldebug, (save_transient_registers(), tailcall_msg(proc)))
+#define	MR_debugmsg1(msg, arg1) \
+	MR_IF (MR_progdebug, (printf(msg, arg1)))
 
-#define	debugproceed() \
-	IF (MR_calldebug, (save_transient_registers(), proceed_msg()))
+#define	MR_debugmsg2(msg, arg1, arg2) \
+	MR_IF (MR_progdebug, (printf(msg, arg1, arg2)))
 
-#define	debugmsg0(msg) \
-	IF (MR_progdebug, (printf(msg)))
-
-#define	debugmsg1(msg, arg1) \
-	IF (MR_progdebug, (printf(msg, arg1)))
-
-#define	debugmsg2(msg, arg1, arg2) \
-	IF (MR_progdebug, (printf(msg, arg1, arg2)))
-
-#define	debugmsg3(msg, arg1, arg2, arg3) \
-	IF (MR_progdebug, (printf(msg, arg1, arg2, arg3)))
+#define	MR_debugmsg3(msg, arg1, arg2, arg3) \
+	MR_IF (MR_progdebug, (printf(msg, arg1, arg2, arg3)))
 
 #endif /* MR_LOWLEVEL_DEBUG */
 
 /*---------------------------------------------------------------------------*/
 
 #ifdef MR_LOWLEVEL_DEBUG
-extern	void	mkframe_msg(const char *);
-extern	void	succeed_msg(void);
-extern	void	succeeddiscard_msg(void);
-extern	void	fail_msg(void);
-extern	void	redo_msg(void);
-extern	void	call_msg(/* const */ MR_Code *proc, /* const */ MR_Code *succcont);
-extern	void	tailcall_msg(/* const */ MR_Code *proc);
-extern	void	proceed_msg(void);
-extern	void	cr1_msg(MR_Word val0, const MR_Word *addr);
-extern	void	cr2_msg(MR_Word val0, MR_Word val1, const MR_Word *addr);
-extern	void	incr_hp_debug_msg(MR_Word val, const MR_Word *addr);
-extern	void	incr_sp_msg(MR_Word val, const MR_Word *addr);
-extern	void	decr_sp_msg(MR_Word val, const MR_Word *addr);
-extern	void	push_msg(MR_Word val, const MR_Word *addr);
-extern	void	pop_msg(MR_Word val, const MR_Word *addr);
+extern	void	MR_mkframe_msg(const char *);
+extern	void	MR_succeed_msg(void);
+extern	void	MR_succeeddiscard_msg(void);
+extern	void	MR_fail_msg(void);
+extern	void	MR_redo_msg(void);
+extern	void	MR_call_msg(/* const */ MR_Code *proc, /* const */ MR_Code *succcont);
+extern	void	MR_tailcall_msg(/* const */ MR_Code *proc);
+extern	void	MR_proceed_msg(void);
+extern	void	MR_cr1_msg(MR_Word val0, const MR_Word *addr);
+extern	void	MR_cr2_msg(MR_Word val0, MR_Word val1, const MR_Word *addr);
+extern	void	MR_incr_hp_debug_msg(MR_Word val, const MR_Word *addr);
+extern	void	MR_incr_sp_msg(MR_Word val, const MR_Word *addr);
+extern	void	MR_decr_sp_msg(MR_Word val, const MR_Word *addr);
 #endif
 
 #ifdef MR_DEBUG_GOTOS
-extern	void	goto_msg(/* const */ MR_Code *addr);
-extern	void	reg_msg(void);
+extern	void	MR_goto_msg(/* const */ MR_Code *addr);
+extern	void	MR_reg_msg(void);
 #endif
 
 #ifdef MR_LOWLEVEL_DEBUG
-extern	void	printint(MR_Word n);
-extern	void	printstring(const char *s);
-extern	void	printheap(const MR_Word *h);
-extern	void	dumpframe(/* const */ MR_Word *);
-extern	void	dumpnondstack(void);
-extern	void	printlist(MR_Word p);
-extern	void	printframe(const char *);
-extern	void	printregs(const char *msg);
+extern	void	MR_printint(MR_Word n);
+extern	void	MR_printstring(const char *s);
+extern	void	MR_printheap(const MR_Word *h);
+extern	void	MR_dumpframe(/* const */ MR_Word *);
+extern	void	MR_dumpnondstack(void);
+extern	void	MR_printlist(MR_Word p);
+extern	void	MR_printframe(const char *);
+extern	void	MR_printregs(const char *msg);
 #endif
 
-extern	void	printdetstack(const MR_Word *s);
+extern	void	MR_printdetstack(const MR_Word *s);
 extern	void	MR_printdetstackptr(const MR_Word *s);
 extern	void	MR_print_detstackptr(FILE *fp, const MR_Word *s);
-extern	void	printnondstack(const MR_Word *s);
+extern	void	MR_printnondstack(const MR_Word *s);
 extern	void	MR_printnondstackptr(const MR_Word *s);
 extern	void	MR_print_nondstackptr(FILE *fp, const MR_Word *s);
 extern	void	MR_print_heapptr(FILE *fp, const MR_Word *s);
 extern	void	MR_print_label(FILE *fp, /* const */ MR_Code *w);
-extern	void	printlabel(/* const */ MR_Code *w);
+extern	void	MR_printlabel(FILE *fp, /* const */ MR_Code *w);
 
 /*---------------------------------------------------------------------------*/
 

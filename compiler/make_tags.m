@@ -94,7 +94,7 @@ assign_constructor_tags(Ctors, Globals, CtorTags, IsEnum) :-
 			globals__lookup_bool_option(Globals,
 				unboxed_no_tag_types, yes),
 			type_constructors_are_no_tag_type(Ctors, SingleFunc,
-				SingleArg),
+				SingleArg, _),
 			ReserveTag = no
 		->
 			make_cons_id_from_qualified_sym_name(SingleFunc,

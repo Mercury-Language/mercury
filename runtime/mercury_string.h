@@ -9,10 +9,10 @@
 #ifndef MERCURY_STRING_H
 #define MERCURY_STRING_H
 
+#include "mercury_heap.h"	/* for MR_incr_hp_atomic */
+
 #include <string.h>	/* for strcmp() etc. */
 #include <stdarg.h>
-
-#include "mercury_heap.h"	/* for incr_hp_atomic */
 
 /*
 ** Mercury characters are given type `MR_Char', which is a typedef for `char'.
@@ -34,13 +34,13 @@
 */
 
 /*
-** string_const("...", len):
+** MR_string_const("...", len):
 **	Given a C string literal and its length, returns a Mercury string.
 */
 #define MR_string_const(string, len) ((MR_String) string)
 
 /*
-** bool string_equal(MR_ConstString s1, MR_ConstString s2):
+** bool MR_string_equal(MR_ConstString s1, MR_ConstString s2):
 **	Return true iff the two Mercury strings s1 and s2 are equal.
 */
 #define MR_string_equal(s1,s2) (strcmp((char*)(s1),(char*)(s2))==0)
@@ -53,10 +53,10 @@
 **	then the string pointed to by `string' should have been either
 **	statically allocated or allocated on the Mercury heap.
 **	
-** BEWARE: this may modify `hp', so it must only be called from
-** places where `hp' is valid.  If calling it from inside a C function,
+** BEWARE: this may modify `MR_hp', so it must only be called from
+** places where `MR_hp' is valid.  If calling it from inside a C function,
 ** rather than inside Mercury code, you may need to call
-** save/restore_transient_hp().
+** MR_{save/restore}_transient_hp().
 **
 ** Algorithm: if the string is aligned, just set ptr equal to it.
 ** Otherwise, allocate space on the heap and copy the C string to
@@ -76,17 +76,17 @@
 **	is guaranteed to be copied. This is useful for copying C strings
 **	onto the Mercury heap.
 **
-** BEWARE: this may modify `hp', so it must only be called from
-** places where `hp' is valid.  If calling it from inside a C function,
+** BEWARE: this may modify `MR_hp', so it must only be called from
+** places where `MR_hp' is valid.  If calling it from inside a C function,
 ** rather than inside Mercury code, you may need to call
-** save/restore_transient_hp().
+** MR_{save/restore}_transient_hp().
 */
 #define MR_make_aligned_string_copy(ptr, string) 			\
 	do {								\
 		MR_Word make_aligned_string_tmp;			\
 		char * make_aligned_string_ptr;				\
 									\
-	  	incr_hp_atomic(make_aligned_string_tmp,			\
+	  	MR_incr_hp_atomic(make_aligned_string_tmp,		\
 	    	    (strlen(string) + sizeof(MR_Word)) / sizeof(MR_Word)); \
 	    	make_aligned_string_ptr =				\
 		    (char *) make_aligned_string_tmp;			\
@@ -101,17 +101,17 @@
 ** record for memory profiling purposes the location, proclabel, of the
 ** allocation if profiling is enabled.
 **
-** BEWARE: this may modify `hp', so it must only be called from
-** places where `hp' is valid.  If calling it from inside a C function,
+** BEWARE: this may modify `MR_hp', so it must only be called from
+** places where `MR_hp' is valid.  If calling it from inside a C function,
 ** rather than inside Mercury code, you may need to call
-** save/restore_transient_hp().
+** MR_{save/restore}_transient_hp().
 */
 #define MR_allocate_aligned_string_msg(ptr, len, proclabel)		\
 	do {								\
 		MR_Word make_aligned_string_tmp;			\
 		char * make_aligned_string_ptr;				\
 									\
-	  	incr_hp_atomic_msg(make_aligned_string_tmp,		\
+	  	MR_incr_hp_atomic_msg(make_aligned_string_tmp,		\
 	    	    ((len) + sizeof(MR_Word)) / sizeof(MR_Word),	\
 		    proclabel, "string:string/0");			\
 	    	make_aligned_string_ptr =				\
@@ -120,7 +120,7 @@
 	} while(0)
 
 /*
-** do_hash_string(int & hash, MR_Word string):
+** MR_do_hash_string(int & hash, MR_Word string):
 **	Given a Mercury string `string', set `hash' to the hash value
 **	for that string.  (`hash' must be an lvalue.)
 **
@@ -158,7 +158,7 @@ int	MR_hash_string(MR_Word);
 #endif
 
 /* 
-** If we're not using gcc, the actual definition of hash_string is in
+** If we're not using gcc, the actual definition of MR_hash_string is in
 ** runtime/mercury_misc.c;
 ** it uses the macro MR_HASH_STRING_FUNC_BODY below.
 */
@@ -174,9 +174,9 @@ int	MR_hash_string(MR_Word);
 ** allocation as coming from proclabel.  The MR_String returned has been
 ** allocated on the mercury heap using MR_allocate_aligned_string_msg.
 **
-** BEWARE: this may modify the saved copy of `hp', so it must only be
-** called from places where the saved copy of `hp' is valid.
-** You will generally need to call save/restore_transient_hp()
+** BEWARE: this may modify the saved copy of `MR_hp', so it must only be
+** called from places where the saved copy of `MR_hp' is valid.
+** You will generally need to call MR_{save/restore}_transient_hp()
 ** before/after calling this function.
 */
 MR_String MR_make_string(MR_Code *proclabel, const char *fmt, ...);

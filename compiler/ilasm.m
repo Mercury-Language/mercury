@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2000 The University of Melbourne.
+% Copyright (C) 1999-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -285,18 +285,33 @@ ilasm__output_decl(data(TLS, MaybeId, Body)) -->
 	output_data_body(Body).
 
 ilasm__output_decl(comment_term(CommentTerm)) --> 
-	io__write_string("// "),
-	{ varset__init(VarSet) },
-	term_io__write_term(VarSet, CommentTerm),
-	io__write_string("\n").
+	globals__io_lookup_bool_option(auto_comments, PrintComments),
+	( { PrintComments = yes } ->
+		io__write_string("// "),
+		{ varset__init(VarSet) },
+		term_io__write_term(VarSet, CommentTerm),
+		io__write_string("\n")
+	;
+		[]
+	).
 
 ilasm__output_decl(comment_thing(Thing)) --> 
-	{ Doc = label("// ", to_doc(Thing)) },
-	write(70, Doc),
-	io__write_string("\n").
+	globals__io_lookup_bool_option(auto_comments, PrintComments),
+	( { PrintComments = yes } ->
+		{ Doc = label("// ", to_doc(Thing)) },
+		write(70, Doc),
+		io__nl
+	;
+		[]
+	).
 
 ilasm__output_decl(comment(CommentStr)) --> 
-	output_comment_string(CommentStr).
+	globals__io_lookup_bool_option(auto_comments, PrintComments),
+	( { PrintComments = yes } ->
+		output_comment_string(CommentStr)
+	;
+		[]
+	).
 
 ilasm__output_decl(extern_assembly(AsmName)) --> 
 	io__write_string(".assembly extern "),
@@ -345,18 +360,33 @@ ilasm__output_classdecl(
 	output_field_initializer(Initializer).
 
 ilasm__output_classdecl(comment(CommentStr)) --> 
-	output_comment_string(CommentStr).
+	globals__io_lookup_bool_option(auto_comments, PrintComments),
+	( { PrintComments = yes } ->
+		output_comment_string(CommentStr)
+	;
+		[]
+	).
 
 ilasm__output_classdecl(comment_term(CommentTerm)) --> 
-	io__write_string("// "),
-	{ varset__init(VarSet) },
-	term_io__write_term(VarSet, CommentTerm),
-	io__write_string("\n").
+	globals__io_lookup_bool_option(auto_comments, PrintComments),
+	( { PrintComments = yes } ->
+		io__write_string("// "),
+		{ varset__init(VarSet) },
+		term_io__write_term(VarSet, CommentTerm),
+		io__nl
+	;
+		[]
+	).
 
 ilasm__output_classdecl(comment_thing(Thing)) --> 
-	{ Doc = label("// ", to_doc(Thing)) },
-	write(70, Doc),
-	io__write_string("\n").
+	globals__io_lookup_bool_option(auto_comments, PrintComments),
+	( { PrintComments = yes } ->
+		{ Doc = label("// ", to_doc(Thing)) },
+		write(70, Doc),
+		io__nl
+	;
+		[]
+	).
 
 :- pred ilasm__output_methodhead(methodhead::in, io__state::di,
 	io__state::uo) is det.
@@ -565,13 +595,14 @@ output_modifier(readonly) --> io__write_string("readonly").
 	list(instr)::in, io__state::di, io__state::uo) is det.
 
 output_instructions(Instructions) --> 
+	globals__io_lookup_bool_option(auto_comments, PrintComments),
 	globals__io_lookup_bool_option(debug_il_asm, DebugIlAsm),
 	( 
 		{ DebugIlAsm = yes },
 		list__foldl(output_debug_instruction, Instructions)
 	;
 		{ DebugIlAsm = no },
-		list__foldl(output_instruction, Instructions)
+		list__foldl(output_instruction(PrintComments), Instructions)
 	).
 
 
@@ -645,20 +676,23 @@ output_trace(S) -->
 	io__write_string("\\n""\n"),
 	io__write_string("\t\tcall void System.Console::Write(class System.String)\n").
 
-:- pred output_instruction(instr::in, io__state::di,
+:- pred output_instruction(bool::in, instr::in, io__state::di,
 	io__state::uo) is det.
 
-output_instruction(Instr) --> 
-	io__write_string("\t"),
-	output_instr(Instr),
-	io__write_string("\n").
+output_instruction(PrintComments, Instr) --> 
+	( { Instr = comment(_), PrintComments = no } ->
+		[]
+	;
+		io__write_string("\t"),
+		output_instr(Instr),
+		io__write_string("\n")
+	).
 
 :- pred output_instr(instr::in, io__state::di,
 	io__state::uo) is det.
 
 output_instr(comment(Comment)) --> 
 	output_comment_string(Comment).
-
 
 output_instr(label(Label)) --> 
 	output_label(Label),
@@ -918,7 +952,7 @@ output_instr(clt(Signed)) -->
 	output_signed(Signed).
 
 output_instr(conv(SimpleType)) --> 
-	io__write_string("conv"),
+	io__write_string("conv."),
 	output_simple_type_opcode(SimpleType).
 
 output_instr(div(Signed)) --> 
@@ -998,12 +1032,13 @@ output_instr(sub(OverFlow, Signed)) -->
 	output_overflow(OverFlow),
 	output_signed(Signed).
 	
-	% XXX we really should implement this since we will use it
-	% eventually.
-output_instr(switch(_)) --> { error("output not implemented") }.
+output_instr(switch(Targets)) --> 
+	io__write_string("switch ("),
+	io__write_list(Targets, ", ", output_target),
+	io__write_string(")").
 
-	% XXX should be implemented
-output_instr(unaligned(_)) --> { error("output not implemented") }.
+output_instr(unaligned(_)) --> 
+	io__write_string("unaligned.").
 
 output_instr(box(Type)) --> 
 	io__write_string("box\t"),

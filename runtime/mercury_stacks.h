@@ -26,33 +26,31 @@
 
 #define	MR_incr_sp_push_msg(n, msg)				\
 			(					\
-				debugincrsp(n, MR_sp),		\
-				dump_push_msg(msg),		\
+				MR_debugincrsp(n, MR_sp),	\
 				MR_sp = MR_sp + (n),		\
-				detstack_overflow_check(),	\
+				MR_detstack_overflow_check(),	\
 				(void)0				\
 			)
 
 #define	MR_decr_sp_pop_msg(n)					\
 			(					\
-				debugdecrsp(n, MR_sp),		\
-				dump_pop_msg(),			\
+				MR_debugdecrsp(n, MR_sp),	\
 				MR_sp = MR_sp - (n),		\
-				detstack_underflow_check(),	\
+				MR_detstack_underflow_check(),	\
 				(void)0				\
 			)
 
 #define	MR_incr_sp(n)	(					\
-				debugincrsp(n, MR_sp),		\
+				MR_debugincrsp(n, MR_sp),	\
 				MR_sp = MR_sp + (n),		\
-				detstack_overflow_check(),	\
+				MR_detstack_overflow_check(),	\
 				(void)0				\
 			)
 
 #define	MR_decr_sp(n)	(					\
-				debugdecrsp(n, MR_sp),		\
+				MR_debugdecrsp(n, MR_sp),	\
 				MR_sp = MR_sp - (n),		\
-				detstack_underflow_check(),	\
+				MR_detstack_underflow_check(),	\
 				(void)0				\
 			)
 
@@ -89,12 +87,18 @@
 #define	MR_based_framevar_addr(fr, n) \
 				(&(((MR_Word *) (fr))[MR_SAVEVAL + 1 - (n)]))
 
-#define	MR_prevfr_slot(fr)	LVALUE_CAST(MR_Word *, ((MR_Word *) (fr))[MR_PREVFR])
-#define	MR_redoip_slot(fr)	LVALUE_CAST(MR_Code *, ((MR_Word *) (fr))[MR_REDOIP])
-#define	MR_redofr_slot(fr)	LVALUE_CAST(MR_Word *, ((MR_Word *) (fr))[MR_REDOFR])
-#define	MR_succip_slot(fr)	LVALUE_CAST(MR_Code *, ((MR_Word *) (fr))[MR_SUCCIP])
-#define	MR_succfr_slot(fr)	LVALUE_CAST(MR_Word *, ((MR_Word *) (fr))[MR_SUCCFR])
-#define	MR_detfr_slot(fr)	LVALUE_CAST(MR_Word *, ((MR_Word *) (fr))[MR_DETFR])
+#define	MR_prevfr_slot(fr)	MR_LVALUE_CAST(MR_Word *,		\
+					((MR_Word *) (fr))[MR_PREVFR])
+#define	MR_redoip_slot(fr)	MR_LVALUE_CAST(MR_Code *,		\
+					((MR_Word *) (fr))[MR_REDOIP])
+#define	MR_redofr_slot(fr)	MR_LVALUE_CAST(MR_Word *,		\
+					((MR_Word *) (fr))[MR_REDOFR])
+#define	MR_succip_slot(fr)	MR_LVALUE_CAST(MR_Code *,		\
+					((MR_Word *) (fr))[MR_SUCCIP])
+#define	MR_succfr_slot(fr)	MR_LVALUE_CAST(MR_Word *,		\
+					((MR_Word *) (fr))[MR_SUCCFR])
+#define	MR_detfr_slot(fr)	MR_LVALUE_CAST(MR_Word *,		\
+					((MR_Word *) (fr))[MR_DETFR])
 #define	MR_based_framevar(fr, n) (((MR_Word *) (fr))[MR_SAVEVAL + 1 - (n)])
 
 #define	MR_framevar(n)		MR_based_framevar(MR_curfr, n)
@@ -105,8 +109,8 @@
 
 #define	MR_mkframe(predname, numslots, redoip)				\
 			do {						\
-				reg	MR_Word	*prevfr;		\
-				reg	MR_Word	*succfr;		\
+				MR_Word	*prevfr;			\
+				MR_Word	*succfr;			\
 									\
 				prevfr = MR_maxfr;			\
 				succfr = MR_curfr;			\
@@ -117,8 +121,8 @@
 				MR_succip_slot(MR_curfr) = MR_succip;	\
 				MR_succfr_slot(MR_curfr) = succfr;	\
 				MR_redofr_slot(MR_curfr) = MR_curfr;	\
-				debugmkframe(predname);			\
-				nondstack_overflow_check();		\
+				MR_debugmkframe(predname);		\
+				MR_nondstack_overflow_check();		\
 			} while (0)
 
 /* convert a size in bytes to a size in words, rounding up if necessary */
@@ -128,8 +132,8 @@
 /* with the given tag at the bottom of the nondet stack frame  */
 #define	MR_mkpragmaframe(predname, numslots, structname, redoip)	\
 	do {								\
-		reg	MR_Word	*prevfr;				\
-		reg	MR_Word	*succfr;				\
+		MR_Word	*prevfr;					\
+		MR_Word	*succfr;					\
 									\
 		prevfr = MR_maxfr;					\
 		succfr = MR_curfr;					\
@@ -141,73 +145,69 @@
 		MR_succip_slot(MR_curfr) = MR_succip;			\
 		MR_succfr_slot(MR_curfr) = succfr;			\
 		MR_redofr_slot(MR_curfr) = MR_curfr;			\
-		debugmkframe(predname);					\
-		nondstack_overflow_check();				\
+		MR_debugmkframe(predname);				\
+		MR_nondstack_overflow_check();				\
 	} while (0)
 
 #define	MR_mktempframe(redoip)						\
 			do {						\
-				reg	MR_Word	*prevfr;		\
-				reg	MR_Word	*succfr;		\
+				MR_Word	*prevfr;			\
 									\
 				prevfr = MR_maxfr;			\
-				succfr = MR_curfr;			\
 				MR_maxfr += MR_NONDET_TEMP_SIZE;	\
 				MR_prevfr_slot(MR_maxfr) = prevfr;	\
 				MR_redoip_slot(MR_maxfr) = redoip;	\
 				MR_redofr_slot(MR_maxfr) = MR_curfr;	\
-				nondstack_overflow_check();		\
+				MR_nondstack_overflow_check();		\
 			} while (0)
 
 #define	MR_mkdettempframe(redoip)					\
 			do {						\
-				reg	MR_Word	*prevfr;		\
-				reg	MR_Word	*succfr;		\
+				MR_Word	*prevfr;			\
 									\
 				prevfr = MR_maxfr;			\
-				succfr = MR_curfr;			\
 				MR_maxfr += MR_DET_TEMP_SIZE;		\
 				MR_prevfr_slot(MR_maxfr) = prevfr;	\
 				MR_redoip_slot(MR_maxfr) = redoip;	\
 				MR_redofr_slot(MR_maxfr) = MR_curfr;	\
 				MR_detfr_slot(MR_maxfr)  = MR_sp;	\
-				nondstack_overflow_check();		\
+				MR_nondstack_overflow_check();		\
 			} while (0)
 
 #define	MR_succeed()	do {						\
-				reg	MR_Word	*childfr;		\
+				MR_Word	*childfr;			\
 									\
-				debugsucceed();				\
+				MR_debugsucceed();			\
 				childfr = MR_curfr;			\
 				MR_curfr = MR_succfr_slot(childfr);	\
-				GOTO(MR_succip_slot(childfr));		\
+				MR_GOTO(MR_succip_slot(childfr));	\
 			} while (0)
 
 #define	MR_succeed_discard()						\
 			do {						\
-				reg	MR_Word	*childfr;		\
+				MR_Word	*childfr;			\
 									\
-				debugsucceeddiscard();			\
+				MR_debugsucceeddiscard();		\
 				childfr = MR_curfr;			\
 				MR_maxfr = MR_prevfr_slot(childfr);	\
 				MR_curfr = MR_succfr_slot(childfr);	\
-				GOTO(MR_succip_slot(childfr));		\
+				MR_GOTO(MR_succip_slot(childfr));	\
 			} while (0)
 
 
 #define	MR_fail()	do {						\
-				debugfail();				\
+				MR_debugfail();				\
 				MR_maxfr = MR_prevfr_slot(MR_maxfr);	\
-				nondstack_underflow_check();		\
+				MR_nondstack_underflow_check();		\
 				MR_curfr = MR_redofr_slot(MR_maxfr);	\
-				GOTO(MR_redoip_slot(MR_maxfr));		\
+				MR_GOTO(MR_redoip_slot(MR_maxfr));	\
 			} while (0)
 
 
 #define	MR_redo()	do {						\
-				debugredo();				\
+				MR_debugredo();				\
 				MR_curfr = MR_redofr_slot(MR_maxfr);	\
-				GOTO(MR_redoip_slot(MR_maxfr));		\
+				MR_GOTO(MR_redoip_slot(MR_maxfr));	\
 			} while (0)
 
 /*---------------------------------------------------------------------------*/
@@ -253,8 +253,8 @@ enum MR_HandlerCodeModel {
 /*
 ** Define a struct for the framevars that we use in an exception handler
 ** nondet stack frame.  This struct gets allocated on the nondet stack
-** using mkpragmaframe(), with a special redoip of
-** `exception_handler_do_fail'.
+** using MR_mkpragmaframe(), with a special redoip of
+** `MR_exception_handler_do_fail'.
 */
 typedef struct MR_Exception_Handler_Frame_struct {
 	/*
@@ -291,7 +291,7 @@ typedef struct MR_Exception_Handler_Frame_struct {
 	MR_IF_NOT_CONSERVATIVE_GC(
 		MR_Word *heap_ptr;
 		MR_Word *solns_heap_ptr;
-		MemoryZone *heap_zone;
+		MR_MemoryZone *heap_zone;
 	)
 } MR_Exception_Handler_Frame;
 
@@ -303,14 +303,14 @@ typedef struct MR_Exception_Handler_Frame_struct {
 	do {								      \
 		/*							      \
 		** Create a handler on the stack with the special redoip      \
-		** of `exception_handler_do_fail' (we'll look for this        \
+		** of `MR_exception_handler_do_fail' (we'll look for this     \
 		** redoip when unwinding the nondet stack in		      \
 		** builtin_throw/1), and save the stuff we will		      \
 		** need if an exception is thrown.			      \
 		*/							      \
-		MR_mkpragmaframe((name), 0,	      		      	      \
+		MR_mkpragmaframe((name), 0,				      \
 			MR_Exception_Handler_Frame_struct,		      \
-			ENTRY(exception_handler_do_fail));		      \
+			MR_ENTRY(MR_exception_handler_do_fail));	      \
 		/* record the handler's code model */			      \
 		MR_EXCEPTION_FRAMEVARS->code_model = (handler_code_model);    \
 		/* save the handler's closure */			      \
@@ -321,7 +321,8 @@ typedef struct MR_Exception_Handler_Frame_struct {
 			/* save the heap and solutions heap pointers */	      \
 			MR_EXCEPTION_FRAMEVARS->heap_ptr = MR_hp;	      \
 			MR_EXCEPTION_FRAMEVARS->solns_heap_ptr = MR_sol_hp;   \
-			MR_EXCEPTION_FRAMEVARS->heap_zone = MR_heap_zone;     \
+			MR_EXCEPTION_FRAMEVARS->heap_zone = 		      \
+				MR_ENGINE(heap_zone);			      \
 		)							      \
 		MR_IF_USE_TRAIL(					      \
 			/* save the trail state */			      \
@@ -376,7 +377,7 @@ struct MR_CutGeneratorListNode {
 
 typedef struct MR_CutStackFrameStruct {
 	MR_Word			*frame;
-	MR_Integer			gen_next;
+	MR_Integer		gen_next;
 	MR_CutGeneratorList	generators;
 } MR_CutStackFrame;
 

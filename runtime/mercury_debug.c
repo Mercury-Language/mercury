@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1996-2000 The University of Melbourne.
+** Copyright (C) 1996-2001 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -16,7 +16,7 @@
 
 /*--------------------------------------------------------------------*/
 
-static void	print_ordinary_regs(void);
+static void	MR_print_ordinary_regs(void);
 static void	MR_printdetslot_as_label(const MR_Integer offset);
 
 /* debugging messages */
@@ -24,151 +24,138 @@ static void	MR_printdetslot_as_label(const MR_Integer offset);
 #ifdef MR_LOWLEVEL_DEBUG
 
 void 
-mkframe_msg(const char *predname)
+MR_mkframe_msg(const char *predname)
 {
-	restore_transient_registers();
+	MR_restore_transient_registers();
 
 	printf("\nnew choice point for procedure %s\n", predname);
-	printf("new  fr: "); printnondstack(MR_curfr);
-	printf("prev fr: "); printnondstack(MR_prevfr_slot(MR_curfr));
-	printf("succ fr: "); printnondstack(MR_succfr_slot(MR_curfr));
-	printf("succ ip: "); printlabel(MR_succip_slot(MR_curfr));
-	printf("redo ip: "); printlabel(MR_redoip_slot(MR_curfr));
+	printf("new  fr: "); MR_printnondstack(MR_curfr);
+	printf("prev fr: "); MR_printnondstack(MR_prevfr_slot(MR_curfr));
+	printf("succ fr: "); MR_printnondstack(MR_succfr_slot(MR_curfr));
+	printf("succ ip: "); MR_printlabel(stdout, MR_succip_slot(MR_curfr));
+	printf("redo ip: "); MR_printlabel(stdout, MR_redoip_slot(MR_curfr));
 
 	if (MR_detaildebug) {
-		dumpnondstack();
+		MR_dumpnondstack();
 	}
 }
 
 void 
-succeed_msg(void)
+MR_succeed_msg(void)
 {
-	restore_transient_registers();
+	MR_restore_transient_registers();
 
 	printf("\nsucceeding from procedure\n");
-	printf("curr fr: "); printnondstack(MR_curfr);
-	printf("succ fr: "); printnondstack(MR_succfr_slot(MR_curfr));
-	printf("succ ip: "); printlabel(MR_succip_slot(MR_curfr));
+	printf("curr fr: "); MR_printnondstack(MR_curfr);
+	printf("succ fr: "); MR_printnondstack(MR_succfr_slot(MR_curfr));
+	printf("succ ip: "); MR_printlabel(stdout, MR_succip_slot(MR_curfr));
 
 	if (MR_detaildebug) {
-		printregs("registers at success");
+		MR_printregs("registers at success");
 	}
 }
 
 void 
-succeeddiscard_msg(void)
+MR_succeeddiscard_msg(void)
 {
-	restore_transient_registers();
+	MR_restore_transient_registers();
 
 	printf("\nsucceeding from procedure\n");
-	printf("curr fr: "); printnondstack(MR_curfr);
-	printf("succ fr: "); printnondstack(MR_succfr_slot(MR_curfr));
-	printf("succ ip: "); printlabel(MR_succip_slot(MR_curfr));
+	printf("curr fr: "); MR_printnondstack(MR_curfr);
+	printf("succ fr: "); MR_printnondstack(MR_succfr_slot(MR_curfr));
+	printf("succ ip: "); MR_printlabel(stdout, MR_succip_slot(MR_curfr));
 
 	if (MR_detaildebug) {
-		printregs("registers at success");
+		MR_printregs("registers at success");
 	}
 }
 
 void 
-fail_msg(void)
+MR_fail_msg(void)
 {
-	restore_transient_registers();
+	MR_restore_transient_registers();
 
 	printf("\nfailing from procedure\n");
-	printf("curr fr: "); printnondstack(MR_curfr);
-	printf("fail fr: "); printnondstack(MR_prevfr_slot(MR_curfr));
-	printf("fail ip: "); printlabel(MR_redoip_slot(MR_prevfr_slot(MR_curfr)));
+	printf("curr fr: "); MR_printnondstack(MR_curfr);
+	printf("fail fr: "); MR_printnondstack(MR_prevfr_slot(MR_curfr));
+	printf("fail ip: "); MR_printlabel(stdout,
+				MR_redoip_slot(MR_prevfr_slot(MR_curfr)));
 }
 
 void 
-redo_msg(void)
+MR_redo_msg(void)
 {
-	restore_transient_registers();
+	MR_restore_transient_registers();
 
 	printf("\nredo from procedure\n");
-	printf("curr fr: "); printnondstack(MR_curfr);
-	printf("redo fr: "); printnondstack(MR_maxfr);
-	printf("redo ip: "); printlabel(MR_redoip_slot(MR_maxfr));
+	printf("curr fr: "); MR_printnondstack(MR_curfr);
+	printf("redo fr: "); MR_printnondstack(MR_maxfr);
+	printf("redo ip: "); MR_printlabel(stdout, MR_redoip_slot(MR_maxfr));
 }
 
 void 
-call_msg(/* const */ MR_Code *proc, /* const */ MR_Code *succcont)
+MR_call_msg(/* const */ MR_Code *proc, /* const */ MR_Code *succ_cont)
 {
-	printf("\ncalling      "); printlabel(proc);
-	printf("continuation "); printlabel(succcont);
-	printregs("registers at call");
+	printf("\ncalling      "); MR_printlabel(stdout, proc);
+	printf("continuation "); MR_printlabel(stdout, succ_cont);
+	MR_printregs("registers at call");
 }
 
 void 
-tailcall_msg(/* const */ MR_Code *proc)
+MR_tailcall_msg(/* const */ MR_Code *proc)
 {
-	restore_transient_registers();
+	MR_restore_transient_registers();
 
-	printf("\ntail calling "); printlabel(proc);
-	printf("continuation "); printlabel(MR_succip);
-	printregs("registers at tailcall");
+	printf("\ntail calling "); MR_printlabel(stdout, proc);
+	printf("continuation "); MR_printlabel(stdout, MR_succip);
+	MR_printregs("registers at tailcall");
 }
 
 void 
-proceed_msg(void)
+MR_proceed_msg(void)
 {
 	printf("\nreturning from determinate procedure\n");
-	printregs("registers at proceed");
+	MR_printregs("registers at proceed");
 }
 
 void 
-cr1_msg(MR_Word val0, const MR_Word *addr)
+MR_cr1_msg(MR_Word val0, const MR_Word *addr)
 {
 	printf("put value %9lx at ", (long) (MR_Integer) val0);
-	printheap(addr);
+	MR_printheap(addr);
 }
 
 void 
-cr2_msg(MR_Word val0, MR_Word val1, const MR_Word *addr)
+MR_cr2_msg(MR_Word val0, MR_Word val1, const MR_Word *addr)
 {
 	printf("put values %9lx,%9lx at ",	
 		(long) (MR_Integer) val0, (long) (MR_Integer) val1);
-	printheap(addr);
+	MR_printheap(addr);
 }
 
 void 
-incr_hp_debug_msg(MR_Word val, const MR_Word *addr)
+MR_incr_hp_debug_msg(MR_Word val, const MR_Word *addr)
 {
 #ifdef CONSERVATIVE_GC
 	printf("allocated %ld words at %p\n", (long) val, addr);
 #else
 	printf("increment hp by %ld from ", (long) (MR_Integer) val);
-	printheap(addr);
+	MR_printheap(addr);
 #endif
 }
 
 void 
-incr_sp_msg(MR_Word val, const MR_Word *addr)
+MR_incr_sp_msg(MR_Word val, const MR_Word *addr)
 {
 	printf("increment sp by %ld from ", (long) (MR_Integer) val);
-	printdetstack(addr);
+	MR_printdetstack(addr);
 }
 
 void 
-decr_sp_msg(MR_Word val, const MR_Word *addr)
+MR_decr_sp_msg(MR_Word val, const MR_Word *addr)
 {
 	printf("decrement sp by %ld from ", (long) (MR_Integer) val);
-	printdetstack(addr);
-}
-
-void 
-push_msg(MR_Word val, const MR_Word *addr)
-{
-	printf("push value %9lx to ", (long) (MR_Integer) val);
-	printdetstack(addr);
-}
-
-void 
-pop_msg(MR_Word val, const MR_Word *addr)
-{
-	printf("pop value %9lx from ", (long) (MR_Integer) val);
-	printdetstack(addr);
+	MR_printdetstack(addr);
 }
 
 #endif /* defined(MR_LOWLEVEL_DEBUG) */
@@ -176,20 +163,20 @@ pop_msg(MR_Word val, const MR_Word *addr)
 #ifdef MR_DEBUG_GOTOS
 
 void 
-goto_msg(/* const */ MR_Code *addr)
+MR_goto_msg(/* const */ MR_Code *addr)
 {
 	printf("\ngoto ");
-	printlabel(addr);
+	MR_printlabel(stdout, addr);
 }
 
 void 
-reg_msg(void)
+MR_reg_msg(void)
 {
 	int	i;
 	MR_Integer	x;
 
 	for(i=1; i<=8; i++) {
-		x = (MR_Integer) get_reg(i);
+		x = (MR_Integer) MR_get_reg(i);
 #ifndef CONSERVATIVE_GC
 		if ((MR_Integer) MR_ENGINE(heap_zone)->min <= x
 				&& x < (MR_Integer) MR_ENGINE(heap_zone)->top) {
@@ -210,19 +197,19 @@ reg_msg(void)
 /* debugging printing tools */
 
 void 
-printint(MR_Word n)
+MR_printint(MR_Word n)
 {
 	printf("int %ld\n", (long) (MR_Integer) n);
 }
 
 void 
-printstring(const char *s)
+MR_printstring(const char *s)
 {
 	printf("string %p %s\n", (const void *) s, s);
 }
 
 void 
-printheap(const MR_Word *h)
+MR_printheap(const MR_Word *h)
 {
 #ifndef CONSERVATIVE_GC
 	printf("ptr %p, offset %3ld words\n",
@@ -235,17 +222,17 @@ printheap(const MR_Word *h)
 }
 
 void 
-dumpframe(/* const */ MR_Word *fr)
+MR_dumpframe(/* const */ MR_Word *fr)
 {
-	reg	int	i;
+	int	i;
 
 	printf("frame at ptr %p, offset %3ld words\n",
 		(const void *) fr, 
 		(long) (MR_Integer) (fr - MR_CONTEXT(nondetstack_zone)->min));
-	printf("\t succip    "); printlabel(MR_succip_slot(fr));
-	printf("\t redoip    "); printlabel(MR_redoip_slot(fr));
-	printf("\t succfr    "); printnondstack(MR_succfr_slot(fr));
-	printf("\t prevfr    "); printnondstack(MR_prevfr_slot(fr));
+	printf("\t succip    "); MR_printlabel(stdout, MR_succip_slot(fr));
+	printf("\t redoip    "); MR_printlabel(stdout, MR_redoip_slot(fr));
+	printf("\t succfr    "); MR_printnondstack(MR_succfr_slot(fr));
+	printf("\t prevfr    "); MR_printnondstack(MR_prevfr_slot(fr));
 
 	for (i = 1; &MR_based_framevar(fr,i) > MR_prevfr_slot(fr); i++) {
 		printf("\t framevar(%d)  %ld 0x%lx\n",
@@ -255,51 +242,51 @@ dumpframe(/* const */ MR_Word *fr)
 }
 
 void 
-dumpnondstack(void)
+MR_dumpnondstack(void)
 {
-	reg	MR_Word	*fr;
+	MR_Word	*fr;
 
 	printf("\nnondstack dump\n");
 	for (fr = MR_maxfr; fr > MR_CONTEXT(nondetstack_zone)->min;
 			fr = MR_prevfr_slot(fr)) {
-		dumpframe(fr);
+		MR_dumpframe(fr);
 	}
 }
 
 void 
-printframe(const char *msg)
+MR_printframe(const char *msg)
 {
 	printf("\n%s\n", msg);
-	dumpframe(MR_curfr);
+	MR_dumpframe(MR_curfr);
 
-	print_ordinary_regs();
+	MR_print_ordinary_regs();
 }
 
 void 
-printregs(const char *msg)
+MR_printregs(const char *msg)
 {
-	restore_transient_registers();
+	MR_restore_transient_registers();
 
 	printf("\n%s\n", msg);
 
-	printf("%-9s", "succip:");  printlabel(MR_succip);
-	printf("%-9s", "curfr:");   printnondstack(MR_curfr);
-	printf("%-9s", "maxfr:");   printnondstack(MR_maxfr);
-	printf("%-9s", "hp:");      printheap(MR_hp);
-	printf("%-9s", "sp:");      printdetstack(MR_sp);
+	printf("%-9s", "succip:");  MR_printlabel(stdout, MR_succip);
+	printf("%-9s", "curfr:");   MR_printnondstack(MR_curfr);
+	printf("%-9s", "maxfr:");   MR_printnondstack(MR_maxfr);
+	printf("%-9s", "hp:");      MR_printheap(MR_hp);
+	printf("%-9s", "sp:");      MR_printdetstack(MR_sp);
 
-	print_ordinary_regs();
+	MR_print_ordinary_regs();
 }
 
 static void 
-print_ordinary_regs(void)
+MR_print_ordinary_regs(void)
 {
-	int	i;
+	int		i;
 	MR_Integer	value;
 
 	for (i = 0; i < 8; i++) {
 		printf("r%d:      ", i + 1);
-		value = (MR_Integer) get_reg(i+1);
+		value = (MR_Integer) MR_get_reg(i+1);
 
 #ifndef	CONSERVATIVE_GC
 		if ((MR_Integer) MR_ENGINE(heap_zone)->min <= value &&
@@ -325,7 +312,8 @@ MR_printdetslot_as_label(const MR_Integer offset)
 {
 	MR_printdetstackptr(&MR_CONTEXT(detstack_zone)->min[offset]);
 	printf(" ");
-	printlabel((MR_Code *) (MR_CONTEXT(detstack_zone)->min[offset]));
+	MR_printlabel(stdout,
+		(MR_Code *) (MR_CONTEXT(detstack_zone)->min[offset]));
 }
 
 void 
@@ -343,7 +331,7 @@ MR_print_detstackptr(FILE *fp, const MR_Word *s)
 }
 
 void 
-printdetstack(const MR_Word *s)
+MR_printdetstack(const MR_Word *s)
 {
 	printf("ptr %p, offset %3ld words\n",
 		(const void *) s,
@@ -365,7 +353,7 @@ MR_print_nondstackptr(FILE *fp, const MR_Word *s)
 }
 
 void 
-printnondstack(const MR_Word *s)
+MR_printnondstack(const MR_Word *s)
 {
 	printf("ptr %p, offset %3ld words\n",
 		(const void *) s,
@@ -416,8 +404,8 @@ MR_print_label(FILE *fp, /* const */ MR_Code *w)
 }
 
 void 
-printlabel(/* const */ MR_Code *w)
+MR_printlabel(FILE *fp, /* const */ MR_Code *w)
 {
-	MR_print_label(stdout, w);
-	fprintf(stdout, "\n");
+	MR_print_label(fp, w);
+	fprintf(fp, "\n");
 }

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-2000 The University of Melbourne.
+** Copyright (C) 1997-2001 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -32,9 +32,9 @@ typedef struct MR_Event_Info_Struct {
 	MR_Unsigned			MR_call_seqno;
 	MR_Unsigned			MR_call_depth;
 	MR_Trace_Port			MR_trace_port;
-	const MR_Stack_Layout_Label	*MR_event_sll;
+	const MR_Label_Layout		*MR_event_sll;
 	const char 			*MR_event_path;
-	MR_Word				MR_saved_regs[MAX_FAKE_REG];
+	MR_Word				MR_saved_regs[MR_MAX_FAKE_REG];
 	int				MR_max_mr_num;
 } MR_Event_Info;
 
@@ -101,6 +101,10 @@ typedef struct MR_Event_Details_Struct {
 ** *problem. It will also do this for other, more prosaic problems, such as
 ** when it finds that some of the stack frames it looks at lack debugging
 ** information.
+**
+** Retry across I/O is unsafe in general, at least for now. It is therefore
+** only allowed if in_fp and out_fp are both non-NULL, and if the user, when
+** asked whether he/she wants to perform the retry anyway, says yes.
 */
 
 typedef	enum {
@@ -113,6 +117,7 @@ typedef	enum {
 extern	MR_Retry_Result	MR_trace_retry(MR_Event_Info *event_info,
 				MR_Event_Details *event_details,
 				int ancestor_level, const char **problem,
+				FILE *in_fp, FILE *out_fp,
 				MR_Code **jumpaddr);
 
 /*

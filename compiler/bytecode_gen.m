@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-2000 The University of Melbourne.
+% Copyright (C) 1996-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -37,10 +37,12 @@
 % arg_info.m so that it didn't depend on the LLDS.
 
 :- import_module arg_info, call_gen. % XXX for arg passing convention
-:- import_module llds.		% XXX for code_model
 :- import_module code_util.	% XXX for cons_id_to_tag
-:- import_module hlds_pred, hlds_goal, hlds_data, prog_data, type_util.
-:- import_module passes_aux, mode_util, goal_util, builtin_ops.
+
+:- import_module prog_data.
+:- import_module hlds_pred, hlds_goal, hlds_data.
+:- import_module type_util, mode_util, goal_util.
+:- import_module builtin_ops, code_model, passes_aux.
 :- import_module globals, tree.
 
 :- import_module bool, int, string, list, assoc_list, set, map, varset.
@@ -70,14 +72,7 @@ bytecode_gen__preds([PredId | PredIds], ModuleInfo, Code) -->
 		{ predicate_name(ModuleInfo, PredId, PredName) },
 		{ list__length(ProcIds, ProcsCount) },
 		{ pred_info_arity(PredInfo, Arity) },
-		{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
-		{ 
-			(PredOrFunc = predicate ->
-				IsFunc = 0
-			;
-				IsFunc = 1
-			)
-		},
+		{ bytecode_gen__get_is_func(PredInfo, IsFunc) },
 		{ EnterCode = node([enter_pred(PredName, Arity, IsFunc,
 			ProcsCount)]) },
 		{ EndofCode = node([endof_pred]) },
@@ -130,7 +125,17 @@ bytecode_gen__proc(ProcId, PredInfo, ModuleInfo, Code) :-
 	call_gen__output_arg_locs(Args, OutputArgs),
 	bytecode_gen__gen_places(OutputArgs, ByteInfo, PlaceCode),
 
-	bytecode_gen__goal(Goal, ByteInfo1, ByteInfo, GoalCode),
+	% If semideterministic, reserve temp slot 0 for the return value
+	( CodeModel = model_semi ->
+		bytecode_gen__get_next_temp(ByteInfo1, _FrameTemp, ByteInfo2)
+	;
+		ByteInfo2 = ByteInfo1
+	),
+
+	bytecode_gen__goal(Goal, ByteInfo2, ByteInfo3, GoalCode),
+
+	bytecode_gen__get_next_label(ByteInfo3, EndLabel, ByteInfo),
+	
 	bytecode_gen__get_counts(ByteInfo, LabelCount, TempCount),
 
 	ZeroLabelCode = node([label(ZeroLabel)]),
@@ -147,12 +152,12 @@ bytecode_gen__proc(ProcId, PredInfo, ModuleInfo, Code) :-
 		BodyCode = node(BodyCode0)
 	),
 	proc_id_to_int(ProcId, ProcInt),
-	EnterCode = node([enter_proc(ProcInt, Detism, LabelCount, TempCount,
-		VarInfos)]),
+	EnterCode = node([enter_proc(ProcInt, Detism, LabelCount, EndLabel,
+		TempCount, VarInfos)]),
 	( CodeModel = model_semi ->
-		EndofCode = node([semidet_succeed, endof_proc])
+		EndofCode = node([semidet_succeed, label(EndLabel), endof_proc])
 	;
-		EndofCode = node([endof_proc])
+		EndofCode = node([label(EndLabel), endof_proc])
 	),
 	Code = tree(EnterCode, tree(BodyCode, EndofCode)).
 
@@ -181,11 +186,13 @@ bytecode_gen__goal_expr(GoalExpr, GoalInfo, ByteInfo0, ByteInfo, Code) :-
 			ByteInfo = ByteInfo0
 		;
 			% XXX
-			functor(GenericCallType, GenericCallFunctor, _),
-			string__append_list([
+			functor(GenericCallType, _GenericCallFunctor, _),
+			/*string__append_list([
 				"sorry: bytecode not yet implemented for ",
 				GenericCallFunctor, " calls"], Msg),
-			error(Msg)
+			error(Msg)*/
+			Code = node([not_supported]),
+			ByteInfo = ByteInfo0
 		)
 	;
 		GoalExpr = call(PredId, ProcId, ArgVars, BuiltinState, _, _),
@@ -205,10 +212,14 @@ bytecode_gen__goal_expr(GoalExpr, GoalInfo, ByteInfo0, ByteInfo, Code) :-
 	;
 		GoalExpr = not(Goal),
 		bytecode_gen__goal(Goal, ByteInfo0, ByteInfo1, SomeCode),
-		bytecode_gen__get_next_label(ByteInfo1, EndLabel, ByteInfo),
-		EnterCode = node([enter_negation(EndLabel)]),
-		EndofCode = node([endof_negation, label(EndLabel)]),
-		Code = tree(EnterCode, tree(SomeCode, EndofCode))
+		bytecode_gen__get_next_label(ByteInfo1, EndLabel, ByteInfo2),
+		bytecode_gen__get_next_temp(ByteInfo2, FrameTemp, ByteInfo),
+		EnterCode = node([enter_negation(FrameTemp, EndLabel)]),
+		EndofCode = node([endof_negation_goal(FrameTemp),
+			label(EndLabel), endof_negation]),
+		Code =  tree(EnterCode,
+			tree(SomeCode,
+			     EndofCode))
 	;
 		GoalExpr = some(_, _, Goal),
 		bytecode_gen__goal(Goal, ByteInfo0, ByteInfo1, SomeCode),
@@ -255,7 +266,8 @@ bytecode_gen__goal_expr(GoalExpr, GoalInfo, ByteInfo0, ByteInfo, Code) :-
 		bytecode_gen__goal(Else, ByteInfo5, ByteInfo, ElseCode),
 		EnterIfCode = node([enter_if(ElseLabel, EndLabel, FrameTemp)]),
 		EnterThenCode = node([enter_then(FrameTemp)]),
-		EndofThenCode = node([endof_then(EndLabel), label(ElseLabel)]),
+		EndofThenCode = node([endof_then(EndLabel), label(ElseLabel),
+			enter_else(FrameTemp)]),
 		EndofIfCode = node([endof_if, label(EndLabel)]),
 		Code =
 			tree(EnterIfCode,
@@ -266,7 +278,7 @@ bytecode_gen__goal_expr(GoalExpr, GoalInfo, ByteInfo0, ByteInfo, Code) :-
 			tree(ElseCode,
 			     EndofIfCode))))))
 	;
-		GoalExpr = pragma_foreign_code(_, _, _, _, _, _, _, _),
+		GoalExpr = pragma_foreign_code(_, _, _, _, _, _, _),
 		Code = node([not_supported]),
 		ByteInfo = ByteInfo0
 	;
@@ -341,6 +353,9 @@ bytecode_gen__call(PredId, ProcId, ArgVars, Detism, ByteInfo, Code) :-
 	proc_info_arg_info(ProcInfo, ArgInfo),
 	assoc_list__from_corresponding_lists(ArgVars, ArgInfo, ArgVarsInfos),
 
+	module_info_pred_info(ModuleInfo, PredId, PredInfo),
+	bytecode_gen__get_is_func(PredInfo, IsFunc),
+
 	call_gen__input_arg_locs(ArgVarsInfos, InputArgs),
 	bytecode_gen__gen_places(InputArgs, ByteInfo, PlaceArgs),
 
@@ -349,7 +364,7 @@ bytecode_gen__call(PredId, ProcId, ArgVars, Detism, ByteInfo, Code) :-
 
 	predicate_id(ModuleInfo, PredId, ModuleName, PredName, Arity),
 	proc_id_to_int(ProcId, ProcInt),
-	Call = node([call(ModuleName, PredName, Arity, ProcInt)]),
+	Call = node([call(ModuleName, PredName, Arity, IsFunc, ProcInt)]),
 	determinism_to_code_model(Detism, CodeModel),
 	( CodeModel = model_semi ->
 		Check = node([semidet_success_check])
@@ -453,7 +468,7 @@ bytecode_gen__unify(construct(Var, ConsId, Args, UniModes, _, _, _),
 	bytecode_gen__map_vars(ByteInfo, Args, ByteArgs),
 	bytecode_gen__map_cons_id(ByteInfo, Var, ConsId, ByteConsId),
 	(
-		ByteConsId = pred_const(_, _, _, _)
+		ByteConsId = pred_const(_, _, _, _, _)
 	->
 		Code = node([construct(ByteVar, ByteConsId, ByteArgs)])
 	;
@@ -650,9 +665,13 @@ bytecode_gen__map_cons_id(ByteInfo, Var, ConsId, ByteConsId) :-
 		( EvalMethod = normal ->
 			predicate_id(ModuleInfo, PredId,
 				ModuleName, PredName, Arity),
+
+			module_info_pred_info(ModuleInfo, PredId, PredInfo),
+			bytecode_gen__get_is_func(PredInfo, IsFunc),
+				
 			proc_id_to_int(ProcId, ProcInt),
 			ByteConsId = pred_const(ModuleName,
-				PredName, Arity, ProcInt)
+				PredName, Arity, IsFunc, ProcInt)
 		;
 			% XXX
 			error(
@@ -787,3 +806,14 @@ bytecode_gen__get_next_temp(ByteInfo0, Temp0, ByteInfo) :-
 bytecode_gen__get_counts(byte_info(_, _, _, Label, Temp), Label, Temp).
 
 %---------------------------------------------------------------------------%
+
+:- pred bytecode_gen__get_is_func(pred_info, byte_is_func).
+:- mode bytecode_gen__get_is_func(in, out) is det.
+
+bytecode_gen__get_is_func(PredInfo, IsFunc) :-
+	pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
+	(	PredOrFunc = predicate
+	->	IsFunc = 0
+	;	IsFunc = 1
+	).
+

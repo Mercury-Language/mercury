@@ -112,8 +112,14 @@
 :- pred mode_info_get_predid(mode_info, pred_id).
 :- mode mode_info_get_predid(mode_info_ui, out) is det.
 
+:- pred mode_info_set_predid(mode_info, pred_id, mode_info).
+:- mode mode_info_set_predid(mode_info_ui, in, mode_info_uo) is det.
+
 :- pred mode_info_get_procid(mode_info, proc_id).
 :- mode mode_info_get_procid(mode_info_ui, out) is det.
+
+:- pred mode_info_set_procid(mode_info, proc_id, mode_info).
+:- mode mode_info_set_procid(mode_info_di, in, mode_info_uo) is det.
 
 :- pred mode_info_get_context(mode_info, prog_context).
 :- mode mode_info_get_context(mode_info_ui, out) is det.
@@ -505,6 +511,8 @@ mode_info_get_how_to_check(MI, MI^how_to_check).
 mode_info_get_may_change_called_proc(MI, MI^may_change_called_proc).
 
 mode_info_set_module_info(MI, ModuleInfo, MI^module_info := ModuleInfo).
+mode_info_set_predid(MI, PredId, MI^predid := PredId).
+mode_info_set_procid(MI, ProcId, MI^procid := ProcId).
 mode_info_set_varset(VarSet) --> ^varset := VarSet.
 mode_info_set_var_types(VTypes) --> ^var_types := VTypes.
 mode_info_set_context(Context) --> ^context := Context.
@@ -578,7 +586,7 @@ mode_info_get_num_errors(ModeInfo, NumErrors) :-
 
 %-----------------------------------------------------------------------------%
 
-			% We keep track of the live variables and the nondet-live variables
+	% We keep track of the live variables and the nondet-live variables
 	% a bag, represented as a list of sets of vars.
 	% This allows us to easily add and remove sets of variables.
 	% It's probably not maximally efficient.

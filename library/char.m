@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2000 The University of Melbourne.
+% Copyright (C) 1994-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -20,29 +20,37 @@
 
 :- module char.
 :- interface.
+:- import_module enum.
 
 %-----------------------------------------------------------------------------%
 
 :- type char == character.
 
+:- instance enum(character).
+
+:- func char__to_int(char) = int.
 :- pred char__to_int(char, int).
 :- mode char__to_int(in, out) is det.
 :- mode char__to_int(in, in) is semidet.	% implied
 :- mode char__to_int(out, in) is semidet.
 	% Convert a character to it's corresponding numerical code.
 
+:- func char__max_char_value = int.
 :- pred char__max_char_value(int).
 :- mode char__max_char_value(out) is det.
 	% Returns the maximum numerical character code.
 
+:- func char__min_char_value = int.
 :- pred char__min_char_value(int).
 :- mode char__min_char_value(out) is det.
 	% Returns the minimum numerical character code.
 
+:- func char__to_upper(char) = char.
 :- pred char__to_upper(char, char).
 :- mode char__to_upper(in, out) is det.
 	% Convert a character to uppercase.
 
+:- func char__to_lower(char) = char.
 :- pred char__to_lower(char, char).
 :- mode char__to_lower(in, out) is det.
 	% Convert a character to lowercase.
@@ -112,6 +120,7 @@
 	% `DigitChar' is a decimal digit or uppercase letter
 	% whose value as a digit is `Int'.
 
+:- func char__det_int_to_digit(int) = char.
 :- pred char__det_int_to_digit(int, char).
 :- mode char__det_int_to_digit(in, out) is det.
 	% Returns a decimal digit or uppercase letter corresponding to the
@@ -123,6 +132,11 @@
 
 :- implementation.
 :- import_module require.
+
+:- instance enum(character) where [
+	(to_int(X) = Y :- char__to_int(X, Y)),
+	(from_int(X) = Y :- char__to_int(Y, X))
+].
 
 char__is_whitespace(' ').
 char__is_whitespace('\t').
@@ -399,17 +413,20 @@ char__lower_upper('z', 'Z').
 
 %-----------------------------------------------------------------------------%
 
-:- pragma c_code(char__to_int(Character::in, Int::out),
+:- pragma foreign_code("C",
+	char__to_int(Character::in, Int::out),
                [will_not_call_mercury, thread_safe] , "
 	Int = (MR_UnsignedChar) Character;
 ").
 
-:- pragma c_code(char__to_int(Character::in, Int::in),
+:- pragma foreign_code("C",
+	char__to_int(Character::in, Int::in),
                [will_not_call_mercury, thread_safe] , "
 	SUCCESS_INDICATOR = ((MR_UnsignedChar) Character == Int);
 ").
 
-:- pragma c_code(char__to_int(Character::out, Int::in),
+:- pragma foreign_code("C",
+	char__to_int(Character::out, Int::in),
                [will_not_call_mercury, thread_safe] , "
 	/*
 	** If the integer doesn't fit into a char, then
@@ -421,40 +438,49 @@ char__lower_upper('z', 'Z').
 	SUCCESS_INDICATOR = ((MR_UnsignedChar) Character == Int);
 ").
 
+:- pragma foreign_code("MC++",
+	char__to_int(Character::in, Int::out),
+               [will_not_call_mercury, thread_safe] , "
+	Int = Character;
+").
+
+:- pragma foreign_code("MC++",
+	char__to_int(Character::in, Int::in),
+               [will_not_call_mercury, thread_safe] , "
+	SUCCESS_INDICATOR = (Character == Int);
+").
+
+:- pragma foreign_code("MC++",
+	char__to_int(Character::out, Int::in),
+               [will_not_call_mercury, thread_safe] , "
+	Character = Int;
+	SUCCESS_INDICATOR = (Character == Int);
+").
+
 % We used unsigned character codes, so the minimum character code
 % is always zero.
 
 char__min_char_value(0).
 
 :- pragma c_header_code("#include <limits.h>").
-:- pragma c_code(char__max_char_value(Max::out),
-               [will_not_call_mercury, thread_safe], "
+:- pragma foreign_code("C",
+		char__max_char_value(Max::out),
+		[will_not_call_mercury, thread_safe], "
 	Max = UCHAR_MAX;
 ").
+
+:- pragma foreign_code("MC++",
+		char__max_char_value(_Max::out),
+		[will_not_call_mercury, thread_safe], "
+	mercury::runtime::Errors::SORRY(""c code for this function"");
+").
+
+
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 % Ralph Becket <rwab1@cl.cam.ac.uk> 27/04/99
 %       Functional forms added.
-
-:- interface.
-
-:- func char__to_int(char) = int.
-
-:- func char__max_char_value = int.
-
-:- func char__min_char_value = int.
-
-:- func char__to_upper(char) = char.
-
-:- func char__to_lower(char) = char.
-
-:- func char__det_int_to_digit(int) = char.
-
-% ---------------------------------------------------------------------------- %
-% ---------------------------------------------------------------------------- %
-
-:- implementation.
 
 char__to_int(C) = N :-
 	char__to_int(C, N).
@@ -473,6 +499,4 @@ char__to_lower(C1) = C2 :-
 
 char__det_int_to_digit(N) = C :-
 	char__det_int_to_digit(N, C).
-
-
 

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2000 The University of Melbourne.
+% Copyright (C) 1994-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -14,8 +14,9 @@
 
 :- interface.
 
-:- import_module vn_type, vn_table, livemap.
-:- import_module llds, rtti, builtin_ops, atsort.
+:- import_module llds, vn_type, vn_table, livemap.
+:- import_module code_model, rtti, layout, builtin_ops.
+:- import_module atsort.
 
 :- import_module io, bool, list, assoc_list, std_util.
 
@@ -148,6 +149,9 @@
 :- pred opt_debug__dump_rtti_name(rtti_name, string).
 :- mode opt_debug__dump_rtti_name(in, out) is det.
 
+:- pred opt_debug__dump_layout_name(layout_name, string).
+:- mode opt_debug__dump_layout_name(in, out) is det.
+
 :- pred opt_debug__dump_unop(unary_op, string).
 :- mode opt_debug__dump_unop(in, out) is det.
 
@@ -194,8 +198,10 @@
 
 :- implementation.
 
-:- import_module llds_out, opt_util, vn_util, hlds_pred, globals, options.
 :- import_module prog_out.
+:- import_module hlds_pred.
+:- import_module llds_out, opt_util, vn_util.
+:- import_module globals, options.
 
 :- import_module int, set, map, string.
 
@@ -734,19 +740,15 @@ opt_debug__dump_data_addr(rtti_addr(RttiTypeId, DataName), Str) :-
 	opt_debug__dump_rtti_name(DataName, DataName_str),
 	string__append_list(
 		["rtti_addr(", RttiTypeId_str, ", ", DataName_str, ")"], Str).
+opt_debug__dump_data_addr(layout_addr(LayoutName), Str) :-
+	opt_debug__dump_layout_name(LayoutName, LayoutName_str),
+	string__append_list(["layout_addr(", LayoutName_str, ")"], Str).
 
 opt_debug__dump_data_name(common(N), Str) :-
 	string__int_to_string(N, N_str),
 	string__append("common", N_str, Str).
 opt_debug__dump_data_name(base_typeclass_info(ClassId, InstanceNum), Str) :-
 	llds_out__make_base_typeclass_info_name(ClassId, InstanceNum, Str).
-opt_debug__dump_data_name(module_layout, "module_layout").
-opt_debug__dump_data_name(proc_layout(Label), Str) :-
-	opt_debug__dump_label(Label, LabelStr),
-	string__append_list(["proc_layout(", LabelStr, ")"], Str).
-opt_debug__dump_data_name(internal_layout(Label), Str) :-
-	opt_debug__dump_label(Label, LabelStr),
-	string__append_list(["internal_layout(", LabelStr, ")"], Str).
 opt_debug__dump_data_name(tabling_pointer(ProcLabel), Str) :-
 	opt_debug__dump_proclabel(ProcLabel, ProcLabelStr),
 	string__append_list(["tabling_pointer(", ProcLabelStr, ")"], Str).
@@ -791,13 +793,70 @@ opt_debug__dump_rtti_name(du_ptag_ordered_table, Str) :-
 	Str = "du_ptag_ordered_table".
 opt_debug__dump_rtti_name(type_ctor_info, Str) :-
 	Str = "type_ctor_info".
-opt_debug__dump_rtti_name(base_typeclass_info(ClassId, InstanceStr), Str) :-
+opt_debug__dump_rtti_name(base_typeclass_info(_ModuleName, ClassId,
+		InstanceStr), Str) :-
 	llds_out__make_base_typeclass_info_name(ClassId, InstanceStr, Str).
 opt_debug__dump_rtti_name(pseudo_type_info(_Pseudo), Str) :-
 	% XXX should give more info than this
 	Str = "pseudo_type_info".
 opt_debug__dump_rtti_name(type_hashcons_pointer, Str) :-
 	Str = "type_hashcons_pointer".
+
+opt_debug__dump_layout_name(label_layout(Label, LabelVars), Str) :-
+	opt_debug__dump_label(Label, LabelStr),
+	(
+		LabelVars = label_has_var_info,
+		LabelVarsStr = "label_has_var_info"
+	;
+		LabelVars = label_has_no_var_info,
+		LabelVarsStr = "label_has_no_var_info"
+	),
+	string__append_list(["label_layout(", LabelStr, ", ",
+		LabelVarsStr, ")"], Str).
+opt_debug__dump_layout_name(proc_layout(ProcLabel, _), Str) :-
+	opt_debug__dump_proclabel(ProcLabel, ProcLabelStr),
+	string__append_list(["proc_layout(", ProcLabelStr, ")"], Str).
+opt_debug__dump_layout_name(proc_layout_var_names(ProcLabel), Str) :-
+	opt_debug__dump_proclabel(ProcLabel, ProcLabelStr),
+	string__append_list(["proc_layout_var_names(", ProcLabelStr, ")"],
+		Str).
+opt_debug__dump_layout_name(closure_proc_id(ProcLabel, SeqNo, _), Str) :-
+	opt_debug__dump_proclabel(ProcLabel, ProcLabelStr),
+	string__int_to_string(SeqNo, SeqNoStr),
+	string__append_list(["closure_proc_id(", ProcLabelStr, ", ",
+		SeqNoStr, ")"], Str).
+opt_debug__dump_layout_name(file_layout(ModuleName, FileNum), Str) :-
+	llds_out__sym_name_mangle(ModuleName, ModuleNameStr),
+	string__int_to_string(FileNum, FileNumStr),
+	string__append_list(["file_layout(", ModuleNameStr, ", ",
+		FileNumStr, ")"], Str).
+opt_debug__dump_layout_name(file_layout_line_number_vector(ModuleName,
+		FileNum), Str) :-
+	llds_out__sym_name_mangle(ModuleName, ModuleNameStr),
+	string__int_to_string(FileNum, FileNumStr),
+	string__append_list(["file_layout_line_number_vector(", ModuleNameStr,
+		", ", FileNumStr, ")"], Str).
+opt_debug__dump_layout_name(file_layout_label_layout_vector(ModuleName,
+		FileNum), Str) :-
+	llds_out__sym_name_mangle(ModuleName, ModuleNameStr),
+	string__int_to_string(FileNum, FileNumStr),
+	string__append_list(["file_layout_label_layout_vector(", ModuleNameStr,
+		", ", FileNumStr, ")"], Str).
+opt_debug__dump_layout_name(module_layout_string_table(ModuleName), Str) :-
+	llds_out__sym_name_mangle(ModuleName, ModuleNameStr),
+	string__append_list(["module_layout_string_table(", ModuleNameStr,
+		")"], Str).
+opt_debug__dump_layout_name(module_layout_file_vector(ModuleName), Str) :-
+	llds_out__sym_name_mangle(ModuleName, ModuleNameStr),
+	string__append_list(["module_layout_file_vector(", ModuleNameStr, ")"],
+		Str).
+opt_debug__dump_layout_name(module_layout_proc_vector(ModuleName), Str) :-
+	llds_out__sym_name_mangle(ModuleName, ModuleNameStr),
+	string__append_list(["module_layout_proc_vector(", ModuleNameStr, ")"],
+		Str).
+opt_debug__dump_layout_name(module_layout(ModuleName), Str) :-
+	llds_out__sym_name_mangle(ModuleName, ModuleNameStr),
+	string__append_list(["module_layout(", ModuleNameStr, ")"], Str).
 
 opt_debug__dump_unop(mktag, "mktag").
 opt_debug__dump_unop(tag, "tag").
@@ -807,7 +866,6 @@ opt_debug__dump_unop(unmkbody, "unmkbody").
 opt_debug__dump_unop(not, "not").
 opt_debug__dump_unop(hash_string, "hash_string").
 opt_debug__dump_unop(bitwise_complement, "bitwise_complement").
-opt_debug__dump_unop(cast_to_unsigned, "cast_to_unsigned").
 
 opt_debug__dump_binop(Op, String) :-
 	llds_out__binary_op_to_string(Op, String).

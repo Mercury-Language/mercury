@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-2000 The University of Melbourne.
+% Copyright (C) 1996-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -20,10 +20,10 @@
 :- type byte_tree	==	tree(list(byte_code)).
 
 :- type byte_code	--->	enter_pred(byte_pred_id, int, 
-					byte_pred_or_func, int)
+					byte_is_func, int)
 			;	endof_pred
 			;	enter_proc(byte_proc_id, determinism,
-					int, int, list(byte_var_info))
+					int, int, int, list(byte_var_info))
 			;	endof_proc
 			;	label(byte_label_id)
 			;	enter_disjunction(byte_label_id)
@@ -38,8 +38,10 @@
 					byte_temp)
 			;	enter_then(byte_temp)
 			;	endof_then(byte_label_id)
+			;	enter_else(byte_temp)
 			;	endof_if
-			;	enter_negation(byte_label_id)
+			;	enter_negation(byte_temp, byte_label_id)
+			;	endof_negation_goal(byte_temp)
 			;	endof_negation
 			;	enter_commit(byte_temp)
 			;	endof_commit(byte_temp)
@@ -56,7 +58,7 @@
 			;	place_arg(byte_reg_type, int, byte_var)
 			;	pickup_arg(byte_reg_type, int, byte_var)
 			;	call(byte_module_id, byte_pred_id,
-					arity, byte_proc_id)
+					arity, byte_is_func, byte_proc_id)
 			;	higher_order_call(byte_var, arity, arity,
 					determinism)
 			;	builtin_binop(binary_op, byte_arg, byte_arg,
@@ -82,7 +84,7 @@
 			;	string_const(string)
 			;	float_const(float)
 			;	pred_const(byte_module_id, byte_pred_id,
-					arity, byte_proc_id)
+					arity, byte_is_func, byte_proc_id)
 			;	code_addr_const(byte_module_id, byte_pred_id,
 					arity, byte_proc_id)
 			;	type_ctor_info_const(byte_module_id, string,
@@ -117,7 +119,7 @@
 :- type byte_label_id	==	int.
 :- type byte_var	==	int.
 :- type byte_temp	==	int.
-:- type byte_pred_or_func ==	int.
+:- type byte_is_func	==	int.	% 0 if a predicate, 1 if a function
 
 :- pred output_bytecode_file(string::in, list(byte_code)::in,
 	io__state::di, io__state::uo) is det.
@@ -203,13 +205,14 @@ debug_bytecode_list([ByteCode | ByteCodes]) -->
 output_args(enter_pred(PredId, PredArity, IsFunc, ProcCount)) -->
 	output_pred_id(PredId),
 	output_length(PredArity),
-	output_byte(IsFunc),
+	output_is_func(IsFunc),
 	output_length(ProcCount).
 output_args(endof_pred) --> [].
-output_args(enter_proc(ProcId, Detism, LabelCount, TempCount, Vars)) -->
+output_args(enter_proc(ProcId, Detism, LabelCount, LabelId, TempCount, Vars)) -->
 	output_proc_id(ProcId),
 	output_determinism(Detism),
 	output_length(LabelCount),
+	output_label_id(LabelId),
 	output_length(TempCount),
 	{ list__length(Vars, VarCount) },
 	output_length(VarCount),
@@ -228,9 +231,9 @@ output_args(enter_switch(Var, LabelId)) -->
 	output_var(Var),
 	output_label_id(LabelId).
 output_args(endof_switch) --> [].
-output_args(enter_switch_arm(ConsId, LabelId)) -->
+output_args(enter_switch_arm(ConsId, NextLabelId)) -->
 	output_cons_id(ConsId),
-	output_label_id(LabelId).
+	output_label_id(NextLabelId).
 output_args(endof_switch_arm(LabelId)) -->
 	output_label_id(LabelId).
 output_args(enter_if(ElseLabelId, FollowLabelId, FramePtrTemp)) -->
@@ -241,9 +244,14 @@ output_args(enter_then(FramePtrTemp)) -->
 	output_temp(FramePtrTemp).
 output_args(endof_then(FollowLabelId)) -->
 	output_label_id(FollowLabelId).
+output_args(enter_else(FramePtrTemp)) -->
+	output_temp(FramePtrTemp).
 output_args(endof_if) --> [].
-output_args(enter_negation(LabelId)) -->
+output_args(enter_negation(FramePtrTemp, LabelId)) -->
+	output_temp(FramePtrTemp),
 	output_label_id(LabelId).
+output_args(endof_negation_goal(FramePtrTemp)) -->
+	output_temp(FramePtrTemp).
 output_args(endof_negation) --> [].
 output_args(enter_commit(Temp)) -->
 	output_temp(Temp).
@@ -285,10 +293,11 @@ output_args(place_arg(RegType, RegNum, Var)) -->
 output_args(pickup_arg(RegType, RegNum, Var)) -->
 	output_reg(RegType, RegNum),
 	output_var(Var).
-output_args(call(ModuleId, PredId, Arity, ProcId)) -->
+output_args(call(ModuleId, PredId, Arity, IsFunc, ProcId)) -->
 	output_module_id(ModuleId),
 	output_pred_id(PredId),
 	output_length(Arity),
+	output_is_func(IsFunc),
 	output_proc_id(ProcId).
 output_args(higher_order_call(PredVar, InVarCount, OutVarCount, Detism)) -->
 	output_var(PredVar),
@@ -324,18 +333,14 @@ output_args(not_supported) --> [].
 debug_args(enter_pred(PredId, PredArity, IsFunc, ProcsCount)) -->
 	debug_pred_id(PredId),
 	debug_length(PredArity),
-	(
-		{ IsFunc = 0 } ->
-			debug_string("pred")
-		;
-			debug_string("func")
-	),
+	debug_is_func(IsFunc),
 	debug_length(ProcsCount).
 debug_args(endof_pred) --> [].
-debug_args(enter_proc(ProcId, Detism, LabelCount, TempCount, Vars)) -->
+debug_args(enter_proc(ProcId, Detism, LabelCount, LabelId, TempCount, Vars)) -->
 	debug_proc_id(ProcId),
 	debug_determinism(Detism),
 	debug_length(LabelCount),
+	debug_label_id(LabelId),
 	debug_length(TempCount),
 	{ list__length(Vars, VarCount) },
 	debug_length(VarCount),
@@ -354,9 +359,9 @@ debug_args(enter_switch(Var, LabelId)) -->
 	debug_var(Var),
 	debug_label_id(LabelId).
 debug_args(endof_switch) --> [].
-debug_args(enter_switch_arm(ConsId, LabelId)) -->
+debug_args(enter_switch_arm(ConsId, NextLabelId)) -->
 	debug_cons_id(ConsId),
-	debug_label_id(LabelId).
+	debug_label_id(NextLabelId).
 debug_args(endof_switch_arm(LabelId)) -->
 	debug_label_id(LabelId).
 debug_args(enter_if(ElseLabelId, FollowLabelId, FramePtrTemp)) -->
@@ -367,9 +372,14 @@ debug_args(enter_then(FramePtrTemp)) -->
 	debug_temp(FramePtrTemp).
 debug_args(endof_then(FollowLabelId)) -->
 	debug_label_id(FollowLabelId).
+debug_args(enter_else(FramePtrTemp)) -->
+	debug_temp(FramePtrTemp).
 debug_args(endof_if) --> [].
-debug_args(enter_negation(LabelId)) -->
+debug_args(enter_negation(FramePtrTemp, LabelId)) -->
+	debug_temp(FramePtrTemp),
 	debug_label_id(LabelId).
+debug_args(endof_negation_goal(FramePtrTemp)) -->
+	debug_temp(FramePtrTemp).
 debug_args(endof_negation) --> [].
 debug_args(enter_commit(Temp)) -->
 	debug_temp(Temp).
@@ -411,10 +421,11 @@ debug_args(place_arg(RegType, RegNum, Var)) -->
 debug_args(pickup_arg(RegType, RegNum, Var)) -->
 	debug_reg(RegType, RegNum),
 	debug_var(Var).
-debug_args(call(ModuleId, PredId, Arity, ProcId)) -->
+debug_args(call(ModuleId, PredId, Arity, IsFunc, ProcId)) -->
 	debug_module_id(ModuleId),
 	debug_pred_id(PredId),
-	debug_length(Arity),
+	debug_length(Arity), 
+	debug_is_func(IsFunc),
 	debug_proc_id(ProcId).
 debug_args(higher_order_call(PredVar, InVarCount, OutVarCount, Detism)) -->
 	debug_var(PredVar),
@@ -503,6 +514,27 @@ output_reg(r, N) -->
 
 debug_reg(r, N) -->
 	debug_int(N).
+
+%---------------------------------------------------------------------------%
+:- pred output_is_func(byte_is_func, io__state, io__state).
+:- mode output_is_func(in, di, uo) is det.
+
+output_is_func(IsFunc) -->
+	(	{ IsFunc = 1 ; IsFunc = 0 }
+	->	output_byte(IsFunc)
+	;	{ error("Invalid predicate or function specified in bytecode") }
+	).
+
+:- pred debug_is_func(byte_is_func, io__state, io__state).
+:- mode debug_is_func(in, di, uo) is det.
+
+debug_is_func(IsFunc) -->
+	(	{ IsFunc = 1 }
+	->	debug_string("func")
+	;	{ IsFunc = 0 }
+	->	debug_string("pred")
+	;	{ error("Invalid predicate or function specifier in bytecode") }
+	).
 
 %---------------------------------------------------------------------------%
 
@@ -707,11 +739,12 @@ output_cons_id(string_const(StringVal)) -->
 output_cons_id(float_const(FloatVal)) -->
 	output_byte(3),
 	output_float(FloatVal).
-output_cons_id(pred_const(ModuleId, PredId, Arity, ProcId)) -->
+output_cons_id(pred_const(ModuleId, PredId, Arity, IsFunc, ProcId)) -->
 	output_byte(4),
 	output_module_id(ModuleId),
 	output_pred_id(PredId),
 	output_length(Arity),
+	output_is_func(IsFunc),
 	output_proc_id(ProcId).
 output_cons_id(code_addr_const(ModuleId, PredId, Arity, ProcId)) -->
 	output_byte(5),
@@ -752,11 +785,12 @@ debug_cons_id(string_const(StringVal)) -->
 debug_cons_id(float_const(FloatVal)) -->
 	debug_string("float_const"),
 	debug_float(FloatVal).
-debug_cons_id(pred_const(ModuleId, PredId, Arity, ProcId)) -->
+debug_cons_id(pred_const(ModuleId, PredId, Arity, IsFunc, ProcId)) -->
 	debug_string("pred_const"),
 	debug_module_id(ModuleId),
 	debug_pred_id(PredId),
 	debug_length(Arity),
+	debug_is_func(IsFunc),
 	debug_proc_id(ProcId).
 debug_cons_id(code_addr_const(ModuleId, PredId, Arity, ProcId)) -->
 	debug_string("code_addr_const"),
@@ -864,7 +898,7 @@ debug_unop(Unop) -->
 
 byte_code(enter_pred(_, _, _, _),		 0).
 byte_code(endof_pred,				 1).
-byte_code(enter_proc(_, _, _, _, _),		 2).
+byte_code(enter_proc(_, _, _, _, _, _),		 2).
 byte_code(endof_proc,				 3).
 byte_code(label(_),				 4).
 byte_code(enter_disjunction(_),			 5).
@@ -879,7 +913,7 @@ byte_code(enter_if(_, _, _),			13).
 byte_code(enter_then(_),			14).
 byte_code(endof_then(_),			15).
 byte_code(endof_if,				16).
-byte_code(enter_negation(_),			17).
+byte_code(enter_negation(_, _),			17).
 byte_code(endof_negation,			18).
 byte_code(enter_commit(_),			19).
 byte_code(endof_commit(_),			20).
@@ -891,7 +925,7 @@ byte_code(complex_construct(_, _, _),		25).
 byte_code(complex_deconstruct(_, _, _),		26).
 byte_code(place_arg(_, _, _),			27).
 byte_code(pickup_arg(_, _, _),			28).
-byte_code(call(_, _, _, _),			29).
+byte_code(call(_, _, _, _, _),			29).
 byte_code(higher_order_call(_, _, _, _),	30).
 byte_code(builtin_binop(_, _, _, _),		31).
 byte_code(builtin_unop(_, _, _),		32).
@@ -902,13 +936,15 @@ byte_code(semidet_success_check,		36).
 byte_code(fail,					37).
 byte_code(context(_),				38).
 byte_code(not_supported,			39).
+byte_code(enter_else(_),			40).
+byte_code(endof_negation_goal(_),		41).
 
 :- pred byte_debug(byte_code, string).
 :- mode byte_debug(in, out) is det.
 
 byte_debug(enter_pred(_, _, _, _),		"enter_pred").
 byte_debug(endof_pred,				"endof_pred").
-byte_debug(enter_proc(_, _, _, _, _),		"enter_proc").
+byte_debug(enter_proc(_, _, _, _, _, _),	"enter_proc").
 byte_debug(endof_proc,				"endof_proc").
 byte_debug(label(_),				"label").
 byte_debug(enter_disjunction(_),		"enter_disjunction").
@@ -922,8 +958,10 @@ byte_debug(endof_switch_arm(_),			"endof_switch_arm").
 byte_debug(enter_if(_, _, _),			"enter_if").
 byte_debug(enter_then(_),			"enter_then").
 byte_debug(endof_then(_),			"endof_then").
+byte_debug(enter_else(_),			"enter_else").
 byte_debug(endof_if,				"endof_if").
-byte_debug(enter_negation(_),			"enter_negation").
+byte_debug(enter_negation(_,_),			"enter_negation").
+byte_debug(endof_negation_goal(_),		"endof_negation_goal").
 byte_debug(endof_negation,			"endof_negation").
 byte_debug(enter_commit(_),			"enter_commit").
 byte_debug(endof_commit(_),			"endof_commit").
@@ -935,7 +973,7 @@ byte_debug(complex_construct(_, _, _),		"complex_construct").
 byte_debug(complex_deconstruct(_, _, _),	"complex_deconstruct").
 byte_debug(place_arg(_, _, _),			"place_arg").
 byte_debug(pickup_arg(_, _, _),			"pickup_arg").
-byte_debug(call(_, _, _, _),			"call").
+byte_debug(call(_, _, _, _, _),			"call").
 byte_debug(higher_order_call(_, _, _, _),	"higher_order_call").
 byte_debug(builtin_binop(_, _, _, _),		"builtin_binop").
 byte_debug(builtin_unop(_, _, _),		"builtin_unop").
@@ -1011,6 +1049,7 @@ binop_code(float_gt,		32).
 binop_code(float_le,		33).
 binop_code(float_ge,		34).
 binop_code(body,		35).
+binop_code(unsigned_le,		36).
 
 :- pred binop_debug(binary_op, string).
 :- mode binop_debug(in, out) is det.
@@ -1051,6 +1090,7 @@ binop_debug(float_gt,		"float_gt").
 binop_debug(float_le,		"float_le").
 binop_debug(float_ge,		"float_ge").
 binop_debug(body,		"body").
+binop_debug(unsigned_le,	"unsigned_le").
 
 :- pred unop_code(unary_op, int).
 :- mode unop_code(in, out) is det.
@@ -1060,7 +1100,8 @@ unop_code(tag,			 1).
 unop_code(unmktag,		 2).
 unop_code(mkbody,		 3).
 unop_code(unmkbody,		 4).
-unop_code(cast_to_unsigned,	 5).
+% We used to use value `5' for cast_to_unsigned.
+% This is now no longer used.
 unop_code(hash_string,		 6).
 unop_code(bitwise_complement,	 7).
 unop_code((not),		 8).
@@ -1073,7 +1114,6 @@ unop_debug(tag,			"tag").
 unop_debug(unmktag,		"unmktag").
 unop_debug(mkbody,		"mkbody").
 unop_debug(unmkbody,		"unmkbody").
-unop_debug(cast_to_unsigned,	"cast_to_unsigned").
 unop_debug(hash_string,		"has_string").
 unop_debug(bitwise_complement,	"bitwise_complement").
 unop_debug((not),		"not").

@@ -1,11 +1,12 @@
 backptr.h
 cord.h
+CVS
 ec.h
-gc.h
 gc_alloc.h
 gc_copy_descr.h
 gc_cpp.h
 gc_gcj.h
+gc.h
 gc_inl.h
 gc_inline.h
 gc_nursery.h
@@ -13,4 +14,8 @@ gc_typed.h
 javaxfc.h
 leak_detector.h
 new_gc_alloc.h
+private
 weakpointer.h
+.
+..
+.nocopyright

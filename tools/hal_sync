@@ -3,6 +3,9 @@
 # compiler.  It should be executed from within the mercury/ directory 
 # (ie. the top level) in a checked-out version of the HAL branch.
 
+chgrp -R mercury *
+chmod -R g+rX *
+
 sync_tag_file=.hal_trunk_sync_tag
 
 if [ ! -f $sync_tag_file ]

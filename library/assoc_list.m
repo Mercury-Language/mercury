@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1995-1997, 1999-2000 The University of Melbourne.
+% Copyright (C) 1995-1997, 1999-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -31,21 +31,36 @@
 :- pred assoc_list__reverse_members(assoc_list(K, V), assoc_list(V, K)).
 :- mode assoc_list__reverse_members(in, out) is det.
 
+:- func assoc_list__reverse_members(assoc_list(K, V)) = assoc_list(V, K).
+
 	% Zip together two lists; abort if they are of different lengths.
 
 :- pred assoc_list__from_corresponding_lists(list(K), list(V),
 						assoc_list(K,V)).
 :- mode assoc_list__from_corresponding_lists(in, in, out) is det.
 
+:- func assoc_list__from_corresponding_lists(list(K), list(V))
+		= assoc_list(K,V).
+
 	% Return the first member of each pair.
 
 :- pred assoc_list__keys(assoc_list(K, V), list(K)).
 :- mode assoc_list__keys(in, out) is det.
 
+:- func assoc_list__keys(assoc_list(K, V)) = list(K).
+
 	% Return the second member of each pair.
 
 :- pred assoc_list__values(assoc_list(K, V), list(V)).
 :- mode assoc_list__values(in, out) is det.
+
+:- func assoc_list__values(assoc_list(K, V)) = list(V).
+
+	% Return the two lists contain respectively the first and second member
+	% of each pair in the assoc_list.
+
+:- pred assoc_list__keys_and_values(assoc_list(K, V), list(K), list(V)).
+:- mode assoc_list__keys_and_values(in, out, out) is det.
 
 	% Find the first element of the association list that matches
 	% the given key, and return the associated value.
@@ -114,6 +129,10 @@ assoc_list__values([], []).
 assoc_list__values([_ - V | KVs], [V | Vs]) :-
 	assoc_list__values(KVs, Vs).
 
+assoc_list__keys_and_values([], [], []).
+assoc_list__keys_and_values([K - V | KVs], [K | Ks], [V | Vs]) :-
+	assoc_list__keys_and_values(KVs, Ks, Vs).
+
 assoc_list__search([K - V | KVs], Key, Value) :-
 	( K = Key ->
 		Value = V
@@ -134,22 +153,6 @@ assoc_list__remove([K - V | KVs], Key, Value, Rest) :-
 %-----------------------------------------------------------------------------%
 % Ralph Becket <rwab1@cl.cam.ac.uk> 29/04/99
 % 	Functional forms added.
-
-:- interface.
-
-:- func assoc_list__reverse_members(assoc_list(K, V)) = assoc_list(V, K).
-
-:- func assoc_list__from_corresponding_lists(list(K), list(V))
-	= assoc_list(K,V).
-
-:- func assoc_list__keys(assoc_list(K, V)) = list(K).
-
-:- func assoc_list__values(assoc_list(K, V)) = list(V).
-
-% ---------------------------------------------------------------------------- %
-% ---------------------------------------------------------------------------- %
-
-:- implementation.
 
 assoc_list__reverse_members(AL1) = AL2 :-
 	assoc_list__reverse_members(AL1, AL2).

@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1996-2000 The University of Melbourne.
+# Copyright (C) 1996-2001 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -47,7 +47,17 @@ DEFAULT_GRADE	= $(MERCURY_DEFAULT_GRADE)
 GRADE		= $(DEFAULT_GRADE)
 GRADESTRING	= $(shell $(MCOGS) $(ALL_GRADEFLAGS))
 
-ALL_GRADEFLAGS  = $(GRADEFLAGS) $(EXTRA_GRADEFLAGS) $(TARGET_GRADEFLAGS)
+# This may be overridden on the command line
+TARGET_ASM	= no
+
+ifeq ($(TARGET_ASM),yes)
+ASM_OPT  = --target asm
+else
+ASM_OPT  =
+endif
+
+ALL_GRADEFLAGS  = $(USUAL_GRADEFLAGS) $(ASM_OPT)
+USUAL_GRADEFLAGS = $(GRADEFLAGS) $(EXTRA_GRADEFLAGS) $(TARGET_GRADEFLAGS)
 GRADEFLAGS	= --grade $(GRADE)
 EXTRA_GRADEFLAGS =
 
@@ -130,6 +140,38 @@ ALL_CFLAGS	= $(CFLAGS) $(EXTRA_CFLAGS) $(TARGET_CFLAGS)
 CFLAGS		=
 EXTRA_CFLAGS	=
 
+# MS_CL is the command line version of Microsoft Visual C++, which we
+# use to compile Managed C++ code in the .NET backend.
+MS_CL		= cl
+ALL_MS_CLFLAGS	= $(MS_CLFLAGS) $(EXTRA_MS_CLFLAGS) $(TARGET_MS_CLFLAGS) \
+		$(LIB_MS_CLFLAGS) $(ALL_CFLAGS)
+MS_CLFLAGS	=
+EXTRA_MS_CLFLAGS =
+LIB_MS_CLFLAGS	= $(patsubst %,-I %,$(EXTRA_C_INCL_DIRS))
+
+# MS_CL_NOASM can be used to turn off assembly generation.  Use
+# MS_CL_NOASM=:noAssembly to turn it off, leave it blank to turn it on.
+MS_CL_NOASM	=
+MS_DOTNET_SDK_DIR=@MS_DOTNET_SDK_DIR@
+# The system libraries.
+MS_CL_LIBS	= "$(MS_DOTNET_SDK_DIR)/Lib/mscoree.lib" \
+		  "$(MS_DOTNET_SDK_DIR)/Lib/kernel32.lib"
+MERC_C_INCL_DIR = @LIBDIR@/inc
+MERC_DLL_DIR    = @LIBDIR@/inc
+
+# MS_ILASM is the Microsoft IL assembler, which turns IL assembly code
+# into bytecode.
+MS_ILASM		= @ILASM@
+ALL_MS_ILASMFLAGS= $(MS_ILASMFLAGS) $(EXTRA_MS_ILASMFLAGS) \
+		$(TARGET_MS_ILASMFLAGS) $(LIB_MS_ILASMFLAGS)
+MS_ILASMFLAGS	=
+EXTRA_MS_ILASMFLAGS =
+LIB_MS_ILASMFLAGS= $(patsubst %,-I %,$(EXTRA_C_INCL_DIRS))
+
+# MS_AL is the Microsoft assembly linker, which creates and installs
+# assemblies.
+MS_AL		= al
+
 ML		= ml
 ALL_MLFLAGS	= $(MLFLAGS) $(EXTRA_MLFLAGS) $(TARGET_MLFLAGS) $(LIB_MLFLAGS)
 MLFLAGS		= $(EXTRA_MLFLAGS)
@@ -199,6 +241,10 @@ EXTRA_LIBGRADES	=
 # (We use `.pic_o' as the extension for `.o' files that must have
 # position-independent code.)
 CFLAGS_FOR_PIC		= @CFLAGS_FOR_PIC@
+
+# $(GCCFLAGS_FOR_PIC) is passed to the GCC back-end when creating
+# `.pic_s' files.
+GCCFLAGS_FOR_PIC	= -fpic
 
 # $(EXT_FOR_PIC_OBJECTS) will be either `.o', if $(CFLAGS_FOR_PIC) is empty,
 # or `.pic_o', if special flags are required for compiling files that
@@ -323,6 +369,16 @@ EXTRA_TARGET_LIBGRADES = \
 maybe-base-EXTRA_LIBGRADES- = $(EXTRA_LIBGRADES-$*)
 maybe-base-EXTRA_LIBGRADES-undefined =
 
+TARGET_MS_CLFLAGS = \
+  $(maybe-base-MS_CLFLAGS-$(findstring undefined,$(origin MS_CLFLAGS-$*)))
+maybe-base-MS_CLFLAGS- = $(MS_CLFLAGS-$*)
+maybe-base-MS_CLFLAGS-undefined =
+
+TARGET_MS_ILASMFLAGS = \
+   $(maybe-base-MS_ILASMFLAGS-$(findstring undefined,$(origin MS_ILASMFLAGS-$*)))
+maybe-base-MS_ILASMFLAGS- = $(MS_ILASMFLAGS-$*)
+maybe-base-MS_ILASMFLAGS-undefined =
+
 # Support for compiling Mercury programs with Prolog will probably be
 # dropped one of these days, so it's probably not worth bothering with these.
 TARGET_MNCFLAGS	=
@@ -362,8 +418,10 @@ date3s_subdir=$(SUBDIR)date3s/
 optdates_subdir=$(SUBDIR)optdates/
 trans_opt_dates_subdir=$(SUBDIR)trans_opt_dates/
 cs_subdir=$(SUBDIR)cs/
+ss_subdir=$(SUBDIR)cs/
 os_subdir=$(SUBDIR)os/
 rlos_subdir=$(SUBDIR)rlos/
+ils_subdir=$(SUBDIR)ils/
 dirs_subdir=$(SUBDIR)dirs/
 
 else
@@ -386,8 +444,10 @@ date3s_subdir=
 optdates_subdir=
 trans_opt_dates_subdir=
 cs_subdir=
+ss_subdir=
 os_subdir=
 rlos_subdir=
+ils_subdir=
 dirs_subdir=
 
 endif

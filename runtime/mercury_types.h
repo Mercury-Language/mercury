@@ -63,6 +63,7 @@ typedef	MR_intptr_t		MR_Bool;
 ** `MR_Code *' is used as a generic pointer-to-label type that can point
 ** to any label defined using the Define_* macros in mercury_goto.h.
 */
+
 typedef void			MR_Code;
 
 /*
@@ -92,17 +93,13 @@ typedef unsigned char MR_UnsignedChar;
 typedef MR_Char *MR_String;
 typedef const MR_Char *MR_ConstString;
 
-/* continuation function type, for --high-level-code option */
-typedef void (*MR_NestedCont) (void);	/* for --gcc-nested-functions */
-typedef void (*MR_Cont) (void *);	/* for --no-gcc-nested-functions */
-
 #ifndef MR_HIGHLEVEL_CODE
   /*
   ** semidet predicates indicate success or failure by leaving nonzero or zero
-  ** respectively in register r1
+  ** respectively in register MR_r1
   ** (should this #define go in some other header file?)
   */
-  #define SUCCESS_INDICATOR r1
+  #define SUCCESS_INDICATOR MR_r1
 #endif
 
 /*

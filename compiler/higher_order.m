@@ -500,7 +500,7 @@ traverse_goal_2(some(Vars, CanRemove, Goal0) - Info,
 	traverse_goal_2(Goal0, Goal).
 
 traverse_goal_2(Goal, Goal) -->
-	{ Goal = pragma_foreign_code(_, _, _, _, _, _, _, _) - _ }.
+	{ Goal = pragma_foreign_code(_, _, _, _, _, _, _) - _ }.
 
 traverse_goal_2(Goal, Goal) -->
 	{ Goal = unify(_, _, _, Unify, _) - _ },
@@ -760,7 +760,7 @@ maybe_specialize_higher_order_call(PredVar, MaybeMethod, Args,
 			module_info_instances(ModuleInfo, Instances),
 			map__lookup(Instances, ClassId, InstanceList),
 			list__index1_det(InstanceList, Instance, InstanceDefn),
-			InstanceDefn = hlds_instance_defn(_, _,
+			InstanceDefn = hlds_instance_defn(_, _, _,
 				InstanceConstraints, InstanceTypes0, _,
 				yes(ClassInterface), _, _),
 			term__vars_list(InstanceTypes0, InstanceTvars),
@@ -862,7 +862,7 @@ find_matching_instance_method([Instance | Instances], MethodNum,
 		TVarSet = TVarSet1,
 		Constraints = Constraints0,
 		UnconstrainedTVarTypes = UnconstrainedTVarTypes0,
-		Instance = hlds_instance_defn(_, _, _,
+		Instance = hlds_instance_defn(_, _, _, _,
 			_, _, yes(ClassInterface), _, _),
 		list__index1_det(ClassInterface, MethodNum,
 			hlds_class_proc(PredId, ProcId))
@@ -878,7 +878,7 @@ find_matching_instance_method([Instance | Instances], MethodNum,
 
 instance_matches(ClassTypes, Instance, Constraints, UnconstrainedTVarTypes,
 		TVarSet0, TVarSet) :-
-	Instance = hlds_instance_defn(_, _, Constraints0,
+	Instance = hlds_instance_defn(_, _, _, Constraints0,
 		InstanceTypes0, _, _, InstanceTVarSet, _),
 	varset__merge_subst(TVarSet0, InstanceTVarSet, TVarSet,
 		RenameSubst),
@@ -1202,6 +1202,7 @@ find_higher_order_args(ModuleInfo, CalleeStatus, [Arg | Args],
 			% specialize any higher-order arguments. We may be
 			% able to do user guided type specialization.
 			CalleeStatus \= imported(_),
+			CalleeStatus \= external(_),
 			type_is_higher_order(CalleeArgType, _, _, _)
 		;
 			true
@@ -1679,7 +1680,7 @@ interpret_typeclass_info_manipulator(Manipulator, Args,
 		module_info_instances(ModuleInfo, Instances),
 		map__lookup(Instances, ClassId, InstanceDefns),
 		list__index1_det(InstanceDefns, InstanceNum, InstanceDefn),
-		InstanceDefn = hlds_instance_defn(_, _, Constraints, _,_,_,_,_),
+		InstanceDefn = hlds_instance_defn(_,_,_,Constraints,_,_,_,_,_),
 		(
 			Manipulator = type_info_from_typeclass_info,
 			list__length(Constraints, NumConstraints),

@@ -20,9 +20,9 @@
 ** transient.
 */
 #define MR_TRACE_USE_HP(STATEMENTS) do {				\
-		restore_transient_registers();				\
+		MR_restore_transient_registers();			\
 		STATEMENTS;						\
-		save_transient_registers();				\
+		MR_save_transient_registers();				\
 	} while (0)
 
 /*
@@ -33,11 +33,11 @@
 */
 
 #define MR_TRACE_CALL_MERCURY(STATEMENTS) do {				\
-		restore_transient_registers();				\
-		save_registers();					\
+		MR_restore_transient_registers();			\
+		MR_save_registers();					\
 		STATEMENTS;						\
-		restore_registers();					\
-		save_transient_registers();				\
+		MR_restore_registers();					\
+		MR_save_transient_registers();				\
 	} while (0)
 
 /*

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2000 The University of Melbourne.
+% Copyright (C) 1994-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -97,6 +97,9 @@
 		;	assume_gmake
 		;	trace
 		;	trace_optimized
+		;	trace_table_io
+		;	trace_table_io_states
+		;	delay_death
 		;	suppress_trace
 		;	stack_trace_higher_order
 		;	generate_bytecode
@@ -175,14 +178,25 @@
 		;	gcc_nested_functions
 		;	det_copy_out
 		;	nondet_copy_out
+		;	put_commit_in_own_func
 		;	unboxed_float
 		;       unboxed_enums
 		;       unboxed_no_tag_types
 		;	sync_term_size % in words
 		;	type_layout
+	% Foreign language interface options
+				% The foreign language that the user has
+				% selected for use in this module
+				% (defaults to the value of backend
+				% foreign target).
+		;	use_foreign_language
 	% Options for internal use only
 	% (the values of these options are implied by the
 	% settings of other options)
+				% The language that this backend can
+				% interface to most easily (probably the
+				% target language of the backend).
+		; 	backend_foreign_language 
 				% Stack layout information required to do
 				% a stack trace.
 		;       basic_stack_layout
@@ -274,6 +288,7 @@
 		;	c_flag_to_name_object_file
 		;	object_file_extension
 		;	max_jump_table_size
+		;	compare_specialization
 		;	fact_table_max_array_size
 				% maximum number of elements in a single 
 				% fact table data array
@@ -284,6 +299,7 @@
 				% percentage.
 
 		;	gcc_local_labels
+		;	prefer_switch
 
 	% Optimization Options
 		;	opt_level
@@ -489,7 +505,10 @@ option_defaults_2(aux_output_option, [
 	assume_gmake		-	bool(yes),
 	trace			-	string("default"),
 	trace_optimized		-	bool(no),
+	trace_table_io		-	bool(no),
+	trace_table_io_states	-	bool(no),
 	suppress_trace		-	string(""),
+	delay_death		-	bool(yes),
 	stack_trace_higher_order -	bool(no),
 	generate_bytecode	-	bool(no),
 	generate_prolog		-	bool(no),
@@ -570,6 +589,11 @@ option_defaults_2(compilation_model_option, [
 					% of writing) - will usually be over-
 					% ridden by a value from configure.
 	type_layout		-	bool(yes),
+	use_foreign_language	-	string(""),
+	backend_foreign_language-	string(""),
+					% The previous two options
+					% depend on the target and are
+					% set in handle_options.
 	basic_stack_layout	-	bool(no),
 	agc_stack_layout	-	bool(no),
 	procid_stack_layout	-	bool(no),
@@ -585,6 +609,7 @@ option_defaults_2(compilation_model_option, [
 	gcc_nested_functions	-	bool(no),
 	det_copy_out		-	bool(no),
 	nondet_copy_out		-	bool(no),
+	put_commit_in_own_func	-	bool(no),
 	unboxed_float           -       bool(no),
 	unboxed_enums           -       bool(yes),
 	unboxed_no_tag_types    -       bool(yes)
@@ -634,10 +659,12 @@ option_defaults_2(code_gen_option, [
 					% above default with a value determined
 					% at configuration time
 	max_jump_table_size	-	int(0),
+	compare_specialization	-	int(4),
 					% 0 indicates any size.
 	fact_table_max_array_size -	int(1024),
 	fact_table_hash_percent_full - 	int(90),
-	gcc_local_labels	-	bool(no)
+	gcc_local_labels	-	bool(no),
+	prefer_switch		-	bool(yes)
 ]).
 option_defaults_2(special_optimization_option, [
 		% Special optimization options.
@@ -881,7 +908,10 @@ long_option("assume-gmake",		assume_gmake).
 long_option("trace",			trace).
 long_option("trace-optimised",		trace_optimized).
 long_option("trace-optimized",		trace_optimized).
+long_option("trace-table-io",		trace_table_io).
+long_option("trace-table-io-states",	trace_table_io_states).
 long_option("suppress-trace",		suppress_trace).
+long_option("delay-death",		delay_death).
 long_option("stack-trace-higher-order",	stack_trace_higher_order).
 long_option("generate-bytecode",	generate_bytecode).
 long_option("generate-prolog",		generate_prolog).
@@ -953,6 +983,7 @@ long_option("bits-per-word",		bits_per_word).
 long_option("bytes-per-word",		bytes_per_word).
 long_option("conf-low-tag-bits",	conf_low_tag_bits).
 long_option("type-layout",		type_layout).
+long_option("use-foreign-language",	use_foreign_language).
 long_option("agc-stack-layout",		agc_stack_layout).
 long_option("basic-stack-layout",	basic_stack_layout).
 long_option("procid-stack-layout",	procid_stack_layout).
@@ -974,6 +1005,7 @@ long_option("high-level-data",		highlevel_data).
 long_option("gcc-nested-functions",	gcc_nested_functions).
 long_option("det-copy-out",		det_copy_out).
 long_option("nondet-copy-out",		nondet_copy_out).
+long_option("put-commit-in-own-func",	put_commit_in_own_func).
 long_option("unboxed-float",		unboxed_float).
 long_option("unboxed-enums",		unboxed_enums).
 long_option("unboxed-no-tag-types",	unboxed_no_tag_types).
@@ -1011,10 +1043,12 @@ long_option("c-include-directory",	c_include_directory).
 long_option("c-flag-to-name-object-file", c_flag_to_name_object_file).
 long_option("object-file-extension",	object_file_extension).
 long_option("max-jump-table-size",	max_jump_table_size).
+long_option("compare-specialization",	compare_specialization).
 long_option("fact-table-max-array-size",fact_table_max_array_size).
 long_option("fact-table-hash-percent-full",
 					fact_table_hash_percent_full).
 long_option("gcc-local-labels",		gcc_local_labels).
+long_option("prefer-switch",		prefer_switch).
 
 % optimization options
 
@@ -1067,6 +1101,12 @@ long_option("type-specialisation",	type_specialization).
 long_option("user-guided-type-specialization",
 					user_guided_type_specialization).
 long_option("user-guided-type-specialisation",
+					user_guided_type_specialization).
+	% This option is for use in configure.in to test for
+	% some bug-fixes for type-specialization which are needed
+	% to compile the library. It's not documented, and should
+	% eventually be removed.
+long_option("fixed-user-guided-type-specialization",
 					user_guided_type_specialization).
 long_option("higher-order-size-limit",	higher_order_size_limit).
 long_option("introduce-accumulators",	introduce_accumulators).
@@ -1443,7 +1483,8 @@ opt_level(4, _, [
 	lazy_code		-	bool(yes),
 	optimize_value_number	-	bool(yes),
 	inline_simple_threshold	-	int(8),
-	inline_compound_threshold -	int(20)
+	inline_compound_threshold -	int(20),
+	higher_order_size_limit -	int(30)
 ]).
 
 % Optimization level 5: apply optimizations which may have some
@@ -1456,7 +1497,8 @@ opt_level(5, _, [
 	pred_value_number	-	bool(yes),
 	optimize_repeat		-	int(5),
 	optimize_vnrepeat	-	int(2),
-	inline_compound_threshold -	int(100)
+	inline_compound_threshold -	int(100),
+	higher_order_size_limit -	int(40)
 ]).
 
 % Optimization level 6: apply optimizations which may have any
@@ -1681,6 +1723,20 @@ options_help_aux_output -->
 %		"\tSuppress the named aspects of the execution tracing system.",
 		"--trace-optimized",
 		"\tDo not disable optimizations that can change the trace.",
+% tabling io is not documented yet, since it is still experimental
+%		"--trace-table-io",
+%		"\tEnable the tabling of I/O actions, to allow the debugger",
+%		"\tto execute retry commands across I/O actions.",
+%		"--trace-table-io-states",
+%		"\tWhen tabling I/O actions, table the io__state arguments",
+%		"\ttogether with the others. This should be required iff",
+%		"\tvalues of type io__state actually contain information.",
+		"--no-delay-death",
+		"\tWhen the trace level is `deep', the compiler normally",
+		"\tpreserves the values of variables as long as possible, even",
+		"\tbeyond the point of their last use, in order to make them",
+		"\taccessible from as many debugger events as possible.",
+		"\tHowever, it will not do this if this option is given.",
 		"--stack-trace-higher-order",
 		"\tEnable stack traces through predicates and functions with",
 		"\thigher-order arguments, even if stack tracing is not",
@@ -1899,6 +1955,16 @@ options_help_compilation_model -->
 %		"\tSpecify whether to handle output arguments for nondet",
 %		"\tprocedures using pass-by-value rather than pass-by-reference.",
 %		"\tThis option is ignored if the `--high-level-code' option is not enabled.",
+% The --put-commit-in-own-func option is not documented because
+% it is enabled automatically (by handle_options) in the situations
+% where it is needed; the user should never need to set it.
+%		"--put-commit-in-own-func",
+%		"\tPut each commit in its own C function.",
+%		"\tThis option only affects the MLDS back-ends.",
+%		"\tIt is needed for the high-level C back-end,",
+%		"\twhere commits are implemented via setjmp()/longjmp(),",
+%		"\tsince longjmp() may clobber any non-volatile local vars",
+%		"\tin the function that called setjmp().",
 		"--gc {none, conservative, accurate}",
 		"--garbage-collection {none, conservative, accurate}",
 		"\t\t\t\t(`.gc' grades use `--gc conservative',",
@@ -1981,6 +2047,15 @@ your program compiled with different options.
 
 		% The --bytes-per-word option is intended for use
 		% by the `mmc' script; it is deliberately not documented.
+		%
+		"--use-foreign-language <foreign language>",
+		"\tUse the given foreign language to implement predicates",
+		"\twritten in foreign languages.  Any name that can be used",
+		"\tto specify foreign languages in pragma foreign declarations",
+		"\tis valid, but not all foreign languages are implemented",
+		"\tin all backends.",
+		"\tDefault value is `C' for the LLDS and MLDS->C backends,",
+		"\tor `ManagedC++' for the .NET backend.",
 
 		"--no-type-layout",
 		"(This option is not for general use.)",
@@ -2133,6 +2208,17 @@ options_help_code_generation -->
 %		"\tvia a `goto'.",
 %		"\tIf this option is not enabled, the default behaviour is to",
 %		"\tuse the standard ANSI/ISO C setjmp() and longjmp() functions."
+
+% This option is not yet documented because it is not yet useful -- currently
+% we don't take advantage of GNU C's computed gotos extension.
+%		"--no-prefer-switch",
+%		"\tGenerate code using computed gotos rather than switches.",
+%		"\tThis makes the generated code less readable, but potentially",
+%		"\tslightly more efficient.",
+%		"\tThis option has no effect unless the `--high-level-code' option",
+%		"\tis enabled.  It also has no effect if the `--target' option is",
+%		"\tset to `il'.",
+
 	]),
 
 	io__write_string("\n    Code generation target options:\n"),
