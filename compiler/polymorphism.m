@@ -382,9 +382,9 @@ polymorphism__process_goal_2(unify(XVar, Y, Mode, Unification, Context),
 		% lambda goal and then convert the lambda expression
 		% into a new predicate
 		{ LambdaGoal0 = _ - GoalInfo0 },
-		{ goal_info_get_nonlocals(GoalInfo0, NonLocals0) },
+		{ goal_info_get_nonlocals(GoalInfo0, OrigNonLocals) },
 		polymorphism__process_goal(LambdaGoal0, LambdaGoal),
-		polymorphism__process_lambda(Vars, Modes, Det, NonLocals0,
+		polymorphism__process_lambda(Vars, Modes, Det, OrigNonLocals,
 				LambdaGoal, Unification, Y1, Unification1),
 		{ Goal = unify(XVar, Y1, Mode, Unification1, Context)
 				- GoalInfo }
@@ -412,13 +412,17 @@ polymorphism__process_goal_2(if_then_else(Vars, A0, B0, C0), GoalInfo,
 	polymorphism__process_goal(B0, B),
 	polymorphism__process_goal(C0, C).
 
-polymorphism__process_goal_2(
-			pragma_c_code(C_Code, PredId, ProcId, Args, ArgNameMap),
-			GoalInfo, 
-			pragma_c_code(C_Code, PredId, ProcId, Args, ArgNameMap)
-				- GoalInfo
-			) -->
-	[].
+polymorphism__process_goal_2(pragma_c_code(C_Code, PredId, ProcId,
+		ArgVars0, ArgNameMap), GoalInfo, Goal) -->
+	polymorphism__process_call(PredId, ProcId, ArgVars0, 
+		ArgVars, ExtraVars, ExtraGoals),
+	{ goal_info_get_nonlocals(GoalInfo, NonLocals0) },
+	{ set__insert_list(NonLocals0, ExtraVars, NonLocals) },
+	{ goal_info_set_nonlocals(GoalInfo, NonLocals, CallGoalInfo) },
+	{ Call = pragma_c_code(C_Code, PredId, ProcId, ArgVars, ArgNameMap)
+			- CallGoalInfo },
+	{ list__append(ExtraGoals, [Call], GoalList) },
+	{ conj_list_to_goal(GoalList, GoalInfo, Goal) }.
 
 :- pred polymorphism__process_goal_list(list(hlds__goal), list(hlds__goal),
 					poly_info, poly_info).
@@ -481,10 +485,10 @@ polymorphism__process_call(PredId, _ProcId, ArgVars0, ArgVars,
 :- mode polymorphism__process_lambda(in, in, in, in, in, in, out, out,
 		in, out) is det.
 
-polymorphism__process_lambda(Vars, Modes, Det, OrigNonLocals0, LambdaGoal,
+polymorphism__process_lambda(Vars, Modes, Det, OrigNonLocals, LambdaGoal,
 		Unification0, Functor, Unification, PolyInfo0, PolyInfo) :-
 	PolyInfo0 = poly_info(VarSet, VarTypes, TVarSet, X, ModuleInfo0),
-	lambda__transform_lambda(Vars, Modes, Det, OrigNonLocals0, LambdaGoal,
+	lambda__transform_lambda(Vars, Modes, Det, OrigNonLocals, LambdaGoal,
 		Unification0, VarSet, VarTypes, TVarSet, ModuleInfo0,
 		Functor, Unification, ModuleInfo),
 	PolyInfo = poly_info(VarSet, VarTypes, TVarSet, X, ModuleInfo).

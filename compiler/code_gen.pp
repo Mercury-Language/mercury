@@ -821,18 +821,24 @@ pragma_select_in_args([V - arg_info(_Loc, Mode)|Rest], In) :-
 
 % make_pragma_decls fills returns the list of pragma_decls for the pragma_c
 % data structure in the llds. It is essentially a list of pairs of type and
-% variable name (so that declarations of the form "Type Name;" can be made.
+% variable name, so that declarations of the form "Type Name;" can be made.
 
 :- pred make_pragma_decls(list(var), map(var, string), 
 			list(pragma_c_decl), code_info, code_info).
 :- mode make_pragma_decls(in, in, out, in, out) is det.
 
 make_pragma_decls([], _, []) --> [].
-make_pragma_decls([A|Args], ArgNameMap, [D|Decls]) -->
-	{ map__lookup(ArgNameMap, A, Name) },
-	code_info__variable_type(A, Type),
-	{ D = pragma_c_decl(Type, Name) },
-	make_pragma_decls(Args, ArgNameMap, Decls).
+make_pragma_decls([Arg|Args], ArgNameMap, Decls) -->
+	( { map__search(ArgNameMap, Arg, Name) } ->
+		code_info__variable_type(Arg, Type),
+		{ Decl = pragma_c_decl(Type, Name) },
+		{ Decls = [Decl | Decls1] },
+		make_pragma_decls(Args, ArgNameMap, Decls1)
+	;
+		% if the variable doesn't occur in the ArgNameMap,
+		% it can't be used, so we just ignore it
+		make_pragma_decls(Args, ArgNameMap, Decls)
+	).
 
 %---------------------------------------------------------------------------%
 
@@ -845,13 +851,19 @@ make_pragma_decls([A|Args], ArgNameMap, [D|Decls]) -->
 :- mode get_pragma_input_vars(in, in, out, out, in, out) is det.
 
 get_pragma_input_vars([], _, [], empty) --> [].
-get_pragma_input_vars([A|Args], ArgNameMap, [I|Inputs], Code) -->
-	{ map__lookup(ArgNameMap, A, Name) },
-	code_info__variable_type(A, Type),
-	code_info__produce_variable(A, Code0, Rval),
-	{ I = pragma_c_input(Name, Type, Rval) },
-	get_pragma_input_vars(Args, ArgNameMap, Inputs, Code1),
-	{ Code = tree(Code0, Code1) }.
+get_pragma_input_vars([Arg|Args], ArgNameMap, Inputs, Code) -->
+	( { map__search(ArgNameMap, Arg, Name) } ->
+		code_info__variable_type(Arg, Type),
+		code_info__produce_variable(Arg, Code0, Rval),
+		{ Input = pragma_c_input(Name, Type, Rval) },
+		{ Inputs = [Input | Inputs1] },
+		{ Code = tree(Code0, Code1) },
+		get_pragma_input_vars(Args, ArgNameMap, Inputs1, Code1)
+	;
+		% if the variable doesn't occur in the ArgNameMap,
+		% it can't be used, so we just ignore it
+		get_pragma_input_vars(Args, ArgNameMap, Inputs, Code)
+	).
 
 %---------------------------------------------------------------------------%
 
