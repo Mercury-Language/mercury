@@ -269,14 +269,14 @@ $(il_dates_subdir)%.il_date : %.m
 ifeq ($(findstring il,$(GRADE)),il)        
 $(os_subdir)%.dll : %.cpp
 	$(MS_CL) -CLR$(MS_CL_NOASM) $(ALL_MS_CLFLAGS) \
-		-I`$(CYGPATH) $(MERC_C_INCL_DIR)` \
-		-AI`$(CYGPATH) $(MERC_DLL_DIR)` $< \
+		-I`$(FIX_PATH_FOR_CL) $(MERC_C_INCL_DIR)` \
+		-AI`$(FIX_PATH_FOR_CL) $(MERC_DLL_DIR)` $< \
 		-link -noentry mscoree.lib -dll $(MS_CL_LIBS) -out:$@
 	rm -f $*.obj
 
 $(os_subdir)%.dll : %.cs
-	$(MS_CSC) /t:library /lib:`$(CYGPATH) $(MERC_DLL_DIR)` /out:$@ \
-		$(CSHARP_ASSEMBLY_REFS-$*) $(ALL_MS_CSCFLAGS) $<
+	$(MS_CSC) /t:library /lib:`$(FIX_PATH_FOR_CSC) $(MERC_DLL_DIR)` \
+		/out:$@ $(CSHARP_ASSEMBLY_REFS-$*) $(ALL_MS_CSCFLAGS) $<
 
 $(os_subdir)%.dll : %.il
 	$(MS_ILASM) $(ALL_MS_ILASMFLAGS) /dll /quiet /OUT=$@ $<
@@ -378,20 +378,20 @@ ifeq ($(findstring il,$(GRADE)),il)
 
 .cpp.dll:
 	$(MS_CL) -CLR$(MS_CL_NOASM) $(ALL_MS_CLFLAGS) \
-		-I`$(CYGPATH) $(MERC_C_INCL_DIR)` \
-		-AI`$(CYGPATH) $(MERC_DLL_DIR)` $< \
+		-I`$(FIX_PATH_FOR_CL) $(MERC_C_INCL_DIR)` \
+		-AI`$(FIX_PATH_FOR_CL) $(MERC_DLL_DIR)` $< \
 		-link -noentry mscoree.lib -dll $(MS_CL_LIBS) -out:$@
 	rm -f $*.obj
 
 .cs.dll:
-	$(MS_CSC) /t:library /lib:`$(CYGPATH) $(MERC_DLL_DIR)` /out:$@ \
-		$(CSHARP_ASSEMBLY_REFS-$*) $(EXTRA_CSCFLAGS) $<
+	$(MS_CSC) /t:library /lib:`$(FIX_PATH_FOR_CSC) $(MERC_DLL_DIR)` \
+		/out:$@ $(CSHARP_ASSEMBLY_REFS-$*) $(EXTRA_CSCFLAGS) $<
 
 .cpp.exe:
 	$(MS_CL) -CLR$(MS_CL_NOASM) -I$(MERCURY_LIBRARY_PATH) $< -link -entry:main $(MS_CL_LIBS) -out:$@
 
 .cs.exe:
-	$(MS_CSC) /lib:`$(CYGPATH) $(MERC_DLL_DIR)` /out:$@ \
+	$(MS_CSC) /lib:`$(FIX_PATH_FOR_CSC) $(MERC_DLL_DIR)` /out:$@ \
 		$(CSHARP_ASSEMBLY_REFS-$*) $(EXTRA_CSCFLAGS) $<
 
 endif # $(findstring il,$(GRADE)) != ""

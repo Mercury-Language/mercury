@@ -186,6 +186,14 @@ EXTRA_MCSFLAGS	= $(EXTRA_MCFLAGS)
 # Stuff which is specific to the C back-ends
 #
 
+# FIX_PATH_FOR_<foo> should be set to a script which converts path names
+# from Unix/Cygwin format into a format suitable for the <foo> command.  
+# If <foo> is a Unix/Cygwin command that expects Unix-style path names,
+# FIX_PATH_FOR_<foo> should be set to "echo".
+# If <foo> is a Windows command that expects Windows-style path names,
+# FIX_PATH_FOR_<foo> should be set to "cygpath -w".
+FIX_PATH_FOR_CC	= @FIX_PATH_FOR_CC@
+
 MGNUC		= mgnuc
 ALL_MGNUCFLAGS	= $(MGNUCFLAGS) $(EXTRA_MGNUCFLAGS) $(TARGET_MGNUCFLAGS) \
 		  -- $(ALL_CFLAGS)
@@ -204,7 +212,7 @@ LIB_CFLAGS	= $(patsubst %,-I %,$(EXTRA_C_INCL_DIRS))
 
 # MS_CL is the command line version of Microsoft Visual C++, which we
 # use to compile Managed C++ code in the .NET backend.
-CYGPATH		= @CYGPATH@
+FIX_PATH_FOR_CL	= cygpath -w
 MS_CL		= @MS_CL@
 MS_VISUALCPP_DIR = @MS_VISUALCPP_DIR@
 ALL_MS_CLFLAGS	= $(MS_CLFLAGS) $(EXTRA_MS_CLFLAGS) $(TARGET_MS_CLFLAGS) \
@@ -216,9 +224,9 @@ EXTRA_MS_CLFLAGS =
 # will be single-quoted when passed to the shell via ECHO_MERCURY_OPTIONS
 # to preserve possible double-quotes, so the command substitution won't
 # be run then.
-MS_VC7_INCLUDE_DIR = $(shell echo `$(CYGPATH) "$(MS_VISUALCPP_DIR)/include"`)
-MS_VC7_INCLUDES = -I"$(MS_VC7_INCLUDE_DIR)"
-LIB_MS_CLFLAGS	= $(MS_VC7_INCLUDES) $(patsubst %,-I %,$(EXTRA_C_INCL_DIRS))
+MS_VC_INCLUDE_DIR = $(shell $(FIX_PATH_FOR_CL) "$(MS_VISUALCPP_DIR)/include")
+MS_VC_INCLUDES = -I"$(MS_VC_INCLUDE_DIR)"
+LIB_MS_CLFLAGS	= $(MS_VC_INCLUDES) $(patsubst %,-I %,$(EXTRA_C_INCL_DIRS))
 
 # MS_CL_NOASM can be used to turn off assembly generation.  Use
 # MS_CL_NOASM=:noAssembly to turn it off, leave it blank to turn it on.
@@ -227,24 +235,31 @@ MS_DOTNET_SDK_DIR=@MS_DOTNET_SDK_DIR@
 # The system libraries were once needed here, but are currently unnecessary.
 MS_CL_LIBS	= 
 
-# XXX handle the case where MERCURY_STDLIB_DIR is not set.
+# MERCURY_STDLIB_DIR should be set by the `mmake' script.
 MERC_C_INCL_DIR = $(MERCURY_STDLIB_DIR)/inc
-MERC_DLL_DIR    = $(MERCURY_STDLIB_DIR)/lib/ilc/@FULLARCH@
+MERC_DLL_DIR    = $(MERCURY_STDLIB_DIR)/lib/$(GRADE)/@FULLARCH@
 
 # MS_ILASM is the Microsoft IL assembler, which turns IL assembly code
 # into bytecode.
-MS_ILASM		= @ILASM@
+# XXX we should also support the Portable.NET version of ILASM,
+# which has a different command-line interface. 
+# (Is there a Mono ILASM too?  What about Rotor?)
+MS_ILASM	= @ILASM@
 ALL_MS_ILASMFLAGS= $(MS_ILASMFLAGS) $(EXTRA_MS_ILASMFLAGS) \
 		$(TARGET_MS_ILASMFLAGS) $(LIB_MS_ILASMFLAGS) $(ILASM_KEYFLAG)
 MS_ILASMFLAGS	=
 EXTRA_MS_ILASMFLAGS =
 LIB_MS_ILASMFLAGS= $(patsubst %,-I %,$(EXTRA_C_INCL_DIRS))
 
-# MS_AL is the Microsoft assembly linker, which creates and installs
-# assemblies.
+# MS_AL is the Microsoft assembly linker, which creates assemblies.
 MS_AL		= al
 
 # MS_CSC is the command line version of C# compiler
+# XXX we should also support the Portable.NET and Mono C# compilers,
+# which have a different command-line interface. 
+# (What about Rotor?)
+
+FIX_PATH_FOR_CSC = cygpath -w
 MS_CSC		= csc
 ALL_MS_CSCFLAGS	= $(MS_CSCFLAGS) $(EXTRA_MS_CSCFLAGS) $(TARGET_MS_CSCFLAGS) \
 		$(LIB_MS_CSCFLAGS)

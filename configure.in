@@ -381,7 +381,7 @@ AC_PROG_CPP
 AC_CHECK_LIB(m, sin, [MATH_LIB=-lm], [MATH_LIB=])
 AC_SUBST(MATH_LIB)
 #-----------------------------------------------------------------------------#
-AC_MSG_CHECKING(for use of a Microsoft compiler)
+AC_MSG_CHECKING(for use of a Microsoft C compiler)
 AC_EGREP_CPP(yes,
 [
 #ifdef _MSC_VER
@@ -408,7 +408,7 @@ if test "$ac_microsoft" = "yes" ; then
 
 	USING_MICROSOFT_CL_COMPILER="yes"
 
-	CYGPATH="cygpath -w"
+	FIX_PATH_FOR_CC="cygpath -w"
 
 		# MS doesn't use a ranlib.
 	RANLIB="echo"
@@ -429,7 +429,7 @@ else
 
 	USING_MICROSOFT_CL_COMPILER="no"
 
-	CYGPATH=echo
+	FIX_PATH_FOR_CC=echo
 
 	AC_PROG_RANLIB
 
@@ -458,7 +458,7 @@ AC_SUBST(LIB_PREFIX)
 AC_SUBST(LIB_LIBPATH)
 AC_SUBST(LINK_LIB)
 AC_SUBST(LINK_OPT_SEP)
-AC_SUBST(CYGPATH)
+AC_SUBST(FIX_PATH_FOR_CC)
 
 #-----------------------------------------------------------------------------#
 # Microsoft.NET configuration
