@@ -71,6 +71,8 @@ MR_trace_browse(Word type_info, Word value)
 ** human-readable strings.
 */
 
+#ifdef MR_USE_EXTERNAL_DEBUGGER
+
 void
 MR_trace_browse_external(Word type_info, Word value)
 {
@@ -85,6 +87,8 @@ MR_trace_browse_external(Word type_info, Word value)
 	MR_trace_browser_state = MR_make_permanent(MR_trace_browser_state,
 				(Word *) MR_trace_browser_state_type);
 }
+
+#endif
 
 void
 MR_trace_print(Word type_info, Word value)

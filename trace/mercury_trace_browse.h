@@ -18,7 +18,9 @@
 ** Interactively browse a term.
 */
 extern 	void	MR_trace_browse(Word type_info, Word value);
+#ifdef MR_USE_EXTERNAL_DEBUGGER
 extern 	void	MR_trace_browse_external(Word type_info, Word value);
+#endif
 
 /*
 ** Display a term (non-interactively).
