@@ -307,7 +307,7 @@ ml_gen_static_const_arg(Var, static_cons(ConsId, ArgVars, StaticArgs), Rval) -->
 		% If this argument is something that would normally be allocated
 		% on the heap, just generate a reference to the static constant
 		% that we must have already generated for it.
-		% XXX Using mdls__array_type(mlds__generic_type) is probably 
+		% XXX Using mlds__array_type(mlds__generic_type) is probably 
 		% wrong when `--high-level-data' is enabled.
 		%
 		{ ConstType = mlds__array_type(mlds__generic_type) },	
@@ -1019,7 +1019,7 @@ ml_gen_new_object(MaybeConsId, Tag, CtorName, Var, ExtraRvals, ExtraTypes,
 
 		%
 		% Generate a local static constant for this term.
-		% XXX Using mdls__array_type(mlds__generic_type) is probably 
+		% XXX Using mlds__array_type(mlds__generic_type) is probably 
 		% wrong when `--high-level-data' is enabled.
 		%
 		ml_gen_static_const_name(Var, ConstName),
