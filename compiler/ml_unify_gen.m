@@ -578,13 +578,13 @@ ml_gen_closure_wrapper(PredId, ProcId, Offset, NumClosureArgs,
 	%
 	{ ClosureName = "closure" },
 	{ ClosureArgName = "closure_arg" },
+	{ MLDS_Context = mlds__make_context(Context) },
 	{ ClosureDecl = ml_gen_mlds_var_decl(var(ClosureName),
 		mlds__generic_env_ptr_type, MLDS_Context) },
 	ml_qualify_var(ClosureName, ClosureLval),
 	ml_qualify_var(ClosureArgName, ClosureArgLval),
-	{ AssignClosure = assign(ClosureLval, lval(ClosureArgLval)) },
-	{ MLDS_Context = mlds__make_context(Context) },
-	{ InitClosure = mlds__statement(atomic(AssignClosure), MLDS_Context) },
+	{ InitClosure = ml_gen_assign(ClosureLval, lval(ClosureArgLval),
+		Context) },
 
 	%
 	% if the wrapper function is model_non, then

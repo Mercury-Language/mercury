@@ -588,9 +588,8 @@ ml_gen_box_or_unbox_lval(CallerType, CalleeType, VarLval, VarName, Context,
 			% and the caller type is the destination type.
 			{ ml_gen_box_or_unbox_rval(CalleeType, CallerType,
 				lval(ArgLval), ConvertedArgRval) },
-			{ AssignStmt = assign(VarLval, ConvertedArgRval) },
-			{ AssignStatement = mlds__statement(atomic(AssignStmt),
-				mlds__make_context(Context)) },
+			{ AssignStatement = ml_gen_assign(VarLval,
+				ConvertedArgRval, Context) },
 			{ ConvStatements = [AssignStatement] }
 		)
 	).

@@ -964,10 +964,8 @@ ml_gen_var(Var, Lval) -->
 		=(MLDSGenInfo),
 		{ ml_gen_info_get_output_vars(MLDSGenInfo, OutputVars) },
 		{ ml_gen_info_get_varset(MLDSGenInfo, VarSet) },
-		{ ml_gen_info_get_module_name(MLDSGenInfo, ModuleName) },
-		{ MLDS_Module = mercury_module_name_to_mlds(ModuleName) },
 		{ VarName = ml_gen_var_name(VarSet, Var) },
-		{ VarLval = var(qual(MLDS_Module, VarName)) },
+		ml_qualify_var(VarName, VarLval),
 		{ MLDS_Type = mercury_type_to_mlds_type(Type) },
 		% output variables are passed by reference...
 		{ list__member(Var, OutputVars) ->
@@ -1107,10 +1105,7 @@ ml_gen_succeeded_var_decl(Context) =
 	% the success or failure of model_semi procedures.)
 	%
 ml_success_lval(SucceededLval) -->
-	=(MLDSGenInfo),
-	{ ml_gen_info_get_module_name(MLDSGenInfo, ModuleName) },
-	{ MLDS_Module = mercury_module_name_to_mlds(ModuleName) },
-	{ SucceededLval = var(qual(MLDS_Module, "succeeded")) }.
+	ml_qualify_var("succeeded", SucceededLval).
 
 	% Return an rval which will test the value of the `succeeded' flag.
 	% (`succeeded' is a boolean variable used to record
@@ -1125,10 +1120,7 @@ ml_gen_test_success(SucceededRval) -->
 	%
 ml_gen_set_success(Value, Context, MLDS_Statement) -->
 	ml_success_lval(Succeeded),
-	{ Assign = assign(Succeeded, Value) },
-	{ MLDS_Stmt = atomic(Assign) },
-	{ MLDS_Statement = mlds__statement(MLDS_Stmt,
-		mlds__make_context(Context)) }.
+	{ MLDS_Statement = ml_gen_assign(Succeeded, Value, Context) }.
 
 %-----------------------------------------------------------------------------%
 
@@ -1143,10 +1135,7 @@ ml_gen_cond_var_decl(CondVar, Context) =
 		mlds__native_bool_type, Context).
 
 ml_cond_var_lval(CondVar, CondVarLval) -->
-	=(MLDSGenInfo),
-	{ ml_gen_info_get_module_name(MLDSGenInfo, ModuleName) },
-	{ MLDS_Module = mercury_module_name_to_mlds(ModuleName) },
-	{ CondVarLval = var(qual(MLDS_Module, ml_gen_cond_var_name(CondVar))) }.
+	ml_qualify_var(ml_gen_cond_var_name(CondVar), CondVarLval).
 
 ml_gen_test_cond_var(CondVar, CondVarRval) -->
 	ml_cond_var_lval(CondVar, CondVarLval),
@@ -1154,10 +1143,7 @@ ml_gen_test_cond_var(CondVar, CondVarRval) -->
 	
 ml_gen_set_cond_var(CondVar, Value, Context, MLDS_Statement) -->
 	ml_cond_var_lval(CondVar, CondVarLval),
-	{ Assign = assign(CondVarLval, Value) },
-	{ MLDS_Stmt = atomic(Assign) },
-	{ MLDS_Statement = mlds__statement(MLDS_Stmt,
-		mlds__make_context(Context)) }.
+	{ MLDS_Statement = ml_gen_assign(CondVarLval, Value, Context) }.
 
 %-----------------------------------------------------------------------------%
 
@@ -1173,12 +1159,9 @@ ml_gen_set_cond_var(CondVar, Value, Context, MLDS_Statement) -->
 	% is not used.)
 	%
 ml_initial_cont(Cont) -->
-	=(MLDSGenInfo),
-	{ ml_gen_info_get_module_name(MLDSGenInfo, ModuleName) },
-	{ MLDS_Module = mercury_module_name_to_mlds(ModuleName) },
-	{ ContRval = lval(var(qual(MLDS_Module, "cont"))) },
-	{ ContEnvRval = lval(var(qual(MLDS_Module, "cont_env_ptr"))) },
-	{ Cont = success_cont(ContRval, ContEnvRval) }.
+	ml_qualify_var("cont", ContLval),
+	ml_qualify_var("cont_env_ptr", ContEnvLval),
+	{ Cont = success_cont(lval(ContLval), lval(ContEnvLval)) }.
 
 	% Generate code to call the current success continuation.
 	% This is used for generating success when in a model_non context.
@@ -1218,11 +1201,8 @@ ml_gen_call_current_success_cont(Context, MLDS_Statement) -->
 	% Note that we generate this as a dangling reference.
 	% The ml_elim_nested pass will insert the declaration
 	% of the env_ptr variable.
-ml_get_env_ptr(EnvPtrRval) -->
-	=(MLDSGenInfo),
-	{ ml_gen_info_get_module_name(MLDSGenInfo, ModuleName) },
-	{ MLDS_Module = mercury_module_name_to_mlds(ModuleName) },
-	{ EnvPtrRval = lval(var(qual(MLDS_Module, "env_ptr"))) }.
+ml_get_env_ptr(lval(EnvPtrLval)) -->
+	ml_qualify_var("env_ptr", EnvPtrLval).
 
 	% Return an rval for a pointer to the current environment
 	% (the set of local variables in the containing procedure).
