@@ -1404,25 +1404,12 @@ mercury_close(MercuryFile* mf)
 	}
 }
 
-/*
-** io__run_0_0 calls io__init_state_2_0 and main_2_0.
-** But to enable Quickstart of shared libraries on Irix 5,
-** we need to make sure that we don't have any undefined
-** external references when building the shared library.
-** Hence the statically linked init file saves the addresses of those
-** procedures in the following global variables.
-*/
-void (*address_of_init_modules)(void);
-#ifdef CONSERVATIVE_GC
-void (*address_of_init_gc)(void);
-#endif
-Code *address_of_io__init_state_2_0;
-Code *address_of_main_2_0;
-Code *entry_point;	/* normally io__run_0_0 */
-
 "). % end pragma(c_header_code).
 
+:- pragma(c_header_code, "#include ""init.h""").
 :- pragma(c_header_code, "
+
+Declare_entry(mercury__io__init_state_2_0);
 
 Define_extern_entry(mercury__io__run_0_0);
 Declare_label(mercury__io__run_0_0_i1);
@@ -1436,12 +1423,15 @@ BEGIN_CODE
 Define_entry(mercury__io__run_0_0);
         mkframe(""mercury__io__run_0_0"", 0, ENTRY(do_fail));
 	r1 = initial_external_state();
-	call(address_of_io__init_state_2_0,
+	call(ENTRY(mercury__io__init_state_2_0),
 		LABEL(mercury__io__run_0_0_i1),
 		LABEL(mercury__io__run_0_0));
 Define_label(mercury__io__run_0_0_i1);
 	r1 = r2;
-	call(address_of_main_2_0,
+	if (program_entry_point == NULL) {
+		fatal_error(""no program entry point supplied"");
+	}
+	call(program_entry_point,
 		LABEL(mercury__io__run_0_0_i2),
 		LABEL(mercury__io__run_0_0));
 Define_label(mercury__io__run_0_0_i2);
