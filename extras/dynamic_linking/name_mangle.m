@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998 The University of Melbourne.
+% Copyright (C) 1998-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -62,7 +62,15 @@
 
 %-----------------------------------------------------------------------------%
 
-proc_name_mangle(MercuryProc) = LabelName :-
+proc_name_mangle(MercuryProc) =
+	( high_level_code ->
+		mlds_proc_name_mangle(MercuryProc)
+	;
+		llds_proc_name_mangle(MercuryProc)
+	).
+		
+:- func llds_proc_name_mangle(mercury_proc) = string.
+llds_proc_name_mangle(MercuryProc) = LabelName :-
 	MercuryProc = mercury_proc(PredOrFunc, Module, Name0, Arity, ModeNum),
 	sym_name_mangle(Module, ModuleName),
 	(
@@ -102,6 +110,40 @@ proc_name_mangle(MercuryProc) = LabelName :-
 	;
 		LabelName = LabelName4
 	).
+
+:- func mlds_proc_name_mangle(mercury_proc) = string.
+mlds_proc_name_mangle(MercuryProc) = LabelName :-
+	MercuryProc = mercury_proc(PredOrFunc, Module, Name0, Arity, ModeNum),
+	sym_name_mangle(Module, ModuleName),
+	(
+		PredOrFunc = predicate,
+		Name0 = "main",
+		Arity = 2
+		% The conditions above define which labels are printed without
+		% module qualification.
+	->
+		LabelName0 = Name0
+	;
+		qualify_name(ModuleName, Name0, LabelName0)
+	),
+	name_mangle(LabelName0, LabelName1),
+	(
+		PredOrFunc = predicate,
+		PredOrFuncString = "p"
+	;
+		PredOrFunc = function,
+		PredOrFuncString = "f"
+	),
+	( PredOrFunc = function ->
+		OrigArity is Arity - 1
+	;
+		OrigArity = Arity
+	),
+	string__int_to_string(OrigArity, ArityString),
+	string__int_to_string(ModeNum, ModeNumString),
+	string__append_list([LabelName1, "_", ArityString, "_",
+		PredOrFuncString, "_", ModeNumString],
+		LabelName).
 
 :- pred sym_name_mangle(sym_name, string).
 :- mode sym_name_mangle(in, out) is det.
@@ -220,5 +262,13 @@ convert_to_valid_c_identifier_2(String, Name) :-
 #endif
 ").
 
+:- pred high_level_code is semidet.
+:- pragma c_code(high_level_code, [will_not_call_mercury, thread_safe], "
+#ifdef MR_HIGHLEVEL_CODE
+	SUCCESS_INDICATOR = TRUE;
+#else
+	SUCCESS_INDICATOR = FALSE;
+#endif
+").
 
 %-----------------------------------------------------------------------------%
