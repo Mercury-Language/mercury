@@ -22,7 +22,7 @@
 :- module mdb__declarative_debugger.
 :- interface.
 :- import_module io, list, bool, std_util.
-:- import_module mdb__declarative_execution.
+:- import_module mdb__declarative_execution, mdb__program_representation.
 
 	% This type represents the possible truth values for nodes
 	% in the EDT.
@@ -112,7 +112,18 @@
 			%
 	;	unexpected_exception(decl_atom, decl_exception).
 
-:- type decl_answer == pair(decl_question, decl_truth).
+	% These are the possible answers that the oracle can give.
+	%
+:- type decl_answer
+			% The oracle knows the truth value of this node.
+			%
+	--->	truth_value(decl_question, decl_truth)
+
+			% The oracle does not say anything about the truth
+			% value, but is suspicious of the subterm at the
+			% given term_path and arg_pos.
+			%
+	;	suspicious_subterm(decl_question, arg_pos, term_path).
 
 :- type decl_atom == trace_atom.
 
@@ -160,7 +171,6 @@
 :- implementation.
 :- import_module require, int, char, string.
 :- import_module mdb__declarative_analyser, mdb__declarative_oracle.
-:- import_module mdb__program_representation.
 
 :- type diagnoser_state(R)
 	--->	diagnoser(

@@ -46,7 +46,7 @@
 
 :- implementation.
 :- import_module mdb__browser_info, mdb__browse, mdb__util.
-:- import_module mdb__declarative_execution.
+:- import_module mdb__declarative_execution, mdb__program_representation.
 :- import_module std_util, char, string, bool, int.
 
 :- type user_state
@@ -77,11 +77,11 @@ query_user_2([Node | Nodes], Skipped, Response, User0, User) -->
 	get_command(Question, Command, User0, User1),
 	(
 		{ Command = yes },
-		{ Response = user_answer(Node - yes) },
+		{ Response = user_answer(truth_value(Node, yes)) },
 		{ User = User1 }
 	;
 		{ Command = no },
-		{ Response = user_answer(Node - no) },
+		{ Response = user_answer(truth_value(Node, no)) },
 		{ User = User1 }
 	;
 		{ Command = inadmissible },
@@ -96,8 +96,17 @@ query_user_2([Node | Nodes], Skipped, Response, User0, User) -->
 		query_user_2(Questions, [], Response, User1, User)
 	;
 		{ Command = browse(Arg) },
-		browse_edt_node(Node, Arg, User1, User2),
-		query_user_2([Node | Nodes], Skipped, Response, User2, User)
+		browse_edt_node(Node, Arg, MaybeMark, User1, User2),
+		(
+			{ MaybeMark = no },
+			query_user_2([Node | Nodes], Skipped, Response, User2,
+					User)
+		;
+			{ MaybeMark = yes(Mark) },
+			{ Answer = suspicious_subterm(Node, Arg, Mark) },
+			{ Response = user_answer(Answer) },
+			{ User = User2 }
+		)
 	;
 		{ Command = abort },
 		{ Response = abort_diagnosis },
@@ -119,11 +128,11 @@ decl_question_prompt(wrong_answer(_), "Valid? ").
 decl_question_prompt(missing_answer(_, _), "Complete? ").
 decl_question_prompt(unexpected_exception(_, _), "Expected? ").
 
-:- pred browse_edt_node(decl_question, int, user_state, user_state,
-		io__state, io__state).
-:- mode browse_edt_node(in, in, in, out, di, uo) is det.
+:- pred browse_edt_node(decl_question::in, int::in, maybe(term_path)::out,
+		user_state::in, user_state::out, io__state::di,
+		io__state::uo) is det.
 
-browse_edt_node(Node, ArgNum, User0, User) -->
+browse_edt_node(Node, ArgNum, MaybeMark, User0, User) -->
 	{
 		Node = wrong_answer(Atom)
 	;
@@ -131,7 +140,7 @@ browse_edt_node(Node, ArgNum, User0, User) -->
 	;
 		Node = unexpected_exception(Atom, _)
 	},
-	browse_atom_argument(Atom, ArgNum, User0, User).
+	browse_atom_argument(Atom, ArgNum, MaybeMark, User0, User).
 
 :- pred browse_decl_bug(decl_bug, int, user_state, user_state,
 		io__state, io__state).
@@ -150,25 +159,34 @@ browse_decl_bug(Bug, ArgNum, User0, User) -->
 	;
 		Bug = i_bug(inadmissible_call(_, _, Atom, _))
 	},
-	browse_atom_argument(Atom, ArgNum, User0, User).
+	browse_atom_argument(Atom, ArgNum, _, User0, User).
 
-:- pred browse_atom_argument(decl_atom, int, user_state, user_state,
-		io__state, io__state).
-:- mode browse_atom_argument(in, in, in, out, di, uo) is det.
+:- pred browse_atom_argument(decl_atom::in, int::in, maybe(term_path)::out,
+		user_state::in, user_state::out, io__state::di,
+		io__state::uo) is det.
 
-browse_atom_argument(Atom, ArgNum, User0, User) -->
+browse_atom_argument(Atom, ArgNum, MaybeMark, User0, User) -->
 	{ Atom = atom(_, _, Args) },
 	(
 		{ list__index1(Args, ArgNum, MaybeArg) },
 		{ MaybeArg = yes(Arg) }
 	->
-		browse(univ_value(Arg), User0^instr, User0^outstr,
+		browse(univ_value(Arg), User0^instr, User0^outstr, MaybeDirs,
 			User0^browser, Browser),
+		{ maybe_convert_dirs_to_path(MaybeDirs, MaybeMark) },
 		{ User = User0^browser := Browser }
 	;
 		io__write_string(User^outstr, "Invalid argument number\n"),
+		{ MaybeMark = no },
 		{ User = User0 }
 	).
+
+:- pred maybe_convert_dirs_to_path(maybe(list(dir)), maybe(term_path)).
+:- mode maybe_convert_dirs_to_path(in, out) is det.
+
+maybe_convert_dirs_to_path(no, no).
+maybe_convert_dirs_to_path(yes(Dirs), yes(TermPath)) :-
+	convert_dirs_to_term_path(Dirs, TermPath).
 
 	% Reverse the first argument and append the second to it.
 	%

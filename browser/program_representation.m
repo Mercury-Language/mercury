@@ -34,6 +34,7 @@
 :- interface.
 
 :- import_module list, std_util.
+:- import_module mdb__browser_info.
 
 	% A representation of the goal we execute.  These need to be
 	% generated statically and stored inside the executable.
@@ -125,6 +126,10 @@
 	;	erroneous_rep
 	;	failure_rep.
 
+	% If the given atomic goal is a call to a predicate or function
+	% (not including the special predicates `unify' and `compare'),
+	% then return the list of variables that are passed as arguments.
+	%
 :- pred atomic_goal_rep_is_call(atomic_goal_rep, list(var_rep)).
 :- mode atomic_goal_rep_is_call(in, out) is semidet.
 
@@ -162,18 +167,23 @@
 
 :- type term_path ==	list(arg_pos).
 
+:- pred convert_dirs_to_term_path(list(dir), term_path).
+:- mode convert_dirs_to_term_path(in, out) is det.
+
 	% Returns type_of(_ `with_type` goal_rep), for use in C code.
 :- func goal_rep_type = type_desc.
 
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module string, char.
+:- import_module string, char, require.
 
 atomic_goal_rep_is_call(pragma_foreign_code_rep(Args), Args).
 atomic_goal_rep_is_call(higher_order_call_rep(_, Args), Args).
 atomic_goal_rep_is_call(method_call_rep(_, _, Args), Args).
-atomic_goal_rep_is_call(plain_call_rep(_, Args), Args).
+atomic_goal_rep_is_call(plain_call_rep(Name, Args), Args) :-
+	Name \= "unify",
+	Name \= "compare".
 
 path_step_from_string(String, Step) :-
 	string__first_char(String, First, Rest),
@@ -196,6 +206,12 @@ path_step_from_string_2('q', "!", exist(cut)).
 path_step_from_string_2('q', "", exist(no_cut)).
 path_step_from_string_2('f', "", first).
 path_step_from_string_2('l', "", later).
+
+convert_dirs_to_term_path([], []).
+convert_dirs_to_term_path([child(N) | Dirs], [N | TermPath]) :-
+	convert_dirs_to_term_path(Dirs, TermPath).
+convert_dirs_to_term_path([parent | _], _) :-
+	error("convert_dirs_to_term_path: not in canonical form").
 
 :- pragma export(goal_rep_type = out, "ML_goal_rep_type").
 goal_rep_type = type_of(_ `with_type` goal_rep).

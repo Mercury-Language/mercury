@@ -29,8 +29,12 @@
 						% Format specified as
 						% an option to the mdb
 						% command.
-			state	:: browser_persistent_state
+			state	:: browser_persistent_state,
 						% Persistent settings.
+			maybe_mark :: maybe(list(dir))
+						% Location of the marked term
+						% relative to the root, or `no'
+						% if there is no mark.
 		).
 
 :- type dir
@@ -182,7 +186,7 @@ set_param_format(P, B, A, Format) -->
 %---------------------------------------------------------------------------%
 
 browser_info__init(Term, MaybeFormat, State, Info) :-
-	Info = browser_info(univ(Term), [], MaybeFormat, State).
+	Info = browser_info(univ(Term), [], MaybeFormat, State, no).
 
 browser_info__get_format(Info, Caller, MaybeFormat, Format) :-
 	(

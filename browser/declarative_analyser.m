@@ -149,8 +149,24 @@ start_analysis(Store, Tree, Response, Analyser0, Analyser) :-
 	Response = oracle_queries(Queries).
 
 continue_analysis(Store, Answers, Response, Analyser0, Analyser) :-
+	%
+	% Check for suspicious subterms before anything else.  The oracle
+	% is unlikely to answer with one of these unless it thinks it is
+	% particularly significant, which is why we check these first.
+	%
+	% After that check for incorrect suspects.  Leave the correct
+	% suspects until last, since these generally prune the search space
+	% by the least amount.
+	%
+	Analyser0 = analyser(_, Suspects, _),
 	(
-		find_incorrect_suspect(Answers, Analyser0, Suspect)
+		find_suspicious_subterm(Answers, Suspects, Suspect, ArgPos,
+				TermPath)
+	->
+		follow_suspicious_subterm(Store, Suspect, ArgPos, TermPath,
+				Response, Analyser0, Analyser)
+	;
+		find_incorrect_suspect(Answers, Suspects, Suspect)
 	->
 		make_new_prime_suspect(Store, Suspect, Response, Analyser0,
 				Analyser)
@@ -158,23 +174,82 @@ continue_analysis(Store, Answers, Response, Analyser0, Analyser) :-
 		remove_suspects(Store, Answers, Response, Analyser0, Analyser)
 	).
 
+	% Find an answer which is a suspicious subterm, and find the
+	% suspect that corresponds to it, or else fail.
+	%
+:- pred find_suspicious_subterm(list(decl_answer), list(suspect(T)),
+		suspect(T), arg_pos, term_path).
+:- mode find_suspicious_subterm(in, in, out, out, out) is semidet.
+
+find_suspicious_subterm([Answer | Answers], Suspects, Suspect, ArgPos,
+		TermPath) :-
+	
+	(
+		Answer = suspicious_subterm(Question, ArgPos0, TermPath0),
+		find_matching_suspects(Question, Suspects, [Match | _], _)
+	->
+		Suspect = Match,
+		ArgPos = ArgPos0,
+		TermPath = TermPath0
+	;
+		find_suspicious_subterm(Answers, Suspects, Suspect, ArgPos,
+				TermPath)
+	).
+
+:- pred follow_suspicious_subterm(S, suspect(T), arg_pos, term_path,
+		analyser_response(T), analyser_state(T), analyser_state(T))
+			<= mercury_edt(S, T).
+:- mode follow_suspicious_subterm(in, in, in, in, out, in, out) is det.
+
+follow_suspicious_subterm(Store, Suspect, ArgPos, TermPath, Response,
+		Analyser0, Analyser) :-
+
+	Suspect = suspect(Tree, Query),
+	edt_dependency(Store, Tree, ArgPos, TermPath, SubtermMode, Origin),
+	%
+	% If the selected subterm has mode `in' then we infer that the node
+	% is correct, otherwise we infer that it is wrong.
+	%
+	(
+		SubtermMode = subterm_in,
+		remove_suspects(Store, [truth_value(Query, yes)], Response0,
+				Analyser0, Analyser)
+	;
+		SubtermMode = subterm_out,
+		make_new_prime_suspect(Store, Suspect, Response0, Analyser0,
+				Analyser)
+	),
+	(
+		Origin = output(Node, _, _),
+		Response0 = oracle_queries(_)
+	->
+		%
+		% Replace all of the queries with just the one which output
+		% the subterm.  We may wind up asking the full list later,
+		% including this query, but the oracle should have the
+		% previous answer available.
+		%
+		create_suspect(Store, Node, suspect(_, NodeQuery)),
+		Response = oracle_queries([NodeQuery])
+	;
+		Response = Response0
+	).
 
 	% Find an answer which is `no' and find the suspect that
-	% corresponds to it, or else fail.
+	% corresponds to it from the given list, or else fail.
 	%
-:- pred find_incorrect_suspect(list(decl_answer), analyser_state(T),
+:- pred find_incorrect_suspect(list(decl_answer), list(suspect(T)),
 		suspect(T)).
 :- mode find_incorrect_suspect(in, in, out) is semidet.
 
-find_incorrect_suspect([Answer | Answers], Analyser, Child) :-
-	Analyser = analyser(_, Suspects, _),
+find_incorrect_suspect([Answer | Answers], Suspects, Child) :-
 	(
-		Answer = _ - no,
-		find_matching_suspects(Answer, Suspects, [Match | _], _)
+		Answer = truth_value(Question, no),
+		find_matching_suspects(Question, Suspects, [Match | _], _)
 	->
 		Match = Child
 	;
-		find_incorrect_suspect(Answers, Analyser, Child)
+		find_incorrect_suspect(Answers, Suspects, Child)
 	).
 
 	% Create a new prime suspect from the given suspect, which is
@@ -267,15 +342,21 @@ remove_suspects(Store, [Answer | Answers], Response, Analyser0,
 		Analyser) :-
 
 	(
-		Answer = _ - yes
+		Answer = truth_value(_, yes)
 	->
 		Analyser0 = analyser(MaybePrime, Suspects0, OldPrimes),
-		find_matching_suspects(Answer, Suspects0, _, Suspects),
+		find_matching_suspects(get_decl_question(Answer), Suspects0,
+				_, Suspects),
 		Analyser1 = analyser(MaybePrime, Suspects, OldPrimes),
 		remove_suspects(Store, Answers, Response, Analyser1, Analyser)
 	;
 		error("remove_suspects: unexpected incorrect node")
 	).
+
+:- func get_decl_question(decl_answer) = decl_question.
+
+get_decl_question(truth_value(Q, _)) = Q.
+get_decl_question(suspicious_subterm(Q, _, _)) = Q.
 
 %-----------------------------------------------------------------------------%
 
@@ -299,17 +380,14 @@ suspect_get_edt_node(suspect(Node, _), Node).
 
 suspect_get_question(suspect(_, Question), Question).
 
-:- pred suspect_answer_match(suspect(T), decl_answer, decl_truth).
-:- mode suspect_answer_match(in, in, out) is semidet.
-
-suspect_answer_match(suspect(_, Question), Question - Truth, Truth).
-
-:- pred find_matching_suspects(decl_answer, list(suspect(T)),
+:- pred find_matching_suspects(decl_question, list(suspect(T)),
 		list(suspect(T)), list(suspect(T))).
 :- mode find_matching_suspects(in, in, out, out) is det.
 
-find_matching_suspects(Answer, Suspects, Matches, NoMatches) :-
-	P = (pred(S::in) is semidet :- suspect_answer_match(S, Answer, _)),
+find_matching_suspects(Question, Suspects, Matches, NoMatches) :-
+	P = (pred(S::in) is semidet :-
+		suspect_get_question(S, Question)
+	),
 	list__filter(P, Suspects, Matches, NoMatches).
 
 %-----------------------------------------------------------------------------%

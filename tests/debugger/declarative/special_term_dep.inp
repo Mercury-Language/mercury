@@ -1,0 +1,21 @@
+echo on
+register --quiet
+break p
+break q
+continue
+finish
+dd
+browse 1
+mark
+yes
+yes
+continue
+finish
+dd
+browse 2
+mark
+browse 1
+mark
+yes
+yes
+continue

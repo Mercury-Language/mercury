@@ -20,16 +20,16 @@
 
 :- interface.
 
-:- import_module io, std_util.
+:- import_module io, std_util, list.
 :- import_module mdb__browser_info.
 
 	% The interactive term browser.  The caller type will be `browse', and
 	% the default format for the `browse' caller type will be used.
 	%
 :- pred browse__browse(T, io__input_stream, io__output_stream,
-			browser_persistent_state, browser_persistent_state,
-			io__state, io__state).
-:- mode browse__browse(in, in, in, in, out, di, uo) is det.
+			maybe(list(dir)), browser_persistent_state,
+			browser_persistent_state, io__state, io__state).
+:- mode browse__browse(in, in, in, out, in, out, di, uo) is det.
 
 	% As above, except that the supplied format will override the default.
 	%
@@ -83,7 +83,7 @@
 :- implementation.
 
 :- import_module mdb__parse, mdb__util, mdb__frame, mdb__sized_pretty.
-:- import_module string, list, parser, require, std_util, int, char, pprint.
+:- import_module string, parser, require, std_util, int, char, pprint.
 :- import_module bool.
 
 %---------------------------------------------------------------------------%
@@ -92,7 +92,7 @@
 % they are used in trace/mercury_trace_browser.c.
 %
 
-:- pragma export(browse__browse(in, in, in, in, out, di, uo),
+:- pragma export(browse__browse(in, in, in, out, in, out, di, uo),
 	"ML_BROWSE_browse").
 :- pragma export(browse__browse_format(in, in, in, in, in, out, di, uo),
 	"ML_BROWSE_browse_format").
@@ -163,27 +163,28 @@ browse__print_common(Term, OutputStream, Caller, MaybeFormat, State) -->
 % Interactive display
 %
 
-browse__browse(Object, InputStream, OutputStream, State0, State) -->
+browse__browse(Object, InputStream, OutputStream, MaybeMark, State0, State) -->
 	browse_common(internal, Object, InputStream, OutputStream, 
-		no, State0, State).
+		no, MaybeMark, State0, State).
 
 browse__browse_format(Object, InputStream, OutputStream, Format,
 		State0, State) -->
 
 	browse_common(internal, Object, InputStream, OutputStream,
-		yes(Format), State0, State).
+		yes(Format), _, State0, State).
 
 browse__browse_external(Object, InputStream, OutputStream, State0, State) -->
 	browse_common(external, Object, InputStream, OutputStream, 
-		no, State0, State).
+		no, _, State0, State).
 
-:- pred browse_common(debugger, T, io__input_stream, io__output_stream,
-		maybe(portray_format), browser_persistent_state,
-		browser_persistent_state, io__state, io__state).
-:- mode browse_common(in, in, in, in, in, in, out, di, uo) is det.
+:- pred browse_common(debugger::in, T::in, io__input_stream::in,
+		io__output_stream::in, maybe(portray_format)::in,
+		maybe(list(dir))::out, browser_persistent_state::in,
+		browser_persistent_state::out, io__state::di, io__state::uo)
+		is det.
 
 browse_common(Debugger, Object, InputStream, OutputStream, MaybeFormat,
-		State0, State) -->
+		MaybeMark, State0, State) -->
 	
 	{ browser_info__init(Object, MaybeFormat, State0, Info0) },
 	io__set_input_stream(InputStream, OldInputStream),
@@ -192,6 +193,7 @@ browse_common(Debugger, Object, InputStream, OutputStream, MaybeFormat,
 	browse_main_loop(Debugger, Info0, Info),
 	io__set_input_stream(OldInputStream, _),
 	io__set_output_stream(OldOutputStream, _),
+	{ MaybeMark = Info ^ maybe_mark },
 	{ State = Info ^ state }.
 
 :- pred browse_main_loop(debugger, browser_info, browser_info, 
@@ -207,7 +209,9 @@ browse_main_loop(Debugger, Info0, Info) -->
 		{ Debugger = external },
 		parse__read_command_external(Command)
 	),
-	( { Command = quit } ->
+	run_command(Debugger, Command, Quit, Info0, Info1),
+	(
+		{ Quit = yes },
 		% write_string_debugger(Debugger, "quitting...\n")
 		(
 			{ Debugger = external },
@@ -215,9 +219,9 @@ browse_main_loop(Debugger, Info0, Info) -->
 		;
 			{ Debugger = internal }
 		),
-		{ Info = Info0 }
+		{ Info = Info1 }
 	;
-		run_command(Debugger, Command, Info0, Info1),
+		{ Quit = no },
 		browse_main_loop(Debugger, Info1, Info)
 	).
 
@@ -230,36 +234,42 @@ startup_message(Debugger) -->
 prompt("browser> ").
 
 
-:- pred run_command(debugger, command, browser_info, browser_info,
-		io__state, io__state).
-:- mode run_command(in, in, in, out, di, uo) is det.
+:- pred run_command(debugger::in, command::in, bool::out, browser_info::in,
+		browser_info::out, io__state::di, io__state::uo) is det.
 
-run_command(Debugger, Command, Info0, Info) -->
+run_command(Debugger, Command, Quit, Info0, Info) -->
 	% XXX The commands `set', `ls' and `print' should allow the format
 	% to be specified by an option.  In each case we instead pass `no' to
 	% the respective handler.
-	( { Command = unknown } ->
+	( { Command = unknown },
 		write_string_debugger(Debugger, 
 			"Error: unknown command or syntax error.\n"),
 		write_string_debugger(Debugger, "Type \"help\" for help.\n"),
+		{ Quit = no },
 		{ Info = Info0 }
-	; { Command = help } ->
+	; { Command = help },
 		help(Debugger),
+		{ Quit = no },
 		{ Info = Info0 }
-	; { Command = set } ->
+	; { Command = set },
 		show_settings(Debugger, Info0, no),
+		{ Quit = no },
 		{ Info = Info0 }
-	; { Command = set(Setting) } ->
-		{ set_browse_param(Setting, Info0, Info) }
-	; { Command = ls } ->
+	; { Command = set(Setting) },
+		{ set_browse_param(Setting, Info0, Info) },
+		{ Quit = no }
+	; { Command = ls },
 		portray(Debugger, browse, no, Info0),
+		{ Quit = no },
 		{ Info = Info0 }
-	; { Command = ls(Path) } ->
+	; { Command = ls(Path) },
 		portray_path(Debugger, browse, no, Info0, Path),
+		{ Quit = no },
 		{ Info = Info0 }
-	; { Command = cd } ->
-		{ set_path(root_rel([]), Info0, Info) }
-	; { Command = cd(Path) } ->
+	; { Command = cd },
+		{ set_path(root_rel([]), Info0, Info) },
+		{ Quit = no }
+	; { Command = cd(Path) },
 		{ change_dir(Info0 ^ dirs, Path, NewPwd) },
 		( { deref_subterm(Info0 ^ term, NewPwd, _SubUniv) } ->
 			{ Info = Info0 ^ dirs := NewPwd }
@@ -267,17 +277,43 @@ run_command(Debugger, Command, Info0, Info) -->
 			write_string_debugger(Debugger, 
 				"error: cannot change to subterm\n"),
 			{ Info = Info0 }
-		)
-	; { Command = print } ->
+		),
+		{ Quit = no }
+	; { Command = print },
 		portray(Debugger, print, no, Info0),
+		{ Quit = no },
 		{ Info = Info0 }
-	; { Command = pwd } ->
+	; { Command = pwd },
 		write_path(Debugger, Info0 ^ dirs),
 		nl_debugger(Debugger),
+		{ Quit = no },
 		{ Info = Info0 }
-	;	
+	; { Command = mark },
+		{ Quit = yes },
+		{ Info = Info0 ^ maybe_mark := yes(Info0 ^ dirs) }
+	; { Command = mark(Path) },
+		{ change_dir(Info0 ^ dirs, Path, NewPwd) },
+		( { deref_subterm(Info0 ^ term, NewPwd, _SubUniv) } ->
+			{ Quit = yes },
+			{ Info = Info0 ^ maybe_mark := yes(NewPwd) }
+		;
+			write_string_debugger(Debugger, 
+				"error: cannot mark subterm\n"),
+			{ Quit = no },
+			{ Info = Info0 }
+		)
+	; { Command = quit },
+		{ Quit = yes },
+		{ Info = Info0 }
+	; { Command = display },
 		write_string_debugger(Debugger,
 				"command not yet implemented\n"),
+		{ Quit = no },
+		{ Info = Info0 }
+	; { Command = write },
+		write_string_debugger(Debugger,
+				"command not yet implemented\n"),
+		{ Quit = no },
 		{ Info = Info0 }
 	),
 	( { Debugger = external } ->
@@ -309,6 +345,7 @@ help(Debugger) -->
 "\tset            -- show settings\n",
 "\tprint          -- show single line representation of current term\n",
 "\tquit           -- quit browser\n",
+"\tmark [path]    -- mark the given subterm (default is current) and quit\n",
 "SICStus Prolog style commands are:\n",
 "\tp              -- print\n",
 "\t< n            -- set depth\n",

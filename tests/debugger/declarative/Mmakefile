@@ -31,13 +31,16 @@ DECLARATIVE_PROGS=		\
 	func_call		\
 	gcf			\
 	if_then_else		\
+	input_term_dep		\
 	lpe_example		\
 	neg_conj		\
 	negation		\
 	oracle_db		\
+	output_term_dep		\
 	propositional		\
 	queens			\
 	small			\
+	special_term_dep	\
 	throw
 
 # The following should not be run in `debug' grades.
@@ -54,6 +57,9 @@ MLFLAGS = --trace
 C2INITFLAGS = --trace
 
 MCFLAGS-deep_sub=--trace deep
+MCFLAGS-input_term_dep=--trace rep
+MCFLAGS-output_term_dep=--trace rep
+MCFLAGS-special_term_dep=--trace rep
 MCFLAGS-untraced_subgoal_sub=--trace minimum
 
 ifneq "$(findstring .debug,$(GRADE))" ""
@@ -138,6 +144,9 @@ higher_order.out: higher_order higher_order.inp
 if_then_else.out: if_then_else if_then_else.inp
 	$(MDB) ./if_then_else < if_then_else.inp > if_then_else.out 2>&1
 
+input_term_dep.out: input_term_dep input_term_dep.inp
+	$(MDB) ./input_term_dep < input_term_dep.inp > input_term_dep.out 2>&1
+
 ite_2.out: ite_2 ite_2.inp
 	$(MDB) ./ite_2 < ite_2.inp > ite_2.out 2>&1
 
@@ -153,6 +162,10 @@ negation.out: negation negation.inp
 oracle_db.out: oracle_db oracle_db.inp
 	$(MDB) ./oracle_db < oracle_db.inp > oracle_db.out 2>&1
 
+output_term_dep.out: output_term_dep output_term_dep.inp
+	$(MDB) ./output_term_dep < output_term_dep.inp	\
+			> output_term_dep.out 2>&1
+
 propositional.out: propositional propositional.inp
 	$(MDB) ./propositional < propositional.inp > propositional.out 2>&1
 
@@ -164,6 +177,10 @@ small.out: small small.inp
 
 solutions.out: solutions solutions.inp
 	$(MDB) ./solutions < solutions.inp > solutions.out 2>&1
+
+special_term_dep.out: special_term_dep special_term_dep.inp
+	$(MDB) ./special_term_dep < special_term_dep.inp \
+			> special_term_dep.out 2>&1
 
 # We need to pipe the output through sed to avoid hard-coding dependencies on
 # particular line numbers in the standard library source code.

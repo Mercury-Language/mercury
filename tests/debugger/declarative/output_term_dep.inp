@@ -1,0 +1,115 @@
+echo on
+register --quiet
+break p
+break q
+break r
+break s
+break t
+continue
+finish
+dd
+browse 2
+mark
+yes
+yes
+yes
+yes
+continue
+finish
+dd
+browse 1
+mark 2/1
+yes
+yes
+yes
+yes
+continue
+finish
+dd
+browse 2
+mark
+yes
+continue
+finish
+dd
+browse 2
+mark
+yes
+yes
+yes
+continue
+finish
+dd
+browse 2
+mark
+yes
+yes
+yes
+yes
+continue
+finish
+dd
+browse 2
+mark
+yes
+yes
+yes
+continue
+finish
+dd
+browse 2
+mark
+no
+yes
+continue
+continue
+finish
+dd
+browse 3
+mark
+no
+yes
+continue
+continue
+finish
+dd
+browse 3
+mark
+yes
+continue
+continue
+finish
+dd
+browse 3
+mark
+yes
+continue
+continue
+finish
+continue
+finish
+dd
+browse 3
+mark
+no
+yes
+continue
+continue
+finish
+dd
+browse 2
+mark
+yes
+continue
+continue
+continue
+continue
+finish
+dd
+browse 2
+mark
+yes
+yes
+yes
+yes
+continue

@@ -57,7 +57,8 @@ MR_c_file_to_mercury_file(FILE *c_file, MercuryFile *mercury_file)
 void
 MR_trace_browse(MR_Word type_info, MR_Word value, MR_Browse_Format format)
 {
-	MercuryFile mdb_in, mdb_out;
+	MercuryFile	mdb_in, mdb_out;
+	MR_Word		maybe_mark;
 
 	MR_trace_browse_ensure_init();
 
@@ -76,7 +77,7 @@ MR_trace_browse(MR_Word type_info, MR_Word value, MR_Browse_Format format)
 		MR_TRACE_CALL_MERCURY(
 			ML_BROWSE_browse(type_info, value,
 				(MR_Word) &mdb_in, (MR_Word) &mdb_out,
-				MR_trace_browser_persistent_state,
+				&maybe_mark, MR_trace_browser_persistent_state,
 				&MR_trace_browser_persistent_state);
 		);
 	}

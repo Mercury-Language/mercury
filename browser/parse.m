@@ -30,6 +30,7 @@
 %		"display"
 %		"write"
 %		"set" [varvalue]
+%		"mark" [path]
 %		"quit"
 %
 %	varvalue:
@@ -72,6 +73,8 @@
 	;	ls
 	;	cd(path)
 	;	cd
+	;	mark(path)
+	;	mark
 	;	pwd
 	;	help
 	;	set(setting)
@@ -252,6 +255,13 @@ start([Tok | Toks], Comm) :-
 			parse_path(Toks, Path),
 			Comm = ls(Path)
 		)
+	; Tok = name("mark") ->
+		( Toks = [] ->
+			Comm = mark
+		;
+			parse_path(Toks, Path),
+			Comm = mark(Path)
+		)
 	; Tok = name("set") ->
 		( Toks = [] ->
 			Comm = set
@@ -361,6 +371,12 @@ show_command(cd(Path)) -->
 	io__nl.
 show_command(cd) -->
 	io__write_string("cd\n").
+show_command(mark(Path)) -->
+	io__write_string("mark "),
+	show_path(Path),
+	io__nl.
+show_command(mark) -->
+	io__write_string("mark\n").
 show_command(pwd) -->
 	io__write_string("pwd\n").
 show_command(help) -->

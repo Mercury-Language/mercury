@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2000 The University of Melbourne.
+% Copyright (C) 1999-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -237,12 +237,12 @@ set_kb_exceptions_map(oracle_kb(G, Y, N, _), X, oracle_kb(G, Y, N, X)).
 :- pred query_oracle_kb(oracle_kb, decl_question, decl_answer).
 :- mode query_oracle_kb(in, in, out) is semidet.
 
-query_oracle_kb(KB, Node, Node - Truth) :-
+query_oracle_kb(KB, Node, truth_value(Node, Truth)) :-
 	Node = wrong_answer(Atom),
 	get_kb_ground_map(KB, Map),
 	map__search(Map, Atom, Truth).
 
-query_oracle_kb(KB, Node, Node - Truth) :-
+query_oracle_kb(KB, Node, truth_value(Node, Truth)) :-
 	Node = missing_answer(Call, Solns),
 	set__list_to_set(Solns, Ss),
 	get_kb_complete_map(KB, CMap),
@@ -258,7 +258,7 @@ query_oracle_kb(KB, Node, Node - Truth) :-
 		Truth = no
 	).
 
-query_oracle_kb(KB, Node, Node - Truth) :-
+query_oracle_kb(KB, Node, truth_value(Node, Truth)) :-
 	Node = unexpected_exception(Call, Exception),
 	get_kb_exceptions_map(KB, XMap),
 	map__search(XMap, Call, known_excp(Possible, Impossible)),
@@ -279,12 +279,14 @@ query_oracle_kb(KB, Node, Node - Truth) :-
 :- pred assert_oracle_kb(decl_answer, oracle_kb, oracle_kb).
 :- mode assert_oracle_kb(in, in, out) is det.
 
-assert_oracle_kb(wrong_answer(Atom) - Truth, KB0, KB) :-
+assert_oracle_kb(suspicious_subterm(_, _, _), KB, KB).
+
+assert_oracle_kb(truth_value(wrong_answer(Atom), Truth), KB0, KB) :-
 	get_kb_ground_map(KB0, Map0),
 	map__det_insert(Map0, Atom, Truth, Map),
 	set_kb_ground_map(KB0, Map, KB).
 
-assert_oracle_kb(missing_answer(Call, Solns) - yes, KB0, KB) :-
+assert_oracle_kb(truth_value(missing_answer(Call, Solns), yes), KB0, KB) :-
 	get_kb_complete_map(KB0, Map0),
 	set__list_to_set(Solns, Ss0),
 	(
@@ -300,7 +302,7 @@ assert_oracle_kb(missing_answer(Call, Solns) - yes, KB0, KB) :-
 	),
 	set_kb_complete_map(KB0, Map, KB).
 
-assert_oracle_kb(missing_answer(Call, Solns) - no, KB0, KB) :-
+assert_oracle_kb(truth_value(missing_answer(Call, Solns), no), KB0, KB) :-
 	get_kb_incomplete_map(KB0, Map0),
 	set__list_to_set(Solns, Ss),
 		%
@@ -310,7 +312,9 @@ assert_oracle_kb(missing_answer(Call, Solns) - no, KB0, KB) :-
 	map__set(Map0, Call, Ss, Map),
 	set_kb_incomplete_map(KB0, Map, KB).
 
-assert_oracle_kb(unexpected_exception(Call, Exception) - Truth, KB0, KB) :-
+assert_oracle_kb(truth_value(unexpected_exception(Call, Exception), Truth),
+		KB0, KB) :-
+
 	get_kb_exceptions_map(KB0, Map0),
 	(
 		map__search(Map0, Call, known_excp(Possible0, Impossible0))
