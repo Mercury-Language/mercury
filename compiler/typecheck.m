@@ -4565,7 +4565,7 @@ write_inference_messages([PredId | PredIds], ModuleInfo) -->
 		{ check_marker(Markers, infer_type) },
 		{ module_info_predids(ModuleInfo, ValidPredIds) },
 		{ list__member(PredId, ValidPredIds) },
-		{ \+ pred_info_get_goal_type(PredInfo, assertion) }
+		{ \+ pred_info_get_goal_type(PredInfo, promise(_)) }
 	->
 		write_inference_message(PredInfo)
 	;

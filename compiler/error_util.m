@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2001 The University of Melbourne.
+% Copyright (C) 1997-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -416,9 +416,9 @@ error_util__describe_one_pred_name(Module, PredId, Piece) :-
 		OrigArity is Arity - 1
 	),
 	(
-		pred_info_get_goal_type(PredInfo, assertion)
+		pred_info_get_goal_type(PredInfo, promise(PromiseType))
 	->
-		Piece = "promise"
+		Piece = "`" ++ promise_to_string(PromiseType) ++ "' declaration"
 	;
 		string__int_to_string(OrigArity, ArityPart),
 		string__append_list([

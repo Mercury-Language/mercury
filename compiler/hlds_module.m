@@ -195,6 +195,13 @@
 	module_info).
 :- mode module_info_set_assertion_table(in, in, out) is det.
 
+:- pred module_info_exclusive_table(module_info, exclusive_table).
+:- mode module_info_exclusive_table(in, out) is det.
+
+:- pred module_info_set_exclusive_table(module_info, exclusive_table, 
+	module_info).
+:- mode module_info_set_exclusive_table(in, in, out) is det.
+
 :- pred module_info_ctor_field_table(module_info, ctor_field_table).
 :- mode module_info_ctor_field_table(in, out) is det.
 
@@ -503,6 +510,7 @@
 		instance_table ::		instance_table,
 		superclass_table ::		superclass_table,
 		assertion_table ::		assertion_table,
+		exclusive_table ::		exclusive_table,
 		ctor_field_table ::		ctor_field_table,
 		cell_counter ::			counter,
 					% cell count, passed into code_info
@@ -595,6 +603,7 @@ module_info_init(Name, Items, Globals, QualifierInfo, RecompInfo,
 	set__init(IndirectlyImportedModules),
 
 	assertion_table_init(AssertionTable),
+	exclusive_table_init(ExclusiveTable),
 	map__init(FieldNameTable),
 
 	map__init(NoTagTypes),
@@ -605,7 +614,7 @@ module_info_init(Name, Items, Globals, QualifierInfo, RecompInfo,
 	ModuleInfo = module(ModuleSubInfo, PredicateTable, Requests,
 		UnifyPredMap, QualifierInfo, Types, Insts, Modes, Ctors,
 		ClassTable, SuperClassTable, InstanceTable, AssertionTable,
-		FieldNameTable, counter__init(1), RecompInfo).
+		ExclusiveTable, FieldNameTable, counter__init(1), RecompInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -623,6 +632,7 @@ module_info_classes(MI, MI ^ class_table).
 module_info_instances(MI, MI ^ instance_table).
 module_info_superclasses(MI, MI ^ superclass_table).
 module_info_assertion_table(MI, MI ^ assertion_table).
+module_info_exclusive_table(MI, MI ^ exclusive_table).
 module_info_ctor_field_table(MI, MI ^ ctor_field_table).
 module_info_get_cell_counter(MI, MI ^ cell_counter).
 module_info_get_maybe_recompilation_info(MI, MI ^ maybe_recompilation_info).
@@ -644,6 +654,7 @@ module_info_set_classes(MI, C, MI ^ class_table := C).
 module_info_set_instances(MI, I, MI ^ instance_table := I).
 module_info_set_superclasses(MI, S, MI ^ superclass_table := S).
 module_info_set_assertion_table(MI, A, MI ^ assertion_table := A).
+module_info_set_exclusive_table(MI, PXT, MI ^ exclusive_table := PXT).
 module_info_set_ctor_field_table(MI, CF, MI ^ ctor_field_table := CF).
 module_info_set_cell_counter(MI, CC, MI ^ cell_counter := CC).
 module_info_set_maybe_recompilation_info(MI, I,

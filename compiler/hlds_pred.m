@@ -239,7 +239,7 @@
 			;	clauses		
 			;	clauses_and_pragmas 
 						% both clauses and pragmas
-			;	(assertion)
+			;	promise(promise_type)
 			;	none.
 
 	% Note: `liveness' and `liveness_info' record liveness in the sense

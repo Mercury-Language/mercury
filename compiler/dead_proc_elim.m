@@ -808,8 +808,8 @@ dead_pred_elim_initialize(PredId, DeadInfo0, DeadInfo) :-
 			string__remove_suffix(PredName, "_init_any", _),
 			PredArity = 1
 		;
-			% Don't eliminate the clauses for assertions.
-			pred_info_get_goal_type(PredInfo, assertion)
+			% Don't eliminate the clauses for promises.
+			pred_info_get_goal_type(PredInfo, promise(_))
 		)
 	->
 		set__insert(NeededNames0, qualified(PredModule, PredName), 

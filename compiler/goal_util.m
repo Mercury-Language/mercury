@@ -149,6 +149,14 @@
 :- pred direct_subgoal(hlds_goal_expr, hlds_goal).
 :- mode direct_subgoal(in, out) is nondet.
 
+	% returns all the predids that are used within a goal
+:- pred predids_from_goal(hlds_goal, list(pred_id)).
+:- mode predids_from_goal(in, out) is det.
+	
+	% returns all the predids that are used in a list of goals
+:- pred predids_from_goals(list(hlds_goal), list(pred_id)).
+:- mode predids_from_goals(in, out) is det.
+
 %-----------------------------------------------------------------------------%
 
 	% Convert a switch back into a disjunction. This is needed 
@@ -1282,5 +1290,24 @@ goal_util__generate_simple_call(ModuleName, PredName, Args, Detism,
 		CallGoalInfo = CallGoalInfo0
 	),
 	CallGoal = Call - CallGoalInfo.
+
+%-----------------------------------------------------------------------------%
+
+predids_from_goals(Goals, PredIds) :- 
+	(
+		Goals = [],
+		PredIds = []
+	;
+		Goals = [Goal | Rest],
+		predids_from_goal(Goal, PredIds0),
+		predids_from_goals(Rest, PredIds1),
+		PredIds = PredIds0 ++ PredIds1
+	).
+
+predids_from_goal(Goal, PredIds) :-
+                % Explicit lambda expression needed since
+		% goal_calls_pred_id has multiple modes.
+	P = (pred(PredId::out) is nondet :- goal_calls_pred_id(Goal, PredId)),
+	solutions(P, PredIds).
 
 %-----------------------------------------------------------------------------%

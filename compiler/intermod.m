@@ -366,9 +366,9 @@ intermod__should_be_processed(ProcessLocalPreds, PredId, PredInfo,
 			clause_list_is_deforestable(PredId, Clauses)
 		)
 	;
-		% assertions that are in the interface should always get
+		% promises that are in the interface should always get
 		% included in the .opt file.
-		pred_info_get_goal_type(PredInfo, assertion)
+		pred_info_get_goal_type(PredInfo, promise(_))
 	).
 
 :- pred intermod__traverse_clauses(list(clause)::in, list(clause)::out,
@@ -1371,7 +1371,7 @@ intermod__write_pred_decls(ModuleInfo, [PredId | PredIds]) -->
 		GoalType = clauses,
 		AppendVarNums = yes
 	;
-		GoalType = (assertion),
+		GoalType = promise(_),
 		AppendVarNums = yes
 	;
 		GoalType = none,
@@ -1458,14 +1458,14 @@ intermod__write_preds(ModuleInfo, [PredId | PredIds]) -->
 	{ clauses_info_clauses(ClausesInfo, Clauses) },
 
 	(
-		{ pred_info_get_goal_type(PredInfo, assertion) }
+		{ pred_info_get_goal_type(PredInfo, promise(PromiseType)) }
 	->
 		(
 			{ Clauses = [Clause] }
 		->
-			hlds_out__write_assertion(0, ModuleInfo, PredId,
-					VarSet, no, HeadVars, PredOrFunc,
-					Clause, no)
+			hlds_out__write_promise(PromiseType, 0, ModuleInfo, 
+					PredId, VarSet, no, HeadVars, 
+					PredOrFunc, Clause, no)
 		;
 			{ error("intermod__write_preds: assertion not a single clause.") }
 		)

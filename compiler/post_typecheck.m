@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2001 The University of Melbourne.
+% Copyright (C) 1997-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -124,9 +124,9 @@
 	% Now that the assertion has finished being typechecked,
 	% remove it from further processing and store it in the
 	% assertion_table.
-:- pred post_typecheck__finish_assertion(module_info, pred_id,
+:- pred post_typecheck__finish_promise(promise_type, module_info, pred_id,
 		module_info, io__state, io__state) is det.
-:- mode post_typecheck__finish_assertion(in, in, out, di, uo) is det.
+:- mode post_typecheck__finish_promise(in, in, in, out, di, uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -134,7 +134,7 @@
 
 :- import_module (assertion), code_util, typecheck, clause_to_proc.
 :- import_module mode_util, inst_match, (inst), prog_util, error_util.
-:- import_module mercury_to_mercury, prog_out, hlds_out, type_util.
+:- import_module mercury_to_mercury, prog_out, hlds_out, type_util, goal_util.
 :- import_module globals, options.
 
 :- import_module map, set, assoc_list, term, require, int.
@@ -691,42 +691,92 @@ post_typecheck__finish_imported_pred_no_io(ModuleInfo, Errors,
 		Errors, PredInfo1, PredInfo).
 
 	%
-	% Now that the assertion has finished being typechecked,
+	% Now that the promise has finished being typechecked,
 	% and has had all of its pred_ids identified,
-	% remove the assertion from the list of pred ids to be processed
+	% remove the promise from the list of pred ids to be processed
 	% in the future and place the pred_id associated with the
-	% assertion into the assertion table.
+	% promise into the assertion or promise_ex table.
 	% For each assertion that is in the interface, you need to check
 	% that it doesn't refer to any symbols which are local to that
 	% module.
 	% Also record for each predicate that is used in an assertion
-	% which assertion it is used in.
-	% 
-post_typecheck__finish_assertion(Module0, PredId, Module) -->
-		% store into assertion table.
-	{ module_info_assertion_table(Module0, AssertTable0) },
-	{ assertion_table_add_assertion(PredId,
-			AssertTable0, AssertionId, AssertTable) },
-	{ module_info_set_assertion_table(Module0, AssertTable, Module1) },
-		
+	% which assertion it is used in, or for a promise ex declaration
+	% record in the promise ex table the predicates used by the
+	% declaration.
+	%
+post_typecheck__finish_promise(PromiseType, Module0, PromiseId, Module) -->
+		% Store the declaration in the appropriate table and get
+		% the goal for the promise
+	{ store_promise(PromiseType, Module0, PromiseId, Module1, Goal) },
+			
 		% Remove from further processing.
-	{ module_info_remove_predid(Module1, PredId, Module2) },
+	{ module_info_remove_predid(Module1, PromiseId, Module2) },
 
-		% If the assertion is in the interface, then ensure that
+		% If the promise is in the interface, then ensure that
 		% it doesn't refer to any local symbols.
-	{ module_info_pred_info(Module2, PredId, PredInfo) },
-	{ assertion__goal(AssertionId, Module2, Goal) },
-	(
-		{ pred_info_is_exported(PredInfo) }
-	->
-		assertion__in_interface_check(Goal, PredInfo, Module2, Module3)
+	{ module_info_pred_info(Module2, PromiseId, PredInfo) },
+	( { pred_info_is_exported(PredInfo) } ->
+		assertion__in_interface_check(Goal, PredInfo, 
+				Module2, Module)
 	;
-		{ Module3 = Module2 }
-	),
+		{ Module2 = Module }
+	).
 
-		% record which predicates are used in assertions
-	{ assertion__record_preds_used_in(Goal, AssertionId, Module3, Module) }.
-	
+	% store promise declaration, normalise goal and return new
+	% module_info and the goal for further processing
+:- pred store_promise(promise_type, module_info, pred_id, module_info, 
+		hlds_goal).
+:- mode store_promise(in, in, in, out, out) is det.
+store_promise(PromiseType, Module0, PromiseId, Module, Goal) :-
+	( 
+		% case for assertions
+		PromiseType = true
+	->
+		module_info_assertion_table(Module0, AssertTable0),
+		assertion_table_add_assertion(PromiseId, AssertTable0, 
+				AssertionId, AssertTable),
+		module_info_set_assertion_table(Module0, AssertTable, 
+				Module1),
+		assertion__goal(AssertionId, Module1, Goal),
+		assertion__record_preds_used_in(Goal, AssertionId, Module1,
+				Module)
+	;
+		% case for exclusivity
+		(
+			PromiseType = exclusive
+		;
+			PromiseType = exclusive_exhaustive
+		)
+	->
+		promise_ex_goal(PromiseId, Module0, Goal),
+		predids_from_goal(Goal, PredIds),
+		module_info_exclusive_table(Module0, Table0),
+		list__foldl(exclusive_table_add(PromiseId), PredIds, Table0,
+				Table),
+		module_info_set_exclusive_table(Module0, Table, Module)
+
+	;
+		% case for exhaustiveness -- XXX not yet implemented
+		promise_ex_goal(PromiseId, Module0, Goal),
+		Module0 = Module
+	).
+
+	% get the goal from a promise_ex declaration
+:- pred promise_ex_goal(pred_id, module_info, hlds_goal).
+:- mode promise_ex_goal(in, in, out) is det.
+promise_ex_goal(ExclusiveDecl, Module, Goal) :-
+        module_info_pred_info(Module, ExclusiveDecl, PredInfo),
+        pred_info_clauses_info(PredInfo, ClausesInfo),
+        clauses_info_clauses(ClausesInfo, Clauses),
+        (
+		Clauses = [clause(_ProcIds, Goal0, _Lang, _Context)]
+	->
+		assertion__normalise_goal(Goal0, Goal)
+	;
+		error("promise_ex__goal: not an promise")
+	).
+
+
 %-----------------------------------------------------------------------------%
 
 :- pred check_type_of_main(pred_info, io__state, io__state).

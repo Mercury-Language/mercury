@@ -392,10 +392,10 @@ check_preds_purity_2([PredId | PredIds], FoundTypeError, ModuleInfo0,
 	{ module_info_set_predicate_table(ModuleInfo0, PredTable,
 					  ModuleInfo1) },
 
-	(
-		{ pred_info_get_goal_type(PredInfo0, assertion) }
-	->
-		post_typecheck__finish_assertion(ModuleInfo1,
+		% finish processing of promise declarations
+	{ pred_info_get_goal_type(PredInfo0, GoalType) },
+	( { GoalType = promise(PromiseType) } ->
+		post_typecheck__finish_promise(PromiseType, ModuleInfo1,
 				PredId, ModuleInfo2)
 	;
 		{ ModuleInfo2 = ModuleInfo1 }

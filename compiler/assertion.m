@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2001 The University of Melbourne.
+% Copyright (C) 1999-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -126,6 +126,14 @@
 :- pred assertion__in_interface_check(hlds_goal::in, pred_info::in,
 		module_info::in, module_info::out,
 		io__state::di, io__state::uo) is det.
+
+	%
+	% assertion__normalise_goal
+	%
+	% Place a hlds_goal into a standard form.  Currently all the
+	% code does is replace conj([G]) with G.
+	%
+:- pred assertion__normalise_goal(hlds_goal::in, hlds_goal::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -650,14 +658,6 @@ update_pred_info(AssertId, PredId, Module0, Module) :-
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
-
-	%
-	% assertion__normalise_goal
-	%
-	% Place a hlds_goal into a standard form.  Currently all the
-	% code does is replace conj([G]) with G.
-	%
-:- pred assertion__normalise_goal(hlds_goal::in, hlds_goal::out) is det.
 
 assertion__normalise_goal(call(A,B,C,D,E,F) - GI, call(A,B,C,D,E,F) - GI).
 assertion__normalise_goal(generic_call(A,B,C,D) - GI, generic_call(A,B,C,D)-GI).
