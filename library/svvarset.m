@@ -48,8 +48,8 @@
 	
 	% Set the name of a variable.
 	%
-:- pred svvarset__name_var(var(T)::in, string::in, varset(T)::in, varset(T)::out)
-	is det.
+:- pred svvarset__name_var(var(T)::in, string::in, varset(T)::in,
+	varset(T)::out) is det.
 	
 	% Bind a value to a variable.
 	% This will overwrite any existing binding.
