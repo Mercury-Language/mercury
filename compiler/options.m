@@ -411,7 +411,8 @@ option_defaults_2(optimization_option, [
 	optimize_frames		-	bool(no),
 	optimize_delay_slot	-	bool(no),
 	optimize_repeat		-	int(0),
-	optimize_vnrepeat	-	int(0),
+	optimize_vnrepeat	-	int(1),		% ineffective unless
+							% value_number is set
 	pred_value_number	-	bool(no),
 	vn_fudge		-	int(1000),
 
@@ -858,8 +859,7 @@ opt_level(3, _, [
 % Currently this just enables value_number
 
 opt_level(4, _, [
-	optimize_value_number	-	bool(yes),
-	optimize_vnrepeat	-	int(1)
+	optimize_value_number	-	bool(yes)
 ]).
 
 % Optimization level 5: apply optimizations which may have some

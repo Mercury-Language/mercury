@@ -203,11 +203,11 @@ detect_cse_in_goal_1(Goal0 - GoalInfo, InstMap0, CseInfo0, CseInfo, Redo,
 detect_cse_in_goal_2(pragma_c_code(A,B,C,D,E,F), _, _, CseInfo, CseInfo, no,
 	pragma_c_code(A,B,C,D,E,F)).
 
-detect_cse_in_goal_2(higher_order_call(A,B,C,D,E,F), _, _, CseInfo, CseInfo, no,
-	higher_order_call(A,B,C,D,E,F)).
+detect_cse_in_goal_2(higher_order_call(A,B,C,D,E), _, _, CseInfo, CseInfo, no,
+	higher_order_call(A,B,C,D,E)).
 
-detect_cse_in_goal_2(call(A,B,C,D,E,F,G), _, _, CseInfo, CseInfo, no,
-	call(A,B,C,D,E,F,G)).
+detect_cse_in_goal_2(call(A,B,C,D,E,F), _, _, CseInfo, CseInfo, no,
+	call(A,B,C,D,E,F)).
 
 detect_cse_in_goal_2(unify(A,B0,C,D,E), _, InstMap, CseInfo0, CseInfo, Redo,
 		unify(A,B,C,D,E)) :-

@@ -138,10 +138,10 @@ bytecode_gen__goal(GoalExpr - GoalInfo, ByteInfo, N0, N, Code) :-
 
 bytecode_gen__goal_expr(GoalExpr, ByteInfo, N0, N, Code) :-
 	(
-		GoalExpr = higher_order_call(_, _, _, _, _, _),
+		GoalExpr = higher_order_call(_, _, _, _, _),
 		error("we do not handle higher order calls yet")
 	;
-		GoalExpr = call(PredId, ProcId, Args, IsBuiltin, _, _, _),
+		GoalExpr = call(PredId, ProcId, Args, IsBuiltin, _, _),
 		( hlds__is_builtin_is_internal(IsBuiltin) ->
 			bytecode_gen__builtin(PredId, ProcId, Args, ByteInfo,
 				Code)
@@ -380,7 +380,7 @@ bytecode_gen__unify(simple_test(Var1, Var2), _, _, ByteInfo, Code) :-
 	bytecode_gen__map_var(ByteInfo, Var1, ByteVar1),
 	bytecode_gen__map_var(ByteInfo, Var2, ByteVar2),
 	Code = node([test(ByteVar1, ByteVar2)]).
-bytecode_gen__unify(complicated_unify(_, _, _), _Var, _RHS, _ByteInfo, _Code) :-
+bytecode_gen__unify(complicated_unify(_, _), _Var, _RHS, _ByteInfo, _Code) :-
 	error("we do not handle complicated unifications yet").
 
 :- pred bytecode_gen__map_uni_modes(list(uni_mode)::in, byte_info::in,

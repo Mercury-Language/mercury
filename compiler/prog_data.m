@@ -151,7 +151,9 @@
 			;	eqv_type(sym_name, list(type_param), type)
 			;	abstract_type(sym_name, list(type_param)).
 
-:- type constructor	==	pair(sym_name, list(type)).
+:- type constructor	==	pair(sym_name, list(constructor_arg)).
+
+:- type constructor_arg	==	pair(string, type).
 
 	% probably type parameters should be variables not terms.
 :- type type_param	==	term.

@@ -392,9 +392,9 @@ det_infer_goal_2(switch(Var, SwitchCanFail, Cases0, FV), _,
 	% This is the point at which annotations start changing
 	% when we iterate to fixpoint for global determinism inference.
 
-det_infer_goal_2(call(PredId, ModeId, A, B, C, N, F), GoalInfo, _, SolnContext,
+det_infer_goal_2(call(PredId, ModeId, A, B, C, N), GoalInfo, _, SolnContext,
 		DetInfo, _, _,
-		call(PredId, ModeId, A, B, C, N, F), Detism, Msgs) :-
+		call(PredId, ModeId, A, B, C, N), Detism, Msgs) :-
 	det_lookup_detism(DetInfo, PredId, ModeId, Detism),
 	%
 	% Make sure we don't try to call a committed-choice pred
@@ -408,10 +408,10 @@ det_infer_goal_2(call(PredId, ModeId, A, B, C, N, F), GoalInfo, _, SolnContext,
 		Msgs = []
 	).
 
-det_infer_goal_2(higher_order_call(PredVar, ArgVars, Types, Modes, Det, Follow),
+det_infer_goal_2(higher_order_call(PredVar, ArgVars, Types, Modes, Det),
 		GoalInfo, _InstMap0, SolnContext,
 		_MiscInfo, _NonLocalVars, _DeltaInstMap,
-		higher_order_call(PredVar, ArgVars, Types, Modes, Det, Follow),
+		higher_order_call(PredVar, ArgVars, Types, Modes, Det),
 		Det, Msgs) :-
 	determinism_components(Det, _, NumSolns),
 	( NumSolns = at_most_many_cc, SolnContext \= first_soln ->
@@ -674,7 +674,7 @@ det_infer_unify(deconstruct(_, _, _, _, CanFail), Detism) :-
 det_infer_unify(assign(_, _), det).
 det_infer_unify(construct(_, _, _, _), det).
 det_infer_unify(simple_test(_, _), semidet).
-det_infer_unify(complicated_unify(_, CanFail, _), Detism) :-
+det_infer_unify(complicated_unify(_, CanFail), Detism) :-
 	determinism_components(Detism, CanFail, at_most_one).
 
 %-----------------------------------------------------------------------------%

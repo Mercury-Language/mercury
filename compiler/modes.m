@@ -749,7 +749,7 @@ modecheck_goal_expr(some(Vs, G0), _, some(Vs, G)) -->
 	modecheck_goal(G0, G),
 	mode_checkpoint(exit, "some").
 
-modecheck_goal_expr(call(PredId0, _, Args0, _, Context, PredName0, Follow),
+modecheck_goal_expr(call(PredId0, _, Args0, _, Context, PredName0),
                 GoalInfo0, Goal) -->
         % do the last step of type-checking
         =(ModeInfo0),
@@ -765,14 +765,14 @@ modecheck_goal_expr(call(PredId0, _, Args0, _, Context, PredName0, Follow),
 	=(ModeInfo),
 	{ mode_info_get_module_info(ModeInfo, ModuleInfo) },
 	{ code_util__is_builtin(ModuleInfo, PredId, Mode, Builtin) },
-	{ Call = call(PredId, Mode, Args, Builtin, Context, PredName, Follow) },
+	{ Call = call(PredId, Mode, Args, Builtin, Context, PredName) },
 	{ handle_extra_goals(Call, ExtraGoals, GoalInfo0, Args0, Args,
 				InstMap0, ModeInfo, Goal) },
 
 	mode_info_unset_call_context,
 	mode_checkpoint(exit, "call").
 
-modecheck_goal_expr(higher_order_call(PredVar, Args0, _, _, _, _),
+modecheck_goal_expr(higher_order_call(PredVar, Args0, _, _, _),
 		GoalInfo0, Goal) -->
 	modecheck_higher_order_pred_call(PredVar, Args0, GoalInfo0, Goal).
 

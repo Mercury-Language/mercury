@@ -351,12 +351,12 @@ polymorphism__process_goal(Goal0 - GoalInfo0, Goal) -->
 	% since the type-infos are added when the closures are
 	% constructed, not when they are called.  (Or at least I
 	% think we don't... -fjh.)
-polymorphism__process_goal_expr(higher_order_call(A, B, C, D, E, F),
-		GoalInfo, higher_order_call(A, B, C, D, E, F) - GoalInfo)
+polymorphism__process_goal_expr(higher_order_call(A, B, C, D, E),
+		GoalInfo, higher_order_call(A, B, C, D, E) - GoalInfo)
 		--> [].
 
 polymorphism__process_goal_expr(call(PredId0, ProcId0, ArgVars0,
-		Builtin, Context, Name0, Follow), GoalInfo, Goal) -->
+		Builtin, Context, Name0), GoalInfo, Goal) -->
 	% Check for a call to a special predicate like compare/3
 	% for which the type is known at compile-time.
 	% Replace such calls with calls to the particular version
@@ -389,15 +389,15 @@ polymorphism__process_goal_expr(call(PredId0, ProcId0, ArgVars0,
 	{ goal_info_get_nonlocals(GoalInfo, NonLocals0) },
 	{ set__insert_list(NonLocals0, ExtraVars, NonLocals) },
 	{ goal_info_set_nonlocals(GoalInfo, NonLocals, CallGoalInfo) },
-	{ Call = call(PredId, ProcId, ArgVars, Builtin, Context, Name,
-		Follow) - CallGoalInfo },
+	{ Call = call(PredId, ProcId, ArgVars, Builtin, Context, Name)
+		- CallGoalInfo },
 	{ list__append(ExtraGoals, [Call], GoalList) },
 	{ conj_list_to_goal(GoalList, GoalInfo, Goal) }.
 
 polymorphism__process_goal_expr(unify(XVar, Y, Mode, Unification, Context),
 				GoalInfo, Goal) -->
 	(
-		{ Unification = complicated_unify(UniMode, CanFail, Follow) },
+		{ Unification = complicated_unify(UniMode, CanFail) },
 		{ Y = var(YVar) }
 	->
 		=(poly_info(_, VarTypes, _, TypeInfoMap, ModuleInfo)),
@@ -431,7 +431,7 @@ polymorphism__process_goal_expr(unify(XVar, Y, Mode, Unification, Context),
 				IsBuiltin) },
 			{ CallContext = call_unify_context(XVar, Y, Context) },
 			{ Goal = call(PredId, ProcId, ArgVars, IsBuiltin,
-				yes(CallContext), SymName, Follow) - GoalInfo }
+				yes(CallContext), SymName) - GoalInfo }
 
 		; { type_is_higher_order(Type, _, _) } ->
 			{ SymName = unqualified("builtin_unify_pred") },
@@ -452,7 +452,7 @@ polymorphism__process_goal_expr(unify(XVar, Y, Mode, Unification, Context),
 			{ hlds__is_builtin_make_builtin(no, no, IsBuiltin) },
 			{ CallContext = call_unify_context(XVar, Y, Context) },
 			{ Call = call(PredId, ProcId, ArgVars, IsBuiltin,
-				yes(CallContext), SymName, Follow) },
+				yes(CallContext), SymName) },
 			polymorphism__process_goal_expr(Call, GoalInfo, Goal)
 			
 		; { type_to_type_id(Type, TypeId, _) } ->
@@ -473,7 +473,7 @@ polymorphism__process_goal_expr(unify(XVar, Y, Mode, Unification, Context),
 			{ hlds__is_builtin_make_builtin(no, no, IsBuiltin) },
 			{ CallContext = call_unify_context(XVar, Y, Context) },
 			{ Call = call(PredId, ProcId, ArgVars, IsBuiltin,
-				yes(CallContext), SymName, Follow) },
+				yes(CallContext), SymName) },
 			polymorphism__process_goal_expr(Call, GoalInfo, Goal)
 		;
 			{ error("polymorphism: type_to_type_id failed") }

@@ -202,19 +202,17 @@ goal_util__name_apart_2(some(Vars0, Goal0), Must, Subn, some(Vars, Goal)) :-
 	goal_util__rename_vars_in_goal(Goal0, Must, Subn, Goal).
 
 goal_util__name_apart_2(
-		higher_order_call(PredVar0, Args0, Types, Modes, Det, FV0),
+		higher_order_call(PredVar0, Args0, Types, Modes, Det),
 		Must, Subn,
-		higher_order_call(PredVar, Args, Types, Modes, Det, FV)) :-
+		higher_order_call(PredVar, Args, Types, Modes, Det)) :-
 	goal_util__rename_var(PredVar0, Must, Subn, PredVar),
-	goal_util__rename_var_list(Args0, Must, Subn, Args),
-	goal_util__rename_follow_vars(FV0, Must, Subn, FV).
+	goal_util__rename_var_list(Args0, Must, Subn, Args).
 
 goal_util__name_apart_2(
-		call(PredId, ProcId, Args0, Builtin, Context, Sym, FV0),
+		call(PredId, ProcId, Args0, Builtin, Context, Sym),
 		Must, Subn,
-		call(PredId, ProcId, Args, Builtin, Context, Sym, FV)) :-
-	goal_util__rename_var_list(Args0, Must, Subn, Args),
-	goal_util__rename_follow_vars(FV0, Must, Subn, FV).
+		call(PredId, ProcId, Args, Builtin, Context, Sym)) :-
+	goal_util__rename_var_list(Args0, Must, Subn, Args).
 
 goal_util__name_apart_2(unify(TermL0,TermR0,Mode,Unify0,Context), Must, Subn,
 		unify(TermL,TermR,Mode,Unify,Context)) :-
@@ -301,13 +299,13 @@ goal_util__rename_unify(assign(L0, R0), Must, Subn, assign(L, R)) :-
 goal_util__rename_unify(simple_test(L0, R0), Must, Subn, simple_test(L, R)) :-
 	goal_util__rename_var(L0, Must, Subn, L),
 	goal_util__rename_var(R0, Must, Subn, R).
-goal_util__rename_unify(complicated_unify(Modes, Cat, Follow0), Must, Subn,
-			complicated_unify(Modes, Cat, Follow)) :-
-	goal_util__rename_follow_vars(Follow0, Must, Subn, Follow).
+goal_util__rename_unify(complicated_unify(Modes, Cat), _Must, _Subn,
+			complicated_unify(Modes, Cat)).
 
 %-----------------------------------------------------------------------------%
 
-:- pred goal_util__rename_follow_vars(map(var, T), bool, map(var, var), map(var, T)).
+:- pred goal_util__rename_follow_vars(map(var, T), bool,
+				map(var, var), map(var, T)).
 :- mode goal_util__rename_follow_vars(in, in, in, out) is det.
 
 goal_util__rename_follow_vars(Follow0, Must, Subn, Follow) :-
@@ -394,11 +392,11 @@ goal_util__goal_vars_2(unify(Var, RHS, _, _, _), Set0, Set) :-
 	set__insert(Set0, Var, Set1),
 	goal_util__rhs_goal_vars(RHS, Set1, Set).
 
-goal_util__goal_vars_2(higher_order_call(PredVar, ArgVars, _, _, _, _),
+goal_util__goal_vars_2(higher_order_call(PredVar, ArgVars, _, _, _),
 		Set0, Set) :-
 	set__insert_list(Set0, [PredVar | ArgVars], Set).
 
-goal_util__goal_vars_2(call(_, _, ArgVars, _, _, _, _), Set0, Set) :-
+goal_util__goal_vars_2(call(_, _, ArgVars, _, _, _), Set0, Set) :-
 	set__insert_list(Set0, ArgVars, Set).
 
 goal_util__goal_vars_2(conj(Goals), Set0, Set) :-
@@ -506,8 +504,8 @@ goal_expr_size(not(Goal), Size) :-
 goal_expr_size(some(_, Goal), Size) :-
 	goal_size(Goal, Size1),
 	Size is Size1 + 1.
-goal_expr_size(call(_, _, _, _, _, _, _), 1).
-goal_expr_size(higher_order_call(_, _, _, _, _, _), 1).
+goal_expr_size(call(_, _, _, _, _, _), 1).
+goal_expr_size(higher_order_call(_, _, _, _, _), 1).
 goal_expr_size(unify(_, _, _, _, _), 1).
 goal_expr_size(pragma_c_code(_, _, _, _, _, _), 1).
 
@@ -557,4 +555,4 @@ goal_expr_calls(not(Goal), PredProcId) :-
 	goal_calls(Goal, PredProcId).
 goal_expr_calls(some(_, Goal), PredProcId) :-
 	goal_calls(Goal, PredProcId).
-goal_expr_calls(call(PredId, ProcId, _, _, _, _, _), proc(PredId, ProcId)).
+goal_expr_calls(call(PredId, ProcId, _, _, _, _), proc(PredId, ProcId)).

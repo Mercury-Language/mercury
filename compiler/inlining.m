@@ -201,7 +201,7 @@ inlining__simple_goal_2(not(Goal) - _) :-
 	inlining__simple_goal_2(Goal).
 inlining__simple_goal_2(some(_, Goal) - _) :-
 	inlining__simple_goal_2(Goal).
-inlining__simple_goal_2(call(_, _, _, Builtin, _, _, _) - _) :-
+inlining__simple_goal_2(call(_, _, _, Builtin, _, _) - _) :-
 	hlds__is_builtin_is_inline(Builtin).
 inlining__simple_goal_2(unify(_, _, _, _, _) - _).
 
@@ -211,7 +211,6 @@ inlining__simple_goal_list([]).
 inlining__simple_goal_list([Goal | Goals]) :-
 	inlining__simple_goal_2(Goal),
 	inlining__simple_goal_list(Goals).
-
 
 :- pred inlining__mark_proc_as_inlined(pred_proc_id, module_info,
 	set(pred_proc_id), set(pred_proc_id), io__state, io__state).
@@ -325,7 +324,7 @@ inlining__inlining_in_goal_2(some(Vars, Goal0), Varset0, VarTypes0, TVarSet,
 		ModuleInfo, InlinedProcs, Thresh, Goal, Varset, VarTypes).
 
 inlining__inlining_in_goal_2(
-		call(PredId, ProcId, ArgVars, Builtin, Context, Sym, Follow),
+		call(PredId, ProcId, ArgVars, Builtin, Context, Sym),
 		Varset0, VarTypes0, TypeVarSet,
 		ModuleInfo, InlinedProcs, Thresh, Goal, Varset, VarTypes) :-
 
@@ -402,15 +401,14 @@ inlining__inlining_in_goal_2(
 		goal_util__must_rename_vars_in_goal(CalledGoal, Subn,
 			Goal - _GInfo)
 	;
-		Goal = call(PredId, ProcId, ArgVars, Builtin, Context, Sym,
-			Follow),
+		Goal = call(PredId, ProcId, ArgVars, Builtin, Context, Sym),
 		Varset = Varset0,
 		VarTypes = VarTypes0
 	).
 
-inlining__inlining_in_goal_2(higher_order_call(A, B, C, D, E, F),
+inlining__inlining_in_goal_2(higher_order_call(A, B, C, D, E),
 		Varset, VarTypes, _, _, _, _,
-		higher_order_call(A, B, C, D, E, F), Varset, VarTypes).
+		higher_order_call(A, B, C, D, E), Varset, VarTypes).
 
 inlining__inlining_in_goal_2(unify(A, B, C, D, E), Varset, VarTypes,
 		_, _, _, _, unify(A, B, C, D, E), Varset, VarTypes).

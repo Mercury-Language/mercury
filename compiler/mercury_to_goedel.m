@@ -292,15 +292,15 @@ goedel_output_type_defn_3(Name2, Name3, Args, Ctors, VarSet, Context) -->
 :- mode goedel_output_ctors(in, in, in, di, uo) is det.
 
 goedel_output_ctors([], _, _) --> [].
-goedel_output_ctors([Name - ArgTypes | Ctors], Type, VarSet) -->
+goedel_output_ctors([Name - Args | Ctors], Type, VarSet) -->
 	{ unqualify_name(Name, Name2),
 	  convert_functor_name(Name2, Name3) },
 	(
-		{ ArgTypes = [ArgType | Rest] }
+		{ Args = [_ArgName - ArgType | Rest] }
 	->
 		io__write_string("FUNCTION     "),
 		io__write_string(Name3),
-		{ list__length(ArgTypes, Arity) },
+		{ list__length(Args, Arity) },
 		(
 			{ Arity = 2, goedel_infix_op(Name2) }
 		->
@@ -318,7 +318,7 @@ goedel_output_ctors([Name - ArgTypes | Ctors], Type, VarSet) -->
 		),
 		io__write_string(" : "),
 		goedel_output_term(ArgType, VarSet),
-		goedel_output_remaining_types(Rest, VarSet),
+		goedel_output_remaining_ctor_args(Rest, VarSet),
 		io__write_string(" -> ")
 	;
 		io__write_string("CONSTANT     "),
@@ -328,6 +328,16 @@ goedel_output_ctors([Name - ArgTypes | Ctors], Type, VarSet) -->
 	goedel_output_term(Type, VarSet),
 	io__write_string(".\n"),
 	goedel_output_ctors(Ctors, Type, VarSet).
+
+:- pred goedel_output_remaining_ctor_args(list(constructor_arg), varset,
+		io__state, io__state).
+:- mode goedel_output_remaining_ctor_args(in, in, di, uo) is det.
+
+goedel_output_remaining_ctor_args([], _VarSet) --> [].
+goedel_output_remaining_ctor_args([_Name - Type | Args], VarSet) -->
+	io__write_string(" * "),
+	goedel_output_type(Type, VarSet),
+	goedel_output_remaining_ctor_args(Args, VarSet).
 
 %-----------------------------------------------------------------------------%
 
@@ -409,7 +419,9 @@ goedel_output_func(VarSet, PredName, TypesAndModes, RetTypeAndMode, Context) -->
 :- mode goedel_output_func_type(in, in, in, in, in, di, uo) is det.
 
 goedel_output_func_type(VarSet, FuncName, Types, RetType, _Context) -->
-	goedel_output_ctors([FuncName - Types], RetType, VarSet).
+	{ list__map(lambda([Type::in, Arg::out] is det, (Arg = "" - Type)),
+		Types, Args) },
+	goedel_output_ctors([FuncName - Args], RetType, VarSet).
 
 %-----------------------------------------------------------------------------%
 

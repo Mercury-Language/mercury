@@ -1983,8 +1983,8 @@ convert_constructor(Term, Result) :-
 		Term2 = Term
 	),
 	parse_qualified_term(Term2, "convert_constructor/2", ok(F, As)),
-	convert_type_list(As, ArgTypes),
-	Result = F - ArgTypes.
+	convert_constructor_arg_list(As, Args),
+	Result = F - Args.
 
 %-----------------------------------------------------------------------------%
 
@@ -2048,12 +2048,44 @@ process_pred_2(ok(F, As0), PredType, VarSet, MaybeDet, Cond, Result) :-
 	(
 		convert_type_and_mode_list(As0, As)
 	->
-		Result = ok(pred(VarSet, F, As, MaybeDet, Cond))
+		(
+			verify_type_and_mode_list(As)
+		->
+			Result = ok(pred(VarSet, F, As, MaybeDet, Cond))
+		;
+			Result = error("some but not all arguments have modes", PredType)
+		)
 	;
 		Result = error("syntax error in `:- pred' declaration",
 				PredType)
 	).
 process_pred_2(error(M, T), _, _, _, _, error(M, T)).
+
+%-----------------------------------------------------------------------------%
+
+	% Verify that among the arguments of a :- pred declaration,
+	% either all arguments specify a mode or none of them do.
+
+:- pred verify_type_and_mode_list(list(type_and_mode)).
+:- mode verify_type_and_mode_list(in) is semidet.
+
+verify_type_and_mode_list([]).
+verify_type_and_mode_list([First | Rest]) :-
+	verify_type_and_mode_list_2(Rest, First).
+
+:- pred verify_type_and_mode_list_2(list(type_and_mode), type_and_mode).
+:- mode verify_type_and_mode_list_2(in, in) is semidet.
+
+verify_type_and_mode_list_2([], _).
+verify_type_and_mode_list_2([Head | Tail], First) :-
+	(
+		Head = type_only(_),
+		First = type_only(_)
+	;
+		Head = type_and_mode(_, _),
+		First = type_and_mode(_, _)
+	),
+	verify_type_and_mode_list_2(Tail, First).
 
 %-----------------------------------------------------------------------------%
 
@@ -3104,15 +3136,22 @@ make_op_specifier(X, sym(X)).
 :- mode parse_type(in, out) is det.
 parse_type(T, ok(T)).
 
-:- pred convert_type_list(list(term), list(type)).
-:- mode convert_type_list(in, out) is det.
-/*
-convert_type_list([], []).
-convert_type_list([H0|T0], [H|T]) :-
-	convert_type(H0, H),
-	convert_type_list(T0, T).
-*/
-convert_type_list(Types, Types).
+:- pred convert_constructor_arg_list(list(term), list(constructor_arg)).
+:- mode convert_constructor_arg_list(in, out) is det.
+
+convert_constructor_arg_list([], []).
+convert_constructor_arg_list([Term | Terms], [Arg | Args]) :-
+	(
+		Term = term__functor(term__atom("::"), [NameTerm, TypeTerm], _),
+		NameTerm = term__functor(term__atom(Name), [], _)
+	->
+		convert_type(TypeTerm, Type),
+		Arg = Name - Type
+	;
+		convert_type(Term, Type),
+		Arg = "" - Type
+	),
+	convert_constructor_arg_list(Terms, Args).
 
 :- pred convert_type(term, type).
 :- mode convert_type(in, out) is det.

@@ -20,6 +20,9 @@
 
 :- type task(T)	--->	update_proc(pred(
 				proc_info, module_info, proc_info))
+		;	update_proc_io(pred(
+				pred_id, proc_id, module_info,
+				proc_info, proc_info, io__state, io__state))
 		;	update_proc_error(pred(
 				pred_id, proc_id, module_info,
 				proc_info, proc_info, int, int,
@@ -33,6 +36,7 @@
 				T).
 
 :- inst task =	bound(( update_proc(pred(in, in, out) is det)
+		;	update_proc_io(pred(in, in, in, in, out, di, uo) is det)
 		;	update_proc_error(pred(in, in, in, in, out, out, out,
 				di, uo) is det)
 		;	update_module(pred(in, out, in, out) is det)
@@ -129,6 +133,12 @@ process__nonimported_procs([ProcId | ProcIds], PredId, Task0, Task,
 		ModuleInfo8 = ModuleInfo0,
 		Task1 = Task0,
 		State9 = State0
+	;
+		Task0 = update_proc_io(Closure),
+		call(Closure, PredId, ProcId, ModuleInfo0,
+			Proc0, Proc, State0, State9),
+		ModuleInfo8 = ModuleInfo0,
+		Task1 = Task0
 	;
 		Task0 = update_proc_error(Closure),
 		call(Closure, PredId, ProcId, ModuleInfo0,

@@ -344,9 +344,8 @@ intermod__traverse_goal(disj(Goals0, FV) - Info, disj(Goals, FV) - Info,
 	intermod__traverse_list_of_goals(Goals0, Goals, DoWrite).
 
 intermod__traverse_goal(
-	call(PredId0, B, Args, D, MaybeUnifyContext, PredName0, F) - Info,
-	call(PredId, B, Args, D, MaybeUnifyContext, PredName, F) - Info,
-	DoWrite)
+	call(PredId0, B, Args, D, MaybeUnifyContext, PredName0) - Info,
+	call(PredId, B, Args, D, MaybeUnifyContext, PredName) - Info, DoWrite)
 		-->
 	intermod_info_get_module_info(ModuleInfo),
 	intermod_info_get_var_types(VarTypes),
@@ -375,8 +374,8 @@ intermod__traverse_goal(
 		{ DoWrite = yes }
 	).
 
-intermod__traverse_goal(higher_order_call(A,B,C,D,E,F) - Info,
-			higher_order_call(A,B,C,D,E,F) - Info, yes) --> [].
+intermod__traverse_goal(higher_order_call(A,B,C,D,E) - Info,
+			higher_order_call(A,B,C,D,E) - Info, yes) --> [].
 
 intermod__traverse_goal(switch(A, B, Cases0, D) - Info,
 		switch(A, B, Cases, D) - Info, DoWrite) -->

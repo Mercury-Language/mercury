@@ -176,11 +176,11 @@ lambda__process_goal_2(if_then_else(Vars, A0, B0, C0, FV), GoalInfo,
 	lambda__process_goal(A0, A),
 	lambda__process_goal(B0, B),
 	lambda__process_goal(C0, C).
-lambda__process_goal_2(higher_order_call(A,B,C,D,E,F), GoalInfo,
-			higher_order_call(A,B,C,D,E,F) - GoalInfo) -->
+lambda__process_goal_2(higher_order_call(A,B,C,D,E), GoalInfo,
+			higher_order_call(A,B,C,D,E) - GoalInfo) -->
 	[].
-lambda__process_goal_2(call(A,B,C,D,E,F,G), GoalInfo,
-			call(A,B,C,D,E,F,G) - GoalInfo) -->
+lambda__process_goal_2(call(A,B,C,D,E,F), GoalInfo,
+			call(A,B,C,D,E,F) - GoalInfo) -->
 	[].
 lambda__process_goal_2(pragma_c_code(A,B,C,D,E,F), GoalInfo,
 			pragma_c_code(A,B,C,D,E,F) - GoalInfo) -->
@@ -249,7 +249,7 @@ lambda__transform_lambda(PredOrFunc, Vars, Modes, Detism, OrigNonLocals0,
 	set__to_sorted_list(NonLocals, ArgVars1),
 	( 
 		LambdaGoal = call(PredId0, ProcId0, CallVars,
-					_, _, PredName0, _) - _,
+					_, _, PredName0) - _,
 		list__remove_suffix(CallVars, Vars, InitialVars),
 
 		module_info_pred_proc_info(ModuleInfo0, PredId0, ProcId0, _,

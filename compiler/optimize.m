@@ -46,7 +46,12 @@ optimize__proc(c_procedure(Name, Arity, Mode, Instrs0),
 	globals__io_lookup_int_option(optimize_vnrepeat, VnRepeat),
 	{ NovnRepeat is AllRepeat - VnRepeat },
 	optimize__repeat(NovnRepeat, no,  Instrs0, Instrs1),
-	optimize__repeat(VnRepeat, yes, Instrs1, Instrs2),
+	globals__io_lookup_bool_option(optimize_value_number, ValueNumber),
+	( { ValueNumber = yes } ->
+		optimize__repeat(VnRepeat, yes, Instrs1, Instrs2)
+	;
+		{ Instrs2 = Instrs1 }
+	),
 	optimize__nonrepeat(Instrs2, Instrs).
 
 %-----------------------------------------------------------------------------%

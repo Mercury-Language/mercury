@@ -475,8 +475,8 @@ code_util__goal_may_allocate_heap(Goal - _GoalInfo) :-
 :- pred code_util__goal_may_allocate_heap_2(hlds__goal_expr).
 :- mode code_util__goal_may_allocate_heap_2(in) is semidet.
 
-code_util__goal_may_allocate_heap_2(higher_order_call(_, _, _, _, _, _)).
-code_util__goal_may_allocate_heap_2(call(_, _, _, Builtin, _, _, _)) :-
+code_util__goal_may_allocate_heap_2(higher_order_call(_, _, _, _, _)).
+code_util__goal_may_allocate_heap_2(call(_, _, _, Builtin, _, _)) :-
 	\+ hlds__is_builtin_is_inline(Builtin).
 code_util__goal_may_allocate_heap_2(unify(_, _, _, construct(_,_,Args,_), _)) :-
 	Args = [_|_].

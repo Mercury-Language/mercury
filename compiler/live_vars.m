@@ -182,7 +182,7 @@ detect_live_vars_in_goal_2(some(_Vs, Goal0), _NondetLives, Liveness0, LiveSets0,
 		ModuleInfo, ProcInfo, Liveness, LiveSets).
 
 detect_live_vars_in_goal_2(higher_order_call(_PredVar, ArgVars, Types, Modes,
-		Det, _Follow),
+		Det),
 		NondetLives, Liveness, LiveSets0,
 		_CodeModel, ModuleInfo, ProcInfo, Liveness, LiveSets) :-
 	% The variables which need to be saved onto the stack
@@ -209,7 +209,7 @@ detect_live_vars_in_goal_2(higher_order_call(_PredVar, ArgVars, Types, Modes,
 
 
 detect_live_vars_in_goal_2(
-		call(PredId, ProcId, ArgVars, Builtin, _, _, _),
+		call(PredId, ProcId, ArgVars, Builtin, _, _),
 		NondetLives, Liveness, LiveSets0,
 		_CodeModel, ModuleInfo, ProcInfo, Liveness, LiveSets) :-
 	(
@@ -237,7 +237,7 @@ detect_live_vars_in_goal_2(
 detect_live_vars_in_goal_2(unify(_,_,_,D,_), NondetLives, Liveness, LiveSets0,
 		_CodeModel, _ModuleInfo, _ProcInfo, Liveness, LiveSets) :-
 	(
-		D = complicated_unify(_, _, _)
+		D = complicated_unify(_, _)
 	->
 			% we have to save all live variables
 			% (and nondet-live variables)

@@ -341,9 +341,9 @@ qualify_type_defn(abstract_type(SymName, Params),
 		mq_info::in, mq_info::out, io__state::di, io__state::uo) is det.
 				
 qualify_constructors([], [], Info, Info) --> [].
-qualify_constructors([SymName - Types0 | Ctors0], [SymName - Types | Ctors],
+qualify_constructors([SymName - Args0 | Ctors0], [SymName - Args | Ctors],
 					Info0, Info) -->
-	qualify_type_list(Types0, Types, Info0, Info1),
+	qualify_constructor_arg_list(Args0, Args, Info0, Info1),
 	qualify_constructors(Ctors0, Ctors, Info1, Info).
 
 
@@ -500,6 +500,16 @@ qualify_bound_inst_list([functor(ConsId, Insts0) | BoundInsts0],
 	qualify_inst_list(Insts0, Insts, Info0, Info1),
 	qualify_bound_inst_list(BoundInsts0, BoundInsts, Info1, Info).
 
+
+:- pred qualify_constructor_arg_list(list(constructor_arg)::in,
+	list(constructor_arg)::out, mq_info::in, mq_info::out,
+	io__state::di, io__state::uo) is det.
+
+qualify_constructor_arg_list([], [], Info, Info) --> [].
+qualify_constructor_arg_list([Name - Type0 | Args0], [Name - Type | Args],
+		Info0, Info) -->
+	qualify_type(Type0, Type, Info0, Info1),
+	qualify_constructor_arg_list(Args0, Args, Info1, Info).
 
 :- pred qualify_type_list(list(type)::in, list(type)::out, mq_info::in,
 			mq_info::out, io__state::di, io__state::uo) is det.

@@ -1019,18 +1019,19 @@ constructors_to_bound_insts([], _, _, []).
 constructors_to_bound_insts([Ctor | Ctors], Uniq, ModuleInfo,
 		[BoundInst | BoundInsts]) :-
 	Ctor = Name - Args,
-	type_list_to_inst_list(Args, Uniq, Insts),
+	ctor_arg_list_to_inst_list(Args, Uniq, Insts),
 	list__length(Insts, Arity),
 	BoundInst = functor(cons(Name, Arity), Insts),
 	constructors_to_bound_insts(Ctors, Uniq, ModuleInfo, BoundInsts).
 
-:- pred type_list_to_inst_list(list(type), uniqueness, list(inst)).
-:- mode type_list_to_inst_list(in, in, out) is det.
+:- pred ctor_arg_list_to_inst_list(list(constructor_arg), uniqueness,
+	list(inst)).
+:- mode ctor_arg_list_to_inst_list(in, in, out) is det.
 
-type_list_to_inst_list([], _, []).
-type_list_to_inst_list([Type | Types], Uniq, [Inst | Insts]) :-
+ctor_arg_list_to_inst_list([], _, []).
+ctor_arg_list_to_inst_list([_Name - Type | Args], Uniq, [Inst | Insts]) :-
 	Inst = defined_inst(typed_ground(Uniq, Type)),
-	type_list_to_inst_list(Types, Uniq, Insts).
+	ctor_arg_list_to_inst_list(Args, Uniq, Insts).
 
 :- pred propagate_ctor_info_2(list(bound_inst), list(constructor),
 		module_info, list(bound_inst)).
@@ -1261,11 +1262,11 @@ recompute_instmap_delta_2(some(Vars, Goal0), some(Vars, Goal), InstMapDelta) -->
 	% calls and unifies shouldn't occur, since atomic goals are
 	% handled directly in recompute_instmap_delta
 
-recompute_instmap_delta_2(higher_order_call(_, _, _, _, _, _), _, _) -->
+recompute_instmap_delta_2(higher_order_call(_, _, _, _, _), _, _) -->
 	{ error("recompute_instmap_delta: recomputing for atomic goal (higher-order call)")
 	}.
 
-recompute_instmap_delta_2(call(_, _, _, _, _, _, _), _, _) -->
+recompute_instmap_delta_2(call(_, _, _, _, _, _), _, _) -->
 	{ error("recompute_instmap_delta: recomputing for atomic goal (call)")
 	}.
 

@@ -58,6 +58,13 @@
 			io__state, io__state).
 :- mode mercury_output_type_defn(in, in, in, di, uo) is det.
 
+:- pred mercury_output_ctor_arg(varset, constructor_arg, io__state, io__state).
+:- mode mercury_output_ctor_arg(in, in, di, uo) is det.
+
+:- pred mercury_output_remaining_ctor_args(varset, list(constructor_arg),
+				io__state, io__state).
+:- mode mercury_output_remaining_ctor_args(in, in, di, uo) is det.
+
 :- pred mercury_output_inst_defn(varset, inst_defn, term__context,
 			io__state, io__state).
 :- mode mercury_output_inst_defn(in, in, in, di, uo) is det.
@@ -593,9 +600,9 @@ mercury_output_type_defn_2(du_type(Name, Args, Ctors), VarSet, Context) -->
 :- mode mercury_output_ctors(in, in, di, uo) is det.
 
 mercury_output_ctors([], _) --> [].
-mercury_output_ctors([Name - ArgTypes | Ctors], VarSet) -->
+mercury_output_ctors([Name - Args | Ctors], VarSet) -->
 	% we need to quote ';'/2 and '{}'/2
-	{ list__length(ArgTypes, Arity) },
+	{ list__length(Args, Arity) },
 	(
 		{ Arity = 2 },
 		{ Name = unqualified(";") ; Name = unqualified("{}") }
@@ -605,12 +612,12 @@ mercury_output_ctors([Name - ArgTypes | Ctors], VarSet) -->
 		[]
 	),
 	(
-		{ ArgTypes = [ArgType | Rest] }
+		{ Args = [Arg | Rest] }
 	->
 		mercury_output_sym_name(Name),
 		io__write_string("("),
-		mercury_output_term(ArgType, VarSet),
-		mercury_output_remaining_terms(Rest, VarSet),
+		mercury_output_ctor_arg(VarSet, Arg),
+		mercury_output_remaining_ctor_args(VarSet, Rest),
 		io__write_string(")")
 	;
 		mercury_output_bracketed_sym_name(Name)
@@ -629,6 +636,29 @@ mercury_output_ctors([Name - ArgTypes | Ctors], VarSet) -->
 		[]
 	),
 	mercury_output_ctors(Ctors, VarSet).
+
+mercury_output_ctor_arg(Varset, N - T) -->
+	mercury_output_ctor_arg_name_prefix(N),
+	mercury_output_term(T, Varset).
+
+mercury_output_remaining_ctor_args(_Varset, []) --> [].
+mercury_output_remaining_ctor_args(Varset, [N - T | As]) -->
+	io__write_string(", "),
+	mercury_output_ctor_arg_name_prefix(N),
+	mercury_output_term(T, Varset),
+        mercury_output_remaining_ctor_args(Varset, As).
+
+:- pred mercury_output_ctor_arg_name_prefix(string,
+				io__state, io__state).
+:- mode mercury_output_ctor_arg_name_prefix(in, di, uo) is det.
+
+mercury_output_ctor_arg_name_prefix(Name) -->
+	( { Name = "" } ->
+		[]
+	;
+		io__write_string(Name),
+		io__write_string(": ")
+	).
 
 %-----------------------------------------------------------------------------%
 

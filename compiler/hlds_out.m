@@ -830,12 +830,12 @@ hlds_out__write_goal_2(disj(List, _), ModuleInfo, VarSet, Indent, TypeQual) -->
 		io__write_string("fail")
 	).
 
-hlds_out__write_goal_2(higher_order_call(PredVar, ArgVars, _, _, _, _Follow),
+hlds_out__write_goal_2(higher_order_call(PredVar, ArgVars, _, _, _),
 				_ModuleInfo, VarSet, _Indent, _TypeQual) -->
 		% XXX we should print more info here
 	hlds_out__write_functor(term__atom("call"), [PredVar|ArgVars], VarSet).
 
-hlds_out__write_goal_2(call(_PredId, _ProcId, ArgVars, _, _, PredName, _Follow),
+hlds_out__write_goal_2(call(_PredId, _ProcId, ArgVars, _, _, PredName),
 				_ModuleInfo, VarSet, _Indent, _TypeQual) -->
 		% XXX we should print more info here
 	(
@@ -867,10 +867,9 @@ hlds_out__write_goal_2(unify(A, B, _, Unification, _), ModuleInfo, VarSet,
 	;
 		% don't output bogus info if we haven't been through
 		% mode analysis yet
-		{ Unification = complicated_unify(Mode, CanFail, Follow) },
+		{ Unification = complicated_unify(Mode, CanFail) },
 		{ CanFail = can_fail },
-		{ Mode = (free - free -> free - free) },
-		{ map__is_empty(Follow) }
+		{ Mode = (free - free -> free - free) }
 	->
 		[]
 	;
@@ -929,7 +928,7 @@ hlds_out__write_unification(deconstruct(Var, ConsId, ArgVars, ArgModes,
 	!,
 	mercury_output_functor(ConsId, ArgVars, ArgModes, ModuleInfo, VarSet,
 			Indent).
-hlds_out__write_unification(complicated_unify(Mode, CanFail, _),
+hlds_out__write_unification(complicated_unify(Mode, CanFail),
 		_ModuleInfo, VarSet, _Indent) -->
 	( { CanFail = can_fail },
 		io__write_string("can_fail, ")
@@ -1394,31 +1393,14 @@ hlds_out__write_constructors_2(Indent, Tvarset, [C | Cs]) -->
 
 hlds_out__write_constructor(Tvarset, Name - Args) -->
 	prog_out__write_sym_name(Name),
-	hlds_out__write_term_list(Tvarset, Args).
-
-:- pred hlds_out__write_term_list(varset, list(term), io__state, io__state).
-:- mode hlds_out__write_term_list(in, in, di, uo) is det.
-
-hlds_out__write_term_list(_Varset, []) --> [].
-hlds_out__write_term_list(Varset, [T]) -->
-	io__write_char('('),
-	mercury_output_term(T, Varset),
-	io__write_char(')').
-hlds_out__write_term_list(Varset, [T | Ts]) -->
-	{ Ts = [_ | _] },
-	io__write_char('('),
-	mercury_output_term(T, Varset),
-	hlds_out__write_term_list_2(Varset, Ts).
-
-:- pred hlds_out__write_term_list_2(varset, list(term), io__state, io__state).
-:- mode hlds_out__write_term_list_2(in, in, di, uo) is det.
-
-hlds_out__write_term_list_2(_Varset, []) -->
-        io__write_char(')').
-hlds_out__write_term_list_2(Varset, [T | Ts]) -->
-	io__write_string(", "),
-	mercury_output_term(T, Varset),
-        hlds_out__write_term_list_2(Varset, Ts).
+	( { Args = [Arg | Rest] } ->
+		io__write_char('('),
+		mercury_output_ctor_arg(Tvarset, Arg),
+		mercury_output_remaining_ctor_args(Tvarset, Rest),
+		io__write_char(')')
+	;
+		[]
+	).
 
 %-----------------------------------------------------------------------------%
 

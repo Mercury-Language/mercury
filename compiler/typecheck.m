@@ -590,12 +590,12 @@ typecheck_goal_2(not(A0), not(A)) -->
 typecheck_goal_2(some(Vs, G0), some(Vs, G)) -->
 	checkpoint("some"),
 	typecheck_goal(G0, G).
-typecheck_goal_2(call(_, Mode, Args, Builtin, Context, Name, Follow),
-		call(PredId, Mode, Args, Builtin, Context, Name, Follow)) -->
+typecheck_goal_2(call(_, Mode, Args, Builtin, Context, Name),
+		call(PredId, Mode, Args, Builtin, Context, Name)) -->
 	checkpoint("call"),
 	typecheck_call_pred(Name, Args, PredId).
-typecheck_goal_2(higher_order_call(PredVar, Args, C, D, E, F),
-		higher_order_call(PredVar, Args, C, D, E, F)) -->
+typecheck_goal_2(higher_order_call(PredVar, Args, C, D, E),
+		higher_order_call(PredVar, Args, C, D, E)) -->
 	checkpoint("higher-order call"),
 	typecheck_higher_order_call(PredVar, Args).
 typecheck_goal_2(unify(A, B0, Mode, Info, UnifyContext),

@@ -75,7 +75,7 @@
 	% Given the name, argument types, and type_id of a functor,
 	% create a cons_id for that functor.
 
-:- pred make_cons_id(sym_name, list(type), type_id, cons_id).
+:- pred make_cons_id(sym_name, list(constructor_arg), type_id, cons_id).
 :- mode make_cons_id(in, in, in, out) is det.
 
 %-----------------------------------------------------------------------------%

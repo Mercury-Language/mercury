@@ -22,7 +22,7 @@
 % completed all of its semantic checks (i.e. after determinism analysis),
 % but before code generation.
 % 
-% It allows middle recursion optimization to be simplified, 
+% It allows optimizations such as middle recursion to be simplified, 
 % and it reduces the pressure on the stack slot allocator.
 
 %-----------------------------------------------------------------------------%
@@ -116,11 +116,11 @@ excess_assignments_in_goal(GoalExpr0 - GoalInfo0, ElimVars0, Goal, ElimVars) :-
 					   SubGoal, ElimVars),
 		Goal = some(Var, SubGoal) - GoalInfo0
 	;
-		GoalExpr0 = higher_order_call(_, _, _, _, _, _),
+		GoalExpr0 = higher_order_call(_, _, _, _, _),
 		Goal = GoalExpr0 - GoalInfo0,
 		ElimVars = ElimVars0
 	;
-		GoalExpr0 = call(_, _, _, _, _, _, _),
+		GoalExpr0 = call(_, _, _, _, _, _),
 		Goal = GoalExpr0 - GoalInfo0,
 		ElimVars = ElimVars0
 	;

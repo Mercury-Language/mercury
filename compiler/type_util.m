@@ -277,8 +277,18 @@ substitute_type_args(TypeParams0, TypeArgs, Constructors0, Constructors) :-
 substitute_type_args_2([], _TypeParams, _TypeArgs, []).
 substitute_type_args_2([Name - Args0 | Ctors0], TypeParams, TypeArgs,
 		[Name - Args | Ctors]) :-
-	term__substitute_corresponding_list(TypeParams, TypeArgs, Args0, Args),
+	substitute_type_args_3(Args0, TypeParams, TypeArgs, Args),
 	substitute_type_args_2(Ctors0, TypeParams, TypeArgs, Ctors).
+
+:- pred substitute_type_args_3(list(constructor_arg), list(var), list(type),
+				list(constructor_arg)).
+:- mode substitute_type_args_3(in, in, in, out) is det.
+
+substitute_type_args_3([], _TypeParams, _TypeArgs, []).
+substitute_type_args_3([Name - Arg0 | Args0], TypeParams, TypeArgs,
+		[Name - Arg | Args]) :-
+	term__substitute_corresponding(TypeParams, TypeArgs, Arg0, Arg),
+	substitute_type_args_3(Args0, TypeParams, TypeArgs, Args).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

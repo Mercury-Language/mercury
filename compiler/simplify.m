@@ -177,11 +177,11 @@ simplify__goal_2(switch(Var, SwitchCanFail, Cases0, FV), _, InstMap0, DetInfo,
 		switch(Var, SwitchCanFail, Cases, FV), Msgs) :-
 	simplify__switch(Cases0, InstMap0, DetInfo, Cases, Msgs).
 
-simplify__goal_2(higher_order_call(A, B, C, D, E, F), _, _, _,
-		 higher_order_call(A, B, C, D, E, F), []).
+simplify__goal_2(higher_order_call(A, B, C, D, E), _, _, _,
+		 higher_order_call(A, B, C, D, E), []).
 
-simplify__goal_2(call(PredId, B, C, D, E, F, G), GoalInfo, _, DetInfo,
-		 call(PredId, B, C, D, E, F, G), Msgs) :-
+simplify__goal_2(call(PredId, B, C, D, E, F), GoalInfo, _, DetInfo,
+		 call(PredId, B, C, D, E, F), Msgs) :-
 	%
 	% check for calls to predicates with `pragma obsolete' declarations
 	%

@@ -34,8 +34,9 @@
 :- import_module switch_detection, cse_detection, det_analysis, unique_modes.
 :- import_module simplify, intermod, bytecode_gen, bytecode, (lambda).
 :- import_module polymorphism, intermod, higher_order, inlining, common, dnf.
-:- import_module constraint, unused_args, dead_proc_elim, excess, liveness.
-:- import_module follow_code, follow_vars, live_vars, arg_info, store_alloc.
+:- import_module constraint, unused_args, dead_proc_elim, excess.
+:- import_module lco, liveness.
+:- import_module follow_code, live_vars, arg_info, store_alloc.
 :- import_module code_gen, optimize, export, base_type_info.
 :- import_module llds_common, llds_out.
 
@@ -555,10 +556,13 @@ mercury_compile__middle_pass(ModuleName, HLDS25, HLDS50) -->
 	mercury_compile__maybe_dead_procs(HLDS43, Verbose, Stats, HLDS46),
 	mercury_compile__maybe_dump_hlds(HLDS46, "46", "dead_procs"),
 
+	mercury_compile__maybe_lco(HLDS46, Verbose, Stats, HLDS47),
+	mercury_compile__maybe_dump_hlds(HLDS47, "47", "lco"),
+
 	% map_args_to_regs affects the interface to a predicate,
 	% so it must be done in one phase immediately before code generation
 
-	mercury_compile__map_args_to_regs(HLDS46, Verbose, Stats, HLDS49),
+	mercury_compile__map_args_to_regs(HLDS47, Verbose, Stats, HLDS49),
 	mercury_compile__maybe_dump_hlds(HLDS49, "49", "args_to_regs"),
 
 	{ HLDS50 = HLDS49 },
@@ -600,10 +604,7 @@ mercury_compile__backend_pass_by_phases(HLDS50, HLDS99, LLDS) -->
 	mercury_compile__compute_liveness(HLDS56, Verbose, Stats, HLDS59),
 	mercury_compile__maybe_dump_hlds(HLDS59, "59", "liveness"),
 
-	mercury_compile__maybe_followvars(HLDS59, Verbose, Stats, HLDS62),
-	mercury_compile__maybe_dump_hlds(HLDS62, "62", "followvars"),
-
-	mercury_compile__compute_stack_vars(HLDS62, Verbose, Stats, HLDS65),
+	mercury_compile__compute_stack_vars(HLDS59, Verbose, Stats, HLDS65),
 	mercury_compile__maybe_dump_hlds(HLDS65, "65", "stackvars"),
 
 	mercury_compile__allocate_store_map(HLDS65, Verbose, Stats, HLDS68),
@@ -708,16 +709,10 @@ mercury_compile__backend_pass_by_preds_4(ProcInfo0, ProcId, PredId,
 		{ ModuleInfo1 = ModuleInfo0 }
 	),
 	{ detect_liveness_proc(ProcInfo2, ModuleInfo1, ProcInfo3) },
-	globals__io_lookup_bool_option(follow_vars, FollowVars),
-	( { FollowVars = yes } ->
-		{ find_follow_vars_in_proc(ProcInfo3, ModuleInfo1, ProcInfo4) }
-	;
-		{ ProcInfo4 = ProcInfo3 }
-	),
-	{ detect_live_vars_in_proc(ProcInfo4, ModuleInfo1, ProcInfo5) },
-	{ store_alloc_in_proc(ProcInfo5, ModuleInfo1, ProcInfo6) },
+	{ detect_live_vars_in_proc(ProcInfo3, ModuleInfo1, ProcInfo4) },
+	{ store_alloc_in_proc(ProcInfo4, ModuleInfo1, ProcInfo5) },
 	{ module_info_get_shapes(ModuleInfo1, Shapes0) },
-	generate_proc_code(ProcInfo6, ProcId, PredId, ModuleInfo1,
+	generate_proc_code(ProcInfo5, ProcId, PredId, ModuleInfo1,
 		Shapes0, Shapes, Proc0),
 	{ module_info_set_shapes(ModuleInfo1, Shapes, ModuleInfo) },
 	globals__io_lookup_bool_option(optimize, Optimize),
@@ -1093,6 +1088,25 @@ mercury_compile__maybe_dead_procs(HLDS0, Verbose, Stats, HLDS) -->
 		{ HLDS0 = HLDS }
 	).
 
+:- pred mercury_compile__maybe_lco(module_info, bool, bool,
+	module_info, io__state, io__state).
+:- mode mercury_compile__maybe_lco(in, in, in, out, di, uo)
+	is det.
+
+mercury_compile__maybe_lco(HLDS0, Verbose, Stats, HLDS) -->
+	globals__io_lookup_bool_option(optimize_constructor_recursion, LCO),
+	( { LCO = yes } ->
+		maybe_write_string(Verbose, "% Looking for LCO modulo constructor application ...\n"),
+		maybe_flush_output(Verbose),
+		process_all_nonimported_procs(
+			update_proc_io(lco_modulo_constructors),
+			HLDS0, HLDS),
+		maybe_write_string(Verbose, "% done.\n"),
+		maybe_report_stats(Stats)
+	;
+		{ HLDS0 = HLDS }
+	).
+
 %-----------------------------------------------------------------------------%
 
 % The backend passes
@@ -1157,24 +1171,6 @@ mercury_compile__compute_liveness(HLDS0, Verbose, Stats, HLDS) -->
 		HLDS0, HLDS),
 	maybe_write_string(Verbose, " done.\n"),
 	maybe_report_stats(Stats).
-
-:- pred mercury_compile__maybe_followvars(module_info, bool, bool,
-	module_info, io__state, io__state).
-:- mode mercury_compile__maybe_followvars(in, in, in, out, di, uo)
-	is det.
-
-mercury_compile__maybe_followvars(HLDS0, Verbose, Stats, HLDS) -->
-	globals__io_lookup_bool_option(follow_vars, FollowVars),
-	( { FollowVars = yes } ->
-		maybe_write_string(Verbose, "% Computing followvars..."),
-		maybe_flush_output(Verbose),
-		process_all_nonimported_procs(update_proc(
-			find_follow_vars_in_proc), HLDS0, HLDS),
-		maybe_write_string(Verbose, " done.\n"),
-		maybe_report_stats(Stats)
-	;
-		{ HLDS = HLDS0 }
-	).
 
 :- pred mercury_compile__compute_stack_vars(module_info, bool, bool,
 	module_info, io__state, io__state).
@@ -1332,6 +1328,7 @@ mercury_compile__output_llds(ModuleName, LLDS, Verbose, Stats) -->
 	maybe_flush_output(Verbose),
 	output_c_file(LLDS),
 	maybe_write_string(Verbose, " done.\n"),
+	maybe_flush_output(Verbose),
 	maybe_report_stats(Stats).
 
 :- pred mercury_compile__maybe_write_gc(module_name, shape_info, c_file,

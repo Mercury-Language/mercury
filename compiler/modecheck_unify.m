@@ -176,9 +176,8 @@ modecheck_unification(X0, functor(Name, ArgVars0), Unification0,
                 hlds__is_builtin_make_builtin(no, no, Builtin),
                 FuncCallUnifyContext = call_unify_context(X0,
                                         functor(Name, ArgVars0), UnifyContext),
-                map__init(Follow),
                 FuncCall = call(PredId, ProcId, ArgVars, Builtin,
-			yes(FuncCallUnifyContext), QualifiedFuncName, Follow),
+			yes(FuncCallUnifyContext), QualifiedFuncName),
                 %
                 % now modecheck it
                 %
@@ -264,11 +263,10 @@ modecheck_unification(X0, functor(Name, ArgVars0), Unification0,
                 ),
 
                 hlds__is_builtin_make_builtin(no, no, Builtin),
-                map__init(Follow),
                 CallUnifyContext = call_unify_context(X0,
                                         functor(Name, ArgVars0), UnifyContext),
                 LambdaGoalExpr = call(PredId, ProcId, Args, Builtin,
-                                yes(CallUnifyContext), QualifiedPName, Follow),
+                                yes(CallUnifyContext), QualifiedPName),
 
                 %
                 % construct a goal_info for the lambda goal, making sure
@@ -634,8 +632,7 @@ modecheck_higher_order_func_call(FuncVar, Args0, RetVar, GoalInfo0, Goal) -->
                         Types, Modes, Det, Args, ExtraGoals),
 
         =(ModeInfo),
-        { map__init(Follow) },
-        { Call = higher_order_call(FuncVar, Args, Types, Modes, Det, Follow) },
+        { Call = higher_order_call(FuncVar, Args, Types, Modes, Det) },
         { handle_extra_goals(Call, ExtraGoals, GoalInfo0, Args1, Args,
                                 InstMap0, ModeInfo, Goal) },
 
@@ -810,11 +807,9 @@ categorize_unify_var_var(ModeOfX, ModeOfY, LiveX, LiveY, X, Y, Det,
                 ;
                         mode_get_insts(ModuleInfo0, ModeOfX, IX, FX),
                         mode_get_insts(ModuleInfo0, ModeOfY, IY, FY),
-                        map__init(Follow),
                         determinism_components(Det, CanFail, _),
                         UniMode = ((IX - IY) -> (FX - FY)),
-                        Unification = complicated_unify(UniMode, CanFail,
-                                Follow),
+                        Unification = complicated_unify(UniMode, CanFail),
                         (
                                 type_is_higher_order(Type, PredOrFunc, _)
                         ->

@@ -147,6 +147,8 @@ equiv_type__replace_in_type_defn(du_type(TName, TArgs, TBody0), VarSet0,
 			EqvMap, du_type(TName, TArgs, TBody), VarSet, no) :-
 	equiv_type__replace_in_du(TBody0, VarSet0, EqvMap, TBody, VarSet).
 
+%-----------------------------------------------------------------------------%
+
 :- pred equiv_type__replace_in_uu(list(type), tvarset, eqv_map,
 					list(type), tvarset).
 :- mode equiv_type__replace_in_uu(in, in, in, out, out) is det.
@@ -155,6 +157,8 @@ equiv_type__replace_in_uu(Ts0, VarSet0, EqvMap,
 				Ts, VarSet) :-
 	equiv_type__replace_in_type_list(Ts0, VarSet0, EqvMap,
 					Ts, VarSet, _).
+
+%-----------------------------------------------------------------------------%
 
 :- pred equiv_type__replace_in_du(list(constructor), tvarset, eqv_map,
 				list(constructor), tvarset).
@@ -171,8 +175,10 @@ equiv_type__replace_in_du([T0|Ts0], VarSet0, EqvMap, [T|Ts], VarSet) :-
 
 equiv_type__replace_in_ctor(TName - Targs0, VarSet0, EqvMap,
 		TName - Targs, VarSet) :-
-	equiv_type__replace_in_type_list(Targs0, VarSet0, EqvMap,
+	equiv_type__replace_in_ctor_arg_list(Targs0, VarSet0, EqvMap,
 		Targs, VarSet, _).
+
+%-----------------------------------------------------------------------------%
 
 :- pred equiv_type__replace_in_type_list(list(type), tvarset, eqv_map,
 					list(type), tvarset, bool).
@@ -190,13 +196,41 @@ equiv_type__replace_in_type_list(Ts0, VarSet0, EqvMap,
 
 equiv_type__replace_in_type_list_2([], VarSet, _EqvMap, _Seen,
 				[], VarSet, ContainsCirc, ContainsCirc).
-equiv_type__replace_in_type_list_2([T0|Ts0], VarSet0, EqvMap, Seen,
-				[T|Ts], VarSet, Circ0, Circ) :-
+equiv_type__replace_in_type_list_2([T0 | Ts0], VarSet0, EqvMap, Seen,
+				[T | Ts], VarSet, Circ0, Circ) :-
 	equiv_type__replace_in_type_2(T0, VarSet0, EqvMap, Seen,
 					T, VarSet1, ContainsCirc),
 	bool__or(Circ0, ContainsCirc, Circ1),
 	equiv_type__replace_in_type_list_2(Ts0, VarSet1, EqvMap, Seen,
 					Ts, VarSet, Circ1, Circ).
+
+%-----------------------------------------------------------------------------%
+
+:- pred equiv_type__replace_in_ctor_arg_list(list(constructor_arg), tvarset,
+				eqv_map, list(constructor_arg), tvarset, bool).
+:- mode equiv_type__replace_in_ctor_arg_list(in, in, in, out, out, out) is det.
+
+equiv_type__replace_in_ctor_arg_list(As0, VarSet0, EqvMap,
+				As, VarSet, ContainsCirc) :-
+	equiv_type__replace_in_ctor_arg_list_2(As0, VarSet0, EqvMap, [],
+					As, VarSet, no, ContainsCirc).
+
+:- pred equiv_type__replace_in_ctor_arg_list_2(list(constructor_arg), tvarset,
+	eqv_map, list(type_id), list(constructor_arg), tvarset, bool, bool).
+:- mode equiv_type__replace_in_ctor_arg_list_2(in, in, in,
+			in, out, out, in, out) is det.
+
+equiv_type__replace_in_ctor_arg_list_2([], VarSet, _EqvMap, _Seen,
+				[], VarSet, ContainsCirc, ContainsCirc).
+equiv_type__replace_in_ctor_arg_list_2([N - T0 | As0], VarSet0, EqvMap, Seen,
+				[N - T | As], VarSet, Circ0, Circ) :-
+	equiv_type__replace_in_type_2(T0, VarSet0, EqvMap, Seen,
+					T, VarSet1, ContainsCirc),
+	bool__or(Circ0, ContainsCirc, Circ1),
+	equiv_type__replace_in_ctor_arg_list_2(As0, VarSet1, EqvMap, Seen,
+					As, VarSet, Circ1, Circ).
+
+%-----------------------------------------------------------------------------%
 
 equiv_type__replace_in_type(Type0, VarSet0, EqvMap, Type, VarSet) :-
 	equiv_type__replace_in_type_2(Type0, VarSet0, EqvMap,
@@ -251,6 +285,8 @@ equiv_type__replace_in_type_2(Type0, VarSet0, EqvMap,
 		Type = Type0,
 		Circ = no
 	).
+
+%-----------------------------------------------------------------------------%
 
 :- pred equiv_type__replace_in_tms(list(type_and_mode), tvarset, eqv_map,
 			list(type_and_mode), tvarset).

@@ -287,7 +287,7 @@ traverse_goal(ModuleInfo, switch(Var, _, Cases, _), UseInf0, UseInf) :-
 	traverse_list_of_goals(ModuleInfo, Goals, UseInf1, UseInf).
 
 % handle predicate call
-traverse_goal(ModuleInfo, call(PredId, ProcId, Args, _, _, _, _),
+traverse_goal(ModuleInfo, call(PredId, ProcId, Args, _, _, _),
 						UseInf0, UseInf) :-
 	module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _Pred, Proc),
 	proc_info_headvars(Proc, HeadVars),
@@ -311,7 +311,7 @@ traverse_goal(ModuleInfo, some(_,  Goal - _), UseInf0, UseInf) :-
 
 
 % we assume that higher-order predicate calls use all variables involved
-traverse_goal(_, higher_order_call(PredVar,Args,_,_,_,_), UseInf0, UseInf) :-
+traverse_goal(_, higher_order_call(PredVar,Args,_,_,_), UseInf0, UseInf) :-
 	set_list_vars_used(UseInf0, [PredVar|Args], UseInf).
 
 % handle pragma(c_code, ...) - pragma_c_code uses all its args
@@ -364,7 +364,7 @@ traverse_goal(_, unify(Var1, _, _, construct(_, _, Args, _), _),
 	).
 	
 	% These should be transformed into calls by polymorphism.m.
-traverse_goal(_, unify(_, _, _, complicated_unify(_, _, _), _),
+traverse_goal(_, unify(_, _, _, complicated_unify(_, _), _),
 		UseInf, UseInf) :-
     error("unused_args should come after making out of line compl unify pred").
 
@@ -650,13 +650,11 @@ create_new_preds([proc(PredId, ProcId) | PredProcs], UnusedArgInfo,
 			%	shouldn't make too much difference
 		proc_info_variables(OldProc0, Varset0),
 		hlds__is_builtin_make_builtin(no, no, IsBuiltin),
-		map__init(FVars0),
 		pred_info_module(PredInfo0, ModuleName),
 		pred_info_name(PredInfo0, Name),
 		remove_listof_elements(HeadVars, 1, UnusedArgs, NewHeadVars),
 		GoalExpr = call(NewPredId, NewProcId, NewHeadVars,
-			      IsBuiltin, no, qualified(ModuleName, Name),
-			      FVars0),
+			      IsBuiltin, no, qualified(ModuleName, Name)),
 		Goal1 = GoalExpr - GoalInfo0,
 		implicitly_quantify_goal(Goal1, Varset0, VarTypes1, NonLocals, 
 				Goal, Varset, VarTypes, _),
@@ -922,8 +920,8 @@ fixup_goal_expr(ModuleInfo, UnusedVars, ProcCallInfo, Changed,
 				Changed, SubGoal0, SubGoal).
 
 fixup_goal_expr(_ModuleInfo, _UnusedVars, ProcCallInfo, Changed,
-		call(PredId0, ProcId0, ArgVars0, B, C, Name0, E) - GoalInfo, 
-		call(PredId, ProcId, ArgVars, B, C, Name, E) - GoalInfo) :-
+		call(PredId0, ProcId0, ArgVars0, B, C, Name0) - GoalInfo, 
+		call(PredId, ProcId, ArgVars, B, C, Name) - GoalInfo) :-
 	(
 		map__search(ProcCallInfo, proc(PredId0, ProcId0),
 			call_info(NewPredId, NewProcId, NewName, UnusedArgs))
@@ -956,12 +954,11 @@ fixup_goal_expr(ModuleInfo, UnusedVars, _ProcCallInfo,
 
 fixup_goal_expr(_ModuleInfo, _UnusedVars, _ProcCallInfo, no,
 			GoalExpr - GoalInfo, GoalExpr - GoalInfo) :-
-	GoalExpr = higher_order_call(_, _, _, _, _, _).
+	GoalExpr = higher_order_call(_, _, _, _, _).
 
 fixup_goal_expr(_ModuleInfo, _UnusedVars, _ProcCallInfo, no,
 			GoalExpr - GoalInfo, GoalExpr - GoalInfo) :-
 	GoalExpr = pragma_c_code(_, _, _, _, _, _).
-
 
 	% Remove useless unifications from a list of conjuncts.
 :- pred fixup_conjuncts(module_info::in, list(var)::in, proc_call_info::in,
@@ -1066,7 +1063,7 @@ fixup_unify(ModuleInfo, UnusedVars, Changed,
 	).
 
 	% These should be transformed into calls by polymorphism.m.
-fixup_unify(_, _, _, complicated_unify(_, _, _), _) :-
+fixup_unify(_, _, _, complicated_unify(_, _), _) :-
 		error("unused_args:fixup_goal : complicated unify").
 
 	% Check if any of the arguments of a deconstruction are unused, if

@@ -178,10 +178,10 @@ detect_liveness_in_goal_2(some(Vars, Goal0), Liveness0, ModuleInfo,
 		Liveness, some(Vars, Goal)) :-
 	detect_liveness_in_goal(Goal0, Liveness0, ModuleInfo, Liveness, Goal).
 
-detect_liveness_in_goal_2(higher_order_call(A,B,C,D,E,F), L, _, L,
-			higher_order_call(A,B,C,D,E,F)).
+detect_liveness_in_goal_2(higher_order_call(A,B,C,D,E), L, _, L,
+			higher_order_call(A,B,C,D,E)).
 
-detect_liveness_in_goal_2(call(A,B,C,D,E,F,G), L, _, L, call(A,B,C,D,E,F,G)).
+detect_liveness_in_goal_2(call(A,B,C,D,E,F), L, _, L, call(A,B,C,D,E,F)).
 
 detect_liveness_in_goal_2(unify(A,B,C,D,E), L, _, L, unify(A,B,C,D,E)).
 
@@ -360,11 +360,11 @@ detect_deadness_in_goal_2(some(Vars, Goal0), _, Deadness0, ModuleInfo,
 	detect_deadness_in_goal(Goal0, Deadness0, ModuleInfo, ProcInfo,
 		Deadness, Goal).
 
-detect_deadness_in_goal_2(higher_order_call(A,B,C,D,E,F), _, Dn, _, _, Dn,
-			higher_order_call(A,B,C,D,E,F)).
+detect_deadness_in_goal_2(higher_order_call(A,B,C,D,E), _, Dn, _, _, Dn,
+			higher_order_call(A,B,C,D,E)).
 
-detect_deadness_in_goal_2(call(A,B,C,D,E,F,G), _, Dn, _, _, Dn, 
-			call(A,B,C,D,E,F,G)).
+detect_deadness_in_goal_2(call(A,B,C,D,E,F), _, Dn, _, _, Dn, 
+			call(A,B,C,D,E,F)).
 
 detect_deadness_in_goal_2(unify(A,B,C,D,E), _, Dn, _, _, Dn, unify(A,B,C,D,E)).
 
@@ -627,7 +627,7 @@ add_nondet_lives_to_goal(Goal0 - GoalInfo0, Liveness0,
 		set__union(Extras0, Liveness1, Extras1)
 	;
 		GoalModel = model_non,
-		Goal0 = call(_,_,_,_,_,_,_)
+		Goal0 = call(_,_,_,_,_,_)
 	->
 		% If the goal is a nondet call then all the variables
 		% that are live across the call become nondet live.
@@ -718,11 +718,11 @@ add_nondet_lives_to_goal_2(not(Goal0), Liveness0, Extras0, _,
 	add_nondet_lives_to_goal(Goal0, Liveness0, Extras0,
 					Goal, Liveness, _).
 
-add_nondet_lives_to_goal_2(higher_order_call(A,B,C,D,E,F), Liveness, Extras, _,
-			higher_order_call(A,B,C,D,E,F), Liveness, Extras).
+add_nondet_lives_to_goal_2(higher_order_call(A,B,C,D,E), Liveness, Extras, _,
+			higher_order_call(A,B,C,D,E), Liveness, Extras).
 
-add_nondet_lives_to_goal_2(call(A,B,C,D,E,F,G), Liveness, Extras, _,
-				call(A,B,C,D,E,F,G), Liveness, Extras).
+add_nondet_lives_to_goal_2(call(A,B,C,D,E,F), Liveness, Extras, _,
+				call(A,B,C,D,E,F), Liveness, Extras).
 
 add_nondet_lives_to_goal_2(unify(A,B,C,D,E), Liveness, Extras, _,
 				unify(A,B,C,D,E), Liveness, Extras).

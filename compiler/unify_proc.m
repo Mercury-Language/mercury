@@ -371,7 +371,8 @@ unify_proc__generate_clause_info(SpecialPredId, Type, TypeBody, ModuleInfo,
 	),
 	special_pred_info(SpecialPredId, HeadVarType,
 			_PredName, ArgTypes, _Modes, _Det),
-	unify_proc__make_fresh_vars(ArgTypes, Args, VarTypeInfo0, VarTypeInfo1),
+	unify_proc__make_fresh_vars_from_types(ArgTypes, Args,
+					VarTypeInfo0, VarTypeInfo1),
 	( SpecialPredId = unify, Args = [H1, H2] ->
 		unify_proc__generate_unify_clauses(TypeBody, H1, H2,
 					Clauses, VarTypeInfo1, VarTypeInfo)
@@ -1270,24 +1271,34 @@ unify_proc__build_call(Name, ArgVars, Goal) -->
 		error(ErrorMessage)
 	},
 	{ ModeId = 0 },
-	{ map__init(Follow) },
 	{ hlds__is_builtin_make_builtin(no, no, Builtin) },
 	% We cheat by not providing a context for the call.
 	% Since automatically generated procedures should not have errors,
 	% the absence of a context should not be a problem.
 	{ Call = call(IndexPredId, ModeId, ArgVars, Builtin,
-			no, unqualified(Name), Follow) },
+			no, unqualified(Name)) },
 	{ goal_info_init(GoalInfo) },
 	{ Goal = Call - GoalInfo }.
 
-:- pred unify_proc__make_fresh_vars(list(type), list(var),
+%-----------------------------------------------------------------------------%
+
+:- pred unify_proc__make_fresh_vars_from_types(list(type), list(var),
+					unify_proc_info, unify_proc_info).
+:- mode unify_proc__make_fresh_vars_from_types(in, out, in, out) is det.
+
+unify_proc__make_fresh_vars_from_types([], []) --> [].
+unify_proc__make_fresh_vars_from_types([Type | Types], [Var | Vars]) -->
+	unify_proc__info_new_var(Type, Var),
+	unify_proc__make_fresh_vars_from_types(Types, Vars).
+
+:- pred unify_proc__make_fresh_vars(list(constructor_arg), list(var),
 					unify_proc_info, unify_proc_info).
 :- mode unify_proc__make_fresh_vars(in, out, in, out) is det.
 
 unify_proc__make_fresh_vars([], []) --> [].
-unify_proc__make_fresh_vars([Type | Types], [Var | Vars]) -->
+unify_proc__make_fresh_vars([_Name - Type | Args], [Var | Vars]) -->
 	unify_proc__info_new_var(Type, Var),
-	unify_proc__make_fresh_vars(Types, Vars).
+	unify_proc__make_fresh_vars(Args, Vars).
 
 :- pred unify_proc__unify_var_lists(list(var), list(var), list(hlds__goal)).
 :- mode unify_proc__unify_var_lists(in, in, out) is det.

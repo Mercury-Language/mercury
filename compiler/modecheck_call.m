@@ -58,8 +58,7 @@ modecheck_higher_order_pred_call(PredVar, Args0, GoalInfo0, Goal) -->
                         Types, Modes, Det, Args, ExtraGoals),
 
         =(ModeInfo),
-        { map__init(Follow) },
-        { Call = higher_order_call(PredVar, Args, Types, Modes, Det, Follow) },
+        { Call = higher_order_call(PredVar, Args, Types, Modes, Det) },
         { handle_extra_goals(Call, ExtraGoals, GoalInfo0, Args0, Args,
                                 InstMap0, ModeInfo, Goal) },
         mode_info_unset_call_context,

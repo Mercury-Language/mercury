@@ -285,12 +285,12 @@ traverse_goal(switch(Var, CanFail, Cases0, FV) - Info,
 
 		% check whether this call could be specialized
 traverse_goal(Goal0, Goal, PredProcId, Changed, 1) -->
-	{ Goal0 = higher_order_call(_,_,_,_,_,_) - _ }, 
+	{ Goal0 = higher_order_call(_,_,_,_,_) - _ }, 
 	maybe_specialize_higher_order_call(Goal0, Goal, PredProcId, Changed).
 
 		% check whether this call could be specialized
 traverse_goal(Goal0, Goal, PredProcId, Changed, 1) -->
-	{ Goal0 = call(_,_,_,_,_,_,_) - _ }, 
+	{ Goal0 = call(_,_,_,_,_,_) - _ }, 
 	maybe_specialize_call(Goal0, Goal, PredProcId, Changed).
 
 		% if-then-elses are handled as disjunctions
@@ -507,9 +507,8 @@ check_unify(construct(LVar, ConsId, Args, _Modes), Info0, Info) :-
 	),
 	Info = info(PredVars, Requests, NewPreds, ModuleInfo).
 	
-check_unify(complicated_unify(_, _, _)) -->
+check_unify(complicated_unify(_, _)) -->
 	{ error("higher_order:check_unify - complicated unification") }.
-
 
 		% Process a higher-order call to see if it could possibly
 		% be specialized.
@@ -520,11 +519,9 @@ check_unify(complicated_unify(_, _, _)) -->
 maybe_specialize_higher_order_call(Goal0 - GoalInfo, Goal - GoalInfo,
 		PredProcId, Changed, Info0, Info) :-
 	Info0 = info(PredVars, Requests0, NewPreds, Module),
-	( Goal0 = higher_order_call(PredVar0, Args0, _Types, _Modes, _Det,
-				FollowVars0) ->
+	( Goal0 = higher_order_call(PredVar0, Args0, _Types, _Modes, _Det) ->
 		PredVar = PredVar0,
-		Args = Args0,
-		FollowVars = FollowVars0
+		Args = Args0
 	;
 		error("higher_order.m: higher_order_call expected")
 	),
@@ -532,7 +529,7 @@ maybe_specialize_higher_order_call(Goal0 - GoalInfo, Goal - GoalInfo,
 	% We can trivially specialize calls to call/N.
 	(
 		map__search(PredVars, PredVar,
-		    yes(PredId, ProcId, CurriedArgs))
+			yes(PredId, ProcId, CurriedArgs))
 	->
 		module_info_pred_info(Module, PredId, PredInfo),
 		pred_info_module(PredInfo, ModuleName),
@@ -543,8 +540,7 @@ maybe_specialize_higher_order_call(Goal0 - GoalInfo, Goal - GoalInfo,
 		MaybeContext = no,
 		Goal1 = call(PredId, ProcId, AllArgs,
 			IsBuiltin, MaybeContext,
-			qualified(ModuleName, PredName),
-			FollowVars),
+			qualified(ModuleName, PredName)),
 		maybe_specialize_call(Goal1 - GoalInfo,
 			Goal - _, PredProcId, _, Info0,
 			info(_, Requests, _, _)),
@@ -566,10 +562,10 @@ maybe_specialize_call(Goal0 - GoalInfo, Goal - GoalInfo, PredProcId,
 		Changed, Info0, Info) :-
 	Info0 = info(PredVars, Requests0, NewPreds, Module),
 	(
-		Goal0 = call(_, _, _, _, _, _, _)
+		Goal0 = call(_, _, _, _, _, _)
 	->
 		Goal0 = call(CalledPred, CalledProc, Args0, IsBuiltin,
-					MaybeContext, _SymName0, FollowVars)
+					MaybeContext, _SymName0)
 	;
 		error("higher_order.m: call expected")
 	),
@@ -604,8 +600,7 @@ maybe_specialize_call(Goal0 - GoalInfo, Goal - GoalInfo, PredProcId,
 		remove_listof_higher_order_args(Args1, 1,
 				HigherOrderArgs, Args2),
 		Goal = call(NewCalledPred, NewCalledProc,
-				Args2, IsBuiltin, MaybeContext,
-				NewName, FollowVars),
+				Args2, IsBuiltin, MaybeContext, NewName),
 		Changed = changed,
 		Requests = Requests0
 	;

@@ -29,9 +29,12 @@
 
 :- import_module hlds_module, hlds_pred.
 
-:- pred find_follow_vars_in_proc(proc_info, module_info, proc_info).
-% :- mode find_follow_vars_in_proc(di, in, uo) is det.
-:- mode find_follow_vars_in_proc(in, in, out) is det.
+:- pred find_final_follow_vars(proc_info, follow_vars).
+:- mode find_final_follow_vars(in, out) is det.
+
+:- pred find_follow_vars_in_goal(hlds__goal, args_method, module_info,
+				follow_vars, hlds__goal, follow_vars).
+:- mode find_follow_vars_in_goal(in, in, in, in, out, out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -43,23 +46,6 @@
 :- import_module list, map, set, std_util, term, require.
 
 %-----------------------------------------------------------------------------%
-
-find_follow_vars_in_proc(ProcInfo0, ModuleInfo, ProcInfo) :-
-	module_info_globals(ModuleInfo, Globals),
-	globals__get_args_method(Globals, ArgsMethod),
-	proc_info_goal(ProcInfo0, Goal0),
-
-	find_final_follow_vars(ProcInfo0, FollowVars0),
-	find_follow_vars_in_goal(Goal0, ArgsMethod, ModuleInfo, FollowVars0,
-		Goal, FollowVars),
-
-	proc_info_set_follow_vars(ProcInfo0, FollowVars, ProcInfo1),
-	proc_info_set_goal(ProcInfo1, Goal, ProcInfo).
-
-%-----------------------------------------------------------------------------%
-
-:- pred find_final_follow_vars(proc_info, follow_vars).
-:- mode find_final_follow_vars(in, out) is det.
 
 find_final_follow_vars(ProcInfo, Follow) :-
 	proc_info_arg_info(ProcInfo, ArgInfo),
@@ -90,10 +76,6 @@ find_final_follow_vars_2([arg_info(Loc, Mode)|Args], [Var|Vars],
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
-
-:- pred find_follow_vars_in_goal(hlds__goal, args_method, module_info,
-				follow_vars, hlds__goal, follow_vars).
-:- mode find_follow_vars_in_goal(in, in, in, in, out, out) is det.
 
 find_follow_vars_in_goal(Goal0 - GoalInfo, ArgsMethod, ModuleInfo, FollowVars0,
 					Goal - GoalInfo, FollowVars) :-
@@ -145,40 +127,36 @@ find_follow_vars_in_goal_2(some(Vars, Goal0), ArgsMethod, ModuleInfo,
 		Goal, FollowVars).
 
 find_follow_vars_in_goal_2(
-		higher_order_call(PredVar, Args, Types, Modes, Det, _),
-		ArgsMethod, ModuleInfo, FollowVars0,
-		higher_order_call(PredVar, Args, Types, Modes, Det,
-			FollowVars0),
+		higher_order_call(PredVar, Args, Types, Modes, Det),
+		ArgsMethod, ModuleInfo, _FollowVars0,
+		higher_order_call(PredVar, Args, Types, Modes, Det),
 		FollowVars) :-
 	determinism_to_code_model(Det, CodeModel),
 	make_arg_infos(ArgsMethod, Types, Modes, CodeModel, ModuleInfo,
 		ArgInfo),
 	find_follow_vars_from_arginfo(ArgInfo, Args, FollowVars).
 
-find_follow_vars_in_goal_2(call(A,B,C,D,E,F,_), _ArgsMethod, ModuleInfo,
-		FollowVars0, call(A,B,C,D,E,F, FollowVars0), FollowVars) :-
+find_follow_vars_in_goal_2(call(A,B,C,D,E,F), _ArgsMethod, ModuleInfo,
+		FollowVars0, call(A,B,C,D,E,F), FollowVars) :-
 	(
 		hlds__is_builtin_is_inline(D)
 	->
 		FollowVars = FollowVars0
 	;
-		% XXX this code should pay attention to ArgsMethod
 		find_follow_vars_in_call(A, B, C, ModuleInfo, FollowVars)
 	).
 
-find_follow_vars_in_goal_2(unify(A,B,C,D0,E), ArgsMethod, _ModuleInfo,
+find_follow_vars_in_goal_2(unify(A,B,C,D,E), ArgsMethod, _ModuleInfo,
 		FollowVars0, unify(A,B,C,D,E), FollowVars) :-
 	(
 		B = var(BVar),
-		D0 = complicated_unify(Mode, CanFail, _F)
+		D = complicated_unify(Mode, CanFail)
 	->
 		determinism_components(Det, CanFail, at_most_one),
 		determinism_to_code_model(Det, CodeModel),
 		arg_info__unify_arg_info(ArgsMethod, CodeModel, ArgInfo),
-		find_follow_vars_from_arginfo(ArgInfo, [A, BVar], FollowVars),
-		D = complicated_unify(Mode, CanFail, FollowVars0)
+		find_follow_vars_from_arginfo(ArgInfo, [A, BVar], FollowVars)
 	;
-		D = D0,
 		FollowVars = FollowVars0
 	).
 
@@ -217,7 +195,7 @@ find_follow_vars_from_arginfo(ArgInfo, Args, Follow) :-
 :- mode find_follow_vars_from_arginfo_2(in, in, in, out) is semidet.
 
 find_follow_vars_from_arginfo_2([], [], Follow, Follow).
-find_follow_vars_from_arginfo_2([arg_info(Loc, Mode)|Args], [Var|Vars],
+find_follow_vars_from_arginfo_2([arg_info(Loc, Mode) | Args], [Var | Vars],
 							Follow0, Follow) :-
 	code_util__arg_loc_to_register(Loc, Reg),
 	(

@@ -604,11 +604,6 @@ generate_dep_file(ModuleName, DepsMap, DepStream) -->
 	io__write_string(DepStream, "\n"),
 
 	io__write_string(DepStream, ModuleName),
-	io__write_string(DepStream, ".err2s = "),
-	write_dependencies_list(Modules, ".err2", DepStream),
-	io__write_string(DepStream, "\n"),
-
-	io__write_string(DepStream, ModuleName),
 	io__write_string(DepStream, ".dates = "),
 	write_dependencies_list(Modules, ".date", DepStream),
 	io__write_string(DepStream, "\n"),
@@ -771,8 +766,7 @@ generate_dep_file(ModuleName, DepsMap, DepStream) -->
 		"\t-rm -f $(", ModuleName, ".os) ", ModuleName, "_init.o\n",
 		"\t-rm -f $(", ModuleName, ".nos)\n",
 		"\t-rm -f $(", ModuleName, ".qls)\n",
-		"\t-rm -f $(", ModuleName, ".errs)\n",
-		"\t-rm -f $(", ModuleName, ".err2s)\n"
+		"\t-rm -f $(", ModuleName, ".errs)\n"
 	]),
 
 	( { GC_Opt = "accurate" } ->

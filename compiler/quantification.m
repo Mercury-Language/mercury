@@ -272,12 +272,12 @@ implicitly_quantify_goal_2(if_then_else(Vars0, Cond0, Then0, Else0, FV),
 	{ set__intersect(NonLocalsIfThenElse, OutsideVars, NonLocals) },
 	quantification__set_nonlocals(NonLocals).
 
-implicitly_quantify_goal_2(call(A, B, HeadVars, D, E, F, G), _,
-		call(A, B, HeadVars, D, E, F, G)) -->
+implicitly_quantify_goal_2(call(A, B, HeadVars, D, E, F), _,
+		call(A, B, HeadVars, D, E, F)) -->
 	implicitly_quantify_atomic_goal(HeadVars).
 
-implicitly_quantify_goal_2(higher_order_call(PredVar, ArgVars, C, D, E, F), _,
-		higher_order_call(PredVar, ArgVars, C, D, E, F)) -->
+implicitly_quantify_goal_2(higher_order_call(PredVar, ArgVars, C, D, E), _,
+		higher_order_call(PredVar, ArgVars, C, D, E)) -->
 	implicitly_quantify_atomic_goal([PredVar|ArgVars]).
 
 implicitly_quantify_goal_2(unify(A, B0, X, Y, Z), Context,
@@ -526,11 +526,11 @@ goal_vars_2(unify(A, B, _, _, _), Set0, LambdaSet0, Set, LambdaSet) :-
 	set__insert(Set0, A, Set1),
 	quantification__unify_rhs_vars(B, Set1, LambdaSet0, Set, LambdaSet).
 
-goal_vars_2(higher_order_call(PredVar, ArgVars, _, _, _, _), Set0, LambdaSet,
+goal_vars_2(higher_order_call(PredVar, ArgVars, _, _, _), Set0, LambdaSet,
 			Set, LambdaSet) :-
 	set__insert_list(Set0, [PredVar | ArgVars], Set).
 
-goal_vars_2(call(_, _, ArgVars, _, _, _, _), Set0, LambdaSet, Set, LambdaSet) :-
+goal_vars_2(call(_, _, ArgVars, _, _, _), Set0, LambdaSet, Set, LambdaSet) :-
 	set__insert_list(Set0, ArgVars, Set).
 
 goal_vars_2(conj(Goals), Set0, LambdaSet0, Set, LambdaSet) :-

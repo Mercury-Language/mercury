@@ -293,6 +293,22 @@ shapes__replace_all_contexts([Type | TRest], [ NewType | NewRest ]) :-
 	),
 	shapes__replace_all_contexts(TRest, NewRest).
 
+:- pred shapes__replace_all_contexts_in_ctor_args(list(constructor_arg),
+		list(type)).
+:- mode shapes__replace_all_contexts_in_ctor_args(in, out) is det.
+shapes__replace_all_contexts_in_ctor_args([], []).
+shapes__replace_all_contexts_in_ctor_args([_Name - Type | TRest],
+		[NewType | NewRest]) :-
+	(
+		Type = term__functor(C, Ts, _)
+	->
+		shapes__replace_all_contexts(Ts, Ns),
+		term__context_init(Init),
+		NewType = term__functor(C, Ns, Init)
+	;
+		NewType = Type
+	),
+	shapes__replace_all_contexts_in_ctor_args(TRest, NewRest).
 %-----------------------------------------------------------------------------%
 % To create each shape, we want to group the types on bit tags, eg all
 % those with tag 0 are represented by the first part of the quad, all
@@ -363,7 +379,7 @@ shapes__create_shape_2(Type_Tab, Type, Inst, Type_Id, TypeArgs, Shape,
 			% check for a type with only one functor of arity one:
 			% such a type will have a `no_tag' functor
 			% (unless it is type_info/1)
-			(	Ctors = [SingleCtor - [SingleArgType]],
+			(	Ctors = [SingleCtor - [_Name - SingleArgType]],
 				SingleCtor \= qualified(_, "type_info"),
 				SingleCtor \= unqualified("type_info")
 			->
@@ -448,16 +464,25 @@ shapes__get_snums([], []).
 shapes__get_snums([N - _I | NIs], [N | Ns]) :-
 	shapes__get_snums(NIs, Ns).
 
-
 :- pred shapes__apply_to_ctors(list(constructor), tsubst, list(constructor)).
 :- mode shapes__apply_to_ctors(in, in, out) is det.
 
 shapes__apply_to_ctors([], _, []).
 shapes__apply_to_ctors([Ctor0 | Ctors0], Subst, [Ctor | Ctors]) :-
-	Ctor0 = SymName - ArgTypes0,
-	term__apply_substitution_to_list(ArgTypes0, Subst, ArgTypes),
-	Ctor = SymName - ArgTypes,
+	Ctor0 = SymName - Args0,
+	shapes__apply_to_ctor_args(Args0, Subst, Args),
+	Ctor = SymName - Args,
 	shapes__apply_to_ctors(Ctors0, Subst, Ctors).
+
+:- pred shapes__apply_to_ctor_args(list(constructor_arg), tsubst,
+		list(constructor_arg)).
+:- mode shapes__apply_to_ctor_args(in, in, out) is det.
+
+shapes__apply_to_ctor_args([], _, []).
+shapes__apply_to_ctor_args([Name - Type0 | Args0], Subst,
+		[Name - Type | Args]) :-
+	term__apply_substitution(Type0, Subst, Type),
+	shapes__apply_to_ctor_args(Args0, Subst, Args).
 
 %-----------------------------------------------------------------------------%
 % We pass seperate the head from the rest as we are going to want to
@@ -511,7 +536,7 @@ shapes__create_shapeA(Type_Id, [ Ctor | Rest ] , TagVals, Bits, A,
 		C_Tag = simple_tag(X),
 		shapes__tag_match(Bits, X)
 	->
-		shapes__replace_all_contexts(Args, NewArgs),
+		shapes__replace_all_contexts_in_ctor_args(Args, NewArgs),
 		shapes__lookup_simple_info(NewArgs, Shapes_Ids,
 					Type_Table, S_Tab0, S_Tab),
 		A = simple(Shapes_Ids)
@@ -592,7 +617,7 @@ shapes__get_complicated_shapeids(Ctor, Tagvals, Bits, S_Ids,
 	map__lookup(Tagvals, C_Id, C_Tag),
 	C_Tag = complicated_tag(Primary, _Sec),
 	shapes__tag_match(Bits, Primary),
-	shapes__replace_all_contexts(Args, NewArgs),
+	shapes__replace_all_contexts_in_ctor_args(Args, NewArgs),
 	shapes__lookup_simple_info(NewArgs, S_Ids, Type_Table, S_Tab0, S_Tab).
 
 %-----------------------------------------------------------------------------%
@@ -614,10 +639,10 @@ shapes__make_complicated_tag(X, (X - complicated)).
 %-----------------------------------------------------------------------------%
 % An interface to make_cons_id.
 %-----------------------------------------------------------------------------%
-:- pred shapes__make_cons_id(sym_name, list(type), cons_id).
+:- pred shapes__make_cons_id(sym_name, list(constructor_arg), cons_id).
 :- mode shapes__make_cons_id(in, in, out) is det.
-shapes__make_cons_id(Sym, Typelist, C_Id) :-
-	make_cons_id(Sym, Typelist, unqualified("X") - 0, C_Id).
+shapes__make_cons_id(Sym, Args, C_Id) :-
+	make_cons_id(Sym, Args, unqualified("X") - 0, C_Id).
 
 %-----------------------------------------------------------------------------%
 %
@@ -640,6 +665,3 @@ shapes__write_shape_num(unwanted) --> io__write_string("unwanted").
 shapes__write_shape_num(prevfr) --> io__write_string("prevfr").
 shapes__write_shape_num(succfr) --> io__write_string("succfr").
 shapes__write_shape_num(ticket) --> io__write_string("ticket").
-
-
-

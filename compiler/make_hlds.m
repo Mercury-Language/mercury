@@ -802,7 +802,8 @@ convert_type_defn(abstract_type(Name, Args), _, Name, Args, abstract_type).
 ctors_add([], _TypeId, _Context, Ctors, Ctors) --> [].
 ctors_add([Name - Args | Rest], TypeId, Context, Ctors0, Ctors) -->
 	{ make_cons_id(Name, Args, TypeId, ConsId) },
-	{ ConsDefn = hlds__cons_defn(Args, TypeId, Context) },
+	{ assoc_list__values(Args, Types) },
+	{ ConsDefn = hlds__cons_defn(Types, TypeId, Context) },
 	( %%% some [ConsDefns0]
 		{ map__search(Ctors0, ConsId, ConsDefns0) }
 	->
@@ -1758,14 +1759,14 @@ warn_singletons_in_goal_2(if_then_else(Vars, Cond, Then, Else, _), GoalInfo,
 	warn_singletons_in_goal(Then, QuantVars1, VarSet, PredCallId),
 	warn_singletons_in_goal(Else, QuantVars, VarSet, PredCallId).
 
-warn_singletons_in_goal_2(call(_, _, Args, _, _, _, _),
+warn_singletons_in_goal_2(call(_, _, Args, _, _, _),
 			GoalInfo, QuantVars, VarSet, PredCallId) -->
 	{ goal_info_get_nonlocals(GoalInfo, NonLocals) },
 	{ goal_info_context(GoalInfo, Context) },
 	warn_singletons(Args, NonLocals, QuantVars, VarSet, Context,
 		PredCallId).
 
-warn_singletons_in_goal_2(higher_order_call(_, Args, _, _, _, _),
+warn_singletons_in_goal_2(higher_order_call(_, Args, _, _, _),
 			GoalInfo, QuantVars, VarSet, PredCallId) -->
 	{ goal_info_get_nonlocals(GoalInfo, NonLocals) },
 	{ goal_info_context(GoalInfo, Context) },
@@ -2275,21 +2276,19 @@ transform_goal_2(call(Name, Args0), Context, VarSet0, Subst, Goal, VarSet,
 			HeadVars = [PredVar | RealHeadVars]
 		->
 			% initialize some fields to junk
-			map__init(Follow),
 			Types = [],
 			Modes = [],
 			Det = erroneous,
 			Call = higher_order_call(PredVar, RealHeadVars,
-					Types, Modes, Det, Follow)
+					Types, Modes, Det)
 		;
 			% initialize some fields to junk
 			invalid_pred_id(PredId),
 			ModeId = 0,
 			hlds__is_builtin_make_builtin(no, no, Builtin),
 			MaybeUnifyContext = no,
-			map__init(Follow),
 			Call = call(PredId, ModeId, HeadVars, Builtin,
-					MaybeUnifyContext, Name, Follow)
+					MaybeUnifyContext, Name)
 		},
 		{ goal_info_init(GoalInfo0) },
 		{ goal_info_set_context(GoalInfo0, Context, GoalInfo) },
@@ -2700,8 +2699,7 @@ create_atomic_unification(A, B, Context, UnifyMainContext, UnifySubContext,
                 Goal) :-
 	UMode = ((free - free) -> (free - free)),
 	Mode = ((free -> free) - (free -> free)),
-	map__init(Follow),
-	UnifyInfo = complicated_unify(UMode, can_fail, Follow),
+	UnifyInfo = complicated_unify(UMode, can_fail),
 	UnifyC = unify_context(UnifyMainContext, UnifySubContext),
 	goal_info_init(GoalInfo0),
 	goal_info_set_context(GoalInfo0, Context, GoalInfo),

@@ -46,13 +46,7 @@
 					% was this predicate call originally
 					% a unification?  If so, we store the
 					% context of the unification.
-			sym_name,	% the name of the predicate
-			follow_vars	% advisory storage locations for
-					% placing variables when generating
-					% the code that follows this call
-					% (used so we can generate more
-					% efficient code by putting variables
-					% in the place they will be needed)
+			sym_name	% the name of the predicate
 		)
 
 	;	higher_order_call(
@@ -60,13 +54,7 @@
 			list(var),	% the list of argument variables
 			list(type),	% the types of the argument variables
 			list(mode),	% the modes of the argument variables
-			determinism,	% the determinism of the called pred
-			follow_vars	% advisory storage locations for
-					% placing variables when generating
-					% the code that follows this call
-					% (used so we can generate more
-					% efficient code by putting variables
-					% in the place they will be needed)
+			determinism	% the determinism of the called pred
 		)
 
 		% Deterministic disjunctions are converted
@@ -158,12 +146,10 @@
 					% in this way).
 		).
 
-
 	% Given the variable name field from a pragma c_code, get all the
 	% variable names.
 :- pred get_pragma_c_var_names(list(maybe(string)), list(string)).
 :- mode get_pragma_c_var_names(in, out) is det.
-
 
 	% Record whether a call should be inlined or not,
 	% and whether it is a builtin or not.
@@ -259,16 +245,7 @@
 
 	;	complicated_unify(
 			uni_mode,	% The mode of the unification.
-			can_fail,	% Whether or not it could possibly fail
-			follow_vars	% The suggested locations where
-					% variables should be placed when
-					% generating code that follows
-					% the call to the out-of-line
-					% unification predicate (e.g. as
-					% determined by whichever call follows
-					% this one).
-					% These are converted into predicate
-					% calls by polymorphism.m.
+			can_fail	% Whether or not it could possibly fail
 		).
 
 	% A unify_context describes the location in the original source
@@ -386,7 +363,6 @@
 				% (Computed by liveness.m.)
 	).
 
-
 get_pragma_c_var_names(MaybeVarNames, VarNames) :-
 	get_pragma_c_var_names_2(MaybeVarNames, [], VarNames0),
 	list__reverse(VarNames0, VarNames).
@@ -405,7 +381,6 @@ get_pragma_c_var_names_2([MaybeName | MaybeNames], Names0, Names) :-
 	),
 	get_pragma_c_var_names_2(MaybeNames, Names1, Names).
 		
-
 :- interface.
 
 :- type unify_mode	==	pair(mode, mode).
@@ -696,8 +671,8 @@ disj_list_to_goal(DisjList, GoalInfo, Goal) :-
 
 goal_is_atomic(conj([])).
 goal_is_atomic(disj([], _)).
-goal_is_atomic(higher_order_call(_,_,_,_,_,_)).
-goal_is_atomic(call(_,_,_,_,_,_,_)).
+goal_is_atomic(higher_order_call(_,_,_,_,_)).
+goal_is_atomic(call(_,_,_,_,_,_)).
 goal_is_atomic(unify(_,_,_,_,_)).
 goal_is_atomic(pragma_c_code(_,_,_,_,_,_)).
 

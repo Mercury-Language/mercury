@@ -705,13 +705,12 @@ code_gen__generate_det_goal_2(disj(Goals, FV), _GoalInfo, Instr) -->
 code_gen__generate_det_goal_2(not(Goal), _GoalInfo, Instr) -->
 	code_gen__generate_negation_general(model_det, Goal, Instr).
 code_gen__generate_det_goal_2(higher_order_call(PredVar, Args, Types,
-		Modes, Det, _Follow),
+		Modes, Det),
 		_CodeInfo, Instr) -->
 	call_gen__generate_higher_order_call(model_det, PredVar, Args,
 		Types, Modes, Det, Instr).
-code_gen__generate_det_goal_2(
-		call(PredId, ProcId, Args, Builtin, _, _, _Follow),
-							_GoalInfo, Instr) -->
+code_gen__generate_det_goal_2(call(PredId, ProcId, Args, Builtin, _, _),
+		_GoalInfo, Instr) -->
 	(
 		{ hlds__is_builtin_is_internal(Builtin) }
 	->
@@ -747,7 +746,7 @@ code_gen__generate_det_goal_2(unify(_L, _R, _U, Uni, _C), _GoalInfo, Instr) -->
 	;
 		% These should have been transformed into calls by
 		% polymorphism.m.
-		{ Uni = complicated_unify(_UniMode, _CanFail, _Follow) },
+		{ Uni = complicated_unify(_UniMode, _CanFail) },
 		{ error("code_gen__generate_det_goal_2 - complicated unify") }
 	;
 		{ Uni = simple_test(_, _) },
@@ -1084,11 +1083,10 @@ code_gen__generate_semi_goal_2(disj(Goals, FV), _GoalInfo, Code) -->
 code_gen__generate_semi_goal_2(not(Goal), _GoalInfo, Code) -->
 	code_gen__generate_negation(Goal, Code).
 code_gen__generate_semi_goal_2(higher_order_call(PredVar, Args, Types, Modes,
-		Det, _Follow), _CodeInfo, Code) -->
+		Det), _CodeInfo, Code) -->
 	call_gen__generate_higher_order_call(model_semi, PredVar, Args,
 		Types, Modes, Det, Code).
-code_gen__generate_semi_goal_2(
-		call(PredId, ProcId, Args, Builtin, _, _, _Follow),
+code_gen__generate_semi_goal_2(call(PredId, ProcId, Args, Builtin, _, _),
 							_GoalInfo, Code) -->
 	(
 		{ hlds__is_builtin_is_internal(Builtin) }
@@ -1127,7 +1125,7 @@ code_gen__generate_semi_goal_2(unify(_L, _R, _U, Uni, _C),
 		{ Uni = simple_test(Var1, Var2) },
 		unify_gen__generate_test(Var1, Var2, Code)
 	;
-		{ Uni = complicated_unify(_UniMode, _CanFail, _Follow) },
+		{ Uni = complicated_unify(_UniMode, _CanFail) },
 		{ error("code_gen__generate_semi_goal_2 - complicated_unify") }
 	).
 
@@ -1247,12 +1245,11 @@ code_gen__generate_non_goal_2(disj(Goals, FV), _GoalInfo, Code) -->
 code_gen__generate_non_goal_2(not(_Goal), _GoalInfo, _Code) -->
 	{ error("Cannot have a nondet negation.") }.
 code_gen__generate_non_goal_2(higher_order_call(PredVar, Args, Types, Modes,
-		Det, _Follow),
+		Det),
 		_CodeInfo, Code) -->
 	call_gen__generate_higher_order_call(model_non, PredVar, Args, Types,
 		Modes, Det, Code).
-code_gen__generate_non_goal_2(
-		call(PredId, ProcId, Args, Builtin, _, _, _Follow),
+code_gen__generate_non_goal_2(call(PredId, ProcId, Args, Builtin, _, _),
 							_GoalInfo, Code) -->
 	(
 		{ hlds__is_builtin_is_internal(Builtin) }

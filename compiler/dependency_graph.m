@@ -216,10 +216,10 @@ dependency_graph__add_arcs_in_goal_2(some(_Vars, Goal), Caller,
 					DepGraph0, DepGraph) :-
 	dependency_graph__add_arcs_in_goal(Goal, Caller, DepGraph0, DepGraph).
 
-dependency_graph__add_arcs_in_goal_2(higher_order_call(_, _, _, _, _, _),
+dependency_graph__add_arcs_in_goal_2(higher_order_call(_, _, _, _, _),
 		_Caller, DepGraph, DepGraph).
 
-dependency_graph__add_arcs_in_goal_2(call(PredId, ProcId, _, Builtin, _, _, _),
+dependency_graph__add_arcs_in_goal_2(call(PredId, ProcId, _, Builtin, _, _),
 			Caller, DepGraph0, DepGraph) :-
 	(
 		hlds__is_builtin_is_inline(Builtin)
@@ -251,7 +251,7 @@ dependency_graph__add_arcs_in_goal_2(unify(_,_,_,Unify,_), Caller,
 	; Unify = deconstruct(_, Cons, _, _, _),
 	    dependency_graph__add_arcs_in_cons(Cons, Caller,
 				DepGraph0, DepGraph)
-	; Unify = complicated_unify(_, _, _),
+	; Unify = complicated_unify(_, _),
 	    DepGraph0 = DepGraph
 	).
 

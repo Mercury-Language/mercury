@@ -347,7 +347,7 @@ det_diagnose_goal_2(switch(Var, SwitchCanFail, Cases, _), GoalInfo,
 		Diagnosed2),
 	{ bool__or(Diagnosed1, Diagnosed2, Diagnosed) }.
 
-det_diagnose_goal_2(call(PredId, ModeId, _, _, CallContext, _, _), GoalInfo,
+det_diagnose_goal_2(call(PredId, ModeId, _, _, CallContext, _), GoalInfo,
 		Desired, Actual, _, DetInfo, yes) -->
 	{ goal_info_context(GoalInfo, Context) },
 	{ determinism_components(Desired, DesiredCanFail, DesiredSolns) },
@@ -391,7 +391,7 @@ det_diagnose_goal_2(call(PredId, ModeId, _, _, CallContext, _, _), GoalInfo,
 		io__write_string(".\n")
 	).
 
-det_diagnose_goal_2(higher_order_call(_, _, _, _, _, _), GoalInfo,
+det_diagnose_goal_2(higher_order_call(_, _, _, _, _), GoalInfo,
 		Desired, Actual, _, _MiscInfo, yes) -->
 	{ goal_info_context(GoalInfo, Context) },
 	{ determinism_components(Desired, DesiredCanFail, DesiredSolns) },

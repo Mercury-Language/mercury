@@ -173,21 +173,20 @@ constraint__propagate_goal_2(some(Vars, Goal0), some(Vars, Goal)) -->
 	constraint__checkpoint(exit, "some").
 
 constraint__propagate_goal_2(
-		higher_order_call(A, B, C, D, E, F),
-		higher_order_call(A, B, C, D, E, F)) -->
+		higher_order_call(A, B, C, D, E),
+		higher_order_call(A, B, C, D, E)) -->
 	constraint__checkpoint(enter, "higher-order call"),
 	constraint__checkpoint(exit, "higher-order call").
 
 constraint__propagate_goal_2(
-		call(PredId, ProcId, ArgVars, Builtin, Sym, Context, Follow),
-		call(PredId, ProcId, ArgVars, Builtin, Sym, Context, Follow)) -->
+		call(PredId, ProcId, ArgVars, Builtin, Sym, Context),
+		call(PredId, ProcId, ArgVars, Builtin, Sym, Context)) -->
 	constraint__checkpoint(enter, "call"),
 	constraint__checkpoint(exit, "call").
 
 constraint__propagate_goal_2(unify(A,B,C,D,E), unify(A,B,C,D,E)) -->
 	constraint__checkpoint(enter, "unify"),
 	constraint__checkpoint(exit, "unify").
-
 
 constraint__propagate_goal_2(
 		pragma_c_code(A, B, C, D, E, F), 

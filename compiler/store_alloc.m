@@ -21,7 +21,7 @@
 
 :- interface.
 
-:- import_module hlds_module, hlds_pred, llds.
+:- import_module hlds_module, hlds_pred.
 
 :- pred store_alloc_in_proc(proc_info, module_info, proc_info).
 :- mode store_alloc_in_proc(in, in, out) is det.
@@ -31,17 +31,31 @@
 
 :- implementation.
 
-:- import_module hlds_goal, goal_util, mode_util, instmap.
+:- import_module hlds_goal, follow_vars, llds.
+:- import_module options, globals, goal_util, mode_util, instmap.
 :- import_module list, map, set, std_util, assoc_list.
-:- import_module int, term, require.
+:- import_module bool, int.
 
 %-----------------------------------------------------------------------------%
 
 store_alloc_in_proc(ProcInfo0, ModuleInfo, ProcInfo) :-
-	proc_info_goal(ProcInfo0, Goal0),
-	initial_liveness(ProcInfo0, ModuleInfo, Liveness0),
-	store_alloc_in_goal(Goal0, Liveness0, ModuleInfo, Goal, _Liveness),
-	proc_info_set_goal(ProcInfo0, Goal, ProcInfo).
+	module_info_globals(ModuleInfo, Globals),
+	globals__lookup_bool_option(Globals, follow_vars, ApplyFollowVars),
+	( ApplyFollowVars = yes ->
+		globals__get_args_method(Globals, ArgsMethod),
+		proc_info_goal(ProcInfo0, Goal0),
+
+		find_final_follow_vars(ProcInfo0, FollowVars0),
+		find_follow_vars_in_goal(Goal0, ArgsMethod, ModuleInfo,
+			FollowVars0, Goal1, FollowVars),
+		proc_info_set_follow_vars(ProcInfo0, FollowVars, ProcInfo1)
+	;
+		ProcInfo1 = ProcInfo0,
+		proc_info_goal(ProcInfo1, Goal1)
+	),
+	initial_liveness(ProcInfo1, ModuleInfo, Liveness1),
+	store_alloc_in_goal(Goal1, Liveness1, ModuleInfo, Goal, _Liveness),
+	proc_info_set_goal(ProcInfo1, Goal, ProcInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -150,11 +164,11 @@ store_alloc_in_goal_2(some(Vars, Goal0), Liveness0, _, ModuleInfo,
 		some(Vars, Goal), Liveness) :-
 	store_alloc_in_goal(Goal0, Liveness0, ModuleInfo, Goal, Liveness).
 
-store_alloc_in_goal_2(higher_order_call(A, B, C, D, E, F), Liveness, _, _,
-		higher_order_call(A, B, C, D, E, F), Liveness).
+store_alloc_in_goal_2(higher_order_call(A, B, C, D, E), Liveness, _, _,
+		higher_order_call(A, B, C, D, E), Liveness).
 
-store_alloc_in_goal_2(call(A, B, C, D, E, F, G), Liveness, _, _,
-		call(A, B, C, D, E, F, G), Liveness).
+store_alloc_in_goal_2(call(A, B, C, D, E, F), Liveness, _, _,
+		call(A, B, C, D, E, F), Liveness).
 
 store_alloc_in_goal_2(unify(A,B,C,D,E), Liveness, _, _,
 		unify(A,B,C,D,E), Liveness).
