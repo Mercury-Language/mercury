@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2000,2002-2003 The University of Melbourne.
+% Copyright (C) 1995-2000,2002-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -114,7 +114,7 @@
 
 	% Does the compiler generate the RTTI for the builtin types, or is
 	% it hand-coded?
-:- pred compiler_generated_rtti_for_the_builtins(module_info::in) is semidet.
+:- pred compiler_generated_rtti_for_builtins(module_info::in) is semidet.
 
 :- implementation.
 
@@ -240,7 +240,7 @@ can_generate_special_pred_clauses_for_type(ModuleInfo, TypeCtor, Body) :-
 	;
 		% Only the types which have it's unification and comparison
 		% predicates defined in private_builtin.m
-		compiler_generated_rtti_for_the_builtins(ModuleInfo),
+		compiler_generated_rtti_for_builtins(ModuleInfo),
 		is_builtin_types_special_preds_defined_in_mercury(TypeCtor, _)
 	),
 	\+ type_ctor_has_hand_defined_rtti(TypeCtor, Body),
@@ -264,7 +264,7 @@ is_builtin_types_special_preds_defined_in_mercury(TypeCtor, TypeName) :-
 	% We don't generate the rtti on the C backends as the runtime contains
 	% references to this rtti so the rtti must be defined in the runtime
 	% not the library.
-compiler_generated_rtti_for_the_builtins(ModuleInfo) :-
+compiler_generated_rtti_for_builtins(ModuleInfo) :-
 	module_info_globals(ModuleInfo, Globals),
 	globals__get_target(Globals, Target),
 	( Target = il ; Target = java ).

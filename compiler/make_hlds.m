@@ -172,7 +172,7 @@ parse_tree_to_hlds(module(Name, Items), MQInfo0, EqvMap, Module, QualInfo,
 	% type declaration, hence no hlds_type_defn is generated for them.
 	(
 		Name = mercury_public_builtin_module,
-		compiler_generated_rtti_for_the_builtins(!.Module)
+		compiler_generated_rtti_for_builtins(!.Module)
 	->
 		varset__init(TVarSet),
 		Body = abstract_type(non_solver_type),

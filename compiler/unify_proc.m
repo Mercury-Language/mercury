@@ -4,7 +4,7 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
-% unify_proc.m: 
+% unify_proc.m:
 %
 %	This module encapsulates access to the proc_requests table,
 %	and constructs the clauses for out-of-line complicated
@@ -38,7 +38,7 @@
 % worth worrying about right now.
 
 % XXX What about complicated unification of an abstract type in a partially
-% instantiated mode?  Currently we don't implement it correctly. Probably 
+% instantiated mode?  Currently we don't implement it correctly. Probably
 % it should be disallowed, but we should issue a proper error message.
 
 %-----------------------------------------------------------------------------%
@@ -72,9 +72,9 @@
 	determinism::in, prog_context::in, module_info::in, module_info::out)
 	is det.
 
-% Add a new request for a procedure (not necessarily a unification)
-% to the request queue.  Return the procedure's newly allocated
-% proc_id.  (This is used by unique_modes.m.)
+	% Add a new request for a procedure (not necessarily a unification)
+	% to the request queue.  Return the procedure's newly allocated
+	% proc_id.  (This is used by unique_modes.m.)
 
 :- pred unify_proc__request_proc(pred_id::in, list(mode)::in, inst_varset::in,
 	maybe(list(is_live))::in, maybe(determinism)::in, prog_context::in,
@@ -89,13 +89,15 @@
 	% is a complicated unification involving the type.
 	% This predicate is exported for use by higher_order.m
 	% when it is specializing calls to unify/2.
+
 :- pred unify_proc__add_lazily_generated_unify_pred(type_ctor::in,
 	pred_id::out, module_info::in, module_info::out) is det.
-	
+
 	% unify_proc__add_lazily_generated_compare_pred_decl(TypeCtor,
 	%	ComparePredId_for_Type, !ModuleInfo).
 	%
 	% Add declarations, but not clauses, for a compare or index predicate.
+
 :- pred unify_proc__add_lazily_generated_compare_pred_decl(type_ctor::in,
 	pred_id::out, module_info::in, module_info::out) is det.
 
@@ -169,12 +171,14 @@
 
 :- type req_queue == queue(pred_proc_id).
 
-:- type proc_requests --->
-		proc_requests(
-			unify_req_map,		% the assignment of proc_id
-						% numbers to unify_proc_ids
-			req_queue		% queue of procs we still need
-						% to generate code for
+:- type proc_requests
+	--->	proc_requests(
+			unify_req_map	:: unify_req_map,
+					% The assignment of proc_id
+					% numbers to unify_proc_ids.
+			req_queue	:: req_queue
+					% The queue of procs we still
+					% to generate code for.
 		).
 
 %-----------------------------------------------------------------------------%
@@ -188,28 +192,20 @@ unify_proc__init_requests(Requests) :-
 
 	% Boring access predicates
 
-:- pred unify_proc__get_unify_req_map(proc_requests, unify_req_map).
-:- mode unify_proc__get_unify_req_map(in, out) is det.
+:- pred unify_proc__get_unify_req_map(proc_requests::in, unify_req_map::out)
+	is det.
+:- pred unify_proc__get_req_queue(proc_requests::in, req_queue::out) is det.
+:- pred unify_proc__set_unify_req_map(unify_req_map::in,
+	proc_requests::in, proc_requests::out) is det.
+:- pred unify_proc__set_req_queue(req_queue::in,
+	proc_requests::in, proc_requests::out) is det.
 
-:- pred unify_proc__get_req_queue(proc_requests, req_queue).
-:- mode unify_proc__get_req_queue(in, out) is det.
-
-:- pred unify_proc__set_unify_req_map(proc_requests, unify_req_map,
-					proc_requests).
-:- mode unify_proc__set_unify_req_map(in, in, out) is det.
-
-:- pred unify_proc__set_req_queue(proc_requests, req_queue, proc_requests).
-:- mode unify_proc__set_req_queue(in, in, out) is det.
-
-unify_proc__get_unify_req_map(proc_requests(UnifyReqMap, _), UnifyReqMap).
-
-unify_proc__get_req_queue(proc_requests(_, ReqQueue), ReqQueue).
-
-unify_proc__set_unify_req_map(proc_requests(_, B), UnifyReqMap,
-			proc_requests(UnifyReqMap, B)).
-
-unify_proc__set_req_queue(proc_requests(A, _), ReqQueue,
-			proc_requests(A, ReqQueue)).
+unify_proc__get_unify_req_map(PR, PR ^ unify_req_map).
+unify_proc__get_req_queue(PR, PR ^ req_queue).
+unify_proc__set_unify_req_map(UnifyReqMap, PR,
+	PR ^ unify_req_map := UnifyReqMap).
+unify_proc__set_req_queue(ReqQueue, PR,
+	PR ^ req_queue := ReqQueue).
 
 %-----------------------------------------------------------------------------%
 
@@ -269,7 +265,7 @@ unify_proc__request_unify(UnifyId, InstVarSet, Determinism, Context,
 	module_info_get_maybe_recompilation_info(!.ModuleInfo,
 		MaybeRecompInfo0),
 	( MaybeRecompInfo0 = yes(RecompInfo0) ->
-		recompilation__record_used_item(type_body, 
+		recompilation__record_used_item(type_body,
 			TypeCtor, TypeCtor, RecompInfo0, RecompInfo),
 		module_info_set_maybe_recompilation_info(yes(RecompInfo),
 			!ModuleInfo)
@@ -285,7 +281,7 @@ unify_proc__request_unify(UnifyId, InstVarSet, Determinism, Context,
 		(
 			unify_proc__search_mode_num(!.ModuleInfo, TypeCtor,
 				UnifyMode, Determinism, _)
-		; 
+		;
 			module_info_types(!.ModuleInfo, TypeTable),
 			map__search(TypeTable, TypeCtor, TypeDefn),
 			hlds_data__get_type_defn_body(TypeDefn, TypeBody),
@@ -295,7 +291,7 @@ unify_proc__request_unify(UnifyId, InstVarSet, Determinism, Context,
 				module_info_name(!.ModuleInfo, ModuleName),
 				ModuleName = TypeModuleName,
 				TypeBody = abstract_type(_)
-			; 
+			;
 				type_ctor_has_hand_defined_rtti(TypeCtor,
 					TypeBody)
 			)
@@ -339,7 +335,8 @@ unify_proc__request_unify(UnifyId, InstVarSet, Determinism, Context,
 		module_info_get_proc_requests(!.ModuleInfo, Requests0),
 		unify_proc__get_unify_req_map(Requests0, UnifyReqMap0),
 		map__set(UnifyReqMap0, UnifyId, ProcId, UnifyReqMap),
-		unify_proc__set_unify_req_map(Requests0, UnifyReqMap, Requests),
+		unify_proc__set_unify_req_map(UnifyReqMap,
+			Requests0, Requests),
 		module_info_set_proc_requests(Requests, !ModuleInfo)
 	).
 
@@ -382,7 +379,7 @@ unify_proc__request_proc(PredId, ArgModes, InstVarSet, ArgLives, MaybeDet,
 	module_info_get_proc_requests(!.ModuleInfo, Requests0),
 	unify_proc__get_req_queue(Requests0, ReqQueue0),
 	queue__put(ReqQueue0, proc(PredId, ProcId), ReqQueue),
-	unify_proc__set_req_queue(Requests0, ReqQueue, Requests),
+	unify_proc__set_req_queue(ReqQueue, Requests0, Requests),
 	module_info_set_proc_requests(Requests, !ModuleInfo).
 
 %-----------------------------------------------------------------------------%
@@ -396,8 +393,7 @@ modecheck_queued_procs(HowToCheckGoal, OldPredTable0, OldPredTable,
 	(
 		queue__get(RequestQueue0, PredProcId, RequestQueue1)
 	->
-		unify_proc__set_req_queue(Requests0, RequestQueue1,
-			Requests1),
+		unify_proc__set_req_queue(RequestQueue1, Requests0, Requests1),
 		module_info_set_proc_requests(Requests1, !ModuleInfo),
 		%
 		% Check that the procedure is valid (i.e. type-correct),
@@ -426,35 +422,34 @@ modecheck_queued_procs(HowToCheckGoal, OldPredTable0, OldPredTable,
 		Changed = no
 	).
 
-:- pred queued_proc_progress_message(pred_proc_id, how_to_check_goal,
-			module_info, io__state, io__state).
-:- mode queued_proc_progress_message(in, in, in, di, uo) is det.
+:- pred queued_proc_progress_message(pred_proc_id::in, how_to_check_goal::in,
+	module_info::in, io::di, io::uo) is det.
 
-queued_proc_progress_message(PredProcId, HowToCheckGoal, ModuleInfo) -->
-	globals__io_lookup_bool_option(very_verbose, VeryVerbose),
-	( { VeryVerbose = yes } ->
+queued_proc_progress_message(PredProcId, HowToCheckGoal, ModuleInfo, !IO) :-
+	globals__io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
+	( VeryVerbose = yes ->
 		%
 		% print progress message
 		%
-		( { HowToCheckGoal = check_unique_modes } ->
+		( HowToCheckGoal = check_unique_modes ->
 			io__write_string("% Analyzing modes, determinism, " ++
-				"and unique-modes for\n% ")
+				"and unique-modes for\n% ", !IO)
 		;
-			io__write_string("% Mode-analyzing ")
+			io__write_string("% Mode-analyzing ", !IO)
 		),
-		{ PredProcId = proc(PredId, ProcId) },
-		hlds_out__write_pred_proc_id(ModuleInfo, PredId, ProcId),
-		io__write_string("\n")
+		PredProcId = proc(PredId, ProcId),
+		hlds_out__write_pred_proc_id(ModuleInfo, PredId, ProcId, !IO),
+		io__write_string("\n", !IO)
 %		/*****
-%		{ mode_list_get_initial_insts(Modes, ModuleInfo1,
-%			InitialInsts) },
-%		io__write_string("% Initial insts: `"),
-%		{ varset__init(InstVarSet) },
-%		mercury_output_inst_list(InitialInsts, InstVarSet),
-%		io__write_string("'\n")
+%		mode_list_get_initial_insts(Modes, ModuleInfo1,
+%			InitialInsts),
+%		io__write_string("% Initial insts: `", !IO),
+%		varset__init(InstVarSet),
+%		mercury_output_inst_list(InitialInsts, InstVarSet, !IO),
+%		io__write_string("'\n", !IO)
 %		*****/
 	;
-		[]
+		true
 	).
 
 :- pred modecheck_queued_proc(how_to_check_goal::in, pred_proc_id::in,
@@ -497,7 +492,7 @@ modecheck_queued_proc(HowToCheckGoal, PredProcId, OldPredTable0, OldPredTable,
 			unique_modes__check_proc(ProcId, PredId, !ModuleInfo,
 				Changed2, !IO),
 			bool__or(Changed1, Changed2, Changed)
-		;	
+		;
 			OldPredTable = OldPredTable0,
 			Changed = Changed1
 		)
@@ -507,8 +502,8 @@ modecheck_queued_proc(HowToCheckGoal, PredProcId, OldPredTable0, OldPredTable,
 % save a copy of the proc info for the specified procedure in OldProcTable0,
 % giving OldProcTable.
 %
-:- pred save_proc_info(proc_id, pred_id, module_info, pred_table, pred_table).
-:- mode save_proc_info(in, in, in, in, out) is det.
+:- pred save_proc_info(proc_id::in, pred_id::in, module_info::in,
+	pred_table::in, pred_table::out) is det.
 
 save_proc_info(ProcId, PredId, ModuleInfo, OldPredTable0, OldPredTable) :-
 	module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
@@ -525,10 +520,10 @@ save_proc_info(ProcId, PredId, ModuleInfo, OldPredTable0, OldPredTable) :-
 unify_proc__add_lazily_generated_unify_pred(TypeCtor,
 		PredId, ModuleInfo0, ModuleInfo) :-
 	(
-		type_ctor_is_tuple(TypeCtor) 
+		type_ctor_is_tuple(TypeCtor)
 	->
 		TypeCtor = _ - TupleArity,
-		
+
 		%
 		% Build a hlds_type_body for the tuple constructor, which will
 		% be used by unify_proc__generate_clause_info.
@@ -539,14 +534,14 @@ unify_proc__add_lazily_generated_unify_pred(TypeCtor,
 		term__var_list_to_term_list(TupleArgTVars, TupleArgTypes),
 
 		% Tuple constructors can't be existentially quantified.
-		ExistQVars = [], 
+		ExistQVars = [],
 		ClassConstraints = [],
 
 		MakeUnamedField = (func(ArgType) = no - ArgType),
 		CtorArgs = list__map(MakeUnamedField, TupleArgTypes),
 
-		Ctor = ctor(ExistQVars, ClassConstraints,
-				CtorSymName, CtorArgs),
+		Ctor = ctor(ExistQVars, ClassConstraints, CtorSymName,
+			CtorArgs),
 
 		CtorSymName = unqualified("{}"),
 		ConsId = cons(CtorSymName, TupleArity),
@@ -573,7 +568,7 @@ unify_proc__add_lazily_generated_unify_pred(TypeCtor,
 			TypeCtor, TypeBody)
 	->
 		% If the unification predicate has another status it should
-		% already have been generated. 
+		% already have been generated.
 		UnifyPredStatus = pseudo_imported,
 		Item = clauses
 	;
@@ -589,9 +584,9 @@ unify_proc__add_lazily_generated_compare_pred_decl(TypeCtor,
 		PredId, ModuleInfo0, ModuleInfo) :-
 	unify_proc__collect_type_defn(ModuleInfo0, TypeCtor, Type,
 		TVarSet, TypeBody, Context),
-	
+
 	% If the compare predicate has another status it should
-	% already have been generated. 
+	% already have been generated.
 	ImportStatus = imported(implementation),
 
 	unify_proc__add_lazily_generated_special_pred(compare, declaration,
@@ -611,14 +606,13 @@ unify_proc__add_lazily_generated_special_pred(SpecialId, Item,
 	%
 	(
 		Item = clauses,
-		make_hlds__add_special_pred_for_real(SpecialId,
-			TVarSet, Type, TypeCtor, TypeBody, Context,
-			PredStatus, !ModuleInfo)
+		make_hlds__add_special_pred_for_real(SpecialId, TVarSet,
+			Type, TypeCtor, TypeBody, Context, PredStatus,
+			!ModuleInfo)
 	;
 		Item = declaration,
-		make_hlds__add_special_pred_decl_for_real(SpecialId,
-			TVarSet, Type, TypeCtor,
-			Context, PredStatus, !ModuleInfo)
+		make_hlds__add_special_pred_decl_for_real(SpecialId, TVarSet,
+			Type, TypeCtor, Context, PredStatus, !ModuleInfo)
 	),
 
 	module_info_get_special_pred_map(!.ModuleInfo, SpecialPredMap),
@@ -661,9 +655,9 @@ unify_proc__add_lazily_generated_special_pred(SpecialId, Item,
 	--->	declaration
 	;	clauses.
 
-:- pred unify_proc__collect_type_defn(module_info,
-	type_ctor, type, tvarset, hlds_type_body, prog_context).
-:- mode unify_proc__collect_type_defn(in, in, out, out, out, out) is det.
+:- pred unify_proc__collect_type_defn(module_info::in, type_ctor::in,
+	(type)::out, tvarset::out, hlds_type_body::out, prog_context::out)
+	is det.
 
 unify_proc__collect_type_defn(ModuleInfo0, TypeCtor, Type,
 		TVarSet, TypeBody, Context) :-
@@ -756,16 +750,15 @@ unify_proc__generate_unify_clauses(ModuleInfo, Type, TypeBody,
 				H1, H2, Context, Clauses, !Info)
 		;
 			TypeBody = abstract_type(_),
-			( compiler_generated_rtti_for_the_builtins(ModuleInfo) ->
+			( compiler_generated_rtti_for_builtins(ModuleInfo) ->
 				TypeCategory = classify_type(ModuleInfo, Type),
 				generate_builtin_unify(TypeCategory,
-						H1, H2, Context,
-						Clauses, !Info)
+					H1, H2, Context, Clauses, !Info)
 			;
-				error(
-				"trying to create unify proc for abstract type")
+				error("trying to create unify proc " ++
+					"for abstract type")
 			)
-			
+
 		)
 	).
 
@@ -778,42 +771,55 @@ generate_builtin_unify(TypeCategory, H1, H2, Context, Clauses, !Info) :-
 
 	% can_generate_special_pred_clauses_for_type ensures the unexpected
 	% cases can never occur.
-	( TypeCategory = int_type,
+	(
+		TypeCategory = int_type,
 		Name = "builtin_unify_int"
-	; TypeCategory = char_type,
+	;
+		TypeCategory = char_type,
 		Name = "builtin_unify_character"
-	; TypeCategory = str_type,
+	;
+		TypeCategory = str_type,
 		Name = "builtin_unify_string"
-	; TypeCategory = float_type,
+	;
+		TypeCategory = float_type,
 		Name = "builtin_unify_float"
-	; TypeCategory = higher_order_type,
+	;
+		TypeCategory = higher_order_type,
 		Name = "builtin_unify_pred"
-	; TypeCategory = tuple_type,
+	;
+		TypeCategory = tuple_type,
 		unexpected(this_file, "generate_builtin_unify: tuple")
-	; TypeCategory = enum_type,
+	;
+		TypeCategory = enum_type,
 		unexpected(this_file, "generate_builtin_unify: enum")
-	; TypeCategory = variable_type,
+	;
+		TypeCategory = variable_type,
 		unexpected(this_file, "generate_builtin_unify: variable type")
-	; TypeCategory = type_info_type,
+	;
+		TypeCategory = type_info_type,
 		unexpected(this_file, "generate_builtin_unify: type_info type")
-	; TypeCategory = type_ctor_info_type,
+	;
+		TypeCategory = type_ctor_info_type,
 		unexpected(this_file,
 			"generate_builtin_unify: type_ctor_info type")
-	; TypeCategory = typeclass_info_type,
+	;
+		TypeCategory = typeclass_info_type,
 		unexpected(this_file,
 			"generate_builtin_unify: typeclass_info type")
-	; TypeCategory = base_typeclass_info_type,
+	;
+		TypeCategory = base_typeclass_info_type,
 		unexpected(this_file,
 			"generate_builtin_unify: base_typeclass_info type")
-	; TypeCategory = void_type,
+	;
+		TypeCategory = void_type,
 		unexpected(this_file,
 			"generate_builtin_unify: void type")
-	; TypeCategory = user_ctor_type,
+	;
+		TypeCategory = user_ctor_type,
 		unexpected(this_file,
 			"generate_builtin_unify: user_ctor type")
 	),
-	unify_proc__build_call(Name,
-			ArgVars, Context, UnifyGoal, !Info),
+	unify_proc__build_call(Name, ArgVars, Context, UnifyGoal, !Info),
 	quantify_clauses_body(ArgVars, UnifyGoal, Context, Clauses, !Info).
 
 :- pred unify_proc__generate_user_defined_unify_clauses(unify_compare::in,
@@ -1014,13 +1020,13 @@ unify_proc__generate_compare_clauses(ModuleInfo, Type, TypeBody, Res,
 				Res, H1, H2, Context, Clauses, !Info)
 		;
 			TypeBody = abstract_type(_),
-			( compiler_generated_rtti_for_the_builtins(ModuleInfo) ->
+			( compiler_generated_rtti_for_builtins(ModuleInfo) ->
 				TypeCategory = classify_type(ModuleInfo, Type),
-				generate_builtin_compare(TypeCategory,
-						Res, H1, H2, Context,
-						Clauses, !Info)
+				generate_builtin_compare(TypeCategory, Res,
+					H1, H2, Context, Clauses, !Info)
 			;
-				error("trying to create compare proc for abstract type")
+				error("trying to create compare proc " ++
+					"for abstract type")
 			)
 		)
 	).
@@ -1035,38 +1041,52 @@ generate_builtin_compare(TypeCategory, Res, H1, H2, Context, Clauses, !Info) :-
 
 	% can_generate_special_pred_clauses_for_type ensures the unexpected
 	% cases can never occur.
-	( TypeCategory = int_type,
+	(
+		TypeCategory = int_type,
 		Name = "builtin_compare_int"
-	; TypeCategory = char_type,
+	;
+		TypeCategory = char_type,
 		Name = "builtin_compare_character"
-	; TypeCategory = str_type,
+	;
+		TypeCategory = str_type,
 		Name = "builtin_compare_string"
-	; TypeCategory = float_type,
+	;
+		TypeCategory = float_type,
 		Name = "builtin_compare_float"
-	; TypeCategory = higher_order_type,
+	;
+		TypeCategory = higher_order_type,
 		Name = "builtin_compare_pred"
-	; TypeCategory = tuple_type,
+	;
+		TypeCategory = tuple_type,
 		unexpected(this_file, "generate_builtin_compare: tuple type")
-	; TypeCategory = enum_type,
+	;
+		TypeCategory = enum_type,
 		unexpected(this_file, "generate_builtin_compare: enum type")
-	; TypeCategory = variable_type,
+	;
+		TypeCategory = variable_type,
 		unexpected(this_file, "generate_builtin_compare: variable type")
-	; TypeCategory = type_info_type,
+	;
+		TypeCategory = type_info_type,
 		unexpected(this_file,
 			"generate_builtin_compare: type_info type")
-	; TypeCategory = type_ctor_info_type,
+	;
+		TypeCategory = type_ctor_info_type,
 		unexpected(this_file,
 			"generate_builtin_compare: type_ctor_info type")
-	; TypeCategory = typeclass_info_type,
+	;
+		TypeCategory = typeclass_info_type,
 		unexpected(this_file,
 			"generate_builtin_compare: typeclass_info type")
-	; TypeCategory = base_typeclass_info_type,
+	;
+		TypeCategory = base_typeclass_info_type,
 		unexpected(this_file,
 			"generate_builtin_compare: base_typeclass_info type")
-	; TypeCategory = void_type,
+	;
+		TypeCategory = void_type,
 		unexpected(this_file,
 			"generate_builtin_compare: void type")
-	; TypeCategory = user_ctor_type,
+	;
+		TypeCategory = user_ctor_type,
 		unexpected(this_file,
 			"generate_builtin_compare: user_ctor type")
 	),
@@ -1084,7 +1104,8 @@ generate_user_defined_compare_clauses(abstract_noncanonical_type,
 generate_user_defined_compare_clauses(unify_compare(_, MaybeCompare),
 		Res, H1, H2, Context, Clauses, !Info) :-
 	ArgVars = [Res, H1, H2],
-	( MaybeCompare = yes(ComparePredName) ->
+	(
+		MaybeCompare = yes(ComparePredName),
 		%
 		% Just generate a call to the specified predicate,
 		% which is the user-defined comparison pred for this
@@ -1095,10 +1116,11 @@ generate_user_defined_compare_clauses(unify_compare(_, MaybeCompare),
 		PredId = invalid_pred_id,
 		ModeId = invalid_proc_id,
 		Call = call(PredId, ModeId, ArgVars, not_builtin,
-				no, ComparePredName),
+			no, ComparePredName),
 		goal_info_init(Context, GoalInfo),
 		Goal = Call - GoalInfo
 	;
+		MaybeCompare = no,
 		%
 		% just generate code that will call error/1
 		%
@@ -1220,11 +1242,9 @@ unify_proc__quantify_clause_body(HeadVars, Goal0, Context, Clause, !Info) :-
 % (See e.g. tests/general/det_complicated_unify2.m.)
 % Hence this optimization is currently disabled.
 
-:- pred unify_proc__generate_du_unify_clauses(list(constructor), prog_var,
-		prog_var, prog_context, list(clause),
-		unify_proc_info, unify_proc_info).
-:- mode unify_proc__generate_du_unify_clauses(in, in, in, in, out, in, out)
-	is det.
+:- pred unify_proc__generate_du_unify_clauses(list(constructor)::in,
+	prog_var::in, prog_var::in, prog_context::in, list(clause)::out,
+	unify_proc_info::in, unify_proc_info::out) is det.
 
 unify_proc__generate_du_unify_clauses([], _X, _Y, _Context, [], !Info).
 unify_proc__generate_du_unify_clauses([Ctor | Ctors], X, Y, Context,
@@ -1285,7 +1305,7 @@ can_compare_constants_as_ints(Info) = CanCompareAsInt :-
 
 %-----------------------------------------------------------------------------%
 
-% For a type such as 
+% For a type such as
 %
 %	:- type foo ---> f ; g(a, b, c) ; h(foo).
 %
@@ -1303,33 +1323,31 @@ can_compare_constants_as_ints(Info) = CanCompareAsInt :-
 %			Index = 2
 %		).
 
-:- pred unify_proc__generate_du_index_clauses(list(constructor), prog_var,
-		prog_var, prog_context, int, list(clause),
-		unify_proc_info, unify_proc_info).
-:- mode unify_proc__generate_du_index_clauses(in, in, in, in, in, out, in, out)
-	is det.
+:- pred unify_proc__generate_du_index_clauses(list(constructor)::in,
+	prog_var::in, prog_var::in, prog_context::in, int::in,
+	list(clause)::out, unify_proc_info::in, unify_proc_info::out) is det.
 
-unify_proc__generate_du_index_clauses([], _X, _Index, _Context, _N, []) --> [].
+unify_proc__generate_du_index_clauses([], _X, _Index, _Context, _N, [], !Info).
 unify_proc__generate_du_index_clauses([Ctor | Ctors], X, Index, Context, N,
-		[Clause | Clauses]) -->
-	{ Ctor = ctor(ExistQTVars, _Constraints, FunctorName, ArgTypes) },
-	{ list__length(ArgTypes, FunctorArity) },
-	{ FunctorConsId = cons(FunctorName, FunctorArity) },
-	unify_proc__make_fresh_vars(ArgTypes, ExistQTVars, ArgVars),
-	{ create_atomic_unification(
-		X, functor(FunctorConsId, no, ArgVars), Context, explicit, [], 
-		UnifyX_Goal) },
-	{ create_atomic_unification(
-		Index, functor(int_const(N), no, []), Context, explicit, [], 
-		UnifyIndex_Goal) },
-	{ GoalList = [UnifyX_Goal, UnifyIndex_Goal] },
-	{ goal_info_init(GoalInfo0) },
-	{ goal_info_set_context(GoalInfo0, Context, GoalInfo) },
-	{ conj_list_to_goal(GoalList, GoalInfo, Goal) },
-	unify_proc__quantify_clause_body([X, Index], Goal, Context, Clause),
-	{ N1 = N + 1 },
-	unify_proc__generate_du_index_clauses(Ctors, X, Index, Context, N1,
-		Clauses).
+		[Clause | Clauses], !Info) :-
+	Ctor = ctor(ExistQTVars, _Constraints, FunctorName, ArgTypes),
+	list__length(ArgTypes, FunctorArity),
+	FunctorConsId = cons(FunctorName, FunctorArity),
+	unify_proc__make_fresh_vars(ArgTypes, ExistQTVars, ArgVars, !Info),
+	create_atomic_unification(
+		X, functor(FunctorConsId, no, ArgVars), Context, explicit, [],
+		UnifyX_Goal),
+	create_atomic_unification(
+		Index, functor(int_const(N), no, []), Context, explicit, [],
+		UnifyIndex_Goal),
+	GoalList = [UnifyX_Goal, UnifyIndex_Goal],
+	goal_info_init(GoalInfo0),
+	goal_info_set_context(GoalInfo0, Context, GoalInfo),
+	conj_list_to_goal(GoalList, GoalInfo, Goal),
+	unify_proc__quantify_clause_body([X, Index], Goal, Context, Clause,
+		!Info),
+	unify_proc__generate_du_index_clauses(Ctors, X, Index, Context, N + 1,
+		Clauses, !Info).
 
 %-----------------------------------------------------------------------------%
 
@@ -1339,23 +1357,23 @@ unify_proc__generate_du_index_clauses([Ctor | Ctors], X, Index, Context, N,
 	unify_proc_info::in, unify_proc_info::out) is det.
 
 unify_proc__generate_du_compare_clauses(Type, Ctors, Res, H1, H2,
-		Context, Clauses) -->
+		Context, Clauses, !Info) :-
 	(
-		{ Ctors = [] },
-		{ error("compare for type with no functors") }
+		Ctors = [],
+		error("compare for type with no functors")
 	;
-		{ Ctors = [_ | _] },
-		unify_proc__info_get_module_info(ModuleInfo),
-		{ module_info_globals(ModuleInfo, Globals) },
-		{ globals__lookup_int_option(Globals, compare_specialization,
-			CompareSpec) },
-		{ list__length(Ctors, NumCtors) },
-		( { NumCtors =< CompareSpec } ->
+		Ctors = [_ | _],
+		unify_proc__info_get_module_info(ModuleInfo, !Info),
+		module_info_globals(ModuleInfo, Globals),
+		globals__lookup_int_option(Globals, compare_specialization,
+			CompareSpec),
+		list__length(Ctors, NumCtors),
+		( NumCtors =< CompareSpec ->
 			unify_proc__generate_du_quad_compare_clauses(
-				Ctors, Res, H1, H2, Context, Clauses)
+				Ctors, Res, H1, H2, Context, Clauses, !Info)
 		;
 			unify_proc__generate_du_linear_compare_clauses(Type,
-				Ctors, Res, H1, H2, Context, Clauses)
+				Ctors, Res, H1, H2, Context, Clauses, !Info)
 		)
 	).
 
@@ -1391,7 +1409,7 @@ unify_proc__generate_du_compare_clauses(Type, Ctors, Res, H1, H2,
 %				R = R1
 %			; compare(R2, X2, Y2), R2 \= (=) ->
 %				R = R2
-%			; 
+%			;
 %				compare(R, X3, Y3)
 %			)
 %		;
@@ -1422,14 +1440,15 @@ unify_proc__generate_du_compare_clauses(Type, Ctors, Res, H1, H2,
 	list(clause)::out, unify_proc_info::in, unify_proc_info::out) is det.
 
 unify_proc__generate_du_quad_compare_clauses(Ctors, R, X, Y, Context,
-		Clauses) -->
+		Clauses, !Info) :-
 	unify_proc__generate_du_quad_compare_clauses_1(Ctors, Ctors, R, X, Y,
-		Context, [], Cases),
-	{ goal_info_init(GoalInfo0) },
-	{ goal_info_set_context(GoalInfo0, Context, GoalInfo) },
-	{ disj_list_to_goal(Cases, GoalInfo, Goal) },
-	{ HeadVars = [R, X, Y] },
-	unify_proc__quantify_clauses_body(HeadVars, Goal, Context, Clauses).
+		Context, [], Cases, !Info),
+	goal_info_init(GoalInfo0),
+	goal_info_set_context(GoalInfo0, Context, GoalInfo),
+	disj_list_to_goal(Cases, GoalInfo, Goal),
+	HeadVars = [R, X, Y],
+	unify_proc__quantify_clauses_body(HeadVars, Goal, Context, Clauses,
+		!Info).
 
 :- pred unify_proc__generate_du_quad_compare_clauses_1(
 	list(constructor)::in, list(constructor)::in,
@@ -1438,13 +1457,13 @@ unify_proc__generate_du_quad_compare_clauses(Ctors, R, X, Y, Context,
 	unify_proc_info::in, unify_proc_info::out) is det.
 
 unify_proc__generate_du_quad_compare_clauses_1([],
-		_RightCtors, _R, _X, _Y, _Context, Cases, Cases) --> [].
+		_RightCtors, _R, _X, _Y, _Context, !Cases, !Info).
 unify_proc__generate_du_quad_compare_clauses_1([LeftCtor | LeftCtors],
-		RightCtors, R, X, Y, Context, Cases0, Cases) -->
+		RightCtors, R, X, Y, Context, !Cases, !Info) :-
 	unify_proc__generate_du_quad_compare_clauses_2(LeftCtor, RightCtors,
-		">", R, X, Y, Context, Cases0, Cases1),
+		">", R, X, Y, Context, !Cases, !Info),
 	unify_proc__generate_du_quad_compare_clauses_1(LeftCtors, RightCtors,
-		R, X, Y, Context, Cases1, Cases).
+		R, X, Y, Context, !Cases, !Info).
 
 :- pred unify_proc__generate_du_quad_compare_clauses_2(
 	constructor::in, list(constructor)::in, string::in,
@@ -1453,25 +1472,25 @@ unify_proc__generate_du_quad_compare_clauses_1([LeftCtor | LeftCtors],
 	unify_proc_info::in, unify_proc_info::out) is det.
 
 unify_proc__generate_du_quad_compare_clauses_2(_LeftCtor,
-		[], _Cmp, _R, _X, _Y, _Context, Cases, Cases) --> [].
+		[], _Cmp, _R, _X, _Y, _Context, !Cases, !Info).
 unify_proc__generate_du_quad_compare_clauses_2(LeftCtor,
 		[RightCtor | RightCtors], Cmp0, R, X, Y, Context,
-		Cases0, Cases) -->
-	( { LeftCtor = RightCtor } ->
+		!Cases, !Info) :-
+	( LeftCtor = RightCtor ->
 		unify_proc__generate_compare_case(LeftCtor, R, X, Y, Context,
-			quad, Case),
-		{ Cmp1 = "<" }
+			quad, Case, !Info),
+		Cmp1 = "<"
 	;
 		unify_proc__generate_asymmetric_compare_case(LeftCtor,
-			RightCtor, Cmp0, R, X, Y, Context, Case),
-		{ Cmp1 = Cmp0 }
+			RightCtor, Cmp0, R, X, Y, Context, Case, !Info),
+		Cmp1 = Cmp0
 	),
 	unify_proc__generate_du_quad_compare_clauses_2(LeftCtor, RightCtors,
-		Cmp1, R, X, Y, Context, [Case | Cases0], Cases).
+		Cmp1, R, X, Y, Context, [Case | !.Cases], !:Cases, !Info).
 
 %-----------------------------------------------------------------------------%
 
-% For a du type, such as 
+% For a du type, such as
 %
 %	:- type foo ---> f ; g(a) ; h(b, foo).
 %
@@ -1499,7 +1518,7 @@ unify_proc__generate_du_quad_compare_clauses_2(LeftCtor,
 %				Y = h(Y1, Y2),
 %				( compare(R1, X1, Y1), R1 \= (=) ->
 %					R = R1
-%				; 
+%				;
 %					compare(R, X2, Y2)
 %				)
 %			)
@@ -1518,11 +1537,12 @@ unify_proc__generate_du_quad_compare_clauses_2(LeftCtor,
 	unify_proc_info::in, unify_proc_info::out) is det.
 
 unify_proc__generate_du_linear_compare_clauses(Type, Ctors, Res, X, Y,
-		Context, [Clause]) -->
+		Context, [Clause], !Info) :-
 	unify_proc__generate_du_linear_compare_clauses_2(Type, Ctors, Res,
-		X, Y, Context, Goal),
-	{ HeadVars = [Res, X, Y] },
-	unify_proc__quantify_clause_body(HeadVars, Goal, Context, Clause).
+		X, Y, Context, Goal, !Info),
+	HeadVars = [Res, X, Y],
+	unify_proc__quantify_clause_body(HeadVars, Goal, Context, Clause,
+		!Info).
 
 :- pred unify_proc__generate_du_linear_compare_clauses_2((type)::in,
 	list(constructor)::in, prog_var::in, prog_var::in, prog_var::in,
@@ -1530,59 +1550,60 @@ unify_proc__generate_du_linear_compare_clauses(Type, Ctors, Res, X, Y,
 	unify_proc_info::in, unify_proc_info::out) is det.
 
 unify_proc__generate_du_linear_compare_clauses_2(Type, Ctors, Res, X, Y,
-		Context, Goal) -->
-	{ IntType = int_type },
-	unify_proc__info_new_var(IntType, X_Index),
-	unify_proc__info_new_var(IntType, Y_Index),
-	unify_proc__info_new_var(comparison_result_type, R),
+		Context, Goal, !Info) :-
+	IntType = int_type,
+	unify_proc__info_new_var(IntType, X_Index, !Info),
+	unify_proc__info_new_var(IntType, Y_Index, !Info),
+	unify_proc__info_new_var(comparison_result_type, R, !Info),
 
-	{ goal_info_init(GoalInfo0) },
-	{ goal_info_set_context(GoalInfo0, Context, GoalInfo) },
+	goal_info_init(GoalInfo0),
+	goal_info_set_context(GoalInfo0, Context, GoalInfo),
 
-	{ instmap_delta_from_assoc_list([X_Index - ground(shared, none)],
-		X_InstmapDelta) },
+	instmap_delta_from_assoc_list([X_Index - ground(shared, none)],
+		X_InstmapDelta),
 	unify_proc__build_specific_call(Type, index, [X, X_Index],
-		X_InstmapDelta, det, Context, Call_X_Index),
-	{ instmap_delta_from_assoc_list([Y_Index - ground(shared, none)],
-		Y_InstmapDelta) },
+		X_InstmapDelta, det, Context, Call_X_Index, !Info),
+	instmap_delta_from_assoc_list([Y_Index - ground(shared, none)],
+		Y_InstmapDelta),
 	unify_proc__build_specific_call(Type, index, [Y, Y_Index],
-		Y_InstmapDelta, det, Context, Call_Y_Index),
+		Y_InstmapDelta, det, Context, Call_Y_Index, !Info),
 
 	unify_proc__build_call("builtin_int_lt", [X_Index, Y_Index], Context,
-		Call_Less_Than),
+		Call_Less_Than, !Info),
 	unify_proc__build_call("builtin_int_gt", [X_Index, Y_Index], Context,
-		Call_Greater_Than),
+		Call_Greater_Than, !Info),
 
-	{ create_atomic_unification(
+	create_atomic_unification(
 		Res, functor(cons(unqualified("<"), 0), no, []),
-			Context, explicit, [], 
-		Return_Less_Than) },
+			Context, explicit, [],
+		Return_Less_Than),
 
-	{ create_atomic_unification(
+	create_atomic_unification(
 		Res, functor(cons(unqualified(">"), 0), no, []),
-			Context, explicit, [], 
-		Return_Greater_Than) },
+			Context, explicit, [],
+		Return_Greater_Than),
 
-	{ create_atomic_unification(Res, var(R), Context, explicit, [],
-		Return_R) },
+	create_atomic_unification(Res, var(R), Context, explicit, [],
+		Return_R),
 
-	unify_proc__generate_compare_cases(Ctors, R, X, Y, Context, Cases),
-	{ CasesGoal = disj(Cases) - GoalInfo },
+	unify_proc__generate_compare_cases(Ctors, R, X, Y, Context, Cases,
+		!Info),
+	CasesGoal = disj(Cases) - GoalInfo,
 
-	unify_proc__build_call("compare_error", [], Context, Abort),
+	unify_proc__build_call("compare_error", [], Context, Abort, !Info),
 
-	{ Goal = conj([
+	Goal = conj([
 		Call_X_Index,
-		Call_Y_Index, 
+		Call_Y_Index,
 		if_then_else([], Call_Less_Than, Return_Less_Than,
 			if_then_else([], Call_Greater_Than, Return_Greater_Than,
 				if_then_else([], CasesGoal, Return_R, Abort)
 				- GoalInfo)
 			- GoalInfo)
 		- GoalInfo
-	]) - GoalInfo }.
+	]) - GoalInfo.
 
-% unify_proc__generate_compare_cases: for a type such as 
+% unify_proc__generate_compare_cases: for a type such as
 %
 %	:- type foo ---> f ; g(a) ; h(b, foo).
 %
@@ -1593,7 +1614,7 @@ unify_proc__generate_du_linear_compare_clauses_2(Type, Ctors, Res, X, Y,
 %		Y = X,		% UnifyY_Goal
 %		R = (=)		% CompareArgs_Goal
 %	;
-%		X = g(X1),	
+%		X = g(X1),
 %		Y = g(Y1),
 %		compare(R, X1, Y1)
 %	;
@@ -1601,7 +1622,7 @@ unify_proc__generate_du_linear_compare_clauses_2(Type, Ctors, Res, X, Y,
 %		Y = h(Y1, Y2),
 %		( compare(R1, X1, Y1), R1 \= (=) ->
 %			R = R1
-%		; 
+%		;
 %			compare(R, X2, Y2)
 %		)
 %	)
@@ -1610,18 +1631,17 @@ unify_proc__generate_du_linear_compare_clauses_2(Type, Ctors, Res, X, Y,
 % the constant. This is to allow dupelim to eliminate all but one of
 % the code fragments implementing such switch arms.
 
-:- pred unify_proc__generate_compare_cases(list(constructor), prog_var,
-		prog_var, prog_var, prog_context, list(hlds_goal),
-		unify_proc_info, unify_proc_info).
-:- mode unify_proc__generate_compare_cases(in, in, in, in, in, out, in, out)
-	is det.
+:- pred unify_proc__generate_compare_cases(list(constructor)::in, prog_var::in,
+	prog_var::in, prog_var::in, prog_context::in, list(hlds_goal)::out,
+	unify_proc_info::in, unify_proc_info::out) is det.
 
-unify_proc__generate_compare_cases([], _R, _X, _Y, _Context, []) --> [].
+unify_proc__generate_compare_cases([], _R, _X, _Y, _Context, [], !Info).
 unify_proc__generate_compare_cases([Ctor | Ctors], R, X, Y, Context,
-		[Case | Cases]) -->
+		[Case | Cases], !Info) :-
 	unify_proc__generate_compare_case(Ctor, R, X, Y, Context, linear,
-		Case),
-	unify_proc__generate_compare_cases(Ctors, R, X, Y, Context, Cases).
+		Case, !Info),
+	unify_proc__generate_compare_cases(Ctors, R, X, Y, Context, Cases,
+		!Info).
 
 :- type linear_or_quad	--->	linear ; quad.
 
@@ -1630,47 +1650,49 @@ unify_proc__generate_compare_cases([Ctor | Ctors], R, X, Y, Context,
 	linear_or_quad::in, hlds_goal::out,
 	unify_proc_info::in, unify_proc_info::out) is det.
 
-unify_proc__generate_compare_case(Ctor, R, X, Y, Context, Kind, Case) -->
-	{ Ctor = ctor(ExistQTVars, _Constraints, FunctorName, ArgTypes) },
-	{ list__length(ArgTypes, FunctorArity) },
-	{ FunctorConsId = cons(FunctorName, FunctorArity) },
+unify_proc__generate_compare_case(Ctor, R, X, Y, Context, Kind, Case, !Info) :-
+	Ctor = ctor(ExistQTVars, _Constraints, FunctorName, ArgTypes),
+	list__length(ArgTypes, FunctorArity),
+	FunctorConsId = cons(FunctorName, FunctorArity),
 	(
-		{ ArgTypes = [] },
-		{ create_atomic_unification(
+		ArgTypes = [],
+		create_atomic_unification(
 			X, functor(FunctorConsId, no, []), Context,
-			explicit, [], UnifyX_Goal) },
-		{ unify_proc__generate_return_equal(R, Context, EqualGoal) },
+			explicit, [], UnifyX_Goal),
+		unify_proc__generate_return_equal(R, Context, EqualGoal),
 		(
-			{ Kind = linear },
+			Kind = linear,
 			% The disjunct we are generating is executed only if
 			% the index values of X and Y are the same, so if X is
 			% bound to a constant, Y must also be bound to that
 			% same constant.
-			{ GoalList = [UnifyX_Goal, EqualGoal] }
+			GoalList = [UnifyX_Goal, EqualGoal]
 		;
-			{ Kind = quad },
-			{ create_atomic_unification(
+			Kind = quad,
+			create_atomic_unification(
 				Y, functor(FunctorConsId, no, []), Context,
-				explicit, [], UnifyY_Goal) },
-			{ GoalList = [UnifyX_Goal, UnifyY_Goal, EqualGoal] }
+				explicit, [], UnifyY_Goal),
+			GoalList = [UnifyX_Goal, UnifyY_Goal, EqualGoal]
 		)
 	;
-		{ ArgTypes = [_ | _] },
-		unify_proc__make_fresh_vars(ArgTypes, ExistQTVars, Vars1),
-		unify_proc__make_fresh_vars(ArgTypes, ExistQTVars, Vars2),
-		{ create_atomic_unification(
+		ArgTypes = [_ | _],
+		unify_proc__make_fresh_vars(ArgTypes, ExistQTVars, Vars1,
+			!Info),
+		unify_proc__make_fresh_vars(ArgTypes, ExistQTVars, Vars2,
+			!Info),
+		create_atomic_unification(
 			X, functor(FunctorConsId, no, Vars1), Context,
-			explicit, [], UnifyX_Goal) },
-		{ create_atomic_unification(
+			explicit, [], UnifyX_Goal),
+		create_atomic_unification(
 			Y, functor(FunctorConsId, no, Vars2), Context,
-			explicit, [], UnifyY_Goal) },
+			explicit, [], UnifyY_Goal),
 		unify_proc__compare_args(ArgTypes, ExistQTVars, Vars1, Vars2,
-			R, Context, CompareArgs_Goal),
-		{ GoalList = [UnifyX_Goal, UnifyY_Goal, CompareArgs_Goal] }
+			R, Context, CompareArgs_Goal, !Info),
+		GoalList = [UnifyX_Goal, UnifyY_Goal, CompareArgs_Goal]
 	),
-	{ goal_info_init(GoalInfo0) },
-	{ goal_info_set_context(GoalInfo0, Context, GoalInfo) },
-	{ conj_list_to_goal(GoalList, GoalInfo, Case) }.
+	goal_info_init(GoalInfo0),
+	goal_info_set_context(GoalInfo0, Context, GoalInfo),
+	conj_list_to_goal(GoalList, GoalInfo, Case).
 
 :- pred unify_proc__generate_asymmetric_compare_case(constructor::in,
 	constructor::in, string::in, prog_var::in, prog_var::in, prog_var::in,
@@ -1678,29 +1700,29 @@ unify_proc__generate_compare_case(Ctor, R, X, Y, Context, Kind, Case) -->
 	unify_proc_info::in, unify_proc_info::out) is det.
 
 unify_proc__generate_asymmetric_compare_case(Ctor1, Ctor2, CompareOp, R, X, Y,
-		Context, Case) -->
-	{ Ctor1 = ctor(ExistQTVars1, _Constraints1, FunctorName1, ArgTypes1) },
-	{ Ctor2 = ctor(ExistQTVars2, _Constraints2, FunctorName2, ArgTypes2) },
-	{ list__length(ArgTypes1, FunctorArity1) },
-	{ list__length(ArgTypes2, FunctorArity2) },
-	{ FunctorConsId1 = cons(FunctorName1, FunctorArity1) },
-	{ FunctorConsId2 = cons(FunctorName2, FunctorArity2) },
-	unify_proc__make_fresh_vars(ArgTypes1, ExistQTVars1, Vars1),
-	unify_proc__make_fresh_vars(ArgTypes2, ExistQTVars2, Vars2),
-	{ create_atomic_unification(
-		X, functor(FunctorConsId1, no, Vars1), Context, explicit, [], 
-		UnifyX_Goal) },
-	{ create_atomic_unification(
-		Y, functor(FunctorConsId2, no, Vars2), Context, explicit, [], 
-		UnifyY_Goal) },
-	{ create_atomic_unification(
+		Context, Case, !Info) :-
+	Ctor1 = ctor(ExistQTVars1, _Constraints1, FunctorName1, ArgTypes1),
+	Ctor2 = ctor(ExistQTVars2, _Constraints2, FunctorName2, ArgTypes2),
+	list__length(ArgTypes1, FunctorArity1),
+	list__length(ArgTypes2, FunctorArity2),
+	FunctorConsId1 = cons(FunctorName1, FunctorArity1),
+	FunctorConsId2 = cons(FunctorName2, FunctorArity2),
+	unify_proc__make_fresh_vars(ArgTypes1, ExistQTVars1, Vars1, !Info),
+	unify_proc__make_fresh_vars(ArgTypes2, ExistQTVars2, Vars2, !Info),
+	create_atomic_unification(
+		X, functor(FunctorConsId1, no, Vars1), Context, explicit, [],
+		UnifyX_Goal),
+	create_atomic_unification(
+		Y, functor(FunctorConsId2, no, Vars2), Context, explicit, [],
+		UnifyY_Goal),
+	create_atomic_unification(
 		R, functor(cons(unqualified(CompareOp), 0), no, []),
-			Context, explicit, [], 
-		ReturnResult) },
-	{ GoalList = [UnifyX_Goal, UnifyY_Goal, ReturnResult] },
-	{ goal_info_init(GoalInfo0) },
-	{ goal_info_set_context(GoalInfo0, Context, GoalInfo) },
-	{ conj_list_to_goal(GoalList, GoalInfo, Case) }.
+			Context, explicit, [],
+		ReturnResult),
+	GoalList = [UnifyX_Goal, UnifyY_Goal, ReturnResult],
+	goal_info_init(GoalInfo0),
+	goal_info_set_context(GoalInfo0, Context, GoalInfo),
+	conj_list_to_goal(GoalList, GoalInfo, Case).
 
 % unify_proc__compare_args: for a constructor such as
 %
@@ -1718,7 +1740,7 @@ unify_proc__generate_asymmetric_compare_case(Ctor1, Ctor2, CompareOp, R, X, Y,
 %		R2 \= (=)
 %	->
 %		R = R2
-%	; 
+%	;
 %		compare(R, X3, Y3)	% Return_Comparison
 %	)
 %
@@ -1726,33 +1748,31 @@ unify_proc__generate_asymmetric_compare_case(Ctor1, Ctor2, CompareOp, R, X, Y,
 %
 %	R = (=)		% Return_Equal
 
-:- pred unify_proc__compare_args(list(constructor_arg), existq_tvars,
-		list(prog_var), list(prog_var), prog_var, prog_context,
-		hlds_goal, unify_proc_info, unify_proc_info).
-:- mode unify_proc__compare_args(in, in, in, in, in, in, out, in, out) is det.
+:- pred unify_proc__compare_args(list(constructor_arg)::in, existq_tvars::in,
+	list(prog_var)::in, list(prog_var)::in, prog_var::in, prog_context::in,
+	hlds_goal::out, unify_proc_info::in, unify_proc_info::out) is det.
 
-unify_proc__compare_args(ArgTypes, ExistQTVars, Xs, Ys, R, Context, Goal) -->
+unify_proc__compare_args(ArgTypes, ExistQTVars, Xs, Ys, R, Context, Goal,
+		!Info) :-
 	(
 		unify_proc__compare_args_2(ArgTypes, ExistQTVars, Xs, Ys, R,
-			Context, Goal0)
+			Context, Goal0, !Info)
 	->
-		{ Goal = Goal0 }
+		Goal = Goal0
 	;
-		{ error("unify_proc__compare_args: length mismatch") }
+		error("unify_proc__compare_args: length mismatch")
 	).
 
-:- pred unify_proc__compare_args_2(list(constructor_arg), existq_tvars,
-		list(prog_var), list(prog_var), prog_var, prog_context,
-		hlds_goal, unify_proc_info, unify_proc_info).
-:- mode unify_proc__compare_args_2(in, in, in, in, in, in, out, in, out)
-		is semidet.
+:- pred unify_proc__compare_args_2(list(constructor_arg)::in, existq_tvars::in,
+	list(prog_var)::in, list(prog_var)::in, prog_var::in, prog_context::in,
+	hlds_goal::out, unify_proc_info::in, unify_proc_info::out) is semidet.
 
-unify_proc__compare_args_2([], _, [], [], R, Context, Return_Equal) -->
-	{ unify_proc__generate_return_equal(R, Context, Return_Equal) }.
-unify_proc__compare_args_2([_Name - Type|ArgTypes], ExistQTVars, [X|Xs], [Y|Ys],
-		R, Context, Goal) -->
-	{ goal_info_init(GoalInfo0) },
-	{ goal_info_set_context(GoalInfo0, Context, GoalInfo) },
+unify_proc__compare_args_2([], _, [], [], R, Context, Return_Equal, !Info) :-
+	unify_proc__generate_return_equal(R, Context, Return_Equal).
+unify_proc__compare_args_2([_Name - Type | ArgTypes], ExistQTVars,
+		[X | Xs], [Y | Ys], R, Context, Goal, !Info) :-
+	goal_info_init(GoalInfo0),
+	goal_info_set_context(GoalInfo0, Context, GoalInfo),
 	%
 	% When comparing existentially typed arguments, the arguments may
 	% have different types; in that case, rather than just comparing them,
@@ -1760,36 +1780,39 @@ unify_proc__compare_args_2([_Name - Type|ArgTypes], ExistQTVars, [X|Xs], [Y|Ys],
 	% builtin that first compares their types and then compares
 	% their values.
 	%
-	{
+	(
 		list__member(ExistQTVar, ExistQTVars),
 		term__contains_var(Type, ExistQTVar)
 	->
 		ComparePred = "typed_compare"
 	;
 		ComparePred = "compare"
-	},
-	( { Xs = [], Ys = [] } ->
-		unify_proc__build_call(ComparePred, [R, X, Y], Context, Goal)
+	),
+	(
+		Xs = [],
+		Ys = []
+	->
+		unify_proc__build_call(ComparePred, [R, X, Y], Context, Goal,
+			!Info)
 	;
-		unify_proc__info_new_var(comparison_result_type, R1),
+		unify_proc__info_new_var(comparison_result_type, R1, !Info),
 
 		unify_proc__build_call(ComparePred, [R1, X, Y], Context,
-			Do_Comparison),
+			Do_Comparison, !Info),
 
-		{ create_atomic_unification(
+		create_atomic_unification(
 			R1, functor(cons(unqualified("="), 0), no, []),
-			Context, explicit, [],
-			Check_Equal) },
-		{ Check_Not_Equal = not(Check_Equal) - GoalInfo },
+			Context, explicit, [], Check_Equal),
+		Check_Not_Equal = not(Check_Equal) - GoalInfo,
 
-		{ create_atomic_unification(
-			R, var(R1), Context, explicit, [], Return_R1) },
-		{ Condition = conj([Do_Comparison, Check_Not_Equal])
-					- GoalInfo },
-		{ Goal = if_then_else([], Condition, Return_R1, ElseCase)
-					- GoalInfo},
+		create_atomic_unification(
+			R, var(R1), Context, explicit, [], Return_R1),
+		Condition = conj([Do_Comparison, Check_Not_Equal])
+			- GoalInfo,
+		Goal = if_then_else([], Condition, Return_R1, ElseCase)
+			- GoalInfo,
 		unify_proc__compare_args_2(ArgTypes, ExistQTVars, Xs, Ys, R,
-			Context, ElseCase)
+			Context, ElseCase, !Info)
 	).
 
 :- pred unify_proc__generate_return_equal(prog_var::in, prog_context::in,
@@ -1802,26 +1825,26 @@ unify_proc__generate_return_equal(ResultVar, Context, Return_Equal) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred unify_proc__build_call(string, list(prog_var), prog_context, hlds_goal,
-			unify_proc_info, unify_proc_info).
-:- mode unify_proc__build_call(in, in, in, out, in, out) is det.
+:- pred unify_proc__build_call(string::in, list(prog_var)::in,
+	prog_context::in, hlds_goal::out,
+	unify_proc_info::in, unify_proc_info::out) is det.
 
-unify_proc__build_call(Name, ArgVars, Context, Goal) -->
-	unify_proc__info_get_module_info(ModuleInfo),
-	{ list__length(ArgVars, Arity) },
+unify_proc__build_call(Name, ArgVars, Context, Goal, !Info) :-
+	unify_proc__info_get_module_info(ModuleInfo, !Info),
+	list__length(ArgVars, Arity),
 	%
 	% We assume that the special preds compare/3, index/2, and unify/2
 	% are the only public builtins called by code generated
 	% by this module.
 	%
-	{ special_pred_name_arity(_, Name, Arity) ->
+	( special_pred_name_arity(_, Name, Arity) ->
 		MercuryBuiltin = mercury_public_builtin_module
 	;
 		MercuryBuiltin = mercury_private_builtin_module
-	},
-	{ goal_util__generate_simple_call(MercuryBuiltin, Name, predicate,
+	),
+	goal_util__generate_simple_call(MercuryBuiltin, Name, predicate,
 		ArgVars, mode_no(0), erroneous, no, [], ModuleInfo,
-		Context, Goal) }.
+		Context, Goal).
 
 :- pred unify_proc__build_specific_call((type)::in, special_pred_id::in,
 	list(prog_var)::in, instmap_delta::in, determinism::in,
@@ -1829,9 +1852,9 @@ unify_proc__build_call(Name, ArgVars, Context, Goal) -->
 	unify_proc_info::in, unify_proc_info::out) is det.
 
 unify_proc__build_specific_call(Type, SpecialPredId, ArgVars, InstmapDelta,
-		Detism, Context, Goal) -->
-	unify_proc__info_get_module_info(ModuleInfo),
-	{
+		Detism, Context, Goal, !Info) :-
+	unify_proc__info_get_module_info(ModuleInfo, !Info),
+	(
 		polymorphism__get_special_proc(Type, SpecialPredId, ModuleInfo,
 			PredName, PredId, ProcId)
 	->
@@ -1850,7 +1873,7 @@ unify_proc__build_specific_call(Type, SpecialPredId, ArgVars, InstmapDelta,
 			% right order (index before compare), the lookup
 			% should never fail.
 		error("unify_proc__build_specific_call: lookup failed")
-	}.
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -1858,38 +1881,39 @@ unify_proc__build_specific_call(Type, SpecialPredId, ArgVars, InstmapDelta,
 	string::in, int::in, prog_var::out,
 	unify_proc_info::in, unify_proc_info::out) is det.
 
-unify_proc__make_fresh_named_var_from_type(Type, BaseName, Num, Var) -->
-	{ string__int_to_string(Num, NumStr) },
-	{ string__append(BaseName, NumStr, Name) },
-	unify_proc__info_new_named_var(Type, Name, Var).
+unify_proc__make_fresh_named_var_from_type(Type, BaseName, Num, Var, !Info) :-
+	string__int_to_string(Num, NumStr),
+	string__append(BaseName, NumStr, Name),
+	unify_proc__info_new_named_var(Type, Name, Var, !Info).
 
 :- pred unify_proc__make_fresh_named_vars_from_types(list(type)::in,
 	string::in, int::in, list(prog_var)::out,
 	unify_proc_info::in, unify_proc_info::out) is det.
 
-unify_proc__make_fresh_named_vars_from_types([], _, _, []) --> [].
+unify_proc__make_fresh_named_vars_from_types([], _, _, [], !Info).
 unify_proc__make_fresh_named_vars_from_types([Type | Types], BaseName, Num,
-		[Var | Vars]) -->
-	unify_proc__make_fresh_named_var_from_type(Type, BaseName, Num, Var),
+		[Var | Vars], !Info) :-
+	unify_proc__make_fresh_named_var_from_type(Type, BaseName, Num, Var,
+		!Info),
 	unify_proc__make_fresh_named_vars_from_types(Types, BaseName, Num + 1,
-		Vars).
+		Vars, !Info).
 
 :- pred unify_proc__make_fresh_vars_from_types(list(type)::in,
 	list(prog_var)::out, unify_proc_info::in, unify_proc_info::out) is det.
 
-unify_proc__make_fresh_vars_from_types([], []) --> [].
-unify_proc__make_fresh_vars_from_types([Type | Types], [Var | Vars]) -->
-	unify_proc__info_new_var(Type, Var),
-	unify_proc__make_fresh_vars_from_types(Types, Vars).
+unify_proc__make_fresh_vars_from_types([], [], !Info).
+unify_proc__make_fresh_vars_from_types([Type | Types], [Var | Vars], !Info) :-
+	unify_proc__info_new_var(Type, Var, !Info),
+	unify_proc__make_fresh_vars_from_types(Types, Vars, !Info).
 
 :- pred unify_proc__make_fresh_vars(list(constructor_arg)::in,
 	existq_tvars::in, list(prog_var)::out,
 	unify_proc_info::in, unify_proc_info::out) is det.
 
-unify_proc__make_fresh_vars(CtorArgs, ExistQTVars, Vars) -->
-	( { ExistQTVars = [] } ->
-		{ assoc_list__values(CtorArgs, ArgTypes) },
-		unify_proc__make_fresh_vars_from_types(ArgTypes, Vars)
+unify_proc__make_fresh_vars(CtorArgs, ExistQTVars, Vars, !Info) :-
+	( ExistQTVars = [] ->
+		assoc_list__values(CtorArgs, ArgTypes),
+		unify_proc__make_fresh_vars_from_types(ArgTypes, Vars, !Info)
 	;
 		%
 		% If there are existential types involved, then it's too
@@ -1899,36 +1923,36 @@ unify_proc__make_fresh_vars(CtorArgs, ExistQTVars, Vars) -->
 		% So we just allocate the variables and leave it up to
 		% typecheck.m to infer their types.
 		%
-		unify_proc__info_get_varset(VarSet0),
-		{ list__length(CtorArgs, NumVars) },
-		{ varset__new_vars(VarSet0, NumVars, Vars, VarSet) },
-		unify_proc__info_set_varset(VarSet)
+		unify_proc__info_get_varset(VarSet0, !Info),
+		list__length(CtorArgs, NumVars),
+		varset__new_vars(VarSet0, NumVars, Vars, VarSet),
+		unify_proc__info_set_varset(VarSet, !Info)
 	).
-		
-:- pred unify_proc__unify_var_lists(list(constructor_arg), existq_tvars,
-		list(prog_var), list(prog_var), list(hlds_goal),
-		unify_proc_info, unify_proc_info).
-:- mode unify_proc__unify_var_lists(in, in, in, in, out, in, out) is det.
 
-unify_proc__unify_var_lists(ArgTypes, ExistQVars, Vars1, Vars2, Goal) -->
+:- pred unify_proc__unify_var_lists(list(constructor_arg)::in,
+	existq_tvars::in, list(prog_var)::in, list(prog_var)::in,
+	list(hlds_goal)::out, unify_proc_info::in, unify_proc_info::out)
+	is det.
+
+unify_proc__unify_var_lists(ArgTypes, ExistQVars, Vars1, Vars2, Goal, !Info) :-
 	(
 		unify_proc__unify_var_lists_2(ArgTypes, ExistQVars,
-			Vars1, Vars2, Goal0)
+			Vars1, Vars2, Goal0, !Info)
 	->
-		{ Goal = Goal0 }
+		Goal = Goal0
 	;
-		{ error("unify_proc__unify_var_lists: length mismatch") }
+		error("unify_proc__unify_var_lists: length mismatch")
 	).
 
-:- pred unify_proc__unify_var_lists_2(list(constructor_arg), existq_tvars,
-		list(prog_var), list(prog_var), list(hlds_goal),
-		unify_proc_info, unify_proc_info).
-:- mode unify_proc__unify_var_lists_2(in, in, in, in, out, in, out) is semidet.
+:- pred unify_proc__unify_var_lists_2(list(constructor_arg)::in,
+	existq_tvars::in, list(prog_var)::in, list(prog_var)::in,
+	list(hlds_goal)::out, unify_proc_info::in, unify_proc_info::out)
+	is semidet.
 
-unify_proc__unify_var_lists_2([], _, [], [], []) --> [].
+unify_proc__unify_var_lists_2([], _, [], [], [], !Info).
 unify_proc__unify_var_lists_2([_Name - Type | ArgTypes], ExistQTVars,
-		[Var1 | Vars1], [Var2 | Vars2], [Goal | Goals]) -->
-	{ term__context_init(Context) },
+		[Var1 | Vars1], [Var2 | Vars2], [Goal | Goals], !Info) :-
+	term__context_init(Context),
 	%
 	% When unifying existentially typed arguments, the arguments may
 	% have different types; in that case, rather than just unifying them,
@@ -1937,17 +1961,17 @@ unify_proc__unify_var_lists_2([_Name - Type | ArgTypes], ExistQTVars,
 	% unifies the values.
 	%
 	(
-		{ list__member(ExistQTVar, ExistQTVars) },
-		{ term__contains_var(Type, ExistQTVar) }
+		list__member(ExistQTVar, ExistQTVars),
+		term__contains_var(Type, ExistQTVar)
 	->
 		unify_proc__build_call("typed_unify", [Var1, Var2], Context,
-			Goal)
+			Goal, !Info)
 	;
-		{ create_atomic_unification(Var1, var(Var2), Context, explicit,
-			[], Goal) }
+		create_atomic_unification(Var1, var(Var2), Context, explicit,
+			[], Goal)
 	),
 	unify_proc__unify_var_lists_2(ArgTypes, ExistQTVars, Vars1, Vars2,
-		Goals).
+		Goals, !Info).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

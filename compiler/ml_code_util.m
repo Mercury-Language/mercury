@@ -1396,7 +1396,7 @@ ml_gen_pred_label_from_rtti(ModuleInfo, RttiProcLabel, MLDS_PredLabel,
 				mercury_public_builtin_module(TypeModule)
 			;
 				TypeCtor = qualified(TypeModule, TypeName)
-						- TypeArity
+					- TypeArity
 			)
 		->
 			(
@@ -1450,8 +1450,7 @@ ml_gen_pred_label_from_rtti(ModuleInfo, RttiProcLabel, MLDS_PredLabel,
 			NonOutputFunc = no
 		),
 		MLDS_PredLabel = pred(PredOrFunc, MaybeDeclaringModule,
-				PredName, PredArity, CodeModel,
-				NonOutputFunc)
+			PredName, PredArity, CodeModel, NonOutputFunc)
 	),
 	MLDS_Module = mercury_module_name_to_mlds(DefiningModule).
 

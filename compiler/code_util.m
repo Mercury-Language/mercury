@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2003 The University of Melbourne.
+% Copyright (C) 1994-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -38,13 +38,11 @@
 
 :- type immed == maybe(pair(int, pred_proc_id)).
 
-:- pred code_util__make_entry_label(module_info, pred_id, proc_id, 
-		immed, code_addr).
-:- mode code_util__make_entry_label(in, in, in, in, out) is det.
+:- pred code_util__make_entry_label(module_info::in, pred_id::in, proc_id::in, 
+	immed::in, code_addr::out) is det.
 
-:- pred code_util__make_entry_label_from_rtti(rtti_proc_label, immed,
-		code_addr).
-:- mode code_util__make_entry_label_from_rtti(in, in, out) is det.
+:- pred code_util__make_entry_label_from_rtti(rtti_proc_label::in, immed::in,
+	code_addr::out) is det.
 
 	% Create a label which holds the address of the specified procedure,
 	% which must be defined in the current module (procedures that are
@@ -54,51 +52,40 @@
 	% The fourth argument has the same meaning as for
 	% code_util__make_entry_label.
 
-:- pred code_util__make_local_entry_label(module_info, pred_id, proc_id,
-		immed, label).
-:- mode code_util__make_local_entry_label(in, in, in, in, out) is det.
+:- pred code_util__make_local_entry_label(module_info::in,
+	pred_id::in, proc_id::in, immed::in, label::out) is det.
 
 	% Create a label internal to a Mercury procedure.
-:- pred code_util__make_internal_label(module_info, pred_id, proc_id, int,
-		label).
-:- mode code_util__make_internal_label(in, in, in, in, out) is det.
+:- pred code_util__make_internal_label(module_info::in,
+	pred_id::in, proc_id::in, int::in, label::out) is det.
 
-:- pred code_util__extract_proc_label_from_code_addr(code_addr, proc_label).
-:- mode code_util__extract_proc_label_from_code_addr(in, out) is det.
+:- pred code_util__extract_proc_label_from_code_addr(code_addr::in,
+	proc_label::out) is det.
 
-:- pred code_util__extract_proc_label_from_label(label, proc_label).
-:- mode code_util__extract_proc_label_from_label(in, out) is det.
+:- pred code_util__extract_proc_label_from_label(label::in, proc_label::out)
+	is det.
 
-:- pred code_util__arg_loc_to_register(arg_loc, lval).
-:- mode code_util__arg_loc_to_register(in, out) is det.
+:- pred code_util__arg_loc_to_register(arg_loc::in, lval::out) is det.
 
-:- pred code_util__max_mentioned_reg(list(lval), int).
-:- mode code_util__max_mentioned_reg(in, out) is det.
+:- pred code_util__max_mentioned_reg(list(lval)::in, int::out) is det.
 
-:- pred code_util__goal_may_alloc_temp_frame(hlds_goal).
-:- mode code_util__goal_may_alloc_temp_frame(in) is semidet.
+:- pred code_util__goal_may_alloc_temp_frame(hlds_goal::in) is semidet.
 
 	% Negate a condition.
 	% This is used mostly just to make the generated code more readable.
 
-:- pred code_util__neg_rval(rval, rval).
-:- mode code_util__neg_rval(in, out) is det.
+:- pred code_util__neg_rval(rval::in, rval::out) is det.
 
-:- pred code_util__negate_the_test(list(instruction), list(instruction)).
-:- mode code_util__negate_the_test(in, out) is det.
+:- pred code_util__negate_the_test(list(instruction)::in,
+	list(instruction)::out) is det.
 
 	% These predicates return the set of lvals referenced in an rval
 	% and an lval respectively. Lvals referenced indirectly through
 	% lvals of the form var(_) are not counted.
 
-:- pred code_util__lvals_in_rval(rval, list(lval)).
-:- mode code_util__lvals_in_rval(in, out) is det.
-
-:- pred code_util__lvals_in_lval(lval, list(lval)).
-:- mode code_util__lvals_in_lval(in, out) is det.
-
-:- pred code_util__lvals_in_lvals(list(lval), list(lval)).
-:- mode code_util__lvals_in_lvals(in, out) is det.
+:- pred code_util__lvals_in_rval(rval::in, list(lval)::out) is det.
+:- pred code_util__lvals_in_lval(lval::in, list(lval)::out) is det.
+:- pred code_util__lvals_in_lvals(list(lval)::in, list(lval)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -123,9 +110,9 @@ code_util__make_entry_label(ModuleInfo, PredId, ProcId, Immed, ProcAddr) :-
 code_util__make_entry_label_from_rtti(RttiProcLabel, Immed, ProcAddr) :-
 	(
 		(
-			RttiProcLabel^is_imported = yes
+			RttiProcLabel ^ is_imported = yes
 		;
-			RttiProcLabel^is_pseudo_imported = yes,
+			RttiProcLabel ^ is_pseudo_imported = yes,
 			% only the (in, in) mode of unification is imported
 			hlds_pred__in_in_unification_proc_id(
 				RttiProcLabel^proc_id)
@@ -144,9 +131,8 @@ code_util__make_local_entry_label(ModuleInfo, PredId, ProcId, Immed, Label) :-
 	code_util__make_local_entry_label_from_rtti(RttiProcLabel,
 		Immed, Label).
 
-:- pred code_util__make_local_entry_label_from_rtti(rtti_proc_label, immed,
-		label).
-:- mode code_util__make_local_entry_label_from_rtti(in, in, out) is det.
+:- pred code_util__make_local_entry_label_from_rtti(rtti_proc_label::in,
+	immed::in, label::out) is det.
 
 code_util__make_local_entry_label_from_rtti(RttiProcLabel, Immed, Label) :-
 	ProcLabel = make_proc_label_from_rtti(RttiProcLabel),
@@ -155,7 +141,7 @@ code_util__make_local_entry_label_from_rtti(RttiProcLabel, Immed, Label) :-
 		% If we want to define the label or use it to put it
 		% into a data structure, a label that is usable only
 		% within the current C module won't do.
-		( RttiProcLabel^is_exported = yes ->
+		( RttiProcLabel ^ is_exported = yes ->
 			Label = exported(ProcLabel)
 		;
 			Label = local(ProcLabel)
@@ -167,9 +153,8 @@ code_util__make_local_entry_label_from_rtti(RttiProcLabel, Immed, Label) :-
 			ProcLabel, Label)
 	).
 
-:- pred choose_local_label_type(int, pred_id, proc_id,
-		pred_id, proc_id, proc_label, label).
-:- mode choose_local_label_type(in, in, in, in, in, in, out) is det.
+:- pred choose_local_label_type(int::in, pred_id::in, proc_id::in,
+	pred_id::in, proc_id::in, proc_label::in, label::out) is det.
 
 choose_local_label_type(ProcsPerFunc, CurPredId, CurProcId,
 		PredId, ProcId, ProcLabel, Label) :-
@@ -336,8 +321,7 @@ code_util__neg_rval(Rval, NegRval) :-
 		NegRval = unop(not, Rval)
 	).
 
-:- pred code_util__neg_rval_2(rval, rval).
-:- mode code_util__neg_rval_2(in, out) is semidet.
+:- pred code_util__neg_rval_2(rval::in, rval::out) is semidet.
 
 code_util__neg_rval_2(const(Const), const(NegConst)) :-
 	(
@@ -349,8 +333,7 @@ code_util__neg_rval_2(unop(not, Rval), Rval).
 code_util__neg_rval_2(binop(Op, X, Y), binop(NegOp, X, Y)) :-
 	code_util__neg_op(Op, NegOp).
 
-:- pred code_util__neg_op(binary_op, binary_op).
-:- mode code_util__neg_op(in, out) is semidet.
+:- pred code_util__neg_op(binary_op::in, binary_op::out) is semidet.
 
 code_util__neg_op(eq, ne).
 code_util__neg_op(ne, eq).
@@ -432,8 +415,7 @@ code_util__lvals_in_lval(temp(_, _), []).
 code_util__lvals_in_lval(mem_ref(Rval), Lvals) :-
 	code_util__lvals_in_rval(Rval, Lvals).
 
-:- pred code_util__lvals_in_mem_ref(mem_ref, list(lval)).
-:- mode code_util__lvals_in_mem_ref(in, out) is det.
+:- pred code_util__lvals_in_mem_ref(mem_ref::in, list(lval)::out) is det.
 
 code_util__lvals_in_mem_ref(stackvar_ref(_), []).
 code_util__lvals_in_mem_ref(framevar_ref(_), []).

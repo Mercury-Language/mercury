@@ -93,8 +93,14 @@
 :- pred hlds_out__write_call_arg_id(call_id::in, int::in, pred_markers::in,
 	io::di, io::uo) is det.
 
+	% Print "predicate" or "function" depending on the given value.
 :- pred hlds_out__write_pred_or_func(pred_or_func::in, io::di, io::uo) is det.
 
+	% Return "predicate" or "function" depending on the given value.
+:- pred hlds_out__pred_or_func_to_full_str(pred_or_func::in, string::out)
+	is det.
+
+	% Return "pred" or "func" depending on the given value.
 :- pred hlds_out__pred_or_func_to_str(pred_or_func::in, string::out) is det.
 
 	% hlds_out__write_unify_context/5 writes out a message such as
@@ -592,6 +598,9 @@ hlds_out__write_pred_or_func(predicate, !IO) :-
 
 hlds_out__write_pred_or_func(function, !IO) :-
 	io__write_string("function", !IO).
+
+hlds_out__pred_or_func_to_full_str(predicate, "predicate").
+hlds_out__pred_or_func_to_full_str(function, "function").
 
 hlds_out__pred_or_func_to_str(predicate, "pred").
 hlds_out__pred_or_func_to_str(function, "func").
