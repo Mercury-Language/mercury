@@ -45,12 +45,6 @@ case $HOST in
 	mars)		ARCH=i686	FULLARCH=i686-pc-linux-gnu ;;
 	*)		echo "$0: unknown HOST $HOST" 1>&2; exit 1 ;;
 esac
-	
-case $HOST in
-	kryten|taifun) 	mail="rsh mundook /bin/mail" ;;
-	hydra|ender|roy|venus|earth|mars) mail=/usr/bin/mail ;;
-	*)		mail=/bin/mail ;;
-esac
 
 #-----------------------------------------------------------------------------#
 
@@ -127,8 +121,6 @@ logfile="$tm_dir/logs/$logname"
 tmpfile=/tmp/run_test$$
 trap 'rm -f $tmpfile $tmpscript; exit 1' 1 2 3 13 15
 {
-echo "Subject: Mercury auto-test: $BRANCH $HOST $C_COMPILER"
-echo
 if nice -5 sh $tmpscript $HOST $ARCH $FULLARCH $BRANCH $C_COMPILER \
 		> $logfile 2>&1
 then
@@ -157,6 +149,7 @@ then
 		size mercury_compile
 		echo
 	} >> $tm_dir/logs/sizes
+	test_status="succeeded"
 else
 	fgrep '**' $logfile > $logfile.errs
 	echo test FAILED
@@ -165,11 +158,15 @@ else
 	echo
 	echo last 20 lines of log file:
 	tail -20 $logfile
+	test_status="FAILED"
 fi
 } > $tmpfile 2>&1
-# NB we can't just pipe into $mail, because $mail times out while
+
+# NB we can't just pipe into `mail', because `mail' times out while
 # waiting for the message.  So we need to use a temp file.
-$mail fjh < $tmpfile
+# XXX This may not be necessary now we're using mutt on the local
+# machine to send the mail.
+mutt -s "test_mercury $test_status: $BRANCH $HOST $C_COMPILER" stayl < $tmpfile
 rm -f $tmpfile $tmpscript
 
 #-----------------------------------------------------------------------------#
