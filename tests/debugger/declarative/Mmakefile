@@ -25,6 +25,7 @@ DECLARATIVE_PROGS=		\
 	big			\
 	comp_gen		\
 	filter			\
+	func_call		\
 	gcf			\
 	if_then_else		\
 	lpe_example		\
@@ -110,6 +111,9 @@ family.out: family family.inp
 
 filter.out: filter filter.inp
 	$(MDB) ./filter < filter.inp > filter.out 2>&1
+
+func_call.out: func_call func_call.inp
+	$(MDB) ./func_call < func_call.inp > func_call.out 2>&1
 
 gcf.out: gcf gcf.inp
 	$(MDB) ./gcf < gcf.inp > gcf.out 2>&1

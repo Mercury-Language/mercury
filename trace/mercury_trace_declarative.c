@@ -584,7 +584,7 @@ MR_trace_decl_fail(MR_Event_Info *event_info, MR_Trace_Node prev)
 #endif
 
 	MR_TRACE_CALL_MERCURY(
-		redo = MR_DD_call_node_get_last_interface( (MR_Word) call);
+		redo = MR_DD_call_node_get_last_interface((MR_Word) call);
 		node = (MR_Trace_Node) MR_DD_construct_fail_node(
 					(MR_Word) prev, (MR_Word) call,
 					(MR_Word) redo,
@@ -1023,6 +1023,7 @@ static	MR_Word
 MR_decl_make_atom(const MR_Stack_Layout_Label *layout, MR_Word *saved_regs,
 		MR_Trace_Port port)
 {
+	MR_PredFunc			pred_or_func;
 	MR_ConstString			name;
 	MR_Word				arity;
 	MR_Word				atom;
@@ -1037,11 +1038,15 @@ MR_decl_make_atom(const MR_Stack_Layout_Label *layout, MR_Word *saved_regs,
 	name = MR_decl_atom_name(entry);
 	if (MR_ENTRY_LAYOUT_COMPILER_GENERATED(layout->MR_sll_entry)) {
 		arity = entry->MR_sle_comp.MR_comp_arity;
+		pred_or_func = MR_PREDICATE;
 	} else {
 		arity = entry->MR_sle_user.MR_user_arity;
+		pred_or_func = entry->MR_sle_user.MR_user_pred_or_func;
 	}
 	MR_TRACE_CALL_MERCURY(
-		atom = MR_DD_construct_trace_atom((MR_String) name,
+		atom = MR_DD_construct_trace_atom(
+				(MR_Word) pred_or_func,
+				(MR_String) name,
 				(MR_Word) arity);
 	);
 

@@ -26,23 +26,23 @@ mdb> continue
 mdb> continue
       19:      2  2 EXIT pred app:app/3-0 (det) app.m:26 (app.m:13)
 mdb> dd
-app
+pred app
 	[1, 2, 3, 4, 5]
 	[6, 7, 8]
 	[1, 2, 3, 4, 5, 6, 7, 8]
 Valid? no
-app
+pred app
 	[2, 3, 4, 5]
 	[6, 7, 8]
 	[2, 3, 4, 5, 6, 7, 8]
 Valid? no
-app
+pred app
 	[3, 4, 5]
 	[6, 7, 8]
 	[3, 4, 5, 6, 7, 8]
 Valid? no
 Found incorrect contour:
-app
+pred app
 	[3, 4, 5]
 	[6, 7, 8]
 	[3, 4, 5, 6, 7, 8]
@@ -58,58 +58,58 @@ append([1, 2, 3, 4, 5], [6, 7, 8], [1, 2, 3, 4, 5, 6, 7, 8]).
 mdb> finish -n
       71:     10  2 EXIT pred app:app/3-0 (det) app.m:26 (app.m:18)
 mdb> dd
-app
+pred app
 	.(1, .(2, .(3, ./2)))
 	[6, 7, 8]
 	.(1, .(2, .(3, ./2)))
 Valid? no
-app
+pred app
 	.(2, .(3, .(4, ./2)))
 	[6, 7, 8]
 	.(2, .(3, .(4, ./2)))
 Valid? no
-app
+pred app
 	.(3, .(4, .(5, ./2)))
 	[6, 7, 8]
 	.(3, .(4, .(5, ./2)))
 Valid? no
-app
+pred app
 	.(4, .(5, .(6, ./2)))
 	[6, 7, 8]
 	.(4, .(5, .(6, ./2)))
 Valid? no
-app
+pred app
 	.(5, .(6, .(7, ./2)))
 	[6, 7, 8]
 	.(5, .(6, .(7, ./2)))
 Valid? no
-app
+pred app
 	.(6, .(7, .(8, ./2)))
 	[6, 7, 8]
 	.(6, .(7, .(8, ./2)))
 Valid? no
-app
+pred app
 	[7, 8, 9, 0, 1, 2, 3, 4, 5]
 	[6, 7, 8]
 	.(7, .(8, .(9, ./2)))
 Valid? no
-app
+pred app
 	[8, 9, 0, 1, 2, 3, 4, 5]
 	[6, 7, 8]
 	.(8, .(9, .(0, ./2)))
 Valid? no
-app
+pred app
 	[9, 0, 1, 2, 3, 4, 5]
 	[6, 7, 8]
 	.(9, .(0, .(1, ./2)))
 Valid? no
-app
+pred app
 	[0, 1, 2, 3, 4, 5]
 	[6, 7, 8]
 	[0, 1, 2, 3, 4, 5, 6, 7, 8]
 Valid? no
 Found incorrect contour:
-app
+pred app
 	[3, 4, 5]
 	[6, 7, 8]
 	[3, 4, 5, 6, 7, 8]

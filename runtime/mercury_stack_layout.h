@@ -22,7 +22,7 @@
 /*-------------------------------------------------------------------------*/
 /*
 ** Definitions for MR_PredFunc. This enum should EXACTLY match the definition
-** of the `pred_or_func' type in browser/debugger_interface.
+** of the `pred_or_func' type in browser/util.m.
 */
 
 typedef	enum { MR_PREDICATE, MR_FUNCTION } MR_PredFunc;
