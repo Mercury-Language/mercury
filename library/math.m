@@ -244,6 +244,14 @@
 
 ").
 
+:- pragma foreign_code("Java", "
+
+	// As for .NET, java does not have a built-in ln2
+
+	private static final double ML_FLOAT_LN2 = 0.69314718055994530941;
+
+").
+
 :- pred domain_checks is semidet.
 
 :- pragma foreign_proc("C", domain_checks,
@@ -264,6 +272,11 @@
 #endif
 ").
 
+:- pragma foreign_proc("Java", domain_checks,
+		[thread_safe, promise_pure], "
+	succeeded = true;
+").
+
 %
 % Mathematical constants from math.m
 %
@@ -276,6 +289,10 @@
 :- pragma foreign_proc("C#", math__pi = (Pi::out),
 		[will_not_call_mercury, promise_pure, thread_safe],"
 	Pi = System.Math.PI;
+").
+:- pragma foreign_proc("Java", math__pi = (Pi::out),
+		[will_not_call_mercury, promise_pure, thread_safe],"
+	Pi = java.lang.Math.PI;
 ").
 	% This version is only used for back-ends for which there is no
 	% matching foreign_proc version.  We define this with sufficient
@@ -292,6 +309,10 @@ math__pi = 3.1415926535897932384626433832795029.
 :- pragma foreign_proc("C#", math__e = (E::out),
 		[will_not_call_mercury, promise_pure, thread_safe],"
 	E = System.Math.E;
+").
+:- pragma foreign_proc("Java", math__e = (E::out),
+		[will_not_call_mercury, promise_pure, thread_safe],"
+	E = java.lang.Math.E;
 ").
 	% This version is only used for back-ends for which there is no
 	% matching foreign_proc version.  We define this with sufficient
@@ -314,6 +335,11 @@ math__e = 2.7182818284590452353602874713526625.
 "
 	Ceil = System.Math.Ceiling(Num);
 ").
+:- pragma foreign_proc("Java", math__ceiling(Num::in) = (Ceil::out),
+		[will_not_call_mercury, promise_pure, thread_safe],
+"
+	Ceil = java.lang.Math.ceil(Num);
+").
 
 %
 % math__floor(X) = Floor is true if Floor is the largest integer
@@ -328,6 +354,11 @@ math__e = 2.7182818284590452353602874713526625.
 		[will_not_call_mercury, promise_pure, thread_safe],
 "
 	Floor = System.Math.Floor(Num);
+").
+:- pragma foreign_proc("Java", math__floor(Num::in) = (Floor::out),
+		[will_not_call_mercury, promise_pure, thread_safe],
+"
+	Floor = java.lang.Math.floor(Num);
 ").
 
 %
@@ -347,6 +378,11 @@ math__e = 2.7182818284590452353602874713526625.
 	// XXX the semantics of System.Math.Round() are not the same as ours.
 	// Unfortunately they are better (round to nearest even number).
 	Rounded = System.Math.Floor(Num+0.5);
+").
+:- pragma foreign_proc("Java", math__round(Num::in) = (Rounded::out),
+		[will_not_call_mercury, promise_pure, thread_safe],
+"
+	Rounded = java.lang.Math.round(Num);
 ").
 math__round(Num) = math__floor(Num + 0.5).
 
@@ -379,6 +415,10 @@ math__sqrt(X) = SquareRoot :-
 :- pragma foreign_proc("C#", math__sqrt_2(X::in) = (SquareRoot::out),
 		[thread_safe, promise_pure], "
 	SquareRoot = System.Math.Sqrt(X);
+").
+:- pragma foreign_proc("Java", math__sqrt_2(X::in) = (SquareRoot::out),
+		[thread_safe, promise_pure], "
+	SquareRoot = java.lang.Math.sqrt(X);
 ").
 	% This version is only used for back-ends for which there is no
 	% matching foreign_proc version.
@@ -460,9 +500,14 @@ math__pow(X, Y) = Res :-
 	Res = System.Math.Pow(X, Y);
 ").
 
+:- pragma foreign_proc("Java", math__pow_2(X::in, Y::in) = (Res::out),
+		[thread_safe, promise_pure], "
+	Res = java.lang.Math.pow(X, Y);
+").
+
 %
-% math__exp(X) = Exp is true if Exp is X raised to the
-% power of e.
+% math__exp(X) = Exp is true if Exp is e raised to the
+% power of X.
 %
 :- pragma foreign_proc("C", math__exp(X::in) = (Exp::out),
 		[will_not_call_mercury, promise_pure, thread_safe],"
@@ -471,6 +516,10 @@ math__pow(X, Y) = Res :-
 :- pragma foreign_proc("C#", math__exp(X::in) = (Exp::out),
 		[will_not_call_mercury, promise_pure, thread_safe],"
 	Exp = System.Math.Exp(X);
+").
+:- pragma foreign_proc("Java", math__exp(X::in) = (Exp::out),
+		[will_not_call_mercury, promise_pure, thread_safe],"
+	Exp = java.lang.Math.exp(X);
 ").
 
 %
@@ -497,6 +546,10 @@ math__ln(X) = Log :-
 		[thread_safe, promise_pure], "
 	Log = System.Math.Log(X);
 ").
+:- pragma foreign_proc("Java", math__ln_2(X::in) = (Log::out),
+		[thread_safe, promise_pure], "
+	Log = java.lang.Math.log(X);
+").
 
 %
 % math__log10(X) = Log is true if Log is the logarithm to
@@ -522,6 +575,7 @@ math__log10(X) = Log :-
 		[thread_safe, promise_pure], "
 	Log10 = System.Math.Log10(X);
 ").
+% Java doesn't have a built-in log10, so default to mercury here.
 math__log10_2(X) = math__ln_2(X) / math__ln_2(10.0).
 
 %
@@ -547,6 +601,10 @@ math__log2(X) = Log :-
 :- pragma foreign_proc("C#", math__log2_2(X::in) = (Log2::out),
 		[thread_safe, promise_pure], "
 	Log2 = System.Math.Log(X) / ML_FLOAT_LN2;
+").
+:- pragma foreign_proc("Java", math__log2_2(X::in) = (Log2::out),
+		[thread_safe, promise_pure], "
+	Log2 = java.lang.Math.log(X) / ML_FLOAT_LN2;
 ").
 math__log2_2(X) = math__ln_2(X) / math__ln_2(2.0).
 
@@ -582,6 +640,7 @@ math__log(B, X) = Log :-
 		[thread_safe, promise_pure], "
 	Log = System.Math.Log(X, B);
 ").
+% Java implementation will default to mercury here.
 math__log_2(X, B) = math__ln_2(X) / math__ln_2(B).
 
 %
@@ -594,6 +653,10 @@ math__log_2(X, B) = math__ln_2(X) / math__ln_2(B).
 :- pragma foreign_proc("C#", math__sin(X::in) = (Sin::out),
 		[will_not_call_mercury, promise_pure, thread_safe],"
 	Sin = System.Math.Sin(X);
+").
+:- pragma foreign_proc("Java", math__sin(X::in) = (Sin::out),
+		[will_not_call_mercury, promise_pure, thread_safe],"
+	Sin = java.lang.Math.sin(X);
 ").
 
 
@@ -608,6 +671,10 @@ math__log_2(X, B) = math__ln_2(X) / math__ln_2(B).
 		[will_not_call_mercury, promise_pure, thread_safe],"
 	Cos = System.Math.Cos(X);
 ").
+:- pragma foreign_proc("Java", math__cos(X::in) = (Cos::out),
+		[will_not_call_mercury, promise_pure, thread_safe],"
+	Cos = java.lang.Math.cos(X);
+").
 
 %
 % math__tan(X) = Tan is true if Tan is the tangent of X.
@@ -619,6 +686,10 @@ math__log_2(X, B) = math__ln_2(X) / math__ln_2(B).
 :- pragma foreign_proc("C#", math__tan(X::in) = (Tan::out),
 		[will_not_call_mercury, promise_pure, thread_safe],"
 	Tan = System.Math.Tan(X);
+").
+:- pragma foreign_proc("Java", math__tan(X::in) = (Tan::out),
+		[will_not_call_mercury, promise_pure, thread_safe],"
+	Tan = java.lang.Math.tan(X);
 ").
 
 %
@@ -650,6 +721,10 @@ math__asin(X) = ASin :-
 		[thread_safe, promise_pure], "
 	ASin = System.Math.Asin(X);
 ").
+:- pragma foreign_proc("Java", math__asin_2(X::in) = (ASin::out),
+		[thread_safe, promise_pure], "
+	ASin = java.lang.Math.asin(X);
+").
 
 %
 % math__acos(X) = ACos is true if ACos is the inverse
@@ -680,6 +755,10 @@ math__acos(X) = ACos :-
 		[thread_safe, promise_pure], "
 	ACos = System.Math.Acos(X);
 ").
+:- pragma foreign_proc("Java", math__acos_2(X::in) = (ACos::out),
+		[thread_safe, promise_pure], "
+	ACos = java.lang.Math.acos(X);
+").
 
 
 %
@@ -694,6 +773,10 @@ math__acos(X) = ACos :-
 		[will_not_call_mercury, promise_pure, thread_safe],"
 	ATan = System.Math.Atan(X);
 ").
+:- pragma foreign_proc("Java", math__atan(X::in) = (ATan::out),
+		[will_not_call_mercury, promise_pure, thread_safe],"
+	ATan = java.lang.Math.atan(X);
+").
 
 %
 % math__atan2(Y, X) = ATan is true if ATan is the inverse
@@ -706,6 +789,10 @@ math__acos(X) = ACos :-
 :- pragma foreign_proc("C#", math__atan2(Y::in, X::in) = (ATan2::out), 
 		[will_not_call_mercury, promise_pure, thread_safe], "
 	ATan2 = System.Math.Atan2(Y, X);
+").
+:- pragma foreign_proc("Java", math__atan2(Y::in, X::in) = (ATan2::out), 
+		[will_not_call_mercury, promise_pure, thread_safe], "
+	ATan2 = java.lang.Math.atan2(Y, X);
 ").
 
 %
@@ -720,6 +807,9 @@ math__acos(X) = ACos :-
 		[will_not_call_mercury, promise_pure, thread_safe],"
 	Sinh = System.Math.Sinh(X);
 ").
+% Java doesn't have any hyperbolic functions built in.
+math__sinh(X) = Sinh :-
+	Sinh = (exp(X)-exp(-X)) / 2.0.
 
 %
 % math__cosh(X) = Cosh is true if Cosh is the hyperbolic
@@ -733,6 +823,9 @@ math__acos(X) = ACos :-
 		[will_not_call_mercury, promise_pure, thread_safe],"
 	Cosh = System.Math.Cosh(X);
 ").
+% Java doesn't have any hyperbolic functions built in.
+math__cosh(X) = Cosh :-
+	Cosh = (exp(X)+exp(-X)) / 2.0.
 
 %
 % math__tanh(X) = Tanh is true if Tanh is the hyperbolic
@@ -746,6 +839,9 @@ math__acos(X) = ACos :-
 		[will_not_call_mercury, promise_pure, thread_safe],"
 	Tanh = System.Math.Tanh(X);
 ").
+% Java doesn't have any hyperbolic functions built in.
+math__tanh(X) = Tanh :-
+	Tanh = (exp(X)-exp(-X)) / (exp(X)+exp(-X)).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
