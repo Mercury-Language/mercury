@@ -22,9 +22,6 @@ MR_get_arg_type_info(const MR_TypeInfoParams type_info_params,
 
 /*---------------------------------------------------------------------------*/
 
-extern	struct MR_TypeCtorInfo_struct	mercury_data___type_ctor_info_pred_0;
-extern	struct MR_TypeCtorInfo_struct	mercury_data___type_ctor_info_func_0;
-
 #define	usual_func		MR_make_type_info
 #define	exist_func		MR_make_type_info_maybe_existq
 #define	exist_func_string	"MR_make_type_info_maybe_existq"
