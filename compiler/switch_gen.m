@@ -49,7 +49,8 @@
 :- mode switch_gen__generate_switch(in, in, in, in, in, in, out, in, out)
 	is det.
 
-% These types are exported to dense_switch, string_switch and tag_switch.
+% The following types are exported to the modules that implement
+% specialized kinds of switches.
 
 :- type extended_case ---> case(int, cons_tag, cons_id, hlds_goal).
 :- type cases_list == list(extended_case).
