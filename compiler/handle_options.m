@@ -402,6 +402,10 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 	%   - using no tags
 	%	  Because Java doesn't provide any mechanism for tagging
 	%	  pointers.
+	%   - box no-tag types
+	%         We require no-tag types to be boxed since in Java 
+	%         java.lang.Object is the only type that all other types
+	%         can be successfully cast to and then cast back from.
 	%   - store nondet environments on the heap
 	%         Because Java has no way of allocating structs on the stack.
 	%   - no static ground terms
@@ -425,6 +429,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 		globals__io_set_option(nondet_copy_out, bool(yes)),
 		globals__io_set_option(det_copy_out, bool(yes)),
 		globals__io_set_option(num_tag_bits, int(0)),
+		globals__io_set_option(unboxed_no_tag_types, bool(no)),
 		globals__io_set_option(static_ground_terms, bool(no)),
 		globals__io_set_option(put_nondet_env_on_heap, bool(yes)),
 
