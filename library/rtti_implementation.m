@@ -28,6 +28,10 @@
 
 :- interface.
 
+:- import_module list.
+
+:- use_module std_util.
+
 	% Our type_info and type_ctor_info implementations are both
 	% abstract types.
 :- type type_info.
@@ -42,12 +46,26 @@
 :- pred compare_type_infos(comparison_result::out,
 		type_info::in, type_info::in) is det.
 
+:- pred type_ctor_and_args(type_info::in,
+		type_ctor_info::out,
+		list(type_info)::out) is det.
+
+:- pred type_ctor_name_and_arity(type_ctor_info::in,
+		string::out, string::out, int::out) is det.
+
+:- pred deconstruct(T::in, string::out, int::out,
+		list(std_util__univ)::out) is det.
+
+	% This is useful in a few places, so we'd like to share the code, but
+	% it's better to put it into an implementation module such as this one.
+:- func unsafe_cast(T1::in) = (T2::out) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module require, string.
+:- import_module require, string, int.
 
 	% std_util has a lot of types and functions with the same names,
 	% so we prefer to keep the namespace separate.
@@ -80,7 +98,7 @@
 	;	array
 	;	succip
 	;	hp
-	;	currfr
+	;	curfr
 	;	maxfr
 	;	redofr
 	;	redoip
@@ -135,26 +153,32 @@ generic_compare(Res, X, Y) :-
 			result_call_4(ComparePred, Res, X, Y)
 		; Arity = 1 ->
 			result_call_5(ComparePred, Res,
-				TypeInfo ^ index(1), X, Y)
+				TypeInfo ^ type_info_index(1), X, Y)
 		; Arity = 2 ->
 			result_call_6(ComparePred, Res,  
-				TypeInfo ^ index(1), TypeInfo ^ index(2), 
+				TypeInfo ^ type_info_index(1),
+				TypeInfo ^ type_info_index(2), 
 				X, Y)
 		; Arity = 3 ->
 			result_call_7(ComparePred, Res,
-				TypeInfo ^ index(1), TypeInfo ^ index(2), 
-				TypeInfo ^ index(3),
+				TypeInfo ^ type_info_index(1),
+				TypeInfo ^ type_info_index(2), 
+				TypeInfo ^ type_info_index(3),
 				X, Y)
 		; Arity = 4 ->
 			result_call_8(ComparePred, Res,
-				TypeInfo ^ index(1), TypeInfo ^ index(2), 
-				TypeInfo ^ index(3), TypeInfo ^ index(4),
+				TypeInfo ^ type_info_index(1),
+				TypeInfo ^ type_info_index(2), 
+				TypeInfo ^ type_info_index(3),
+				TypeInfo ^ type_info_index(4),
 				X, Y)
 		; Arity = 5 ->
 			result_call_9(ComparePred, Res,
-				TypeInfo ^ index(1), TypeInfo ^ index(2), 
-				TypeInfo ^ index(3), TypeInfo ^ index(4),
-				TypeInfo ^ index(5),
+				TypeInfo ^ type_info_index(1),
+				TypeInfo ^ type_info_index(2), 
+				TypeInfo ^ type_info_index(3),
+				TypeInfo ^ type_info_index(4),
+				TypeInfo ^ type_info_index(5),
 				X, Y)
 		;
 			error("compare/3: type arity > 5 not supported")
@@ -180,26 +204,33 @@ generic_unify(X, Y) :-
 		( Arity = 0 ->
 			semidet_call_3(UnifyPred, X, Y)
 		; Arity = 1 ->
-			semidet_call_4(UnifyPred, TypeInfo ^ index(1), X, Y)
+			semidet_call_4(UnifyPred,
+				TypeInfo ^ type_info_index(1), X, Y)
 		; Arity = 2 ->
 			semidet_call_5(UnifyPred, 
-				TypeInfo ^ index(1), TypeInfo ^ index(2), 
+				TypeInfo ^ type_info_index(1),
+				TypeInfo ^ type_info_index(2), 
 				X, Y)
 		; Arity = 3 ->
 			semidet_call_6(UnifyPred, 
-				TypeInfo ^ index(1), TypeInfo ^ index(2), 
-				TypeInfo ^ index(3),
+				TypeInfo ^ type_info_index(1),
+				TypeInfo ^ type_info_index(2), 
+				TypeInfo ^ type_info_index(3),
 				X, Y)
 		; Arity = 4 ->
 			semidet_call_7(UnifyPred, 
-				TypeInfo ^ index(1), TypeInfo ^ index(2), 
-				TypeInfo ^ index(3), TypeInfo ^ index(4),
+				TypeInfo ^ type_info_index(1),
+				TypeInfo ^ type_info_index(2), 
+				TypeInfo ^ type_info_index(3),
+				TypeInfo ^ type_info_index(4),
 				X, Y)
 		; Arity = 5 ->
 			semidet_call_8(UnifyPred, 
-				TypeInfo ^ index(1), TypeInfo ^ index(2), 
-				TypeInfo ^ index(3), TypeInfo ^ index(4),
-				TypeInfo ^ index(5),
+				TypeInfo ^ type_info_index(1),
+				TypeInfo ^ type_info_index(2), 
+				TypeInfo ^ type_info_index(3),
+				TypeInfo ^ type_info_index(4),
+				TypeInfo ^ type_info_index(5),
 				X, Y)
 		;
 			error("unify/2: type arity > 5 not supported")
@@ -414,11 +445,7 @@ compare_collapsed_type_infos(Res, TypeInfo1, TypeInfo2) :-
 			TypeCtorInfo2 ^ type_ctor_module_name),
 		( 
 			Res = (=),
-			TypeCtorInfo1 ^ type_ctor_module_name = "builtin",
-			( TypeCtorInfo1 ^ type_ctor_name = "tuple" 
-			; TypeCtorInfo1 ^ type_ctor_name = "pred" 
-			; TypeCtorInfo1 ^ type_ctor_name = "func" 
-			)
+			type_ctor_is_variable_arity(TypeCtorInfo1)
 		->
 			% XXX code to handle tuples and higher order
 			error("rtti_implementation.m: unimplemented: tuples and higher order type comparisons")
@@ -427,6 +454,12 @@ compare_collapsed_type_infos(Res, TypeInfo1, TypeInfo2) :-
 		)
 	;
 		Res = NameRes
+	).
+
+:- pred type_ctor_is_variable_arity(type_ctor_info::in) is semidet.
+type_ctor_is_variable_arity(TypeCtorInfo) :-
+	( TypeCtorInfo ^ type_ctor_rep = (pred)
+	; TypeCtorInfo ^ type_ctor_rep = tuple
 	).
 
 %-----------------------------------------------------------------------------%
@@ -455,6 +488,471 @@ collapse_equivalences(TypeInfo) = NewTypeInfo :-
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
+
+type_ctor_name_and_arity(TypeCtorInfo, ModuleName, Name, Arity) :-
+	ModuleName = type_ctor_module_name(TypeCtorInfo),
+	Name = type_ctor_name(TypeCtorInfo),
+	Arity = type_ctor_arity(TypeCtorInfo).
+
+type_ctor_and_args(TypeInfo0, TypeCtorInfo, TypeArgs) :-
+	TypeInfo = collapse_equivalences(TypeInfo0),
+	TypeCtorInfo = get_type_ctor_info(TypeInfo),
+	( 
+		type_ctor_is_variable_arity(TypeCtorInfo)
+	->
+		error("rtti_implementation.m: unimplemented: tuples and higher order type comparisons")
+	;
+		Arity = type_ctor_arity(TypeCtorInfo),
+		TypeArgs = iterate(1, Arity,
+			(func(X) = Y :-
+				Y = TypeInfo ^ type_info_index(X)
+			)
+		)
+	).
+
+:- func iterate(int, int, func(int, T)) = list(T).
+iterate(Start, Max, Func) = Results :-
+	( Start =< Max ->
+		Res = Func(Start),
+		Results = [Res | iterate(Start + 1, Max, Func)]
+	;
+		Results = []
+	).
+
+:- pred iterate_foldl(int, int, pred(int, T, T), T, T).
+:- mode iterate_foldl(in, in, pred(in, in, out) is det, in, out) is det.
+iterate_foldl(Start, Max, Pred) -->
+	( { Start =< Max } ->
+		Pred(Start),
+		iterate_foldl(Start + 1, Max, Pred)
+	;
+		[]
+	).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+
+	% Code to perform deconstructions (not yet complete).
+	%
+	% There are many cases to implement here, only the ones that were
+	% immediately useful (e.g. called by io__write) have been implemented
+	% so far.
+
+deconstruct(Term, Functor, Arity, Arguments) :-
+	TypeInfo = get_type_info(Term),
+	TypeCtorInfo = get_type_ctor_info(TypeInfo),
+	TypeCtorRep = type_ctor_rep(TypeCtorInfo),
+	( 
+		TypeCtorRep = enum_usereq,
+		Functor = "some_enum_usereq", 
+		Arity = 0,
+		Arguments = []
+	; 	
+		TypeCtorRep = enum,
+		Functor = "some_enum", 
+		Arity = 0,
+		Arguments = []
+	;
+		TypeCtorRep = du_usereq,
+		Functor = "some_du_usereq", 
+		Arity = 0,
+		Arguments = []
+	;
+		TypeCtorRep = du,
+
+		LayoutInfo = type_layout(TypeCtorInfo),
+		PTag = get_primary_tag(Term),
+		PTagEntry = LayoutInfo ^ ptag_index(PTag),
+		SecTagLocn = PTagEntry ^ sectag_locn,
+		(
+			SecTagLocn = none,
+			FunctorDesc = PTagEntry ^ du_sectag_alternatives(0),
+			Functor = FunctorDesc ^ functor_name,
+			Arity = FunctorDesc ^ functor_arity,
+			Arguments = iterate(0, Arity - 1, 
+				(func(X) = std_util__univ(
+					get_arg(Term, X, SecTagLocn,
+						FunctorDesc, TypeInfo))
+				))
+		;
+			SecTagLocn = local,
+			Functor = "some_du_local_sectag",
+			Arity = 0,
+			Arguments = []
+		;
+			SecTagLocn = remote,
+			SecTag = get_remote_secondary_tag(Term),
+			FunctorDesc = PTagEntry ^
+				du_sectag_alternatives(SecTag),
+			Functor = FunctorDesc ^ functor_name,
+			Arity = FunctorDesc ^ functor_arity,
+			Arguments = iterate(0, Arity - 1, 
+				(func(X) = std_util__univ(
+					get_arg(Term, X, SecTagLocn,
+						FunctorDesc, TypeInfo))
+				))
+		;
+			SecTagLocn = variable,
+			Functor = "some_du_variable_sectag",
+			Arity = 0,
+			Arguments = []
+		)
+	;
+		TypeCtorRep = notag_usereq,
+		Functor = "some_notag_usereq", 
+		Arity = 0,
+		Arguments = []
+	;
+		TypeCtorRep = notag,
+		Functor = "some_notag", 
+		Arity = 0,
+		Arguments = []
+	;
+		TypeCtorRep = notag_ground_usereq,
+		Functor = "some_notag_ground_usereq", 
+		Arity = 0,
+		Arguments = []
+	;
+		TypeCtorRep = notag_ground,
+		Functor = "some_notag_ground", 
+		Arity = 0,
+		Arguments = []
+	;
+		TypeCtorRep = equiv_ground,
+		Functor = "some_equiv_ground", 
+		Arity = 0,
+		Arguments = []
+	;
+		TypeCtorRep = equiv_var,
+		Functor = "some_equiv_var", 
+		Arity = 0,
+		Arguments = []
+	;
+		TypeCtorRep = equiv,
+		Functor = "some_equiv", 
+		Arity = 0,
+		Arguments = []
+	;
+		TypeCtorRep = int,
+		Functor = "some_int", 
+		Arity = 0,
+		Arguments = []
+	;
+		TypeCtorRep = char,
+		Functor = "some_char", 
+		Arity = 0,
+		Arguments = []
+	;
+		TypeCtorRep = float,
+		Functor = "some_float", 
+		Arity = 0,
+		Arguments = []
+	;
+		TypeCtorRep = string,
+		Functor = "some_string", 
+		Arity = 0,
+		Arguments = []
+	;
+		TypeCtorRep = (pred),
+		Functor = "some_pred", 
+		Arity = 0,
+		Arguments = []
+	;
+		TypeCtorRep = tuple,
+		Functor = "some_tuple", 
+		Arity = 0,
+		Arguments = []
+	;
+		TypeCtorRep = univ,
+		Functor = "some_univ", 
+		Arity = 0,
+		Arguments = []
+	;
+		TypeCtorRep = void,
+		Functor = "some_void", 
+		Arity = 0,
+		Arguments = []
+	;
+		TypeCtorRep = c_pointer,
+		Functor = "some_c_pointer", 
+		Arity = 0,
+		Arguments = []
+	;
+		TypeCtorRep = typeinfo,
+		Functor = "some_typeinfo", 
+		Arity = 0,
+		Arguments = []
+	;
+		TypeCtorRep = typeclassinfo,
+		Functor = "some_typeclassinfo", 
+		Arity = 0,
+		Arguments = []
+	;
+		TypeCtorRep = array,
+		Functor = "some_array", 
+		Arity = 0,
+		Arguments = []
+	;
+		TypeCtorRep = succip,
+		Functor = "some_succip", 
+		Arity = 0,
+		Arguments = []
+	;
+		TypeCtorRep = hp,
+		Functor = "some_hp", 
+		Arity = 0,
+		Arguments = []
+	;
+		TypeCtorRep = curfr,
+		Functor = "some_curfr", 
+		Arity = 0,
+		Arguments = []
+	;
+		TypeCtorRep = maxfr,
+		Functor = "some_maxfr", 
+		Arity = 0,
+		Arguments = []
+	;
+		TypeCtorRep = redofr,
+		Functor = "some_redofr", 
+		Arity = 0,
+		Arguments = []
+	;
+		TypeCtorRep = redoip,
+		Functor = "some_redoip", 
+		Arity = 0,
+		Arguments = []
+	;
+		TypeCtorRep = trail_ptr,
+		Functor = "some_trail_ptr", 
+		Arity = 0,
+		Arguments = []
+	;
+		TypeCtorRep = ticket,
+		Functor = "some_ticket", 
+		Arity = 0,
+		Arguments = []
+	;
+		TypeCtorRep = unknown,
+		Functor = "some_unknown", 
+		Arity = 0,
+		Arguments = []
+	).
+	
+
+
+	% Retrieve an argument number from a term, given the functor
+	% descriptor.
+
+:- some [T] func get_arg(
+		U, int, sectag_locn, du_functor_descriptor, type_info) = T.
+
+get_arg(Term, Index, SecTagLocn, FunctorDesc, TypeInfo) = (Arg) :-
+	ArgTypes = FunctorDesc ^ functor_arg_types,
+	PseudoTypeInfo = get_pti_from_arg_types(ArgTypes, Index),
+	( SecTagLocn = none ->
+		TagOffset = 0
+	;
+		TagOffset = 1
+	),
+	ArgTypeInfo = get_type(TypeInfo, PseudoTypeInfo, Term, FunctorDesc),
+	Arg = get_subterm(ArgTypeInfo, Term, Index, TagOffset).
+
+:- func get_type(type_info, P, T, du_functor_descriptor) = type_info.
+
+get_type(TypeInfoParams, PseudoTypeInfo, Term, FunctorDesc) = (ArgTypeInfo) :-
+	( 
+		typeinfo_is_variable(PseudoTypeInfo, VarNum)
+	->
+		ExpandedTypeInfo = get_type_info_for_var(TypeInfoParams,
+			VarNum, Term, FunctorDesc),
+		( typeinfo_is_variable(ExpandedTypeInfo, _) ->
+			error("unbound type variable")
+		;
+			ArgTypeInfo = ExpandedTypeInfo
+		)
+	;
+		CastTypeInfo = type_info_cast(PseudoTypeInfo),
+		TypeCtorInfo = get_type_ctor_info(CastTypeInfo),
+		( 
+			type_ctor_is_variable_arity(TypeCtorInfo)
+		->
+			Arity = pseudotypeinfo_get_higher_order_arity(
+				CastTypeInfo),
+			StartRegionSize = 2
+		;
+			Arity = TypeCtorInfo ^ type_ctor_arity,
+			StartRegionSize = 1
+		),
+		ArgTypeInfo0 = std_util__no,
+		UpperBound = Arity + StartRegionSize - 1,
+
+		iterate_foldl(StartRegionSize, UpperBound,
+			(pred(I::in, TI0::in, TI::out) is det :-
+
+				PTI = get_pti_from_type_info(CastTypeInfo, I),
+				ETypeInfo = get_type(
+					TypeInfoParams, PTI, Term, FunctorDesc),
+						% this comparison is not
+						% right...???
+				( 
+					same_pointer_value_untyped(
+						ETypeInfo, PTI)
+				->
+					TI = TI0
+				;
+					TI0 = std_util__yes(TypeInfo)
+				->
+					update_type_info_index(I, 
+						TypeInfo, ETypeInfo),
+					TI = std_util__yes(TypeInfo)
+				;
+					NewTypeInfo = new_type_info(
+						CastTypeInfo, UpperBound),
+					update_type_info_index(I, 
+						NewTypeInfo, ETypeInfo),
+					TI = std_util__yes(NewTypeInfo)
+				)
+			), ArgTypeInfo0, MaybeArgTypeInfo),
+		( MaybeArgTypeInfo = std_util__yes(ArgTypeInfo1) ->
+			ArgTypeInfo = ArgTypeInfo1
+		;
+			ArgTypeInfo = CastTypeInfo
+		)
+	).
+
+
+	% XXX this is completely unimplemented.
+:- func pseudotypeinfo_get_higher_order_arity(type_info) = int.
+pseudotypeinfo_get_higher_order_arity(_) = 1 :-
+	det_unimplemented("pseudotypeinfo_get_higher_order_arity").
+
+
+	% Make a new type-info with the given arity, using the given type_info
+	% as the basis.
+
+:- func new_type_info(type_info, int) = type_info.
+new_type_info(TypeInfo::in, _::in) = (TypeInfo::out) :- 
+	det_unimplemented("new_type_info").
+
+:- pragma foreign_proc("C#",
+	new_type_info(OldTypeInfo::in, Arity::in) = (NewTypeInfo::out), [], "
+	NewTypeInfo = new object[Arity + 1];
+	System.Array.Copy(OldTypeInfo, NewTypeInfo, OldTypeInfo.Length);
+").
+
+
+	% Get the pseudo-typeinfo at the given index from the argument types.
+	
+:- some [T] func get_pti_from_arg_types(arg_types, int) = T.
+
+get_pti_from_arg_types(_::in, _::in) = (42::out) :-
+	det_unimplemented("get_pti_from_arg_types").
+
+:- pragma foreign_proc("C#",
+	get_pti_from_arg_types(ArgTypes::in, Index::in) =
+		(ArgTypeInfo::out), [], "
+	ArgTypeInfo = ArgTypes[Index];
+").
+
+
+	% Get the pseudo-typeinfo at the given index from a type-info.
+
+:- some [T] func get_pti_from_type_info(type_info, int) = T.
+
+get_pti_from_type_info(_::in, _::in) = (42::out) :-
+	det_unimplemented("get_pti_from_type_info").
+
+:- pragma foreign_proc("C#",
+	get_pti_from_type_info(TypeInfo::in, Index::in) = (PTI::out), [], "
+	PTI = TypeInfo[Index];
+").
+
+
+
+	% Get the type info for a particular type variable number
+	% (it might be in the type_info or in the term itself).
+	%
+	% XXX existentially quantified vars are not yet handled.
+	
+:- func get_type_info_for_var(
+		type_info, int, T, du_functor_descriptor) = type_info.
+
+get_type_info_for_var(TypeInfo, VarNum, _Term, _FunctorDesc) = ArgTypeInfo :-
+	(
+		type_variable_is_univ_quant(VarNum) 
+	->
+		ArgTypeInfo = TypeInfo ^ type_info_index(VarNum)
+	;
+		error("get_type_info_for_var for exist quant vars")
+	).
+
+
+	% An unchecked cast to type_info (for pseudo-typeinfos).
+
+:- func type_info_cast(T) = type_info.
+
+type_info_cast(X::in) = (unsafe_cast(X)::out) :-
+	det_unimplemented("type_info_cast").
+
+:- pragma foreign_proc("C#",
+	type_info_cast(PseudoTypeInfo::in) = (TypeInfo::out), [], "
+
+	TypeInfo = (object[]) PseudoTypeInfo;
+").
+
+
+	% Get a subterm term, given its type_info, the original term, its
+	% index and the start region size.
+
+:- some [T] func get_subterm(type_info, U, int, int) = T.
+
+get_subterm(_::in, _::in, _::in, _::in) = (42::out) :-
+	det_unimplemented("get_subterm").
+
+:- pragma foreign_proc("C#",
+	get_subterm(TypeInfo::in, Term::in, Index::in,
+		TagOffset::in) = (Arg::out), [], "
+	Arg = ((object[]) Term)[Index + TagOffset];
+	TypeInfo_for_T = TypeInfo;
+").
+
+
+	% Test whether a type info is variable.
+
+:- pred typeinfo_is_variable(T::in, int::out) is semidet.
+
+typeinfo_is_variable(_::in, 42::out) :-
+	std_util__semidet_succeed,
+	det_unimplemented("typeinfo_is_variable").
+
+:- pragma foreign_proc("MC++",
+	typeinfo_is_variable(TypeInfo::in, VarNum::out), [], "
+	SUCCESS_INDICATOR = (dynamic_cast<MR_Word>(TypeInfo) == NULL);
+	if (SUCCESS_INDICATOR) {
+		VarNum = System::Convert::ToInt32(TypeInfo);
+	}
+").
+
+
+	% Tests for universal and existentially quantified variables.
+
+:- pred type_variable_is_univ_quant(int::in) is semidet.
+:- pred type_variable_is_exist_quant(int::in) is semidet.
+
+type_variable_is_exist_quant(X) :- X > pseudotypeinfo_exist_var_base.
+type_variable_is_univ_quant(X) :- X =< pseudotypeinfo_exist_var_base.
+
+:- func pseudotypeinfo_exist_var_base = int.
+:- func pseudotypeinfo_max_var = int.
+
+pseudotypeinfo_exist_var_base = 512.
+pseudotypeinfo_max_var = 1024.
+
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 %
 % XXX we have only implemented the .NET backend for the low-level data case.
 
@@ -466,16 +964,34 @@ collapse_equivalences(TypeInfo) = NewTypeInfo :-
 	// Fill this in as you add new field accessors.
 
 	enum type_ctor_info_field_nums {
-		type_ctor_arity = 0,
-		type_ctor_unify_pred = 1,
-		type_ctor_compare_pred = 3,
-		type_ctor_rep = 4,
-		type_ctor_module_name = 7,
-		type_ctor_name = 8,
-		type_functors = 10,
-		type_layout = 11,
-		type_ctor_num_functors = 12,
-		type_ctor_num_ptags = 13
+		type_ctor_arity 	= 0,
+		type_ctor_unify_pred 	= 1,
+		type_ctor_compare_pred	= 3,
+		type_ctor_rep		= 4,
+		type_ctor_module_name	= 7,
+		type_ctor_name		= 8,
+		type_functors		= 10,
+		type_layout		= 11,
+		type_ctor_num_functors	= 12,
+		type_ctor_num_ptags	= 13
+	}
+
+	enum ptag_layout_field_nums {
+		sectag_sharers		= 0,
+		sectag_locn		= 1,
+		sectag_alternatives	= 2
+	}
+
+	enum du_functor_field_nums {
+		du_functor_name		= 0,
+		du_functor_orig_arity	= 1,
+		du_functor_arg_type_contains_var = 2,
+		du_functor_sectag_locn	= 3,
+		du_functor_primary	= 4,
+		du_functor_secondary	= 5,
+		du_functor_ordinal	= 6,
+		du_functor_arg_types	= 7,
+		du_functor_exist_info	= 8
 	}
 
 ").
@@ -499,30 +1015,156 @@ collapse_equivalences(TypeInfo) = NewTypeInfo :-
 
 
 :- pred same_pointer_value(T::in, T::in) is semidet.
+:- pred same_pointer_value_untyped(T::in, U::in) is semidet.
+
+same_pointer_value(X, Y) :- same_pointer_value_untyped(X, Y).
 
 :- pragma foreign_proc("MC++",
-	same_pointer_value(T1::in, T2::in), [], "
+	same_pointer_value_untyped(T1::in, T2::in), [], "
 	SUCCESS_INDICATOR = (T1 == T2);
 ").
 :- pragma foreign_proc("C",
-	same_pointer_value(T1::in, T2::in), [], "
+	same_pointer_value_untyped(T1::in, T2::in), [], "
 	SUCCESS_INDICATOR = (T1 == T2);
 ").
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- func index(int, type_info) = type_info.
+
+:- func get_primary_tag(T) = int.
+:- func get_remote_secondary_tag(T) = int.
+
+get_primary_tag(_::in) = (0::out) :- 
+	det_unimplemented("get_primary_tag").
+
+get_remote_secondary_tag(_::in) = (0::out) :- 
+	det_unimplemented("get_remote_secondary_tag").
+
 :- pragma foreign_proc("C#",
-	index(X::in, TypeInfo::in) = (TypeInfoAtIndex::out), [], "
-	TypeInfoAtIndex = (object[]) TypeInfo[X];
+	get_primary_tag(X::in) = (Tag::out), [], "
+	// We don't look at X to find the tag, for .NET low-level data
+	// there is no primary tag, so we always return zero.
+	Tag = 0;
 ").
+
+:- pragma foreign_proc("C#",
+	get_remote_secondary_tag(X::in) = (Tag::out), [], "
+	object[] data = (object[]) X;
+	Tag = (int) data[0];
+").
+
+
+
+:- type sectag_locn ---> none ; local ; remote ; variable.
+
+:- type du_sectag_alternatives ---> du_sectag_alternatives(c_pointer).
+
+:- type ptag_entry ---> ptag_entry(c_pointer).
+
+:- type du_functor_descriptor ---> du_functor_descriptor(c_pointer).
+
+:- type arg_types ---> arg_types(c_pointer).
+
+:- func ptag_index(int, type_layout) = ptag_entry.
 
 	% This is an "unimplemented" definition in Mercury, which will be
 	% used by default.
 
-index(_::in, TypeInfo::in) = (TypeInfo::out) :- 
-	det_unimplemented("index").
+ptag_index(_::in, TypeLayout::in) = (unsafe_cast(TypeLayout)::out) :- 
+	det_unimplemented("ptag_index").
+
+:- pragma foreign_proc("C#",
+	ptag_index(X::in, TypeLayout::in) = (PtagEntry::out), [], "
+	PtagEntry = (object[]) TypeLayout[X];
+").
+
+:- func sectag_locn(ptag_entry) = sectag_locn.
+
+sectag_locn(PTagEntry::in) = (unsafe_cast(PTagEntry)::out) :- 
+	det_unimplemented("sectag_locn").
+
+:- pragma foreign_proc("C#",
+	sectag_locn(PTagEntry::in) = (SectagLocn::out), [], "
+	SectagLocn = mercury.runtime.LowLevelData.make_enum((int)
+		PTagEntry[(int) ptag_layout_field_nums.sectag_locn]);
+").
+
+:- func du_sectag_alternatives(int, ptag_entry) = du_functor_descriptor.
+
+du_sectag_alternatives(_::in, PTagEntry::in) = (unsafe_cast(PTagEntry)::out) :- 
+	det_unimplemented("sectag_alternatives").
+
+:- pragma foreign_proc("C#",
+	du_sectag_alternatives(X::in, PTagEntry::in) =
+		(FunctorDescriptor::out), [], "
+	object[] sectag_alternatives;
+	sectag_alternatives = (object []) 
+		PTagEntry[(int) ptag_layout_field_nums.sectag_alternatives];
+	FunctorDescriptor = (object []) sectag_alternatives[X];
+").
+
+:- func functor_name(du_functor_descriptor) = string.
+
+functor_name(FunctorDescriptor::in) = (unsafe_cast(FunctorDescriptor)::out) :- 
+	det_unimplemented("functor_name").
+
+:- pragma foreign_proc("C#",
+	functor_name(FunctorDescriptor::in) = (Name::out), [], "
+	Name = (string)
+		FunctorDescriptor[(int) du_functor_field_nums.du_functor_name];
+").
+
+:- func functor_arity(du_functor_descriptor) = int.
+
+functor_arity(FunctorDescriptor::in) = (unsafe_cast(FunctorDescriptor)::out) :- 
+	det_unimplemented("functor_arity").
+
+:- pragma foreign_proc("C#",
+	functor_arity(FunctorDescriptor::in) = (Name::out), [], "
+	Name = (int)
+		FunctorDescriptor[(int)
+			du_functor_field_nums.du_functor_orig_arity];
+		
+").
+
+:- func functor_arg_types(du_functor_descriptor) = arg_types.
+
+functor_arg_types(X::in) = (unsafe_cast(X)::out) :- 
+	det_unimplemented("functor_arg_types").
+
+:- pragma foreign_proc("C#",
+	functor_arg_types(FunctorDescriptor::in) = (ArgTypes::out), [], "
+	ArgTypes = (object[])
+		FunctorDescriptor[(int)
+			du_functor_field_nums.du_functor_arg_types];
+		
+").
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+:- func type_info_index(int, type_info) = type_info.
+
+	% This is an "unimplemented" definition in Mercury, which will be
+	% used by default.
+
+type_info_index(_::in, TypeInfo::in) = (TypeInfo::out) :- 
+	det_unimplemented("type_info_index").
+
+:- pragma foreign_proc("C#",
+	type_info_index(X::in, TypeInfo::in) = (TypeInfoAtIndex::out), [], "
+	TypeInfoAtIndex = (object[]) TypeInfo[X];
+").
+
+update_type_info_index(_::in, _::in, _::in) :- 
+	det_unimplemented("type_info_index").
+
+:- pred update_type_info_index(int::in, type_info::in, type_info::in) is det.
+:- pragma foreign_proc("C#",
+	update_type_info_index(X::in, OldTypeInfo::in, NewValue::in), [], "
+	OldTypeInfo[X] = NewValue;
+").
+
 
 
 :- pred semidet_unimplemented(string::in) is semidet.
@@ -638,8 +1280,23 @@ det_unimplemented(S) :-
 :- pragma foreign_proc("C",
 	type_layout(TypeCtorInfo::in) = (TypeLayout::out), [], "
 	MR_TypeCtorInfo tci = (MR_TypeCtorInfo) TypeCtorInfo;
-	TypeLayout = tci->type_layout;
+	TypeLayout = (MR_Word) &(tci->type_layout); 
 ").
+
+:- pragma foreign_proc("C",
+	unsafe_cast(VarIn::in) = (VarOut::out),
+		[will_not_call_mercury, thread_safe],
+"
+	VarOut = VarIn;
+").
+:- pragma foreign_proc("C#",
+	unsafe_cast(VarIn::in) = (VarOut::out),
+		[will_not_call_mercury, thread_safe],
+"
+	VarOut = VarIn;
+").
+
+
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
