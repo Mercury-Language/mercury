@@ -20,10 +20,12 @@ else
 	PREFIX="$prefix"
 fi
 LIBDIR="$PREFIX/lib/mercury"
+WINDOWS_LIBDIR="`cygpath -w $LIBDIR 2>/dev/null`"
 NONSHARED_LIB_DIR=${MERCURY_NONSHARED_LIB_DIR=$PREFIX/lib/nonshared}
 AC_SUBST(PREFIX)
-AC_SUBST(NONSHARED_LIB_DIR)
 AC_SUBST(LIBDIR)
+AC_SUBST(WINDOWS_LIBDIR)
+AC_SUBST(NONSHARED_LIB_DIR)
 DEFAULT_MERCURY_DEBUGGER_INIT_DIR=$LIBDIR/mdb
 AC_SUBST(DEFAULT_MERCURY_DEBUGGER_INIT_DIR)
 
@@ -218,7 +220,7 @@ AC_SUBST_FILE(CANONICAL_GRADE)
 #-----------------------------------------------------------------------------#
 MERCURY_CHECK_READLINE
 #-----------------------------------------------------------------------------#
-AC_OUTPUT(Makefile scripts/mmc scripts/mprof
+AC_OUTPUT(Makefile scripts/mmc scripts/mercury.bat scripts/mprof
 scripts/mercury_update_interface scripts/mgnuc scripts/ml
 scripts/mmake scripts/c2init scripts/sicstus_conv
 scripts/mkfifo_using_mknod scripts/Mmake.vars

@@ -54,10 +54,12 @@ else
 	PREFIX="$prefix"
 fi
 LIBDIR="$PREFIX/lib/mercury"
+WINDOWS_LIBDIR="`cygpath -w $LIBDIR 2>/dev/null`"
 NONSHARED_LIB_DIR=${MERCURY_NONSHARED_LIB_DIR=$PREFIX/lib/nonshared}
 AC_SUBST(PREFIX)
 AC_SUBST(NONSHARED_LIB_DIR)
 AC_SUBST(LIBDIR)
+AC_SUBST(WINDOWS_LIBDIR)
 DEFAULT_MERCURY_DEBUGGER_INIT_DIR=$LIBDIR/mdb
 AC_SUBST(DEFAULT_MERCURY_DEBUGGER_INIT_DIR)
 #-----------------------------------------------------------------------------#
@@ -2820,8 +2822,8 @@ if test "$BOOTSTRAP_MC" != "" ; then
     rm -f confscratch $to_delete
 fi
 #-----------------------------------------------------------------------------#
-AC_OUTPUT(Mmake.common scripts/Mmake.vars scripts/mmc scripts/mprof
-scripts/mercury_update_interface scripts/mgnuc scripts/ml
+AC_OUTPUT(Mmake.common scripts/Mmake.vars scripts/mmc scripts/mercury.bat
+scripts/mprof scripts/mercury_update_interface scripts/mgnuc scripts/ml
 scripts/mmake scripts/c2init scripts/mdb scripts/mdbrc 
 scripts/sicstus_conv scripts/mkfifo_using_mknod bindist/bindist.build_vars
 ,

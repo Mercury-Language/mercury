@@ -1,0 +1,73 @@
+@echo off
+rem @configure_input@
+rem ---------------------------------------------------------------------------
+rem Copyright (C) 1994-1998, 2000-2001 The University of Melbourne.
+rem This file may only be copied under the terms of the GNU General
+rem Public License - see the file COPYING in the Mercury distribution.
+rem ---------------------------------------------------------------------------
+rem
+rem mercury.bat - Melbourne Mercury Compiler.
+rem
+rem Use `mercury -h' for help.
+rem
+rem Environment variables: MERCURY_INT_DIR, MERCURY_C_INCL_DIR,
+rem MERCURY_ALL_MC_C_INCL_DIRS,
+rem MERCURY_COMPILER, MERCURY_C_COMPILER,
+rem MERCURY_DEFAULT_GRADE, MERCURY_DEFAULT_OPT_LEVEL.
+rem ---------------------------------------------------------------------------
+rem This is a Windows batch file version of the `mmc' Bourne shell script.
+rem The idea is to eventually avoid the need to use Cygwin.
+rem XXX Note that currently Cygwin is still required:
+rem     (1) For `c2init' and `ml'.
+rem	(2) For `mmake'.
+rem	(3) For installation (`configure' and `make install').
+rem There are work-arounds for some but not all of these:
+rem	(1) Currently there's no work-around for `c2init' and `ml'
+rem	(2) `mmake' is not strictly necessary; you can always invoke the
+rem	    necessary commands by hand.  This is of course tedious and
+rem	    error-prone, so we might eventually include more of mmake's
+rem	    functionality into the Mercury compiler itself.
+rem	(3) This would be easy enough to avoid; if we're willing to hard-code
+rem	    the installation path, we could easily package up the installation
+rem         in a WinZip file or something similar.
+rem ---------------------------------------------------------------------------
+
+set INTDIR=%MERCURY_INT_DIR%
+if "%INTDIR%"=="" set INTDIR=@WINDOWS_LIBDIR@\ints
+
+set MERC_C_INCL_DIR=%MERCURY_C_INCL_DIR%
+if "%MERC_C_INCL_DIR%"=="" set MERC_C_INCL_DIR=@WINDOWS_LIBDIR@\inc
+
+set MERC_ALL_MC_C_INCL_DIRS=%MERCURY_ALL_MC_C_INCL_DIRS%
+if "%MERC_ALL_MC_C_INCL_DIRS%"=="" set MERC_ALL_MC_C_INCL_DIRS=--c-include-directory "%MERC_C_INCL_DIR%"
+
+set MC=%MERCURY_COMPILER%
+if "%MC%"=="" set MC=@WINDOWS_LIBDIR@\bin\@FULLARCH@\mercury_compile
+
+set DEFAULT_GRADE=%MERCURY_DEFAULT_GRADE%
+if "%DEFAULT_GRADE%"=="" set DEFAULT_GRADE=@DEFAULT_GRADE@
+
+set CC=%MERCURY_C_COMPILER%
+if "%CC%"=="" set CC=@CC@
+
+set CFLAGS_FOR_REGS=@CFLAGS_FOR_REGS@
+set CFLAGS_FOR_GOTOS=@CFLAGS_FOR_GOTOS@
+set CFLAGS_FOR_THREADS=@CFLAGS_FOR_THREADS@
+set CFLAG_TO_NAME_OBJECT_FILE=@OBJFILE_OPT@
+set OBJECT_FILE_EXTENSION=@OBJ_SUFFIX@
+set LOW_TAG_BITS=@LOW_TAG_BITS@
+set BITS_PER_WORD=@BITS_PER_WORD@
+set BYTES_PER_WORD=@BYTES_PER_WORD@
+set NUM_REAL_R_REGS=@NUM_REAL_R_REGS@
+set NUM_REAL_R_TEMPS=@NUM_REAL_R_TEMPS@
+set HAVE_DELAY_SLOT=@HAVE_DELAY_SLOT@
+set HAVE_BOXED_FLOATS=@HAVE_BOXED_FLOATS@
+
+set DEFAULT_OPT_LEVEL=%MERCURY_DEFAULT_OPT_LEVEL%
+if "%DEFAULT_OPT_LEVEL%"=="" set DEFAULT_OPT_LEVEL=-O2
+
+rem The default optimization level should be after
+rem all the options that describe the machine configuration.
+
+echo on
+%MC% %MERC_ALL_MC_C_INCL_DIRS% --cc "%CC%" --grade "%DEFAULT_GRADE%" --cflags-for-threads "%CFLAGS_FOR_THREADS%" --cflags-for-regs "%CFLAGS_FOR_REGS%" --cflags-for-gotos "%CFLAGS_FOR_GOTOS%" --c-flag-to-name-object-file "%CFLAG_TO_NAME_OBJECT_FILE%" --object-file-extension "%OBJECT_FILE_EXTENSION%" --num-real-r-regs "%NUM_REAL_R_REGS%" --num-real-r-temps "%NUM_REAL_R_TEMPS%" --conf-low-tag-bits "%LOW_TAG_BITS%" --bits-per-word "%BITS_PER_WORD%" --bytes-per-word "%BYTES_PER_WORD%" %HAVE_DELAY_SLOT% %HAVE_BOXED_FLOATS% %DEFAULT_OPT_LEVEL% -I "%INTDIR%" %1 %2 %3 %4 %5 %6 %7 %8 %9 %10 %11 %12 %13 %14 %15 %16 %17 %18 %19 %20 %21 %22 %23 %24 %25 %26 %27 %28 %29 %30
