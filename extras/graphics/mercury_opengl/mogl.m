@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997, 2003 The University of Melbourne.
+% Copyright (C) 1997, 2003-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %------------------------------------------------------------------------------%
@@ -77,6 +77,9 @@
 :- pred vertex4(float, float, float, float, io, io).
 :- mode vertex4(in, in, in, in, di, uo) is det.
 
+:- pred rect(float, float, float, float, io, io).
+:- mode rect(in, in, in, in, di, uo) is det.
+
 :- pred tex_coord1(float, io, io).
 :- mode tex_coord1(in, di, uo) is det.
 
@@ -97,6 +100,9 @@
 
 :- pred color4(float, float, float, float, io, io).
 :- mode color4(in, in, in, in, di, uo) is det.
+
+:- pred index(float, io, io).
+:- mode index(in, di, uo) is det.
 
 %------------------------------------------------------------------------------%
 %
@@ -676,6 +682,29 @@
 :- pred disable(control_flag, io, io).
 :- mode disable(in, di, uo) is det.
 
+:- pred is_enabled(control_flag, bool, io, io).
+:- mode is_enabled(in, out, di, uo) is det.
+
+%------------------------------------------------------------------------------%
+%
+% Hints.
+%
+
+:- type hint_target
+	--->    perspective_correction
+	;	point_smooth
+	;	line_smooth
+	;	polygon_smooth
+	;	fog.
+
+:- type hint_mode
+	--->    fastest
+	;       nicest
+	;       do_not_care.
+
+:- pred hint(hint_target, hint_mode, io, io).
+:- mode hint(in, in, di, uo) is det.
+
 %------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%
 
@@ -688,6 +717,8 @@
 	#include <math.h>
 	#include <GL/gl.h>
 ").
+
+:- pragma foreign_import_module("C", bool).
 
 %------------------------------------------------------------------------------%
 %
@@ -869,6 +900,22 @@ edge_flag(yes, !IO) :-
 	IO = IO0;
 ").
 
+:- pragma foreign_proc("C",
+	rect(X1::in, Y1::in, X2::in, Y2::in, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure],
+"
+	if(sizeof(MR_Float) == sizeof(GLfloat))
+	{
+		glRectf((GLfloat) X1, (GLfloat) Y1, (GLfloat) X2, (GLfloat) Y2);
+	}
+	else
+	{
+		glRectd((GLdouble) X1, (GLdouble) Y1, (GLdouble) X2, 
+			(GLdouble) Y2);
+	}
+	IO = IO0;
+").
+
 %------------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C", 
@@ -979,6 +1026,21 @@ edge_flag(yes, !IO) :-
 	{
 		glColor4d((GLdouble) R, (GLdouble) G, (GLdouble) B,
 			(GLdouble) A);
+	}
+	IO = IO0;
+").
+
+:- pragma foreign_proc("C",
+	index(I::in, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure],
+"
+	if(sizeof(MR_Float) == sizeof(GLfloat))
+	{
+		glIndexf((GLfloat) I);
+	}
+	else
+	{
+		glIndexd((GLdouble) I);
 	}
 	IO = IO0;
 ").
@@ -2853,6 +2915,98 @@ disable(Flag, !IO) :-
 	[will_not_call_mercury, promise_pure],
 "
 	glDisable(control_flag_flags[I]+J);
+	IO = IO0;
+").
+
+is_enabled(Flag, IsEnabled, !IO) :-
+	( Flag = clip_plane(I) ->
+	  	is_enabled_3(control_flag_to_int(Flag), I, IsEnabled, !IO)
+	; Flag = light(I) ->
+	  	is_enabled_3(control_flag_to_int(Flag), I, IsEnabled, !IO)
+	;	
+		is_enabled_2(control_flag_to_int(Flag), IsEnabled, !IO)
+	).
+
+:- pred is_enabled_2(int::in, bool::out, io::di, io::uo) is det.
+:- pragma foreign_proc("C",
+	is_enabled_2(I::in, R::out, IO0::di, IO::uo), 
+	[may_call_mercury, promise_pure],
+"
+	if(glIsEnabled(control_flag_flags[I]))
+		R = ML_bool_return_yes();
+	else
+		R = ML_bool_return_no();
+	IO = IO0;
+").
+
+:- pred is_enabled_3(int::in, int::in, bool::out, io::di, io::uo) is det.
+:- pragma foreign_proc("C",
+	is_enabled_3(I::in, J::in, R::out, IO0::di, IO::uo), 
+	[may_call_mercury, promise_pure],
+"
+	if(glIsEnabled(control_flag_flags[I] + J))
+		R = ML_bool_return_yes();
+	else
+		R = ML_bool_return_no();
+	IO = IO0;
+").
+%------------------------------------------------------------------------------%
+%
+% Hints.
+%
+
+:- pragma foreign_decl("C", "
+	extern const GLenum hint_target_flags[];
+").
+
+:- pragma foreign_code("C", "
+	const GLenum hint_target_flags[] = {
+		GL_PERSPECTIVE_CORRECTION_HINT,
+		GL_POINT_SMOOTH_HINT,
+		GL_LINE_SMOOTH_HINT,
+		GL_POLYGON_SMOOTH_HINT,
+		GL_FOG_HINT
+	};
+").
+
+:- pragma foreign_decl("C", "
+	extern const GLenum hint_mode_flags[];
+").
+
+:- pragma foreign_code("C", "
+	const GLenum hint_mode_flags[] = {
+		GL_FASTEST,
+		GL_NICEST,
+		GL_DONT_CARE
+	};
+").
+
+:- func hint_target_to_int(hint_target) = int.
+
+hint_target_to_int(perspective_correction) = 0.
+hint_target_to_int(point_smooth) = 1.
+hint_target_to_int(line_smooth) = 2.
+hint_target_to_int(polygon_smooth) = 3.
+hint_target_to_int(fog) = 4.
+
+:- pred hint_mode_to_int(hint_mode, int).
+:- mode hint_mode_to_int(in, out) is det.
+
+hint_mode_to_int(fastest, 0).
+hint_mode_to_int(nicest, 1).
+hint_mode_to_int(do_not_care, 2).
+	
+hint(Target0, Mode0, !IO) :-
+	Target = hint_target_to_int(Target0),
+	hint_mode_to_int(Mode0, Mode),
+	set_hint(Target, Mode, !IO).
+
+:- pred set_hint(int::in, int::in, io::di, io::uo) is det.
+:- pragma foreign_proc("C",
+	set_hint(Target::in, Mode::in, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure], 
+"
+	glHint(hint_target_flags[Target], hint_mode_flags[Mode]);
 	IO = IO0;
 ").
 
