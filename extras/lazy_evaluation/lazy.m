@@ -156,7 +156,7 @@ do_force(Lazy, Value) :-
 	[will_not_call_mercury],
 "{
 	/* strip off tag bits */
-	Word *ptr = (Word *) strip_tag(MercuryTerm);
+	Word *ptr = (Word *) MR_strip_tag(MercuryTerm);
 	/* destructively update value */
 	*ptr = NewValue;
 }").
