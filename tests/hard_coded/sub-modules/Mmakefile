@@ -23,6 +23,7 @@ PROGS=	\
 	nested \
 	nested2 \
 	nested3 \
+	class \
 	nested_intermod_main
 
 MCFLAGS-nested_intermod	=	--intermodule-optimization
