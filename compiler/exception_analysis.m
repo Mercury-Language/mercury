@@ -308,7 +308,8 @@ check_goal_for_exceptions_2(SCC, Module, VarTypes,
 			pred_info_get_origin(CallPredInfo, Origin),
 			Origin = special_pred(SpecialPredId - _),
 			( SpecialPredId = compare
-			; SpecialPredId = unify )
+			; SpecialPredId = unify
+			)
 		)	
 	->
 		% For unification/comparison the exception status depends
