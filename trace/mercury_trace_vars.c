@@ -163,25 +163,25 @@ static  MR_Point        MR_point;
   extern struct MR_TypeCtorInfo_Struct
     mercury_data_type_desc__type_ctor_info_type_ctor_desc_0;
   extern struct MR_TypeCtorInfo_Struct
-    mercury_data___type_ctor_info_func_0;
+    mercury_data_builtin__type_ctor_info_func_0;
   extern struct MR_TypeCtorInfo_Struct
-    mercury_data___type_ctor_info_pred_0;
+    mercury_data_builtin__type_ctor_info_pred_0;
   extern struct MR_TypeCtorInfo_Struct
-    mercury_data___type_ctor_info_void_0;
+    mercury_data_builtin__type_ctor_info_void_0;
 
   #ifdef MR_NATIVE_GC
     extern struct MR_TypeCtorInfo_Struct
-    mercury_data___type_ctor_info_succip_0;
+    mercury_data_builtin__type_ctor_info_succip_0;
     extern struct MR_TypeCtorInfo_Struct
-    mercury_data___type_ctor_info_hp_0;
+    mercury_data_builtin__type_ctor_info_hp_0;
     extern struct MR_TypeCtorInfo_Struct
-    mercury_data___type_ctor_info_curfr_0;
+    mercury_data_builtin__type_ctor_info_curfr_0;
     extern struct MR_TypeCtorInfo_Struct
-    mercury_data___type_ctor_info_maxfr_0;
+    mercury_data_builtin__type_ctor_info_maxfr_0;
     extern struct MR_TypeCtorInfo_Struct
-    mercury_data___type_ctor_info_redoip_0;
+    mercury_data_builtin__type_ctor_info_redoip_0;
     extern struct MR_TypeCtorInfo_Struct
-    mercury_data___type_ctor_info_redofr_0;
+    mercury_data_builtin__type_ctor_info_redofr_0;
   #endif
 #endif
 
@@ -195,16 +195,16 @@ MR_trace_always_ignored_type_ctors[] =
     &mercury_data_private_builtin__type_ctor_info_base_typeclass_info_1,
 
     /* we ignore these because they should never be needed */
-    &mercury_data___type_ctor_info_void_0,
+    &mercury_data_builtin__type_ctor_info_void_0,
 
   #ifdef MR_NATIVE_GC
     /* we ignore these because they are not interesting */
-    &mercury_data___type_ctor_info_succip_0,
-    &mercury_data___type_ctor_info_hp_0,
-    &mercury_data___type_ctor_info_curfr_0,
-    &mercury_data___type_ctor_info_maxfr_0,
-    &mercury_data___type_ctor_info_redoip_0,
-    &mercury_data___type_ctor_info_redofr_0,
+    &mercury_data_builtin__type_ctor_info_succip_0,
+    &mercury_data_builtin__type_ctor_info_hp_0,
+    &mercury_data_builtin__type_ctor_info_curfr_0,
+    &mercury_data_builtin__type_ctor_info_maxfr_0,
+    &mercury_data_builtin__type_ctor_info_redoip_0,
+    &mercury_data_builtin__type_ctor_info_redofr_0,
   #endif
 #endif
     /* dummy member */
