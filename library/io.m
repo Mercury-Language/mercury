@@ -496,7 +496,7 @@
 
 	% This inter-language stuff is tricky.
 	% We communicate via ints rather than via io__result_codes because
-	% we don't want the C code to depend on how Mercury stores it's
+	% we don't want the C code to depend on how Mercury stores its
 	% discriminated union data types.
 
 :- pred io__read_char_code(io__input_stream, int, io__state, io__state).
