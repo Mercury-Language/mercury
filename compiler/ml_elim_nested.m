@@ -376,7 +376,16 @@ ml_create_env(EnvClassName, LocalVars, Context, ModuleName, Globals,
 	%		<LocalVars>
 	%	};
 	%
-	EnvTypeKind = mlds__struct,
+		% IL uses classes instead of structs, so the code
+		% generated needs to be a little different.
+		% XXX Perhaps if we used value classes this could go
+		% away.
+	globals__get_target(Globals, Target),
+	( Target = il ->
+		EnvTypeKind = mlds__class
+	;
+		EnvTypeKind = mlds__struct
+	),
 	EnvTypeName = class_type(qual(ModuleName, EnvClassName), 0,
 		EnvTypeKind),
 	EnvTypeEntityName = type(EnvClassName, 0),
@@ -387,7 +396,6 @@ ml_create_env(EnvClassName, LocalVars, Context, ModuleName, Globals,
 		% generated needs to be a little different.
 		% XXX Perhaps if we used value classes this could go
 		% away.
-	globals__get_target(Globals, Target),
 	( Target = il ->
 			% Generate a ctor for the class.
 

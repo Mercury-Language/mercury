@@ -23,6 +23,9 @@
 %
 % [ ] advanced name mangling: 
 %	- optionally only mangle names when it is absolutely necessary
+%	(Partly done; we now mangle names less often than we used to.
+%	The only way to mangle less would be to use a context-sensitive
+%	name mangling algorithm, which may not be a good idea.)
 % [ ] solutions
 % [ ] Type classes
 %	- now work, but...
@@ -497,10 +500,10 @@ mlds_defn_to_ilasm_decl(defn(Name, _Context, Flags, class(ClassDefn)),
 generate_class_body(Name, ClassDefn, ClassName, EntityName, Extends, Interfaces,
 		ClassDecls, Info0, Info) :-
 	EntityName = entity_name_to_ilds_id(Name),
-	ClassDefn = class_defn(_Kind, _Imports, Inherits, Implements,
+	ClassDefn = class_defn(Kind, _Imports, Inherits, Implements,
 			Ctors, Members),
 	Parent - Extends = generate_parent_and_extends(Info0 ^ il_data_rep,
-			Inherits),
+			Kind, Inherits),
 	Interfaces = implements(
 			list__map(interface_id_to_class_name, Implements)),
 
@@ -512,13 +515,21 @@ generate_class_body(Name, ClassDefn, ClassName, EntityName, Extends, Interfaces,
 	ClassDecls = IlCtors ++ MethodsAndFields.
 
 
-:- func generate_parent_and_extends(il_data_rep, list(mlds__class_id))
-	= pair(ilds__class_name, extends).
+:- func generate_parent_and_extends(il_data_rep, mlds__class_kind,
+		list(mlds__class_id)) = pair(ilds__class_name, extends).
 
-generate_parent_and_extends(DataRep, Inherits) = Parent - Extends :-
+generate_parent_and_extends(DataRep, Kind, Inherits) = Parent - Extends :-
 	( Inherits = [],
-		Parent = il_generic_class_name,
-		Extends = extends_nothing
+		( Kind = mlds__struct ->
+			Parent = il_generic_valuetype_name,
+			Extends = extends(Parent)
+		; Kind = mlds__enum ->
+			Parent = il_generic_enum_name,
+			Extends = extends(Parent)
+		; % Kind = mlds__class, mlds__package, or mlds__interface
+			Parent = il_generic_class_name,
+			Extends = extends_nothing
+		)
 	; Inherits = [Parent0 | Rest],
 		( Rest = [] ->
 			Parent = mlds_type_to_ilds_class_name(DataRep, Parent0),
@@ -1544,19 +1555,17 @@ atomic_statement_to_il(new_object(Target, _MaybeTag, Type, Size, _CtorName,
 	DataRep =^ il_data_rep,
 	( 
 		{ 
-			Type = mlds__generic_env_ptr_type 
-		; 
-			Type = mlds__class_type(_, _, _) 
+			Type = mlds__generic_env_ptr_type
 		;
-			Type = mlds__commit_type
-		; 
+			Type = mlds__class_type(_, _, mlds__class) 
+		;
 			DataRep ^ highlevel_data = yes,
 			Type = mlds__mercury_type(_, user_type)
 		}
 	->
-			% If this is an env_ptr we should call the
-			% constructor.  
-			% (This is also how we will handle high-level data).
+			% If this is a class, we should call the
+			% constructor.  (This is needed for nondet environment
+			% classes, and also for high-level data.)
 			% We generate code of the form:
 			%
 			% 	... load memory reference ...
@@ -2355,9 +2364,10 @@ mlds_type_to_ilds_type(_, mlds__generic_type) = il_generic_type.
 	% see comments about function types above.
 mlds_type_to_ilds_type(_, mlds__cont_type(_ArgTypes)) = ilds__type([], int32).
 
-mlds_type_to_ilds_type(_, mlds__class_type(Class, Arity, _Kind)) = 
-	ilds__type([], class(
-		mlds_class_name_to_ilds_class_name(Class, Arity))).
+mlds_type_to_ilds_type(_, mlds__class_type(Class, Arity, Kind)) =
+		ilds__type([], SimpleType) :-
+	ClassName = mlds_class_name_to_ilds_class_name(Class, Arity),
+	SimpleType = mlds_class_to_ilds_simple_type(Kind, ClassName).
 
 mlds_type_to_ilds_type(_, mlds__commit_type) = il_commit_type.
 
@@ -2397,6 +2407,18 @@ mlds_type_to_ilds_type(DataRep, mercury_type(MercuryType, user_type)) =
 	;
 		il_array_type
 	).
+mlds_type_to_ilds_type(_, mlds__unknown_type) = _ :-
+	unexpected(this_file, "mlds_type_to_ilds_type: unknown_type").
+
+:- func mlds_class_to_ilds_simple_type(mlds__class_kind, ilds__class_name) =
+	ilds__simple_type.
+mlds_class_to_ilds_simple_type(Kind, ClassName) = SimpleType :-
+	( Kind = mlds__package,		SimpleType = class(ClassName)
+	; Kind = mlds__class,		SimpleType = class(ClassName)
+	; Kind = mlds__interface,	SimpleType = class(ClassName)
+	; Kind = mlds__struct,		SimpleType = value_class(ClassName)
+	; Kind = mlds__enum,		SimpleType = value_class(ClassName)
+	).
 
 :- func mercury_type_to_highlevel_class_type(mercury_type) = ilds__type.
 mercury_type_to_highlevel_class_type(MercuryType) = ILType :-
@@ -2416,9 +2438,6 @@ mercury_type_to_highlevel_class_type(MercuryType) = ILType :-
 	).
 
 
-
-mlds_type_to_ilds_type(_, mlds__unknown_type) = _ :-
-	unexpected(this_file, "mlds_type_to_ilds_type: unknown_type").
 
 
 :- func mlds_class_name_to_ilds_class_name(mlds__class, arity) =
@@ -3085,6 +3104,14 @@ il_generic_type = ilds__type([], il_generic_simple_type).
 il_generic_simple_type = class(il_generic_class_name).
 
 il_generic_class_name = il_system_name(["Object"]).
+
+	% Return the class name for System.ValueType.
+:- func il_generic_valuetype_name = ilds__class_name.
+il_generic_valuetype_name = il_system_name(["ValueType"]).
+
+	% Return the class name for System.Enum
+:- func il_generic_enum_name = ilds__class_name.
+il_generic_enum_name = il_system_name(["Enum"]).
 
 %-----------------------------------------------------------------------------%
 %
