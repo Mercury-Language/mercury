@@ -28,6 +28,7 @@ ORDINARY_PROGS=	\
 	cut_test \
 	cycles \
 	cycles2 \
+	deconstruct_arg \
 	deep_copy \
 	deep_copy_bug \
 	deep_copy_exist \

@@ -101,13 +101,14 @@ BODY_HDRS	=	\
 			mercury_deep_call_port_body.h	\
 			mercury_deep_copy_body.h \
 			mercury_deep_leave_port_body.h	\
-			mercury_deep_redo_port_body.h	\
 			mercury_deep_rec_depth_actions.h \
 			mercury_deep_rec_depth_body.h \
+			mercury_deep_redo_port_body.h	\
 			mercury_exception_catch_body.h	\
 			mercury_hand_compare_body.h	\
 			mercury_hand_unify_body.h	\
 			mercury_make_type_info_body.h	\
+			mercury_ml_expand_body.h \
 			mercury_unify_compare_body.h
 
 # Note that $(LIB_GLOBALS_H) cannot be part of $(HDRS), since it depends on

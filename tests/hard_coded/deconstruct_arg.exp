@@ -1,0 +1,162 @@
+apple/1
+argument 0 of apple([]) is []
+argument 1 of apple([]) doesn't exist
+argument 2 of apple([]) doesn't exist
+deconstruct: functor apple arity 1
+[[]]
+limited deconstruct 3 of apple([])
+functor apple arity 1 [[]]
+
+apple/1
+argument 0 of apple([9, 5, 1]) is [9, 5, 1]
+argument 1 of apple([9, 5, 1]) doesn't exist
+argument 2 of apple([9, 5, 1]) doesn't exist
+deconstruct: functor apple arity 1
+[[9, 5, 1]]
+limited deconstruct 3 of apple([9, 5, 1])
+functor apple arity 1 [[9, 5, 1]]
+
+zop/2
+argument 0 of zop(3.30000000000000, 2.03000000000000) is 3.30000000000000
+argument 1 of zop(3.30000000000000, 2.03000000000000) is 2.03000000000000
+argument 2 of zop(3.30000000000000, 2.03000000000000) doesn't exist
+deconstruct: functor zop arity 2
+[3.30000000000000, 2.03000000000000]
+limited deconstruct 3 of zop(3.30000000000000, 2.03000000000000)
+functor zop arity 2 [3.30000000000000, 2.03000000000000]
+
+zap/3
+argument 0 of zap(50, 51.0000000000000, 52) is 50
+argument 1 of zap(50, 51.0000000000000, 52) is 51.0000000000000
+argument 2 of zap(50, 51.0000000000000, 52) is 52
+deconstruct: functor zap arity 3
+[50, 51.0000000000000, 52]
+limited deconstruct 3 of zap(50, 51.0000000000000, 52)
+functor zap arity 3 [50, 51.0000000000000, 52]
+
+zip/4
+argument 0 of zip(50, 51, 52, 53) is 50
+argument 1 of zip(50, 51, 52, 53) is 51
+argument 2 of zip(50, 51, 52, 53) is 52
+deconstruct: functor zip arity 4
+[50, 51, 52, 53]
+limited deconstruct 3 of zip(50, 51, 52, 53)
+failed
+
+wombat/0
+argument 0 of wombat doesn't exist
+argument 1 of wombat doesn't exist
+argument 2 of wombat doesn't exist
+deconstruct: functor wombat arity 0
+[]
+limited deconstruct 3 of wombat
+functor wombat arity 0 []
+
+qwerty/1
+argument 0 of qwerty(5) is 5
+argument 1 of qwerty(5) doesn't exist
+argument 2 of qwerty(5) doesn't exist
+deconstruct: functor qwerty arity 1
+[5]
+limited deconstruct 3 of qwerty(5)
+functor qwerty arity 1 [5]
+
+'a'/0
+argument 0 of a doesn't exist
+argument 1 of a doesn't exist
+argument 2 of a doesn't exist
+deconstruct: functor 'a' arity 0
+[]
+limited deconstruct 3 of a
+functor 'a' arity 0 []
+
+3.14159000000000/0
+argument 0 of 3.14159000000000 doesn't exist
+argument 1 of 3.14159000000000 doesn't exist
+argument 2 of 3.14159000000000 doesn't exist
+deconstruct: functor 3.14159000000000 arity 0
+[]
+limited deconstruct 3 of 3.14159000000000
+functor 3.14159000000000 arity 0 []
+
+4/0
+argument 0 of 4 doesn't exist
+argument 1 of 4 doesn't exist
+argument 2 of 4 doesn't exist
+deconstruct: functor 4 arity 0
+[]
+limited deconstruct 3 of 4
+functor 4 arity 0 []
+
+univ_cons/1
+argument 0 of ["hi! I\'m a univ!"] is ["hi! I\'m a univ!"]
+argument 1 of ["hi! I\'m a univ!"] doesn't exist
+argument 2 of ["hi! I\'m a univ!"] doesn't exist
+deconstruct: functor univ_cons arity 1
+[["hi! I\'m a univ!"]]
+limited deconstruct 3 of ["hi! I\'m a univ!"]
+functor univ_cons arity 1 [["hi! I\'m a univ!"]]
+
+<<predicate>>/0
+argument 0 of '<<predicate>>' doesn't exist
+argument 1 of '<<predicate>>' doesn't exist
+argument 2 of '<<predicate>>' doesn't exist
+deconstruct: functor <<predicate>> arity 0
+[]
+limited deconstruct 3 of '<<predicate>>'
+functor <<predicate>> arity 0 []
+
+{}/2
+argument 0 of {1, 'b'} is 1
+argument 1 of {1, 'b'} is 'b'
+argument 2 of {1, 'b'} doesn't exist
+deconstruct: functor {} arity 2
+[1, 'b']
+limited deconstruct 3 of {1, 'b'}
+functor {} arity 2 [1, 'b']
+
+{}/3
+argument 0 of {1, 'b', "third"} is 1
+argument 1 of {1, 'b', "third"} is 'b'
+argument 2 of {1, 'b', "third"} is "third"
+deconstruct: functor {} arity 3
+[1, 'b', "third"]
+limited deconstruct 3 of {1, 'b', "third"}
+functor {} arity 3 [1, 'b', "third"]
+
+{}/4
+argument 0 of {1, 'b', "third", {1, 2, 3, 4}} is 1
+argument 1 of {1, 'b', "third", {1, 2, 3, 4}} is 'b'
+argument 2 of {1, 'b', "third", {1, 2, 3, 4}} is "third"
+deconstruct: functor {} arity 4
+[1, 'b', "third", {1, 2, 3, 4}]
+limited deconstruct 3 of {1, 'b', "third", {1, 2, 3, 4}}
+failed
+
+<<array>>/2
+argument 0 of array([1000, 2000]) is 1000
+argument 1 of array([1000, 2000]) is 2000
+argument 2 of array([1000, 2000]) doesn't exist
+deconstruct: functor <<array>> arity 2
+[1000, 2000]
+limited deconstruct 3 of array([1000, 2000])
+functor <<array>> arity 2 [1000, 2000]
+
+<<array>>/3
+argument 0 of array([100, 200, 300]) is 100
+argument 1 of array([100, 200, 300]) is 200
+argument 2 of array([100, 200, 300]) is 300
+deconstruct: functor <<array>> arity 3
+[100, 200, 300]
+limited deconstruct 3 of array([100, 200, 300])
+functor <<array>> arity 3 [100, 200, 300]
+
+<<array>>/4
+argument 0 of array([10, 20, 30, 40]) is 10
+argument 1 of array([10, 20, 30, 40]) is 20
+argument 2 of array([10, 20, 30, 40]) is 30
+deconstruct: functor <<array>> arity 4
+[10, 20, 30, 40]
+limited deconstruct 3 of array([10, 20, 30, 40])
+failed
+
