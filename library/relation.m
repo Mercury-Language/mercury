@@ -324,7 +324,7 @@
 		map(relation_key, set(relation_key)),	% The mapping U -> V
 		map(relation_key, set(relation_key))	% The reverse mapping
 							% V -> U
-		).
+	).
 
 %------------------------------------------------------------------------------%
 

@@ -165,7 +165,7 @@
     %
 :- typeclass doc(T) where [
 
-        % Convert a T do a doc, placing a limit on how much of the
+        % Convert a T to a doc, placing a limit on how much of the
         % term will be fully converted as follows:
         %
         % doc(_, f         ) = f
@@ -450,7 +450,6 @@ write(Stream, W, X)     --> layout_best(io__write_string(Stream), W, doc(X)).
 layout_best(P, W, X, S0, S) :-
     lb(P, W, 0, _, "", X, S0, S).
 
-
     % lb(P, W, K0, K, I, X, S0, S)
     %
     %   P  is the predicate for accumulating output strings;
@@ -512,7 +511,6 @@ lb(P, _, K0, K, _, 'TEXT'(T),     S0, S) :-
 
 fits_flat(X, R) :-
     ff(X, R) = _.
-
 
 :- func ff(doc, int) = int is semidet.
 
