@@ -1247,7 +1247,7 @@ simplify__call_goal(PredId, ProcId, Args, IsBuiltin,
 		% (The compiler generates code for builtins that looks
 		% recursive, so that you can take their address, but since
 		% the recursive call actually expands into inline
-		% instructions, so it's not infinite recursion.)
+		% instructions, it is not infinite recursion.)
 		%
 		IsBuiltin \= inline_builtin,
 
@@ -1289,13 +1289,15 @@ simplify__call_goal(PredId, ProcId, Args, IsBuiltin,
 	%
 	% check for duplicate calls to the same procedure
 	%
-	( simplify_do_calls(Info2),
-	  goal_info_is_pure(GoalInfo0)
+	(
+		simplify_do_calls(Info2),
+		goal_info_is_pure(GoalInfo0)
 	->	
 		common__optimise_call(PredId, ProcId, Args, Goal0, GoalInfo0,
 			Goal1, Info2, Info3)
-	; simplify_do_warn_calls(Info0),
-	  goal_info_is_pure(GoalInfo0)
+	;
+		simplify_do_warn_calls(Info0),
+		goal_info_is_pure(GoalInfo0)
 	->	
 		% we need to do the pass, for the warnings, but we ignore
 		% the optimized goal and instead use the original one
