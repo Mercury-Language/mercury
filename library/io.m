@@ -1300,7 +1300,7 @@ io__set_op_table(OpTable,	io__state(A, B, _, D, E),
 
 :- pragma(c_header_code, "
 
-#include ""io_rt.h""
+#include ""init.h""
 #include ""wrapper.h""
 
 #include <stdlib.h>
