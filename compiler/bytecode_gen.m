@@ -27,7 +27,8 @@
 :- import_module hlds_pred, hlds_goal, hlds_data, llds.
 :- import_module passes_aux, call_gen, code_util, goal_util, tree.
 
-:- import_module bool, int, list, assoc_list, set, map, std_util, require.
+:- import_module bool, int, list, assoc_list, set, map, varset.
+:- import_module std_util, require.
 
 bytecode_gen__module(ModuleInfo, Code) -->
 	{ module_info_predids(ModuleInfo, PredIds) },
@@ -79,7 +80,16 @@ bytecode_gen__proc(ProcId, PredInfo, ModuleInfo, Code) :-
 
 	proc_info_goal(ProcInfo, Goal),
 	proc_info_vartypes(ProcInfo, VarTypes),
-	bytecode_gen__init_byte_info(ModuleInfo, VarTypes, Goal, ByteInfo),
+	proc_info_variables(ProcInfo, VarSet),
+	proc_info_interface_determinism(ProcInfo, Detism),
+
+	goal_util__goal_vars(Goal, Vars),
+	set__to_sorted_list(Vars, VarList),
+	map__init(VarMap0),
+	bytecode_gen__create_varmap(VarList, VarSet, VarTypes, 0,
+		VarMap0, VarMap, VarInfos),
+
+	bytecode_gen__init_byte_info(ModuleInfo, VarMap, VarTypes, ByteInfo),
 
 	proc_info_headvars(ProcInfo, ArgVars),
 	proc_info_arg_info(ProcInfo, ArgInfo),
@@ -91,25 +101,27 @@ bytecode_gen__proc(ProcId, PredInfo, ModuleInfo, Code) :-
 	call_gen__output_arg_locs(Args, OutputArgs),
 	bytecode_gen__gen_places(OutputArgs, ByteInfo, PlaceCode),
 
-	bytecode_gen__goal(Goal, ByteInfo, 0, N, GoalCode),
+	bytecode_gen__goal(Goal, ByteInfo, 1, N, GoalCode),
 
-	proc_info_interface_determinism(ProcInfo, Detism),
-	CodeTree = tree(
-		tree(
-			node([enter_proc(ProcId, Detism, N)]),
-			PickupCode),
-		tree(
-			GoalCode,
+	BodyTree = tree(
 			tree(
-				PlaceCode,
-				node([endof_proc])))),
-	tree__flatten(CodeTree, CodeList),
-	list__condense(CodeList, Code0),
-	( list__member(not_supported, Code0) ->
-		Code = node([not_supported])
+				PickupCode,
+				node([label(0)])),
+			tree(
+				GoalCode,
+				PlaceCode)),
+	tree__flatten(BodyTree, BodyList),
+	list__condense(BodyList, BodyCode0),
+	( list__member(not_supported, BodyCode0) ->
+		BodyCode = node([not_supported])
 	;
-		Code = node(Code0)
-	).
+		BodyCode = node(BodyCode0)
+	),
+	Code = tree(
+			node([enter_proc(ProcId, Detism, N, VarInfos)]),
+			tree(
+				BodyCode,
+				node([endof_proc]))).
 
 %---------------------------------------------------------------------------%
 
@@ -441,6 +453,23 @@ bytecode_gen__map_cons_tag(pred_closure_tag(_, _), _) :-
 bytecode_gen__map_cons_tag(address_constant(_, _), _) :-
 	error("address_constant cons tag for non-address_const cons id").
 
+%---------------------------------------------------------------------------%
+
+:- pred bytecode_gen__create_varmap(list(var)::in, varset::in,
+	map(var, type)::in, int::in, map(var, byte_var)::in,
+	map(var, byte_var)::out, list(byte_var_info)::out) is det.
+
+bytecode_gen__create_varmap([], _, _, _, VarMap, VarMap, []).
+bytecode_gen__create_varmap([Var | VarList], VarSet, VarTypes, N0,
+		VarMap0, VarMap, VarInfos) :-
+	map__det_insert(VarMap0, Var, N0, VarMap1),
+	N1 is N0 + 1,
+	varset__lookup_name(VarSet, Var, VarName),
+	map__lookup(VarTypes, Var, VarType),
+	bytecode_gen__create_varmap(VarList, VarSet, VarTypes, N1,
+		VarMap1, VarMap, VarInfos1),
+	VarInfos = [var_info(VarName, VarType) | VarInfos1].
+
 %---------------------------------------------------------------------------%(
 
 :- type byte_info	--->	byte_info(
@@ -448,26 +477,11 @@ bytecode_gen__map_cons_tag(address_constant(_, _), _) :-
 					map(var, type),
 					module_info).
 
-:- pred bytecode_gen__init_byte_info(module_info::in, map(var, type)::in,
-	hlds__goal::in, byte_info::out) is det.
+:- pred bytecode_gen__init_byte_info(module_info::in, map(var, byte_var)::in,
+	map(var, type)::in, byte_info::out) is det.
 
-bytecode_gen__init_byte_info(ModuleInfo, VarTypes, Goal, ByteInfo) :-
-	map__init(VarMap0),
-	goal_util__goal_vars(Goal, Vars),
-	set__to_sorted_list(Vars, VarList),
-	bytecode_gen__create_varmap(VarList, 0, VarMap0, VarMap),
+bytecode_gen__init_byte_info(ModuleInfo, VarMap, VarTypes, ByteInfo) :-
 	ByteInfo = byte_info(VarMap, VarTypes, ModuleInfo).
-
-:- pred bytecode_gen__create_varmap(list(var)::in, int::in,
-	map(var, byte_var)::in, map(var, byte_var)::out) is det.
-
-bytecode_gen__create_varmap([], _, VarMap, VarMap).
-bytecode_gen__create_varmap([Var | VarList], N0, VarMap0, VarMap) :-
-	map__det_insert(VarMap0, Var, N0, VarMap1),
-	N1 is N0 + 1,
-	bytecode_gen__create_varmap(VarList, N1, VarMap1, VarMap).
-
-%---------------------------------------------------------------------------%
 
 :- pred bytecode_gen__get_module_info(byte_info::in, module_info::out) is det.
 

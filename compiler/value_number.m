@@ -333,7 +333,7 @@ value_number__optimize_fragment_2(Instrs0, LiveMap, Params, ParEntries,
 		{ vn_temploc__init_templocs(MaxRealRegs, MaxRealTemps,
 			Liveset0, VnTables2, Templocs0) },
 		vn_flush__nodelist(Order, Ctrlmap, VnTables2, Templocs0,
-			Instrs1),
+			Params, Instrs1),
 
 		{ value_number__push_decr_sp_back(Instrs1, Instrs2) },
 		{ value_number__push_incr_sp_forw(Instrs2, Instrs3) },

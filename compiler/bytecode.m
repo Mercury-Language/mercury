@@ -21,7 +21,8 @@
 
 :- type byte_code	--->	enter_pred(byte_pred_id, int)
 			;	endof_pred
-			;	enter_proc(byte_proc_id, determinism, int)
+			;	enter_proc(byte_proc_id, determinism, int,
+					list(byte_var_info))
 			;	endof_proc
 			;	label(byte_label_id)
 			;	enter_disjunction(byte_label_id)
@@ -69,6 +70,8 @@
 					arity, byte_proc_id)
 			.
 
+:- type byte_var_info	--->	var_info(string, type).
+
 :- type byte_cons_tag	--->	no_tag
 			;	simple_tag(tag_bits)
 			;	complicated_tag(tag_bits, int)
@@ -100,7 +103,7 @@
 
 :- pred bytecode__version(int::out) is det.
 
-bytecode__version(1).
+bytecode__version(2).
 
 output_bytecode_file(FileName, ByteCodes) -->
 	io__tell_binary(FileName, Result),
@@ -171,10 +174,13 @@ output_args(enter_pred(PredId, ProcCount)) -->
 	output_pred_id(PredId),
 	output_length(ProcCount).
 output_args(endof_pred) --> [].
-output_args(enter_proc(ProcId, Detism, LabelCount)) -->
+output_args(enter_proc(ProcId, Detism, LabelCount, Vars)) -->
 	output_proc_id(ProcId),
 	output_determinism(Detism),
-	output_length(LabelCount).
+	output_length(LabelCount),
+	{ list__length(Vars, VarCount) },
+	output_length(VarCount),
+	output_var_infos(Vars).
 output_args(endof_proc) --> [].
 output_args(label(LabelId)) -->
 	output_label_id(LabelId).
@@ -259,10 +265,13 @@ debug_args(enter_pred(PredId, ProcsCount)) -->
 	debug_pred_id(PredId),
 	debug_length(ProcsCount).
 debug_args(endof_pred) --> [].
-debug_args(enter_proc(ProcId, Detism, LabelCount)) -->
+debug_args(enter_proc(ProcId, Detism, LabelCount, Vars)) -->
 	debug_proc_id(ProcId),
 	debug_determinism(Detism),
-	debug_length(LabelCount).
+	debug_length(LabelCount),
+	{ list__length(Vars, VarCount) },
+	debug_length(VarCount),
+	debug_var_infos(Vars).
 debug_args(endof_proc) --> [].
 debug_args(label(LabelId)) -->
 	debug_label_id(LabelId).
@@ -339,6 +348,36 @@ debug_args(builtin_untest(Unop, Var1)) -->
 debug_args(context(Line)) -->
 	debug_int(Line).
 debug_args(not_supported) --> [].
+
+%---------------------------------------------------------------------------%
+
+:- pred output_var_infos(list(byte_var_info), io__state, io__state).
+:- mode output_var_infos(in, di, uo) is det.
+
+output_var_infos([]) --> [].
+output_var_infos([Var | Vars]) -->
+	output_var_info(Var),
+	output_var_infos(Vars).
+
+:- pred output_var_info(byte_var_info, io__state, io__state).
+:- mode output_var_info(in, di, uo) is det.
+
+output_var_info(var_info(Name, _)) -->
+	output_string(Name).
+
+:- pred debug_var_infos(list(byte_var_info), io__state, io__state).
+:- mode debug_var_infos(in, di, uo) is det.
+
+debug_var_infos([]) --> [].
+debug_var_infos([Var | Vars]) -->
+	debug_var_info(Var),
+	debug_var_infos(Vars).
+
+:- pred debug_var_info(byte_var_info, io__state, io__state).
+:- mode debug_var_info(in, di, uo) is det.
+
+debug_var_info(var_info(Name, _)) -->
+	debug_string(Name).
 
 %---------------------------------------------------------------------------%
 
@@ -655,7 +694,7 @@ debug_unop(Unop) -->
 
 byte_code(enter_pred(_, _),			 0).
 byte_code(endof_pred,				 1).
-byte_code(enter_proc(_, _, _),			 2).
+byte_code(enter_proc(_, _, _, _),		 2).
 byte_code(endof_proc,				 3).
 byte_code(label(_),				 4).
 byte_code(enter_disjunction(_),			 5).
@@ -693,7 +732,7 @@ byte_code(not_supported,			33).
 
 byte_debug(enter_pred(_, _),			"enter_pred").
 byte_debug(endof_pred,				"endof_pred").
-byte_debug(enter_proc(_, _, _),			"enter_proc").
+byte_debug(enter_proc(_, _, _, _),		"enter_proc").
 byte_debug(endof_proc,				"endof_proc").
 byte_debug(label(_),				"label").
 byte_debug(enter_disjunction(_),		"enter_disjunction").

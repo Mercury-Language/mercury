@@ -21,8 +21,8 @@
 	% Flush the given nodes in the given order.
 
 :- pred vn_flush__nodelist(list(vn_node), ctrlmap, vn_tables, templocs,
-	list(instruction), io__state, io__state).
-:- mode vn_flush__nodelist(in, in, in, in, out, di, uo) is det.
+	vn_params, list(instruction), io__state, io__state).
+:- mode vn_flush__nodelist(in, in, in, in, in, out, di, uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -33,39 +33,43 @@
 
 :- import_module vn_table, vn_util, vn_debug, opt_debug.
 
-vn_flush__nodelist([], _, _, _, []) --> [].
-vn_flush__nodelist([Node0 | Nodes0], Ctrlmap, VnTables0, Templocs0, Instrs) -->
+vn_flush__nodelist([], _, _, _, _, []) --> [].
+vn_flush__nodelist([Node0 | Nodes0], Ctrlmap, VnTables0, Templocs0, Params,
+		Instrs) -->
 	( { Node0 = node_origlval(_) } ->
 		{ Nodes1 = Nodes0 },
 		{ VnTables1 = VnTables0 },
 		{ Templocs1 = Templocs0 },
 		{ Instrs0 = [] }
 	;
-		vn_flush__node(Node0, Ctrlmap, Nodes0, Nodes1,
-			VnTables0, VnTables1, Templocs0, Templocs1, Instrs0)
+		vn_flush__node(Node0, Ctrlmap,
+			Nodes0, Nodes1, VnTables0, VnTables1,
+			Templocs0, Templocs1, Params,Instrs0)
 	),
-	vn_flush__nodelist(Nodes1, Ctrlmap, VnTables1, Templocs1, Instrs1),
+	vn_flush__nodelist(Nodes1, Ctrlmap, VnTables1, Templocs1, Params,
+		Instrs1),
 	{ list__append(Instrs0, Instrs1, Instrs) }.
 
 	% Flush the given node.
 
 :- pred vn_flush__node(vn_node, ctrlmap, list(vn_node), list(vn_node),
-	vn_tables, vn_tables, templocs, templocs, list(instruction),
+	vn_tables, vn_tables, templocs, templocs, vn_params, list(instruction),
 	io__state, io__state).
-% :- mode vn_flush__node(in, in, di, uo, di, uo, di, uo, out, di, uo) is det.
-:- mode vn_flush__node(in, in, in, out, in, out, in, out, out, di, uo) is det.
+:- mode vn_flush__node(in, in, in, out, in, out, in, out, in, out, di, uo)
+	is det.
 
 vn_flush__node(Node, Ctrlmap, Nodes0, Nodes, VnTables0, VnTables,
-		Templocs0, Templocs, Instrs) -->
+		Templocs0, Templocs, Params, Instrs) -->
 	vn_debug__flush_start_msg(Node),
 	(
 		{ Node = node_shared(Vn) },
 		vn_flush__shared_node(Vn, Nodes0, Nodes, VnTables0, VnTables,
-			Templocs0, Templocs, Instrs)
+			Templocs0, Templocs, Params, Instrs)
 	;
 		{ Node = node_lval(Vnlval) },
 		vn_flush__lval_node(Vnlval, Ctrlmap, Nodes0, Nodes,
-			VnTables0, VnTables, Templocs0, Templocs, Instrs)
+			VnTables0, VnTables, Templocs0, Templocs, Params,
+			Instrs)
 	;
 		{ Node = node_origlval(_Vnlval) },
 		{ Nodes = Nodes0 },
@@ -76,8 +80,8 @@ vn_flush__node(Node, Ctrlmap, Nodes0, Nodes, VnTables0, VnTables,
 		{ Node = node_ctrl(N) },
 		{ Nodes = Nodes0 },
 		{ map__lookup(Ctrlmap, N, VnInstr) },
-		{ vn_flush__ctrl_node(VnInstr, N,
-			VnTables0, VnTables, Templocs0, Templocs, Instrs) }
+		{ vn_flush__ctrl_node(VnInstr, N, VnTables0, VnTables,
+			Templocs0, Templocs, Params, Instrs) }
 	),
 	% we should look at all the temporary regs here and call reuse_temploc
 	% for the ones that store values that are not live and are not needed
@@ -87,15 +91,13 @@ vn_flush__node(Node, Ctrlmap, Nodes0, Nodes, VnTables0, VnTables,
 %-----------------------------------------------------------------------------%
 
 :- pred vn_flush__lval_node(vnlval, ctrlmap, list(vn_node), list(vn_node),
-	vn_tables, vn_tables, templocs, templocs, list(instruction),
+	vn_tables, vn_tables, templocs, templocs, vn_params, list(instruction),
 	io__state, io__state).
-% :- mode vn_flush__lval_node(in, in, di, uo, di, uo, di, uo, out, di, uo)
-%	is det.
-:- mode vn_flush__lval_node(in, in, in, out, in, out, in, out, out, di, uo)
+:- mode vn_flush__lval_node(in, in, in, out, in, out, in, out, in, out, di, uo)
 	is det.
 
 vn_flush__lval_node(Vnlval, Ctrlmap, Nodes0, Nodes,
-		VnTables0, VnTables, Templocs0, Templocs, Instrs) -->
+		VnTables0, VnTables, Templocs0, Templocs, Params, Instrs) -->
 	{ vn_table__lookup_desired_value(Vnlval, DesVn, "vn_flush__lval_node",
 		VnTables0) },
 	{ vn_table__lookup_current_value(Vnlval, CurVn, "vn_flush__lval_node",
@@ -119,28 +121,28 @@ vn_flush__lval_node(Vnlval, Ctrlmap, Nodes0, Nodes,
 		% should come before the user lval nodes.
 		vn_flush__node(node_shared(DesVn), Ctrlmap,
 			Nodes0, Nodes, VnTables0, VnTables1,
-			Templocs0, Templocs1, Instrs1),
+			Templocs0, Templocs1, Params, Instrs1),
 		{ vn_flush__ensure_assignment(Vnlval, DesVn, [],
 			VnTables1, VnTables,
-			Templocs1, Templocs, Instrs2) },
+			Templocs1, Templocs, Params, Instrs2) },
 		{ list__append(Instrs1, Instrs2, Instrs) }
 	;
 		{ vn_flush__ensure_assignment(Vnlval, DesVn, [],
 			VnTables0, VnTables,
-			Templocs0, Templocs, Instrs) },
+			Templocs0, Templocs, Params, Instrs) },
 		{ Nodes = Nodes0 }
 	).
 
 %-----------------------------------------------------------------------------%
 
 :- pred vn_flush__shared_node(vn, list(vn_node), list(vn_node),
-	vn_tables, vn_tables, templocs, templocs, list(instruction),
+	vn_tables, vn_tables, templocs, templocs, vn_params, list(instruction),
 	io__state, io__state).
-:- mode vn_flush__shared_node(in, in, out, in, out, in, out, out, di, uo)
+:- mode vn_flush__shared_node(in, in, out, in, out, in, out, in, out, di, uo)
 	is det.
 
 vn_flush__shared_node(Vn, Nodes0, Nodes, VnTables0, VnTables,
-		Templocs0, Templocs, Instrs) -->
+		Templocs0, Templocs, Params, Instrs) -->
 	( { vn_table__lookup_uses(Vn, [], "vn_flush__shared_node", VnTables0) } ->
 		% earlier nodes must have taken care of this vn
 		{ Nodes = Nodes0 },
@@ -157,18 +159,18 @@ vn_flush__shared_node(Vn, Nodes0, Nodes, VnTables0, VnTables,
 			{ Nodes = Nodes0 }
 		),
 		{ vn_flush__ensure_assignment(Vnlval, Vn, [],
-			VnTables0, VnTables, Templocs1, Templocs, Instrs) }
+			VnTables0, VnTables, Templocs1, Templocs, Params,
+			Instrs) }
 	).
 
 %-----------------------------------------------------------------------------%
 
 :- pred vn_flush__ctrl_node(vn_instr, int, vn_tables, vn_tables,
-	templocs, templocs, list(instruction)).
-% :- mode vn_flush__ctrl_node(in, in, di, uo, di, uo, out) is det.
-:- mode vn_flush__ctrl_node(in, in, in, out, in, out, out) is det.
+	templocs, templocs, vn_params, list(instruction)).
+:- mode vn_flush__ctrl_node(in, in, in, out, in, out, in, out) is det.
 
 vn_flush__ctrl_node(Vn_instr, N, VnTables0, VnTables, Templocs0, Templocs,
-		Instrs) :-
+		Params, Instrs) :-
 	(
 		Vn_instr = vn_livevals(Livevals),
 		VnTables = VnTables0,
@@ -201,20 +203,21 @@ vn_flush__ctrl_node(Vn_instr, N, VnTables0, VnTables, Templocs0, Templocs,
 		Instrs = [goto(TargetAddr) - ""]
 	;
 		Vn_instr = vn_computed_goto(Vn, Labels),
-		vn_flush__vn(Vn, [src_ctrl(N)], [], Rval,
-			VnTables0, VnTables, Templocs0, Templocs, FlushInstrs),
+		vn_flush__vn(Vn, [src_ctrl(N)], [], Rval, VnTables0, VnTables,
+			Templocs0, Templocs, Params, FlushInstrs),
 		Instr = computed_goto(Rval, Labels) - "",
 		list__append(FlushInstrs, [Instr], Instrs)
 	;
 		Vn_instr = vn_if_val(Vn, TargetAddr),
-		vn_flush__vn(Vn, [src_ctrl(N)], [], Rval,
-			VnTables0, VnTables, Templocs0, Templocs, FlushInstrs),
+		vn_flush__vn(Vn, [src_ctrl(N)], [], Rval, VnTables0, VnTables,
+			Templocs0, Templocs, Params, FlushInstrs),
 		Instr = if_val(Rval, TargetAddr) - "",
 		list__append(FlushInstrs, [Instr], Instrs)
 	;
 		Vn_instr = vn_mark_hp(Vnlval),
 		vn_flush__access_path(Vnlval, [src_ctrl(N)], [], Lval,
-			VnTables0, VnTables1, Templocs0, Templocs, FlushInstrs),
+			VnTables0, VnTables1, Templocs0, Templocs, Params,
+			FlushInstrs),
 		vn_table__lookup_assigned_vn(vn_origlval(vn_hp), OldhpVn,
 			"vn_flush__ctrl_node", VnTables1),
 		vn_table__set_current_value(Vnlval, OldhpVn,
@@ -223,15 +226,16 @@ vn_flush__ctrl_node(Vn_instr, N, VnTables0, VnTables, Templocs0, Templocs,
 		list__append(FlushInstrs, [Instr], Instrs)
 	;
 		Vn_instr = vn_restore_hp(Vn),
-		vn_flush__vn(Vn, [src_ctrl(N)], [], Rval,
-			VnTables0, VnTables1, Templocs0, Templocs, FlushInstrs),
+		vn_flush__vn(Vn, [src_ctrl(N)], [], Rval, VnTables0, VnTables1,
+			Templocs0, Templocs, Params, FlushInstrs),
 		vn_table__set_current_value(vn_hp, Vn, VnTables1, VnTables),
 		Instr = restore_hp(Rval) - "",
 		list__append(FlushInstrs, [Instr], Instrs)
 	;
 		Vn_instr = vn_store_ticket(Vnlval),
 		vn_flush__access_path(Vnlval, [src_ctrl(N)], [], Lval,
-			VnTables0, VnTables1, Templocs0, Templocs, FlushInstrs),
+			VnTables0, VnTables1, Templocs0, Templocs, Params,
+			FlushInstrs),
 		vn_table__lookup_assigned_vn(vn_origlval(Vnlval), OldVn,
 			"vn_flush__ctrl_node", VnTables1),
 		vn_table__set_current_value(Vnlval, OldVn, VnTables1, VnTables),
@@ -239,8 +243,8 @@ vn_flush__ctrl_node(Vn_instr, N, VnTables0, VnTables, Templocs0, Templocs,
 		list__append(FlushInstrs, [Instr], Instrs)
 	;
 		Vn_instr = vn_restore_ticket(Vn),
-		vn_flush__vn(Vn, [src_ctrl(N)], [], Rval,
-			VnTables0, VnTables1, Templocs0, Templocs, FlushInstrs),
+		vn_flush__vn(Vn, [src_ctrl(N)], [], Rval, VnTables0, VnTables1,
+			Templocs0, Templocs, Params, FlushInstrs),
 
 		VnTables1 = VnTables,
 		Instr = restore_ticket(Rval) - "",
@@ -391,13 +395,13 @@ vn_flush__find_cheap_users_2([Src | Srcs], Vnlvals, VnTables) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- pred vn_flush__ensure_assignment(vnlval, vn, list(lval), vn_tables, vn_tables,
-	templocs, templocs, list(instruction)).
-% :- mode vn_flush__ensure_assignment(in, in, in, di, uo, di, uo, out) is det.
-:- mode vn_flush__ensure_assignment(in, in, in, in, out, in, out, out) is det.
+:- pred vn_flush__ensure_assignment(vnlval, vn, list(lval),
+	vn_tables, vn_tables, templocs, templocs, vn_params, list(instruction)).
+:- mode vn_flush__ensure_assignment(in, in, in, in, out, in, out, in, out)
+	is det.
 
 vn_flush__ensure_assignment(Vnlval, Vn, Forbidden, VnTables0, VnTables,
-		Templocs0, Templocs, Instrs) :-
+		Templocs0, Templocs, Params, Instrs) :-
 	(
 		vn_table__search_current_value(Vnlval, Cur_vn, VnTables0),
 		Vn = Cur_vn
@@ -411,18 +415,18 @@ vn_flush__ensure_assignment(Vnlval, Vn, Forbidden, VnTables0, VnTables,
 		Instrs = []
 	;
 		vn_flush__generate_assignment(Vnlval, Vn, Forbidden,
-			VnTables0, VnTables, Templocs0, Templocs, _, Instrs)
+			VnTables0, VnTables, Templocs0, Templocs, Params,
+			_, Instrs)
 	).
 
 :- pred vn_flush__generate_assignment(vnlval, vn, list(lval),
-	vn_tables, vn_tables, templocs, templocs, lval, list(instruction)).
-% :- mode vn_flush__generate_assignment(in, in, in, di, uo, di, uo, out, out)
-%	is det.
-:- mode vn_flush__generate_assignment(in, in, in, in, out, in, out, out, out)
-	is det.
+	vn_tables, vn_tables, templocs, templocs, vn_params,
+	lval, list(instruction)).
+:- mode vn_flush__generate_assignment(in, in, in, in, out, in, out, in,
+	out, out) is det.
 
 vn_flush__generate_assignment(Vnlval, Vn, Forbidden0, VnTables0, VnTables,
-		Templocs0, Templocs, Lval, Instrs) :-
+		Templocs0, Templocs, Params, Lval, Instrs) :-
 	( Vnlval = vn_hp ->
 		error("vn_hp should never need to be explicitly flushed")
 		% It should be done by the first reference to the old value
@@ -440,9 +444,11 @@ vn_flush__generate_assignment(Vnlval, Vn, Forbidden0, VnTables0, VnTables,
 	% next two calls, at most one will modify Temploc.
 	vn_temploc__no_temploc(Vnlval, Templocs0, Templocs1),
 	vn_flush__access_path(Vnlval, [src_access(Vnlval)], Forbidden0, Lval,
-		VnTables0, VnTables1, Templocs1, Templocs2, AccessInstrs),
+		VnTables0, VnTables1, Templocs1, Templocs2, Params,
+		AccessInstrs),
 	vn_flush__vn(Vn, [src_liveval(Vnlval)], Forbidden0, Rval,
-		VnTables1, VnTables2, Templocs2, Templocs3, FlushInstrs0),
+		VnTables1, VnTables2, Templocs2, Templocs3, Params,
+		FlushInstrs0),
 	% The 'current' value of Vnlval may be changed by flush_vn if it
 	% involves a reference to the old value of hp.
 	(
@@ -450,7 +456,8 @@ vn_flush__generate_assignment(Vnlval, Vn, Forbidden0, VnTables0, VnTables,
 		vn_util__find_lvals_in_rval(Rval, Forbidden1),
 		list__append(Forbidden0, Forbidden1, Forbidden),
 		vn_flush__maybe_save_prev_value(Vnlval, OldVn, Vn, Forbidden,
-			VnTables2, VnTables3, Templocs3, Templocs, SaveInstrs)
+			VnTables2, VnTables3, Templocs3, Templocs, Params,
+			SaveInstrs)
 	;
 		SaveVn = no,
 		VnTables3 = VnTables2,
@@ -494,12 +501,11 @@ vn_flush__get_incr_hp([Instr0 | Instrs0], IncrHp, Instrs) :-
 %-----------------------------------------------------------------------------%
 
 :- pred vn_flush__vn(vn, list(vn_src), list(lval), rval, vn_tables, vn_tables,
-	templocs, templocs, list(instruction)).
-% :- mode vn_flush__vn(in, in, in, out, di, uo, di, uo, out) is det.
-:- mode vn_flush__vn(in, in, in, out, in, out, in, out, out) is det.
+	templocs, templocs, vn_params, list(instruction)).
+:- mode vn_flush__vn(in, in, in, out, in, out, in, out, in, out) is det.
 
 vn_flush__vn(Vn, Srcs, Forbidden, Rval, VnTables0, VnTables,
-		Templocs0, Templocs, Instrs) :-
+		Templocs0, Templocs, Params, Instrs) :-
 	( Srcs = [SrcPrime | _] ->
 		Src = SrcPrime
 	;
@@ -509,7 +515,8 @@ vn_flush__vn(Vn, Srcs, Forbidden, Rval, VnTables0, VnTables,
 	(
 		IsConst = yes,
 		vn_flush__vn_value(Vn, Srcs, Forbidden, Rval,
-			VnTables0, VnTables3, Templocs0, Templocs, Instrs)
+			VnTables0, VnTables3, Templocs0, Templocs, Params,
+			Instrs)
 	;
 		IsConst = no,
 		vn_table__lookup_current_locs(Vn, Locs, "vn_flush__vn",
@@ -523,7 +530,7 @@ vn_flush__vn(Vn, Srcs, Forbidden, Rval, VnTables0, VnTables,
 				% The first reference to the old value of hp.
 				vn_flush__old_hp(Srcs, Forbidden, Rval,
 					VnTables0, VnTables3,
-					Templocs0, Templocs, Instrs)
+					Templocs0, Templocs, Params, Instrs)
 			;
 				NewUses = [_,_|_],
 				\+ ( Loc = vn_reg(_) ; Loc = vn_temp(_) ),
@@ -533,12 +540,13 @@ vn_flush__vn(Vn, Srcs, Forbidden, Rval, VnTables0, VnTables,
 					Vnlval),
 				vn_flush__generate_assignment(Vnlval, Vn,
 					Forbidden, VnTables0, VnTables3,
-					Templocs1, Templocs, Lval, Instrs),
+					Templocs1, Templocs, Params,
+					Lval, Instrs),
 				Rval = lval(Lval)
 			;
 				vn_flush__access_path(Loc, [src_vn(Vn) | Srcs],
 					Forbidden, Lval, VnTables0, VnTables3,
-					Templocs0, Templocs, Instrs),
+					Templocs0, Templocs, Params, Instrs),
 				Rval = lval(Lval)
 			)
 		;
@@ -554,12 +562,13 @@ vn_flush__vn(Vn, Srcs, Forbidden, Rval, VnTables0, VnTables,
 					VnTables0, Templocs0, Templocs1),
 				vn_flush__generate_assignment(Vnlval, Vn,
 					Forbidden, VnTables0, VnTables3,
-					Templocs1, Templocs, Lval, Instrs),
+					Templocs1, Templocs, Params,
+					Lval, Instrs),
 				Rval = lval(Lval)
 			;
 				vn_flush__vn_value(Vn, Srcs, Forbidden, Rval,
 					VnTables0, VnTables3,
-					Templocs0, Templocs, Instrs)
+					Templocs0, Templocs, Params, Instrs)
 			)
 		)
 	),
@@ -568,12 +577,11 @@ vn_flush__vn(Vn, Srcs, Forbidden, Rval, VnTables0, VnTables,
 %-----------------------------------------------------------------------------%
 
 :- pred vn_flush__vn_value(vn, list(vn_src), list(lval), rval,
-	vn_tables, vn_tables, templocs, templocs, list(instruction)).
-% :- mode vn_flush__vn_value(in, in, in, out, di, uo, di, uo, out) is det.
-:- mode vn_flush__vn_value(in, in, in, out, in, out, in, out, out) is det.
+	vn_tables, vn_tables, templocs, templocs, vn_params, list(instruction)).
+:- mode vn_flush__vn_value(in, in, in, out, in, out, in, out, in, out) is det.
 
 vn_flush__vn_value(Vn, Srcs, Forbidden, Rval, VnTables0, VnTables,
-		Templocs0, Templocs, Instrs) :-
+		Templocs0, Templocs, Params, Instrs) :-
 	vn_table__lookup_defn(Vn, Vnrval, "vn_flush__vn_value", VnTables0),
 	(
 		Vnrval = vn_origlval(Vnlval),
@@ -606,7 +614,8 @@ vn_flush__vn_value(Vn, Srcs, Forbidden, Rval, VnTables0, VnTables,
 			error(Str)
 		),
 		vn_flush__access_path(Loc, [src_vn(Vn) | Srcs], Forbidden, Lval,
-			VnTables0, VnTables, Templocs0, Templocs, Instrs),
+			VnTables0, VnTables, Templocs0, Templocs, Params,
+			Instrs),
 		Rval = lval(Lval)
 	;
 		Vnrval = vn_mkword(Tag, SubVn1),
@@ -617,13 +626,13 @@ vn_flush__vn_value(Vn, Srcs, Forbidden, Rval, VnTables0, VnTables,
 		->
 			vn_flush__vn(SubVn1, [src_vn(Vn) | Srcs], Forbidden,
 				Rval1, VnTables0, VnTables,
-				Templocs0, Templocs, Instrs),
+				Templocs0, Templocs, Params, Instrs),
 			vn_table__lookup_current_locs(Vn, Locs,
 				"vn_flush__vn_value", VnTables),
 			( Locs = [Loc0 | _] ->
 				% see below for an explanation
 				vn_flush__access_path(Loc0, [], Forbidden, Lval,
-					VnTables, _, Templocs0, _, _),
+					VnTables, _, Templocs0, _, Params, _),
 				Rval = lval(Lval)
 			;
 				Rval = mkword(Tag, Rval1)
@@ -631,7 +640,7 @@ vn_flush__vn_value(Vn, Srcs, Forbidden, Rval, VnTables0, VnTables,
 		;
 			vn_flush__vn(SubVn1, [src_vn(Vn) | Srcs], Forbidden,
 				Rval1, VnTables0, VnTables,
-				Templocs0, Templocs, Instrs),
+				Templocs0, Templocs, Params, Instrs),
 			Rval = mkword(Tag, Rval1)
 		)
 	;
@@ -649,14 +658,17 @@ vn_flush__vn_value(Vn, Srcs, Forbidden, Rval, VnTables0, VnTables,
 	;
 		Vnrval = vn_unop(Unop, SubVn1),
 		vn_flush__vn(SubVn1, [src_vn(Vn) | Srcs], Forbidden, Rval1,
-			VnTables0, VnTables, Templocs0, Templocs, Instrs),
+			VnTables0, VnTables, Templocs0, Templocs, Params,
+			Instrs),
 		Rval = unop(Unop, Rval1)
 	;
 		Vnrval = vn_binop(Binop, SubVn1, SubVn2),
 		vn_flush__vn(SubVn1, [src_vn(Vn) | Srcs], Forbidden, Rval1,
-			VnTables0, VnTables1, Templocs0, Templocs1, Instrs1),
+			VnTables0, VnTables1, Templocs0, Templocs1, Params,
+			Instrs1),
 		vn_flush__vn(SubVn2, [src_vn(Vn) | Srcs], Forbidden, Rval2,
-			VnTables1, VnTables, Templocs1, Templocs, Instrs2),
+			VnTables1, VnTables, Templocs1, Templocs, Params,
+			Instrs2),
 		Rval = binop(Binop, Rval1, Rval2),
 		list__append(Instrs1, Instrs2, Instrs)
 	).
@@ -664,26 +676,26 @@ vn_flush__vn_value(Vn, Srcs, Forbidden, Rval, VnTables0, VnTables,
 %-----------------------------------------------------------------------------%
 
 :- pred vn_flush__old_hp(list(vn_src), list(lval), rval, vn_tables, vn_tables,
-	templocs, templocs, list(instruction)).
-% :- mode vn_flush__old_hp(in, in, out, di, uo, di, uo, out) is det.
-:- mode vn_flush__old_hp(in, in, out, in, out, in, out, out) is det.
+	templocs, templocs, vn_params, list(instruction)).
+:- mode vn_flush__old_hp(in, in, out, in, out, in, out, in, out) is det.
 
 vn_flush__old_hp(Srcs0, Forbidden0, ReturnRval, VnTables0, VnTables,
-		Templocs0, Templocs, Instrs) :-
+		Templocs0, Templocs, Params, Instrs) :-
 	% First take care of the "assignment to hp" part of incr_hp.
 	vn_table__lookup_desired_value(vn_hp, NewhpVn, "vn_flush__old_hp",
 		VnTables0),
 	vn_flush__hp_incr(NewhpVn, Srcs0, Forbidden0, MaybeRval,
-		VnTables0, VnTables1, Templocs0, Templocs1, IncrInstrs),
+		VnTables0, VnTables1, Templocs0, Templocs1, Params, IncrInstrs),
 	(
 		MaybeRval = yes(Rval0),
+		vn_type__bytes_per_word(Params, BytesPerWord),
 		( Rval0 = const(int_const(I)) ->
-			I1 is I // 4,
+			I1 is I // BytesPerWord,
 			Rval = const(int_const(I1))
-		; Rval0 = binop((*), Rval1, const(int_const(4))) ->
+		; Rval0 = binop((*), Rval1, const(int_const(BytesPerWord))) ->
 			Rval = Rval1
 		;
-			Rval = binop((/), Rval0, const(int_const(4)))
+			Rval = binop((/), Rval0, const(int_const(BytesPerWord)))
 		)
 	;
 		MaybeRval = no,
@@ -723,7 +735,7 @@ vn_flush__old_hp(Srcs0, Forbidden0, ReturnRval, VnTables0, VnTables,
 			% generate_assign, we give it a bogus Srcs input and
 			% ignore all its other outputs.
 			vn_flush__access_path(Vnlval, [], Forbidden0, Lval,
-				VnTables3, _, Templocs1, _, _),
+				VnTables3, _, Templocs1, _, Params, _),
 			Templocs2 = Templocs1
 		; 
 			vn_flush__find_cheap_users(UserVn, UserLocs, VnTables3),
@@ -770,7 +782,7 @@ vn_flush__old_hp(Srcs0, Forbidden0, ReturnRval, VnTables0, VnTables,
 		list__append(Forbidden0, Forbidden1, Forbidden),
 		vn_flush__maybe_save_prev_value(Vnlval, OldVn, AssignedVn,
 			Forbidden, VnTables3, VnTables4, Templocs2, Templocs,
-			SaveInstrs)
+			Params, SaveInstrs)
 	;
 		VnTables4 = VnTables2,
 		Templocs = Templocs2,
@@ -784,18 +796,17 @@ vn_flush__old_hp(Srcs0, Forbidden0, ReturnRval, VnTables0, VnTables,
 %-----------------------------------------------------------------------------%
 
 :- pred vn_flush__hp_incr(vn, list(vn_src), list(lval), maybe(rval),
-	vn_tables, vn_tables, templocs, templocs, list(instruction)).
-% :- mode vn_flush__hp_incr(in, in, in, out, di, uo, di, uo, out) is det.
-:- mode vn_flush__hp_incr(in, in, in, out, in, out, in, out, out) is det.
+	vn_tables, vn_tables, templocs, templocs, vn_params, list(instruction)).
+:- mode vn_flush__hp_incr(in, in, in, out, in, out, in, out, in, out) is det.
 
 vn_flush__hp_incr(Vn, Srcs, Forbidden, MaybeRval, VnTables0, VnTables,
-		Templocs0, Templocs, Instrs) :-
+		Templocs0, Templocs, Params, Instrs) :-
 	(
 		vn_flush__rec_find_ref_vns(Vn, SubVns, VnTables0),
 		vn_flush__free_of_old_hp(SubVns, VnTables0)
 	->
 		vn_flush__vn(Vn, Srcs, Forbidden, Rval, VnTables0, VnTables,
-			Templocs0, Templocs, Instrs),
+			Templocs0, Templocs, Params, Instrs),
 		MaybeRval = yes(Rval)
 	;
 		vn_table__lookup_defn(Vn, Vnrval, "vn_flush__hp_incr",
@@ -833,10 +844,10 @@ vn_flush__hp_incr(Vn, Srcs, Forbidden, MaybeRval, VnTables0, VnTables,
 			Vnrval = vn_binop(Op, SubVn1, SubVn2),
 			vn_flush__hp_incr(SubVn1, [src_vn(Vn) | Srcs],
 				Forbidden, MaybeRval1, VnTables0, VnTables1,
-				Templocs0, Templocs1, Instrs1),
+				Templocs0, Templocs1, Params, Instrs1),
 			vn_flush__hp_incr(SubVn2, [src_vn(Vn) | Srcs],
 				Forbidden, MaybeRval2, VnTables1, VnTables2,
-				Templocs1, Templocs, Instrs2),
+				Templocs1, Templocs, Params, Instrs2),
 			list__append(Instrs1, Instrs2, Instrs),
 			(
 				MaybeRval1 = yes(Rval1),
@@ -904,12 +915,12 @@ vn_flush__rec_find_ref_vns_list([Vn | Vns], SubVns, VnTables) :-
 %-----------------------------------------------------------------------------%
 
 :- pred vn_flush__access_path(vnlval, list(vn_src), list(lval), lval,
-	vn_tables, vn_tables, templocs, templocs, list(instruction)).
-% :- mode vn_flush__access_path(in, in, in, out, di, uo, di, uo, out) is det.
-:- mode vn_flush__access_path(in, in, in, out, in, out, in, out, out) is det.
+	vn_tables, vn_tables, templocs, templocs, vn_params, list(instruction)).
+:- mode vn_flush__access_path(in, in, in, out, in, out, in, out, in, out)
+	is det.
 
 vn_flush__access_path(Vnlval, Srcs, Forbidden, Lval, VnTables0, VnTables,
-		Templocs0, Templocs, AccessInstrs) :-
+		Templocs0, Templocs, Params, AccessInstrs) :-
 	(
 		Vnlval = vn_reg(Reg),
 		Lval = reg(Reg),
@@ -950,25 +961,25 @@ vn_flush__access_path(Vnlval, Srcs, Forbidden, Lval, VnTables0, VnTables,
 		Vnlval = vn_succfr(Vn1),
 		vn_flush__vn(Vn1, [src_access(Vnlval) | Srcs], Forbidden, Rval,
 			VnTables0, VnTables,
-			Templocs0, Templocs, AccessInstrs),
+			Templocs0, Templocs, Params, AccessInstrs),
 		Lval = succfr(Rval)
 	;
 		Vnlval = vn_prevfr(Vn1),
 		vn_flush__vn(Vn1, [src_access(Vnlval) | Srcs], Forbidden, Rval,
 			VnTables0, VnTables,
-			Templocs0, Templocs, AccessInstrs),
+			Templocs0, Templocs, Params, AccessInstrs),
 		Lval = prevfr(Rval)
 	;
 		Vnlval = vn_redoip(Vn1),
 		vn_flush__vn(Vn1, [src_access(Vnlval) | Srcs], Forbidden, Rval,
 			VnTables0, VnTables,
-			Templocs0, Templocs, AccessInstrs),
+			Templocs0, Templocs, Params, AccessInstrs),
 		Lval = redoip(Rval)
 	;
 		Vnlval = vn_succip(Vn1),
 		vn_flush__vn(Vn1, [src_access(Vnlval) | Srcs], Forbidden, Rval,
 			VnTables0, VnTables,
-			Templocs0, Templocs, AccessInstrs),
+			Templocs0, Templocs, Params, AccessInstrs),
 		Lval = succip(Rval)
 	;
 		Vnlval = vn_hp,
@@ -986,10 +997,10 @@ vn_flush__access_path(Vnlval, Srcs, Forbidden, Lval, VnTables0, VnTables,
 		Vnlval = vn_field(Tag, Vn1, Vn2),
 		vn_flush__vn(Vn1, [src_access(Vnlval) | Srcs], Forbidden, Rval1,
 			VnTables0, VnTables1,
-			Templocs0, Templocs1, AccessInstrs1),
+			Templocs0, Templocs1, Params, AccessInstrs1),
 		vn_flush__vn(Vn2, [src_access(Vnlval) | Srcs], Forbidden, Rval2,
 			VnTables1, VnTables,
-			Templocs1, Templocs, AccessInstrs2),
+			Templocs1, Templocs, Params, AccessInstrs2),
 		Lval = field(Tag, Rval1, Rval2),
 		list__append(AccessInstrs1, AccessInstrs2, AccessInstrs)
 	;
@@ -1017,14 +1028,12 @@ vn_flush__access_path(Vnlval, Srcs, Forbidden, Lval, VnTables0, VnTables,
 	% it may have been already overwritten in flush_old_hp.
 
 :- pred vn_flush__maybe_save_prev_value(vnlval, vn, vn, list(lval),
-	vn_tables, vn_tables, templocs, templocs, list(instruction)).
-% :- mode vn_flush__maybe_save_prev_value(in, in, in, in, di, uo, di, uo, out)
-%	is det.
-:- mode vn_flush__maybe_save_prev_value(in, in, in, in, in, out, in, out, out)
-	is det.
+	vn_tables, vn_tables, templocs, templocs, vn_params, list(instruction)).
+:- mode vn_flush__maybe_save_prev_value(in, in, in, in, in, out, in, out,
+	in, out) is det.
 
 vn_flush__maybe_save_prev_value(Vnlval, OldVn, NewVn, Forbidden,
-		VnTables0, VnTables, Templocs0, Templocs, Instrs) :-
+		VnTables0, VnTables, Templocs0, Templocs, Params, Instrs) :-
 	(
 		vn_table__set_current_value(Vnlval, NewVn, VnTables0,
 			VnTablesProbe),
@@ -1066,7 +1075,8 @@ vn_flush__maybe_save_prev_value(Vnlval, OldVn, NewVn, Forbidden,
 			vn_temploc__next_temploc(Templocs0, Templocs1, Chosen)
 		),
 		vn_flush__ensure_assignment(Chosen, OldVn, Forbidden,
-			VnTables0, VnTables, Templocs1, Templocs, Instrs1),
+			VnTables0, VnTables, Templocs1, Templocs, Params,
+			Instrs1),
 		opt_debug__dump_uses_list(RealUses, Debug),
 		Instrs = [comment(Debug) - "" | Instrs1]
 	;

@@ -89,8 +89,8 @@
 :- pred vn_type__init_params(option_table(option), vn_params).
 :- mode vn_type__init_params(in, out) is det.
 
-:- pred vn_type__word_size(vn_params, int).
-:- mode vn_type__word_size(in, out) is det.
+:- pred vn_type__bytes_per_word(vn_params, int).
+:- mode vn_type__bytes_per_word(in, out) is det.
 
 :- pred vn_type__real_r_regs(vn_params, int).
 :- mode vn_type__real_r_regs(in, out) is det.
@@ -131,7 +131,7 @@ vn_type__init_params(OptionTable, VnParams) :-
 	getopt__lookup_int_option(OptionTable, bytes_per_word, WordBytes),
 	VnParams = vn_params(WordBytes, RealRegs, RealTemps, 1, 1, 2, 2).
 
-vn_type__word_size(vn_params(WordSize, _, _, _, _, _, _), WordSize).
+vn_type__bytes_per_word(vn_params(BytesPerWord, _, _, _, _, _,_), BytesPerWord).
 vn_type__real_r_regs(vn_params(_, RealRegs, _, _, _, _, _), RealRegs).
 vn_type__real_temps(vn_params(_, _, RealTemps, _, _, _, _), RealTemps).
 vn_type__costof_assign(vn_params(_, _, _, AssignCost, _, _, _), AssignCost).
