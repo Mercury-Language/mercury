@@ -455,7 +455,8 @@ compute_expr_purity(call(PredId0,ProcId,Vars,BIState,UContext,Name0),
 						 ActualPurity),
 		{ NumErrors is NumErrors0 + 1 }
 	;
-		warn_unnecessary_body_impurity_decl(ModuleInfo, CalleePredInfo,
+		warn_unnecessary_body_impurity_decl(ModuleInfo, PredInfo,
+						    CalleePredInfo,
 						    PredId, CallContext,
 						    ActualPurity,
 						    DeclaredPurity),
@@ -708,14 +709,28 @@ error_inconsistent_promise(ModuleInfo, PredInfo, PredId, Purity) -->
 
 warn_exaggerated_impurity_decl(ModuleInfo, PredInfo, PredId,
 		DeclPurity, AcutalPurity) -->
-	{ pred_info_context(PredInfo, Context) },
-	write_context_and_pred_id(ModuleInfo, PredInfo, PredId),
-	prog_out__write_context(Context),
-	report_warning("  warning: declared `"),
-	write_purity(DeclPurity),
-	io__write_string("' but actually "),
-	write_purity(AcutalPurity),
-	io__write_string(".\n").
+	(
+			% A class method can't have exaggerated impurity...
+			% the impurity means that implementations are *allowed*
+			% to be impure.
+		{ pred_info_get_markers(PredInfo, Markers) },
+		{ 
+			check_marker(Markers, class_method) 
+		;
+			check_marker(Markers, class_instance_method) 
+		}
+	->
+		[]
+	;
+		{ pred_info_context(PredInfo, Context) },
+		write_context_and_pred_id(ModuleInfo, PredInfo, PredId),
+		prog_out__write_context(Context),
+		report_warning("  warning: declared `"),
+		write_purity(DeclPurity),
+		io__write_string("' but actually "),
+		write_purity(AcutalPurity),
+		io__write_string(".\n")
+	).
 
 :- pred warn_unnecessary_promise_pure(module_info, pred_info, pred_id,
 				  io__state, io__state).
@@ -786,28 +801,39 @@ error_missing_body_impurity_decl(ModuleInfo, _, PredId, Context,
 	io__write_string("' indicator.\n").
 
 
-:- pred warn_unnecessary_body_impurity_decl(module_info, pred_info, pred_id,
-	prog_context, purity, purity, io__state, io__state).
-:- mode warn_unnecessary_body_impurity_decl(in, in, in, in, in, in, di, uo)
+:- pred warn_unnecessary_body_impurity_decl(module_info, pred_info, pred_info, 
+	pred_id, prog_context, purity, purity, io__state, io__state).
+:- mode warn_unnecessary_body_impurity_decl(in, in, in, in, in, in, in, di, uo)
 	is det.
 
-warn_unnecessary_body_impurity_decl(ModuleInfo, _, PredId, Context,
-		ActualPurity, DeclaredPurity) -->
-	prog_out__write_context(Context),
-	io__write_string("In call to "),
-	hlds_out__write_pred_id(ModuleInfo, PredId),
-	io__write_string(":\n"),
-	prog_out__write_context(Context),
-	io__write_string("  warning: unnecessary `"),
-	write_purity(DeclaredPurity),
-	io__write_string("' indicator.\n"),
-	prog_out__write_context(Context),
-	( { ActualPurity = pure } ->
-		io__write_string("  No purity indicator is necessary.\n")
+warn_unnecessary_body_impurity_decl(ModuleInfo, CallerPredInfo, _PredInfo,
+		PredId, Context, ActualPurity, DeclaredPurity) -->
+	(
+			% We don't warn about exaggerated impurity decls in
+			% instance methods --- it just means that the predicate
+			% provided as an implementation was more pure than
+			% necessary.
+		{ pred_info_get_markers(CallerPredInfo, Markers) },
+		{ check_marker(Markers, class_instance_method) }
+	->
+		[]
 	;
-		io__write_string("  A purity indicator of `"),
-		write_purity(ActualPurity),
-		io__write_string("' is sufficient.\n")
+		prog_out__write_context(Context),
+		io__write_string("In call to "),
+		hlds_out__write_pred_id(ModuleInfo, PredId),
+		io__write_string(":\n"),
+		prog_out__write_context(Context),
+		io__write_string("  warning: unnecessary `"),
+		write_purity(DeclaredPurity),
+		io__write_string("' indicator.\n"),
+		prog_out__write_context(Context),
+		( { ActualPurity = pure } ->
+			io__write_string("  No purity indicator is necessary.\n")
+		;
+			io__write_string("  A purity indicator of `"),
+			write_purity(ActualPurity),
+			io__write_string("' is sufficient.\n")
+		)
 	).
 	
 

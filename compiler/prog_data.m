@@ -426,21 +426,21 @@
 :- type class_method
 	--->	pred(tvarset, inst_varset, existq_tvars, sym_name,
 			list(type_and_mode), maybe(determinism), condition,
-			class_constraints, prog_context)
+			purity, class_constraints, prog_context)
 		%       TypeVarNames, InstVarNames,
 		%	ExistentiallyQuantifiedTypeVars,
 		%	PredName, ArgTypes, Determinism, Cond
-		%	ClassContext, Context
+		%	Purity, ClassContext, Context
 
 	; 	func(tvarset, inst_varset, existq_tvars, sym_name,
 			list(type_and_mode), type_and_mode,
 			maybe(determinism), condition,
-			class_constraints, prog_context)
+			purity, class_constraints, prog_context)
 		%       TypeVarNames, InstVarNames,
 		%	ExistentiallyQuantfiedTypeVars,
 		%	PredName, ArgTypes, ReturnType,
 		%	Determinism, Cond
-		%	ClassContext, Context
+		%	Purity, ClassContext, Context
 
 	; 	pred_mode(inst_varset, sym_name, list(mode),
 			maybe(determinism), condition,

@@ -500,17 +500,17 @@ output_class_method(Method) -->
 	io__write_string("\t"),
 	(
 		{ Method = pred(TypeVarSet, InstVarSet, ExistQVars, Name,
-			TypesAndModes, Detism, _Condition, ClassContext,
+			TypesAndModes, Detism, _Condition, Purity, ClassContext,
 			Context) },
 		mercury_output_pred_decl(TypeVarSet, InstVarSet, ExistQVars,
-			Name, TypesAndModes, Detism, pure, ClassContext,
+			Name, TypesAndModes, Detism, Purity, ClassContext,
 			Context, "", ",\n\t", "")
 	;
 		{ Method = func(TypeVarSet, InstVarSet, ExistQVars, Name,
 			TypesAndModes, TypeAndMode, Detism, _Condition,
-			ClassContext, Context) },
+			Purity, ClassContext, Context) },
 		mercury_output_func_decl(TypeVarSet, InstVarSet, ExistQVars,
-			Name, TypesAndModes, TypeAndMode, Detism, pure,
+			Name, TypesAndModes, TypeAndMode, Detism, Purity,
 			ClassContext, Context, "", ",\n\t", "")
 	;
 		{ Method = pred_mode(VarSet, Name, Modes, Detism, 

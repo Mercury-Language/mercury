@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-1999 University of Melbourne.
+% Copyright (C) 1997-2000 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -198,15 +198,13 @@ list_term_to_term_list(Methods, MethodList) :-
 item_to_class_method(error(String, Term), _, error(String, Term)).
 item_to_class_method(ok(Item, Context), Term, Result) :-
 	(
-			% XXX Purity is ignored
-		Item = pred(A, B, C, D, E, F, G, _, I)
+		Item = pred(A, B, C, D, E, F, G, H, I)
 	->
-		Result = ok(pred(A, B, C, D, E, F, G, I, Context))
+		Result = ok(pred(A, B, C, D, E, F, G, H, I, Context))
 	;
-			% XXX Purity is ignored
-		Item = func(A, B, C, D, E, F, G, H, _, J)
+		Item = func(A, B, C, D, E, F, G, H, I, J)
 	->
-		Result = ok(func(A, B, C, D, E, F, G, H, J, Context))
+		Result = ok(func(A, B, C, D, E, F, G, H, I, J, Context))
 	;
 		Item = pred_mode(A, B, C, D, E)
 	->

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1999 The University of Melbourne.
+% Copyright (C) 1996-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -248,10 +248,11 @@ equiv_type__replace_in_class_interface(ClassInterface0, EqvMap,
 
 equiv_type__replace_in_class_method(EqvMap,
 			pred(TypeVarSet0, InstVarSet, ExistQVars, PredName,
-				TypesAndModes0, Det, Cond, ClassContext0,
-				Context),
+				TypesAndModes0, Det, Cond, Purity,
+				ClassContext0, Context),
 			pred(TypeVarSet, InstVarSet, ExistQVars, PredName,
-				TypesAndModes, Det, Cond, ClassContext, Context)
+				TypesAndModes, Det, Cond, Purity,
+				ClassContext, Context)
 			) :-
 	equiv_type__replace_in_class_constraints(ClassContext0, TypeVarSet0, 
 				EqvMap, ClassContext, TypeVarSet1),
@@ -261,10 +262,10 @@ equiv_type__replace_in_class_method(EqvMap,
 equiv_type__replace_in_class_method(EqvMap,
 			func(TypeVarSet0, InstVarSet, ExistQVars, PredName,
 				TypesAndModes0, RetTypeAndMode0, Det, Cond,
-				ClassContext0, Context),
+				Purity, ClassContext0, Context),
 			func(TypeVarSet, InstVarSet, ExistQVars, PredName,
 				TypesAndModes, RetTypeAndMode, Det, Cond,
-				ClassContext, Context)
+				Purity, ClassContext, Context)
 			) :-
 	equiv_type__replace_in_class_constraints(ClassContext0, TypeVarSet0, 
 				EqvMap, ClassContext, TypeVarSet1),

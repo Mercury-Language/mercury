@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-1999 The University of Melbourne.
+% Copyright (C) 1996-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -257,6 +257,8 @@ check_instance_pred(ClassId, ClassVars, ClassInterface, PredId,
 	module_info_pred_info(ModuleInfo0, PredId, PredInfo),
 	pred_info_arg_types(PredInfo, ArgTypeVars, ExistQVars, ArgTypes),
 	pred_info_get_class_context(PredInfo, ClassContext0),
+	pred_info_get_markers(PredInfo, Markers0),
+	remove_marker(Markers0, class_method, Markers),
 		% The first constraint in the class context of a class method
 		% is always the constraint for the class of which it is
 		% a member. Seeing that we are checking an instance 
@@ -301,20 +303,20 @@ check_instance_pred(ClassId, ClassVars, ClassInterface, PredId,
 		ExistQVars, ArgTypes, ClassContext, ArgModes, Errors0,
 		ArgTypeVars, Status, PredOrFunc),
 
-	check_instance_pred_procs(ClassId, ClassVars, MethodName,
+	check_instance_pred_procs(ClassId, ClassVars, MethodName, Markers,
 		InstanceDefn0, InstanceDefn, Info0, Info),
 
 	Info = instance_method_info(ModuleInfo, _PredName, _PredArity, 
 		_ExistQVars, _ArgTypes, _ClassContext, _ArgModes, Errors,
 		_ArgTypeVars, _Status, _PredOrFunc).
 
-:- pred check_instance_pred_procs(class_id, list(tvar), sym_name,
+:- pred check_instance_pred_procs(class_id, list(tvar), sym_name, pred_markers,
 	hlds_instance_defn, hlds_instance_defn, 
 	instance_method_info, instance_method_info).
-:- mode check_instance_pred_procs(in, in, in, in, out, in, out) is det.
+:- mode check_instance_pred_procs(in, in, in, in, in, out, in, out) is det.
 
-check_instance_pred_procs(ClassId, ClassVars, MethodName, InstanceDefn0,
-		InstanceDefn, Info0, Info) :-
+check_instance_pred_procs(ClassId, ClassVars, MethodName, Markers,
+		InstanceDefn0, InstanceDefn, Info0, Info) :-
 	InstanceDefn0 = hlds_instance_defn(A, InstanceContext, 
 				InstanceConstraints, InstanceTypes,
 				InstanceBody, MaybeInstancePredProcs,
@@ -327,7 +329,7 @@ check_instance_pred_procs(ClassId, ClassVars, MethodName, InstanceDefn0,
 	(
 		InstanceNames = [InstancePredName - Context]
 	->
-		produce_auxiliary_procs(ClassVars, 
+		produce_auxiliary_procs(ClassVars, Markers,
 			InstanceTypes, InstanceConstraints, 
 			InstanceVarSet, 
 			InstancePredName, Context,
@@ -466,13 +468,13 @@ get_matching_instance_names(InstanceBody, PredOrFunc, PredName,
 	% Just a bit simpler than using a pair of pairs
 :- type triple(T1, T2, T3) ---> triple(T1, T2, T3).
 
-:- pred produce_auxiliary_procs(list(tvar), 
+:- pred produce_auxiliary_procs(list(tvar), pred_markers,
 	list(type), list(class_constraint), tvarset, sym_name, prog_context,
 	pred_id, list(proc_id), instance_method_info, instance_method_info).
-:- mode produce_auxiliary_procs(in, in, in, in, in, in, out, out, 
+:- mode produce_auxiliary_procs(in, in, in, in, in, in, in, out, out, 
 	in, out) is det.
 
-produce_auxiliary_procs(ClassVars, 
+produce_auxiliary_procs(ClassVars, Markers0,
 		InstanceTypes0, InstanceConstraints0, InstanceVarSet,
 		InstancePredName, Context, PredId,
 		InstanceProcIds, Info0, Info) :-
@@ -519,7 +521,6 @@ produce_auxiliary_procs(ClassVars,
 
 	Cond = true,
 	map__init(Proofs),
-	init_markers(Markers0),
 	add_marker(Markers0, class_instance_method, Markers),
 	module_info_globals(ModuleInfo0, Globals),
 	globals__lookup_string_option(Globals, aditi_user, User),
@@ -565,7 +566,18 @@ produce_auxiliary_procs(ClassVars,
 	goal_info_init(GoalInfo0),
 	goal_info_set_context(GoalInfo0, Context, GoalInfo1),
 	set__list_to_set(HeadVars, NonLocals),
-	goal_info_set_nonlocals(GoalInfo1, NonLocals, GoalInfo),
+	goal_info_set_nonlocals(GoalInfo1, NonLocals, GoalInfo2),
+	(
+		check_marker(Markers, (impure))
+	->
+		goal_info_add_feature(GoalInfo2, (impure), GoalInfo)
+	;
+		check_marker(Markers, (semipure))
+	->
+		goal_info_add_feature(GoalInfo2, (semipure), GoalInfo)
+	;
+		GoalInfo = GoalInfo2
+	),
 
 		% Then the goal itself
 	invalid_pred_id(InvalidPredId),

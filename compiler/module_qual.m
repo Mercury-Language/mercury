@@ -1022,9 +1022,9 @@ qualify_class_interface([M0|M0s], [M|Ms], MQInfo0, MQInfo) -->
 	% done when the item is parsed.
 qualify_class_method(
 		pred(TypeVarset, InstVarset, ExistQVars, Name, TypesAndModes0,
-			MaybeDet, Cond, ClassContext0, Context), 
+			MaybeDet, Cond, Purity, ClassContext0, Context), 
 		pred(TypeVarset, InstVarset, ExistQVars, Name, TypesAndModes,
-			MaybeDet, Cond, ClassContext, Context), 
+			MaybeDet, Cond, Purity, ClassContext, Context), 
 		MQInfo0, MQInfo
 		) -->
 	qualify_types_and_modes(TypesAndModes0, TypesAndModes, 
@@ -1033,9 +1033,11 @@ qualify_class_method(
 		MQInfo1, MQInfo).
 qualify_class_method(
 		func(TypeVarset, InstVarset, ExistQVars, Name, TypesAndModes0,
-			ReturnMode0, MaybeDet, Cond, ClassContext0, Context), 
+			ReturnMode0, MaybeDet, Cond, Purity, ClassContext0,
+			Context), 
 		func(TypeVarset, InstVarset, ExistQVars, Name, TypesAndModes,
-			ReturnMode, MaybeDet, Cond, ClassContext, Context), 
+			ReturnMode, MaybeDet, Cond, Purity, ClassContext,
+			Context), 
 		MQInfo0, MQInfo
 		) -->
 	qualify_types_and_modes(TypesAndModes0, TypesAndModes, 

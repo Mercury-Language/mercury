@@ -2349,7 +2349,8 @@ module_add_class_method(Method, Name, Vars, Status, MaybePredIdProcId,
 		Module0, Module) -->
 	(
 		{ Method = pred(TypeVarSet, InstVarSet, ExistQVars, PredName,
-			TypesAndModes, MaybeDet, Cond, ClassContext, Context) },
+			TypesAndModes, MaybeDet, Cond, Purity,
+			ClassContext, Context) },
 		{ term__var_list_to_term_list(Vars, VarTerms) },
 		{ ClassContext = constraints(UnivCnstrs, ExistCnstrs) },
 		{ NewUnivCnstrs = [constraint(Name, VarTerms) | UnivCnstrs] },
@@ -2357,13 +2358,13 @@ module_add_class_method(Method, Name, Vars, Status, MaybePredIdProcId,
 		{ init_markers(Markers0) },
 		{ add_marker(Markers0, class_method, Markers) },
 		module_add_pred(Module0, TypeVarSet, InstVarSet, ExistQVars,
-			PredName, TypesAndModes, MaybeDet, Cond, pure,
+			PredName, TypesAndModes, MaybeDet, Cond, Purity,
 			NewClassContext, Markers, Context, Status,
 			MaybePredIdProcId, Module)
 	;
 		{ Method = func(TypeVarSet, InstVarSet, ExistQVars, FuncName,
 			TypesAndModes, RetTypeAndMode, MaybeDet, Cond,
-			ClassContext, Context) },
+			Purity, ClassContext, Context) },
 		{ term__var_list_to_term_list(Vars, VarTerms) },
 		{ ClassContext = constraints(UnivCnstrs, ExistCnstrs) },
 		{ NewUnivCnstrs = [constraint(Name, VarTerms) | UnivCnstrs] },
@@ -2372,8 +2373,8 @@ module_add_class_method(Method, Name, Vars, Status, MaybePredIdProcId,
 		{ add_marker(Markers0, class_method, Markers) },
 		module_add_func(Module0, TypeVarSet, InstVarSet, ExistQVars,
 			FuncName, TypesAndModes, RetTypeAndMode, MaybeDet,
-			Cond, pure, NewClassContext, Markers, Context, Status,
-			MaybePredIdProcId, Module)
+			Cond, Purity, NewClassContext, Markers, Context, 
+			Status, MaybePredIdProcId, Module)
 	;
 		{ Method = pred_mode(VarSet, PredName, Modes, MaybeDet, 
 			Cond, Context) },
@@ -2405,7 +2406,7 @@ add_default_class_method_func_modes([], PredProcIds, PredProcIds,
 add_default_class_method_func_modes([M|Ms], PredProcIds0, PredProcIds,
 		Module0, Module) :-
 	(
-		M = func(_, _, _, FuncName, TypesAndModes, _, _, _, _, _)
+		M = func(_, _, _, FuncName, TypesAndModes, _, _, _, _, _, _)
 	->
 		( FuncName = qualified(ModuleName0, Func0) ->
 			ModuleName = ModuleName0,
