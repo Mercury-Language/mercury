@@ -209,6 +209,11 @@
 :- mode array__bsearch(array_ui, in, pred(in, in, out) is det, out) is det.
 :- mode array__bsearch(in, in, pred(in, in, out) is det, out) is det.
 
+	% array__map(Closure, OldArray, NewArray) applys `Closure' to
+	% each of the elements of `OldArray' to create `NewArray'.
+:- pred array__map(pred(T1, T2), array(T1), array(T2)).
+:- mode array__map(pred(in, out) is det, array_di, array_uo) is det.
+
 %-----------------------------------------------------------------------------%
 :- implementation.
 
@@ -719,6 +724,34 @@ array__bsearch_2(Array, Lo, Hi, El, Compare, Result) :-
 		    array__bsearch_2(Array, Lo, Mid1, El, Compare, Result)
 	        )
 	    )
+	).
+
+%-----------------------------------------------------------------------------%
+
+array__map(Closure, OldArray, NewArray) :-
+	( array__semidet_lookup(OldArray, 0, Elem0) ->
+		array__size(OldArray, Size),
+		call(Closure, Elem0, Elem),
+		array__init(Size, Elem, NewArray0),
+		array__map_2(1, Size, Closure, OldArray,
+		NewArray0, NewArray)
+	;
+		array__make_empty_array(NewArray)
+	).
+
+:- pred array__map_2(int, int, pred(T1, T2), array(T1), array(T2), array(T2)).
+:- mode array__map_2(in, in, pred(in, out) is det, in, array_di, array_uo)
+		is det.
+
+array__map_2(N, Size, Closure, OldArray, NewArray0, NewArray) :-
+	( N >= Size ->
+		NewArray = NewArray0
+	;
+		array__lookup(OldArray, N, OldElem),
+		Closure(OldElem, NewElem),
+		array__set(NewArray0, N, NewElem, NewArray1),
+		array__map_2(N + 1, Size, Closure, OldArray,
+		NewArray1, NewArray)
 	).
 
 %-----------------------------------------------------------------------------%
