@@ -130,8 +130,12 @@
 
 %-----------------------------------------------------------------------------%
 
-:- type cons_id		--->	cons(sym_name, int, type_id).
-				% name, arity, result type
+	% The symbol table for constructors.
+	% This table is used by the type-checker to look
+	% up the type of functors/constants.
+
+:- type cons_id		--->	cons(string, int).
+				% name, arity
 
 :- export_type cons_table.
 :- type cons_table	=	map(cons_id, hlds__cons_defn).

@@ -14,18 +14,18 @@
 %-----------------------------------------------------------------------------%
 
 :- module array.
-:- import_module integer.
+:- import_module int, list.
 
-:- type subarray(T)	--->	node(T)
+:- type array(T)	--->	node(T)
 			;	two(
-					integer,
-					integer,
+					int,
+					int,
 					array(T),
 					array(T)
 				)
 			;	three(
-					integer,
-					integer,
+					int,
+					int,
 					array(T),
 					array(T),
 					array(T)
@@ -33,22 +33,22 @@
 
 % array__init creates an array with bounds from Low to High, with each
 % element initialized to Init.
-:- pred array__init(integer, integer, T, array(T)).
+:- pred array__init(int, int, T, array(T)).
 :- mode array__init(input, input, input, output). % want an array_skeleton?
 
 % array__bounds returns the upper and lower bounds of an array.
-:- pred array__bounds(array(T), integer, integer).
+:- pred array__bounds(array(T), int, int).
 :- mode array__bounds(input, output, output).
 
 % array__search returns the Nth element of an array - or fails if the index
 % is out of bounds.
-:- pred array__search(array(T), integer, T).
+:- pred array__search(array(T), int, T).
 :- mode array__search(input, input, output).
 
 % array__set sets the nth element of an array, and returns the resulting 
 % array (good oppertunity for destructive update ;-). It fails if the
 % index is out of bounds.
-:- pred array__set(array(T), integer, T, array(T)).
+:- pred array__set(array(T), int, T, array(T)).
 :- mode array__set(input, input, input, output).
 
 % array__from_list takes a list (of nonzero length), and returns an array
@@ -186,6 +186,9 @@ array__from_list(List, Array) :-
 	array__init(0, Len1, Head, Array0),
 	array__insert_items(Array0, 1, Tail, Array).
 
+:- pred array__insert_items(array(T), int, list(T), array(T)).
+:- mode array__insert_items(input, input, input, output).
+
 array__insert_items(Array, N, [], Array).
 array__insert_items(Array0, N, [Head|Tail], Array) :-
 	array__set(Array0, N, Head, Array1),
@@ -195,6 +198,9 @@ array__insert_items(Array0, N, [Head|Tail], Array) :-
 array__to_list(Array, List) :-
 	array__bounds(Array, Low, High),
 	array__fetch_items(Array, Low, High, List).
+
+:- pred array__fetch_items(array(T), int, int, list(T)).
+:- mode array__fetch_items(input, input, input, output).
 
 array__fetch_items(Array, Low, High, List) :-
 	(if

@@ -246,14 +246,22 @@ ctors_add([], _TypeId, _Context, Ctors, Ctors).
 ctors_add([Name - Args | Rest], TypeId, Context, Ctors0, Ctors) :-
 	make_cons_id(Name, Args, TypeId, ConsId),
 	ConsDefn = hlds__cons_defn(Args, TypeId, Context),
-	% XXX warning/error for duplicates
-	map__set(Ctors0, ConsId, ConsDefn, Ctors1),
+	(if some [ConsDefns0]
+		map__search(Ctors, ConsId, ConsDefns0)
+	then
+		ConsDefns1 = ConsDefns0
+	else
+		ConsDefns1 = []
+	),
+	map__set(Ctors0, ConsId, [ConsDefn | ConsDefns1], Ctors1),
 	ctors_add(Rest, TypeId, Context, Ctors1, Ctors).
 
 :- pred make_cons_id(sym_name, list(type), type_id, cons_id).
 :- mode make_cons_id(input, input, input, output).
 
-make_cons_id(Name, Args, TypeId, cons(Name, Arity, TypeId)) :-
+make_cons_id(qualified(_Module, Name), Args, _TypeId, cons(Name, Arity)) :-
+	length(Args, Arity).
+make_cons_id(unqualified(Name), Args, _TypeId, cons(Name, Arity)) :-
 	length(Args, Arity).
 
 %-----------------------------------------------------------------------------%

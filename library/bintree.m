@@ -81,6 +81,9 @@ bintree__delete(tree(K0 - V0, Left, Right), K, Tree) :-
 		Tree = tree(K0 - V0, Tree1, Right)
 	).
 
+:- pred bintree__fixup(bintree(K,V), bintree(K,V), bintree(K,V)).
+:- mode bintree__fixup(input, input, output).
+
 bintree__fixup(empty, Right, Right).
 bintree__fixup(Left, empty, Left).
 bintree__fixup(Left, Right, Tree) :-
@@ -97,15 +100,24 @@ bintree__fixup(Left, Right, Tree) :-
 	),
 	Tree = tree(Node, Left1, Right1).
 
+:- pred bintree__right_depth(bintree(K,V), int).
+:- mode bintree__right_depth(input, output).
+
 bintree__right_depth(empty, 0).
 bintree__right_depth(tree(Node, Left, Right), N) :-
 	bintree__right_depth(Right, M),
 	N is M + 1.
 
+:- pred bintree__left_depth(bintree(K,V), int).
+:- mode bintree__left_depth(input, output).
+
 bintree__left_depth(empty, 0).
 bintree__left_depth(tree(Node, Left, Right), N) :-
 	bintree__left_depth(Left, M),
 	N is M + 1.
+
+:- pred bintree__knock_left(bintree(K,V), pair(K, V), bintree(K, V)).
+:- mode bintree__knock_left(input, input, output).
 
 bintree__knock_left(tree(Node0, Left, Right), Node, Tree) :-
 	(if
@@ -117,6 +129,9 @@ bintree__knock_left(tree(Node0, Left, Right), Node, Tree) :-
 		bintree__knock_left(Right, Node, Right1),
 		Tree = tree(Node0, Left, Right1)
 	).
+
+:- pred bintree__knock_right(bintree(K,V), pair(K, V), bintree(K, V)).
+:- mode bintree__knock_right(input, input, output).
 
 bintree__knock_right(tree(Node0, Left, Right), Node, Tree) :-
 	(if
@@ -135,6 +150,9 @@ bintree__knock_right(tree(Node0, Left, Right), Node, Tree) :-
 bintree__from_list(List, Tree) :-
 	bintree__from_list_2(List, empty, Tree).
 
+:- pred bintree__from_list_2(list(pair(K,V)), bintree(K,V), bintree(K,V)).
+:- mode bintree__from_list_2(input, input, output).
+
 bintree__from_list_2([], Tree, Tree).
 bintree__from_list_2([K - V | List], Tree0, Tree) :-
 	bintree__insert(Tree0, K, V, Tree1),
@@ -145,6 +163,9 @@ bintree__from_list_2([K - V | List], Tree0, Tree) :-
 
 bintree__to_list(Tree, List) :-
 	bintree__to_list_2(Tree, [], List).
+
+:- pred bintree__to_list_2(bintree(K,V), list(pair(K,V)), list(pair(K,V))).
+:- mode bintree__to_list_2(input, input, output).
 
 bintree__to_list_2(empty, List, List).
 bintree__to_list_2(tree(Node, Left, Right), List0, List) :-
