@@ -178,8 +178,9 @@ unify_gen__generate_construction_2(float_constant(_Float),
 unify_gen__generate_construction_2(simple_tag(SimpleTag),
 		Var, Args, Modes, Code) -->
 	code_info__get_module_info(ModuleInfo),
+	code_info__get_next_label_number(LabelCount),
 	{ unify_gen__generate_cons_args(Args, ModuleInfo, Modes, RVals) },
-	code_info__cache_expression(Var, create(SimpleTag, RVals, 0)),
+	code_info__cache_expression(Var, create(SimpleTag, RVals, LabelCount)),
 		% we need to flush the expression immediately,
 		% since the expression cache doesn't handle the
 		% dependencies in create expressions
@@ -187,10 +188,11 @@ unify_gen__generate_construction_2(simple_tag(SimpleTag),
 unify_gen__generate_construction_2(complicated_tag(Bits0, Num0),
 		Var, Args, Modes, Code) -->
 	code_info__get_module_info(ModuleInfo),
+	code_info__get_next_label_number(LabelCount),
 	{ unify_gen__generate_cons_args(Args, ModuleInfo, Modes, RVals0) },
 		% the first field holds the secondary tag
 	{ RVals = [yes(const(int_const(Num0))) | RVals0] },
-	code_info__cache_expression(Var, create(Bits0, RVals, 0)),
+	code_info__cache_expression(Var, create(Bits0, RVals, LabelCount)),
 		% we need to flush the expression immediately,
 		% since the expression cache doesn't handle the
 		% dependencies in create expressions
@@ -268,10 +270,11 @@ unify_gen__generate_construction_2(pred_constant(PredId, ProcId),
 		{ proc_info_arg_info(ProcInfo, ArgInfo) },
 		{ code_util__make_entry_label(ModuleInfo, PredId, ProcId,
 				CodeAddress) },
+		code_info__get_next_label_number(LabelCount),
 		{ unify_gen__generate_pred_args(Args, ArgInfo, PredArgs) },
 		{ Vector = [yes(const(int_const(NumArgs))),
 				yes(const(pred_const(CodeAddress))) | PredArgs] },
-		{ Value = create(0, Vector, 0) }
+		{ Value = create(0, Vector, LabelCount) }
 	),
 	code_info__cache_expression(Var, Value).
 
