@@ -1,0 +1,52 @@
+acos
+addi
+addf
+apply
+asin
+clampf
+cone			# Tier-2
+cos
+cube			# Tier-2
+cylinder		# Tier-2
+difference		# Tier-3
+divi
+divf
+eqi
+eqf
+false			# literal
+floor
+frac
+get
+getx
+gety
+getz
+if
+intersect		# Tier-3
+length
+lessi
+lessf
+light
+modi
+muli
+mulf
+negi
+negf
+plane
+point
+pointlight		# Tier-2
+real
+render
+rotatex
+rotatey
+rotatez
+scale
+sin
+sphere
+spotlight		# Tier-3
+sqrt
+subi
+subf
+translate
+true			# literal
+union
+uscale

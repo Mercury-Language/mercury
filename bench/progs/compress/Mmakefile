@@ -1,0 +1,14 @@
+include Mmakefile.grade
+include Mmakefile.optlevel
+include Mmakefile.flags
+
+PROG_MCFLAGS = \
+	--intermod-inline-simple-threshold 40 \
+	--inline-simple-threshold 40 \
+	--inline-vars-threshold 99999 \
+	--deforestation-vars-threshold 99999
+NAME = compress
+PROG = harness
+ARGS = testbuf-1000000-t-11610884 1000000
+
+include ../Mmakefile.common

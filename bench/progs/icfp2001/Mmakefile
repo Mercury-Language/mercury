@@ -1,0 +1,10 @@
+include Mmakefile.grade
+include Mmakefile.optlevel
+include Mmakefile.flags
+
+PROG_MCFLAGS =
+NAME = icfp2001
+PROG = smlngopt
+ARGS = OUTPUT < 103-the-random-returns.txt
+
+include ../Mmakefile.common

@@ -1,0 +1,44 @@
+MCFLAGS = -$(OPTLEVEL) $(PROG_MCFLAGS) --intermodule-optimization \
+		--transitive-intermodule-optimization
+MGNUCFLAGS = --inline-alloc -DML_OMIT_MATH_DOMAIN_CHECKS
+MLFLAGS = --static
+
+MAIN_TARGET = all
+
+.PHONY: all
+all:	$(PROG).$(GRADE).$(OPTLEVEL)
+
+.PHONY: depend
+depend: $(PROG).depend
+
+$(PROG).$(GRADE).$(OPTLEVEL): $(PROG)
+	cp $(PROG) $(PROG).$(GRADE).$(OPTLEVEL)
+
+.PHONY: times
+times:	$(PROG).$(GRADE).$(OPTLEVEL)
+	( \
+	echo -n "$(NAME).$(GRADE).$(OPTLEVEL) " ; \
+	../dotime $(PROG).$(GRADE).$(OPTLEVEL) $(ARGS) ; \
+	echo -n "$(NAME).$(GRADE).$(OPTLEVEL) " ; \
+	../dotime $(PROG).$(GRADE).$(OPTLEVEL) $(ARGS) ; \
+	echo -n "$(NAME).$(GRADE).$(OPTLEVEL) " ; \
+	../dotime $(PROG).$(GRADE).$(OPTLEVEL) $(ARGS) ; \
+	echo -n "$(NAME).$(GRADE).$(OPTLEVEL) " ; \
+	../dotime $(PROG).$(GRADE).$(OPTLEVEL) $(ARGS) ; \
+	echo -n "$(NAME).$(GRADE).$(OPTLEVEL) " ; \
+	../dotime $(PROG).$(GRADE).$(OPTLEVEL) $(ARGS) ; \
+	echo -n "$(NAME).$(GRADE).$(OPTLEVEL) " ; \
+	../dotime $(PROG).$(GRADE).$(OPTLEVEL) $(ARGS) ; \
+	echo -n "$(NAME).$(GRADE).$(OPTLEVEL) " ; \
+	../dotime $(PROG).$(GRADE).$(OPTLEVEL) $(ARGS) ; \
+	echo -n "$(NAME).$(GRADE).$(OPTLEVEL) " ; \
+	../dotime $(PROG).$(GRADE).$(OPTLEVEL) $(ARGS) ; \
+	echo -n "$(NAME).$(GRADE).$(OPTLEVEL) " ; \
+	../dotime $(PROG).$(GRADE).$(OPTLEVEL) $(ARGS) ; \
+	echo -n "$(NAME).$(GRADE).$(OPTLEVEL) " ; \
+	../dotime $(PROG).$(GRADE).$(OPTLEVEL) $(ARGS) ; \
+	echo -n "$(NAME).$(GRADE).$(OPTLEVEL) " ; \
+	../dotime $(PROG).$(GRADE).$(OPTLEVEL) $(ARGS) ; \
+	echo -n "$(NAME).$(GRADE).$(OPTLEVEL) " ; \
+	../dotime $(PROG).$(GRADE).$(OPTLEVEL) $(ARGS) ; \
+	true ) > TIMES.$(GRADE).$(OPTLEVEL) 2>&1

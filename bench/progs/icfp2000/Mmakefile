@@ -1,0 +1,14 @@
+include Mmakefile.grade
+include Mmakefile.optlevel
+include Mmakefile.flags
+
+PROG_MCFLAGS = \
+	--intermod-inline-simple-threshold 40 \
+	--inline-simple-threshold 40 \
+	--inline-vars-threshold 99999 \
+	--deforestation-vars-threshold 99999
+NAME = icfp2000
+PROG = main
+ARGS = < dice.cpp
+
+include ../Mmakefile.common
