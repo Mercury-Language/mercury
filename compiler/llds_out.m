@@ -289,14 +289,7 @@ output_split_c_file_init(ModuleName, Modules, Datas,
 		{ Result = ok }
 	->
 		{ library__version(Version) },
-		io__write_strings(
-			["/*\n",
-			"** Automatically generated from `", SourceFileName,
-				"' by the Mercury compiler,\n",
-			"** version ", Version, ".\n",
-			"** Do not edit.\n",
-			"*/\n"]),
-
+		output_c_file_intro_and_grade(SourceFileName, Version),
 		output_init_comment(ModuleName),
 		output_c_file_mercury_headers,
 		io__write_string("\n"),
@@ -326,6 +319,35 @@ output_c_file_mercury_headers -->
 		io__write_string("#include ""mercury_imp.h""\n")
 	).
 
+:- pred output_c_file_intro_and_grade(string, string, io__state, io__state).
+:- mode output_c_file_intro_and_grade(in, in, di, uo) is det.
+
+output_c_file_intro_and_grade(SourceFileName, Version) -->
+	globals__io_lookup_int_option(num_tag_bits, NumTagBits),
+	{ string__int_to_string(NumTagBits, NumTagBitsStr) },
+	globals__io_lookup_bool_option(unboxed_float, UnboxedFloat),
+	{ convert_bool_to_string(UnboxedFloat, UnboxedFloatStr) },
+
+	io__write_strings(["/*\n",
+		"** Automatically generated from `", SourceFileName,
+			"' by the Mercury compiler,\n",
+		"** version ", Version, ".\n",
+		"** The autoconfigured grade settings governing\n",
+		"** the generation of this C file were\n",
+		"**\n",
+		"** TAG_BITS=", NumTagBitsStr, "\n",
+		"** UNBOXED_FLOAT=", UnboxedFloatStr, "\n",
+		"**\n",
+		"** END_OF_C_GRADE_INFO\n",
+		"** Do not edit.\n*/\n"
+	]).
+
+:- pred convert_bool_to_string(bool, string).
+:- mode convert_bool_to_string(in, out) is det.
+
+convert_bool_to_string(no, "no").
+convert_bool_to_string(yes, "yes").
+
 :- pred output_single_c_file(c_file, maybe(int), set_bbbtree(label),
 	maybe(rl_file), io__state, io__state).
 :- mode output_single_c_file(in, in, in, in, di, uo) is det.
@@ -345,13 +367,7 @@ output_single_c_file(CFile, SplitFiles, StackLayoutLabels, MaybeRLFile) -->
 	->
 		{ library__version(Version) },
 		module_name_to_file_name(ModuleName, ".m", no, SourceFileName),
-		io__write_strings(
-			["/*\n",
-			"** Automatically generated from `", SourceFileName,
-				"' by the Mercury compiler,\n",
-			"** version ", Version, ".\n",
-			"** Do not edit.\n",
-			"*/\n"]),
+		output_c_file_intro_and_grade(SourceFileName, Version),
 		( { SplitFiles = yes(_) } ->
 			[]
 		;
