@@ -186,7 +186,7 @@ a variable live if its value will be used later on in the computation.
 
 % The following predicates are used by unique_modes.m.
 
-:- import_module mode_info.
+:- import_module mode_info, hlds_data.
 
 	% Modecheck a unification.
 
@@ -250,6 +250,14 @@ a variable live if its value will be used later on in the computation.
 :- pred mode_info_remove_goals_live_vars(list(hlds_goal), mode_info,
 					mode_info).
 :- mode mode_info_remove_goals_live_vars(in, mode_info_di, mode_info_uo) is det.
+
+	% modecheck_functor_test(ConsId, Var):
+	%	update the instmap to reflect the fact that
+	%	Var was bound to ConsId. 
+	% This is used for the functor tests in `switch' statements.
+	%
+:- pred modecheck_functor_test(prog_var, cons_id, mode_info, mode_info).
+:- mode modecheck_functor_test(in, in, mode_info_di, mode_info_uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -1606,14 +1614,11 @@ modecheck_case_list([Case0 | Cases0], Var,
 	{ Case = case(ConsId, Goal) },
 	mode_info_dcg_get_instmap(InstMap0),
 
-		% record the fact that Var was bound to ConsId in the
-		% instmap before processing this case
-	{ cons_id_arity(ConsId, Arity) },
-	{ list__duplicate(Arity, free, ArgInsts) },
-	modecheck_set_var_inst(Var,
-		bound(unique, [functor(ConsId, ArgInsts)])),
+	% record the fact that Var was bound to ConsId in the
+	% instmap before processing this case
+	modecheck_functor_test(Var, ConsId),
 
-		% modecheck this case (if it is reachable)
+	% modecheck this case (if it is reachable)
 	mode_info_dcg_get_instmap(InstMap1),
 	( { instmap__is_reachable(InstMap1) } ->
 		modecheck_goal(Goal0, Goal1),
@@ -1631,6 +1636,26 @@ modecheck_case_list([Case0 | Cases0], Var,
 
 	mode_info_set_instmap(InstMap0),
 	modecheck_case_list(Cases0, Var, Cases, InstMaps).
+
+	% modecheck_functor_test(ConsId, Var):
+	%	update the instmap to reflect the fact that
+	%	Var was bound to ConsId. 
+	% This is used for the functor tests in `switch' statements.
+	%
+modecheck_functor_test(Var, ConsId) -->
+		% figure out the arity of this constructor,
+		% _including_ any type-infos or typeclass-infos
+		% inserted for existential data types.
+	=(ModeInfo0),
+	{ mode_info_get_module_info(ModeInfo0, ModuleInfo) },
+	{ mode_info_get_var_types(ModeInfo0, VarTypes) },
+	{ map__lookup(VarTypes, Var, Type) },
+	{ AdjustedArity = cons_id_adjusted_arity(ModuleInfo, Type, ConsId) },
+
+		% record the fact that Var was bound to ConsId in the instmap
+	{ list__duplicate(AdjustedArity, free, ArgInsts) },
+	modecheck_set_var_inst(Var,
+		bound(unique, [functor(ConsId, ArgInsts)])).
 
 %-----------------------------------------------------------------------------%
 

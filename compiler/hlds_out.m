@@ -34,7 +34,7 @@
 
 :- import_module hlds_module, hlds_pred, hlds_goal, hlds_data.
 :- import_module prog_data, llds, instmap, term.
-:- import_module io, bool, map, list, term.
+:- import_module io, bool, list, term.
 
 %-----------------------------------------------------------------------------%
 
@@ -137,13 +137,13 @@
 :- mode hlds_out__write_hlds(in, in, di, uo) is det.
 
 :- pred hlds_out__write_clauses(int, module_info, pred_id, prog_varset, bool,
-		list(prog_var), pred_or_func, list(clause), vartypes,
+		list(prog_var), pred_or_func, list(clause), maybe_vartypes,
 		io__state, io__state).
 :- mode hlds_out__write_clauses(in, in, in, in, in, in, in, in, in, di, uo)
 	is det.
 
 :- pred hlds_out__write_assertion(int, module_info, pred_id, prog_varset, bool,
-		list(prog_var), pred_or_func, clause, vartypes,
+		list(prog_var), pred_or_func, clause, maybe_vartypes,
 		io__state, io__state).
 :- mode hlds_out__write_assertion(in, in, in, in, in, in, in, in, in, di, uo)
 	is det.
@@ -159,16 +159,17 @@
 		string, io__state, io__state).
 :- mode hlds_out__write_goal(in, in, in, in, in, in, di, uo) is det.
 
-	% hlds_out__write_goal_list is used to write both disjunctions and
-	% parallel conjunctions. The module_info, prog_varset and vartypes give
-	% the context of the goal. The boolean says whether variables should
-	% have their numbers appended to them. The integer gives the level
-	% of indentation to be used within the goal. The string says what
-	% should be on the line between each goal; it should include a newline
-	% character, but may also contain other characters before that.
+	% hlds_out__write_goal_list is used to write both disjunctions
+	% and parallel conjunctions. The module_info, prog_varset and
+	% maybe_vartypes give the context of the goal. The boolean
+	% says whether variables should have their numbers appended to
+	% them. The integer gives the level of indentation to be used
+	% within the goal. The string says what should be on the line
+	% between each goal; it should include a newline character,
+	% but may also contain other characters before that.
 
 :- pred hlds_out__write_goal_list(list(hlds_goal), module_info, prog_varset,
-		bool, int, string, vartypes, io__state, io__state).
+		bool, int, string, maybe_vartypes, io__state, io__state).
 :- mode hlds_out__write_goal_list(in, in, in, in, in, in, in, di, uo) is det.
 
 	% Print out a functor and its arguments. The prog_varset gives
@@ -219,8 +220,8 @@
 :- pred hlds_out__write_marker(marker, io__state, io__state).
 :- mode hlds_out__write_marker(in, di, uo) is det.
 
-:- type vartypes --->
-		yes(tvarset, map(prog_var, type))
+:- type maybe_vartypes
+	--->	yes(tvarset, vartypes)
 	;	no.
 
 %-----------------------------------------------------------------------------%
@@ -232,7 +233,7 @@
 :- import_module llds_out, prog_out, prog_util, (inst), instmap, trace.
 :- import_module rl, termination, term_errors, check_typeclass.
 
-:- import_module int, string, set, assoc_list, multi_map.
+:- import_module int, string, set, assoc_list, map, multi_map.
 :- import_module require, getopt, std_util, term_io, varset.
 
 
@@ -864,7 +865,7 @@ hlds_out__write_clauses(Indent, ModuleInfo, PredId, VarSet, AppendVarnums,
 	).
 
 :- pred hlds_out__write_clause(int, module_info, pred_id, prog_varset, bool,
-		list(prog_var), pred_or_func, clause, vartypes,
+		list(prog_var), pred_or_func, clause, maybe_vartypes,
 		io__state, io__state).
 :- mode hlds_out__write_clause(in, in, in, in, in, in, in, in, in, di, uo)
 	is det.
@@ -965,7 +966,7 @@ hlds_out__write_goal(Goal, ModuleInfo, VarSet, AppendVarnums,
 	% TypeQual is yes(TVarset, VarTypes) if all constructors should
 	% be module qualified.
 :- pred hlds_out__write_goal_a(hlds_goal, module_info, prog_varset, bool, int,
-	string, vartypes, io__state, io__state).
+	string, maybe_vartypes, io__state, io__state).
 :- mode hlds_out__write_goal_a(in, in, in, in, in, in, in, di, uo) is det.
 
 hlds_out__write_goal_a(Goal - GoalInfo, ModuleInfo, VarSet, AppendVarnums,
@@ -1175,7 +1176,7 @@ hlds_out__write_goal_a(Goal - GoalInfo, ModuleInfo, VarSet, AppendVarnums,
 	).
 
 :- pred hlds_out__write_goal_2(hlds_goal_expr, module_info, prog_varset, bool,
-	int, string, vartypes, io__state, io__state).
+	int, string, maybe_vartypes, io__state, io__state).
 :- mode hlds_out__write_goal_2(in, in, in, in, in, in, in, di, uo) is det.
 
 hlds_out__write_goal_2(switch(Var, CanFail, CasesList, _), ModuleInfo, VarSet,
@@ -1797,7 +1798,7 @@ hlds_out__write_unify_rhs(Rhs, ModuleInfo, VarSet, InstVarSet, AppendVarnums,
 		AppendVarnums, Indent, no, no).
 
 :- pred hlds_out__write_unify_rhs_2(unify_rhs, module_info, prog_varset,
-		inst_varset, bool, int, string, maybe(type), vartypes,
+		inst_varset, bool, int, string, maybe(type), maybe_vartypes,
 		io__state, io__state).
 :- mode hlds_out__write_unify_rhs_2(in, in, in, in, in, in, in, in, in, di, uo)
 	is det.
@@ -1809,7 +1810,7 @@ hlds_out__write_unify_rhs_2(Rhs, ModuleInfo, VarSet, InstVarSet, AppendVarnums,
 	io__write_string(Follow).
 
 :- pred hlds_out__write_unify_rhs_3(unify_rhs, module_info, prog_varset,
-	inst_varset, bool, int, maybe(type), vartypes, io__state, io__state).
+	inst_varset, bool, int, maybe(type), maybe_vartypes, io__state, io__state).
 :- mode hlds_out__write_unify_rhs_3(in, in, in, in, in, in, in, in,
 	di, uo) is det.
 
@@ -2032,7 +2033,7 @@ hlds_out__write_var_mode(Var, Mode, VarSet, InstVarSet, AppendVarnums) -->
 	mercury_output_mode(Mode, InstVarSet).
 
 :- pred hlds_out__write_conj(hlds_goal, list(hlds_goal), module_info,
-		prog_varset, bool, int, string, string, string, vartypes,
+		prog_varset, bool, int, string, string, string, maybe_vartypes,
 		io__state, io__state).
 :- mode hlds_out__write_conj(in, in, in, in, in, in, in, in, in, in,
 	di, uo) is det.
@@ -2081,7 +2082,7 @@ hlds_out__write_goal_list(GoalList, ModuleInfo, VarSet, AppendVarnums, Indent,
 	).
 
 :- pred hlds_out__write_case(case, prog_var, module_info, prog_varset, bool,
-		int, vartypes, io__state, io__state).
+		int, maybe_vartypes, io__state, io__state).
 :- mode hlds_out__write_case(in, in, in, in, in, in, in, di, uo) is det.
 
 hlds_out__write_case(case(ConsId, Goal), Var, ModuleInfo, VarSet,
@@ -2101,7 +2102,7 @@ hlds_out__write_case(case(ConsId, Goal), Var, ModuleInfo, VarSet,
 		Indent, "\n", VarTypes).
 
 :- pred hlds_out__write_cases(list(case), prog_var, module_info, prog_varset,
-		bool, int, vartypes, io__state, io__state).
+		bool, int, maybe_vartypes, io__state, io__state).
 :- mode hlds_out__write_cases(in, in, in, in, in, in, in, di, uo) is det.
 
 hlds_out__write_cases(CasesList, Var, ModuleInfo, VarSet, AppendVarnums,
@@ -2187,7 +2188,7 @@ hlds_out__write_import_status(pseudo_imported) -->
 hlds_out__write_import_status(exported_to_submodules) -->
 	io__write_string("exported_to_submodules").
 
-:- pred hlds_out__write_var_types(int, prog_varset, bool, map(prog_var, type),
+:- pred hlds_out__write_var_types(int, prog_varset, bool, vartypes,
 		tvarset, io__state, io__state).
 :- mode hlds_out__write_var_types(in, in, in, in, in, di, uo) is det.
 
@@ -2199,7 +2200,7 @@ hlds_out__write_var_types(Indent, VarSet, AppendVarnums, VarTypes, TVarSet) -->
 		VarTypes, TVarSet).
 
 :- pred hlds_out__write_var_types_2(list(prog_var), int, prog_varset, bool,
-	map(prog_var, type), tvarset, io__state, io__state).
+	vartypes, tvarset, io__state, io__state).
 :- mode hlds_out__write_var_types_2(in, in, in, in, in, in, di, uo) is det.
 
 hlds_out__write_var_types_2([], _, _, _, _, _) --> [].
@@ -2894,8 +2895,7 @@ hlds_out__write_proc(Indent, AppendVarnums, ModuleInfo, PredId, ProcId,
 % 		{ error("This cannot happen") }
 % 	).
 
-:- pred hlds_out__write_vartypes(int, map(prog_var, type),
-		io__state, io__state).
+:- pred hlds_out__write_vartypes(int, vartypes, io__state, io__state).
 :- mode hlds_out__write_vartypes(in, in, di, uo) is det.
 
 hlds_out__write_vartypes(Indent, X) -->

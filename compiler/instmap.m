@@ -165,13 +165,14 @@
 
 	% Bind a variable in an instmap to a functor at the beginning
 	% of a case in a switch. Aborts on compiler generated cons_ids.
-:- pred instmap_delta_bind_var_to_functor(prog_var, cons_id, instmap,
+:- pred instmap_delta_bind_var_to_functor(prog_var, type, cons_id, instmap,
 		instmap_delta, instmap_delta, module_info, module_info).
-:- mode instmap_delta_bind_var_to_functor(in, in, in, in, out, in, out) is det.
+:- mode instmap_delta_bind_var_to_functor(in, in, in, in, in, out, in, out)
+		is det.
 
-:- pred instmap__bind_var_to_functor(prog_var, cons_id,
+:- pred instmap__bind_var_to_functor(prog_var, type, cons_id,
 		instmap, instmap, module_info, module_info).
-:- mode instmap__bind_var_to_functor(in, in, in, out, in, out) is det.
+:- mode instmap__bind_var_to_functor(in, in, in, in, out, in, out) is det.
 
 	% Update the given instmap to include the initial insts of the
 	% lambda variables.
@@ -305,15 +306,15 @@
 
 :- implementation.
 
-:- import_module mode_util, inst_match, prog_data, goal_util.
-:- import_module hlds_data, inst_util, term.
+:- import_module mode_util, inst_match, prog_data, goal_util, type_util.
+:- import_module hlds_data, inst_util.
 
-:- import_module std_util, require, string.
+:- import_module std_util, require, string, term.
 
 :- type instmap_delta	==	instmap.
 
 :- type instmap	--->	reachable(instmapping)
-			;	unreachable.
+		;	unreachable.
 
 :- type instmapping	==	map(prog_var, inst).
 
@@ -480,7 +481,7 @@ instmap_delta_insert(reachable(InstMapping0), Var, Inst, Instmap) :-
 
 %-----------------------------------------------------------------------------%
 
-instmap_delta_bind_var_to_functor(Var, ConsId, InstMap,
+instmap_delta_bind_var_to_functor(Var, Type, ConsId, InstMap,
 		InstmapDelta0, InstmapDelta, ModuleInfo0, ModuleInfo) :-
 	( 
 		InstmapDelta0 = unreachable,
@@ -504,7 +505,7 @@ instmap_delta_bind_var_to_functor(Var, ConsId, InstMap,
 		;
 			NewInst1 = OldInst
 		),
-		bind_inst_to_functor(NewInst1, ConsId, NewInst,
+		bind_inst_to_functor(Type, ConsId, NewInst1, NewInst,
 			ModuleInfo0, ModuleInfo),
 
 		%
@@ -518,18 +519,19 @@ instmap_delta_bind_var_to_functor(Var, ConsId, InstMap,
 		)
 	).
 
-instmap__bind_var_to_functor(Var, ConsId, InstMap0, InstMap,
+instmap__bind_var_to_functor(Var, Type, ConsId, InstMap0, InstMap,
 		ModuleInfo0, ModuleInfo) :-
 	instmap__lookup_var(InstMap0, Var, Inst0),
-	bind_inst_to_functor(Inst0, ConsId, Inst, ModuleInfo0, ModuleInfo),
+	bind_inst_to_functor(Type, ConsId, Inst0, Inst,
+		ModuleInfo0, ModuleInfo),
 	instmap__set(InstMap0, Var, Inst, InstMap).
 
-:- pred bind_inst_to_functor((inst), cons_id, (inst),
+:- pred bind_inst_to_functor(type, cons_id, (inst), (inst),
 		module_info, module_info). 
-:- mode bind_inst_to_functor(in, in, out, in, out) is det.
+:- mode bind_inst_to_functor(in, in, in, out, in, out) is det.
 
-bind_inst_to_functor(Inst0, ConsId, Inst, ModuleInfo0, ModuleInfo) :-
-	cons_id_arity(ConsId, Arity),
+bind_inst_to_functor(Type, ConsId, Inst0, Inst, ModuleInfo0, ModuleInfo) :-
+	Arity = cons_id_adjusted_arity(ModuleInfo0, Type, ConsId),
 	list__duplicate(Arity, dead, ArgLives),
 	list__duplicate(Arity, free, ArgInsts),
 	(

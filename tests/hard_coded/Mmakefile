@@ -33,6 +33,8 @@ PROGS=	\
 	elim_special_pred \
 	existential_bound_tvar \
 	existential_reordering \
+	existential_type_switch \
+	existential_types_test \
 	eqv_type_bug \
 	error_func \
 	erroneous_liveness \
@@ -116,6 +118,7 @@ MCFLAGS-no_fully_strict	=	--no-fully-strict
 MCFLAGS-nondet_ctrl_vn	=	--optimize-value-number
 MCFLAGS-rnd		=	-O6
 MCFLAGS-type_spec	=	--user-guided-type-specialization
+MCFLAGS-existential_types_test = --infer-all
 
 # In grade `none' with options `-O1 --opt-space' on kryten
 # (a sparc-sun-solaris2.5 system), mode_choice needs to be linked

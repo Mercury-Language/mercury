@@ -391,8 +391,9 @@ fixup_proc_info(MustRecompute, Goal0, Info0, Info) :-
 		proc_info_goal(ProcInfo2, Goal2),
 		RecomputeAtomic = no,
 		proc_info_get_initial_instmap(ProcInfo2, ModuleInfo0, InstMap),
-		recompute_instmap_delta(RecomputeAtomic, Goal2, Goal3, InstMap,
-			ModuleInfo0, ModuleInfo),
+		proc_info_vartypes(ProcInfo2, VarTypes),
+		recompute_instmap_delta(RecomputeAtomic, Goal2, Goal3,
+			VarTypes, InstMap, ModuleInfo0, ModuleInfo),
 		proc_info_set_goal(ProcInfo2, Goal3, ProcInfo),
 		Info = info(A, B, C, D, E, ProcInfo, ModuleInfo, H, Changed)
 	;

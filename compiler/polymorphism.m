@@ -1864,22 +1864,6 @@ insert_typeclass_info_locns([_|_], [], _, _) :-
 
 %-----------------------------------------------------------------------------%
 
-% constraint_list_get_tvars(Constraints, TVars):
-%	return the list of type variables contained in a list of constraints
-
-:- pred constraint_list_get_tvars(list(class_constraint), list(tvar)).
-:- mode constraint_list_get_tvars(in, out) is det.
-constraint_list_get_tvars(Constraints, TVars) :-
-	list__map(constraint_get_tvars, Constraints, TVarsList),
-	list__condense(TVarsList, TVars).
-
-:- pred constraint_get_tvars(class_constraint, list(tvar)).
-:- mode constraint_get_tvars(in, out) is det.
-constraint_get_tvars(constraint(_Name, Args), TVars) :-
-	term__vars_list(Args, TVars).
-
-%-----------------------------------------------------------------------------%
-
 :- pred polymorphism__fixup_quantification(list(prog_var), existq_tvars,
 			hlds_goal, hlds_goal, poly_info, poly_info).
 :- mode polymorphism__fixup_quantification(in, in, in, out, in, out) is det.

@@ -777,14 +777,12 @@ unique_modes__check_case_list([Case0 | Cases0], Var,
 			[Case | Cases], [InstMap | InstMaps]) -->
 	{ Case0 = case(ConsId, Goal0) },
 	{ Case = case(ConsId, Goal) },
-	mode_info_dcg_get_instmap(InstMap0),
+	=(ModeInfo0),
+	{ mode_info_get_instmap(ModeInfo0, InstMap0) },
 
-		% record the fact that Var was bound to ConsId in the
-		% instmap before processing this case
-	{ cons_id_arity(ConsId, Arity) },
-	{ list__duplicate(Arity, free, ArgInsts) },
-	modecheck_set_var_inst(Var,
-		bound(unique, [functor(ConsId, ArgInsts)])),
+	% record the fact that Var was bound to ConsId in the
+	% instmap before processing this case
+	modecheck_functor_test(Var, ConsId),
 
 	mode_info_dcg_get_instmap(InstMap1),
 	( { instmap__is_reachable(InstMap1) } ->

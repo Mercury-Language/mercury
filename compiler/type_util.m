@@ -314,11 +314,31 @@
 :- pred strip_prog_contexts(list(term(T))::in, list(term(T))::out) is det.
 :- pred strip_prog_context(term(T)::in, term(T)::out) is det.
 
+	% cons_id_adjusted_arity(ModuleInfo, Type, ConsId):
+	%	Returns the number of arguments of specified constructor id,
+	%	adjusted to include the extra typeclassinfo and typeinfo
+	%	arguments inserted by polymorphism.m for existentially
+	%	typed constructors.
+	%
+:- func cons_id_adjusted_arity(module_info, type, cons_id) = int.
+
+	% constraint_list_get_tvars(Constraints, TVars):
+	%	return the list of type variables contained in a
+	%	list of constraints
+	%
+:- pred constraint_list_get_tvars(list(class_constraint), list(tvar)).
+:- mode constraint_list_get_tvars(in, out) is det.
+
+	% constraint_list_get_tvars(Constraint, TVars):
+	%	return the list of type variables contained in a constraint.
+:- pred constraint_get_tvars(class_constraint, list(tvar)).
+:- mode constraint_get_tvars(in, out) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module bool, require, std_util, string.
+:- import_module bool, int, require, std_util, string.
 :- import_module prog_io, prog_io_goal, prog_util.
 
 type_util__type_id_module(_ModuleInfo, TypeName - _Arity, ModuleName) :-
@@ -1191,4 +1211,35 @@ strip_prog_context(term__functor(F, As0, _C0),
 	strip_prog_contexts(As0, As).
 
 %-----------------------------------------------------------------------------%
+
+cons_id_adjusted_arity(ModuleInfo, Type, ConsId) = AdjustedArity :-
+		% figure out the arity of this constructor,
+		% _including_ any type-infos or typeclass-infos
+		% inserted for existential data types.
+	cons_id_arity(ConsId, ConsArity),
+	(
+		type_util__get_existq_cons_defn(ModuleInfo, Type, ConsId,
+			ConsDefn)
+	->
+		ConsDefn = ctor_defn(_TVarSet, ExistQTVars, Constraints,
+				_ArgTypes, _ResultType),
+		list__length(Constraints, NumTypeClassInfos),
+		constraint_list_get_tvars(Constraints, ConstrainedTVars),
+		list__delete_elems(ExistQTVars, ConstrainedTVars,
+				UnconstrainedExistQTVars),
+		list__length(UnconstrainedExistQTVars, NumTypeInfos),
+		AdjustedArity = ConsArity + NumTypeClassInfos + NumTypeInfos
+	;
+		AdjustedArity = ConsArity
+	).
+
+%-----------------------------------------------------------------------------%
+
+constraint_list_get_tvars(Constraints, TVars) :-
+	list__map(constraint_get_tvars, Constraints, TVarsList),
+	list__condense(TVarsList, TVars).
+
+constraint_get_tvars(constraint(_Name, Args), TVars) :-
+	term__vars_list(Args, TVars).
+
 %-----------------------------------------------------------------------------%

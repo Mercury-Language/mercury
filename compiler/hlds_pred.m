@@ -112,10 +112,10 @@
 	% the optimized goal can be compared with the original in HLDS dumps.
 :- type clauses_info	--->	clauses_info(
 					prog_varset,	% variable names
-					map(prog_var, type),
+					vartypes,
 						% variable types from
 						% explicit qualifications
-					map(prog_var, type),
+					vartypes,
 						% variable types
 						% inferred by typecheck.m.
 					list(prog_var),	% head vars
@@ -127,17 +127,19 @@
 					typeclass_info_varmap
 				).
 
+:- type vartypes == map(prog_var, type).
+
 :- pred clauses_info_varset(clauses_info, prog_varset).
 :- mode clauses_info_varset(in, out) is det.
 
 	% This partial map holds the types specified by any explicit
 	% type qualifiers in the clauses.
-:- pred clauses_info_explicit_vartypes(clauses_info, map(prog_var, type)).
+:- pred clauses_info_explicit_vartypes(clauses_info, vartypes).
 :- mode clauses_info_explicit_vartypes(in, out) is det.
 
 	% This map contains the types of all the variables, as inferred
 	% by typecheck.m.
-:- pred clauses_info_vartypes(clauses_info, map(prog_var, type)).
+:- pred clauses_info_vartypes(clauses_info, vartypes).
 :- mode clauses_info_vartypes(in, out) is det.
 
 :- pred clauses_info_type_info_varmap(clauses_info, type_info_varmap).
@@ -164,13 +166,13 @@
 
 	% This partial map holds the types specified by any explicit
 	% type qualifiers in the clauses.
-:- pred clauses_info_set_explicit_vartypes(clauses_info, map(prog_var, type),
+:- pred clauses_info_set_explicit_vartypes(clauses_info, vartypes,
 		clauses_info).
 :- mode clauses_info_set_explicit_vartypes(in, in, out) is det.
 
 	% This map contains the types of all the variables, as inferred
 	% by typecheck.m.
-:- pred clauses_info_set_vartypes(clauses_info, map(prog_var, type),
+:- pred clauses_info_set_vartypes(clauses_info, vartypes,
 		clauses_info).
 :- mode clauses_info_set_vartypes(in, in, out) is det.
 
@@ -442,7 +444,7 @@
 	% type_infos and typeclass_infos required by typeinfo liveness
 	% which were added to the front of the argument list.
 :- pred hlds_pred__define_new_pred(hlds_goal, hlds_goal, list(prog_var),
-		list(prog_var), instmap, string, tvarset, map(prog_var, type),
+		list(prog_var), instmap, string, tvarset, vartypes,
 		class_constraints, type_info_varmap, typeclass_info_varmap,
 		prog_varset, pred_markers, aditi_owner, is_address_taken,
 		module_info, module_info, pred_proc_id).
@@ -1166,10 +1168,10 @@ marker_list_to_markers(Markers, Markers).
 
 % :- type clauses_info	--->	clauses_info(
 % 					prog_varset,	% variable names
-% 					map(prog_var, type),
+% 					vartypes,
 % 						% variable types from
 % 						% explicit qualifications
-% 					map(prog_var, type),
+% 					vartypes,
 % 						% variable types
 % 						% inferred by typecheck.m.
 % 					list(prog_var),	% head vars
@@ -1281,7 +1283,7 @@ hlds_pred__define_new_pred(Goal0, Goal, ArgVars0, ExtraTypeInfos, InstMap0,
 	Goal = GoalExpr - GoalInfo,
 	PredProcId = proc(PredId, ProcId).
 
-:- pred compute_arg_types_modes(list(prog_var)::in, map(prog_var, type)::in,
+:- pred compute_arg_types_modes(list(prog_var)::in, vartypes::in,
 	instmap::in, instmap::in, list(type)::out, list(mode)::out) is det.
 
 compute_arg_types_modes([], _, _, _, [], []).
@@ -1310,7 +1312,7 @@ compute_arg_types_modes([Var | Vars], VarTypes, InstMap0, InstMap,
 	is_address_taken, proc_info).
 :- mode proc_info_init(in, in, in, in, in, in, in, in, out) is det.
 
-:- pred proc_info_set(maybe(determinism), prog_varset, map(prog_var, type),
+:- pred proc_info_set(maybe(determinism), prog_varset, vartypes,
 	list(prog_var), list(mode), maybe(list(is_live)), hlds_goal,
 	prog_context, stack_slots, determinism, bool, list(arg_info),
 	liveness_info, type_info_varmap, typeclass_info_varmap,
@@ -1319,12 +1321,12 @@ compute_arg_types_modes([Var | Vars], VarTypes, InstMap0, InstMap,
 :- mode proc_info_set(in, in, in, in, in, in, in, in, in, in, in, in, in, in,
 	in, in, in, in, out) is det.
 
-:- pred proc_info_create(prog_varset, map(prog_var, type), list(prog_var),
+:- pred proc_info_create(prog_varset, vartypes, list(prog_var),
 	list(mode), determinism, hlds_goal, prog_context,
 	type_info_varmap, typeclass_info_varmap, is_address_taken, proc_info).
 :- mode proc_info_create(in, in, in, in, in, in, in, in, in, in, out) is det.
 
-:- pred proc_info_set_body(proc_info, prog_varset, map(prog_var, type),
+:- pred proc_info_set_body(proc_info, prog_varset, vartypes,
 		list(prog_var), hlds_goal, type_info_varmap,
 		typeclass_info_varmap, proc_info).
 :- mode proc_info_set_body(in, in, in, in, in, in, in, out) is det.
@@ -1354,10 +1356,10 @@ compute_arg_types_modes([Var | Vars], VarTypes, InstMap0, InstMap,
 :- pred proc_info_set_varset(proc_info, prog_varset, proc_info).
 :- mode proc_info_set_varset(in, in, out) is det.
 
-:- pred proc_info_vartypes(proc_info, map(prog_var, type)).
+:- pred proc_info_vartypes(proc_info, vartypes).
 :- mode proc_info_vartypes(in, out) is det.
 
-:- pred proc_info_set_vartypes(proc_info, map(prog_var, type), proc_info).
+:- pred proc_info_set_vartypes(proc_info, vartypes, proc_info).
 :- mode proc_info_set_vartypes(in, in, out) is det.
 
 :- pred proc_info_headvars(proc_info, list(prog_var)).
@@ -1523,8 +1525,7 @@ compute_arg_types_modes([Var | Vars], VarTypes, InstMap0, InstMap,
 					% _declared_ determinism
 					% or `no' if there was no detism decl
 			prog_varset,	% variable names
-			map(prog_var, type),
-					% variable types
+			vartypes,	% variable types
 			list(prog_var),	% head vars
 			list(mode), 	% modes of args
 			maybe(list(is_live)),

@@ -108,9 +108,9 @@
 	% may need to insert new merge_insts into the merge_inst table.
 	% If the first argument is yes, the instmap_deltas for calls
 	% and deconstruction unifications are also recomputed.
-:- pred recompute_instmap_delta(bool, hlds_goal, hlds_goal, instmap,
+:- pred recompute_instmap_delta(bool, hlds_goal, hlds_goal, vartypes, instmap,
 				module_info, module_info).
-:- mode recompute_instmap_delta(in, in, out, in, in, out) is det.
+:- mode recompute_instmap_delta(in, in, out, in, in, in, out) is det.
 
 	% Given corresponding lists of types and modes, produce a new
 	% list of modes which includes the information provided by the
@@ -1076,15 +1076,15 @@ mode_id_to_int(_ - X, X).
 	% and deconstructions may become non-local (XXX does this require
 	% rerunning mode analysis rather than just recompute_instmap_delta?).
 
-recompute_instmap_delta(RecomputeAtomic, Goal0, Goal, InstMap0) -->
-	recompute_instmap_delta(RecomputeAtomic, Goal0, Goal, InstMap0, _).
+recompute_instmap_delta(RecomputeAtomic, Goal0, Goal, VarTypes, InstMap0) -->
+	recompute_instmap_delta(RecomputeAtomic, Goal0, Goal, VarTypes, InstMap0, _).
 
-:- pred recompute_instmap_delta(bool, hlds_goal, hlds_goal, instmap,
+:- pred recompute_instmap_delta(bool, hlds_goal, hlds_goal, vartypes, instmap,
 		instmap_delta, module_info, module_info).
-:- mode recompute_instmap_delta(in, in, out, in, out, in, out) is det.
+:- mode recompute_instmap_delta(in, in, out, in, in, out, in, out) is det.
 
 recompute_instmap_delta(RecomputeAtomic, Goal0 - GoalInfo0, Goal - GoalInfo,
-		InstMap0, InstMapDelta) -->
+		VarTypes, InstMap0, InstMapDelta) -->
 	( 
 		{ RecomputeAtomic = no },
 		( 
@@ -1099,7 +1099,7 @@ recompute_instmap_delta(RecomputeAtomic, Goal0 - GoalInfo0, Goal - GoalInfo,
 		{ GoalInfo1 = GoalInfo0 }
 	;
 		recompute_instmap_delta_2(RecomputeAtomic, Goal0,
-			 GoalInfo0, Goal, InstMap0, InstMapDelta0),
+			 GoalInfo0, Goal, VarTypes, InstMap0, InstMapDelta0),
 		{ goal_info_get_nonlocals(GoalInfo0, NonLocals) },
 		{ instmap_delta_restrict(InstMapDelta0,
 			NonLocals, InstMapDelta1) },
@@ -1118,44 +1118,45 @@ recompute_instmap_delta(RecomputeAtomic, Goal0 - GoalInfo0, Goal - GoalInfo,
 	{ goal_info_get_instmap_delta(GoalInfo, InstMapDelta) }.
 
 :- pred recompute_instmap_delta_2(bool, hlds_goal_expr, hlds_goal_info,
-		hlds_goal_expr, instmap, instmap_delta,
+		hlds_goal_expr, vartypes, instmap, instmap_delta,
 		module_info, module_info).
-:- mode recompute_instmap_delta_2(in, in, in, out, in, out, in, out) is det.
+:- mode recompute_instmap_delta_2(in, in, in, out, in, in, out, in, out) is det.
 
 recompute_instmap_delta_2(Atomic, switch(Var, Det, Cases0, SM), GoalInfo,
-		switch(Var, Det, Cases, SM), InstMap, InstMapDelta) -->
+		switch(Var, Det, Cases, SM), VarTypes, InstMap,
+		InstMapDelta) -->
 	{ goal_info_get_nonlocals(GoalInfo, NonLocals) },
 	recompute_instmap_delta_cases(Atomic, Var, Cases0, Cases,
-		InstMap, NonLocals, InstMapDelta).
+		VarTypes, InstMap, NonLocals, InstMapDelta).
 
 recompute_instmap_delta_2(Atomic, conj(Goals0), _, conj(Goals),
-		InstMap, InstMapDelta) -->
+		VarTypes, InstMap, InstMapDelta) -->
 	recompute_instmap_delta_conj(Atomic, Goals0, Goals,
-		InstMap, InstMapDelta).
+		VarTypes, InstMap, InstMapDelta).
 
 recompute_instmap_delta_2(Atomic, par_conj(Goals0, SM), GoalInfo,
-		par_conj(Goals, SM), InstMap, InstMapDelta) -->
+		par_conj(Goals, SM), VarTypes, InstMap, InstMapDelta) -->
 	{ goal_info_get_nonlocals(GoalInfo, NonLocals) },
 	recompute_instmap_delta_par_conj(Atomic, Goals0, Goals,
-		InstMap, NonLocals, InstMapDelta).
+		VarTypes, InstMap, NonLocals, InstMapDelta).
 
 recompute_instmap_delta_2(Atomic, disj(Goals0, SM), GoalInfo, disj(Goals, SM),
-		InstMap, InstMapDelta) -->
+		VarTypes, InstMap, InstMapDelta) -->
 	{ goal_info_get_nonlocals(GoalInfo, NonLocals) },
 	recompute_instmap_delta_disj(Atomic, Goals0, Goals,
-		InstMap, NonLocals, InstMapDelta).
+		VarTypes, InstMap, NonLocals, InstMapDelta).
 
 recompute_instmap_delta_2(Atomic, not(Goal0), _, not(Goal),
-		InstMap, InstMapDelta) -->
+		VarTypes, InstMap, InstMapDelta) -->
 	{ instmap_delta_init_reachable(InstMapDelta) },
-	recompute_instmap_delta(Atomic, Goal0, Goal, InstMap).
+	recompute_instmap_delta(Atomic, Goal0, Goal, VarTypes, InstMap).
 
 recompute_instmap_delta_2(Atomic, if_then_else(Vars, A0, B0, C0, SM), GoalInfo,
-		if_then_else(Vars, A, B, C, SM), InstMap0, InstMapDelta) -->
-	recompute_instmap_delta(Atomic, A0, A, InstMap0, InstMapDelta1),
+		if_then_else(Vars, A, B, C, SM), VarTypes, InstMap0, InstMapDelta) -->
+	recompute_instmap_delta(Atomic, A0, A, VarTypes, InstMap0, InstMapDelta1),
 	{ instmap__apply_instmap_delta(InstMap0, InstMapDelta1, InstMap1) },
-	recompute_instmap_delta(Atomic, B0, B, InstMap1, InstMapDelta2),
-	recompute_instmap_delta(Atomic, C0, C, InstMap0, InstMapDelta3),
+	recompute_instmap_delta(Atomic, B0, B, VarTypes, InstMap1, InstMapDelta2),
+	recompute_instmap_delta(Atomic, C0, C, VarTypes, InstMap0, InstMapDelta3),
 	{ instmap_delta_apply_instmap_delta(InstMapDelta1, InstMapDelta2,
 		InstMapDelta4) },
 	{ goal_info_get_nonlocals(GoalInfo, NonLocals) },
@@ -1164,23 +1165,25 @@ recompute_instmap_delta_2(Atomic, if_then_else(Vars, A0, B0, C0, SM), GoalInfo,
 
 recompute_instmap_delta_2(Atomic, some(Vars, CanRemove, Goal0), _,
 		some(Vars, CanRemove, Goal),
-		InstMap, InstMapDelta) -->
-	recompute_instmap_delta(Atomic, Goal0, Goal, InstMap, InstMapDelta).
+		VarTypes, InstMap, InstMapDelta) -->
+	recompute_instmap_delta(Atomic, Goal0, Goal, VarTypes, InstMap, InstMapDelta).
 
 recompute_instmap_delta_2(_, generic_call(A, Vars, Modes, D), _,
 		generic_call(A, Vars, Modes, D),
-		_InstMap, InstMapDelta) -->
+		_VarTypes, _InstMap, InstMapDelta) -->
 	=(ModuleInfo),
 	{ instmap_delta_from_mode_list(Vars, Modes,
 		ModuleInfo, InstMapDelta) }.
 
 recompute_instmap_delta_2(_, call(PredId, ProcId, Args, D, E, F), _,
-		call(PredId, ProcId, Args, D, E, F), InstMap, InstMapDelta) -->
+		call(PredId, ProcId, Args, D, E, F), _VarTypes,
+		InstMap, InstMapDelta) -->
 	recompute_instmap_delta_call(PredId, ProcId,
 		Args, InstMap, InstMapDelta).
 
 recompute_instmap_delta_2(Atomic, unify(A, Rhs0, UniMode0, Uni, E), GoalInfo, 
-		unify(A, Rhs, UniMode, Uni, E), InstMap0, InstMapDelta) -->
+		unify(A, Rhs, UniMode, Uni, E), VarTypes, InstMap0,
+		InstMapDelta) -->
 	(
 		{ Rhs0 = lambda_goal(PorF, EvalMethod, FixModes, NonLocals,
 			LambdaVars, Modes, Det, Goal0) }
@@ -1188,7 +1191,7 @@ recompute_instmap_delta_2(Atomic, unify(A, Rhs0, UniMode0, Uni, E), GoalInfo,
 		=(ModuleInfo0),
 		{ instmap__pre_lambda_update(ModuleInfo0, LambdaVars, Modes,
 			InstMap0, InstMap) },
-		recompute_instmap_delta(Atomic, Goal0, Goal, InstMap),
+		recompute_instmap_delta(Atomic, Goal0, Goal, VarTypes, InstMap),
 		{ Rhs = lambda_goal(PorF, EvalMethod, FixModes, NonLocals,
 			LambdaVars, Modes, Det, Goal) }
 	;
@@ -1204,91 +1207,96 @@ recompute_instmap_delta_2(Atomic, unify(A, Rhs0, UniMode0, Uni, E), GoalInfo,
 
 recompute_instmap_delta_2(_, pragma_c_code(A, PredId, ProcId, Args, E, F,
 		G), _, pragma_c_code(A, PredId, ProcId, Args, E, F, G),
-		InstMap, InstMapDelta) -->
+		_VarTypes, InstMap, InstMapDelta) -->
 	recompute_instmap_delta_call(PredId, ProcId,
 		Args, InstMap, InstMapDelta).
 
 %-----------------------------------------------------------------------------%
 
 :- pred recompute_instmap_delta_conj(bool, list(hlds_goal), list(hlds_goal),
-		instmap, instmap_delta, module_info, module_info).
-:- mode recompute_instmap_delta_conj(in, in, out, in, out, in, out) is det.
+		vartypes, instmap, instmap_delta, module_info, module_info).
+:- mode recompute_instmap_delta_conj(in, in, out, in, in, out, in, out) is det.
 
-recompute_instmap_delta_conj(_, [], [], _InstMap, InstMapDelta) -->
+recompute_instmap_delta_conj(_, [], [], _VarTypes, _InstMap, InstMapDelta) -->
 	{ instmap_delta_init_reachable(InstMapDelta) }.
 recompute_instmap_delta_conj(Atomic, [Goal0 | Goals0], [Goal | Goals],
-		InstMap0, InstMapDelta) -->
+		VarTypes, InstMap0, InstMapDelta) -->
 	recompute_instmap_delta(Atomic, Goal0, Goal,
-		InstMap0, InstMapDelta0),
+		VarTypes, InstMap0, InstMapDelta0),
 	{ instmap__apply_instmap_delta(InstMap0, InstMapDelta0, InstMap1) },
 	recompute_instmap_delta_conj(Atomic, Goals0, Goals,
-		InstMap1, InstMapDelta1),
+		VarTypes, InstMap1, InstMapDelta1),
 	{ instmap_delta_apply_instmap_delta(InstMapDelta0, InstMapDelta1,
 		InstMapDelta) }.
 
 %-----------------------------------------------------------------------------%
 
 :- pred recompute_instmap_delta_disj(bool, list(hlds_goal), list(hlds_goal),
-		instmap, set(prog_var), instmap_delta,
+		vartypes, instmap, set(prog_var), instmap_delta,
 		module_info, module_info).
-:- mode recompute_instmap_delta_disj(in, in, out, in, in, out, in, out) is det.
+:- mode recompute_instmap_delta_disj(in, in, out, in, in, in, out, in, out)
+		is det.
 
-recompute_instmap_delta_disj(_, [], [], _, _, InstMapDelta) -->
+recompute_instmap_delta_disj(_, [], [], _, _, _, InstMapDelta) -->
 	{ instmap_delta_init_unreachable(InstMapDelta) }.
 recompute_instmap_delta_disj(Atomic, [Goal0], [Goal],
-		InstMap, _, InstMapDelta) -->
-	recompute_instmap_delta(Atomic, Goal0, Goal, InstMap, InstMapDelta).
+		VarTypes, InstMap, _, InstMapDelta) -->
+	recompute_instmap_delta(Atomic, Goal0, Goal, VarTypes, InstMap,
+		InstMapDelta).
 recompute_instmap_delta_disj(Atomic, [Goal0 | Goals0], [Goal | Goals],
-		InstMap, NonLocals, InstMapDelta) -->
+		VarTypes, InstMap, NonLocals, InstMapDelta) -->
 	{ Goals0 = [_|_] },
 	recompute_instmap_delta(Atomic, Goal0, Goal,
-		InstMap, InstMapDelta0),
+		VarTypes, InstMap, InstMapDelta0),
 	recompute_instmap_delta_disj(Atomic, Goals0, Goals,
-		InstMap, NonLocals, InstMapDelta1),
+		VarTypes, InstMap, NonLocals, InstMapDelta1),
 	merge_instmap_delta(InstMap, NonLocals, InstMapDelta0,
 		InstMapDelta1, InstMapDelta).
 
 :- pred recompute_instmap_delta_par_conj(bool, list(hlds_goal),
-		list(hlds_goal), instmap, set(prog_var), instmap_delta,
-		module_info, module_info).
-:- mode recompute_instmap_delta_par_conj(in, in, out, in, in, out,
+		list(hlds_goal), vartypes, instmap, set(prog_var),
+		instmap_delta, module_info, module_info).
+:- mode recompute_instmap_delta_par_conj(in, in, out, in, in, in, out,
 		in, out) is det.
 
-recompute_instmap_delta_par_conj(_, [], [], _, _, InstMapDelta) -->
+recompute_instmap_delta_par_conj(_, [], [], _, _, _, InstMapDelta) -->
 	{ instmap_delta_init_unreachable(InstMapDelta) }.
 recompute_instmap_delta_par_conj(Atomic, [Goal0], [Goal],
-		InstMap, _, InstMapDelta) -->
-	recompute_instmap_delta(Atomic, Goal0, Goal, InstMap, InstMapDelta).
+		VarTypes, InstMap, _, InstMapDelta) -->
+	recompute_instmap_delta(Atomic, Goal0, Goal, VarTypes, InstMap,
+		InstMapDelta).
 recompute_instmap_delta_par_conj(Atomic, [Goal0 | Goals0], [Goal | Goals],
-		InstMap, NonLocals, InstMapDelta) -->
+		VarTypes, InstMap, NonLocals, InstMapDelta) -->
 	{ Goals0 = [_|_] },
 	recompute_instmap_delta(Atomic, Goal0, Goal,
-		InstMap, InstMapDelta0),
+		VarTypes, InstMap, InstMapDelta0),
 	recompute_instmap_delta_par_conj(Atomic, Goals0, Goals,
-		InstMap, NonLocals, InstMapDelta1),
+		VarTypes, InstMap, NonLocals, InstMapDelta1),
 	unify_instmap_delta(InstMap, NonLocals, InstMapDelta0,
 		InstMapDelta1, InstMapDelta).
 
 %-----------------------------------------------------------------------------%
 
 :- pred recompute_instmap_delta_cases(bool, prog_var, list(case), list(case),
-		instmap, set(prog_var), instmap_delta,
+		vartypes, instmap, set(prog_var), instmap_delta,
 		module_info, module_info).
 :- mode recompute_instmap_delta_cases(in, in, in, out,
-		in, in, out, in, out) is det.
+		in, in, in, out, in, out) is det.
 
-recompute_instmap_delta_cases(_, _, [], [], _, _, InstMapDelta) -->
+recompute_instmap_delta_cases(_, _, [], [], _, _, _, InstMapDelta) -->
 	{ instmap_delta_init_unreachable(InstMapDelta) }.
 recompute_instmap_delta_cases(Atomic, Var, [Case0 | Cases0], [Case | Cases],
-		InstMap0, NonLocals, InstMapDelta) -->
+		VarTypes, InstMap0, NonLocals, InstMapDelta) -->
 	{ Case0 = case(Functor, Goal0) },
-	instmap__bind_var_to_functor(Var, Functor, InstMap0, InstMap),
-	recompute_instmap_delta(Atomic, Goal0, Goal, InstMap, InstMapDelta0),
-	instmap_delta_bind_var_to_functor(Var, Functor,
+	{ map__lookup(VarTypes, Var, Type) },
+	instmap__bind_var_to_functor(Var, Type, Functor, InstMap0, InstMap),
+	recompute_instmap_delta(Atomic, Goal0, Goal, VarTypes, InstMap,
+		InstMapDelta0),
+	instmap_delta_bind_var_to_functor(Var, Type, Functor,
 		InstMap0, InstMapDelta0, InstMapDelta1),
 	{ Case = case(Functor, Goal) },
 	recompute_instmap_delta_cases(Atomic, Var, Cases0, Cases,
-		InstMap0, NonLocals, InstMapDelta2),
+		VarTypes, InstMap0, NonLocals, InstMapDelta2),
 	merge_instmap_delta(InstMap0, NonLocals, InstMapDelta1,
 		InstMapDelta2, InstMapDelta).
 
