@@ -20,7 +20,7 @@
 */
 
 #ifndef USE_GCC_NONLOCAL_GOTOS
-  #include "no_regs.h"
+  #error "On SPARCs, you must use non-local gotos if you want global registers"
 #else
 
 #define NUM_REAL_REGS 10
