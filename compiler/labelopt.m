@@ -83,8 +83,8 @@ labelopt__label_list_build_usemap([Label | Labels], Usemap0, Usemap) :-
 :- mode labelopt__instr_list(in, in, in, out, out) is det.
 
 labelopt__instr_list([], _Fallthrough, _Usemap, [], no).
-labelopt__instr_list([Instr0 | Moreinstrs0],
-		Fallthrough, Usemap, [Instr | Moreinstrs], Mod) :-
+labelopt__instr_list([Instr0 | MoreInstrs0],
+		Fallthrough, Usemap, MoreInstrs, Mod) :-
 	( Instr0 = label(Label) - Comment ->
 		(
 		    (   Label = exported(_)
@@ -92,20 +92,20 @@ labelopt__instr_list([Instr0 | Moreinstrs0],
 		    ;   bintree_set__is_member(Label, Usemap)
 		    )
 		->
-			Instr = Instr0,
+			ReplInstrs = [Instr0],
 			Fallthrough1 = yes,
 			Mod0 = no
 		;
-			labelopt__eliminate(Instr0, yes(Fallthrough), Instr,
-				Mod0),
+			labelopt__eliminate(Instr0, yes(Fallthrough),
+				ReplInstrs, Mod0),
 			Fallthrough1 = Fallthrough
 		)
 	;
 		( Fallthrough = yes ->
-			Instr = Instr0,
+			ReplInstrs = [Instr0],
 			Mod0 = no
 		;
-			labelopt__eliminate(Instr0, no, Instr, Mod0)
+			labelopt__eliminate(Instr0, no, ReplInstrs, Mod0)
 		),
 		Instr0 = Uinstr0 - Comment,
 		opt_util__can_instr_fall_through(Uinstr0, Canfallthrough),
@@ -115,8 +115,9 @@ labelopt__instr_list([Instr0 | Moreinstrs0],
 			Fallthrough1 = no
 		)
 	),
-	labelopt__instr_list(Moreinstrs0, Fallthrough1, Usemap,
-		Moreinstrs, Mod1),
+	labelopt__instr_list(MoreInstrs0, Fallthrough1, Usemap,
+		MoreInstrs1, Mod1),
+	list__append(ReplInstrs, MoreInstrs1, MoreInstrs),
 	( Mod0 = no, Mod1 = no ->
 		Mod = no
 	;
@@ -124,32 +125,46 @@ labelopt__instr_list([Instr0 | Moreinstrs0],
 	).
 
 	% Instead of removing eliminated instructions from the instruction list,
-	% we replace them by placeholder comments. The original comment field
+	% we can replace them by placeholder comments. The original comment field
 	% on the instruction is often enough to deduce what the eliminated
 	% instruction was.
 
-:- pred labelopt__eliminate(instruction, maybe(bool), instruction, bool).
+:- pred labelopt__eliminate(instruction, maybe(bool), list(instruction), bool).
 :- mode labelopt__eliminate(in, in, out, out) is det.
 
-labelopt__eliminate(Uinstr0 - Comment0, Label, Uinstr - Comment, Mod) :-
-	( Uinstr0 = comment(_) ->
-		Comment = Comment0,
-		Uinstr = Uinstr0,
-		Mod = no
-	;
-		( Label = yes(Follow) ->
-			( Follow = yes ->
-				Uinstr = comment("eliminated label only")
-			;
-				% Follow = no,
-				Uinstr = comment("eliminated label and block")
-			)
-		;
-			% Label = no,
-			Uinstr = comment("eliminated instruction")
-		),
-		Comment = Comment0,
+labelopt__eliminate(Uinstr0 - Comment0, Label, Instr, Mod) :-
+	labelopt_eliminate_total(Total),
+	(
+		Total = yes,
+		Instr = [],
 		Mod = yes
+	;
+		Total = no,
+		( Uinstr0 = comment(_) ->
+			Comment = Comment0,
+			Uinstr = Uinstr0,
+			Mod = no
+		;
+			( Label = yes(Follow) ->
+				( Follow = yes ->
+					Uinstr = comment("eliminated label only")
+				;
+					% Follow = no,
+					Uinstr = comment("eliminated label and block")
+				)
+			;
+				% Label = no,
+				Uinstr = comment("eliminated instruction")
+			),
+			Comment = Comment0,
+			Mod = yes
+		),
+		Instr = [Uinstr - Comment]
 	).
+
+:- pred labelopt_eliminate_total(bool).
+:- mode labelopt_eliminate_total(out) is det.
+
+labelopt_eliminate_total(yes).
 
 %-----------------------------------------------------------------------------%

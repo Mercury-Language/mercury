@@ -154,6 +154,13 @@
 :- pred opt_util__instr_labels(instr, list(label), list(code_addr)).
 :- mode opt_util__instr_labels(in, out, out) is det.
 
+	% Determine all the labels and code addresses which are referenced
+	% by a list of instructions.
+
+:- pred opt_util__instr_list_labels(list(instruction),
+	list(label), list(code_addr)).
+:- mode opt_util__instr_list_labels(in, out, out) is det.
+
 	% Find a label number that does not occur in the instruction list,
 	% starting the search at a given number.
 
@@ -175,10 +182,31 @@
 :- pred opt_util__rval_refers_stackvars(rval, bool).
 :- mode opt_util__rval_refers_stackvars(in, out) is det.
 
+	% See whether a list of maybe rvals references any stackvars.
+
+:- pred opt_util__rvals_refer_stackvars(list(maybe(rval)), bool).
+:- mode opt_util__rvals_refer_stackvars(in, out) is det.
+
+	% See whether a list of instructions references any stackvars.
+
+:- pred opt_util__block_refers_stackvars(list(instruction), bool).
+:- mode opt_util__block_refers_stackvars(in, out) is det.
+
 	% Format a label for verbose messages during compilation
 
 :- pred opt_util__format_label(label, string).
 :- mode opt_util__format_label(in, out) is det.
+
+	% Find out if an instruction sequence has both incr_sp and decr_sp.
+
+:- pred opt_util__has_both_incr_decr_sp(list(instruction)).
+:- mode opt_util__has_both_incr_decr_sp(in) is semidet.
+
+	% Remove all incr_sp and decr_sp from an instruction sequence.
+
+:- pred opt_util__remove_both_incr_decr_sp(list(instruction),
+	list(instruction)).
+:- mode opt_util__remove_both_incr_decr_sp(di, uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -480,9 +508,6 @@ opt_util__rval_refers_stackvars(binop(_, Baserval1, Baserval2), Refers) :-
 	opt_util__rval_refers_stackvars(Baserval2, Refers2),
 	bool__or(Refers1, Refers2, Refers).
 
-:- pred opt_util__rvals_refer_stackvars(list(maybe(rval)), bool).
-:- mode opt_util__rvals_refer_stackvars(in, out) is det.
-
 opt_util__rvals_refer_stackvars([], no).
 opt_util__rvals_refer_stackvars([MaybeRval | Tail], Refers) :-
 	(
@@ -490,13 +515,106 @@ opt_util__rvals_refer_stackvars([MaybeRval | Tail], Refers) :-
 			MaybeRval = no
 		;
 			MaybeRval = yes(Rval),
-			opt_util__rval_refers_stackvars(Rval, Refers1),
-			Refers1 = no
+			opt_util__rval_refers_stackvars(Rval, no)
 		)
 	->
 		opt_util__rvals_refer_stackvars(Tail, Refers)
 	;
 		Refers = yes
+	).
+
+opt_util__block_refers_stackvars([], no).
+opt_util__block_refers_stackvars([Uinstr0 - _ | Instrs0], Need) :-
+	(
+		Uinstr0 = comment(_),
+		opt_util__block_refers_stackvars(Instrs0, Need)
+	;
+		Uinstr0 = livevals(_),
+		opt_util__block_refers_stackvars(Instrs0, Need)
+	;
+		Uinstr0 = block(_, BlockInstrs),
+		opt_util__block_refers_stackvars(BlockInstrs, Need)
+	;
+		Uinstr0 = assign(Lval, Rval),
+		opt_util__lval_refers_stackvars(Lval, Use1),
+		opt_util__rval_refers_stackvars(Rval, Use2),
+		bool__or(Use1, Use2, Use),
+		( Use = yes ->
+			Need = yes
+		;
+			opt_util__block_refers_stackvars(Instrs0, Need)
+		)
+	;
+		Uinstr0 = call(_, _, _),
+		Need = no
+	;
+		Uinstr0 = call_closure(_, _, _),
+		Need = no
+	;
+		Uinstr0 = mkframe(_, _, _),
+		Need = no
+	;
+		Uinstr0 = modframe(_),
+		Need = no
+	;
+		Uinstr0 = label(_),
+		Need = no
+	;
+		Uinstr0 = goto(_),
+		Need = no
+	;
+		Uinstr0 = computed_goto(Rval, _),
+		opt_util__rval_refers_stackvars(Rval, Use),
+		( Use = yes ->
+			Need = yes
+		;
+			Need = no
+		)
+	;
+		Uinstr0 = c_code(_),
+		Need = no
+	;
+		Uinstr0 = if_val(Rval, _),
+		opt_util__rval_refers_stackvars(Rval, Use),
+		( Use = yes ->
+			Need = yes
+		;
+			Need = no
+		)
+	;
+		Uinstr0 = incr_hp(Lval, _, Rval),
+		opt_util__lval_refers_stackvars(Lval, Use1),
+		opt_util__rval_refers_stackvars(Rval, Use2),
+		bool__or(Use1, Use2, Use),
+		( Use = yes ->
+			Need = yes
+		;
+			opt_util__block_refers_stackvars(Instrs0, Need)
+		)
+	;
+		Uinstr0 = mark_hp(Lval),
+		opt_util__lval_refers_stackvars(Lval, Use),
+		( Use = yes ->
+			Need = yes
+		;
+			opt_util__block_refers_stackvars(Instrs0, Need)
+		)
+	;
+		Uinstr0 = restore_hp(Rval),
+		opt_util__rval_refers_stackvars(Rval, Use),
+		( Use = yes ->
+			Need = yes
+		;
+			opt_util__block_refers_stackvars(Instrs0, Need)
+		)
+	;
+		% handled specially
+		Uinstr0 = incr_sp(_),
+		Need = no
+	;
+		% handled specially
+		Uinstr0 = decr_sp(_),
+		Need = no
 	).
 
 opt_util__filter_out_r1([], []).
@@ -593,7 +711,8 @@ opt_util__can_instr_fall_through(decr_sp(_), yes).
 
 opt_util__instr_labels(comment(_), [], []).
 opt_util__instr_labels(livevals(_), [], []).
-opt_util__instr_labels(block(_, _), [], []).
+opt_util__instr_labels(block(_, Instrs), Labels, CodeAddrs) :-
+	opt_util__instr_list_labels(Instrs, Labels, CodeAddrs).
 opt_util__instr_labels(assign(_,_), [], []).
 opt_util__instr_labels(call(Target, Ret, _), [], [Target, Ret]).
 opt_util__instr_labels(call_closure(_, Ret, _), [], [Ret]).
@@ -609,6 +728,13 @@ opt_util__instr_labels(mark_hp(_), [], []).
 opt_util__instr_labels(restore_hp(_), [], []).
 opt_util__instr_labels(incr_sp(_), [], []).
 opt_util__instr_labels(decr_sp(_), [], []).
+
+opt_util__instr_list_labels([], [], []).
+opt_util__instr_list_labels([Uinstr - _ | Instrs], Labels, CodeAddrs) :-
+	opt_util__instr_labels(Uinstr, Labels0, CodeAddrs0),
+	opt_util__instr_list_labels(Instrs, Labels1, CodeAddrs1),
+	list__append(Labels0, Labels1, Labels),
+	list__append(CodeAddrs0, CodeAddrs1, CodeAddrs).
 
 opt_util__livevals_addr(label(Label), Result) :-
 	( Label = local(_,_) ->
@@ -695,5 +821,39 @@ opt_util__format_proclabel(unify_proc(_Module, Type, Arity, Mode), Str) :-
 	string__int_to_string(Arity, ArityStr),
 	string__int_to_string(Mode, ModeStr),
 	string__append_list(["unify_", Type, "/", ArityStr, " mode ", ModeStr], Str).
+
+opt_util__has_both_incr_decr_sp(Instrs) :-
+	opt_util__has_both_incr_decr_sp_2(Instrs, no, yes, no, yes).
+
+:- pred opt_util__has_both_incr_decr_sp_2(list(instruction),
+	bool, bool, bool, bool).
+:- mode opt_util__has_both_incr_decr_sp_2(in, in, out, in, out) is det.
+
+opt_util__has_both_incr_decr_sp_2([], HasIncr, HasIncr, HasDecr, HasDecr).
+opt_util__has_both_incr_decr_sp_2([Uinstr - _ | Instrs],
+		HasIncr0, HasIncr, HasDecr0, HasDecr) :-
+	( Uinstr = incr_sp(_) ->
+		HasIncr1 = yes
+	;
+		HasIncr1 = HasIncr0
+	),
+	( Uinstr = decr_sp(_) ->
+		HasDecr1 = yes
+	;
+		HasDecr1 = HasDecr0
+	),
+	opt_util__has_both_incr_decr_sp_2(Instrs,
+		HasIncr1, HasIncr, HasDecr1, HasDecr).
+
+opt_util__remove_both_incr_decr_sp([], []).
+opt_util__remove_both_incr_decr_sp([Instr0 | Instrs0], Instrs) :-
+	opt_util__remove_both_incr_decr_sp(Instrs0, Instrs1),
+	( Uinstr = incr_sp(_) - _ ->
+		Instrs = Instrs1
+	; Uinstr = decr_sp(_) - _ ->
+		Instrs = Instrs1
+	;
+		Instrs = [Instr0 | Instrs1]
+	).
 
 %-----------------------------------------------------------------------------%

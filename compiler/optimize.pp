@@ -199,9 +199,14 @@ optimize__nonrepeat(Instructions0, Instructions) -->
 	;
 		{ Instructions3 = Instructions2 }
 	),
-	( { Mod1 = yes } ->
+	{ ( Mod1 = yes ; ValueNumber = yes ) ->
+		Mod2 = yes
+	;
+		Mod2 = no
+	},
+	( { Mod2 = yes } ->
 		( { VeryVerbose = yes } ->
-			io__write_string("% Optimizing locally for "),
+			io__write_string("% Optimizing jumps for "),
 			io__write_string(LabelStr),
 			io__write_string("\n")
 		),
@@ -209,13 +214,23 @@ optimize__nonrepeat(Instructions0, Instructions) -->
 	;
 		{ Instructions4 = Instructions3 }
 	),
-	( { Mod1 = yes } ->
+	( { Mod2 = yes } ->
+		( { VeryVerbose = yes } ->
+			io__write_string("% Optimizing locally for "),
+			io__write_string(LabelStr),
+			io__write_string("\n")
+		),
+		{ peephole__main(Instructions4, Instructions5, _) }
+	;
+		{ Instructions5 = Instructions4 }
+	),
+	( { Mod2 = yes } ->
 		( { VeryVerbose = yes } ->
 			io__write_string("% Optimizing labels for "),
 			io__write_string(LabelStr),
 			io__write_string("\n")
 		),
-		{ labelopt__main(Instructions4, Instructions, _) }
+		{ labelopt__main(Instructions5, Instructions, _) }
 	;
-		{ Instructions = Instructions4 }
+		{ Instructions = Instructions5 }
 	).

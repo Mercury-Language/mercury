@@ -63,8 +63,8 @@ vn__convert_to_vnlval_and_insert([Lval | Lvals], Liveset0, Liveset) :-
 
 	% Initialize the list of temporary locations.
 
-:- pred vn__init_templocs(int, int, bintree_set(lval), templocs).
-:- mode vn__init_templocs(in, in, in, out) is det.
+:- pred vn__init_templocs(int, int, vnlvalset, vn_tables, templocs).
+:- mode vn__init_templocs(in, in, in, in, out) is det.
 
 	% Get a temporary location.
 
@@ -90,16 +90,14 @@ vn__convert_to_vnlval_and_insert([Lval | Lvals], Liveset0, Liveset) :-
 
 :- implementation.
 
-:- type templocs ---> quad(list(vnlval), list(vnlval), int, int).
+:- type templocs ---> quad(list(vnlval), vnlvalset, int, int).
 
-vn__init_templocs(MaxTemp, MaxReg, Livevals, Templocs) :-
+vn__init_templocs(MaxTemp, MaxReg, Livevals, Vn_tables, Templocs) :-
 	vn__get_n_temps(1, MaxTemp, Temps),
-	vn__find_free_regs(1, MaxReg, Livevals, Regs),
-	NextTemp is MaxTemp + 1,
+	vn__find_free_regs(1, MaxReg, Livevals, Vn_tables, Regs),
 	list__append(Regs, Temps, Queue),
-	bintree_set__to_sorted_list(Livevals, Livelist),
-	vn__find_live_non_heap(Livelist, Livevnlvals),
-	Templocs = quad(Queue, Livevnlvals, 0, NextTemp).
+	NextTemp is MaxTemp + 1,
+	Templocs = quad(Queue, Livevals, 0, NextTemp).
 
 vn__next_temploc(quad(Queue0, Livevnlvals, MaxUsed0, Next0),
 		quad(Queue1, Livevnlvals, MaxUsed1, Next1), Vnlval) :-
@@ -127,7 +125,7 @@ vn__reuse_templocs([Vnlval | Vnlvals], Templocs0, Templocs) :-
 	Templocs0 = quad(Queue0, Livevnlvals, MaxUsed, Next),
 	( Vnlval = vn_field(_, _, _) ->
 		Templocs1 = Templocs0
-	; list__member(Vnlval, Livevnlvals) ->
+	; bintree_set__is_member(Vnlval, Livevnlvals) ->
 		Templocs1 = Templocs0
 	;
 		list__append(Queue0, [Vnlval], Queue1),
@@ -139,17 +137,28 @@ vn__max_temploc(quad(_Queue0, _Livevnlvals, MaxUsed, _Next), MaxUsed).
 
 	% Return the non-live registers from the first N registers.
 
-:- pred vn__find_free_regs(int, int, bintree_set(lval), list(vnlval)).
-:- mode vn__find_free_regs(in, in, in, out) is det.
+:- pred vn__find_free_regs(int, int, vnlvalset, vn_tables, list(vnlval)).
+:- mode vn__find_free_regs(in, in, in, in, out) is det.
 
-vn__find_free_regs(N, Max, Livevals, Freeregs) :-
+vn__find_free_regs(N, Max, Livevals, Vn_tables, Freeregs) :-
 	( N > Max ->
 		Freeregs = []
 	;
 		N1 is N + 1,
-		vn__find_free_regs(N1, Max, Livevals, Freeregs0),
-		( bintree_set__member(reg(r(N)), Livevals) ->
+		vn__find_free_regs(N1, Max, Livevals, Vn_tables, Freeregs0),
+		(
+			bintree_set__member(vn_reg(r(N)), Livevals)
+		->
 			Freeregs = Freeregs0
+		;
+			Vnrval = vn_origlval(vn_reg(r(N))), 
+			vn__search_assigned_vn(Vnrval, Vn, Vn_tables)
+		->
+			( vn__search_uses(Vn, [_|_], Vn_tables) ->
+				Freeregs = Freeregs0
+			;
+				Freeregs = [vn_reg(r(N)) | Freeregs0]
+			)
 		;
 			Freeregs = [vn_reg(r(N)) | Freeregs0]
 		)
@@ -254,7 +263,10 @@ vn__new_ctrl_node(Vn_instr, Livemap, Vn_tables0, Vn_tables, Livevals0, Livevals,
 			Livevals0, Livevals, FlushEntry0, FlushEntry)
 	;
 		Vn_instr = vn_goto(TargetAddr),
-		( TargetAddr = label(Label) ->
+		(
+			TargetAddr = label(Label),
+			map__search(Livemap, Label, _)
+		->
 			vn__record_one_label(Label, Livemap,
 				Vn_tables0, Vn_tables, Livevals0, Livevals,
 				FlushEntry0, FlushEntry)
@@ -269,7 +281,10 @@ vn__new_ctrl_node(Vn_instr, Livemap, Vn_tables0, Vn_tables, Livevals0, Livevals,
 			FlushEntry0, FlushEntry)
 	;
 		Vn_instr = vn_if_val(_, TargetAddr),
-		( TargetAddr = label(Label) ->
+		(
+			TargetAddr = label(Label),
+			map__search(Livemap, Label, _)
+		->
 			vn__record_one_label(Label, Livemap,
 				Vn_tables0, Vn_tables, Livevals0, Livevals,
 				FlushEntry0, FlushEntry)
@@ -286,6 +301,16 @@ vn__new_ctrl_node(Vn_instr, Livemap, Vn_tables0, Vn_tables, Livevals0, Livevals,
 		FlushEntry = FlushEntry0
 	;
 		Vn_instr = vn_restore_hp(_Vn),
+		Vn_tables = Vn_tables0,
+		Livevals = Livevals0,
+		FlushEntry = FlushEntry0
+	;
+		Vn_instr = vn_incr_sp(_),
+		Vn_tables = Vn_tables0,
+		Livevals = Livevals0,
+		FlushEntry = FlushEntry0
+	;
+		Vn_instr = vn_decr_sp(_),
 		Vn_tables = Vn_tables0,
 		Livevals = Livevals0,
 		FlushEntry = FlushEntry0
@@ -352,10 +377,16 @@ vn__record_labels([Label | Labels], Livemap, Vn_tables0, Vn_tables,
 
 vn__record_label(Label, Livemap, Vn_tables0, Vn_tables, Livevals0, Livevals,
 		FlushEntry0, FlushEntry) :-
-	map__lookup(Livemap, Label, Liveset),
-	bintree_set__to_sorted_list(Liveset, Livelist),
-	vn__record_livevals(Livelist, Vn_tables0, Vn_tables,
-		Livevals0, Livevals, FlushEntry0, FlushEntry).
+	( map__search(Livemap, Label, Liveset) ->
+		bintree_set__to_sorted_list(Liveset, Livelist),
+		vn__record_livevals(Livelist, Vn_tables0, Vn_tables,
+			Livevals0, Livevals, FlushEntry0, FlushEntry)
+	;
+		opt_debug__dump_label(Label, L_str),
+		string__append_list(["cannot find label ",
+			L_str, " in Livemap"], Str),
+		error(Str)
+	).
 
 :- pred vn__record_livevals(list(lval), vn_tables, vn_tables,
 	vnlvalset, vnlvalset, flushmapentry, flushmapentry).
@@ -598,34 +629,6 @@ vn__find_last_ctrl([Node0 | Nodes0], N, Ctrl, Nodes) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- pred vn__find_sub_vns(vnrval, list(vn)).
-:- mode vn__find_sub_vns(in, out) is det.
-
-vn__find_sub_vns(vn_origlval(Vnlval), SubVns) :-
-	vn__find_sub_vns_vnlval(Vnlval, SubVns).
-vn__find_sub_vns(vn_mkword(_, SubVn), [SubVn]).
-vn__find_sub_vns(vn_const(_), []).
-vn__find_sub_vns(vn_create(_, _, _), []).
-vn__find_sub_vns(vn_unop(_, SubVn), [SubVn]).
-vn__find_sub_vns(vn_binop(_, SubVn1, SubVn2), [SubVn1, SubVn2]).
-
-:- pred vn__find_sub_vns_vnlval(vnlval, list(vn)).
-:- mode vn__find_sub_vns_vnlval(in, out) is det.
-
-vn__find_sub_vns_vnlval(vn_reg(_), []).
-vn__find_sub_vns_vnlval(vn_stackvar(_), []).
-vn__find_sub_vns_vnlval(vn_framevar(_), []).
-vn__find_sub_vns_vnlval(vn_succip, []).
-vn__find_sub_vns_vnlval(vn_maxfr, []).
-vn__find_sub_vns_vnlval(vn_curredoip, []).
-vn__find_sub_vns_vnlval(vn_hp, []).
-vn__find_sub_vns_vnlval(vn_sp, []).
-vn__find_sub_vns_vnlval(vn_field(_, Vn1, Vn2), [Vn1, Vn2]).
-vn__find_sub_vns_vnlval(vn_temp(_), []).
-
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-
 :- interface.
 
 	% Convert an rval into a vnrval and hence into a vn.
@@ -648,6 +651,17 @@ vn__find_sub_vns_vnlval(vn_temp(_), []).
 
 :- pred vn__vnlval_access_vns(vnlval, list(vn)).
 :- mode vn__vnlval_access_vns(in, out) is det.
+
+	% Turn an vnlval into an lval if possible.
+
+:- pred vn__no_heap_vnlval_to_lval(vnlval, maybe(lval)).
+:- mode vn__no_heap_vnlval_to_lval(in, out) is det.
+
+:- pred vn__find_sub_vns(vnrval, list(vn)).
+:- mode vn__find_sub_vns(in, out) is det.
+
+:- pred vn__find_sub_vns_vnlval(vnlval, list(vn)).
+:- mode vn__find_sub_vns_vnlval(in, out) is det.
 
 :- implementation.
 
@@ -877,18 +891,29 @@ vn__lval_to_vnlval(Lval, Vnlval, Vn_tables0, Vn_tables) :-
 % If you to add to this list to fix a determinism error,
 % check vn__lval_to_vnlval above as well.
 
-vn__no_heap_lval_to_vnlval(reg(Reg),	yes(vn_reg(Reg))).
-vn__no_heap_lval_to_vnlval(stackvar(N),	yes(vn_stackvar(N))).
-vn__no_heap_lval_to_vnlval(framevar(N),	yes(vn_framevar(N))).
-vn__no_heap_lval_to_vnlval(succip,	yes(vn_succip)).
-vn__no_heap_lval_to_vnlval(maxfr,	yes(vn_maxfr)).
-vn__no_heap_lval_to_vnlval(curredoip,	yes(vn_curredoip)).
-vn__no_heap_lval_to_vnlval(hp,		yes(vn_hp)).
-vn__no_heap_lval_to_vnlval(sp,		yes(vn_sp)).
-vn__no_heap_lval_to_vnlval(field(_, _, _), no).
-vn__no_heap_lval_to_vnlval(temp(N),	yes(vn_temp(N))).
+vn__no_heap_lval_to_vnlval(reg(Reg),		yes(vn_reg(Reg))).
+vn__no_heap_lval_to_vnlval(stackvar(N),		yes(vn_stackvar(N))).
+vn__no_heap_lval_to_vnlval(framevar(N),		yes(vn_framevar(N))).
+vn__no_heap_lval_to_vnlval(succip,		yes(vn_succip)).
+vn__no_heap_lval_to_vnlval(maxfr,		yes(vn_maxfr)).
+vn__no_heap_lval_to_vnlval(curredoip,		yes(vn_curredoip)).
+vn__no_heap_lval_to_vnlval(hp,			yes(vn_hp)).
+vn__no_heap_lval_to_vnlval(sp,			yes(vn_sp)).
+vn__no_heap_lval_to_vnlval(field(_, _, _),	no).
+vn__no_heap_lval_to_vnlval(temp(N),		yes(vn_temp(N))).
 vn__no_heap_lval_to_vnlval(lvar(_Var), _) :-
 	error("lvar detected in value_number").
+
+vn__no_heap_vnlval_to_lval(vn_reg(Reg),		yes(reg(Reg))).
+vn__no_heap_vnlval_to_lval(vn_stackvar(N),	yes(stackvar(N))).
+vn__no_heap_vnlval_to_lval(vn_framevar(N),	yes(framevar(N))).
+vn__no_heap_vnlval_to_lval(vn_succip,		yes(succip)).
+vn__no_heap_vnlval_to_lval(vn_maxfr,		yes(maxfr)).
+vn__no_heap_vnlval_to_lval(vn_curredoip,	yes(curredoip)).
+vn__no_heap_vnlval_to_lval(vn_hp,		yes(hp)).
+vn__no_heap_vnlval_to_lval(vn_sp,		yes(sp)).
+vn__no_heap_vnlval_to_lval(vn_field(_, _, _), 	no).
+vn__no_heap_vnlval_to_lval(vn_temp(N),		yes(temp(N))).
 
 vn__lval_access_rval(reg(_), []).
 vn__lval_access_rval(stackvar(_), []).
@@ -937,6 +962,25 @@ vn__is_const_expr(Vn, IsConst, Vn_tables) :-
 		vn__is_const_expr(Vn2, IsConst2, Vn_tables),
 		bool__and(IsConst1, IsConst2, IsConst)
 	).
+
+vn__find_sub_vns(vn_origlval(Vnlval), SubVns) :-
+	vn__find_sub_vns_vnlval(Vnlval, SubVns).
+vn__find_sub_vns(vn_mkword(_, SubVn), [SubVn]).
+vn__find_sub_vns(vn_const(_), []).
+vn__find_sub_vns(vn_create(_, _, _), []).
+vn__find_sub_vns(vn_unop(_, SubVn), [SubVn]).
+vn__find_sub_vns(vn_binop(_, SubVn1, SubVn2), [SubVn1, SubVn2]).
+
+vn__find_sub_vns_vnlval(vn_reg(_), []).
+vn__find_sub_vns_vnlval(vn_stackvar(_), []).
+vn__find_sub_vns_vnlval(vn_framevar(_), []).
+vn__find_sub_vns_vnlval(vn_succip, []).
+vn__find_sub_vns_vnlval(vn_maxfr, []).
+vn__find_sub_vns_vnlval(vn_curredoip, []).
+vn__find_sub_vns_vnlval(vn_hp, []).
+vn__find_sub_vns_vnlval(vn_sp, []).
+vn__find_sub_vns_vnlval(vn_field(_, Vn1, Vn2), [Vn1, Vn2]).
+vn__find_sub_vns_vnlval(vn_temp(_), []).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1170,7 +1214,11 @@ vn__add_new_use(Vn, NewUse, Vn_tables0, Vn_tables) :-
 		Lval_to_vn_table0, Rval_to_vn_table0,
 		Vn_to_rval_table0, Vn_to_uses_table0,
 		Vn_to_locs_table0, Loc_to_vn_table0),
-	map__lookup(Vn_to_uses_table0, Vn, Uses0),
+	( map__search(Vn_to_uses_table0, Vn, Uses0Prime) ->
+		Uses0 = Uses0Prime
+	;
+		error("cannot find old use set in add_new_use")
+	),
 	(
 		list__member(NewUse, Uses0),
 		\+ NewUse = src_access(_)
@@ -1197,7 +1245,11 @@ vn__del_old_use(Vn, OldUse, Vn_tables0, Vn_tables) :-
 		Lval_to_vn_table0, Rval_to_vn_table0,
 		Vn_to_rval_table0, Vn_to_uses_table0,
 		Vn_to_locs_table0, Loc_to_vn_table0),
-	map__lookup(Vn_to_uses_table0, Vn, Uses0),
+	( map__search(Vn_to_uses_table0, Vn, Uses0Prime) ->
+		Uses0 = Uses0Prime
+	;
+		error("cannot find old use set in add_new_use")
+	),
 	% a given src_access may appear several times, we delete just one
 	( list__delete_first(Uses0, OldUse, Uses1Prime) ->
 		Uses1 = Uses1Prime
@@ -1375,6 +1427,12 @@ vn__build_uses_from_ctrl(Ctrl, Ctrlmap, Vn_tables0, Vn_tables) :-
 			VnInstr = vn_restore_hp(Vn),
 			vn__record_use(Vn, src_ctrl(Ctrl),
 				Vn_tables0, Vn_tables1)
+		;
+			VnInstr = vn_incr_sp(_),
+			Vn_tables1 = Vn_tables0
+		;
+			VnInstr = vn_decr_sp(_),
+			Vn_tables1 = Vn_tables0
 		),
 		NextCtrl is Ctrl + 1,
 		vn__build_uses_from_ctrl(NextCtrl, Ctrlmap,
@@ -1444,6 +1502,221 @@ vn__record_use_list([], _Src, Vn_tables, Vn_tables).
 vn__record_use_list([Vn | Vns], Src, Vn_tables0, Vn_tables) :-
 	vn__record_use(Vn, Src, Vn_tables0, Vn_tables1),
 	vn__record_use_list(Vns, Src, Vn_tables1, Vn_tables).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+:- interface.
+
+:- pred vn__block_cost(list(instruction), int).
+:- mode vn__block_cost(in, out) is det.
+
+:- implementation.
+
+vn__block_cost(Instrs, Cost) :-
+	vn__block_cost_2(Instrs, 0, Assigns, 0, Ops, 0, StackRefs, 0, HeapRefs),
+	AssignCost is Assigns * 1,
+	OpsCost is Ops * 1,
+	StackCost is StackRefs * 2,
+	HeapCost is HeapRefs * 2,
+	Cost1 is AssignCost + OpsCost,
+	Cost2 is StackCost + HeapCost,
+	Cost is Cost1 + Cost2.
+
+:- pred vn__block_cost_2(list(instruction), int, int, int, int, int, int,
+	int, int).
+:- mode vn__block_cost_2(in, in, out, in, out, in, out, in, out) is det.
+
+vn__block_cost_2([], A, A, O, O, S, S, H, H).
+vn__block_cost_2([Uinstr - _Comment | Instrs],  A0, A, O0, O, S0, S, H0, H) :-
+	(
+		Uinstr = comment(_),
+		A1 = A0,
+		O2 = O0,
+		S2 = S0,
+		H2 = H0
+	;
+		Uinstr = livevals(_),
+		A1 = A0,
+		O2 = O0,
+		S2 = S0,
+		H2 = H0
+	;
+		Uinstr = block(_, _),
+		error("block found in vn_block_cost")
+	;
+		Uinstr = assign(Lval, Rval),
+		A1 is A0 + 1,
+		vn__lval_cost(Lval, O0, O1, S0, S1, H0, H1),
+		vn__rval_cost(Rval, O1, O2, S1, S2, H1, H2)
+	;
+		Uinstr = call(_, _, _),
+		A1 = A0,
+		O2 = O0,
+		S2 = S0,
+		H2 = H0
+	;
+		Uinstr = call_closure(_, _, _),
+		A1 = A0,
+		O2 = O0,
+		S2 = S0,
+		H2 = H0
+	;
+		Uinstr = mkframe(_, _, _),
+		A1 = A0,
+		O2 = O0,
+		S2 = S0,
+		H2 = H0
+	;
+		Uinstr = modframe(_),
+		A1 = A0,
+		O2 = O0,
+		S2 = S0,
+		H2 = H0
+	;
+		Uinstr = label(_),
+		A1 = A0,
+		O2 = O0,
+		S2 = S0,
+		H2 = H0
+	;
+		Uinstr = goto(_),
+		A1 = A0,
+		O2 = O0,
+		S2 = S0,
+		H2 = H0
+	;
+		Uinstr = computed_goto(Rval, _),
+		A1 = A0,
+		vn__rval_cost(Rval, O0, O2, S0, S2, H0, H2)
+	;
+		Uinstr = c_code(_),
+		error("c_code found in vn_block_cost")
+	;
+		Uinstr = if_val(Rval, _),
+		A1 = A0,
+		vn__rval_cost(Rval, O0, O2, S0, S2, H0, H2)
+	;
+		Uinstr = incr_hp(Lval, _, Rval),
+		A1 is A0 + 2,
+		vn__lval_cost(Lval, O0, O1, S0, S1, H0, H1),
+		vn__lval_cost(Lval, O1, O2, S1, S2, H1, H2)
+	;
+		Uinstr = mark_hp(Lval),
+		A1 = A0,
+		vn__lval_cost(Lval, O0, O2, S0, S2, H0, H2)
+	;
+		Uinstr = restore_hp(Rval),
+		A1 = A0,
+		vn__rval_cost(Rval, O0, O2, S0, S2, H0, H2)
+	;
+		Uinstr = incr_sp(_),
+		A1 = A0,
+		O2 = O0,
+		S2 = S0,
+		H2 = H0
+	;
+		Uinstr = decr_sp(_),
+		A1 = A0,
+		O2 = O0,
+		S2 = S0,
+		H2 = H0
+	),
+	vn__block_cost_2(Instrs, A1, A, O2, O, S2, S, H2, H).
+
+:- pred vn__lval_cost(lval, int, int, int, int, int, int).
+:- mode vn__lval_cost(in, in, out, in, out, in, out) is det.
+
+vn__lval_cost(Lval, O0, O, S0, S, H0, H) :-
+	(
+		Lval = reg(_),
+		O = O0,
+		S = S0,
+		H = H0
+	;
+		Lval = stackvar(_),
+		O = O0,
+		S is S0 + 1,
+		H = H0
+	;
+		Lval = framevar(_),
+		O = O0,
+		S is S0 + 1,
+		H = H0
+	;
+		Lval = succip,
+		O = O0,
+		S = S0,
+		H = H0
+	;
+		Lval = maxfr,
+		O = O0,
+		S = S0,
+		H = H0
+	;
+		Lval = curredoip,
+		O = O0,
+		S is S0 + 1,
+		H = H0
+	;
+		Lval = hp,
+		O = O0,
+		S = S0,
+		H = H0
+	;
+		Lval = sp,
+		O = O0,
+		S = S0,
+		H = H0
+	;
+		Lval = field(_, Rval1, Rval2),
+		H1 is H0 + 1,
+		vn__rval_cost(Rval1, O0, O1, S0, S1, H1, H2),
+		vn__rval_cost(Rval2, O1, O, S1, S, H2, H)
+	;
+		Lval = lvar(_),
+		error("lvar found in lval_cost")
+	;
+		Lval = temp(_),
+		O = O0,
+		S = S0,
+		H = H0
+	).
+
+:- pred vn__rval_cost(rval, int, int, int, int, int, int).
+:- mode vn__rval_cost(in, in, out, in, out, in, out) is det.
+
+vn__rval_cost(Rval, O0, O, S0, S, H0, H) :-
+	(
+		Rval = lval(Lval),
+		vn__lval_cost(Lval, O0, O, S0, S, H0, H)
+	;
+		Rval = var(_),
+		error("var found in rval_cost")
+	;
+		Rval = create(_, _, _),
+		O = O0,
+		S = S0,
+		H = H0
+	;
+		Rval = mkword(_, Rval1),
+		O1 is O0 + 1,
+		vn__rval_cost(Rval1, O1, O, S0, S, H0, H)
+	;
+		Rval = const(_),
+		O = O0,
+		S = S0,
+		H = H0
+	;
+		Rval = unop(_, Rval1),
+		O1 is O0 + 1,
+		vn__rval_cost(Rval1, O1, O, S0, S, H0, H)
+	;
+		Rval = binop(_, Rval1, Rval2),
+		O1 is O0 + 1,
+		vn__rval_cost(Rval1, O1, O2, S0, S1, H0, H1),
+		vn__rval_cost(Rval2, O2, O, S1, S, H1, H)
+	).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

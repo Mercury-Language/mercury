@@ -348,10 +348,9 @@ output_instruction(livevals(LiveVals)) -->
 	).
 
 output_instruction(block(N, Instrs)) -->
-	io__write_string("\t{\n"),
-	io__write_string("\tWord "),
+	io__write_string("\t{ Word "),
 	output_temp_decls(N),
-	io__write_string("\n"),
+	io__write_string(";\n"),
 	output_instruction_list(Instrs),
 	io__write_string("\t}\n").
 
@@ -522,8 +521,8 @@ output_temp_decls(N) -->
 :- mode output_temp_decls_2(in, in, di, uo) is det.
 
 output_temp_decls_2(Next, Max) --> 
-	( { Next < Max } ->
-		( { Next > 0 } ->
+	( { Next =< Max } ->
+		( { Next > 1 } ->
 			io__write_string(", ")
 		;
 			[]

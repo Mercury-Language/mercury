@@ -272,6 +272,12 @@ opt_debug__dump_vninstr(vn_mark_hp(Vnlval), Str) :-
 opt_debug__dump_vninstr(vn_restore_hp(Vn), Str) :-
 	opt_debug__dump_vn(Vn, Vn_str),
 	string__append_list(["restore_hp(", Vn_str, ")"], Str).
+opt_debug__dump_vninstr(vn_incr_sp(N), Str) :-
+	string__int_to_string(N, N_str),
+	string__append_list(["incr_sp(", N_str, ")"], Str).
+opt_debug__dump_vninstr(vn_decr_sp(N), Str) :-
+	string__int_to_string(N, N_str),
+	string__append_list(["decr_sp(", N_str, ")"], Str).
 
 opt_debug__dump_flushmap(Flushmap, Str) :-
 	map__to_assoc_list(Flushmap, Flushlist),
@@ -301,6 +307,7 @@ opt_debug__dump_useful_vns(Vn_tables, Str) :-
 	map__to_assoc_list(Vn_to_uses_table, Vn_to_uses_list),
 	opt_debug__dump_vn_to_uses(Vn_to_uses_list, no, Str).
 
+/*###304 [cc] Warning: variable `Rval_to_vn_str' occurs only once.%%%*/
 opt_debug__dump_tables(Vn_tables, Str) :-
 	Vn_tables = vn_tables(Next_vn,
 		Lval_to_vn_table, Rval_to_vn_table,
@@ -314,19 +321,20 @@ opt_debug__dump_tables(Vn_tables, Str) :-
 	map__to_assoc_list(Vn_to_locs_table, Vn_to_locs_list),
 	map__to_assoc_list(Loc_to_vn_table,  Loc_to_vn_list),
 	opt_debug__dump_lval_to_vn(Lval_to_vn_list, Lval_to_vn_str),
-	opt_debug__dump_rval_to_vn(Rval_to_vn_list, Rval_to_vn_str),
+	opt_debug__dump_rval_to_vn(Rval_to_vn_list, _Rval_to_vn_str),
 	opt_debug__dump_vn_to_rval(Vn_to_rval_list, Vn_to_rval_str),
 	opt_debug__dump_vn_to_uses(Vn_to_uses_list, yes, Vn_to_uses_str),
 	opt_debug__dump_vn_to_locs(Vn_to_locs_list, Vn_to_locs_str),
-	opt_debug__dump_lval_to_vn(Loc_to_vn_list,  Loc_to_vn_str),
+	opt_debug__dump_lval_to_vn(Loc_to_vn_list,  _Loc_to_vn_str),
 	string__append_list([
 		"\nNext vn\n",      Next_vn_str, "\n",
-		"\nLval to vn\n", Lval_to_vn_str,
-		"\nRval to vn\n", Rval_to_vn_str,
+		% "\nRval to vn\n", Rval_to_vn_str,
 		"\nVn to rval\n", Vn_to_rval_str,
 		"\nVn to uses\n", Vn_to_uses_str,
-		"\nVn to locs\n", Vn_to_locs_str,
-		"\nLoc to vn\n",  Loc_to_vn_str], Str).
+		"\nLval to vn\n", Lval_to_vn_str,
+		"\nVn to locs\n", Vn_to_locs_str
+		% "\nLoc to vn\n",  Loc_to_vn_str
+		], Str).
 
 opt_debug__dump_lval_to_vn([], "").
 opt_debug__dump_lval_to_vn([Vnlval - Vn | Lval_to_vn_list], Str) :-

@@ -307,7 +307,7 @@ frameopt__setup_if(Rval, Target, Instrs0, FrameSize,
 			SetupFrame0 = no,
 			Use = no,
 			set__is_member(Label, FrameSet0, yes),
-			frameopt__block_needs_detstack(Instrs0, yes)
+			opt_util__block_refers_stackvars(Instrs0, yes)
 		->
 			% If we get here, then we will need a stack frame
 			% soon after the if in both continuations, so it is
@@ -715,7 +715,7 @@ frameopt__generate_if(Rval, CodeAddr, Comment, Instrs0, FrameSize,
 		CodeAddr = label(Label),
 		\+ frameopt__label_without_frame(Label,
 			FrameSet, TeardownMap, _),
-		frameopt__block_needs_detstack(Instrs0, yes)
+		opt_util__block_refers_stackvars(Instrs0, yes)
 	->
 		frameopt__generate_setup(SetupFrame0, yes,
 			SetupSuccip0, yes, FrameSize, SetupCode),
@@ -785,7 +785,7 @@ frameopt__generate_if(Rval, CodeAddr, Comment, Instrs0, FrameSize,
 		% If it does, put the setup code immediately after the if.
 		% This will be faster because the sp won't be assigned to
 		% just before it is referenced by a detstackvar.
-		( frameopt__block_needs_detstack(Instrs0, yes) ->
+		( opt_util__block_refers_stackvars(Instrs0, yes) ->
 			SetupFrame2 = yes,
 			SetupSuccip2 = yes,
 			frameopt__generate_setup(SetupFrame1, SetupFrame2,
@@ -929,10 +929,23 @@ frameopt__detstack_setup(Instrs0, FrameSize, Instrs) :-
 	opt_util__skip_comments_livevals(Instrs0, Instrs1),
 	Instrs1 = [Instr1 | Instrs2],
 	Instr1 = incr_sp(FrameSize) - _,
-	opt_util__skip_comments_livevals(Instrs2, Instrs3),
-	Instrs3 = [Instr3 | Instrs4],
-	Instr3 = assign(stackvar(FrameSize), lval(succip)) - _,
-	opt_util__skip_comments_livevals(Instrs4, Instrs).
+	frameopt__detstack_setup_2(Instrs2, FrameSize, Instrs).
+
+:- pred frameopt__detstack_setup_2(list(instruction), int, list(instruction)).
+:- mode frameopt__detstack_setup_2(in, in, out) is semidet.
+
+frameopt__detstack_setup_2([Instr0 | Instrs0], FrameSize, Instrs) :-
+	( Instr0 = assign(stackvar(FrameSize), lval(succip)) - _ ->
+		Instrs = Instrs0
+	; Instr0 = assign(_, _) - _ ->
+		frameopt__detstack_setup_2(Instrs0, FrameSize, Instrs1),
+		Instrs = [Instr0 | Instrs1]
+	; Instr0 = comment(_) - _ ->
+		frameopt__detstack_setup_2(Instrs0, FrameSize, Instrs1),
+		Instrs = [Instr0 | Instrs1]
+	;
+		fail
+	).
 
 	% Is the following code a teardown of a det stack frame, including
 	% possibly a semidet assignment to r1 and a proceed or tailcall?
@@ -996,103 +1009,6 @@ frameopt__detstack_teardown_2(Instrs0, FrameSize,
 		list__append(SeenSuccip0, SeenDecrsp0, Teardown),
 		list__append(SeenExtra0, [Instr1], Tail),
 		Remain = Instrs2
-	).
-
-:- pred frameopt__block_needs_detstack(list(instruction), bool).
-:- mode frameopt__block_needs_detstack(in, out) is det.
-
-frameopt__block_needs_detstack([], no).
-frameopt__block_needs_detstack([Uinstr0 - _ | Instrs0], Need) :-
-	(
-		Uinstr0 = comment(_),
-		frameopt__block_needs_detstack(Instrs0, Need)
-	;
-		Uinstr0 = livevals(_),
-		frameopt__block_needs_detstack(Instrs0, Need)
-	;
-		Uinstr0 = block(_, BlockInstrs),
-		frameopt__block_needs_detstack(BlockInstrs, Need)
-	;
-		Uinstr0 = assign(Lval, Rval),
-		opt_util__lval_refers_stackvars(Lval, Use1),
-		opt_util__rval_refers_stackvars(Rval, Use2),
-		bool__or(Use1, Use2, Use),
-		( Use = yes ->
-			Need = yes
-		;
-			frameopt__block_needs_detstack(Instrs0, Need)
-		)
-	;
-		Uinstr0 = call(_, _, _),
-		Need = no
-	;
-		Uinstr0 = call_closure(_, _, _),
-		Need = no
-	;
-		Uinstr0 = mkframe(_, _, _),
-		Need = no
-	;
-		Uinstr0 = modframe(_),
-		Need = no
-	;
-		Uinstr0 = label(_),
-		Need = no
-	;
-		Uinstr0 = goto(_),
-		Need = no
-	;
-		Uinstr0 = computed_goto(Rval, _),
-		opt_util__rval_refers_stackvars(Rval, Use),
-		( Use = yes ->
-			Need = yes
-		;
-			Need = no
-		)
-	;
-		Uinstr0 = c_code(_),
-		Need = no
-	;
-		Uinstr0 = if_val(Rval, _),
-		opt_util__rval_refers_stackvars(Rval, Use),
-		( Use = yes ->
-			Need = yes
-		;
-			Need = no
-		)
-	;
-		Uinstr0 = incr_hp(Lval, _, Rval),
-		opt_util__lval_refers_stackvars(Lval, Use1),
-		opt_util__rval_refers_stackvars(Rval, Use2),
-		bool__or(Use1, Use2, Use),
-		( Use = yes ->
-			Need = yes
-		;
-			frameopt__block_needs_detstack(Instrs0, Need)
-		)
-	;
-		Uinstr0 = mark_hp(Lval),
-		opt_util__lval_refers_stackvars(Lval, Use),
-		( Use = yes ->
-			Need = yes
-		;
-			frameopt__block_needs_detstack(Instrs0, Need)
-		)
-	;
-		Uinstr0 = restore_hp(Rval),
-		opt_util__rval_refers_stackvars(Rval, Use),
-		( Use = yes ->
-			Need = yes
-		;
-			frameopt__block_needs_detstack(Instrs0, Need)
-		)
-	;
-		% handled specially
-		Uinstr0 = incr_sp(_),
-		Need = no
-	;
-		% handled specially
-		Uinstr0 = decr_sp(_),
-		Need = no
 	).
 
 %-----------------------------------------------------------------------------%
