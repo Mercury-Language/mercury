@@ -171,7 +171,7 @@ export__get_foreign_export_defns(Module, ExportedProcsCode) :-
 	%		/* MR_call_engine()				  */
 	%	MR_restore_transient_registers();
 	% #if SEMIDET
-	%	if (!r1) {
+	%	if (!MR_r1) {
 	%		MR_restore_regs_from_mem(c_regs);
 	%		return FALSE;
 	%	}
@@ -325,7 +325,7 @@ get_export_info(Preds, PredId, ProcId, HowToDeclareLabel, C_RetType,
 		C_RetType = "bool",
 		MaybeDeclareRetval = "",
 		string__append_list([
-			"\tif (!r1) {\n",
+			"\tif (!MR_r1) {\n",
 			"\t\tMR_restore_regs_from_mem(c_regs);\n",
 			"\treturn FALSE;\n",
 			"\t}\n"
@@ -474,7 +474,7 @@ argloc_to_string(RegNum, RegName) :-
 	->
 		string__append_list(["MR_r(", RegNumString, ")"], RegName)
 	;
-		string__append("r", RegNumString, RegName)
+		string__append("MR_r", RegNumString, RegName)
 	).
 
 convert_type_to_mercury(Rval, Type, ConvertedRval) :-	
