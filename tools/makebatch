@@ -134,50 +134,59 @@ do
 	if $needgrade
 	then
 		grade=`awk "NR == $n" batch/$batch.GRADE`
-		echo "GRADE = $grade" >> Mmake.stage.params
+		gradeopt="--grade $grade"
+	else
+		gradeopt=""
 	fi
 
-	cp Mmake.stage.params batch/$batch.params.$n
-	echo starting bootcheck of version $n
-	if tools/bootcheck -r $jfactor $runtests $objects > batch/$batch.out.$n 2>&1
+	if test $n < 10
 	then
-		echo bootcheck of version $n succeeded
-		echo bootcheck succeeded > batch/$batch.out.$n
-		mv stage2/compiler/mercury_compile batch/$batch.mercury_compile.$n
-		echo -n "batch/$batch.mercury_compile.$n	" >> batch/$batch.sizes
-		size batch/$batch.mercury_compile.$n | tail -1 >> batch/$batch.sizes
-		/bin/rm -f batch/$batch.mercury_compile.$n.gz > /dev/null 2>&1
-		gzip batch/$batch.mercury_compile.$n
+		visn="0$n"
+	else
+		visn="$n"
+	else
+
+	cp Mmake.stage.params batch/$batch.params.$visn
+	echo starting bootcheck of version $visn
+	if tools/bootcheck $gradeopt -r $jfactor $runtests $objects > batch/$batch.out.$visn 2>&1
+	then
+		echo bootcheck of version $visn succeeded
+		echo bootcheck succeeded > batch/$batch.out.$visn
+		mv stage2/compiler/mercury_compile batch/$batch.mercury_compile.$visn
+		echo -n "batch/$batch.mercury_compile.$visn	" >> batch/$batch.sizes
+		size batch/$batch.mercury_compile.$visn | tail -1 >> batch/$batch.sizes
+		/bin/rm -f batch/$batch.mercury_compile.$visn.gz > /dev/null 2>&1
+		gzip batch/$batch.mercury_compile.$visn
 	else
 		if test "$failed" = "wanted"
 		then
 			if test -x stage2/compiler/mercury_compile
 			then
-				echo bootcheck of version $n failed but produced compiler
-				mv stage2/compiler/mercury_compile batch/$batch.mercury_compile.$n
-				size batch/$batch.mercury_compile.$n | tail -1 >> batch/$batch.sizes
-				/bin/rm -f batch/$batch.mercury_compile.$n.gz > /dev/null 2>&1
-				gzip batch/$batch.mercury_compile.$n
+				echo bootcheck of version $visn failed but produced compiler
+				mv stage2/compiler/mercury_compile batch/$batch.mercury_compile.$visn
+				size batch/$batch.mercury_compile.$visn | tail -1 >> batch/$batch.sizes
+				/bin/rm -f batch/$batch.mercury_compile.$visn.gz > /dev/null 2>&1
+				gzip batch/$batch.mercury_compile.$visn
 
 			else
-				echo bootcheck of version $n failed and did not produce compiler
+				echo bootcheck of version $visn failed and did not produce compiler
 			fi
 		else
-			echo bootcheck of version $n failed
+			echo bootcheck of version $visn failed
 		fi
 	fi
 
 	if test "$objects" = "-k"
 	then
 		echo saving object files
-		mkdir -p batch/objs/$batch.library.$n
-		/bin/rm -fr batch/objs/$batch.library.$n/*
-		cp stage2/library/*.o batch/objs/$batch.library.$n
-		gzip batch/objs/$batch.library.$n/*
-		mkdir -p batch/objs/$batch.compiler.$n
-		/bin/rm -fr batch/objs/$batch.compiler.$n/*
-		cp stage2/compiler/*.o batch/objs/$batch.compiler.$n
-		gzip batch/objs/$batch.compiler.$n/*
+		mkdir -p batch/objs/$batch.library.$visn
+		/bin/rm -fr batch/objs/$batch.library.$visn/*
+		cp stage2/library/*.o batch/objs/$batch.library.$visn
+		gzip batch/objs/$batch.library.$visn/*
+		mkdir -p batch/objs/$batch.compiler.$visn
+		/bin/rm -fr batch/objs/$batch.compiler.$visn/*
+		cp stage2/compiler/*.o batch/objs/$batch.compiler.$visn
+		gzip batch/objs/$batch.compiler.$visn/*
 	fi
 
 	n=`expr $n + 1`
