@@ -53,14 +53,6 @@
 :- pred convert_tags_method(string::in, tags_method::out) is semidet.
 :- pred convert_termination_norm(string::in, termination_norm::out) is semidet.
 
-	% A string representation of the foreign language suitable 
-	% for use in human-readable error messages
-:- func foreign_language_string(foreign_language) = string.
-
-	% A string representation of the foreign language suitable 
-	% for use in machine-readable name mangling.
-:- func simple_foreign_language_string(foreign_language) = string.
-
 %-----------------------------------------------------------------------------%
 
 	% Access predicates for the `globals' structure.
@@ -71,6 +63,8 @@
 
 :- pred globals__get_options(globals::in, option_table::out) is det.
 :- pred globals__get_target(globals::in, compilation_target::out) is det.
+:- pred globals__get_backend_foreign_languages(globals::in,
+		list(foreign_language)::out) is det.
 :- pred globals__get_gc_method(globals::in, gc_method::out) is det.
 :- pred globals__get_tags_method(globals::in, tags_method::out) is det.
 :- pred globals__get_termination_norm(globals::in, termination_norm::out) 
@@ -123,6 +117,9 @@
 	io__state::di, io__state::uo) is det.
 
 :- pred globals__io_get_target(compilation_target::out,
+	io__state::di, io__state::uo) is det.
+
+:- pred globals__io_get_backend_foreign_languages(list(foreign_language)::out,
 	io__state::di, io__state::uo) is det.
 	
 :- pred globals__io_lookup_foreign_language_option(option::in,
@@ -206,16 +203,6 @@ convert_foreign_language_2("csharp", csharp).
 convert_foreign_language_2("c sharp", csharp).
 convert_foreign_language_2("il", il).
 
-foreign_language_string(c) = "C".
-foreign_language_string(managed_cplusplus) = "Managed C++".
-foreign_language_string(csharp) = "C#".
-foreign_language_string(il) = "IL".
-
-simple_foreign_language_string(c) = "c".
-simple_foreign_language_string(managed_cplusplus) = "cpp". % XXX mcpp is better
-simple_foreign_language_string(csharp) = "csharp".
-simple_foreign_language_string(il) = "il".
-
 convert_gc_method("none", none).
 convert_gc_method("conservative", conservative).
 convert_gc_method("accurate", accurate).
@@ -254,6 +241,16 @@ globals__get_tags_method(Globals, Globals ^ tags_method).
 globals__get_termination_norm(Globals, Globals ^ termination_norm).
 globals__get_trace_level(Globals, Globals ^ trace_level).
 globals__get_trace_suppress(Globals, Globals ^ trace_suppress_items).
+
+globals__get_backend_foreign_languages(Globals, ForeignLangs) :-
+	globals__lookup_accumulating_option(Globals, backend_foreign_languages,
+		LangStrs),
+	ForeignLangs = list__map(func(String) = ForeignLang :-
+		(convert_foreign_language(String, ForeignLang0) ->
+			ForeignLang = ForeignLang0
+		;
+			error("globals__io_get_backend_foreign_languages: invalid foreign_language string")
+		), LangStrs).
 
 globals__set_options(Globals, Options, Globals ^ options := Options).
 
@@ -426,6 +423,10 @@ globals__io_lookup_foreign_language_option(Option, ForeignLang) -->
 	;
 		error("globals__io_lookup_foreign_language_option: invalid foreign_language option")
 	}.
+
+globals__io_get_backend_foreign_languages(ForeignLangs) -->
+	globals__io_get_globals(Globals),
+	{ globals__get_backend_foreign_languages(Globals, ForeignLangs) }.
 
 globals__io_lookup_bool_option(Option, Value) -->
 	globals__io_get_globals(Globals),

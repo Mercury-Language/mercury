@@ -583,7 +583,7 @@ polymorphism__process_clause(PredInfo0, OldHeadVars, NewHeadVars,
 	->
 		{ Clause = Clause0 }
 	;
-		{ Clause0 = clause(ProcIds, Goal0, Context) },
+		{ Clause0 = clause(ProcIds, Goal0, Lang, Context) },
 		%
 		% process any polymorphic calls inside the goal
 		%
@@ -602,7 +602,7 @@ polymorphism__process_clause(PredInfo0, OldHeadVars, NewHeadVars,
 		{ pred_info_get_exist_quant_tvars(PredInfo0, ExistQVars) },
 		polymorphism__fixup_quantification(NewHeadVars, ExistQVars,
 			Goal2, Goal),
-		{ Clause = clause(ProcIds, Goal, Context) }
+		{ Clause = clause(ProcIds, Goal, Lang, Context) }
 	).
 
 :- pred polymorphism__process_procs(list(proc_id), proc_table,

@@ -260,7 +260,7 @@
 :- import_module code_util, llds, llds_out, trace.
 
 % Misc
-:- import_module globals, options.
+:- import_module globals, options, foreign.
 
 % Standard library modules
 :- import_module int, string, set, assoc_list, map, multi_map.
@@ -917,7 +917,7 @@ hlds_out__write_assertion(Indent, ModuleInfo, _PredId, VarSet, AppendVarnums,
 	io__write_list(HeadVars, ", ", PrintVar),
 	io__write_string("] (\n"),
 
-	{ Clause = clause(_Modes, Goal, _Context) },
+	{ Clause = clause(_Modes, Goal, _Lang, _Context) },
 	hlds_out__write_goal_a(Goal, ModuleInfo, VarSet, AppendVarnums,
 			Indent+1, ").\n", TypeQual).
 
@@ -944,6 +944,7 @@ hlds_out__write_clause(Indent, ModuleInfo, PredId, VarSet,
 		Clause = clause(
 			Modes,
 			Goal,
+			Lang,
 			Context
 		),
 		Indent1 is Indent + 1
@@ -959,6 +960,9 @@ hlds_out__write_clause(Indent, ModuleInfo, PredId, VarSet,
 	;
 		[]
 	),
+	io__write_string("% Language of implementation: "),
+	io__write(Lang),
+	io__nl,
 	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
 	{ pred_info_procids(PredInfo, ProcIds) },
 	( { Modes = [] ; Modes = ProcIds } ->

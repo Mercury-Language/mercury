@@ -276,7 +276,7 @@
 				% in this module.
 		foreign_code :: contains_foreign_code,
 				% Whether or not the module contains
-				% foreign code
+				% foreign code (and which languages if it does)
 		items :: item_list,
 				% The contents of the module and its imports
 		error :: module_error,
@@ -290,7 +290,7 @@
 	).
 
 :- type contains_foreign_code
-	--->	contains_foreign_code
+	--->	contains_foreign_code(set(foreign_language))
 	;	no_foreign_code
 	;	unknown.
 
@@ -614,7 +614,7 @@
 
 :- implementation.
 :- import_module llds_out, passes_aux, prog_out, prog_util, mercury_to_mercury.
-:- import_module prog_io_util, options, module_qual.
+:- import_module prog_io_util, options, module_qual, foreign.
 :- import_module recompilation_version.
 
 :- import_module string, map, term, varset, dir, library.
@@ -2032,60 +2032,23 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 				SourceFileName, "\n\n"
 		]),
 
-		% Generate the following dependency.  This dependency is
-		% needed because module__cpp_code.dll might refer to
-		% high level data in any of the mercury modules it
-		% imports plus itself.
-		%
-		% 	module__cpp_code.dll : module.dll imports.dll
-		% 
-		%
-		% Generate the following sequence of rules which state
-		% how to generate the module__cpp_code.dll.
-		%
-		%	module__cpp_code.dll : module__cpp_code.cpp
-		%	module__cpp_code.cpp : module.il
-		%
 		globals__io_get_target(Target),
+		globals__io_get_globals(Globals),
 		(
 			{ Target = il },
 			{
-				ContainsForeignCode = contains_foreign_code
+				ContainsForeignCode = 
+					contains_foreign_code(LangSet)
 			;
 				ContainsForeignCode = unknown,
-				item_list_contains_foreign_code(Items)
+				get_item_list_foreign_code(Globals, Items,
+					LangSet),
+				not set__empty(LangSet)
 			}
 		->
-			globals__io_lookup_foreign_language_option(
-					backend_foreign_language, ForeignLang),
-			{ ForeignExt = simple_foreign_language_string(
-					ForeignLang) },
-			{ ForeignCodeExt = "__" ++ ForeignExt ++ "_code." },
-			module_name_to_file_name(ModuleName,
-					ForeignCodeExt ++ ForeignExt,
-					no, ForeignFileName),
-			module_name_to_file_name(ModuleName, ".il", no,
-					IlFileName),
-			module_name_to_file_name(ModuleName, ".dll", no,
-					DllFileName),
-			module_name_to_file_name(ModuleName,
-					ForeignCodeExt ++ "dll",
-					no, ForeignDllFileName),
-
-			io__write_strings(DepStream, [
-				ForeignDllFileName, " : ", DllFileName]),
-			% XXX This change doesn't work correctly because
-			% mmake can't find the dlls which don't reside
-			% in the current directory.
-			/*
-			write_dll_dependencies_list(ModuleName,
-					AllDeps, DepStream),
-			*/
-			io__nl(DepStream),
-
-			io__write_strings(DepStream, [
-				ForeignDllFileName, " : ", ForeignFileName,"\n",
-				ForeignFileName, " : ", IlFileName, "\n\n"])
+			{ Langs = set__to_sorted_list(LangSet) },
+			list__foldl(write_foreign_dependency_for_il(DepStream,
+				ModuleName), Langs)
 		;
 			[]
 		),
@@ -2234,6 +2197,58 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 		;
 			maybe_write_string(Verbose, " done.\n")
 		)
+	).
+
+	% Generate the following dependency.  This dependency is
+	% needed because module__cpp_code.dll might refer to
+	% high level data in any of the mercury modules it
+	% imports plus itself.
+	%
+	% For example, for MC++ we generate:
+	%
+	% 	<module>__cpp_code.dll : <module>.dll <imports>.dll
+	% 
+	%
+	% Generate the following sequence of rules which state
+	% how to generate the module__cpp_code.dll.
+	%
+	% For example, for MC++ we generate:
+	%
+	%	<module>__cpp_code.dll : <module>__cpp_code.cpp
+	%	<module>__cpp_code.cpp : <module>.il
+	%
+:- pred write_foreign_dependency_for_il(io__output_stream::in, sym_name::in,
+		foreign_language::in, io__state::di, io__state::uo) is det.
+write_foreign_dependency_for_il(DepStream, ModuleName, ForeignLang) -->
+	( 
+		{ ForeignModuleName = foreign_language_module_name(
+			ModuleName, ForeignLang) },
+		{ ForeignExt = foreign_language_file_extension(ForeignLang) }
+	->
+		module_name_to_file_name(ForeignModuleName, ForeignExt, no,
+			ForeignFileName),
+		module_name_to_file_name(ModuleName, ".il", no, IlFileName),
+		module_name_to_file_name(ModuleName, ".dll", no, DllFileName),
+		module_name_to_file_name(ForeignModuleName, ".dll", no,
+			ForeignDllFileName),
+
+		io__write_strings(DepStream, [ForeignDllFileName,
+			" : ", DllFileName]),
+			% XXX This change doesn't work correctly because
+			% mmake can't find the dlls which don't reside
+			% in the current directory.
+		/*
+		write_dll_dependencies_list(ModuleName, AllDeps, DepStream),
+		*/
+		io__nl(DepStream),
+
+		io__write_strings(DepStream, [
+			ForeignDllFileName, " : ", ForeignFileName,"\n",
+			ForeignFileName, " : ", IlFileName, "\n\n"])
+	;
+		% This foreign language doesn't generate an external file
+		% so there are no dependencies to generate.
+		[]
 	).
 
 maybe_read_dependency_file(ModuleName, MaybeTransOptDeps) -->
@@ -2922,15 +2937,12 @@ generate_dv_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 	io__write_string(DepStream, "\n"),
 
 	globals__io_get_target(Target),
-	globals__io_lookup_foreign_language_option(
-			backend_foreign_language, ForeignLang),
-	{ ForeignExt = "." ++ simple_foreign_language_string(ForeignLang) },
 	( { Target = il } ->
-		{ ForeignModules = foreign_modules(ForeignLang,
-				Modules, DepsMap) }
+		{ ForeignModulesAndExts = foreign_modules(Modules, DepsMap) }
 	;
-		{ ForeignModules = [] }
+		{ ForeignModulesAndExts = [] }
 	),
+	{ ForeignModules = assoc_list__keys(ForeignModulesAndExts) },
 	io__write_string(DepStream, MakeVarName),
 	io__write_string(DepStream, ".foreign ="),
 	write_dependencies_list(ForeignModules, "", DepStream),
@@ -2950,12 +2962,19 @@ generate_dv_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 
 	{ get_extra_link_objects(Modules, DepsMap, Target, ExtraLinkObjs) },
 
+
+	{ MakeFileName = (pred(M - E::in, F::out, di, uo) is det -->
+		module_name_to_file_name(M, E, yes, F0),
+		{ F = "$(os_subdir)" ++ F0 }
+	) },
+
+	list__map_foldl(MakeFileName, ForeignModulesAndExts, ForeignFileNames),
+
 		% .foreign_cs are the source files which have had
 		% foreign code placed in them.
 	io__write_string(DepStream, MakeVarName),
 	io__write_string(DepStream, ".foreign_cs = "),
-	write_compact_dependencies_list(ForeignModules, "$(os_subdir)",
-					ForeignExt, ForeignBasis, DepStream),
+	write_file_dependencies_list(ForeignFileNames, "", DepStream),
 	io__write_string(DepStream, "\n"),
 
 		% The dlls which contain the foreign_code.
@@ -3692,21 +3711,24 @@ append_to_init_list(DepStream, InitFileName, Module) -->
 modules_that_need_headers(Modules, DepsMap) =
 	list__filter(module_needs_header(DepsMap), Modules).
 
-:- func foreign_modules(foreign_language, list(module_name), deps_map)  =
-		list(module_name).
 
-foreign_modules(ForeignLang, Modules, DepsMap) = ForeignModules :-
-	P = (pred(M::in, FM::out) is semidet :-
-		Ext = "__" ++ simple_foreign_language_string(ForeignLang) ++
-				"_code",
-		module_needs_header(DepsMap, M),
-		( M = unqualified(Name),
-			FM = unqualified(Name ++ Ext)
-		; M = qualified(Module, Name),
-			FM = qualified(Module, Name ++ Ext)
-		)
+
+	% Find out which modules will generate as external foreign
+	% language files. 
+	% We return the module names and file extensions.
+:- func foreign_modules(list(module_name), deps_map) =
+		assoc_list(module_name, string).
+
+foreign_modules(Modules, DepsMap) = ForeignModules :-
+	P = (pred(M::in, FMs::out) is semidet :-
+		module_has_foreign(DepsMap, M, LangList),
+		FMs = list__filter_map((func(L) = (NewM - Ext) is semidet :-
+			NewM = foreign_language_module_name(M, L),
+			Ext = foreign_language_file_extension(L)
+		), LangList)
 	),
-	list__filter_map(P, Modules, ForeignModules).
+	list__filter_map(P, Modules, ForeignModulesList),
+	ForeignModules = list__condense(ForeignModulesList).
 
 	% Succeed iff we need to generate a C header file for the specified
 	% module, assuming we're compiling with `--target asm'.
@@ -3714,7 +3736,19 @@ foreign_modules(ForeignLang, Modules, DepsMap) = ForeignModules :-
 
 module_needs_header(DepsMap, Module) :-
 	map__lookup(DepsMap, Module, deps(_, ModuleImports)),
-	ModuleImports ^ foreign_code = contains_foreign_code.
+	ModuleImports ^ foreign_code = contains_foreign_code(Langs),
+	set__member(c, Langs).
+
+	% Succeed iff we need to generate a foreign language output file 
+	% for the specified module.
+:- pred module_has_foreign(deps_map::in, module_name::in,
+		list(foreign_language)::out) is semidet.
+
+module_has_foreign(DepsMap, Module, LangList) :-
+	map__lookup(DepsMap, Module, deps(_, ModuleImports)),
+	ModuleImports ^ foreign_code = contains_foreign_code(Langs),
+	LangList = set__to_sorted_list(Langs).
+
 
 	% get_extra_link_objects(Modules, DepsMap, Target, ExtraLinkObjs) },
 	% Find any extra .$O files that should be linked into the executable.
@@ -3755,7 +3789,8 @@ get_extra_link_objects_2([Module | Modules], DepsMap, Target,
 	%
 	(
 		Target = asm,
-		( ModuleImports ^ foreign_code = contains_foreign_code
+		( ModuleImports ^ foreign_code = contains_foreign_code(Langs),
+		  set__member(c, Langs)
 		; FactTableObjs \= []
 		)
 	->
@@ -3769,33 +3804,85 @@ get_extra_link_objects_2([Module | Modules], DepsMap, Target,
 	get_extra_link_objects_2(Modules, DepsMap, Target, ExtraLinkObjs1, 
 		ExtraLinkObjs).
 
-:- pred item_list_contains_foreign_code(item_list::in) is semidet.
+:- pred get_item_list_foreign_code(globals::in, item_list::in,
+		set(foreign_language)::out) is det.
 
-item_list_contains_foreign_code([Item|Items]) :-
-	(
-		Item = pragma(Pragma) - _Context,
-		% The code here should match the way that mlds_to_gcc.m
-		% decides whether or not to call mlds_to_c.m.
-		% XXX Note that we do NOT count foreign_decls here.
-		% We only link in a foreign object file if mlds_to_gcc
-		% called mlds_to_c.m to generate it, which it will only
-		% do if there is some foreign_code, not just foreign_decls.
-		% Counting foreign_decls here causes problems with
-		% intermodule optimization.
-		(	Pragma = foreign_code(_Lang, _)
-		;	Pragma = foreign_proc(_, _, _, _, _, _)
-		;	% XXX `pragma export' should not be treated as
-			% foreign, but currently mlds_to_gcc.m doesn't
-			% handle that declaration, and instead just punts
-			% it on to mlds_to_c.m, thus generating C code for
-			% it, rather than assembler code.  So we need to
-			% treat `pragma export' like the other pragmas for
-			% foreign code.
-			Pragma = export(_, _, _, _)
-		)
-	;
-		item_list_contains_foreign_code(Items)
-	).
+get_item_list_foreign_code(Globals, Items, LangSet) :-
+	globals__get_backend_foreign_languages(Globals, BackendLangs),
+	globals__get_target(Globals, Target),
+	list__foldl2((pred(Item::in, Set0::in, Set::out, Seen0::in, Seen::out)
+			is det :-
+		(
+			Item = pragma(Pragma) - _Context
+		->
+			% The code here should match the way that mlds_to_gcc.m
+			% decides whether or not to call mlds_to_c.m.  XXX Note
+			% that we do NOT count foreign_decls here.  We only
+			% link in a foreign object file if mlds_to_gcc called
+			% mlds_to_c.m to generate it, which it will only do if
+			% there is some foreign_code, not just foreign_decls.
+			% Counting foreign_decls here causes problems with
+			% intermodule optimization.
+			(	
+				Pragma = foreign_code(Lang, _) 
+			->
+				set__insert(Set0, Lang, Set),
+				Seen = Seen0
+			;	
+				Pragma = foreign_proc(Attrs, Name, _, _, _, _)
+			->
+				foreign_language(Attrs, NewLang),
+				( OldLang = map__search(Seen0, Name) ->
+						% is it better than an existing
+						% one? 
+					( 
+					  yes = prefer_foreign_language(
+						Globals, Target, OldLang,
+						NewLang)
+					->
+						map__set(Seen0, Name,
+							NewLang, Seen)
+					;
+						Seen = Seen0
+					)
+				;
+						% is it one of the languages
+						% we support?
+					( 
+						list__member(NewLang,
+							BackendLangs)
+					->
+						map__det_insert(Seen0, Name,
+							NewLang, Seen)
+					;
+						Seen = Seen0
+					)
+				),
+				Set = Set0
+			;	
+				% XXX `pragma export' should not be treated as
+				% foreign, but currently mlds_to_gcc.m doesn't
+				% handle that declaration, and instead just
+				% punts it on to mlds_to_c.m, thus generating C
+				% code for it, rather than assembler code.  So
+				% we need to treat `pragma export' like the
+				% other pragmas for foreign code.
+				Pragma = export(_, _, _, _)
+			->
+				% XXX we assume lang = c for exports
+				Lang = c,
+				set__insert(Set0, Lang, Set),
+				Seen = Seen0
+			;
+				Set = Set0,
+				Seen = Seen0
+			)
+		;
+			Set = Set0,
+			Seen = Seen0
+		)), Items, set__init, LangSet0, map__init, LangMap),
+		Values = map__values(LangMap),
+		LangSet = set__insert_list(LangSet0, Values).
 
 %-----------------------------------------------------------------------------%
 
@@ -4060,8 +4147,12 @@ init_dependencies(FileName, Error, Globals, ModuleName - Items,
 	globals__get_target(Globals, Target),
 	ContainsForeignCode =
 		(if (Target = asm ; Target = il) then
-			(if item_list_contains_foreign_code(Items) then
-				contains_foreign_code
+			(if 
+				get_item_list_foreign_code(Globals,
+					Items, LangSet),
+				not set__empty(LangSet)
+			then
+				contains_foreign_code(LangSet)
 			else
 				no_foreign_code
 			)

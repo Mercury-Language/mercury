@@ -854,7 +854,7 @@ dead_pred_elim_analyze(DeadInfo0, DeadInfo) :-
 :- pred dead_pred_elim_process_clause(clause::in, dead_pred_info::in, 
 		dead_pred_info::out) is det.
 
-dead_pred_elim_process_clause(clause(_, Goal, _)) -->
+dead_pred_elim_process_clause(clause(_, Goal, _, _)) -->
 	pre_modecheck_examine_goal(Goal).
 
 :- pred pre_modecheck_examine_goal(hlds_goal::in, 

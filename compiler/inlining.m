@@ -311,7 +311,7 @@ inlining__is_simple_clause_list(Clauses, SimpleThreshold) :-
 	(
 		Size < SimpleThreshold
 	;
-		Clauses = [clause(_, Goal, _)],
+		Clauses = [clause(_, Goal, _, _)],
 		Size < SimpleThreshold * 3,
 		%
 		% For flat goals, we are more likely to be able to

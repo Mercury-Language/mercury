@@ -2937,9 +2937,8 @@ mercury_compile__output_pass(HLDS0, GlobalData, Procs0, MaybeRLFile,
 	% XXX this should perhaps be part of backend_pass
 	% rather than output_pass.
 	%
-	globals__io_lookup_foreign_language_option(use_foreign_language,
-		UseForeignLanguage),
-	{ get_c_interface_info(HLDS, UseForeignLanguage, C_InterfaceInfo) },
+	% XXX We assume that the foreign language we use is C
+	{ get_c_interface_info(HLDS, c, C_InterfaceInfo) },
 	{ global_data_get_all_proc_vars(GlobalData, GlobalVars) },
 	{ global_data_get_all_non_common_static_data(GlobalData,
 		NonCommonStaticData) },

@@ -217,10 +217,17 @@
 							% it applies to all
 							% clauses)
 					hlds_goal,	% Body
+					implementation_language,
+							% implementation
+							% language
 					prog_context
 				).
 
 %-----------------------------------------------------------------------------%
+
+:- type implementation_language --->	mercury
+				; 	foreign_language(foreign_language).
+
 
 	% The type of goals that have been given for a pred.
 

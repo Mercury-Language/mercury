@@ -18,11 +18,11 @@
 
 :- interface.
 
-:- import_module prog_data.
+:- import_module prog_data, globals.
 :- import_module hlds_module, hlds_pred.
 :- import_module llds.
 
-:- import_module list.
+:- import_module list, bool.
 
 	% Filter the decls for the given foreign language. 
 	% The first return value is the list of matches, the second is
@@ -39,7 +39,7 @@
 :- mode foreign__filter_bodys(in, in, out, out) is det.
 
 	% Given some foreign code, generate some suitable proxy code for 
-	% calling the code via the given language. 
+	% calling the code via one of the given languages. 
 	% This might mean, for example, generating a call to a
 	% forwarding function in C.
 	% The foreign language argument specifies which language is the
@@ -49,7 +49,7 @@
 	% code.
 	% XXX This implementation is currently incomplete, so in future
 	% this interface may change.
-:- pred foreign__extrude_pragma_implementation(foreign_language,
+:- pred foreign__extrude_pragma_implementation(list(foreign_language),
 		list(pragma_var), sym_name, pred_or_func, prog_context,
 		module_info, pragma_foreign_proc_attributes,
 		pragma_foreign_code_impl, 
@@ -71,13 +71,87 @@
 :- mode foreign__make_pragma_import(in, in, in, in, in,
 	out, out, out, out, out, out) is det.
 
+
+	% It is possible that more than one foreign language could be used to
+	% implement a particular piece of code.
+	% Therefore, foreign languages have an order of preference, from most
+	% preferred to least perferred.
+	% prefer_foreign_language(Globals, Target, Lang1, Lang2) returns the
+	% yes if Lang2 is preferred over Lang1.
+	%
+	% Otherwise it will return no.
+	
+:- func foreign__prefer_foreign_language(globals, compilation_target, 
+	foreign_language, foreign_language) = bool.
+
+	% A string representation of the foreign language suitable 
+	% for use in human-readable error messages
+:- func foreign_language_string(foreign_language) = string.
+
+	% A string representation of the foreign language suitable 
+	% for use in machine-readable name mangling.
+:- func simple_foreign_language_string(foreign_language) = string.
+
+	% The file extension used for this foreign language (including
+	% the dot).
+	% Not all foreign languages generate external files,
+	% so this function only succeeds for those that do.
+:- func foreign_language_file_extension(foreign_language) = string
+		is semidet.
+
+	% The module name used for this foreign language.
+	% Not all foreign languages generate external modules 
+	% so this function only succeeds for those that do.
+:- func foreign_language_module_name(module_name, foreign_language) =
+		module_name is semidet.
+
 :- implementation.
 
 :- import_module list, map, assoc_list, std_util, string, varset, int.
 :- import_module require.
 
-:- import_module hlds_pred, hlds_module, type_util, mode_util.
+:- import_module hlds_pred, hlds_module, type_util, mode_util, error_util.
 :- import_module code_model, globals.
+
+	% Currently we don't use the globals to compare foreign language
+	% interfaces, but if we added appropriate options we might want
+	% to do this later.
+
+	% C is always preferred over any other language.
+prefer_foreign_language(_Globals, c, Lang1, Lang2) = 
+	( Lang2 = c, not Lang1 = c ->
+		yes
+	; 
+		no
+	).
+
+	% Same as for C
+prefer_foreign_language(Globals, asm, Lang1, Lang2) = 
+	prefer_foreign_language(Globals, c, Lang1, Lang2).
+
+	% First prefer il, then csharp, then prefer managed_cplusplus, after
+	% that we don't care.
+prefer_foreign_language(_Globals, il, Lang1, Lang2) = Comp :-
+	PreferredList = [il, csharp, managed_cplusplus],
+
+	FindLangPriority = (func(L) = X :-
+		( list__nth_member_search(PreferredList, L, X0) ->
+			X = X0
+		;
+			X = list__length(PreferredList) + 1
+		)),
+	N1 = FindLangPriority(Lang1),
+	N2 = FindLangPriority(Lang2),
+	( N2 < N1 ->
+		Comp = yes
+	;
+		Comp = no
+	).
+
+	% Nothing useful to do here, but when we add Java as a
+	% foreign language, we should add it here.
+prefer_foreign_language(_Globals, java, _Lang1, _Lang2) = no.
+
 
 foreign__filter_decls(WantedLang, Decls0, LangDecls, NotLangDecls) :-
 	list__filter((pred(foreign_decl_code(Lang, _, _)::in) is semidet :-
@@ -89,87 +163,119 @@ foreign__filter_bodys(WantedLang, Bodys0, LangBodys, NotLangBodys) :-
 			WantedLang = Lang),
 		Bodys0, LangBodys, NotLangBodys).
 	
-foreign__extrude_pragma_implementation(TargetLang, _PragmaVars,
-		_PredName, _PredOrFunc, _Context,
+foreign__extrude_pragma_implementation([], _PragmaVars,
+	_PredName, _PredOrFunc, _Context, _ModuleInfo0, _Attributes, _Impl0, 
+	_ModuleInfo, _NewAttributes, _Impl) :-
+	unexpected(this_file, "no suitable target languages available").
+
+	% We just use the first target language for now, it might be nice
+	% to try a few others if the backend supports multiple ones.
+foreign__extrude_pragma_implementation([TargetLang | TargetLangs], 
+		_PragmaVars, _PredName, _PredOrFunc, _Context,
 		ModuleInfo0, Attributes, Impl0, 
 		ModuleInfo, NewAttributes, Impl) :-
 	foreign_language(Attributes, ForeignLanguage),
-	set_foreign_language(Attributes, TargetLang, NewAttributes),
-	( TargetLang = c ->
-		( ForeignLanguage = managed_cplusplus,
-			% This isn't finished yet, and we probably won't
-			% implement it for C calling MC++.
-			% For C calling normal C++ we would generate a proxy
-			% function in C++ (implemented in a piece of C++
-			% body code) with C linkage, and import that
-			% function.
-			% The backend would spit the C++ body code into
-			% a separate file.
-			% The code would look a little like this:
-			/*
-			NewName = make_pred_name(ForeignLanguage, PredName),
-			( PredOrFunc = predicate ->
-				ReturnCode = ""
-			;
-				ReturnCode = "ReturnVal = "
-			),
-			C_ExtraCode = "Some Extra Code To Run",
-			create_pragma_import_c_code(PragmaVars, ModuleInfo0,
-				"", VarString),
-			module_add_foreign_body_code(cplusplus, 
-				C_ExtraCode, Context, ModuleInfo0, ModuleInfo),
-			Impl = import(NewName, ReturnCode, VarString, no)
-			*/
-			error("unimplemented: calling MC++ foreign code from C backend")
 
-				
-		; ForeignLanguage = csharp,
-			error("unimplemented: calling C# foreign code from C backend")
-		; ForeignLanguage = il,
-			error("unimplemented: calling IL foreign code from C backend")
-		; ForeignLanguage = c,
-			Impl = Impl0,
-			ModuleInfo = ModuleInfo0
-		)
-	; TargetLang = managed_cplusplus ->
-			% Don't do anything - C and MC++ are embedded
-			% inside MC++ without any changes.
-		( ForeignLanguage = managed_cplusplus,
-			Impl = Impl0,
-			ModuleInfo = ModuleInfo0
-		; ForeignLanguage = csharp,
-			error("unimplemented: calling C# foreign code from MC++ backend")
-		; ForeignLanguage = il,
-			error("unimplemented: calling IL foreign code from MC++ backend")
-		; ForeignLanguage = c,
-			Impl = Impl0,
-			ModuleInfo = ModuleInfo0
-		)
-	; TargetLang = csharp ->
-		( ForeignLanguage = managed_cplusplus,
-			error("unimplemented: calling MC++ foreign code from MC++ backend")
-		; ForeignLanguage = csharp,
-			Impl = Impl0,
-			ModuleInfo = ModuleInfo0
-		; ForeignLanguage = c,
-			error("unimplemented: calling C foreign code from MC++ backend")
-		; ForeignLanguage = il,
-			error("unimplemented: calling IL foreign code from MC++ backend")
-		)
-	; TargetLang = il ->
-		( ForeignLanguage = managed_cplusplus,
-			error("unimplemented: calling MC++ foreign code from IL backend")
-		; ForeignLanguage = csharp,
-			error("unimplemented: calling C# foreign code from MC++ backend")
-		; ForeignLanguage = c,
-			error("unimplemented: calling C foreign code from MC++ backend")
-		; ForeignLanguage = il,
-			Impl = Impl0,
-			ModuleInfo = ModuleInfo0
-		)
+		% If the foreign language is available as a target language, 
+		% we don't need to do anything.
+	( list__member(ForeignLanguage, [TargetLang | TargetLangs]) ->
+		Impl = Impl0,
+		ModuleInfo = ModuleInfo0,
+		NewAttributes = Attributes
 	;
-		error("extrude_pragma_implementation: unsupported foreign language")
+		set_foreign_language(Attributes, TargetLang, NewAttributes),
+		extrude_pragma_implementation_2(TargetLang, ForeignLanguage,
+			ModuleInfo0, Impl0, ModuleInfo, Impl)
 	).
+
+
+:- pred extrude_pragma_implementation_2(
+	foreign_language::in, foreign_language::in,
+	module_info::in, pragma_foreign_code_impl::in,
+	module_info::out, pragma_foreign_code_impl::out) is det.
+
+	% This isn't finished yet, and we probably won't implement it for C
+	% calling MC++.  For C calling normal C++ we would generate a proxy
+	% function in C++ (implemented in a piece of C++ body code) with C
+	% linkage, and import that function.  The backend would spit the C++
+	% body code into a separate file.
+	% The code would look a little like this:
+	/*
+	NewName = make_pred_name(ForeignLanguage, PredName),
+	( PredOrFunc = predicate ->
+		ReturnCode = ""
+	;
+		ReturnCode = "ReturnVal = "
+	),
+	C_ExtraCode = "Some Extra Code To Run",
+	create_pragma_import_c_code(PragmaVars, ModuleInfo0, "", VarString),
+	module_add_foreign_body_code(cplusplus, 
+		C_ExtraCode, Context, ModuleInfo0, ModuleInfo),
+	Impl = import(NewName, ReturnCode, VarString, no)
+	*/
+
+extrude_pragma_implementation_2(c, managed_cplusplus, _, _, _, _) :-
+	unimplemented_combination(c, managed_cplusplus).
+
+extrude_pragma_implementation_2(c, csharp, _, _, _, _) :-
+	unimplemented_combination(c, csharp).
+
+extrude_pragma_implementation_2(c, il, _, _, _, _) :-
+	unimplemented_combination(c, il).
+
+extrude_pragma_implementation_2(c, c, ModuleInfo, Impl, ModuleInfo, Impl).
+
+
+		% Don't do anything - C and MC++ are embedded inside MC++
+		% without any changes.
+extrude_pragma_implementation_2(managed_cplusplus, managed_cplusplus,
+	ModuleInfo, Impl, ModuleInfo, Impl).
+
+extrude_pragma_implementation_2(managed_cplusplus, c,
+	ModuleInfo, Impl, ModuleInfo, Impl).
+
+extrude_pragma_implementation_2(managed_cplusplus, csharp, _, _, _, _) :-
+	unimplemented_combination(managed_cplusplus, csharp).
+
+extrude_pragma_implementation_2(managed_cplusplus, il, _, _, _, _) :-
+	unimplemented_combination(managed_cplusplus, il).
+
+
+
+extrude_pragma_implementation_2(csharp, csharp,
+	ModuleInfo, Impl, ModuleInfo, Impl).
+
+extrude_pragma_implementation_2(csharp, c, _, _, _, _) :-
+	unimplemented_combination(csharp, c).
+
+extrude_pragma_implementation_2(csharp, managed_cplusplus, _, _, _, _) :-
+	unimplemented_combination(csharp, managed_cplusplus).
+
+extrude_pragma_implementation_2(csharp, il, _, _, _, _) :-
+	unimplemented_combination(csharp, il).
+
+
+extrude_pragma_implementation_2(il, il,
+	ModuleInfo, Impl, ModuleInfo, Impl).
+
+extrude_pragma_implementation_2(il, c, _, _, _, _) :-
+	unimplemented_combination(il, c).
+
+extrude_pragma_implementation_2(il, managed_cplusplus, _, _, _, _) :-
+	unimplemented_combination(il, managed_cplusplus).
+
+extrude_pragma_implementation_2(il, csharp, _, _, _, _) :-
+	unimplemented_combination(il, csharp).
+
+
+
+:- pred unimplemented_combination(foreign_language::in, foreign_language::in)
+		is erroneous.
+
+unimplemented_combination(Lang1, Lang2) :-
+	error("unimplemented: calling " ++ foreign_language_string(Lang2)
+		++ " foreign code from " ++ foreign_language_string(Lang1)).
+
 
 	% XXX we haven't implemented these functions yet.
 	% What is here is only a guide
@@ -359,4 +465,36 @@ create_pragma_import_c_code([PragmaVar | PragmaVars], ModuleInfo,
 
 	create_pragma_import_c_code(PragmaVars, ModuleInfo, C_Code3, C_Code).
 
+foreign_language_string(c) = "C".
+foreign_language_string(managed_cplusplus) = "Managed C++".
+foreign_language_string(csharp) = "C#".
+foreign_language_string(il) = "IL".
+
+simple_foreign_language_string(c) = "c".
+simple_foreign_language_string(managed_cplusplus) = "cpp". % XXX mcpp is better
+simple_foreign_language_string(csharp) = "csharp".
+simple_foreign_language_string(il) = "il".
+
+foreign_language_file_extension(c) = ".c".
+foreign_language_file_extension(managed_cplusplus) = ".cpp".
+foreign_language_file_extension(csharp) = ".cs".
+foreign_language_file_extension(il) = _ :- fail.
+
+foreign_language_module_name(M, L) = FM :-
+
+		% Only succeed if this language generates external files.
+	_ = foreign_language_file_extension(L),
+
+	Ending = "__" ++ simple_foreign_language_string(L) ++ "_code",
+	( M = unqualified(Name),
+		FM = unqualified(Name ++ Ending)
+	; M = qualified(Module, Name),
+		FM = qualified(Module, Name ++ Ending)
+	).
+
+
+
+
+:- func this_file = string.
+this_file = "foreign.m".
 

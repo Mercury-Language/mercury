@@ -91,7 +91,7 @@ output_src_end(ModuleName) -->
 :- mode generate_mcplusplus_code(in, di, uo) is det.
 generate_mcplusplus_code(MLDS) -->
 
-	{ MLDS = mlds(ModuleName, ForeignCode, _Imports, Defns) },
+	{ MLDS = mlds(ModuleName, AllForeignCode, _Imports, Defns) },
 	{ prog_out__sym_name_to_string(ModuleName, ModuleNameStr) },
 	{ ClassName = class_name(mercury_module_name_to_mlds(ModuleName),
 			wrapper_class_name) },
@@ -128,6 +128,8 @@ generate_mcplusplus_code(MLDS) -->
 			io__format("namespace %s {", [s(N)])
 	)),
 
+		% Get the foreign code for MC++
+	{ ForeignCode = map__lookup(AllForeignCode, managed_cplusplus) },
 	generate_foreign_header_code(mercury_module_name_to_mlds(ModuleName),
 		ForeignCode),
 

@@ -469,7 +469,7 @@ assertion__goal(AssertId, Module, Goal) :-
 	pred_info_clauses_info(PredInfo, ClausesInfo),
 	clauses_info_clauses(ClausesInfo, Clauses),
 	(
-		Clauses = [clause(_ProcIds, Goal0, _Context)]
+		Clauses = [clause(_ProcIds, Goal0, _Lang, _Context)]
 	->
 		assertion__normalise_goal(Goal0, Goal)
 	;

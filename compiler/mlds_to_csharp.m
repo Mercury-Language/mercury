@@ -89,7 +89,7 @@ output_src_end(ModuleName) -->
 :- mode generate_csharp_code(in, di, uo) is det.
 generate_csharp_code(MLDS) -->
 
-	{ MLDS = mlds(ModuleName, ForeignCode, _Imports, Defns) },
+	{ MLDS = mlds(ModuleName, AllForeignCode, _Imports, Defns) },
 	{ ClassName = class_name(mercury_module_name_to_mlds(ModuleName), 
 			wrapper_class_name) },
 
@@ -101,6 +101,8 @@ generate_csharp_code(MLDS) -->
 		"using mercury;\n",
 		"\n"]),
 
+		% Get the foreign code for C#
+	{ ForeignCode = map__lookup(AllForeignCode, csharp) },
 	generate_foreign_header_code(mercury_module_name_to_mlds(ModuleName),
 		ForeignCode),
 
@@ -473,8 +475,14 @@ write_il_simple_type_as_csharp_type(value_class(_ClassName)) -->
 	{ sorry(this_file, "value classes") }.
 write_il_simple_type_as_csharp_type(interface(_ClassName)) --> 
 	{ sorry(this_file, "interfaces") }.
-write_il_simple_type_as_csharp_type('[]'(_Type, _Bounds)) --> 
-	{ sorry(this_file, "arrays") }.
+write_il_simple_type_as_csharp_type('[]'(Type, Bounds)) --> 
+	write_il_type_as_csharp_type(Type),
+	io__write_string("[]"),
+	( { Bounds = [] } ->
+		[]
+	;
+		{ sorry(this_file, "arrays with bounds") }
+	).
 write_il_simple_type_as_csharp_type('&'(Type)) --> 
 		% XXX is this always right?
 	io__write_string("ref "),

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2000 The University of Melbourne.
+% Copyright (C) 1995-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -207,7 +207,7 @@ get_purity(_Goal - GoalInfo, Purity) :-
 
 select_matching_clauses([], _, []).
 select_matching_clauses([Clause | Clauses], ProcId, MatchingClauses) :-
-	Clause = clause(ProcIds, _, _),
+	Clause = clause(ProcIds, _, _, _),
 	% an empty list here means that the clause applies to all procs
 	( ProcIds = [] ->
 		MatchingClauses = [Clause | MatchingClauses1]
@@ -222,7 +222,7 @@ select_matching_clauses([Clause | Clauses], ProcId, MatchingClauses) :-
 
 get_clause_goals([], []).
 get_clause_goals([Clause | Clauses], Goals) :-
-	Clause = clause(_, Goal, _),
+	Clause = clause(_, Goal, _, _),
 	goal_to_disj_list(Goal, GoalList),
 	list__append(GoalList, Goals1, Goals),
 	get_clause_goals(Clauses, Goals1).

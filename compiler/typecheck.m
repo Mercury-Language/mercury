@@ -820,7 +820,7 @@ maybe_add_field_access_function_clause(ModuleInfo, PredInfo0, PredInfo) :-
 		goal_info_set_nonlocals(GoalInfo0, NonLocals, GoalInfo),
 		Goal = GoalExpr - GoalInfo,
 		ProcIds = [], % the clause applies to all procedures.
-		Clause = clause(ProcIds, Goal, Context),
+		Clause = clause(ProcIds, Goal, mercury, Context),
 		clauses_info_set_clauses(ClausesInfo0, [Clause], ClausesInfo),
 		pred_info_set_clauses_info(PredInfo0, ClausesInfo, PredInfo)
 	;
@@ -871,14 +871,14 @@ typecheck_clause_list([Clause0|Clauses0], HeadVars, ArgTypes,
 
 typecheck_clause(Clause0, HeadVars, ArgTypes, Clause) -->
 		% XXX abstract clause/3
-	{ Clause0 = clause(Modes, Body0, Context) },
+	{ Clause0 = clause(Modes, Body0, Lang, Context) },
 	typecheck_info_set_context(Context),
 		% typecheck the clause - first the head unification, and
 		% then the body
 	typecheck_var_has_type_list(HeadVars, ArgTypes, 1),
 	typecheck_goal(Body0, Body),
 	checkpoint("end of clause"),
-	{ Clause = clause(Modes, Body, Context) },
+	{ Clause = clause(Modes, Body, Lang, Context) },
 	typecheck_info_set_context(Context),
 	typecheck_check_for_ambiguity(clause_only, HeadVars).
 

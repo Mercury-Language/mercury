@@ -61,7 +61,7 @@
 :- import_module builtin_ops, c_util, modules.
 :- import_module prog_data, prog_out, type_util, error_util, code_model.
 
-:- import_module bool, int, string, library, list.
+:- import_module bool, int, string, library, list, map.
 :- import_module assoc_list, term, std_util, require.
 
 %-----------------------------------------------------------------------------%
@@ -120,9 +120,11 @@ mlds_to_c__output_mlds(MLDS, Suffix) -->
 :- mode mlds_output_hdr_file(in, in, di, uo) is det.
 
 mlds_output_hdr_file(Indent, MLDS) -->
-	{ MLDS = mlds(ModuleName, ForeignCode, Imports, Defns) },
+	{ MLDS = mlds(ModuleName, AllForeignCode, Imports, Defns) },
 	mlds_output_hdr_start(Indent, ModuleName), io__nl,
 	mlds_output_hdr_imports(Indent, Imports), io__nl,
+		% Get the foreign code for C
+	{ ForeignCode = map__lookup(AllForeignCode, c) },
 	mlds_output_c_hdr_decls(MLDS_ModuleName, Indent, ForeignCode), io__nl,
 	%
 	% The header file must contain _definitions_ of all public types,
@@ -190,9 +192,12 @@ mlds_output_src_import(_Indent, Import) -->
 :- mode mlds_output_src_file(in, in, di, uo) is det.
 
 mlds_output_src_file(Indent, MLDS) -->
-	{ MLDS = mlds(ModuleName, ForeignCode, Imports, Defns) },
+	{ MLDS = mlds(ModuleName, AllForeignCode, Imports, Defns) },
 	mlds_output_src_start(Indent, ModuleName), io__nl,
 	mlds_output_src_imports(Indent, Imports), io__nl,
+
+		% Get the foreign code for C
+	{ ForeignCode = map__lookup(AllForeignCode, c) },
 	mlds_output_c_decls(Indent, ForeignCode), io__nl,
 	%
 	% The public types have already been defined in the

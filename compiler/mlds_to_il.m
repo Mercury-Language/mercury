@@ -138,7 +138,7 @@
 :- import_module globals, options, passes_aux.
 :- import_module builtin_ops, c_util, modules, tree.
 :- import_module prog_data, prog_out, llds_out.
-:- import_module rtti, type_util, code_model.
+:- import_module rtti, type_util, code_model, foreign.
 
 :- import_module ilasm, il_peephole.
 :- import_module ml_util, ml_code_util, error_util.
@@ -2671,7 +2671,7 @@ make_static_fieldref(DataRep, Var, VarType) = FieldRef :-
 :- mode mangle_foreign_code_module(in, in, out) is det.
 
 mangle_foreign_code_module(ModuleName0, Lang, ModuleName) :-
-	LangStr = globals__simple_foreign_language_string(Lang),
+	LangStr = simple_foreign_language_string(Lang),
 	PackageName0 = mlds_module_name_to_package_name(ModuleName0),
 	( 
 		PackageName0 = qualified(Q, M0),

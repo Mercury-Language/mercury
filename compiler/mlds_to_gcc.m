@@ -216,7 +216,10 @@ mlds_to_gcc__run_gcc_backend(ModuleName, CallBack, CallBackOutput) -->
 	).
 
 mlds_to_gcc__compile_to_asm(MLDS, ContainsCCode) -->
-	{ MLDS = mlds(ModuleName, ForeignCode, Imports, Defns0) },
+	{ MLDS = mlds(ModuleName, AllForeignCode, Imports, Defns0) },
+
+		% We only handle C currently, so we just look up C
+	{ ForeignCode = map__lookup(AllForeignCode, c) },
 
 	%
 	% Handle output of any foreign code (C, Ada, Fortran, etc.)
@@ -259,7 +262,7 @@ mlds_to_gcc__compile_to_asm(MLDS, ContainsCCode) -->
 		% create a new MLDS containing just the foreign code
 		% (with all definitions made public, so we can use
 		% them from the asm file!) and pass that to mlds_to_c.m
-		{ ForeignMLDS = mlds(ModuleName, ForeignCode, Imports,
+		{ ForeignMLDS = mlds(ModuleName, AllForeignCode, Imports,
 			list__map(make_public, ForeignDefns)) },
 		mlds_to_c__output_mlds(ForeignMLDS, ""),
 		% XXX currently the only foreign code we handle is C;

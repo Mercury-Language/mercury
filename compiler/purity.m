@@ -562,7 +562,7 @@ repuritycheck_proc(ModuleInfo, proc(_PredId, ProcId), PredInfo0, PredInfo) :-
 compute_purity([], [], _, Purity, Purity) --> [].
 compute_purity([Clause0|Clauses0], [Clause|Clauses], ProcIds,
 		Purity0, Purity) -->
-	{ Clause0 = clause(Ids, Body0 - Info0, Context) },
+	{ Clause0 = clause(Ids, Body0 - Info0, Lang, Context) },
 	compute_expr_purity(Body0, Body, Info0, no, Bodypurity0),
 	% If this clause doesn't apply to all modes of this procedure,
 	% i.e. the procedure has different clauses for different modes,
@@ -577,12 +577,12 @@ compute_purity([Clause0|Clauses0], [Clause|Clauses], ProcIds,
 	{ worst_purity(Bodypurity0, Clausepurity, Bodypurity) },
 	{ add_goal_info_purity_feature(Info0, Bodypurity, Info) },
 	{ worst_purity(Purity0, Bodypurity, Purity1) },
-	{ Clause = clause(Ids, Body - Info, Context) },
+	{ Clause = clause(Ids, Body - Info, Lang, Context) },
 	compute_purity(Clauses0, Clauses, ProcIds, Purity1, Purity).
 
 :- pred applies_to_all_modes(clause::in, list(proc_id)::in) is semidet.
 
-applies_to_all_modes(clause(ClauseProcIds, _, _), ProcIds) :-
+applies_to_all_modes(clause(ClauseProcIds, _, _, _), ProcIds) :-
 	(
 		% an empty list here means that the clause applies
 		% to *all* procedures

@@ -226,7 +226,7 @@
 
 :- import_module prog_out, prog_util, hlds_pred, hlds_out, instmap.
 :- import_module recompilation_version, purity, term_util.
-:- import_module globals, options, termination.
+:- import_module globals, options, termination, foreign.
 
 :- import_module assoc_list, char, int, string, set, lexer, require.
 :- import_module term, term_io, varset.

@@ -358,8 +358,8 @@ intermod__should_be_processed(ProcessLocalPreds, PredId, PredInfo,
 		bool::out, intermod_info::in, intermod_info::out) is det.
 
 intermod__traverse_clauses([], [], yes) --> [].
-intermod__traverse_clauses([clause(P, Goal0, C) | Clauses0],
-			[clause(P, Goal, C) | Clauses], DoWrite) -->
+intermod__traverse_clauses([clause(P, Goal0, L, C) | Clauses0],
+			[clause(P, Goal, L, C) | Clauses], DoWrite) -->
 	intermod__traverse_goal(Goal0, Goal, DoWrite1),
 	( { DoWrite1 = yes } ->
 		intermod__traverse_clauses(Clauses0, Clauses, DoWrite)
@@ -397,14 +397,14 @@ check_for_ho_input_args(ModuleInfo, [HeadVar | HeadVars],
 clause_list_is_deforestable(PredId, Clauses)  :-
 	some [Clause1] (
 		list__member(Clause1, Clauses),
-		Clause1 = clause(_, Goal1, _),
+		Clause1 = clause(_, Goal1, _, _),
 		goal_calls_pred_id(Goal1, PredId)
 	),
 	(
 		Clauses = [_, _ | _]
 	;
 		Clauses = [Clause2],
-		Clause2 = clause(_, Goal2, _),
+		Clause2 = clause(_, Goal2, _, _),
 		goal_to_conj_list(Goal2, GoalList),
 		goal_contains_one_branched_goal(GoalList)
 	).
@@ -1449,8 +1449,8 @@ intermod__write_clause(ModuleInfo, PredId, VarSet, HeadVars,
 :- pred strip_headvar_unifications(list(prog_var)::in,
 		clause::in, list(prog_term)::out, clause::out) is det.
 
-strip_headvar_unifications(HeadVars, clause(ProcIds, Goal0, Context),
-		HeadTerms, clause(ProcIds, Goal, Context)) :-
+strip_headvar_unifications(HeadVars, clause(ProcIds, Goal0, Lang, Context),
+		HeadTerms, clause(ProcIds, Goal, Lang, Context)) :-
 	Goal0 = _ - GoalInfo0,
 	goal_to_conj_list(Goal0, Goals0),
 	map__init(HeadVarMap0),
@@ -1622,7 +1622,7 @@ intermod__should_output_marker(generate_inline, _) :-
 intermod__write_foreign_code(_, _, _, _, [], _) --> [].
 intermod__write_foreign_code(SymName, PredOrFunc, HeadVars, Varset, 
 		[Clause | Clauses], Procs) -->
-	{ Clause = clause(ProcIds, Goal, _) },
+	{ Clause = clause(ProcIds, Goal, _, _) },
 	(
 		(
 			% Pull the foreign code out of the goal.

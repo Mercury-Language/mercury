@@ -798,25 +798,41 @@ ml_code_gen(ModuleInfo, MLDS) -->
 	ml_gen_defns(ModuleInfo, Defns),
 	{ MLDS = mlds(ModuleName, ForeignCode, Imports, Defns) }.
 
-:- pred ml_gen_foreign_code(module_info, mlds__foreign_code,
-				io__state, io__state).
+:- pred ml_gen_foreign_code(module_info, map(foreign_language,
+		mlds__foreign_code), io__state, io__state).
 :- mode ml_gen_foreign_code(in, out, di, uo) is det.
 
-ml_gen_foreign_code(ModuleInfo, MLDS_ForeignCode) -->
+ml_gen_foreign_code(ModuleInfo, All_MLDS_ForeignCode) -->
 	{ module_info_get_foreign_decl(ModuleInfo, ForeignDecls) },
 	{ module_info_get_foreign_body_code(ModuleInfo, ForeignBodys) },
-	globals__io_lookup_foreign_language_option(use_foreign_language,
-		UseForeignLanguage),
-	{ foreign__filter_decls(UseForeignLanguage, ForeignDecls,
-		WantedForeignDecls, _OtherForeignDecls) },
-	{ foreign__filter_bodys(UseForeignLanguage, ForeignBodys,
-		WantedForeignBodys, _OtherForeignBodys) },
-	{ ConvBody = (func(foreign_body_code(L, S, C)) = 
-		user_foreign_code(L, S, C)) },
-	{ MLDSWantedForeignBodys = list__map(ConvBody, WantedForeignBodys) },
-	{ ml_gen_pragma_export(ModuleInfo, MLDS_PragmaExports) },
-	{ MLDS_ForeignCode = mlds__foreign_code(WantedForeignDecls,
-			MLDSWantedForeignBodys, MLDS_PragmaExports) }.
+	globals__io_get_backend_foreign_languages(BackendForeignLanguages),
+	
+	{ list__foldl((pred(Lang::in, Map0::in, Map::out) is det :-
+			foreign__filter_decls(Lang,
+				ForeignDecls, WantedForeignDecls, 
+				_OtherForeignDecls),
+			foreign__filter_bodys(Lang,
+				ForeignBodys, WantedForeignBodys,
+				_OtherForeignBodys),
+			ConvBody = (func(foreign_body_code(L, S, C)) = 
+				user_foreign_code(L, S, C)),
+			MLDSWantedForeignBodys = list__map(ConvBody, 
+				WantedForeignBodys),
+			 	% XXX exports are only implemented for
+				% C at the moment
+			( Lang = c ->
+				ml_gen_pragma_export(ModuleInfo,
+					MLDS_PragmaExports)
+			;
+				MLDS_PragmaExports = []
+			),
+			MLDS_ForeignCode = mlds__foreign_code(
+				WantedForeignDecls, MLDSWantedForeignBodys,
+				MLDS_PragmaExports),
+			map__det_insert(Map0, Lang, 
+				MLDS_ForeignCode, Map)
+		), BackendForeignLanguages, map__init, All_MLDS_ForeignCode) }.
+
 
 :- pred ml_gen_imports(module_info, mlds__imports).
 :- mode ml_gen_imports(in, out) is det.
@@ -2002,10 +2018,11 @@ ml_gen_goal_expr(foreign_proc(Attributes,
                 PredId, ProcId, ArgVars, ArgDatas, OrigArgTypes, PragmaImpl),
 		CodeModel, OuterContext, MLDS_Decls, MLDS_Statements) -->
         (
-                { PragmaImpl = ordinary(C_Code, _MaybeContext) },
+                { PragmaImpl = ordinary(Foreign_Code, _MaybeContext) },
                 ml_gen_ordinary_pragma_foreign_proc(CodeModel, Attributes,
                         PredId, ProcId, ArgVars, ArgDatas, OrigArgTypes,
-                        C_Code, OuterContext, MLDS_Decls, MLDS_Statements)
+                        Foreign_Code, OuterContext, MLDS_Decls,
+			MLDS_Statements)
         ;
                 { PragmaImpl = nondet(
                         LocalVarsDecls, LocalVarsContext,
@@ -2018,11 +2035,11 @@ ml_gen_goal_expr(foreign_proc(Attributes,
 			SharedCode, SharedContext, MLDS_Decls, MLDS_Statements)
 	;
 		{ PragmaImpl = import(Name, HandleReturn, Vars, _Context) },
-		{ C_Code = string__append_list([HandleReturn, " ",
+		{ ForeignCode = string__append_list([HandleReturn, " ",
 				Name, "(", Vars, ");"]) },
                 ml_gen_ordinary_pragma_foreign_proc(CodeModel, Attributes,
                         PredId, ProcId, ArgVars, ArgDatas, OrigArgTypes,
-                        C_Code, OuterContext, MLDS_Decls, MLDS_Statements)
+                        ForeignCode, OuterContext, MLDS_Decls, MLDS_Statements)
         ).
 
 ml_gen_goal_expr(shorthand(_), _, _, _, _) -->

@@ -726,7 +726,7 @@ goals_size([Goal | Goals], Size) :-
 clause_list_size(Clauses, GoalSize) :-
 	GetClauseSize =
 		(pred(Clause::in, Size0::in, Size::out) is det :-
-			Clause = clause(_, ClauseGoal, _),
+			Clause = clause(_, ClauseGoal, _, _),
 			goal_size(ClauseGoal, ClauseSize),
 			Size = Size0 + ClauseSize
 		),

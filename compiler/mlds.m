@@ -286,7 +286,7 @@
 % It would be nice to avoid this dependency...
 :- import_module llds.
 
-:- import_module bool, list, assoc_list, std_util.
+:- import_module bool, list, assoc_list, std_util, map.
 
 %-----------------------------------------------------------------------------%
 
@@ -303,7 +303,7 @@
 
 			% Code defined in some other language, e.g.  for
 			% `pragma c_header_code', etc.
-		foreign_code	:: mlds__foreign_code,
+		foreign_code	:: map(foreign_language, mlds__foreign_code),
 
 			% The MLDS code itself
 			% Packages/classes to import

@@ -792,7 +792,7 @@ modecheck_proc_3(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
 	pred_info_clauses_info(PredInfo, ClausesInfo),
 	clauses_info_clauses(ClausesInfo, ClauseList),
 	( ClauseList = [FirstClause | _] ->
-		FirstClause = clause(_, _, Context)
+		FirstClause = clause(_, _, _, Context)
 	;
 		proc_info_context(ProcInfo0, Context)
 	),
