@@ -53,6 +53,8 @@ moose		A parser generator for Mercury.  Moose works much like
 odbc		A Mercury interface to ODBC (Open Database Connectivity),
 		for interfacing to standard relational database packages.
 
+quickcheck	An autotesting tool similar to Haskell's QuickCheck.
+
 references	A library package containing modules for manipulating
 		ML-style references (mutable state).
 

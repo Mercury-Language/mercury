@@ -183,6 +183,7 @@ The "mercury-extras" distribution contains some extra libraries for:
         -  arithmetic on complex and imaginary numbers
         -  a CLP(R) interface, i.e. constraint solving over real numbers
      o  a set of generic stream type classes
+     o	an autotesting tool similar to Haskell's QuickCheck
      o  UIs:
         -  graphics using Tk and OpenGL
         -  text interfaces using curses
