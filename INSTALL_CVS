@@ -5,29 +5,33 @@
 #	the CVS archive.  Note: you need a previous version of Mercury
 #	already installed (the CVS archive doesn't have all the necessary
 #	files for bootstrapping).
+#	You also need autoconf (and hence GNU m4) installed.
 #
-# Step 1.  In the file Mmake.params, set the installation target directories
-#	   and other system-specific macros that are listed in Mmake.common.
-#	   (But don't edit Mmake.common, otherwise you might accidentally
-#	   commit your changes later.)
+# Step 0.  autoconf
+#
+# Step 1.  ./configure
+#
+# Step 2.  mmake depend
+#
+# Step 3.  mmake
+#
+# Step 4.  mmake install
+#
 #	   Set the MERCURY_COMPILER environment variable below to point
 #	   to the compiler executable to use for bootstrapping.
 #	   If you just want to do a `make' rather than a `make install',
 #	   then comment out the `mmake install' line below.
 #	   If you don't want to do a parallel make, comment out the
 #	   `parallel=-j3' line below.
-#
-# Step 2.  Execute this script.  (Just type `sh INSTALL_CVS'.)
-#
-# Step 3.  Check the permissions on the installed files.
 
-MERCURY_COMPILER=/usr/local/contrib/lib/mercury/bin/`fullarch`/mercury_compile
-export MERCURY_COMPILER
+# MERCURY_COMPILER=/usr/local/contrib/lib/mercury/bin/`fullarch`/mercury_compile
+# export MERCURY_COMPILER
 
 parallel=-j3
 
-touch Mmake.params
-(cd scripts; mmake $parallel) &&
+autoconf &&
+./configure &&
+touch Mmake.params &&
 mmake depend $parallel &&
 mmake MMAKEFLAGS=$parallel &&
 mmake install MMAKEFLAGS=$parallel &&

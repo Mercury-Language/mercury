@@ -4,13 +4,14 @@
 #
 # Step 0.  Extract the files from the gzipped tar archive.
 #
-# Step 1.  Set the installation target directories and other system-specific
-#	   macros in the file Mmake.common.
-#	   Uncomment the `MMAKEFLAGS=-j3' below if you want to do a parallel
-#	   make.
+# Step 1.  Run configure (just type `sh configure').
+#
+# IMPORTANT: Make sure that the `make' executable in your path is GNU Make.
+# (Use `make -v' to check.)
 #
 # Step 2.  Execute this script.  (Just type `sh INSTALL'.)
-#	   [If it doesn't work first time, try again.]
+#	   Uncomment the `MMAKEFLAGS=-j3' below if you want to do a parallel
+#	   make.
 #
 # Step 3.  Check the permissions on the installed files.
 
@@ -19,7 +20,5 @@ MMAKE_VARS=`pwd`/scripts/Mmake.vars
 MMAKE_RULES=`pwd`/scripts/Mmake.rules
 export PATH MMAKE_VARS MMAKE_RULES
 
-touch Mmake.params
-(cd scripts && make -f Mmake.makefile) &&
 mmake install # MMAKEFLAGS=-j3
 

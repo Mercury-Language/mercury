@@ -94,6 +94,7 @@ util: scripts
 
 .PHONY: tar
 tar:
+	touch Mmake.params
 	cd scripts && mmake
 	cd library && $(SUBDIR_MMAKE) depend
 	cd library && $(SUBDIR_MMAKE) ints cs
@@ -101,6 +102,9 @@ tar:
 	cd compiler && $(SUBDIR_MMAKE) ints cs
 	cd scripts && mmake -s realclean
 	cd util && mmake realclean
+	-rm -f errs errs2
+	-rm -f config.status config.log config.cache
+	-rm -f Mmake.common.in
 	cd .. && (tar -cf - mercury | gzip > mercury.tar.gz)
 
 #-----------------------------------------------------------------------------#
