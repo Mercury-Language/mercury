@@ -1512,9 +1512,9 @@ module_add_clause(ModuleInfo0, ClauseVarSet, PredName, Args, Body, Status,
 	->
 		{ module_info_incr_errors(ModuleInfo0, ModuleInfo) },
 		prog_out__write_context(Context),
-		io__write_string("Error: clause for predicate `"),
-		hlds_out__write_pred_call_id(PredName/Arity),
-		io__write_string("'\n"),
+		io__write_string("Error: clause for "),
+		hlds_out__write_call_id(PredOrFunc, PredName/Arity),
+		io__write_string("\n"),
 		prog_out__write_context(Context),
 		io__write_string("  with `:- pragma c_code' declaration preceding.\n"),
 		{ Info = Info0 }
@@ -1556,7 +1556,8 @@ module_add_clause(ModuleInfo0, ClauseVarSet, PredName, Args, Body, Status,
 		},
 		( { Status \= opt_imported } ->
 			% warn about singleton variables 
-			maybe_warn_singletons(VarSet, PredName/Arity, Goal),
+			maybe_warn_singletons(VarSet,
+				PredOrFunc - PredName/Arity, Goal),
 			% warn about variables with overlapping scopes
 			maybe_warn_overlap(Warnings, VarSet, PredOrFunc,
 						PredName/Arity)
@@ -1625,7 +1626,7 @@ module_add_pragma_c_code(MayCallMercury, PredName, PredOrFunc, PVars, VarSet,
 		{ PredicateTable1 = PredicateTable0 }
 	;
 		maybe_undefined_pred_error(PredName, Arity, PredOrFunc,
-			Context, "pragma (c_code)"),
+			Context, "`:- pragma c_code' declaration"),
 		{ preds_add_implicit(PredicateTable0,
 				ModuleName, PredName, Arity, Context,
 				PredOrFunc, PredId, PredicateTable1) }
@@ -1685,7 +1686,8 @@ module_add_pragma_c_code(MayCallMercury, PredName, PredOrFunc, PVars, VarSet,
 				PredicateTable) },
 			{ module_info_set_predicate_table(ModuleInfo0, 
 				PredicateTable, ModuleInfo) },
-			maybe_warn_singletons(VarSet, PredName/Arity, Goal)
+			maybe_warn_singletons(VarSet,
+				PredOrFunc - PredName/Arity, Goal)
 		;
 			{ module_info_incr_errors(ModuleInfo0, ModuleInfo) }, 
 			io__stderr_stream(StdErr),
@@ -1825,11 +1827,11 @@ warn_overlap([Warn|Warns], VarSet, PredOrFunc, PredCallId) -->
 	io__write_string(StdErr, ":\n"),
 	prog_out__write_context(Context),
 	( { Vars = [Var] } ->
-		io__write_string(StdErr, "  Warning: variable `"),
+		io__write_string(StdErr, "  warning: variable `"),
 		mercury_output_var(Var, VarSet, no),
 		report_warning(StdErr, "' has overlapping scopes.\n")
 	;
-		io__write_string(StdErr, "  Warning: variables `"),
+		io__write_string(StdErr, "  warning: variables `"),
 		mercury_output_vars(Vars, VarSet, no),
 		report_warning(StdErr, "'\n"),
 		prog_out__write_context(Context),
@@ -1840,11 +1842,13 @@ warn_overlap([Warn|Warns], VarSet, PredOrFunc, PredCallId) -->
 
 %-----------------------------------------------------------------------------%
 
+:- type pred_or_func_call_id == pair(pred_or_func, pred_call_id).
+
 	% Warn about variables which occur only once but don't start with
 	% an underscore, or about variables which do start with an underscore
 	% but occur more than once.
 	%
-:- pred maybe_warn_singletons(varset, pred_call_id, hlds_goal,
+:- pred maybe_warn_singletons(varset, pred_or_func_call_id, hlds_goal,
 				io__state, io__state).
 :- mode maybe_warn_singletons(in, in, in, di, uo) is det.
 
@@ -1857,8 +1861,8 @@ maybe_warn_singletons(VarSet, PredCallId, Body) -->
 		[]
 	).
 
-:- pred warn_singletons_in_goal(hlds_goal, set(var), varset, pred_call_id,
-				io__state, io__state).
+:- pred warn_singletons_in_goal(hlds_goal, set(var), varset,
+			pred_or_func_call_id, io__state, io__state).
 :- mode warn_singletons_in_goal(in, in, in, in, di, uo) is det.
 
 warn_singletons_in_goal(Goal - GoalInfo, QuantVars, VarSet, PredCallId) -->
@@ -1866,7 +1870,8 @@ warn_singletons_in_goal(Goal - GoalInfo, QuantVars, VarSet, PredCallId) -->
 		PredCallId).
 
 :- pred warn_singletons_in_goal_2(hlds_goal_expr, hlds_goal_info, set(var),
-				varset, pred_call_id, io__state, io__state).
+				varset, pred_or_func_call_id,
+				io__state, io__state).
 :- mode warn_singletons_in_goal_2(in, in, in, in, in, di, uo) is det.
 
 warn_singletons_in_goal_2(conj(Goals), _GoalInfo, QuantVars, VarSet,
@@ -1881,8 +1886,8 @@ warn_singletons_in_goal_2(switch(_Var, _CanFail, Cases, _),
 			_GoalInfo, QuantVars, VarSet, PredCallId) -->
 	warn_singletons_in_cases(Cases, QuantVars, VarSet, PredCallId).
 
-warn_singletons_in_goal_2(not(Goal), _GoalInfo, QuantVars, VarSet, PredCallId)
-		-->
+warn_singletons_in_goal_2(not(Goal), _GoalInfo, QuantVars, VarSet,
+		PredCallId) -->
 	warn_singletons_in_goal(Goal, QuantVars, VarSet, PredCallId).
 
 warn_singletons_in_goal_2(some(Vars, SubGoal), GoalInfo, QuantVars, VarSet,
@@ -1951,7 +1956,7 @@ warn_singletons_in_goal_2(pragma_c_code(C_Code, _, _, _, _, ArgNames, _),
 		PredCallId).
 
 :- pred warn_singletons_in_goal_list(list(hlds_goal), set(var), varset,
-				pred_call_id, io__state, io__state).
+				pred_or_func_call_id, io__state, io__state).
 :- mode warn_singletons_in_goal_list(in, in, in, in, di, uo) is det.
 
 warn_singletons_in_goal_list([], _, _, _) --> [].
@@ -1959,8 +1964,8 @@ warn_singletons_in_goal_list([Goal|Goals], QuantVars, VarSet, CallPredId) -->
 	warn_singletons_in_goal(Goal, QuantVars, VarSet, CallPredId),
 	warn_singletons_in_goal_list(Goals, QuantVars, VarSet, CallPredId).
 
-:- pred warn_singletons_in_cases(list(case), set(var), varset, pred_call_id,
-					io__state, io__state).
+:- pred warn_singletons_in_cases(list(case), set(var), varset,
+				pred_or_func_call_id, io__state, io__state).
 :- mode warn_singletons_in_cases(in, in, in, in, di, uo) is det.
 
 warn_singletons_in_cases([], _, _, _) --> [].
@@ -1970,7 +1975,7 @@ warn_singletons_in_cases([Case|Cases], QuantVars, VarSet, CallPredId) -->
 	warn_singletons_in_cases(Cases, QuantVars, VarSet, CallPredId).
 
 :- pred warn_singletons_in_unify(var, unify_rhs, hlds_goal_info, set(var),
-			varset, pred_call_id, io__state, io__state).
+			varset, pred_or_func_call_id, io__state, io__state).
 :- mode warn_singletons_in_unify(in, in, in, in, in, in, di, uo) is det.
 
 warn_singletons_in_unify(X, var(Y), GoalInfo, QuantVars, VarSet, CallPredId) -->
@@ -2015,11 +2020,11 @@ warn_singletons_in_unify(X, lambda_goal(_PredOrFunc, LambdaVars, _Modes, _Det,
 	% warn_singletons_in_pragma_c_code checks to see if each variable is
 	% a substring of the given c code. If not, it gives a warning
 :- pred warn_singletons_in_pragma_c_code(string, list(maybe(string)),
-	term__context, pred_call_id, io__state, io__state).
+	term__context, pred_or_func_call_id, io__state, io__state).
 :- mode warn_singletons_in_pragma_c_code(in, in, in, in, di, uo) is det.
 
 warn_singletons_in_pragma_c_code(C_Code, ArgNames, 
-		Context, PredCallId) -->
+		Context, PredOrFunc - PredCallId) -->
 	{ c_code_to_name_list(C_Code, C_CodeList) },
 	{ warn_singletons_in_pragma_c_code_2(C_CodeList, ArgNames,
 		Context, SingletonVars) },
@@ -2029,19 +2034,19 @@ warn_singletons_in_pragma_c_code(C_Code, ArgNames,
 		io__stderr_stream(StdErr),
 		io__set_output_stream(StdErr, OldStream),
 		prog_out__write_context(Context),
-		( { SingletonVars = [_] } ->
-			io__write_string("Warning: variable `"),
-			write_string_list(SingletonVars),
-			io__write_string("' does not occur in C code\n")
-		;
-			io__write_string("Warning: variables `"),
-			write_string_list(SingletonVars),
-			io__write_string("' do not occur in C code\n")
-		),
+		io__write_string("In `:- pragma c_code' for "),
+		hlds_out__write_call_id(PredOrFunc, PredCallId),
+		io__write_string(":\n"),
 		prog_out__write_context(Context),
-		io__write_string("  in `:- pragma c_code' for "),
-		hlds_out__write_call_id(predicate, PredCallId),
-		io__write_string(".\n"),
+		( { SingletonVars = [_] } ->
+			io__write_string("  warning: variable `"),
+			write_string_list(SingletonVars),
+			io__write_string("' does not occur in the C code.\n")
+		;
+			io__write_string("  warning: variables `"),
+			write_string_list(SingletonVars),
+			io__write_string("' do not occur in the C code.\n")
+		),
 		io__set_output_stream(OldStream, _)
 	).
 
@@ -2069,6 +2074,7 @@ warn_singletons_in_pragma_c_code_2(C_CodeList, [Arg|Args],
 	;
 		SingletonVars = SingletonVars0
 	).
+
 %-----------------------------------------------------------------------------%
 
 	% c_code_to_name_list(Code, List) is true iff List is a list of the 
@@ -2155,10 +2161,11 @@ write_string_list([X|Xs]) -->
 	%	in Vars do occur in NonLocals.
 
 :- pred warn_singletons(list(var), set(var), set(var), varset, term__context,
-			pred_call_id, io__state, io__state).
+			pred_or_func_call_id, io__state, io__state).
 :- mode warn_singletons(in, in, in, in, in, in, di, uo) is det.
 
-warn_singletons(GoalVars, NonLocals, QuantVars, VarSet, Context, PredCallId) -->
+warn_singletons(GoalVars, NonLocals, QuantVars, VarSet, Context,
+		PredOrFunc - CallId) -->
 	io__stderr_stream(StdErr),
 
 	% find all the variables in the goal that don't occur outside the
@@ -2184,16 +2191,16 @@ warn_singletons(GoalVars, NonLocals, QuantVars, VarSet, Context, PredCallId) -->
 		[]
 	;
 		prog_out__write_context(Context),
-		io__write_string(StdErr, "In clause for predicate `"),
-		hlds_out__write_pred_call_id(PredCallId),
-		io__write_string(StdErr, "':\n"),
+		io__write_string(StdErr, "In clause for "),
+		hlds_out__write_call_id(PredOrFunc, CallId),
+		io__write_string(StdErr, ":\n"),
 		prog_out__write_context(Context),
 		( { SingletonVars = [_] } ->
-			io__write_string(StdErr, "  Warning: variable `"),
+			io__write_string(StdErr, "  warning: variable `"),
 			mercury_output_vars(SingletonVars, VarSet, no),
 			report_warning(StdErr, "' occurs only once in this scope.\n")
 		;
-			io__write_string(StdErr, "  Warning: variables `"),
+			io__write_string(StdErr, "  warning: variables `"),
 			mercury_output_vars(SingletonVars, VarSet, no),
 			report_warning(StdErr, "' occur only once in this scope.\n")
 		)
@@ -2216,16 +2223,16 @@ warn_singletons(GoalVars, NonLocals, QuantVars, VarSet, Context, PredCallId) -->
 		[]
 	;
 		prog_out__write_context(Context),
-		io__write_string(StdErr, "In clause for predicate `"),
-		hlds_out__write_pred_call_id(PredCallId),
-		io__write_string(StdErr, "':\n"),
+		io__write_string(StdErr, "In clause for "),
+		hlds_out__write_call_id(PredOrFunc, CallId),
+		io__write_string(StdErr, ":\n"),
 		prog_out__write_context(Context),
 		( { MultiVars = [_] } ->
-			io__write_string(StdErr, "  Warning: variable `"),
+			io__write_string(StdErr, "  warning: variable `"),
 			mercury_output_vars(MultiVars, VarSet, no),
 			report_warning(StdErr, "' occurs more than once in this scope.\n")
 		;
-			io__write_string(StdErr, "  Warning: variables `"),
+			io__write_string(StdErr, "  warning: variables `"),
 			mercury_output_vars(MultiVars, VarSet, no),
 			report_warning(StdErr, "' occur more than once in this scope.\n")
 		)
