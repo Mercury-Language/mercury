@@ -136,13 +136,13 @@ BEGIN_CODE
 
 Define_entry(do_call_det_closure);
 	tailcall(ENTRY(mercury__do_call_closure),
-		LABEL(mercury__do_call_det_closure));
+		LABEL(do_call_det_closure));
 Define_entry(do_call_semidet_closure);
 	tailcall(ENTRY(mercury__do_call_closure),
-		LABEL(mercury__do_call_semidet_closure));
+		LABEL(do_call_semidet_closure));
 Define_entry(do_call_nondet_closure);
 	tailcall(ENTRY(mercury__do_call_closure),
-		LABEL(mercury__do_call_nondet_closure));
+		LABEL(do_call_nondet_closure));
 
 Define_entry(do_call_old_closure);
 {
@@ -223,13 +223,13 @@ Define_entry(mercury__do_call_closure);
 
 Define_entry(do_call_det_class_method);
 	tailcall(ENTRY(mercury__do_call_class_method),
-		LABEL(mercury__do_call_det_class_method));
+		LABEL(do_call_det_class_method));
 Define_entry(do_call_semidet_class_method);
 	tailcall(ENTRY(mercury__do_call_class_method),
-		LABEL(mercury__do_call_semidet_class_method));
+		LABEL(do_call_semidet_class_method));
 Define_entry(do_call_nondet_class_method);
 	tailcall(ENTRY(mercury__do_call_class_method),
-		LABEL(mercury__do_call_nondet_class_method));
+		LABEL(do_call_nondet_class_method));
 
 	/*
 	** r1: the typeclass_info
