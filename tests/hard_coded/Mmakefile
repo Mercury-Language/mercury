@@ -55,6 +55,7 @@ ORDINARY_PROGS=	\
 	float_map \
 	float_reg \
 	float_rounding_bug \
+	foreign_and_mercury \
 	foreign_import_module \
 	frameopt_pragma_redirect \
 	free_free_mode \
