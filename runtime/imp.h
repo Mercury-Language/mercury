@@ -122,21 +122,21 @@ typedef void	Code;		/* should be `typedef function_t Code' */
   #define BEGIN_CODE			return 0;
   #define END_MODULE			}
 
-  #define Declare_entry(label)	void *label(void);
+  #define Declare_entry(label)	void *label(void)
   #define Define_entry(label)	\
 		GOTO(label);	\
 	}			\
 	Code* label(void) {
   #define init_entry(label)	make_entry(stringify(label), label)
 
-  #define Declare_local(label)	static Code *label(void);
+  #define Declare_local(label)	static Code *label(void)
   #define Define_local(label)	\
 		GOTO(label);	\
 	}			\
 	static Code* label(void) {
   #define init_local(label)	make_local(stringify(label), label)
 
-  #define Declare_label(label)	static Code *label(void);
+  #define Declare_label(label)	static Code *label(void)
   #define Define_label(label)	\
 		GOTO(label);	\
 	}			\
@@ -477,19 +477,17 @@ typedef void	Code;		/* should be `typedef function_t Code' */
 				GOTO(bt_succip(childfr));	\
 			} while (0)
 
-#if 0 /* this is old code for intelligent backtracking -
-	it doesn't work with profiling */
 #define	succeed_discard()					\
 			do {					\
 				reg	Word	*childfr;	\
 								\
 				debugsucceeddiscard();		\
+				succeed_prof_stuff();		\
 				childfr = curfr;		\
 				maxfr = curprevfr;		\
 				curfr = cursuccfr;		\
 				GOTO(bt_succip(childfr));	\
 			} while (0)
-#endif
 
 #ifdef PROFILE_TIME
 #define fail_prof_stuff() (prof_current_proc = pop())
