@@ -5,11 +5,11 @@
 :- mode main(di, uo) is det.
 :- implementation.
 :- type foobar
-	--->	foo
+	--->	foo 
 	;	bar(int)
 	;	baz(int, int).
 :- type cont(T)
-	--->	foo
+	--->	foo 
 	;	cont(T, cont(T)).
 :- type eq(T1, T2) == foobar.
 main(DCG_0, DCG_2) :-
