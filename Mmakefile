@@ -144,7 +144,7 @@ compiler: dep_compiler scripts util boehm_gc runtime library browser trace
 	cd compiler && $(SUBDIR_MMAKE)
 
 .PHONY: doc
-doc: scripts
+doc: scripts util
 	cd doc && $(SUBDIR_MMAKE)
 
 .PHONY: profiler
@@ -428,6 +428,7 @@ preinstall_hack_for_windows:
 	cd profiler && mv mercury_profile.exe xyzzy && mv xyzzy mercury_profile
 	cd util && mv mkinit.exe xyzzy && mv xyzzy mkinit
 	cd util && mv mdemangle.exe xyzzy && mv xyzzy mdemangle
+	cd util && mv info_to_mdb.exe xyzzy && mv xyzzy info_to_mdb
 
 .PHONY: postinstall_hack_for_windows
 postinstall_hack_for_windows:
@@ -435,6 +436,7 @@ postinstall_hack_for_windows:
 	cd $(INSTALL_MERC_BIN_DIR) && mv mercury_profile mercury_profile.exe
 	cd $(INSTALL_BINDIR) && mv mkinit mkinit.exe
 	cd $(INSTALL_BINDIR) && mv mdemangle mdemangle.exe
+	cd $(INSTALL_BINDIR) && mv info_to_mdb info_to_mdb.exe
 
 #-----------------------------------------------------------------------------#
 
