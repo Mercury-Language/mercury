@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1993-1995, 1997-1998,2000 The University of Melbourne.
+** Copyright (C) 1993-1995, 1997-1998,2000, 2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -42,7 +42,7 @@ typedef	struct {
 extern	void		MR_ht_init_table(MR_Hash_Table *);
 extern	const void	*MR_ht_lookup_table(const MR_Hash_Table *,
 				const void *);
-extern	MR_bool		MR_ht_insert_table(const MR_Hash_Table *, void *);
+extern	void		*MR_ht_insert_table(const MR_Hash_Table *, void *);
 extern	MR_Dlist	*MR_ht_get_all_entries(const MR_Hash_Table *);
 extern	void		MR_ht_process_all_entries(const MR_Hash_Table *,
 				void f(const void *));

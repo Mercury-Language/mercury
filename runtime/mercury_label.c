@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1994-2001, 2003 The University of Melbourne.
+** Copyright (C) 1994-2001, 2003-2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -206,6 +206,7 @@ MR_insert_internal_label(const char *name, MR_Code *addr,
 	const MR_Label_Layout *label_layout)
 {
 	MR_Internal	*internal;
+	MR_Internal	*prev_internal;
 
 	MR_do_init_label_tables();
 
@@ -230,10 +231,29 @@ MR_insert_internal_label(const char *name, MR_Code *addr,
 	}
 #endif
 
-	/* two labels at same location will happen quite often */
-	/* when the code generated between them turns out to be empty */
+	prev_internal = (MR_Internal *)
+		MR_insert_hash_table(internal_addr_table, internal);
 
-	(void) MR_insert_hash_table(internal_addr_table, internal);
+	if (prev_internal != NULL) {
+		/*
+		** Two labels at same location will happen quite often,
+		** when the code generated between them turns out to be empty.
+		** In this case, MR_insert_hash_table will not have inserted
+		** internal into the table.
+		**
+		** If only one of internal and prev_internal have a layout
+		** structure, make sure that we associate the layout structure
+		** with the label address.
+		**
+		** If both internal and prev_internal have a layout structure,
+		** we rely on the compiler to make sure that it is ok to use
+		** either of their layout structures.
+		*/
+
+		if (prev_internal->i_layout == NULL) {
+			prev_internal->i_layout = label_layout;
+		}
+	}
 }
 
 MR_Internal *

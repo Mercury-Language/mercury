@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1993-2000 The University of Melbourne.
+** Copyright (C) 1993-2000, 2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -59,7 +59,7 @@ MR_ht_lookup_table(const MR_Hash_Table *table, const void *key)
 
 	MR_for_dlist (ptr, table->MR_ht_store[h]) {
 		if (MR_tableequal(table)(key,
-				MR_tablekey(table)(MR_dlist_data(ptr))))
+			MR_tablekey(table)(MR_dlist_data(ptr))))
 		{
 			return MR_dlist_data(ptr);
 		}
@@ -73,7 +73,7 @@ MR_ht_lookup_table(const MR_Hash_Table *table, const void *key)
 **	Return whether it was there before.
 */
 
-MR_bool 
+void *
 MR_ht_insert_table(const MR_Hash_Table *table, void *entry)
 {
 	MR_Dlist	*ptr;
@@ -93,14 +93,14 @@ MR_ht_insert_table(const MR_Hash_Table *table, void *entry)
 
 	MR_for_dlist (ptr, table->MR_ht_store[h]) {
 		if (MR_tableequal(table)(key,
-				MR_tablekey(table)(MR_dlist_data(ptr))))
+			MR_tablekey(table)(MR_dlist_data(ptr))))
 		{
-			return MR_TRUE;
+			return MR_dlist_data(ptr);
 		}
 	}
 
 	table->MR_ht_store[h] = MR_dlist_addhead(table->MR_ht_store[h], entry);
-	return MR_FALSE;
+	return NULL;
 }
 
 /*
