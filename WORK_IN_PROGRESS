@@ -5,9 +5,12 @@ The compiler contains some code for the following features,
 which are not yet completed, but which we hope to complete
 at some time in the future:
 
-* There is a `--high-level-c' option, for a new back-end
-  that generates C code but at a much higher level than the
-  current back-end (e.g. no gotos).
+* There is a `--target il' option, which generates MSIL code
+  for Microsoft's new .NET common language runtime.
+  See <http://www.cs.mu.oz.au/mercury/dotnet.html> and/or
+  <http://www.cs.mu.oz.au/mercury/information/dotnet/mercury_and_dotnet.html>.
+  (The first of those two URLs does not yet exist at the time of writing,
+  but should be added shortly.)
 
 * Thread-safe engine.
 
@@ -21,9 +24,6 @@ at some time in the future:
   which identifies opportunities for LCO where a call
   is followed only by some constructor invocations.
   However, these opportunities are not exploited yet.
-
-* We now allow programmers to give names to the arguments of constructor
-  function symbols.  (Disabled, due to lack of a suitable operator.)
 
 * There is a new garbage collector that does accurate garbage
   collection (.agc grade).  It is currently limited to deterministic
@@ -51,6 +51,10 @@ code has not yet been committed and thus is not part of the standard
 distribution.
 
 * Support for aliasing in the mode system.
+
+* Support for automatic structure reuse (reusing old data
+  structures that are no longer live, rather than allocating
+  new memory on the heap) and compile time garbage collection
 
 
 Work not in progress
