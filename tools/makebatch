@@ -189,10 +189,6 @@ do
 	   $objects $compile_times $testparams > batch/$batch.out.$visn 2>&1
 	then
 		echo bootcheck of version $visn succeeded
-		if test "$compile_times" = ""
-		then
-			echo bootcheck succeeded > batch/$batch.out.$visn
-		fi
 		cp stage2/compiler/mercury_compile batch/$batch.mercury_compile.$visn
 		size batch/$batch.mercury_compile.$visn | tail -1 | sed -e 's/mercury_compile.//' | sed -e 's/batch\///' >> batch/$batch.sizes
 		/bin/rm -f batch/$batch.mercury_compile.$visn.gz > /dev/null 2>&1
