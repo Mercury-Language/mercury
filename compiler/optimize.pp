@@ -63,16 +63,20 @@ optimize__proc(c_procedure(Name, Arity, Mode, Instructions0),
 	io__state, io__state).
 :- mode optimize__repeat(in, in, in, out, di, uo) is det.
 
-optimize__repeat(Iter, DoVn, Instructions0, Instructions) -->
-	optimize__repeated(Instructions0, DoVn, Instructions1, Mod),
-	{ Iter1 is Iter - 1 },
+optimize__repeat(Iter0, DoVn, Instructions0, Instructions) -->
 	(
-		{ Iter1 > 0 },
-		{ Mod = yes }
+		{ Iter0 > 0 }
 	->
-		optimize__repeat(Iter1, DoVn, Instructions1, Instructions)
+		optimize__repeated(Instructions0, DoVn, Instructions1, Mod),
+		( { Mod = yes } ->
+			{ Iter1 is Iter0 - 1 },
+			optimize__repeat(Iter1, DoVn, Instructions1,
+				Instructions)
+		;
+			{ Instructions = Instructions1 }
+		)
 	;
-		{ Instructions = Instructions1 }
+		{ Instructions = Instructions0 }
 	).
 
 	% We short-circuit jump sequences before normal peepholing
@@ -114,8 +118,8 @@ optimize__repeated(Instructions0, DoVn, Instructions, Mod) -->
 		{ Instructions2 = Instructions1 },
 		{ Mod1 = no }
 	),
-	globals__io_lookup_bool_option(optimize_peep, Local),
-	( { Local = yes } ->
+	globals__io_lookup_bool_option(optimize_peep, Peephole),
+	( { Peephole = yes } ->
 		( { VeryVerbose = yes } ->
 			io__write_string("% Optimizing locally for "),
 			io__write_string(LabelStr),
@@ -209,4 +213,14 @@ optimize__nonrepeat(Instructions0, Instructions) -->
 	;
 		{ Instructions2 = Instructions1 }
 	),
-	optimize__repeated(Instructions2, no, Instructions, _).
+	( { FrameOpt = yes ; ValueNumber = yes } ->
+		optimize__repeated(Instructions2, no, Instructions3, RedMod),
+		globals__io_lookup_bool_option(optimize_peep, Peephole),
+		( { RepMod = yes, FrameOpt = yes, Peephole = yes } ->
+			{ peephole__main(Instructions3, Instructions, _) }
+		;
+			{ Instructions = Instructions3 }
+		)
+	;
+		{ Instructions = Instructions2 }
+	).

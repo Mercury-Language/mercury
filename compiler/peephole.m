@@ -198,7 +198,7 @@ peephole__match(livevals(Livevals), Comment, Procmap, Forkmap,
 		Instrs0, Instrs) :-
 	opt_util__skip_comments(Instrs0, Instrs1),
 	Instrs1 = [call(CodeAddress, label(ContLabel), Caller, _LiveVals)
-							- Comment2 | _],
+		- Comment2 | _],
 	( map__search(Procmap, ContLabel, Between0) ->
 		opt_util__filter_out_livevals(Between0, Between1),
 		string__append(Comment2, " (redirected return)", Redirect),
@@ -228,6 +228,10 @@ peephole__match(goto(label(Label), _Caller), _Comment, _Procmap, _Forkmap,
 	opt_util__is_this_label_next(Label, Instrs0, _),
 	Instrs = Instrs0.
 
+	% A conditional branch whose condition is constant
+	% can either be replaced by an unconditional goto
+	% or elimininated
+	%
 	% A conditional branch over a branch can be replaced
 	% by an inverse conditional branch:
 	%
@@ -244,16 +248,28 @@ peephole__match(goto(label(Label), _Caller), _Comment, _Procmap, _Forkmap,
 	%	<comments, labels>	      next:
 	%     next:
 
-peephole__match(if_val(Rval, label(Target)), _C1, _Procmap, _Forkmap,
+peephole__match(if_val(Rval, label(Target)), Comment, _Procmap, _Forkmap,
 		Instrs0, Instrs) :-
-	opt_util__skip_comments_livevals(Instrs0, Instrs1),
-	( Instrs1 = [goto(Somewhere, Somewhere) - C2 | Instrs2] ->
-		opt_util__is_this_label_next(Target, Instrs2, _),
-		code_util__neg_rval(Rval, NotRval),
-		Instrs = [if_val(NotRval, Somewhere) - C2 | Instrs2]
+	( opt_util__is_const_condition(Rval, Taken) ->
+		(
+			Taken = yes,
+			% XXX must be fixed before profiling is finished
+			Instrs = [goto(label(Target), label(Target)) - Comment
+				| Instrs0]
+		;
+			Taken = no,
+			Instrs = Instrs0
+		)
 	;
-		opt_util__is_this_label_next(Target, Instrs1, _),
-		Instrs = Instrs0
+		opt_util__skip_comments_livevals(Instrs0, Instrs1),
+		( Instrs1 = [goto(Somewhere, _) - C2 | Instrs2] ->
+			opt_util__is_this_label_next(Target, Instrs2, _),
+			code_util__neg_rval(Rval, NotRval),
+			Instrs = [if_val(NotRval, Somewhere) - C2 | Instrs2]
+		;
+			opt_util__is_this_label_next(Target, Instrs1, _),
+			Instrs = Instrs0
+		)
 	).
 
 	% If a `mkframe' is followed by a `modframe', with the instructions
@@ -345,18 +361,20 @@ peephole__match(modframe(Redoip), Comment,
 		opt_util__straight_alternative(Instrs0, Between, After)
 	->
 		list__condense([Between,
+			% XXX must be fixed before profiling is finished
 			[goto(do_succeed(yes), do_succeed(yes)) -
 			"early discard"], After], Instrs)
 	;
 		fail
 	).
 
-	% If a decr_sp immediately follows an incr_sp of the same amount,
-	% the two cancel out.
+	% If a decr_sp follows an incr_sp of the same amount, with the code
+	% in between not referencing the stack, then the two cancel out.
 	%
 	%	incr_sp N
-	%	decr_sp N	=>	(nothing)
+	%	<...>		=>	<...>
+	%	decr_sp N
 
 peephole__match(incr_sp(N), _Comment, _Procmap, _Forkmap, Instrs0, Instrs) :-
-	opt_util__skip_comments_livevals(Instrs0, Instrs1),
-	Instrs1 = [decr_sp(N) - _Comment2 | Instrs].
+	opt_util__no_stackvars_til_decr_sp(Instrs0, N, Between, Remain),
+	list__append(Between, Remain, Instrs).

@@ -108,9 +108,11 @@ postprocess_options(ok(OptionTable0), Error) -->
 				;	
 					[]
 				),
-				% dump flags require compilation by phases
+				% dump and flags statistics
+				% require compilation by phases
 				globals__io_lookup_accumulating_option(dump_hlds, DumpStages),
-				( { DumpStages \= [] } ->
+				globals__io_lookup_bool_option(statistics, Statistics),
+				( { DumpStages \= [] ; Statistics = yes } ->
 					globals__io_set_option(trad_passes,
 						bool(no))
 				;
@@ -1538,11 +1540,12 @@ mercury_compile__middle_pass_by_phases(HLDS9, HLDS11, GenerateCode, Proceed) -->
 	mercury_compile__maybe_dump_hlds(HLDS10, "10", "determinism"),
 	(
 		{ GenerateCode = yes },
+		{ FoundError = no }
+	->
 		mercury_compile__map_args_to_regs(HLDS10, HLDS11),
 		maybe_report_stats(Statistics),
 		mercury_compile__maybe_dump_hlds(HLDS11, "11", "args_to_regs")
 	;
-		{ GenerateCode = no },
 		{ HLDS11 = HLDS10 }
 	),
 	{ bool__not(FoundError, Proceed) }.
@@ -1551,18 +1554,18 @@ mercury_compile__middle_pass_by_phases(HLDS9, HLDS11, GenerateCode, Proceed) -->
 	io__state, io__state).
 :- mode mercury_compile__check_determinism(in, out, out, di, uo) is det.
 
-mercury_compile__check_determinism(HLDS0, HLDS, FoundDeterminismError) -->
+mercury_compile__check_determinism(HLDS0, HLDS, FoundError) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
 	{ module_info_num_errors(HLDS0, NumErrors0) },
 	determinism_pass(HLDS0, HLDS),
 	{ module_info_num_errors(HLDS, NumErrors) },
 	( { NumErrors \= NumErrors0 } ->
-		{ FoundDeterminismError = yes },
+		{ FoundError = yes },
 		maybe_write_string(Verbose,
 			"% Program contains determinism error(s).\n"),
 		io__set_exit_status(1)
 	;
-		{ FoundDeterminismError = no },
+		{ FoundError = no },
 		maybe_write_string(Verbose,
 			"% Program is determinism-correct.\n")
 	).

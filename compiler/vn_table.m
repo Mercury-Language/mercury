@@ -97,6 +97,9 @@
 :- pred vn__set_parallel_value(vnlval, vn, vn_tables, vn_tables).
 :- mode vn__set_parallel_value(in, in, di, uo) is det.
 
+:- pred vn__get_all_vnrvals(list(vnrval), vn_tables).
+:- mode vn__get_all_vnrvals(out, in) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -262,8 +265,10 @@ vn__add_new_use(Vn, NewUse, VnTables0, VnTables) :-
 		\+ NewUse = src_access(_)
 	->
 		opt_debug__dump_tables(VnTables0, T_str),
+		opt_debug__dump_vn(Vn, V_str),
 		opt_debug__dump_use(NewUse, U_str),
-		string__append_list(["\n", T_str, "\n", U_str, "\n",
+		string__append_list(["\n", T_str, "\n",
+			"new use for vn ", V_str, " = ", U_str, "\n",
 			"new use already known"], Msg),
 		error(Msg)
 	;
@@ -407,3 +412,10 @@ vn__set_current_value(Vnlval, Vn, VnTables0, VnTables) :-
 vn__set_parallel_value(Vnlval, Vn, VnTables0, VnTables) :-
 	vn__set_desired_value(Vnlval, Vn, VnTables0, VnTables1),
 	vn__set_current_value(Vnlval, Vn, VnTables1, VnTables).
+
+vn__get_all_vnrvals(Vnrvals, VnTables) :-
+	VnTables = vn_tables(_NextVn,
+		_Lval_to_vn_table,  Rval_to_vn_table,
+		_Vn_to_rval_table, _Vn_to_uses_table,
+		_Vn_to_locs_table, _Loc_to_vn_table),
+	map__keys(Rval_to_vn_table, Vnrvals).

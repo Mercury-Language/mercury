@@ -138,6 +138,12 @@
 :- pred opt_util__filter_in_livevals(list(instruction), list(instruction)).
 :- mode opt_util__filter_in_livevals(in, out) is det.
 
+	% See if the condition of an if-then-else is constant,
+	% and if yes, whether the branch will be taken or not.
+
+:- pred opt_util__is_const_condition(rval, bool).
+:- mode opt_util__is_const_condition(in, out) is semidet.
+
 	% See if an instruction sequence contains incr_sp, and if yes,
 	% what is the increment.
 
@@ -209,6 +215,14 @@
 
 :- pred opt_util__rvals_refer_stackvars(list(maybe(rval)), bool).
 :- mode opt_util__rvals_refer_stackvars(in, out) is det.
+
+	% See whether instructions until the next decr_sp (if any) refer to
+	% any stackvars or branch away. If not, return the instructions up to
+	% the decr_sp.
+
+:- pred opt_util__no_stackvars_til_decr_sp(list(instruction), int,
+	list(instruction), list(instruction)).
+:- mode opt_util__no_stackvars_til_decr_sp(di, in, uo, uo) is semidet.
 
 	% See whether a list of instructions references any stackvars.
 
@@ -591,6 +605,39 @@ opt_util__rvals_refer_stackvars([MaybeRval | Tail], Refers) :-
 		Refers = yes
 	).
 
+opt_util__no_stackvars_til_decr_sp([Instr0 | Instrs0], FrameSize,
+		Between, Remain) :-
+	Instr0 = Uinstr0 - _,
+	(
+		Uinstr0 = comment(_),
+		opt_util__no_stackvars_til_decr_sp(Instrs0, FrameSize,
+			Between0, Remain),
+		Between = [Instr0 | Between0]
+	;
+		Uinstr0 = livevals(_),
+		opt_util__no_stackvars_til_decr_sp(Instrs0, FrameSize,
+			Between0, Remain),
+		Between = [Instr0 | Between0]
+	;
+		Uinstr0 = assign(Lval, Rval),
+		opt_util__lval_refers_stackvars(Lval, no),
+		opt_util__rval_refers_stackvars(Rval, no),
+		opt_util__no_stackvars_til_decr_sp(Instrs0, FrameSize,
+			Between0, Remain),
+		Between = [Instr0 | Between0]
+	;
+		Uinstr0 = incr_hp(Lval, _, Rval),
+		opt_util__lval_refers_stackvars(Lval, no),
+		opt_util__rval_refers_stackvars(Rval, no),
+		opt_util__no_stackvars_til_decr_sp(Instrs0, FrameSize,
+			Between0, Remain),
+		Between = [Instr0 | Between0]
+	;
+		Uinstr0 = decr_sp(FrameSize),
+		Between = [],
+		Remain = Instrs0
+	).
+
 opt_util__block_refers_stackvars([], no).
 opt_util__block_refers_stackvars([Uinstr0 - _ | Instrs0], Need) :-
 	(
@@ -712,6 +759,27 @@ opt_util__filter_in_livevals([Instr0 | Instrs0], Instrs) :-
 		Instrs = Instrs1
 	).
 
+	% We recognize only a subset of all constant conditions.
+	% The time to extend this predicate is when the rest of the compiler
+	% generates more complicated constant conditions.
+
+opt_util__is_const_condition(const(Const), Taken) :-
+	( Const = true ->
+		Taken = yes
+	; Const = false ->
+		Taken = no
+	;
+		error("non-boolean constant as if-then-else condition")
+	).
+opt_util__is_const_condition(unop(Op, Rval1), Taken) :-
+	Op = (not),
+	opt_util__is_const_condition(Rval1, Taken1),
+	bool__not(Taken1, Taken).
+opt_util__is_const_condition(binop(Op, Rval1, Rval2), Taken) :-
+	Op = eq,
+	Rval1 = Rval2,
+	Taken = yes.
+
 % opt_util__has_incr_sp([Instr0 | Instrs0], Inc) :-
 % 	( Instr0 = incr_sp(N) - _Comment ->
 % 		Inc = N
@@ -728,12 +796,11 @@ opt_util__filter_in_livevals([Instr0 | Instrs0], Instrs) :-
 
 opt_util__new_label_no([], N, N).
 opt_util__new_label_no([Instr0 | Instrs0], N0, N) :-
-	( Instr0 = label(local(_, K, _)) - _Comment ->
-		( K < N0 ->
-			N1 = N0
-		;
-			N1 is K + 1
-		)
+	(
+		Instr0 = label(local(_, K, _)) - _,
+		K >= N0
+	->
+		N1 is K + 1
 	;
 		N1 = N0
 	),

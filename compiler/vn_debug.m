@@ -23,6 +23,9 @@
 :- pred vn__fragment_msg(instr, io__state, io__state).
 :- mode vn__fragment_msg(in, di, uo) is det.
 
+:- pred vn__failure_msg(instr, string, io__state, io__state).
+:- mode vn__failure_msg(in, in, di, uo) is det.
+
 :- pred vn__parallel_msg(parallel, io__state, io__state).
 :- mode vn__parallel_msg(in, di, uo) is det.
 
@@ -86,6 +89,21 @@ vn__fragment_msg(Instr) -->
 		{ Flag = yes },
 		io__write_string("in vn__optimize_fragment starting at\n"),
 		output_instruction(Instr),
+		io__write_string("\n")
+	;
+		{ Flag = no }
+	).
+
+vn__failure_msg(Instr, Cause) -->
+	vn__failure_msg_flag(Flag),
+	(
+		{ Flag = yes },
+		io__write_string("FAILURE of VN consistency check "),
+		io__write_string("in fragment starting at\n"),
+		output_instruction(Instr),
+		io__write_string("\n"),
+		io__write_string("Cause: "),
+		io__write_string(Cause),
 		io__write_string("\n")
 	;
 		{ Flag = no }
@@ -323,39 +341,47 @@ vn__flush_end_msg(Instrs, VnTables) -->
 :- pred vn__flush_msg_flag(bool, io__state, io__state).
 :- mode vn__flush_msg_flag(out, di, uo) is det.
 
+:- pred vn__failure_msg_flag(bool, io__state, io__state).
+:- mode vn__failure_msg_flag(out, di, uo) is det.
+
 %-----------------------------------------------------------------------------%
 
 vn__livemap_msg_flag(Flag) -->
 	globals__io_lookup_int_option(vndebug, Vndebug),
-	{ Bit is Vndebug /\ 64 },
+	{ Bit is Vndebug /\ 128 },
 	{ Bit = 0 -> Flag = no ; Flag = yes }.
 
 vn__parallel_msg_flag(Flag) -->
 	globals__io_lookup_int_option(vndebug, Vndebug),
-	{ Bit is Vndebug /\ 32 },
+	{ Bit is Vndebug /\ 64 },
 	{ Bit = 0 -> Flag = no ; Flag = yes }.
 
 vn__order_sink_msg_flag(Flag) -->
 	globals__io_lookup_int_option(vndebug, Vndebug),
-	{ Bit is Vndebug /\ 16 },
+	{ Bit is Vndebug /\ 32 },
 	{ Bit = 0 -> Flag = no ; Flag = yes }.
 
 vn__order_msg_flag(Flag) -->
 	globals__io_lookup_int_option(vndebug, Vndebug),
-	{ Bit is Vndebug /\ 8 },
+	{ Bit is Vndebug /\ 16 },
 	{ Bit = 0 -> Flag = no ; Flag = yes }.
 
 vn__order_map_msg_flag(Flag) -->
 	globals__io_lookup_int_option(vndebug, Vndebug),
-	{ Bit is Vndebug /\ 4 },
+	{ Bit is Vndebug /\ 8 },
 	{ Bit = 0 -> Flag = no ; Flag = yes }.
 
 vn__cost_msg_flag(Flag) -->
 	globals__io_lookup_int_option(vndebug, Vndebug),
-	{ Bit is Vndebug /\ 2 },
+	{ Bit is Vndebug /\ 4 },
 	{ Bit = 0 -> Flag = no ; Flag = yes }.
 
 vn__flush_msg_flag(Flag) -->
+	globals__io_lookup_int_option(vndebug, Vndebug),
+	{ Bit is Vndebug /\ 2 },
+	{ Bit = 0 -> Flag = no ; Flag = yes }.
+
+vn__failure_msg_flag(Flag) -->
 	globals__io_lookup_int_option(vndebug, Vndebug),
 	{ Bit is Vndebug /\ 1 },
 	{ Bit = 0 -> Flag = no ; Flag = yes }.

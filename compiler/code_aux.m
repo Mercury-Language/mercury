@@ -24,9 +24,9 @@
 :- pred code_aux__goal_is_flat(hlds__goal).
 :- mode code_aux__goal_is_flat(in) is semidet.
 
-:- pred code_aux__contains_simple_recursive_call(hlds__goal,
+:- pred code_aux__contains_simple_recursive_call(hlds__goal, bool,
 	code_info, code_info).
-:- mode code_aux__contains_simple_recursive_call(in, in, out) is semidet.
+:- mode code_aux__contains_simple_recursive_call(in, out, in, out) is semidet.
 
 :- pred code_aux__pre_goal_update(hlds__goal_info, code_info, code_info).
 :- mode code_aux__pre_goal_update(in, in, out) is det.
@@ -87,8 +87,6 @@ code_aux__contains_only_builtins_cases([]).
 code_aux__contains_only_builtins_cases([case(_ConsId, Goal)|Cases]) :-
 	code_aux__contains_only_builtins(Goal),
 	code_aux__contains_only_builtins_cases(Cases).
-	
-%-----------------------------------------------------------------------------%
 
 :- pred code_aux__contains_only_builtins_list(list(hlds__goal)).
 :- mode code_aux__contains_only_builtins_list(in) is semidet.
@@ -127,23 +125,30 @@ code_aux__goal_is_flat_list([Goal|Goals]) :-
 	
 %-----------------------------------------------------------------------------%
 
-code_aux__contains_simple_recursive_call(Goal - _, CodeInfo, CodeInfo) :-
+code_aux__contains_simple_recursive_call(Goal - _, Last, CodeInfo, CodeInfo) :-
 	Goal = conj(Goals),
-	code_aux__contains_simple_recursive_call_2(Goals, CodeInfo, _).
+	code_aux__contains_simple_recursive_call_2(Goals, Last, CodeInfo, _).
 
 :- pred code_aux__contains_simple_recursive_call_2(list(hlds__goal),
-	code_info, code_info).
-:- mode code_aux__contains_simple_recursive_call_2(in, in, out) is semidet.
+	bool, code_info, code_info).
+:- mode code_aux__contains_simple_recursive_call_2(in, out, in, out) is semidet.
 
-code_aux__contains_simple_recursive_call_2([Goal|Goals], CodeInfo, CodeInfo) :-
+code_aux__contains_simple_recursive_call_2([Goal|Goals], Last,
+		CodeInfo, CodeInfo) :-
 	Goal = GoalExpr - _,
 	(
 		code_aux__contains_only_builtins_2(GoalExpr)
 	->
-		code_aux__contains_simple_recursive_call_2(Goals, CodeInfo, _)
+		code_aux__contains_simple_recursive_call_2(Goals, Last,
+			CodeInfo, _)
 	;
 		code_aux__is_recursive_call(GoalExpr, CodeInfo),
-		code_aux__contains_only_builtins_list(Goals)
+		( Goals = [] ->
+			Last = yes
+		;
+			code_aux__contains_only_builtins_list(Goals),
+			Last = no
+		)
 	).
 		
 :- pred code_aux__is_recursive_call(hlds__goal_expr, code_info).

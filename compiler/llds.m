@@ -82,8 +82,8 @@
 	;	goto(code_addr, code_addr)
 			% goto(Target, CallerAddress)
 			% Branch to the specified address.
-			% Note that jumps to do_fail, etc., get
-			% optimized into calls to fail(), etc..
+			% Note that jumps to do_fail, etc., can get
+			% optimized into the invocations of macros fail(), etc..
 			% CallerAddress is needed for profiling,
 			% when tailcall optimization is turned on.
 

@@ -30,7 +30,7 @@
 
 :- implementation.
 
-:- import_module opt_util, require.
+:- import_module opt_util, require, string.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -85,23 +85,35 @@ livemap__equal_livemaps_keys([Label | Labels], Livemap1, Livemap2) :-
 :- mode livemap__build_livemap(in, in, in, out, di, uo) is det.
 
 livemap__build_livemap([], _, Ccode, Ccode, Livemap, Livemap).
-livemap__build_livemap([Instr|Moreinstrs], Livevals0, Ccode0, Ccode,
+livemap__build_livemap([Instr0 | Instrs0], Livevals0, Ccode0, Ccode,
 		Livemap0, Livemap) :-
-	Instr = Uinstr - _Comment,
+	livemap__build_livemap_instr(Instr0, Instrs0, Instrs1,
+		Livevals0, Livevals1, Ccode0, Ccode1, Livemap0, Livemap1),
+	livemap__build_livemap(Instrs1, Livevals1,
+		Ccode1, Ccode, Livemap1, Livemap).
+
+:- pred livemap__build_livemap_instr(instruction, list(instruction),
+	list(instruction), lvalset, lvalset, bool, bool, livemap, livemap).
+:- mode livemap__build_livemap_instr(in, di, uo, di, uo, in, out, di, uo)
+	is det.
+
+livemap__build_livemap_instr(Instr0, Instrs0, Instrs,
+		Livevals0, Livevals, Ccode0, Ccode, Livemap0, Livemap) :-
+	Instr0 = Uinstr0 - _,
 	(
-		Uinstr = comment(_),
-		Livemap1 = Livemap0,
-		Livevals2 = Livevals0,
-		Moreinstrs2 = Moreinstrs,
-		Ccode1 = Ccode0
+		Uinstr0 = comment(_),
+		Livemap = Livemap0,
+		Livevals = Livevals0,
+		Instrs = Instrs0,
+		Ccode = Ccode0
 	;
-		Uinstr = livevals(_),
+		Uinstr0 = livevals(_),
 		error("livevals found in backward scan in build_livemap")
 	;
-		Uinstr = block(_, _),
+		Uinstr0 = block(_, _),
 		error("block found in backward scan in build_livemap")
 	;
-		Uinstr = assign(Lval, Rval),
+		Uinstr0 = assign(Lval, Rval),
 
 		% Make dead the variable assigned, but make any variables
 		% needed to access it live. Make the variables in the assigned
@@ -112,140 +124,94 @@ livemap__build_livemap([Instr|Moreinstrs], Livevals0, Ccode0, Ccode,
 
 		set__delete(Livevals0, Lval, Livevals1),
 		opt_util__lval_access_rvals(Lval, Rvals),
-		livemap__make_live([Rval | Rvals], Livevals1, Livevals2),
-		Livemap1 = Livemap0,
-		Moreinstrs2 = Moreinstrs,
-		Ccode1 = Ccode0
+		livemap__make_live([Rval | Rvals], Livevals1, Livevals),
+		Livemap = Livemap0,
+		Instrs = Instrs0,
+		Ccode = Ccode0
 	;
-		Uinstr = call(_, _, _, _),
-		opt_util__skip_comments(Moreinstrs, Moreinstrs1),
-		(
-			Moreinstrs1 = [Nextinstr | Evenmoreinstrs],
-			Nextinstr = Nextuinstr - Nextcomment,
-			Nextuinstr = livevals(Livevals1)
-		->
-			livemap__filter_livevals(Livevals1, Livevals2),
-			Livemap1 = Livemap0,
-			Moreinstrs2 = Evenmoreinstrs,
-			Ccode1 = Ccode0
-		;
-			error("call not preceded by livevals")
-		)
+		Uinstr0 = call(_, _, _, _),
+		livemap__look_for_livevals(Instrs0, Instrs,
+			Livevals0, Livevals, "call", yes, _),
+		Livemap = Livemap0,
+		Ccode = Ccode0
 	;
-		Uinstr = call_closure(_, _, _),
-		opt_util__skip_comments(Moreinstrs, Moreinstrs1),
-		(
-			Moreinstrs1 = [Nextinstr | Evenmoreinstrs],
-			Nextinstr = Nextuinstr - Nextcomment,
-			Nextuinstr = livevals(Livevals1)
-		->
-			livemap__filter_livevals(Livevals1, Livevals2),
-			Livemap1 = Livemap0,
-			Moreinstrs2 = Evenmoreinstrs,
-			Ccode1 = Ccode0
-		;
-			error("call_closure not preceded by livevals")
-		)
+		Uinstr0 = call_closure(_, _, _),
+		livemap__look_for_livevals(Instrs0, Instrs,
+			Livevals0, Livevals, "call_closure", yes, _),
+		Livemap = Livemap0,
+		Ccode = Ccode0
 	;
-		Uinstr = mkframe(_, _, _),
-		Livemap1 = Livemap0,
-		Livevals2 = Livevals0,
-		Moreinstrs2 = Moreinstrs,
-		Ccode1 = Ccode0
+		Uinstr0 = mkframe(_, _, _),
+		Livemap = Livemap0,
+		Livevals = Livevals0,
+		Instrs = Instrs0,
+		Ccode = Ccode0
 	;
-		Uinstr = modframe(_),
-		Livemap1 = Livemap0,
-		Livevals2 = Livevals0,
-		Moreinstrs2 = Moreinstrs,
-		Ccode1 = Ccode0
+		Uinstr0 = modframe(_),
+		Livemap = Livemap0,
+		Livevals = Livevals0,
+		Instrs = Instrs0,
+		Ccode = Ccode0
 	;
-		Uinstr = label(Label),
-		map__det_insert(Livemap0, Label, Livevals0, Livemap1),
-		Livevals2 = Livevals0,
-		Moreinstrs2 = Moreinstrs,
-		Ccode1 = Ccode0
+		Uinstr0 = label(Label),
+		map__det_insert(Livemap0, Label, Livevals0, Livemap),
+		Livevals = Livevals0,
+		Instrs = Instrs0,
+		Ccode = Ccode0
 	;
-		Uinstr = goto(CodeAddr, _),
-		opt_util__skip_comments(Moreinstrs, Moreinstrs1),
+		Uinstr0 = goto(CodeAddr, _),
 		opt_util__livevals_addr(CodeAddr, LivevalsNeeded),
-		( LivevalsNeeded = yes ->
-			(
-				Moreinstrs1 = [Nextinstr | Evenmoreinstrs],
-				Nextinstr = Nextuinstr - Nextcomment,
-				Nextuinstr = livevals(Livevals1)
-			->
-				livemap__filter_livevals(Livevals1, Livevals2),
-				Livemap1 = Livemap0,
-				Moreinstrs2 = Evenmoreinstrs,
-				Ccode1 = Ccode0
-			;
-				error("tailcall not preceded by livevals")
-			)
+		livemap__look_for_livevals(Instrs0, Instrs,
+			Livevals0, Livevals1, "goto", LivevalsNeeded, Found),
+		( Found = yes ->
+			Livevals = Livevals1
 		; CodeAddr = label(Label) ->
-			set__init(Livevals1),
-			livemap__insert_label_livevals([Label], Livemap0,
-				Livevals1, Livevals2),
-			Livemap1 = Livemap0,
-			Moreinstrs2 = Moreinstrs,
-			Ccode1 = Ccode0
-		; CodeAddr = do_redo ->
-			Livemap1 = Livemap0,
-			Livevals2 = Livevals0,
-			Moreinstrs2 = Moreinstrs,
-			Ccode1 = Ccode0
-		; CodeAddr = do_fail ->
-			Livemap1 = Livemap0,
-			Livevals2 = Livevals0,
-			Moreinstrs2 = Moreinstrs,
-			Ccode1 = Ccode0
+			set__init(Livevals2),
+			livemap__insert_label_livevals([Label],
+				Livemap0, Livevals2, Livevals)
+		; ( CodeAddr = do_redo ; CodeAddr = do_fail ) ->
+			Livevals = Livevals1
 		;
 			error("unknown label type in build_livemap")
-			% Livevals2 = Livevals0,
-			% Livemap1 = Livemap0,
-			% Moreinstrs2 = Moreinstrs,
-			% Ccode1 = Ccode0
-		)
+		),
+		Livemap = Livemap0,
+		Ccode = Ccode0
 	;
-		Uinstr = computed_goto(_, Labels),
+		Uinstr0 = computed_goto(_, Labels),
 		set__init(Livevals1),
 		livemap__insert_label_livevals(Labels, Livemap0,
-			Livevals1, Livevals2),
-		Livemap1 = Livemap0,
-		Moreinstrs2 = Moreinstrs,
-		Ccode1 = Ccode0
+			Livevals1, Livevals),
+		Livemap = Livemap0,
+		Instrs = Instrs0,
+		Ccode = Ccode0
 	;
-		Uinstr = c_code(_),
-		Livemap1 = Livemap0,
-		Livevals2 = Livevals0,
-		Moreinstrs2 = Moreinstrs,
-		Ccode1 = yes
+		Uinstr0 = c_code(_),
+		Livemap = Livemap0,
+		Livevals = Livevals0,
+		Instrs = Instrs0,
+		Ccode = yes
 	;
-		Uinstr = if_val(Rval, CodeAddr),
-		opt_util__skip_comments(Moreinstrs, Moreinstrs1),
+		Uinstr0 = if_val(Rval, CodeAddr),
+		livemap__look_for_livevals(Instrs0, Instrs,
+			Livevals0, Livevals1, "if_val", no, Found),
 		(
-			Moreinstrs1 = [Nextinstr | Evenmoreinstrs],
-			Nextinstr = Nextuinstr - Nextcomment,
-			Nextuinstr = livevals(Livevals1)
-		->
+			Found = yes,
 			% This if_val was put here by middle_rec.
-			livemap__filter_livevals(Livevals1, Livevals2),
-			Livemap1 = Livemap0,
-			Moreinstrs2 = Evenmoreinstrs,
-			Ccode1 = Ccode0
+			Livevals = Livevals1
 		;
-			livemap__make_live([Rval], Livevals0, Livevals1),
+			Found = no,
+			livemap__make_live([Rval], Livevals1, Livevals2),
 			( CodeAddr = label(Label) ->
-				livemap__insert_label_livevals([Label], Livemap0,
-					Livevals1, Livevals2)
+				livemap__insert_label_livevals([Label],
+					Livemap0, Livevals2, Livevals)
 			;	
-				Livevals2 = Livevals1
-			),
-			Livemap1 = Livemap0,
-			Moreinstrs2 = Moreinstrs,
-			Ccode1 = Ccode0
-		)
+				Livevals = Livevals2
+			)
+		),
+		Livemap = Livemap0,
+		Ccode = Ccode0
 	;
-		Uinstr = incr_hp(Lval, _, Rval),
+		Uinstr0 = incr_hp(Lval, _, Rval),
 
 		% Make dead the variable assigned, but make any variables
 		% needed to access it live. Make the variables in the size
@@ -256,38 +222,56 @@ livemap__build_livemap([Instr|Moreinstrs], Livevals0, Ccode0, Ccode,
 
 		set__delete(Livevals0, Lval, Livevals1),
 		opt_util__lval_access_rvals(Lval, Rvals),
-		livemap__make_live([Rval | Rvals], Livevals1, Livevals2),
-		Livemap1 = Livemap0,
-		Moreinstrs2 = Moreinstrs,
-		Ccode1 = Ccode0
+		livemap__make_live([Rval | Rvals], Livevals1, Livevals),
+		Livemap = Livemap0,
+		Instrs = Instrs0,
+		Ccode = Ccode0
 	;
-		Uinstr = mark_hp(Lval),
+		Uinstr0 = mark_hp(Lval),
 		opt_util__lval_access_rvals(Lval, Rvals),
-		livemap__make_live(Rvals, Livevals0, Livevals2),
-		Livemap1 = Livemap0,
-		Moreinstrs2 = Moreinstrs,
-		Ccode1 = Ccode0
+		livemap__make_live(Rvals, Livevals0, Livevals),
+		Livemap = Livemap0,
+		Instrs = Instrs0,
+		Ccode = Ccode0
 	;
-		Uinstr = restore_hp(Rval),
-		livemap__make_live([Rval], Livevals0, Livevals2),
-		Livemap1 = Livemap0,
-		Moreinstrs2 = Moreinstrs,
-		Ccode1 = Ccode0
+		Uinstr0 = restore_hp(Rval),
+		livemap__make_live([Rval], Livevals0, Livevals),
+		Livemap = Livemap0,
+		Instrs = Instrs0,
+		Ccode = Ccode0
 	;
-		Uinstr = incr_sp(_),
-		Livevals2 = Livevals0,
-		Livemap1 = Livemap0,
-		Moreinstrs2 = Moreinstrs,
-		Ccode1 = Ccode0
+		Uinstr0 = incr_sp(_),
+		Livevals = Livevals0,
+		Livemap = Livemap0,
+		Instrs = Instrs0,
+		Ccode = Ccode0
 	;
-		Uinstr = decr_sp(_),
-		Livevals2 = Livevals0,
-		Livemap1 = Livemap0,
-		Moreinstrs2 = Moreinstrs,
-		Ccode1 = Ccode0
-	),
-	livemap__build_livemap(Moreinstrs2, Livevals2, Ccode1, Ccode,
-		Livemap1, Livemap).
+		Uinstr0 = decr_sp(_),
+		Livevals = Livevals0,
+		Livemap = Livemap0,
+		Instrs = Instrs0,
+		Ccode = Ccode0
+	).
+
+:- pred livemap__look_for_livevals(list(instruction), list(instruction),
+	lvalset, lvalset, string, bool, bool).
+:- mode livemap__look_for_livevals(di, uo, di, uo, in, in, out) is det.
+
+livemap__look_for_livevals(Instrs0, Instrs, Livevals0, Livevals,
+		Site, Compulsory, Found) :-
+	opt_util__skip_comments(Instrs0, Instrs1),
+	( Instrs1 = [livevals(Livevals1) - _ | Instrs2] ->
+		livemap__filter_livevals(Livevals1, Livevals),
+		Instrs = Instrs2,
+		Found = yes
+	; Compulsory = yes ->
+		string__append(Site, " not preceded by livevals", Msg),
+		error(Msg)
+	;
+		Instrs = Instrs1,
+		Livevals = Livevals0,
+		Found = no
+	).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

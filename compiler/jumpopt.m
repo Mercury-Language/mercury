@@ -45,6 +45,8 @@ jumpopt__main(Instrs0, Instrs, Mod) :-
 	% A label has an entry in a table if it is followed by a deterministic,
 	% semideterministic or nondeterministic proceed/succeed; the map target
 	% gives the code sequence between the label and the proceed/succeed.
+	% We also build up a map giving the livevals instruction at the label
+	% if any, and the first real instruction at the label.
 
 :- pred jumpopt__build_maps(list(instruction), instrmap, instrmap,
 	lvalmap, lvalmap, tailmap, tailmap, tailmap, tailmap, tailmap, tailmap).
@@ -114,23 +116,23 @@ jumpopt__build_maps([Instr0 | Instrs0], Instrmap0, Instrmap, Lvalmap0, Lvalmap,
 	instrmap, lvalmap, tailmap, tailmap, tailmap, list(instruction), bool).
 :- mode jumpopt__instr_list(in, in, in, in, in, in, in, out, out) is det.
 
-jumpopt__instr_list([], _Previnstr,
+jumpopt__instr_list([], _PrevInstr,
 		_Instrmap, _Lvalmap, _Procmap, _Sdprocmap, _Succmap, [], no).
-jumpopt__instr_list([Instr0 | Instrs0], Previnstr,
+jumpopt__instr_list([Instr0 | Instrs0], PrevInstr,
 		Instrmap, Lvalmap, Procmap, Sdprocmap, Succmap, Instrs, Mod) :-
 	Instr0 = Uinstr0 - Comment0,
 	string__append(Comment0, " (redirected return)", Redirect),
 	(
-		Uinstr0 = call(Proc, label(Retlabel), Caller, LiveVals),
-		map__search(Instrmap, Retlabel, Retinstr)
+		Uinstr0 = call(Proc, label(RetLabel), Caller, LiveVals),
+		map__search(Instrmap, RetLabel, RetInstr)
 	->
-		jumpopt__final_dest(Retlabel, Retinstr, Instrmap,
-			Destlabel, Destinstr),
-		( Retlabel = Destlabel ->
-			Newinstrs = [Instr0],
+		jumpopt__final_dest(RetLabel, RetInstr, Instrmap,
+			DestLabel, DestInstr),
+		( RetLabel = DestLabel ->
+			NewInstrs = [Instr0],
 			Mod0 = no
 		;
-			Newinstrs = [call(Proc, label(Destlabel), Caller,
+			NewInstrs = [call(Proc, label(DestLabel), Caller,
 				LiveVals) - Redirect],
 			Mod0 = yes
 		)
@@ -141,10 +143,10 @@ jumpopt__instr_list([Instr0 | Instrs0], Previnstr,
 			opt_util__is_this_label_next(TargetLabel, Instrs0, _)
 		->
 			% Eliminating is better than shortcircuiting.
-			Newinstrs = [],
+			NewInstrs = [],
 			Mod0 = yes
 		;
-			Previnstr = if_val(_, label(IfTargetLabel)),
+			PrevInstr = if_val(_, label(IfTargetLabel)),
 			opt_util__is_this_label_next(IfTargetLabel, Instrs0, _)
 		->
 			% Eliminating the goto (by the local peephole pass)
@@ -153,56 +155,60 @@ jumpopt__instr_list([Instr0 | Instrs0], Previnstr,
 			% we could use profiling feedback on this.
 			% We cannot eliminate the instruction here because
 			% that would require altering the if_val instruction.
-			Newinstrs = [Instr0],
+			NewInstrs = [Instr0],
 			Mod0 = no
 		;
-			map__search(Procmap, TargetLabel, Between)
+			map__search(Procmap, TargetLabel, Between0)
 		->
+			jumpopt__adjust_livevals(PrevInstr, Between0, Between),
 			list__append(Between, [goto(succip, succip) -
-				"shortcircuit"], Newinstrs),
+				"shortcircuit"], NewInstrs),
 			Mod0 = yes
 		;
-			map__search(Sdprocmap, TargetLabel, Between)
+			map__search(Sdprocmap, TargetLabel, Between0)
 		->
+			jumpopt__adjust_livevals(PrevInstr, Between0, Between),
 			list__append(Between, [goto(succip, succip) -
-				"shortcircuit"], Newinstrs),
+				"shortcircuit"], NewInstrs),
 			Mod0 = yes
 		;
-			map__search(Succmap, TargetLabel, BetweenIncl)
+			map__search(Succmap, TargetLabel, BetweenIncl0)
 		->
-			Newinstrs = BetweenIncl,
+			jumpopt__adjust_livevals(PrevInstr, BetweenIncl0,
+				NewInstrs),
 			Mod0 = yes
 		;
 			map__search(Instrmap, TargetLabel, TargetInstr)
 		->
 			jumpopt__final_dest(TargetLabel, TargetInstr,
-				Instrmap, Destlabel, Destinstr),
-			Destinstr = Udestinstr - _Destcomment,
+				Instrmap, DestLabel, DestInstr),
+			DestInstr = UdestInstr - _Destcomment,
 			string__append("shortcircuited jump: ",
 				Comment0, Shorted),
-			opt_util__can_instr_fall_through(Udestinstr,
+			opt_util__can_instr_fall_through(UdestInstr,
 				Canfallthrough),
 			( Canfallthrough = no ->
-				Newinstrs0 = [Udestinstr - Shorted],
+				NewInstrs0 = [UdestInstr - Shorted],
 				Mod0 = yes
 			;
-				( TargetLabel = Destlabel ->
-					Newinstrs0 = [Instr0],
+				( TargetLabel = DestLabel ->
+					NewInstrs0 = [Instr0],
 					Mod0 = no
 				;
-					Newinstrs0 = [goto(label(Destlabel),
-						label(Destlabel)) - Shorted],
+					NewInstrs0 = [goto(label(DestLabel),
+						label(DestLabel)) - Shorted],
 					Mod0 = yes
 				)
 			),
-			( map__search(Lvalmap, Destlabel, yes(Lvalinstr)) ->
-				Newinstrs = [Lvalinstr | Newinstrs0]
+			( map__search(Lvalmap, DestLabel, yes(Lvalinstr)) ->
+				jumpopt__adjust_livevals(PrevInstr,
+					[Lvalinstr | NewInstrs0], NewInstrs)
 			;
-				Newinstrs = Newinstrs0
+				NewInstrs = NewInstrs0
 			)
 		;
 			% error("target label not in instrmap")
-			Newinstrs = [Instr0],
+			NewInstrs = [Instr0],
 			Mod0 = no
 		)
 	; Uinstr0 = computed_goto(Index, LabelList0) ->
@@ -210,26 +216,44 @@ jumpopt__instr_list([Instr0 | Instrs0], Previnstr,
 		( Mod0 = yes ->
 			string__append(Comment0, " (some shortcircuits)",
 				Shorted),
-			Newinstrs = [computed_goto(Index, LabelList) - Shorted]
+			NewInstrs = [computed_goto(Index, LabelList) - Shorted]
 		;
-			Newinstrs = [Instr0]
+			NewInstrs = [Instr0]
 		)
 	;
-		Newinstrs = [Instr0],
+		NewInstrs = [Instr0],
 		Mod0 = no
 	),
-	( ( Uinstr0 = comment(_) ; Uinstr0 = livevals(_) ) ->
-		Newprevinstr = Previnstr
+	( Uinstr0 = comment(_) ->
+		NewPrevInstr = PrevInstr
 	;
-		Newprevinstr = Uinstr0
+		NewPrevInstr = Uinstr0
 	),
-	jumpopt__instr_list(Instrs0, Newprevinstr,
+	jumpopt__instr_list(Instrs0, NewPrevInstr,
 		Instrmap, Lvalmap, Procmap, Sdprocmap, Succmap, Instrs1, Mod1),
-	list__append(Newinstrs, Instrs1, Instrs),
+	list__append(NewInstrs, Instrs1, Instrs),
 	( Mod0 = no, Mod1 = no ->
 		Mod = no
 	;
 		Mod = yes
+	).
+
+:- pred jumpopt__adjust_livevals(instr, list(instruction), list(instruction)).
+:- mode jumpopt__adjust_livevals(in, di, uo) is det.
+
+jumpopt__adjust_livevals(PrevInstr, Instrs0, Instrs) :-
+	(
+		PrevInstr = livevals(PrevLivevals),
+		opt_util__skip_comments(Instrs0, Instrs1),
+		Instrs1 = [livevals(BetweenLivevals) - _ | Instrs2]
+	->
+		( BetweenLivevals = PrevLivevals ->
+			Instrs = Instrs2
+		;
+			error("betweenLivevals and prevLivevals differ in jumpopt")
+		)
+	;
+		Instrs = Instrs0
 	).
 
 %-----------------------------------------------------------------------------%

@@ -39,7 +39,7 @@ middle_rec__match_det(Goal, Switch, CodeInfo, CodeInfo) :-
 	Case2 = case(ConsId2, Goal2),
 	(
 		code_aux__contains_only_builtins(Goal1),
-		code_aux__contains_simple_recursive_call(Goal2, CodeInfo, _)
+		code_aux__contains_simple_recursive_call(Goal2, no, CodeInfo, _)
 	->
 		Switch = switch(Var, cannot_fail, [
 			case(ConsId1, Goal1),
@@ -47,7 +47,7 @@ middle_rec__match_det(Goal, Switch, CodeInfo, CodeInfo) :-
 		]) - GoalInfo
 	;
 		code_aux__contains_only_builtins(Goal2),
-		code_aux__contains_simple_recursive_call(Goal1, CodeInfo, _)
+		code_aux__contains_simple_recursive_call(Goal1, no, CodeInfo, _)
 	->
 		Switch = switch(Var, cannot_fail, [
 			case(ConsId2, Goal2),

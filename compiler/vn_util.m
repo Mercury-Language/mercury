@@ -279,7 +279,8 @@ vn__simplify_vnrval(Vnrval0, Vnrval, VnTables0, VnTables) :-
 				VnTables1, VnTables)
 		;
 							% c1-e2 => 0-e2+c1
-			Vnrval1 = vn_const(int_const(I1))
+			Vnrval1 = vn_const(int_const(I1)),
+			I1 \= 0
 		->
 			vn__vnrval_to_vn(vn_const(int_const(0)), VnConst0,
 				VnTables0, VnTables1),

@@ -41,7 +41,6 @@
 :- import_module make_tags, quantification, shapes.
 :- import_module code_util, unify_proc, type_util.
 
-
 parse_tree_to_hlds(module(Name, Items), Module) -->
 	{ module_info_init(Name, Module0) },
 	add_item_list_decls(Items, local, Module0, Module1),
@@ -911,7 +910,6 @@ warn_singletons([Var | Vars0], VarSet, PredCallId, Context) -->
 	),
 	warn_singletons(Vars1, VarSet, PredCallId, Context).
 
-
 	% delete_all(List0, Elem, List, Found) is true iff
 	% List is List0 with all occurrences of Elem removed,
 	% and Found = 'yes' if Elem occurred in List0 and 'no' otherwise.
@@ -1169,7 +1167,6 @@ transform_goal_2(unify(A0, B0), VarSet0, Subst, Goal, VarSet) :-
 			unify_sub_contexts
 		).
 
-		
 :- pred insert_arg_unifications(list(var), list(term), arg_context,
 				hlds__goal, varset, hlds__goal, varset).
 :- mode insert_arg_unifications(in, in, in, in, in, out, out) is det.

@@ -809,9 +809,7 @@ compare_solncounts(at_most_many, at_most_many, sameas).
 
 det_diagnose_goal(Goal - GoalInfo, Desired, MiscInfo, Diagnosed) -->
 	{ goal_info_get_determinism(GoalInfo, External) },
-	( { Desired = External } ->
-		{ Diagnosed = no }
-	;
+	( { compare_determinisms(Desired, External, tighter) } ->
 		{ goal_info_get_internal_determinism(GoalInfo, Internal) },
 		{ External = Internal ->
 			Desired1 = Desired
@@ -819,8 +817,14 @@ det_diagnose_goal(Goal - GoalInfo, Desired, MiscInfo, Diagnosed) -->
 			determinism_components(Desired, CanFail, _),
 			determinism_components(Desired1, CanFail, at_most_many)
 		},
-		det_diagnose_goal_2(Goal, GoalInfo, Desired1, Internal,
-			MiscInfo, Diagnosed)
+		( { compare_determinisms(Desired1, Internal, tighter) } ->
+			det_diagnose_goal_2(Goal, GoalInfo, Desired1, Internal,
+				MiscInfo, Diagnosed)
+		;
+			{ Diagnosed = no }
+		)
+	;
+		{ Diagnosed = no }
 	).
 
 %-----------------------------------------------------------------------------%
@@ -865,9 +869,12 @@ det_diagnose_goal_2(switch(Var, SwitchCanFail, Cases), GoalInfo,
 		{ det_misc_get_proc_info(MiscInfo, ProcInfo) },
 		{ proc_info_variables(ProcInfo, Varset) },
 		{ MiscInfo = misc_info(ModuleInfo, _, _) },
-		{ det_lookup_var_type(ModuleInfo, ProcInfo, Var, TypeDefn) },
-		{ TypeDefn = hlds__type_defn(_, _, TypeBody, _, _) },
-		( { TypeBody = du_type(_, ConsTable, _) } ->
+		(
+			{ det_lookup_var_type(ModuleInfo, ProcInfo, Var,
+				TypeDefn) },
+			{ TypeDefn = hlds__type_defn(_, _, TypeBody, _, _) },
+			{ TypeBody = du_type(_, ConsTable, _) }
+		->
 			{ map__keys(ConsTable, ConsIds) },
 			{ det_diagnose_missing_consids(ConsIds, Cases,
 				Missing) },
@@ -933,16 +940,20 @@ det_diagnose_goal_2(call(PredId, ModeId, _, _, _, _), GoalInfo,
 		prog_out__write_context(Context),
 		io__write_string("  Call to `"),
 		det_report_pred_name_mode(PredName, ArgModes),
-		io__write_string("' has unknown determinism problem\n")
+		io__write_string("' has unknown determinism problem\n"),
+		prog_out__write_context(Context),
+		io__write_string("  desired determinism is "),
+		hlds_out__write_determinism(Desired),
+		io__write_string(", while actual determinism is "),
+		hlds_out__write_determinism(Actual),
+		io__write_string("\n")
 	).
 
 det_diagnose_goal_2(unify(LT, RT, _, _, UnifyContext), GoalInfo,
-		Desired, Actual, MiscInfo, yes) -->
+		Desired, Actual, MiscInfo, Diagnosed) -->
 	{ goal_info_context(GoalInfo, Context) },
 	{ determinism_components(Desired, DesiredCanFail, _DesiredSolns) },
 	{ determinism_components(Actual, ActualCanFail, _ActualSolns) },
-	% prog_out__write_context(Context),
-	% io__write_string("  Cause:\n"),
 	hlds_out__write_unify_context(UnifyContext, Context),
 	prog_out__write_context(Context),
 	{ det_misc_get_proc_info(MiscInfo, ProcInfo) },
@@ -955,9 +966,17 @@ det_diagnose_goal_2(unify(LT, RT, _, _, UnifyContext), GoalInfo,
 		{ DesiredCanFail = cannot_fail },
 		{ ActualCanFail = can_fail }
 	->
+		{ Diagnosed = yes },
 		io__write_string("' can fail.\n")
 	;
-		io__write_string("' has unknown determinism problem\n")
+		{ Diagnosed = no },
+		io__write_string("' has unknown determinism problem;\n"),
+		prog_out__write_context(Context),
+		io__write_string("  desired determinism is "),
+		hlds_out__write_determinism(Desired),
+		io__write_string(", while actual determinism is "),
+		hlds_out__write_determinism(Actual),
+		io__write_string("\n")
 	).
 
 det_diagnose_goal_2(if_then_else(_Vars, Cond, Then, Else), _GoalInfo,
@@ -1058,18 +1077,19 @@ det_misc_get_proc_info(MiscInfo, ProcInfo) :-
 	map__lookup(ProcTable, ModeId, ProcInfo).
 
 :- pred det_lookup_var_type(module_info, proc_info, var, hlds__type_defn).
-:- mode det_lookup_var_type(in, in, in, out) is det.
+:- mode det_lookup_var_type(in, in, in, out) is semidet.
 
 det_lookup_var_type(ModuleInfo, ProcInfo, Var, TypeDefn) :-
 	proc_info_vartypes(ProcInfo, VarTypes),
 	map__lookup(VarTypes, Var, Type),
-	( type_to_type_id(Type, TypeIdPrime, _) ->
-		TypeId = TypeIdPrime
+	(
+		type_to_type_id(Type, TypeId, _)
+	->
+		module_info_types(ModuleInfo, TypeTable),
+		map__search(TypeTable, TypeId, TypeDefn)
 	;
 		error("cannot lookup the type of a variable")
-	),
-	module_info_types(ModuleInfo, TypeTable),
-	map__lookup(TypeTable, TypeId, TypeDefn).
+	).
 
 :- pred no_output_vars(set(var), instmap, instmap_delta, misc_info).
 :- mode no_output_vars(in, in, in, in) is semidet.

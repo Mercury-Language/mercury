@@ -40,8 +40,8 @@
 
 :- import_module vn_table, vn_block, vn_order, vn_flush.
 :- import_module vn_temploc, vn_cost, vn_debug, vn_util.
-:- import_module peephole, livemap, opt_util, opt_debug.
-:- import_module map, bintree_set, require, int, string, std_util.
+:- import_module globals, options, peephole, livemap, opt_util, opt_debug.
+:- import_module set, map, bintree_set, require, int, string, std_util.
 
 	% We can't find out what variables are used by C code sequences,
 	% so we don't optimize any predicates containing them.
@@ -72,8 +72,13 @@ vn__procedure(Instrs0, Livemap, OptInstrs) -->
 	{ vn__divide_into_blocks(Instrs1, Blocks) },
 	vn__optimize_blocks(Blocks, Livemap, LabelNo0, OptBlocks0,
 		[], RevTuples),
-	{ list__reverse(RevTuples, Tuples) },
-	vn__process_parallel_tuples(Tuples, OptBlocks0, Livemap, OptBlocks1),
+	globals__io_lookup_bool_option(pred_value_number, PredVn),
+	( { PredVn = yes } ->
+		{ list__reverse(RevTuples, Tuples) },
+		vn__process_parallel_tuples(Tuples, OptBlocks0, Livemap, OptBlocks1)
+	;
+		{ OptBlocks1 = OptBlocks0 }
+	),
 	{ list__condense([Comments | OptBlocks1], OptInstrs) }.
 
 :- pred vn__optimize_blocks(list(list(instruction)), livemap, int,
@@ -128,12 +133,14 @@ vn__optimize_block(Instrs0, Livemap, ParEntries, LabelNo0, LabelNo, Instrs,
 :- mode vn__optimize_fragment(in, in, in, in, out, out, di, uo) is det.
 
 vn__optimize_fragment(Instrs0, Livemap, ParEntries, LabelNo0, Tuple, Instrs) -->
-	( { Instrs0 = [Uinstr0 - _ | _] } ->
+	( { Instrs0 = [Uinstr0Prime - _ | _] } ->
+		{ Uinstr0 = Uinstr0Prime },
 		vn__fragment_msg(Uinstr0)
 	;
 		{ error("empty instruction sequence in vn__optimize_fragment") }
 	),
-	{ vn__build_block_info(Instrs0, Livemap, ParEntries, LabelNo0,
+	{ vn__separate_tag_test(Instrs0, Instrs1) },
+	{ vn__build_block_info(Instrs1, Livemap, ParEntries, LabelNo0,
 		VnTables0, Liveset, SeenIncr, Tuple0) },
 	{ Tuple0 = tuple(Ctrl, Ctrlmap, Flushmap, LabelNo, _Parmap) },
 
@@ -149,33 +156,396 @@ vn__optimize_fragment(Instrs0, Livemap, ParEntries, LabelNo0, Tuple, Instrs) -->
 		{ vn__init_templocs(MaxRealRegs, MaxRealTemps,
 			Liveset, VnTables2, Templocs0) },
 		vn__flush_nodelist(Order, Ctrlmap, VnTables2, Templocs0,
-			Instrs1),
+			Instrs2),
 
-		{ vn__push_decr_sp_back(Instrs1, Instrs2) },
-		{ vn__push_incr_sp_forw(Instrs2, Instrs3) },
-		{ vn__push_livevals_back(Instrs3, Instrs4) },
-		{ vn__convert_back_modframe(Instrs4, Instrs5) },
-		{ peephole__main(Instrs5, Instrs6, _) },
+		{ vn__push_decr_sp_back(Instrs2, Instrs3) },
+		{ vn__push_incr_sp_forw(Instrs3, Instrs4) },
+		{ vn__push_livevals_back(Instrs4, Instrs5) },
+		{ vn__convert_back_modframe(Instrs5, Instrs6) },
+		{ peephole__main(Instrs6, Instrs7, _) },
 
 		vn__cost_header_msg("original code sequence"),
 		vn__block_cost(Instrs0, yes, OrigCost),
 		vn__cost_header_msg("new code sequence"),
-		vn__block_cost(Instrs6, yes, VnCost),
+		vn__block_cost(Instrs7, yes, VnCost),
 		vn__cost_msg(OrigCost, VnCost),
 
-		{ VnCost < OrigCost ->
-			Instrs = Instrs6,
-			vn__build_block_info(Instrs6, Livemap, ParEntries,
-				LabelNo0, _, _, _, Tuple)
+		( { VnCost < OrigCost } ->
+			{ vn__build_block_info(Instrs7, Livemap, ParEntries,
+				LabelNo0, VnTables7, Liveset7, SeenIncr7,
+				Tuple7) },
+			{ vn__verify_equivalence(Liveset, Liveset7,
+				VnTables0, VnTables7, Problem) },
+			( { SeenIncr \= SeenIncr7 } ->
+				vn__failure_msg(Uinstr0, "disagreement on SeenIncr"),
+				{ Instrs = Instrs0 },
+				{ Tuple = Tuple0 }
+			; { Problem = yes(Msg) } ->
+				vn__failure_msg(Uinstr0, Msg),
+				{ Instrs = Instrs0 },
+				{ Tuple = Tuple0 }
+			; { vn__verify_tags(Instrs7) } ->
+				{ Instrs = Instrs7 },
+				{ Tuple = Tuple7 }
+			;
+				vn__failure_msg(Uinstr0, "failure of tag check"),
+				{ Instrs = Instrs0 },
+				{ Tuple = Tuple0 }
+			)
 		;
-			Instrs = Instrs0,
-			Tuple = Tuple0
-		}
+			{ Instrs = Instrs0 },
+			{ Tuple = Tuple0 }
+		)
 	;
 		{ Maybe = no },
 		vn__try_again(Instrs0, Livemap, LabelNo, Instrs),
 		{ vn__build_block_info(Instrs0, Livemap, ParEntries,	
 			LabelNo0, _, _, _, Tuple) }
+	).
+
+:- pred vn__separate_tag_test(list(instruction), list(instruction)).
+:- mode vn__separate_tag_test(di, uo) is det.
+
+vn__separate_tag_test([], []).
+vn__separate_tag_test([Instr0 | Instrs0], Instrs) :-
+	vn__separate_tag_test(Instrs0, Instrs1),
+	Instr0 = Uinstr0 - Comment,
+	(
+		Uinstr0 = if_val(unop(not, binop(and, Test1, Test2)), Addr),
+		Test1 = binop(eq, unop(tag, Rval), unop(mktag, const(int_const(Tag)))),
+		Test2 = binop(eq, lval(field(Tag, Rval, Index)), FieldVal)
+	->
+		New1 = binop(ne, unop(tag, Rval), unop(mktag, const(int_const(Tag)))),
+		New2 = binop(ne, lval(field(Tag, Rval, Index)), FieldVal),
+		If1 = if_val(New1, Addr) - Comment,
+		If2 = if_val(New2, Addr) - Comment,
+		Instrs = [If1, If2 | Instrs1]
+	;
+		Instrs = [Instr0 | Instrs1]
+	).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+:- pred vn__verify_equivalence(vnlvalset, vnlvalset, vn_tables, vn_tables,
+	maybe(string)).
+:- mode vn__verify_equivalence(in, in, in, in, out) is det.
+
+vn__verify_equivalence(Liveset0, Liveset7, VnTables0, VnTables7, Problem) :-
+	set__to_sorted_list(Liveset0, Livevals0),
+	set__to_sorted_list(Liveset7, Livevals7),
+	map__init(InitVerifyMap0),
+	vn__make_verify_map(Livevals0, VnTables0, InitVerifyMap0, VerifyMap0,
+		Problem0),
+	map__init(InitVerifyMap7),
+	vn__make_verify_map(Livevals7, VnTables7, InitVerifyMap7, VerifyMap7,
+		Problem7),
+	( Problem0 = yes(_) ->
+		Problem = Problem0
+	; Problem7 = yes(_) ->
+		Problem = Problem7
+	;
+		map__keys(VerifyMap0, Keys0),
+		map__keys(VerifyMap7, Keys7),
+		list__append(Keys0, Keys7, KeysDups),
+		list__remove_dups(KeysDups, Keys),
+		vn__verify_correspondence(Keys, VerifyMap0, VerifyMap7, Problem)
+	).
+
+:- pred vn__verify_correspondence(list(lval), map(lval, rval), map(lval, rval),
+	maybe(string)).
+:- mode vn__verify_correspondence(in, in, in, out) is det.
+
+vn__verify_correspondence([], _, _, no).
+vn__verify_correspondence([Lval | Lvals], VerifyMap0, VerifyMap7, Problem) :-
+	(
+		map__search(VerifyMap0, Lval, Rval0),
+		map__search(VerifyMap7, Lval, Rval7)
+	->
+		( Rval0 = Rval7 ->
+			vn__verify_correspondence(Lvals, VerifyMap0, VerifyMap7,
+				Problem)
+		;
+			opt_debug__dump_lval(Lval, Lstr),
+			string__append("disagreement on value of ", Lstr, Msg),
+			Problem = yes(Msg)
+		)
+	;
+		\+ map__search(VerifyMap0, Lval, _),
+		\+ map__search(VerifyMap7, Lval, _)
+	->
+		vn__verify_correspondence(Lvals, VerifyMap0, VerifyMap7,
+			Problem)
+	;
+		opt_debug__dump_lval(Lval, Lstr),
+		string__append("cannot find value of ", Lstr, Msg),
+		Problem = yes(Msg)
+	).
+
+:- pred vn__make_verify_map(list(vnlval), vn_tables,
+	map(lval, rval), map(lval, rval), maybe(string)).
+:- mode vn__make_verify_map(in, in, di, uo, out) is det.
+
+vn__make_verify_map(LiveVnlvals, VnTables, VerifyMap0, VerifyMap, Problem) :-
+	vn__get_all_vnrvals(Vnrvals, VnTables),
+	vn__make_verify_map_specials(Vnrvals, LiveVnlvals, Vnlvals),
+	vn__make_verify_map_2(Vnlvals, VnTables,
+		VerifyMap0, VerifyMap, Problem).
+
+:- pred vn__make_verify_map_2(list(vnlval), vn_tables,
+	map(lval, rval), map(lval, rval), maybe(string)).
+:- mode vn__make_verify_map_2(in, in, di, uo, out) is det.
+
+vn__make_verify_map_2([], _, VerifyMap, VerifyMap, no).
+vn__make_verify_map_2([Vnlval | Vnlvals], VnTables, VerifyMap0, VerifyMap,
+		Problem) :-
+	vn__verify_lval(Vnlval, VnTables, Lval),
+	( vn__search_desired_value(Vnlval, DesVn, VnTables) ->
+		vn__verify_value(DesVn, VnTables, Rval),
+		map__set(VerifyMap0, Lval, Rval, VerifyMap1),
+		vn__make_verify_map_2(Vnlvals, VnTables,
+			VerifyMap1, VerifyMap, Problem)
+	;
+		opt_debug__dump_vnlval(Vnlval, Lstr),
+		string__append("cannot find desired value of ", Lstr, Msg),
+		Problem = yes(Msg),
+		VerifyMap = VerifyMap0	% should be ignored
+	).
+
+:- pred vn__make_verify_map_specials(list(vnrval), list(vnlval), list(vnlval)).
+:- mode vn__make_verify_map_specials(in, di, uo) is det.
+
+vn__make_verify_map_specials([], Vnlvals, Vnlvals).
+vn__make_verify_map_specials([Vnrval | Vnrvals], Vnlvals0, Vnlvals) :-
+	(
+		Vnrval = vn_origlval(Vnlval),
+		vn__find_specials(Vnlval, Specials)
+	->
+		list__append(Vnlvals0, Specials, Vnlvals1)
+	;
+		Vnlvals1 = Vnlvals0
+	),
+	vn__make_verify_map_specials(Vnrvals, Vnlvals1, Vnlvals).
+
+:- pred vn__verify_lval(vnlval, vn_tables, lval).
+:- mode vn__verify_lval(in, in, out) is det.
+
+vn__verify_lval(Vnlval, VnTables, Lval) :-
+	vn__vnlval_access_vns(Vnlval, AccessVns),
+	vn__verify_values(AccessVns, VnTables, AccessRvals),
+	( vn__substitute_access_vns(Vnlval, AccessRvals, LvalPrime) ->
+		Lval = LvalPrime
+	;
+		error("cannot substitute access vns in vn__verify_lval")
+	).
+
+:- pred vn__verify_values(list(vn), vn_tables, list(rval)).
+:- mode vn__verify_values(in, in, out) is det.
+
+vn__verify_values([], _VnTables, []).
+vn__verify_values([Vn | Vns], VnTables, [Rval | Rvals]) :-
+	vn__verify_value(Vn, VnTables, Rval),
+	vn__verify_values(Vns, VnTables, Rvals).
+
+:- pred vn__verify_value(vn, vn_tables, rval).
+:- mode vn__verify_value(in, in, out) is det.
+
+vn__verify_value(Vn, VnTables, Rval) :-
+	vn__lookup_defn(Vn, Vnrval, "vn__verify_value", VnTables),
+	vn__find_sub_vns(Vnrval, SubVns),
+	vn__verify_values(SubVns, VnTables, SubRvals),
+	( vn__substitute_sub_vns(Vnrval, SubRvals, VnTables, RvalPrime) ->
+		Rval = RvalPrime
+	;
+		error("cannot substitute sub vns in vn__verify_value")
+	).
+
+:- pred vn__substitute_access_vns(vnlval, list(rval), lval).
+:- mode vn__substitute_access_vns(in, in, out) is semidet.
+
+vn__substitute_access_vns(vn_reg(R), [], reg(R)).
+vn__substitute_access_vns(vn_stackvar(N), [], stackvar(N)).
+vn__substitute_access_vns(vn_framevar(N), [], framevar(N)).
+vn__substitute_access_vns(vn_succip, [], succip).
+vn__substitute_access_vns(vn_maxfr, [], maxfr).
+vn__substitute_access_vns(vn_curfr, [], curfr).
+vn__substitute_access_vns(vn_succfr(_), [R], succfr(R)).
+vn__substitute_access_vns(vn_prevfr(_), [R], prevfr(R)).
+vn__substitute_access_vns(vn_redoip(_), [R], redoip(R)).
+vn__substitute_access_vns(vn_hp, [], hp).
+vn__substitute_access_vns(vn_sp, [], sp).
+vn__substitute_access_vns(vn_field(T, _, _), [R1, R2], field(T, R1, R2)).
+vn__substitute_access_vns(vn_temp(N), [], temp(N)).
+
+:- pred vn__substitute_sub_vns(vnrval, list(rval), vn_tables, rval).
+:- mode vn__substitute_sub_vns(in, in, in, out) is semidet.
+
+vn__substitute_sub_vns(vn_origlval(Vnlval), _, VnTables, lval(Lval)) :-
+	vn__verify_lval(Vnlval, VnTables, Lval).
+vn__substitute_sub_vns(vn_mkword(Tag, _), [R], _, mkword(Tag, R)).
+vn__substitute_sub_vns(vn_const(Const), [], _, const(Const)).
+vn__substitute_sub_vns(vn_create(T, A, L), [], _, create(T, A, L)).
+vn__substitute_sub_vns(vn_unop(Op, _), [R], _, unop(Op, R)).
+vn__substitute_sub_vns(vn_binop(Op, _, _), [R1, R2], _, binop(Op, R1, R2)).
+
+%-----------------------------------------------------------------------------%
+
+:- pred vn__verify_tags(list(instruction)).
+:- mode vn__verify_tags(in) is semidet.
+
+vn__verify_tags(Instrs) :-
+	list__reverse(Instrs, RevInstrs),
+	set__init(NoDeref),
+	vn__verify_tags_2(RevInstrs, NoDeref).
+
+:- pred vn__verify_tags_2(list(instruction), set(rval)).
+:- mode vn__verify_tags_2(in, in) is semidet.
+
+vn__verify_tags_2([], _).
+vn__verify_tags_2([Instr0 - _| RevInstrs], NoDeref0) :-
+	vn__verify_tags_instr(Instr0, NoDeref0, NoDeref1),
+	vn__verify_tags_2(RevInstrs, NoDeref1).
+
+:- pred vn__verify_tags_instr(instr, set(rval), set(rval)).
+:- mode vn__verify_tags_instr(in, di, uo) is semidet.
+
+vn__verify_tags_instr(Instr, NoDeref0, NoDeref) :-
+	(
+		Instr = comment(_),
+		NoDeref = NoDeref0
+	;
+		Instr = livevals(_),
+		NoDeref = NoDeref0
+	;
+		Instr = block(_, _),
+		error("found block in vn__verify_tags_instr")
+	;
+		Instr = assign(Lval, Rval),
+		vn__verify_tags_lval(Lval, NoDeref0),
+		vn__verify_tags_rval(Rval, NoDeref0),
+		NoDeref = NoDeref0
+	;
+		Instr = call(_, _, _, _),
+		NoDeref = NoDeref0
+	;
+		Instr = call_closure(_, _, _),
+		NoDeref = NoDeref0
+	;
+		Instr = mkframe(_, _, _),
+		NoDeref = NoDeref0
+	;
+		Instr = modframe(_),
+		NoDeref = NoDeref0
+	;
+		Instr = label(_),
+		NoDeref = NoDeref0
+	;
+		Instr = goto(_, _),
+		NoDeref = NoDeref0
+	;
+		Instr = computed_goto(_, _),
+		NoDeref = NoDeref0
+	;
+		Instr = c_code(_),
+		error("found c_code in vn__verify_tags_instr")
+	;
+		Instr = if_val(Rval, _),
+		vn__verify_tags_cond(Rval, NoDeref0, NoDeref)
+	;
+		Instr = incr_hp(Lval, _, Rval),
+		vn__verify_tags_lval(Lval, NoDeref0),
+		vn__verify_tags_rval(Rval, NoDeref0),
+		NoDeref = NoDeref0
+	;
+		Instr = mark_hp(Lval),
+		vn__verify_tags_lval(Lval, NoDeref0),
+		NoDeref = NoDeref0
+	;
+		Instr = restore_hp(Rval),
+		vn__verify_tags_rval(Rval, NoDeref0),
+		NoDeref = NoDeref0
+	;
+		Instr = incr_sp(_),
+		NoDeref = NoDeref0
+	;
+		Instr = decr_sp(_),
+		NoDeref = NoDeref0
+	).
+
+:- pred vn__verify_tags_lval(lval, set(rval)).
+:- mode vn__verify_tags_lval(in, in) is semidet.
+
+vn__verify_tags_lval(reg(_), _).
+vn__verify_tags_lval(stackvar(_), _).
+vn__verify_tags_lval(framevar(_), _).
+vn__verify_tags_lval(succip, _).
+vn__verify_tags_lval(maxfr, _).
+vn__verify_tags_lval(curfr, _).
+vn__verify_tags_lval(redoip(Rval), NoDeref) :-
+	vn__verify_tags_rval(Rval, NoDeref).
+vn__verify_tags_lval(succfr(Rval), NoDeref) :-
+	vn__verify_tags_rval(Rval, NoDeref).
+vn__verify_tags_lval(prevfr(Rval), NoDeref) :-
+	vn__verify_tags_rval(Rval, NoDeref).
+vn__verify_tags_lval(hp, _).
+vn__verify_tags_lval(sp, _).
+vn__verify_tags_lval(field(_, Rval1, Rval2), NoDeref) :-
+	\+ set__member(Rval1, NoDeref),
+	vn__verify_tags_rval(Rval1, NoDeref),
+	vn__verify_tags_rval(Rval2, NoDeref).
+vn__verify_tags_lval(lvar(_), _) :-
+	error("found lvar in vn__verify_tags_lval").
+vn__verify_tags_lval(temp(_), _).
+
+:- pred vn__verify_tags_rval(rval, set(rval)).
+:- mode vn__verify_tags_rval(in, in) is semidet.
+
+vn__verify_tags_rval(lval(Lval), NoDeref) :-
+	vn__verify_tags_lval(Lval, NoDeref).
+vn__verify_tags_rval(var(_), _) :-
+	error("found var in vn__verify_tags_rval").
+vn__verify_tags_rval(create(_, _, _), _).
+vn__verify_tags_rval(mkword(_, Rval), NoDeref) :-
+	vn__verify_tags_rval(Rval, NoDeref).
+vn__verify_tags_rval(const(_), _).
+vn__verify_tags_rval(unop(_, Rval), NoDeref) :-
+	vn__verify_tags_rval(Rval, NoDeref).
+vn__verify_tags_rval(binop(_, Rval1, Rval2), NoDeref) :-
+	vn__verify_tags_rval(Rval1, NoDeref),
+	vn__verify_tags_rval(Rval2, NoDeref).
+
+:- pred vn__verify_tags_cond(rval, set(rval), set(rval)).
+:- mode vn__verify_tags_cond(in, di, uo) is semidet.
+
+vn__verify_tags_cond(Cond, NoDeref0, NoDeref) :-
+	( Cond = binop(Binop, Rval1, Rval2) ->
+		( ( Binop = (and) ; Binop = (or) ) ->
+			vn__verify_tags_cond(Rval2, NoDeref0, NoDeref1),
+			vn__verify_tags_cond(Rval1, NoDeref1, NoDeref)
+		;
+			( Rval1 = unop(tag, Base1) ->
+				set__insert(NoDeref0, Base1, NoDeref1)
+			;
+				vn__verify_tags_rval(Rval1, NoDeref0),
+				NoDeref1 = NoDeref0
+			),
+			( Rval2 = unop(tag, Base2) ->
+				set__insert(NoDeref1, Base2, NoDeref)
+			;
+				vn__verify_tags_rval(Rval2, NoDeref1),
+				NoDeref = NoDeref1
+			)
+		)
+	; Cond = unop(Unop, Rval1) ->
+		( Unop = (not) ->
+			vn__verify_tags_cond(Rval1, NoDeref0, NoDeref)
+		;
+			vn__verify_tags_rval(Cond, NoDeref0),
+			NoDeref = NoDeref0
+		)
+	;
+		vn__verify_tags_rval(Cond, NoDeref0),
+		NoDeref = NoDeref0
 	).
 
 %-----------------------------------------------------------------------------%

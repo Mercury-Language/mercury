@@ -74,7 +74,6 @@
 		;	dump_hlds
 		;	verbose_dump_hlds
 		;	generate_code
-		;	compile_to_c		% obsolete, ignored
 		;	compile
 		;	link
 		;	line_numbers
@@ -107,6 +106,7 @@
 		;	optimize_frames
 		;	optimize_repeat
 		;	optimize_vnrepeat
+		;	pred_value_number
 		;	static_ground_terms
 		;	smart_indexing
 		;	req_density
@@ -168,7 +168,7 @@ option_defaults_2(verbosity_option, [
 	statistics		-	bool(no),
 	debug_types		- 	bool(no),
 	debug_modes		- 	bool(no),
-	vndebug			- 	int(0)
+	vndebug			- 	int(1)
 ]).
 option_defaults_2(output_option, [
 		% Output Options
@@ -195,7 +195,6 @@ option_defaults_2(code_gen_option, [
 	reclaim_heap_on_nondet_failure	-	bool(yes),
 	num_tag_bits		-	int(2),
 	gc			-	string("conservative"),
-	compile_to_c		-	bool(no),
 	compile			-	bool(no),
 	cc			-	string("gcc"),
 	cflags			-	string(""),
@@ -214,11 +213,12 @@ option_defaults_2(optimization_option, [
 	optimize_peep		-	bool(yes),
 	optimize_jumps		-	bool(yes),
 	optimize_labels		-	bool(yes),
-	optimize_dups		-	bool(yes),
+	optimize_dups		-	bool(no),
 	optimize_value_number	-	bool(no),
 	optimize_frames		-	bool(yes),
-	optimize_repeat		-	int(5),
-	optimize_vnrepeat	-	int(2),
+	optimize_repeat		-	int(4),
+	optimize_vnrepeat	-	int(1),
+	pred_value_number	-	bool(no),
 	static_ground_terms	-	bool(yes),
 	smart_indexing		-	bool(yes),
 	req_density		-	int(25),
@@ -228,7 +228,7 @@ option_defaults_2(optimization_option, [
 	middle_rec		-	bool(yes),
 	inlining		-	bool(yes),
 	common_struct		-	bool(no),
-	common_goal		-	bool(no),
+	common_goal		-	bool(yes),
 	procs_per_c_function	-	int(5)
 ]).
 option_defaults_2(miscellaneous_option, [
@@ -311,7 +311,6 @@ long_option("reclaim-heap-on-nondet-failure",
 long_option("num-tag-bits",		num_tag_bits).
 long_option("gc",			gc).
 long_option("garbage-collection",	gc).
-long_option("compile-to-c",		compile_to_c).	% obsolete, ignored
 long_option("compile",			compile).
 long_option("cc",			cc).
 long_option("cflags",			cflags).
@@ -339,6 +338,7 @@ long_option("optimize-repeat",		optimize_repeat).
 long_option("optimise-repeat",		optimize_repeat).
 long_option("optimize-vnrepeat",	optimize_vnrepeat).
 long_option("optimise-vnrepeat",	optimize_vnrepeat).
+long_option("pred-value-number",	pred_value_number).
 long_option("static-ground-terms",	static_ground_terms).
 long_option("smart-indexing",		smart_indexing).
 long_option("req-density",		req_density).
@@ -495,6 +495,8 @@ options_help -->
 	io__write_string("\t\tIterate optimizations at most <n> times\n"),
 	io__write_string("\t--optimize-vnrepeat <n>\n"),
 	io__write_string("\t\tIterate value numbering at most <n> times\n"),
+	io__write_string("\t--pred-value-number\n"),
+	io__write_string("\t\tExtend value numbering to entire predicates\n"),
 	io__write_string("\t--no-static-ground-terms\n"),
 	io__write_string("\t\tConstruct all terms at runtime; disable the optimization\n"),
 	io__write_string("\t\tof constructing constant ground terms at compile time\n"),

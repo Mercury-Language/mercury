@@ -40,20 +40,23 @@ vn__order(Liveset, VnTables0, SeenIncr, Ctrl, Ctrlmap, Flushmap, Maybe) -->
 		{ vn__prod_cons_order(Livelist, VnTables0, VnTables1,
 			MustSuccmap0, MustSuccmap1,
 			MustPredmap0, MustPredmap1) },
+		{ vn__vn_ctrl_order(0, Ctrlmap, VnTables1, VnTables2,
+			MustSuccmap1, Succmap1,
+			MustPredmap1, Predmap1) },
+		vn__use_before_redef(VnTables2, Liveset,
+			Succmap1, Succmap2, Predmap1, Predmap2),
 		{ vn__ctrl_vn_order(0, Flushmap,
 			MustSuccmap1, MustSuccmap2,
 			MustPredmap1, MustPredmap2) },
-		{ vn__vn_ctrl_order(0, Ctrlmap, VnTables1, VnTables2,
-			MustSuccmap2, Succmap1,
-			MustPredmap2, Predmap1) },
-		vn__use_before_redef(VnTables2, Liveset,
-			Succmap1, Succmap2, Predmap1, Predmap2),
-		{ vn__pref_order(Succmap2, PrefOrder) },
+		{ vn__ctrl_vn_order(0, Flushmap,
+			Succmap2, Succmap3,
+			Predmap2, Predmap3) },
 
 		vn__order_map_msg(MustSuccmap2, MustPredmap2,
-			Succmap2, Predmap2),
+			Succmap3, Predmap3),
 
-		{ atsort(Succmap2, Predmap2, MustSuccmap2, MustPredmap2,
+		{ vn__pref_order(Succmap3, PrefOrder) },
+		{ atsort(Succmap3, Predmap3, MustSuccmap2, MustPredmap2,
 			PrefOrder, Blocks) },
 		{ LastCtrl is Ctrl - 1 },
 		{ vn__blocks_to_order(Blocks, LastCtrl, VnTables2, Order0) },
@@ -172,7 +175,8 @@ vn__prod_cons_order([Vnlval | Vnlvals], VnTables0, VnTables,
 	% Record the requirement of not producing any lvals before a control
 	% node except those we absolutely have to, since any such production
 	% will be wasted on one control path, and may cause dereferencing of
-	% a word whose tag has not yet been checked, which will to a segfault.
+	% a word whose tag has not yet been checked, which will in general
+	% lead to an unaligned memory reference and a core dump.
 
 :- pred vn__ctrl_vn_order(int, flushmap,
 	relmap(vn_node), relmap(vn_node), relmap(vn_node), relmap(vn_node)).

@@ -487,8 +487,8 @@ code_gen__generate_det_prolog(EntryCode, SUsed) -->
 	{ code_util__make_local_entry_label(ModuleInfo, PredId, ProcId,
 		Entry) },
 	{ CodeA = node([
-		label(Entry) - "Procedure entry point",
-		comment(CallInfoComment) - ""
+		comment(CallInfoComment) - "",
+		label(Entry) - "Procedure entry point"
 	]) },
 	(
 		{ Used = yes }
@@ -588,8 +588,8 @@ code_gen__generate_semi_prolog(EntryCode, SUsed) -->
 	{ code_util__make_local_entry_label(ModuleInfo, PredId, ProcId,
 		Entry) },
 	{ CodeA = node([
-		label(Entry) - "Procedure entry point",
-		comment(CallInfoComment) - ""
+		comment(CallInfoComment) - "",
+		label(Entry) - "Procedure entry point"
 	]) },
 	(
 		{ Used = yes }
@@ -722,8 +722,8 @@ code_gen__generate_non_prolog(EntryCode, no) -->
 	{ code_util__make_local_entry_label(ModuleInfo, PredId, ProcId,
 		Entry) },
 	{ CodeA = node([
-		label(Entry) - "Procedure entry point",
-		comment(CallInfoComment) - ""
+		comment(CallInfoComment) - "",
+		label(Entry) - "Procedure entry point"
 	]) },
 		% The `name' argument to mkframe() is just for
 		% debugging purposes.  We construct it as "predname/arity".
