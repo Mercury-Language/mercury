@@ -249,6 +249,18 @@
 % Routines for dealing with static constants
 %
 
+	% Generate a name for a local static constant.
+	%
+:- pred ml_format_static_const_name(string, const_seq, mlds__var_name,
+		ml_gen_info, ml_gen_info).
+:- mode ml_format_static_const_name(in, in, out, in, out) is det.
+
+	% Generate a definition of a local static constant,
+	% given the constant's name, type, and initializer.
+	%
+:- func ml_gen_static_const_defn(mlds__var_name, mlds__type, mlds__initializer,
+		prog_context) = mlds__defn.
+
 	% Return the declaration flags appropriate for an
 	% initialized local static constant.
 	%
@@ -1305,6 +1317,24 @@ ml_gen_var_name(VarSet, Var) = UniqueVarName :-
 	term__var_to_int(Var, VarNumber),
 	string__format("%s_%d", [s(VarName), i(VarNumber)], UniqueVarName).
 
+	% Generate a name for a local static constant.
+	%
+	% To ensure that the names are unique, we qualify them with the
+	% pred_id and proc_id numbers, as well as a sequence number.
+	% This is needed to allow ml_elim_nested.m to hoist
+	% such constants out to top level.
+ml_format_static_const_name(BaseName, SequenceNum, ConstName) -->
+	=(MLDSGenInfo),
+	{ ml_gen_info_get_pred_id(MLDSGenInfo, PredId) },
+	{ ml_gen_info_get_proc_id(MLDSGenInfo, ProcId) },
+	{ pred_id_to_int(PredId, PredIdNum) },
+	{ proc_id_to_int(ProcId, ProcIdNum) },
+	{ string__format("const_%d_%d_%d_%s", [i(PredIdNum), i(ProcIdNum),
+		i(SequenceNum), s(BaseName)], ConstName) }.
+
+	% Qualify the name of the specified variable
+	% with the current module name.
+	%
 ml_qualify_var(VarName, QualifiedVarLval) -->
 	=(MLDSGenInfo),
 	{ ml_gen_info_get_module_name(MLDSGenInfo, ModuleName) },
@@ -1331,6 +1361,17 @@ ml_gen_mlds_var_decl(DataName, MLDS_Type, Initializer, Context) = MLDS_Defn :-
 	Defn = data(MLDS_Type, Initializer),
 	DeclFlags = ml_gen_var_decl_flags,
 	MLDS_Defn = mlds__defn(Name, Context, DeclFlags, Defn).
+
+	% Generate a definition of a local static constant,
+	% given the constant's name, type, and initializer.
+	%
+ml_gen_static_const_defn(ConstName, ConstType, Initializer, Context) =
+		MLDS_Defn :-
+	Name = data(var(ConstName)),
+	Defn = data(ConstType, Initializer),
+	DeclFlags = ml_static_const_decl_flags,
+	MLDS_Context = mlds__make_context(Context),
+	MLDS_Defn = mlds__defn(Name, MLDS_Context, DeclFlags, Defn).
 
 	% Return the declaration flags appropriate for a local variable.
 	%

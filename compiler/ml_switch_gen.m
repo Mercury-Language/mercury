@@ -64,6 +64,7 @@
 
 :- import_module prog_data, hlds_goal, hlds_data, mlds, ml_code_util.
 :- import_module llds. % XXX for code_model
+:- import_module globals.
 
 :- import_module list.
 
@@ -81,15 +82,21 @@
 :- type ml_extended_case ---> case(int, cons_tag, cons_id, hlds_goal).
 :- type ml_cases_list == list(ml_extended_case).
 
+	% Succeed iff the target supports the specified construct.
+:- pred target_supports_int_switch(globals::in) is semidet.
+:- pred target_supports_string_switch(globals::in) is semidet.
+:- pred target_supports_goto(globals::in) is semidet.
+:- pred target_supports_computed_goto(globals::in) is semidet.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
 % These ones are not yet implemented yet:
-% :- import_module ml_string_switch, ml_tag_switch, ml_lookup_switch.
-:- import_module ml_dense_switch.
+% :- import_module ml_tag_switch, ml_lookup_switch.
+:- import_module ml_dense_switch, ml_string_switch.
 :- import_module ml_code_gen, ml_unify_gen, ml_code_util, type_util.
-:- import_module globals, options.
+:- import_module options.
 
 :- import_module bool, int, string, map, tree, std_util, require.
 
@@ -170,8 +177,6 @@ XXX Lookup switches are NYI
 			CaseVar, CodeModel, CanFail1, Context,
 			MLDS_Decls, MLDS_Statements)
 	;
-/**********
-XXX String hash switches are NYI
 		%
 		% Try using a string hash switch
 		%
@@ -180,12 +185,28 @@ XXX String hash switches are NYI
 		{ list__length(TaggedCases, NumCases) },
 		{ globals__lookup_int_option(Globals, string_switch_size,
 			StringSize) },
-		{ NumCases >= StringSize }
+		{ NumCases >= StringSize },
+		% We can implement string hash switches using either
+		% computed gotos or int switches.
+		(
+			{ target_supports_computed_goto(Globals) }
+		;
+			{ target_supports_int_switch(Globals) }
+		),
+		% XXX Currently string hash switches always use gotos.
+		% We should change that, so that we can use string hash
+		% switches for the Java back-end too.
+		{ target_supports_goto(Globals) },
+		% OK, we could use a string hash switch.  But should we?
+		% We may prefer to do a direct-mapped string switch.
+		\+ {
+			target_supports_string_switch(Globals),
+			globals__lookup_bool_option(Globals, prefer_switch, yes)
+		}
 	->
 		ml_string_switch__generate(TaggedCases, CaseVar, CodeModel,
 			CanFail, Context, MLDS_Decls, MLDS_Statements)
 	;
-**********/
 /**********
 XXX Tag switches are NYI
 		%
@@ -234,10 +255,6 @@ target_supports_switch(SwitchCategory, Globals) :-
 		target_supports_string_switch(Globals)
 	).
 
-:- pred target_supports_int_switch(globals::in) is semidet.
-:- pred target_supports_string_switch(globals::in) is semidet.
-:- pred target_supports_computed_goto(globals::in) is semidet.
-
 target_supports_int_switch(Globals) :-
 	globals__get_target(Globals, Target),
 	target_supports_int_switch_2(Target) = yes.
@@ -246,12 +263,17 @@ target_supports_string_switch(Globals) :-
 	globals__get_target(Globals, Target),
 	target_supports_string_switch_2(Target) = yes.
 
+target_supports_goto(Globals) :-
+	globals__get_target(Globals, Target),
+	target_supports_goto_2(Target) = yes.
+
 target_supports_computed_goto(Globals) :-
 	globals__get_target(Globals, Target),
 	target_supports_computed_goto_2(Target) = yes.
 
 :- func target_supports_int_switch_2(compilation_target) = bool.
 :- func target_supports_string_switch_2(compilation_target) = bool.
+:- func target_supports_goto_2(compilation_target) = bool.
 :- func target_supports_computed_goto_2(compilation_target) = bool.
 
 target_supports_int_switch_2(c) = yes.
@@ -268,6 +290,11 @@ target_supports_computed_goto_2(c) = yes.
 target_supports_computed_goto_2(il) = yes.
 target_supports_computed_goto_2(java) = no.
 % target_supports_computed_goto_2(c_sharp) = yes.
+
+target_supports_goto_2(c) = yes.
+target_supports_goto_2(il) = yes.
+target_supports_goto_2(java) = no.
+% target_supports_goto_2(c_sharp) = yes.
 
 %-----------------------------------------------------------------------------%
 
@@ -431,6 +458,8 @@ ml_switch_generate_mlds_case(Case, CodeModel, MLDS_Case) -->
 	ml_gen_goal(CodeModel, Goal, MLDS_Statement),
 	{ MLDS_Case = [match_value(Rval)] - MLDS_Statement }.
 
+	% Generate an appropriate default for a switch.
+	%
 :- pred ml_switch_generate_default(can_fail::in, code_model::in,
 		prog_context::in, switch_default::out,
 		ml_gen_info::in, ml_gen_info::out) is det.
