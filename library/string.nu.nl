@@ -21,7 +21,7 @@ string__to_int_list(S, S).
 %-----------------------------------------------------------------------------%
 
 string__to_float(String, Float) :-
-	tokenize(String, number, Num, ""),
+	tokenize(String, Num, number, ""),
 	Float is float(Num).
 
 string__float_to_string(Float, String) :-
