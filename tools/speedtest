@@ -84,7 +84,8 @@ do
 	count=1
 	while test $count -le $limit
 	do
-		$ECHO -n "$file "
+		briefname=`echo "$file" | sed "s:batch/$batch.::"`
+		$ECHO -n "$briefname "
 		if $debug
 		then
 			echo "c" | $root/tools/dotime mdb $cmd
