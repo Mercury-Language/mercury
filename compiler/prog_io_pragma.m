@@ -244,12 +244,12 @@ parse_il_type_name(String0, ErrorTerm, ForeignType) :-
 	;
 		String0 = "object"
 	->
-		ForeignType = ok(il(value, "mscorlib",
+		ForeignType = ok(il(reference, "mscorlib",
 			qualified(unqualified("System"), "Object")))
 	;
 		String0 = "string"
 	->
-		ForeignType = ok(il(value, "mscorlib",
+		ForeignType = ok(il(reference, "mscorlib",
 			qualified(unqualified("System"), "String")))
 	;
 		String0 = "float32"
