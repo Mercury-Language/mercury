@@ -11,13 +11,14 @@
 *.date
 *.date3
 *.used
-rl_file.m rl_out.m
+aditi_backend rl_file.m rl_out.m
 maybe_mlds_to_gcc.m
 *.pp_date
 mercury_compile.stats
 mercury_compile
 mercury_compile.dep
 mercury_compile.dv
+top_level
 mlds_to_gcc.dep
 mlds_to_gcc.dv
 Mercury
