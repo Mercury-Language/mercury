@@ -1,6 +1,7 @@
 /* 
  * Copyright 1988, 1989 Hans-J. Boehm, Alan J. Demers
  * Copyright (c) 1991-1994 by Xerox Corporation.  All rights reserved.
+ * Copyright (c) 2000 by Hewlett-Packard Company.  All rights reserved.
  *
  * THIS MATERIAL IS PROVIDED AS IS, WITH ABSOLUTELY NO WARRANTY EXPRESSED
  * OR IMPLIED.  ANY USE IS AT YOUR OWN RISK.
@@ -14,7 +15,7 @@
 /* Boehm, February 7, 1996 4:32 pm PST */
  
 #include <stdio.h>
-#include "gc_priv.h"
+#include "private/gc_priv.h"
 
 extern ptr_t GC_clear_stack();	/* in misc.c, behaves like identity */
 void GC_extend_size_map();	/* in misc.c. */
@@ -32,7 +33,66 @@ register struct obj_kind * kind;
     return(TRUE);
 }
 
-/* allocate lb bytes for an object of kind.	*/
+/* Allocate a large block of size lw words.	*/
+/* The block is not cleared.			*/
+/* Flags is 0 or IGNORE_OFF_PAGE.		*/
+ptr_t GC_alloc_large(lw, k, flags)
+word lw;
+int k;
+unsigned flags;
+{
+    struct hblk * h;
+    word n_blocks = OBJ_SZ_TO_BLOCKS(lw);
+    ptr_t result;
+	
+    if (!GC_is_initialized) GC_init_inner();
+    /* Do our share of marking work */
+        if(GC_incremental && !GC_dont_gc)
+	    GC_collect_a_little_inner((int)n_blocks);
+    h = GC_allochblk(lw, k, flags);
+#   ifdef USE_MUNMAP
+	if (0 == h) {
+	    GC_merge_unmapped();
+	    h = GC_allochblk(lw, k, flags);
+	}
+#   endif
+    while (0 == h && GC_collect_or_expand(n_blocks, (flags != 0))) {
+	h = GC_allochblk(lw, k, flags);
+    }
+    if (h == 0) {
+	result = 0;
+    } else {
+	int total_bytes = BYTES_TO_WORDS(n_blocks * HBLKSIZE);
+	if (n_blocks > 1) {
+	    GC_large_allocd_bytes += n_blocks * HBLKSIZE;
+	    if (GC_large_allocd_bytes > GC_max_large_allocd_bytes)
+	        GC_max_large_allocd_bytes = GC_large_allocd_bytes;
+	}
+	result = (ptr_t) (h -> hb_body);
+	GC_words_wasted += total_bytes - lw;
+    }
+    return result;
+}
+
+
+/* Allocate a large block of size lb bytes.  Clear if appropriate.	*/
+ptr_t GC_alloc_large_and_clear(lw, k, flags)
+word lw;
+int k;
+unsigned flags;
+{
+    ptr_t result = GC_alloc_large(lw, k, flags);
+    word n_blocks = OBJ_SZ_TO_BLOCKS(lw);
+
+    if (0 == result) return 0;
+    if (GC_debugging_started || GC_obj_kinds[k].ok_init) {
+	/* Clear the whole block, in case of GC_realloc call. */
+	BZERO(result, n_blocks * HBLKSIZE);
+    }
+    return result;
+}
+
+/* allocate lb bytes for an object of kind k.	*/
 /* Should not be used to directly to allocate	*/
 /* objects such as STUBBORN objects that	*/
 /* require special handling on allocation.	*/
@@ -52,7 +112,7 @@ register ptr_t *opp;
 	  lw = GC_size_map[lb];
 #	else
 	  lw = ALIGNED_WORDS(lb);
-	  if (lw == 0) lw = 1;
+	  if (lw == 0) lw = MIN_WORDS;
 #       endif
 	opp = &(kind -> ok_freelist[lw]);
         if( (op = *opp) == 0 ) {
@@ -88,36 +148,13 @@ register ptr_t *opp;
         *opp = obj_link(op);
         obj_link(op) = 0;
     } else {
-	register struct hblk * h;
-	register word n_blocks = divHBLKSZ(ADD_SLOP(lb)
-					   + HDR_BYTES + HBLKSIZE-1);
-	
-	if (!GC_is_initialized) GC_init_inner();
-	/* Do our share of marking work */
-          if(GC_incremental && !GC_dont_gc)
-		GC_collect_a_little_inner((int)n_blocks);
 	lw = ROUNDED_UP_WORDS(lb);
-        h = GC_allochblk(lw, k, 0);
-#       ifdef USE_MUNMAP
-	  if (0 == h) {
-	    GC_merge_unmapped();
-	    h = GC_allochblk(lw, k, 0);
-	  }
-#	endif
-	while (0 == h && GC_collect_or_expand(n_blocks, FALSE)) {
-	  h = GC_allochblk(lw, k, 0);
-	}
-	if (h == 0) {
-	    op = 0;
-	} else {
-	    op = (ptr_t) (h -> hb_body);
-	    GC_words_wasted += BYTES_TO_WORDS(n_blocks * HBLKSIZE) - lw;
-	}
+	op = (ptr_t)GC_alloc_large_and_clear(lw, k, 0);
     }
     GC_words_allocd += lw;
     
 out:
-    return((ptr_t)op);
+    return op;
 }
 
 ptr_t GC_generic_malloc(lb, k)
@@ -128,11 +165,32 @@ register int k;
     DCL_LOCK_STATE;
 
     GC_INVOKE_FINALIZERS();
-    DISABLE_SIGNALS();
-    LOCK();
-    result = GC_generic_malloc_inner(lb, k);
-    UNLOCK();
-    ENABLE_SIGNALS();
+    if (SMALL_OBJ(lb)) {
+    	DISABLE_SIGNALS();
+	LOCK();
+        result = GC_generic_malloc_inner((word)lb, k);
+	UNLOCK();
+	ENABLE_SIGNALS();
+    } else {
+	word lw;
+	word n_blocks;
+	GC_bool init;
+	lw = ROUNDED_UP_WORDS(lb);
+	n_blocks = OBJ_SZ_TO_BLOCKS(lw);
+	init = GC_obj_kinds[k].ok_init;
+	DISABLE_SIGNALS();
+	LOCK();
+	result = (ptr_t)GC_alloc_large(lw, k, 0);
+	if (GC_debugging_started) {
+	    BZERO(result, n_blocks * HBLKSIZE);
+	}
+	GC_words_allocd += lw;
+	UNLOCK();
+	ENABLE_SIGNALS();
+    	if (init & !GC_debugging_started && 0 != result) {
+	    BZERO(result, n_blocks * HBLKSIZE);
+        }
+    }
     if (0 == result) {
         return((*GC_oom_fn)(lb));
     } else {
@@ -159,7 +217,7 @@ register ptr_t * opp;
 register word lw;
 DCL_LOCK_STATE;
 
-    if( SMALL_OBJ(lb) ) {
+    if( EXPECT(SMALL_OBJ(lb), 1) ) {
 #       ifdef MERGE_SIZES
 	  lw = GC_size_map[lb];
 #	else
@@ -167,7 +225,7 @@ DCL_LOCK_STATE;
 #       endif
 	opp = &(GC_aobjfreelist[lw]);
 	FASTLOCK();
-        if( !FASTLOCK_SUCCEEDED() || (op = *opp) == 0 ) {
+        if( EXPECT(!FASTLOCK_SUCCEEDED() || (op = *opp) == 0, 0) ) {
             FASTUNLOCK();
             return(GENERAL_MALLOC((word)lb, PTRFREE));
         }
@@ -194,7 +252,7 @@ register ptr_t *opp;
 register word lw;
 DCL_LOCK_STATE;
 
-    if( SMALL_OBJ(lb) ) {
+    if( EXPECT(SMALL_OBJ(lb), 1) ) {
 #       ifdef MERGE_SIZES
 	  lw = GC_size_map[lb];
 #	else
@@ -202,7 +260,7 @@ DCL_LOCK_STATE;
 #       endif
 	opp = &(GC_objfreelist[lw]);
 	FASTLOCK();
-        if( !FASTLOCK_SUCCEEDED() || (op = *opp) == 0 ) {
+        if( EXPECT(!FASTLOCK_SUCCEEDED() || (op = *opp) == 0, 0) ) {
             FASTUNLOCK();
             return(GENERAL_MALLOC((word)lb, NORMAL));
         }
@@ -238,7 +296,7 @@ DCL_LOCK_STATE;
        */
       if (!GC_is_initialized) return sbrk(lb);
 #   endif /* I386 && SOLARIS_THREADS */
-    return(REDIRECT_MALLOC(lb));
+    return((GC_PTR)REDIRECT_MALLOC(lb));
   }
 
 # ifdef __STDC__
@@ -248,7 +306,7 @@ DCL_LOCK_STATE;
     size_t n, lb;
 # endif
   {
-    return(REDIRECT_MALLOC(n*lb));
+    return((GC_PTR)REDIRECT_MALLOC(n*lb));
   }
 # endif /* REDIRECT_MALLOC */
 
@@ -303,19 +361,17 @@ int obj_kind;
     sz = WORDS_TO_BYTES(sz);
     orig_sz = sz;
 
-    if (sz > WORDS_TO_BYTES(MAXOBJSZ)) {
+    if (sz > MAXOBJBYTES) {
 	/* Round it up to the next whole heap block */
 	  register word descr;
 	  
-	  sz = (sz+HDR_BYTES+HBLKSIZE-1)
-		& (~HBLKMASK);
-	  sz -= HDR_BYTES;
+	  sz = (sz+HBLKSIZE-1) & (~HBLKMASK);
 	  hhdr -> hb_sz = BYTES_TO_WORDS(sz);
 	  descr = GC_obj_kinds[obj_kind].ok_descriptor;
           if (GC_obj_kinds[obj_kind].ok_relocate_descr) descr += sz;
           hhdr -> hb_descr = descr;
 	  if (IS_UNCOLLECTABLE(obj_kind)) GC_non_gc_bytes += (sz - orig_sz);
-	  /* Extra area is already cleared by allochblk. */
+	  /* Extra area is already cleared by GC_alloc_large_and_clear. */
     }
     if (ADD_SLOP(lb) <= sz) {
 	if (lb >= (sz >> 1)) {
@@ -357,7 +413,7 @@ int obj_kind;
     }
 }
 
-# ifdef REDIRECT_MALLOC
+# if defined(REDIRECT_MALLOC) || defined(REDIRECT_REALLOC)
 # ifdef __STDC__
     GC_PTR realloc(GC_PTR p, size_t lb)
 # else
@@ -366,7 +422,11 @@ int obj_kind;
     size_t lb;
 # endif
   {
-    return(GC_realloc(p, lb));
+#   ifdef REDIRECT_REALLOC
+      return(REDIRECT_REALLOC(p, lb));
+#   else
+      return(GC_realloc(p, lb));
+#   endif
   }
 # endif /* REDIRECT_MALLOC */
 
@@ -399,7 +459,7 @@ int obj_kind;
     knd = hhdr -> hb_obj_kind;
     sz = hhdr -> hb_sz;
     ok = &GC_obj_kinds[knd];
-    if (sz <= MAXOBJSZ) {
+    if (EXPECT((sz <= MAXOBJSZ), 1)) {
 #	ifdef THREADS
 	    DISABLE_SIGNALS();
 	    LOCK();
@@ -431,6 +491,42 @@ int obj_kind;
         ENABLE_SIGNALS();
     }
 }
+
+/* Explicitly deallocate an object p when we already hold lock.		*/
+/* Only used for internally allocated objects, so we can take some 	*/
+/* shortcuts.								*/
+#ifdef THREADS
+void GC_free_inner(GC_PTR p)
+{
+    register struct hblk *h;
+    register hdr *hhdr;
+    register signed_word sz;
+    register ptr_t * flh;
+    register int knd;
+    register struct obj_kind * ok;
+    DCL_LOCK_STATE;
+
+    h = HBLKPTR(p);
+    hhdr = HDR(h);
+    knd = hhdr -> hb_obj_kind;
+    sz = hhdr -> hb_sz;
+    ok = &GC_obj_kinds[knd];
+    if (sz <= MAXOBJSZ) {
+	GC_mem_freed += sz;
+	if (IS_UNCOLLECTABLE(knd)) GC_non_gc_bytes -= WORDS_TO_BYTES(sz);
+	if (ok -> ok_init) {
+	    BZERO((word *)p + 1, WORDS_TO_BYTES(sz-1));
+	}
+	flh = &(ok -> ok_freelist[sz]);
+	obj_link(p) = *flh;
+	*flh = (ptr_t)p;
+    } else {
+        GC_mem_freed += sz;
+	if (IS_UNCOLLECTABLE(knd)) GC_non_gc_bytes -= WORDS_TO_BYTES(sz);
+        GC_freehblk(h);
+    }
+}
+#endif /* THREADS */
 
 # ifdef REDIRECT_MALLOC
 #   ifdef __STDC__

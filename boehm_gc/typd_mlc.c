@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 1991-1994 by Xerox Corporation.  All rights reserved.
+ * opyright (c) 1999-2000 by Hewlett-Packard Company.  All rights reserved.
  *
  * THIS MATERIAL IS PROVIDED AS IS, WITH ABSOLUTELY NO WARRANTY EXPRESSED
  * OR IMPLIED.  ANY USE IS AT YOUR OWN RISK.
@@ -11,7 +12,6 @@
  * modified is included with the above copyright notice.
  *
  */
-/* Boehm, July 31, 1995 5:02 pm PDT */
 
 
 /*
@@ -36,15 +36,11 @@
  * since they are not accessible through the current interface.
  */
 
-#include "gc_priv.h"
-#include "gc_mark.h"
+#include "private/gc_priv.h"
+#include "private/gc_mark.h"
 #include "gc_typed.h"
 
-# ifdef ADD_BYTE_AT_END
-#   define EXTRA_BYTES (sizeof(word) - 1)
-# else
-#   define EXTRA_BYTES (sizeof(word))
-# endif
+# define TYPD_EXTRA_BYTES (sizeof(word) - EXTRA_BYTES)
 
 GC_bool GC_explicit_typing_initialized = FALSE;
 
@@ -175,7 +171,7 @@ GC_descr GC_double_descr(descriptor, nwords)
 register GC_descr descriptor;
 register word nwords;
 {
-    if (descriptor & DS_TAGS == DS_LENGTH) {
+    if ((descriptor & DS_TAGS) == DS_LENGTH) {
         descriptor = GC_bm_table[BYTES_TO_WORDS((word)descriptor)];
     };
     descriptor |= (descriptor & ~DS_TAGS) >> nwords;
@@ -343,9 +339,15 @@ ptr_t * GC_eobjfreelist;
 
 ptr_t * GC_arobjfreelist;
 
-mse * GC_typed_mark_proc();
+mse * GC_typed_mark_proc GC_PROTO((register word * addr,
+				   register mse * mark_stack_ptr,
+				   mse * mark_stack_limit,
+				   word env));
 
-mse * GC_array_mark_proc();
+mse * GC_array_mark_proc GC_PROTO((register word * addr,
+				   register mse * mark_stack_ptr,
+				   mse * mark_stack_limit,
+				   word env));
 
 GC_descr GC_generic_array_descr;
 
@@ -370,7 +372,7 @@ void GC_init_explicit_typing()
     GC_explicit_typing_initialized = TRUE;
     /* Set up object kind with simple indirect descriptor. */
       GC_eobjfreelist = (ptr_t *)
-          GC_generic_malloc_inner((MAXOBJSZ+1)*sizeof(ptr_t), PTRFREE);
+          GC_INTERNAL_MALLOC((MAXOBJSZ+1)*sizeof(ptr_t), PTRFREE);
       if (GC_eobjfreelist == 0) ABORT("Couldn't allocate GC_eobjfreelist");
       BZERO(GC_eobjfreelist, (MAXOBJSZ+1)*sizeof(ptr_t));
       GC_explicit_kind = GC_n_kinds++;
@@ -387,7 +389,7 @@ void GC_init_explicit_typing()
         /* Moving this up breaks DEC AXP compiler.      */
     /* Set up object kind with array descriptor. */
       GC_arobjfreelist = (ptr_t *)
-          GC_generic_malloc_inner((MAXOBJSZ+1)*sizeof(ptr_t), PTRFREE);
+          GC_INTERNAL_MALLOC((MAXOBJSZ+1)*sizeof(ptr_t), PTRFREE);
       if (GC_arobjfreelist == 0) ABORT("Couldn't allocate GC_arobjfreelist");
       BZERO(GC_arobjfreelist, (MAXOBJSZ+1)*sizeof(ptr_t));
       if (GC_n_mark_procs >= MAX_MARK_PROCS)
@@ -414,11 +416,18 @@ void GC_init_explicit_typing()
     ENABLE_SIGNALS();
 }
 
-mse * GC_typed_mark_proc(addr, mark_stack_ptr, mark_stack_limit, env)
-register word * addr;
-register mse * mark_stack_ptr;
-mse * mark_stack_limit;
-word env;
+# if defined(__STDC__) || defined(__cplusplus)
+    mse * GC_typed_mark_proc(register word * addr,
+			     register mse * mark_stack_ptr,
+			     mse * mark_stack_limit,
+			     word env)
+# else
+    mse * GC_typed_mark_proc(addr, mark_stack_ptr, mark_stack_limit, env)
+    register word * addr;
+    register mse * mark_stack_ptr;
+    mse * mark_stack_limit;
+    word env;
+# endif
 {
     register word bm = GC_ext_descriptors[env].ed_bitmap;
     register word * current_p = addr;
@@ -533,11 +542,18 @@ mse * msl;
 }
 
 /*ARGSUSED*/
-mse * GC_array_mark_proc(addr, mark_stack_ptr, mark_stack_limit, env)
-register word * addr;
-register mse * mark_stack_ptr;
-mse * mark_stack_limit;
-word env;
+# if defined(__STDC__) || defined(__cplusplus)
+    mse * GC_array_mark_proc(register word * addr,
+			     register mse * mark_stack_ptr,
+			     mse * mark_stack_limit,
+			     word env)
+# else
+    mse * GC_array_mark_proc(addr, mark_stack_ptr, mark_stack_limit, env)
+    register word * addr;
+    register mse * mark_stack_ptr;
+    mse * mark_stack_limit;
+    word env;
+# endif
 {
     register hdr * hhdr = HDR(addr);
     register word sz = hhdr -> hb_sz;
@@ -647,7 +663,7 @@ register ptr_t * opp;
 register word lw;
 DCL_LOCK_STATE;
 
-    lb += EXTRA_BYTES;
+    lb += TYPD_EXTRA_BYTES;
     if( SMALL_OBJ(lb) ) {
 #       ifdef MERGE_SIZES
 	  lw = GC_size_map[lb];
@@ -692,7 +708,7 @@ register ptr_t * opp;
 register word lw;
 DCL_LOCK_STATE;
 
-    lb += EXTRA_BYTES;
+    lb += TYPD_EXTRA_BYTES;
     if( SMALL_OBJ(lb) ) {
 #       ifdef MERGE_SIZES
 	  lw = GC_size_map[lb];
@@ -750,11 +766,11 @@ DCL_LOCK_STATE;
     	case SIMPLE: return(GC_malloc_explicitly_typed(n*lb, simple_descr));
     	case LEAF:
     	    lb *= n;
-    	    lb += sizeof(struct LeafDescriptor) + EXTRA_BYTES;
+    	    lb += sizeof(struct LeafDescriptor) + TYPD_EXTRA_BYTES;
     	    break;
     	case COMPLEX:
     	    lb *= n;
-    	    lb += EXTRA_BYTES;
+    	    lb += TYPD_EXTRA_BYTES;
     	    break;
     }
     if( SMALL_OBJ(lb) ) {
