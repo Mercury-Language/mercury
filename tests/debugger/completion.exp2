@@ -5,26 +5,29 @@ Command echo enabled.
 mdb> register --quiet
 register --quiet
 mdb> 
-?                  document_category  maxdepth           return
-P                  down               mindepth           s
-alias              e                  mmc_options        save
-all_regs           echo               modules            scope
-b                  enable             next               scroll
-break              exception          nondet_stack       set
-browse             excp               p                  source
-c                  f                  print              stack
-cc_query           finish             print_optionals    stack_regs
-context            forward            printlevel         step
-continue           g                  proc_body          table
-current            goto               proc_stats         table_io
-d                  h                  procedures         unalias
-dd                 help               query              unhide_events
-dd_dd              ignore             quit               up
-delete             io_query           r                  v
-disable            label_stats        register           vars
-document           level              retry              view
+?                  document_category  level              s
+P                  down               maxdepth           save
+alias              e                  mindepth           scope
+all_regs           echo               mmc_options        scroll
+b                  enable             modules            set
+break              exception          next               source
+browse             excp               nondet_stack       stack
+c                  f                  p                  stack_regs
+cc_query           finish             pneg_stack         step
+clear_histogram    flag               print              subgoal
+consumer           forward            print_optionals    table
+context            g                  printlevel         table_io
+continue           gen_stack          proc_body          unalias
+current            goto               proc_stats         unhide_events
+cut_stack          h                  procedures         up
+d                  help               query              v
+dd                 histogram_all      quit               vars
+dd_dd              histogram_exp      r                  view
+delete             ignore             register           
+disable            io_query           retry              
+document           label_stats        return             
 mdb> h
-h     help  
+h              help           histogram_all  histogram_exp  
 mdb> help v
 vars  view  
 mdb> help vars 
