@@ -1,4 +1,0 @@
-sub_b.m:012: In module `sub_b':
-sub_b.m:012:   error in `import_module' declaration:
-sub_b.m:012:   module `sub_a:sub1' is inaccessible.
-For more information, try recompiling with `-E'.

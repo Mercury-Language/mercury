@@ -1,9 +1,0 @@
-echo on
-register --quiet
-context none
-b std_util__det_arg
-c
-P
-f
-P
-c

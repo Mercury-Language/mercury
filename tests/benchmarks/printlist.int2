@@ -1,2 +1,0 @@
-:- module printlist.
-:- import_module list, int, io.

@@ -1,3 +1,0 @@
-qual_basic_test2.m:014: In clause for predicate `qual_basic_test2:main/2':
-qual_basic_test2.m:014:   error: undefined predicate `io:io__write_string/3'.
-For more information, try recompiling with `-E'.

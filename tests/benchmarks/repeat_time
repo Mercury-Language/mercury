@@ -1,6 +1,0 @@
-#!/bin/csh -f
-#!/usr/bin/csh -f
-#!/usr/local/bin/tcsh -f
-set count=$argv[1]
-shift
-repeat $count time $argv:q
