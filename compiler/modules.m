@@ -4855,10 +4855,32 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 		"\t$(RANLIB) $(ALL_RANLIBFLAGS) ", LibFileName, "\n\n"
 	]),
 
+	{ ClassFiles = "$(" ++ MakeVarName ++ ".classes)" },
+	globals__io_lookup_bool_option(use_subdirs, UseSubdirs),
+	globals__io_lookup_bool_option(use_grade_subdirs, UseGradeSubdirs),
+	{ AnySubdirs = UseSubdirs `or` UseGradeSubdirs },
+	(
+		{ AnySubdirs = yes },
+		module_name_to_file_name(ModuleName, ".class", no, ClassFile),
+		{ ClassSubdir = dir.dirname(ClassFile) },
+		% Here we use the `-C' option of jar to change directory during
+		% execution, then use sed to strip away the Mercury/classs/
+		% prefix to the class files.
+		% Otherwise, the class files would be stored as
+		%	Mercury/classs/*.class
+		% within the jar file, which is not what we want.
+		% XXX It would be nice to avoid this dependency on sed.
+		{ ListClassFiles = "-C " ++ ClassSubdir ++ " \\\n" ++
+				"\t\t`echo "" " ++ ClassFiles ++ """" ++
+				" | sed 's| '" ++ ClassSubdir ++ "/| |'`" }
+	;
+		{ AnySubdirs = no },
+		{ ListClassFiles = ClassFiles }
+	),
 	io__write_strings(DepStream, [
 		JarFileName, " : ", "$(", MakeVarName, ".classes)\n",
-		"\t$(JAR) $(JAR_CREATE_FLAGS) ", JarFileName,
-		" $(", MakeVarName, ".classes)\n\n"
+		"\t$(JAR) $(JAR_CREATE_FLAGS) ", JarFileName, " ",
+		ListClassFiles, "\n\n"
 	]),
 
 	module_name_to_file_name(ModuleName, ".dep", no, DepFileName),
