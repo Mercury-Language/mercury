@@ -69,8 +69,8 @@ stack_trace=false
 require_tracing=false
 
 case $# in
-	0) set - "--grade $DEFAULT_GRADE" ;;
-	*) set - "--grade $DEFAULT_GRADE" "$@" ;;
+	0) set - --grade "$DEFAULT_GRADE" ;;
+	*) set - --grade "$DEFAULT_GRADE" "$@" ;;
 esac
 
 #---------------------------------------------------------------------------#

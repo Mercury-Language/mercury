@@ -395,9 +395,10 @@
 	-s*)
 		grade="` expr $1 : '-s\(.*\)' `"
 		# just insert it as `--grade $grade' and then reparse it
+		shift
 		case $# in
-			0) set - "x --grade $grade" ;;
-			*) set - "x --grade $grade" "$@" ;;
+			0) set - x --grade "$grade" ;;
+			*) set - x --grade "$grade" "$@" ;;
 		esac
 		;;
 
