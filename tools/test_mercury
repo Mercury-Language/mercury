@@ -61,6 +61,7 @@ case $HOST in
 	taifun) 	OPTIMIZE=-O1 ;;
 	quicksilver) 	OPTIMIZE=-O0 ;;
 	hg) 		OPTIMIZE=-O4 ;;
+	roy) 		OPTIMIZE=-O4 ;;
 	hydra)		OPTIMIZE=-O2 ;;
 	ender)		OPTIMIZE=-O3 ;;
 	kryten) 	OPTIMIZE=-O1 ;;	# currently not used
@@ -107,7 +108,7 @@ TESTDIR=/home/mercury/public/test_mercury
 DIR=$TESTDIR/test_dirs/$HOST
 
 case $HOST in
-	hg|ender)	
+	hg|ender|roy)	
 		INSTALL_DIR=/home/$HOST/public/mercury-latest/$FULLARCH ;;
 	*)		
 		INSTALL_DIR=/home/mercury/public/mercury-latest/$FULLARCH ;;
@@ -143,12 +144,14 @@ case $HOST in
 	hydra)		PARALLEL=-j2 ;; # out of two CPUs
 	quicksilver) 	PARALLEL= ;; 	# one CPU
 	hg) 		PARALLEL= ;; 	# one CPU
+	ender) 		PARALLEL= ;; 	# one CPU
+	roy) 		PARALLEL= ;; 	# one CPU
 	*)		PARALLEL= ;;
 esac
 
 # version of the mercury compiler to use for bootstrapping
 case $HOST in
-	hg|ender)
+	hg|ender|roy)
 		BOOTSTRAP_MERCURY_COMPILER=/home/$HOST/public/mercury-latest/$FULLARCH/lib/mercury/bin/$FULLARCH/mercury_compile
 		;;
 	*)
@@ -218,6 +221,13 @@ case $HOST in
 		# to work
 		CONFIG_OPTS="--enable-all-hlc-grades \
 			--enable-new-mercuryfile-struct" ;;
+	roy)
+		CONFIG_OPTS=""
+		INSTALL_GRADE="hlc.gc"
+		INSTALL_LIBGRADES="hl.gc \
+			hlc.gc.prof hlc.gc.memprof hlc.gc.tr hlc.par.gc \
+			hl.gc.prof  hl.gc.memprof  hl.gc.tr  hl.par.gc"
+		;;
 	*)	
 		CONFIG_OPTS="" ;;
 esac
@@ -241,7 +251,7 @@ set -x	# trace execution
 cd $DIR || { false; exit 1; }
 cvs checkout $CHECKOUT_OPTS mercury tests || { false; exit 1; }
 case $HOST in
-	murlibobo|kryten|taifun|quicksilver|hg|hydra)
+	murlibobo|kryten|taifun|quicksilver|hg|hydra|roy)
 		[ -d mercury/extras/clpr/CVS ] ||
 		(cd mercury/extras && cvs checkout $CHECKOUT_OPTS clpr) ||
 			{ false; exit 1; }
@@ -269,6 +279,16 @@ cd mercury || { false; exit 1; }
 	echo "EXTRA_MGNUCFLAGS = $INSTALL_MGNUCFLAGS" >> Mmake.params
 	echo "EXTRA_CFLAGS = $INSTALL_CFLAGS" >> Mmake.params
 	echo "EXTRA_MLFLAGS = $INSTALL_MLFLAGS" >> Mmake.params
+	case "$INSTALL_GRADE" in
+		"")	;;
+		*)	echo "GRADE = $INSTALL_GRADE" >> Mmake.params
+			;;
+	esac
+	case "$INSTALL_LIBGRADES" in
+		"")	;;
+		*)	echo "LIBGRADES = $INSTALL_LIBGRADES" >> Mmake.params
+			;;
+	esac
 # fi
 
 autoconf || { false; exit 1; }
@@ -315,8 +335,14 @@ case $status in 0)
     # the necessary code.
 
     mmake install MMAKEFLAGS=$PARALLEL || status=1
-    mmake install_split_library LIBGRADES= MMAKEFLAGS=$PARALLEL \
-	|| status=1
+    case "$INSTALL_GRADE" in
+	hl*)
+	    	# --split-c-files is not supported for the hl* grades
+	    	;;
+	*)	mmake install_split_library LIBGRADES= MMAKEFLAGS=$PARALLEL ||
+	    		status=1
+		;;
+    esac
 
 	# If you want to add extra grades to install on specific hosts,
 	# do it here.  Any grade which is tested later, but which is not
@@ -348,6 +374,9 @@ case $HOST in
 		;;
 	hg|quicksilver|hydra|ender|kryten|taifun)
 		GRADES="asm_fast.gc.tr"
+		;;
+	roy)
+		GRADES="hlc.gc.tr hl.gc.tr"
 		;;
 	*)
 		GRADES=""
@@ -467,6 +496,10 @@ case $HOST in
 			asm_fast.gc.memprof asm_fast.gc.tr asm_fast.gc.tr.debug
 			asm_fast.par.gc hlc.gc"
 		;;
+	roy)
+		GRADES="hlc.gc hlc.gc.prof hlc.gc.memprof hlc.gc.tr hlc.par.gc
+			hl.gc  hl.gc.prof  hl.gc.memprof  hl.gc.tr  hl.par.gc"
+		;;
 	ender)
 		GRADES="asm_fast.gc asm_fast
 			asm_fast.gc.prof asm_fast.prof
@@ -547,6 +580,9 @@ esac
 case $HOST in
 	hg)	
 		fullname=i686-pc-linux-libc2.1-gnu-O4
+		;;
+	roy)	
+		fullname=i686-pc-linux-libc2.1-gnu-O4-hlc
 		;;
 	quicksilver)	
 		fullname=i586-pc-linux-libc2.1-gnu-O0
