@@ -109,6 +109,12 @@ void pop_msg(Word val, const Word *addr)
 	printstack(addr);
 }
 
+void goto_msg(const Code *addr)
+{
+	printf("goto ");
+	printlabel(addr);
+}
+
 /*--------------------------------------------------------------------*/
 
 void printint(Word n)
@@ -192,7 +198,12 @@ void printlist(Word p)
 		if ((c % LIST_WRAP) == 0 && c != 0)
 			printf("\n\t ");
 
-		printf("(%p)%d.", & field(TAG_CONS, t, 0), field(TAG_CONS, t, 0));
+		if ((body(t, TAG_CONS) & 0x3) || body(t, TAG_CONS) == 0)
+		{
+			printf("<not a list> (%d)\n", t);
+			return;
+		}
+		printf("(%p)%d.", & field(TAG_CONS,t,0), field(TAG_CONS,t,0));
 		fflush(stdout);
 		t = field(TAG_CONS, t, 1);
 
@@ -317,7 +328,17 @@ PrintRegFunc	*regtable[MAXENTRIES][32] =
 /* OK_4 */
 	{ P_INT, P_INT, FNULL },
 /* DO_NOTHING_1 */
-	{ FNULL }
+	{ FNULL },
+/* QUEEN_1 */
+	{ P_LIST, FNULL },
+/* QPERM_1 */
+	{ P_LIST, P_LIST, FNULL },
+/* QDELETE_1 */
+	{ P_INT, P_LIST, P_LIST, FNULL },
+/* SAFE_1 */
+	{ P_LIST, P_LIST, P_LIST, FNULL },
+/* NODIAG_1 */
+	{ P_INT, P_INT, P_LIST, FNULL }
 };
 
 void printframe(const char *msg)

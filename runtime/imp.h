@@ -63,7 +63,11 @@ enum {
 	OK_3,
 	OK_4,
 	DO_NOTHING_1,
-
+	QUEEN_1,
+	QPERM_1,
+	QDELETE_1,
+	SAFE_1,
+	NODIAG_1,
 	MAXENTRIES
 };
 
@@ -121,11 +125,11 @@ extern	Code	*dofastnegproceed;
   #ifndef __GNUC__
   #error "You must use gcc if you define USE_GCC_NONLOCAL_GOTOS"
   #endif
-  #define LABEL(label)		(&&label)
-  #define GOTO(label)		do { assert(label); goto *(label); } while(0)
+  #define LABEL(label)	(&&label)
+  #define GOTO(label)	do { debuggoto(label); goto *(label); } while(0)
 #else
-  #define LABEL(label)		(label)
-  #define GOTO(label)		do { assert(label); return (label); } while(0)
+  #define LABEL(label)	(label)
+  #define GOTO(label)	do { debuggoto(label); return (label); } while(0)
 #endif
 
 /* DEFINITIONS FOR CALLS AND RETURNS */
@@ -155,7 +159,7 @@ extern	Code	*dofastnegproceed;
 
 /* DEFINITIONS FOR VIRTUAL MACHINE DATA AREAS */
 
-#define	MAXHEAP		0x10000
+#define	MAXHEAP		0x100000
 #define	MAXSTACK	0x10000
 #define	MAXCPSTACK	0x10000
 #define	CACHE_OFFSET	0x200
@@ -408,6 +412,7 @@ extern	Word	*cpstackmin;
 #define	debugcall(proc, succcont)		((void)0)
 #define	debugtailcall(proc)			((void)0)
 #define	debugproceed()				((void)0)
+#define	debuggoto(label)			((void)0)
 #define	debugmsg0(msg)				((void)0)
 #define	debugmsg1(msg, arg1)			((void)0)
 #define	debugmsg2(msg, arg1, arg2)		((void)0)
@@ -458,6 +463,10 @@ extern	Word	*cpstackmin;
 #define	debugproceed() \
 	IF (calldebug, (save_registers(), proceed_msg()))
 
+#define	debuggoto(label) \
+	(assert(label), \
+	IF (gotodebug, (save_registers(), goto_msg(label))))
+
 #define	debugmsg0(msg) \
 	printf(msg)
 
@@ -507,6 +516,7 @@ extern	Word	do_mklist(int start, int len);
 typedef void PrintRegFunc(Word);
 extern	PrintRegFunc * regtable[MAXENTRIES][32];
 
+extern	bool	gotodebug;
 extern	bool	calldebug;
 extern	bool	heapdebug;
 extern	bool	stackdebug;
@@ -528,6 +538,7 @@ extern	void	cr1_msg(Word val0, const Word *addr);
 extern	void	cr2_msg(Word val0, Word val1, const Word *addr);
 extern	void	push_msg(Word val, const Word *addr);
 extern	void	pop_msg(Word val, const Word *addr);
+extern	void	goto_msg(const Code *addr);
 
 /* more debugging messages, defined in aux.c */
 
