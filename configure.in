@@ -1798,10 +1798,14 @@ EOF
 	fi
 	rm -f conftest*
 else
-	AS="gcc -c -x assembler-with-cpp"
+	mercury_cv_asm_does_full_preprocessing="no"
+	AC_MSG_RESULT(no)	
 fi
 ])
 AC_MSG_RESULT($mercury_cv_asm_does_full_preprocessing)	
+if test $mercury_cv_asm_does_full_preprocessing = "no"; then
+	AS="gcc -c -x assembler-with-cpp"
+fi
 AC_SUBST(AS)
 #-----------------------------------------------------------------------------#
 AC_MSG_CHECKING(whether structure assignment conflicts with global registers)
