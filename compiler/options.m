@@ -1948,7 +1948,8 @@ options_help_compilation_model -->
 		
 		"--compile-to-c",
 		"\tAn abbreviation for `--target c --target-code-only'.",
-		"\tGenerate C code in `<module>.c', but do not generate object code.",
+		"\tGenerate C code in `<module>.c', but do not generate object",
+		"\tcode.",
 
 
 % These grades (hl, hl_nest, and hlc_nest) are not yet documented, because
@@ -1966,17 +1967,20 @@ options_help_compilation_model -->
 		"--no-gcc-global-registers\t(grades: none, jump, asm_jump)",
 		"\tSpecify whether or not to use GNU C's",
 		"\tglobal register variables extension.",
-		"\tThis option is ignored if the `--high-level-code' option is enabled.",
+		"\tThis option is ignored if the `--high-level-code' option is",
+		"\tenabled.",
 		"--gcc-non-local-gotos\t\t(grades: jump, fast, asm_jump, asm_fast)",
 		"--no-gcc-non-local-gotos\t(grades: none, reg)",
 		"\tSpecify whether or not to use GNU C's",
 		"\t""labels as values"" extension.",
-		"\tThis option is ignored if the `--high-level-code' option is enabled.",
+		"\tThis option is ignored if the `--high-level-code' option is",
+		"\tenabled.",
 		"--asm-labels\t\t\t(grades: asm_jump, asm_fast)",
 		"--no-asm-labels\t\t\t(grades: none, reg, jump, fast)",
 		"\tSpecify whether or not to use GNU C's",
 		"\tasm extensions for inline assembler labels.",
-		"\tThis option is ignored if the `--high-level-code' option is enabled.",
+		"\tThis option is ignored if the `--high-level-code' option is",
+		"\tenabled.",
 % These grades (hl, hl_nest, and hlc_nest) are not yet documented, because
 % the --high-level-data option is not yet implemented,
 % and the --gcc-nested-functions option is not yet documented.
@@ -2410,8 +2414,8 @@ options_help_hlds_hlds_optimization -->
 		"--unneeded-code-copy-limit",
 		"\tGives the maximum number of places to which a goal may be copied",
 		"\twhen removing it from computation paths on which its outputs are",
-		"\tnot needed. A value of zero forbids goal movement and allows only",
-		"\tgoal deletion; a value of one prevents any increase in the",
+		"\tnot needed. A value of zero forbids goal movement and allows",
+		"\tonly goal deletion; a value of one prevents any increase in the",
 		"\tsize of the code.",
 		"--type-specialization",
 		"\tEnable specialization of polymorphic predicates where the",
@@ -2548,9 +2552,9 @@ options_help_mlds_mlds_optimization -->
 		"\tTreat tailcalls as ordinary calls, rather than optimizing",
 		"\tby turning self-tailcalls into loops.",
 		"--no-optimize-initializations",
-		"\tLeave initializations of local variables as assignment",
-		"\tstatements, rather than converting such assignments statements",
-		"\tinto initializers."
+		"\tLeave initializations of local variables as",
+		"\tassignment statements, rather than converting such",
+		"\tassignment statements into initializers."
 	]).
 
 
