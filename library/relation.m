@@ -189,7 +189,7 @@ relation__add(relation(FwdIn, BwdIn), U, V, relation(FwdOut, BwdOut)) :-
 	% relation__add_assoc_list adds a list of elements to
 	% a relation.
 relation__add_assoc_list(Rel, [], Rel).
-relation__add_assoc_list(Rel0, [ U-V | Elems ], Rel1) :-
+relation__add_assoc_list(Rel0, [U - V | Elems], Rel1) :-
 	relation__add(Rel0, U, V, Rel2),
 	relation__add_assoc_list(Rel2, Elems, Rel1).
 
@@ -215,7 +215,7 @@ relation__remove(relation(FwdIn, BwdIn), U, V, relation(FwdOut, BwdOut)) :-
 	% relation__remove_assoc_list removes a list of elements
 	% from a relation.
 relation__remove_assoc_list(Rel, [], Rel).
-relation__remove_assoc_list(Rel0, [ U-V | Elems ], Rel1) :-
+relation__remove_assoc_list(Rel0, [U - V | Elems], Rel1) :-
 	relation__remove(Rel0, U, V, Rel2),
 	relation__remove_assoc_list(Rel2, Elems, Rel1).
 
@@ -278,7 +278,7 @@ relation__to_assoc_list_2(Fwd, [Key | Keys], List) :-
 :- pred relation__append_to(T, list(T), assoc_list(T,T)).
 :- mode relation__append_to(in, in, out) is det.
 relation__append_to(_U, [], []).
-relation__append_to(U, [ V | Vs ], [ U-V | UVs ]) :-
+relation__append_to(U, [V | Vs], [U - V | UVs]) :-
 	relation__append_to(U, Vs, UVs).
 
 %------------------------------------------------------------------------------%
@@ -287,7 +287,7 @@ relation__append_to(U, [ V | Vs ], [ U-V | UVs ]) :-
 	% elements into a relation.
 relation__from_assoc_list([], Rel) :-
 	relation__init(Rel).
-relation__from_assoc_list([ U-V | List ], Rel) :-
+relation__from_assoc_list([U - V | List], Rel) :-
 	relation__from_assoc_list(List, Rel1),
 	relation__add(Rel1, U, V, Rel).
 
@@ -506,7 +506,7 @@ relation__make_clique_map_2(MapIn, Set, [X | Xs], MapOut) :-
 :- mode relation__make_reduced_graph(in, in, out) is det.
 relation__make_reduced_graph(_Map, [], Rel) :-
 	relation__init(Rel).
-relation__make_reduced_graph(Map, [U-V | Rest], Rel) :-
+relation__make_reduced_graph(Map, [U - V | Rest], Rel) :-
 	relation__make_reduced_graph(Map, Rest, Rel0),
 	map__lookup(Map, U, USet),
 	map__lookup(Map, V, VSet),
@@ -523,39 +523,49 @@ relation__make_reduced_graph(Map, [U-V | Rest], Rel) :-
 relation__tsort(Rel, Tsort) :-
 	relation__effective_domain(Rel, DomSet),
 	set__to_sorted_list(DomSet, DomList),
-	relation__tsort_2(Rel, DomList, [], Tsort).
+	set__init(Vis0),
+	relation__c_dfs(Rel, DomList, Vis0, _Vis, [], Tsort),
+	relation__check_tsort(Rel, Vis0, Tsort).
 
-:- pred relation__tsort_2(relation(T), list(T), list(T), list(T)).
-:- mode relation__tsort_2(in, in, in, out) is semidet.
-relation__tsort_2(_Rel, [], Tsort, Tsort).
-relation__tsort_2(Rel, [X | Xs], Tsort0, Tsort) :-
+:- pred relation__tsort_2(relation(T), list(T), set(T), set(T),
+				list(T), list(T)).
+:- mode relation__tsort_2(in, in, in, out, in, out) is det.
+relation__tsort_2(_Rel, [], Vis, Vis, Tsort, Tsort).
+relation__tsort_2(Rel, [X | Xs], Vis0, Vis, Tsort0, Tsort) :-
 	stack__init(S0),
 	stack__push(S0, X, S1),
-	set__list_to_set(Tsort0, VisMaj),
-	set__init(VisMin),
-	relation__tsort_3(Rel, S1, VisMaj, VisMin, Tsort0, Tsort1),
+	relation__tsort_3(Rel, S1, Vis0, Vis1, Tsort0, Tsort1),
 	list__delete_elems(Xs, Tsort1, XsRed),
-	relation__tsort_2(Rel, XsRed, Tsort1, Tsort).
+	relation__tsort_2(Rel, XsRed, Vis1, Vis, Tsort1, Tsort).
 
 :- pred relation__tsort_3(relation(T), stack(T), set(T), set(T),
-	list(T), list(T)).
-:- mode relation__tsort_3(in, in, in, in, in, out) is semidet.
-relation__tsort_3(Rel, S0, VisMaj, VisMin, Tsort0, Tsort) :-
+				list(T), list(T)).
+:- mode relation__tsort_3(in, in, in, out, in, out) is det.
+relation__tsort_3(Rel, S0, Vis0, Vis, Tsort0, Tsort) :-
 	( stack__pop(S0, X, S1) ->
-	    ( set__member(X, VisMaj) ->
-		relation__tsort_3(Rel, S1, VisMaj, VisMin, Tsort0, Tsort)
+	    ( set__member(X, Vis0) ->
+		relation__tsort_3(Rel, S1, Vis0, Vis, Tsort0, Tsort)
 	    ;
-		not set__member(X, VisMin),
 	    	relation__lookup_from(Rel, X, AdjSet),
 	    	set__to_sorted_list(AdjSet, AdjList),
-	    	set__insert(VisMin, X, VisMin1),
+	    	set__insert(Vis0, X, Vis1),
 	    	stack__push_list(S1, AdjList, S2),
-	    	relation__tsort_3(Rel, S2, VisMaj, VisMin1, Tsort0, Tsort1),
+	    	relation__tsort_3(Rel, S2, Vis1, Vis, Tsort0, Tsort1),
 	    	Tsort = [ X | Tsort1 ]
 	    )
 	;
-	    Tsort = Tsort0
+	    Tsort = Tsort0, Vis = Vis0
 	).
+
+:- pred relation__check_tsort(relation(T), set(T), list(T)).
+:- mode relation__check_tsort(in, in, in) is semidet.
+relation__check_tsort(_Rel, _Vis, []).
+relation__check_tsort(Rel, Vis, [X | Xs]) :-
+	set__insert(Vis, X, Vis1),
+	relation__lookup_from(Rel, X, RX),
+	set__intersect(Vis1, RX, BackPointers),
+	set__empty(BackPointers),
+	relation__check_tsort(Rel, Vis1, Xs).
 
 %------------------------------------------------------------------------------%
 
