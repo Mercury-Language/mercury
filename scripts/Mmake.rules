@@ -10,6 +10,7 @@ main_target: $(MAIN_TARGET)
 
 #-----------------------------------------------------------------------------#
 
+# Beware that the order of suffixes is significant.
 .SUFFIXES: .pp .m .nl .no .err .int .int2 .dep .depend .doit .ugly \
 		.date .mod .c .nu .o .pic_o .i .s .garb .mod_h .ql .pl
 
@@ -115,7 +116,7 @@ main_target: $(MAIN_TARGET)
 	$(MGNUC) -s$(GRADE) $(MGNUCFLAGS) -E $< > $@
 
 .m.o:
-	$(MCG) -s $(GRADE) $(MCGFLAGS) $< > $*.err2 2>&1
+	$(MMAKE_MAKE_CMD) $(MAKEOVERRIDES) $*.c
 	$(MGNUC) -s$(GRADE) $(MGNUCFLAGS) -c $*.c -o $@
 	$(RM_C) $*.c
 

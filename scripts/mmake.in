@@ -105,9 +105,13 @@ else
 	trap 'status=$?; rm -f $tmp; exit $status' 0 1 2 3 13 15
 fi
 
+MMAKE_MAKE_CMD="${MMAKE_MAKE} -f $tmp -r"
+
 if $verbose; then
 	echo MMAKE=$MMAKE
 	echo export MMAKE
+	echo MMAKE_MAKE_CMD=$MMAKE_MAKE_CMD
+	echo export MMAKE_MAKE_CMD
 	echo MERCURY_INT_DIR=$MERCURY_INT_DIR
 	echo export MERCURY_INT_DIR
 	echo MERCURY_DEFAULT_GRADE=$MERCURY_DEFAULT_GRADE
@@ -116,6 +120,7 @@ if $verbose; then
 	echo ${MMAKE_MAKE} -f $tmp -r "$@"
 fi
 export MMAKE
+export MMAKE_MAKE_CMD
 export MERCURY_INT_DIR
 export MERCURY_DEFAULT_GRADE
 cat ${MMAKE_VARS} $deps $ds $mmake ${MMAKE_RULES} > $tmp
