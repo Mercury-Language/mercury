@@ -189,10 +189,17 @@ dates		:
 
 #-----------------------------------------------------------------------------#
 
-.PHONY: os cs ss ils 
+# Note that we need to explicitly mention $(library.pic_ss) somewhere
+# in the Mmakefile, otherwise it won't build properly with --target asm:
+# GNU Make's pattern rule algorithm will try to use the .m -> .c -> .pic_o
+# rule chain rather than the .m -> .pic_s_date -> .pic_s -> .pic_o chain.
+# So don't remove the pic_ss target here.
+
+.PHONY: os cs ss pic_ss ils 
 os: $(library.os)
 cs: $(library.cs)
 ss: $(library.ss)
+pic_ss: $(library.pic_ss)
 ils: $(library.ils)
 
 #-----------------------------------------------------------------------------#
