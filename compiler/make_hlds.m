@@ -30,12 +30,12 @@
 :- import_module bool, list, io, std_util.
 
 % parse_tree_to_hlds(ParseTree, MQInfo, EqvMap, HLDS, QualInfo,
-%		UndefTypes, UndefModes):
+%		InvalidTypes, InvalidModes):
 %	Given MQInfo (returned by module_qual.m) and EqvMap (returned by
 %	equiv_type.m), converts ParseTree to HLDS.
 %	Any errors found are recorded in the HLDS num_errors field.
-%	Returns UndefTypes = yes if undefined types found.
-%	Returns UndefModes = yes if undefined modes found.
+%	Returns InvalidTypes = yes if undefined types found.
+%	Returns InvalidModes = yes if undefined or cyclic insts or modes found.
 %	QualInfo is an abstract type that is then passed back to
 %	produce_instance_method_clauses (see below).	
 :- pred parse_tree_to_hlds(compilation_unit, mq_info, eqv_map, module_info,
@@ -121,12 +121,13 @@
 :- import_module bag, term, varset, getopt, assoc_list, term_io.
 
 parse_tree_to_hlds(module(Name, Items), MQInfo0, EqvMap, Module, QualInfo,
-		UndefTypes, UndefModes) -->
+		InvalidTypes, InvalidModes) -->
 	globals__io_get_globals(Globals),
 	{ mq_info_get_partial_qualifier_info(MQInfo0, PQInfo) },
 	{ module_info_init(Name, Items, Globals, PQInfo, no, Module0) },
 	add_item_list_decls_pass_1(Items,
-		item_status(local, may_be_unqualified), Module0, Module1),
+		item_status(local, may_be_unqualified), Module0, Module1,
+		no, InvalidModes0),
 	globals__io_lookup_bool_option(statistics, Statistics),
 	maybe_report_stats(Statistics),
 	add_item_list_decls_pass_2(Items,
@@ -145,8 +146,9 @@ parse_tree_to_hlds(module(Name, Items), MQInfo0, EqvMap, Module, QualInfo,
 	add_item_list_clauses(Items, local, Module4, Module5,
 				QualInfo0, QualInfo),
 	{ qual_info_get_mq_info(QualInfo, MQInfo) },
-	{ mq_info_get_type_error_flag(MQInfo, UndefTypes) },
-	{ mq_info_get_mode_error_flag(MQInfo, UndefModes) },
+	{ mq_info_get_type_error_flag(MQInfo, InvalidTypes) },
+	{ mq_info_get_mode_error_flag(MQInfo, InvalidModes1) },
+	{ InvalidModes = bool__or(InvalidModes0, InvalidModes1) },
 	{ mq_info_get_num_errors(MQInfo, MQ_NumErrors) },
 	{ module_info_num_errors(Module4, NumErrors0) },
 	{ NumErrors is NumErrors0 + MQ_NumErrors },
@@ -168,16 +170,22 @@ parse_tree_to_hlds(module(Name, Items), MQInfo0, EqvMap, Module, QualInfo,
 	% Add the declarations one by one to the module,
 	% except for type definitions and pragmas.
 
-:- pred add_item_list_decls_pass_1(item_list, item_status,
-				module_info, module_info,
-				io__state, io__state).
-:- mode add_item_list_decls_pass_1(in, in, in, out, di, uo) is det.
+	% The `InvalidModes' bool records whether we detected
+	% any cyclic insts or modes.
 
-add_item_list_decls_pass_1([], _, Module, Module) --> [].
-add_item_list_decls_pass_1([Item - Context | Items], Status0, Module0, Module)
-		-->
-	add_item_decl_pass_1(Item, Context, Status0, Module0, Status1, Module1),
-	add_item_list_decls_pass_1(Items, Status1, Module1, Module).
+:- pred add_item_list_decls_pass_1(item_list, item_status,
+		module_info, module_info, bool, bool, io__state, io__state).
+:- mode add_item_list_decls_pass_1(in, in, in, out, in, out, di, uo) is det.
+
+add_item_list_decls_pass_1([], _, Module, Module, InvalidModes, InvalidModes)
+	--> [].
+add_item_list_decls_pass_1([Item - Context | Items], Status0, Module0, Module,
+		InvalidModes0, InvalidModes) -->
+	add_item_decl_pass_1(Item, Context, Status0, Module0,
+		Status1, Module1, InvalidModes1),
+	{ InvalidModes2 = bool__or(InvalidModes0, InvalidModes1) },
+	add_item_list_decls_pass_1(Items, Status1, Module1, Module,
+		InvalidModes2, InvalidModes).
 
 	% pass 2:
 	% Add the type definitions and pragmas one by one to the module,
@@ -227,33 +235,36 @@ add_item_list_clauses([Item - Context | Items], Status0,
 
 %-----------------------------------------------------------------------------%
 
-	% dispatch on the different types of items
+	% The bool records whether any cyclic insts or modes were
+	% detected.
 
-:- pred add_item_decl_pass_1(item, prog_context, item_status,
-		module_info, item_status, module_info, io__state, io__state).
-:- mode add_item_decl_pass_1(in, in, in, in, out, out, di, uo) is det.
+:- pred add_item_decl_pass_1(item, prog_context, item_status, module_info,
+		item_status, module_info, bool, io__state, io__state).
+:- mode add_item_decl_pass_1(in, in, in, in, out, out, out, di, uo) is det.
+
+	% Dispatch on the different types of items.
 
 	% skip clauses
-add_item_decl_pass_1(clause(_, _, _, _, _), _, Status, Module, Status, Module)
-		--> [].
+add_item_decl_pass_1(clause(_, _, _, _, _), _, Status, Module,
+		Status, Module, no) --> [].
 
 add_item_decl_pass_1(type_defn(_, _, _, _, _), _, Status, Module,
-		Status, Module) --> [].
+		Status, Module, no) --> [].
 
 add_item_decl_pass_1(inst_defn(VarSet, Name, Params, InstDefn, Cond), Context,
-		Status, Module0, Status, Module) -->
+		Status, Module0, Status, Module, InvalidMode) -->
 	module_add_inst_defn(Module0, VarSet, Name, Params,
-		InstDefn, Cond, Context, Status, Module).
+		InstDefn, Cond, Context, Status, Module, InvalidMode).
 
 add_item_decl_pass_1(mode_defn(VarSet, Name, Params, ModeDefn, Cond), Context,
-		Status, Module0, Status, Module) -->
+		Status, Module0, Status, Module, InvalidMode) -->
 	module_add_mode_defn(Module0, VarSet, Name, Params, ModeDefn,
-		Cond, Context, Status, Module).
+		Cond, Context, Status, Module, InvalidMode).
 
 add_item_decl_pass_1(pred_or_func(TypeVarSet, InstVarSet, ExistQVars,
 		PredOrFunc, PredName, TypesAndModes, _WithType, _WithInst,
 		MaybeDet, Cond, Purity, ClassContext),
-		Context, Status, Module0, Status, Module) -->
+		Context, Status, Module0, Status, Module, no) -->
 	{ init_markers(Markers) },
 	module_add_pred_or_func(Module0, TypeVarSet, InstVarSet, ExistQVars,
 		PredOrFunc, PredName, TypesAndModes, MaybeDet, Cond,
@@ -262,7 +273,7 @@ add_item_decl_pass_1(pred_or_func(TypeVarSet, InstVarSet, ExistQVars,
 add_item_decl_pass_1(
 		pred_or_func_mode(VarSet, MaybePredOrFunc, PredName,
 			Modes, _WithInst, MaybeDet, Cond),
-		Context, Status, Module0, Status, Module) -->
+		Context, Status, Module0, Status, Module, no) -->
 	( { MaybePredOrFunc = yes(PredOrFunc) } ->
 		{ Status = item_status(ImportStatus, _) },
 		{ IsClassMethod = no },
@@ -276,13 +287,13 @@ add_item_decl_pass_1(
 		"add_item_decl_pass_1: no pred_or_func on mode declaration") }
 	).
 
-add_item_decl_pass_1(pragma(_), _, Status, Module, Status, Module) --> [].
+add_item_decl_pass_1(pragma(_), _, Status, Module, Status, Module, no) --> [].
 
-add_item_decl_pass_1(promise(_, _, _, _), _, Status, Module, Status, Module)
-	--> [].
+add_item_decl_pass_1(promise(_, _, _, _), _, Status, Module, Status, Module,
+		no) --> [].
 
 add_item_decl_pass_1(module_defn(_VarSet, ModuleDefn), Context,
-		Status0, Module0, Status, Module) -->
+		Status0, Module0, Status, Module, no) -->
 	( { module_defn_update_import_status(ModuleDefn, Status1) } ->
 		{ Status = Status1 },
 		{ Module = Module0 }
@@ -349,17 +360,17 @@ add_item_decl_pass_1(module_defn(_VarSet, ModuleDefn), Context,
 		report_warning("Warning: declaration not yet implemented.\n")
 	).
 
-add_item_decl_pass_1(nothing(_), _, Status, Module, Status, Module) --> [].
+add_item_decl_pass_1(nothing(_), _, Status, Module, Status, Module, no) --> [].
 
 add_item_decl_pass_1(typeclass(Constraints, Name, Vars, Interface, VarSet), 
-		Context, Status, Module0, Status, Module) -->
+		Context, Status, Module0, Status, Module, no) -->
 	module_add_class_defn(Module0, Constraints, Name, Vars, Interface,
 		VarSet, Context, Status, Module).
 
 	% We add instance declarations on the second pass so that we don't add
 	% an instance declaration before its class declaration.
 add_item_decl_pass_1(instance(_, _, _, _, _,_), _, Status, Module, Status,
-	Module) --> [].
+	Module, no) --> [].
 
 %-----------------------------------------------------------------------------%
 
@@ -1803,18 +1814,28 @@ module_mark_preds_as_external([PredId | PredIds], Module0, Module) :-
 
 :- pred module_add_inst_defn(module_info, inst_varset, sym_name, list(inst_var),
 		inst_defn, condition, prog_context, item_status, 
-		module_info, io__state, io__state).
+		module_info, bool, io__state, io__state).
 :- mode module_add_inst_defn(in, in, in, in, in, in, in, in,
-		out, di, uo) is det.
+		out, out, di, uo) is det.
 
 module_add_inst_defn(Module0, VarSet, Name, Args, InstDefn, Cond,
-		Context, item_status(Status, _NeedQual), Module) -->
+		Context, item_status(Status, _NeedQual),
+		Module, InvalidMode) -->
+	%
+	% add the definition of this inst to the HLDS inst table
+	%
 	{ module_info_insts(Module0, InstTable0) },
 	{ inst_table_get_user_insts(InstTable0, Insts0) },
 	insts_add(Insts0, VarSet, Name, Args, InstDefn, Cond,
 		Context, Status, Insts),
 	{ inst_table_set_user_insts(InstTable0, Insts, InstTable) },
-	{ module_info_set_insts(Module0, InstTable, Module) }.
+	{ module_info_set_insts(Module0, InstTable, Module) },
+	%
+	% check if the inst is infinitely recursive (at the top level)
+	%
+	{ Arity = list__length(Args) },
+	{ InstId = Name - Arity },
+	check_for_cyclic_inst(Insts, InstId, InstId, [], Context, InvalidMode).
 
 :- pred insts_add(user_inst_table, inst_varset, sym_name, list(inst_var),
 		inst_defn, condition, prog_context, import_status,
@@ -1848,44 +1869,146 @@ insts_add(Insts0, VarSet, Name, Args, eqv_inst(Body),
 			Context, OrigContext, _)
 	).
 
+	%
+	% check if the inst is infinitely recursive (at the top level)
+	%
+:- pred check_for_cyclic_inst(user_inst_table, inst_id, inst_id, list(inst_id),
+		prog_context, bool, io__state, io__state).
+:- mode check_for_cyclic_inst(in, in, in, in, in, out, di, uo) is det.
+
+check_for_cyclic_inst(UserInstTable, OrigInstId, InstId0, Expansions0,
+		Context, InvalidMode) -->
+	( { list__member(InstId0, Expansions0) } ->
+		report_circular_equiv_error("inst", OrigInstId, InstId0,
+			Expansions0, Context),
+		{ InvalidMode = yes }
+	;
+		{ user_inst_table_get_inst_defns(UserInstTable, InstDefns) },
+		(
+			{ map__search(InstDefns, InstId0, InstDefn) },
+			{ InstDefn = hlds_inst_defn(_, _, Body, _, _, _) },
+			{ Body = eqv_inst(EqvInst) },
+			{ EqvInst = defined_inst(user_inst(Name, Args)) }
+		->
+			{ Arity = list__length(Args) },
+			{ InstId = Name - Arity },
+			{ Expansions = [InstId0 | Expansions0] },
+			check_for_cyclic_inst(UserInstTable, OrigInstId,
+				InstId, Expansions, Context, InvalidMode)
+		;
+			{ InvalidMode = no }
+		)
+	).
+
 %-----------------------------------------------------------------------------%
 
 :- pred module_add_mode_defn(module_info, inst_varset, sym_name,
 		list(inst_var), mode_defn, condition, prog_context,
-		item_status, module_info, io__state, io__state).
+		item_status, module_info, bool, io__state, io__state).
 :- mode module_add_mode_defn(in, in, in, in, in, in, in,
-		in, out, di, uo) is det.
+		in, out, out, di, uo) is det.
 
 module_add_mode_defn(Module0, VarSet, Name, Params, ModeDefn, Cond,
-		Context, item_status(Status, _NeedQual), Module) -->
+		Context, item_status(Status, _NeedQual),
+		Module, InvalidMode) -->
 	{ module_info_modes(Module0, Modes0) },
 	modes_add(Modes0, VarSet, Name, Params, ModeDefn,
-		Cond, Context, Status, Modes),
+		Cond, Context, Status, Modes, InvalidMode),
 	{ module_info_set_modes(Module0, Modes, Module) }.
 
 :- pred modes_add(mode_table, inst_varset, sym_name, list(inst_var),
 		mode_defn, condition, prog_context, import_status,
-		mode_table, io__state, io__state).
-:- mode modes_add(in, in, in, in, in, in, in, in, out, di, uo) is det.
+		mode_table, bool, io__state, io__state).
+:- mode modes_add(in, in, in, in, in, in, in, in, out, out, di, uo) is det.
 
 modes_add(Modes0, VarSet, Name, Args, eqv_mode(Body),
-			Cond, Context, Status, Modes) -->
+			Cond, Context, Status, Modes, InvalidMode) -->
 	{ list__length(Args, Arity) },
+	{ ModeId = Name - Arity },
 	(
 		{ I = hlds_mode_defn(VarSet, Args, eqv_mode(Body), Cond,
 			Context, Status) },
-		{ mode_table_insert(Modes0, Name - Arity, I, Modes1) }
+		{ mode_table_insert(Modes0, ModeId, I, Modes1) }
 	->
 		{ Modes = Modes1 }
 	;
 		{ Modes = Modes0 },
 		{ mode_table_get_mode_defns(Modes, ModeDefns) },
-		{ map__lookup(ModeDefns, Name - Arity, OrigI) },
+		{ map__lookup(ModeDefns, ModeId, OrigI) },
 		{ OrigI = hlds_mode_defn(_, _, _, _, OrigContext, _) },
 		% XXX we should record each error using
 		% 	module_info_incr_errors
 		multiple_def_error(Status, Name, Arity, "mode",
 			Context, OrigContext, _)
+	),
+	check_for_cyclic_mode(Modes, ModeId, ModeId, [], Context,
+		InvalidMode).
+
+	%
+	% check if the mode is infinitely recursive at the top level
+	%
+:- pred check_for_cyclic_mode(mode_table, mode_id, mode_id, list(mode_id),
+		prog_context, bool, io__state, io__state).
+:- mode check_for_cyclic_mode(in, in, in, in, in, out, di, uo) is det.
+
+check_for_cyclic_mode(ModeTable, OrigModeId, ModeId0, Expansions0, Context,
+		InvalidMode) -->
+	( { list__member(ModeId0, Expansions0) } ->
+		report_circular_equiv_error("mode", OrigModeId, ModeId0,
+			Expansions0, Context),
+		{ InvalidMode = yes }
+	;
+		{ mode_table_get_mode_defns(ModeTable, ModeDefns) },
+		(
+			{ map__search(ModeDefns, ModeId0, ModeDefn) },
+			{ ModeDefn = hlds_mode_defn(_, _, Body, _, _, _) },
+			{ Body = eqv_mode(EqvMode) },
+			{ EqvMode = user_defined_mode(Name, Args) }
+		->
+			{ Arity = list__length(Args) },
+			{ ModeId = Name - Arity },
+			{ Expansions = [ModeId0 | Expansions0] },
+			check_for_cyclic_mode(ModeTable, OrigModeId, ModeId,
+				Expansions, Context, InvalidMode)
+		;
+			{ InvalidMode = no }
+		)
+	).
+
+:- type id == pair(sym_name, arity).
+:- pred report_circular_equiv_error(string::in, id::in, id::in, list(id)::in,
+		prog_context::in, io__state::di, io__state::uo) is det.
+
+report_circular_equiv_error(Kind, OrigId, Id, Expansions, Context) -->
+	( { Id = OrigId } ->
+		%
+		% Report an error message of the form
+		%	Error: circular equivalence <kind> foo/0.
+		% or
+		%	Error: circular equivalence <kind>s foo/0 and bar/1.
+		% or
+		%	Error: circular equivalence <kind>s foo/0, bar/1,
+		%	and baz/2.
+		% where <kind> is either "inst" or "mode".
+		%
+		{ Kinds = (if Expansions = [_] then Kind else Kind ++ "s") },
+		{ Pieces0 = list__map(
+			(func(SymName - Arity) =
+			    error_util__describe_sym_name_and_arity(
+			    	SymName / Arity)),
+			Expansions) },
+		{ error_util__list_to_pieces(Pieces0, Pieces1) },
+		{ Pieces = append_punctuation(
+			[words("Error: circular equivalence"),
+				fixed(Kinds) | Pieces1], '.') },
+		error_util__write_error_pieces(Context, 0, Pieces),
+		io__set_exit_status(1)
+	;
+		% We have an inst `OrigId' which is not itself circular,
+		% but which is defined in terms of `Id' which is circular.
+		% Don't bother reporting it now -- it have already been
+		% reported when we processed the definition of Id.
+		[]
 	).
 
 %-----------------------------------------------------------------------------%

@@ -10,7 +10,7 @@
 :- inst circ1(I) == circ1(I).			% error -- cyclic
 :- inst circ2(I) == circ2(circ2(I)).		% error -- cyclic
 :- inst circ3(I) == list_skel(circ3(I)).	% OK
-:- inst circ4(I) == circ4(list_skel(I)).	% OK
+:- inst circ4(I) == circ4(list_skel(I)).	% error -- cyclic
 
 :- inst left(I) == right(I).			% error -- cyclic
 :- inst right(I) == left(I).			% error -- cyclic

@@ -1553,6 +1553,7 @@ mercury_compile__frontend_pass(HLDS1, QualInfo0, FoundUndefTypeError,
 	    % error, since propagate_types_into_proc_modes
 	    % (in post_typecheck.m -- called by purity.m)
 	    % and mode analysis would get internal errors.
+	    % Also mode analysis can loop if there are cyclic insts/modes.
 	    %
 	    % We can't continue if the type inference iteration
 	    % limit was exceeeded because the code to resolve
