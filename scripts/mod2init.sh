@@ -16,6 +16,9 @@
 MERCURY_MOD_LIB_DIR=${MERCURY_MOD_LIB_DIR:-@LIBDIR@/modules}
 MERCURY_MOD_LIB_MODS=${MERCURY_MOD_LIB_MODS:-@LIBDIR@/modules/*}
 
+# maximum number of calls to put in a single function
+calls_per_func=50
+
 defentry=mercury__io__run_0_0
 while getopts w: c
 do
@@ -63,10 +66,28 @@ echo "    GC_INIT();";
 echo "}";
 echo "#endif";
 echo "";
+
+init_funcs=
+num_funcs=0
+set - $modules
+while [ $# -gt 0 ]; do
+	num_funcs=`expr $num_funcs + 1`
+	init_funcs="$init_funcs init_modules_$num_funcs"
+	echo "static void init_modules_$num_funcs(void) {"
+	num_calls=0
+	while [ $# -gt 0 ] && [ $num_calls -lt $calls_per_func ]; do
+		num_calls=`expr $num_calls + 1`
+		echo "  $1();"
+		shift
+	done
+	echo "}"
+	echo ""
+done
+		
 echo "void init_modules(void)";
 echo "{";
-for mod in $modules; do
-	echo "	$mod();";
+for init in $init_funcs; do
+	echo "	$init();";
 done
 echo "";
 echo "	default_entry = ENTRY($defentry);";
