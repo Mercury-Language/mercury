@@ -1062,6 +1062,11 @@ value_number__push_livevals_back_2([Instr0 | Instrs0], Livevals, Instrs) :-
 
 %-----------------------------------------------------------------------------%
 
+	% Return true if we must treat this instruction as a boundary
+	% instruction, i.e. an instruction across which it is neither safe
+	% nor necessary to push stack frame setup or teardown instructions
+	% (incr_sp, livevals and decr_sp).
+
 :- pred value_number__boundary_instr(instr, bool).
 :- mode value_number__boundary_instr(in, out) is det.
 
@@ -1080,11 +1085,11 @@ value_number__boundary_instr(if_val(_, _), yes).
 value_number__boundary_instr(incr_hp(_, _, _), no).
 value_number__boundary_instr(mark_hp(_), no).
 value_number__boundary_instr(restore_hp(_), no).
-value_number__boundary_instr(store_ticket(_), yes). % XXX is it safe to use no?
-value_number__boundary_instr(reset_ticket(_, _), yes).
-value_number__boundary_instr(discard_ticket, yes). % XXX
-value_number__boundary_instr(mark_ticket_stack(_), yes). % XXX
-value_number__boundary_instr(discard_tickets_to(_), yes). % XXX
+value_number__boundary_instr(store_ticket(_), no).
+value_number__boundary_instr(reset_ticket(_, _), no).
+value_number__boundary_instr(discard_ticket, no).
+value_number__boundary_instr(mark_ticket_stack(_), no).
+value_number__boundary_instr(discard_tickets_to(_), no).
 value_number__boundary_instr(incr_sp(_, _), yes).
 value_number__boundary_instr(decr_sp(_), yes).
 value_number__boundary_instr(pragma_c(_, _, _, _, _), yes).

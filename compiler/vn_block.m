@@ -861,6 +861,11 @@ vn_block__split_at_next_ctrl_instr([Instr0 | Instrs0], Before, Instr, After) :-
 		Before = [Instr0 | Before0]
 	).
 
+	% Return true if we need to create a control node for this instruction.
+	% We do not create control nodes for instructions that either (a)
+	% can be optimized away by value numbering or (b) cannot happen in
+	% code sequences presented to value numbering.
+
 :- pred vn_block__is_ctrl_instr(instr, bool).
 :- mode vn_block__is_ctrl_instr(in, out) is det.
 

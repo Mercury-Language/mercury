@@ -28,6 +28,10 @@
 :- import_module opt_util.
 :- import_module require, std_util.
 
+	% Look for assignments to temp variables. If possible and profitable,
+	% eliminate the assignment by substituting the value being assigned
+	% for the later occurrences of the temp variable.
+
 vn_filter__block([], []).
 vn_filter__block([Instr0 | Instrs0], Instrs) :-
 	(
@@ -45,6 +49,20 @@ vn_filter__block([Instr0 | Instrs0], Instrs) :-
 	).
 
 %-----------------------------------------------------------------------------%
+
+	% Check whether eliminating the assignment of Defn to Temp is
+	% possible and profitable.
+	%
+	% Eliminating the assignment would require substituting Defn for
+	% lval(Temp) in later instructions, up to the next definition of Temp.
+	%
+	% We cannot eliminate the assignment if a later reference that we
+	% must substitute occurs after some code that has modified the value
+	% of any location that occurs in Defn. (E.g. we cannot replace the
+	% sequence t1 = r1; r1 = ...; ...t1... with r1 = ..., ...r1...)
+	%
+	% If there are two or more references to the value of Temp, then
+	% it is not profitable to eliminate the assignment to it.
 
 :- pred vn_filter__can_substitute(list(instruction), lval, rval, list(lval),
 	list(instruction)).
@@ -99,6 +117,16 @@ vn_filter__can_substitute([Instr0 | Instrs0], Temp, Defn, Deps, Instrs) :-
 		Instrs = [Instr0 | Instrs1]
 	).
 
+	% Check whether this instruction can possibly use the value
+	% stored in a temp variable. If it can, it must refer to the
+	% value via an rval; return that rval.
+	%
+	% Note that some of the instructions below can refer to the values of
+	% variables such as r1, yet we consider that they cannot refer to the
+	% values of temp variables. This is because value numbering does not
+	% attempt to optimize them, and value numbering is the only part of
+	% the compiler that can introduce temp variables.
+
 :- pred vn_filter__user_instr(instr, maybe(rval)).
 :- mode vn_filter__user_instr(in, out) is det.
 
@@ -128,6 +156,11 @@ vn_filter__user_instr(incr_sp(_, _), no).
 vn_filter__user_instr(decr_sp(_), no).
 vn_filter__user_instr(pragma_c(_, _, _, _, _), _):-
 	error("inappropriate instruction in vn__filter").
+
+	% vn_filter__replace_in_user_instr(Instr0, Old, New, Instr):
+	% Given that Instr0 refers to the values of some locations,
+	% replace all occurrences of lval(Old) with New in those uses,
+	% returning the result as Instr.
 
 :- pred vn_filter__replace_in_user_instr(instr, lval, rval, instr).
 :- mode vn_filter__replace_in_user_instr(in, in, in, out) is det.
@@ -186,6 +219,8 @@ vn_filter__replace_in_user_instr(decr_sp(_), _, _, _) :-
 vn_filter__replace_in_user_instr(pragma_c(_, _, _, _, _), _, _, _):-
 	error("inappropriate instruction in vn__filter").
 
+	% Check whether this instruction defines the value of any lval.
+
 :- pred vn_filter__defining_instr(instr, maybe(lval)).
 :- mode vn_filter__defining_instr(in, out) is det.
 
@@ -215,6 +250,11 @@ vn_filter__defining_instr(incr_sp(_, _), no).
 vn_filter__defining_instr(decr_sp(_), no).
 vn_filter__defining_instr(pragma_c(_, _, _, _, _), _):-
 	error("inappropriate instruction in vn__filter").
+
+	% vn_filter__replace_in_defining_instr(Instr0, Old, New, Instr):
+	% Given that Instr0 defines the value of a location,
+	% replace all occurrences of lval(Old) with New in the access path
+	% of that location, returning the result as Instr.
 
 :- pred vn_filter__replace_in_defining_instr(instr, lval, rval, instr).
 :- mode vn_filter__replace_in_defining_instr(in, in, in, out) is det.
@@ -271,6 +311,10 @@ vn_filter__replace_in_defining_instr(decr_sp(_), _, _, _) :-
 vn_filter__replace_in_defining_instr(pragma_c(_, _, _, _, _), _, _, _):-
 	error("inappropriate instruction in vn__filter").
 
+	% vn_filter__replace_in_lval(Lval0, Old, New, Lval):
+	% Replace all occurrences of Old with New in Lval0,
+	% returning the result as Lval.
+
 :- pred vn_filter__replace_in_lval(lval, lval, rval, lval).
 :- mode vn_filter__replace_in_lval(in, in, in, out) is det.
 
@@ -300,6 +344,10 @@ vn_filter__replace_in_lval(temp(T, N), _, _, temp(T, N)).
 vn_filter__replace_in_lval(mem_ref(Rval0), Temp, Defn, mem_ref(Rval)) :-
 	vn_filter__replace_in_rval(Rval0, Temp, Defn, Rval).
 
+	% vn_filter__replace_in_rval(Rval0, Old, New, Rval):
+	% Replace all occurrences of lval(Old) with New in Rval0,
+	% returning the result as Rval.
+
 :- pred vn_filter__replace_in_rval(rval, lval, rval, rval).
 :- mode vn_filter__replace_in_rval(in, in, in, out) is det.
 
@@ -326,6 +374,10 @@ vn_filter__replace_in_rval(binop(Binop, Rval1, Rval2), Temp, Defn,
 vn_filter__replace_in_rval(mem_addr(MemRef0), Temp, Defn, mem_addr(MemRef)) :-
 	vn_filter__replace_in_mem_ref(MemRef0, Temp, Defn, MemRef).
 
+	% vn_filter__replace_in_mem_ref(Ref0, Old, New, Ref):
+	% Replace all occurrences of lval(Old) with New in Ref0,
+	% returning the result as Ref.
+
 :- pred vn_filter__replace_in_mem_ref(mem_ref, lval, rval, mem_ref).
 :- mode vn_filter__replace_in_mem_ref(in, in, in, out) is det.
 
@@ -334,6 +386,9 @@ vn_filter__replace_in_mem_ref(framevar_ref(N), _, _, framevar_ref(N)).
 vn_filter__replace_in_mem_ref(heap_ref(Rval0, Tag, N), Temp, Defn,
 		heap_ref(Rval, Tag, N)) :-
 	vn_filter__replace_in_rval(Rval0, Temp, Defn, Rval).
+
+	% Succeed if the given list of instructions does not mention
+	% the given lval.
 
 :- pred vn_filter__instrs_free_of_lval(list(instruction), lval).
 :- mode vn_filter__instrs_free_of_lval(in, in) is semidet.
