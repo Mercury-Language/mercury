@@ -22,6 +22,10 @@
 :- pred hlds_out__write_pred_id(pred_id, io__state, io__state).
 :- mode hlds_out__write_pred_id(in, di, uo).
 
+:- pred hlds_out__write_unify_context(unify_context, term__context,
+				io__state, io__state).
+:- mode hlds_out__write_unify_context(in, in, di, uo).
+
 %-----------------------------------------------------------------------------%
 
 	% print out an hlds structure.
@@ -55,6 +59,47 @@ hlds_out__write_pred_id(PredId) -->
 	io__write_string(Name),
 	io__write_string("/"),
 	io__write_int(Arity).
+
+%-----------------------------------------------------------------------------%
+
+hlds_out__write_unify_context(unify_context(MainContext, RevSubContexts),
+		Context) -->
+	prog_out__write_context(Context),
+	hlds_out__write_unify_main_context(MainContext),
+	{ reverse(RevSubContexts, SubContexts) },
+	hlds_out__write_unify_sub_contexts(SubContexts, Context).
+
+:- pred hlds_out__write_unify_main_context(unify_main_context,
+						io__state, io__state).
+:- mode hlds_out__write_unify_main_context(in, di, uo).
+
+hlds_out__write_unify_main_context(explicit) -->
+	[].
+hlds_out__write_unify_main_context(head(ArgNum)) -->
+	io__write_string("  in argument "),
+	io__write_int(ArgNum),
+	io__write_string(" of clause head:\n").
+hlds_out__write_unify_main_context(call(PredId, ArgNum)) -->
+	io__write_string("  in argument "),
+	io__write_int(ArgNum),
+	io__write_string(" of call to predicate `"),
+	hlds_out__write_pred_id(PredId),
+	io__write_string("':\n").
+
+:- pred hlds_out__write_unify_sub_contexts(unify_sub_contexts, term__context,
+				io__state, io__state).
+:- mode hlds_out__write_unify_sub_contexts(in, in, di, uo).
+
+hlds_out__write_unify_sub_contexts([], _) -->
+	[].
+hlds_out__write_unify_sub_contexts([ConsId - ArgNum | SubContexts], Context) -->
+	prog_out__write_context(Context),
+	io__write_string("  in argument "),
+	io__write_int(ArgNum),
+	io__write_string(" of functor `"),
+	hlds_out__write_cons_id(ConsId),
+	io__write_string("':\n"),
+	hlds_out__write_unify_sub_contexts(SubContexts, Context).
 
 %-----------------------------------------------------------------------------%
 

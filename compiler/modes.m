@@ -72,7 +72,7 @@ a local variable, then report the error.
 
 :- implementation.
 :- import_module list, map, varset, prog_out, string, require, std_util.
-:- import_module globals, options, mercury_to_mercury.
+:- import_module globals, options, mercury_to_mercury, hlds_out.
 
 %-----------------------------------------------------------------------------%
 
@@ -125,7 +125,7 @@ modecheck_pred_modes_2([PredId | PredIds], ModuleInfo0, ModuleInfo) -->
 		lookup_option(very_verbose, bool(VeryVerbose)),
 		( { VeryVerbose = yes } ->
 			io__write_string("% Mode-checking predicate "),
-			write_pred_id(PredId),
+			hlds_out__write_pred_id(PredId),
 			io__write_string("\n")
 		;
 			[]
@@ -318,52 +318,59 @@ modecheck_goal(Goal0 - GoalInfo0, Goal - GoalInfo, ModeInfo0, ModeInfo) :-
 :- mode modecheck_goal_2(in, in, out, modeinfo_di, modeinfo_uo) is det.
 
 modecheck_goal_2(conj(List0), _, conj(List1)) -->
+	mode_checkpoint("conj"),
 	modecheck_conj_list(List0, List1).
 
-/****
-modecheck_goal_2(disj(List0), NonLocals, disj(List), ModeInfo0, ModeInfo) :-
-	modecheck_disj_list(List0, List1, ModeInfo0, ModeInfoList),
-	merge_disj(ModeInfoList, NonLocals, ModeInfo).
+modecheck_goal_2(disj(List0), NonLocals, disj(List)) -->
+	mode_checkpoint("disj"),
+	( { List0 = [] } ->	% for efficiency, optimize common case
+		{ List = [] }
+	;
+		modecheck_disj_list(List0, List, InstMapList),
+		instmap_merge(NonLocals, InstMapList, disj)
+	).
 
-modecheck_goal_2(if_then_else(Vs0, A0, B0, C0), NonLocals,
-		if_then_else(Vs, A, B, C), ModeInfo0, ModeInfo) :-
-	modeinfo_lock_vars(NonLocals, ModeInfo0, ModeInfo1),
-	modecheck_goal(A0, A, ModeInfo1, ModeInfo2),
-	modeinfo_unlock_vars(NonLocals, ModeInfo2, ModeInfo3),
-	modecheck_goal(B0, B, ModeInfo3, ModeInfoB),
-	modecheck_goal(C0, C, ModeInfo0, ModeInfoC),
-	modeinfo_merge(ModeInfoB, ModeInfoC, ModeInfo).
-
-*****/
+modecheck_goal_2(if_then_else(Vs, A0, B0, C0), NonLocals,
+		if_then_else(Vs, A, B, C)) -->
+	mode_checkpoint("if-then-else"),
+	modeinfo_dcg_get_instmap(InstMap0),
+	modeinfo_lock_vars(NonLocals),
+	modecheck_goal(A0, A),
+	modeinfo_unlock_vars(NonLocals),
+	modecheck_goal(B0, B),
+	modeinfo_dcg_get_instmap(InstMapB),
+	modeinfo_set_instmap(InstMap0),
+	modecheck_goal(C0, C),
+	modeinfo_dcg_get_instmap(InstMapC),
+	instmap_merge(NonLocals, [InstMapB, InstMapC], if_then_else).
 
 modecheck_goal_2(not(Vs, A0), NonLocals, not(Vs, A)) -->
+	mode_checkpoint("not"),
 	modeinfo_lock_vars(NonLocals),
 	modecheck_goal(A0, A),
 	modeinfo_unlock_vars(NonLocals).
 
 modecheck_goal_2(some(Vs, G0), _, some(Vs, G)) -->
+	mode_checkpoint("some"),
 	modecheck_goal(G0, G).
 
 modecheck_goal_2(all(Vs, G0), NonLocals, all(Vs, G)) -->
+	mode_checkpoint("all"),
 	modeinfo_lock_vars(NonLocals),
 	modecheck_goal(G0, G),
 	modeinfo_unlock_vars(NonLocals).
 
 modecheck_goal_2(call(PredId, _, Args, Builtin), _,
 		 call(PredId, Mode, Args, Builtin)) -->
+	mode_checkpoint("call"),
 	modeinfo_set_call_context(call(PredId)),
 	modecheck_call_pred(PredId, Args, Mode).
 
 modecheck_goal_2(unify(A, B, _, _, UnifyContext), _,
 		 unify(A, B, Mode, UnifyInfo, UnifyContext)) -->
+	mode_checkpoint("unify"),
 	modeinfo_set_call_context(unify(UnifyContext)),
 	modecheck_unification(A, B, Mode, UnifyInfo).
-
-	% XXX
-
-:- type call_context
-	--->	unify(unify_context)
-	;	call(pred_id).
 
 %-----------------------------------------------------------------------------%
 
@@ -418,18 +425,143 @@ modecheck_conj_list([Goal0 | Goals0], [Goal | Goals]) -->
 
 	% XXX we don't handle disjunctions or if-then-else yet
 
-/****
-
-:- pred modecheck_disj_list(list(hlds__goal), list(hlds__goal),
+:- pred modecheck_disj_list(list(hlds__goal), list(hlds__goal), list(instmap),
 				modeinfo, modeinfo).
-:- mode modecheck_disj_list(in, out, modeinfo_di, modeinfo_uo).
+:- mode modecheck_disj_list(in, out, out, modeinfo_di, modeinfo_uo).
 
-modecheck_disj_list([], []) --> [].
-modecheck_disj_list([Goal | Goals]) -->
-	modecheck_disj(Goal),
-	modecheck_disj_list(Goals).
+modecheck_disj_list([], [], []) --> [].
+modecheck_disj_list([Goal0 | Goals0], [Goal | Goals], [InstMap | InstMaps]) -->
+	modeinfo_dcg_get_instmap(InstMap0),
+	modecheck_goal(Goal0, Goal),
+	modeinfo_dcg_get_instmap(InstMap),
+	modeinfo_set_instmap(InstMap0),
+	modecheck_disj_list(Goals0, Goals, InstMaps).
 
-*****/
+	% instmap_merge_2(NonLocalVars, InstMaps, MergeContext):
+	%	Merge the `InstMaps' resulting from different branches
+	%	of a disjunction or if-then-else, checking that
+	%	the resulting instantiatedness of all the nonlocal variables
+	%	is the same for every branch.
+
+:- type merge_context
+	---> disj
+	;    if_then_else.
+
+:- pred instmap_merge(set(var), list(instmap), merge_context,
+		modeinfo, modeinfo).
+:- mode instmap_merge(in, in, in, modeinfo_di, modeinfo_uo).
+
+instmap_merge(NonLocals, InstMapList, MergeContext, ModeInfo0, ModeInfo) :-
+	modeinfo_get_moduleinfo(ModeInfo0, ModuleInfo),
+	map__init(InstMap0),
+	set__to_sorted_list(NonLocals, NonLocalsList),
+	instmap_merge_2(NonLocalsList, InstMapList, ModuleInfo, InstMap0,
+				InstMap, ErrorList),
+	( ErrorList = [] ->
+		ModeInfo2 = ModeInfo0
+	;
+		modeinfo_get_io_state(ModeInfo0, IOState0),
+		report_mode_error_disj(ModeInfo0, MergeContext, ErrorList,
+				IOState0, IOState),
+		modeinfo_set_io_state(ModeInfo0, IOState, ModeInfo1),
+		modeinfo_incr_errors(ModeInfo1, ModeInfo2)
+	),
+	modeinfo_set_instmap(InstMap, ModeInfo2, ModeInfo).
+
+	% instmap_merge_2(Vars, InstMaps, ModuleInfo, ErrorList):
+	%	Let `ErrorList' be the list of variables in `Vars' for
+	%	there are two instmaps in `InstMaps' for which the inst
+	%	the variable is different.
+
+:- type merge_errors == assoc_list(var, list(inst)).
+
+:- pred instmap_merge_2(list(var), list(instmap), module_info, instmap,
+			instmap, merge_errors).
+:- mode instmap_merge_2(in, in, in, in, out, out) is det.
+
+instmap_merge_2([], _, _, InstMap, InstMap, []).
+instmap_merge_2([Var|Vars], InstMapList, ModuleInfo, InstMap0,
+			InstMap, ErrorList) :-
+	instmap_merge_2(Vars, InstMapList, ModuleInfo, InstMap0,
+			InstMap1, ErrorList1),
+	instmap_merge_var(InstMapList, Var, ModuleInfo, Insts, Error),
+	( Error = yes ->
+		ErrorList = [Var - Insts | ErrorList1],
+		map__set(InstMap1, Var, ground, InstMap)
+	;
+		ErrorList = ErrorList1,
+		Insts = [Inst | _],
+		map__set(InstMap1, Var, Inst, InstMap)
+	).
+
+	% instmap_merge_var(InstMaps, Var, ModuleInfo, Insts, Error):
+	%	Let `Insts' be the list of the inst of `Var' in the
+	%	corresponding `InstMaps'.  Let `Error' be yes iff
+	%	there are two instmaps for which the inst of `Var'
+	%	is different.
+
+:- pred instmap_merge_var(list(instmap), var, module_info, list(inst), bool).
+:- mode instmap_merge_var(in, in, in, out, out) is det.
+
+instmap_merge_var([], _, _, [], no).
+instmap_merge_var([InstMap | InstMaps], Var, ModuleInfo, Insts, Error) :-
+	instmap_lookup_var(InstMap, Var, Inst),
+	instmap_merge_var_2(InstMaps, Inst, Var, ModuleInfo, Insts, Error).
+
+:- pred instmap_merge_var_2(list(instmap), inst, var, module_info,
+				list(inst), bool).
+:- mode instmap_merge_var_2(in, in, in, in, out, out) is det.
+
+instmap_merge_var_2([], Inst, _Var, _ModuleInfo, [Inst], no).
+instmap_merge_var_2([InstMapB | InstMaps], InstA, Var, ModuleInfo,
+			Insts, Error) :-
+	instmap_lookup_var(InstMapB, Var, InstB),
+	( inst_is_compat(InstA, InstB, ModuleInfo) ->
+		Error = no
+	;
+		Error = Error1
+	),
+	Insts = [InstA | Insts1],
+	instmap_merge_var_2(InstMaps, InstB, Var, ModuleInfo, Insts1, Error1).
+
+%-----------------------------------------------------------------------------%
+
+:- pred report_mode_error_disj(modeinfo, merge_context, merge_errors,
+				io__state, io__state).
+:- mode report_mode_error_disj(modeinfo_no_io, in, in, di, uo).
+
+report_mode_error_disj(ModeInfo, MergeContext, ErrorList) -->
+	{ modeinfo_get_context(ModeInfo, Context) },
+	modeinfo_write_context(ModeInfo),
+	prog_out__write_context(Context),
+	io__write_string("  mode mismatch in "),
+	write_merge_context(MergeContext),
+	io__write_string(".\n"),
+	write_merge_error_list(ErrorList, ModeInfo).
+
+:- pred write_merge_error_list(merge_errors, modeinfo, io__state, io__state).
+:- mode write_merge_error_list(in, modeinfo_no_io, di, uo).
+
+write_merge_error_list([], _) --> [].
+write_merge_error_list([Var - Insts | Errors], ModeInfo) -->
+	{ modeinfo_get_context(ModeInfo, Context) },
+	{ modeinfo_get_varset(ModeInfo, VarSet) },
+	{ modeinfo_get_instvarset(ModeInfo, InstVarSet) },
+	prog_out__write_context(Context),
+	io__write_string("  `"),
+	io__write_variable(Var, VarSet),
+	io__write_string("' :: "),
+	mercury_output_inst_list(Insts, InstVarSet),
+	io__write_string(".\n"),
+	write_merge_error_list(Errors, ModeInfo).
+
+:- pred write_merge_context(merge_context, io__state, io__state).
+:- mode write_merge_context(in, di, uo).
+
+write_merge_context(disj) -->
+	io__write_string("disjunction").
+write_merge_context(if_then_else) -->
+	io__write_string("if-then-else").
 
 %-----------------------------------------------------------------------------%
 
@@ -570,8 +702,9 @@ inst_expand(ModuleInfo, Inst0, Inst) :-
 report_mode_error_var_has_inst(ModeInfo, Var, VarInst, Inst) -->
 	{ modeinfo_get_context(ModeInfo, Context) },
 	{ modeinfo_get_varset(ModeInfo, VarSet) },
-	{ varset__init(InstVarSet) },
+	{ modeinfo_get_instvarset(ModeInfo, InstVarSet) },
 	modeinfo_write_context(ModeInfo),
+	prog_out__write_context(Context),
 	io__write_string("  mode error: variable `"),
 	io__write_variable(Var, VarSet),
 	io__write_string("' has instantiatedness `"),
@@ -591,16 +724,16 @@ report_mode_error_var_has_inst(ModeInfo, Var, VarInst, Inst) -->
 report_mode_error_unify_var_var(ModeInfo, X, Y, InstX, InstY) -->
 	{ modeinfo_get_context(ModeInfo, Context) },
 	{ modeinfo_get_varset(ModeInfo, VarSet) },
-		% XXX InstVarSet (here and in a couple of other places)
-	{ varset__init(InstVarSet) },
+	{ modeinfo_get_instvarset(ModeInfo, InstVarSet) },
 	modeinfo_write_context(ModeInfo),
+	prog_out__write_context(Context),
 	io__write_string("  mode error in unification of `"),
 	io__write_variable(X, VarSet),
 	io__write_string("' and `"),
 	io__write_variable(Y, VarSet),
-	io__write_string("':\n"),
+	io__write_string("'.\n"),
 	prog_out__write_context(Context),
-	io__write_string("  variable `"),
+	io__write_string("  Variable `"),
 	io__write_variable(X, VarSet),
 	io__write_string("' has instantiatedness `"),
 	mercury_output_inst(InstX, InstVarSet),
@@ -650,7 +783,7 @@ modecheck_set_var_inst(Var, Inst, ModeInfo0, ModeInfo) :-
 		modeinfo_incr_errors(ModeInfo1, ModeInfo)
 	;
 		map__set(InstMap0, Var, Inst, InstMap),
-		modeinfo_set_instmap(ModeInfo0, InstMap, ModeInfo)
+		modeinfo_set_instmap(InstMap, ModeInfo0, ModeInfo)
 	).
 
 :- pred inst_is_compat(inst, inst, module_info).
@@ -713,7 +846,7 @@ modeinfo_write_context(ModeInfo) -->
 	{ map__lookup(Procs, ProcId, ProcInfo) },
 	{ procinfo_argmodes(ProcInfo, ArgModes) },
 	{ predicate_name(PredId, PredName) },
-	{ varset__init(InstVarSet) },
+	{ modeinfo_get_instvarset(ModeInfo, InstVarSet) },
 
 	prog_out__write_context(Context),
 	io__write_string("In clause for `"),
@@ -726,8 +859,20 @@ modeinfo_write_context(ModeInfo) -->
 		[]
 	),
 	io__write_string("':\n"),
-		% XXX mode_context
-	prog_out__write_context(Context).
+	{ modeinfo_get_mode_context(ModeInfo, ModeContext) },
+	write_mode_context(ModeContext, Context).
+
+:- pred write_mode_context(mode_context, term__context, io__state, io__state).
+:- mode write_mode_context(in, in, di, uo).
+
+write_mode_context(call(PredId, _ArgNum), Context) -->
+	prog_out__write_context(Context),
+	io__write_string("  in call to predicate `"),
+	hlds_out__write_pred_id(PredId),
+	io__write_string("':\n").
+
+write_mode_context(unify(UnifyContext, _Side), Context) -->
+	hlds_out__write_unify_context(UnifyContext, Context).
 
 :- pred report_mode_error_bind_var(modeinfo, var, inst, inst,
 					io__state, io__state).
@@ -736,8 +881,9 @@ modeinfo_write_context(ModeInfo) -->
 report_mode_error_bind_var(ModeInfo, Var, VarInst, Inst) -->
 	{ modeinfo_get_context(ModeInfo, Context) },
 	{ modeinfo_get_varset(ModeInfo, VarSet) },
-	{ varset__init(InstVarSet) },
+	{ modeinfo_get_instvarset(ModeInfo, InstVarSet) },
 	modeinfo_write_context(ModeInfo),
+	prog_out__write_context(Context),
 	io__write_string(
 		"  mode error: attempt to bind variable inside a negation.\n"),
 	prog_out__write_context(Context),
@@ -769,21 +915,48 @@ report_mode_error_bind_var(ModeInfo, Var, VarInst, Inst) -->
 :- pred mode_checkpoint(string, modeinfo, modeinfo).
 :- mode mode_checkpoint(in, modeinfo_di, modeinfo_uo).
 
-%%% mode_checkpoint(_, T, T).
-mode_checkpoint(Msg, T0, T) :-
-	modeinfo_get_io_state(T0, I0),
-	mode_checkpoint_2(Msg, T0, I0, I),
-	modeinfo_set_io_state(T0, I, T).
+mode_checkpoint(Msg, ModeInfo0, ModeInfo) :-
+	modeinfo_get_io_state(ModeInfo0, IOState0),
+        lookup_option(debug, bool(DoCheckPoint), IOState0, IOState1),
+	( DoCheckPoint = yes ->
+		mode_checkpoint_2(Msg, ModeInfo0, IOState1, IOState)
+	;
+		IOState = IOState1
+	),
+	modeinfo_set_io_state(ModeInfo0, IOState, ModeInfo).
 
 :- pred mode_checkpoint_2(string, modeinfo, io__state, io__state).
 :- mode mode_checkpoint_2(in, modeinfo_ui, di, uo).
 
-mode_checkpoint_2(Msg, _T0) -->
+mode_checkpoint_2(Msg, ModeInfo) -->
 	io__write_string("At "),
 	io__write_string(Msg),
-	io__write_string(": "),
-		% ...
+	io__write_string(":\n"),
+	lookup_option(statistics, bool(Statistics)),
+	maybe_report_stats(Statistics),
+	{ modeinfo_get_instmap(ModeInfo, InstMap) },
+	{ map__to_assoc_list(InstMap, AssocList) },
+	{ modeinfo_get_varset(ModeInfo, VarSet) },
+	{ modeinfo_get_instvarset(ModeInfo, InstVarSet) },
+	write_var_insts(AssocList, VarSet, InstVarSet),
 	io__write_string("\n").
+
+:- pred write_var_insts(assoc_list(var, inst), varset, varset,
+			io__state, io__state).
+:- mode write_var_insts(in, in, in, di, uo).
+
+write_var_insts([], _, _) --> [].
+write_var_insts([Var - Inst | VarInsts], VarSet, InstVarSet) -->
+	io__write_string("\t"),
+	io__write_variable(Var, VarSet),
+	io__write_string(" :: "),
+	mercury_output_inst(Inst, InstVarSet),
+	( { VarInsts = [] } ->
+		[]
+	;
+		io__write_string("\n"),
+		write_var_insts(VarInsts, VarSet, InstVarSet)
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -803,7 +976,7 @@ modecheck_unification(term_variable(X), term_variable(Y), Modes, Unification,
 		modeinfo_get_instmap(ModeInfo0, InstMap0),
 		map__set(InstMap0, X, Inst, InstMap1),
 		map__set(InstMap1, X, Inst, InstMap),
-		modeinfo_set_instmap(ModeInfo0, InstMap, ModeInfo)
+		modeinfo_set_instmap(InstMap, ModeInfo0, ModeInfo)
 	;
 		modeinfo_get_io_state(ModeInfo0, IOState0),
 		report_mode_error_unify_var_var(ModeInfo0, X, Y, InstX, InstY,
@@ -821,6 +994,7 @@ modecheck_unification(term_variable(X), term_variable(Y), Modes, Unification,
 
 modecheck_unification(term_functor(_Functor, _Args, _), term_variable(_Y),
 			_Mode, _Unification, _ModeInfo0, _ModeInfo) :-
+		% XXX
 	error("NOT IMPLEMENTED: unification of var with functor\n").
 
 modecheck_unification(term_variable(Y), term_functor(F, As, _), ModeAssign0,
@@ -1199,7 +1373,7 @@ report_undef_inst(InstId, ErrorContext - Context) -->
 
 write_mode_error_context(pred(PredId)) -->
 	io__write_string("mode declaration for predicate "),
-	write_pred_id(PredId).
+	hlds_out__write_pred_id(PredId).
 write_mode_error_context(mode(ModeId)) -->
 	io__write_string("definition of mode "),
 	write_mode_id(ModeId).
@@ -1209,8 +1383,8 @@ write_mode_error_context(inst(InstId)) -->
 
 %-----------------------------------------------------------------------------%
 
-	% Predicates to out mode_ids and pred_ids.
-	% XXX mode_ids should include the module.
+	% Predicates to output inst_ids and mode_ids.
+	% XXX inst_ids and mode_ids should include the module.
 
 :- pred write_mode_id(mode_id, io__state, io__state).
 :- mode write_mode_id(in, di, uo).
@@ -1230,15 +1404,6 @@ write_inst_id(F - N) -->
 	io__write_string("/"),
 	io__write_int(N).
 
-
-:- pred write_pred_id(pred_id, io__state, io__state).
-:- mode write_pred_id(in, di, uo).
-
-write_pred_id(pred(_Module, PredName, Arity)) -->
-	io__write_string(PredName),
-	io__write_string("/"),
-	io__write_int(Arity).
-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -1246,7 +1411,7 @@ write_pred_id(pred(_Module, PredName, Arity)) -->
 
 	% XXX
 :- type mode_context
-	--->	pred(	
+	--->	call(	
 			pred_id,	% pred name
 			int		% argument number
 		)
@@ -1260,13 +1425,15 @@ write_pred_id(pred(_Module, PredName, Arity)) -->
 			cons_id,
 			int
 		)
-	;
-		uninitialized.
-
-
-:- type instmap == map(var, inst).
+	;	uninitialized.
 
 :- type side ---> left ; right.
+
+:- type call_context
+	--->	unify(unify_context)
+	;	call(pred_id).
+
+:- type instmap == map(var, inst).
 
 :- type modeinfo 
 	--->	modeinfo(
@@ -1420,11 +1587,21 @@ modeinfo_get_mode_context(modeinfo(_,_,_,_,_,ModeContext,_,_,_), ModeContext).
 
 %-----------------------------------------------------------------------------%
 
+:- pred modeinfo_set_mode_context(mode_context, modeinfo, modeinfo).
+:- mode modeinfo_set_mode_context(in, modeinfo_di, modeinfo_uo) is det.
+
+modeinfo_set_mode_context(ModeContext, modeinfo(A,B,C,D,E,_,G,H,I),
+				modeinfo(A,B,C,D,E,ModeContext,G,H,I)).
+
+%-----------------------------------------------------------------------------%
+
 :- pred modeinfo_set_call_context(call_context, modeinfo, modeinfo).
 :- mode modeinfo_set_call_context(in, in, out) is det.
 
-	% XXX stub only
-modeinfo_set_call_context(_, ModeInfo, ModeInfo).
+modeinfo_set_call_context(unify(UnifyContext)) -->
+	modeinfo_set_mode_context(unify(UnifyContext, left)).
+modeinfo_set_call_context(call(PredId)) -->
+	modeinfo_set_mode_context(call(PredId, 0)).
 
 %-----------------------------------------------------------------------------%
 
@@ -1432,6 +1609,21 @@ modeinfo_set_call_context(_, ModeInfo, ModeInfo).
 :- mode modeinfo_get_instmap(in, out) is det.
 
 modeinfo_get_instmap(modeinfo(_,_,_,_,_,_,InstMap,_,_), InstMap).
+
+	% modeinfo_dcg_get_instmap/3 is the same as modeinfo_get_instmap/2
+	% except that it's easier to use inside a DCG.
+
+:- pred modeinfo_dcg_get_instmap(instmap, modeinfo, modeinfo).
+:- mode modeinfo_dcg_get_instmap(out, modeinfo_di, modeinfo_uo) is det.
+
+modeinfo_dcg_get_instmap(InstMap, ModeInfo, ModeInfo) :-
+	modeinfo_get_instmap(ModeInfo, InstMap).
+
+	% modeinfo_get_vars_instmap/3 is the same as modeinfo_get_instmap/2
+	% except that the map it returns might only contain the specified
+	% variables if that would be more efficient; currently it's not,
+	% so the two are just the same, but if we were to change the
+	% data structures...
 
 :- pred modeinfo_get_vars_instmap(modeinfo, set(var), instmap).
 :- mode modeinfo_get_vars_instmap(in, in, out) is det.
@@ -1441,10 +1633,10 @@ modeinfo_get_vars_instmap(ModeInfo, _Vars, InstMap) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred modeinfo_set_instmap(modeinfo, instmap, modeinfo).
-:- mode modeinfo_set_instmap(modeinfo_di, in, modeinfo_uo) is det.
+:- pred modeinfo_set_instmap(instmap, modeinfo, modeinfo).
+:- mode modeinfo_set_instmap(in, modeinfo_di, modeinfo_uo) is det.
 
-modeinfo_set_instmap( modeinfo(A,B,C,D,E,F,_,H,I), InstMap,
+modeinfo_set_instmap( InstMap, modeinfo(A,B,C,D,E,F,_,H,I),
 			modeinfo(A,B,C,D,E,F,InstMap,H,I)).
 
 %-----------------------------------------------------------------------------%
@@ -1494,6 +1686,15 @@ modeinfo_get_varset(ModeInfo, VarSet) :-
 	modeinfo_get_procid(ModeInfo, ProcId),
 	map__lookup(Procs, ProcId, ProcInfo),
 	procinfo_variables(ProcInfo, VarSet).
+
+:- pred modeinfo_get_instvarset(modeinfo, varset).
+:- mode modeinfo_get_instvarset(modeinfo_ui, out) is det.
+
+	% Since we don't yet handle polymorphic modes, the inst varset
+	% is always empty.
+
+modeinfo_get_instvarset(_ModeInfo, InstVarSet) :-
+	varset__init(InstVarSet).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -43,7 +43,8 @@
 			;	help
 			;	line_numbers
 			;	warn_singleton_vars
-			;	modecheck.
+			;	modecheck
+			;	debug.
 
 :- implementation.
 
@@ -63,7 +64,8 @@ option_defaults([
 	help 			-	bool(no),
 	line_numbers		-	bool(no),
 	warn_singleton_vars	-	bool(yes),
-	modecheck		-	bool(no)
+	modecheck		-	bool(no),
+	debug			- 	bool(no)
 ]).
 
 short_option('v', 			verbose).
@@ -82,6 +84,7 @@ short_option('M', 			convert_to_mercury).
 short_option('G', 			convert_to_goedel).
 short_option('l', 			line_numbers).
 short_option('m', 			modecheck).
+short_option('D', 			debug).
 
 long_option("verbose",			verbose).
 long_option("very-verbose",		very_verbose).
@@ -101,10 +104,13 @@ long_option("help",			help).
 long_option("line-numbers",		line_numbers).
 long_option("warn-singleton-variables",	warn_singleton_vars).
 long_option("modecheck",		modecheck).
+long_option("debug",			debug).
 
 options_help -->
 	io__write_string("\t-h, --help\n"),
 	io__write_string("\t\tPrint this usage message.\n"),
+
+	io__write_string("\nVerbosity Options:\n"),
 	io__write_string("\t-v, --verbose\n"),
 	io__write_string("\t\tOutput progress messages at each stage in the compilation.\n"),
 	io__write_string("\t-V, --very_verbose\n"),
@@ -113,17 +119,13 @@ options_help -->
 	io__write_string("\t\tDon't warn about variables which only occur once.\n"),
 	io__write_string("\t-e, --verbose-error-messages\n"),
 	io__write_string("\t\tExplain error messages.  Asks the compiler to give you a more\n"),
-	io__write_string("\t\detailed texplanation of any errors in your program.\n"),
+	io__write_string("\t\tdetailed explanation of any errors in your program.\n"),
 	io__write_string("\t-s, --statistics\n"),
 	io__write_string("\t\tOutput messages about the compiler's time/space usage\n"),
-	io__write_string("\t-m, --modecheck\n"),
-	io__write_string("\t\tInvoke the mode analysis pass of the compiler.\n"),
-	io__write_string("\t-d, --dump-hlds\n"),
-	io__write_string("\t\tDump the HLDS to `<module>.hlds'.\n"),
-	io__write_string("\t-g, --generate-code\n"),
-	io__write_string("\t\tGenerate .mod code in `xxx.xmod'.\n"),
-	io__write_string("\t-b <builtin>, --builtin-module <builtin>\n"),
-	io__write_string("\t\tUse `<builtin>' instead of `mercury_builtin' as the \n\t\tmodule which always gets automatically imported.\n"),
+	io__write_string("\t-D, --debug\n"),
+	io__write_string("\t\tOutput detailed debugging traces of the type/mode checking.\n"),
+
+	io__write_string("\nOutput Options:\n"),
 	io__write_string("\t-i, --make-interface\n"),
 	io__write_string("\t\tWrite the module interface to `<module>.int'.\n"),
 	io__write_string("\t\tOnly syntax analysis will be performed - this option\n"),
@@ -134,15 +136,24 @@ options_help -->
 	io__write_string("\t-M, --convert-to-mercury\n"),
 	io__write_string("\t\tConvert to Mercury. Output to file `<module>.ugly'\n"),
 	io__write_string("\t\tThis option acts as a Mercury ugly-printer.\n"),
+	io__write_string("\t-m, --modecheck\n"),
+	io__write_string("\t\tInvoke the mode analysis pass of the compiler.\n"),
+	io__write_string("\t-d, --dump-hlds\n"),
+	io__write_string("\t\tDump the HLDS to `<module>.hlds'.\n"),
+	io__write_string("\t-g, --generate-code\n"),
+	io__write_string("\t\tGenerate .mod code in `xxx.xmod'.\n"),
 	io__write_string("\t\tAs with -i, it disables type-checking, etc.\n"),
 	io__write_string("\t-l, --line-numbers\n"),
 	io__write_string("\t\tOutput line numbers in the generated code.\n"),
 	io__write_string("\t\tCurrently only works with the -G and -M options.\n"),
-	io__write_string("\t-h <n>, --heap-space <n>\n"),
+	io__write_string("\nMiscellaneous Options:\n"),
+	io__write_string("\t-H <n>, --heap-space <n>\n"),
 	io__write_string("\t\tPre-allocate <n> kilobytes of heap space.\n"),
 	io__write_string("\t\tUse this option to avoid NU-Prolog's\n"),
 	io__write_string("\t\t\t\"Panic: growing stacks has required shifting the heap\"\n"),
 	io__write_string("\t\tmessage.\n"),
+	io__write_string("\t-b <builtin>, --builtin-module <builtin>\n"),
+	io__write_string("\t\tUse `<builtin>' instead of `mercury_builtin' as the \n\t\tmodule which always gets automatically imported.\n"),
 	io__write_string("\t-I <dir>, --search-directory <dir>\n"),
 	io__write_string("\t\tAppend <dir> to the list of directories to be searched for \n\t\timported modules.\n").
 

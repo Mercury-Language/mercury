@@ -848,8 +848,7 @@ type_assign_term_has_type(term_functor(F, Args, _Context), Type, TypeAssign,
 
 checkpoint(Msg, T0, T) :-
 	typeinfo_get_io_state(T0, I0),
-		% we should use a different option
-	lookup_option(very_verbose, bool(DoCheckPoint), I0, I1),
+	lookup_option(debug, bool(DoCheckPoint), I0, I1),
 	( DoCheckPoint = yes ->
 		checkpoint_2(Msg, T0, I1, I)
 	;	
@@ -2192,21 +2191,24 @@ report_error_unif_var_var(TypeInfo, X, Y, TypeAssignSet) -->
 	{ typeinfo_get_unify_context(TypeInfo, UnifyContext) },
 
 	write_context_and_pred_id(TypeInfo),
-	write_unify_context(UnifyContext, Context),
+	hlds_out__write_unify_context(UnifyContext, Context),
 
+	prog_out__write_context(Context),
 	io__write_string("  type error in unification of variable `"),
 	io__write_variable(X, VarSet),
 	io__write_string("' and variable `"),
 	io__write_variable(Y, VarSet),
 	io__write_string("'.\n"),
 
-	io__write_string("\t`"),
+	prog_out__write_context(Context),
+	io__write_string("  `"),
 	io__write_variable(X, VarSet),
 	io__write_string("' "),
 	write_type_of_var(TypeInfo, TypeAssignSet, X),
 	io__write_string(",\n"),
 
-	io__write_string("\t`"),
+	prog_out__write_context(Context),
+	io__write_string("  `"),
 	io__write_variable(Y, VarSet),
 	io__write_string("' "),
 	write_type_of_var(TypeInfo, TypeAssignSet, Y),
@@ -2226,15 +2228,17 @@ report_error_unif_var_functor(TypeInfo, Var, Functor, Args, TypeAssignSet) -->
 	{ typeinfo_get_unify_context(TypeInfo, UnifyContext) },
 
 	write_context_and_pred_id(TypeInfo),
-	write_unify_context(UnifyContext, Context),
+	hlds_out__write_unify_context(UnifyContext, Context),
 
+	prog_out__write_context(Context),
 	io__write_string("  type error in unification of "),
 	write_argument_name(VarSet, Var),
 	io__write_string(" and term `"),
 	io__write_term(VarSet, term_functor(Functor, Args, Context)),
 	io__write_string("'.\n"),
 
-	io__write_string("\t("),
+	prog_out__write_context(Context),
+	io__write_string("  ("),
 	write_argument_name(VarSet, Var),
 	io__write_string(" "),
 	write_type_of_var(TypeInfo, TypeAssignSet, Var),
@@ -2253,46 +2257,6 @@ write_argument_name(VarSet, VarId) -->
 	;
 		io__write_string("argument")
 	).
-
-:- pred write_unify_context(unify_context, term__context, io__state, io__state).
-:- mode write_unify_context(in, in, di, uo).
-
-write_unify_context(unify_context(MainContext, RevSubContexts), Context) -->
-	prog_out__write_context(Context),
-	write_unify_main_context(MainContext),
-	{ reverse(RevSubContexts, SubContexts) },
-	write_unify_sub_contexts(SubContexts, Context).
-
-:- pred write_unify_main_context(unify_main_context, io__state, io__state).
-:- mode write_unify_main_context(in, di, uo).
-
-write_unify_main_context(explicit) -->
-	[].
-write_unify_main_context(head(ArgNum)) -->
-	io__write_string("  in argument "),
-	io__write_int(ArgNum),
-	io__write_string(" of clause head:\n").
-write_unify_main_context(call(PredId, ArgNum)) -->
-	io__write_string("  in argument "),
-	io__write_int(ArgNum),
-	io__write_string(" of call to predicate `"),
-	hlds_out__write_pred_id(PredId),
-	io__write_string("':\n").
-
-:- pred write_unify_sub_contexts(unify_sub_contexts, term__context,
-				io__state, io__state).
-:- mode write_unify_sub_contexts(in, in, di, uo).
-
-write_unify_sub_contexts([], _) -->
-	[].
-write_unify_sub_contexts([ConsId - ArgNum | SubContexts], Context) -->
-	prog_out__write_context(Context),
-	io__write_string("  in argument "),
-	io__write_int(ArgNum),
-	io__write_string(" of functor `"),
-	hlds_out__write_cons_id(ConsId),
-	io__write_string("':\n"),
-	write_unify_sub_contexts(SubContexts, Context).
 
 :- pred write_type_of_var(type_info, type_assign_set, var,
 				io__state, io__state).
@@ -2505,7 +2469,7 @@ report_error_undef_cons(TypeInfo, Functor, Arity) -->
 
 write_call_context(Context, PredId, ArgNum, UnifyContext) -->
 	( { ArgNum = 0 } ->
-		write_unify_context(UnifyContext, Context)
+		hlds_out__write_unify_context(UnifyContext, Context)
 	;
 		prog_out__write_context(Context),
 		io__write_string("  in argument "),

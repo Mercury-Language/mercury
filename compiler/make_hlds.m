@@ -876,7 +876,7 @@ transform_goal(call(Goal0), VarSet0, Subst, Goal, VarSet) :-
 	),
 	length(Args, Arity),
 	make_predid(ModuleName, unqualified(PredName), Arity, PredId),
-	make_n_fresh_vars(Arity, VarSet0, HeadVars, VarSet1),
+	make_fresh_arg_vars(Args, VarSet0, HeadVars, VarSet1),
 	var_list_to_term_list(HeadVars, HeadArgs),
 	Goal2 = call(PredId, ModeId, HeadArgs, Builtin) - GoalInfo,
 	goalinfo_init(GoalInfo),
@@ -901,8 +901,11 @@ transform_goal(unify(A0, B0), VarSet0, Subst, Goal, VarSet) :-
 :- type arg_context
 	--->	head		% the arguments in the head of the clause
 	;	call(pred_id)	% the arguments in a call to a predicate
-	;	functor(cons_id, unify_main_context, unify_sub_contexts).
-				% the arguments in a functor
+	;	functor(	% the arguments in a functor
+			cons_id,
+			unify_main_context,
+			unify_sub_contexts
+		).
 
 :- pred insert_arg_unifications(list(var), list(term), arg_context,
 				hlds__goal, varset, hlds__goal, varset).
@@ -932,14 +935,20 @@ insert_arg_unifications_2([], [], _, _, List, VarSet, List, VarSet).
 insert_arg_unifications_2([Var|Vars], [Arg|Args], Context, N0, List0, VarSet0,
 				List, VarSet) :-
 	N1 is N0 + 1,
-	arg_context_to_unify_context(Context, N1,
-			UnifyMainContext, UnifySubContext),
-	unravel_unification(term_variable(Var), Arg, UnifyMainContext,
-			UnifySubContext, VarSet0, Goal, VarSet1),
-	( Goal = (conj(ConjList) - _) ->
-		append(ConjList, List1, List)
+	( Arg = term_variable(Var) ->
+		% just skip unifications of the form `X = X'
+		List = List1,
+		VarSet1 = VarSet0
 	;
-		List = [Goal | List1]
+		arg_context_to_unify_context(Context, N1,
+				UnifyMainContext, UnifySubContext),
+		unravel_unification(term_variable(Var), Arg, UnifyMainContext,
+				UnifySubContext, VarSet0, Goal, VarSet1),
+		( Goal = (conj(ConjList) - _) ->
+			append(ConjList, List1, List)
+		;
+			List = [Goal | List1]
+		)
 	),
 	insert_arg_unifications_2(Vars, Args, Context, N1, List0, VarSet1,
 				List1, VarSet).
@@ -954,6 +963,10 @@ arg_context_to_unify_context(functor(ConsId, MainContext, SubContexts), N,
 			MainContext, [ConsId - N | SubContexts]).
 
 %-----------------------------------------------------------------------------%
+
+	% make_n_fresh_vars(N, VarSet0, Vars, VarSet):
+	%	`Vars' is a list of `N' fresh variables allocated from
+	%	`VarSet0'.  `VarSet' is the resulting varset.
 
 :- pred make_n_fresh_vars(int, varset, list(var), varset).
 :- mode make_n_fresh_vars(input, input, output, output).
@@ -971,12 +984,47 @@ make_n_fresh_vars_2(N, Max, VarSet0, Vars, VarSet) :-
 	;
 		N1 is N + 1,
 		varset__new_var(VarSet0, Var, VarSet1),
-		%%% string__int_to_string(N1, Num),
-		%%% string__append("HeadVar__", Num, VarName),
-		%%% varset__name_var(VarSet1, Var, VarName, VarSet2),
+		string__int_to_string(N1, Num),
+		string__append("HeadVar__", Num, VarName),
+		varset__name_var(VarSet1, Var, VarName, VarSet2),
 		Vars = [Var | Vars1],
-		make_n_fresh_vars_2(N1, Max, VarSet1, Vars1, VarSet)
+		make_n_fresh_vars_2(N1, Max, VarSet2, Vars1, VarSet)
 	).
+
+%-----------------------------------------------------------------------------%
+
+	% make_fresh_arg_vars(Args, VarSet0, Vars, VarSet):
+	%	`Vars' is a list of distinct variables corresponding to
+	%	the terms in `Args'.  For each term in `Args', if
+	%	the term is a variable V which is distinct from the
+	%	variables already produced, then the corresponding
+	%	variable in `Vars' is just V, otherwise a fresh variable
+	%	is allocated from `VarSet0'.   `VarSet' is the resulting
+	%	varset after all the necessary variables have been allocated.
+	%
+	%	For efficiency, the list `Vars' is constructed backwards
+	%	and then reversed to get the correct order.
+
+:- pred make_fresh_arg_vars(list(term), varset, list(var), varset).
+:- mode make_fresh_arg_vars(input, input, output, output).
+
+make_fresh_arg_vars(Args, VarSet0, Vars, VarSet) :-
+	make_fresh_arg_vars_2(Args, [], VarSet0, Vars1, VarSet),
+	reverse(Vars1, Vars).
+
+:- pred make_fresh_arg_vars_2(list(term), list(var), varset,
+				list(var), varset).
+:- mode make_fresh_arg_vars_2(input, input, input, output, output).
+
+make_fresh_arg_vars_2([], Vars, VarSet, Vars, VarSet).
+make_fresh_arg_vars_2([Arg | Args], Vars0, VarSet0, Vars, VarSet) :-
+	( Arg = term_variable(ArgVar), \+ member(ArgVar, Vars0) ->
+		Var = ArgVar,
+		VarSet1 = VarSet0
+	;
+		varset__new_var(VarSet0, Var, VarSet1)
+	),
+	make_fresh_arg_vars_2(Args, [Var | Vars0], VarSet1, Vars, VarSet).
 
 %-----------------------------------------------------------------------------%
 
@@ -1282,12 +1330,12 @@ unravel_unification(term_variable(X), term_functor(F, Args, C), MainContext,
 				MainContext, SubContext, Goal),
 		VarSet = VarSet0
 	;
-		length(Args, Arity),
-		make_n_fresh_vars(Arity, VarSet0, HeadVars, VarSet1),
+		make_fresh_arg_vars(Args, VarSet0, HeadVars, VarSet1),
 		var_list_to_term_list(HeadVars, HeadArgs),
 		create_atomic_unification(term_variable(X),
 				term_functor(F, HeadArgs, C),
 				MainContext, SubContext, Goal0),
+		length(Args, Arity),
 		make_functor_cons_id(F, Arity, ConsId),
 		ArgContext = functor(ConsId, MainContext, SubContext),
 		insert_arg_unifications(HeadVars, Args, ArgContext,
@@ -1309,12 +1357,12 @@ unravel_unification(term_functor(F, As, C), term_variable(Y), MC, SC,
 unravel_unification(term_functor(LeftF, LeftAs, LeftC),
 			term_functor(RightF, RightAs, RightC),
 			MainContext, SubContext, VarSet0, Goal, VarSet) :-
-	length(LeftAs, LeftArity),
-	length(RightAs, RightArity),
-	make_n_fresh_vars(LeftArity, VarSet0, LeftHeadVars, VarSet1),
-	make_n_fresh_vars(RightArity, VarSet1, RightHeadVars, VarSet2),
+	make_fresh_arg_vars(LeftAs, VarSet0, LeftHeadVars, VarSet1),
+	make_fresh_arg_vars(RightAs, VarSet1, RightHeadVars, VarSet2),
 	var_list_to_term_list(LeftHeadVars, LeftHeadArgs),
 	var_list_to_term_list(RightHeadVars, RightHeadArgs),
+	length(LeftAs, LeftArity),
+	length(RightAs, RightArity),
 	make_functor_cons_id(LeftF, LeftArity, LeftConsId),
 	make_functor_cons_id(RightF, RightArity, RightConsId),
 	LeftArgContext = functor(LeftConsId, MainContext, SubContext),

@@ -19,6 +19,9 @@
 :- pred mercury_output_inst(inst, varset, io__state, io__state).
 :- mode mercury_output_inst(in, in, di, uo).
 
+:- pred mercury_output_inst_list(list(inst), varset, io__state, io__state).
+:- mode mercury_output_inst_list(in, in, di, uo).
+
 :- pred mercury_output_mode_list(list(mode), varset, io__state, io__state).
 :- mode mercury_output_mode_list(in, in, di, uo).
 
@@ -177,9 +180,6 @@ mercury_output_inst_defn(VarSet, eqv_inst(Name, Args, Body), Context) -->
 	io__write_string(") = "),
 	mercury_output_inst(Body, VarSet),
 	io__write_string(".\n").
-
-:- pred mercury_output_inst_list(list(inst), varset, io__state, io__state).
-:- mode mercury_output_inst_list(in, in, di, uo).
 
 mercury_output_inst_list([], _) --> [].
 mercury_output_inst_list([Inst | Insts], VarSet) -->
