@@ -1002,7 +1002,7 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 		} else if (word_count == 3) {
 			MR_trace_help_cat_item(words[1], words[2]);
 		} else {
-			MR_trace_help_cat_item("misc", "help");
+			MR_trace_help_cat_item("help", "help");
 		}
 #ifdef	MR_TRACE_HISTOGRAM
 	} else if (streq(words[0], "histogram_all")) {
