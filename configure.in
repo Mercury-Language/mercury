@@ -2164,7 +2164,11 @@ fi
 LIBGRADES="$LIBGRADES $DEFAULT_GRADE.tr.debug"
 
 # add `hlc' (--high-level-code, i.e. MLDS back-end) grades
-LIBGRADES="$LIBGRADES hlc.gc"
+if test "$enable_inefficient_grades" = yes -a "$CC" = gcc ; then
+    LIBGRADES="$LIBGRADES hlc.gc hlc_nest.gc"
+else
+    LIBGRADES="$LIBGRADES hlc.gc"
+fi
 
 if test $mercury_cv_microsoft_dotnet = yes -a "$enable_dotnet_grades" = yes
 then
