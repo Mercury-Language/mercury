@@ -813,6 +813,9 @@ mercury__exception__builtin_catch_model_non(MR_Mercury_Type_Info type_info,
 This causes problems because the LLDS back-end
 does not let you export code with determinism `nondet'.
 Instead we hand-code it... see below.
+Hand-coding it also avoids the casting needed to use MR_Word
+(which `pragma export' procedures use for polymorphically
+typed arguments) rather than MR_Box.
 
 :- pred call_goal(pred(T), T).
 :- mode call_goal(pred(out) is det, out) is det.

@@ -579,8 +579,6 @@ export__type_to_type_string(Type, Result) :-
 		Result = "MR_String"
 	; Type = term__functor(term__atom("character"), [], _) ->
 		Result = "MR_Char"
-	; Type = term__variable(_) ->
-		Result = "MR_Box"
 	;
 		Result = "MR_Word"
 	).

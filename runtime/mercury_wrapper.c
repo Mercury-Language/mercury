@@ -204,8 +204,8 @@ void	(*MR_library_finalizer)(void);
 void	(*MR_io_stderr_stream)(MR_Word *);
 void	(*MR_io_stdout_stream)(MR_Word *);
 void	(*MR_io_stdin_stream)(MR_Word *);
-void	(*MR_io_print_to_cur_stream)(MR_Word, MR_Box);
-void	(*MR_io_print_to_stream)(MR_Word, MR_Word, MR_Box);
+void	(*MR_io_print_to_cur_stream)(MR_Word, MR_Word);
+void	(*MR_io_print_to_stream)(MR_Word, MR_Word, MR_Word);
 
 void	(*MR_DI_output_current_ptr)(MR_Integer, MR_Integer, MR_Integer, MR_Word, MR_String,
 		MR_String, MR_Integer, MR_Integer, MR_Integer, MR_Word, MR_String, MR_Word, MR_Word);
