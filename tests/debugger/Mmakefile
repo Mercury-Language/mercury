@@ -75,7 +75,9 @@ MLFLAGS-interactive = --shared
 # this means it won't work properly if the static libraries are linked
 # (as is done by tools/bootcheck and tools/lmc).
 # So we only enable it if LINK_STATIC is not set.
-LINK_STATIC ?= no
+ifeq ($(origin LINK_STATIC),undefined)
+LINK_STATIC = no
+endif
 ifeq ($(LINK_STATIC),no)
 	RETRY_PROGS := $(RETRY_PROGS) interactive
 endif

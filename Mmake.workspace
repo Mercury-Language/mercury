@@ -29,11 +29,21 @@
 # and library directories to be included in MLFLAGS, MLLIBS and CFLAGS.
 
 #-----------------------------------------------------------------------------#
-LINK_STATIC ?= no
-SET_RPATH ?= yes
-LINK_BOEHM_GC_ONLY ?= no
-LINK_RUNTIME_ONLY ?= no
-LINK_STDLIB_ONLY ?= no
+ifeq ($(origin LINK_STATIC),undefined)
+LINK_STATIC = no
+endif
+ifeq ($(origin SET_RPATH),undefined)
+SET_RPATH = yes
+endif
+ifeq ($(origin LINK_BOEHM_GC_ONLY),undefined)
+LINK_BOEHM_GC_ONLY = no
+endif
+ifeq ($(origin LINK_RUNTIME_ONLY),undefined)
+LINK_RUNTIME_ONLY = no
+endif
+ifeq ($(origin LINK_STDLIB_ONLY),undefined)
+LINK_STDLIB_ONLY = no
+endif
 
 SCRIPTS_DIR = $(WORKSPACE)/scripts
 RUNTIME_DIR = $(WORKSPACE)/runtime
