@@ -702,17 +702,21 @@ esac
 
 #-----------------------------------------------------------------------------#
 
-: test and install the CLPR interface
-# CLPR requires trailing, so here we only test the trailing grades.
 GRADES="`(cd $DIR/mercury && mmake echo_libgrades)`"
 case $HOST in
    hg)
    	GRADES="$GRADES asm_fast.par.gc"
 	;;
 esac
-for grade in $GRADES
-do
-	case "$grade" in *.tr*)
+
+: test and install the CLPR interface
+# CLPR requires trailing, so here we only test the trailing grades.
+# XXX The CLPR interface currently also requires GCC (see the #error in
+# extras/clpr/cfloat.m), so we test it only if we're using GCC.
+case "$C_COMPILER" in
+    gcc)
+	for grade in $GRADES; do
+	    case "$grade" in *.tr*)
 		echo "test clpr stuff for grade $grade" 1>&2
 		{
 			echo "GRADE = $grade"
@@ -739,8 +743,13 @@ do
 			mmake realclean $PARALLEL MMAKEFLAGS=$PARALLEL) ||
 			    set_status "trailed_update tests"
 		;;
-	esac
-done
+	    esac
+	done
+	;;
+    *)
+	echo "not testing clpr, since the CLP(R) interface requires GCC"
+	;;
+esac
 
 #-----------------------------------------------------------------------------#
 
