@@ -5438,8 +5438,14 @@ check_timestamp(FileName, MaybeTimestamp0, MaybeTimestamp) -->
 	;
 		{ MaybeTimestamp0 = yes(error(IOError)) },
 		{ MaybeTimestamp = no },
-		report_modification_time_warning(
-			FileName, IOError)
+		globals__io_lookup_bool_option(smart_recompilation,
+			SmartRecompilation),
+		( { SmartRecompilation = yes } ->
+			report_modification_time_warning(
+				FileName, IOError)
+		;
+			[]
+		)
 	;
 		{ MaybeTimestamp0 = no },
 		{ MaybeTimestamp = no }

@@ -633,6 +633,12 @@ make_command_string(String0, QuoteType, String) :-
 	).
 
 	% Are we compiling in a win32 environment?
+	%
+	% If in doubt, use_win32 should succeed.  This is only used to
+	% decide whether to invoke Bourne shell command and shell scripts
+	% directly, or whether to invoke them via `sh -c ...'.  The latter
+	% should work correctly in a Unix environment too, but is a little
+	% less efficient since it invokes another process.
 :- pred use_win32 is semidet.
 :- pragma foreign_proc("C",
 	use_win32,
@@ -644,6 +650,9 @@ make_command_string(String0, QuoteType, String) :-
 	SUCCESS_INDICATOR = 0;
 #endif
 ").
+% The following clause is only used if there is no matching foreign_proc.
+% See comment above for why it is OK to just succeed here.
+use_win32 :- semidet_succeed.
 
 maybe_report_sizes(HLDS) -->
 	globals__io_lookup_bool_option(statistics, Statistics),

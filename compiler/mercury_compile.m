@@ -18,8 +18,10 @@
 
 :- import_module io, list.
 
-:- pred main(io__state, io__state).
-:- mode main(di, uo) is det.
+	% This is the main entry point for the Mercury compiler.
+	% It is called from top_level.main.
+:- pred real_main(io__state, io__state).
+:- mode real_main(di, uo) is det.
 
 	% main(Args).
 :- pred main(list(string), io__state, io__state).
@@ -121,7 +123,7 @@
 
 %-----------------------------------------------------------------------------%
 
-main -->
+real_main -->
 	gc_init,
 
 	 	% All messages go to stderr
@@ -170,6 +172,9 @@ main(Args) -->
 %-----------------------------------------------------------------------------%
 
 :- pred gc_init(io__state::di, io__state::uo) is det.
+
+% This version is only used if there is no matching foreign_proc version.
+gc_init --> [].
 
 :- pragma foreign_proc("C",
 	gc_init(_IO0::di, _IO::uo),

@@ -27,6 +27,18 @@
 
 :- include_module mercury_compile.
 
+% XXX It would be nicer to define `main' in top_level.mercury_compile,
+%     rather than defining it here.  But that doesn't work with the
+%     Mercury compiler's .NET back-end, which assumes that main is defined
+%     in the program's top-level module.
+:- use_module io.
+:- use_module top_level.mercury_compile.
+:- pred main(io.state::di, io.state::uo) is det.
+
+:- implementation.
+
+main --> top_level.mercury_compile.real_main.
+
 :- end_module top_level.
 
 %-----------------------------------------------------------------------------%
