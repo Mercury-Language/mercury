@@ -52,11 +52,13 @@
 % code at that resume point as well as the nature of the required
 % entry labels.
 %
-% Accurate Garbage Collection Notes:
+% Accurate garbage collection notes:
 %
-% Note that when using accurate gc, liveness is computed slightly
-% differently. The garbage collector needs access to the typeinfo
-% variables of any variable that could be garbage collected. 
+% When using accurate gc, liveness is computed slightly differently.
+% The garbage collector needs access to the typeinfo variables of any
+% variable that could be live at a garbage collection point. In the
+% present design of the garbage collector, garbage collection takes place
+% at procedure returns.
 % 
 % Hence, the invariant needed for accurate GC is:
 % 	a variable holding a typeinfo must be live at any continuation
@@ -75,6 +77,7 @@
 % 
 % A typeinfo variable becomes dead after both the following conditions
 % are true: 
+%
 % 	(1) The typeinfo variable is not used again (when it is no
 % 	    longer part of the nonlocals)
 %	(2) No other nonlocal variable's type is described by that typeinfo
@@ -91,6 +94,30 @@
 % die only when no other variable needing them will be live, so the
 % invariant holds.
 %
+% Quantification notes:
+%
+% If a variable is not live on entry to a goal, but the goal gives it a value,
+% the code of this module assumes that
+%
+% (a) any parallel goals also give it a value, or
+% (b) the variable is local to this goal and hence does not occur in parallel
+%     goals.
+%
+% If a variable occurs in the nonlocal set of the goal, the code of this
+% assumes that (b) is not true, and will therefore require (a) to be true.
+% If some of the parallel goals cannot succeed, the first pass will include
+% the variable in their post-birth sets.
+%
+% If a variable occurs in the nonlocal set of the goal, but is actually
+% local to the goal, then any occurrence of that variable in the postbirth
+% sets of parallel goals will lead to an inconsistency, because the variable
+% will not die on those parallel paths, but will die on the path that
+% actually gives a value to the variable.
+%
+% The nonlocal set of a goal is in general allowed to overapproximate the
+% true set of nonlocal variables of the goal. Since this module requires
+% *exact* information about nonlocals, it must recompute the nonlocal sets
+% before starting.
 
 %-----------------------------------------------------------------------------%
 
@@ -118,30 +145,39 @@
 :- implementation.
 
 :- import_module hlds_goal, hlds_data, llds, quantification, (inst), instmap.
-:- import_module hlds_out, mode_util, code_util.
+:- import_module hlds_out, mode_util, code_util, quantification.
 :- import_module prog_data, globals, passes_aux.
 :- import_module bool, list, map, set, std_util, term, assoc_list, require.
 :- import_module varset, string.
 
 detect_liveness_proc(ProcInfo0, ModuleInfo, ProcInfo) :-
 	proc_info_goal(ProcInfo0, Goal0),
-	proc_info_variables(ProcInfo0, Varset),
-	proc_info_vartypes(ProcInfo0, VarTypes),
-	live_info_init(ModuleInfo, ProcInfo0, VarTypes, Varset, LiveInfo),
+	proc_info_variables(ProcInfo0, Varset0),
+	proc_info_vartypes(ProcInfo0, VarTypes0),
+	proc_info_headvars(ProcInfo0, HeadVars),
 
-	initial_liveness(ProcInfo0, ModuleInfo, Liveness0),
-	detect_liveness_in_goal(Goal0, Liveness0, LiveInfo,
-		_, Goal1),
+		% recompute the nonlocal sets
+	implicitly_quantify_clause_body(HeadVars, Goal0, Varset0,
+	 	VarTypes0, Goal1, Varset, VarTypes, _Warnings),
 
-	initial_deadness(ProcInfo0, ModuleInfo, Deadness0),
-	detect_deadness_in_goal(Goal1, Deadness0, LiveInfo, _, Goal2),
+	proc_info_set_variables(ProcInfo0, Varset, ProcInfo1),
+	proc_info_set_vartypes(ProcInfo1, VarTypes, ProcInfo2),
+
+	live_info_init(ModuleInfo, ProcInfo2, VarTypes, Varset, LiveInfo),
+
+	initial_liveness(ProcInfo2, ModuleInfo, Liveness0),
+	detect_liveness_in_goal(Goal1, Liveness0, LiveInfo,
+		_, Goal2),
+
+	initial_deadness(ProcInfo2, ModuleInfo, Deadness0),
+	detect_deadness_in_goal(Goal2, Deadness0, LiveInfo, _, Goal3),
 
 	set__init(ResumeVars0),
-	detect_resume_points_in_goal(Goal2, Liveness0, LiveInfo,
+	detect_resume_points_in_goal(Goal3, Liveness0, LiveInfo,
 		ResumeVars0, Goal, _),
 
-	proc_info_set_goal(ProcInfo0, Goal, ProcInfo1),
-	proc_info_set_liveness_info(ProcInfo1, Liveness0, ProcInfo).
+	proc_info_set_goal(ProcInfo2, Goal, ProcInfo3),
+	proc_info_set_liveness_info(ProcInfo3, Liveness0, ProcInfo).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

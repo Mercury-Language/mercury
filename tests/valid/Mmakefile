@@ -49,6 +49,7 @@ SOURCES= \
 	lambda_switch.m \
 	lambda_type.m \
 	lazy_list.m \
+	liveness_nonlocals.m \
 	livevals_seq.m \
 	loop.m \
 	loop_in_disj.m \
