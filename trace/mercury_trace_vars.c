@@ -138,8 +138,6 @@ extern	struct MR_TypeCtorInfo_Struct
 	mercury_data_std_util__type_ctor_info_type_desc_0;
 extern	struct MR_TypeCtorInfo_Struct
 	mercury_data_std_util__type_ctor_info_type_ctor_desc_0;
-extern	struct MR_TypeCtorInfo_Struct	mercury_data___type_ctor_info_func_0;
-extern	struct MR_TypeCtorInfo_Struct	mercury_data___type_ctor_info_pred_0;
 extern	struct MR_TypeCtorInfo_Struct	mercury_data___type_ctor_info_void_0;
 
 #ifdef	NATIVE_GC

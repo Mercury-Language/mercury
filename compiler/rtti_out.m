@@ -88,9 +88,17 @@ output_rtti_data_defn(exist_locns(RttiTypeId, Ordinal, Locns),
 		DeclSet0, DeclSet) -->
 	output_generic_rtti_data_defn_start(RttiTypeId, exist_locns(Ordinal),
 		DeclSet0, DeclSet),
-	io__write_string(" = {\n"),
-	output_exist_locns(Locns),
-	io__write_string("};\n").
+	(
+			% ANSI/ISO C doesn't allow empty arrays, so
+			% place a dummy value in the array if necessary.
+		{ Locns = [] }
+	->
+		io__write_string("= { {0, 0} };\n")
+	;
+		io__write_string(" = {\n"),
+		output_exist_locns(Locns),
+		io__write_string("};\n")
+	).
 output_rtti_data_defn(exist_info(RttiTypeId, Ordinal, Plain, InTci, Tci,
 		Locns), DeclSet0, DeclSet) -->
 	output_rtti_addr_decls(RttiTypeId, Locns, "", "", 0, _,
@@ -110,17 +118,33 @@ output_rtti_data_defn(field_names(RttiTypeId, Ordinal, MaybeNames),
 		DeclSet0, DeclSet) -->
 	output_generic_rtti_data_defn_start(RttiTypeId, field_names(Ordinal),
 		DeclSet0, DeclSet),
-	io__write_string(" = {\n"),
-	output_maybe_quoted_strings(MaybeNames),
-	io__write_string("};\n").
+	(
+			% ANSI/ISO C doesn't allow empty arrays, so
+			% place a dummy value in the array if necessary.
+		{ MaybeNames = [] }
+	->
+		io__write_string("= { "" };\n")
+	;
+		io__write_string(" = {\n"),
+		output_maybe_quoted_strings(MaybeNames),
+		io__write_string("};\n")
+	).
 output_rtti_data_defn(field_types(RttiTypeId, Ordinal, Types),
 		DeclSet0, DeclSet) -->
 	output_rtti_datas_decls(Types, "", "", 0, _, DeclSet0, DeclSet1),
 	output_generic_rtti_data_defn_start(RttiTypeId, field_types(Ordinal),
 		DeclSet1, DeclSet),
-	io__write_string(" = {\n"),
-	output_addr_of_rtti_datas(Types),
-	io__write_string("};\n").
+	(
+			% ANSI/ISO C doesn't allow empty arrays, so
+			% place a dummy value in the array if necessary.
+		{ Types = [] }
+	->
+		io__write_string("= { NULL };\n")
+	;
+		io__write_string(" = {\n"),
+		output_addr_of_rtti_datas(Types),
+		io__write_string("};\n")
+	).
 output_rtti_data_defn(enum_functor_desc(RttiTypeId, FunctorName, Ordinal),
 		DeclSet0, DeclSet) -->
 	output_generic_rtti_data_defn_start(RttiTypeId,
@@ -929,9 +953,19 @@ pseudo_type_info_would_incl_code_addr(type_info(_, _))			= no.
 pseudo_type_info_would_incl_code_addr(higher_order_type_info(_, _, _))	= no.
 
 rtti_name_linkage(RttiName, Linkage) :-
-	Exported = rtti_name_is_exported(RttiName),
-	( Exported = yes, Linkage = extern
-	; Exported = no, Linkage = static
+	(
+			% ANSI/ISO C doesn't allow forward declarations
+			% of static data with incomplete types (in this
+			% case array types without an explicit array
+			% size), so make the declarations extern.
+		yes = rtti_name_has_array_type(RttiName)
+	->
+		Linkage = extern
+	;
+		Exported = rtti_name_is_exported(RttiName),
+		( Exported = yes, Linkage = extern
+		; Exported = no, Linkage = static
+		)
         ).
 
 rtti_name_c_type(exist_locns(_),           "MR_DuExistLocn", "[]").

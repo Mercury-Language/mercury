@@ -236,22 +236,22 @@ promise_only_solution(Pred) = OutVal :-
 
 #ifndef MR_HIGHLEVEL_CODE
 
-MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_FULL(builtin, , int, 0,
+MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_NOCM(builtin, int, 0,
 	MR_TYPECTOR_REP_INT,
 	mercury__builtin_unify_int_2_0,
 	mercury__builtin_compare_int_3_0);
 
-MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_FULL(builtin, , character, 0,
+MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_NOCM(builtin, character, 0,
 	MR_TYPECTOR_REP_CHAR,
 	mercury__builtin_unify_character_2_0,
 	mercury__builtin_compare_character_3_0);
 
-MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_FULL(builtin, , string, 0,
+MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_NOCM(builtin, string, 0,
 	MR_TYPECTOR_REP_STRING,
 	mercury__builtin_unify_string_2_0,
 	mercury__builtin_compare_string_3_0);
 
-MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_FULL(builtin, , float, 0,
+MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_NOCM(builtin, float, 0,
 	MR_TYPECTOR_REP_FLOAT,
 	mercury__builtin_unify_float_2_0,
 	mercury__builtin_compare_float_3_0);
@@ -261,11 +261,11 @@ MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_FULL(builtin, , float, 0,
 	** Note that they use the same three predicates.
 	*/
 
-MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_FULL(builtin, , func, 0,
+MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_NOCM(builtin, func, 0,
 	MR_TYPECTOR_REP_PRED,
 	mercury__builtin_unify_pred_2_0,
 	mercury__builtin_compare_pred_3_0);
-MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_FULL(builtin, , pred, 0,
+MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_NOCM(builtin, pred, 0,
 	MR_TYPECTOR_REP_PRED,
 	mercury__builtin_unify_pred_2_0,
 	mercury__builtin_compare_pred_3_0);

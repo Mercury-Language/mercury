@@ -808,10 +808,22 @@ struct MR_TypeCtorInfo_Struct {
 */
 
 #define MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_FULL(m, cm, n, a, cr, u, c)    \
+    MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_FULL_A(u, c)			\
+    MR_PASTE6(mercury_data_, cm, __type_ctor_info_, n, _, a) = {        \
+    MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_FULL_B(m, n, a, cr, u, c)
+
+	/* MSVC CPP doesn't like having an empty CM field. */
+#define MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_NOCM(m, n, a, cr, u, c)	\
+    MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_FULL_A(u, c)			\
+    MR_PASTE5(mercury_data_, __type_ctor_info_, n, _, a) = {		\
+    MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_FULL_B(m, n, a, cr, u, c)
+
+#define MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_FULL_A(u, c)			\
     Declare_entry(u);                                                   \
     Declare_entry(c);                                                   \
     MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_Struct                  \
-    MR_PASTE6(mercury_data_, cm, __type_ctor_info_, n, _, a) = {        \
+
+#define MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_FULL_B(m, n, a, cr, u, c)	\
         a,                                                              \
         MR_MAYBE_STATIC_CODE(ENTRY(u)),                                 \
         MR_MAYBE_STATIC_CODE(ENTRY(u)),                                 \
@@ -837,7 +849,7 @@ struct MR_TypeCtorInfo_Struct {
         MR_PASTE7(mercury____Compare___, m, __, n, _, a, _0))
 
 #define MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_UNUSED(n, a, cr)       \
-    MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_FULL(builtin, , n, a, cr,  \
+    MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_NOCM(builtin, n, a, cr,	\
         mercury__unused_0_0,                                    \
         mercury__unused_0_0)
 
