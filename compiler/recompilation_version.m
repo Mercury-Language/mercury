@@ -158,7 +158,6 @@ distribute_pragma_items(ItemId - ItemAndContext,
 	AddIfNotExisting = no,
 	(
 		MaybePredOrFunc = yes(PredOrFunc),
-
 		ItemType = pred_or_func_to_item_type(PredOrFunc),
 		recompilation_version__add_gathered_item(Item,
 			item_id(ItemType, SymName - Arity),
@@ -166,15 +165,12 @@ distribute_pragma_items(ItemId - ItemAndContext,
 			GatheredItems0, GatheredItems2)
 	;
 		MaybePredOrFunc = no,
-
 		recompilation_version__add_gathered_item(Item,
 			item_id(predicate, SymName - Arity),
 			ItemContext, AddIfNotExisting,
 			GatheredItems0, GatheredItems1),
-
-		adjust_func_arity(function, Arity, FuncArity),
 		recompilation_version__add_gathered_item(Item,
-			item_id(function, SymName - FuncArity),
+			item_id(function, SymName - Arity),
 			ItemContext, AddIfNotExisting,
 			GatheredItems1, GatheredItems2)
 	),
