@@ -16,11 +16,12 @@ MAIN_TARGET=mercury_compile
 MC	=	MERCURY_C_INCL_DIR=$(RUNTIME_DIR) \
 		MERCURY_INT_DIR=$(LIBRARY_DIR) mc
 MGNUC	=	MERCURY_C_INCL_DIR=$(RUNTIME_DIR) mgnuc
-MGNUCFLAGS =	-I $(MERCURY_DIR)/boehm_gc
+MGNUCFLAGS =	-I $(BOEHM_GC_DIR)
 MOD2INIT =	MERCURY_MOD_LIB_DIR=$(RUNTIME_DIR) \
 		MERCURY_MOD_LIB_MODS="$(SYS_MODS)" \
 		mod2init
 ML	=	MERCURY_C_LIB_DIR=`pwd`/$(RUNTIME_DIR) ml
+MLFLAGS=	-L$(RUNTIME_DIR) -L$(LIBRARY_DIR) -L$(BOEHM_GC_DIR)
 
 #-----------------------------------------------------------------------------#
 
