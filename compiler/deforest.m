@@ -1638,7 +1638,7 @@ deforest__move_goals(CanMove, ModuleInfo, FullyStrict,
 		RevBetweenGoals0, !BetweenGoals, EndGoal, !MovedGoals).
 
 :- type can_move == pred(module_info, bool, hlds_goal, hlds_goals).
-:- mode can_move :: (pred(in, in, in, in) is semidet).
+:- mode can_move == (pred(in, in, in, in) is semidet).
 
 	% Check all goals occurring later in the conjunction to
 	% see if they depend on the current goal. A goal
