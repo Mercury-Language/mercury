@@ -3181,8 +3181,7 @@ get_c_interface_info(HLDS, UseForeignLanguage, Foreign_InterfaceInfo) :-
 	% If this module contains `:- pragma export' declarations,
 	% add a "#include <module>.h" declaration.
 	% XXX pragma export is only supported for C.
-	Foreign_ExportDecls = foreign_export_decls(_, ExportDecls),
-	( UseForeignLanguage = c, ExportDecls \= [] ->
+	( UseForeignLanguage = c, Foreign_ExportDecls \= [] ->
 		% We put the new include at the end since the list is
 		% stored in reverse, and we want this include to come
 		% first.
@@ -3252,8 +3251,8 @@ mercury_compile__output_pass(HLDS0, GlobalData, Procs0, MaybeRLFile,
 	{ list__condense([CommonableData, NonCommonStaticData, ClosureLayouts,
 		TypeCtorTables, TypeClassInfos, PossiblyDynamicLayouts],
 		AllData) },
-	mercury_compile__construct_c_file(HLDS, C_InterfaceInfo,
-		Procs1, GlobalVars, AllData, CFile, NumChunks),
+	mercury_compile__construct_c_file(C_InterfaceInfo, Procs1, GlobalVars,
+		AllData, CFile, NumChunks),
 	mercury_compile__output_llds(ModuleName, CFile, LayoutLabels,
 		MaybeRLFile, Verbose, Stats),
 
@@ -3277,14 +3276,13 @@ mercury_compile__output_pass(HLDS0, GlobalData, Procs0, MaybeRLFile,
 
 	% Split the code up into bite-size chunks for the C compiler.
 
-:- pred mercury_compile__construct_c_file(module_info, foreign_interface_info,
+:- pred mercury_compile__construct_c_file(foreign_interface_info,
 	list(c_procedure), list(comp_gen_c_var), list(comp_gen_c_data),
 	c_file, int, io__state, io__state).
-:- mode mercury_compile__construct_c_file(in, in, in, in, in, out, out, di, uo)
+:- mode mercury_compile__construct_c_file(in, in, in, in, out, out, di, uo)
 	is det.
 
-mercury_compile__construct_c_file(Module,
-		C_InterfaceInfo, Procedures, GlobalVars,
+mercury_compile__construct_c_file(C_InterfaceInfo, Procedures, GlobalVars,
 		AllData, CFile, ComponentCount) -->
 	{ C_InterfaceInfo = foreign_interface_info(ModuleSymName,
 		C_HeaderCode0, C_Includes, C_BodyCode0,
@@ -3305,16 +3303,7 @@ mercury_compile__construct_c_file(Module,
 	),
 	list__map_foldl(make_foreign_import_header_code, C_Includes,
 		C_HeaderCode1),
-
-		% If the current module contains a foreign_type then all the
-		% declarations will be placed into the header (.mh) file, so
-		% only keep the foreign imports.
-	{ module_info_contains_foreign_type(Module) ->
-		C_HeaderCode = C_HeaderCode1
-	;
-		C_HeaderCode = C_HeaderCode0 ++ C_HeaderCode1
-	},
-
+	{ C_HeaderCode = C_HeaderCode0 ++ C_HeaderCode1 },
 	{ CFile = c_file(ModuleSymName, C_HeaderCode, C_BodyCode,
 		C_ExportDefns, GlobalVars, AllData, ChunkedModules) },
 	{ list__length(C_BodyCode, UserCCodeCount) },

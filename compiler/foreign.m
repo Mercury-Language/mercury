@@ -21,7 +21,7 @@
 :- import_module parse_tree__prog_data, libs__globals.
 :- import_module hlds__hlds_module, hlds__hlds_pred.
 
-:- import_module bool, list, std_util, string, term.
+:- import_module bool, list, string, term.
 
 :- type foreign_decl_info ==	list(foreign_decl_code).	
 		% in reverse order
@@ -39,16 +39,7 @@
 		foreign_body_code(foreign_language, string, prog_context).
 
 :- type foreign_export_defns == list(foreign_export).
-:- type foreign_export_decls
-	--->	foreign_export_decls(
-				% The foreign decls needed for use by
-				% the foreign exports, if any.
-				% Currently this will be filled out if
-				% there is a foreign_type declared in
-				% the module.
-			maybe(foreign_decl_info),
-			list(foreign_export_decl)
-		).
+:- type foreign_export_decls == list(foreign_export_decl).
 
 :- type foreign_export_decl
 	---> foreign_export_decl(
