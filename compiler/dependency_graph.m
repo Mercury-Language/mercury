@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2000 The University of Melbourne.
+% Copyright (C) 1995-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -21,10 +21,23 @@
 
 :- interface.
 :- import_module hlds_module, hlds_pred.
-:- import_module list, io.
+:- import_module bool, list, io.
 
+	% Ensure that the module_info contains a version of the
+	% dependency_info which only contains arcs between procedures
+	% for which there are clauses defined (ie not imported except
+	% for opt_imported).
+	%
 :- pred module_info_ensure_dependency_info(module_info, module_info).
 :- mode module_info_ensure_dependency_info(in, out) is det.
+
+	% Build the dependency graph, if the bool is yes then
+	% imported procedures are included in the dependency graph,
+	% otherwise they aren't.
+	%
+:- pred dependency_graph__build_dependency_graph(module_info, bool,
+		dependency_info).
+:- mode dependency_graph__build_dependency_graph(in, in, out) is det.
 
 :- pred dependency_graph__write_dependency_graph(module_info, module_info,
 						io__state, io__state).
@@ -56,6 +69,30 @@
 :- pred module_info_ensure_aditi_dependency_info(module_info, module_info).
 :- mode module_info_ensure_aditi_dependency_info(in, out) is det.
 
+	% write_graph(Graph, WriteNode, WriteEdge)
+	%
+	% Write out the dependency graph using WriteNode to decide what
+	% to output for a node in the dependency graph and WriteEdge for
+	% an edge.
+	%
+:- pred dependency_graph__write_graph(dependency_info::in,
+	pred(pred_proc_id, io__state, io__state)::pred(in, di, uo) is det,
+	pred(pred_proc_id, pred_proc_id, io__state, io__state)::
+			pred(in, in, di, uo) is det,
+	io__state::di, io__state::uo) is det.
+
+	% write_graph_nodes(Nodes, Graph, WriteNode, WriteEdge)
+	%
+	% Write out each of the Nodes in the Graph using WriteNode and
+	% any edges originating in Nodes, using WriteEdge.
+	%
+:- pred dependency_graph__write_graph_nodes(list(pred_proc_id)::in,
+	dependency_graph::in,
+	pred(pred_proc_id, io__state, io__state)::pred(in, di, uo) is det,
+	pred(pred_proc_id, pred_proc_id, io__state, io__state)::
+			pred(in, in, di, uo) is det,
+	io__state::di, io__state::uo) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -85,21 +122,19 @@ module_info_ensure_dependency_info(ModuleInfo0, ModuleInfo) :-
 	( MaybeDepInfo = yes(_) ->
 	    ModuleInfo = ModuleInfo0
 	;
-	    dependency_graph__build_dependency_graph(ModuleInfo0, ModuleInfo)
+	    dependency_graph__build_dependency_graph(ModuleInfo0, no, DepInfo),
+	    module_info_set_dependency_info(ModuleInfo0, DepInfo, ModuleInfo)
 	).
 
 	% Traverse the module structure, calling `dependency_graph__add_arcs'
 	% for each procedure body.
 
-:- pred dependency_graph__build_dependency_graph(module_info, module_info).
-:- mode dependency_graph__build_dependency_graph(in, out) is det.
-
-dependency_graph__build_dependency_graph(ModuleInfo0, ModuleInfo) :-
+dependency_graph__build_dependency_graph(ModuleInfo0, Imported, DepInfo) :-
 	module_info_predids(ModuleInfo0, PredIds),
 	relation__init(DepGraph0),
-	dependency_graph__add_pred_nodes(PredIds, ModuleInfo0,
+	dependency_graph__add_pred_nodes(PredIds, ModuleInfo0, Imported,
 				DepGraph0, DepGraph1),
-	dependency_graph__add_pred_arcs(PredIds, ModuleInfo0,
+	dependency_graph__add_pred_arcs(PredIds, ModuleInfo0, Imported,
 				DepGraph1, DepGraph),
 	hlds_dependency_info_init(DepInfo0),
 	hlds_dependency_info_set_dependency_graph(DepInfo0, DepGraph,
@@ -107,8 +142,7 @@ dependency_graph__build_dependency_graph(ModuleInfo0, ModuleInfo) :-
 	relation__atsort(DepGraph, DepOrd0),
 	dependency_graph__sets_to_lists(DepOrd0, [], DepOrd),
 	hlds_dependency_info_set_dependency_ordering(DepInfo1, DepOrd,
-				DepInfo),
-	module_info_set_dependency_info(ModuleInfo0, DepInfo, ModuleInfo).
+				DepInfo).
 
 :- pred dependency_graph__sets_to_lists( list(set(pred_proc_id)),
 			list(list(pred_proc_id)), list(list(pred_proc_id))).
@@ -123,21 +157,28 @@ dependency_graph__sets_to_lists([X | Xs], Ys, Zs) :-
 %-----------------------------------------------------------------------------%
 
 :- pred dependency_graph__add_pred_nodes(list(pred_id), module_info,
-                        dependency_graph, dependency_graph).
-:- mode dependency_graph__add_pred_nodes(in, in, in, out) is det.
+		bool, dependency_graph, dependency_graph).
+:- mode dependency_graph__add_pred_nodes(in, in, in, in, out) is det.
 
-dependency_graph__add_pred_nodes([], _ModuleInfo, DepGraph, DepGraph).
-dependency_graph__add_pred_nodes([PredId | PredIds], ModuleInfo,
+dependency_graph__add_pred_nodes([], _ModuleInfo, _, DepGraph, DepGraph).
+dependency_graph__add_pred_nodes([PredId | PredIds], ModuleInfo, Imported,
                                         DepGraph0, DepGraph) :-
         module_info_preds(ModuleInfo, PredTable),
         map__lookup(PredTable, PredId, PredInfo),
-	% Don't bother adding nodes (or arcs) for procedures
-	% which which are imported (ie we don't have any `clauses'
-	% for).
-	pred_info_non_imported_procids(PredInfo, ProcIds),
+	(
+		% Don't bother adding nodes (or arcs) for procedures
+		% which which are imported (ie we don't have any
+		% `clauses' for).
+		Imported = no,
+		pred_info_non_imported_procids(PredInfo, ProcIds)
+	;
+		Imported = yes,
+		pred_info_procids(PredInfo, ProcIds)
+	),
+
 	dependency_graph__add_proc_nodes(ProcIds, PredId, ModuleInfo,
 		DepGraph0, DepGraph1),
-        dependency_graph__add_pred_nodes(PredIds, ModuleInfo,
+        dependency_graph__add_pred_nodes(PredIds, ModuleInfo, Imported,
 		DepGraph1, DepGraph).
 
 :- pred dependency_graph__add_proc_nodes(list(proc_id), pred_id, module_info,
@@ -154,40 +195,71 @@ dependency_graph__add_proc_nodes([ProcId | ProcIds], PredId, ModuleInfo,
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- pred dependency_graph__add_pred_arcs(list(pred_id), module_info,
+:- pred dependency_graph__add_pred_arcs(list(pred_id), module_info, bool,
 			dependency_graph, dependency_graph).
-:- mode dependency_graph__add_pred_arcs(in, in, in, out) is det.
+:- mode dependency_graph__add_pred_arcs(in, in, in, in, out) is det.
 
-dependency_graph__add_pred_arcs([], _ModuleInfo, DepGraph, DepGraph).
-dependency_graph__add_pred_arcs([PredId | PredIds], ModuleInfo,
+dependency_graph__add_pred_arcs([], _ModuleInfo, _, DepGraph, DepGraph).
+dependency_graph__add_pred_arcs([PredId | PredIds], ModuleInfo, Imported,
 					DepGraph0, DepGraph) :-
 	module_info_preds(ModuleInfo, PredTable),
 	map__lookup(PredTable, PredId, PredInfo),
-	pred_info_non_imported_procids(PredInfo, ProcIds),
-	dependency_graph__add_proc_arcs(ProcIds, PredId, ModuleInfo,
+	(
+		% Don't bother adding nodes (or arcs) for procedures
+		% which which are imported (ie we don't have any
+		% `clauses' for).
+		Imported = no,
+		pred_info_non_imported_procids(PredInfo, ProcIds)
+	;
+		Imported = yes,
+		pred_info_procids(PredInfo, ProcIds)
+	),
+	dependency_graph__add_proc_arcs(ProcIds, PredId, ModuleInfo, Imported,
 			DepGraph0, DepGraph1),
-	dependency_graph__add_pred_arcs(PredIds, ModuleInfo,
+	dependency_graph__add_pred_arcs(PredIds, ModuleInfo, Imported,
 			DepGraph1, DepGraph).
 
 :- pred dependency_graph__add_proc_arcs(list(proc_id), pred_id, module_info,
-			dependency_graph, dependency_graph).
-:- mode dependency_graph__add_proc_arcs(in, in, in, in, out) is det.
+			bool, dependency_graph, dependency_graph).
+:- mode dependency_graph__add_proc_arcs(in, in, in, in, in, out) is det.
 
-dependency_graph__add_proc_arcs([], _PredId, _ModuleInfo, DepGraph, DepGraph).
+dependency_graph__add_proc_arcs([], _PredId, _ModuleInfo, _,
+		DepGraph, DepGraph).
 dependency_graph__add_proc_arcs([ProcId | ProcIds], PredId, ModuleInfo,
-						DepGraph0, DepGraph) :-
+		IncludeImported, DepGraph0, DepGraph) :-
+
 	module_info_preds(ModuleInfo, PredTable0),
 	map__lookup(PredTable0, PredId, PredInfo0),
 	pred_info_procedures(PredInfo0, ProcTable0),
 	map__lookup(ProcTable0, ProcId, ProcInfo0),
 
-	proc_info_goal(ProcInfo0, Goal),
+	(
+		IncludeImported = no,
+		proc_info_goal(ProcInfo0, Goal),
 
-	relation__lookup_element(DepGraph0, proc(PredId, ProcId), Caller),
-	dependency_graph__add_arcs_in_goal(Goal, Caller, DepGraph0, DepGraph1),
+		relation__lookup_element(DepGraph0,
+				proc(PredId, ProcId), Caller),
+		dependency_graph__add_arcs_in_goal(Goal, Caller,
+				DepGraph0, DepGraph1)
+	;
+		IncludeImported = yes,
+		pred_info_import_status(PredInfo0, ImportStatus),
+		status_is_imported(ImportStatus, Imported),
+		(
+			Imported = yes,
+			DepGraph1 = DepGraph0
+		;
+			Imported = no,
+			proc_info_goal(ProcInfo0, Goal),
 
+			relation__lookup_element(DepGraph0,
+					proc(PredId, ProcId), Caller),
+			dependency_graph__add_arcs_in_goal(Goal, Caller,
+					DepGraph0, DepGraph1)
+		)
+	),
 	dependency_graph__add_proc_arcs(ProcIds, PredId, ModuleInfo,
-						DepGraph1, DepGraph).
+			IncludeImported, DepGraph1, DepGraph).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -358,69 +430,36 @@ dependency_graph__write_dependency_graph(ModuleInfo0, ModuleInfo) -->
 	io__write_string("% Dependency graph\n"),
 	{ module_info_ensure_dependency_info(ModuleInfo0, ModuleInfo) },
 	{ module_info_dependency_info(ModuleInfo, DepInfo) },
-	{ hlds_dependency_info_get_dependency_graph(DepInfo, DepGraph) },
-	{ relation__domain(DepGraph, DomSet) },
-	{ set__to_sorted_list(DomSet, DomList) },
-	dependency_graph__write_dependency_graph_2(DomList, DepGraph,
-			ModuleInfo),
 	io__write_string("\n\n% Dependency ordering\n"),
-	{ hlds_dependency_info_get_dependency_ordering(DepInfo, DepOrd) },
-	dependency_graph__write_dependency_ordering(DepOrd, ModuleInfo, 1).
+	write_graph(DepInfo, (pred(_::in, di, uo) is det --> []),
+		(pred(Parent::in, Child::in, di, uo) is det -->
+			{ Parent = proc(PPredId, PProcId) }, % Caller
+			{ Child = proc(CPredId, CProcId) }, % Callee
+			{ module_info_pred_proc_info(ModuleInfo, PPredId,
+					PProcId, PPredInfo, PProcInfo) },
+			{ module_info_pred_proc_info(ModuleInfo, CPredId,
+					CProcId, CPredInfo, CProcInfo) },
+			{ pred_info_name(PPredInfo, PName) },
+			{ proc_info_declared_determinism(PProcInfo, PDet) },
+			{ proc_info_argmodes(PProcInfo, PModes) },
+			{ proc_info_context(PProcInfo, PContext) },
 
-:- pred dependency_graph__write_dependency_graph_2(list(pred_proc_id),
-		dependency_graph, module_info, io__state, io__state).
-:- mode dependency_graph__write_dependency_graph_2(in, in, in, di, uo) is det.
+			{ pred_info_name(CPredInfo, CName) },
+			{ proc_info_declared_determinism(CProcInfo, CDet) },
+			{ proc_info_argmodes(CProcInfo, CModes) },
+			{ proc_info_context(CProcInfo, CContext) },
 
-dependency_graph__write_dependency_graph_2([], _DepGraph, _ModuleInfo) --> [].
-dependency_graph__write_dependency_graph_2([Node | Nodes], DepGraph, 
-			ModuleInfo) -->
-	{ relation__lookup_element(DepGraph, Node, NodeKey) },
-	{ relation__lookup_from(DepGraph, NodeKey, SuccSet) },
-	{ set__to_sorted_list(SuccSet, SuccList) },
-	dependency_graph__write_dependency_graph_3(SuccList, Node, DepGraph, 
-				ModuleInfo),
-	dependency_graph__write_dependency_graph_2(Nodes, DepGraph, 
-				ModuleInfo).
+			{ varset__init(ModeVarSet) },
 
-:- pred dependency_graph__write_dependency_graph_3(list(relation_key),
-		pred_proc_id, dependency_graph, module_info, 
-		io__state, io__state).
-:- mode dependency_graph__write_dependency_graph_3(in, in, in, in, 
-				di, uo) is det.
-
-dependency_graph__write_dependency_graph_3([], _Node, _DepGraph, 
-				_ModuleInfo) -->
-	[].
-dependency_graph__write_dependency_graph_3([S | Ss], Node, DepGraph, 
-				ModuleInfo) -->
-	{ relation__lookup_key(DepGraph, S, SNode) },
-	{ Node  = proc(PPredId, PProcId) },
-	{ SNode = proc(CPredId, CProcId) },
-	{ module_info_pred_proc_info(ModuleInfo, PPredId, PProcId,
-						PPredInfo, PProcInfo) },
-	{ module_info_pred_proc_info(ModuleInfo, CPredId, CProcId,
-						CPredInfo, CProcInfo) },
-	{ pred_info_name(PPredInfo, PName) },
-	{ proc_info_declared_determinism(PProcInfo, PDet) },
-	{ proc_info_argmodes(PProcInfo, PModes) },
-	{ proc_info_context(PProcInfo, PContext) },
-
-	{ pred_info_name(CPredInfo, CName) },
-	{ proc_info_declared_determinism(CProcInfo, CDet) },
-	{ proc_info_argmodes(CProcInfo, CModes) },
-	{ proc_info_context(CProcInfo, CContext) },
-
-	{ varset__init(ModeVarSet) },
-
-	mercury_output_pred_mode_subdecl(ModeVarSet, unqualified(PName),
-						PModes, PDet, PContext),
-	io__write_string(" -> "),
-	mercury_output_pred_mode_subdecl(ModeVarSet, unqualified(CName),
-						CModes, CDet, CContext),
-	io__write_string(".\n"),
-
-	dependency_graph__write_dependency_graph_3(Ss, Node, DepGraph, 
-					ModuleInfo).
+			mercury_output_pred_mode_subdecl(ModeVarSet,
+					unqualified(PName), PModes, PDet,
+					PContext),
+			io__write_string(" -> "),
+			mercury_output_pred_mode_subdecl(ModeVarSet,
+					unqualified(CName), CModes, CDet,
+					CContext),
+			io__write_string("\n")
+		)).
 
 %-----------------------------------------------------------------------------%
 
@@ -465,55 +504,49 @@ dependency_graph__write_clique([proc(PredId, ProcId) | Rest], ModuleInfo) -->
 dependency_graph__write_prof_dependency_graph(ModuleInfo0, ModuleInfo) -->
 	{ module_info_ensure_dependency_info(ModuleInfo0, ModuleInfo) },
 	{ module_info_dependency_info(ModuleInfo, DepInfo) },
+	write_graph(DepInfo, (pred(_::in, di, uo) is det --> []),
+		(pred(Parent::in, Child::in, di, uo) is det -->
+			{ Parent = proc(PPredId, PProcId) }, % Caller
+			{ Child = proc(CPredId, CProcId) }, % Callee
+			dependency_graph__output_label(ModuleInfo,
+					PPredId, PProcId),
+			io__write_string("\t"),
+			dependency_graph__output_label(ModuleInfo,
+					CPredId, CProcId),
+			io__write_string("\n")
+		)).
+
+%-----------------------------------------------------------------------------%
+
+write_graph(DepInfo, WriteNode, WriteLink) -->
 	{ hlds_dependency_info_get_dependency_graph(DepInfo, DepGraph) },
 	{ relation__domain(DepGraph, DomSet) },
 	{ set__to_sorted_list(DomSet, DomList) },
-	dependency_graph__write_prof_dependency_graph_2(DomList, DepGraph,
-			ModuleInfo).
+	write_graph_nodes(DomList, DepGraph, WriteNode, WriteLink).
 
-:- pred dependency_graph__write_prof_dependency_graph_2(list(pred_proc_id),
-		dependency_graph, module_info, io__state, io__state).
-:- mode dependency_graph__write_prof_dependency_graph_2(in, in, in, di, uo) 
-		is det.
+write_graph_nodes([], _Graph, _WriteNode, _WriteLink) --> [].
+write_graph_nodes([Node | Nodes], Graph, WriteNode, WriteLink) -->
+	WriteNode(Node),
 
-% dependency_graph__write_prof_dependency_graph_2:
-% 	Scan's through list of caller's, then call's next predicate to get
-%	callee's
-dependency_graph__write_prof_dependency_graph_2([], _DepGraph, _ModuleInfo) --> [].
-dependency_graph__write_prof_dependency_graph_2([Node | Nodes], DepGraph, 
-			ModuleInfo) -->
-	{ relation__lookup_element(DepGraph, Node, NodeKey) },
-	{ relation__lookup_from(DepGraph, NodeKey, SuccSet) },
-	{ set__to_sorted_list(SuccSet, SuccList) },
-	dependency_graph__write_prof_dependency_graph_3(SuccList, Node,
-				DepGraph, ModuleInfo),
-	dependency_graph__write_prof_dependency_graph_2(Nodes, DepGraph, 
-				ModuleInfo).
+	{ relation__lookup_element(Graph, Node, NodeKey) },
+	{ relation__lookup_from(Graph, NodeKey, ChildrenSet) },
+	{ set__to_sorted_list(ChildrenSet, Children) },
 
+	write_graph_children(Children, Node, Graph, WriteLink),
 
-% dependency_graph__write_prof_dependency_graph_3:
-%	Process all the callee's of a node.
-%	XXX We should only make the Caller label once and then pass it around.
-:- pred dependency_graph__write_prof_dependency_graph_3(list(relation_key),
-		pred_proc_id, dependency_graph, module_info, 
-		io__state, io__state).
-:- mode dependency_graph__write_prof_dependency_graph_3(in, in, in, in, 
-				di, uo) is det.
+	write_graph_nodes(Nodes, Graph, WriteNode, WriteLink).
 
-dependency_graph__write_prof_dependency_graph_3([], _Node, _DepGraph, 
-				_ModuleInfo) -->
-	[].
-dependency_graph__write_prof_dependency_graph_3([S | Ss], Node, DepGraph, 
-				ModuleInfo) -->
-	{ relation__lookup_key(DepGraph, S, SNode) },
-	{ Node  = proc(PPredId, PProcId) }, % Caller
-	{ SNode = proc(CPredId, CProcId) }, % Callee
-	dependency_graph__output_label(ModuleInfo, PPredId, PProcId),
-	io__write_string("\t"),
-	dependency_graph__output_label(ModuleInfo, CPredId, CProcId),
-	io__write_string("\n"),
-	dependency_graph__write_prof_dependency_graph_3(Ss, Node, DepGraph, 
-					ModuleInfo).
+:- pred write_graph_children(list(relation_key)::in, pred_proc_id::in,
+	dependency_graph::in,
+	pred(pred_proc_id, pred_proc_id, io__state, io__state)::
+			pred(in, in, di, uo) is det,
+	io__state::di, io__state::uo) is det.
+
+write_graph_children([], _Parent, _Graph, _WriteLink) --> [].
+write_graph_children([ChildKey | Children], Parent, Graph, WriteLink) -->
+	{ relation__lookup_key(Graph, ChildKey, Child) },
+	WriteLink(Parent, Child),
+	write_graph_children(Children, Parent, Graph, WriteLink).
 
 %-----------------------------------------------------------------------------%
 

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2000 The University of Melbourne.
+% Copyright (C) 1996-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -266,6 +266,8 @@
 		module_info, module_info).
 :- mode module_add_foreign_body_code(in, in, in, in, out) is det.
 
+	% Please see module_info_ensure_dependency_info for the
+	% constraints on this dependency_info.
 :- pred module_info_get_maybe_dependency_info(module_info,
 	maybe(dependency_info)).
 :- mode module_info_get_maybe_dependency_info(in, out) is det.
@@ -399,6 +401,8 @@
 :- pred module_info_consids(module_info, list(cons_id)).
 :- mode module_info_consids(in, out) is det.
 
+	% Please see module_info_ensure_dependency_info for the
+	% constraints on this dependency_info.
 :- pred module_info_dependency_info(module_info, dependency_info).
 :- mode module_info_dependency_info(in, out) is det.
 
@@ -406,6 +410,8 @@
 		aditi_dependency_ordering).
 :- mode module_info_aditi_dependency_ordering(in, out) is det.
 
+	% Please see module_info_ensure_dependency_info for the
+	% constraints on this dependency_info.
 :- pred module_info_set_dependency_info(module_info, dependency_info,
 	module_info).
 :- mode module_info_set_dependency_info(in, in, out) is det.
@@ -485,6 +491,11 @@
 		globals ::			globals,
 		foreign_decl_info ::		foreign_decl_info,
 		foreign_body_info ::		foreign_body_info,
+			
+			% This dependency info is constrained to be only
+			% for between procedures which have clauses
+			% defined for them in this compilation unit
+			% (that includes opt_imported procedures).
 		maybe_dependency_info ::	maybe(dependency_info),
 		num_errors ::			int,
 		last_lambda_number ::		int,
