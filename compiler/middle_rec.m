@@ -112,8 +112,11 @@ middle_rec__gen_det(Goal, Instrs) -->
 		{ assoc_list__from_corresponding_lists(HeadVars, ArgModes, Args) },
 		code_info__setup_call(Args, HeadVars, callee, EpilogFrag),
 
+		{ code_gen__output_args(Args, LiveArgs) },
+
 		{ BaseCode = tree(BaseCodeFrag, EpilogFrag) },
 		{ RecCode = tree(RecCodeFrag, EpilogFrag) },
+		{ LiveValCode = [ livevals(LiveArgs) - "" ] },
 
 		{ tree__flatten(RecCode, RecListList) },
 		{ list__condense(RecListList, RecList) },
@@ -184,11 +187,13 @@ middle_rec__gen_det(Goal, Instrs) -->
 			MaybeDecrSp,
 			DecrAuxReg,
 			TestAuxReg,
+			LiveValCode,
 			[
 				goto(succip) - "exit from recursive case",
 				label(BaseLabel) - "start of base case"
 			],
 			BaseList,
+			LiveValCode,
 			[
 				goto(succip) - "exit from base case"
 			]

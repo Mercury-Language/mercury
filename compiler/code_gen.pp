@@ -68,6 +68,9 @@
 						code_info, code_info).
 :- mode code_gen__generate_forced_non_goal(in, out, in, out) is det.
 
+:- pred code_gen__output_args(assoc_list(var, arg_info), bintree_set(lval)).
+:- mode code_gen__output_args(in, out) is det.
+
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -1039,9 +1042,6 @@ code_gen__generate_non_goals([Goal | Goals], Instr) -->
 	).
 
 %---------------------------------------------------------------------------%
-
-:- pred code_gen__output_args(assoc_list(var, arg_info), bintree_set(lval)).
-:- mode code_gen__output_args(in, out) is det.
 
 code_gen__output_args([], LiveVals) :-
 	bintree_set__init(LiveVals).
