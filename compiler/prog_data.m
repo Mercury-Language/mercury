@@ -316,6 +316,10 @@
 	% The "real" inst unifications correspond to real unifications,
 	% and are not allowed to unify with `clobbered' insts (unless
 	% the unification would be `det').
+	% Any inst unification which is associated with some code that
+	% will actually examine the contents of the variables in question
+	% must be "real".  Inst unifications that are not associated with
+	% some real code that examines the variables' values are "fake".
 	% "Fake" inst unifications are used for procedure calls in implied
 	% modes, where the final inst of the var must be computed by
 	% unifying its initial inst with the procedure's final inst,
