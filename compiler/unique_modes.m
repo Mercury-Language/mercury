@@ -126,19 +126,9 @@ unique_modes__check_proc_2(ProcInfo0, PredId, ProcId, ModuleInfo0,
 	% Extract the useful fields in the proc_info.
 	%
 	proc_info_headvars(ProcInfo0, Args),
-	proc_info_argmodes(ProcInfo0, ArgModes0),
+	proc_info_argmodes(ProcInfo0, ArgModes),
 	proc_info_arglives(ProcInfo0, ModuleInfo0, ArgLives),
 	proc_info_goal(ProcInfo0, Goal0),
-
-	%
-	% extract the predicate's type from the pred_info
-	% and propagate the type information into the modes
-	%
-	module_info_preds(ModuleInfo0, Preds),
-	map__lookup(Preds, PredId, PredInfo),
-	pred_info_arg_types(PredInfo, _TypeVars, ArgTypes),
-	propagate_type_info_mode_list(ArgTypes, ModuleInfo0, ArgModes0,
-			ArgModes),
 
 	%
 	% Figure out the right context to use.
@@ -146,6 +136,7 @@ unique_modes__check_proc_2(ProcInfo0, PredId, ProcId, ModuleInfo0,
 	% there weren't any clauses at all, in which case
 	% we use the context of the mode declaration.
 	%
+	module_info_pred_info(ModuleInfo0, PredId, PredInfo),
 	pred_info_clauses_info(PredInfo, ClausesInfo),
 	ClausesInfo = clauses_info(_, _, _, _, ClauseList),
 	( ClauseList = [FirstClause | _] ->
@@ -594,13 +585,9 @@ unique_modes__check_call(PredId, ProcId, ArgVars,
 :- mode unique_modes__check_call_modes(in, in, in, in,
 			mode_info_di, mode_info_uo) is det.
 
-unique_modes__check_call_modes(ArgVars, ProcArgModes0, CodeModel, NeverSucceeds,
+unique_modes__check_call_modes(ArgVars, ProcArgModes, CodeModel, NeverSucceeds,
 			ModeInfo0, ModeInfo) :-
 	mode_info_get_module_info(ModeInfo0, ModuleInfo),
-	% propagate type info into modes
-	mode_info_get_types_of_vars(ModeInfo0, ArgVars, ArgTypes),
-	propagate_type_info_mode_list(ArgTypes, ModuleInfo,
-		ProcArgModes0, ProcArgModes),
 	mode_list_get_initial_insts(ProcArgModes, ModuleInfo,
 				InitialInsts),
 	modecheck_var_has_inst_list(ArgVars, InitialInsts, 0,

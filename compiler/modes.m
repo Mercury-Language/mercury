@@ -490,21 +490,16 @@ modecheck_proc_3(ProcId, PredId, ModuleInfo0, ProcInfo0, Changed0,
 	;
 		proc_info_context(ProcInfo0, Context)
 	),
-		% extract the predicate's type from the pred_info
-		% and propagate the type information into the modes
-	pred_info_arg_types(PredInfo, _TypeVars, ArgTypes),
-	propagate_type_info_mode_list(ArgTypes, ModuleInfo0, ArgModes0,
-			ArgModes1),
 
 		% modecheck the clause - first set the initial instantiation
 		% of the head arguments, mode-check the body, and
 		% then check that the final instantiation matches that in
 		% the mode declaration
-	mode_list_get_initial_insts(ArgModes1, ModuleInfo0, ArgInitialInsts),
+	mode_list_get_initial_insts(ArgModes0, ModuleInfo0, ArgInitialInsts),
 	assoc_list__from_corresponding_lists(HeadVars, ArgInitialInsts, InstAL),
 	instmap__from_assoc_list(InstAL, InstMap0),
 		% initially, only the non-clobbered head variables are live
-	mode_list_get_final_insts(ArgModes1, ModuleInfo0, ArgFinalInsts0),
+	mode_list_get_final_insts(ArgModes0, ModuleInfo0, ArgFinalInsts0),
 	get_live_vars(HeadVars, ArgLives0, LiveVarsList),
 	set__list_to_set(LiveVarsList, LiveVars),
 	mode_info_init(IOState0, ModuleInfo0, PredId, ProcId,

@@ -203,19 +203,13 @@
 				list(mode)).
 :- mode propagate_type_info_mode_list(in, in, in, out) is det.
 
-	% Given corresponding lists of types and insts, produce a new
-	% list of insts which includes the information provided by the
-	% corresponding types.
+	% Given corresponding lists of types and insts and a substitution
+	% for the type variables in the type, produce a new list of insts
+	% which includes the information provided by the corresponding types.
 	%
-:- pred propagate_type_info_inst_list(list(type), module_info, list(inst),
-				list(inst)).
-:- mode propagate_type_info_inst_list(in, in, in, out) is det.
-
-	% Given a type and an inst, produce a new inst which includes
-	% the information provided by the type.
-	%
-:- pred propagate_type_info_inst(type, module_info, inst, inst).
-:- mode propagate_type_info_inst(in, in, in, out) is det.
+:- pred propagate_type_info_inst_list(list(type), tsubst, module_info,
+		list(inst), list(inst)).
+:- mode propagate_type_info_inst_list(in, in, in, in, out) is det.
 
 	% Given the mode of a predicate,
 	% work out which arguments are live (might be used again
@@ -369,7 +363,7 @@ mode_to_arg_mode(ModuleInfo, Mode, Type, ArgMode) :-
 		type_constructors(Type, ModuleInfo, Constructors),
 		type_is_no_tag_type(Constructors, FunctorName, ArgType)
 	->
-		% if so, the arg_mode will be determined by the mode and
+		% the arg_mode will be determined by the mode and
 		% type of the functor's argument,
 		% so we figure out the mode and type of the argument,
 		% and then recurse
@@ -1038,11 +1032,13 @@ inst_lookup_2(InstName, ModuleInfo, Inst) :-
 			Inst = abstract_inst(Name, Args)
 		)
 	; InstName = typed_ground(Uniq, Type),
-		propagate_type_info_inst(Type, ModuleInfo, ground(Uniq, no),
-			Inst)
+		map__init(Subst),
+		propagate_type_info_inst(Type, Subst, ModuleInfo,
+			ground(Uniq, no), Inst)
 	; InstName = typed_inst(Type, TypedInstName),
 		inst_lookup_2(TypedInstName, ModuleInfo, Inst0),
-		propagate_type_info_inst(Type, ModuleInfo, Inst0, Inst)
+		map__init(Subst),
+		propagate_type_info_inst(Type, Subst, ModuleInfo, Inst0, Inst)
 	),
 	!.
 
@@ -1051,8 +1047,6 @@ inst_lookup_2(InstName, ModuleInfo, Inst) :-
 	% Given corresponding lists of types and modes, produce a new
 	% list of modes which includes the information provided by the
 	% corresponding types.
-
-:- propagate_type_info_mode_list(A, B, _, _) when A and B.
 
 propagate_type_info_mode_list([], _, [], []).
 propagate_type_info_mode_list([Type | Types], ModuleInfo, [Mode0 | Modes0],
@@ -1064,16 +1058,14 @@ propagate_type_info_mode_list([], _, [_|_], []) :-
 propagate_type_info_mode_list([_|_], _, [], []) :-
 	error("propagate_type_info_mode_list: length mismatch").
 
-:- propagate_type_info_inst_list(A, B, _, _) when A and B.
-
-propagate_type_info_inst_list([], _, [], []).
-propagate_type_info_inst_list([Type | Types], ModuleInfo, [Inst0 | Insts0],
-		[Inst | Insts]) :-
-	propagate_type_info_inst(Type, ModuleInfo, Inst0, Inst),
-	propagate_type_info_inst_list(Types, ModuleInfo, Insts0, Insts).
-propagate_type_info_inst_list([], _, [_|_], []) :-
+propagate_type_info_inst_list([], _, _, [], []).
+propagate_type_info_inst_list([Type | Types], Subst, ModuleInfo,
+		[Inst0 | Insts0], [Inst | Insts]) :-
+	propagate_type_info_inst(Type, Subst, ModuleInfo, Inst0, Inst),
+	propagate_type_info_inst_list(Types, Subst, ModuleInfo, Insts0, Insts).
+propagate_type_info_inst_list([], _, _, [_|_], []) :-
 	error("propagate_type_info_inst_list: length mismatch").
-propagate_type_info_inst_list([_|_], _, [], []) :-
+propagate_type_info_inst_list([_|_], _, _, [], []) :-
 	error("propagate_type_info_inst_list: length mismatch").
 
 	% Given a type and a mode, produce a new mode which includes
@@ -1084,45 +1076,31 @@ propagate_type_info_inst_list([_|_], _, [], []) :-
 
 propagate_type_info_mode(Type, ModuleInfo, Mode0, Mode) :-
 	mode_get_insts(ModuleInfo, Mode0, InitialInst0, FinalInst0),
-	ex_propagate_type_info_inst(Type, ModuleInfo, InitialInst0,
+	map__init(Subst),
+	ex_propagate_type_info_inst(Type, Subst, ModuleInfo, InitialInst0,
 		InitialInst),
-	ex_propagate_type_info_inst(Type, ModuleInfo, FinalInst0, FinalInst),
+	ex_propagate_type_info_inst(Type, Subst, ModuleInfo, FinalInst0, 
+		FinalInst),
 	Mode = (InitialInst -> FinalInst).
 
-	% Given a type and an inst, produce a new inst which includes
-	% the information provided by the type.
+	% Given a type, an inst and a substitution for the type variables in
+	% the type, produce a new inst which includes the information provided
+	% by the type.
+	%
+:- pred propagate_type_info_inst(type, tsubst, module_info, inst, inst).
+:- mode propagate_type_info_inst(in, in, in, in, out) is det.
 
-propagate_type_info_inst(Type, ModuleInfo, Inst0, Inst) :-
-	(
-		type_constructors(Type, ModuleInfo, Constructors)
-	->
-		% Many of the calls to this predicate from inst_match.m do
-		% not require expansion of ground insts to bound insts.
-		% At the moment the extra expansion only complicates the insts
-		% unnecessarily, so this is disabled.
-		% propagate_ctor_info(Inst0, Type, Constructors, ModuleInfo,
-		%	Inst) 
-		ex_propagate_ctor_info(Inst0, Type, Constructors, ModuleInfo,
-			Inst)
-	;
-		Inst = Inst0
-	).
+propagate_type_info_inst(Type, Subst, ModuleInfo, Inst0, Inst) :-
+	ex_propagate_ctor_info(Inst0, Type, Subst, ModuleInfo, Inst).
 
 	% Given a type and an inst, produce a new inst which includes
 	% the information provided by the type.
 
-:- pred ex_propagate_type_info_inst(type, module_info, inst, inst).
-:- mode ex_propagate_type_info_inst(in, in, in, out) is det.
+:- pred ex_propagate_type_info_inst(type, tsubst, module_info, inst, inst).
+:- mode ex_propagate_type_info_inst(in, in, in, in, out) is det.
 
-ex_propagate_type_info_inst(Type, ModuleInfo, Inst0, Inst) :-
-	(
-		type_constructors(Type, ModuleInfo, Constructors)
-	->
-		ex_propagate_ctor_info(Inst0, Type, Constructors, ModuleInfo,
-			Inst)
-	;
-		Inst = Inst0
-	).
+ex_propagate_type_info_inst(Type, Subst, ModuleInfo, Inst0, Inst) :-
+	ex_propagate_ctor_info(Inst0, Type, Subst, ModuleInfo, Inst).
 
 %-----------------------------------------------------------------------------%
 
@@ -1136,9 +1114,10 @@ propagate_ctor_info(free, _Type, _, _, free).	% XXX temporary hack
 
 propagate_ctor_info(free(_), _, _, _, _) :-
 	error("propagate_ctor_info: type info already present").
-propagate_ctor_info(bound(Uniq, BoundInsts0), Type, Constructors, ModuleInfo,
+propagate_ctor_info(bound(Uniq, BoundInsts0), Type, _Constructors, ModuleInfo,
 		Inst) :-
-	propagate_ctor_info_2(BoundInsts0, Type, Constructors, ModuleInfo,
+	map__init(Subst),
+	propagate_ctor_info_2(BoundInsts0, Type, Subst, ModuleInfo,
 		BoundInsts),
 	( BoundInsts = [] ->
 		Inst = not_reached
@@ -1166,7 +1145,7 @@ propagate_ctor_info(defined_inst(InstName), Type, Ctors, ModuleInfo, Inst) :-
 	inst_lookup(ModuleInfo, InstName, Inst0),
 	propagate_ctor_info(Inst0, Type, Ctors, ModuleInfo, Inst).
 
-:- pred ex_propagate_ctor_info(inst, type, list(constructor), module_info, inst).
+:- pred ex_propagate_ctor_info(inst, type, tsubst, module_info, inst).
 :- mode ex_propagate_ctor_info(in, in, in, in, out) is det.
 
 % ex_propagate_ctor_info(free, Type, _, _, free(Type)).	% temporarily disabled
@@ -1176,10 +1155,10 @@ ex_propagate_ctor_info(any(Uniq), _Type, _, _, any(Uniq)).
 						% XXX loses type info!
 ex_propagate_ctor_info(free(_), _, _, _, _) :-
 	error("ex_propagate_ctor_info: type info already present").
-ex_propagate_ctor_info(bound(Uniq, BoundInsts0), Type, Constructors,
+ex_propagate_ctor_info(bound(Uniq, BoundInsts0), Type, Subst, 
 		ModuleInfo, Inst) :-
-	propagate_ctor_info_2(BoundInsts0, Type, Constructors, ModuleInfo,
-		BoundInsts),
+	propagate_ctor_info_2(BoundInsts0, Type, Subst,
+		ModuleInfo, BoundInsts),
 	( BoundInsts = [] ->
 		Inst = not_reached
 	;
@@ -1195,14 +1174,19 @@ ex_propagate_ctor_info(ground(Uniq, yes(PredInstInfo)), _, _, _,
 	% for higher-order pred modes, the information we need is already
 	% in the inst, so we leave it unchanged
 			ground(Uniq, yes(PredInstInfo))).
-ex_propagate_ctor_info(not_reached, _Type, _Constructors, _ModuleInfo,
-		not_reached).
+ex_propagate_ctor_info(not_reached, _Type, _, _ModuleInfo, not_reached).
 ex_propagate_ctor_info(inst_var(_), _, _, _, _) :-
 	error("propagate_ctor_info: unbound inst var").
 ex_propagate_ctor_info(abstract_inst(Name, Args), _, _, _,
 		abstract_inst(Name, Args)).	% XXX loses info
-ex_propagate_ctor_info(defined_inst(InstName), Type, _, _,
-		defined_inst(typed_inst(Type, InstName))).
+ex_propagate_ctor_info(defined_inst(InstName0), Type0, Subst, _,
+		defined_inst(InstName)) :-
+	( map__is_empty(Subst) ->
+		Type = Type0
+	;
+		term__apply_substitution(Type0, Subst, Type)
+	),
+	InstName = typed_inst(Type, InstName0).
 
 :- pred constructors_to_bound_insts(list(constructor), uniqueness, module_info,
 				list(bound_inst)).
@@ -1229,18 +1213,29 @@ ctor_arg_list_to_inst_list([_Name - _Type | Args], Uniq, [Inst | Insts]) :-
 	Inst = ground(Uniq, no),
 	ctor_arg_list_to_inst_list(Args, Uniq, Insts).
 
-:- pred propagate_ctor_info_2(list(bound_inst), (type), list(constructor),
+:- pred propagate_ctor_info_2(list(bound_inst), (type), tsubst,
 		module_info, list(bound_inst)).
 :- mode propagate_ctor_info_2(in, in, in, in, out) is det.
 
-propagate_ctor_info_2(BoundInsts0, Type, Constructors,
-		ModuleInfo, BoundInsts) :-
+propagate_ctor_info_2(BoundInsts0, Type0, Subst, ModuleInfo, BoundInsts) :-
+	( map__is_empty(Subst) ->
+		Type = Type0
+	;
+		term__apply_substitution(Type0, Subst, Type)
+	),
 	(
-		type_to_type_id(Type, TypeId, _),
-		TypeId = qualified(TypeModule, _) - _
+		type_to_type_id(Type, TypeId, TypeArgs),
+		TypeId = qualified(TypeModule, _) - _,
+		module_info_types(ModuleInfo, TypeTable),
+		map__search(TypeTable, TypeId, TypeDefn),
+		hlds_data__get_type_defn_tparams(TypeDefn, TypeParams0),
+		hlds_data__get_type_defn_body(TypeDefn, TypeBody),
+		TypeBody = du_type(Constructors, _, _)
 	->
-		propagate_ctor_info_3(BoundInsts0, TypeModule,
-			Constructors, ModuleInfo, BoundInsts1),
+		term__term_list_to_var_list(TypeParams0, TypeParams),
+		map__from_corresponding_lists(TypeParams, TypeArgs, ArgSubst),
+		propagate_ctor_info_3(BoundInsts0, TypeModule, Constructors,
+			ArgSubst, ModuleInfo, BoundInsts1),
 		list__sort(BoundInsts1, BoundInsts)
 	;
 		% Builtin types don't need processing.
@@ -1248,12 +1243,12 @@ propagate_ctor_info_2(BoundInsts0, Type, Constructors,
 	).
 
 :- pred propagate_ctor_info_3(list(bound_inst), string, list(constructor),
-		module_info, list(bound_inst)).
-:- mode propagate_ctor_info_3(in, in, in, in, out) is det.
+		tsubst, module_info, list(bound_inst)).
+:- mode propagate_ctor_info_3(in, in, in, in, in, out) is det.
 
-propagate_ctor_info_3([], _, _, _, []).
+propagate_ctor_info_3([], _, _, _, _, []).
 propagate_ctor_info_3([BoundInst0 | BoundInsts0], TypeModule, Constructors,
-		ModuleInfo, [BoundInst | BoundInsts]) :-
+		Subst, ModuleInfo, [BoundInst | BoundInsts]) :-
 	BoundInst0 = functor(ConsId0, ArgInsts0),
 	( ConsId0 = cons(unqualified(Name), Ar) ->
 		ConsId = cons(qualified(TypeModule, Name), Ar)
@@ -1273,7 +1268,7 @@ propagate_ctor_info_3([BoundInst0 | BoundInsts0], TypeModule, Constructors,
 				CtorArg = _ArgName - ArgType
 			)),
 		list__map(GetArgTypes, Args, ArgTypes),
-		propagate_type_info_inst_list(ArgTypes,
+		propagate_type_info_inst_list(ArgTypes, Subst,
 			ModuleInfo, ArgInsts0, ArgInsts),
 		BoundInst = functor(ConsId, ArgInsts)
 	;
@@ -1284,7 +1279,7 @@ propagate_ctor_info_3([BoundInst0 | BoundInsts0], TypeModule, Constructors,
 		BoundInst = functor(ConsId, ArgInsts0)
 	),
 	propagate_ctor_info_3(BoundInsts0, TypeModule,
-		Constructors, ModuleInfo, BoundInsts).
+		Constructors, Subst, ModuleInfo, BoundInsts).
 
 %-----------------------------------------------------------------------------%
 

@@ -40,9 +40,10 @@
 			unify_main_context, unify_sub_contexts, hlds_goal).
 :- mode create_atomic_unification(in, in, in, in, in, out) is det.
 
-:- pred add_new_proc(pred_info, arity, list(mode), maybe(list(is_live)),
-		maybe(determinism), term__context, pred_info, proc_id).
-:- mode add_new_proc(in, in, in, in, in, in, out, out) is det.
+:- pred add_new_proc(pred_info, arity, list(mode), maybe(list(mode)),
+		maybe(list(is_live)), maybe(determinism),
+		term__context, pred_info, proc_id).
+:- mode add_new_proc(in, in, in, in, in, in, in, out, out) is det.
 
 :- pred clauses_info_init(int::in, clauses_info::out) is det.
 
@@ -1208,8 +1209,8 @@ add_special_pred_decl(SpecialPredId,
 	pred_info_init(ModuleName, PredName, Arity, TVarSet, ArgTypes, Cond,
 		Context, ClausesInfo0, Status, no, none, predicate, PredInfo0),
 	ArgLives = no,
-	add_new_proc(PredInfo0, Arity, ArgModes, ArgLives, yes(Det), Context,
-			PredInfo, _),
+	add_new_proc(PredInfo0, Arity, ArgModes, yes(ArgModes),
+		ArgLives, yes(Det), Context, PredInfo, _),
 
 	module_info_get_predicate_table(Module0, PredicateTable0),
 	predicate_table_insert(PredicateTable0, PredInfo, PredId,
@@ -1248,12 +1249,12 @@ adjust_special_pred_status(Status0, SpecialPredId, Status) :-
 		Status = Status1
 	).
 
-add_new_proc(PredInfo0, Arity, ArgModes, MaybeArgLives, MaybeDet, Context,
-		PredInfo, ModeId) :-
+add_new_proc(PredInfo0, Arity, ArgModes, MaybeDeclaredArgModes,
+		MaybeArgLives, MaybeDet, Context, PredInfo, ModeId) :-
 	pred_info_procedures(PredInfo0, Procs0),
 	next_mode_id(Procs0, MaybeDet, ModeId),
-	proc_info_init(Arity, ArgModes, MaybeArgLives, MaybeDet, Context,
-			NewProc),
+	proc_info_init(Arity, ArgModes, MaybeDeclaredArgModes, MaybeArgLives,
+		MaybeDet, Context, NewProc),
 	map__det_insert(Procs0, ModeId, NewProc, Procs),
 	pred_info_set_procedures(PredInfo0, Procs, PredInfo).
 
@@ -1327,8 +1328,8 @@ module_add_mode(ModuleInfo0, _VarSet, PredName, Modes, MaybeDet, _Cond,
 		% XXX we should check that this mode declaration
 		% isn't the same as an existing one
 	{ ArgLives = no },
-	{ add_new_proc(PredInfo0, Arity, Modes, ArgLives, MaybeDet, MContext,
-			PredInfo, _) },
+	{ add_new_proc(PredInfo0, Arity, Modes, yes(Modes), ArgLives,
+			MaybeDet, MContext, PredInfo, _) },
 	{ map__det_update(Preds0, PredId, PredInfo, Preds) },
 	{ predicate_table_set_preds(PredicateTable1, Preds, PredicateTable) },
 	{ module_info_set_predicate_table(ModuleInfo0, PredicateTable,

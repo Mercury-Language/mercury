@@ -84,12 +84,13 @@ modecheck_higher_order_call(PredOrFunc, PredVar, Args0, Types, Modes, Det, Args,
 		list__length(Modes0, Arity)
 	->
 		Det = Det0,
+		Modes = Modes0,
 
 		%
 		% Check that `Args0' have livenesses which match the
 		% expected livenesses.
 		%
-		get_arg_lives(Modes0, ModuleInfo0, ExpectedArgLives),
+		get_arg_lives(Modes, ModuleInfo0, ExpectedArgLives),
 		modecheck_var_list_is_live(Args0, ExpectedArgLives, 1,
 			ModeInfo0, ModeInfo1),
 
@@ -98,9 +99,6 @@ modecheck_higher_order_call(PredOrFunc, PredVar, Args0, Types, Modes, Det, Args,
 		% initial insts, and set their new final insts (introducing
 		% extra unifications for implied modes, if necessary).
 		%
-		% propagate type info into modes
-		propagate_type_info_mode_list(Types, ModuleInfo0, Modes0,
-			Modes),
 		mode_list_get_initial_insts(Modes, ModuleInfo0, InitialInsts),
 		modecheck_var_has_inst_list(Args0, InitialInsts, 1,
 					ModeInfo1, ModeInfo2),
@@ -158,7 +156,7 @@ modecheck_call_pred(PredId, ArgVars0, TheProcId, ArgVars, ExtraGoals,
 	->
 		TheProcId = ProcId,
 		map__lookup(Procs, ProcId, ProcInfo),
-		proc_info_argmodes(ProcInfo, ProcArgModes0),
+		proc_info_argmodes(ProcInfo, ProcArgModes),
 		proc_info_arglives(ProcInfo, ModuleInfo, ProcArgLives0),
 
 		%
@@ -167,11 +165,6 @@ modecheck_call_pred(PredId, ArgVars0, TheProcId, ArgVars, ExtraGoals,
 		%
 		modecheck_var_list_is_live(ArgVars0, ProcArgLives0, 0,
 					ModeInfo0, ModeInfo1),
-
-		% propagate type info into modes
-		mode_info_get_types_of_vars(ModeInfo0, ArgVars0, ArgTypes),
-		propagate_type_info_mode_list(ArgTypes, ModuleInfo,
-			ProcArgModes0, ProcArgModes),
 
 		%
 		% Check that `ArgsVars0' have insts which match the expected
@@ -252,13 +245,9 @@ modecheck_call_pred_2([ProcId | ProcIds], PredId, Procs, ArgVars0, WaitingVars,
 		% find the initial insts and the final livenesses
 		% of the arguments for this mode of the called pred
 	map__lookup(Procs, ProcId, ProcInfo),
-	proc_info_argmodes(ProcInfo, ProcArgModes0),
+	proc_info_argmodes(ProcInfo, ProcArgModes),
 	mode_info_get_module_info(ModeInfo0, ModuleInfo),
 	proc_info_arglives(ProcInfo, ModuleInfo, ProcArgLives0),
-		% propagate the type information into the modes
-	mode_info_get_types_of_vars(ModeInfo0, ArgVars0, ArgTypes),
-	propagate_type_info_mode_list(ArgTypes, ModuleInfo,
-		ProcArgModes0, ProcArgModes),
 	mode_list_get_initial_insts(ProcArgModes, ModuleInfo, InitialInsts),
 
 		% check whether the livenesses of the args matches their
@@ -322,8 +311,8 @@ insert_new_mode(PredId, ArgVars, ProcId, ModeInfo0, ModeInfo) :-
 	MaybeDeterminism = no,
 
 	% create the new mode
-	add_new_proc(PredInfo0, Arity, Modes, yes(ArgLives), MaybeDeterminism,
-		Context, PredInfo1, ProcId),
+	add_new_proc(PredInfo0, Arity, Modes, no, yes(ArgLives),
+		MaybeDeterminism, Context, PredInfo1, ProcId),
 
 	% copy the clauses for the predicate to this procedure,
 	% and then store the new proc_info and pred_info

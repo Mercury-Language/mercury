@@ -349,7 +349,7 @@ modecheck_unification(X0, functor(ConsId, ArgVars0), Unification0,
 		)
 	).
 
-modecheck_unification(X, lambda_goal(PredOrFunc, Vars, Modes, Det, Goal0),
+modecheck_unification(X, lambda_goal(PredOrFunc, Vars, Modes0, Det, Goal0),
 			Unification0, UnifyContext, _GoalInfo, HowToCheckGoal,
 			unify(X, RHS, Mode, Unification, UnifyContext),
 			ModeInfo0, ModeInfo) :-
@@ -377,6 +377,15 @@ modecheck_unification(X, lambda_goal(PredOrFunc, Vars, Modes, Det, Goal0),
 	%
 
 	mode_info_get_module_info(ModeInfo0, ModuleInfo0),
+
+	( HowToCheckGoal = check_modes ->
+		% This only needs to be done once.
+		mode_info_get_types_of_vars(ModeInfo0, Vars, VarTypes),
+		propagate_type_info_mode_list(VarTypes, ModuleInfo0,
+			Modes0, Modes)
+ 	;
+		Modes = Modes0
+	),
  
 	% initialize the initial insts of the lambda variables
 	mode_list_get_initial_insts(Modes, ModuleInfo0, VarInitialInsts),

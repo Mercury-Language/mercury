@@ -446,6 +446,11 @@ mercury_compile__maybe_write_optfile(MakeOptInt, HLDS0, HLDS) -->
 	globals__io_lookup_bool_option(statistics, Stats),
 	( { MakeOptInt = yes } ->
 		intermod__write_optfile(HLDS0, HLDS1),
+
+		% If intermod_unused_args is being performed, run mode and
+		% determinism analysis and polymorphism, then run unused_args
+		% to append the unused argument information to the `.opt' file
+		% written above.
 		( { IntermodArgs = yes } ->
 			mercury_compile__frontend_pass_2_by_phases(
 				HLDS1, HLDS2, FoundModeError),

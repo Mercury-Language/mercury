@@ -440,7 +440,8 @@ intermod_info_add_proc(PredId, DoWrite) -->
 	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
 	{ pred_info_import_status(PredInfo, Status) },
 	{ pred_info_procids(PredInfo, ProcIds) },
-	( { ProcIds = [] } ->
+	{ pred_info_get_marker_list(PredInfo, Markers) },
+	( { list__member(request(infer_modes), Markers) } ->
 		% Don't write this pred if it calls preds without mode decls.
 		{ DoWrite = no }
 	; 
@@ -873,12 +874,13 @@ intermod__write_pred_decls(ModuleInfo, [PredId | PredIds]) -->
 intermod__write_pred_modes(_, _, _, []) --> [].
 intermod__write_pred_modes(Procs, SymName, PredOrFunc, [ProcId | ProcIds]) -->
 	{ map__lookup(Procs, ProcId, ProcInfo) },
-	{ proc_info_argmodes(ProcInfo, ArgModes) },
+	{ proc_info_maybe_declared_argmodes(ProcInfo, MaybeArgModes) },
 	{ proc_info_declared_determinism(ProcInfo, MaybeDetism) },
-	{ MaybeDetism = yes(Detism0) ->
+	{ MaybeArgModes = yes(ArgModes0), MaybeDetism = yes(Detism0) ->
+		ArgModes = ArgModes0,
 		Detism = Detism0
 	;
-		error("Attempt to write pred mode decl without det decl")
+		error("intermod__write_pred_modes: attempt to write undeclared mode")
 	},
 	{ proc_info_context(ProcInfo, Context) },
 	{ varset__init(Varset) },
@@ -996,13 +998,17 @@ intermod__write_c_clauses(_, [], _, _, _, _, _, _) --> [].
 intermod__write_c_clauses(Procs, [ProcId | ProcIds], PredOrFunc,
 			CCode, MayCallMercury, Vars, Varset, SymName) -->
 	{ map__lookup(Procs, ProcId, ProcInfo) },
-	{ proc_info_argmodes(ProcInfo, ArgModes) },
-	{ get_pragma_c_code_vars(Vars, Varset, ArgModes, PragmaVars) },
-	% XXX will need modification for nondet pragma C code
-	mercury_output_pragma_c_code(MayCallMercury, SymName, PredOrFunc,
-		PragmaVars, no, Varset, CCode),
-	intermod__write_c_clauses(Procs, ProcIds, PredOrFunc, CCode,
-		MayCallMercury, Vars, Varset, SymName).
+	{ proc_info_maybe_declared_argmodes(ProcInfo, MaybeArgModes) },
+	( { MaybeArgModes = yes(ArgModes) } ->
+		{ get_pragma_c_code_vars(Vars, Varset, ArgModes, PragmaVars) },
+		% XXX will need modification for nondet pragma C code
+		mercury_output_pragma_c_code(MayCallMercury, SymName,
+			PredOrFunc, PragmaVars, no, Varset, CCode),
+		intermod__write_c_clauses(Procs, ProcIds, PredOrFunc, CCode,
+			MayCallMercury, Vars, Varset, SymName)
+	;
+		{ error("intermod__write_c_clauses: no mode declaration") }
+	).
 
 :- pred get_pragma_c_code_vars(list(var)::in, varset::in,
 		list(mode)::in, list(pragma_var)::out) is det.

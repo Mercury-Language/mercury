@@ -87,9 +87,9 @@ maybe_add_default_mode(PredInfo0, PredInfo) :-
 		Determinism = det,
 		pred_info_context(PredInfo0, Context),
 		MaybePredArgLives = no,
-		add_new_proc(PredInfo0, PredArity, PredArgModes,
-			MaybePredArgLives, yes(Determinism), Context,
-			PredInfo, _ProcId)
+		add_new_proc(PredInfo0, PredArity, PredArgModes, 
+			yes(PredArgModes), MaybePredArgLives, yes(Determinism),
+			Context, PredInfo, _ProcId)
 	;
 		PredInfo = PredInfo0
 	).

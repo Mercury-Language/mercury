@@ -237,19 +237,43 @@ typecheck_pred_types_2([PredId | PredIds],
 		ModuleInfo0, ModuleInfo, Error0, Error, Changed0, Changed) -->
 	{ module_info_preds(ModuleInfo0, Preds0) },
 	{ map__lookup(Preds0, PredId, PredInfo0) },
+	{ pred_info_procids(PredInfo0, ProcIds) },
 	(
 		{ pred_info_is_imported(PredInfo0) }
 	->
 		{ Error1 = Error0 },
-		{ ModuleInfo1 = ModuleInfo0 },
-		{ Changed2 = Changed0 }
+
+		% 
+		% Ensure that all constructors occurring in predicate mode
+		% declarations are module qualified.
+		% 
+		{
+		pred_info_arg_types(PredInfo0, _, ArgTypes),
+		pred_info_procedures(PredInfo0, Procs0),
+		typecheck_propagate_type_info_into_proc_modes(
+		    ModuleInfo0, ProcIds, ArgTypes, Procs0, Procs),
+		pred_info_set_procedures(PredInfo0, Procs, PredInfo),
+		map__set(Preds0, PredId, PredInfo, Preds),
+		module_info_set_preds(ModuleInfo0, Preds, ModuleInfo1),
+		Changed2 = Changed0
+		}
 	;
 		typecheck_pred_type(PredId, PredInfo0, ModuleInfo0,
 			MaybePredInfo, Changed1),
 		{
 			MaybePredInfo = yes(PredInfo1),
 			Error1 = Error0,
-			map__det_update(Preds0, PredId, PredInfo1, Preds),
+
+			% 
+			% Ensure that all constructors occurring in predicate 
+			% mode declarations are module qualified.
+			% 
+			pred_info_arg_types(PredInfo1, _, ArgTypes),
+			pred_info_procedures(PredInfo1, Procs1),
+			typecheck_propagate_type_info_into_proc_modes(
+			    ModuleInfo0, ProcIds, ArgTypes, Procs1, Procs),
+			pred_info_set_procedures(PredInfo1, Procs, PredInfo),
+			map__det_update(Preds0, PredId, PredInfo, Preds),
 			module_info_set_preds(ModuleInfo0, Preds, ModuleInfo1)
 		;
 			MaybePredInfo = no,
@@ -261,6 +285,23 @@ typecheck_pred_types_2([PredId | PredIds],
 	),
 	typecheck_pred_types_2(PredIds, ModuleInfo1, ModuleInfo, Error1, Error,
 		Changed2, Changed).
+
+:- pred typecheck_propagate_type_info_into_proc_modes(module_info,
+		list(proc_id), list(type), proc_table, proc_table).
+:- mode typecheck_propagate_type_info_into_proc_modes(in,
+		in, in, in, out) is det.		
+
+typecheck_propagate_type_info_into_proc_modes(_, [], _, Procs, Procs).
+typecheck_propagate_type_info_into_proc_modes(ModuleInfo, [ProcId | ProcIds],
+		ArgTypes, Procs0, Procs) :-
+	map__lookup(Procs0, ProcId, ProcInfo0),
+	proc_info_argmodes(ProcInfo0, ArgModes0),
+	propagate_type_info_mode_list(ArgTypes, ModuleInfo,
+		ArgModes0, ArgModes),
+	proc_info_set_argmodes(ProcInfo0, ArgModes, ProcInfo),
+	map__det_update(Procs0, ProcId, ProcInfo, Procs1),
+	typecheck_propagate_type_info_into_proc_modes(ModuleInfo, ProcIds,
+		ArgTypes, Procs1, Procs).
 
 :- pred typecheck_pred_type(pred_id, pred_info, module_info,
 	maybe(pred_info), bool, io__state, io__state).

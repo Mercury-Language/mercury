@@ -364,29 +364,28 @@ substitute_type_args(TypeParams0, TypeArgs, Constructors0, Constructors) :-
 		Constructors = Constructors0
 	;
 		term__term_list_to_var_list(TypeParams0, TypeParams),
-		substitute_type_args_2(Constructors0, TypeParams, TypeArgs,
-			Constructors)
+		map__from_corresponding_lists(TypeParams, TypeArgs, Subst),
+		substitute_type_args_2(Constructors0, Subst, Constructors)
 	).
 
-:- pred substitute_type_args_2(list(constructor), list(var), list(type),
+:- pred substitute_type_args_2(list(constructor), substitution,
 				list(constructor)).
-:- mode substitute_type_args_2(in, in, in, out) is det.
+:- mode substitute_type_args_2(in, in, out) is det.
 
-substitute_type_args_2([], _TypeParams, _TypeArgs, []).
-substitute_type_args_2([Name - Args0 | Ctors0], TypeParams, TypeArgs,
+substitute_type_args_2([], _, []).
+substitute_type_args_2([Name - Args0 | Ctors0], Subst,
 		[Name - Args | Ctors]) :-
-	substitute_type_args_3(Args0, TypeParams, TypeArgs, Args),
-	substitute_type_args_2(Ctors0, TypeParams, TypeArgs, Ctors).
+	substitute_type_args_3(Args0, Subst, Args),
+	substitute_type_args_2(Ctors0, Subst, Ctors).
 
-:- pred substitute_type_args_3(list(constructor_arg), list(var), list(type),
+:- pred substitute_type_args_3(list(constructor_arg), substitution,
 				list(constructor_arg)).
-:- mode substitute_type_args_3(in, in, in, out) is det.
+:- mode substitute_type_args_3(in, in, out) is det.
 
-substitute_type_args_3([], _TypeParams, _TypeArgs, []).
-substitute_type_args_3([Name - Arg0 | Args0], TypeParams, TypeArgs,
-		[Name - Arg | Args]) :-
-	term__substitute_corresponding(TypeParams, TypeArgs, Arg0, Arg),
-	substitute_type_args_3(Args0, TypeParams, TypeArgs, Args).
+substitute_type_args_3([], _, []).
+substitute_type_args_3([Name - Arg0 | Args0], Subst, [Name - Arg | Args]) :-
+	term__apply_substitution(Arg0, Subst, Arg),
+	substitute_type_args_3(Args0, Subst, Args).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -61,7 +61,7 @@
 
 :- import_module hlds_out.
 
-:- import_module code_aux, det_report, det_analysis, follow_code, goal_util.
+:- import_module code_aux, det_analysis, follow_code, goal_util.
 :- import_module hlds_module, hlds_goal, hlds_data, instmap, inst_match.
 :- import_module globals, options, passes_aux, prog_data, mode_util, type_util.
 :- import_module code_util, quantification, modes.
