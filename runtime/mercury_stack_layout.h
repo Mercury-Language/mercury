@@ -688,6 +688,15 @@ typedef	struct MR_Exec_Trace_Struct {
 	MR_int_least8_t		MR_exec_maybe_call_table;
 } MR_Exec_Trace;
 
+#define MR_compute_max_mr_num(max_mr_num, layout)			\
+	do {								\
+		int	max_r_num;					\
+									\
+		max_r_num = (layout)->MR_sll_entry->MR_sle_max_r_num +	\
+			MR_NUM_SPECIAL_REG;				\
+		max_mr_num = MR_max(max_r_num, MR_MAX_SPECIAL_REG_MR);	\
+	} while (0)
+
 /*-------------------------------------------------------------------------*/
 /*
 ** Definitions for MR_Proc_Layout

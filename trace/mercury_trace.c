@@ -177,18 +177,11 @@ MR_trace_real(const MR_Label_Layout *layout)
 #ifdef MR_USE_EXTERNAL_DEBUGGER
             MR_Event_Info   event_info;
             MR_Word         *saved_regs = event_info.MR_saved_regs;
-            int             max_r_num;
             const char      *path;
             MR_bool         stop_collecting = MR_FALSE;
             int             lineno = 0;
 
-            max_r_num = layout->MR_sll_entry->MR_sle_max_r_num;
-            if (max_r_num + MR_NUM_SPECIAL_REG > MR_MAX_SPECIAL_REG_MR) {
-                event_info.MR_max_mr_num = max_r_num + MR_NUM_SPECIAL_REG;
-            } else {
-                event_info.MR_max_mr_num = MR_MAX_SPECIAL_REG_MR;
-            }
-            
+            MR_compute_max_mr_num(event_info.MR_max_mr_num, layout);
             port = (MR_Trace_Port) layout->MR_sll_port;
             path = MR_label_goal_path(layout);
             MR_copy_regs_to_saved_regs(event_info.MR_max_mr_num, saved_regs);
@@ -421,7 +414,6 @@ MR_trace_event(MR_Trace_Cmd_Info *cmd, MR_bool interactive,
     MR_Code         *jumpaddr;
     MR_Event_Info   event_info;
     MR_Word         *saved_regs = event_info.MR_saved_regs;
-    int             max_r_num;
 
     event_info.MR_event_number = MR_trace_event_number;
     event_info.MR_call_seqno = seqno;
@@ -430,13 +422,7 @@ MR_trace_event(MR_Trace_Cmd_Info *cmd, MR_bool interactive,
     event_info.MR_event_sll = layout;
     event_info.MR_event_path = MR_label_goal_path(layout);
 
-    max_r_num = layout->MR_sll_entry->MR_sle_max_r_num;
-    if (max_r_num + MR_NUM_SPECIAL_REG > MR_MAX_SPECIAL_REG_MR) {
-        event_info.MR_max_mr_num = max_r_num + MR_NUM_SPECIAL_REG;
-    } else {
-        event_info.MR_max_mr_num = MR_MAX_SPECIAL_REG_MR;
-    }
-
+    MR_compute_max_mr_num(event_info.MR_max_mr_num, layout);
     /* This also saves the regs in MR_fake_regs. */
     MR_copy_regs_to_saved_regs(event_info.MR_max_mr_num, saved_regs);
 
