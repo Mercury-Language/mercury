@@ -26,8 +26,8 @@ main -->
 :- mode p(in) is semidet.
 
 p(N) :-
-	q(N, Q),
-	Q(0).
+	q(0, Q),
+	Q(N).
 
 :- pred q(int, pred(int)).
 :- mode q(in, out(pred(in) is semidet)) is multi.

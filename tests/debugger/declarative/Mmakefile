@@ -22,6 +22,8 @@ DECLARATIVE_PROGS=		\
 	gcf			\
 	higher_order		\
 	ho2			\
+	ho3			\
+	ho4			\
 	if_then_else		\
 	input_term_dep		\
 	ite_2			\
@@ -45,17 +47,11 @@ DECLARATIVE_PROGS=		\
 NONDEBUG_DECLARATIVE_PROGS=	\
 	untraced_subgoal
 
-# XXX 'ho3' and 'ho4' test cases fail due to an attempt to compare higher
-# order terms.  This happens because for missing answer questions the oracle
-# stores the solutions in a set, which relies on builtin comparison.
-#
-# XXX 'ho5' also fails due to an attempt to compare higher order terms.  This
-# happens because thrown exceptions are stored in a set, and exceptions are
-# not necessarily first order terms.
+# XXX 'ho5' fails due to an attempt to compare higher order terms.  This
+# happens because thrown exceptions are stored in a set, which uses builtin
+# comparison, and exceptions are not necessarily first order terms.
 #
 NONWORKING_DECLARATIVE_PROGS=	\
-	ho3			\
-	ho4			\
 	ho5
 
 # Some of the test cases require a different input in debug grades,
