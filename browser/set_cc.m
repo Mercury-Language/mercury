@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 2002 The University of Melbourne.
+% Copyright (C) 2002-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -40,8 +40,9 @@
 
 :- implementation.
 
-:- import_module std_util.
 :- import_module mdb__tree234_cc.
+
+:- import_module std_util.
 
 :- type set_cc(T) == tree234_cc(T, unit).
 

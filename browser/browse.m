@@ -118,8 +118,12 @@
 
 :- implementation.
 
-:- import_module mdb__parse, mdb__util, mdb__frame, mdb__sized_pretty.
-:- import_module string, int, char, map, std_util, getopt.
+:- import_module mdb__parse.
+:- import_module mdb__util.
+:- import_module mdb__frame.
+:- import_module mdb__sized_pretty.
+
+:- import_module string, int, char, map, std_util.
 :- import_module parser, require, pprint, getopt, deconstruct.
 
 %---------------------------------------------------------------------------%

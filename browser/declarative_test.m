@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2000 The University of Melbourne.
+% Copyright (C) 1999-2000, 2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -10,14 +10,20 @@
 % testing.
 
 :- module declarative_test.
+
 :- interface.
+
 :- import_module io.
 
 :- pred main(io__state, io__state).
 :- mode main(di, uo) is det.
 
 :- implementation.
-:- import_module mdb, mdb__declarative_debugger, mdb__declarative_execution.
+
+:- import_module mdb.
+:- import_module mdb__declarative_debugger.
+:- import_module mdb__declarative_execution.
+
 :- import_module list, std_util, map, require.
 
 main -->
