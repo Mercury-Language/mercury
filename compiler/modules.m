@@ -2706,6 +2706,8 @@ generate_dv_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 	write_compact_dependencies_list(Modules, "$(os_subdir)",
 					".$(EXT_FOR_PIC_OBJECTS)",
 					Basis, DepStream),
+	write_extra_link_dependencies_list(ExtraLinkObjs,
+					".$(EXT_FOR_PIC_OBJECTS)", DepStream),
 	io__write_string(DepStream, "\n"),
 
 	io__write_string(DepStream, MakeVarName),
@@ -3208,6 +3210,7 @@ append_to_init_list(DepStream, InitFileName, Module) -->
 	]).
 
 %-----------------------------------------------------------------------------%
+
 	% get_extra_link_objects(Modules, DepsMap, Target, ExtraLinkObjs) },
 	% Find any extra .$O files that should be linked into the executable.
 	% These include fact table object files and object files for foreign
