@@ -98,36 +98,71 @@ debugger_regs.out: debugger_regs debugger_regs.inp
 # particular line numbers in the standard library source code.
 exception_value.out: exception_value exception_value.inp
 	$(MDB) ./exception_value < exception_value.inp 2>&1 | \
-		sed 's/exception.m:[0-9]*/exception.m:NNNN/g' \
-			> exception_value.out 2>&1
+		sed -e 's/exception.m:[0-9]*/exception.m:NNNN/g' | \
+		sed -e '/EXCP/s/).*/)/' > exception_value.out 2>&1
 
-# The exception_vars test is supposed to return a non-zero
-# exit status, since it exits by throwing an exception.
-# Likewise for the exception_cmd and polymorphic_output test cases.
+# The exception_cmd, exception_vars, polymorphic_output and loopcheck tests
+# are supposed to return a non-zero exit status, since they exit by throwing
+# an exception. We strip the goal paths from their exception events, since
+# the exact goal paths are dependent on optimization level. The stripping
+# must be done outside the condition of the if-then-else.
 exception_cmd.out: exception_cmd exception_cmd.inp
 	if $(MDB) ./exception_cmd < exception_cmd.inp		\
-		> exception_cmd.out 2>&1;			\
+		> exception_cmd.tmp 2>&1;			\
 	then							\
+		sed -e '/EXCP/s/).*/)/' < exception_cmd.tmp	\
+			> exception_cmd.out 2>&1;		\
+		rm exception_cmd.tmp;				\
 		false;						\
 	else							\
+		sed -e '/EXCP/s/).*/)/' < exception_cmd.tmp	\
+			> exception_cmd.out 2>&1;		\
+		rm exception_cmd.tmp;				\
 		true;						\
 	fi
 
 exception_vars.out: exception_vars exception_vars.inp
 	if $(MDB) ./exception_vars < exception_vars.inp		\
-		> exception_vars.out 2>&1;			\
+		> exception_vars.tmp 2>&1;			\
 	then							\
+		sed -e '/EXCP/s/).*/)/' < exception_vars.tmp	\
+			> exception_vars.out 2>&1;		\
+		rm exception_vars.tmp;				\
 		false;						\
 	else							\
+		sed -e '/EXCP/s/).*/)/' < exception_vars.tmp	\
+			> exception_vars.out 2>&1;		\
+		rm exception_vars.tmp;				\
 		true;						\
 	fi
 
 polymorphic_output.out: polymorphic_output polymorphic_output.inp
 	if $(MDB) ./polymorphic_output < polymorphic_output.inp	\
-		> polymorphic_output.out 2>&1;			\
+		> polymorphic_output.tmp 2>&1;			\
 	then							\
+		sed -e '/EXCP/s/).*/)/' < polymorphic_output.tmp\
+			> polymorphic_output.out 2>&1;		\
+		rm polymorphic_output.tmp;			\
 		false;						\
 	else							\
+		sed -e '/EXCP/s/).*/)/' < polymorphic_output.tmp\
+			> polymorphic_output.out 2>&1;		\
+		rm polymorphic_output.tmp;			\
+		true;						\
+	fi
+
+loopcheck.out: loopcheck loopcheck.inp
+	if $(MDB) ./loopcheck < loopcheck.inp			\
+		> loopcheck.tmp 2>&1;				\
+	then							\
+		sed -e '/EXCP/s/).*/)/' < loopcheck.tmp		\
+			> loopcheck.out 2>&1;			\
+		rm loopcheck.tmp;				\
+		false;						\
+	else							\
+		sed -e '/EXCP/s/).*/)/' < loopcheck.tmp		\
+			> loopcheck.out 2>&1;			\
+		rm loopcheck.tmp;				\
 		true;						\
 	fi
 
@@ -145,10 +180,6 @@ implied_instance.out: implied_instance implied_instance.inp
 interpreter.out: interpreter interpreter.inp
 	$(MDB) ./interpreter interpreter.m < interpreter.inp \
 		> interpreter.out 2>&1
-
-# loopcheck aborts, so we must ignore the exit status
-loopcheck.out: loopcheck loopcheck.inp
-	-$(MDB) ./loopcheck < loopcheck.inp > loopcheck.out 2>&1
 
 # We need to pipe the output through sed to avoid hard-coding dependencies on
 # particular line numbers in the standard library source code.

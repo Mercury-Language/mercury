@@ -9,14 +9,14 @@ mdb> break q
 mdb> continue
        4:      4  4 CALL pred exception_value:p/1-0 (det) exception_value.m:30 (exception.m:NNNN)
 mdb> finish
-       7:      4  4 EXCP pred exception_value:p/1-0 (det) c3; exception_value.m:31 (exception.m:NNNN)
+       7:      4  4 EXCP pred exception_value:p/1-0 (det)
 mdb> print exception
 	"p exception"
 mdb> continue
 exception(univ("p exception" : string))
       18:     11  4 CALL pred exception_value:q/1-0 (det) exception_value.m:35 (exception.m:NNNN)
 mdb> finish
-      21:     11  4 EXCP pred exception_value:q/1-0 (det) c16; exception_value.m:36 (exception.m:NNNN)
+      21:     11  4 EXCP pred exception_value:q/1-0 (det)
 mdb> browse exception
 browser> set depth 9
 browser> set size 99
