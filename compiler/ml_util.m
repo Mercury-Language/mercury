@@ -633,7 +633,6 @@ type_ctor_needs_lowlevel_rep(il, TypeName - _Arity) :-
 	; TypeName = qualified(PrivateBuiltin, "type_ctor_info")
 	; TypeName = qualified(PrivateBuiltin, "typeclass_info")
 	; TypeName = qualified(PrivateBuiltin, "type_info")
-	; TypeName = qualified(PrivateBuiltin, "ref")
 
 		% Use lowlevel types for all types in rtti_implementation
 		% as this allows as to add new types needed to manipulate
@@ -644,10 +643,11 @@ type_ctor_needs_lowlevel_rep(il, TypeName - _Arity) :-
 	; TypeName = qualified(TypeDesc, "type_ctor_desc")
 
 		% Types which don't have a Mercury representation.
+	; TypeName = qualified(PrivateBuiltin, "ref")
 	; TypeName = qualified(PrivateBuiltin, "heap_pointer")
 	; TypeName = qualified(Builtin, "c_pointer")
 
-		% XXX These two types are referenced in IL and C# code,
+		% XXX These types are referenced in IL and C# code,
 		% so it is easier to just keep their low level representation
 		% for the moment.
 	; TypeName = qualified(Builtin, "comparison_result")
