@@ -746,8 +746,9 @@ decl_bug_get_event_number(i_bug(IBug), Event) :-
 write_origin(wrap(Store), Origin, !IO) :-
 	(Origin = output(dynamic(NodeId), ArgPos, TermPath) ->
 		exit_node_from_id(Store, NodeId, ExitNode),
-		ProcLabel = get_proc_label_from_layout(
-			ExitNode ^ exit_atom ^ proc_layout),
+		ProcLayout = get_proc_layout_from_label_layout(
+			ExitNode ^ exit_label),
+		ProcLabel = get_proc_label_from_layout(ProcLayout),
 		ProcName = get_proc_name(ProcLabel),
 		io.write_string("output(", !IO),
 		io.write_string(ProcName, !IO),
