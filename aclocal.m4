@@ -98,26 +98,16 @@ fi
 AC_MSG_RESULT($mercury_cv_microsoft_visual_cpp)
 MS_CL=`basename "$MS_CL"`
 
+# Check for the C# (C sharp) compiler.
 AC_PATH_PROG(MS_CSC, csc)
-AC_MSG_CHECKING(for Microsoft.NET Visual C sharp)
-AC_CACHE_VAL(mercury_cv_microsoft_visual_csharp, [
-if test "$MS_CSC" != ""; then
-	changequote(<<,>>) 
-	MS_VISUALCSHARP_DIR=`expr "$MS_CSC" : '\(.*\)[/\\]*[bB]in[/\\]*csc`
-	changequote([,]) 
-	mercury_cv_microsoft_visual_csharp="yes"
-else
-	MS_VISUALCSHARP_DIR=""
-	mercury_cv_microsoft_visual_csharp="no"
-fi
-])
-AC_MSG_RESULT($mercury_cv_microsoft_visual_csharp)
 MS_CSC=`basename "$MS_CSC"`
 
 # We default to the Beta 2 version of the library
 mercury_cv_microsoft_dotnet_library_version=1.0.2411.0
-if test $mercury_cv_microsoft_dotnet = "yes"; then
-	AC_MSG_CHECKING(determining version of .NET libraries)
+if	test $mercury_cv_microsoft_dotnet = "yes" &&
+	test "$MS_CSC" != "";
+then
+	AC_MSG_CHECKING(version of .NET libraries)
 	cat > conftest.cs << EOF
 	using System;
 	using System.Reflection;
@@ -142,9 +132,11 @@ EOF
 		rm -f conftest*
 	else
 		rm -f conftest*
-		AC_MSG_ERROR(unable to determine version)
 		if test $enable_dotnet_grades = "yes"; then
-			    exit 1
+			AC_MSG_ERROR(unable to determine version)
+			exit 1
+		else
+			AC_MSG_WARN(unable to determine version)
 		fi
 	fi
 fi
