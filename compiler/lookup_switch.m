@@ -330,7 +330,7 @@ lookup_switch__generate_bitvec_test(Index, CaseVals, Start, _End,
 	code_info__get_globals(Globals),
 	{ globals__get_options(Globals, Options) },
 	{ getopt__lookup_int_option(Options, bits_per_word, WordBits0) },
-	{ int__int_bits(MachineBits) },
+	{ int__bits_per_int(MachineBits) },
 		% prevent cross-compilation errors by making sure that
 		% the bitvector uses a number of bits that will fit both
 		% on this machine (so that we can correctly generate it),
@@ -358,7 +358,7 @@ generate_bit_vec(CaseVals, Start, BitVec) -->
 	code_info__get_globals(Globals),
 	{ globals__get_options(Globals, Options) },
 	{ getopt__lookup_int_option(Options, bits_per_word, WordBits0) },
-	{ int__int_bits(MachineBits) },
+	{ int__bits_per_int(MachineBits) },
 		% prevent cross-compilation errors by making sure that
 		% the bitvector uses a number of bits that will fit both
 		% on this machine (so that we can correctly generate it),
