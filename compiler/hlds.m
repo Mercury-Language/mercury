@@ -1363,6 +1363,11 @@ proc_info_get_initial_instmap(ProcInfo, ModuleInfo, reachable(InstMapping)) :-
 :- pred disj_list_to_goal(list(hlds__goal), hlds__goal_info, hlds__goal).
 :- mode disj_list_to_goal(in, in, out) is det.
 
+	% A goal is atomic iff it doesn't contain any sub-goals.
+
+:- pred goal_is_atomic(hlds__goal_expr).
+:- mode goal_is_atomic(in) is semidet.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -1463,6 +1468,13 @@ disj_list_to_goal(ConjList, GoalInfo, Goal) :-
 	;
 		Goal = disj(ConjList) - GoalInfo
 	).
+
+%-----------------------------------------------------------------------------%
+
+goal_is_atomic(conj([])).
+goal_is_atomic(disj([])).
+goal_is_atomic(call(_,_,_,_,_,_)).
+goal_is_atomic(unify(_,_,_,_,_)).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

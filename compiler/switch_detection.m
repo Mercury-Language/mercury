@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 %
-% Switch Detection - replace disjunctions with deterministic switch
+% Switch Detection - replace disjunctions with (semi)deterministic switch
 % statements, where we can determine that the disjunction is actually
 % just a switch.
 %
@@ -154,8 +154,7 @@ detect_switches_in_goal_2(unify(A,B,C,D,E), _, _, _, _, unify(A,B,C,D,E)).
 	% of that disjunction.  Now for each non-local variable, we
 	% check whether there is a partition of the disjuncts such that
 	% each group of disjunctions can only succeed if the variable
-	% is bound to a different functor.  We check this by examining
-	% the instantiatedness of the variable after the disjunction.
+	% is bound to a different functor.
 
 :- pred detect_switches_in_disj(list(var), list(hlds__goal), hlds__goal_info,
 		instmap, instmap, module_info, hlds__goal_expr).
@@ -194,7 +193,7 @@ partition_disj(Goals0, Var, GoalInfo, CaseList) :-
 	map__init(Cases0),
 	partition_disj_2(Goals0, Var, Cases0, Cases),
 	map__to_assoc_list(Cases, CasesAssocList),
-	CasesAssocList \= [_],
+	CasesAssocList \= [_],	% there must be more than one case
 	fix_case_list(CasesAssocList, GoalInfo, CaseList).
 
 :- type cases == map(cons_id, list(hlds__goal)).

@@ -105,7 +105,7 @@ detect_liveness_in_goal(Goal0 - GoalInfo0, Liveness0, ModuleInfo,
 	PreDelta0 = _PreBirths0 - PreDeaths,
 	PostDelta0 = PostBirths0 - PostDeaths,
 	(
-		detect_liveness_is_atomic(Goal0)
+		goal_is_atomic(Goal0)
 	->
 		set__difference(NonLocals, Liveness0, PreBirths),
 		set__union(Liveness0, PreBirths, Liveness),
@@ -252,7 +252,7 @@ detect_deadness_in_goal(Goal0 - GoalInfo0, Deadness0, ModuleInfo,
 	PostDelta0 = PostBirths - _PostDeaths0,
 	PreDelta0 = PreBirths - _PreDeaths0,
 	(
-		detect_liveness_is_atomic(Goal0)
+		goal_is_atomic(Goal0)
 	->
 		set__difference(NonLocals, Deadness0, PostDeaths),
 		set__union(Deadness0, PostDeaths, Deadness),
@@ -458,17 +458,6 @@ stuff_deadness_residue_into_goal(Goal - GoalInfo0, Residue, Goal - GoalInfo) :-
 	goal_info_pre_delta_liveness(GoalInfo0, Births - Deaths0),
 	set__union(Deaths0, Residue, Deaths),
 	goal_info_set_pre_delta_liveness(GoalInfo0, Births - Deaths, GoalInfo).
-
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-
-:- pred detect_liveness_is_atomic(hlds__goal_expr).
-:- mode detect_liveness_is_atomic(in) is semidet.
-
-detect_liveness_is_atomic(conj([])).
-detect_liveness_is_atomic(disj([])).
-detect_liveness_is_atomic(call(_,_,_,_,_,_)).
-detect_liveness_is_atomic(unify(_,_,_,_,_)).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
