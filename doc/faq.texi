@@ -159,8 +159,8 @@ a new local variable, which we will call @samp{Value1}:
 @example
 lookup(Map, Key, Value) :-
         (if some [Value1]
-		map__search(Map, Key, Value1)
-	then
+                map__search(Map, Key, Value1)
+        then
                 Value = Value1
         ;
                 Value = -1

@@ -14,7 +14,7 @@ END-INFO-DIR-ENTRY
 
 @c @smallbook
 @c @cropmarks
-@c @finalout
+@finalout
 @setchapternewpage on
 @ifinfo
 This file documents the Mercury standard library.

@@ -14,7 +14,7 @@ END-INFO-DIR-ENTRY
 
 @c @smallbook
 @c @cropmarks
-@c @finalout
+@finalout
 @setchapternewpage on
 @ifinfo
 This file documents the Mercury programming language.
@@ -114,8 +114,7 @@ for significantly improving the efficiency of the code it generates.
 To facilitate programming-in-the-large, to allow separate compilation,
 and to support encapsulation, Mercury has a simple module system.
 Mercury's standard library has a variety of pre-defined modules
-for common programming tasks;
-see the Mercury Library Reference Manual.
+for common programming tasks --- see the Mercury Library Reference Manual.
 
 @node Syntax, Types, Introduction, Top
 @chapter Syntax
@@ -137,7 +136,7 @@ see the Mercury Library Reference Manual.
 
 @node Syntax Overview, Tokens,, Syntax
 
-Mercury's syntax is similar to the syntax of (pure) Prolog, with some
+Mercury's syntax is similar to the syntax of Prolog, with some
 additional declarations for types, modes, determinism, and the module system.
 A Mercury program consists of a set of modules.  Each module is a file
 containing a sequence of items (declarations and clauses).  Each item
@@ -558,33 +557,33 @@ Here are some examples:
 
 @example
 :- type fruit
-	--->    apple
-	;       orange
-	;       banana
-	;       pear.
+        --->    apple
+        ;       orange
+        ;       banana
+        ;       pear.
 
 :- type strange
-	--->    foo(int)
-	;       bar(string).
+        --->    foo(int)
+        ;       bar(string).
 
 :- type employee
-	--->    employee(
-		       string,               % name
-		       int,                  % age
-		       string                % department
-		).
+        --->    employee(
+                       string,               % name
+                       int,                  % age
+                       string                % department
+                ).
 
 :- type tree
-	--->    empty
-	;       leaf(int)
-	;       branch(tree, tree).
+        --->    empty
+        ;       leaf(int)
+        ;       branch(tree, tree).
 
 :- type list(T)
-	--->    []
-	;       [T | list(T)].
+        --->    []
+        ;       [T | list(T)].
 
 :- type pair(T1, T2)
-	--->    T1 - T2.
+        --->    T1 - T2.
 @end example
 
 If the body of a discriminated union type definition
@@ -598,8 +597,8 @@ The following example illustrates this:
 
 @example
 :- type tricky
-	--->    @{ int ; int @}
-	;       @{ @{ int @} @}.
+        --->    @{ int ; int @}
+        ;       @{ @{ int @} @}.
 @end example
 
 Each discriminated union type definition introduces a distinct type.
@@ -616,7 +615,7 @@ They may be polymorphic.
 @example
 :- type money == int.
 :- type assoc_list(KeyType, ValueType)
-	== list(pair(KeyType, ValueType)).
+        == list(pair(KeyType, ValueType)).
 @end example
 
 Like discriminated union type definitions,
@@ -730,7 +729,7 @@ with the constraint that all descendants of a free node must be free.
 A term is @dfn{approximated by} an instantiatedness tree
 if for every node in the instantiatedness tree,
 
-@itemize
+@itemize @bullet
 @item
 if the node is ``free'',
 then the corresponding node in the term (if any)
@@ -885,18 +884,18 @@ We refer to the assertion associated with a mode set
 as the @dfn{mode set constraint};
 these are also checked by the compiler.
 
-A predicate p is @dfn{well-moded
+A predicate @var{p} is @dfn{well-moded
 with respect to a given mode declaration}
-if given that the predicates called by p
+if given that the predicates called by @var{p}
 all satisfy their mode declaration constraints,
-there exists an ordering of the literals in the definition of p
+there exists an ordering of the literals in the definition of @var{p}
 such that
 
-@itemize
+@itemize @bullet
 @item
-p satisfies its mode declaration constraint, and
+@var{p} satisfies its mode declaration constraint, and
 @item
-p satisfies the mode set constraint of all of the predicates it calls
+@var{p} satisfies the mode set constraint of all of the predicates it calls
 @end itemize
 
 We say that a predicate is well-moded
@@ -928,7 +927,7 @@ For each mode of a predicate,
 we categorise that mode according to how many times it can succeed,
 and whether or not it can fail before producing its first solution.
 
-@itemize
+@itemize @bullet
 @item
 If all calls to a particular mode of a predicate
 have exactly one solution,
@@ -1109,9 +1108,9 @@ For example, consider the common pattern
 
 @example
 (
-	L = [], empty(Out)
+        L = [], empty(Out)
 ;
-	L = [H|T], nonempty(H, T, Out)
+        L = [H|T], nonempty(H, T, Out)
 )
 @end example
 
@@ -1216,8 +1215,8 @@ and if it fails, call the library predicate @samp{error/1}.
 :- mode q(in, out) is det.
 
 q(A, B) :-
-        ( goal_that_should_never_fail(A, Bprime) ->
-                B = Bprime
+        ( goal_that_should_never_fail(A, B0) ->
+                B = B0
         ;
                 error("goal_that_should_never_fail failed!")
         ).
@@ -1232,12 +1231,13 @@ The small amount of up-front work that Mercury requires
 is paid back in reduced debugging time.)
 Mercury's mode analysis knows that
 computations with determinism erroneous can never succeed,
-which is why it does not require the else part to generate a value for B.
-The introduction of the new variable Bprime is necessary
+which is why it does not require the ``else'' part to generate
+a value for @samp{B}.
+The introduction of the new variable @samp{B0} is necessary
 because the condition of an if-then-else is a negated context,
 and can export the values it generates
-only to the then part of the if-then-else,
-not directly to the surrounding computation
+only to the ``then'' part of the if-then-else,
+not directly to the surrounding computation.
 (If the surrounding computations had direct access
 to values generated in conditions,
 they might access them even if the condition failed.)
@@ -1245,8 +1245,8 @@ they might access them even if the condition failed.)
 @subsection Interfacing nondeterministic code with the real world
 
 Normally, attempting to call
-a @samp{nondet} or @samp{multi} mode of a predicate
-from a predicate declared as @samp{semidet} or @samp{det}
+a @code{nondet} or @code{multi} mode of a predicate
+from a predicate declared as @code{semidet} or @code{det}
 will cause a determinism error.
 So how can we call nondeterministic code from deterministic code?
 There are several alternative possibilities.
@@ -1254,19 +1254,75 @@ There are several alternative possibilities.
 If you just want to see if a nondeterministic goal is satisfiable or not,
 without needing to know what variable bindings it produces,
 then there is no problem -
-determinism analysis considers @samp{nondet} and @samp{multi} goals
+determinism analysis considers @code{nondet} and @code{multi} goals
 with no non-local output variables to be
-@samp{semidet} and @samp{det} respectively.
+@code{semidet} and @code{det} respectively.
 
 If you want to use the values of output variables,
 then you need to ask yourself
 which one of possibly many solutions to a goal do you want?
 If you want all of them, you need to use the predicate
-@code{solutions/2} in the standard library module @samp{std_util}.
-@c XXX need more details on how to use solutions.
+@samp{solutions/2} in the standard library module @samp{std_util},
+which has the following declaration:
+
+@example
+:- pred solutions(pred(T), list(T)).
+:- mode solutions(in, out) is det.
+@end example
+
+The term which you pass to @samp{solutions/2} is a higher-order
+predicate term.  You can pass the name of a one-argument predicate,
+or you can pass a several-argument predicate with all but one
+of the arguments supplied (a closure).  The declarative semantics of
+@samp{solutions/2} can be defined as follows:
+
+@example
+solutions(Pred, List) is true iff
+        all [X] (call(Pred, X) <=> list__member(X, List))
+        and List is sorted.
+@end example
+
+@noindent
+where @samp{call(Pred, X)} is a call to the standard library predicate
+@samp{call/2} which invokes the higher-order predicate term @samp{Pred}
+with argument @samp{X}, and where @samp{list__member/2} is the standard
+library predicate for list membership.  In other words,
+@samp{solutions(Pred, List)} finds all the values of @samp{X}
+for which @samp{call(Pred, X)} is true, collects these solutions
+in a list, sorts the list, and returns that list as its result.
+Here's an example: the standard library defines a predicate
+@samp{list__perm(List0, List)}
+
+@example
+:- pred list__perm(list(T), list(T)).
+:- mode list__perm(in, out) is nondet.
+@end example
+
+@noindent
+which succeeds iff List is a permutation of List0.
+Hence the following call to solutions
+
+@example
+solutions(list__perm([3,1,2]), L)
+@end example
+
+@noindent
+should return all the possible permutations of the list @samp{[3,1,2]}
+in sorted order:
+
+@example
+L = [[1,2,3],[1,3,2],[2,1,3],[2,3,1],[3,1,2],[3,2,1]].
+@end example
+
+Unfortunately, the current implementation of higher-order predicates
+is not complete.  You cannot pass a polymorphic predicate (one with
+a type variable in its predicate declaration) like @samp{list__perm} to
+@samp{solutions/2}, and there is no compile-time mode or determinism
+checking for higher-order predicate terms (if you get the mode
+or determinism wrong, you will probably just get a core dump).
 
 If you just want one solution and don't care which,
-the calling predicate should be declared @samp{nondet} or @samp{multi}.
+the calling predicate should be declared @code{nondet} or @code{multi}.
 The nondeterminism should then be propagated up the call tree
 to the point at which it can be pruned.
 In Mercury, pruning can be achieved in several ways.
@@ -1279,10 +1335,10 @@ Any potential duplicate solutions will be implicitly pruned away.
 The second way is to rely on the fact that
 the implementation will only seek a single solution to @samp{main/2},
 so alternative solutions to @samp{main/2}
-(and hence also to @samp{nondet} or @samp{multi} predicates
+(and hence also to @code{nondet} or @code{multi} predicates
 called directly or indirectly from @samp{main/2})
 are implicitly pruned away.
-This is one way to achieve "don't care" nondeterminism in Mercury.
+This is one way to achieve ``don't care'' nondeterminism in Mercury.
 
 The other situation in which you may want pruning
 and committed choice style nondeterminism
@@ -1352,7 +1408,7 @@ These declarations may occur
 either in the interface or the implementation section.
 If the imported entities are used in the interface section,
 then the corresponding @code{import_module} declaration must
-also be in the interface section.  If the imported entites are only
+also be in the interface section.  If the imported entities are only
 used in the implementation section, the @code{import_module}
 declaration should be in the implementation section.
 
@@ -1446,7 +1502,7 @@ Mercury implementations must be sound:
 the answers they compute must be true in every model of the theory.
 
 Execution of a legal Mercury program begins with the predicate @samp{main/2}.
-Only one solution is sought, even if @samp{main/2} is multi.
+Only one solution is sought, even if @samp{main/2} is declared as @code{multi}.
 
 @contents
 @bye
