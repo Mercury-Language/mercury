@@ -58,7 +58,7 @@ general
 
 - warn about predicates with no modes.
 
-- handle abstract insts in the same way abstract types are handled
+- handle abstract insts in the same way abstract types are handled (???)
 
 - test & debug the determinism analysis 
 
