@@ -386,8 +386,10 @@ pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes,
 		ObtainLock = pragma_c_raw_code(""),
 		ReleaseLock = pragma_c_raw_code("")
 	;
-		ObtainLock = pragma_c_raw_code("\tMR_OBTAIN_GLOBAL_LOCK();\n"),
-		ReleaseLock = pragma_c_raw_code("\tMR_RELEASE_GLOBAL_LOCK();\n")
+		ObtainLock =
+			pragma_c_raw_code("\tMR_OBTAIN_GLOBAL_C_LOCK();\n"),
+		ReleaseLock =
+			pragma_c_raw_code("\tMR_RELEASE_GLOBAL_C_LOCK();\n")
 	},
 
 	%
