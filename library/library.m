@@ -20,8 +20,8 @@
 :- import_module array, bag, bimap, bintree, bintree_set, char, dir.
 :- import_module eqvclass, float, graph, group, int, io.
 :- import_module list, map, pqueue, queue, random, relation, require.
-:- import_module set, stack, std_util, string, term, term_io.
-:- import_module tree234, varset, store, rbtree.
+:- import_module set, set_bbbtree, set_unordlist, stack, std_util, string.
+:- import_module term, term_io, tree234, varset, store, rbtree.
 
 :- import_module parser, lexer, ops.
 

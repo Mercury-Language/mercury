@@ -65,7 +65,9 @@
 			;	(int__expr mod int__expr)
 			;	(int__expr // int__expr).
 
-:- pred is(int :: out, int__expr :: (in)) is det.
+:- pred is(int, int__expr) is det.
+:- mode is(uo, in) is det.
+:- mode is(out, in) is det.
 
 */
 
@@ -84,7 +86,9 @@
 			;	(int ^ int)	% bitwise exclusive or
 			;	(\ int).	% bitwise complement
 
-:- pred is(int :: out, int__simple_expr :: in) is det.
+:- pred is(int, int__simple_expr) is det.
+:- mode is(uo, in) is det.
+:- mode is(out, in) is det.
 
 /* NB: calls to `is' get automagically converted into
    calls to builtin_whatever by the parser.
@@ -92,6 +96,7 @@
 */
 
 :- pred builtin_plus(int, int, int).
+:- mode builtin_plus(in, in, uo) is det.
 :- mode builtin_plus(in, in, out) is det.
 
 :- pred builtin_minus(int, int, int).

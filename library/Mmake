@@ -112,7 +112,7 @@ libmercury.a : $(library.os)
 
 libmercury.so : $(library.pic_os)
 	$(LINK_SHARED_OBJ) -o libmercury.so $(library.pic_os) \
-		# -L$(RUNTIME_DIR) -L$(BOEHM_GC_DIR) -lmer -lgc
+		-L$(RUNTIME_DIR) -L$(BOEHM_GC_DIR) -lmer -lgc
 
 library.init: $(library.cs)
 	cat `vpath_find $(library.cs)` | grep '^INIT ' > library.init

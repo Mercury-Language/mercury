@@ -5,10 +5,9 @@
 %---------------------------------------------------------------------------%
 
 % File: set.m.
-% Main authors: conway, fjh.
+% Main authors: benyi.
 
-% This file contains a `set' ADT.
-% Sets are implemented here as unsorted lists, which may contain duplicates.
+% This file just calls the equivalent predicates in set_unordlist.
 
 %--------------------------------------------------------------------------%
 
@@ -16,7 +15,7 @@
 :- interface.
 :- import_module list, std_util.
 
-:- type set(_T).
+:- type set(T).
 
 	% `set__list_to_set(List, Set)' is true iff `Set' is the set 
 	% containing only the members of `List'.
@@ -38,7 +37,7 @@
 
 	% `set__init(Set)' is true iff `Set' is an empty set.
 
-:- pred set__init(set(_T)).
+:- pred set__init(set(T)).
 :- mode set__init(uo) is det.
 
 	% `set__singleton_set(Set, Elem)' is true iff `Set' is the set
@@ -54,7 +53,7 @@
 :- pred set__equal(set(T), set(T)).
 :- mode set__equal(in, in) is semidet.
 
-:- pred set__empty(set(_T)).
+:- pred set__empty(set(T)).
 :- mode set__empty(in) is semidet.
 
 	% `set__subset(SetA, SetB)' is true iff `SetA' is a subset of `SetB'.
@@ -163,133 +162,78 @@
 
 :- implementation.
 
-:- import_module list, std_util.
+:- import_module set_unordlist.
 
-:- type set(T)		  ==	  list(T).
+:- type set(T)		  ==	  set_unordlist(T).
 
-set__list_to_set(List, List).
+set__list_to_set(List, Set) :-
+	set_unordlist__list_to_set(List, Set).
 
-set__sorted_list_to_set(List, List).
+set__sorted_list_to_set(List, Set) :-
+	set_unordlist__sorted_list_to_set(List, Set).
 
 set__to_sorted_list(Set, List) :-
-	list__sort_and_remove_dups(Set, List).
-
-:- set__insert_list(_, Xs, _) when Xs.	% NU-Prolog indexing.
+	set_unordlist__to_sorted_list(Set, List).
 
 set__insert_list(Set0, List, Set) :-
-	list__append(List, Set0, Set).
+	set_unordlist__insert_list(Set0, List, Set).
 
-set__insert(S0, E, [E|S0]).
+set__insert(Set0, X, Set) :-
+	set_unordlist__insert(Set0, X, Set).
 
-set__init([]).
+set__init(Set) :-
+	set_unordlist__init(Set).
 
-set__singleton_set([X], X).
+set__singleton_set(Set, X) :-
+	set_unordlist__singleton_set(Set, X).
 
 set__equal(SetA, SetB) :-
-	set__subset(SetA, SetB),
-	set__subset(SetB, SetA).
+	set_unordlist__equal(SetA, SetB).
 
-set__empty([]).
+set__empty(Set) :-
+	set_unordlist__empty(Set).
 
-set__subset([], _).
-set__subset([E|S0], S1) :-
-	set__member(E, S1),
-	set__subset(S0, S1).
+set__subset(SetA, SetB) :-
+	set_unordlist__subset(SetA, SetB).
 
-set__superset(S0, S1) :-
-	set__subset(S1, S0).
+set__superset(SetA, SetB) :-
+	set_unordlist__superset(SetA, SetB).
 
-set__member(E, S) :-
-	list__member(E, S).
+set__member(X, Set) :-
+	set_unordlist__member(X, Set).
 
-set__is_member(E, S, R) :-
-	( set__member(E, S) ->
-		R = yes
-	;
-		R = no
-	).
+set__is_member(X, Set, Result) :-
+	set_unordlist__is_member(X, Set, Result).
 
-:- set__delete_list(_, Xs, _) when Xs.
+set__delete_list(Set0, List, Set) :-
+	set_unordlist__delete_list(Set0, List, Set).
 
-set__delete_list(S, [], S).
-set__delete_list(S0, [X | Xs], S) :-
-	set__delete(S0, X, S1),
-	set__delete_list(S1, Xs, S).
+set__delete(Set0, X, Set) :-
+	set_unordlist__delete(Set0, X, Set).
 
-set__delete(S0, E, S) :-
-	list__delete_all(S0, E, S).
+set__remove_list(Set0, List, Set) :-
+	set_unordlist__remove_list(Set0, List, Set).
 
-:- set__remove_list(_, Xs, _) when Xs.
+set__remove(Set0, X, Set) :-
+	set_unordlist__remove(Set0, X, Set).
 
-set__remove_list(S, [], S).
-set__remove_list(S0, [X | Xs], S) :-
-	set__remove(S0, X, S1),
-	set__remove_list(S1, Xs, S).
+set__remove_least(Set0, X, Set) :-
+	set_unordlist__remove_least(Set0, X, Set).
 
-set__remove(S0, E, S) :-
-	list__member(E, S0),
-	set__delete(S0, E, S).
+set__union(SetA, SetB, Set) :-
+	set_unordlist__union(SetA, SetB, Set).
 
-set__remove_least(Set0, E, Set) :-
-	Set0 = [_|_],	% fail early on an empty set
-	set__to_sorted_list(Set0, [E|Set]).
+set__power_union(Sets, Set) :-
+	set_unordlist__power_union(Sets, Set).
 
-set__union(Set0, Set1, Set) :-
-	list__append(Set1, Set0, Set).
+set__intersect(SetA, SetB, Set) :-
+	set_unordlist__intersect(SetA, SetB, Set).
 
-set__power_union(PS, S) :-
-	set__to_sorted_list(PS, SL),
-	set__init(S0),
-	set__power_union_2(SL, S0, S).
+set__power_intersect(Sets, Set) :-
+	set_unordlist__power_intersect(Sets, Set).
 
-:- pred set__power_union_2(list(set(T)), set(T), set(T)).
-:- mode set__power_union_2(in, in, out) is det.
-
-set__power_union_2([], S, S).
-set__power_union_2([T|Ts], S0, S) :-
-	set__union(T, S0, S1),
-	set__power_union_2(Ts, S1, S).
-
-set__intersect(S0, S1, S) :-
-	set__intersect_2(S0, S1, [], S).
-
-:- pred set__intersect_2(set(T), set(T), set(T), set(T)).
-:- mode set__intersect_2(in, in, in, out) is det.
-
-set__intersect_2([], _, S, S).
-set__intersect_2([E|S0], S1, S2, S) :-
-	(
-		list__member(E, S1)
-	->
-		S3 = [E|S2]
-	;
-		S3 = S2
-	),
-	set__intersect_2(S0, S1, S3, S).
-
-set__power_intersect([], []).
-set__power_intersect([S0|Ss], S) :-
-	(
-		Ss = []
-	->
-		S = S0
-	;
-		set__power_intersect(Ss, S1),
-		set__intersect(S1, S0, S)
-	).
-
-%--------------------------------------------------------------------------%
-
-set__difference(A, B, C) :-
-	set__difference_2(B, A, C).
-
-:- pred set__difference_2(set(T), set(T), set(T)).
-:- mode set__difference_2(in, in, out) is det.
-
-set__difference_2([], C, C).
-set__difference_2([E|Es], A, C) :-
-	set__delete(A, E, B),
-	set__difference_2(Es, B, C).
+set__difference(SetA, SetB, Set) :-
+	set_unordlist__difference(SetA, SetB, Set).
 
 %--------------------------------------------------------------------------%
 %--------------------------------------------------------------------------%
