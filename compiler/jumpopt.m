@@ -66,7 +66,7 @@ jumpopt__build_maps([Instr0 | Instrs0], Instrmap0, Instrmap, Lvalmap0, Lvalmap,
 		( Instrs2 = [Instr2 | _] ->
 			map__set(Instrmap0, Label, Instr2, Instrmap1)
 		;
-			error("label followed directly by end of procedure")
+			Instrmap1 = Instrmap0
 		),
 		( opt_util__is_proceed_next(Instrs2, Between1) ->
 			map__set(Procmap0, Label, Between1, Procmap1)

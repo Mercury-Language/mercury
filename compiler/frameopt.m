@@ -468,7 +468,7 @@ frameopt__dup_teardown_labels([Instr0 | Instrs0], FrameSize,
 		N1 is N0 + 1,
 		NewLabel = local(ProcLabel, N0),
 		NewLabelInstr = label(NewLabel) - "non-teardown parallel label",
-		list__condense([[NewLabelInstr], Tail, [Goto]], Extra1),
+		list__condense([[NewLabelInstr], Tail, Goto], Extra1),
 		map__set(TeardownMap0, Label, NewLabel, TeardownMap1),
 		frameopt__dup_teardown_labels(After, FrameSize,
 			TeardownMap1, TeardownMap, ProcLabel, N1, N, Extra2),
@@ -496,10 +496,10 @@ frameopt__doit([Instr0 | Instrs0], FrameSize, First, SetupFrame0, SetupSuccip0,
 			FrameSet, SuccipSet, TeardownMap,
 			ProcLabel, N0, N, Instrs1),
 		( SetupFrame0 = yes ->
-			list__condense([Tail, Teardown, [Goto], Instrs1],
+			list__condense([Tail, Teardown, Goto, Instrs1],
 				Instrs)
 		;
-			list__condense([Tail, [Goto], Instrs1], Instrs)
+			list__condense([Tail, Goto, Instrs1], Instrs)
 		)
 	;
 		Instr0 = Uinstr0 - Comment,
@@ -704,7 +704,7 @@ frameopt__generate_if(Rval, CodeAddr, Comment, Instrs0, FrameSize,
 		frameopt__doit(After, FrameSize, yes, no, no,
 			FrameSet, SuccipSet, TeardownMap,
 			ProcLabel, N0, N, Instrs1),
-		list__condense([Teardown, [Instr1], Tail, [Goto], Instrs1],
+		list__condense([Teardown, [Instr1], Tail, Goto, Instrs1],
 			Instrs)
 	;
 		% If both continuations require a stack frame, set it up
@@ -960,24 +960,25 @@ frameopt__detstack_setup_2([Instr0 | Instrs0], FrameSize, Instrs) :-
 	% We are looking for the teardown components in any order, since
 	% value numbering may change the original order.
 
-:- pred frameopt__detstack_teardown(list(instruction), int,
-	list(instruction), list(instruction), instruction, list(instruction)).
+:- pred frameopt__detstack_teardown(list(instruction), int, list(instruction),
+	list(instruction), list(instruction), list(instruction)).
 :- mode frameopt__detstack_teardown(in, in, out, out, out, out) is semidet.
 
 frameopt__detstack_teardown(Instrs0, FrameSize, Tail, Teardown, Goto, Remain) :-
-	frameopt__detstack_teardown_2(Instrs0, FrameSize, [], [], [],
+	frameopt__detstack_teardown_2(Instrs0, FrameSize, [], [], [], [],
 		Tail, Teardown, Goto, Remain).
 
 :- pred frameopt__detstack_teardown_2(list(instruction), int,
 	list(instruction), list(instruction), list(instruction),
-	list(instruction), list(instruction), instruction, list(instruction)).
-:- mode frameopt__detstack_teardown_2(in, in, in, in, in, out, out, out, out)
-	is semidet.
+	list(instruction), list(instruction), list(instruction),
+	list(instruction), list(instruction)).
+:- mode frameopt__detstack_teardown_2(in, in, in, in, in, in,
+	out, out, out, out) is semidet.
 
 frameopt__detstack_teardown_2(Instrs0, FrameSize,
-		SeenSuccip0, SeenDecrsp0, SeenExtra0,
+		SeenSuccip0, SeenDecrsp0, SeenExtra0, SeenLivevals0,
 		Tail, Teardown, Goto, Remain) :-
-	opt_util__skip_comments_livevals(Instrs0, Instrs1),
+	opt_util__skip_comments(Instrs0, Instrs1),
 	Instrs1 = [Instr1 | Instrs2],
 	Instr1 = Uinstr1 - _,
 	(
@@ -991,28 +992,35 @@ frameopt__detstack_teardown_2(Instrs0, FrameSize,
 			SeenSuccip1 = [Instr1],
 			frameopt__detstack_teardown_2(Instrs2, FrameSize,
 				SeenSuccip1, SeenDecrsp0, SeenExtra0,
-				Tail, Teardown, Goto, Remain)
+				SeenLivevals0, Tail, Teardown, Goto, Remain)
 		;
 			opt_util__lval_refers_stackvars(Lval, no),
 			opt_util__rval_refers_stackvars(Rval, no),
 			list__append(SeenExtra0, [Instr1], SeenExtra1),
 			frameopt__detstack_teardown_2(Instrs2, FrameSize,
 				SeenSuccip0, SeenDecrsp0, SeenExtra1,
-				Tail, Teardown, Goto, Remain)
+				SeenLivevals0, Tail, Teardown, Goto, Remain)
 		)
 	;
 		Uinstr1 = decr_sp(FrameSize),
 		SeenDecrsp0 = [],
 		SeenDecrsp1 = [Instr1],
 		frameopt__detstack_teardown_2(Instrs2, FrameSize,
-			SeenSuccip0, SeenDecrsp1, SeenExtra0,
+			SeenSuccip0, SeenDecrsp1, SeenExtra0, SeenLivevals0,
+			Tail, Teardown, Goto, Remain)
+	;
+		Uinstr1 = livevals(_),
+		SeenLivevals0 = [],
+		SeenLivevals1 = [Instr1],
+		frameopt__detstack_teardown_2(Instrs2, FrameSize,
+			SeenSuccip0, SeenDecrsp0, SeenExtra0, SeenLivevals1,
 			Tail, Teardown, Goto, Remain)
 	;
 		Uinstr1 = goto(_, _),
 		SeenDecrsp0 = [_],
 		list__append(SeenSuccip0, SeenDecrsp0, Teardown),
 		Tail = SeenExtra0,
-		Goto = Instr1,
+		list__append(SeenLivevals0, [Instr1], Goto),
 		Remain = Instrs2
 	).
 

@@ -77,8 +77,8 @@ vn__procedure(Instrs0, Livemap, OptInstrs) -->
 	vn__process_parallel_tuples(Tuples).
 
 :- pred vn__optimize_blocks(list(list(instruction)), livemap, int,
-	list(list(instruction)), list(vn_ctrl_tuple), list(vn_ctrl_tuple),
-	io__state, io__state).
+	list(list(instruction)), list(maybe(vn_ctrl_tuple)),
+	list(maybe(vn_ctrl_tuple)), io__state, io__state).
 :- mode vn__optimize_blocks(in, in, in, out, di, uo, di, uo) is det.
 
 vn__optimize_blocks([], _, _, [], Tuples, Tuples) --> [].
@@ -93,15 +93,28 @@ vn__optimize_blocks([Block0 | Blocks0], Livemap, LabelNo0, [Block | Blocks],
 %-----------------------------------------------------------------------------%
 
 :- pred vn__optimize_block(list(instruction), livemap, int, int,
-	list(instruction), list(vn_ctrl_tuple), list(vn_ctrl_tuple),
-	io__state, io__state).
+	list(instruction), list(maybe(vn_ctrl_tuple)),
+	list(maybe(vn_ctrl_tuple)), io__state, io__state).
 :- mode vn__optimize_block(in, in, in, out, out, in, out, di, uo) is det.
 
 vn__optimize_block(Instrs0, Livemap, LabelNo0, LabelNo, Instrs,
 		RevTuples0, RevTuples) -->
-	vn__optimize_fragment(Instrs0, Livemap, LabelNo0, Tuple, Instrs),
-	{ Tuple = tuple(_, _, _, LabelNo, _) },
-	{ RevTuples = [Tuple | RevTuples0] }.
+	(
+		{ list__reverse(Instrs0, RevInstrs) },
+		{ RevInstrs = [LastInstr - _ | _] },
+		{ opt_util__can_instr_fall_through(LastInstr, yes) }
+	->
+		% The blocks ends with a call to an erroneous procedure
+		% and its never to be used return label
+		{ Instrs = Instrs0 },
+		{ LabelNo = LabelNo0 },
+		{ RevTuples = [no | RevTuples0] }
+	;
+		vn__optimize_fragment(Instrs0, Livemap, LabelNo0,
+			Tuple, Instrs),
+		{ Tuple = tuple(_, _, _, LabelNo, _) },
+		{ RevTuples = [yes(Tuple) | RevTuples0] }
+	).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -162,13 +175,19 @@ vn__optimize_fragment(Instrs0, Livemap, LabelNo0, Tuple, Instrs) -->
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- pred vn__process_parallel_tuples(list(vn_ctrl_tuple), io__state, io__state).
+:- pred vn__process_parallel_tuples(list(maybe(vn_ctrl_tuple)),
+	io__state, io__state).
 :- mode vn__process_parallel_tuples(in, di, uo) is det.
 
 vn__process_parallel_tuples([]) --> [].
-vn__process_parallel_tuples([Tuple | Tuples]) -->
-	vn__process_parallel_tuple(Tuple),
-	vn__process_parallel_tuples(Tuples).
+vn__process_parallel_tuples([MaybeTuple | MaybeTuples]) -->
+	(
+		{ MaybeTuple = yes(Tuple) },
+		vn__process_parallel_tuple(Tuple)
+	;
+		{ MaybeTuple = no }
+	),
+	vn__process_parallel_tuples(MaybeTuples).
 
 :- pred vn__process_parallel_tuple(vn_ctrl_tuple, io__state, io__state).
 :- mode vn__process_parallel_tuple(in, di, uo) is det.

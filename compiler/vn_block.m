@@ -42,7 +42,12 @@ vn__divide_into_blocks_2([], BlockInstrs, PrevBlocks, Blocks) :-
 	( BlockInstrs = [] ->
 		list__reverse(PrevBlocks, Blocks)
 	;
-		error("procedure ends with fallthrough instruction")
+		% This happens only if a procedure ends with fallthrough
+		% instruction. This can happen only if the procedure ends
+		% with a call to an erroneous procedure and the return label
+		% of that call, which will never be used.
+		list__reverse(BlockInstrs, ThisBlock),
+		list__reverse([ThisBlock | PrevBlocks], Blocks)
 	).
 vn__divide_into_blocks_2([Instr0|Instrs0], BlockInstrs0, PrevBlocks0, Blocks) :-
 	Instr0 = Uinstr0 - _Comment0,

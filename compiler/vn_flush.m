@@ -67,10 +67,27 @@ vn__flush_node(Node, Ctrlmap, Nodes0, Nodes, VnTables0, VnTables,
 			VnTables0, VnTables, Templocs1, Templocs, Instrs) }
 	;
 		{ Node = node_lval(Vnlval) },
-		{ Nodes = Nodes0 },
-		{ vn__lookup_desired_value(Vnlval, Vn, VnTables0) },
-		{ vn__ensure_assignment(Vnlval, Vn,
-			VnTables0, VnTables, Templocs0, Templocs, Instrs) }
+		{ vn__lookup_desired_value(Vnlval, DesVn, VnTables0) },
+		{ vn__lookup_current_value(Vnlval, CurVn, VnTables0) },
+		(
+			{ CurVn = DesVn },
+			{ vn__vnlval_access_vns(Vnlval, AccessVns) },
+			{ AccessVns = [_|_] }
+			% XXX { vn__vnlval_access_vns(Vnlval, [_|_]) }
+		->
+			% Even if a vnlval already has the right value,
+			% we must make sure its access path will not be
+			% needed again. This requires its storage in a
+			% register or temporary if it is ever used again.
+			vn__flush_node(node_shared(DesVn), Ctrlmap,
+				Nodes0, Nodes, VnTables0, VnTables,
+				Templocs0, Templocs, Instrs)
+		;
+			{ vn__ensure_assignment(Vnlval, DesVn,
+				VnTables0, VnTables,
+				Templocs0, Templocs, Instrs) },
+			{ Nodes = Nodes0 }
+		)
 	;
 		{ Node = node_origlval(Vnlval) },
 		{ Nodes = Nodes0 },

@@ -501,7 +501,7 @@ vn__is_vn_shared(Vn, Vnrval, Uses0, VnTables) :-
 vn__real_uses([], [], _VnTables).
 vn__real_uses([Use0 | Uses0], Uses, VnTables) :-
 	vn__real_uses(Uses0, Uses1, VnTables),
-	( ( Use0 = src_liveval(Vnlval) ; Use0 = src_access(Vnlval) ) ->
+	( Use0 = src_liveval(Vnlval) ->
 		(
 			vn__search_desired_value(Vnlval, Vn, VnTables),
 			vn__search_current_value(Vnlval, Vn, VnTables)
@@ -829,7 +829,8 @@ vn__reorder_noops_2([Node | Nodes], VnTables, Noops, Ops) :-
 		;
 			Node = node_lval(Vnlval),
 			vn__lookup_desired_value(Vnlval, Vn, VnTables),
-			vn__search_current_value(Vnlval, Vn, VnTables)
+			vn__search_current_value(Vnlval, Vn, VnTables),
+			vn__vnlval_access_vns(Vnlval, [])
 		)
 	->
 		Ops = Ops0,
