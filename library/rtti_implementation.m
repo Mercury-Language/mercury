@@ -764,9 +764,15 @@ deconstruct(Term, Functor, Arity, Arguments) :-
 		Arguments = []
 	;
 		TypeCtorRep = tuple,
-		Functor = "some_tuple", 
-		Arity = 0,
-		Arguments = []
+		type_ctor_and_args(TypeInfo, _TypeCtorInfo, TypeArgs),
+		Functor = "{}", 
+		Arity = get_var_arity_typeinfo_arity(TypeInfo),
+		list__map_foldl(
+			(pred(TI::in, U::out, Index::in, Next::out) is det :-
+				SubTerm = get_subterm(TI, Term, Index, 0),
+				U = std_util__univ(SubTerm),
+				Next = Index + 1
+			), TypeArgs, Arguments, 0, _)
 	;
 		TypeCtorRep = univ,
 		Functor = "some_univ", 
