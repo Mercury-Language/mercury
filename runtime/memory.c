@@ -277,12 +277,12 @@ debug_memory(void)
 	MemoryZone	*zone;
 
 	fprintf(stderr, "\n");
-	fprintf(stderr, "pcache_size  = %d (0x%x)\n",
-		pcache_size, pcache_size);
-	fprintf(stderr, "page_size    = %d (0x%x)\n",
-		page_size, page_size);
-	fprintf(stderr, "unit         = %d (0x%x)\n",
-		unit, unit);
+	fprintf(stderr, "pcache_size  = %lu (0x%lx)\n",
+		(unsigned long) pcache_size, (unsigned long) pcache_size);
+	fprintf(stderr, "page_size    = %lu (0x%lx)\n",
+		(unsigned long) page_size, (unsigned long) page_size);
+	fprintf(stderr, "unit         = %lu (0x%lx)\n",
+		(unsigned long) unit, (unsigned long) unit);
 
 	fprintf(stderr, "\n");
 	fprintf(stderr, "fake_reg       = %p (offset %ld)\n",
