@@ -1647,8 +1647,9 @@ output_instruction(if_val(Rval, Target), ProfInfo) -->
 	{ ProfInfo = CallerLabel - _ },
 	io__write_string("\tif ("),
 	output_rval_as_type(Rval, bool),
-	io__write_string(")\n\t\t"),
-	output_goto(Target, CallerLabel).
+	io__write_string(") {\n\t\t"),
+	output_goto(Target, CallerLabel),
+	io__write_string("\t}\n").
 
 output_instruction(incr_hp(Lval, MaybeTag, Rval, TypeMsg), ProfInfo) -->
 	(
@@ -3070,13 +3071,19 @@ output_goto(do_trace_redo_fail_shallow, _) -->
 output_goto(do_trace_redo_fail_deep, _) -->
 	io__write_string("GOTO(ENTRY(MR_do_trace_redo_fail_deep));\n").
 output_goto(do_call_closure, CallerLabel) -->
-	io__write_string("tailcall(ENTRY(mercury__do_call_closure),\n\t\t"),
+	% see comment in output_call for why we use `noprof_' etc. here
+	io__write_string("MR_set_prof_ho_caller_proc("),
 	output_label_as_code_addr(CallerLabel),
-	io__write_string(");\n").
+	io__write_string(");\n\t\t"),
+	io__write_string(
+		"noprof_tailcall(ENTRY(mercury__do_call_closure));\n").
 output_goto(do_call_class_method, CallerLabel) -->
-	io__write_string("tailcall(ENTRY(mercury__do_call_class_method),\n\t\t"),
+	% see comment in output_call for why we use `noprof_' etc. here
+	io__write_string("MR_set_prof_ho_caller_proc("),
 	output_label_as_code_addr(CallerLabel),
-	io__write_string(");\n").
+	io__write_string(");\n\t\t"),
+	io__write_string(
+		"noprof_tailcall(ENTRY(mercury__do_call_class_method));\n").
 output_goto(do_det_aditi_call, CallerLabel) -->
 	io__write_string("tailcall(ENTRY(do_det_aditi_call),\n\t\t"),
 	output_label_as_code_addr(CallerLabel),
@@ -3123,12 +3130,36 @@ output_goto(do_not_reached, CallerLabel) -->
 :- mode output_call(in, in, in, di, uo) is det.
 
 output_call(Target, Continuation, CallerLabel) -->
+	io__write_string("\t"),
+	% For profiling, we ignore calls to do_call_closure
+	% and do_call_class_method, because in general they
+	% lead to cycles in the call graph that screw up the
+	% profile.  By generating a `noprof_call' rather than
+	% a `call', we ensure that time spent inside those
+	% routines is credited to the caller, rather than to
+	% do_call_closure or do_call_class_method itself.
+	% But if we do use a noprof_call, we need to set
+	% MR_prof_ho_caller_proc, so that the callee knows
+	% which proc it has been called from.
+	(
+		{ Target = do_call_closure
+		; Target = do_call_class_method
+		}
+	->
+		{ ProfileCall = no },
+		io__write_string("MR_set_prof_ho_caller_proc("),
+		output_label_as_code_addr(CallerLabel),
+		io__write_string(");\n\t"),
+		io__write_string("noprof_")
+	;
+		{ ProfileCall = yes }
+	),
 	(
 		{ Target = label(Label) },
 		% We really shouldn't be calling internal labels ...
 		{ Label = c_local(_) ; Label = local(_, _) }
 	->
-		io__write_string("\tlocalcall("),
+		io__write_string("localcall("),
 		output_label(Label),
 		io__write_string(",\n\t\t"),
 		output_code_addr(Continuation)
@@ -3136,18 +3167,22 @@ output_call(Target, Continuation, CallerLabel) -->
 		{ Continuation = label(ContLabel) },
 		{ ContLabel = c_local(_) ; ContLabel = local(_, _) }
 	->
-		io__write_string("\tcall_localret("),
+		io__write_string("call_localret("),
 		output_code_addr(Target),
 		io__write_string(",\n\t\t"),
 		output_label(ContLabel)
 	;
-		io__write_string("\tcall("),
+		io__write_string("call("),
 		output_code_addr(Target),
 		io__write_string(",\n\t\t"),
 		output_code_addr(Continuation)
 	),
-	io__write_string(",\n\t\t"),
-	output_label_as_code_addr(CallerLabel),
+	( { ProfileCall = yes } ->
+		io__write_string(",\n\t\t"),
+		output_label_as_code_addr(CallerLabel)
+	;
+		[]
+	),
 	io__write_string(");\n").
 
 output_code_addr(label(Label)) -->
@@ -4202,6 +4237,7 @@ llds_out__name_conversion_table("/", "f_slash").
 llds_out__name_conversion_table(",", "f_comma").
 llds_out__name_conversion_table(";", "f_semicolon").
 llds_out__name_conversion_table("!", "f_cut").
+llds_out__name_conversion_table("{}", "f_tuple").
 
 	% This is the fall-back method.
 	% Given a string, produce a C identifier

@@ -118,6 +118,15 @@
 							% variable types from
 							% explicit
 							% qualifications
+			tvar_name_map		:: tvar_name_map,
+							% map from variable
+							% name to type variable
+							% for the type
+							% variables occurring
+							% in the argument
+							% types. This is used
+							% to process explicit
+							% type qualifications.
 			vartypes		:: vartypes,
 							% variable types
 							% inferred by
@@ -133,6 +142,8 @@
 		).
 
 :- type vartypes == map(prog_var, type).
+
+:- type tvar_name_map == map(string, tvar).
 
 :- pred clauses_info_varset(clauses_info, prog_varset).
 :- mode clauses_info_varset(in, out) is det.
@@ -864,8 +875,9 @@ pred_info_create(ModuleName, SymName, TypeVarSet, ExistQVars, Types, Cond,
 	unqualify_name(SymName, PredName),
 	% The empty list of clauses is a little white lie.
 	Clauses = [],
-	ClausesInfo = clauses_info(VarSet, VarTypes, VarTypes, HeadVars,
-		Clauses, TypeInfoMap, TypeClassInfoMap),
+	map__init(TVarNameMap),
+	ClausesInfo = clauses_info(VarSet, VarTypes, TVarNameMap,
+		VarTypes, HeadVars, Clauses, TypeInfoMap, TypeClassInfoMap),
 	map__init(ClassProofs),
 	term__vars_list(Types, TVars),
 	list__delete_elems(TVars, ExistQVars, HeadTypeParams),
@@ -1870,9 +1882,12 @@ no_type_info_builtin(ModuleName, PredName, Arity) :-
 	;
 		ModuleNameType = private_builtin,
 		mercury_private_builtin_module(ModuleName)
+	;
+		ModuleNameType = table_builtin,
+		mercury_table_builtin_module(ModuleName)
 	).
 
-:- type builtin_mod ---> builtin ; private_builtin.
+:- type builtin_mod ---> builtin ; private_builtin ; table_builtin.
 
 :- pred no_type_info_builtin_2(builtin_mod::out, string::in, int::in)
 	is semidet.
@@ -1885,8 +1900,8 @@ no_type_info_builtin_2(private_builtin,
 no_type_info_builtin_2(private_builtin, "type_info_from_typeclass_info", 3).
 no_type_info_builtin_2(private_builtin,
 			"unconstrained_type_info_from_typeclass_info", 3).
-no_type_info_builtin_2(private_builtin, "table_restore_any_ans", 3).
-no_type_info_builtin_2(private_builtin, "table_lookup_insert_enum", 4).
+no_type_info_builtin_2(table_builtin, "table_restore_any_ans", 3).
+no_type_info_builtin_2(table_builtin, "table_lookup_insert_enum", 4).
 
 %-----------------------------------------------------------------------------%
 

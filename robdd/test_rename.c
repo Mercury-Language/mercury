@@ -1,6 +1,6 @@
 /*****************************************************************
   File     : test_rename.c
-  RCS      : $Id: test_rename.c,v 1.1.2.1 2000-09-21 01:27:44 dgj Exp $
+  RCS      : $Id: test_rename.c,v 1.1.2.2 2000-09-27 04:00:11 dgj Exp $
   Author   : Peter Schachte
   Origin   : Sat Jul 29 20:53:11 1995
   Purpose  : Timing test for bryant graph renameArray code

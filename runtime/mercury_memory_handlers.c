@@ -22,12 +22,17 @@
 #include <stdio.h>
 #include <string.h>
 
+/*
+** XXX This code is duplicated in three files:
+** mercury_memory.c, mercury_memory_handlers.c, and mercury_signal.c.
+*/
 #ifdef HAVE_SIGCONTEXT_STRUCT
   /*
   ** Some versions of Linux call it struct sigcontext_struct, some call it
   ** struct sigcontext.  The following #define eliminates the differences.
   */
   #define sigcontext_struct sigcontext /* must be before #include <signal.h> */
+  struct sigcontext; /* this forward decl avoids a gcc warning in signal.h */
 
   /*
   ** On some systems (e.g. most versions of Linux) we need to #define
@@ -946,7 +951,7 @@ print_dump_stack(void)
 #ifndef	MR_LOWLEVEL_DEBUG
 
 	const char *msg =
-		"You can get a stack dump by using `--low-level-debug'\n";
+		"This may have been caused by a stack overflow, due to unbounded recursion.\n";
 	write(STDERR, msg, strlen(msg));
 
 #else /* MR_LOWLEVEL_DEBUG */

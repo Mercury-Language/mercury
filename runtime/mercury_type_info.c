@@ -183,11 +183,12 @@ MR_compare_type_info(MR_TypeInfo t1, MR_TypeInfo t2)
 	** If the type_ctor_info addresses are equal, we don't need to
 	** compare the arity of the types - they must be the same -
 	** unless they are higher-order (which are all mapped to
-	** pred/0). 
+	** pred/0) or tuples (which are all mapped to tuple/0). 
 	** But we need to recursively compare the argument types, if any.
 	*/
-		/* Check for higher order */
-	if (type_ctor_info_1->type_ctor_rep == MR_TYPECTOR_REP_PRED) 
+		/* Check for higher order or tuples */
+	if (MR_type_ctor_rep_is_variable_arity(
+			type_ctor_info_1->type_ctor_rep))
 	{
 		int	num_arg_types_2;
 
@@ -196,9 +197,6 @@ MR_compare_type_info(MR_TypeInfo t1, MR_TypeInfo t2)
 				type_info_1);
 		num_arg_types_2 = MR_TYPEINFO_GET_HIGHER_ORDER_ARITY(
 				type_info_2);
-
-		num_arg_types_2 = MR_field(MR_mktag(0), type_info_2, 
-			TYPEINFO_OFFSET_FOR_PRED_ARITY);
 
 			/* Check arity */
 		if (num_arg_types < num_arg_types_2) {

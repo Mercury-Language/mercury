@@ -1308,6 +1308,9 @@ magic_util__traverse_type(IsTopLevel, Parents, ArgType, Errors0, Errors) -->
 	; { type_is_higher_order(ArgType, _, _, _) } ->
 		% Higher-order types are not allowed.
 		{ set__insert(Errors0, higher_order, Errors) }
+	; { type_is_tuple(ArgType, TupleArgTypes) } ->
+		list__foldl2(magic_util__traverse_type(no, Parents),
+			TupleArgTypes, Errors0, Errors)
 	; { type_is_aditi_state(ArgType) } ->
 		( { IsTopLevel = no } ->
 			{ set__insert(Errors0, embedded_aditi_state, Errors) }

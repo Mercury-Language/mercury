@@ -445,6 +445,44 @@ try_again:
         }
         break;
 
+    case MR_TYPECTOR_REP_TUPLE:
+        {
+            MR_Word    *data_value;
+            int     arity, i;
+
+            assert(MR_tag(data) == 0);
+            data_value = (MR_Word *) MR_body(data, MR_mktag(0));
+
+            if (in_range(data_value)) {
+                MR_Word *new_data_ptr;
+                MR_TypeInfo *arg_typeinfo_vector;
+
+                arity = MR_TYPEINFO_GET_TUPLE_ARITY(type_info);
+
+                if (arity == 0) {
+                        new_data = (MR_Word) NULL;
+                } else {
+                        /* allocate space for the new tuple */
+                        incr_saved_hp(new_data, arity);
+                        new_data_ptr = (MR_Word *) new_data;
+
+                        arg_typeinfo_vector =
+                            MR_TYPEINFO_GET_TUPLE_ARG_VECTOR(type_info);
+                        for (i = 0; i < arity; i++) {
+                           /* type_infos are counted from one */
+                           new_data_ptr[i] = copy(&data_value[i],
+                                (const MR_TypeInfo) arg_typeinfo_vector[i + 1],
+                                lower_limit, upper_limit);
+                        }
+                        leave_forwarding_pointer(data_ptr, new_data);
+                }
+            } else {
+                new_data = data;
+                found_forwarding_pointer(data);
+            }
+        }
+        break;
+
     case MR_TYPECTOR_REP_UNIV:
         {
             MR_Word    *data_value;
@@ -645,21 +683,23 @@ copy_type_info(maybeconst MR_TypeInfo *type_info_ptr, const MR_Word *lower_limit
             return (MR_TypeInfo) type_ctor_info;
         }
 
-        if (type_ctor_info->type_ctor_rep == MR_TYPECTOR_REP_PRED) {
+        if (MR_type_ctor_rep_is_variable_arity(
+                type_ctor_info->type_ctor_rep))
+        {
             arity = MR_TYPEINFO_GET_HIGHER_ORDER_ARITY(type_info);
             type_info_args =
                 MR_TYPEINFO_GET_HIGHER_ORDER_ARG_VECTOR(type_info);
             incr_saved_hp(LVALUE_CAST(MR_Word, new_type_info_arena),
                 MR_higher_order_type_info_size(arity));
             MR_fill_in_higher_order_type_info(new_type_info_arena,
-		type_ctor_info, arity, new_type_info_args);
+                type_ctor_info, arity, new_type_info_args);
         } else {
             arity = type_ctor_info->arity;
             type_info_args = MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info);
             incr_saved_hp(LVALUE_CAST(MR_Word, new_type_info_arena),
                 MR_first_order_type_info_size(arity));
             MR_fill_in_first_order_type_info(new_type_info_arena,
-		type_ctor_info, new_type_info_args);
+                type_ctor_info, new_type_info_args);
         }
         for (i = 1; i <= arity; i++) {
             new_type_info_args[i] = copy_type_info(&type_info_args[i],

@@ -4,11 +4,14 @@ INTRODUCTION
 
 Mercury has been ported to Windows using the "Cygwin"
 (formerly also known as "Cygwin32" and "gnu-win32") Unix emulation
-package from Cygnus.  We've tested the port on Windows 2000,
-but it should work on Windows 95, Windows 98, and Windows NT too.
+package.  We've tested the port on Windows 2000,
+but it should work on Windows 95/98/ME and Windows NT too.
 
-This file documents how to build the source distribution
-of Mercury on Windows using Cygwin.
+This file documents how to install the binary distribution of
+Mercury on Windows and how to build the source distribution
+of Mercury on Windows using Cygwin.  This installation will use the GNU
+C compiler by default.  If you want to use the Microsoft Visual C
+compiler, please see the file README.MS-VisualC.
 
 (Note: we don't have any plans for a port to Windows 3.1.)
 
@@ -17,36 +20,32 @@ of Mercury on Windows using Cygwin.
 PREPARATION
 
 To use or build Mercury on Windows, you need to first get Cygwin
-from Cygnus, and install it. 
+and install it.  Recent versions of Cygwin can be installed directly
+from:
+
+	http://sources.redhat.com/cygwin/setup.exe
+
+This program will download and install the required components.
+
+If you want more information on Cygwin, see the site:
+
+	http://sources.redhat.com/cygwin/
 
 If you're going to use a binary distribution of Mercury for Windows,
 you need to make sure that you get a version of Cygwin that is
 compatible with the one that the binary distribution was compiled
 with.  This will normally be specified in the filename of the
 Mercury binary distribution.  For example, if the file name is
-mercury-0.8.1.pc-windows-cygwin-b20.1.tar.gz then you need version
-b20.1 of Cygwin.
+mercury-0.9.1.pc-windows-cygwin-1.1.4.tar.gz then you need version
+1.1.4 of Cygwin.  Later versions may work also, however it is always
+possible that compatibility might break at some point.  Cygwin will
+create a file C:\cygwin\setup.txt that lists the versions of every
+package installed.
 
-The version of gcc that came with Cygwin version b19 (and b19.1),
-called `gcc 2.7-b19', had a bug which causes it to generate incorrect
-code when compiling Mercury.  So if you want to use Cygwin version b19,
-then you need to also install a version of gcc that has this bug fixed,
-such as egcs version 1.0.2 or later.  It's probably simpler to just
-get version b20.1 or later of Cygwin.
-
-You can download Cygwin from <http://sourceware.cygnus.com/cygwin/>.
-Follow the installation instructions that come with Cygwin.
-Make sure that the Cygwin binaries are in your PATH, that you have
-a /tmp directory, that you have a copy of sh.exe in /bin.
-Before continuing, check that `sh' and `gcc' work.
+Before continuing, check that you can run Cygwin and get a command line
+shell, and that `gcc' (the GNU C compiler) works.
 
 For more information on Cygwin, see the Cygwin web site mentioned above.
-
-If you want to use the mtags tool from the Mercury distribution, you'll
-need to install perl.  A binary distribution of Perl is available at the
-Cygwin porting project:
-	http://www.student.uni-koeln.de/cygwin/
-
 
 -----------------------------------------------------------------------------
 
@@ -62,28 +61,14 @@ program (the autoconfiguration process looks for a program named "mmc").
 If so, just close that application, e.g. by selecting "Exit" from
 the "Console" menu.
 
-Reportedly running configure sometimes results in permission errors,
-but apparently the errors go away if you run configure a second time.
-This is probably due to a bug in Cygwin.
-
-If you are using Cygwin version b18, and you want to use the
-`--prefix' option to configure to install Mercury onto a different
-drive, then you should probably first use the `mount' command to
-mount that drive (e.g.  `mount d:/ /d'), and use the mount name
- (e.g.`configure --prefix /d/foo'), rather than using the `//d' notation
-(e.g. --prefix //d/foo').  We got a report that using the `//d' notation
-(a Cygwin feature: this is supposed to name the root directory of
-drive `d') does not work with the version of gcc included with Cygwin
-version b18.  In addition, support for the `//d' notation is going to be 
-dropped from future versions of Cygwin.
-
 -----------------------------------------------------------------------------
 
 RUNNING MAKE
 
-The date-stamps seem to get screwed up by Cygwin;
-to avoid errors about `mercury_compile: Command not found',
-or `makeinfo: Command not found', you need to do the following:
+Under older versions of Cygwin the date-stamps of files seemed
+to get screwed up by Cygwin; to avoid errors about 
+`mercury_compile: Command not found', or `makeinfo: Command not found',
+you need to do the following:
 
 	touch configure
 	make touch_files
@@ -91,6 +76,8 @@ or `makeinfo: Command not found', you need to do the following:
 Then do
 
 	make
+
+This doesn't seem to be required by recent builds of Cygwin.
 
 -----------------------------------------------------------------------------
 
@@ -106,13 +93,33 @@ USING MERCURY
 
 Once you've finished installing, you need to add the appropriate
 directory, normally /usr/local/mercury-<VERSION>/bin, to your PATH. 
+If you are familiar with how to set the PATH for command-line programs
+in Windows you can add 
+
+	C:\cygwin\usr\local\mercury-<VERSION>\bin
+
+to that path.
+
+Otherwise you can just set the path in Cygwin by creating a file called
+`.bashrc' in your Cygwin home directory that contains the line: 
+
+	PATH=/usr/local/mercury-<VERSION>/bin:$PATH
+
+You Cygwin home directory can be found in C:\cygwin\home\username\ 
+if using Windows Explorer (Cygwin will call your home directory
+`/home/username' or simply `~').
+
 On Windows 2000, you need to make sure that this directory precedes
 the Windows system directory in the PATH, otherwise `mmc' will invoke the
 Microsoft Management Console rather than the Melbourne Mercury Compiler.
+In this case it might be a good idea to modify your path in your
+.bashrc rather than in the Windows PATH environment variable, so as to
+not confuse any other programs that might be looking for the Microsoft
+Management Console.
 
 You should be able to read the HTML version of the Mercury
 documentation, which by default gets installed in
-/usr/local/mercury-<VERSION>/lib/mercury/html, using Netscape
+C:\cygwin\usr\local\mercury-<VERSION>\lib\mercury\html, using Netscape
 or MS Internet Explorer.  Or you can get a copy of GNU Emacs
 for NT and use it to browse the INFO version.
 
@@ -120,4 +127,29 @@ If you use mmake files named `Mmake' rather than `Mmakefile',
 there can be some problems with case-insensitive filenames
 and the name clash between `mmake' and `Mmake'.  If you run into any
 such problems, rename your `Mmake' file to `Mmakefile'.
+
+To write Mercury programs, simply create a new .m file in your favourite
+editor.  Run `mmc <filename>.m' on the Cygwin command line to compile
+small programs, or use `mmake' to handle larger systems.  See the
+Mercury Users Guide for more information about the command line tools.
+There is currently no GUI for editing and compiling Mercury programs,
+although it is quite likely you can hook up a sophisticated editor to
+run `mmc' and/or `mmake' for you.
+
+-----------------------------------------------------------------------------
+
+OTHER PACKAGES YOU MIGHT NEED
+
+If you want to use the mtags tool from the Mercury distribution, you'll
+need to install perl.  A binary distribution of Perl is available at the
+Cygwin porting project:
+	http://www.student.uni-koeln.de/cygwin/
+
+If you want to build your own Mercury releases from the CVS sources, you
+will need a previously installed Mercury compiler (for example, one of
+the recent releases of the day).  You will also need GNU autoconf, which
+can be downloaded from 
+	ftp://ftp.gnu.org/pub/gnu/autoconf/
+Autoconf should configure, build and install directly from the source
+package.
 

@@ -16,6 +16,9 @@
 % of the world argument is properly single-threaded, and will also check
 % to ensure that you don't attempt to backtrack over any I/O.
 %
+% Attempting any operation on a stream which has already been closed results
+% in undefined behaviour.
+%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -404,7 +407,7 @@
 :- mode io__seen(di, uo) is det.
 %		Closes the current input stream.
 %		The current input stream reverts to standard input.
-%		This will all throw an io__error exception
+%		This will throw an io__error exception
 %		if an I/O error occurs.
 
 :- pred io__open_input(string, io__res(io__input_stream),
@@ -418,7 +421,7 @@
 :- mode io__close_input(in, di, uo) is det.
 %	io__close_input(File, IO0, IO1).
 %		Closes an open input stream.
-%		This will all throw an io__error exception
+%		This will throw an io__error exception
 %		if an I/O error occurs.
 
 :- pred io__input_stream(io__input_stream, io__state, io__state).
@@ -489,7 +492,7 @@
 %		Closes the current output stream.
 %		The default output stream reverts to standard output.
 %		As per Prolog told/0.
-%		This will all throw an io__error exception
+%		This will throw an io__error exception
 %		if an I/O error occurs.
 
 :- pred io__open_output(string, io__res(io__output_stream),
@@ -510,7 +513,7 @@
 :- mode io__close_output(in, di, uo) is det.
 %	io__close_output(File, IO0, IO1).
 %		Closes an open output stream.
-%		This will all throw an io__error exception
+%		This will throw an io__error exception
 %		if an I/O error occurs.
 
 :- pred io__output_stream(io__output_stream, io__state, io__state).
@@ -707,7 +710,7 @@
 :- mode io__seen_binary(di, uo) is det.
 %		Closes the current input stream.
 %		The current input stream reverts to standard input.
-%		This will all throw an io__error exception
+%		This will throw an io__error exception
 %		if an I/O error occurs.
 
 :- pred io__open_binary_input(string, io__res(io__binary_input_stream),
@@ -721,7 +724,7 @@
 :- mode io__close_binary_input(in, di, uo) is det.
 %	io__close_binary_input(File, IO0, IO1).
 %		Closes an open binary input stream.
-%		This will all throw an io__error exception
+%		This will throw an io__error exception
 %		if an I/O error occurs.
 
 :- pred io__binary_input_stream(io__binary_input_stream,
@@ -774,7 +777,7 @@
 %		Closes the current binary output stream.
 %		The default binary output stream reverts to standard output.
 %		As per Prolog told/0.
-%		This will all throw an io__error exception
+%		This will throw an io__error exception
 %		if an I/O error occurs.
 
 :- pred io__open_binary_output(string, io__res(io__binary_output_stream),
@@ -796,7 +799,7 @@
 :- mode io__close_binary_output(in, di, uo) is det.
 %	io__close_binary_output(File, IO0, IO1).
 %		Closes an open binary output stream.
-%		This will all throw an io__error exception
+%		This will throw an io__error exception
 %		if an I/O error occurs.
 
 :- pred io__binary_output_stream(io__binary_output_stream,
@@ -1090,6 +1093,7 @@
 :- implementation.
 :- import_module map, dir, term, term_io, varset, require, benchmarking, array.
 :- import_module int, parser, exception.
+:- use_module table_builtin.
 
 :- type io__state ---> io__state(c_pointer).
 	% Values of type `io__state' are never really used:
@@ -1468,10 +1472,10 @@ io__read_file_as_string(Stream, Result, String) -->
 io__read_file_as_string_2(Stream, Buffer0, Pos0, Size0, Buffer, Pos, Size) -->
 	io__read_into_buffer(Stream, Buffer0, Pos0, Size0,
 		Buffer1, Pos1),
-	( { Pos1 = Pos0 } ->
-		% end of file (or error)
+	( { Pos1 =< Pos0 } ->
+		% end-of-file or error
 		{ Size = Size0 },
-		{ Pos = Pos1 },
+		{ Pos = Pos0 },
 		{ Buffer = Buffer1 }
 	; { Pos1 = Size0 } ->
 		% full buffer
@@ -1667,7 +1671,7 @@ io__check_err(Stream, Res) -->
 	char *buffer = (Char *) Buffer0;
 	int items_read;
 
-	MR_READ(*f, buffer + Pos0, Size - Pos0);
+	items_read = MR_READ(*f, buffer + Pos0, Size - Pos0);
 
 	Buffer = (Word) buffer;
 	Pos = Pos0 + items_read;
@@ -1993,6 +1997,14 @@ io__write_ordinary_term(Term, Priority) -->
 		io__write_string("{ "),
 		io__write_univ(BracedTerm),
 		io__write_string(" }")
+	;
+		{ Functor = "{}" },
+		{ Args = [BracedHead | BracedTail] }
+	->
+		io__write_char('{'),
+		io__write_arg(BracedHead),
+		io__write_term_args(BracedTail),
+		io__write_char('}')
 	;
 		{ Args = [PrefixArg] },
 		{ ops__lookup_prefix_op(OpTable, Functor,
@@ -2528,7 +2540,7 @@ io__report_stats(Selector) -->
 	; Selector = "full_memory_stats" ->
 		impure report_full_memory_stats
 	; Selector = "tabling" ->
-		impure private_builtin__table_report_statistics
+		impure table_builtin__table_report_statistics
 	;
 		string__format(
 			"io__report_stats: selector `%s' not understood",
@@ -2793,7 +2805,7 @@ mercury_io_error(MercuryFile* mf, const char *format, ...)
 
 	/* copy the error message to a Mercury string */
 	restore_registers(); /* for MR_hp */
-	MR_make_aligned_string(message_as_mercury_string, message);
+	MR_make_aligned_string_copy(message_as_mercury_string, message);
 	save_registers(); /* for MR_hp */
 
 	/* call some Mercury code to throw the exception */
@@ -2856,7 +2868,95 @@ mercury_getc(MercuryFile* mf)
 
 ").
 
+%------------------------------------------------------------------------------%
+%------------------------------------------------------------------------------%
+
 :- pragma c_code("
+
+#ifdef MR_NEW_MERCURYFILE_STRUCT
+
+#include <errno.h>
+
+#ifdef EBADF
+  #define MR_CLOSED_FILE_ERROR	EBADF
+#else
+  /* ANSI/ISO C guarantees that EDOM will exist */
+  #define MR_CLOSED_FILE_ERROR	EDOM
+#endif
+
+static int
+ME_closed_stream_close(MR_StreamInfo *info)
+{
+	errno = MR_CLOSED_FILE_ERROR;
+	return EOF;
+}
+
+static int
+ME_closed_stream_read(MR_StreamInfo *info, void *buffer, size_t size)
+{ 
+	errno = MR_CLOSED_FILE_ERROR;
+	return -1;	/* XXX should this be 0? */
+}
+
+static int
+ME_closed_stream_write(MR_StreamInfo *info, const void *buffer, size_t size)
+{
+	errno = MR_CLOSED_FILE_ERROR;
+	return -1;	/* XXX should this be 0? */
+}
+  
+static int
+ME_closed_stream_flush(MR_StreamInfo *info)
+{
+	errno = MR_CLOSED_FILE_ERROR;
+	return EOF;
+}
+
+static int
+ME_closed_stream_ungetch(MR_StreamInfo *info, int ch)
+{
+	errno = MR_CLOSED_FILE_ERROR;
+	return EOF;
+}
+
+static int
+ME_closed_stream_getch(MR_StreamInfo *info) 
+{
+	errno = MR_CLOSED_FILE_ERROR;
+	return EOF;
+}
+ 
+static int
+ME_closed_stream_vfprintf(MR_StreamInfo *info, const char *format, va_list ap)
+{
+	errno = MR_CLOSED_FILE_ERROR;
+	return EOF;
+}
+
+static int
+ME_closed_stream_putch(MR_StreamInfo *info, int ch)
+{
+	errno = MR_CLOSED_FILE_ERROR;
+	return EOF;
+}
+
+static const MercuryFile MR_closed_stream = {
+	/* stream_type	= */	MR_USER_STREAM,
+	/* stream_info	= */	{ NULL },
+	/* line_number	= */	0,
+
+	/* close	= */	ME_closed_stream_close,
+	/* read		= */	ME_closed_stream_read,
+	/* write	= */	ME_closed_stream_write,
+
+	/* flush	= */	ME_closed_stream_flush,
+	/* ungetc	= */	ME_closed_stream_ungetch,
+	/* getc		= */	ME_closed_stream_getch,
+	/* vprintf	= */	ME_closed_stream_vfprintf,
+	/* putc		= */	ME_closed_stream_putch
+};
+
+#endif /* MR_NEW_MERCURYFILE_STRUCT */
 
 void
 mercury_close(MercuryFile* mf)
@@ -2869,7 +2969,48 @@ mercury_close(MercuryFile* mf)
 			mercury_io_error(mf, ""error closing file: %s"",
 				strerror(errno));
 		}
-		MR_GC_free(mf);
+
+#ifdef MR_NEW_MERCURYFILE_STRUCT
+
+		/*
+		** MR_closed_stream is a dummy stream object containing
+		** pointers to functions that always return an error
+		** indication.
+		** Doing this ensures that future accesses to the file
+		** will fail nicely.
+		*/
+		*mf = MR_closed_stream;
+
+/*
+** XXX it would be nice to have an autoconf check
+** for the GNU libc function fopencookie();
+** we could use that to do a similar thing to what
+** we do in the MR_NEW_MERCURYFILE_STRUCT case.
+*/
+
+/****
+#elif defined(HAVE_FOPENCOOKIE)
+		MR_file(*mf) = MR_closed_file;
+****/
+
+#else
+
+		/*
+		** We want future accesses to the file to fail nicely.
+		** Ideally they would throw an exception, but that would
+		** require a check at every I/O operation, and for simple
+		** operations like putchar() or getchar(), that would be
+		** too expensive.  Instead we just set the file pointer
+		** to NULL; on systems which trap null pointer dereferences,
+		** or if library/io.m is compiled with MR_assert assertions
+		** enabled (i.e. -DMR_LOWLEVEL_DEBUG), this will ensure that
+		** accessing closed files traps immediately rather than
+		** causing problems at some later point.
+		*/
+		MR_mercuryfile_init(NULL, 0, mf);
+
+#endif /* ! MR_NEW_MERCURYFILE_STRUCT */
+
 	}
 }
 

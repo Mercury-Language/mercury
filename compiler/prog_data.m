@@ -487,10 +487,21 @@
 	.
 
 :- type instance_method	
-	--->	instance_method(pred_or_func, sym_name,
-			sym_name, arity, prog_context).
+	--->	instance_method(pred_or_func, sym_name, instance_proc_def,
+			arity, prog_context).
 				% PredOrFunc, Method, Instance, Arity, 
 				% Line number of declaration
+
+:- type instance_proc_def
+		% defined using the `pred(...) is <Name>' syntax
+	--->	name(sym_name)	
+
+		% defined using clauses
+	;	clauses(
+			list(item)	% the items must be either
+					% pred_clause or func_clause items
+		)
+	.
 
 :- type instance_body
 	--->	abstract

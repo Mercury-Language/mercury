@@ -20,6 +20,7 @@
 :- import_module rtti.
 :- import_module mlds.
 :- import_module llds. % XXX for `code_model'.
+:- import_module globals.
 
 :- import_module bool, int, list, map, std_util.
 
@@ -120,6 +121,13 @@
 :- func ml_gen_params(module_info, list(string), list(prog_type),
 		list(mode), code_model) = mlds__func_params.
 
+	% Given a list of variables and their corresponding modes,
+	% return a list containing only those variables which have
+	% an output mode.
+	%
+:- func select_output_vars(module_info, list(Var), list(mode),
+		map(Var, prog_type)) = list(Var).
+
 %-----------------------------------------------------------------------------%
 %
 % Routines for generating labels and entity names.
@@ -141,11 +149,14 @@
 		= mlds__entity_name.
 
 	% Allocate a new function label and return an rval containing
-	% the function's address.
+	% the function's address.  If parameters are not given, we
+	% assume it's a continuation function, and give it the
+	% appropriate arguments (depending on whether we are doing
+	% nested functions or not).
 	%
-:- pred ml_gen_new_func_label(ml_label_func, mlds__rval,
-		ml_gen_info, ml_gen_info).
-:- mode ml_gen_new_func_label(out, out, in, out) is det.
+:- pred ml_gen_new_func_label(maybe(mlds__func_params), ml_label_func,
+	mlds__rval, ml_gen_info, ml_gen_info).
+:- mode ml_gen_new_func_label(in, out, out, in, out) is det.
 
 	% Generate the mlds__pred_label and module name
 	% for a given procedure.
@@ -316,7 +327,7 @@
 		mlds__statement, ml_gen_info, ml_gen_info).
 :- mode ml_gen_set_cond_var(in, in, in, out, in, out) is det.
 
-	% Return rvals for the success continuation that was
+	% Return the success continuation that was
 	% passed as the current function's argument(s).
 	% The success continuation consists of two parts, the
 	% `cont' argument, and the `cont_env' argument.
@@ -326,9 +337,13 @@
 	% of local variables in the containing procedure) for the continuation
 	% function.  (If we're using gcc nested function, the `cont_env'
 	% is not used.)
+	% The output variable lvals and types need to be supplied when
+	% generating a continuation using --nondet-copy-out, otherwise
+	% they should be empty.
 	%
-:- pred ml_initial_cont(success_cont, ml_gen_info, ml_gen_info).
-:- mode ml_initial_cont(out, in, out) is det.
+:- pred ml_initial_cont(list(mlds__lval), list(prog_type), success_cont,
+			ml_gen_info, ml_gen_info).
+:- mode ml_initial_cont(in, in, out, in, out) is det.
 
 	% Generate code to call the current success continuation.
 	% This is used for generating success when in a model_non context.
@@ -376,6 +391,15 @@
 :- func ml_base_typeclass_info_method_offset = int.
 
 %-----------------------------------------------------------------------------%
+%
+% Miscellaneous routines
+%
+
+	% Get the value of the appropriate --det-copy-out or --nondet-copy-out
+	% option, depending on the code model.
+:- func get_copy_out_option(globals, code_model) = bool.
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 %
 % The `ml_gen_info' ADT.
@@ -414,6 +438,12 @@
 
 :- pred ml_gen_info_get_output_vars(ml_gen_info, list(prog_var)).
 :- mode ml_gen_info_get_output_vars(in, out) is det.
+
+:- pred ml_gen_info_set_output_vars(list(prog_var), ml_gen_info, ml_gen_info).
+:- mode ml_gen_info_set_output_vars(in, in, out) is det.
+
+:- pred ml_gen_info_get_globals(globals, ml_gen_info, ml_gen_info).
+:- mode ml_gen_info_get_globals(out, in, out) is det.
 
 :- pred ml_gen_info_use_gcc_nested_functions(bool, ml_gen_info, ml_gen_info).
 :- mode ml_gen_info_use_gcc_nested_functions(out, in, out) is det.
@@ -470,15 +500,21 @@
 	% holding the address of the) function that a nondet procedure
 	% should call if it succeeds, and possibly also the
 	% (rval for the variable holding) the environment pointer
-	% for that function.
+	% for that function, and possibly also the (list of rvals
+	% for the) arguments to the continuation.
 	%
 :- type success_cont 
 	--->	success_cont(
 			mlds__rval,	% function pointer
-			mlds__rval	% environment pointer
+			mlds__rval,	% environment pointer
 				% note that if we're using nested
 				% functions then the environment
 				% pointer will not be used
+			list(mlds__type), % argument types, if any
+			list(mlds__lval)  % arguments, if any
+				% The arguments will only be non-empty if the
+				% --nondet-copy-out option is enabled.
+				% They do not include the environment pointer.
 		).
 
 	%
@@ -486,8 +522,7 @@
 	% The following routines provide access to that stack.
 	%
 
-:- pred ml_gen_info_push_success_cont(success_cont,
-			ml_gen_info, ml_gen_info).
+:- pred ml_gen_info_push_success_cont(success_cont, ml_gen_info, ml_gen_info).
 :- mode ml_gen_info_push_success_cont(in, in, out) is det.
 
 :- pred ml_gen_info_pop_success_cont(ml_gen_info, ml_gen_info).
@@ -515,6 +550,11 @@
 :- pred ml_gen_info_get_var_lvals(ml_gen_info, map(prog_var, mlds__lval)).
 :- mode ml_gen_info_get_var_lvals(in, out) is det.
 
+	% Set the partial mapping from variables to lvals.
+:- pred ml_gen_info_set_var_lvals(map(prog_var, mlds__lval),
+		ml_gen_info, ml_gen_info).
+:- mode ml_gen_info_set_var_lvals(in, in, out) is det.
+
 	%
 	% The ml_gen_info contains a list of extra definitions
 	% of functions or global constants which should be inserted
@@ -540,6 +580,7 @@
 
 :- implementation.
 
+:- import_module ml_call_gen.
 :- import_module prog_util, type_util, mode_util, special_pred.
 :- import_module code_util. % XXX for `code_util__compiler_generated'.
 :- import_module globals, options.
@@ -657,7 +698,7 @@ ml_combine_conj(FirstCodeModel, Context, DoGenFirst, DoGenRest,
 		{ FirstCodeModel = model_non },
 
 		% generate the `succ_func'
-		ml_gen_new_func_label(RestFuncLabel, RestFuncLabelRval),
+		ml_gen_new_func_label(no, RestFuncLabel, RestFuncLabelRval),
 		/* push nesting level */
 		DoGenRest(RestDecls, RestStatements),
 		{ RestStatement = ml_gen_block(RestDecls, RestStatements,
@@ -668,7 +709,7 @@ ml_combine_conj(FirstCodeModel, Context, DoGenFirst, DoGenRest,
 
 		ml_get_env_ptr(EnvPtrRval),
 		{ SuccessCont = success_cont(RestFuncLabelRval,
-			EnvPtrRval) },
+			EnvPtrRval, [], []) },
 		ml_gen_info_push_success_cont(SuccessCont),
 		DoGenFirst(FirstDecls, FirstStatements),
 		ml_gen_info_pop_success_cont,
@@ -795,21 +836,28 @@ ml_gen_params(ModuleInfo, HeadVarNames, HeadTypes, HeadModes, CodeModel) =
 
 ml_gen_params_base(ModuleInfo, HeadVarNames, HeadTypes, HeadModes,
 		CodeModel) = FuncParams :-
-	( CodeModel = model_semi ->
-		RetTypes = [mlds__native_bool_type]
-	;
-		RetTypes = []
-	),
+	module_info_globals(ModuleInfo, Globals),
+	CopyOut = get_copy_out_option(Globals, CodeModel),
 	ml_gen_arg_decls(ModuleInfo, HeadVarNames, HeadTypes, HeadModes,
-		FuncArgs0),
+		CopyOut, FuncArgs0, RetTypes0),
+	( CodeModel = model_semi ->
+		RetTypes = [mlds__native_bool_type | RetTypes0]
+	; CodeModel = model_non, CopyOut = yes ->
+		RetTypes = []
+	;
+		RetTypes = RetTypes0
+	),
 	( CodeModel = model_non ->
-		ContType = mlds__cont_type,
+		( CopyOut = yes ->
+			ContType = mlds__cont_type(RetTypes0)
+		;
+			ContType = mlds__cont_type([])
+		),
 		ContName = data(var("cont")),
 		ContArg = ContName - ContType,
 		ContEnvType = mlds__generic_env_ptr_type,
 		ContEnvName = data(var("cont_env_ptr")),
 		ContEnvArg = ContEnvName - ContEnvType,
-		module_info_globals(ModuleInfo, Globals),
 		globals__lookup_bool_option(Globals, gcc_nested_functions,
 			NestedFunctions),
 		(
@@ -826,29 +874,52 @@ ml_gen_params_base(ModuleInfo, HeadVarNames, HeadTypes, HeadModes,
 	FuncParams = mlds__func_params(FuncArgs, RetTypes).
 
 	% Given the argument variable names, and corresponding lists of their
-	% types and modes, generate the MLDS argument list declaration.
+	% types and modes, generate the MLDS argument declarations
+	% and return types.
 	%
 :- pred ml_gen_arg_decls(module_info, list(mlds__var_name), list(prog_type),
-		list(arg_mode), mlds__arguments).
-:- mode ml_gen_arg_decls(in, in, in, in, out) is det.
+		list(arg_mode), bool, mlds__arguments, mlds__return_types).
+:- mode ml_gen_arg_decls(in, in, in, in, in, out, out) is det.
 
-ml_gen_arg_decls(ModuleInfo, HeadVars, HeadTypes, HeadModes, FuncArgs) :-
+ml_gen_arg_decls(ModuleInfo, HeadVars, HeadTypes, HeadModes, CopyOut,
+		FuncArgs, RetTypes) :-
 	(
 		HeadVars = [], HeadTypes = [], HeadModes = []
 	->
-		FuncArgs = []
+		FuncArgs = [], RetTypes = []
 	;	
 		HeadVars = [Var | Vars],
 		HeadTypes = [Type | Types],
 		HeadModes = [Mode | Modes]
 	->
-		ml_gen_arg_decls(ModuleInfo, Vars, Types, Modes, FuncArgs0),
-		% exclude types such as io__state, etc.
-		( type_util__is_dummy_argument_type(Type) ->
+		ml_gen_arg_decls(ModuleInfo, Vars, Types, Modes, CopyOut,
+			FuncArgs0, RetTypes0),
+		(
+			%
+			% exclude types such as io__state, etc.
+			%
+			type_util__is_dummy_argument_type(Type)
+		->
+			FuncArgs = FuncArgs0,
+			RetTypes = RetTypes0
+		;
+			%
+			% for by-value outputs, generate a return type
+			%
+			Mode = top_out,
+			CopyOut = yes
+		->
+			RetType = mercury_type_to_mlds_type(ModuleInfo, Type),
+			RetTypes = [RetType | RetTypes0],
 			FuncArgs = FuncArgs0
 		;
+			%
+			% for inputs and by-reference outputs,
+			% generate argument
+			%
 			ml_gen_arg_decl(ModuleInfo, Var, Type, Mode, FuncArg),
-			FuncArgs = [FuncArg | FuncArgs0]
+			FuncArgs = [FuncArg | FuncArgs0],
+			RetTypes = RetTypes0
 		)
 	;
 		error("ml_gen_arg_decls: length mismatch")
@@ -905,7 +976,7 @@ ml_gen_func_label(ModuleInfo, PredId, ProcId, MaybeSeqNum,
 	% Allocate a new function label and return an rval containing
 	% the function's address.
 	%
-ml_gen_new_func_label(FuncLabel, FuncLabelRval) -->
+ml_gen_new_func_label(MaybeParams, FuncLabel, FuncLabelRval) -->
 	ml_gen_info_new_func_label(FuncLabel),
 	=(Info),
 	{ ml_gen_info_get_module_info(Info, ModuleInfo) },
@@ -914,13 +985,16 @@ ml_gen_new_func_label(FuncLabel, FuncLabelRval) -->
 	{ ml_gen_pred_label(ModuleInfo, PredId, ProcId,
 		PredLabel, PredModule) },
 	{ ml_gen_info_use_gcc_nested_functions(UseNestedFuncs, Info, _) },
-	{ UseNestedFuncs = yes ->
-		ArgTypes = []
+	{ MaybeParams = yes(Params) ->
+		Signature = mlds__get_func_signature(Params)
 	;
-		ArgTypes = [mlds__generic_env_ptr_type]
+		( UseNestedFuncs = yes ->
+			ArgTypes = []
+		;
+			ArgTypes = [mlds__generic_env_ptr_type]
+		),
+		Signature = mlds__func_signature(ArgTypes, [])
 	},
-	{ Signature = mlds__func_signature(ArgTypes, []) },
-
 	{ ProcLabel = qual(PredModule, PredLabel - ProcId) },
 	{ FuncLabelRval = const(code_addr_const(internal(ProcLabel,
 		FuncLabel, Signature))) }.
@@ -945,10 +1019,17 @@ ml_gen_pred_label_from_rtti(RttiProcLabel, MLDS_PredLabel, MLDS_Module) :-
 		(
 			special_pred_get_type(PredName, ArgTypes, Type),
 			type_to_type_id(Type, TypeId, _),
-			% All type_ids here should be module qualified,
-			% since builtin types are handled separately in
-			% polymorphism.m.
-			TypeId = qualified(TypeModule, TypeName) - TypeArity
+			% All type_ids other than tuples here should be
+			% module qualified, since builtin types are handled
+			% separately in polymorphism.m.
+			(
+				TypeId = unqualified(TypeName) - TypeArity,
+				type_id_is_tuple(TypeId),
+				mercury_public_builtin_module(TypeModule)
+			;
+				TypeId = qualified(TypeModule, TypeName)
+						- TypeArity
+			)
 		->
 			(
 				ThisModule \= TypeModule,
@@ -1262,42 +1343,55 @@ ml_gen_set_cond_var(CondVar, Value, Context, MLDS_Statement) -->
 
 %-----------------------------------------------------------------------------%
 
-	% Return rvals for the success continuation that was
-	% passed as the current function's argument(s).
-	% The success continuation consists of two parts, the
-	% `cont' argument, and the `cont_env' argument.
-	% The `cont' argument is a continuation function that
-	% will be called when a model_non goal succeeds.
-	% The `cont_env' argument is a pointer to the environment (set
-	% of local variables in the containing procedure) for the continuation
-	% function.  (If we're using gcc nested function, the `cont_env'
-	% is not used.)
-	%
-ml_initial_cont(Cont) -->
+ml_initial_cont(OutputVarLvals0, OutputVarTypes0, Cont) -->
 	ml_qualify_var("cont", ContLval),
 	ml_qualify_var("cont_env_ptr", ContEnvLval),
-	{ Cont = success_cont(lval(ContLval), lval(ContEnvLval)) }.
+	{ ml_skip_dummy_argument_types(OutputVarTypes0, OutputVarLvals0,
+		OutputVarTypes, OutputVarLvals) },
+	list__map_foldl(ml_gen_type, OutputVarTypes, MLDS_OutputVarTypes),
+	{ Cont = success_cont(lval(ContLval), lval(ContEnvLval),
+		MLDS_OutputVarTypes, OutputVarLvals) }.
+
+:- pred ml_skip_dummy_argument_types(list(prog_type), list(T),
+		list(prog_type), list(T)).
+:- mode ml_skip_dummy_argument_types(in, in, out, out) is det.
+
+ml_skip_dummy_argument_types([], [], [], []).
+ml_skip_dummy_argument_types([Type | Types0], [Var | Vars0],
+		Types, Vars) :-
+	ml_skip_dummy_argument_types(Types0, Vars0, Types1, Vars1),
+	( type_util__is_dummy_argument_type(Type) ->
+		Types = Types1,
+		Vars = Vars1
+	;
+		Types = [Type | Types1],
+		Vars = [Var | Vars1]
+	).
+ml_skip_dummy_argument_types([_|_], [], _, _) :-
+	error("ml_skip_dummy_argument_types: length mismatch").
+ml_skip_dummy_argument_types([], [_|_], _, _) :-
+	error("ml_skip_dummy_argument_types: length mismatch").
 
 	% Generate code to call the current success continuation.
 	% This is used for generating success when in a model_non context.
 	%
 ml_gen_call_current_success_cont(Context, MLDS_Statement) -->
 	ml_gen_info_current_success_cont(SuccCont),
-	{ SuccCont = success_cont(FuncRval, EnvPtrRval) },
+	{ SuccCont = success_cont(FuncRval, EnvPtrRval,
+		ArgTypes0, ArgLvals0) },
+	{ ArgRvals0 = list__map(func(Lval) = lval(Lval), ArgLvals0) },
 	ml_gen_info_use_gcc_nested_functions(UseNestedFuncs),
 	( { UseNestedFuncs = yes } ->
-		{ ArgTypes = [] }
+		{ ArgTypes = ArgTypes0 },
+		{ ArgRvals = ArgRvals0 }
 	;
-		{ ArgTypes = [mlds__generic_env_ptr_type] }
+		{ ArgTypes = list__append(ArgTypes0,
+			[mlds__generic_env_ptr_type]) },
+		{ ArgRvals = list__append(ArgRvals0, [EnvPtrRval]) }
 	),
 	{ RetTypes = [] },
 	{ Signature = mlds__func_signature(ArgTypes, RetTypes) },
 	{ ObjectRval = no },
-	( { UseNestedFuncs = yes } ->
-		{ ArgRvals = [] }
-	;
-		{ ArgRvals = [EnvPtrRval] }
-	),
 	{ RetLvals = [] },
 	{ CallOrTailcall = call },
 	{ MLDS_Stmt = call(Signature, FuncRval, ObjectRval, ArgRvals, RetLvals,
@@ -1333,9 +1427,10 @@ ml_declare_env_ptr_arg(Name - mlds__generic_env_ptr_type) -->
 % The `ml_gen_info' type holds information used during MLDS code generation
 % for a given procedure.
 %
-% Only the `func_label', `commit_label', `cond_var', `success_cont_stack',
-% and `extra_defns' fields are mutable; the others are set when the 
-% `ml_gen_info' is created and then never modified.
+% Only the `func_label', `commit_label', `cond_var', `conv_var',
+% `var_lvals', `success_cont_stack', and `extra_defns' fields are mutable;
+% the others are set when the `ml_gen_info' is created and then never
+% modified.
 % 
 
 :- type ml_gen_info
@@ -1374,15 +1469,13 @@ ml_declare_env_ptr_arg(Name - mlds__generic_env_ptr_type) -->
 
 ml_gen_info_init(ModuleInfo, PredId, ProcId) = MLDSGenInfo :-
 	module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
-			PredInfo, ProcInfo),
+			_PredInfo, ProcInfo),
 	proc_info_headvars(ProcInfo, HeadVars),
 	proc_info_varset(ProcInfo, VarSet),
 	proc_info_vartypes(ProcInfo, VarTypes),
 	proc_info_argmodes(ProcInfo, HeadModes),
-	pred_info_arg_types(PredInfo, ArgTypes),
-	map__from_corresponding_lists(HeadVars, ArgTypes, HeadVarTypes),
 	OutputVars = select_output_vars(ModuleInfo, HeadVars, HeadModes,
-		HeadVarTypes, VarTypes),
+		VarTypes),
 
 	FuncLabelCounter = 0,
 	CommitLabelCounter = 0,
@@ -1419,13 +1512,17 @@ ml_gen_info_get_proc_id(Info, Info^proc_id).
 ml_gen_info_get_varset(Info, Info^varset).
 ml_gen_info_get_var_types(Info, Info^var_types).
 ml_gen_info_get_output_vars(Info, Info^output_vars).
+ml_gen_info_set_output_vars(OutputVars, Info, Info^output_vars := OutputVars).
 
 ml_gen_info_use_gcc_nested_functions(UseNestedFuncs) -->
-	=(Info),
-	{ ml_gen_info_get_module_info(Info, ModuleInfo) },
-	{ module_info_globals(ModuleInfo, Globals) },
+	ml_gen_info_get_globals(Globals),
 	{ globals__lookup_bool_option(Globals, gcc_nested_functions,
 		UseNestedFuncs) }.
+
+ml_gen_info_get_globals(Globals) -->
+	=(Info),
+	{ ml_gen_info_get_module_info(Info, ModuleInfo) },
+	{ module_info_globals(ModuleInfo, Globals) }.
 
 ml_gen_info_new_func_label(Label, Info, Info^func_label := Label) :-
 	Label = Info^func_label + 1.
@@ -1455,10 +1552,11 @@ ml_gen_info_pop_success_cont(Info0, Info) :-
 ml_gen_info_current_success_cont(SuccCont, Info, Info) :-
 	stack__top_det(Info^success_cont_stack, SuccCont).
 
-ml_gen_info_get_var_lvals(Info, Info^var_lvals).
-
 ml_gen_info_set_var_lval(Var, Lval, Info,
 		Info^var_lvals := map__set(Info^var_lvals, Var, Lval)).
+
+ml_gen_info_get_var_lvals(Info, Info^var_lvals).
+ml_gen_info_set_var_lvals(VarLvals, Info, Info^var_lvals := VarLvals).
 
 ml_gen_info_add_extra_defn(ExtraDefn, Info,
 	Info^extra_defns := [ExtraDefn | Info^extra_defns]).
@@ -1471,11 +1569,7 @@ ml_gen_info_get_extra_defns(Info, Info^extra_defns).
 	% return a list containing only those variables which have
 	% an output mode.
 	%
-:- func select_output_vars(module_info, list(prog_var), list(mode),
-		vartypes, vartypes) = list(prog_var).
-
-select_output_vars(ModuleInfo, HeadVars, HeadModes, HeadVarTypes, VarTypes)
-		= OutputVars :-
+select_output_vars(ModuleInfo, HeadVars, HeadModes, VarTypes) = OutputVars :-
 	( HeadVars = [], HeadModes = [] ->
 		OutputVars = []
 	; HeadVars = [Var|Vars], HeadModes = [Mode|Modes] ->
@@ -1484,11 +1578,11 @@ select_output_vars(ModuleInfo, HeadVars, HeadModes, HeadVarTypes, VarTypes)
 			\+ mode_to_arg_mode(ModuleInfo, Mode, VarType, top_in)
 		->
 			OutputVars1 = select_output_vars(ModuleInfo,
-					Vars, Modes, HeadVarTypes, VarTypes),
+					Vars, Modes, VarTypes),
 			OutputVars = [Var | OutputVars1]
 		;
 			OutputVars = select_output_vars(ModuleInfo,
-					Vars, Modes, HeadVarTypes, VarTypes)
+					Vars, Modes, VarTypes)
 		)
 	;
 		error("select_output_vars: length mismatch")
@@ -1530,6 +1624,22 @@ ml_typeclass_info_arg_offset = 0.
 	%	more information about the layout of base_typeclass_infos.)
 	% Hence the offset is 4.
 ml_base_typeclass_info_method_offset = 4.
+
+%-----------------------------------------------------------------------------%
+%
+% Miscellaneous routines
+%
+
+	% Get the value of the appropriate --det-copy-out or --nondet-copy-out
+	% option, depending on the code model.
+get_copy_out_option(Globals, CodeModel) = CopyOut :-
+	( CodeModel = model_non ->
+		globals__lookup_bool_option(Globals,
+			nondet_copy_out, CopyOut)
+	;	
+		globals__lookup_bool_option(Globals,
+			det_copy_out, CopyOut)
+	).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

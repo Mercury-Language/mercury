@@ -90,6 +90,12 @@ BEGIN_MODULE(call_module)
 	init_entry(mercury__init_1_0);
 BEGIN_CODE
 
+/*
+** Note: this routine gets ignored for profiling.
+** That means it should be called using noprof_call()
+** rather than call().  See comment in output_call in
+** compiler/llds_out for explanation.
+*/
 Define_entry(mercury__do_call_closure);
 {
 	MR_Closure	*closure;
@@ -123,8 +129,12 @@ Define_entry(mercury__do_call_closure);
 
 	restore_registers();
 
-	tailcall(closure->MR_closure_code,
-		LABEL(mercury__do_call_closure));
+	/*
+	** Note that we pass MR_prof_ho_caller_proc rather than
+	** LABEL(do_call_closure), so that the call gets recorded
+	** as having come from our caller.
+	*/
+	tailcall(closure->MR_closure_code, MR_prof_ho_caller_proc);
 }
 
 	/*
@@ -135,6 +145,12 @@ Define_entry(mercury__do_call_closure);
 	** r5+:input args
 	*/
 
+/*
+** Note: this routine gets ignored for profiling.
+** That means it should be called using noprof_call()
+** rather than call().  See comment in output_call in
+** compiler/llds_out for explanation.
+*/
 Define_entry(mercury__do_call_class_method);
 {
 	MR_Code 	*destination;
@@ -171,7 +187,12 @@ Define_entry(mercury__do_call_class_method);
 
 	restore_registers();
 
-	tailcall(destination, LABEL(mercury__do_call_class_method));
+	/*
+	** Note that we pass MR_prof_ho_caller_proc rather than
+	** LABEL(do_call_class_method), so that the call gets recorded
+	** as having come from our caller.
+	*/
+	tailcall(destination, MR_prof_ho_caller_proc);
 }
 
 /*

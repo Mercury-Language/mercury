@@ -173,6 +173,8 @@ library-menu.texi: $(LIBRARY_DIR)/*.m
 		case $$filename in					\
 			$(LIBRARY_DIR)/private_builtin.m)		\
 				;;					\
+			$(LIBRARY_DIR)/table_builtin.m)			\
+				;;					\
 			*)						\
 				echo "* `basename $$filename .m`::"; 	\
 				;;					\
@@ -184,6 +186,8 @@ library-chapters.texi: $(LIBRARY_DIR)/*.m
 	for filename in $(LIBRARY_DIR)/*.m; do 				\
 		case $$filename in					\
 			$(LIBRARY_DIR)/private_builtin.m)		\
+				;;					\
+			$(LIBRARY_DIR)/table_builtin.m)			\
 				;;					\
 			*)						\
 				file="`basename $$filename .m`"; 	\

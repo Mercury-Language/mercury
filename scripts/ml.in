@@ -31,15 +31,33 @@ EXT_FOR_SHARED_LIB=${MERCURY_EXT_FOR_SHARED_LIB="@EXT_FOR_SHARED_LIB@"}
 LINK_SHARED_OBJ=${MERCURY_LINK_SHARED_OBJ="@LINK_SHARED_OBJ_SH@"}
 SHLIB_RPATH_OPT=${MERCURY_SHLIB_RPATH_OPT="@SHLIB_RPATH_OPT@"}
 SHLIB_RPATH_SEP=${MERCURY_SHLIB_RPATH_SEP="@SHLIB_RPATH_SEP@"}
-SHARED_LIBS=${MERCURY_SHARED_LIBS="@SHARED_LIBS@"}
 TMPDIR=${TMPDIR=/tmp}
+MATH_LIB=${MERCURY_MATH_LIB="@MATH_LIB@"}
+# Note: the setting of SHARED_LIBS needs to come after the setting of MATH_LIB,
+# since @SHARED_LIBS_SH@ may refer to $MATH_LIB.
+SHARED_LIBS=${MERCURY_SHARED_LIBS="@SHARED_LIBS_SH@"}
 
 # When compiling in the hlc.gc grade using the Microsoft Visual C
 # compiler, the default maximum stack size of 4Mb is too low for a
 # recursive language.
 # XXX at some stage this should become an option to ml
-LINK=/stack:10485760	# 10 Mb
+LINK=${LINK=/stack:10485760}   # 10 Mb
 export LINK
+
+case "$CC" in
+    *gcc*)
+	COMPILER=gcc
+	;;
+    *lcc*)
+	COMPILER=lcc
+	;;
+    *cl* | *CL*)
+	COMPILER=cl
+	;;
+    *)
+	COMPILER=unknown
+	;;
+esac
 
 # On some systems (Solaris for exemple), we need libraries to be able to 
 # use sockets. The name of the needed libraries is determined by autoconf
@@ -551,10 +569,29 @@ esac
 
 case $use_thread_libs in
 	true)
+		# For Linux, Irix, Solaris, and HPUX,
+		# the thread-enabled version of the Boehm
+		# collector contains a reference to dlopen(), so 
+		# if threads are enabled, we need to link with the
+		# appropriate extra library for that (-ldl on Linux
+		# and Solaris, -lrt on HPUX, and nothing on Irix).
+		# XXX That should only be done if conservative GC
+		#     is enabled.
+
 		case "$FULLARCH" in
  		*-osf*)		THREAD_LIBS="-lpthreads -lmach -lc_r" ;;
-		*-linux*)	THREAD_LIBS="-lpthread" ;;
+		*-linux*)	THREAD_LIBS="-lpthread -ldl" ;;
 		*-solaris*)	THREAD_LIBS="-lpthread -ldl" ;;
+		### We don't yet support threads on HPUX and IRIX
+		### *-hpux*)	THREAD_LIBS="-lpthread -lrt" ;;
+		### *-irix*)	THREAD_LIBS="-lpthread" ;;
+		*cygwin*)
+			case $COMPILER in
+				cl)	ARCH_OPTS="/MD"
+					;;
+
+			esac
+			;;
 		*)		echo "$0: warning: don't know which" \
 					"library to use for pthreads" 1>&2
 				THREAD_LIBS=""
@@ -579,7 +616,7 @@ case $make_shared_lib in
 	UNDEF_OPT=""
 	RPATH_OPT="$EXE_RPATH_OPT"
 	RPATH_SEP="$EXE_RPATH_SEP"
-	STDLIBS="-lm $THREAD_LIBS"
+	STDLIBS="$MATH_LIB $THREAD_LIBS"
 	;;
 esac
 

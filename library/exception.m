@@ -585,42 +585,6 @@ ML_call_handler_det(MR_Type_Info type_info, MR_Pred closure, MR_Univ exception,
 	(*code)((void *) closure, (MR_Box) exception, result);
 }
 
-static bool
-ML_call_handler_semi(MR_Type_Info type_info, MR_Pred closure,
-	MR_Univ exception, MR_Box *result)
-{
-	typedef bool FuncType(void *, MR_Box, MR_Box *);
-	FuncType *code = (FuncType *)
-		MR_field(MR_mktag(0), closure, (Integer) 1);
-	return (*code)((void *) closure, (MR_Box) exception, result);
-}
-
-#ifdef MR_USE_GCC_NESTED_FUNCTIONS
-
-static void
-ML_call_handler_non(MR_Type_Info type_info, MR_Pred closure, MR_Univ exception,
-	MR_Box *result, MR_NestedCont cont)
-{
-	typedef void FuncType(void *, MR_Box, MR_Box *, MR_NestedCont);
-	FuncType *code = (FuncType *)
-		MR_field(MR_mktag(0), closure, (Integer) 1);
-	(*code)((void *) closure, (MR_Box) exception, result, cont);
-}
-
-#else
-
-static void
-ML_call_handler_non(MR_Type_Info type_info, MR_Pred closure, MR_Univ exception,
-	MR_Box *result, MR_Cont cont, void *cont_env)
-{
-	typedef void FuncType(void *, MR_Box, MR_Box *, MR_Cont, void *);
-	FuncType *code = (FuncType *)
-		MR_field(MR_mktag(0), closure, (Integer) 1);
-	(*code)((void *) closure, (MR_Box) exception, result, cont, cont_env);
-}
-
-#endif
-
 /*---------------------------------------------------------------------------*/
 
 #include <stdlib.h>
@@ -702,8 +666,9 @@ mercury__exception__builtin_catch_model_semi(MR_Type_Info type_info,
 #endif
 
 		ML_exception_handler = this_handler.prev;
-		return ML_call_handler_semi(type_info, handler_pred,
+		ML_call_handler_det(type_info, handler_pred,
 			this_handler.exception, output);
+		return TRUE;
 	}
 }
 
@@ -753,8 +718,9 @@ mercury__exception__builtin_catch_model_non(MR_Type_Info type_info,
 #endif
 
 		ML_exception_handler = this_handler.prev;
-		ML_call_handler_non(type_info, handler_pred,
-			this_handler.exception, output, cont);
+		ML_call_handler_det(type_info, handler_pred,
+			this_handler.exception, output);
+		(*cont)();
 	}
 }
 
@@ -830,9 +796,9 @@ mercury__exception__builtin_catch_model_non(MR_Type_Info type_info,
 
 
 		ML_exception_handler = locals.this_handler.prev;
-		ML_call_handler_non(type_info, handler_pred,
-			locals.this_handler.exception, output,
-			cont, cont_env);
+		ML_call_handler_det(type_info, handler_pred,
+			locals.this_handler.exception, output);
+		cont(cont_env);
 	}
 }
 
@@ -866,10 +832,6 @@ call_handler(Handler, Exception, Result) :- Handler(Exception, Result).
 
 :- pragma export(call_handler(pred(in, out) is det,     in, out),
 	"ML_call_handler_det").
-:- pragma export(call_handler(pred(in, out) is semidet, in, out),
-	"ML_call_handler_semidet").
-% :- pragma export(call_handler(pred(in, out) is nondet,  in, out),
-%	"ML_call_handler_nondet").
 
 *******/
 

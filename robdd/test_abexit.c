@@ -1,6 +1,6 @@
 /*****************************************************************
   File     : test_abexit.c
-  RCS      : $Id: test_abexit.c,v 1.1.2.1 2000-09-21 01:27:42 dgj Exp $
+  RCS      : $Id: test_abexit.c,v 1.1.2.2 2000-09-27 04:00:10 dgj Exp $
   Author   : Peter Schachte
   Origin   : Tue Aug  1 11:27:35 1995
   Purpose  : Timing test for bryant graph abstract_exit code

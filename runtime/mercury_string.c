@@ -74,9 +74,10 @@ MR_make_string(MR_Code *proclabel, const char *fmt, ...) {
 
 	p = fixed;
 #endif
-	      
+	restore_transient_hp();      
 	MR_allocate_aligned_string_msg(result, strlen(p),
 			proclabel);
+	save_transient_hp();
 	strcpy(result, p);
 
 #ifdef HAVE_VSNPRINTF

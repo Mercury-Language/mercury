@@ -1,6 +1,6 @@
 /*****************************************************************
   File     : test_restrict.c
-  RCS      : $Id: test_restrict.c,v 1.1.2.1 2000-09-21 01:27:44 dgj Exp $
+  RCS      : $Id: test_restrict.c,v 1.1.2.2 2000-09-27 04:00:12 dgj Exp $
   Author   : Peter Schachte
   Origin   : Mon Jul 17 19:54:11 1995
   Purpose  : Timing test for bryant graph restrictThresh code

@@ -355,7 +355,7 @@ parse_instance(ModuleName, VarSet, TypeClassTerm, Result) :-
 	(
 		Arg = term__functor(term__atom("where"), [Name, Methods], _)
 	->
-		parse_non_empty_instance(ModuleName, Name, Methods,
+		parse_non_empty_instance(ModuleName, Name, Methods, VarSet,
 			TVarSet, Result)
 	;
 		parse_instance_name(ModuleName, Arg, TVarSet, Result)
@@ -472,12 +472,12 @@ parse_underived_instance(_ModuleName, Name, TVarSet, Result) :-
 		Result = error(String, Term)
 	).
 
-:- pred parse_non_empty_instance(module_name, term, term, tvarset,
+:- pred parse_non_empty_instance(module_name, term, term, varset, tvarset,
 		maybe1(item)).
-:- mode parse_non_empty_instance(in, in, in, in, out) is det.
+:- mode parse_non_empty_instance(in, in, in, in, in, out) is det.
 
-parse_non_empty_instance(ModuleName, Name, Methods, TVarSet, Result) :-
-	parse_instance_methods(ModuleName, Methods, ParsedMethods),
+parse_non_empty_instance(ModuleName, Name, Methods, VarSet, TVarSet, Result) :-
+	parse_instance_methods(ModuleName, Methods, VarSet, ParsedMethods),
 	(
 		ParsedMethods = ok(MethodList),
 		parse_instance_name(ModuleName, Name, TVarSet,
@@ -531,17 +531,17 @@ check_tvars_in_instance_constraint(ok(Item), InstanceTerm, Result) :-
 		error("check_tvars_in_constraint: expecting instance item")
 	).
 
-:- pred parse_instance_methods(module_name, term,
+:- pred parse_instance_methods(module_name, term, varset,
 		maybe1(list(instance_method))).
-:- mode parse_instance_methods(in, in, out) is det.
+:- mode parse_instance_methods(in, in, in, out) is det.
 
-parse_instance_methods(ModuleName, Methods, Result) :-
+parse_instance_methods(ModuleName, Methods, VarSet, Result) :-
 	(
 		list_term_to_term_list(Methods, MethodList)
 	->
 			% Convert the list of terms into a list of 
 			% maybe1(class_method)s.
-		list__map(term_to_instance_method(ModuleName),
+		list__map(term_to_instance_method(ModuleName, VarSet),
 			MethodList, Interface),
 		find_errors(Interface, Result)
 	;
@@ -549,10 +549,11 @@ parse_instance_methods(ModuleName, Methods, Result) :-
 	).
 
 	% Turn the term into a method instance
-:- pred term_to_instance_method(module_name, term, maybe1(instance_method)).
-:- mode term_to_instance_method(in, in, out) is det.
+:- pred term_to_instance_method(module_name, varset, term,
+		maybe1(instance_method)).
+:- mode term_to_instance_method(in, in, in, out) is det.
 
-term_to_instance_method(_ModuleName, MethodTerm, Result) :-
+term_to_instance_method(ModuleName, VarSet, MethodTerm, Result) :-
 	(
 		MethodTerm = term__functor(term__atom("is"), [ClassMethodTerm,
 						InstanceMethod], TermContext)
@@ -576,7 +577,8 @@ term_to_instance_method(_ModuleName, MethodTerm, Result) :-
 					ok(InstanceMethodName, []))
 			->
 				Result = ok(instance_method(predicate,
-					ClassMethodName, InstanceMethodName,
+					ClassMethodName,
+					name(InstanceMethodName),
 					ArityInt, TermContext))
 			;
 				Result = error(
@@ -602,7 +604,8 @@ term_to_instance_method(_ModuleName, MethodTerm, Result) :-
 					ok(InstanceMethodName, []))
 			->
 				Result = ok(instance_method(function,
-					ClassMethodName, InstanceMethodName,
+					ClassMethodName,
+					name(InstanceMethodName),
 					ArityInt, TermContext))
 			;
 				Result = error(
@@ -615,7 +618,29 @@ term_to_instance_method(_ModuleName, MethodTerm, Result) :-
 				MethodTerm)
 		)
 	;
-		Result = error("expected `pred(<Name> / <Arity>) is <InstanceName>'",
-			MethodTerm)
+		parse_item(ModuleName, VarSet, MethodTerm, Result0),
+		(
+			Result0 = ok(Item, Context),
+			(
+				Item = pred_clause(_VarNames, ClassMethodName,
+					HeadArgs, _ClauseBody),
+				PredOrFunc = predicate,
+				ArityInt = list__length(HeadArgs)
+			;
+				Item = func_clause(_VarNames, ClassMethodName,
+					FuncArgs, _Result, _ClauseBody),
+				ArityInt = list__length(FuncArgs),
+				PredOrFunc = function
+			)
+		->
+			Result = ok(instance_method(PredOrFunc,
+					ClassMethodName,
+					% XXX FIXME handle multiple clauses
+					clauses([Item]),
+					ArityInt, Context))
+		;
+			Result = error("expected clause or `pred(<Name> / <Arity>) is <InstanceName>' or `func(<Name> / <Arity>) is <InstanceName>')",
+				MethodTerm)
+		)
 	).
 

@@ -107,7 +107,8 @@
 
 module_qual__module_qualify_items(Items0, Items, ModuleName, ReportErrors,
 			Info, NumErrors, UndefTypes, UndefModes) -->
-	{ init_mq_info(ReportErrors, Info0) },
+	globals__io_get_globals(Globals),
+	{ init_mq_info(Items0, Globals, ReportErrors, Info0) },
 	{ collect_mq_info(Items0, Info0, Info1) },
 	do_module_qualify_items(Items0, Items, Info1, Info),
 	{ mq_info_get_type_error_flag(Info, UndefTypes) },
@@ -838,6 +839,9 @@ qualify_type(Type0, Type, Info0, Info) -->
 		; { type_id_is_higher_order(TypeId0, _, _) } ->
 			{ TypeId = TypeId0 },
 			{ Info1 = Info0 }
+		; { type_id_is_tuple(TypeId0) } ->
+			{ TypeId = TypeId0 },
+			{ Info1 = Info0 }
 		;
 			{ mq_info_get_types(Info0, Types) },
 			find_unique_match(TypeId0, TypeId, Types,
@@ -1384,16 +1388,15 @@ is_builtin_atomic_type(unqualified("character") - 0).
 %-----------------------------------------------------------------------------%
 % Access and initialisation predicates.
 
-:- pred init_mq_info(bool::in, mq_info::out) is det.
+:- pred init_mq_info(item_list::in, globals::in, bool::in, mq_info::out)
+	is det.
 
-init_mq_info(ReportErrors, Info0) :-
+init_mq_info(Items, Globals, ReportErrors, Info0) :-
 	term__context_init(Context),
 	ErrorContext = type(unqualified("") - 0) - Context,
 	set__init(InterfaceModules0),
-	mercury_public_builtin_module(BuiltinModule),
-	mercury_private_builtin_module(PrivateBuiltinModule),
-	set__list_to_set([BuiltinModule, PrivateBuiltinModule],
-		ImportedModules),
+	get_implicit_dependencies(Items, Globals, ImportDeps, UseDeps),
+	set__list_to_set(ImportDeps `list__append` UseDeps, ImportedModules),
 	id_set_init(Empty),
 	Info0 = mq_info(ImportedModules, Empty, Empty, Empty, Empty,
 			Empty, InterfaceModules0, not_exported, 0, no, no,

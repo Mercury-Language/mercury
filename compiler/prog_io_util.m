@@ -106,6 +106,12 @@
 :- pred conjunction_to_list(term(T), list(term(T))).
 :- mode conjunction_to_list(in, out) is det.
 
+	% list_to_conjunction(Context, First, Rest, Term).
+	% convert a list to a "conjunction" (bunch of terms separated by ','s)
+
+:- pred list_to_conjunction(prog_context, term(T), list(term(T)), term(T)).
+:- mode list_to_conjunction(in, in, in, out) is det.
+
 	% convert a "sum" (bunch of terms separated by '+' operators) to a list
 
 :- pred sum_to_list(term(T), list(term(T))).
@@ -443,6 +449,11 @@ disjunction_to_list(Term, List) :-
 
 conjunction_to_list(Term, List) :-
 	binop_term_to_list(",", Term, List).
+
+list_to_conjunction(_, Term, [], Term).
+list_to_conjunction(Context, First, [Second | Rest], Term) :-
+	list_to_conjunction(Context, Second, Rest, Tail),
+	Term = term__functor(term__atom(","), [First, Tail], Context).
 
 sum_to_list(Term, List) :-
 	binop_term_to_list("+", Term, List).

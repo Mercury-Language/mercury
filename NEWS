@@ -3,6 +3,17 @@ NEWS since Mercury release 0.9:
 
 Changes to the Mercury language:
 
+* We've added support for explicit type quantification.
+
+  An expression of the form "Term `with_type` Type",
+  e.g. "X `with_type` list(int)", can be used in place of
+  the specified Term to constrain the type of that term.
+  This is sometimes useful for resolving type ambiguities,
+  which can occur as a result of overloading or polymorphism.
+
+  See the "Explicit type quantification" and "Variable scoping"
+  sections of the language reference manual for details.
+
 * We've added support for record syntax, so that fields of
   constructors can be conveniently extracted and updated
   without writing lots of trivial access predicates.
@@ -13,6 +24,16 @@ Changes to the Mercury language:
   that appeared in the release of the day in early January 2000.
   `Value =^ field' is now the syntax for DCG field selection,
   rather than `Value := ^ field'.
+
+* We've added support for tuple types, similar to those in most
+  other functional languages. Tuples use the syntax `{A, B, ...}'.
+  See the "Builtin types" section of the "Types" chapter of the
+  Mercury Language Reference Manual for details.
+
+* The behaviour of the parser__read_term applied to terms with
+  functor `{}/N' has been changed. The parser from Mercury 0.9
+  parsed "{1, 2, 3}" as `{}(','(1, ','(2, 3)))'. It is now
+  parsed as `{}(1, 2, 3)'.
 
 * You can now declare functions by giving a determinism but without
   supplying the modes.  The default function modes will be assumed.
@@ -38,8 +59,17 @@ Changes to the Mercury language:
 
   The old syntax is still accepted but is deprecated.  Support for it may
   eventually be dropped.
- 
+
+* Type class methods can now be defined by listing the clauses
+  directly in the instance declaration.  You no longer need to define a
+  separate predicate or function for each type class method definition.
+
 Changes to the standard library:
+
+* We've added a pretty printing module, `pprint', to the standard library.
+
+* We've added a new function to the Mercury standard library:
+	std_util__construct_tuple/1.
 
 * Functions `int:^/2' and `integer:^/2' have been removed.
   Use `int__xor/2' and `integer__xor/2' instead.
@@ -50,7 +80,7 @@ Changes to the standard library:
 * There is a new predicate `random__permutation', for
   computing a random permutation of a list.
 
-* There is a new library module for managing counters.
+* There is a new library module `counter' for managing counters.
 
 * Four new parametric instantiations `maybe/1', `maybe_error/1',
   `pair/2' and `pair/1' have been added to the `std_util' library

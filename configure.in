@@ -223,6 +223,10 @@ AC_PROG_CPP
 AC_C_CROSS
 AC_RETSIGTYPE
 #-----------------------------------------------------------------------------#
+# Check for `-lm': some systems, e.g. MacOS X (Darwin), don't have it.
+AC_HAVE_LIBRARY(m,[MATH_LIB=-lm],[MATH_LIB=])
+AC_SUBST(MATH_LIB)
+#-----------------------------------------------------------------------------#
 AC_MSG_CHECKING(for use of a Microsoft compiler)
 AC_EGREP_CPP(yes,
 [
@@ -1418,7 +1422,7 @@ case "$host" in
 	# due to problems with the `gp' register.  Ideally we
 	# ought to write a big enough example program to trigger
 	# the problem, but that would be too much work.
-	alpha-dec-*)
+	alpha*-dec-*)
 		MERCURY_MSG("asm labels work on the Alpha")
 		MERCURY_MSG("but plain gcc labels do not")
 		mercury_cv_asm_labels=yes
@@ -1620,7 +1624,7 @@ AC_MSG_RESULT($mercury_cv_gcc_model_reg)
 # Figure out which flavour of pthreads to use, since none of the
 # implementations seem to be exactly the same
 case $host in
-	alpha-dec-osf*)
+	alpha*-dec-osf*)
 		mercury_cv_use_digital_unix_threads=yes ;;
 
 	*)
@@ -1630,6 +1634,59 @@ esac
 if test $mercury_cv_use_digital_unix_threads = yes; then
 	AC_DEFINE(MR_DIGITAL_UNIX_PTHREADS)
 fi
+
+# Figure out what options we need to pass to the C compiler
+# for multithreading.   We may need to pass different
+# options to tell (a) the Mercury runtime & library
+# (b) the boehm collector and (c) the C library
+# that they need to be thread-safe.
+case "$host" in
+	*solaris*)
+		CFLAGS_FOR_THREADS="-DMR_THREAD_SAFE -DSOLARIS_THREADS \
+			-D_SOLARIS_PTHREADS -D_REENTRANT"
+		;;
+
+	*linux*)
+		CFLAGS_FOR_THREADS="-DMR_THREAD_SAFE -DLINUX_THREADS \
+			-D_THREAD_SAFE -D_REENTRANT"
+		# Note that for old versions of Linux / glibc,
+		# you may also need to make sure that you don't
+		# pass -ansi to gcc.
+		;;
+
+	*cygwin*)
+		case "$CC" in
+			*cl* | *CL*)	# cl is the Microsoft C compiler
+				CFLAGS_FOR_THREADS="-DMR_THREAD_SAFE -DWIN32_THREADS /MD" ;;
+			*)
+				CFLAGS_FOR_THREADS="" ;;
+		esac
+		;;
+
+###	# The threads stuff on Digital Unix (OSF) is not yet enabled because
+###	# the Boehm garbage collector doesn't support threads on that platform
+###	# XXX probably we should enable it but report an error if you try to
+###	#     use an *.par.gc* grade
+###	*-osf*)
+###		CFLAGS_FOR_THREADS="-DMR_THREAD_SAFE"
+###		;;
+
+###	# The threads stuff on IRIX is not yet enabled because
+###	# we don't have an IRIX box to test it on.
+###	# (XXX perhaps we should enable it anyway, so it is easier to test?)
+###	*irix*)
+###		CFLAGS_FOR_THREADS="-DMR_THREAD_SAFE -DIRIX_THREADS"
+###		;;
+
+	*)	
+		# Multithreading not (yet) supported on other architectures.
+		# For multithreading, we need (1) Posix threads and
+		# (2) a port of the Boehm gc for that architecture
+		# that works with threads.
+		CFLAGS_FOR_THREADS=""
+		;;
+esac
+AC_SUBST(CFLAGS_FOR_THREADS)
 
 #-----------------------------------------------------------------------------#
 
@@ -1774,9 +1831,6 @@ AC_ARG_ENABLE(all-hlc-grades,
 enable_all_hlc_grades=yes,enable_all_hlc_grades=no)
 
 if test $enable_all_hlc_grades = "yes" -o $ac_microsoft = "yes"; then
-	# add `hlc' grade
-	LIBGRADES="$LIBGRADES hlc"
-
 	# add `.prof' (--profiling) grades, if time profiling is supported,
 	# and a `.memprof' (--memory-profiling) grade.
 	if test $mercury_cv_profiling = yes; then
@@ -1784,6 +1838,9 @@ if test $enable_all_hlc_grades = "yes" -o $ac_microsoft = "yes"; then
 	fi
 	LIBGRADES="$LIBGRADES hlc.gc.memprof"
 fi
+
+# Add the .par grade
+LIBGRADES="$LIBGRADES hlc.par.gc"
 
 # If we are using the Microsoft compiler then use hlc.gc as the default
 # grade.
@@ -1828,7 +1885,7 @@ case "$host" in
 		NUM_REAL_R_TEMPS=0
 		HAVE_DELAY_SLOT=
 		;;
-	alpha-*)
+	alpha*-*)
 		# NUM_REAL_REGS=6
 		# but succip, sp, and hp are real regs, so subtract 3
 		NUM_REAL_R_REGS=3
@@ -1961,7 +2018,8 @@ AC_MSG_CHECKING(whether Mercury supports shared libraries on this system)
 # see Mmake.common.in for documentation on the meaning of these variables
 LINK_SHARED_OBJ="$CC -shared"
 LINK_SHARED_OBJ_SH="$CC -shared"
-SHARED_LIBS='`gcc -print-libgcc-file-name` -lm -lc'
+SHARED_LIBS='`gcc -print-libgcc-file-name` $(MATH_LIB) -lc'
+SHARED_LIBS_SH='`gcc -print-libgcc-file-name` $MATH_LIB -lc'
 EXE_RPATH_OPT="-Wl,-rpath,"
 EXE_RPATH_SEP=" -Wl,-rpath,"
 SHLIB_RPATH_OPT="-Wl,-rpath,"
@@ -1998,7 +2056,8 @@ case "$host" in
 		;;
 	sparc-sun-solaris2.*)
 		AC_MSG_RESULT(yes)
-		SHARED_LIBS="-lm -lc"	# don't link in libgcc.a
+		SHARED_LIBS="$(MATH_LIB) -lc"	# don't link in libgcc.a
+		SHARED_LIBS_SH="$MATH_LIB -lc"	# don't link in libgcc.a
 		LINK_SHARED_OBJ="$CC -G"
 		LINK_SHARED_OBJ_SH="$CC -G"
 		ERROR_UNDEFINED="-Wl,-z,defs"
@@ -2039,7 +2098,7 @@ case "$host" in
 
 		EXT_FOR_SHARED_LIB=so
 		;;
-	alpha-dec-osf*)
+	alpha*-dec-osf*)
 		AC_MSG_RESULT(yes)
 		LINK_SHARED_OBJ="gcc -shared \
 		-Wl,-O3,-update_registry,\$(SO_LOCATIONS_DIR)so_locations"
@@ -2152,6 +2211,7 @@ AC_SUBST(EXT_FOR_SHARED_LIB)
 AC_SUBST(EXT_FOR_EXE)
 AC_SUBST(USE_DLLS)
 AC_SUBST(SHARED_LIBS)
+AC_SUBST(SHARED_LIBS_SH)
 AC_SUBST(DEFAULT_RM_C)
 AC_SUBST(LIBRARY_RM_C)
 if test $USE_DLLS = "yes"; then

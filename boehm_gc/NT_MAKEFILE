@@ -24,30 +24,40 @@ OBJS= alloc.obj reclaim.obj allchblk.obj misc.obj mach_dep.obj os_dep.obj mark_r
 
 all: gctest.exe cord\de.exe test_cpp.exe
 
-dll: lib$(GC_GRADE)d$(DLL_DEF_LIB).dll
-lib$(GC_GRADE)$(DLL_DEF_LIB).dll: libgcd.dll
-# had -DSMALL_CONFIG
+libpar_gc.lib:
+	MAKEFLAGS="" nmake /F gc.mak
+	cp Release/libpar_gc.lib ./libpar_gc.lib
+	cp Release/libpar_gc.dll ./libpar_gc.dll
+
+dll: libgcd$(DLL_DEF_LIB).dll
+libgc$(DLL_DEF_LIB).dll: libgcd.dll
+
 %.obj:%.c
-	$(cc) $(cdebug) $(CFLAGS) $(cvars)  -DSILENT -DLARGE_CONFIG -DALL_INTERIOR_POINTERS -D__STDC__  /c /Fo$*.obj $*.c
+	$(cc) $(cdebug) $(CFLAGS) $(cvars)  -DSILENT -DALL_INTERIOR_POINTERS -D__STDC__  /c /Fo$*.obj $*.c
 
 %.obj:%.cpp
-	$(cc) $(cdebug) $(CFLAGS) $(cvars) -DSMALL_CONFIG -DSILENT -DALL_INTERIOR_POINTERS $*.CPP /c  /Fo$*.obj
+	$(cc) $(cdebug) $(CFLAGS) $(cvars) -DSILENT -DALL_INTERIOR_POINTERS $*.CPP /c  /Fo$*.obj
 
 $(OBJS) test.obj: gc_priv.h gc_hdrs.h gc.h
 
 gc.lib: $(OBJS)
 	lib /MACHINE:i386 /out:gc.lib $(OBJS)
 # a .def defining exports should be made....
-lib$(GC_GRADE)d$(DLL_DEF_LIB).dll: $(OBJS)
-#	$(link) /MACHINE:i386 /DLL /out:lib$(GC_GRADE)d.dll $(OBJS)
+libgcd$(DLL_DEF_LIB).dll: $(OBJS)
+#	$(link) /MACHINE:i386 /DLL /out:libgcd.dll $(OBJS)
 
 # The original NT SDK used lib32 instead of lib
 
 
-lib$(GC_GRADE)$(DLL_DEF_LIB).lib: gc.lib
-	rm -f lib$(GC_GRADE)$(DLL_DEF_LIB).lib
+libnogc$(DLL_DEF_LIB).lib: gc.lib
+	rm -f libnogc$(DLL_DEF_LIB).lib
 	# `ln -s' here doesn't work with gnu-win32, so we use `cp' instead
-	cp gc.lib lib$(GC_GRADE)$(DLL_DEF_LIB).lib
+	cp gc.lib libnogc$(DLL_DEF_LIB).lib
+
+libgc$(DLL_DEF_LIB).lib: gc.lib
+	rm -f libgc$(DLL_DEF_LIB).lib
+	# `ln -s' here doesn't work with gnu-win32, so we use `cp' instead
+	cp gc.lib libgc$(DLL_DEF_LIB).lib
 
 gctest.exe: test.obj libgc.lib
 #	The following works for win32 debugging.  For win32s debugging use debugtype:coff
@@ -86,6 +96,7 @@ test_cpp.exe: test_cpp.obj gc_cpp.h gc.h libgc.lib
 .PHONY: clean
 clean:
 	-rm -f *.lib *.dll *.obj 
+	-rm -rf Release
 
 # The Mmakefile invokes `make $(EXT_FOR_SHARED_LIB)',
 # so we need targets `a', `so', and `dll'.

@@ -25,13 +25,11 @@
 	--->	branch_on_success
 	;	branch_on_failure.
 
-:- pred unify_gen__generate_unification(code_model, unification, code_tree,
-	code_info, code_info).
-:- mode unify_gen__generate_unification(in, in, out, in, out) is det.
+:- pred unify_gen__generate_unification(code_model::in, unification::in,
+	code_tree::out, code_info::in, code_info::out) is det.
 
-:- pred unify_gen__generate_tag_test(prog_var, cons_id, test_sense, label,
-	code_tree, code_info, code_info).
-:- mode unify_gen__generate_tag_test(in, in, in, out, out, in, out) is det.
+:- pred unify_gen__generate_tag_test(prog_var::in, cons_id::in, test_sense::in,
+	label::out, code_tree::out, code_info::in, code_info::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -58,11 +56,19 @@ unify_gen__generate_unification(CodeModel, Uni, Code) -->
 	},
 	(
 		{ Uni = assign(Left, Right) },
-		unify_gen__generate_assignment(Left, Right, Code)
+		( code_info__variable_is_forward_live(Left) ->
+			unify_gen__generate_assignment(Left, Right, Code)
+		;
+			{ Code = empty }
+		)
 	;
 		{ Uni = construct(Var, ConsId, Args, Modes, _, _, AditiInfo) },
-		unify_gen__generate_construction(Var, ConsId,
-			Args, Modes, AditiInfo, Code)
+		( code_info__variable_is_forward_live(Var) ->
+			unify_gen__generate_construction(Var, ConsId,
+				Args, Modes, AditiInfo, Code)
+		;
+			{ Code = empty }
+		)
 	;
 		{ Uni = deconstruct(Var, ConsId, Args, Modes, _CanFail) },
 		( { CodeModel = model_det } ->
@@ -92,20 +98,17 @@ unify_gen__generate_unification(CodeModel, Uni, Code) -->
 	% bound variable as the expression that generates the free
 	% variable. No immediate code is generated.
 
-:- pred unify_gen__generate_assignment(prog_var, prog_var, code_tree,
-	code_info, code_info).
-:- mode unify_gen__generate_assignment(in, in, out, in, out) is det.
+:- pred unify_gen__generate_assignment(prog_var::in, prog_var::in,
+	code_tree::out, code_info::in, code_info::out) is det.
 
 unify_gen__generate_assignment(VarA, VarB, empty) -->
-	(
-		code_info__variable_is_forward_live(VarA)
-	->
-		code_info__cache_expression(VarA, var(VarB))
+	( code_info__variable_is_forward_live(VarA) ->
+		code_info__assign_var_to_var(VarA, VarB)
 	;
 		% For free-free unifications, the mode analysis reports
 		% them as assignment to the dead variable.  For such
 		% unifications we of course don't generate any code
-		{ true }
+		[]
 	).
 
 %---------------------------------------------------------------------------%
@@ -116,14 +119,13 @@ unify_gen__generate_assignment(VarA, VarB, empty) -->
 	% Simple tests are in-in unifications on enumerations, integers,
 	% strings and floats.
 
-:- pred unify_gen__generate_test(prog_var, prog_var, code_tree,
-		code_info, code_info).
-:- mode unify_gen__generate_test(in, in, out, in, out) is det.
+:- pred unify_gen__generate_test(prog_var::in, prog_var::in, code_tree::out,
+	code_info::in, code_info::out) is det.
 
 unify_gen__generate_test(VarA, VarB, Code) -->
-	code_info__produce_variable(VarA, Code0, ValA),
-	code_info__produce_variable(VarB, Code1, ValB),
-	{ CodeA = tree(Code0, Code1) },
+	code_info__produce_variable(VarA, CodeA, ValA),
+	code_info__produce_variable(VarB, CodeB, ValB),
+	{ CodeAB = tree(CodeA, CodeB) },
 	code_info__variable_type(VarA, Type),
 	{ Type = term__functor(term__atom("string"), [], _) ->
 		Op = str_eq
@@ -133,7 +135,7 @@ unify_gen__generate_test(VarA, VarB, Code) -->
 		Op = eq
 	},
 	code_info__fail_if_rval_is_false(binop(Op, ValA, ValB), FailCode),
-	{ Code = tree(CodeA, FailCode) }.
+	{ Code = tree(CodeAB, FailCode) }.
 
 %---------------------------------------------------------------------------%
 
@@ -203,17 +205,16 @@ unify_gen__generate_tag_test(Var, ConsId, Sense, ElseLab, Code) -->
 
 %---------------------------------------------------------------------------%
 
-:- pred unify_gen__generate_tag_rval(prog_var, cons_id, rval, code_tree,
-	code_info, code_info).
-:- mode unify_gen__generate_tag_rval(in, in, out, out, in, out) is det.
+:- pred unify_gen__generate_tag_rval(prog_var::in, cons_id::in, rval::out,
+	code_tree::out, code_info::in, code_info::out) is det.
 
 unify_gen__generate_tag_rval(Var, ConsId, TestRval, Code) -->
         code_info__produce_variable(Var, Code, Rval),
 	code_info__cons_id_to_tag(Var, ConsId, Tag),
 	{ unify_gen__generate_tag_rval_2(Tag, Rval, TestRval) }.
 
-:- pred unify_gen__generate_tag_rval_2(cons_tag, rval, rval).
-:- mode unify_gen__generate_tag_rval_2(in, in, out) is det.
+:- pred unify_gen__generate_tag_rval_2(cons_tag::in, rval::in, rval::out)
+	is det.
 
 unify_gen__generate_tag_rval_2(string_constant(String), Rval, TestRval) :-
 	TestRval = binop(str_eq, Rval, const(string_const(String))).
@@ -256,39 +257,37 @@ unify_gen__generate_tag_rval_2(shared_local_tag(Bits, Num), Rval,
 
 %---------------------------------------------------------------------------%
 
-	% A construction unification consists of a heap-increment to
-	% create a term, and a series of [optional] assignments to
+	% A construction unification is implemented as a simple assignment
+	% of a function symbol if the function symbol has arity zero.
+	% If the function symbol's arity is greater than zero, and all its
+	% arguments are constants, the construction is implemented by
+	% constructing the new term statically. If not all the argumemts are
+	% constants, the construction is implemented as a heap-increment
+	% to create a term, and a series of [optional] assignments to
 	% instantiate the arguments of that term.
 
-:- pred unify_gen__generate_construction(prog_var, cons_id,
-		list(prog_var), list(uni_mode), maybe(rl_exprn_id),
-		code_tree, code_info, code_info).
-:- mode unify_gen__generate_construction(in, in, in, in,
-		in, out, in, out) is det.
+:- pred unify_gen__generate_construction(prog_var::in, cons_id::in,
+	list(prog_var)::in, list(uni_mode)::in, maybe(rl_exprn_id)::in,
+	code_tree::out, code_info::in, code_info::out) is det.
 
 unify_gen__generate_construction(Var, Cons, Args, Modes, AditiInfo, Code) -->
 	code_info__cons_id_to_tag(Var, Cons, Tag),
 	unify_gen__generate_construction_2(Tag, Var, Args,
 		Modes, AditiInfo, Code).
 
-:- pred unify_gen__generate_construction_2(cons_tag, prog_var, 
-		list(prog_var), list(uni_mode), maybe(rl_exprn_id),
-		code_tree, code_info, code_info).
-:- mode unify_gen__generate_construction_2(in, in, in, in, in, out,
-					in, out) is det.
+:- pred unify_gen__generate_construction_2(cons_tag::in, prog_var::in, 
+	list(prog_var)::in, list(uni_mode)::in, maybe(rl_exprn_id)::in,
+	code_tree::out, code_info::in, code_info::out) is det.
 
 unify_gen__generate_construction_2(string_constant(String),
-		Var, _Args, _Modes, _, Code) -->
-	{ Code = empty },
-	code_info__cache_expression(Var, const(string_const(String))).
+		Var, _Args, _Modes, _, empty) -->
+	code_info__assign_const_to_var(Var, const(string_const(String))).
 unify_gen__generate_construction_2(int_constant(Int),
-		Var, _Args, _Modes, _, Code) -->
-	{ Code = empty },
-	code_info__cache_expression(Var, const(int_const(Int))).
+		Var, _Args, _Modes, _, empty) -->
+	code_info__assign_const_to_var(Var, const(int_const(Int))).
 unify_gen__generate_construction_2(float_constant(Float),
-		Var, _Args, _Modes, _, Code) -->
-	{ Code = empty },
-	code_info__cache_expression(Var, const(float_const(Float))).
+		Var, _Args, _Modes, _, empty) -->
+	code_info__assign_const_to_var(Var, const(float_const(Float))).
 unify_gen__generate_construction_2(no_tag, Var, Args, Modes, _, Code) -->
 	( { Args = [Arg], Modes = [Mode] } ->
 		code_info__variable_type(Arg, Type),
@@ -298,90 +297,71 @@ unify_gen__generate_construction_2(no_tag, Var, Args, Modes, _, Code) -->
 		{ error(
 		"unify_gen__generate_construction_2: no_tag: arity != 1") }
 	).
-unify_gen__generate_construction_2(unshared_tag(UnsharedTag),
+unify_gen__generate_construction_2(unshared_tag(Ptag),
 		Var, Args, Modes, _, Code) -->
 	code_info__get_module_info(ModuleInfo),
-	code_info__get_next_cell_number(CellNo),
 	unify_gen__var_types(Args, ArgTypes),
 	{ unify_gen__generate_cons_args(Args, ArgTypes, Modes, ModuleInfo,
-		RVals) },
-	{ Code = empty },
+		Rvals) },
 	code_info__variable_type(Var, VarType),
 	{ unify_gen__var_type_msg(VarType, VarTypeMsg) },
-	% XXX Later we will need to worry about
-	% whether the cell must be unique or not.
-	{ Reuse = no },
-	{ Expr = create(UnsharedTag, RVals, uniform(no), can_be_either,
-		CellNo, VarTypeMsg, Reuse) },
-	code_info__cache_expression(Var, Expr).
-unify_gen__generate_construction_2(shared_remote_tag(Bits0, Num0),
+	code_info__assign_cell_to_var(Var, Ptag, Rvals, VarTypeMsg, Code).
+unify_gen__generate_construction_2(shared_remote_tag(Ptag, Sectag),
 		Var, Args, Modes, _, Code) -->
 	code_info__get_module_info(ModuleInfo),
-	code_info__get_next_cell_number(CellNo),
 	unify_gen__var_types(Args, ArgTypes),
 	{ unify_gen__generate_cons_args(Args, ArgTypes, Modes, ModuleInfo,
-		RVals0) },
+		Rvals0) },
 		% the first field holds the secondary tag
-	{ RVals = [yes(const(int_const(Num0))) | RVals0] },
-	{ Code = empty },
+	{ Rvals = [yes(const(int_const(Sectag))) | Rvals0] },
 	code_info__variable_type(Var, VarType),
 	{ unify_gen__var_type_msg(VarType, VarTypeMsg) },
-	% XXX Later we will need to worry about
-	% whether the cell must be unique or not.
-	{ Reuse = no },
-	{ Expr = create(Bits0, RVals, uniform(no), can_be_either,
-		CellNo, VarTypeMsg, Reuse) },
-	code_info__cache_expression(Var, Expr).
+	code_info__assign_cell_to_var(Var, Ptag, Rvals, VarTypeMsg, Code).
 unify_gen__generate_construction_2(shared_local_tag(Bits1, Num1),
-		Var, _Args, _Modes, _, Code) -->
-	{ Code = empty },
-	code_info__cache_expression(Var,
+		Var, _Args, _Modes, _, empty) -->
+	code_info__assign_const_to_var(Var,
 		mkword(Bits1, unop(mkbody, const(int_const(Num1))))).
 unify_gen__generate_construction_2(type_ctor_info_constant(ModuleName,
-		TypeName, TypeArity), Var, Args, _Modes, _, Code) -->
+		TypeName, TypeArity), Var, Args, _Modes, _, empty) -->
 	( { Args = [] } ->
 		[]
 	;
 		{ error("unify_gen: type-info constant has args") }
 	),
-	{ Code = empty },
 	{ RttiTypeId = rtti_type_id(ModuleName, TypeName, TypeArity) },
 	{ DataAddr = rtti_addr(RttiTypeId, type_ctor_info) },
-	code_info__cache_expression(Var, const(data_addr_const(DataAddr))).
+	code_info__assign_const_to_var(Var, const(data_addr_const(DataAddr))).
 unify_gen__generate_construction_2(base_typeclass_info_constant(ModuleName,
-		ClassId, Instance), Var, Args, _Modes, _, Code) -->
+		ClassId, Instance), Var, Args, _Modes, _, empty) -->
 	( { Args = [] } ->
 		[]
 	;
 		{ error("unify_gen: typeclass-info constant has args") }
 	),
-	{ Code = empty },
-	code_info__cache_expression(Var, const(data_addr_const(data_addr(
+	code_info__assign_const_to_var(Var, const(data_addr_const(data_addr(
 		ModuleName, base_typeclass_info(ClassId, Instance))))).
 unify_gen__generate_construction_2(tabling_pointer_constant(PredId, ProcId),
-		Var, Args, _Modes, _, Code) -->
+		Var, Args, _Modes, _, empty) -->
 	( { Args = [] } ->
 		[]
 	;
 		{ error("unify_gen: tabling pointer constant has args") }
 	),
-	{ Code = empty },
 	code_info__get_module_info(ModuleInfo),
 	{ code_util__make_proc_label(ModuleInfo, PredId, ProcId, ProcLabel) },
 	{ module_info_name(ModuleInfo, ModuleName) },
 	{ DataAddr = data_addr(ModuleName, tabling_pointer(ProcLabel)) },
-	code_info__cache_expression(Var, const(data_addr_const(DataAddr))).
+	code_info__assign_const_to_var(Var, const(data_addr_const(DataAddr))).
 unify_gen__generate_construction_2(code_addr_constant(PredId, ProcId),
-		Var, Args, _Modes, _, Code) -->
+		Var, Args, _Modes, _, empty) -->
 	( { Args = [] } ->
 		[]
 	;
 		{ error("unify_gen: address constant has args") }
 	),
-	{ Code = empty },
 	code_info__get_module_info(ModuleInfo),
 	code_info__make_entry_label(ModuleInfo, PredId, ProcId, no, CodeAddr),
-	code_info__cache_expression(Var, const(code_addr_const(CodeAddr))).
+	code_info__assign_const_to_var(Var, const(code_addr_const(CodeAddr))).
 unify_gen__generate_construction_2(
 		pred_closure_tag(PredId, ProcId, EvalMethod),
 		Var, Args, _Modes, _AditiInfo, Code) -->
@@ -440,7 +420,8 @@ unify_gen__generate_construction_2(
 	    ( { CallArgs = [] } ->
 		% if there are no new arguments, we can just use the old
 		% closure
-		code_info__produce_variable(CallPred, Code, Value)
+		code_info__assign_var_to_var(Var, CallPred),
+		{ Code = empty }
 	    ;
 		code_info__get_next_label(LoopStart),
 		code_info__get_next_label(LoopTest),
@@ -456,8 +437,9 @@ unify_gen__generate_construction_2(
 		{ NumNewArgsPlusThree is NumNewArgs + 3 },
 		{ NumNewArgsPlusThree_Rval =
 			const(int_const(NumNewArgsPlusThree)) },
-		code_info__produce_variable(CallPred, Code1, OldClosure),
-		{ Code2 = node([
+		code_info__produce_variable(CallPred, OldClosureCode,
+			OldClosure),
+		{ NewClosureCode = node([
 			comment("build new closure from old closure") - "",
 			assign(NumOldArgs,
 				lval(field(yes(0), OldClosure, Two)))
@@ -501,16 +483,19 @@ unify_gen__generate_construction_2(
 				- "repeat the loop?"
 		]) },
 		unify_gen__generate_extra_closure_args(CallArgs,
-			LoopCounter, NewClosure, Code3),
+			LoopCounter, NewClosure, ExtraArgsCode),
 		code_info__release_reg(LoopCounter),
 		code_info__release_reg(NumOldArgs),
 		code_info__release_reg(NewClosure),
-		{ Code = tree(Code1, tree(Code2, Code3)) },
-		{ Value = lval(NewClosure) }
+		code_info__assign_lval_to_var(Var, NewClosure, AssignCode),
+		{ Code =
+			tree(OldClosureCode,
+			tree(NewClosureCode,
+			tree(ExtraArgsCode,
+			     AssignCode)))
+		}
 	    )
 	;
-		{ Code = empty },
-
 		code_info__make_entry_label(ModuleInfo,
 			PredId, ProcId, no, CodeAddr),
 		{ code_util__extract_proc_label_from_code_addr(CodeAddr,
@@ -565,15 +550,11 @@ unify_gen__generate_construction_2(
 			yes(const(int_const(NumArgs)))
 			| PredArgs
 		] },
-		code_info__get_next_cell_number(ClosureCellNo),
-		{ Value = create(0, Vector, uniform(no), can_be_either,
-			ClosureCellNo, "closure", Reuse) }
-	),
-	code_info__cache_expression(Var, Value).
+		code_info__assign_cell_to_var(Var, 0, Vector, "closure", Code)
+	).
 
-:- pred unify_gen__generate_extra_closure_args(list(prog_var), lval, lval,
-		code_tree, code_info, code_info).
-:- mode unify_gen__generate_extra_closure_args(in, in, in, out, in, out) is det.
+:- pred unify_gen__generate_extra_closure_args(list(prog_var)::in, lval::in,
+	lval::in, code_tree::out, code_info::in, code_info::out) is det.
 
 unify_gen__generate_extra_closure_args([], _, _, empty) --> [].
 unify_gen__generate_extra_closure_args([Var | Vars], LoopCounter,
@@ -592,9 +573,8 @@ unify_gen__generate_extra_closure_args([Var | Vars], LoopCounter,
 	unify_gen__generate_extra_closure_args(Vars, LoopCounter,
 		NewClosure, Code2).
 
-:- pred unify_gen__generate_pred_args(list(prog_var), list(arg_info),
-	list(maybe(rval))).
-:- mode unify_gen__generate_pred_args(in, in, out) is det.
+:- pred unify_gen__generate_pred_args(list(prog_var)::in, list(arg_info)::in,
+	list(maybe(rval))::out) is det.
 
 unify_gen__generate_pred_args([], _, []).
 unify_gen__generate_pred_args([_|_], [], _) :-
@@ -609,9 +589,8 @@ unify_gen__generate_pred_args([Var | Vars], [ArgInfo | ArgInfos],
 	),
 	unify_gen__generate_pred_args(Vars, ArgInfos, Rvals).
 
-:- pred unify_gen__generate_cons_args(list(prog_var), list(type),
-		list(uni_mode), module_info, list(maybe(rval))).
-:- mode unify_gen__generate_cons_args(in, in, in, in, out) is det.
+:- pred unify_gen__generate_cons_args(list(prog_var)::in, list(type)::in,
+	list(uni_mode)::in, module_info::in, list(maybe(rval))::out) is det.
 
 unify_gen__generate_cons_args(Vars, Types, Modes, ModuleInfo, Args) :-
 	( unify_gen__generate_cons_args_2(Vars, Types, Modes, ModuleInfo,
@@ -627,13 +606,13 @@ unify_gen__generate_cons_args(Vars, Types, Modes, ModuleInfo, Args) :-
 	% but if the argument is free, we just produce `no', meaning don't
 	% generate an assignment to that field.
 
-:- pred unify_gen__generate_cons_args_2(list(prog_var), list(type),
-		list(uni_mode), module_info, list(maybe(rval))).
-:- mode unify_gen__generate_cons_args_2(in, in, in, in, out) is semidet.
+:- pred unify_gen__generate_cons_args_2(list(prog_var)::in, list(type)::in,
+	list(uni_mode)::in, module_info::in, list(maybe(rval))::out)
+	is semidet.
 
 unify_gen__generate_cons_args_2([], [], [], _, []).
-unify_gen__generate_cons_args_2([Var|Vars], [Type|Types], [UniMode|UniModes],
-			ModuleInfo, [Arg|RVals]) :-
+unify_gen__generate_cons_args_2([Var | Vars], [Type | Types],
+		[UniMode | UniModes], ModuleInfo, [Arg | RVals]) :-
 	UniMode = ((_LI - RI) -> (_LF - RF)),
 	( mode_to_arg_mode(ModuleInfo, (RI -> RF), Type, top_in) ->
 		Arg = yes(var(Var))
@@ -645,8 +624,8 @@ unify_gen__generate_cons_args_2([Var|Vars], [Type|Types], [UniMode|UniModes],
 
 %---------------------------------------------------------------------------%
 
-:- pred unify_gen__var_types(list(prog_var), list(type), code_info, code_info).
-:- mode unify_gen__var_types(in, out, in, out) is det.
+:- pred unify_gen__var_types(list(prog_var)::in, list(type)::out,
+	code_info::in, code_info::out) is det.
 
 unify_gen__var_types(Vars, Types) -->
 	code_info__get_proc_info(ProcInfo),
@@ -655,9 +634,8 @@ unify_gen__var_types(Vars, Types) -->
 
 %---------------------------------------------------------------------------%
 
-:- pred unify_gen__make_fields_and_argvars(list(prog_var), rval, int, int,
-		list(uni_val), list(uni_val)).
-:- mode unify_gen__make_fields_and_argvars(in, in, in, in, out, out) is det.
+:- pred unify_gen__make_fields_and_argvars(list(prog_var)::in, rval::in,
+	int::in, int::in, list(uni_val)::out, list(uni_val)::out) is det.
 
 	% Construct a pair of lists that associates the fields of
 	% a term with variables.
@@ -680,11 +658,9 @@ unify_gen__make_fields_and_argvars([Var | Vars], Rval, Field0, TagNum,
 	% unifications are generated eagerly (they _must_ be), but
 	% assignment unifications are cached.
 
-:- pred unify_gen__generate_det_deconstruction(prog_var, cons_id,
-		list(prog_var), list(uni_mode), code_tree,
-		code_info, code_info).
-:- mode unify_gen__generate_det_deconstruction(in, in, in, in, out,
-	in, out) is det.
+:- pred unify_gen__generate_det_deconstruction(prog_var::in, cons_id::in,
+	list(prog_var)::in, list(uni_mode)::in,
+	code_tree::out, code_info::in, code_info::out) is det.
 
 unify_gen__generate_det_deconstruction(Var, Cons, Args, Modes, Code) -->
 	code_info__cons_id_to_tag(Var, Cons, Tag),
@@ -724,23 +700,23 @@ unify_gen__generate_det_deconstruction(Var, Cons, Args, Modes, Code) -->
 			{ error("unify_gen__generate_det_deconstruction: no_tag: arity != 1") }
 		)
 	;
-		{ Tag = unshared_tag(UnsharedTag) },
+		{ Tag = unshared_tag(Ptag) },
 		{ Rval = var(Var) },
 		{ unify_gen__make_fields_and_argvars(Args, Rval, 0,
-			UnsharedTag, Fields, ArgVars) },
+			Ptag, Fields, ArgVars) },
 		unify_gen__var_types(Args, ArgTypes),
 		unify_gen__generate_unify_args(Fields, ArgVars,
 			Modes, ArgTypes, Code)
 	;
-		{ Tag = shared_remote_tag(Bits0, _Num0) },
+		{ Tag = shared_remote_tag(Ptag, _Sectag1) },
 		{ Rval = var(Var) },
 		{ unify_gen__make_fields_and_argvars(Args, Rval, 1,
-			Bits0, Fields, ArgVars) },
+			Ptag, Fields, ArgVars) },
 		unify_gen__var_types(Args, ArgTypes),
 		unify_gen__generate_unify_args(Fields, ArgVars,
 			Modes, ArgTypes, Code)
 	;
-		{ Tag = shared_local_tag(_Bits1, _Num1) },
+		{ Tag = shared_local_tag(_Ptag, _Sectag2) },
 		{ Code = empty } % if this is det, then nothing happens
 	).
 
@@ -750,11 +726,9 @@ unify_gen__generate_det_deconstruction(Var, Cons, Args, Modes, Code) -->
 	% A semideterministic deconstruction unification is tag-test
 	% followed by a deterministic deconstruction.
 
-:- pred unify_gen__generate_semi_deconstruction(prog_var, cons_id,
-		list(prog_var), list(uni_mode), code_tree,
-		code_info, code_info).
-:- mode unify_gen__generate_semi_deconstruction(in, in, in, in, out, in, out)
-	is det.
+:- pred unify_gen__generate_semi_deconstruction(prog_var::in, cons_id::in,
+	list(prog_var)::in, list(uni_mode)::in,
+	code_tree::out, code_info::in, code_info::out) is det.
 
 unify_gen__generate_semi_deconstruction(Var, Tag, Args, Modes, Code) -->
 	unify_gen__generate_tag_test(Var, Tag, branch_on_success,
@@ -779,10 +753,9 @@ unify_gen__generate_semi_deconstruction(Var, Tag, Args, Modes, Code) -->
 	% Generate code to perform a list of deterministic subunifications
 	% for the arguments of a construction.
 
-:- pred unify_gen__generate_unify_args(list(uni_val), list(uni_val),
-			list(uni_mode), list(type), code_tree,
-			code_info, code_info).
-:- mode unify_gen__generate_unify_args(in, in, in, in, out, in, out) is det.
+:- pred unify_gen__generate_unify_args(list(uni_val)::in, list(uni_val)::in,
+	list(uni_mode)::in, list(type)::in,
+	code_tree::out, code_info::in, code_info::out) is det.
 
 unify_gen__generate_unify_args(Ls, Rs, Ms, Ts, Code) -->
 	( unify_gen__generate_unify_args_2(Ls, Rs, Ms, Ts, Code0) ->
@@ -791,14 +764,13 @@ unify_gen__generate_unify_args(Ls, Rs, Ms, Ts, Code) -->
 		{ error("unify_gen__generate_unify_args: length mismatch") }
 	).
 
-:- pred unify_gen__generate_unify_args_2(list(uni_val), list(uni_val),
-			list(uni_mode), list(type), code_tree,
-			code_info, code_info).
-:- mode unify_gen__generate_unify_args_2(in, in, in, in, out, in, out)
-	is semidet.
+:- pred unify_gen__generate_unify_args_2(list(uni_val)::in, list(uni_val)::in,
+	list(uni_mode)::in, list(type)::in,
+	code_tree::out, code_info::in, code_info::out) is semidet.
 
 unify_gen__generate_unify_args_2([], [], [], [], empty) --> [].
-unify_gen__generate_unify_args_2([L|Ls], [R|Rs], [M|Ms], [T|Ts], Code) -->
+unify_gen__generate_unify_args_2([L | Ls], [R | Rs], [M | Ms], [T | Ts],
+		Code) -->
 	unify_gen__generate_sub_unify(L, R, M, T, CodeA),
 	unify_gen__generate_unify_args_2(Ls, Rs, Ms, Ts, CodeB),
 	{ Code = tree(CodeA, CodeB) }.
@@ -807,9 +779,8 @@ unify_gen__generate_unify_args_2([L|Ls], [R|Rs], [M|Ms], [T|Ts], Code) -->
 
 	% Generate a subunification between two [field|variable].
 
-:- pred unify_gen__generate_sub_unify(uni_val, uni_val, uni_mode, type,
-					code_tree, code_info, code_info).
-:- mode unify_gen__generate_sub_unify(in, in, in, in, out, in, out) is det.
+:- pred unify_gen__generate_sub_unify(uni_val::in, uni_val::in, uni_mode::in,
+	(type)::in, code_tree::out, code_info::in, code_info::out) is det.
 
 unify_gen__generate_sub_unify(L, R, Mode, Type, Code) -->
 	{ Mode = ((LI - RI) -> (LF - RF)) },
@@ -832,7 +803,7 @@ unify_gen__generate_sub_unify(L, R, Mode, Type, Code) -->
 	->
 		unify_gen__generate_sub_assign(R, L, Code)
 	;
-			% Input - Output== assignment <-
+			% Output - Input== assignment <-
 		{ LeftMode = top_out },
 		{ RightMode = top_in }
 	->
@@ -850,28 +821,15 @@ unify_gen__generate_sub_unify(L, R, Mode, Type, Code) -->
 
 %---------------------------------------------------------------------------%
 
-:- pred unify_gen__generate_sub_assign(uni_val, uni_val, code_tree,
-							code_info, code_info).
-:- mode unify_gen__generate_sub_assign(in, in, out, in, out) is det.
+:- pred unify_gen__generate_sub_assign(uni_val::in, uni_val::in,
+	code_tree::out, code_info::in, code_info::out) is det.
 
-	% Assignment between two lvalues - cannot cache [yet]
-	% so generate immediate code
-	% If the destination of the assignment contains any vars,
-	% we need to materialize those before we can do the assignment.
-unify_gen__generate_sub_assign(lval(Lval0), lval(Rval), Code) -->
-	code_info__materialize_vars_in_rval(lval(Lval0), NewLval,
-		MaterializeCode),
-	(
-		{ NewLval = lval(Lval) }
-	->
-		{ Code = tree(MaterializeCode, node([
-			assign(Lval, lval(Rval)) - "Copy field"
-		])) }
-	;
-		{ error("unify_gen__generate_sub_assign: lval vanished with lval") }
-	).
-	% assignment from a variable to an lvalue - cannot cache
-	% so generate immediately
+	% Assignment between two lvalues - cannot happen.
+unify_gen__generate_sub_assign(lval(_Lval0), lval(_Rval), _Code) -->
+	{ error("unify_gen__generate_sub_assign: lval/lval") }.
+
+	% Assignment from a variable to an lvalue - cannot cache
+	% so generate immediately.
 unify_gen__generate_sub_assign(lval(Lval0), ref(Var), Code) -->
 	code_info__produce_variable(Var, SourceCode, Source),
 	code_info__materialize_vars_in_rval(lval(Lval0), NewLval,
@@ -888,29 +846,24 @@ unify_gen__generate_sub_assign(lval(Lval0), ref(Var), Code) -->
 	;
 		{ error("unify_gen__generate_sub_assign: lval vanished with ref") }
 	).
-	% assignment to a variable, so cache it.
-unify_gen__generate_sub_assign(ref(Var), lval(Rval), empty) -->
-	(
-		code_info__variable_is_forward_live(Var)
-	->
-		code_info__cache_expression(Var, lval(Rval))
+	% Assignment to a variable, so cache it.
+unify_gen__generate_sub_assign(ref(Var), lval(Lval), Code) -->
+	( code_info__variable_is_forward_live(Var) ->
+		code_info__assign_lval_to_var(Var, Lval, Code)
 	;
-		{ true }
+		{ Code = empty }
 	).
-	% assignment to a variable, so cache it.
+	% Assignment to a variable, so cache it.
 unify_gen__generate_sub_assign(ref(Lvar), ref(Rvar), empty) -->
-	(
-		code_info__variable_is_forward_live(Lvar)
-	->
-		code_info__cache_expression(Lvar, var(Rvar))
+	( code_info__variable_is_forward_live(Lvar) ->
+		code_info__assign_var_to_var(Lvar, Rvar)
 	;
-		{ true }
+		[]
 	).
 
 %---------------------------------------------------------------------------%
 
-:- pred unify_gen__var_type_msg(type, string).
-:- mode unify_gen__var_type_msg(in, out) is det.
+:- pred unify_gen__var_type_msg((type)::in, string::out) is det.
 
 unify_gen__var_type_msg(Type, Msg) :-
 	( type_to_type_id(Type, TypeId, _) ->

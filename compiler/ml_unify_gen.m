@@ -80,7 +80,7 @@
 :- import_module code_util. % XXX needed for `code_util__cons_id_to_tag'.
 :- import_module globals, options.
 
-:- import_module bool, int, string, list, require, std_util, term, varset.
+:- import_module bool, int, string, list, map, require, std_util, term, varset.
 
 %-----------------------------------------------------------------------------%
 
@@ -409,12 +409,12 @@ ml_gen_closure(PredId, ProcId, EvalMethod, Var, ArgVars, ArgModes,
 	% (we do this just to match the structure used
 	% by the LLDS closure representation)
 	%
-	{ ClosureLayoutRval = const(int_const(0)) },
 	{ mercury_private_builtin_module(PrivateBuiltinModule) },
 	{ MLDS_PrivateBuiltinModule = mercury_module_name_to_mlds(
 		PrivateBuiltinModule) },
 	{ ClosureLayoutType = mlds__class_type(qual(MLDS_PrivateBuiltinModule,
-			"closure_layout"), 0, mlds__struct) },
+			"closure_layout"), 0, mlds__class) },
+	{ ClosureLayoutRval = const(null(ClosureLayoutType)) },
 
 	%
 	% Generate a wrapper function which just unboxes the
@@ -467,7 +467,8 @@ ml_gen_closure(PredId, ProcId, EvalMethod, Var, ArgVars, ArgModes,
 	% The generated function will be of the following form:
 	%
 	%	foo_wrapper(void *closure_arg,
-	%			MR_Box arg1, MR_Box *arg2, ..., MR_Box argn)
+	%			MR_Box wrapper_arg1, MR_Box *wrapper_arg2,
+	%			..., MR_Box wrapper_argn)
 	%	{
 	%		FooClosure *closure;
 	%		...
@@ -483,10 +484,11 @@ ml_gen_closure(PredId, ProcId, EvalMethod, Var, ArgVars, ArgModes,
 	%	    CONJ(code_model, 
 	%		/* call function, boxing/unboxing inputs if needed */
 	%		foo(closure->f1, unbox(closure->f2), ...,
-	%			unbox(arg1), &unboxed_arg2, arg3, ...);
+	%			unbox(wrapper_arg1), &conv_arg2,
+	%			wrapper_arg3, ...);
 	%	    ,
 	%		/* box output arguments */
-	%		*arg2 = box(unboxed_arg2);
+	%		*wrapper_arg2 = box(conv_arg2);
 	%		...
 	%	    )
 	%	}
@@ -497,19 +499,21 @@ ml_gen_closure(PredId, ProcId, EvalMethod, Var, ArgVars, ArgModes,
 	% #if MODEL_DET
 	%		/* call function, boxing/unboxing inputs if needed */
 	%		foo(closure->f1, unbox(closure->f2), ...,
-	%			unbox(arg1), &unboxed_arg2, arg3, ...);
+	%			unbox(wrapper_arg1), &conv_arg2,
+	%			wrapper_arg3, ...);
 	%
 	%		/* box output arguments */
-	%		*arg2 = box(unboxed_arg2);
+	%		*wrapper_arg2 = box(conv_arg2);
 	%		...
 	% #elif MODEL_SEMI
 	%		/* call function, boxing/unboxing inputs if needed */
 	%		succeeded = foo(closure->f1, unbox(closure->f2), ...,
-	%			unbox(arg1), &unboxed_arg2, arg3, ...);
+	%			unbox(wrapper_arg1), &conv_arg2,
+	%			wrapper_arg3, ...);
 	%		
 	%		if (succeeded) {
 	%			/* box output arguments */
-	%			*arg2 = box(unboxed_arg2);
+	%			*wrapper_arg2 = box(conv_arg2);
 	%			...
 	%		}
 	%
@@ -518,14 +522,15 @@ ml_gen_closure(PredId, ProcId, EvalMethod, Var, ArgVars, ArgModes,
 	% #else /* MODEL_NON */
 	%		foo_1() {
 	%			/* box output arguments */
-	%			*arg2 = box(unboxed_arg2);
+	%			*wrapper_arg2 = box(conv_arg2);
 	%			...
 	%			(*succ_cont)();
 	%		}
 	%			
 	%		/* call function, boxing/unboxing inputs if needed */
 	%		foo(closure->f1, unbox(closure->f2), ...,
-	%			unbox(arg1), &unboxed_arg2, arg3, ...,
+	%			unbox(wrapper_arg1), &conv_arg2,
+	%			wrapper_arg3, ...,
 	%			foo_1);
 	% #endif
 	%
@@ -558,7 +563,8 @@ ml_gen_closure_wrapper(PredId, ProcId, Offset, NumClosureArgs,
 	%
 	% compute the parameters for the wrapper function
 	%	(void *closure_arg,
-	%	MR_Box arg1, MR_Box *arg2, ..., MR_Box argn)
+	%	MR_Box wrapper_arg1, MR_Box *wrapper_arg2, ...,
+	%	MR_Box wrapper_argn)
 	%
 
 	% first generate the declarations for the boxed arguments
@@ -580,10 +586,16 @@ ml_gen_closure_wrapper(PredId, ProcId, Offset, NumClosureArgs,
 		WrapperBoxedArgTypes, WrapperArgModes, CodeModel) },
 
 	% then insert the `closure_arg' parameter
-	{ ClosureArg = data(var("closure_arg")) - mlds__generic_env_ptr_type },
+	{ ClosureArg = data(var("closure_arg")) - mlds__generic_type },
 	{ WrapperParams0 = mlds__func_params(WrapperArgs0, WrapperRetType) },
 	{ WrapperParams = mlds__func_params([ClosureArg | WrapperArgs0],
 		WrapperRetType) },
+
+	% also compute the lvals for the parameters,
+	% and local declarations for any --copy-out output parameters
+	ml_gen_wrapper_arg_lvals(WrapperHeadVarNames, WrapperBoxedArgTypes,
+		WrapperArgModes, CodeModel, Context,
+		WrapperHeadVarDecls, WrapperHeadVarLvals),
 
 	%
 	% generate code to declare and initialize the closure pointer.
@@ -602,7 +614,7 @@ ml_gen_closure_wrapper(PredId, ProcId, Offset, NumClosureArgs,
 	{ ClosureArgName = "closure_arg" },
 	{ MLDS_Context = mlds__make_context(Context) },
 	{ ClosureDecl = ml_gen_mlds_var_decl(var(ClosureName),
-		mlds__generic_env_ptr_type, MLDS_Context) },
+		mlds__generic_type, MLDS_Context) },
 	ml_qualify_var(ClosureName, ClosureLval),
 	ml_qualify_var(ClosureArgName, ClosureArgLval),
 	{ InitClosure = ml_gen_assign(ClosureLval, lval(ClosureArgLval),
@@ -614,7 +626,22 @@ ml_gen_closure_wrapper(PredId, ProcId, Offset, NumClosureArgs,
 	% this is needed by ml_gen_call which we call below
 	%
 	( { CodeModel = model_non } ->
-		ml_initial_cont(InitialCont),
+		{ module_info_globals(ModuleInfo, Globals) },
+		{ globals__lookup_bool_option(Globals, nondet_copy_out,
+			NondetCopyOut) },
+		( { NondetCopyOut = yes } ->
+			{ map__from_corresponding_lists(WrapperHeadVarLvals,
+				WrapperBoxedArgTypes, WrapperBoxedVarTypes) },
+			{ WrapperOutputLvals = select_output_vars(ModuleInfo,
+				WrapperHeadVarLvals, WrapperArgModes,
+				WrapperBoxedVarTypes) },
+			{ WrapperOutputTypes = map__apply_to_list(
+				WrapperOutputLvals, WrapperBoxedVarTypes) },
+			ml_initial_cont(WrapperOutputLvals, WrapperOutputTypes,
+				InitialCont)
+		;
+			ml_initial_cont([], [], InitialCont)
+		),
 		ml_gen_info_push_success_cont(InitialCont)
 	;
 		[]
@@ -632,13 +659,11 @@ ml_gen_closure_wrapper(PredId, ProcId, Offset, NumClosureArgs,
 	%		MR_field(MR_mktag(0), closure, 4),
 	%		...
 	% #endif
-	%		unbox(arg1), &unboxed_arg2, arg3, ...
+	%		unbox(wrapper_arg1), &conv_arg2, wrapper_arg3, ...
 	%	);
 	%
 	ml_gen_closure_field_lvals(ClosureLval, Offset, 1, NumClosureArgs,
 		ClosureArgLvals),
-	ml_gen_wrapper_arg_lvals(WrapperHeadVarNames, WrapperBoxedArgTypes,
-		WrapperArgModes, WrapperHeadVarLvals),
 	{ CallLvals = list__append(ClosureArgLvals, WrapperHeadVarLvals) },
 	ml_gen_call(PredId, ProcId, ProcHeadVarNames, CallLvals,
 		ProcBoxedArgTypes, CodeModel, Context, Decls0, Statements0),
@@ -653,15 +678,21 @@ ml_gen_closure_wrapper(PredId, ProcId, Offset, NumClosureArgs,
 	%
 	( { CodeModel = model_semi } ->
 		{ SucceededVarDecl = ml_gen_succeeded_var_decl(MLDS_Context) },
-		{ Decls = [SucceededVarDecl | Decls1] },
+		{ Decls2 = [SucceededVarDecl | Decls1] },
 		ml_gen_test_success(Succeeded),
 		{ ReturnStmt = return([Succeeded]) },
 		{ ReturnStatement = mlds__statement(ReturnStmt, MLDS_Context) },
 		{ Statements = list__append(Statements1, [ReturnStatement]) }
 	;
-		{ Decls = Decls1 },
+		{ Decls2 = Decls1 },
 		{ Statements = Statements1 }
 	),
+
+	%
+	% Insert the local declarations of the wrapper's output arguments,
+	% if any (this is needed for `--nondet-copy-out')
+	%
+	{ Decls = list__append(WrapperHeadVarDecls, Decls2) },
 
 	%
 	% if the wrapper function was model_non, then
@@ -677,7 +708,8 @@ ml_gen_closure_wrapper(PredId, ProcId, Offset, NumClosureArgs,
 	% Put it all together
 	%
 	{ WrapperFuncBody = ml_gen_block(Decls, Statements, Context) },
-	ml_gen_new_func_label(WrapperFuncName, WrapperFuncRval),
+	ml_gen_new_func_label(yes(WrapperParams), WrapperFuncName,
+		WrapperFuncRval),
 	ml_gen_label_func(WrapperFuncName, WrapperParams, Context,
 		WrapperFuncBody, WrapperFunc),
 	{ WrapperFuncType = mlds__func_type(WrapperParams) },
@@ -693,37 +725,70 @@ ml_gen_wrapper_head_var_names(Num, Max) = Names :-
 		Names = [Name | Names1]
 	).
 
-	% ml_gen_wrapper_arg_lvals(HeadVarNames, ArgModes, HeadVarLvals):
+	% ml_gen_wrapper_arg_lvals(HeadVarNames, Types, ArgModes, CodeModel,
+	%		LocalVarDefns, HeadVarLvals):
 	%	Generate lvals for the specified head variables
 	%	passed in the specified modes.
+	%	Also generate local definitions for output variables,
+	%	if those output variables will be copied out,
+	%	rather than passed by reference.
 	%
 :- pred ml_gen_wrapper_arg_lvals(list(var_name), list(prog_type), list(mode),
-		list(mlds__lval), ml_gen_info, ml_gen_info).
-:- mode ml_gen_wrapper_arg_lvals(in, in, in, out, in, out) is det.
+		code_model, prog_context, list(mlds__defn), list(mlds__lval),
+		ml_gen_info, ml_gen_info).
+:- mode ml_gen_wrapper_arg_lvals(in, in, in, in, in, out, out, in, out) is det.
 
-ml_gen_wrapper_arg_lvals(Names, Types, Modes, Lvals) -->
+ml_gen_wrapper_arg_lvals(Names, Types, Modes, CodeModel, Context,
+		Defns, Lvals) -->
 	(
 		{ Names = [], Types = [], Modes = [] }
 	->
-		{ Lvals = [] }
+		{ Lvals = [] },
+		{ Defns = [] }
 	;
-		{ Names = [Name|Names1] },
-		{ Types = [Type|Types1] },
-		{ Modes = [Mode|Modes1] }
+		{ Names = [Name | Names1] },
+		{ Types = [Type | Types1] },
+		{ Modes = [Mode | Modes1] }
 	->
+		ml_gen_wrapper_arg_lvals(Names1, Types1, Modes1,
+			CodeModel, Context, Defns1, Lvals1),
 		ml_qualify_var(Name, VarLval),
 		=(Info),
 		{ ml_gen_info_get_module_info(Info, ModuleInfo) },
 		( { mode_to_arg_mode(ModuleInfo, Mode, Type, top_in) } ->
-			{ Lval = VarLval }
+			{ Lval = VarLval },
+			{ Defns = Defns1 }
 		;
-			% output arguments are passed by reference,
-			% so we need to dereference them
-			ml_gen_type(Type, MLDS_Type),
-			{ Lval = mem_ref(lval(VarLval), MLDS_Type) }
+			%
+			% handle output variables
+			%
+			ml_gen_info_get_globals(Globals),
+			{ CopyOut = get_copy_out_option(Globals, CodeModel) },
+			( { CopyOut = yes } ->
+				%
+				% output arguments are copied out,
+				% so we need to generate a local declaration
+				% for them here
+				%
+				{ Lval = VarLval },
+				( { type_util__is_dummy_argument_type(Type) } ->
+					{ Defns = Defns1 }
+				;
+					ml_gen_local_for_output_arg(Name, Type,
+						Context, Defn),
+					{ Defns = [Defn | Defns1] }
+				)
+			;
+				%
+				% output arguments are passed by reference,
+				% so we need to dereference them
+				%
+				ml_gen_type(Type, MLDS_Type),
+				{ Lval = mem_ref(lval(VarLval), MLDS_Type) },
+				{ Defns = Defns1 }
+			)
 		),
-		ml_gen_wrapper_arg_lvals(Names1, Types1, Modes1, Lvals1),
-		{ Lvals = [Lval|Lvals1] }
+		{ Lvals = [Lval | Lvals1] }
 	;
 		{ error("ml_gen_wrapper_arg_lvals: length mismatch") }
 	).
@@ -744,7 +809,7 @@ ml_gen_closure_field_lvals(ClosureLval, Offset, ArgNum, NumClosureArgs,
 		{ FieldId = offset(const(int_const(ArgNum + Offset))) },
 			% XXX these types might not be right
 		{ FieldLval = field(yes(0), lval(ClosureLval), FieldId,
-			mlds__generic_type, mlds__generic_env_ptr_type) },
+			mlds__generic_type, mlds__generic_type) },
 		%
 		% recursively handle the remaining fields
 		%
@@ -752,6 +817,19 @@ ml_gen_closure_field_lvals(ClosureLval, Offset, ArgNum, NumClosureArgs,
 			NumClosureArgs, ClosureArgLvals0),
 		{ ClosureArgLvals = [FieldLval | ClosureArgLvals0] }
 	).
+
+:- pred ml_gen_local_for_output_arg(var_name, prog_type, prog_context,
+		mlds__defn, ml_gen_info, ml_gen_info).
+:- mode ml_gen_local_for_output_arg(in, in, in, out, in, out) is det.
+
+ml_gen_local_for_output_arg(VarName, Type, Context, LocalVarDefn) -->
+	%
+	% Generate a declaration for a corresponding local variable.
+	%
+	=(MLDSGenInfo),
+	{ ml_gen_info_get_module_info(MLDSGenInfo, ModuleInfo) },
+	{ LocalVarDefn = ml_gen_var_decl(VarName, Type,
+		mlds__make_context(Context), ModuleInfo) }.
 
 %-----------------------------------------------------------------------------%
 		
@@ -1070,8 +1148,7 @@ ml_gen_cons_args(Lvals, Types, Modes, ModuleInfo, Rvals) :-
 	% for a construction unification.  For each argument which
 	% is input to the construction unification, we produce the
 	% corresponding lval, but if the argument is free,
-	% we just produce `0', meaning initialize that field to a
-	% null value.  (XXX perhaps we should have a special `null' rval.)
+	% we produce a null value.
 
 :- pred ml_gen_cons_args_2(list(mlds__lval), list(prog_type),
 		list(uni_mode), module_info, list(mlds__rval)).
@@ -1084,8 +1161,7 @@ ml_gen_cons_args_2([Lval|Lvals], [Type|Types], [UniMode|UniModes],
 	( mode_to_arg_mode(ModuleInfo, (RI -> RF), Type, top_in) ->
 		Rval = lval(Lval)
 	;
-		% XXX perhaps we should have a special `null' rval.
-		Rval = const(int_const(0))
+		Rval = const(null(mercury_type_to_mlds_type(ModuleInfo, Type)))
 	),
 	ml_gen_cons_args_2(Lvals, Types, UniModes, ModuleInfo, Rvals).
 
@@ -1184,23 +1260,35 @@ ml_field_names_and_types(Type, ConsId, ArgTypes, Fields) -->
 	%
 	% Lookup the field types for the arguments of this cons_id
 	%
-	=(Info),
-	{ ml_gen_info_get_module_info(Info, ModuleInfo) },
-	{ type_util__get_type_and_cons_defn(ModuleInfo, Type, ConsId,
-			_TypeDefn, ConsDefn) },
-	{ ConsDefn = hlds_cons_defn(_, _, Fields0, _, _) },
-	%
-	% Add the fields for any type_infos and/or typeclass_infos
-	% inserted for existentially quantified data types.
-	% For these, we just copy the types from the ArgTypes.
-	%
-	{ NumArgs = list__length(ArgTypes) },
-	{ NumFieldTypes0 = list__length(Fields0) },
-	{ NumExtraTypes = NumArgs - NumFieldTypes0 },
-	{ ExtraFieldTypes = list__take_upto(NumExtraTypes, ArgTypes) },
-	{ ExtraFields = list__map(func(FieldType) = no - FieldType,
-		ExtraFieldTypes) },
-	{ Fields = list__append(ExtraFields, Fields0) }.
+	{ MakeUnnamedField = (func(FieldType) = no - FieldType) },
+	(
+		{ type_is_tuple(Type, _) },
+		{ list__length(ArgTypes, TupleArity) }
+	->
+		% The argument types for tuples are unbound type variables.
+		{ varset__init(TypeVarSet0) },
+		{ varset__new_vars(TypeVarSet0, TupleArity,
+			TVars, _TypeVarSet) },
+		{ term__var_list_to_term_list(TVars, FieldTypes) },
+		{ Fields = list__map(MakeUnnamedField, FieldTypes) }
+	;
+		=(Info),
+		{ ml_gen_info_get_module_info(Info, ModuleInfo) },
+		{ type_util__get_type_and_cons_defn(ModuleInfo, Type, ConsId,
+				_TypeDefn, ConsDefn) },
+		{ ConsDefn = hlds_cons_defn(_, _, Fields0, _, _) },
+		%
+		% Add the fields for any type_infos and/or typeclass_infos
+		% inserted for existentially quantified data types.
+		% For these, we just copy the types from the ArgTypes.
+		%
+		{ NumArgs = list__length(ArgTypes) },
+		{ NumFieldTypes0 = list__length(Fields0) },
+		{ NumExtraTypes = NumArgs - NumFieldTypes0 },
+		{ ExtraFieldTypes = list__take_upto(NumExtraTypes, ArgTypes) },
+		{ ExtraFields = list__map(MakeUnnamedField, ExtraFieldTypes) },
+		{ Fields = list__append(ExtraFields, Fields0) }
+	).
 
 :- pred ml_gen_unify_args(cons_id, prog_vars, list(uni_mode), list(prog_type),
 		list(constructor_arg), prog_type, mlds__lval, int, int,

@@ -531,11 +531,18 @@ parser__parse_simple_term_2(open_curly, Context, _, Term) -->
 	( parser__get_token(close_curly) ->
 		parser__parse_special_atom("{}", TermContext, Term)
 	;
+		% This is a slight departure from ISO Prolog
+		% syntax -- instead of parsing "{1,2,3}"
+		% as "'{}'(','(1, ','(2, 3)))" we parse
+		% it as "'{}'(1,2,3)". This makes the
+		% structure of tuple functors the same
+		% as other functors.
 		parser__parse_term(SubTerm0),
 		( { SubTerm0 = ok(SubTerm) } ->
+			{ conjunction_to_list(SubTerm, ArgTerms) },
 			( parser__get_token(close_curly) ->
 				{ Term = ok(term__functor(term__atom("{}"), 
-					[SubTerm], TermContext)) }
+					ArgTerms, TermContext)) }
 			;
 				parser__unexpected("expecting `}' or operator",
 					Term)
@@ -544,6 +551,17 @@ parser__parse_simple_term_2(open_curly, Context, _, Term) -->
 			% propagate error upwards
 			{ Term = SubTerm0 }
 		)
+	).
+
+:- pred parser__conjunction_to_list(term(T), list(term(T))).
+:- mode parser__conjunction_to_list(in, out) is det.
+
+parser__conjunction_to_list(Term, ArgTerms) :-
+	( Term = term__functor(term__atom(","), [LeftTerm, RightTerm], _) ->
+		parser__conjunction_to_list(RightTerm, ArgTerms0),
+		ArgTerms = [LeftTerm | ArgTerms0]
+	;
+		ArgTerms = [Term]
 	).
 
 :- pred parser__check_for_higher_order_term(parse(term(T)), token_context,

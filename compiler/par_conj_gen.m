@@ -274,7 +274,7 @@ par_conj_gen__place_all_outputs([Var|Vars]) -->
 	code_info__get_variable_slot(Var, Slot),
 	(
 		{ map__search(VarLocations, Var, Locations) },
-		{ set__member(lval(Slot), Locations) }
+		{ set__member(Slot, Locations) }
 	->
 		[]
 	;

@@ -20,7 +20,7 @@
 :- import_module prog_data, hlds_module, hlds_pred, hlds_goal, hlds_data.
 :- import_module rtti, llds.
 
-:- import_module bool, list, assoc_list, set, std_util.
+:- import_module bool, list, std_util.
 
 	% Create a code address which holds the address of the specified
 	% procedure.
@@ -85,6 +85,9 @@
 
 :- pred code_util__arg_loc_to_register(arg_loc, lval).
 :- mode code_util__arg_loc_to_register(in, out) is det.
+
+:- pred code_util__max_mentioned_reg(list(lval), int).
+:- mode code_util__max_mentioned_reg(in, out) is det.
 
 	% Determine whether a goal might allocate some heap space,
 	% i.e. whether it contains any construction unifications
@@ -163,11 +166,6 @@
 	int, int).
 :- mode code_util__count_recursive_calls(in, in, in, out, out) is det.
 
-	% Return the set of locations occupied by output arguments.
-
-:- pred code_util__output_args(assoc_list(prog_var, arg_info), set(lval)).
-:- mode code_util__output_args(in, out) is det.
-
 	% These predicates return the set of lvals referenced in an rval
 	% and an lval respectively. Lvals referenced indirectly through
 	% lvals of the form var(_) are not counted.
@@ -178,11 +176,14 @@
 :- pred code_util__lvals_in_lval(lval, list(lval)).
 :- mode code_util__lvals_in_lval(in, out) is det.
 
+:- pred code_util__lvals_in_lvals(list(lval), list(lval)).
+:- mode code_util__lvals_in_lvals(in, out) is det.
+
 %---------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module builtin_ops, type_util, special_pred.
+:- import_module builtin_ops, prog_util, type_util, special_pred.
 
 :- import_module char, int, string, set, map, term, varset.
 :- import_module require, std_util, assoc_list.
@@ -289,11 +290,18 @@ code_util__make_proc_label_from_rtti(RttiProcLabel, ProcLabel) :-
 		(
 			special_pred_get_type(PredName, ArgTypes, Type),
 			type_to_type_id(Type, TypeId, _),
-			% All type_ids here should be module qualified,
-			% since builtin types are handled separately in
-			% polymorphism.m.
-			TypeId = qualified(TypeModule, TypeName) - TypeArity
+			% All type_ids other than tuples here should be
+			% module qualified, since builtin types are
+			% handled separately in polymorphism.m.
+			(
+				TypeId = unqualified(TypeName) - _,
+				type_id_is_tuple(TypeId),
+				mercury_public_builtin_module(TypeModule)
+			;
+				TypeId = qualified(TypeModule, TypeName) - _
+			)
 		->
+			TypeId = _ - TypeArity,
 			(
 				ThisModule \= TypeModule,
 				PredName = "__Unify__",
@@ -376,6 +384,23 @@ code_util__extract_proc_label_from_label(exported(ProcLabel), ProcLabel).
 %-----------------------------------------------------------------------------%
 
 code_util__arg_loc_to_register(ArgLoc, reg(r, ArgLoc)).
+
+%-----------------------------------------------------------------------------%
+
+code_util__max_mentioned_reg(Lvals, MaxRegNum) :-
+	code_util__max_mentioned_reg_2(Lvals, 0, MaxRegNum).
+
+:- pred code_util__max_mentioned_reg_2(list(lval)::in, int::in, int::out)
+	is det.
+
+code_util__max_mentioned_reg_2([], MaxRegNum, MaxRegNum).
+code_util__max_mentioned_reg_2([Lval | Lvals], MaxRegNum0, MaxRegNum) :-
+	( Lval = reg(r, N) ->
+		int__max(MaxRegNum0, N, MaxRegNum1)
+	;
+		MaxRegNum1 = MaxRegNum0
+	),
+	code_util__max_mentioned_reg_2(Lvals, MaxRegNum1, MaxRegNum).
 
 %-----------------------------------------------------------------------------%
 
@@ -547,6 +572,13 @@ code_util__cons_id_to_tag(cons(Name, Arity), Type, ModuleInfo, Tag) :-
 	->
 		char__to_int(Char, CharCode),
 		Tag = int_constant(CharCode)
+	;
+		% Tuples do not need a tag. Note that unary tuples are not
+		% treated as no_tag types. There's no reason why they
+		% couldn't be, it's just not worth the effort.
+		type_is_tuple(Type, _)
+	->
+		Tag = unshared_tag(0)
 	;
 			% Use the type to determine the type_id
 		( type_to_type_id(Type, TypeId0, _) ->
@@ -755,20 +787,13 @@ code_util__count_recursive_calls_cases([case(_, Goal) | Cases], PredId, ProcId,
 		int__max(Max0, Max1, Max)
 	).
 
-code_util__output_args([], LiveVals) :-
-	set__init(LiveVals).
-code_util__output_args([_V - arg_info(Loc, Mode) | Args], Vs) :-
-	code_util__output_args(Args, Vs0),
-	(
-		Mode = top_out
-	->
-		code_util__arg_loc_to_register(Loc, Reg),
-		set__insert(Vs0, Reg, Vs)
-	;
-		Vs = Vs0
-	).
-
 %-----------------------------------------------------------------------------%
+
+code_util__lvals_in_lvals([], []).
+code_util__lvals_in_lvals([First | Rest], Lvals) :-
+	code_util__lvals_in_lval(First, FirstLvals),
+	code_util__lvals_in_lvals(Rest, RestLvals),
+	list__append(FirstLvals, RestLvals, Lvals).
 
 code_util__lvals_in_rval(lval(Lval), [Lval | Lvals]) :-
 	code_util__lvals_in_lval(Lval, Lvals).

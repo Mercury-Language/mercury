@@ -22,27 +22,65 @@
 :- module make_hlds.
 :- interface.
 
-:- import_module prog_data, hlds_module, hlds_pred.
-:- import_module equiv_type, module_qual.
+:- import_module prog_data, hlds_data, hlds_module, hlds_pred.
+:- import_module equiv_type, module_qual, special_pred.
 
 :- import_module io, std_util, list, bool.
 
-% parse_tree_to_hlds(ParseTree, MQInfo, EqvMap, HLDS, UndefTypes, UndefModes):
+% parse_tree_to_hlds(ParseTree, MQInfo, EqvMap, HLDS, QualInfo,
+%		UndefTypes, UndefModes):
 %	Given MQInfo (returned by module_qual.m) and EqvMap (returned by
 %	equiv_type.m), converts ParseTree to HLDS.
 %	Any errors found are recorded in the HLDS num_errors field.
 %	Returns UndefTypes = yes if undefined types found.
 %	Returns UndefModes = yes if undefined modes found.
+%	QualInfo is an abstract type that is then passed back to
+%	produce_instance_method_clauses (see below).	
 :- pred parse_tree_to_hlds(compilation_unit, mq_info, eqv_map, module_info,
-			bool, bool, io__state, io__state).
-:- mode parse_tree_to_hlds(in, in, in, out, out, out, di, uo) is det.
+			qual_info, bool, bool, io__state, io__state).
+:- mode parse_tree_to_hlds(in, in, in, out, out, out, out, di, uo) is det.
 
 :- pred add_new_proc(pred_info, arity, list(mode), maybe(list(mode)),
 		maybe(list(is_live)), maybe(determinism),
 		prog_context, is_address_taken, pred_info, proc_id).
 :- mode add_new_proc(in, in, in, in, in, in, in, in, out, out) is det.
 
-:- pred clauses_info_init(int::in, clauses_info::out) is det.
+	% add_special_pred_for_real(SpecialPredId, ModuleInfo0, TVarSet,
+	% 	Type, TypeId, TypeBody, TypeContext, TypeStatus, ModuleInfo).
+	%
+	% Add declarations and clauses for a special predicate.
+	% This is used by unify_proc.m to add a unification predicate
+	% for an imported type for which special predicates are being
+	% generated only when a unification procedure is requested
+	% during mode analysis.
+:- pred add_special_pred_for_real(special_pred_id,
+		module_info, tvarset, type, type_id, hlds_type_body,
+		prog_context, import_status, module_info).
+:- mode add_special_pred_for_real(in, in, in, in, in, in, in, in, out) is det.
+
+	% add_special_pred_decl_for_real(SpecialPredId, ModuleInfo0, TVarSet,
+	% 	Type, TypeId, TypeContext, TypeStatus, ModuleInfo).
+	%
+	% Add declarations for a special predicate.
+	% This is used by higher_order.m when specializing an in-in
+	% unification for an imported type for which unification procedures
+	% are generated lazily.	
+:- pred add_special_pred_decl_for_real(special_pred_id,
+		module_info, tvarset, type, type_id, prog_context,
+		import_status, module_info).
+:- mode add_special_pred_decl_for_real(in, in, in, in, in, in, in, out) is det.
+
+:- type qual_info.
+
+	% Given the definition for a predicate or function from a
+	% type class instance declaration, produce the clauses_info
+	% for that definition.
+:- pred produce_instance_method_clauses(instance_proc_def::in,
+		pred_or_func::in, arity::in, list(type)::in, pred_markers::in,
+		term__context::in, clauses_info::out,
+		module_info::in, module_info::out,
+		qual_info::in, qual_info::out,
+		io__state::di, io__state::uo) is det.
 
 :- pred next_mode_id(proc_table, maybe(determinism), proc_id).
 :- mode next_mode_id(in, in, out) is det.
@@ -52,11 +90,11 @@
 
 :- implementation.
 
-:- import_module hlds_data, hlds_goal.
+:- import_module hlds_goal.
 :- import_module prog_io, prog_io_goal, prog_io_dcg, prog_io_util, prog_out.
-:- import_module modules, module_qual, prog_util, options, hlds_out.
+:- import_module modules, module_qual, prog_util, options, hlds_out, typecheck.
 :- import_module make_tags, quantification, (inst), globals.
-:- import_module code_util, unify_proc, special_pred, type_util, mode_util.
+:- import_module code_util, unify_proc, type_util, mode_util.
 :- import_module mercury_to_mercury, passes_aux, clause_to_proc, inst_match.
 :- import_module fact_table, purity, goal_util, term_util, export, llds.
 :- import_module error_util.
@@ -64,11 +102,11 @@
 :- import_module string, char, int, set, bintree, map, multi_map, require.
 :- import_module bag, term, varset, getopt, assoc_list, term_io.
 
-parse_tree_to_hlds(module(Name, Items), MQInfo0, EqvMap, Module, 
+parse_tree_to_hlds(module(Name, Items), MQInfo0, EqvMap, Module, QualInfo,
 		UndefTypes, UndefModes) -->
 	globals__io_get_globals(Globals),
 	{ mq_info_get_partial_qualifier_info(MQInfo0, PQInfo) },
-	{ module_info_init(Name, Globals, PQInfo, Module0) },
+	{ module_info_init(Name, Items, Globals, PQInfo, Module0) },
 	add_item_list_decls_pass_1(Items,
 		item_status(local, may_be_unqualified), Module0, Module1),
 	globals__io_lookup_bool_option(statistics, Statistics),
@@ -79,10 +117,10 @@ parse_tree_to_hlds(module(Name, Items), MQInfo0, EqvMap, Module,
 		% balance the binary trees
 	{ module_info_optimize(Module2, Module3) },
 	maybe_report_stats(Statistics),
-	{ init_qual_info(MQInfo0, EqvMap, Info0) },
+	{ init_qual_info(MQInfo0, EqvMap, QualInfo0) },
 	add_item_list_clauses(Items, local, Module3, Module4,
-				Info0, Info),
-	{ qual_info_get_mq_info(Info, MQInfo) },
+				QualInfo0, QualInfo),
+	{ qual_info_get_mq_info(QualInfo, MQInfo) },
 	{ mq_info_get_type_error_flag(MQInfo, UndefTypes) },
 	{ mq_info_get_mode_error_flag(MQInfo, UndefModes) },
 	{ mq_info_get_num_errors(MQInfo, MQ_NumErrors) },
@@ -925,7 +963,8 @@ add_pragma_type_spec_2(Pragma, SymName, SpecName, Arity,
 		Clause = clause(ProcIds, Goal, Context),
 		map__init(TI_VarMap),
 		map__init(TCI_VarMap),
-		Clauses = clauses_info(ArgVarSet, VarTypes0,
+		map__init(TVarNameMap),
+		Clauses = clauses_info(ArgVarSet, VarTypes0, TVarNameMap,
 			VarTypes0, Args, [Clause], TI_VarMap, TCI_VarMap),
 		pred_info_get_markers(PredInfo0, Markers),
 		map__init(Proofs),
@@ -2819,9 +2858,10 @@ add_builtin(PredId, Types, PredInfo0, PredInfo) :-
 		%
 	ClauseList = [Clause],
 	map__from_corresponding_lists(HeadVars, Types, VarTypes),
+	map__init(TVarNameMap),
 	map__init(TI_VarMap),
 	map__init(TCI_VarMap),
-	ClausesInfo = clauses_info(VarSet, VarTypes, VarTypes,
+	ClausesInfo = clauses_info(VarSet, VarTypes, TVarNameMap, VarTypes,
 				HeadVars, ClauseList, TI_VarMap, TCI_VarMap),
 	pred_info_set_clauses_info(PredInfo0, ClausesInfo, PredInfo).
 
@@ -2885,30 +2925,49 @@ add_special_preds(Module0, TVarSet, Type, TypeId,
 		SolverSpecialPreds = [init, solve_equal]
 	),
 	(
-		(
-			Body = abstract_type
-		;
-			Body = uu_type(_)
-		;
-			type_id_has_hand_defined_rtti(TypeId)
-		)
+		special_pred_is_generated_lazily(Module0,
+			TypeId, Body, Status)
 	->
+		Module = Module0
+	;
+		can_generate_special_pred_clauses_for_type(TypeId, Body)
+	->
+		add_special_pred_list([unify|SolverSpecialPreds], 
+			Module0, TVarSet, Type, TypeId,
+			Body, Context, Status, Module1),
+		(
+			status_defined_in_this_module(Status, yes)
+		->
+			(
+				Body = du_type(Ctors, _, IsEnum,
+						UserDefinedEquality),
+				IsEnum = no,
+				UserDefinedEquality = no,
+				Ctors = [_, _|_]
+			->
+				SpecialPredIds = [index, compare]
+			;
+				SpecialPredIds = [compare]
+			),
+			add_special_pred_list(SpecialPredIds,
+				Module1, TVarSet, Type, TypeId,
+				Body, Context, Status, Module)
+		;
+			% Never add clauses for comparison predicates
+			% for imported types -- they will never be used.
+			module_info_get_special_pred_map(Module1,
+				SpecialPreds),
+			( map__contains(SpecialPreds, compare - TypeId) ->
+				Module = Module1
+			;
+				add_special_pred_decl(compare, Module1,
+					TVarSet, Type, TypeId, Body,
+					Context, Status, Module)
+			)
+		)
+	;
 		SpecialPredIds = [unify, compare|SolverSpecialPreds],
 		add_special_pred_decl_list(SpecialPredIds, Module0, TVarSet,
-			Type, TypeId, Body, Context, Status, Module)
-	;
-		(
-			Body = du_type(Ctors, _, IsEnum, UserDefinedEquality),
-			IsEnum = no,
-			UserDefinedEquality = no,
-			Ctors = [_, _|_]
-		->
-			SpecialPredIds = 
-				[unify, index, compare|SolverSpecialPreds]
-		;
-			SpecialPredIds = [unify, compare|SolverSpecialPreds]
-		),
-		add_special_pred_list(SpecialPredIds, Module0, TVarSet,
 			Type, TypeId, Body, Context, Status, Module)
 	).
 
@@ -2979,11 +3038,6 @@ add_special_pred(SpecialPredId, Module0, TVarSet, Type, TypeId, TypeBody,
 			Module = Module0
 		)
 	).
-
-:- pred add_special_pred_for_real(special_pred_id,
-			module_info, tvarset, type, type_id, hlds_type_body,
-			prog_context, import_status, module_info).
-:- mode add_special_pred_for_real(in, in, in, in, in, in, in, in, out) is det.
 
 add_special_pred_for_real(SpecialPredId,
 		Module0, TVarSet, Type, TypeId, TypeBody, Context, Status0,
@@ -3064,11 +3118,6 @@ add_special_pred_decl(SpecialPredId, Module0, TVarSet, Type, TypeId, TypeBody,
 	;
 		Module = Module0
 	).
-
-:- pred add_special_pred_decl_for_real(special_pred_id,
-		module_info, tvarset, type, type_id, prog_context,
-		import_status, module_info).
-:- mode add_special_pred_decl_for_real(in, in, in, in, in, in, in, out) is det.
 
 add_special_pred_decl_for_real(SpecialPredId,
 			Module0, TVarSet, Type, TypeId, Context, Status0,
@@ -3557,7 +3606,7 @@ module_add_clause(ModuleInfo0, ClauseVarSet, PredName, Args, Body, Status,
 		{ maybe_add_default_func_mode(PredInfo1, PredInfo2, _) },
 		{ pred_info_procedures(PredInfo2, Procs) },
 		{ map__keys(Procs, ModeIds) },
-		clauses_info_add_clause(Clauses0, PredId, ModeIds,
+		clauses_info_add_clause(Clauses0, ModeIds,
 			ClauseVarSet, TVarSet0, Args, Body, Context,
 			PredOrFunc, Arity, IsAssertion, Goal,
 			VarSet, TVarSet, Clauses, Warnings,
@@ -3604,6 +3653,107 @@ module_add_clause(ModuleInfo0, ClauseVarSet, PredName, Args, Body, Status,
 		;
 			[]
 		)
+	).
+
+%-----------------------------------------------------------------------------%
+%
+% Generate the clauses_info for the introduced predicate that we generate
+% for each method in a type class instance declaration.
+%
+
+	% handle the `pred(<MethodName>/<Arity>) is <ImplName>' syntax
+produce_instance_method_clauses(name(InstancePredName), PredOrFunc, PredArity,
+		ArgTypes, Markers, Context, ClausesInfo,
+		ModuleInfo, ModuleInfo, QualInfo, QualInfo, IO, IO) :-
+
+		% Add the body of the introduced pred
+
+		% First the goal info
+	goal_info_init(GoalInfo0),
+	goal_info_set_context(GoalInfo0, Context, GoalInfo1),
+	set__list_to_set(HeadVars, NonLocals),
+	goal_info_set_nonlocals(GoalInfo1, NonLocals, GoalInfo2),
+	(
+		check_marker(Markers, (impure))
+	->
+		goal_info_add_feature(GoalInfo2, (impure), GoalInfo)
+	;
+		check_marker(Markers, (semipure))
+	->
+		goal_info_add_feature(GoalInfo2, (semipure), GoalInfo)
+	;
+		GoalInfo = GoalInfo2
+	),
+
+		% Then the goal itself
+	varset__init(VarSet0),
+	make_n_fresh_vars("HeadVar__", PredArity, VarSet0, HeadVars, VarSet), 
+	invalid_pred_id(InvalidPredId),
+	construct_pred_or_func_call(InvalidPredId, PredOrFunc,
+		InstancePredName, HeadVars, GoalInfo, IntroducedGoal),
+	IntroducedClause = clause([], IntroducedGoal, Context),
+
+	map__from_corresponding_lists(HeadVars, ArgTypes, VarTypes),
+	map__init(TVarNameMap),
+	map__init(TI_VarMap),
+	map__init(TCI_VarMap),
+	ClausesInfo = clauses_info(VarSet, VarTypes, TVarNameMap, VarTypes,
+		HeadVars, [IntroducedClause], TI_VarMap, TCI_VarMap).
+
+	% handle the arbitrary clauses syntax
+produce_instance_method_clauses(clauses(InstanceClauses), PredOrFunc,
+		PredArity, _ArgTypes, _Markers, Context, ClausesInfo,
+		ModuleInfo0, ModuleInfo, QualInfo0, QualInfo, IO0, IO) :-
+	clauses_info_init(PredArity, ClausesInfo0),
+	list__foldl2(produce_instance_method_clause(PredOrFunc, Context),
+		InstanceClauses, ModuleInfo0 - QualInfo0 - ClausesInfo0,
+		ModuleInfo - QualInfo - ClausesInfo, IO0, IO).
+
+:- pred produce_instance_method_clause(pred_or_func::in,
+		prog_context::in, item::in,
+		pair(pair(module_info, qual_info), clauses_info)::in,
+		pair(pair(module_info, qual_info), clauses_info)::out,
+		io__state::di, io__state::uo) is det.
+produce_instance_method_clause(PredOrFunc, Context, InstanceClause,
+		ModuleInfo0 - QualInfo0 - ClausesInfo0,
+		ModuleInfo - QualInfo - ClausesInfo) -->
+	(
+		{
+			PredOrFunc = predicate,
+			InstanceClause = pred_clause(CVarSet, PredName,
+				HeadTerms, Body),
+			Arity = list__length(HeadTerms)
+		;
+			PredOrFunc = function,
+			InstanceClause = func_clause(CVarSet, PredName,
+				ArgTerms, ResultTerm, Body),
+			HeadTerms = list__append(ArgTerms, [ResultTerm]),
+			Arity = list__length(ArgTerms)
+		}
+	->
+		% The tvarset argument is only used for explicit type
+		% qualifications, of which there are none in this clause,
+		% so it is set to a dummy value.
+		{ varset__init(TVarSet0) },
+
+		{ ModeIds = [] }, % means this clause applies to _every_
+				  % mode of the procedure
+		{ IsAssertion = no },
+		clauses_info_add_clause(ClausesInfo0, ModeIds,
+			CVarSet, TVarSet0, HeadTerms, Body, Context,
+			PredOrFunc, Arity, IsAssertion, Goal,
+			VarSet, _TVarSet, ClausesInfo, Warnings,
+			ModuleInfo0, ModuleInfo, QualInfo0, QualInfo),
+
+		% warn about singleton variables 
+		maybe_warn_singletons(VarSet,
+			PredOrFunc - PredName/Arity, ModuleInfo, Goal),
+
+		% warn about variables with overlapping scopes
+		maybe_warn_overlap(Warnings, VarSet,
+			PredOrFunc - PredName/Arity)
+	;
+		{ error("produce_clause: invalid instance item") }
 	).
 
 %-----------------------------------------------------------------------------%
@@ -4974,22 +5124,26 @@ warn_singletons(GoalVars, NonLocals, QuantVars, VarSet, Context,
 
 clauses_info_init_for_assertion(HeadVars, ClausesInfo) :-
 	map__init(VarTypes),
+	map__init(TVarNameMap),
 	varset__init(VarSet),
 	map__init(TI_VarMap),
 	map__init(TCI_VarMap),
-	ClausesInfo = clauses_info(VarSet, VarTypes, VarTypes, HeadVars, [],
-		TI_VarMap, TCI_VarMap).
+	ClausesInfo = clauses_info(VarSet, VarTypes, TVarNameMap, VarTypes,
+		HeadVars, [], TI_VarMap, TCI_VarMap).
+
+:- pred clauses_info_init(int::in, clauses_info::out) is det.
 
 clauses_info_init(Arity, ClausesInfo) :-
 	map__init(VarTypes),
+	map__init(TVarNameMap),
 	varset__init(VarSet0),
 	make_n_fresh_vars("HeadVar__", Arity, VarSet0, HeadVars, VarSet),
 	map__init(TI_VarMap),
 	map__init(TCI_VarMap),
-	ClausesInfo = clauses_info(VarSet, VarTypes, VarTypes, HeadVars, [],
-		TI_VarMap, TCI_VarMap).
+	ClausesInfo = clauses_info(VarSet, VarTypes, TVarNameMap,
+		VarTypes, HeadVars, [], TI_VarMap, TCI_VarMap).
 
-:- pred clauses_info_add_clause(clauses_info::in, pred_id::in, 
+:- pred clauses_info_add_clause(clauses_info::in,
 		list(proc_id)::in, prog_varset::in, tvarset::in,
 		list(prog_term)::in, goal::in, prog_context::in,
 		pred_or_func::in, arity::in, bool::in,
@@ -4998,19 +5152,33 @@ clauses_info_init(Arity, ClausesInfo) :-
 		module_info::in, module_info::out, qual_info::in,
 		qual_info::out, io__state::di, io__state::uo) is det.
 
-clauses_info_add_clause(ClausesInfo0, PredId, ModeIds, CVarSet, TVarSet0,
+clauses_info_add_clause(ClausesInfo0, ModeIds, CVarSet, TVarSet0,
 		Args, Body, Context, PredOrFunc, Arity, IsAssertion, Goal,
-		VarSet, TVarSet0, ClausesInfo, Warnings, Module0, Module,
+		VarSet, TVarSet, ClausesInfo, Warnings, Module0, Module,
 		Info0, Info) -->
-	{ ClausesInfo0 = clauses_info(VarSet0, VarTypes0, VarTypes1,
-					HeadVars, ClauseList0,
-					TI_VarMap, TCI_VarMap) },
-	{ update_qual_info(Info0, TVarSet0, VarTypes0, PredId, Info1) },
+	{ ClausesInfo0 = clauses_info(VarSet0, ExplicitVarTypes0, TVarNameMap0,
+				InferredVarTypes, HeadVars, ClauseList0,
+				TI_VarMap, TCI_VarMap) },
+	{ ClauseList0 = [] ->
+		% Create the mapping from type variable name, used to
+		% rename type variables occurring in explicit type
+		% qualifications. The version of this mapping stored
+		% in the clauses_info should only contain type variables
+		% which occur in the argument types of the predicate.
+		% Type variables which only occur in explicit type
+		% qualifications are local to the clause in which they appear.
+		varset__create_name_var_map(TVarSet0, TVarNameMap)
+	;
+		TVarNameMap = TVarNameMap0
+	},
+	{ update_qual_info(Info0, TVarNameMap, TVarSet0,
+			ExplicitVarTypes0, Info1) },
 	{ varset__merge_subst(VarSet0, CVarSet, VarSet1, Subst) },
 	transform(Subst, HeadVars, Args, Body, VarSet1, Context, PredOrFunc,
 			Arity, IsAssertion, Goal0, VarSet, Warnings,
 			transform_info(Module0, Info1),
 			transform_info(Module, Info2)),
+	{ TVarSet = Info2 ^ tvarset },
 	{ qual_info_get_found_syntax_error(Info2, FoundError) },
 	{ qual_info_set_found_syntax_error(no, Info2, Info) },
 	(
@@ -5029,10 +5197,10 @@ clauses_info_add_clause(ClausesInfo0, PredId, ModeIds, CVarSet, TVarSet0,
 			% XXX we should avoid append - this gives O(N*N)
 		{ list__append(ClauseList0, [clause(ModeIds, Goal, Context)],
 								ClauseList) },
-		{ qual_info_get_var_types(Info, VarTypes) },
-		{ ClausesInfo = clauses_info(VarSet, VarTypes, VarTypes1,
-						HeadVars, ClauseList,
-						TI_VarMap, TCI_VarMap) }
+		{ qual_info_get_var_types(Info, ExplicitVarTypes) },
+		{ ClausesInfo = clauses_info(VarSet, ExplicitVarTypes,
+				TVarNameMap, InferredVarTypes, HeadVars,
+				ClauseList, TI_VarMap, TCI_VarMap) }
 	).
 
 %-----------------------------------------------------------------------------
@@ -5055,7 +5223,7 @@ clauses_info_add_pragma_c_code(ClausesInfo0, Purity, Attributes, PredId,
 		PredOrFunc, PredName, Arity, ClausesInfo, ModuleInfo0,
 		ModuleInfo, Info0, Info) -->
 	{
-	ClausesInfo0 = clauses_info(VarSet0, VarTypes, VarTypes1,
+	ClausesInfo0 = clauses_info(VarSet0, VarTypes, TVarNameMap, VarTypes1,
 				 HeadVars, ClauseList, TI_VarMap, TCI_VarMap),
 	pragma_get_vars(PVars, Args0),
 	pragma_get_var_infos(PVars, ArgInfo),
@@ -5129,19 +5297,12 @@ clauses_info_add_pragma_c_code(ClausesInfo0, Purity, Attributes, PredId,
 				transform_info(ModuleInfo, Info)),
 		{
 		map__init(EmptyVarTypes),
-			% Since the we haven't done mode analysis yet, the
-			% instmap_delta fields in goal_infos are not yet
-			% meaningful. Therefore there no point in clipping
-			% them to the set of typeinfo-liveness-completed
-			% nonlocals.
-		map__init(EmptyTVarMap),
-		TypeInfoLiveness = no,
-		implicitly_quantify_clause_body(HeadVars, HldsGoal1,
-			VarSet2, EmptyVarTypes, EmptyTVarMap, TypeInfoLiveness,
+		implicitly_quantify_clause_body(HeadVars,
+			HldsGoal1, VarSet2, EmptyVarTypes,
 			HldsGoal, VarSet, _, _Warnings),
 		NewClause = clause([ModeId], HldsGoal, Context),
-		ClausesInfo =  clauses_info(VarSet, VarTypes, VarTypes1,
-			HeadVars, [NewClause|ClauseList],
+		ClausesInfo =  clauses_info(VarSet, VarTypes, TVarNameMap,
+			VarTypes1, HeadVars, [NewClause|ClauseList],
 			TI_VarMap, TCI_VarMap)
 		}
 	).
@@ -5191,16 +5352,8 @@ transform(Subst, HeadVars, Args0, Body, VarSet0, Context, PredOrFunc,
 			no, Goal1, VarSet1, Goal2, VarSet2, Info1, Info)
 	),
 	{ map__init(EmptyVarTypes) },
-		% Since the we haven't done mode analysis yet, the
-		% instmap_delta fields in goal_infos are not yet
-		% meaningful. Therefore there no point in clipping
-		% them to the set of typeinfo-liveness-completed
-		% nonlocals.
-	{ map__init(EmptyTVarMap) },
-	{ TypeInfoLiveness = no },
-	{ implicitly_quantify_clause_body(HeadVars, Goal2, VarSet2,
-		EmptyVarTypes, EmptyTVarMap, TypeInfoLiveness,
-		Goal, VarSet, _, Warnings) }.
+	{ implicitly_quantify_clause_body(HeadVars,
+		Goal2, VarSet2, EmptyVarTypes, Goal, VarSet, _, Warnings) }.
 
 %-----------------------------------------------------------------------------%
 
@@ -6702,8 +6855,7 @@ unravel_unification(term__variable(X), RHS,
 	{ RHS = term__functor(F, Args, FunctorContext) },
 	(
 		% Handle explicit type qualification.
-		{ semidet_fail },
-		{ F = term__atom("TYPE_QUAL_OP") },
+		{ F = term__atom("with_type") },
 		{ Args = [RVal, DeclType0] }
 	->
 		{ term__coerce(DeclType0, DeclType) },
@@ -7113,7 +7265,8 @@ construct_pred_or_func_call(PredId, PredOrFunc, SymName, Args, GoalInfo,
 		goal_info_get_context(GoalInfo, Context),
 		create_atomic_unification(RetArg,
 			functor(ConsId, FuncArgs), Context,
-			explicit, [], Goal)
+			explicit, [], GoalExpr - _),
+		Goal = GoalExpr - GoalInfo
 	).
 
 %-----------------------------------------------------------------------------%
@@ -7124,8 +7277,8 @@ construct_pred_or_func_call(PredId, PredOrFunc, SymName, Args, GoalInfo,
 :- mode process_type_qualification(in, in, in, in, in, out, di, uo) is det.
 
 process_type_qualification(Var, Type0, VarSet, Context, Info0, Info) -->
-	{ Info0 ^ qual_info = qual_info(EqvMap, TVarSet0, TVarRenaming0, Index0,
-				VarTypes0, PredId, MQInfo0, FoundError) },
+	{ Info0 ^ qual_info = qual_info(EqvMap, TVarSet0, TVarRenaming0,
+				TVarNameMap0, VarTypes0, MQInfo0, FoundError) },
 
 	module_qual__qualify_type_qualification(Type0, Type1, 
 		Context, MQInfo0, MQInfo),
@@ -7134,7 +7287,7 @@ process_type_qualification(Var, Type0, VarSet, Context, Info0, Info) -->
 	% add them to the var-name index and the variable renaming.
 	term__vars(Type1, TVars),
 	get_new_tvars(TVars, VarSet, TVarSet0, TVarSet1,
-		Index0, Index, TVarRenaming0, TVarRenaming),
+		TVarNameMap0, TVarNameMap, TVarRenaming0, TVarRenaming),
 			
 	% Apply the updated renaming to convert type variables in
 	% the clause to type variables in the tvarset.
@@ -7145,7 +7298,7 @@ process_type_qualification(Var, Type0, VarSet, Context, Info0, Info) -->
 	},
 	update_var_types(VarTypes0, Var, Type, Context, VarTypes),	
 	{ Info = Info0 ^ qual_info := qual_info(EqvMap, TVarSet, TVarRenaming,
-			Index, VarTypes, PredId, MQInfo, FoundError) }.
+			TVarNameMap, VarTypes, MQInfo, FoundError) }.
 
 :- pred update_var_types(map(prog_var, type), prog_var, type, prog_context,
 			map(prog_var, type), io__state, io__state).
@@ -7169,34 +7322,35 @@ update_var_types(VarTypes0, Var, Type, Context, VarTypes) -->
 
 	% Add new type variables for those introduced by a type qualification.
 :- pred get_new_tvars(list(tvar), tvarset, tvarset, tvarset,
-	map(string, tvar), map(string, tvar), map(tvar, tvar), map(tvar, tvar)).
+	tvar_name_map, tvar_name_map, map(tvar, tvar), map(tvar, tvar)).
 :- mode get_new_tvars(in, in, in, out, in, out, in, out) is det.
 
-get_new_tvars([], _, T, T, I, I, R, R).
+get_new_tvars([], _, T, T, M, M, R, R).
 get_new_tvars([TVar | TVars], VarSet, TVarSet0, TVarSet,
-		Index0, Index, TVarRenaming0, TVarRenaming) :-
+		TVarNameMap0, TVarNameMap, TVarRenaming0, TVarRenaming) :-
 	( map__contains(TVarRenaming0, TVar) ->
 		TVarRenaming1 = TVarRenaming0,
 		TVarSet2 = TVarSet0,
-		Index1 = Index0
+		TVarNameMap1 = TVarNameMap0
 	;
 		varset__lookup_name(VarSet, TVar, TVarName),
-		( map__search(Index0, TVarName, TVarSetVar) ->
+		( map__search(TVarNameMap0, TVarName, TVarSetVar) ->
 			map__det_insert(TVarRenaming0, TVar, TVarSetVar,
 						TVarRenaming1),
 			TVarSet2 = TVarSet0,
-			Index1 = Index0
+			TVarNameMap1 = TVarNameMap0
 		;
 			varset__new_var(TVarSet0, NewTVar, TVarSet1),
 			varset__name_var(TVarSet1, NewTVar,
 					TVarName, TVarSet2),
-			map__det_insert(Index0, TVarName, NewTVar, Index1),
+			map__det_insert(TVarNameMap0, TVarName, NewTVar,
+					TVarNameMap1),
 			map__det_insert(TVarRenaming0, TVar, NewTVar,
 					TVarRenaming1)
 		)
 	),
 	get_new_tvars(TVars, VarSet, TVarSet2, TVarSet,
-		 Index1, Index, TVarRenaming1, TVarRenaming).
+		 TVarNameMap1, TVarNameMap, TVarRenaming1, TVarRenaming).
 			
 %-----------------------------------------------------------------------------%
 
@@ -7292,18 +7446,20 @@ get_disj(Goal, Subst, Disj0, VarSet0, Disj, VarSet, Info0, Info) -->
 
 	% Information used to process explicit type qualifications.
 :- type qual_info
-	--->	qual_info(
-			eqv_map,	% Used to expand equivalence types. 
-			tvarset,	% All type variables for predicate.
-			map(tvar, tvar),
+	---> qual_info(
+		eqv_map :: eqv_map,	% Used to expand equivalence types. 
+		tvarset :: tvarset,	% All type variables for predicate.
+		tvar_renaming :: map(tvar, tvar),
 					% Map from clause type variable to
 					% actual type variable in tvarset.
-			map(string, tvar),
-				% Type variables in tvarset indexed by name.
-			map(prog_var, type), % Var types
-			pred_id,	% Last pred processed.
-			mq_info,	% Module qualification info.
-			bool		% Was there a syntax error
+		tvar_name_map :: tvar_name_map,
+					% Type variables in tvarset occurring
+					% in the predicate's argument types
+					% indexed by name.
+		vartypes :: map(prog_var, type), % Var types
+		mq_info :: mq_info,	% Module qualification info.
+		found_syntax_error :: bool
+					% Was there a syntax error
 					% in an Aditi update.
 		).
 
@@ -7316,61 +7472,48 @@ init_qual_info(MQInfo0, EqvMap, QualInfo) :-
 	map__init(Renaming),
 	map__init(Index),
 	map__init(VarTypes),
-	invalid_pred_id(PredId),
 	FoundSyntaxError = no,
 	QualInfo = qual_info(EqvMap, TVarSet, Renaming,
-			Index, VarTypes, PredId, MQInfo, FoundSyntaxError).
+			Index, VarTypes, MQInfo, FoundSyntaxError).
 
 	% Update the qual_info when processing a new clause.
-:- pred update_qual_info(qual_info, tvarset, map(prog_var, type),
-				pred_id, qual_info).
+:- pred update_qual_info(qual_info, tvar_name_map, tvarset,
+			map(prog_var, type), qual_info).
 :- mode update_qual_info(in, in, in, in, out) is det.
 
-update_qual_info(QualInfo0, TVarSet, VarTypes, PredId, QualInfo) :-
-	QualInfo0 = qual_info(EqvMap, TVarSet0, _Renaming0, Index0,
-			VarTypes0, PredId0, MQInfo, FoundError),
-	( PredId = PredId0 ->
-		% The renaming for one clause is useless in the others.
-		map__init(Renaming),
-		QualInfo = qual_info(EqvMap, TVarSet0, Renaming,
-				Index0, VarTypes0, PredId0, MQInfo, FoundError)
-	;
-		varset__create_name_var_map(TVarSet, Index),
-		map__init(Renaming),
-		QualInfo = qual_info(EqvMap, TVarSet, Renaming,
-			Index, VarTypes, PredId, MQInfo, FoundError)
-	).
-
-	% All the other items are needed all at once in one or two places,
-	% so access predicates for them would be a waste of time.
+update_qual_info(QualInfo0, TVarNameMap, TVarSet, VarTypes, QualInfo) :-
+	QualInfo0 = qual_info(EqvMap, _TVarSet0, _Renaming0, _TVarNameMap0,
+			_VarTypes0, MQInfo, _FoundError),
+	% The renaming for one clause is useless in the others.
+	map__init(Renaming),
+	QualInfo = qual_info(EqvMap, TVarSet, Renaming, TVarNameMap,
+			VarTypes, MQInfo, no).
 
 :- pred qual_info_get_mq_info(qual_info, mq_info).
 :- mode qual_info_get_mq_info(in, out) is det.
 
-qual_info_get_mq_info(qual_info(_,_,_,_,_,_,MQInfo, _), MQInfo).
+qual_info_get_mq_info(Info, Info ^ mq_info).
 
 :- pred qual_info_set_mq_info(qual_info, mq_info, qual_info).
 :- mode qual_info_set_mq_info(in, in, out) is det.
 
-qual_info_set_mq_info(qual_info(A,B,C,D,E,F,_,H), MQInfo,
-			qual_info(A,B,C,D,E,F, MQInfo,H)).
+qual_info_set_mq_info(Info0, MQInfo, Info0 ^ mq_info := MQInfo).
 
 :- pred qual_info_get_var_types(qual_info, map(prog_var, type)).
 :- mode qual_info_get_var_types(in, out) is det.
 
-qual_info_get_var_types(qual_info(_,_,_,_,VarTypes,_,_,_), VarTypes).
+qual_info_get_var_types(Info, Info ^ vartypes).
 
 :- pred qual_info_get_found_syntax_error(qual_info, bool).
 :- mode qual_info_get_found_syntax_error(in, out) is det.
 
-qual_info_get_found_syntax_error(qual_info(_,_,_,_,_,_,_,FoundError),
-		FoundError).
+qual_info_get_found_syntax_error(Info, Info ^ found_syntax_error).
 
 :- pred qual_info_set_found_syntax_error(bool, qual_info, qual_info).
 :- mode qual_info_set_found_syntax_error(in, in, out) is det.
 
-qual_info_set_found_syntax_error(FoundError, qual_info(A,B,C,D,E,F,G,_),
-		qual_info(A,B,C,D,E,F,G,FoundError)).
+qual_info_set_found_syntax_error(FoundError, Info,
+		Info ^ found_syntax_error := FoundError).
 
 %-----------------------------------------------------------------------------%
 

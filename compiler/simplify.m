@@ -208,15 +208,8 @@ simplify__do_process_goal(Goal0, Goal, Info0, Info) :-
 	( simplify_info_requantify(Info1) ->
 		Goal1 = _ - GoalInfo1,
 		goal_info_get_nonlocals(GoalInfo1, NonLocals),
-		simplify_info_get_type_info_varmap(Info1, TVarMap),
-		simplify_info_get_pred_info(Info1, PredInfo0),
-		simplify_info_get_module_info(Info1, ModuleInfo1),
-		module_info_globals(ModuleInfo1, Globals),
-		body_should_use_typeinfo_liveness(PredInfo0, Globals,
-			TypeInfoLiveness),
 		implicitly_quantify_goal(Goal1, VarSet0, VarTypes0,
-			TVarMap, TypeInfoLiveness, NonLocals,
-			Goal2, VarSet, VarTypes, _),
+			NonLocals, Goal2, VarSet, VarTypes, _),
 
 		simplify_info_set_varset(Info1, VarSet, Info2),
 		simplify_info_set_var_types(Info2, VarTypes, Info3),
@@ -228,9 +221,8 @@ simplify__do_process_goal(Goal0, Goal, Info0, Info) :-
 		RecomputeAtomic = yes,
 
 		simplify_info_get_module_info(Info3, ModuleInfo3),
-		recompute_instmap_delta(RecomputeAtomic, PredInfo0,
-			Goal2, Goal3, VarTypes, TVarMap, InstMap0,
-			ModuleInfo3, ModuleInfo4),
+		recompute_instmap_delta(RecomputeAtomic, Goal2, Goal3,
+			VarTypes, InstMap0, ModuleInfo3, ModuleInfo4),
 		simplify_info_set_module_info(Info3, ModuleInfo4, Info4)
 	;
 		Goal3 = Goal1,
@@ -905,6 +897,8 @@ simplify__goal_2(Goal0, GoalInfo0, Goal, GoalInfo, Info0, Info) :-
 	% cannot succeed, then we replace the if-then-else with the
 	% other disjunct. (We could also eliminate A, but we leave
 	% that to the recursive invocations.)
+	% Note that this simplification is required for the MLDS back-end,
+	% which assumes that conditions of if-then-elses are not model_det.
 	%
 	% The conjunction operator in the remaining disjunct ought to be
 	% a sequential conjunction, because Mercury's if-then-else always
@@ -919,7 +913,6 @@ simplify__goal_2(Goal0, GoalInfo0, Goal, GoalInfo, Info0, Info) :-
 simplify__goal_2(if_then_else(Vars, Cond0, Then0, Else0, SM),
 		GoalInfo0, Goal, GoalInfo, Info0, Info) :-
 	Cond0 = _ - CondInfo0,
-
 	goal_info_get_determinism(CondInfo0, CondDetism0),
 	determinism_components(CondDetism0, CondCanFail0, CondSolns0),
 	( CondCanFail0 = cannot_fail ->
@@ -983,6 +976,10 @@ simplify__goal_2(if_then_else(Vars, Cond0, Then0, Else0, SM),
 		simplify__goal(conj(List) - GoalInfo0, Goal - GoalInfo,
 			Info0, Info)
 	;
+		%
+		% recursively simplify the sub-goals,
+		% and rebuild the resulting if-then-else
+		%
 		simplify_info_get_instmap(Info0, InstMap0),
 		simplify__goal(Cond0, Cond, Info0, Info1),
 		simplify_info_update_instmap(Info1, Cond, Info2),
@@ -1003,33 +1000,58 @@ simplify__goal_2(if_then_else(Vars, Cond0, Then0, Else0, SM),
 		merge_instmap_deltas(InstMap0, NonLocals,
 			[CondThenDelta, ElseDelta], NewDelta,
 			ModuleInfo0, ModuleInfo1),
-		simplify_info_set_module_info(Info6, ModuleInfo1, Info),
+		simplify_info_set_module_info(Info6, ModuleInfo1, Info7),
 		goal_info_set_instmap_delta(GoalInfo0, NewDelta, GoalInfo1),
 		IfThenElse = if_then_else(Vars, Cond, Then, Else, SM),
-		%
-		% If-then-elses that are det or semidet may nevertheless
-		% contain nondet or multidet conditions. If this happens, the
-		% if-then-else must be put inside a `some' to appease the code
-		% generator.
-		%
+
 		goal_info_get_determinism(GoalInfo0, IfThenElseDetism0),
 		determinism_components(IfThenElseDetism0, IfThenElseCanFail,
 			IfThenElseNumSolns),
+
+		goal_info_get_determinism(CondInfo, CondDetism),
+		determinism_components(CondDetism, CondCanFail, CondSolns),
 		(
-			simplify_do_once(Info),
-			goal_info_get_determinism(CondInfo, CondDetism),
-			determinism_components(CondDetism, _, at_most_many),
-			IfThenElseNumSolns \= at_most_many
+			%
+			% check again if we can apply one of the above
+			% simplifications after having simplified the 
+			% sub-goals (we need to do this to ensure that
+			% the goal is fully simplified, to maintain the
+			% invariants that the MLDS back-end depends on)
+			%
+			( CondCanFail = cannot_fail
+			; CondSolns = at_most_zero
+			; Else = disj([], _) - _ 
+			)
 		->
-			determinism_components(InnerDetism, IfThenElseCanFail,
-				at_most_many),
-			goal_info_set_determinism(GoalInfo1, InnerDetism,
-				InnerInfo),
-			Goal = some([], can_remove, IfThenElse - InnerInfo)
+			simplify_info_undo_goal_updates(Info0, Info7, Info8),
+			simplify__goal_2(IfThenElse, GoalInfo1,
+				Goal, GoalInfo, Info8, Info)
 		;
-			Goal = IfThenElse
-		),
-		GoalInfo = GoalInfo1
+			(
+				%
+				% If-then-elses that are det or semidet may
+				% nevertheless contain nondet or multidet
+				% conditions. If this happens, the if-then-else
+				% must be put inside a `some' to appease the
+				% code generator.  (Both the MLDS and LLDS
+				% back-ends rely on this.)
+				%
+				simplify_do_once(Info),
+				CondSolns = at_most_many,
+				IfThenElseNumSolns \= at_most_many
+			->
+				determinism_components(InnerDetism,
+					IfThenElseCanFail, at_most_many),
+				goal_info_set_determinism(GoalInfo1,
+					InnerDetism, InnerInfo),
+				Goal = some([], can_remove,
+					IfThenElse - InnerInfo)
+			;
+				Goal = IfThenElse
+			),
+			GoalInfo = GoalInfo1,
+			Info = Info7
+		)
 	).
 
 simplify__goal_2(not(Goal0), GoalInfo0, Goal, GoalInfo, Info0, Info) :-
@@ -1188,9 +1210,23 @@ simplify__process_compl_unify(XVar, YVar, UniMode, CanFail, _OldTypeInfoVars,
 		{ globals__lookup_bool_option(Globals, special_preds,
 			SpecialPreds) },
 		(
-			{ SpecialPreds = no },
-			{ proc_id_to_int(ProcId, ProcIdInt) },
-			{ ProcIdInt = 0 }
+			{ hlds_pred__in_in_unification_proc_id(ProcId) },
+			{
+				SpecialPreds = no
+			;
+				SpecialPreds = yes,
+
+				%
+				% For most imported types we only generate
+				% unification predicate declarations if they
+				% are needed for complicated unifications
+				% other than proc_id 0.
+				% higher_order.m will specialize these cases
+				% if possible.
+				%
+				special_pred_is_generated_lazily(ModuleInfo,
+					TypeId)
+			}
 		->
 			simplify__make_type_info_vars([Type], TypeInfoVars,
 				ExtraGoals),
@@ -1226,7 +1262,7 @@ simplify__process_compl_unify(XVar, YVar, UniMode, CanFail, _OldTypeInfoVars,
 	is det.
 
 simplify__call_generic_unify(TypeInfoVar, XVar, YVar, ModuleInfo, Context,
-		GoalInfo, Call) :-
+		GoalInfo0, Call) :-
 	ArgVars = [TypeInfoVar, XVar, YVar],
 	module_info_get_predicate_table(ModuleInfo, PredicateTable),
 	mercury_public_builtin_module(MercuryBuiltin),
@@ -1245,6 +1281,9 @@ simplify__call_generic_unify(TypeInfoVar, XVar, YVar, ModuleInfo, Context,
 	SymName = unqualified("unify"),
 	code_util__builtin_state(ModuleInfo, PredId, ProcId, BuiltinState),
 	CallContext = call_unify_context(XVar, var(YVar), Context),
+	goal_info_get_nonlocals(GoalInfo0, NonLocals0),
+	set__insert(NonLocals0, TypeInfoVar, NonLocals),
+	goal_info_set_nonlocals(GoalInfo0, NonLocals, GoalInfo),
 	Call = call(PredId, ProcId, ArgVars, BuiltinState, yes(CallContext),
 		SymName) - GoalInfo.
 
@@ -1805,7 +1844,7 @@ simplify__disj([Goal0 | Goals0], RevGoals0, Goals,  PostBranchInstMaps0,
 	****/
 
 :- pred simplify__fixup_disj(list(hlds_goal), determinism, bool,
-	hlds_goal_info, follow_vars, hlds_goal_expr,
+	hlds_goal_info, store_map, hlds_goal_expr,
 	simplify_info, simplify_info).
 :- mode simplify__fixup_disj(in, in, in, in, in, out, in, out) is det.
 
@@ -1832,7 +1871,7 @@ simplify__fixup_disj(Disjuncts, _, _OutputVars, GoalInfo, SM,
 	%		Disjunct3
 	%	).
 
-:- pred det_disj_to_ite(list(hlds_goal), hlds_goal_info, follow_vars,
+:- pred det_disj_to_ite(list(hlds_goal), hlds_goal_info, store_map,
 	hlds_goal).
 :- mode det_disj_to_ite(in, in, in, out) is det.
 

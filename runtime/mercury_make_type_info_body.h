@@ -62,7 +62,8 @@ exist_func(const MR_TypeInfoParams type_info_params,
 		return MR_pseudo_type_info_is_ground(pseudo_type_info);
 	}
 
-	if (type_ctor_info->type_ctor_rep == MR_TYPECTOR_REP_PRED) {
+	if (MR_type_ctor_rep_is_variable_arity(type_ctor_info->type_ctor_rep))
+	{
 		arity = MR_PSEUDO_TYPEINFO_GET_HIGHER_ORDER_ARITY(
 			pseudo_type_info);
 		start_region_size = 2;

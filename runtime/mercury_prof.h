@@ -26,7 +26,7 @@ extern MR_Code *	volatile	MR_prof_current_proc;
 
 /*
 ** The following two macros are used to ensure that the profiler can
-** use `prof_current_proc' to determine what procedure is currently
+** use `MR_prof_current_proc' to determine what procedure is currently
 ** being executed when a profiling interrupt occurs.
 */
 
@@ -39,6 +39,21 @@ extern MR_Code *	volatile	MR_prof_current_proc;
 #else
   #define set_prof_current_proc(target)		((void)0)
   #define update_prof_current_proc(target)	((void)0)
+#endif
+
+
+/*
+** This variable holds the address of the calling procedure
+** for a call to do_call_closure or do_call_class_method.
+*/
+#ifdef PROFILE_CALLS
+  extern MR_Code *	MR_prof_ho_caller_proc;
+#endif
+#ifdef PROFILE_CALLS
+  #define MR_set_prof_ho_caller_proc(target) \
+  		(MR_prof_ho_caller_proc = (target))
+#else
+  #define MR_set_prof_ho_caller_proc(target)	((void)0)
 #endif
 
 /*

@@ -19,6 +19,23 @@
 #
 #---------------------------------------------------------------------------#
 
+	--target)
+		shift
+		case "$1" in
+			c|C)
+				target=c ;;
+			il|IL)
+				target=il ;;
+			*)
+				echo "$0: invalid target \`$1'" 1>&2
+				exit 1
+				;;
+		esac
+		;;
+
+	--il|--IL)
+		target=il ;;
+
 	--high-level-code|-H)
 		highlevel_code=true ;;
 	--no-high-level-code|-H-)
@@ -163,6 +180,7 @@
 		# may also require changes to all the files indicated by
 		# runtime/mercury_grade.h.
 
+		target=c
 		highlevel_code=false
 		gcc_nested_functions=false
 		highlevel_data=false
@@ -188,7 +206,26 @@
 		for grade_piece in $grade_pieces
 		do
 			case "$grade_piece" in
+				il)
+					target=il
+					asm_labels=false
+					non_local_gotos=false
+					global_regs=false
+					highlevel_code=true
+					gcc_nested_functions=false
+					highlevel_data=true
+					;;
+				ilc)
+					target=il
+					asm_labels=false
+					non_local_gotos=false
+					global_regs=false
+					highlevel_code=true
+					gcc_nested_functions=false
+					highlevel_data=false
+					;;
 				hl)
+					target=c
 					asm_labels=false
 					non_local_gotos=false
 					global_regs=false
@@ -197,6 +234,7 @@
 					highlevel_data=true
 					;;
 				hlc)
+					target=c
 					asm_labels=false
 					non_local_gotos=false
 					global_regs=false
@@ -205,6 +243,7 @@
 					highlevel_data=false
 					;;
 				hl_nest)
+					target=c
 					asm_labels=false
 					non_local_gotos=false
 					global_regs=false
@@ -213,6 +252,7 @@
 					highlevel_data=true
 					;;
 				hlc_nest)
+					target=c
 					asm_labels=false
 					non_local_gotos=false
 					global_regs=false
@@ -221,6 +261,7 @@
 					highlevel_data=false
 					;;
 				asm_fast)
+					target=c
 					asm_labels=true
 					non_local_gotos=true
 					global_regs=true
@@ -229,6 +270,7 @@
 					highlevel_data=false
 					;;
 				asm_jump)
+					target=c
 					asm_labels=true
 					non_local_gotos=true
 					global_regs=false
@@ -237,6 +279,7 @@
 					highlevel_data=false
 					;;
 				fast)
+					target=c
 					asm_labels=false
 					non_local_gotos=true
 					global_regs=true
@@ -245,6 +288,7 @@
 					highlevel_data=false
 					;;
 				jump)
+					target=c
 					asm_labels=false
 					non_local_gotos=true
 					global_regs=false
@@ -253,6 +297,7 @@
 					highlevel_data=false
 					;;
 				reg)
+					target=c
 					asm_labels=false
 					non_local_gotos=false
 					global_regs=true
@@ -261,6 +306,7 @@
 					highlevel_data=false
 					;;
 				none)
+					target=c
 					asm_labels=false
 					non_local_gotos=false
 					global_regs=false

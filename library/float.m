@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1998 The University of Melbourne.
+% Copyright (C) 1994-1998,2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -555,7 +555,7 @@ float__min_exponent(float__min_exponent).
 	% is a normalised floating-point number.
 :- pragma c_code(float__max_exponent = (MaxExp::out),
 		[will_not_call_mercury, thread_safe],
-	"MaxExp = ML_FLOAT_MIN_EXP;").
+	"MaxExp = ML_FLOAT_MAX_EXP;").
 
 float__max_exponent(float__max_exponent).
 

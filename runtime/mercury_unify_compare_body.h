@@ -359,6 +359,42 @@ start_label:
 
             tailcall_user_pred();
 
+        case MR_TYPECTOR_REP_TUPLE:
+            {
+                int     i;
+                int     type_arity;
+                int     result;
+
+                type_arity = MR_TYPEINFO_GET_TUPLE_ARITY(type_info);
+
+                for (i = 0; i < type_arity; i++) {
+                    MR_TypeInfo arg_type_info;
+
+                    /* type_infos are counted from one */
+                    arg_type_info = MR_TYPEINFO_GET_TUPLE_ARG_VECTOR(
+                                            type_info)[i + 1];
+
+#ifdef  select_compare_code
+                    result = MR_generic_compare(arg_type_info,
+                                ((MR_Word *) x)[i], ((MR_Word *) y)[i]);
+                    if (result != MR_COMPARE_EQUAL) {
+                        return_answer(result);
+                    }
+#else
+                    result = MR_generic_unify(arg_type_info,
+                                ((MR_Word *) x)[i], ((MR_Word *) y)[i]);
+                    if (! result) {
+                        return_answer(FALSE);
+                    }
+#endif
+                }
+#ifdef  select_compare_code
+                return_answer(MR_COMPARE_EQUAL);
+#else
+                return_answer(TRUE);
+#endif
+            }
+
         case MR_TYPECTOR_REP_ENUM:
         case MR_TYPECTOR_REP_INT:
         case MR_TYPECTOR_REP_CHAR:

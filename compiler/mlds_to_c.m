@@ -30,6 +30,7 @@
 
 :- implementation.
 
+:- import_module ml_util.
 :- import_module llds.		% XXX needed for C interface types
 :- import_module llds_out.	% XXX needed for llds_out__name_mangle,
 				% llds_out__sym_name_mangle,
@@ -516,7 +517,7 @@ mlds_output_pragma_export_type(suffix, _Type) --> [].
 mlds_output_pragma_export_type(prefix, mercury_type(Type, _)) -->
 	{ export__type_to_type_string(Type, String) },
 	io__write_string(String).
-mlds_output_pragma_export_type(prefix, mlds__cont_type) -->
+mlds_output_pragma_export_type(prefix, mlds__cont_type(_)) -->
 	io__write_string("MR_Word").
 mlds_output_pragma_export_type(prefix, mlds__commit_type) -->
 	io__write_string("MR_Word").
@@ -1198,7 +1199,8 @@ mlds_output_func_decl_ho(Indent, QualifiedName, Context, Signature,
 	; { RetTypes = [RetType] } ->
 		OutputPrefix(RetType)
 	;
-		{ error("mlds_output_func: multiple return types") }
+		io__write_string("\n#error multiple return types\n")
+		% { error("mlds_output_func: multiple return types") }
 	),
 	io__write_char(' '),
 	mlds_output_fully_qualified_name(QualifiedName),
@@ -1513,12 +1515,18 @@ mlds_output_type_prefix(mlds__generic_env_ptr_type) -->
 	io__write_string("void *").
 mlds_output_type_prefix(mlds__pseudo_type_info_type) -->
 	io__write_string("MR_PseudoTypeInfo").
-mlds_output_type_prefix(mlds__cont_type) -->
-	globals__io_lookup_bool_option(gcc_nested_functions, GCC_NestedFuncs),
-	( { GCC_NestedFuncs = yes } ->
-		io__write_string("MR_NestedCont")
+mlds_output_type_prefix(mlds__cont_type(ArgTypes)) -->
+	( { ArgTypes = [] } ->
+		globals__io_lookup_bool_option(gcc_nested_functions,
+			GCC_NestedFuncs),
+		( { GCC_NestedFuncs = yes } ->
+			io__write_string("MR_NestedCont")
+		;
+			io__write_string("MR_Cont")
+		)
 	;
-		io__write_string("MR_Cont")
+		% This case only happens for --nondet-copy-out
+		io__write_string("void (*")
 	).
 mlds_output_type_prefix(mlds__commit_type) -->
 	globals__io_lookup_bool_option(gcc_local_labels, GCC_LocalLabels),
@@ -1551,6 +1559,9 @@ mlds_output_mercury_type_prefix(Type, TypeCategory) -->
 	;
 		{ TypeCategory = polymorphic_type },
 		io__write_string("MR_Box")
+	;
+		{ TypeCategory = tuple_type },
+		io__write_string("MR_Tuple")
 	;
 		{ TypeCategory = pred_type },
 		globals__io_lookup_bool_option(highlevel_data, HighLevelData),
@@ -1610,7 +1621,23 @@ mlds_output_type_suffix(mlds__func_type(FuncParams)) -->
 mlds_output_type_suffix(mlds__generic_type) --> [].
 mlds_output_type_suffix(mlds__generic_env_ptr_type) --> [].
 mlds_output_type_suffix(mlds__pseudo_type_info_type) --> [].
-mlds_output_type_suffix(mlds__cont_type) --> [].
+mlds_output_type_suffix(mlds__cont_type(ArgTypes)) -->
+	( { ArgTypes = [] } ->
+		[]
+	;
+		% This case only happens for --nondet-copy-out
+		io__write_string(")("),
+		io__write_list(ArgTypes, ", ", mlds_output_type),
+		% add the type for the environment parameter, if needed
+		globals__io_lookup_bool_option(gcc_nested_functions,
+			GCC_NestedFuncs),
+		( { GCC_NestedFuncs = no } ->
+			io__write_string(", void *")
+		;
+			[]
+		),
+		io__write_string(")")
+	).
 mlds_output_type_suffix(mlds__commit_type) --> [].
 mlds_output_type_suffix(mlds__rtti_type(_)) --> [].
 
@@ -2111,66 +2138,6 @@ no_code_address(const(code_addr_const(proc(qual(Module, PredLabel - _), _)))) :-
 	SymName = mlds_module_name_to_sym_name(Module),
 	SymName = qualified(unqualified("mercury"), "private_builtin"),
 	PredLabel = pred(predicate, _, "unsafe_type_cast", 2).
-
-	% Assign the specified list of rvals to the arguments.
-	% This is used as part of tail recursion optimization (see above).
-:- pred mlds_output_assign_args(indent, mlds_module_name, mlds__context,
-		mlds__arguments, list(mlds__rval), io__state, io__state).
-:- mode mlds_output_assign_args(in, in, in, in, in, di, uo) is det.
-
-mlds_output_assign_args(_, _, _, [_|_], []) -->
-	{ error("mlds_output_assign_args: length mismatch") }.
-mlds_output_assign_args(_, _, _, [], [_|_]) -->
-	{ error("mlds_output_assign_args: length mismatch") }.
-mlds_output_assign_args(_, _, _, [], []) --> [].
-mlds_output_assign_args(Indent, ModuleName, Context,
-		[Name - Type | Rest], [Arg | Args]) -->
-	%
-	% extract the variable name
-	%
-	{ Name = data(var(VarName1)) ->
-		VarName = VarName1
-	;
-		error("mlds_output_assign_args: arg is not a variable!")
-	},
-	(
-		%
-		% don't bother assigning a variable to itself
-		%
-		{ Arg = lval(var(qual(ModuleName, VarName))) }
-	->
-		mlds_output_assign_args(Indent, ModuleName, Context, Rest, Args)
-	;
-		% Declare a temporary variable, initialized it to the arg,
-		% recursively process the remaining args,
-		% and then assign the temporary to the parameter:
-		%
-		%	SomeType argN__tmp_copy = new_argN_value;
-		%	...
-		%	new_argN_value = argN_tmp_copy;
-		%
-		% The temporaries are needed for the case where
-		% we are e.g. assigning v1, v2 to v2, v1;
-		% they ensure that we don't try to reference the old value of
-		% a parameter after it has already been clobbered by the
-		% new value.
-
-		{ string__append(VarName, "__tmp_copy", TempName) },
-		{ QualTempName = qual(ModuleName, data(var(TempName))) },
-		{ Initializer = init_obj(Arg) },
-		{ TempDefn = ml_gen_mlds_var_decl(var(TempName), Type,
-			Initializer, Context) },
-		mlds_output_defn(Indent, ModuleName, TempDefn),
-
-		mlds_output_assign_args(Indent, ModuleName, Context, Rest,
-			Args),
-
-		mlds_indent(Context, Indent),
-		mlds_output_fully_qualified_name(qual(ModuleName, Name)),
-		io__write_string(" = "),
-		mlds_output_fully_qualified_name(QualTempName),
-		io__write_string(";\n")
-	).
 
 %-----------------------------------------------------------------------------%
 
@@ -2746,6 +2713,8 @@ mlds_output_rval_const(code_addr_const(CodeAddr)) -->
 	mlds_output_code_addr(CodeAddr).
 mlds_output_rval_const(data_addr_const(DataAddr)) -->
 	mlds_output_data_addr(DataAddr).
+mlds_output_rval_const(null(_)) -->
+       io__write_string("NULL").
 
 %-----------------------------------------------------------------------------%
 

@@ -111,11 +111,14 @@
 	% Various predicates for manipulating the module_info data structure
 
 	% Create an empty module_info for a given module name (and the
-	% global options).
-
-:- pred module_info_init(module_name, globals, partial_qualifier_info,
-		module_info).
-:- mode module_info_init(in, in, in, out) is det.
+	% global options).  The item_list is passed so that we can
+	% call get_implicit_dependencies to figure out whether to
+	% import `table_builtin', but the items are not inserted into
+	% the module_info.
+	%
+:- pred module_info_init(module_name, item_list, globals,
+		partial_qualifier_info, module_info).
+:- mode module_info_init(in, in, in, in, out) is det.
 
 :- pred module_info_get_predicate_table(module_info, predicate_table).
 :- mode module_info_get_predicate_table(in, out) is det.
@@ -502,7 +505,7 @@
 
 	% A predicate which creates an empty module
 
-module_info_init(Name, Globals, QualifierInfo, ModuleInfo) :-
+module_info_init(Name, Items, Globals, QualifierInfo, ModuleInfo) :-
 	predicate_table_init(PredicateTable),
 	unify_proc__init_requests(Requests),
 	map__init(UnifyPredMap),
@@ -525,9 +528,8 @@ module_info_init(Name, Globals, QualifierInfo, ModuleInfo) :-
 	map__init(SuperClassTable),
 
 	% the builtin modules are automatically imported
-	mercury_public_builtin_module(PublicBuiltin),
-	mercury_private_builtin_module(PrivateBuiltin),
-	set__list_to_set([PublicBuiltin, PrivateBuiltin], ImportedModules),
+	get_implicit_dependencies(Items, Globals, ImportDeps, UseDeps),
+	set__list_to_set(ImportDeps `list__append` UseDeps, ImportedModules),
 	set__init(IndirectlyImportedModules),
 
 	assertion_table_init(AssertionTable),
@@ -545,68 +547,68 @@ module_info_init(Name, Globals, QualifierInfo, ModuleInfo) :-
 
 	% Various predicates which access the module_info data structure.
 
-module_info_get_predicate_table(MI, MI^predicate_table).
-module_info_get_proc_requests(MI, MI^proc_requests).
-module_info_get_special_pred_map(MI, MI^special_pred_map).
-module_info_get_partial_qualifier_info(MI, MI^partial_qualifier_info).
-module_info_types(MI, MI^type_table).
-module_info_insts(MI, MI^inst_table).
-module_info_modes(MI, MI^mode_table).
-module_info_ctors(MI, MI^cons_table).
-module_info_classes(MI, MI^class_table).
-module_info_instances(MI, MI^instance_table).
-module_info_superclasses(MI, MI^superclass_table).
-module_info_assertion_table(MI, MI^assertion_table).
-module_info_ctor_field_table(MI, MI^ctor_field_table).
-module_info_get_cell_counter(MI, MI^cell_counter).
+module_info_get_predicate_table(MI, MI ^ predicate_table).
+module_info_get_proc_requests(MI, MI ^ proc_requests).
+module_info_get_special_pred_map(MI, MI ^ special_pred_map).
+module_info_get_partial_qualifier_info(MI, MI ^ partial_qualifier_info).
+module_info_types(MI, MI ^ type_table).
+module_info_insts(MI, MI ^ inst_table).
+module_info_modes(MI, MI ^ mode_table).
+module_info_ctors(MI, MI ^ cons_table).
+module_info_classes(MI, MI ^ class_table).
+module_info_instances(MI, MI ^ instance_table).
+module_info_superclasses(MI, MI ^ superclass_table).
+module_info_assertion_table(MI, MI ^ assertion_table).
+module_info_ctor_field_table(MI, MI ^ ctor_field_table).
+module_info_get_cell_counter(MI, MI ^ cell_counter).
 
 %-----------------------------------------------------------------------------%
 
 	% Various predicates which modify the module_info data structure.
 
-module_info_set_predicate_table(MI, PT, MI^predicate_table := PT).
-module_info_set_proc_requests(MI, PR, MI^proc_requests := PR).
-module_info_set_special_pred_map(MI, SPM, MI^special_pred_map := SPM).
+module_info_set_predicate_table(MI, PT, MI ^ predicate_table := PT).
+module_info_set_proc_requests(MI, PR, MI ^ proc_requests := PR).
+module_info_set_special_pred_map(MI, SPM, MI ^ special_pred_map := SPM).
 module_info_set_partial_qualifier_info(MI, PQ,
-	MI^partial_qualifier_info := PQ).
-module_info_set_types(MI, T, MI^type_table := T).
-module_info_set_insts(MI, I, MI^inst_table := I).
-module_info_set_modes(MI, M, MI^mode_table := M).
-module_info_set_ctors(MI, C, MI^cons_table := C).
-module_info_set_classes(MI, C, MI^class_table := C).
-module_info_set_instances(MI, I, MI^instance_table := I).
-module_info_set_superclasses(MI, S, MI^superclass_table := S).
-module_info_set_assertion_table(MI, A, MI^assertion_table := A).
-module_info_set_ctor_field_table(MI, CF, MI^ctor_field_table := CF).
-module_info_set_cell_counter(MI, CC, MI^cell_counter := CC).
+	MI ^ partial_qualifier_info := PQ).
+module_info_set_types(MI, T, MI ^ type_table := T).
+module_info_set_insts(MI, I, MI ^ inst_table := I).
+module_info_set_modes(MI, M, MI ^ mode_table := M).
+module_info_set_ctors(MI, C, MI ^ cons_table := C).
+module_info_set_classes(MI, C, MI ^ class_table := C).
+module_info_set_instances(MI, I, MI ^ instance_table := I).
+module_info_set_superclasses(MI, S, MI ^ superclass_table := S).
+module_info_set_assertion_table(MI, A, MI ^ assertion_table := A).
+module_info_set_ctor_field_table(MI, CF, MI ^ ctor_field_table := CF).
+module_info_set_cell_counter(MI, CC, MI ^ cell_counter := CC).
 
 %-----------------------------------------------------------------------------%
 
 	% Various predicates which access the module_sub_info data structure
 	% via the module_info structure.
 
-module_info_name(MI, MI^sub_info^module_name).
-module_info_globals(MI, MI^sub_info^globals).
-module_info_get_foreign_header(MI, MI^sub_info^foreign_header_info).
-module_info_get_foreign_body_code(MI, MI^sub_info^foreign_body_info).
+module_info_name(MI, MI ^ sub_info ^ module_name).
+module_info_globals(MI, MI ^ sub_info ^ globals).
+module_info_get_foreign_header(MI, MI ^ sub_info ^ foreign_header_info).
+module_info_get_foreign_body_code(MI, MI ^ sub_info ^ foreign_body_info).
 module_info_get_maybe_dependency_info(MI,
-	MI^sub_info^maybe_dependency_info).
-module_info_num_errors(MI, MI^sub_info^num_errors).
-module_info_get_lambda_count(MI, MI^sub_info^last_lambda_number).
+	MI ^ sub_info ^ maybe_dependency_info).
+module_info_num_errors(MI, MI ^ sub_info ^ num_errors).
+module_info_get_lambda_count(MI, MI ^ sub_info ^ last_lambda_number).
 module_info_get_pragma_exported_procs(MI,
-	MI^sub_info^pragma_exported_procs).
-module_info_type_ctor_gen_infos(MI, MI^sub_info^type_ctor_gen_infos).
-module_info_stratified_preds(MI, MI^sub_info^must_be_stratified_preds).
-module_info_unused_arg_info(MI, MI^sub_info^unused_arg_info).
+	MI ^ sub_info ^ pragma_exported_procs).
+module_info_type_ctor_gen_infos(MI, MI ^ sub_info ^ type_ctor_gen_infos).
+module_info_stratified_preds(MI, MI ^ sub_info ^ must_be_stratified_preds).
+module_info_unused_arg_info(MI, MI ^ sub_info ^ unused_arg_info).
 module_info_get_model_non_pragma_count(MI,
-	MI^sub_info^model_non_pragma_types_so_far).
+	MI ^ sub_info ^ model_non_pragma_types_so_far).
 module_info_get_imported_module_specifiers(MI,
-	MI^sub_info^imported_module_specifiers).
+	MI ^ sub_info ^ imported_module_specifiers).
 module_info_get_indirectly_imported_module_specifiers(MI,
-	MI^sub_info^indirectly_imported_module_specifiers).
-module_info_type_spec_info(MI, MI^sub_info^type_spec_info).
+	MI ^ sub_info ^ indirectly_imported_module_specifiers).
+module_info_type_spec_info(MI, MI ^ sub_info ^ type_spec_info).
 module_info_get_do_aditi_compilation(MI,
-	MI^sub_info^do_aditi_compilation).
+	MI ^ sub_info ^ do_aditi_compilation).
 
 %-----------------------------------------------------------------------------%
 
@@ -614,37 +616,41 @@ module_info_get_do_aditi_compilation(MI,
 	% via the module_info structure.
 
 module_info_set_globals(MI, NewVal,
-	MI^sub_info^globals := NewVal).
+	MI ^ sub_info ^ globals := NewVal).
 module_info_set_foreign_header(MI, NewVal,
-	MI^sub_info^foreign_header_info := NewVal).
+	MI ^ sub_info ^ foreign_header_info := NewVal).
 module_info_set_foreign_body_code(MI, NewVal,
-	MI^sub_info^foreign_body_info := NewVal).
+	MI ^ sub_info ^ foreign_body_info := NewVal).
 module_info_set_maybe_dependency_info(MI, NewVal,
-	MI^sub_info^maybe_dependency_info := NewVal).
+	MI ^ sub_info ^ maybe_dependency_info := NewVal).
 module_info_set_num_errors(MI, NewVal,
-	MI^sub_info^num_errors := NewVal).
+	MI ^ sub_info ^ num_errors := NewVal).
 module_info_set_lambda_count(MI, NewVal,
-	MI^sub_info^last_lambda_number := NewVal).
+	MI ^ sub_info ^ last_lambda_number := NewVal).
 module_info_set_pragma_exported_procs(MI, NewVal,
-	MI^sub_info^pragma_exported_procs := NewVal).
+	MI ^ sub_info ^ pragma_exported_procs := NewVal).
 module_info_set_type_ctor_gen_infos(MI, NewVal,
-	MI^sub_info^type_ctor_gen_infos := NewVal).
+	MI ^ sub_info ^ type_ctor_gen_infos := NewVal).
 module_info_set_stratified_preds(MI, NewVal,
-	MI^sub_info^must_be_stratified_preds := NewVal).
+	MI ^ sub_info ^ must_be_stratified_preds := NewVal).
 module_info_set_unused_arg_info(MI, NewVal,
-	MI^sub_info^unused_arg_info := NewVal).
+	MI ^ sub_info ^ unused_arg_info := NewVal).
 module_info_set_model_non_pragma_count(MI, NewVal,
-	MI^sub_info^model_non_pragma_types_so_far := NewVal).
+	MI ^ sub_info ^ model_non_pragma_types_so_far := NewVal).
 module_add_imported_module_specifiers(ModuleSpecifiers, MI,
-	MI^sub_info^imported_module_specifiers := set__insert_list(
-		MI^sub_info^imported_module_specifiers, ModuleSpecifiers)).
+	MI ^ sub_info ^ imported_module_specifiers :=
+		set__insert_list(
+			MI ^ sub_info ^ imported_module_specifiers,
+			ModuleSpecifiers)).
 module_add_indirectly_imported_module_specifiers(Modules, MI,
-	MI^sub_info^indirectly_imported_module_specifiers := set__insert_list(
-		MI^sub_info^indirectly_imported_module_specifiers, Modules)).
+	MI ^ sub_info ^ indirectly_imported_module_specifiers :=
+		set__insert_list(
+			MI ^ sub_info ^ indirectly_imported_module_specifiers,
+			Modules)).
 module_info_set_type_spec_info(MI, NewVal,
-	MI^sub_info^type_spec_info := NewVal).
+	MI ^ sub_info ^ type_spec_info := NewVal).
 module_info_set_do_aditi_compilation(MI,
-	MI^sub_info^do_aditi_compilation := do_aditi_compilation).
+	MI ^ sub_info ^ do_aditi_compilation := do_aditi_compilation).
 
 %-----------------------------------------------------------------------------%
 

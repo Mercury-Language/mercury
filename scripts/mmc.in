@@ -23,6 +23,7 @@ DEFAULT_GRADE=${MERCURY_DEFAULT_GRADE=@DEFAULT_GRADE@}
 CC=${MERCURY_C_COMPILER="@CC@"}
 CFLAGS_FOR_REGS="@CFLAGS_FOR_REGS@"
 CFLAGS_FOR_GOTOS="@CFLAGS_FOR_GOTOS@"
+CFLAGS_FOR_THREADS="@CFLAGS_FOR_THREADS@"
 CFLAG_TO_NAME_OBJECT_FILE="@OBJFILE_OPT@"
 OBJECT_FILE_EXTENSION="@OBJ_SUFFIX@"
 LOW_TAG_BITS=@LOW_TAG_BITS@
@@ -34,6 +35,19 @@ HAVE_DELAY_SLOT=@HAVE_DELAY_SLOT@
 HAVE_BOXED_FLOATS=@HAVE_BOXED_FLOATS@
 DEFAULT_OPT_LEVEL=${MERCURY_DEFAULT_OPT_LEVEL="-O2"}
 
+# XXX Temporary hack for bootstrapping purposes:
+# invoke $MC to test if it supports the --cflags-for-threads option.
+case "`$MC --cflags-for-threads </dev/null 2>&1`" in
+	*"unrecognized option"*)
+		# This value will get overridden by
+		# the later setting of --cflags-for-regs, so
+		# it will just get ignored
+		THREADS_OPT="--cflags-for-regs"
+		;;
+	*)
+		THREADS_OPT="--cflags-for-threads"
+esac
+
 # The default optimization level should be after
 # all the options that describe the machine configuration.
 
@@ -41,6 +55,7 @@ case $# in
 	0) exec $MC \
 		$MERC_ALL_MC_C_INCL_DIRS \
 		--cc "$CC" --grade "$DEFAULT_GRADE" \
+		$THREADS_OPT "$CFLAGS_FOR_THREADS" \
 		--cflags-for-regs "$CFLAGS_FOR_REGS" \
 		--cflags-for-gotos "$CFLAGS_FOR_GOTOS" \
 		--c-flag-to-name-object-file "$CFLAG_TO_NAME_OBJECT_FILE" \
@@ -58,6 +73,7 @@ case $# in
 	*) exec $MC \
 		$MERC_ALL_MC_C_INCL_DIRS \
 		--cc "$CC" --grade "$DEFAULT_GRADE" \
+		$THREADS_OPT "$CFLAGS_FOR_THREADS" \
 		--cflags-for-regs "$CFLAGS_FOR_REGS" \
 		--cflags-for-gotos "$CFLAGS_FOR_GOTOS" \
 		--c-flag-to-name-object-file "$CFLAG_TO_NAME_OBJECT_FILE" \

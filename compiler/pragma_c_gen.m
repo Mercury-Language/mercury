@@ -38,7 +38,7 @@
 
 :- implementation.
 
-:- import_module hlds_module, hlds_pred, call_gen, llds_out, trace, tree.
+:- import_module hlds_module, hlds_pred, llds_out, trace, tree.
 :- import_module code_util.
 :- import_module options, globals.
 :- import_module bool, string, int, assoc_list, set, map, require, term.
@@ -350,6 +350,9 @@ pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes,
 	{ pragma_select_in_args(Args, InArgs) },
 	{ pragma_select_out_args(Args, OutArgs) },
 
+	{ set__init(DeadVars0) },
+	find_dead_input_vars(InArgs, DeadVars0, DeadVars),
+
 	%
 	% Generate code to <save live variables on stack>
 	%
@@ -365,7 +368,13 @@ pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes,
 		% (other than the output args) onto the stack
 		{ get_c_arg_list_vars(OutArgs, OutArgs1) },
 		{ set__list_to_set(OutArgs1, OutArgsSet) },
-		call_gen__save_variables(OutArgsSet, SaveVarsCode)
+		code_info__save_variables(OutArgsSet, _, SaveVarsCode)
+	),
+
+	( { CodeModel = model_semi } ->
+		code_info__reserve_r1(ReserveR1_Code)
+	;
+		{ ReserveR1_Code = empty }
 	),
 
 	%
@@ -380,11 +389,30 @@ pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes,
 	% currently in r1 elsewhere, so that the C code can assign to
 	% SUCCESS_INDICATOR without clobbering anything important.
 	%
+	% With --no-lazy-code, the call to code_info__reserve_r1 will have
+	% reserved r1, ensuring that none of InArgs is placed there, and
+	% code_info__clear_r1 just releases r1. This reservation of r1
+	% is not strictly necessary, as we generate assignments from
+	% the input registers to C variables before we invoke code that could
+	% assign to SUCCESS_INDICATOR. However, by not storing an argument in
+	% r1, we don't require the C compiler to generate a copy instruction
+	% from r1 to somewhere else in cases where the last use of the variable
+	% we are trying to pass in r1 is after the first reference to
+	% SUCCESS_INDICATOR. Instead we generate that argument directly
+	% into some other location.
+	%
 	( { CodeModel = model_semi } ->
-		code_info__clear_r1(ShuffleR1_Code)
+		code_info__clear_r1(ClearR1_Code)
 	;
-		{ ShuffleR1_Code = empty }
+		{ ClearR1_Code = empty }
 	),
+
+	%
+	% We cannot kill the forward dead input arguments until we have
+	% finished generating the code producing the input variables.
+	% (The forward dead variables will be dead after the pragma_c_code,
+	% but are live during its input phase.)
+	code_info__make_vars_forward_dead(DeadVars),
 
 	%
 	% Generate <declaration of one local variable for each arg>
@@ -527,10 +555,11 @@ pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes,
 	%
 	{ Code =
 		tree(SaveVarsCode,
+		tree(ReserveR1_Code, 
 		tree(InputVarsCode,
-		tree(ShuffleR1_Code, 
+		tree(ClearR1_Code, 
 		tree(PragmaCCode,
-		     FailureCode))))
+		     FailureCode)))))
 	}.
 
 :- pred make_proc_label_hash_define(module_info, pred_id, proc_id,
@@ -1051,24 +1080,39 @@ make_pragma_decls([Arg | Args], Decls) :-
 
 %---------------------------------------------------------------------------%
 
+:- pred find_dead_input_vars(list(c_arg)::in, set(prog_var)::in,
+	set(prog_var)::out, code_info::in, code_info::out) is det.
+
+find_dead_input_vars([], DeadVars, DeadVars) --> [].
+find_dead_input_vars([Arg | Args], DeadVars0, DeadVars) -->
+	{ Arg = c_arg(Var, _MaybeName, _Type, _ArgInfo) },
+	( code_info__variable_is_forward_live(Var) ->
+		{ DeadVars1 = DeadVars0 }
+	;
+		{ set__insert(DeadVars0, Var, DeadVars1) }
+	),
+	find_dead_input_vars(Args, DeadVars1, DeadVars).
+
+%---------------------------------------------------------------------------%
+
 % get_pragma_input_vars returns a list of pragma_c_inputs for the pragma_c
 % data structure in the LLDS. It is essentially a list of the input variables,
 % and the corresponding rvals assigned to those (C) variables.
 
 :- pred get_pragma_input_vars(list(c_arg)::in, list(pragma_c_input)::out,
-		code_tree::out, code_info::in, code_info::out) is det.
+	code_tree::out, code_info::in, code_info::out) is det.
 
 get_pragma_input_vars([], [], empty) --> [].
 get_pragma_input_vars([Arg | Args], Inputs, Code) -->
 	{ Arg = c_arg(Var, MaybeName, Type, _ArgInfo) },
-	(
-		{ var_is_not_singleton(MaybeName, Name) }
-	->
-		code_info__produce_variable(Var, Code0, Rval),
+	( { var_is_not_singleton(MaybeName, Name) } ->
+		code_info__produce_variable(Var, FirstCode, Rval),
+		% code_info__produce_variable_in_reg(Var, FirstCode, Lval),
+		% { Rval = lval(Lval) },
 		{ Input = pragma_c_input(Name, Type, Rval) },
-		get_pragma_input_vars(Args, Inputs1, Code1),
+		get_pragma_input_vars(Args, Inputs1, RestCode),
 		{ Inputs = [Input | Inputs1] },
-		{ Code = tree(Code0, Code1) }
+		{ Code = tree(FirstCode, RestCode) }
 	;
 		% if the variable doesn't occur in the ArgNames list,
 		% it can't be used, so we just ignore it
@@ -1100,17 +1144,22 @@ pragma_acquire_regs([Arg | Args], [Reg | Regs]) -->
 
 place_pragma_output_args_in_regs([], [], []) --> [].
 place_pragma_output_args_in_regs([Arg | Args], [Reg | Regs], Outputs) -->
+	place_pragma_output_args_in_regs(Args, Regs, Outputs0),
 	{ Arg = c_arg(Var, MaybeName, OrigType, _ArgInfo) },
 	code_info__release_reg(Reg),
-	code_info__set_var_location(Var, Reg),
-	{
-		var_is_not_singleton(MaybeName, Name)
-	->
-		Outputs = [pragma_c_output(Reg, OrigType, Name) | Outputs0]
+	( code_info__variable_is_forward_live(Var) ->
+		code_info__set_var_location(Var, Reg),
+		{
+			var_is_not_singleton(MaybeName, Name)
+		->
+			PragmaCOutput = pragma_c_output(Reg, OrigType, Name),
+			Outputs = [PragmaCOutput | Outputs0]
+		;
+			Outputs = Outputs0
+		}
 	;
-		Outputs = Outputs0
-	},
-	place_pragma_output_args_in_regs(Args, Regs, Outputs0).
+		{ Outputs = Outputs0 }
+	).
 place_pragma_output_args_in_regs([_|_], [], _) -->
 	{ error("place_pragma_output_args_in_regs: length mismatch") }.
 place_pragma_output_args_in_regs([], [_|_], _) -->

@@ -141,8 +141,12 @@ parse_dcg_goal(Term, VarSet0, N0, Var0, Goal, VarSet, N, Var) :-
 				is semidet.
 
 	% Ordinary goal inside { curly braces }.
-parse_dcg_goal_2("{}", [G], _, VarSet0, N, Var, Goal, VarSet, N, Var) :-
-	parse_goal(G, VarSet0, Goal, VarSet).
+parse_dcg_goal_2("{}", [G0 | Gs], Context, VarSet0, N, Var,
+		Goal, VarSet, N, Var) :-
+	% The parser treats '{}/N' terms as tuples, so we need
+	% to undo the parsing of the argument conjunction here.
+	list_to_conjunction(Context, G0, Gs, G),
+        parse_goal(G, VarSet0, Goal, VarSet).
 parse_dcg_goal_2("impure", [G], _, VarSet0, N0, Var0, Goal, VarSet, N, Var) :-
 	parse_dcg_goal_with_purity(G, VarSet0, N0, Var0, (impure),
 		Goal, VarSet, N, Var).

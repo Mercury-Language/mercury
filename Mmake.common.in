@@ -178,6 +178,10 @@ PERL=@PERL@
 
 #-----------------------------------------------------------------------------#
 
+# The linker option to use to link in the math library, if any.
+# Typically `-lm'.
+MATH_LIB=@MATH_LIB@
+
 # Extensions to use
 O=@OBJ_SUFFIX@
 A=@LIB_SUFFIX@

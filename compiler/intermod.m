@@ -513,6 +513,19 @@ intermod__traverse_cases([case(F, Goal0) | Cases0],
 		intermod_info::in, intermod_info::out) is det.
 
 intermod__add_proc(PredId, DoWrite) -->
+	( { invalid_pred_id(PredId) } ->
+		% This will happen for type class instance methods
+		% defined using the clause syntax.  Currently we
+		% can't handle intermodule-optimization of those.
+		{ DoWrite = no }
+	;
+		intermod__add_proc_2(PredId, DoWrite)
+	).
+
+:- pred intermod__add_proc_2(pred_id::in, bool::out,
+		intermod_info::in, intermod_info::out) is det.
+
+intermod__add_proc_2(PredId, DoWrite) -->
 	intermod_info_get_module_info(ModuleInfo),
 	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
 	{ pred_info_import_status(PredInfo, Status) },
@@ -908,8 +921,9 @@ intermod__qualify_instance_method(ModuleInfo,
 	pred_info_arg_types(MethodCallPredInfo, MethodCallTVarSet, _,
 		MethodCallArgTypes),
 	InstanceMethod0 = instance_method(PredOrFunc, MethodName,
-			InstanceMethodName0, MethodArity, MethodContext),
+			InstanceMethodDefn0, MethodArity, MethodContext),
 	(
+		InstanceMethodDefn0 = name(InstanceMethodName0),
 		PredOrFunc = function,
 		module_info_get_predicate_table(ModuleInfo, PredicateTable),
 		(
@@ -929,15 +943,31 @@ intermod__qualify_instance_method(ModuleInfo,
 			    "intermod__qualify_instance_method: undefined ",
 			    MethodStr, Msg),
 			error(Msg)
-		)
+		),
+		InstanceMethodDefn = name(InstanceMethodName)
 	;
+		InstanceMethodDefn0 = name(InstanceMethodName0),
 		PredOrFunc = predicate,
 		typecheck__resolve_pred_overloading(ModuleInfo,
 			MethodCallArgTypes, MethodCallTVarSet,
-			InstanceMethodName0, InstanceMethodName, PredId)
+			InstanceMethodName0, InstanceMethodName, PredId),
+		InstanceMethodDefn = name(InstanceMethodName)
+	;
+		InstanceMethodDefn0 = clauses(_ItemList),
+		%
+		% XXX for methods defined using this syntax
+		% it is a little tricky to write out the .opt files,
+		% so for now I've just disabled intermodule optimization
+		% for type class instance declarations using the new
+		% syntax.
+		%
+		% This will force intermod__add_proc to return DoWrite = no
+		invalid_pred_id(PredId),
+		% We can just leave the method definition unchanged
+		InstanceMethodDefn = InstanceMethodDefn0
 	),
 	InstanceMethod = instance_method(PredOrFunc, MethodName,
-			InstanceMethodName, MethodArity, MethodContext).
+			InstanceMethodDefn, MethodArity, MethodContext).
 
 %-----------------------------------------------------------------------------%
 
@@ -1261,17 +1291,19 @@ intermod__write_pred_decls(ModuleInfo, [PredId | PredIds]) -->
 	{ pred_info_get_purity(PredInfo, Purity) },
 	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
 	{ pred_info_get_class_context(PredInfo, ClassContext) },
+	{ AppendVarNums = yes },
 	(
 		{ PredOrFunc = predicate },
 		mercury_output_pred_type(TVarSet, ExistQVars,
 			qualified(Module, Name), ArgTypes, no, Purity,
-			ClassContext, Context)
+			ClassContext, Context, AppendVarNums)
 	;
 		{ PredOrFunc = function },
 		{ pred_args_to_func_args(ArgTypes, FuncArgTypes, FuncRetType) },
 		mercury_output_func_type(TVarSet, ExistQVars,
 			qualified(Module, Name), FuncArgTypes,
-			FuncRetType, no, Purity, ClassContext, Context)
+			FuncRetType, no, Purity, ClassContext, Context,
+			AppendVarNums)
 	),
 	{ pred_info_procedures(PredInfo, Procs) },
 	{ pred_info_procids(PredInfo, ProcIds) },
@@ -1984,7 +2016,11 @@ intermod__grab_optfiles(Module0, Module, FoundError) -->
 		% Figure out which .int files are needed by the .opt files
 		%
 	{ get_dependencies(OptItems, NewImportDeps0, NewUseDeps0) },
-	{ list__append(NewImportDeps0, NewUseDeps0, NewDeps0) },
+	globals__io_get_globals(Globals),
+	{ get_implicit_dependencies(OptItems, Globals,
+		NewImplicitImportDeps0, NewImplicitUseDeps0) },
+	{ NewDeps0 = list__condense([NewImportDeps0, NewUseDeps0,
+		NewImplicitImportDeps0, NewImplicitUseDeps0]) },
 	{ set__list_to_set(NewDeps0, NewDepsSet0) },
 	{ set__delete_list(NewDepsSet0, [ModuleName | OptFiles], NewDepsSet) },
 	{ set__to_sorted_list(NewDepsSet, NewDeps) },

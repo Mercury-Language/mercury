@@ -134,11 +134,8 @@ unique_modes__check_goal(Goal0, Goal, ModeInfo0, ModeInfo) :-
 	% Grab the final instmap, compute the change in insts
 	% over this goal, and save that instmap_delta in the goal_info.
 	%
-	mode_info_get_instmap(ModeInfo, InstMap),
-	mode_info_get_completed_nonlocals(GoalInfo0, NonLocals,
-		ModeInfo4, ModeInfo),
-	compute_instmap_delta(InstMap0, InstMap, NonLocals, DeltaInstMap),
-	goal_info_set_instmap_delta(GoalInfo0, DeltaInstMap, GoalInfo),
+	compute_goal_instmap_delta(InstMap0, GoalExpr,
+		GoalInfo0, GoalInfo, ModeInfo4, ModeInfo),
 
 	Goal = GoalExpr - GoalInfo.
 
@@ -264,12 +261,12 @@ unique_modes__check_goal_2(conj(List0), _GoalInfo0, conj(List)) -->
 unique_modes__check_goal_2(par_conj(List0, SM), GoalInfo0,
 		par_conj(List, SM)) -->
 	mode_checkpoint(enter, "par_conj"),
-	mode_info_get_completed_nonlocals(GoalInfo0, NonLocals),
+	{ goal_info_get_nonlocals(GoalInfo0, NonLocals) },
 	mode_info_add_live_vars(NonLocals),
 		% Build a multiset of the nonlocals of the conjuncts
 		% so that we can figure out which variables must be
 		% made shared at the start of the parallel conjunction.
-	make_par_conj_nonlocal_multiset(List0, NonLocalsBag),
+	{ make_par_conj_nonlocal_multiset(List0, NonLocalsBag) },
 	unique_modes__check_par_conj(List0, NonLocalsBag, List, InstMapList),
 	instmap__unify(NonLocals, InstMapList),
 	mode_info_remove_live_vars(NonLocals),
@@ -295,7 +292,7 @@ unique_modes__check_goal_2(disj(List0, SM), GoalInfo0, disj(List, SM)) -->
 		% disjuncts.  But we handle that seperately for each
 		% disjunct, in unique_modes__check_disj.
 		%
-		mode_info_get_completed_nonlocals(GoalInfo0, NonLocals),
+		{ goal_info_get_nonlocals(GoalInfo0, NonLocals) },
 		{ goal_info_get_code_model(GoalInfo0, CodeModel) },
 		% does this disjunction create a choice point?
 		( { CodeModel = model_non } ->
@@ -316,13 +313,13 @@ unique_modes__check_goal_2(disj(List0, SM), GoalInfo0, disj(List, SM)) -->
 	),
 	mode_checkpoint(exit, "disj").
 
-unique_modes__check_goal_2(if_then_else(Vs, A0, B0, C0, SM), GoalInfo0, Goal)
-		-->
+unique_modes__check_goal_2(if_then_else(Vs, Cond0, Then0, Else0, SM),
+		GoalInfo0, Goal) -->
 	mode_checkpoint(enter, "if-then-else"),
-	mode_info_get_completed_nonlocals(GoalInfo0, NonLocals),
-	mode_info_get_goal_completed_nonlocals(A0, A_Vars),
-	mode_info_get_goal_completed_nonlocals(B0, B_Vars),
-	mode_info_get_goal_completed_nonlocals(C0, C_Vars),
+	{ goal_info_get_nonlocals(GoalInfo0, NonLocals) },
+	{ goal_get_nonlocals(Cond0, Cond_Vars) },
+	{ goal_get_nonlocals(Then0, Then_Vars) },
+	{ goal_get_nonlocals(Else0, Else_Vars) },
 	mode_info_dcg_get_instmap(InstMap0),
 	mode_info_lock_vars(if_then_else, NonLocals),
 
@@ -353,38 +350,38 @@ unique_modes__check_goal_2(if_then_else(Vs, A0, B0, C0, SM), GoalInfo0, Goal)
 	%		use(Var)
 	%	).
 	%
-	mode_info_add_live_vars(C_Vars),
+	mode_info_add_live_vars(Else_Vars),
 	=(ModeInfo),
-	{ set__to_sorted_list(A_Vars, A_Vars_List) },
-	{ select_live_vars(A_Vars_List, ModeInfo, A_Live_Vars) },
-	{ A0 = _ - A0_GoalInfo },
-	{ goal_info_get_instmap_delta(A0_GoalInfo, A0_DeltaInstMap) },
-	{ select_changed_inst_vars(A_Live_Vars, A0_DeltaInstMap, ModeInfo,
-				ChangedVars) },
+	{ set__to_sorted_list(Cond_Vars, Cond_Vars_List) },
+	{ select_live_vars(Cond_Vars_List, ModeInfo, Cond_Live_Vars) },
+	{ Cond0 = _ - Cond0_GoalInfo },
+	{ goal_info_get_instmap_delta(Cond0_GoalInfo, Cond0_DeltaInstMap) },
+	{ select_changed_inst_vars(Cond_Live_Vars, Cond0_DeltaInstMap,
+		ModeInfo, ChangedVars) },
 	make_var_list_mostly_uniq(ChangedVars),
-	mode_info_remove_live_vars(C_Vars),
+	mode_info_remove_live_vars(Else_Vars),
 
-	mode_info_add_live_vars(B_Vars),
-	unique_modes__check_goal(A0, A),
-	mode_info_remove_live_vars(B_Vars),
+	mode_info_add_live_vars(Then_Vars),
+	unique_modes__check_goal(Cond0, Cond),
+	mode_info_remove_live_vars(Then_Vars),
 	mode_info_unlock_vars(if_then_else, NonLocals),
-	mode_info_dcg_get_instmap(InstMapA),
-	( { instmap__is_reachable(InstMapA) } ->
-		unique_modes__check_goal(B0, B),
-		mode_info_dcg_get_instmap(InstMapB)
+	mode_info_dcg_get_instmap(InstMapCond),
+	( { instmap__is_reachable(InstMapCond) } ->
+		unique_modes__check_goal(Then0, Then),
+		mode_info_dcg_get_instmap(InstMapThen)
 	;
 		% We should not mode-analyse the goal, since it is unreachable.
 		% Instead we optimize the goal away, so that later passes
 		% won't complain about it not having unique mode information.
-		{ true_goal(B) },
-		{ InstMapB = InstMapA }
+		{ true_goal(Then) },
+		{ InstMapThen = InstMapCond }
 	),
 	mode_info_set_instmap(InstMap0),
-	unique_modes__check_goal(C0, C),
-	mode_info_dcg_get_instmap(InstMapC),
+	unique_modes__check_goal(Else0, Else),
+	mode_info_dcg_get_instmap(InstMapElse),
 	mode_info_set_instmap(InstMap0),
-	instmap__merge(NonLocals, [InstMapB, InstMapC], if_then_else),
-	{ Goal = if_then_else(Vs, A, B, C, SM) },
+	instmap__merge(NonLocals, [InstMapThen, InstMapElse], if_then_else),
+	{ Goal = if_then_else(Vs, Cond, Then, Else, SM) },
 	mode_checkpoint(exit, "if-then-else").
 
 unique_modes__check_goal_2(not(A0), GoalInfo0, not(A)) -->
@@ -397,7 +394,7 @@ unique_modes__check_goal_2(not(A0), GoalInfo0, not(A)) -->
 	% negation will succeed, and so these variables
 	% can be accessed again after backtracking.
 	%
-	mode_info_get_completed_nonlocals(GoalInfo0, NonLocals),
+	{ goal_info_get_nonlocals(GoalInfo0, NonLocals) },
 	{ set__to_sorted_list(NonLocals, NonLocalsList) },
 	=(ModeInfo),
 	{ select_live_vars(NonLocalsList, ModeInfo, LiveNonLocals) },
@@ -501,7 +498,7 @@ unique_modes__check_goal_2(switch(Var, CanFail, Cases0, SM), GoalInfo0,
 		{ instmap__init_unreachable(InstMap) },
 		mode_info_set_instmap(InstMap)
 	;
-		mode_info_get_completed_nonlocals(GoalInfo0, NonLocals),
+		{ goal_info_get_nonlocals(GoalInfo0, NonLocals) },
 		unique_modes__check_case_list(Cases0, Var, Cases, InstMapList),
 		instmap__merge(NonLocals, InstMapList, disj)
 	),
@@ -657,7 +654,7 @@ unique_modes__check_call_modes(ArgVars, ProcArgModes, ArgOffset,
 
 unique_modes__check_conj([], []) --> [].
 unique_modes__check_conj([Goal0 | Goals0], [Goal | Goals]) -->
-	mode_info_get_goal_completed_nonlocals(Goal0, NonLocals),
+	{ goal_get_nonlocals(Goal0, NonLocals) },
 	mode_info_remove_live_vars(NonLocals),
 	unique_modes__check_goal(Goal0, Goal),
 	mode_info_dcg_get_instmap(InstMap),
@@ -676,20 +673,18 @@ unique_modes__check_conj([Goal0 | Goals0], [Goal | Goals]) -->
 
 	% make_par_conj_nonlocal_multiset builds a multiset (bag) of all
 	% the nonlocals of the conjuncts.
-:- pred make_par_conj_nonlocal_multiset(list(hlds_goal), bag(prog_var),
-	mode_info, mode_info).
-:- mode make_par_conj_nonlocal_multiset(in, out, mode_info_di, mode_info_uo)
-	is det.
+:- pred make_par_conj_nonlocal_multiset(list(hlds_goal)::in,
+	bag(prog_var)::out) is det.
 
-make_par_conj_nonlocal_multiset([], Empty) -->
-	{ bag__init(Empty) }.
-make_par_conj_nonlocal_multiset([Goal | Goals], NonLocalsMultiSet) -->
+make_par_conj_nonlocal_multiset([], Empty) :-
+	bag__init(Empty).
+make_par_conj_nonlocal_multiset([Goal | Goals], NonLocalsMultiSet) :-
 	make_par_conj_nonlocal_multiset(Goals, NonLocalsMultiSet0),
-	mode_info_get_goal_completed_nonlocals(Goal, NonLocals),
-	{ set__to_sorted_list(NonLocals, NonLocalsList) },
-	{ bag__from_list(NonLocalsList, NonLocalsMultiSet1) },
-	{ bag__union(NonLocalsMultiSet0, NonLocalsMultiSet1,
-		NonLocalsMultiSet) }.
+	goal_get_nonlocals(Goal, NonLocals),
+	set__to_sorted_list(NonLocals, NonLocalsList),
+	bag__from_list(NonLocalsList, NonLocalsMultiSet1),
+	bag__union(NonLocalsMultiSet0, NonLocalsMultiSet1,
+		NonLocalsMultiSet).
 
 	% To unique-modecheck a parallel conjunction, we find the variables
 	% that are nonlocal to more than one conjunct and make them shared,
@@ -742,7 +737,7 @@ unique_modes__check_par_conj_0(NonLocalVarsBag, ModeInfo0, ModeInfo) :-
 unique_modes__check_par_conj_1([], [], []) --> [].
 unique_modes__check_par_conj_1([Goal0 | Goals0], [Goal | Goals],
 		[InstMap - NonLocals|InstMaps]) -->
-	mode_info_get_goal_completed_nonlocals(Goal0, NonLocals),
+	{ goal_get_nonlocals(Goal0, NonLocals) },
 	mode_info_dcg_get_instmap(InstMap0),
 	unique_modes__check_goal(Goal0, Goal),
 	mode_info_dcg_get_instmap(InstMap),

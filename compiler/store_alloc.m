@@ -57,11 +57,14 @@ store_alloc_in_proc(ProcInfo0, PredId, ModuleInfo, ProcInfo) :-
 	( ApplyFollowVars = yes ->
 		proc_info_goal(ProcInfo0, Goal0),
 
-		find_final_follow_vars(ProcInfo0, FollowVars0),
+		find_final_follow_vars(ProcInfo0,
+			FollowVarsMap0, NextNonReserved0),
 		proc_info_vartypes(ProcInfo0, VarTypes),
 		find_follow_vars_in_goal(Goal0, VarTypes, ModuleInfo,
-			FollowVars0, Goal1, FollowVars),
+			FollowVarsMap0, NextNonReserved0,
+			Goal1, FollowVarsMap, NextNonReserved),
 		Goal1 = GoalExpr1 - GoalInfo1,
+		FollowVars = follow_vars(FollowVarsMap, NextNonReserved),
 		goal_info_set_follow_vars(GoalInfo1, yes(FollowVars),
 			GoalInfo2),
 		Goal2 = GoalExpr1 - GoalInfo2
@@ -110,27 +113,27 @@ store_alloc_in_goal(Goal0 - GoalInfo0, Liveness0, ResumeVars0, ModuleInfo,
 	% should not be included in the store map.
 	set__union(Liveness4, PostBirths, Liveness),
 	(
-		Goal1 = switch(Var, CanFail, Cases, FollowVars)
+		Goal1 = switch(Var, CanFail, Cases, AdvisoryStoreMap)
 	->
 		set__union(Liveness4, ResumeVars0, MappedSet),
 		set__to_sorted_list(MappedSet, MappedVars),
-		store_alloc_allocate_storage(MappedVars, FollowVars,
+		store_alloc_allocate_storage(MappedVars, AdvisoryStoreMap,
 			StackSlotInfo, StoreMap),
 		Goal = switch(Var, CanFail, Cases, StoreMap)
 	;
-		Goal1 = if_then_else(Vars, Cond, Then, Else, FollowVars)
+		Goal1 = if_then_else(Vars, Cond, Then, Else, AdvisoryStoreMap)
 	->
 		set__union(Liveness4, ResumeVars0, MappedSet),
 		set__to_sorted_list(MappedSet, MappedVars),
-		store_alloc_allocate_storage(MappedVars, FollowVars,
+		store_alloc_allocate_storage(MappedVars, AdvisoryStoreMap,
 			StackSlotInfo, StoreMap),
 		Goal = if_then_else(Vars, Cond, Then, Else, StoreMap)
 	;
-		Goal1 = disj(Disjuncts, FollowVars)
+		Goal1 = disj(Disjuncts, AdvisoryStoreMap)
 	->
 		set__union(Liveness4, ResumeVars0, MappedSet),
 		set__to_sorted_list(MappedSet, MappedVars),
-		store_alloc_allocate_storage(MappedVars, FollowVars,
+		store_alloc_allocate_storage(MappedVars, AdvisoryStoreMap,
 			StackSlotInfo, StoreMap),
 		Goal = disj(Disjuncts, StoreMap)
 	;
@@ -302,7 +305,7 @@ store_alloc_in_cases([case(Cons, Goal0) | Goals0], Liveness0, ResumeVars0,
 	% generate a store map that maps every live variable to its own
 	% real location.
 
-:- pred store_alloc_allocate_storage(list(prog_var), follow_vars,
+:- pred store_alloc_allocate_storage(list(prog_var), store_map,
 		stack_slot_info, store_map).
 :- mode store_alloc_allocate_storage(in, in, in, out) is det.
 

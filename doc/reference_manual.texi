@@ -151,6 +151,7 @@ for common programming tasks --- see the Mercury Library Reference Manual.
 * Syntax Overview::
 * Tokens::
 * Terms::
+* Builtin Operators::
 * Items::
 * Declarations::
 * Facts::
@@ -159,6 +160,7 @@ for common programming tasks --- see the Mercury Library Reference Manual.
 * DCG-rules::
 * DCG-goals::
 * Data-terms::
+* Variable scoping::
 * Implicit quantification::
 * Elimination of double negation::
 @end menu
@@ -308,7 +310,8 @@ The end of file.
 Syntactically, terms in Mercury are exactly the same as in ISO Prolog,
 except that as extensions we permit higher-order terms and the
 introduction of infix operators by the use of grave accents (backquotes),
-as described below.
+as described below,
+and we support an extended set of builtin operators. @xref{Builtin Operators}.
 However, the meaning of some terms in Mercury is different to that
 in Prolog.  @xref{Data-terms}.
 
@@ -317,13 +320,17 @@ A term is either a variable or a functor.
 A functor is an integer, a float, a string, a name, a compound term,
 or a higher-order term.
 
-A compound term is a simple compound term, an operator term,
+A compound term is a simple compound term, a tuple term, an operator term,
 or a parenthesized term.
 
 A simple compound term is a name followed without any intervening
 whitespace by an open parenthesis (i.e. an open_ct token),
 a sequence of argument terms separated by commas, and a close
 parenthesis.  
+
+A tuple term is a left curly bracket (i.e. an open_curly token)
+followed by a sequence of argument terms separated by commas,
+and a right curly bracket.
 
 An operator term is a term specified using operator notation, as in Prolog.
 Operators can also be formed by enclosing a variable or name between grave
@@ -338,7 +345,7 @@ followed by a term and a close parenthesis.
 
 A higher-order term is a ``closure'' term, which can be any term 
 other than a name or an operator term, followed without
-any intervening whitespace by an open parenthesis (i.e. an open_ct token),
+any intervening whitespace by an open parenthesis (i.e. an open_ct token), 
 a sequence of argument terms separated by commas, and a close
 parenthesis.  A higher-order term is equivalent to a simple compound term
 whose functor is the empty name, and whose arguments are the 
@@ -349,6 +356,138 @@ Note that the closure term can be a parenthesized
 term; for example, @code{(Term^FieldName)(Arg1, Arg2)}
 is a higher-order term, and so it gets parsed as
 if it were @code{''((Term^FieldName), Arg1, Arg2)}.
+
+@node Builtin Operators
+@section Builtin Operators
+
+The following table lists all of Mercury's builtin operators. 
+Operators with a low ``Priority'' bind more tightly than those
+with a high ``Priority''. For example, given that @code{+} has priority
+500 and @code{*} has priority 400, the term @code{2 * X + Y} would parse
+as @code{(2 * X) + Y}.
+
+The ``Specifier'' field indicates what structure terms 
+constructed with an operator are allowed to take. 
+``f'' represents the operator and ``x'' and ``y'' represent arguments. 
+``x'' represents an argument whose priority must be 
+strictly lower that that of the operator.
+``y'' represents an argument whose priority is 
+lower or equal to that of the operator.
+For example, ``yfx'' indicates a left-associative infix operator, 
+while ``xfy'' indicates a right-associative infix operator.
+
+@multitable @columnfractions .25 .2 .2 .2
+
+@item Operator @tab Category @tab Specifier @tab Priority
+
+@item @code{^} @tab after @tab xfy @tab 99
+@item @code{^} @tab before @tab fx @tab 100
+@item @code{**} @tab after @tab xfy @tab 200
+@item @code{-} @tab before @tab fx @tab 200
+@item @code{\} @tab before @tab fx @tab 200
+@item @code{*} @tab after @tab yfx @tab 400
+@item @code{//} @tab after @tab yfx @tab 400
+@item @code{/} @tab after @tab yfx @tab 400
+@item @code{<<} @tab after @tab yfx @tab 400
+@item @code{>>} @tab after @tab yfx @tab 400
+@item @code{div} @tab after @tab yfx @tab 400
+@item @code{mod} @tab after @tab xfx @tab 400
+@item @code{rem} @tab after @tab xfx @tab 400
+@item @code{++} @tab after @tab xfy @tab 500
+@item @code{+} @tab after @tab yfx @tab 500
+@item @code{+} @tab before @tab fx @tab 500
+@item @code{--} @tab after @tab yfx @tab 500
+@item @code{-} @tab after @tab yfx @tab 500
+@item @code{/\} @tab after @tab yfx @tab 500
+@item @code{\/} @tab after @tab yfx @tab 500
+@item @code{aditi_bottom_up} @tab before @tab fx @tab 500
+@item @code{aditi_top_down} @tab before @tab fx @tab 500
+@item @code{.} @tab after @tab xfy @tab 600
+@item @code{:} @tab after @tab yfx @tab 600
+@item @code{:=} @tab after @tab xfx @tab 650
+@item @code{=^} @tab after @tab xfx @tab 650
+@item @code{<} @tab after @tab xfx @tab 700
+@item @code{=..} @tab after @tab xfx @tab 700
+@item @code{=:=} @tab after @tab xfx @tab 700
+@item @code{=<} @tab after @tab xfx @tab 700
+@item @code{==} @tab after @tab xfx @tab 700
+@item @code{=\=} @tab after @tab xfx @tab 700
+@item @code{=} @tab after @tab xfx @tab 700
+@item @code{>=} @tab after @tab xfx @tab 700
+@item @code{>} @tab after @tab xfx @tab 700
+@item @code{@@<} @tab after @tab xfx @tab 700
+@item @code{@@=<} @tab after @tab xfx @tab 700
+@item @code{@@>=} @tab after @tab xfx @tab 700
+@item @code{@@>} @tab after @tab xfx @tab 700
+@item @code{\==} @tab after @tab xfx @tab 700
+@item @code{\=} @tab after @tab xfx @tab 700
+@item @code{~=} @tab after @tab xfx @tab 700
+@item @code{is} @tab after @tab xfx @tab 701
+@item @code{and} @tab after @tab xfy @tab 720
+@item @code{or} @tab after @tab xfy @tab 740
+@item @code{func} @tab before @tab fx @tab 800
+@item @code{impure} @tab before @tab fy @tab 800
+@item @code{pred} @tab before @tab fx @tab 800
+@item @code{semipure} @tab before @tab fy @tab 800
+@item @code{\+} @tab before @tab fy @tab 900
+@item @code{not} @tab before @tab fy @tab 900
+@item @code{when} @tab after @tab xfx @tab 900
+@item @code{~} @tab before @tab fy @tab 900
+@item @code{<=>} @tab after @tab xfy @tab 920
+@item @code{<=} @tab after @tab xfy @tab 920
+@item @code{=>} @tab after @tab xfy @tab 920
+@item @code{all} @tab before @tab fxy @tab 950
+@item @code{lambda} @tab before @tab fxy @tab 950
+@item @code{some} @tab before @tab fxy @tab 950
+@item @code{,} @tab after @tab xfy @tab 1000
+@item @code{&} @tab after @tab xfy @tab 1025
+@item @code{->} @tab after @tab xfy @tab 1050
+@item @code{;} @tab after @tab xfy @tab 1100
+@item @code{then} @tab after @tab xfx @tab 1150
+@item @code{if} @tab before @tab fx @tab 1160
+@item @code{else} @tab after @tab xfy @tab 1170
+@item @code{::} @tab after @tab xfx @tab 1175
+@item @code{==>} @tab after @tab xfx @tab 1175
+@item @code{where} @tab after @tab xfx @tab 1175
+@item @code{--->} @tab after @tab xfy @tab 1179
+@item @code{type} @tab before @tab fx @tab 1180
+@item @code{end_module} @tab before @tab fx @tab 1199
+@c @item @code{export_adt} @tab before @tab fx @tab 1199
+@c @item @code{export_cons} @tab before @tab fx @tab 1199
+@c @item @code{export_module} @tab before @tab fx @tab 1199
+@c @item @code{export_op} @tab before @tab fx @tab 1199
+@c @item @code{export_pred} @tab before @tab fx @tab 1199
+@c @item @code{export_sym} @tab before @tab fx @tab 1199
+@c @item @code{export_type} @tab before @tab fx @tab 1199
+@c @item @code{import_adt} @tab before @tab fx @tab 1199
+@c @item @code{import_cons} @tab before @tab fx @tab 1199
+@item @code{import_module} @tab before @tab fx @tab 1199
+@c @item @code{import_op} @tab before @tab fx @tab 1199
+@c @item @code{import_pred} @tab before @tab fx @tab 1199
+@c @item @code{import_sym} @tab before @tab fx @tab 1199
+@c @item @code{import_type} @tab before @tab fx @tab 1199
+@item @code{include_module} @tab before @tab fx @tab 1199
+@item @code{instance} @tab before @tab fx @tab 1199
+@item @code{inst} @tab before @tab fx @tab 1199
+@item @code{mode} @tab before @tab fx @tab 1199
+@item @code{module} @tab before @tab fx @tab 1199
+@item @code{pragma} @tab before @tab fx @tab 1199
+@item @code{promise} @tab before @tab fx @tab 1199
+@item @code{rule} @tab before @tab fx @tab 1199
+@item @code{typeclass} @tab before @tab fx @tab 1199
+@c @item @code{use_adt} @tab before @tab fx @tab 1199
+@c @item @code{use_cons} @tab before @tab fx @tab 1199
+@item @code{use_module} @tab before @tab fx @tab 1199
+@c @item @code{use_op} @tab before @tab fx @tab 1199
+@c @item @code{use_pred} @tab before @tab fx @tab 1199
+@c @item @code{use_sym} @tab before @tab fx @tab 1199
+@c @item @code{use_type} @tab before @tab fx @tab 1199
+@item @code{-->} @tab after @tab xfx @tab 1200
+@item @code{:-} @tab after @tab xfx @tab 1200
+@item @code{:-} @tab before @tab fx @tab 1200
+@item @code{?-} @tab before @tab fx @tab 1200
+
+@end multitable
 
 @node Items
 @section Items
@@ -787,12 +926,16 @@ Syntactically, a data-term is just a term.
 There are a couple of differences from Prolog.
 The first one is that double-quoted strings are atomic in
 Mercury, they are not abbreviations for lists of character codes.
-The second is that Mercury terms may contain function applications,
-higher-order function applications, and lambda expressions.
+The second is that Mercury provides several extensions to Prolog's
+term syntax: Mercury terms may contain record field selection and
+field update expressions, conditional (if-then-else) expressions,
+function applications, higher-order function applications, lambda
+expressions, and explicit type qualifications.
 
-A data-term is either a variable, a data-functor,
-a conditional expression, a lambda expression,
-or a higher-order function application.
+A data-term is either a variable, a data-functor, or a special data-term.
+A special data-term is a conditional expression, a record syntax expression,
+a lambda expression, a higher-order function application,
+or an explicit type qualification.
 
 @menu
 * Data-functors::
@@ -800,6 +943,7 @@ or a higher-order function application.
 * Conditional expressions::
 * Lambda expressions::
 * Higher-order function applications::
+* Explicit type qualification::
 @end menu
 
 @node Data-functors
@@ -807,9 +951,9 @@ or a higher-order function application.
 
 A data-functor is an integer, a float, a string, a character literal
 (any single-character name), a name, or a compound data-term.
-A compound data-term is a compound term whose form
-does not match the form of a lambda expression or higher-order
-function application and whose arguments are data-terms.
+A compound data-term is a compound term which does not match
+the form of a special data-term (@pxref{Data-terms}),
+and whose arguments are data-terms.
 If a data-functor is a name or a compound data-term, its top-level functor
 must name a function, predicate, or data constructor declared
 in the program or in the interface of an imported module.
@@ -822,6 +966,8 @@ of data constructors, independent of the definition of the constructor.
 
 Record syntax expressions are transformed into sequences of calls
 to field selection or update functions (@pxref{Field access functions}).
+
+Record syntax expressions have one of the following forms:
 
 @table @code
 @item @var{Term} ^ @var{field}
@@ -961,6 +1107,61 @@ The type of the higher-order function application term is @var{T}.
 It denotes the result of applying the specified function to the
 specified arguments.  @xref{Higher-order}.
 
+@node Explicit type qualification
+@subsection Explicit type qualification
+
+Explicit type qualifications are occaisionally useful
+to resolve ambiguities that can arise from overloading
+or polymorphic types.
+
+An explicit type qualification expression is a term of the form
+
+@example
+with_type(@var{Term}, @var{Type})
+@end example
+
+@noindent
+or equivalently, as it is more commonly written,
+
+@example
+@var{Term} `with_type` @var{Type}
+@end example
+
+@noindent
+@var{Term} must be a valid data-term.
+@var{Type} must be a valid type (@pxref{Types}).
+
+An explicit type qualification expression constrains
+the specified term to have the specified type.
+Apart from that, the meaning of an explicit type qualification
+expression is just the same as the specified @var{Term}.
+
+@node Variable scoping
+@section Variable scoping
+
+Variables occurring in data-terms, other than in the right-hand
+(@var{Type}) operand of an explicit type qualification,
+are called ordinary variables,
+while variables occurring in types are called type variables.
+Type variables and ordinary variables occupy different namespaces:
+there is no semantic relationship between a type variable and
+an ordinary variable even if they happen to share the same name.
+(However, as a matter of programming style, it is generally a
+bad idea to use the same name for both a type variable and
+an ordinary variable in the same clause.)
+
+The scope of ordinary variables is the clause or declaration in which
+they occur, unless they are quantified, either explicitly
+(@pxref{Goals}) or implicitly (@pxref{Implicit quantification}).
+
+The scope of type variables in a predicate or function's type
+declaration extends over any explicit type qualifications in the
+clauses for that predicate or function, so explicit type
+qualifications can refer to those type variables.
+The scope of any type variables in an explicit type qualification
+which do not occur in the predicate or function's type declaration
+is the clause in which they occur.
+
 @node Implicit quantification
 @section Implicit quantification
 
@@ -1039,6 +1240,14 @@ and @code{string}.  (For @code{char}, the standard syntax suffices.)
 @itemx @code{func(T1, T2) = T}, @dots{}
 These higher-order function and predicate types are used to pass procedure
 addresses and closures to other predicates.  @xref{Higher-order}.
+
+@item Tuple types: @code{@{@}}, @code{@{T@}}, @code{@{T1, T2@}}, @dots{}. 
+A tuple type is equivalent to a discriminated union type
+(@pxref{Discriminated unions}) with declaration
+@example
+:- type @{Arg1, Arg2, @dots{}, ArgN@}
+        ---> @{ @{Arg1, Arg2, @dots{}, ArgN@} @}.
+@end example
 
 @item The universal type: @code{univ}.
 The type @code{univ} is defined in the standard library module @code{std_util},
@@ -1154,7 +1363,9 @@ The following example illustrates this:
 @end example
 
 This defines a type with two constructors, @code{';'/2} and @code{'@{@}'/1},
-whose argument types are all @code{int}.
+whose argument types are all @code{int}. We recommend against using
+constructors named @code{'@{@}'} because of the possibility of confusion
+with the builtin tuple types.
 
 Each discriminated union type definition introduces a distinct type.
 Mercury considers two discriminated union types that have the same bodies
@@ -1299,6 +1510,15 @@ The type assigned to each head argument in a function clause must exactly match
 the argument type specified in the corresponding @samp{:- func} declaration,
 and the type assigned to the result term in a function clause must exactly
 match the result type specified in the corresponding @samp{:- func} declaration.
+
+The type assigned to each data-term with an explicit type qualification
+(@pxref{Explicit type qualification}) must match the type specified
+by the type qualification expression@footnote{The type of an explicitly
+type qualified term may be an instance of the type specified by the
+qualifier. This allows explicit type qualifications to constrain the
+types of two data-terms to be identical, without knowing the exact types
+of the data-terms. It also allows type qualifications to refer to the
+types of the results of existentially typed predicates or functions.}.
 
 (Here ``match'' means to be an instance of,
 i.e. to be identical to for some substitution of the type parameters,
@@ -3393,9 +3613,7 @@ An instance declaration has the form
 
 @example
 :- instance @var{classname}(@var{typename}(@var{typevar}, @dots{}), @dots{})
-        where [pred(@var{methodname}/@var{arity}) is @var{predname},
-               func(@var{methodname}/@var{arity}) is @var{funcname},
-               @dots{}].
+        where [@var{methoddefinition}, @var{methoddefinition}, @dots{}].
 @end example
 
 An @samp{instance} declaration gives a type for each parameter of the
@@ -3405,15 +3623,27 @@ For example @code{int}, @code{list(T)} and @code{bintree(K,V)} are allowed,
 but @code{T}, @code{list(int)} and @code{bintree(T,T)} are not.
 The types in an instance declaration must not be abstract types which
 are elsewhere defined as equivalence types.
-A program may not contain more than one @code{instance} declaration for a
-particular type (or sequence of types, in the case of a multi-parameter
-type class).  These restrictions ensure that there are no overlapping instance
-declarations, ie. there is at most one instance declaration that may be 
-applied to any type (or sequence of types).
+A program may not contain more than one instance
+declaration for a particular type (or sequence of types, in
+the case of a multi-parameter type class) and typeclass.
+These restrictions ensure that there are no overlapping
+instance declarations, i.e. for each typeclass there is at
+most one instance declaration that may be applied to any
+type (or sequence of types). 
 
-Each entry in the @samp{where [@dots{}]} part of an @code{instance}
-declaration defines the implementation of one of the class methods
-for this instance.
+Each @var{methoddefinition} entry in the @samp{where [@dots{}]} part
+of an @code{instance} declaration defines the implementation of one of
+the class methods for this instance.  There are two ways of defining
+methods.  The first way is to define a method by giving the name of
+the predicate or function which implements that method.  In this
+case, the @var{methoddefinition} must have one of the following forms:
+
+@example
+pred(@var{methodname}/@var{arity}) is @var{predname}
+func(@var{methodname}/@var{arity}) is @var{funcname}
+@end example
+
+@noindent
 The @var{predname} or @var{funcname} must name a function or
 predicate of the specified arity whose type, modes, determinism, and
 purity are at least as permissive as the declared type, modes,
@@ -3421,6 +3651,57 @@ determinism, and purity of the class method with the specified
 @var{methodname} and @var{arity}, after the types of the arguments
 in the instance declaration have been substituted in place of the
 parameters in the type class declaration.
+
+The second way of defining methods is by listing the clauses for the
+definition inside the instance declaration.  A @var{methoddefinition}
+can be a clause.  These clauses are just like the clauses used to
+define ordinary predicates or functions (@pxref{Items}), and so they
+can be facts, rules, or DCG rules.  The only difference is that in instance
+declarations, clauses are separated by commas rather than being terminated
+by periods, and so rules and DCG rules in instance declarations must
+normally be enclosed in parentheses.  As with ordinary predicates,
+you can have more than one clause for each method.  The clauses must
+satisfy the declared type, modes, determinism and purity for the
+method, after the types of the arguments in the instance declaration
+have been substituted in place of the parameters in the type class
+declaration.
+
+These two ways are mutually exclusive: each method must be defined
+either by a single naming definition (using the @samp{pred(@dots{}) is
+@var{predname}} or @samp{func(@dots{}) is @var{funcname}} form),
+or by a set of one or more clauses, but not both.
+
+Here's an example of an instance declaration and the different kinds
+of method definitions that it can contain:
+
+@example
+:- typeclass foo(T) where [
+	func method1(T, T) = int,
+	func method2(T) = int,
+	pred method3(T::in, int::out) is det
+	pred method4(T::in, io__state::di, io__state::uo) is det
+	func method5(bool, T) = T
+].
+
+:- instance foo(int) where [
+	% method defined by naming the implementation
+	func(method1/1) is (+),
+
+	% method defined by a fact
+	method2(X) = X + 1,
+
+	% method defined by a rule
+	(method3(X, Y) :- Y = X + 2),
+
+	% method defined by a DCG rule
+	(method4(X) --> io__print(X), io__nl),
+
+	% method defined by multiple clauses
+	method5(no, _) = 0,
+	(method5(yes, X) = Y :- X + Y = 0)
+].
+@end example
+	
 Each @samp{instance} declaration must define an implementation for
 every method declared in the corresponding @samp{typeclass} declaration.
 It is an error to define more than one implementation for the same
@@ -3709,14 +3990,14 @@ constraints on existentially quantified type variables.
 @section Existentially typed predicates and functions
 
 @menu
-* Syntax for explicit type qualifiers::
-* Semantics of type qualifiers::
+* Syntax for explicit type quantifiers::
+* Semantics of type quantifiers::
 * Examples of correct code using type quantifiers::
 * Examples of incorrect code using type quantifiers::
 @end menu
 
-@node Syntax for explicit type qualifiers
-@subsection Syntax for explicit type qualifiers
+@node Syntax for explicit type quantifiers
+@subsection Syntax for explicit type quantifiers
 
 Type variables in type declarations for polymorphic predicates or functions
 are normally universally quantified.  
@@ -3752,8 +4033,8 @@ quantifiers.)  For example:
 :- all [T3] some [T2] pred foo(T1, T2, T3).
 @end example
 
-@node Semantics of type qualifiers
-@subsection Semantics of type qualifiers
+@node Semantics of type quantifiers
+@subsection Semantics of type quantifiers
 
 If a type variable in the type declaration for a polymorphic predicate
 or function is universally quantified, this means the caller will

@@ -21,6 +21,7 @@
 	% Returns the name of the module containing public builtins;
 	% originally this was "mercury_builtin", but it later became
 	% just "builtin", and it may eventually be renamed "std:builtin".
+	% This module is automatically imported, as if via `import_module'.
 
 :- pred mercury_public_builtin_module(sym_name).
 :- mode mercury_public_builtin_module(out) is det.
@@ -29,9 +30,26 @@
 	% traditionally this was "mercury_builtin", but it later became
 	% "private_builtin", and it may eventually be renamed
 	% "std:private_builtin".
+	% This module is automatically imported, as if via `use_module'.
 
 :- pred mercury_private_builtin_module(sym_name).
 :- mode mercury_private_builtin_module(out) is det.
+
+	% Returns the name of the module containing builtins for tabling;
+	% originally these were in "private_builtin", but they
+	% may soon be moved into a separate module.
+	% This module is automatically imported iff tabling is enabled.
+
+:- pred mercury_table_builtin_module(sym_name).
+:- mode mercury_table_builtin_module(out) is det.
+
+	% Succeeds iff the specified module is one of the three
+	% builtin modules listed above which are automatically imported.
+
+:- pred any_mercury_builtin_module(sym_name).
+:- mode any_mercury_builtin_module(in) is semidet.
+
+%-----------------------------------------------------------------------------%
 
 	% Given a symbol name, return its unqualified name.
 
@@ -173,6 +191,13 @@
 % 		M = qualified(unqualified("std"), "private_builtin"))).
 mercury_public_builtin_module(unqualified("builtin")).
 mercury_private_builtin_module(unqualified("private_builtin")).
+mercury_table_builtin_module(unqualified("table_builtin")).
+
+any_mercury_builtin_module(Module) :-
+	(	mercury_public_builtin_module(Module)
+	;	mercury_private_builtin_module(Module)
+	;	mercury_table_builtin_module(Module)
+	).
 
 unqualify_name(unqualified(PredName), PredName).
 unqualify_name(qualified(_ModuleName, PredName), PredName).

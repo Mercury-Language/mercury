@@ -14,10 +14,10 @@
 %
 % We reserve some slots in the stack frame of the traced procedure.
 % One contains the call sequence number, which is set in the procedure prologue
-% by incrementing a global counter. An other contains the call depth, which
+% by incrementing a global counter. Another contains the call depth, which
 % is also set by incrementing a global variable containing the depth of the
 % caller. The caller sets this global variable from its own saved depth
-% just before the call.  We also save the event number, and sometimes also
+% just before the call. We also save the event number, and sometimes also
 % the redo layout and the from_full flag.
 %
 % Each event has a label associated with it. The stack layout for that label
@@ -103,8 +103,8 @@
 	% of the procedure (those partially clobbered may still be of interest,
 	% although to handle them properly we need to record insts in stack
 	% layouts).
-:- pred trace__fail_vars(module_info::in, proc_info::in,
-		set(prog_var)::out) is det.
+:- pred trace__fail_vars(module_info::in, proc_info::in, set(prog_var)::out)
+	is det.
 
 	% Return the number of slots reserved for tracing information.
 	% If there are N slots, the reserved slots will be 1 through N.
@@ -691,19 +691,10 @@ trace__maybe_setup_redo_event(TraceInfo, Code) :-
 trace__produce_vars([], _, _, Tvars, Tvars, [], empty) --> [].
 trace__produce_vars([Var | Vars], VarSet, InstMap, Tvars0, Tvars,
 		[VarInfo | VarInfos], tree(VarCode, VarsCode)) -->
-	code_info__produce_variable_in_reg_or_stack(Var, VarCode, Rval),
+	code_info__produce_variable_in_reg_or_stack(Var, VarCode, Lval),
 	code_info__variable_type(Var, Type),
 	code_info__get_module_info(ModuleInfo),
 	{
-	( Rval = lval(LvalPrime) ->
-		Lval = LvalPrime
-	;
-		error("var not an lval in trace__produce_vars")
-		% If the value of the variable is known,
-		% we record it as living in a nonexistent location, r0.
-		% The code that interprets layout information must know this.
-		% Lval = reg(r, 0)
-	),
 	( varset__search_name(VarSet, Var, SearchName) ->
 		Name = SearchName
 	;

@@ -21,7 +21,13 @@
 ** and then doles out portions of these chunks one at a time.
 ** We use MR_prof_malloc() to reduce the chance of calling MR_GC_malloc()
 ** from a profiling interrupt that interrupted another call to MR_GC_malloc().
-** Doing that is bad news, because MR_GC_malloc() is not re-entrant.
+** Doing that is bad news, because MR_GC_malloc() is not guaranteed to be
+** re-entrant.
+** (If conservative GC is enabled, then MR_GC_malloc() _is_ re-entrant,
+** since for profiling grades we compile the conservative collector without
+** -DNO_SIGNALS [see boehm_gc/README for documentation about -DNO_SIGNALS].
+** But if conservative GC is not enabled, then MR_GC_malloc() just
+** calls malloc(), which is not guaranteed to be re-entrant.)
 **
 ** Note that the current implementation of MR_prof_malloc only guarantees
 ** that the memory will be MR_Word-aligned; if you want to allocate types

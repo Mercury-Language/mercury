@@ -40,6 +40,8 @@ MR_Spy_Point    	**MR_spy_points;
 int			MR_spy_point_next = 0;
 int			MR_spy_point_max  = 0;
 
+int			MR_most_recent_spy_point = -1;
+
 /* The initial size of the spy points table. */
 #define	MR_INIT_SPY_POINTS	10
 
@@ -331,23 +333,25 @@ MR_add_proc_spy_point(MR_Spy_When when, MR_Spy_Action action,
 	MR_spy_points[point_slot] = point;
 	MR_spy_point_next++;
 
+	MR_most_recent_spy_point = point_slot;
 	return point_slot;
 }
 
 int
 MR_add_line_spy_point(MR_Spy_Action action,
-	const char *filename, int linenumber)
+	const char *orig_filename, int linenumber)
 {
 	MR_Spy_Point	*point;
 	int		point_slot;
 	int		old_size, new_size;
+	char 		*filename;
 
 	/*
 	** The original filename string may have come from a buffer
 	** or other volatile storage.
 	*/
 
-	filename = MR_copy_string(filename);
+	filename = MR_copy_string(orig_filename);
 
 	point_slot = MR_spy_point_next;
 
@@ -382,6 +386,7 @@ MR_add_line_spy_point(MR_Spy_Action action,
 	MR_spy_points[point_slot] = point;
 	MR_spy_point_next++;
 
+	MR_most_recent_spy_point = point_slot;
 	return point_slot;
 }
 
@@ -422,6 +427,10 @@ MR_delete_spy_point(int point_table_slot)
 	int		label_slot;
 
 	point = MR_spy_points[point_table_slot];
+
+	if (MR_most_recent_spy_point == point_table_slot) {
+		MR_most_recent_spy_point = -1;
+	}
 
 	/* this effectively removes the point from the spypoint table */
 	point->spy_exists = FALSE;
@@ -474,4 +483,98 @@ MR_delete_spy_point(int point_table_slot)
 
 		*cur_addr = point->spy_next;
 	}
+}
+
+void
+MR_print_spy_point(FILE *fp, int spy_point_num)
+{
+	MR_Spy_Point	*point;
+
+	point = MR_spy_points[spy_point_num];
+	fprintf(fp, "%2d: %1s %-5s %9s ",
+		spy_point_num,
+		point->spy_exists ?
+			(point->spy_enabled ? "+" : "-") :
+			(point->spy_enabled ? "E" : "D"),
+		MR_spy_action_string(point->spy_action),
+		MR_spy_when_names[point->spy_when]);
+	if (point->spy_when == MR_SPY_LINENO) {
+		fprintf(fp, "%s:%d\n",
+			point->spy_filename, point->spy_linenumber);
+	} else {
+		MR_print_proc_id(fp, point->spy_proc);
+		fprintf(fp, "\n");
+	}
+}
+
+bool
+MR_save_spy_points(FILE *fp, FILE *err_fp)
+{
+	MR_Spy_Point	*point;
+	int		i;
+
+	for (i = 0; i < MR_spy_point_next; i++) {
+		if (! MR_spy_points[i]->spy_exists) {
+			continue;
+		}
+
+		point = MR_spy_points[i];
+
+		switch (point->spy_action) {
+			case MR_SPY_STOP:
+				fprintf(fp, "break ");
+				break;
+
+			case MR_SPY_PRINT:
+				fprintf(fp, "break -P ");
+				break;
+
+			default:
+				fprintf(err_fp, "internal error: "
+					"unknown spy action\n");
+				return TRUE;
+		}
+
+		switch (point->spy_when) {
+			case MR_SPY_LINENO:
+				fprintf(fp, "%s:%d\n",
+					point->spy_filename,
+					point->spy_linenumber);
+				break;
+
+			case MR_SPY_ALL:
+				fprintf(fp, "-a ");
+				MR_print_proc_spec(fp, point->spy_proc);
+				fprintf(fp, "\n");
+				break;
+
+			case MR_SPY_INTERFACE:
+				MR_print_proc_spec(fp, point->spy_proc);
+				fprintf(fp, "\n");
+				break;
+
+			case MR_SPY_ENTRY:
+				fprintf(fp, "-e ");
+				MR_print_proc_spec(fp, point->spy_proc);
+				fprintf(fp, "\n");
+				break;
+
+			case MR_SPY_SPECIFIC:
+				fprintf(err_fp, "mdb: cannot save "
+					"breakpoint on specific "
+					"internal label\n");
+				break;
+
+			default:
+				fprintf(err_fp, "mdb: internal error: "
+					"unknown spy when\n");
+				return TRUE;
+		}
+
+		if (!point->spy_enabled) {
+			fprintf(fp, "disable\n");
+		}
+	}
+
+	return FALSE;
 }

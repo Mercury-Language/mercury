@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1999 The University of Melbourne.
+% Copyright (C) 1994-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -20,6 +20,13 @@
 :- import_module options.
 
 :- type globals.
+
+:- type compilation_target
+	--->	c	% Generate C code
+	;	il	% Generate IL assembler code
+			% IL is the Microsoft .NET Intermediate Language
+	;	java.	% Generate Java
+			% (this target is not yet implemented)
 
 :- type gc_method
 	--->	none
@@ -47,6 +54,7 @@
 	;	shallow
 	;	deep.
 
+:- pred convert_target(string::in, compilation_target::out) is semidet.
 :- pred convert_gc_method(string::in, gc_method::out) is semidet.
 :- pred convert_tags_method(string::in, tags_method::out) is semidet.
 :- pred convert_prolog_dialect(string::in, prolog_dialect::out) is semidet.
@@ -58,11 +66,12 @@
 
 	% Access predicates for the `globals' structure.
 
-:- pred globals__init(option_table::di, gc_method::di, tags_method::di,
-	prolog_dialect::di, termination_norm::di, trace_level::di,
-	globals::uo) is det.
+:- pred globals__init(option_table::di, compilation_target::di, gc_method::di,
+	tags_method::di, prolog_dialect::di, termination_norm::di,
+	trace_level::di, globals::uo) is det.
 
 :- pred globals__get_options(globals::in, option_table::out) is det.
+:- pred globals__get_target(globals::in, compilation_target::out) is det.
 :- pred globals__get_gc_method(globals::in, gc_method::out) is det.
 :- pred globals__get_tags_method(globals::in, tags_method::out) is det.
 :- pred globals__get_prolog_dialect(globals::in, prolog_dialect::out) is det.
@@ -107,8 +116,12 @@
 	% Access predicates for storing a `globals' structure in the
 	% io__state using io__set_globals and io__get_globals.
 
-:- pred globals__io_init(option_table::di, gc_method::in, tags_method::in,
-	prolog_dialect::in, termination_norm::in, trace_level::in,
+:- pred globals__io_init(option_table::di, compilation_target::in,
+	gc_method::in, tags_method::in, prolog_dialect::in,
+	termination_norm::in, trace_level::in,
+	io__state::di, io__state::uo) is det.
+
+:- pred globals__io_get_target(compilation_target::out,
 	io__state::di, io__state::uo) is det.
 
 :- pred globals__io_get_gc_method(gc_method::out,
@@ -164,6 +177,17 @@
 :- import_module exprn_aux.
 :- import_module map, std_util, io, require.
 
+	% XXX this should use the same language specification
+	% strings as parse_foreign_language.
+	% Also, we should probably just convert to lower case and then
+	% test against known strings.
+convert_target("java", java).
+convert_target("Java", java).
+convert_target("il", il).
+convert_target("IL", il).
+convert_target("c", c).
+convert_target("C", c).
+
 convert_gc_method("none", none).
 convert_gc_method("conservative", conservative).
 convert_gc_method("accurate", accurate).
@@ -202,33 +226,32 @@ convert_trace_level("default", yes, deep).
 
 :- type globals
 	--->	globals(
-			option_table,
-			gc_method,
-			tags_method,
-			prolog_dialect,
-			termination_norm,
-			trace_level
+			options 		:: option_table,
+			target 			:: compilation_target,
+			gc_method 		:: gc_method,
+			tags_method 		:: tags_method,
+			prolog_dialect 		:: prolog_dialect,
+			termination_norm 	:: termination_norm,
+			trace_level 		:: trace_level
 		).
 
-globals__init(Options, GC_Method, TagsMethod,
+globals__init(Options, Target, GC_Method, TagsMethod,
 		PrologDialect, TerminationNorm, TraceLevel,
-	globals(Options, GC_Method, TagsMethod,
+	globals(Options, Target, GC_Method, TagsMethod,
 		PrologDialect, TerminationNorm, TraceLevel)).
 
-globals__get_options(globals(Options, _, _, _, _, _), Options).
-globals__get_gc_method(globals(_, GC_Method, _, _, _, _), GC_Method).
-globals__get_tags_method(globals(_, _, TagsMethod, _, _, _), TagsMethod).
-globals__get_prolog_dialect(globals(_, _, _, PrologDialect, _, _),
-	PrologDialect).
-globals__get_termination_norm(globals(_, _, _, _, TerminationNorm, _),
-	TerminationNorm).
-globals__get_trace_level(globals(_, _, _, _, _, TraceLevel), TraceLevel).
+globals__get_options(Globals, Globals^options).
+globals__get_target(Globals, Globals^target).
+globals__get_gc_method(Globals, Globals^gc_method).
+globals__get_tags_method(Globals, Globals^tags_method).
+globals__get_prolog_dialect(Globals, Globals^prolog_dialect).
+globals__get_termination_norm(Globals, Globals^termination_norm).
+globals__get_trace_level(Globals, Globals^trace_level).
 
-globals__set_options(globals(_, B, C, D, E, F), Options,
-	globals(Options, B, C, D, E, F)).
+globals__set_options(Globals, Options, Globals^options := Options).
 
-globals__set_trace_level(globals(A, B, C, D, E, _), TraceLevel,
-	globals(A, B, C, D, E, TraceLevel)).
+globals__set_trace_level(Globals, TraceLevel,
+	Globals^trace_level := TraceLevel).
 
 globals__lookup_option(Globals, Option, OptionData) :-
 	globals__get_options(Globals, OptionTable),
@@ -306,16 +329,21 @@ globals__want_return_var_layouts(Globals, WantReturnLayouts) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-globals__io_init(Options, GC_Method, TagsMethod,
+globals__io_init(Options, Target, GC_Method, TagsMethod,
 		PrologDialect, TerminationNorm, TraceLevel) -->
+	{ copy(Target, Target1) },
 	{ copy(GC_Method, GC_Method1) },
 	{ copy(TagsMethod, TagsMethod1) },
 	{ copy(PrologDialect, PrologDialect1) },
 	{ copy(TerminationNorm, TerminationNorm1) },
 	{ copy(TraceLevel, TraceLevel1) },
-	{ globals__init(Options, GC_Method1, TagsMethod1,
+	{ globals__init(Options, Target1, GC_Method1, TagsMethod1,
 		PrologDialect1, TerminationNorm1, TraceLevel1, Globals) },
 	globals__io_set_globals(Globals).
+
+globals__io_get_target(Target) -->
+	globals__io_get_globals(Globals),
+	{ globals__get_target(Globals, Target) }.
 
 globals__io_get_gc_method(GC_Method) -->
 	globals__io_get_globals(Globals),

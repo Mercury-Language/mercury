@@ -75,6 +75,29 @@
 				module_info, proc_id, module_info).
 :- mode unify_proc__request_proc(in, in, in, in, in, in, out, out) is det.
 
+	% unify_proc__add_lazily_generated_unify_pred(TypeId,
+	%	UnifyPredId_for_Type, ModuleInfo0, ModuleInfo).
+	%
+	% For most imported unification procedures, we delay
+	% generating declarations and clauses until we know
+	% whether they are actually needed because there
+	% is a complicated unification involving the type.
+	% This predicate is exported for use by higher_order.m
+	% when it is specializing calls to unify/2.
+:- pred unify_proc__add_lazily_generated_unify_pred(type_id,
+		pred_id, module_info, module_info).
+:- mode unify_proc__add_lazily_generated_unify_pred(in,
+		out, in, out) is det.
+	
+	% unify_proc__add_lazily_generated_compare_pred_decl(TypeId,
+	%	ComparePredId_for_Type, ModuleInfo0, ModuleInfo).
+	%
+	% Add declarations, but not clauses, for a compare or index predicate.
+:- pred unify_proc__add_lazily_generated_compare_pred_decl(type_id,
+		pred_id, module_info, module_info).
+:- mode unify_proc__add_lazily_generated_compare_pred_decl(in,
+		out, in, out) is det.
+
 	% Do mode analysis of the queued procedures.
 	% If the first argument is `unique_mode_check',
 	% then also go on and do full determinism analysis and unique mode
@@ -110,7 +133,7 @@
 :- import_module globals, options.
 :- import_module code_util, code_info, type_util.
 :- import_module mercury_to_mercury, hlds_out.
-:- import_module make_hlds, polymorphism, prog_util, prog_out.
+:- import_module make_hlds, polymorphism, post_typecheck, prog_util, prog_out.
 :- import_module quantification, clause_to_proc, term, varset.
 :- import_module modes, mode_util, inst_match, instmap, (inst).
 :- import_module switch_detection, cse_detection, det_analysis, unique_modes.
@@ -234,7 +257,7 @@ unify_proc__request_unify(UnifyId, Determinism, Context, ModuleInfo0,
 			module_info_name(ModuleInfo0, ModuleName),
 			ModuleName = TypeModuleName,
 			module_info_types(ModuleInfo0, TypeTable),
-			map__lookup(TypeTable, TypeId, TypeDefn),
+			map__search(TypeTable, TypeId, TypeDefn),
 			hlds_data__get_type_defn_body(TypeDefn, TypeBody),
 			TypeBody = abstract_type
 		; 
@@ -248,32 +271,41 @@ unify_proc__request_unify(UnifyId, Determinism, Context, ModuleInfo0,
 		% that we are going to generate
 		%
 		module_info_get_special_pred_map(ModuleInfo0, SpecialPredMap),
-		map__lookup(SpecialPredMap, unify - TypeId, PredId),
+		( map__search(SpecialPredMap, unify - TypeId, PredId0) ->
+			PredId = PredId0,
+			ModuleInfo1 = ModuleInfo0
+		;
+			% We generate unification predicates for most
+			% imported types lazily, so add the declarations
+			% and clauses now.
+			unify_proc__add_lazily_generated_unify_pred(TypeId,
+				PredId, ModuleInfo0, ModuleInfo1)
+		),
 
 		% convert from `uni_mode' to `list(mode)'
 		UnifyMode = ((X_Initial - Y_Initial) -> (X_Final - Y_Final)),
 		ArgModes0 = [(X_Initial -> X_Final), (Y_Initial -> Y_Final)],
 
 		% for polymorphic types, add extra modes for the type_infos
-		TypeId = _TypeName - TypeArity,
 		in_mode(InMode),
+		TypeId = _ - TypeArity,
 		list__duplicate(TypeArity, InMode, TypeInfoModes),
 		list__append(TypeInfoModes, ArgModes0, ArgModes),
 
 		ArgLives = no,  % XXX ArgLives should be part of the UnifyId
 
 		unify_proc__request_proc(PredId, ArgModes, ArgLives,
-			yes(Determinism), Context, ModuleInfo0,
-			ProcId, ModuleInfo1),
+			yes(Determinism), Context, ModuleInfo1,
+			ProcId, ModuleInfo2),
 
 		%
 		% save the proc_id for this unify_proc_id
 		%
-		module_info_get_proc_requests(ModuleInfo1, Requests0),
+		module_info_get_proc_requests(ModuleInfo2, Requests0),
 		unify_proc__get_unify_req_map(Requests0, UnifyReqMap0),
 		map__set(UnifyReqMap0, UnifyId, ProcId, UnifyReqMap),
 		unify_proc__set_unify_req_map(Requests0, UnifyReqMap, Requests),
-		module_info_set_proc_requests(ModuleInfo1, Requests,
+		module_info_set_proc_requests(ModuleInfo2, Requests,
 			ModuleInfo)
 	).
 
@@ -470,6 +502,161 @@ save_proc_info(ProcId, PredId, ModuleInfo, OldPredTable0, OldPredTable) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
+unify_proc__add_lazily_generated_unify_pred(TypeId,
+		PredId, ModuleInfo0, ModuleInfo) :-
+	(
+		type_id_is_tuple(TypeId) 
+	->
+		TypeId = _ - TupleArity,
+		
+		%
+		% Build a hlds_type_body for the tuple constructor, which will
+		% be used by unify_proc__generate_clause_info.
+		%
+
+		varset__init(TVarSet0),
+		varset__new_vars(TVarSet0, TupleArity, TupleArgTVars, TVarSet),
+		term__var_list_to_term_list(TupleArgTVars, TupleArgTypes),
+
+		% Tuple constructors can't be existentially quantified.
+		ExistQVars = [], 
+		ClassConstraints = [],
+
+		MakeUnamedField = (func(ArgType) = no - ArgType),
+		CtorArgs = list__map(MakeUnamedField, TupleArgTypes),
+
+		Ctor = ctor(ExistQVars, ClassConstraints,
+				CtorSymName, CtorArgs),
+
+		CtorSymName = unqualified("{}"),
+		ConsId = cons(CtorSymName, TupleArity),
+		map__from_assoc_list([ConsId - unshared_tag(0)],
+			ConsTagValues),
+		UnifyPred = no,
+		IsEnum = no,
+		TypeBody = du_type([Ctor], ConsTagValues, IsEnum, UnifyPred),
+		construct_type(TypeId, TupleArgTypes, Type),
+
+		term__context_init(Context)
+	;
+		unify_proc__collect_type_defn(ModuleInfo0, TypeId,
+			Type, TVarSet, TypeBody, Context)
+	),
+
+	% Call make_hlds.m to construct the unification predicate.
+	( can_generate_special_pred_clauses_for_type(TypeId, TypeBody) ->
+		% If the unification predicate has another status it should
+		% already have been generated. 
+		UnifyPredStatus = pseudo_imported,
+		Item = clauses
+	;
+		UnifyPredStatus = imported(implementation),
+		Item = declaration
+	),
+
+	unify_proc__add_lazily_generated_special_pred(unify, Item,
+		TVarSet, Type, TypeId, TypeBody, Context, UnifyPredStatus,
+		PredId, ModuleInfo0, ModuleInfo).
+
+unify_proc__add_lazily_generated_compare_pred_decl(TypeId,
+		PredId, ModuleInfo0, ModuleInfo) :-
+	unify_proc__collect_type_defn(ModuleInfo0, TypeId, Type,
+		TVarSet, TypeBody, Context),
+	
+	% If the compare predicate has another status it should
+	% already have been generated. 
+	ImportStatus = imported(implementation),
+
+	unify_proc__add_lazily_generated_special_pred(compare, declaration,
+		TVarSet, Type, TypeId, TypeBody, Context, ImportStatus,
+		PredId, ModuleInfo0, ModuleInfo).
+
+:- pred unify_proc__add_lazily_generated_special_pred(special_pred_id,
+		unify_pred_item, tvarset, type, type_id, hlds_type_body,
+		context, import_status, pred_id, module_info, module_info).
+:- mode unify_proc__add_lazily_generated_special_pred(in, in, in, in, in, in,
+		in, in, out, in, out) is det.
+
+unify_proc__add_lazily_generated_special_pred(SpecialId, Item,
+		TVarSet, Type, TypeId, TypeBody, Context, PredStatus,
+		PredId, ModuleInfo0, ModuleInfo) :-
+	%
+	% Add the declaration and maybe clauses.
+	%
+	(
+		Item = clauses,
+		make_hlds__add_special_pred_for_real(SpecialId, ModuleInfo0,
+			TVarSet, Type, TypeId, TypeBody, Context,
+			PredStatus, ModuleInfo1)
+	;
+		Item = declaration,
+		make_hlds__add_special_pred_decl_for_real(SpecialId,
+			ModuleInfo0, TVarSet, Type, TypeId,
+			Context, PredStatus, ModuleInfo1)
+	),
+
+	module_info_get_special_pred_map(ModuleInfo1, SpecialPredMap),
+	map__lookup(SpecialPredMap, SpecialId - TypeId, PredId),
+	module_info_pred_info(ModuleInfo1, PredId, PredInfo0),
+
+	%
+	% The clauses are generated with all type information computed,
+	% so just go on to post_typecheck.
+	%
+	(
+		Item = clauses,
+		post_typecheck__finish_pred_no_io(ModuleInfo1,
+			ErrorProcs, PredInfo0, PredInfo)
+	;
+		Item = declaration,
+		post_typecheck__finish_imported_pred_no_io(ModuleInfo1,
+			ErrorProcs,  PredInfo0, PredInfo)
+	),
+	require(unify(ErrorProcs, []),
+"unify_proc__add_lazily_generated_special_pred: error in post_typecheck"),
+
+	%
+	% Call polymorphism to introduce type_info arguments
+	% for polymorphic types.
+	%
+	module_info_set_pred_info(ModuleInfo1, PredId, PredInfo, ModuleInfo2),
+
+	%
+	% Note that this will not work if the generated clauses call
+	% a polymorphic predicate which requires type_infos to be added.
+	% Such calls can be generated by unify_proc__generate_clause_info,
+	% but unification predicates which contain such calls are never
+	% generated lazily.
+	%
+	polymorphism__process_generated_pred(PredId, ModuleInfo2, ModuleInfo).
+
+:- type unify_pred_item
+	--->	declaration
+	;	clauses
+	.
+
+:- pred unify_proc__collect_type_defn(module_info,
+		type_id, type, tvarset, hlds_type_body, prog_context).
+:- mode unify_proc__collect_type_defn(in, in, out, out, out, out) is det.
+
+unify_proc__collect_type_defn(ModuleInfo0, TypeId, Type,
+		TVarSet, TypeBody, Context) :-
+	module_info_types(ModuleInfo0, Types),
+	map__lookup(Types, TypeId, TypeDefn),
+	hlds_data__get_type_defn_tvarset(TypeDefn, TVarSet),
+	hlds_data__get_type_defn_tparams(TypeDefn, TypeParams),
+	hlds_data__get_type_defn_body(TypeDefn, TypeBody),
+	hlds_data__get_type_defn_status(TypeDefn, TypeStatus),
+	hlds_data__get_type_defn_context(TypeDefn, Context),
+
+	require(special_pred_is_generated_lazily(ModuleInfo0,
+		TypeId, TypeBody, TypeStatus),
+		"unify_proc__add_lazily_generated_unify_pred"),
+
+	construct_type(TypeId, TypeParams, Type).
+
+%-----------------------------------------------------------------------------%
+
 unify_proc__generate_clause_info(SpecialPredId, Type, TypeBody, Context,
 		ModuleInfo, ClauseInfo) :-
 	( TypeBody = eqv_type(EqvType) ->
@@ -503,10 +690,11 @@ unify_proc__generate_clause_info(SpecialPredId, Type, TypeBody, Context,
 		error("unknown special pred")
 	),
 	unify_proc__info_extract(VarTypeInfo, VarSet, Types),
+	map__init(TVarNameMap),
 	map__init(TI_VarMap),
 	map__init(TCI_VarMap),
-	ClauseInfo = clauses_info(VarSet, Types, Types, Args, Clauses,
-			TI_VarMap, TCI_VarMap).
+	ClauseInfo = clauses_info(VarSet, Types, TVarNameMap,
+			Types, Args, Clauses, TI_VarMap, TCI_VarMap).
 
 :- pred unify_proc__generate_unify_clauses(hlds_type_body, prog_var, prog_var,
 		prog_context, list(clause), unify_proc_info, unify_proc_info).
@@ -535,25 +723,14 @@ unify_proc__generate_unify_clauses(TypeBody, H1, H2, Context, Clauses) -->
 			unify_proc__quantify_clauses_body([H1, H2], Goal,
 				Context, Clauses)
 		; { IsEnum = yes } ->
-			{ IntType = int_type },
-			unify_proc__info_new_var(IntType, TC1),
-			unify_proc__info_new_var(IntType, TC2),
-			{ TC1ArgVars = [H1, TC1] },
-			unify_proc__build_call("unsafe_type_cast",
-				TC1ArgVars, Context, TC1Goal),
-			{ TC2ArgVars = [H2, TC2] },
-			unify_proc__build_call("unsafe_type_cast",
-				TC2ArgVars, Context, TC2Goal),
-			{ UnifyArgVars = [TC1, TC2] },
-			unify_proc__build_call("unify",
-				UnifyArgVars, Context, UnifyGoal),
-			{ goal_info_init(GoalInfo0) },
-			{ goal_info_set_context(GoalInfo0, Context,
-				GoalInfo) },
-			{ conj_list_to_goal([TC1Goal, TC2Goal, UnifyGoal],
-				GoalInfo, Goal) },
-			{ ArgVars = [H1, H2] },
-			unify_proc__quantify_clauses_body(ArgVars, Goal,
+			%
+			% Enumerations are atomic types, so modecheck_unify.m
+			% will treat this unification as a simple_test, not
+			% a complicated_unify.
+			%
+			{ create_atomic_unification(H1, var(H2),
+				Context, explicit, [], Goal) },
+			unify_proc__quantify_clauses_body([H1, H2], Goal,
 				Context, Clauses)
 		;
 			% Check to see if it's a single zero-arity functor.
@@ -743,15 +920,8 @@ unify_proc__quantify_clauses_body(HeadVars, Goal, Context, Clauses) -->
 unify_proc__quantify_clause_body(HeadVars, Goal, Context, Clause) -->
 	unify_proc__info_get_varset(Varset0),
 	unify_proc__info_get_types(Types0),
-	unify_proc__info_get_type_info_varmap(TVarMap),
-		% Since the we haven't done mode analysis yet, the
-		% instmap_delta fields in goal_infos are not yet
-		% meaningful. Therefore there no point in clipping
-		% them to the set of typeinfo-liveness-completed
-		% nonlocals.
-	{ TypeInfoLiveness = no },
 	{ implicitly_quantify_clause_body(HeadVars, Goal, Varset0, Types0,
-		TVarMap, TypeInfoLiveness, Body, Varset, Types, _Warnings) },
+		Body, Varset, Types, _Warnings) },
 	unify_proc__info_set_varset(Varset),
 	unify_proc__info_set_types(Types),
 	{ Clause = clause([], Body, Context) }.
@@ -965,16 +1135,8 @@ unify_proc__generate_du_solve_equal_clauses([Ctor | Ctors], H1, H2, Context,
 	{ conj_list_to_goal(GoalList, GoalInfo, Goal) },
 	unify_proc__info_get_varset(Varset0),
 	unify_proc__info_get_types(Types0),
-	unify_proc__info_get_type_info_varmap(TVarMap),
-		% Since the we haven't done mode analysis yet, the
-		% instmap_delta fields in goal_infos are not yet
-		% meaningful. Therefore there no point in clipping
-		% them to the set of typeinfo-liveness-completed
-		% nonlocals.
-	{ TypeInfoLiveness = no },
 	{ implicitly_quantify_clause_body([H1, H2], Goal,
-		Varset0, Types0, TVarMap, TypeInfoLiveness, 
-		Body, Varset, Types, _Warnings) },
+		Varset0, Types0, Body, Varset, Types, _Warnings) },
 	unify_proc__info_set_varset(Varset),
 	unify_proc__info_set_types(Types),
 	{ Clause = clause([], Body, Context) },

@@ -58,9 +58,9 @@
 		)
 	;	higher_order_type_info(
 			%
-			% This represents a higher-order type.
-			% The rtti_type_id field will be pred/0
-			% or func/0; the real arity is 
+			% This represents a higher-order or tuple type.
+			% The rtti_type_id field will be pred/0,
+			% func/0 or tuple/0; the real arity is 
 			% given in the arity field.
 			%
 			rtti_type_id,
@@ -104,14 +104,20 @@ pseudo_type_info__construct_pseudo_type_info(Type, NumUnivQTvars,
 			% defined pred_0 type_ctor_info, have an extra
 			% argument for their real arity, and then type
 			% arguments according to their types.
+			% Tuples are similar -- they use the tuple_0
+			% type_ctor_info.
 			% polymorphism.m has a detailed explanation.
 			% XXX polymorphism.m does not have a
 			% detailed explanation.
-			type_is_higher_order(Type, _PredFunc,
-				_EvalMethod, _TypeArgs)
+			( type_is_higher_order(Type, _, _, _) ->
+				TypeName = "pred"
+			; type_is_tuple(Type, _) ->
+				TypeName = "tuple"
+			;
+				fail
+			)
 		->
 			TypeModule = unqualified(""),
-			TypeName = "pred",
 			Arity = 0,
 			RttiTypeId = rtti_type_id(TypeModule, TypeName, Arity),
 			TypeId = _QualTypeName - RealArity,

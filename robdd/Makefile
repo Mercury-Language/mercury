@@ -1,5 +1,5 @@
 #  File     : Makefile
-#  RCS      : $Id: Makefile,v 1.1.2.1 2000-09-21 01:27:38 dgj Exp $
+#  RCS      : $Id: Makefile,v 1.1.2.2 2000-09-27 04:00:08 dgj Exp $
 #  Author   : Peter Schachte
 #  Origin   : 1995
 #  Purpose  : Makefile for bryant graph (ROBDD) manipulation code

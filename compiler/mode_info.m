@@ -275,23 +275,6 @@
 :- mode mode_info_set_checking_extra_goals(in,
 		mode_info_di, mode_info_uo) is det.
 
-:- pred mode_info_get_typeinfo_liveness(mode_info, bool).
-:- mode mode_info_get_typeinfo_liveness(mode_info_no_io, out) is det.
-
-:- pred mode_info_get_completed_nonlocals_base(hlds_goal_info,
-		vartypes, type_info_varmap, bool, set(prog_var)).
-:- mode mode_info_get_completed_nonlocals_base(in, in, in, in, out) is det.
-
-:- pred mode_info_get_completed_nonlocals(hlds_goal_info, set(prog_var),
-		mode_info, mode_info).
-:- mode mode_info_get_completed_nonlocals(in, out,
-		mode_info_di, mode_info_uo) is det.
-
-:- pred mode_info_get_goal_completed_nonlocals(hlds_goal, set(prog_var),
-		mode_info, mode_info).
-:- mode mode_info_get_goal_completed_nonlocals(in, out,
-		mode_info_di, mode_info_uo) is det.
-
 	% Find the simple_call_id to use in error messages
 	% for the given pred_id.
 :- pred mode_info_get_call_id(mode_info, pred_id, simple_call_id).
@@ -350,7 +333,7 @@
 
 :- implementation.
 
-:- import_module delay_info, mode_errors, mode_util, globals, prog_util.
+:- import_module delay_info, mode_errors, mode_util.
 :- import_module term, varset.
 :- import_module require, std_util, queue.
 
@@ -431,7 +414,7 @@
 					% to change which procedure
 					% is called?
 
-			checking_extra_goals :: bool,
+			checking_extra_goals :: bool
 					% Are we rechecking a goal after
 					% introducing unifications for
 					% complicated sub-unifications
@@ -439,9 +422,6 @@
 					% If so, redoing the mode check
 					% should not introduce more
 					% extra unifications.
-
-			typeinfo_liveness :: bool,
-			type_info_varmap :: type_info_varmap
 		).
 
 	% The normal inst of a mode_info struct: ground, with
@@ -465,7 +445,6 @@ mode_info_init(IOState, ModuleInfo, PredId, ProcId, Context,
 	map__lookup(Procs, ProcId, ProcInfo),
 	proc_info_varset(ProcInfo, VarSet),
 	proc_info_vartypes(ProcInfo, VarTypes),
-	proc_info_typeinfo_varmap(ProcInfo, TVarMap),
 
 	LiveVarsList = [LiveVars],
 	NondetLiveVarsList = [LiveVars],
@@ -473,14 +452,11 @@ mode_info_init(IOState, ModuleInfo, PredId, ProcId, Context,
 	Changed = no,
 	CheckingExtraGoals = no,
 
-	module_info_globals(ModuleInfo, Globals),
-	body_should_use_typeinfo_liveness(PredInfo, Globals, TypeInfoLiveness),
 	ModeInfo = mode_info(
 		IOState, ModuleInfo, PredId, ProcId, VarSet, VarTypes,
 		Context, ModeContext, InstMapping0, LockedVars, DelayInfo,
 		ErrorList, LiveVarsList, NondetLiveVarsList, [], [],
-		Changed, HowToCheck, MayChangeProc, CheckingExtraGoals,
-		TypeInfoLiveness, TVarMap
+		Changed, HowToCheck, MayChangeProc, CheckingExtraGoals
 	).
 
 %-----------------------------------------------------------------------------%
@@ -522,7 +498,6 @@ mode_info_get_parallel_vars(PVars) --> PVars =^ parallel_vars.
 mode_info_get_changed_flag(MI, MI^changed_flag).
 mode_info_get_how_to_check(MI, MI^how_to_check).
 mode_info_get_may_change_called_proc(MI, MI^may_change_called_proc).
-mode_info_get_typeinfo_liveness(MI, MI^typeinfo_liveness).
 
 mode_info_set_module_info(MI, ModuleInfo, MI^module_info := ModuleInfo).
 mode_info_set_varset(VarSet) --> ^varset := VarSet.
@@ -760,29 +735,5 @@ mode_info_add_error(ModeErrorInfo, ModeInfo0, ModeInfo) :-
         mode_info_get_errors(ModeInfo0, Errors0),
         list__append(Errors0, [ModeErrorInfo], Errors),
         mode_info_set_errors(Errors, ModeInfo0, ModeInfo).
-
-%-----------------------------------------------------------------------------%
-
-mode_info_get_completed_nonlocals_base(GoalInfo, VarTypes, TVarMap,
-		TypeinfoLiveness, CompletedNonlocals) :-
-	goal_info_get_nonlocals(GoalInfo, NonLocals),
-	(
-		TypeinfoLiveness = yes,
-		proc_info_get_typeinfo_vars(NonLocals, VarTypes, TVarMap,
-			TypeInfoVars),
-		set__union(NonLocals, TypeInfoVars, CompletedNonlocals)
-	;
-		TypeinfoLiveness = no,
-		CompletedNonlocals = NonLocals
-	).
-
-mode_info_get_completed_nonlocals(GoalInfo, CompletedNonlocals,
-		ModeInfo, ModeInfo) :-
-	mode_info_get_completed_nonlocals_base(GoalInfo,
-		ModeInfo^var_types, ModeInfo^type_info_varmap,
-		ModeInfo^typeinfo_liveness, CompletedNonlocals).
-
-mode_info_get_goal_completed_nonlocals(_ - GoalInfo, CompletedNonlocals) -->
-	mode_info_get_completed_nonlocals(GoalInfo, CompletedNonlocals).
 
 %-----------------------------------------------------------------------------%

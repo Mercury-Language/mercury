@@ -80,14 +80,18 @@ handle_options(MaybeError, Args, Link) -->
 			ConvertToGoedel),
 		globals__io_lookup_bool_option(typecheck_only, TypecheckOnly),
 		globals__io_lookup_bool_option(errorcheck_only, ErrorcheckOnly),
-		globals__io_lookup_bool_option(compile_to_c, CompileToC),
+		globals__io_lookup_bool_option(target_code_only,
+			TargetCodeOnly),
+		globals__io_get_target(Target),
+		{ GenerateIL = (if Target = il then yes else no) },
 		globals__io_lookup_bool_option(compile_only, CompileOnly),
 		globals__io_lookup_bool_option(aditi_only, AditiOnly),
 		{ bool__or_list([GenerateDependencies, MakeInterface,
 			MakePrivateInterface, MakeShortInterface,
 			MakeOptimizationInt, MakeTransOptInt,
 			ConvertToMercury, ConvertToGoedel, TypecheckOnly,
-			ErrorcheckOnly, CompileToC, CompileOnly, AditiOnly],
+			ErrorcheckOnly, TargetCodeOnly, GenerateIL,
+			CompileOnly, AditiOnly],
 			NotLink) },
 		{ bool__not(NotLink, Link) }
 	).
@@ -114,93 +118,103 @@ dump_arguments([Arg | Args]) -->
 
 postprocess_options(error(ErrorMessage), yes(ErrorMessage)) --> [].
 postprocess_options(ok(OptionTable), Error) -->
-    { map__lookup(OptionTable, gc, GC_Method0) },
+    { map__lookup(OptionTable, target, Target0) },
     (
-        { GC_Method0 = string(GC_MethodStr) },
-        { convert_gc_method(GC_MethodStr, GC_Method) }
+        { Target0 = string(TargetStr) },
+        { convert_target(TargetStr, Target) }
     ->
-        { map__lookup(OptionTable, tags, TagsMethod0) },
+        { map__lookup(OptionTable, gc, GC_Method0) },
         (
-            { TagsMethod0 = string(TagsMethodStr) },
-            { convert_tags_method(TagsMethodStr, TagsMethod) }
+            { GC_Method0 = string(GC_MethodStr) },
+            { convert_gc_method(GC_MethodStr, GC_Method) }
         ->
-            { map__lookup(OptionTable, prolog_dialect, PrologDialect0) },
+            { map__lookup(OptionTable, tags, TagsMethod0) },
             (
-                { PrologDialect0 = string(PrologDialectStr) },
-                { convert_prolog_dialect(PrologDialectStr, PrologDialect) }
+                { TagsMethod0 = string(TagsMethodStr) },
+                { convert_tags_method(TagsMethodStr, TagsMethod) }
             ->
-                { map__lookup(OptionTable,
-                    fact_table_hash_percent_full, PercentFull) },
+                { map__lookup(OptionTable, prolog_dialect, PrologDialect0) },
                 (
-                    { PercentFull = int(Percent) },
-                    { Percent >= 1 },
-                    { Percent =< 100 }
+                    { PrologDialect0 = string(PrologDialectStr) },
+                    { convert_prolog_dialect(PrologDialectStr, PrologDialect) }
                 ->
-                    { map__lookup(OptionTable, termination_norm,
-                        TermNorm0) },
+                    { map__lookup(OptionTable,
+                        fact_table_hash_percent_full, PercentFull) },
                     (
-                        { TermNorm0 = string(TermNormStr) },
-                        { convert_termination_norm(TermNormStr, TermNorm) }
+                        { PercentFull = int(Percent) },
+                        { Percent >= 1 },
+                        { Percent =< 100 }
                     ->
-                        { map__lookup(OptionTable, trace, Trace) },
-                        { map__lookup(OptionTable, require_tracing,
-                            RequireTracingOpt) },
+                        { map__lookup(OptionTable, termination_norm,
+                            TermNorm0) },
                         (
-                            { Trace = string(TraceStr) },
-                            { RequireTracingOpt = bool(RequireTracing) },
-                            { convert_trace_level(TraceStr, RequireTracing,
-                                TraceLevel) }
+                            { TermNorm0 = string(TermNormStr) },
+                            { convert_termination_norm(TermNormStr, TermNorm) }
                         ->
-                            { map__lookup(OptionTable, dump_hlds_alias,
-                                DumpAliasOption) },
+                            { map__lookup(OptionTable, trace, Trace) },
+                            { map__lookup(OptionTable, require_tracing,
+                                RequireTracingOpt) },
                             (
-                                { DumpAliasOption = string(DumpAlias) },
-                                { DumpAlias = "" }
+                                { Trace = string(TraceStr) },
+                                { RequireTracingOpt = bool(RequireTracing) },
+                                { convert_trace_level(TraceStr, RequireTracing,
+                                    TraceLevel) }
                             ->
-                                postprocess_options_2(OptionTable,
-                                    GC_Method, TagsMethod, PrologDialect,
-				    TermNorm, TraceLevel, Error)
+                                { map__lookup(OptionTable, dump_hlds_alias,
+                                    DumpAliasOption) },
+                                (
+                                    { DumpAliasOption = string(DumpAlias) },
+                                    { DumpAlias = "" }
+                                ->
+                                    postprocess_options_2(OptionTable,
+                                        Target, GC_Method, TagsMethod,
+				        PrologDialect, TermNorm, TraceLevel,
+					Error)
+                                ;
+                                    { DumpAliasOption = string(DumpAlias) },
+                                    { convert_dump_alias(DumpAlias,
+                                        DumpOptions) }
+                                ->
+                                    { map__set(OptionTable, dump_hlds_options,
+                                        string(DumpOptions), NewOptionTable) },
+                                    postprocess_options_2(NewOptionTable,
+                                        Target, GC_Method, TagsMethod,
+				        PrologDialect, TermNorm, TraceLevel,
+					Error)
+                                ;
+                                    { Error = yes("Invalid argument to option `--hlds-dump-alias'.") }
+                                )
                             ;
-                                { DumpAliasOption = string(DumpAlias) },
-                                { convert_dump_alias(DumpAlias,
-                                    DumpOptions) }
-                            ->
-                                { map__set(OptionTable, dump_hlds_options,
-                                    string(DumpOptions), NewOptionTable) },
-                                postprocess_options_2(NewOptionTable,
-                                    GC_Method, TagsMethod, PrologDialect,
-				    TermNorm, TraceLevel, Error)
-                            ;
-                                { Error = yes("Invalid argument to option `--hlds-dump-alias'.") }
+                                { Error = yes("Invalid argument to option `--trace'\n\t(must be `minimum', `shallow', `deep', or `default').") }
                             )
                         ;
-                            { Error = yes("Invalid argument to option `--trace'\n\t(must be `minimum', `shallow', `deep', or `default').") }
+                            { Error = yes("Invalid argument to option `--termination-norm'\n\t(must be `simple', `total' or  `num-data-elems').") }
                         )
                     ;
-                        { Error = yes("Invalid argument to option `--termination-norm'\n\t(must be `simple', `total' or  `num-data-elems').") }
+                        { Error = yes("Invalid argument to option `--fact-table-hash-percent-full'\n\t(must be an integer between 1 and 100)") }
                     )
                 ;
-                    { Error = yes("Invalid argument to option `--fact-table-hash-percent-full'\n\t(must be an integer between 1 and 100)") }
+                    { Error = yes("Invalid prolog-dialect option (must be `sicstus', `nu', or `default')") }
                 )
             ;
-                { Error = yes("Invalid prolog-dialect option (must be `sicstus', `nu', or `default')") }
+                { Error = yes("Invalid tags option (must be `none', `low' or `high')") }
             )
         ;
-            { Error = yes("Invalid tags option (must be `none', `low' or `high')") }
-        )
+            { Error = yes("Invalid GC option (must be `none', `conservative' or `accurate')") }
+	)
     ;
-        { Error = yes("Invalid GC option (must be `none', `conservative' or `accurate')") }
+        { Error = yes("Invalid target option (must be `c' or `il')") }
     ).
 
-:- pred postprocess_options_2(option_table, gc_method, tags_method,
-	prolog_dialect, termination_norm, trace_level, maybe(string),
-	io__state, io__state).
-:- mode postprocess_options_2(in, in, in, in, in, in, out, di, uo) is det.
+:- pred postprocess_options_2(option_table, compilation_target, gc_method,
+	tags_method, prolog_dialect, termination_norm, trace_level,
+	maybe(string), io__state, io__state).
+:- mode postprocess_options_2(in, in, in, in, in, in, in, out, di, uo) is det.
 
-postprocess_options_2(OptionTable, GC_Method, TagsMethod, PrologDialect,
-		TermNorm, TraceLevel, Error) -->
+postprocess_options_2(OptionTable, Target, GC_Method, TagsMethod,
+		PrologDialect, TermNorm, TraceLevel, Error) -->
 	{ unsafe_promise_unique(OptionTable, OptionTable1) }, % XXX
-	globals__io_init(OptionTable1, GC_Method, TagsMethod,
+	globals__io_init(OptionTable1, Target, GC_Method, TagsMethod,
 		PrologDialect, TermNorm, TraceLevel),
 
 	% --gc conservative implies --no-reclaim-heap-*
@@ -249,6 +263,22 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, PrologDialect,
 	),
 
 	globals__io_set_option(num_tag_bits, int(NumTagBits)),
+
+	% Generating IL implies high-level code, turning off nested functions,
+	% using copy-out for nondet output arguments,
+	% using zero tags, boxing enums, disabling no_tag_types and no
+	% static ground terms.
+	( { Target = il } ->
+		globals__io_set_option(highlevel_code, bool(yes)),
+		globals__io_set_option(gcc_nested_functions, bool(no)),
+		globals__io_set_option(nondet_copy_out, bool(yes)),
+		globals__io_set_option(num_tag_bits, int(0)),
+		globals__io_set_option(unboxed_enums, bool(no)),
+		globals__io_set_option(unboxed_no_tag_types, bool(no)),
+		globals__io_set_option(static_ground_terms, bool(no))
+	;
+		[]
+	),
 
 	% --high-level-code disables the use of low-level gcc extensions
 	option_implies(highlevel_code, gcc_non_local_gotos, bool(no)),
@@ -487,6 +517,17 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, PrologDialect,
 	% we are expecting some to be missing.
 	option_implies(use_opt_files, warn_missing_opt_files, bool(no)),
 
+	% --no-lazy-code assumes that const(_) rvals are really constant,
+	% and that create(_) rvals with constant arguments can be materialized
+	% in an assignable rval without further code. For float_consts,
+	% the former is true only if either static_ground_terms or
+	% unboxed_floats is true, and the latter cannot be true without
+	% static_ground_terms.
+	option_neg_implies(lazy_code, static_ground_terms, bool(yes)),
+
+	% --no-lazy-code requires --follow-vars for acceptable performance.
+	option_neg_implies(lazy_code, follow_vars, bool(yes)),
+
 	% --optimize-frames requires --optimize-labels and --optimize-jumps
 	option_implies(optimize_frames, optimize_labels, bool(yes)),
 	option_implies(optimize_frames, optimize_jumps, bool(yes)).
@@ -667,77 +708,105 @@ compute_grade_components(Options, GradeComponents) :-
 :- mode grade_component_table(out, in, out) is multi.
 :- mode grade_component_table(out, out, out) is multi.
 
-	% GCC-hack components
+	% Base components
+	% These specify the basic compilation model we use,
+	% including the choice of back-end and the use of gcc extensions.
 grade_component_table("none", gcc_ext, [
 		asm_labels		- bool(no),
 		gcc_non_local_gotos	- bool(no),
 		gcc_global_registers	- bool(no),
 		highlevel_code		- bool(no),
 		gcc_nested_functions	- bool(no),
-		highlevel_data		- bool(no)]).
+		highlevel_data		- bool(no),
+		target			- string("c")]).
 grade_component_table("reg", gcc_ext, [
 		asm_labels		- bool(no),
 		gcc_non_local_gotos	- bool(no),
 		gcc_global_registers	- bool(yes),
 		highlevel_code		- bool(no),
 		gcc_nested_functions	- bool(no),
-		highlevel_data		- bool(no)]).
+		highlevel_data		- bool(no),
+		target			- string("c")]).
 grade_component_table("jump", gcc_ext, [
 		asm_labels		- bool(no),
 		gcc_non_local_gotos	- bool(yes),
 		gcc_global_registers	- bool(no),
 		highlevel_code		- bool(no),
 		gcc_nested_functions	- bool(no),
-		highlevel_data		- bool(no)]).
+		highlevel_data		- bool(no),
+		target			- string("c")]).
 grade_component_table("asm_jump", gcc_ext, [
 		asm_labels		- bool(yes),
 		gcc_non_local_gotos	- bool(yes),
 		gcc_global_registers	- bool(no),
 		highlevel_code		- bool(no),
 		gcc_nested_functions	- bool(no),
-		highlevel_data		- bool(no)]).
+		highlevel_data		- bool(no),
+		target			- string("c")]).
 grade_component_table("fast", gcc_ext, [
 		asm_labels		- bool(no),
 		gcc_non_local_gotos	- bool(yes),
 		gcc_global_registers	- bool(yes),
 		highlevel_code		- bool(no),
 		gcc_nested_functions	- bool(no),
-		highlevel_data		- bool(no)]).
+		highlevel_data		- bool(no),
+		target			- string("c")]).
 grade_component_table("asm_fast", gcc_ext, [
 		asm_labels		- bool(yes),
 		gcc_non_local_gotos	- bool(yes),
 		gcc_global_registers	- bool(yes),
 		highlevel_code		- bool(no),
 		gcc_nested_functions	- bool(no),
-		highlevel_data		- bool(no)]).
+		highlevel_data		- bool(no),
+		target			- string("c")]).
 grade_component_table("hl", gcc_ext, [
 		asm_labels		- bool(no),
 		gcc_non_local_gotos	- bool(no),
 		gcc_global_registers	- bool(no),
 		highlevel_code		- bool(yes),
 		gcc_nested_functions	- bool(no),
-		highlevel_data		- bool(yes)]).
+		highlevel_data		- bool(yes),
+		target			- string("c")]).
 grade_component_table("hlc", gcc_ext, [
 		asm_labels		- bool(no),
 		gcc_non_local_gotos	- bool(no),
 		gcc_global_registers	- bool(no),
 		highlevel_code		- bool(yes),
 		gcc_nested_functions	- bool(no),
-		highlevel_data		- bool(no)]).
+		highlevel_data		- bool(no),
+		target			- string("c")]).
 grade_component_table("hl_nest", gcc_ext, [
 		asm_labels		- bool(no),
 		gcc_non_local_gotos	- bool(no),
 		gcc_global_registers	- bool(no),
 		highlevel_code		- bool(yes),
 		gcc_nested_functions	- bool(yes),
-		highlevel_data		- bool(yes)]).
+		highlevel_data		- bool(yes),
+		target			- string("c")]).
 grade_component_table("hlc_nest", gcc_ext, [
 		asm_labels		- bool(no),
 		gcc_non_local_gotos	- bool(no),
 		gcc_global_registers	- bool(no),
 		highlevel_code		- bool(yes),
 		gcc_nested_functions	- bool(yes),
-		highlevel_data		- bool(no)]).
+		highlevel_data		- bool(no),
+		target			- string("c")]).
+grade_component_table("il", gcc_ext, [
+		asm_labels		- bool(no),
+		gcc_non_local_gotos	- bool(no),
+		gcc_global_registers	- bool(no),
+		highlevel_code		- bool(yes),
+		gcc_nested_functions	- bool(no),
+		highlevel_data		- bool(yes),
+		target			- string("il")]).
+grade_component_table("ilc", gcc_ext, [
+		asm_labels		- bool(no),
+		gcc_non_local_gotos	- bool(no),
+		gcc_global_registers	- bool(no),
+		highlevel_code		- bool(yes),
+		gcc_nested_functions	- bool(no),
+		highlevel_data		- bool(no),
+		target			- string("il")]).
 
 	% Parallelism/multithreading components.
 grade_component_table("par", par, [parallel - bool(yes)]).

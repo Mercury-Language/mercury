@@ -34,7 +34,7 @@
 
 %-----------------------------------------------------------------------------%
 
-move_follow_code_in_proc(PredInfo, ProcInfo0, ProcInfo,
+move_follow_code_in_proc(_PredInfo, ProcInfo0, ProcInfo,
 		ModuleInfo0, ModuleInfo) :-
 	module_info_globals(ModuleInfo0, Globals),
 	globals__lookup_bool_option(Globals, follow_code, FollowCode),
@@ -51,16 +51,13 @@ move_follow_code_in_proc(PredInfo, ProcInfo0, ProcInfo,
 			% we need to fix up the goal_info by recalculating
 			% the nonlocal vars and the non-atomic instmap deltas.
 		proc_info_headvars(ProcInfo0, HeadVars),
-		proc_info_typeinfo_varmap(ProcInfo0, TVarMap),
-		body_should_use_typeinfo_liveness(PredInfo, Globals,
-			TypeInfoLiveness),
-		implicitly_quantify_clause_body(HeadVars, Goal1,
-			Varset0, VarTypes0, TVarMap, TypeInfoLiveness,
+		implicitly_quantify_clause_body(HeadVars,
+			Goal1, Varset0, VarTypes0,
 			Goal2, Varset, VarTypes, _Warnings),
 		proc_info_get_initial_instmap(ProcInfo0,
 			ModuleInfo0, InstMap0),
-		recompute_instmap_delta(no, PredInfo, Goal2, Goal,
-			VarTypes, TVarMap, InstMap0, ModuleInfo0, ModuleInfo)
+		recompute_instmap_delta(no, Goal2, Goal, VarTypes, InstMap0,
+			ModuleInfo0, ModuleInfo)
 	;
 		Goal = Goal0,
 		Varset = Varset0,

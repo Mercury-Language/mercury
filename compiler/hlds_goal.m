@@ -350,11 +350,21 @@
 				% The only legal lvals in the range are
 				% stackvars and framevars.
 
-:- type follow_vars	==	map(prog_var, lval).
+:- type follow_vars_map	==	map(prog_var, lval).
+
+:- type follow_vars	--->	follow_vars(follow_vars_map, int).
 				% Advisory information about where variables
-				% ought to be put next. The legal range
-				% includes the nonexistent register r(-1),
-				% which indicates any available register.
+				% ought to be put next. Variables may or may
+				% not appear in the map. If they do, then the
+				% associated lval says where the value of that
+				% variable ought to be put when it is computed,
+				% or, if the lval refers to the nonexistent
+				% register r(-1), it says that it should be
+				% put into an available register. The integer
+				% in the second half of the pair gives the
+				% number of the first register that is
+				% not reserved for other purposes, and is
+				% free to hold such variables.
 
 :- type store_map	==	map(prog_var, lval).
 				% Authoritative information about where
@@ -725,11 +735,7 @@
 				% says a goal is unreachable then it is.
 				%
 				% Normally the instmap_delta will list only
-				% the nonlocal variables of the goal. However,
-				% with typeinfo liveness, it may also list
-				% typeinfo or typeclass info variables that
-				% describe (part of) the type of a nonlocal
-				% variable.
+				% the nonlocal variables of the goal.
 
 		context :: prog_context,
 
@@ -945,6 +951,9 @@ hlds_goal__generic_call_id(aditi_builtin(Builtin, Name),
 
 :- pred goal_info_set_goal_path(hlds_goal_info, goal_path, hlds_goal_info).
 :- mode goal_info_set_goal_path(in, in, out) is det.
+
+:- pred goal_get_nonlocals(hlds_goal, set(prog_var)).
+:- mode goal_get_nonlocals(in, out) is det.
 
 :- pred goal_set_follow_vars(hlds_goal, maybe(follow_vars), hlds_goal).
 :- mode goal_set_follow_vars(in, in, out) is det.
@@ -1249,6 +1258,9 @@ goal_info_remove_feature(GoalInfo0, Feature, GoalInfo) :-
 goal_info_has_feature(GoalInfo, Feature) :-
 	goal_info_get_features(GoalInfo, Features),
 	set__member(Feature, Features).
+
+goal_get_nonlocals(_Goal - GoalInfo, NonLocals) :-
+	goal_info_get_nonlocals(GoalInfo, NonLocals).
 
 goal_set_follow_vars(Goal - GoalInfo0, FollowVars, Goal - GoalInfo) :-
 	goal_info_set_follow_vars(GoalInfo0, FollowVars, GoalInfo).

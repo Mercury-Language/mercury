@@ -111,6 +111,9 @@ parse_pragma_type(ModuleName, "c_code", PragmaTerms,
 		    ErrorTerm)
 	).
 
+
+	% XXX this should use the same language specification
+	% strings as globals__convert_target.
 :- pred parse_foreign_language(term, foreign_language).
 :- mode parse_foreign_language(in, out) is semidet.
 

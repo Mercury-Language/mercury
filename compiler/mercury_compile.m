@@ -67,6 +67,7 @@
 :- import_module ml_optimize.			% MLDS -> MLDS
 :- import_module mlds_to_c.			% MLDS -> C
 
+
 	% miscellaneous compiler modules
 :- import_module prog_data, hlds_module, hlds_pred, hlds_out, llds, rl.
 :- import_module mercury_to_mercury, mercury_to_goedel.
@@ -293,9 +294,7 @@ process_module(ModuleName, FileName, Items, Error, ModulesToLink) -->
 	;
 		split_into_submodules(ModuleName, Items, SubModuleList),
 		(
-			{ mercury_private_builtin_module(ModuleName)
-			; mercury_public_builtin_module(ModuleName)
-			}
+			{ any_mercury_builtin_module(ModuleName) }
 		->
 			% Some predicates in the builtin modules are missing
 			% typeinfo arguments, which means that execution
@@ -397,9 +396,9 @@ mercury_compile(Module) -->
 	% If we are only typechecking or error checking, then we should not
 	% modify any files, this includes writing to .d files.
 	mercury_compile__pre_hlds_pass(Module, DontWriteDFile,
-		HLDS1, UndefTypes, UndefModes, Errors1),
-	mercury_compile__frontend_pass(HLDS1, HLDS20, UndefTypes,
-		UndefModes, Errors2),
+		HLDS1, QualInfo, UndefTypes, UndefModes, Errors1),
+	mercury_compile__frontend_pass(HLDS1, QualInfo, UndefTypes,
+		UndefModes, HLDS20, Errors2),
 	( { Errors1 = no }, { Errors2 = no } ->
 	    globals__io_lookup_bool_option(verbose, Verbose),
 	    globals__io_lookup_bool_option(statistics, Stats),
@@ -439,6 +438,8 @@ mercury_compile(Module) -->
 		mercury_compile__middle_pass(ModuleName, HLDS25, HLDS50),
 		globals__io_lookup_bool_option(highlevel_code, HighLevelCode),
 		globals__io_lookup_bool_option(aditi_only, AditiOnly),
+		globals__io_lookup_bool_option(target_code_only, 
+				TargetCodeOnly),
 
 		% magic sets can report errors.
 		{ module_info_num_errors(HLDS50, NumErrors) },
@@ -450,9 +451,9 @@ mercury_compile(Module) -->
 		    ; { HighLevelCode = yes } ->
 			mercury_compile__mlds_backend(HLDS50, MLDS),
 			mercury_compile__mlds_to_high_level_c(MLDS),
-			globals__io_lookup_bool_option(compile_to_c, 
-				CompileToC),
-			( { CompileToC = no } ->
+			( { TargetCodeOnly = yes } ->
+				[]
+			;
 				module_name_to_file_name(ModuleName, ".c", no,
 					C_File),
 				object_extension(Obj),
@@ -460,8 +461,6 @@ mercury_compile(Module) -->
 					O_File),
 				mercury_compile__single_c_to_obj(
 					C_File, O_File, _CompileOK)
-			;
-			    []
 			)
 		    ;
 			mercury_compile__backend_pass(HLDS50, HLDS70,
@@ -481,12 +480,13 @@ mercury_compile(Module) -->
 %-----------------------------------------------------------------------------%
 
 :- pred mercury_compile__pre_hlds_pass(module_imports, bool,
-		module_info, bool, bool, bool, io__state, io__state).
-:- mode mercury_compile__pre_hlds_pass(in, in, out, out, out, out,
+		module_info, qual_info, bool, bool, bool,
+		io__state, io__state).
+:- mode mercury_compile__pre_hlds_pass(in, in, out, out, out, out, out,
 		di, uo) is det.
 
 mercury_compile__pre_hlds_pass(ModuleImports0, DontWriteDFile,
-		HLDS1, UndefTypes, UndefModes, FoundError) -->
+		HLDS1, QualInfo, UndefTypes, UndefModes, FoundError) -->
 	globals__io_lookup_bool_option(statistics, Stats),
 	globals__io_lookup_bool_option(verbose, Verbose),
 
@@ -515,7 +515,8 @@ mercury_compile__pre_hlds_pass(ModuleImports0, DontWriteDFile,
 	{ bool__or(UndefTypes0, CircularTypes, UndefTypes1) },
 
 	mercury_compile__make_hlds(Module, Items, MQInfo, EqvMap, Verbose, 
-			Stats, HLDS0, UndefTypes2, UndefModes2, FoundError),
+			Stats, HLDS0, QualInfo,
+			UndefTypes2, UndefModes2, FoundError),
 
 	{ bool__or(UndefTypes1, UndefTypes2, UndefTypes) },
 	{ bool__or(UndefModes0, UndefModes2, UndefModes) },
@@ -645,15 +646,17 @@ mercury_compile__expand_equiv_types(Items0, Verbose, Stats,
 	maybe_report_stats(Stats).
 
 :- pred mercury_compile__make_hlds(module_name, item_list, mq_info, eqv_map, 
-	bool, bool, module_info, bool, bool, bool, io__state, io__state).
+	bool, bool, module_info, qual_info, bool, bool, bool,
+	io__state, io__state).
 :- mode mercury_compile__make_hlds(in, in, in, in, in, in,
-	out, out, out, out, di, uo) is det.
+	out, out, out, out, out, di, uo) is det.
 
 mercury_compile__make_hlds(Module, Items, MQInfo, EqvMap, Verbose, Stats,
-		HLDS, UndefTypes, UndefModes, FoundSemanticError) -->
+		HLDS, QualInfo, UndefTypes, UndefModes, FoundSemanticError) -->
 	maybe_write_string(Verbose, "% Converting parse tree to hlds...\n"),
 	{ Prog = module(Module, Items) },
-	parse_tree_to_hlds(Prog, MQInfo, EqvMap, HLDS, UndefTypes, UndefModes),
+	parse_tree_to_hlds(Prog, MQInfo, EqvMap, HLDS, QualInfo,
+		UndefTypes, UndefModes),
 	{ module_info_num_errors(HLDS, NumErrors) },
 	( { NumErrors > 0 } ->
 		{ FoundSemanticError = yes },
@@ -667,13 +670,15 @@ mercury_compile__make_hlds(Module, Items, MQInfo, EqvMap, Verbose, Stats,
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- pred mercury_compile__frontend_pass(module_info, module_info, bool,
-					bool, bool, io__state, io__state).
-% :- mode mercury_compile__frontend_pass(di, uo, in, in, out, di, uo) is det.
-:- mode mercury_compile__frontend_pass(in, out, in, in, out, di, uo) is det.
+:- pred mercury_compile__frontend_pass(module_info, qual_info, bool, bool,
+		module_info, bool, io__state, io__state).
+% :- mode mercury_compile__frontend_pass(di, in, in, in, uo, out, di, uo)
+%	is det.
+:- mode mercury_compile__frontend_pass(in, in, in, in, out, out, di, uo)
+	is det.
 
-mercury_compile__frontend_pass(HLDS1, HLDS, FoundUndefTypeError,
-		FoundUndefModeError, FoundError) -->
+mercury_compile__frontend_pass(HLDS1, QualInfo, FoundUndefTypeError,
+		FoundUndefModeError, HLDS, FoundError) -->
 	%
 	% We can't continue after an undefined type error, since
 	% typecheck would get internal errors
@@ -691,7 +696,7 @@ mercury_compile__frontend_pass(HLDS1, HLDS, FoundUndefTypeError,
 		
 	    maybe_write_string(Verbose, 
 		"% Checking typeclass instances...\n"),
-	    check_typeclass__check_instance_decls(HLDS1, HLDS2,
+	    check_typeclass__check_instance_decls(HLDS1, QualInfo, HLDS2,
 		FoundTypeclassError),
 	    mercury_compile__maybe_dump_hlds(HLDS2, "02", "typeclass"),
 
@@ -1243,7 +1248,7 @@ mercury_compile__backend_pass_by_preds_2([PredId | PredIds], ModuleInfo0,
 		; hlds_pred__pred_info_is_aditi_relation(PredInfo)
 		}
 	->
-		{ ModuleInfo1 = ModuleInfo0 },
+		{ ModuleInfo3 = ModuleInfo0 },
 		{ GlobalData1 = GlobalData0 },
 		{ Code1 = [] }
 	;
@@ -1255,12 +1260,43 @@ mercury_compile__backend_pass_by_preds_2([PredId | PredIds], ModuleInfo0,
 		;
 			[]
 		),
-		mercury_compile__backend_pass_by_preds_3(ProcIds, PredId,
-			PredInfo, ModuleInfo0, ModuleInfo1,
-			GlobalData0, GlobalData1, Code1)
+		(
+			{ pred_info_module(PredInfo, PredModule) },
+			{ pred_info_name(PredInfo, PredName) },
+                        { pred_info_arity(PredInfo, PredArity) },
+                        { no_type_info_builtin(PredModule, PredName,
+				PredArity) }
+		->
+				% These predicates should never be traced,
+				% since they do not obey typeinfo_liveness.
+				% Since they may be opt_imported into other
+				% modules, we must switch off the tracing
+				% of such preds on a pred-by-pred basis.
+			{ module_info_globals(ModuleInfo0, Globals0) },
+			{ globals__get_trace_level(Globals0, TraceLevel) },
+			{ globals__set_trace_level(Globals0, none, Globals1) },
+			{ module_info_set_globals(ModuleInfo0, Globals1,
+				ModuleInfo1) },
+			{ copy(Globals1, Globals1Unique) },
+			globals__io_set_globals(Globals1Unique),
+			mercury_compile__backend_pass_by_preds_3(ProcIds,
+				PredId, PredInfo, ModuleInfo1, ModuleInfo2,
+				GlobalData0, GlobalData1, Code1),
+			{ module_info_globals(ModuleInfo2, Globals2) },
+			{ globals__set_trace_level(Globals2, TraceLevel,
+				Globals) },
+			{ module_info_set_globals(ModuleInfo2, Globals,
+				ModuleInfo3) },
+			{ copy(Globals, GlobalsUnique) },
+			globals__io_set_globals(GlobalsUnique)
+		;
+			mercury_compile__backend_pass_by_preds_3(ProcIds,
+				PredId, PredInfo, ModuleInfo0, ModuleInfo3,
+				GlobalData0, GlobalData1, Code1)
+		)
 	),
 	mercury_compile__backend_pass_by_preds_2(PredIds,
-		ModuleInfo1, ModuleInfo, GlobalData1, GlobalData, Code2),
+		ModuleInfo3, ModuleInfo, GlobalData1, GlobalData, Code2),
 	{ list__append(Code1, Code2, Code) }.
 
 :- pred mercury_compile__backend_pass_by_preds_3(list(proc_id), pred_id,
@@ -1294,7 +1330,7 @@ mercury_compile__backend_pass_by_preds_3([ProcId | ProcIds], PredId, PredInfo,
 
 mercury_compile__backend_pass_by_preds_4(PredInfo, ProcInfo0, ProcId, PredId,
 		ModuleInfo0, ModuleInfo, GlobalData0, GlobalData, Proc) -->
-	globals__io_get_globals(Globals),
+	{ module_info_globals(ModuleInfo0, Globals) },
 	{ globals__lookup_bool_option(Globals, follow_code, FollowCode) },
 	{ globals__lookup_bool_option(Globals, prev_code, PrevCode) },
 	( { FollowCode = yes ; PrevCode = yes } ->
@@ -1341,8 +1377,7 @@ mercury_compile__backend_pass_by_preds_4(PredInfo, ProcInfo0, ProcId, PredId,
 				PredId, ProcId, ModuleInfo3),
 	{ module_info_get_cell_counter(ModuleInfo3, CellCounter0) },
 	{ generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo3,
-		Globals, GlobalData0, GlobalData1, CellCounter0, CellCounter,
-		Proc0) },
+		GlobalData0, GlobalData1, CellCounter0, CellCounter, Proc0) },
 	{ globals__lookup_bool_option(Globals, optimize, Optimize) },
 	( { Optimize = yes } ->
 		optimize__proc(Proc0, GlobalData1, Proc)
@@ -2201,8 +2236,8 @@ mercury_compile__output_pass(HLDS0, GlobalData, Procs0, MaybeRLFile,
 	%
 	% Finally we invoke the C compiler to compile it.
 	%
-	globals__io_lookup_bool_option(compile_to_c, CompileToC),
-	( { CompileToC = no } ->
+	globals__io_lookup_bool_option(target_code_only, TargetCodeOnly),
+	( { TargetCodeOnly = no } ->
 		mercury_compile__c_to_obj(ModuleName, NumChunks, CompileOK),
 		{ bool__not(CompileOK, CompileErrors) }
 	;
@@ -2396,6 +2431,7 @@ mercury_compile__mlds_backend(HLDS51, MLDS) -->
 	{ MLDS = MLDS40 },
 	mercury_compile__maybe_dump_mlds(MLDS, "99", "final").
 
+
 :- pred mercury_compile__mlds_gen_rtti_data(module_info, mlds, mlds).
 :- mode mercury_compile__mlds_gen_rtti_data(in, in, out) is det.
 
@@ -2544,6 +2580,13 @@ mercury_compile__single_c_to_obj(C_File, O_File, Succeeded) -->
 	;
 		AsmOpt = ""
 	},
+	globals__io_lookup_bool_option(parallel, Parallel),
+	( { Parallel = yes } ->
+		globals__io_lookup_string_option(cflags_for_threads,
+			CFLAGS_FOR_THREADS)
+	;
+		{ CFLAGS_FOR_THREADS = "" }
+	),
 	globals__io_get_gc_method(GC_Method),
 	{ GC_Method = conservative ->
 		GC_Opt = "-DCONSERVATIVE_GC "
@@ -2693,6 +2736,7 @@ mercury_compile__single_c_to_obj(C_File, O_File, Succeeded) -->
 		HighLevelCodeOpt, NestedFunctionsOpt, HighLevelDataOpt,
 		RegOpt, GotoOpt, AsmOpt,
 		CFLAGS_FOR_REGS, " ", CFLAGS_FOR_GOTOS, " ",
+		CFLAGS_FOR_THREADS, " ",
 		GC_Opt, ProfileCallsOpt, ProfileTimeOpt, ProfileMemoryOpt,
 		PIC_Reg_Opt, TagsOpt, NumTagBitsOpt,
 		C_DebugOpt, LL_DebugOpt,

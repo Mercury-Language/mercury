@@ -1,6 +1,6 @@
 /*****************************************************************
     File   : test_upclose
-    RCS    : $Id: test_upclose.c,v 1.1.2.1 2000-09-21 01:27:45 dgj Exp $
+    RCS    : $Id: test_upclose.c,v 1.1.2.2 2000-09-27 04:00:13 dgj Exp $
     Author : Peter Schachte
     Origin : 4 May 1998
     Purpose: Test of set sharing upward closure operation

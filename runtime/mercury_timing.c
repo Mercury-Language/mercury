@@ -26,9 +26,8 @@
 int
 MR_get_user_cpu_miliseconds(void)
 {
-#ifndef MR_CLOCK_TICKS_PER_SECOND
-  #ifdef MR_WIN32_GETPROCESSTIMES
-    #define FILETIME_TO_MILLISEC(time, msec)				\
+#ifdef MR_WIN32_GETPROCESSTIMES
+	#define FILETIME_TO_MILLISEC(time, msec)			\
 	do								\
 	{								\
 	  SYSTEMTIME tmp;						\
@@ -49,10 +48,8 @@ MR_get_user_cpu_miliseconds(void)
 	FILETIME_TO_MILLISEC(user_time, user_msec);
 	FILETIME_TO_MILLISEC(kernel_time, kernel_msec);
 	return user_msec + kernel_msec;
-  #else
-	return -1;
-  #endif
-#else
+#elif HAVE_SYS_TIMES_H
+  #ifdef MR_CLOCK_TICKS_PER_SECOND
 	const double ticks_per_milisecond = MR_CLOCK_TICKS_PER_SECOND / 1000.0;
 	struct tms t;
 
@@ -60,5 +57,10 @@ MR_get_user_cpu_miliseconds(void)
 		return -1;
 	}
 	return (int) (t.tms_utime / ticks_per_milisecond);
+  #else
+	return -1;
+  #endif
+#else
+	return -1;
 #endif
 }

@@ -12,12 +12,17 @@
 
 #include "mercury_imp.h"
 
+/*
+** XXX This code is duplicated in three files:
+** mercury_memory.c, mercury_memory_handlers.c, and mercury_signal.c.
+*/
 #ifdef HAVE_SIGCONTEXT_STRUCT
   /*
   ** Some versions of Linux call it struct sigcontext_struct, some call it
   ** struct sigcontext.  The following #define eliminates the differences.
   */
   #define sigcontext_struct sigcontext /* must be before #include <signal.h> */
+  struct sigcontext; /* this forward decl avoids a gcc warning in signal.h */
 
   /*
   ** On some systems (e.g. most versions of Linux) we need to #define
@@ -91,7 +96,17 @@ MR_setup_signal(int sig, MR_Code *handler, bool need_info,
 	struct sigaction	act;
 
 	if (need_info) {
+	/*
+	** If we are using sigcontext struct, it means we have
+	** configured to not use siginfo, and so when we
+	** request signals, we should not ask for SA_SIGINFO, since our
+	** handler will not be of the right type.
+	*/
+#if	defined(HAVE_SIGCONTEXT_STRUCT)
+		act.sa_flags = SA_RESTART;
+#else	/* not HAVE_SIGCONTEXT_STRUCT */
 		act.sa_flags = SA_SIGINFO | SA_RESTART;
+#endif
 	} else {
 		act.sa_flags = SA_RESTART;
 	}
@@ -107,12 +122,12 @@ MR_setup_signal(int sig, MR_Code *handler, bool need_info,
 		exit(1);
 	}
 
-#else /* not HAVE_SIGINFO_T */
+#else /* not HAVE_SIGACTION */
 
 	if (signal(sig, handler) == SIG_ERR) {
 		perror(error_message);
 		exit(1);
 	}
-#endif /* not HAVE_SIGINFO_T */
+#endif /* not HAVE_SIGACTION */
 }
 

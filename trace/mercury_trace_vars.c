@@ -237,7 +237,6 @@ MR_trace_set_level(int ancestor_level)
 	const MR_Stack_Layout_Label	*level_layout;
 	const MR_Stack_Layout_Entry	*entry;
 	const MR_Stack_Layout_Vars	*vars;
-	const MR_Var_Name		*var_info;
 	MR_Word				*valid_saved_regs;
 	int				var_count;
 	MR_TypeInfo			*type_params;
@@ -252,7 +251,7 @@ MR_trace_set_level(int ancestor_level)
 	char				*s;
 	const char			*name;
 	const char			*string_table;
-	MR_Integer				string_table_size;
+	MR_Integer			string_table_size;
 	const char			*filename;
 	int				linenumber;
 
@@ -320,7 +319,7 @@ MR_trace_set_level(int ancestor_level)
 		return NULL;
 	}
 
-	if (vars->MR_slvs_names == NULL) {
+	if (vars->MR_slvs_var_nums == NULL) {
 		return "there are no names for the live variables";
 	}
 
@@ -350,18 +349,27 @@ MR_trace_set_level(int ancestor_level)
 
 	slot = 0;
 	for (i = 0; i < var_count; i++) {
-		var_info = &vars->MR_slvs_names[i];
+		int	var_num;
+		int	offset;
 
-		if (var_info->MR_var_num == 0) {
+		var_num = vars->MR_slvs_var_nums[i];
+
+		if (var_num == 0) {
 			/* this value is not a variable */
 			continue;
 		}
 
-		if (var_info->MR_var_name_offset > string_table_size) {
+		if (var_num > entry->MR_sle_max_var_num) {
+			MR_fatal_error("array bounds error on var name table");
+		}
+
+			/* variable number 1 is stored at offset 0 */
+		offset = entry->MR_sle_used_var_names[var_num - 1];
+		if (offset > string_table_size) {
 			MR_fatal_error("array bounds error on string table");
 		}
 
-		name = string_table + var_info->MR_var_name_offset;
+		name = string_table + offset;
 		if (name == NULL || streq(name, "")) {
 			/* this value is a compiler-generated variable */
 			continue;
@@ -379,8 +387,7 @@ MR_trace_set_level(int ancestor_level)
 			continue;
 		}
 
-		MR_point.MR_point_vars[slot].MR_var_hlds_number =
-			var_info->MR_var_num;
+		MR_point.MR_point_vars[slot].MR_var_hlds_number = var_num;
 
 		copy = MR_copy_string(name);
 		MR_point.MR_point_vars[slot].MR_var_fullname = copy;

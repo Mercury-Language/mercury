@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1999 The University of Melbourne.
+% Copyright (C) 1994-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -100,13 +100,14 @@ switch_gen__generate_switch(CodeModel, CaseVar, CanFail, Cases, StoreMap,
 		{ globals__lookup_int_option(Globals, lookup_switch_req_density,
 			ReqDensity) },
 		lookup_switch__is_lookup_switch(CaseVar, TaggedCases, GoalInfo,
-			CanFail, ReqDensity, CodeModel, FirstVal, LastVal,
-			NeedRangeCheck, NeedBitVecCheck,
-			OutVars, CaseVals, MLiveness)
+			CanFail, ReqDensity, StoreMap, no, MaybeEndPrime,
+			CodeModel, FirstVal, LastVal, NeedRangeCheck,
+			NeedBitVecCheck, OutVars, CaseVals, MLiveness)
 	->
+		{ MaybeEnd = MaybeEndPrime },
 		lookup_switch__generate(CaseVar, OutVars, CaseVals,
 			FirstVal, LastVal, NeedRangeCheck, NeedBitVecCheck,
-			MLiveness, StoreMap, no, MaybeEnd, Code)
+			MLiveness, StoreMap, no, Code)
 	;
 		{ Indexing = yes },
 		{ SwitchCategory = atomic_switch },
@@ -180,6 +181,7 @@ switch_gen__type_cat_to_switch_cat(str_type,  string_switch).
 switch_gen__type_cat_to_switch_cat(pred_type, other_switch).
 switch_gen__type_cat_to_switch_cat(user_type, tag_switch).
 switch_gen__type_cat_to_switch_cat(polymorphic_type, other_switch).
+switch_gen__type_cat_to_switch_cat(tuple_type, other_switch).
 
 %---------------------------------------------------------------------------%
 

@@ -943,25 +943,36 @@ ml_gen_proc_defn(ModuleInfo, PredId, ProcId, MLDS_ProcDefnBody, ExtraDefns) :-
 
 	MLDSGenInfo0 = ml_gen_info_init(ModuleInfo, PredId, ProcId),
 	MLDS_Params = ml_gen_proc_params(ModuleInfo, PredId, ProcId),
+
 	( CodeModel = model_non ->
 		% set up the initial success continuation
-		ml_initial_cont(InitialCont, MLDSGenInfo0, MLDSGenInfo1),
-		ml_gen_info_push_success_cont(InitialCont,
-			MLDSGenInfo1, MLDSGenInfo2)
+		ml_set_up_initial_succ_cont(ModuleInfo, NondetCopiedOutputVars,
+			MLDSGenInfo0, MLDSGenInfo2)
 	;
+		NondetCopiedOutputVars = [],
 		MLDSGenInfo2 = MLDSGenInfo0
 	),
 
 	% This would generate all the local variables at the top of the
 	% function:
-	%	proc_info_varset(ProcInfo, VarSet),
-	%	proc_info_vartypes(ProcInfo, VarTypes),
 	%	MLDS_LocalVars = ml_gen_all_local_var_decls(Goal, VarSet,
 	% 		VarTypes, HeadVars, ModuleInfo),
 	% But instead we now generate them locally for each goal.
-	% We just declare the `succeeded' var here.
+	% We just declare the `succeeded' var here,
+	% plus, if --nondet-copy-out is enabled,
+	% locals for the output arguments.
 	MLDS_Context = mlds__make_context(Context),
-	MLDS_LocalVars = [ml_gen_succeeded_var_decl(MLDS_Context)],
+	( NondetCopiedOutputVars = [] ->
+		% optimize common case
+		OutputVarLocals = []
+	;
+		proc_info_varset(ProcInfo, VarSet),
+		proc_info_vartypes(ProcInfo, VarTypes),
+		OutputVarLocals = ml_gen_local_var_decls(VarSet, VarTypes,
+			MLDS_Context, ModuleInfo, NondetCopiedOutputVars)
+	),
+	MLDS_LocalVars = [ml_gen_succeeded_var_decl(MLDS_Context) |
+			OutputVarLocals],
 	ml_gen_proc_body(CodeModel, HeadVars, ArgTypes, Goal,
 			MLDS_Decls0, MLDS_Statements,
 			MLDSGenInfo2, MLDSGenInfo),
@@ -970,6 +981,30 @@ ml_gen_proc_defn(ModuleInfo, PredId, ProcId, MLDS_ProcDefnBody, ExtraDefns) :-
 	MLDS_Statement = ml_gen_block(MLDS_Decls, MLDS_Statements, Context),
 	MLDS_ProcDefnBody = mlds__function(yes(proc(PredId, ProcId)),
 			MLDS_Params, yes(MLDS_Statement)).
+
+:- pred ml_set_up_initial_succ_cont(module_info, list(prog_var),
+		ml_gen_info, ml_gen_info).
+:- mode ml_set_up_initial_succ_cont(in, out, in, out) is det.
+
+ml_set_up_initial_succ_cont(ModuleInfo, NondetCopiedOutputVars) -->
+	{ module_info_globals(ModuleInfo, Globals) },
+	{ globals__lookup_bool_option(Globals, nondet_copy_out,
+		NondetCopyOut) },
+	( { NondetCopyOut = yes } ->
+		% for --nondet-copy-out, we generate local variables
+		% for the output variables and then pass them to the
+		% continuation, rather than passing them by reference.
+		=(MLDSGenInfo0),
+		{ ml_gen_info_get_output_vars(MLDSGenInfo0,
+			NondetCopiedOutputVars) },
+		ml_gen_info_set_output_vars([])
+	;
+		{ NondetCopiedOutputVars = [] }
+	),
+	ml_gen_var_list(NondetCopiedOutputVars, OutputVarLvals),
+	ml_variable_types(NondetCopiedOutputVars, OutputVarTypes),
+	ml_initial_cont(OutputVarLvals, OutputVarTypes, InitialCont),
+	ml_gen_info_push_success_cont(InitialCont).
 
 	% Generate MLDS definitions for all the local variables in a function.
 	%
@@ -1360,15 +1395,26 @@ ml_gen_commit(Goal, CodeModel, Context, MLDS_Decls, MLDS_Statements) -->
 		%			succeeded = TRUE;
 		%			MR_DO_COMMIT(ref);
 		%		}
+		%	#ifdef NONDET_COPY_OUT
+		%		<local var decls>
+		%	#endif
 		%		MR_TRY_COMMIT(ref, {
 		%			<Goal && success()>
 		%			succeeded = FALSE;
 		%		}, {
+		%	#ifdef NONDET_COPY_OUT
+		%			<copy local vars to output args>
+		%	#endif
 		%			succeeded = TRUE;
 		%		})
 
+		ml_gen_maybe_make_locals_for_output_args(GoalInfo,
+			LocalVarDecls, CopyLocalsToOutputArgs,
+			OrigVarLvalMap),
+
 		% generate the `success()' function
-		ml_gen_new_func_label(SuccessFuncLabel, SuccessFuncLabelRval),
+		ml_gen_new_func_label(no, SuccessFuncLabel, 
+			SuccessFuncLabelRval),
 		/* push nesting level */
 		{ MLDS_Context = mlds__make_context(Context) },
 		ml_gen_info_new_commit_label(CommitLabelNum),
@@ -1386,7 +1432,7 @@ ml_gen_commit(Goal, CodeModel, Context, MLDS_Decls, MLDS_Statements) -->
 
 		ml_get_env_ptr(EnvPtrRval),
 		{ SuccessCont = success_cont(SuccessFuncLabelRval,
-			EnvPtrRval) },
+			EnvPtrRval, [], []) },
 		ml_gen_info_push_success_cont(SuccessCont),
 		ml_gen_goal(model_non, Goal, GoalStatement),
 		ml_gen_info_pop_success_cont,
@@ -1395,12 +1441,15 @@ ml_gen_commit(Goal, CodeModel, Context, MLDS_Decls, MLDS_Statements) -->
 		{ TryCommitStmt = try_commit(CommitRefLval,
 			ml_gen_block([], [GoalStatement, SetSuccessFalse],
 				Context),
-			SetSuccessTrue) },
+			ml_gen_block([], list__append(CopyLocalsToOutputArgs,
+				[SetSuccessTrue]), Context)) },
 		{ TryCommitStatement = mlds__statement(TryCommitStmt,
 			MLDS_Context) },
 
-		{ MLDS_Decls = [CommitRefDecl, SuccessFunc] },
-		{ MLDS_Statements = [TryCommitStatement] }
+		{ MLDS_Decls = [CommitRefDecl, SuccessFunc | LocalVarDecls] },
+		{ MLDS_Statements = [TryCommitStatement] },
+
+		ml_gen_info_set_var_lvals(OrigVarLvalMap)
 
 	; { GoalCodeModel = model_non, CodeModel = model_det } ->
 
@@ -1411,12 +1460,23 @@ ml_gen_commit(Goal, CodeModel, Context, MLDS_Decls, MLDS_Statements) -->
 		%		void success() {
 		%			MR_DO_COMMIT(ref);
 		%		}
+		%	#ifdef NONDET_COPY_OUT
+		%		<local var decls>
+		%	#endif
 		%		MR_TRY_COMMIT(ref, {
+		%	#ifdef NONDET_COPY_OUT
+		%			<copy local vars to output args>
+		%	#endif
 		%			<Goal && success()>
 		%		}, {})
 
+		ml_gen_maybe_make_locals_for_output_args(GoalInfo,
+			LocalVarDecls, CopyLocalsToOutputArgs,
+			OrigVarLvalMap),
+
 		% generate the `success()' function
-		ml_gen_new_func_label(SuccessFuncLabel, SuccessFuncLabelRval),
+		ml_gen_new_func_label(no,
+			SuccessFuncLabel, SuccessFuncLabelRval),
 		/* push nesting level */
 		{ MLDS_Context = mlds__make_context(Context) },
 		ml_gen_info_new_commit_label(CommitLabelNum),
@@ -1434,22 +1494,116 @@ ml_gen_commit(Goal, CodeModel, Context, MLDS_Decls, MLDS_Statements) -->
 
 		ml_get_env_ptr(EnvPtrRval),
 		{ SuccessCont = success_cont(SuccessFuncLabelRval,
-			EnvPtrRval) },
+			EnvPtrRval, [], []) },
 		ml_gen_info_push_success_cont(SuccessCont),
 		ml_gen_goal(model_non, Goal, GoalStatement),
 		ml_gen_info_pop_success_cont,
 
 		{ TryCommitStmt = try_commit(CommitRefLval, GoalStatement,
-			ml_gen_block([], [], Context)) },
+			ml_gen_block([], CopyLocalsToOutputArgs, Context)) },
 		{ TryCommitStatement = mlds__statement(TryCommitStmt,
 			MLDS_Context) },
 
-		{ MLDS_Decls = [CommitRefDecl, SuccessFunc] },
-		{ MLDS_Statements = [TryCommitStatement] }
+		{ MLDS_Decls = [CommitRefDecl, SuccessFunc | LocalVarDecls] },
+		{ MLDS_Statements = [TryCommitStatement] },
+
+		ml_gen_info_set_var_lvals(OrigVarLvalMap)
 	;
 		% no commit required
 		ml_gen_goal(CodeModel, Goal, MLDS_Decls, MLDS_Statements)
 	).
+
+	%
+	% In commits, you have model_non code called from a model_det or
+	% model_semi context.  With --nondet-copy-out, when generating code
+	% for commits, if the context is a model_det or model_semi procedure
+	% with output arguments passed by reference, then we need to introduce
+	% local variables corresponding to those output arguments,
+	% and at the end of the commit we'll copy the local variables into
+	% the output arguments.
+	%
+:- pred ml_gen_maybe_make_locals_for_output_args(hlds_goal_info, mlds__defns,
+		mlds__statements, map(prog_var, mlds__lval),
+		ml_gen_info, ml_gen_info).
+:- mode ml_gen_maybe_make_locals_for_output_args(in, out, out, out, in, out)
+		is det.
+
+ml_gen_maybe_make_locals_for_output_args(GoalInfo,
+		LocalVarDecls, CopyLocalsToOutputArgs, OrigVarLvalMap) -->
+	=(MLDSGenInfo0),
+	{ ml_gen_info_get_var_lvals(MLDSGenInfo0, OrigVarLvalMap) },
+	ml_gen_info_get_globals(Globals),
+	{ globals__lookup_bool_option(Globals, nondet_copy_out,
+		NondetCopyOut) },
+	( { NondetCopyOut = yes } ->
+		{ goal_info_get_context(GoalInfo, Context) },
+		{ goal_info_get_nonlocals(GoalInfo, NonLocals) },
+		{ ml_gen_info_get_output_vars(MLDSGenInfo0, OutputVars) },
+		{ VarsToCopy = set__intersect(set__list_to_set(OutputVars),
+			NonLocals) },
+		ml_gen_make_locals_for_output_args(
+			set__to_sorted_list(VarsToCopy), Context,
+			LocalVarDecls, CopyLocalsToOutputArgs)
+	;
+		{ LocalVarDecls = [] },
+		{ CopyLocalsToOutputArgs = [] }
+	).
+
+:- pred ml_gen_make_locals_for_output_args(list(prog_var), prog_context,
+		mlds__defns, mlds__statements, ml_gen_info, ml_gen_info).
+:- mode ml_gen_make_locals_for_output_args(in, in, out, out, in, out) is det.
+
+ml_gen_make_locals_for_output_args([], _, [], []) --> [].
+ml_gen_make_locals_for_output_args([Var | Vars], Context,
+		LocalDefns, Assigns) -->
+	ml_gen_make_locals_for_output_args(Vars, Context,
+		LocalDefns0, Assigns0),
+	ml_variable_type(Var, Type),
+	( { type_util__is_dummy_argument_type(Type) } ->
+		{ LocalDefns = LocalDefns0 },
+		{ Assigns = Assigns0 }
+	;
+		ml_gen_make_local_for_output_arg(Var, Type, Context,
+			LocalDefn, Assign),
+		{ LocalDefns = [LocalDefn | LocalDefns0] },
+		{ Assigns = [Assign | Assigns0] }
+	).
+
+:- pred ml_gen_make_local_for_output_arg(prog_var, prog_type, prog_context,
+		mlds__defn, mlds__statement, ml_gen_info, ml_gen_info).
+:- mode ml_gen_make_local_for_output_arg(in, in, in, out, out, in, out) is det.
+
+ml_gen_make_local_for_output_arg(OutputVar, Type, Context,
+		LocalVarDefn, Assign) -->
+	%
+	% Look up the name of the output variable
+	%
+	=(MLDSGenInfo),
+	{ ml_gen_info_get_varset(MLDSGenInfo, VarSet) },
+	{ ml_gen_info_get_module_info(MLDSGenInfo, ModuleInfo) },
+	{ OutputVarName = ml_gen_var_name(VarSet, OutputVar) },
+
+	%
+	% Generate a declaration for a corresponding local variable.
+	%
+	{ string__append("local_", OutputVarName, LocalVarName) },
+	{ LocalVarDefn = ml_gen_var_decl(LocalVarName, Type,
+		mlds__make_context(Context), ModuleInfo) },
+
+	%
+	% Generate code to assign from the local var to the output var
+	%
+	ml_gen_var(OutputVar, OutputVarLval),
+	ml_qualify_var(LocalVarName, LocalVarLval),
+	{ Assign = ml_gen_assign(OutputVarLval, lval(LocalVarLval), Context) },
+
+	%
+	% Update the lval for this variable so that any references to it
+	% inside the commit refer to the local variable rather than
+	% to the output argument.
+	% (Note that we reset all the var lvals at the end of the commit.)
+	%
+	ml_gen_info_set_var_lval(OutputVar, LocalVarLval).
 
 	% Generate the declaration for the `commit' variable.
 	%
@@ -2391,7 +2545,7 @@ ml_gen_ite(CodeModel, Cond, Then, Else, Context,
 		{ CondVarDecl = ml_gen_cond_var_decl(CondVar, MLDS_Context) },
 
 		% generate the `then_func'
-		ml_gen_new_func_label(ThenFuncLabel, ThenFuncLabelRval),
+		ml_gen_new_func_label(no, ThenFuncLabel, ThenFuncLabelRval),
 		/* push nesting level */
 		{ Then = _ - ThenGoalInfo },
 		{ goal_info_get_context(ThenGoalInfo, ThenContext) },
@@ -2408,7 +2562,8 @@ ml_gen_ite(CodeModel, Cond, Then, Else, Context,
 		ml_gen_set_cond_var(CondVar, const(false), Context,
 			SetCondFalse),
 		ml_get_env_ptr(EnvPtrRval),
-		{ SuccessCont = success_cont(ThenFuncLabelRval, EnvPtrRval) },
+		{ SuccessCont = success_cont(ThenFuncLabelRval, EnvPtrRval,
+			[], []) },
 		ml_gen_info_push_success_cont(SuccessCont),
 		ml_gen_goal(model_non, Cond, CondDecls, CondStatements),
 		ml_gen_info_pop_success_cont,

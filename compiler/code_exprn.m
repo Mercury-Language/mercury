@@ -138,21 +138,21 @@
 		exprn_info, exprn_info).
 :- mode code_exprn__produce_var(in, out, out, in, out) is det.
 
-%	code_exprn__produce_var_in_reg(Var, Rval, Code, ExprnInfo0, ExprnInfo)
+%	code_exprn__produce_var_in_reg(Var, Lval, Code, ExprnInfo0, ExprnInfo)
 %		Produces a code fragment Code to evaluate Var and
-%		provide it as an Rval of the form lval(reg(_)).
+%		provide it as an Lval of the form reg(_).
 
-:- pred code_exprn__produce_var_in_reg(prog_var, rval, code_tree,
+:- pred code_exprn__produce_var_in_reg(prog_var, lval, code_tree,
 	exprn_info, exprn_info).
 :- mode code_exprn__produce_var_in_reg(in, out, out, in, out) is det.
 
-%	code_exprn__produce_var_in_reg_or_stack(Var, FollowVars, Rval, Code,
+%	code_exprn__produce_var_in_reg_or_stack(Var, FollowVars, Lval, Code,
 %			ExprnInfo0, ExprnInfo)
 %		Produces a code fragment Code to evaluate Var and
-%		provide it as an Rval of the form lval(reg(_)),
-%		lval(stackvar(_)), or lval(framevar(_)).
+%		provide it as an Lval of the form reg(_), stackvar(_),
+%		or framevar(_).
 
-:- pred code_exprn__produce_var_in_reg_or_stack(prog_var, rval, code_tree,
+:- pred code_exprn__produce_var_in_reg_or_stack(prog_var, lval, code_tree,
 	exprn_info, exprn_info).
 :- mode code_exprn__produce_var_in_reg_or_stack(in, out, out, in, out) is det.
 
@@ -1414,59 +1414,63 @@ code_exprn__produce_var(Var, Rval, Code) -->
 
 %------------------------------------------------------------------------------%
 
-code_exprn__produce_var_in_reg(Var, Rval, Code) -->
+code_exprn__produce_var_in_reg(Var, Lval, Code) -->
 	code_exprn__get_var_status(Var, Stat),
 	(
 		{ Stat = evaled(Rvals) },
 		{ set__to_sorted_list(Rvals, RvalList) },
-		{ code_exprn__select_reg_rval(RvalList, Rval0) }
+		{ code_exprn__select_reg_rval(RvalList, Lval0) }
 	->
 		{ Code = empty },
-		{ Rval = Rval0 }
+		{ Lval = Lval0 }
 	;
 		code_exprn__select_preferred_reg(Var, Lval),
-		code_exprn__place_var(Var, Lval, Code),
-		{ Rval = lval(Lval) }
+		code_exprn__place_var(Var, Lval, Code)
 	).
 
-code_exprn__produce_var_in_reg_or_stack(Var, Rval, Code) -->
+code_exprn__produce_var_in_reg_or_stack(Var, Lval, Code) -->
 	code_exprn__get_var_status(Var, Stat),
 	(
 		{ Stat = evaled(Rvals) },
 		{ set__to_sorted_list(Rvals, RvalList) },
-		{ code_exprn__select_reg_or_stack_rval(RvalList, Rval0) }
+		{ code_exprn__select_reg_or_stack_rval(RvalList, Lval0) }
 	->
 		{ Code = empty },
-		{ Rval = Rval0 }
+		{ Lval = Lval0 }
 	;
 		code_exprn__select_preferred_lval(Var, Lval),
-		code_exprn__place_var(Var, Lval, Code),
-		{ Rval = lval(Lval) }
+		code_exprn__place_var(Var, Lval, Code)
 	).
 
 %------------------------------------------------------------------------------%
 
-:- pred code_exprn__select_reg_rval(list(rval), rval).
+:- pred code_exprn__select_reg_rval(list(rval), lval).
 :- mode code_exprn__select_reg_rval(in, out) is semidet.
 
-code_exprn__select_reg_rval([Rval0 | Rvals0], Rval) :-
-	( Rval0 = lval(reg(_, _)) ->
-		Rval = Rval0
+code_exprn__select_reg_rval([Rval0 | Rvals0], Lval) :-
+	(
+		Rval0 = lval(Lval0),
+		Lval0 = reg(_, _)
+	->
+		Lval = Lval0
 	;
-		code_exprn__select_reg_rval(Rvals0, Rval)
+		code_exprn__select_reg_rval(Rvals0, Lval)
 	).
 
-:- pred code_exprn__select_reg_or_stack_rval(list(rval), rval).
+:- pred code_exprn__select_reg_or_stack_rval(list(rval), lval).
 :- mode code_exprn__select_reg_or_stack_rval(in, out) is semidet.
 
-code_exprn__select_reg_or_stack_rval([Rval0 | Rvals0], Rval) :-
+code_exprn__select_reg_or_stack_rval([Rval0 | Rvals0], Lval) :-
 	(
-		Rval0 = lval(Lval),
-		( Lval = reg(_, _) ; Lval = stackvar(_) ; Lval = framevar(_) )
+		Rval0 = lval(Lval0),
+		( Lval0 = reg(_, _)
+		; Lval0 = stackvar(_)
+		; Lval0 = framevar(_)
+		)
 	->
-		Rval = Rval0
+		Lval = Lval0
 	;
-		code_exprn__select_reg_or_stack_rval(Rvals0, Rval)
+		code_exprn__select_reg_or_stack_rval(Rvals0, Lval)
 	).
 
 %------------------------------------------------------------------------------%
@@ -1477,8 +1481,9 @@ code_exprn__select_reg_or_stack_rval([Rval0 | Rvals0], Rval) :-
 
 code_exprn__select_preferred_lval(Var, Lval) -->
 	code_exprn__get_follow_vars(FollowVars),
+	{ FollowVars = follow_vars(FollowVarsMap, NextNonReserved) },
 	(
-		{ map__search(FollowVars, Var, PrefLval) }
+		{ map__search(FollowVarsMap, Var, PrefLval) }
 	->
 		(
 			\+ { unreal_lval(PrefLval) },
@@ -1486,10 +1491,11 @@ code_exprn__select_preferred_lval(Var, Lval) -->
 		->
 			{ Lval = PrefLval }
 		;
-			code_exprn__get_spare_reg(r, Lval)
+			code_exprn__get_spare_reg_start_from(r,
+				NextNonReserved, Lval)
 		)
 	;
-		code_exprn__get_spare_reg(r, Lval)
+		code_exprn__get_spare_reg_start_from(r, NextNonReserved, Lval)
 	).
 
 :- pred code_exprn__select_preferred_reg(prog_var, lval,
@@ -1498,8 +1504,9 @@ code_exprn__select_preferred_lval(Var, Lval) -->
 
 code_exprn__select_preferred_reg(Var, Lval) -->
 	code_exprn__get_follow_vars(FollowVars),
+	{ FollowVars = follow_vars(FollowVarsMap, NextNonReserved) },
 	(
-		{ map__search(FollowVars, Var, PrefLval) },
+		{ map__search(FollowVarsMap, Var, PrefLval) },
 		{ PrefLval = reg(_, _) }
 	->
 		(
@@ -1508,10 +1515,11 @@ code_exprn__select_preferred_reg(Var, Lval) -->
 		->
 			{ Lval = PrefLval }
 		;
-			code_exprn__get_spare_reg(r, Lval)
+			code_exprn__get_spare_reg_start_from(r,
+				NextNonReserved, Lval)
 		)
 	;
-		code_exprn__get_spare_reg(r, Lval)
+		code_exprn__get_spare_reg_start_from(r, NextNonReserved, Lval)
 	).
 
 :- pred unreal_lval(lval).
@@ -1703,24 +1711,23 @@ code_exprn__maybe_add_evaled(yes(Var), NewRval) -->
 
 	% Warning: if you get a reg, you must mark it as in use yourself.
 
+:- pred code_exprn__get_spare_reg_start_from(reg_type, int, lval,
+	exprn_info, exprn_info).
+:- mode code_exprn__get_spare_reg_start_from(in, in, out, in, out) is det.
+
+code_exprn__get_spare_reg_start_from(RegType, N0, Lval) -->
+	{ TrialLval = reg(RegType, N0) },
+	( code_exprn__lval_in_use(TrialLval) ->
+		code_exprn__get_spare_reg_start_from(RegType, N0 + 1, Lval)
+	;
+		{ Lval = TrialLval }
+	).
+
 :- pred code_exprn__get_spare_reg(reg_type, lval, exprn_info, exprn_info).
 :- mode code_exprn__get_spare_reg(in, out, in, out) is det.
 
 code_exprn__get_spare_reg(RegType, Lval) -->
-	code_exprn__get_regs(Regs),
-	{ code_exprn__get_spare_reg_2(RegType, 1, Regs, Lval) }.
-
-:- pred code_exprn__get_spare_reg_2(reg_type, int, bag(lval), lval).
-:- mode code_exprn__get_spare_reg_2(in, in, in, out) is det.
-
-code_exprn__get_spare_reg_2(RegType, N0, Regs, Lval) :-
-	TrialLval = reg(RegType, N0),
-	( bag__contains(Regs, TrialLval) ->
-		N1 is N0 + 1,
-		code_exprn__get_spare_reg_2(RegType, N1, Regs, Lval)
-	;
-		Lval = TrialLval
-	).
+	code_exprn__get_spare_reg_start_from(RegType, 1, Lval).
 
 %------------------------------------------------------------------------------%
 

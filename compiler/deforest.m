@@ -117,18 +117,13 @@ deforest__proc(proc(PredId, ProcId), CostDelta, SizeDelta) -->
 
 	( { Changed = yes } ->
 		pd_info_get_module_info(ModuleInfo2),
-		{ module_info_globals(ModuleInfo2, Globals0) },
-		{ body_should_use_typeinfo_liveness(PredInfo0, Globals0,
-			TypeInfoLiveness) },
-		{ requantify_proc(TypeInfoLiveness, ProcInfo2, ProcInfo3) },
+		{ requantify_proc(ProcInfo2, ProcInfo3) },
 		{ proc_info_goal(ProcInfo3, Goal3) },
 		{ proc_info_get_initial_instmap(ProcInfo3,
 			ModuleInfo2, InstMap0) },
 		{ proc_info_vartypes(ProcInfo3, VarTypes) },
-		{ proc_info_typeinfo_varmap(ProcInfo3, TVarMap) },
-		{ recompute_instmap_delta(yes, PredInfo0, Goal3, Goal,
-			VarTypes, TVarMap, InstMap0,
-			ModuleInfo2, ModuleInfo3) },
+		{ recompute_instmap_delta(yes, Goal3, Goal,
+			VarTypes, InstMap0, ModuleInfo2, ModuleInfo3) },
 		pd_info_set_module_info(ModuleInfo3),
 
 		pd_info_get_pred_info(PredInfo),

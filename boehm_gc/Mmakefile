@@ -45,14 +45,15 @@ force:
 clean_local:
 	MAKEFLAGS=""; export MAKEFLAGS; \
 	$(MAKE) $(BOEHMGC_MAKEFILE) $(MMAKEFLAGS) clean
-	rm -f libgc.$A libgc.so
+	rm -rf Release
+	rm -f libgc.$A libgc.so libpar_gc.$A libpar_gc.dll
 
 #-----------------------------------------------------------------------------#
 
 # installation rules
 
 .PHONY: install
-install: install_headers install_lib
+install: install_headers install_lib install_dll
 
 # As well as installing gc.h, we also install gc_inl.h (and hence
 # private/gc_priv.h, private/gc_hdrs.h, and private/gcconfig.h),
@@ -92,5 +93,9 @@ install_headers: install_dirs
 install_lib: lib$(GC_GRADE).$A lib$(GC_GRADE).$(EXT_FOR_SHARED_LIB) install_dirs
 	cp `vpath_find lib$(GC_GRADE).$A lib$(GC_GRADE).$(EXT_FOR_SHARED_LIB)` \
 		$(INSTALL_MERC_GC_LIB_DIR)
+
+.PHONY: install_dll
+install_dll:
+	-[ -f libpar_gc.dll ] && cp `vpath_find libpar_gc.dll` $(INSTALL_BINDIR)
 
 #-----------------------------------------------------------------------------#

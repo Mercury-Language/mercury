@@ -199,6 +199,23 @@
 			io__state, io__state).
 :- mode polymorphism__process_module(in, out, di, uo) is det.
 
+% Run the polymorphism pass over a single pred.
+% This is used to transform clauses introduced by unify_proc.m
+% for complicated unification predicates for types
+% for which unification predicates are generated lazily. 
+%
+% This predicate should be used with caution. polymorphism.m
+% expects that the argument types of called predicates have not
+% been transformed yet. This predicate will not work correctly
+% after the original pass of polymorphism has been run if the
+% predicate to be processed calls any polymorphic predicates
+% which require type_infos or typeclass_infos to be added to
+% the argument list.
+
+:- pred polymorphism__process_generated_pred(pred_id,
+		module_info, module_info).
+:- mode polymorphism__process_generated_pred(in, in, out) is det.
+
 % Add the type_info variables for a complicated unification to
 % the appropriate fields in the unification and the goal_info.
 
@@ -380,8 +397,15 @@ polymorphism__maybe_process_pred(PredId, ModuleInfo0, ModuleInfo) -->
 :- pred polymorphism__fixup_preds(list(pred_id), module_info, module_info).
 :- mode polymorphism__fixup_preds(in, in, out) is det.
 
-polymorphism__fixup_preds([], ModuleInfo, ModuleInfo).
-polymorphism__fixup_preds([PredId | PredIds], ModuleInfo0, ModuleInfo) :-
+polymorphism__fixup_preds(PredIds, ModuleInfo0, ModuleInfo) :-
+	list__foldl(polymorphism__fixup_pred,
+		PredIds, ModuleInfo0, ModuleInfo).
+
+:- pred polymorphism__fixup_pred(pred_id, module_info, module_info).
+:- mode polymorphism__fixup_pred(in, in, out) is det.
+
+polymorphism__fixup_pred(PredId, ModuleInfo0, ModuleInfo) :-
+
 	%
 	% Recompute the arg types by finding the headvars and
 	% the var->type mapping (from the clauses_info) and
@@ -393,31 +417,71 @@ polymorphism__fixup_preds([PredId | PredIds], ModuleInfo0, ModuleInfo) :-
 	%
 	module_info_preds(ModuleInfo0, PredTable0),
 	map__lookup(PredTable0, PredId, PredInfo0),
-	pred_info_clauses_info(PredInfo0, ClausesInfo),
-	clauses_info_vartypes(ClausesInfo, VarTypes),
-	clauses_info_headvars(ClausesInfo, HeadVars),
+	pred_info_clauses_info(PredInfo0, ClausesInfo0),
+	clauses_info_vartypes(ClausesInfo0, VarTypes0),
+	clauses_info_headvars(ClausesInfo0, HeadVars),
 
 	pred_info_arg_types(PredInfo0, TypeVarSet, ExistQVars, ArgTypes0),
 	list__length(ArgTypes0, NumOldArgs),
 	list__length(HeadVars, NumNewArgs),
 	NumExtraArgs is NumNewArgs - NumOldArgs,
 	(
-		list__split_list(NumExtraArgs, HeadVars, ExtraHeadVars,
-				_OldHeadVars)
+		list__split_list(NumExtraArgs, HeadVars, ExtraHeadVars0,
+				OldHeadVars0)
 	->
-		map__apply_to_list(ExtraHeadVars, VarTypes,
-			ExtraArgTypes),
-		list__append(ExtraArgTypes, ArgTypes0, ArgTypes)
+		ExtraHeadVars = ExtraHeadVars0,
+		OldHeadVars = OldHeadVars0
 	;
 		error("polymorphism.m: list__split_list failed")
 	),
 
+	map__apply_to_list(ExtraHeadVars, VarTypes0, ExtraArgTypes),
+	list__append(ExtraArgTypes, ArgTypes0, ArgTypes),
 	pred_info_set_arg_types(PredInfo0, TypeVarSet, ExistQVars,
-		ArgTypes, PredInfo),
-	map__det_update(PredTable0, PredId, PredInfo, PredTable),
-	module_info_set_preds(ModuleInfo0, PredTable, ModuleInfo1),
+		ArgTypes, PredInfo1),
 
-	polymorphism__fixup_preds(PredIds, ModuleInfo1, ModuleInfo).
+	%
+	% If the clauses binds some existentially quantified
+	% type variables, make sure the types of the type-infos
+	% for those type variables in the variable types map
+	% are as specific as possible. The predicate argument
+	% types shouldn't be substituted, because the binding
+	% should not be visible to calling predicates.
+	%
+	(
+		ExistQVars \= [],
+		% This can fail for unification procedures
+		% of equivalence types.
+		map__apply_to_list(OldHeadVars, VarTypes0, OldHeadVarTypes),
+		type_list_subsumes(ArgTypes0, OldHeadVarTypes, Subn),
+		\+ map__is_empty(Subn)
+	->
+		list__foldl(
+			(pred(HeadVar::in, Types0::in, Types::out) is det :-
+				map__lookup(Types0, HeadVar, HeadVarType0),
+				term__apply_rec_substitution(HeadVarType0,
+					Subn, HeadVarType),
+				map__set(Types0, HeadVar, HeadVarType, Types)
+			), ExtraHeadVars, VarTypes0, VarTypes),
+		clauses_info_set_vartypes(ClausesInfo0, VarTypes, ClausesInfo),
+		pred_info_set_clauses_info(PredInfo1, ClausesInfo, PredInfo2),
+
+		% Fix up the var-types in the procedures as well.
+		% It would be better if this were done before copying
+		% clauses to procs, but that's difficult to arrange. 
+		pred_info_procedures(PredInfo2, Procs0),
+		map__map_values(
+			(pred(_::in, ProcInfo0::in, ProcInfo::out) is det :- 
+				proc_info_set_vartypes(ProcInfo0,
+					VarTypes, ProcInfo)
+			), Procs0, Procs),
+		pred_info_set_procedures(PredInfo2, Procs, PredInfo)
+	;				
+		PredInfo = PredInfo1
+	),
+
+	map__det_update(PredTable0, PredId, PredInfo, PredTable),
+	module_info_set_preds(ModuleInfo0, PredTable, ModuleInfo).
 
 %---------------------------------------------------------------------------%
 
@@ -426,38 +490,46 @@ polymorphism__fixup_preds([PredId | PredIds], ModuleInfo0, ModuleInfo) :-
 :- mode polymorphism__process_pred(in, in, out, di, uo) is det.
 
 polymorphism__process_pred(PredId, ModuleInfo0, ModuleInfo) -->
-	{ module_info_pred_info(ModuleInfo0, PredId, PredInfo0) },
-
 	write_pred_progress_message("% Transforming polymorphism for ",
 					PredId, ModuleInfo0),
+	{ polymorphism__process_pred(PredId, ModuleInfo0, ModuleInfo) }.
 
+polymorphism__process_generated_pred(PredId, ModuleInfo0, ModuleInfo) :-
+	polymorphism__process_pred(PredId, ModuleInfo0, ModuleInfo1),
+	polymorphism__fixup_pred(PredId, ModuleInfo1, ModuleInfo).
+
+:- pred polymorphism__process_pred(pred_id, module_info, module_info).
+:- mode polymorphism__process_pred(in, in, out) is det.
+
+polymorphism__process_pred(PredId, ModuleInfo0, ModuleInfo) :-
+	module_info_pred_info(ModuleInfo0, PredId, PredInfo0),
 	%
 	% run the polymorphism pass over the clauses_info,
 	% updating the headvars, goals, varsets, types, etc.,
 	% and computing some information in the poly_info.
 	%
-	{ pred_info_clauses_info(PredInfo0, ClausesInfo0) },
-	{ polymorphism__process_clause_info(
+	pred_info_clauses_info(PredInfo0, ClausesInfo0),
+	polymorphism__process_clause_info(
 			ClausesInfo0, PredInfo0, ModuleInfo0,
-			ClausesInfo, PolyInfo, ExtraArgModes) },
-	{ poly_info_get_module_info(PolyInfo, ModuleInfo1) },
-	{ poly_info_get_typevarset(PolyInfo, TypeVarSet) },
-	{ pred_info_set_typevarset(PredInfo0, TypeVarSet, PredInfo1) },
-	{ pred_info_set_clauses_info(PredInfo1, ClausesInfo, PredInfo2) },
+			ClausesInfo, PolyInfo, ExtraArgModes),
+	poly_info_get_module_info(PolyInfo, ModuleInfo1),
+	poly_info_get_typevarset(PolyInfo, TypeVarSet),
+	pred_info_set_typevarset(PredInfo0, TypeVarSet, PredInfo1),
+	pred_info_set_clauses_info(PredInfo1, ClausesInfo, PredInfo2),
 
 	%
 	% do a pass over the proc_infos, copying the relevant information
 	% from the clauses_info and the poly_info, and updating all
 	% the argmodes with modes for the extra arguments.
 	%
-	{ pred_info_procids(PredInfo2, ProcIds) },
-	{ pred_info_procedures(PredInfo2, Procs0) },
-	{ polymorphism__process_procs(ProcIds, Procs0, PredInfo2, ClausesInfo,
-		ExtraArgModes, Procs) },
-	{ pred_info_set_procedures(PredInfo2, Procs, PredInfo) },
+	pred_info_procids(PredInfo2, ProcIds),
+	pred_info_procedures(PredInfo2, Procs0),
+	polymorphism__process_procs(ProcIds, Procs0, PredInfo2, ClausesInfo,
+		ExtraArgModes, Procs),
+	pred_info_set_procedures(PredInfo2, Procs, PredInfo),
 
-	{ module_info_set_pred_info(ModuleInfo1, PredId, PredInfo,
-		ModuleInfo) }.
+	module_info_set_pred_info(ModuleInfo1, PredId, PredInfo,
+		ModuleInfo).
 
 :- pred polymorphism__process_clause_info(clauses_info, pred_info, module_info,
 			clauses_info, poly_info, list(mode)).
@@ -490,8 +562,9 @@ polymorphism__process_clause_info(ClausesInfo0, PredInfo0, ModuleInfo0,
 	poly_info_get_type_info_map(PolyInfo, TypeInfoMap),
 	poly_info_get_typeclass_info_map(PolyInfo, TypeClassInfoMap),
 	clauses_info_explicit_vartypes(ClausesInfo0, ExplicitVarTypes),
-	ClausesInfo = clauses_info(VarSet, ExplicitVarTypes, VarTypes,
-				HeadVars, Clauses,
+	map__init(TVarNameMap), % This is only used while adding the clauses.
+	ClausesInfo = clauses_info(VarSet, ExplicitVarTypes, TVarNameMap,
+				VarTypes, HeadVars, Clauses,
 				TypeInfoMap, TypeClassInfoMap).
 
 :- pred polymorphism__process_clause(pred_info, list(prog_var), list(prog_var),
@@ -1382,7 +1455,7 @@ polymorphism__process_existq_unify_functor(CtorDefn, IsConstruction,
 		polymorphism__make_typeclass_info_vars(	
 				ExistentialConstraints, [], Context,
 				ExtraTypeClassVars, ExtraTypeClassGoals,
-				PolyInfo1, PolyInfo2)
+				PolyInfo1, PolyInfo3)
 	;
 		IsConstruction = no,
 		% assume it's a deconstruction
@@ -1390,12 +1463,12 @@ polymorphism__process_existq_unify_functor(CtorDefn, IsConstruction,
 				ExistentialConstraints, 
 				ExtraTypeClassVars,
 				PolyInfo1, PolyInfo2),
-		ExtraTypeClassGoals = []
+		ExtraTypeClassGoals = [],
+		polymorphism__update_typeclass_infos(
+			ExistentialConstraints, ExtraTypeClassVars,
+			PolyInfo2, PolyInfo3)
 	),
 
-	polymorphism__update_typeclass_infos(
-			ExistentialConstraints, ExtraTypeClassVars,
-			PolyInfo2, PolyInfo3),
 
 	%
 	% Compute the set of _unconstrained_ existentially quantified type
@@ -1793,15 +1866,8 @@ polymorphism__fixup_quantification(HeadVars, ExistQVars, Goal0, Goal,
 		poly_info_get_varset(Info0, VarSet0),
 		poly_info_get_var_types(Info0, VarTypes0),
 		set__list_to_set(HeadVars, OutsideVars),
-		poly_info_get_type_info_map(Info0, TVarMap),
-		poly_info_get_pred_info(Info0, PredInfo),
-		poly_info_get_module_info(Info0, ModuleInfo),
-		module_info_globals(ModuleInfo, Globals),
-		body_should_use_typeinfo_liveness(PredInfo, Globals,
-			TypeInfoLiveness),
 		implicitly_quantify_goal(Goal0, VarSet0, VarTypes0,
-			TVarMap, TypeInfoLiveness, OutsideVars,
-			Goal, VarSet, VarTypes, _Warnings),
+			OutsideVars, Goal, VarSet, VarTypes, _Warnings),
 		poly_info_set_varset_and_types(VarSet, VarTypes, Info0, Info)
 	).
 
@@ -1844,15 +1910,8 @@ polymorphism__fixup_lambda_quantification(Goal0, ArgVars, LambdaVars,
 			TypeClassVarMap, VarTypes0, ExistQVars,
 			NonLocalsPlusArgs, NewOutsideVars),
 		set__union(NonLocals, NewOutsideVars, OutsideVars),
-		poly_info_get_type_info_map(Info0, TVarMap),
-		poly_info_get_pred_info(Info0, PredInfo),
-		poly_info_get_module_info(Info0, ModuleInfo),
-		module_info_globals(ModuleInfo, Globals),
-		body_should_use_typeinfo_liveness(PredInfo, Globals,
-			TypeInfoLiveness),
 		implicitly_quantify_goal(Goal0, VarSet0, VarTypes0,
-			TVarMap, TypeInfoLiveness, OutsideVars,
-			Goal, VarSet, VarTypes, _Warnings),
+			OutsideVars, Goal, VarSet, VarTypes, _Warnings),
 		poly_info_set_varset_and_types(VarSet, VarTypes, Info0, Info)
 	).
 
@@ -2371,20 +2430,28 @@ polymorphism__make_type_info_var(Type, Context, Var, ExtraGoals,
 	% (i.e. types which are not type variables)
 	%
 	(
-		type_is_higher_order(Type, PredOrFunc, _, TypeArgs)
+		( type_is_higher_order(Type, PredOrFunc, _, TypeArgs0) ->
+			TypeArgs = TypeArgs0,
+			hlds_out__pred_or_func_to_str(PredOrFunc,
+				PredOrFuncStr),
+			TypeId = unqualified(PredOrFuncStr) - 0
+		; type_is_tuple(Type, TypeArgs1) ->
+			TypeArgs = TypeArgs1,
+			TypeId = unqualified("tuple") - 0
+		;
+			fail
+		)
 	->
 		% This occurs for code where a predicate calls a polymorphic
-		% predicate with a known higher-order value of the type
-		% variable.
+		% predicate with a known higher-order or tuple value of the
+		% type variable.
 		% The transformation we perform is basically the same as
 		% in the first-order case below, except that we map
-		% pred/func types to builtin pred/0 or func/0 for the
-		% purposes of creating type_infos.  
+		% pred types to pred/0, func types to func/0 and tuple
+		% types to tuple/0 for the purposes of creating type_infos.  
 		% To allow univ_to_type to check the type_infos
 		% correctly, the actual arity of the pred is added to
 		% the type_info of higher-order types.
-		hlds_out__pred_or_func_to_str(PredOrFunc, PredOrFuncStr),
-		TypeId = unqualified(PredOrFuncStr) - 0,
 		polymorphism__construct_type_info(Type, TypeId, TypeArgs,
 			yes, Context, Var, ExtraGoals, Info0, Info)
 	;
@@ -2436,7 +2503,7 @@ polymorphism__make_type_info_var(Type, Context, Var, ExtraGoals,
 :- mode polymorphism__construct_type_info(in, in, in, in, in, out, out, 
 	in, out) is det.
 
-polymorphism__construct_type_info(Type, TypeId, TypeArgs, IsHigherOrder, 
+polymorphism__construct_type_info(Type, TypeId, TypeArgs, IsHigherOrderOrTuple, 
 		Context, Var, ExtraGoals, Info0, Info) :-
 
 	% Create the typeinfo vars for the arguments
@@ -2451,7 +2518,7 @@ polymorphism__construct_type_info(Type, TypeId, TypeArgs, IsHigherOrder,
 		TypeId, ModuleInfo, VarSet1, VarTypes1, 
 		BaseVar, BaseGoal, VarSet2, VarTypes2),
 	polymorphism__maybe_init_second_cell(ArgTypeInfoVars,
-		ArgTypeInfoGoals, Type, IsHigherOrder,
+		ArgTypeInfoGoals, Type, IsHigherOrderOrTuple,
 		BaseVar, VarSet2, VarTypes2, [BaseGoal],
 		Var, VarSet, VarTypes, ExtraGoals),
 
@@ -2474,12 +2541,12 @@ polymorphism__construct_type_info(Type, TypeId, TypeArgs, IsHigherOrder,
 	out, out, out, out) is det.
 
 polymorphism__maybe_init_second_cell(ArgTypeInfoVars, ArgTypeInfoGoals, Type,
-		IsHigherOrder, BaseVar, VarSet0, VarTypes0, ExtraGoals0,
+		IsHigherOrderOrTuple, BaseVar, VarSet0, VarTypes0, ExtraGoals0,
 		Var, VarSet, VarTypes, ExtraGoals) :-
 	% Unfortunately, if we have higher order terms, we
 	% can no longer just optimise them to be the actual
 	% type_ctor_info
-	( IsHigherOrder = yes ->
+	( IsHigherOrderOrTuple = yes ->
 		list__length(ArgTypeInfoVars, PredArity),
 		polymorphism__make_count_var(PredArity,
 			VarSet0, VarTypes0, ArityVar, ArityGoal,
@@ -2593,6 +2660,7 @@ polymorphism__get_category_name(enum_type, "int").
 polymorphism__get_category_name(float_type, "float").
 polymorphism__get_category_name(str_type, "string").
 polymorphism__get_category_name(pred_type, "pred").
+polymorphism__get_category_name(tuple_type, "tuple").
 polymorphism__get_category_name(polymorphic_type, _) :-
 	error("polymorphism__get_category_name: polymorphic type").
 polymorphism__get_category_name(user_type, _) :-

@@ -438,7 +438,7 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
 	for (i = 0; i < MR_all_desc_var_count(input_args); i++) {
 		arg_value = MR_trace_find_input_arg(event_info->MR_event_sll,
 				saved_regs,
-				input_args->MR_slvs_names[i].MR_var_num,
+				input_args->MR_slvs_var_nums[i],
 				&succeeded);
 
 		if (! succeeded) {
@@ -573,13 +573,13 @@ MR_trace_find_input_arg(const MR_Stack_Layout_Label *label, MR_Word *saved_regs,
 	int				i;
 
 	vars = &label->MR_sll_var_info;
-	if (vars->MR_slvs_names == NULL) {
+	if (vars->MR_slvs_var_nums == NULL) {
 		*succeeded = FALSE;
 		return 0;
 	}
 
 	for (i = 0; i < MR_all_desc_var_count(vars); i++) {
-		if (var_num == vars->MR_slvs_names[i].MR_var_num) {
+		if (var_num == vars->MR_slvs_var_nums[i]) {
 			if (i < MR_long_desc_var_count(vars)) {
 				return MR_lookup_long_lval_base(
 					MR_long_desc_var_locn(vars, i),

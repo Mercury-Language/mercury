@@ -2166,6 +2166,10 @@ Reports an error if there is no break point with that number.
 @item disable *
 Disables all break points.
 @sp 1
+@item disable
+Disables the most recently added breakpoint.
+Reports an error if the most recently added breakpoint has since been deleted.
+@sp 1
 @item enable @var{num}
 Enables the break point with the given number.
 Reports an error if there is no break point with that number.
@@ -2173,12 +2177,21 @@ Reports an error if there is no break point with that number.
 @item enable *
 Enables all break points.
 @sp 1
+@item enable
+Enables the most recently added breakpoint.
+Reports an error if the most recently added breakpoint has since been deleted.
+@sp 1
 @item delete @var{num}
 Deletes the break point with the given number.
 Reports an error if there is no break point with that number.
 @sp 1
 @item delete *
 Deletes all break points.
+@sp 1
+@item delete
+Deletes the most recently added breakpoint.
+Reports an error if the most recently added breakpoint
+has already been deleted.
 @sp 1
 @item modules
 Lists all the debuggable modules
@@ -2379,8 +2392,16 @@ Prints the contents of all the virtual machine registers.
 @subsection Miscellaneous commands
 @sp 1
 @table @code
-@item source @var{filename}
+@item source [-i] @var{filename}
 Executes the commands in the file named @var{filename}.
+@sp 1
+The option @samp{-i} or @samp{--ignore-errors} tells @samp{mdb}
+not to complain if the named file does not exist or is not readable.
+@sp 1
+@item save @var{filename}
+Saves current set of breakpoints and the current set of aliases
+in the named file as a set of @samp{break} and @samp{alias} commands.
+Sourcing the file will recreate the current breakpoints and aliases.
 @sp 1
 @item quit [-y]
 Quits the debugger and aborts the execution of the program.
@@ -3035,9 +3056,9 @@ Check the module for errors, but do not generate any code.
 
 @sp 1
 @item -C
-@itemx --compile-to-c
-@itemx --compile-to-C
-Generate C code in @file{@var{module}.c}, but not object code.
+@itemx --target-code-only
+Generate target code (i.e. C in @file{@var{module}.c},
+or IL in @file{@var{module}.il}, but not object code.
 
 @sp 1
 @item -c
@@ -3220,6 +3241,10 @@ Execute disjunctions strictly left-to-right.
 Don't optimize away loops or calls to @code{error/1}.
 
 @sp 1
+@item --infer-all
+An abbreviation for @samp{--infer-types --infer-modes --infer-det}.
+
+@sp 1
 @item --infer-types
 If there is no type declaration for a predicate or function,
 try to infer the type, rather than just reporting an error.
@@ -3339,9 +3364,10 @@ exclusive alternatives governing a single aspect of the compilation model.
 The set of aspects and their alternatives are:
 
 @table @asis
-@item What combination of GNU C extensions to use:
+@item What target language to use, and (for C) what combination of GNU C extensions to use:
 @samp{none}, @samp{reg}, @samp{jump}, @samp{asm_jump},
-@samp{fast}, @samp{asm_fast}, and @samp{hlc} (the default is system dependent).
+@samp{fast}, @samp{asm_fast}, @samp{hlc}, and @samp{ilc}
+(the default is system dependent).
 
 @item What garbage collection strategy to use:
 @samp{gc}, and @samp{agc} (the default is no garbage collection).
@@ -3381,25 +3407,28 @@ and grade modifier; they are followed by descriptions of those options.
 @var{Options implied}.
 
 @item @samp{none}
-@code{--no-gcc-global-registers --no-gcc-nonlocal_gotos --no-asm-labels}.
+@code{--target c --no-gcc-global-registers --no-gcc-nonlocal_gotos --no-asm-labels}.
 
 @item @samp{reg}
-@code{--gcc-global-registers --no-gcc-nonlocal_gotos --no-asm-labels}.
+@code{--target c --gcc-global-registers --no-gcc-nonlocal_gotos --no-asm-labels}.
 
 @item @samp{jump}
-@code{--no-gcc-global-registers --gcc-nonlocal-gotos --no-asm-labels}.
+@code{--target c --no-gcc-global-registers --gcc-nonlocal-gotos --no-asm-labels}.
 
 @item @samp{fast}
-@code{--gcc-global-registers --gcc-nonlocal-gotos --no-asm-labels}.
+@code{--target c --gcc-global-registers --gcc-nonlocal-gotos --no-asm-labels}.
 
 @item @samp{asm_jump}
-@code{--no-gcc-global-registers --gcc-nonlocal-gotos --asm-labels}.
+@code{--target c --no-gcc-global-registers --gcc-nonlocal-gotos --asm-labels}.
 
 @item @samp{asm_fast}
-@code{--gcc-global-registers --gcc-nonlocal_gotos --asm-labels}.
+@code{--target c --gcc-global-registers --gcc-nonlocal_gotos --asm-labels}.
 
 @item @samp{hlc}
-@code{--high-level-code}.
+@code{--target c --high-level-code}.
+
+@item @samp{il}
+@code{--target il --high-level-code}.
 
 @item @samp{.gc}
 @code{--gc conservative}.
@@ -3437,6 +3466,27 @@ and grade modifier; they are followed by descriptions of those options.
 @end table
 
 @sp 1
+@item @code{--target c} (grades: none, reg, jump, fast, asm_jump, asm_fast, hlc)
+@itemx @code{--il}, @code{--target il} (grades: ilc)
+Specify the target language used for compilation: C or IL.
+C means ANSI/ISO C, optionally with GNU C extensions (see below).
+IL means the Microsoft .NET Intermediate Language.
+@samp{--target il} implies @samp{--high-level-code}.
+
+@sp 1
+@item @code{--il-only}
+An abbreviation for @samp{--target il --target-code-only}.
+Generate IL assembler code in @file{@var{module}.il}, but do not invoke
+ilasm to produce IL object code.
+
+@sp 1
+@item @code{--compile-to-c}
+@itemx @code{--compile-to-C}
+An abbreviation for @samp{--target c --target-code-only}.
+Generate C code in @file{@var{module}.c}, but do not invoke the
+C compiler to generate object code.
+
+@sp 1
 @item @code{--gcc-global-registers} (grades: reg, fast, asm_fast)
 @itemx @code{--no-gcc-global-registers} (grades: none, jump, asm_jump)
 Specify whether or not to use GNU C's global register variables extension.
@@ -3456,9 +3506,9 @@ for inline assembler labels.
 This option is ignored if the @samp{--high-level-code} option is enabled.
 
 @sp 1
-@item @code{-H}, @code{--high-level-code} (grades: hlc)
-Use an alternative back-end that generates high-level C code
-rather than the very low-level C code that is generated by our
+@item @code{-H}, @code{--high-level-code} (grades: hlc, ilc)
+Use an alternative back-end that generates high-level code
+rather than the very low-level code that is generated by our
 original back-end.
 
 @sp 1
@@ -3691,6 +3741,7 @@ Assume that @var{n} float temporaries will fit into real machine registers.
 @menu
 * Overall optimization options::
 * High-level (HLDS -> HLDS) optimization options::
+* MLDS backend (MLDS -> MLDS) optimization options::
 * Medium-level (HLDS -> LLDS) optimization options::
 * Low-level (LLDS -> LLDS) optimization options::
 * Output-level (LLDS -> C) optimization options::
@@ -3921,6 +3972,18 @@ that have to be saved across calls.
 Enable deforestation. Deforestation is a program transformation whose aim
 is to avoid the construction of intermediate data structures and to avoid
 repeated traversals over data structures within a conjunction.
+
+@end table
+
+@node MLDS backend (MLDS -> MLDS) optimization options
+@subsection MLDS backend (MLDS -> MLDS) optimization options
+
+These optimizations are applied to the medium level 
+intermediate code.
+
+@table @code
+@item --no-mlds-optimize
+Disable the MLDS -> MLDS optimization passes.
 
 @end table
 

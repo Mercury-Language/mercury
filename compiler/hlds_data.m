@@ -26,6 +26,9 @@
 :- type cons_table	==	map(cons_id, list(hlds_cons_defn)).
 
 :- type cons_id		--->	cons(sym_name, arity)	% name, arity
+				% Tuples have cons_id
+				% `cons(unqualified("{}"), Arity)'.
+
 			;	int_const(int)
 			;	string_const(string)
 			;	float_const(float)

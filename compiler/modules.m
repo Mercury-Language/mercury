@@ -39,7 +39,7 @@
 
 :- interface.
 
-:- import_module prog_data, prog_io.
+:- import_module prog_data, prog_io, globals.
 :- import_module std_util, bool, list, set, io.
 
 %-----------------------------------------------------------------------------%
@@ -432,16 +432,31 @@
 :- mode generate_file_dependencies(in, di, uo) is det.
 
 	% get_dependencies(Items, ImportDeps, UseDeps).
-	%	Get the list of modules that a list of items depends on.
-	%	ImportDeps is the list of modules imported using
+	%	Get the list of modules that a list of items (explicitly)
+	%	depends on.  ImportDeps is the list of modules imported using
 	% 	`:- import_module', UseDeps is the list of modules imported
 	%	using `:- use_module'.
 	%	N.B. Typically you also need to consider the module's
-	%	parent modules (see get_ancestors/2) and possibly
+	%	implicit dependencies (see get_implicit_dependencies/3),
+	%	its parent modules (see get_ancestors/2) and possibly
 	%	also the module's child modules (see get_children/2).
+	%	You may also need to consider indirect dependencies.
 	%
 :- pred get_dependencies(item_list, list(module_name), list(module_name)).
 :- mode get_dependencies(in, out, out) is det.
+
+	% get_implicit_dependencies(Items, Globals, ImportDeps, UseDeps):
+	%	Get the list of builtin modules (e.g. "public_builtin",
+	%	"private_builtin") that a list of items may implicitly
+	% 	depend on.  ImportDeps is the list of modules which 
+	%	should be automatically implicitly imported as if via
+	%	`:- import_module', and UseDeps is the list which should
+	%	be automatically implicitly imported as if via
+	%	`:- use_module'.
+	%
+:- pred get_implicit_dependencies(item_list, globals,
+		list(module_name), list(module_name)).
+:- mode get_implicit_dependencies(in, in, out, out) is det.
 
 	% get_ancestors(ModuleName, ParentDeps):
 	%	ParentDeps is the list of ancestor modules for this
@@ -491,7 +506,7 @@
 
 :- implementation.
 :- import_module llds_out, passes_aux, prog_out, prog_util, mercury_to_mercury.
-:- import_module prog_io_util, globals, options, module_qual.
+:- import_module prog_io_util, options, module_qual.
 
 :- import_module string, map, term, varset, dir, library.
 :- import_module assoc_list, relation, char, require.
@@ -549,6 +564,7 @@ mercury_std_library_module("stack").
 mercury_std_library_module("std_util").
 mercury_std_library_module("store").
 mercury_std_library_module("string").
+mercury_std_library_module("table_builtin").
 mercury_std_library_module("term").
 mercury_std_library_module("term_io").
 mercury_std_library_module("time").
@@ -1207,7 +1223,9 @@ grab_imported_modules(SourceFileName, ModuleName, Items0, Module, Error) -->
 
 		% Add `builtin' and `private_builtin' to the
 		% list of imported modules
-	{ add_implicit_imports(IntImportedModules1, IntUsedModules1,
+	globals__io_get_globals(Globals),
+	{ add_implicit_imports(Items0, Globals,
+			IntImportedModules1, IntUsedModules1,
 			IntImportedModules2, IntUsedModules2) },
 
 		% Process the ancestor modules
@@ -1269,7 +1287,8 @@ grab_unqual_imported_modules(SourceFileName, ModuleName, Items0,
 	{ append_pseudo_decl(Module0, imported(interface), Module1) },
 
 		% Add `builtin' and `private_builtin' to the imported modules.
-	{ add_implicit_imports(IntImportDeps0, IntUseDeps0,
+	globals__io_get_globals(Globals),
+	{ add_implicit_imports(Items0, Globals, IntImportDeps0, IntUseDeps0,
 			IntImportDeps1, IntUseDeps1) },
 
 		%
@@ -1380,18 +1399,40 @@ make_pseudo_decl(PseudoDecl, Item) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred add_implicit_imports(list(module_name), list(module_name),
-			list(module_name), list(module_name)).
-:- mode add_implicit_imports(in, in, out, out) is det.
+get_implicit_dependencies(Items, Globals, ImportDeps, UseDeps) :-
+	add_implicit_imports(Items, Globals, [], [], ImportDeps, UseDeps).
 
-add_implicit_imports(ImportDeps0, UseDeps0, ImportDeps, UseDeps) :-
+:- pred add_implicit_imports(item_list, globals,
+			list(module_name), list(module_name),
+			list(module_name), list(module_name)).
+:- mode add_implicit_imports(in, in, in, in, out, out) is det.
+
+add_implicit_imports(Items, _Globals, ImportDeps0, UseDeps0,
+		ImportDeps, UseDeps) :-
 	mercury_public_builtin_module(MercuryPublicBuiltin),
 	mercury_private_builtin_module(MercuryPrivateBuiltin),
+	mercury_table_builtin_module(MercuryTableBuiltin),
 	ImportDeps = [MercuryPublicBuiltin | ImportDeps0],
-	( MercuryPrivateBuiltin = MercuryPublicBuiltin ->
-		UseDeps = UseDeps0
+	UseDeps1 = [MercuryPrivateBuiltin | UseDeps0],
+	(
+		%
+		% we should include MercuryTableBuiltin iff
+		% the Items contain a tabling pragma
+		%
+		contains_tabling_pragma(Items)
+	->
+		UseDeps = [MercuryTableBuiltin | UseDeps1]
 	;
-		UseDeps = [MercuryPrivateBuiltin | UseDeps0]
+		UseDeps = UseDeps1
+	).
+
+:- pred contains_tabling_pragma(item_list).
+contains_tabling_pragma([Item|Items]) :-
+	(
+		Item = pragma(Pragma) - _Context,
+		Pragma = tabled(_, _, _, _, _)
+	;
+		contains_tabling_pragma(Items)
 	).
 
 :- pred warn_if_import_self_or_ancestor(module_name, list(module_name),
@@ -2130,8 +2171,9 @@ generate_file_dependencies(FileName) -->
 		Items, Error, ModuleName),
 	{ string__append(FileName, ".m", SourceFileName) },
 	split_into_submodules(ModuleName, Items, SubModuleList),
-	{ list__map(init_dependencies(SourceFileName, Error), SubModuleList,
-		ModuleImportsList) },
+	globals__io_get_globals(Globals),
+	{ list__map(init_dependencies(SourceFileName, Error, Globals),
+		SubModuleList, ModuleImportsList) },
 	{ map__init(DepsMap0) },
 	{ list__foldl(insert_into_deps_map, ModuleImportsList,
 		DepsMap0, DepsMap1) },
@@ -3312,25 +3354,28 @@ read_dependencies(ModuleName, Search, ModuleImportsList) -->
 		{ Items = Items0 },
 		split_into_submodules(ModuleName, Items, SubModuleList)
 	),
-	{ list__map(init_dependencies(FileName, Error), SubModuleList,
+	globals__io_get_globals(Globals),
+	{ list__map(init_dependencies(FileName, Error, Globals), SubModuleList,
 		ModuleImportsList) }.
 
-:- pred init_dependencies(file_name, module_error,
+:- pred init_dependencies(file_name, module_error, globals,
 		pair(module_name, item_list), module_imports).
-:- mode init_dependencies(in, in, in, out) is det.
+:- mode init_dependencies(in, in, in, in, out) is det.
 
-init_dependencies(FileName, Error, ModuleName - Items, ModuleImports) :-
+init_dependencies(FileName, Error, Globals, ModuleName - Items,
+		ModuleImports) :-
 	get_ancestors(ModuleName, ParentDeps),
 
 	get_dependencies(Items, ImplImportDeps0, ImplUseDeps0),
-	add_implicit_imports(ImplImportDeps0, ImplUseDeps0,
+	add_implicit_imports(Items, Globals, ImplImportDeps0, ImplUseDeps0,
 		ImplImportDeps, ImplUseDeps),
 	list__append(ImplImportDeps, ImplUseDeps, ImplementationDeps),
 
 	get_interface(Items, no, InterfaceItems),
 	get_dependencies(InterfaceItems, InterfaceImportDeps0,
 		InterfaceUseDeps0),
-	add_implicit_imports(InterfaceImportDeps0, InterfaceUseDeps0,
+	add_implicit_imports(InterfaceItems, Globals,
+		InterfaceImportDeps0, InterfaceUseDeps0,
 		InterfaceImportDeps, InterfaceUseDeps),
 	list__append(InterfaceImportDeps, InterfaceUseDeps, 
 		InterfaceDeps),
@@ -3838,7 +3883,8 @@ get_dependencies(Items, ImportDeps, UseDeps) :-
 
 	% get_dependencies(Items, IntImportDeps, IntUseDeps,
 	% 		ImpImportDeps, ImpUseDeps).
-	%	Get the list of modules that a list of items depends on.
+	%	Get the list of modules that a list of items (explicitly)
+	%	depends on.
 	%	IntImportDeps is the list of modules imported using `:-
 	%	import_module' in the interface, and ImpImportDeps those
 	%	modules imported in the implementation. IntUseDeps is the
@@ -3846,9 +3892,12 @@ get_dependencies(Items, ImportDeps, UseDeps) :-
 	%	interface, and ImpUseDeps those modules imported in the
 	%	implementation.
 	%	N.B. Typically you also need to consider the module's
-	%	parent modules (see get_ancestors/2) and possibly
+	%	implicit dependencies (see get_implicit_dependencies/3),
+	%	its parent modules (see get_ancestors/2) and possibly
 	%	also the module's child modules (see get_children/2).
-	%	N.B This predicate assumes that any declaration between
+	%	You may also need to consider indirect dependencies.
+	%
+	%	N.B This predicate assumes that any declarations between
 	%	the `:- module' and the first `:- interface' or
 	%	`:- implementation' are in the implementation.
 	%

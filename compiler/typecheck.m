@@ -345,7 +345,7 @@ typecheck_pred_type(PredId, PredInfo0, ModuleInfo, PredInfo, Error, Changed,
 	    clauses_info_clauses(ClausesInfo0, Clauses0),
 	    clauses_info_headvars(ClausesInfo0, HeadVars),
 	    clauses_info_varset(ClausesInfo0, VarSet),
-	    clauses_info_explicit_vartypes(ClausesInfo0, ExplicitVarTypes),
+	    clauses_info_explicit_vartypes(ClausesInfo0, ExplicitVarTypes0),
 	    ( 
 		Clauses0 = [] 
 	    ->
@@ -417,7 +417,7 @@ typecheck_pred_type(PredId, PredInfo0, ModuleInfo, PredInfo, Error, Changed,
 		dual_constraints(PredConstraints, Constraints),
 
 		typecheck_info_init(IOState1, ModuleInfo, PredId,
-				TypeVarSet0, VarSet, ExplicitVarTypes,
+				TypeVarSet0, VarSet, ExplicitVarTypes0,
 				HeadTypeParams1, Constraints, Status,
 				TypeCheckInfo1),
 		typecheck_info_get_type_assign_set(TypeCheckInfo1,
@@ -431,21 +431,36 @@ typecheck_pred_type(PredId, PredInfo0, ModuleInfo, PredInfo, Error, Changed,
 		typecheck_check_for_ambiguity(whole_pred, HeadVars,
 				TypeCheckInfo3, TypeCheckInfo4),
 		typecheck_info_get_final_info(TypeCheckInfo4, HeadTypeParams1, 
-				ExistQVars0, TypeVarSet, HeadTypeParams2,
-				InferredVarTypes0, InferredTypeConstraints0,
-				ConstraintProofs, TVarRenaming,
-				ExistTypeRenaming),
+				ExistQVars0, ExplicitVarTypes0, TypeVarSet,
+				HeadTypeParams2, InferredVarTypes0,
+				InferredTypeConstraints0, ConstraintProofs,
+				TVarRenaming, ExistTypeRenaming),
 		map__optimize(InferredVarTypes0, InferredVarTypes),
 		clauses_info_set_vartypes(ClausesInfo0, InferredVarTypes,
 				ClausesInfo1),
-		clauses_info_set_clauses(ClausesInfo1, Clauses, ClausesInfo),
+
+		%
+		% Apply substitutions to the explicit vartypes.
+		%
+		( ExistQVars0 = [] ->
+			ExplicitVarTypes1 = ExplicitVarTypes0
+		;
+			apply_variable_renaming_to_type_map(ExistTypeRenaming,
+				ExplicitVarTypes0, ExplicitVarTypes1)
+		),
+		apply_variable_renaming_to_type_map(TVarRenaming,
+			ExplicitVarTypes1, ExplicitVarTypes),
+
+		clauses_info_set_explicit_vartypes(ClausesInfo1,
+			ExplicitVarTypes, ClausesInfo2),
+		clauses_info_set_clauses(ClausesInfo2, Clauses, ClausesInfo),
 		pred_info_set_clauses_info(PredInfo1, ClausesInfo, PredInfo2),
 		pred_info_set_typevarset(PredInfo2, TypeVarSet, PredInfo3),
 		pred_info_set_constraint_proofs(PredInfo3, ConstraintProofs,
 			PredInfo4),
 
 		%
-		% Split the inferred type class constraints into those that
+		% Split the inferred type class constraints into those 
 		% that apply only to the head variables, and those that
 		% apply to type variables which occur only in the body.
 		%
@@ -733,12 +748,7 @@ special_pred_needs_typecheck(PredInfo, ModuleInfo) :-
 	module_info_types(ModuleInfo, TypeTable),
 	map__lookup(TypeTable, TypeId, TypeDefn),
 	hlds_data__get_type_defn_body(TypeDefn, Body),
-	Body = du_type(Ctors, _, _, MaybeEqualityPred),
-	(	MaybeEqualityPred = yes(_)
-	;	list__member(Ctor, Ctors),
-		Ctor = ctor(ExistQTVars, _, _, _),
-		ExistQTVars \= []
-	).
+	special_pred_for_type_needs_typecheck(Body).
 
 %-----------------------------------------------------------------------------%
 
@@ -3354,7 +3364,7 @@ typecheck_info_get_type_assign_set(TypeCheckInfo, TypeAssignSet) :-
 %-----------------------------------------------------------------------------%
 
 % typecheck_info_get_final_info(TypeCheckInfo, 
-% 		OldHeadTypeParams, OldExistQVars,
+% 		OldHeadTypeParams, OldExistQVars, OldExplicitVarTypes,
 %		NewTypeVarSet, New* ..., TypeRenaming, ExistTypeRenaming):
 %	extracts the final inferred types from TypeCheckInfo.
 %
@@ -3362,6 +3372,8 @@ typecheck_info_get_type_assign_set(TypeCheckInfo, TypeAssignSet) :-
 %	predicate.
 %	OldExistQVars should be the declared existentially quantified
 %	type variables (if any).
+%	OldExplicitVarTypes is the vartypes map containing the explicit 
+%	type qualifications.
 %	New* is the newly inferred types, in NewTypeVarSet.
 %	TypeRenaming is a map to rename things from the old TypeVarSet
 %	to the NewTypeVarSet.
@@ -3370,15 +3382,15 @@ typecheck_info_get_type_assign_set(TypeCheckInfo, TypeAssignSet) :-
 %	in OldExistQVars.
 
 :- pred typecheck_info_get_final_info(typecheck_info, list(tvar), existq_tvars,
-		tvarset, existq_tvars, map(prog_var, type),
+		vartypes, tvarset, existq_tvars, map(prog_var, type),
 		class_constraints, map(class_constraint, constraint_proof),
 		map(tvar, tvar), map(tvar, tvar)).
-:- mode typecheck_info_get_final_info(in, in, in, 
+:- mode typecheck_info_get_final_info(in, in, in, in,
 		out, out, out, out, out, out, out) is det.
 
 typecheck_info_get_final_info(TypeCheckInfo, OldHeadTypeParams, OldExistQVars, 
-		NewTypeVarSet, NewHeadTypeParams, NewVarTypes,
-		NewTypeConstraints, NewConstraintProofs, TSubst,
+		OldExplicitVarTypes, NewTypeVarSet, NewHeadTypeParams,
+		NewVarTypes, NewTypeConstraints, NewConstraintProofs, TSubst,
 		ExistTypeRenaming) :-
 	typecheck_info_get_type_assign_set(TypeCheckInfo, TypeAssignSet),
 	( TypeAssignSet = [TypeAssign | _] ->
@@ -3418,8 +3430,9 @@ typecheck_info_get_final_info(TypeCheckInfo, OldHeadTypeParams, OldExistQVars,
 		%
 		% First, find the set (sorted list) of type variables
 		% that we need.  This must include any type variables
-		% in the inferred types, plus any existentially typed
-		% variables that will remain in the declaration.
+		% in the inferred types, the explicit type qualifications,
+		% and any existentially typed variables that will remain
+		% in the declaration.
 		%
 		% There may also be some type variables in the HeadTypeParams
 		% which do not occur in the type of any variable (e.g. this
@@ -3431,11 +3444,13 @@ typecheck_info_get_final_info(TypeCheckInfo, OldHeadTypeParams, OldExistQVars,
 		%
 		map__values(VarTypes, Types),
 		term__vars_list(Types, TypeVars0),
+		map__values(OldExplicitVarTypes, ExplicitTypes),
+		term__vars_list(ExplicitTypes, ExplicitTypeVars0),
 		map__keys(ExistTypeRenaming, ExistQVarsToBeRenamed),
 		list__delete_elems(OldExistQVars, ExistQVarsToBeRenamed,
 			ExistQVarsToRemain),
-		list__condense([ExistQVarsToRemain, HeadTypeParams, TypeVars0],
-			TypeVars1),
+		list__condense([ExistQVarsToRemain, HeadTypeParams,
+			TypeVars0, ExplicitTypeVars0], TypeVars1),
 		list__sort_and_remove_dups(TypeVars1, TypeVars),
 		%
 		% Next, create a new typevarset with the same number of
@@ -3729,6 +3744,34 @@ typecheck_info_get_ctor_list_2(TypeCheckInfo, Functor, Arity,
 		ConsInfoList2 = ConsInfoList1
 	),
 
+	%
+	% Check if Functor is a tuple constructor.
+	%
+	(
+		Functor = cons(unqualified("{}"), TupleArity)
+	->
+		%
+		% Make some fresh type variables for the argument types.
+		%
+		varset__init(TupleConsTypeVarSet0),
+		varset__new_vars(TupleConsTypeVarSet0, TupleArity,
+			TupleArgTVars, TupleConsTypeVarSet),
+		term__var_list_to_term_list(TupleArgTVars, TupleArgTypes),
+
+		construct_type(unqualified("{}") - TupleArity, TupleArgTypes,
+			TupleConsType),
+
+		% Tuples can't have existentially typed arguments.
+		TupleExistQVars = [],
+
+		TupleConsInfo = cons_type_info(TupleConsTypeVarSet,
+			TupleExistQVars, TupleConsType,
+			TupleArgTypes, constraints([], [])),
+		ConsInfoList3 = [TupleConsInfo | ConsInfoList2]
+	;
+		ConsInfoList3 = ConsInfoList2
+	),
+
 	% Check if Functor is the name of a predicate which takes at least
 	% Arity arguments.  If so, insert the resulting cons_type_info
 	% at the start of the list.
@@ -3736,9 +3779,9 @@ typecheck_info_get_ctor_list_2(TypeCheckInfo, Functor, Arity,
 		builtin_pred_type(TypeCheckInfo, Functor, Arity,
 			PredConsInfoList)
 	->
-		list__append(ConsInfoList2, PredConsInfoList, ConsInfoList3)
+		list__append(ConsInfoList3, PredConsInfoList, ConsInfoList4)
 	;
-		ConsInfoList3 = ConsInfoList2
+		ConsInfoList4 = ConsInfoList3
 	),
 	
 	%
@@ -3751,11 +3794,11 @@ typecheck_info_get_ctor_list_2(TypeCheckInfo, Functor, Arity,
 			InvalidFieldUpdates0)
 	->
 		list__append(FieldAccessConsInfoList,
-			ConsInfoList3, ConsInfoList),
+			ConsInfoList4, ConsInfoList),
 		InvalidFieldUpdates = InvalidFieldUpdates0
 	;
 		InvalidFieldUpdates = [],
-		ConsInfoList = ConsInfoList3
+		ConsInfoList = ConsInfoList4
 	).
 
 :- pred flip_quantifiers(cons_type_info, cons_type_info).
@@ -3809,8 +3852,10 @@ report_unsatisfiable_constraints(TypeAssignSet, TypeCheckInfo0, TypeCheckInfo) :
 				UnprovenConstraints),
 			prog_out__write_context(Context, IO0, IO1),
 			io__write_string("  `", IO1, IO2),
+			AppendVarnums = no,
 			io__write_list(UnprovenConstraints, "', `",
-				mercury_output_constraint(VarSet), IO2, IO3),
+			    mercury_output_constraint(VarSet, AppendVarnums),
+			    IO2, IO3),
 			io__write_string("'.\n", IO3, IO)
 		)),
 
@@ -4227,19 +4272,10 @@ find_first(Pred, [X|Xs], Result) :-
 :- mode check_satisfiability(in, in) is semidet.
 
 check_satisfiability(Constraints, HeadTypeParams) :-
-	% SICStus doesn't allow the following syntax
-	% all [C] list__member(C, Constraints) => (
-	% 	C = constraint(_ClassName, Types),
-	% 	term__contains_var_list(Types, TVar),
-	% 	not list__member(TVar, HeadTypeParams)
-	% ).
-	\+ (
-		list__member(C, Constraints),
-		\+ (
-			C = constraint(_ClassName, Types),
-			term__contains_var_list(Types, TVar),
-			\+ list__member(TVar, HeadTypeParams)
-		)
+	all [C] list__member(C, Constraints) => (
+		C = constraint(_ClassName, Types),
+		term__contains_var_list(Types, TVar),
+		not list__member(TVar, HeadTypeParams)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -4452,13 +4488,15 @@ write_inference_message(PredInfo) -->
 	{ MaybeDet = no },
 	prog_out__write_context(Context),
 	io__write_string("Inferred "),
+	{ AppendVarNums = no },
 	(	{ PredOrFunc = predicate },
 		mercury_output_pred_type(VarSet, ExistQVars, Name, Types,
-			MaybeDet, Purity, ClassContext, Context)
+			MaybeDet, Purity, ClassContext, Context, AppendVarNums)
 	;	{ PredOrFunc = function },
 		{ pred_args_to_func_args(Types, ArgTypes, RetType) },
 		mercury_output_func_type(VarSet, ExistQVars, Name, ArgTypes,
-			RetType, MaybeDet, Purity, ClassContext, Context)
+			RetType, MaybeDet, Purity, ClassContext, Context,
+			AppendVarNums)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -5094,7 +5132,8 @@ write_type_assign_constraints(Operator, [Constraint | Constraints],
 	),
 	{ apply_rec_subst_to_constraint(TypeBindings, Constraint,
 		BoundConstraint) },
-	mercury_output_constraint(TypeVarSet, BoundConstraint),
+	{ AppendVarNums = no },
+	mercury_output_constraint(TypeVarSet, AppendVarNums, BoundConstraint),
 	write_type_assign_constraints(Operator, Constraints,
 		TypeBindings, TypeVarSet, yes).
 
@@ -5558,6 +5597,37 @@ report_error_undef_cons(TypeCheckInfo, InvalidFieldUpdates, Functor, Arity) -->
 		;
 			[]
 		)
+	; { Functor = cons(unqualified("^"), 2) } ->
+		io__write_string(
+		  "  error: invalid use of field selection operator (`^').\n"),
+		globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
+		( { VerboseErrors = yes } ->
+			prog_out__write_context(Context),
+			io__write_string(
+			  "  This is probably some kind of syntax error.\n"),
+			prog_out__write_context(Context),
+			io__write_string(
+			  "  The field name must be an atom, not a variable or other term.\n")
+		;
+			[]
+		)
+	; { Functor = cons(unqualified(":="), 2) } ->
+		io__write_string(
+		  "  error: invalid use of field update operator (`:=').\n"),
+		globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
+		( { VerboseErrors = yes } ->
+			prog_out__write_context(Context),
+			io__write_string(
+			  "  This is probably some kind of syntax error.\n")
+		;
+			[]
+		)
+	; { Functor = cons(unqualified(":-"), 2) } ->
+		io__write_string(
+		  "  syntax error in lambda expression (`:-').\n")
+	; { Functor = cons(unqualified("-->"), 2) } ->
+		io__write_string(
+		  "  syntax error in DCG lambda expression (`-->').\n")
 	; { InvalidFieldUpdates = [_ | _] } ->
 		io__write_string(
 			"  error: invalid field update `"),

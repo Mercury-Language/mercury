@@ -9,7 +9,8 @@
 %
 % This module transforms HLDS code to implement loop detection, memoing
 % or minimal model evaluation. The transformation involves adding calls to
-% predicates defined in private_builtin.m and in mercury_tabling.c.
+% predicates defined in library/table_builtin.m and in
+% runtime/mercury_tabling.c.
 %
 % The loop detection transformation adds code to a procedure that allows
 % early detection of infinite loops. If such loops are detected the program
@@ -281,8 +282,8 @@ table_gen__process_proc(EvalMethod, PredId, ProcId, ProcInfo0, PredInfo0,
 	% are pretty dodgy (especially those for if-then-elses), so 
 	% recompute them here.
 	RecomputeAtomic = no,
-	recompute_instmap_delta_proc(RecomputeAtomic, PredInfo1,
-		ProcInfo4, ProcInfo, Module1, Module2),
+	recompute_instmap_delta_proc(RecomputeAtomic, ProcInfo4, ProcInfo,
+		Module1, Module2),
 
 	pred_info_procedures(PredInfo1, ProcTable1),
 	map__det_update(ProcTable1, ProcId, ProcInfo, ProcTable),
@@ -1196,7 +1197,7 @@ generate_new_table_var(Name, VarTypes0, VarTypes, VarSet0, VarSet, Var) :-
 generate_call(PredName, Args, Detism, Feature, InstMap, Module, Context,
 		CallGoal) :-
 	list__length(Args, Arity),
-	mercury_private_builtin_module(BuiltinModule),
+	mercury_table_builtin_module(BuiltinModule),
 	module_info_get_predicate_table(Module, PredTable),
 	(
 		predicate_table_search_pred_m_n_a(PredTable,
@@ -1327,6 +1328,7 @@ create_instmap_delta([Goal | Rest], IMD) :-
 not_builtin_type(pred_type).
 not_builtin_type(enum_type).
 not_builtin_type(polymorphic_type).
+not_builtin_type(tuple_type).
 not_builtin_type(user_type).
 
 :- pred builtin_type_to_string(builtin_type::in, string::out) is det.
@@ -1336,6 +1338,7 @@ builtin_type_to_string(char_type, 	"char").
 builtin_type_to_string(str_type, 	"string").
 builtin_type_to_string(float_type, 	"float").
 builtin_type_to_string(pred_type, 	"pred").
+builtin_type_to_string(tuple_type,	"any").
 builtin_type_to_string(enum_type, 	"enum").
 builtin_type_to_string(polymorphic_type, "any").
 builtin_type_to_string(user_type, 	"any").

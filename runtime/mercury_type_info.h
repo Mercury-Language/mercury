@@ -91,11 +91,12 @@ typedef const struct MR_PseudoTypeInfo_Almost_Struct	*MR_PseudoTypeInfo;
 /*
 ** The C structures of typeinfos and pseudotypeinfos are sort of lies,
 ** for two reasons. First, we want one C type that can describe both first
-** order and higher order (pseudo-) typeinfos, and they have different
-** structures (higher order (pseudo-) typeinfos have an extra word, the arity,
-** between the type_ctor_info and the argument (pseudo-) typeinfos). Second,
-** we can't rely on the C compiler having a mechanism for the declaration
-** of dynamically sized vectors embedded in structures.
+** order, and higher order and tuple (pseudo-) typeinfos, and they have
+** different structures (higher order and tuple (pseudo-) typeinfos have
+** an extra word, the arity, between the type_ctor_info and the argument
+** (pseudo-) typeinfos). Second, we can't rely on the C compiler having a
+** mechanism for the declaration of dynamically sized vectors embedded in
+** structures.
 **
 ** Instead, the types MR_TypeInfo and MR_PseudoTypeInfo are designed as
 ** error-detection devices. Values of these types should be manipulated
@@ -132,17 +133,22 @@ typedef const struct MR_PseudoTypeInfo_Almost_Struct	*MR_PseudoTypeInfo;
 	MR_TypeCtorInfo     MR_ti_type_ctor_info;			\
 	MR_TypeInfo         MR_ti_first_order_arg_typeinfos[ARITY];	\
     }
+
+/* Tuple types also use the higher-order type-info structure. */
 #define MR_HIGHER_ORDER_TYPEINFO_STRUCT(NAME, ARITY)			\
     struct NAME {							\
 	MR_TypeCtorInfo     MR_ti_type_ctor_info;			\
 	MR_Integer             MR_ti_higher_order_arity;			\
 	MR_TypeInfo         MR_ti_higher_order_arg_typeinfos[ARITY];	\
     }
+
 #define MR_FIRST_ORDER_PSEUDOTYPEINFO_STRUCT(NAME, ARITY)		\
     struct NAME {							\
 	MR_TypeCtorInfo     MR_pti_type_ctor_info;			\
 	MR_PseudoTypeInfo   MR_pti_first_order_arg_pseudo_typeinfos[ARITY]; \
     }
+
+/* Tuple types also use the higher-order pseude-type-info structure. */
 #define MR_HIGHER_ORDER_PSEUDOTYPEINFO_STRUCT(NAME, ARITY)		\
     struct NAME {							\
 	MR_TypeCtorInfo     MR_pti_type_ctor_info;			\
@@ -223,15 +229,24 @@ typedef MR_TypeInfo     *MR_TypeInfoParams;
 #define MR_TYPEINFO_GET_HIGHER_ORDER_ARITY(type_info)               \
     ((type_info)->MR_ti_higher_order_arity)
 
+#define MR_TYPEINFO_GET_TUPLE_ARITY(type_info)                      \
+    MR_TYPEINFO_GET_HIGHER_ORDER_ARITY(type_info)
+
 #define MR_PSEUDO_TYPEINFO_GET_HIGHER_ORDER_ARITY(pseudo_type_info) \
     ((pseudo_type_info)->MR_pti_higher_order_arity)
+
+#define MR_PSEUDO_TYPEINFO_GET_TUPLE_ARITY(pseudo_type_info)        \
+    MR_PSEUDO_TYPEINFO_GET_HIGHER_ORDER_ARITY(pseudo_type_info)
+
+#define MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info)           \
+    ((MR_TypeInfoParams) &(type_info)->MR_ti_type_ctor_info)
 
 #define MR_TYPEINFO_GET_HIGHER_ORDER_ARG_VECTOR(type_info)          \
     ((MR_TypeInfoParams)                                            \
         &(type_info)->MR_ti_higher_order_arity)
 
-#define MR_TYPEINFO_GET_FIRST_ORDER_ARG_VECTOR(type_info)           \
-    ((MR_TypeInfoParams) &(type_info)->MR_ti_type_ctor_info)
+#define MR_TYPEINFO_GET_TUPLE_ARG_VECTOR(type_info)                 \
+    MR_TYPEINFO_GET_HIGHER_ORDER_ARG_VECTOR(type_info)
 
 /*
 ** Macros for creating type_infos.
@@ -242,6 +257,9 @@ typedef MR_TypeInfo     *MR_TypeInfoParams;
 
 #define MR_higher_order_type_info_size(arity)                       \
     (2 + (arity))
+
+#define MR_tuple_type_info_size(arity)                              \
+    MR_higher_order_type_info_size(arity)
 
 #define MR_fill_in_first_order_type_info(arena, type_ctor_info, vector) \
     do {                                                            \
@@ -262,15 +280,8 @@ typedef MR_TypeInfo     *MR_TypeInfoParams;
 
 #define OFFSET_FOR_ARG_TYPE_INFOS 1
 
-/*
-** Where the predicate arity and args are stored in the type_info.
-** They are stored in the type_info (*not* the type_ctor_info).
-** This is brought about by higher-order predicates all using the
-** same type_ctor_info - pred/0.
-*/
-
-#define TYPEINFO_OFFSET_FOR_PRED_ARITY 1
-#define TYPEINFO_OFFSET_FOR_PRED_ARGS 2
+#define MR_fill_in_tuple_type_info(arena, type_ctor_info, arity, vector) \
+    MR_fill_in_higher_order_type_info(arena, type_ctor_info, arity, vector)
 
 /*---------------------------------------------------------------------------*/
 
@@ -341,6 +352,22 @@ typedef MR_TypeInfo     *MR_TypeInfoParams;
 
 #define UNIV_OFFSET_FOR_TYPEINFO        0
 #define UNIV_OFFSET_FOR_DATA            1
+
+#define	MR_unravel_univ(univ, typeinfo, value)                      \
+    do {							                                \
+        typeinfo = (MR_TypeInfo) MR_field(MR_mktag(0), (univ),      \
+                        UNIV_OFFSET_FOR_TYPEINFO);                  \
+        value = MR_field(MR_mktag(0), (univ),                       \
+                        UNIV_OFFSET_FOR_DATA);                      \
+    } while (0)
+
+#define MR_define_univ_fields(univ, typeinfo, value)                \
+    do {                                                            \
+        MR_field(MR_mktag(0), (univ), UNIV_OFFSET_FOR_TYPEINFO)     \
+            = (Word) (typeinfo);                                    \
+        MR_field(MR_mktag(0), (univ), UNIV_OFFSET_FOR_DATA)         \
+            = (Word) (value);                                       \
+    } while (0)
 
 /*---------------------------------------------------------------------------*/
 
@@ -442,6 +469,7 @@ typedef enum {
     MR_DEFINE_ENUM_CONST(MR_TYPECTOR_REP_NOTAG_GROUND),
     MR_DEFINE_ENUM_CONST(MR_TYPECTOR_REP_NOTAG_GROUND_USEREQ),
     MR_DEFINE_ENUM_CONST(MR_TYPECTOR_REP_EQUIV_GROUND),
+    MR_DEFINE_ENUM_CONST(MR_TYPECTOR_REP_TUPLE),
     /*
     ** MR_TYPECTOR_REP_UNKNOWN should remain the last alternative;
     ** MR_TYPE_CTOR_STATS depends on this.
@@ -486,6 +514,7 @@ typedef enum {
     "NOTAG_GROUND",                             \
     "NOTAG_GROUND_USEREQ",                      \
     "EQUIV_GROUND",                             \
+    "TUPLE",                                    \
     "UNKNOWN"
 
 #define MR_type_ctor_rep_is_basically_du(rep)               \
@@ -497,6 +526,16 @@ typedef enum {
     || ((rep) == MR_TYPECTOR_REP_NOTAG_USEREQ)              \
     || ((rep) == MR_TYPECTOR_REP_NOTAG_GROUND)              \
     || ((rep) == MR_TYPECTOR_REP_NOTAG_GROUND_USEREQ))
+
+/*
+** Returns TRUE if the type_ctor_info is used to represent
+** multiple types of different arities. The arity is stored
+** as the first element of the argument type-info vector.
+** This is true for higher-order types and tuple types.
+*/
+#define MR_type_ctor_rep_is_variable_arity(rep)             \
+    (  ((rep) == MR_TYPECTOR_REP_PRED)                      \
+    || ((rep) == MR_TYPECTOR_REP_TUPLE))
 
 /*---------------------------------------------------------------------------*/
 
@@ -602,7 +641,7 @@ typedef enum {
 } MR_Sectag_Locn;
 
 typedef struct {
-    MR_ConstString             MR_du_functor_name;
+    MR_ConstString          MR_du_functor_name;
     MR_int_least16_t        MR_du_functor_orig_arity;
     MR_int_least16_t        MR_du_functor_arg_type_contains_var;
     MR_Sectag_Locn          MR_du_functor_sectag_locn;
@@ -610,7 +649,7 @@ typedef struct {
     MR_int_least32_t        MR_du_functor_secondary;
     MR_int_least32_t        MR_du_functor_ordinal;
     const MR_PseudoTypeInfo *MR_du_functor_arg_types;
-    const MR_ConstString       *MR_du_functor_arg_names;
+    const MR_ConstString    *MR_du_functor_arg_names;
     const MR_DuExistInfo    *MR_du_functor_exist_info;
 } MR_DuFunctorDesc;
 
@@ -645,14 +684,14 @@ typedef struct {
 /*---------------------------------------------------------------------------*/
 
 typedef struct {
-    MR_ConstString         MR_enum_functor_name;
+    MR_ConstString      MR_enum_functor_name;
     MR_int_least32_t    MR_enum_functor_ordinal;
 } MR_EnumFunctorDesc;
 
 /*---------------------------------------------------------------------------*/
 
 typedef struct {
-    MR_ConstString         MR_notag_functor_name;
+    MR_ConstString      MR_notag_functor_name;
     MR_PseudoTypeInfo   MR_notag_functor_arg_type;
 } MR_NotagFunctorDesc;
 
@@ -741,7 +780,7 @@ typedef MR_PseudoTypeInfo   MR_EquivLayout;
   ** XXX This should be `MR_Box', but MR_Box is not visible here
   ** (due to a cyclic dependency problem), so we use `void *' instead.
   */
-  typedef	void *	MR_ProcAddr;
+  typedef	void        *MR_ProcAddr;
 #else
   typedef	MR_Code 	*MR_ProcAddr;
 #endif
@@ -806,16 +845,16 @@ typedef union {
     */
 
 struct MR_TypeCtorInfo_Struct {
-    MR_Integer             arity;
+    MR_Integer          arity;
     MR_ProcAddr         unify_pred;
     MR_ProcAddr         new_unify_pred;
     MR_ProcAddr         compare_pred;
     MR_TypeCtorRep      type_ctor_rep;
     MR_ProcAddr         solve_equal_pred;
     MR_ProcAddr         init_pred;
-    MR_ConstString         type_ctor_module_name;
-    MR_ConstString         type_ctor_name;
-    MR_Integer             type_ctor_version;
+    MR_ConstString      type_ctor_module_name;
+    MR_ConstString      type_ctor_name;
+    MR_Integer          type_ctor_version;
     MR_TypeFunctors     type_functors;
     MR_TypeLayout       type_layout;
     MR_int_least32_t    type_ctor_num_functors;
@@ -997,18 +1036,24 @@ struct MR_TypeCtorInfo_Struct {
 #ifdef MR_HIGHLEVEL_CODE
   extern const struct MR_TypeCtorInfo_Struct 
         mercury__builtin__builtin__type_ctor_info_pred_0,
-        mercury__builtin__builtin__type_ctor_info_func_0;
+        mercury__builtin__builtin__type_ctor_info_func_0,
+        mercury__builtin__builtin__type_ctor_info_tuple_0;
   #define MR_TYPE_CTOR_INFO_HO_PRED                                     \
         (&mercury__builtin__builtin__type_ctor_info_pred_0)
   #define MR_TYPE_CTOR_INFO_HO_FUNC                                     \
         (&mercury__builtin__builtin__type_ctor_info_func_0)
+  #define MR_TYPE_CTOR_INFO_TUPLE                                       \
+        (&mercury__builtin__builtin__type_ctor_info_tuple_0)
 #else
   MR_DECLARE_TYPE_CTOR_INFO_STRUCT(mercury_data___type_ctor_info_pred_0);
   MR_DECLARE_TYPE_CTOR_INFO_STRUCT(mercury_data___type_ctor_info_func_0);
+  MR_DECLARE_TYPE_CTOR_INFO_STRUCT(mercury_data___type_ctor_info_tuple_0);
   #define MR_TYPE_CTOR_INFO_HO_PRED                                     \
         ((MR_TypeCtorInfo) &mercury_data___type_ctor_info_pred_0)
   #define MR_TYPE_CTOR_INFO_HO_FUNC                                     \
         ((MR_TypeCtorInfo) &mercury_data___type_ctor_info_func_0)
+  #define MR_TYPE_CTOR_INFO_TUPLE                                       \
+        ((MR_TypeCtorInfo) &mercury_data___type_ctor_info_tuple_0)
 #endif
 
 #define MR_TYPE_CTOR_INFO_IS_HO_PRED(T)                                 \
@@ -1017,6 +1062,8 @@ struct MR_TypeCtorInfo_Struct {
         (T == MR_TYPE_CTOR_INFO_HO_FUNC)
 #define MR_TYPE_CTOR_INFO_IS_HO(T)                                      \
         (MR_TYPE_CTOR_INFO_IS_HO_FUNC(T) || MR_TYPE_CTOR_INFO_IS_HO_PRED(T))
+#define MR_TYPE_CTOR_INFO_IS_TUPLE(T)                                   \
+        (T == MR_TYPE_CTOR_INFO_TUPLE)
 
 /*---------------------------------------------------------------------------*/
 
