@@ -165,6 +165,7 @@ OTHER_SOURCES= \
 	transitive_instance.m \
 	tricky_assert2.m \
 	tricky_ite.m \
+	tuple_eqv.m \
 	two_pragma_c_codes.m \
 	two_way_unif.m \
 	typeclass_inlining_bug.m \
@@ -321,6 +322,7 @@ MCFLAGS-quantifier_warning	= --halt-at-warn
 MCFLAGS-simplify_bug		= -O-1
 MCFLAGS-simplify_bug2		= -O3
 MCFLAGS-spurious_purity_warning	= --halt-at-warn
+MCFLAGS-tuple_eqv		= --smart-recompilation
 MCFLAGS-two_way_unif		= -O-1
 MCFLAGS-type_inf_ambig_test	= --infer-all
 MCFLAGS-typeclass_det_warning	= --halt-at-warn

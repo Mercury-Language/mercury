@@ -364,6 +364,17 @@ init_recompilation_info(ModuleName) =
 	).
 
 recompilation__record_used_item(ItemType, Id, QualifiedId) -->
+    (
+    	% Don't record builtin items (QualifiedId may be unqualified
+	% for predicates, functions and functors because they aren't 
+	% qualified until after typechecking).
+	{ ItemType \= predicate },
+	{ ItemType \= function },
+	{ ItemType \= functor },
+    	{ QualifiedId = unqualified(_) - _ }
+    ->
+	[]	
+    ;
 	ItemSet0 =^ used_items,
 	{ IdSet0 = extract_ids(ItemSet0, ItemType) },
 	{ QualifiedId = QualifiedName - Arity },
@@ -386,7 +397,8 @@ recompilation__record_used_item(ItemType, Id, QualifiedId) -->
 			MatchingNames, IdSet) },
 		{ ItemSet = update_ids(ItemSet0, ItemType, IdSet) },
 		^ used_items := ItemSet
-	).
+	)
+    ).
 
 recompilation__record_expanded_items(Item, ExpandedItems, Info0, Info) :-
 	( set__empty(ExpandedItems) ->
