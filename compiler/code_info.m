@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2003 The University of Melbourne.
+% Copyright (C) 1994-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -63,7 +63,7 @@
 
 :- import_module varset.
 :- import_module set, stack.
-:- import_module string, require, char, bimap, int.
+:- import_module string, require, char, int.
 
 %---------------------------------------------------------------------------%
 

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2003 The University of Melbourne.
+% Copyright (C) 1996-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -50,7 +50,7 @@
 :- import_module ll_backend__wrap_blocks.
 
 :- import_module bool, int, string.
-:- import_module map, bimap, set, std_util, require, counter.
+:- import_module map, set, std_util, require, counter.
 
 optimize_main([], _, []) --> [].
 optimize_main([Proc0 | Procs0], GlobalData, [Proc | Procs]) -->
