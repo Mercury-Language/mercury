@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1997-1998 The University of Melbourne.
+% Copyright (C) 1997-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -392,16 +392,13 @@ evaluate_builtin_test("float", ">=", 0, Args, Result) :-
 
 %------------------------------------------------------------------------------%
 
+	% recompute_instmap_delta is run by simplify.m if anything changes,
+	% so the insts are not important here.
 :- pred make_construction(pair(prog_var, inst), cons_id, hlds_goal_expr).
 :- mode make_construction(in, in, out) is det.
 
-make_construction(Var - VarInst, ConsId, Goal) :-
-	RHS = functor(ConsId, []),
-	CInst = bound(unique, [functor(ConsId, [])]),
-	Mode =  (VarInst -> CInst) - (CInst -> CInst),
-	Unification = construct(Var, ConsId, [], []),
-	Context = unify_context(explicit, []),
-	Goal = unify(Var, RHS, Mode, Unification, Context).
+make_construction(Var - _, ConsId, Goal) :-
+	make_const_construction(Var, ConsId, Goal - _).
 
 %------------------------------------------------------------------------------%
 

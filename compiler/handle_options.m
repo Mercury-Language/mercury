@@ -427,6 +427,11 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, ArgsMethod,
 		[]
 	),
 
+	% If we are doing type-specialization, we may as well take
+	% advantage of the declarations supplied by the programmer.
+	option_implies(type_specialization, user_guided_type_specialization,
+		bool(yes)),
+
 	% --intermod-unused-args implies --intermodule-optimization and
 	% --optimize-unused-args.
 	option_implies(intermod_unused_args, intermodule_optimization,

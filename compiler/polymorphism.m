@@ -347,6 +347,11 @@
 :- pred polymorphism__no_type_info_builtin(module_name, string, int).
 :- mode polymorphism__no_type_info_builtin(in, in, out) is semidet.
 
+	% Build the type describing the typeclass_info for the
+	% given class_constraint.
+:- pred polymorphism__build_typeclass_info_type(class_constraint, (type)).
+:- mode polymorphism__build_typeclass_info_type(in, out) is det.
+
 	% From the type of a typeclass_info variable find the class_constraint
 	% about which the variable carries information, failing if the
 	% type is not a valid typeclass_info type.
@@ -370,6 +375,7 @@
 :- type typeclass_info_manipulator
 	--->	type_info_from_typeclass_info
 	;	superclass_from_typeclass_info
+	;	instance_constraint_from_typeclass_info
 	.
 
 	% Look up the pred_id and proc_id for a type specific
@@ -499,6 +505,9 @@ polymorphism__no_type_info_builtin(MercuryBuiltin,
 	mercury_public_builtin_module(MercuryBuiltin).
 polymorphism__no_type_info_builtin(MercuryBuiltin,
 		"superclass_from_typeclass_info", 3) :-
+	mercury_private_builtin_module(MercuryBuiltin).
+polymorphism__no_type_info_builtin(MercuryBuiltin,
+		"instance_constraint_from_typeclass_info", 3) :-
 	mercury_private_builtin_module(MercuryBuiltin).
 polymorphism__no_type_info_builtin(MercuryBuiltin,
 		"type_info_from_typeclass_info", 3) :-
@@ -2826,9 +2835,6 @@ polymorphism__new_typeclass_info_var(VarSet0, VarTypes0, Constraint,
 	polymorphism__build_typeclass_info_type(Constraint, DictionaryType),
 	map__set(VarTypes0, Var, DictionaryType, VarTypes).
 
-:- pred polymorphism__build_typeclass_info_type(class_constraint, (type)).
-:- mode polymorphism__build_typeclass_info_type(in, out) is det.
-
 polymorphism__build_typeclass_info_type(Constraint, DictionaryType) :-
 	Constraint = constraint(SymName, ArgTypes),
 
@@ -2880,6 +2886,9 @@ polymorphism__is_typeclass_info_manipulator(ModuleInfo,
 	;
 		PredName = "superclass_from_typeclass_info",
 		TypeClassManipulator = superclass_from_typeclass_info
+	;
+		PredName = "instance_constraint_from_typeclass_info",
+		TypeClassManipulator = instance_constraint_from_typeclass_info
 	).
 
 %---------------------------------------------------------------------------%

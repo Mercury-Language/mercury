@@ -88,6 +88,12 @@
 :- pred construct_type(type_id, list(type), prog_context, (type)).
 :- mode construct_type(in, in, in, out) is det.
 
+	% Construct builtin types.
+:- func int_type = (type).
+:- func string_type = (type).
+:- func float_type = (type).
+:- func char_type = (type).
+
 	% Given a constant and an arity, return a type_id.
 	% Fails if the constant is not an atom.
 
@@ -385,6 +391,11 @@ construct_type(TypeId, Args, Context, Type) :-
 	),
 	TypeId = SymName - _,
 	construct_qualified_term(SymName, NewArgs, Context, Type).
+
+int_type = Type :- construct_type(unqualified("int") - 0, [], Type).
+string_type = Type :- construct_type(unqualified("string") - 0, [], Type).
+float_type = Type :- construct_type(unqualified("float") - 0, [], Type).
+char_type = Type :- construct_type(unqualified("character") - 0, [], Type).
 
 %-----------------------------------------------------------------------------%
 

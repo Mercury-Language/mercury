@@ -32,6 +32,9 @@
 				io__state, io__state).
 :- mode convert_to_mercury(in, in, in, di, uo) is det.
 
+:- pred mercury_output_item(item, prog_context, io__state, io__state).
+:- mode mercury_output_item(in, in, di, uo) is det.
+
 :- pred mercury_output_pred_type(tvarset, existq_tvars, sym_name, list(type),
 		maybe(determinism), purity, class_constraints,
 		prog_context, io__state, io__state).
@@ -205,11 +208,10 @@
 :- implementation.
 
 :- import_module prog_out, prog_util, hlds_pred, hlds_out, instmap.
-:- import_module globals, options, termination, term, varset.
-:- import_module term_io.
+:- import_module globals, options, termination.
 
-:- import_module int, string, set, lexer, require.
-:- import_module char.
+:- import_module assoc_list, char, int, string, set, lexer, require.
+:- import_module term, term_io, varset.
 
 %-----------------------------------------------------------------------------%
 
@@ -255,9 +257,6 @@ mercury_output_item_list([Item - Context | Items]) -->
 	mercury_output_item_list(Items).
 
 %-----------------------------------------------------------------------------%
-
-:- pred mercury_output_item(item, prog_context, io__state, io__state).
-:- mode mercury_output_item(in, in, di, uo) is det.
 
 	% dispatch on the different types of items
 
@@ -346,6 +345,11 @@ mercury_output_item(pragma(Pragma), Context) -->
 		{ Pragma = tabled(Type, Pred, Arity, _PredOrFunc, _Mode) },
 		{ eval_method_to_string(Type, TypeS) },
 		mercury_output_pragma_decl(Pred, Arity, predicate, TypeS)
+	;
+		{ Pragma = type_spec(PredName, SymName, Arity,
+			MaybePredOrFunc, MaybeModes, Subst, VarSet) },
+		mercury_output_pragma_type_spec(PredName, SymName, Arity,
+			MaybePredOrFunc, MaybeModes, Subst, VarSet)
 	;
 		{ Pragma = inline(Pred, Arity) },
 		mercury_output_pragma_decl(Pred, Arity, predicate, "inline")
@@ -2178,6 +2182,62 @@ mercury_output_pragma_c_code_vars([V|Vars], VarSet) -->
 		io__write_string(", ")
 	),
 	mercury_output_pragma_c_code_vars(Vars, VarSet).
+
+%-----------------------------------------------------------------------------%
+
+:- pred mercury_output_pragma_type_spec(sym_name, sym_name, arity,
+		maybe(pred_or_func), maybe(list(mode)), assoc_list(tvar, type),
+		tvarset, io__state, io__state).
+:- mode mercury_output_pragma_type_spec(in, in, in, in, in,
+		in, in, di, uo) is det.
+
+mercury_output_pragma_type_spec(PredName, SpecName, Arity,
+		MaybePredOrFunc, MaybeModes, Subst, VarSet) -->
+	io__write_string(":- pragma type_spec("),
+	( { MaybeModes = yes(Modes) } ->
+		{ MaybePredOrFunc = yes(PredOrFunc0) ->
+			PredOrFunc = PredOrFunc0
+		;
+			error("pragma type_spec: no pred_or_func")
+		},
+		(
+			{ PredOrFunc = function },
+			{ pred_args_to_func_args(Modes, FuncModes, RetMode) },
+			mercury_output_sym_name(PredName),
+			io__write_string("("),
+			{ varset__init(InstVarSet) },
+			mercury_output_mode_list(FuncModes, InstVarSet),
+			io__write_string(") = "),
+			mercury_output_mode(RetMode, InstVarSet)
+		;
+			{ PredOrFunc = predicate },
+			mercury_output_sym_name(PredName),
+			io__write_string("("),
+			{ varset__init(InstVarSet) },
+			mercury_output_mode_list(Modes, InstVarSet),
+			io__write_string(")")
+		)
+	;
+		mercury_output_bracketed_sym_name(PredName,
+			next_to_graphic_token),
+		io__write_string("/"),
+		io__write_int(Arity)
+	),
+
+	io__write_string(", ("),
+	io__write_list(Subst, ", ", mercury_output_type_subst(VarSet)),
+	io__write_string("), "),
+	mercury_output_bracketed_sym_name(SpecName, not_next_to_graphic_token),
+	io__write_string(").\n").
+	
+:- pred mercury_output_type_subst(tvarset, pair(tvar, type),	
+		io__state, io__state).
+:- mode mercury_output_type_subst(in, in, di, uo) is det.
+
+mercury_output_type_subst(VarSet, Var - Type) -->
+	mercury_output_var(Var, VarSet, no),
+	io__write_string(" = "),
+	mercury_output_term(Type, VarSet, no).
 
 %-----------------------------------------------------------------------------%
 

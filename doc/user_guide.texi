@@ -3347,6 +3347,13 @@ Specialize calls to polymorphic predicates where
 the polymorphic types are known.
 
 @sp 1
+@item --user-guided-type-specialization
+Enable specialization of polymorphic predicates for which
+there are `:- pragma type_spec' declarations.
+See the ``Type specialization'' section in the ``Pragmas''
+chapter of the Mercury Language Reference Manual for more details.
+
+@sp 1
 @item --higher-order-size-limit
 Set the maximum goal size of specialized versions created by
 @samp{--optimize-higher-order} and @samp{--type-specialization}.

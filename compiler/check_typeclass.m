@@ -55,6 +55,10 @@
 	io__state, io__state).
 :- mode check_typeclass__check_instance_decls(in, out, out, di, uo) is det.
 
+	% The prefix added to the class method name for the predicate
+	% used to call a class method for a specific instance.
+:- func check_typeclass__introduced_pred_name_prefix = string.
+
 :- implementation.
 
 :- import_module map, list, std_util, hlds_pred, hlds_data, prog_data, require.
@@ -612,13 +616,15 @@ make_introduced_pred_name(ClassId, MethodName, PredArity,
 	base_typeclass_info__make_instance_string(InstanceTypes, 
 		InstanceString),
 	string__append_list(
-		["Introduced_pred_for_",
+		[check_typeclass__introduced_pred_name_prefix,
 		ClassNameString, "__",
 		InstanceString, "____",
 		MethodNameString, "_",
 		PredArityString], 
 		PredNameString),
 	PredName = unqualified(PredNameString).
+
+check_typeclass__introduced_pred_name_prefix = "Introduced_pred_for_".
 
 %---------------------------------------------------------------------------%
 

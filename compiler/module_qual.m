@@ -65,8 +65,9 @@
 
 :- import_module hlds_data, hlds_module, hlds_pred, type_util, prog_out.
 :- import_module prog_util, mercury_to_mercury, modules, globals, options.
-:- import_module (inst), instmap, term, varset.
-:- import_module int, map, require, set, std_util, string.
+:- import_module (inst), instmap.
+:- import_module int, map, require, set, std_util, string, term, varset.
+:- import_module assoc_list.
 
 module_qual__module_qualify_items(Items0, Items, ModuleName, ReportErrors,
 			Info, NumErrors, UndefTypes, UndefModes) -->
@@ -685,6 +686,18 @@ qualify_pragma(export(Name, PredOrFunc, Modes0, CFunc),
 	qualify_mode_list(Modes0, Modes, Info0, Info).
 qualify_pragma(unused_args(A, B, C, D, E), unused_args(A, B, C, D, E),
 				Info, Info) --> [].
+qualify_pragma(type_spec(A, B, C, D, MaybeModes0, Subst0, G),
+		type_spec(A, B, C, D, MaybeModes, Subst, G), Info0, Info) -->
+	(
+		{ MaybeModes0 = yes(Modes0) }
+	->
+		qualify_mode_list(Modes0, Modes, Info0, Info1),
+		{ MaybeModes = yes(Modes) }
+	;
+		{ Info1 = Info0 },
+		{ MaybeModes = no }
+	),
+	qualify_type_spec_subst(Subst0, Subst, Info1, Info).
 qualify_pragma(fact_table(SymName, Arity, FileName),
 		fact_table(SymName, Arity, FileName), Info, Info) --> [].
 qualify_pragma(aditi(SymName, Arity), aditi(SymName, Arity),
@@ -726,6 +739,16 @@ qualify_pragma_vars([pragma_var(Var, Name, Mode0) | PragmaVars0],
 		[pragma_var(Var, Name, Mode) | PragmaVars], Info0, Info) -->
 	qualify_mode(Mode0, Mode, Info0, Info1),
 	qualify_pragma_vars(PragmaVars0, PragmaVars, Info1, Info).
+
+:- pred qualify_type_spec_subst(assoc_list(tvar, type)::in,
+		assoc_list(tvar, type)::out, mq_info::in, mq_info::out,
+		io__state::di, io__state::uo) is det.
+
+qualify_type_spec_subst([], [], Info, Info) --> [].
+qualify_type_spec_subst([Var - Type0 |  Subst0], [Var - Type | Subst],
+		Info0, Info) -->
+	qualify_type(Type0, Type, Info0, Info1),
+	qualify_type_spec_subst(Subst0, Subst, Info1, Info).
 
 :- pred qualify_class_constraints(class_constraints::in,
 	class_constraints::out, mq_info::in, mq_info::out, io__state::di,

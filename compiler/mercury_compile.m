@@ -1635,14 +1635,15 @@ mercury_compile__maybe_bytecodes(HLDS0, ModuleName, Verbose, Stats) -->
 
 mercury_compile__maybe_higher_order(HLDS0, Verbose, Stats, HLDS) -->
 	globals__io_lookup_bool_option(optimize_higher_order, HigherOrder),
-	globals__io_lookup_bool_option(type_specialization, Types),
+	% --type-specialization implies --user-guided-type-specialization.
+	globals__io_lookup_bool_option(user_guided_type_specialization, Types),
 
 	( { HigherOrder = yes ; Types = yes } ->
 		maybe_write_string(Verbose,
 		"% Specializing higher-order and polymorphic predicates...\n"),
 		maybe_flush_output(Verbose),
 		
-		specialize_higher_order(HigherOrder, Types, HLDS0, HLDS),
+		specialize_higher_order(HLDS0, HLDS),
 		maybe_write_string(Verbose, "% done.\n"),
 		maybe_report_stats(Stats)
 	;

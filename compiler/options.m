@@ -233,6 +233,7 @@
 		;	intermod_unused_args
 		;	optimize_higher_order
 		;	type_specialization
+		;	user_guided_type_specialization
 		;	higher_order_size_limit
 		;	optimize_constructor_last_call
 		;	optimize_duplicate_calls
@@ -576,6 +577,7 @@ option_defaults_2(optimization_option, [
 	intermod_unused_args	-	bool(no),
 	optimize_higher_order	-	bool(no),
 	type_specialization	-	bool(no),
+	user_guided_type_specialization	-	bool(no),
 	higher_order_size_limit	-	int(20),
 	optimize_constructor_last_call -	bool(no),
 	optimize_dead_procs	-	bool(no),
@@ -906,6 +908,10 @@ long_option("optimize-higher-order",	optimize_higher_order).
 long_option("optimise-higher-order",	optimize_higher_order).
 long_option("type-specialization",	type_specialization).
 long_option("type-specialisation",	type_specialization).
+long_option("user-guided-type-specialization",
+					user_guided_type_specialization).
+long_option("user-guided-type-specialisation",
+					user_guided_type_specialization).
 long_option("higher-order-size-limit",	higher_order_size_limit).
 long_option("optimise-constructor-last-call",	optimize_constructor_last_call).
 long_option("optimize-constructor-last-call",	optimize_constructor_last_call).
@@ -1211,6 +1217,8 @@ opt_level(2, _, [
 	inline_single_use	-	bool(yes),
 	inline_compound_threshold -	int(10),
 	common_struct		-	bool(yes),
+	user_guided_type_specialization
+				-	bool(yes),
 /****
 % XXX optimize_duplicate_calls is broken --
 % it doesn't take type information into account.
@@ -1831,10 +1839,10 @@ options_help_code_generation -->
 
 		"--fact-table-max-array-size <n>",
 		"\tSpecify the maximum number of elements in a single",
-		"\t`pragma fact_table' data array (default: 1024).",
+		"\t`:- pragma fact_table' data array (default: 1024).",
 		"--fact-table-hash-percent-full <percentage>",
-		"\tSpecify how full the `pragma fact_table' hash tables should be",
-		"\tallowed to get.  Given as an integer percentage",
+		"\tSpecify how full the `:- pragma fact_table' hash tables",
+		"\tshould be allowed to get.  Given as an integer percentage",
 		"\t(valid range: 1 to 100, default: 90)."
 	]),
 
@@ -1959,7 +1967,11 @@ options_help_hlds_hlds_optimization -->
 		"--optimize-higher-order",
 		"\tEnable specialization of higher-order predicates.",
 		"--type-specialization",
-		"\tEnable specialization of polymorphic predicates.",
+		"\tEnable specialization of polymorphic predicates where the",
+		"\tpolymorphic types are known.",
+		"--user-guided-type-specialization",
+		"\tEnable specialization of polymorphic predicates for which",
+		"\tthere are `:- pragma type_spec' declarations.",
 		"--higher-order-size-limit",
 		"\tSet the maximum goal size of specialized versions created by",
 		"\t`--optimize-higher-order' and `--type-specialization'.",

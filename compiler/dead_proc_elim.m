@@ -687,12 +687,37 @@ dead_pred_elim(ModuleInfo0, ModuleInfo) :-
 	list__foldl(dead_pred_elim_initialize, PredIds, 
 		DeadInfo0, DeadInfo1),
 	dead_pred_elim_analyze(DeadInfo1, DeadInfo),
-	DeadInfo = dead_pred_info(ModuleInfo1, _, _, NeededPreds, _),
+	DeadInfo = dead_pred_info(ModuleInfo1, _, _, NeededPreds2, _),
+
+	%
+	% If a predicate is not needed, predicates which were added in
+	% make_hlds.m to force type specialization are also not needed.
+	% Here we add in those which are needed.
+	%
+	module_info_type_spec_info(ModuleInfo1,
+		type_spec_info(TypeSpecProcs0, TypeSpecForcePreds0,
+			SpecMap0, PragmaMap0)),
+	set__to_sorted_list(NeededPreds2, NeededPredList2),
+	list__foldl(
+	    lambda([NeededPred::in, AllPreds0::in, AllPreds::out] is det, (
+		( map__search(SpecMap0, NeededPred, NewNeededPreds) ->
+			set__insert_list(AllPreds0, NewNeededPreds, AllPreds)
+		;
+			AllPreds = AllPreds0
+		)
+	)), NeededPredList2, NeededPreds2, NeededPreds),
+	set__intersect(TypeSpecForcePreds0, NeededPreds, TypeSpecForcePreds),
+
+	module_info_set_type_spec_info(ModuleInfo1,
+		type_spec_info(TypeSpecProcs0, TypeSpecForcePreds, 
+			SpecMap0, PragmaMap0),
+		ModuleInfo2),
+
 	set__list_to_set(PredIds, PredIdSet),
 	set__difference(PredIdSet, NeededPreds, DeadPreds),
 	set__to_sorted_list(DeadPreds, DeadPredList),
 	list__foldl(module_info_remove_predicate, DeadPredList,
-		ModuleInfo1, ModuleInfo).
+		ModuleInfo2, ModuleInfo).
 
 :- pred dead_pred_elim_add_entity(entity::in, queue(pred_id)::in,
 	queue(pred_id)::out, set(pred_id)::in, set(pred_id)::out) is det.

@@ -19,7 +19,7 @@
 :- interface.
 
 :- import_module hlds_data, hlds_pred, (inst), purity, rl, term_util.
-:- import_module list, map, varset, term, std_util.
+:- import_module assoc_list, list, map, varset, term, std_util.
 
 %-----------------------------------------------------------------------------%
 
@@ -110,6 +110,13 @@
 			%	whether or not the C code is thread-safe
 			% PredName, Predicate or Function, Vars/Mode, 
 			% VarNames, C Code Implementation Info
+	
+	;	type_spec(sym_name, sym_name, arity, maybe(pred_or_func),
+			maybe(list(mode)), type_subst, tvarset)
+			% PredName, SpecializedPredName, Arity,
+			% PredOrFunc, Modes if a specific procedure was
+			% specified, type substitution (using the variable
+			% names from the pred declaration), TVarSet
 
 	;	inline(sym_name, arity)
 			% Predname, Arity
@@ -214,6 +221,9 @@
 
 	;	check_termination(sym_name, arity).
 			% Predname, Arity
+
+	% The type substitution for a `pragma type_spec' declaration.
+:- type type_subst == assoc_list(tvar, type).
 
 	% This type holds information about the implementation details
 	% of procedures defined via `pragma c_code'.

@@ -134,3 +134,8 @@ Changes to the Mercury implementation:
   directories for both versions in their PATH, with the more recent one
   first, of course.
 
+* We've added support for user-guided type specialization.
+
+  See the "Type specialization" section of the "Pragmas" chapter of the
+  Mercury Language Reference Manual for details.
+

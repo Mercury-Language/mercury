@@ -90,6 +90,11 @@
 :- implementation.
 :- import_module require, string, std_util, int, float, char, string, list.
 
+:- pragma inline(builtin_compare_int/3).
+:- pragma inline(builtin_compare_character/3).
+:- pragma inline(builtin_compare_string/3).
+:- pragma inline(builtin_compare_float/3).
+
 builtin_unify_int(X, X).
 
 builtin_index_int(X, X).
@@ -150,7 +155,7 @@ builtin_compare_float(R, F1, F2) :-
 :- mode builtin_strcmp(out, in, in) is det.
 
 :- pragma c_code(builtin_strcmp(Res::out, S1::in, S2::in),
-	will_not_call_mercury,
+	[will_not_call_mercury, thread_safe],
 	"Res = strcmp(S1, S2);").
 
 :- external(builtin_unify_pred/2).
@@ -224,11 +229,19 @@ compare_error :-
 :- mode type_info_from_typeclass_info(in, in, out) is det.
 
 	% superclass_from_typeclass_info(TypeClassInfo, Index, SuperClass)
-	% extracts SuperClass from TypeClassInfo where TypeInfo is the Indexth
-	% superclass of the class.
+	% extracts SuperClass from TypeClassInfo where SuperClass is the
+	% Indexth superclass of the class.
 :- pred superclass_from_typeclass_info(typeclass_info(_),
 		int, typeclass_info(_)).
 :- mode superclass_from_typeclass_info(in, in, out) is det.
+
+	% instance_constraint_from_typeclass_info(TypeClassInfo, Index,
+	%       InstanceConstraintTypeClassInfo)
+	% extracts the typeclass_info for the Indexth typeclass constraint
+	% of the instance described by TypeClassInfo.
+:- pred instance_constraint_from_typeclass_info(
+		typeclass_info(_), int, typeclass_info(_)).
+:- mode instance_constraint_from_typeclass_info(in, in, out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -397,16 +410,23 @@ void sys_init_type_info_module(void) {
 ").
 
 :- pragma c_code(type_info_from_typeclass_info(TypeClassInfo::in, Index::in,
-	TypeInfo::out), will_not_call_mercury,
+	TypeInfo::out), [will_not_call_mercury, thread_safe],
 "
 	TypeInfo = MR_typeclass_info_type_info(TypeClassInfo, Index);
 ").
 
 :- pragma c_code(superclass_from_typeclass_info(TypeClassInfo0::in, Index::in,
-	TypeClassInfo::out), will_not_call_mercury,
+	TypeClassInfo::out), [will_not_call_mercury, thread_safe],
 "
 	TypeClassInfo =
 		MR_typeclass_info_superclass_info(TypeClassInfo0, Index);
+").
+
+:- pragma c_code(instance_constraint_from_typeclass_info(TypeClassInfo0::in,
+        Index::in, TypeClassInfo::out), [will_not_call_mercury, thread_safe],
+"
+	TypeClassInfo =
+		MR_typeclass_info_arg_typeclass_info(TypeClassInfo0, Index);
 ").
 
 %-----------------------------------------------------------------------------%

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-1998 The University of Melbourne.
+% Copyright (C) 1996-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -60,8 +60,8 @@
 
 :- implementation.
 
-:- import_module assoc_list, dir, getopt, int, list, map, require, set.
-:- import_module std_util, string.
+:- import_module assoc_list, dir, getopt, int, list, map, multi_map, require.
+:- import_module set, std_util, string, term, varset.
 
 :- import_module code_util, globals, goal_util, term, varset.
 :- import_module hlds_data, hlds_goal, hlds_pred, hlds_out, inlining, llds.
@@ -167,6 +167,8 @@ intermod__gather_preds([PredId | PredIds], CollectTypes,
 	intermod_info_get_module_info(ModuleInfo0),
 	{ module_info_preds(ModuleInfo0, PredTable0) },
 	{ map__lookup(PredTable0, PredId, PredInfo0) },
+	{ module_info_type_spec_info(ModuleInfo0, TypeSpecInfo) },
+	{ TypeSpecInfo = type_spec_info(_, TypeSpecForcePreds, _, _) },
 	(
 		%
 		% note: we can't include exported_to_submodules predicates
@@ -183,6 +185,9 @@ intermod__gather_preds([PredId | PredIds], CollectTypes,
 			% recreated in the importing module anyway.
 			{ \+ code_util__compiler_generated(PredInfo0) },
 			{ \+ code_util__predinfo_is_builtin(PredInfo0) },
+
+			% These will be recreated in the importing module.
+			{ \+ set__member(PredId, TypeSpecForcePreds) },
 			(
 				{ inlining__is_simple_goal(Goal,
 						InlineThreshold) },
@@ -1010,6 +1015,8 @@ intermod__write_pred_decls(ModuleInfo, [PredId | PredIds]) -->
 	{ list__sort(CompareProcId, ProcIds, SortedProcIds) },
 	intermod__write_pred_modes(Procs, qualified(Module, Name),
 					PredOrFunc, SortedProcIds),
+	intermod__write_pragmas(PredInfo),
+	intermod__write_type_spec_pragmas(ModuleInfo, PredId),
 	intermod__write_pred_decls(ModuleInfo, PredIds).
 
 :- pred intermod__write_pred_modes(map(proc_id, proc_info)::in, 
@@ -1048,15 +1055,14 @@ intermod__write_pred_modes(Procs, SymName, PredOrFunc, [ProcId | ProcIds]) -->
 intermod__write_preds(_, []) --> [].
 intermod__write_preds(ModuleInfo, [PredId | PredIds]) -->
 	{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
-	{ pred_info_arg_types(PredInfo, ArgTypes) },
-	{ list__length(ArgTypes, Arity) },
 	{ pred_info_module(PredInfo, Module) },
 	{ pred_info_name(PredInfo, Name) },
 	{ SymName = qualified(Module, Name) },
-	{ pred_info_get_markers(PredInfo, Markers) },
-	{ markers_to_marker_list(Markers, MarkerList) },
 	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
-	intermod__write_pragmas(SymName, Arity, MarkerList, PredOrFunc),
+	intermod__write_pragmas(PredInfo),
+	% The type specialization pragmas for exported preds should
+	% already be in the interface file.
+
 	{ pred_info_clauses_info(PredInfo, ClausesInfo) },
 	{ ClausesInfo = clauses_info(Varset, _, _VarTypes, HeadVars, Clauses) },
 		% handle pragma c_code(...) separately
@@ -1072,6 +1078,20 @@ intermod__write_preds(ModuleInfo, [PredId | PredIds]) -->
 	),
 	intermod__write_preds(ModuleInfo, PredIds).
 
+
+:- pred intermod__write_pragmas(pred_info::in,
+		io__state::di, io__state::uo) is det.
+
+intermod__write_pragmas(PredInfo) -->
+	{ pred_info_module(PredInfo, Module) },
+	{ pred_info_name(PredInfo, Name) },
+	{ pred_info_arity(PredInfo, Arity) },
+	{ SymName = qualified(Module, Name) },
+	{ pred_info_get_markers(PredInfo, Markers) },
+	{ markers_to_marker_list(Markers, MarkerList) },
+	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
+	intermod__write_pragmas(SymName, Arity, MarkerList, PredOrFunc).
+
 :- pred intermod__write_pragmas(sym_name::in, int::in, list(marker)::in,
 		pred_or_func::in, io__state::di, io__state::uo) is det.
 
@@ -1085,6 +1105,21 @@ intermod__write_pragmas(SymName, Arity, [Marker | Markers], PredOrFunc) -->
 		[]
 	),
 	intermod__write_pragmas(SymName, Arity, Markers, PredOrFunc).
+
+:- pred intermod__write_type_spec_pragmas(module_info::in, pred_id::in,
+		io__state::di, io__state::uo) is det.
+
+intermod__write_type_spec_pragmas(ModuleInfo, PredId) -->
+	{ module_info_type_spec_info(ModuleInfo,
+		type_spec_info(_, _, _, PragmaMap)) },
+	( { multi_map__search(PragmaMap, PredId, TypeSpecPragmas) } ->
+		{ term__context_init(Context) },
+		list__foldl(lambda([Pragma::in, IO0::di, IO::uo] is det, (
+			mercury_output_item(pragma(Pragma), Context, IO0, IO)
+		)), TypeSpecPragmas)
+	;
+		[]
+	).
 
 	% Is a pragma declaration required in the `.opt' file for
 	% a predicate with the given marker.

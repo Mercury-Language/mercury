@@ -90,6 +90,7 @@ PROGS=	\
 	test_imported_no_tag \
 	term_io_test \
 	tim_qual1 \
+	type_spec \
 	write \
 	write_reg1
 
@@ -100,6 +101,7 @@ PROGS=	\
 
 # some tests need to be compiled with particular options
 
+MCFLAGS-bigtest		=	--intermodule-optimization -O3
 MCFLAGS-boyer		=	--infer-all
 MCFLAGS-func_test	=	--infer-all
 MCFLAGS-ho_order	=	--optimize-higher-order
@@ -107,7 +109,7 @@ MCFLAGS-ho_order2	=	--optimize-higher-order
 MCFLAGS-no_fully_strict	=	--no-fully-strict
 MCFLAGS-nondet_ctrl_vn	=	--optimize-value-number
 MCFLAGS-rnd		=	-O6
-MCFLAGS-bigtest		=	--intermodule-optimization -O3
+MCFLAGS-type_spec	=	--user-guided-type-specialization
 
 # In grade `none' with options `-O1 --opt-space' on kryten
 # (a sparc-sun-solaris2.5 system), mode_choice needs to be linked
