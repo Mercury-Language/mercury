@@ -3000,12 +3000,15 @@ string__contains_char(String, Char) :-
 		int::in, int::in) is semidet.
 
 string__contains_char(Str, Char, Index, Length) :-
-	Index < Length,
-	string__unsafe_index(Str, Index, IndexChar),
-	( IndexChar = Char ->
-		true
+	( Index < Length ->
+		string__unsafe_index(Str, Index, IndexChar),
+		( IndexChar = Char ->
+			true
+		;
+			string__contains_char(Str, Char, Index + 1, Length)
+		)
 	;
-		string__contains_char(Str, Char, Index + 1, Length)
+		fail
 	).
 
 /*-----------------------------------------------------------------------*/
