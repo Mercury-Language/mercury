@@ -287,7 +287,7 @@ const struct mercury_data_array__base_type_functors_array_1_struct {
 Declare_entry(mercury__array__array_equal_2_0);
 Declare_entry(mercury__array__array_compare_3_0);
 
-BEGIN_MODULE(array_module)
+BEGIN_MODULE(array_module_builtins)
 	init_entry(mercury____Unify___array__array_1_0);
 	init_entry(mercury____Index___array__array_1_0);
 	init_entry(mercury____Compare___array__array_1_0);
@@ -311,12 +311,13 @@ END_MODULE
 
 /* Ensure that the initialization code for the above module gets run. */
 /*
-INIT sys_init_array_module
+INIT sys_init_array_module_builtins
 */
-void sys_init_array_module(void); /* suppress gcc -Wmissing-decl warning */
-void sys_init_array_module(void) {
+void sys_init_array_module_builtins(void);
+		/* suppress gcc -Wmissing-decl warning */
+void sys_init_array_module_builtins(void) {
 	extern ModuleFunc array_module;
-	array_module();
+	array_module_builtins();
 }
 
 ").

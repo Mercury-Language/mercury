@@ -93,6 +93,10 @@ Changes to the Mercury standard library:
 
 * We have added the predicate queue__delete_all/3.
 
+* Map (and tree234) have 2 new predicates: map__foldl which is
+  analogous to list__foldl, and map__map_values which is analogous
+  to list__map.
+
 New library packages in the `extras' distribution:
 **************************************************
 
