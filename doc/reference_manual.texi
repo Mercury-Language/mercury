@@ -3176,14 +3176,12 @@ of a C function on the trail and have the Mercury runtime call your
 function back whenever future execution backtracks to the current choice point,
 or whenever that choice point is pruned, either because execution
 commits to never backtracking over that point, or because an
-exception was thrown, or because the garbage collector determined
-that the value being trailed is no longer accessible.
+exception was thrown, or possibly during garbage collection.
 
 Note that currently Mercury does not support exception handling,
-and (as with most logic programming implementations) the garbage
-collector in the current Mercury implementation does not garbage-collect
-the trail; these two cases are mentioned only so that we can cater
-for possible future extensions.
+and the garbage collector in the current Mercury implementation
+does not garbage-collect the trail; these two cases are mentioned
+only so that we can cater for possible future extensions.
 
 @table @b
 @item @bullet{} @code{MR_trail_function()}
