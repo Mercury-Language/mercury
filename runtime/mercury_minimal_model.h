@@ -87,6 +87,7 @@ typedef struct {
 /* The state of a consumer subgoal */
 struct MR_Consumer_Struct {
 	MR_SavedState		MR_cns_saved_state;
+	MR_Integer		MR_cns_num_returned_answers;
 	MR_AnswerList		*MR_cns_remaining_answer_list_ptr;
 #ifdef	MR_TABLE_DEBUG
 	MR_Subgoal		*MR_cns_subgoal;

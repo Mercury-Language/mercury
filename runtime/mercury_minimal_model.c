@@ -28,7 +28,7 @@ static  void    save_state(MR_SavedState *saved_state, MR_Word *generator_fr,
 static  void    restore_state(MR_SavedState *saved_state, const char *who,
                     const char *what);
 static  void    extend_consumer_stacks(MR_Subgoal *leader,
-                    MR_Consumer *suspension);
+                    MR_Consumer *consumer);
 static  void    make_subgoal_follow_leader(MR_Subgoal *this_follower,
                     MR_Subgoal *leader);
 static  void    print_saved_state(FILE *fp, MR_SavedState *saved_state);
@@ -393,7 +393,8 @@ MR_print_consumer(FILE *fp, const MR_Proc_Layout *proc, MR_Consumer *consumer)
         MR_subgoal_addr_name(consumer->MR_cns_subgoal));
 #endif
 
-    fprintf(fp, ", remaining answers %p\n",
+    fprintf(fp, "\nreturned answers %d, remaining answers ptr %p\n",
+        consumer->MR_cns_num_returned_answers,
         consumer->MR_cns_remaining_answer_list_ptr);
     print_saved_state(fp, &consumer->MR_cns_saved_state);
 }
@@ -884,7 +885,6 @@ extend_consumer_stacks(MR_Subgoal *leader, MR_Consumer *consumer)
 static void
 make_subgoal_follow_leader(MR_Subgoal *this_follower, MR_Subgoal *leader)
 {
-    MR_Consumer     *suspension;
     MR_SubgoalList  sub_follower;
     MR_ConsumerList suspend_list;
 
@@ -1183,6 +1183,7 @@ MR_define_label(SUSPEND_LABEL(Call));
 
 #ifdef  MR_TABLE_DEBUG
     consumer->MR_cns_subgoal = subgoal;
+    consumer->MR_cns_num_returned_answers = 0;
     MR_enter_consumer_debug(consumer);
 
     if (MR_tabledebug) {
@@ -1316,7 +1317,7 @@ MR_define_label(SUSPEND_LABEL(Call));
 
   #ifdef  MR_TABLE_DEBUG
     if (MR_tabledebug) {
-        printf("adding suspension node %s to table %s",
+        printf("adding consumer %s to table %s",
                 MR_consumer_addr_name(consumer),
                 MR_subgoal_addr_name(subgoal));
         printf("\n\tat slot %p\n", subgoal->MR_sg_consumer_list_tail);
@@ -1431,6 +1432,21 @@ MR_define_label(RESUME_LABEL(StartCompletionOp));
 #endif  /* MR_TABLE_DEBUG */
     }
 
+#ifdef  MR_TABLE_DEBUG
+    if (MR_tabledebug) {
+        MR_SubgoalList  subgoal_list;
+
+        printf("the list of subgoals to iterate over:");
+        for (subgoal_list = resume_info->MR_ri_subgoal_list;
+            subgoal_list != NULL;
+            subgoal_list = subgoal_list->MR_sl_next)
+        {
+            printf(" %s", MR_subgoal_addr_name(subgoal_list->MR_sl_item));
+        }
+        printf("\n");
+    }
+#endif  /* MR_TABLE_DEBUG */
+
     /* fall through to LoopOverSubgoals */
 }
 
@@ -1459,6 +1475,23 @@ MR_define_label(RESUME_LABEL(LoopOverSubgoals));
     resume_info->MR_ri_consumer_list =
         resume_info->MR_ri_cur_subgoal->MR_sg_consumer_list;
 
+#ifdef  MR_TABLE_DEBUG
+    if (MR_tabledebug) {
+        MR_ConsumerList  consumer_list;
+
+        printf("returning answers to the consumers of subgoal %s\n",
+            MR_subgoal_addr_name(resume_info->MR_ri_cur_subgoal));
+        printf("the list of consumers to iterate over:");
+        for (consumer_list = resume_info->MR_ri_consumer_list;
+            consumer_list != NULL;
+            consumer_list = consumer_list->MR_cl_next)
+        {
+            printf(" %s", MR_consumer_addr_name(consumer_list->MR_cl_item));
+        }
+        printf("\n");
+    }
+#endif  /* MR_TABLE_DEBUG */
+
     /* fall through to LoopOverSuspensions */
 }
 
@@ -1473,7 +1506,7 @@ MR_define_label(RESUME_LABEL(LoopOverSuspensions));
     if (resume_info->MR_ri_consumer_list == NULL) {
 #ifdef  MR_TABLE_DEBUG
         if (MR_tabledebug) {
-            printf("no more suspensions for current subgoal\n");
+            printf("no more consumers for current subgoal\n");
         }
 #endif  /* MR_TABLE_DEBUG */
         MR_GOTO_LABEL(RESUME_LABEL(LoopOverSubgoals));
@@ -1490,7 +1523,7 @@ MR_define_label(RESUME_LABEL(LoopOverSuspensions));
     if (cur_consumer_answer_list == NULL) {
 #ifdef  MR_TABLE_DEBUG
         if (MR_tabledebug) {
-            printf("no first answer for this suspension\n");
+            printf("no first answer for this consumers\n");
         }
 #endif  /* MR_TABLE_DEBUG */
         MR_GOTO_LABEL(RESUME_LABEL(LoopOverSuspensions));
@@ -1523,6 +1556,23 @@ MR_define_label(RESUME_LABEL(LoopOverSuspensions));
     MR_redofr_slot(MR_maxfr) = MR_maxfr;
     MR_based_framevar(MR_maxfr, 1) = (MR_Word) MR_cur_leader;
 
+#ifdef  MR_TABLE_DEBUG
+    if (MR_tabledebug) {
+        MR_AnswerList   answer_list;
+
+        printf("returning answers to consumer %s\n",
+            MR_consumer_addr_name(resume_info->MR_ri_cur_consumer));
+        printf("the list of answers to return:");
+        for (answer_list = cur_consumer_answer_list;
+            answer_list != NULL;
+            answer_list = answer_list->MR_aln_next_answer)
+        {
+            printf(" #%d", answer_list->MR_aln_answer_num);
+        }
+        printf("\n");
+    }
+#endif  /* MR_TABLE_DEBUG */
+
     /* fall through to ReturnAnswer */
 }
 
@@ -1549,6 +1599,15 @@ MR_define_label(RESUME_LABEL(ReturnAnswer));
     MR_r1 = (MR_Word) answer_list->MR_aln_answer_data.MR_answerblock;
     consumer->MR_cns_remaining_answer_list_ptr =
         &(answer_list->MR_aln_next_answer);
+    consumer->MR_cns_num_returned_answers++;
+
+#ifdef  MR_TABLE_DEBUG
+    if (MR_tabledebug) {
+        printf("returning answer %d to consumer %s\n",
+            answer_list->MR_aln_answer_num,
+            MR_consumer_addr_name(resume_info->MR_ri_cur_consumer));
+    }
+#endif  /* MR_TABLE_DEBUG */
 
     /*
     ** Return the answer. Since we just restored the state of the
@@ -1595,7 +1654,7 @@ MR_define_label(RESUME_LABEL(RestartPoint));
 
 #ifdef  MR_TABLE_DEBUG
     if (MR_tabledebug) {
-        printf("no more unreturned answers for this suspension\n");
+        printf("no more unreturned answers for this consumer\n");
     }
 #endif  /* MR_TABLE_DEBUG */
 
@@ -1683,7 +1742,7 @@ MR_define_label(RESUME_LABEL(ReachedFixpoint));
 #ifdef  MR_TABLE_DEBUG
     if (MR_tabledebug) {
         printf("using resume info succip ");
-        MR_print_label(stdout, MR_succip);
+        MR_printlabel(stdout, MR_succip);
     }
 #endif  /* MR_TABLE_DEBUG */
 
