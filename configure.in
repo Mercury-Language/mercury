@@ -933,33 +933,40 @@ AC_SUBST(HAVE_DELAY_SLOT)
 AC_MSG_CHECKING(whether Mercury supports shared libraries on this system)
 # We ought to use $target here rather than $host - but we don't
 # support cross-compilation at the moment anyhow.
+
+# set up some default values that should work on most systems
+# see Mmake.common.in for documentation on the meaning of these variables
+LINK_SHARED_OBJ="$CC -shared"
+SHARED_LIBS='`gcc -print-libgcc-file-name` -lm -lc'
+CFLAGS_FOR_PIC=-fpic
+EXT_FOR_PIC_OBJECTS=pic_o
+EXT_FOR_SHARED_LIB=a
+
 case "$host" in
 	i386-*-freebsd*)
 		# From Cornelis van der Laan <nils@ims.uni-stuttgart.de>
 		AC_MSG_RESULT(yes)
 		LINK_SHARED_OBJ="ld -Bshareable"
-		CFLAGS_FOR_PIC=-fpic
-		EXT_FOR_PIC_OBJECTS=pic_o
 		EXT_FOR_SHARED_LIB=so
 		;;
 	sparc-sun-solaris2.*)
 		AC_MSG_RESULT(yes)
-		LINK_SHARED_OBJ="$CC -G"
-		CFLAGS_FOR_PIC=
-		EXT_FOR_PIC_OBJECTS=o
+		SHARED_LIBS="-lm -lc"	# don't link in libgcc.a
 		EXT_FOR_SHARED_LIB=so
 		;;
 	alpha-dec-osf*)
 		AC_MSG_RESULT(yes)
 		LINK_SHARED_OBJ="ld -O3 -shared \
 			-update_registry ../so_locations"
+		EXT_FOR_SHARED_LIB=so
+		# -fpic not needed on Alpha/OSF, since it is the default
 		CFLAGS_FOR_PIC=
 		EXT_FOR_PIC_OBJECTS=o
-		EXT_FOR_SHARED_LIB=so
 		;;
 	mips-sgi-irix5.*)
 		LINK_SHARED_OBJ="ld -shared -update_registry ../so_locations\
 			-quickstart_info -rdata_shared -no_unresolved"
+		# -fpic not needed on IRIX, since it is the default
 		CFLAGS_FOR_PIC=
 		EXT_FOR_PIC_OBJECTS=o
 		# shared libraries only work for reg.gc or none.gc
@@ -974,16 +981,13 @@ case "$host" in
 		;;
 	*)
 		AC_MSG_RESULT(no)
-		LINK_SHARED_OBJ="$CC"
-		CFLAGS_FOR_PIC=
-		EXT_FOR_PIC_OBJECTS=o
-		EXT_FOR_SHARED_LIB=a
 		;;
 esac
 AC_SUBST(LINK_SHARED_OBJ)
 AC_SUBST(CFLAGS_FOR_PIC)
 AC_SUBST(EXT_FOR_PIC_OBJECTS)
 AC_SUBST(EXT_FOR_SHARED_LIB)
+AC_SUBST(SHARED_LIBS)
 #-----------------------------------------------------------------------------#
 if test "$BOOTSTRAP_MC" = ""; then
 	BOOTSTRAP_MC=mc

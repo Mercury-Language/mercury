@@ -50,18 +50,15 @@ SICSTUS			= @SICSTUS@
 # Define `nuprolog' for use in the construction of binary distributions
 NUPROLOG		= @NUPROLOG@
 
-# Specify EXT_FOR_SHARED_LIB as `so' if your operating system
+# Specify EXT_FOR_SHARED_LIB as `so' if the operating system
 # supports `.so' shared libraries,
-# or as `a' if it doesn't.  Currently shared libraries work on Solaris
-# and maybe also on Irix 5.
+# or as `a' if it doesn't.
 EXT_FOR_SHARED_LIB	= @EXT_FOR_SHARED_LIB@
 
 # Specify any special flags to pass to the C compiler when creating objects
 # for a shared library (e.g. -fpic or -fPIC for gcc).
-# Note that for sparc-sun-solaris2.3 (and maybe other architectures?)
-# for some reason (probably inter-module jumps don't work with shared libs)
-# things fail if you use -fpic or -fPIC, so leave this blank.
-# For Irix 5 and Alpha/OSF, PIC is the default, so leave this blank.
+# For Irix 5 and Alpha/OSF, position-independent code is the default,
+# so leave this blank.
 CFLAGS_FOR_PIC		= @CFLAGS_FOR_PIC@
 
 # Specify EXT_FOR_PIC_OBJECTS as `pic_o' if any special $(PIC) flags are
@@ -71,14 +68,14 @@ CFLAGS_FOR_PIC		= @CFLAGS_FOR_PIC@
 EXT_FOR_PIC_OBJECTS	= @EXT_FOR_PIC_OBJECTS@
 
 # Specify the command to link a shared library
-# This is only used if you defined SO=so above.
+# This is only used if EXT_FOR_SHARED_LIB was defined as `so' above.
 # LINK_SHARED_OBJ  	= ld -shared	# for Irix 5
 # LINK_SHARED_OBJ  	= gcc -assert nodefinitions
 #					# for SunOS 4 (completely untested)
-# LINK_SHARED_OBJ  	= gcc -G	# for Solaris
+# LINK_SHARED_OBJ  	= gcc -shared	# for Solaris etc.
 LINK_SHARED_OBJ  	= @LINK_SHARED_OBJ@
 
-SHARED_LIBS		= `gcc -print-libgcc-file-name` -lm -lc
+SHARED_LIBS		= @SHARED_LIBS@
 
 # Set INSTALL_NUPROLOG to `install_nuprolog' if you have NU-Prolog
 # and want use it for debugging Mercury programs.
