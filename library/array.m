@@ -200,16 +200,6 @@
 :- pred array_compare(comparison_result, array(T), array(T)).
 :- mode array_compare(out, in, in) is det.
 
-	% type_to_term/2 for arrays
-
-:- pred array_to_term(array(T), term).
-:- mode array_to_term(in, out) is det.
-
-	% term_to_type/2 for arrays
-
-:- pred array_from_term(term, array(T)).
-:- mode array_from_term(in, out) is semidet.
-
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -240,8 +230,6 @@ lower bounds other than zero are not supported
 Define_extern_entry(mercury____Unify___array__array_1_0);
 Define_extern_entry(mercury____Index___array__array_1_0);
 Define_extern_entry(mercury____Compare___array__array_1_0);
-Define_extern_entry(mercury____TermToType___array__array_1_0);
-Define_extern_entry(mercury____TypeToTerm___array__array_1_0);
 
 #ifdef  USE_TYPE_LAYOUT
 
@@ -262,15 +250,11 @@ const struct mercury_data_array__base_type_functors_array_1_struct {
 
 Declare_entry(mercury__array__array_equal_2_0);
 Declare_entry(mercury__array__array_compare_3_0);
-Declare_entry(mercury__array__array_to_term_2_0);
-Declare_entry(mercury__array__array_from_term_2_0);
 
 BEGIN_MODULE(array_module)
 	init_entry(mercury____Unify___array__array_1_0);
 	init_entry(mercury____Index___array__array_1_0);
 	init_entry(mercury____Compare___array__array_1_0);
-	init_entry(mercury____TermToType___array__array_1_0);
-	init_entry(mercury____TypeToTerm___array__array_1_0);
 BEGIN_CODE
 
 Define_entry(mercury____Unify___array__array_1_0);
@@ -286,16 +270,6 @@ Define_entry(mercury____Compare___array__array_1_0);
 	/* this is implemented in Mercury, not hand-coded low-level C */
 	tailcall(ENTRY(mercury__array__array_compare_3_0),
 		ENTRY(mercury____Compare___array__array_1_0));
-
-Define_entry(mercury____TermToType___array__array_1_0);
-	/* this is implemented in Mercury, not hand-coded low-level C */
-	tailcall(ENTRY(mercury__array__array_from_term_2_0),
-		ENTRY(mercury____TermToType___array__array_1_0));
-
-Define_entry(mercury____TypeToTerm___array__array_1_0);
-	/* this is implemented in Mercury, not hand-coded low-level C */
-	tailcall(ENTRY(mercury__array__array_to_term_2_0),
-		ENTRY(mercury____TypeToTerm___array__array_1_0));
 
 END_MODULE
 
@@ -364,23 +338,6 @@ array__compare_elements(N, Size, Array1, Array2, Result) :-
 			Result = ElemResult
 		)
 	).
-
-
-	% type_to_term for arrays
-
-array_to_term(Array, Term) :-
-	array__to_list(Array, List),
-	type_to_term(List, ListTerm),
-	term__context_init(Context),
-	Term = term__functor(term__atom("array"), [ListTerm], Context).
-
-
-	% term_to_type for arrays
-
-array_from_term(Term, Array) :-
-	Term = term__functor(term__atom("array"), [ListTerm], _),
-	term_to_type(ListTerm, List),
-	array__from_list(List, Array).
 
 %-----------------------------------------------------------------------------%
 
