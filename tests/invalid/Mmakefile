@@ -19,6 +19,7 @@ MULTIMODULE_SOURCES= \
 	imported_mode.m \
 	partial_implied_mode.m \
 	test_nested.m \
+	transitive_import.m \
 	transitive_import_class.m \
 	undef_mod_qual.m
 
@@ -78,7 +79,6 @@ SINGLEMODULE_SOURCES= \
 	spurious_mode_error.m \
 	tc_err1.m \
 	tc_err2.m \
-	transitive_import.m \
 	tricky_assert1.m \
 	type_inf_loop.m \
 	type_loop.m \
@@ -144,6 +144,11 @@ MCFLAGS-no_exports = 		--halt-at-warn
 MCFLAGS-sub_c = 		--verbose-error-messages
 MCFLAGS-record_syntax_errors =	--verbose-error-messages
 MCFLAGS-test_nested =		--no-intermodule-optimization
+MCFLAGS-transitive_import = --no-intermodule-optimization
+MCFLAGS-transitive_import2 = --no-intermodule-optimization
+MCFLAGS-transitive_import_class = --no-intermodule-optimization
+MCFLAGS-transitive_import_class2 = --no-intermodule-optimization
+MCFLAGS-transitive_import_class3 = --no-intermodule-optimization
 MCFLAGS-typeclass_mode =	--infer-all
 MCFLAGS-undef_mod_qual = 	--no-intermodule-optimization
 MCFLAGS-undef_symbol = 		--no-intermodule-optimization
