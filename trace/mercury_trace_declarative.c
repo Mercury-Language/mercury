@@ -559,11 +559,4 @@ MR_edt_root_node_args(const MR_Edt_Node *edt)
 	return arglist;
 }
 
-#else	/* not MR_USE_DECLARATIVE_DEBUGGER */
-
-extern void
-MR_edt_root_node(Word EDT, Word *Node)
-{
-	fatal_error("MR_edt_root_node should not have been called");
-}
 #endif

@@ -138,13 +138,17 @@ edt_children_2(Child, Siblings) :-
 :- pragma c_code(edt_root(EDT::in, Root::out),
 	[will_not_call_mercury],
 	"
-		/*
-		** We wish to call MR_edt_root_node in the trace
-		** directory, but due to problems with linking we
-		** call it indirectly via a pointer defined in
-		** runtime/mercury_wrapper.c.
-		*/
-		MR_address_of_edt_root_node(EDT, &Root);
+		#ifdef MR_USE_DECLARATIVE_DEBUGGER
+			/*
+			** We wish to call MR_edt_root_node in the trace
+			** directory, but due to problems with linking we
+			** call it indirectly via a pointer defined in
+			** runtime/mercury_wrapper.c.
+			*/
+			MR_address_of_edt_root_node(EDT, &Root);
+		#else
+			fatal_error(\"this should never be reached\");
+		#endif
 	"
 ).
 

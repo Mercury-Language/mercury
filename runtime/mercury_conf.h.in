@@ -261,6 +261,12 @@
 #undef  MR_USE_EXTERNAL_DEBUGGER
 
 /*
+** MR_USE_DECLARATIVE_DEBUGGER:
+**	Include declarative debugging support in the internal debugger.
+*/
+#undef	MR_USE_DECLARATIVE_DEBUGGER
+
+/*
 ** MR_NO_USE_READLINE
 **	Set this if you want to prevent the debugger from using the GNU
 **	readline library for the command-line prompt.
