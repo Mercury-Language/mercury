@@ -183,6 +183,7 @@ call_gen__generate_nondet_call(PredId, ModeId, Arguments, Code) -->
 	{ assoc_list__from_corresponding_lists(Arguments, ArgInfo, Args) },
 	{ call_gen__select_out_args(Args, OutArgs) },
 	call_gen__save_variables(OutArgs, SaveCode),
+	code_info__may_use_nondet_tailcall(TailCall),
 	code_info__unset_failure_cont(FlushCode),
 	code_info__setup_call(Args, caller, SetupCode),
 	code_info__get_next_label(ReturnLabel),
@@ -193,7 +194,6 @@ call_gen__generate_nondet_call(PredId, ModeId, Arguments, Code) -->
 	call_gen__generate_return_livevals(OutArgs, OutputArguments,
 		OutLiveVals),
 	code_info__make_entry_label(ModuleInfo, PredId, ModeId, yes, Address),
-	code_info__may_use_nondet_tailcall(TailCall),
 	{ CallModel = nondet(TailCall) },
 	{ CallCode = node([
 		call(Address, label(ReturnLabel), OutLiveVals, CallModel)
