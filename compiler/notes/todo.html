@@ -53,22 +53,10 @@ For more information on any of these issues, contact mercury@cs.mu.oz.au.
 
 <h2> determinism analysis </h2>
 
-<ul>
-<li> allow overloading of nondet/multidet and cc_nondet/cc_multidet
-  determinism for the same mode of a predicate.
-</ul>
-
 <h2> unique modes </h2>
 
 <ul>
-<li> handle unique mode overloading better -
-  don't depend on the order of the mode declarations.
-
-<li> handle overloading of unique and mostly_unique modes.
-  Currently in modes.m we always pick the unique version, and then in
-  unique_modes.m, if it turns out out to be mostly_unique, we report an
-  error.  We should changed unique_modes.m to also look for a
-  mostly_unique version before reporting an error.
+<li> handle nested unique modes
 
 <li> we will probably need to extend unique modes a bit,
      in as-yet-unknown ways; need more experience here
@@ -85,18 +73,23 @@ For more information on any of these issues, contact mercury@cs.mu.oz.au.
 <li> imports should not be transitive
   (currently we get this right for predicates, constants, and functors,
   but wrong for types, insts, and modes).
+
+<li> there are some problems with nested modules (see the language
+  reference manual)
+
 </ul>
 
 <h2> C interface </h2>
 
 <ul>
-<li> document it properly
-
-<li> nondeterministic C code
+<li> document `pragma import' and nondet C code interface
 
 <li> exporting things for manipulating Mercury types from C
 
 <li> better support for types defined in C
+
+<li> need to deal with memory management issues
+
 </ul>
 
 <h2> code generation </h2>
@@ -128,7 +121,7 @@ For more information on any of these issues, contact mercury@cs.mu.oz.au.
      i.e. allow universal quantifiers at the top level of
      higher-order types, e.g. <samp>:- pred foo(all [T] pred(T)).</samp>.
 
-<li> type classes
+<li> constructor classes
 
 <li> allow a module exporting an abstract type to specify that other modules
      should not be allowed to test two values of that type for equality (similar
@@ -206,12 +199,6 @@ For more information on any of these issues, contact mercury@cs.mu.oz.au.
 <li> allow floating point fields of structures without boxing
 	(need multi-word fields)
 
-<li> The generated code should include some more profiling hooks.
-     In particular, we should add a version of the heap allocation
-     macro which takes an extra string parameter identifying which
-     routine allocated the memory.  Then we can do heap-allocation
-     profiling to identify which routines use up all the bloody memory.
-
 <li> inter-procedural register allocation 
 
 <li> stack allocation of structures
@@ -229,6 +216,7 @@ For more information on any of these issues, contact mercury@cs.mu.oz.au.
 
 <li> transform non-tail-recursive predicates into tail-recursive form
      using accumulators
+	[being worked on by petdr]
 
 <li> deforestation and partial deduction
 	[being worked on by stayl]
@@ -241,10 +229,10 @@ For more information on any of these issues, contact mercury@cs.mu.oz.au.
      the real registers into the fake_reg array and back)
 
 <li> tail recursion optimization using pass-by-reference argument conventions
+	[being worked on by dmo]
 
 <li> other specializations, e.g. if argument is known to be bound to
      f(X,Y), then just pass X and Y in registers
-	[being worked on by petdr]
 
 <li> trim stack frames before making recursive calls, to minimize stack usage
      (this would probably be a pessimization much of the time - zs)
@@ -290,9 +278,6 @@ For more information on any of these issues, contact mercury@cs.mu.oz.au.
 	[being worked on by conway]
 
 <li> implement streams (need coroutining at least)
-
-<li> implement tabling
-	[tabling in the absence of negation done by ohutch, but not committed]
 
 <li> implement a very fast turn-around bytecode compiler/interpreter/debugger,
      similar to Gofer
@@ -348,6 +333,6 @@ For more information on any of these issues, contact mercury@cs.mu.oz.au.
 <hr>
 <!-------------------------->
 
-Last update was $Date: 1997-07-10 06:44:42 $ by $Author: zs $@cs.mu.oz.au. <br>
+Last update was $Date: 1998-06-29 05:37:19 $ by $Author: fjh $@cs.mu.oz.au. <br>
 </body>
 </html>
