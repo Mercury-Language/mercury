@@ -240,6 +240,16 @@ static Code *engine_init_registers(void)
 	return NULL;
 }
 
+/* For debugging purposes, we keep a circular buffer of
+   the last 40 locations that we jumped to.  This is
+   very useful for determining the cause of a crash,
+   since it runs a lot faster than -dg.
+*/
+#define NUM_PREV_FPS 40
+typedef void (*FuncPtr)();
+FuncPtr prev_fps[NUM_PREV_FPS];
+int prev_fp_index = 0;
+
 void call_engine(Code *entry_point)
 {
 	typedef Code *Func(void);
@@ -290,6 +300,10 @@ void call_engine(Code *entry_point)
 	}
 #else
 	for(;;) {
+		prev_fps[prev_fp_index++] = fp;
+		if (prev_fp_index >= NUM_PREV_FPS) {
+			prev_fp_index = 0;
+		}
 		debuggoto(fp);
 		debugsreg();
 		fp = (*fp)();
