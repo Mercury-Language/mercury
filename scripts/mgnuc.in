@@ -136,6 +136,15 @@ esac
 
 ARCH_OPTS=""
 case @FULLARCH@ in
+	i?86-*)
+		# on the 386, we need `-fno-builtin' to make global register
+		# variables work
+		case $GRADE_OPTS in
+			*-DUSE_GCC_GLOBAL_REGISTERS*)
+				ARCH_OPTS="-fno-builtin"
+			;;
+		esac
+		;;
 	mips-sgi-irix5.*)
 		# nonlocal gotos don't work with PIC, which is the
 		# default for Irix 5, so if nonlocal gotos are enabled
@@ -147,7 +156,7 @@ LIBRARY_PATH="/usr/contrib/lib/nonshared:/usr/lib/nonshared:$LIBRARY_PATH"
 				ARCH_OPTS="-non_shared -mno-abicalls"
 			;;
 		esac
-	;;
+		;;
 esac
 
 if $verbose; then
