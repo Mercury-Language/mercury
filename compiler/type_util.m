@@ -165,6 +165,7 @@
 :- func float_type = (type).
 :- func char_type = (type).
 :- func c_pointer_type = (type).
+:- func heap_pointer_type = (type).
 :- func sample_type_info_type = (type).
 :- func sample_typeclass_info_type = (type).
 
@@ -791,6 +792,10 @@ char_type = Type :-
 c_pointer_type = Type :-
 	mercury_public_builtin_module(BuiltinModule),
 	construct_type(qualified(BuiltinModule, "c_pointer") - 0, [], Type).
+
+heap_pointer_type = Type :-
+	mercury_private_builtin_module(BuiltinModule),
+	construct_type(qualified(BuiltinModule, "heap_pointer") - 0, [], Type).
 
 sample_type_info_type = Type :-
 	mercury_private_builtin_module(BuiltinModule),

@@ -128,6 +128,7 @@ typedef const MR_Closure *MR_ClosurePtr;
   	MR_Comparison_Result;
   typedef struct mercury__builtin__void_0_s * MR_Void;
   typedef struct mercury__builtin__c_pointer_0_s * MR_C_Pointer;
+  typedef struct mercury__private_builtin__heap_pointer_0_s * MR_Heap_Pointer;
   typedef MR_ClosurePtr MR_Pred;
   typedef MR_ClosurePtr MR_Func;
   typedef struct mercury__array__array_1_s * MR_Array;
@@ -146,6 +147,7 @@ typedef const MR_Closure *MR_ClosurePtr;
   typedef MR_Word MR_Comparison_Result;
   typedef MR_Word MR_Void;
   typedef MR_Word MR_C_Pointer;
+  typedef MR_Word MR_Heap_Pointer;
   typedef MR_Word MR_Pred;
   typedef MR_Word MR_Func;
   typedef MR_Word MR_Array;
@@ -312,6 +314,7 @@ extern const MR_TypeCtorInfo_Struct
 	mercury__builtin__builtin__type_ctor_info_character_0,
 	mercury__builtin__builtin__type_ctor_info_void_0,
 	mercury__builtin__builtin__type_ctor_info_c_pointer_0,
+	mercury__private_builtin__private_builtin__type_ctor_info_heap_pointer_0,
 	mercury__builtin__builtin__type_ctor_info_pred_0,
 	mercury__builtin__builtin__type_ctor_info_func_0,
 	mercury__builtin__builtin__type_ctor_info_tuple_0,
@@ -543,6 +546,8 @@ bool MR_CALL mercury__builtin____Unify____character_0_0(MR_Char x, MR_Char);
 bool MR_CALL mercury__builtin____Unify____void_0_0(MR_Void x, MR_Void y); 
 bool MR_CALL mercury__builtin____Unify____c_pointer_0_0(
 	MR_C_Pointer x, MR_C_Pointer y); 
+bool MR_CALL mercury__private_builtin____Unify____heap_pointer_0_0(
+	MR_Heap_Pointer x, MR_Heap_Pointer y); 
 bool MR_CALL mercury__builtin____Unify____func_0_0(MR_Func x, MR_Func y); 
 bool MR_CALL mercury__builtin____Unify____pred_0_0(MR_Pred x, MR_Pred y); 
 bool MR_CALL mercury__builtin____Unify____tuple_0_0(
@@ -574,6 +579,8 @@ void MR_CALL mercury__builtin____Compare____void_0_0(
 	MR_Comparison_Result *result, MR_Void x, MR_Void y);
 void MR_CALL mercury__builtin____Compare____c_pointer_0_0(
 	MR_Comparison_Result *result, MR_C_Pointer x, MR_C_Pointer y);
+void MR_CALL mercury__private_builtin____Compare____heap_pointer_0_0(
+	MR_Comparison_Result *result, MR_Heap_Pointer x, MR_Heap_Pointer y);
 void MR_CALL mercury__builtin____Compare____func_0_0(
 	MR_Comparison_Result *result, MR_Func x, MR_Func y);
 void MR_CALL mercury__builtin____Compare____pred_0_0(

@@ -340,11 +340,6 @@ new_var(Name, Type, Var, TOI0, TOI) :-
 
 %-----------------------------------------------------------------------------%
 
-:- func heap_pointer_type = (type).
-heap_pointer_type = c_pointer_type.
-
-%-----------------------------------------------------------------------------%
-
 :- pred generate_call(string::in, list(prog_var)::in, determinism::in,
 	maybe(goal_feature)::in, assoc_list(prog_var, inst)::in,
 	module_info::in, term__context::in, hlds_goal::out) is det.

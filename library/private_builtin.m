@@ -1137,7 +1137,7 @@ trailed_nondet_pragma_foreign_code :-
 	% For documentation, see the corresponding LLDS instructions
 	% in compiler/llds.m.  See also compiler/notes/trailing.html.
 
-:- type heap_pointer == c_pointer.
+:- type heap_pointer.
 
 :- impure pred mark_hp(heap_pointer::out) is det.
 :- impure pred restore_hp(heap_pointer::in) is det.
@@ -1232,6 +1232,165 @@ reclaim_heap_nondet_pragma_foreign_code :-
 		"is not supported when `--reclaim-heap-on-failure' is enabled."
 	]),
 	error(Msg).
+
+%-----------------------------------------------------------------------------%
+
+% Code to define the `heap_pointer' type for the LLDS and .NET back-ends.
+% (For the MLDS->C back-end, this type is defined in runtime/mercury.c.)
+
+:- pragma foreign_code("C", "
+
+#include ""mercury_deep_profiling_hand.h""
+
+/* Ensure that the initialization code for the module below gets run. */
+/*
+INIT sys_init_heap_pointer_module
+*/
+
+/* duplicate declarations to suppress gcc -Wmissing-decl warning */
+void sys_init_heap_pointer_module_init(void);
+void sys_init_heap_pointer_module_init_type_tables(void);
+#ifdef	MR_DEEP_PROFILING
+void sys_init_heap_pointer_module_write_out_proc_statics(FILE *fp);
+#endif
+
+#ifndef MR_HIGHLEVEL_CODE
+
+#ifdef	MR_DEEP_PROFILING
+MR_proc_static_compiler_empty(private_builtin, __Unify__,   heap_pointer,
+	0, 0, ""private_builtin.m"", 0, TRUE);
+MR_proc_static_compiler_empty(private_builtin, __Compare__, heap_pointer,
+	0, 0, ""private_builtin.m"", 0, TRUE);
+#endif
+
+MR_DEFINE_BUILTIN_TYPE_CTOR_INFO_PRED(private_builtin, heap_pointer, 0,
+	MR_TYPECTOR_REP_HP,
+	mercury____Unify___private_builtin__heap_pointer_0_0,
+	mercury____Compare___private_builtin__heap_pointer_0_0);
+
+MR_declare_entry(mercury____Unify___private_builtin__heap_pointer_0_0);
+MR_declare_entry(mercury____Index___private_builtin__heap_pointer_0_0);
+MR_declare_entry(mercury____Compare___private_builtin__heap_pointer_0_0);
+
+MR_BEGIN_MODULE(heap_pointer_module)
+	MR_init_entry(mercury____Unify___private_builtin__heap_pointer_0_0);
+	MR_init_entry(mercury____Compare___private_builtin__heap_pointer_0_0);
+#ifdef	MR_DEEP_PROFILING
+	MR_init_label(mercury____Unify___private_builtin__heap_pointer_0_0_i1);
+	MR_init_label(mercury____Unify___private_builtin__heap_pointer_0_0_i2);
+	MR_init_label(mercury____Unify___private_builtin__heap_pointer_0_0_i3);
+	MR_init_label(mercury____Unify___private_builtin__heap_pointer_0_0_i4);
+	MR_init_label(mercury____Compare___private_builtin__heap_pointer_0_0_i1);
+	MR_init_label(mercury____Compare___private_builtin__heap_pointer_0_0_i2);
+#endif
+MR_BEGIN_CODE
+
+#define	proc_label	mercury____Unify___private_builtin__heap_pointer_0_0
+#define	proc_static	MR_proc_static_compiler_name(private_builtin, \
+				__Unify__, heap_pointer, 0, 0)
+#define	body_code	MR_fatal_error( \
+		""called unify for type `private_builtin:heap_pointer'"")
+
+#include ""mercury_hand_unify_body.h""
+
+#undef	body_code
+#undef	proc_static
+#undef	proc_label
+
+#define	proc_label	mercury____Compare___private_builtin__heap_pointer_0_0
+#define	proc_static	MR_proc_static_compiler_name(private_builtin, \
+				__Compare__, heap_pointer, 0, 0)
+#define	body_code	MR_fatal_error( \
+		""called compare/3 for type `private_builtin:heap_pointer'"")
+
+#include ""mercury_hand_compare_body.h""
+
+#undef	body_code
+#undef	proc_static
+#undef	proc_label
+
+MR_END_MODULE
+
+MR_MODULE_STATIC_OR_EXTERN MR_ModuleFunc heap_pointer_module;
+
+#endif /* ! MR_HIGHLEVEL_CODE */
+
+void
+sys_init_heap_pointer_module_init(void)
+{
+#ifndef	MR_HIGHLEVEL_CODE
+	heap_pointer_module();
+
+	MR_INIT_TYPE_CTOR_INFO(
+		mercury_data_private_builtin__type_ctor_info_heap_pointer_0,
+		private_builtin__heap_pointer_0_0);
+#endif
+}
+
+void
+sys_init_heap_pointer_module_init_type_tables(void)
+{
+#ifndef	MR_HIGHLEVEL_CODE
+	MR_register_type_ctor_info(
+		&mercury_data_private_builtin__type_ctor_info_heap_pointer_0);
+#endif
+}
+
+#ifdef	MR_DEEP_PROFILING
+void
+sys_init_heap_pointer_module_write_out_proc_statics(FILE *fp)
+{
+	MR_write_out_proc_static(fp, (MR_ProcStatic *)
+		&MR_proc_static_compiler_name(private_builtin, __Unify__,
+			heap_pointer, 0, 0));
+	MR_write_out_proc_static(fp, (MR_ProcStatic *)
+		&MR_proc_static_compiler_name(private_builtin, __Compare__,
+			heap_pointer, 0, 0));
+}
+#endif
+
+").
+
+
+:- pragma foreign_code("MC++", "
+	
+MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(private_builtin, heap_pointer, 0,
+	MR_TYPECTOR_REP_HP) 
+
+static int
+__Unify__private_builtin__heap_pointer_0_0(MR_Word x, MR_Word y)
+{
+	mercury::runtime::Errors::fatal_error(
+		""called unify for type `private_builtin:heap_pointer'"");
+	return 0;
+}
+
+static void
+__Compare__private_builtin__heap_pointer_0_0(
+	MR_Word_Ref result, MR_Word x, MR_Word y)
+{
+	mercury::runtime::Errors::fatal_error(
+		""called compare/3 for type `private_builtin:heap_pointer'"");
+}
+
+static int
+do_unify__heap_pointer_0_0(MR_Box x, MR_Box y)
+{
+	mercury::runtime::Errors::fatal_error(
+		""called unify for type `private_builtin:heap_pointer'"");
+	return 0;
+}
+
+static void
+do_compare__heap_pointer_0_0(
+	MR_Word_Ref result, MR_Box x, MR_Box y)
+{
+	mercury::runtime::Errors::fatal_error(
+		""called compare/3 for type `private_builtin:heap_pointer'"");
+	return 0;
+}
+
+").
 
 %-----------------------------------------------------------------------------%
 

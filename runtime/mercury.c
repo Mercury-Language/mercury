@@ -84,6 +84,7 @@ static MR_UnifyFunc_0
 	mercury__builtin__do_unify__character_0_0,
 	mercury__builtin__do_unify__void_0_0,
 	mercury__builtin__do_unify__c_pointer_0_0,
+	mercury__private_builtin__do_unify__heap_pointer_0_0,
 	mercury__builtin__do_unify__func_0_0,
 	mercury__builtin__do_unify__pred_0_0,
 	mercury__type_desc__do_unify__type_desc_0_0;
@@ -102,6 +103,7 @@ static MR_CompareFunc_0
 	mercury__builtin__do_compare__character_0_0,
 	mercury__builtin__do_compare__void_0_0,
 	mercury__builtin__do_compare__c_pointer_0_0,
+	mercury__private_builtin__do_compare__heap_pointer_0_0,
 	mercury__builtin__do_compare__func_0_0,
 	mercury__builtin__do_compare__pred_0_0,
 	mercury__type_desc__do_compare__type_desc_0_0;
@@ -128,6 +130,7 @@ MR_define_type_ctor_info(builtin, float, 0, MR_TYPECTOR_REP_FLOAT);
 MR_define_type_ctor_info(builtin, character, 0, MR_TYPECTOR_REP_CHAR);
 MR_define_type_ctor_info(builtin, void, 0, MR_TYPECTOR_REP_VOID);
 MR_define_type_ctor_info(builtin, c_pointer, 0, MR_TYPECTOR_REP_C_POINTER);
+MR_define_type_ctor_info(private_builtin, heap_pointer, 0, MR_TYPECTOR_REP_HP);
 MR_define_type_ctor_info(builtin, pred, 0, MR_TYPECTOR_REP_PRED);
 MR_define_type_ctor_info(builtin, func, 0, MR_TYPECTOR_REP_FUNC);
 MR_define_type_ctor_info(builtin, tuple, 0, MR_TYPECTOR_REP_TUPLE);
@@ -373,6 +376,13 @@ mercury__builtin____Unify____c_pointer_0_0(MR_C_Pointer x, MR_C_Pointer y)
 }
 
 bool MR_CALL
+mercury__private_builtin____Unify____heap_pointer_0_0(MR_Heap_Pointer x,
+	MR_Heap_Pointer y)
+{
+	MR_fatal_error("called unify for type `private_builtin:heap_pointer'");
+}
+
+bool MR_CALL
 mercury__builtin____Unify____func_0_0(MR_Func x, MR_Func y)
 {
 	MR_fatal_error("called unify for `func' type");
@@ -519,6 +529,14 @@ mercury__builtin____Compare____c_pointer_0_0(
 }
 
 void MR_CALL
+mercury__private_builtin____Compare____heap_pointer_0_0(
+	MR_Comparison_Result *result, MR_Heap_Pointer x, MR_Heap_Pointer y)
+{
+	MR_fatal_error(
+		"called compare/3 for type `private_builtin:heap_pointer'");
+}
+
+void MR_CALL
 mercury__builtin____Compare____func_0_0(MR_Comparison_Result *result,
 	MR_Func x, MR_Func y)
 {
@@ -649,6 +667,13 @@ mercury__builtin__do_unify__c_pointer_0_0(MR_Box x, MR_Box y)
 }
 
 static bool MR_CALL
+mercury__private_builtin__do_unify__heap_pointer_0_0(MR_Box x, MR_Box y)
+{
+	return mercury__private_builtin____Unify____heap_pointer_0_0(
+		(MR_Heap_Pointer) x, (MR_Heap_Pointer) y);
+}
+
+static bool MR_CALL
 mercury__builtin__do_unify__func_0_0(MR_Box x, MR_Box y)
 {
 	MR_fatal_error("called unify for `func' type");
@@ -760,6 +785,14 @@ mercury__builtin__do_compare__c_pointer_0_0(
 {
 	mercury__builtin____Compare____c_pointer_0_0(
 		result, (MR_C_Pointer) x, (MR_C_Pointer) y);
+}
+
+static void MR_CALL
+mercury__private_builtin__do_compare__heap_pointer_0_0(
+	MR_Comparison_Result *result, MR_Box x, MR_Box y)
+{
+	MR_fatal_error(
+		"called compare/3 for type `private_builtin:heap_pointer'");
 }
 
 static void MR_CALL
