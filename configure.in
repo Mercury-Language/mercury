@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-2002 The University of Melbourne. 
+# Copyright (C) 1995-2003 The University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -1732,7 +1732,8 @@ if test $mercury_cv_gcc_labels = yes; then
 
 	mercury__label1:
 		__asm__(".globl entry_" "mercury__label1" "\n" "entry_"
-			"mercury__label1" ":");
+			"mercury__label1" ":\n"
+			"/* this is a comment */");
 		exit(0);
 	}], [mercury_cv_asm_labels=yes], [mercury_cv_asm_labels=no],
 		[mercury_cv_asm_labels=no])
