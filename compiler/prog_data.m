@@ -233,151 +233,255 @@
 	%
 			% a foreign language declaration, such as C
 			% header code.
-	--->	foreign_decl(foreign_language, string)
+	--->	foreign_decl(
+			decl_lang	:: foreign_language,
+			decl_decl	:: string
+		)
 
-	;	foreign_code(foreign_language, string)
+	;	foreign_code(
+			code_lang	:: foreign_language,
+			code_code	:: string)
 
-	;	foreign_proc(pragma_foreign_proc_attributes,
-			sym_name, pred_or_func, list(pragma_var),
-			prog_varset, pragma_foreign_code_impl)
+	;	foreign_proc(
+			proc_attrs	:: pragma_foreign_proc_attributes,
+			proc_name	:: sym_name,
+			proc_p_or_f	:: pred_or_func,
+			proc_vars	:: list(pragma_var),
+			proc_varset	:: prog_varset,
+			proc_impl	:: pragma_foreign_code_impl
 			% Set of foreign proc attributes, eg.:
 			%	what language this code is in
 			%	whether or not the code may call Mercury,
 			%	whether or not the code is thread-safe
 			% PredName, Predicate or Function, Vars/Mode, 
 			% VarNames, Foreign Code Implementation Info
+		)
 
-	;	foreign_type(foreign_language_type, tvarset,
-			sym_name, list(type_param), maybe(unify_compare))
+	;	foreign_type(
+			type_lang	:: foreign_language_type,
+			type_tvarset	:: tvarset,
+			type_name	:: sym_name,
+			type_params	:: list(type_param),
+			type_unifycompare :: maybe(unify_compare)
 			% ForeignType, TVarSet, MercuryTypeName,
 			% MercuryTypeParams, UnifyAndCompare
+		)
 
-	;	foreign_import_module(foreign_language, module_name)
+	;	foreign_import_module(
+			imp_lang	:: foreign_language,
+			imp_module	:: module_name
 			% Equivalent to
 			% `:- pragma foreign_decl(Lang, "#include <module>.h").'
 			% except that the name of the header file is not
 			% hard-coded, and mmake can use the dependency
 			% information.
+		)
 
-	;	export(sym_name, pred_or_func, list(mode),
-			string)
+	;	export(
+			exp_predname	:: sym_name,
+			exp_p_or_f	:: pred_or_func,
+			exp_modes	:: list(mode),
+			exp_c_func	:: string
 			% Predname, Predicate/function, Modes,
 			% C function name.
+		)
 
-	;	import(sym_name, pred_or_func, list(mode),
-			pragma_foreign_proc_attributes, string)
+	;	import(
+			import_pred_name :: sym_name,
+			import_p_or_f	:: pred_or_func,
+			import_modes	:: list(mode),
+			import_attrs	:: pragma_foreign_proc_attributes,
+			import_foreign_name :: string
 			% Predname, Predicate/function, Modes,
 			% Set of foreign proc attributes, eg.:
 			%    whether or not the foreign code may call Mercury,
 			%    whether or not the foreign code is thread-safe
 			% foreign function name.
+		)
 	%
 	% Optimization pragmas
 	%
-	;	type_spec(sym_name, sym_name, arity, maybe(pred_or_func),
-			maybe(list(mode)), type_subst, tvarset, set(item_id))
+	;	type_spec(
+			tspec_pred_name	:: sym_name,
+			tspec_new_name	:: sym_name,
+			tspec_arity	::  arity,
+			tspec_p_or_f	:: maybe(pred_or_func),
+			tspec_modes	:: maybe(list(mode)),
+			tspec_tsubst	:: type_subst,
+			tspec_tvarset	:: tvarset,
+			tspec_items	:: set(item_id)
 			% PredName, SpecializedPredName, Arity,
 			% PredOrFunc, Modes if a specific procedure was
 			% specified, type substitution (using the variable
 			% names from the pred declaration), TVarSet,
 			% Equivalence types used
+		)
 
-	;	inline(sym_name, arity)
+	;	inline(
+			inline_name	:: sym_name,
+			inline_arity	:: arity
 			% Predname, Arity
+		)
 
-	;	no_inline(sym_name, arity)
+	;	no_inline(
+			noinline_name	:: sym_name,
+			noinline_arity	:: arity
 			% Predname, Arity
+		)
 
-	;	unused_args(pred_or_func, sym_name, arity,
-			mode_num, list(int))
+	;	unused_args(
+			unused_p_or_f	:: pred_or_func,
+			unusused_name	:: sym_name,
+			unused_arity	:: arity,
+			unused_mode	:: mode_num,
+			unused_args	:: list(int)
 			% PredName, Arity, Mode number, Optimized pred name,
 			% 	Removed arguments.
 			% Used for inter-module unused argument
 			% removal, should only appear in .opt files.
+		)
 
 	%
 	% Diagnostics pragmas (pragmas related to compiler warnings/errors)
 	%
 
-	;	obsolete(sym_name, arity)
+	;	obsolete(
+			obsolete_name	:: sym_name,
+			obsolete_arity	:: arity
 			% Predname, Arity
+		)
 
-	;	source_file(string)
+	;	source_file(
+			source_file	:: string
 			% Source file name.
+		)
 
 	%
 	% Evaluation method pragmas
 	%
 
-	;	tabled(eval_method, sym_name, int, maybe(pred_or_func), 
-				maybe(list(mode)))
+	;	tabled(
+			tabled_method	:: eval_method,
+			tabled_name	:: sym_name,
+			tabled_arity	:: int,
+			tabled_p_or_f	:: maybe(pred_or_func), 
+			tabled_mode	:: maybe(list(mode))
 			% Tabling type, Predname, Arity, PredOrFunc?, Mode?
+		)
 
-	;	fact_table(sym_name, arity, string)
+	;	fact_table(
+			facttable_name	:: sym_name,
+			facttable_arity :: arity,
+			facttable_file	:: string
 			% Predname, Arity, Fact file name.
+		)
 
-	;	reserve_tag(sym_name, arity)
+	;	reserve_tag(
+			restag_type	:: sym_name,
+			restag_arity	:: arity
 			% Typename, Arity
+		)
 
 	%
 	% Aditi pragmas
 	%
-	;	aditi(sym_name, arity)
+	;	aditi(
+			aditi_name	:: sym_name,
+			aditi_arity	:: arity
 			% Predname, Arity
+		)
 
-	;	base_relation(sym_name, arity)
+	;	base_relation(
+			baserel_name	:: sym_name,
+			baserel_arity	:: arity
 			% Predname, Arity
 			%
 			% Eventually, these should only occur in 
 			% automatically generated database interface 
 			% files, but for now there's no such thing, 
 			% so they can occur in user programs.
+		)
 
-	;	aditi_index(sym_name, arity, index_spec)
+	;	aditi_index(
+			index_name	:: sym_name,
+			index_arity	:: arity,
+			index_spec	:: index_spec
 			% PredName, Arity, IndexType, Attributes
 			%
 			% Specify an index on a base relation.
+		)
 
-	;	naive(sym_name, arity)
+	;	naive(
+			naive_name	:: sym_name,
+			naive_arity	:: arity
 			% Predname, Arity
 			% Use naive evaluation.
+		)
 
-	;	psn(sym_name, arity)
+	;	psn(
+			psn_name	:: sym_name,
+			psn_arity	:: arity
 			% Predname, Arity
 			% Use predicate semi-naive evaluation.
+		)
 
-	;	aditi_memo(sym_name, arity)
+	;	aditi_memo(
+			aditimemo_name	:: sym_name,
+			aditimemo_arity	:: arity
 			% Predname, Arity
+		)
 
-	;	aditi_no_memo(sym_name, arity)
+	;	aditi_no_memo(
+			aditinomemo_name :: sym_name,
+			aditinomemo_arity :: arity
 			% Predname, Arity
+		)
 
-	;	supp_magic(sym_name, arity)
+	;	supp_magic(
+			suppmagic_name	:: sym_name,
+			suppmagic_arity	:: arity
 			% Predname, Arity
+		)
 
-	;	context(sym_name, arity)
+	;	context(
+			context_name	:: sym_name,
+			context_arity	:: arity
 			% Predname, Arity
+		)
 
-	;	owner(sym_name, arity, string)
+	;	owner(
+			owner_name	:: sym_name,
+			owner_arity	:: arity,
+			owner_id	:: string
 			% PredName, Arity, String.
+		)
 
 	%
 	% Purity pragmas
 	%
 	
-	;	promise_pure(sym_name, arity)
+	;	promise_pure(
+			pure_name	:: sym_name,
+			pure_arity	:: arity
 			% Predname, Arity
+		)
 
-	;	promise_semipure(sym_name, arity)
+	;	promise_semipure(
+			semipure_name	:: sym_name,
+			semipure_arity	:: arity
 			% Predname, Arity
+		)
 
 	%
 	% Termination analysis pragmas
 	%
 
-	;	termination_info(pred_or_func, sym_name, list(mode),
-				maybe(pragma_arg_size_info),
-				maybe(pragma_termination_info))
+	;	termination_info(
+			terminfo_p_or_f	:: pred_or_func,
+			terminfo_name	:: sym_name,
+			terminfo_mode	:: list(mode),
+			terminfo_args	:: maybe(pragma_arg_size_info),
+			terminfo_term	:: maybe(pragma_termination_info)
 			% the list(mode) is the declared argmodes of the
 			% procedure, unless there are no declared argmodes,
 			% in which case the inferred argmodes are used.
@@ -388,16 +492,25 @@
 			% This includes c_code, and imported predicates.
 			% termination_info pragmas are used in opt and
 			% trans_opt files.
+		)
 
-	;	terminates(sym_name, arity)
+	;	terminates(
+			term_name	:: sym_name,
+			term_arity	:: arity
 			% Predname, Arity
+		)
 
-	;	does_not_terminate(sym_name, arity)
+	;	does_not_terminate(
+			noterm_name	:: sym_name,
+			noterm_arity	:: arity
 			% Predname, Arity
+		)
 
-	;	check_termination(sym_name, arity)
+	;	check_termination(
+			checkterm_name	:: sym_name,
+			checkterm_arity	:: arity
 			% Predname, Arity
-	.
+		).
 
 %
 % Stuff for the foreign interfacing pragmas.
