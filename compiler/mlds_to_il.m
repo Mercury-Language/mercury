@@ -1050,9 +1050,8 @@ maybe_box_initializer(init_array(X), init_array(X)) --> [].
 maybe_box_initializer(init_struct(X), init_struct(X)) --> [].
 	% single items need to be boxed
 maybe_box_initializer(init_obj(Rval), init_obj(NewRval)) -->
-	rval_to_type(Rval, BoxType),
+	{ rval_to_type(Rval, BoxType) },
 	{ NewRval = unop(box(BoxType), Rval) }.
-
 
 %-----------------------------------------------------------------------------%
 %
@@ -1276,7 +1275,7 @@ statement_to_il(statement(try_commit(Ref, GoalToTry, CommitHandlerGoal),
 	statement_to_il(CommitHandlerGoal, HandlerInstrsTree),
 	il_info_make_next_label(DoneLabel),
 
-	rval_to_type(lval(Ref), MLDSRefType),
+	{ rval_to_type(lval(Ref), MLDSRefType) },
 	DataRep =^ il_data_rep,
 	{ ClassName = mlds_type_to_ilds_class_name(DataRep, MLDSRefType) },
 	{ Instrs = tree__list([
@@ -2717,45 +2716,43 @@ is_local(VarName, Info) :-
 	% This is so you can generate appropriate box rvals for
 	% rval_consts.
 
-:- pred rval_to_type(mlds__rval::in, mlds__type::out,
-		il_info::in, il_info::out) is det.
+:- pred rval_to_type(mlds__rval::in, mlds__type::out) is det.
 
-rval_to_type(lval(Lval), Type, Info0, Info) :- 
-	( Lval = var(Var, _VarType),
-		mangle_mlds_var(Var, MangledVarStr),
-		il_info_get_mlds_type(MangledVarStr, Type, Info0, Info)
-	; Lval = field(_, _, _, Type, _),
-		Info = Info0
-	; Lval = mem_ref(_Rval, Type),
-		Info = Info0
+rval_to_type(lval(var(_, Type)), Type).
+rval_to_type(lval(field(_, _, _, Type, _)), Type).
+rval_to_type(lval(mem_ref(_, Type)), Type).
+
+rval_to_type(mkword(_, _), _) :-
+	unexpected(this_file, "rval_to_type: mkword").
+
+rval_to_type(unop(Unop, _), Type) :- 
+	( 
+		Unop = box(_),
+		Type = mlds__generic_type
+	; 
+		Unop = unbox(UnboxType),
+		Type = UnboxType
+	; 
+		Unop = cast(CastType),
+		Type = CastType
+	; 
+		Unop = std_unop(StdUnop),
+		functor(StdUnop, StdUnopStr, _Arity),
+		unexpected(this_file, "rval_to_type: unop: " ++ StdUnopStr)
 	).
 
-	% The following five conversions should never occur or be boxed
-	% anyway, but just in case they are we make them reference
-	% mercury.invalid which is a non-exisitant class.   If we try to
-	% run this code, we'll get a runtime error.
-	% XXX can we just call error?
-rval_to_type(mkword(_Tag, _Rval), Type, I, I) :- 
+rval_to_type(binop(_, _, _), _) :- 
+	unexpected(this_file, "rval_to_type: binop").
+
+rval_to_type(mem_addr(_), _) :-
+	unexpected(this_file, "rval_to_type: mem_addr").
+
+rval_to_type(self(_), Type) :-
 	ModuleName = mercury_module_name_to_mlds(unqualified("mercury")),
 	Type = mlds__class_type(qual(ModuleName, "invalid"),
 		0, mlds__class).
-rval_to_type(unop(_, _), Type, I, I) :- 
-	ModuleName = mercury_module_name_to_mlds(unqualified("mercury")),
-	Type = mlds__class_type(qual(ModuleName, "invalid"),
-		0, mlds__class).
-rval_to_type(binop(_, _, _), Type, I, I) :- 
-	ModuleName = mercury_module_name_to_mlds(unqualified("mercury")),
-	Type = mlds__class_type(qual(ModuleName, "invalid"),
-		0, mlds__class).
-rval_to_type(mem_addr(_), Type, I, I) :-
-	ModuleName = mercury_module_name_to_mlds(unqualified("mercury")),
-	Type = mlds__class_type(qual(ModuleName, "invalid"),
-		0, mlds__class).
-rval_to_type(self(_), Type, I, I) :-
-	ModuleName = mercury_module_name_to_mlds(unqualified("mercury")),
-	Type = mlds__class_type(qual(ModuleName, "invalid"),
-		0, mlds__class).
-rval_to_type(const(Const), Type, I, I) :- 
+
+rval_to_type(const(Const), Type) :- 
 	Type = rval_const_to_type(Const).
 
 :- func rval_const_to_type(mlds__rval_const) = mlds__type.

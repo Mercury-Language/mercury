@@ -380,24 +380,14 @@ ml_create_env(EnvClassName, LocalVars, Context, ModuleName, Globals,
 		% away.
 	globals__get_target(Globals, Target),
 	( Target = il ->
-			% Generate a ctor for the class which
-			% initilaises the commit field.
-		ThisPtr = self(mlds__commit_type),
-		FieldType = mlds__commit_type,
-		CtorType = mlds__commit_type,
-		PtrType = EnvTypeName,	
-			
-			% Note we have to do the correct name mangling
-			% for the IL backend.
-		FieldName = qual(mlds__append_name(ModuleName,
-				EnvClassName ++ "_0"), "commit_1"),
-		Lval = field(no, ThisPtr, named_field(FieldName, CtorType),
-				FieldType, PtrType),
+			% Generate a ctor for the class.
 
-		Rval = new_object(Lval, no, FieldType, no, no, [], []),
+			% We generate an empty block for the body of the
+			% constructor.
+		Stmt = mlds__statement(block([], []), Context),
 
-		Stmt = mlds__statement(atomic(Rval), Context),
-		Ctor = mlds__function(no, func_params([], []), yes(Stmt)),
+		Ctor = mlds__function(no, func_params([], []),
+				yes(Stmt)),
 		CtorFlags = init_decl_flags(public, per_instance, non_virtual,
 				overridable, modifiable, concrete),
 

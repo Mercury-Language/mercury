@@ -1582,18 +1582,38 @@ ml_gen_commit(Goal, CodeModel, Context, MLDS_Decls, MLDS_Statements) -->
 		/* push nesting level */
 		{ MLDS_Context = mlds__make_context(Context) },
 		ml_gen_info_new_commit_label(CommitLabelNum),
-		{ CommitRef = mlds__var_name(
-			string__format("commit_%d", [i(CommitLabelNum)]),
-			no) },
-		ml_gen_var_lval(CommitRef, mlds__commit_type, CommitRefLval),
+		{ CommitRef = mlds__var_name(string__format("commit_%d",
+			[i(CommitLabelNum)]), no) },
+		ml_gen_var_lval(CommitRef, mlds__commit_type,
+			CommitRefLval),
 		{ CommitRefDecl = ml_gen_commit_var_decl(MLDS_Context,
 			CommitRef) },
 		{ DoCommitStmt = do_commit(lval(CommitRefLval)) },
-		{ DoCommitStatement = mlds__statement(DoCommitStmt,
-			MLDS_Context) },
+		{ DoCommitStatement = 
+			mlds__statement(DoCommitStmt, MLDS_Context) },
+		=(MLDSGenInfo),
+		{ ml_gen_info_get_module_info(MLDSGenInfo, ModuleInfo) },
+		{ module_info_globals(ModuleInfo, Globals) },
+		{ globals__get_target(Globals, Target) },
+		{ Target = il ->
+				% XXX would be a good performance thing
+				% to re-use the same pre-allocated commit
+				% object over and over again, instead of
+				% allocating them each time.
+			NewCommitObject = mlds__statement(
+				atomic(new_object(CommitRefLval, no,
+					mlds__commit_type, no, no, [], [])),
+					MLDS_Context),
+			DoCommitBody = ml_gen_block([CommitRefDecl], 
+				[NewCommitObject,
+				DoCommitStatement],
+				Context)
+		;
+			DoCommitBody = DoCommitStatement
+		},
 		/* pop nesting level */
 		ml_gen_nondet_label_func(SuccessFuncLabel, Context,
-			DoCommitStatement, SuccessFunc),
+			DoCommitBody, SuccessFunc),
 
 		ml_get_env_ptr(EnvPtrRval),
 		{ SuccessCont = success_cont(SuccessFuncLabelRval,
@@ -1616,8 +1636,13 @@ ml_gen_commit(Goal, CodeModel, Context, MLDS_Decls, MLDS_Statements) -->
 				[SetSuccessTrue]), Context)) },
 		{ TryCommitStatement = mlds__statement(TryCommitStmt,
 			MLDS_Context) },
-		{ CommitFuncLocalDecls = [CommitRefDecl, SuccessFunc |
-			GoalStaticDecls] },
+		{ Target = il ->
+			CommitFuncLocalDecls = [SuccessFunc |
+				GoalStaticDecls]
+		;
+			CommitFuncLocalDecls = [CommitRefDecl, SuccessFunc |
+				GoalStaticDecls]
+		},
 		maybe_put_commit_in_own_func(CommitFuncLocalDecls,
 			[TryCommitStatement], Context,
 			CommitFuncDecls, MLDS_Statements),
@@ -2182,7 +2207,7 @@ ml_gen_nondet_pragma_foreign_proc(CodeModel, Attributes,
 	=(MLDSGenInfo),
 	{ ml_gen_info_get_module_info(MLDSGenInfo, ModuleInfo) },
 	{ module_info_globals(ModuleInfo, Globals) },
-	{ globals__lookup_string_option(Globals, target, Target) },
+	{ globals__get_target(Globals, Target) },
 	( { CodeModel = model_non } ->
 
 		% For IL code, we can't call continutations because
@@ -2193,7 +2218,7 @@ ml_gen_nondet_pragma_foreign_proc(CodeModel, Attributes,
 		% continuation call.
 		
 		(
-			{ Target = "il" }
+			{ Target = il }
 		->
 			ml_gen_call_current_success_cont_indirectly(Context,
 				CallCont)
