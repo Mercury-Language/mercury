@@ -131,19 +131,21 @@ defn_is_commit_type_var(Defn) :-
 :- pred mlds_output_hdr_imports(indent, mlds__imports, io__state, io__state).
 :- mode mlds_output_hdr_imports(in, in, di, uo) is det.
 
-mlds_output_hdr_imports(Indent, Imports) -->
-	list__foldl(mlds_output_hdr_import(Indent), Imports).
+% XXX currently we assume all imports are source imports,
+% i.e. that the header file does not depend on any types
+% defined in other header files.
+mlds_output_hdr_imports(_Indent, _Imports) --> [].
 
 :- pred mlds_output_src_imports(indent, mlds__imports, io__state, io__state).
 :- mode mlds_output_src_imports(in, in, di, uo) is det.
 
-% XXX currently we assume all imports are header imports
-mlds_output_src_imports(_Indent, _Imports) --> [].
+mlds_output_src_imports(Indent, Imports) -->
+	list__foldl(mlds_output_src_import(Indent), Imports).
 
-:- pred mlds_output_hdr_import(indent, mlds__import, io__state, io__state).
-:- mode mlds_output_hdr_import(in, in, di, uo) is det.
+:- pred mlds_output_src_import(indent, mlds__import, io__state, io__state).
+:- mode mlds_output_src_import(in, in, di, uo) is det.
 
-mlds_output_hdr_import(_Indent, Import) -->
+mlds_output_src_import(_Indent, Import) -->
 	{ SymName = mlds_module_name_to_sym_name(Import) },
 	module_name_to_file_name(SymName, ".h", no, HeaderFile),
 	io__write_strings(["#include """, HeaderFile, """\n"]).
@@ -210,7 +212,7 @@ mlds_output_src_start(Indent, ModuleName) -->
 	mlds_indent(Indent),
 	io__write_string("/* :- implementation. */\n"),
 	io__nl,
-	mlds_output_hdr_import(Indent,
+	mlds_output_src_import(Indent,
 		mercury_module_name_to_mlds(ModuleName)),
 	io__nl.
 

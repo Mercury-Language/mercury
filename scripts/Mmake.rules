@@ -83,7 +83,7 @@ $(qls_subdir)%.ql : %.nl
 
 # beware the code for `%.depend' and `%.dep'/`%.dv' is duplicated
 $(deps_subdir)%.dep $(deps_subdir)%.dv:
-	$(MCD) $(ALL_MCDFLAGS) $*
+	$(MCD) $(ALL_GRADEFLAGS) $(ALL_MCDFLAGS) $*
 ifeq ($(MMAKE_USE_SUBDIRS),yes)
 	# the following mkdirs work around a bug in GNU Make
 	-[ -d Mercury/dates ] || mkdir Mercury/dates
@@ -95,7 +95,7 @@ endif
 # beware the code for `%.depend' and `%.dep'/`%.dv' is duplicated
 .PHONY: %.depend
 %.depend :
-	$(MCD) $(ALL_MCDFLAGS) $*
+	$(MCD) $(ALL_GRADEFLAGS) $(ALL_MCDFLAGS) $*
 ifeq ($(MMAKE_USE_SUBDIRS),yes)
 	# the following mkdirs work around a bug in GNU Make
 	-[ -d Mercury/dates ] || mkdir Mercury/dates
