@@ -161,6 +161,8 @@
 
 :- implementation.
 
+:- type xxx		= int.
+
 :- type module_info	--->	module(
 					string,		% module name
 					pred_table,

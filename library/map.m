@@ -130,4 +130,13 @@ map__keys(Map, KeyList) :-
 map__to_assoc_list(M, M).
 
 %-----------------------------------------------------------------------------%
+
+	% delete a key -value pair from a map
+
+:- pred map__delete(list(K,V), K, list(K,V)).
+:- mode map__delete(input, input, output).
+
+map__delete(_Map0, _Key, _Map) :-
+	require(fail, "unimplemented").
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
