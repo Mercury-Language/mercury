@@ -697,9 +697,7 @@ ml_gen_closure_wrapper(PredId, ProcId, Offset, NumClosureArgs,
 	%
 	% allocate some fresh type variables to use as the Mercury types
 	% of the boxed arguments
-	% XXX The accurate GC handling for closures arguments is wrong,
-	% because we don't have type_infos for the type variables in
-	% ProcBoxedArgTypes
+	%
 	{ ProcBoxedArgTypes = ml_make_boxed_types(ProcArity) },
 
 	%
