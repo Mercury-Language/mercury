@@ -1447,7 +1447,7 @@ mercury_compile__maybe_dump_hlds(HLDS) -->
 		{ string__append(ModuleName, ".hlds_dump", HLDS_DumpFile) },
 		mercury_compile__dump_hlds(HLDS_DumpFile, HLDS)
 	;
-		[]
+		{ true }
 	).
 
 :- pred mercury_compile__dump_hlds(string, module_info, io__state, io__state).

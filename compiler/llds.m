@@ -44,7 +44,7 @@
 			% Assign the value specified by rval to the location
 			% specified by lval
 
-	;	call(code_addr, code_addr) 
+	;	call(code_addr, code_addr, list(live_lvalue)) 
 			% call(Target, Continuation) is the same as
 			% succip = Continuation; goto(Target)
 
@@ -99,6 +99,10 @@
 			;	field(tag, rval, rval)
 			;	lvar(var)
 			;	temp(int).	% only inside blocks
+
+:- type live_lvalue	--->
+		live_lvalue(lval, int).
+			% XXX this tuple will need shape information
 
 :- type rval		--->	lval(lval)
 			;	var(var)
@@ -353,12 +357,13 @@ output_instruction(assign(Lval, Rval)) -->
 	output_rval(Rval),
 	io__write_string("; }").
 
-output_instruction(call(Target, Continuation)) -->
+output_instruction(call(Target, Continuation, LiveVals)) -->
 	io__write_string("\t{ "),
 	output_code_addr_decls(Target),
 	output_code_addr_decls(Continuation),
 	output_call(Target, Continuation),
-	io__write_string(" }").
+	io__write_string(" }\n/*\n"),
+	output_gc_livevals(LiveVals).
 
 output_instruction(call_closure(IsSemidet, Continuation)) -->
 	io__write_string("\t{ "),
@@ -438,6 +443,19 @@ output_livevals([Lval|Lvals]) -->
 	output_lval(Lval),
 	io__write_string("\n"),
 	output_livevals(Lvals).
+
+:- pred output_gc_livevals(list(live_lvalue), io__state, io__state).
+:- mode output_gc_livevals(in, di, uo) is det.
+
+output_gc_livevals([]) -->
+	io__write_string(" */").
+output_gc_livevals([live_lvalue(Lval, Shape)|Lvals]) -->
+	io__write_string(" *\t"),
+	output_lval(Lval),
+	io__write_string("\t"),
+	io__write_int(Shape),
+	io__write_string("\n"),
+	output_gc_livevals(Lvals).
 
 :- pred output_temp_decls(int, io__state, io__state).
 :- mode output_temp_decls(in, di, uo) is det.
