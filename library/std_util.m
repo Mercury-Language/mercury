@@ -624,7 +624,7 @@ Define_entry(mercury__std_util__builtin_aggregate_4_0);
 	** when we're done.
 	*/
 	mkframe(""builtin_aggregate"", 6,
-		LABEL(mercury__std_util__builtin_aggregate_4_0_i2));
+		LABEL(mercury__std_util__builtin_aggregate_4_0_i3));
  
 	/* save heap states */
  	saved_solhp_fv = (Word) solutions_heap_pointer; 
