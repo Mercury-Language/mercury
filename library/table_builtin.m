@@ -81,42 +81,39 @@
 % structures. Because the structures are persistent through backtracking,
 % this causes the predicates to become impure. The predicates with the semipure
 % directive only examine the tabling structures, but do not modify them.
+%
+% At the moment, tabling is supported only by the LLDS and MLDS C backends,
+% so in the next three type definitions, only the C definition is useful.
+% The Mercury and IL definitions are placeholders only, required to make
+% this module compile cleanly on the Java and .NET backends respectively.
+%
+% These three types ought to be abstract types. The only reason why their
+% implementation is exported is that if they aren't, C code inside and
+% outside the module would end up using different C types to represent
+% values of these Mercury types, and lcc treats those type disagreements
+% as errors.
 
 	% This type represents the interior pointers of both call
 	% tables and ansswer tables.
-:- type ml_trie_node.
-
-	% This type represents the data structure at the tips of the call table
-	% in model_non predicates.
-:- type ml_subgoal.
-
-	% This type represents a block of memory that contains one word
-	% for each output argument of a procedure.
-:- type ml_answer_block.
-
-:- implementation.
-
-% At the moment, tabling is supported only by the LLDS and MLDS C backends,
-% so in definitions of ml_table and ml_answer_list, only the C definition
-% is useful. The Mercury and IL definitions are placeholders only, required
-% to make this module compile cleanly on the Java and .NET backends
-% respectively.
-
-	% This type represents a list of answers of a model_non predicate.
-:- type ml_answer_list.
-
 :- type ml_trie_node --->	ml_trie_node(c_pointer).
 :- pragma foreign_type("C", ml_trie_node, "MR_TrieNode").
 :- pragma foreign_type(il,  ml_trie_node, "class [mscorlib]System.Object").
 
+	% This type represents the data structure at the tips of the call table
+	% in model_non predicates.
 :- type ml_subgoal --->		ml_subgoal(c_pointer).
 :- pragma foreign_type("C", ml_subgoal, "MR_SubgoalPtr").
 :- pragma foreign_type(il,  ml_subgoal, "class [mscorlib]System.Object").
 
+	% This type represents a block of memory that contains one word
+	% for each output argument of a procedure.
 :- type ml_answer_block --->	ml_answer_block(c_pointer).
 :- pragma foreign_type("C", ml_answer_block, "MR_AnswerBlock").
 :- pragma foreign_type(il,  ml_answer_block, "class [mscorlib]System.Object").
 
+:- implementation.
+
+	% This type represents a list of answers of a model_non predicate.
 :- type ml_answer_list --->	ml_answer_list(c_pointer).
 :- pragma foreign_type("C", ml_answer_list, "MR_AnswerList").
 :- pragma foreign_type(il,  ml_answer_list, "class [mscorlib]System.Object").
