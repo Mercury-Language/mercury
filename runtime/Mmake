@@ -59,7 +59,8 @@ libmer.a: $(OBJS)
 libmer.so: $(PIC_OBJS)
 	$(LINK_SHARED_OBJ) -o libmer.so $(PIC_OBJS) `\
 		case "$(GRADE)" in \
-			*.gc*) echo "-L$(BOEHM_GC_DIR) -lgc" ;; \
+			*.gc.prof) echo "-L$(BOEHM_GC_DIR) -lgc_prof" ;; \
+			*.gc) echo "-L$(BOEHM_GC_DIR) -lgc" ;; \
 		esac \
 		` $(SHARED_LIBS)
 

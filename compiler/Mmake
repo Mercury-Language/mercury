@@ -27,7 +27,12 @@ MERCURY_MOD_LIB_MODS="$(RUNTIME_DIR)/runtime.init $(LIBRARY_DIR)/library.init" \
 ML	=	MERCURY_C_LIB_DIR=. $(SCRIPTS_DIR)/ml
 MLFLAGS =	--no-libs  $(EXTRA_MLFLAGS)
 MLLIBS  =	$(EXTRA_MLLIBS) $(LIBRARY_DIR)/libmercury.a \
-		$(RUNTIME_DIR)/libmer.a $(BOEHM_GC_DIR)/libgc.a -lm
+		$(RUNTIME_DIR)/libmer.a ` \
+		    case $(GRADE) in \
+			*.gc.prof) echo $(BOEHM_GC_DIR)/libgc_prof.a ;; \
+			*.gc) echo $(BOEHM_GC_DIR)/libgc.a ;; \
+		    esac \
+		` -lm
 MSC	=	MERCURY_SICSTUS_COMPILER=$(LIBRARY_DIR)/sicstus_compile \
 		$(SCRIPTS_DIR)/msc
 MSL	=	MERCURY_SP_LIB_DIR=$(LIBRARY_DIR) $(SCRIPTS_DIR)/msl
@@ -70,11 +75,15 @@ sicstus: mercury_compile.sicstus
 # Add some additional dependencies, so that Mmake knows to remake the
 # compiler if one of the libraries changes.
 
-mercury_compile: $(RUNTIME_DIR)/libmer.a $(LIBRARY_DIR)/libmercury.a \
-	$(BOEHM_GC_DIR)/libgc.a
+mercury_compile: $(RUNTIME_DIR)/libmer.a $(LIBRARY_DIR)/libmercury.a
+# Should also depend on $(BOEHM_GC_DIR)/libgc(_prof).a, but only
+# if in .gc(.prof) grade; GNU make does not support dynamic dependencies,
+# so just leave it out.
 
 mercury_compile.sicstus: $(LIBRARY_DIR)/library.sicstus.debug
 mercury_compile.sicstus.debug: $(LIBRARY_DIR)/library.sicstus.debug
+
+mercury_compile_init.c: $(UTIL_DIR)/mkinit
 
 #-----------------------------------------------------------------------------#
 
@@ -104,6 +113,11 @@ dates		:
 .PHONY: os cs
 os: $(mercury_compile.os) mercury_compile_init.o
 cs: $(mercury_compile.cs) mercury_compile_init.c
+
+#-----------------------------------------------------------------------------#
+
+realclean:
+	rm -f tags mercury_compile.stats
 
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
