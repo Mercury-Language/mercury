@@ -348,7 +348,7 @@ livemap__make_live([Rval | Rvals], Livevals0, Livevals) :-
 			set__insert(Livevals0, Lval1, Livevals1)
 		)
 	;
-		Rval = create(_, _, _),
+		Rval = create(_, _, _, _),
 		Livevals1 = Livevals0
 	;
 		Rval = mkword(_, Rval1),

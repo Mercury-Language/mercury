@@ -100,13 +100,6 @@
 			% of the called procedure, and if it is nondet,
 			% says whether tail recursion is applicable to the call.
 
-%	;	call_closure(code_model, code_addr, list(liveinfo))
-			% Setup the arguments and branch to a higher
-			% order call. The closure is in r1 and the
-			% input arguments are in r2, r3, ...
-			% The output arguments are in r1, r2, ...
-			% except for semidet calls, where they are in r2, ...
-
 	;	mkframe(string, int, code_addr)
 			% mkframe(Comment, SlotCount, FailureContinuation)
 			% creates a nondet stack frame.
@@ -227,8 +220,11 @@
 
 :- type rval		--->	lval(lval)
 			;	var(var)
-			;	create(tag, list(maybe(rval)), int)
-				% tag, arguments, label number
+			;	create(tag, list(maybe(rval)), bool, int)
+				% tag, arguments, unique, label number
+				% The boolean should be true if the term
+				% must be unique. This will prevent the term
+				% from being used for other purposes as well.
 				% The label number is needed for the case when
 				% we can construct the term at compile-time
 				% and just reference the label.

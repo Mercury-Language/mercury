@@ -660,8 +660,8 @@ vn_flush__vn_value(Vn, Srcs, Forbidden, Rval, VnTables0, VnTables,
 		Templocs = Templocs0,
 		Instrs = []
 	;
-		Vnrval = vn_create(Tag, MaybeRvals, Label),
-		Rval = create(Tag, MaybeRvals, Label),
+		Vnrval = vn_create(Tag, MaybeRvals, Unique, Label),
+		Rval = create(Tag, MaybeRvals, Unique, Label),
 		VnTables = VnTables0,
 		Templocs = Templocs0,
 		Instrs = []
@@ -845,7 +845,7 @@ vn_flush__hp_incr(Vn, Srcs, Forbidden, MaybeRval, VnTables0, VnTables,
 			Templocs = Templocs0,
 			Instrs = []
 		;
-			Vnrval = vn_create(_, _, _),
+			Vnrval = vn_create(_, _, _, _),
 			error("create in calculation of new hp")
 		;
 			Vnrval = vn_unop(_, _),

@@ -290,7 +290,7 @@ code_exprn__rval_depends_on_reg(var(Var), Vars) :-
 		code_exprn__filter_out_reg_depending(Rvals0, Vars, Rvals),
 		set__empty(Rvals)
 	).
-code_exprn__rval_depends_on_reg(create(_Tag, Rvals, _LabNum), Vars) :-
+code_exprn__rval_depends_on_reg(create(_Tag, Rvals, _Unique, _LabNum), Vars) :-
 	code_exprn__args_depend_on_reg(Rvals, Vars).
 code_exprn__rval_depends_on_reg(mkword(_Tag, Rval), Vars) :-
 	code_exprn__rval_depends_on_reg(Rval, Vars).
@@ -512,7 +512,7 @@ code_exprn__add_rval_list_reg_dependencies([R | Rs]) -->
 code_exprn__add_rval_reg_dependencies(lval(Lval)) -->
 	code_exprn__add_lval_reg_dependencies(Lval).
 code_exprn__add_rval_reg_dependencies(var(_Var)) --> [].
-code_exprn__add_rval_reg_dependencies(create(_, Rvals, _)) -->
+code_exprn__add_rval_reg_dependencies(create(_, Rvals, _, _)) -->
 	code_exprn__add_arg_reg_dependencies(Rvals).
 code_exprn__add_rval_reg_dependencies(mkword(_Tag, Rval)) -->
 	code_exprn__add_rval_reg_dependencies(Rval).
@@ -574,7 +574,7 @@ code_exprn__rem_rval_list_reg_dependencies([R | Rs]) -->
 code_exprn__rem_rval_reg_dependencies(lval(Lval)) -->
 	code_exprn__rem_lval_reg_dependencies(Lval).
 code_exprn__rem_rval_reg_dependencies(var(_Var)) --> [].
-code_exprn__rem_rval_reg_dependencies(create(_, Rvals, _)) -->
+code_exprn__rem_rval_reg_dependencies(create(_, Rvals, _, _)) -->
 	code_exprn__rem_arg_reg_dependencies(Rvals).
 code_exprn__rem_rval_reg_dependencies(mkword(_Tag, Rval)) -->
 	code_exprn__rem_rval_reg_dependencies(Rval).
@@ -799,8 +799,8 @@ code_exprn__expr_is_constant(mkword(Tag, Expr0), Vars, ExprnOpts,
 		mkword(Tag, Expr)) :-
 	code_exprn__expr_is_constant(Expr0, Vars, ExprnOpts, Expr).
 
-code_exprn__expr_is_constant(create(Tag, Args0, Label), Vars, ExprnOpts,
-		create(Tag, Args, Label)) :-
+code_exprn__expr_is_constant(create(Tag, Args0, Unique, Label), Vars, ExprnOpts,
+		create(Tag, Args, Unique, Label)) :-
 	ExprnOpts = nlg_asm_sgt_ubf(_, _, StaticGroundTerms, _),
 	StaticGroundTerms = yes,
 	code_exprn__args_are_constant(Args0, Vars, ExprnOpts, Args).
@@ -1108,7 +1108,7 @@ code_exprn__find_real_creates([MaybeRval | MaybeRvals], SubCreates) -->
 
 code_exprn__rval_is_real_create(Rval) -->
 	(
-		{ Rval = create(_, _, _) },
+		{ Rval = create(_, _, _, _) },
 		code_exprn__get_vars(Vars0),
 		code_exprn__get_options(ExprnOpts),
 		{ \+ code_exprn__expr_is_constant(Rval, Vars0, ExprnOpts, _) }
@@ -1134,7 +1134,7 @@ code_exprn__rval_is_real_create(Rval) -->
 code_exprn__construct_code(Lval, VarName, Rval0, Code) -->
 	{ exprn_aux__simplify_rval(Rval0, Rval) },
 	(
-		{ Rval = create(Tag, Rvals, _Label) }
+		{ Rval = create(Tag, Rvals, _Unique, _Label) }
 	->
 		{ list__length(Rvals, Arity) },
 		(
@@ -1240,7 +1240,7 @@ code_exprn__produce_var(Var, Rval, Code) -->
 			;
 				RvalX = unop(_, _)
 			;
-				RvalX = create(_, _, _)
+				RvalX = create(_, _, _, _)
 			;
 				RvalX = mkword(_, _)
 			}

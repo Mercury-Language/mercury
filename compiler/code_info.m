@@ -2022,7 +2022,7 @@ code_info__place_cont_vars([Var - CurrSet | Rest], Map0, Map, Code) -->
 			{ map__set(Map0, Var, Rvals2, Map1) }
 		;
 			{ list__member(Thing, TargetList) },
-			{ Thing = create(_, _, _) }
+			{ Thing = create(_, _, _, _) }
 		->
 			{ Map1 = Map0 },
 			{ ThisCode = empty }

@@ -39,7 +39,7 @@
 :- type vnrval		--->	vn_origlval(vnlval)
 			;	vn_mkword(tag, vn)		% rval
 			;	vn_const(rval_const)
-			;	vn_create(tag, list(maybe(rval)), int)
+			;	vn_create(tag, list(maybe(rval)), bool, int)
 			;	vn_unop(unary_op, vn)		% rval
 			;	vn_binop(binary_op, vn, vn).	% rval, rval
 

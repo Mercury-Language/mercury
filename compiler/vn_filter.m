@@ -296,8 +296,8 @@ vn_filter__replace_in_rval(lval(Lval0), Temp, Defn, Rval) :-
 	).
 vn_filter__replace_in_rval(var(_), _, _, _) :-
 	error("found var in vn_filter__replace_in_rval").
-vn_filter__replace_in_rval(create(Tag, Args, Label), _, _,
-		create(Tag, Args, Label)).
+vn_filter__replace_in_rval(create(Tag, Args, Unique, Label), _, _,
+		create(Tag, Args, Unique, Label)).
 vn_filter__replace_in_rval(mkword(Tag, Rval0), Temp, Defn, mkword(Tag, Rval)) :-
 	vn_filter__replace_in_rval(Rval0, Temp, Defn, Rval).
 vn_filter__replace_in_rval(const(Const), _, _, const(Const)).

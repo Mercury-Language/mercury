@@ -516,7 +516,7 @@ opt_debug__dump_vnrval(vn_mkword(T, N), Str) :-
 opt_debug__dump_vnrval(vn_const(C), Str) :-
 	opt_debug__dump_const(C, C_str),
 	string__append_list(["vn_const(", C_str, ")"], Str).
-opt_debug__dump_vnrval(vn_create(T, MA, L), Str) :-
+opt_debug__dump_vnrval(vn_create(T, MA, _U, L), Str) :-
 	string__int_to_string(T, T_str),
 	opt_debug__dump_maybe_rvals(MA, 3, MA_str),
 	string__int_to_string(L, L_str),
@@ -588,12 +588,19 @@ opt_debug__dump_rval(mkword(T, N), Str) :-
 opt_debug__dump_rval(const(C), Str) :-
 	opt_debug__dump_const(C, C_str),
 	string__append_list(["const(", C_str, ")"], Str).
-opt_debug__dump_rval(create(T, MA, L), Str) :-
+opt_debug__dump_rval(create(T, MA, U, L), Str) :-
 	string__int_to_string(T, T_str),
 	opt_debug__dump_maybe_rvals(MA, 3, MA_str),
+	(
+		U = yes,
+		U_str = "yes"
+	;
+		U = no,
+		U_str = "no"
+	),
 	string__int_to_string(L, L_str),
 	string__append_list(["create(", T_str, ", ", MA_str, ", ",
-		L_str, ")"], Str).
+		U_str, ", ", L_str, ")"], Str).
 opt_debug__dump_rval(unop(O, N), Str) :-
 	opt_debug__dump_unop(O, O_str),
 	opt_debug__dump_rval(N, N_str),

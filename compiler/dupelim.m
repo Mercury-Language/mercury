@@ -219,7 +219,8 @@ dupelim__replace_labels_lval(temp(N), _, temp(N)).
 dupelim__replace_labels_rval(lval(Lval0), Replmap, lval(Lval)) :-
 	dupelim__replace_labels_lval(Lval0, Replmap, Lval).
 dupelim__replace_labels_rval(var(Var), _, var(Var)).
-dupelim__replace_labels_rval(create(Tag, Rvals, N), _, create(Tag, Rvals, N)).
+dupelim__replace_labels_rval(create(Tag, Rvals, Unique, N), _,
+		create(Tag, Rvals, Unique, N)).
 dupelim__replace_labels_rval(mkword(Tag, Rval0), Replmap, mkword(Tag, Rval)) :-
 	dupelim__replace_labels_rval(Rval0, Replmap, Rval).
 dupelim__replace_labels_rval(const(Const0), Replmap, const(Const)) :-

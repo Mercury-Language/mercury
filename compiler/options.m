@@ -18,7 +18,7 @@
 
 :- module options.
 :- interface.
-:- import_module bool, int, string, std_util, list, io, map, require, getopt.
+:- import_module list, io, getopt.
 
 :- pred short_option(character::in, option::out) is semidet.
 :- pred long_option(string::in, option::out) is semidet.
@@ -188,7 +188,7 @@
 
 :- implementation.
 
-:- import_module assoc_list.
+:- import_module bool, int, map, std_util, assoc_list, require.
 
 :- type option_category
 	--->	warning_option

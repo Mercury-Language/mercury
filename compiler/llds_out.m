@@ -1245,7 +1245,7 @@ output_rval_decls(binop(Op, Rval1, Rval2), DeclSet0, DeclSet) -->
 	% We output the original format if possible, since we want it
 	% to go in rdata if it can, because rdata is shared.
 	%
-output_rval_decls(create(_Tag, ArgVals, Label), DeclSet0, DeclSet) -->
+output_rval_decls(create(_Tag, ArgVals, _Unique, Label), DeclSet0, DeclSet) -->
 	{ CreateLabel = create_label(Label) },
 	( { set__member(CreateLabel, DeclSet0) } ->
 		{ DeclSet = DeclSet0 }
@@ -1266,7 +1266,7 @@ output_rval_decls(create(_Tag, ArgVals, Label), DeclSet0, DeclSet) -->
 			    exprn_aux__args_contain_rval(ArgVals, Rval),
 			    (   Rval = const(string_const(_))
 			    ;   Rval = const(float_const(_))
-			    ;   Rval = create(_, _, Label1),
+			    ;   Rval = create(_, _, _, Label1),
 				% every create contains a create - itself.
 				% We don't want to count that one,
 				% so we check that the labels are different:
@@ -1920,7 +1920,7 @@ output_rval(mkword(Tag, Exprn)) -->
 	io__write_string(")").
 output_rval(lval(Lval)) -->
 	output_rval_lval(Lval).
-output_rval(create(Tag, _Args, LabelNum)) -->
+output_rval(create(Tag, _Args, _Unique, LabelNum)) -->
 		% emit a reference to the static constant which we
 		% declared in output_rval_decls.
 	io__write_string("mkword(mktag("),

@@ -28,8 +28,8 @@
 
 :- implementation.
 
-:- import_module hlds_data, code_gen.
-:- import_module string, list, map, tree, std_util, assoc_list, int, require.
+:- import_module hlds_data, code_gen, tree.
+:- import_module bool, int, string, list, map, std_util, assoc_list, require.
 
 string_switch__generate(Cases, Var, CodeModel, _CanFail, EndLabel, Code) -->
 	code_info__produce_variable(Var, VarCode, VarRval),
@@ -84,8 +84,8 @@ string_switch__generate(Cases, Var, CodeModel, _CanFail, EndLabel, Code) -->
 
 		% Generate code which does the hash table lookup
 	{
-		NextSlotsTable = create(0, NextSlots, NextSlotsTableLabel),
-		StringTable = create(0, Strings, StringTableLabel),
+		NextSlotsTable = create(0, NextSlots, no, NextSlotsTableLabel),
+		StringTable = create(0, Strings, no, StringTableLabel),
 		HashLookupCode = node([
 			comment("hashed string switch") -
 			  "",

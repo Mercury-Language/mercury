@@ -628,7 +628,7 @@ vn_order__find_links(Vn, Sink, VnTables0, VnTables,
 			Predmap = Predmap0,
 			VnTables = VnTables0
 		;
-			Vnrval = vn_create(_Tag2, _Args, _Label),
+			Vnrval = vn_create(_Tag2, _Args, _Unique, _Label),
 			Succmap = Succmap0,
 			Predmap = Predmap0,
 			VnTables = VnTables0

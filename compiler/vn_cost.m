@@ -261,7 +261,7 @@ vn_cost__rval_cost(Rval, Params, Cost) :-
 		Rval = var(_),
 		error("var found in rval_cost")
 	;
-		Rval = create(_, _, _),
+		Rval = create(_, _, _, _),
 		Cost = 0
 	;
 		Rval = mkword(_, Rval1),

@@ -154,7 +154,7 @@ exprn_aux__addr_is_constant(do_nondet_closure, _, no).
 
 exprn_aux__rval_contains_lval(lval(Lval0), Lval) :-
 	exprn_aux__lval_contains_lval(Lval0, Lval).
-exprn_aux__rval_contains_lval(create(_, Rvals, _), Lval) :-
+exprn_aux__rval_contains_lval(create(_, Rvals, _, _), Lval) :-
 	exprn_aux__args_contain_lval(Rvals, Lval).
 exprn_aux__rval_contains_lval(mkword(_, Rval), Lval) :-
 	exprn_aux__rval_contains_lval(Rval, Lval).
@@ -214,7 +214,7 @@ exprn_aux__rval_contains_rval(Rval0, Rval) :-
 			Rval0 = lval(Lval),
 			exprn_aux__lval_contains_rval(Lval, Rval)
 		;
-			Rval0 = create(_, Rvals, _),
+			Rval0 = create(_, Rvals, _, _),
 			exprn_aux__args_contain_rval(Rvals, Rval)
 		;
 			Rval0 = mkword(_, Rval1),
@@ -256,7 +256,7 @@ exprn_aux__args_contain_rval([M | Ms], Rval) :-
 exprn_aux__vars_in_rval(lval(Lval), Vars) :-
 	exprn_aux__vars_in_lval(Lval, Vars).
 exprn_aux__vars_in_rval(var(Var), [Var]).
-exprn_aux__vars_in_rval(create(_, Rvals, _), Vars) :-
+exprn_aux__vars_in_rval(create(_, Rvals, _, _), Vars) :-
 	exprn_aux__vars_in_args(Rvals, Vars).
 exprn_aux__vars_in_rval(mkword(_, Rval), Vars) :-
 	exprn_aux__vars_in_rval(Rval, Vars).
@@ -313,10 +313,10 @@ exprn_aux__substitute_lval_in_rval(OldLval, NewLval, Rval0, Rval) :-
 		Rval0 = var(_Var),
 		Rval = Rval0
 	;
-		Rval0 = create(Tag, Rvals0, Num),
+		Rval0 = create(Tag, Rvals0, Unique, Num),
 		exprn_aux__substitute_lval_in_args(OldLval, NewLval,
 						Rvals0, Rvals),
-		Rval = create(Tag, Rvals, Num)
+		Rval = create(Tag, Rvals, Unique, Num)
 	;
 		Rval0 = mkword(Tag, Rval1),
 		exprn_aux__substitute_lval_in_rval(OldLval, NewLval, Rval1,
@@ -391,29 +391,29 @@ exprn_aux__substitute_rval_in_rval(OldRval, NewRval, Rval0, Rval) :-
 			Rval0 = var(_),
 			Rval = Rval0
 		;
-			Rval0 = create(Tag, Rvals0, Num),
+			Rval0 = create(Tag, Rvals0, Unique, Num),
 			exprn_aux__substitute_rval_in_args(OldRval, NewRval,
 							Rvals0, Rvals),
-			Rval = create(Tag, Rvals, Num)
+			Rval = create(Tag, Rvals, Unique, Num)
 		;
 			Rval0 = mkword(Tag, Rval1),
-			exprn_aux__substitute_rval_in_rval(OldRval, NewRval, Rval1,
-				Rval2),
+			exprn_aux__substitute_rval_in_rval(OldRval, NewRval,
+				Rval1, Rval2),
 			Rval = mkword(Tag, Rval2)
 		;
 			Rval0 = const(_Const),
 			Rval = Rval0
 		;
 			Rval0 = unop(Unop, Rval1),
-			exprn_aux__substitute_rval_in_rval(OldRval, NewRval, Rval1,
-				Rval2),
+			exprn_aux__substitute_rval_in_rval(OldRval, NewRval,
+				Rval1, Rval2),
 			Rval = unop(Unop, Rval2)
 		;
 			Rval0 = binop(Binop, Rval1, Rval2),
-			exprn_aux__substitute_rval_in_rval(OldRval, NewRval, Rval1,
-				Rval3),
-			exprn_aux__substitute_rval_in_rval(OldRval, NewRval, Rval2,
-				Rval4),
+			exprn_aux__substitute_rval_in_rval(OldRval, NewRval,
+				Rval1, Rval3),
+			exprn_aux__substitute_rval_in_rval(OldRval, NewRval,
+				Rval2, Rval4),
 			Rval = binop(Binop, Rval3, Rval4)
 		)
 	).
@@ -507,7 +507,7 @@ exprn_aux__simplify_rval(Rval0, Rval) :-
 
 exprn_aux__simplify_rval_2(Rval0, Rval) :-
 	(
-		Rval0 = lval(field(Tag, create(Tag, Args, _), Field)),
+		Rval0 = lval(field(Tag, create(Tag, Args, _, _), Field)),
 		Field = const(int_const(FieldNum))
 	->
 		list__index0_det(Args, FieldNum, yes(Rval))
@@ -517,11 +517,11 @@ exprn_aux__simplify_rval_2(Rval0, Rval) :-
 	->
 		Rval = lval(field(Tag, Rval2, Num))
 	;
-		Rval0 = create(Tag, Args0, CNum),
+		Rval0 = create(Tag, Args0, Unique, CNum),
 		exprn_aux__simplify_args(Args0, Args),
 		Args \= Args0
 	->
-		Rval = create(Tag, Args, CNum)
+		Rval = create(Tag, Args, Unique, CNum)
 	;
 		Rval0 = unop(UOp, Rval1),
 		exprn_aux__simplify_rval_2(Rval1, Rval2)
@@ -564,7 +564,7 @@ exprn_aux__simplify_args([MR0 | Ms0], [MR | Ms]) :-
 exprn_aux__rval_code_addrs(lval(Lval), CodeAddrs) :-
 	exprn_aux__lval_code_addrs(Lval, CodeAddrs).
 exprn_aux__rval_code_addrs(var(_), []).
-exprn_aux__rval_code_addrs(create(_, MaybeRvals, _), CodeAddrs) :-
+exprn_aux__rval_code_addrs(create(_, MaybeRvals, _, _), CodeAddrs) :-
 	exprn_aux__maybe_rval_list_code_addrs(MaybeRvals, CodeAddrs).
 exprn_aux__rval_code_addrs(mkword(_Tag, Rval), CodeAddrs) :-
 	exprn_aux__rval_code_addrs(Rval, CodeAddrs).

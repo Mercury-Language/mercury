@@ -247,7 +247,7 @@ lookup_switch__rval_is_constant(binop(_, Exprn0, Exprn1), ExprnOpts) :-
 	lookup_switch__rval_is_constant(Exprn1, ExprnOpts).
 lookup_switch__rval_is_constant(mkword(_, Exprn0), ExprnOpts) :-
 	lookup_switch__rval_is_constant(Exprn0, ExprnOpts).
-lookup_switch__rval_is_constant(create(_, Args, _), ExprnOpts) :-
+lookup_switch__rval_is_constant(create(_, Args, _, _), ExprnOpts) :-
 	ExprnOpts = nlg_asm_sgt_ubf(_, _, StaticGroundTerms, _),
 	StaticGroundTerms = yes,
 	lookup_switch__rvals_are_constant(Args, ExprnOpts).
@@ -358,7 +358,7 @@ generate_bit_vec(CaseVals, Start, BitVec) -->
 	{ map__to_assoc_list(BitMap, WordVals) },
 	{ generate_bit_vec_args(WordVals, 0, Args) },
 	code_info__get_next_label_number(Label),
-	{ BitVec = create(0, Args, Label) }.
+	{ BitVec = create(0, Args, no, Label) }.
 
 :- pred generate_bit_vec_2(case_consts, int, int,
 		map(int, int), map(int, int)).
@@ -424,7 +424,7 @@ lookup_switch__generate_terms_2(Index, [Var|Vars], Map) -->
 	{ list__sort(Vals0, Vals) },
 	{ construct_args(Vals, 0, Args) },
 	code_info__get_next_label_number(Label),
-	{ ArrayTerm = create(0, Args, Label) },
+	{ ArrayTerm = create(0, Args, no, Label) },
 	{ LookupTerm = lval(field(0, ArrayTerm, Index)) },
 	code_info__cache_expression(Var, LookupTerm),
 	lookup_switch__generate_terms_2(Index, Vars, Map).
