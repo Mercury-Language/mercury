@@ -1684,9 +1684,12 @@ fragments that use only the features of standard make;
 do not assume the availability of GNU Make extensions.
 This makes these files significantly larger.
 
-@item --generate-trace
-Include code to generate an execution trace in the
-C code output by the compiler.
+@item --trace @var{level}
+Generate code that includes the specified level of execution tracing.
+The @var{level} should be one of
+@samp{minimum}, @samp{interfaces} and @samp{all}.
+@c XXX should include a pointer here to the as-yet-unwritten
+@c section on debugging
 
 @item --generate-bytecode
 @c Output a bytecode version of the module
