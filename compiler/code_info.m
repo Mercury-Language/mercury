@@ -1255,8 +1255,10 @@ code_info__generate_test_and_fail(Rval0, Code) -->
 		->
 			{ FailureAddress = Addr },
 			{ map__to_assoc_list(Map, AssocList) },
-			code_info__place_vars(AssocList, PlaceCode),
 			code_info__get_next_label(SuccessLabel),
+			code_info__grab_code_info(CodeInfo),
+			code_info__place_vars(AssocList, PlaceCode),
+			code_info__slap_code_info(CodeInfo),
 			{ SuccessAddress = label(SuccessLabel) },
 				% We branch away if the test Succeeds
 			{ TestCode = node([ if_val(Rval0, SuccessAddress) -
