@@ -673,10 +673,97 @@ if test "$HAVE_INTTYPES_H" = 1; then
 	AC_DEFINE(HAVE_INTTYPES)
 fi
 
-if test "$HAVE_STDINT_H" = 1 || test "$HAVE_INTTYPES_H" = 1; then
+AC_CHECK_HEADER(sys/types.h, HAVE_SYS_TYPES_H=1)
+if test "$HAVE_SYS_TYPES_H" = 1; then
+	AC_DEFINE(HAVE_SYS_TYPES)
+fi
+#-----------------------------------------------------------------------------#
+AC_MSG_CHECKING(for intptr_t)
+AC_CACHE_VAL(mercury_cv_have_intptr_t,
+	AC_TRY_COMPILE([
+		#ifdef HAVE_STDINT
+		  #include <stdint.h>
+		#endif
+		#ifdef HAVE_INTTYPES
+		  #include <inttypes.h>
+		#endif
+		#ifdef HAVE_SYS_TYPES
+		  #include <sys/types.h>
+		#endif
+	], [
+		changequote(<<,>>) 
+
+		/* test the existence of the types */
+		intptr_t foo;
+		uintptr_t bar;
+
+		/* check that they have the right size */
+		#define ASSERTION \
+			(sizeof(intptr_t) == sizeof(void *) && \
+			 sizeof(uintptr_t) == sizeof(void *))
+
+		/* this forces a compile error if ASSERTION is false */
+		int array[ASSERTION ? 1 : -1];
+
+		changequote([,]) 
+	],
+	[mercury_cv_have_intptr_t=yes],
+	[mercury_cv_have_intptr_t=no])
+)
+AC_MSG_RESULT($mercury_cv_have_intptr_t)
+if test "$mercury_cv_have_intptr_t" = yes; then
+	AC_DEFINE(MR_HAVE_INTPTR_T)
+fi
+#-----------------------------------------------------------------------------#
+AC_MSG_CHECKING(for int_leastN_t)
+AC_CACHE_VAL(mercury_cv_have_int_leastN_t,
+	AC_TRY_COMPILE([
+		#ifdef HAVE_STDINT
+		  #include <stdint.h>
+		#endif
+		#ifdef HAVE_INTTYPES
+		  #include <inttypes.h>
+		#endif
+		#ifdef HAVE_SYS_TYPES
+		  #include <sys/types.h>
+		#endif
+		#include <limits.h> /* for CHAR_BIT */
+	], [
+		changequote(<<,>>) 
+
+		/* test the existence of the types */
+		int_least8_t foo8;
+		uint_least8_t bar8;
+		int_least16_t foo16;
+		uint_least16_t bar16;
+		int_least32_t foo32;
+		uint_least32_t bar32;
+
+		/* check that they have the right size */
+		#define ASSERTION \
+			(sizeof(int_least8_t) * CHAR_BIT >= 8 && \
+			 sizeof(uint_least8_t) * CHAR_BIT >= 8 && \
+			 sizeof(int_least16_t) * CHAR_BIT >= 16 && \
+			 sizeof(uint_least16_t) * CHAR_BIT >= 16 && \
+			 sizeof(int_least32_t) * CHAR_BIT >= 32 && \
+			 sizeof(uint_least32_t) * CHAR_BIT >= 32)
+
+		/* this forces a compile error if ASSERTION is false */
+		int array[ASSERTION ? 1 : -1];
+
+		changequote([,]) 
+	],
+	[mercury_cv_have_int_leastN_t=yes],
+	[mercury_cv_have_int_leastN_t=no])
+)
+AC_MSG_RESULT($mercury_cv_have_int_leastN_t)
+if test "$mercury_cv_have_intleastN_t" = yes; then
+	AC_DEFINE(MR_HAVE_INT_LEASTN_T)
+fi
+#-----------------------------------------------------------------------------#
+if test "$mercury_cv_have_intptr_t" = yes; then
 	true
 else
-#-----------------------------------------------------------------------------#
 	AC_MSG_CHECKING(for an integer type with the same size as a pointer)
 	AC_CACHE_VAL(mercury_cv_word_type,
 		AC_TRY_RUN([
@@ -734,7 +821,11 @@ else
 	AC_DEFINE_UNQUOTED(MR_WORD_TYPE, $mercury_cv_word_type)
 	MR_WORD_TYPE=$mercury_cv_word_type
 	AC_SUBST(MR_WORD_TYPE)
+fi # ! have_int_ptr_t
 #-----------------------------------------------------------------------------#
+if test "$mercury_cv_have_int_leastN_t" = yes; then
+	true
+else
 	AC_MSG_CHECKING(for an integer type of at least 32 bits)
 	AC_CACHE_VAL(mercury_cv_int_least32_type,
 		AC_TRY_RUN([
@@ -806,7 +897,7 @@ else
 	AC_DEFINE_UNQUOTED(MR_INT_LEAST16_TYPE, $mercury_cv_int_least16_type)
 	MR_INT_LEAST16_TYPE=$mercury_cv_int_least16_type
 	AC_SUBST(MR_INT_LEAST16_TYPE)
-fi # ! (HAVE_STDINT_H || HAVE_INTTYPES_H)
+fi # ! have_int_leastN_t
 #-----------------------------------------------------------------------------#
 AC_MSG_CHECKING(the number of low tag bits available)
 AC_CACHE_VAL(mercury_cv_low_tag_bits,

@@ -40,7 +40,8 @@
 ** MR_WORD_TYPE: the base type for the definition of Word.
 ** This must be a C integral type (e.g. int, long, or long long)
 ** without any explicit signedness.
-** It ought to be the same size as the machine's general-purpose registers.
+** It ought to be the same size as the machine's general-purpose registers
+** (i.e. the same size as pointers).
 */
 #undef	MR_WORD_TYPE
 
@@ -93,6 +94,7 @@
 **	HAVE_DLFCN_H		we have <dlfcn.h>
 **	HAVE_STDINT		we have <stdint.h>
 **	HAVE_INTTYPES		we have <inttypes.h>
+**	HAVE_SYS_TYPES		we have <sys/types.h>
 */
 #undef	HAVE_SYS_SIGINFO
 #undef	HAVE_UCONTEXT
@@ -104,6 +106,17 @@
 #undef	HAVE_DLFCN_H
 #undef	HAVE_STDINT    
 #undef	HAVE_INTTYPES
+#undef	HAVE_SYS_TYPES
+
+/*
+** The following macros are defined iff the corresponding type
+** is available (in <stdint.h>, <inttypes.h>, or <sys/types.h>):
+**
+**	MR_HAVE_INTPTR_T	we have intptr_t and uintptr_t
+**	MR_HAVE_INT_LEASTN_T	we have {u,}int_least{8,16,32}_t
+*/
+#undef MR_HAVE_INTPTR_T
+#undef MR_HAVE_INT_LEASTN_T
 
 /*
 ** The following macros are defined iff the corresponding function or

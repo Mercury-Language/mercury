@@ -21,18 +21,29 @@
 
 #include "mercury_conf.h"
 
-/* 
-** Note that we require sizeof(Word) == sizeof(Integer) == sizeof(Code*);
-** this is ensured by the autoconfiguration script.
+/*
+** This section defines the relevant types from C9X's
+** <stdint.h> header, either by including that header,
+** or if necessary by emulating it ourselves, with some
+** help from the autoconfiguration script.
 */
 
-#if defined(HAVE_STDINT)
+#ifdef HAVE_STDINT
   #include <stdint.h>
-#elif defined(HAVE_INTTYPES)
+#endif
+#ifdef HAVE_INTTYPES
   #include <inttypes.h>
-#else
+#endif
+#ifdef HAVE_SYS_TYPES
+  #include <sys/types.h>
+#endif
+
+#ifndef MR_HAVE_INTPTR_T
   typedef unsigned MR_WORD_TYPE		uintptr_t;
   typedef MR_WORD_TYPE			intptr_t;
+#endif
+
+#ifndef MR_HAVE_INT_LEASTN_T
   typedef unsigned MR_INT_LEAST32_TYPE	uint_least32_t;
   typedef MR_INT_LEAST32_TYPE		int_least32_t;
   typedef unsigned MR_INT_LEAST16_TYPE	uint_least16_t;
@@ -40,6 +51,11 @@
   typedef unsigned char			uint_least8_t;
   typedef signed char			int_least8_t;
 #endif
+
+/* 
+** This section defines the basic types that we use.
+** Note that we require sizeof(Word) == sizeof(Integer) == sizeof(Code*).
+*/
 
 typedef	uintptr_t		Word;
 typedef	intptr_t		Integer;
@@ -67,9 +83,11 @@ typedef void			Code;
 	#error	For Mercury bytecode, we require 64-bit IEEE-754 floating point
 #endif
 
-/* The following four typedefs logically belong in mercury_string.h.     */
-/* They are defined here to avoid problems with circular #includes.      */
-/* If you modify them, you will need to modify mercury_string.h as well. */
+/*
+** The following four typedefs logically belong in mercury_string.h.
+** They are defined here to avoid problems with circular #includes.
+** If you modify them, you will need to modify mercury_string.h as well.
+*/
 
 typedef char Char;
 typedef unsigned char UnsignedChar;
