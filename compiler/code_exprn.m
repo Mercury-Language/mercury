@@ -515,6 +515,7 @@ code_exprn__var_becomes_dead(Var) -->
 	code_exprn__get_options(Options),
 	{ options__lookup_bool_option(Options, gcc_non_local_gotos, NLG) },
 	{ options__lookup_bool_option(Options, asm_labels, ASM) },
+	{ options__lookup_bool_option(Options, static_ground_terms, SGT) },
 	(
 		{ map__search(Vars0, Var, Stat) }
 	->
@@ -527,7 +528,7 @@ code_exprn__var_becomes_dead(Var) -->
 			code_exprn__rem_rval_list_reg_dependencies(RvalList0),
 			(
 				{ code_exprn__member_expr_is_constant(RvalList0,
-							Vars0,  NLG, ASM, Rval7) }
+						Vars0,  NLG, ASM, SGT, Rval7) }
 			->
 				{ Rval0 = Rval7 }
 			;
@@ -687,11 +688,11 @@ code_exprn__select_reg([R|Rs], Rval) :-
 
 %------------------------------------------------------------------------------%
 
-:- pred code_exprn__expr_is_constant(rval, var_map, bool, bool, rval).
-:- mode code_exprn__expr_is_constant(in, in, in, in, out) is semidet.
+:- pred code_exprn__expr_is_constant(rval, var_map, bool, bool, bool, rval).
+:- mode code_exprn__expr_is_constant(in, in, in, in, in, out) is semidet.
 
 code_exprn__expr_is_constant(const(Const), _Vars,
-				NonLocalGotos, AsmLabels, Rval) :-
+				NonLocalGotos, AsmLabels, _SGT, Rval) :-
 	(
 		Const = address_const(CodeAddress)
 	->
@@ -715,59 +716,57 @@ code_exprn__expr_is_constant(const(Const), _Vars,
 	),
 	Rval = const(Const).
 
-code_exprn__expr_is_constant(unop(Op, Expr0), Vars, NLG, ASM, unop(Op, Expr)) :-
-	code_exprn__expr_is_constant(Expr0, Vars, NLG, ASM, Expr).
+code_exprn__expr_is_constant(unop(Op, Expr0), Vars, NLG, ASM, SGT, unop(Op, Expr)) :-
+	code_exprn__expr_is_constant(Expr0, Vars, NLG, ASM, SGT, Expr).
 
 code_exprn__expr_is_constant(binop(Op, Expr1, Expr2), Vars,
-					NLG, ASM, binop(Op, Expr3, Expr4)) :-
-	code_exprn__expr_is_constant(Expr1, Vars, NLG, ASM, Expr3),
-	code_exprn__expr_is_constant(Expr2, Vars, NLG, ASM, Expr4).
+					NLG, ASM, SGT, binop(Op, Expr3, Expr4)) :-
+	code_exprn__expr_is_constant(Expr1, Vars, NLG, ASM, SGT, Expr3),
+	code_exprn__expr_is_constant(Expr2, Vars, NLG, ASM, SGT, Expr4).
 
-code_exprn__expr_is_constant(mkword(Tag, Expr0), Vars, NLG, ASM, mkword(Tag, Expr)) :-
-	code_exprn__expr_is_constant(Expr0, Vars, NLG, ASM, Expr).
+code_exprn__expr_is_constant(mkword(Tag, Expr0), Vars, NLG, ASM, SGT, mkword(Tag, Expr)) :-
+	code_exprn__expr_is_constant(Expr0, Vars, NLG, ASM, SGT, Expr).
 
 code_exprn__expr_is_constant(create(Tag, Args0, Label), Vars,
-					NLG, ASM, create(Tag, Args, Label)) :-
-	code_exprn__args_are_constant(Args0, Vars, NLG, ASM, Args).
+				NLG, ASM, SGT, create(Tag, Args, Label)) :-
+	SGT = yes,
+	code_exprn__args_are_constant(Args0, Vars, NLG, ASM, SGT, Args).
 
-code_exprn__expr_is_constant(var(Var), Vars, NLG, ASM, Rval) :-
+code_exprn__expr_is_constant(var(Var), Vars, NLG, ASM, SGT, Rval) :-
 	map__search(Vars, Var, Stat),
 	(
 		Stat = cached(Rval0),
-		code_exprn__expr_is_constant(Rval0, Vars, NLG, ASM, Rval)
+		code_exprn__expr_is_constant(Rval0, Vars, NLG, ASM, SGT, Rval)
 	;
 		Stat = evaled(Rvals),
 		set__to_sorted_list(Rvals, RvalList),
-		code_exprn__member_expr_is_constant(RvalList, Vars, NLG, ASM, Rval)
+		code_exprn__member_expr_is_constant(RvalList, Vars, NLG, ASM, SGT, Rval)
 	).
 
 :- pred code_exprn__args_are_constant(list(maybe(rval)), var_map,
-						bool, bool, list(maybe(rval))).
-:- mode code_exprn__args_are_constant(in, in, in, in, out) is semidet.
+					bool, bool, bool, list(maybe(rval))).
+:- mode code_exprn__args_are_constant(in, in, in, in, in, out) is semidet.
 
-code_exprn__args_are_constant([], _Vars, _NLG, _ASM, []).
-code_exprn__args_are_constant([Arg0 | Args0], Vars, NLG, ASM, [Arg | Args]) :-
-	(
-		Arg0 = no,
-		Arg = no
-	;
-		Arg0 = yes(Rval0),
-		code_exprn__expr_is_constant(Rval0, Vars, NLG, ASM, Rval),
-		Arg = yes(Rval)
-	),
-	code_exprn__args_are_constant(Args0, Vars, NLG, ASM, Args).
+code_exprn__args_are_constant([], _Vars, _NLG, _ASM, _SGT, []).
+code_exprn__args_are_constant([Arg0 | Args0], Vars, NLG, ASM, SGT, [Arg | Args]) :-
+	% if any of the fields are 'no' then we cannot treat the
+	% term as a constant.
+	Arg0 = yes(Rval0),
+	code_exprn__expr_is_constant(Rval0, Vars, NLG, ASM, SGT, Rval),
+	Arg = yes(Rval),
+	code_exprn__args_are_constant(Args0, Vars, NLG, ASM, SGT, Args).
 
 :- pred code_exprn__member_expr_is_constant(list(rval), var_map,
-							bool, bool, rval).
-:- mode code_exprn__member_expr_is_constant(in, in, in, in, out) is semidet.
+							bool, bool, bool, rval).
+:- mode code_exprn__member_expr_is_constant(in, in, in, in, in, out) is semidet.
 
-code_exprn__member_expr_is_constant([Rval0|Rvals0], Vars, NLG, ASM, Rval) :-
+code_exprn__member_expr_is_constant([Rval0|Rvals0], Vars, NLG, ASM, SGT, Rval) :-
 	(
-		code_exprn__expr_is_constant(Rval0, Vars, NLG, ASM, Rval1)
+		code_exprn__expr_is_constant(Rval0, Vars, NLG, ASM, SGT, Rval1)
 	->
 		Rval = Rval1
 	;
-		code_exprn__member_expr_is_constant(Rvals0, Vars, NLG, ASM, Rval)
+		code_exprn__member_expr_is_constant(Rvals0, Vars, NLG, ASM, SGT, Rval)
 	).
 
 %------------------------------------------------------------------------------%
@@ -814,12 +813,14 @@ code_exprn__place_var_2(cached(Exprn0), Var, Lval, Code) -->
 	code_exprn__get_options(Options),
 	{ options__lookup_bool_option(Options, gcc_non_local_gotos, NLG) },
 	{ options__lookup_bool_option(Options, asm_labels, ASM) },
+	{ options__lookup_bool_option(Options, static_ground_terms, SGT) },
 	(
 		{ exprn_aux__vars_in_rval(Exprn0, []) }
 	->
 		{ error("code_exprn__place_var: cached exprn with no vars!") }
 	;
-		{ code_exprn__expr_is_constant(Exprn0, Vars0, NLG, ASM, Exprn) }
+		{ code_exprn__expr_is_constant(Exprn0, Vars0,
+						NLG, ASM, SGT, Exprn) }
 	->
 			% move stuff out of the way
 			% We don't care about the renamed exprn
@@ -872,6 +873,7 @@ code_exprn__place_var_2(evaled(Rvals0), Var, Lval, Code) -->
 	code_exprn__get_options(Options),
 	{ options__lookup_bool_option(Options, gcc_non_local_gotos, NLG) },
 	{ options__lookup_bool_option(Options, asm_labels, ASM) },
+	{ options__lookup_bool_option(Options, static_ground_terms, SGT) },
 	(
 		{ set__member(lval(Lval), Rvals0) }
 	->
@@ -901,7 +903,8 @@ code_exprn__place_var_2(evaled(Rvals0), Var, Lval, Code) -->
 		{ code_exprn__construct_code(Lval, VarName, Rval, ExprnCode) }
 	;
 		{set__to_sorted_list(Rvals0, RvalList0) },
-		{ code_exprn__member_expr_is_constant(RvalList0, Vars0, NLG, ASM, Rval0) }
+		{ code_exprn__member_expr_is_constant(RvalList0,
+				Vars0, NLG, ASM, SGT, Rval0) }
 	->
 			% move stuff out of the way
 		code_exprn__clear_lval(Lval, Rval0, Rval1, ClearCode),

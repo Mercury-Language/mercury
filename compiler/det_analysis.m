@@ -734,12 +734,8 @@ global_checking_pass_2([PredId - ModeId | Rest], ModuleInfo0, ModuleInfo) -->
 		{ pred_info_arity(PredInfo, 2) },
 		{ pred_info_is_exported(PredInfo) },
 		{
-/*********
-	% XXX this is commented out since the compiler generates incorrect
-	% code for it!!!
 		  determinism_components(InferredDetism, can_fail, _)
 		;
-**********/
 		  MaybeDetism = yes(DeclaredDeterminism),
 		  determinism_components(DeclaredDeterminism, can_fail, _)
 		}
