@@ -255,17 +255,6 @@ void dumpnondstack(void)
 		dumpframe(fr);
 }
 
-void printlabel(/* const */ Code *w)
-{
-	Label	*label;
-
-	label = lookup_label_addr(w);
-	if (label != NULL)
-		printf("label %s (0x%p)\n", label->e_name, w);
-	else
-		printf("label UNKNOWN (0x%p)\n", w);
-}
-
 void printframe(const char *msg)
 {
 	printf("\n%s\n", msg);
@@ -307,6 +296,17 @@ static void print_ordinary_regs(void)
 }
 
 #endif
+
+void printlabel(/* const */ Code *w)
+{
+	Label	*label;
+
+	label = lookup_label_addr(w);
+	if (label != NULL)
+		printf("label %s (0x%p)\n", label->e_name, w);
+	else
+		printf("label UNKNOWN (0x%p)\n", w);
+}
 
 #if 0
 
