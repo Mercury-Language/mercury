@@ -23,7 +23,7 @@
 #include	<string.h>
 #include	<ctype.h>
 #include	<errno.h>
-#include	"getopt.h"
+#include	"mercury_getopt.h"
 #include	"mercury_conf.h"
 #include	"mercury_std.h"
 

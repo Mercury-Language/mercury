@@ -17,7 +17,7 @@ include $(MERCURY_DIR)/Mmake.common
 
 MGNUC   = MERCURY_C_INCL_DIR=$(RUNTIME_DIR) $(SCRIPTS_DIR)/mgnuc
 CFLAGS	= -I$(RUNTIME_DIR) $(EXTRA_CFLAGS)
-# we need -I ../runtime for "getopt.h"
+# we need -I ../runtime for "mercury_getopt.h"
 
 PROGS=mkinit mdemangle
 
