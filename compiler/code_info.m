@@ -459,8 +459,8 @@ code_info__flush_variable(Var, Code) -->
 			%	the variable does not depend on
 			%	itself (occurs check!)
 			%	2. Code reordering guarentees that
-			%	the target register is available.
-			%	(I think. comment fjh?)
+			%	there is no other value that _requires_
+			%	this register.
 		(
 			{ TargetReg = reg(Reg) }
 		->

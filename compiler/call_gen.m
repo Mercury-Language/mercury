@@ -82,7 +82,7 @@ call_gen__setup_call([Var - arg_info(ArgLoc, Mode)|Vars], Code) -->
 		(
 			code_info__variable_register(Var, Lval0),
 			{ Lval0 = reg(Reg0) },
-			{ not Reg = Reg0 }
+			{ \+ Reg = Reg0 }
 		->
 			code_info__shuffle_register(Var, Reg, Code0),
 			{ CodeA = node(Code0) }
