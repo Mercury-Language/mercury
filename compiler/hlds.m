@@ -11,11 +11,11 @@
 
 :- interface.
 
-:- adt module_info.
+% :- adt module_info.
 
-:- adt pred_id.
+% :- adt pred_id.
 
-:- adt mode_id.
+% :- adt mode_id.
 
 :- type category	--->	deterministic		% functional & total
 			;	semideterministic	% just functional
@@ -105,7 +105,7 @@
 	% This is how types are represented.  XXX
 
 :- type type_defn	--->	du_type(string, list(term), list(constructor))
-			;	%%% uu_type(string, list(term), list(type_body))
+%			;	 uu_type(string, list(term), list(type_body))
 			;	eqv_type(string, list(term), type_body).
 :- type constructor	==	term.
 :- type type_head	==	term.
@@ -144,7 +144,7 @@
 :- pred predicate_category(module_info, pred_id, mode_id, category).
 :- mode predicate_category(input, input, input, output).
 
-:- pred var_is_live(module_info, liveness_info, var_is, is_live).
+:- pred var_is_live(module_info, goal_info, var_id, liveness).
 :- mode var_is_live(input, input, input, output).
 
 :- pred var_type(module_info, var_info, var_id, type).
@@ -157,15 +157,19 @@
 
 :- type module_info	--->	module(
 					string,		% module name
-					map(pred_id, pred_info),
-					map(type_id, type_body),
-					map(inst_id, inst_body),
-					map(mode_id, mode_body)
+					list(pred_id),
+					pred_table,
+					list(type_id),
+					type_table,
+					list(inst_id),
+					inst_table,
+					list(mode_id),
+					mode_table
 				).
 
 :- type pred_info	--->	predicate(
 					list(mode_id),	% usually [1,2,...]
-					map(mode_id, proc_info),
+					map(mode_id, proc_info)
 				).
 
 :- type proc_info	--->	procedure(
@@ -181,55 +185,116 @@
 
 :- type proc_id		=	proc(pred_id, mode_id).
 
+:- type type_id		= 	int.
+
+:- type type_table	=	map(type_id, type_body).
+
 :- type mode_id		=	int.
+
+:- type mode_table	=	map(mode_id, mode_body).
+
+:- type inst_id		=	int.
+
+:- type inst_table	=	map(inst_id, inst_body).
 
 :- type var_info	--->	var_info(
 					string, % name
-					type
+					type_id
 				).
 
-:- type goal_info	=	goalinfo (
+:- type goal_info	--->	goalinfo(
 					map(var_id, is_live)
-		% maybe			map(var_id, inst)
+		% maybe			map(var_id, inst_id)
 				).
 
 :- type is_live		--->	live ; dead.
 
-:- type mode_info	=	map(var_id, inst - inst). % initial - final
+:- type mode_info	=	map(var_id, mode_id). % initial-final
+
+:- type mode_body	--->	inst_id - inst_id.
+
+:- type inst_body	--->	free
+			;	ground.
 
 %-----------------------------------------------------------------------------%
 
 	% Various access predicates for the module_info data structure
 
-module_get_modes(...) :-
+moduleinfo_name(ModuleInfo, Name) :-
+	ModuleInfo = module(Name, _PredIDs, _Preds, _TypeIDs, _Types,
+		_InstIDs, _Insts, _ModeIDs,  _Modes).
+moduleinfo_predids(ModuleInfo, PredIDs) :-
+	ModuleInfo = module(_Name, PredIDs, _Preds, _TypeIDs, _Types,
+		_InstIDs, _Insts, _ModeIDs,  _Modes).
+moduleinfo_preds(ModuleInfo, Name) :-
+	ModuleInfo = module(_Name, _PredIDs, Preds, _TypeIDs, _Types,
+		_InstIDs, _Insts, _ModeIDs,  _Modes).
+moduleinfo_typeids(ModuleInfo, TypeIDs) :-
+	ModuleInfo = module(_Name, _PredIDs, _Preds, TypeIDs, _Types,
+		_InstIDs, _Insts, _ModeIDs,  _Modes).
+moduleinfo_types(ModuleInfo, Types) :-
+	ModuleInfo = module(_Name, _PredIDs, _Preds, _TypeIDs, Types,
+		_InstIDs, _Insts, _ModeIDs,  _Modes).
+moduleinfo_instids(ModuleInfo, InstIDs) :-
+	ModuleInfo = module(_Name, _PredIDs, _Preds, _TypeIDs, _Types,
+		InstIDs, _Insts, _ModeIDs,  _Modes).
+moduleinfo_insts(ModuleInfo, Insts) :-
+	ModuleInfo = module(_Name, _PredIDs, _Preds, _TypeIDs, _Types,
+		_InstIDs, Insts, _ModeIDs,  _Modes).
+moduleinfo_modeids(ModuleInfo, ModeIds) :-
+	ModuleInfo = module(_Name, _PredIDs, _Preds, _TypeIDs, _Types,
+		_InstIDs, _Insts, ModeIDs,  _Modes).
+moduleinfo_modes(ModuleInfo, Modes) :-
+	ModuleInfo = module(_Name, _PredIDs, _Preds, _TypeIDs, _Types,
+		_InstIDs, _Insts, _ModeIDs,  Modes).
 
-module_name(module(Name,_,_,_,_),Name).
+%-----------------------------------------------------------------------------%
 
-module_predicates(module(_,PredInfo,_,_,_), PredIds) :-
-	map__keys(PredInfo,PredIds).
+predicate_module(pred(Module,_Name,_Arity), Module).
 
-	% Various access predicates for the module_info and/or pred_id
-	% data structures
+predicate_name(pred(_Module,Name,_Arity), Name).
 
-predicate_module(_, pred(Module,_Name,_Arity), Module).
+predicate_arity(pred(_Module,_Name,Arity), Arity).
 
-predicate_name(_, pred(_Module,Name,_Arity), Name).
+predinfo_modes(PredInfo, Modes) :-
+	PredInfo = pred_info(Modes, _Procs).
 
-predicate_arity(_, pred(_Module,_Name,Arity), Arity).
+predinfo_procedures(PredInfo, Procs) :-
+	PredInfo = pred_info(_Modes, Procs).
 
-predicate_modes(module(_,PredInfo,_,_,_), PredId, Modes) :-
-	map__search(PredInfo, PredId, Modes).
+%-----------------------------------------------------------------------------%
 
-predicate_clauses(module(_,_,ClauseInfo,_,_), PredId, ModeId, Clauses) :-
-	map__search(ClauseInfo, PredId - ModeId, Clauses).
+procinfo_category(ProcInfo, Category) :-
+	ProcInfo = procedure(Category, _Vars, _HeadVars, _ModeInfo, _Goal).
+procinfo_variables(ProcInfo, Vars) :-
+	ProcInfo = procedure(_Category, Vars, _HeadVars, _ModeInfo, _Goal).
+procinfo_headvars(ProcInfo, HeadVars) :-
+	ProcInfo = procedure(_Category, _Vars, HeadVars, _ModeInfo, _Goal).
+procinfo_modeinfo(ProcInfo, ModeInfo) :-
+	ProcInfo = procedure(_Category, _Vars, _HeadVars, ModeInfo, _Goal).
+procinfo_goal(ProcInfo, Goal) :-
+	ProcInfo = procedure(_Category, _Vars, _HeadVars, _ModeInfo, Goal).
 
-predicate_category(module(_,_,_,CategoryInfo,_), PredId, ModeId, Category) :-
-	map__search(CategoryInfo, PredId - ModeId, Category).
+%-----------------------------------------------------------------------------%
 
-mode_is_input(...) :-
+:- pred mode_is_input(mode_table, mode_id).
 
-	% 
+mode_is_input(ModuleInfo, ModeID) :-
+	moduleinfo_modes(ModuleInfo, Modes),
+	moduleinfo_insts(ModuleInfo, Insts),
+	map__search(Modes, ModeID, Mode),
+	Mode = Inst1 - _Inst2.
+	map__search(Insts, Inst1, ground).
 
+:- pred mode_is_output(mode_table, mode_id).
+
+mode_is_output(ModuleInfo, ModeID) :-
+	moduleinfo_modes(ModuleInfo, Modes),
+	moduleinfo_insts(ModuleInfo, Insts),
+	map__search(Modes, ModeID, Mode),
+	Mode = Inst1 - Inst2,
+	map__search(Insts, Inst1, free),
+	map__search(Insts, Inst2, ground).
 
 mode_id_to_int(X, X).
 
