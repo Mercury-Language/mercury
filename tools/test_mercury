@@ -309,6 +309,9 @@ trap 'rm -f $lockfile; exit 1' 1 2 3 13 15
 trap 'exit_status=$?; rm -f $lockfile; exit $exit_status' 0
 echo $HOST > $lockfile
 
+ulimit -a > $HOSTDIR/ulimit
+env > $HOSTDIR/env
+
 #-----------------------------------------------------------------------------#
 
 status=0
@@ -342,6 +345,7 @@ case $HOST in
 		# Test the asm_fast.gc.tr.rt grade, but not on the 0.10 branch,
 		# since the asm_fast.gc.tr.rt grade is not yet implemented
 		# in the 0.10 branch.
+		# Likewise for `hlc' and `hlc.agc'
 		#	
 		# The hl.* grades don't work on the release branch because
 		# we can only install the header files for one grade, and the 
@@ -349,7 +353,7 @@ case $HOST in
 		# fixed on the main branch.
 		case $BRANCH in
 			0.10)	;;
-			*)	INSTALL_LIBGRADES="$INSTALL_LIBGRADES \
+			*)	INSTALL_LIBGRADES="hlc hlc.agc $INSTALL_LIBGRADES \
 					asm_fast.gc.tr.rt hl.gc hl.gc.prof \
 					hl.gc.memprof hl.gc.tr hl.par.gc" ;;
 		esac
@@ -853,6 +857,7 @@ cd tests || { false; exit 1; }
 # 	*) ;;
 # esac
 
+echo "test_mercury running tests in grades $GRADES" 1>&2
 case "$C_COMPILER" in
         gcc) test_error_file="$TESTDIR/logs/test-$BRANCH-$HOST.test_errs" ;;
         *)   test_error_file=\
@@ -906,6 +911,7 @@ do
 			cp Prof.Decl poly.$grade.Decl) || status=1
 			;;
 	esac
+	echo "test_mercury finished tests for grade $grade at `date`" 1>&2
 done
 case $HOST in hg)
 	echo "test_mercury starting tests for --target asm at `date`" 1>&2
@@ -923,6 +929,7 @@ case $HOST in hg)
 	fi
 	;;
 esac
+echo "test_mercury finished tests at `date`" 1>&2
 
 cd ..
 
