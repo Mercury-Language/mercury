@@ -241,7 +241,7 @@
 :- export_type hlds__goals.
 :- type hlds__goals		==	list(hlds__goal).
 
-:- type goal_info	--->	goalinfo(
+:- type hlds__goal_info	--->	goalinfo(
 					map(var_id, is_live), 
 					category,
 					map(var_id, inst)
@@ -402,10 +402,10 @@ moduleinfo_modeids(ModuleInfo, ModeIDs) :-
 	map__keys(Modes, ModeIDs).
 
 moduleinfo_ctors(ModuleInfo, Ctors) :-
-	ModuleInfo = module(_Name, _Preds, _Types, _Insts, Modes, Ctors).
+	ModuleInfo = module(_Name, _Preds, _Types, _Insts, _Modes, Ctors).
 
 moduleinfo_consids(ModuleInfo, ConsIDs) :-
-	ModuleInfo = module(_Name, _Preds, _Types, _Insts, Modes, Ctors),
+	ModuleInfo = module(_Name, _Preds, _Types, _Insts, _Modes, Ctors),
 	map__keys(Ctors, ConsIDs).
 
 	% Various predicates which modify the module_info data structure.
@@ -511,7 +511,7 @@ predinfo_arg_types(PredInfo, TypeVars, ArgTypes) :-
 :- pred procinfo_goal(proc_info, hlds__goal).
 :- mode procinfo_goal(input, output).
 
-:- pred procinfo_context(proc_info, hlds__context).
+:- pred procinfo_context(proc_info, term__context).
 :- mode procinfo_context(input, output).
 
 :- pred procinfo_callinfo(proc_info, call_info).
@@ -550,14 +550,14 @@ procinfo_callinfo(ProcInfo, CallInfo) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-	% Access predicates for the goal_info data structure.
+	% Access predicates for the hlds__goal_info data structure.
 
 :- interface.
 
-:- pred goalinfo_init(goal_info).
+:- pred goalinfo_init(hlds__goal_info).
 :- mode goalinfo_init(output).
 
-:- pred goalinfo_liveness(goal_info, map(var_id, is_live)).
+:- pred goalinfo_liveness(hlds__goal_info, map(var_id, is_live)).
 :- mode goalinfo_liveness(input, output).
 
 %-----------------------------------------------------------------------------%
@@ -731,7 +731,7 @@ inst_substitute_arg(ground, _, _, ground).
 inst_substitute_arg(bound(Alts0), Arg, Param, bound(Alts)) :-
 	inst_substitute_alts(Alts0, Arg, Param, Alts).
 inst_substitute_arg(inst_var(Var), Arg, Param, Result) :-
-	Param = term_variable(ParamVar),	% XXX params should be vars?
+	Param = term_variable(ParamVar),	% XXX params should be vars!
 	(if Var = ParamVar then
 		Result = Arg
 	else

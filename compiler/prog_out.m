@@ -32,17 +32,17 @@ prog_out__write_messages([Message | Messages]) -->
 	prog_out__write_messages(Messages).
 
 prog_out__write_message(Msg - Term) -->
-	(if %%% some [Functor, Args, Context]	% NU-Prolog DCG inconsistency
-		{ Term = term_functor(Functor, Args, Context) }
-	then
+	(
+		{ Term = term_functor(_Functor, _Args, Context) }
+	->
 		prog_out__write_context(Context)
 	),
 	io__write_string(Msg),
-	(if %%% some [_Context]		% NU-Prolog DCG inconsistency
-		{ Term = term_functor(term_atom(""), [], _Context) }
-	then
+	(
+		{ Term = term_functor(term_atom(""), [], _Context2) }
+	->
 		io__write_string(".\n")
-	else
+	;
 		io__write_string(": "),
 		{ varset__init(VarSet) }, % XXX variable names in error messages
 		io__write_term_nl(VarSet, Term)
@@ -96,7 +96,7 @@ prog_out__write_item(mode_defn(_VarSet, Defn, _Condition)) -->
 	{ write(Defn), write('.'), nl }.
 prog_out__write_item(inst_defn(_VarSet, Defn, _Condition)) -->
 	{ write(Defn), write('.'), nl }.
-prog_out__write_item(pred(VarSet, Name, Args, _Condition)) -->
+prog_out__write_item(pred(VarSet, Name, Args, _Det, _Condition)) -->
 	io__write_string(":- pred "),
 	prog_out__write_sym_name(Name),
 	prog_out__write_pred_args(VarSet, Args),
@@ -389,7 +389,7 @@ prog_out__op_adj(1, xfy, 1).
 prog_out__op_adj(1, fxy, 1).
 prog_out__op_adj(1, fxx, 1).
 prog_out__op_adj(1, yfx, 0).
-prog_out__op_adj(1, yfy, 0).
+% prog_out__op_adj(1, yfy, 0).
 prog_out__op_adj(1, fyx, 0).
 prog_out__op_adj(1, fyy, 0).
 prog_out__op_adj(2, xfx, 1).
@@ -397,7 +397,7 @@ prog_out__op_adj(2, xfy, 0).
 prog_out__op_adj(2, fxy, 0).
 prog_out__op_adj(2, fxx, 1).
 prog_out__op_adj(2, yfx, 1).
-prog_out__op_adj(2, yfy, 0).
+% prog_out__op_adj(2, yfy, 0).
 prog_out__op_adj(2, fyx, 1).
 prog_out__op_adj(2, fyy, 0).
 prog_out__op_adj(1,  xf, 1).

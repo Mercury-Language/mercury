@@ -31,10 +31,9 @@ require(Goal, Message) :-
 		fail
 	).
 
-:- pred error(string).
 error(Message) :-
 	format("~s\n", [Message]),
 	trace,		% this doesn't work with NU-Prolog, unfortunately.
-	fail.
+	abort.
 
 :- end_module require.

@@ -18,7 +18,7 @@
 
 	% append two strings together
 
-:- pred char_to_string(char, string).
+:- pred char_to_string(character, string).
 :- mode char_to_string(input, output).
 :- mode char_to_string(output, input).
 
@@ -80,7 +80,7 @@ digit_to_string(7, "7").
 digit_to_string(8, "8").
 digit_to_string(9, "9").
 
-:- pred string__first_char(string, char, string).
+:- pred string__first_char(string, character, string).
 :- mode string__first_char(input, output, output).
 :- mode string__first_char(output, input, input).
 
@@ -103,8 +103,8 @@ string__uncapitalize_first(S0, S) :-
 	to_lower(C, LowerC),
 	string__first_char(S, LowerC, S1).
 
-:- pred to_upper(char, char).
-:- mode to_upper(char, char).
+:- pred to_upper(character, character).
+:- mode to_upper(input, output).
 
 to_upper(Char, Upper) :-
 	(if some [UpperChar]
@@ -115,8 +115,8 @@ to_upper(Char, Upper) :-
 		Upper = Char
 	).
 
-:- pred to_lower(char, char).
-:- mode to_lower(char, char).
+:- pred to_lower(character, character).
+:- mode to_lower(input, output).
 
 to_lower(Char, Lower) :-
 	(if some [LowerChar]
@@ -127,19 +127,19 @@ to_lower(Char, Lower) :-
 		Lower = Char
 	).
 
-:- pred is_upper(char).
+:- pred is_upper(character).
 :- mode is_upper(input).
 
 is_upper(Upper) :-
 	some [Lower] upper_lower(Lower, Upper).
 
-:- pred is_lower(char).
+:- pred is_lower(character).
 :- mode is_lower(input).
 
 is_lower(Lower) :-
 	some [Upper] upper_lower(Lower, Upper).
 
-:- pred upper_lower(char, char).
+:- pred upper_lower(character, character).
 :- mode upper_lower(input, output).
 :- mode upper_lower(output, input).
 
@@ -169,6 +169,8 @@ upper_lower('w', 'W').
 upper_lower('x', 'X').
 upper_lower('y', 'Y').
 upper_lower('z', 'Z').
+
+:- type character == atom.
 
 :- end_module string.
 

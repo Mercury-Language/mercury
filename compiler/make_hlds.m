@@ -67,13 +67,14 @@ add_item_decl(inst_defn(VarSet, InstDefn, Cond), Context, Module0, Module) -->
 add_item_decl(mode_defn(VarSet, ModeDefn, Cond), Context, Module0, Module) -->
 	module_add_mode_defn(Module0, VarSet, ModeDefn, Cond, Context, Module).
 
-add_item_decl(pred(VarSet, PredName, TypesAndModes, Cond), Context, Module0,
-		Module) -->
-	module_add_pred(Module0, VarSet, PredName, TypesAndModes, Cond,
+add_item_decl(pred(VarSet, PredName, TypesAndModes, Det, Cond), Context,
+		Module0, Module) -->
+	module_add_pred(Module0, VarSet, PredName, TypesAndModes, Det, Cond,
 		Context, Module).
 
-add_item_decl(mode(VarSet, PredName, Modes, Cond), Context, Module0, Module) -->
-	module_add_mode(Module0, VarSet, PredName, Modes, Cond, Context,
+add_item_decl(mode(VarSet, PredName, Modes, Det, Cond), Context, Module0,
+		Module) -->
+	module_add_mode(Module0, VarSet, PredName, Modes, Det, Cond, Context,
 		Module).
 
 add_item_decl(module_defn(_VarSet, _ModuleDefn), Context, Module, Module) -->
@@ -94,8 +95,8 @@ add_item_clause(clause(VarSet, PredName, Args, Body), Context, Module0,
 add_item_clause(type_defn(_, _, _), _, Module, Module) --> [].
 add_item_clause(inst_defn(_, _, _), _, Module, Module) --> [].
 add_item_clause(mode_defn(_, _, _), _, Module, Module) --> [].
-add_item_clause(pred(_, _, _, _), _, Module, Module) --> [].
-add_item_clause(mode(_, _, _, _), _, Module, Module) --> [].
+add_item_clause(pred(_, _, _, _, _), _, Module, Module) --> [].
+add_item_clause(mode(_, _, _, _, _), _, Module, Module) --> [].
 add_item_clause(module_defn(_, _), _, Module, Module) --> [].
 add_item_clause(nothing, _, Module, Module) --> [].
 
@@ -271,11 +272,12 @@ make_cons_id(unqualified(Name), Args, _TypeId, cons(Name, Arity)) :-
 %-----------------------------------------------------------------------------%
 
 :- pred module_add_pred(module_info, varset, sym_name, list(type_and_mode),
-		condition, term__context, module_info, io__state, io__state).
-:- mode module_add_pred(input, input, input, input, input, input, output,
+		determinism, condition, term__context, module_info,
+		io__state, io__state).
+:- mode module_add_pred(input, input, input, input, input, input, input, output,
 		di, uo).
 
-module_add_pred(Module0, VarSet, PredName, TypesAndModes, Cond, Context,
+module_add_pred(Module0, VarSet, PredName, TypesAndModes, Det, Cond, Context,
 		Module) -->
 	{ moduleinfo_preds(Module0, Preds0) },
 	{ split_types_and_modes(TypesAndModes, Types, MaybeModes) },
@@ -286,7 +288,7 @@ module_add_pred(Module0, VarSet, PredName, TypesAndModes, Cond, Context,
 	(if %%% some [Modes]
 		{ MaybeModes = yes(Modes) }
 	then
-		module_add_mode(Module1, VarSet, PredName, Modes, Cond,
+		module_add_mode(Module1, VarSet, PredName, Modes, Det, Cond,
 			Context, Module)
 	else
 		{ Module = Module1 }
@@ -371,26 +373,29 @@ pred_is_compat(predicate(_, Types, _, _, _, _),
 	% Add a mode declaration for a predicate.
 
 :- pred module_add_mode(module_info, varset, sym_name, list(mode), condition,
-			term__context, module_info, io__state, io__state).
-:- mode module_add_mode(input, input, input, input, input, input, output,
+			determinism, term__context, module_info,
+			io__state, io__state).
+:- mode module_add_mode(input, input, input, input, input, input, input, output,
 			di, uo).
 
-module_add_mode(Module0, VarSet, PredName, Modes, Cond, Context, Module) -->
+module_add_mode(Module0, VarSet, PredName, Modes, Det, Cond, Context, Module)
+		-->
 	{ moduleinfo_preds(Module0, Preds0) },
 	{ moduleinfo_name(Module0, ModuleName) },
-	pred_modes_add(Preds0, ModuleName, VarSet, PredName, Modes, Cond,
+	pred_modes_add(Preds0, ModuleName, VarSet, PredName, Modes, Det, Cond,
 			Context, Preds),
 	{ moduleinfo_set_preds(Module0, Preds, Module) }.
 
 :- pred pred_modes_add(pred_table, module_name, varset, sym_name, list(mode),
-		condition, term__context, pred_table, io__state, io__state).
-:- mode pred_modes_add(input, input, input, input, input, input, input, output,
-		di, uo).
+		determinism, condition, term__context, pred_table,
+		io__state, io__state).
+:- mode pred_modes_add(input, input, input, input, input, input, input,
+		input, output, di, uo).
 
 	% XXX we should store the mode varset and the mode condition
 	% in the hlds - at the moment we just ignore those two arguments
-pred_modes_add(Preds0, ModuleName, _VarSet, PredName, Modes, _Cond, MContext,
-		Preds) -->
+pred_modes_add(Preds0, ModuleName, _VarSet, PredName, Modes, Det, _Cond,
+		MContext, Preds) -->
 	{ length(Modes, Arity),
 	  make_predid(ModuleName, PredName, Arity, PredId) },
 	(if %%% some [P0]
@@ -409,7 +414,8 @@ pred_modes_add(Preds0, ModuleName, _VarSet, PredName, Modes, _Cond, MContext,
 		{ goalinfo_init(GoalInfo) },
 		{ varset__init(BodyVarSet) },
 		{ HeadVars = [] },
-		{ NewProc = procedure(nondeterministic, BodyVarSet, BodyTypes,
+		{ determinism_to_category(Det, Category) },
+		{ NewProc = procedure(Category, BodyVarSet, BodyTypes,
 			HeadVars, Modes, conj([]) - GoalInfo, MContext) },
 		{ map__insert(Procs0, ModeId, NewProc, Procs) },
 		{ P = predicate(TVarSet, ArgTypes, TCond, Clauses, Procs,
@@ -420,6 +426,13 @@ pred_modes_add(Preds0, ModuleName, _VarSet, PredName, Modes, _Cond, MContext,
 			"mode declaration"),
 		{ Preds = Preds0 }
 	).
+
+:- pred determinism_to_category(determinism, category).
+:- mode determinism_to_category(input, output).
+determinism_to_category(det, deterministic(declared)).
+determinism_to_category(semidet, deterministic(declared)).
+determinism_to_category(nondet, deterministic(declared)).
+determinism_to_category(unspecified, unspecified).
 
 	% XXX efficiency could be improved
 	% we should probably store the next available ModeId rather
@@ -604,7 +617,7 @@ get_disj(Goal, Disj0, Disj) :-
 		get_disj(A, Disj1, Disj)
 	else
 		transform_goal(Goal, Goal1),
-		Disj = [Goal | Disj0]
+		Disj = [Goal1 | Disj0]
 	).
 
 %-----------------------------------------------------------------------------%

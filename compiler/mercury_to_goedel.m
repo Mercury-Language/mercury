@@ -186,9 +186,9 @@ goedel_replace_eqv_type(type_defn(VarSet0, TypeDefn0, Cond),
 	goedel_replace_eqv_type_defn(TypeDefn0, Name, Args, Body, TypeDefn),
 	varset__merge(VarSet0, TVarSet, VarSet).
 
-goedel_replace_eqv_type(pred(VarSet0, PredName, TypesAndModes0, Cond),
+goedel_replace_eqv_type(pred(VarSet0, PredName, TypesAndModes0, Det, Cond),
 			TVarSet, Name, Args, Body,
-			pred(VarSet, PredName, TypesAndModes, Cond)) :-
+			pred(VarSet, PredName, TypesAndModes, Det, Cond)) :-
 	goedel_replace_eqv_type_pred(TypesAndModes0, Name, Args, Body,
 		no, TypesAndModes, yes),
 	varset__merge(VarSet0, TVarSet, VarSet).
@@ -336,7 +336,8 @@ goedel_output_item(inst_defn(VarSet, InstDefn, _Cond), Context) -->
 goedel_output_item(mode_defn(VarSet, ModeDefn, _Cond), Context) -->
 	goedel_output_mode_defn(VarSet, ModeDefn, Context).
 
-goedel_output_item(pred(VarSet, PredName, TypesAndModes, _Cond), Context) -->
+goedel_output_item(pred(VarSet, PredName, TypesAndModes, _Det, _Cond), Context)
+		-->
 	( { option_write_line_numbers } ->
 		io__write_string("\n"),
 		goedel_write_context(Context)
@@ -344,7 +345,7 @@ goedel_output_item(pred(VarSet, PredName, TypesAndModes, _Cond), Context) -->
 	io__write_string("\n"),
 	goedel_output_pred(VarSet, PredName, TypesAndModes, Context).
 
-goedel_output_item(mode(VarSet, PredName, Modes, _Cond), Context) -->
+goedel_output_item(mode(VarSet, PredName, Modes, _Det, _Cond), Context) -->
 	goedel_output_mode(VarSet, PredName, Modes, Context).
 
 goedel_output_item(module_defn(_VarSet, _ModuleDefn), _Context) -->

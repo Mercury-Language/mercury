@@ -781,9 +781,9 @@ process_decl(VarSet, "end_module", [ModuleName], Result) :-
 		Result = error("module name expected", ModuleName)
 	).
 
-process_decl(VarSet, "when", [Goal, _Cond], Result) :-
 	% NU-Prolog `when' declarations are silently ignored for
 	% backwards compatibility.
+process_decl(_VarSet, "when", [_Goal, _Cond], Result) :-
 	Result = ok(nothing).
 
 :- pred parse_type_decl(varset, term, maybe(item)).
@@ -845,14 +845,15 @@ parse_type_decl_type(term_functor(term_atom("=="),[H,B],_), Condition, R) :-
 
 %-----------------------------------------------------------------------------%
 	% parse_type_decl_pred(Pred, Condition, Result) succeeds
-	% if Pred is a "pred" type declaration, and binds Condition
+	% if Pred is a predicate type declaration, and binds Condition
 	% to the condition for that declaration (if any), and Result to
 	% a representation of the declaration.
 :- pred parse_type_decl_pred(varset, term, maybe(item)).
 :- mode parse_type_decl_pred(input, input, output).
 parse_type_decl_pred(VarSet, Pred, R) :-
 	get_condition(Pred, Body, Condition),
-	process_pred(VarSet, Body, Condition, R).
+	get_determinism(Body, Body2, Determinism),
+	process_pred(VarSet, Body2, Determinism, Condition, R).
 
 %-----------------------------------------------------------------------------%
 
@@ -870,14 +871,50 @@ parse_type_decl_rule(VarSet, Rule, R) :-
 
 %-----------------------------------------------------------------------------%
 	% parse_mode_decl_pred(Pred, Condition, Result) succeeds
-	% if Pred is a "pred" mode declaration, and binds Condition
+	% if Pred is a predicate mode declaration, and binds Condition
 	% to the condition for that declaration (if any), and Result to
 	% a representation of the declaration.
 :- pred parse_mode_decl_pred(varset, term, maybe(item)).
 :- mode parse_mode_decl_pred(input, input, output).
 parse_mode_decl_pred(VarSet, Pred, R) :-
 	get_condition(Pred, Body, Condition),
-	process_mode(VarSet, Body, Condition, R).
+	get_determinism(Body, Body2, Determinism),
+	process_mode(VarSet, Body2, Determinism, Condition, R).
+
+%-----------------------------------------------------------------------------%
+	% get_determinism(Term0, Term, Determinism) binds Determinism
+	% to a representation of the 'where' condition of Term0, if any,
+	% and binds Term to the other part of Term0. If Term0 does not
+	% contain a condition, then Determinism is bound to true.
+:- pred get_determinism(term, term, condition).
+:- mode get_determinism(input, output, output).
+get_determinism(B, Body, Determinism) :-
+	(if some [Body1, Determinism1, Context]
+		B = term_functor(term_atom("is"), [Body1, Determinism1],
+					Context)
+	then
+		Body = Body1,
+		(if some [Determinism2, Determinism3, Context2] (
+			Determinism1 = term_functor(term_atom(Determinism2),
+				[], Context2),
+			standard_det(Determinism2, Determinism3)
+		    )
+		then
+			Determinism = Determinism3
+		else
+			% XXX should report a syntax error!!
+			Determinism = unspecified
+		)
+	else
+		Body = B,
+		Determinism = unspecified
+	).
+
+:- pred standard_det(string, determinism).
+:- mode standard_det(input, output).
+standard_det("det", det).
+standard_det("nondet", nondet).
+standard_det("semidet", semidet).
 
 %-----------------------------------------------------------------------------%
 	% get_condition(Term0, Term, Condition) binds Condition
@@ -1090,44 +1127,46 @@ binop_term_to_list_2(Op, Term, List0, List) :-
 
 	% parse a `:- pred p(...)' declaration
 
-:- pred process_pred(varset, term, condition, maybe(item)).
-:- mode process_pred(input, input, input, output).
-process_pred(VarSet, PredType, Cond, Result) :-
+:- pred process_pred(varset, term, determinism, condition, maybe(item)).
+:- mode process_pred(input, input, input, input, output).
+process_pred(VarSet, PredType, Det, Cond, Result) :-
 	parse_qualified_term(PredType, "`:- pred' declaration", R),
-	process_pred_2(R, PredType, VarSet, Cond, Result).
+	process_pred_2(R, PredType, VarSet, Det, Cond, Result).
 
-:- pred process_pred_2(maybe_functor, term, varset, condition, maybe(item)).
-:- mode process_pred_2(input, input, input, input, output).
-process_pred_2(ok(F, As0), PredType, VarSet, Cond, Result) :-
+:- pred process_pred_2(maybe_functor, term, varset, determinism, condition,
+			maybe(item)).
+:- mode process_pred_2(input, input, input, input, input, output).
+process_pred_2(ok(F, As0), PredType, VarSet, Det, Cond, Result) :-
 	(if some [As]
 		convert_type_and_mode_list(As0, As)
 	then
-		Result = ok(pred(VarSet, F, As, Cond))
+		Result = ok(pred(VarSet, F, As, Det, Cond))
 	else
 		Result = error("syntax error in :- pred declaration", PredType)
 	).
-process_pred_2(error(M, T), _, _, _, error(M, T)).
+process_pred_2(error(M, T), _, _, _, _, error(M, T)).
 
 	% parse a `:- mode p(...)' declaration
 
-:- pred process_mode(varset, term, condition, maybe(item)).
-:- mode process_mode(input, input, input, output).
-process_mode(VarSet, PredMode, Cond, Result) :-
+:- pred process_mode(varset, term, determinism, condition, maybe(item)).
+:- mode process_mode(input, input, input, input, output).
+process_mode(VarSet, PredMode, Det, Cond, Result) :-
 	parse_qualified_term(PredMode, "`:- mode' declaration", R),
-	process_mode_2(R, PredMode, VarSet, Cond, Result).
+	process_mode_2(R, PredMode, VarSet, Det, Cond, Result).
 
-:- pred process_mode_2(maybe_functor, term, varset, condition, maybe(item)).
-:- mode process_mode_2(input, input, input, input, output).
-process_mode_2(ok(F, As0), PredMode, VarSet, Cond, Result) :-
+:- pred process_mode_2(maybe_functor, term, varset, determinism, condition,
+			maybe(item)).
+:- mode process_mode_2(input, input, input, input, input, output).
+process_mode_2(ok(F, As0), PredMode, VarSet, Det, Cond, Result) :-
 	(if some [As]
 		convert_mode_list(As0, As)
 	then
-		Result = ok(mode(VarSet, F, As, Cond))
+		Result = ok(mode(VarSet, F, As, Det, Cond))
 	else
 		Result = error("syntax error in predicate mode declaration",
 				PredMode)
 	).
-process_mode_2(error(M, T), _, _, _, error(M, T)).
+process_mode_2(error(M, T), _, _, _, _, error(M, T)).
 
 /*** OBSOLETE
 	% A rule declaration is just the same as a pred declaration,
@@ -2016,7 +2055,7 @@ parse_qualified_term(Term, Msg, Result) :-
         (if some [Name, Args, Context2]
             NameArgsTerm = term_functor(term_atom(Name), Args, Context2)
         then
-            (if some [Modulem, Context3]
+            (if some [Module, Context3]
                 ModuleTerm = term_functor(term_atom(Module), [], Context3)
 	    then
 		Result = ok(qualified(Module, Name), Args)
@@ -2053,8 +2092,8 @@ parse_symbol_name(Term, Result) :-
     (if some [ModuleTerm, NameTerm, Context]
        	Term = term_functor(term_atom(":"), [ModuleTerm, NameTerm], Context)
     then
-        (if some [Name, Context]
-            NameTerm = term_functor(term_atom(Name), [], Context)
+        (if some [Name, Context1]
+            NameTerm = term_functor(term_atom(Name), [], Context1)
         then
             (if some [Module, Context2]
                 ModuleTerm = term_functor(term_atom(Module), [], Context2)
