@@ -1408,7 +1408,11 @@ case "$host" in
 		AC_MSG_RESULT(yes)
 		LINK_SHARED_OBJ="ld -Bshareable"
 		EXT_FOR_SHARED_LIB=so
-		# XXX what about *_RPATH_*?
+		# From Kevet Duncombe <dunc@acm.org> tested on FreeBSD 2.2.5
+		EXE_RPATH_OPT="-R"
+		EXE_RPATH_SEP=" -R"
+		SHLIB_RPATH_OPT="-R"
+		SHLIB_RPATH_SEP=" -R"
 		;;
 	sparc-sun-solaris2.*)
 		AC_MSG_RESULT(yes)
