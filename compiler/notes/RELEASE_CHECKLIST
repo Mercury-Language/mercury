@@ -6,6 +6,7 @@ taken when releasing a new version of Mercury.
 	INSTALL (various places)
 	bindist/bindist.README
 	bindist/bindist.INSTALL
+	bindist/bindist.configure.in
 	configure.in
 	library/library.m
     and update the NEWS and RELEASE_NOTES files.  The RELEASE_NOTES file
