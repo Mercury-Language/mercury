@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998 The University of Melbourne.
+** Copyright (C) 1998-1999 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -42,7 +42,7 @@ MR_search_spy_table_for_proc(const MR_Stack_Layout_Entry *entry)
 	bool	found;
 
 	MR_bsearch(MR_spied_proc_next, slot, found,
-		(Unsigned) entry - (Unsigned) MR_spied_procs[slot].spy_proc);
+		(Unsigned) MR_spied_procs[slot].spy_proc - (Unsigned) entry);
 	if (found) {
 		return slot;
 	} else {
