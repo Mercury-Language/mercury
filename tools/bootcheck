@@ -305,7 +305,7 @@ then
 		ln -s $root/boehm_gc/*.h .
 		ln -s $root/boehm_gc/*.c .
 		ln -s $root/boehm_gc/*.s .
-		ln -s $root/boehm_gc/includes .
+		ln -s $root/boehm_gc/include .
 		cp $root/boehm_gc/Mmake* .
 		cp $root/boehm_gc/Makefile .
 		cd $root/stage2_sicstus
@@ -535,7 +535,7 @@ then
 		ln -s $root/boehm_gc/*.h .
 		ln -s $root/boehm_gc/*.c .
 		ln -s $root/boehm_gc/*.s .
-		ln -s $root/boehm_gc/includes .
+		ln -s $root/boehm_gc/include .
 		cp $root/boehm_gc/Mmake* .
 		cp $root/boehm_gc/Makefile .
 		ln -s $root/boehm_gc/machdeps .
