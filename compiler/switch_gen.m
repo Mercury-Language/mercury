@@ -209,10 +209,7 @@ switch_gen__generate_all_cases(Cases, Var, CodeModel, CanFail, EndLabel, Code) -
 		{ Cases = [Case1, Case2] }
 	->
 		{ Case1 = case(_, _, Cons1, Goal1) },
-		code_info__get_next_label(ElseLab, no),
-		code_info__push_failure_cont(known(ElseLab)),
-		unify_gen__generate_tag_test(Var, Cons1, TestCode),
-		code_info__pop_failure_cont,
+		unify_gen__generate_tag_test(Var, Cons1, NextLab, TestCode),
 		code_info__grab_code_info(CodeInfo),
 		code_gen__generate_forced_goal(CodeModel, Goal1, Case1Code),
 
@@ -233,7 +230,7 @@ switch_gen__generate_all_cases(Cases, Var, CodeModel, CanFail, EndLabel, Code) -
 				node([
 					goto(label(EndLabel), label(EndLabel)) -
 						"skip to the end of the switch",
-					label(ElseLab) - "next case" ]),
+					label(NextLab) - "next case" ]),
 				tree(
 					Case1Code,
 					node([ label(EndLabel) -
@@ -266,32 +263,29 @@ switch_gen__generate_cases([], _Var, _CodeModel, CanFail, EndLabel, Code) -->
 	% goal and a label for the start of the next case.
 switch_gen__generate_cases([case(_, _, Cons, Goal)|Cases], Var, CodeModel,
 				CanFail, EndLabel, CasesCode) -->
+	code_info__grab_code_info(CodeInfo),
 	(
 		{ Cases = [_|_] ; CanFail = can_fail }
 	->
-		code_info__grab_code_info(CodeInfo),
-		code_info__get_next_label(ElseLabel, no),
-		code_info__push_failure_cont(known(ElseLabel)),
-		unify_gen__generate_tag_test(Var, Cons, TestCode),
-		code_info__pop_failure_cont,
+		unify_gen__generate_tag_test(Var, Cons, NextLab, TestCode),
 		code_gen__generate_forced_goal(CodeModel, Goal, ThisCode),
 		{ ElseCode = node([
 			goto(label(EndLabel), label(EndLabel)) -
 				"skip to the end of the switch",
-			label(ElseLabel) - "next case"
+			label(NextLab) - "next case"
 		]) },
 		{ ThisCaseCode = tree(tree(TestCode, ThisCode), ElseCode) },
-		% If there are more cases, then we need to restore
-		% the expression cache, etc.
-		( { Cases = [_|_] } ->
-			code_info__slap_code_info(CodeInfo)
-		;
-			[]
-		)
+		code_info__grab_code_info(CodeInfo1),
+		code_info__slap_code_info(CodeInfo)
 	;
-		code_gen__generate_forced_goal(CodeModel, Goal, ThisCaseCode)
+		code_gen__generate_forced_goal(CodeModel, Goal, ThisCaseCode),
+		code_info__grab_code_info(CodeInfo1),
+		code_info__slap_code_info(CodeInfo)
 	),
 		% generate the rest of the cases.
 	switch_gen__generate_cases(Cases, Var, CodeModel, CanFail, EndLabel,
 		CasesCode0),
-	{ CasesCode = tree(ThisCaseCode, CasesCode0) }.
+	{ CasesCode = tree(ThisCaseCode, CasesCode0) },
+	code_info__slap_code_info(CodeInfo1).
+
+%------------------------------------------------------------------------------%

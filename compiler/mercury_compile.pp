@@ -541,7 +541,7 @@ touch_datestamp(ModuleName) -->
 				io__state, io__state).
 :- mode write_dependency_file(in, in, in, di, uo) is det.
 
-write_dependency_file(ModuleName, LongDeps, ShortDeps) -->
+write_dependency_file(ModuleName, LongDeps0, ShortDeps0) -->
 	globals__io_lookup_bool_option(verbose, Verbose),
 	{ string__append(ModuleName, ".d", DependencyFileName) },
 	maybe_write_string(Verbose, "% Writing auto-dependency file `"),
@@ -550,6 +550,9 @@ write_dependency_file(ModuleName, LongDeps, ShortDeps) -->
 	maybe_flush_output(Verbose),
 	io__open_output(DependencyFileName, Result),
 	( { Result = ok(DepStream) } ->
+		{ list__sort(LongDeps0, LongDeps) },
+		{ list__sort(ShortDeps0, ShortDeps) },
+
 		io__write_string(DepStream, ModuleName),
 		io__write_string(DepStream, ".err : "),
 		io__write_string(DepStream, ModuleName),
@@ -685,12 +688,10 @@ generate_dependencies_2([], ModuleName, DepsMap, DepStream) -->
 	io__write_string(DepStream, ".os)\n\n"),
 
 	io__write_string(DepStream, ModuleName),
-	io__write_string(DepStream, "_init.c : $("),
-	io__write_string(DepStream, ModuleName),
-	io__write_string(DepStream, ".cs)\n"),
+	io__write_string(DepStream, "_init.c :\n"),
 	io__write_string(DepStream, "\t$(C2INIT) $(C2INITFLAGS) $("),
 	io__write_string(DepStream, ModuleName),
-	io__write_string(DepStream, ".cs) > "),
+	io__write_string(DepStream, ".srcs) > "),
 	io__write_string(DepStream, ModuleName),
 	io__write_string(DepStream, "_init.c\n\n"),
 
@@ -1344,7 +1345,7 @@ mercury_compile__semantic_pass_by_phases(HLDS1, HLDS9, Proceed0, Proceed) -->
 	{ bool__not(FoundTypeError, Proceed1) },
 
 	globals__io_lookup_bool_option(modecheck, DoModeCheck),
-	( { DoModeCheck = yes } ->
+	( { DoModeCheck = yes, FoundTypeError = no } ->
 		mercury_compile__modecheck(HLDS2, HLDS3, FoundModeError),
 		maybe_report_stats(Statistics),
 		mercury_compile__maybe_dump_hlds(HLDS3, "3", "modecheck"),

@@ -270,9 +270,9 @@ det_infer_goal(Goal0 - GoalInfo0, InstMap0, MiscInfo,
 		Detism = InternalDetism
 	),
 
-	determinism_components(Detism, _CanFail2, InternalSolns2),
+	determinism_components(Detism, _CanFail2, ExternalSolns),
 	(
-		InternalSolns2 = at_most_one,
+		ExternalSolns = at_most_one,
 		Goal1 = disj(Disjuncts),
 		Disjuncts \= []
 	->
@@ -280,12 +280,13 @@ det_infer_goal(Goal0 - GoalInfo0, InstMap0, MiscInfo,
 		implicitly_quantify_goal(Goal2 - GoalInfo0, NonLocalVars,
 			GoalPair3),
 		det_infer_goal(GoalPair3, InstMap0, MiscInfo,
-			Goal - GoalInfo1, _, NewDetism),
+			Goal - GoalInfo, _, NewDetism),
 		( Detism = NewDetism ->
 			true
 		;
 			error("transformation of pruned disj to ite changes its determinism")
 		)
+/*****************
 %	;
 %		It would nice to do this, but without further changes
 %		it screws up delta-instantiations and liveness.
@@ -295,15 +296,16 @@ det_infer_goal(Goal0 - GoalInfo0, InstMap0, MiscInfo,
 %		Detism = failure
 %	->
 %		Goal = disj([]),
-%		GoalInfo1 = GoalInfo0
+%		goal_info_set_internal_determinism(GoalInfo0, InternalDetism,
+%			GoalInfo1),
+%		goal_info_set_determinism(GoalInfo1, Detism, GoalInfo)
+******************/
 	;
 		Goal = Goal1,
-		GoalInfo1 = GoalInfo0
-	),
-
-	goal_info_set_internal_determinism(GoalInfo1, InternalDetism,
-		GoalInfo2),
-	goal_info_set_determinism(GoalInfo2, Detism, GoalInfo).
+		goal_info_set_internal_determinism(GoalInfo0, InternalDetism,
+			GoalInfo1),
+		goal_info_set_determinism(GoalInfo1, Detism, GoalInfo)
+	).
 
 :- pred det__disj_to_ite(list(hlds__goal), hlds__goal_info, hlds__goal_expr).
 :- mode det__disj_to_ite(di, in, uo) is det.
@@ -331,7 +333,10 @@ det__disj_to_ite([Disjunct | Disjuncts], GoalInfo, Goal) :-
 	;
 		Goal = if_then_else([], Cond, Then, Else),
 		Cond = Disjunct,
-		goal_info_init(InitGoalInfo),
+		goal_info_init(InitGoalInfo0),
+		map__init(InstMap),
+		goal_info_set_instmap_delta(InitGoalInfo0,
+				reachable(InstMap), InitGoalInfo),
 		Then = conj([]) - InitGoalInfo,
 		Else = Rest - GoalInfo,
 		det__disj_to_ite(Disjuncts, GoalInfo, Rest)
@@ -723,7 +728,35 @@ global_checking_pass_2([PredId - ModeId | Rest], ModuleInfo0, ModuleInfo) -->
 			% returns false, i.e. it didn't print a message.
 		)
 	),
-	global_checking_pass_2(Rest, ModuleInfo1, ModuleInfo).
+	% check that `main/2' cannot fail
+	( 
+		{ pred_info_name(PredInfo, "main") },
+		{ pred_info_arity(PredInfo, 2) },
+		{ pred_info_is_exported(PredInfo) },
+		{
+/*********
+	% XXX this is commented out since the compiler generates incorrect
+	% code for it!!!
+		  determinism_components(InferredDetism, can_fail, _)
+		;
+**********/
+		  MaybeDetism = yes(DeclaredDeterminism),
+		  determinism_components(DeclaredDeterminism, can_fail, _)
+		}
+	->
+		{ proc_info_context(ProcInfo, Context) },
+		prog_out__write_context(Context),
+			% The error message is actually a lie -
+			% main/2 can also be `erroneous'.  But mentioning
+			% that would probably just confuse people.
+		io__write_string(
+			"Error: main/2 must be `det' or `multidet'.\n"),
+		{ module_info_incr_errors(ModuleInfo1,
+			ModuleInfo2) }
+	;
+		{ ModuleInfo2 = ModuleInfo1 }
+	),
+	global_checking_pass_2(Rest, ModuleInfo2, ModuleInfo).
 
 :- pred report_determinism_problem(pred_id, proc_id, module_info, string,
 	determinism, determinism, io__state, io__state).
@@ -959,9 +992,10 @@ det_diagnose_goal_2(unify(LT, RT, _, _, UnifyContext), GoalInfo,
 	{ det_misc_get_proc_info(MiscInfo, ProcInfo) },
 	{ proc_info_variables(ProcInfo, Varset) },
 	io__write_string("  unification of `"),
-	mercury_output_term(LT, Varset),
+	mercury_output_var(LT, Varset),
 	io__write_string("' and `"),
-	mercury_output_term(RT, Varset),
+	{ MiscInfo = misc_info(ModuleInfo, _, _) },
+	hlds_out__write_unify_rhs(RT, ModuleInfo, Varset, 3),
 	(
 		{ DesiredCanFail = cannot_fail },
 		{ ActualCanFail = can_fail }

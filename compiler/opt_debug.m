@@ -248,7 +248,6 @@ opt_debug__dump_vninstr(vn_call_closure(_, Ret, _), Str) :-
 	opt_debug__dump_code_addr(Ret, R_str),
 	string__append_list(["call_closure(", R_str, ")"], Str).
 opt_debug__dump_vninstr(vn_mkframe(_, _, _), "mkframe").
-opt_debug__dump_vninstr(vn_modframe(_), "modframe").
 opt_debug__dump_vninstr(vn_label(Label), Str) :-
 	opt_debug__dump_label(Label, L_str),
 	string__append_list(["label(", L_str, ")"], Str).
@@ -423,13 +422,13 @@ opt_debug__dump_vnlval(vn_curfr, Str) :-
 	string__append_list(["vn_curfr"], Str).
 opt_debug__dump_vnlval(vn_prevfr(V), Str) :-
 	string__int_to_string(V, V_str),
-	string__append_list(["vn_prevfr(", V_str, "("], Str).
+	string__append_list(["vn_prevfr(", V_str, ")"], Str).
 opt_debug__dump_vnlval(vn_succfr(V), Str) :-
 	string__int_to_string(V, V_str),
-	string__append_list(["vn_succfr(", V_str, "("], Str).
+	string__append_list(["vn_succfr(", V_str, ")"], Str).
 opt_debug__dump_vnlval(vn_redoip(V), Str) :-
 	string__int_to_string(V, V_str),
-	string__append_list(["vn_redoip(", V_str, "("], Str).
+	string__append_list(["vn_redoip(", V_str, ")"], Str).
 opt_debug__dump_vnlval(vn_hp, Str) :-
 	string__append_list(["vn_hp"], Str).
 opt_debug__dump_vnlval(vn_sp, Str) :-
@@ -554,8 +553,9 @@ opt_debug__dump_const(float_const(F), Str) :-
 	string__float_to_string(F, Str).
 opt_debug__dump_const(string_const(I), Str) :-
 	string__append_list(["""", I, """"], Str).
-opt_debug__dump_const(address_const(_CodeAddress),
-			"address_const(<code address>)").
+opt_debug__dump_const(address_const(CodeAddr), Str) :-
+	opt_debug__dump_code_addr(CodeAddr, C_str),
+	string__append_list(["address_const(", C_str, ")"], Str).
 
 opt_debug__dump_unop(mktag, "mktag").
 opt_debug__dump_unop(tag, "tag").

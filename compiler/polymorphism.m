@@ -257,13 +257,12 @@ polymorphism__process_goal_2(
 	{ list__append(ExtraGoals, [Call], GoalList) },
 	{ conj_list_to_goal(GoalList, GoalInfo, Goal) }.
 
-polymorphism__process_goal_2(unify(X, Y, Mode, Unification, Context), GoalInfo,
-		Goal) -->
+polymorphism__process_goal_2(unify(XVar, Y, Mode, Unification, Context),
+				GoalInfo, Goal) -->
 	(
 		{ Unification = complicated_unify(UniMode, _Category,
 			FollowVars) },
-		{ X = term__variable(XVar) },
-		{ Y = term__variable(YVar) }
+		{ Y = var(YVar) }
 	->
 		=(poly_info(_, VarTypes, _, TypeInfoMap, ModuleInfo)),
 		{ map__lookup(VarTypes, XVar, Type) },
@@ -338,7 +337,7 @@ polymorphism__process_goal_2(unify(X, Y, Mode, Unification, Context), GoalInfo,
 		)
 	;
 		% ordinary unifications are left unchanged
-		{ Goal = unify(X, Y, Mode, Unification, Context) - GoalInfo }
+		{ Goal = unify(XVar, Y, Mode, Unification, Context) - GoalInfo }
 	).
 
 	% the rest of the clauses just process goals recursively
@@ -584,15 +583,13 @@ polymorphism__init_with_int_constant(CountVar, Num, CountUnifyGoal) :-
 	CountConsId = int_const(Num),
 	CountUnification = construct(CountVar, CountConsId, [], []),
 
-	CountVarTerm = term__variable(CountVar),
 	CountConst = term__integer(Num),
-	term__context_init(Context),
-	CountTerm = term__functor(CountConst, [], Context),
+	CountTerm = functor(CountConst, []),
 	CountInst = bound([functor(CountConst, [])]),
 	CountUnifyMode = (free -> CountInst) - (CountInst -> CountInst),
 	CountUnifyContext = unify_context(explicit, []),
 		% XXX the UnifyContext is wrong
-	CountUnify = unify(CountVarTerm, CountTerm, CountUnifyMode,
+	CountUnify = unify(CountVar, CountTerm, CountUnifyMode,
 		CountUnification, CountUnifyContext),
 
 	% create a goal_info for the unification
@@ -622,12 +619,13 @@ polymorphism__get_special_proc_list([Id | Ids],
 		Type, ModuleInfo, VarSet0, VarTypes0,
 		[Var | Vars], [Goal | Goals], VarSet, VarTypes) :-
 
-	% introduce a fresh variable of the appropriate higher-oder pred type
+	% introduce a fresh variable of the appropriate higher-order pred type
 
 	special_pred_info(Id, Type, PredName, TypeArgs, _Modes, _Det),
 	varset__new_var(VarSet0, Var, VarSet1a),
 	string__append("Var__", PredName, VarName),
 	varset__name_var(VarSet1a, Var, VarName, VarSet1),
+	term__context_init(Context),
 	PredType = term__functor(term__atom("pred"), TypeArgs, Context),
 	map__set(VarTypes0, Var, PredType, VarTypes1),
 
@@ -643,15 +641,13 @@ polymorphism__get_special_proc_list([Id | Ids],
 	Unification = construct(Var, ConsId, [], []),
 
 	Functor = term__atom(PredName),
-	term__context_init(Context),
-	Term = term__functor(Functor, [], Context),
+	Term = functor(Functor, []),
 
-	VarTerm = term__variable(Var),
 	Inst = bound([functor(Functor, [])]),
 	UnifyMode = (free -> Inst) - (Inst -> Inst),
 	UnifyContext = unify_context(explicit, []),
 		% XXX the UnifyContext is wrong
-	Unify = unify(VarTerm, Term, UnifyMode, Unification, UnifyContext),
+	Unify = unify(Var, Term, UnifyMode, Unification, UnifyContext),
 
 	% create a goal_info for the unification
 
@@ -756,17 +752,13 @@ polymorphism__get_proc_id(PredId, ModuleInfo, ProcId) :-
 polymorphism__init_type_info_var(Type, ArgVars, VarSet0, VarTypes0,
 			TypeInfoVar, TypeInfoGoal, VarSet, VarTypes) :-
 
-	term__var_list_to_term_list(ArgVars, ArgTerms),
 	TypeInfoFunctor = term__atom("type_info"),
 	ConsId = cons("type_info", 1),
-	term__context_init(Context),
-	TypeInfoTerm = term__functor(TypeInfoFunctor, ArgTerms,
-		Context),
+	TypeInfoTerm = functor(TypeInfoFunctor, ArgVars),
 
 	% introduce a new variable
 	polymorphism__new_type_info_var(Type, VarSet0, VarTypes0,
 		TypeInfoVar, VarSet, VarTypes),
-	TypeInfoVarTerm = term__variable(TypeInfoVar),
 
 	% create the construction unification to initialize it
 	UniMode = (free - ground -> ground - ground),
@@ -776,7 +768,7 @@ polymorphism__init_type_info_var(Type, ArgVars, VarSet0, VarTypes0,
 	UnifyMode = (free -> ground) - (ground -> ground),
 	UnifyContext = unify_context(explicit, []),
 		% XXX the UnifyContext is wrong
-	Unify = unify(TypeInfoVarTerm, TypeInfoTerm, UnifyMode,
+	Unify = unify(TypeInfoVar, TypeInfoTerm, UnifyMode,
 			Unification, UnifyContext),
 
 	% create a goal_info for the unification

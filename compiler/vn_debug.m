@@ -38,6 +38,9 @@
 :- pred vn__order_link_msg(vn_node, vn_node, bool, io__state, io__state).
 :- mode vn__order_link_msg(in, in, in, di, uo) is det.
 
+:- pred vn__order_antidep_msg(vn_node, vn_node, io__state, io__state).
+:- mode vn__order_antidep_msg(in, in, di, uo) is det.
+
 :- pred vn__order_map_msg(relmap(vn_node), relmap(vn_node),
 	relmap(vn_node), relmap(vn_node), io__state, io__state).
 :- mode vn__order_map_msg(in, in, in, in, di, uo) is det.
@@ -185,6 +188,21 @@ vn__order_link_msg(From, To, User) -->
 		io__write_string(F_str),
 		io__write_string(" to "),
 		io__write_string(T_str),
+		io__write_string("\n")
+	;
+		{ Flag = no }
+	).
+
+vn__order_antidep_msg(CtrlNode, Node) -->
+	vn__order_sink_msg_flag(Flag),
+	(
+		{ Flag = yes },
+		io__write_string("anti dependency from "),
+		{ opt_debug__dump_node(CtrlNode, C_str) },
+		io__write_string(C_str),
+		io__write_string(" to "),
+		{ opt_debug__dump_node(Node, N_str) },
+		io__write_string(N_str),
 		io__write_string("\n")
 	;
 		{ Flag = no }

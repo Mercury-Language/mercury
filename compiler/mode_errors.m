@@ -60,7 +60,7 @@
 			% a negated context
 	;	mode_error_unify_var_var(var, var, inst, inst)
 			% attempt to unify two free variables
-	;	mode_error_unify_var_functor(var, const, list(term),
+	;	mode_error_unify_var_functor(var, const, list(var),
 							inst, list(inst))
 			% attempt to unify a free var with a functor containing
 			% free arguments
@@ -440,7 +440,7 @@ report_mode_error_unify_var_var(ModeInfo, X, Y, InstX, InstY) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred report_mode_error_unify_var_functor(mode_info, var, const, list(term),
+:- pred report_mode_error_unify_var_functor(mode_info, var, const, list(var),
 					inst, list(inst), io__state, io__state).
 :- mode report_mode_error_unify_var_functor(mode_info_ui, in, in, in, in, in,
 			di, uo) is det.
@@ -450,13 +450,12 @@ report_mode_error_unify_var_functor(ModeInfo, X, Name, Args, InstX, ArgInsts)
 	{ mode_info_get_context(ModeInfo, Context) },
 	{ mode_info_get_varset(ModeInfo, VarSet) },
 	{ mode_info_get_instvarset(ModeInfo, InstVarSet) },
-	{ Term = term__functor(Name, Args, Context) },
 	mode_info_write_context(ModeInfo),
 	prog_out__write_context(Context),
 	io__write_string("  mode error in unification of `"),
 	mercury_output_var(X, VarSet),
 	io__write_string("' and `"),
-	term_io__write_term(VarSet, Term),
+	hlds_out__write_functor(Name, Args, VarSet),
 	io__write_string("'.\n"),
 	prog_out__write_context(Context),
 	io__write_string("  Variable `"),
@@ -466,7 +465,7 @@ report_mode_error_unify_var_functor(ModeInfo, X, Name, Args, InstX, ArgInsts)
 	io__write_string("',\n"),
 	prog_out__write_context(Context),
 	io__write_string("  term `"),
-	term_io__write_term(VarSet, Term),
+	hlds_out__write_functor(Name, Args, VarSet),
 	( { Args \= [] } ->
 		io__write_string("'\n"),
 		prog_out__write_context(Context),

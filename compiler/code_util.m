@@ -55,6 +55,9 @@
 :- pred code_util__negate_the_test(list(instruction), list(instruction)).
 :- mode code_util__negate_the_test(in, out) is det.
 
+:- pred code_util__compiler_generated(pred_info).
+:- mode code_util__compiler_generated(in) is semidet.
+
 :- pred code_util__predinfo_is_builtin(module_info, pred_info).
 :- mode code_util__predinfo_is_builtin(in, in) is semidet.
 
@@ -212,6 +215,19 @@ code_util__builtin_binop("builtin_float_ge", 2, float_ge).
 code_util__builtin_binop("builtin_float_le", 2, float_le).
 
 code_util__builtin_unop("builtin_bit_neg", 2, bitwise_complement).
+
+%-----------------------------------------------------------------------------%
+
+	% code_util__compiler_generated(PredInfo) should succeed iff
+	% the PredInfo is for a compiler generated predicate.
+
+code_util__compiler_generated(PredInfo) :-
+    pred_info_name(PredInfo, PredName),
+    pred_info_arity(PredInfo, PredArity),
+    ( PredName = "__Unify__", PredArity = 2
+    ; PredName = "__Compare__", PredArity = 3
+    ; PredName = "__Index__", PredArity = 2
+    ).
 
 %-----------------------------------------------------------------------------%
 

@@ -402,7 +402,7 @@ inst_table_set_ground_insts(inst_table(A, B, C, _), GroundInsts,
 				% Initially only the terms and the context
 				% are known. Mode analysis fills in the
 				% missing information.
-			;	unify(term, term, unify_mode, unification,
+			;	unify(var, unify_rhs, unify_mode, unification,
 								unify_context)
 				% A disjunction.
 				% Note: disjunctions must be fully flattened.
@@ -431,11 +431,16 @@ inst_table_set_ground_insts(inst_table(A, B, C, _), GroundInsts,
 			%	functor to match with,
 			%	goal to execute if match succeeds.
 
-	% Initially all unifications are represented as
-	% unify(term, term, _, _), but mode analysis replaces
-	% these with various special cases.
-
 :- type follow_vars	==	map(var, lval).
+
+	% Initially all unifications are represented as
+	% unify(var, unify_rhs, _, _, _), but mode analysis replaces
+	% these with various special cases (construct/deconstruct/assign/
+	% simple_test/complicated_unify).
+
+:- type unify_rhs	--->	var(var)
+			;	functor(const, list(var))
+			;	lambda_goal(list(var), hlds__goal).
 
 :- type unification	--->
 				% Y = f(X) where the top node of Y is output,
@@ -482,6 +487,10 @@ inst_table_set_ground_insts(inst_table(A, B, C, _), GroundInsts,
 
 :- type hlds__goals	==	list(hlds__goal).
 
+:- type hlds__goal_info.
+
+:- implementation.
+
 :- type hlds__goal_info
 	---> goal_info(
 		delta_liveness,	% the changes in liveness after goal
@@ -491,11 +500,23 @@ inst_table_set_ground_insts(inst_table(A, B, C, _), GroundInsts,
 		term__context,
 		set(var),	% the non-local vars in the goal
 		delta_liveness,	% the changes in liveness before goal
-		maybe(map(var, lval))
+		maybe(map(var, lval)),
 				% the new store_map, if any - this records
 				% where to store variables at the end of
 				% branched structures.
+		maybe(set(var))	% maybe the set of variables that are
+				% live when forward execution resumes
+				% on the failure of some subgoal of this
+				% goal. For
+				% negations, it is just the set of
+				% variables live after the negation.
+				% For ite's it is the set of variables
+				% live after the condition.
+				% These are the only kinds of goal that
+				% use this field.
 	).
+
+:- interface.
 
 :- type unify_mode	==	pair(mode, mode).
 
@@ -1753,6 +1774,13 @@ proc_info_set_vartypes(ProcInfo0, Vars, ProcInfo) :-
 				maybe(map(var, lval)), hlds__goal_info).
 :- mode goal_info_set_store_map(in, in, out) is det.
 
+:- pred goal_info_cont_lives(hlds__goal_info, maybe(set(var))).
+:- mode goal_info_cont_lives(in, out) is det.
+
+:- pred goal_info_set_cont_lives(hlds__goal_info,
+				maybe(set(var)), hlds__goal_info).
+:- mode goal_info_set_cont_lives(in, in, out) is det.
+
 :- pred goal_to_conj_list(hlds__goal, list(hlds__goal)).
 :- mode goal_to_conj_list(in, out) is det.
 
@@ -1784,71 +1812,78 @@ goal_info_init(GoalInfo) :-
 	set__init(NonLocals),
 	term__context_init(Context),
 	GoalInfo = goal_info(DeltaLiveness, InternalDetism, ExternalDetism,
-			InstMapDelta, Context, NonLocals, DeltaLiveness, no).
+		InstMapDelta, Context, NonLocals, DeltaLiveness, no, no).
 
 goal_info_pre_delta_liveness(GoalInfo, DeltaLiveness) :-
-	GoalInfo = goal_info(DeltaLiveness, _, _, _, _, _, _, _).
+	GoalInfo = goal_info(DeltaLiveness, _, _, _, _, _, _, _, _).
 
 goal_info_set_pre_delta_liveness(GoalInfo0, DeltaLiveness, GoalInfo) :-
-	GoalInfo0 = goal_info(_, B, C, D, E, F, G, H),
-	GoalInfo = goal_info(DeltaLiveness, B, C, D, E, F, G, H).
+	GoalInfo0 = goal_info(_, B, C, D, E, F, G, H, I),
+	GoalInfo = goal_info(DeltaLiveness, B, C, D, E, F, G, H, I).
 
 goal_info_post_delta_liveness(GoalInfo, DeltaLiveness) :-
-	GoalInfo = goal_info(_, _, _, _, _, _, DeltaLiveness, _).
+	GoalInfo = goal_info(_, _, _, _, _, _, DeltaLiveness, _, _).
 
 goal_info_set_post_delta_liveness(GoalInfo0, DeltaLiveness, GoalInfo) :-
-	GoalInfo0 = goal_info(A, B, C, D, E, F, _, H),
-	GoalInfo = goal_info(A, B, C, D, E, F, DeltaLiveness, H).
+	GoalInfo0 = goal_info(A, B, C, D, E, F, _, H, I),
+	GoalInfo = goal_info(A, B, C, D, E, F, DeltaLiveness, H, I).
 
 goal_info_get_internal_code_model(GoalInfo, CodeModel) :-
 	goal_info_get_internal_determinism(GoalInfo, Determinism),
 	determinism_to_code_model(Determinism, CodeModel).
 
 goal_info_get_internal_determinism(GoalInfo, Determinism) :-
-	GoalInfo = goal_info(_, Determinism, _, _, _, _, _, _).
+	GoalInfo = goal_info(_, Determinism, _, _, _, _, _, _, _).
 
 goal_info_set_internal_determinism(GoalInfo0, Determinism, GoalInfo) :-
-	GoalInfo0 = goal_info(A, _, C, D, E, F, G, H),
-	GoalInfo = goal_info(A, Determinism, C, D, E, F, G, H).
+	GoalInfo0 = goal_info(A, _, C, D, E, F, G, H, I),
+	GoalInfo = goal_info(A, Determinism, C, D, E, F, G, H, I).
 
 goal_info_get_code_model(GoalInfo, CodeModel) :-
 	goal_info_get_determinism(GoalInfo, Determinism),
 	determinism_to_code_model(Determinism, CodeModel).
 
 goal_info_get_determinism(GoalInfo, Determinism) :-
-	GoalInfo = goal_info(_, _, Determinism, _, _, _, _, _).
+	GoalInfo = goal_info(_, _, Determinism, _, _, _, _, _, _).
 
 goal_info_set_determinism(GoalInfo0, Determinism, GoalInfo) :-
-	GoalInfo0 = goal_info(A, B, _, D, E, F, G, H),
-	GoalInfo = goal_info(A, B, Determinism, D, E, F, G, H).
+	GoalInfo0 = goal_info(A, B, _, D, E, F, G, H, I),
+	GoalInfo = goal_info(A, B, Determinism, D, E, F, G, H, I).
 
 goal_info_get_instmap_delta(GoalInfo, InstMapDelta) :-
-	GoalInfo = goal_info(_, _, _, InstMapDelta, _, _, _, _).
+	GoalInfo = goal_info(_, _, _, InstMapDelta, _, _, _, _, _).
 
 goal_info_set_instmap_delta(GoalInfo0, InstMapDelta, GoalInfo) :-
-	GoalInfo0 = goal_info(A, B, C, _, E, F, G, H),
-	GoalInfo = goal_info(A, B, C, InstMapDelta, E, F, G, H).
+	GoalInfo0 = goal_info(A, B, C, _, E, F, G, H, I),
+	GoalInfo = goal_info(A, B, C, InstMapDelta, E, F, G, H, I).
 
 goal_info_context(GoalInfo, Context) :-
-	GoalInfo = goal_info(_, _, _, _, Context, _, _, _).
+	GoalInfo = goal_info(_, _, _, _, Context, _, _, _, _).
 
 goal_info_set_context(GoalInfo0, Context, GoalInfo) :-
-	GoalInfo0 = goal_info(A, B, C, D, _, F, G, H),
-	GoalInfo = goal_info(A, B, C, D, Context, F, G, H).
+	GoalInfo0 = goal_info(A, B, C, D, _, F, G, H, I),
+	GoalInfo = goal_info(A, B, C, D, Context, F, G, H, I).
 
 goal_info_get_nonlocals(GoalInfo, NonLocals) :-
-	GoalInfo = goal_info(_, _, _, _, _, NonLocals, _, _).
+	GoalInfo = goal_info(_, _, _, _, _, NonLocals, _, _, _).
 
 goal_info_set_nonlocals(GoalInfo0, NonLocals, GoalInfo) :-
-	GoalInfo0 = goal_info(A, B, C, D, E, _, G, H),
-	GoalInfo  = goal_info(A, B, C, D, E, NonLocals, G, H).
+	GoalInfo0 = goal_info(A, B, C, D, E, _, G, H, I),
+	GoalInfo  = goal_info(A, B, C, D, E, NonLocals, G, H, I).
 
 goal_info_store_map(GoalInfo, H) :-
-	GoalInfo = goal_info(_, _, _, _, _, _, _, H).
+	GoalInfo = goal_info(_, _, _, _, _, _, _, H, _).
 
 goal_info_set_store_map(GoalInfo0, H, GoalInfo) :-
-	GoalInfo0 = goal_info(A, B, C, D, E, F, G, _),
-	GoalInfo  = goal_info(A, B, C, D, E, F, G, H).
+	GoalInfo0 = goal_info(A, B, C, D, E, F, G, _, I),
+	GoalInfo  = goal_info(A, B, C, D, E, F, G, H, I).
+
+goal_info_cont_lives(GoalInfo, I) :-
+	GoalInfo = goal_info(_, _, _, _, _, _, _, _, I).
+
+goal_info_set_cont_lives(GoalInfo0, I, GoalInfo) :-
+	GoalInfo0 = goal_info(A, B, C, D, E, F, G, H, _),
+	GoalInfo  = goal_info(A, B, C, D, E, F, G, H, I).
 
 %-----------------------------------------------------------------------------%
 

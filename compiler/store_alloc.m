@@ -108,7 +108,7 @@ store_alloc_in_goal(Goal0 - GoalInfo0, Liveness0, Follow0, ModuleInfo,
 	set__union(Liveness1, PreBirths, Liveness2),
 	set__difference(Liveness2, PostDeaths, Liveness3),
 	store_alloc_in_goal_2(Goal0, Liveness3, Follow0, ModuleInfo,
-						Goal, Liveness4, Follow),
+					Goal, Liveness4, Follow, ContLives),
 	% If any variables magically become live in the PostBirths,
 	% then they have to mundanely become live somewhere else,
 	% so we don't need to allocate anything for them.
@@ -118,45 +118,57 @@ store_alloc_in_goal(Goal0 - GoalInfo0, Liveness0, Follow0, ModuleInfo,
 	->
 		set__to_sorted_list(Liveness, LiveVarList),
 		store_alloc_allocate_storage(LiveVarList, 1, Follow, StoreMap),
-		goal_info_set_store_map(GoalInfo0, yes(StoreMap), GoalInfo)
+		goal_info_set_store_map(GoalInfo0, yes(StoreMap), GoalInfo1)
 	;
-		goal_info_set_store_map(GoalInfo0, no, GoalInfo)
-	).
-		
+		goal_info_set_store_map(GoalInfo0, no, GoalInfo1)
+	),
+	goal_info_set_cont_lives(GoalInfo1, ContLives, GoalInfo).
 
 %-----------------------------------------------------------------------------%
 	% Here we process each of the different sorts of goals.
 
 :- pred store_alloc_in_goal_2(hlds__goal_expr, liveness_info, follow_vars,
-		module_info, hlds__goal_expr, liveness_info, follow_vars).
-:- mode store_alloc_in_goal_2(in, in, in, in, out, out, out) is det.
+		module_info, hlds__goal_expr,
+		liveness_info, follow_vars, maybe(liveness_info)).
+:- mode store_alloc_in_goal_2(in, in, in, in, out, out, out, out) is det.
 
 store_alloc_in_goal_2(conj(Goals0), Liveness0, Follow0, ModuleInfo,
-					conj(Goals), Liveness, Follow) :-
+					conj(Goals), Liveness, Follow, no) :-
 	store_alloc_in_conj(Goals0, Liveness0, Follow0, ModuleInfo,
 						Goals, Liveness, Follow).
 
 store_alloc_in_goal_2(disj(Goals0), Liveness0, Follow0, ModuleInfo,
-					disj(Goals), Liveness, Follow) :-
+					disj(Goals), Liveness, Follow, no) :-
 	store_alloc_in_disj(Goals0, Liveness0, Follow0, ModuleInfo,
 					Goals, Liveness, Follow).
 
 store_alloc_in_goal_2(not(Goal0), Liveness0, Follow0, ModuleInfo,
-					not(Goal), Liveness, Follow) :-
+				not(Goal), Liveness, Follow, no) :-
 	store_alloc_in_goal(Goal0, Liveness0, Follow0, ModuleInfo,
-					Goal, Liveness, Follow).
+					Goal1, Liveness, Follow),
+	Goal1 = GoalGoal - GoalInfo0,
+	goal_info_set_cont_lives(GoalInfo0, yes(Liveness), GoalInfo),
+	Goal = GoalGoal - GoalInfo.
 
 store_alloc_in_goal_2(switch(Var, Det, Cases0), Liveness0, Follow0, ModuleInfo,
-				switch(Var, Det, Cases), Liveness, Follow) :-
+			switch(Var, Det, Cases), Liveness, Follow, no) :-
 	store_alloc_in_cases(Cases0, Liveness0, Follow0, ModuleInfo,
 					Cases, Liveness, Follow).
 
 store_alloc_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0), Liveness0,
 		Follow0, ModuleInfo,
 			if_then_else(Vars, Cond, Then, Else),
-				Liveness, Follow) :-
+				Liveness, Follow, no) :-
 	store_alloc_in_goal(Cond0, Liveness0, Follow0, ModuleInfo,
-						Cond, Liveness1, Follow1),
+						Cond1, Liveness1, Follow1),
+	Cond1 = CondGoal - GoalInfo0,
+	Else0 = _ElseGoal - ElseGoalInfo,
+	goal_info_pre_delta_liveness(ElseGoalInfo, ElseDelta),
+	ElseDelta = _Births - Deaths,
+	set__intersect(Liveness0, Liveness1, ContLiveness0),
+	set__difference(ContLiveness0, Deaths, ContLiveness),
+	goal_info_set_cont_lives(GoalInfo0, yes(ContLiveness), GoalInfo),
+	Cond = CondGoal - GoalInfo,
 	store_alloc_in_goal(Then0, Liveness1, Follow1, ModuleInfo,
 						Then, Liveness, Follow),
 		% We ignore the resulting liveness and follow-vars
@@ -166,16 +178,16 @@ store_alloc_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0), Liveness0,
 						Else, _Liveness2, _Follow2).
 
 store_alloc_in_goal_2(some(Vars, Goal0), Liveness0, Follow0, ModuleInfo,
-					some(Vars, Goal), Liveness, Follow) :-
+				some(Vars, Goal), Liveness, Follow, no) :-
 	store_alloc_in_goal(Goal0, Liveness0, Follow0, ModuleInfo,
 					Goal, Liveness, Follow).
 
 store_alloc_in_goal_2(call(A, B, C, D, E, F), Liveness, _Follow0, _ModuleInfo,
-				call(A, B, C, D, E, F), Liveness, Follow) :-
+				call(A, B, C, D, E, F), Liveness, Follow, no) :-
 	Follow = F.
 
 store_alloc_in_goal_2(unify(A,B,C,D,E), Liveness, Follow0, _ModuleInfo,
-					unify(A,B,C,D,E), Liveness, Follow) :-
+				unify(A,B,C,D,E), Liveness, Follow, no) :-
 	(
 		D = complicated_unify(_, _, F)
 	->
