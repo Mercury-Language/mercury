@@ -3,7 +3,7 @@ INIT mercury_sys_init_wrapper
 ENDINIT
 */
 /*
-** Copyright (C) 1994-2000 The University of Melbourne.
+** Copyright (C) 1994-2001 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -363,7 +363,17 @@ mercury_runtime_init(int argc, char **argv)
 	(*MR_library_initializer)();
 
 #ifndef MR_HIGHLEVEL_CODE
+  #ifndef __LCC__
 	MR_save_context(&(MR_ENGINE(context)));
+  #else
+	{
+	  /* XXX Work around lcc bug -- lcc 4.1 miscompiles the original code */
+	  size_t offset = offsetof(MercuryEngine, context);
+	  char *tmp = (char *) MR_cur_engine();
+	  MR_Context *eng_context = (tmp += offset, (MR_Context *) tmp);
+	  MR_save_context(eng_context);
+	}
+  #endif
 #endif
 
 	/*
