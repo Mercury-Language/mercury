@@ -1,4 +1,4 @@
-% This ix supposed to be the same as "coup2', albeit without a coup.
+% This is supposed to be the same as "coup2', albeit without a coup.
 % 
 % Currently (12 Mar 2004), it does not work correctly for q/1 (some
 % answers are missing perhaps due to a bug in the completion algorithm.
