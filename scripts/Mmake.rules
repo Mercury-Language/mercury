@@ -434,8 +434,8 @@ endif # $(findstring il,$(GRADE)) != ""
 ifeq ($(MMAKE_USE_MMC_MAKE),yes)
 
 # Always attempt to rebuild these files, even if they exist.
-.PHONY: $(ALL_MC_MAKE_FILES) *.err
-$(ALL_MC_MAKE_FILES) %.err:
+.PHONY: $(ALL_MC_BUILD_FILES) *.err
+$(ALL_MC_BUILD_FILES) %.err:
 	$(MCM) $(ALL_GRADEFLAGS) $(ALL_MC_MAKE_FLAGS) $@
 
 # If we don't know how to make the file, try using `mmc --make'.
