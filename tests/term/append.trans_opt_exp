@@ -1,2 +1,2 @@
 :- module append.
-:- pragma termination_info(append:app(mercury_builtin:out, mercury_builtin:out, mercury_builtin:in), finite(0, [no, no, no, yes]), cannot_loop).
+:- pragma termination_info(append:app((mercury_builtin:out), (mercury_builtin:out), (mercury_builtin:in)), finite(0, [no, no, no, yes]), cannot_loop).

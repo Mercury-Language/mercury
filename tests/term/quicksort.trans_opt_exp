@@ -1,2 +1,2 @@
 :- module quicksort.
-:- pragma termination_info(quicksort:qs(mercury_builtin:in, mercury_builtin:out), finite(0, [yes, no]), cannot_loop).
+:- pragma termination_info(quicksort:qs((mercury_builtin:in), (mercury_builtin:out)), finite(0, [yes, no]), cannot_loop).

@@ -1,2 +1,2 @@
 :- module my_map.
-:- pragma termination_info(my_map:map(mercury_builtin:in, mercury_builtin:out), infinite, cannot_loop).
+:- pragma termination_info(my_map:map((mercury_builtin:in), (mercury_builtin:out)), infinite, cannot_loop).

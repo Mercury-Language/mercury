@@ -59,6 +59,7 @@ PROGS=	\
 	qual_adv_test \
 	qual_basic_test \
 	qual_is_test \
+	quoting_bug_test \
 	rational_test \
 	relation_test \
 	remove_file \
