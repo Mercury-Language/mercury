@@ -354,7 +354,7 @@
 % Header files of mathematical significance.
 %
 
-:- pragma c_header_code("
+:- pragma foreign_decl("C", "
 
 	#include <float.h>
 	#include <math.h>
@@ -376,37 +376,57 @@ float(Int) = Float :-
 
 	% float__ceiling_to_int(X) returns the
 	% smallest integer not less than X.
-:- pragma c_code(float__ceiling_to_int(X :: in) = (Ceil :: out),
+:- pragma foreign_code("C", float__ceiling_to_int(X :: in) = (Ceil :: out),
 	[will_not_call_mercury, thread_safe],
 "
 	Ceil = (MR_Integer) ceil(X);
+").
+:- pragma foreign_code("MC++", float__ceiling_to_int(X :: in) = (Ceil :: out),
+	[will_not_call_mercury, thread_safe],
+"
+	Ceil = (MR_Integer) System::Math::Ceil(X);
 ").
 
 float__ceiling_to_int(X, float__ceiling_to_int(X)).
 
 	% float__floor_to_int(X) returns the
 	% largest integer not greater than X.
-:- pragma c_code(float__floor_to_int(X :: in) = (Floor :: out),
+:- pragma foreign_code("C", float__floor_to_int(X :: in) = (Floor :: out),
 	[will_not_call_mercury, thread_safe],
 "
 	Floor = (MR_Integer) floor(X);
+").
+:- pragma foreign_code("MC++", float__floor_to_int(X :: in) = (Floor :: out),
+	[will_not_call_mercury, thread_safe],
+"
+	Floor = (MR_Integer) System::Math::Floor(X);
 ").
 
 float__floor_to_int(X, float__floor_to_int(X)).
 
 	% float__round_to_int(X) returns the integer closest to X.
 	% If X has a fractional value of 0.5, it is rounded up.
-:- pragma c_code(float__round_to_int(X :: in) = (Round :: out),
+:- pragma foreign_code("C", float__round_to_int(X :: in) = (Round :: out),
 	[will_not_call_mercury, thread_safe],
 "
 	Round = (MR_Integer) floor(X + 0.5);
+").
+:- pragma foreign_code("MC++", float__round_to_int(X :: in) = (Round :: out),
+	[will_not_call_mercury, thread_safe],
+"
+	Round = (MR_Integer) System::Math::Floor(X + 0.5);
 ").
 
 float__round_to_int(X, float__round_to_int(X)).
 
 	% float__truncate_to_int(X) returns the integer closest
 	% to X such that |float__truncate_to_int(X)| =< |X|.
-:- pragma c_code(float__truncate_to_int(X :: in) = (Trunc :: out),
+:- pragma foreign_code("C", float__truncate_to_int(X :: in) = (Trunc :: out),
+	[will_not_call_mercury, thread_safe],
+"
+	Trunc = (MR_Integer) X;
+").
+:- pragma foreign_code("MC++", float__truncate_to_int(X :: in) = (Trunc :: out),
 	[will_not_call_mercury, thread_safe],
 "
 	Trunc = (MR_Integer) X;
@@ -469,10 +489,15 @@ float__pow(X, Exp) = Ans :-
 
 float__pow(X, Exp, float__pow(X, Exp)).
 
-:- pragma c_code(float__hash(F::in) = (H::out),
+:- pragma foreign_code("C", float__hash(F::in) = (H::out),
 	[will_not_call_mercury, thread_safe],
 "
 	H = MR_hash_float(F);
+").
+:- pragma foreign_code("MC++", float__hash(F::in) = (H::out),
+	[will_not_call_mercury, thread_safe],
+"
+	H = F.GetHashCode();
 ").
 
 float__hash(F, float__hash(F)).
@@ -507,55 +532,83 @@ float__hash(F, float__hash(F)).
 ").
 
 	% Maximum floating-point number
-:- pragma c_code(float__max = (Max::out),
+:- pragma foreign_code("C", float__max = (Max::out),
 		[will_not_call_mercury, thread_safe],
 	"Max = ML_FLOAT_MAX;").
+:- pragma foreign_code("MC++", float__max = (Max::out),
+		[will_not_call_mercury, thread_safe],
+	"Max = MR_BoxedFloat::MaxValue;").
+
 
 float__max(float__max).
 
 	% Minimum normalised floating-point number */
-:- pragma c_code(float__min = (Min::out),
+:- pragma foreign_code("C", float__min = (Min::out),
 		[will_not_call_mercury, thread_safe],
 	"Min = ML_FLOAT_MIN;").
+:- pragma foreign_code("MC++", float__min = (Min::out),
+		[will_not_call_mercury, thread_safe],
+	"Min = MR_BoxedFloat::MinValue;").
 
 float__min(float__min).
 
 	% Smallest x such that x \= 1.0 + x
-:- pragma c_code(float__epsilon = (Eps::out),
+:- pragma foreign_code("C", float__epsilon = (Eps::out),
 		[will_not_call_mercury, thread_safe],
 	"Eps = ML_FLOAT_EPSILON;").
+:- pragma foreign_code("MC++", float__epsilon = (Eps::out),
+		[will_not_call_mercury, thread_safe],
+	"Eps = MR_BoxedFloat::Epsilon;").
 
 float__epsilon(float__epsilon).
 
 	% Radix of the floating-point representation.
-:- pragma c_code(float__radix = (Radix::out),
+:- pragma foreign_code("C", float__radix = (Radix::out),
 		[will_not_call_mercury, thread_safe],
 	"Radix = ML_FLOAT_RADIX;").
+:- pragma foreign_code("MC++", float__radix = (_Radix::out),
+		[will_not_call_mercury, thread_safe], "
+	mercury::runtime::Errors::SORRY(""foreign code for this function"");
+").
 
 float__radix(float__radix).
 
 	% The number of base-radix digits in the mantissa.
-:- pragma c_code(float__mantissa_digits = (MantDig::out),
+:- pragma foreign_code("C", float__mantissa_digits = (MantDig::out),
 		[will_not_call_mercury, thread_safe],
 	"MantDig = ML_FLOAT_MANT_DIG;").
+:- pragma foreign_code("MC++", float__mantissa_digits = (_MantDig::out),
+		[will_not_call_mercury, thread_safe], "
+	mercury::runtime::Errors::SORRY(""foreign code for this function"");
+").
 
 float__mantissa_digits(float__mantissa_digits).
 
 	% Minimum negative integer such that:
 	%	radix ** (min_exponent - 1)
 	% is a normalised floating-point number.
-:- pragma c_code(float__min_exponent = (MinExp::out),
+:- pragma foreign_code("C", float__min_exponent = (MinExp::out),
 		[will_not_call_mercury, thread_safe],
 	"MinExp = ML_FLOAT_MIN_EXP;").
+:- pragma foreign_code("MC++", float__min_exponent = (_MinExp::out),
+		[will_not_call_mercury, thread_safe], "	
+	mercury::runtime::Errors::SORRY(""foreign code for this function"");
+").
 
 float__min_exponent(float__min_exponent).
 
 	% Maximum integer such that:
 	%	radix ** (max_exponent - 1)
 	% is a normalised floating-point number.
-:- pragma c_code(float__max_exponent = (MaxExp::out),
+:- pragma foreign_code("C", float__max_exponent = (MaxExp::out),
 		[will_not_call_mercury, thread_safe],
 	"MaxExp = ML_FLOAT_MAX_EXP;").
+
+:- pragma foreign_code("MC++", float__max_exponent = (_MaxExp::out),
+		[will_not_call_mercury, thread_safe], "	
+	mercury::runtime::Errors::SORRY(""foreign code for this function"");
+").
+
 
 float__max_exponent(float__max_exponent).
 

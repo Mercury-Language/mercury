@@ -80,7 +80,7 @@
 
 :- implementation.
 
-:- type ops__table ---> ops__table.	% XXX
+:- type ops__table ---> ops__table.
 
 :- type ops__category ---> before ; after.
 

@@ -130,6 +130,38 @@ ALL_CFLAGS	= $(CFLAGS) $(EXTRA_CFLAGS) $(TARGET_CFLAGS)
 CFLAGS		=
 EXTRA_CFLAGS	=
 
+# MS_CL is the command line version of Microsoft Visual C++, which we
+# use to compile Managed C++ code in the .NET backend.
+MS_CL		= cl
+ALL_MS_CLFLAGS	= $(MS_CLFLAGS) $(EXTRA_MS_CLFLAGS) $(TARGET_MS_CLFLAGS) \
+		$(LIB_MS_CLFLAGS) $(ALL_CFLAGS)
+MS_CLFLAGS	=
+EXTRA_MS_CLFLAGS =
+LIB_MS_CLFLAGS	= $(patsubst %,-I %,$(EXTRA_C_INCL_DIRS))
+
+# MS_CL_NOASM can be used to turn off assembly generation.  Use
+# MS_CL_NOASM=:noAssembly to turn it off, leave it blank to turn it on.
+MS_CL_NOASM	=
+MS_DOTNET_SDK_DIR=@MS_DOTNET_SDK_DIR@
+# The system libraries.
+MS_CL_LIBS	= "$(MS_DOTNET_SDK_DIR)/Lib/mscoree.lib" \
+		  "$(MS_DOTNET_SDK_DIR)/Lib/kernel32.lib"
+MERC_C_INCL_DIR = @LIBDIR@/inc
+MERC_DLL_DIR    = @LIBDIR@/inc
+
+# MS_ILASM is the Microsoft IL assembler, which turns IL assembly code
+# into bytecode.
+MS_ILASM		= @ILASM@
+ALL_MS_ILASMFLAGS= $(MS_ILASMFLAGS) $(EXTRA_MS_ILASMFLAGS) \
+		$(TARGET_MS_ILASMFLAGS) $(LIB_MS_ILASMFLAGS)
+MS_ILASMFLAGS	=
+EXTRA_MS_ILASMFLAGS =
+LIB_MS_ILASMFLAGS= $(patsubst %,-I %,$(EXTRA_C_INCL_DIRS))
+
+# MS_AL is the Microsoft assembly linker, which creates and installs
+# assemblies.
+MS_AL		= al
+
 ML		= ml
 ALL_MLFLAGS	= $(MLFLAGS) $(EXTRA_MLFLAGS) $(TARGET_MLFLAGS) $(LIB_MLFLAGS)
 MLFLAGS		= $(EXTRA_MLFLAGS)
@@ -322,6 +354,16 @@ EXTRA_TARGET_LIBGRADES = \
 		$(origin EXTRA_LIBGRADES-$*)))
 maybe-base-EXTRA_LIBGRADES- = $(EXTRA_LIBGRADES-$*)
 maybe-base-EXTRA_LIBGRADES-undefined =
+
+TARGET_MS_CLFLAGS = \
+  $(maybe-base-MS_CLFLAGS-$(findstring undefined,$(origin MS_CLFLAGS-$*)))
+maybe-base-MS_CLFLAGS- = $(MS_CLFLAGS-$*)
+maybe-base-MS_CLFLAGS-undefined =
+
+TARGET_MS_ILASMFLAGS = \
+   $(maybe-base-MS_ILASMFLAGS-$(findstring undefined,$(origin MS_ILASMFLAGS-$*)))
+maybe-base-MS_ILASMFLAGS- = $(MS_ILASMFLAGS-$*)
+maybe-base-MS_ILASMFLAGS-undefined =
 
 # Support for compiling Mercury programs with Prolog will probably be
 # dropped one of these days, so it's probably not worth bothering with these.

@@ -10,7 +10,7 @@
 % TODO:
 %	- RTTI for debugging (module_layout, proc_layout, internal_layout)
 %	- trail ops
-%	- foreign language interfacing and inline target code
+%	- foreign language interfacing (trd: what does this mean?)
 %	- packages, classes and inheritance
 %	  (currently we just generate all classes as structs)
 

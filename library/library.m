@@ -48,7 +48,9 @@
 % at configuration time, because that would cause bootstrapping problems --
 % might not have a Mercury compiler around to compile library.m with.
 
-:- pragma c_code(library__version(Version::out), will_not_call_mercury, "
+:- pragma foreign_code("C",
+	library__version(Version::out), will_not_call_mercury,
+"
 	MR_ConstString version_string = 
 		MR_VERSION "", configured for "" MR_FULLARCH;
 	/*
@@ -56,6 +58,18 @@
 	** with type String rather than MR_ConstString.
 	*/
 	Version = (MR_String) (MR_Word) version_string;
+").
+
+:- pragma foreign_code("MC++", "
+	#include ""mercury_conf.h""
+").
+
+:- pragma foreign_code("MC++",
+	library__version(Version::out), will_not_call_mercury,
+"
+	// XXX we should use string literals with an S at the start
+	// so this code uses just managed types.
+	Version = MR_VERSION "", configured for "" MR_FULLARCH;
 ").
 
 %---------------------------------------------------------------------------%

@@ -209,6 +209,19 @@ mercury_ho_call.o:	mercury_unify_compare_body.h
 
 #-----------------------------------------------------------------------------#
 
+ifneq (,$(findstring il,$(GRADE)))
+
+# Managed C++ files compiled in this directory should not be put in an
+# assembly of their own.  We put the runtime and library dlls into a single
+# assembly called `mercury'
+MS_CL_NOASM=:noAssembly
+ 
+runtime: mercury_il.dll mercury_mcpp.dll
+
+mercury_mcpp.dll: mercury_il.dll
+ 
+else
+
 .PHONY: runtime
 runtime: lib$(RT_LIB_NAME).$A lib$(RT_LIB_NAME).$(EXT_FOR_SHARED_LIB)
 runtime: $(RT_LIB_NAME).init
@@ -225,6 +238,8 @@ lib$(RT_LIB_NAME).so: $(PIC_OBJS)
 		$(SHLIB_RPATH_OPT)$(FINAL_INSTALL_MERC_GC_LIB_DIR)	\
 		$(LDFLAGS) $(LDLIBS) $(THREADLIBS)			\
 		$(SHARED_LIBS)
+
+endif
 
 $(RT_LIB_NAME).init: $(CFILES)
 	cat `vpath_find $(CFILES)` | grep '^INIT ' > $(RT_LIB_NAME).init

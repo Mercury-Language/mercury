@@ -835,6 +835,14 @@ inlining__should_inline_proc(PredId, ProcId, BuiltinState, HighLevelCode,
 		( Detism = nondet ; Detism = multidet )
 	),
 
+	% don't inline foreign_code if we are generating IL
+	module_info_globals(ModuleInfo, Globals),
+	globals__get_target(Globals, Target),
+	\+ (
+		Target = il,
+		CalledGoal = pragma_foreign_code(_,_,_,_,_,_,_) - _
+	),
+
 	% Don't inline memoed Aditi predicates.
 	pred_info_get_markers(PredInfo, CalledPredMarkers),
 	\+ check_marker(CalledPredMarkers, aditi_memo),

@@ -57,7 +57,7 @@
 :- implementation.
 :- import_module int, std_util.
 
-:- pragma c_header_code("
+:- pragma foreign_decl("C", "
 
 #include ""mercury_timing.h""
 #include ""mercury_heap.h""
@@ -66,23 +66,33 @@ extern void ML_report_stats(void);
 
 extern void ML_report_full_memory_stats(void);
 
-"). % end pragma c_header_code
+"). % end pragma foreign_decl
 
-:- pragma c_code(report_stats, will_not_call_mercury,
+:- pragma foreign_code("C", report_stats, will_not_call_mercury,
 "
 	ML_report_stats();
 ").
 
-:- pragma c_code(report_full_memory_stats, will_not_call_mercury,
+:- pragma foreign_code("C", report_full_memory_stats, will_not_call_mercury,
 "
 #ifdef	PROFILE_MEMORY
 	ML_report_full_memory_stats();
 #endif
 ").
 
+:- pragma foreign_code("MC++", report_stats, will_not_call_mercury,
+"
+	mercury::runtime::Errors::SORRY(""foreign code for this function"");
+").
+
+:- pragma foreign_code("MC++", report_full_memory_stats, will_not_call_mercury,
+"
+	mercury::runtime::Errors::SORRY(""foreign code for this function"");
+").
+
 %-----------------------------------------------------------------------------%
 
-:- pragma c_code("
+:- pragma foreign_code("C", "
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -605,9 +615,22 @@ repeat(N) :-
 	( true ; impure repeat(N - 1) ).
 
 :- impure pred get_user_cpu_miliseconds(int::out) is det.
-:- pragma c_code(get_user_cpu_miliseconds(Time::out), [will_not_call_mercury],
+:- pragma foreign_code("C",
+	get_user_cpu_miliseconds(Time::out), [will_not_call_mercury],
 "
 	Time = MR_get_user_cpu_miliseconds();
+").
+:- pragma foreign_code("MC++",
+	get_user_cpu_miliseconds(_Time::out), [will_not_call_mercury],
+"
+	// This won't return the elapsed time since program start,
+	// as it begins timing after the first call.
+	// For computing time differences it should be fine.
+	// Time = (int) (1000 * System::Diagnostics::Counter::GetElapsed());
+	// XXX Can't seem to get this to work -- perhaps Diagnositcs isn't
+	// yet available in Beta 1 of the .NET frameworks.
+
+	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 ").
 
 /*
@@ -615,16 +638,30 @@ repeat(N) :-
 ** away, we assign the benchmark output to a volatile global variable.
 */
 
-:- pragma c_header_code("
+:- pragma foreign_decl("C", "
 	extern volatile MR_Word ML_benchmarking_dummy_word;
 ").
-:- pragma c_code("
+:- pragma foreign_code("C", "
 	volatile MR_Word ML_benchmarking_dummy_word;
 ").
 
 :- impure pred do_nothing(T::in) is det.
-:- pragma c_code(do_nothing(X::in), [will_not_call_mercury, thread_safe], "
+:- pragma foreign_code("C", 
+	do_nothing(X::in), [will_not_call_mercury, thread_safe], "
 	ML_benchmarking_dummy_word = (MR_Word) X;
+").
+/*
+** To prevent the MC++ compiler from optimizing the benchmark code
+** away, we assign the benchmark output to a volatile static variable.
+** XXX at least, we should do this but it doesn't seem to work.
+*/
+:- pragma foreign_code("MC++", 
+	do_nothing(X::in), [will_not_call_mercury, thread_safe],
+"
+	mercury::runtime::Errors::SORRY(""foreign code for this function"");
+/*	static volatile MR_Word ML_benchmarking_dummy_word;
+	ML_benchmarking_dummy_word = (MR_Word) X;
+*/
 ").
 
 %-----------------------------------------------------------------------------%
@@ -636,10 +673,18 @@ repeat(N) :-
 %  Create a new int_reference given a term for it to reference.
 :- impure pred new_int_reference(int::in, int_reference::out) is det.
 :- pragma inline(new_int_reference/2).
-:- pragma c_code(new_int_reference(X::in, Ref::out), will_not_call_mercury, "
+:- pragma foreign_code("C",
+	new_int_reference(X::in, Ref::out), will_not_call_mercury,
+"
 	MR_incr_hp(Ref, 1);
 	* (MR_Integer *) Ref = X;
 ").
+:- pragma foreign_code("MC++",
+	new_int_reference(_X::in, _Ref::out), will_not_call_mercury, 
+"
+	mercury::runtime::Errors::SORRY(""foreign code for this function"");
+").
+
 
 :- impure pred incr_ref(int_reference::in) is det.
 incr_ref(Ref) :-
@@ -648,14 +693,24 @@ incr_ref(Ref) :-
 
 :- semipure pred ref_value(int_reference::in, int::out) is det.
 :- pragma inline(ref_value/2).
-:- pragma c_code(ref_value(Ref::in, X::out), will_not_call_mercury, "
+:- pragma foreign_code("C",
+	ref_value(Ref::in, X::out), will_not_call_mercury, "
 	X = * (MR_Integer *) Ref;
+").
+:- pragma foreign_code("MC++",
+	ref_value(_Ref::in, _X::out), will_not_call_mercury, "
+	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 ").
 
 :- impure pred update_ref(int_reference::in, T::in) is det.
 :- pragma inline(update_ref/2).
-:- pragma c_code(update_ref(Ref::in, X::in), will_not_call_mercury, "
+:- pragma foreign_code("C",
+	update_ref(Ref::in, X::in), will_not_call_mercury, "
 	* (MR_Integer *) Ref = X;
+").
+:- pragma foreign_code("MC++",
+	update_ref(_Ref::in, _X::in), will_not_call_mercury, "
+	mercury::runtime::Errors::SORRY(""foreign code for this function"");
 ").
 
 %-----------------------------------------------------------------------------%

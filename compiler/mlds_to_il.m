@@ -288,7 +288,14 @@ generate_method_defn(FunctionDefn) -->
 		( { MaybeStatement = yes(Statement) } -> 
 			statement_to_il(Statement, InstrsTree0)
 		;
-			{ InstrsTree0 = empty }
+				% If there is no function body,
+				% generate forwarding code instead.
+				% This can happen with :- external
+			atomic_statement_to_il(target_code(lang_C, []),
+				InstrsTree0),
+				% The code might reference locals...
+			il_info_add_locals(["succeeded" - 
+				mlds__native_bool_type])
 		),
 
 			% If this is main, add the entrypoint, set a
@@ -1744,7 +1751,7 @@ mlds_type_to_ilds_type(mlds__class_type(Class, _Arity, _Kind)) = ILType :-
 	ILType = ilds__type([], class(FullClassName)).
 
 mlds_type_to_ilds_type(mlds__commit_type) =
-	ilds__type([], class(["mercury", "commit"])).
+	ilds__type([], class(["mercury", "runtime", "Commit"])).
 
 mlds_type_to_ilds_type(mlds__generic_env_ptr_type) = il_envptr_type.
 
@@ -2181,22 +2188,22 @@ defn_to_local(ModuleName,
 
 convert_to_object(Type) = methoddef(call_conv(no, default), 
 		simple_type(il_generic_simple_type),
-		class_member_name(ConvertClass, id("ToObject")), [Type]) :-
-	ConvertClass = ["mercury", "mr_convert"].
+		class_member_name(il_conversion_class_name, id("ToObject")),
+		[Type]).
 
 :- func convert_from_object(ilds__type) = methodref.
 
 convert_from_object(Type) = 
 	methoddef(call_conv(no, default), simple_type(SimpleType),
-		class_member_name(ConvertClass, id(Id)), [il_generic_type]) :-
-	ConvertClass = ["mercury", "mr_convert"],
+		class_member_name(il_conversion_class_name, id(Id)),
+			[il_generic_type]) :-
 	Type = ilds__type(_, SimpleType),
 	ValueClassName = simple_type_to_value_class_name(SimpleType),
 	string__append("To", ValueClassName, Id).
 
 
 	% XXX String and Array should be converted to/from Object using a
-	% cast, not a call to mr_convert.  When that is done they can be
+	% cast, not a call to runtime convert.  When that is done they can be
 	% removed from this list
 :- func simple_type_to_value_class_name(simple_type) = string.
 simple_type_to_value_class_name(int8) = "Int8".
@@ -2281,6 +2288,28 @@ il_array_type = ilds__type([], '[]'(il_generic_type, [])).
 
 %-----------------------------------------------------------------------------%
 %
+% The class that performs conversion operations
+%
+
+:- func il_conversion_class_name = ilds__class_name.
+il_conversion_class_name = ["mercury", "runtime", "Convert"].
+
+%-----------------------------------------------------------------------------%
+%
+% The mapping to the exception type.
+%
+
+:- func il_exception_type = ilds__type.
+il_exception_type = ilds__type([], il_exception_simple_type).
+
+:- func il_exception_simple_type = simple_type.
+il_exception_simple_type = class(il_exception_class_name).
+
+:- func il_exception_class_name = ilds__class_name.
+il_exception_class_name = ["mercury", "runtime", "Exception"].
+
+%-----------------------------------------------------------------------------%
+%
 % The mapping to the environment type.
 %
 
@@ -2291,7 +2320,7 @@ il_envptr_type = ilds__type([], il_envptr_simple_type).
 il_envptr_simple_type = class(il_envptr_class_name).
 
 :- func il_envptr_class_name = ilds__class_name.
-il_envptr_class_name = ["mercury", "envptr"].
+il_envptr_class_name = ["mercury", "runtime", "Environment"].
 
 
 %-----------------------------------------------------------------------------%
@@ -2306,7 +2335,7 @@ il_commit_type = ilds__type([], il_commit_simple_type).
 il_commit_simple_type = class(il_commit_class_name).
 
 :- func il_commit_class_name = ilds__class_name.
-il_commit_class_name = ["mercury", "commit"].
+il_commit_class_name = ["mercury", "runtime", "Commit"].
 
 %-----------------------------------------------------------------------------
 
@@ -2436,7 +2465,7 @@ call_constructor(CtorMemberName) =
 throw_unimplemented(String) = 
 	node([
 		ldstr(String),
-		newobj(get_instance_methodref(["mercury", "mercury_exception"],
+		newobj(get_instance_methodref(il_exception_class_name,
 			ctor, void, [il_string_type])),
 		throw]
 	).
