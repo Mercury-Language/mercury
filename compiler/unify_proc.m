@@ -469,8 +469,8 @@ unify_proc__generate_clause_info(SpecialPredId, Type, TypeBody, Context,
 	special_pred_info(SpecialPredId, HeadVarType,
 		_PredName, ArgTypes, _Modes, _Det),
 	unify_proc__info_init(ModuleInfo, VarTypeInfo0),
-	unify_proc__make_fresh_vars_from_types(ArgTypes, Args,
-				VarTypeInfo0, VarTypeInfo1),
+	unify_proc__make_fresh_named_vars_from_types(ArgTypes, "HeadVar__", 1,
+		Args, VarTypeInfo0, VarTypeInfo1),
 	( SpecialPredsOpt = yes ->
 		( SpecialPredId = unify, Args = [H1, H2] ->
 			unify_proc__generate_unify_clauses(TypeBody, H1, H2,
@@ -1056,6 +1056,20 @@ unify_proc__build_call(Name, ArgVars, Context, Goal) -->
 
 %-----------------------------------------------------------------------------%
 
+:- pred unify_proc__make_fresh_named_vars_from_types(list(type), string, int,
+	list(prog_var), unify_proc_info, unify_proc_info).
+:- mode unify_proc__make_fresh_named_vars_from_types(in, in, in, out, in, out)
+	is det.
+
+unify_proc__make_fresh_named_vars_from_types([], _, _, []) --> [].
+unify_proc__make_fresh_named_vars_from_types([Type | Types], BaseName, Num,
+		[Var | Vars]) -->
+	{ string__int_to_string(Num, NumStr) },
+	{ string__append(BaseName, NumStr, Name) },
+	unify_proc__info_new_named_var(Type, Name, Var),
+	unify_proc__make_fresh_named_vars_from_types(Types, BaseName, Num + 1,
+		Vars).
+
 :- pred unify_proc__make_fresh_vars_from_types(list(type), list(prog_var),
 			unify_proc_info, unify_proc_info).
 :- mode unify_proc__make_fresh_vars_from_types(in, out, in, out) is det.
@@ -1149,6 +1163,10 @@ unify_proc__unify_var_lists_2([_Name - Type | ArgTypes], ExistQTVars,
 		unify_proc_info, unify_proc_info).
 :- mode unify_proc__info_new_var(in, out, in, out) is det.
 
+:- pred unify_proc__info_new_named_var(type, string, prog_var,
+		unify_proc_info, unify_proc_info).
+:- mode unify_proc__info_new_named_var(in, in, out, in, out) is det.
+
 :- pred unify_proc__info_extract(unify_proc_info, prog_varset,
 		map(prog_var, type)).
 :- mode unify_proc__info_extract(in, out, out) is det.
@@ -1193,6 +1211,12 @@ unify_proc__info_new_var(Type, Var,
 		unify_proc_info(VarSet0, Types0, ModuleInfo),
 		unify_proc_info(VarSet, Types, ModuleInfo)) :-
 	varset__new_var(VarSet0, Var, VarSet),
+	map__det_insert(Types0, Var, Type, Types).
+
+unify_proc__info_new_named_var(Type, Name, Var,
+		unify_proc_info(VarSet0, Types0, ModuleInfo),
+		unify_proc_info(VarSet, Types, ModuleInfo)) :-
+	varset__new_named_var(VarSet0, Name, Var, VarSet),
 	map__det_insert(Types0, Var, Type, Types).
 
 unify_proc__info_extract(unify_proc_info(VarSet, Types, _ModuleInfo),
