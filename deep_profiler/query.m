@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2002 The University of Melbourne.
+% Copyright (C) 2001-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1153,7 +1153,7 @@ call_site_summary_group_to_html(Pref, Deep, FileName, LineNumber, ProcName,
 
 multi_call_site_add_suffix(Pref, RawCallSiteName, CallList) = CallSiteName :-
 	( CallList = [] ->
-		CallSiteName = RawCallSiteName ++ " (no&nbps;calls&nbps;made)"
+		CallSiteName = RawCallSiteName ++ " (no&nbsp;calls&nbsp;made)"
 	; Pref ^ pref_summarize = summarize ->
 		CallSiteName = RawCallSiteName ++ " (summary)"
 	;
