@@ -1162,7 +1162,7 @@ EXT_FOR_PIC_OBJECTS=pic_o
 EXT_FOR_SHARED_LIB=a
 
 case "$host" in
-	i?86-*-linux)
+	i?86-*-linux|i?86-*-linux-gnu)
 		AC_MSG_RESULT(yes)
 		EXT_FOR_SHARED_LIB=so
 		;;
