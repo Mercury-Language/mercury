@@ -366,7 +366,7 @@ MR_create3(MR_Word w1, MR_Word w2, MR_Word w3)
 					size_in_words);			\
 			*(T *)(box) = (value);				\
 			MR_maybe_record_allocation(size_in_words,	\
-				"", "foreign type: " MR_STRINGIZE(T));	\
+				"", "foreign type: " MR_STRINGIFY(T));	\
 		} else {						\
 			/* We can't take the address of `box' here, */	\
 			/* since it might be a global register. */	\
