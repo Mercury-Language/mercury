@@ -54,14 +54,14 @@ bool		MR_trace_enabled = FALSE;
 /*
 ** MR_trace_call_seqno counts distinct calls. The prologue of every
 ** procedure assigns the current value of this counter as the sequence number
-** of that invocation and increments the counter. This is the only way that
-** MR_trace_call_seqno is modified.
+** of that invocation and increments the counter. This and retry are the only
+** ways that MR_trace_call_seqno is modified.
 **
 ** MR_trace_call_depth records the current depth of the call tree. The prologue
 ** of every procedure assigns the current value of this variable plus one
 ** as the depth of that invocation. Just before making a call, the caller
 ** will set MR_trace_call_depth to its own remembered depth value. 
-** These are the only ways in which MR_trace_call_depth is modified.
+** These and retry are the only ways in which MR_trace_call_depth is modified.
 **
 ** Although neither MR_trace_call_seqno nor MR_trace_call_depth are used
 ** directly in this module, the seqno and depth arguments of MR_trace
@@ -74,9 +74,9 @@ MR_Unsigned	MR_trace_call_depth = 0;
 
 /*
 ** MR_trace_event_number is a simple counter of events. This is used in
-** two places: here, for display to the user and for skipping a given number
-** of events, and when printing an abort message, so that the programmer
-** can zero in on the source of the problem more quickly.
+** two places: in the debugger for display to the user and for skipping
+** a given number of events, and when printing an abort message, so that
+** the programmer can zero in on the source of the problem more quickly.
 */
 
 MR_Unsigned	MR_trace_event_number = 0;
