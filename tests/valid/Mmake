@@ -23,6 +23,7 @@ SOURCES= \
 	higher_order3.m\
 	implied_mode.m \
 	indexing.m \
+	lambda_inference.m\
 	loop.m \
 	multidet_prune1.m \
 	multidet_test.m \
