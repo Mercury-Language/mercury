@@ -12,6 +12,8 @@ Options:
 		Display this usage message.
 	-j <num-jobs>, --jobs <num-jobs>
 		Run using <num-jobs> different parallel processes.
+	-k, --keep-objs
+		Keep the stage 2 object files even if stage 2 is successful.
 	-m <mmake-args>, --mmake-args <mmake-args>
 		Pass <mmake-args> as options to \`mmake'.
 	-o <filename>, --output-file <filename>
@@ -47,6 +49,7 @@ Options:
 "
 
 jfactor=""
+keep_objs=false
 mmake_opts="-k"
 outfile=""
 runtests=true
@@ -71,6 +74,9 @@ while [ $# -gt 0 ]; do
 		jfactor="-j` expr $1 : '-j\(.*\)' `" ;;
 	--jobs*)
 		jfactor="--jobs` expr $1 : '--jobs\(.*\)' `" ;;
+
+	-k|--keep-objs)
+		keep_objs=true ;;
 
 	-m|--mmake)
 		mmake_opts="$mmake_opts $2"; shift ;;
@@ -459,6 +465,17 @@ then
 	else
 		echo "building of stage 2 not successful"
 		exit 1
+	fi
+
+	if $keep_objs
+	then
+		true
+	else
+		/bin/rm -f $root/stage2/library/[a-l]*.o < /dev/null
+		/bin/rm -f $root/stage2/library/[m-z]*.o < /dev/null
+		/bin/rm -f $root/stage2/compiler/[a-l]*.o < /dev/null
+		/bin/rm -f $root/stage2/compiler/[i-s]*.o < /dev/null
+		/bin/rm -f $root/stage2/compiler/[t-z]*.o < /dev/null
 	fi
 
 	MERCURY_COMPILER=$root/stage2/compiler/mercury_compile
