@@ -109,7 +109,7 @@ extern int sys_nerr;
 extern char *sys_errlist[];
 
 char *strerror(int errnum) {
-	if (ernum >= 0 && errnum < sys_nerr && sys_errlist[errnum] != NULL) {
+	if (errnum >= 0 && errnum < sys_nerr && sys_errlist[errnum] != NULL) {
 		return sys_errlist[errnum];
 	} else {
 		static char buf[30];
