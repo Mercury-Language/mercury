@@ -589,7 +589,12 @@ code_gen__generate_forced_goal(Det, Goal, Code) -->
 
 code_gen__generate_goal(ContextModel, Goal - GoalInfo, Code) -->
 		% Make any changes to liveness before Goal
-	code_aux__pre_goal_update(GoalInfo),
+	{ goal_is_atomic(Goal) ->
+		IsAtomic = yes
+	;
+		IsAtomic = no
+	},
+	code_aux__pre_goal_update(GoalInfo, IsAtomic),
 	code_info__get_instmap(InstMap),
 	(
 		{ InstMap \= unreachable }
@@ -1152,7 +1157,7 @@ code_gen__generate_negation(Goal, Code) -->
 			% (special-cased, though it may be)
 			% we need to apply the pre- and post-
 			% updates.
-		code_aux__pre_goal_update(GoalInfo),
+		code_aux__pre_goal_update(GoalInfo, yes),
 		code_info__produce_variable(L, Code0, ValA),
 		code_info__produce_variable(R, Code1, ValB),
 		code_aux__post_goal_update(GoalInfo),

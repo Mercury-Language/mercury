@@ -41,14 +41,15 @@
 :- pred code_aux__contains_simple_recursive_call(hlds__goal, code_info, bool).
 :- mode code_aux__contains_simple_recursive_call(in, in, out) is semidet.
 
-	% code_aux__pre_goal_update(GoalInfo, OldCodeInfo, NewCodeInfo)
+	% code_aux__pre_goal_update(GoalInfo, Atomic, OldCodeInfo, NewCodeInfo)
 	% updates OldCodeInfo to produce NewCodeInfo with the changes
 	% specified by GoalInfo. The components that change are:
 	%	- The set of live variables has the predeath set from
 	%	  GoalInfo removed (by set difference)
 	%	- The set of live variable has the prebirth set from GoalInfo
 	%	  added (set union)
-	%	- The set of live variables has the postdeath set from GoalInfo
+	%	- If (and only if) `Atomic' is yes, then
+	%	  the set of live variables has the postdeath set from GoalInfo
 	%	  removed (by set difference). These variables are removed so
 	%	  that they do not get saved across calls and positioned where
 	%	  branched computations join unnecessarily.
@@ -58,17 +59,20 @@
 	%	  backtracking (and therefore still need to be stored on
 	%	  the stack) are updated (those in the goal-info replace
 	%	  the existing set).
-:- pred code_aux__pre_goal_update(hlds__goal_info, code_info, code_info).
-:- mode code_aux__pre_goal_update(in, in, out) is det.
+:- pred code_aux__pre_goal_update(hlds__goal_info, bool, code_info, code_info).
+:- mode code_aux__pre_goal_update(in, in, in, out) is det.
 
 	% code_aux__post_goal_update(GoalInfo, OldCodeInfo, NewCodeInfo)
 	% updates OldCodeInfo to produce NewCodeInfo with the changes described
 	% by GoalInfo. These are:
+	%	- The set of live variables has the postdeath set from GoalInfo
+	%	  removed (by set difference).
 	%	- The variables that died during the goal are removed from the
 	%	  exprn_info structure (from the post-death set).
 	%	- Variables that became live at the end of the goal (the post-
 	%	  birth set) are added to the exprn_info structure and to the
 	%	  set of live variables.
+	%	- The instmap delta is applied to the current instmap.
 :- pred code_aux__post_goal_update(hlds__goal_info, code_info, code_info).
 :- mode code_aux__post_goal_update(in, in, out) is det.
 
@@ -207,7 +211,7 @@ code_aux__is_recursive_call(Goal, CodeInfo) :-
 
 	% Update the code info structure to be consistent
 	% immediately prior to generating a goal
-code_aux__pre_goal_update(GoalInfo) -->
+code_aux__pre_goal_update(GoalInfo, Atomic) -->
 	{ goal_info_nondet_lives(GoalInfo, NondetLives) },
 	code_info__set_nondet_lives(NondetLives),
 	{ goal_info_pre_delta_liveness(GoalInfo, PreDelta) },
@@ -215,8 +219,12 @@ code_aux__pre_goal_update(GoalInfo) -->
 	code_info__update_deadness_info(PreDelta),
 	{ PreDelta = _ - PreDeaths },
 	code_info__make_vars_dead(PreDeaths),
-	{ goal_info_post_delta_liveness(GoalInfo, PostDelta) },
-	code_info__update_deadness_info(PostDelta).
+	( { Atomic = yes } ->
+		{ goal_info_post_delta_liveness(GoalInfo, PostDelta) },
+		code_info__update_deadness_info(PostDelta)
+	;
+		[]
+	).
 
 	% Update the code info structure to be consistent
 	% immediately after generating a goal

@@ -1234,10 +1234,9 @@ code_exprn__produce_vars([V | Vs], [V - R | Rest], Code) -->
 %------------------------------------------------------------------------------%
 
 code_exprn__produce_var(Var, Rval, Code) -->
-	code_exprn__get_vars(Vars0),
-	{ map__lookup(Vars0, Var, Stat0) },
+	code_exprn__get_var_status(Var, Stat),
 	(
-		{ Stat0 = evaled(Rvals) },
+		{ Stat = evaled(Rvals) },
 		\+ (
 			{ set__member(RvalX, Rvals) },
 			{

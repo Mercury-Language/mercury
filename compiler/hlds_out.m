@@ -1514,9 +1514,9 @@ hlds_out__write_proc(Indent, ModuleInfo, PredId, ProcId, ImportStatus, Proc) -->
 	( { ImportStatus = pseudo_imported, ProcId = 0 } ->
 		[]
 	;
-		% { proc_info_call_info(Proc, CallInfo) },
-		% hlds_out__write_indent(Indent),
-		% hlds_out__write_call_info(Indent, CallInfo, VarSet),
+		{ proc_info_call_info(Proc, CallInfo) },
+		hlds_out__write_indent(Indent),
+		hlds_out__write_call_info(Indent, CallInfo, VarSet),
 		hlds_out__write_indent(Indent),
 		{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
 		hlds_out__write_clause_head(ModuleInfo, PredId, VarSet,

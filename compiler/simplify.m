@@ -135,7 +135,7 @@ simplify__goal_2(conj(Goals0), GoalInfo0, InstMap0, DetInfo, Goal, Msgs) :-
 		)
 	).
 
-simplify__goal_2(disj(Disjuncts0, FV), GoalInfo, InstMap0, DetInfo,
+simplify__goal_2(disj(Disjuncts0, FV), _GoalInfo, InstMap0, DetInfo,
 		Goal, Msgs) :-
 	( Disjuncts0 = [] ->
 		Goal = disj([], FV),
@@ -146,6 +146,9 @@ simplify__goal_2(disj(Disjuncts0, FV), GoalInfo, InstMap0, DetInfo,
 	;
 		simplify__disj(Disjuncts0, InstMap0, DetInfo, Disjuncts, MsgsA),
 		(
+	/****
+	XXX This optimization is not correct, see comment below
+	    at the definition of fixup_disj
 			goal_info_get_determinism(GoalInfo, Detism),
 			determinism_components(Detism, _CanFail, MaxSoln),
 			MaxSoln \= at_most_many
@@ -164,6 +167,7 @@ simplify__goal_2(disj(Disjuncts0, FV), GoalInfo, InstMap0, DetInfo,
 				GoalInfo, FV, InstMap0, DetInfo, Goal,
 				MsgsA, Msgs)
 		;
+	****/
 			Goal = disj(Disjuncts, FV),
 			Msgs = MsgsA
 		)

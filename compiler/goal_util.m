@@ -352,11 +352,24 @@ goal_util__name_apart_goalinfo(GoalInfo0, Must, Subn, GoalInfo) :-
 		MaybeInstMap0 = reachable(InstMap0)
 	->
 		goal_util__rename_follow_vars(InstMap0, Must, Subn, InstMap),
-		MaybeInstMap = reachable(InstMap)
+		MaybeInstMap = reachable(InstMap),
+		goal_info_set_instmap_delta(GoalInfo3, MaybeInstMap, GoalInfo4)
 	;
-		MaybeInstMap = MaybeInstMap0
+		GoalInfo4 = GoalInfo3
 	),
-	goal_info_set_instmap_delta(GoalInfo3, MaybeInstMap, GoalInfo).
+
+	goal_info_nondet_lives(GoalInfo4, NondetLives0),
+	goal_util__name_apart_set(NondetLives0, Must, Subn, NondetLives),
+	goal_info_set_nondet_lives(GoalInfo4, NondetLives, GoalInfo5),
+
+	goal_info_cont_lives(GoalInfo5, MaybeContLives0),
+	( MaybeContLives0 = yes(ContLives0) ->
+		goal_util__name_apart_set(ContLives0, Must, Subn, ContLives),
+		MaybeContLives = yes(ContLives),
+		goal_info_set_cont_lives(GoalInfo5, MaybeContLives, GoalInfo)
+	;
+		GoalInfo = GoalInfo5
+	).
 
 %-----------------------------------------------------------------------------%
 

@@ -119,7 +119,7 @@ middle_rec__generate_switch(Var, BaseConsId, Base, Recursive, FollowVars,
 	{ code_util__make_local_entry_label(ModuleInfo, PredId, ProcId, no,
 		EntryLabel) },
 
-	code_aux__pre_goal_update(SwitchGoalInfo),
+	code_aux__pre_goal_update(SwitchGoalInfo, no),
 
 	unify_gen__generate_tag_test(Var, BaseConsId, BaseLabel, NegTestCode),
 	{ tree__flatten(NegTestCode, NegTestListList) },

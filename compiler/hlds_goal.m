@@ -334,10 +334,14 @@
 
 :- implementation.
 
+	% NB. Don't forget to check goal_util__name_apart_goalinfo
+	% if this structure is modified.
 :- type hlds__goal_info
 	---> goal_info(
 		delta_liveness,	% the changes in liveness after goal
 				% (computed by liveness.m)
+				% NB for atomic goals, the post-deadness
+				% should be applied _before_ the goal
 		unit,		% junk
 		determinism, 	% the overall determinism of the goal
 				% (computed during determinism analysis)
@@ -359,11 +363,10 @@
 				% For conditions of ite's it is the
 				% set of variables
 				% live after the condition.
-				% (XXX For disjunctions in det or semidet
+				% (XXX For disjuncts in model_det or model_semi
 				% disjunctions, it should perhaps be the set of
 				% variables live at the start of the next
-				% disjunction.  But we don't handle them
-				% yet.)
+				% disjunct.  But we don't handle them yet.)
 				% These are the only kinds of goal that
 				% use this field.
 				% (Computed by store_alloc.m.)
@@ -374,7 +377,9 @@
 		set(var)
 				% The "nondet lives" -
 				% Nondet live variables that may be 'dead' but
-				% still nondet live.
+				% still nondet live.  In other words, they
+				% will not be accessed on forwards execution,
+				% but may be needed on backtracking.
 				% (Computed by liveness.m.)
 	).
 

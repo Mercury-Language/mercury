@@ -74,7 +74,8 @@ disj_gen__generate_det_disj_2([Goal|Goals], EndLabel, Code) -->
 			RestoreAndPopCode),
 		code_gen__generate_forced_goal(GoalModel, Goal, GoalCode),
 		{ EndCode = node([label(EndLabel) - "end of det disj"]) },
-		{ Code = tree(RestoreAndPopCode, tree(GoalCode, EndCode)) }
+		{ Code = tree(RestoreAndPopCode, tree(GoalCode, EndCode)) },
+		code_info__remake_with_store_map
 	;
 		code_info__get_live_variables(VarList),
 		{ set__list_to_set(VarList, Vars) },
@@ -96,7 +97,6 @@ disj_gen__generate_det_disj_2([Goal|Goals], EndLabel, Code) -->
 			% we need to use the saved input vars.
 		code_info__slap_code_info(CodeInfo),
 		code_info__restore_failure_cont(RestoreContCode),
-		code_info__remake_with_call_info,
 		(
 			{ Goals \= [] }
 		->
@@ -123,7 +123,6 @@ disj_gen__generate_semi_disj(Goals, FollowVars, Code) -->
 :- mode disj_gen__generate_semi_disj_2(in, in, out, in, out) is det.
 
 disj_gen__generate_semi_disj_2(Goals, _FollowVars, Code) -->
-	code_info__generate_nondet_saves(SaveVarsCode),
 /****
 % This heap restore code only works for goals with no output variables.
 % It wouldn't work for nondet_cc disjuctions in single-solution contexts.
@@ -144,8 +143,7 @@ disj_gen__generate_semi_disj_2(Goals, _FollowVars, Code) -->
 	code_info__remake_with_store_map,
 /*
 	code_info__maybe_restore_hp(RestoreHeap, HPRestoreCode),
-	{ Code = tree(tree(SaveVarsCode, HPSaveCode),
-			tree(GoalsCode, HPRestoreCode)) }.
+	{ Code = tree(HPSaveCode, tree(GoalsCode, HPRestoreCode)) }.
 */
 	code_info__get_globals(Globals),
 		% If we are using constraints, save the current solver state
@@ -153,8 +151,7 @@ disj_gen__generate_semi_disj_2(Goals, _FollowVars, Code) -->
 	{ globals__lookup_bool_option(Globals,
 			constraints, SaveTicket) },
 	code_info__maybe_save_ticket(SaveTicket, SaveTicketCode),
-	{ Code = tree(SaveVarsCode, 
-		 tree(SaveTicketCode, GoalsCode)) }.
+	{ Code = tree(SaveTicketCode, GoalsCode) }.
 
 :- pred disj_gen__generate_semi_cases(list(hlds__goal), label,
 					code_tree, code_info, code_info).
@@ -196,12 +193,15 @@ disj_gen__generate_semi_cases([Goal|Goals], EndLabel, GoalsCode) -->
 			% we need to use the saved input vars.
 		code_info__slap_code_info(CodeInfo),
 		code_info__restore_failure_cont(RestoreContCode),
-		code_info__remake_with_call_info,
 
 			% generate the rest of the cases.
 		disj_gen__generate_semi_cases(Goals, EndLabel, GoalsCode0),
+		{ SuccCode = node([
+			goto(label(EndLabel)) - "Jump to end of semidet disj"
+		  ]) },
 		{ GoalsCode = tree(tree(ModContCode, 
-				tree(RestoreTicketCode, ThisCode)),
+				tree(RestoreTicketCode,
+				tree(ThisCode, SuccCode))),
 				tree(RestoreContCode, GoalsCode0)) }
 	).
 
