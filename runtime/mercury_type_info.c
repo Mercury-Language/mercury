@@ -146,6 +146,8 @@ Define_entry(mercury__builtin_compare_pred_3_0);
 END_MODULE
 
 	/* 
+	** MR_create_type_info():
+	**
 	** Given a type_info (term_type_info) which contains a
 	** base_type_info pointer and possibly other type_infos
 	** giving the values of the type parameters of this type,
@@ -161,7 +163,8 @@ END_MODULE
 	**
 	** We allocate memory for a new type_info on the Mercury heap,
 	** copy the necessary information, and return a pointer to the
-	** new type_info. 
+	** new type_info.  You need to wrap save_transient_hp()
+	** and restore_transient_hp() around calls to this function.
 	**
 	** In the case where the argument's pseudo_type_info is a
 	** base_type_info with no arguments, we don't copy the
@@ -259,7 +262,7 @@ MR_create_type_info(Word *term_type_info, Word *arg_pseudo_type_info)
 ** (based on the addresses of the base_type_infos, or in
 ** the case of higher order types, the arity).
 **
-** You need to save and restore transient registers around
+** You need to wrap save/restore_transient_hp() around
 ** calls to this function.
 */
 
@@ -372,7 +375,7 @@ MR_compare_type_info(Word t1, Word t2)
 	** This only looks past equivalences of the top level type, not
 	** the argument typeinfos.
 	** 
-	** You need to save and restore transient registers around
+	** You need to wrap save/restore_transient_hp() around
 	** calls to this function.
 	*/
 

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-1998 The University of Melbourne.
+** Copyright (C) 1995-1999 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -55,7 +55,7 @@
 ** BEWARE: this may modify `hp', so it must only be called from
 ** places where `hp' is valid.  If calling it from inside a C function,
 ** rather than inside Mercury code, you may need to call
-** save/restore_transient_regs().
+** save/restore_transient_hp().
 **
 ** Algorithm: if the string is aligned, just set ptr equal to it.
 ** Otherwise, allocate space on the heap and copy the C string to
@@ -78,7 +78,7 @@
 ** BEWARE: this may modify `hp', so it must only be called from
 ** places where `hp' is valid.  If calling it from inside a C function,
 ** rather than inside Mercury code, you may need to call
-** save/restore_transient_regs().
+** save/restore_transient_hp().
 */
 #define make_aligned_string_copy(ptr, string) 				\
 	do {								\

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-1998 The University of Melbourne.
+** Copyright (C) 1997-1999 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -413,13 +413,13 @@ TrieNode MR_table_type(TrieNode Table, Word *type_info, Word data_value);
 
   #define MR_TABLE_SAVE_ANSWER(Offset, ABlock, Value, TypeInfo)		\
 	do {								\
-		save_transient_registers();				\
+		save_transient_hp();					\
 		{ Word local_val = Value;				\
 		(* ((AnswerBlock) ABlock))[Offset] = 			\
 			deep_copy(&local_val, (Word *) (Word) &TypeInfo,\
 				NULL, NULL);				\
 		}							\
-		restore_transient_registers();				\
+		restore_transient_hp();					\
 	} while(0)
 
 #endif /* CONSERVATIVE_GC */

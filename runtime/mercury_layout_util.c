@@ -129,9 +129,9 @@ MR_make_var_list(const MR_Stack_Layout_Label *layout, Word *saved_regs)
 	base_curfr = MR_saved_curfr(saved_regs);
 
 	/* build up the live variable list, starting from the end */
-	restore_transient_registers();
+	restore_transient_hp();
 	univ_list = list_empty();
-	save_transient_registers();
+	save_transient_hp();
 
 	/* 
 	** If no information on live variables is available, return the 
@@ -171,19 +171,19 @@ MR_make_var_list(const MR_Stack_Layout_Label *layout, Word *saved_regs)
 		/*
 		** Create a term of type `univ' to hold the type & value,
 		** and cons it onto the list.
-		** Note that the calls to save/restore transient registers
+		** Note that the calls to save/restore_transient_hp()
 		** can't be hoisted out of the loop, because
 		** MR_get_type_and_value() calls MR_create_type_info()
 		** which may allocate memory using incr_saved_hp.
 		*/
 
-		restore_transient_registers();
+		restore_transient_hp();
 		incr_hp(univ, 2);
 		field(mktag(0), univ, UNIV_OFFSET_FOR_TYPEINFO) = type_info;
 		field(mktag(0), univ, UNIV_OFFSET_FOR_DATA) = value;
 		
 		univ_list = list_cons(univ, univ_list);
-		save_transient_registers();
+		save_transient_hp();
 	}
 
 	return univ_list;
