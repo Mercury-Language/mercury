@@ -1863,7 +1863,8 @@ string__float_to_f_string(_, _) :-
 	string__to_float(FloatString::in, FloatVal::out),
 		[will_not_call_mercury, promise_pure, thread_safe], "{
 	// leading or trailing whitespace is not allowed
-	if (System::Char::IsWhiteSpace(FloatString, 0) ||
+	if (FloatString->Length == 0 ||
+	    System::Char::IsWhiteSpace(FloatString, 0) ||
 	    System::Char::IsWhiteSpace(FloatString, FloatString->Length - 1))
 	{
 	    SUCCESS_INDICATOR = MR_FALSE;
