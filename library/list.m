@@ -505,11 +505,31 @@
 	in, in, out) is det.
 
 %-----------------------------------------------------------------------------%
+
+	% list__series(X, OK, Succ) = [X0, X1, ..., Xn]
+	% 	where X0 = X and successive elements Xj, Xk
+	% 	are computed as Xk = Succ(Xj).  The series
+	% 	terminates as soon as an element Xi is
+	% 	generated such that OK(Xi) fails; Xi is not
+	% 	included in the output.
+	%
+:- func list__series(T, pred(T), func(T) = T) = list(T).
+:- mode list__series(in, pred(in) is semidet, func(in) = out is det) = out
+		is det.
+
+% ---------------------------------------------------------------------------- %
+
+	% Lo `..` Hi = [Lo, Lo + 1, ..., Hi] if Lo =< Hi
+	%            =                    [] otherwise
+	%
+:- func int `..` int = list(int).
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module bintree_set, require.
+:- import_module bintree_set, require, std_util.
 
 %-----------------------------------------------------------------------------%
 
@@ -1328,6 +1348,20 @@ list__merge_and_remove_dups(F, Xs, Ys) = Zs :-
 % ---------------------------------------------------------------------------- %
 
 L1 ++ L2 = list__append(L1, L2).
+
+% ---------------------------------------------------------------------------- %
+
+list__series(I, OK, Succ) =
+	( if OK(I) then
+		[I | list__series(Succ(I), OK, Succ)]
+	  else
+	  	[]
+	).
+
+% ---------------------------------------------------------------------------- %
+
+Lo `..` Hi =
+	list__series(Lo, ( pred(I::in) is semidet :- I =< Hi ), plus(1)).
 
 % ---------------------------------------------------------------------------- %
 % ---------------------------------------------------------------------------- %
