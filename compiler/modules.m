@@ -649,6 +649,8 @@ choose_file_name(ModuleName, BaseName, Ext, MkDir, FileName) -->
 		; Ext = ".check"
 		; Ext = ".ints"
 		; Ext = ".int3s"
+		; Ext = ".rlos"
+		; Ext = ".ils"
 		; Ext = ".opts"
 		; Ext = ".trans_opts"
 		% The current interface to `mercury_update_interface'
@@ -1694,6 +1696,7 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 		module_name_to_file_name(ModuleName, ".c", no, CFileName),
 		module_name_to_file_name(ModuleName, ".$O", no, ObjFileName),
 		module_name_to_file_name(ModuleName, ".rlo", no, RLOFileName),
+		module_name_to_file_name(ModuleName, ".il", no, ILFileName),
 		module_name_to_file_name(ModuleName, ".pic_o", no,
 							PicObjFileName),
 		module_name_to_split_c_file_pattern(ModuleName, ".$O",
@@ -1706,7 +1709,8 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 			PicObjFileName, " ",
 			ObjFileName, " ",
 			SplitObjPattern, " ",
-			RLOFileName, " : ",
+			RLOFileName, " ",
+			ILFileName, " : ",
 			SourceFileName
 		] ),
 		write_dependencies_list(ParentDeps, ".int0", DepStream),
@@ -2663,6 +2667,12 @@ generate_dv_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 	io__write_string(DepStream, "\n"),
 
 	io__write_string(DepStream, MakeVarName),
+	io__write_string(DepStream, ".ils = "),
+	write_compact_dependencies_list(Modules, "$(ils_subdir)", ".il",
+					Basis, DepStream),
+	io__write_string(DepStream, "\n"),
+
+	io__write_string(DepStream, MakeVarName),
 	io__write_string(DepStream, ".pic_os = "),
 	write_compact_dependencies_list(Modules, "$(os_subdir)",
 					".$(EXT_FOR_PIC_OBJECTS)",
@@ -3045,6 +3055,8 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 						TransOptsTargetName),
 	module_name_to_file_name(ModuleName, ".rlos", no,
 						RLOsTargetName),
+	module_name_to_file_name(ModuleName, ".ils", no,
+						ILsTargetName),
 
 	io__write_strings(DepStream, [
 		".PHONY : ", CheckTargetName, "\n",
@@ -3059,7 +3071,9 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 		TransOptsTargetName, " : $(", MakeVarName,
 						".trans_opt_dates)\n\n",
 		".PHONY : ", RLOsTargetName, "\n",
-		RLOsTargetName, " : $(", MakeVarName, ".rlos)\n\n"
+		RLOsTargetName, " : $(", MakeVarName, ".rlos)\n\n",
+		".PHONY : ", ILsTargetName, "\n",
+		ILsTargetName, " : $(", MakeVarName, ".ils)\n\n"
 	]),
 
 
@@ -3082,6 +3096,7 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 		"\t-rm -f $(", MakeVarName, ".os) ", InitObjFileName, "\n",
 		"\t-rm -f $(", MakeVarName, ".pic_os) ", InitPicObjFileName,
 									"\n",
+		"\t-rm -f $(", MakeVarName, ".ils)\n",
 		"\t-rm -f $(", MakeVarName, ".profs)\n",
 		"\t-rm -f $(", MakeVarName, ".errs)\n",
 		"\t-rm -f $(", MakeVarName, ".schemas)\n"
