@@ -1,15 +1,4 @@
        1:      1  1 CALL pred interpreter:main/2-0 (det) 
-s      =>    step
-g      =>    goto
-f      =>    finish
-r      =>    retry
-v      =>    vars
-p      =>    print *
-d      =>    stack
-c      =>    continue
-b      =>    break
-h      =>    help
-?      =>    help
 mdb> mdb> Command echo enabled.
 mdb> 10 step
 Pure Prolog Interpreter.

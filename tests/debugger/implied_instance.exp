@@ -1,15 +1,4 @@
        1:      1  1 CALL pred implied_instance:main/2-0 (det) 
-s      =>    step
-g      =>    goto
-f      =>    finish
-r      =>    retry
-v      =>    vars
-p      =>    print *
-d      =>    stack
-c      =>    continue
-b      =>    break
-h      =>    help
-?      =>    help
 mdb> Command echo enabled.
 mdb> register --quiet
 mdb> alias P print *

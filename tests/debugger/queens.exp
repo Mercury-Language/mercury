@@ -1,15 +1,4 @@
        1:      1  1 CALL pred queens:main/2-0 (cc_multi) 
-s      =>    step
-g      =>    goto
-f      =>    finish
-r      =>    retry
-v      =>    vars
-p      =>    print *
-d      =>    stack
-c      =>    continue
-b      =>    break
-h      =>    help
-?      =>    help
 mdb> Command echo enabled.
 mdb> print *
        HeadVar__1           		state('<<c_pointer>>')
