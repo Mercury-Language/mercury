@@ -51,8 +51,8 @@ sets up another race condition, since there is a time window between the
 delivery of the timeout alarm signal and the deletion of the pipes. If another
 mdprof_cgi process tests for the existence of the pipes during this interval,
 it could find that they do exist, and therefore commit to becoming a client,
-only to find that either the pipes or the process behind don't exist when it
-actually tries to send its query to the server.
+only to find that either the pipes or the process behind them don't exist
+when it actually tries to send its query to the server.
 
 The solution we use to eliminate this race condition has two parts. First,
 we make the timeout code in the server get mutual exclusion on the same lock
@@ -61,7 +61,7 @@ operations that create or delete the pipes are guarded by the same mutex.
 This is necessary because we use the existence of the pipes to denote the
 existence of a server process committed to serving queries on the associated
 profiling data file. However, this doesn't prevent the server from getting
-the mutex, deleting the pipes and exiting immediately another mdprof_cgi
+the mutex, deleting the pipes and exiting immediately after another mdprof_cgi
 process got the mutex, found that the pipes existed, committed to becoming
 a client, and released the mutex. Therefore inside the critical section
 in the timeout code, we check for the existence of waiting clients, and
