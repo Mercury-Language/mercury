@@ -63,6 +63,12 @@ Directory options:
 	-R <directory>, --shared-lib-dir <directory>
 		Include <directory> in the list of directories that the
 		dynamic linker will use to search for shared libraries.
+	--leave-shared-lib-dirs-relative
+		Don't convert relative shared library directory names
+		into absolute paths.
+	--no-leave-shared-lib-dirs-relative
+		Convert relative shared library directory names into
+		absolute paths.  This is the default.
 
 Debugging options:
 	-t, --trace
@@ -151,6 +157,7 @@ all_libs=default
 demangle=true
 MAYBE_STATIC_OPT=""
 make_shared_lib=false
+leave_shlib_dirs_relative=false
 user_shlib_dirs=""
 
 # include the file `init_grade_options.sh-subr'
@@ -246,13 +253,33 @@ EOF
 	-L*)
 		user_libdir_opts="$user_libdir_opts $1"
 		;;
+	--leave-shared-lib-dirs-relative)
+		leave_shlib_dirs_relative=true
+		;;
+	--no-leave-shared-lib-dirs-relative)
+		leave_shlib_dirs_relative=false
+		;;
 	-R|--shared-lib-dir)
 		dir="$2"
+		case $leave_shlib_dirs_relative in false)
+			case "$dir" in
+				/*) ;;
+				*)  dir="`pwd`/$dir" ;;
+			esac
+			;;
+		esac
 		user_shlib_dirs="$user_shlib_dirs $dir"
 		shift
 		;;
 	-R*)
 		dir="` expr $1 : '-R\(.*\)' `"
+		case $leave_shlib_dirs_relative in false)
+			case "$dir" in
+				/*) ;;
+				*)  dir="`pwd`/$dir" ;;
+			esac
+			;;
+		esac
 		user_shlib_dirs="$user_shlib_dirs $dir"
 		;;
 
