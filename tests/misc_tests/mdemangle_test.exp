@@ -6,25 +6,25 @@ Each symbol is followed by the correct decoding.
 <shared constant number 21 for module mercury_builtin>
 <shared constant number 21 for module mercury_builtin>
 
-	a base type info
-<base type_info for type 'mercury_builtin:list'/1>
-<base type_info for type 'mercury_builtin:list'/1>
+	a type ctor info
+<type_ctor_info for type 'mercury_builtin:list'/1>
+<type_ctor_info for type 'mercury_builtin:list'/1>
 
-	a base type layout
-<type layout for type 'mercury_builtin:term__context'/0>
-<type layout for type 'mercury_builtin:term__context'/0>
+	a type ctor layout
+<type_ctor_layout for type 'mercury_builtin:term__context'/0>
+<type_ctor_layout for type 'mercury_builtin:term__context'/0>
 
-	a base type functors
-<type functors for type 'eliza:message'/0>
-<type functors for type 'eliza:message'/0>
+	a type ctor functors
+<type_ctor_functors for type 'eliza:message'/0>
+<type_ctor_functors for type 'eliza:message'/0>
 
-	an unqualified base type info
-<base type_info for type 'int'/0>
-<base type_info for type 'int'/0>
+	an unqualified type ctor info
+<type_ctor_info for type 'int'/0>
+<type_ctor_info for type 'int'/0>
 
-	an unqualified base type layout
-<type layout for type 'float'/0>
-<type layout for type 'float'/0>
+	an unqualified type ctor layout
+<type_ctor_layout for type 'float'/0>
+<type_ctor_layout for type 'float'/0>
 
 	a mangled name
 <predicate '!'/0 mode 0>
@@ -105,11 +105,11 @@ Undefined			first referenced
 <index/2 predicate for type 'store:mutvar'/2> interpreter.o
 <compare/3 predicate for type 'store:mutvar'/2> interpreter.o
 <predicate 'std_util:unsorted_aggregate'/4 mode 5> interpreter.o
-<base type_info for type 'store:some_store_type'/0> interpreter.o
+<type_ctor_info for type 'store:some_store_type'/0> interpreter.o
 <unification predicate for type 'store:mutvar'/2 mode 0> interpreter.o
 <predicate 'tr_store:new_mutvar'/4 mode 0> interpreter.o
 <predicate 'tr_store:set_mutvar'/4 mode 0> interpreter.o
-<base type_info for type 'store:mutvar'/2> interpreter.o
+<type_ctor_info for type 'store:mutvar'/2> interpreter.o
 ld: fatal: Symbol referencing errors. No output written to interpreter
 gmake: *** [interpreter] Error 1
 
@@ -122,11 +122,11 @@ Undefined			first referenced
 <index/2 predicate for type 'store:mutvar'/2> interpreter.o
 <compare/3 predicate for type 'store:mutvar'/2> interpreter.o
 <predicate 'std_util:unsorted_aggregate'/4 mode 5> interpreter.o
-<base type_info for type 'store:some_store_type'/0> interpreter.o
+<type_ctor_info for type 'store:some_store_type'/0> interpreter.o
 <unification predicate for type 'store:mutvar'/2 mode 0> interpreter.o
 <predicate 'tr_store:new_mutvar'/4 mode 0> interpreter.o
 <predicate 'tr_store:set_mutvar'/4 mode 0> interpreter.o
-<base type_info for type 'store:mutvar'/2> interpreter.o
+<type_ctor_info for type 'store:mutvar'/2> interpreter.o
 ld: fatal: Symbol referencing errors. No output written to interpreter
 gmake: *** [interpreter] Error 1
 

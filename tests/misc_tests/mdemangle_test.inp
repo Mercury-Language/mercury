@@ -6,25 +6,25 @@ Each symbol is followed by the correct decoding.
 mercury_data_mercury_builtin__common_21
 <shared constant number 21 for module mercury_builtin>
 
-	a base type info
-mercury_data_mercury_builtin__base_type_info_list_1
-<base type_info for type 'mercury_builtin:list'/1>
+	a type ctor info
+mercury_data_mercury_builtin__type_ctor_info_list_1
+<type_ctor_info for type 'mercury_builtin:list'/1>
 
-	a base type layout
-mercury_data_mercury_builtin__base_type_layout_term__context_0
-<type layout for type 'mercury_builtin:term__context'/0>
+	a type ctor layout
+mercury_data_mercury_builtin__type_ctor_layout_term__context_0
+<type_ctor_layout for type 'mercury_builtin:term__context'/0>
 
-	a base type functors
-mercury_data_eliza__base_type_functors_message_0
-<type functors for type 'eliza:message'/0>
+	a type ctor functors
+mercury_data_eliza__type_ctor_functors_message_0
+<type_ctor_functors for type 'eliza:message'/0>
 
-	an unqualified base type info
-mercury_data___base_type_info_int_0
-<base type_info for type 'int'/0>
+	an unqualified type ctor info
+mercury_data___type_ctor_info_int_0
+<type_ctor_info for type 'int'/0>
 
-	an unqualified base type layout
-mercury_data___base_type_layout_float_0
-<type layout for type 'float'/0>
+	an unqualified type ctor layout
+mercury_data___type_ctor_layout_float_0
+<type_ctor_layout for type 'float'/0>
 
 	a mangled name
 _entry_mercury__f_cut_0_0
@@ -105,11 +105,11 @@ _entry_mercury__tr_store__get_mutvar_4_0 interpreter.o
 _entry_mercury____Index___store__mutvar_2_0 interpreter.o
 _entry_mercury____Compare___store__mutvar_2_0 interpreter.o
 _entry_mercury__std_util__unsorted_aggregate_4_5 interpreter.o
-mercury_data_store__base_type_info_some_store_type_0 interpreter.o
+mercury_data_store__type_ctor_info_some_store_type_0 interpreter.o
 _entry_mercury____Unify___store__mutvar_2_0 interpreter.o
 _entry_mercury__tr_store__new_mutvar_4_0 interpreter.o
 _entry_mercury__tr_store__set_mutvar_4_0 interpreter.o
-mercury_data_store__base_type_info_mutvar_2 interpreter.o
+mercury_data_store__type_ctor_info_mutvar_2 interpreter.o
 ld: fatal: Symbol referencing errors. No output written to interpreter
 gmake: *** [interpreter] Error 1
 
@@ -122,11 +122,11 @@ Undefined			first referenced
 <index/2 predicate for type 'store:mutvar'/2> interpreter.o
 <compare/3 predicate for type 'store:mutvar'/2> interpreter.o
 <predicate 'std_util:unsorted_aggregate'/4 mode 5> interpreter.o
-<base type_info for type 'store:some_store_type'/0> interpreter.o
+<type_ctor_info for type 'store:some_store_type'/0> interpreter.o
 <unification predicate for type 'store:mutvar'/2 mode 0> interpreter.o
 <predicate 'tr_store:new_mutvar'/4 mode 0> interpreter.o
 <predicate 'tr_store:set_mutvar'/4 mode 0> interpreter.o
-<base type_info for type 'store:mutvar'/2> interpreter.o
+<type_ctor_info for type 'store:mutvar'/2> interpreter.o
 ld: fatal: Symbol referencing errors. No output written to interpreter
 gmake: *** [interpreter] Error 1
 
