@@ -25,18 +25,27 @@
 :- inst find_target_file_names ==
 		(pred(in, out, di, uo) is det).
 
+:- type find_timestamp_file_names ==
+		pred(module_name, list(file_name), io__state, io__state).
+:- inst find_timestamp_file_names ==
+		(pred(in, out, di, uo) is det).
+
 	% recompilation_check__should_recompile(ModuleName, FindTargetFiles,
-	%	ModulesToRecompile, ReadModules)
+	%	FindTimestampFiles, ModulesToRecompile, ReadModules)
 	%
 	% Process the `.used'  files for the given module and all its
 	% inline sub-modules to find out which modules need to be recompiled.
 	% `FindTargetFiles' takes a module name and returns a list of
 	% file names which need to be up-to-date to avoid recompilation.
+	% `FindTimestampFiles' takes a module name and returns a list of
+	% file names which should be touched if the module does not need
+	% to be recompiled.
 	% `ReadModules' is the list of interface files read during
 	% recompilation checking, returned to avoid rereading them
 	% if recompilation is required.
 :- pred recompilation_check__should_recompile(module_name::in,
 	find_target_file_names::in(find_target_file_names),
+	find_timestamp_file_names::in(find_timestamp_file_names),
 	modules_to_recompile::out, read_modules::out,
 	io__state::di, io__state::uo) is det.	
 
@@ -56,20 +65,22 @@
 :- import_module set, std_util, string, term, term_io.
 
 recompilation_check__should_recompile(ModuleName, FindTargetFiles,
-		Info ^ modules_to_recompile, Info ^ read_modules) -->
+		FindTimestampFiles, Info ^ modules_to_recompile,
+		Info ^ read_modules) -->
 	{ Info0 = recompilation_check_info(ModuleName, no, [], map__init,
 			init_item_id_set(map__init, map__init, map__init),
 			set__init, some([])) },
 	recompilation_check__should_recompile_2(no, FindTargetFiles,
-		ModuleName, Info0, Info).
+		FindTimestampFiles, ModuleName, Info0, Info).
 	
 :- pred recompilation_check__should_recompile_2(bool::in,
-	find_target_file_names::in(find_target_file_names), module_name::in,
-	recompilation_check_info::in, recompilation_check_info::out,
-	io__state::di, io__state::uo) is det.	
+	find_target_file_names::in(find_target_file_names),
+	find_timestamp_file_names::in(find_timestamp_file_names),
+	module_name::in, recompilation_check_info::in,
+	recompilation_check_info::out, io__state::di, io__state::uo) is det.	
 
 recompilation_check__should_recompile_2(IsSubModule, FindTargetFiles,
-		ModuleName, Info0, Info) -->
+		FindTimestampFiles, ModuleName, Info0, Info) -->
 	{ Info1 = (Info0 ^ module_name := ModuleName)
 			^ sub_modules := [] },
 	module_name_to_file_name(ModuleName, ".used", no, UsageFileName),
@@ -90,6 +101,8 @@ recompilation_check__should_recompile_2(IsSubModule, FindTargetFiles,
 		    Result),
 		(
 			{ Result = succeeded(Info4) },
+			FindTimestampFiles(ModuleName, TimestampFiles),
+			list__foldl(touch_datestamp, TimestampFiles),
 			write_recompilation_message(
 			    (pred(di, uo) is det -->
 				io__write_string("Not recompiling module "),
@@ -124,7 +137,7 @@ recompilation_check__should_recompile_2(IsSubModule, FindTargetFiles,
 			{ Info5 = Info4 ^ is_inline_sub_module := yes },
 			list__foldl2(
 				recompilation_check__should_recompile_2(yes,
-					FindTargetFiles),
+					FindTargetFiles, FindTimestampFiles),
 				Info5 ^ sub_modules, Info5, Info)
 		)
 	;

@@ -621,9 +621,11 @@ process_module(FileOrModule, ModulesToLink) -->
 			globals__io_get_globals(Globals),
 			{ find_smart_recompilation_target_files(ModuleName,
 				Globals, FindTargetFiles) },
+			{ find_timestamp_files(ModuleName, Globals,
+				FindTimestampFiles) },
 			recompilation_check__should_recompile(ModuleName,
-				FindTargetFiles, ModulesToRecompile0,
-				ReadModules),
+				FindTargetFiles, FindTimestampFiles,
+				ModulesToRecompile0, ReadModules),
 			{
 				ModulesToRecompile0 = some([_ | _]),
 				globals__get_target(Globals, asm)
@@ -681,6 +683,10 @@ process_module_2(FileOrModule, MaybeModulesToRecompile, ReadModules0,
 		{ assoc_list__keys(SubModuleList, NestedSubModules0) },
 		{ list__delete_all(NestedSubModules0,
 			ModuleName, NestedSubModules) },
+
+		globals__io_get_globals(Globals),
+		{ find_timestamp_files(ModuleName, Globals,
+			FindTimestampFiles) },
 		(
 			{ any_mercury_builtin_module(ModuleName) }
 		->
@@ -699,7 +705,8 @@ process_module_2(FileOrModule, MaybeModulesToRecompile, ReadModules0,
 
 			compile_all_submodules(FileName,
 				ModuleName - NestedSubModules,
-				MaybeTimestamp, ReadModules, SubModuleList,
+				MaybeTimestamp, ReadModules,
+				FindTimestampFiles, SubModuleList,
 				ModulesToLink),
 
 			globals__io_set_option(trace_stack_layout, bool(TSL)),
@@ -707,7 +714,8 @@ process_module_2(FileOrModule, MaybeModulesToRecompile, ReadModules0,
 		;
 			compile_all_submodules(FileName,
 				ModuleName - NestedSubModules,
-				MaybeTimestamp, ReadModules, SubModuleList,
+				MaybeTimestamp, ReadModules,
+				FindTimestampFiles, SubModuleList,
 				ModulesToLink)
 		)
 	).
@@ -724,15 +732,17 @@ process_module_2(FileOrModule, MaybeModulesToRecompile, ReadModules0,
 	% i.e. compile nested modules to a single C file.
 
 :- pred compile_all_submodules(string, pair(module_name, list(module_name)),
-	maybe(timestamp), read_modules, list(pair(module_name, item_list)),
+	maybe(timestamp), read_modules, find_timestamp_file_names,
+	list(pair(module_name, item_list)),
 	list(string), io__state, io__state).
-:- mode compile_all_submodules(in, in, in, in, in, out, di, uo) is det.
+:- mode compile_all_submodules(in, in, in, in, in(find_timestamp_file_names),
+	in, out, di, uo) is det.
 
-compile_all_submodules(FileName, NestedSubModules, MaybeTimestamp,
-		ReadModules, SubModuleList, ModulesToLink) -->
+compile_all_submodules(FileName, NestedSubModules, MaybeTimestamp, ReadModules,
+		FindTimestampFiles, SubModuleList, ModulesToLink) -->
 	list__foldl(
-		compile(FileName, NestedSubModules,
-			MaybeTimestamp, ReadModules),
+		compile(FileName, NestedSubModules, MaybeTimestamp,
+			ReadModules, FindTimestampFiles),
 		SubModuleList),
 	list__map_foldl(module_to_link, SubModuleList, ModulesToLink).
 
@@ -823,11 +833,40 @@ find_smart_recompilation_target_files(TopLevelModuleName,
 				{ TargetFiles = [] }
 			;
 				module_name_to_file_name(ModuleName,
-					TargetSuffix, no, FileName),
+					TargetSuffix, yes, FileName),
 				{ TargetFiles = [FileName] }
 			)
 		    )
 	).
+
+:- pred find_timestamp_files(module_name, globals, find_timestamp_file_names).
+:- mode find_timestamp_files(in, in, out(find_timestamp_file_names)) is det.
+
+find_timestamp_files(TopLevelModuleName, Globals, FindTimestampFiles) :-
+	globals__lookup_bool_option(Globals, pic_reg, PicReg),
+	globals__get_target(Globals, CompilationTarget),
+	( CompilationTarget = c, TimestampSuffix = ".c_date"
+	; CompilationTarget = il, TimestampSuffix = ".il_date"
+	; CompilationTarget = java, TimestampSuffix = ".java_date"
+	; CompilationTarget = asm,
+		TimestampSuffix = (PicReg = yes -> ".pic_s_date" ; ".s_date")
+	),
+	FindTimestampFiles =
+	    (pred(ModuleName::in, TimestampFiles::out, di, uo) is det -->
+		(
+			{ CompilationTarget = asm },
+			{ ModuleName \= TopLevelModuleName }
+		->
+			% With `--target asm' all the nested
+			% sub-modules are placed in the `.s' file
+			% of the top-level module.
+			{ TimestampFiles = [] }
+		;
+			module_name_to_file_name(ModuleName,
+				TimestampSuffix, no, FileName),
+			{ TimestampFiles = [FileName] }
+		)
+	    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -845,12 +884,14 @@ find_smart_recompilation_target_files(TopLevelModuleName,
 	% so that new stages can be slotted in without too much trouble.
 
 :- pred compile(file_name, pair(module_name, list(module_name)),
-	maybe(timestamp), read_modules, pair(module_name, item_list),
-	io__state, io__state).
-:- mode compile(in, in, in, in, in, di, uo) is det.
+	maybe(timestamp), read_modules, find_timestamp_file_names,
+	pair(module_name, item_list), io__state, io__state).
+:- mode compile(in, in, in, in, in(find_timestamp_file_names),
+	in, di, uo) is det.
 
 compile(SourceFileName, RootModuleName - NestedSubModules0,
-		MaybeTimestamp, ReadModules, ModuleName - Items) -->
+		MaybeTimestamp, ReadModules, FindTimestampFiles,
+		ModuleName - Items) -->
 	check_for_no_exports(Items, ModuleName),
 	grab_imported_modules(SourceFileName, ModuleName, ReadModules,
 		MaybeTimestamp, Items, Module, Error2),
@@ -860,16 +901,16 @@ compile(SourceFileName, RootModuleName - NestedSubModules0,
 		;
 			NestedSubModules = []
 		},
-		mercury_compile(Module, NestedSubModules)
+		mercury_compile(Module, NestedSubModules, FindTimestampFiles)
 	;
 		[]
 	).
 
 :- pred mercury_compile(module_imports, list(module_name),
-		io__state, io__state).
-:- mode mercury_compile(in, in, di, uo) is det.
+		find_timestamp_file_names, io__state, io__state).
+:- mode mercury_compile(in, in, in(find_timestamp_file_names), di, uo) is det.
 
-mercury_compile(Module, NestedSubModules) -->
+mercury_compile(Module, NestedSubModules, FindTimestampFiles) -->
 	{ module_imports_get_module_name(Module, ModuleName) },
 	% If we are only typechecking or error checking, then we should not
 	% modify any files, this includes writing to .d files.
@@ -1024,7 +1065,9 @@ mercury_compile(Module, NestedSubModules) -->
 				MaybeRLFile, ModuleName, _CompileErrors)
 		    ),
 		    recompilation_usage__write_usage_file(HLDS,
-		    	NestedSubModules, MaybeTimestamps)
+		    	NestedSubModules, MaybeTimestamps),
+		    FindTimestampFiles(ModuleName, TimestampFiles),
+		    list__foldl(touch_datestamp, TimestampFiles)
 		;
 		    	% If the number of errors is > 0, make sure that
 			% the compiler exits with a non-zero exit

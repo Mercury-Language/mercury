@@ -393,13 +393,15 @@ install_grades: scripts
 	cd runtime && rm -rf tmp_dir && mkdir tmp_dir && \
 		{ mv -f *.$O *.pic_o *.$A *.so tmp_dir || true; }
 	cd library && rm -rf tmp_dir && mkdir tmp_dir && \
-		{ mv -f *.dep *.h *.c *.$O *.pic_o *.$A *.so \
-			Mercury/deps/*.dep \
-			Mercury/cs/*.c Mercury/os/*.$O tmp_dir || true; }
+		{ mv -f *.dep *.h *.c *.c_date *.$O *.pic_o *.$A *.so *.used \
+			Mercury/useds/*.used Mercury/deps/*.dep \
+			Mercury/cs/*.c Mercury/c_dates/*.c_date \
+			Mercury/os/*.$O tmp_dir || true; }
 	cd browser && rm -rf tmp_dir && mkdir tmp_dir && \
-		{ mv -f *.dep *.h *.c *.$O *.pic_o *.$A *.so \
-			Mercury/deps/*.dep \
-			Mercury/cs/*.c Mercury/os/*.$O tmp_dir || true; }
+		{ mv -f *.dep *.h *.c *.c_date *.$O *.pic_o *.$A *.so *.used \
+			Mercury/useds/*.used Mercury/deps/*.dep \
+			Mercury/cs/*.c Mercury/c_dates/*.c_date \
+			Mercury/os/*.$O tmp_dir || true; }
 	cd trace && rm -rf tmp_dir && mkdir tmp_dir && \
 		{ mv -f *.$O *.pic_o *.$A *.so tmp_dir || true; }
 	#
@@ -428,10 +430,10 @@ install_grades: scripts
 		  $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade install_lib ) && \
 		( cd boehm_gc && rm -f *.$O *.pic_o *.$A *.so ) && \
 		( cd runtime && rm -f *.$O *.pic_o *.$A *.so ) && \
-		( cd library && rm -f *.dep *.h *.c *.$O *.pic_o *.$A *.so \
-				Mercury/cs/*.c Mercury/os/*.$O ) && \
-		( cd browser && rm -f *.dep *.h *.c *.$O *.pic_o *.$A *.so \
-				Mercury/cs/*.c Mercury/os/*.$O ) && \
+		( cd library && rm -f *.dep *.h *.c *.c_date *.$O *.pic_o \
+				*.$A *.so Mercury/cs/*.c Mercury/os/*.$O ) && \
+		( cd browser && rm -f *.dep *.h *.c *.c_date *.$O *.pic_o \
+				*.$A *.so Mercury/cs/*.c Mercury/os/*.$O ) && \
 		( cd trace && rm -f *.$O *.pic_o *.$A *.so ) && \
 		true \
 		|| { scripts/mercury_cleanup_install; exit 1; }; \
@@ -442,10 +444,18 @@ install_grades: scripts
 	cd library  && { [ -d Mercury/cs ] && mv tmp_dir/*.c Mercury/cs; \
 			 [ -d Mercury/os ] && mv tmp_dir/*.$O Mercury/os; \
 			 [ -d Mercury/deps ] && mv tmp_dir/*.dep Mercury/deps;\
+			 [ -d Mercury/c_dates ] && \
+			 	mv tmp_dir/*.c_date Mercury/c_dates;\
+			 [ -d Mercury/useds ] && \
+			 	mv tmp_dir/*.used Mercury/useds;\
 			 mv tmp_dir/* . ; rmdir tmp_dir; true; }
 	cd browser  && { [ -d Mercury/cs ] && mv tmp_dir/*.c Mercury/cs; \
 			 [ -d Mercury/os ] && mv tmp_dir/*.$O Mercury/os; \
 			 [ -d Mercury/deps ] && mv tmp_dir/*.dep Mercury/deps;\
+			 [ -d Mercury/c_dates ] && \
+			 	mv tmp_dir/*.c_date Mercury/c_dates;\
+			 [ -d Mercury/useds ] && \
+			 	mv tmp_dir/*.used Mercury/useds;\
 			 mv tmp_dir/* . ; rmdir tmp_dir; true; }
 	cd trace    && { mv tmp_dir/* . ; rmdir tmp_dir; true; }
 

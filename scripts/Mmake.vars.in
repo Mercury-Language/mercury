@@ -426,6 +426,10 @@ os_subdir=$(SUBDIR)os/
 rlos_subdir=$(SUBDIR)rlos/
 ils_subdir=$(SUBDIR)ils/
 dirs_subdir=$(SUBDIR)dirs/
+c_dates_subdir=$(SUBDIR)c_dates/
+s_dates_subdir=$(SUBDIR)s_dates/
+pic_s_dates_subdir=$(SUBDIR)pic_s_dates/
+il_dates_subdir=$(SUBDIR)il_dates/
 
 else
 
@@ -452,6 +456,10 @@ os_subdir=
 rlos_subdir=
 ils_subdir=
 dirs_subdir=
+c_dates_subdir=
+s_dates_subdir=
+pic_s_dates_subdir=
+il_dates_subdir=
 
 endif
 

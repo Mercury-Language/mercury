@@ -2834,55 +2834,67 @@ fi
 #-----------------------------------------------------------------------------#
 MERCURY_CHECK_READLINE
 #-----------------------------------------------------------------------------#
-to_keep=""
-to_delete=""
-if test "$BOOTSTRAP_MC" != "" ; then
-    MERCURY_MSG("checking whether any C files need to be rebuilt...")
-    for c_file in library/*.c compiler/*.c browser/*.c profiler/*.c deep_profiler/*.c \
-    		library/Mercury/cs/*.c compiler/Mercury/cs/*.c \
-		browser/Mercury/cs/*.c profiler/Mercury/cs/*.c \
-		deep_profiler/Mercury/cs/*.c 
+
+check_c_files () {
+    c_dir=$1
+    c_date_dir=$2
+
+    for c_file in $c_dir/*.c
     do
         case $c_file in
         */'*.c')
             ;;
         */*_init.c)
-            to_keep="$to_keep $c_file"
+            some_kept=true
             ;;
         *)
             sed -e '/END_OF_C_GRADE_INFO/q' < $c_file > confscratch
             if grep "TAG_BITS=$mercury_cv_low_tag_bits" \
-	    	confscratch > /dev/null 2>&1
+                    confscratch > /dev/null 2>&1 \
+                && grep "UNBOXED_FLOAT=$mercury_cv_unboxed_floats" \
+                    confscratch > /dev/null 2>&1
             then
-                if grep "UNBOXED_FLOAT=$mercury_cv_unboxed_floats" \
-			confscratch > /dev/null 2>&1
-                then
-                    to_keep="$to_keep $c_file"
-                else
-                    to_delete="$to_delete $c_file"
-                fi
+                some_kept=true
             else
-                to_delete="$to_delete $c_file"
+                c_date_file="$c_date_dir/`basename $c_file .c`.c_date"
+                to_delete="$to_delete $c_file $c_date_file"
             fi
             ;;
         esac
     done
+}
+
+some_kept=false
+to_delete=""
+if test "$BOOTSTRAP_MC" != "" ; then
+    MERCURY_MSG("checking whether any C files need to be rebuilt...")
+    for directory in library compiler profiler deep_profiler
+    do
+        check_c_files $directory $directory
+        check_c_files $directory/Mercury/cs $directory/Mercury/c_dates
+    done
     if test "$to_delete" = "" ; then
-        if test "$to_keep" != "" ; then
+        case $some_kept in
+          true)
             MERCURY_MSG("no - they are compatible with autoconfigured settings")
-        else
+            ;;
+          false)
             MERCURY_MSG("there are no existing Mercury-generated C files")
-        fi
+            ;;
+          esac 
     else
-        if test "$to_keep" != "" ; then
+        case $some_kept in
+          true)
             MERCURY_MSG("the following C files must be rebuilt in a grade")
             MERCURY_MSG("that is consistent with autoconfigured settings")
             MERCURY_MSG("$to_delete")
-        else
+            ;;
+          false)
             MERCURY_MSG("all Mercury generated C files must be rebuilt")
             MERCURY_MSG("in a grade that is consistent with the")
             MERCURY_MSG("autoconfigured settings")
-        fi
+            ;;
+        esac
         MERCURY_MSG("installation may take longer than usual")
     fi
     rm -f confscratch $to_delete

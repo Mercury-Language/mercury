@@ -198,6 +198,19 @@ and @file{.trans_opt_date}
 files associated with the module are used as date stamps;
 they are used when deciding whether the interface files need to be regenerated.
 
+@file{.c_date}, @file{.il_date}, @file{.s_date} and @file{.pic_s_date} files
+perform a similar function for @file{.c}, @file{.il}, @file{.s} and
+@file{.pic_s} files respectively. When smart recompilation
+(@pxref{Auxiliary output options}) works out that a module
+does not need to be recompiled, the timestamp file for the
+target file is updated, and the timestamp of the target file
+is left unchanged.
+@findex --smart-recompilation
+
+@file{.used} files contain dependency information for smart recompilation
+(@pxref{Auxiliary output options}).
+@findex --smart-recompilation
+
 Files ending in @file{.d} are automatically-generated Makefile fragments
 which contain the dependencies for a module.
 Files ending in @file{.dep} are automatically-generated Makefile fragments

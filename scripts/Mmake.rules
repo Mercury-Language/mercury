@@ -22,7 +22,8 @@ main_target: $(MAIN_TARGET)
 		.i .s .pic_s \
 		.ql .pl \
 		.rlo \
-		.il .dll .exe .cpp
+		.il .dll .exe .cpp \
+		.c_date .il_date .s_date .pic_s_date
 
 #-----------------------------------------------------------------------------#
 #
@@ -171,11 +172,20 @@ $(trans_opts_subdir)%.trans_opt : $(trans_opt_dates_subdir)%.trans_opt_date
 ifeq ($(TARGET_ASM),yes)
 
 # `--target asm' back-end
-$(ss_subdir)%.s : %.m
+
+# When smart recompilation finds that a module does not need to be
+# recompiled, it only touches the `.s_date' or `.pic_s_date' file.
+$(ss_subdir)%.s : $(s_dates_subdir)%.s_date
+	@:
+
+$(ss_subdir)%.pic_s : $(s_dates_subdir)%.s_date
+	@:
+
+$(s_dates_subdir)%.s_date : %.m
 	$(MCG) $(ALL_GRADEFLAGS) --target-code-only $(ALL_MCGFLAGS) \
 		$< > $*.err 2>&1
 
-$(ss_subdir)%.pic_s : %.m
+$(pic_s_dates_subdir)%.pic_s_date : %.m
 	$(MCG) $(ALL_GRADEFLAGS) --target-code-only $(ALL_MCGFLAGS) \
 		--pic --cflags "$(GCCFLAGS_FOR_PIC)" $< > $*.err 2>&1
 
@@ -195,7 +205,13 @@ $(os_subdir)%__c_code.pic_o : $(cs_subdir)%.c
 endif
 
 # C back-end
-$(cs_subdir)%.c : %.m
+
+# When smart recompilation finds that a module does not need to be
+# recompiled, it only touches the `.c_date' file.
+$(cs_subdir)%.c : $(c_dates_subdir)%.c_date
+	@:
+
+$(cs_subdir)%.c_date : %.m
 	$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) $< > $*.err 2>&1
 
 # Aditi-RL back-end
@@ -203,7 +219,13 @@ $(rlos_subdir)%.rlo : %.m
 	$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) --aditi-only $< > $*.err 2>&1
 
 # .NET back-end
-$(ils_subdir)%.il : %.m
+
+# When smart recompilation finds that a module does not need to be
+# recompiled, it only touches the `.il_date' file.
+$(os_subdir)%.il : $(il_dates_subdir)%.il_date
+	@:
+
+$(il_dates_subdir)%.il_date : %.m
 	$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) --il-only $< > $*.err 2>&1
 
 # These rules are only available in *il* backends, because we'd like to avoid
