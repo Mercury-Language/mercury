@@ -19,7 +19,6 @@ ORDINARY_PROGS=	\
 	cc_multi_bug \
 	cc_nondet_disj \
 	checked_nondet_tailcall \
-	closure_arg_comparison \
 	closure_extension \
 	common_type_cast \
 	compare_spec \
@@ -359,7 +358,7 @@ endif
 
 # compare_representation does not work in the MLDS grades (e.g. hlc.gc),
 # because comparison of closures gives "Sorry, not implemented" when
-# MR_HIGHLEVEL_CODE is set.
+# MR_HIGHLEVEL_CODE is set.  Likewise for closure_arg_comparison.
 #
 # factt_non does not work in the MLDS grades because the code for nondet
 # fact tables assumes that we're using the LLDS back-end. Also, fact tables
