@@ -52,7 +52,7 @@ main_target: $(MAIN_TARGET)
 	@touch $@
 
 .m.date:
-	$(MCI) $(MCFLAGS) $(MCIFLAGS) $<
+	$(MCI) $(MCIFLAGS) $<
 
 # do not remove the whitespace in the following two rules!
 
