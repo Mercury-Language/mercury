@@ -4980,9 +4980,17 @@ clauses_info_add_pragma_c_code(ClausesInfo0, Purity, Attributes, PredId,
 			HldsGoal1, VarSet2, transform_info(ModuleInfo0, Info0),
 				transform_info(ModuleInfo, Info)),
 		{
-		map__init(Empty),
+		map__init(EmptyVarTypes),
+			% Since the we haven't done mode analysis yet, the
+			% instmap_delta fields in goal_infos are not yet
+			% meaningful. Therefore there no point in clipping
+			% them to the set of typeinfo-liveness-completed
+			% nonlocals.
+		map__init(EmptyTVarMap),
+		TypeInfoLiveness = no,
 		implicitly_quantify_clause_body(HeadVars, HldsGoal1,
-			VarSet2, Empty, HldsGoal, VarSet, _, _Warnings),
+			VarSet2, EmptyVarTypes, EmptyTVarMap, TypeInfoLiveness,
+			HldsGoal, VarSet, _, _Warnings),
 		NewClause = clause([ModeId], HldsGoal, Context),
 		ClausesInfo =  clauses_info(VarSet, VarTypes, VarTypes1,
 			HeadVars, [NewClause|ClauseList],
@@ -5021,7 +5029,6 @@ transform(Subst, HeadVars, Args0, Body, VarSet0, Context, PredOrFunc,
 		Arity, IsAssertion, Goal, VarSet, Warnings, Info0, Info) -->
 	transform_goal(Body, VarSet0, Subst, Goal1, VarSet1, Info0, Info1),
 	{ term__apply_substitution_to_list(Args0, Subst, Args) },
-	{ map__init(Empty) },
 		
 		% The head variables of an assertion will always be
 		% variables, so it is unnecessary to insert unifications.
@@ -5036,8 +5043,17 @@ transform(Subst, HeadVars, Args0, Body, VarSet0, Context, PredOrFunc,
 		insert_arg_unifications(HeadVars, Args, Context, ArgContext,
 			no, Goal1, VarSet1, Goal2, VarSet2, Info1, Info)
 	),
-	{ implicitly_quantify_clause_body(HeadVars, Goal2, VarSet2, Empty,
-				Goal, VarSet, _, Warnings) }.
+	{ map__init(EmptyVarTypes) },
+		% Since the we haven't done mode analysis yet, the
+		% instmap_delta fields in goal_infos are not yet
+		% meaningful. Therefore there no point in clipping
+		% them to the set of typeinfo-liveness-completed
+		% nonlocals.
+	{ map__init(EmptyTVarMap) },
+	{ TypeInfoLiveness = no },
+	{ implicitly_quantify_clause_body(HeadVars, Goal2, VarSet2,
+		EmptyVarTypes, EmptyTVarMap, TypeInfoLiveness,
+		Goal, VarSet, _, Warnings) }.
 
 %-----------------------------------------------------------------------------%
 

@@ -191,9 +191,11 @@ lambda__process_proc_2(ProcInfo0, PredInfo0, ModuleInfo0,
 
 	% check if we need to requantify
 	( MustRecomputeNonLocals = yes ->
+		module_info_globals(ModuleInfo, Globals),
+		body_should_use_typeinfo_liveness(Globals, TypeInfoLiveness),
 		implicitly_quantify_clause_body(HeadVars,
-			Goal1, VarSet1, VarTypes1, Goal, VarSet, VarTypes,
-			_Warnings)
+			Goal1, VarSet1, VarTypes1, TVarMap, TypeInfoLiveness,
+			Goal, VarSet, VarTypes, _Warnings)
 	;
 		Goal = Goal1,
 		VarSet = VarSet1,

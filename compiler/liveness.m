@@ -152,11 +152,14 @@
 :- import_module string.
 
 detect_liveness_proc(ProcInfo0, PredId, ModuleInfo, ProcInfo) :-
-	requantify_proc(ProcInfo0, ProcInfo1),
+	module_info_globals(ModuleInfo, Globals),
+	body_should_use_typeinfo_liveness(Globals, TypeInfoLiveness0),
+	requantify_proc(TypeInfoLiveness0, ProcInfo0, ProcInfo1),
+
 	proc_info_goal(ProcInfo1, Goal0),
 	proc_info_varset(ProcInfo1, Varset),
 	proc_info_vartypes(ProcInfo1, VarTypes),
-	module_info_globals(ModuleInfo, Globals),
+	proc_info_typeinfo_varmap(ProcInfo1, TVarMap),
 
 	module_info_pred_info(ModuleInfo, PredId, PredInfo),
 	pred_info_module(PredInfo, PredModule),
@@ -168,10 +171,10 @@ detect_liveness_proc(ProcInfo0, PredId, ModuleInfo, ProcInfo) :-
 	->
 		TypeInfoLiveness = no
 	;
-		body_should_use_typeinfo_liveness(Globals, TypeInfoLiveness)
+		TypeInfoLiveness = TypeInfoLiveness0
 	),
-	live_info_init(ModuleInfo, ProcInfo1, TypeInfoLiveness,
-		VarTypes, Varset, LiveInfo),
+	live_info_init(ModuleInfo, TypeInfoLiveness, VarTypes, TVarMap, Varset,
+		LiveInfo),
 
 	initial_liveness(ProcInfo1, PredId, ModuleInfo, Liveness0),
 	detect_liveness_in_goal(Goal0, Liveness0, LiveInfo,
@@ -952,7 +955,7 @@ require_equal(LivenessFirst, LivenessRest, GoalType, LiveInfo) :-
 	->
 		true
 	;
-		live_info_get_varset(LiveInfo, Varset),
+		Varset = LiveInfo^varset,
 		set__to_sorted_list(LivenessFirst, FirstVarsList),
 		set__to_sorted_list(LivenessRest, RestVarsList),
 		list__map(varset__lookup_name(Varset),
@@ -1009,7 +1012,8 @@ initial_liveness(ProcInfo, PredId, ModuleInfo, Liveness) :-
 		\+ polymorphism__no_type_info_builtin(PredModule,
 			PredName, PredArity)
 	->
-		proc_info_get_typeinfo_vars_setwise(ProcInfo, NonLocals0,
+		proc_info_typeinfo_varmap(ProcInfo, TVarMap),
+		proc_info_get_typeinfo_vars(NonLocals0, VarTypes, TVarMap,
 			TypeInfoNonLocals),
 		set__union(NonLocals0, TypeInfoNonLocals, NonLocals)
 	;
@@ -1056,11 +1060,11 @@ initial_deadness(ProcInfo, LiveInfo, ModuleInfo, Deadness) :-
 
 		% If doing alternate liveness, the corresponding
 		% typeinfos need to be added to these.
-	live_info_get_typeinfo_liveness(LiveInfo, TypeinfoLiveness),
 	( 
-		TypeinfoLiveness = yes
+		LiveInfo^typeinfo_liveness = yes
 	->
-		proc_info_get_typeinfo_vars_setwise(ProcInfo, Deadness2,
+		proc_info_typeinfo_varmap(ProcInfo, TVarMap),
+		proc_info_get_typeinfo_vars(Deadness2, VarTypes, TVarMap,
 			TypeInfoVars),
 		set__union(Deadness2, TypeInfoVars, Deadness)
 	;
@@ -1120,11 +1124,11 @@ add_deadness_before_goal(Goal - GoalInfo0, Residue, Goal - GoalInfo) :-
 find_value_giving_occurrences([], _, _, ValueVars, ValueVars).
 find_value_giving_occurrences([Var | Vars], LiveInfo, InstMapDelta,
 		ValueVars0, ValueVars) :-
-	live_info_get_var_types(LiveInfo, VarTypes),
-	live_info_get_module_info(LiveInfo, ModuleInfo),
+	VarTypes = LiveInfo^vartypes,
 	map__lookup(VarTypes, Var, Type),
 	(
 		instmap_delta_search_var(InstMapDelta, Var, Inst),
+		ModuleInfo = LiveInfo^module_info,
 		mode_to_arg_mode(ModuleInfo, (free -> Inst), Type, top_out)
 	->
 		set__insert(ValueVars0, Var, ValueVars1)
@@ -1133,52 +1137,6 @@ find_value_giving_occurrences([Var | Vars], LiveInfo, InstMapDelta,
 	),
 	find_value_giving_occurrences(Vars, LiveInfo, InstMapDelta,
 		ValueVars1, ValueVars).
-
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-
-:- type live_info	--->	live_info(
-					module_info,
-					proc_info,
-					bool,		% Do we use typeinfo
-							% liveness for this
-							% proc?
-					map(prog_var, type),
-					prog_varset
-				).
-
-:- pred live_info_init(module_info, proc_info, bool, map(prog_var, type),
-	prog_varset, live_info).
-:- mode live_info_init(in, in, in, in, in, out) is det.
-
-live_info_init(ModuleInfo, ProcInfo, TypeInfoLiveness, VarTypes, Varset,
-	live_info(ModuleInfo, ProcInfo, TypeInfoLiveness, VarTypes, Varset)).
-
-:- pred live_info_get_module_info(live_info, module_info).
-:- mode live_info_get_module_info(in, out) is det.
-
-live_info_get_module_info(live_info(ModuleInfo, _, _, _, _), ModuleInfo).
-
-:- pred live_info_get_proc_info(live_info, proc_info).
-:- mode live_info_get_proc_info(in, out) is det.
-
-live_info_get_proc_info(live_info(_, ProcInfo, _, _, _), ProcInfo).
-
-:- pred live_info_get_typeinfo_liveness(live_info, bool).
-:- mode live_info_get_typeinfo_liveness(in, out) is det.
-
-live_info_get_typeinfo_liveness(live_info(_, _, TypeInfoLiveness, _, _),
-	TypeInfoLiveness).
-
-:- pred live_info_get_var_types(live_info, map(prog_var, type)).
-:- mode live_info_get_var_types(in, out) is det.
-
-live_info_get_var_types(live_info(_, _, _, VarTypes, _), VarTypes).
-
-:- pred live_info_get_varset(live_info, prog_varset).
-:- mode live_info_get_varset(in, out) is det.
-
-live_info_get_varset(live_info(_, _, _, _, Varset), Varset).
 
 %-----------------------------------------------------------------------------%
 
@@ -1198,14 +1156,26 @@ liveness__get_nonlocals_and_typeinfos(LiveInfo, GoalInfo,
 	set(prog_var)::in, set(prog_var)::out) is det.
 
 liveness__maybe_complete_with_typeinfos(LiveInfo, Vars0, Vars) :-
-	live_info_get_typeinfo_liveness(LiveInfo, TypeinfoLiveness),
-	( TypeinfoLiveness = yes ->
-		live_info_get_proc_info(LiveInfo, ProcInfo),
-		proc_info_get_typeinfo_vars_setwise(ProcInfo, Vars0,
-			TypeInfoVars),
-		set__union(Vars0, TypeInfoVars, Vars)
-	;
-		Vars = Vars0
-	).
+	proc_info_maybe_complete_with_typeinfo_vars(Vars0,
+		LiveInfo^typeinfo_liveness, LiveInfo^vartypes,
+		LiveInfo^type_info_varmap, Vars).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+:- type live_info
+	--->	live_info(
+			module_info		::	module_info,
+			typeinfo_liveness	::	bool,
+			vartypes		::	vartypes,
+			type_info_varmap	::	type_info_varmap,
+			varset			::	prog_varset
+		).
+
+:- pred live_info_init(module_info::in, bool::in, vartypes::in,
+	type_info_varmap::in, prog_varset::in, live_info::out) is det.
+
+live_info_init(ModuleInfo, ProcInfo, TypeInfoLiveness, VarTypes, Varset,
+	live_info(ModuleInfo, ProcInfo, TypeInfoLiveness, VarTypes, Varset)).
 
 %-----------------------------------------------------------------------------%

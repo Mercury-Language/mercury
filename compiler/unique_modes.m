@@ -128,14 +128,15 @@ unique_modes__check_goal(Goal0, Goal, ModeInfo0, ModeInfo) :-
 	% 
 	% Restore the original bag of nondet-live vars
 	%
-	mode_info_set_nondet_live_vars(NondetLiveVars0, ModeInfo3, ModeInfo),
+	mode_info_set_nondet_live_vars(NondetLiveVars0, ModeInfo3, ModeInfo4),
 
 	%
 	% Grab the final instmap, compute the change in insts
 	% over this goal, and save that instmap_delta in the goal_info.
 	%
 	mode_info_get_instmap(ModeInfo, InstMap),
-	goal_info_get_nonlocals(GoalInfo0, NonLocals),
+	mode_info_get_completed_nonlocals(GoalInfo0, NonLocals,
+		ModeInfo4, ModeInfo),
 	compute_instmap_delta(InstMap0, InstMap, NonLocals, DeltaInstMap),
 	goal_info_set_instmap_delta(GoalInfo0, DeltaInstMap, GoalInfo),
 
@@ -263,12 +264,12 @@ unique_modes__check_goal_2(conj(List0), _GoalInfo0, conj(List)) -->
 unique_modes__check_goal_2(par_conj(List0, SM), GoalInfo0,
 		par_conj(List, SM)) -->
 	mode_checkpoint(enter, "par_conj"),
-	{ goal_info_get_nonlocals(GoalInfo0, NonLocals) },
+	mode_info_get_completed_nonlocals(GoalInfo0, NonLocals),
 	mode_info_add_live_vars(NonLocals),
 		% Build a multiset of the nonlocals of the conjuncts
 		% so that we can figure out which variables must be
 		% made shared at the start of the parallel conjunction.
-	{ make_par_conj_nonlocal_multiset(List0, NonLocalsBag) },
+	make_par_conj_nonlocal_multiset(List0, NonLocalsBag),
 	unique_modes__check_par_conj(List0, NonLocalsBag, List, InstMapList),
 	instmap__unify(NonLocals, InstMapList),
 	mode_info_remove_live_vars(NonLocals),
@@ -294,7 +295,7 @@ unique_modes__check_goal_2(disj(List0, SM), GoalInfo0, disj(List, SM)) -->
 		% disjuncts.  But we handle that seperately for each
 		% disjunct, in unique_modes__check_disj.
 		%
-		{ goal_info_get_nonlocals(GoalInfo0, NonLocals) },
+		mode_info_get_completed_nonlocals(GoalInfo0, NonLocals),
 		{ goal_info_get_code_model(GoalInfo0, CodeModel) },
 		% does this disjunction create a choice point?
 		( { CodeModel = model_non } ->
@@ -318,10 +319,10 @@ unique_modes__check_goal_2(disj(List0, SM), GoalInfo0, disj(List, SM)) -->
 unique_modes__check_goal_2(if_then_else(Vs, A0, B0, C0, SM), GoalInfo0, Goal)
 		-->
 	mode_checkpoint(enter, "if-then-else"),
-	{ goal_info_get_nonlocals(GoalInfo0, NonLocals) },
-	{ unique_modes__goal_get_nonlocals(A0, A_Vars) },
-	{ unique_modes__goal_get_nonlocals(B0, B_Vars) },
-	{ unique_modes__goal_get_nonlocals(C0, C_Vars) },
+	mode_info_get_completed_nonlocals(GoalInfo0, NonLocals),
+	mode_info_get_goal_completed_nonlocals(A0, A_Vars),
+	mode_info_get_goal_completed_nonlocals(B0, B_Vars),
+	mode_info_get_goal_completed_nonlocals(C0, C_Vars),
 	mode_info_dcg_get_instmap(InstMap0),
 	mode_info_lock_vars(if_then_else, NonLocals),
 
@@ -396,7 +397,7 @@ unique_modes__check_goal_2(not(A0), GoalInfo0, not(A)) -->
 	% negation will succeed, and so these variables
 	% can be accessed again after backtracking.
 	%
-	{ goal_info_get_nonlocals(GoalInfo0, NonLocals) },
+	mode_info_get_completed_nonlocals(GoalInfo0, NonLocals),
 	{ set__to_sorted_list(NonLocals, NonLocalsList) },
 	=(ModeInfo),
 	{ select_live_vars(NonLocalsList, ModeInfo, LiveNonLocals) },
@@ -500,7 +501,7 @@ unique_modes__check_goal_2(switch(Var, CanFail, Cases0, SM), GoalInfo0,
 		{ instmap__init_unreachable(InstMap) },
 		mode_info_set_instmap(InstMap)
 	;
-		{ goal_info_get_nonlocals(GoalInfo0, NonLocals) },
+		mode_info_get_completed_nonlocals(GoalInfo0, NonLocals),
 		unique_modes__check_case_list(Cases0, Var, Cases, InstMapList),
 		instmap__merge(NonLocals, InstMapList, disj)
 	),
@@ -656,7 +657,7 @@ unique_modes__check_call_modes(ArgVars, ProcArgModes, ArgOffset,
 
 unique_modes__check_conj([], []) --> [].
 unique_modes__check_conj([Goal0 | Goals0], [Goal | Goals]) -->
-	{ unique_modes__goal_get_nonlocals(Goal0, NonLocals) },
+	mode_info_get_goal_completed_nonlocals(Goal0, NonLocals),
 	mode_info_remove_live_vars(NonLocals),
 	unique_modes__check_goal(Goal0, Goal),
 	mode_info_dcg_get_instmap(InstMap),
@@ -675,17 +676,20 @@ unique_modes__check_conj([Goal0 | Goals0], [Goal | Goals]) -->
 
 	% make_par_conj_nonlocal_multiset builds a multiset (bag) of all
 	% the nonlocals of the conjuncts.
-:- pred make_par_conj_nonlocal_multiset(list(hlds_goal), bag(prog_var)).
-:- mode make_par_conj_nonlocal_multiset(in, out) is det.
+:- pred make_par_conj_nonlocal_multiset(list(hlds_goal), bag(prog_var),
+	mode_info, mode_info).
+:- mode make_par_conj_nonlocal_multiset(in, out, mode_info_di, mode_info_uo)
+	is det.
 
-make_par_conj_nonlocal_multiset([], Empty) :-
-	bag__init(Empty).
-make_par_conj_nonlocal_multiset([G|Gs], NonLocalsMultiSet) :-
-	make_par_conj_nonlocal_multiset(Gs, NonLocalsMultiSet0),
-	unique_modes__goal_get_nonlocals(G, NonLocals),
-	set__to_sorted_list(NonLocals, NonLocalsList),
-	bag__from_list(NonLocalsList, NonLocalsMultiSet1),
-	bag__union(NonLocalsMultiSet0, NonLocalsMultiSet1, NonLocalsMultiSet).
+make_par_conj_nonlocal_multiset([], Empty) -->
+	{ bag__init(Empty) }.
+make_par_conj_nonlocal_multiset([Goal | Goals], NonLocalsMultiSet) -->
+	make_par_conj_nonlocal_multiset(Goals, NonLocalsMultiSet0),
+	mode_info_get_goal_completed_nonlocals(Goal, NonLocals),
+	{ set__to_sorted_list(NonLocals, NonLocalsList) },
+	{ bag__from_list(NonLocalsList, NonLocalsMultiSet1) },
+	{ bag__union(NonLocalsMultiSet0, NonLocalsMultiSet1,
+		NonLocalsMultiSet) }.
 
 	% To unique-modecheck a parallel conjunction, we find the variables
 	% that are nonlocal to more than one conjunct and make them shared,
@@ -738,7 +742,7 @@ unique_modes__check_par_conj_0(NonLocalVarsBag, ModeInfo0, ModeInfo) :-
 unique_modes__check_par_conj_1([], [], []) --> [].
 unique_modes__check_par_conj_1([Goal0 | Goals0], [Goal | Goals],
 		[InstMap - NonLocals|InstMaps]) -->
-	{ unique_modes__goal_get_nonlocals(Goal0, NonLocals) },
+	mode_info_get_goal_completed_nonlocals(Goal0, NonLocals),
 	mode_info_dcg_get_instmap(InstMap0),
 	unique_modes__check_goal(Goal0, Goal),
 	mode_info_dcg_get_instmap(InstMap),
@@ -825,13 +829,5 @@ unique_modes__check_case_list([Case0 | Cases0], Var,
 
 	mode_info_set_instmap(InstMap0),
 	unique_modes__check_case_list(Cases0, Var, Cases, InstMaps).
-
-%-----------------------------------------------------------------------------%
-
-:- pred unique_modes__goal_get_nonlocals(hlds_goal, set(prog_var)).
-:- mode unique_modes__goal_get_nonlocals(in, out) is det.
-
-unique_modes__goal_get_nonlocals(_Goal - GoalInfo, NonLocals) :-
-	goal_info_get_nonlocals(GoalInfo, NonLocals).
 
 %-----------------------------------------------------------------------------%

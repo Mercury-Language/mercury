@@ -276,7 +276,9 @@ magic__ite_to_disj_and_simplify(Simplifications, PredId, ProcId,
 
 		% Requantify the goal to rename apart the variables
 		% in the copies of the condition.
-		requantify_proc(ProcInfo1, ProcInfo3),
+		module_info_globals(ModuleInfo0, Globals),
+		body_should_use_typeinfo_liveness(Globals, TypeInfoLiveness),
+		requantify_proc(TypeInfoLiveness, ProcInfo1, ProcInfo3),
 		ModuleInfo1 = ModuleInfo0
 	; Goal0 = switch(Var, _Canfail, Cases, _SM) - GoalInfo ->
 		proc_info_varset(ProcInfo0, VarSet0),

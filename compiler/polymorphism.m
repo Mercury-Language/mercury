@@ -1825,8 +1825,13 @@ polymorphism__fixup_quantification(HeadVars, ExistQVars, Goal0, Goal,
 		poly_info_get_varset(Info0, VarSet0),
 		poly_info_get_var_types(Info0, VarTypes0),
 		set__list_to_set(HeadVars, OutsideVars),
+		poly_info_get_type_info_map(Info0, TVarMap),
+		poly_info_get_module_info(Info0, ModuleInfo),
+		module_info_globals(ModuleInfo, Globals),
+		body_should_use_typeinfo_liveness(Globals, TypeInfoLiveness),
 		implicitly_quantify_goal(Goal0, VarSet0, VarTypes0,
-			OutsideVars, Goal, VarSet, VarTypes, _Warnings),
+			TVarMap, TypeInfoLiveness, OutsideVars,
+			Goal, VarSet, VarTypes, _Warnings),
 		poly_info_set_varset_and_types(VarSet, VarTypes, Info0, Info)
 	).
 
@@ -1869,8 +1874,13 @@ polymorphism__fixup_lambda_quantification(Goal0, ArgVars, LambdaVars,
 			TypeClassVarMap, VarTypes0, ExistQVars,
 			NonLocalsPlusArgs, NewOutsideVars),
 		set__union(NonLocals, NewOutsideVars, OutsideVars),
+		poly_info_get_type_info_map(Info0, TVarMap),
+		poly_info_get_module_info(Info0, ModuleInfo),
+		module_info_globals(ModuleInfo, Globals),
+		body_should_use_typeinfo_liveness(Globals, TypeInfoLiveness),
 		implicitly_quantify_goal(Goal0, VarSet0, VarTypes0,
-			OutsideVars, Goal, VarSet, VarTypes, _Warnings),
+			TVarMap, TypeInfoLiveness, OutsideVars,
+			Goal, VarSet, VarTypes, _Warnings),
 		poly_info_set_varset_and_types(VarSet, VarTypes, Info0, Info)
 	).
 
@@ -1954,8 +1964,7 @@ polymorphism__make_typeclass_info_var(Constraint, ExistQVars,
 	ClassId = class_id(ClassName, ClassArity),
 
 	Info0 = poly_info(VarSet0, VarTypes0, TypeVarSet, TypeInfoMap0, 
-		TypeClassInfoMap0, Proofs, PredName, ModuleInfo,
-		unit, unit),
+		TypeClassInfoMap0, Proofs, PredName, ModuleInfo),
 
 	(
 		map__search(TypeClassInfoMap0, Constraint, Location)
@@ -2099,7 +2108,7 @@ polymorphism__make_typeclass_info_var(Constraint, ExistQVars,
 
 			Info1 = poly_info(VarSet1, VarTypes1, TypeVarSet, 
 				TypeInfoMap0, TypeClassInfoMap0, Proofs, 
-				PredName, ModuleInfo, unit, unit),
+				PredName, ModuleInfo),
 
 				% Make the typeclass_info for the subclass
 			polymorphism__make_typeclass_info_var(
@@ -3204,21 +3213,25 @@ delete_nth([X|Xs], N0, Result) :-
 
 :- type poly_info --->
 		poly_info(
-			prog_varset,		% from the proc_info
-			map(prog_var, type),	% from the proc_info
-			tvarset,		% from the proc_info
-			map(tvar, type_info_locn),		
+			% the first three fields are from the proc_info
+			varset			:: prog_varset,
+			vartypes		:: vartypes,
+			typevarset		:: tvarset,
+
+			type_info_varmap	:: type_info_varmap,		
 						% specifies the location of
 						% the type_info var
 						% for each of the pred's type
 						% parameters
 
-			map(class_constraint, prog_var),		
+			typeclass_info_map	::
+				map(class_constraint, prog_var),		
 						% specifies the location of
 						% the typeclass_info var
 						% for each of the pred's class
 						% constraints
-			map(class_constraint, constraint_proof),
+			proof_map		::
+				map(class_constraint, constraint_proof),
 						% specifies why each constraint
 						% that was eliminated from the
 						% pred was able to be eliminated
@@ -3233,10 +3246,8 @@ delete_nth([X|Xs], N0, Result) :-
 						% calculated here in
 						% polymorphism.m
 
-			pred_info,
-			module_info,
-			unit,
-			unit
+			pred_info		:: pred_info,
+			module_info		:: module_info
 		).
 
 %---------------------------------------------------------------------------%
@@ -3256,7 +3267,7 @@ init_poly_info(ModuleInfo, PredInfo, ClausesInfo, PolyInfo) :-
 	map__init(TypeClassInfoMap),
 	PolyInfo = poly_info(VarSet, VarTypes, TypeVarSet,
 			TypeInfoMap, TypeClassInfoMap,
-			Proofs, PredInfo, ModuleInfo, unit, unit).
+			Proofs, PredInfo, ModuleInfo).
 
 	% create_poly_info creates a poly_info for an existing procedure.
 	% (See also init_poly_info.)
@@ -3269,13 +3280,12 @@ create_poly_info(ModuleInfo, PredInfo, ProcInfo, PolyInfo) :-
 	proc_info_typeclass_info_varmap(ProcInfo, TypeClassInfoMap),
 	PolyInfo = poly_info(VarSet, VarTypes, TypeVarSet,
 			TypeInfoMap, TypeClassInfoMap,
-			Proofs, PredInfo, ModuleInfo, unit, unit).
+			Proofs, PredInfo, ModuleInfo).
 
 poly_info_extract(Info, PredInfo0, PredInfo,
                 ProcInfo0, ProcInfo, ModuleInfo) :-
 	Info = poly_info(VarSet, VarTypes, TypeVarSet, TypeInfoMap,
-		TypeclassInfoLocations, _Proofs, _OldPredInfo, ModuleInfo,
-		_, _),
+		TypeclassInfoLocations, _Proofs, _OldPredInfo, ModuleInfo),
 
 	% set the new values of the fields in proc_info and pred_info
 	proc_info_set_varset(ProcInfo0, VarSet, ProcInfo1),
@@ -3287,109 +3297,51 @@ poly_info_extract(Info, PredInfo0, PredInfo,
 
 %---------------------------------------------------------------------------%
 
-:- pred poly_info_get_varset(poly_info, prog_varset).
-:- mode poly_info_get_varset(in, out) is det.
+:- pred poly_info_get_varset(poly_info::in, prog_varset::out) is det.
+:- pred poly_info_get_var_types(poly_info::in, vartypes::out) is det.
+:- pred poly_info_get_typevarset(poly_info::in, tvarset::out) is det.
+:- pred poly_info_get_type_info_map(poly_info::in, type_info_varmap::out)
+	is det.
+:- pred poly_info_get_typeclass_info_map(poly_info::in,
+	map(class_constraint, prog_var)::out) is det.
+:- pred poly_info_get_proofs(poly_info::in,
+	map(class_constraint, constraint_proof)::out) is det.
+:- pred poly_info_get_pred_info(poly_info::in, pred_info::out) is det.
+:- pred poly_info_get_module_info(poly_info::in, module_info::out) is det.
 
-poly_info_get_varset(PolyInfo, VarSet) :-
-	PolyInfo = poly_info(VarSet, _, _, _, _, _, _, _, _, _).
+poly_info_get_varset(PolyInfo, PolyInfo^varset).
+poly_info_get_var_types(PolyInfo, PolyInfo^vartypes).
+poly_info_get_typevarset(PolyInfo, PolyInfo^typevarset).
+poly_info_get_type_info_map(PolyInfo, PolyInfo^type_info_varmap).
+poly_info_get_typeclass_info_map(PolyInfo, PolyInfo^typeclass_info_map).
+poly_info_get_proofs(PolyInfo, PolyInfo^proof_map).
+poly_info_get_pred_info(PolyInfo, PolyInfo^pred_info).
+poly_info_get_module_info(PolyInfo, PolyInfo^module_info).
 
-:- pred poly_info_get_var_types(poly_info, map(prog_var, type)).
-:- mode poly_info_get_var_types(in, out) is det.
+:- pred poly_info_set_varset(prog_varset::in, poly_info::in,
+	poly_info::out) is det.
+:- pred poly_info_set_varset_and_types(prog_varset::in, vartypes::in,
+	poly_info::in, poly_info::out) is det.
+:- pred poly_info_set_typevarset(tvarset::in, poly_info::in,
+	poly_info::out) is det.
+:- pred poly_info_set_type_info_map(type_info_varmap::in,
+	poly_info::in, poly_info::out) is det.
+:- pred poly_info_set_typeclass_info_map(map(class_constraint, prog_var)::in,
+	poly_info::in, poly_info::out) is det.
+:- pred poly_info_set_proofs(map(class_constraint, constraint_proof)::in,
+	poly_info::in, poly_info::out) is det.
+:- pred poly_info_set_module_info(module_info::in, poly_info::in,
+	poly_info::out) is det.
 
-poly_info_get_var_types(PolyInfo, VarTypes) :-
-	PolyInfo = poly_info(_, VarTypes, _, _, _, _, _, _, _, _).
-
-:- pred poly_info_get_typevarset(poly_info, tvarset).
-:- mode poly_info_get_typevarset(in, out) is det.
-
-poly_info_get_typevarset(PolyInfo, TypeVarSet) :-
-	PolyInfo = poly_info(_, _, TypeVarSet, _, _, _, _, _, _, _).
-
-:- pred poly_info_get_type_info_map(poly_info, map(tvar, type_info_locn)).
-:- mode poly_info_get_type_info_map(in, out) is det.
-
-poly_info_get_type_info_map(PolyInfo, TypeInfoMap) :-
-	PolyInfo = poly_info(_, _, _, TypeInfoMap, _, _, _, _, _, _).
-
-:- pred poly_info_get_typeclass_info_map(poly_info,
-					map(class_constraint, prog_var)).
-:- mode poly_info_get_typeclass_info_map(in, out) is det.
-
-poly_info_get_typeclass_info_map(PolyInfo, TypeClassInfoMap) :-
-	PolyInfo = poly_info(_, _, _, _, TypeClassInfoMap, _, _, _, _, _).
-
-:- pred poly_info_get_proofs(poly_info,
-				map(class_constraint, constraint_proof)).
-:- mode poly_info_get_proofs(in, out) is det.
-
-poly_info_get_proofs(PolyInfo, Proofs) :-
-	PolyInfo = poly_info(_, _, _, _, _, Proofs, _, _, _, _).
-
-:- pred poly_info_get_pred_info(poly_info, pred_info).
-:- mode poly_info_get_pred_info(in, out) is det.
-
-poly_info_get_pred_info(PolyInfo, PredInfo) :-
-	PolyInfo = poly_info(_, _, _, _, _, _, PredInfo, _, _, _).
-
-:- pred poly_info_get_module_info(poly_info, module_info).
-:- mode poly_info_get_module_info(in, out) is det.
-
-poly_info_get_module_info(PolyInfo, ModuleInfo) :-
-	PolyInfo = poly_info(_, _, _, _, _, _, _, ModuleInfo, _, _).
-
-:- pred poly_info_set_varset(prog_varset, poly_info, poly_info).
-:- mode poly_info_set_varset(in, in, out) is det.
-
-poly_info_set_varset(VarSet, PolyInfo0, PolyInfo) :-
-	PolyInfo0 = poly_info(_, B, C, D, E, F, G, H, I, J),
-	PolyInfo = poly_info(VarSet, B, C, D, E, F, G, H, I, J).
-
-:- pred poly_info_set_varset_and_types(prog_varset, map(prog_var, type),
-					poly_info, poly_info).
-:- mode poly_info_set_varset_and_types(in, in, in, out) is det.
-
-poly_info_set_varset_and_types(VarSet, VarTypes, PolyInfo0, PolyInfo) :-
-	PolyInfo0 = poly_info(_, _, C, D, E, F, G, H, I, J),
-	PolyInfo = poly_info(VarSet, VarTypes, C, D, E, F, G, H, I, J).
-
-:- pred poly_info_set_typevarset(tvarset, poly_info, poly_info).
-:- mode poly_info_set_typevarset(in, in, out) is det.
-
-poly_info_set_typevarset(TypeVarSet, PolyInfo0, PolyInfo) :-
-	PolyInfo0 = poly_info(A, B, _, D, E, F, G, H, I, J),
-	PolyInfo = poly_info(A, B, TypeVarSet, D, E, F, G, H, I, J).
-
-:- pred poly_info_set_type_info_map(map(tvar, type_info_locn),
-					poly_info, poly_info).
-:- mode poly_info_set_type_info_map(in, in, out) is det.
-
-poly_info_set_type_info_map(TypeInfoMap, PolyInfo0, PolyInfo) :-
-	PolyInfo0 = poly_info(A, B, C, _, E, F, G, H, I, J),
-	PolyInfo = poly_info(A, B, C, TypeInfoMap, E, F, G, H, I, J).
-
-:- pred poly_info_set_typeclass_info_map(map(class_constraint, prog_var),
-					poly_info, poly_info).
-:- mode poly_info_set_typeclass_info_map(in, in, out) is det.
-
-poly_info_set_typeclass_info_map(TypeClassInfoMap, PolyInfo0, PolyInfo) :-
-	PolyInfo0 = poly_info(A, B, C, D, _, F, G, H, I, J),
-	PolyInfo = poly_info(A, B, C, D, TypeClassInfoMap, F, G, H, I, J).
-
-
-:- pred poly_info_set_proofs(map(class_constraint, constraint_proof),
-				poly_info, poly_info).
-:- mode poly_info_set_proofs(in, in, out) is det.
-
-poly_info_set_proofs(Proofs, PolyInfo0, PolyInfo) :-
-	PolyInfo0 = poly_info(A, B, C, D, E, _, G, H, I, J),
-	PolyInfo = poly_info(A, B, C, D, E, Proofs, G, H, I, J).
-
-:- pred poly_info_set_module_info(module_info, poly_info, poly_info).
-:- mode poly_info_set_module_info(in, in, out) is det.
-
-poly_info_set_module_info(ModuleInfo, PolyInfo0, PolyInfo) :-
-	PolyInfo0 = poly_info(A, B, C, D, E, F, G, _, I, J),
-	PolyInfo = poly_info(A, B, C, D, E, F, G, ModuleInfo, I, J).
+poly_info_set_varset(VarSet, PI, PI^varset := VarSet).
+poly_info_set_varset_and_types(VarSet, VarTypes, PI,
+	(PI ^varset := VarSet) ^vartypes := VarTypes).
+poly_info_set_typevarset(TVarSet, PI, PI^typevarset := TVarSet).
+poly_info_set_type_info_map(TVarMap, PI, PI^type_info_varmap := TVarMap).
+poly_info_set_typeclass_info_map(TypeClassInfoMap, PI,
+	PI^typeclass_info_map := TypeClassInfoMap).
+poly_info_set_proofs(Proofs, PI, PI^proof_map := Proofs).
+poly_info_set_module_info(ModuleInfo, PI, PI^module_info := ModuleInfo).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

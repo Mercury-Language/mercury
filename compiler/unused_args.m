@@ -829,6 +829,8 @@ create_new_pred(proc(PredId, ProcId), UnusedArgInfo,
 		map__det_insert(ProcCallInfo0, proc(PredId, ProcId),
 		    call_info(NewPredId, NewProcId, PredSymName, UnusedArgs),
 		    ProcCallInfo),
+		module_info_globals(ModuleInfo0, Globals),
+		body_should_use_typeinfo_liveness(Globals, TypeInfoLiveness),
 		(
 			Status0 = exported,
 			IntermodUnusedArgs = yes(UnusedArgs2)
@@ -840,7 +842,8 @@ create_new_pred(proc(PredId, ProcId), UnusedArgInfo,
 				UnusedArgs2, "__ua", exported,
 				proc(PredId, ProcId), ExtraPredInfo0),
 			create_call_goal(UnusedArgs, NewPredId, NewProcId,
-				PredModule, PredName, OldProc0, ExtraProc0),
+				PredModule, PredName, TypeInfoLiveness,
+				OldProc0, ExtraProc0),
 			proc_info_headvars(OldProc0, HeadVars0),
 			remove_listof_elements(HeadVars0, 1, UnusedArgs2,
 				IntermodHeadVars),
@@ -866,7 +869,8 @@ create_new_pred(proc(PredId, ProcId), UnusedArgInfo,
 		predicate_table_get_preds(PredTable2, Preds0),
 		pred_info_procedures(PredInfo0, Procs0),
 		create_call_goal(UnusedArgs, NewPredId, NewProcId,
-			PredModule, PredName, OldProc0, OldProc),
+			PredModule, PredName, TypeInfoLiveness,
+			OldProc0, OldProc),
 		map__set(Procs0, ProcId, OldProc, Procs),
 		pred_info_set_procedures(PredInfo0, Procs, PredInfo),
 		map__det_update(Preds0, PredId, PredInfo, Preds1),
@@ -965,11 +969,11 @@ make_new_pred_info(ModuleInfo, PredInfo0, UnusedArgs, NameSuffix, Status,
 	% Replace the goal in the procedure with one to call the given
 	% pred_id and proc_id.
 :- pred create_call_goal(list(int)::in, pred_id::in, proc_id::in,
-		module_name::in, string::in, proc_info::in, proc_info::out)
-		is det.
+		module_name::in, string::in, bool::in, proc_info::in,
+		proc_info::out) is det.
 
 create_call_goal(UnusedArgs, NewPredId, NewProcId, PredModule,
-		PredName, OldProc0, OldProc) :-
+		PredName, TypeInfoLiveness, OldProc0, OldProc) :-
 	proc_info_headvars(OldProc0, HeadVars),
 	proc_info_goal(OldProc0, Goal0), 
 	Goal0 = _GoalExpr - GoalInfo0,
@@ -984,12 +988,13 @@ create_call_goal(UnusedArgs, NewPredId, NewProcId, PredModule,
 	GoalExpr = call(NewPredId, NewProcId, NewHeadVars,
 		      not_builtin, no, qualified(PredModule, PredName)),
 	Goal1 = GoalExpr - GoalInfo0,
-	implicitly_quantify_goal(Goal1, Varset0, VarTypes1, NonLocals, 
-			Goal, Varset, VarTypes, _),
+	proc_info_typeinfo_varmap(OldProc0, TVarMap),
+	implicitly_quantify_goal(Goal1, Varset0, VarTypes1,
+		TVarMap, TypeInfoLiveness, NonLocals, 
+		Goal, Varset, VarTypes, _),
 	proc_info_set_goal(OldProc0, Goal, OldProc1),
 	proc_info_set_varset(OldProc1, Varset, OldProc2),
 	proc_info_set_vartypes(OldProc2, VarTypes, OldProc).
-
 
 	% Create a pred_info for an imported pred with a pragma unused_args
 	% in the .opt file.
@@ -1151,8 +1156,12 @@ do_fixup_unused_args(VarUsage, proc(OldPredId, OldProcId), ProcCallInfo,
 		Changed = yes,
 			% if anything has changed, rerun quantification
 		set__list_to_set(HeadVars, NonLocals),
-		implicitly_quantify_goal(Goal1, Varset0, VarTypes0, NonLocals,
-						Goal, Varset, VarTypes, _),
+		proc_info_typeinfo_varmap(ProcInfo0, TVarMap),
+		module_info_globals(Mod0, Globals),
+		body_should_use_typeinfo_liveness(Globals, TypeInfoLiveness),
+		implicitly_quantify_goal(Goal1, Varset0, VarTypes0,
+			TVarMap, TypeInfoLiveness, NonLocals,
+			Goal, Varset, VarTypes, _),
 		proc_info_set_goal(FixedProc2, Goal, FixedProc3),
 		proc_info_set_varset(FixedProc3, Varset, FixedProc4),
 		proc_info_set_vartypes(FixedProc4, VarTypes, FixedProc5)

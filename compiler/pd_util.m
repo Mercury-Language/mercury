@@ -157,8 +157,9 @@ pd_util__simplify_goal(Simplifications, Goal0, Goal) -->
 	pd_info_get_proc_info(ProcInfo0),
 	{ proc_info_varset(ProcInfo0, VarSet0) },
 	{ proc_info_vartypes(ProcInfo0, VarTypes0) },
+	{ proc_info_typeinfo_varmap(ProcInfo0, TVarMap) },
 	{ simplify_info_init(DetInfo0, Simplifications, InstMap0,
-		VarSet0, VarTypes0, SimplifyInfo0) },
+		VarSet0, VarTypes0, TVarMap, SimplifyInfo0) },
 
 	{ simplify__process_goal(Goal0, Goal, SimplifyInfo0, SimplifyInfo) },
 
@@ -666,8 +667,13 @@ pd_util__requantify_goal(Goal0, NonLocals, Goal) -->
 	pd_info_get_proc_info(ProcInfo0),
 	{ proc_info_varset(ProcInfo0, VarSet0) },
 	{ proc_info_vartypes(ProcInfo0, VarTypes0) },
-	{ implicitly_quantify_goal(Goal0, VarSet0, VarTypes0, NonLocals,
-			Goal, VarSet, VarTypes, _) },
+	{ proc_info_typeinfo_varmap(ProcInfo0, TVarMap) },
+	pd_info_get_module_info(ModuleInfo0),
+	{ module_info_globals(ModuleInfo0, Globals) },
+	{ body_should_use_typeinfo_liveness(Globals, TypeInfoLiveness) },
+	{ implicitly_quantify_goal(Goal0, VarSet0, VarTypes0,
+		TVarMap, TypeInfoLiveness, NonLocals,
+		Goal, VarSet, VarTypes, _) },
 	{ proc_info_set_varset(ProcInfo0, VarSet, ProcInfo1) },
 	{ proc_info_set_vartypes(ProcInfo1, VarTypes, ProcInfo) },
 	pd_info_set_proc_info(ProcInfo).
@@ -677,7 +683,8 @@ pd_util__recompute_instmap_delta(Goal0, Goal) -->
 	pd_info_get_instmap(InstMap),
 	pd_info_get_proc_info(ProcInfo),
 	{ proc_info_vartypes(ProcInfo, VarTypes) },
-	{ recompute_instmap_delta(yes, Goal0, Goal, VarTypes, InstMap, 
+	{ proc_info_typeinfo_varmap(ProcInfo, TVarMap) },
+	{ recompute_instmap_delta(yes, Goal0, Goal, VarTypes, TVarMap, InstMap, 
 		ModuleInfo0, ModuleInfo) },
 	pd_info_set_module_info(ModuleInfo).
 

@@ -1554,7 +1554,9 @@ stage3(RecCallId, Accs, VarSet, VarTypes, C, CS, Substs,
 	proc_info_set_varset(OrigProcInfo1, VarSet, OrigProcInfo2),
 	proc_info_set_vartypes(OrigProcInfo2, VarTypes, OrigProcInfo3),
 
-	OrigProcInfo = requantify_procedure(OrigProcInfo3),
+	module_info_globals(ModuleInfo1, Globals),
+	body_should_use_typeinfo_liveness(Globals, TypeInfoLiveness),
+	OrigProcInfo = requantify_procedure(TypeInfoLiveness, OrigProcInfo3),
 
 	update_accumulator_pred(AccPredId, AccProcId, AccGoal,
 			ModuleInfo1, ModuleInfo).
@@ -1961,26 +1963,19 @@ update_accumulator_pred(NewPredId, NewProcId, AccGoal,
 
 	proc_info_set_goal(ProcInfo0, AccGoal, ProcInfo),
 
+	module_info_globals(ModuleInfo0, Globals),
+	body_should_use_typeinfo_liveness(Globals, TypeInfoLiveness),
 	module_info_set_pred_proc_info(ModuleInfo0, NewPredId, NewProcId,
-			PredInfo, requantify_procedure(ProcInfo), ModuleInfo).
+		PredInfo, requantify_procedure(TypeInfoLiveness, ProcInfo),
+		ModuleInfo).
 
 	%
 	% Recalculate the non-locals of a procedure.
 	%
-:- func requantify_procedure(proc_info) = proc_info.
+:- func requantify_procedure(bool, proc_info) = proc_info.
 
-requantify_procedure(ProcInfo0) = ProcInfo :-
-	proc_info_headvars(ProcInfo0, HeadVars),
-	proc_info_vartypes(ProcInfo0, VarTypes0),
-	proc_info_varset(ProcInfo0, Varset0),
-	proc_info_goal(ProcInfo0, Goal0),
-
-	implicitly_quantify_clause_body(HeadVars, Goal0, Varset0,
-		VarTypes0, Goal, Varset, VarTypes, _Warnings),
-
-	proc_info_set_goal(ProcInfo0, Goal, ProcInfo1),
-	proc_info_set_varset(ProcInfo1, Varset, ProcInfo2),
-	proc_info_set_vartypes(ProcInfo2, VarTypes, ProcInfo).
+requantify_procedure(TypeInfoLiveness, ProcInfo0) = ProcInfo :-
+	requantify_proc(TypeInfoLiveness, ProcInfo0, ProcInfo).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

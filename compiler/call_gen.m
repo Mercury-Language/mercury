@@ -585,16 +585,11 @@ call_gen__save_variables(OutArgs, Code) -->
 	{ set__list_to_set(Variables0, Vars0) },
 	code_info__get_globals(Globals),
 	{ body_should_use_typeinfo_liveness(Globals, TypeInfoLiveness) },
-	( 
-		{ TypeInfoLiveness = yes }
-	->
-		code_info__get_proc_info(ProcInfo),
-		{ proc_info_get_typeinfo_vars_setwise(ProcInfo, Vars0, 
-			TypeInfoVars) },
-		{ set__union(Vars0, TypeInfoVars, Vars1) }
-	;
-		{ Vars1 = Vars0 }
-	),
+	code_info__get_proc_info(ProcInfo),
+	{ proc_info_vartypes(ProcInfo, VarTypes) },
+	{ proc_info_typeinfo_varmap(ProcInfo, TVarMap) },
+	{ proc_info_maybe_complete_with_typeinfo_vars(Vars0, TypeInfoLiveness,
+		VarTypes, TVarMap, Vars1) },
 	{ set__difference(Vars1, OutArgs, Vars) },
 	{ set__to_sorted_list(Vars, Variables) },
 	call_gen__save_variables_2(Variables, Code).

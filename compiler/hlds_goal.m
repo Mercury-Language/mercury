@@ -721,6 +721,13 @@
 				% unreachability, but both will be
 				% conservative approximations, so if either
 				% says a goal is unreachable then it is.
+				%
+				% Normally the instmap_delta will list only
+				% the nonlocal variables of the goal. However,
+				% with typeinfo liveness, it may also list
+				% typeinfo or typeclass info variables that
+				% describe (part of) the type of a nonlocal
+				% variable.
 
 		context :: prog_context,
 

@@ -700,8 +700,10 @@ unify_proc__generate_compare_clauses(Type, TypeBody, Res, H1, H2, Context,
 unify_proc__quantify_clause_body(HeadVars, Goal, Context, Clauses) -->
 	unify_proc__info_get_varset(Varset0),
 	unify_proc__info_get_types(Types0),
-	{ implicitly_quantify_clause_body(HeadVars, Goal,
-		Varset0, Types0, Body, Varset, Types, _Warnings) },
+	unify_proc__info_get_type_info_varmap(TVarMap),
+	{ TypeInfoLiveness = no },
+	{ implicitly_quantify_clause_body(HeadVars, Goal, Varset0, Types0,
+		TVarMap, TypeInfoLiveness, Body, Varset, Types, _Warnings) },
 	unify_proc__info_set_varset(Varset),
 	unify_proc__info_set_types(Types),
 	{ Clauses = [clause([], Body, Context)] }.
@@ -765,8 +767,10 @@ unify_proc__generate_du_unify_clauses([Ctor | Ctors], H1, H2, Context,
 	{ conj_list_to_goal(GoalList, GoalInfo, Goal) },
 	unify_proc__info_get_varset(Varset0),
 	unify_proc__info_get_types(Types0),
-	{ implicitly_quantify_clause_body([H1, H2], Goal,
-		Varset0, Types0, Body, Varset, Types, _Warnings) },
+	unify_proc__info_get_type_info_varmap(TVarMap),
+	{ TypeInfoLiveness = no },
+	{ implicitly_quantify_clause_body([H1, H2], Goal, Varset0, Types0,
+		TVarMap, TypeInfoLiveness, Body, Varset, Types, _Warnings) },
 	unify_proc__info_set_varset(Varset),
 	unify_proc__info_set_types(Types),
 	{ Clause = clause([], Body, Context) },
@@ -820,8 +824,10 @@ unify_proc__generate_du_index_clauses([Ctor | Ctors], X, Index, Context, N,
 	{ conj_list_to_goal(GoalList, GoalInfo, Goal) },
 	unify_proc__info_get_varset(Varset0),
 	unify_proc__info_get_types(Types0),
-	{ implicitly_quantify_clause_body([X, Index], Goal,
-		Varset0, Types0, Body, Varset, Types, _Warnings) },
+	unify_proc__info_get_type_info_varmap(TVarMap),
+	{ TypeInfoLiveness = no },
+	{ implicitly_quantify_clause_body([X, Index], Goal, Varset0, Types0,
+		TVarMap, TypeInfoLiveness, Body, Varset, Types, _Warnings) },
 	unify_proc__info_set_varset(Varset),
 	unify_proc__info_set_types(Types),
 	{ Clause = clause([], Body, Context) },
@@ -885,8 +891,12 @@ unify_proc__generate_du_compare_clauses(Type, Ctors, Res, X, Y, Context,
 	{ ArgVars = [Res, X, Y] },
 	unify_proc__info_get_varset(Varset0),
 	unify_proc__info_get_types(Types0),
-	{ implicitly_quantify_clause_body(ArgVars, Goal,
-		Varset0, Types0, Body, Varset, Types, _Warnings) },
+	unify_proc__info_get_type_info_varmap(TVarMap),
+	unify_proc__info_get_module_info(ModuleInfo),
+	{ module_info_globals(ModuleInfo, Globals) },
+	{ body_should_use_typeinfo_liveness(Globals, TypeInfoLiveness) },
+	{ implicitly_quantify_clause_body(ArgVars, Goal, Varset0, Types0,
+		TVarMap, TypeInfoLiveness, Body, Varset, Types, _Warnings) },
 	unify_proc__info_set_varset(Varset),
 	unify_proc__info_set_types(Types),
 	{ Clause = clause([], Body, Context) }.
@@ -1288,40 +1298,25 @@ unify_proc__unify_var_lists_2([_Name - Type | ArgTypes], ExistQTVars,
 
 :- type unify_proc_info.
 
-:- pred unify_proc__info_init(module_info, unify_proc_info).
-:- mode unify_proc__info_init(in, out) is det.
-
-:- pred unify_proc__info_new_var(type, prog_var,
-		unify_proc_info, unify_proc_info).
-:- mode unify_proc__info_new_var(in, out, in, out) is det.
-
-:- pred unify_proc__info_new_named_var(type, string, prog_var,
-		unify_proc_info, unify_proc_info).
-:- mode unify_proc__info_new_named_var(in, in, out, in, out) is det.
-
-:- pred unify_proc__info_extract(unify_proc_info, prog_varset,
-		map(prog_var, type)).
-:- mode unify_proc__info_extract(in, out, out) is det.
-
-:- pred unify_proc__info_get_varset(prog_varset,
-		unify_proc_info, unify_proc_info).
-:- mode unify_proc__info_get_varset(out, in, out) is det.
-
-:- pred unify_proc__info_set_varset(prog_varset,
-		unify_proc_info, unify_proc_info).
-:- mode unify_proc__info_set_varset(in, in, out) is det.
-
-:- pred unify_proc__info_get_types(map(prog_var, type),
-		unify_proc_info, unify_proc_info).
-:- mode unify_proc__info_get_types(out, in, out) is det.
-
-:- pred unify_proc__info_set_types(map(prog_var, type),
-		unify_proc_info, unify_proc_info).
-:- mode unify_proc__info_set_types(in, in, out) is det.
-
-:- pred unify_proc__info_get_module_info(module_info,
-					unify_proc_info, unify_proc_info).
-:- mode unify_proc__info_get_module_info(out, in, out) is det.
+:- pred unify_proc__info_init(module_info::in, unify_proc_info::out) is det.
+:- pred unify_proc__info_new_var((type)::in, prog_var::out,
+	unify_proc_info::in, unify_proc_info::out) is det.
+:- pred unify_proc__info_new_named_var((type)::in, string::in, prog_var::out,
+	unify_proc_info::in, unify_proc_info::out) is det.
+:- pred unify_proc__info_extract(unify_proc_info::in,
+	prog_varset::out, vartypes::out) is det.
+:- pred unify_proc__info_get_varset(prog_varset::out,
+	unify_proc_info::in, unify_proc_info::out) is det.
+:- pred unify_proc__info_set_varset(prog_varset::in,
+	unify_proc_info::in, unify_proc_info::out) is det.
+:- pred unify_proc__info_get_types(vartypes::out,
+	unify_proc_info::in, unify_proc_info::out) is det.
+:- pred unify_proc__info_set_types(vartypes::in,
+	unify_proc_info::in, unify_proc_info::out) is det.
+:- pred unify_proc__info_get_type_info_varmap(type_info_varmap::out,
+	unify_proc_info::in, unify_proc_info::out) is det.
+:- pred unify_proc__info_get_module_info(module_info::out,
+	unify_proc_info::in, unify_proc_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -1329,46 +1324,36 @@ unify_proc__unify_var_lists_2([_Name - Type | ArgTypes], ExistQTVars,
 
 :- type unify_proc_info
 	--->	unify_proc_info(
-			prog_varset,
-			map(prog_var, type),
-			module_info
+			varset			::	prog_varset,
+			vartypes		::	vartypes,
+			type_info_varmap	::	type_info_varmap,
+			module_info		::	module_info
 		).
 
-unify_proc__info_init(ModuleInfo, VarTypeInfo) :-
+unify_proc__info_init(ModuleInfo, UPI) :-
 	varset__init(VarSet),
 	map__init(Types),
-	VarTypeInfo = unify_proc_info(VarSet, Types, ModuleInfo).
+	map__init(TVarMap),
+	UPI = unify_proc_info(VarSet, Types, TVarMap, ModuleInfo).
 
-unify_proc__info_new_var(Type, Var,
-		unify_proc_info(VarSet0, Types0, ModuleInfo),
-		unify_proc_info(VarSet, Types, ModuleInfo)) :-
-	varset__new_var(VarSet0, Var, VarSet),
-	map__det_insert(Types0, Var, Type, Types).
+unify_proc__info_new_var(Type, Var, UPI,
+		(UPI^varset := VarSet) ^vartypes := Types) :-
+	varset__new_var(UPI^varset, Var, VarSet),
+	map__det_insert(UPI^vartypes, Var, Type, Types).
 
-unify_proc__info_new_named_var(Type, Name, Var,
-		unify_proc_info(VarSet0, Types0, ModuleInfo),
-		unify_proc_info(VarSet, Types, ModuleInfo)) :-
-	varset__new_named_var(VarSet0, Name, Var, VarSet),
-	map__det_insert(Types0, Var, Type, Types).
+unify_proc__info_new_named_var(Type, Name, Var, UPI,
+		(UPI^varset := VarSet) ^vartypes := Types) :-
+	varset__new_named_var(UPI^varset, Name, Var, VarSet),
+	map__det_insert(UPI^vartypes, Var, Type, Types).
 
-unify_proc__info_extract(unify_proc_info(VarSet, Types, _ModuleInfo),
-			VarSet, Types).
+unify_proc__info_extract(UPI, UPI^varset, UPI^vartypes).
 
-unify_proc__info_get_varset(VarSet, ProcInfo, ProcInfo) :-
-	ProcInfo = unify_proc_info(VarSet, _Types, _ModuleInfo).
+unify_proc__info_get_varset(UPI^varset, UPI, UPI).
+unify_proc__info_get_types(UPI^vartypes, UPI, UPI).
+unify_proc__info_get_type_info_varmap(UPI^type_info_varmap, UPI, UPI).
+unify_proc__info_get_module_info(UPI^module_info, UPI, UPI).
 
-unify_proc__info_set_varset(VarSet, unify_proc_info(_VarSet, Types, ModuleInfo),
-				unify_proc_info(VarSet, Types, ModuleInfo)).
-
-unify_proc__info_get_types(Types, ProcInfo, ProcInfo) :-
-	ProcInfo = unify_proc_info(_VarSet, Types, _ModuleInfo).
-
-unify_proc__info_set_types(Types, unify_proc_info(VarSet, _Types, ModuleInfo),
-				unify_proc_info(VarSet, Types, ModuleInfo)).
-
-unify_proc__info_get_module_info(ModuleInfo, VarTypeInfo, VarTypeInfo) :-
-	VarTypeInfo = unify_proc_info(_VarSet, _Types, ModuleInfo).
-
-% :- end_module unify_proc_info.
+unify_proc__info_set_varset(VarSet, UPI, UPI^varset := VarSet).
+unify_proc__info_set_types(Types, UPI, UPI^vartypes := Types).
 
 %-----------------------------------------------------------------------------%
