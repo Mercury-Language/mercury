@@ -43,7 +43,7 @@ Define_extern_entry(mercury____Unify___std_util__type_info_0_0_bootstrap);
 Define_extern_entry(mercury____Index___std_util__type_info_0_0_bootstrap);
 Define_extern_entry(mercury____Compare___std_util__type_info_0_0_bootstrap);
 
-#if !defined(USE_NONLOCAL_GOTOS) || defined(USE_ASM_LABELS)
+#if !defined(USE_GCC_NONLOCAL_GOTOS) || defined(USE_ASM_LABELS)
 
 const struct MR_TypeCtorInfo_struct
 mercury_data_std_util__type_ctor_info_type_info_0 = {
@@ -58,7 +58,7 @@ mercury_data_std_util__type_ctor_info_type_info_0 = {
 	string_const("type_info", 9)
 };
 
-#else /* defined(USE_NONLOCAL_GOTOS) && !defined(USE_ASM_LABELS) */
+#else /* defined(USE_GCC_NONLOCAL_GOTOS) && !defined(USE_ASM_LABELS) */
 
 /*
 ** Can't use ENTRY(...) in initializers, so just don't bother;
