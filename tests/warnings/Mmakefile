@@ -28,7 +28,7 @@ ERRORCHECK_PROGS= \
 
 # some files need to be compiled with special options
 
-MCFLAGS-arg_order_rearrangment	= --introduce-accumulators
+MCFLAGS-arg_order_rearrangment	= --introduce-accumulators \
 					--excess-assign --common-struct
 					# we need to explicitly enable those
 					# optimizations because otherwise the
