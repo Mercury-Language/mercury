@@ -174,9 +174,10 @@
 %		  * the number of constraints on the typeclass decl. (`m')
 %		  * the number of parameters (type variables) from 
 %		         the typeclass decl. (`n')
-%		  * pointer to first method
+%		  * the number of constraints on the typeclass decl. (`p')
+%		  * pointer to method #1
 %		    ...
-%		  * pointer to last method
+%		  * pointer to method #p
 %
 %		The typeclass_info contains:
 %		  * a pointer to the base typeclass info

@@ -131,7 +131,10 @@ base_typeclass_info__gen_rvals_and_procs(yes(PredProcIds0), Constraints,
 		PredAddrArgs),
 	base_typeclass_info__gen_superclass_count(ClassId, ModuleInfo,
 			SuperClassCount, ClassArity),
-	Rvals = [ ArityArg, SuperClassCount, ClassArity | PredAddrArgs ].
+	list__length(PredAddrArgs, NumMethods),
+	NumMethodsArg = yes(const(int_const(NumMethods))),
+	Rvals = [ ArityArg, SuperClassCount, ClassArity, NumMethodsArg 
+			| PredAddrArgs ].
 
 :- pred base_typeclass_info__construct_pred_addrs(list(pred_proc_id),
 	module_info, list(maybe(rval))).

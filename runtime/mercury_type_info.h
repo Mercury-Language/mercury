@@ -755,8 +755,10 @@ typedef struct {
 	((Integer)(*(Word **)(tci))[1])
 #define	MR_typeclass_info_num_type_infos(tci) \
 	((Integer)(*(Word **)(tci))[2])
+#define	MR_typeclass_info_num_methods(tci) \
+	((Integer)(*(Word **)(tci))[3])
 #define	MR_typeclass_info_class_method(tci, n) \
-	((Code *)(*(Word **)tci)[(n+2)])
+	((Code *)(*(Word **)tci)[(n+3)])
 #define	MR_typeclass_info_arg_typeclass_info(tci, n) \
 	(((Word *)(tci))[(n)])
 
