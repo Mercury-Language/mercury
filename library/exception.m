@@ -636,7 +636,7 @@ ML_ExceptionHandler *ML_exception_handler;
 void
 mercury__exception__builtin_throw_1_p_0(MR_Univ exception)
 {
-	if (ML_exception_handler->handler == NULL) {
+	if (ML_exception_handler == NULL) {
 		ML_report_uncaught_exception(exception);
 		abort();
 	} else {
