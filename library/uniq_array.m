@@ -128,6 +128,7 @@ lower bounds other than zero are not supported
 	% uniq_array
 	% Note: in this implementation, the lower bound is always zero.
 :- pred uniq_array__bounds(uniq_array(_T), int, int).
+:- mode uniq_array__bounds(uniq_array_ui, out, out) is det.
 :- mode uniq_array__bounds(in, out, out) is det.
 
 	% uniq_array__min returns the lower bound of the array
