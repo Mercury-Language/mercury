@@ -64,7 +64,7 @@
 	% containing `Length' elements.
 
 :- pred queue__length(queue(T), int).
-:- mode queue__length(in, out).
+:- mode queue__length(in, out) is det.
 
 %--------------------------------------------------------------------------%
 

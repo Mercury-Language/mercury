@@ -108,7 +108,7 @@
 
 
 :- pred output_c_file(c_file, io__state, io__state).
-:- mode output_c_file(in, di, uo).
+:- mode output_c_file(in, di, uo) is det.
 
 	% Given a 'c_file' structure, open the appropriate .xmod file
 	% and output the code into that file.
@@ -146,7 +146,7 @@ output_c_file(c_file(Name, Modules)) -->
 	).
 
 :- pred output_c_module_list(list(c_module), io__state, io__state).
-:- mode output_c_module_list(in, di, uo).
+:- mode output_c_module_list(in, di, uo) is det.
 
 output_c_module_list([]) --> [].
 output_c_module_list([M|Ms]) -->
@@ -154,7 +154,7 @@ output_c_module_list([M|Ms]) -->
 	output_c_module_list(Ms).
 
 :- pred output_c_module(c_module, io__state, io__state).
-:- mode output_c_module(in, di, uo).
+:- mode output_c_module(in, di, uo) is det.
 
 output_c_module(c_module(Name,Predicates)) -->
 	io__write_string("\n"),
@@ -170,7 +170,7 @@ output_c_module(c_module(Name,Predicates)) -->
 	io__write_string("END_MODULE\n").
 
 :- pred output_c_procedure_list(list(c_procedure), io__state, io__state).
-:- mode output_c_procedure_list(in, di, uo).
+:- mode output_c_procedure_list(in, di, uo) is det.
 
 output_c_procedure_list([]) --> [].
 output_c_procedure_list([P|Ps]) -->
@@ -178,7 +178,7 @@ output_c_procedure_list([P|Ps]) -->
 	output_c_procedure_list(Ps).
 
 :- pred output_c_procedure(c_procedure, io__state, io__state).
-:- mode output_c_procedure(in, di, uo).
+:- mode output_c_procedure(in, di, uo) is det.
 
 output_c_procedure(c_procedure(Name,Arity,Mode,Instructions)) -->
 	io__write_string("/* code for predicate "),
@@ -191,7 +191,7 @@ output_c_procedure(c_procedure(Name,Arity,Mode,Instructions)) -->
 	output_instruction_list(Instructions).
 
 :- pred output_instruction_list(list(instruction), io__state, io__state).
-:- mode output_instruction_list(in, di, uo).
+:- mode output_instruction_list(in, di, uo) is det.
 
 output_instruction_list([]) --> [].
 output_instruction_list([Inst - Comment|Instructions]) -->
@@ -208,7 +208,7 @@ output_instruction_list([Inst - Comment|Instructions]) -->
 	output_instruction_list(Instructions).
 
 :- pred output_instruction(instr, io__state, io__state).
-:- mode output_instruction(in, di, uo).
+:- mode output_instruction(in, di, uo) is det.
 
 output_instruction(comment(Comment)) -->
 	io__write_strings(["/*\n\t",Comment,"\n*/"]).
@@ -325,7 +325,7 @@ output_instruction(incr_hp(N)) -->
 	io__write_string(");").
 
 :- pred output_label(label, io__state, io__state).
-:- mode output_label(in, di, uo).
+:- mode output_label(in, di, uo) is det.
 
 output_label(entrylabel(_Module, Pred, Arity, Mode)) -->
 	%%% io__write_string(Module),
@@ -349,7 +349,7 @@ output_label(label(_Module, Pred, Arity, Mode, Num)) -->
 	io__write_int(Num).
 
 :- pred output_unilabel(unilabel, io__state, io__state).
-:- mode output_unilabel(in, di, uo).
+:- mode output_unilabel(in, di, uo) is det.
 
 output_unilabel(unilabel(_Module, LeftStr, RightStr)) -->
 	%%% io__write_string(Module),
@@ -360,7 +360,7 @@ output_unilabel(unilabel(_Module, LeftStr, RightStr)) -->
 	io__write_string(RightStr).
 
 :- pred output_reg(reg, io__state, io__state).
-:- mode output_reg(in, di, uo).
+:- mode output_reg(in, di, uo) is det.
 
 output_reg(r(N)) -->
 	{ (N < 1, N > 32) ->
@@ -374,7 +374,7 @@ output_reg(f(_)) -->
 	{ error("Floating point registers not implemented") }.
 
 :- pred output_tag(tag, io__state, io__state).
-:- mode output_tag(in, di, uo).
+:- mode output_tag(in, di, uo) is det.
 
 output_tag(Tag) -->
 	io__write_string("mktag("),
@@ -382,7 +382,7 @@ output_tag(Tag) -->
 	io__write_string(")").
 
 :- pred output_rval(rval, io__state, io__state).
-:- mode output_rval(in, di, uo).
+:- mode output_rval(in, di, uo) is det.
 
 output_rval(binop(Op, X, Y)) -->
 	io__write_string("("),
@@ -423,7 +423,7 @@ output_rval(var(_)) -->
 	{ error("Cannot output a var(_) expression in code") }.
 
 :- pred output_lval(lval, io__state, io__state).
-:- mode output_lval(in, di, uo).
+:- mode output_lval(in, di, uo) is det.
 
 output_lval(reg(R)) -->
 	output_reg(R).
@@ -456,7 +456,7 @@ output_lval(lvar(_)) -->
 %-----------------------------------------------------------------------------%
 
 :- pred output_c_quoted_string(string, io__state, io__state).
-:- mode output_c_quoted_string(in, di, uo).
+:- mode output_c_quoted_string(in, di, uo) is det.
 
 output_c_quoted_string(S0) -->
 	( { string__first_char(S0, Char, S1) } ->
@@ -483,7 +483,7 @@ quote_c_char('\b', 'b').
 %-----------------------------------------------------------------------------%
 
 :- pred output_operator(operator, io__state, io__state).
-:- mode output_operator(in, di, uo).
+:- mode output_operator(in, di, uo) is det.
 
 output_operator(+) -->
 	io__write_string("+").
@@ -528,7 +528,7 @@ clause_num_to_string(N, Str) :-
 	).
 
 :- pred int_to_letter(int, string).
-:- mode int_to_letter(in, out).
+:- mode int_to_letter(in, out) is det.
 
 	% This code is boring, but portable - it works even for EBCDIC ;-)
 

@@ -26,49 +26,49 @@
 	% Create an empty group
 
 :- pred group__init(group(T)).
-:- mode group__init(out).
+:- mode group__init(out) is det.
 
 	% Insert a set of elements into the group.
 
 :- pred group__insert(group(T), set(T), group(T)).
-:- mode group__insert(in, in, out).
+:- mode group__insert(in, in, out) is det.
 
 	% Given an element, get the set containing that element.
 
 :- pred group__group(group(T), T, set(T)).
-:- mode group__group(in, in, out).
+:- mode group__group(in, in, out) is det.
 
 	% Convert the group to a set of sets.
 
 :- pred group__to_set(group(T), set(set(T))).
-:- mode group__to_set(in, out).
+:- mode group__to_set(in, out) is det.
 
 :- pred group__sets_and_keys(group(T), assoc_list(set(T), group__key)).
-:- mode group__sets_and_keys(in, out).
+:- mode group__sets_and_keys(in, out) is det.
 
 	% Given an element, get the key for the group containing
 	% that element.
 
 :- pred group__group_key(group(T), T, group__key).
-:- mode group__group_key(in, in, out).
+:- mode group__group_key(in, in, out) is det.
 
 	% Given a group key, get the corresponding set of elements.
 
 :- pred group__key_group(group(T), group__key, set(T)).
-:- mode group__key_group(in, in, out).
+:- mode group__key_group(in, in, out) is det.
 
 	% Remove a set from the group, and return the set.
 
 :- pred group__remove_group(group(T), group__key, set(T), group(T)).
-:- mode group__remove_group(in, in, out, out).
+:- mode group__remove_group(in, in, out, out) is det.
 
 	% Test to see if two elements are in the same set.
 
 :- pred group__same_group(group(T), T, T).
-:- mode group__same_group(in, in, in).
+:- mode group__same_group(in, in, in) is semidet.
 
 :- pred group__largest_group_key(group(T), group__key).
-:- mode group__largest_group_key(in, out).
+:- mode group__largest_group_key(in, out) is det.
 
 :- pred group__group_keys(group(T), list(group__key)).
 :- mode group__group_keys(in, out) is det.

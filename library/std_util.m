@@ -86,7 +86,7 @@
 % to stdout.  (Technically, every Mercury implementation must offer
 % a mode of invokation which disables this side-effect.)
 
-:- pred report_stats.
+:- pred report_stats is det.
 
 %-----------------------------------------------------------------------------%
 
