@@ -364,7 +364,7 @@ ifeq ($(findstring il,$(GRADE)),il)
 	$(MS_ILASM) $(ALL_MS_ILASMFLAGS) /quiet /OUT=$@ $< 
 
 .cpp.dll:
-	$(MS_CL) -CLR($MS_CL_NOASM) $(ALL_MS_CLFLAGS) \
+	$(MS_CL) -CLR$(MS_CL_NOASM) $(ALL_MS_CLFLAGS) \
 		-I`cygpath -w $(MERC_C_INCL_DIR)` \
 		-AI`cygpath -w $(MERC_DLL_DIR)` $< \
 		-link -noentry mscoree.lib -dll $(MS_CL_LIBS) -out:$@
@@ -375,7 +375,7 @@ ifeq ($(findstring il,$(GRADE)),il)
 		$(CSHARP_ASSEMBLY_REFS-$*) $(EXTRA_CSCFLAGS) $<
 
 .cpp.exe:
-	$(MS_CL) -CLR($MS_CL_NOASM) -I$(MERCURY_LIBRARY_PATH) $< -link -entry:main $(MS_CL_LIBS) -out:$@
+	$(MS_CL) -CLR$(MS_CL_NOASM) -I$(MERCURY_LIBRARY_PATH) $< -link -entry:main $(MS_CL_LIBS) -out:$@
 
 .cs.exe:
 	$(MS_CSC) /lib:`cygpath -w $(MERC_DLL_DIR)` /out:$@ \
