@@ -2181,13 +2181,30 @@ get_load_store_lval_instrs(Lval, LoadMemRefInstrs,
 		{ StoreLvalInstrs = instr_node(stind(SimpleType)) } 
 	; { Lval = field(_MaybeTag, FieldRval, FieldNum, FieldType, 
 			ClassType) } -> 
-		{ get_fieldref(DataRep, FieldNum, FieldType, ClassType,
-			FieldRef, CastClassInstrs) },
-		load(FieldRval, LoadMemRefInstrs0),
-		{ LoadMemRefInstrs = tree__list([
-			LoadMemRefInstrs0,
-			CastClassInstrs]) },
-		{ StoreLvalInstrs = instr_node(stfld(FieldRef)) } 
+		{ ClassILType = mlds_type_to_ilds_type(DataRep, ClassType) },
+		( { ClassILType = ilds__type(_, '[]'(_, _)) } ->
+			( { FieldNum = offset(OffsetRval) },
+				{ FieldILType = mlds_type_to_ilds_simple_type(
+							DataRep, FieldType) },
+				load(FieldRval, LoadArrayRval),
+				load(OffsetRval, LoadIndexRval),
+				{ LoadMemRefInstrs = tree__list([
+						LoadArrayRval,
+						LoadIndexRval]) },
+				{ StoreLvalInstrs = node([stelem(FieldILType)]) }
+			; { FieldNum = named_field(_, _) },
+				{ unexpected(this_file, "named_field for a type with an array representation.") }
+			)
+		;
+			{ get_fieldref(DataRep, FieldNum, FieldType, ClassType,
+				FieldRef, CastClassInstrs) },
+			load(FieldRval, LoadMemRefInstrs0),
+			{ LoadMemRefInstrs = tree__list([
+				LoadMemRefInstrs0,
+				CastClassInstrs]) },
+			{ StoreLvalInstrs = instr_node(stfld(FieldRef)) } 
+		)
+
 	;
 		{ LoadMemRefInstrs = empty },
 		store(Lval, StoreLvalInstrs)
