@@ -570,6 +570,7 @@ mercury_std_library_module("parser").
 mercury_std_library_module("pprint").
 mercury_std_library_module("pqueue").
 mercury_std_library_module("private_builtin").
+mercury_std_library_module("profiling_builtin").
 mercury_std_library_module("prolog").
 mercury_std_library_module("queue").
 mercury_std_library_module("random").
