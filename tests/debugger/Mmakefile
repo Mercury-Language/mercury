@@ -83,13 +83,13 @@ else
             endif
         endif
     endif
-endif
 
-# Declarative debugging grades don't support trace level shallow,
-# so we execute the tests exercising shallow tracing only in grades
-# other than .decldebug grades.
-ifeq "$(findstring decldebug,$(GRADE))" ""
-    PROGS := $(PROGS) $(SHALLOW_PROGS)
+    # Declarative debugging grades don't support trace level shallow,
+    # so we execute the tests exercising shallow tracing only in grades
+    # other than .decldebug grades.
+    ifeq "$(findstring decldebug,$(GRADE))" ""
+        PROGS := $(PROGS) $(SHALLOW_PROGS)
+    endif
 endif
 
 SUBDIRS=declarative
