@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2001 The University of Melbourne.
+% Copyright (C) 1994-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -309,7 +309,8 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 
 	% Generating Java implies high-level code, turning off nested functions,
 	% using copy-out for both det and nondet output arguments,
-	% using no tags, not optimizing tailcalls and no static ground terms.
+	% using no tags, not optimizing tailcalls, no static ground terms and
+	% store nondet environments on the heap.
 	% XXX no static ground terms should be eliminated in a later
 	%     version.
 	% XXX The Java backend should eventually support optimizing tailcalls.
@@ -321,7 +322,8 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 		globals__io_set_option(det_copy_out, bool(yes)),
 		globals__io_set_option(num_tag_bits, int(0)),
 		globals__io_set_option(optimize_tailcalls, bool(no)),
-		globals__io_set_option(static_ground_terms, bool(no))
+		globals__io_set_option(static_ground_terms, bool(no)),
+		globals__io_set_option(put_nondet_env_on_heap, bool(yes))
 	;
 		[]
 	),
