@@ -42,6 +42,8 @@ in the general case.
 :- interface.
 
 :- import_module hlds_module, hlds_data, prog_data, (inst), instmap.
+:- import_module inst_table.
+
 :- import_module list, map, std_util, set.
 
 :- pred abstractly_unify_inst(is_live, inst, inst, unify_is_real,
@@ -151,11 +153,6 @@ in the general case.
 
 %-----------------------------------------------------------------------------%
 
-:- pred inst_table_create_sub(inst_table, inst_table, inst_key_sub, inst_table).
-:- mode inst_table_create_sub(in, in, out, out) is det.
-
-%-----------------------------------------------------------------------------%
-
 :- type inst_fold_pred(T) == pred(inst, set(inst_name), T, T).
 :- mode inst_fold_pred :: (pred(in, in, in, out) is semidet).
 
@@ -186,7 +183,7 @@ in the general case.
 
 :- implementation.
 :- import_module hlds_data, inst_match, mode_util, det_analysis.
-:- import_module bool, std_util, require, map, list, set, assoc_list.
+:- import_module bool, std_util, require, map, list, set, int, assoc_list.
 
 :- pred add_new_keys_to_sub(map(inst_key, inst_key), list(inst_key),
 		inst_key, map(inst_key, inst_key)).
@@ -852,7 +849,7 @@ abstractly_unify_inst_functor_2(dead, Real, ground(Uniq, _), ConsId, ArgInsts,
 abstractly_unify_bound_inst_list(Live, Xs, Ys, Real, UnifyInstInfo0,
 			L, Det, UnifyInstInfo) :-
 	abstractly_unify_bound_inst_list_2(Live, Xs, Ys, Real,
-		UnifyInstInfo0, L, Det0, UnifyInstInfo),
+		UnifyInstInfo0, 0, L, Det0, UnifyInstInfo),
 	( L = [] ->
 		det_par_conjunction_detism(Det0, erroneous, Det)
 	;
@@ -861,22 +858,37 @@ abstractly_unify_bound_inst_list(Live, Xs, Ys, Real, UnifyInstInfo0,
 
 :- pred abstractly_unify_bound_inst_list_2(is_live, list(bound_inst),
 		list(bound_inst), unify_is_real, unify_inst_info,
-		list(bound_inst), determinism, unify_inst_info).
-:- mode abstractly_unify_bound_inst_list_2(in, in, in, in, in,
+		int, list(bound_inst), determinism, unify_inst_info).
+:- mode abstractly_unify_bound_inst_list_2(in, in, in, in, in, in,
 		out, out, out) is semidet.
 
-abstractly_unify_bound_inst_list_2(_, [], [], _, UI, [], det, UI).
-abstractly_unify_bound_inst_list_2(_, [], [_|_], _, UI, [], semidet, UI).
-abstractly_unify_bound_inst_list_2(_, [_|_], [], _, UI, [], semidet, UI).
-abstractly_unify_bound_inst_list_2(Live, [X|Xs], [Y|Ys], Real, UnifyInstInfo0,
-		L, Det, UnifyInstInfo) :-
+abstractly_unify_bound_inst_list_2(_, [], [], _, UI, N, [], Det, UI) :-
+	(
+			% The only time an abstract unification should
+			% be det, is when both of the bound_inst lists
+			% are of length one and have the same cons_ids.
+			%
+			% If N=0, we need to make the determinism det
+			% so that determinism is inferred as erroneous
+			% rather then failure in 
+			% abstractly_unify_bound_inst_list
+		N =< 1
+	->
+		Det = det
+	;
+		Det = semidet
+	).
+abstractly_unify_bound_inst_list_2(_, [], [_|_], _, UI, _, [], semidet, UI).
+abstractly_unify_bound_inst_list_2(_, [_|_], [], _, UI, _, [], semidet, UI).
+abstractly_unify_bound_inst_list_2(Live, [X|Xs], [Y|Ys], Real, UI0,
+		N, L, Det, UI) :-
 	X = functor(ConsIdX, ArgsX),
 	Y = functor(ConsIdY, ArgsY),
 	( ConsIdX = ConsIdY ->
 		abstractly_unify_inst_list(ArgsX, ArgsY, Live, Real,
-			UnifyInstInfo0, Args, Det1, UnifyInstInfo1),
+			UI0, Args, Det1, UI1),
 		abstractly_unify_bound_inst_list_2(Live, Xs, Ys, Real,
-				UnifyInstInfo1, L1, Det2, UnifyInstInfo),
+				UI1, N+1, L1, Det2, UI),
 
 		% If the unification of the two cons_ids is guaranteed
 		% not to succeed, don't include it in the list.
@@ -890,12 +902,10 @@ abstractly_unify_bound_inst_list_2(Live, [X|Xs], [Y|Ys], Real, UnifyInstInfo0,
 	;
 		( compare(<, ConsIdX, ConsIdY) ->
 			abstractly_unify_bound_inst_list_2(Live,
-				Xs, [Y|Ys], Real, UnifyInstInfo0, L, Det1,
-				UnifyInstInfo)
+				Xs, [Y|Ys], Real, UI0, N+1, L, Det1, UI)
 		;
 			abstractly_unify_bound_inst_list_2(Live,
-				[X|Xs], Ys, Real, UnifyInstInfo0, L, Det1,
-				UnifyInstInfo)
+				[X|Xs], Ys, Real, UI0, N+1, L, Det1, UI)
 		),
 		det_par_conjunction_detism(Det1, semidet, Det)
 	).
@@ -2403,214 +2413,6 @@ get_single_arg_inst_2([BoundInst | BoundInsts], ConsId, ArgInst) :-
 	).
 
 %-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-
-inst_table_create_sub(InstTable0, NewInstTable, Sub, InstTable) :-
-	inst_table_get_all_tables(InstTable0, SubInstTable0, UnifyInstTable0,
-		MergeInstTable0, GroundInstTable0, AnyInstTable0,
-		SharedInstTable0, ClobberedInstTable0, MostlyUniqInstTable0,
-		IKT0),
-	inst_table_get_all_tables(NewInstTable, NewSubInstTable,
-		NewUnifyInstTable, NewMergeInstTable, NewGroundInstTable,
-		NewAnyInstTable, NewSharedInstTable, NewMostlyUniqInstTable,
-		NewClobberedInstTable, NewIKT),
-	inst_key_table_create_sub(IKT0, NewIKT, Sub, IKT),
-
-	maybe_inst_det_table_apply_sub(UnifyInstTable0, NewUnifyInstTable,
-		UnifyInstTable, Sub),
-
-	merge_inst_table_apply_sub(MergeInstTable0, NewMergeInstTable,
-		MergeInstTable, Sub),
-
-	substitution_inst_table_apply_sub(SubInstTable0, NewSubInstTable,
-		SubInstTable, Sub),
-
-	maybe_inst_det_table_apply_sub(GroundInstTable0, NewGroundInstTable,
-		GroundInstTable, Sub),
-
-	( map__is_empty(NewAnyInstTable) ->
-		AnyInstTable = AnyInstTable0
-	;
-		error("NYI: inst_table_create_sub (any_inst_table)")
-	),
-	( map__is_empty(NewSharedInstTable) ->
-		SharedInstTable = SharedInstTable0
-	;
-		error("NYI: inst_table_create_sub (shared_inst_table)")
-	),
-	( map__is_empty(NewMostlyUniqInstTable) ->
-		MostlyUniqInstTable = MostlyUniqInstTable0
-	;
-		error("NYI: inst_table_create_sub (mostly_uniq_inst_table)")
-	),
-	( map__is_empty(NewClobberedInstTable) ->
-		ClobberedInstTable = ClobberedInstTable0
-	;
-		error("NYI: inst_table_create_sub (clobbered_inst_table)")
-	),
-	inst_table_set_all_tables(InstTable0, SubInstTable, UnifyInstTable,
-		MergeInstTable, GroundInstTable, AnyInstTable,
-		SharedInstTable, MostlyUniqInstTable, ClobberedInstTable, IKT,
-		InstTable).
-
-:- pred maybe_inst_table_apply_sub(map(inst_name, maybe_inst),
-		map(inst_name, maybe_inst), map(inst_name, maybe_inst),
-		inst_key_sub).
-:- mode maybe_inst_table_apply_sub(in, in, out, in) is det.
-
-maybe_inst_table_apply_sub(Table0, NewTable, Table, Sub) :-
-	( map__is_empty(Table0) ->
-		% Optimise common case
-		Table = Table0
-	;
-		map__to_assoc_list(NewTable, NewTableAL),
-		maybe_inst_table_apply_sub_2(NewTableAL, Table0, Table, Sub)
-	).
-
-:- pred maybe_inst_table_apply_sub_2(assoc_list(inst_name, maybe_inst),
-		map(inst_name, maybe_inst), map(inst_name, maybe_inst),
-		inst_key_sub).
-:- mode maybe_inst_table_apply_sub_2(in, in, out, in) is det.
-
-maybe_inst_table_apply_sub_2([], Table, Table, _).
-maybe_inst_table_apply_sub_2([InstName0 - Inst0 | Rest], Table0, Table, Sub) :-
-	inst_name_apply_sub(Sub, InstName0, InstName),
-	( Inst0 = unknown,
-		Inst = unknown
-	; Inst0 = known(I0),
-		inst_apply_sub(Sub, I0, I),
-		Inst = known(I)
-	),
-	map__set(Table0, InstName, Inst, Table1),
-	maybe_inst_table_apply_sub_2(Rest, Table1, Table, Sub).
-
-:- pred maybe_inst_det_table_apply_sub(map(inst_name, maybe_inst_det),
-		map(inst_name, maybe_inst_det), map(inst_name, maybe_inst_det),
-		inst_key_sub).
-:- mode maybe_inst_det_table_apply_sub(in, in, out, in) is det.
-
-maybe_inst_det_table_apply_sub(Table0, NewTable, Table, Sub) :-
-	( map__is_empty(Table0) ->
-		% Optimise common case
-		Table = Table0
-	;
-		map__to_assoc_list(NewTable, NewTableAL),
-		maybe_inst_det_table_apply_sub_2(NewTableAL, Table0, Table,
-			Sub)
-	).
-
-:- pred maybe_inst_det_table_apply_sub_2(assoc_list(inst_name, maybe_inst_det),
-		map(inst_name, maybe_inst_det), map(inst_name, maybe_inst_det),
-		inst_key_sub).
-:- mode maybe_inst_det_table_apply_sub_2(in, in, out, in) is det.
-
-maybe_inst_det_table_apply_sub_2([], Table, Table, _).
-maybe_inst_det_table_apply_sub_2([InstName0 - InstDet0 | Rest], Table0, Table, 
-		Sub) :-
-	inst_name_apply_sub(Sub, InstName0, InstName),
-	( InstDet0 = unknown,
-		InstDet = unknown
-	; InstDet0 = known(Inst0, Det),
-		inst_apply_sub(Sub, Inst0, Inst),
-		InstDet = known(Inst, Det)
-	),
-	map__set(Table0, InstName, InstDet, Table1),
-	maybe_inst_det_table_apply_sub_2(Rest, Table1, Table, Sub).
-
-:- pred merge_inst_table_apply_sub(merge_inst_table, merge_inst_table,
-		merge_inst_table, inst_key_sub).
-:- mode merge_inst_table_apply_sub(in, in, out, in) is det.
-
-merge_inst_table_apply_sub(Table0, NewTable, Table, Sub) :-
-	( map__is_empty(Table0) ->
-		% Optimise common case
-		Table = Table0
-	;
-		map__to_assoc_list(NewTable, NewTableAL),
-		merge_inst_table_apply_sub_2(NewTableAL, Table0, Table, Sub)
-	).
-
-:- pred merge_inst_table_apply_sub_2(assoc_list(merge_inst_pair, maybe_inst),
-		merge_inst_table, merge_inst_table, inst_key_sub).
-:- mode merge_inst_table_apply_sub_2(in, in, out, in) is det.
-
-merge_inst_table_apply_sub_2([], Table, Table, _).
-merge_inst_table_apply_sub_2([Pair0 - Inst0 | Rest], Table0, Table, Sub) :-
-	Pair0 = merge_inst_pair(IsLive, IA0, IB0),
-	inst_apply_sub(Sub, IA0, IA),
-	inst_apply_sub(Sub, IB0, IB),
-	( Inst0 = unknown,
-		Inst = unknown
-	; Inst0 = known(I0),
-		inst_apply_sub(Sub, I0, I),
-		Inst = known(I)
-	),
-	map__set(Table0, merge_inst_pair(IsLive, IA, IB), Inst, Table1),
-	merge_inst_table_apply_sub_2(Rest, Table1, Table, Sub).
-
-:- pred substitution_inst_table_apply_sub(substitution_inst_table,
-	substitution_inst_table, substitution_inst_table, inst_key_sub).
-:- mode substitution_inst_table_apply_sub(in, in, out, in) is det.
-
-substitution_inst_table_apply_sub(Table0, NewTable, Table, Sub) :-
-	( map__is_empty(Table0) ->
-		% Optimise common case
-		Table = Table0
-	;
-		map__to_assoc_list(NewTable, NewTableAL),
-		substitution_inst_table_apply_sub_2(NewTableAL, Table0, Table,
-			Sub)
-	).
-
-:- pred substitution_inst_table_apply_sub_2(assoc_list(substitution_inst,
-	maybe_inst), substitution_inst_table, substitution_inst_table,
-	inst_key_sub).
-:- mode substitution_inst_table_apply_sub_2(in, in, out, in) is det.
-
-substitution_inst_table_apply_sub_2([], Table, Table, _).
-substitution_inst_table_apply_sub_2(
-		[substitution_inst(InstName0, K, S) - Inst0 | Rest],
-		Table0, Table, Sub) :-
-	inst_name_apply_sub(Sub, InstName0, InstName),
-	( Inst0 = unknown,
-		Inst = unknown
-	; Inst0 = known(I0),
-		inst_apply_sub(Sub, I0, I),
-		Inst = known(I)
-	),
-	map__set(Table0, substitution_inst(InstName, K, S), Inst, Table1),
-	substitution_inst_table_apply_sub_2(Rest, Table1, Table, Sub).
-
-:- pred inst_name_apply_sub(inst_key_sub, inst_name, inst_name).
-:- mode inst_name_apply_sub(in, in, out) is det.
-
-inst_name_apply_sub(Sub, user_inst(Sym, Insts0), user_inst(Sym, Insts)) :-
-	list__map(inst_apply_sub(Sub), Insts0, Insts).
-inst_name_apply_sub(Sub, merge_inst(IsLive, InstA0, InstB0),
-		merge_inst(IsLive, InstA, InstB)) :-
-	inst_apply_sub(Sub, InstA0, InstA),
-	inst_apply_sub(Sub, InstB0, InstB).
-inst_name_apply_sub(Sub, unify_inst(IsLive, InstA0, InstB0, IsReal),
-		unify_inst(IsLive, InstA, InstB, IsReal)) :-
-	inst_apply_sub(Sub, InstA0, InstA),
-	inst_apply_sub(Sub, InstB0, InstB).
-inst_name_apply_sub(Sub, ground_inst(Name0, IsLive, Uniq, IsReal),
-		ground_inst(Name, IsLive, Uniq, IsReal)) :-
-	inst_name_apply_sub(Sub, Name0, Name).
-inst_name_apply_sub(Sub, any_inst(Name0, IsLive, Uniq, IsReal),
-		any_inst(Name, IsLive, Uniq, IsReal)) :-
-	inst_name_apply_sub(Sub, Name0, Name).
-inst_name_apply_sub(Sub, shared_inst(Name0), shared_inst(Name)) :-
-	inst_name_apply_sub(Sub, Name0, Name).
-inst_name_apply_sub(Sub, mostly_uniq_inst(Name0), mostly_uniq_inst(Name)) :-
-	inst_name_apply_sub(Sub, Name0, Name).
-inst_name_apply_sub(_Sub, typed_ground(Uniq, Type), typed_ground(Uniq, Type)).
-inst_name_apply_sub(Sub, typed_inst(Type, Name0), typed_inst(Type, Name)) :-
-	inst_name_apply_sub(Sub, Name0, Name).
-inst_name_apply_sub(Sub, substitution_inst(Name0, K, S),
-		substitution_inst(Name, K, S)) :-
-	inst_name_apply_sub(Sub, Name0, Name).
-
 %-----------------------------------------------------------------------------%
 
 inst_fold(InstMap, InstTable, ModuleInfo, Before, After, Merge, Inst) -->

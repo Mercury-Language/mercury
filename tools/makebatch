@@ -3,13 +3,18 @@
 # A program to prepare batches of versions of the compiler.
 #
 # The control and output files are all in the subdirectory batch.
-# The control files are $batch.MCFLAGS and possibly $batch.CFLAGS
-# and/or $batch.GRADE, where $batch is the last argument of makebatch.
-# $batch.CFLAGS and $batch.GRADE are consulted if they exist.
+# The control files are $batch.MCFLAGS and possibly $batch.CFLAGS,
+# $batch.GRADE, and/or $batch.MMAKE, where $batch is the last argument
+# of makebatch. $batch.CFLAGS, $batch.GRADE and $batch.MMAKE are consulted
+# if they exist.
 #
-# All the control files must have the same number of lines. Each line
-# corresponds to a version of the compiler that is built with the
-# MCFLAGS, EXTRA_CFLAGS and GRADE make variables being set from that line.
+# The control files $batch.MCFLAGS, $batch.CFLAGS and $batch.GRADE must have
+# the same number of lines. Each line corresponds to a version of the compiler
+# that is built with the MCFLAGS, EXTRA_CFLAGS and GRADE make variables
+# being set from that line.
+#
+# The control file $batch.MMAKE contains an Mmakefile fragment that is
+# included in the parameters of all the versions being built.
 #
 # The output goes in $batch.mercury_compile.$n.gz; the sizes of the versions
 # are put in $batch.sizes. If a bootcheck fails, the bootcheck output goes
@@ -21,9 +26,10 @@
 # that version. When makebatch exits normally, it removes the file to indicate
 # completion.
 
-usage="Usage: makebatch [-jN] [-ft] batchname"
+usage="Usage: makebatch [-jN] [-fot] batchname"
 jfactor=-j1
 runtests=""
+objects=""
 failed="notwanted"
 
 while test $# -gt 0
@@ -39,6 +45,9 @@ do
 		jfactor="-j` expr $1 : '-j\(.*\)' `" ;;
 	--jobs*)
 		jfactor="--jobs` expr $1 : '--jobs\(.*\)' `" ;;
+
+	-o|--object-files)
+		objects="-k" ;;
 
 	-t|--no-test-suite)
 		runtests="-t" ;;
@@ -81,6 +90,13 @@ else
 	needgrade=false
 fi
 
+if test -r batch/$batch.MMAKE
+then
+	needmmake=true
+else
+	needmmake=false
+fi
+
 if test -f Mmake.stage.params
 then
 	echo moving Mmake.stage.params to Mmake.stage.params.$$
@@ -99,16 +115,23 @@ maxn=`wc -l < batch/$batch.MCFLAGS`
 
 while test $n -le $maxn
 do
-	mcflags=`awk "NR == $n" batch/$batch.MCFLAGS`
-	echo "EXTRA_MCFLAGS = $mcflags" > Mmake.stage.params
+	if $needmmake
+	then
+		cp batch/$batch.MMAKE Mmake.stage.params
+	else
+		cat < /dev/null > Mmake.stage.params
+	fi
 
-	if test "$needcflags" = true
+	mcflags=`awk "NR == $n" batch/$batch.MCFLAGS`
+	echo "EXTRA_MCFLAGS = $mcflags" >> Mmake.stage.params
+
+	if $needcflags
 	then
 		cflags=`awk "NR == $n" batch/$batch.CFLAGS`
 		echo "EXTRA_CFLAGS = $cflags" >> Mmake.stage.params
 	fi
 
-	if test "$needgrade" = true
+	if $needgrade
 	then
 		grade=`awk "NR == $n" batch/$batch.GRADE`
 		echo "GRADE = $grade" >> Mmake.stage.params
@@ -116,7 +139,7 @@ do
 
 	cp Mmake.stage.params batch/$batch.params.$n
 	echo starting bootcheck of version $n
-	if tools/bootcheck -r $jfactor $runtests > batch/$batch.out.$n 2>&1
+	if tools/bootcheck -r $jfactor $runtests $objects > batch/$batch.out.$n 2>&1
 	then
 		echo bootcheck of version $n succeeded
 		echo bootcheck succeeded > batch/$batch.out.$n
@@ -143,6 +166,20 @@ do
 			echo bootcheck of version $n failed
 		fi
 	fi
+
+	if test "$objects" = "-k"
+	then
+		echo saving object files
+		mkdir -p batch/objs/$batch.library.$n
+		/bin/rm -fr batch/objs/$batch.library.$n/*
+		cp stage2/library/*.o batch/objs/$batch.library.$n
+		gzip batch/objs/$batch.library.$n/*
+		mkdir -p batch/objs/$batch.compiler.$n
+		/bin/rm -fr batch/objs/$batch.compiler.$n/*
+		cp stage2/compiler/*.o batch/objs/$batch.compiler.$n
+		gzip batch/objs/$batch.compiler.$n/*
+	fi
+
 	n=`expr $n + 1`
 	echo $n > batch/$batch.checkpoint
 done

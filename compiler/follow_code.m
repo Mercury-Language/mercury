@@ -113,14 +113,12 @@ move_follow_code_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0, SM),
 	move_follow_code_in_goal(Then0, Then, Flags, R1, R2),
 	move_follow_code_in_goal(Else0, Else, Flags, R2, R).
 
-move_follow_code_in_goal_2(some(Vars, Goal0), some(Vars, Goal), Flags, R0, R) :-
+move_follow_code_in_goal_2(some(Vars, CanRemove, Goal0),
+		some(Vars, CanRemove, Goal), Flags, R0, R) :-
 	move_follow_code_in_goal(Goal0, Goal, Flags, R0, R).
 
-move_follow_code_in_goal_2(higher_order_call(A,B,C,D,E,F),
-			higher_order_call(A,B,C,D,E,F), _, R, R).
-
-move_follow_code_in_goal_2(class_method_call(A,B,C,D,E,F),
-			class_method_call(A,B,C,D,E,F), _, R, R).
+move_follow_code_in_goal_2(generic_call(A,B,C,D),
+			generic_call(A,B,C,D), _, R, R).
 
 move_follow_code_in_goal_2(call(A,B,C,D,E,F), call(A,B,C,D,E,F), _, R, R).
 
@@ -314,7 +312,7 @@ check_follow_code_detism([_ - GoalInfo | Goals], Detism0) :-
 :- mode move_follow_code_is_builtin(in) is semidet.
 
 move_follow_code_is_builtin(unify(_, _, _, Unification, _) - _GoalInfo) :-
-	Unification \= complicated_unify(_, _).
+	Unification \= complicated_unify(_, _, _).
 move_follow_code_is_builtin(call(_, _, _, Builtin, _, _) - _GoalInfo) :-
 	Builtin = inline_builtin.
 

@@ -23,6 +23,8 @@
 #include	<string.h>
 #include	<ctype.h>
 #include	<errno.h>
+#include	<unistd.h>
+#include	<sys/stat.h>
 #include	"getopt.h"
 #include	"mercury_conf.h"
 #include	"mercury_std.h"
@@ -32,7 +34,7 @@
 #define	MAXLINE		256	/* maximum number of characters per line */
 				/* (characters after this limit are ignored) */
 
-/* --- used to collect Aditi data constant names --- */
+/* --- used to collect a list of strings, e.g. Aditi data constant names --- */
 
 typedef struct String_List_struct {
 		char *data;
@@ -56,6 +58,12 @@ static bool need_tracing = FALSE;
 
 static int num_modules = 0;
 static int num_errors = 0;
+
+	/* List of directories to search for init files */
+static String_List *init_file_dirs = NULL;
+
+	/* Pointer to tail of the init_file_dirs list */
+static String_List **init_file_dirs_tail = &init_file_dirs;
 
 	/* List of names of Aditi-RL code constants. */
 static String_List *rl_data = NULL;
@@ -175,8 +183,10 @@ static const char mercury_funcs[] =
 	"#endif\n"
 	"#if MR_TRACE_ENABLED\n"
 	"	MR_trace_func_ptr = MR_trace_real;\n"
+	"	MR_register_module_layout = MR_register_module_layout_real;\n"
 	"#else\n"
 	"	MR_trace_func_ptr = MR_trace_fake;\n"
+	"	MR_register_module_layout = NULL;\n"
 	"#endif\n"
 	"#if defined(USE_GCC_NONLOCAL_GOTOS) && !defined(USE_ASM_LABELS)\n"
 	"	do_init_modules();\n"
@@ -227,6 +237,9 @@ static const char if_need_to_init[] =
 /* --- function prototypes --- */
 static	void parse_options(int argc, char *argv[]);
 static	void usage(void);
+static	void do_path_search(void);
+static	char *find_init_file(const char *basename);
+static	bool file_exists(const char *filename);
 static	void output_headers(void);
 static	void output_sub_init_functions(void);
 static	void output_main_init_function(void);
@@ -277,6 +290,8 @@ main(int argc, char **argv)
 
 	parse_options(argc, argv);
 
+	do_path_search();
+
 	output_headers();
 	output_sub_init_functions();
 	output_main_init_function();
@@ -302,8 +317,9 @@ main(int argc, char **argv)
 static void 
 parse_options(int argc, char *argv[])
 {
-	int	c;
-	while ((c = getopt(argc, argv, "ac:iltw:x")) != EOF) {
+	int c;
+	String_List *tmp_slist;
+	while ((c = getopt(argc, argv, "ac:iI:ltw:x")) != EOF) {
 		switch (c) {
 		case 'a':
 			aditi = TRUE;
@@ -316,6 +332,21 @@ parse_options(int argc, char *argv[])
 
 		case 'i':
 			need_initialization_code = TRUE;
+			break;
+
+		case 'I':
+			/*
+			** Add the directory name to the end of the
+			** search path for `.init' files.
+			*/
+			tmp_slist = (String_List *)
+					checked_malloc(sizeof(String_List));
+			tmp_slist->next = NULL;
+			tmp_slist->data = (char *)
+					checked_malloc(strlen(optarg) + 1);
+			strcpy(tmp_slist->data, optarg);
+			*init_file_dirs_tail = tmp_slist;
+			init_file_dirs_tail = &tmp_slist->next;
 			break;
 
 		case 'l':
@@ -351,6 +382,86 @@ usage(void)
 	fprintf(stderr,
 "Usage: mkinit [-a] [-c maxcalls] [-w entry] [-i] [-l] [-t] [-x] files...\n");
 	exit(1);
+}
+
+/*---------------------------------------------------------------------------*/
+
+	/*
+	** Scan the list of files for ones not found in the current
+	** directory, and replace them with their full path equivalent
+	** if they are found in the list of search directories.
+	*/
+static void
+do_path_search(void)
+{
+	int filenum;
+	char *init_file;
+
+	for (filenum = 0; filenum < num_files; filenum++) {
+		init_file = find_init_file(files[filenum]);
+		if (init_file != NULL)
+			files[filenum] = init_file;
+	}
+}
+
+	/*
+	** Search the init file directory list to locate the file.
+	** If the file is in the current directory or is not in any of the
+	** search directories, then return NULL.  Otherwise return the full
+	** path name to the file.
+	** It is the caller's responsibility to free the returned buffer
+	** holding the full path name when it is no longer needed.
+	*/
+static char *
+find_init_file(const char *basename)
+{
+	char *filename;
+	char *dirname;
+	String_List *dir_ptr;
+	int dirlen;
+	int baselen;
+	int len;
+
+	if (file_exists(basename)) {
+		/* File is in current directory, so no search required */
+		return NULL;
+	}
+
+	baselen = strlen(basename);
+
+	for (dir_ptr = init_file_dirs; dir_ptr != NULL;
+			dir_ptr = dir_ptr->next)
+	{
+		dirname = dir_ptr->data;
+		dirlen = strlen(dirname);
+		len = dirlen + 1 + baselen;
+
+		filename = (char *) checked_malloc(len + 1);
+		strcpy(filename, dirname);
+		filename[dirlen] = '/';
+		strcpy(filename + dirlen + 1, basename);
+
+		if (file_exists(filename))
+			return filename;
+
+		free(filename);
+	}
+
+	/* Did not find file */
+	return NULL;
+}
+
+	/*
+	** Check whether a file exists.
+	** At some point in the future it may be worth making this
+	** implementation more portable.
+	*/
+static bool
+file_exists(const char *filename)
+{
+	struct stat buf;
+
+	return (stat(filename, &buf) == 0);
 }
 
 /*---------------------------------------------------------------------------*/
@@ -431,14 +542,6 @@ static void
 process_file(const char *filename)
 {
 	int len = strlen(filename);
-	/*
-	** XXX the following three lines are needed only for bootstrapping;
-	** they should be deleted once the new compiler has been installed
-	** everywhere.
-	*/
-	if (len >= 2 && strcmp(filename + len - 2, ".m") == 0) {
-		process_c_file(filename);
-	} else
 	if (len >= 2 && strcmp(filename + len - 2, ".c") == 0) {
 		if (c_files_contain_extra_inits) {
 			process_init_file(filename);

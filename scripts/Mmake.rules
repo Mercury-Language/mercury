@@ -16,7 +16,7 @@ main_target: $(MAIN_TARGET)
 # Beware that the order of suffixes is significant.
 .SUFFIXES: .m .nl .no .err \
 		.int0 .int .int2 .int3 .opt .trans_opt \
-		.dep .depend .doit .ugly \
+		.dep .depend .dv .doit .ugly \
 		.date0 .date .date3 .optdate .trans_opt_date \
 		.c .nu .o .pic_o \
 		.i .s .pic_s \
@@ -81,8 +81,8 @@ $(qls_subdir)%.ql : %.nl
 # I have sent off a bug report to the GNU Make maintainers (19 March 1998).
 #	-fjh.
 
-# beware the code for `%.depend' and `%.dep' is duplicated
-$(deps_subdir)%.dep:
+# beware the code for `%.depend' and `%.dep'/`%.dv' is duplicated
+$(deps_subdir)%.dep $(deps_subdir)%.dv:
 	$(MCD) $(ALL_MCDFLAGS) $*
 ifeq ($(MMAKE_USE_SUBDIRS),yes)
 	# the following mkdirs work around a bug in GNU Make
@@ -92,7 +92,7 @@ ifeq ($(MMAKE_USE_SUBDIRS),yes)
 	-[ -d Mercury/optdates ] || mkdir Mercury/optdates
 endif
 
-# beware the code for `%.depend' and `%.dep' is duplicated
+# beware the code for `%.depend' and `%.dep'/`%.dv' is duplicated
 .PHONY: %.depend
 %.depend :
 	$(MCD) $(ALL_MCDFLAGS) $*
@@ -106,7 +106,7 @@ endif
 
 # The `.doit' files are helpful when using Prolog.
 
-%.doit : $(deps_subdir)%.dep
+%.doit : $(deps_subdir)%.dep $(deps_subdir)%.dv
 	sed -e ':a' -e '/\\/N' -e 's/\\\n	//' -e 't a' $< |  \
 	grep '\.ms *=' | \
 	sed	-e 's/.*=/:-[ '\''nu_library.doit'\'', /' \
@@ -190,7 +190,7 @@ $(os_subdir)%.o : %.m
 	$(RM_C) $(cs_subdir)$*.c
 
 $(os_subdir)%.pic_o : %.m
-	$(MMAKE_MAKE_CMD) $(MFLAGS) MC="$(MC)" ALL_MCFLAGS="$(ALL_MCFLAGS") \
+	$(MMAKE_MAKE_CMD) $(MFLAGS) MC="$(MC)" ALL_MCFLAGS="$(ALL_MCFLAGS)" \
 		ALL_GRADEFLAGS="$(ALL_GRADEFLAGS)" $(cs_subdir)$*.c
 	$(MGNUC) $(ALL_GRADEFLAGS) $(ALL_MGNUCFLAGS) $(CFLAGS_FOR_PIC) \
 		-c $(cs_subdir)$*.c -o $@
@@ -298,13 +298,26 @@ $(MLPICOBJS_DEPS) : $(MLPICOBJS)
 # automatically generated `.d' files.
 #
 
-.PHONY: clean realclean change_clean clean_nu clean_sicstus clean_prof_files
-
-realclean: clean
-
-clean: clean_prof_files
+.PHONY: clean realclean clean_nu clean_sicstus clean_prof_files
 
 clean_prof_files:
 	-rm -f Prof.CallPair Prof.Counts Prof.Decl Prof.MemWords Prof.MemCells
+
+#
+# The `clean' and `realclean' targets are implemented via `clean_local'
+# and `realclean_local'.  This allows a user to add rules in their
+# Mmakefile to do a recursive mmake clean, for example, while still being
+# able to use the local versions in their original form.
+#
+
+.PHONY: clean_local realclean_local
+
+realclean: realclean_local
+
+clean: clean_local
+
+realclean_local: clean_local
+
+clean_local: clean_prof_files
 
 #-----------------------------------------------------------------------------#

@@ -42,7 +42,7 @@ typedef	enum { MR_PREDICATE, MR_FUNCTION } MR_PredFunc;
 ** that we do not set the 1 bit unless we also set the 2 bit.
 */
 
-typedef	int_least16_t	 MR_Determinism;
+typedef	MR_int_least16_t	MR_Determinism;
 
 #define	MR_DETISM_DET		6
 #define	MR_DETISM_SEMI		2
@@ -70,10 +70,11 @@ typedef	int_least16_t	 MR_Determinism;
 */
 
 /*
-** MR_Long_Lval is a uint_least32_t which describes an location. This includes
-** lvals such as stack slots, general registers, and special registers
-** such as succip, hp, etc, as well as locations whose address is given
-** as a typeinfo inside the type class info structure pointed to by an lval.
+** MR_Long_Lval is a MR_uint_least32_t which describes an location.
+** This includes lvals such as stack slots, general registers, and special
+** registers such as succip, hp, etc, as well as locations whose address is
+** given as a typeinfo inside the type class info structure pointed to by an
+** lval.
 **
 ** What kind of location an MR_Long_Lval refers to is encoded using
 ** a low tag with MR_LONG_LVAL_TAGBITS bits; the type MR_Lval_Type describes
@@ -104,7 +105,7 @@ typedef	int_least16_t	 MR_Determinism;
 ** which must be kept in sync with the constants and macros defined here.
 */
 
-typedef uint_least32_t	MR_Long_Lval;
+typedef MR_uint_least32_t	MR_Long_Lval;
 
 typedef enum {
 	MR_LONG_LVAL_TYPE_R,
@@ -149,9 +150,9 @@ typedef enum {
 	((Word) ((n) << MR_LONG_LVAL_TAGBITS) + MR_LONG_LVAL_TYPE_R)
 
 /*
-** MR_Short_Lval is a uint_least8_t which describes an location. This includes
-** lvals such as stack slots and general registers that have small numbers,
-** and special registers such as succip, hp, etc.
+** MR_Short_Lval is a MR_uint_least8_t which describes an location. This
+** includes lvals such as stack slots and general registers that have small
+** numbers, and special registers such as succip, hp, etc.
 **
 ** What kind of location an MR_Long_Lval refers to is encoded using
 ** a low tag with 2 bits; the type MR_Short_Lval_Type describes
@@ -168,7 +169,7 @@ typedef enum {
 ** which must be kept in sync with the constants and macros defined here.
 */
 
-typedef uint_least8_t	MR_Short_Lval;
+typedef MR_uint_least8_t	MR_Short_Lval;
 
 typedef enum {
 	MR_SHORT_LVAL_TYPE_R,
@@ -213,9 +214,26 @@ typedef enum {
 */
 
 typedef	struct MR_Type_Param_Locns_Struct {
-	uint_least32_t		MR_tp_param_count;
+	MR_uint_least32_t	MR_tp_param_count;
 	MR_Long_Lval		MR_tp_param_locns[MR_VARIABLE_SIZED];
 } MR_Type_Param_Locns;
+
+/*
+** This structure describes the name of a live value, if it has any.
+**
+** The MR_var_num field is zero if the live value is not a variable;
+** if it is, it gives the HLDS number of the variable.
+**
+** The MR_var_name_offset field gives the offset, within the string
+** table of the module containing the layout structure, of the name
+** of the variable. If the variable has no name, or if the live value
+** is not a variable, the offset will be zero.
+*/
+
+typedef	struct MR_Var_Name_Struct {
+	MR_uint_least16_t	MR_var_num;
+	MR_uint_least16_t	MR_var_name_offset;
+} MR_Var_Name;
 
 /*
 ** The MR_slvs_var_count field should be set to a negative number
@@ -226,7 +244,7 @@ typedef	struct MR_Stack_Layout_Vars_Struct {
 	void			*MR_slvs_var_count;
 	/* the remaining fields are present only if MR_sll_var_count > 0 */
 	void			*MR_slvs_locns_types;
-	String			*MR_slvs_names;
+	MR_Var_Name		*MR_slvs_names;
 	MR_Type_Param_Locns	*MR_slvs_tvars;
 } MR_Stack_Layout_Vars;
 
@@ -248,23 +266,23 @@ typedef	struct MR_Stack_Layout_Vars_Struct {
 #define	MR_end_of_var_ptis(slvs)					    \
 		(&MR_var_pti((slvs), MR_all_desc_var_count(slvs)))
 #define	MR_long_desc_var_locn(slvs, i)					    \
-		(((uint_least32_t *) MR_end_of_var_ptis(slvs))[(i)])
+		(((MR_uint_least32_t *) MR_end_of_var_ptis(slvs))[(i)])
 #define	MR_end_of_long_desc_var_locns(slvs)				    \
 		(&MR_long_desc_var_locn((slvs), MR_long_desc_var_count(slvs)))
 #define	MR_short_desc_var_locn(slvs, i)					    \
-		(((uint_least8_t *) MR_end_of_long_desc_var_locns(slvs))[(i)])
+		(((MR_uint_least8_t *)					    \
+			MR_end_of_long_desc_var_locns(slvs))[(i)])
 
-#define	MR_name_if_present(vars, i)					    \
-				((vars->MR_slvs_names != NULL		    \
-				&& vars->MR_slvs_names[(i)] != NULL)	    \
-				? strchr(vars->MR_slvs_names[(i)], ':') + 1 \
-				: "")
+#define	MR_name_if_present(module_layout, vars, i)			    \
+		(((vars)->MR_slvs_names == NULL) ? "" :			    \
+		((module_layout)->MR_ml_string_table +			    \
+			(vars)->MR_slvs_names[(i)].MR_var_name_offset))
 
-#define	MR_numbered_name_if_present(vars, i)				    \
-				((vars->MR_slvs_names != NULL	 	    \
-				&& vars->MR_slvs_names[(i)] != NULL)	    \
-				? vars->MR_slvs_names[(i)]		    \
-				: "")
+#define	MR_name_if_present_from_label(label_layout, i)			    \
+		MR_name_if_present(					    \
+			(label_layout)->MR_sll_entry->MR_sle_module_layout, \
+			&((label_layout)->MR_sll_var_info),		    \
+			(i))
 
 /*-------------------------------------------------------------------------*/
 /*
@@ -335,7 +353,7 @@ typedef	struct MR_Stack_Layout_Entry_Struct {
 	/* stack traversal group */
 	Code			*MR_sle_code_addr;
 	MR_Long_Lval		MR_sle_succip_locn;
-	int_least16_t		MR_sle_stack_slots;
+	MR_int_least16_t	MR_sle_stack_slots;
 	MR_Determinism		MR_sle_detism;
 
 	/* proc id group */
@@ -344,8 +362,10 @@ typedef	struct MR_Stack_Layout_Entry_Struct {
 	/* exec trace group */
 	struct MR_Stack_Layout_Label_Struct
 				*MR_sle_call_label;
-	int_least16_t		MR_sle_maybe_from_full;
-	int_least16_t		MR_sle_maybe_decl_debug;
+	struct MR_Module_Layout_Struct
+				*MR_sle_module_layout;
+	MR_int_least16_t	MR_sle_maybe_from_full;
+	MR_int_least16_t	MR_sle_maybe_decl_debug;
 } MR_Stack_Layout_Entry;
 
 #define	MR_sle_user	MR_sle_proc_id.MR_proc_user
@@ -450,19 +470,20 @@ typedef	struct MR_Stack_Layout_Entry_Struct {
 #define MR_call_depth_stackvar(base_sp)	     MR_based_stackvar(base_sp, 3)
 
 /*
-** In model_non procedures compiled with an execution trace options that
-** require REDO events, one other item is stored in a fixed stack slot.
-** This is
+** In model_non procedures compiled with --trace-redo, one or two other items
+** are stored in fixed stack slots. These are
 **
 **	the address of the layout structure for the redo event
+**	the saved copy of the from-full flag (only if trace level is shallow)
 **
-** The following macro will access it. This macro should be used only from
+** The following macros will access these slots. They should be used only from
 ** within the code that calls MR_trace for the REDO event.
 **
 ** This macros have to be kept in sync with compiler/trace.m.
 */
 
-#define MR_redo_layout_framevar(base_curfr)  MR_based_framevar(base_curfr, 4)
+#define MR_redo_layout_framevar(base_curfr)   MR_based_framevar(base_curfr, 4)
+#define MR_redo_fromfull_framevar(base_curfr) MR_based_framevar(base_curfr, 5)
 
 /*-------------------------------------------------------------------------*/
 /*
@@ -520,5 +541,27 @@ typedef	struct MR_Stack_Layout_Label_Struct {
 
 #define MR_MAKE_INTERNAL_LAYOUT(e, n)					\
 	MR_MAKE_INTERNAL_LAYOUT_WITH_ENTRY(e##_i##n, e)
+
+/*-------------------------------------------------------------------------*/
+/*
+** Definitions for MR_Module_Layout
+**
+** The layout struct for a module contains two main components.
+**
+** The first is a string table, which contains strings referred to by other
+** layout structures in the module (initially only the tables containing
+** variables names, referred to from label layout structures).
+**
+** The second is a table containing pointers to the proc layout structures
+** of all the procedures in the module.
+*/
+
+typedef	struct MR_Module_Layout_Struct {
+	String			MR_ml_name;
+	Integer			MR_ml_string_table_size;
+	char			*MR_ml_string_table;
+	Integer			MR_ml_proc_count;
+	MR_Stack_Layout_Entry	**MR_ml_procs;
+} MR_Module_Layout;
 
 #endif /* not MERCURY_STACK_LAYOUT_H */

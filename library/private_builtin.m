@@ -37,7 +37,8 @@
 	% should not be used by user programs directly.
 
 	% Changes here may also require changes in compiler/polymorphism.m,
-	% compiler/higher_order.m and runtime/mercury_type_info.{c,h}.
+	% compiler/unify_proc.m, compiler/higher_order.m and
+	% runtime/mercury_type_info.{c,h}.
 
 :- pred builtin_unify_int(int::in, int::in) is semidet.
 :- pred builtin_index_int(int::in, int::out) is det.
@@ -94,6 +95,24 @@
 :- pred builtin_int_gt(int, int).
 :- mode builtin_int_gt(in, in) is semidet.
 :- external(builtin_int_gt/2).
+
+	% A "typed" version of unify/2 -- i.e. one that can handle arguments
+	% of different types.  It first unifies their types, and then if
+	% the types are equal it unifies the values.
+:- pred typed_unify(T1, T2).
+:- mode typed_unify(in, in) is semidet.
+
+	% A "typed" version of compare/3 -- i.e. one that can handle arguments
+	% of different types.  It first compares the types, and then if the
+	% types are equal it compares the values.
+:- pred typed_compare(comparison_result, T1, T2).
+:- mode typed_compare(uo, in, in) is det.
+
+	% A "typed" version of solve_equal/2 -- i.e. one that can handle
+	% arguments of different types.  It first unifies their types, and
+	% then if the types are equal it solves the values.
+:- pred typed_solve_equal(T1, T2).
+:- mode typed_solve_equal((any->any), (any->any)) is semidet.
 
 %-----------------------------------------------------------------------------%
 
@@ -215,6 +234,13 @@ builtin_solve_equal_non_solver_type(X, _Y) :-
 		semidet_succeed
 	).
 
+	% XXX These could be implemented more efficiently using
+	%     `pragma c_code' -- the implementation below does some
+	%     unnecessary memory allocatation.
+typed_unify(X, Y) :- univ(X) = univ(Y).
+typed_compare(R, X, Y) :- compare(R, univ(X), univ(Y)).
+typed_solve_equal(X, Y) :- solve_equal(univ(X), univ(Y)).
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -284,17 +310,13 @@ builtin_solve_equal_non_solver_type(X, _Y) :-
 
 :- pragma c_header_code("
 
-extern MR_STATIC_CODE_CONST struct
-	mercury_data___type_ctor_info_int_0_struct
+extern MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
 	mercury_data___type_ctor_info_int_0;
-extern MR_STATIC_CODE_CONST struct
-	mercury_data___type_ctor_info_string_0_struct
+extern MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
 	mercury_data___type_ctor_info_string_0;
-extern MR_STATIC_CODE_CONST struct
-	mercury_data___type_ctor_info_float_0_struct
+extern MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
 	mercury_data___type_ctor_info_float_0;
-extern MR_STATIC_CODE_CONST struct
-	mercury_data___type_ctor_info_character_0_struct
+extern MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
 	mercury_data___type_ctor_info_character_0;
 
 ").
@@ -321,21 +343,8 @@ extern const struct
 	** type_ctor_infos.
 	*/
 
-MR_STATIC_CODE_CONST struct
-mercury_data_private_builtin__type_ctor_info_type_ctor_info_1_struct {
-	Integer f1;
-	Code *f2;
-	Code *f3;
-	Code *f4;
-#ifdef MR_USE_SOLVE_EQUAL
-	Code *f5;
-#endif
-	const Word *f6;
-	const Word *f7;
-	const Word *f8;
-	const Word *f9;
-	const Word *f10;
-} mercury_data_private_builtin__type_ctor_info_type_ctor_info_1 = {
+MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
+mercury_data_private_builtin__type_ctor_info_type_ctor_info_1 = {
 	((Integer) 1),
 	MR_MAYBE_STATIC_CODE(ENTRY(
 		mercury____Unify___private_builtin__type_info_1_0)),
@@ -347,31 +356,17 @@ mercury_data_private_builtin__type_ctor_info_type_ctor_info_1_struct {
 	MR_MAYBE_STATIC_CODE(ENTRY(
 		mercury____SolveEqual___private_builtin__type_info_1_0)),
 #endif
-	(const Word *) &
+	MR_TYPECTOR_REP_TYPEINFO,
+	(MR_TypeCtorFunctors) &
+	    mercury_data_private_builtin__type_ctor_functors_type_info_1,
+	(MR_TypeCtorLayout) &
 		mercury_data_private_builtin__type_ctor_layout_type_info_1,
-	(const Word *) &
-		mercury_data_private_builtin__type_ctor_functors_type_info_1,
-	(const Word *) &
-		mercury_data_private_builtin__type_ctor_layout_type_info_1,
-	(const Word *) string_const(""private_builtin"", 15),
-	(const Word *) string_const(""type_ctor_info"", 14)
+	string_const(""private_builtin"", 15),
+	string_const(""type_ctor_info"", 14)
 };
 
-MR_STATIC_CODE_CONST struct
-mercury_data_private_builtin__type_ctor_info_type_info_1_struct {
-	Integer f1;
-	Code *f2;
-	Code *f3;
-	Code *f4;
-#ifdef MR_USE_SOLVE_EQUAL
-	Code *f5;
-#endif
-	const Word *f6;
-	const Word *f7;
-	const Word *f8;
-	const Word *f9;
-	const Word *f10;
-} mercury_data_private_builtin__type_ctor_info_type_info_1 = {
+MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
+mercury_data_private_builtin__type_ctor_info_type_info_1 = {
 	((Integer) 1),
 	MR_MAYBE_STATIC_CODE(ENTRY(
 		mercury____Unify___private_builtin__type_info_1_0)),
@@ -383,12 +378,13 @@ mercury_data_private_builtin__type_ctor_info_type_info_1_struct {
 	MR_MAYBE_STATIC_CODE(ENTRY(
 		mercury____SolveEqual___private_builtin__type_info_1_0)),
 #endif
-	(const Word *) &
-		mercury_data_private_builtin__type_ctor_layout_type_info_1,
-	(const Word *) &
+	MR_TYPECTOR_REP_TYPEINFO,
+	(MR_TypeCtorFunctors) &
 		mercury_data_private_builtin__type_ctor_functors_type_info_1,
-	(const Word *) string_const(""private_builtin"", 15),
-	(const Word *) string_const(""type_info"", 9)
+	(MR_TypeCtorLayout) &
+		mercury_data_private_builtin__type_ctor_layout_type_info_1,
+	string_const(""private_builtin"", 15),
+	string_const(""type_info"", 9)
 };
 
 
@@ -405,12 +401,92 @@ const struct mercury_data_private_builtin__type_ctor_functors_type_info_1_struct
 	MR_TYPE_CTOR_FUNCTORS_SPECIAL
 };
 
+Define_extern_entry(mercury____Unify___private_builtin__typeclass_info_1_0);
+Define_extern_entry(mercury____Index___private_builtin__typeclass_info_1_0);
+Define_extern_entry(mercury____Compare___private_builtin__typeclass_info_1_0);
+#ifdef MR_USE_SOLVE_EQUAL
+Define_extern_entry(mercury____SolveEqual___private_builtin__typeclass_info_1_0);
+#endif
+
+extern const struct
+	mercury_data_private_builtin__type_ctor_layout_typeclass_info_1_struct 
+	mercury_data_private_builtin__type_ctor_layout_typeclass_info_1;
+extern const struct
+	mercury_data_private_builtin__type_ctor_functors_typeclass_info_1_struct
+	mercury_data_private_builtin__type_ctor_functors_typeclass_info_1;
+
+MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
+mercury_data_private_builtin__type_ctor_info_base_typeclass_info_1 = {
+	((Integer) 1),
+	MR_MAYBE_STATIC_CODE(ENTRY(
+		mercury____Unify___private_builtin__typeclass_info_1_0)),
+	MR_MAYBE_STATIC_CODE(ENTRY(
+		mercury____Index___private_builtin__typeclass_info_1_0)),
+	MR_MAYBE_STATIC_CODE(ENTRY(
+		mercury____Compare___private_builtin__typeclass_info_1_0)),
+#ifdef MR_USE_SOLVE_EQUAL
+	MR_MAYBE_STATIC_CODE(ENTRY(
+		mercury____SolveEqual___private_builtin__typeclass_info_1_0)),
+#endif
+	MR_TYPECTOR_REP_TYPECLASSINFO,
+	(MR_TypeCtorFunctors) &
+	    mercury_data_private_builtin__type_ctor_functors_typeclass_info_1,
+	(MR_TypeCtorLayout) &
+	    mercury_data_private_builtin__type_ctor_layout_typeclass_info_1,
+	string_const(""private_builtin"", 15),
+	string_const(""base_typeclass_info"", 19)
+};
+
+MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
+mercury_data_private_builtin__type_ctor_info_typeclass_info_1 = {
+	((Integer) 1),
+	MR_MAYBE_STATIC_CODE(ENTRY(
+		mercury____Unify___private_builtin__typeclass_info_1_0)),
+	MR_MAYBE_STATIC_CODE(ENTRY(
+		mercury____Index___private_builtin__typeclass_info_1_0)),
+	MR_MAYBE_STATIC_CODE(ENTRY(
+		mercury____Compare___private_builtin__typeclass_info_1_0)),
+#ifdef MR_USE_SOLVE_EQUAL
+	MR_MAYBE_STATIC_CODE(ENTRY(
+		mercury____SolveEqual___private_builtin__typeclass_info_1_0)),
+#endif
+	MR_TYPECTOR_REP_TYPECLASSINFO,
+	(MR_TypeCtorFunctors) &
+	    mercury_data_private_builtin__type_ctor_functors_typeclass_info_1,
+	(MR_TypeCtorLayout) &
+	    mercury_data_private_builtin__type_ctor_layout_typeclass_info_1,
+	string_const(""private_builtin"", 15),
+	string_const(""typeclass_info"", 14)
+};
+
+const struct
+mercury_data_private_builtin__type_ctor_layout_typeclass_info_1_struct {
+	TYPE_LAYOUT_FIELDS
+} mercury_data_private_builtin__type_ctor_layout_typeclass_info_1 = {
+	make_typelayout_for_all_tags(TYPE_CTOR_LAYOUT_CONST_TAG, 
+		mkbody(MR_TYPE_CTOR_LAYOUT_TYPECLASSINFO_VALUE))
+};
+
+const struct mercury_data_private_builtin__type_ctor_functors_typeclass_info_1_struct {
+	Integer f1;
+} mercury_data_private_builtin__type_ctor_functors_typeclass_info_1 = {
+	MR_TYPE_CTOR_FUNCTORS_SPECIAL
+};
+
+
+
 BEGIN_MODULE(type_info_module)
 	init_entry(mercury____Unify___private_builtin__type_info_1_0);
 	init_entry(mercury____Index___private_builtin__type_info_1_0);
 	init_entry(mercury____Compare___private_builtin__type_info_1_0);
 #ifdef MR_USE_SOLVE_EQUAL
 	init_entry(mercury____SolveEqual___private_builtin__type_info_1_0);
+#endif
+	init_entry(mercury____Unify___private_builtin__typeclass_info_1_0);
+	init_entry(mercury____Index___private_builtin__typeclass_info_1_0);
+	init_entry(mercury____Compare___private_builtin__typeclass_info_1_0);
+#ifdef MR_USE_SOLVE_EQUAL
+	init_entry(mercury____SolveEqual___private_builtin__typeclass_info_1_0);
 #endif
 BEGIN_CODE
 Define_entry(mercury____Unify___private_builtin__type_info_1_0);
@@ -421,16 +497,17 @@ Define_entry(mercury____Unify___private_builtin__type_info_1_0);
 	** The two inputs are in the registers named by unify_input[12].
 	** The success/failure indication should go in unify_output.
 	*/
-	int comp;
+	int	comp;
+
 	save_transient_registers();
-	comp = MR_compare_type_info(unify_input1, unify_input2);
+	comp = MR_compare_type_info(r1, r2);
 	restore_transient_registers();
-	unify_output = (comp == COMPARE_EQUAL);
+	r1 = (comp == COMPARE_EQUAL);
 	proceed();
 }
 
 Define_entry(mercury____Index___private_builtin__type_info_1_0);
-	index_output = -1;
+	r1 = -1;
 	proceed();
 
 Define_entry(mercury____Compare___private_builtin__type_info_1_0);
@@ -441,11 +518,12 @@ Define_entry(mercury____Compare___private_builtin__type_info_1_0);
 	** The two inputs are in the registers named by compare_input[12].
 	** The result should go in compare_output.
 	*/
-	int comp;
+	int	comp;
+
 	save_transient_registers();
-	comp = MR_compare_type_info(compare_input1, compare_input2);
+	comp = MR_compare_type_info(r1, r2);
 	restore_transient_registers();
-	compare_output = comp;
+	r1 = comp;
 	proceed();
 }
 
@@ -461,10 +539,30 @@ Define_entry(mercury____SolveEqual___private_builtin__type_info_1_0);
 	*/
 	int comp;
 	save_transient_registers();
-	comp = MR_compare_type_info(solve_equal_input1, solve_equal_input2);
+	comp = MR_compare_type_info(r1, r2);
 	restore_transient_registers();
-	solve_equal_output = (comp == COMPARE_EQUAL);
+	r1 = (comp == COMPARE_EQUAL);
 	proceed();
+}
+#endif
+
+Define_entry(mercury____Unify___private_builtin__typeclass_info_1_0);
+{
+	fatal_error(""attempt to unify typeclass_info"");
+}
+Define_entry(mercury____Index___private_builtin__typeclass_info_1_0);
+	r1 = -1;
+	proceed();
+
+Define_entry(mercury____Compare___private_builtin__typeclass_info_1_0);
+{
+	fatal_error(""attempt to compare typeclass_info"");
+}
+
+#ifdef MR_USE_SOLVE_EQUAL
+Define_entry(mercury____SolveEqual___private_builtin__typeclass_info_1_0);
+{
+	fatal_error(""attempt to solve_equal typeclass_info"");
 }
 #endif
 END_MODULE

@@ -185,19 +185,12 @@ constraint__propagate_goal_2(some(Vars, Goal0), some(Vars, Goal)) -->
 	[].
 
 constraint__propagate_goal_2(
-		higher_order_call(A, B, C, D, E, F),
-		higher_order_call(A, B, C, D, E, F)) -->
-%	mode_checkpoint(enter, "higher-order call"),
-%	mode_checkpoint(exit, "higher-order call").
+		generic_call(A, B, C, D),
+		generic_call(A, B, C, D)) -->
+%	mode_checkpoint(enter, "generic call"),
+%	mode_checkpoint(exit, "generic call").
 	[].
-
-constraint__propagate_goal_2(
-		class_method_call(A, B, C, D, E, F),
-		class_method_call(A, B, C, D, E, F)) -->
-%	mode_checkpoint(enter, "class method call"),
-%	mode_checkpoint(exit, "class method call").
-	[].
-
+	
 constraint__propagate_goal_2(
 		call(PredId, ProcId, ArgVars, Builtin, Sym, Context),
 		call(PredId, ProcId, ArgVars, Builtin, Sym, Context)) -->
@@ -368,6 +361,8 @@ mode_info_write_goal(Goal, Indent, ModeInfo0, ModeInfo) :-
 	( semidet_succeed ->
 		mode_info_get_module_info(ModeInfo0, ModuleInfo),
 		mode_info_get_varset(ModeInfo0, VarSet),
+		mode_info_get_instmap(ModeInfo0, InstMap),
+		mode_info_get_inst_table(ModeInfo0, InstTable),
 		hlds_out__write_goal(Goal, InstMap, InstTable, ModuleInfo,
 			VarSet, no, Indent, "\n", IOState1, IOState)
 	;

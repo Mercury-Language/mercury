@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1997-1998 The University of Melbourne.
+# Copyright (C) 1997-1999 The University of Melbourne.
 # This file may only be copied under the terms of the GNU Library General
 # Public License - see the file COPYING.LIB in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -20,8 +20,7 @@ MCFLAGS += -I.. $(EXTRA_MCFLAGS)
 MLFLAGS += -R`pwd`/.. -L.. $(EXTRA_MLFLAGS)
 MLLIBS = -ltrailed_update $(EXTRA_MLLIBS)
 VPATH = ..:$(MMAKE_VPATH)
-C2INITFLAGS = ../trailed_update.init
-%_init.c: $(C2INITFLAGS)
+C2INITARGS = ../trailed_update.init
 
 # We need the following to use shared libraries on Linux
 #MGNUCFLAGS += -DPIC_REG

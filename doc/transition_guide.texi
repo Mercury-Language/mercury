@@ -68,15 +68,15 @@ This guide gives some advice about
 translating Prolog programs into Mercury.
 
 @menu
-* Introduction::    Introduction
-* Syntax::          Syntax
-* IO::              Input and output
-* FailLoops::       Failure driven loops, @code{assert} and @code{retract}
-* Commits::         Cuts
-* Accumulators::    Accumulators and difference lists
-* Determinism::     Determinism
-* All-solutions::   All-solutions predicates: @code{findall} and @code{setof}
-@c * Problems::        Common Problems
+* Introduction::    Introduction.
+* Syntax::          Syntax.
+* IO::              Input and output.
+* FailLoops::       Failure driven loops, @code{assert} and @code{retract}.
+* Commits::         Cuts.
+* Accumulators::    Accumulators and difference lists.
+* Determinism::     Determinism.
+* All-solutions::   All-solutions predicates: @code{findall} and @code{setof}.
+@c * Problems::        Common Problems.
 @end menu
 @end ifinfo
 
@@ -134,6 +134,7 @@ OPERATOR        ASSOCIATIVITY   PRECEDENCE
 =               xfx             700
 =<              xfx             700
 ==              xfx             700
+==>             xfx             1175
 =>              xfy             920
 >               xfx             700
 >=              xfx             700
@@ -144,6 +145,8 @@ OPERATOR        ASSOCIATIVITY   PRECEDENCE
 \=              xfx             700
 ^               xfy             200
 ~               fy              900
+aditi_bottom_up fx              500
+aditi_top_down  fx              500
 all             fxy             950
 and             xfy             720
 div             yfx             400

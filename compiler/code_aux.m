@@ -70,7 +70,7 @@ code_aux__contains_only_builtins_2(switch(_Var, _Category, Cases, _)) :-
 	code_aux__contains_only_builtins_cases(Cases).
 code_aux__contains_only_builtins_2(not(Goal)) :-
 	code_aux__contains_only_builtins(Goal).
-code_aux__contains_only_builtins_2(some(_Vars, Goal)) :-
+code_aux__contains_only_builtins_2(some(_Vars, _, Goal)) :-
 	code_aux__contains_only_builtins(Goal).
 code_aux__contains_only_builtins_2(if_then_else(_Vars, Cond, Then, Else, _)) :-
 	code_aux__contains_only_builtins(Cond),
@@ -84,7 +84,7 @@ code_aux__contains_only_builtins_2(unify(_, _, _, Uni, _)) :-
 	;
 		Uni = simple_test(_, _)
 	;
-		Uni = construct(_, _, _, _)
+		Uni = construct(_, _, _, _, _, _, _)
 	;
 		Uni = deconstruct(_, _, _, _, _)
 	).
@@ -133,7 +133,7 @@ code_aux__goal_cannot_loop_2(ModuleInfo, switch(_Var, _Category, Cases, _)) :-
 	).
 code_aux__goal_cannot_loop_2(ModuleInfo, not(Goal)) :-
 	code_aux__goal_cannot_loop(ModuleInfo, Goal).
-code_aux__goal_cannot_loop_2(ModuleInfo, some(_Vars, Goal)) :-
+code_aux__goal_cannot_loop_2(ModuleInfo, some(_Vars, _, Goal)) :-
 	code_aux__goal_cannot_loop(ModuleInfo, Goal).
 code_aux__goal_cannot_loop_2(ModuleInfo,
 		if_then_else(_Vars, Cond, Then, Else, _)) :-
@@ -150,7 +150,7 @@ code_aux__goal_cannot_loop_2(_, unify(_, _, _, Uni, _)) :-
 	;
 		Uni = simple_test(_, _)
 	;
-		Uni = construct(_, _, _, _)
+		Uni = construct(_, _, _, _, _, _, _)
 	;
 		Uni = deconstruct(_, _, _, _, _)
 	).
@@ -169,9 +169,9 @@ code_aux__goal_is_flat_2(conj(Goals)) :-
 	code_aux__goal_is_flat_list(Goals).
 code_aux__goal_is_flat_2(not(Goal)) :-
 	code_aux__goal_is_flat(Goal).
-code_aux__goal_is_flat_2(some(_Vars, Goal)) :-
+code_aux__goal_is_flat_2(some(_Vars, _, Goal)) :-
 	code_aux__goal_is_flat(Goal).
-code_aux__goal_is_flat_2(higher_order_call(_, _, _, _, _, _)).
+code_aux__goal_is_flat_2(generic_call(_, _, _, _)).
 code_aux__goal_is_flat_2(call(_, _, _, _, _, _)).
 code_aux__goal_is_flat_2(unify(_, _, _, _, _)).
 code_aux__goal_is_flat_2(pragma_c_code(_, _, _, _, _, _, _)).

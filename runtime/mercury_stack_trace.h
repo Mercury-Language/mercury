@@ -126,7 +126,7 @@ MR_stack_walk_step(const MR_Stack_Layout_Entry *entry_layout,
 ** reach a stack frame whose saved succip slot contains this address.
 */
 
-Code	*MR_stack_trace_bottom;
+extern Code	*MR_stack_trace_bottom;
 
 /*
 ** MR_nondet_stack_trace_bottom should be set to the address of the buffer
@@ -135,7 +135,7 @@ Code	*MR_stack_trace_bottom;
 ** the redoip and redofr slots of this frame may be hijacked.
 */
 
-Word	*MR_nondet_stack_trace_bottom;
+extern Word	*MR_nondet_stack_trace_bottom;
 
 /*
 ** The different Mercury determinisms are internally represented by integers. 

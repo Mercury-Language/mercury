@@ -17,8 +17,8 @@
 %	- it resolves predicate overloading
 %	  (perhaps it ought to also resolve function overloading,
 %	  converting unifications that are function calls into
-%	  HLDS call instructions, but currently that is still done
-%	  in modecheck_unify.m)
+%	  HLDS call instructions, but currently that is done
+%	  in polymorphism.m)
 %	- it checks for unbound type variables and if there are any,
 %	  it reports an error (or a warning, binding them to the type `void').
 %  These actions cannot be done until after type inference is complete,
@@ -79,13 +79,13 @@
 :- module purity.
 :- interface.
 
-:- import_module hlds_module, hlds_goal.
+:- import_module prog_data, hlds_module, hlds_goal.
 :- import_module io, bool.
 
-:- type purity		--->	pure
-			;	(semipure)
-			;	(impure).
-
+% The purity type itself is defined in prog_data.m as follows:
+% :- type purity	--->	pure
+% 			;	(semipure)
+% 			;	(impure).
 
 %  Purity check a whole module.
 %  The first argument specifies whether there were any type
@@ -135,11 +135,11 @@
 
 :- implementation.
 
-:- import_module make_hlds, hlds_data, hlds_pred, prog_io_util.
+:- import_module make_hlds, hlds_pred, prog_io_util.
 :- import_module type_util, mode_util, code_util, prog_data, unify_proc.
 :- import_module globals, options, mercury_to_mercury, hlds_out.
 :- import_module passes_aux, typecheck, module_qual, clause_to_proc.
-:- import_module modecheck_unify, modecheck_call, inst_util, prog_out.
+:- import_module inst_util, prog_out.
 :- import_module post_typecheck.
 
 :- import_module list, map, varset, term, string, require, std_util.
@@ -216,7 +216,7 @@ goal_info_is_impure(GoalInfo) :-
 % operators, and that we never need `pure' indicators/declarations.
 
 write_purity_prefix(Purity) -->
-	(   { Purity = pure } ->
+	( { Purity = pure } ->
 		[]
 	;
 		write_purity(Purity),
@@ -270,18 +270,14 @@ check_preds_purity_2([PredId | PredIds], FoundTypeError, ModuleInfo0,
 		write_pred_progress_message("% Purity-checking ", PredId,
 					    ModuleInfo0),
 		%
-		% Only check the type bindings if we didn't get any
-		% type errors already; this avoids a lot of spurious
-		% diagnostics.
+		% Only report error messages for unbound type variables
+		% if we didn't get any type errors already; this avoids
+		% a lot of spurious diagnostics.
 		%
-		( { FoundTypeError = no } ->
-			post_typecheck__check_type_bindings(PredId, PredInfo0,
-					PredInfo1, ModuleInfo0,
-					UnboundTypeErrsInThisPred)
-		;
-			{ PredInfo1 = PredInfo0 },
-			{ UnboundTypeErrsInThisPred = 0 }
-		),
+		{ bool__not(FoundTypeError, ReportErrs) },
+		post_typecheck__check_type_bindings(PredId, PredInfo0,
+				ModuleInfo0, ReportErrs,
+				PredInfo1, UnboundTypeErrsInThisPred),
 		puritycheck_pred(PredId, PredInfo1, PredInfo2, ModuleInfo0,
 				PurityErrsInThisPred),
 		post_typecheck__finish_pred(ModuleInfo0, PredId, PredInfo2,
@@ -294,7 +290,16 @@ check_preds_purity_2([PredId | PredIds], FoundTypeError, ModuleInfo0,
 	{ predicate_table_set_preds(PredTable0, Preds, PredTable) },
 	{ module_info_set_predicate_table(ModuleInfo0, PredTable,
 					  ModuleInfo1) },
-	check_preds_purity_2(PredIds, FoundTypeError, ModuleInfo1, ModuleInfo,
+
+	(
+		{ pred_info_get_goal_type(PredInfo0, assertion) }
+	->
+		{ post_typecheck__finish_assertion(ModuleInfo1,
+				PredId, ModuleInfo2) }
+	;
+		{ ModuleInfo2 = ModuleInfo1 }
+	),
+	check_preds_purity_2(PredIds, FoundTypeError, ModuleInfo2, ModuleInfo,
 				  NumErrors1, NumErrors).
 
 	% Purity-check the code for single predicate, reporting any errors.
@@ -322,36 +327,36 @@ check_preds_purity_2([PredId | PredIds], FoundTypeError, ModuleInfo0,
 :- mode puritycheck_pred(in, in, out, in, out, di, uo) is det.
 
 puritycheck_pred(PredId, PredInfo0, PredInfo, ModuleInfo, NumErrors) -->
-	{ pred_info_get_purity(PredInfo0, DeclPurity)} ,
+	{ pred_info_get_purity(PredInfo0, DeclPurity) } ,
 	{ pred_info_get_promised_pure(PredInfo0, Promised) },
-	(   { pred_info_get_goal_type(PredInfo0, pragmas) } ->
+	( { pred_info_get_goal_type(PredInfo0, pragmas) } ->
 		{ WorstPurity = (impure) },
 		{ Purity = pure },
 		{ PredInfo = PredInfo0 },
 		{ NumErrors0 = 0 }
 	;   
 		{ pred_info_clauses_info(PredInfo0, ClausesInfo0) },
-		{ ClausesInfo0 = clauses_info(A, B, C, D, Clauses0) },
-		{ ClausesInfo = clauses_info(A, B, C, D, Clauses) },
-		{ pred_info_set_clauses_info(PredInfo0, ClausesInfo,
-					     PredInfo) },
+		{ clauses_info_clauses(ClausesInfo0, Clauses0) },
 		compute_purity(Clauses0, Clauses, PredInfo0, ModuleInfo,
-			       pure, Purity, 0, NumErrors0),
+				pure, Purity, 0, NumErrors0),
+		{ clauses_info_set_clauses(ClausesInfo0, Clauses,
+				ClausesInfo) },
+		{ pred_info_set_clauses_info(PredInfo0, ClausesInfo,
+				PredInfo) },
 		{ WorstPurity = Purity }
 	),
-	(
-	    { DeclPurity \= pure, Promised = yes } ->
+	( { DeclPurity \= pure, Promised = yes } ->
 		{ NumErrors is NumErrors0 + 1 },
 		error_inconsistent_promise(ModuleInfo, PredInfo, PredId,
 					  DeclPurity)
-	;   { less_pure(DeclPurity, WorstPurity) } ->
+	; { less_pure(DeclPurity, WorstPurity) } ->
 		{ NumErrors = NumErrors0 },
 		warn_exaggerated_impurity_decl(ModuleInfo, PredInfo, PredId,
 					     DeclPurity, WorstPurity)
-	;   { less_pure(Purity, DeclPurity), Promised = no } ->
+	; { less_pure(Purity, DeclPurity), Promised = no } ->
 		{ NumErrors is NumErrors0 + 1 },
 		error_inferred_impure(ModuleInfo, PredInfo, PredId, Purity)
-	;   { Purity = pure, Promised = yes } ->
+	; { Purity = pure, Promised = yes } ->
 		{ NumErrors = NumErrors0 },
 		warn_unnecessary_promise_pure(ModuleInfo, PredInfo, PredId)
 	;
@@ -402,17 +407,17 @@ compute_expr_purity(call(PredId0,ProcId,Vars,BIState,UContext,Name0),
 	{ pred_info_get_purity(CalleePredInfo, ActualPurity) },
 	{ infer_goal_info_purity(GoalInfo, DeclaredPurity) },
 	{ goal_info_get_context(GoalInfo, CallContext) },
-	(   { code_util__compiler_generated(PredInfo) } ->
+	( { code_util__compiler_generated(PredInfo) } ->
 		% Don't require purity annotations on calls in
 		% compiler-generated code
 		{ NumErrors = NumErrors0 }
-	;   { ActualPurity = DeclaredPurity } ->
+	; { ActualPurity = DeclaredPurity } ->
 		{ NumErrors = NumErrors0 }
-	;   { InClosure = yes } ->
+	; { InClosure = yes } ->
 		% Don't report purity errors inside closures:  the whole
 		% closure is an error if it's not pure
 		{ NumErrors = NumErrors0 }
-	;   { less_pure(ActualPurity, DeclaredPurity) } ->
+	; { less_pure(ActualPurity, DeclaredPurity) } ->
 		error_missing_body_impurity_decl(ModuleInfo, CalleePredInfo,
 						 PredId, CallContext,
 						 ActualPurity),
@@ -424,10 +429,27 @@ compute_expr_purity(call(PredId0,ProcId,Vars,BIState,UContext,Name0),
 						    DeclaredPurity),
 		{ NumErrors = NumErrors0 }
 	).
-compute_expr_purity(HOCall, HOCall, _, _, _, _, pure, NumErrors, NumErrors) -->
-	{ HOCall = higher_order_call(_,_,_,_,_,_) }.
-compute_expr_purity(CMCall, CMCall, _, _, _, _, pure, NumErrors, NumErrors) -->
-	{ CMCall = class_method_call(_,_,_,_,_,_) }.
+compute_expr_purity(generic_call(GenericCall0, Args, Modes0, Det),
+		generic_call(GenericCall, Args, Modes, Det),
+		GoalInfo, PredInfo, ModuleInfo, _InClosure, Purity,
+		NumErrors, NumErrors) -->
+	{ Purity = pure },
+	(
+		{ GenericCall0 = higher_order(_, _, _) },
+		{ GenericCall = GenericCall0 },
+		{ Modes = Modes0 }
+	;
+		{ GenericCall0 = class_method(_, _, _, _) },
+		{ GenericCall = GenericCall0 },
+		{ Modes = Modes0 }
+	;
+		{ GenericCall0 = aditi_builtin(Builtin0, CallId0) },
+		{ goal_info_get_context(GoalInfo, Context) },
+		post_typecheck__finish_aditi_builtin(ModuleInfo, PredInfo,
+			Args, Context, Builtin0, Builtin,
+			CallId0, CallId, Modes),
+		{ GenericCall = aditi_builtin(Builtin, CallId) }
+	).
 compute_expr_purity(switch(Var,Canfail,Cases0,Storemap),
 		switch(Var,Canfail,Cases,Storemap), _, PredInfo,
 		ModuleInfo, InClosure, Purity, NumErrors0, NumErrors) -->
@@ -437,12 +459,49 @@ compute_expr_purity(Unif0, Unif, GoalInfo, PredInfo, ModuleInfo, _,
 		pure, NumErrors0, NumErrors) -->
 	{ Unif0 = unify(A,RHS0,C,D,E) },
 	{ Unif  = unify(A,RHS,C,D,E) },
-	(   { RHS0 = lambda_goal(F, G, H, I, J, K, Goal0 - Info0) } ->
-		{ RHS = lambda_goal(F, G, H, I, J, K, Goal - Info0) },
+	(
+		{ RHS0 = lambda_goal(F, EvalMethod, FixModes, H, Vars,
+			Modes0, K, L, Goal0 - Info0) }
+	->
+		{ RHS = lambda_goal(F, EvalMethod, modes_are_ok, H, Vars,
+			Modes, K, L, Goal - Info0) },
 		compute_expr_purity(Goal0, Goal, Info0, PredInfo, ModuleInfo,
 				    yes, Purity, NumErrors0, NumErrors1),
 		error_if_closure_impure(GoalInfo, Purity,
-					NumErrors1, NumErrors)
+					NumErrors1, NumErrors),
+		{
+			FixModes = modes_are_ok,
+			Modes = Modes0
+		;
+			FixModes = modes_need_fixing,
+			(
+				EvalMethod = normal,
+				error(
+	"compute_expr_purity: modes need fixing for normal lambda_goal")
+			;
+				EvalMethod = (aditi_top_down),
+				% `aditi_top_down' predicates can't call
+				% database predicates, so their `aditi__state'
+				% arguments must have mode `unused'.
+				% The `aditi__state's are passed even
+				% though they are not used so that the
+				% arguments of the closure and the
+				% base relation being updated match.
+				unused_mode(StateMode)
+			;
+				EvalMethod = (aditi_bottom_up),
+				% Make sure `aditi_bottom_up' expressions have
+				% a `ui' mode for their aditi_state.
+				StateMode = aditi_ui_mode
+			),
+			pred_info_clauses_info(PredInfo, ClausesInfo),
+			clauses_info_vartypes(ClausesInfo, VarTypes),
+			map__apply_to_list(Vars, VarTypes, LambdaVarTypes),
+			Modes0 = argument_modes(ArgInstTable, ArgModes0),
+			fix_aditi_state_modes(StateMode, LambdaVarTypes,
+				ArgModes0, ArgModes),
+			Modes = argument_modes(ArgInstTable, ArgModes)
+		}
 	;
 		{ RHS = RHS0 },
 		{ NumErrors = NumErrors0 }
@@ -455,8 +514,9 @@ compute_expr_purity(not(Goal0), not(Goal), _, PredInfo, ModuleInfo,
 		InClosure, Purity, NumErrors0, NumErrors) -->
 	compute_goal_purity(Goal0, Goal, PredInfo, ModuleInfo, 
 			    InClosure, Purity, NumErrors0, NumErrors).
-compute_expr_purity(some(Vars,Goal0), some(Vars,Goal), _, PredInfo,
-		ModuleInfo, InClosure, Purity, NumErrors0, NumErrors) -->
+compute_expr_purity(some(Vars, CanRemove, Goal0), some(Vars, CanRemove, Goal),
+		_, PredInfo, ModuleInfo, InClosure, Purity,
+		NumErrors0, NumErrors) -->
 	compute_goal_purity(Goal0, Goal, PredInfo, ModuleInfo, 
 			    InClosure, Purity, NumErrors0, NumErrors).
 compute_expr_purity(if_then_else(Vars,Goali0,Goalt0,Goale0,Store),
@@ -476,7 +536,6 @@ compute_expr_purity(Ccode, Ccode, _, _, ModuleInfo, _, Purity,
 	{ module_info_preds(ModuleInfo, Preds) },
 	{ map__lookup(Preds, PredId, PredInfo) },
 	{ pred_info_get_purity(PredInfo, Purity) }.
-	
 
 
 :- pred compute_goal_purity(hlds_goal, hlds_goal, pred_info,
@@ -527,7 +586,24 @@ compute_cases_purity([case(Ctor,IMDelta,Goal0)|Goals0],
 	compute_cases_purity(Goals0, Goals, PredInfo, ModuleInfo, InClosure,
 			     Purity2, Purity, NumErrors1, NumErrors).
 
+	% Make sure lambda expressions introduced by the compiler
+	% have the correct mode for their `aditi__state' arguments.
+:- pred fix_aditi_state_modes((mode), list(type), list(mode), list(mode)).
+:- mode fix_aditi_state_modes(in, in, in, out) is det.
 
+fix_aditi_state_modes(_, [], [], []).
+fix_aditi_state_modes(_, [_|_], [], []) :-
+	error("purity:fix_aditi_state_modes").
+fix_aditi_state_modes(_, [], [_|_], []) :-
+	error("purity:fix_aditi_state_modes").
+fix_aditi_state_modes(AditiStateMode, [Type | Types],
+		[ArgMode0 | Modes0], [ArgMode | Modes]) :-
+	( type_is_aditi_state(Type) ->
+		ArgMode = AditiStateMode
+	;
+		ArgMode = ArgMode0
+	),
+	fix_aditi_state_modes(AditiStateMode, Types, Modes0, Modes).
 
 %-----------------------------------------------------------------------------%
 %				Print error messages
@@ -617,7 +693,7 @@ error_inferred_impure(ModuleInfo, PredInfo, PredId, Purity) -->
 	write_purity(Purity),
 	io__write_string(".\n"),
 	prog_out__write_context(Context),
-	(   { code_util__compiler_generated(PredInfo) } ->
+	( { code_util__compiler_generated(PredInfo) } ->
 		io__write_string("  It must be pure.\n")
 	;
 		io__write_string("  It must be declared `"),
@@ -660,7 +736,7 @@ warn_unnecessary_body_impurity_decl(ModuleInfo, _, PredId, Context,
 	write_purity(DeclaredPurity),
 	io__write_string("' indicator.\n"),
 	prog_out__write_context(Context),
-	(   { ActualPurity = pure } ->
+	( { ActualPurity = pure } ->
 		io__write_string("  No purity indicator is necessary.\n")
 	;
 		io__write_string("  A purity indicator of `"),
@@ -674,7 +750,7 @@ warn_unnecessary_body_impurity_decl(ModuleInfo, _, PredId, Context,
 :- mode error_if_closure_impure(in, in, in, out, di, uo) is det.
 
 error_if_closure_impure(GoalInfo, Purity, NumErrors0, NumErrors) -->
-	(   { Purity = pure } ->
+	( { Purity = pure } ->
 		{ NumErrors = NumErrors0 }
 	;
 		{ NumErrors is NumErrors0 + 1 },
@@ -684,7 +760,7 @@ error_if_closure_impure(GoalInfo, Purity, NumErrors0, NumErrors) -->
 		write_purity(Purity),
 		io__write_string(".\n"),
 		globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
-		(   { VerboseErrors = yes } ->
+		( { VerboseErrors = yes } ->
 			prog_out__write_context(Context),
 			io__write_string("  All closures must be pure.\n")
 		;   

@@ -73,24 +73,33 @@ into another language, under the above conditions for modified versions.
 @top
 @end ifinfo
 @menu
-* Introduction::      A brief introduction to Mercury
-* Syntax::            Mercury's syntax is similar to ISO Prolog
-* Types::             Mercury has a strong parametric polymorphic type system
-* Modes::             Modes allow you to specify the direction of data flow
+* Introduction::      A brief introduction to Mercury.
+* Syntax::            Mercury's syntax is similar to ISO Prolog.
+* Types::             Mercury has a strong parametric polymorphic type system.
+* Modes::             Modes allow you to specify the direction of data flow.
 * Unique modes::      Unique modes allow you to specify when there is only one
                       reference to a particular value, so the compiler can
-                      safely use destructive update to modify that value
+                      safely use destructive update to modify that value.
 * Determinism::       Determinism declarations let you specify that a predicate
-                      should never fail or should never succeed more than once
+                      should never fail or should never succeed more than once.
 * Equality preds::    User-defined types can have user-defined equality
                       predicates.
 * Higher-order::      Mercury supports higher-order predicates and functions,
-                      with closures, lambda expressions, and currying
-* Modules::           Modules allow you to divide a program into smaller parts
-* Type classes::      Constrained polymorphism
-* Semantics::         Declarative and operational semantics of Mercury programs
-* Pragmas::           Various compiler directives, used for the C interface
-                      and to control optimization.
+                      with closures, lambda expressions, and currying.
+* Modules::           Modules allow you to divide a program into smaller parts.
+* Type classes::      Constrained polymorphism.
+* Existential types:: Support for data abstraction and heterogeneous
+                      collections.
+* Semantics::         Declarative and operational semantics of Mercury
+                      programs.
+* C interface::       The C interface allows C code to be called
+                      from Mercury code, and vice versa.
+* Impurity::          Users can write impure Mercury code.
+* Pragmas::           Various compiler directives, used for example to
+                      control optimization.
+* Implementation-dependent extensions::       
+                      The University of Melbourne Mercury implementation
+                      supports several extensions to the Mercury language.
 * Bibliography::      References for further reading.
 @end menu
 
@@ -170,8 +179,9 @@ for clauses.
 @section Tokens
 
 Tokens in Mercury are the same as in ISO Prolog.
-The only difference is the @samp{#@var{line}} token, which
-is used as a line number directive (see below).
+The only differences are the @samp{#@var{line}} token, which
+is used as a line number directive (see below) and the
+@samp{backquote (`)} token.
 
 The different tokens are as follows.  Tokens may be separated by
 whitespace or line number directives.
@@ -293,8 +303,9 @@ The end of file.
 @section Terms
 
 Syntactically, terms in Mercury are exactly the same as in ISO Prolog,
-except that as an extension we permit higher-order terms, as described
-below.
+except that as extensions we permit higher-order terms and the
+introduction of infix operators by the use of grave accents (backquotes)
+, as described below.
 However, the meaning of some terms in Mercury is different to that
 in Prolog.  @xref{Data-terms}.
 
@@ -308,6 +319,13 @@ whitespace by an open parenthesis (i.e. an open_ct token),
 a sequence of argument terms separated by commas, and a close
 parenthesis.  Compound terms may also be specified using
 operator notation, as in Prolog.
+
+Operators can also be formed by enclosing an variable or name between grave
+accents (backquotes).  Any variable or name may
+be used as an operator in this way.  If @var{fun} is a variable or name,
+then a term of the form @code{x `fun` y} is equivalent to 
+@code{fun(x,y)}.  The operator is treated as having the highest precedence
+possible and is left associative.
 
 A higher-order term is a variable followed without any intervening
 whitespace by an open parenthesis (i.e. an open_ct token),
@@ -509,6 +527,19 @@ A higher-order predicate call.
 The semantics are exactly the same as for the corresponding
 higher-order call using the @code{call/N} syntax, i.e.
 @samp{call(Var)}, @samp{call(Var, Arg1)}, etc.
+
+@ifset aditi
+
+@item @code{aditi_bulk_delete(@dots{})}
+@item @code{aditi_bulk_insert(@dots{})}
+@item @code{aditi_delete(@dots{})}
+@item @code{aditi_insert(@dots{})}
+@item @code{aditi_modify(@dots{})}
+These goal forms are used for the Aditi database interface.
+@xref{Aditi update syntax}.
+
+@end ifset
+@c aditi
 
 @item @code{@var{Call}}
 Any goal which does not match any of the above forms
@@ -761,7 +792,7 @@ A lambda expression denotes a higher-order predicate or function term
 whose value is the predicate or function of the specified arguments
 determined by the specified goal.  @xref{Higher-order}.
 
-A lambda expression introduces a new scope: any variables occuring in
+A lambda expression introduces a new scope: any variables occurring in
 the arguments Arg1, Arg2, ... are locally quantified, i.e.
 any occurrences of variables with that name in the lambda
 expression are considered to name a different variable than any
@@ -866,8 +897,9 @@ well-moded into ones that would be ill-moded.)
 @node Types
 @chapter Types
 
-The type system is based on many-sorted logic, with polymorphism and
-type classes (@pxref{Type classes}).
+The type system is based on many-sorted logic, and supports polymorphism,
+type classes (@pxref{Type classes}), and existentially quantified types
+(@pxref{Existential types}).
 
 Certain special types are builtin, or are defined in the Mercury library:
 
@@ -917,12 +949,20 @@ Otherwise, it names a polymorphic type;
 the arguments of the functor must be distinct type variables.
 The @var{body} term is defined as
 a sequence of constructor definitions separated by semi-colons.
-Each constructor definition is a functor whose arguments (if any) are types.
-Type definitions must be @dfn{transparent}:
-all type variables occurring in the @var{body}
-must also occur in the @var{type}.
 
-Here are some examples:
+Ordinarily, each constructor definition must be a functor whose arguments
+(if any) are types.  Ordinary discriminated union definitions must be
+@dfn{transparent}: all type variables occurring in the @var{body} must
+also occur in the @var{type}.  
+
+However, constructor definitions can optionally be existentially typed.
+In that case, the functor will be preceded by an existential type
+quantifier and can optionally be followed by an existential type
+class constraint.  For details, see @ref{Existential types}.
+Existentially typed discriminated union definitions need not be
+transparent.
+
+Here are some examples of discriminated union definitions:
 
 @example
 :- type fruit
@@ -990,11 +1030,11 @@ They may be polymorphic.
         == list(pair(KeyType, ValueType)).
 @end example
 
-Like discriminated union type definitions,
-equivalence type definitions must be transparent.
+Equivalence type definitions must be transparent.
 Unlike discriminated union type definitions,
 equivalence type definitions must not be cyclic;
 that is, the type on the left hand side of the @samp{==}
+(@samp{assoc_list} and @samp{money} in the examples above)
 must not occur on the right hand side of the @samp{==}.
 
 Mercury treats an equivalence type
@@ -1040,14 +1080,37 @@ The argument types of each predicate
 must be explicitly declared with a @samp{:- pred} declaration.
 The argument types and return type of each function must be
 explicitly declared with a @samp{:- func} declaration.
-These declarations may be polymorphic.
 For example:
+
+@example
+:- pred is_all_uppercase(string).
+
+:- func strlen(string) = int.
+@end example
+
+Predicates and functions can be polymorphic; that is, their
+declarations can include type variables.  For example:
 
 @example
 :- pred member(T, list(T)).
 
 :- func length(list(T)) = int.
 @end example
+
+Type variables in predicate and function declarations
+are implicitly universally quantified by default;
+that is, the predicate or function may be called with arguments
+and (in the case of functions) return value
+whose actual types are any instance of the types
+specified in the declaration.  For example,
+the function @samp{length/1} declared above
+could be called with the argument having
+type @samp{list(int)}, or @samp{list(float)},
+or @samp{list(list(int))}, etc.
+
+Type variables in predicate and function declarations can
+also be existentially quantified; this is discussed in
+@ref{Existential types}.
 
 There must only be one predicate with a given name and arity in each module,
 and only one function with a given name and arity in each module.
@@ -2039,7 +2102,7 @@ if-then-else is also in a single-solution context.
 @item
 For other compound goals, i.e. disjunctions, negations, and
 (explicitly) existentially quantified goals, if the compound goal
-is in a single-solution context, then the immediate subgoals of that
+is in a single-solution context, then the immediate sub-goals of that
 compound goal are also in single-solution contexts.
 
 @end itemize
@@ -2064,6 +2127,8 @@ or @samp{cc_multi} predicates, not in @samp{multi} predicates.
 Another is for dealing with types that use non-canonical representations
 (@pxref{Equality preds}).
 And there are a variety of other applications.
+
+@c XXX fix semantics for I/O + committed choice + mode inference 
 
 @node Equality preds
 @chapter User-defined equality predicates
@@ -2491,7 +2556,7 @@ func(@var{Mode1}, @var{Mode2}) = @var{Mode} is @var{Determinism}
 These insts represent the instantiation state of variables bound
 to higher-order predicate and function terms with the appropriate mode
 and determinism.
-For example, @samp{pred(out) is det} represents the instantion state
+For example, @samp{pred(out) is det} represents the instantiation state
 of being bound to a higher-order predicate term which is @samp{det}
 and accepts one output argument; the term @samp{sum([1,2,3])} from the
 example above is one such higher-order predicate term which matches
@@ -2822,10 +2887,6 @@ limitations.
 
 @itemize @bullet
 @item
-If you mix an @samp{import_module} declaration for a parent module
-with a @samp{use_module} declaration for the child, or vice versa,
-then the compiler may report some spurious errors.
-@item
 The compiler sometimes reports spurious errors if you
 define an equivalence type in a sub-module and export it
 as abstract type.
@@ -2953,7 +3014,7 @@ in the instance declaration have been substituted in place of the
 parameters in the type class declaration.
 Each @samp{instance} declaration must define an implementation for
 every method declared in the corresponding @samp{typeclass} declaration.
-It is an error to define more than one implemention for the same
+It is an error to define more than one implementation for the same
 method within a single @samp{instance} declaration.
 
 Any call to a method must have argument types (and in the case of functions,
@@ -3082,7 +3143,7 @@ hash_string(S) = H :-
 @section Type class constraints on predicates and functions
 
 Mercury allows a type class constraint to appear as part of a predicate or
-functions's type signature.  This constrains the values that can be taken
+function's type signature.  This constrains the values that can be taken
 by type variables in the signature to belong to particular type classes.
 
 A type class constraint is of the form:
@@ -3210,6 +3271,434 @@ constraints on the corresponding non-abstract instance declaration that
 defines that instance.
 @c XXX The current implementation does not enforce that rule.
 
+@node Existential types
+@chapter Existential types
+
+Existentially quantified type variables (or simply "existential types"
+for short) are useful tools for data abstraction.  In combination with
+type classes, they allow you to write code in an "object oriented"
+style that is similar to the use of interfaces in Java or abstract
+base classes in C++.
+
+Mercury supports existential type quantifiers on predicate and function
+declarations, and in data type definitions.  You can put type class
+constraints on existentially quantified type variables.
+
+@menu
+* Existentially typed predicates and functions::
+* Existential class constraints::
+* Existentially typed data types::
+* Some idioms using existentially quantified types::
+* Known bugs in the current implementation::
+@end menu
+
+@node Existentially typed predicates and functions
+@section Existentially typed predicates and functions
+
+@menu
+* Syntax for explicit type qualifiers::
+* Semantics of type qualifiers::
+* Examples of correct code using type quantifiers::
+* Examples of incorrect code using type quantifiers::
+@end menu
+
+@node Syntax for explicit type qualifiers
+@subsection Syntax for explicit type qualifiers
+
+Type variables in type declarations for polymorphic predicates or functions
+are normally universally quantified.  
+However, it is also possible to existentially quantify such
+type variables, by using an explicit existential quantifier of
+the form @samp{some @var{Vars}} before the @samp{pred} or @samp{func}
+declaration, where @var{Vars} is a list of variables.
+
+For example:
+
+@example
+% Here the type variables `T' is existentially quantified
+:- some [T] pred foo(T).
+
+% Here the type variables `T1' and `T2' are existentially quantified.
+:- some [T1, T2] func bar(int, list(T1), set(T2)) = pair(T1, T2).
+
+% Here the type variable `T2' is existentially quantified,
+% but the type variables `T1' and `T3' are universally quantified.
+:- some [T2] pred foo(T1, T2, T3).
+@end example
+
+Explicit universal quantifiers, of the form @samp{all @var{Vars}},
+are also permitted on @samp{pred} and @samp{func} declarations,
+although they are not necessary, since universal quantification is
+the default.  (If both universal and existential quantifiers
+are present, the universal quantifiers must precede the existential
+quantifiers.)  For example:
+
+@example
+% Here the type variable `T2' is existentially quantified,
+% but the type variables `T1' and `T3' are universally quantified.
+:- all [T3] some [T2] pred foo(T1, T2, T3).
+@end example
+
+@node Semantics of type qualifiers
+@subsection Semantics of type qualifiers
+
+If a type variable in the type declaration for a polymorphic predicate
+or function is universally quantified, this means the caller will
+determine the value of the type variable, and the callee must be defined
+so that it will work for @emph{all} types which are an instance of its
+declared type.
+
+For an existentially quantified type variable, the situation is the
+converse: the @emph{callee} must determine the value of the type variable,
+and all @emph{callers} must be defined so as to work for all types
+which are an instance of the called procedure's declared type.
+
+When type checking a predicate or function, if a variable has a type
+that occurs as a universally quantified type variable in the predicate
+or function declaration, or a type that occurs as an existentially
+quantified type variable in the declaration of one of the predicates
+or functions that it calls, then its type is treated as an opaque type.
+This means that there are very few things which it is legal to do with
+such a variable -- basically you can only pass it to another procedure
+expecting the same type, unify it with another value of the same
+type, put it in a polymorphic data structure, or pass it to a
+polymorphic procedure whose argument type is universally quantified.
+(Note, however, that the standard library includes some quite powerful
+procedures such as `io__write' which can be useful in this context.)
+
+A non-variable type is considered @emph{more general} than an
+existentially quantified type variable.  Type inference will therefore
+never infer an existentially quantified type for a predicate or
+function unless that predicate or function calls (directly or indirectly)
+a predicate or function which was explicitly declared to have an
+existentially quantified type.
+
+For procedures involving calls to existentially-typed predicates or functions,
+the compiler's mode analysis must take account of the modes for type
+variables in all polymorphic calls.
+Universally quantified type variables have mode @samp{in},
+whereas existentially quantified type variables have mode @samp{out}.
+As usual, the compiler's mode analysis will attempt to reorder the
+elements of conjunctions in order to satisfy the modes.
+
+@node Examples of correct code using type quantifiers
+@subsection Examples of correct code using type quantifiers
+
+Here are some examples of type-correct code using universal and
+existential types.
+
+@example
+/* simple examples */
+
+:- pred foo(T).
+foo(_).
+	% ok
+
+:- pred call_foo.
+call_foo :- foo(42).
+	% ok (T = int)
+
+:- some [T] pred e_foo(T).
+e_foo(X) :- X = 42.
+	% ok (T = int)
+
+:- pred call_e_foo.
+call_e_foo :- e_foo(_).
+	% ok
+
+/* examples using higher-order functions */
+
+:- func bar(T, T, func(T) = int) = int.
+bar(X, Y, F) = F(X) + F(Y).
+	% ok
+
+:- func call_bar = int.
+call_bar = bar(2, 3, (func(X) = X*X)).
+	% ok (T = int)
+	% returns 13 (= 2*2 + 3*3)
+
+:- some [T] pred e_bar(T, T, func(T) = int).
+:-          mode e_bar(out, out, out(func(in) = out is det)).
+e_bar(2, 3, (func(X) = X * X)).
+	% ok (T = int)
+
+:- func call_e_bar = int.
+call_e_bar = F(X) + F(Y) :- e_bar(X, Y, F).
+	% ok
+	% returns 13 (= 2*2 + 3*3)
+
+@end example
+
+@node Examples of incorrect code using type quantifiers
+@subsection Examples of incorrect code using type quantifiers
+
+Here are some examples of code using universal and
+existential types that contains type errors.
+
+@example
+/* simple examples */
+
+:- pred bad_foo(T).
+bad_foo(42).
+	% type error
+
+:- some [T] pred e_foo(T).
+e_foo(42).
+	% ok
+
+:- pred bad_call_e_foo.
+bad_call_e_foo :- e_foo(42).
+	% type error
+
+:- some [T] pred e_bar1(T).
+e_bar1(42).
+e_bar1(42).
+e_bar1(43).
+	% ok (T = int)
+
+:- some [T] pred bad_e_bar2(T).
+bad_e_bar2(42).
+bad_e_bar2("blah").
+	% type error (cannot unify types `int' and `string')
+
+:- some [T] pred bad_e_bar3(T).
+bad_e_bar3(X) :- e_foo(X).
+bad_e_bar3(X) :- e_foo(X).
+	% type error (attempt to bind type variable `T' twice)
+
+@end example
+
+@node Existential class constraints
+@section Existential class constraints
+
+Existentially quantified type variables are especially useful in
+combination with type class constraints.
+
+Type class constraints can be either universal or existential.
+Universal type class constraints are written using "<=",
+as described in @ref{Type class constraints on predicates and functions};
+they signify a constraint that the @emph{caller} must satisfy.
+Existential type class constraints are written in the same syntax
+as universal constraints, but using "=>" instead of "<=";
+they signify a constraint that the @emph{callee} must satisfy.
+(If a declaration has both universal and existential constraints,
+then the universal constraints must precede the existential constraints.)
+
+For example:
+
+@example
+% Here `c1(T1)' is a universal constraint,
+% and `c2(T2)' is an existential constraint.
+:- all [T1] some [T2] ((pred p(T1, T2) <= c1(T1)) => (c2(T2), c3(T1, T2)).
+@end example
+
+In general, constraints that constrain any existentially quantified
+type variables should be existential constraints, and constraints that
+constrain only universally quantified type variables should be
+universal constraints.  (The only time exceptions to this rule would
+make any sense at all would be if there were instance declarations that
+were visible in the definition of the caller but which due to module
+visibility issues were not in the definition of the callee, or vice
+versa.  But even then, any exception to this rule would have to involve
+a rather obscure coding style, which we do not recommend.)
+
+@node Existentially typed data types
+@section Existentially typed data types
+
+Note: existentially typed data types are not yet fully supported.
+See @ref{Known bugs in the current implementation} for details.
+
+Type variables occurring in the body of a discriminated union type
+definition may be existentially quantified.  Constructor definitions
+within discriminated union type definitions may be preceded by
+an existential type quantifier and followed by one or more existential
+type class constraints.
+
+For example:
+
+@example
+% A simple heterogeneous list type
+:- type list_of_any
+	---> nil_any
+	;    some [T] cons_any(T, list_of_any).
+
+% A heterogeneous list type with a type class constraint
+:- typeclass showable(T) where [ func show(T) = string ].
+:- type showable_list
+	---> nil
+	;    some [T] (cons(T, list_of_any) => showable(T)).
+
+% A different way of doing the same kind of thing, this
+% time using the standard type list(T).
+:- type showable ---> some [T] (s(T) => showable(T)).
+:- type list_of_showable == list(showable).
+
+% Here's an arbitrary example involving multiple
+% type variables and multiple constraints
+:- typeclass foo(T1, T2) where [ /* ... */ ].
+:- type bar(T)
+	---> f1
+	;    f2(T)
+	;    some [T]
+	     f4(T)
+	;    some [T1, T2]
+	     (f4(T1, T2, T) => showable(T1), showable(T2))
+	;    some [T1, T2]
+	     (f5(list(T1), T2) => fooable(T1, list(T2)))
+	.
+@end example
+
+Construction and deconstruction of existentially quantified data types
+are inverses: when constructing a value of an existentially quantified
+data type, the ``existentially quantified'' functor acts for purposes
+of type checking like a universally quantified function: the caller
+will determine the values of the type variables.
+Conversely, for deconstruction the functor acts like an
+existentially quantified function: the caller must be defined so
+as to work for all possible values of the existentially quantified
+type variables which satisfy the declared type class constraints.
+
+In order to make this distinction clear to the compiler,
+whenever you want to construct a value using an existentially
+quantified functor, you must prepend @samp{new } onto the functor name.
+This tells the compiler to treat it as though it were universally
+quantified: the caller can bind that functor's existentially quantified
+type variables to any type which satisfies the declared type class
+constraints.  Conversely, any occurrence without the @samp{new } prefix
+must be a deconstruction, and is therefore existentially quantified:
+the caller must not bind the existentially quantified type variables,
+but the caller is allowed to depend on those type variables satisfying
+the declared type class constraints, if any.
+
+For example, the function @samp{make_list} constructs a value of type
+@samp{list_of_showable} containing a sequence of values of different types,
+all of which are instances of the @samp{showable} class
+
+@example
+:- instance showable(int).
+:- instance showable(float).
+:- instance showable(string).
+
+:- func make_list = showable_list.
+make_list = List :-
+	Int = 42,
+	Float = 1.0,
+	String = "blah",
+	List =  'new cons'(Int,
+		'new cons'(Float,
+		'new cons'(String, nil))).
+@end example
+
+while the function @samp{process_list} below applies the @samp{show}
+method of the @samp{showable} class to the values in such a list.
+
+@example
+:- func process_list(list_of_showable) = list(string).
+process_list(nil) = "".
+process_list(cons(Head, Tail)) = [show(Head) | process_list(Tail)].
+@end example
+
+@node Some idioms using existentially quantified types
+@section Some idioms using existentially quantified types
+
+The standard library module @samp{std_util} provides an abstract
+type named @samp{univ} which can hold values of any type. 
+You can form heterogeneous containers (containers that can hold values of
+different types at the same time) by using data structures
+that contain @code{univ}s, e.g. @samp{list(univ)}.
+
+The interface to @samp{std_util} includes the following:
+
+@example
+% `univ' is a type which can hold any value.
+:- type univ.
+
+% The function univ/1 takes a value of any type and constructs
+% a `univ' containing that value (the type will be stored along
+% with the value)
+:- func univ(T) = univ.
+
+% The function univ_value/1 takes a `univ' argument and extracts
+% the value contained in the `univ' (together with its type).
+% This is the inverse of the function univ/1.
+:- some [T] func univ_value(univ) = T.
+@end example
+
+The @samp{univ} type in the standard library is in fact a simple
+example of an existentially typed data type.  It could be implemented
+as follows:
+
+@example
+:- implementation.
+:- type univ ---> some [T] mkuniv(T).
+univ(X) = 'new mkuniv'(X).
+univ_value(mkuniv(X)) = X.
+@end example
+
+An existentially typed procedure is not allowed to have different
+types for its existentially typed arguments in different clauses or
+or in different subgoals of a single clause.  For instance, both
+of the following examples are illegal:
+
+@example
+:- some [T] pred bad_example(string, T).
+bad_example("foo", 42).
+bad_example("bar", "blah").
+	% type error (cannot unify `int' and `string')
+
+:- some [T] pred bad_example2(string, T).
+bad_example2(Name, Value) :-
+	( Name = "foo", Value = 42
+	; Name = "bar", Value = "blah"
+	).
+	% type error (cannot unify `int' and `string')
+@end example
+
+However, using @samp{univ},
+it is possible for an existentially typed function to return
+values of different types at each invocation.
+
+@example
+:- some [T] pred good_example(string, T).
+good_example(Name, univ_value(Univ)) :-
+	( Name = "foo", Univ = univ(42)
+	; Name = "bar", Univ = univ("blah")
+	).
+@end example
+
+Using @samp{univ} doesn't work if you also want to use type class constraints.  
+If you want to use type class constraints, then you must define your own
+existentially typed data type, analogous to @samp{univ}, and use that:
+
+@example
+:- type univ_showable ---> some [T] (mkshowable(T) => showable(T)).
+
+:- some [T] pred harder_example(string, T) => showable(T).
+harder_example(Name, Showable) :-
+	( Name = "bar", Univ = 'new mkshowable'(42)
+	; Name = "bar", Univ = 'new mkshowable'("blah")
+	),
+	Univ = mkshowable(Showable).
+@end example
+
+@node Known bugs in the current implementation
+@section Known bugs in the current implementation
+
+The current implementation does not properly deal with most cases
+that involve both existentially quantified constraints and
+mode reordering due to the modes of type variables.
+The symptom in such cases is spurious mode errors.
+The solution is to write such code in the correct order manually
+rather than relying on the compiler's mode reordering.
+
+We have not yet implemented RTTI (run-time type information) support
+for existentially quantified data types.  This means that many of
+the procedures in the Mercury standard library will not work for
+values of those types.  Functions affected include for example
+@samp{io__write}, @samp{io__read}, @samp{std_util__construct},
+and @samp{std_util__deconstruct}.  Likewise, the Mercury debugger
+does not yet support such types.
+
 @node Semantics
 @chapter Semantics
 
@@ -3278,7 +3767,7 @@ semantics if and only if the implementation-defined
 semantics guarantees to compute an answer in finite time for
 any program for which an answer would be computed in finite time for all
 possible executions under the strict commutative semantics
-(i.e. for all possible orderings of conjuctions and disjunctions).
+(i.e. for all possible orderings of conjunctions and disjunctions).
 
 Thus, to summarize, there are in fact a variety of different operational
 semantics for Mercury.  In one of them, the strict sequential semantics, there
@@ -3337,33 +3826,8 @@ For example, they may wish to provide semantics in which function
 evaluation is lazy, rather than strict; semantics with a guaranteed
 fair search rule; and so forth.
 
-@node Pragmas
-@chapter Pragmas
-
-@ifinfo
-There are several uses for @code{pragma} declarations:
-@end ifinfo
-
-@menu
-* C interface::                 The C interface allows C code to be called
-                                from Mercury code, and vice versa.
-* Impurity::                    Users can write impure Mercury code
-* Inlining::                    Pragmas can be used to suggest or prevent
-                                procedure inlining.
-* Type specialization::		Pragmas can be used to produce specialized
-				versions of polymorphic procedures.
-* Obsolescence::                Library developers can declare old versions
-                                of predicates or functions to be obsolete.
-* Source file name::            The @samp{source_file} pragma and
-                                @samp{#@var{line}} directives provide support
-                                for preprocessors and other tools that
-                                generate Mercury code.
-* Implementation-dependent pragmas::
-                                Implementations may support additional pragmas.
-@end menu
-
 @node C interface
-@section C interface
+@chapter C interface
 
 @menu
 * Calling C code from Mercury::         How to implement a Mercury predicate
@@ -3391,7 +3855,7 @@ and how to set up @samp{Mmake} files to automate the build process.
 See the @samp{samples/c_interface} directory in the Mercury distribution.
 
 @node Calling C code from Mercury
-@subsection Calling C code from Mercury
+@section Calling C code from Mercury
 
 There are two slightly different mechanisms for calling C code from Mercury:
 @samp{pragma import} and @samp{pragma c_code}.  @samp{pragma import}
@@ -3406,8 +3870,8 @@ of C code.  @samp{pragma import} is usually simpler, but
 @c e.g. "pragma import" rather than "@samp{pragma import}".
 @c
 @menu
-* pragma import::             Importing C functions
-* pragma c_code::             Defining Mercury procedures using C code
+* pragma import::             Importing C functions.
+* pragma c_code::             Defining Mercury procedures using C code.
 * Nondet pragma c_code::      Using @samp{pragma c_code} for Mercury procedures
                               that can have more than one solution.
 * C code attributes::         Describing properties of C functions or C code.
@@ -3415,7 +3879,7 @@ of C code.  @samp{pragma import} is usually simpler, but
 @end menu
 
 @node pragma import
-@subsubsection pragma import
+@subsection pragma import
 
 A declaration of the form
 
@@ -3484,7 +3948,7 @@ with determinism @samp{nondet} or @samp{multi}.
 using @samp{pragma c_code} -- @pxref{Nondet pragma c_code}).
 
 @node pragma c_code
-@subsubsection pragma c_code
+@subsection pragma c_code
 
 A declaration of the form
 
@@ -3571,7 +4035,7 @@ before returning.  If the procedure fails, the C code need only
 set @code{SUCCESS_INDICATOR} to false (zero).
 
 @node Nondet pragma c_code
-@subsubsection Nondet pragma c_code
+@subsection Nondet pragma c_code
 
 For procedures that can return more than one result on backtracking,
 i.e. those with determinism @samp{nondet} or @samp{multi},
@@ -3698,7 +4162,7 @@ two pieces, using @samp{pragma c_code}.
 @end example
 
 @node C code attributes
-@subsubsection C code attributes
+@subsection C code attributes
 
 As described above, @samp{pragma import} and @samp{pragma c_code}
 declarations may include a list of attributes describing properties
@@ -3742,7 +4206,7 @@ and release a mutex.  All non-thread-safe C code shares a single mutex.)
 @end table
 
 @node Purity and side effects
-@subsubsection Purity and side effects
+@subsection Purity and side effects
 
 Note that procedures implemented in C using either
 @samp{pragma import} or @samp{pragma c_code} must still be ``pure'',
@@ -3787,7 +4251,7 @@ to this procedure, which could effect the behaviour
 of the program in unpredictable ways.
 
 @node Including C headers
-@subsection Including C headers
+@section Including C headers
 
 Any macros, function prototypes, or other C declarations
 that are used in @samp{c_code} pragmas must be included using a
@@ -3831,7 +4295,7 @@ but you should not rely on this, as the set of headers which Mercury
 automatically includes is subject to change.
 
 @node Including C code
-@subsection Including C code
+@section Including C code
 
 Definitions of C functions or global variables may be
 included using a declaration of the form
@@ -3852,7 +4316,7 @@ For example,
 Such code is copied verbatim into the generated C file.
 
 @node Calling Mercury code from C
-@subsection Calling Mercury code from C
+@section Calling Mercury code from C
 
 It is also possible to export Mercury procedures to C,
 so that you can call Mercury code from C (or from
@@ -3914,7 +4378,7 @@ be obtained using the Mercury @samp{type_of} function in the Mercury
 standard library module @samp{std_util}.
 
 @node Linking with C object files 
-@subsection Linking with C object files 
+@section Linking with C object files 
 
 A Mercury implementation should allow you to link with
 object files or libraries that were produced by compiling C code.
@@ -3946,7 +4410,7 @@ For more information, see the ``Libraries'' chapter of the
 Mercury users guide, and the @samp{man} pages for @samp{mmc} and @samp{ml}.
 
 @node Passing data to and from C
-@subsection Passing data to and from C
+@section Passing data to and from C
 
 For each of the Mercury types @code{int}, @code{float}, @code{char},
 and @code{string}, there is a C typedef for the corresponding type in C:
@@ -3987,7 +4451,7 @@ Note that the use of these macros is subject to some caveats
 (@pxref{Memory management}).
 
 @node Using C pointers
-@subsection Using C pointers
+@section Using C pointers
 
 The inbuilt Mercury type @code{c_pointer} can be used to pass C pointers
 between C functions which are called from Mercury.  For example:
@@ -4026,7 +4490,7 @@ between C functions which are called from Mercury.  For example:
 @end example
 
 @node Memory management
-@subsection Memory management
+@section Memory management
 
 Passing pointers to dynamically-allocated memory from Mercury to code
 written in other languages, or vice versa, is in general
@@ -4064,7 +4528,7 @@ methods of memory management, but more implementation experience is
 needed before we can formulate such an interface.
 
 @node Trailing
-@subsection Trailing
+@section Trailing
 
 In certain compilation grades (see the ``Compilation model options''
 section of the Mercury User's Guide), the University of Melbourne
@@ -4098,7 +4562,7 @@ For examples of the use of this interface, see the modules
 @end menu
 
 @node Choice points
-@subsubsection Choice points
+@subsection Choice points
 
 A ``choice point'' is a point in the computation to
 which execution might backtrack.  The ``current''
@@ -4118,7 +4582,7 @@ because in general they may still be necessary in case we backtrack
 to a prior choice point.
 
 @node Value trailing
-@subsubsection Value trailing
+@subsection Value trailing
 
 The simplest form of trailing is value trailing.
 This allows you to trail updates to memory and have
@@ -4151,7 +4615,7 @@ will be restored.
 @end table
 
 @node Function trailing
-@subsubsection Function trailing
+@subsection Function trailing
 
 For more complicated uses of trailing, you can store the address
 of a C function on the trail and have the Mercury runtime call your
@@ -4216,12 +4680,12 @@ If it is called with anything else (such as @samp{MR_gc}),
 then it should probably abort execution with an error message.
 
 @node Delayed goals and floundering
-@subsubsection Delayed goals and floundering
+@subsection Delayed goals and floundering
 
 Another use for the function trail is check for floundering
 in the presence of delayed goals.
 
-Often, when implementating certain kinds of constraint solvers, it may
+Often, when implementing certain kinds of constraint solvers, it may
 not be possible to actually solve all of the constraints at the time
 they are added.  Instead, it may be necessary to simply delay their
 execution until a later time, in the hope the constraints may become
@@ -4232,7 +4696,7 @@ is important for the system to check that their are no outstanding
 delayed goals which might cause failure, before execution commits
 to this execution path.  If there are any such delayed goals, the
 computation is said to ``flounder''.  If the check for floundering was
-omitted, then it could lead to unsound behavior,  such as a negation
+omitted, then it could lead to unsound behaviour,  such as a negation
 failing even though logically speaking it ought to have succeeded.
 
 The check for floundering can be implemented using the function trail,
@@ -4249,7 +4713,7 @@ If your function does detect floundering, then it should print
 an error message and then abort execution.
 
 @node Avoiding redundant trailing
-@subsubsection Avoiding redundant trailing
+@subsection Avoiding redundant trailing
 
 If a mutable data structure is updated multiple times, and each update
 is recorded on the trail using the functions described above, then
@@ -4333,7 +4797,7 @@ outweigh these costs will depend on your application.
 @c such as implementing your own exception handling.
 
 @node Impurity
-@section Impurity declarations
+@chapter Impurity declarations
 
 In order to efficiently implement certain predicates, it is occasionally
 necessary to venture outside pure logic programming.  Other predicates
@@ -4364,17 +4828,17 @@ Newcomers to Mercury are hence encouraged to @strong{skip this section}.
 
 
 @menu
-* Purity levels::       Choosing the right level of purity
-* Impurity semantics::  What impure code means
-* Declaring impurity::  Declaring predicates impure
-* Impure calls::        Marking a call as impure
-* Promising purity::    Promising that a predicate is pure
-* Impurity Example::    A simple example using impurity
+* Purity levels::       Choosing the right level of purity.
+* Impurity semantics::  What impure code means.
+* Declaring impurity::  Declaring predicates impure.
+* Impure calls::        Marking a call as impure.
+* Promising purity::    Promising that a predicate is pure.
+* Impurity Example::    A simple example using impurity.
 @end menu
 
 
 @node Purity levels
-@subsection Choosing the right level of purity
+@section Choosing the right level of purity
 
 Mercury distinguishes three ``levels'' of purity:
 
@@ -4385,16 +4849,16 @@ same inputs.  They do not interact with the ``real'' world (i.e., do any
 input/output) without taking an io__state (@pxref{Types}) as input and
 returning one as output, and do not make any changes to any data
 structure that will not be undone on backtracking (unless the data
-structure would be unreachable on backtracking).  The behavior of other
+structure would be unreachable on backtracking).  The behaviour of other
 predicates is never affected by the invocation of pure predicates, nor
-is the behavior of pure predicates ever affected by the invocation of
+is the behaviour of pure predicates ever affected by the invocation of
 other predicates.
 
 The vast majority of Mercury predicates are pure.  
 
 @item semipure
 Semipure predicates are just like pure predicates, except that their
-behavior may be affected by the invocation of impure predicates.  That
+behaviour may be affected by the invocation of impure predicates.  That
 is, they are sensitive to the state of the computation other than as
 reflected by their input arguments, though they do not affect the state
 themselves.
@@ -4407,7 +4871,7 @@ computation.
 
 
 @node Impurity semantics
-@subsection Semantics
+@section Semantics
 
 It is important to the proper operation of impure and semipure code, to
 the flexibility of the compiler to optimize pure code, and to the
@@ -4448,7 +4912,7 @@ compiler may treat a semipure goal as if it were pure.
 
 
 @node Declaring impurity
-@subsection Declaring predicate impurity
+@section Declaring predicate impurity
 
 A predicate is declared to be impure or semipure by preceding the word
 @code{pred} in its @code{pred} declaration with @code{impure}
@@ -4470,7 +4934,7 @@ declares the predicate @var{Pred} to be impure or semipure, respectively.
 
 
 @node Impure calls
-@subsection Marking a call as impure
+@section Marking a call as impure
 
 If a predicate is impure or semipure, all calls to it must be preceded
 with the word @code{impure} or @code{semipure}, respectively.  Note
@@ -4478,7 +4942,7 @@ that only predicate calls need to (and are permitted to) be prefixed
 with @code{impure} or @code{semipure}, compound goals never need this.
 See @ref{Impurity Example} for an example of this.
 
-The requiremment that impure or semipure calls be marked with
+The requirement that impure or semipure calls be marked with
 @code{impure} or @code{semipure} allows someone 
 reading the code to tell which goals are not pure, making code which
 relies on side effects somewhat less mysterious.  Furthermore, it means
@@ -4488,7 +4952,7 @@ declarative semantics, without hidden side-effects.
 
 
 @node Promising purity
-@subsection Promising that a predicate is pure
+@section Promising that a predicate is pure
 
 Some predicates which call impure or semipure predicates are themselves
 pure.  In fact, the main purpose of the Mercury impurity system is to
@@ -4496,7 +4960,7 @@ allow programmers to write pure predicates using impure ones, while protecting
 the procedural implementation from aggressive compiler optimizations.
 Of course, the Mercury compiler cannot verify that a predicate is pure,
 so it is the programmer's responsibility to ensure this.  If a predicate
-is promised pure and is not, the behavior of the program is undefined.
+is promised pure and is not, the behaviour of the program is undefined.
 
 The programmer may promise that a predicate is pure using the
 @code{promise_pure} pragma:
@@ -4507,7 +4971,7 @@ The programmer may promise that a predicate is pure using the
 
 
 @node Impurity Example
-@subsection An example using impurity
+@section An example using impurity
 
 The following example illustrates how a pure predicate may be
 implemented using impure code.  Note that this code is not reentrant,
@@ -4545,6 +5009,28 @@ max_solution(Generator, Max) :-
         ).
 @end example
 
+@node Pragmas
+@chapter Pragmas
+
+The pragma declarations described below are a standard part of the
+Mercury language, as are the pragmas for controlling the C interface
+(@pxref{C interface}) and impurity (@pxref{Impurity}).
+As an extension, implementations may also choose to support additional
+pragmas with implementation-dependent semantics
+(@pxref{Implementation-dependent extensions}).
+
+@menu
+* Inlining::                    Pragmas can be used to suggest or prevent
+                                procedure inlining.
+* Type specialization::         Pragmas can be used to produce specialized
+                                versions of polymorphic procedures.
+* Obsolescence::                Library developers can declare old versions
+                                of predicates or functions to be obsolete.
+* Source file name::            The @samp{source_file} pragma and
+                                @samp{#@var{line}} directives provide support
+                                for preprocessors and other tools that
+                                generate Mercury code.
+@end menu
 
 @node Inlining
 @section Inlining
@@ -4623,7 +5109,7 @@ be created for integer keys.
 
 Implementations are free to ignore @samp{pragma type_spec} declarations.
 Implementations are also free to perform type specialization
-even in the absense of any @samp{pragma type_spec} declarations.
+even in the absence of any @samp{pragma type_spec} declarations.
 
 @node When to use type specialization
 @subsection When to use type specialization
@@ -4730,16 +5216,11 @@ to reset the source file name and line number to point back to the
 generated file for the automatically generated text, as in the above
 example.
 
-@node Implementation-dependent pragmas
-@section Implementation-dependent pragmas
-
-The @samp{pragma} declarations described above are a standard part of
-the Mercury language.  However, as an extension, implementations may
-also choose to support additional pragmas with implementation-dependent
-semantics.
+@node Implementation-dependent extensions
+@chapter Implementation-dependent extensions
 
 The University of Melbourne Mercury implementation supports the following
-additional pragmas:
+extensions to the Mercury language:
 
 @menu
 * Fact tables::                 Support for very large tables of facts.
@@ -4755,7 +5236,7 @@ additional pragmas:
 @end menu
 
 @node Fact tables
-@subsection Fact tables
+@section Fact tables
 
 Large tables of facts can be compiled using a different algorithm that
 is more efficient and produces more efficient code.
@@ -4779,7 +5260,7 @@ produce very efficient code using this technique.
 
 In the current implementation, the table of facts is compiled into a
 separate C file named @samp{@var{FileName}.c}.  The compiler will
-automatically generate the correct depencencies for this file when the
+automatically generate the correct dependencies for this file when the
 command @samp{mmake @var{main_module}.depend} is invoked.  This ensures
 that the C file will be compiled to @samp{@var{FileName}.o} and then
 linked with the other object files when @samp{mmake @var{main_module}}
@@ -4790,7 +5271,7 @@ predicates or functions defined as fact tables can only have
 arguments of types @samp{string}, @samp{int} or @samp{float}.
 
 @node Tabled evaluation
-@subsection Tabled evaluation
+@section Tabled evaluation
 
 (Note: ``Tabled evaluation'' has no relation to the ``fact tables''
 described above.)
@@ -4853,7 +5334,7 @@ the ``minimal model'' semantics.  Anything which is
 true or false in the completion semantics is also true
 or false (respectively) in the minimal model semantics,
 but there are goals for which the minimal model specifies
-that the result is true or false, wheres the completion semantics
+that the result is true or false, whereas the completion semantics
 leaves the result unspecified. 
 For these goals, the usual Mercury semantics requires the
 implementation to either loop or report an error message,
@@ -4905,7 +5386,7 @@ or if you select a garbage collection method other than the default
 @end cartouche
 
 @node Termination analysis
-@subsection Termination analysis
+@section Termination analysis
 
 The compiler includes a termination analyser which can be used to prove 
 termination of predicates and functions.  Details of the analysis is
@@ -4989,7 +5470,17 @@ function then the compiler will quit with an error message.
 
 @ifset aditi
 @node Aditi deductive database interface
-@subsection Aditi deductive database interface
+@section Aditi deductive database interface
+
+@menu
+* Aditi overview::
+* Aditi pragma declarations::   Controlling Aditi compilation.
+* Aditi update syntax::         Changing the contents of Aditi relations.
+* Aditi glossary::              Glossary of Aditi terms.
+@end menu
+
+@node Aditi overview
+@subsection Aditi overview
 
 The University of Melbourne Mercury implementation includes support for
 compiling Mercury predicates for bottom-up evaluation using the Aditi
@@ -5006,10 +5497,6 @@ Bottom-up evaluation computes the answers to a predicate a set at a time,
 rather than a tuple at a time as in the normal top-down execution of a
 Mercury program.
 
-@menu
-* Aditi glossary::              Glossary of Aditi terms
-@end menu
-
 There are several restrictions on predicates to be evaluated using Aditi.
 Argument types may not include polymorphic, higher-order or abstract types.
 Type classes are not supported within database predicates. The argument
@@ -5017,13 +5504,13 @@ modes must not contain partially instantiated insts. Aditi predicates must
 be stratified (@pxref{Aditi glossary}) and must not be mutually recursive
 with predicates in other modules.
 
-Every predicate with a @samp{:- pragma aditi(...)} or
-@samp{:- pragma base_relation(...)} declaration must have an input
+Every predicate with a @samp{pragma aditi} or
+@samp{pragma base_relation} declaration must have an input
 argument of type @samp{aditi__state}. This ensures that Aditi predicates
 are only called from within transactions and that updates and database
 calls are ordered correctly, in the same way that @samp{io__state} arguments
 are used to ensure ordering of I/O operations. Within the clauses for
-predicates with a @samp{:- pragma aditi(...)} declaration variables with
+predicates with a @samp{pragma aditi} declaration variables with
 type @samp{aditi__state} may only be passed to other database predicates --
 they may not be packaged into terms or passed to top-down Mercury predicates.
 This allows the compiler to remove all instances of @samp{aditi__state}
@@ -5034,7 +5521,79 @@ code, which is currently impossible for Aditi to handle.
 Some useful predicates are defined in @file{extras/aditi/aditi.m} in the
 @samp{mercury-extras} distribution.
 
-The following pragma declarations control Aditi compilation.
+The Aditi interface currently has the major restriction that recursive or
+imported top-down Mercury predicates or functions cannot be called from
+predicates with @samp{pragma aditi} declarations.
+The following predicates and functions from the standard library
+can be called from Aditi: 
+
+@samp{builtin__compare/3},
+
+@samp{int:'<'/2},
+@samp{int:'>'/2},
+@samp{int:'=<'/2},
+@samp{int:'>='/2},
+@samp{int__abs/2},
+@samp{int__max/3},
+@samp{int__min/3},
+@samp{int__to_float/2},
+@samp{int__pow/2},
+@samp{int__log2/2},
+@samp{int:'+'/2},
+@samp{int:'+'/1},
+@samp{int:'-'/2},
+@samp{int:'-'/1},
+@samp{int:'*'/2},
+@samp{int:'//'/2},
+@samp{int__rem/2},
+
+@samp{float:'<'/2},
+@samp{float:'>'/2},
+@samp{float:'>='/2},
+@samp{float:'=<'/2},
+@samp{float__abs/1},
+@samp{float__abs/2},
+@samp{float__max/2},
+@samp{float__max/3},
+@samp{float__min/2},
+@samp{float__min/3},
+@samp{float__pow/2},
+@samp{float__log2/2},
+@samp{float__float/1},
+@samp{float__truncate_to_int/1},
+@samp{float__truncate_to_int/2},
+@samp{float:'+'/2},
+@samp{float:'+'/1},
+@samp{float:'-'/2},
+@samp{float:'-'/1},
+@samp{float:'*'/2},
+@samp{float:'/'/2},
+
+@samp{math__ceiling/1},
+@samp{math__round/1},
+@samp{math__floor/1},
+@samp{math__sqrt/1},
+@samp{math__pow/2},
+@samp{math__exp/1},
+@samp{math__ln/1},
+@samp{math__log10/1},
+@samp{math__log2/1},
+@samp{math__sin/1},
+@samp{math__cos/1},
+@samp{math__tan/1},
+@samp{math__asin/1},
+@samp{math__acos/1},
+@samp{math__atan/1},
+@samp{math__sinh/1},
+@samp{math__cosh/1},
+@samp{math__tanh/1},
+
+@samp{string__length/2}.
+
+@node Aditi pragma declarations
+@subsection Aditi pragma declarations
+
+The following pragma declarations control compilation of Aditi predicates.
 
 @example
 :- pragma aditi(@var{Name}/@var{Arity}).
@@ -5089,7 +5648,7 @@ the type of memoing described in @ref{Tabled evaluation}.
 
 The predicate is owned by the named user. A predicate in the database
 is identified by owner, module name, predicate name and arity. The owner
-field is used for security checks. If no @samp{:- pragma owner(...)}
+field is used for security checks. If no @samp{pragma owner}
 declaration is given, the owner is taken from the @samp{--aditi-user}
 option, which defaults to the value of the environment variable @samp{USER},
 or ``guest'' if that is not set.
@@ -5098,18 +5657,423 @@ or ``guest'' if that is not set.
 @c generated by the Aditi system, so this documentation should disappear
 @c eventually.
 @example
-:- pragma aditi_index(@var{Name}/@var{Arity},
-                @var{IndexType}, @var{Attributes}).
+:- pragma aditi_index(@var{Name}/@var{Arity}, @var{IndexType}, @var{Attributes}).
 @end example
 
 The base relation has the given B-tree index. B-tree indexes allow efficient
 retrieval of a tuple or range of tuples from a base relation.
-@var{IndexType} must be one of @samp{unique_B_tree} or
-@samp{non_unique_B_tree}. @var{Attributes} is a list of argument
+@samp{@var{IndexType}} must be one of @samp{unique_B_tree} or
+@samp{non_unique_B_tree}. @samp{@var{Attributes}} is a list of argument
 numbers (argument numbers are counted from one).
 
+@node Aditi update syntax
+@subsection Aditi update syntax
+
+The Melbourne Mercury compiler provides special syntax to specify updates
+of Aditi base relations.
+
+Note: Only error checking is implemented for Aditi updates --- no code is
+generated yet.
+
+@menu 
+* Aditi update notes::
+* Insertion::
+* Deletion::
+* Bulk insertion and deletion::
+* Modification::
+@end menu
+
+@node Aditi update notes
+@subsubsection Aditi update notes
+
+All Aditi update goals have determinism @samp{det}.
+
+There must be a @w{@samp{pragma base_relation}} declaration for
+any relation to be updated. 
+
+It is currently up to the application to ensure that any modifications
+do not violate the determinism of a base relation. If any modification
+does violate the determinism of a base relation, then the behaviour
+is undefined. However, updates of relations with unique B-tree indexes
+are checked to ensure that a key is not given multiple values. The transaction
+will abort if this occurs.
+
+Predicate and function names in Aditi update goals may be module qualified.
+
+The examples make use of the following declarations:
+@example
+:- pred p(aditi__state::aditi_ui, int::out, int::out) is nondet.
+:- pragma base_relation(p/3).
+
+:- func f(aditi__state::aditi_ui, int::out) = (int::out) is nondet.
+:- pragma base_relation(f/2).
+
+:- pred ancestor(aditi__state::aditi_ui, int::out, int::out) is nondet.
+:- pragma aditi(ancestor/3).
+@end example
+
+@node Insertion
+@subsubsection Insertion
+
+@example
+aditi_insert(@var{PredName}(@var{Arg1}, @var{Arg2}, @dots{}), @var{DB0}, @var{DB}).
+
+aditi_insert(@var{FuncName}(@var{Arg1}, @var{Arg2}, @dots{}) = @var{RetVal}, @var{DB0}, @var{DB}).
+@end example
+
+Insert the specified tuple into a relation.
+
+@itemize @bullet
+@item
+@samp{@var{PredName}} must be the name of a predicate. 
+
+@item
+@samp{@var{FuncName}} must be the name of a function.
+
+@item
+@samp{@var{Arg1}}, @samp{@var{Arg2}}, @dots{} and @samp{@var{RetVal}}
+must be data-terms.
+
+The tuple to be inserted must have the same type signature as the relation
+being inserted into. All the arguments of the tuple (including the return value
+of a function) have mode @samp{in}, except the @samp{aditi__state} argument
+which has mode @samp{unused}.
+
+@item
+@samp{@var{DB0}} and @samp{@var{DB}} must be data-terms of type
+@samp{aditi__state}. They have mode @w{@samp{aditi_di, aditi_uo}}.
+@end itemize
+
+Note that @w{@samp{@var{PredName}(@var{Arg1}, @var{Arg2}, @dots{})}}
+in an @samp{aditi_insert} goal is not a higher-order term.
+@w{@samp{Pred = p(DB0, X, Y), aditi_insert(Pred, DB0, DB)}}
+is a syntax error.
+
+Examples:
+@example
+insert_example_1(DB0, DB) :-
+        aditi_insert(p(_, 1, 2), DB0, DB).
+
+insert_example_2(DB0, DB) :-
+        aditi_insert(f(_, 1) = 2, DB0, DB).
+@end example
+
+@node Deletion
+@subsubsection Deletion
+
+@example
+aditi_delete((@var{PredName}(@var{Arg1}, @var{Arg2}, @dots{}) :- @var{Goal}), @var{DB0}, @var{DB}).
+
+aditi_delete((@var{FuncName}(@var{Arg1}, @var{Arg2}, @dots{}) = @var{RetVal} :- @var{Goal}), @var{DB0}, @var{DB}).
+
+aditi_delete(@var{PredOrFunc} @var{Name}/@var{Arity}, @var{Closure}, @var{DB0}, @var{DB}).
+@end example
+
+Delete all tuples for which @samp{@var{Goal}} or @samp{@var{Closure}} 
+succeeds from the named base relation. 
+
+@itemize @bullet
+@item
+@samp{@var{PredName}} must be the name of a predicate. 
+
+@item
+@samp{@var{FuncName}} must be the name of a function.
+
+@item
+@samp{@var{PredOrFunc}} must be either @samp{pred} or @samp{func}.
+If it is @samp{pred}, then @samp{@var{Name}} must be the name of
+a predicate, and if it is @samp{func}, then @samp{@var{Name}}
+must be the name of a function.
+
+@item
+@samp{@var{Arity}} must be the arity of the predicate or function
+being updated.
+
+@item
+@samp{@var{Arg1}}, @samp{@var{Arg2}}, @dots{} and @samp{@var{RetVal}}
+must be data-terms. The head of the deletion rule must have the same
+type signature as the relation being deleted from. The arguments
+(including the return value of a function) all have mode @samp{in},
+except for the @samp{aditi__state} argument, which has mode
+@samp{unused} --- it is not possible to call an Aditi relation
+from the deletion goal.
+
+@item
+@samp{@var{Goal}} must be a Mercury goal.
+
+@item
+@samp{@var{Closure}} must be a data-term which has a higher-order type.
+
+When deleting from a predicate with type declaration
+@w{@samp{:- pred p(aditi__state, @var{Type1}, @dots{})}},
+@samp{@var{Closure}} must have type
+@w{@samp{aditi_top_down pred(aditi__state, @var{Type1}, @dots{})}},
+and inst @w{@samp{pred(unused, in, @dots{}) is semidet}}.
+
+When deleting from a function with type declaration
+@w{@samp{:- func p(aditi__state, @var{Type1}, @dots{}) = @var{Type2}}},
+@samp{@var{Closure}} must have type
+@w{@samp{aditi_top_down func(aditi__state, @var{Type1}, @dots{}) = @var{Type2}}},
+and inst @w{@samp{func(unused, in, @dots{}) = in is semidet}}.
+
+The @samp{aditi_top_down} annotation on the lambda expression is needed to 
+tell the compiler to generate code for execution by the
+Aditi database using the normal Mercury execution algorithm.
+
+The @samp{aditi__state} argument of @samp{@var{Closure}} must have
+mode @samp{unused} --- it is not possible to call an Aditi
+relation from the deletion condition. All other arguments of
+@samp{@var{Closure}} must have mode @samp{in}.
+
+If the construction of @samp{@var{Closure}} is in the same conjunction
+as the @samp{aditi_delete} call, the compiler may be able to do a better
+job of optimizing the deletion using indexes.
+
+@item
+@samp{@var{DB0}} and @samp{@var{DB}} must be data-terms of type
+@samp{aditi__state}. They have mode @w{@samp{aditi_di, aditi_uo}}.
+@end itemize
+
+Examples:
+@example
+delete_example_1(DB0, DB) :-
+        aditi_delete((p(_, X, Y) :- X + Y = 2), DB0, DB).
+
+delete_example_2(DB0, DB) :-
+        aditi_delete(f(_, 2) = _Y, DB0, DB).
+
+delete_example_3(DB0, DB) :-
+        DeleteP = (aditi_top_down
+               pred(_::unused, X::in, Y::in) is semidet :-
+                        X = 2
+               ),
+        aditi_delete(pred p/3, DeleteP, DB0, DB).
+
+delete_example_4(DB0, DB) :-
+        DeleteQ = (aditi_top_down
+               func(_::unused, X::in) = (Y::in) is semidet :-
+                        X = 2
+               ),
+        aditi_delete(func f/2, DeleteQ, DB0, DB).
+
+delete_example_5 -->
+        aditi_delete((p(_, X, Y) :- X = 2, Y = 2)). 
+
+@end example
+
+The type of @samp{DeleteP} is
+@w{@samp{aditi_top_down pred(aditi__state, int, int)}}.
+Its inst is @w{@samp{pred(unused, in, in) is semidet}}, as for a normal
+lambda expression.
+
+Note that in @samp{delete_example_5} the extra set of parentheses around
+the goal are needed, otherwise the second goal in the conjunction
+in the deletion goal would be parsed as an extra argument of the
+@samp{aditi_delete} call, resulting in a syntax error.
+
+@node Bulk insertion and deletion
+@subsubsection Bulk insertion and deletion
+
+@example
+aditi_bulk_insert(@var{PredOrFunc} @var{Name}/@var{Arity}, @var{Closure}, @var{DB0}, @var{DB}).
+@end example
+
+Insert all solutions of @samp{@var{Closure}} into the named relation.
+
+@example
+aditi_bulk_delete(@var{PredOrFunc} @var{Name}/@var{Arity}, @var{Closure}, @var{DB0}, @var{DB}).
+@end example
+
+Delete all solutions of @samp{@var{Closure}} from the named relation.
+
+@itemize @bullet
+@item
+@samp{@var{PredOrFunc}} must be either @samp{pred} or @samp{func}.
+If it is @samp{pred}, then @samp{@var{Name}} must be the name of
+a predicate, and if it is @samp{func}, then @samp{@var{Name}}
+must be the name of a function.
+
+@item
+@samp{@var{Arity}} must be the arity of the predicate or function
+being updated.
+
+@item
+@samp{@var{Closure}} must be a data-term which has a higher-order type with
+the same type signature as the base relation being updated.
+
+The @samp{aditi__state} argument of @samp{@var{Closure}} must have
+mode @samp{aditi_ui}. All other arguments must have mode @samp{out}.
+The determinism of @samp{@var{Closure}} must be @samp{nondet}.
+
+@samp{@var{Closure}} must be evaluable bottom-up by the Aditi
+system --- the predicate or function passed must have a
+@w{@samp{pragma aditi}} declaration. Lambda expressions can be
+marked as evaluable by Aditi using an @samp{aditi_bottom_up} annotation
+on the lambda expression.
+
+@item
+@samp{@var{DB0}} and @samp{@var{DB}} must be data-terms of type
+@samp{aditi__state}. They have mode @w{@samp{aditi_di, aditi_uo}}.
+@end itemize
+
+Examples:
+@example
+bulk_insert_example_1(DB0, DB) :-
+        aditi_bulk_insert(pred p/3, ancestor, DB0, DB).
+
+bulk_delete_example_1(DB0, DB) :-
+        aditi_bulk_delete(pred p/3, ancestor, DB0, DB).
+
+bulk_insert_example_2(DB0, DB) :-
+        InsertP = (aditi_bottom_up
+                pred(DB1::aditi_ui, X::out, Y::out) is nondet :-
+                        ancestor(DB1, X, Y)
+                ),
+        aditi_bulk_insert(pred p/3, InsertP, DB0, DB).
+
+bulk_delete_example_2(DB0, DB) :-
+        DeleteQ = (aditi_bottom_up
+                func(DB1::aditi_ui, X::out) = (Y::out) is nondet :-
+                        ancestor(DB1, X, Y)
+                ),
+        aditi_bulk_delete(func f/2, DeleteQ, DB0, DB).
+@end example
+
+The type of @samp{InsertP} is
+@w{@samp{aditi_bottom_up pred(aditi__state, int, int)}}.
+Its inst is @w{@samp{pred(aditi_ui, out, out) is nondet}},
+as for a normal lambda expression.
+
+@node Modification
+@subsubsection Modification
+
+@example
+aditi_modify(
+        (@var{PredName}(@var{OldArg1}, @var{OldArg2}, @dots{}) ==>
+        @var{PredName}(@var{NewArg1}, @var{NewArg2}, @dots{}) :-
+                @var{Goal}
+        ),
+        @var{DB0}, @var{DB}).
+
+aditi_modify(
+        ((@var{FuncName}(@var{OldArg1}, @var{OldArg2}, @dots{}) = @var{OldRetVal}) ==>
+        (@var{FuncName}(@var{NewArg1}, @var{NewArg2}, @dots{}) = @var{NewRetVal}) :-
+                @var{Goal}
+        ),
+        @var{DB0}, @var{DB}).
+
+aditi_modify(@var{PredOrFunc} @var{PredName}/@var{Arity}, @var{Closure}, @var{DB0}, @var{DB}).
+
+@end example
+
+Modify tuples for which @samp{@var{Goal}} or @samp{@var{Closure}} succeeds,
+leaving any other tuples unchanged.
+
+@itemize @bullet
+@item
+@samp{@var{PredName}} must be the name of a predicate. 
+
+@item
+@samp{@var{FuncName}} must be the name of a function.
+
+@item
+@samp{@var{PredOrFunc}} must be either @samp{pred} or @samp{func}.
+If it is @samp{pred}, then @samp{@var{Name}} must be the name of
+a predicate, and if it is @samp{func}, then @samp{@var{Name}}
+must be the name of a function.
+
+@item
+@samp{@var{Arity}} must be the arity of the predicate or function
+being updated.
+
+@item
+@samp{@var{OldArg1}}, @samp{@var{OldArg2}}, @dots{}, @samp{@var{OldRetVal}},
+@samp{@var{NewArg1}}, @samp{@var{NewArg2}}, @dots{}, and @samp{@var{NewRetVal}}
+must be data-terms.
+
+The original tuple is given by the first set of arguments, which
+have mode @samp{in}. The updated tuple is given by the second set
+of arguments, which have mode @samp{out}. The @samp{aditi__state}
+arguments for both tuples have mode @samp{unused} --- it is not possible
+to call an Aditi relation from the modification goal.
+
+The argument types of each tuple must match the argument types
+of the base relation being modified.
+
+@item
+@samp{@var{Goal}} must be a Mercury goal.
+
+@item
+@samp{@var{Closure}} must be a data-term which has a higher-order type.
+
+When modifying a predicate with type declaration
+@w{@samp{:- pred p(aditi__state, @var{Type1}, @dots{})}}, @samp{@var{Closure}}
+must have type
+@samp{aditi_top_down pred(aditi__state, @var{Type1}, @dots{}, aditi__state, @var{Type1}, @dots{})},
+and inst @w{@samp{pred(unused, in, @dots{}, unused, out, @dots{}) is semidet}}.
+
+When modifying a function with type declaration
+@w{@samp{:- func p(aditi__state, @var{Type1}, @dots{}) = @var{Type2}}},
+@samp{@var{Closure}} must have type
+@samp{aditi_top_down pred(aditi__state, @var{Type1}, @dots{}, @var{Type2}, aditi__state, @var{Type1}, @dots{}, @var{Type2})},
+and inst
+@w{@samp{pred(unused, in, @dots{}, in, unused, out, @dots{}, out) is semidet}}.
+
+The @samp{aditi__state} arguments of @samp{@var{Closure}} must have
+mode @samp{unused} --- it is not possible to call an Aditi
+relation from the modification goal.
+
+If the construction of @samp{@var{Closure}} is in the same conjunction
+as the @samp{aditi_modify} call, the compiler may be able to do a better
+job of optimizing the modification using indexes.
+
+@item
+@samp{@var{DB0}} and @samp{@var{DB}} must be data-terms of type
+@samp{aditi__state}. They have mode @w{@samp{aditi_di, aditi_uo}}.
+@end itemize
+
+Examples:
+@example
+modify_example_1(DB0, DB) :-
+        aditi_modify(
+                (p(_DB0, X, Y0) ==> p(_DB, X, Y) :-
+                        X > 2, X < 5, Y = Y0 + 1
+                ), DB0, DB).
+
+modify_example_2(DB0, DB) :-
+        aditi_modify(
+                ((f(_DB0, X) = Y0) ==> (f(_DB, X) = Y) :-
+                        X > 2, X < 5, Y = Y0 + 1
+                ), DB0, DB).
+
+modify_example_3(DB0, DB) :-
+        ModifyP = (aditi_top_down pred(_::unused, X::in, Y0::in,
+                        _::unused, X::out, Y::out) is semidet :-
+                    X > 2, X < 5, Y = Y0 + 1
+                 ),
+        aditi_modify(pred p/3, ModifyP, DB0, DB).
+
+modify_example_4(DB0, DB) :-
+        ModifyQ = (aditi_top_down pred(_::unused, X::in, Y0::in,
+                        _::unused, X::out, Y::out) is semidet :-
+                    X > 2, X < 5, Y = Y0 + 1
+                 ),
+        aditi_modify(func f/2, ModifyQ, DB0, DB).
+
+modify_example_5 -->
+        aditi_modify(
+                (p(_DB0, X, Y0) ==> p(_DB, X, Y) :-
+                        X > 2, X < 5, Y = Y0 + 1
+                )).
+@end example
+
+Note that in @samp{modify_example_5} the extra set of parentheses around
+the goal are needed, otherwise the second and third goals in
+the conjunction in the modification goal would be parsed as extra arguments
+of the @samp{aditi_modify} call, resulting in a syntax error.
+
 @node Aditi glossary
-@subsubsection Aditi glossary
+@subsection Aditi glossary
 
 @table @asis
 

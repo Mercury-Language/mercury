@@ -35,7 +35,7 @@
 
 :- import_module int, float, string, set, map, require.
 
-:- import_module opt_util.
+:- import_module builtin_ops, opt_util.
 
 vn_util__find_specials(vn_reg(_, _), []).
 vn_util__find_specials(vn_temp(_, _), []).

@@ -7,8 +7,8 @@ Subsequent debianizations have been performed by Tyson Dowd
 <trd@cs.mu.oz.au>.
 
 The sources for this package were obtained from the Mercury CVS archive,
-but are the same sources as
-ftp://turiel.cs.mu.oz.au/pub/mercury/mercury-0.8.1-compiler.tar.gz
+but are the same sources as mercury-<VERSION>-compiler.tar.gz from
+<ftp://ftp.mercury.cs.mu.oz.au/pub/mercury>.
 The only difference is that the tar file contains pre-compiled .c files
 to make bootstrapping easier.
 
@@ -49,8 +49,12 @@ distributed by Hans Boehm:
 	that the code was modified is included with the above copyright
 	notice.
 
-The program `texi2html' in the doc directory (contained only in source package)
-is copyright by CERN and is distributed under the GNU General Public
+A few files (config.guess, config.sub) are derived from code that is
+copyright by the Free Software Foundation, Inc, and are distributed
+under the GNU General Public License version 2.
+
+The program `texi2html' in the `doc' directory is copyright by CERN
+and is distributed under the GNU General Public
 License version 2:
 
 	This program is the intellectual property of the European
@@ -59,4 +63,9 @@ License version 2:
 	accepted for any loss or damage of any kind resulting from any
 	defect or inaccuracy in this information or code.
 
-A few files (config.guess, config.sub) are derived from code that is
+The files in the `samples' directory are either public domain, or
+distributed under the GNU General Public License.
+
+THIS MATERIAL IS PROVIDED AS IS, WITH ABSOLUTELY NO WARRANTY
+EXPRESSED OR IMPLIED.  ANY USE IS AT YOUR OWN RISK.  See the file COPYING.
+

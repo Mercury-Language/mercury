@@ -185,8 +185,7 @@
 :- import_module prog_io_goal, prog_io_dcg, prog_io_pragma, prog_io_util.
 :- import_module prog_io_typeclass.
 :- import_module hlds_data, hlds_pred, prog_util, prog_out.
-:- import_module globals, options, (inst).
-:- import_module purity.
+:- import_module globals, options, (inst), inst_table.
 
 :- import_module int, string, std_util, parser, term_io, dir, require.
 :- import_module assoc_list.
@@ -1043,6 +1042,10 @@ process_decl(ModuleName, VarSet, "pragma", Pragma, Attributes, Result):-
 	parse_pragma(ModuleName, VarSet, Pragma, Result0),
 	check_no_attributes(Result0, Attributes, Result).
 
+process_decl(ModuleName, VarSet, "assertion", Assertion, Attributes, Result):-
+	parse_assertion(ModuleName, VarSet, Assertion, Result0),
+	check_no_attributes(Result0, Attributes, Result).
+
 process_decl(ModuleName, VarSet, "typeclass", Args, Attributes, Result):-
 	parse_typeclass(ModuleName, VarSet, Args, Result0),
 	check_no_attributes(Result0, Attributes, Result).
@@ -1093,6 +1096,17 @@ attribute_description(quantifier(exist, _), "existential quantifier (`some')").
 attribute_description(constraints(univ, _), "type class constraint (`<=')").
 attribute_description(constraints(exist, _),
 	"existentially quantified type class constraint (`=>')").
+
+%-----------------------------------------------------------------------------%
+
+	% parse the assertion declaration. 
+:- pred parse_assertion(module_name, varset, list(term), maybe1(item)).
+:- mode parse_assertion(in, in, in, out) is semidet.
+
+parse_assertion(_ModuleName, VarSet, [AssertionTerm], Result) :-
+	varset__coerce(VarSet, ProgVarSet),
+	parse_goal(AssertionTerm, ProgVarSet, AssertGoal, AssertVarSet),
+	Result = ok(assertion(AssertGoal, AssertVarSet)).
 
 %-----------------------------------------------------------------------------%
 

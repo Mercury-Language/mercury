@@ -50,7 +50,8 @@
 
 :- implementation.
 
-:- import_module hlds_module, hlds_goal, hlds_data, code_gen, trace.
+:- import_module builtin_ops, hlds_module, code_gen, trace.
+
 :- import_module char, map, tree, int, std_util, require, list.
 
 dense_switch__is_dense_switch(CaseVar, TaggedCases, CanFail0, ReqDensity,

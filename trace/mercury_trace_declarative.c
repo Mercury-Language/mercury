@@ -38,8 +38,10 @@
 #include "mercury_trace_tables.h"
 #include "mercury_trace_util.h"
 #include "mercury_layout_util.h"
+#include "mercury_deep_copy.h"
 #include "mercury_string.h"
 #include "declarative_debugger.h"
+#include "std_util.h"
 #include <stdio.h>
 
 /*
@@ -381,6 +383,7 @@ MR_trace_decl_save_args(const MR_Stack_Layout_Label *layout, Word *saved_regs,
 	Word				*base_sp;
 	Word				*base_curfr;
 	Word				*type_params;
+	Word				typeinfo_type;
 	int				i;
 
 	vars = &layout->MR_sll_var_info;
@@ -403,10 +406,20 @@ MR_trace_decl_save_args(const MR_Stack_Layout_Label *layout, Word *saved_regs,
 	base_curfr = MR_saved_curfr(saved_regs);
 	type_params = MR_materialize_typeinfos_base(vars, saved_regs, 
 			base_sp, base_curfr);
+
+	MR_TRACE_CALL_MERCURY(
+		ML_get_type_info_for_type_info(&typeinfo_type);
+	);
+
 	for (i = 0; i < arg_count; i++) {
+		Word	arg_type;
+
 		MR_get_type_and_value_base(vars, i, saved_regs, base_sp,
-				base_curfr, type_params, &arg_types[i],
+				base_curfr, type_params, &arg_type,
 				&arg_values[i]);
+
+		arg_types[i] = MR_make_permanent(arg_type,
+					(Word *) typeinfo_type);
 
 #ifdef MR_DEBUG_DD_BACK_END
 		fprintf(MR_mdb_out, "\t");

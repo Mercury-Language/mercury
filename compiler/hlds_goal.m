@@ -13,7 +13,8 @@
 :- interface.
 
 :- import_module hlds_data, hlds_pred, llds, prog_data, (inst), instmap.
-:- import_module char, list, set, map, std_util.
+:- import_module inst_table.
+:- import_module bool, char, list, set, map, std_util.
 
 	% Here is how goals are represented
 
@@ -47,26 +48,23 @@
 			sym_name	% the name of the predicate
 		)
 
-	;	higher_order_call(
-			prog_var,	% the predicate to call
+		% A generic call implements operations which are too
+		% polymorphic to be written as ordinary predicates in Mercury
+		% and require special casing, either because their arity
+		% is variable, or they take higher-order arguments of
+		% variable arity.
+		% This currently includes higher-order calls, class-method
+		% calls, Aditi calls and the Aditi update goals.
+	
+	;	generic_call(
+			generic_call,
 			list(prog_var),	% the list of argument variables
-			list(type),	% the types of the argument variables
-			argument_modes,	% the argument modes of the called
-					% pred or func (since we can't look
-					% these up in the proc_info of the
-					% called pred/func)
-			determinism,	% the determinism of the called pred
-			pred_or_func	% call/N (pred) or apply/N (func)
-		)
-
-	;	class_method_call(
-			prog_var,	% the typeclass_info for the instance
-			int,		% the number of the method to call
-			list(prog_var),	% the list of argument variables (other
-					% than this instance's typeclass_info)
-			list(type),	% the types of the argument variables
-			argument_modes,	% the modes of the argument variables
-			determinism	% the determinism of the called pred
+			argument_modes,	% The modes of the argument variables.
+					% For higher_order calls, this field
+					% is junk until after mode analysis.
+					% For aditi_builtins, this field
+					% is junk until after purity checking.
+			determinism	% the determinism of the call
 		)
 
 		% Deterministic disjunctions are converted
@@ -127,8 +125,15 @@
 		% field of the goal_info, so these get ignored
 		% (except to recompute the goal_info quantification).
 		% `all Vs' gets converted to `not some Vs not'.
-
-	;	{ some(list(prog_var), hlds_goal) }
+		% The second argument is `can_remove' if the quantification
+		% is allowed to be removed. A non-removable explicit
+		% quantification may be introduced to keep related goals
+		% together where optimizations that separate the goals
+		% can only result in worse behaviour. An example is the
+		% closures for the builtin aditi update predicates -
+		% they should be kept close to the update call where
+		% possible to make it easier to use indexes for the update.
+	;	{ some(list(prog_var), can_remove, hlds_goal) }
 
 		% An if-then-else,
 		% `if some <Vars> <Condition> then <Then> else <Else>'.
@@ -191,18 +196,113 @@
 			list(maybe(pair(string, mode)))
 		).
 
+:- type generic_call
+	--->	higher_order(
+			prog_var,
+			pred_or_func,	% call/N (pred) or apply/N (func)
+			arity		% number of arguments (including the
+					% higher-order term)
+		)
 
-	% Given the variable info field from a pragma c_code, get all the
-	% variable names.
-:- pred get_pragma_c_var_names(pragma_c_code_arg_info, list(string)).
-:- mode get_pragma_c_var_names(in, out) is det.
+	;	class_method(
+			prog_var,	% typeclass_info for the instance
+			int,		% number of the called method
+			class_id,	% name and arity of the class
+			simple_call_id	% name of the called method
+		)
+
+	;	aditi_builtin(
+			aditi_builtin,
+			simple_call_id
+		)
+	.
+
+	% Builtin Aditi operations. 
+:- type aditi_builtin
+	--->
+		% Call an Aditi predicate from Mercury compiled to C.
+		% This is introduced by magic.m.
+		% Arguments: 
+		%   type-infos for the input arguments
+		%   the input arguments
+		%   type-infos for the output arguments
+		%   the output arguments
+		aditi_call(
+			pred_proc_id,	% procedure to call
+			int,		% number of inputs
+			list(type),	% types of input arguments
+			int		% number of outputs
+		)
+
+		% Insert a single tuple into a predicate.
+		% Arguments:
+		%   type-infos for the arguments of the tuple to insert
+		%   the arguments of tuple to insert
+		% aditi__state::di, aditi__state::uo
+	;	aditi_insert(
+			pred_id		% base relation to insert into
+		)
+
+		% Apply a filter to a relation.
+		% Arguments:
+		%   deletion condition (semidet `aditi_top_down' closure). 
+		%   aditi__state::di, aditi__state::uo
+	;	aditi_delete(
+			pred_id,	% base relation to delete from
+			aditi_builtin_syntax
+		)
+
+		% Insert or delete the tuples returned by a query.
+		% Arguments:
+		%   query to generate tuples to insert or delete
+		% 	(nondet `aditi_bottom_up' closure).
+		%   aditi__state::di, aditi__state::uo
+	;	aditi_bulk_operation(
+			aditi_bulk_operation,
+			pred_id		% base relation to insert into
+		)
+
+		% Modify the tuples in a relation.
+		% Arguments:
+		%   semidet `aditi_top_down' closure to construct a
+		%	new tuple from the old tuple.
+		%	The tuple is not changed if the closure fails.
+ 		%   aditi__state::di, aditi__state::uo.
+	;	aditi_modify(
+			pred_id,	% base relation to modify
+			aditi_builtin_syntax
+		)
+	.
+
+	% Which syntax was used for an `aditi_delete' or `aditi_modify'
+	% call. The first syntax is prettier, the second is used
+	% where the closure to be passed in is not known at the call site.
+	% (See the "Aditi update syntax" section of the Mercury Language
+	% Reference Manual).
+:- type aditi_builtin_syntax
+	--->	pred_term		% e.g.	aditi_delete(p(_, X) :- X = 1).
+	;	sym_name_and_closure	% e.g.
+					% aditi_delete(p/2,
+					%    (pred(_::in, X::in) is semidet :-
+					%	X = 1)
+					%    )
+	.
+
+:- type aditi_bulk_operation
+	--->	insert
+	;	delete
+	.
+
+:- type can_remove
+	--->	can_remove
+	;	cannot_remove.
 
 	% There may be two sorts of "builtin" predicates - those that we
 	% open-code using inline instructions (e.g. arithmetic predicates),
 	% and those which are still "internal", but for which we generate
 	% a call to an out-of-line procedure. At the moment there are no
 	% builtins of the second sort, although we used to handle call/N
-	% that wayay.
+	% that way.
 
 :- type builtin_state	--->	inline_builtin
 			;	out_of_line_builtin
@@ -258,7 +358,11 @@
 			list(prog_var)
 		)
 	;	lambda_goal(
-			pred_or_func,	% Is this a predicate or a function
+			pred_or_func, 	% Is this a predicate or a function
+			lambda_eval_method,
+					% should be `normal' except for
+					% closures executed by Aditi.
+			fix_aditi_state_modes,
 			list(prog_var),	% non-locals of the goal excluding
 					% the lambda quantified variables
 			list(prog_var),	% lambda quantified variables
@@ -270,6 +374,16 @@
 					% body.
 			hlds_goal
 		).
+
+	% For lambda expressions built automatically for Aditi updates
+	% the modes of `aditi__state' arguments may need to be fixed
+	% by purity.m because make_hlds.m does not know which relation
+	% is being updated, so it doesn't know which are the `aditi__state'
+	% arguments.
+:- type fix_aditi_state_modes
+	--->	modes_need_fixing
+	;	modes_are_ok
+	.
 
 :- type unification
 		% A construction unification is a unification with a functor
@@ -288,12 +402,31 @@
 					% expression, this is the list of
 					% the non-local variables of the
 					% lambda expression.
-			list(uni_mode)	% The list of modes of the arguments
+			list(uni_mode),	% The list of modes of the arguments
 					% sub-unifications.
 					% For a unification with a lambda
 					% expression, this is the list of
 					% modes of the non-local variables
 					% of the lambda expression.
+			maybe(cell_to_reuse),
+					% Cell to destructively update.
+			cell_is_unique,	% Can the cell be allocated
+					% in shared data.
+			maybe(rl_exprn_id)
+					% Used for `aditi_top_down' closures
+					% passed to `aditi_delete' and
+					% `aditi_modify' calls where the
+					% relation being modified has a
+					% B-tree index.
+					% The Aditi-RL expression referred
+					% to by this field constructs a key
+					% range which restricts the deletion
+					% or modification of the relation using
+					% the index so that the deletion or
+					% modification closure is only applied
+					% to tuples for which the closure could
+					% succeed, reducing the number of
+					% tuples read from disk.
 		)
 
 		% A deconstruction unification is a unification with a functor
@@ -339,7 +472,29 @@
 
 	;	complicated_unify(
 			uni_mode,	% The mode of the unification.
-			can_fail	% Whether or not it could possibly fail
+			can_fail,	% Whether or not it could possibly fail
+
+			% When unifying polymorphic types such as
+			% map/2, we need to pass type_info variables
+			% to the unification procedure for map/2
+			% so that it knows how to unify the
+			% polymorphically typed components of the
+			% data structure.  Likewise for comparison
+			% predicates.
+			% This field records which type_info variables
+			% we will need.
+			% This field is set by polymorphism.m.
+			% It is used by quantification.m
+			% when recomputing the nonlocals.
+			% It is also used by modecheck_unify.m,
+			% which checks that the type_info
+			% variables needed are all ground.
+			% It is also checked by simplify.m when
+			% it converts complicated unifications
+			% into procedure calls.
+			list(prog_var)	% The type_info variables needed
+					% by this unification, if it ends up
+					% being a complicated unify.
 		).
 
 	% A unify_context describes the location in the original source
@@ -366,7 +521,7 @@
 
 		% a unification in an argument of a predicate call
 	;	call(
-			pred_call_id,	% the name and arity of the predicate
+			call_id,	% the name and arity of the predicate
 			int		% the argument number (first arg == 1)
 		).
 
@@ -393,6 +548,26 @@
 			unify_rhs,	% the RHS of the unification
 			unify_context	% the context of the unification
 		).
+
+	% Information used to perform structure reuse on a cell.
+:- type cell_to_reuse
+	---> cell_to_reuse(
+		prog_var,
+		cons_id,
+		list(bool)      % A `no' entry means that the corresponding
+				% argument already has the correct value
+				% and does not need to be filled in.
+	).
+
+	% Cells marked `cell_is_shared' can be allocated in read-only memory,
+	% and can be shared.
+	% Cells marked `cell_is_unique' must be writeable, and therefore
+	% cannot be shared.
+	% `cell_is_unique' is always a safe approximation.
+:- type cell_is_unique
+	--->	cell_is_unique
+	;	cell_is_shared
+	.
 
 :- type hlds_goals == list(hlds_goal).
 
@@ -432,6 +607,17 @@
 			;	exist.
 
 :- type goal_path == list(goal_path_step).
+
+	% Given the variable info field from a pragma c_code, get all the
+	% variable names.
+:- pred get_pragma_c_var_names(pragma_c_code_arg_info, list(string)).
+:- mode get_pragma_c_var_names(in, out) is det.
+
+	% Get a description of a generic_call goal.
+:- pred hlds_goal__generic_call_id(generic_call, call_id).
+:- mode hlds_goal__generic_call_id(in, out) is det.
+
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -525,6 +711,16 @@ get_pragma_c_var_names_2([MaybeName | MaybeNames], Names0, Names) :-
 		Names1 = Names0
 	),
 	get_pragma_c_var_names_2(MaybeNames, Names1, Names).
+
+hlds_goal__generic_call_id(higher_order(_, PorF, Arity),
+		generic_call(higher_order(PorF, Arity))).
+hlds_goal__generic_call_id(
+		class_method(_, _, ClassId, MethodId),
+		generic_call(class_method(ClassId, MethodId))).
+hlds_goal__generic_call_id(aditi_builtin(Builtin, Name),
+		generic_call(aditi_builtin(Builtin, Name))).
+
+%-----------------------------------------------------------------------------%
 
 :- interface.
 
@@ -753,6 +949,13 @@ get_pragma_c_var_names_2([MaybeName | MaybeNames], Names0, Names) :-
        % Compute the determinism of a list of goals.
 :- pred goal_list_determinism(list(hlds_goal), determinism).
 :- mode goal_list_determinism(in, out) is det.
+
+	% Change the contexts of the goal_infos of all the sub-goals
+	% of the given goal. This is used to ensure that error messages
+	% for automatically generated unification procedures have a useful
+	% context.
+:- pred set_goal_contexts(prog_context, hlds_goal, hlds_goal).
+:- mode set_goal_contexts(in, in, out) is det.
 
 	%
 	% Produce a goal to construct a given constant.
@@ -1088,8 +1291,7 @@ conjoin_goals(Goal1, Goal2, Goal) :-
 
 goal_is_atomic(conj([])).
 goal_is_atomic(disj([], _)).
-goal_is_atomic(higher_order_call(_,_,_,_,_,_)).
-goal_is_atomic(class_method_call(_,_,_,_,_,_)).
+goal_is_atomic(generic_call(_,_,_,_)).
 goal_is_atomic(call(_,_,_,_,_,_)).
 goal_is_atomic(unify(_,_,_,_,_)).
 goal_is_atomic(pragma_c_code(_,_,_,_,_,_,_)).
@@ -1148,6 +1350,47 @@ goal_list_determinism(Goals, Determinism) :-
                        det_conjunction_detism(Det0, Det1, Det)
                )),
        list__foldl(ComputeDeterminism, Goals, det, Determinism).
+
+%-----------------------------------------------------------------------------%
+
+set_goal_contexts(Context, Goal0 - GoalInfo0, Goal - GoalInfo) :-
+	goal_info_set_context(GoalInfo0, Context, GoalInfo),
+	set_goal_contexts_2(Context, Goal0, Goal).
+
+:- pred set_goal_contexts_2(prog_context, hlds_goal_expr, hlds_goal_expr).
+:- mode set_goal_contexts_2(in, in, out) is det.
+
+set_goal_contexts_2(Context, conj(Goals0), conj(Goals)) :-
+	list__map(set_goal_contexts(Context), Goals0, Goals).
+set_goal_contexts_2(Context, disj(Goals0, SM), disj(Goals, SM)) :-
+	list__map(set_goal_contexts(Context), Goals0, Goals).
+set_goal_contexts_2(Context, par_conj(Goals0, SM), par_conj(Goals, SM)) :-
+	list__map(set_goal_contexts(Context), Goals0, Goals).
+set_goal_contexts_2(Context, if_then_else(Vars, Cond0, Then0, Else0, SM),
+		if_then_else(Vars, Cond, Then, Else, SM)) :-
+	set_goal_contexts(Context, Cond0, Cond),
+	set_goal_contexts(Context, Then0, Then),
+	set_goal_contexts(Context, Else0, Else).
+set_goal_contexts_2(Context, switch(Var, CanFail, Cases0, SM),
+		switch(Var, CanFail, Cases, SM)) :-
+	list__map(
+	    (pred(case(ConsId, IMD, Goal0)::in, case(ConsId, IMD, Goal)::out)
+	    		is det :-
+		set_goal_contexts(Context, Goal0, Goal)
+	    ), Cases0, Cases).
+set_goal_contexts_2(Context, some(Vars, CanRemove, Goal0),
+		some(Vars, CanRemove, Goal)) :-
+	set_goal_contexts(Context, Goal0, Goal).	
+set_goal_contexts_2(Context, not(Goal0), not(Goal)) :-
+	set_goal_contexts(Context, Goal0, Goal).	
+set_goal_contexts_2(_, Goal, Goal) :-
+	Goal = call(_, _, _, _, _, _).
+set_goal_contexts_2(_, Goal, Goal) :-
+	Goal = generic_call(_, _, _, _).
+set_goal_contexts_2(_, Goal, Goal) :-
+	Goal = unify(_, _, _, _, _).
+set_goal_contexts_2(_, Goal, Goal) :-
+	Goal = pragma_c_code(_, _, _, _, _, _, _).
 
 %-----------------------------------------------------------------------------%
 
@@ -1218,7 +1461,10 @@ make_const_construction(Var, ConsId, Goal - GoalInfo) :-
 	RHS = functor(ConsId, []),
 	Inst = bound(unique, [functor(ConsId, [])]),
 	Mode = (free(unique) - Inst) - (Inst - Inst),
-	Unification = construct(Var, ConsId, [], []),
+	VarToReuse = no,
+	RLExprnId = no,
+	Unification = construct(Var, ConsId, [], [],
+		VarToReuse, cell_is_unique, RLExprnId),
 	Context = unify_context(explicit, []),
 	Goal = unify(Var, RHS, Mode, Unification, Context),
 	set__singleton_set(NonLocals, Var),

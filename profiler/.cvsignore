@@ -1,10 +1,14 @@
 *.c
 *.d
-*.date
-*.err2
+*.ql
+*.pl
+*.prof
+*.err
 *.int
 *.int2
-*.prof
+*.int3
+*.date
+*.date3
 mercury_profile
 mercury_profile.dep
 Mercury

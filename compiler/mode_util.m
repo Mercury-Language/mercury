@@ -15,7 +15,7 @@
 :- interface.
 
 :- import_module hlds_module, hlds_pred, hlds_goal, hlds_data, prog_data.
-:- import_module instmap, (inst).
+:- import_module instmap, (inst), inst_table.
 :- import_module bool, list, map, assoc_list.
 
 	% mode_get_insts returns the initial instantiatedness and
@@ -190,12 +190,12 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pred normalise_insts(list(inst), instmap, inst_table, module_info,
-		list(inst)).
-:- mode normalise_insts(in, in, in, in, out) is det.
+:- pred normalise_insts(list(inst), list(type), instmap, inst_table,
+		module_info, list(inst)).
+:- mode normalise_insts(in, in, in, in, in, out) is det.
 
-:- pred normalise_inst(inst, instmap, inst_table, module_info, inst).
-:- mode normalise_inst(in, in, in, in, out) is det.
+:- pred normalise_inst(inst, (type), instmap, inst_table, module_info, inst).
+:- mode normalise_inst(in, in, in, in, in, out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -205,8 +205,8 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pred apply_inst_key_sub_mode(inst_key_sub, mode, mode).
-:- mode apply_inst_key_sub_mode(in, in, out) is det.
+:- pred apply_inst_table_sub_mode(inst_table_sub, mode, mode).
+:- mode apply_inst_table_sub_mode(in, in, out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -226,18 +226,26 @@
 %-----------------------------------------------------------------------------%
 
 	% Construct a mode corresponding to the standard `in',
-	% `out', `uo', or `in(any)' mode.
+	% `out', `uo', `in(any)' or `unused' mode.
 :- pred in_mode((mode)::out) is det.
 :- pred out_mode((mode)::out) is det.
 :- pred uo_mode((mode)::out) is det.
 :- pred in_any_mode((mode)::out) is det.
+:- pred unused_mode((mode)::out) is det.
+
+	% Construct the modes used for `aditi__state' arguments.
+	% XXX These should be unique, but are not yet because that
+	% would require alias tracking.
+:- func aditi_ui_mode = (mode).
+:- func aditi_di_mode = (mode).
+:- func aditi_uo_mode = (mode).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 :- import_module require, int, map, set, std_util, assoc_list, bag.
-:- import_module prog_util, type_util, unify_proc.
+:- import_module prog_util, prog_io, type_util, unify_proc.
 :- import_module inst_match, inst_util, det_analysis, term.
 
 %-----------------------------------------------------------------------------%
@@ -586,10 +594,10 @@ inst_lookup_2(InstName, InstTable, ModuleInfo, Inst) :-
 		map__init(Subst),
 		propagate_type_into_inst(Type, Subst, InstTable, ModuleInfo,
 			Inst0, Inst)
-	; InstName = substitution_inst(SubInstName, SubKeys, Sub),
-		inst_table_get_substitution_insts(InstTable, SubInsts),
-		map__lookup(SubInsts, substitution_inst(SubInstName, SubKeys,
-			Sub), MaybeInst),
+	; InstName = other_inst(OtherInstId, OtherInstName),
+		inst_table_get_other_insts(InstTable, OtherInsts),
+		other_inst_table_lookup(OtherInsts, OtherInstId, OtherInstName,
+			MaybeInst),
 		( MaybeInst = known(Inst0) ->
 			Inst = Inst0
 		;
@@ -819,7 +827,7 @@ propagate_ctor_info(bound(Uniq, BoundInsts0), Type, _Constructors, InstTable,
 	).
 propagate_ctor_info(ground(Uniq, no), Type, Constructors, _, ModuleInfo,
 		Inst) :-
-	( type_is_higher_order(Type, function, ArgTypes) ->
+	( type_is_higher_order(Type, function, _, ArgTypes) ->
 		default_higher_order_func_inst(ArgTypes, ModuleInfo,
 			HigherOrderInstInfo),
 		Inst = ground(Uniq, yes(HigherOrderInstInfo))
@@ -836,7 +844,7 @@ propagate_ctor_info(ground(Uniq, yes(PredInstInfo0)), Type, _Ctors, _InstTable,
 	PredInstInfo = pred_inst_info(PredOrFunc,
 		argument_modes(ArgInstTable, ArgModes), Det),
 	(
-		type_is_higher_order(Type, PredOrFunc, ArgTypes),
+		type_is_higher_order(Type, PredOrFunc, _, ArgTypes),
 		list__same_length(ArgTypes, ArgModes0)
 	->
 		propagate_types_into_mode_list(ArgTypes, ArgInstTable,
@@ -894,7 +902,7 @@ propagate_ctor_info_lazily(bound(Uniq, BoundInsts0), Type0, Subst,
 propagate_ctor_info_lazily(ground(Uniq, no), Type0, Subst, _InstTable,
 		ModuleInfo, Inst) :-
 	apply_type_subst(Type0, Subst, Type),
-	( type_is_higher_order(Type, function, ArgTypes) ->
+	( type_is_higher_order(Type, function, _, ArgTypes) ->
 		default_higher_order_func_inst(ArgTypes, ModuleInfo,
 			HigherOrderInstInfo),
 		Inst = ground(Uniq, yes(HigherOrderInstInfo))
@@ -916,7 +924,7 @@ propagate_ctor_info_lazily(ground(Uniq, yes(PredInstInfo0)), Type0, Subst,
 		argument_modes(ArgInstTable, ArgModes), Det),
 	apply_type_subst(Type0, Subst, Type),
 	(
-		type_is_higher_order(Type, PredOrFunc, ArgTypes),
+		type_is_higher_order(Type, PredOrFunc, _, ArgTypes),
 		list__same_length(ArgTypes, ArgModes0)
 	->
 		propagate_types_into_mode_list(ArgTypes, ArgInstTable,
@@ -1232,8 +1240,8 @@ inst_name_apply_substitution(typed_inst(T, Inst0), Subst,
 		typed_inst(T, Inst)) :-
 	inst_name_apply_substitution(Inst0, Subst, Inst).
 inst_name_apply_substitution(typed_ground(Uniq, T), _, typed_ground(Uniq, T)).
-inst_name_apply_substitution(substitution_inst(InstName0, K, S), Subst,
-		substitution_inst(InstName, K, S)) :-
+inst_name_apply_substitution(other_inst(Id, InstName0), Subst,
+		other_inst(Id, InstName)) :-
 	inst_name_apply_substitution(InstName0, Subst, InstName).
 
 :- pred alt_list_apply_substitution(list(bound_inst), inst_subst,
@@ -1602,30 +1610,19 @@ recompute_instmap_delta_3(if_then_else(Vars, A0, B0, C0, SM), GoalInfo0,
 		recompute_info_set_inst_table(InstTable)
 	).
 
-recompute_instmap_delta_3(some(Vars, Goal0), GoalInfo,
-		some(Vars, Goal), GoalInfo, InstMap, InstMapDelta) -->
+recompute_instmap_delta_3(some(Vars, CanRemove, Goal0), GoalInfo,
+		some(Vars, CanRemove, Goal), GoalInfo,
+		InstMap, InstMapDelta) -->
 	recompute_instmap_delta_2(Goal0, Goal, InstMap, _, InstMapDelta).
 
-recompute_instmap_delta_3(higher_order_call(A, Vars, B, Modes, C, D), GoalInfo,
-		higher_order_call(A, Vars, B, Modes, C, D), GoalInfo,
+recompute_instmap_delta_3(generic_call(A, Vars, Modes, D), GoalInfo,
+		generic_call(A, Vars, Modes, D), GoalInfo,
 		InstMap0, InstMapDelta) -->
 	=(RI0),
 	{ recompute_info_get_inst_table(RI0, InstTable0) },
 	{ Modes = argument_modes(ArgInstTable, ArgModes0) },
 	{ inst_table_create_sub(InstTable0, ArgInstTable, Sub, InstTable) },
-	{ list__map(apply_inst_key_sub_mode(Sub), ArgModes0, ArgModes) },
-	recompute_info_set_inst_table(InstTable),
-	recompute_instmap_delta_call_2(Vars, InstMap0, ArgModes, InstMap),
-	{ compute_instmap_delta(InstMap0, InstMap, InstMapDelta) }.
-
-recompute_instmap_delta_3(class_method_call(A, B, Vars, C, Modes, D), GoalInfo,
-		class_method_call(A, B, Vars, C, Modes, D), GoalInfo,
-		InstMap0, InstMapDelta) -->
-	=(RI0),
-	{ recompute_info_get_inst_table(RI0, InstTable0) },
-	{ Modes = argument_modes(ArgInstTable, ArgModes0) },
-	{ inst_table_create_sub(InstTable0, ArgInstTable, Sub, InstTable) },
-	{ list__map(apply_inst_key_sub_mode(Sub), ArgModes0, ArgModes) },
+	{ list__map(apply_inst_table_sub_mode(Sub), ArgModes0, ArgModes) },
 	recompute_info_set_inst_table(InstTable),
 	recompute_instmap_delta_call_2(Vars, InstMap0, ArgModes, InstMap),
 	{ compute_instmap_delta(InstMap0, InstMap, InstMapDelta) }.
@@ -1800,7 +1797,7 @@ recompute_instmap_delta_call(PredId, ProcId, Args, InstMap0,
 		proc_info_argmodes(ProcInfo,
 			argument_modes(ArgInstTable, ArgModes0)),
 		inst_table_create_sub(InstTable0, ArgInstTable, Sub, InstTable),
-		list__map(apply_inst_key_sub_mode(Sub), ArgModes0, ArgModes),
+		list__map(apply_inst_table_sub_mode(Sub), ArgModes0, ArgModes),
 		recompute_info_set_inst_table(InstTable, RI0, RI1),
 		recompute_instmap_delta_call_2(Args, InstMap0,
 			ArgModes, InstMap, RI1, RI),
@@ -1930,9 +1927,11 @@ recompute_instmap_delta_unify(Var, functor(ConsId, Vars), _UniMode0,
 		map__init(StoreMap),
 		Goal = disj([], StoreMap)
 	;
-		Unification0 = construct(_, RealConsId, _, _)
+		Unification0 = construct(_, RealConsId, _, _,
+			ReuseVar, CellIsUnique, RLExprnId)
 	->
-		Unification = construct(Var, RealConsId, Vars, UniModes),
+		Unification = construct(Var, RealConsId, Vars, UniModes,
+				ReuseVar, CellIsUnique, RLExprnId),
 		Det = det,
 		Goal = unify(Var, UnifyRhs, UniMode, Unification, UniContext)
 	;
@@ -1963,10 +1962,11 @@ recompute_instmap_delta_unify(Var, functor(ConsId, Vars), _UniMode0,
 
 	% var-lambda unification
 	%
-recompute_instmap_delta_unify(Var, lambda_goal(PredOrFunc, LambdaNonLocals,
-		Vars, LambdaModes, LambdaDet, _, LambdaGoal0), _UniMode0,
-		Unification0, UniContext, _GoalInfo, Goal, Det, InstMap0,
-		InstMapDelta, RI0, RI) :-
+recompute_instmap_delta_unify(Var,
+		lambda_goal(PredOrFunc, EvalMethod, FixModes, LambdaNonLocals,
+			Vars, LambdaModes, LambdaDet, _, LambdaGoal0),
+		_UniMode0, Unification0, UniContext, _GoalInfo, Goal, Det,
+		InstMap0, InstMapDelta, RI0, RI) :-
 
 	% First, compute the instmap_delta of the goal.
 
@@ -2019,16 +2019,21 @@ recompute_instmap_delta_unify(Var, lambda_goal(PredOrFunc, LambdaNonLocals,
 	ModeOfX = (InstOfX - UnifyInst),
 	ModeOfY = (InstOfY - UnifyInst),
 	UniMode = ModeOfX - ModeOfY,
-	UnifyRhs = lambda_goal(PredOrFunc, LambdaNonLocals, Vars,
-			LambdaModes, LambdaDet, IMDelta, LambdaGoal),
-	( Unification0 = construct(_, RealConsId, _, _) ->
+	UnifyRhs = lambda_goal(PredOrFunc, EvalMethod, FixModes,
+			LambdaNonLocals, Vars, LambdaModes,
+			LambdaDet, IMDelta, LambdaGoal),
+	(
+		Unification0 = construct(_, RealConsId, _, _,
+			ReuseVar, CellIsUnique, RLExprnId)
+	->
 		list__delete_elems(LambdaNonLocals, Vars, ArgVars),
 		instmap__lookup_vars(ArgVars, InstMap0, ArgInsts),
 		assoc_list__from_corresponding_lists(ArgInsts, ArgInsts,
 			ArgModes0),
 		mode_util__inst_pairs_to_uni_modes(ArgModes0, ArgModes0,
 			ArgModes),
-		Unification = construct(Var, RealConsId, Vars, ArgModes)
+		Unification = construct(Var, RealConsId, Vars, ArgModes,
+			ReuseVar, CellIsUnique, RLExprnId)
 	;
 		error("recompute_instmap_delta_unify: bad var-lambda unification")
 	),
@@ -2126,18 +2131,19 @@ recompute_instmap_delta_unify(Var, var(VarY), _UniMode0, Unification0,
 		),
 		ModuleInfo = ModuleInfo2
 	;
-		Unification0 = complicated_unify(_, CanFail)
+		Unification0 = complicated_unify(_, CanFail, TIVars)
 	->
 		Det = Det1,
 		ComplUniMode = ((InitialInstX - InitialInstY) ->
 					(UnifyInst - UnifyInst)),
-		Unification = complicated_unify(ComplUniMode, CanFail),
+		Unification = complicated_unify(ComplUniMode, CanFail, TIVars),
 		goal_info_get_context(GoalInfo, Context),
 		recompute_info_get_vartypes(RI0, VarTypes),
 		map__lookup(VarTypes, Var, Type),
 		( type_to_type_id(Type, TypeId, _) ->
-			unify_proc__request_unify(TypeId - ComplUniMode,
-				Det, Context, InstTable, ModuleInfo2,
+			unify_proc__request_unify(unify_proc_id(TypeId,
+					InitialInstX, InitialInstY, InstTable),
+				Det, Context, InstMap0, ModuleInfo2,
 				ModuleInfo)
 		;
 			ModuleInfo = ModuleInfo2
@@ -2153,7 +2159,7 @@ recompute_instmap_delta_unify(Var, var(VarY), _UniMode0, Unification0,
 	compute_instmap_delta(InstMap0, InstMap, InstMapDelta),
 	recompute_info_set_module_info(ModuleInfo, RI0, RI1),
 	recompute_info_set_inst_table(InstTable, RI1, RI2),
-	( GoalChanged = yes ->
+	( GoalChanged = bool__yes ->
 		recompute_info_set_goal_changed(RI2, RI)
 	;
 		RI = RI2
@@ -2317,28 +2323,41 @@ strip_builtin_qualifiers_from_pred_inst(yes(Pred0), yes(Pred)) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-normalise_insts([], _, _, _, []).
-normalise_insts([Inst0|Insts0], InstMap, InstTable, ModuleInfo, [Inst|Insts]) :-
-	normalise_inst(Inst0, InstMap, InstTable, ModuleInfo, Inst),
-	normalise_insts(Insts0, InstMap, InstTable, ModuleInfo, Insts).
+normalise_insts([], [], _, _, _, []).
+normalise_insts([Inst0|Insts0], [Type|Types], InstMap, InstTable, ModuleInfo,
+		[Inst|Insts]) :-
+	normalise_inst(Inst0, Type, InstMap, InstTable, ModuleInfo, Inst),
+	normalise_insts(Insts0, Types, InstMap, InstTable, ModuleInfo, Insts).
+normalise_insts([], [_|_], _, _, _, _) :-
+	error("normalise_insts: length mismatch").
+normalise_insts([_|_], [], _, _, _, _) :-
+	error("normalise_insts: length mismatch").
 
 	% This is a bit of a hack.
 	% The aim is to avoid non-termination due to the creation
 	% of ever-expanding insts.
 	% XXX should also normalise partially instantiated insts.
 
-normalise_inst(Inst0, InstMap, InstTable, ModuleInfo, NormalisedInst) :-
+normalise_inst(Inst0, Type, InstMap, InstTable, ModuleInfo, NormalisedInst) :-
 	inst_expand(InstMap, InstTable, ModuleInfo, Inst0, Inst),
 	( Inst = bound(_, _) ->
 		(
 			inst_is_ground(Inst, InstMap, InstTable, ModuleInfo),
-			inst_is_unique(Inst, InstMap, InstTable, ModuleInfo)
+			inst_is_unique(Inst, InstMap, InstTable, ModuleInfo),
+			% don't infer unique modes for introduced type_infos
+			% arguments, because that leads to an increase
+			% in the number of inferred modes without any benefit
+			\+ is_introduced_type_info_type(Type)
 		->
 			NormalisedInst = ground(unique, no)
 		;
 			inst_is_ground(Inst, InstMap, InstTable, ModuleInfo),
 			inst_is_mostly_unique(Inst, InstMap, InstTable,
-					ModuleInfo)
+					ModuleInfo),
+			% don't infer unique modes for introduced type_infos
+			% arguments, because that leads to an increase
+			% in the number of inferred modes without any benefit
+			\+ is_introduced_type_info_type(Type)
 		->
 			NormalisedInst = ground(mostly_unique, no)
 		;
@@ -2383,7 +2402,13 @@ uo_mode(Mode) :- make_std_mode("uo", [], Mode).
 
 in_any_mode(Mode) :- make_std_mode("in", [any(shared)], Mode).
 
-%-----------------------------------------------------------------------------%
+unused_mode(Mode) :- make_std_mode("unused", [], Mode).
+
+aditi_ui_mode = Mode :- in_mode(Mode). 
+
+aditi_di_mode = Mode :- in_mode(Mode).
+
+aditi_uo_mode = Mode :- out_mode(Mode).
 
 :- pred make_std_mode(string, list(inst), mode).
 :- mode make_std_mode(in, in, out) is det.
@@ -2486,12 +2511,12 @@ make_std_mode(Name, Args, Mode) :-
 
 %-----------------------------------------------------------------------------%
 
-apply_inst_key_sub_mode(Sub, (I0 -> F0), (I -> F)) :-
-	inst_apply_sub(Sub, I0, I),
-	inst_apply_sub(Sub, F0, F).
-apply_inst_key_sub_mode(Sub, user_defined_mode(SymName, Insts0),
+apply_inst_table_sub_mode(Sub, (I0 -> F0), (I -> F)) :-
+	inst_apply_inst_table_sub(Sub, I0, I),
+	inst_apply_inst_table_sub(Sub, F0, F).
+apply_inst_table_sub_mode(Sub, user_defined_mode(SymName, Insts0),
 		user_defined_mode(SymName, Insts)) :-
-	list__map(inst_apply_sub(Sub), Insts0, Insts).
+	list__map(inst_apply_inst_table_sub(Sub), Insts0, Insts).
 
 %-----------------------------------------------------------------------------%
 

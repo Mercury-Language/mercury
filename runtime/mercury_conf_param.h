@@ -44,7 +44,6 @@
 ** USE_ASM_LABELS
 ** CONSERVATIVE_GC
 ** NATIVE_GC		[not yet working]
-** COMPACT_ARGS
 ** NO_TYPE_LAYOUT
 ** BOXED_FLOAT
 ** MR_USE_TRAIL
@@ -236,7 +235,7 @@
 #endif
 
 /*
-** MR_INSERT_ENTRY_LABEL_NAMES -- the internal label table should contain
+** MR_INSERT_ENTRY_LABEL_NAMES -- the entry label table should contain
 **				  the names of labels as well as their
 **				  addresses and layouts (label names are
 **				  quite big, so prefer not to include them

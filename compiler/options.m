@@ -181,9 +181,53 @@
 				% execution tracing.
 		;	trace_stack_layout
 				% Use an alternate calculation of liveness
-				% where typeinfos are live for any live data
-				% the includes that type variable.
-		;	typeinfo_liveness
+				% where the typeinfo for a type variable
+				% must live at any point in the body of the
+				% procedure at which a live variable's type
+				% includes that type variable.
+				%
+				% Although this option governs whether the
+				% body of a procedure uses this liveness
+				% calculation, it is not the only consideration
+				% we have to take into account when deciding on
+				% the interface of any procedure whose address
+				% may be taken. We must include typeinfos
+				% describing the types of all arguments in the
+				% interface of a procedure if either this
+				% option is set *or* the procedure's address
+				% may be taken, otherwise, the layout structure
+				% we include in closures using that procedure
+				% may not have all the information required
+				% to reconstruct the types of all the values
+				% inside the closure.
+				%
+				% The only place in the compiler that should
+				% look at this option is the predicate
+				% body_should_use_typeinfo_liveness in
+				% hlds_pred.m; everything else, including
+				% the predicates deciding interface typeinfo
+				% liveness, should go through there.
+		;	body_typeinfo_liveness
+				% Generate unify and compare preds.  For
+				% measurement only. Code generated with
+				% this set to `no' is unlikely to
+				% actually work.
+		;	special_preds
+				% Generate type_ctor_info structures.
+				% For measurement only -- if you turn this
+				% off, then you're unlikely to be able
+				% to link.
+		;	type_ctor_info
+				% Generate type_ctor_layout structures.
+				% For measurement only -- if you turn this
+				% off, then you're unlikely to be able
+				% to link.
+		;	type_ctor_layout
+				% Generate type_ctor_functors structures.
+				% For measurement only -- if you turn this
+				% off, then you're unlikely to be able
+				% to link.
+		;	type_ctor_functors
 	% Code generation options
 		;	low_level_debug
 		;	trad_passes
@@ -239,6 +283,7 @@
 		;	type_specialization
 		;	user_guided_type_specialization
 		;	higher_order_size_limit
+		;	introduce_accumulators
 		;	optimize_constructor_last_call
 		;	optimize_duplicate_calls
 		;	constant_propagation
@@ -479,7 +524,6 @@ option_defaults_2(compilation_model_option, [
 					% the `mmc' script will override the
 					% above default with a value determined
 					% at configuration time
-	args			-	string("compact"),
 	sync_term_size		-	int(8),
 					% 8 is the size on linux (at the time
 					% of writing) - will usually be over-
@@ -489,7 +533,11 @@ option_defaults_2(compilation_model_option, [
 	agc_stack_layout	-	bool(no),
 	procid_stack_layout	-	bool(no),
 	trace_stack_layout	-	bool(no),
-	typeinfo_liveness	-	bool(no),
+	body_typeinfo_liveness	-	bool(no),
+	special_preds		-	bool(yes),
+	type_ctor_info		-	bool(yes),
+	type_ctor_layout	-	bool(yes),
+	type_ctor_functors	-	bool(yes),
 	highlevel_c		-	bool(no),
 	unboxed_float		-	bool(no)
 ]).
@@ -586,6 +634,7 @@ option_defaults_2(optimization_option, [
 	type_specialization	-	bool(no),
 	user_guided_type_specialization	-	bool(no),
 	higher_order_size_limit	-	int(20),
+	introduce_accumulators -	bool(no),
 	optimize_constructor_last_call -	bool(no),
 	optimize_dead_procs	-	bool(no),
 	deforestation		-	bool(no),
@@ -829,14 +878,16 @@ long_option("num-tag-bits",		num_tag_bits).
 long_option("bits-per-word",		bits_per_word).
 long_option("bytes-per-word",		bytes_per_word).
 long_option("conf-low-tag-bits",	conf_low_tag_bits).
-long_option("args",			args).
-long_option("arg-convention",		args).
 long_option("type-layout",		type_layout).
 long_option("agc-stack-layout",		agc_stack_layout).
 long_option("basic-stack-layout",	basic_stack_layout).
 long_option("procid-stack-layout",	procid_stack_layout).
 long_option("trace-stack-layout",	trace_stack_layout).
-long_option("typeinfo-liveness",	typeinfo_liveness).
+long_option("body-typeinfo-liveness",	body_typeinfo_liveness).
+long_option("special-preds",		special_preds).
+long_option("type-ctor-info",		type_ctor_info).
+long_option("type-ctor-layout",		type_ctor_layout).
+long_option("type-ctor-functors",	type_ctor_functors).
 long_option("highlevel-C",		highlevel_c).
 long_option("highlevel-c",		highlevel_c).
 long_option("high-level-C",		highlevel_c).
@@ -923,6 +974,7 @@ long_option("user-guided-type-specialization",
 long_option("user-guided-type-specialisation",
 					user_guided_type_specialization).
 long_option("higher-order-size-limit",	higher_order_size_limit).
+long_option("introduce-accumulators",	introduce_accumulators).
 long_option("optimise-constructor-last-call",	optimize_constructor_last_call).
 long_option("optimize-constructor-last-call",	optimize_constructor_last_call).
 long_option("optimize-dead-procs",	optimize_dead_procs).
@@ -1740,19 +1792,6 @@ your program compiled with different options.
 		% The --bytes-per-word option is intended for use
 		% by the `mmc' script; it is deliberately not documented.
 
-		"--args {simple, compact}",
-		"--arg-convention {simple, compact}",
-		"(This option is not for general use.)",
-		"\tUse the specified argument passing convention",
-		"\tin the generated low-level C code. With the `simple'",
-		"\tconvention, the <n>th argument is passed in or out",
-		"\tusing register r<n>. With the `compact' convention,",
-		"\tthe <n>th input argument is passed using register r<n>,",
-		"\tand the <n>th output argument is returned using",
-		"\tregister r<n>. The compact convention generally leads to",
-		"\tmore efficient code. Use of the simple convention requires the",
-		"\tC code to be compiled with -UCOMPACT_ARGS.",
-
 		"--no-type-layout",
 		"(This option is not for general use.)",
 		"\tDon't output type_ctor_layout structures or references",
@@ -1784,12 +1823,10 @@ your program compiled with different options.
 %		"\texecution tracing.",
 
 		% This is a developer only option.
-%		"--typeinfo-liveness",
+%		"--body-typeinfo-liveness",
 %		"(This option is not for general use.)",
-%		"\tUse an alternate technique for calculating liveness.",
-%		"\tKeeps typeinfo variables around for as long as any data",
-%		"\tthat has a type that contains that type variable is live",
-%
+%		For documentation, see the comment in the type declaration.
+
 		"--use-minimal-model",
 		"(This option is not for general use.)",
 		"\tEnable the use of minimal model tabling.",
@@ -1998,6 +2035,9 @@ options_help_hlds_hlds_optimization -->
 		"\t`--optimize-higher-order' and `--type-specialization'.",
 		"\tGoal size is measured as the number of calls, unifications",
 		"\tand branched goals.",
+		"--introduce-accumulators",
+		"\tAttempt to introduce accumulating variables into",
+		"\tprocedures, so as to make them tail recursive.",
 		"--optimize-constructor-last-call",
 		"\tEnable the optimization of ""last"" calls that are followed by",
 		"\tconstructor application.",

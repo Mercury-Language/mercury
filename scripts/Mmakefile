@@ -61,13 +61,16 @@ install_mmake: Mmake.vars Mmake.rules install_dirs
 
 .PHONY: install_scripts
 install_scripts: $(SCRIPTS) install_dirs
-	# we remove the installed `mmake' script before (re)installing it
+	# we move the installed `mmake' script before (re)installing it
 	# to avoid overwriting the script while it is running
-	-rm -f $(INSTALL_BINDIR)/mmake
+	# (just removing it doesn't work very well on win32, which will
+	# deny you permission to write the file while mmake is running).
+	-mv $(INSTALL_BINDIR)/mmake $(INSTALL_BINDIR)/mmake.old
 	cp $(SCRIPTS) $(INSTALL_BINDIR) 
 	for file in $(SCRIPTS); do \
 		chmod u+w $(INSTALL_BINDIR)/$$file ;\
 	done
+	-rm -f $(INSTALL_BINDIR)/mmake.old
 
 .PHONY: install_emacs_scripts
 install_emacs_scripts: $(EMACS_SCRIPTS) install_dirs

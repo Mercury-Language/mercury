@@ -17,6 +17,8 @@
 :- interface.
 
 :- import_module hlds_pred, hlds_data, tree, prog_data, (inst).
+:- import_module builtin_ops, inst_table.
+
 :- import_module bool, assoc_list, list, map, set, std_util.
 
 %-----------------------------------------------------------------------------%
@@ -25,6 +27,8 @@
 	--->	model_det		% functional & total
 	;	model_semi		% just functional
 	;	model_non.		% not functional
+
+%-----------------------------------------------------------------------------%
 
 % c_interface_info holds information used when generating
 % code that uses the C interface.
@@ -58,6 +62,43 @@
 	% the code for `pragma export' is generated directly as strings
 	% by export.m.
 :- type c_export	==	string.
+
+%-----------------------------------------------------------------------------%
+
+:- import_module continuation_info.
+
+:- type global_data.
+
+:- pred global_data_init(global_data::out) is det.
+
+:- pred global_data_add_new_proc_var(global_data::in,
+	pred_proc_id::in, comp_gen_c_var::in, global_data::out) is det.
+
+:- pred global_data_add_new_proc_layout(global_data::in,
+	pred_proc_id::in, proc_layout_info::in, global_data::out) is det.
+
+:- pred global_data_update_proc_layout(global_data::in,
+	pred_proc_id::in, proc_layout_info::in, global_data::out) is det.
+
+:- pred global_data_add_new_non_common_static_datas(global_data::in,
+	list(comp_gen_c_data)::in, global_data::out) is det.
+
+:- pred global_data_maybe_get_proc_layout(global_data::in, pred_proc_id::in,
+	proc_layout_info::out) is semidet.
+
+:- pred global_data_get_proc_layout(global_data::in, pred_proc_id::in,
+	proc_layout_info::out) is det.
+
+:- pred global_data_get_all_proc_vars(global_data::in,
+	list(comp_gen_c_var)::out) is det.
+
+:- pred global_data_get_all_proc_layouts(global_data::in,
+	list(proc_layout_info)::out) is det.
+
+:- pred global_data_get_all_non_common_static_data(global_data::in,
+	list(comp_gen_c_data)::out) is det.
+
+%-----------------------------------------------------------------------------%
 
 %
 % The type `c_file' is the actual LLDS.
@@ -507,7 +548,7 @@
 	;	redoip				% A stored redoip.
 	;	redofr				% A stored redofr.
 	;	hp				% A stored heap pointer.
-	;	var(prog_var, string, type, qualified_inst)
+	;	var(prog_var, string, type, llds_inst)
 						% A variable (the var number
 						% and name are for execution
 						% tracing; we have to store
@@ -518,11 +559,23 @@
 	;	unwanted.			% Something we don't need,
 						% or at least don't need
 						% information about.
-:- type qualified_inst
-	--->	qualified_inst(
-			inst_table,
-			inst
-		).
+
+	% For recording information about the inst of a variable for use
+	% by the garbage collector or the debugger, we don't need to know
+	% what functors its parts are bound to, or which parts of it are
+	% unique; we just need to know which parts of it are bound.
+	% If we used the HLDS type inst to represent the instantiatedness
+	% in the LLDS, we would find that insts that the LLDS wants to treat
+	% as the same would compare as different. The live_value_types and
+	% var_infos containing them would compare as different as well,
+	% which can lead to a variable being listed more than once in
+	% a label's list of live variable.
+	%
+	% At the moment, the LLDS only handles ground insts. When this changes,
+	% the argument type of partial will have to be changed.
+:- type llds_inst
+	--->	ground
+	;	partial(inst_table, (inst)).
 
 	% An lval represents a data location or register that can be used
 	% as the target of an assignment.
@@ -572,7 +625,7 @@
 	;	framevar(int)	% A nondet stack slot. The reference is
 				% relative to the current value of `curfr'.
 				% These are used in nondet code.
-				% Framevar slot numbers start at 0.
+				% Framevar slot numbers start at 1.
 
 	;	succip(rval)	% The succip slot of the specified
 				% nondet stack frame; holds the code address
@@ -734,6 +787,10 @@
 	;	int_const(int)
 	;	float_const(float)
 	;	string_const(string)
+	;	multi_string_const(int, string)
+			% a string containing embedded NULLs,
+			% whose real length is given by the integer,
+			% and not the location of the first NULL
 	;	code_addr_const(code_addr)
 	;	data_addr_const(data_addr)
 	;	label_entry(label).
@@ -750,6 +807,8 @@
 	;	base_typeclass_info(class_id, string)
 			% class name & class arity, names and arities of the
 			% types
+	;	module_layout
+			% Layout information for the current module.
 	;	proc_layout(label)
 			% Layout structure for the procedure with the given
 			% entry label.
@@ -767,57 +826,6 @@
 			% layout information
 	;	functors.
 			% information on functors
-
-:- type unary_op
-	--->	mktag
-	;	tag
-	;	unmktag
-	;	mkbody
-	;	body
-	;	unmkbody
-	;	cast_to_unsigned
-	;	hash_string
-	;	bitwise_complement
-	;	(not).
-
-:- type binary_op
-	--->	(+)	% integer arithmetic
-	;	(-)
-	;	(*)
-	;	(/)	% integer division
-			% assumed to truncate toward zero
-	;	(mod)	% remainder (w.r.t. truncating integer division)
-			% XXX `mod' should be renamed `rem'
-	;	(<<)	% unchecked left shift
-	;	(>>)	% unchecked right shift
-	;	(&)	% bitwise and
-	;	('|')	% bitwise or
-	;	(^)	% bitwise xor
-	;	(and)	% logical and
-	;	(or)	% logical or
-	;	eq	% ==
-	;	ne	% !=
-	;	array_index
-	;	str_eq	% string comparisons
-	;	str_ne
-	;	str_lt
-	;	str_gt
-	;	str_le
-	;	str_ge
-	;	(<)	% integer comparions
-	;	(>)
-	;	(<=)
-	;	(>=)
-	;	float_plus
-	;	float_minus
-	;	float_times
-	;	float_divide
-	;	float_eq
-	;	float_ne
-	;	float_lt
-	;	float_gt
-	;	float_le
-	;	float_ge.
 
 :- type reg_type	
 	--->	r		% general-purpose (integer) regs
@@ -853,6 +861,11 @@
 	;	do_det_aditi_call
 	;	do_semidet_aditi_call
 	;	do_nondet_aditi_call
+	;	do_aditi_insert
+	;	do_aditi_delete
+	;	do_aditi_bulk_insert
+	;	do_aditi_bulk_delete
+	;	do_aditi_modify
 	;	do_not_reached.		% We should never jump to this address.
 
 	% A proc_label is a label used for the entry point to a procedure.
@@ -1016,7 +1029,8 @@ llds__const_type(true, bool).
 llds__const_type(false, bool).
 llds__const_type(int_const(_), integer).
 llds__const_type(float_const(_), float).
-llds__const_type(string_const(_), data_ptr).
+llds__const_type(string_const(_), string).
+llds__const_type(multi_string_const(_, _), string).
 llds__const_type(code_addr_const(_), code_ptr).
 llds__const_type(data_addr_const(_), data_ptr).
 llds__const_type(label_entry(_), code_ptr).
@@ -1111,3 +1125,114 @@ llds__type_is_word_size_as_arg(string,       yes).
 llds__type_is_word_size_as_arg(data_ptr,     yes).
 llds__type_is_word_size_as_arg(code_ptr,     yes).
 llds__type_is_word_size_as_arg(word,         yes).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+:- type proc_var_map	==	map(pred_proc_id, comp_gen_c_var).
+:- type proc_layout_map	==	map(pred_proc_id, proc_layout_info).
+
+:- type global_data
+	--->	global_data(
+			proc_var_map,		% Information about the global
+						% variables defined by each
+						% procedure.
+			proc_layout_map,	% Information about the
+						% layout structures defined
+						% by each procedure.
+			list(comp_gen_c_data)	% The list of global data
+						% structures that do not need
+						% to be checked by llds_common,
+						% because their construction
+						% ensures no overlaps.
+		).
+
+global_data_init(global_data(EmptyDataMap, EmptyLayoutMap, [])) :-
+	map__init(EmptyDataMap),
+	map__init(EmptyLayoutMap).
+
+global_data_add_new_proc_var(GlobalData0, PredProcId, ProcVar,
+		GlobalData) :-
+	global_data_get_proc_var_map(GlobalData0, ProcVarMap0),
+	map__det_insert(ProcVarMap0, PredProcId, ProcVar, ProcVarMap),
+	global_data_set_proc_var_map(GlobalData0, ProcVarMap,
+		GlobalData).
+
+global_data_add_new_proc_layout(GlobalData0, PredProcId, ProcLayout,
+		GlobalData) :-
+	global_data_get_proc_layout_map(GlobalData0, ProcLayoutMap0),
+	map__det_insert(ProcLayoutMap0, PredProcId, ProcLayout, ProcLayoutMap),
+	global_data_set_proc_layout_map(GlobalData0, ProcLayoutMap,
+		GlobalData).
+
+global_data_update_proc_layout(GlobalData0, PredProcId, ProcLayout,
+		GlobalData) :-
+	global_data_get_proc_layout_map(GlobalData0, ProcLayoutMap0),
+	map__det_update(ProcLayoutMap0, PredProcId, ProcLayout, ProcLayoutMap),
+	global_data_set_proc_layout_map(GlobalData0, ProcLayoutMap,
+		GlobalData).
+
+global_data_add_new_non_common_static_datas(GlobalData0, NewNonCommonStatics,
+		GlobalData) :-
+	global_data_get_non_common_static_data(GlobalData0, NonCommonStatics0),
+	list__append(NewNonCommonStatics, NonCommonStatics0, NonCommonStatics),
+	global_data_set_non_common_static_data(GlobalData0, NonCommonStatics,
+		GlobalData).
+
+global_data_maybe_get_proc_layout(GlobalData0, PredProcId, ProcLayout) :-
+	global_data_get_proc_layout_map(GlobalData0, ProcLayoutMap),
+	map__search(ProcLayoutMap, PredProcId, ProcLayout).
+
+global_data_get_proc_layout(GlobalData0, PredProcId, ProcLayout) :-
+	global_data_get_proc_layout_map(GlobalData0, ProcLayoutMap),
+	map__lookup(ProcLayoutMap, PredProcId, ProcLayout).
+
+global_data_get_all_proc_vars(GlobalData, ProcVars) :-
+	global_data_get_proc_var_map(GlobalData, ProcVarMap),
+	map__values(ProcVarMap, ProcVars).
+
+global_data_get_all_proc_layouts(GlobalData, ProcLayouts) :-
+	global_data_get_proc_layout_map(GlobalData, ProcLayoutMap),
+	map__values(ProcLayoutMap, ProcLayouts).
+
+global_data_get_all_non_common_static_data(GlobalData, NonCommonStatics) :-
+	global_data_get_non_common_static_data(GlobalData, NonCommonStatics).
+
+%-----------------------------------------------------------------------------%
+
+:- pred global_data_get_proc_var_map(global_data::in, proc_var_map::out)
+	is det.
+:- pred global_data_get_proc_layout_map(global_data::in, proc_layout_map::out)
+	is det.
+:- pred global_data_get_non_common_static_data(global_data::in,
+	list(comp_gen_c_data)::out) is det.
+:- pred global_data_set_proc_var_map(global_data::in, proc_var_map::in,
+	global_data::out) is det.
+:- pred global_data_set_proc_layout_map(global_data::in, proc_layout_map::in,
+	global_data::out) is det.
+:- pred global_data_set_non_common_static_data(global_data::in,
+	list(comp_gen_c_data)::in, global_data::out) is det.
+
+global_data_get_proc_var_map(GD, A) :-
+	GD = global_data(A, _, _).
+
+global_data_get_proc_layout_map(GD, B) :-
+	GD = global_data(_, B, _).
+
+global_data_get_non_common_static_data(GD, C) :-
+	GD = global_data(_, _, C).
+
+global_data_set_proc_var_map(GD0, A, GD) :-
+	GD0 = global_data(_, B, C),
+	GD  = global_data(A, B, C).
+
+global_data_set_proc_layout_map(GD0, B, GD) :-
+	GD0 = global_data(A, _, C),
+	GD  = global_data(A, B, C).
+
+global_data_set_non_common_static_data(GD0, C, GD) :-
+	GD0 = global_data(A, B, _),
+	GD  = global_data(A, B, C).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%

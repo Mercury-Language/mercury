@@ -14,7 +14,7 @@
 
 :- interface.
 
-:- import_module hlds_module, hlds_pred, hlds_goal, hlds_data.
+:- import_module hlds_module, hlds_pred, hlds_goal.
 :- import_module det_util, prog_data.
 :- import_module io, list.
 
@@ -29,6 +29,8 @@
 		;	ite_cond_cannot_succeed(prog_context)
 		;	negated_goal_cannot_fail(prog_context)
 		;	negated_goal_cannot_succeed(prog_context)
+		;	goal_cannot_succeed(prog_context)
+		;	det_goal_has_no_outputs(prog_context)
 		;	warn_obsolete(pred_id, prog_context)
 				% warning about calls to predicates
 				% for which there is a `:- pragma obsolete'
@@ -536,21 +538,12 @@ det_diagnose_goal_2(call(PredId, ModeId, _, _, CallContext, _), GoalInfo,
 			PredId, ModeId),
 		Context).
 
-det_diagnose_goal_2(higher_order_call(_, _, _, _, _, _), GoalInfo,
+det_diagnose_goal_2(generic_call(GenericCall, _, _, _), GoalInfo,
 		Desired, Actual, _, _DetInfo, yes) -->
 	{ goal_info_get_context(GoalInfo, Context) },
 	det_diagnose_atomic_goal(Desired, Actual,
-		report_higher_order_call_context(Context), Context).
-
-	% There's probably no point in this code being here: we only
-	% insert class_method_calls by hand, so they're gauranteed to be right,
-	% and in any case, we insert them after determinism analysis.
-	% Nonetheless, it's probably safer to include the code.
-det_diagnose_goal_2(class_method_call(_, _, _, _, _, _), GoalInfo,
-		Desired, Actual, _, _MiscInfo, yes) -->
-	{ goal_info_get_context(GoalInfo, Context) },
-	det_diagnose_atomic_goal(Desired, Actual,
-		report_higher_order_call_context(Context), Context).
+		report_generic_call_context(Context, GenericCall),
+		Context).
 
 det_diagnose_goal_2(unify(LT, RT, _, _, UnifyContext), GoalInfo,
 		Desired, Actual, _, DetInfo, yes) -->
@@ -606,7 +599,7 @@ det_diagnose_goal_2(not(_), GoalInfo, Desired, Actual, _, _, Diagnosed) -->
 		{ Diagnosed = no }
 	).
 
-det_diagnose_goal_2(some(_Vars, Goal), _, Desired, Actual,
+det_diagnose_goal_2(some(_Vars, _, Goal), _, Desired, Actual,
 		SwitchContext, DetInfo, Diagnosed) -->
 	{ Goal = _ - GoalInfo },
 	{ goal_info_get_determinism(GoalInfo, Internal) },
@@ -636,11 +629,13 @@ det_diagnose_goal_2(pragma_c_code(_, _, _, _, _, _, _), GoalInfo, Desired,
 
 %-----------------------------------------------------------------------------%
 
-:- pred report_higher_order_call_context(prog_context::in,
-		io__state::di, io__state::uo) is det.
-report_higher_order_call_context(Context) -->
+:- pred report_generic_call_context(prog_context::in,
+		generic_call::in, io__state::di, io__state::uo) is det.
+report_generic_call_context(Context, CallType) -->
 	prog_out__write_context(Context),
-	io__write_string("  Higher-order call").
+	io__write_string("  "),
+	{ hlds_goal__generic_call_id(CallType, CallId) },
+	hlds_out__write_call_id(CallId).
 
 %-----------------------------------------------------------------------------%
 
@@ -688,9 +683,6 @@ det_diagnose_atomic_goal(Desired, Actual, WriteContext, Context) -->
 		hlds_out__write_determinism(Actual),
 		io__write_string(".\n")
 	).
-
-	% det_diagnose_conj is used for both normal [sequential]
-	% conjunction and parallel conjunction.
 
 	% det_diagnose_conj is used for both normal [sequential]
 	% conjunction and parallel conjunction.
@@ -1006,7 +998,9 @@ det_msg_get_type(ite_cond_cannot_fail(_), simple_code_warning).
 det_msg_get_type(ite_cond_cannot_succeed(_), simple_code_warning).
 det_msg_get_type(negated_goal_cannot_fail(_), simple_code_warning).
 det_msg_get_type(negated_goal_cannot_succeed(_), simple_code_warning).
-	% XXX this isn't really a simple code warning.
+det_msg_get_type(goal_cannot_succeed(_), simple_code_warning).
+det_msg_get_type(det_goal_has_no_outputs(_), simple_code_warning).
+	% XXX warn_obsolete isn't really a simple code warning.
 	% We should add a separate warning type for this.
 det_msg_get_type(warn_obsolete(_, _), simple_code_warning).
 det_msg_get_type(warn_infinite_recursion(_), simple_code_warning).
@@ -1028,6 +1022,8 @@ det_msg_is_any_mode_msg(ite_cond_cannot_fail(_), all_modes).
 det_msg_is_any_mode_msg(ite_cond_cannot_succeed(_), all_modes).
 det_msg_is_any_mode_msg(negated_goal_cannot_fail(_), all_modes).
 det_msg_is_any_mode_msg(negated_goal_cannot_succeed(_), all_modes).
+det_msg_is_any_mode_msg(goal_cannot_succeed(_), all_modes).
+det_msg_is_any_mode_msg(det_goal_has_no_outputs(_), all_modes).
 det_msg_is_any_mode_msg(warn_obsolete(_, _), all_modes).
 det_msg_is_any_mode_msg(warn_infinite_recursion(_), any_mode).
 det_msg_is_any_mode_msg(duplicate_call(_, _, _), any_mode).
@@ -1085,6 +1081,28 @@ det_report_msg(negated_goal_cannot_fail(Context), _) -->
 det_report_msg(negated_goal_cannot_succeed(Context), _) -->
 	prog_out__write_context(Context),
 	io__write_string("Warning: the negated goal cannot succeed.\n").
+det_report_msg(goal_cannot_succeed(Context), _) -->
+	prog_out__write_context(Context),
+	io__write_string("Warning: this goal cannot succeed.\n"),
+	globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
+	( { VerboseErrors = yes } ->
+		io__write_string(
+"\tThe compiler will optimize away this goal, replacing it with `fail'.
+\tTo disable this optimization, use the `--fully-strict' option.\n")
+	;
+		[]
+	).
+det_report_msg(det_goal_has_no_outputs(Context), _) -->
+	prog_out__write_context(Context),
+	io__write_string("Warning: det goal has no outputs.\n"),
+	globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
+	( { VerboseErrors = yes } ->
+		io__write_string(
+"\tThe compiler will optimize away this goal, replacing it with `true'.
+\tTo disable this optimization, use the `--fully-strict' option.\n")
+	;
+		[]
+	).
 det_report_msg(warn_obsolete(PredId, Context), ModuleInfo) -->
 	prog_out__write_context(Context),
 	io__write_string("Warning: call to obsolete "),

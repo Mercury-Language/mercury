@@ -50,7 +50,7 @@
 #define	MR_tag(w)	((w) & ((1 << TAGBITS) - 1))
 #define	MR_mkbody(i)	((i) << TAGBITS)
 #define	MR_unmkbody(w)	((Word) (w) >> TAGBITS)
-#define	MR_body(w, t)	((w) - (t))
+#define	MR_body(w, t)	((Word) (w) - (t))
 #define	MR_strip_tag(w)	((w) & (~(Word)0 << TAGBITS))
 
 #endif /* ! HIGHTAGS */

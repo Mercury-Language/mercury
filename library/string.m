@@ -1966,7 +1966,153 @@ string__special_precision_and_width(-1).
 	strcpy(Str + 1, Rest);
 }").
 
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+% Ralph Becket <rwab1@cl.cam.ac.uk> 27/04/99
+%       Functional forms added.
+
+:- interface.
+
+:- func string__append(string, string) = string.
+
+:- func string__char_to_string(char) = string.
+
+:- func string__int_to_string(int) = string.
+
+:- func string__int_to_base_string(int, int) = string.
+
+:- func string__float_to_string(float) = string.
+
+:- func string__replace_all(string, string, string) = string.
+
+:- func string__to_lower(string) = string.
+
+:- func string__to_upper(string) = string.
+
+:- func string__capitalize_first(string) = string.
+
+:- func string__uncapitalize_first(string) = string.
+
+:- func string__to_char_list(string) = list(char).
+
+:- func string__from_char_list(list(char)) = string.
+
+:- func string__from_rev_char_list(list(char)) = string.
+
+:- func string__pad_left(string, char, int) = string.
+
+:- func string__pad_right(string, char, int) = string.
+
+:- func string__duplicate_char(char, int) = string.
+
+:- func string__index_det(string, int) = char.
+
+:- func string__unsafe_index(string, int) = char.
+
+:- func string__foldl(func(char, T) = T, string, T) = T.
+
+:- func string__left(string, int) = string.
+
+:- func string__right(string, int) = string.
+
+:- func string__substring(string, int, int) = string.
+
+:- func string__unsafe_substring(string, int, int) = string.
+
+:- func string__append_list(list(string)) = string.
+
+:- func string__hash(string) = int.
+
+:- func string__format(string, list(string__poly_type)) = string.
+
+% ---------------------------------------------------------------------------- %
+% ---------------------------------------------------------------------------- %
+
+:- implementation.
+
+string__append(S1, S2) = S3 :-
+	string__append(S1, S2, S3).
+
+string__char_to_string(C) = S1 :-
+	string__char_to_string(C, S1).
+
+string__int_to_string(N) = S1 :-
+	string__int_to_string(N, S1).
+
+string__int_to_base_string(N1, N2) = S2 :-
+	string__int_to_base_string(N1, N2, S2).
+
+string__float_to_string(R) = S2 :-
+	string__float_to_string(R, S2).
+
+string__replace_all(S1, S2, S3) = S4 :-
+	string__replace_all(S1, S2, S3, S4).
+
+string__to_lower(S1) = S2 :-
+	string__to_lower(S1, S2).
+
+string__to_upper(S1) = S2 :-
+	string__to_upper(S1, S2).
+
+string__capitalize_first(S1) = S2 :-
+	string__capitalize_first(S1, S2).
+
+string__uncapitalize_first(S1) = S2 :-
+	string__uncapitalize_first(S1, S2).
+
+string__to_char_list(S) = Cs :-
+	string__to_char_list(S, Cs).
+
+string__from_char_list(Cs) = S :-
+	string__from_char_list(Cs, S).
+
+string__from_rev_char_list(Cs) = S :-
+	string__from_rev_char_list(Cs, S).
+
+string__pad_left(S1, C, N) = S2 :-
+	string__pad_left(S1, C, N, S2).
+
+string__pad_right(S1, C, N) = S2 :-
+	string__pad_right(S1, C, N, S2).
+
+string__duplicate_char(C, N) = S :-
+	string__duplicate_char(C, N, S).
+
+string__index_det(S, N) = C :-
+	string__index_det(S, N, C).
+
+string__unsafe_index(S, N) = C :-
+	string__unsafe_index(S, N, C).
+
+string__foldl(F, S, A) = B :-
+	P = ( pred(X::in, Y::in, Z::out) is det :- Z = F(X, Y) ),
+	string__foldl(P, S, A, B).
+
+string__left(S1, N) = S2 :-
+	string__left(S1, N, S2).
+
+string__right(S1, N) = S2 :-
+	string__right(S1, N, S2).
+
+string__substring(S1, N1, N2) = S2 :-
+	string__substring(S1, N1, N2, S2).
+
+string__unsafe_substring(S1, N1, N2) = S2 :-
+	string__unsafe_substring(S1, N1, N2, S2).
+
+string__append_list(S1s) = S2 :-
+	string__append_list(S1s, S2).
+
+string__hash(S) = N :-
+	string__hash(S, N).
+
+string__format(S1, PT) = S2 :-
+	string__format(S1, PT, S2).
+
+% ---------------------------------------------------------------------------- %
+% ---------------------------------------------------------------------------- %
+
 :- end_module string.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+% ---------------------------------------------------------------------------- %
+% ---------------------------------------------------------------------------- %

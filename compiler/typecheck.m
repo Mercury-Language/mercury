@@ -129,10 +129,9 @@
 	% Abort if there is no matching pred.
 	% Abort if there are multiple matching preds.
 
-:- pred typecheck__resolve_pred_overloading(module_info, list(prog_var),
-		map(prog_var, type), tvarset, sym_name, sym_name, pred_id).
-:- mode typecheck__resolve_pred_overloading(in, in, in, in,
-			in, out, out) is det.
+:- pred typecheck__resolve_pred_overloading(module_info, list(type),
+		tvarset, sym_name, sym_name, pred_id).
+:- mode typecheck__resolve_pred_overloading(in, in, in, in, out, out) is det.
 
 	% Find a predicate or function from the list of pred_ids
 	% which matches the given name and argument types.
@@ -161,13 +160,12 @@
 
 :- import_module post_typecheck.
 :- import_module hlds_goal, prog_util, type_util, modules, code_util.
-:- import_module prog_io, prog_io_util, prog_out, hlds_out.
+:- import_module prog_io, prog_io_util, prog_out, hlds_out, error_util.
 :- import_module mercury_to_mercury, mode_util, options, getopt, globals.
 :- import_module passes_aux, clause_to_proc, special_pred, inst_match.
-:- import_module term, varset.
 
-:- import_module int, set, string, require, std_util, tree234, multi_map.
-:- import_module assoc_list, varset, term_io.
+:- import_module int, set, string, require, tree234, multi_map.
+:- import_module assoc_list, std_util, term, varset, term_io.
 
 %-----------------------------------------------------------------------------%
 
@@ -311,14 +309,15 @@ typecheck_pred_type(PredId, PredInfo0, ModuleInfo, PredInfo, Error, Changed,
 	    % Compiler-generated predicates are created already type-correct,
 	    % there's no need to typecheck them.  Same for builtins.
 	    % But, compiler-generated unify predicates are not guaranteed
-	    % to be type-correct if they call a user-defined equality pred.
+	    % to be type-correct if they call a user-defined equality pred
+	    % or if it is a special pred for an existentially typed data type.
 	    ( code_util__compiler_generated(PredInfo0),
-	      \+ pred_is_user_defined_equality_pred(PredInfo0, ModuleInfo)
+	      \+ special_pred_needs_typecheck(PredInfo0, ModuleInfo)
 	    ; code_util__predinfo_is_builtin(PredInfo0)
 	    )
 	->
 	    pred_info_clauses_info(PredInfo0, ClausesInfo0),
-	    ClausesInfo0 = clauses_info(_, _, _, _, Clauses0),
+	    clauses_info_clauses(ClausesInfo0, Clauses0),
 	    ( Clauses0 = [] ->
 		pred_info_mark_as_external(PredInfo0, PredInfo)
 	    ;
@@ -331,8 +330,10 @@ typecheck_pred_type(PredId, PredInfo0, ModuleInfo, PredInfo, Error, Changed,
 	    pred_info_arg_types(PredInfo0, _ArgTypeVarSet, ExistQVars0,
 		    ArgTypes0),
 	    pred_info_clauses_info(PredInfo0, ClausesInfo0),
-	    ClausesInfo0 = clauses_info(VarSet, ExplicitVarTypes,
-				_OldInferredVarTypes, HeadVars, Clauses0),
+	    clauses_info_clauses(ClausesInfo0, Clauses0),
+	    clauses_info_headvars(ClausesInfo0, HeadVars),
+	    clauses_info_varset(ClausesInfo0, VarSet),
+	    clauses_info_explicit_vartypes(ClausesInfo0, ExplicitVarTypes),
 	    ( 
 		Clauses0 = [] 
 	    ->
@@ -346,10 +347,18 @@ typecheck_pred_type(PredId, PredInfo0, ModuleInfo, PredInfo, Error, Changed,
 				% of the head vars into the clauses_info
 			map__from_corresponding_lists(HeadVars, ArgTypes0,
 				VarTypes),
-			ClausesInfo = clauses_info(VarSet, VarTypes,
-				VarTypes, HeadVars, Clauses0),
+			clauses_info_set_vartypes(ClausesInfo0, VarTypes,
+				ClausesInfo),
 			pred_info_set_clauses_info(PredInfo0, ClausesInfo,
-				PredInfo),
+				PredInfo1),
+				% We also need to set the head_type_params
+				% field to indicate that all the existentially
+				% quantified tvars in the head of this
+				% pred are indeed bound by this predicate.
+			term__vars_list(ArgTypes0,
+				HeadVarsIncludingExistentials),
+			pred_info_set_head_type_params(PredInfo1,
+				HeadVarsIncludingExistentials, PredInfo),
 			Error = no,
 			Changed = no
 		;
@@ -415,8 +424,9 @@ typecheck_pred_type(PredId, PredInfo0, ModuleInfo, PredInfo, Error, Changed,
 				ConstraintProofs, TVarRenaming,
 				ExistTypeRenaming),
 		map__optimize(InferredVarTypes0, InferredVarTypes),
-		ClausesInfo = clauses_info(VarSet, ExplicitVarTypes,
-				InferredVarTypes, HeadVars, Clauses),
+		clauses_info_set_vartypes(ClausesInfo0, InferredVarTypes,
+				ClausesInfo1),
+		clauses_info_set_clauses(ClausesInfo1, Clauses, ClausesInfo),
 		pred_info_set_clauses_info(PredInfo0, ClausesInfo, PredInfo1),
 		pred_info_set_typevarset(PredInfo1, TypeVarSet, PredInfo2),
 		pred_info_set_constraint_proofs(PredInfo2, ConstraintProofs,
@@ -679,20 +689,31 @@ same_structure_2([ConstraintA | ConstraintsA], [ConstraintB | ConstraintsB],
 	list__append(ArgTypesA, TypesA0, TypesA),
 	list__append(ArgTypesB, TypesB0, TypesB).
 
-:- pred pred_is_user_defined_equality_pred(pred_info::in, module_info::in)
+%
+% A compiler-generated predicate only needs type checking if
+%	(a) it is a user-defined equality pred
+% or	(b) it is the unification or comparison predicate for an
+%           existially quantified type.
+%
+% In case (b), we need to typecheck it to fill in the head_type_params
+% field in the pred_info.
+%
+
+:- pred special_pred_needs_typecheck(pred_info::in, module_info::in)
 	is semidet.
 
-pred_is_user_defined_equality_pred(PredInfo, ModuleInfo) :-
+special_pred_needs_typecheck(PredInfo, ModuleInfo) :-
 	%
-	% check if the predicate is a compiler-generated unification predicate
+	% check if the predicate is a compiler-generated special
+	% predicate
 	%
 	pred_info_name(PredInfo, PredName),
 	pred_info_arity(PredInfo, PredArity),
-	special_pred_name_arity(unify, _, PredName, PredArity),
+	special_pred_name_arity(_, _, PredName, PredArity),
 	%
-	% find out which type it is a unification predicate for,
+	% find out which type it is a special predicate for,
 	% and check whether that type is a type for which there is
-	% a user-defined equality predicate.
+	% a user-defined equality predicate, or which is existentially typed.
 	%
 	pred_info_arg_types(PredInfo, ArgTypes),
 	special_pred_get_type(PredName, ArgTypes, Type),
@@ -700,7 +721,12 @@ pred_is_user_defined_equality_pred(PredInfo, ModuleInfo) :-
 	module_info_types(ModuleInfo, TypeTable),
 	map__lookup(TypeTable, TypeId, TypeDefn),
 	hlds_data__get_type_defn_body(TypeDefn, Body),
-	Body = du_type(_, _, _, yes(_)).
+	Body = du_type(Ctors, _, _, MaybeEqualityPred),
+	(	MaybeEqualityPred = yes(_)
+	;	list__member(Ctor, Ctors),
+		Ctor = ctor(ExistQTVars, _, _, _),
+		ExistQTVars \= []
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -749,7 +775,7 @@ typecheck_clause(Clause0, HeadVars, ArgTypes, Clause) -->
 	typecheck_info_set_context(Context),
 		% typecheck the clause - first the head unification, and
 		% then the body
-	typecheck_var_has_type_list(HeadVars, ArgTypes, 0),
+	typecheck_var_has_type_list(HeadVars, ArgTypes, 1),
 	typecheck_goal(Body0, Body),
 	checkpoint("end of clause"),
 	{ Clause = clause(Modes, Body, Context) },
@@ -902,21 +928,35 @@ typecheck_goal_2(if_then_else(Vs, A0, B0, C0, SM),
 typecheck_goal_2(not(A0), not(A)) -->
 	checkpoint("not"),
 	typecheck_goal(A0, A).
-typecheck_goal_2(some(Vs, G0), some(Vs, G)) -->
+typecheck_goal_2(some(Vs, C, G0), some(Vs, C, G)) -->
 	checkpoint("some"),
 	typecheck_goal(G0, G),
 	ensure_vars_have_a_type(Vs).
 typecheck_goal_2(call(_, Mode, Args, Builtin, Context, Name),
 		call(PredId, Mode, Args, Builtin, Context, Name)) -->
 	checkpoint("call"),
-	typecheck_call_pred(Name, Args, PredId).
-typecheck_goal_2(higher_order_call(PredVar, Args, C, D, E, F),
-		higher_order_call(PredVar, Args, C, D, E, F)) -->
-	checkpoint("higher-order call"),
-	typecheck_higher_order_call(PredVar, Args).
-typecheck_goal_2(class_method_call(A, B, C, D, E, F),
-		class_method_call(A, B, C, D, E, F)) -->
-	{ error("class_method_calls should be introduced after typechecking") }.
+	{ list__length(Args, Arity) },
+	typecheck_info_set_called_predid(call(predicate - Name/Arity)),
+	typecheck_call_pred(predicate - Name/Arity, Args, PredId).
+typecheck_goal_2(generic_call(GenericCall0, Args, C, D),
+		generic_call(GenericCall, Args, C, D)) -->
+	{ hlds_goal__generic_call_id(GenericCall0, CallId) },
+	typecheck_info_set_called_predid(CallId),
+	(
+		{ GenericCall0 = higher_order(PredVar, _, _) },
+		{ GenericCall = GenericCall0 },
+		checkpoint("higher-order call"),
+		typecheck_higher_order_call(PredVar, Args)
+	;
+		{ GenericCall0 = class_method(_, _, _, _) },
+		{ error("typecheck_goal_2: unexpected class method call") }
+	;
+		{ GenericCall0 = aditi_builtin(AditiBuiltin0, PredCallId) },
+		checkpoint("aditi builtin"),
+		typecheck_aditi_builtin(PredCallId, Args,
+			AditiBuiltin0, AditiBuiltin),
+		{ GenericCall = aditi_builtin(AditiBuiltin, PredCallId) }
+	).
 typecheck_goal_2(unify(A, B0, Mode, Info, UnifyContext),
 		unify(A, B, Mode, Info, UnifyContext)) -->
 	checkpoint("unify"),
@@ -984,10 +1024,8 @@ ensure_vars_have_a_type(Vars) -->
 
 typecheck_higher_order_call(PredVar, Args) -->
 	{ list__length(Args, Arity) },
-	{ higher_order_pred_type(Arity, TypeVarSet, PredVarType, ArgTypes) },
-	{ Arity1 is Arity + 1 },
-	{ PredCallId = unqualified("call")/Arity1 },
-	typecheck_info_set_called_predid(PredCallId),
+	{ higher_order_pred_type(Arity, normal,
+		TypeVarSet, PredVarType, ArgTypes) },
 		% The class context is empty because higher-order predicates
 		% are always monomorphic.  Similarly for ExistQVars.
 	{ ClassContext = constraints([], []) },
@@ -995,78 +1033,219 @@ typecheck_higher_order_call(PredVar, Args) -->
 	typecheck_var_has_polymorphic_type_list([PredVar|Args], TypeVarSet,
 		ExistQVars, [PredVarType|ArgTypes], ClassContext).
 
-:- pred higher_order_pred_type(int, tvarset, type, list(type)).
-:- mode higher_order_pred_type(in, out, out, out) is det.
+:- pred higher_order_pred_type(int, lambda_eval_method,
+		tvarset, type, list(type)).
+:- mode higher_order_pred_type(in, in, out, out, out) is det.
 
-	% higher_order_pred_type(N, TypeVarSet, PredType, ArgTypes):
+	% higher_order_pred_type(N, EvalMethod,
+	%	TypeVarSet, PredType, ArgTypes):
 	% Given an arity N, let TypeVarSet = {T1, T2, ..., TN},
-	% PredType = `pred(T1, T2, ..., TN)', and
+	% PredType = `EvalMethod pred(T1, T2, ..., TN)', and
 	% ArgTypes = [T1, T2, ..., TN].
 
-higher_order_pred_type(Arity, TypeVarSet, PredType, ArgTypes) :-
+higher_order_pred_type(Arity, EvalMethod, TypeVarSet, PredType, ArgTypes) :-
 	varset__init(TypeVarSet0),
 	varset__new_vars(TypeVarSet0, Arity, ArgTypeVars, TypeVarSet),
 	term__var_list_to_term_list(ArgTypeVars, ArgTypes),
-	term__context_init(Context),
-	PredType = term__functor(
-			term__atom("pred"), ArgTypes, Context).
+	construct_higher_order_type(predicate, EvalMethod, ArgTypes, PredType).
 
-:- pred higher_order_func_type(int, tvarset, type, list(type), type).
-:- mode higher_order_func_type(in, out, out, out, out) is det.
+:- pred higher_order_func_type(int, lambda_eval_method,
+		tvarset, type, list(type), type).
+:- mode higher_order_func_type(in, in, out, out, out, out) is det.
 
-	% higher_order_func_type(N, TypeVarSet, FuncType, ArgTypes, RetType):
+	% higher_order_func_type(N, EvalMethod, TypeVarSet,
+	%	FuncType, ArgTypes, RetType):
 	% Given an arity N, let TypeVarSet = {T0, T1, T2, ..., TN},
-	% FuncType = `func(T1, T2, ..., TN) = T0',
+	% FuncType = `EvalMethod func(T1, T2, ..., TN) = T0',
 	% ArgTypes = [T1, T2, ..., TN], and
 	% RetType = T0.
 
-higher_order_func_type(Arity, TypeVarSet, FuncType, ArgTypes, RetType) :-
+higher_order_func_type(Arity, EvalMethod, TypeVarSet,
+		FuncType, ArgTypes, RetType) :-
 	varset__init(TypeVarSet0),
 	varset__new_vars(TypeVarSet0, Arity, ArgTypeVars, TypeVarSet1),
 	varset__new_var(TypeVarSet1, RetTypeVar, TypeVarSet),
 	term__var_list_to_term_list(ArgTypeVars, ArgTypes),
 	RetType = term__variable(RetTypeVar),
-	term__context_init(Context),
-	FuncType = term__functor(term__atom("="),
-			[term__functor(
-				term__atom("func"), ArgTypes, Context),
-			 RetType],
-			Context).
+	construct_higher_order_func_type(EvalMethod,
+		ArgTypes, RetType, FuncType).
 
 %-----------------------------------------------------------------------------%
 
-:- pred typecheck_call_pred(sym_name, list(prog_var), pred_id, typecheck_info,
-				typecheck_info).
+:- pred typecheck_aditi_builtin(simple_call_id, list(prog_var),
+		aditi_builtin, aditi_builtin,
+		typecheck_info, typecheck_info).
+:- mode typecheck_aditi_builtin(in, in, in, out, typecheck_info_di, 
+		typecheck_info_uo) is det.
+
+typecheck_aditi_builtin(CallId, Args, Builtin0, Builtin) -->
+	% This must succeed because make_hlds.m does not add a clause
+	% to the clauses_info if it contains Aditi updates with the
+	% wrong number of arguments.
+	{ get_state_args_det(Args, OtherArgs, State0, State) },
+
+	typecheck_aditi_builtin_2(CallId, OtherArgs,
+		Builtin0, Builtin),
+
+	typecheck_aditi_state_args(Builtin0, CallId,
+		State0, State).
+
+	% Typecheck the arguments of an Aditi update other than
+	% the `aditi__state' arguments.
+:- pred typecheck_aditi_builtin_2(simple_call_id, list(prog_var),
+		aditi_builtin, aditi_builtin, typecheck_info, typecheck_info).
+:- mode typecheck_aditi_builtin_2(in, in, in, out,
+		typecheck_info_di, typecheck_info_uo) is det.
+
+typecheck_aditi_builtin_2(_, _, aditi_call(_, _, _, _), _) -->
+	% There are only added by magic.m.
+	{ error("typecheck_aditi_builtin: unexpected aditi_call") }.
+typecheck_aditi_builtin_2(CallId, Args, aditi_insert(_),
+		aditi_insert(PredId)) -->
+	% The tuple to insert has the same argument types
+	% as the relation being inserted into.
+	typecheck_call_pred(CallId, Args, PredId).
+typecheck_aditi_builtin_2(CallId, Args, aditi_delete(_, Syntax),
+		aditi_delete(PredId, Syntax)) -->
+	typecheck_aditi_delete_or_bulk_operation_closure(CallId,
+		(aditi_top_down), Args, PredId).
+typecheck_aditi_builtin_2(CallId, Args, aditi_bulk_operation(BulkOp, _), 
+		aditi_bulk_operation(BulkOp, PredId)) -->
+	typecheck_aditi_delete_or_bulk_operation_closure(CallId,
+		(aditi_bottom_up), Args, PredId).
+typecheck_aditi_builtin_2(CallId, Args, aditi_modify(_, Syntax),
+		aditi_modify(PredId, Syntax)) -->
+	% `aditi_modify' takes a closure which takes two sets of arguments
+	% corresponding to those of the base relation - one set input
+	% and one set output.
+	{ AdjustArgTypes = 
+	    lambda([RelationArgTypes::in, AditiModifyTypes::out] is det, (
+			list__append(RelationArgTypes, RelationArgTypes,
+				ClosureArgTypes),
+			construct_higher_order_pred_type((aditi_top_down),
+				ClosureArgTypes, ClosureType),
+			AditiModifyTypes = [ClosureType]
+	    )) },
+	typecheck_aditi_builtin_closure(CallId, Args, AdjustArgTypes, PredId).
+
+	% Typecheck the closure passed to an `aditi_delete',
+	% `aditi_bulk_insert' or `aditi_bulk_delete' which
+	% determines which tuples are inserted or deleted. 
+	% The argument types of the closure are the same as the
+	% argument types of the base relation being updated.
+:- pred typecheck_aditi_delete_or_bulk_operation_closure(simple_call_id,
+		lambda_eval_method, list(prog_var), pred_id,
+		typecheck_info, typecheck_info).
+:- mode typecheck_aditi_delete_or_bulk_operation_closure(in, in, in, out,
+		typecheck_info_di, typecheck_info_uo) is det.
+
+typecheck_aditi_delete_or_bulk_operation_closure(CallId,
+		EvalMethod, Args, PredId) -->
+	{ CallId = PredOrFunc - _ },
+	{ AdjustArgTypes = 
+	    lambda([RelationArgTypes::in, UpdateArgTypes::out] is det, (
+			construct_higher_order_type(PredOrFunc,
+				EvalMethod, RelationArgTypes, ClosureType),
+			UpdateArgTypes = [ClosureType]
+	    )) },
+	typecheck_aditi_builtin_closure(CallId, Args, AdjustArgTypes, PredId).
+
+	% Check that there is only one argument (other than the `aditi__state'
+	% arguments) passed to an `aditi_delete', `aditi_bulk_insert',
+	% `aditi_bulk_delete' or `aditi_modify', then typecheck that argument.
+:- pred typecheck_aditi_builtin_closure(simple_call_id,
+		list(prog_var), adjust_arg_types, pred_id,
+		typecheck_info, typecheck_info).
+:- mode typecheck_aditi_builtin_closure(in,
+		in, in(adjust_arg_types), out,
+		typecheck_info_di, typecheck_info_uo) is det.
+
+typecheck_aditi_builtin_closure(CallId, OtherArgs, AdjustArgTypes, PredId) -->
+	( { OtherArgs = [HOArg] } ->
+		typecheck_call_pred_adjust_arg_types(CallId, [HOArg],
+			AdjustArgTypes, PredId)
+	;
+		% An error should have been reported by make_hlds.m.
+		{ error(
+		"typecheck_aditi_builtin: incorrect arity for builtin") }
+	).
+
+	% Typecheck the DCG state arguments in the argument
+	% list of an Aditi builtin.
+:- pred typecheck_aditi_state_args(aditi_builtin, simple_call_id,
+		prog_var, prog_var, typecheck_info, typecheck_info).
+:- mode typecheck_aditi_state_args(in, in, in, in,
+		typecheck_info_di, typecheck_info_uo) is det.
+
+typecheck_aditi_state_args(Builtin, CallId, AditiState0Var, AditiStateVar) -->
+	{ construct_type(qualified(unqualified("aditi"), "state") - 0,
+		[], StateType) },
+	typecheck_var_has_type_list([AditiState0Var, AditiStateVar],
+		[StateType, StateType],
+		aditi_builtin_first_state_arg(Builtin, CallId)).
+
+	% Return the index in the argument list of the first
+	% `aditi__state' DCG argument.
+:- func aditi_builtin_first_state_arg(aditi_builtin, simple_call_id) = int.
+
+aditi_builtin_first_state_arg(aditi_call(_, _, _, _), _) = _ :-
+	error("aditi_builtin_first_state_arg: unexpected_aditi_call").
+aditi_builtin_first_state_arg(aditi_insert(_), _ - _/Arity) = Arity + 1.
+aditi_builtin_first_state_arg(aditi_delete(_, _), _) = 2.
+aditi_builtin_first_state_arg(aditi_bulk_operation(_, _), _) = 2.
+aditi_builtin_first_state_arg(aditi_modify(_, _), _) = 2.
+
+%-----------------------------------------------------------------------------%
+
+:- pred typecheck_call_pred(simple_call_id, list(prog_var), pred_id,
+				typecheck_info, typecheck_info).
 :- mode typecheck_call_pred(in, in, out, typecheck_info_di, 
 				typecheck_info_uo) is det.
 
-typecheck_call_pred(PredName, Args, PredId, TypeCheckInfo0, TypeCheckInfo) :-
-	list__length(Args, Arity),
-	PredCallId = PredName/Arity,
-	typecheck_info_set_called_predid(PredCallId, TypeCheckInfo0,
-		TypeCheckInfo1),
+typecheck_call_pred(CallId, Args, PredId, TypeCheckInfo0, TypeCheckInfo) :-
+	AdjustArgTypes = lambda([X::in, X::out] is det, true),
+	typecheck_call_pred_adjust_arg_types(CallId, Args, AdjustArgTypes,
+		PredId, TypeCheckInfo0, TypeCheckInfo).
 
+	% A closure of this type performs a transformation on
+	% the argument types of the called predicate. It is used to
+	% convert the argument types of the base relation for an Aditi
+	% update builtin to the type of the higher-order argument of
+	% the update predicate. For an ordinary predicate call,
+	% the types are not transformed.
+:- type adjust_arg_types == pred(list(type), list(type)).
+:- inst adjust_arg_types = (pred(in, out) is det).
+
+	% Typecheck a predicate, performing the given transformation on the
+	% argument types.
+:- pred typecheck_call_pred_adjust_arg_types(simple_call_id, list(prog_var),
+	adjust_arg_types, pred_id, typecheck_info, typecheck_info).
+:- mode typecheck_call_pred_adjust_arg_types(in, in, in(adjust_arg_types), out,
+	typecheck_info_di, typecheck_info_uo) is det.
+
+typecheck_call_pred_adjust_arg_types(CallId, Args, AdjustArgTypes,
+		PredId, TypeCheckInfo1, TypeCheckInfo) :-
 	typecheck_info_get_type_assign_set(TypeCheckInfo1, OrigTypeAssignSet),
 
 		% look up the called predicate's arg types
 	typecheck_info_get_module_info(TypeCheckInfo1, ModuleInfo),
 	module_info_get_predicate_table(ModuleInfo, PredicateTable),
 	( 
-		predicate_table_search_pred_sym_arity(PredicateTable,
-			PredName, Arity, PredIdList)
+		CallId = PorF - SymName/Arity,
+		predicate_table_search_pf_sym_arity(PredicateTable,
+			PorF, SymName, Arity, PredIdList)
 	->
 		% handle the case of a non-overloaded predicate specially
 		% (so that we can optimize the case of a non-overloaded,
 		% non-polymorphic predicate)
 		( PredIdList = [PredId0] ->
 			PredId = PredId0,
-			typecheck_call_pred_id(PredId, Args,
-				TypeCheckInfo1, TypeCheckInfo2)
+			typecheck_call_pred_id_adjust_arg_types(PredId, Args,
+				AdjustArgTypes, TypeCheckInfo1, TypeCheckInfo2)
 		;
-			typecheck_info_get_pred_import_status(TypeCheckInfo1,
-						CallingStatus),
 			typecheck_call_overloaded_pred(PredIdList, Args,
-				CallingStatus, TypeCheckInfo1, TypeCheckInfo2),
+				AdjustArgTypes, TypeCheckInfo1,
+				TypeCheckInfo2),
 
 			%
 			% In general, we can't figure out which
@@ -1092,22 +1271,36 @@ typecheck_call_pred(PredName, Args, PredId, TypeCheckInfo0, TypeCheckInfo) :-
 
 	;
 		invalid_pred_id(PredId),
-		report_pred_call_error(TypeCheckInfo1, ModuleInfo,
-				PredicateTable, PredCallId, TypeCheckInfo)
+		report_pred_call_error(CallId, TypeCheckInfo1, TypeCheckInfo)
 	).
 
+	% Typecheck a call to a specific predicate.
 :- pred typecheck_call_pred_id(pred_id, list(prog_var), 
 				typecheck_info, typecheck_info).
 :- mode typecheck_call_pred_id(in, in, typecheck_info_di, 
 				typecheck_info_uo) is det.
 
 typecheck_call_pred_id(PredId, Args, TypeCheckInfo0, TypeCheckInfo) :-
+	AdjustArgTypes = lambda([X::in, X::out] is det, true),
+	typecheck_call_pred_id_adjust_arg_types(PredId, Args, AdjustArgTypes,
+		TypeCheckInfo0, TypeCheckInfo).
+
+	% Typecheck a call to a specific predicate, performing the given
+	% transformation on the argument types.
+:- pred typecheck_call_pred_id_adjust_arg_types(pred_id, list(prog_var),
+		adjust_arg_types, typecheck_info, typecheck_info).
+:- mode typecheck_call_pred_id_adjust_arg_types(in, in, in(adjust_arg_types),
+		typecheck_info_di, typecheck_info_uo) is det.
+
+typecheck_call_pred_id_adjust_arg_types(PredId, Args, AdjustArgTypes,
+		TypeCheckInfo0, TypeCheckInfo) :-
 	typecheck_info_get_module_info(TypeCheckInfo0, ModuleInfo),
 	module_info_get_predicate_table(ModuleInfo, PredicateTable),
 	predicate_table_get_preds(PredicateTable, Preds),
 	map__lookup(Preds, PredId, PredInfo),
 	pred_info_arg_types(PredInfo, PredTypeVarSet, PredExistQVars,
-			PredArgTypes),
+			PredArgTypes0),
+	AdjustArgTypes(PredArgTypes0, PredArgTypes),
 	pred_info_get_class_context(PredInfo, PredClassContext),
 	%
 	% rename apart the type variables in 
@@ -1119,7 +1312,7 @@ typecheck_call_pred_id(PredId, Args, TypeCheckInfo0, TypeCheckInfo) :-
 	%
 	( varset__is_empty(PredTypeVarSet) ->
 		typecheck_var_has_type_list(Args,
-			PredArgTypes, 0, TypeCheckInfo0,
+			PredArgTypes, 1, TypeCheckInfo0,
 			TypeCheckInfo),
 		( 
 			% sanity check
@@ -1135,18 +1328,18 @@ typecheck_call_pred_id(PredId, Args, TypeCheckInfo0, TypeCheckInfo) :-
 			PredClassContext, TypeCheckInfo0, TypeCheckInfo)
 	).
 
-:- pred report_pred_call_error(typecheck_info, module_info, predicate_table, 
-			pred_call_id, typecheck_info).
-:- mode report_pred_call_error(typecheck_info_di, in, in,
-			in, typecheck_info_uo) is det.
+:- pred report_pred_call_error(simple_call_id, typecheck_info, typecheck_info).
+:- mode report_pred_call_error(in, typecheck_info_di,
+		typecheck_info_uo) is det.
 
-report_pred_call_error(TypeCheckInfo1, _ModuleInfo, PredicateTable,
-			PredCallId, TypeCheckInfo) :-
-	PredCallId = PredName/_Arity,
+report_pred_call_error(PredCallId, TypeCheckInfo1, TypeCheckInfo) :-
+	PredCallId = PredOrFunc0 - SymName/_Arity,
+	typecheck_info_get_module_info(TypeCheckInfo1, ModuleInfo), 
+	module_info_get_predicate_table(ModuleInfo, PredicateTable),
 	typecheck_info_get_io_state(TypeCheckInfo1, IOState0),
 	(
-		predicate_table_search_pred_sym(PredicateTable,
-			PredName, OtherIds),
+		predicate_table_search_pf_sym(PredicateTable,
+			PredOrFunc0, SymName, OtherIds),
 		predicate_table_get_preds(PredicateTable, Preds),
 		OtherIds \= []
 	->
@@ -1154,12 +1347,15 @@ report_pred_call_error(TypeCheckInfo1, _ModuleInfo, PredicateTable,
 		report_error_pred_num_args(TypeCheckInfo1, PredCallId,
 			Arities, IOState0, IOState)
 	;
-		predicate_table_search_func_sym(PredicateTable,
-			PredName, OtherIds),
+		( PredOrFunc0 = predicate, PredOrFunc = function
+		; PredOrFunc0 = function, PredOrFunc = predicate
+		),
+		predicate_table_search_pf_sym(PredicateTable,
+			PredOrFunc, SymName, OtherIds),
 		OtherIds \= []
 	->
-		report_error_func_instead_of_pred(TypeCheckInfo1, PredCallId,
-			IOState0, IOState)
+		report_error_func_instead_of_pred(TypeCheckInfo1, PredOrFunc,
+			PredCallId, IOState0, IOState)
 	;
 		report_error_undef_pred(TypeCheckInfo1, PredCallId,
 			IOState0, IOState)
@@ -1177,11 +1373,11 @@ typecheck_find_arities(Preds, [PredId | PredIds], [Arity | Arities]) :-
 	typecheck_find_arities(Preds, PredIds, Arities).
 
 :- pred typecheck_call_overloaded_pred(list(pred_id), list(prog_var),
-				import_status, typecheck_info, typecheck_info).
-:- mode typecheck_call_overloaded_pred(in, in, in,
-				typecheck_info_di, typecheck_info_uo) is det.
+		adjust_arg_types, typecheck_info, typecheck_info).
+:- mode typecheck_call_overloaded_pred(in, in, in(adjust_arg_types),
+		typecheck_info_di, typecheck_info_uo) is det.
 
-typecheck_call_overloaded_pred(PredIdList, Args, CallingPredStatus,
+typecheck_call_overloaded_pred(PredIdList, Args, AdjustArgTypes,
 				TypeCheckInfo0, TypeCheckInfo) :-
 	%
 	% let the new arg_type_assign_set be the cross-product
@@ -1193,40 +1389,43 @@ typecheck_call_overloaded_pred(PredIdList, Args, CallingPredStatus,
 	module_info_get_predicate_table(ModuleInfo, PredicateTable),
 	predicate_table_get_preds(PredicateTable, Preds),
 	typecheck_info_get_type_assign_set(TypeCheckInfo0, TypeAssignSet0),
-	get_overloaded_pred_arg_types(PredIdList, Preds, CallingPredStatus,
+	get_overloaded_pred_arg_types(PredIdList, Preds, AdjustArgTypes,
 			TypeAssignSet0, [], ArgsTypeAssignSet),
 	%
 	% then unify the types of the call arguments with the
 	% called predicates' arg types
 	%
-	typecheck_var_has_arg_type_list(Args, 0, ArgsTypeAssignSet, 
+	typecheck_var_has_arg_type_list(Args, 1, ArgsTypeAssignSet, 
 		TypeCheckInfo0, TypeCheckInfo).
 
-:- pred get_overloaded_pred_arg_types(list(pred_id), pred_table, import_status,
-		type_assign_set, args_type_assign_set, args_type_assign_set).
-:- mode get_overloaded_pred_arg_types(in, in, in, in, in, out) is det.
+:- pred get_overloaded_pred_arg_types(list(pred_id), pred_table,
+		adjust_arg_types, type_assign_set,
+		args_type_assign_set, args_type_assign_set).
+:- mode get_overloaded_pred_arg_types(in, in, in(adjust_arg_types),
+		in, in, out) is det.
 
-get_overloaded_pred_arg_types([], _Preds, _CallingPredStatus,
-		_TypeAssignSet0, ArgsTypeAssignSet, ArgsTypeAssignSet).
-get_overloaded_pred_arg_types([PredId | PredIds], Preds, CallingPredStatus,
+get_overloaded_pred_arg_types([], _Preds, _AdjustArgTypes, _TypeAssignSet0,
+		ArgsTypeAssignSet, ArgsTypeAssignSet).
+get_overloaded_pred_arg_types([PredId | PredIds], Preds, AdjustArgTypes,
 		TypeAssignSet0, ArgsTypeAssignSet0, ArgsTypeAssignSet) :-
 	map__lookup(Preds, PredId, PredInfo),
 	pred_info_arg_types(PredInfo, PredTypeVarSet, PredExistQVars,
-		PredArgTypes),
+		PredArgTypes0),
+	call(AdjustArgTypes, PredArgTypes0, PredArgTypes),
 	pred_info_get_class_context(PredInfo, PredClassContext),
 	rename_apart(TypeAssignSet0, PredTypeVarSet, PredExistQVars,
 		PredArgTypes, PredClassContext,
 		ArgsTypeAssignSet0, ArgsTypeAssignSet1),
-	get_overloaded_pred_arg_types(PredIds, Preds, CallingPredStatus,
+	get_overloaded_pred_arg_types(PredIds, Preds, AdjustArgTypes,
 		TypeAssignSet0, ArgsTypeAssignSet1, ArgsTypeAssignSet).
 
 %-----------------------------------------------------------------------------%
 
-	% Note: calls to preds declared in .opt files should always be 
+	% Note: calls to preds declared in `.opt' files should always be 
 	% module qualified, so they should not be considered
 	% when resolving overloading.
 
-typecheck__resolve_pred_overloading(ModuleInfo, Args, VarTypes, TVarSet,
+typecheck__resolve_pred_overloading(ModuleInfo, ArgTypes, TVarSet,
 		 PredName0, PredName, PredId) :-
 	module_info_get_predicate_table(ModuleInfo, PredTable),
 	(
@@ -1237,12 +1436,12 @@ typecheck__resolve_pred_overloading(ModuleInfo, Args, VarTypes, TVarSet,
 	;
 		PredIds = []
 	),
+
 	%
 	% Check if there any of the candidate pred_ids
 	% have argument/return types which subsume the actual
 	% argument/return types of this function call
 	%
-	map__apply_to_list(Args, VarTypes, ArgTypes),
 	(
 		typecheck__find_matching_pred_id(PredIds, ModuleInfo,
 			TVarSet, ArgTypes, PredId1, PredName1)
@@ -1360,7 +1559,7 @@ typecheck_var_has_polymorphic_type_list(Args, PredTypeVarSet, PredExistQVars,
 	rename_apart(TypeAssignSet0, PredTypeVarSet, PredExistQVars,
 				PredArgTypes, PredClassConstraints,
 				[], ArgsTypeAssignSet),
-	typecheck_var_has_arg_type_list(Args, 0, ArgsTypeAssignSet,
+	typecheck_var_has_arg_type_list(Args, 1, ArgsTypeAssignSet,
 				TypeCheckInfo0, TypeCheckInfo).
 
 :- pred rename_apart(type_assign_set, tvarset, existq_tvars, list(type),
@@ -1430,9 +1629,9 @@ typecheck_var_has_arg_type_list([], _, ArgTypeAssignSet,
 		TypeCheckInfo).
 
 typecheck_var_has_arg_type_list([Var|Vars], ArgNum, ArgTypeAssignSet0) -->
-	{ ArgNum1 is ArgNum + 1 },
-	typecheck_info_set_arg_num(ArgNum1),
+	typecheck_info_set_arg_num(ArgNum),
 	typecheck_var_has_arg_type(Var, ArgTypeAssignSet0, ArgTypeAssignSet1),
+	{ ArgNum1 is ArgNum + 1 },
 	typecheck_var_has_arg_type_list(Vars, ArgNum1, ArgTypeAssignSet1).
 
 :- pred convert_args_type_assign_set(args_type_assign_set, type_assign_set).
@@ -1574,9 +1773,9 @@ typecheck_var_has_type_list([_|_], [], _) -->
 	{ error("typecheck_var_has_type_list: length mismatch") }.
 typecheck_var_has_type_list([], [], _) --> [].
 typecheck_var_has_type_list([Var|Vars], [Type|Types], ArgNum) -->
-	{ ArgNum1 is ArgNum + 1 },
-	typecheck_info_set_arg_num(ArgNum1),
+	typecheck_info_set_arg_num(ArgNum),
 	typecheck_var_has_type(Var, Type),
+	{ ArgNum1 is ArgNum + 1 },
 	typecheck_var_has_type_list(Vars, Types, ArgNum1).
 
 :- pred typecheck_var_has_type(prog_var, type, typecheck_info, typecheck_info).
@@ -1858,9 +2057,11 @@ typecheck_unification(X, functor(F, As), functor(F, As)) -->
 	typecheck_unify_var_functor(X, F, As),
 	perform_context_reduction(OrigTypeAssignSet).
 typecheck_unification(X, 
-	    lambda_goal(PredOrFunc, NonLocals, Vars, Modes, Det, IMD, Goal0),
-	    lambda_goal(PredOrFunc, NonLocals, Vars, Modes, Det, IMD, Goal)) -->
- 	typecheck_lambda_var_has_type(PredOrFunc, X, Vars),
+		lambda_goal(PredOrFunc, EvalMethod, FixModes, NonLocals, Vars,
+			Modes, Det, IMD, Goal0),
+		lambda_goal(PredOrFunc, EvalMethod, FixModes, NonLocals, Vars,
+			Modes, Det, IMD, Goal)) -->
+ 	typecheck_lambda_var_has_type(PredOrFunc, EvalMethod, X, Vars),
 	typecheck_goal(Goal0, Goal).
 
 :- pred typecheck_unify_var_var(prog_var, prog_var,
@@ -2300,58 +2501,47 @@ apply_var_renaming_to_var(RenameSubst, Var0, Var) :-
 	% checks that `Var' has type `pred(T1, T2, ...)' where
 	% T1, T2, ... are the types of the `ArgVars'.
 
-:- pred typecheck_lambda_var_has_type(pred_or_func, prog_var, list(prog_var),
-					typecheck_info, typecheck_info).
-:- mode typecheck_lambda_var_has_type(in, in, in, typecheck_info_di, 
-					typecheck_info_uo) is det.
+:- pred typecheck_lambda_var_has_type(pred_or_func, lambda_eval_method,
+		prog_var, list(prog_var), typecheck_info, typecheck_info).
+:- mode typecheck_lambda_var_has_type(in, in, in, in, typecheck_info_di, 
+		typecheck_info_uo) is det.
 
-typecheck_lambda_var_has_type(PredOrFunc, Var, ArgVars, TypeCheckInfo0,
-				TypeCheckInfo) :-
+typecheck_lambda_var_has_type(PredOrFunc, EvalMethod, Var,
+		ArgVars, TypeCheckInfo0, TypeCheckInfo) :-
 	typecheck_info_get_type_assign_set(TypeCheckInfo0, TypeAssignSet0),
 	typecheck_lambda_var_has_type_2(TypeAssignSet0,
-			PredOrFunc, Var, ArgVars, [], TypeAssignSet),
+		PredOrFunc, EvalMethod, Var, ArgVars, [], TypeAssignSet),
 	(
 		TypeAssignSet = [],
 		TypeAssignSet0 \= []
 	->
 		typecheck_info_get_io_state(TypeCheckInfo0, IOState0),
-		report_error_lambda_var(TypeCheckInfo0, PredOrFunc, Var,
-				ArgVars, TypeAssignSet0, IOState0, IOState),
+		report_error_lambda_var(TypeCheckInfo0, PredOrFunc, EvalMethod,
+			Var, ArgVars, TypeAssignSet0, IOState0, IOState),
 		typecheck_info_set_io_state(TypeCheckInfo0, IOState,
-				TypeCheckInfo1),
+			TypeCheckInfo1),
 		typecheck_info_set_found_error(TypeCheckInfo1, yes,
-				TypeCheckInfo)
+			TypeCheckInfo)
 	;
 		typecheck_info_set_type_assign_set(TypeCheckInfo0,
-				TypeAssignSet, TypeCheckInfo)
+			TypeAssignSet, TypeCheckInfo)
 	).
 
 :- pred typecheck_lambda_var_has_type_2(type_assign_set, 
-				pred_or_func, prog_var, list(prog_var),
-				type_assign_set, type_assign_set).
-:- mode typecheck_lambda_var_has_type_2(in, in, in, in, in, out) is det.
+		pred_or_func, lambda_eval_method, prog_var, list(prog_var),
+		type_assign_set, type_assign_set).
+:- mode typecheck_lambda_var_has_type_2(in, in, in, in, in, in, out) is det.
 
-typecheck_lambda_var_has_type_2([], _, _, _) --> [].
+typecheck_lambda_var_has_type_2([], _, _, _, _) --> [].
 typecheck_lambda_var_has_type_2([TypeAssign0 | TypeAssignSet0],
-				PredOrFunc, Var, ArgVars) -->
+				PredOrFunc, EvalMethod, Var, ArgVars) -->
 	{ type_assign_get_types_of_vars(ArgVars, TypeAssign0, ArgVarTypes,
 					TypeAssign1) },
-	{ term__context_init(Context) },
-	{
-		PredOrFunc = predicate, 
-		LambdaType = term__functor(term__atom("pred"), ArgVarTypes,
-					Context)
-	;	
-		PredOrFunc = function,
-		pred_args_to_func_args(ArgVarTypes, FuncArgTypes, RetType),
-		LambdaType = term__functor(term__atom("="),
-				[term__functor(term__atom("func"),
-					FuncArgTypes, Context),
-				RetType], Context)
-	},
+	{ construct_higher_order_type(PredOrFunc,
+		EvalMethod, ArgVarTypes, LambdaType) },
 	type_assign_var_has_type(TypeAssign1, Var, LambdaType),
 	typecheck_lambda_var_has_type_2(TypeAssignSet0,
-					PredOrFunc, Var, ArgVars).
+		PredOrFunc, EvalMethod, Var, ArgVars).
 
 :- pred type_assign_get_types_of_vars(list(prog_var), type_assign, list(type),
 					type_assign).
@@ -2485,13 +2675,29 @@ make_pred_cons_info(_TypeCheckInfo, PredId, PredTable, FuncArity,
 			list__split_list(FuncArity, CompleteArgTypes,
 				ArgTypes, PredTypeParams)
 		->
-			term__context_init("<builtin>", 0, Context),
-			PredType = term__functor(term__atom("pred"),
-					PredTypeParams, Context),
+			construct_higher_order_pred_type(normal,
+					PredTypeParams, PredType),
 			ConsInfo = cons_type_info(PredTypeVarSet,
 					PredExistQVars,
 					PredType, ArgTypes, ClassContext),
-			L = [ConsInfo | L0]
+			L1 = [ConsInfo | L0],
+
+			% If the predicate has an Aditi marker,
+			% we also add the `aditi pred(...)' type,
+			% which is used for inputs to the Aditi bulk update
+			% operations and also to Aditi aggregates.
+			pred_info_get_markers(PredInfo, Markers),
+			( check_marker(Markers, aditi) ->
+				construct_higher_order_pred_type(
+					(aditi_bottom_up), PredTypeParams,
+					PredType2),
+				ConsInfo2 = cons_type_info(PredTypeVarSet,
+					PredExistQVars, PredType2,
+					ArgTypes, ClassContext),
+				L = [ConsInfo2 | L1]
+			;
+				L = L1
+			)
 		;
 			error("make_pred_cons_info: split_list failed")
 		)
@@ -2505,29 +2711,22 @@ make_pred_cons_info(_TypeCheckInfo, PredId, PredTable, FuncArity,
 		(
 			list__split_list(FuncArity, CompleteArgTypes,
 				FuncArgTypes, FuncTypeParams),
-			list__length(FuncTypeParams, NumParams0),
-			NumParams1 is NumParams0 - 1,
-			list__split_list(NumParams1, FuncTypeParams,
-			    FuncArgTypeParams, [FuncReturnTypeParam])
+			pred_args_to_func_args(FuncTypeParams,
+				FuncArgTypeParams, FuncReturnTypeParam)
 		->
 			( FuncArgTypeParams = [] ->
 				FuncType = FuncReturnTypeParam
 			;
-				term__context_init("<builtin>", 0,
-					Context),
-				FuncType = term__functor(term__atom("="), [
-					term__functor(term__atom("func"),
-						FuncArgTypeParams,
-						Context),
-					FuncReturnTypeParam
-					], Context)
+				construct_higher_order_func_type(normal,
+					FuncArgTypeParams, FuncReturnTypeParam,
+					FuncType)	
 			),
 			ConsInfo = cons_type_info(PredTypeVarSet,
 					PredExistQVars,
 					FuncType, FuncArgTypes, ClassContext),
 			L = [ConsInfo | L0]
 		;
-			error("make_pred_cons_info: split_list or remove_suffix failed")
+			error("make_pred_cons_info: split_list failed")
 		)
 	;
 		L = L0
@@ -2547,7 +2746,8 @@ builtin_apply_type(_TypeCheckInfo, Functor, Arity, ConsTypeInfos) :-
 	( ApplyName = "apply" ; ApplyName = "" ),
 	Arity >= 1,
 	Arity1 is Arity - 1,
-	higher_order_func_type(Arity1, TypeVarSet, FuncType, ArgTypes, RetType),
+	higher_order_func_type(Arity1, normal, TypeVarSet,
+		FuncType, ArgTypes, RetType),
 	ExistQVars = [],
 	Constraints = constraints([], []),
 	ConsTypeInfos = [cons_type_info(TypeVarSet, ExistQVars, RetType,
@@ -2564,7 +2764,7 @@ builtin_apply_type(_TypeCheckInfo, Functor, Arity, ConsTypeInfos) :-
 
 			module_info, 	% The global symbol tables
 
-			pred_call_id,	% The pred_call_id of the pred
+			call_id,	% The call_id of the pred
 					% being called (if any)
 
 			int,		% The argument number within
@@ -2651,7 +2851,7 @@ builtin_apply_type(_TypeCheckInfo, Functor, Arity, ConsTypeInfos) :-
 
 typecheck_info_init(IOState0, ModuleInfo, PredId, TypeVarSet, VarSet,
 		VarTypes, HeadTypeParams, Constraints, Status, TypeCheckInfo) :-
-	CallPredId = unqualified("") / 0,
+	CallPredId = call(predicate - unqualified("") / 0),
 	term__context_init(Context),
 	map__init(TypeBindings),
 	map__init(Proofs),
@@ -2733,7 +2933,7 @@ typecheck_info_get_ctors(TypeCheckInfo, Ctors) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred typecheck_info_get_called_predid(typecheck_info, pred_call_id).
+:- pred typecheck_info_get_called_predid(typecheck_info, call_id).
 :- mode typecheck_info_get_called_predid(in, out) is det.
 
 typecheck_info_get_called_predid(TypeCheckInfo, PredId) :-
@@ -2741,7 +2941,7 @@ typecheck_info_get_called_predid(TypeCheckInfo, PredId) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred typecheck_info_set_called_predid(pred_call_id, typecheck_info,
+:- pred typecheck_info_set_called_predid(call_id, typecheck_info,
 			typecheck_info).
 :- mode typecheck_info_set_called_predid(in, typecheck_info_di,
 			typecheck_info_uo) is det.
@@ -2868,10 +3068,12 @@ typecheck_info_get_final_info(TypeCheckInfo, OldHeadTypeParams, OldExistQVars,
 		type_assign_get_typeclass_constraints(TypeAssign,
 			TypeConstraints),
 		type_assign_get_constraint_proofs(TypeAssign,
-			ConstraintProofs),
+			ConstraintProofs0),
 
 		map__keys(VarTypes0, Vars),
 		expand_types(Vars, TypeBindings, VarTypes0, VarTypes),
+		apply_rec_subst_to_constraint_proofs(TypeBindings,
+			ConstraintProofs0, ConstraintProofs),
 
 		%
 		% figure out how we should rename the existential types
@@ -3148,6 +3350,41 @@ typecheck_info_get_ctor_list_2(TypeCheckInfo, Functor, Arity, ConsInfoList) :-
 	;
 		ConsInfoList0 = []
 	),
+
+	% For "existentially typed" functors, whether the functor
+	% is actually existentially typed depends on whether it is
+	% used as a constructor or as a deconstructor.  As a constructor,
+	% it is universally typed, but as a deconstructor, it is
+	% existentially typed.  But type checking and polymorphism need
+	% to know whether it is universally or existentially quantified
+	% _before_ mode analysis has inferred the mode of the unification.
+	% Therefore, we use a special syntax for construction unifications
+	% with existentially quantified functors: instead of just using the
+	% functor name (e.g. "Y = foo(X)", the programmer must use the
+	% special functor name "new foo" (e.g. "Y = 'new foo'(X)").
+	% 
+	% Here we check for occurrences of functor names starting with
+	% "new ".  For these, we look up the original functor in the
+	% constructor symbol table, and for any occurrences of that
+	% functor we flip the quantifiers on the type definition
+	% (i.e. convert the existential quantifiers and constraints
+	% into universal ones).
+	(
+		Functor = cons(Name, Arity),
+		remove_new_prefix(Name, OrigName),
+		OrigFunctor = cons(OrigName, Arity),
+		map__search(Ctors, OrigFunctor, HLDS_ExistQConsDefnList)
+	->
+		convert_cons_defn_list(TypeCheckInfo, HLDS_ExistQConsDefnList,
+			ExistQuantifiedConsInfoList),
+		list__filter_map(flip_quantifiers, ExistQuantifiedConsInfoList,
+			UnivQuantifiedConsInfoList),
+		list__append(UnivQuantifiedConsInfoList,
+			ConsInfoList0, ConsInfoList1)
+	;
+		ConsInfoList1 = ConsInfoList0
+	),
+
 	% Check if Functor is a constant of one of the builtin atomic
 	% types (string, float, int, character).  If so, insert
 	% the resulting cons_type_info at the start of the list.
@@ -3161,10 +3398,11 @@ typecheck_info_get_ctor_list_2(TypeCheckInfo, Functor, Arity, ConsInfoList) :-
 		varset__init(ConsTypeVarSet),
 		ConsInfo = cons_type_info(ConsTypeVarSet, [], ConsType, [],
 			constraints([], [])),
-		ConsInfoList1 = [ConsInfo | ConsInfoList0]
+		ConsInfoList2 = [ConsInfo | ConsInfoList1]
 	;
-		ConsInfoList1 = ConsInfoList0
+		ConsInfoList2 = ConsInfoList1
 	),
+
 	% Check if Functor is the name of a predicate which takes at least
 	% Arity arguments.  If so, insert the resulting cons_type_info
 	% at the start of the list.
@@ -3172,10 +3410,30 @@ typecheck_info_get_ctor_list_2(TypeCheckInfo, Functor, Arity, ConsInfoList) :-
 		builtin_pred_type(TypeCheckInfo, Functor, Arity,
 			PredConsInfoList)
 	->
-		list__append(ConsInfoList1, PredConsInfoList, ConsInfoList)
+		list__append(ConsInfoList2, PredConsInfoList, ConsInfoList)
 	;
-		ConsInfoList = ConsInfoList1
+		ConsInfoList = ConsInfoList2
 	).
+
+:- pred flip_quantifiers(cons_type_info, cons_type_info).
+:- mode flip_quantifiers(in, out) is semidet.
+
+flip_quantifiers(cons_type_info(A, ExistQVars0, C, D, Constraints0),
+		cons_type_info(A, ExistQVars, C, D, Constraints)) :-
+	% Fail if there are no existentially quantifier variables.
+	% We do this because we want to allow the 'new foo' syntax only 
+	% for existentially typed functors, not for ordinary functors.
+	% 
+	ExistQVars0 \= [],
+
+	% convert the existentially quantified type vars into
+	% universally quantified type vars by just discarding
+	% the old list of existentially quantified type vars and
+	% replacing it with an empty list.
+	ExistQVars = [],
+
+	% convert the existential constraints into universal constraints
+	dual_constraints(Constraints0, Constraints).
 
 %-----------------------------------------------------------------------------%
 
@@ -3809,7 +4067,8 @@ type_assign_set_constraint_proofs(type_assign(A, B, C, D, E, _),
 %-----------------------------------------------------------------------------%
 
 	% write out the inferred `pred' or `func' declarations
-	% for a list of predicates.
+	% for a list of predicates.  Don't write out the inferred types
+	% for assertions.
 
 :- pred write_inference_messages(list(pred_id), module_info,
 				io__state, io__state).
@@ -3822,7 +4081,8 @@ write_inference_messages([PredId | PredIds], ModuleInfo) -->
 	(
 		{ check_marker(Markers, infer_type) },
 		{ module_info_predids(ModuleInfo, ValidPredIds) },
-		{ list__member(PredId, ValidPredIds) }
+		{ list__member(PredId, ValidPredIds) },
+		{ \+ pred_info_get_goal_type(PredInfo, assertion) }
 	->
 		write_inference_message(PredInfo)
 	;
@@ -3976,12 +4236,13 @@ report_error_functor_type(TypeCheckInfo, Var, ConsDefnList, Functor, Arity,
 
 	write_type_assign_set_msg(TypeAssignSet, VarSet).
 
-:- pred report_error_lambda_var(typecheck_info, pred_or_func, prog_var,
-		list(prog_var), type_assign_set, io__state, io__state).
-:- mode report_error_lambda_var(typecheck_info_no_io, in, in, in, in, di, uo)
-				is det.
+:- pred report_error_lambda_var(typecheck_info, pred_or_func,
+		lambda_eval_method, prog_var, list(prog_var), type_assign_set,
+		io__state, io__state).
+:- mode report_error_lambda_var(typecheck_info_no_io,
+		in, in, in, in, in, di, uo) is det.
 
-report_error_lambda_var(TypeCheckInfo, PredOrFunc, Var, ArgVars,
+report_error_lambda_var(TypeCheckInfo, PredOrFunc, EvalMethod, Var, ArgVars,
 				TypeAssignSet) -->
 
 	{ typecheck_info_get_context(TypeCheckInfo, Context) },
@@ -3996,15 +4257,25 @@ report_error_lambda_var(TypeCheckInfo, PredOrFunc, Var, ArgVars,
 	write_argument_name(VarSet, Var),
 	io__write_string("\n"),
 	prog_out__write_context(Context),
+
+	{ EvalMethod = normal, EvalStr = ""
+	; EvalMethod = (aditi_bottom_up), EvalStr = "aditi_bottom_up "
+	; EvalMethod = (aditi_top_down), EvalStr = "aditi_top_down "
+	},
+
 	(
 		{ PredOrFunc = predicate },
-		io__write_string("  and `pred("),
+		io__write_string("  and `"),
+		io__write_string(EvalStr),
+		io__write_string("pred("),
 		mercury_output_vars(ArgVars, VarSet, no),
 		io__write_string(") :- ...':\n")
 	;
 		{ PredOrFunc = function },
 		{ pred_args_to_func_args(ArgVars, FuncArgs, RetVar) },
-		io__write_string("  and `func("),
+		io__write_string("  and `"),
+		io__write_string(EvalStr),
+		io__write_string("func("),
 		mercury_output_vars(FuncArgs, VarSet, no),
 		io__write_string(") = "),
 		mercury_output_var(RetVar, VarSet, no),
@@ -4655,16 +4926,16 @@ write_arg_type_stuff_list_2([arg_type_stuff(T0, VT0, TVarSet) | Ts]) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred report_error_undef_pred(typecheck_info, pred_call_id, 
+:- pred report_error_undef_pred(typecheck_info, simple_call_id, 
 			io__state, io__state).
 :- mode report_error_undef_pred(typecheck_info_no_io, in, di, uo) is det.
 
-report_error_undef_pred(TypeCheckInfo, PredCallId) -->
+report_error_undef_pred(TypeCheckInfo, PredOrFunc - PredCallId) -->
 	{ PredCallId = PredName/Arity },
 	{ typecheck_info_get_context(TypeCheckInfo, Context) },
 	write_typecheck_info_context(TypeCheckInfo),
 	(
-		{ PredName = unqualified("->"), Arity = 2 }
+		{ PredName = unqualified("->"), (Arity = 2 ; Arity = 4) }
 	->
 		io__write_string("  error: `->' without `;'.\n"),
 		globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
@@ -4679,15 +4950,15 @@ report_error_undef_pred(TypeCheckInfo, PredCallId) -->
 			[]
 		)
 	;
-		{ PredName = unqualified("else"), Arity = 2 }
+		{ PredName = unqualified("else"), (Arity = 2 ; Arity = 4) }
 	->
 		io__write_string("  error: unmatched `else'.\n")
 	;
-		{ PredName = unqualified("if"), Arity = 2 }
+		{ PredName = unqualified("if"), (Arity = 2 ; Arity = 4) }
 	->
 		io__write_string("  error: `if' without `then' or `else'.\n")
 	;
-		{ PredName = unqualified("then"), Arity = 2 }
+		{ PredName = unqualified("then"), (Arity = 2 ; Arity = 4) }
 	->
 		io__write_string("  error: `then' without `if' or `else'.\n"),
 		globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
@@ -4730,9 +5001,8 @@ report_error_undef_pred(TypeCheckInfo, PredCallId) -->
 		io__write_string(
 		    "  argument of `some' should be a list of variables.\n")
 	;
-		io__write_string("  error: undefined predicate `"),
-		hlds_out__write_pred_call_id(PredCallId),
-		io__write_string("'"),
+		io__write_string("  error: undefined "),
+		hlds_out__write_simple_call_id(PredOrFunc - PredCallId),
 		( { PredName = qualified(ModQual, _) } ->
 			maybe_report_missing_import(TypeCheckInfo, ModQual)
 		;
@@ -4767,18 +5037,25 @@ maybe_report_missing_import(TypeCheckInfo, ModuleQualifier) -->
 		io__write_string(".\n")
 	).
 
-:- pred report_error_func_instead_of_pred(typecheck_info, pred_call_id,
-					io__state, io__state).
-:- mode report_error_func_instead_of_pred(typecheck_info_no_io, in, di, uo)
-					is det.
+:- pred report_error_func_instead_of_pred(typecheck_info, pred_or_func,
+			simple_call_id, io__state, io__state).
+:- mode report_error_func_instead_of_pred(typecheck_info_no_io, in, in,
+			di, uo) is det.
 
-report_error_func_instead_of_pred(TypeCheckInfo, PredCallId) -->
+report_error_func_instead_of_pred(TypeCheckInfo, PredOrFunc, PredCallId) -->
 	report_error_undef_pred(TypeCheckInfo, PredCallId),
 	{ typecheck_info_get_context(TypeCheckInfo, Context) },
 	prog_out__write_context(Context),
-	io__write_string("  (There is a *function* with that name, however.\n"),
-	prog_out__write_context(Context),
-	io__write_string("  Perhaps you forgot to add ` = ...'?)\n").
+	io__write_string("  (There is a *"),
+	hlds_out__write_pred_or_func(PredOrFunc),
+	io__write_string("* with that name, however."),
+	( { PredOrFunc = function } ->
+		io__nl,
+		prog_out__write_context(Context),
+		io__write_string("  Perhaps you forgot to add ` = ...'?)\n")
+	;
+		io__write_string(")\n")
+	).
 
 :- pred report_error_apply_instead_of_pred(typecheck_info, io__state, 
 			io__state).
@@ -4820,37 +5097,25 @@ report_error_apply_instead_of_pred(TypeCheckInfo) -->
 		[]
 	).
 
-:- pred report_error_pred_num_args(typecheck_info, pred_call_id, list(int),
-					io__state, io__state).
-:- mode report_error_pred_num_args(typecheck_info_no_io, in, in, di, uo) is det.
+:- pred report_error_pred_num_args(typecheck_info, simple_call_id,
+		list(int), io__state, io__state).
+:- mode report_error_pred_num_args(typecheck_info_no_io, in,
+		in, di, uo) is det.
 
-report_error_pred_num_args(TypeCheckInfo, Name / Arity, Arities) -->
-	write_typecheck_info_context(TypeCheckInfo),
-	io__write_string("  error: wrong number of arguments ("),
-	io__write_int(Arity),
-	io__write_string("; should be "),
-	report_error_right_num_args(Arities),
-	io__write_string(")\n"),
+report_error_pred_num_args(TypeCheckInfo,
+		PredOrFunc - SymName/Arity, Arities) -->
+	write_context_and_pred_id(TypeCheckInfo),
 	{ typecheck_info_get_context(TypeCheckInfo, Context) },
 	prog_out__write_context(Context),
-	io__write_string("  in call to pred `"),
-	prog_out__write_sym_name(Name),
+	io__write_string("  error: "),
+	report_error_num_args(yes(PredOrFunc), Arity, Arities),
+	io__nl,
+	prog_out__write_context(Context),
+	io__write_string("  in call to "),
+	hlds_out__write_pred_or_func(PredOrFunc),
+	io__write_string(" `"),
+	prog_out__write_sym_name(SymName),
 	io__write_string("'.\n").
-
-:- pred report_error_right_num_args(list(int), io__state, io__state).
-:- mode report_error_right_num_args(in, di, uo) is det.
-
-report_error_right_num_args([]) --> [].
-report_error_right_num_args([Arity | Arities]) -->
-	io__write_int(Arity),
-	( { Arities = [] } ->
-		[]
-	; { Arities = [_] } ->
-		io__write_string(" or ")
-	;
-		io__write_string(", ")
-	),
-	report_error_right_num_args(Arities).
 
 :- pred report_error_undef_cons(typecheck_info, cons_id, int, io__state, 
 			io__state).
@@ -4973,11 +5238,10 @@ report_error_undef_cons(TypeCheckInfo, Functor, Arity) -->
 :- mode report_wrong_arity_constructor(in, in, in, in, di, uo) is det.
 
 report_wrong_arity_constructor(Name, Arity, ActualArities, Context) -->
-	io__write_string("  error: wrong number of arguments ("),
-	io__write_int(Arity),
-	io__write_string("; should be "),
-	report_error_right_num_args(ActualArities),
-	io__write_string(")\n"),
+	io__write_string("  error: "),
+	{ MaybePredOrFunc = no },
+	report_error_num_args(MaybePredOrFunc, Arity, ActualArities),
+	io__nl,
 	prog_out__write_context(Context),
 	io__write_string("  in use of constructor `"),
 	prog_out__write_sym_name(Name),
@@ -5003,21 +5267,26 @@ language_builtin("impure", 1).
 language_builtin("semipure", 1).
 language_builtin("all", 2).
 language_builtin("some", 2).
+language_builtin("aditi_insert", 3).
+language_builtin("aditi_delete", 3).
+language_builtin("aditi_delete", 4).
+language_builtin("aditi_bulk_insert", 4).
+language_builtin("aditi_bulk_delete", 4).
+language_builtin("aditi_modify", 3).
+language_builtin("aditi_modify", 4).
 
-:- pred write_call_context(prog_context, pred_call_id, int, unify_context,
+:- pred write_call_context(prog_context, call_id, int, unify_context,
 				io__state, io__state).
 :- mode write_call_context(in, in, in, in, di, uo) is det.
 
-write_call_context(Context, PredCallId, ArgNum, UnifyContext) -->
+write_call_context(Context, CallId, ArgNum, UnifyContext) -->
 	( { ArgNum = 0 } ->
 		hlds_out__write_unify_context(UnifyContext, Context)
 	;
 		prog_out__write_context(Context),
-		io__write_string("  in argument "),
-		io__write_int(ArgNum),
-		io__write_string(" of call to pred `"),
-		hlds_out__write_pred_call_id(PredCallId),
-		io__write_string("':\n")
+		io__write_string("  in "),
+		hlds_out__write_call_arg_id(CallId, ArgNum),
+		io__write_string(":\n")
 	).
 
 %-----------------------------------------------------------------------------%

@@ -35,13 +35,11 @@ MCTOI	=	$(M_ENV) $(MC) --make-transitive-optimization-interface
 MCG	=	$(M_ENV) $(MC) --compile-to-c
 MCS	=	$(M_ENV) $(MC) --split-c-files -c --cflags $(ALL_CFLAGS)
 MGNUC	=	$(M_ENV) $(SCRIPTS_DIR)/mgnuc
-MGNUCFLAGS =	$(EXTRA_MGNUCFLAGS) $(EXTRA_CFLAGS)
 C2INIT =	MERCURY_MOD_LIB_MODS="$(BROWSER_DIR)/$(BROWSER_LIB_NAME).init $(LIBRARY_DIR)/$(STD_LIB_NAME).init $(RUNTIME_DIR)/$(RT_LIB_NAME).init" \
 		MERCURY_MKINIT=$(UTIL_DIR)/mkinit $(SCRIPTS_DIR)/c2init
 ML	=	MERCURY_C_LIB_DIR=. $(SCRIPTS_DIR)/ml
-MLFLAGS =	--mercury-libs none $(EXTRA_MLFLAGS)
-MLLIBS  =	$(EXTRA_MLLIBS) \
-		$(TRACE_DIR)/lib$(TRACE_LIB_NAME).a \
+MLFLAGS =	--mercury-libs none
+MLLIBS  =	$(TRACE_DIR)/lib$(TRACE_LIB_NAME).a \
 		$(BROWSER_DIR)/lib$(BROWSER_LIB_NAME).a \
 		$(LIBRARY_DIR)/lib$(STD_LIB_NAME).a \
 		$(RUNTIME_DIR)/lib$(RT_LIB_NAME).a ` \
@@ -50,74 +48,74 @@ MLLIBS  =	$(EXTRA_MLLIBS) \
 			*.gc*)		echo $(BOEHM_GC_DIR)/libgc.a ;; \
 		    esac \
 		` -lm
-MSC	=	MERCURY_SICSTUS_COMPILER=$(LIBRARY_DIR)/sicstus_compile \
-		$(SCRIPTS_DIR)/msc
-MSL	=	MERCURY_SP_LIB_DIR=$(LIBRARY_DIR) $(SCRIPTS_DIR)/msl
-MNC	=	MERCURY_NC_BUILTIN=$(LIBRARY_DIR)/nc_builtin.nl \
-		$(SCRIPTS_DIR)/mnc
-MNL	=	MERCURY_NU_LIB_DIR=$(LIBRARY_DIR) $(SCRIPTS_DIR)/mnl
-MNLFLAGS =	-u 6000
 MTAGS	=	$(SCRIPTS_DIR)/mtags
 MTAGSFLAGS =	
 
 #-----------------------------------------------------------------------------#
 
 # Rules for preprocessing `.pp' files.
+# `.pp_date' files are used as timestamps as for interface files.
 
 ifeq ($(INCLUDE_ADITI_OUTPUT),yes)
 
 # Remove the #if line and everything between the #else and #endif lines.
-%.m: %.pp
-	@-[ ! -f $@ ] || chmod +w $@
+$(dates_subdir)%.pp_date: %.pp
+	m_file=$(<:.pp=.m); \
+	[ ! -f $$m_file ] || chmod +w $$m_file; \
 	sed	-e '/^#if *INCLUDE_ADITI_OUTPUT/s/.*//' \
 		-e '/^#else/,/^#endif/s/.*//' \
-		$< > $@
-	@-chmod -w $@
+		$< > $$m_file.tmp; \
+	mercury_update_interface -v $$m_file; \
+	touch $@; \
+	chmod -w $$m_file
 
 else
 
 # Remove everything between the #if line and the #else line,
 # and the #endif line.
-%.m: %.pp
-	@-[ ! -f $@ ] || chmod +w $@
+$(dates_subdir)%.pp_date: %.pp
+	m_file=$(<:.pp=.m); \
+	[ ! -f $$m_file ] || chmod +w $$m_file; \
 	sed	-e '/^#if *INCLUDE_ADITI_OUTPUT/,/^#else/s/.*//' \
 		-e '/^#endif/s/.*//' \
-		$< > $@
-	@-chmod -w $@
+		$< > $$m_file.tmp; \
+	mercury_update_interface -v $$m_file; \
+	touch $@; \
+	chmod -w $$m_file
 
 endif
+
+PREPROCESSED_MODULES = rl_file rl_out
+PREPROCESSED_FILES = $(PREPROCESSED_MODULES:%=%.pp)
+PREPROCESSED_M_FILES = $(PREPROCESSED_MODULES:%=%.m)
+PP_DATE_FILES = $(PREPROCESSED_MODULES:%=$(dates_subdir)%.pp_date)
+
+# Force regeneration of the preprocessed modules.
+# This is necessary if the setting of `INCLUDE_ADITI_OUTPUT' has changed.
+regenerate_preprocessed_files:
+	touch $(PREPROCESSED_FILES)
+	$(MMAKE) $(PREPROCESSED_M_FILES)
+
+# The `.m' files for the preprocessed modules depend on the `.pp_date' files.
+$(PREPROCESSED_M_FILES): %.m: $(dates_subdir)%.pp_date
+	@:
 
 #-----------------------------------------------------------------------------#
 
 # targets
 #
 # mercury_compile
-# mercury_compile.nu
-# mercury_compile.nu.debug
-# mercury_compile.sicstus
-# mercury_compile.sicstus.debug
 
 .PHONY: depend
 depend:		mercury_compile.depend
 
-# we need to make sure the .pp files get converted to .m before
-# we do the make depend
-mercury_compile.depend: rl_file.m rl_out.m
+mercury_compile.depend: regenerate_preprocessed_files
 
 .PHONY: all
-all:		mercury nuprolog sicstus
+all:		mercury
 
 .PHONY: mercury
 mercury:	mercury_compile
-
-.PHONY: nuprolog
-nuprolog:	mercury_compile.nu
-
-.PHONY: sicstus
-sicstus:	mercury_compile.sicstus
-
-.PHONY: debug
-debug:		mercury_compile mercury_compile.sicstus.debug
 
 #-----------------------------------------------------------------------------#
 
@@ -131,9 +129,6 @@ mercury_compile: $(TRACE_DIR)/lib$(TRACE_LIB_NAME).a
 # Should also depend on $(BOEHM_GC_DIR)/libgc(_prof).a, but only
 # if in .gc(.prof) grade; GNU make does not support dynamic dependencies,
 # so just leave it out.
-
-mercury_compile.sicstus: $(LIBRARY_DIR)/library.sicstus.debug
-mercury_compile.sicstus.debug: $(LIBRARY_DIR)/library.sicstus.debug
 
 mercury_compile_init.c: $(UTIL_DIR)/mkinit
 
@@ -176,7 +171,7 @@ clean:
 	done
 
 realclean:
-	rm -f tags mercury_compile.stats
+	rm -f tags mercury_compile.stats $(PP_DATE_FILES)
 
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
@@ -187,36 +182,17 @@ realclean:
 install: install_mercury
 
 .PHONY: install_all
-install_all: install_mercury install_nuprolog install_sicstus
+install_all: install_mercury
 
 .PHONY: install_mercury
 install_mercury: install_compiler
 	
-.PHONY: install_nuprolog
-install_nuprolog: install_compiler_nu
-
-.PHONY: install_sicstus
-install_sicstus: install_compiler_sicstus
-
 .PHONY: install_dirs
 install_dirs:
 	-[ -d $(INSTALL_MERC_BIN_DIR) ] || mkdir -p $(INSTALL_MERC_BIN_DIR)
-	-[ -d $(INSTALL_NU_ARCH_DIR) ] || mkdir -p $(INSTALL_NU_ARCH_DIR) 
-	-[ -d $(INSTALL_SP_ARCH_DIR) ] || mkdir -p $(INSTALL_SP_ARCH_DIR) 
 
 .PHONY: install_compiler
 install_compiler: mercury_compile install_dirs
-	cp `vpath_find mercury_compile` $(INSTALL_MERC_BIN_DIR)
-
-.PHONY: install_compiler_nu
-install_compiler_nu: mercury_compile.nu install_dirs
-	sed "s^`pwd`^$(INSTALL_NU_ARCH_DIR)^g" `vpath_find mercury_compile.nu` \
-		> $(INSTALL_NU_ARCH_DIR)/mercury_compile.nu
-	-chmod +x $(INSTALL_NU_ARCH_DIR)/mercury_compile.nu
-	cp `vpath_find mercury_compile.nu.save` $(INSTALL_NU_ARCH_DIR)
-
-.PHONY: install_compiler_sicstus
-install_compiler_sicstus: mercury_compile.sicstus install_dirs
-	cp `vpath_find mercury_compile.sicstus` $(INSTALL_SP_ARCH_DIR)
+	cp `vpath_find mercury_compile$(EXT_FOR_EXE)` $(INSTALL_MERC_BIN_DIR)
 
 #-----------------------------------------------------------------------------#

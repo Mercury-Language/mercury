@@ -181,10 +181,10 @@ rl_dump__write_instruction(_ModuleInfo, RelationInfo,
 	union_diff(Union, Input1, Input2, Diff, Index, CopyInfo) - Comment) -->
 
 	rl_dump__write_output_rel(RelationInfo, Diff),
-	comma,
-	rl_dump__write_relation_id(RelationInfo, Union),
 	io__write_string(" = union_diff("),
 	rl_dump__write_relation_id(RelationInfo, Input1),
+	io__write_string(" => "),
+	rl_dump__write_relation_id(RelationInfo, Union),
 	comma,
 	rl_dump__write_relation_id(RelationInfo, Input2),
 	comma,
@@ -197,9 +197,10 @@ rl_dump__write_instruction(_ModuleInfo, RelationInfo,
 
 rl_dump__write_instruction(ModuleInfo, RelationInfo,
 		insert(UoOutput, DiInput, Input, Type, CopyInfo) - Comment) -->
-	rl_dump__write_relation_id(RelationInfo, UoOutput),
-	io__write_string(" = insert("),
+	io__write_string("insert("),
 	rl_dump__write_relation_id(RelationInfo, DiInput),
+	io__write_string(" => "),
+	rl_dump__write_relation_id(RelationInfo, UoOutput),
 	comma,
 	rl_dump__write_relation_id(RelationInfo, Input),
 	comma,
@@ -390,6 +391,8 @@ rl_dump__write_join_type(_, semi) -->
 
 rl_dump__write_subtract_type(_, nested_loop) -->
 	io__write_string("nested_loop").
+rl_dump__write_subtract_type(_, semi) -->
+	io__write_string("semi").
 rl_dump__write_subtract_type(_, sort_merge(SortAttr1, SortAttr2)) -->
 	io__write_string("sort_merge("),
 	rl_dump__write_sort_spec(SortAttr1),

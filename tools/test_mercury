@@ -33,6 +33,9 @@ export CVSROOT
 TMPDIR=/tmp
 export TMPDIR
 
+# Make the files writable by group mercury.
+umask 002
+
 #-----------------------------------------------------------------------------#
 
 DATE=`date '+%Y-%m-%d'`
@@ -150,9 +153,23 @@ status=0
 #-----------------------------------------------------------------------------#
 
 case $HOST in
-	murlibobo)	CONFIG_OPTS=--enable-all-grades ;;
-	kryten)		CONFIG_OPTS=--enable-all-grades ;;
-	*)		CONFIG_OPTS="" ;;
+	murlibobo)
+		CONFIG_OPTS=--enable-all-grades ;;
+	kryten)		
+		CONFIG_OPTS=--enable-all-grades ;;
+	taifun)		
+		# On taifun, there is a bug in readline which causes
+		# it to go into an infinite loop when reading from
+		# a file.
+		CONFIG_OPTS=--without-readline ;;
+	munta)		
+		# On munta, we need to disable the external debugger,
+		# because it uses sockets, and munta doesn't have
+		# the static versions of the socket libraries
+		# installed.
+		CONFIG_OPTS=--disable-extern-debug ;;
+	*)	
+		CONFIG_OPTS="" ;;
 esac
 
 #-----------------------------------------------------------------------------#

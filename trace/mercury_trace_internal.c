@@ -20,6 +20,7 @@
 #include "mercury_trace_spy.h"
 #include "mercury_trace_tables.h"
 #include "mercury_trace_util.h"
+#include "mercury_trace_vars.h"
 #include "mercury_trace_readline.h"
 #include "mercury_layout_util.h"
 #include "mercury_array_macros.h"
@@ -57,7 +58,7 @@
 ** Debugger I/O streams.
 ** Replacements for stdin/stdout/stderr respectively.
 **
-** The distinction between MR_mdb_out and MR_mdb_err is analagous to
+** The distinction between MR_mdb_out and MR_mdb_err is analogous to
 ** the distinction between stdout and stderr: ordinary output, including
 ** information messages about conditions which are not errors, should
 ** go to MR_mdb_out, but error messages should go to MR_mdb_err.
@@ -66,12 +67,14 @@
 ** file, so we need to be careful to ensure that buffering does
 ** not stuff up the interleaving of error messages and ordinary output.
 ** To ensure this, we do two things:
+**
 **	- MR_mdb_err is unbuffered
 **	- we always fflush(MR_mdb_out) before writing to MR_mdb_err
 */
-FILE *MR_mdb_in;
-FILE *MR_mdb_out;
-FILE *MR_mdb_err;
+
+FILE	*MR_mdb_in;
+FILE	*MR_mdb_out;
+FILE	*MR_mdb_err;
 
 static	MR_Trace_Print_Level	MR_default_print_level = MR_PRINT_LEVEL_SOME;
 
@@ -122,17 +125,6 @@ typedef enum {
 	STOP_INTERACTING
 } MR_Next;
 
-typedef	enum {
-	VAR_NUMBER,
-	VAR_NAME
-} MR_Var_Spec_Kind;
-
-typedef struct {
-	MR_Var_Spec_Kind	MR_var_spec_kind;
-	int			MR_var_spec_number; /* valid if VAR_NUMBER */
-	const char		*MR_var_spec_name;  /* valid if VAR_NAME   */
-} MR_Var_Spec;
-
 #ifdef	MR_USE_DECLARATIVE_DEBUGGER
 
 MR_Trace_Mode MR_trace_decl_mode = MR_TRACE_INTERACTIVE;
@@ -144,13 +136,15 @@ static	void	MR_trace_internal_init_from_env(void);
 static	void	MR_trace_internal_init_from_local(void);
 static	void	MR_trace_internal_init_from_home_dir(void);
 static	MR_Next	MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
-			MR_Event_Info *event_info, 
-			MR_Event_Details *event_details, int *ancestor_level,
-			Code **jumpaddr);
+			MR_Event_Info *event_info,
+			MR_Event_Details *event_details, Code **jumpaddr);
 static	MR_Next	MR_trace_handle_cmd(char **words, int word_count,
 			MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info,
-			MR_Event_Details *event_details, int *ancestor_level,
-			Code **jumpaddr);
+			MR_Event_Details *event_details, Code **jumpaddr);
+static	void	MR_print_stack_regs(Word *saved_regs);
+static	void	MR_print_heap_regs(Word *saved_regs);
+static	void	MR_print_tabling_regs(Word *saved_regs);
+static	void	MR_print_succip_reg(Word *saved_regs);
 static	bool	MR_trace_options_strict_print(MR_Trace_Cmd_Info *cmd,
 			char ***words, int *word_count,
 			const char *cat, const char *item);
@@ -170,27 +164,11 @@ static	void	MR_trace_internal_add_spy_point(MR_Spy_When when,
 			const MR_Stack_Layout_Entry *entry,
 			const MR_Stack_Layout_Label *label);
 static	void	MR_print_spy_point(int i);
-static	void	MR_trace_list_vars(const MR_Stack_Layout_Label *top_layout,
-			Word *saved_regs, int ancestor_level);
-static	void	MR_trace_set_level(const MR_Stack_Layout_Label *top_layout,
-			Word *saved_regs, int *ancestor_level,
-			int new_ancestor_level);
-static	const char *MR_trace_browse_check_level(const MR_Stack_Layout_Label
-			*top_layout, Word *saved_regs, int ancestor_level);
-static	void	MR_trace_browse_one(const MR_Stack_Layout_Label *top_layout,
-			Word *saved_regs, int ancestor_level,
-			MR_Var_Spec which_var, bool browse);
-static	void	MR_trace_browse_all(const MR_Stack_Layout_Label *top_layout,
-			Word *saved_regs, int ancestor_level);
-static	void	MR_trace_browse_var(const char *name,
-			const MR_Stack_Layout_Vars *vars, int i,
-			Word *saved_regs, Word *base_sp, Word *base_curfr,
-			Word *type_params, bool browse);
-static	const char *MR_trace_validate_var_count(const MR_Stack_Layout_Label
-			*layout, int *var_count_ptr);
-static	const char *MR_trace_find_var(const MR_Stack_Layout_Label *layout,
-			MR_Var_Spec var_spec, int *which_var_ptr);
 static	void	MR_trace_do_noop(void);
+
+static	void	MR_trace_set_level_and_report(int ancestor_level);
+static	void	MR_trace_print_var(Word type_info, Word value);
+static	void	MR_trace_browse_var(Word type_info, Word value);
 
 static	const char *MR_trace_read_help_text(void);
 static	bool	MR_trace_is_number(const char *word, int *value);
@@ -222,7 +200,6 @@ MR_trace_event_internal(MR_Trace_Cmd_Info *cmd, bool interactive,
 	int			c;
 	int			count;
 	bool			count_given;
-	int			ancestor_level;
 	Code			*jumpaddr;
 	char			*line;
 	MR_Next			res;
@@ -255,16 +232,16 @@ MR_trace_event_internal(MR_Trace_Cmd_Info *cmd, bool interactive,
 	event_details.MR_call_depth = MR_trace_call_depth;
 	event_details.MR_event_number = MR_trace_event_number;
 
-	/* by default, print variables from the current call */
-	ancestor_level = 0;
+	MR_trace_init_point_vars(event_info->MR_event_sll,
+		event_info->MR_saved_regs);
 
 	/* by default, return where we came from */
 	jumpaddr = NULL;
 
 	do {
-		line = MR_trace_getline("mdb> ");
+		line = MR_trace_getline("mdb> ", MR_mdb_in, MR_mdb_out);
 		res = MR_trace_debug_cmd(line, cmd, event_info, &event_details,
-				&ancestor_level, &jumpaddr);
+				&jumpaddr);
 	} while (res == KEEP_INTERACTING);
 
 	cmd->MR_trace_must_check = (! cmd->MR_trace_strict) ||
@@ -387,6 +364,43 @@ MR_trace_internal_init_from_home_dir(void)
 }
 
 static void
+MR_trace_set_level_and_report(int ancestor_level)
+{
+	const char			*problem;
+	const MR_Stack_Layout_Entry	*entry;
+	Word				*base_sp;
+	Word				*base_curfr;
+
+	problem = MR_trace_set_level(ancestor_level);
+	if (problem == NULL) {
+		MR_trace_current_level_details(&entry, &base_sp, &base_curfr);
+		fprintf(MR_mdb_out, "%4d ", ancestor_level);
+		MR_print_proc_id(MR_mdb_out, entry, "", base_sp, base_curfr);
+		fprintf(MR_mdb_out, "Ancestor level set to %d.\n",
+			ancestor_level);
+	} else {
+		fflush(MR_mdb_out);
+		fprintf(MR_mdb_err, "%s.\n", problem);
+	}
+}
+
+static void
+MR_trace_print_var(Word type_info, Word value)
+{
+	fprintf(MR_mdb_out, "\t");
+	fflush(MR_mdb_out);
+	/* XXX should use MR_mdb_out */
+	MR_trace_print(type_info, value);
+}
+
+static void
+MR_trace_browse_var(Word type_info, Word value)
+{
+	/* XXX should use MR_mdb_in and MR_mdb_out */
+	MR_trace_browse(type_info, value);
+}
+
+static void
 MR_trace_do_noop(void)
 {
 	fflush(MR_mdb_out);
@@ -400,6 +414,7 @@ MR_trace_do_noop(void)
 ** so that this function's address can be passed to
 ** MR_process_matching_procedures().
 */
+
 static void
 MR_mdb_print_proc_id(void *data, const MR_Stack_Layout_Entry *entry_layout)
 {
@@ -413,7 +428,7 @@ static char *MR_mmc_options = NULL;
 static MR_Next
 MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 	MR_Event_Info *event_info, MR_Event_Details *event_details,
-	int *ancestor_level, Code **jumpaddr)
+	Code **jumpaddr)
 {
 	char		**words;
 	char		**orig_words = NULL;
@@ -474,7 +489,7 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 		** Call the command dispatcher
 		*/
 		next = MR_trace_handle_cmd(words, word_count, cmd,
-			event_info, event_details, ancestor_level, jumpaddr);
+			event_info, event_details, jumpaddr);
 	}
 
 	free(line);
@@ -488,10 +503,11 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 **	(a) include them in MR_trace_valid_command_list, defined below.
 **	(b) document them in doc/user_guide.texi
 */
+
 static MR_Next
 MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	MR_Event_Info *event_info, MR_Event_Details *event_details,
-	int *ancestor_level, Code **jumpaddr)
+	Code **jumpaddr)
 {
 	const MR_Stack_Layout_Label
 		*layout = event_info->MR_event_sll;
@@ -722,58 +738,68 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	} else if (streq(words[0], "level")) {
 		int	n;
 		if (word_count == 2 && MR_trace_is_number(words[1], &n)) {
-			MR_trace_set_level(layout, saved_regs, ancestor_level,
-				n);
+			MR_trace_set_level_and_report(n);
 		} else {
 			MR_trace_usage("browsing", "level");
 		}
 	} else if (streq(words[0], "up")) {
 		int	n;
 		if (word_count == 2 && MR_trace_is_number(words[1], &n)) {
-			MR_trace_set_level(layout, saved_regs, ancestor_level,
-				*ancestor_level + n);
+			MR_trace_set_level_and_report(
+				MR_trace_current_level() + n);
 		} else if (word_count == 1) {
-			MR_trace_set_level(layout, saved_regs, ancestor_level,
-				*ancestor_level + 1);
+			MR_trace_set_level_and_report(
+				MR_trace_current_level() + 1);
 		} else {
 			MR_trace_usage("browsing", "up");
 		}
 	} else if (streq(words[0], "down")) {
 		int	n;
 		if (word_count == 2 && MR_trace_is_number(words[1], &n)) {
-			MR_trace_set_level(layout, saved_regs, ancestor_level,
-				*ancestor_level - n);
+			MR_trace_set_level_and_report(
+				MR_trace_current_level() - n);
 		} else if (word_count == 1) {
-			MR_trace_set_level(layout, saved_regs, ancestor_level,
-				*ancestor_level - 1);
+			MR_trace_set_level_and_report(
+				MR_trace_current_level() - 1);
 		} else {
 			MR_trace_usage("browsing", "down");
 		}
 	} else if (streq(words[0], "vars")) {
 		if (word_count == 1) {
-			MR_trace_list_vars(layout, saved_regs,
-				*ancestor_level);
+			const char	*problem;
+
+			problem = MR_trace_list_vars(MR_mdb_out);
+			if (problem != NULL) {
+				fflush(MR_mdb_out);
+				fprintf(MR_mdb_err, "mdb: %s.\n", problem);
+			}
 		} else {
 			MR_trace_usage("browsing", "vars");
 		}
 	} else if (streq(words[0], "print")) {
 		if (word_count == 2) {
 			MR_Var_Spec	var_spec;
+			const char	*problem;
 			int		n;
 
 			if streq(words[1], "*") {
-				MR_trace_browse_all(layout, saved_regs,
-					*ancestor_level);
+				problem = MR_trace_browse_all(MR_mdb_out,
+					MR_trace_print_var);
 			} else if (MR_trace_is_number(words[1], &n)) {
-				var_spec.MR_var_spec_kind = VAR_NUMBER;
+				var_spec.MR_var_spec_kind = MR_VAR_SPEC_NUMBER;
 				var_spec.MR_var_spec_number = n;
-				MR_trace_browse_one(layout, saved_regs,
-					*ancestor_level, var_spec, FALSE);
+				problem = MR_trace_browse_one(MR_mdb_out,
+					var_spec, MR_trace_print_var, FALSE);
 			} else {
-				var_spec.MR_var_spec_kind = VAR_NAME;
+				var_spec.MR_var_spec_kind = MR_VAR_SPEC_NAME;
 				var_spec.MR_var_spec_name = words[1];
-				MR_trace_browse_one(layout, saved_regs,
-					*ancestor_level, var_spec, FALSE);
+				problem = MR_trace_browse_one(MR_mdb_out,
+					var_spec, MR_trace_print_var, FALSE);
+			}
+
+			if (problem != NULL) {
+				fflush(MR_mdb_out);
+				fprintf(MR_mdb_err, "mdb: %s.\n", problem);
 			}
 		} else {
 			MR_trace_usage("browsing", "print");
@@ -781,18 +807,24 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 	} else if (streq(words[0], "browse")) {
 		if (word_count == 2) {
 			MR_Var_Spec	var_spec;
+			const char	*problem;
 			int		n;
 
 			if (MR_trace_is_number(words[1], &n)) {
-				var_spec.MR_var_spec_kind = VAR_NUMBER;
+				var_spec.MR_var_spec_kind = MR_VAR_SPEC_NUMBER;
 				var_spec.MR_var_spec_number = n;
-				MR_trace_browse_one(layout, saved_regs,
-					*ancestor_level, var_spec, TRUE);
+				problem = MR_trace_browse_one(NULL, var_spec,
+					MR_trace_browse_var, TRUE);
 			} else {
-				var_spec.MR_var_spec_kind = VAR_NAME;
+				var_spec.MR_var_spec_kind = MR_VAR_SPEC_NAME;
 				var_spec.MR_var_spec_name = words[1];
-				MR_trace_browse_one(layout, saved_regs,
-					*ancestor_level, var_spec, TRUE);
+				problem = MR_trace_browse_one(NULL, var_spec,
+					MR_trace_browse_var, TRUE);
+			}
+
+			if (problem != NULL) {
+				fflush(MR_mdb_out);
+				fprintf(MR_mdb_err, "mdb: %s.\n", problem);
 			}
 		} else {
 			MR_trace_usage("browsing", "browse");
@@ -833,12 +865,12 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 		MR_Spy_Action	action;
 
 		if (word_count == 2 && streq(words[1], "info")) {
-			int i;
+			int	i;
 			for (i = 0; i < MR_spy_point_next; i++) {
 				MR_print_spy_point(i);
 			}
 
-			return STOP_INTERACTING;
+			return KEEP_INTERACTING;
 		}
 
 		when = MR_SPY_INTERFACE;
@@ -898,7 +930,7 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 			int i;
 			for (i = 0; i < MR_spy_point_next; i++) {
 				MR_spy_points[i]->spy_enabled = TRUE;
-				MR_print_spy_point(n);
+				MR_print_spy_point(i);
 			}
 
 			if (MR_spy_point_next == 0) {
@@ -924,7 +956,7 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 			int i;
 			for (i = 0; i < MR_spy_point_next; i++) {
 				MR_spy_points[i]->spy_enabled = FALSE;
-				MR_print_spy_point(n);
+				MR_print_spy_point(i);
 			}
 
 			if (MR_spy_point_next == 0) {
@@ -1296,18 +1328,18 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 #endif
 	} else if (streq(words[0], "stack_regs")) {
 		if (word_count == 1) {
-			fprintf(MR_mdb_out, "sp = ");
-			MR_print_detstackptr(MR_mdb_out,
-				MR_saved_sp(saved_regs));
-			fprintf(MR_mdb_out, ", curfr = ");
-			MR_print_nondstackptr(MR_mdb_out,
-				MR_saved_curfr(saved_regs));
-			fprintf(MR_mdb_out, ", maxfr = ");
-			MR_print_nondstackptr(MR_mdb_out,
-				MR_saved_maxfr(saved_regs));
-			fprintf(MR_mdb_out, "\n");
+			MR_print_stack_regs(saved_regs);
 		} else {
 			MR_trace_usage("developer", "stack_regs");
+		}
+	} else if (streq(words[0], "all_regs")) {
+		if (word_count == 1) {
+			MR_print_stack_regs(saved_regs);
+			MR_print_heap_regs(saved_regs);
+			MR_print_tabling_regs(saved_regs);
+			MR_print_succip_reg(saved_regs);
+		} else {
+			MR_trace_usage("developer", "all_regs");
 		}
 	} else if (streq(words[0], "source")) {
 		if (word_count == 2) {
@@ -1332,7 +1364,8 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 				char	*line2;
 
 				line2 = MR_trace_getline("mdb: "
-					"are you sure you want to quit? ");
+					"are you sure you want to quit? ",
+					MR_mdb_in, MR_mdb_out);
 				if (line2 == NULL) {
 					/* This means the user input EOF. */
 					confirmed = TRUE;
@@ -1385,6 +1418,57 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 			"Give the command `help' for help.\n", words[0]);
 	}
 	return KEEP_INTERACTING;
+}
+
+static void
+MR_print_stack_regs(Word *saved_regs)
+{
+	fprintf(MR_mdb_out, "sp = ");
+	MR_print_detstackptr(MR_mdb_out,
+		MR_saved_sp(saved_regs));
+	fprintf(MR_mdb_out, "\ncurfr = ");
+	MR_print_nondstackptr(MR_mdb_out,
+		MR_saved_curfr(saved_regs));
+	fprintf(MR_mdb_out, "\nmaxfr = ");
+	MR_print_nondstackptr(MR_mdb_out,
+		MR_saved_maxfr(saved_regs));
+	fprintf(MR_mdb_out, "\n");
+}
+
+static void
+MR_print_heap_regs(Word *saved_regs)
+{
+	fprintf(MR_mdb_out, "hp = ");
+	MR_print_heapptr(MR_mdb_out,
+		MR_saved_hp(saved_regs));
+	fprintf(MR_mdb_out, "\nsol_hp = ");
+	MR_print_heapptr(MR_mdb_out,
+		MR_saved_sol_hp(saved_regs));
+	fprintf(MR_mdb_out, "\nmin_hp_rec = ");
+	MR_print_heapptr(MR_mdb_out,
+		MR_saved_min_hp_rec(saved_regs));
+	fprintf(MR_mdb_out, "\nglobal_hp = ");
+	MR_print_heapptr(MR_mdb_out,
+		MR_saved_global_hp(saved_regs));
+	fprintf(MR_mdb_out, "\n");
+}
+
+static void
+MR_print_tabling_regs(Word *saved_regs)
+{
+	fprintf(MR_mdb_out, "gen_next = %ld\n",
+		(long) MR_saved_gen_next(saved_regs));
+	fprintf(MR_mdb_out, "cut_next = %ld\n",
+		(long) MR_saved_cut_next(saved_regs));
+}
+
+static void
+MR_print_succip_reg(Word *saved_regs)
+{
+	fprintf(MR_mdb_out, "succip = ");
+	MR_print_label(MR_mdb_out,
+		MR_saved_gen_next(saved_regs));
+	fprintf(MR_mdb_out, "\n");
 }
 
 static struct MR_option MR_trace_strict_print_opts[] =
@@ -1632,315 +1716,6 @@ MR_print_spy_point(int spy_point_num)
 		NULL, NULL, NULL);
 }
 
-static void
-MR_trace_list_vars(const MR_Stack_Layout_Label *top_layout, Word *saved_regs,
-	int ancestor_level)
-{
-	const MR_Stack_Layout_Label	*level_layout;
-	Word				*base_sp;
-	Word				*base_curfr;
-	Word				*type_params;
-	int				var_count;
-	const MR_Stack_Layout_Vars	*vars;
-	int				i;
-	const char 			*problem;
-
-	base_sp = MR_saved_sp(saved_regs);
-	base_curfr = MR_saved_curfr(saved_regs);
-	level_layout = MR_find_nth_ancestor(top_layout, ancestor_level,
-				&base_sp, &base_curfr, &problem);
-
-	if (level_layout == NULL) {
-		fflush(MR_mdb_out);
-		fprintf(MR_mdb_err, "%s\n", problem);
-		return;
-	}
-
-	problem = MR_trace_validate_var_count(level_layout, &var_count);
-	if (problem != NULL) {
-		fflush(MR_mdb_out);
-		fprintf(MR_mdb_err, "mdb: %s.\n", problem);
-		return;
-	}
-
-	vars = &level_layout->MR_sll_var_info;
-	for (i = 0; i < var_count; i++) {
-		fprintf(MR_mdb_out, "%9d %s\n",
-			i, MR_name_if_present(vars, i));
-	}
-}
-
-static void
-MR_trace_set_level(const MR_Stack_Layout_Label *layout,
-	Word *saved_regs, int *ancestor_level, int new_ancestor_level)
-{
-	const char *problem;
-	
-	problem = MR_trace_browse_check_level(layout, saved_regs,
-		new_ancestor_level);
-	if (problem == NULL) {
-		*ancestor_level = new_ancestor_level;
-		fprintf(MR_mdb_out, "Ancestor level set to %d.\n",
-			*ancestor_level);
-	} else {
-		fflush(MR_mdb_out);
-		fprintf(MR_mdb_err, "%s.\n", problem);
-	}
-}
-
-static const char *
-MR_trace_browse_check_level(const MR_Stack_Layout_Label *top_layout,
-	Word *saved_regs, int ancestor_level)
-{
-	Word				*base_sp;
-	Word				*base_curfr;
-	const char 			*problem;
-	const MR_Stack_Layout_Label	*label_layout;
-	const MR_Stack_Layout_Entry	*entry;
-
-	base_sp = MR_saved_sp(saved_regs);
-	base_curfr = MR_saved_curfr(saved_regs);
-	label_layout = MR_find_nth_ancestor(top_layout, ancestor_level,
-			&base_sp, &base_curfr, &problem);
-
-	if (label_layout == NULL) {
-		return problem;
-	} else {
-		entry = label_layout->MR_sll_entry;
-		fprintf(MR_mdb_out, "%4d ", ancestor_level);
-		MR_print_proc_id(MR_mdb_out, entry, "", base_sp, base_curfr);
-		if (MR_ENTRY_LAYOUT_HAS_EXEC_TRACE(entry)) {
-			return NULL;
-		} else {
-			return "this procedure does not have debugging info";
-		}
-	}
-}
-
-static void
-MR_trace_browse_one(const MR_Stack_Layout_Label *top_layout,
-	Word *saved_regs, int ancestor_level, MR_Var_Spec var_spec,
-	bool browse)
-{
-	const MR_Stack_Layout_Label	*level_layout;
-	Word				*base_sp;
-	Word				*base_curfr;
-	Word				*type_params;
-	Word				*valid_saved_regs;
-	int				which_var;
-	const MR_Stack_Layout_Vars	*vars;
-	const char 			*problem;
-
-	base_sp = MR_saved_sp(saved_regs);
-	base_curfr = MR_saved_curfr(saved_regs);
-	level_layout = MR_find_nth_ancestor(top_layout, ancestor_level,
-				&base_sp, &base_curfr, &problem);
-
-	if (level_layout == NULL) {
-		fflush(MR_mdb_out);
-		fprintf(MR_mdb_err, "mdb: %s.\n", problem);
-		return;
-	}
-
-	problem = MR_trace_find_var(level_layout, var_spec, &which_var);
-	if (problem != NULL) {
-		fflush(MR_mdb_out);
-		fprintf(MR_mdb_err, "mdb: %s.\n", problem);
-		return;
-	}
-
-	if (ancestor_level == 0) {
-		valid_saved_regs = saved_regs;
-	} else {
-		valid_saved_regs = NULL;
-	}
-
-	vars = &level_layout->MR_sll_var_info;
-	type_params = MR_materialize_typeinfos_base(vars,
-				valid_saved_regs, base_sp, base_curfr);
-	MR_trace_browse_var(MR_name_if_present(vars, which_var),
-		vars, which_var, valid_saved_regs,
-		base_sp, base_curfr, type_params, browse);
-	free(type_params);
-}
-
-static void 
-MR_trace_browse_all(const MR_Stack_Layout_Label *top_layout,
-	Word *saved_regs, int ancestor_level)
-{
-	const MR_Stack_Layout_Label	*level_layout;
-	Word				*base_sp;
-	Word				*base_curfr;
-	Word				*type_params;
-	Word				*valid_saved_regs;
-	int				var_count;
-	const MR_Stack_Layout_Vars	*vars;
-	const char 			*problem;
-	int				i;
-
-	base_sp = MR_saved_sp(saved_regs);
-	base_curfr = MR_saved_curfr(saved_regs);
-	level_layout = MR_find_nth_ancestor(top_layout, ancestor_level,
-				&base_sp, &base_curfr, &problem);
-
-	if (level_layout == NULL) {
-		fflush(MR_mdb_out);
-		fprintf(MR_mdb_err, "mdb: %s.\n", problem);
-		return;
-	}
-
-	problem = MR_trace_validate_var_count(level_layout, &var_count);
-	if (problem != NULL) {
-		fflush(MR_mdb_out);
-		fprintf(MR_mdb_err, "mdb: %s.\n", problem);
-		return;
-	}
-
-	vars = &level_layout->MR_sll_var_info;
-	if (ancestor_level == 0) {
-		valid_saved_regs = saved_regs;
-	} else {
-		valid_saved_regs = NULL;
-	}
-
-	type_params = MR_materialize_typeinfos_base(vars,
-				valid_saved_regs, base_sp, base_curfr);
-
-	for (i = 0; i < var_count; i++) {
-		MR_trace_browse_var(MR_name_if_present(vars, i),
-			vars, i, valid_saved_regs,
-			base_sp, base_curfr, type_params, FALSE);
-	}
-
-	free(type_params);
-}
-
-static void
-MR_trace_browse_var(const char *name, const MR_Stack_Layout_Vars *vars, int i,
-	Word *saved_regs, Word *base_sp, Word *base_curfr, Word *type_params,
-	bool browse)
-{
-	Word	value;
-	Word	type_info;
-	bool	print_value;
-
-	/*
-	** XXX The printing of type_infos is buggy at the moment
-	** due to the fake arity of the type private_builtin:typeinfo/1.
-	*/
-
-	if ((strncmp(name, "TypeInfo", 8) == 0)
-	|| (strncmp(name, "TypeClassInfo", 13) == 0))
-		return;
-
-	/* The initial blanks are to visually separate */
-	/* the variable names from the prompt. */
-
-	if (!browse) {
-		if (name != NULL) {
-			fprintf(MR_mdb_out, "%7s%-21s\t", "", name);
-		} else {
-			fprintf(MR_mdb_out, "%7s%-21s\t", "",
-				"anonymous variable");
-		}
-
-		fflush(MR_mdb_out);
-	}
-
-
-	/*
-	** "variables" representing the saved values of succip, hp etc,
-	** which are the "variables" for which get_type_and_value fails,
-	** are not of interest to the user.
-	*/
-
-	print_value = MR_get_type_and_value_base(vars, i, saved_regs,
-			base_sp, base_curfr, type_params, &type_info, &value);
-	if (print_value) {
-		if (browse) {
-			/* XXX should use MR_mdb_in and MR_mdb_out */
-			MR_trace_browse(type_info, value);
-		} else {
-			fprintf(MR_mdb_out, "\t");
-			fflush(MR_mdb_out);
-			/* XXX should use MR_mdb_out */
-			MR_trace_print(type_info, value);
-		}
-	}
-}
-
-static const char *
-MR_trace_validate_var_count(const MR_Stack_Layout_Label *layout,
-	int *var_count_ptr)
-{
-	if (! MR_has_valid_var_count(&layout->MR_sll_var_info)) {
-		return "there is no information about live variables";
-	} else if (! MR_has_valid_var_info(&layout->MR_sll_var_info)) {
-		return "there are no live variables";
-	} else {
-		*var_count_ptr =
-			MR_all_desc_var_count(&layout->MR_sll_var_info);
-		return NULL;
-	}
-}
-
-/*
-** Find and validate the number of a variable given by a variable
-** specification in the given layout. If successful, return the
-** number of the variable in *which_var_ptr, and a NULL string;
-** otherwise return a string containing an error message.
-*/
-
-static const char *
-MR_trace_find_var(const MR_Stack_Layout_Label *layout,
-	MR_Var_Spec var_spec, int *which_var_ptr)
-{
-	int		var_count;
-	const char 	*problem;
-
-	problem = MR_trace_validate_var_count(layout, &var_count);
-	if (problem != NULL) {
-		return problem;
-	}
-
-	if (var_spec.MR_var_spec_kind == VAR_NUMBER) {
-		*which_var_ptr = var_spec.MR_var_spec_number;
-		if (*which_var_ptr >= var_count) {
-			return "there is no such variable";
-		} else {
-			return NULL;	/* represents success */
-		}
-	} else if (var_spec.MR_var_spec_kind == VAR_NAME) {
-		const MR_Stack_Layout_Vars	*vars;
-		const char 			*name;
-		bool				collision = FALSE;
-		int				i;
-
-		vars = &layout->MR_sll_var_info;
-		*which_var_ptr = -1;
-		name = var_spec.MR_var_spec_name;
-		for (i = 0; i < var_count; i++) {
-			if (streq(name, MR_name_if_present(vars, i))) {
-				if (*which_var_ptr >= 0) {
-					collision = TRUE;
-				}
-
-				*which_var_ptr = i;
-			}
-		}
-
-		if (*which_var_ptr < 0) {
-			return "there is no variable with that name";
-		} else if (collision) {
-			return "variable name is not unique";
-		} else {
-			return NULL;	/* represents success */
-		}
-	} else {
-		return "internal error: bad var_spec kind";
-	}
-}
-
 /*
 ** Read lines until we find one that contains only "end".
 ** Return the lines concatenated together.
@@ -1957,7 +1732,8 @@ MR_trace_read_help_text(void)
 	int	i;
 
 	next_char_slot = 0;
-	while ((text = MR_trace_getline("cat> ")) != NULL) {
+	while ((text = MR_trace_getline("cat> ", MR_mdb_in, MR_mdb_out))
+			!= NULL) {
 		if (streq(text, "end")) {
 			free(text);
 			break;
@@ -2217,7 +1993,7 @@ MR_trace_source_from_open_file(FILE *fp)
 
 /*
 ** If there any lines waiting in the queue, return the first of these.
-** If not, print the prompt to MR_mdb_out, read a line from MR_mdb_in,
+** If not, print the prompt to mdb_out, read a line from mdb_in,
 ** and return it in a malloc'd buffer holding the line (without the final
 ** newline).
 ** If EOF occurs on a nonempty line, treat the EOF as a newline; if EOF
@@ -2225,7 +2001,7 @@ MR_trace_source_from_open_file(FILE *fp)
 */
 
 char *
-MR_trace_getline(const char *prompt)
+MR_trace_getline(const char *prompt, FILE *mdb_in, FILE *mdb_out)
 {
 	char	*line;
 
@@ -2236,13 +2012,13 @@ MR_trace_getline(const char *prompt)
 
 	MR_trace_internal_interacting = TRUE;
 
-	line = MR_trace_readline(prompt, MR_mdb_in, MR_mdb_out);
+	line = MR_trace_readline(prompt, mdb_in, mdb_out);
 
 	/* if we're using readline, then readline does the echoing */
 #ifdef MR_NO_USE_READLINE
 	if (MR_echo_commands) {
-		fputs(line, MR_mdb_out);
-		putc('\n', MR_mdb_out);
+		fputs(line, mdb_out);
+		putc('\n', mdb_out);
 	}
 #endif
 
@@ -2323,7 +2099,7 @@ MR_trace_event_internal_report(MR_Trace_Cmd_Info *cmd,
 	/* We try to leave one line for the prompt itself. */
 	if (MR_scroll_control && MR_scroll_next >= MR_scroll_limit - 1) {
 	try_again:
-		buf = MR_trace_getline("--more-- ");
+		buf = MR_trace_getline("--more-- ", MR_mdb_in, MR_mdb_out);
 		if (buf != NULL) {
 			for (i = 0; buf[i] != '\0' && MR_isspace(buf[i]); i++)
 				;
@@ -2377,7 +2153,7 @@ void
 MR_trace_event_print_internal_report(MR_Event_Info *event_info)
 {
 	fprintf(MR_mdb_out, "%8ld: %6ld %2ld ",
-		(long) event_info->MR_event_number, 
+		(long) event_info->MR_event_number,
 		(long) event_info->MR_call_seqno,
 		(long) event_info->MR_call_depth);
 
@@ -2503,6 +2279,7 @@ static	MR_trace_cmd_cat_item MR_trace_valid_command_list[] =
 	{ "developer", "gen_stack" },
 #endif
 	{ "developer", "stack_regs" },
+	{ "developer", "all_regs" },
 	{ "misc", "source" },
 	{ "misc", "quit" },
 	/* End of doc/mdb_command_list. */

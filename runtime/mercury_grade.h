@@ -173,11 +173,7 @@
   #define MR_GRADE_PART_9	MR_PASTE2(MR_GRADE_PART_8, _ubf)
 #endif
 
-#ifdef COMPACT_ARGS
-  #define MR_GRADE_PART_10	MR_GRADE_PART_9
-#else				/* "sa" stands for "simple args" */
-  #define MR_GRADE_PART_10	MR_PASTE2(MR_GRADE_PART_9, _sa)
-#endif
+#define MR_GRADE_PART_10	MR_GRADE_PART_9
 
 #if defined(PIC_REG) && defined(USE_GCC_GLOBAL_REGISTERS) && defined(__i386__)
   #define MR_GRADE_PART_11	MR_PASTE2(MR_GRADE_PART_10, _picreg)
@@ -304,7 +300,7 @@ extern const char MR_GRADE_VAR;
 #endif
 
 /*
-** Parts 8-10 above (i.e. tag bits, compact args, and (un)boxed float)
+** Parts 8-10 above (i.e. tag bits, and (un)boxed float)
 ** are documented as "not for general use", and can't be set via the
 ** `--grade' option; we don't bother to pass them on.
 */

@@ -40,18 +40,19 @@
 ** MR_WORD_TYPE: the base type for the definition of Word.
 ** This must be a C integral type (e.g. int, long, or long long)
 ** without any explicit signedness.
-** It ought to be the same size as the machine's general-purpose registers.
+** It ought to be the same size as the machine's general-purpose registers
+** (i.e. the same size as pointers).
 */
 #undef	MR_WORD_TYPE
 
 /*
-** MR_INT_LEAST16_TYPE:
-** This must be a C integral type (e.g. short, int)
+** MR_INT_LEAST64_TYPE:
+** This must be a C integral type (e.g. int, long, long long)
 ** without any explicit signedness.
-** It ought to be at least 16 bits in size.
-** It may be bigger, but any bits beyond 16 are not used.
+** It ought to be at least 64 bits in size.
+** It may be bigger, but any bits beyond 64 are not used.
 */
-#undef	MR_INT_LEAST16_TYPE
+#undef	MR_INT_LEAST64_TYPE
 
 /*
 ** MR_INT_LEAST32_TYPE:
@@ -61,6 +62,15 @@
 ** It may be bigger, but any bits beyond 32 are not used.
 */
 #undef	MR_INT_LEAST32_TYPE
+
+/*
+** MR_INT_LEAST16_TYPE:
+** This must be a C integral type (e.g. short, int)
+** without any explicit signedness.
+** It ought to be at least 16 bits in size.
+** It may be bigger, but any bits beyond 16 are not used.
+*/
+#undef	MR_INT_LEAST16_TYPE
 
 /*
 ** LOW_TAG_BITS: an integer, specifying the number of low-order tag bits
@@ -91,7 +101,6 @@
 **	HAVE_SYS_PARAM		we have <sys/param.h>
 **	HAVE_SYS_WAIT		we have <sys/wait.h>
 **	HAVE_DLFCN_H		we have <dlfcn.h>
-**	HAVE_STDINT		we have <stdint.h>
 */
 #undef	HAVE_SYS_SIGINFO
 #undef	HAVE_UCONTEXT
@@ -101,7 +110,16 @@
 #undef	HAVE_SYS_PARAM
 #undef	HAVE_SYS_WAIT
 #undef	HAVE_DLFCN_H
-#undef	HAVE_STDINT    
+
+/*
+** The following macros are defined iff the corresponding type
+** is available (in <stdint.h>, <inttypes.h>, or <sys/types.h>):
+**
+**	MR_HAVE_INTPTR_T	we have intptr_t and uintptr_t
+**	MR_HAVE_INT_LEASTN_T	we have {u,}int_least{8,16,32}_t
+*/
+#undef MR_HAVE_INTPTR_T
+#undef MR_HAVE_INT_LEASTN_T
 
 /*
 ** The following macros are defined iff the corresponding function or

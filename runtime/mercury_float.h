@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-1997 The University of Melbourne.
+** Copyright (C) 1995-1997, 1999 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -26,7 +26,7 @@ typedef double Float;
 
 #ifdef CONSERVATIVE_GC
 #define float_to_word(f) ( \
-		hp_alloc(FLOAT_WORDS), \
+		hp_alloc_atomic(FLOAT_WORDS), \
 		*(Float *)(void *)(MR_hp - FLOAT_WORDS) = (f), \
 		/* return */ (Word) (MR_hp - FLOAT_WORDS) \
 	)
@@ -34,8 +34,9 @@ typedef double Float;
 /* we need to ensure that what we allocated on the heap is properly
    aligned */
 #define float_to_word(f) ( \
-		( (Word)MR_hp & (sizeof(Float) - 1) ? hp_alloc(1) : (void)0 ), \
-		hp_alloc(FLOAT_WORDS), \
+		( (Word)MR_hp & (sizeof(Float) - 1) ? \
+			hp_alloc_atomic(1) : (void)0 ), \
+		hp_alloc_atomic(FLOAT_WORDS), \
 		*(Float *)(void *)(MR_hp - FLOAT_WORDS) = (f), \
 		/* return */ (Word) (MR_hp - FLOAT_WORDS) \
 	)

@@ -14,7 +14,7 @@
 :- interface.
 
 :- import_module hlds_pred, llds, prog_data, (inst), term.
-:- import_module bool, list, map, std_util, set_bbbtree.
+:- import_module bool, list, map, std_util.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -29,7 +29,8 @@
 			;	int_const(int)
 			;	string_const(string)
 			;	float_const(float)
-			;	pred_const(pred_id, proc_id)
+			;	pred_const(pred_id, proc_id,
+					lambda_eval_method)
 			;	code_addr_const(pred_id, proc_id)
 				% Used for constructing type_infos.
 				% Note that a pred_const is for a closure
@@ -124,7 +125,7 @@ cons_id_arity(cons(_, Arity), Arity).
 cons_id_arity(int_const(_), 0).
 cons_id_arity(string_const(_), 0).
 cons_id_arity(float_const(_), 0).
-cons_id_arity(pred_const(_, _), _) :-
+cons_id_arity(pred_const(_, _, _), _) :-
 	error("cons_id_arity: can't get arity of pred_const").
 cons_id_arity(code_addr_const(_, _), _) :-
 	error("cons_id_arity: can't get arity of code_addr_const").
@@ -249,11 +250,12 @@ make_cons_id(SymName0, Args, TypeId, cons(SymName, Arity)) :-
 			% a word containing the specified integer value.
 			% This is used for enumerations and character
 			% constants as well as for int constants.
-	;	pred_closure_tag(pred_id, proc_id)
+	;	pred_closure_tag(pred_id, proc_id, lambda_eval_method)
 			% Higher-order pred closures tags.
 			% These are represented as a pointer to
 			% an argument vector.
-			% The first two words of the argument vector
+			% For closures with lambda_eval_method `normal',
+			% the first two words of the argument vector
 			% hold the number of args and the address of
 			% the procedure respectively.
 			% The remaining words hold the arguments.
@@ -358,53 +360,11 @@ hlds_data__set_type_defn_status(hlds_type_defn(A, B, C, _, E), Status,
 
 :- interface.
 
-	% The symbol table for insts.
-
 :- type inst_id		==	pair(sym_name, arity).
 				% name, arity.
 
-:- type inst_table.
-
 :- type user_inst_table.
 :- type user_inst_defns ==	map(inst_id, hlds_inst_defn).
-
-:- type unify_inst_table ==	map(inst_name, maybe_inst_det).
-
-:- type unify_inst_pair	--->	unify_inst_pair(is_live, inst, inst,
-					unify_is_real).
-
-:- type merge_inst_table ==	map(merge_inst_pair, maybe_inst).
-
-:- type merge_inst_pair --->	merge_inst_pair(is_live, inst, inst).
-
-:- type ground_inst_table == 	map(inst_name, maybe_inst_det).
-
-:- type any_inst_table == 	map(inst_name, maybe_inst_det).
-
-:- type shared_inst_table == 	map(inst_name, maybe_inst).
-
-:- type mostly_uniq_inst_table == map(inst_name, maybe_inst).
-
-:- type substitution_inst_table == map(substitution_inst, maybe_inst).
-
-:- type clobbered_inst_table == map(inst_name, maybe_inst).
-
-:- type substitution_inst
-	--->	substitution_inst(
-			inst_name,
-			inst_key_set,	% The set of inst_keys that have
-					% had their substitutions expanded.
-			inst_key_sub	% The substitution map used to expand
-					% the substitutions.
-		).
-
-:- type inst_key_set == set_bbbtree(inst_key).
-
-:- type maybe_inst	--->	unknown
-			;	known(inst).
-
-:- type maybe_inst_det	--->	unknown
-			;	known(inst, determinism).
 
 	% An `hlds_inst_defn' holds the information we need to store
 	% about inst definitions such as
@@ -436,82 +396,6 @@ hlds_data__set_type_defn_status(hlds_type_defn(A, B, C, _, E), Status,
 						% later.  (XXX Abstract insts
 						% are not really supported.)
 
-%-----------------------------------------------------------------------------%
-
-:- pred inst_table_init(inst_table).
-:- mode inst_table_init(out) is det.
-
-:- pred inst_table_get_all_tables(inst_table, substitution_inst_table,
-	unify_inst_table, merge_inst_table, ground_inst_table, any_inst_table,
-	shared_inst_table, mostly_uniq_inst_table, clobbered_inst_table,
-	inst_key_table).
-:- mode inst_table_get_all_tables(in, out, out, out, out, out, out, out,
-	out, out) is det.
-
-:- pred inst_table_set_all_tables(inst_table, substitution_inst_table,
-	unify_inst_table, merge_inst_table, ground_inst_table, any_inst_table,
-	shared_inst_table, mostly_uniq_inst_table, clobbered_inst_table,
-	inst_key_table, inst_table).
-:- mode inst_table_set_all_tables(in, in, in, in, in, in, in, in, in, in, out)
-	is det.
-
-:- pred inst_table_get_substitution_insts(inst_table, substitution_inst_table).
-:- mode inst_table_get_substitution_insts(in, out) is det.
-
-:- pred inst_table_get_unify_insts(inst_table, unify_inst_table).
-:- mode inst_table_get_unify_insts(in, out) is det.
-
-:- pred inst_table_get_merge_insts(inst_table, merge_inst_table).
-:- mode inst_table_get_merge_insts(in, out) is det.
-
-:- pred inst_table_get_ground_insts(inst_table, ground_inst_table).
-:- mode inst_table_get_ground_insts(in, out) is det.
-
-:- pred inst_table_get_any_insts(inst_table, any_inst_table).
-:- mode inst_table_get_any_insts(in, out) is det.
-
-:- pred inst_table_get_shared_insts(inst_table, shared_inst_table).
-:- mode inst_table_get_shared_insts(in, out) is det.
-
-:- pred inst_table_get_mostly_uniq_insts(inst_table, mostly_uniq_inst_table).
-:- mode inst_table_get_mostly_uniq_insts(in, out) is det.
-
-:- pred inst_table_get_clobbered_insts(inst_table, clobbered_inst_table).
-:- mode inst_table_get_clobbered_insts(in, out) is det.
-
-:- pred inst_table_get_inst_key_table(inst_table, inst_key_table).
-:- mode inst_table_get_inst_key_table(in, out) is det.
-
-:- pred inst_table_set_substitution_insts(inst_table, substitution_inst_table,
-	inst_table).
-:- mode inst_table_set_substitution_insts(in, in, out) is det.
-
-:- pred inst_table_set_unify_insts(inst_table, unify_inst_table, inst_table).
-:- mode inst_table_set_unify_insts(in, in, out) is det.
-
-:- pred inst_table_set_merge_insts(inst_table, merge_inst_table, inst_table).
-:- mode inst_table_set_merge_insts(in, in, out) is det.
-
-:- pred inst_table_set_ground_insts(inst_table, ground_inst_table, inst_table).
-:- mode inst_table_set_ground_insts(in, in, out) is det.
-
-:- pred inst_table_set_any_insts(inst_table, any_inst_table, inst_table).
-:- mode inst_table_set_any_insts(in, in, out) is det.
-
-:- pred inst_table_set_shared_insts(inst_table, shared_inst_table, inst_table).
-:- mode inst_table_set_shared_insts(in, in, out) is det.
-
-:- pred inst_table_set_mostly_uniq_insts(inst_table, mostly_uniq_inst_table,
-					inst_table).
-:- mode inst_table_set_mostly_uniq_insts(in, in, out) is det.
-
-:- pred inst_table_set_clobbered_insts(inst_table, clobbered_inst_table,
-					inst_table).
-:- mode inst_table_set_clobbered_insts(in, in, out) is det.
-
-:- pred inst_table_set_inst_key_table(inst_table, inst_key_table, inst_table).
-:- mode inst_table_set_inst_key_table(in, in, out) is det.
-
 :- pred user_inst_table_init(user_inst_table).
 :- mode user_inst_table_init(out) is det.
 
@@ -532,19 +416,6 @@ hlds_data__set_type_defn_status(hlds_type_defn(A, B, C, _, E), Status,
 
 :- implementation.
 
-:- type inst_table
-	--->	inst_table(
-			substitution_inst_table,
-			unify_inst_table,
-			merge_inst_table,
-			ground_inst_table,
-			any_inst_table,
-			shared_inst_table,
-			mostly_uniq_inst_table,
-			clobbered_inst_table,
-			inst_key_table
-		).
-
 :- type user_inst_defns.
 
 :- type user_inst_table
@@ -553,92 +424,6 @@ hlds_data__set_type_defn_status(hlds_type_defn(A, B, C, _, E), Status,
 			list(inst_id)	% Cached for efficiency when module
 				% qualifying the modes of lambda expressions.
 		).
-
-inst_table_init(inst_table(SubInsts, UnifyInsts, MergeInsts, GroundInsts,
-			AnyInsts, SharedInsts, NondetLiveInsts, ClobberedInsts,
-			InstKeys)) :-
-	map__init(SubInsts),
-	map__init(UnifyInsts),
-	map__init(MergeInsts),
-	map__init(GroundInsts),
-	map__init(AnyInsts),
-	map__init(SharedInsts),
-	map__init(NondetLiveInsts),
-	map__init(ClobberedInsts),
-	inst_key_table_init(InstKeys).
-
-inst_table_get_all_tables(InstTable, SubInsts, UnifyInsts, MergeInsts,
-		GroundInsts, AnyInsts, SharedInsts, NondetLiveInsts,
-		ClobberedInsts, InstKeys) :-
-	InstTable = inst_table(SubInsts, UnifyInsts, MergeInsts, GroundInsts,
-		AnyInsts, SharedInsts, NondetLiveInsts, ClobberedInsts,
-		InstKeys).
-
-inst_table_set_all_tables(_InstTable0, SubInsts, UnifyInsts, MergeInsts,
-		GroundInsts, AnyInsts, SharedInsts, NondetLiveInsts,
-		ClobberedInsts, InstKeys, InstTable) :-
-	InstTable  = inst_table(SubInsts, UnifyInsts, MergeInsts, GroundInsts,
-		AnyInsts, SharedInsts, NondetLiveInsts, ClobberedInsts,
-		InstKeys).
-
-inst_table_get_substitution_insts(inst_table(SubInsts, _, _, _, _, _, _, _, _),
-			SubInsts).
-
-inst_table_get_unify_insts(inst_table(_, UnifyInsts, _, _, _, _, _, _, _),
-			UnifyInsts).
-
-inst_table_get_merge_insts(inst_table(_, _, MergeInsts, _, _, _, _, _, _),
-			MergeInsts).
-
-inst_table_get_ground_insts(inst_table(_, _, _, GroundInsts, _, _, _, _, _),
-			GroundInsts).
-
-inst_table_get_any_insts(inst_table(_, _, _, _, AnyInsts, _, _, _, _),
-			AnyInsts).
-
-inst_table_get_shared_insts(inst_table(_, _, _, _, _, SharedInsts, _, _, _),
-			SharedInsts).
-
-inst_table_get_mostly_uniq_insts(
-			inst_table(_, _, _, _, _, _, NondetLiveInsts, _, _),
-			NondetLiveInsts).
-
-inst_table_get_clobbered_insts(
-			inst_table(_, _, _, _, _, _, _, ClobberedInsts, _),
-			ClobberedInsts).
-
-inst_table_get_inst_key_table(inst_table(_, _, _, _, _, _, _, _, InstKeyTable),
-			InstKeyTable).
-
-inst_table_set_substitution_insts(inst_table(_, B, C, D, E, F, G, H, I),
-			SubInsts,
-			inst_table(SubInsts, B, C, D, E, F, G, H, I)).
-
-inst_table_set_unify_insts(inst_table(A, _, C, D, E, F, G, H, I), UnifyInsts,
-			inst_table(A, UnifyInsts, C, D, E, F, G, H, I)).
-
-inst_table_set_merge_insts(inst_table(A, B, _, D, E, F, G, H, I), MergeInsts,
-			inst_table(A, B, MergeInsts, D, E, F, G, H, I)).
-
-inst_table_set_ground_insts(inst_table(A, B, C, _, E, F, G, H, I), GroundInsts,
-			inst_table(A, B, C, GroundInsts, E, F, G, H, I)).
-
-inst_table_set_any_insts(inst_table(A, B, C, D, _, F, G, H, I), AnyInsts,
-			inst_table(A, B, C, D, AnyInsts, F, G, H, I)).
-
-inst_table_set_shared_insts(inst_table(A, B, C, D, E, _, G, H, I), SharedInsts,
-			inst_table(A, B, C, D, E, SharedInsts, G, H, I)).
-
-inst_table_set_mostly_uniq_insts(inst_table(A, B, C, D, E, F, _, H, I),
-			NondetLiveInsts,
-			inst_table(A, B, C, D, E, F, NondetLiveInsts, H, I)).
-
-inst_table_set_clobbered_insts(inst_table(A, B, C, D, E, F, G, _, I),
-			ClobberedInsts,
-			inst_table(A, B, C, D, E, F, G, ClobberedInsts, I)).
-
-inst_table_set_inst_key_table(inst_table(A, B, C, D, E, F, G, H, _), InstKeys,
-			inst_table(A, B, C, D, E, F, G, H, InstKeys)).
 
 user_inst_table_init(user_inst_table(InstDefns, InstIds)) :-
 	map__init(InstDefns),
@@ -657,8 +442,6 @@ user_inst_table_optimize(user_inst_table(InstDefns0, InstIds0),
 			user_inst_table(InstDefns, InstIds)) :-
 	map__optimize(InstDefns0, InstDefns),
 	list__sort(InstIds0, InstIds).
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
 
 :- interface.
 
@@ -756,14 +539,10 @@ mode_table_optimize(mode_table(ModeDefns0, ModeIds0),
 %-----------------------------------------------------------------------------%
 :- interface.
 
-:- type determinism	--->	det
-			;	semidet
-			;	nondet
-			;	multidet
-			;	cc_nondet
-			;	cc_multidet
-			;	erroneous
-			;	failure.
+%
+% Types and procedures for decomposing and analysing determinism.
+% The `determinism' type itself is defined in prog_data.m.
+%
 
 :- type can_fail	--->	can_fail
 			;	cannot_fail.
@@ -896,4 +675,52 @@ determinism_to_code_model(failure,     model_semi).
 	% doing this with graphs or relations...
 :- type superclass_table == multi_map(class_id, subclass_details).
 
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+:- interface.
+
+	%
+	% A table that records all the assertions in the system.
+	% An assertion is a goal that will always evaluate to true,
+	% subject to the constraints imposed by the quantifiers.
+	%
+	% ie :- assertion all [A] some [B] (B > A)
+	% 
+	% The above assertion states that for all possible values of A,
+	% there will exist at least one value, B, such that B is greater
+	% then A.
+	%
+:- type assert_id.
+:- type assertion_table.
+
+:- pred assertion_table_init(assertion_table::out) is det.
+
+:- pred assertion_table_add_assertion(pred_id::in, assertion_table::in,
+		assert_id::out, assertion_table::out) is det.
+
+:- pred assertion_table_lookup(assertion_table::in, assert_id::in,
+		pred_id::out) is det.
+
+:- implementation.
+
+:- import_module int.
+
+:- type assert_id == int.
+:- type assertion_table 
+	---> 	assertion_table(assert_id, map(assert_id, pred_id)).
+
+assertion_table_init(assertion_table(0, AssertionMap)) :-
+	map__init(AssertionMap).
+
+assertion_table_add_assertion(Assertion, AssertionTable0, Id, AssertionTable) :-
+	AssertionTable0 = assertion_table(Id, AssertionMap0),
+	map__det_insert(AssertionMap0, Id, Assertion, AssertionMap),
+	AssertionTable = assertion_table(Id + 1, AssertionMap).
+
+assertion_table_lookup(AssertionTable, Id, Assertion) :-
+	AssertionTable = assertion_table(_MaxId, AssertionMap),
+	map__lookup(AssertionMap, Id, Assertion).
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

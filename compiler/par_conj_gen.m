@@ -103,7 +103,7 @@
 
 :- import_module hlds_data, code_gen, code_util, options, globals, prog_data.
 :- import_module hlds_module, (inst), instmap, mode_util, code_info.
-:- import_module continuation_info, inst_match.
+:- import_module continuation_info, inst_match, inst_table.
 :- import_module set, tree, list, map, std_util, require, int.
 
 %---------------------------------------------------------------------------%

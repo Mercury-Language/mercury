@@ -9,7 +9,7 @@
 cat mdb_categories > mdb_doc
 
 tmp="mdb_doc_tmp.$$"
-trap '/bin/rm -f $tmp' 0 1 2 3 15
+trap 'rm -f $tmp' 0 1 2 3 15
 
 info -f ./mercury_user_guide.info -o $tmp -n "Mercury debugger concepts"
 ../util/info_to_mdb concepts $tmp >> mdb_doc

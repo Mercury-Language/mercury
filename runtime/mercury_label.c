@@ -177,6 +177,10 @@ MR_prev_entry_by_addr(const Code *addr)
 	lo = 0;
 	hi = entry_array_next-1;
 
+	if (addr < entry_array[lo].e_addr) {
+		return NULL;
+	}
+
 	while (lo <= hi) {
 		mid = (lo + hi) / 2;
 		if (entry_array[mid].e_addr == addr) {
@@ -250,7 +254,12 @@ MR_lookup_internal_by_addr(const Code *addr)
 static const void *
 internal_addr(const void *internal)
 {
-	return (const void *) (((const MR_Internal *) internal)->i_addr);
+	if (internal == NULL) {
+		return NULL;
+	} else {
+		return (const void *)
+			(((const MR_Internal *) internal)->i_addr);
+	}
 }
 
 static bool 

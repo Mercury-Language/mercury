@@ -72,21 +72,21 @@ This guide describes the compilation environment of Mercury ---
 how to build and debug Mercury programs.
 
 @menu
-* Introduction::    General overview
-* Filenames::       File naming conventions
-* Using mmc::       Compiling and linking programs with the Mercury compiler
-* Running::         Execution of programs built with the Mercury compiler
-* Using Mmake::     ``Mercury Make'', a tool for building Mercury programs
-* Libraries::       Creating and using libraries of Mercury modules
-* Debugging::       The Mercury debugger @samp{mdb}
+* Introduction::    General overview.
+* Filenames::       File naming conventions.
+* Using mmc::       Compiling and linking programs with the Mercury compiler.
+* Running::         Execution of programs built with the Mercury compiler.
+* Using Mmake::     ``Mercury Make'', a tool for building Mercury programs.
+* Libraries::       Creating and using libraries of Mercury modules.
+* Debugging::       The Mercury debugger @samp{mdb}.
 * Profiling::       The Mercury profiler @samp{mprof}, a tool for analyzing
-                    program performance
-* Invocation::      List of options for the Mercury compiler
-* Environment::     Environment variables used by the compiler and utilities
-* C compilers::     How to use a C compiler other than GNU C
+                    program performance.
+* Invocation::      List of options for the Mercury compiler.
+* Environment::     Environment variables used by the compiler and utilities.
+* C compilers::     How to use a C compiler other than GNU C.
 @ifset aditi 
 * Using Aditi::     Executing Mercury predicates using the Aditi
-                    deductive database
+                    deductive database.
 @end ifset 
 @c XXX I'd like to put the Aditi section below the Using libraries section
 @c in the menu but texinfo doesn't seem to like `@ifset's in menus.
@@ -158,6 +158,8 @@ Files ending in @file{.d} are automatically-generated Makefile fragments
 which contain the dependencies for a module.
 Files ending in @file{.dep} are automatically-generated Makefile fragments
 which contain the rules for an entire program.
+Files ending in @file{.dv} are automatically-generated Makefile fragments
+which contain variable definitions for an entire program.
 
 As usual, @file{.c} files are C source code,
 @file{.h} files are C header files,
@@ -360,16 +362,16 @@ based on automatically generated dependency information.
 Most of the dependencies are stored in @file{.d} files that are
 automatically recomputed every time you recompile,
 so they are never out-of-date.
-A little bit of the dependency information is stored in @file{.dep} files
-which are more expensive to recompute.
-The @samp{mmake @var{main-module}.depend} command
-which recreates the @file{@var{main-module}.dep} file
-needs to be repeated only when you add or remove a module from your program,
-and there is no danger of getting an inconsistent executable
-if you forget this step --- instead you will get a compile or link error.
+A little bit of the dependency information is stored in @file{.dep}
+and @file{.dv} files which are more expensive to recompute.
+The @samp{mmake @var{main-module}.depend} command which recreates the
+@file{@var{main-module}.dep} and @file{@var{main-module}.dv} files needs
+to be repeated only when you add or remove a module from your program,
+and there is no danger of getting an inconsistent executable if you forget
+this step --- instead you will get a compile or link error.
 
 @samp{mmake} allows you to build more than one program in the same directory.
-Each program must have its own @file{.dep} file,
+Each program must have its own @file{.dep} and @file{.dv} files,
 and therefore you must run @samp{mmake @var{program}.depend}
 for each program.
 
@@ -384,14 +386,18 @@ Mmake's builtin rules are defined by the file
 @file{@var{prefix}/lib/mercury/mmake/Mmake.rules}
 (where @var{prefix} is @file{/usr/local/mercury-@var{version}} by default,
 and @var{version} is the version number, e.g. @samp{0.6}),
-as well as the rules in the automatically-generated @file{.dep} files.
+as well as the rules and variables in the automatically-generated
+@file{.dep} and @file{.dv} files.
 These rules define the following targets:
 
 @table @file
 @item @var{main-module}.depend
-Creates the file @file{@var{main-module}.dep} from @file{@var{main-module}.m}
+Creates the files @file{@var{main-module}.dep} and
+@file{@var{main-module}.dv} from @file{@var{main-module}.m}
 and the modules it imports.
 This step must be performed first.
+It is also required whenever you wish to change the level of
+inter-module optimization performed (@pxref{Overall optimization options}).
 
 @item @var{main-module}.ints
 Ensure that the interface files for @var{main-module}
@@ -412,30 +418,31 @@ Error messages are placed in @file{.err} files.
 @item @var{main-module}.split
 Compiles and links @var{main-module} using the Mercury compiler,
 with the Mercury compiler's @samp{--split-c-files} option enabled.
-@xref{Output-level (LLDS -> C) optimization options} for more information
-about @samp{--split-c-files}.
+For more information about @samp{--split-c-files}, see
+@ref{Output-level (LLDS -> C) optimization options}.
 
 @item lib@var{main-module}
 Builds a library whose top-level module is @var{main-module}.
 This will build a static object library, a shared object library
 (for platforms that support it), and the necessary interface files.
-@xref{Libraries} for more information.
+For more information, see @ref{Libraries}.
 
 @item @var{main-module}.clean
 Removes the automatically generated files
 that contain the compiled code of the program
 and the error messages produced by the compiler.
 Specifically, this will remove all the @samp{.c}, @samp{.s}, @samp{.o},
-@samp{.no}, @samp{.ql}, and @samp{.err} files
+@samp{.pic_o}, @samp{.prof}, @samp{.no}, @samp{.ql},
+@ifset aditi
+@samp{.schema},
+@end ifset
+and @samp{.err} files
 belonging to the named @var{main-module} or its imported modules.
-
-@item @var{main-module}.change_clean
-Removes files that need updating when changing compilation model
-(@pxref{Compilation model options}) or
-when enabling inter-module optimization.
-Specifically, this will remove all the @samp{.c}, @samp{.s}, @samp{.o},
-@samp{.dep} and executable files belonging to the named @var{main-module}
-or its imported modules.
+Use this target whenever you wish to change compilation model
+(@pxref{Compilation model options}).
+This target is also recommended whenever you wish to change the level
+of inter-module optimization performed (@pxref{Overall optimization
+options}) in addition to the mandatory @var{main-module}.depend.
 
 @item @var{main-module}.realclean
 Removes all the automatically generated files.
@@ -447,25 +454,42 @@ removes the @samp{.int}, @samp{.int0}, @samp{.int2},
 @ifset aditi
 @samp{.rlo},
 @end ifset
-@samp{.d}, and @samp{.dep} belonging to one of the modules of the program,
-and also the various possible executables for the program ---
+@samp{.h} and @samp{.d} files
+belonging to one of the modules of the program,
+and also the various possible executables, libraries and dependency files
+for the program as a whole ---
 @samp{@var{main-module}},
+@samp{@var{main-module}.split},
 @samp{@var{main-module}.nu},
 @samp{@var{main-module}.nu.save},
 @samp{@var{main-module}.nu.debug},
 @samp{@var{main-module}.nu.debug.save},
-@samp{@var{main-module}.sicstus}, and
-@samp{@var{main-module}.sicstus.debug}.
+@samp{@var{main-module}.sicstus},
+@samp{@var{main-module}.sicstus.debug},
+@samp{lib@var{main-module}.a},
+@samp{lib@var{main-module}.so},
+@samp{@var{main-module}.split.a},
+@samp{@var{main-module}.init},
+@samp{@var{main-module}.dep}
+and
+@samp{@var{main-module}.dv}.
 
 @item clean
 This makes @samp{@var{main-module}.clean} for every @var{main-module}
 for which there is a @file{@var{main-module}.dep} file in the current
-directory.
+directory, as well as deleting the profiling files
+@samp{Prof.CallPair},
+@samp{Prof.Counts},
+@samp{Prof.Decl},
+@samp{Prof.MemWords}
+and
+@samp{Prof.MemCells}.
 
 @item realclean
 This makes @samp{@var{main-module}.realclean} for every @var{main-module}
 for which there is a @file{@var{main-module}.dep} file in the current
-directory.
+directory, as well as deleting the profiling files as per the @samp{clean}
+target.
 
 @end table
 
@@ -517,8 +541,26 @@ that you are building.
 
 @item C2INITFLAGS and EXTRA_C2INITFLAGS
 Options to pass to the c2init program.
-(Note that compilation model options should be
-specified in @code{GRADEFLAGS}, not in @code{C2INITFLAGS}.)
+(Note that compilation model options and extra files to be processed by
+c2init should not be specified in @code{C2INITFLAGS} - they should be
+specified in @code{GRADEFLAGS} and @code{C2INITARGS}, respectively.)
+
+@item C2INITARGS and EXTRA_C2INITARGS
+Extra files to be processed by c2init.  These variables should not be
+used for specifying flags to c2init (that's what @code{C2INITFLAGS} is for)
+since they are also used to derive extra dependency information.
+
+@item EXTRA_LIBRARIES
+A list of extra Mercury libraries to link into any programs or libraries
+that you are building.
+Libraries should be specified using their base name; that is, without any
+@samp{lib} prefix or extension.
+For example the library including the files @file{libfoo.a} and
+@file{foo.init} would be referred to as just @samp{foo}.
+
+@item EXTRA_LIB_DIRS
+A list of extra Mercury library directory hierarchies to search when
+looking for extra libraries.
 @end table
 
 Other variables also exist - see
@@ -571,6 +613,7 @@ and, on many platforms, it supports shared object libraries.
 * Building libraries::
 * Installing libraries::
 * Using libraries::
+* Supporting multiple grades and architectures::
 @end menu
 
 @node Writing libraries
@@ -582,7 +625,7 @@ It may be as simple as this @file{mypackage.m} file:
 
 @example
 :- module mypackage.
-:- interface
+:- interface.
 :- include_module foo, bar, baz.
 @end example
 
@@ -717,7 +760,7 @@ library.
 @section Using libraries
 
 To use a library, you need to set the Mmake variables @samp{VPATH},
-@samp{MCFLAGS}, @samp{MLFLAGS}, @samp{MLLIBS}, and @samp{C2INITFLAGS}
+@samp{MCFLAGS}, @samp{MLFLAGS}, @samp{MLLIBS}, and @samp{C2INITARGS}
 to specify the name and location of the library or libraries that you
 wish to use. If you are using @samp{--intermodule-optimization}, you
 may also need to set @samp{MGNUCFLAGS} if the library uses the C interface.
@@ -737,8 +780,8 @@ MCFLAGS = -I$(MYPACKAGE_DIR) -I$(MYOTHERLIB_DIR) $(EXTRA_MCFLAGS)
 MLFLAGS = -R$(MYPACKAGE_DIR) -R$(MYOTHERLIB_DIR) $(EXTRA_MLFLAGS) \
           -L$(MYPACKAGE_DIR) -L$(MYOTHERLIB_DIR)
 MLLIBS = -lmypackage -lmyotherlib $(EXTRA_MLLIBS)
-C2INITFLAGS = $(MYPACKAGE_DIR)/mypackage.init \
-              $(MYOTHERLIB_DIR)/myotherlib.init
+C2INITARGS = $(MYPACKAGE_DIR)/mypackage.init \
+             $(MYOTHERLIB_DIR)/myotherlib.init
 
 # This line may be needed if @samp{--intermodule-optimization}
 # is in @samp{MCFLAGS}. @samp{-I} options should be added for any other
@@ -754,9 +797,11 @@ the loader where to find shared libraries, and the @samp{-L}
 options tell the linker where to find libraries.
 (Note that the @samp{-R} options must precede the @samp{-L} options.)
 The @samp{-l} options tell the linker which libraries to link with.
-The extra arguments to @samp{c2init} specified in the @samp{C2INITLFLAGS}
-variable tell @samp{c2init} where to find the @samp{.init} files for the
-libraries, so that it can generate appropriate initialization code.
+The extra arguments to @samp{c2init} specified in the @samp{C2INITARGS}
+variable tell @samp{c2init} where to find the @samp{.init} files for
+the libraries (so that it can generate appropriate initialization code)
+as well as telling Mmake that any @samp{_init.c} files generated depend
+on these files.
 The @samp{-I} options in @samp{MGNUCFLAGS} tell the C preprocessor where
 to find the header files for the libraries.
 
@@ -765,6 +810,45 @@ shared object library, interface files and initialization file
 for each Mercury library being used are all put in a single directory,
 which is probably the simplest way of organizing things, but the
 Mercury implementation does not require that.
+
+@node Supporting multiple grades and architectures
+@section Supporting multiple grades and architectures
+
+In order to better support using and installing libraries in multiple
+grades, @samp{mmake} now has some support for alternative library directory
+hierarchies.
+These have the same structure as the @file{@var{prefix}/lib/mercury} tree,
+including the different subdirectories for different grades and different
+machine architectures.
+
+Automatically installing a library and all its associated files to such a
+tree is not yet supported, but until it is the user can use the same
+techniques used for building and installing the core Mercury libraries.
+
+Once a library is installed in such a hierarchy, using it is easy.
+Suppose the user wishes to use the library @samp{mypackage} (installed
+in the tree rooted at @samp{/some/directory/mypackage}) and the library
+@samp{myotherlib} (installed in the tree rooted at
+@samp{/some/directory/myotherlib}).
+The user need only set the following Mmake variables:
+
+@example
+EXTRA_LIB_DIRS = /some/directory/mypackage /some/directory/myotherlib
+EXTRA_LIBRARIES = mypackage myotherlib
+@end example
+
+Mmake will then ensure that the appropriate directories are searched for
+the relevant interface files, module initialisation files, compiled
+libraries, etc.
+
+One can specify extra libraries to be used on a program-by-program
+basis.  For instance, if the program @samp{foo} also uses the library
+@samp{mylib4foo}, but the other programs governed by the Mmakefile don't,
+then one can declare:
+
+@example
+EXTRA_LIBRARIES-foo = mylib4foo
+@end example
 
 @node Debugging
 @chapter Debugging
@@ -1135,7 +1219,7 @@ The executables of Mercury programs
 by default do not invoke the Mercury debugger
 even if some or all of their modules were compiled with some form of tracing,
 and even if the grade of the executable is a debugging grade,
-This is similar to the behavior of executables
+This is similar to the behaviour of executables
 created by the implementations of other languages;
 for example the executable of a C program compiled with @samp{-g}
 does not automatically invoke gdb or dbx etc when it is executed.
@@ -1213,14 +1297,14 @@ The effect of a break point depends on the state of the break point.
 If the state of the break point is @samp{stop},
 execution will stop and user interaction will start
 at any event within the procedure that matches the invocation conditions,
-unless the current debugger command has specifically disabled this behavior
+unless the current debugger command has specifically disabled this behaviour
 (see the concept @samp{strict commands} below).
 @sp 1
 @item
 If the state of the break point is @samp{print},
 the debugger will print any event within the procedure
 that matches the invocation conditions,
-unless the current debugger command has specifically disabled this behavior
+unless the current debugger command has specifically disabled this behaviour
 (see the concept @samp{print level} below).
 @end itemize
 @sp 1
@@ -1728,7 +1812,7 @@ This command sets the options that will be passed to @samp{mmc}
 to compile your query when you use one of the query commands:
 @samp{query}, @samp{cc_query}, or @samp{io_query}.
 For example, if a query results in a compile error,
-it may sometimes be helpful to use @samp{mmc_options --verbose-errors}.
+it may sometimes be helpful to use @samp{mmc_options --verbose-error-messages}.
 @sp 1
 @item printlevel none
 Sets the default print level to @samp{none}.
@@ -1863,6 +1947,9 @@ Prints the contents of the fixed slots of the frames on the nondet stack.
 @item stack_regs
 Prints the contents of the virtual machine registers
 that point to the det and nondet stacks.
+@sp 1
+@item all_regs
+Prints the contents of all the virtual machine registers.
 @end table
 @node Miscellaneous commands
 @subsection Miscellaneous commands
@@ -1889,9 +1976,9 @@ information:
 
 @itemize @bullet
 @item
-the ``Aditi deductive database interface'' section in 
-Mercury Language Reference Manual (listed under
-``Implementation dependent pragmas'' in the ``Pragmas'' chapter)
+the ``Aditi deductive database interface'' section of the
+``Implementation-dependent extensions'' chapter in the
+Mercury Language Reference Manual
 @item
 the Aditi Reference Manual (doesn't exist yet) @c XXX
 @item
@@ -1948,11 +2035,11 @@ engineer's toolkit.
 To enable profiling, your program must be built with profiling enabled.
 This can be done by passing the @samp{-p} (@samp{--profiling}) option
 to @samp{mmc} (and also to @samp{mgnuc} and @samp{ml}, if you invoke them
-seperately).  If you are using Mmake, then
+separately).  If you are using Mmake, then
 you can do this by setting the @samp{GRADEFLAGS} variable in your Mmakefile,
 e.g. by adding the line @samp{GRADEFLAGS=--profiling}. 
-@xref{Compilation model options} for more information about the
-different grades.
+For more information about the different grades, see
+@ref{Compilation model options}.
 
 Enabling profiling has several effects.  Firstly, it causes the
 compiler to generate slightly modified code which counts the number
@@ -2436,8 +2523,9 @@ an executable.
 @table @code
 @item -M
 @itemx --generate-dependencies
-Output ``Make''-style dependencies for the module
-and all of its dependencies to @file{@var{module}.dep}.
+Output ``Make''-style dependencies for the module and all of its
+dependencies to @file{@var{module}.dep}, @file{@var{module}.dv} and the
+relevant @samp{.d} files.
 
 @item --generate-module-order
 Output the strongly connected components of the module
@@ -2544,10 +2632,10 @@ string and print it on the standard output.
 @section Auxiliary output options
 @table @code
 @item --no-assume-gmake
-When generating @file{.dep} files, generate Makefile
-fragments that use only the features of standard make;
+When generating @file{.d}, @file{.dep} and @file{.dv} files,
+generate Makefile fragments that use only the features of standard make;
 do not assume the availability of GNU Make extensions.
-This makes these files significantly larger.
+This can make these files significantly larger.
 
 @item --trace-level @var{level}
 Generate code that includes the specified level of execution tracing.
@@ -2736,8 +2824,8 @@ Perform at most @var{n} passes of mode inference (default: 30).
 @section Termination analysis options
 
 For detailed explanations, see the ``Termination analysis'' section
-in Mercury Language Reference Manual.  (It is listed under
-``Implementation dependent pragmas'' in the ``Pragmas'' chapter.)
+of the ``Implementation-dependent extensions'' chapter in the Mercury
+Language Reference Manual.
 
 @table @code
 @item --enable-term
@@ -2976,7 +3064,7 @@ call counts for an identical run of your program need to be gathered
 using @samp{--profiling} or @samp{--profile-calls}.
 XXX this doesn't work, because the code addresses change.
 The only advantage of using @samp{--profile-time} and @samp{--profile-calls}
-to gather timing information and call counts in seperate runs,
+to gather timing information and call counts in separate runs,
 rather than just using @samp{--profiling} to gather them both at once,
 is that the former method can give slightly more accurate timing results.
 because with the latter method the code inserted to record call counts
@@ -3026,20 +3114,6 @@ Use @var{n} tag bits.  This option is required if you specify
 @samp{--tags high}.
 With @samp{--tags low}, the default number of tag bits to use
 is determined by the auto-configuration script.
-
-@sp 1
-@item @code{--args @{simple, compact@}}
-@item @code{--arg-convention @{simple, compact@}}
-(This option is not intended for general use.)@*
-Use the specified argument passing convention
-in the generated low-level C code.
-With the @samp{simple} convention,
-the @var{n}th argument is passed in or out using register r@var{n}.
-With the @samp{compact} convention,
-the @var{n}th input argument is passed using register r@var{n}
-and the @var{n}th output argument is returned using register r@var{n}.
-The @samp{compact} convention, which is the default,
-generally leads to more efficient code.
 
 @sp 1
 @item @code{--no-type-layout}
@@ -3215,7 +3289,7 @@ levels higher than that give better optimization, but take longer,
 and are subject to the law of diminishing returns.  The difference in
 the quality of the generated code between optimization level 5 and
 optimization level 6 is very small, but using level 6 may increase
-compiation time and memory requirements dramatically.
+compilation time and memory requirements dramatically.
 
 Note that if you want the compiler to perform cross-module
 optimizations, then you must enable them separately;
@@ -3240,7 +3314,7 @@ predicates or functions imported from other modules.
 @itemx --transitive-intermodule-optimization
 Use the information stored in @file{@var{module}.trans_opt} files
 to make intermodule optimizations.  The @file{@var{module}.trans_opt} files
-are differents to the @file{@var{module}.opt} files as @samp{.trans_opt}
+are different to the @file{@var{module}.opt} files as @samp{.trans_opt}
 files may depend on other @samp{.trans_opt} files, whereas each
 @samp{.opt} file may only depend on the corresponding @samp{.m} file. 
 
@@ -3370,6 +3444,11 @@ and branched goals.
 Evaluate constant expressions at compile time.
 
 @sp 1
+@item --introduce-accumulators
+Attempt to introduce accumulating variables into
+procedures, so as to make the procedure tail recursive.
+
+@sp 1
 @item --optimize-constructor-last-call
 Enable the optimization of ``last'' calls that are followed by
 constructor application.
@@ -3409,7 +3488,7 @@ low-level intermediate code from our high-level data structure.
 @item --no-static-ground-terms
 Disable the optimization of constructing constant ground terms
 at compile time and storing them as static constants.
-Note that auxiliarity data structures created by the compiler
+Note that auxiliary data structures created by the compiler
 for purposes such as debugging
 will still be created as static constants.
 
@@ -3802,7 +3881,7 @@ to differ as much as possible modulo this size.
 @c @item -d @var{debugflag}
 @c Sets a low-level debugging flag.
 @c These flags are consulted only if
-@c the runtime was compiled with the approriate definitions;
+@c the runtime was compiled with the appropriate definitions;
 @c most of them depend on MR_LOWLEVEL_DEBUG.
 @c For the meanings of the debugflag parameters,
 @c see process_options() in mercury_wrapper.c

@@ -524,15 +524,15 @@ produce_auxiliary_procs(ClassVars,
 	varset__init(VarSet0),
 	make_n_fresh_vars("HeadVar__", PredArity, VarSet0, HeadVars, VarSet), 
 	map__from_corresponding_lists(HeadVars, ArgTypes, VarTypes),
-	DummyClausesInfo = clauses_info(VarSet, VarTypes, VarTypes, HeadVars,
-		DummyClause),
+	map__init(TI_VarMap),
+	map__init(TCI_VarMap),
+	ClausesInfo0 = clauses_info(VarSet, VarTypes, VarTypes, HeadVars,
+		DummyClause, TI_VarMap, TCI_VarMap),
 
 	pred_info_init(ModuleName, PredName, PredArity, ArgTypeVars, 
-		ExistQVars, ArgTypes, Cond, Context, DummyClausesInfo, Status,
+		ExistQVars, ArgTypes, Cond, Context, ClausesInfo0, Status,
 		Markers, none, PredOrFunc, ClassContext, Proofs, User,
 		PredInfo0),
-
-	globals__get_args_method(Globals, ArgsMethod),
 
 		% Add procs with the expected modes and determinisms
 	AddProc = lambda([ModeAndDet::in, NewProcId::out,
@@ -540,7 +540,8 @@ produce_auxiliary_procs(ClassVars,
 	(
 		ModeAndDet = Modes - Det,
 		add_new_proc(OldPredInfo, PredArity, Modes, yes(Modes), no,
-			yes(Det), Context, ArgsMethod, NewPredInfo, NewProcId)
+			yes(Det), Context, address_is_taken,
+			NewPredInfo, NewProcId)
 	)),
 	list__map_foldl(AddProc, ArgModes, InstanceProcIds, 
 		PredInfo0, PredInfo1),
@@ -573,13 +574,15 @@ produce_auxiliary_procs(ClassVars,
 		IntroducedGoal = IntroducedGoalExpr - GoalInfo
 	),
 	IntroducedClause = clause(InstanceProcIds, IntroducedGoal, Context),
-	ClausesInfo = clauses_info(VarSet, VarTypes, VarTypes, HeadVars,
-		[IntroducedClause]),
+	clauses_info_set_clauses(ClausesInfo0, [IntroducedClause], ClausesInfo),
 	pred_info_set_clauses_info(PredInfo1, ClausesInfo, PredInfo),
 
 	module_info_get_predicate_table(ModuleInfo0, PredicateTable0),
+	module_info_get_partial_qualifier_info(ModuleInfo0, PQInfo),
+	% XXX why do we need to pass may_be_unqualified here,
+	%     rather than passing must_be_qualified or calling the /4 version?
 	predicate_table_insert(PredicateTable0, PredInfo,
-		may_be_unqualified, PredId, PredicateTable),
+		may_be_unqualified, PQInfo, PredId, PredicateTable),
 	module_info_set_predicate_table(ModuleInfo0, PredicateTable,
 		ModuleInfo),
 

@@ -46,13 +46,19 @@
 :- module unify_proc.
 
 :- interface.
-:- import_module hlds_module, hlds_pred, hlds_goal, hlds_data.
-:- import_module mode_info, prog_data, special_pred.
+:- import_module hlds_module, hlds_pred, hlds_data, inst_table.
+:- import_module mode_info, prog_data, special_pred, instmap, (inst).
 :- import_module bool, std_util, io, list.
 
 :- type proc_requests.
 
-:- type unify_proc_id == pair(type_id, uni_mode).
+:- type unify_proc_id
+	--->	unify_proc_id(
+			type_id,
+			(inst),		% LHS initial inst.
+			(inst),		% RHS initial inst.
+			inst_table
+		).
 
 	% Initialize the proc_requests table.
 
@@ -63,7 +69,7 @@
 	% proc_requests table.
 
 :- pred unify_proc__request_unify(unify_proc_id, determinism, prog_context,
-				inst_table, module_info, module_info).
+			instmap, module_info, module_info).
 :- mode unify_proc__request_unify(in, in, in, in, in, out) is det.
 
 	% Add a new request for a procedure (not necessarily a unification)
@@ -91,9 +97,9 @@
 	% Given the type and mode of a unification, look up the
 	% mode number for the unification proc.
 
-:- pred unify_proc__lookup_mode_num(inst_table, module_info, type_id,
-					uni_mode, determinism, proc_id).
-:- mode unify_proc__lookup_mode_num(in, in, in, in, in, out) is det.
+:- pred unify_proc__lookup_mode_num(instmap, module_info, unify_proc_id,
+		determinism, proc_id).
+:- mode unify_proc__lookup_mode_num(in, in, in, in, out) is det.
 
 	% Generate the clauses for one of the compiler-generated
 	% special predicates (compare/3, index/3, unify, etc.)
@@ -109,12 +115,13 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module tree, map, queue, int, string, require.
+:- import_module tree, map, queue, int, string, require, assoc_list.
+:- import_module term, varset.
 
 :- import_module code_util, code_info, type_util.
-:- import_module mercury_to_mercury, hlds_out.
-:- import_module make_hlds, prog_util, prog_out, inst_match.
-:- import_module quantification, clause_to_proc, term, varset.
+:- import_module mercury_to_mercury, hlds_out, hlds_goal.
+:- import_module make_hlds, prog_util, prog_out, inst_match, inst_table.
+:- import_module quantification, clause_to_proc, inst_util, inst_table.
 :- import_module globals, options, modes, mode_util, (inst), instmap.
 :- import_module switch_detection, cse_detection, det_analysis, unique_modes.
 :- import_module llds_out.
@@ -125,7 +132,7 @@
 	% (mode number) of the unification procedure which corresponds to
 	% that mode.
 
-:- type unify_req_map == map(unify_proc_id, proc_id).
+:- type unify_req_map == map(type_id, assoc_list(unify_proc_id, proc_id)).
 
 :- type req_queue == queue(pred_proc_id).
 
@@ -173,19 +180,21 @@ unify_proc__set_req_queue(proc_requests(A, _), ReqQueue,
 
 %-----------------------------------------------------------------------------%
 
-unify_proc__lookup_mode_num(InstTable, ModuleInfo, TypeId, UniMode, Det, Num) :-
+unify_proc__lookup_mode_num(InstMap, ModuleInfo, UnifyId0, Det, Num) :-
 	(
-		unify_proc__search_mode_num(InstTable, ModuleInfo, TypeId, UniMode,
-				Det, Num1)
+		normalise_unify_id(InstMap, ModuleInfo, UnifyId0, UnifyId),
+		instmap__init_reachable(NewInstMap),
+		unify_proc__search_mode_num(NewInstMap, ModuleInfo, UnifyId,
+			Det, Num1)
 	->
 		Num = Num1
 	;
 		error("unify_proc.m: unify_proc__search_num failed")
 	).
 
-:- pred unify_proc__search_mode_num(inst_table, module_info, type_id,
-				uni_mode, determinism, proc_id).
-:- mode unify_proc__search_mode_num(in, in, in, in, in, out) is semidet.
+:- pred unify_proc__search_mode_num(instmap, module_info, unify_proc_id,
+		determinism, proc_id).
+:- mode unify_proc__search_mode_num(in, in, in, in, out) is semidet.
 
 	% Given the type, mode, and determinism of a unification, look up the
 	% mode number for the unification proc.
@@ -195,10 +204,9 @@ unify_proc__lookup_mode_num(InstTable, ModuleInfo, TypeId, UniMode, Det, Num) :-
 	% we assume that `ground' and `any' have the same representation.)
 	% For unreachable unifications, we also use mode zero.
 
-unify_proc__search_mode_num(InstTable, ModuleInfo, TypeId, UniMode, Determinism,
+unify_proc__search_mode_num(InstMapBefore, ModuleInfo, UnifyId, Determinism,
 		ProcId) :-
-	UniMode = (XInitial - YInitial -> _Final),
-	instmap__init_reachable(InstMapBefore),	% YYY Certainly bogus
+	UnifyId = unify_proc_id(TypeId, XInitial, YInitial, InstTable),
 	(
 		Determinism = semidet,
 		inst_is_ground_or_any(XInitial, InstMapBefore,
@@ -220,22 +228,60 @@ unify_proc__search_mode_num(InstTable, ModuleInfo, TypeId, UniMode, Determinism,
 	;
 		module_info_get_proc_requests(ModuleInfo, Requests),
 		unify_proc__get_unify_req_map(Requests, UnifyReqMap),
-		map__search(UnifyReqMap, TypeId - UniMode, ProcId)
+		map__search(UnifyReqMap, TypeId, UnifyProcs),
+		unify_proc__search_mode_num_2(UnifyProcs, UnifyId, 
+			InstMapBefore, ModuleInfo, ProcId)
+	).
+
+:- pred unify_proc__search_mode_num_2(assoc_list(unify_proc_id, proc_id),
+		unify_proc_id, instmap, module_info, proc_id).
+:- mode unify_proc__search_mode_num_2(in, in, in, in, out) is semidet.
+
+unify_proc__search_mode_num_2([UnifyIdA - ProcId0 | Rest], UnifyIdB,
+		InstMapB, ModuleInfo, ProcId) :-
+	UnifyIdA = unify_proc_id(_, LIA0, RIA0, InstTableA),
+	UnifyIdB = unify_proc_id(_, LIB, RIB, InstTableB),
+
+	inst_table_create_sub(InstTableB, InstTableA, Sub, InstTable),
+	inst_apply_inst_table_sub(Sub, LIA0, LIA),
+	inst_apply_inst_table_sub(Sub, RIA0, RIA),
+
+	instmap__init_reachable(InstMapA),
+
+	(
+		map__init(AliasMapA0),
+		inst_matches_final(LIA, InstMapA, LIB, InstMapB, InstTable,
+			ModuleInfo, AliasMapA0, AliasMapA1),
+		inst_matches_final(RIA, InstMapA, RIB, InstMapB, InstTable,
+			ModuleInfo, AliasMapA1, _),
+
+		map__init(AliasMapB0),
+		inst_matches_final(LIB, InstMapB, LIA, InstMapA, InstTable,
+			ModuleInfo, AliasMapB0, AliasMapB1),
+		inst_matches_final(RIB, InstMapB, RIA, InstMapA, InstTable,
+			ModuleInfo, AliasMapB1, _)
+	->
+		ProcId = ProcId0
+	;
+		unify_proc__search_mode_num_2(Rest, UnifyIdB, InstMapB,
+			ModuleInfo, ProcId)
 	).
 
 %-----------------------------------------------------------------------------%
 
-unify_proc__request_unify(UnifyId, Determinism, Context, InstTable, ModuleInfo0,
-		ModuleInfo) :-
+unify_proc__request_unify(UnifyId0, Determinism, Context, InstMap,
+			ModuleInfo0, ModuleInfo) :-
 	%
 	% check if this unification has already been requested, or
 	% if the proc is hand defined.
 	%
-	UnifyId = TypeId - UnifyMode,
+	normalise_unify_id(InstMap, ModuleInfo0, UnifyId0, UnifyId),
+	UnifyId = unify_proc_id(TypeId, X_Initial, Y_Initial, InstTable0),
+	instmap__init_reachable(NewInstMap),
 	(
 		(
-			unify_proc__search_mode_num(InstTable, ModuleInfo0,
-				TypeId, UnifyMode, Determinism, _)
+			unify_proc__search_mode_num(NewInstMap, ModuleInfo0,
+				UnifyId, Determinism, _)
 		; 
 			type_id_is_hand_defined(TypeId)
 		)
@@ -249,25 +295,44 @@ unify_proc__request_unify(UnifyId, Determinism, Context, InstTable, ModuleInfo0,
 		module_info_get_special_pred_map(ModuleInfo0, SpecialPredMap),
 		map__lookup(SpecialPredMap, unify - TypeId, PredId),
 
-		% convert from `uni_mode' to `list(mode)'
-		UnifyMode = ((X_Initial - Y_Initial) -> (X_Final - Y_Final)),
-		ArgModes = [(X_Initial -> X_Final), (Y_Initial -> Y_Final)],
-		Modes = argument_modes(InstTable, ArgModes),
+		( abstractly_unify_inst(live, X_Initial, Y_Initial, real_unify,
+			InstTable0, ModuleInfo0, NewInstMap, Final0, _,
+			InstTable1, ModuleInfo1, _)
+		->
+			Final = Final0,
+			InstTable = InstTable1,
+			ModuleInfo2 = ModuleInfo1
+		;
+			error("unify_proc__request_unify: error unifying insts")
+		),
+		ArgModes0 = [(X_Initial -> Final), (Y_Initial -> Final)],
+
+		% for polymorphic types, add extra modes for the type_infos
+		TypeId = _TypeName - TypeArity,
+		in_mode(InMode),
+		list__duplicate(TypeArity, InMode, TypeInfoModes),
+		list__append(TypeInfoModes, ArgModes0, ArgModes),
 
 		ArgLives = no,  % XXX ArgLives should be part of the UnifyId
 
+		Modes = argument_modes(InstTable, ArgModes),
 		unify_proc__request_proc(PredId, Modes, ArgLives,
-			yes(Determinism), Context, ModuleInfo0,
-			ProcId, ModuleInfo1),
+			yes(Determinism), Context, ModuleInfo2,
+			ProcId, ModuleInfo3),
 
 		%
 		% save the proc_id for this unify_proc_id
 		%
-		module_info_get_proc_requests(ModuleInfo1, Requests0),
+		module_info_get_proc_requests(ModuleInfo3, Requests0),
 		unify_proc__get_unify_req_map(Requests0, UnifyReqMap0),
-		map__set(UnifyReqMap0, UnifyId, ProcId, UnifyReqMap),
+		( map__search(UnifyReqMap0, TypeId, UnifyProcs0) ->
+			UnifyProcs = [UnifyId - ProcId | UnifyProcs0]
+		;
+			UnifyProcs = [UnifyId - ProcId]
+		),
+		map__set(UnifyReqMap0, TypeId, UnifyProcs, UnifyReqMap),
 		unify_proc__set_unify_req_map(Requests0, UnifyReqMap, Requests),
-		module_info_set_proc_requests(ModuleInfo1, Requests,
+		module_info_set_proc_requests(ModuleInfo3, Requests,
 			ModuleInfo)
 	).
 
@@ -281,10 +346,9 @@ unify_proc__request_proc(PredId, Modes, ArgLives, MaybeDet, Context,
 	Modes = argument_modes(_, ArgModes),
 	list__length(ArgModes, Arity),
 	DeclaredArgModes = no,
-	module_info_globals(ModuleInfo0, Globals),
-	globals__get_args_method(Globals, ArgsMethod),
 	add_new_proc(PredInfo0, Arity, Modes, DeclaredArgModes,
-		ArgLives, MaybeDet, Context, ArgsMethod, PredInfo1, ProcId),
+		ArgLives, MaybeDet, Context, address_is_not_taken,
+		PredInfo1, ProcId),
 
 	%
 	% copy the clauses for the procedure from the pred_info to the
@@ -297,7 +361,11 @@ unify_proc__request_proc(PredId, Modes, ArgLives, MaybeDet, Context,
 	proc_info_set_can_process(ProcInfo0, no, ProcInfo1),
 
 	copy_clauses_to_proc(ProcId, ClausesInfo, ProcInfo1, ProcInfo2),
-	map__det_update(Procs1, ProcId, ProcInfo2, Procs2),
+
+	proc_info_goal(ProcInfo2, Goal0),
+	set_goal_contexts(Context, Goal0, Goal),
+	proc_info_set_goal(ProcInfo2, Goal, ProcInfo),
+	map__det_update(Procs1, ProcId, ProcInfo, Procs2),
 	pred_info_set_procedures(PredInfo1, Procs2, PredInfo2),
 	map__det_update(Preds0, PredId, PredInfo2, Preds2),
 	module_info_set_preds(ModuleInfo0, Preds2, ModuleInfo2),
@@ -310,6 +378,311 @@ unify_proc__request_proc(PredId, Modes, ArgLives, MaybeDet, Context,
 	queue__put(ReqQueue0, proc(PredId, ProcId), ReqQueue),
 	unify_proc__set_req_queue(Requests0, ReqQueue, Requests),
 	module_info_set_proc_requests(ModuleInfo2, Requests, ModuleInfo).
+
+%-----------------------------------------------------------------------------%
+
+	% normalise_unify_id removes all unnecessary aliases and inst_table
+	% entries from the unify_proc_id.
+	% Aliases are retained only between corresponding nodes in the
+	% inst trees of the two arguments.
+	% This is required in order to ensure that the unification
+	% procedure has the correct determinism.
+	% Such aliases also allow us to produce more efficient code for
+	% the unification procedure since, if we know that two
+	% corresponding nodes are already aliased, we don't need to
+	% produce code to unify them. (In such cases the unification
+	% goal will be replaced by conj([]) during mode checking by
+	% categorize_unify_var_var).
+
+	% normalise_unify_id also removes any instmap alias substitution
+	% dependencies from the insts.  This is important since these are
+	% not allowed in the argument insts of a procedure.
+
+:- pred normalise_unify_id(instmap, module_info, unify_proc_id, unify_proc_id).
+:- mode normalise_unify_id(in, in, in, out) is det.
+
+normalise_unify_id(InstMap, ModuleInfo, UnifyId0, UnifyId) :-
+	UnifyId0 = unify_proc_id(TypeId, InstLI0, InstRI0, OrigInstTable),
+
+	inst_table_init(InstTable0),
+	normalise_unify_insts(InstMap, ModuleInfo, OrigInstTable,
+		InstLI0, InstLI, InstRI0, InstRI, InstTable0, InstTable),
+
+	UnifyId = unify_proc_id(TypeId, InstLI, InstRI, InstTable).
+
+:- pred normalise_unify_insts(instmap, module_info, inst_table,
+	inst, inst, inst, inst, inst_table, inst_table).
+:- mode normalise_unify_insts(in, in, in, in, out, in, out, in, out)
+	is det.
+
+normalise_unify_insts(InstMap, ModuleInfo, OrigInstTable, InstL0, InstL,
+		InstR0, InstR, InstTable0, InstTable) :-
+	( ( InstL0 = defined_inst(_) ; InstR0 = defined_inst(_) ) ->
+		inst_remove_aliases(InstL0, InstMap, ModuleInfo, OrigInstTable,
+			InstL, InstTable0, InstTable1),
+		inst_remove_aliases(InstR0, InstMap, ModuleInfo, OrigInstTable,
+			InstR, InstTable1, InstTable)
+	;
+		normalise_unify_insts_2(InstMap, ModuleInfo, OrigInstTable,
+			InstL0, InstL, InstR0, InstR, InstTable0, InstTable)
+	).
+
+:- pred normalise_unify_insts_2(instmap, module_info, inst_table,
+	inst, inst, inst, inst, inst_table, inst_table).
+:- mode normalise_unify_insts_2(in, in, in, in, out, in, out, in, out)
+	is det.
+
+normalise_unify_insts_2(InstMap, ModuleInfo, OrigInstTable,
+		InstL0, InstL, InstR0, InstR, InstTable0, InstTable) :-
+	(
+		InstL0 = alias(IKL)
+	->
+		(
+			InstR0 = alias(IKR)
+		->
+			(
+				instmap__inst_keys_are_equivalent(IKL, InstMap,
+					IKR, InstMap)
+			->
+				inst_remove_aliases(alias(IKL), InstMap,
+					ModuleInfo, OrigInstTable, Inst,
+					InstTable0, InstTable1),
+				inst_table_get_inst_key_table(InstTable1, IKT0),
+				inst_key_table_add(IKT0, Inst, IK, IKT),
+				inst_table_set_inst_key_table(InstTable1, IKT,
+					InstTable),
+				InstL = alias(IK),
+				InstR = alias(IK)
+			;
+				inst_table_get_inst_key_table(OrigInstTable,
+					IKT),
+				instmap__inst_key_table_lookup(InstMap, IKT,
+					IKL, InstL1),
+				instmap__inst_key_table_lookup(InstMap, IKT,
+					IKR, InstR1),
+				normalise_unify_insts(InstMap, ModuleInfo,
+					OrigInstTable, InstL1, InstL,
+					InstR1, InstR, InstTable0, InstTable)
+			)
+		;
+			inst_table_get_inst_key_table(OrigInstTable, IKT),
+			instmap__inst_key_table_lookup(InstMap, IKT, IKL,
+				InstL1),
+			normalise_unify_insts(InstMap, ModuleInfo,
+				OrigInstTable, InstL1, InstL, InstR0, InstR,
+				InstTable0, InstTable)
+		)
+	;
+		InstR0 = alias(IK)
+	->
+		inst_table_get_inst_key_table(OrigInstTable, IKT),
+		instmap__inst_key_table_lookup(InstMap, IKT, IK, InstR1),
+		normalise_unify_insts(InstMap, ModuleInfo, OrigInstTable,
+			InstL0, InstL, InstR1, InstR, InstTable0, InstTable)
+	;
+		InstL0 = bound(UniqL, BoundInstsL0)
+	->
+		(
+			InstR0 = bound(UniqR, BoundInstsR0)
+		->
+			normalise_unify_bound_insts(InstMap, ModuleInfo,
+				OrigInstTable, BoundInstsL0, BoundInstsL,
+				BoundInstsR0, BoundInstsR,
+				InstTable0, InstTable),
+			InstL = bound(UniqL, BoundInstsL),
+			InstR = bound(UniqR, BoundInstsR)
+		;
+			bound_insts_remove_aliases(BoundInstsL0, InstMap,
+				ModuleInfo, OrigInstTable, BoundInstsL,
+				InstTable0, InstTable1),
+			InstL = bound(UniqL, BoundInstsL),
+			inst_remove_aliases(InstR0, InstMap, ModuleInfo,
+				OrigInstTable, InstR, InstTable1, InstTable)
+		)
+	;
+		InstR0 = bound(UniqR, BoundInstsR0)
+	->
+		bound_insts_remove_aliases(BoundInstsR0, InstMap, ModuleInfo,
+			OrigInstTable, BoundInstsR, InstTable0, InstTable1),
+		InstR = bound(UniqR, BoundInstsR),
+		inst_remove_aliases(InstL0, InstMap, ModuleInfo, OrigInstTable,
+			InstL, InstTable1, InstTable)
+	;
+		InstL0 = abstract_inst(Name, InstsL0),
+		InstR0 = abstract_inst(Name, InstsR0),
+		normalise_unify_insts_list(InstMap, ModuleInfo, OrigInstTable,
+			InstsL0, InstsL, InstsR0, InstsR,
+			InstTable0, InstTable1)
+	->
+		InstL = abstract_inst(Name, InstsL),
+		InstR = abstract_inst(Name, InstsR),
+		InstTable = InstTable1
+	;
+		inst_remove_aliases(InstL0, InstMap, ModuleInfo, OrigInstTable,
+			InstL, InstTable0, InstTable1),
+		inst_remove_aliases(InstR0, InstMap, ModuleInfo, OrigInstTable,
+			InstR, InstTable1, InstTable)
+	).
+
+	% normalise_unify_insts fails iff the lists are different lengths.
+:- pred normalise_unify_insts_list(instmap, module_info, inst_table,
+	list(inst), list(inst), list(inst), list(inst), inst_table, inst_table).
+:- mode normalise_unify_insts_list(in, in, in, in, out, in, out, in, out)
+	is semidet.
+
+normalise_unify_insts_list(_, _, _, [], [], [], []) --> [].
+normalise_unify_insts_list(InstMap, ModuleInfo, OrigInstTable,
+		[L0 | Ls0], [L | Ls], [R0 | Rs0], [R | Rs]) -->
+	normalise_unify_insts(InstMap, ModuleInfo, OrigInstTable, L0, L, R0, R),
+	normalise_unify_insts_list(InstMap, ModuleInfo, OrigInstTable,
+		Ls0, Ls, Rs0, Rs).
+
+:- pred normalise_unify_bound_insts(instmap, module_info, inst_table,
+	list(bound_inst), list(bound_inst), list(bound_inst), list(bound_inst),
+	inst_table, inst_table).
+:- mode normalise_unify_bound_insts(in, in, in, in, out, in, out, in, out)
+	is det.
+
+normalise_unify_bound_insts(_, _, _, [], [], [], []) --> [].
+normalise_unify_bound_insts(InstMap, ModuleInfo, OrigInstTable, [], [],
+		BI0, BI) -->
+	{ BI0 = [_|_] },
+	bound_insts_remove_aliases(BI0, InstMap, ModuleInfo, OrigInstTable, BI).
+normalise_unify_bound_insts(InstMap, ModuleInfo, OrigInstTable, BI0, BI,
+		[], []) -->
+	{ BI0 = [_|_] },
+	bound_insts_remove_aliases(BI0, InstMap, ModuleInfo, OrigInstTable, BI).
+normalise_unify_bound_insts(InstMap, ModuleInfo, OrigInstTable,
+		[BL0 | BLs0], BLs, [BR0 | BRs0], BRs) -->
+	{ BL0 = functor(ConsIdL, ILs0) },
+	{ BR0 = functor(ConsIdR, IRs0) },
+	{ compare(Comp, ConsIdL, ConsIdR) },
+	(
+		{ Comp = (=) },
+		( 
+			normalise_unify_insts_list(InstMap, ModuleInfo,
+				OrigInstTable, ILs0, ILs1, IRs0, IRs1)
+		->
+			{ ILs = ILs1 },
+			{ IRs = IRs1 }
+		;
+			insts_remove_aliases(ILs0, InstMap, ModuleInfo,
+				OrigInstTable, ILs),
+			insts_remove_aliases(IRs0, InstMap, ModuleInfo,
+				OrigInstTable, IRs)
+		),
+		{ BLs = [functor(ConsIdL, ILs) | BLs1] },
+		{ BRs = [functor(ConsIdR, IRs) | BRs1] },
+		normalise_unify_bound_insts(InstMap, ModuleInfo, OrigInstTable,
+			BLs0, BLs1, BRs0, BRs1)
+	;
+		{ Comp = (<) },
+		insts_remove_aliases(ILs0, InstMap, ModuleInfo, OrigInstTable,
+			ILs),
+		{ BLs = [functor(ConsIdL, ILs) | BLs1] },
+		normalise_unify_bound_insts(InstMap, ModuleInfo, OrigInstTable,
+			BLs0, BLs1, [BR0 | BRs0], BRs)
+	;
+		{ Comp = (>) },
+		insts_remove_aliases(IRs0, InstMap, ModuleInfo, OrigInstTable,
+			IRs),
+		{ BRs = [functor(ConsIdR, IRs) | BRs1] },
+		normalise_unify_bound_insts(InstMap, ModuleInfo, OrigInstTable,
+			[BL0 | BLs0], BLs, BRs0, BRs1)
+	).
+
+
+%-----------------------------------------------------------------------------%
+
+:- pred inst_remove_aliases(inst, instmap, module_info, inst_table, inst,
+		inst_table, inst_table).
+:- mode inst_remove_aliases(in, in, in, in, out, in, out) is det.
+
+
+inst_remove_aliases(any(U), _, _, _, any(U), IT, IT).
+inst_remove_aliases(free(A), _, _, _, free(A), IT, IT).
+inst_remove_aliases(free(A, T), _, _, _, free(A, T), IT, IT).
+inst_remove_aliases(ground(U, P), _, _, _, ground(U, P), IT, IT).
+inst_remove_aliases(not_reached, _, _, _, not_reached, IT, IT).
+inst_remove_aliases(inst_var(V), _, _, _, inst_var(V), IT, IT).
+inst_remove_aliases(alias(IK), InstMap, ModuleInfo, OrigInstTable, Inst,
+		InstTable0, InstTable) :-
+	inst_table_get_inst_key_table(OrigInstTable, IKT),
+	instmap__inst_key_table_lookup(InstMap, IKT, IK, Inst0),
+	inst_remove_aliases(Inst0, InstMap, ModuleInfo, OrigInstTable, Inst,
+		InstTable0, InstTable).
+inst_remove_aliases(abstract_inst(Name, Insts0), InstMap, ModuleInfo,
+		OrigInstTable, abstract_inst(Name, Insts),
+		InstTable0, InstTable) :-
+	insts_remove_aliases(Insts0, InstMap, ModuleInfo, OrigInstTable, Insts,
+		InstTable0, InstTable).
+inst_remove_aliases(bound(U, BoundInsts0), InstMap, ModuleInfo, OrigInstTable,
+		bound(U, BoundInsts), InstTable0, InstTable) :-
+	bound_insts_remove_aliases(BoundInsts0, InstMap, ModuleInfo,
+		OrigInstTable, BoundInsts, InstTable0, InstTable).
+inst_remove_aliases(defined_inst(InstName0), InstMap, ModuleInfo,
+		OrigInstTable, Inst, InstTable0, InstTable) :-
+	inst_table_get_other_insts(InstTable0, OtherInsts0),
+	other_inst_table_mark_inst_name(OtherInsts0, InstName0, InstName),
+	( other_inst_table_search(OtherInsts0, InstName0, MaybeInst) ->
+		( MaybeInst = known(Inst0) ->
+			Inst2 = Inst0
+		;
+			Inst2 = defined_inst(InstName)
+		),
+		InstTable = InstTable0
+	;
+		other_inst_table_set(OtherInsts0, InstName0, unknown,
+			OtherInsts1),
+		inst_table_set_other_insts(InstTable0, OtherInsts1, InstTable1),
+
+		inst_lookup(OrigInstTable, ModuleInfo, InstName0, Inst0),
+		inst_expand_defined_inst(OrigInstTable, ModuleInfo, Inst0,
+			Inst1),
+		inst_remove_aliases(Inst1, InstMap, ModuleInfo, OrigInstTable,
+			Inst2, InstTable1, InstTable2),
+
+		inst_table_get_other_insts(InstTable2, OtherInsts2),
+		other_inst_table_set(OtherInsts2, InstName0, known(Inst2),
+			OtherInsts),
+		inst_table_set_other_insts(InstTable2, OtherInsts, InstTable)
+	),
+
+		% Avoid expanding recursive insts.  We can use any instmap
+		% here because the new inst doesn't contain any aliases.
+	(
+		inst_contains_instname(Inst2, InstMap, InstTable, ModuleInfo,
+			InstName0)
+	->
+		Inst = defined_inst(InstName0)
+	;
+		inst_contains_instname(Inst2, InstMap, InstTable, ModuleInfo,
+			InstName)
+	->
+		Inst = defined_inst(InstName)
+	;
+		Inst = Inst2
+	).
+
+:- pred insts_remove_aliases(list(inst), instmap, module_info, inst_table,
+		list(inst), inst_table, inst_table).
+:- mode insts_remove_aliases(in, in, in, in, out, in, out) is det.
+
+insts_remove_aliases([], _, _, _, []) --> [].
+insts_remove_aliases([I0 | Is0], InstMap, ModuleInfo, OrigInstTable, [I | Is])
+		-->
+	inst_remove_aliases(I0, InstMap, ModuleInfo, OrigInstTable, I),
+	insts_remove_aliases(Is0, InstMap, ModuleInfo, OrigInstTable, Is).
+
+:- pred bound_insts_remove_aliases(list(bound_inst), instmap, module_info,
+		inst_table, list(bound_inst), inst_table, inst_table).
+:- mode bound_insts_remove_aliases(in, in, in, in, out, in, out) is det.
+
+bound_insts_remove_aliases([], _, _, _, []) --> [].
+bound_insts_remove_aliases([functor(C, Is0) | Bs0], InstMap, ModuleInfo,
+		OrigInstTable, [functor(C, Is) | Bs]) -->
+	insts_remove_aliases(Is0, InstMap, ModuleInfo, OrigInstTable, Is),
+	bound_insts_remove_aliases(Bs0, InstMap, ModuleInfo, OrigInstTable, Bs).
 
 %-----------------------------------------------------------------------------%
 
@@ -366,7 +739,7 @@ queued_proc_progress_message(PredProcId, HowToCheckGoal, ModuleInfo) -->
 		%
 		% print progress message
 		%
-		( { HowToCheckGoal = check_unique_modes(_) } ->
+		( { HowToCheckGoal = check_unique_modes } ->
 			io__write_string(
 		    "% Analyzing modes, determinism, and unique-modes for\n% ")
 		;
@@ -420,10 +793,10 @@ modecheck_queued_proc(HowToCheckGoal, PredProcId, OldPredTable0, ModuleInfo0,
 	->
 		io__set_exit_status(1),
 		{ OldPredTable = OldPredTable0 },
-		{ ModuleInfo = ModuleInfo2 },
+		{ module_info_remove_predid(ModuleInfo2, PredId, ModuleInfo) },
 		{ Changed = Changed1 }
 	;
-		( { HowToCheckGoal = check_unique_modes(_) } ->
+		( { HowToCheckGoal = check_unique_modes } ->
 			{ detect_switches_in_proc(ProcId, PredId,
 						ModuleInfo2, ModuleInfo3) },
 			detect_cse_in_proc(ProcId, PredId,
@@ -464,35 +837,46 @@ save_proc_info(ProcId, PredId, ModuleInfo, OldPredTable0, OldPredTable) :-
 
 unify_proc__generate_clause_info(SpecialPredId, Type, TypeBody, Context,
 		ModuleInfo, ClauseInfo) :-
-	unify_proc__info_init(ModuleInfo, VarTypeInfo0),
+	module_info_globals(ModuleInfo, Globals),
+	globals__lookup_bool_option(Globals, special_preds, SpecialPredsOpt),
 	( TypeBody = eqv_type(EqvType) ->
 		HeadVarType = EqvType
 	;
 		HeadVarType = Type
 	),
 	special_pred_info(SpecialPredId, HeadVarType,
-			_PredName, ArgTypes, _Modes, _Det),
+		_PredName, ArgTypes, _Modes, _Det),
+	unify_proc__info_init(ModuleInfo, VarTypeInfo0),
 	unify_proc__make_fresh_vars_from_types(ArgTypes, Args,
-					VarTypeInfo0, VarTypeInfo1),
-	( SpecialPredId = unify, Args = [H1, H2] ->
-		unify_proc__generate_unify_clauses(TypeBody, H1, H2, Context,
-					Clauses, VarTypeInfo1, VarTypeInfo)
-	; SpecialPredId = index, Args = [X, Index] ->
-		unify_proc__generate_index_clauses(TypeBody, X, Index, Context,
-					Clauses, VarTypeInfo1, VarTypeInfo)
-	; SpecialPredId = compare, Args = [Res, X, Y] ->
-		unify_proc__generate_compare_clauses(TypeBody, Res, X, Y,
-					Context,
-					Clauses, VarTypeInfo1, VarTypeInfo)
-	; SpecialPredId = solve_equal, Args = [H1, H2] ->
-		unify_proc__generate_solve_equal_clauses(TypeBody, H1, H2,
-					Context, ModuleInfo, Type,
-					Clauses, VarTypeInfo1, VarTypeInfo)
+				VarTypeInfo0, VarTypeInfo1),
+	( SpecialPredsOpt = yes ->
+		( SpecialPredId = unify, Args = [H1, H2] ->
+			unify_proc__generate_unify_clauses(TypeBody, H1, H2,
+				Context, Clauses, VarTypeInfo1, VarTypeInfo)
+		; SpecialPredId = index, Args = [X, Index] ->
+			unify_proc__generate_index_clauses(TypeBody,
+				X, Index, Context, Clauses, VarTypeInfo1,
+				VarTypeInfo)
+		; SpecialPredId = compare, Args = [Res, X, Y] ->
+			unify_proc__generate_compare_clauses(TypeBody, Res,
+				X, Y, Context, Clauses, VarTypeInfo1,
+				VarTypeInfo)
+		; SpecialPredId = solve_equal, Args = [H1, H2] ->
+			unify_proc__generate_solve_equal_clauses(TypeBody,
+				H1, H2, Context, ModuleInfo, Type, Clauses,
+				VarTypeInfo1, VarTypeInfo)
+		;
+			error("unknown special pred")
+		)
 	;
-		error("unknown special pred")
+		Clauses = [],
+		VarTypeInfo = VarTypeInfo1
 	),
 	unify_proc__info_extract(VarTypeInfo, VarSet, Types),
-	ClauseInfo = clauses_info(VarSet, Types, Types, Args, Clauses).
+	map__init(TI_VarMap),
+	map__init(TCI_VarMap),
+	ClauseInfo = clauses_info(VarSet, Types, Types, Args, Clauses,
+			TI_VarMap, TCI_VarMap).
 
 :- pred unify_proc__generate_unify_clauses(hlds_type_body, prog_var, prog_var,
 		prog_context, list(clause), unify_proc_info, unify_proc_info).
@@ -737,18 +1121,19 @@ unify_proc__quantify_clause_body(HeadVars, Goal, Context, Clauses) -->
 unify_proc__generate_du_unify_clauses([], _H1, _H2, _Context, []) --> [].
 unify_proc__generate_du_unify_clauses([Ctor | Ctors], H1, H2, Context,
 		[Clause | Clauses]) -->
-	{ Ctor = ctor(_ExistQVars, _Constraints, FunctorName, ArgTypes) },
+	{ Ctor = ctor(ExistQTVars, _Constraints, FunctorName, ArgTypes) },
 	{ list__length(ArgTypes, FunctorArity) },
 	{ FunctorConsId = cons(FunctorName, FunctorArity) },
-	unify_proc__make_fresh_vars(ArgTypes, Vars1),
-	unify_proc__make_fresh_vars(ArgTypes, Vars2),
+	unify_proc__make_fresh_vars(ArgTypes, ExistQTVars, Vars1),
+	unify_proc__make_fresh_vars(ArgTypes, ExistQTVars, Vars2),
 	{ create_atomic_unification(
 		H1, functor(FunctorConsId, Vars1), Context, explicit, [], 
 		UnifyH1_Goal) },
 	{ create_atomic_unification(
 		H2, functor(FunctorConsId, Vars2), Context, explicit, [], 
 		UnifyH2_Goal) },
-	{ unify_proc__unify_var_lists(Vars1, Vars2, UnifyArgs_Goal) },
+	unify_proc__unify_var_lists(ArgTypes, ExistQTVars, Vars1, Vars2,
+		UnifyArgs_Goal),
 	{ GoalList = [UnifyH1_Goal, UnifyH2_Goal | UnifyArgs_Goal] },
 	{ goal_info_init(GoalInfo0) },
 	{ goal_info_set_context(GoalInfo0, Context,
@@ -772,18 +1157,19 @@ unify_proc__generate_du_unify_clauses([Ctor | Ctors], H1, H2, Context,
 unify_proc__generate_du_solve_equal_clauses([], _H1, _H2, _Context, []) --> [].
 unify_proc__generate_du_solve_equal_clauses([Ctor | Ctors], H1, H2, Context,
 		[Clause | Clauses]) -->
-	{ Ctor = ctor(_ExistQVars, _Constraints, FunctorName, ArgTypes) },
+	{ Ctor = ctor(ExistQTVars, _Constraints, FunctorName, ArgTypes) },
 	{ list__length(ArgTypes, FunctorArity) },
 	{ FunctorConsId = cons(FunctorName, FunctorArity) },
-	unify_proc__make_fresh_vars(ArgTypes, Vars1),
-	unify_proc__make_fresh_vars(ArgTypes, Vars2),
+	unify_proc__make_fresh_vars(ArgTypes, ExistQTVars, Vars1),
+	unify_proc__make_fresh_vars(ArgTypes, ExistQTVars, Vars2),
 	{ create_atomic_unification(
 		H1, functor(FunctorConsId, Vars1), Context, explicit, [], 
 		SolveEqualH1_Goal) },
 	{ create_atomic_unification(
 		H2, functor(FunctorConsId, Vars2), Context, explicit, [], 
 		SolveEqualH2_Goal) },
-	unify_proc__solve_equal_var_lists(Vars1, Vars2, SolveEqualArgs_Goal),
+	unify_proc__solve_equal_var_lists(ArgTypes, ExistQTVars,
+		Vars1, Vars2, SolveEqualArgs_Goal),
 	{ GoalList = [SolveEqualH1_Goal, SolveEqualH2_Goal |
 		SolveEqualArgs_Goal] },
 	{ goal_info_init(GoalInfo0) },
@@ -831,10 +1217,10 @@ unify_proc__generate_du_solve_equal_clauses([Ctor | Ctors], H1, H2, Context,
 unify_proc__generate_du_index_clauses([], _X, _Index, _Context, _N, []) --> [].
 unify_proc__generate_du_index_clauses([Ctor | Ctors], X, Index, Context, N,
 		[Clause | Clauses]) -->
-	{ Ctor = ctor(_ExistQVars, _Constraints, FunctorName, ArgTypes) },
+	{ Ctor = ctor(ExistQTVars, _Constraints, FunctorName, ArgTypes) },
 	{ list__length(ArgTypes, FunctorArity) },
 	{ FunctorConsId = cons(FunctorName, FunctorArity) },
-	unify_proc__make_fresh_vars(ArgTypes, ArgVars),
+	unify_proc__make_fresh_vars(ArgTypes, ExistQTVars, ArgVars),
 	{ create_atomic_unification(
 		X, functor(FunctorConsId, ArgVars), Context, explicit, [], 
 		UnifyX_Goal) },
@@ -1022,18 +1408,19 @@ unify_proc__generate_compare_cases([Ctor | Ctors], R, X, Y, Context,
 	is det.
 
 unify_proc__generate_compare_case(Ctor, R, X, Y, Context, Case) -->
-	{ Ctor = ctor(_ExistQVars, _Constraints, FunctorName, ArgTypes) },
+	{ Ctor = ctor(ExistQTVars, _Constraints, FunctorName, ArgTypes) },
 	{ list__length(ArgTypes, FunctorArity) },
 	{ FunctorConsId = cons(FunctorName, FunctorArity) },
-	unify_proc__make_fresh_vars(ArgTypes, Vars1),
-	unify_proc__make_fresh_vars(ArgTypes, Vars2),
+	unify_proc__make_fresh_vars(ArgTypes, ExistQTVars, Vars1),
+	unify_proc__make_fresh_vars(ArgTypes, ExistQTVars, Vars2),
 	{ create_atomic_unification(
 		X, functor(FunctorConsId, Vars1), Context, explicit, [], 
 		UnifyX_Goal) },
 	{ create_atomic_unification(
 		Y, functor(FunctorConsId, Vars2), Context, explicit, [], 
 		UnifyY_Goal) },
-	unify_proc__compare_args(Vars1, Vars2, R, Context, CompareArgs_Goal),
+	unify_proc__compare_args(ArgTypes, ExistQTVars, Vars1, Vars2,
+		R, Context, CompareArgs_Goal),
 	{ GoalList = [UnifyX_Goal, UnifyY_Goal, CompareArgs_Goal] },
 	{ goal_info_init(GoalInfo0) },
 	{ goal_info_set_context(GoalInfo0, Context,
@@ -1066,20 +1453,53 @@ unify_proc__generate_compare_case(Ctor, R, X, Y, Context, Case) -->
 
 */
 
-:- pred unify_proc__compare_args(list(prog_var), list(prog_var), prog_var,
-		prog_context, hlds_goal, unify_proc_info, unify_proc_info).
-:- mode unify_proc__compare_args(in, in, in, in, out, in, out) is det.
+:- pred unify_proc__compare_args(list(constructor_arg), existq_tvars,
+		list(prog_var), list(prog_var), prog_var, prog_context,
+		hlds_goal, unify_proc_info, unify_proc_info).
+:- mode unify_proc__compare_args(in, in, in, in, in, in, out, in, out) is det.
 
-unify_proc__compare_args([], [], R, Context, Return_Equal) -->
+unify_proc__compare_args(ArgTypes, ExistQTVars, Xs, Ys, R, Context, Goal) -->
+	(
+		unify_proc__compare_args_2(ArgTypes, ExistQTVars, Xs, Ys, R,
+			Context, Goal0)
+	->
+		{ Goal = Goal0 }
+	;
+		{ error("unify_proc__compare_args: length mismatch") }
+	).
+
+:- pred unify_proc__compare_args_2(list(constructor_arg), existq_tvars,
+		list(prog_var), list(prog_var), prog_var, prog_context,
+		hlds_goal, unify_proc_info, unify_proc_info).
+:- mode unify_proc__compare_args_2(in, in, in, in, in, in, out, in, out)
+		is semidet.
+
+unify_proc__compare_args_2([], _, [], [], R, Context, Return_Equal) -->
 	{ create_atomic_unification(
 		R, functor(cons(unqualified("="), 0), []),
 		Context, explicit, [], 
 		Return_Equal) }.
-unify_proc__compare_args([X|Xs], [Y|Ys], R, Context, Goal) -->
+unify_proc__compare_args_2([_Name - Type|ArgTypes], ExistQTVars, [X|Xs], [Y|Ys],
+		R, Context, Goal) -->
 	{ goal_info_init(GoalInfo0) },
 	{ goal_info_set_context(GoalInfo0, Context, GoalInfo) },
+	%
+	% When comparing existentially typed arguments, the arguments may
+	% have different types; in that case, rather than just comparing them,
+	% which would be a type error, we call `typed_compare', which is a
+	% builtin that first compares their types and then compares
+	% their values.
+	%
+	{
+		list__member(ExistQTVar, ExistQTVars),
+		term__contains_var(Type, ExistQTVar)
+	->
+		ComparePred = "typed_compare"
+	;
+		ComparePred = "compare"
+	},
 	( { Xs = [], Ys = [] } ->
-		unify_proc__build_call("compare", [R, X, Y], Context, Goal)
+		unify_proc__build_call(ComparePred, [R, X, Y], Context, Goal)
 	;
 		{ mercury_public_builtin_module(MercuryBuiltin) },
 		{ construct_type(
@@ -1087,7 +1507,7 @@ unify_proc__compare_args([X|Xs], [Y|Ys], R, Context, Goal) -->
 			[], ResType) },
 		unify_proc__info_new_var(ResType, R1),
 
-		unify_proc__build_call("compare", [R1, X, Y], Context,
+		unify_proc__build_call(ComparePred, [R1, X, Y], Context,
 			Do_Comparison),
 
 		{ create_atomic_unification(
@@ -1103,12 +1523,9 @@ unify_proc__compare_args([X|Xs], [Y|Ys], R, Context, Goal) -->
 		{ map__init(Empty) },
 		{ Goal = if_then_else([], Condition, Return_R1, ElseCase, Empty)
 					- GoalInfo},
-		unify_proc__compare_args(Xs, Ys, R, Context, ElseCase)
+		unify_proc__compare_args_2(ArgTypes, ExistQTVars, Xs, Ys, R,
+			Context, ElseCase)
 	).
-unify_proc__compare_args([], [_|_], _, _, _) -->
-	{ error("unify_proc__compare_args: length mismatch") }.
-unify_proc__compare_args([_|_], [], _, _, _) -->
-	{ error("unify_proc__compare_args: length mismatch") }.
 
 %-----------------------------------------------------------------------------%
 
@@ -1147,7 +1564,7 @@ unify_proc__build_call(Name, ArgVars, Context, Goal) -->
 	},
 	{ hlds_pred__initial_proc_id(ModeId) },
 	{ Call = call(IndexPredId, ModeId, ArgVars, not_builtin,
-			no, unqualified(Name)) },
+			no, qualified(MercuryBuiltin, Name)) },
 	{ goal_info_init(GoalInfo0) },
 	{ goal_info_set_context(GoalInfo0, Context, GoalInfo) },
 	{ Goal = Call - GoalInfo }.
@@ -1155,7 +1572,7 @@ unify_proc__build_call(Name, ArgVars, Context, Goal) -->
 %-----------------------------------------------------------------------------%
 
 :- pred unify_proc__make_fresh_vars_from_types(list(type), list(prog_var),
-					unify_proc_info, unify_proc_info).
+			unify_proc_info, unify_proc_info).
 :- mode unify_proc__make_fresh_vars_from_types(in, out, in, out) is det.
 
 unify_proc__make_fresh_vars_from_types([], []) --> [].
@@ -1163,44 +1580,117 @@ unify_proc__make_fresh_vars_from_types([Type | Types], [Var | Vars]) -->
 	unify_proc__info_new_var(Type, Var),
 	unify_proc__make_fresh_vars_from_types(Types, Vars).
 
-:- pred unify_proc__make_fresh_vars(list(constructor_arg), list(prog_var),
-					unify_proc_info, unify_proc_info).
-:- mode unify_proc__make_fresh_vars(in, out, in, out) is det.
+:- pred unify_proc__make_fresh_vars(list(constructor_arg), existq_tvars,
+			list(prog_var), unify_proc_info, unify_proc_info).
+:- mode unify_proc__make_fresh_vars(in, in, out, in, out) is det.
 
-unify_proc__make_fresh_vars([], []) --> [].
-unify_proc__make_fresh_vars([_Name - Type | Args], [Var | Vars]) -->
-	unify_proc__info_new_var(Type, Var),
-	unify_proc__make_fresh_vars(Args, Vars).
+unify_proc__make_fresh_vars(CtorArgs, ExistQTVars, Vars) -->
+	( { ExistQTVars = [] } ->
+		{ assoc_list__values(CtorArgs, ArgTypes) },
+		unify_proc__make_fresh_vars_from_types(ArgTypes, Vars)
+	;
+		%
+		% If there are existential types involved, then it's too
+		% hard to get the types right here (it would require
+		% allocating new type variables) -- instead, typecheck.m
+		% will typecheck the clause to figure out the correct types.
+		% So we just allocate the variables and leave it up to
+		% typecheck.m to infer their types.
+		%
+		unify_proc__info_get_varset(VarSet0),
+		{ list__length(CtorArgs, NumVars) },
+		{ varset__new_vars(VarSet0, NumVars, Vars, VarSet) },
+		unify_proc__info_set_varset(VarSet)
+	).
 
-:- pred unify_proc__unify_var_lists(list(prog_var), list(prog_var),
-		list(hlds_goal)).
-:- mode unify_proc__unify_var_lists(in, in, out) is det.
+:- pred unify_proc__unify_var_lists(list(constructor_arg), existq_tvars,
+		list(prog_var), list(prog_var), list(hlds_goal),
+		unify_proc_info, unify_proc_info).
+:- mode unify_proc__unify_var_lists(in, in, in, in, out, in, out) is det.
 
-unify_proc__unify_var_lists([], [_|_], _) :-
-	error("unify_proc__unify_var_lists: length mismatch").
-unify_proc__unify_var_lists([_|_], [], _) :-
-	error("unify_proc__unify_var_lists: length mismatch").
-unify_proc__unify_var_lists([], [], []).
-unify_proc__unify_var_lists([Var1 | Vars1], [Var2 | Vars2], [Goal | Goals]) :-
-	term__context_init(Context),
-	create_atomic_unification(Var1, var(Var2), Context, explicit, [],
-		Goal),
-	unify_proc__unify_var_lists(Vars1, Vars2, Goals).
+unify_proc__unify_var_lists(ArgTypes, ExistQVars, Vars1, Vars2, Goal) -->
+	(
+		unify_proc__unify_var_lists_2(ArgTypes, ExistQVars,
+			Vars1, Vars2, Goal0)
+	->
+		{ Goal = Goal0 }
+	;
+		{ error("unify_proc__unify_var_lists: length mismatch") }
+	).
 
-:- pred unify_proc__solve_equal_var_lists(list(prog_var), list(prog_var),
-		list(hlds_goal), unify_proc_info, unify_proc_info).
-:- mode unify_proc__solve_equal_var_lists(in, in, out, in, out) is det.
+:- pred unify_proc__unify_var_lists_2(list(constructor_arg), existq_tvars,
+		list(prog_var), list(prog_var), list(hlds_goal),
+		unify_proc_info, unify_proc_info).
+:- mode unify_proc__unify_var_lists_2(in, in, in, in, out, in, out) is semidet.
 
-unify_proc__solve_equal_var_lists([], [_|_], _) -->
-	{ error("unify_proc__solve_equal_var_lists: length mismatch") }.
-unify_proc__solve_equal_var_lists([_|_], [], _) -->
-	{ error("unify_proc__solve_equal_var_lists: length mismatch") }.
-unify_proc__solve_equal_var_lists([], [], []) --> [].
-unify_proc__solve_equal_var_lists([Var1 | Vars1], [Var2 | Vars2],
-		[Goal | Goals]) -->
+unify_proc__unify_var_lists_2([], _, [], [], []) --> [].
+unify_proc__unify_var_lists_2([_Name - Type | ArgTypes], ExistQTVars,
+		[Var1 | Vars1], [Var2 | Vars2], [Goal | Goals]) -->
 	{ term__context_init(Context) },
-	unify_proc__build_call("solve_equal", [Var1, Var2], Context, Goal),
-	unify_proc__solve_equal_var_lists(Vars1, Vars2, Goals).
+	%
+	% When unifying existentially typed arguments, the arguments may
+	% have different types; in that case, rather than just unifying them,
+	% which would be a type error, we call `typed_unify', which is a
+	% builtin that first checks that their types are equal and then
+	% unifies the values.
+	%
+	(
+		{ list__member(ExistQTVar, ExistQTVars) },
+		{ term__contains_var(Type, ExistQTVar) }
+	->
+		unify_proc__build_call("typed_unify", [Var1, Var2], Context,
+			Goal)
+	;
+		{ create_atomic_unification(Var1, var(Var2), Context, explicit,
+			[], Goal) }
+	),
+	unify_proc__unify_var_lists_2(ArgTypes, ExistQTVars, Vars1, Vars2,
+		Goals).
+
+:- pred unify_proc__solve_equal_var_lists(list(constructor_arg), existq_tvars,
+		list(prog_var), list(prog_var), list(hlds_goal),
+		unify_proc_info, unify_proc_info).
+:- mode unify_proc__solve_equal_var_lists(in, in, in, in, out, in, out) is det.
+
+unify_proc__solve_equal_var_lists(ArgTypes, ExistQVars, Vars1, Vars2, Goal) -->
+	(
+		unify_proc__solve_equal_var_lists_2(ArgTypes, ExistQVars,
+			Vars1, Vars2, Goal0)
+	->
+		{ Goal = Goal0 }
+	;
+		{ error("unify_proc__solve_equal_var_lists: length mismatch") }
+	).
+
+:- pred unify_proc__solve_equal_var_lists_2(list(constructor_arg),
+		existq_tvars, list(prog_var), list(prog_var),
+		list(hlds_goal), unify_proc_info, unify_proc_info).
+:- mode unify_proc__solve_equal_var_lists_2(in, in, in, in, out, in, out)
+		is semidet.
+
+unify_proc__solve_equal_var_lists_2([], _, [], [], []) --> [].
+unify_proc__solve_equal_var_lists_2([_Name - Type | ArgTypes], ExistQTVars,
+		[Var1 | Vars1], [Var2 | Vars2], [Goal | Goals]) -->
+	{ term__context_init(Context) },
+	%
+	% When solving existentially typed arguments, the arguments may
+	% have different types; in that case, rather than just solving them,
+	% which would be a type error, we call `typed_solve_equal', which is a
+	% builtin that first checks that their types are equal and then
+	% unifies the values.
+	%
+	(
+		{ list__member(ExistQTVar, ExistQTVars) },
+		{ term__contains_var(Type, ExistQTVar) }
+	->
+		unify_proc__build_call("typed_solve_equal", [Var1, Var2], Context,
+			Goal)
+	;
+		{ create_atomic_unification(Var1, var(Var2), Context, explicit,
+			[], Goal) }
+	),
+	unify_proc__solve_equal_var_lists_2(ArgTypes, ExistQTVars, Vars1, Vars2,
+		Goals).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

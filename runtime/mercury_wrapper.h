@@ -14,7 +14,7 @@
 
 #include <stddef.h>			/* for `size_t' */
 #include "mercury_std.h"		/* for `bool' */
-#include "mercury_stack_layout.h"	/* for `MR_Stack_Layout_Label' */
+#include "mercury_stack_layout.h"	/* for `MR_Stack_Layout_Label' etc */
 #include "mercury_trace_base.h"		/* for `MR_trace_port' */
 #include "mercury_stacks.h"		/* for `MR_{Cut,Generator}StackFrame' */
 
@@ -62,12 +62,14 @@ extern	void		(*address_of_init_gc)(void);
 #endif
 
 /*
-** MR_trace_getline(const char *) is defined in trace/mercury_trace_internal.c
-** but is called in browser/util.m.  As we cannot do direct calls from
-** browser/ to trace/, we do an indirect call via the following pointer.
+** MR_trace_getline(const char *, FILE *, FILE *) is defined in
+** trace/mercury_trace_internal.c but is called in browser/util.m.  As
+** we cannot do direct calls from browser/ to trace/, we do an indirect 
+** call via the following pointer.
 */
 
-extern	char *		(*MR_address_of_trace_getline)(const char *);
+extern	char *		(*MR_address_of_trace_getline)(const char *,
+				FILE *, FILE *);
 
 /*
 ** MR_trace_init_external() and MR_trace_final_external() are defined 
@@ -97,7 +99,7 @@ extern void		(*MR_address_of_edt_root_node)(Word, Word *);
 ** been retired.
 */
 
-extern	Code	*MR_library_trace_browser;
+extern	Code		*MR_library_trace_browser;
 
 /*
 ** MR_trace_func_ptr is set to either MR_trace_real (trace/mercury_trace.c), or
@@ -105,8 +107,12 @@ extern	Code	*MR_library_trace_browser;
 ** depending on whether tracing was enabled when creating the _init.c
 ** file.  It is called from MR_trace (runtime/mercury_trace_base.c).
 */
-extern	Code    *(*MR_trace_func_ptr)(const MR_Stack_Layout_Label *,
-			MR_Trace_Port, Unsigned, Unsigned, const char *, int);
+
+extern	Code		*(*MR_trace_func_ptr)(const MR_Stack_Layout_Label *,
+				MR_Trace_Port, Unsigned, Unsigned,
+				const char *, int);
+
+extern	void		(*MR_register_module_layout)(const MR_Module_Layout *);
 
 extern	void		do_init_modules(void);
 
@@ -160,6 +166,6 @@ enum MR_TimeProfileMethod {
 extern	enum MR_TimeProfileMethod
 			MR_time_profile_method;
 
-extern  bool MR_profiling;
+extern	bool MR_profiling;
 
 #endif /* not MERCURY_WRAPPER_H */

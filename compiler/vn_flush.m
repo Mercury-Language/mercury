@@ -31,7 +31,7 @@
 
 :- import_module bool, map, int, string, require, std_util.
 
-:- import_module vn_table, vn_util, vn_debug, opt_debug.
+:- import_module builtin_ops, vn_table, vn_util, vn_debug, opt_debug.
 
 vn_flush__nodelist([], _, _, _, _, []) --> [].
 vn_flush__nodelist([Node0 | Nodes0], Ctrlmap, VnTables0, Templocs0, Params,

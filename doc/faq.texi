@@ -74,9 +74,9 @@ into another language, under the above conditions for modified versions.
 @node Top,,, (mercury)
 @top The Mercury Frequently Asked Questions list
 @menu
-* Programming::     Common programming errors
-* Unimplemented::   Problems caused by unimplemented Mercury features
-* Last resort::     What to do when all else fails
+* Programming::     Common programming errors.
+* Unimplemented::   Problems caused by unimplemented Mercury features.
+* Last resort::     What to do when all else fails.
 @end menu
 @end ifinfo
 

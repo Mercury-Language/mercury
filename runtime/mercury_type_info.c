@@ -53,22 +53,8 @@ Declare_entry(mercury__builtin_compare_pred_3_0);
 #ifdef MR_USE_SOLVE_EQUAL
 Declare_entry(mercury__builtin_solve_equal_pred_2_0);
 #endif
-MR_STATIC_CODE_CONST struct mercury_data___type_ctor_info_func_0_struct {
-	Integer f1;
-	Code *f2;
-	Code *f3;
-	Code *f4;
-#ifdef MR_USE_SOLVE_EQUAL
-	Code *f5;
-#endif
-#ifdef USE_TYPE_LAYOUT
-	const Word *f6;
-	const Word *f7;
-	const Word *f8;
-	const Word *f9;
-	const Word *f10;
-#endif
-} mercury_data___type_ctor_info_func_0 = {
+MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
+mercury_data___type_ctor_info_func_0 = {
 	((Integer) 0),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_unify_pred_2_0)),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_index_pred_2_0)),
@@ -76,13 +62,11 @@ MR_STATIC_CODE_CONST struct mercury_data___type_ctor_info_func_0_struct {
 #ifdef MR_USE_SOLVE_EQUAL
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_solve_equal_pred_2_0)),
 #endif
-#ifdef  USE_TYPE_LAYOUT
-	(const Word *) & mercury_data___type_ctor_layout_pred_0,
-	(const Word *) & mercury_data___type_ctor_functors_pred_0,
-	(const Word *) & mercury_data___type_ctor_layout_pred_0,
-	(const Word *) string_const("builtin", 7),
-	(const Word *) string_const("func", 4)
-#endif
+	MR_TYPECTOR_REP_PRED,
+	(MR_TypeCtorFunctors) & mercury_data___type_ctor_functors_pred_0,
+	(MR_TypeCtorLayout) & mercury_data___type_ctor_layout_pred_0,
+	string_const("builtin", 7),
+	string_const("func", 4)
 };
 
 	/*
@@ -96,22 +80,8 @@ Declare_entry(mercury__builtin_compare_pred_3_0);
 #ifdef MR_USE_SOLVE_EQUAL
 Declare_entry(mercury__builtin_solve_equal_pred_2_0);
 #endif
-MR_STATIC_CODE_CONST struct mercury_data___type_ctor_info_pred_0_struct {
-	Integer f1;
-	Code *f2;
-	Code *f3;
-	Code *f4;
-#ifdef MR_USE_SOLVE_EQUAL
-	Code *f5;
-#endif
-#ifdef USE_TYPE_LAYOUT
-	const Word *f6;
-	const Word *f7;
-	const Word *f8;
-	const Word *f9;
-	const Word *f10;
-#endif
-} mercury_data___type_ctor_info_pred_0 = {
+MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
+mercury_data___type_ctor_info_pred_0 = {
 	((Integer) 0),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_unify_pred_2_0)),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_index_pred_2_0)),
@@ -119,19 +89,19 @@ MR_STATIC_CODE_CONST struct mercury_data___type_ctor_info_pred_0_struct {
 #ifdef MR_USE_SOLVE_EQUAL
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_solve_equal_pred_2_0)),
 #endif
-#ifdef  USE_TYPE_LAYOUT
-	(const Word *) & mercury_data___type_ctor_layout_pred_0,
-	(const Word *) & mercury_data___type_ctor_functors_pred_0,
-	(const Word *) & mercury_data___type_ctor_layout_pred_0,
-	(const Word *) string_const("builtin", 7),
-	(const Word *) string_const("pred", 4)
-#endif
+	MR_TYPECTOR_REP_PRED,
+	(MR_TypeCtorFunctors) & mercury_data___type_ctor_functors_pred_0,
+	(MR_TypeCtorLayout) & mercury_data___type_ctor_layout_pred_0,
+	string_const("builtin", 7),
+	string_const("pred", 4)
 };
 
 Define_extern_entry(mercury__builtin_unify_pred_2_0);
 Define_extern_entry(mercury__builtin_index_pred_2_0);
 Define_extern_entry(mercury__builtin_compare_pred_3_0);
+#ifdef MR_USE_SOLVE_EQUAL
 Define_extern_entry(mercury__builtin_solve_equal_pred_2_0);
+#endif
 
 BEGIN_MODULE(mercury__builtin_unify_pred_module)
 	init_entry_ai(mercury__builtin_unify_pred_2_0);
@@ -164,6 +134,7 @@ Define_entry(mercury__builtin_compare_pred_3_0);
 	fatal_error("attempted comparison of higher-order terms");
 END_MODULE
 
+#ifdef MR_USE_SOLVE_EQUAL
 BEGIN_MODULE(mercury__builtin_solve_equal_pred_module)
 	init_entry_ai(mercury__builtin_solve_equal_pred_2_0);
 BEGIN_CODE
@@ -173,6 +144,7 @@ Define_entry(mercury__builtin_solve_equal_pred_2_0);
 	incr_sp_push_msg(2, "private_builtin:builtin_solve_equal_pred");
 	fatal_error("attempted solve equal of higher-order terms");
 END_MODULE
+#endif
 
 	/* 
 	** MR_create_type_info():
@@ -213,7 +185,7 @@ Word *
 MR_create_type_info(Word *term_type_info, Word *arg_pseudo_type_info)
 {
 	int i, arity, extra_args;
-	Word *type_ctor_info;
+	MR_TypeCtorInfo type_ctor_info;
 	Word *arg_type_info;
 	Word *type_info;
 
@@ -236,7 +208,7 @@ MR_create_type_info(Word *term_type_info, Word *arg_pseudo_type_info)
 	type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(arg_pseudo_type_info);
 
 	/* no arguments - optimise common case */
-	if (type_ctor_info == arg_pseudo_type_info) {
+	if ((Word) type_ctor_info == (Word) arg_pseudo_type_info) {
 		return arg_pseudo_type_info;
 	}
 
@@ -299,7 +271,7 @@ int
 MR_compare_type_info(Word t1, Word t2)
 {
 	Word	*type_info_1, *type_info_2;
-	Word	*type_ctor_info_1, *type_ctor_info_2;
+	MR_TypeCtorInfo	type_ctor_info_1, type_ctor_info_2;
 	int	num_arg_types;
 	int	i;
 
@@ -485,7 +457,7 @@ MR_make_type_info(const Word *term_type_info, const Word *arg_pseudo_type_info,
 	MR_MemoryList *allocated) 
 {
 	int i, arity, extra_args;
-	Word *type_ctor_info;
+	MR_TypeCtorInfo type_ctor_info;
 	Word *arg_type_info;
 	Word *type_info;
 
@@ -506,8 +478,8 @@ MR_make_type_info(const Word *term_type_info, const Word *arg_pseudo_type_info,
 	type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(arg_pseudo_type_info);
 
 	/* no arguments - optimise common case */
-	if (type_ctor_info == arg_pseudo_type_info) {
-		return type_ctor_info;
+	if ((Word) type_ctor_info == (Word) arg_pseudo_type_info) {
+		return (Word *) type_ctor_info;
 	} 
 
 	if (MR_TYPE_CTOR_INFO_IS_HO(type_ctor_info)) {
@@ -571,72 +543,20 @@ MR_make_type_info(const Word *term_type_info, const Word *arg_pseudo_type_info,
 
 /*---------------------------------------------------------------------------*/
 
-enum MR_DataRepresentation
-MR_categorize_data(Word functors_indicator, Word layout_entry)
+enum MR_DiscUnionTagRepresentation
+MR_get_tag_representation(Word layout_entry)
 {
-	switch ((int) functors_indicator) { 
-		case MR_TYPE_CTOR_FUNCTORS_ENUM: 
-			return MR_DATAREP_ENUM;
-		case MR_TYPE_CTOR_FUNCTORS_DU: 
-			switch ((int) tag(layout_entry)) {
-				case TYPE_CTOR_LAYOUT_UNSHARED_TAG:
-					return MR_DATAREP_UNSHARED;
-				case TYPE_CTOR_LAYOUT_SHARED_REMOTE_TAG:
-					return MR_DATAREP_SHARED_REMOTE;
-				case TYPE_CTOR_LAYOUT_CONST_TAG:
-					return MR_DATAREP_SHARED_LOCAL;
-				default:
-					return MR_DATAREP_UNKNOWN;
-			}
-		case MR_TYPE_CTOR_FUNCTORS_NO_TAG:
-			return MR_DATAREP_NOTAG;
-		case MR_TYPE_CTOR_FUNCTORS_EQUIV:
-			if (TYPEINFO_IS_VARIABLE(strip_tag(layout_entry))) {
-				return MR_DATAREP_EQUIV_VAR;
-			} else {
-				return MR_DATAREP_EQUIV;
-			}
-		case MR_TYPE_CTOR_FUNCTORS_SPECIAL:
-		{
-			int builtin_type = unmkbody(strip_tag(layout_entry));
-
-			switch (builtin_type) {
-				case MR_TYPE_CTOR_LAYOUT_UNASSIGNED_VALUE:
-					return MR_DATAREP_UNKNOWN;
-				case MR_TYPE_CTOR_LAYOUT_UNUSED_VALUE:
-					return MR_DATAREP_UNKNOWN;
-				case MR_TYPE_CTOR_LAYOUT_STRING_VALUE:
-					return MR_DATAREP_STRING;
-				case MR_TYPE_CTOR_LAYOUT_FLOAT_VALUE:
-					return MR_DATAREP_FLOAT;
-				case MR_TYPE_CTOR_LAYOUT_INT_VALUE:
-					return MR_DATAREP_INT;
-				case MR_TYPE_CTOR_LAYOUT_CHARACTER_VALUE:
-					return MR_DATAREP_CHAR;
-				case MR_TYPE_CTOR_LAYOUT_PREDICATE_VALUE:
-					return MR_DATAREP_PRED;
-				case MR_TYPE_CTOR_LAYOUT_VOID_VALUE:
-					return MR_DATAREP_VOID;
-				case MR_TYPE_CTOR_LAYOUT_ARRAY_VALUE:
-					return MR_DATAREP_ARRAY;
-				case MR_TYPE_CTOR_LAYOUT_TYPEINFO_VALUE:
-					return MR_DATAREP_TYPEINFO;
-				case MR_TYPE_CTOR_LAYOUT_C_POINTER_VALUE:
-					return MR_DATAREP_C_POINTER;
-				case MR_TYPE_CTOR_LAYOUT_TYPECLASSINFO_VALUE:
-					return MR_DATAREP_TYPECLASSINFO;
-				default: 
-					return MR_DATAREP_UNKNOWN;
-			}
-		}
-		case MR_TYPE_CTOR_FUNCTORS_UNIV:
-			return MR_DATAREP_UNIV;
+	switch ((int) tag(layout_entry)) {
+		case TYPE_CTOR_LAYOUT_UNSHARED_TAG:
+			return MR_DISCUNIONTAG_UNSHARED;
+		case TYPE_CTOR_LAYOUT_SHARED_REMOTE_TAG:
+			return MR_DISCUNIONTAG_SHARED_REMOTE;
+		case TYPE_CTOR_LAYOUT_CONST_TAG:
+			return MR_DISCUNIONTAG_SHARED_LOCAL;
 		default:
-			return MR_DATAREP_UNKNOWN;
+		fatal_error("MR_get_tag_representation: unknown tag representation");
 	}
 }
-
-
 
 /*---------------------------------------------------------------------------*/
 

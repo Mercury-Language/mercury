@@ -17,7 +17,7 @@
 :- interface.
 
 :- import_module hlds_module, hlds_pred, hlds_goal, hlds_data, globals.
-:- import_module instmap, prog_data.
+:- import_module instmap, prog_data, inst_table.
 :- import_module bool, set, list.
 
 :- type maybe_changed	--->	changed ; unchanged.
@@ -123,9 +123,8 @@ interpret_unify(X, functor(ConsId, ArgVars), Subst0, Subst) :-
 	term__var_list_to_term_list(ArgVars, ArgTerms),
 	cons_id_and_args_to_term(ConsId, ArgTerms, RhsTerm),
 	term__unify(term__variable(X), RhsTerm, Subst0, Subst).
-interpret_unify(_X, lambda_goal(_POrF, _NonLocals, _Vars, _Modes, _Det,
-			_IMDelta, _Goal),
-		Subst0, Subst) :-
+interpret_unify(_X, lambda_goal(_POrF, _Method, _Fix, _NonLocals, _Vars,
+			_Modes, _Det, _IMDelta, _Goal), Subst0, Subst) :-
 		% For ease of implementation we just ignore unifications with
 		% lambda terms.  This is a safe approximation, it just
 		% prevents us from optimizing them as well as we would like.

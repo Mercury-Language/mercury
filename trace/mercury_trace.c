@@ -53,11 +53,13 @@ static	MR_Trace_Cmd_Info	MR_trace_ctrl = { MR_CMD_GOTO, 0, 0,
 Code 		*MR_trace_real(const MR_Stack_Layout_Label *layout,
 			MR_Trace_Port port, Unsigned seqno, Unsigned depth,
 			const char *path, int max_r_num);
-
 static	Code	*MR_trace_event(MR_Trace_Cmd_Info *cmd, bool interactive,
 			const MR_Stack_Layout_Label *layout,
 			MR_Trace_Port port, Unsigned seqno, Unsigned depth,
 			const char *path, int max_r_num);
+static	Word	MR_trace_find_input_arg(const MR_Stack_Layout_Label *label, 
+			Word *saved_regs, MR_uint_least16_t var_num,
+			bool *succeeded);
 
 /*
 ** Reserve room for event counts for this many depths initially.
@@ -323,7 +325,8 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
 
 	for (i = 0; i < MR_all_desc_var_count(input_args); i++) {
 		arg_value = MR_trace_find_input_arg(event_info->MR_event_sll,
-				saved_regs, input_args->MR_slvs_names[i],
+				saved_regs,
+				input_args->MR_slvs_names[i].MR_var_num,
 				&succeeded);
 
 		if (! succeeded) {
@@ -418,9 +421,9 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
 }
 
 
-extern Word
+static Word
 MR_trace_find_input_arg(const MR_Stack_Layout_Label *label, Word *saved_regs,
-	const char *name, bool *succeeded)
+	MR_uint_least16_t var_num, bool *succeeded)
 {
 	const MR_Stack_Layout_Vars	*vars;
 	int				i;
@@ -432,7 +435,7 @@ MR_trace_find_input_arg(const MR_Stack_Layout_Label *label, Word *saved_regs,
 	}
 
 	for (i = 0; i < MR_all_desc_var_count(vars); i++) {
-		if (streq(vars->MR_slvs_names[i], name)) {
+		if (var_num == vars->MR_slvs_names[i].MR_var_num) {
 			if (i < MR_long_desc_var_count(vars)) {
 				return MR_lookup_long_lval_base(
 					MR_long_desc_var_locn(vars, i),

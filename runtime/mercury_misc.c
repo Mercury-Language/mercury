@@ -16,7 +16,8 @@
 
 /*--------------------------------------------------------------------*/
 
-static void print_ordinary_regs(void);
+static void	print_ordinary_regs(void);
+static void	MR_printdetslot_as_label(const Integer offset);
 
 /* debugging messages */
 
@@ -27,7 +28,7 @@ mkframe_msg(const char *predname)
 {
 	restore_transient_registers();
 
-	printf("\nnew choice point %s for procedure %s\n", predname);
+	printf("\nnew choice point for procedure %s\n", predname);
 	printf("new  fr: "); printnondstack(MR_curfr);
 	printf("prev fr: "); printnondstack(MR_prevfr_slot(MR_curfr));
 	printf("succ fr: "); printnondstack(MR_succfr_slot(MR_curfr));
@@ -77,7 +78,7 @@ fail_msg(void)
 	printf("\nfailing from procedure\n");
 	printf("curr fr: "); printnondstack(MR_curfr);
 	printf("fail fr: "); printnondstack(MR_prevfr_slot(MR_curfr));
-	printf("fail ip: "); printlabel(MR_redoip_slot(curprevfr_slot(MR_curfr)));
+	printf("fail ip: "); printlabel(MR_redoip_slot(MR_prevfr_slot(MR_curfr)));
 }
 
 void 
@@ -135,7 +136,7 @@ void
 incr_hp_debug_msg(Word val, const Word *addr)
 {
 #ifdef CONSERVATIVE_GC
-	printf("allocated %ld words at %lu\n", (unsigned long) val, addr);
+	printf("allocated %ld words at %p\n", (long) val, addr);
 #else
 	printf("increment hp by %ld from ", (long) (Integer) val);
 	printheap(addr);
@@ -309,9 +310,23 @@ print_ordinary_regs(void)
 
 		printf("%ld\n", (long) value);
 	}
+
+	if (MR_sp >= &MR_CONTEXT(detstack_zone)->min[300]) {
+		for (i = 321; i < 335; i++) {
+			MR_printdetslot_as_label(i);
+		}
+	}
 }
 
 #endif /* defined(MR_DEBUG_GOTOS) */
+
+static void 
+MR_printdetslot_as_label(const Integer offset)
+{
+	MR_printdetstackptr(&MR_CONTEXT(detstack_zone)->min[offset]);
+	printf(" ");
+	printlabel((Code *) (MR_CONTEXT(detstack_zone)->min[offset]));
+}
 
 void 
 MR_printdetstackptr(const Word *s)
@@ -358,30 +373,53 @@ printnondstack(const Word *s)
 }
 
 void 
-printlabel(/* const */ Code *w)
+MR_print_heapptr(FILE *fp, const Word *s)
+{
+#ifdef	CONSERVATIVE_GC
+	fprintf(fp, "heap %ld (%p)",
+		(long) s, (const void *) s);
+#else
+	fprintf(fp, "heap %3ld (%p)",
+		(long) (Integer) (s - MR_ENGINE(heap_zone)->min),
+		(const void *) s);
+#endif
+}
+
+void 
+MR_print_label(FILE *fp, /* const */ Code *w)
 {
 	MR_Internal	*internal;
 
 	internal = MR_lookup_internal_by_addr(w);
 	if (internal != NULL) {
 		if (internal->i_name != NULL) {
-			printf("label %s (%p)\n", internal->i_name, w);
+			fprintf(fp, "label %s (%p)", internal->i_name, w);
 		} else {
-			printf("label (%p)\n", w);
+			fprintf(fp, "label (%p)", w);
 		}
 	} else {
 #ifdef	MR_DEBUG_GOTOS
 		MR_Entry	*entry;
+
 		entry = MR_prev_entry_by_addr(w);
-		if (entry->e_addr == w && entry->e_name != NULL) {
-			printf("label %s (%p)\n", entry->e_name, w);
+		if (entry != NULL && entry->e_addr == w
+			&& entry->e_name != NULL)
+		{
+			fprintf(fp, "label %s (%p)", entry->e_name, w);
 		} else {
-			printf("label UNKNOWN (%p)\n", w);
+			fprintf(fp, "label UNKNOWN (%p)", w);
 		}
 #else
-		printf("label UNKNOWN (%p)\n", w);
+		fprintf(fp, "label UNKNOWN (%p)", w);
 #endif	/* not MR_DEBUG_GOTOS */
 	}
+}
+
+void 
+printlabel(/* const */ Code *w)
+{
+	MR_print_label(stdout, w);
+	fprintf(stdout, "\n");
 }
 
 void *

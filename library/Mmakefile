@@ -67,14 +67,16 @@ MCG	=	$(M_ENV) $(MC) --compile-to-c $(INTERMODULE_OPTS) \
 MCS	=	$(M_ENV) $(MC) --split-c-files -c --cflags "$(ALL_CFLAGS)" \
 			$(INTERMODULE_OPTS) $(CHECK_TERM_OPTS)
 MGNUC	=	$(M_ENV) $(SCRIPTS_DIR)/mgnuc
-MGNUCFLAGS =	$(EXTRA_MGNUCFLAGS) $(DLL_CFLAGS) $(EXTRA_CFLAGS)
+MGNUCFLAGS =	$(DLL_CFLAGS)
 LDFLAGS	=	-L$(BOEHM_GC_DIR) -L$(RUNTIME_DIR)
+ALL_LDFLAGS =	$(LDFLAGS) $(EXTRA_LDFLAGS)
 LDLIBS	=	-l$(RT_LIB_NAME) \
 		` case "$(GRADE)" in 					\
 		    *.gc*.prof*) echo "-lgc_prof" ;;			\
 		    *.gc*)	 echo "-lgc" ;;				\
 		  esac							\
 		`
+ALL_LDLIBS =	$(LDLIBS) $(EXTRA_LDLIBS)
 
 MTAGS	=	$(SCRIPTS_DIR)/mtags
 
@@ -94,6 +96,11 @@ DLL_CFLAGS =
 DLL_DEF_LIB =
 
 endif
+
+# io.m uses library features that are supported by POSIX but which are not
+# part of ANSI C, such as `struct stat', fileno(), and putenv().
+# We need to pass --no-ansi to mgnuc to ensure that these are declared.
+MGNUCFLAGS-io =	--no-ansi
 
 #-----------------------------------------------------------------------------#
 
@@ -178,7 +185,7 @@ RPATH_2=$(SHLIB_RPATH_SEP)$(FINAL_INSTALL_MERC_GC_LIB_DIR)
 lib$(STD_LIB_NAME).so : $(library.pic_os)
 	$(LINK_SHARED_OBJ) -o lib$(STD_LIB_NAME).so $(library.pic_os)	\
 		$(RPATH_1)$(RPATH_2)					\
-		$(LDFLAGS) $(LDLIBS)					\
+		$(ALL_LDFLAGS) $(ALL_LDLIBS)				\
 		$(SHARED_LIBS)
 
 $(STD_LIB_NAME).init: $(deps_subdir)library.dep

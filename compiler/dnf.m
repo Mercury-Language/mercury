@@ -60,7 +60,7 @@
 
 :- implementation.
 
-:- import_module hlds_goal, hlds_data, prog_data, instmap, (inst).
+:- import_module hlds_goal, hlds_data, prog_data, instmap, (inst), inst_table.
 :- import_module excess, make_hlds, mode_util.
 :- import_module require, map, string, int, term, varset.
 
@@ -192,11 +192,11 @@ dnf__transform_goal(Goal0, InstMap0, MaybeNonAtomic, ModuleInfo0, ModuleInfo,
 		GoalExpr0 = par_conj(_Goals0, _SM),
 		error("sorry, dnf of parallel conjunction not implemented")
 	;
-		GoalExpr0 = some(Vars, SomeGoal0),
+		GoalExpr0 = some(Vars, CanRemove, SomeGoal0),
 		dnf__make_goal_literal(SomeGoal0, InstMap0, MaybeNonAtomic,
 			ModuleInfo0, ModuleInfo, no, yes, Base, 0, _, 
 			DnfInfo, SomeGoal, NewPredIds0, NewPredIds),
-		Goal = some(Vars, SomeGoal) - GoalInfo
+		Goal = some(Vars, CanRemove, SomeGoal) - GoalInfo
 	;
 		GoalExpr0 = not(NegGoal0),
 		dnf__make_goal_literal(NegGoal0, InstMap0, MaybeNonAtomic,
@@ -223,12 +223,7 @@ dnf__transform_goal(Goal0, InstMap0, MaybeNonAtomic, ModuleInfo0, ModuleInfo,
 			DnfInfo, Cond, Then, Else, NewPredIds0, NewPredIds),
 		Goal = if_then_else(Vars, Cond, Then, Else, SM) - GoalInfo
 	;
-		GoalExpr0 = higher_order_call(_, _, _, _, _, _),
-		ModuleInfo = ModuleInfo0,
-		NewPredIds = NewPredIds0,
-		Goal = Goal0
-	;
-		GoalExpr0 = class_method_call(_, _, _, _, _, _),
+		GoalExpr0 = generic_call(_, _, _, _),
 		ModuleInfo = ModuleInfo0,
 		NewPredIds = NewPredIds0,
 		Goal = Goal0
@@ -401,8 +396,8 @@ dnf__define_new_pred(Goal0, Goal, InstMap0, PredName, DnfInfo,
 		% that are not part of the goal.
 	hlds_pred__define_new_pred(Goal0, Goal, ArgVars, _, InstMap0, PredName,
 		TVarSet, VarTypes, ClassContext, TVarMap, TCVarMap, VarSet,
-		Markers, Owner, InstTable, ModuleInfo0, ModuleInfo,
-		PredProcId),
+		Markers, Owner, address_is_not_taken, InstTable, ModuleInfo0,
+		ModuleInfo, PredProcId),
 	PredProcId = proc(PredId, _).
 
 %-----------------------------------------------------------------------------%
@@ -452,7 +447,7 @@ dnf__is_atomic_expr(MaybeNonAtomic, _, _, conj([Call | Tests]), IsAtomic) :-
 		IsAtomic = no
 	).
 dnf__is_atomic_expr(_, _, _, par_conj(_, _), no).
-dnf__is_atomic_expr(_, _, _, higher_order_call(_, _, _, _, _, _), yes).
+dnf__is_atomic_expr(_, _, _, generic_call(_, _, _, _), yes).
 dnf__is_atomic_expr(_, _, _, call(_, _, _, _, _, _), yes).
 dnf__is_atomic_expr(_, _, _, switch(_, _, _, _), no).
 dnf__is_atomic_expr(_, _, _, unify(_, _, _, _, _), yes).
@@ -466,7 +461,7 @@ dnf__is_atomic_expr(MaybeNonAtomic, InNeg, InSome, not(NegGoalExpr - _),
 		IsAtomic = no
 	).
 dnf__is_atomic_expr(MaybeNonAtomic, InNeg, InSome,
-		some(_, GoalExpr - _), IsAtomic) :-
+		some(_, _, GoalExpr - _), IsAtomic) :-
 	( InSome = no ->
 		dnf__is_atomic_expr(MaybeNonAtomic, InNeg, yes,
 			GoalExpr, IsAtomic)
@@ -475,7 +470,6 @@ dnf__is_atomic_expr(MaybeNonAtomic, InNeg, InSome,
 	).
 dnf__is_atomic_expr(_, _, _, if_then_else(_, _, _, _, _), no).
 dnf__is_atomic_expr(_, _, _, pragma_c_code(_, _, _, _, _, _, _), yes).
-dnf__is_atomic_expr(_, _, _, class_method_call(_, _, _, _, _, _), yes).
 
 :- pred dnf__free_of_nonatomic(hlds_goal::in,
 	set(pred_proc_id)::in) is semidet.
@@ -490,7 +484,8 @@ dnf__free_of_nonatomic(switch(_, _, Cases, _) - _, NonAtomic) :-
 	dnf__cases_free_of_nonatomic(Cases, NonAtomic).
 dnf__free_of_nonatomic(unify(_, _, _, Uni, _) - _, NonAtomic) :-
 	\+ (
-		Uni = construct(_, pred_const(PredId, ProcId), _, _),
+		Uni = construct(_, pred_const(PredId, ProcId, _),
+			_, _, _, _, _),
 		set__member(proc(PredId, ProcId), NonAtomic)
 	).
 dnf__free_of_nonatomic(disj(Goals, _) - GoalInfo, NonAtomic) :-
@@ -501,7 +496,7 @@ dnf__free_of_nonatomic(disj(Goals, _) - GoalInfo, NonAtomic) :-
 	dnf__goals_free_of_nonatomic(Goals, NonAtomic).
 dnf__free_of_nonatomic(not(Goal) - _, NonAtomic) :-
 	dnf__free_of_nonatomic(Goal, NonAtomic).
-dnf__free_of_nonatomic(some(_, Goal) - _, NonAtomic) :-
+dnf__free_of_nonatomic(some(_, _, Goal) - _, NonAtomic) :-
 	dnf__free_of_nonatomic(Goal, NonAtomic).
 dnf__free_of_nonatomic(if_then_else(_, Cond, Then, Else, _) - GoalInfo, 
 		NonAtomic) :-

@@ -130,8 +130,9 @@
 	% This consists of the {pre,post}{birth,death} sets and
 	% resume point information.
 
-:- pred detect_liveness_proc(proc_info, pred_id, module_info, proc_info).
-:- mode detect_liveness_proc(in, in, in, out) is det.
+:- pred detect_liveness_proc(pred_id, proc_info, proc_info,
+		module_info, module_info).
+:- mode detect_liveness_proc(in, in, out, in, out) is det.
 
 	% initial_liveness(ProcInfo, PredId, ModuleInfo, InitialLiveness,
 	%		InitialRefs).
@@ -151,19 +152,30 @@
 :- import_module hlds_goal, hlds_data, llds, quantification, (inst), instmap.
 :- import_module hlds_out, mode_util, code_util, quantification, options.
 :- import_module prog_data, trace, globals, polymorphism, passes_aux.
-:- import_module inst_match, term, varset.
+:- import_module inst_match, inst_table, term, varset.
 
 :- import_module bool, map, std_util, list, assoc_list, require.
 :- import_module string.
 
-detect_liveness_proc(ProcInfo0, PredId, ModuleInfo, ProcInfo) :-
+detect_liveness_proc(PredId, ProcInfo0, ProcInfo, ModuleInfo0, ModuleInfo) :-
+
+	%
+	% XXX Requantifying and recomputing the instmap_deltas isn't
+	% necessary all the time, and could be quite expensive.
+	% Passes which invalidate the quantification information
+	% or instmap_deltas should run these themselves only when needed.
+	%
 	requantify_proc(ProcInfo0, ProcInfo1),
-	proc_info_goal(ProcInfo1, Goal0),
-	proc_info_varset(ProcInfo1, Varset),
-	proc_info_vartypes(ProcInfo1, VarTypes),
+	% recompute_instmap_delta must be run after requantifying
+	% because some non-local variables to a goal may have been
+	% made local, but they may still have entries in instmap_deltas.
+	recompute_instmap_delta_proc(ProcInfo1, ProcInfo2,
+		ModuleInfo0, ModuleInfo),
+
+	proc_info_goal(ProcInfo2, Goal0),
+	proc_info_varset(ProcInfo2, Varset),
+	proc_info_vartypes(ProcInfo2, VarTypes),
 	module_info_globals(ModuleInfo, Globals),
-	globals__lookup_bool_option(Globals, typeinfo_liveness,
-		TypeInfoLiveness0),
 
 	module_info_pred_info(ModuleInfo, PredId, PredInfo),
 	pred_info_module(PredInfo, PredModule),
@@ -175,29 +187,29 @@ detect_liveness_proc(ProcInfo0, PredId, ModuleInfo, ProcInfo) :-
 	->
 		TypeInfoLiveness = no
 	;
-		TypeInfoLiveness = TypeInfoLiveness0
+		body_should_use_typeinfo_liveness(Globals, TypeInfoLiveness)
 	),
-	live_info_init(ModuleInfo, ProcInfo1, TypeInfoLiveness,
+	live_info_init(ModuleInfo, ProcInfo2, TypeInfoLiveness,
 		VarTypes, Varset, LiveInfo),
 
-	initial_liveness(ProcInfo1, PredId, ModuleInfo, Liveness0, Refs0),
+	initial_liveness(ProcInfo2, PredId, ModuleInfo, Liveness0, Refs0),
 	detect_liveness_in_goal(Goal0, Liveness0, Refs0, LiveInfo,
 		_, _, _, Goal1),
 
-	initial_deadness(ProcInfo1, LiveInfo, ModuleInfo, Deadness0),
+	initial_deadness(ProcInfo2, LiveInfo, ModuleInfo, Deadness0),
 	detect_deadness_in_goal(Goal1, Deadness0, LiveInfo, _, Goal2),
 
 	globals__get_trace_level(Globals, TraceLevel),
 	( TraceLevel \= none ->
-		trace__fail_vars(ModuleInfo, ProcInfo0, ResumeVars0)
+		trace__fail_vars(ModuleInfo, ProcInfo2, ResumeVars0)
 	;
 		set__init(ResumeVars0)
 	),
 	detect_resume_points_in_goal(Goal2, Liveness0, LiveInfo,
 		ResumeVars0, Goal, _),
 
-	proc_info_set_goal(ProcInfo1, Goal, ProcInfo2),
-	proc_info_set_liveness_info(ProcInfo2, Liveness0, ProcInfo).
+	proc_info_set_goal(ProcInfo2, Goal, ProcInfo3),
+	proc_info_set_liveness_info(ProcInfo3, Liveness0, ProcInfo).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -335,16 +347,13 @@ detect_liveness_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0, SM),
 	add_liveness_after_goal(Then1, ResidueThen, Refs, Then),
 	add_liveness_after_goal(Else1, ResidueElse, Refs, Else).
 
-detect_liveness_in_goal_2(some(Vars, Goal0), Liveness0, Refs0, _, LiveInfo,
-		Liveness, some(Vars, Goal)) :-
+detect_liveness_in_goal_2(some(Vars, CanRemove, Goal0), Liveness0, Refs0,
+		_, LiveInfo, Liveness, some(Vars, CanRemove, Goal)) :-
 	detect_liveness_in_goal(Goal0, Liveness0, Refs0, LiveInfo, Liveness, _,
 		_, Goal).
 
-detect_liveness_in_goal_2(higher_order_call(_,_,_,_,_,_), _, _, _, _, _, _) :-
-	error("higher-order-call in detect_liveness_in_goal_2").
-
-detect_liveness_in_goal_2(class_method_call(_,_,_,_,_,_), _, _, _, _, _, _) :-
-	error("class method call in detect_liveness_in_goal_2").
+detect_liveness_in_goal_2(generic_call(_,_,_,_), _, _, _, _, _, _) :-
+	error("generic_call in detect_liveness_in_goal_2").
 
 detect_liveness_in_goal_2(call(_,_,_,_,_,_), _, _, _, _, _, _) :-
 	error("call in detect_liveness_in_goal_2").
@@ -563,15 +572,12 @@ detect_deadness_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0, SM),
 	add_deadness_before_goal(Cond1, ResidueCond, Cond),
 	add_deadness_before_goal(Else1, ResidueElse, Else).
 
-detect_deadness_in_goal_2(some(Vars, Goal0), _, Deadness0, LiveInfo,
-		Deadness, some(Vars, Goal)) :-
+detect_deadness_in_goal_2(some(Vars, CanRemove, Goal0), _, Deadness0, LiveInfo,
+		Deadness, some(Vars, CanRemove, Goal)) :-
 	detect_deadness_in_goal(Goal0, Deadness0, LiveInfo, Deadness, Goal).
 
-detect_deadness_in_goal_2(higher_order_call(_,_,_,_,_,_), _, _, _, _, _) :-
+detect_deadness_in_goal_2(generic_call(_,_,_,_), _, _, _, _, _) :-
 	error("higher-order-call in detect_deadness_in_goal_2").
-
-detect_deadness_in_goal_2(class_method_call(_,_,_,_,_,_), _, _, _, _, _) :-
-	error("class-method-call in detect_deadness_in_goal_2").
 
 detect_deadness_in_goal_2(call(_,_,_,_,_,_), _, _, _, _, _) :-
 	error("call in detect_deadness_in_goal_2").
@@ -760,8 +766,9 @@ detect_resume_points_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0, SM),
 
 	require_equal(LivenessThen, LivenessElse, "if-then-else", LiveInfo).
 
-detect_resume_points_in_goal_2(some(Vars, Goal0), _, Liveness0, LiveInfo,
-		ResumeVars0, some(Vars, Goal), Liveness) :-
+detect_resume_points_in_goal_2(some(Vars, CanRemove, Goal0), _, Liveness0,
+		LiveInfo, ResumeVars0, some(Vars, CanRemove, Goal),
+		Liveness) :-
 	detect_resume_points_in_goal(Goal0, Liveness0, LiveInfo, ResumeVars0,
 					Goal, Liveness).
 
@@ -789,11 +796,8 @@ detect_resume_points_in_goal_2(not(Goal0), _, Liveness0, LiveInfo, ResumeVars0,
 	Resume = resume_point(ResumeVars1, ResumeLocs),
 	goal_set_resume_point(Goal1, Resume, Goal).
 
-detect_resume_points_in_goal_2(higher_order_call(A,B,C,D,E,F), _, Liveness,
-		_, _, higher_order_call(A,B,C,D,E,F), Liveness).
-
-detect_resume_points_in_goal_2(class_method_call(A,B,C,D,E,F), _, Liveness, _,
-		_, class_method_call(A,B,C,D,E,F), Liveness).
+detect_resume_points_in_goal_2(generic_call(A,B,C,D), _, Liveness,
+		_, _, generic_call(A,B,C,D), Liveness).
 
 detect_resume_points_in_goal_2(call(A,B,C,D,E,F), _, Liveness, _, _,
 		call(A,B,C,D,E,F), Liveness).
@@ -1029,9 +1033,8 @@ initial_liveness(ProcInfo, PredId, ModuleInfo, Liveness, Refs) :-
 	module_info_globals(ModuleInfo, Globals),
 	proc_info_goal(ProcInfo, _Goal - GoalInfo),
 	goal_info_get_nonlocals(GoalInfo, NonLocals0),
-	globals__lookup_bool_option(Globals, typeinfo_liveness, 
-		TypeinfoLiveness),
 	module_info_pred_info(ModuleInfo, PredId, PredInfo),
+	body_should_use_typeinfo_liveness(Globals, TypeinfoLiveness),
 	pred_info_module(PredInfo, PredModule),
 	pred_info_name(PredInfo, PredName),
 	pred_info_arity(PredInfo, PredArity),

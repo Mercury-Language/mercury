@@ -928,6 +928,8 @@ dupelim__replace_labels_rval_const(false, _, false).
 dupelim__replace_labels_rval_const(int_const(N), _, int_const(N)).
 dupelim__replace_labels_rval_const(float_const(N), _, float_const(N)).
 dupelim__replace_labels_rval_const(string_const(S), _, string_const(S)).
+dupelim__replace_labels_rval_const(multi_string_const(L, S), _,
+	multi_string_const(L, S)).
 dupelim__replace_labels_rval_const(code_addr_const(Addr0), ReplMap,
 		code_addr_const(Addr)) :-
 	dupelim__replace_labels_code_addr(Addr0, ReplMap, Addr).
@@ -954,6 +956,13 @@ dupelim__replace_labels_code_addr(do_semidet_aditi_call, _,
 		do_semidet_aditi_call).
 dupelim__replace_labels_code_addr(do_nondet_aditi_call, _,
 		do_nondet_aditi_call).
+dupelim__replace_labels_code_addr(do_aditi_insert, _, do_aditi_insert).
+dupelim__replace_labels_code_addr(do_aditi_delete, _, do_aditi_delete).
+dupelim__replace_labels_code_addr(do_aditi_bulk_insert, _,
+		do_aditi_bulk_insert).
+dupelim__replace_labels_code_addr(do_aditi_bulk_delete, _,
+		do_aditi_bulk_delete).
+dupelim__replace_labels_code_addr(do_aditi_modify, _, do_aditi_modify).
 dupelim__replace_labels_code_addr(do_not_reached, _, do_not_reached).
 
 :- pred dupelim__replace_labels_label_list(list(label)::in,

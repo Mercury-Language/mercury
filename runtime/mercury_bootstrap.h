@@ -15,6 +15,17 @@
 #ifndef	MERCURY_BOOTSTRAP_H
 #define	MERCURY_BOOTSTRAP_H
 
+#define	uintptr_t		MR_uintptr_t
+#define	intptr_t		MR_intptr_t
+#define	uint_least64_t		MR_uint_least64_t
+#define	int_least64_t		MR_int_least64_t
+#define	uint_least32_t		MR_uint_least32_t
+#define	int_least32_t		MR_int_least32_t
+#define	uint_least16_t		MR_uint_least16_t
+#define	int_least16_t		MR_int_least16_t
+#define	uint_least8_t		MR_uint_least8_t
+#define	int_least8_t		MR_int_least8_t
+
 #ifndef	MR_NO_BACKWARDS_COMPAT
 
 /*
@@ -213,6 +224,25 @@
 
 #define mercury_data_private_builtin__base_type_info_type_info_1_struct \
 	mercury_data_private_builtin__type_ctor_info_type_info_1_struct
+
+
+/*
+** These definitions are needed to bootstrap the change of all
+** type_ctor_info structures to use the MR_TypeCtorInfo type.
+*/
+
+#define mercury_data___type_ctor_info_int_0_struct \
+	MR_TypeCtorInfo_struct
+#define mercury_data___type_ctor_info_string_0_struct \
+	MR_TypeCtorInfo_struct
+#define mercury_data___type_ctor_info_float_0_struct \
+	MR_TypeCtorInfo_struct
+#define mercury_data___type_ctor_info_character_0_struct \
+	MR_TypeCtorInfo_struct
+#define mercury_data___type_ctor_info_pred_0_struct \
+	MR_TypeCtorInfo_struct
+#define mercury_data___type_ctor_info_func_0_struct \
+	MR_TypeCtorInfo_struct
 
 #endif	/* not MR_NO_BACKWARDS_COMPAT */
 

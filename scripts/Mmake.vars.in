@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1996-1998 The University of Melbourne.
+# Copyright (C) 1996-1999 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -12,9 +12,31 @@
 # Ensure that commands use /bin/sh not the user's shell
 SHELL		= /bin/sh
 
+ALL_EXTRA_LIBRARIES	= $(TARGET_EXTRA_LIBRARIES) $(EXTRA_LIBRARIES)
+EXTRA_LIB_DIRS		=
+EXTRA_LIBRARIES		=
+
+EXTRA_INT_DIRS		= $(patsubst %,%/ints,$(EXTRA_LIB_DIRS))
+MERCURY_EXTRA_INT_DIRS	= $(EXTRA_INT_DIRS)
+EXTRA_C_LIB_DIRS	= \
+	$(patsubst %,%/lib/$(GRADESTRING)/@FULLARCH@,$(EXTRA_LIB_DIRS)) \
+	$(patsubst %,%/lib/@FULLARCH@,$(EXTRA_LIB_DIRS))
+EXTRA_C_INCL_DIRS	= $(patsubst %,%/inc,$(EXTRA_LIB_DIRS))
+EXTRA_INIT_DIRS		= $(patsubst %,%/modules,$(EXTRA_LIB_DIRS))
+MERCURY_EXTRA_INIT_DIRS = $(EXTRA_INIT_DIRS)
+
 # Set the directory search path. 
 # (See the GNU Make manual for documentation about VPATH and GPATH.)
-MMAKE_VPATH	= $(MERCURY_INT_DIR)
+# We need to substitute all spaces with colons for the VPATH to work.
+# Getting a space to be recognised as the first argument of the subst
+# function is problematic; hence the `$(nullstring)' hack.
+# XXX Note that directory names with spaces in them (e.g. under Windows)
+# will cause problems for the VPATH settings below, as well as every
+# occurrence of $(patsubst ...), since GNU Make does not respect quotes.
+nullstring	=
+MMAKE_VPATH	= $(subst $(nullstring) ,:,$(strip \
+			$(MERCURY_EXTRA_INT_DIRS) $(MERCURY_INT_DIR)\
+			$(MERCURY_EXTRA_INIT_DIRS)))
 VPATH		= $(MMAKE_VPATH) # do not remove the `:' from this comment!!!
 #			 the above comment works around a misfeature of
 #			 autoconf which causes it to delete assignments to
@@ -23,15 +45,17 @@ GPATH		= $(VPATH)
 
 DEFAULT_GRADE	= $(MERCURY_DEFAULT_GRADE)
 GRADE		= $(DEFAULT_GRADE)
+GRADESTRING	= $(shell $(MCOGS) $(ALL_GRADEFLAGS))
 
 ALL_GRADEFLAGS  = $(GRADEFLAGS) $(EXTRA_GRADEFLAGS) $(TARGET_GRADEFLAGS)
 GRADEFLAGS	= --grade $(GRADE)
 EXTRA_GRADEFLAGS =
 
 MC		= mmc
-ALL_MCFLAGS	= $(MCFLAGS) $(EXTRA_MCFLAGS) $(TARGET_MCFLAGS)
+ALL_MCFLAGS	= $(MCFLAGS) $(EXTRA_MCFLAGS) $(TARGET_MCFLAGS) $(LIB_MCFLAGS)
 MCFLAGS		=
 EXTRA_MCFLAGS	=
+LIB_MCFLAGS	= $(patsubst %,-I %,$(EXTRA_INT_DIRS))
 
 MCS		= $(MC) --split-c-files --compile-only
 MCG		= $(MC) --compile-to-c
@@ -41,15 +65,24 @@ MCPI		= $(MC) --make-private-interface
 MCSI		= $(MC) --make-short-interface
 MCOI		= $(MC) --make-optimization-interface
 MCTOI		= $(MC) --make-transitive-optimization-interface
+MCOGS		= $(MC) --output-grade-string
 
-ALL_MCIFLAGS	= $(MCIFLAGS) $(EXTRA_MCIFLAGS) $(TARGET_MCFLAGS)
-ALL_MCPIFLAGS	= $(MCPIFLAGS) $(EXTRA_MCPIFLAGS) $(TARGET_MCFLAGS)
-ALL_MCSIFLAGS	= $(MCSIFLAGS) $(EXTRA_MCSIFLAGS) $(TARGET_MCFLAGS)
-ALL_MCOIFLAGS	= $(MCOIFLAGS) $(EXTRA_MCOIFLAGS) $(TARGET_MCFLAGS)
-ALL_MCTOIFLAGS	= $(MCTOIFLAGS) $(EXTRA_MCTOIFLAGS) $(TARGET_MCFLAGS)
-ALL_MCDFLAGS	= $(MCDFLAGS) $(EXTRA_MCDFLAGS) $(TARGET_MCFLAGS)
-ALL_MCGFLAGS	= $(MCGFLAGS) $(EXTRA_MCGFLAGS) $(TARGET_MCFLAGS)
-ALL_MCSFLAGS	= $(MCSFLAGS) $(EXTRA_MCSFLAGS) $(TARGET_MCFLAGS)
+ALL_MCIFLAGS	= $(MCIFLAGS) $(EXTRA_MCIFLAGS) $(TARGET_MCFLAGS) \
+		  $(LIB_MCFLAGS)
+ALL_MCPIFLAGS	= $(MCPIFLAGS) $(EXTRA_MCPIFLAGS) $(TARGET_MCFLAGS) \
+		  $(LIB_MCFLAGS)
+ALL_MCSIFLAGS	= $(MCSIFLAGS) $(EXTRA_MCSIFLAGS) $(TARGET_MCFLAGS) \
+		  $(LIB_MCFLAGS)
+ALL_MCOIFLAGS	= $(MCOIFLAGS) $(EXTRA_MCOIFLAGS) $(TARGET_MCFLAGS) \
+		  $(LIB_MCFLAGS)
+ALL_MCTOIFLAGS	= $(MCTOIFLAGS) $(EXTRA_MCTOIFLAGS) $(TARGET_MCFLAGS) \
+		  $(LIB_MCFLAGS)
+ALL_MCDFLAGS	= $(MCDFLAGS) $(EXTRA_MCDFLAGS) $(TARGET_MCFLAGS) \
+		  $(LIB_MCFLAGS)
+ALL_MCGFLAGS	= $(MCGFLAGS) $(EXTRA_MCGFLAGS) $(TARGET_MCFLAGS) \
+		  $(LIB_MCFLAGS)
+ALL_MCSFLAGS	= $(MCSFLAGS) $(EXTRA_MCSFLAGS) $(TARGET_MCFLAGS) \
+		  $(LIB_MCFLAGS)
 
 MCIFLAGS	= $(MCFLAGS)
 MCPIFLAGS	= $(MCFLAGS)
@@ -74,9 +107,17 @@ EXTRA_MCSFLAGS	= $(EXTRA_MCFLAGS)
 # the options which should be passed to them.
 #
 C2INIT		= c2init
-ALL_C2INITFLAGS	= $(C2INITFLAGS) $(EXTRA_C2INITFLAGS) $(TARGET_C2INITFLAGS)
+ALL_C2INITFLAGS	= $(C2INITFLAGS) $(EXTRA_C2INITFLAGS) $(TARGET_C2INITFLAGS) \
+		  $(LIB_C2INITFLAGS)
 C2INITFLAGS	=
 EXTRA_C2INITFLAGS =
+LIB_C2INITFLAGS	= $(patsubst %,--init-file-directory %,$(EXTRA_INIT_DIRS))
+
+ALL_C2INITARGS	= $(C2INITARGS) $(EXTRA_C2INITARGS) $(TARGET_C2INITARGS) \
+		  $(LIB_C2INITARGS)
+C2INITARGS	=
+EXTRA_C2INITARGS =
+LIB_C2INITARGS	= $(patsubst %,%.init,$(ALL_EXTRA_LIBRARIES))
 
 MGNUC		= mgnuc
 ALL_MGNUCFLAGS	= $(MGNUCFLAGS) $(EXTRA_MGNUCFLAGS) $(TARGET_MGNUCFLAGS) \
@@ -89,15 +130,23 @@ CFLAGS		=
 EXTRA_CFLAGS	=
 
 ML		= ml
-ALL_MLFLAGS	= $(MLFLAGS) $(EXTRA_MLFLAGS) $(TARGET_MLFLAGS)
+ALL_MLFLAGS	= $(MLFLAGS) $(EXTRA_MLFLAGS) $(TARGET_MLFLAGS) $(LIB_MLFLAGS)
 MLFLAGS		= $(EXTRA_MLFLAGS)
 EXTRA_MLFLAGS	=
+LIB_MLFLAGS	= $(patsubst %,-R%,$(EXTRA_C_LIB_DIRS)) \
+		  $(patsubst %,-L%,$(EXTRA_C_LIB_DIRS))
 
 MLOBJS		=
 MLPICOBJS	= $(MLOBJS:.o=.$(EXT_FOR_PIC_OBJECTS))
-ALL_MLLIBS	= $(MLLIBS) $(EXTRA_MLLIBS) $(TARGET_MLLIBS)
+ALL_MLLIBS	= $(MLLIBS) $(EXTRA_MLLIBS) $(TARGET_MLLIBS) $(LIB_MLLIBS)
+# XXX ALL_MLLIBS_DEP should contain a list of the file names of the
+# libraries specified in ALL_MLLIBS, but I can't see how to know whether
+# they should be `.a' or `.so' libraries, so for now we leave it empty.
+#ALL_MLLIBS_DEP	= $(patsubst -l%,lib%.???,$(ALL_MLLIBS))
+ALL_MLLIBS_DEP	=
 MLLIBS		=
 EXTRA_MLLIBS	=
+LIB_MLLIBS	= $(patsubst %,-l%,$(ALL_EXTRA_LIBRARIES))
 
 MNC		= mnc
 ALL_MNCFLAGS	= $(MNCFLAGS) $(EXTRA_MNCFLAGS) $(TARGET_MNCFLAGS)
@@ -184,11 +233,13 @@ MLPICOBJS_DEPS =
 # undefined variables is enabled.
 
 TARGET_GRADEFLAGS = \
-  $(maybe-base-GRADEFLAGS-$(findstring undefined,$(origin GRADEFLAGS-$*))) \
-  $(maybe-target-GRADEFLAGS-$(findstring undefined,$(origin GRADEFLAGS-$@)))
-maybe-base-GRADEFLAGS- = $(GRADEFLAGS-$*)
+  $(maybe-base-GRADEFLAGS-$(findstring undefined,\
+		$(origin GRADEFLAGS-$(patsubst %_init,%,$*)))) \
+  $(maybe-target-GRADEFLAGS-$(findstring undefined,\
+  		$(origin GRADEFLAGS-$(patsubst %_init.c,%,$@))))
+maybe-base-GRADEFLAGS- = $(GRADEFLAGS-$(patsubst %_init,%,$*))
 maybe-base-GRADEFLAGS-undefined =
-maybe-target-GRADEFLAGS- = $(GRADEFLAGS-$@)
+maybe-target-GRADEFLAGS- = $(GRADEFLAGS-$(patsubst %_init.c,%,$@))
 maybe-target-GRADEFLAGS-undefined =
 
 TARGET_MCFLAGS = \
@@ -197,9 +248,20 @@ maybe-base-MCFLAGS- = $(MCFLAGS-$*)
 maybe-base-MCFLAGS-undefined =
 
 TARGET_C2INITFLAGS = \
-  $(maybe-target-C2INITFLAGS-$(findstring undefined,$(origin C2INITFLAGS-$@)))
-maybe-target-C2INITFLAGS- = $(C2INITFLAGS-$@)
+  $(maybe-target-C2INITFLAGS-$(findstring undefined,\
+		$(origin C2INITFLAGS-$(patsubst %_init.c,%,$@))))
+maybe-target-C2INITFLAGS- = $(C2INITFLAGS-$(patsubst %_init.c,%,$@))
 maybe-target-C2INITFLAGS-undefined =
+
+TARGET_C2INITARGS = \
+  $(maybe-base-C2INITARGS-$(findstring undefined,\
+		$(origin C2INITARGS-$*))) \
+  $(maybe-target-C2INITARGS-$(findstring undefined,\
+		$(origin C2INITARGS-$(patsubst %_init.c,%,$@))))
+maybe-base-C2INITARGS- = $(C2INITARGS-$*)
+maybe-base-C2INITARGS-undefined =
+maybe-target-C2INITARGS- = $(C2INITARGS-$(patsubst %_init.c,%,$@))
+maybe-target-C2INITARGS-undefined =
 
 TARGET_MGNUCFLAGS = \
   $(maybe-base-MGNUCFLAGS-$(findstring undefined,$(origin MGNUCFLAGS-$*)))
@@ -233,6 +295,15 @@ TARGET_RANLIBFLAGS = \
   $(maybe-target-RANLIBFLAGS-$(findstring undefined,$(origin RANLIBFLAGS-$@)))
 maybe-target-RANLIBFLAGS- = $(RANLIBFLAGS-$@)
 maybe-target-RANLIBFLAGS-undefined =
+
+# Note we strip any trailing `_init.c' from `$@' so we get the appropriate
+# "base" name, regardless of whether this variable ends up being used as
+# an argument of a `c2init' rule or an `ml' rule.
+TARGET_EXTRA_LIBRARIES = \
+  $(maybe-target-EXTRA_LIBRARIES-$(findstring undefined,\
+		$(origin EXTRA_LIBRARIES-$(patsubst %_init.c,%,$@))))
+maybe-target-EXTRA_LIBRARIES- = $(EXTRA_LIBRARIES-$(patsubst %_init.c,%,$@))
+maybe-target-EXTRA_LIBRARIES-undefined =
 
 # Support for compiling Mercury programs with Prolog will probably be
 # dropped one of these days, so it's probably not worth bothering with these.

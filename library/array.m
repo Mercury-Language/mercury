@@ -28,6 +28,9 @@
 % part of the library.
 %
 
+% Ralph Becket <rwab1@cam.sri.com> 24/04/99
+%	Function forms added.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -135,6 +138,7 @@
 :- pred array__set(array(T), int, T, array(T)).
 :- mode array__set(array_di, in, in, array_uo) is det.
 
+
 	% array__semidet_set sets the nth element of an array,
 	% and returns the resulting array.
 	% It fails if the index is out of bounds.
@@ -178,6 +182,7 @@
 :- pred array__shrink(array(T), int, array(T)).
 :- mode array__shrink(array_di, in, array_uo) is det.
 
+
 	% array__from_list takes a list,
 	% and returns an array containing those elements in
 	% the same order that they occured in the list.
@@ -197,6 +202,7 @@
 	% out of bounds.
 :- pred array__fetch_items(array(T), int, int, list(T)).
 :- mode array__fetch_items(in, in, in, out) is det.
+
 
 	% array__bsearch takes an array, an element to be found
 	% and a comparison predicate and returns the position of
@@ -280,7 +286,27 @@ Define_extern_entry(mercury____Compare___array__array_1_0);
 Define_extern_entry(mercury____SolveEqual___array__array_1_0);
 #endif
 
-#ifdef  USE_TYPE_LAYOUT
+MR_MODULE_STATIC_OR_EXTERN 
+const struct mercury_data_array__type_ctor_functors_array_1_struct
+	mercury_data_array__type_ctor_functors_array_1;
+MR_MODULE_STATIC_OR_EXTERN
+const struct mercury_data_array__type_ctor_layout_array_1_struct
+	mercury_data_array__type_ctor_layout_array_1;
+MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
+mercury_data_array__type_ctor_info_array_1 = {
+	(Integer) 1,
+	ENTRY(mercury____Unify___array__array_1_0),
+	ENTRY(mercury____Index___array__array_1_0),
+	ENTRY(mercury____Compare___array__array_1_0),
+#ifdef MR_USE_SOLVE_EQUAL
+	ENTRY(mercury____SolveEqual___array__array_1_0),
+#endif
+	MR_TYPECTOR_REP_ARRAY,
+	(Word *) &mercury_data_array__type_ctor_functors_array_1,
+	(Word *) &mercury_data_array__type_ctor_layout_array_1,
+	string_const(""array"", 5),
+	string_const(""array"", 5)
+};
 
 MR_MODULE_STATIC_OR_EXTERN
 const struct mercury_data_array__type_ctor_layout_array_1_struct {
@@ -296,8 +322,6 @@ const struct mercury_data_array__type_ctor_functors_array_1_struct {
 } mercury_data_array__type_ctor_functors_array_1 = {
 	MR_TYPE_CTOR_FUNCTORS_SPECIAL
 };
-
-#endif
 
 Declare_entry(mercury__array__array_equal_2_0);
 Declare_entry(mercury__array__array_compare_3_0);
@@ -317,7 +341,7 @@ Define_entry(mercury____Unify___array__array_1_0);
 		ENTRY(mercury____Unify___array__array_1_0));
 
 Define_entry(mercury____Index___array__array_1_0);
-	index_output = -1;
+	r1 = -1;
 	proceed();
 
 Define_entry(mercury____Compare___array__array_1_0);
@@ -803,3 +827,118 @@ array__map_2(N, Size, Closure, OldArray, NewArray0, NewArray) :-
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
+% Ralph Becket <rwab1@cam.sri.com> 24/04/99
+%	Function forms added.
+
+:- interface.
+
+:- func array__make_empty_array = array(T).
+:- mode array__make_empty_array = array_uo is det.
+
+:- func array__init(int, T) = array(T).
+:- mode array__init(in, in) = array_uo is det.
+
+:- func array__min(array(_T)) = int.
+:- mode array__min(array_ui) = out is det.
+
+:- func array__max(array(_T)) = int.
+:- mode array__max(array_ui) = out is det.
+
+:- func array__size(array(_T)) = int.
+:- mode array__size(array_ui) = out is det.
+
+:- func array__lookup(array(T), int) = T.
+:- mode array__lookup(array_ui, in) = out is det.
+
+:- func array__set(array(T), int, T) = array(T).
+:- mode array__set(array_di, in, in) = array_uo is det.
+
+:- func array__slow_set(array(T), int, T) = array(T).
+:- mode array__slow_set(array_ui, in, in) = array_uo is det.
+:- mode array__slow_set(in, in, in) = array_uo is det.
+
+:- func array__copy(array(T)) = array(T).
+:- mode array__copy(array_ui) = array_uo is det.
+
+:- func array__resize(array(T), int, T) = array(T).
+:- mode array__resize(array_di, in, in) = array_uo is det.
+
+:- func array__shrink(array(T), int) = array(T).
+:- mode array__shrink(array_di, in) = array_uo is det.
+
+:- func array__from_list(list(T)) = array(T).
+:- mode array__from_list(in) = array_uo is det.
+
+:- func array__to_list(array(T)) = list(T).
+:- mode array__to_list(array_ui) = out is det.
+
+:- func array__fetch_items(array(T), int, int) = list(T).
+:- mode array__fetch_items(array_ui, in, in) = out is det.
+
+:- func array__bsearch(array(T), T, func(T,T) = comparison_result) = maybe(int).
+:- mode array__bsearch(array_ui, in, func(in,in) = out is det) = out is det.
+
+:- func array__map(func(T1) = T2, array(T1)) = array(T2).
+:- mode array__map(func(in) = out is det, array_di) = array_uo is det.
+
+:- func array_compare(array(T), array(T)) = comparison_result.
+:- mode array_compare(in, in) = out is det.
+
+% ---------------------------------------------------------------------------- %
+% ---------------------------------------------------------------------------- %
+
+:- implementation.
+
+array__make_empty_array = A :-
+	array__make_empty_array(A).
+
+array__init(N, X) = A :-
+	array__init(N, X, A).
+
+array__min(A) = N :-
+	array__min(A, N).
+
+array__max(A) = N :-
+	array__max(A, N).
+
+array__size(A) = N :-
+	array__size(A, N).
+
+array__lookup(A, N) = X :-
+	array__lookup(A, N, X).
+
+array__set(A1, N, X) = A2 :-
+	array__set(A1, N, X, A2).
+
+array__slow_set(A1, N, X) = A2 :-
+	array__slow_set(A1, N, X, A2).
+
+array__copy(A1) = A2 :-
+	array__copy(A1, A2).
+
+array__resize(A1, N, X) = A2 :-
+	array__resize(A1, N, X, A2).
+
+array__shrink(A1, N) = A2 :-
+	array__shrink(A1, N, A2).
+
+array__from_list(Xs) = A :-
+	array__from_list(Xs, A).
+
+array__to_list(A) = Xs :-
+	array__to_list(A, Xs).
+
+array__fetch_items(A, N1, N2) = Xs :-
+	array__fetch_items(A, N1, N2, Xs).
+
+array__bsearch(A, X, F) = MN :-
+	P = ( pred(X1::in, X2::in, C::out) is det :- C = F(X1, X2) ),
+	array__bsearch(A, X, P, MN).
+
+array__map(F, A1) = A2 :-
+	P = ( pred(X::in, Y::out) is det :- Y = F(X) ),
+	array__map(P, A1, A2).
+
+array_compare(A1, A2) = C :-
+	array_compare(C, A1, A2).
+

@@ -238,7 +238,7 @@
 
 :- implementation.
 
-:- import_module hlds_data, hlds_pred, hlds_out, type_util.
+:- import_module hlds_data, hlds_pred, hlds_out, builtin_ops, type_util.
 :- import_module code_util, globals, options, special_pred, prog_util.
 :- import_module term.
 :- import_module assoc_list, bool, string, int, map, std_util, require.
@@ -427,12 +427,25 @@ base_type_layout__construct_base_type_data([BaseGenInfo | BaseGenInfos],
 		FunctorsDataName = type_ctor(functors, TypeName, TypeArity),
 		FunctorsCData = comp_gen_c_data(ModuleName, FunctorsDataName,
 			Exported, FunctorsTypeData, uniform(no), []),
-		base_type_layout__add_c_data(LayoutInfo3, LayoutCData, 
-			LayoutInfo4),
-		base_type_layout__add_c_data(LayoutInfo4, FunctorsCData, 
-			LayoutInfo5)
+
+		globals__lookup_bool_option(Globals, type_ctor_layout,
+			LayoutOption),
+		globals__lookup_bool_option(Globals, type_ctor_functors,
+			FunctorsOption),
+		( LayoutOption = yes ->
+			base_type_layout__add_c_data(LayoutInfo3,
+				LayoutCData, LayoutInfo4)
+		;	
+			LayoutInfo4 = LayoutInfo3
+		),
+		( FunctorsOption = yes ->
+			base_type_layout__add_c_data(LayoutInfo4,
+				FunctorsCData, LayoutInfo5)
+		;
+			LayoutInfo5 = LayoutInfo4
+		)
 	),
-	base_type_layout__construct_base_type_data(BaseGenInfos, Globals,
+	base_type_layout__construct_base_type_data(BaseGenInfos, Globals, 
 		LayoutInfo5, LayoutInfo).
 
 
@@ -601,8 +614,8 @@ base_type_layout__layout_special(_ConsId - ConsTag, LayoutInfo,
 		base_type_layout__encode_mkword(LayoutInfo, Tag, 
 			const(int_const(Value)), Rval)
 	;
-		ConsTag = pred_closure_tag(_, _),
-		error("type_ctor_layout: Unexpected tag - pred_closure_tag/2")
+		ConsTag = pred_closure_tag(_, _, _),
+		error("base_type_layout: Unexpected tag - pred_closure_tag/3")
 	;
 		ConsTag = code_addr_constant(_, _),
 		error("type_ctor_layout: Unexpected constant - code_addr_constant/2")
@@ -1119,8 +1132,10 @@ base_type_layout__construct_typed_pseudo_type_info(Type, Pseudo, LldsType,
 			% argument for their real arity, and then type
 			% arguments according to their types. 
 			% polymorphism.m has a detailed explanation.
-
-			type_is_higher_order(Type, _PredFunc, _TypeArgs)
+			% XXX polymorphism.m does not have a
+			% detailed explanation.
+			type_is_higher_order(Type, _PredFunc,
+				_EvalMethod, _TypeArgs)
 		->
 			TypeModule = unqualified(""),
 			TypeName = "pred",
@@ -1235,7 +1250,7 @@ base_type_layout__tag_type_and_value(no_tag, -1, no_tag).
 base_type_layout__tag_type_and_value(string_constant(_), -1, unused). 
 base_type_layout__tag_type_and_value(float_constant(_), -1, unused). 
 base_type_layout__tag_type_and_value(int_constant(_), -1, unused). 
-base_type_layout__tag_type_and_value(pred_closure_tag(_, _), -1, unused). 
+base_type_layout__tag_type_and_value(pred_closure_tag(_, _, _), -1, unused). 
 base_type_layout__tag_type_and_value(code_addr_constant(_, _), -1, unused).
 base_type_layout__tag_type_and_value(type_ctor_info_constant(_, _, _), -1,
 	unused). 

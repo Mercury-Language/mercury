@@ -18,8 +18,8 @@
 #include "mercury_memory.h"
 
 
-MR_DECLARE_STRUCT(mercury_data___type_ctor_info_pred_0);
-MR_DECLARE_STRUCT(mercury_data___type_ctor_info_func_0);
+MR_DECLARE_TYPE_CTOR_INFO_STRUCT(mercury_data___type_ctor_info_pred_0);
+MR_DECLARE_TYPE_CTOR_INFO_STRUCT(mercury_data___type_ctor_info_func_0);
 
 /*
 ** deep_copy(): see mercury_deep_copy.h for documentation.

@@ -111,18 +111,6 @@
 	--no-use-minimal-model)
 		use_minimal_model=false ;;
 
-	--args)
-		shift
-		case "$1" in
-			simple|compact)
-				args_method=$1;;
-			*)
-				echo "$0: invalid arg method \`$1'" 1>&2
-				exit 1
-				;;
-		esac
-		;;
-
 	--pic-reg)
 		pic_reg=true ;;
 	--no-pic-reg)
@@ -151,7 +139,6 @@
 	    reserve_tag=false
 	    use_solve_equal=false
 	    use_minimal_model=false
-	    args_method=compact
 	    stack_trace=false
 	    require_tracing=false
 	    low_level_debug=false
@@ -175,9 +162,6 @@
 #				stack_trace=true
 #				require_tracing=false
 #				;;
-			sa)
-				args_method=simple
-				;;
 			tr)	use_trail=true
 				;;
 			rt)	reserve_tag=true

@@ -35,6 +35,10 @@
 			browser_state, browser_state, io__state, io__state).
 :- mode browse__browse(in, in, in, in, out, di, uo) is det.
 
+:- pred browse__browse_external(T, io__input_stream, io__output_stream,
+			browser_state, browser_state, io__state, io__state).
+:- mode browse__browse_external(in, in, in, in, out, di, uo) is det.
+
 	% The non-interactive term browser.
 :- pred browse__print(T, io__output_stream, browser_state,
 			io__state, io__state).
@@ -60,6 +64,29 @@
 	"ML_BROWSE_print").
 :- pragma export(browse__browser_state_type(out),
 	"ML_BROWSE_browser_state_type").
+
+:- pragma export(browse__browse_external(in, in, in, in, out, di, uo),
+	"ML_BROWSE_browse_external").
+
+%---------------------------------------------------------------------------%
+% If the term browser is called from the internal debugger, input is
+% done via a call to the readline library (if available), using streams
+% MR_mdb_in and MR_mdb_out.  If it is called from the external debugger,
+% Input/Output are done via MR_debugger_socket_in/MR_debugger_socket_out. 
+% In the latter case we need to output terms; their type is 
+% term_browser_response.
+
+
+:- type term_browser_response 
+	--->	browser_str(string)
+	;	browser_int(int)
+	;	browser_nl
+	;	browser_end_command
+	;	browser_quit.
+
+:- type debugger 
+	--->	internal
+	;	external.
 
 %---------------------------------------------------------------------------%
 
@@ -104,8 +131,14 @@ browse__print(State) -->
 		io__write_univ(Univ),
 		io__nl
 	;
-		portray_fmt(State, flat)
+		portray_fmt(internal, State, flat)
 	).
+
+:- pred browse__print_external(browser_state, io__state, io__state).
+:- mode browse__print_external(in, di, uo) is det.
+
+browse__print_external(State) -->
+	portray_fmt(external, State, flat).
 
 	% The maximum estimated size for which we use `io__write'.
 :- pred max_print_size(int::out) is det.
@@ -162,49 +195,77 @@ term_size_left_from_max(Univ, MaxSize, RemainingSize) :-
 %
 
 browse__browse(Object, InputStream, OutputStream, State0, State) -->
+	browse_common(internal, Object, InputStream, OutputStream, 
+		State0, State).
+
+browse__browse_external(Object, InputStream, OutputStream, State0, State) -->
+	browse_common(external, Object, InputStream, OutputStream, 
+		State0, State).
+
+
+:- pred browse_common(debugger, T, io__input_stream, io__output_stream,
+			browser_state, browser_state, io__state, io__state).
+:- mode browse_common(in, in, in, in, in, out, di, uo) is det.
+
+browse_common(Debugger, Object, InputStream, OutputStream, State0, State) -->
 	{ type_to_univ(Object, Univ) },
 	{ set_term(Univ, State0, State1) },
 	io__set_input_stream(InputStream, OldInputStream),
 	io__set_output_stream(OutputStream, OldOutputStream),
 	% startup_message,
-	browse_main_loop(State1, State),
+	browse_main_loop(Debugger, State1, State),
 	io__set_input_stream(OldInputStream, _),
 	io__set_output_stream(OldOutputStream, _).
 
-:- pred browse_main_loop(browser_state, browser_state, io__state, io__state).
-:- mode browse_main_loop(in, out, di, uo) is det.
-browse_main_loop(State0, State) -->
-	{ prompt(Prompt) },
-	parse__read_command(Prompt, Command),
+:- pred browse_main_loop(debugger, browser_state, browser_state, 
+	io__state, io__state).
+:- mode browse_main_loop(in, in, out, di, uo) is det.
+browse_main_loop(Debugger, State0, State) -->
+	(
+		{ Debugger = internal },
+		{ prompt(Prompt) },
+		parse__read_command(Prompt, Command)
+	;
+		{ Debugger = external },
+		parse__read_command_external(Command)
+	),
 	( { Command = quit } ->
-		% io__write_string("quitting...\n")
+		% write_string_debugger(Debugger, "quitting...\n")
+		(
+			{ Debugger = external },
+			send_term_to_socket(browser_quit)
+		;
+			{ Debugger = internal }
+		),
 		{ State = State0 }
 	;
-		run_command(Command, State0, State1),
-		browse_main_loop(State1, State)
+		run_command(Debugger, Command, State0, State1),
+		browse_main_loop(Debugger, State1, State)
 	).
 
-:- pred startup_message(io__state::di, io__state::uo) is det.
-startup_message -->
-	io__write_string("-- Simple Mercury Term Browser.\n"),
-	io__write_string("-- Type \"help\" for help.\n\n").
+:- pred startup_message(debugger::in, io__state::di, io__state::uo) is det.
+startup_message(Debugger) -->
+	write_string_debugger(Debugger, "-- Simple Mercury Term Browser.\n"),
+	write_string_debugger(Debugger, "-- Type \"help\" for help.\n\n").
 
 :- pred prompt(string::out) is det.
 prompt("browser> ").
 
 
-:- pred run_command(command, browser_state, browser_state,
+:- pred run_command(debugger, command, browser_state, browser_state,
 	io__state, io__state).
-:- mode run_command(in, in, out, di, uo) is det.
-run_command(Command, State, NewState) -->
+:- mode run_command(in, in, in, out, di, uo) is det.
+run_command(Debugger, Command, State, NewState) -->
 	( { Command = unknown } ->
-		io__write_string("Error: unknown command or syntax error.\nType \"help\" for help.\n"),
+		write_string_debugger(Debugger, 
+			"Error: unknown command or syntax error.\n"),
+		write_string_debugger(Debugger, "Type \"help\" for help.\n"),
 		{ NewState = State }
 	; { Command = help } ->
-		help,
+		help(Debugger),
 		{ NewState = State }
 	; { Command = set } ->
-		show_settings(State),
+		show_settings(Debugger, State),
 		{ NewState = State }
 	; { Command = set(Setting) } ->
 		( { Setting = depth(MaxDepth) } ->
@@ -218,14 +279,15 @@ run_command(Command, State, NewState) -->
 		; { Setting = format(Fmt) } ->
 			{ set_fmt(Fmt, State, NewState) }
 		;
-			io__write_string("error: unknown setting.\n"),
+			write_string_debugger(Debugger, 
+				"error: unknown setting.\n"),
 			{ NewState = State }
 		)
 	; { Command = ls } ->
-		portray(State),
+		portray(Debugger, State),
 		{ NewState = State }
 	; { Command = ls(Path) } ->
-		portray_path(State, Path),
+		portray_path(Debugger, State, Path),
 		{ NewState = State }
 	; { Command = cd } ->
 		{ set_path(root_rel([]), State, NewState) }
@@ -236,26 +298,36 @@ run_command(Command, State, NewState) -->
 		( { deref_subterm(Univ, NewPwd, _SubUniv) } ->
 			{ set_path(Path, State, NewState) }
 		;
-			io__write_string("error: cannot change to subterm\n"),
+			write_string_debugger(Debugger, 
+				"error: cannot change to subterm\n"),
 			{ NewState = State }
 		)
 	; { Command = print } ->
-		browse__print(State),
+		( { Debugger = internal} ->
+			browse__print(State)
+		;
+			browse__print_external(State)
+		),
 		{ NewState = State }
 	; { Command = pwd } ->
 		{ get_dirs(State, Path) },
-		write_path(Path),
-		io__nl,
+		write_path(Debugger, Path),
+		nl_debugger(Debugger),
 		{ NewState = State }
 	;	
-		io__write_string("command not yet implemented\n"),
+		write_string_debugger(Debugger, "command not yet implemented\n"),
 		{ NewState = State }
+	),
+	( { Debugger = external } ->
+		send_term_to_socket(browser_end_command)
+	;
+		{ true }
 	).
 
 	% XXX: default depth is hardwired to 10.
-:- pred help(io__state::di, io__state::uo) is det.
-help -->
-	io__write_string(
+:- pred help(debugger::in, io__state::di, io__state::uo) is det.
+help(Debugger) -->
+	write_string_debugger(Debugger,
 "Commands are:\n\
 \tls [path]      -- list subterm (expanded)\n\
 \tcd [path]      -- cd current subterm (default is root)\n\
@@ -282,61 +354,62 @@ SICStus Prolog style commands are:\n\
 % Various pretty-print routines
 %
 
-:- pred portray(browser_state, io__state, io__state).
-:- mode portray(in, di, uo) is det.
-portray(State) -->
+:- pred portray(debugger, browser_state, io__state, io__state).
+:- mode portray(in, in, di, uo) is det.
+portray(Debugger, State) -->
 	{ get_fmt(State, Fmt) },
 	(
 		{ Fmt = flat },
-		portray_flat(State)
+		portray_flat(Debugger, State)
 	;
 		{ Fmt = pretty },
-		portray_pretty(State)
+		portray_pretty(Debugger, State)
 	;
 		{ Fmt = verbose },
-		portray_verbose(State)
+		portray_verbose(Debugger, State)
 	).
 
 
-:- pred portray_path(browser_state, path, io__state, io__state).
-:- mode portray_path(in, in, di, uo) is det.
-portray_path(State, Path) -->
+:- pred portray_path(debugger, browser_state, path, io__state, io__state).
+:- mode portray_path(in, in, in, di, uo) is det.
+portray_path(Debugger, State, Path) -->
 	{ set_path(Path, State, NewState) },
-	portray(NewState).
+	portray(Debugger, NewState).
 
-:- pred portray_fmt(browser_state, portray_format, io__state, io__state).
-:- mode portray_fmt(in, in, di, uo) is det.
-portray_fmt(State, Format) -->
+:- pred portray_fmt(debugger, browser_state, portray_format, 
+	io__state, io__state).
+:- mode portray_fmt(in, in, in, di, uo) is det.
+portray_fmt(Debugger, State, Format) -->
 	(
 		{ Format = flat },
-		portray_flat(State)
+		portray_flat(Debugger, State)
 	;
 		{ Format = pretty },
-		portray_pretty(State)
+		portray_pretty(Debugger, State)
 	;
 		{ Format = verbose },
-		portray_verbose(State)
+		portray_verbose(Debugger, State)
 	).
 
 	% XXX: could abstract out the code common to the following preds.
-:- pred portray_flat(browser_state, io__state, io__state).
-:- mode portray_flat(in, di, uo) is det.
-portray_flat(State) -->
+:- pred portray_flat(debugger, browser_state, io__state, io__state).
+:- mode portray_flat(in, in, di, uo) is det.
+portray_flat(Debugger, State) -->
 	{ get_term(State, Univ) },
 	{ get_size(State, MaxSize) },
 	{ get_depth(State, MaxDepth) },
 	{ get_dirs(State, Dir) },
 	( { deref_subterm(Univ, Dir, SubUniv) } ->
 		{ term_to_string(SubUniv, MaxSize, MaxDepth, Str) },
-		io__write_string(Str)
+		write_string_debugger(Debugger, Str)
 	;
-		io__write_string("error: no such subterm")
+		write_string_debugger(Debugger, "error: no such subterm")
 	),
-	io__nl.
+	nl_debugger(Debugger).
 
-:- pred portray_verbose(browser_state, io__state, io__state).
-:- mode portray_verbose(in, di, uo) is det.
-portray_verbose(State) -->
+:- pred portray_verbose(debugger, browser_state, io__state, io__state).
+:- mode portray_verbose(in, in, di, uo) is det.
+portray_verbose(Debugger, State) -->
 	{ get_size(State, MaxSize) },
 	{ get_depth(State, MaxDepth) },
 	{ get_term(State, Univ) },
@@ -346,27 +419,27 @@ portray_verbose(State) -->
 	( { deref_subterm(Univ, Dir, SubUniv) } ->
 		{ term_to_string_verbose(SubUniv, MaxSize,
 			MaxDepth, X, Y, Str) },
-		io__write_string(Str)
+		write_string_debugger(Debugger, Str)
 	;
-		io__write_string("error: no such subterm")
+		write_string_debugger(Debugger, "error: no such subterm")
 	),
-	io__nl.
+	nl_debugger(Debugger).
 
 
-:- pred portray_pretty(browser_state, io__state, io__state).
-:- mode portray_pretty(in, di, uo) is det.
-portray_pretty(State) -->
+:- pred portray_pretty(debugger, browser_state, io__state, io__state).
+:- mode portray_pretty(in, in, di, uo) is det.
+portray_pretty(Debugger, State) -->
 	{ get_size(State, MaxSize) },
 	{ get_depth(State, MaxDepth) },
 	{ get_term(State, Univ) },
 	{ get_dirs(State, Dir) },
 	( { deref_subterm(Univ, Dir, SubUniv) } ->
 		{ term_to_string_pretty(SubUniv, MaxSize, MaxDepth, Str) },
-		io__write_string(Str)
+		write_string_debugger(Debugger, Str)
 	;
-		io__write_string("error: no such subterm")
+		write_string_debugger(Debugger, "error: no such subterm")
 	),
-	io__nl.
+	nl_debugger(Debugger).
 
 %---------------------------------------------------------------------------%
 %
@@ -617,43 +690,46 @@ term_to_string_verbose_list([Univ1, Univ2 | Univs], ArgNum, MaxSize, CurSize,
 % Miscellaneous path handling
 %
 
-:- pred write_path(list(dir), io__state, io__state).
-:- mode write_path(in, di, uo) is det.
-write_path([]) -->
-	io__write_string("/").
-write_path([Dir]) -->
+:- pred write_path(debugger, list(dir), io__state, io__state).
+:- mode write_path(in, in, di, uo) is det.
+write_path(Debugger, []) -->
+	write_string_debugger(Debugger, "/").
+write_path(Debugger, [Dir]) -->
 	(
 		{ Dir = parent },
-		io__write_string("/")
+		write_string_debugger(Debugger, "/")
 	;
 		{ Dir = child(N) },
-		io__write_string("/"), io__write_int(N)
+		write_string_debugger(Debugger, "/"), 
+		write_int_debugger(Debugger, N)
 	).
-write_path([Dir, Dir2 | Dirs]) -->
-	write_path_2([Dir, Dir2 | Dirs]).
+write_path(Debugger, [Dir, Dir2 | Dirs]) -->
+	write_path_2(Debugger, [Dir, Dir2 | Dirs]).
 
 
-:- pred write_path_2(list(dir), io__state, io__state).
-:- mode write_path_2(in, di, uo) is det.
-write_path_2([]) -->
-	io__write_string("/").
-write_path_2([Dir]) -->
+:- pred write_path_2(debugger, list(dir), io__state, io__state).
+:- mode write_path_2(in, in, di, uo) is det.
+write_path_2(Debugger, []) -->
+	write_string_debugger(Debugger, "/").
+write_path_2(Debugger, [Dir]) -->
 	(
 		{ Dir = parent },
-		io__write_string("/..")
+		write_string_debugger(Debugger, "/..")
 	;
 		{ Dir = child(N) },
-		io__write_string("/"), io__write_int(N)
+		write_string_debugger(Debugger, "/"), 
+		write_int_debugger(Debugger, N)
 	).
-write_path_2([Dir, Dir2 | Dirs]) -->
+write_path_2(Debugger, [Dir, Dir2 | Dirs]) -->
 	(
 		{ Dir = parent },
-		io__write_string("/.."),
-		write_path_2([Dir2 | Dirs])
+		write_string_debugger(Debugger, "/.."),
+		write_path_2(Debugger, [Dir2 | Dirs])
 	;
 		{ Dir = child(N) },
-		io__write_string("/"), io__write_int(N),
-		write_path_2([Dir2 | Dirs])
+		write_string_debugger(Debugger, "/"), 
+		write_int_debugger(Debugger, N),
+		write_path_2(Debugger, [Dir2 | Dirs])
 	).
 
 	% We assume a root-relative path. We assume Term is the entire term
@@ -820,20 +896,27 @@ set_univ(NewUniv, browser_state(_OldUniv, Dep, Siz, Path, Fmt, X, Y),
 % Display predicates.
 %
 
-:- pred show_settings(browser_state, io__state, io__state).
-:- mode show_settings(in, di, uo) is det.
-show_settings(State) -->
+:- pred show_settings(debugger, browser_state, io__state, io__state).
+:- mode show_settings(in, in, di, uo) is det.
+show_settings(Debugger, State) -->
 	{ State = browser_state(_Univ, MaxDepth, MaxSize,
 		CurPath, Fmt, X, Y) },
-	io__write_string("Max depth is: "), io__write_int(MaxDepth), io__nl,
-	io__write_string("Max size is: "), io__write_int(MaxSize), io__nl,
-	io__write_string("X clip is: "), io__write_int(X), io__nl,
-	io__write_string("Y clip is: "), io__write_int(Y), io__nl,
-	io__write_string("Current path is: "),
-		write_path(CurPath), io__nl,
-	io__write_string("Print format is "),
-	io__print(Fmt),
-	io__nl.
+	write_string_debugger(Debugger, "Max depth is: "), 
+		write_int_debugger(Debugger, MaxDepth), 
+		nl_debugger(Debugger),
+	write_string_debugger(Debugger, "Max size is: "), 
+		write_int_debugger(Debugger, MaxSize), 
+		nl_debugger(Debugger),
+	write_string_debugger(Debugger, "X clip is: "), 
+		write_int_debugger(Debugger, X), 
+		nl_debugger(Debugger),
+	write_string_debugger(Debugger, "Y clip is: "), 
+		write_int_debugger(Debugger, Y), nl_debugger(Debugger),
+	write_string_debugger(Debugger, "Current path is: "),
+		write_path(Debugger, CurPath), nl_debugger(Debugger),
+	write_string_debugger(Debugger, "Print format is "),
+		print_format_debugger(Debugger, Fmt),
+		nl_debugger(Debugger).
 
 :- pred string_to_path(string, path).
 :- mode string_to_path(in, out) is semidet.
@@ -919,5 +1002,52 @@ simplify([child(Dir)], [child(Dir)]).
 simplify([child(_Dir), parent | Dirs], Dirs).
 simplify([child(Dir1), child(Dir2) | Dirs], [child(Dir1) | Rest]) :-
 	simplify([child(Dir2) | Dirs], Rest).
+
+%---------------------------------------------------------------------------%
+
+:- pred write_string_debugger(debugger, string, io__state, io__state).
+:- mode write_string_debugger(in, in, di, uo) is det.
+write_string_debugger(internal, String) -->
+	io__write_string(String).
+write_string_debugger(external, String) -->
+	send_term_to_socket(browser_str(String)).
+
+:- pred nl_debugger(debugger, io__state, io__state).
+:- mode nl_debugger(in, di, uo) is det.
+nl_debugger(internal) -->
+	io__nl.
+nl_debugger(external) -->
+	send_term_to_socket(browser_nl).
+
+:- pred write_int_debugger(debugger, int, io__state, io__state).
+:- mode write_int_debugger(in, in, di, uo) is det.
+write_int_debugger(internal, Int) -->
+	io__write_int(Int).
+write_int_debugger(external, Int) -->
+	send_term_to_socket(browser_int(Int)).
+
+
+:- pred print_format_debugger(debugger, portray_format, io__state, io__state).
+:- mode print_format_debugger(in, in, di, uo) is det.
+print_format_debugger(internal, X) -->
+	io__print(X).
+print_format_debugger(external, X) -->
+	(
+		{ X = flat },
+		send_term_to_socket(browser_str("flat"))
+	;
+		{ X = pretty },
+		send_term_to_socket(browser_str("pretty"))
+	;
+		{ X = verbose },
+		send_term_to_socket(browser_str("verbose"))
+	).
+
+:- pred send_term_to_socket(term_browser_response, io__state, io__state).
+:- mode send_term_to_socket(in, di, uo) is det.
+send_term_to_socket(Term) -->
+	write(Term),
+	print(".\n"),
+	flush_output.
 
 %---------------------------------------------------------------------------%

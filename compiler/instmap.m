@@ -20,7 +20,7 @@
 :- interface.
 
 :- import_module hlds_module, prog_data, mode_info, (inst), mode_errors.
-:- import_module hlds_data.
+:- import_module hlds_data, inst_table.
 
 :- import_module map, bool, set, list, assoc_list, std_util.
 
@@ -103,6 +103,16 @@
 	%
 :- pred instmap__vars_list(instmap, list(prog_var)).
 :- mode instmap__vars_list(in, out) is det.
+
+	%
+	% instmap_changed_vars(IMA, IMB, IT, MI, CV)
+	%
+	% Given an earlier instmap, IMA, and a later instmap, IMB,
+	% determine what variables, CV, have had their instantiatedness
+	% information changed.
+	%
+:- pred instmap_changed_vars(instmap::in, instmap::in, inst_table::in,
+		module_info::in, set(prog_var)::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -374,6 +384,35 @@ instmap__vars(Instmap, Vars) :-
 instmap__vars_list(unreachable, []).
 instmap__vars_list(reachable(InstMapping, _), VarsList) :-
 	map__keys(InstMapping, VarsList).
+
+%-----------------------------------------------------------------------------%
+
+instmap_changed_vars(InstMapA, InstMapB, InstTable, ModuleInfo, ChangedVars) :-
+	instmap__vars_list(InstMapB, VarsB),
+	changed_vars_2(VarsB, InstMapA, InstMapB,
+			InstTable, ModuleInfo, ChangedVars).
+
+:- pred changed_vars_2(prog_vars::in, instmap::in, instmap::in,
+		inst_table::in, module_info::in, set(prog_var)::out) is det.
+
+changed_vars_2([], _InstMapA, _InstMapB, _InstTbl, _ModuleInfo, ChangedVars) :-
+	set__init(ChangedVars).
+changed_vars_2([VarB|VarBs], InstMapA, InstMapB,
+		InstTable, ModuleInfo, ChangedVars) :-
+	changed_vars_2(VarBs, InstMapA, InstMapB, InstTable,
+			ModuleInfo, ChangedVars0),
+
+	instmap__lookup_var(InstMapA, VarB, InitialInst),
+	instmap__lookup_var(InstMapB, VarB, FinalInst),
+
+	(
+		inst_matches_final_ignore_aliasing(InitialInst, InstMapA,
+				FinalInst, InstMapB, InstTable, ModuleInfo)
+	->
+		ChangedVars = ChangedVars0
+	;
+		set__insert(ChangedVars0, VarB, ChangedVars)
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -917,8 +956,11 @@ instmap__expand_subs(Keys, ModuleInfo, Sub, InstMapping0, InstMapping,
 		InstTable0, InstTable) :-
 	map__to_assoc_list(InstMapping0, AL0),
 	map__init(SeenIKs),
+	inst_table_get_other_insts(InstTable0, OtherInsts0),
+	other_inst_table_new_id(OtherInsts0, OtherInsts),
+	inst_table_set_other_insts(InstTable0, OtherInsts, InstTable1),
 	instmap__expand_subs_2(Keys, ModuleInfo, Sub, SeenIKs, AL0, AL,
-		InstTable0, InstTable),
+		InstTable1, InstTable),
 	map__from_assoc_list(AL, InstMapping).
 
 :- pred instmap__expand_subs_2(inst_key_set, module_info, inst_key_sub,
@@ -1008,25 +1050,22 @@ instmap__expand_inst_sub(Keys, ModuleInfo, Sub, SeenIKs0, SeenIKs,
 		Insts0, Insts, InstTable0, InstTable).
 instmap__expand_inst_sub(Keys, ModuleInfo, Sub, SeenIKs0, SeenIKs,
 		defined_inst(InstName), Inst, InstTable0, InstTable) :-
-	inst_table_get_substitution_insts(InstTable0, SubInsts0),
-	SubInst = substitution_inst(InstName, Keys, Sub),
-	SubInstName = substitution_inst(InstName, Keys, Sub),
-	(
-		map__search(SubInsts0, SubInst, Result)
-	->
+	inst_table_get_other_insts(InstTable0, OtherInsts0),
+	other_inst_table_mark_inst_name(OtherInsts0, InstName, NewInstName),
+	( other_inst_table_search(OtherInsts0, InstName, Result) ->
 		( Result = known(Inst0) ->
 			Inst2 = Inst0
 		;
-			Inst2 = defined_inst(SubInstName)
+			Inst2 = defined_inst(NewInstName)
 		),
 		SeenIKs = SeenIKs0,
 		InstTable = InstTable0
 	;
-		% Insert the inst_name in the substitution_inst_table with
+		% Insert the inst_name in the other_inst_table with
 		% value `unknown' for the moment.
-		map__det_insert(SubInsts0, SubInst, unknown, SubInsts1),
-		inst_table_set_substitution_insts(InstTable0, SubInsts1,
-			InstTable1),
+		other_inst_table_set(OtherInsts0, InstName, unknown,
+			OtherInsts1),
+		inst_table_set_other_insts(InstTable0, OtherInsts1, InstTable1),
 
 		% Recursively expand the inst.
 		inst_lookup(InstTable1, ModuleInfo, InstName, Inst0),
@@ -1035,10 +1074,10 @@ instmap__expand_inst_sub(Keys, ModuleInfo, Sub, SeenIKs0, SeenIKs,
 			SeenIKs, Inst1, Inst2, InstTable1, InstTable2),
 
 		% Update the substitution_inst_table with the known value.
-		inst_table_get_substitution_insts(InstTable2, SubInsts2),
-		map__det_update(SubInsts2, SubInst, known(Inst2), SubInsts),
-		inst_table_set_substitution_insts(InstTable2, SubInsts,
-			InstTable)
+		inst_table_get_other_insts(InstTable2, OtherInsts2),
+		other_inst_table_set(OtherInsts2, InstName, known(Inst2),
+			OtherInsts),
+		inst_table_set_other_insts(InstTable2, OtherInsts, InstTable)
 	),
 		% Avoid expanding recursive insts.
 	map__init(InstMapping),
@@ -1051,9 +1090,9 @@ instmap__expand_inst_sub(Keys, ModuleInfo, Sub, SeenIKs0, SeenIKs,
 	;
 			% InstMapping is not used by inst_contains_instname.
 		inst_contains_instname(Inst2, reachable(InstMapping, Sub),
-			InstTable, ModuleInfo, SubInstName)
+			InstTable, ModuleInfo, NewInstName)
 	->
-		Inst = defined_inst(SubInstName)
+		Inst = defined_inst(NewInstName)
 	;
 		Inst = Inst2
 	).

@@ -31,6 +31,7 @@
 
 :- import_module hlds_module, hlds_pred, hlds_goal, llds, instmap, trace.
 :- import_module continuation_info, prog_data, hlds_data, globals.
+:- import_module inst_table.
 
 :- import_module bool, set, list, map, std_util, assoc_list.
 
@@ -3106,15 +3107,19 @@ code_info__place_var(Var, Lval, Code) -->
 
 code_info__place_vars([], empty) --> [].
 code_info__place_vars([V - Rs | RestList], Code) -->
-	(
-		{ set__to_sorted_list(Rs, VList) },
-		{ list__filter_map(code_exprn__value_to_rval, VList, RList) },
-		{ code_info__lval_in_rval_list(L, RList) }
-	->
-		code_info__place_var(V, L, ThisCode)
+	{ set__to_sorted_list(Rs, VList) },
+	{ list__filter_map(code_exprn__value_to_rval, VList, RList, RefList) },
+	( { code_info__lval_in_rval_list(L, RList) } ->
+		code_info__place_var(V, L, ValueCode)
 	;
-		{ ThisCode = empty }
+		{ ValueCode = empty }
 	),
+	( { RefList = [reference(RefLval) | _] } ->
+		code_info__place_var_reference(V, RefLval, ReferenceCode)
+	;
+		{ ReferenceCode = empty }
+	),
+	{ ThisCode = tree(ValueCode, ReferenceCode) },
 	code_info__place_vars(RestList, RestCode),
 	{ Code = tree(ThisCode, RestCode) }.
 
@@ -3390,9 +3395,10 @@ code_info__generate_return_live_lvalues(OutputArgLocs, ReturnInstMap,
 	code_info__get_proc_info(ProcInfo),
 	code_info__get_globals(Globals),
 	{ proc_info_inst_table(ProcInfo, InstTable) },
+	code_info__get_module_info(ModuleInfo),
 	{ continuation_info__generate_return_live_lvalues(OutputArgLocs,
-		ReturnInstMap, InstTable, Vars, VarLocs,
-		Temps, ProcInfo, Globals, LiveLvalues) }.
+		ReturnInstMap, InstTable, Vars, VarLocs, Temps, ProcInfo,
+		ModuleInfo, Globals, LiveLvalues) }.
 
 :- pred code_info__generate_resume_layout(label::in, resume_map::in,
 	code_info::in, code_info::out) is det.
@@ -3406,8 +3412,10 @@ code_info__generate_resume_layout(Label, ResumeMap) -->
 		code_info__get_instmap(InstMap),
 		code_info__get_inst_table(InstTable),
 		code_info__get_proc_info(ProcInfo),
+		code_info__get_module_info(ModuleInfo),
 		{ continuation_info__generate_resume_layout(ResumeMap,
-			Temps, InstMap, InstTable, ProcInfo, Layout) },
+			Temps, InstMap, InstTable, ProcInfo, ModuleInfo,
+			Layout) },
 		code_info__add_gc_layout_for_label(Label, Layout)
 	;
 		[]

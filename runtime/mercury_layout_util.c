@@ -107,88 +107,6 @@ MR_materialize_typeinfos_base(const MR_Stack_Layout_Vars *vars,
 	}
 }
 
-Word
-MR_make_var_list(const MR_Stack_Layout_Label *layout, Word *saved_regs)
-{
-	const MR_Stack_Layout_Vars 	*vars;
-	int 				var_count;
-	int 				long_count;
-	const char			*name;
-
-	Word				univ_list;
-	Word				univ;
-	Word				value;
-	Word				type_info;
-	Word				*base_sp;
-	Word				*base_curfr;
-	Word				*type_params;
-
-	int				i;
-
-	vars = &layout->MR_sll_var_info;
-	var_count = MR_all_desc_var_count(vars);
-	long_count = MR_long_desc_var_count(vars);
-	base_sp = MR_saved_sp(saved_regs);
-	base_curfr = MR_saved_curfr(saved_regs);
-
-	/* build up the live variable list, starting from the end */
-	restore_transient_hp();
-	univ_list = list_empty();
-	save_transient_hp();
-
-	/* 
-	** If no information on live variables is available, return the 
-	** empty list.
-	*/
-	if (var_count <= 0) {
-		return univ_list;
-	} 
-		
-	type_params = MR_materialize_typeinfos_base(vars,
-	       	saved_regs, base_sp, base_curfr);
-    
-	for (i = var_count - 1; i >= 0; i--) {
-		/*
-		** Look up the name, the type and value
-		** (XXX we don't include the name or the inst
-		** in the list that we return)
-		*/
-
-		name = MR_name_if_present(vars, i);
-		if (! MR_get_type_and_value_filtered(vars, i, saved_regs,
-			name, type_params, &type_info, &value))
-		{
-			/*
-			** "variables" representing the saved values of
-			** succip, hp etc, which are the "variables" for which
-			** get_type_and_value fails, are not of interest to
-			** the user.
-			*/
-
-			continue;
-		}
-
-		/*
-		** Create a term of type `univ' to hold the type & value,
-		** and cons it onto the list.
-		** Note that the calls to save/restore_transient_hp()
-		** can't be hoisted out of the loop, because
-		** MR_get_type_and_value() calls MR_create_type_info()
-		** which may allocate memory using incr_saved_hp.
-		*/
-
-		restore_transient_hp();
-		incr_hp(univ, 2);
-		field(mktag(0), univ, UNIV_OFFSET_FOR_TYPEINFO) = type_info;
-		field(mktag(0), univ, UNIV_OFFSET_FOR_DATA) = value;
-		
-		univ_list = list_cons(univ, univ_list);
-		save_transient_hp();
-	}
-
-	return univ_list;
-}
-
 int
 MR_get_register_number_long(MR_Long_Lval locn)
 {
@@ -478,35 +396,6 @@ MR_get_type_base(const MR_Stack_Layout_Vars *vars, int i,
 	*type_info = (Word) MR_create_type_info(type_params, pseudo_type_info);
 	
 	return TRUE;
-}
-
-/*
-** get_type_and_value() and get_type() will succeed to retrieve "variables"
-** beginning with `TypeInfo' and `TypeClassInfo'. As we can not print those
-** variables because of the fake arity of the type private_builtin:typeinfo/1,
-** we define filtered version of get_type_and_value() and get_type()
-** that will fail to retrieve such variables.
-*/
-
-bool
-MR_get_type_and_value_filtered(const MR_Stack_Layout_Vars *vars, int i,
-	Word *saved_regs, const char *name, Word *type_params, 
-	Word *type_info, Word *value)
-{
-	return ((strncmp(name, "TypeInfo", 8) != 0)
-	       && (strncmp(name, "TypeClassInfo", 13) != 0)
-	       && MR_get_type_and_value(vars, i, saved_regs, type_params,
-			type_info, value));
-}
-
-
-bool
-MR_get_type_filtered(const MR_Stack_Layout_Vars *vars, int i,
-	Word *saved_regs, const char *name, Word *type_params, Word *type_info)
-{
-	return ((strncmp(name, "TypeInfo", 8) != 0)
-	       && (strncmp(name, "TypeClassInfo", 13) != 0)
-	       && MR_get_type(vars, i, saved_regs, type_params, type_info));
 }
 
 void

@@ -304,7 +304,7 @@ inlining__is_flat_simple_goal(conj(Goals) - _) :-
 	inlining__is_flat_simple_goal_list(Goals).
 inlining__is_flat_simple_goal(not(Goal) - _) :-
 	inlining__is_flat_simple_goal(Goal).
-inlining__is_flat_simple_goal(some(_, Goal) - _) :-
+inlining__is_flat_simple_goal(some(_, _, Goal) - _) :-
 	inlining__is_flat_simple_goal(Goal).
 inlining__is_flat_simple_goal(call(_, _, _, BuiltinState, _, _) - _) :-
 	BuiltinState = inline_builtin.
@@ -478,8 +478,8 @@ inlining__inlining_in_goal(
 inlining__inlining_in_goal(not(Goal0) - GoalInfo, not(Goal) - GoalInfo) -->
 	inlining__inlining_in_goal(Goal0, Goal).
 
-inlining__inlining_in_goal(some(Vars, Goal0) - GoalInfo,
-		some(Vars, Goal) - GoalInfo) -->
+inlining__inlining_in_goal(some(Vars, CanRemove, Goal0) - GoalInfo,
+		some(Vars, CanRemove, Goal) - GoalInfo) -->
 	inlining__inlining_in_goal(Goal0, Goal).
 
 inlining__inlining_in_goal(call(PredId, ProcId, ArgVars, Builtin, Context,
@@ -540,11 +540,8 @@ inlining__inlining_in_goal(call(PredId, ProcId, ArgVars, Builtin, Context,
 		VarSet, VarTypes, TypeVarSet, TypeInfoVarMap, DidInlining,
 		DetChanged).
 
-inlining__inlining_in_goal(higher_order_call(A, B, C, D, E, F) - GoalInfo,
-		higher_order_call(A, B, C, D, E, F) - GoalInfo) --> [].
-
-inlining__inlining_in_goal(class_method_call(A, B, C, D, E, F) - GoalInfo,
-		class_method_call(A, B, C, D, E, F) - GoalInfo) --> [].
+inlining__inlining_in_goal(generic_call(A, B, C, D) - GoalInfo,
+		generic_call(A, B, C, D) - GoalInfo) --> [].
 
 inlining__inlining_in_goal(unify(A, B, C, D, E) - GoalInfo,
 		unify(A, B, C, D, E) - GoalInfo) --> [].

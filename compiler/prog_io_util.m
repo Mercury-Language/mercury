@@ -25,9 +25,8 @@
 
 :- interface.
 
-:- import_module prog_data, hlds_data, (inst).
-:- import_module term.
-:- import_module list, map, term, io.
+:- import_module prog_data, (inst).
+:- import_module list, map, std_util, term, io.
 
 :- type maybe2(T1, T2)	--->	error(string, term)
 			;	ok(T1, T2).
@@ -38,6 +37,9 @@
 
 :- type maybe_functor	== 	maybe_functor(generic).
 :- type maybe_functor(T) == 	maybe2(sym_name, list(term(T))).
+
+	% ok(SymName, Args - MaybeFuncRetArg) ; error(Msg, Term).
+:- type maybe_pred_or_func(T) == maybe2(sym_name, pair(list(T), maybe(T))).
 
 :- type maybe_item_and_context
 			==	maybe2(item, prog_context).
@@ -56,6 +58,28 @@
 
 :- pred parse_list_of_vars(term(T), list(var(T))).
 :- mode parse_list_of_vars(in, out) is semidet.
+
+:- pred parse_name_and_arity(module_name, term(_T), sym_name, arity).
+:- mode parse_name_and_arity(in, in, out, out) is semidet.
+
+:- pred parse_name_and_arity(term(_T), sym_name, arity).
+:- mode parse_name_and_arity(in, out, out) is semidet.
+
+:- pred parse_pred_or_func_name_and_arity(module_name,
+		term(_T), pred_or_func, sym_name, arity).
+:- mode parse_pred_or_func_name_and_arity(in, in, out, out, out) is semidet.
+
+:- pred parse_pred_or_func_name_and_arity(term(_T), pred_or_func,
+		sym_name, arity).
+:- mode parse_pred_or_func_name_and_arity(in, out, out, out) is semidet.
+
+:- pred parse_pred_or_func_and_args(maybe(module_name), term(_T), term(_T),
+		string, maybe_pred_or_func(term(_T))).
+:- mode parse_pred_or_func_and_args(in, in, in, in, out) is det.
+
+:- pred parse_pred_or_func_and_args(term(_T), pred_or_func, sym_name,
+		list(term(_T))).
+:- mode parse_pred_or_func_and_args(in, out, out, out) is semidet.
 
 :- pred convert_mode_list(list(term), list(mode)).
 :- mode convert_mode_list(in, out) is semidet.
@@ -108,11 +132,84 @@
 
 :- implementation.
 
-:- import_module prog_io, prog_io_goal, hlds_pred, options, globals.
+:- import_module prog_io, prog_io_goal, options, globals, inst_table.
+
+% XXX we should not need to import hlds*.m here.
+% But currently we need to import hlds_data.m for the `cons_id' type
+% that is used in insts.
+:- import_module hlds_data.
+
 :- import_module bool, string, std_util, term.
 
 add_context(error(M, T), _, error(M, T)).
 add_context(ok(Item), Context, ok(Item, Context)).
+
+parse_name_and_arity(ModuleName, PredAndArityTerm, SymName, Arity) :-
+	PredAndArityTerm = term__functor(term__atom("/"),
+		[PredNameTerm, ArityTerm], _),
+	parse_implicitly_qualified_term(ModuleName,
+		PredNameTerm, PredNameTerm, "", ok(SymName, [])),
+	ArityTerm = term__functor(term__integer(Arity), [], _).
+
+parse_name_and_arity(PredAndArityTerm, SymName, Arity) :-
+	parse_name_and_arity(unqualified(""),
+		PredAndArityTerm, SymName, Arity).
+
+parse_pred_or_func_name_and_arity(ModuleName, PorFPredAndArityTerm,
+		PredOrFunc, SymName, Arity) :-
+	PorFPredAndArityTerm = term__functor(term__atom(PredOrFuncStr),
+		Args, _),
+	( PredOrFuncStr = "pred", PredOrFunc = predicate
+	; PredOrFuncStr = "func", PredOrFunc = function
+	),
+	Args = [Arg],
+	parse_name_and_arity(ModuleName, Arg, SymName, Arity).
+
+parse_pred_or_func_name_and_arity(PorFPredAndArityTerm,
+		PredOrFunc, SymName, Arity) :-
+	parse_pred_or_func_name_and_arity(unqualified(""),
+		PorFPredAndArityTerm, PredOrFunc, SymName, Arity).
+
+parse_pred_or_func_and_args(Term, PredOrFunc, SymName, ArgTerms) :-
+	parse_pred_or_func_and_args(no, Term, Term, "",
+		ok(SymName, ArgTerms0 - MaybeRetTerm)), 
+	(
+		MaybeRetTerm = yes(RetTerm),
+		PredOrFunc = function,
+		list__append(ArgTerms0, [RetTerm], ArgTerms)
+	;
+		MaybeRetTerm = no,
+		PredOrFunc = predicate,
+		ArgTerms = ArgTerms0
+	).
+
+parse_pred_or_func_and_args(MaybeModuleName, PredAndArgsTerm, ErrorTerm,
+		Msg, PredAndArgsResult) :-
+	(
+		PredAndArgsTerm = term__functor(term__atom("="),
+			[FuncAndArgsTerm, FuncResultTerm], _)
+	->
+		FunctorTerm = FuncAndArgsTerm,
+		MaybeFuncResult = yes(FuncResultTerm)
+	;
+		FunctorTerm = PredAndArgsTerm,
+		MaybeFuncResult = no
+	),
+	(
+		MaybeModuleName = yes(ModuleName),
+		parse_implicitly_qualified_term(ModuleName, FunctorTerm,
+			ErrorTerm, Msg, Result)
+	;
+		MaybeModuleName = no,
+		parse_qualified_term(FunctorTerm, ErrorTerm, Msg, Result)
+	),
+	(
+		Result = ok(SymName, Args),
+		PredAndArgsResult = ok(SymName, Args - MaybeFuncResult)
+	;
+		Result = error(ErrorMsg, Term),
+		PredAndArgsResult = error(ErrorMsg, Term)
+	).
 
 parse_list_of_vars(term__functor(term__atom("[]"), [], _), []).
 parse_list_of_vars(term__functor(term__atom("."), [Head, Tail], _), [V|Vs]) :-

@@ -13,7 +13,7 @@
 
 :- interface.
 
-:- import_module hlds_pred, prog_data, term.
+:- import_module prog_data, term.
 :- import_module std_util, list.
 
 %-----------------------------------------------------------------------------%
@@ -60,6 +60,12 @@
 	%
 :- pred match_sym_name(sym_name, sym_name).
 :- mode match_sym_name(in, in) is semidet.
+
+	% insert_module_qualifier(ModuleName, SymName0, SymName):
+	%	prepend the specified ModuleName onto the module
+	%	qualifiers in SymName0, giving SymName.
+:- pred insert_module_qualifier(string, sym_name, sym_name).
+:- mode insert_module_qualifier(in, in, out) is det.
 
         % Given a possible module qualified sym_name and a list of
 	% argument types and a context, construct a term. This is
@@ -295,9 +301,6 @@ string_to_sym_name(String, ModuleSeparator, Result) :-
     ;
     	Result = unqualified(String)
     ).
-
-:- pred insert_module_qualifier(string, sym_name, sym_name).
-:- mode insert_module_qualifier(in, in, out) is det.
 
 insert_module_qualifier(ModuleName, unqualified(PlainName),
 		qualified(unqualified(ModuleName), PlainName)).

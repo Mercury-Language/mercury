@@ -178,6 +178,18 @@ AC_SUBST(MKTEMP)
 AC_PATH_PROG(INSTALL_INFO,install-info)
 AC_SUBST(INSTALL_INFO)
 #-----------------------------------------------------------------------------#
+AC_PATH_PROG(TEXI2DVI,texi2dvi)
+AC_SUBST(TEXI2DVI)
+#-----------------------------------------------------------------------------#
+AC_PATH_PROG(DVIPS,dvips)
+AC_SUBST(DVIPS)
+#-----------------------------------------------------------------------------#
+AC_PATH_PROG(MAKEINFO,makeinfo)
+AC_SUBST(MAKEINFO)
+#-----------------------------------------------------------------------------#
+AC_PATH_PROG(PERL,perl)
+AC_SUBST(PERL)
+#-----------------------------------------------------------------------------#
 AC_PROG_CC
 AC_SUBST(CC)
 
@@ -663,141 +675,197 @@ else
 	fi
 fi
 #-----------------------------------------------------------------------------#
-AC_CHECK_HEADER(stdint.h, HAVE_STDINT_H=1)
-if test "$HAVE_STDINT_H" = 1; then
-	AC_DEFINE(HAVE_STDINT)
-else
+AC_MSG_CHECKING(for an integer type with the same size as a pointer)
+AC_CACHE_VAL(mercury_cv_word_type,
+	AC_TRY_RUN([
+	#include <stdio.h>
+	int main() {
+		FILE *fp;
+
+		fp = fopen("conftest.tags", "w");
+		if (fp == NULL)
+			exit(1);
+
+		if (sizeof(int) == sizeof(void *))
+		{
+			fprintf(fp, "int\n");
+			exit(0);
+		}
+
+		if (sizeof(long) == sizeof(void *))
+		{
+			fprintf(fp, "long\n");
+			exit(0);
+		}
+
+		fprintf(fp, "unknown\n");
+		exit(1);
+	}],
+	[mercury_cv_word_type=`cat conftest.tags`],
+	[mercury_cv_word_type=unknown],
+	[mercury_cv_word_type=unknown])
+)
+if test "$mercury_cv_word_type" = unknown; then
+	AC_TRY_RUN([
+	#include <stdio.h>
+	int main() {
+		FILE *fp;
+
+		fp = fopen("conftest.tags", "w");
+		if (fp == NULL)
+			exit(1);
+
+		if (sizeof(long long) == sizeof(void *))
+		{
+			fprintf(fp, "long long\n");
+			exit(0);
+		}
+
+		fprintf(fp, "unknown\n");
+		exit(1);
+	}],
+	[mercury_cv_word_type=`cat conftest.tags`],
+	[mercury_cv_word_type=unknown],
+	[mercury_cv_word_type=unknown])
+fi
+AC_MSG_RESULT($mercury_cv_word_type)
+AC_DEFINE_UNQUOTED(MR_WORD_TYPE, $mercury_cv_word_type)
+MR_WORD_TYPE=$mercury_cv_word_type
+AC_SUBST(MR_WORD_TYPE)
 #-----------------------------------------------------------------------------#
-	AC_MSG_CHECKING(for an integer type with the same size as a pointer)
-	AC_CACHE_VAL(mercury_cv_word_type,
-		AC_TRY_RUN([
-		#include <stdio.h>
-		int main() {
-			FILE *fp;
+AC_MSG_CHECKING(for an integer type of at least 64 bits)
+AC_CACHE_VAL(mercury_cv_int_least64_type,
+	AC_TRY_RUN([
+	#include <stdio.h>
+	#include <limits.h>
+	int main() {
+		FILE *fp;
 
-			fp = fopen("conftest.tags", "w");
-			if (fp == NULL)
-				exit(1);
-
-			if (sizeof(int) == sizeof(void *))
-			{
-				fprintf(fp, "int\n");
-				exit(0);
-			}
-
-			if (sizeof(long) == sizeof(void *))
-			{
-				fprintf(fp, "long\n");
-				exit(0);
-			}
-
-			fprintf(fp, "unknown\n");
+		fp = fopen("conftest.tags", "w");
+		if (fp == NULL)
 			exit(1);
-		}],
-		[mercury_cv_word_type=`cat conftest.tags`],
-		[mercury_cv_word_type=unknown],
-		[mercury_cv_word_type=unknown])
-	)
-	if test "$mercury_cv_word_type" = unknown; then
-		AC_TRY_RUN([
-		#include <stdio.h>
-		int main() {
-			FILE *fp;
 
-			fp = fopen("conftest.tags", "w");
-			if (fp == NULL)
-				exit(1);
+		if (sizeof(int) * CHAR_BIT >= 64)
+		{
+			fprintf(fp, "int\n");
+			exit(0);
+		}
 
-			if (sizeof(long long) == sizeof(void *))
-			{
-				fprintf(fp, "long long\n");
-				exit(0);
-			}
+		if (sizeof(long) * CHAR_BIT >= 64)
+		{
+			fprintf(fp, "long\n");
+			exit(0);
+		}
 
-			fprintf(fp, "unknown\n");
+		fprintf(fp, "unknown\n");
+		exit(1);
+	}],
+	[mercury_cv_int_least64_type=`cat conftest.tags`],
+	[mercury_cv_int_least64_type=unknown],
+	[mercury_cv_int_least64_type=unknown])
+)
+if test "$mercury_cv_int_least64_type" = unknown; then
+	AC_TRY_RUN([
+	#include <stdio.h>
+	#include <limits.h>
+	int main() {
+		FILE *fp;
+
+		fp = fopen("conftest.tags", "w");
+		if (fp == NULL)
 			exit(1);
-		}],
-		[mercury_cv_word_type=`cat conftest.tags`],
-		[mercury_cv_word_type=unknown],
-		[mercury_cv_word_type=unknown])
-	fi
-	AC_MSG_RESULT($mercury_cv_word_type)
-	AC_DEFINE_UNQUOTED(MR_WORD_TYPE, $mercury_cv_word_type)
-	MR_WORD_TYPE=$mercury_cv_word_type
-	AC_SUBST(MR_WORD_TYPE)
+
+		if (sizeof(long long) * CHAR_BIT >= 64)
+		{
+			fprintf(fp, "long long\n");
+			exit(0);
+		}
+
+		fprintf(fp, "unknown\n");
+		exit(1);
+	}],
+	[mercury_cv_int_least64_type=`cat conftest.tags`],
+	[mercury_cv_int_least64_type=unknown],
+	[mercury_cv_int_least64_type=unknown])
+fi
+AC_MSG_RESULT($mercury_cv_int_least64_type)
+if test "$mercury_cv_int_least64_type" != unknown; then
+	AC_DEFINE_UNQUOTED(MR_INT_LEAST64_TYPE, $mercury_cv_int_least64_type)
+	MR_INT_LEAST64_TYPE=$mercury_cv_int_least64_type
+	AC_SUBST(MR_INT_LEAST64_TYPE)
+fi
 #-----------------------------------------------------------------------------#
-	AC_MSG_CHECKING(for an integer type of at least 32 bits)
-	AC_CACHE_VAL(mercury_cv_int_least32_type,
-		AC_TRY_RUN([
-		#include <stdio.h>
-		#include <limits.h>
-		int main() {
-			FILE *fp;
+AC_MSG_CHECKING(for an integer type of at least 32 bits)
+AC_CACHE_VAL(mercury_cv_int_least32_type,
+	AC_TRY_RUN([
+	#include <stdio.h>
+	#include <limits.h>
+	int main() {
+		FILE *fp;
 
-			fp = fopen("conftest.tags", "w");
-			if (fp == NULL)
-				exit(1);
-
-			if (sizeof(int) * CHAR_BIT >= 32)
-			{
-				fprintf(fp, "int\n");
-				exit(0);
-			}
-
-			if (sizeof(long) * CHAR_BIT >= 32)
-			{
-				fprintf(fp, "long\n");
-				exit(0);
-			}
-
-			fprintf(fp, "unknown\n");
+		fp = fopen("conftest.tags", "w");
+		if (fp == NULL)
 			exit(1);
-		}],
-		[mercury_cv_int_least32_type=`cat conftest.tags`],
-		[mercury_cv_int_least32_type=unknown],
-		[mercury_cv_int_least32_type=unknown])
-	)
-	AC_MSG_RESULT($mercury_cv_int_least32_type)
-	AC_DEFINE_UNQUOTED(MR_INT_LEAST32_TYPE, $mercury_cv_int_least32_type)
-	MR_INT_LEAST32_TYPE=$mercury_cv_int_least32_type
-	AC_SUBST(MR_INT_LEAST32_TYPE)
+
+		if (sizeof(int) * CHAR_BIT >= 32)
+		{
+			fprintf(fp, "int\n");
+			exit(0);
+		}
+
+		if (sizeof(long) * CHAR_BIT >= 32)
+		{
+			fprintf(fp, "long\n");
+			exit(0);
+		}
+
+		fprintf(fp, "unknown\n");
+		exit(1);
+	}],
+	[mercury_cv_int_least32_type=`cat conftest.tags`],
+	[mercury_cv_int_least32_type=unknown],
+	[mercury_cv_int_least32_type=unknown])
+)
+AC_MSG_RESULT($mercury_cv_int_least32_type)
+AC_DEFINE_UNQUOTED(MR_INT_LEAST32_TYPE, $mercury_cv_int_least32_type)
+MR_INT_LEAST32_TYPE=$mercury_cv_int_least32_type
+AC_SUBST(MR_INT_LEAST32_TYPE)
 #-----------------------------------------------------------------------------#
-	AC_MSG_CHECKING(for an integer type of at least 16 bits)
-	AC_CACHE_VAL(mercury_cv_int_least16_type,
-		AC_TRY_RUN([
-		#include <stdio.h>
-		#include <limits.h>
-		int main() {
-			FILE *fp;
+AC_MSG_CHECKING(for an integer type of at least 16 bits)
+AC_CACHE_VAL(mercury_cv_int_least16_type,
+	AC_TRY_RUN([
+	#include <stdio.h>
+	#include <limits.h>
+	int main() {
+		FILE *fp;
 
-			fp = fopen("conftest.tags", "w");
-			if (fp == NULL)
-				exit(1);
-
-			if (sizeof(short) * CHAR_BIT >= 16)
-			{
-				fprintf(fp, "short\n");
-				exit(0);
-			}
-
-			if (sizeof(int) * CHAR_BIT >= 16)
-			{
-				fprintf(fp, "int\n");
-				exit(0);
-			}
-
-			fprintf(fp, "unknown\n");
+		fp = fopen("conftest.tags", "w");
+		if (fp == NULL)
 			exit(1);
-		}],
-		[mercury_cv_int_least16_type=`cat conftest.tags`],
-		[mercury_cv_int_least16_type=unknown],
-		[mercury_cv_int_least16_type=unknown])
-	)
-	AC_MSG_RESULT($mercury_cv_int_least16_type)
-	AC_DEFINE_UNQUOTED(MR_INT_LEAST16_TYPE, $mercury_cv_int_least16_type)
-	MR_INT_LEAST16_TYPE=$mercury_cv_int_least16_type
-	AC_SUBST(MR_INT_LEAST16_TYPE)
-fi # ! HAVE_STDINT_H = 1
+
+		if (sizeof(short) * CHAR_BIT >= 16)
+		{
+			fprintf(fp, "short\n");
+			exit(0);
+		}
+
+		if (sizeof(int) * CHAR_BIT >= 16)
+		{
+			fprintf(fp, "int\n");
+			exit(0);
+		}
+
+		fprintf(fp, "unknown\n");
+		exit(1);
+	}],
+	[mercury_cv_int_least16_type=`cat conftest.tags`],
+	[mercury_cv_int_least16_type=unknown],
+	[mercury_cv_int_least16_type=unknown])
+)
+AC_MSG_RESULT($mercury_cv_int_least16_type)
+AC_DEFINE_UNQUOTED(MR_INT_LEAST16_TYPE, $mercury_cv_int_least16_type)
+MR_INT_LEAST16_TYPE=$mercury_cv_int_least16_type
+AC_SUBST(MR_INT_LEAST16_TYPE)
 #-----------------------------------------------------------------------------#
 AC_MSG_CHECKING(the number of low tag bits available)
 AC_CACHE_VAL(mercury_cv_low_tag_bits,
@@ -1517,9 +1585,9 @@ fi
 
 AC_ARG_ENABLE(all-grades,
 [  --enable-all-grades     install all the different versions of the library],
-enable_all_grades=yes,enable_all_grades=no)
+enable_all_grades="$enableval",enable_all_grades=no)
 
-if test $enable_all_grades = yes; then
+if test "$enable_all_grades" = yes; then
 	LIBGRADES="$ALL_LIBGRADES"
 else
 	LIBGRADES="$BEST_GRADE"
@@ -1544,7 +1612,7 @@ LIBGRADES="$LIBGRADES $DEFAULT_GRADE.memprof"
 
 # add `.tr' (--trailing) grades
 LIBGRADES="$LIBGRADES $DEFAULT_GRADE.tr"
-if test $enable_all_grades = yes; then
+if test "$enable_all_grades" = yes; then
 	DEFAULT_GRADE_NOGC="`echo $DEFAULT_GRADE | sed 's/\.gc$//'`"
 	LIBGRADES="$LIBGRADES $DEFAULT_GRADE_NOGC.tr"
 	if test $mercury_cv_profiling = yes; then
@@ -1561,13 +1629,13 @@ MERCURY_MSG("using \`LIBGRADES=$LIBGRADES' as the set of library grades to insta
 AC_SUBST(LIBGRADES)
 #-----------------------------------------------------------------------------#
 #
-# Add an option that enables declarative debugging support in the internal
-# debugger.  It is disabled by default.
+# Add an option that disables declarative debugging support in the internal
+# debugger.  It is enabled by default.
 #
 AC_ARG_ENABLE(decl-debug,
-[  --enable-decl-debug     enable the declarative debugger],
-mercury_cv_enable_decl_debug=yes,mercury_cv_enable_decl_debug=no)
-if test $mercury_cv_enable_decl_debug = "yes"; then
+[  --disable-decl-debug    disable the declarative debugger],
+mercury_cv_enable_decl_debug="$enableval",mercury_cv_enable_decl_debug=yes)
+if test "$mercury_cv_enable_decl_debug" = "yes"; then
 	AC_DEFINE(MR_USE_DECLARATIVE_DEBUGGER)
 fi
 #-----------------------------------------------------------------------------#
@@ -1723,6 +1791,10 @@ CFLAGS_FOR_PIC="-fpic -DPIC"
 EXT_FOR_PIC_OBJECTS=pic_o
 EXT_FOR_SHARED_LIB=a
 USE_DLLS=no
+# The following variables specify options to $LINK_SHARED_OBJ to
+# allow/disallow unresolved symbols when building shared libraries.
+ALLOW_UNDEFINED=""
+ERROR_UNDEFINED=""
 
 case "$host" in
 	i?86-*-linux|i?86-*-linux-gnu)
@@ -1748,6 +1820,7 @@ case "$host" in
 		AC_MSG_RESULT(yes)
 		SHARED_LIBS="-lm -lc"	# don't link in libgcc.a
 		LINK_SHARED_OBJ="$CC -G"
+		ERROR_UNDEFINED="-Wl,-z,defs"
 		EXE_RPATH_OPT="-R"
 		EXE_RPATH_SEP=" -R"
 		SHLIB_RPATH_OPT="-R"
@@ -1772,7 +1845,8 @@ case "$host" in
 		# does the fixups, it gets copied.  Hence the lack of
 		# runtime sharing.)  We need to link with `gcc -G'
 		# rather than `gcc -shared', because `gcc -shared'
-		# reports an error if any runtime fixups would be needed.
+		# passes `-z text' to the linker, which causes it to
+		# report an error if any runtime fixups would be needed.
 		#
 		# If you *do* use `-fpic', you must also use `-DPIC'.
 		#
@@ -1788,6 +1862,7 @@ case "$host" in
 		AC_MSG_RESULT(yes)
 		LINK_SHARED_OBJ="gcc -shared \
 			-Wl,-O3,-update_registry,../so_locations"
+		ERROR_UNDEFINED="-Wl,-error_unresolved"
 		EXE_RPATH_OPT="-Wl,-rpath,"
 		EXE_RPATH_SEP=":"
 		SHLIB_RPATH_OPT="-Wl,-rpath,"
@@ -1799,7 +1874,8 @@ case "$host" in
 		;;
 	mips-sgi-irix5.*)
 		LINK_SHARED_OBJ="ld -shared -update_registry ../so_locations\
-			-quickstart_info -rdata_shared -no_unresolved"
+			-quickstart_info -rdata_shared"
+		ERROR_UNDEFINED="-no_unresolved"
 		EXE_RPATH_OPT="-Wl,-rpath,"
 		EXE_RPATH_SEP=":"
 		SHLIB_RPATH_OPT="-rpath "
@@ -1864,7 +1940,20 @@ esac
 
 #-----------------------------------------------------------------------------#
 
+case "$host" in
+	*-cygwin*)
+		EXT_FOR_EXE=".exe"
+		;;
+	*)
+		EXT_FOR_EXE=
+		;;
+esac
+
+#-----------------------------------------------------------------------------#
+
 AC_SUBST(LINK_SHARED_OBJ)
+AC_SUBST(ERROR_UNDEFINED)
+AC_SUBST(ALLOW_UNDEFINED)
 AC_SUBST(EXE_RPATH_OPT)
 AC_SUBST(EXE_RPATH_SEP)
 AC_SUBST(SHLIB_RPATH_OPT)
@@ -1872,6 +1961,7 @@ AC_SUBST(SHLIB_RPATH_SEP)
 AC_SUBST(CFLAGS_FOR_PIC)
 AC_SUBST(EXT_FOR_PIC_OBJECTS)
 AC_SUBST(EXT_FOR_SHARED_LIB)
+AC_SUBST(EXT_FOR_EXE)
 AC_SUBST(USE_DLLS)
 AC_SUBST(SHARED_LIBS)
 AC_SUBST(DEFAULT_RM_C)
@@ -1899,6 +1989,9 @@ AC_SUBST_FILE(PARSE_GRADE_OPTIONS)
 AC_SUBST_FILE(FINAL_GRADE_OPTIONS)
 
 #-----------------------------------------------------------------------------#
+#
+# Check whether sockets work (we need them for the external debugger)
+#
 
 #
 # check whether we need -lsocket
@@ -2070,12 +2163,10 @@ AC_TRY_LINK([
 ],[mercury_cv_sockets_work=yes],[mercury_cv_sockets_work=no]))
 
 #
-# figure out whether the test succeeded, and if so,
-# enable the external debugger
+# figure out whether the test succeeded
 #
 if test "$mercury_cv_sockets_work" = yes; then
 	AC_MSG_RESULT(yes)
-	AC_DEFINE(MR_USE_EXTERNAL_DEBUGGER)
 else
 	AC_MSG_RESULT(no)
 fi
@@ -2084,52 +2175,85 @@ fi
 # restore the previous value of LIBS
 #
 LIBS="$save_LIBS"
+
+#-----------------------------------------------------------------------------#
+#
+# Add an option that enables the external debugger support.
+# By default, external debugger support is enabled if and only if
+# sockets work.  But it is also possible to explicitly disable this
+# by passing the `--disable-extern-debug' option.  This is needed on
+# some platforms because the test for sockets working sometimes gets
+# some false positives (e.g. if they work with dynamic linking but
+# not static linking, then the test will pass, but it will cause
+# problems later on when we try to link things statically).
+#
+AC_ARG_ENABLE(extern-debug,
+[  --disable-extern-debug  disable the external (separate process) debugger],
+mercury_cv_enable_extern_debug="$enableval",
+mercury_cv_enable_extern_debug="$mercury_cv_sockets_work")
+
+AC_MSG_CHECKING(whether to enable the external debugger)
+if test "$mercury_cv_enable_extern_debug" = "yes"; then
+	if test "$mercury_cv_sockets_work" = yes; then
+		AC_MSG_RESULT(yes)
+		AC_DEFINE(MR_USE_EXTERNAL_DEBUGGER)
+	else
+		AC_MSG_RESULT(no)
+		AC_MSG_ERROR(Cannot enable external debugger)
+		AC_MSG_ERROR(because sockets do not work)
+	fi		
+else
+	AC_MSG_RESULT(no)
+fi
 #-----------------------------------------------------------------------------#
 MERCURY_CHECK_READLINE
 #-----------------------------------------------------------------------------#
 to_keep=""
 to_delete=""
 if test "$BOOTSTRAP_MC" != "" ; then
-	MERCURY_MSG("checking whether any C files need to be rebuilt...")
-	for c_file in library/*.c compiler/*.c browser/*.c profiler/*.c
-	do
-		case $c_file in
-		*/'*.c')
-			;;
-		*)
-			sed -e '/END_OF_C_GRADE_INFO/,$d' < $c_file > confscratch
-			if grep "TAG_BITS=$mercury_cv_low_tag_bits" confscratch > /dev/null 2>&1
-			then
-				if grep "UNBOXED_FLOAT=$mercury_cv_unboxed_floats" confscratch > /dev/null 2>&1
-				then
-					to_keep="$to_keep $c_file"
-				else
-					to_delete="$to_delete $c_file"
-				fi
-			else
-				to_delete="$to_delete $c_file"
-			fi
-			;;
-		esac
-	done
-	if test "$to_delete" = "" ; then
-		if test "$to_keep" != "" ; then
-			MERCURY_MSG("no - they are compatible with autoconfigured settings")
-		else
-			MERCURY_MSG("there are no existing Mercury-generated C files")
-		fi
-	else
-		if test "$to_keep" != "" ; then
-			MERCURY_MSG("the following C files must be rebuilt in a grade")
-			MERCURY_MSG("that is consistent with autoconfigured settings")
-			MERCURY_MSG("$to_delete")
-		else
-			MERCURY_MSG("all Mercury generated C files must be rebuilt in a grade")
-			MERCURY_MSG("that is consistent with autoconfigured settings")
-		fi
-		MERCURY_MSG("installation may take longer than usual")
-	fi
-	rm -f confscratch $to_delete
+    MERCURY_MSG("checking whether any C files need to be rebuilt...")
+    for c_file in library/*.c compiler/*.c browser/*.c profiler/*.c
+    do
+        case $c_file in
+        */'*.c')
+            ;;
+        *)
+            sed -e '/END_OF_C_GRADE_INFO/,$d' < $c_file > confscratch
+            if grep "TAG_BITS=$mercury_cv_low_tag_bits" \
+	    	confscratch > /dev/null 2>&1
+            then
+                if grep "UNBOXED_FLOAT=$mercury_cv_unboxed_floats" \
+			confscratch > /dev/null 2>&1
+                then
+                    to_keep="$to_keep $c_file"
+                else
+                    to_delete="$to_delete $c_file"
+                fi
+            else
+                to_delete="$to_delete $c_file"
+            fi
+            ;;
+        esac
+    done
+    if test "$to_delete" = "" ; then
+        if test "$to_keep" != "" ; then
+            MERCURY_MSG("no - they are compatible with autoconfigured settings")
+        else
+            MERCURY_MSG("there are no existing Mercury-generated C files")
+        fi
+    else
+        if test "$to_keep" != "" ; then
+            MERCURY_MSG("the following C files must be rebuilt in a grade")
+            MERCURY_MSG("that is consistent with autoconfigured settings")
+            MERCURY_MSG("$to_delete")
+        else
+            MERCURY_MSG("all Mercury generated C files must be rebuilt")
+            MERCURY_MSG("in a grade that is consistent with the")
+            MERCURY_MSG("autoconfigured settings")
+        fi
+        MERCURY_MSG("installation may take longer than usual")
+    fi
+    rm -f confscratch $to_delete
 fi
 #-----------------------------------------------------------------------------#
 AC_OUTPUT(Mmake.common scripts/Mmake.vars scripts/mmc scripts/mprof

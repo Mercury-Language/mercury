@@ -466,7 +466,8 @@ wrap_exception(Exception, exception(Exception)).
 	#include <assert.h>
 	#include ""mercury_deep_copy.h""
 
-	MR_DECLARE_STRUCT(mercury_data_std_util__type_ctor_info_univ_0);
+	MR_DECLARE_TYPE_CTOR_INFO_STRUCT( \
+			mercury_data_std_util__type_ctor_info_univ_0);
 ").
 
 :- pragma c_code("
@@ -620,11 +621,7 @@ Declare_label(mercury__exception__builtin_catch_3_5_i2);
 #endif
 Declare_label(mercury__exception__builtin_throw_1_0_i1);
 
-#ifdef COMPACT_ARGS
-  #define BUILTIN_THROW_STACK_SIZE 1
-#else
-  #define BUILTIN_THROW_STACK_SIZE 2
-#endif
+#define BUILTIN_THROW_STACK_SIZE 1
 
 
 /*
@@ -634,13 +631,9 @@ Declare_label(mercury__exception__builtin_throw_1_0_i1);
 /* do we need one for exception_handler_do_fail? */
 
 MR_MAKE_PROC_LAYOUT(mercury__exception__builtin_throw_1_0,
-        MR_DETISM_DET, BUILTIN_THROW_STACK_SIZE, MR_LIVE_LVAL_STACKVAR(1),
+        MR_DETISM_DET, BUILTIN_THROW_STACK_SIZE, MR_LONG_LVAL_STACKVAR(1),
         MR_PREDICATE, ""exception"", ""builtin_throw"", 1, 0);
 MR_MAKE_INTERNAL_LAYOUT(mercury__exception__builtin_throw_1_0, 1);
-#ifndef COMPACT_ARGS
-  MR_MAKE_INTERNAL_LAYOUT(mercury__exception__builtin_throw_1_0, 2);
-  MR_MAKE_INTERNAL_LAYOUT(mercury__exception__builtin_throw_1_0, 3);
-#endif
 
 /*
 ** The following procedures all allocate their stack frames on
@@ -650,15 +643,15 @@ MR_MAKE_INTERNAL_LAYOUT(mercury__exception__builtin_throw_1_0, 1);
 */ 
 MR_MAKE_PROC_LAYOUT(mercury__exception__builtin_catch_3_2,
 	MR_DETISM_NON,	/* really cc_multi; also used for det */
-	MR_ENTRY_NO_SLOT_COUNT, MR_LVAL_TYPE_UNKNOWN,
+	MR_ENTRY_NO_SLOT_COUNT, MR_LONG_LVAL_TYPE_UNKNOWN,
 	MR_PREDICATE, ""exception"", ""builtin_catch"", 3, 2);
 MR_MAKE_PROC_LAYOUT(mercury__exception__builtin_catch_3_3,
 	MR_DETISM_NON,	/* really cc_nondet; also used for semidet */
-	MR_ENTRY_NO_SLOT_COUNT, MR_LVAL_TYPE_UNKNOWN,
+	MR_ENTRY_NO_SLOT_COUNT, MR_LONG_LVAL_TYPE_UNKNOWN,
 	MR_PREDICATE, ""exception"", ""builtin_catch"", 3, 3);
 MR_MAKE_PROC_LAYOUT(mercury__exception__builtin_catch_3_5,
 	MR_DETISM_NON,	/* ; also used for multi */
-	MR_ENTRY_NO_SLOT_COUNT, MR_LVAL_TYPE_UNKNOWN,
+	MR_ENTRY_NO_SLOT_COUNT, MR_LONG_LVAL_TYPE_UNKNOWN,
 	MR_PREDICATE, ""exception"", ""builtin_catch"", 3, 5);
 
 MR_MAKE_INTERNAL_LAYOUT(mercury__exception__builtin_catch_3_2, 1);
@@ -698,7 +691,7 @@ BEGIN_CODE
 ** This is the model_det version.
 ** On entry, we have a type_info (which we don't use) in r1,
 ** the Goal to execute in r2 and the Handler in r3.
-** On exit, we should put Result in r1 (with COMPACT_ARGS) or r4.
+** On exit, we should put Result in r1.
 */
 Define_entry(mercury__exception__builtin_catch_3_0); /* det */
 #ifdef PROFILE_CALLS
@@ -763,9 +756,6 @@ Define_label(mercury__exception__builtin_catch_3_2_i2);
 	/*
 	** On exit from do_call_det_closure, Result is in r1
 	*/
-#ifndef COMPACT_ARGS
-	r4 = r1;
-#endif
 #ifdef MR_USE_TRAIL
 	MR_discard_ticket();
 #endif
@@ -779,14 +769,9 @@ Define_label(mercury__exception__builtin_catch_3_2_i2);
 **	if throws an exception, call Handler(Result).
 **
 ** This is the model_semi version.
-** With COMPACT_ARGS,
-** on entry, we have a type_info (which we don't use) in r1,
+** On entry, we have a type_info (which we don't use) in r1,
 ** the Goal to execute in r2 and the Handler in r3,
 ** and on exit, we should put Result in r2.
-** Without COMPACT_ARGS,
-** on entry, we have a type_info (which we don't use) in r2,
-** the Goal to execute in r3 and the Handler in r4,
-** and on exit, we should put Result in r5.
 */
 Define_entry(mercury__exception__builtin_catch_3_1); /* semidet */
 #ifdef PROFILE_CALLS
@@ -806,11 +791,7 @@ Define_entry(mercury__exception__builtin_catch_3_3); /* cc_nondet */
 		Exception_Handler_Frame_struct,
 		ENTRY(exception_handler_do_fail));
 	FRAMEVARS->code_model = MODEL_SEMI;
-#ifdef COMPACT_ARGS
 	FRAMEVARS->handler = r3;	/* save the Handler closure */
-#else
-	FRAMEVARS->handler = r4;	/* save the Handler closure */
-#endif
 	FRAMEVARS->stack_ptr = MR_sp;	/* save the det stack pointer */
 #ifndef CONSERVATIVE_GC
 	/* save the heap and solutions heap pointers */
@@ -844,11 +825,7 @@ Define_entry(mercury__exception__builtin_catch_3_3); /* cc_nondet */
 	/*
 	** Now call `Goal(Result)'.
 	*/
-#ifdef COMPACT_ARGS
 	r1 = r2;	/* The Goal to call */
-#else
-	r1 = r3;	/* The Goal to call */
-#endif
 	r2 = 0;		/* Zero additional input arguments */
 	r3 = 1;		/* One output argument */
 	call(ENTRY(do_call_semidet_closure), 
@@ -864,9 +841,6 @@ Define_label(mercury__exception__builtin_catch_3_3_i2);
 	** of whether r1 is true or false.  We just return the r1 value
 	** back to our caller.
 	*/
-#ifndef COMPACT_ARGS
-	r5 = r2;
-#endif
 #ifdef MR_USE_TRAIL
 	MR_discard_ticket();
 #endif
@@ -882,7 +856,7 @@ Define_label(mercury__exception__builtin_catch_3_3_i2);
 ** This is the model_non version.
 ** On entry, we have a type_info (which we don't use) in r1,
 ** the Goal to execute in r2 and the Handler in r3.
-** On exit, we should put Result in r1 (with COMPACT_ARGS) or r3.
+** On exit, we should put Result in r1.
 */
 Define_entry(mercury__exception__builtin_catch_3_4); /* multi */
 #ifdef PROFILE_CALLS
@@ -950,11 +924,7 @@ Define_label(mercury__exception__builtin_catch_3_5_i2);
 	update_prof_current_proc(LABEL(mercury__exception__builtin_catch_3_5));
 	/*
 	** On exit from do_call_nondet_closure, Result is in r1
-	*/
-#ifndef COMPACT_ARGS
-	r3 = r1;
-#endif
-	/*
+	**
 	** Note that we need to keep the trail ticket still,
 	** in case it is needed again on backtracking.
 	** We can only discard it when we fail() out, or
@@ -1121,7 +1091,6 @@ Define_entry(mercury__exception__builtin_throw_1_0);
 	r3 = 1;			/* One output argument */
 	r4 = exception;		/* This is our one input argument */
 
-#ifdef COMPACT_ARGS
 	/*
 	** If the catch was semidet, we need to set the success indicator
 	** r1 to TRUE and return the result in r2; otherwise, we return
@@ -1146,30 +1115,6 @@ Define_label(mercury__exception__builtin_throw_1_0_i1);
 	MR_succip = (Code *) MR_stackvar(1);
 	decr_sp_pop_msg(1);
 	proceed();
-
-#else /* not COMPACT_ARGS */
-
-	incr_sp_push_msg(2, ""builtin_throw/1"");
-	MR_stackvar(1) = (Word) MR_succip;
-	MR_stackvar(2) = catch_code_model;
-	call(ENTRY(do_call_det_closure), 
-		LABEL(mercury__exception__builtin_throw_1_0_i1)),
-		ENTRY(mercury__exception__builtin_throw_1_0));
-}
-Define_label(mercury__exception__builtin_throw_1_0_i1);
-	update_prof_current_proc(LABEL(mercury__exception__builtin_throw_1_0));
-	/* we've just returned from do_call_det_closure */
-	catch_code_model = MR_stackvar(2);
-	if (catch_code_model == MODEL_SEMI) {
-		r5 = r1;
-	else {
-		r4 = r1;
-	}
-	MR_succip = (Code *) MR_stackvar(1);
-	decr_sp_pop_msg(2);
-	proceed();
-
-#endif /* not COMPACT_ARGS */
 
 Define_entry(exception_handler_do_fail);
 	/*

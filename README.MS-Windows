@@ -42,6 +42,12 @@ Before continuing, check that `sh' and `gcc' work.
 
 For more information on Cygwin, see the Cygwin web site mentioned above.
 
+If you want to use the mtags tool from the Mercury distribution, you'll
+need to install perl.  A binary distribution of Perl is available at the
+Cygwin porting project:
+	http://www.student.uni-koeln.de/cygwin/
+
+
 -----------------------------------------------------------------------------
 
 RUNNING CONFIGURE
@@ -71,12 +77,7 @@ dropped from future versions of Cygwin.
 
 RUNNING MAKE
 
-Due to bugs in Cygwin, you need to apply the 
-patches which are listed at the end of this file:
-
-	patch < README.MS-Windows
-
-Also, the date-stamps seem to get screwed up by Cygwin;
+The date-stamps seem to get screwed up by Cygwin;
 to avoid errors about `mercury_compile: Command not found',
 or `makeinfo: Command not found', you need to do the following:
 
@@ -113,19 +114,3 @@ there can be some problems with case-insensitive filenames
 and the name clash between `mmake' and `Mmake'.  If you run into any
 such problems, rename your `Mmake' file to `Mmakefile'.
 
------------------------------------------------------------------------------
------------------------------------------------------------------------------
-
---- Mmakefile	Sat Feb  7 02:48:13 1998
-+++ Mmakefile.windows	Sat Feb  7 02:49:58 1998
-@@ -23,8 +23,8 @@
- #-----------------------------------------------------------------------------#
- 
- # For Windows 95 or Windows NT, uncomment the following two lines:
--# PREINSTALL_HACK = preinstall_hack_for_windows
--# POSTINSTALL_HACK = postinstall_hack_for_windows
-+PREINSTALL_HACK = preinstall_hack_for_windows
-+POSTINSTALL_HACK = postinstall_hack_for_windows
- 
- #-----------------------------------------------------------------------------#
- 

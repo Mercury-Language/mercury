@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-1998 The University of Melbourne.
+% Copyright (C) 1997-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -624,38 +624,40 @@ quot_rem_rev_2(Ur, U, V, Qt, Rm) :-
 		;
 			Q = Qhat - 2
 		),
-		V0 = head(V),
-		U0 = head(Ur),
-		LengthUr = length(Ur),
-		LengthV = length(V),
+		V0 = list__det_head(V),
+		U0 = list__det_head(Ur),
+		LengthUr = list__length(Ur),
+		LengthV = list__length(V),
 		( LengthUr > LengthV ->
 			Qhat = (U0*B+U1) div V0,
-			U1 = head(tail(Ur))
+			U1 = list__det_head(list__det_tail(Ur))
 		;
 			Qhat = U0 div V0
 		),
 		B = base
 	).
 
-:- func length(list(T)) = int.
-length([]) = 0.
-length([_|Xs]) = 1 + length(Xs).
+	% XXX rwab1 27/04/99: Versions of these functions now exist in list.m
 
-:- func head(list(T)) = T.
-head(HT) = H :-
-	( HT = [Hd|_T] ->
-		H = Hd
-	;
-		error("integer__head: []")
-	).
-		
-:- func tail(list(T)) = list(T).
-tail(HT) = T :-
-	( HT = [_H|Tl] ->
-		T = Tl
-	;
-		error("integer__tail: []")
-	).
+% :- func length(list(T)) = int.
+% length([]) = 0.
+% length([_|Xs]) = 1 + length(Xs).
+% 
+% :- func head(list(T)) = T.
+% head(HT) = H :-
+% 	( HT = [Hd|_T] ->
+% 		H = Hd
+% 	;
+% 		error("integer__head: []")
+% 	).
+% 		
+% :- func tail(list(T)) = list(T).
+% tail(HT) = T :-
+% 	( HT = [_H|Tl] ->
+% 		T = Tl
+% 	;
+% 		error("integer__tail: []")
+% 	).
 
 
 	% Multiply a *reverse* list of digits (big end first)

@@ -48,9 +48,10 @@
 
 :- import_module dependency_graph, hlds_pred, hlds_goal, hlds_data.
 :- import_module hlds_module, type_util, mode_util, prog_data, passes_aux.
-:- import_module prog_out, globals, options, (inst), instmap.
+:- import_module prog_out, globals, options, (inst), instmap, inst_table.
 
 :- import_module assoc_list, map, list, set, bool, std_util, relation, require.
+:- import_module string.
 
 stratify__check_stratification(Module0, Module) -->
 	{ module_info_ensure_dependency_info(Module0, Module1) },
@@ -169,7 +170,7 @@ first_order_check_goal(if_then_else(_Vars, Cond - CInfo, Then - TInfo,
 		Error, Module1, Module2),
 	first_order_check_goal(Else, EInfo, Negated, WholeScc, ThisPredProcId,
 		Error, Module2, Module).
-first_order_check_goal(some(_Vars, Goal - GoalInfo), _GoalInfo,
+first_order_check_goal(some(_Vars, _, Goal - GoalInfo), _GoalInfo,
 		Negated, WholeScc, ThisPredProcId, Error, Module0, Module) -->
 	first_order_check_goal(Goal, GoalInfo, Negated, WholeScc, 
 		ThisPredProcId, Error, Module0, Module).
@@ -208,12 +209,9 @@ first_order_check_goal(call(CPred, CProc, _Args, _BuiltinState, _Contex, _Sym),
 	;
 		{ Module = Module0 }
 	).
-first_order_check_goal(higher_order_call(_Var, _Vars, _Types, _Modes, 
-	_Det, _PredOrFunc), _GInfo, _Negated, _WholeScc, _ThisPredProcId, 
+first_order_check_goal(generic_call(_Var, _Vars, _Modes, _Det),
+	_GInfo, _Negated, _WholeScc, _ThisPredProcId, 
 	_Error,  Module, Module) --> []. 
-first_order_check_goal(class_method_call(_Var, _Num, _Vars, _Types, _Modes, 
-	_Det), _GInfo, _Negated, _WholeScc, _ThisPredProcId, _Error,  
-	Module, Module) --> [].
 
 :- pred first_order_check_goal_list(list(hlds_goal), bool, 
 	list(pred_proc_id), pred_proc_id, bool, module_info, 
@@ -324,7 +322,7 @@ higher_order_check_goal(if_then_else(_Vars, Cond - CInfo, Then - TInfo,
 		HighOrderLoops, Error, Module1, Module2),
 	higher_order_check_goal(Else, EInfo, Negated, WholeScc, ThisPredProcId,
 		HighOrderLoops, Error, Module2, Module).
-higher_order_check_goal(some(_Vars, Goal - GoalInfo), _GoalInfo, Negated, 
+higher_order_check_goal(some(_Vars, _, Goal - GoalInfo), _GoalInfo, Negated, 
 		WholeScc, ThisPredProcId, HighOrderLoops, 
 		Error, Module0, Module) -->
 	higher_order_check_goal(Goal, GoalInfo, Negated, WholeScc, 
@@ -360,37 +358,26 @@ higher_order_check_goal((call(_CPred, _CProc, _Args, _Builtin, _Contex, Sym)),
 		{ Module = Module0 }
 	).
 	
-higher_order_check_goal(higher_order_call(_Var, _Vars, _Types, _Modes, _Det,
-			_PredOrFunc), 
+higher_order_check_goal(generic_call(GenericCall, _Vars, _Modes, _Det), 
 		GoalInfo, Negated, _WholeScc, ThisPredProcId, HighOrderLoops, 
 		Error, Module0, Module) -->
 	(
 		{ Negated = yes },
-		{ HighOrderLoops = yes }
+		{ HighOrderLoops = yes },
+		{ GenericCall = higher_order(_, _, _), Msg = "higher order"
+		; GenericCall = class_method(_, _, _, _), Msg = "class method"
+		}
 	->
 		{ goal_info_get_context(GoalInfo, Context) },
-		emit_message(ThisPredProcId, Context, 
-			"higher order call may introduce a non-stratified loop",
+		{ string__append(Msg, 
+			" call may introduce a non-stratified loop",
+			ErrorMsg) },
+		emit_message(ThisPredProcId, Context, ErrorMsg,
 			Error, Module0, Module)		
 	;
 		{ Module = Module0 }
 	).
 
-higher_order_check_goal(class_method_call(_Var, _Num, _Vars, _Types, _Modes,
-		_Det), GoalInfo, Negated, _WholeScc, ThisPredProcId,
-		HighOrderLoops, Error, Module0, Module) -->
-	(
-		{ Negated = yes },
-		{ HighOrderLoops = yes }
-	->
-		{ goal_info_get_context(GoalInfo, Context) },
-		emit_message(ThisPredProcId, Context, 
-			"class method call may introduce a non-stratified loop",
-			Error, Module0, Module)		
-	;
-		{ Module = Module0 }
-	).
-	
 :- pred higher_order_check_goal_list(list(hlds_goal), bool, set(pred_proc_id),
 	pred_proc_id, bool, bool, module_info, module_info, 
 	io__state, io__state).
@@ -726,7 +713,7 @@ higherorder_in_out1([Type|Types], [Mode|Modes], IT, Module, InstMap,
 		% XXX : will have to use a more general check for higher
 		% order constants in parameters user could hide higher
 		% order consts in a data structure etc..
-		type_is_higher_order(Type, _, _)
+		type_is_higher_order(Type, _, _, _)
 	->	
 		(
 			mode_is_input(InstMap, IT, Module, Mode) 
@@ -772,8 +759,9 @@ check_goal1(unify(_Var, RHS, _Mode, Unification, _Context), Calls,
 		% lambda goal have addresses taken. this is not
 		% always to case, but should be a suitable approximation for
 		% the stratification analysis
-		RHS = lambda_goal(_PredOrFunc, _NonLocals, _Vars, _Modes,
-				_Determinism, _IMDelta, Goal - _GoalInfo)
+		RHS = lambda_goal(_PredOrFunc, _EvalMethod, _Fix, _NonLocals,
+				_Vars, _Modes, _Determinism, _IMDelta,
+				Goal - _GoalInfo)
 	->
 		get_called_procs(Goal, [], CalledProcs),
 		set__insert_list(HasAT0, CalledProcs, HasAT)
@@ -782,11 +770,11 @@ check_goal1(unify(_Var, RHS, _Mode, Unification, _Context), Calls,
 		% currently when this pass is run the construct/4
 		% case will not happen as higher order constants have
 		% been transformed to lambda goals. see above
-		Unification = construct(_Var2, ConsId, _VarList, _ModeList)
+		Unification = construct(_Var2, ConsId, _, _, _, _, _)
 	->
 		(
 			(
-				ConsId = pred_const(PredId, ProcId)
+				ConsId = pred_const(PredId, ProcId, _)
 			;
 				ConsId = code_addr_const(PredId, ProcId)
 			)
@@ -805,13 +793,8 @@ check_goal1(call(CPred, CProc, _Args, _Builtin, _Contex, _Sym), Calls0, Calls,
 	set__insert(Calls0, proc(CPred, CProc), Calls).
 
 	% record that the higher order call was made
-check_goal1(higher_order_call(_Var, _Vars, _Types, _Modes, _Det, _PredOrFUnc),
+check_goal1(generic_call(_Var, _Vars, _Modes, _Det),
 		Calls, Calls, HasAT, HasAT, _, yes).
-
-	% record that the higher order call was made. Well... a class method
-	% call is pretty similar to a higher order call...
-check_goal1(class_method_call(_Var, _Num, _Vars, _Types, _Modes, _Det), Calls,
-		Calls, HasAT, HasAT, _, yes).
 
 check_goal1(conj(Goals), Calls0, Calls, HasAT0, HasAT, CallsHO0, CallsHO) :-
 	check_goal_list(Goals, Calls0, Calls, HasAT0, HasAT, CallsHO0, CallsHO).
@@ -830,7 +813,7 @@ check_goal1(if_then_else(_Vars, Cond - _CInfo, Then - _TInfo, Else - _EInfo,
 	check_goal1(Then, Calls1, Calls2, HasAT1, HasAT2, CallsHO1, CallsHO2),
 	check_goal1(Else, Calls2, Calls, HasAT2, HasAT, CallsHO2, CallsHO).
 	
-check_goal1(some(_Vars, Goal - _GoalInfo), Calls0, Calls, HasAT0, HasAT, 
+check_goal1(some(_Vars, _, Goal - _GoalInfo), Calls0, Calls, HasAT0, HasAT, 
 		CallsHO0, CallsHO) :- 
 	check_goal1(Goal, Calls0, Calls, HasAT0, HasAT, CallsHO0, CallsHO).
 
@@ -876,19 +859,20 @@ get_called_procs(unify(_Var, RHS, _Mode, Unification, _Context), Calls0,
 		% lambda goal have addresses taken. this is not
 		% always to case, but should be a suitable approximation for
 		% the stratification analysis
-		RHS = lambda_goal(_PredOrFunc, _NonLocals, _Vars, _Modes,
-				_Determinism, _IMDelta, Goal - _GoalInfo)
+		RHS = lambda_goal(_PredOrFunc, _EvalMethod, _Fix, _NonLocals,
+				_Vars, _Modes, _Determinism, _IMDelta,
+				Goal - _GoalInfo)
 	->
 		get_called_procs(Goal, Calls0, Calls)
 	;
 		% currently when this pass is run the construct/4
 		% case will not happen as higher order constants have
 		% been transformed to lambda goals see above
-		Unification = construct(_Var2, ConsId, _VarList, _ModeList)
+		Unification = construct(_Var2, ConsId, _, _, _, _, _)
 	->
 		(
 			(
-				ConsId = pred_const(PredId, ProcId)
+				ConsId = pred_const(PredId, ProcId, _)
 			;
 				ConsId = code_addr_const(PredId, ProcId)
 			)
@@ -906,11 +890,7 @@ get_called_procs(call(CPred, CProc, _Args, _Builtin, _Contex, _Sym), Calls0,
 		Calls) :- 
 	Calls = [proc(CPred, CProc) | Calls0].
 
-get_called_procs(higher_order_call(_Var, _Vars, _Types, _Modes, _Det,
-		_PredOrFunc), Calls, Calls).
-
-get_called_procs(class_method_call(_Var, _Num,_Vars, _Types, _Modes, _Det),
-	Calls, Calls).
+get_called_procs(generic_call(_Var, _Vars, _Modes, _Det), Calls, Calls).
 
 get_called_procs(conj(Goals), Calls0, Calls) :-
 	check_goal_list(Goals, Calls0, Calls).
@@ -925,7 +905,7 @@ get_called_procs(if_then_else(_Vars, Cond - _CInfo, Then - _TInfo,
 	get_called_procs(Cond, Calls0, Calls1),
 	get_called_procs(Then, Calls1, Calls2),
 	get_called_procs(Else, Calls2, Calls). 
-get_called_procs(some(_Vars, Goal - _GoalInfo), Calls0, Calls) :-
+get_called_procs(some(_Vars, _, Goal - _GoalInfo), Calls0, Calls) :-
 	get_called_procs(Goal, Calls0, Calls).
 get_called_procs(not(Goal - _GoalInfo), Calls0, Calls) :-
 	get_called_procs(Goal, Calls0, Calls).

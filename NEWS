@@ -36,6 +36,10 @@ Changes to the Mercury language:
   instead.  The compiler still supports the old-style syntax, but
   we plan to eventually drop this support in some future release.
 
+* Terms in the form of x `fun` y are transformed into fun(x, y).  `fun`
+  is parsed as an infix operator with the highest possible precedence
+  and left associativity.
+
 Changes to the Mercury standard library:
 ****************************************
 

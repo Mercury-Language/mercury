@@ -60,7 +60,7 @@
 
 :- implementation.
 
-:- import_module type_util, mode_util, prog_util.
+:- import_module type_util, mode_util, prog_util, inst_table.
 :- import_module globals, options.
 
 special_pred_list(PredList) -->

@@ -31,7 +31,7 @@
 
 :- implementation.
 
-:- import_module globals, options, opt_util, prog_data.
+:- import_module builtin_ops, globals, options, opt_util, prog_data.
 :- import_module bool, int, list, require, std_util.
 
 transform_llds(LLDS0, LLDS) -->

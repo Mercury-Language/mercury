@@ -14,7 +14,7 @@
 
 :- interface.
 
-:- import_module hlds_data, prog_data, llds, tree.
+:- import_module hlds_data, prog_data, tree, builtin_ops.
 :- import_module char, list, std_util, io.
 
 :- type byte_tree	==	tree(list(byte_code)).
@@ -53,8 +53,8 @@
 					list(pair(byte_var, byte_dir)))
 			;	complex_deconstruct(byte_var, byte_cons_id,
 					list(pair(byte_var, byte_dir)))
-			;	place_arg(reg_type, int, byte_var)
-			;	pickup_arg(reg_type, int, byte_var)
+			;	place_arg(byte_reg_type, int, byte_var)
+			;	pickup_arg(byte_reg_type, int, byte_var)
 			;	call(byte_module_id, byte_pred_id,
 					arity, byte_proc_id)
 			;	higher_order_call(byte_var, arity, arity,
@@ -70,6 +70,11 @@
 			;	context(int)
 			;	not_supported
 			.
+
+	% Currently we only support integer registers.
+	% This might one day be extended to support separate
+	% floating-point registers.
+:- type byte_reg_type	--->	r.	% general-purpose (integer) register.
 
 :- type byte_cons_id	--->	cons(byte_module_id, string,
 					arity, byte_cons_tag)
@@ -487,21 +492,17 @@ debug_determinism(Detism) -->
 
 %---------------------------------------------------------------------------%
 
-:- pred output_reg(reg_type, int, io__state, io__state).
+:- pred output_reg(byte_reg_type, int, io__state, io__state).
 :- mode output_reg(in, in, di, uo) is det.
 
 output_reg(r, N) -->
 	output_byte(N).
-output_reg(f, _) -->
-	{ error("we do not handle floating point registers yet") }.
 
-:- pred debug_reg(reg_type, int, io__state, io__state).
+:- pred debug_reg(byte_reg_type, int, io__state, io__state).
 :- mode debug_reg(in, in, di, uo) is det.
 
 debug_reg(r, N) -->
 	debug_int(N).
-debug_reg(f, _) -->
-	{ error("we do not handle floating point registers yet") }.
 
 %---------------------------------------------------------------------------%
 

@@ -29,14 +29,17 @@
 
 :- interface.
 
-:- import_module hlds_module, hlds_pred, hlds_goal, hlds_data.
+:- import_module hlds_module, hlds_pred, hlds_goal, prog_data.
+:- import_module inst_table.
+
+:- import_module map.
 
 :- pred find_final_follow_vars(proc_info, follow_vars).
 :- mode find_final_follow_vars(in, out) is det.
 
-:- pred find_follow_vars_in_goal(hlds_goal, inst_table,
+:- pred find_follow_vars_in_goal(hlds_goal, map(prog_var, type), inst_table,
 			module_info, follow_vars, hlds_goal, follow_vars).
-:- mode find_follow_vars_in_goal(in, in, in, in, out, out) is det.
+:- mode find_follow_vars_in_goal(in, in, in, in, in, out, out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -50,6 +53,7 @@
 :- type follow_vars_info
 	--->	follow_vars_info(
 			module_info,
+			map(prog_var, type),
 			inst_table
 		).
 
@@ -85,9 +89,9 @@ find_final_follow_vars_2([arg_info(Loc, Mode) | Args], [Var | Vars],
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-find_follow_vars_in_goal(Goal0, InstTable, ModuleInfo, FollowVars0,
+find_follow_vars_in_goal(Goal0, VarTypes, InstTable, ModuleInfo, FollowVars0,
 					Goal, FollowVars) :-
-	FVInfo = follow_vars_info(ModuleInfo, InstTable),
+	FVInfo = follow_vars_info(ModuleInfo, VarTypes, InstTable),
 	find_follow_vars_in_goal(Goal0, FVInfo, FollowVars0, Goal, FollowVars).
 
 :- pred find_follow_vars_in_goal(hlds_goal, follow_vars_info, follow_vars,
@@ -173,59 +177,31 @@ find_follow_vars_in_goal_expr(if_then_else(Vars, Cond0, Then0, Else0, _),
 		Else1, FollowVarsElse),
 	goal_set_follow_vars(Else1, yes(FollowVarsElse), Else).
 
-find_follow_vars_in_goal_expr(some(Vars, Goal0), FVInfo,
-		FollowVars0, some(Vars, Goal), FollowVars) :-
+find_follow_vars_in_goal_expr(some(Vars, CanRemove, Goal0), FVInfo,
+		FollowVars0, some(Vars, CanRemove, Goal), FollowVars) :-
 	find_follow_vars_in_goal(Goal0, FVInfo, FollowVars0,
 		Goal, FollowVars).
 
 	% XXX These follow-vars aren't correct since the desired positions for
 	% XXX the arguments are different from an ordinary call --- they are
-	% XXX as required by do_call_{det,semidet,nondet}_closure
+	% XXX as required by the builtin operation.
 find_follow_vars_in_goal_expr(
-		higher_order_call(PredVar, Args, Types, Modes, Det,
-			IsPredOrFunc),
+		generic_call(GenericCall, Args, Modes, Det),
 		FVInfo, _FollowVars0,
-		higher_order_call(PredVar, Args, Types, Modes, Det,
-			IsPredOrFunc),
+		generic_call(GenericCall, Args, Modes, Det),
 		FollowVars) :-
-	FVInfo = follow_vars_info(ModuleInfo, _),
+	FVInfo = follow_vars_info(ModuleInfo, VarTypes, _),
 	determinism_to_code_model(Det, CodeModel),
+	map__apply_to_list(Args, VarTypes, Types),
 	Modes = argument_modes(ArgInstTable, ArgModes),
-	module_info_globals(ModuleInfo, Globals),
-	arg_info__ho_call_args_method(Globals, ArgsMethod),
 	instmap__init_reachable(BogusInstMap),
-	make_arg_infos(ArgsMethod, Types, ArgModes, CodeModel, BogusInstMap,
-		ArgInstTable, ModuleInfo, ArgInfo),
-	find_follow_vars_from_arginfo(ArgInfo, Args, FollowVars).
-
-	% XXX These follow-vars aren't correct since the desired positions for
-	% XXX the arguments are different from an ordinary call --- they are
-	% XXX as required by do_call_{det,semidet,nondet}_class_method
-find_follow_vars_in_goal_expr(
-		class_method_call(TypeClassInfoVar, Num, Args, Types, Modes,
-			Det),
-		FVInfo, _FollowVars0,
-		class_method_call(TypeClassInfoVar, Num, Args, Types, Modes,
-			Det),
-		FollowVars) :-
-	FVInfo = follow_vars_info(ModuleInfo, _),
-	determinism_to_code_model(Det, CodeModel),
-	Modes = argument_modes(ArgInstTable, ArgModes),
-	module_info_globals(ModuleInfo, Globals),
-	globals__get_args_method(Globals, ArgsMethod),
-	( ArgsMethod = compact ->
-		true
-	;
-		error("Sorry, typeclasses with simple args_method not yet implemented")
-	),
-	instmap__init_reachable(BogusInstMap),
-	make_arg_infos(ArgsMethod, Types, ArgModes, CodeModel, BogusInstMap,
+	make_arg_infos(Types, ArgModes, CodeModel, BogusInstMap,
 		ArgInstTable, ModuleInfo, ArgInfo),
 	find_follow_vars_from_arginfo(ArgInfo, Args, FollowVars).
 
 find_follow_vars_in_goal_expr(call(A,B,C,D,E,F), FVInfo,
 		FollowVars0, call(A,B,C,D,E,F), FollowVars) :-
-	FVInfo = follow_vars_info(ModuleInfo, _),
+	FVInfo = follow_vars_info(ModuleInfo, _, _),
 	(
 		D = inline_builtin
 	->
@@ -374,7 +350,7 @@ find_follow_vars_in_conj([Goal0 | Goals0], FVInfo, FollowVars0,
 			BuiltinState = inline_builtin
 		;
 			GoalExpr0 = unify(_, _, _, Unification, _),
-			Unification \= complicated_unify(_, _)
+			Unification \= complicated_unify(_, _, _)
 		)
 	->
 		AttachToNext = no

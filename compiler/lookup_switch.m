@@ -68,10 +68,11 @@
 
 :- implementation.
 
-:- import_module int, require, bool, assoc_list.
-:- import_module code_gen, type_util, tree.
+:- import_module builtin_ops, code_gen, type_util, tree.
 :- import_module dense_switch, globals, options, mode_util.
 :- import_module exprn_aux, getopt, prog_data, instmap, inst_match.
+
+:- import_module int, require, bool, assoc_list.
 
 	% Most of this predicate is taken from dense_switch.m
 
@@ -208,7 +209,7 @@ lookup_switch__generate_constants([Case|Cases], Vars, CodeModel,
 	code_info__remember_position(BranchStart),
 	code_gen__generate_goal(CodeModel, Goal, Code),
 	code_info__get_forward_live_vars(Liveness),
-	{ tree__is_empty(Code) },
+	{ tree__tree_of_lists_is_empty(Code) },
 	lookup_switch__get_case_rvals(Vars, CaseRvals),
 	{ CaseVal = CaseTag - CaseRvals },
 	code_info__reset_to_position(BranchStart),
@@ -223,7 +224,7 @@ lookup_switch__generate_constants([Case|Cases], Vars, CodeModel,
 lookup_switch__get_case_rvals([], []) --> [].
 lookup_switch__get_case_rvals([Var|Vars], [Rval|Rvals]) -->
 	code_info__produce_variable(Var, Code, Rval),
-	{ tree__is_empty(Code) },
+	{ tree__tree_of_lists_is_empty(Code) },
 	code_info__get_globals(Globals),
 	{ globals__get_options(Globals, Options) },
 	{ exprn_aux__init_exprn_opts(Options, ExprnOpts) },

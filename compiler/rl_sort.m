@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998 University of Melbourne.
+% Copyright (C) 1998-1999 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -202,6 +202,21 @@ rl_sort__proc_2(IO0, IO) -->
 	.
 
 :- type sort_data_map == block_data_map(sortedness, unit).
+
+%-----------------------------------------------------------------------------%
+
+	% Filter out unneeded specs.
+:- type spec_filter ==  pred(pair(sort_index, sort_req)).
+:- inst spec_filter == (pred(in) is semidet).
+
+:- func true_filter = (spec_filter::out(spec_filter)) is det.
+true_filter = (pred(_::in) is semidet :- true).
+
+:- func sort_filter = (spec_filter::out(spec_filter)) is det.
+sort_filter = (pred((sort(_) - _)::in) is semidet).
+
+:- func index_filter = (spec_filter::out(spec_filter)) is det.
+index_filter = (pred((index(_) - _)::in) is semidet).
 
 %-----------------------------------------------------------------------------%
 
@@ -498,10 +513,21 @@ rl_sort__remove_relation_id(RelationId, sort_info(Sortedness0, VarReq, C),
 
 	% Add the required sortedness of the first relation
 	% to that of the second.
-:- pred rl_sort__assign_relation_sortedness(block_id::in, relation_id::in,
-		relation_id::in, sort_info::in, sort_info::out) is det.
+:- pred rl_sort__assign_sortedness_and_indexing(block_id::in,
+		relation_id::in, relation_id::in,
+		sort_info::in, sort_info::out) is det.
 
-rl_sort__assign_relation_sortedness(BlockId, Relation1, Relation2) -->
+rl_sort__assign_sortedness_and_indexing(BlockId,
+		Relation1, Relation2) -->
+	rl_sort__assign_sortedness_and_indexing(true_filter, BlockId,
+		Relation1, Relation2).
+
+:- pred rl_sort__assign_sortedness_and_indexing(spec_filter::in(spec_filter),
+		block_id::in, relation_id::in, relation_id::in,
+		sort_info::in, sort_info::out) is det.
+
+rl_sort__assign_sortedness_and_indexing(SpecFilter, BlockId,
+		Relation1, Relation2) -->
 	=(sort_info(sortedness(RelMap0, _), _, RLInfo)),
 	{ rl_opt_info_get_relation_info(Relation2, RelInfo, RLInfo, _) },
 	( { RelInfo = relation_info(permanent(_), _, Indexes, _) } ->
@@ -512,9 +538,15 @@ rl_sort__assign_relation_sortedness(BlockId, Relation1, Relation2) -->
 			(
 				map__set(SpecMap0, index(Index),
 					sort_req(definite, BlockIds), SpecMap)
-			)), Indexes, Specs0, Specs) },
+			)), Indexes, Specs0, Specs1) },
+		{ map__to_assoc_list(Specs1, SpecAL1) },
+		{ list__filter(SpecFilter, SpecAL1, SpecAL) },
+		{ map__from_assoc_list(SpecAL, Specs) },
 		rl_sort__add_relation_sortedness_map(Specs, Relation1)
-	; { map__search(RelMap0, Relation2, Specs) } ->
+	; { map__search(RelMap0, Relation2, Specs0) } ->
+		{ map__to_assoc_list(Specs0, SpecAL0) },
+		{ list__filter(SpecFilter, SpecAL0, SpecAL) },
+		{ map__from_assoc_list(SpecAL, Specs) },
 		rl_sort__add_relation_sortedness_map(Specs, Relation1)
 	;
 		[]
@@ -533,22 +565,19 @@ rl_sort__handle_output_indexing(BlockId, output_rel(Output, Indexes0)) -->
 	{ map__from_assoc_list(Specs0, Specs) },
 	rl_sort__add_relation_sortedness_map(Specs, Output).
 
-:- pred rl_sort__assign_indexing(relation_id::in, relation_id::in,
-		sort_info::in, sort_info::out) is det.
+:- pred rl_sort__assign_indexing(block_id::in, relation_id::in,
+		relation_id::in, sort_info::in, sort_info::out) is det.
 
-rl_sort__assign_indexing(Output, Input) -->
-	=(sort_info(sortedness(RelMap0, _VarMap0), _, _)),
-	( { map__search(RelMap0, Input, Specs0) } ->
-		{ map__to_assoc_list(Specs0, Specs1) },
-		{ list__filter(
-			lambda([SpecAndReq::in] is semidet, (
-				SpecAndReq = index(_) - _
-			)), Specs1, Specs2) },
-		{ map__from_assoc_list(Specs2, Specs) },
-		rl_sort__add_relation_sortedness_map(Specs, Output)
-	;
-		[]
-	).
+rl_sort__assign_indexing(BlockId, Output, Input) -->
+	rl_sort__assign_sortedness_and_indexing(index_filter,
+		BlockId, Output, Input).
+
+:- pred rl_sort__assign_sortedness(block_id::in, relation_id::in,
+		relation_id::in, sort_info::in, sort_info::out) is det.
+
+rl_sort__assign_sortedness(BlockId, Output, Input) -->
+	rl_sort__assign_sortedness_and_indexing(sort_filter,
+		BlockId, Output, Input).
 
 :- pred rl_sort__unset_relation(relation_id::in, 
 		sort_info::in, sort_info::out) is det.
@@ -598,6 +627,8 @@ rl_sort__instr_needed(BlockId,
 	( 
 		{ Type = nested_loop }
 	;
+		{ Type = semi }
+	;
 		{ Type = sort_merge(SortSpec1, SortSpec2) },
 		rl_sort__add_relation_sortedness(BlockId, sort(SortSpec1),
 			Input1),
@@ -609,13 +640,13 @@ rl_sort__instr_needed(BlockId,
 			Input2)
 	;
 		{ Type = cross }
-	;
-		{ Type = semi }
 	).
 rl_sort__instr_needed(BlockId,
 		subtract(_Output, Input1, Input2, Type, _Exprn) - _) -->
 	(
 		{ Type = nested_loop }
+	;
+		{ Type = semi }
 	;
 		{ Type = sort_merge(SortSpec1, SortSpec2) },
 		rl_sort__add_relation_sortedness(BlockId, sort(SortSpec1),
@@ -640,18 +671,28 @@ rl_sort__instr_needed(BlockId, union(_Output, Inputs, Type) - _) -->
 	{ Type = sort_merge(SortSpec) },
 	list__foldl(rl_sort__add_relation_sortedness(BlockId, sort(SortSpec)),
 		Inputs).
-rl_sort__instr_needed(_, insert(_, _, _, _, _) - _) --> [].
-rl_sort__instr_needed(_, union_diff(_, _, _, _, _, _) - _) --> [].
-
+rl_sort__instr_needed(BlockId, insert(UoOutput, DiInput, _, InsertType, _) - _)
+		-->
+	( { InsertType = index(Index) } ->
+		rl_sort__assign_indexing(BlockId, DiInput, UoOutput),
+		rl_sort__add_relation_sortedness(BlockId,
+			index(Index), DiInput)
+	;
+		[]
+	).
+rl_sort__instr_needed(BlockId,
+		union_diff(UoOutput, DiInput, _, _, Index, _) - _) -->
+	rl_sort__assign_indexing(BlockId, DiInput, UoOutput),
+	rl_sort__add_relation_sortedness(BlockId, index(Index), DiInput).
 rl_sort__instr_needed(_BlockId, sort(_Output, _Input, _Attrs) - _) --> [].
 rl_sort__instr_needed(BlockId, ref(Output, Input) - _) -->
-	rl_sort__assign_relation_sortedness(BlockId, Input, Output).
+	rl_sort__assign_sortedness_and_indexing(BlockId, Input, Output).
 rl_sort__instr_needed(BlockId, copy(Output, Input) - _) -->
 	{ Output = output_rel(OutputRel, _) },
-	rl_sort__assign_relation_sortedness(BlockId, Input, OutputRel).
+	rl_sort__assign_sortedness(BlockId, Input, OutputRel).
 rl_sort__instr_needed(BlockId, make_unique(Output, Input) - _) -->
 	{ Output = output_rel(OutputRel, _) },
-	rl_sort__assign_relation_sortedness(BlockId, Input, OutputRel).
+	rl_sort__assign_sortedness(BlockId, Input, OutputRel).
 rl_sort__instr_needed(_BlockId, init(_Output) - _) --> [].
 rl_sort__instr_needed(_BlockId, insert_tuple(_, _, _) - _) --> [].
 rl_sort__instr_needed(_BlockId, call(_, _Inputs, _Outputs, _) - _) --> [].
@@ -762,26 +803,27 @@ rl_sort__instr_avail(BlockId, union(Output, _Inputs, Type) - _) -->
 	{ Output = output_rel(OutputRel, _) },
 	rl_sort__add_relation_sortedness(BlockId, sort(SortSpec), OutputRel),
 	rl_sort__handle_output_indexing(BlockId, Output).
-rl_sort__instr_avail(_, insert(UoOutput, DiInput, _Input, _Type, _) - _)
+rl_sort__instr_avail(BlockId, insert(UoOutput, DiInput, _Input, _Type, _) - _)
 		-->
-	rl_sort__assign_indexing(UoOutput, DiInput).
-rl_sort__instr_avail(_,
-		union_diff(UoOutput, DiInput, _Input1, _Diff, _, _) - _) -->
-	rl_sort__assign_indexing(UoOutput, DiInput).
+	rl_sort__assign_indexing(BlockId, UoOutput, DiInput).
+rl_sort__instr_avail(BlockId,
+		union_diff(UoOutput, DiInput, _Input1, Diff, _, _) - _) -->
+	rl_sort__assign_indexing(BlockId, UoOutput, DiInput),
+	rl_sort__handle_output_indexing(BlockId, Diff).
 rl_sort__instr_avail(BlockId, sort(Output, _Input, Attrs) - _) -->
 	{ Output = output_rel(OutputRel, _) },
 	rl_sort__add_relation_sortedness(BlockId,
 		sort(attributes(Attrs)), OutputRel),
 	rl_sort__handle_output_indexing(BlockId, Output).
 rl_sort__instr_avail(BlockId, ref(Output, Input) - _) -->
-	rl_sort__assign_relation_sortedness(BlockId, Output, Input).
+	rl_sort__assign_sortedness_and_indexing(BlockId, Output, Input).
 rl_sort__instr_avail(BlockId, copy(Output, Input) - _) -->
 	{ Output = output_rel(OutputRel, _) },
-	rl_sort__assign_relation_sortedness(BlockId, OutputRel, Input),
+	rl_sort__assign_sortedness(BlockId, OutputRel, Input),
 	rl_sort__handle_output_indexing(BlockId, Output).
 rl_sort__instr_avail(BlockId, make_unique(Output, Input) - _) -->
 	{ Output = output_rel(OutputRel, _) },
-	rl_sort__assign_relation_sortedness(BlockId, OutputRel, Input),
+	rl_sort__assign_sortedness(BlockId, OutputRel, Input),
 	rl_sort__handle_output_indexing(BlockId, Output).
 rl_sort__instr_avail(BlockId, init(Output) - _) -->
 	rl_sort__handle_output_indexing(BlockId, Output).
@@ -1391,9 +1433,9 @@ rl_sort__map_sort_and_index_specs(OutputPred, _IndexPred, SortPred,
 	Type0 = sort_merge(SortSpec0),
 	call(SortPred, SortSpec0, SortSpec),
 	Type = sort_merge(SortSpec).
-rl_sort__map_sort_and_index_specs(_, IndexPred, _,
-		insert(A, B, C, Type0, E) - F,
-		insert(A, B, C, Type, E) - F) :-
+rl_sort__map_sort_and_index_specs(OutputPred, IndexPred, _,
+		insert(A, B, C, Type0, MaybeCopy0) - F,
+		insert(A, B, C, Type, MaybeCopy) - F) :-
 	(
 		Type0 = append,
 		Type = append
@@ -1401,11 +1443,28 @@ rl_sort__map_sort_and_index_specs(_, IndexPred, _,
 		Type0 = index(Index0),
 		call(IndexPred, Index0, Index),
 		Type = index(Index)
+	),
+	(
+		MaybeCopy0 = yes(Copy0),
+		call(OutputPred, Copy0, Copy),
+		MaybeCopy = yes(Copy)
+	;
+		MaybeCopy0 = no,
+		MaybeCopy = no
 	).
-rl_sort__map_sort_and_index_specs(_, IndexPred, _,
-		union_diff(A, B, C, D, Index0, F) - G,
-		union_diff(A, B, C, D, Index, F) - G) :-
-	call(IndexPred, Index0, Index).
+rl_sort__map_sort_and_index_specs(OutputPred, IndexPred, _,
+		union_diff(A, B, C, Diff0, Index0, MaybeCopy0) - G,
+		union_diff(A, B, C, Diff, Index, MaybeCopy) - G) :-
+	call(IndexPred, Index0, Index),
+	call(OutputPred, Diff0, Diff),
+	(
+		MaybeCopy0 = yes(Copy0),
+		call(OutputPred, Copy0, Copy),
+		MaybeCopy = yes(Copy)
+	;
+		MaybeCopy0 = no,
+		MaybeCopy = no
+	).
 rl_sort__map_sort_and_index_specs(OutputPred, _, SortPred,
 		sort(Output0, B, Attrs0) - D,
 		sort(Output, B, Attrs) - D) :-

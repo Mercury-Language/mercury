@@ -355,10 +355,10 @@ bag__intersect(A, B, Out) :-
 bag__intersect_2(A, B, Out0, Out) :-
 	( map__remove_smallest(A, Key, AVal,A0) ->
 		( map__search(B, Key, BVal) ->
-			int__max(AVal, BVal, Val),
+			int__min(AVal, BVal, Val),
 			map__det_insert(Out0, Key, Val, Out1)
 		;
-			map__det_insert(Out0, Key, AVal, Out1)
+			Out1 = Out0
 		),
 		bag__intersect_2(A0, B, Out1, Out)
 	;

@@ -41,7 +41,7 @@
 :- import_module term, varset, string, require.
 :- import_module modes, options, mercury_to_mercury, passes_aux.
 :- import_module globals, hlds_goal, instmap, prog_data, (inst).
-:- import_module hlds_module, hlds_data.
+:- import_module hlds_module, hlds_data, inst_table.
 
 %-----------------------------------------------------------------------------%
 

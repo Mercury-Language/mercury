@@ -13,13 +13,43 @@ include $(MERCURY_DIR)/Mmake.common
 
 #-----------------------------------------------------------------------------#
 
-TEXI2DVI=texi2dvi
-MAKEINFO=makeinfo
-TEXI2HTML=perl texi2html
-TEXI2HTML_SPLIT=perl texi2html -split
-DVIPS=dvips
+TEXI2HTML=$(PERL) texi2html
+TEXI2HTML_SPLIT=$(PERL) texi2html -split
 
-# INSTALL_INFO is defined in ../Mmake.common
+ifeq ("$(PERL)","")
+	HTML=
+	INSTALL_HTML=
+else
+	HTML=html
+	INSTALL_HTML=install_html
+endif
+
+ifeq ("$(TEXI2DVI)","")
+	DVI=
+	INSTALL_DVI=
+else
+	DVI=dvi
+	INSTALL_HTML=install_dvi
+endif
+
+ifeq ("$(MAKEINFO)","")
+	INFO=
+	INSTALL_INFO=
+	MDB_DOC=
+else
+	INFO=info
+	INSTALL_INFO=install_info
+	MDB_DOC=mdb_doc mdb_command_list mdb_command_test.inp
+	INSTALL_MDB_DOC=install_mdb_doc
+endif
+
+ifeq ("$(DVIPS)","")
+	PS=
+	INSTALL_PS=
+else
+	PS=ps
+	INSTALL_PS=install_ps
+endif
 
 #-----------------------------------------------------------------------------#
 
@@ -48,8 +78,10 @@ DVIPS=dvips
 
 #-----------------------------------------------------------------------------#
 
+	# Currently `mmake all' does not build the PostScript or plain-text
+	# versions of the documentation.  But it might make sense to add them.
 .PHONY: all
-all: info dvi html manpages mdb_doc mdb_command_list mdb_command_test.inp
+all: $(INFO) $(DVI) $(HTML) manpages $(MDB_DOC) 
 #all: ps text
 
 #-----------------------------------------------------------------------------#
@@ -168,8 +200,12 @@ doc.ps.tar.gz: ps
 
 #-----------------------------------------------------------------------------#
 
+	# Currently `mmake all' does not build the PostScript or plain-text
+	# versions of the documentation.  If they are added they should
+	# be installed here.
 .PHONY: install
-install: install_info install_html install_dvi install_manpages install_mdb_doc
+install: $(INSTALL_INFO) $(INSTALL_HTML) $(INSTALL_DVI) install_manpages \
+	$(INSTALL_MDB_DOC) 
 	# install_text install_ps
 
 .PHONY: install_dirs

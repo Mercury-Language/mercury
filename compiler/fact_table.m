@@ -93,6 +93,7 @@
 :- import_module prog_util, prog_out, llds_out, modules, hlds_out, hlds_data.
 :- import_module globals, options, passes_aux, arg_info, llds, mode_util.
 :- import_module prog_io, code_util, export, inst_match, (inst), instmap, term.
+:- import_module inst_table.
 
 :- type fact_result
 	--->	ok ; error.
@@ -1427,8 +1428,12 @@ write_primary_hash_table(ProcID, FileName, DataFileName, StructName, ProcTable,
 			{ proc_id_to_int(ProcID, ProcInt) },
 			{ string__format("%s_hash_table_%d_", 
 				[s(StructName), i(ProcInt)], HashTableName) },
-			{ string__format("extern %s0;\n", [s(HashTableName)],
-				C_HeaderCode0) },
+			{ string__format(
+				"extern struct fact_table_hash_table_i %s0;\n",
+				[s(HashTableName)], C_HeaderCode0) },
+				% Note: the type declared here is not
+				% necessarily correct.  The type is declared
+				% just to stop the C compiler emitting warnings.
 			{ map__lookup(ProcTable, ProcID, ProcInfo) },
 			{ proc_info_argmodes(ProcInfo,
 				argument_modes(ArgInstTable, ArgModes)) },
@@ -1504,8 +1509,11 @@ write_secondary_hash_tables([ProcID - FileName | ProcFiles], StructName,
 		{ proc_id_to_int(ProcID, ProcInt) },
 		{ string__format("%s_hash_table_%d_",
 			[s(StructName), i(ProcInt)], HashTableName) },
-		{ string__format("extern %s0;\n", [s(HashTableName)],
-			C_HeaderCode1) },
+		{ string__format("extern struct fact_table_hash_table_i %s0;\n",
+			[s(HashTableName)], C_HeaderCode1) },
+			% Note: the type declared here is not
+			% necessarily correct.  The type is declared
+			% just to stop the C compiler emitting warnings.
 		{ string__append(C_HeaderCode1, C_HeaderCode0,
 			C_HeaderCode2) },
 		{ map__lookup(ProcTable, ProcID, ProcInfo) },
@@ -2381,7 +2389,7 @@ get_hash_table_type_2(Map, Index, TableType) :-
 write_fact_table_pointer_array(NumFacts, StructName, OutputStream, 
 		C_HeaderCode) -->
 	{ string__append_list(
-		["struct ", StructName, "_struct *", StructName, "[]"], 
+		["const struct ", StructName, "_struct *", StructName, "[]"], 
 		PointerArrayName) },
 	{ string__append_list(["extern ", PointerArrayName, ";\n"], 
 		C_HeaderCode) },
@@ -2470,7 +2478,6 @@ delete_temporary_file(FileName) -->
 fact_table_generate_c_code(PredName, PragmaVars, ProcID, PrimaryProcID, 
 		ProcInfo, ArgTypes, ModuleInfo, ProcCode, ExtraCode) -->
 	fact_table_size(FactTableSize),
-	{ proc_info_args_method(ProcInfo, ArgsMethod) },
 	{ proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap) },
 	{ proc_info_argmodes(ProcInfo,
 			argument_modes(ArgInstTable, ArgModes)) },
@@ -2483,7 +2490,7 @@ fact_table_generate_c_code(PredName, PragmaVars, ProcID, PrimaryProcID,
 		Determinism = multidet
 	->
 		generate_multidet_code(Identifier, PragmaVars, ProcID,
-			ArgTypes, ArgsMethod, InstMap, ArgInstTable,
+			ArgTypes, InstMap, ArgInstTable,
 			ModuleInfo, FactTableSize, ProcCode, ExtraCode)
 	;
 		ModeType = all_out,
@@ -2513,7 +2520,7 @@ fact_table_generate_c_code(PredName, PragmaVars, ProcID, PrimaryProcID,
 		ProcID = PrimaryProcID
 	->
 		generate_primary_nondet_code(Identifier, PragmaVars,
-			ProcID, ArgTypes, ArgsMethod, InstMap, ArgInstTable,
+			ProcID, ArgTypes, InstMap, ArgInstTable,
 			ModuleInfo, FactTableSize, ProcCode, ExtraCode)
 	;
 		ModeType = in_out,
@@ -2521,7 +2528,7 @@ fact_table_generate_c_code(PredName, PragmaVars, ProcID, PrimaryProcID,
 		ProcID \= PrimaryProcID
 	->
 		generate_secondary_nondet_code(Identifier, PragmaVars,
-			ProcID, ArgTypes, ArgsMethod, InstMap, ArgInstTable,
+			ProcID, ArgTypes, InstMap, ArgInstTable,
 			ModuleInfo, FactTableSize, ProcCode, ExtraCode)
 	;
 		% There is a determinism error in this procedure which will be 
@@ -2541,12 +2548,12 @@ fact_table_generate_c_code(PredName, PragmaVars, ProcID, PrimaryProcID,
 
 	% XXX this should be changed to use the new model_non pragma c_code
 :- pred generate_multidet_code(string, list(pragma_var), proc_id, 
-		list(type), args_method, instmap, inst_table, module_info,
+		list(type), instmap, inst_table, module_info,
 		int, string, string).
-:- mode generate_multidet_code(in, in, in, in, in, in, in, in, in,
+:- mode generate_multidet_code(in, in, in, in, in, in, in, in,
 		out, out) is det.
 
-generate_multidet_code(PredName, PragmaVars, ProcID, ArgTypes, ArgsMethod,
+generate_multidet_code(PredName, PragmaVars, ProcID, ArgTypes,
 	    InstMap, InstTable, ModuleInfo, FactTableSize, ProcCode,
 	    ExtraCode) :-
 	generate_nondet_proc_code(PragmaVars, PredName, ProcID, ExtraCodeLabel,
@@ -2595,7 +2602,7 @@ void sys_init_%s_module(void) {
 	string__append_list(["mercury__", PredName, "_fact_table_num_facts"],
 		NumFactsVar),
 	list__length(PragmaVars, Arity), 
-	generate_argument_vars_code(PragmaVars, ArgTypes, ArgsMethod,
+	generate_argument_vars_code(PragmaVars, ArgTypes,
 		InstMap, InstTable, ModuleInfo, ArgDeclCode, _InputCode,
 		OutputCode, _, _, _),
 	generate_fact_lookup_code(PredName, PragmaVars, ArgTypes, InstMap,
@@ -2773,7 +2780,7 @@ generate_decl_code(Name, ProcID, DeclCode) :-
 			Integer hashval, hashsize;
 			Word ind;
 			void *current_table;
-			char keytype;
+			char keytype = '\\0';
 			Word current_key, tmp;
 
 			/*
@@ -3075,13 +3082,13 @@ generate_fact_lookup_code(PredName, [pragma_var(_, VarName, Mode)|PragmaVars],
 	% XXX this should change to use the new model_non pragma c_code when
 	% it has been implemented.
 :- pred generate_primary_nondet_code(string, list(pragma_var), proc_id, 
-		list(type), args_method, instmap, inst_table, module_info,
+		list(type), instmap, inst_table, module_info,
 		int, string, string).
-:- mode generate_primary_nondet_code(in, in, in, in, in, in, in, in, in,
+:- mode generate_primary_nondet_code(in, in, in, in, in, in, in, in,
 		out, out) is det.
 
 generate_primary_nondet_code(PredName, PragmaVars, ProcID, ArgTypes,
-		ArgsMethod, InstMap, InstTable, ModuleInfo, FactTableSize,
+		InstMap, InstTable, ModuleInfo, FactTableSize,
 		ProcCode, ExtraCode) :-
 	generate_nondet_proc_code(PragmaVars, PredName, ProcID, ExtraCodeLabel,
 		ProcCode),
@@ -3152,7 +3159,7 @@ void sys_init_%s_module(void) {
 
 	",
 
-	generate_argument_vars_code(PragmaVars, ArgTypes, ArgsMethod, InstMap,
+	generate_argument_vars_code(PragmaVars, ArgTypes, InstMap,
 		InstTable, ModuleInfo, ArgDeclCode, InputCode, OutputCode,
 		SaveRegsCode, GetRegsCode, NumFrameVars),
 	generate_decl_code(PredName, ProcID, DeclCode),
@@ -3208,18 +3215,18 @@ void sys_init_%s_module(void) {
 
 	% generate code to create argument variables and assign them to 
 	% registers
-:- pred generate_argument_vars_code(list(pragma_var), list(type), args_method,
+:- pred generate_argument_vars_code(list(pragma_var), list(type),
 		instmap, inst_table, module_info,
 		string, string, string, string, string, int).
-:- mode generate_argument_vars_code(in, in, in, in, in, in,
+:- mode generate_argument_vars_code(in, in, in, in, in,
 		out, out, out, out, out, out) is det.
 
-generate_argument_vars_code(PragmaVars, Types, ArgsMethod, InstMap,
+generate_argument_vars_code(PragmaVars, Types, InstMap,
 		InstTable, ModuleInfo, DeclCode, InputCode, OutputCode,
 		SaveRegsCode, GetRegsCode, NumInputArgs) :-
 	list__map(lambda([X::in, Y::out] is det, X = pragma_var(_,_,Y)),
 		PragmaVars, Modes),
-	make_arg_infos(ArgsMethod, Types, Modes, model_non, InstMap,
+	make_arg_infos(Types, Modes, model_non, InstMap,
 		InstTable, ModuleInfo, ArgInfos),
 	generate_argument_vars_code_2(PragmaVars, ArgInfos, Types, DeclCode,
 		InputCode, OutputCode, SaveRegsCode, GetRegsCode, 1,
@@ -3383,13 +3390,13 @@ generate_test_condition_code(FactTableName, [PragmaVar|PragmaVars],
 	% XXX this should change to use the new model_non pragma c_code when
 	% it has been implemented.
 :- pred generate_secondary_nondet_code(string, list(pragma_var), proc_id, 
-		list(type), args_method, instmap, inst_table, module_info,
+		list(type), instmap, inst_table, module_info,
 		int, string, string).
-:- mode generate_secondary_nondet_code(in, in, in, in, in, in, in, in, in,
+:- mode generate_secondary_nondet_code(in, in, in, in, in, in, in, in,
 		out, out) is det.
 
 generate_secondary_nondet_code(PredName, PragmaVars, ProcID, ArgTypes,
-		ArgsMethod, InstMap, InstTable, ModuleInfo, FactTableSize,
+		InstMap, InstTable, ModuleInfo, FactTableSize,
 		ProcCode, ExtraCode) :-
 	generate_nondet_proc_code(PragmaVars, PredName, ProcID, ExtraCodeLabel,
 		ProcCode),
@@ -3477,7 +3484,7 @@ void sys_init_%s_module(void) {
 
 	",
 
-	generate_argument_vars_code(PragmaVars, ArgTypes, ArgsMethod, InstMap,
+	generate_argument_vars_code(PragmaVars, ArgTypes, InstMap,
 		InstTable, ModuleInfo, ArgDeclCode, InputCode, OutputCode,
 		_SaveRegsCode, _GetRegsCode, _NumFrameVars),
 	generate_decl_code(PredName, ProcID, DeclCode),

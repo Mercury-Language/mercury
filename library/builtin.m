@@ -247,8 +247,6 @@ promise_only_solution(Pred) = OutVal :-
 :- pragma c_code("
 
 
-#ifdef  USE_TYPE_LAYOUT
-
 	/* type_ctor_layout definitions */ 
 
 	/* type_ctor_layout for `int' */
@@ -301,6 +299,8 @@ const struct mercury_data___type_ctor_layout_void_0_struct {
 		mkbody(MR_TYPE_CTOR_LAYOUT_VOID_VALUE))
 };
 
+#ifdef	NATIVE_GC
+
 	/* type_ctor_layout for `succip' (only used by accurate gc) */
 
 MR_MODULE_STATIC_OR_EXTERN
@@ -318,7 +318,7 @@ const struct mercury_data___type_ctor_layout_hp_0_struct {
 	TYPE_LAYOUT_FIELDS
 } mercury_data___type_ctor_layout_hp_0 = {
 	make_typelayout_for_all_tags(TYPE_CTOR_LAYOUT_CONST_TAG, 
-		mkbody(MR_TYPE_CTOR_LAYOUT_SUCCIP_VALUE))
+		mkbody(MR_TYPE_CTOR_LAYOUT_HP_VALUE))
 };
 
 	/* type_ctor_layout for `curfr' (only used by accurate gc) */
@@ -360,6 +360,8 @@ const struct mercury_data___type_ctor_layout_redoip_0_struct {
 	make_typelayout_for_all_tags(TYPE_CTOR_LAYOUT_CONST_TAG, 
 		mkbody(MR_TYPE_CTOR_LAYOUT_REDOIP_VALUE))
 };
+
+#endif /* NATIVE_GC */
 
 	/* type_ctor_functors definitions */
 
@@ -407,6 +409,8 @@ const struct mercury_data___type_ctor_functors_void_0_struct {
 } mercury_data___type_ctor_functors_void_0 = {
 	MR_TYPE_CTOR_FUNCTORS_SPECIAL
 };
+
+#ifdef	NATIVE_GC
 
 	/* type_ctor_functors for `succip' (only used by accurate gc) */
 
@@ -462,7 +466,7 @@ const struct mercury_data___type_ctor_functors_redoip_0_struct {
 	MR_TYPE_CTOR_FUNCTORS_SPECIAL
 };
 
-#endif /* USE_TYPE_LAYOUT */
+#endif /* NATIVE_GC */
 
 	/* type_ctor_infos definitions */
 
@@ -474,22 +478,8 @@ Declare_entry(mercury__builtin_compare_int_3_0);
 #ifdef MR_USE_SOLVE_EQUAL
 Declare_entry(mercury__builtin_solve_equal_int_2_0);
 #endif
-MR_STATIC_CODE_CONST struct mercury_data___type_ctor_info_int_0_struct {
-	Integer f1;
-	Code *f2;
-	Code *f3;
-	Code *f4;
-#ifdef MR_USE_SOLVE_EQUAL
-	Code *f5;
-#endif
-#ifdef USE_TYPE_LAYOUT
-	const Word *f6;
-	const Word *f7;
-	const Word *f8;
-	const Word *f9;
-	const Word *f10;
-#endif
-} mercury_data___type_ctor_info_int_0 = {
+MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
+mercury_data___type_ctor_info_int_0 = {
 	((Integer) 0),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_unify_int_2_0)),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_index_int_2_0)),
@@ -497,13 +487,11 @@ MR_STATIC_CODE_CONST struct mercury_data___type_ctor_info_int_0_struct {
 #ifdef MR_USE_SOLVE_EQUAL
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_solve_equal_int_2_0)),
 #endif
-#ifdef  USE_TYPE_LAYOUT
-	(const Word *) & mercury_data___type_ctor_layout_int_0,
-	(const Word *) & mercury_data___type_ctor_functors_int_0,
-	(const Word *) & mercury_data___type_ctor_layout_int_0,
-	(const Word *) string_const(""builtin"", 7),
-	(const Word *) string_const(""int"", 3)
-#endif
+	MR_TYPECTOR_REP_INT,
+	(MR_TypeCtorFunctors) & mercury_data___type_ctor_functors_int_0,
+	(MR_TypeCtorLayout) & mercury_data___type_ctor_layout_int_0,
+	string_const(""builtin"", 7),
+	string_const(""int"", 3)
 };
 
 	/* type_ctor_info for `character' */
@@ -514,23 +502,8 @@ Declare_entry(mercury__builtin_compare_character_3_0);
 #ifdef MR_USE_SOLVE_EQUAL
 Declare_entry(mercury__builtin_solve_equal_character_2_0);
 #endif
-MR_STATIC_CODE_CONST struct 
-mercury_data___type_ctor_info_character_0_struct {
-	Integer f1;
-	Code *f2;
-	Code *f3;
-	Code *f4;
-#ifdef MR_USE_SOLVE_EQUAL
-	Code *f5;
-#endif
-#ifdef USE_TYPE_LAYOUT
-	const Word *f6;
-	const Word *f7;
-	const Word *f8;
-	const Word *f9;
-	const Word *f10;
-#endif
-} mercury_data___type_ctor_info_character_0 = {
+MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
+mercury_data___type_ctor_info_character_0 = {
 	((Integer) 0),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_unify_character_2_0)),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_index_character_2_0)),
@@ -538,13 +511,11 @@ mercury_data___type_ctor_info_character_0_struct {
 #ifdef MR_USE_SOLVE_EQUAL
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_solve_equal_character_2_0)),
 #endif
-#ifdef  USE_TYPE_LAYOUT
-	(const Word *) & mercury_data___type_ctor_layout_character_0,
-	(const Word *) & mercury_data___type_ctor_functors_character_0,
-	(const Word *) & mercury_data___type_ctor_layout_character_0,
-	(const Word *) string_const(""builtin"", 7),
-	(const Word *) string_const(""character"", 9)
-#endif
+	MR_TYPECTOR_REP_CHAR,
+	(MR_TypeCtorFunctors) & mercury_data___type_ctor_functors_character_0,
+	(MR_TypeCtorLayout) & mercury_data___type_ctor_layout_character_0,
+	string_const(""builtin"", 7),
+	string_const(""character"", 9)
 };
 
 	/* type_ctor_info for `string' */
@@ -555,22 +526,8 @@ Declare_entry(mercury__builtin_compare_string_3_0);
 #ifdef MR_USE_SOLVE_EQUAL
 Declare_entry(mercury__builtin_solve_equal_string_2_0);
 #endif
-MR_STATIC_CODE_CONST struct mercury_data___type_ctor_info_string_0_struct {
-	Integer f1;
-	Code *f2;
-	Code *f3;
-	Code *f4;
-#ifdef MR_USE_SOLVE_EQUAL
-	Code *f5;
-#endif
-#ifdef USE_TYPE_LAYOUT
-	const Word *f6;
-	const Word *f7;
-	const Word *f8;
-	const Word *f9;
-	const Word *f10;
-#endif
-} mercury_data___type_ctor_info_string_0 = {
+MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
+mercury_data___type_ctor_info_string_0 = {
 	((Integer) 0),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_unify_string_2_0)),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_index_string_2_0)),
@@ -578,13 +535,11 @@ MR_STATIC_CODE_CONST struct mercury_data___type_ctor_info_string_0_struct {
 #ifdef MR_USE_SOLVE_EQUAL
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_solve_equal_string_2_0)),
 #endif
-#ifdef  USE_TYPE_LAYOUT
-	(const Word *) & mercury_data___type_ctor_layout_string_0,
-	(const Word *) & mercury_data___type_ctor_functors_string_0,
-	(const Word *) & mercury_data___type_ctor_layout_string_0,
-	(const Word *) string_const(""builtin"", 7),
-	(const Word *) string_const(""string"", 6)
-#endif
+	MR_TYPECTOR_REP_STRING,
+	(MR_TypeCtorFunctors) & mercury_data___type_ctor_functors_string_0,
+	(MR_TypeCtorLayout) & mercury_data___type_ctor_layout_string_0,
+	string_const(""builtin"", 7),
+	string_const(""string"", 6)
 };
 
 	/* type_ctor_info for `float' */
@@ -595,22 +550,8 @@ Declare_entry(mercury__builtin_compare_float_3_0);
 #ifdef MR_USE_SOLVE_EQUAL
 Declare_entry(mercury__builtin_solve_equal_float_2_0);
 #endif
-MR_STATIC_CODE_CONST struct mercury_data___type_ctor_info_float_0_struct {
-	Integer f1;
-	Code *f2;
-	Code *f3;
-	Code *f4;
-#ifdef MR_USE_SOLVE_EQUAL
-	Code *f5;
-#endif
-#ifdef USE_TYPE_LAYOUT
-	const Word *f6;
-	const Word *f7;
-	const Word *f8;
-	const Word *f9;
-	const Word *f10;
-#endif
-} mercury_data___type_ctor_info_float_0 = {
+MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
+mercury_data___type_ctor_info_float_0 = {
 	((Integer) 0),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_unify_float_2_0)),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_index_float_2_0)),
@@ -618,34 +559,18 @@ MR_STATIC_CODE_CONST struct mercury_data___type_ctor_info_float_0_struct {
 #ifdef MR_USE_SOLVE_EQUAL
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__builtin_solve_equal_float_2_0)),
 #endif
-#ifdef  USE_TYPE_LAYOUT
-	(const Word *) & mercury_data___type_ctor_layout_float_0,
-	(const Word *) & mercury_data___type_ctor_functors_float_0,
-	(const Word *) & mercury_data___type_ctor_layout_float_0,
-	(const Word *) string_const(""builtin"", 7),
-	(const Word *) string_const(""float"", 5)
-#endif
+	MR_TYPECTOR_REP_FLOAT,
+	(MR_TypeCtorFunctors) & mercury_data___type_ctor_functors_float_0,
+	(MR_TypeCtorLayout) & mercury_data___type_ctor_layout_float_0,
+	string_const(""builtin"", 7),
+	string_const(""float"", 5)
 };
 
 	/* type_ctor_info for `void' */
 
 Declare_entry(mercury__unused_0_0);
-MR_STATIC_CODE_CONST struct mercury_data___type_ctor_info_void_0_struct {
-	Integer f1;
-	Code *f2;
-	Code *f3;
-	Code *f4;
-#ifdef MR_USE_SOLVE_EQUAL
-	Code *f5;
-#endif
-#ifdef USE_TYPE_LAYOUT
-	const Word *f6;
-	const Word *f7;
-	const Word *f8;
-	const Word *f9;
-	const Word *f10;
-#endif
-} mercury_data___type_ctor_info_void_0 = {
+MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
+mercury_data___type_ctor_info_void_0 = {
 	((Integer) 0),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
@@ -653,34 +578,20 @@ MR_STATIC_CODE_CONST struct mercury_data___type_ctor_info_void_0_struct {
 #ifdef MR_USE_SOLVE_EQUAL
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
 #endif
-#ifdef  USE_TYPE_LAYOUT
-	(const Word *) & mercury_data___type_ctor_layout_void_0,
-	(const Word *) & mercury_data___type_ctor_functors_void_0,
-	(const Word *) & mercury_data___type_ctor_layout_void_0,
-	(const Word *) string_const(""builtin"", 7),
-	(const Word *) string_const(""void"", 4)
-#endif
+	MR_TYPECTOR_REP_VOID,
+	(MR_TypeCtorFunctors) & mercury_data___type_ctor_functors_void_0,
+	(MR_TypeCtorLayout) & mercury_data___type_ctor_layout_void_0,
+	string_const(""builtin"", 7),
+	string_const(""void"", 4)
 };
+
+#ifdef	NATIVE_GC
 
 	/* type_ctor_info for `succip' (only used by accurate gc) */
 
 Declare_entry(mercury__unused_0_0);
-MR_STATIC_CODE_CONST struct mercury_data___type_ctor_info_succip_0_struct {
-	Integer f1;
-	Code *f2;
-	Code *f3;
-	Code *f4;
-#ifdef MR_USE_SOLVE_EQUAL
-	Code *f5;
-#endif
-#ifdef USE_TYPE_LAYOUT
-	const Word *f6;
-	const Word *f7;
-	const Word *f8;
-	const Word *f9;
-	const Word *f10;
-#endif
-} mercury_data___type_ctor_info_succip_0 = {
+MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
+mercury_data___type_ctor_info_succip_0 = {
 	((Integer) 0),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
@@ -688,34 +599,18 @@ MR_STATIC_CODE_CONST struct mercury_data___type_ctor_info_succip_0_struct {
 #ifdef MR_USE_SOLVE_EQUAL
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
 #endif
-#ifdef  USE_TYPE_LAYOUT
 	(const Word *) & mercury_data___type_ctor_layout_succip_0,
 	(const Word *) & mercury_data___type_ctor_functors_succip_0,
 	(const Word *) & mercury_data___type_ctor_layout_succip_0,
-	(const Word *) string_const(""builtin"", 7),
-	(const Word *) string_const(""succip"", 4)
-#endif
+	string_const(""builtin"", 7),
+	string_const(""succip"", 6)
 };
 
 	/* type_ctor_info for `hp' (only used by accurate gc) */
 
 Declare_entry(mercury__unused_0_0);
-MR_STATIC_CODE_CONST struct mercury_data___type_ctor_info_hp_0_struct {
-	Integer f1;
-	Code *f2;
-	Code *f3;
-	Code *f4;
-#ifdef MR_USE_SOLVE_EQUAL
-	Code *f5;
-#endif
-#ifdef USE_TYPE_LAYOUT
-	const Word *f6;
-	const Word *f7;
-	const Word *f8;
-	const Word *f9;
-	const Word *f10;
-#endif
-} mercury_data___type_ctor_info_hp_0 = {
+MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
+mercury_data___type_ctor_info_hp_0 = {
 	((Integer) 0),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
@@ -723,34 +618,18 @@ MR_STATIC_CODE_CONST struct mercury_data___type_ctor_info_hp_0_struct {
 #ifdef MR_USE_SOLVE_EQUAL
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
 #endif
-#ifdef  USE_TYPE_LAYOUT
 	(const Word *) & mercury_data___type_ctor_layout_hp_0,
 	(const Word *) & mercury_data___type_ctor_functors_hp_0,
 	(const Word *) & mercury_data___type_ctor_layout_hp_0,
-	(const Word *) string_const(""builtin"", 7),
-	(const Word *) string_const(""hp"", 4)
-#endif
+	string_const(""builtin"", 7),
+	string_const(""hp"", 2)
 };
 
 	/* type_ctor_info for `curfr' (only used by accurate gc) */
 
 Declare_entry(mercury__unused_0_0);
-MR_STATIC_CODE_CONST struct mercury_data___type_ctor_info_curfr_0_struct {
-	Integer f1;
-	Code *f2;
-	Code *f3;
-	Code *f4;
-#ifdef MR_USE_SOLVE_EQUAL
-	Code *f5;
-#endif
-#ifdef USE_TYPE_LAYOUT
-	const Word *f6;
-	const Word *f7;
-	const Word *f8;
-	const Word *f9;
-	const Word *f10;
-#endif
-} mercury_data___type_ctor_info_curfr_0 = {
+MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
+mercury_data___type_ctor_info_curfr_0 = {
 	((Integer) 0),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
@@ -758,34 +637,18 @@ MR_STATIC_CODE_CONST struct mercury_data___type_ctor_info_curfr_0_struct {
 #ifdef MR_USE_SOLVE_EQUAL
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
 #endif
-#ifdef  USE_TYPE_LAYOUT
 	(const Word *) & mercury_data___type_ctor_layout_curfr_0,
 	(const Word *) & mercury_data___type_ctor_functors_curfr_0,
 	(const Word *) & mercury_data___type_ctor_layout_curfr_0,
-	(const Word *) string_const(""builtin"", 7),
-	(const Word *) string_const(""curfr"", 4)
-#endif
+	string_const(""builtin"", 7),
+	string_const(""curfr"", 5)
 };
 
 	/* type_ctor_info for `maxfr' (only used by accurate gc) */
 
 Declare_entry(mercury__unused_0_0);
-MR_STATIC_CODE_CONST struct mercury_data___type_ctor_info_maxfr_0_struct {
-	Integer f1;
-	Code *f2;
-	Code *f3;
-	Code *f4;
-#ifdef MR_USE_SOLVE_EQUAL
-	Code *f5;
-#endif
-#ifdef USE_TYPE_LAYOUT
-	const Word *f6;
-	const Word *f7;
-	const Word *f8;
-	const Word *f9;
-	const Word *f10;
-#endif
-} mercury_data___type_ctor_info_maxfr_0 = {
+MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
+mercury_data___type_ctor_info_maxfr_0 = {
 	((Integer) 0),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
@@ -793,34 +656,18 @@ MR_STATIC_CODE_CONST struct mercury_data___type_ctor_info_maxfr_0_struct {
 #ifdef MR_USE_SOLVE_EQUAL
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
 #endif
-#ifdef  USE_TYPE_LAYOUT
 	(const Word *) & mercury_data___type_ctor_layout_maxfr_0,
 	(const Word *) & mercury_data___type_ctor_functors_maxfr_0,
 	(const Word *) & mercury_data___type_ctor_layout_maxfr_0,
-	(const Word *) string_const(""builtin"", 7),
-	(const Word *) string_const(""maxfr"", 4)
-#endif
+	string_const(""builtin"", 7),
+	string_const(""maxfr"", 5)
 };
 
 	/* type_ctor_info for `redoip' (only used by accurate gc) */
 
 Declare_entry(mercury__unused_0_0);
-MR_STATIC_CODE_CONST struct mercury_data___type_ctor_info_redoip_0_struct {
-	Integer f1;
-	Code *f2;
-	Code *f3;
-	Code *f4;
-#ifdef MR_USE_SOLVE_EQUAL
-	Code *f5;
-#endif
-#ifdef USE_TYPE_LAYOUT
-	const Word *f6;
-	const Word *f7;
-	const Word *f8;
-	const Word *f9;
-	const Word *f10;
-#endif
-} mercury_data___type_ctor_info_redoip_0 = {
+MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
+mercury_data___type_ctor_info_redoip_0 = {
 	((Integer) 0),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
@@ -828,34 +675,18 @@ MR_STATIC_CODE_CONST struct mercury_data___type_ctor_info_redoip_0_struct {
 #ifdef MR_USE_SOLVE_EQUAL
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
 #endif
-#ifdef  USE_TYPE_LAYOUT
 	(const Word *) & mercury_data___type_ctor_layout_redoip_0,
 	(const Word *) & mercury_data___type_ctor_functors_redoip_0,
 	(const Word *) & mercury_data___type_ctor_layout_redoip_0,
-	(const Word *) string_const(""builtin"", 7),
-	(const Word *) string_const(""redoip"", 4)
-#endif
+	string_const(""builtin"", 7),
+	string_const(""redoip"", 6)
 };
 
 	/* type_ctor_info for `redofr' (only used by accurate gc) */
 
 Declare_entry(mercury__unused_0_0);
-MR_STATIC_CODE_CONST struct mercury_data___type_ctor_info_redofr_0_struct {
-	Integer f1;
-	Code *f2;
-	Code *f3;
-	Code *f4;
-#ifdef MR_USE_SOLVE_EQUAL
-	Code *f5;
-#endif
-#ifdef USE_TYPE_LAYOUT
-	const Word *f6;
-	const Word *f7;
-	const Word *f8;
-	const Word *f9;
-	const Word *f10;
-#endif
-} mercury_data___type_ctor_info_redofr_0 = {
+MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
+mercury_data___type_ctor_info_redofr_0 = {
 	((Integer) 0),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
@@ -863,14 +694,14 @@ MR_STATIC_CODE_CONST struct mercury_data___type_ctor_info_redofr_0_struct {
 #ifdef MR_USE_SOLVE_EQUAL
 	MR_MAYBE_STATIC_CODE(ENTRY(mercury__unused_0_0)),
 #endif
-#ifdef  USE_TYPE_LAYOUT
 	(const Word *) & mercury_data___type_ctor_layout_redofr_0,
 	(const Word *) & mercury_data___type_ctor_functors_redofr_0,
 	(const Word *) & mercury_data___type_ctor_layout_redofr_0,
-	(const Word *) string_const(""builtin"", 7),
-	(const Word *) string_const(""redofr"", 4)
-#endif
+	string_const(""builtin"", 7),
+	string_const(""redofr"", 6)
 };
+
+#endif /* NATIVE_GC */
 
 BEGIN_MODULE(builtin_types_module)
 
@@ -970,12 +801,7 @@ Define_entry(mercury__copy_2_1);
 	copy = deep_copy(&value, (Word *) type_info, NULL, NULL);
 	restore_transient_registers();
 
-#ifdef	COMPACT_ARGS
 	r1 = copy;
-#else
-	r3 = copy;
-#endif
-
 	proceed();
 }
 END_MODULE
@@ -1005,8 +831,6 @@ void sys_init_copy_module(void) {
  * be handled as a special case.
  */
 
-#ifdef  USE_TYPE_LAYOUT
-
 MR_MODULE_STATIC_OR_EXTERN
 const struct mercury_data_builtin__type_ctor_layout_c_pointer_0_struct {
 	TYPE_LAYOUT_FIELDS
@@ -1023,14 +847,30 @@ mercury_data_builtin__type_ctor_functors_c_pointer_0_struct {
 	MR_TYPE_CTOR_FUNCTORS_SPECIAL
 };
 
-#endif
-
 Define_extern_entry(mercury____Unify___builtin__c_pointer_0_0);
 Define_extern_entry(mercury____Index___builtin__c_pointer_0_0);
 Define_extern_entry(mercury____Compare___builtin__c_pointer_0_0);
 #ifdef MR_USE_SOLVE_EQUAL
 Define_extern_entry(mercury____SolveEqual___builtin__c_pointer_0_0);
 #endif
+
+
+const struct MR_TypeCtorInfo_struct
+mercury_data_builtin__type_ctor_info_c_pointer_0 = {
+	(Integer) 0,
+	ENTRY(mercury____Unify___builtin__c_pointer_0_0),
+	ENTRY(mercury____Index___builtin__c_pointer_0_0),
+	ENTRY(mercury____Compare___builtin__c_pointer_0_0),
+#ifdef MR_USE_SOLVE_EQUAL
+	ENTRY(mercury____SolveEqual___builtin__c_pointer_0_0),
+#endif
+	MR_TYPECTOR_REP_C_POINTER,
+	(MR_TypeCtorFunctors) &mercury_data_builtin__type_ctor_functors_c_pointer_0,
+	(MR_TypeCtorLayout) &mercury_data_builtin__type_ctor_layout_c_pointer_0,
+	string_const(""builtin"", 7),
+	string_const(""c_pointer"", 9)
+};
+
 
 BEGIN_MODULE(unify_c_pointer_module)
 	init_entry(mercury____Unify___builtin__c_pointer_0_0);
@@ -1049,16 +889,16 @@ Define_entry(mercury____Unify___builtin__c_pointer_0_0);
 	** the io__state contains a map(io__stream, filename).
 	** However, it might not be correct in general...
 	*/
-	unify_output = (unify_input1 == unify_input2);
+	r1 = (r1 == r2);
 	proceed();
 
 Define_entry(mercury____Index___builtin__c_pointer_0_0);
-	index_output = -1;
+	r1 = -1;
 	proceed();
 
 Define_entry(mercury____Compare___builtin__c_pointer_0_0);
-	compare_output = (compare_input1 == compare_input2 ? COMPARE_EQUAL :
-			  compare_input1 < compare_input2 ? COMPARE_LESS :
+	r1 = (r1 == r2 ? COMPARE_EQUAL :
+			  r1 < r2 ? COMPARE_LESS :
 			  COMPARE_GREATER);
 	proceed();
 
@@ -1078,6 +918,8 @@ END_MODULE
 /*
 INIT sys_init_unify_c_pointer_module
 */
+
+
 extern ModuleFunc unify_c_pointer_module;
 void sys_init_unify_c_pointer_module(void);
 	/* duplicate declaration to suppress gcc -Wmissing-decl warning */

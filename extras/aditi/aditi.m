@@ -89,10 +89,11 @@
 	%
 	% When called, the query Closure returns the relation to be 
 	% aggregated over. This relation must have two attributes,
-	% the first being the attribute to group by. The closure 
-	% ComputeInitial computes an initial accumulator for each 
-	% group given the first tuple in the group. The closure
-	% UpdateAcc is called for each tuple in each group to 
+	% the first being the attribute to group by. The relation is
+	% sorted and duplicates are removed before the aggregate is applied.
+	% The closure ComputeInitial computes an initial accumulator
+	% for each group given the first tuple in the group.
+	% The closure UpdateAcc is called for each tuple in each group to 
 	% update the accumulator. The outputs are the group-by element
 	% and final accumulator for each group.
 	%

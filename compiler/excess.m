@@ -117,16 +117,12 @@ excess_assignments_in_goal(GoalExpr0 - GoalInfo0, ElimVars0, Goal, ElimVars) :-
 		excess_assignments_in_goal(Else0, ElimVars2, Else, ElimVars),
 		Goal = if_then_else(Vars, Cond, Then, Else, SM) - GoalInfo0
 	;
-		GoalExpr0 = some(Var, SubGoal0),
+		GoalExpr0 = some(Var, CanRemove, SubGoal0),
 		excess_assignments_in_goal(SubGoal0, ElimVars0,
 					   SubGoal, ElimVars),
-		Goal = some(Var, SubGoal) - GoalInfo0
+		Goal = some(Var, CanRemove, SubGoal) - GoalInfo0
 	;
-		GoalExpr0 = higher_order_call(_, _, _, _, _, _),
-		Goal = GoalExpr0 - GoalInfo0,
-		ElimVars = ElimVars0
-	;
-		GoalExpr0 = class_method_call(_, _, _, _, _, _),
+		GoalExpr0 = generic_call(_, _, _, _),
 		Goal = GoalExpr0 - GoalInfo0,
 		ElimVars = ElimVars0
 	;

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1998 The University of Melbourne.
+% Copyright (C) 1995-1999 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -35,7 +35,7 @@
 
 :- implementation.
 
-:- import_module vn_util, vn_cost, opt_util, opt_debug.
+:- import_module builtin_ops, vn_util, vn_cost, opt_util, opt_debug.
 :- import_module map, int, string, require, std_util, assoc_list.
 
 %-----------------------------------------------------------------------------%
@@ -227,10 +227,16 @@ vn_block__handle_instr(assign(Lval, Rval),
 		% redo() or fail() operation. We compensate here by ensuring
 		% that assignments to stack variables are not removed by
 		% value numbering.
+		% 
+		% We also ensure that assignments to mem_refs are not
+		% removed.
 		%
 		% The condition of this test subsumes the condition that used
 		% to be here, which is therefore commented out above.
-		( Lval = stackvar(_) ; Lval = framevar(_) )
+		( Lval = stackvar(_) 
+		; Lval = framevar(_)
+		; Lval = mem_ref(_)
+		)
 	->
 		Specials = [Vnlval | LeftSpecials]
 	;
@@ -812,6 +818,7 @@ vn_block__record_compulsory_lval_list([Vnlval - Vn | Lval_vn_list],
 		; Vnlval = vn_curfr
 		; Vnlval = vn_maxfr
 		; Vnlval = vn_succip
+		; Vnlval = vn_mem_ref(_)
 		)
 	->
 		map__set(FlushEntry0, Vnlval, Vn, FlushEntry1),

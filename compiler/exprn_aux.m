@@ -135,6 +135,7 @@ exprn_aux__const_is_constant(float_const(_), ExprnOpts, IsConst) :-
 		IsConst = StaticGroundTerms
 	).
 exprn_aux__const_is_constant(string_const(_), _, yes).
+exprn_aux__const_is_constant(multi_string_const(_, _), _, yes).
 exprn_aux__const_is_constant(code_addr_const(CodeAddr), ExprnOpts, IsConst) :-
 	exprn_aux__addr_is_constant(CodeAddr, ExprnOpts, IsConst).
 exprn_aux__const_is_constant(data_addr_const(_), _, yes).
@@ -160,6 +161,11 @@ exprn_aux__addr_is_constant(do_call_class_method, _, no).
 exprn_aux__addr_is_constant(do_det_aditi_call, _, no).
 exprn_aux__addr_is_constant(do_semidet_aditi_call, _, no).
 exprn_aux__addr_is_constant(do_nondet_aditi_call, _, no).
+exprn_aux__addr_is_constant(do_aditi_insert, _, no).
+exprn_aux__addr_is_constant(do_aditi_delete, _, no).
+exprn_aux__addr_is_constant(do_aditi_bulk_insert, _, no).
+exprn_aux__addr_is_constant(do_aditi_bulk_delete, _, no).
+exprn_aux__addr_is_constant(do_aditi_modify, _, no).
 exprn_aux__addr_is_constant(do_not_reached, _, no).
 
 :- pred exprn_aux__label_is_constant(label, bool, bool, bool).

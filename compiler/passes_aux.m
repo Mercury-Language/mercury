@@ -13,7 +13,7 @@
 
 :- interface.
 
-:- import_module hlds_module, hlds_pred, hlds_data, prog_data.
+:- import_module hlds_module, hlds_pred, prog_data, inst_table.
 :- import_module io, std_util, list, bool.
 
 %-----------------------------------------------------------------------------%
@@ -22,6 +22,9 @@
 				proc_info, module_info, proc_info))
 		;	update_proc_predid(pred(
 				proc_info, pred_id, module_info, proc_info))
+		;	update_proc_predprocid(pred(
+				proc_info, pred_id, proc_id,
+				module_info, proc_info))
 		;	update_proc_io(pred(
 				pred_id, proc_id, module_info,
 				proc_info, proc_info, io__state, io__state))
@@ -33,11 +36,14 @@
 		;	update_module(pred(
 				proc_info, proc_info,
 				module_info, module_info))
+		;	update_module_predid(pred(
+				pred_id, proc_info, proc_info,
+				module_info, module_info))
 		;	update_module_io(pred(
 				pred_id, proc_id, proc_info, proc_info,
 				module_info, module_info,
 				io__state, io__state))
-		% It would be better to use an existentiallly-quantified type
+		% It would be better to use an existentially-quantified type
 		% rather than `univ' here, but the current version of Mercury 
 		% doesn't support existentially-quantified types.
 		;	update_module_cookie(pred(
@@ -82,12 +88,17 @@ about unbound type variables.
 
 :- inst task =	bound(( update_proc(pred(in, in, out) is det)
 		;	update_proc_predid(pred(in, in, in, out) is det)
-		;	update_proc_io(pred(in, in, in, in, out, di, uo) is det)
+		;	update_proc_predprocid(pred(in, in, in, in, out)
+				is det)
+		;	update_proc_io(pred(in, in, in, in, out, di, uo)
+				is det)
 		;	update_proc_error(pred(in, in, in, out, in, out,
 				out, out, di, uo) is det)
 		;	update_pred_error(pred(in, in, out, in, out,
 				out, out, di, uo) is det)
 		;	update_module(pred(in, out, in, out) is det)
+		;	update_module_predid(pred(in,
+				in, out, in, out) is det)
 		;	update_module_io(pred(in, in, in, out,
 				in, out, di, uo) is det)
 		;	update_module_cookie(pred(in, in, in, out, in, out,
@@ -117,6 +128,11 @@ about unbound type variables.
 :- pred process_all_nonimported_nonaditi_procs(task, module_info, module_info,
 	io__state, io__state).
 :- mode process_all_nonimported_nonaditi_procs(task, in, out, di, uo) is det.
+
+:- pred process_all_nonimported_nonaditi_procs(task, task,
+	module_info, module_info, io__state, io__state).
+:- mode process_all_nonimported_nonaditi_procs(task, out(task),
+	in, out, di, uo) is det.
 
 :- pred process_all_nonimported_procs(task, task,
 	module_info, module_info, io__state, io__state).
@@ -169,6 +185,14 @@ process_all_nonimported_nonaditi_procs(Task, ModuleInfo0, ModuleInfo) -->
 			\+ hlds_pred__pred_info_is_aditi_relation(PredInfo)
 		)) }, 
 	process_matching_nonimported_procs(Task, NotAditi, 
+		ModuleInfo0, ModuleInfo).
+
+process_all_nonimported_nonaditi_procs(Task0, Task,
+		ModuleInfo0, ModuleInfo) -->
+	{ NotAditi = lambda([PredInfo::in] is semidet, (
+			\+ hlds_pred__pred_info_is_aditi_relation(PredInfo)
+		)) }, 
+	process_matching_nonimported_procs(Task0, Task, NotAditi, 
 		ModuleInfo0, ModuleInfo).
 
 process_all_nonimported_procs(Task0, Task, ModuleInfo0, ModuleInfo) -->
@@ -259,6 +283,11 @@ process_nonimported_procs([ProcId | ProcIds], PredId, Task0, Task,
 		Task1 = Task0,
 		State9 = State0
 	;
+		Task0 = update_module_predid(Closure),
+		call(Closure, PredId, Proc0, Proc, ModuleInfo0, ModuleInfo8),
+		Task1 = Task0,
+		State9 = State0
+	;
 		Task0 = update_module_io(Closure),
 		call(Closure, PredId, ProcId, Proc0, Proc,
 			ModuleInfo0, ModuleInfo8, State0, State9),
@@ -272,6 +301,12 @@ process_nonimported_procs([ProcId | ProcIds], PredId, Task0, Task,
 	;
 		Task0 = update_proc_predid(Closure),
 		call(Closure, Proc0, PredId, ModuleInfo0, Proc),
+		ModuleInfo8 = ModuleInfo0,
+		Task1 = Task0,
+		State9 = State0
+	;
+		Task0 = update_proc_predprocid(Closure),
+		call(Closure, Proc0, PredId, ProcId, ModuleInfo0, Proc),
 		ModuleInfo8 = ModuleInfo0,
 		Task1 = Task0,
 		State9 = State0

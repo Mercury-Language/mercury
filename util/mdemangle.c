@@ -111,6 +111,7 @@ demangle(const char *orig_name)
 
 	static const char introduced[]  = "IntroducedFrom__";
 	static const char deforestation[]  = "DeforestationIn__";
+	static const char accumulator[]  = "AccFrom__";
 	static const char pred[]  = "pred__";
 	static const char func[]  = "func__";
 
@@ -130,6 +131,7 @@ demangle(const char *orig_name)
 	static const char * trailing_context_1[] = {
 		introduced,
 		deforestation,
+		accumulator,
 		NULL
 	};
 
@@ -162,7 +164,8 @@ demangle(const char *orig_name)
 	int lambda_seq_number = 0;
 	char *lambda_pred_name = NULL;
 	const char *lambda_kind = NULL;
-	enum { ORDINARY, UNIFY, COMPARE, INDEX, LAMBDA, DEFORESTATION }
+	enum { ORDINARY, UNIFY, COMPARE, INDEX,
+		LAMBDA, DEFORESTATION, ACCUMULATOR }
 		category;
 	enum { COMMON, INFO, LAYOUT, FUNCTORS } data_category;
 	const char * class_name;
@@ -339,17 +342,21 @@ demangle(const char *orig_name)
 	module = strip_module_name(&start, end, trailing_context_1);
 
 	/*
-	** look for "IntroducedFrom" or "DeforestationIn"
+	** look for "IntroducedFrom" or "DeforestationIn" or "AccFrom"
 	*/
 	if (category == ORDINARY) {
 		if (strip_prefix(&start, introduced)) {
 			category = LAMBDA;
 		} else if (strip_prefix(&start, deforestation)) {
 			category = DEFORESTATION;
+		} else if (strip_prefix(&start, accumulator)) {
+			category = ACCUMULATOR;
 		}
 	}
 
-	if (category == LAMBDA || category == DEFORESTATION) {
+	if (category == LAMBDA || category == DEFORESTATION || 
+			category == ACCUMULATOR) 
+	{
 		if (strip_prefix(&start, pred)) {
 			lambda_kind = "pred";
 		} else if (strip_prefix(&start, func)) {
@@ -397,6 +404,10 @@ demangle(const char *orig_name)
 	case LAMBDA:
 		printf("%s goal (#%d) from '%s' in module '%s' line %d",
 			lambda_kind, lambda_seq_number,
+			lambda_pred_name, module, lambda_line);
+		break;
+	case ACCUMULATOR:
+		printf("accumulator procedure from '%s' in module '%s' line %d",
 			lambda_pred_name, module, lambda_line);
 		break;
 	case DEFORESTATION:

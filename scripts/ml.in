@@ -27,6 +27,14 @@ Diagnostics options:
 	--no-demangle
 		Don't pipe the output of the linker through the Mercury
 		demangler.
+	--allow-undef
+	--allow-undefined
+		Don't report an error if there are unresolved symbols.
+		This option is only used if you are building a shared
+		library (with \`--make-shared-lib); when building
+		executables, unresolved symbols are always errors.
+		This option is useful when building shared libraries
+		that are not intended to be self-contained.
 
 Dynamic/static linking options:
 	--mercury-libs {shared, static, none}
@@ -55,6 +63,12 @@ Directory options:
 	-R <directory>, --shared-lib-dir <directory>
 		Include <directory> in the list of directories that the
 		dynamic linker will use to search for shared libraries.
+	--leave-shared-lib-dirs-relative
+		Don't convert relative shared library directory names
+		into absolute paths.
+	--no-leave-shared-lib-dirs-relative
+		Convert relative shared library directory names into
+		absolute paths.  This is the default.
 
 Debugging options:
 	-t, --trace
@@ -85,7 +99,6 @@ Grade options:
 	--use-trail
 	--reserve-tag
 	--use-solve-equal
-	--args {simple, compact}
 	--pic-reg
 		See the documentation in the \"Invocation\" section
 		of the Mercury User's Guide."
@@ -99,6 +112,8 @@ DEFAULT_GRADE=${MERCURY_DEFAULT_GRADE=@DEFAULT_GRADE@}
 DEMANGLER=${MERCURY_DEMANGLER=mdemangle}
 CC=${MERCURY_C_COMPILER="@CC@"}
 MKFIFO=${MERCURY_MKFIFO="@MKFIFO@"}
+ERROR_UNDEFINED="@ERROR_UNDEFINED@"
+ALLOW_UNDEFINED="@ALLOW_UNDEFINED@"
 EXE_RPATH_OPT=${MERCURY_EXE_RPATH_OPT="@EXE_RPATH_OPT@"}
 EXE_RPATH_SEP=${MERCURY_EXE_RPATH_SEP="@EXE_RPATH_SEP@"}
 EXT_FOR_SHARED_LIB=${MERCURY_EXT_FOR_SHARED_LIB="@EXT_FOR_SHARED_LIB@"}
@@ -127,6 +142,7 @@ TRACE_LIB_NAME=mer_trace
 BROWSER_LIB_NAME=mer_browser
 
 verbose=false
+allow_undefined=false
 trace=false
 readline=true
 case $FULLARCH in
@@ -143,6 +159,7 @@ all_libs=default
 demangle=true
 MAYBE_STATIC_OPT=""
 make_shared_lib=false
+leave_shlib_dirs_relative=false
 user_shlib_dirs=""
 
 # include the file `init_grade_options.sh-subr'
@@ -162,6 +179,12 @@ while : ; do
 		;;
 	--no-demangle)
 		demangle=false
+		;;
+	--allow-undef|--allow-undefined)
+		allow_undef=true
+		;;
+	--no-allow-undef|--no-allow-undefined)
+		allow_undef=false
 		;;
 	-t|--trace)
 		trace=true
@@ -232,13 +255,33 @@ EOF
 	-L*)
 		user_libdir_opts="$user_libdir_opts $1"
 		;;
+	--leave-shared-lib-dirs-relative)
+		leave_shlib_dirs_relative=true
+		;;
+	--no-leave-shared-lib-dirs-relative)
+		leave_shlib_dirs_relative=false
+		;;
 	-R|--shared-lib-dir)
 		dir="$2"
+		case $leave_shlib_dirs_relative in false)
+			case "$dir" in
+				/*) ;;
+				*)  dir="`pwd`/$dir" ;;
+			esac
+			;;
+		esac
 		user_shlib_dirs="$user_shlib_dirs $dir"
 		shift
 		;;
 	-R*)
 		dir="` expr $1 : '-R\(.*\)' `"
+		case $leave_shlib_dirs_relative in false)
+			case "$dir" in
+				/*) ;;
+				*)  dir="`pwd`/$dir" ;;
+			esac
+			;;
+		esac
 		user_shlib_dirs="$user_shlib_dirs $dir"
 		;;
 
@@ -268,9 +311,10 @@ esac
 # it will also have set mercury_libs.
 case $mercury_libs in default)
 	mercury_libs=shared
-	case $FULLARCH in i?86-*-linux*)
+	case $FULLARCH in i?86-*-linux*|i?86-*-freebsd*)
 		# shared libraries are not the default on Linux
 		# -- see README.Linux
+		# Likewise for FreeBSD
 		case $make_shared_lib in false)
 			mercury_libs=static
 			;;
@@ -284,9 +328,10 @@ esac
 # (shared on most systems).
 case $all_libs in default)
 	all_libs=shared
-	case $FULLARCH in i?86-*-linux*)
+	case $FULLARCH in i?86-*-linux*|i?86-*-freebsd*)
 		# shared libraries are not the default on Linux
 		# -- see README.Linux
+		# Likewise for FreeBSD
 		case $make_shared_lib in false)
 			all_libs=static
 			;;
@@ -297,6 +342,7 @@ case $all_libs in default)
 esac
 
 # Defaults have been set, now set options.
+
 case $all_libs in static)
 	case $FULLARCH in
 		*-linux*)
@@ -356,10 +402,6 @@ esac
 case $use_solve_equal in
 	true)		GRADE="$GRADE.se" ;;
 	false)		;;
-esac
-case $args_method in
-	simple)		GRADE="$GRADE.sa" ;;
-	compact)	;;
 esac
 case $stack_trace,$require_tracing in
 	true,true)	GRADE="$GRADE.debug" ;;
@@ -429,12 +471,17 @@ esac
 case $make_shared_lib in
     true)
 	LINKER="$LINK_SHARED_OBJ"
+	case $allow_undef in
+	    true)  UNDEF_OPT="$ALLOW_UNDEFINED" ;;
+	    false) UNDEF_OPT="$ERROR_UNDEFINED" ;;
+	esac
 	RPATH_OPT="$SHLIB_RPATH_OPT"
 	RPATH_SEP="$SHLIB_RPATH_SEP"
 	STDLIBS="$SHARED_LIBS $THREAD_LIBS"
 	;;
     false)
 	LINKER="$CC"
+	UNDEF_OPT=""
 	RPATH_OPT="$EXE_RPATH_OPT"
 	RPATH_SEP="$EXE_RPATH_SEP"
 	STDLIBS="-lm $THREAD_LIBS"
@@ -531,12 +578,12 @@ case $verbose in
 	echo "ml: using grade \`$GRADE'"
 	case $demangle in
 	    false)
-		echo $LINKER $STRIP_OPTS $MAYBE_STATIC_OPT $ARCH_OPTS \
-			$LIBDIR_OPTS $RPATH_OPT_LIST "$@" $LIBS
+		echo $LINKER $UNDEF_OPT $STRIP_OPTS $MAYBE_STATIC_OPT \
+			$ARCH_OPTS $LIBDIR_OPTS $RPATH_OPT_LIST "$@" $LIBS
 		;;
 	    true)
-		echo $LINKER $STRIP_OPTS $MAYBE_STATIC_OPT $ARCH_OPTS \
-			$LIBDIR_OPTS $RPATH_OPT_LIST "$@" $LIBS "|"
+		echo $LINKER $UNDEF_OPT $STRIP_OPTS $MAYBE_STATIC_OPT \
+			$ARCH_OPTS $LIBDIR_OPTS $RPATH_OPT_LIST "$@" $LIBS "|"
 		echo "$DEMANGLER"
 		;;
 	esac
@@ -578,8 +625,8 @@ case $demangle in
 	;;
 esac
 case $# in
-	0) exec $LINKER $STRIP_OPTS $MAYBE_STATIC_OPT $ARCH_OPTS \
+	0) exec $LINKER $UNDEF_OPT $STRIP_OPTS $MAYBE_STATIC_OPT $ARCH_OPTS \
 		$LIBDIR_OPTS $RPATH_OPT_LIST $LIBS ;;
-	*) exec $LINKER $STRIP_OPTS $MAYBE_STATIC_OPT $ARCH_OPTS \
+	*) exec $LINKER $UNDEF_OPT $STRIP_OPTS $MAYBE_STATIC_OPT $ARCH_OPTS \
 		$LIBDIR_OPTS $RPATH_OPT_LIST "$@" $LIBS ;;
 esac

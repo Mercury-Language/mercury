@@ -55,8 +55,6 @@ typedef struct MR_Event_Details_Struct {
 
 const char *	MR_trace_retry(MR_Event_Info *event_info,
 			MR_Event_Details *event_details, Code **jumpaddr);
-Word		MR_trace_find_input_arg(const MR_Stack_Layout_Label *label, 
-			Word *saved_regs, const char *name, bool *succeeded);
 
 /*
 ** MR_trace_cmd says what mode the tracer is in, i.e. how events should be

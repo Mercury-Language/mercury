@@ -36,7 +36,7 @@
 	%
 	% Values of this type represent EDT nodes.  This representation
 	% is used by the front end (in this module), as well as the
-	% oracle (in browser/declarative_oracle.m).
+	% oracle and user interface.
 	%
 	% There will be nodes other than wrong_answer in future, such
 	% as for missing answer analysis.
@@ -50,13 +50,6 @@
 	--->	wrong_answer(string, list(univ)).
 
 	%
-	% Display the node in user readable form on the current
-	% output stream.
-	%
-:- pred write_node(edt_node, io__state, io__state).
-:- mode write_node(in, di, uo) is det.
-
-	%
 	% See comments above.
 	%
 :- typeclass evaluation_tree(Tree) where [
@@ -67,14 +60,15 @@
 	mode edt_children(in, out) is det
 ].
 
-:- pred analyse_edt(T, io__input_stream, io__output_stream, oracle_data,
-		oracle_data, io__state, io__state) <= evaluation_tree(T).
+:- pred analyse_edt(T, io__input_stream, io__output_stream, oracle_state,
+		oracle_state, io__state, io__state) <= evaluation_tree(T).
 :- mode analyse_edt(in, in, in, in, out, di, uo) is det.
 
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 :- import_module require, int, char.
+:- import_module declarative_user.
 
 	%
 	% This section defines the Mercury instance of the evaluation
@@ -239,7 +233,7 @@ analyse_mercury_edt(EDT, MdbIn, MdbOut) -->
 		% persistent.  It really should be saved between
 		% calls to this predicate.
 		%
-	{ oracle_data_init(Oracle0) },
+	{ oracle_state_init(Oracle0) },
 	analyse_edt(EDT, MdbIn, MdbOut, Oracle0, _).
 
 
@@ -247,14 +241,18 @@ analyse_edt(EDT, MdbIn, MdbOut, Oracle0, Oracle) -->
 	io__set_input_stream(MdbIn, OldIn),
 	io__set_output_stream(MdbOut, OldOut),
 	{ edt_root(EDT, RootNode) },
-	query_oracle(RootNode, Valid, Oracle0, Oracle1),
+	query_oracle(RootNode, Answer, Oracle0, Oracle1),
 	(
-		{ Valid = yes },
+		{ Answer = truth_value(yes) },
 		{ Bug = not_found },
 		{ Oracle = Oracle1 }
 	;
-		{ Valid = no },
+		{ Answer = truth_value(no) },
 		analyse_edt_2(EDT, Bug, Oracle1, Oracle)
+	;
+		{ Answer = deferred(_) },
+		{ Bug = not_found },
+		{ Oracle = Oracle1 }
 	),
 	report_bug(Bug),
 	io__set_input_stream(OldIn, _),
@@ -264,7 +262,7 @@ analyse_edt(EDT, MdbIn, MdbOut, Oracle0, Oracle) -->
 	%
 	% Assumes the root note is not valid.
 	%
-:- pred analyse_edt_2(T, declarative_bug(T), oracle_data, oracle_data,
+:- pred analyse_edt_2(T, declarative_bug(T), oracle_state, oracle_state,
 		io__state, io__state) <= evaluation_tree(T).
 :- mode analyse_edt_2(in, out, in, out, di, uo) is det.
 
@@ -274,7 +272,7 @@ analyse_edt_2(EDT, Bug, Oracle0, Oracle) -->
 
 
 :- pred analyse_children(list(T), declarative_bug(T), declarative_bug(T),
-		oracle_data, oracle_data, io__state, io__state)
+		oracle_state, oracle_state, io__state, io__state)
 				<= evaluation_tree(T).
 :- mode analyse_children(in, in, out, in, out, di, uo) is det.
 
@@ -282,13 +280,17 @@ analyse_children([], Bug, Bug, Oracle, Oracle) -->
 	[].
 analyse_children([Child | Children], Bug0, Bug, Oracle0, Oracle) -->
 	{ edt_root(Child, ChildNode) },
-	query_oracle(ChildNode, Valid, Oracle0, Oracle1),
+	query_oracle(ChildNode, Answer, Oracle0, Oracle1),
 	(
-		{ Valid = yes },
+		{ Answer = truth_value(yes) },
 		analyse_children(Children, Bug0, Bug, Oracle1, Oracle)
 	;
-		{ Valid = no },
+		{ Answer = truth_value(no) },
 		analyse_edt_2(Child, Bug, Oracle1, Oracle)
+	;
+		{ Answer = deferred(_) },
+		{ append(Children, [Child], NewChildren) },
+		analyse_children(NewChildren, Bug0, Bug, Oracle1, Oracle)
 	).
 
 
@@ -333,31 +335,5 @@ write_children([Child | Children]) -->
 
 write_root_node(EDT) -->
 	{ edt_root(EDT, RootNode) },
-	write_node(RootNode).
-
-
-write_node(Node) -->
-	{ Node = wrong_answer(Name, Args) },
-	io__write_string(Name),
-	(
-		{ Args = [Arg1 | Args0] }
-	->
-		io__write_char('('),
-		io__print(Arg1),
-		write_args_rest(Args0),
-		io__write_char(')')
-	;
-		[]
-	).
-
-
-:- pred write_args_rest(list(univ), io__state, io__state).
-:- mode write_args_rest(in, di, uo) is det.
-
-write_args_rest([]) -->
-	[].
-write_args_rest([Arg | Args]) -->
-	io__write_string(", "),
-	io__print(Arg),
-	write_args_rest(Args).
+	write_edt_node(RootNode).
 

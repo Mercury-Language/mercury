@@ -14,7 +14,6 @@
 #include "mercury_stack_trace.h"
 #include <stdio.h>
 
-
 static	void	MR_dump_stack_record_init(void);
 static	void	MR_dump_stack_record_frame(FILE *fp,
 			const MR_Stack_Layout_Entry *,
@@ -26,6 +25,10 @@ static	void	MR_dump_stack_record_flush(FILE *fp,
 			void (*print_stack_record)(
 				FILE *, const MR_Stack_Layout_Entry *, 
 				int, int, Word *, Word *));
+
+/* see comments in mercury_stack_trace.h */
+Code *MR_stack_trace_bottom;
+Word *MR_nondet_stack_trace_bottom;
 
 void
 MR_dump_stack(Code *success_pointer, Word *det_stack_pointer,

@@ -603,3 +603,162 @@ map__det_union(CommonPred, Map1, Map2, Union) :-
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
+% Ralph Becket <rwab1@cl.cam.ac.uk> 27/04/99
+% 	Functional forms added.
+
+:- interface.
+
+:- func map__lookup(map(K,V), K) = V.
+
+:- func map__det_insert(map(K,V), K, V) = map(K,V).
+
+:- func map__det_insert_from_corresponding_lists(map(K,V), list(K), list(V)) =
+		map(K,V).
+
+:- func map__det_insert_from_assoc_list(map(K,V), assoc_list(K, V)) = map(K,V).
+
+:- func map__det_update(map(K,V), K, V) = map(K,V).
+
+:- func map__set(map(K,V), K, V) = map(K,V).
+
+:- func map__keys(map(K, _V)) = list(K).
+
+:- func map__sorted_keys(map(K, _V)) = list(K).
+
+:- func map__values(map(_K, V)) = list(V).
+
+:- func map__to_assoc_list(map(K,V)) = assoc_list(K,V).
+
+:- func map__to_sorted_assoc_list(map(K,V)) = assoc_list(K,V).
+
+:- func map__from_assoc_list(assoc_list(K,V)) = map(K,V).
+
+:- func map__from_sorted_assoc_list(assoc_list(K,V)) = map(K,V).
+
+:- func map__delete(map(K,V), K) = map(K,V).
+
+:- func map__delete_list(map(K,V), list(K)) = map(K,V).
+
+:- func map__count(map(K, V)) = int.
+
+:- func map__from_corresponding_lists(list(K), list(V)) = map(K, V).
+
+:- func map__merge(map(K, V), map(K, V)) = map(K, V).
+
+:- func map__overlay(map(K,V), map(K,V)) = map(K,V).
+
+:- func map__select(map(K,V), set(K)) = map(K,V).
+
+:- func map__apply_to_list(list(K), map(K, V)) = list(V).
+
+:- func map__optimize(map(K, V)) = map(K, V).
+
+:- func map__foldl(func(K, V, T) = T, map(K, V), T) = T.
+
+:- func map__map_values(func(K, V) = W, map(K, V)) = map(K, W).
+
+:- func map__intersect(func(V, V) = V, map(K, V), map(K, V)) = map(K, V).
+
+:- func map__det_intersect(func(V, V) = V, map(K, V), map(K, V)) = map(K, V).
+:- mode map__det_intersect(func(in, in) = out is semidet, in, in) = out is det.
+
+:- func map__union(func(V, V) = V, map(K, V), map(K, V)) = map(K, V).
+
+:- func map__det_union(func(V, V) = V, map(K, V), map(K, V)) = map(K, V).
+:- mode map__det_union(func(in, in) = out is semidet, in, in) = out is det.
+
+% ---------------------------------------------------------------------------- %
+% ---------------------------------------------------------------------------- %
+
+:- implementation.
+
+map__lookup(M, K) = V :-
+	map__lookup(M, K, V).
+
+map__det_insert(M1, K, V) = M2 :-
+	map__det_insert(M1, K, V, M2).
+
+map__det_insert_from_corresponding_lists(M1, Ks, Vs) = M2 :-
+	map__det_insert_from_corresponding_lists(M1, Ks, Vs, M2).
+
+map__det_insert_from_assoc_list(M1, AL) = M2 :-
+	map__det_insert_from_assoc_list(M1, AL, M2).
+
+map__det_update(M1, K, V) = M2 :-
+	map__det_update(M1, K, V, M2).
+
+map__set(M1, K, V) = M2 :-
+	map__set(M1, K, V, M2).
+
+map__keys(M) = Ks :-
+	map__keys(M, Ks).
+
+map__sorted_keys(M) = Ks :-
+	map__sorted_keys(M, Ks).
+
+map__values(M) = Vs :-
+	map__values(M, Vs).
+
+map__to_assoc_list(M) = AL :-
+	map__to_assoc_list(M, AL).
+
+map__to_sorted_assoc_list(M) = AL :-
+	map__to_sorted_assoc_list(M, AL).
+
+map__from_assoc_list(AL) = M :-
+	map__from_assoc_list(AL, M).
+
+map__from_sorted_assoc_list(AL) = M :-
+	map__from_sorted_assoc_list(AL, M).
+
+map__delete(M1, K) = M2 :-
+	map__delete(M1, K, M2).
+
+map__delete_list(M1, Ks) = M2 :-
+	map__delete_list(M1, Ks, M2).
+
+map__count(M) = N :-
+	map__count(M, N).
+
+map__from_corresponding_lists(Ks, Vs) = M :-
+	map__from_corresponding_lists(Ks, Vs, M).
+
+map__merge(M1, M2) = M3 :-
+	map__merge(M1, M2, M3).
+
+map__overlay(M1, M2) = M3 :-
+	map__overlay(M1, M2, M3).
+
+map__select(M1, S) = M2 :-
+	map__select(M1, S, M2).
+
+map__apply_to_list(Ks, M) = Vs :-
+	map__apply_to_list(Ks, M, Vs).
+
+map__optimize(M1) = M2 :-
+	map__optimize(M1, M2).
+
+map__foldl(F, M, A) = B :-
+	P = ( pred(W::in, X::in, Y::in, Z::out) is det :- Z = F(W, X, Y) ),
+	map__foldl(P, M, A, B).
+
+map__map_values(F, M1) = M2 :-
+	P = ( pred(X::in, Y::in, Z::out) is det :- Z = F(X, Y) ),
+	map__map_values(P, M1, M2).
+
+map__intersect(F, M1, M2) = M3 :-
+	P = ( pred(X::in, Y::in, Z::out) is det :- Z = F(X, Y) ),
+	map__intersect(P, M1, M2, M3).
+
+map__det_intersect(PF, M1, M2) = M3 :-
+	P = ( pred(X::in, Y::in, Z::out) is semidet :- Z = PF(X, Y) ),
+	map__det_intersect(P, M1, M2, M3).
+
+map__union(F, M1, M2) = M3 :-
+	P = ( pred(X::in, Y::in, Z::out) is det :- Z = F(X, Y) ),
+	map__union(P, M1, M2, M3).
+
+map__det_union(F, M1, M2) = M3 :-
+	P = ( pred(X::in, Y::in, Z::out) is semidet :- Z = F(X, Y) ),
+	map__det_union(P, M1, M2, M3).
+

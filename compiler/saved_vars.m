@@ -37,8 +37,9 @@
 :- implementation.
 
 :- import_module hlds_goal, hlds_out, goal_util, quantification, passes_aux.
-:- import_module mode_util, prog_data, term, varset.
-:- import_module bool, list, set, map, std_util.
+:- import_module mode_util, prog_data, hlds_data, instmap, inst_match.
+:- import_module inst_table.
+:- import_module bool, list, set, map, std_util, term, varset.
 
 %-----------------------------------------------------------------------------%
 
@@ -49,13 +50,15 @@ saved_vars_proc(PredId, ProcId, ProcInfo0, ProcInfo,
 	{ proc_info_goal(ProcInfo0, Goal0) },
 	{ proc_info_varset(ProcInfo0, Varset0) },
 	{ proc_info_vartypes(ProcInfo0, VarTypes0) },
-	{ init_slot_info(Varset0, VarTypes0, SlotInfo0) },
+	{ proc_info_inst_table(ProcInfo0, InstTable0) },
+	{ proc_info_get_initial_instmap(ProcInfo0, ModuleInfo0, InstMap0) },
+	{ init_slot_info(Varset0, VarTypes0, InstTable0, InstMap0, ModuleInfo0,
+		SlotInfo0) },
 
 	{ saved_vars_in_goal(Goal0, SlotInfo0, Goal1, SlotInfo) },
 
 	{ final_slot_info(Varset1, VarTypes1, SlotInfo) },
 	{ proc_info_headvars(ProcInfo0, HeadVars) },
-	{ proc_info_inst_table(ProcInfo0, InstTable0) },
 
 	% hlds_out__write_goal(Goal1, InstTable0,
 	%	ModuleInfo0, Varset1, no, 0, "\n"),
@@ -63,7 +66,6 @@ saved_vars_proc(PredId, ProcId, ProcInfo0, ProcInfo,
 	% recompute the nonlocals for each goal
 	{ implicitly_quantify_clause_body(HeadVars, Goal1, Varset1,
 		VarTypes1, Goal2, Varset, VarTypes, _Warnings) },
-	{ proc_info_get_initial_instmap(ProcInfo0, ModuleInfo0, InstMap0) },
 	{ proc_info_arglives(ProcInfo0, ModuleInfo0, ArgLives) },
 	{ recompute_instmap_delta(HeadVars, ArgLives, VarTypes, Goal2, Goal,
 		InstMap0, InstTable0, InstTable, _, ModuleInfo0, ModuleInfo) },
@@ -108,20 +110,24 @@ saved_vars_in_goal(GoalExpr0 - GoalInfo0, SlotInfo0, Goal, SlotInfo) :-
 		Goal = switch(Var, CanFail, Cases, SM) - GoalInfo0
 	;
 		GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0, SM),
+		slot_info_get_instmap(SlotInfo0, InstMap0),
+		Cond0 = _ - CondInfo0,
+		goal_info_get_instmap_delta(CondInfo0, CondIMD),
 		saved_vars_in_goal(Cond0, SlotInfo0, Cond, SlotInfo1),
-		saved_vars_in_goal(Then0, SlotInfo1, Then, SlotInfo2),
-		saved_vars_in_goal(Else0, SlotInfo2, Else, SlotInfo),
+
+		instmap__apply_instmap_delta(InstMap0, CondIMD, InstMap1),
+		slot_info_set_instmap(SlotInfo1, InstMap1, SlotInfo2),
+		saved_vars_in_goal(Then0, SlotInfo2, Then, SlotInfo3),
+
+		slot_info_set_instmap(SlotInfo3, InstMap0, SlotInfo4),
+		saved_vars_in_goal(Else0, SlotInfo4, Else, SlotInfo),
 		Goal = if_then_else(Vars, Cond, Then, Else, SM) - GoalInfo0
 	;
-		GoalExpr0 = some(Var, SubGoal0),
+		GoalExpr0 = some(Var, CanRemove, SubGoal0),
 		saved_vars_in_goal(SubGoal0, SlotInfo0, SubGoal, SlotInfo),
-		Goal = some(Var, SubGoal) - GoalInfo0
+		Goal = some(Var, CanRemove, SubGoal) - GoalInfo0
 	;
-		GoalExpr0 = higher_order_call(_, _, _, _, _, _),
-		Goal = GoalExpr0 - GoalInfo0,
-		SlotInfo = SlotInfo0
-	;
-		GoalExpr0 = class_method_call(_, _, _, _, _, _),
+		GoalExpr0 = generic_call(_, _, _, _),
 		Goal = GoalExpr0 - GoalInfo0,
 		SlotInfo = SlotInfo0
 	;
@@ -160,20 +166,40 @@ saved_vars_in_conj([Goal0 | Goals0], NonLocals, SlotInfo0,
 		Goals, SlotInfo) :-
 	(
 		Goal0 = unify(_, _, _, Unif, _) - _,
-		Unif = construct(Var, _, [], _),
+		Unif = construct(Var, _, [], _, _, _, _),
 		skip_constant_constructs(Goals0, Constants, Others),
 		Others = [First | _Rest],
 		can_push(Var, First)
 	->
 		set__is_member(Var, NonLocals, IsNonLocal),
-		saved_vars_delay_goal(Others, Goal0, Var, IsNonLocal,
+		slot_info_var_is_free_alias(SlotInfo0, Var, IsFreeAlias),
+		PlaceAtEnd = (IsNonLocal = yes, IsFreeAlias = no -> yes ; no),
+		saved_vars_delay_goal(Others, Goal0, Var, PlaceAtEnd,
 			SlotInfo0, Goals1, SlotInfo1),
 		list__append(Constants, Goals1, Goals2),
-		saved_vars_in_conj(Goals2, NonLocals, SlotInfo1,
-			Goals, SlotInfo)
+		( IsFreeAlias = yes ->
+			Goal0 = _ - GoalInfo0,
+			goal_info_get_instmap_delta(GoalInfo0, InstMapDelta),
+			slot_info_apply_instmap_delta(SlotInfo1, InstMapDelta,
+				SlotInfo2)
+		;
+			SlotInfo2 = SlotInfo1
+		),
+		saved_vars_in_conj(Goals2, NonLocals, SlotInfo2,
+			Goals3, SlotInfo),
+		( IsFreeAlias = yes ->
+			Goals = [Goal0 | Goals3]
+		;
+			Goals = Goals3
+		)
 	;
+		slot_info_get_instmap(SlotInfo0, InstMap0),
+		Goal0 = _ - GoalInfo0,
+		goal_info_get_instmap_delta(GoalInfo0, InstMapDelta),
 		saved_vars_in_goal(Goal0, SlotInfo0, Goal1, SlotInfo1),
-		saved_vars_in_conj(Goals0, NonLocals, SlotInfo1,
+		instmap__apply_instmap_delta(InstMap0, InstMapDelta, InstMap),
+		slot_info_set_instmap(SlotInfo1, InstMap, SlotInfo2),
+		saved_vars_in_conj(Goals0, NonLocals, SlotInfo2,
 			Goals1, SlotInfo),
 		Goals = [Goal1 | Goals1]
 	).
@@ -189,7 +215,7 @@ skip_constant_constructs([], [], []).
 skip_constant_constructs([Goal0 | Goals0], Constants, Others) :-
 	(
 		Goal0 = unify(_, _, _, Unif, _) - _,
-		Unif = construct(_, _, [], _)
+		Unif = construct(_, _, [], _, _, _, _)
 	->
 		skip_constant_constructs(Goals0, Constants1, Others),
 		Constants = [Goal0 | Constants1]
@@ -214,7 +240,7 @@ can_push(Var, First) :-
 		(
 			FirstExpr = conj(_)
 		;
-			FirstExpr = some(_, _)
+			FirstExpr = some(_, _, _)
 		;
 			FirstExpr = not(_)
 		;
@@ -247,16 +273,16 @@ can_push(Var, First) :-
 	slot_info, list(hlds_goal), slot_info).
 :- mode saved_vars_delay_goal(in, in, in, in, in, out, out) is det.
 
-saved_vars_delay_goal([], Construct, _Var, IsNonLocal, SlotInfo,
+saved_vars_delay_goal([], Construct, _Var, PlaceAtEnd, SlotInfo,
 		Goals, SlotInfo) :-
 	(
-		IsNonLocal = yes,
+		PlaceAtEnd = yes,
 		Goals = [Construct]
 	;
-		IsNonLocal = no,
+		PlaceAtEnd = no,
 		Goals = []
 	).
-saved_vars_delay_goal([Goal0 | Goals0], Construct, Var, IsNonLocal, SlotInfo0,
+saved_vars_delay_goal([Goal0 | Goals0], Construct, Var, PlaceAtEnd, SlotInfo0,
 		Goals, SlotInfo) :-
 	Goal0 = Goal0Expr - Goal0Info,
 	goal_info_get_nonlocals(Goal0Info, Goal0NonLocals),
@@ -268,7 +294,7 @@ saved_vars_delay_goal([Goal0 | Goals0], Construct, Var, IsNonLocal, SlotInfo0,
 				NewConstruct),
 			goal_util__rename_vars_in_goal(Goal0, Subst, Goal1),
 			saved_vars_delay_goal(Goals0, Construct, Var,
-				IsNonLocal, SlotInfo1, Goals1, SlotInfo),
+				PlaceAtEnd, SlotInfo1, Goals1, SlotInfo),
 			Goals = [NewConstruct, Goal1 | Goals1]
 		;
 			Goal0Expr = call(_, _, _, _, _, _),
@@ -277,25 +303,16 @@ saved_vars_delay_goal([Goal0 | Goals0], Construct, Var, IsNonLocal, SlotInfo0,
 				NewConstruct),
 			goal_util__rename_vars_in_goal(Goal0, Subst, Goal1),
 			saved_vars_delay_goal(Goals0, Construct, Var,
-				IsNonLocal, SlotInfo1, Goals1, SlotInfo),
+				PlaceAtEnd, SlotInfo1, Goals1, SlotInfo),
 			Goals = [NewConstruct, Goal1 | Goals1]
 		;
-			Goal0Expr = higher_order_call(_, _, _, _, _, _),
+			Goal0Expr = generic_call(_, _, _, _),
 			rename_var(SlotInfo0, Var, _NewVar, Subst, SlotInfo1),
 			goal_util__rename_vars_in_goal(Construct, Subst,
 				NewConstruct),
 			goal_util__rename_vars_in_goal(Goal0, Subst, Goal1),
 			saved_vars_delay_goal(Goals0, Construct, Var,
-				IsNonLocal, SlotInfo1, Goals1, SlotInfo),
-			Goals = [NewConstruct, Goal1 | Goals1]
-		;
-			Goal0Expr = class_method_call(_, _, _, _, _, _),
-			rename_var(SlotInfo0, Var, _NewVar, Subst, SlotInfo1),
-			goal_util__rename_vars_in_goal(Construct, Subst,
-				NewConstruct),
-			goal_util__rename_vars_in_goal(Goal0, Subst, Goal1),
-			saved_vars_delay_goal(Goals0, Construct, Var,
-				IsNonLocal, SlotInfo1, Goals1, SlotInfo),
+				PlaceAtEnd, SlotInfo1, Goals1, SlotInfo),
 			Goals = [NewConstruct, Goal1 | Goals1]
 		;
 			Goal0Expr = pragma_c_code(_, _, _, _, _, _, _),
@@ -304,20 +321,20 @@ saved_vars_delay_goal([Goal0 | Goals0], Construct, Var, IsNonLocal, SlotInfo0,
 				NewConstruct),
 			goal_util__rename_vars_in_goal(Goal0, Subst, Goal1),
 			saved_vars_delay_goal(Goals0, Construct, Var,
-				IsNonLocal, SlotInfo1, Goals1, SlotInfo),
+				PlaceAtEnd, SlotInfo1, Goals1, SlotInfo),
 			Goals = [NewConstruct, Goal1 | Goals1]
 		;
 			Goal0Expr = conj(Conj),
 			list__append(Conj, Goals0, Goals1),
 			saved_vars_delay_goal(Goals1, Construct, Var,
-				IsNonLocal, SlotInfo0, Goals, SlotInfo)
+				PlaceAtEnd, SlotInfo0, Goals, SlotInfo)
 		;
 			Goal0Expr = par_conj(_ParConj, _SM),
 			saved_vars_delay_goal(Goals0, Construct, Var,
-				IsNonLocal, SlotInfo0, Goals1, SlotInfo),
+				PlaceAtEnd, SlotInfo0, Goals1, SlotInfo),
 			Goals = [Goal0|Goals1]
 		;
-			Goal0Expr = some(SomeVars, SomeGoal0),
+			Goal0Expr = some(SomeVars, CanRemove, SomeGoal0),
 			rename_var(SlotInfo0, Var, NewVar, Subst, SlotInfo1),
 			goal_util__rename_vars_in_goal(Construct, Subst,
 				NewConstruct),
@@ -325,9 +342,10 @@ saved_vars_delay_goal([Goal0 | Goals0], Construct, Var, IsNonLocal, SlotInfo0,
 				SomeGoal1),
 			push_into_goal(SomeGoal1, NewConstruct, NewVar,
 				SlotInfo1, SomeGoal, SlotInfo2),
-			Goal1 = some(SomeVars, SomeGoal) - Goal0Info,
+			Goal1 = some(SomeVars, CanRemove, SomeGoal)
+					- Goal0Info,
 			saved_vars_delay_goal(Goals0, Construct, Var,
-				IsNonLocal, SlotInfo2, Goals1, SlotInfo),
+				PlaceAtEnd, SlotInfo2, Goals1, SlotInfo),
 			Goals = [Goal1 | Goals1]
 		;
 			Goal0Expr = not(NegGoal0),
@@ -340,7 +358,7 @@ saved_vars_delay_goal([Goal0 | Goals0], Construct, Var, IsNonLocal, SlotInfo0,
 				SlotInfo1, NegGoal, SlotInfo2),
 			Goal1 = not(NegGoal) - Goal0Info,
 			saved_vars_delay_goal(Goals0, Construct, Var,
-				IsNonLocal, SlotInfo2, Goals1, SlotInfo),
+				PlaceAtEnd, SlotInfo2, Goals1, SlotInfo),
 			Goals = [Goal1 | Goals1]
 		;
 			Goal0Expr = disj(Disjuncts0, SM),
@@ -348,13 +366,13 @@ saved_vars_delay_goal([Goal0 | Goals0], Construct, Var, IsNonLocal, SlotInfo0,
 				SlotInfo0, Disjuncts, SlotInfo1),
 			Goal1 = disj(Disjuncts, SM) - Goal0Info,
 			saved_vars_delay_goal(Goals0, Construct, Var,
-				IsNonLocal, SlotInfo1, Goals1, SlotInfo),
+				PlaceAtEnd, SlotInfo1, Goals1, SlotInfo),
 			Goals = [Goal1 | Goals1]
 		;
 			Goal0Expr = switch(SwitchVar, CF, Cases0, SM),
 			( SwitchVar = Var ->
 				saved_vars_delay_goal(Goals0, Construct, Var,
-					IsNonLocal, SlotInfo0,
+					PlaceAtEnd, SlotInfo0,
 					Goals1, SlotInfo),
 				Goals = [Construct, Goal0 | Goals1]
 			;
@@ -363,7 +381,7 @@ saved_vars_delay_goal([Goal0 | Goals0], Construct, Var, IsNonLocal, SlotInfo0,
 				Goal1 = switch(SwitchVar, CF, Cases, SM)
 					- Goal0Info,
 				saved_vars_delay_goal(Goals0, Construct, Var,
-					IsNonLocal, SlotInfo1,
+					PlaceAtEnd, SlotInfo1,
 					Goals1, SlotInfo),
 				Goals = [Goal1 | Goals1]
 			)
@@ -378,11 +396,11 @@ saved_vars_delay_goal([Goal0 | Goals0], Construct, Var, IsNonLocal, SlotInfo0,
 			Goal1 = if_then_else(V, Cond, Then, Else, SM)
 				- Goal0Info,
 			saved_vars_delay_goal(Goals0, Construct, Var,
-				IsNonLocal, SlotInfo3, Goals1, SlotInfo),
+				PlaceAtEnd, SlotInfo3, Goals1, SlotInfo),
 			Goals = [Goal1 | Goals1]
 		)
 	;
-		saved_vars_delay_goal(Goals0, Construct, Var, IsNonLocal,
+		saved_vars_delay_goal(Goals0, Construct, Var, PlaceAtEnd,
 			SlotInfo0, Goals1, SlotInfo),
 		Goals = [Goal0 | Goals1]
 	).
@@ -463,8 +481,10 @@ push_into_cases_rename([case(ConsId, IMDelta, Goal0) | Cases0], Construct, Var,
 
 saved_vars_in_disj([], SlotInfo, [], SlotInfo).
 saved_vars_in_disj([Goal0 | Goals0], SlotInfo0, [Goal | Goals], SlotInfo) :-
+	slot_info_get_instmap(SlotInfo0, InstMap0),
 	saved_vars_in_goal(Goal0, SlotInfo0, Goal, SlotInfo1),
-	saved_vars_in_disj(Goals0, SlotInfo1, Goals, SlotInfo).
+	slot_info_set_instmap(SlotInfo1, InstMap0, SlotInfo2),
+	saved_vars_in_disj(Goals0, SlotInfo2, Goals, SlotInfo).
 
 :- pred saved_vars_in_switch(list(case), slot_info,
 				     list(case), slot_info).
@@ -473,36 +493,78 @@ saved_vars_in_disj([Goal0 | Goals0], SlotInfo0, [Goal | Goals], SlotInfo) :-
 saved_vars_in_switch([], SlotInfo, [], SlotInfo).
 saved_vars_in_switch([case(Cons, IMDelta, Goal0) | Cases0], SlotInfo0,
 		[case(Cons, IMDelta, Goal) | Cases], SlotInfo) :-
-	saved_vars_in_goal(Goal0, SlotInfo0, Goal, SlotInfo1),
-	saved_vars_in_switch(Cases0, SlotInfo1, Cases, SlotInfo).
+	slot_info_get_instmap(SlotInfo0, InstMap0),
+	slot_info_apply_instmap_delta(SlotInfo0, IMDelta, SlotInfo1),
+	saved_vars_in_goal(Goal0, SlotInfo1, Goal, SlotInfo2),
+	slot_info_set_instmap(SlotInfo2, InstMap0, SlotInfo3),
+	saved_vars_in_switch(Cases0, SlotInfo3, Cases, SlotInfo).
 
 %-----------------------------------------------------------------------------%
 
 :- type slot_info	--->	slot_info(
 					prog_varset,
-					map(prog_var, type)
+					map(prog_var, type),
+					inst_table,
+					instmap,
+					module_info
 				).
 
-:- pred init_slot_info(prog_varset, map(prog_var, type), slot_info).
-:- mode init_slot_info(in, in, out) is det.
+:- pred init_slot_info(prog_varset, map(prog_var, type), inst_table, instmap,
+	module_info, slot_info).
+:- mode init_slot_info(in, in, in, in, in, out) is det.
 
-init_slot_info(Varset, VarTypes, slot_info(Varset, VarTypes)).
+init_slot_info(Varset, VarTypes, InstTable, InstMap, ModuleInfo,
+	slot_info(Varset, VarTypes, InstTable, InstMap, ModuleInfo)).
 
 :- pred final_slot_info(prog_varset, map(prog_var, type), slot_info).
 :- mode final_slot_info(out, out, in) is det.
 
-final_slot_info(Varset, VarTypes, slot_info(Varset, VarTypes)).
+final_slot_info(Varset, VarTypes, slot_info(Varset, VarTypes, _, _, _)).
 
 :- pred rename_var(slot_info, prog_var, prog_var, map(prog_var, prog_var),
 		slot_info).
 :- mode rename_var(in, in, out, out, out) is det.
 
 rename_var(SlotInfo0, Var, NewVar, Substitution, SlotInfo) :-
-	SlotInfo0 = slot_info(Varset0, VarTypes0),
+	SlotInfo0 = slot_info(Varset0, VarTypes0, C, D, E),
 	varset__new_var(Varset0, NewVar, Varset),
 	map__from_assoc_list([Var - NewVar], Substitution),
 	map__lookup(VarTypes0, Var, Type),
 	map__det_insert(VarTypes0, NewVar, Type, VarTypes),
-	SlotInfo = slot_info(Varset, VarTypes).
+	SlotInfo = slot_info(Varset, VarTypes, C, D, E).
+
+:- pred slot_info_var_is_free_alias(slot_info, prog_var, bool).
+:- mode slot_info_var_is_free_alias(in, in, out) is det.
+
+slot_info_var_is_free_alias(SlotInfo, Var, IsFreeAlias) :-
+	SlotInfo = slot_info(_, _, InstTable, InstMap, ModuleInfo),
+	instmap__lookup_var(InstMap, Var, Inst),
+	(
+		inst_is_free_alias(Inst, InstMap, InstTable, ModuleInfo)
+	->
+		IsFreeAlias = yes
+	;
+		IsFreeAlias = no
+	).
+
+:- pred slot_info_get_instmap(slot_info, instmap).
+:- mode slot_info_get_instmap(in, out) is det.
+
+slot_info_get_instmap(slot_info(_, _, _, InstMap, _), InstMap).
+
+:- pred slot_info_set_instmap(slot_info, instmap, slot_info).
+:- mode slot_info_set_instmap(in, in, out) is det.
+
+slot_info_set_instmap(SlotInfo0, InstMap, SlotInfo) :-
+	SlotInfo0 = slot_info(A, B, C, _, E),
+	SlotInfo = slot_info(A, B, C, InstMap, E).
+
+:- pred slot_info_apply_instmap_delta(slot_info, instmap_delta, slot_info).
+:- mode slot_info_apply_instmap_delta(in, in, out) is det.
+
+slot_info_apply_instmap_delta(SlotInfo0, InstMapDelta, SlotInfo) :-
+	SlotInfo0 = slot_info(A, B, C, InstMap0, E),
+	instmap__apply_instmap_delta(InstMap0, InstMapDelta, InstMap),
+	SlotInfo = slot_info(A, B, C, InstMap, E).
 
 %-----------------------------------------------------------------------------%

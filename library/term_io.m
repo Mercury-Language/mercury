@@ -444,6 +444,12 @@ term_io__quote_atom(S, NextToGraphicToken) -->
 				\+ lexer__graphic_token_char(Char)) },
 			{ Chars \= [] },
 			%
+			% We need to quote tokens starting with '#',
+			% because Mercury uses '#' to start source line
+			% number indicators.
+			% 
+			{ Chars \= ['#' | _] },
+			%
 			% If the token could be the last token in a term,
 			% and the term could be followed with ".\n",
 			% then we need to quote the token, otherwise

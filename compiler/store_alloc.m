@@ -60,7 +60,8 @@ store_alloc_in_proc(ProcInfo0, PredId, ModuleInfo, ProcInfo) :-
 		proc_info_goal(ProcInfo0, Goal0),
 
 		find_final_follow_vars(ProcInfo0, FollowVars0),
-		find_follow_vars_in_goal(Goal0, InstTable, ModuleInfo,
+		proc_info_vartypes(ProcInfo0, VarTypes),
+		find_follow_vars_in_goal(Goal0, VarTypes, InstTable, ModuleInfo,
 			FollowVars0, Goal1, FollowVars),
 		Goal1 = GoalExpr1 - GoalInfo1,
 		goal_info_set_follow_vars(GoalInfo1, yes(FollowVars),
@@ -190,16 +191,14 @@ store_alloc_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0, FV),
 	store_alloc_in_goal(Else0, Liveness0, ResumeVars0, ModuleInfo,
 		StackSlotInfo, Else, _Liveness2).
 
-store_alloc_in_goal_2(some(Vars, Goal0), Liveness0, ResumeVars0, ModuleInfo,
-		StackSlotInfo, some(Vars, Goal), Liveness) :-
+store_alloc_in_goal_2(some(Vars, CanRemove, Goal0), Liveness0, ResumeVars0,
+		ModuleInfo,
+		StackSlotInfo, some(Vars, CanRemove, Goal), Liveness) :-
 	store_alloc_in_goal(Goal0, Liveness0, ResumeVars0, ModuleInfo,
 		StackSlotInfo, Goal, Liveness).
 
-store_alloc_in_goal_2(higher_order_call(A, B, C, D, E, F), Liveness, _, _,
-		_, higher_order_call(A, B, C, D, E, F), Liveness).
-
-store_alloc_in_goal_2(class_method_call(A, B, C, D, E, F), Liveness, _, _,
-		_, class_method_call(A, B, C, D, E, F), Liveness).
+store_alloc_in_goal_2(generic_call(A, B, C, D), Liveness, _, _,
+		_, generic_call(A, B, C, D), Liveness).
 
 store_alloc_in_goal_2(call(A, B, C, D, E, F), Liveness, _, _,
 		_, call(A, B, C, D, E, F), Liveness).

@@ -20,24 +20,19 @@
 #include <string.h>
 #include <ctype.h>
 
-static	MR_Module_Info	*MR_module_infos;
-static	int		MR_module_info_next = 0;
-static	int		MR_module_info_max  = 0;
-static	int		MR_module_info_proc_count = 0;
+static	const MR_Module_Layout	**MR_module_infos;
+static	int			MR_module_info_next = 0;
+static	int			MR_module_info_max  = 0;
+static	int			MR_module_info_proc_count = 0;
 
 #define	INIT_MODULE_TABLE_SIZE	10
 
-static	void		MR_register_from_internal_label(const void *info);
-static	void		MR_ensure_proc_node_is_present(MR_Module_Info *module,
-				const MR_Stack_Layout_Entry *entry);
-static	MR_Module_Info	*MR_search_module_info(const char *name);
-static	MR_Module_Info	*MR_insert_module_info(const char *name);
-static	MR_Module_Info	*MR_ensure_module_info_is_present(const char *name);
-
-static	void		MR_process_matching_procedures_in_module(
-				MR_Module_Info *module, MR_Proc_Spec *spec,
-				void f(void *, const MR_Stack_Layout_Entry *),
-				void *);
+static	const MR_Module_Layout	*MR_search_module_info(const char *name);
+static	void	MR_insert_module_info(const MR_Module_Layout *);
+static	void	MR_process_matching_procedures_in_module(
+			const MR_Module_Layout *module, MR_Proc_Spec *spec,
+			void f(void *, const MR_Stack_Layout_Entry *),
+			void *);
 
 void
 MR_register_all_modules_and_procs(FILE *fp, bool verbose)
@@ -51,7 +46,6 @@ MR_register_all_modules_and_procs(FILE *fp, bool verbose)
 		}
 
 		do_init_modules();
-		MR_process_all_internal_labels(MR_register_from_internal_label);
 		done = TRUE;
 		if (verbose) {
 			fprintf(fp, "done.\n");
@@ -71,113 +65,63 @@ MR_register_all_modules_and_procs(FILE *fp, bool verbose)
 	}
 }
 
-static void
-MR_register_from_internal_label(const void *info)
+void
+MR_register_module_layout_real(const MR_Module_Layout *module)
 {
-	const MR_Stack_Layout_Label	*label;
-	const MR_Stack_Layout_Entry	*entry;
-	MR_Module_Info			*module;
+	/*
+	** MR_register_module_layout_real should only be called from
+	** the initialization function of a module, which should be
+	** called only once. The check here whether the module layout
+	** already exists in the table is really only for paranoia.
+	*/
 
-	label = ((const MR_Internal *) info)->i_layout;
-
-	if (label == NULL) {
-		/* some labels have no layout structure */
-		return;
-	}
-
-	if (label->MR_sll_entry == NULL) {
-		/* some hand-crafted label structures have no entry */
-		return;
-	}
-
-	entry = label->MR_sll_entry;
-
-	if (MR_ENTRY_LAYOUT_HAS_EXEC_TRACE(entry) &&
-			! MR_ENTRY_LAYOUT_COMPILER_GENERATED(entry))
-	{
-		module = MR_ensure_module_info_is_present(
-				entry->MR_sle_user.MR_user_decl_module);
-		MR_ensure_proc_node_is_present(module, entry);
+	if (MR_search_module_info(module->MR_ml_name) == NULL) {
+		MR_insert_module_info(module);
 	}
 }
 
-static void
-MR_ensure_proc_node_is_present(MR_Module_Info *module,
-	const MR_Stack_Layout_Entry *entry)
-{
-	MR_Proc_Node	*cur;
-
-	for (cur = module->MR_module_procs; cur != NULL;
-			cur = cur->MR_proc_next) {
-		if (entry == cur->MR_proc_layout) {
-			return;
-		}
-	}
-
-	cur = checked_malloc(sizeof(MR_Proc_Node));
-	cur->MR_proc_layout = entry;
-	cur->MR_proc_next   = module->MR_module_procs;
-	module->MR_module_procs = cur;
-	MR_module_info_proc_count++;
-}
-
-static MR_Module_Info *
+static const MR_Module_Layout *
 MR_search_module_info(const char *name)
 {
 	int	slot;
 	bool	found;
 
 	MR_bsearch(MR_module_info_next, slot, found,
-		strcmp(MR_module_infos[slot].MR_module_name, name));
+		strcmp(MR_module_infos[slot]->MR_ml_name, name));
 	if (found) {
-		return &MR_module_infos[slot];
+		return MR_module_infos[slot];
 	} else {
 		return NULL;
 	}
 }
 
-static MR_Module_Info *
-MR_insert_module_info(const char *name)
+static void
+MR_insert_module_info(const MR_Module_Layout *module)
 {
 	int	slot;
 
-	MR_ensure_room_for_next(MR_module_info, MR_Module_Info,
+	MR_ensure_room_for_next(MR_module_info, MR_Module_Layout *,
 		INIT_MODULE_TABLE_SIZE);
 	MR_prepare_insert_into_sorted(MR_module_infos, MR_module_info_next,
-		slot, strcmp(MR_module_infos[slot].MR_module_name, name));
+		slot,
+		strcmp(MR_module_infos[slot]->MR_ml_name, module->MR_ml_name));
 
-	MR_module_infos[slot].MR_module_name = name;
-	MR_module_infos[slot].MR_module_procs = NULL;
-	return &MR_module_infos[slot];
-}
-
-static MR_Module_Info *
-MR_ensure_module_info_is_present(const char *name)
-{
-	MR_Module_Info	*module;
-
-	module = MR_search_module_info(name);
-	if (module != NULL) {
-		return module;
-	} else {
-		return MR_insert_module_info(name);
-	}
+	MR_module_infos[slot] = module;
+	MR_module_info_proc_count += module->MR_ml_proc_count;
 }
 
 void
 MR_dump_module_tables(FILE *fp)
 {
-	const MR_Proc_Node	*cur;
-	int			i;
+	int	i, j;
 
 	for (i = 0; i < MR_module_info_next; i++) {
 		fprintf(fp, "====================\n");
-		fprintf(fp, "module %s\n", MR_module_infos[i].MR_module_name);
+		fprintf(fp, "module %s\n", MR_module_infos[i]->MR_ml_name);
 		fprintf(fp, "====================\n");
-		for (cur = MR_module_infos[i].MR_module_procs; cur != NULL;
-				cur = cur->MR_proc_next) {
-			MR_print_proc_id(fp, cur->MR_proc_layout, NULL,
-				NULL, NULL);
+		for (j = 0; j < MR_module_infos[i]->MR_ml_proc_count; j++) {
+			MR_print_proc_id_for_debugger(fp,
+				MR_module_infos[i]->MR_ml_procs[j]);
 		}
 	}
 }
@@ -189,15 +133,15 @@ MR_dump_module_list(FILE *fp)
 
 	fprintf(fp, "List of debuggable modules\n\n");
 	for (i = 0; i < MR_module_info_next; i++) {
-		fprintf(fp, "%s\n", MR_module_infos[i].MR_module_name);
+		fprintf(fp, "%s\n", MR_module_infos[i]->MR_ml_name);
 	}
 }
 
 void
 MR_dump_module_procs(FILE *fp, const char *name)
 {
-	MR_Module_Info		*module;
-	const MR_Proc_Node	*cur;
+	const MR_Module_Layout		*module;
+	int				j;
 
 	module = MR_search_module_info(name);
 	if (module == NULL) {
@@ -205,10 +149,9 @@ MR_dump_module_procs(FILE *fp, const char *name)
 				name);
 	} else {
 		fprintf(fp, "List of procedures in module `%s'\n\n", name);
-		for (cur = module->MR_module_procs; cur != NULL;
-				cur = cur->MR_proc_next) {
-			MR_print_proc_id(fp, cur->MR_proc_layout, NULL,
-				NULL, NULL);
+		for (j = 0; j < module->MR_ml_proc_count; j++) {
+			MR_print_proc_id_for_debugger(fp,
+				module->MR_ml_procs[j]);
 		}
 	}
 }
@@ -336,7 +279,7 @@ MR_process_matching_procedures(MR_Proc_Spec *spec,
 	void *data)
 {
 	if (spec->MR_proc_module != NULL) {
-		MR_Module_Info			*module;
+		const MR_Module_Layout	*module;
 
 		module = MR_search_module_info(spec->MR_proc_module);
 		if (module != NULL) {
@@ -348,7 +291,7 @@ MR_process_matching_procedures(MR_Proc_Spec *spec,
 
 		for (i = 0; i < MR_module_info_next; i++) {
 			MR_process_matching_procedures_in_module(
-				&MR_module_infos[i], spec, f, data);
+				MR_module_infos[i], spec, f, data);
 		}
 	}
 }
@@ -370,16 +313,15 @@ MR_process_matching_procedures(MR_Proc_Spec *spec,
 					cur->MR_sle_user.MR_user_pred_or_func)
 
 static void
-MR_process_matching_procedures_in_module(MR_Module_Info *module,
+MR_process_matching_procedures_in_module(const MR_Module_Layout *module,
 	MR_Proc_Spec *spec, void f(void *, const MR_Stack_Layout_Entry *),
 	void *data)
 {
-	MR_Proc_Node			*cur;
 	const MR_Stack_Layout_Entry	*cur_entry;
+	int				j;
 
-	for (cur = module->MR_module_procs; cur != NULL;
-			cur = cur->MR_proc_next) {
-		cur_entry = cur->MR_proc_layout;
+	for (j = 0; j < module->MR_ml_proc_count; j++) {
+		cur_entry = module->MR_ml_procs[j];
 		if (match_name(spec, cur_entry) &&
 				match_arity(spec, cur_entry) &&
 				match_mode(spec, cur_entry) &&

@@ -21,29 +21,26 @@
 :- module modecheck_call.
 :- interface.
 
-:- import_module hlds_goal, hlds_pred, hlds_module, hlds_data.
+:- import_module hlds_goal, hlds_pred, hlds_module.
 :- import_module prog_data, modes, mode_info.
 :- import_module list, std_util.
 
-:- pred modecheck_call_pred(pred_id, list(prog_var), maybe(determinism),
-		proc_id, list(prog_var), extra_goals, mode_info, mode_info).
-:- mode modecheck_call_pred(in, in, in, out, out, out,
-				mode_info_di, mode_info_uo) is det.
-
-:- pred modecheck_higher_order_call(pred_or_func, prog_var, list(prog_var),
-		list(type), argument_modes, determinism, list(prog_var),
+:- pred modecheck_call_pred(pred_id, proc_id, list(prog_var),
+		maybe(determinism), proc_id, list(prog_var),
 		extra_goals, mode_info, mode_info).
-:- mode modecheck_higher_order_call(in, in, in, out, out, out, out, out,
-				mode_info_di, mode_info_uo) is det.
-
-:- pred modecheck_higher_order_pred_call(prog_var, list(prog_var), pred_or_func,
-		hlds_goal_info, hlds_goal_expr, mode_info, mode_info).
-:- mode modecheck_higher_order_pred_call(in, in, in, in, out,
+:- mode modecheck_call_pred(in, in, in, in, out, out, out,
 		mode_info_di, mode_info_uo) is det.
 
-:- pred modecheck_higher_order_func_call(prog_var, list(prog_var), prog_var,
-		hlds_goal_info, hlds_goal_expr, mode_info, mode_info).
-:- mode modecheck_higher_order_func_call(in, in, in, in, out,
+:- pred modecheck_higher_order_call(pred_or_func, prog_var, list(prog_var),
+		argument_modes, determinism, list(prog_var),
+		extra_goals, mode_info, mode_info).
+:- mode modecheck_higher_order_call(in, in, in, out, out, out, out,
+		mode_info_di, mode_info_uo) is det.
+
+:- pred modecheck_aditi_builtin(aditi_builtin, simple_call_id,
+		list(prog_var), argument_modes, determinism,
+		list(prog_var), extra_goals, mode_info, mode_info).
+:- mode modecheck_aditi_builtin(in, in, in, in, out, out, out,
 		mode_info_di, mode_info_uo) is det.
 
 	%
@@ -72,57 +69,14 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module prog_data, instmap, (inst).
+:- import_module hlds_data, instmap, prog_data, (inst), inst_table.
 :- import_module mode_info, mode_debug, modes, mode_util, mode_errors.
 :- import_module clause_to_proc, inst_match, inst_util, make_hlds.
 :- import_module det_report, unify_proc.
-:- import_module map, bool, set, require.
+:- import_module int, map, bool, set, require.
 
-modecheck_higher_order_pred_call(PredVar, Args0, PredOrFunc, GoalInfo0, Goal)
-		-->
-	mode_checkpoint(enter, "higher-order call", GoalInfo0),
-	mode_info_set_call_context(higher_order_call(PredOrFunc)),
-	=(ModeInfo0),
-
-	{ mode_info_get_instmap(ModeInfo0, InstMap0) },
-	modecheck_higher_order_call(PredOrFunc, PredVar, Args0,
-			Types, Modes, Det, Args, ExtraGoals),
-
-	=(ModeInfo),
-	{ Call = higher_order_call(PredVar, Args, Types, Modes, Det,
-			PredOrFunc) },
-	{ handle_extra_goals(Call, ExtraGoals, GoalInfo0,
-			[PredVar | Args0], [PredVar | Args],
-			InstMap0, ModeInfo, Goal) },
-	mode_info_unset_call_context,
-	mode_checkpoint(exit, "higher-order predicate call", GoalInfo0).
-
-modecheck_higher_order_func_call(FuncVar, Args0, RetVar, GoalInfo0, Goal) -->
-	mode_checkpoint(enter, "higher-order function call", GoalInfo0),
-	mode_info_set_call_context(higher_order_call(function)),
-
-	=(ModeInfo0),
-	{ mode_info_get_instmap(ModeInfo0, InstMap0) },
-
-	{ list__append(Args0, [RetVar], Args1) },
-	modecheck_higher_order_call(function, FuncVar, Args1,
-			Types, Modes, Det, Args, ExtraGoals),
-
-	=(ModeInfo),
-	{ Call = higher_order_call(FuncVar, Args, Types, Modes, Det,
-				function) },
-	{ handle_extra_goals(Call, ExtraGoals, GoalInfo0,
-				[FuncVar | Args1], [FuncVar | Args],
-				InstMap0, ModeInfo, Goal) },
-
-	mode_info_unset_call_context,
-	mode_checkpoint(exit, "higher-order function call", GoalInfo0).
-
-modecheck_higher_order_call(PredOrFunc, PredVar, Args0, Types, Modes, Det, Args,
-		ExtraGoals, ModeInfo0, ModeInfo) :-
-
-	mode_info_get_types_of_vars(ModeInfo0, Args0, Types),
-
+modecheck_higher_order_call(PredOrFunc, PredVar, Args0, Modes, Det,
+		Args, ExtraGoals, ModeInfo0, ModeInfo) :-
 	%
 	% First, check that `PredVar' has a higher-order pred inst
 	% (of the appropriate arity)
@@ -137,45 +91,19 @@ modecheck_higher_order_call(PredOrFunc, PredVar, Args0, Types, Modes, Det, Args,
 	(
 		PredVarInst = ground(_Uniq, yes(PredInstInfo)),
 		PredInstInfo = pred_inst_info(_PredOrFunc, Modes0, Det0),
-		Modes0 = argument_modes(ArgInstTable, ArgModes0),
+		Modes0 = argument_modes(_, ArgModes0),
 		list__length(ArgModes0, Arity)
 	->
 		Det = Det0,
 		Modes = Modes0,
-
-		%
-		% Check that `Args0' have livenesses which match the
-		% expected livenesses.
-		%
-			% YYY InstMap0 is probably incorrect here
-		get_arg_lives(ArgModes0, InstMap0, ArgInstTable, ModuleInfo0,
-			ExpectedArgLives),
-		modecheck_var_list_is_live(Args0, ExpectedArgLives, 1,
+		ArgOffset = 1,
+		modecheck_arg_list(ArgOffset, Modes, ExtraGoals, Args0, Args,
 			ModeInfo0, ModeInfo1),
-
-		inst_table_create_sub(InstTable0, ArgInstTable, Sub, InstTable1),
-		list__map(apply_inst_key_sub_mode(Sub), ArgModes0, ArgModes),
-		mode_info_set_inst_table(InstTable1, ModeInfo1, ModeInfo2),
-
-		%
-		% Check that `Args0' have insts which match the expected
-		% initial insts, set their new final insts (introducing
-		% extra unifications for implied modes, if necessary),
-		% then check that the final insts of the vars match the
-		% declared final insts.
-		%
-		mode_list_get_initial_insts(ArgModes, ModuleInfo0,
-				InitialInsts),
-		modecheck_var_has_inst_list(Args0, InitialInsts, 0,
-					ModeInfo2, ModeInfo3),
-		mode_list_get_final_insts(ArgModes, ModuleInfo0, FinalInsts),
-		modecheck_set_var_inst_list(Args0, InitialInsts, FinalInsts,
-				Args, ExtraGoals, ModeInfo3, ModeInfo4),
 		( determinism_components(Det, _, at_most_zero) ->
 			instmap__init_unreachable(Instmap),
-			mode_info_set_instmap(Instmap, ModeInfo4, ModeInfo)
+			mode_info_set_instmap(Instmap, ModeInfo1, ModeInfo)
 		;
-			ModeInfo = ModeInfo4
+			ModeInfo = ModeInfo1
 		)
 	;
 		% the error occurred in argument 1, i.e. the pred term
@@ -191,17 +119,103 @@ modecheck_higher_order_call(PredOrFunc, PredVar, Args0, Types, Modes, Det, Args,
 		ExtraGoals = no_extra_goals
 	).
 
-modecheck_call_pred(PredId, ArgVars0, DeterminismKnown,
+modecheck_aditi_builtin(AditiBuiltin, CallId,
+		Args0, Modes, Det, Args, ExtraGoals) -->
+	{ aditi_builtin_determinism(AditiBuiltin, Det) },
+
+	% `aditi_insert' goals have type_info arguments for each
+	% of the arguments of the tuple to insert added to the
+	% start of the argument list by polymorphism.m.
+	( { AditiBuiltin = aditi_insert(_) } ->
+		{ CallId = _ - _/Arity },
+		{ ArgOffset = -Arity }
+	;
+		{ ArgOffset = 0 }
+	),
+
+	% The argument modes are set by post_typecheck.m, so all
+	% that needs to be done here is to check that they match.
+	modecheck_arg_list(ArgOffset, Modes, ExtraGoals, Args0, Args).
+
+:- pred aditi_builtin_determinism(aditi_builtin, determinism).
+:- mode aditi_builtin_determinism(in, out) is det.
+
+aditi_builtin_determinism(aditi_call(_, _, _, _), _) :-
+	error(
+	"modecheck_call__aditi_builtin_determinism: unexpected Aditi call"). 
+aditi_builtin_determinism(aditi_insert(_), det).
+aditi_builtin_determinism(aditi_delete(_, _), det).
+aditi_builtin_determinism(aditi_bulk_operation(_, _), det).
+aditi_builtin_determinism(aditi_modify(_, _), det).
+
+:- pred modecheck_arg_list(int, argument_modes, extra_goals,
+		list(prog_var), list(prog_var), mode_info, mode_info).
+:- mode modecheck_arg_list(in, in, out, in, out,
+		mode_info_di, mode_info_uo) is det.
+
+modecheck_arg_list(ArgOffset, Modes, ExtraGoals, Args0, Args,
+		ModeInfo0, ModeInfo) :-
+	Modes = argument_modes(ArgInstTable, ArgModes0),
+
+	%
+	% Check that `Args0' have livenesses which match the
+	% expected livenesses.
+	%
+	mode_info_get_module_info(ModeInfo0, ModuleInfo0),
+	mode_info_get_instmap(ModeInfo0, InstMap0),
+
+		% YYY InstMap0 is probably incorrect here
+	get_arg_lives(ArgModes0, InstMap0, ArgInstTable, ModuleInfo0,
+		ExpectedArgLives),
+	modecheck_var_list_is_live(Args0, ExpectedArgLives, ArgOffset,
+		ModeInfo0, ModeInfo1),	
+
+	%
+	% Substitute the inst_keys in the argument_modes.
+	%
+	mode_info_get_inst_table(ModeInfo1, InstTable0),
+	inst_table_create_sub(InstTable0, ArgInstTable, Sub, InstTable1),
+	list__map(apply_inst_table_sub_mode(Sub), ArgModes0, ArgModes),
+	mode_info_set_inst_table(InstTable1, ModeInfo1, ModeInfo2),
+
+	%
+	% Check that `Args0' have insts which match the expected
+	% initial insts, set their new final insts (introducing
+	% extra unifications for implied modes, if necessary),
+	% then check that the final insts of the vars match the
+	% declared final insts.
+	%
+	mode_list_get_initial_insts(ArgModes, ModuleInfo0, InitialInsts),
+	modecheck_var_has_inst_list(Args0, InitialInsts, ArgOffset,
+		ModeInfo2, ModeInfo3),
+	mode_list_get_final_insts(ArgModes, ModuleInfo0, FinalInsts),
+	modecheck_set_var_inst_list(Args0, InitialInsts, FinalInsts,
+		ArgOffset, Args, ExtraGoals, ModeInfo3, ModeInfo).
+
+modecheck_call_pred(PredId, ProcId0, ArgVars0, DeterminismKnown,
 		TheProcId, ArgVars, ExtraGoals, ModeInfo0, ModeInfo) :-
 
-		% Get the list of different possible modes for the called
-		% predicate
+	mode_info_get_may_change_called_proc(ModeInfo0, MayChangeCalledProc),
+
 	mode_info_get_preds(ModeInfo0, Preds),
 	mode_info_get_module_info(ModeInfo0, ModuleInfo),
 	map__lookup(Preds, PredId, PredInfo0),
-	maybe_add_default_mode(ModuleInfo, PredInfo0, PredInfo, _),
+	maybe_add_default_mode(PredInfo0, PredInfo, _),
 	pred_info_procedures(PredInfo, Procs),
-	map__keys(Procs, ProcIds),
+
+	( MayChangeCalledProc = may_not_change_called_proc ->
+		( invalid_proc_id(ProcId0) ->
+			error("modecheck_call_pred: invalid proc_id")
+		;
+			ProcIds = [ProcId0]
+		)
+	;
+			% Get the list of different possible
+			% modes for the called predicate
+		map__keys(Procs, ProcIds)
+	),
+
+	compute_arg_offset(PredInfo, ArgOffset),
 	pred_info_get_markers(PredInfo, Markers),
 
 		% In order to give better diagnostics, we handle the
@@ -219,16 +233,19 @@ modecheck_call_pred(PredId, ArgVars0, DeterminismKnown,
 		ExtraGoals = no_extra_goals
 	;
 		ProcIds = [ProcId],
-		\+ check_marker(Markers, infer_modes)
+		( \+ check_marker(Markers, infer_modes)
+		; MayChangeCalledProc = may_not_change_called_proc
+		)
 	->
 		TheProcId = ProcId,
 		map__lookup(Procs, ProcId, ProcInfo),
+
 		%
 		% Check that `ArgsVars0' have livenesses which match the
 		% expected livenesses.
 		%
 		proc_info_arglives(ProcInfo, ModuleInfo, ProcArgLives0),
-		modecheck_var_list_is_live(ArgVars0, ProcArgLives0, 0,
+		modecheck_var_list_is_live(ArgVars0, ProcArgLives0, ArgOffset,
 					ModeInfo0, ModeInfo1),
 
 		%
@@ -244,15 +261,15 @@ modecheck_call_pred(PredId, ArgVars0, DeterminismKnown,
 		mode_info_get_inst_table(ModeInfo1, InstTable0),
 		inst_table_create_sub(InstTable0, ArgInstTable, Sub,
 					InstTable1),
-		list__map(apply_inst_key_sub_mode(Sub), ArgModes0, ArgModes),
+		list__map(apply_inst_table_sub_mode(Sub), ArgModes0, ArgModes),
 		mode_info_set_inst_table(InstTable1, ModeInfo1, ModeInfo2),
 
 		mode_list_get_initial_insts(ArgModes, ModuleInfo,
 					InitialInsts),
-		modecheck_var_has_inst_list(ArgVars0, InitialInsts, 0,
+		modecheck_var_has_inst_list(ArgVars0, InitialInsts, ArgOffset,
 					ModeInfo2, ModeInfo3),
 
-		modecheck_end_of_call(ProcInfo, ArgVars0, ArgVars,
+		modecheck_end_of_call(ProcInfo, ArgVars0, ArgOffset, ArgVars,
 					ExtraGoals, ModeInfo3, ModeInfo)
 	;
 			% set the current error list to empty (and
@@ -291,8 +308,8 @@ modecheck_call_pred(PredId, ArgVars0, DeterminismKnown,
 			% mode_info_set_inst_table(InstTable1, ModeInfo2,
 			% 	ModeInfo3),
 			ModeInfo2 = ModeInfo3,
-			modecheck_end_of_call(ProcInfo, ArgVars0, ArgVars,
-				ExtraGoals, ModeInfo3, ModeInfo4),
+			modecheck_end_of_call(ProcInfo, ArgVars0, ArgOffset,
+				ArgVars, ExtraGoals, ModeInfo3, ModeInfo4),
 			ModeInfo99 = ModeInfo4
 		),
 
@@ -361,7 +378,7 @@ modecheck_find_matching_modes([ProcId | ProcIds], PredId, Procs, ArgVars0,
 	proc_info_argmodes(ProcInfo, argument_modes(ArgInstTable, ArgModes0)),
 	mode_info_get_inst_table(ModeInfo0, InstTable0),
 	inst_table_create_sub(InstTable0, ArgInstTable, Sub, InstTable1),
-	list__map(apply_inst_key_sub_mode(Sub), ArgModes0, ArgModes),
+	list__map(apply_inst_table_sub_mode(Sub), ArgModes0, ArgModes),
 	mode_info_set_inst_table(InstTable1, ModeInfo0, ModeInfo1),
 
 		% check whether the livenesses of the args matches their
@@ -398,19 +415,19 @@ modecheck_find_matching_modes([ProcId | ProcIds], PredId, Procs, ArgVars0,
 			MatchingProcIds1, MatchingProcIds,
 			WaitingVars1, WaitingVars, ModeInfo4, ModeInfo).
 
-:- pred modecheck_end_of_call(proc_info, list(prog_var), list(prog_var),
-		extra_goals, mode_info, mode_info).
-:- mode modecheck_end_of_call(in, in, out, out,
+:- pred modecheck_end_of_call(proc_info, list(prog_var), int,
+		list(prog_var), extra_goals, mode_info, mode_info).
+:- mode modecheck_end_of_call(in, in, in, out, out,
 				mode_info_di, mode_info_uo) is det.
 
-modecheck_end_of_call(ProcInfo, ArgVars0, ArgVars, ExtraGoals,
+modecheck_end_of_call(ProcInfo, ArgVars0, ArgOffset, ArgVars, ExtraGoals,
 			ModeInfo0, ModeInfo) :-
 	proc_info_argmodes(ProcInfo, argument_modes(_, ProcArgModes)),
 	mode_info_get_module_info(ModeInfo0, ModuleInfo),
 	mode_list_get_initial_insts(ProcArgModes, ModuleInfo, InitialInsts),
 	mode_list_get_final_insts(ProcArgModes, ModuleInfo, FinalInsts),
 	modecheck_set_var_inst_list(ArgVars0, InitialInsts, FinalInsts,
-			ArgVars, ExtraGoals, ModeInfo0, ModeInfo1),
+			ArgOffset, ArgVars, ExtraGoals, ModeInfo0, ModeInfo1),
 	proc_info_never_succeeds(ProcInfo, NeverSucceeds),
 	( NeverSucceeds = yes ->
 		instmap__init_unreachable(Instmap),
@@ -469,8 +486,10 @@ get_var_insts_and_lives([Var | Vars], ModeInfo,
 	mode_info_get_module_info(ModeInfo, ModuleInfo),
 	mode_info_get_instmap(ModeInfo, InstMap),
 	mode_info_get_inst_table(ModeInfo, InstTable),
+	mode_info_get_var_types(ModeInfo, VarTypes),
 	instmap__lookup_var(InstMap, Var, Inst0),
-	normalise_inst(Inst0, InstMap, InstTable, ModuleInfo, Inst),
+	map__lookup(VarTypes, Var, Type),
+	normalise_inst(Inst0, Type, InstMap, InstTable, ModuleInfo, Inst),
 
 	mode_info_var_is_live(ModeInfo, Var, IsLive0),
 
@@ -525,7 +544,7 @@ modes_are_indistinguishable(ProcId, OtherProcId, PredInfo, ModuleInfo) :-
 		OtherProcInstMap),
 	inst_table_create_sub(ProcArgInstTable, OtherProcArgInstTable,
 			Sub, InstTable),
-	list__map(apply_inst_key_sub_mode(Sub), OtherProcArgModes0,
+	list__map(apply_inst_table_sub_mode(Sub), OtherProcArgModes0,
 		OtherProcArgModes),
 	mode_list_get_initial_insts(ProcArgModes, ModuleInfo, InitialInsts),
 	mode_list_get_initial_insts(OtherProcArgModes, ModuleInfo,
@@ -585,7 +604,7 @@ modes_are_identical_bar_cc(ProcId, OtherProcId, PredInfo, ModuleInfo) :-
 		OtherProcInstMap),
 	inst_table_create_sub(ProcArgInstTable, OtherProcArgInstTable,
 		Sub, InstTable),
-	list__map(apply_inst_key_sub_mode(Sub), OtherProcArgModes0,
+	list__map(apply_inst_table_sub_mode(Sub), OtherProcArgModes0,
 		OtherProcArgModes),
 	mode_list_get_initial_insts(ProcArgModes, ModuleInfo, InitialInsts),
 	mode_list_get_initial_insts(OtherProcArgModes, ModuleInfo,
@@ -713,23 +732,28 @@ compare_proc(ProcId, OtherProcId, ArgVars, Compare, Procs, ModeInfo) :-
 	%
 	mode_info_get_module_info(ModeInfo, ModuleInfo),
 	proc_info_argmodes(ProcInfo,
-		argument_modes(ProcArgInstTable, ProcArgModes)),
+		argument_modes(ProcArgInstTable, ProcArgModes0)),
 	proc_info_get_initial_instmap(ProcInfo, ModuleInfo,
 		ProcInstMap),
 	proc_info_argmodes(OtherProcInfo,
 		argument_modes(OtherProcArgInstTable, OtherProcArgModes0)),
 	proc_info_get_initial_instmap(OtherProcInfo, ModuleInfo,
 		OtherProcInstMap),
-	inst_table_create_sub(ProcArgInstTable, OtherProcArgInstTable,
-			Sub, InstTable),
-	list__map(apply_inst_key_sub_mode(Sub), OtherProcArgModes0,
+	mode_info_get_inst_table(ModeInfo, InstTable0),
+	inst_table_create_sub(InstTable0, ProcArgInstTable, Sub0, InstTable1),
+	inst_table_create_sub(InstTable1, OtherProcArgInstTable, Sub1,
+		InstTable),
+	list__map(apply_inst_table_sub_mode(Sub0), ProcArgModes0, ProcArgModes),
+	list__map(apply_inst_table_sub_mode(Sub1), OtherProcArgModes0,
 		OtherProcArgModes),
 	mode_list_get_initial_insts(ProcArgModes, ModuleInfo, InitialInsts),
 	mode_list_get_initial_insts(OtherProcArgModes, ModuleInfo,
 							OtherInitialInsts),
+	mode_info_get_instmap(ModeInfo, InstMap),
 	get_var_insts_and_lives(ArgVars, ModeInfo, ArgInitialInsts, _ArgLives),
-	compare_inst_list(InitialInsts, OtherInitialInsts, yes(ArgInitialInsts),
-		InstTable, CompareInsts, ModuleInfo),
+	compare_inst_list(InitialInsts, OtherInitialInsts,
+		yes(ArgInitialInsts - InstMap), InstTable, CompareInsts,
+		ModuleInfo),
 	%
 	% Compare the expected livenesses of the arguments
 	%
@@ -755,36 +779,51 @@ compare_proc(ProcId, OtherProcId, ArgVars, Compare, Procs, ModeInfo) :-
 	combine_results(CompareInsts, CompareLives, Compare0),
 	prioritized_combine_results(Compare0, CompareDet, Compare).
 
-:- pred compare_inst_list(list(inst), list(inst), maybe(list(inst)),
-				inst_table, match, module_info).
+	% compare_inst_list(InstsA, InstsB, ArgInsts, InstTable, Result,
+	%		ModuleInfo)
+	%       Compare two lists of insts.  InstsA and InstsB should 
+	%       not depend on any instmap alias substitutions. Also, 
+	%       InstsA and InstsB should not share any common inst_keys. 
+	%       These preconditions are guaranteed if the inst lists are
+	%       the argument insts of two procedures (with an
+	%       appropriate application of inst_table_create_sub to
+	%       rename apart the inst_keys of the two procedures).
+
+:- pred compare_inst_list(list(inst), list(inst),
+	maybe(pair(list(inst), instmap)), inst_table, match, module_info).
 :- mode compare_inst_list(in, in, in, in, out, in) is det.
 
 compare_inst_list(InstsA, InstsB, ArgInsts, InstTable, Result, ModuleInfo) :-
+	map__init(AliasMap0),
 	(
 		compare_inst_list_2(InstsA, InstsB, ArgInsts, InstTable,
-				Result0, ModuleInfo)
+			AliasMap0, Result0, ModuleInfo)
 	->
 		Result = Result0
 	;
 		error("compare_inst_list: length mis-match")
 	).
 
-:- pred compare_inst_list_2(list(inst), list(inst), maybe(list(inst)),
-				inst_table, match, module_info).
-:- mode compare_inst_list_2(in, in, in, in, out, in) is semidet.
+:- pred compare_inst_list_2(list(inst), list(inst),
+	maybe(pair(list(inst), instmap)), inst_table, alias_map, match,
+	module_info).
+:- mode compare_inst_list_2(in, in, in, in, in, out, in) is semidet.
 
-compare_inst_list_2([], [], _, _, same, _).
+compare_inst_list_2([], [], _, _, _, same, _).
 compare_inst_list_2([InstA | InstsA], [InstB | InstsB],
-		no, InstTable, Result, ModuleInfo) :-
-	compare_inst(InstA, InstB, no, InstTable, Result0, ModuleInfo),
-	compare_inst_list_2(InstsA, InstsB, no, InstTable, Result1, ModuleInfo),
+		no, InstTable, AliasMap0, Result, ModuleInfo) :-
+	compare_inst(InstA, InstB, no, InstTable, AliasMap0, AliasMap1,
+		Result0, ModuleInfo),
+	compare_inst_list_2(InstsA, InstsB, no, InstTable, AliasMap1,
+		Result1, ModuleInfo),
 	combine_results(Result0, Result1, Result).
 compare_inst_list_2([InstA | InstsA], [InstB | InstsB],
-		yes([ArgInst|ArgInsts]), InstTable, Result, ModuleInfo) :-
-	compare_inst(InstA, InstB, yes(ArgInst), InstTable, Result0,
-		ModuleInfo),
-	compare_inst_list_2(InstsA, InstsB, yes(ArgInsts), InstTable, Result1,
-		ModuleInfo),
+		yes([ArgInst|ArgInsts] - InstMap), InstTable, AliasMap0,
+		Result, ModuleInfo) :-
+	compare_inst(InstA, InstB, yes(ArgInst - InstMap), InstTable, AliasMap0,
+		AliasMap1, Result0, ModuleInfo),
+	compare_inst_list_2(InstsA, InstsB, yes(ArgInsts - InstMap), InstTable,
+		AliasMap1, Result1, ModuleInfo),
 	combine_results(Result0, Result1, Result).
 
 :- pred compare_liveness_list(list(is_live), list(is_live), match).
@@ -858,34 +897,56 @@ combine_results(incomparable, _, incomparable).
 	%	prefer ground to free	(i.e. prefer in to out)
 	% 	prefer ground to any	(e.g. prefer in to in(any))
 	% 	prefer any to free	(e.g. prefer any->ground to out)
+	%
+	% This predicate is designed to be called from compare_inst_list 
+	% which is used for comparing argument insts of two procedures. 
+	% It assumes that InstA and InstB do not depend on any instmap
+	% alias substitutions.  InstA and InstB are also required not to
+	% share any inst_keys. It also assumes that AliasMap0 will be
+	% initialised before the first call to compare_inst and the
+	% alias_map will be threaded through all calls to compare_inst
+	% for the list of insts being compared.
 
-:- pred compare_inst(inst, inst, maybe(inst), inst_table, match, module_info).
-:- mode compare_inst(in, in, in, in, out, in) is det.
+:- pred compare_inst(inst, inst, maybe(pair(inst, instmap)), inst_table,
+	alias_map, alias_map, match, module_info).
+:- mode compare_inst(in, in, in, in, in, out, out, in) is det.
 
-compare_inst(InstA, InstB, MaybeArgInst, InstTable, Result, ModuleInfo) :-
+compare_inst(InstA, InstB, MaybeArgInst, InstTable, AliasMap0, AliasMap,
+		Result, ModuleInfo) :-
 	% inst_matches_initial(A,B) succeeds iff
 	%	A specifies at least as much information
 	%	and at least as much binding as B --
 	%	with the exception that `any' matches_initial `free'
 	% 	and perhaps vice versa.
-	instmap__init_reachable(InstMapA),	% YYY
-	instmap__init_reachable(InstMapB),	% YYY
-	instmap__init_reachable(MaybeInstMap),	% YYY
+	instmap__init_reachable(InstMapA),
+	instmap__init_reachable(InstMapB),
+		% Empty instmaps are ok here because InstA and InstB are
+		% assumed to be insts which have no instmap alias substitutions
+		% on them.
 	(
 		inst_matches_initial(InstA, InstMapA, InstB, InstMapB,
-				InstTable, ModuleInfo)
+			InstTable, ModuleInfo, AliasMap0, AliasMap1)
 	->
-		A_mi_B = yes
+		A_mi_B = yes,
+		AliasMap2 = AliasMap1
 	;
-		A_mi_B = no
+		A_mi_B = no,
+		AliasMap2 = AliasMap0
 	),
 	(
+		% (It is ok to thread the same AliasMap through both of the
+		% calls to inst_matches_initial in this predicate because
+		% the inst_keys in InstA and InstB will not overlap.  This
+		% is because the inst_keys in InstB were created by
+		% inst_table_create_sub.)
 		inst_matches_initial(InstB, InstMapB, InstA, InstMapA,
-				InstTable, ModuleInfo)
+			InstTable, ModuleInfo, AliasMap2, AliasMap3)
 	->
-		B_mi_A = yes
+		B_mi_A = yes,
+		AliasMap = AliasMap3
 	;
-		B_mi_A = no
+		B_mi_A = no,
+		AliasMap = AliasMap2
 	),
 	( A_mi_B = yes, B_mi_A = no,  Result = better
 	; A_mi_B = no,  B_mi_A = yes, Result = worse
@@ -899,24 +960,27 @@ compare_inst(InstA, InstB, MaybeArgInst, InstTable, Result, ModuleInfo) :-
 		% if the argument is `free', we should prefer `free',
 		% but otherwise, we should prefer `any'.
 		%
+		% We can use the version of inst_matches_final that ignores
+		% aliases here because the aliases have already been checked
+		% by inst_matches_initial, above.
 		(
 			MaybeArgInst = no,
 			Result0 = same
 		;
-			MaybeArgInst = yes(ArgInst),
+			MaybeArgInst = yes(ArgInst - MaybeInstMap),
 			(
-				inst_matches_final(ArgInst, MaybeInstMap,
-					InstA, InstMapA, InstTable,
-					ModuleInfo)
+				inst_matches_final_ignore_aliasing(ArgInst,
+					MaybeInstMap, InstA, InstMapA,
+					InstTable, ModuleInfo)
 			->
 				Arg_mf_A = yes
 			;
 				Arg_mf_A = no
 			),
 			(
-				inst_matches_final(ArgInst, MaybeInstMap,
-					InstB, InstMapB, InstTable,
-					ModuleInfo)
+				inst_matches_final_ignore_aliasing(ArgInst,
+					MaybeInstMap, InstB, InstMapB,
+					InstTable, ModuleInfo)
 			->
 				Arg_mf_B = yes
 			;
@@ -935,8 +999,8 @@ compare_inst(InstA, InstB, MaybeArgInst, InstTable, Result, ModuleInfo) :-
 			% then compare the two proc insts
 			%
 			(
-				inst_matches_final(InstA, InstMapA,
-					InstB, InstMapB, InstTable,
+				inst_matches_final_ignore_aliasing(InstA,
+					InstMapA, InstB, InstMapB, InstTable,
 					ModuleInfo)
 			->
 				A_mf_B = yes
@@ -944,8 +1008,8 @@ compare_inst(InstA, InstB, MaybeArgInst, InstTable, Result, ModuleInfo) :-
 				A_mf_B = no
 			),
 			(
-				inst_matches_final(InstB, InstMapB,
-					InstA, InstMapA, InstTable,
+				inst_matches_final_ignore_aliasing(InstB,
+					InstMapB, InstA, InstMapA, InstTable,
 					ModuleInfo)
 			->
 				B_mf_A = yes

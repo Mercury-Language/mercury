@@ -25,7 +25,7 @@
 
 :- implementation.
 
-:- import_module term_traversal, term_errors, instmap.
+:- import_module term_traversal, term_errors, instmap, inst_table.
 :- import_module hlds_data, hlds_goal, prog_data, type_util, mode_util.
 
 :- import_module std_util, bool, int, assoc_list.

@@ -42,7 +42,7 @@
 :- implementation.
 :- import_module bool, int, char, std_util, require, string.
 :- import_module prog_io, prog_out, prog_util, equiv_type, purity.
-:- import_module globals, options, hlds_data, term, varset.
+:- import_module globals, options, hlds_data, inst_table, term, varset.
 %-----------------------------------------------------------------------------%
 
 	% The following is a hard-coded hack.
@@ -204,7 +204,12 @@ goedel_output_item(func_clause(VarSet, PredName, Args, Result, Body), Context)
 goedel_output_item(pragma(_Pragma), _Context) -->
 	io__stderr_stream(Stderr),
 	io__write_string(Stderr, 
-			"warning: C header declarations not allowed. Ignoring\n").
+			"warning: pragma declarations not allowed. Ignoring\n").
+
+goedel_output_item(assertion(_, _), _Context) -->
+	io__stderr_stream(Stderr),
+	io__write_string(Stderr, 
+			"warning: assertion declarations not allowed. Ignoring\n").
 
 goedel_output_item(nothing, _) --> [].
 goedel_output_item(typeclass(_, _, _, _, _), _) -->

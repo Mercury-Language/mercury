@@ -169,6 +169,8 @@ dummy_pred_to_avoid_warning_about_nothing_exported.
 	;	io_query(imports)
 			% options to compile queries with
 	;	mmc_options(options)
+			% to call the term browser
+	;	browse(string)
 	.
 
 :- type event_number == int.
@@ -573,6 +575,23 @@ get_mmc_options(DebuggerRequest, Options) :-
 
 init_mercury_string("").
 
+%-----------------------------------------------------------------------------%
+
+:- pred get_variable_name(debugger_request, string).
+:- mode get_variable_name(in, out) is det.
+
+:- pragma export(get_variable_name(in, out), "ML_DI_get_variable_name").
+	% This predicate allows mercury_trace_external.c to retrieve the name 
+	% of the variable to browse from a `browse(var_name)' request.
+get_variable_name(DebuggerRequest, Options) :-
+	(
+		DebuggerRequest = browse(Options1)
+	->
+		Options = Options1
+	;
+		error("get_variable_name: not a browse request")
+	).
+
 %------------------------------------------------------------------------------%
 
 :- pred classify_request(debugger_request, int).
@@ -598,6 +617,7 @@ classify_request(query(_),13).
 classify_request(cc_query(_),14).
 classify_request(io_query(_),15).
 classify_request(mmc_options(_),16).
+classify_request(browse(_),17).
 
 
 %-----------------------------------------------------------------------------%

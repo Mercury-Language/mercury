@@ -20,8 +20,8 @@
 
 :- interface.
 
-:- import_module term_util, term_errors, instmap.
-:- import_module hlds_module, hlds_pred, hlds_goal, hlds_data, prog_data.
+:- import_module term_util, term_errors, instmap, inst_table.
+:- import_module hlds_module, hlds_pred, hlds_goal, prog_data.
 :- import_module list, bag, map, std_util, set.
 
 :- type traversal_info
@@ -121,7 +121,7 @@ traverse_goal_2(unify(_Var, _RHS, _UniMode, Unification, _Context),
 	goal_info_get_instmap_delta(GoalInfo, IMDelta),
 	instmap__apply_instmap_delta(InstMapBefore, IMDelta, InstMapAfter),
 	(
-		Unification = construct(OutVar, ConsId, Args, Modes),
+		Unification = construct(OutVar, ConsId, Args, Modes, _, _, _),
 		(
 			unify_change(OutVar, ConsId, Args, Modes, Params,
 				Gamma, InstMapBefore, InstMapAfter,
@@ -157,7 +157,7 @@ traverse_goal_2(unify(_Var, _RHS, _UniMode, Unification, _Context),
 		Unification = simple_test(_InVar1, _InVar2),
 		Info = Info0
 	;
-		Unification = complicated_unify(_, _),
+		Unification = complicated_unify(_, _, _),
 		error("Unexpected complicated_unify in termination analysis")
 	).
 
@@ -181,7 +181,8 @@ traverse_goal_2(not(Goal), _, InstMap0, Params, Info0, Info) :-
 		% but it shouldn't hurt either.
 	traverse_goal(Goal, InstMap0, _, Params, Info0, Info).
 
-traverse_goal_2(some(_Vars, Goal), _GoalInfo, InstMap0, Params, Info0, Info) :-
+traverse_goal_2(some(_Vars, _, Goal), _GoalInfo,
+		InstMap0, Params, Info0, Info) :-
 	traverse_goal(Goal, InstMap0, _, Params, Info0, Info).
 
 traverse_goal_2(if_then_else(_, Cond, Then, Else, _), _, InstMap0,
@@ -203,18 +204,24 @@ traverse_goal_2(pragma_c_code(_, CallPredId, CallProcId, Args, _, _, _),
 	goal_info_get_context(GoalInfo, Context),
 	error_if_intersect(OutVars, Context, pragma_c_code, Info0, Info).
 
-traverse_goal_2(higher_order_call(_, _, _, _, _, _),
-		GoalInfo, _InstMap0, Params, Info0, Info) :-
-	goal_info_get_context(GoalInfo, Context),
-	add_error(Context, horder_call, Params, Info0, Info).
-
-	% For now, we'll pretend that the class method call is a higher order
-	% call. In reality, we could probably analyse further than this, since
-	% we know that the method being called must come from one of the
-	% instance declarations, and we could potentially (globally) analyse
-	% these.
-traverse_goal_2(class_method_call(_, _, _, _, _, _),
-		GoalInfo, _InstMap0, Params, Info0, Info) :-
+traverse_goal_2(generic_call(_, _, _, _), GoalInfo, _InstMap0, Params,
+		Info0, Info) :-
+	%
+	% For class method calls, we could probably analyse further
+	% than this, since we know that the method being called must come
+	% from one of the instance declarations, and we could potentially
+	% (globally) analyse these.
+	%
+	% Aditi builtins are not guaranteed to terminate
+	% - all of them cause the transaction to abort if an error occurs
+	% (e.g. if the database server dies).
+	% - all except `aditi_insert' execute a user-specified goal
+	% which could possibly loop. Analysis of the termination of
+	% goals executed bottom-up is not yet implemented.
+	%
+	% The error message for `generic_call's other than higher-order calls
+	% could be better.
+	%
 	goal_info_get_context(GoalInfo, Context),
 	add_error(Context, horder_call, Params, Info0, Info).
 
@@ -449,7 +456,7 @@ unify_change(OutVar, ConsId, Args0, Modes0, Params, Gamma,
 	params_get_functor_info(Params, FunctorInfo),
 	params_get_var_types(Params, VarTypes),
 	map__lookup(VarTypes, OutVar, Type),
-	\+ type_is_higher_order(Type, _, _),
+	\+ type_is_higher_order(Type, _, _, _),
 	( type_to_type_id(Type, TypeId, _) ->
 		params_get_module_info(Params, Module),
 		params_get_inst_table(Params, InstTable),

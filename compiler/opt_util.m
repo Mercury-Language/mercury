@@ -303,7 +303,7 @@
 
 :- implementation.
 
-:- import_module exprn_aux, llds_out, hlds_pred.
+:- import_module builtin_ops, exprn_aux, llds_out, hlds_pred.
 :- import_module int, string, set, require.
 
 opt_util__get_prologue(Instrs0, ProcLabel, LabelInstr, Comments, Instrs) :-
@@ -1287,6 +1287,11 @@ opt_util__livevals_addr(do_call_class_method, yes).
 opt_util__livevals_addr(do_det_aditi_call, yes).
 opt_util__livevals_addr(do_semidet_aditi_call, yes).
 opt_util__livevals_addr(do_nondet_aditi_call, yes).
+opt_util__livevals_addr(do_aditi_insert, yes).
+opt_util__livevals_addr(do_aditi_delete, yes).
+opt_util__livevals_addr(do_aditi_bulk_insert, yes).
+opt_util__livevals_addr(do_aditi_bulk_delete, yes).
+opt_util__livevals_addr(do_aditi_modify, yes).
 opt_util__livevals_addr(do_not_reached, no).
 
 opt_util__count_temps_instr_list([], R, R, F, F).

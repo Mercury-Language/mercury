@@ -13,14 +13,14 @@ include $(MERCURY_DIR)/Mmake.common
 
 #-----------------------------------------------------------------------------#
 
-CFLAGS		= -g $(DLL_CFLAGS) $(EXTRA_CFLAGS)
+CFLAGS		= -g $(DLL_CFLAGS)
 MGNUC		= MERCURY_ALL_C_INCL_DIRS=" \
 			-I$(RUNTIME_DIR) \
 			-I$(BOEHM_GC_DIR) \
 			-I$(BOEHM_GC_DIR)/include \
 			" \
 		  $(SCRIPTS_DIR)/mgnuc 
-MGNUCFLAGS	= --no-ansi $(EXTRA_MGNUCFLAGS) $(CFLAGS)
+MGNUCFLAGS	= --no-ansi
 MOD2C		= $(SCRIPTS_DIR)/mod2c
 
 #-----------------------------------------------------------------------------#

@@ -138,7 +138,7 @@ bool		MR_profiling = TRUE;
 void	(*address_of_mercury_init_io)(void);
 void	(*address_of_init_modules)(void);
 
-char *	(*MR_address_of_trace_getline)(const char *);
+char *	(*MR_address_of_trace_getline)(const char *, FILE *, FILE *);
 
 #ifdef	MR_USE_EXTERNAL_DEBUGGER
 void	(*MR_address_of_trace_init_external)(void);
@@ -185,6 +185,8 @@ Code	*MR_library_trace_browser;
 
 Code	*(*MR_trace_func_ptr)(const MR_Stack_Layout_Label *, MR_Trace_Port,
 		Unsigned, Unsigned, const char *, int);
+
+void	(*MR_register_module_layout)(const MR_Module_Layout *);
 
 #ifdef USE_GCC_NONLOCAL_GOTOS
 

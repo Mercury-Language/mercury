@@ -56,7 +56,7 @@
 #ifdef	MR_THREAD_SAFE
   #define MR_IF_THREAD_SAFE(x)	x
 #else
-  #define MR_IF_THREAD_SAFE(x)	((void) 0)
+  #define MR_IF_THREAD_SAFE(x)
 #endif
 
 /*

@@ -68,8 +68,11 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
+
+:- import_module instmap, goal_util.
+
 :- import_module term, varset.
-:- import_module std_util, bool, goal_util, require.
+:- import_module std_util, bool, require.
 
 	% The `outside vars', `lambda outside vars', and `quant vars'
 	% fields are inputs; the `nonlocals' field is output; and
@@ -169,6 +172,18 @@ implicitly_quantify_goal(Goal0 - GoalInfo0, Goal - GoalInfo) -->
 		{ GoalInfo1 = GoalInfo0 }
 	),
 	{ goal_info_set_nonlocals(GoalInfo1, NonLocalVars, GoalInfo) }.
+	/* XXX instmap_delta_restrict no longer exists
+	{ goal_info_set_nonlocals(GoalInfo1, NonLocalVars, GoalInfo2) },
+	%
+	% If the non-locals set has shrunk (e.g. because some optimization
+	% optimizes away the other occurrences of a variable, causing it
+	% to become local when previously it was non-local),
+	% then we may need to likewise shrink the instmap delta.
+	%
+	{ goal_info_get_instmap_delta(GoalInfo2, InstMapDelta0) },
+	{ instmap_delta_restrict(InstMapDelta0, NonLocalVars, InstMapDelta) },
+	{ goal_info_set_instmap_delta(GoalInfo2, InstMapDelta, GoalInfo) }.
+	*/
 
 :- pred implicitly_quantify_goal_2(hlds_goal_expr, prog_context,
 				hlds_goal_expr, quant_info, quant_info).
@@ -180,11 +195,12 @@ implicitly_quantify_goal(Goal0 - GoalInfo0, Goal - GoalInfo) -->
 	% We need to keep the structure, though, so that mode
 	% analysis doesn't try to reorder through quantifiers.
 	% (Actually it would make sense to allow mode analysis
-	% to do that, but there reference manual says it doesn't,
+	% to do that, but the reference manual says it doesn't,
 	% so we don't.)  Thus we replace `some(Vars, Goal0)' with
 	% an empty quantifier `some([], Goal)'.
 
-implicitly_quantify_goal_2(some(Vars0, Goal0), Context, some([], Goal)) -->
+implicitly_quantify_goal_2(some(Vars0, CanRemove, Goal0), Context,
+		some([], CanRemove, Goal)) -->
 	quantification__get_outside(OutsideVars),
 	quantification__get_lambda_outside(LambdaOutsideVars),
 	quantification__get_quant_vars(QuantVars),
@@ -304,13 +320,11 @@ implicitly_quantify_goal_2(call(A, B, HeadVars, D, E, F), _,
 		call(A, B, HeadVars, D, E, F)) -->
 	implicitly_quantify_atomic_goal(HeadVars).
 
-implicitly_quantify_goal_2(higher_order_call(PredVar, ArgVars, C, D, E, F), _,
-		higher_order_call(PredVar, ArgVars, C, D, E, F)) -->
-	implicitly_quantify_atomic_goal([PredVar|ArgVars]).
-
-implicitly_quantify_goal_2(class_method_call(TCVar, B, ArgVars, D, E, F), _,
-		class_method_call(TCVar, B, ArgVars, D, E, F)) -->
-	implicitly_quantify_atomic_goal([TCVar|ArgVars]).
+implicitly_quantify_goal_2(generic_call(GenericCall, ArgVars1, C, D), _,
+		generic_call(GenericCall, ArgVars1, C, D)) -->
+	{ goal_util__generic_call_vars(GenericCall, ArgVars0) },
+	{ list__append(ArgVars0, ArgVars1, ArgVars) },
+	implicitly_quantify_atomic_goal(ArgVars).
 
 implicitly_quantify_goal_2(
 		unify(Var, UnifyRHS0, Mode, Unification0, UnifyContext),
@@ -318,10 +332,20 @@ implicitly_quantify_goal_2(
 		unify(Var, UnifyRHS, Mode, Unification, UnifyContext)) -->
 	quantification__get_outside(OutsideVars),
 	quantification__get_lambda_outside(LambdaOutsideVars),
+	{ quantification__get_unify_typeinfos(Unification0, TypeInfoVars) },
 	implicitly_quantify_unify_rhs(UnifyRHS0, Unification0, Context,
 		UnifyRHS, Unification),
 	quantification__get_nonlocals(VarsUnifyRHS),
-	{ set__insert(VarsUnifyRHS, Var, GoalVars) },
+	{ set__insert(VarsUnifyRHS, Var, GoalVars0) },
+	{ set__insert_list(GoalVars0, TypeInfoVars, GoalVars1) },
+	{
+		Unification = construct(_, _, _, _, CellToReuse, _, _),
+		CellToReuse = yes(cell_to_reuse(ReuseVar, _, _))
+	->
+		set__insert(GoalVars1, ReuseVar, GoalVars)
+	;
+		GoalVars = GoalVars1
+	},
 	quantification__update_seen_vars(GoalVars),
 	{ set__intersect(GoalVars, OutsideVars, NonLocalVars1) },
 	{ set__intersect(GoalVars, LambdaOutsideVars, NonLocalVars2) },
@@ -358,11 +382,11 @@ implicitly_quantify_unify_rhs(functor(Functor, ArgVars), Unification, _,
 	{ set__list_to_set(ArgVars, Vars) },
 	quantification__set_nonlocals(Vars).
 implicitly_quantify_unify_rhs(
-		lambda_goal(PredOrFunc, LambdaNonLocals0,
+		lambda_goal(PredOrFunc, EvalMethod, FixModes, LambdaNonLocals0,
 			LambdaVars0, Modes, Det, IMD, Goal0),
 		Unification0,
 		Context,
-		lambda_goal(PredOrFunc, LambdaNonLocals,
+		lambda_goal(PredOrFunc, EvalMethod, FixModes, LambdaNonLocals,
 			LambdaVars, Modes, Det, IMD, Goal),
 		Unification
 		) -->
@@ -445,12 +469,14 @@ implicitly_quantify_unify_rhs(
 	% so we can just use the old modes.
 	%
 	{
-		Unification0 = construct(ConstructVar, ConsId, Args0, ArgModes0)
+		Unification0 = construct(ConstructVar, ConsId, Args0,
+			ArgModes0, Reuse, Uniq, AditiInfo)
 	->
 		map__from_corresponding_lists(Args0, ArgModes0, ArgModesMap),
 		set__to_sorted_list(NonLocals, Args),
 		map__apply_to_list(Args, ArgModesMap, ArgModes),
-		Unification = construct(ConstructVar, ConsId, Args, ArgModes)
+		Unification = construct(ConstructVar, ConsId, Args,
+			ArgModes, Reuse, Uniq, AditiInfo)
 	;
 		% after mode analysis, unifications with lambda variables
 		% should always be construction unifications, but
@@ -619,18 +645,28 @@ quantification__goal_vars(Goal - _GoalInfo, Set, LambdaSet) :-
 		set(prog_var), set(prog_var), set(prog_var)).
 :- mode quantification__goal_vars_2(in, in, in, out, out) is det.
 
-quantification__goal_vars_2(unify(A, B, _, _, _), Set0, LambdaSet0,
+quantification__goal_vars_2(unify(A, B, _, Unification, _), Set0, LambdaSet0,
 		Set, LambdaSet) :-
 	set__insert(Set0, A, Set1),
-	quantification__unify_rhs_vars(B, Set1, LambdaSet0, Set, LambdaSet).
+	(
+		Unification = construct(_, _, _, _, Reuse, _, _),
+		Reuse = yes(cell_to_reuse(ReuseVar, _, _))
+	->
+		set__insert(Set1, ReuseVar, Set2)
+	;
+		Unification = complicated_unify(_, _, TypeInfoVars)
+	->
+		set__insert_list(Set1, TypeInfoVars, Set2)
+	;
+		Set2 = Set1
+	),
+	quantification__unify_rhs_vars(B, Set2, LambdaSet0, Set, LambdaSet).
 
-quantification__goal_vars_2(higher_order_call(PredVar, ArgVars, _, _, _, _),
+quantification__goal_vars_2(generic_call(GenericCall, ArgVars1, _, _),
 		Set0, LambdaSet, Set, LambdaSet) :-
-	set__insert_list(Set0, [PredVar | ArgVars], Set).
-
-quantification__goal_vars_2(class_method_call(TCVar, _, ArgVars, _, _, _),
-		Set0, LambdaSet, Set, LambdaSet) :-
-	set__insert_list(Set0, [TCVar | ArgVars], Set).
+	goal_util__generic_call_vars(GenericCall, ArgVars0),
+	set__insert_list(Set0, ArgVars0, Set1),
+	set__insert_list(Set1, ArgVars1, Set).
 
 quantification__goal_vars_2(call(_, _, ArgVars, _, _, _), Set0, LambdaSet,
 		Set, LambdaSet) :-
@@ -650,7 +686,7 @@ quantification__goal_vars_2(switch(Var, _Det, Cases, _), Set0, LambdaSet0,
 	set__insert(Set0, Var, Set1),
 	case_list_vars_2(Cases, Set1, LambdaSet0, Set, LambdaSet).
 
-quantification__goal_vars_2(some(Vars, Goal), Set0, LambdaSet0,
+quantification__goal_vars_2(some(Vars, _, Goal), Set0, LambdaSet0,
 		Set, LambdaSet) :-
 	quantification__goal_vars(Goal, Set1, LambdaSet1),
 	set__delete_list(Set1, Vars, Set2),
@@ -693,13 +729,23 @@ quantification__unify_rhs_vars(functor(_Functor, ArgVars), Set0, LambdaSet,
 		Set, LambdaSet) :-
 	set__insert_list(Set0, ArgVars, Set).
 quantification__unify_rhs_vars(
-		lambda_goal(_POrF, _NonLocals, LambdaVars, _M, _D, _IMD, Goal), 
+		lambda_goal(_POrF, _E, _F, _N, LambdaVars, _M, _D, _IMD, Goal), 
 		Set, LambdaSet0, Set, LambdaSet) :-
 	% Note that the NonLocals list is not counted, since all the 
 	% variables in that list must occur in the goal.
 	quantification__goal_vars(Goal, GoalVars),
 	set__delete_list(GoalVars, LambdaVars, GoalVars1),
 	set__union(LambdaSet0, GoalVars1, LambdaSet).
+
+:- pred quantification__get_unify_typeinfos(unification, list(prog_var)).
+:- mode quantification__get_unify_typeinfos(in, out) is det.
+
+quantification__get_unify_typeinfos(Unification, TypeInfoVars) :-
+	( Unification = complicated_unify(_, _, TypeInfoVars0) ->
+		TypeInfoVars = TypeInfoVars0
+	;
+		TypeInfoVars = []
+	).
 
 %-----------------------------------------------------------------------------%
 

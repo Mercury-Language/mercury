@@ -24,7 +24,6 @@ use_trail=false
 reserve_tag=false
 use_solve_equal=false
 use_minimal_model=false
-args_method=compact
 stack_trace=false
 require_tracing=false
 low_level_debug=false

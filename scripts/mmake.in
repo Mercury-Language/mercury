@@ -1,7 +1,7 @@
 #! /bin/sh
 # @configure_input@
 #---------------------------------------------------------------------------#
-# Copyright (C) 1995-1998 The University of Melbourne.
+# Copyright (C) 1995-1999 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -40,8 +40,8 @@ Options:
 		Print this usage message.
 Targets:
 	<module>.depend:
-		Make the file \`<module>.dep'.  This step is required
-		in preparation for the targets below.
+		Make the files \`<module>.dep' and \`<module>.dv'.  This
+		step is required in preparation for the targets below.
 	<module>:
 		Compile and link a Mercury program with main module
 		\`<module>.m' to produce an executable.
@@ -144,6 +144,10 @@ fi
 
 case $use_subdirs in
 	no)
+		dvs="`echo *.dv`"
+		if [ "$dvs" = "*.dv" ]; then
+			dvs=""
+		fi
 		deps="`echo *.dep`"
 		if [ "$deps" = "*.dep" ]; then
 			deps=""
@@ -154,6 +158,10 @@ case $use_subdirs in
 		fi
 		;;
 	yes)
+		dvs="`echo Mercury/deps/*.dv`"
+		if [ "$dvs" = "Mercury/deps/*.dv" ]; then
+			dvs=""
+		fi
 		deps="`echo Mercury/deps/*.dep`"
 		if [ "$deps" = "Mercury/deps/*.dep" ]; then
 			deps=""
@@ -213,6 +221,13 @@ case "$@" in
 		;;
 esac
 
+# For backwards compatibility/bootstrapping:
+# If no `.dv' files exist, use the `.dep' files instead.
+if [ "$dvs" = "" ] ; then
+	dvs=$deps
+	deps=
+fi
+
 if $verbose; then
 	echo MMAKE=$MMAKE
 	echo export MMAKE
@@ -224,7 +239,7 @@ if $verbose; then
 	echo export MERCURY_INT_DIR
 	echo MERCURY_DEFAULT_GRADE=$MERCURY_DEFAULT_GRADE
 	echo export MERCURY_DEFAULT_GRADE
-	echo cat ${MMAKE_VARS} $deps $ds $mmake ${MMAKE_RULES} ">>" $tmp
+	echo cat ${MMAKE_VARS} $dvs $ds $mmake $deps ${MMAKE_RULES} ">>" $tmp
 	echo ${MMAKE_MAKE} ${MMAKE_MAKE_OPTS} -f $tmp -r "$@"
 fi
 export MMAKE
@@ -232,10 +247,10 @@ export MMAKE_MAKE_CMD
 export MMAKE_USE_SUBDIRS
 export MERCURY_INT_DIR
 export MERCURY_DEFAULT_GRADE
-cat ${MMAKE_VARS} $deps $ds $mmake ${MMAKE_RULES} > $tmp
+cat ${MMAKE_VARS} $dvs $ds $mmake $deps ${MMAKE_RULES} > $tmp
 case $# in
 	# Note that we can't use `exec' here, because if we did that,
 	# that `trap' code which removes $tmp would never get executed.
-	0) ${MMAKE_MAKE} -f $tmp -r ;;
+	0) ${MMAKE_MAKE} ${MMAKE_MAKE_OPTS} -f $tmp -r ;;
 	*) ${MMAKE_MAKE} ${MMAKE_MAKE_OPTS} -f $tmp -r "$@" ;;
 esac
