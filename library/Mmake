@@ -98,6 +98,8 @@ dates		:
 os: $(library.os)
 cs: $(library.cs)
 
+library.pic_os=$(library.os:.o=.pic_o)
+
 #-----------------------------------------------------------------------------#
 
 .PHONY: libmercury
@@ -107,8 +109,8 @@ libmercury.a : $(library.os)
 	ar cr libmercury.a $(library.os)
 	$(RANLIB) libmercury.a
 
-libmercury.so : $(library.os)
-	$(MGNUC) $(MGNUCFLAGS) -shared -o libmercury.so $(library.os)
+libmercury.so : $(library.pic_os)
+	$(MGNUC) $(MGNUCFLAGS) -shared -o libmercury.so $(library.pic_os)
 
 #-----------------------------------------------------------------------------#
 
