@@ -95,9 +95,30 @@ main_2(ok(OptionTable0), Args) -->
 				Tags_Method = Tags_Method1
 			},
 		        globals__io_init(OptionTable, GC_Method, Tags_Method),
+			% --gc conservative implies --no-reclaim-heap-*
+			( { GC_Method = conservative } ->
+				globals__io_set_option(
+					reclaim_heap_on_semidet_failure,
+					bool(no)
+				),
+				globals__io_set_option(
+					reclaim_heap_on_nondet_failure,
+					bool(no)
+				)
+			;
+				[]
+			),
 			% --tags none implies --num-tag-bits 0
 			( { Tags_Method = none } ->
 				globals__io_set_option(num_tag_bits, int(0))
+			;	
+				[]
+			),
+			% --very-verbose implies --verbose
+			globals__io_lookup_bool_option(very_verbose,
+				VeryVerbose),
+			( { VeryVerbose = yes } ->
+				globals__io_set_option(verbose, bool(yes))
 			;	
 				[]
 			),
@@ -221,7 +242,7 @@ report_error(ErrorMessage) -->
 usage -->
 	io__progname_base("mercury_compile", ProgName),
 	io__stderr_stream(StdErr),
- 	io__write_string(StdErr, "Mercury compiler version 0.1\n"),
+ 	io__write_string(StdErr, "Mercury compiler version 0.2\n"),
 	io__write_string(StdErr, "Usage: "),
 	io__write_string(StdErr, ProgName),
 	io__write_string(StdErr, " [<options>] <module>\n"),
@@ -612,11 +633,11 @@ generate_dependencies_2([], ModuleName, DepsMap, DepStream) -->
 	io__write_string(DepStream, ModuleName),
 	io__write_string(DepStream, ".qls)\n\n"),
 
-	io__write_string(DepStream, "clean_progs: clean_"),
+	io__write_string(DepStream, "clean_progs: clean_prog_"),
 	io__write_string(DepStream, ModuleName),
 	io__write_string(DepStream, "\n\n"),
 
-	io__write_string(DepStream, "clean_"),
+	io__write_string(DepStream, "clean_prog_"),
 	io__write_string(DepStream, ModuleName),
 	io__write_string(DepStream, ":\n"),
 	io__write_string(DepStream, "\t-rm -f "),
