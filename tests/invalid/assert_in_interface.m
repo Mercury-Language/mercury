@@ -2,7 +2,7 @@
 	% imported in the implementation of the module.
 :- module assert_in_interface.
 :- interface.
-:- assertion all [X, Y] list__last(X, Y).
+:- promise all [X, Y] list__last(X, Y).
 
 :- implementation.
 :- import_module list.

@@ -2,7 +2,7 @@
 	% only in the implementation
 :- module tricky_assert1.
 :- interface.
-:- assertion tricky_assert1__local.
+:- promise tricky_assert1__local.
 
 :- implementation.
 :- pred tricky_assert1__local is semidet.
