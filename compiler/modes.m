@@ -8,7 +8,15 @@
 % Main author: fjh.
 %
 % This file contains a mode-checker.
-% Still somewhat incomplete.
+% Basically what this module does is to traverse the HLDS,
+% mode-checking each procedure.  For each procedure,
+% it will reorder the procedure body if necessary, check that the
+% procedure body is mode-correct, annotate each sub_goal with its mode.
+% This pass also determines whether or not unifications can fail.
+% It also converts unifications with higher-order predicate terms into
+% unifications with lambda expressions.
+
+% The input to this pass must be type-correct and in superhomogeneous form.
 
 % XXX we need to allow unification of free with free even when both
 %     *variables* are live, if one of the particular *sub-nodes* is 

@@ -425,14 +425,16 @@ inst_table_set_shared_insts(inst_table(A, B, C, D, _), SharedInsts,
 	% these with various special cases (construct/deconstruct/assign/
 	% simple_test/complicated_unify).
 
-:- type unify_rhs	--->	var(var)
-			;	functor(const, list(var))
-			;	lambda_goal(list(var), list(mode), determinism,
-						hlds__goal).
+:- type unify_rhs
+	--->	var(var)
+	;	functor(const, list(var))
+	;	lambda_goal(list(var), list(mode), determinism, hlds__goal).
 
 :- type unification
-		% Y = f(X) where the top node of Y is output,
-		% written as Y := f(X).
+		% A construction unification is a unification with a functor
+		% or lambda expression which binds the LHS variable,
+		% e.g. Y = f(X) where the top node of Y is output,
+		% Constructions are written using `:=', e.g. Y := f(X).
 	--->	construct(
 			var,		% the variable being constructed
 					% e.g. Y in above example
@@ -440,23 +442,35 @@ inst_table_set_shared_insts(inst_table(A, B, C, D, _), SharedInsts,
 					% f/1 in the above example
 			list(var),	% the list of argument variables
 					% [X] in the above example
+					% For a unification with a lambda
+					% expression, this is the list of
+					% the non-local variables of the
+					% lambda expression.
 			list(uni_mode)	% The list of modes of the arguments
 					% sub-unifications.
+					% For a unification with a lambda
+					% expression, this is the list of
+					% modes of the non-local variables
+					% of the lambda expression.
 		)
 
-		% Y = f(X) where the top node of Y is input,
-		% written Y == f(X).
+		% A deconstruction unification is a unification with a functor
+		% for which the LHS variable was already bound,
+		% e.g. Y = f(X) where the top node of Y is input.
+		% Deconstructions are written using `==', e.g. Y == f(X).
+		% Note that deconstruction of lambda expressions is
+		% a mode error.
 	;	deconstruct(
-			var,		% the variable being deconstructed
-					% e.g. Y in the above example
-			cons_id,	% the cons_id of the functor
-					% f/1 in the above example
-			list(var),	% the list of argument variables
-					% [X] in the above example
-			list(uni_mode), % the lists of modes of the argument
-					% sub-unifications
-			can_fail	% whether or not the unification
-					% can fail
+			var,		% The variable being deconstructed
+					% e.g. Y in the above example.
+			cons_id,	% The cons_id of the functor,
+					% e.g. f/1 in the above example
+			list(var),	% The list of argument variables,
+					% e.g. [X] in the above example.
+			list(uni_mode), % The lists of modes of the argument
+					% sub-unifications.
+			can_fail	% Whether or not the unification
+					% could possibly fail.
 		)
 
 		% Y = X where the top node of Y is output,
@@ -478,9 +492,9 @@ inst_table_set_shared_insts(inst_table(A, B, C, D, _), SharedInsts,
 		% generated unification predicate for that
 		% type & mode.
 	;	complicated_unify(
-			uni_mode,	% the mode of the unification
-			can_fail,	% whether or not it can fail
-			follow_vars	% the suggested locations where
+			uni_mode,	% The mode of the unification.
+			can_fail,	% Whether or not it could possibly fail
+			follow_vars	% The suggested locations where
 					% variables should be placed when
 					% generating code that follows
 					% the call to the out-of-line
