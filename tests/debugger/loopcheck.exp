@@ -1,4 +1,6 @@
        1:      1  1 CALL pred loopcheck:main/2-0 (det) loopcheck.m:13
+mdb> echo on
+Command echo enabled.
 mdb> context nextline
 Contexts will be printed on the next line.
 mdb> continue -a
