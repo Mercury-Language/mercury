@@ -54,6 +54,8 @@
 :- implementation.
 
 :- import_module hlds_goal, hlds_data, make_hlds.
+:- import_module prog_util, mode_util, inst_match, llds.
+
 :- import_module bool, string, std_util, require.
 
 :- type lambda_info --->
@@ -225,24 +227,19 @@ lambda__transform_lambda(Vars, Modes, Detism, OrigNonLocals0, LambdaGoal,
 	% where `p' has determinism `Detism' with
 	%	`p(X1, X2, ...)'
 	%
-	% XXX This optimization is only valid if the modes of the Xi are
+	% This optimization is only valid if the modes of the Xi are
 	% input, since only input arguments can be curried.
-	% Until this check is added, this optimization is incorrect,
-	% so I have disabled it - fjh.
 
 	LambdaGoal = _ - LambdaGoalInfo,
 	goal_info_get_nonlocals(LambdaGoalInfo, NonLocals0),
 	set__delete_list(NonLocals0, Vars, NonLocals),
 	set__to_sorted_list(NonLocals, ArgVars1),
 	( 
-/****************
-XXX this optimization temporarily disabled, see comment above
-
-		LambdaGoal = call(PredId0, ModeId0, CallVars, _, _, PredName, _)
+		LambdaGoal = call(PredId0, ProcId0, CallVars, _, _, PredName, _)
 					- _,
 		list__remove_suffix(CallVars, Vars, InitialVars),
 
-		module_info_pred_proc_info(ModuleInfo0, PredId0, ModeId0, _,
+		module_info_pred_proc_info(ModuleInfo0, PredId0, ProcId0, _,
 			Call_ProcInfo),
 		proc_info_interface_code_model(Call_ProcInfo, Call_CodeModel),
 		determinism_to_code_model(Detism, CodeModel),
@@ -253,15 +250,21 @@ XXX this optimization temporarily disabled, see comment above
 			% But det is compatible with nondet.
 		( CodeModel = Call_CodeModel
 		; CodeModel = model_non, Call_CodeModel = model_det
+		),
+			% check that the curried arguments are all input
+		proc_info_argmodes(Call_ProcInfo, Call_ArgModes),
+		list__length(InitialVars, NumInitialVars),
+		list__take(NumInitialVars, Call_ArgModes, CurriedArgModes),
+		\+ (	list__member(Mode, CurriedArgModes), 
+			\+ mode_is_input(ModuleInfo0, Mode)
 		)
 	->
 		ArgVars = InitialVars,
 		PredId = PredId0,
-		ModeId = ModeId0,
+		ProcId = ProcId0,
 		unqualify_name(PredName, PName),
 		ModuleInfo = ModuleInfo0
 	;
-****************/
 		% Prepare to create a new predicate for the lambda
 		% expression: work out the arguments, module name, predicate
 		% name, arity, arg types, determinism,
