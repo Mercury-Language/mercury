@@ -744,18 +744,20 @@ ml_gen_closure_wrapper(PredId, ProcId, Offset, NumClosureArgs,
 
 	% then insert the `closure_arg' parameter
 	{ ClosureArgType = mlds__generic_type },
+	{ ClosureArgDeclType = list__det_head(ml_make_boxed_types(1)) },
 	{ ClosureArgName = var_name("closure_arg", no) },
-	% The GC doesn't need to trace the `closure_arg' parameter,
-	% since it is not live at any point during which GC could occur
-	% (its value is immediately assigned to the `closure' local
-	% variable, and `closure_arg' is never used after that).
-	% However, the closure_arg does need to be stored in the GC
-	% stack frame struct, since it holds the types of other variables.
-	% So we give it an empty GCTraceCode field.
-	% This tells ml_elim_nested.m to put it in the struct.
-	{ MLDS_Context = mlds__make_context(Context) },
-	{ ClosureArgGCTraceCode = yes(mlds__statement(mlds__block([], []),
-		MLDS_Context)) },
+	% We can't use WrapperArgTypes here,
+	% because we don't have type_infos for the type variables in
+	% WrapperArgTypes; those type variables come from the callee.
+	% But when copying closures, we don't care what the types of the
+	% not-yet-applied arguments are.  So we can just use dummy values here.
+	{ HigherOrderArgTypes = list__duplicate(list__length(WrapperArgTypes),
+		c_pointer_type) },
+	{ LambdaEvalMethod = normal },
+	{ construct_higher_order_type(PredOrFunc, LambdaEvalMethod,
+		HigherOrderArgTypes, ClosureActualType) },
+	ml_gen_maybe_gc_trace_code(ClosureArgName, ClosureArgDeclType,
+		ClosureActualType, Context, ClosureArgGCTraceCode),
 	{ ClosureArg = mlds__argument(
 		data(var(ClosureArgName)),
 		ClosureArgType,
@@ -786,18 +788,11 @@ ml_gen_closure_wrapper(PredId, ProcId, Offset, NumClosureArgs,
 	{ ClosureArgName = mlds__var_name("closure_arg", no) },
 	{ ClosureType = mlds__generic_type },
 	{ ClosureDeclType = list__det_head(ml_make_boxed_types(1)) },
-	% We can't use WrapperArgTypes here,
-	% because we don't have type_infos for the type variables in
-	% WrapperArgTypes; those type variables come from the callee.
-	% But when copying closures, we don't care what the types of the
-	% not-yet-applied arguments are.  So we can just use dummy values here.
-	{ HigherOrderArgTypes = list__duplicate(list__length(WrapperArgTypes),
-		c_pointer_type) },
-	{ LambdaEvalMethod = normal },
-	{ construct_higher_order_type(PredOrFunc, LambdaEvalMethod,
-		HigherOrderArgTypes, ClosureActualType) },
+	% The GC tracing code for `closure' is essentially the same as
+	% for `closure_arg' (see above)
 	ml_gen_maybe_gc_trace_code(ClosureName, ClosureDeclType,
 		ClosureActualType, Context, ClosureGCTraceCode),
+	{ MLDS_Context = mlds__make_context(Context) },
 	{ ClosureDecl = ml_gen_mlds_var_decl(var(ClosureName),
 		ClosureType, ClosureGCTraceCode, MLDS_Context) },
 	ml_gen_var_lval(ClosureName, ClosureType, ClosureLval),
