@@ -276,47 +276,23 @@ unify_gen__generate_sub_assign(ref(Lvar), ref(Rvar), empty) -->
 							code_info, code_info).
 :- mode unify_gen__generate_sub_test(in, in, out, in, out) is det.
 
-unify_gen__generate_sub_test(lval(Lval), lval(Rval), Code) -->
+unify_gen__generate_sub_test(UnivalX, UnivalY, Code) -->
+	unify_gen__evaluate_uni_val(UnivalX, LvalX, CodeX),
+	unify_gen__evaluate_uni_val(UnivalY, LvalY, CodeY),
 	code_info__get_fall_through(FallThrough),
-	{ Code = node([
-		test(lval(Lval), lval(Rval), FallThrough) -
-				"simple test in [de]construction"
-	]) }.
-unify_gen__generate_sub_test(lval(Lval), ref(Rvar), Code) -->
-	code_info__flush_variable(Rvar, Code0),
-	code_info__get_variable_register(Rvar, Rval),
-	code_info__get_fall_through(FallThrough),
-	{ Code = tree(
-		node(Code0),
-		node([
-			test(lval(Lval), lval(Rval), FallThrough) -
-					"simple test in [de]construction"
-		])
-	)}.
-unify_gen__generate_sub_test(ref(Lvar), lval(Rval), Code) -->
-	code_info__flush_variable(Lvar, Code0),
-	code_info__get_variable_register(Lvar, Lval),
-	code_info__get_fall_through(FallThrough),
-	{ Code = tree(
-		node(Code0),
-		node([
-			test(lval(Lval), lval(Rval), FallThrough) -
-					"simple test in [de]construction"
-		])
-	)}.
-unify_gen__generate_sub_test(ref(Lvar), ref(Rvar), Code) -->
-	code_info__flush_variable(Lvar, Code0),
-	code_info__get_variable_register(Lvar, Lval),
-	code_info__flush_variable(Rvar, Code0),
-	code_info__get_variable_register(Rvar, Rval),
-	code_info__get_fall_through(FallThrough),
-	{ Code = tree(
-		node(Code0),
-		node([
-			test(lval(Lval), lval(Rval), FallThrough) -
-					"simple test in [de]construction"
-		])
-	)}.
+	{ Code = tree(CodeX, tree(CodeY,
+		node([test(lval(LvalX), lval(LvalY), FallThrough) -
+				"simple test in [de]construction"])
+	)) }.
+
+:- pred unify_gen__evaluate_uni_val(uni_val, lval, code_tree,
+					code_info, code_info).
+:- mode unify_gen__evaluate_uni_val(in, out, out, in, out) is det.
+			
+unify_gen__evaluate_uni_val(lval(Lval), Lval, empty) --> [].
+unify_gen__evaluate_uni_val(ref(Var), Lval, node(Code)) -->
+	code_info__flush_variable(Var, Code),
+	code_info__get_variable_register(Var, Lval).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
