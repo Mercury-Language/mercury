@@ -253,7 +253,7 @@ typecheck_pred_types_2([PredId | PredIds], ModuleInfo0, ModuleInfo,
 		{
 		pred_info_arg_types(PredInfo0, _, ArgTypes),
 		pred_info_procedures(PredInfo0, Procs0),
-		typecheck_propagate_type_info_into_proc_modes(
+		typecheck_propagate_types_into_proc_modes(
 		    ModuleInfo0, ProcIds, ArgTypes, Procs0, Procs),
 		pred_info_set_procedures(PredInfo0, Procs, PredInfo),
 		map__set(Preds0, PredId, PredInfo, Preds),
@@ -305,7 +305,7 @@ typecheck_pred_type(PredId, PredInfo0, ModuleInfo, ModeError,
 			pred_info_arg_types(PredInfo3, _, ArgTypes),
 			pred_info_procedures(PredInfo3, Procs1),
 			pred_info_procids(PredInfo3, ProcIds),
-			typecheck_propagate_type_info_into_proc_modes(
+			typecheck_propagate_types_into_proc_modes(
 				ModuleInfo, ProcIds, ArgTypes, Procs1, Procs),
 			pred_info_set_procedures(PredInfo3, Procs, PredInfo)
 		;
@@ -314,21 +314,21 @@ typecheck_pred_type(PredId, PredInfo0, ModuleInfo, ModeError,
 		MaybePredInfo = yes(PredInfo)
 	).
 
-:- pred typecheck_propagate_type_info_into_proc_modes(module_info,
+:- pred typecheck_propagate_types_into_proc_modes(module_info,
 		list(proc_id), list(type), proc_table, proc_table).
-:- mode typecheck_propagate_type_info_into_proc_modes(in,
+:- mode typecheck_propagate_types_into_proc_modes(in,
 		in, in, in, out) is det.		
 
-typecheck_propagate_type_info_into_proc_modes(_, [], _, Procs, Procs).
-typecheck_propagate_type_info_into_proc_modes(ModuleInfo, [ProcId | ProcIds],
+typecheck_propagate_types_into_proc_modes(_, [], _, Procs, Procs).
+typecheck_propagate_types_into_proc_modes(ModuleInfo, [ProcId | ProcIds],
 		ArgTypes, Procs0, Procs) :-
 	map__lookup(Procs0, ProcId, ProcInfo0),
 	proc_info_argmodes(ProcInfo0, ArgModes0),
-	propagate_type_info_mode_list(ArgTypes, ModuleInfo,
+	propagate_types_into_mode_list(ArgTypes, ModuleInfo,
 		ArgModes0, ArgModes),
 	proc_info_set_argmodes(ProcInfo0, ArgModes, ProcInfo),
 	map__det_update(Procs0, ProcId, ProcInfo, Procs1),
-	typecheck_propagate_type_info_into_proc_modes(ModuleInfo, ProcIds,
+	typecheck_propagate_types_into_proc_modes(ModuleInfo, ProcIds,
 		ArgTypes, Procs1, Procs).
 
 :- pred typecheck_pred_type_2(pred_id, pred_info, module_info,
