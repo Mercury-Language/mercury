@@ -399,9 +399,10 @@ maybe-target-GRADEFLAGS- = $(GRADEFLAGS-$(patsubst $(cs_subdir)%_init.c,%,$@))
 maybe-target-GRADEFLAGS-undefined =
 
 TARGET_MCFLAGS = \
-  $(maybe-base-MCFLAGS-$(findstring undefined,$(origin MCFLAGS-$*)))
-maybe-base-MCFLAGS- = $(MCFLAGS-$*)
-maybe-base-MCFLAGS-undefined =
+  $(maybe-target-MCFLAGS-$(findstring undefined,\
+  		$(origin MCFLAGS-$(notdir $(basename $@)))))
+maybe-target-MCFLAGS- = $(MCFLAGS-$(notdir $(basename $@)))
+maybe-target-MCFLAGS-undefined =
 
 TARGET_C2INITFLAGS = \
   $(maybe-target-C2INITFLAGS-$(findstring undefined,\
