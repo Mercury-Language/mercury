@@ -143,8 +143,8 @@ while : ; do
 done
 
 case "$grade" in
-	*.cnstr) CNSTR_OPTS="-DCONSTRAINTS"
-		grade="` expr $grade : '\(.*\).cnstr' `"
+	*.tr) CNSTR_OPTS="-DMR_USE_TRAIL"
+		grade="` expr $grade : '\(.*\).tr' `"
 		;;
 	*)
 		CNSTR_OPTS=""
