@@ -324,7 +324,7 @@ get_functor_impl(TypeDesc, FunctorNumber,
 		TypeInfoList = iterate(1, Arity, (func(I) =
 			unsafe_cast(TypeInfo ^ var_arity_type_info_index(I)))
 		),
-		Names = list__duplicate(Arity, null)
+		Names = list__duplicate(Arity, null_string)
 
 	; TypeCtorRep = int,
 		fail
@@ -418,7 +418,7 @@ get_functor_du(TypeCtorRep, TypeInfo, TypeCtorInfo, FunctorNumber,
 		Names = iterate(0, Arity - 1,
 				(func(I) = ArgNames ^ unsafe_index(I)))
 	;
-		Names = list__duplicate(Arity, null)
+		Names = list__duplicate(Arity, null_string)
 	).
 
 :- pred get_functor_enum(type_ctor_rep::in(enum),
@@ -2258,23 +2258,23 @@ null(_) :-
 
  %--------------------------%
 
-:- func null = T.
+:- func null_string = string.
 :- pragma foreign_proc("C",
-	null = (T::out),
+	null_string = (Str::out),
 	[will_not_call_mercury, thread_safe, promise_pure],
 "
-	T = (MR_Word) NULL;
+	Str = (MR_Word) NULL;
 ").
 :- pragma foreign_proc("C#",
-	null = (T::out),
+	null_string = (Str::out),
 	[will_not_call_mercury, thread_safe, promise_pure],
 "
-	T = 0;
+	Str = null;
 ").
-null = _ :-
+null_string = _ :-
 	% This version is only used for back-ends for which there is no
 	% matching foreign_proc version.
-	private_builtin__sorry("rtti_implementation__null/0").
+	private_builtin__sorry("rtti_implementation__null_string/0").
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
