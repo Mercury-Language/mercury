@@ -93,6 +93,7 @@ Mercury code typically has a very different style to most Prolog code.
 * IO::              Input and Output
 * FailLoops::       Failure Driven Loops, Assert and Retract
 * Commits::         Cuts
+* Accumulators::    Accumulators and Difference lists
 @c * Problems::        Common Problems
 @end menu
 
@@ -352,7 +353,7 @@ In any case, the transformed code is more declarative
 and hence easier to maintain and understand for humans
 and easier for the compiler to optimize.
 
-@node Commits,, FailLoops, Top
+@node Commits, Accumulators, FailLoops, Top
 @section Cuts and Indexing
 
 The cut operator is not part of the Mercury language.
@@ -426,5 +427,28 @@ Second, in some situations the code generator
 can implement an indexed disjunction (which we call a @emph{switch})
 using a jump table or a hash table,
 which is faster than a chain of if-then-elses.
+
+@node Accumulators,, Commits, Top
+@section Accumulators and Difference lists
+
+Mercury does not allow the kind of aliasing that is used
+in difference lists. Prolog programs using difference lists fall
+in to two categories --- those that contain circular dataflow
+and thoes that contain ``left-to-right'' dataflow.
+Programs in the former category are more difficult to translate
+into Mercury since the current implementation supports only programs
+that have a left-to-right dataflow.
+
+Prolog programs that use difference lists but still have a left-to-right
+dataflow can mostly translated into Mercury fairly easily. The way to
+do this is to transform the difference list into an accumulator,
+possibly introducing a call to @code{list__reverse} at the end.
+In most circumstances, the need for difference lists is negated by
+the simple fact that Mercury is efficient enough for them to be
+unnecessary. Occasionally they can lead to a significant improvement
+in the complexity of an operation (insertions into a long queue,
+for example) and in these situations an alternative solution should
+be sought (in the case of queues, the Mercury library uses the
+pair of lists proposed by Richard O'Keefe).
 
 @bye

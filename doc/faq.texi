@@ -67,15 +67,17 @@ into another language, under the above conditions for modified versions.
 @end titlepage
 @page
 
+@iftex
+@chapter The Mercury Frequently Asked Questions list - BETA TEST version, July 1995
+@end iftex
 @node Top,,, (DIR)
 @ifinfo
-@chapter The Mercury Frequently Asked Questions list - BETA TEST version, July 1995
-@end ifinfo
 @menu
 * Programming::     Common programming errors
 * Unimplemented::   Problems caused by unimplemented Mercury features
 * Last resort::     What to do when all else fails
 @end menu
+@end ifinfo
 
 @node Programming, Unimplemented,, Top
 @section Common programming errors
@@ -84,6 +86,7 @@ into another language, under the above conditions for modified versions.
 
 @item
 @emph{What does the error message ``undefined symbol @samp{'.'/2}'' mean?}
+@sp 1
 
 You need to explicitly import the @samp{list} module
 
@@ -94,15 +97,32 @@ You need to explicitly import the @samp{list} module
 @noindent
 if your code uses lists.
 
+@sp 1
 @item
 @emph{Why doesn't @samp{X <= 3} work?}
+@sp 1
 
 In Mercury, less-than-or-equal to is written as @samp{=<} not
 as @samp{<=}, which is used for reverse implication.
 
+@sp 1
+@item
+@emph{I defined a type like this: @samp{:- type number ---> int ; float.}
+Why doesn't this work?}
+@sp 1
+
+You tried to define a type that is an undiscriminated union of two types,
+which is not allowed by the Mercury type system.
+The declaration above defines an enumerated type with two constants,
+``int'' and ``float''.
+This is not what you want, but it is legal Mercury,
+which is why you don't get an error message on the type declaration itself.
+
+@sp 1
 @item
 @emph{I get a ``scope error'' in an if-then-else.
 I checked and both branches bind the same variables. What is the error?}
+@sp 1
 
 This error is generally happens if you attempt bind non-local variables
 in the @emph{condition} of the if-then-else.  For example, the following
@@ -172,9 +192,14 @@ lookup(Map, Key, Value) :-
 @item
 @emph{How can I avoid getting a compile-time error when I try to
 fill in a partially instantiated data structure?}
+@sp 1
 
-At the moment, you can't if XXX.
-The reason is that XXX
+At the moment, you can create a partially instantiated data structure,
+but you can't fill in the holes.
+The reason is that the code that does the filling in
+must temporarily alias two variables together,
+and the current mode checker does not allow this.
+This limitation will go away in the future.
 
 @end enumerate
 
@@ -185,17 +210,20 @@ The reason is that XXX
 
 @item
 @emph{I'm getting an error message that I don't understand.  What can I do?}
+@sp 1
 
-Try compiling with the @samp{-e} (@samp{--verbose-errors}) option.
+Try compiling with the @samp{-E} (@samp{--verbose-errors}) option.
 This option causes the compiler to give even more verbose descriptions
 than usual.
 
+@sp 1
 @item
-@emph{I followed the instructions in the user's guide, but it still didn't
-work.  What do I do next?}
+@emph{I followed the instructions in the user's guide,
+but it still didn't work. What do I do next?}
+@sp 1
 
-Send email to @code{mercury-bugs@@cs.mu.oz.au}, and we'll try to solve your
-problem.
+Send email to @code{mercury-bugs@@cs.mu.oz.au},
+and we'll try to solve your problem.
 
 @end enumerate
 
