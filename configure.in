@@ -2295,8 +2295,8 @@ case "$host" in
 		AC_MSG_RESULT(yes)
 		SHARED_LIBS="$(MATH_LIB) -lc"	# don't link in libgcc.a
 		SHARED_LIBS_SH="$MATH_LIB -lc"	# don't link in libgcc.a
-		LINK_SHARED_OBJ="$CC -G"
-		LINK_SHARED_OBJ_SH="$CC -G"
+		LINK_SHARED_OBJ="$CC -shared -mimpure-text"
+		LINK_SHARED_OBJ_SH="$CC -shared -mimpure-text"
 		ERROR_UNDEFINED="-Wl,-z,defs"
 		EXE_RPATH_OPT="-R"
 		EXE_RPATH_SEP=" -R"
