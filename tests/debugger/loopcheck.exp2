@@ -26,7 +26,7 @@ mdb> continue -a
                          loopcheck.m:21 (from loopcheck.m:14)
       12:      1  1 EXCP pred loopcheck:main/2-0 (det)
                          loopcheck.m:14
-Uncaught exception:
+Uncaught Mercury exception:
 Software Error: detected infinite recursion in pred loopcheck:loop/1
 Last trace event was event #12.
 Last trace event before the unhandled exception was event #8.

@@ -54,7 +54,7 @@ browser> quit
 mdb> b std_util__det_arg
 mdb: there is no such procedure.
 mdb> c
-Uncaught exception:
+Uncaught Mercury exception:
 Software Error: det_arg: argument has wrong type
 Last trace event was event #7.
 Last trace event before the unhandled exception was event #4.

@@ -8,7 +8,7 @@ mdb> finish
 mdb> print *
        X (arg 1)              	42
 mdb> continue
-Uncaught exception:
+Uncaught Mercury exception:
 Software Error: oops
 Last trace event was event #5.
 Last trace event before the unhandled exception was event #3.

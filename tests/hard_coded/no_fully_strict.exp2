@@ -1,4 +1,4 @@
-Uncaught exception:
+Uncaught Mercury exception:
 Software Error: oops
 Stack dump follows:
    0       pred exception:throw_impl/1-0 (erroneous) (exception.m:NNNN)

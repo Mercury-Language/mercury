@@ -6,7 +6,7 @@ mdb> exception
 mdb> print *
        Message (arg 1)        	"oops"
 mdb> continue
-Uncaught exception:
+Uncaught Mercury exception:
 Software Error: oops
 Last trace event was event #9.
 Last trace event before the unhandled exception was event #4.

@@ -1,2 +1,2 @@
-Uncaught exception:
+Uncaught Mercury exception:
 Software Error: detected infinite recursion in pred loopcheck:loop/1
