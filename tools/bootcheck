@@ -131,7 +131,9 @@ export MMAKE_VPATH
 MMAKE_DIR=../scripts
 export MMAKE_DIR
 
-if (cd stage2/library ; mmake $mmake_opts $jfactor libmercury)
+# the `RM_C=:' ensures that the `.c' files do not get deleted
+
+if (cd stage2/library ; mmake $mmake_opts $jfactor RM_C=: libmercury)
 then
 	echo "building of stage 2 library successful"
 else
@@ -139,7 +141,7 @@ else
 	exit 1
 fi
 
-if (cd stage2/compiler ; mmake $mmake_opts $jfactor mercury_compile)
+if (cd stage2/compiler ; mmake $mmake_opts $jfactor RM_C=: mercury_compile)
 then
 	echo "building of stage 2 compiler successful"
 else
