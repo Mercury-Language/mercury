@@ -129,6 +129,12 @@ typedef	enum {
 	MR_NO_INTERACT
 } MR_trace_interact;
 
+/*
+** All of the C functions declared here which use any of the Mercury registers
+** expect the transient registers to be in fake_reg, others in their normal
+** homes.
+*/
+
 static void	MR_trace_event(MR_trace_interact interact,
 			const MR_Stack_Layout_Label *layout,
 			MR_trace_port port, int seqno, int depth,
@@ -160,12 +166,10 @@ static bool	MR_trace_get_type_and_value(const MR_Stack_Layout_Var *var,
 			Word *type_params, Word *type_info, Word *value);
 
 /*
-We could use
-	if (MR_use_debugger) { ...
-instead of #if; this would be better in the long run.
-This would require changing mercury_wrapper.c to
-check for an additional flag in the MERCURY_OPTIONS
-environment variable and set MR_use_debugger accordingly.
+** The code for using an external debugger is conditionalized
+** on MR_USE_EXTERNAL_DEBUGGER (which by default is not enabled)
+** because it uses sockets, which are not portable.
+** Ideally we ought to autoconf that...
 */
 #ifdef MR_USE_EXTERNAL_DEBUGGER
 
@@ -1146,13 +1150,14 @@ MR_trace_make_var_list(MR_trace_port port, const MR_Stack_Layout_Label *layout)
 	MR_Live_Type			live_type;
 	Word				type_info;
 
-	restore_transient_registers();
 
 	var_count = layout->MR_sll_var_count;
 	vars = &layout->MR_sll_var_info;
 
 	/* build up the live variable list, starting from the end */
+	restore_transient_registers();
 	univ_list = list_empty();
+	save_transient_registers();
 	for (i = var_count - 1; i >= 0; i--) {
 		/*
 		** Look up the name, the type and value
@@ -1183,15 +1188,21 @@ MR_trace_make_var_list(MR_trace_port port, const MR_Stack_Layout_Label *layout)
 			continue;
 		}
 
-		/* create a term of type `univ' to hold the type & value */
+		/*
+		** Create a term of type `univ' to hold the type & value,
+		** and cons it onto the list.
+		** Note that the calls to save/restore transient registers
+		** can't be hoisted out of the loop, because
+		** MR_trace_get_type_and_value() calls ML_create_type_info()
+		** which may allocate memory using incr_saved_hp.
+		*/
+		restore_transient_registers();
 		incr_hp(univ, 2);
 		field(mktag(0), univ, UNIV_OFFSET_FOR_TYPEINFO) = type_info;
 		field(mktag(0), univ, UNIV_OFFSET_FOR_DATA) = value;
-		
 		univ_list = list_cons(univ, univ_list);
+		save_transient_registers();
 	}
-
-	save_transient_registers();
 
 	return univ_list;
 }
@@ -1369,7 +1380,6 @@ MR_trace_browse_var(const char *name, const MR_Stack_Layout_Var *var,
 	** which are the "variables" for which get_type_and_value fails,
 	** are not of interest to the user.
 	*/
-
 	if (MR_trace_get_type_and_value(var, type_params, &type_info, &value))
 	{
 		printf("\t");
@@ -1384,21 +1394,18 @@ MR_trace_browse_var(const char *name, const MR_Stack_Layout_Var *var,
 		** Probably that was due to a bug which has since been
 		** fixed, so we should change the code below back again...
 		**
-		** call_engine expects the transient registers to be
+		** call_engine() expects the transient registers to be
 		** in fake_reg, others in their normal homes.
-		** The code below works by placing r1, r2 and all other
-		** transient registers both in their normal homes and
-		** and in fake_reg as well.
+		** That is the case on entry to this function.
+		** But r1 or r2 may be transient, so we need to save/restore
+		** transient regs around the assignments to them.
 		*/
 
 		MR_trace_enabled = FALSE;
-		for (i = 0; i < MR_MAX_SPECIAL_REG_MR; i++) {
-			fake_reg[i] = MR_saved_regs[i];
-		}
-		restore_registers();
+		restore_transient_registers();
 		r1 = type_info;
 		r2 = value;
-		save_transient_registers(); /* r1 or r2 may be transient */
+		save_transient_registers();
 		call_engine(MR_library_trace_browser);
 		MR_trace_enabled = TRUE;
 	}
