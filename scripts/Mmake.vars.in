@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1996-2002 The University of Melbourne.
+# Copyright (C) 1996-2003 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -237,7 +237,7 @@ MS_CL_LIBS	=
 
 # MERCURY_STDLIB_DIR should be set by the `mmake' script.
 MERC_C_INCL_DIR = $(MERCURY_STDLIB_DIR)/inc
-MERC_DLL_DIR    = $(MERCURY_STDLIB_DIR)/lib/$(GRADE)/@FULLARCH@
+MERC_DLL_DIR    = $(MERCURY_STDLIB_DIR)/lib/$(GRADESTRING)/@FULLARCH@
 
 # MS_ILASM is the Microsoft IL assembler, which turns IL assembly code
 # into bytecode.
