@@ -377,15 +377,7 @@ parse_class_or_inst_constraint(_ModuleName, ConstraintTerm, Result) :-
 		% constraints do not contain any info in their prog_context
 		% fields
 		list__map(convert_type, Args0, Args),
-
-		% Check that the arguments contain at least one type variable.
-		( term__contains_var_list(Args, _) ->
-			Result = ok(class_constraint(constraint(ClassName,
-						Args)))
-		;
-			Result = error("class constraint contains no variables",
-					ConstraintTerm)
-		)
+		Result = ok(class_constraint(constraint(ClassName, Args)))
 	;
 		Result = error("expected atom as class name or inst constraint",
 			ConstraintTerm)

@@ -1686,20 +1686,15 @@ typecheck_call_pred_id_adjust_arg_types(PredId, Args, AdjustArgTypes,
 	% unify the types of the call arguments
 	% with the called predicates' arg types
 	% (optimize for the common case of
-	% a non-polymorphic predicate)
+	% a non-polymorphic, non-constrained predicate)
 	%
-	( varset__is_empty(PredTypeVarSet) ->
+	(
+		varset__is_empty(PredTypeVarSet),
+		PredClassContext = constraints([], [])
+	->
 		typecheck_var_has_type_list(Args,
 			PredArgTypes, 1, TypeCheckInfo0,
-			TypeCheckInfo),
-		( 
-			% sanity check
-			PredClassContext \= constraints([], [])
-		->
-			error("non-polymorphic pred has class context")
-		;
-			true
-		)
+			TypeCheckInfo)
 	;
 		typecheck_var_has_polymorphic_type_list(Args,
 			PredTypeVarSet, PredExistQVars, PredArgTypes,

@@ -24,6 +24,7 @@ TYPECLASS_PROGS= \
 	instance_superclass \
 	instance_unconstrained_tvar \
 	repeated_class_constraint \
+	typeclass_constraint_no_var \
 	typeclass_det_warning
 
 ADITI_PROGS= \

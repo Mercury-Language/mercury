@@ -104,7 +104,6 @@ SINGLEMODULE_PROGS= \
 	type_vars \
 	typeclass_bogus_method \
 	typeclass_constraint_extra_var \
-	typeclass_constraint_no_var \
 	typeclass_mode \
 	typeclass_missing_det \
 	typeclass_missing_det_2 \

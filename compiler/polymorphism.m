@@ -1879,7 +1879,9 @@ polymorphism__process_call(PredId, ArgVars0, GoalInfo0,
 	( 
 		(
 			% optimize for common case of non-polymorphic call
-			PredTypeVars0 = []
+			% with no constraints
+			PredTypeVars0 = [],
+			PredClassContext0 = constraints([], [])
 		;
 			% some builtins don't need the type_info
 			no_type_info_builtin(PredModule, PredName, PredArity)
