@@ -516,31 +516,36 @@ string__int_to_base_string(N, Base, Str) :-
 :- mode string__int_to_base_string_1(in, in, out) is det.
 
 string__int_to_base_string_1(N, Base, Str) :-
+	% Note that in order to handle MININT correctly,
+	% we need to do the conversion of the absolute
+	% number into digits using negative numbers
+	% (we can't use positive numbers, since -MININT overflows)
 	(
 		N < 0
 	->
-		N1 is 0 - N,
-		string__int_to_base_string_2(N1, Base, Str1),
+		string__int_to_base_string_2(N, Base, Str1),
 		string__append("-", Str1, Str)
 	;
-		string__int_to_base_string_2(N, Base, Str)
+		N1 is 0 - N,
+		string__int_to_base_string_2(N1, Base, Str)
 	).
 
 :- pred string__int_to_base_string_2(int, int, string).
 :- mode string__int_to_base_string_2(in, in, out) is det.
 
-string__int_to_base_string_2(N, Base, Str) :-
+string__int_to_base_string_2(NegN, Base, Str) :-
 	(
-		N < Base
+		NegN > -Base
 	->
+		N is -NegN,
 		char__det_int_to_digit(N, DigitChar),
 		string__char_to_string(DigitChar, Str)
 	;
-		N10 is N mod Base,
-		N1 is N // Base,
+		NegN1 is NegN // Base,
+		N10 is (NegN1 * Base) - NegN,
 		char__det_int_to_digit(N10, DigitChar),
 		string__char_to_string(DigitChar, DigitString),
-		string__int_to_base_string_2(N1, Base, Str1),
+		string__int_to_base_string_2(NegN1, Base, Str1),
 		string__append(Str1, DigitString, Str)
 	).
 
