@@ -153,7 +153,7 @@ NEWS for Mercury release 0.6
   - The code generator generates special code for dense switches in
     which all the output variables are constant terms.  Instead of
     generating dense jump tables, it puts the answers in static constant
-    arrays, and uses retrieves them using array indexing, avoiding
+    arrays, and uses retrieve them using array indexing, avoiding
     an expensive jump and reducing code size.
 
   - The code generator now emits better code for constructing deeply nested
