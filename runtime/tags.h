@@ -34,7 +34,31 @@
 
 #endif
 
+/*
+** the following macros are used by the handwritten .mod code in io.mod etc.
+** to access lists
+*/
+
+#if TAGBITS > 0
+
+#define list_is_empty(list)	(tag(list) == mktag(0))
+#define list_head(list)		field(TAG_CONS, (list), 0)
+#define list_tail(list)		field(TAG_CONS, (list), 1)
+#define list_empty()		mkword(mktag(0), mkbody(0))
+#define list_cons(head,tail)	mkword(mktag(1), create2((head),(tail)))
+
+#else
+
+#define list_is_empty(list)	(field(mktag(0), (list), 0) == 0)
+#define list_head(list)		field(mktag(0), (list), 1)
+#define list_tail(list)		field(mktag(0), (list), 2)
+#define list_empty()		mkword(mktag(0), create1(0))
+#define list_cons(head,tail)	mkword(mktag(0), create3(1, (head), (tail)))
+
+#endif
+
 /* the rest of this file is for archaic code only */
+
 #define	bTAG_NIL	0
 #define	bTAG_CONS	1
 #define	bTAG_VAR	3

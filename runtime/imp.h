@@ -181,30 +181,17 @@ extern	int	hash_string(const char *);
 #include "gc.h"
 
 #define	tag_incr_hp(dest,tag,count)	(			\
-				(dest) = mkword(tag, (Word)gc_malloc(count)), \
+				(dest) = mkword(tag, (Word)GC_MALLOC(count)), \
 				(void)0				\
 			)
-
-#define	incr_hp(dest,count)	(				\
-				(dest) = (Word)gc_malloc(count)), \
-				(void)0				\
-			)
-
 #define	mark_hp(dest)	((void)0)
 #define	restore_hp(src)	((void)0)
+#define hp_alloc(count) (incr_hp(hp,(count)), hp += (count), (void)0)
 
 #else
 
 #define	tag_incr_hp(dest,tag,count)	(			\
 				(dest) = mkword(tag, (Word)hp),	\
-				debugincrhp(count, hp),		\
-				hp += (count),			\
-				heap_overflow_check(),		\
-				(void)0				\
-			)
-
-#define	incr_hp(dest,count)	(				\
-				(dest) = (Word)hp,		\
 				debugincrhp(count, hp),		\
 				hp += (count),			\
 				heap_overflow_check(),		\
@@ -221,7 +208,11 @@ extern	int	hash_string(const char *);
 				(void)0				\
 			)
 
+#define hp_alloc(count)  incr_hp(hp,count)
+
 #endif
+
+#define	incr_hp(dest,count)	tag_incr_hp((dest),mktag(0),(count))
 
 /*
 ** Note that gcc optimizes `hp += 2; return hp - 2;'
@@ -232,7 +223,7 @@ extern	int	hash_string(const char *);
 /* used only by the hand-written example programs */
 /* not by the automatically generated code */
 #define create1(w1)	(					\
-				hp = hp + 1,			\
+				hp_alloc(1),			\
 				hp[-1] = (Word) (w1),		\
 				debugcr1(hp[-1], hp),		\
 				heap_overflow_check(),		\
@@ -242,12 +233,23 @@ extern	int	hash_string(const char *);
 /* used only by the hand-written example programs */
 /* not by the automatically generated code */
 #define create2(w1, w2)	(					\
-				hp = hp + 2,			\
+				hp_alloc(2),			\
 				hp[-2] = (Word) (w1),		\
 				hp[-1] = (Word) (w2),		\
 				debugcr2(hp[-2], hp[-1], hp),	\
 				heap_overflow_check(),		\
 				/* return */ (Word) (hp - 2)	\
+			)
+
+/* used only by the hand-written example programs */
+/* not by the automatically generated code */
+#define create3(w1, w2, w3)	(				\
+				hp_alloc(3),			\
+				hp[-3] = (Word) (w1),		\
+				hp[-2] = (Word) (w2),		\
+				hp[-1] = (Word) (w3),		\
+				heap_overflow_check(),		\
+				/* return */ (Word) (hp - 3)	\
 			)
 
 /* used only by the hand-written example programs */

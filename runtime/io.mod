@@ -317,9 +317,9 @@ mercury__io__progname_4_0:
 mercury__io__command_line_arguments_3_0:
 	/* convert mercury_argv from a vector to a list */
 	{ char **p = mercury_argv + mercury_argc;
-	  r1 = mkword(TAG_NIL, 0);
+	  r1 = list_empty();
 	  while (--p >= mercury_argv) {
-		r1 = mkword(TAG_CONS, create2((Word)*p, r1));
+		r1 = list_cons((Word)*p, r1);
 	  }
 	}
 	update_io(r2, r3);
@@ -471,9 +471,9 @@ mercury__string__to_float_2_0:
 mercury__string__to_int_list_2_0:
 		/* mode (in, out) is det */
 	{ char *p = (char*)r1 + strlen((char*)r1);
-	  r2 = mkword(TAG_NIL, 0);
+	  r2 = list_empty();
 	  while (--p >= (char*)r1) {
-		r2 = mkword(TAG_CONS, create2(*p, r2));
+		r2 = list_cons(*p, r2);
 	  }
 	}
 	proceed();
@@ -492,10 +492,10 @@ mercury__string__to_int_list_2_1:
 	r4 = 4;
 	GOTO_LABEL(mercury__string__to_int_list_2_1_i4);
 mercury__string__to_int_list_2_1_i3:
-	r2 = field(TAG_CONS, r2, 1);
+	r2 = list_tail(r2);
 	r4 = ((int) r4 + 1);
 mercury__string__to_int_list_2_1_i4:
-	if (r2 != mkword(TAG_NIL, mkbody(0)))
+	if (!list_is_empty(r2))
 		GOTO_LABEL(mercury__string__to_int_list_2_1_i3);
 /*
 ** allocate (length + 1) bytes of heap space for string
@@ -508,11 +508,11 @@ mercury__string__to_int_list_2_1_i4:
 	r4 = 0;
 	GOTO_LABEL(mercury__string__to_int_list_2_1_i5);
 mercury__string__to_int_list_2_1_i6:
-	((char *) r1) [r4] = (char) field(TAG_CONS, r3, 0);
+	((char *) r1) [r4] = (char) list_head(r3);
 	r4 = ((int) r4 + 1);
-	r3 = field(TAG_CONS, r3, 1);
+	r3 = list_tail(r3);
 mercury__string__to_int_list_2_1_i5:
-	if (r3 != mkword(TAG_NIL, mkbody(0)))
+	if (!list_is_empty(r3))
 		GOTO_LABEL(mercury__string__to_int_list_2_1_i6);
 /*
 ** null terminate the string and return
