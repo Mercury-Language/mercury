@@ -294,6 +294,7 @@ process_goal(Goal0, Goal, !Info) :-
 		% because saving/restoring them is more expensive than defining
 		% them again.
 		!:Info = !.Info ^ type_ctor_map := map__init,
+		!:Info = !.Info ^ rev_type_ctor_map := map__init,
 		GoalExpr = GoalExpr0
 	;
 		GoalExpr0 = generic_call(_, _, _, _),
@@ -301,6 +302,7 @@ process_goal(Goal0, Goal, !Info) :-
 		% because saving/restoring them is more expensive than defining
 		% them again.
 		!:Info = !.Info ^ type_ctor_map := map__init,
+		!:Info = !.Info ^ rev_type_ctor_map := map__init,
 		GoalExpr = GoalExpr0
 	;
 		GoalExpr0 = foreign_proc(_, _, _, _, _, _),
@@ -317,6 +319,7 @@ process_goal(Goal0, Goal, !Info) :-
 		% better transformation while parallel conjunctions are rare.
 		TargetTypeInfoMap0 = !.Info ^ target_type_info_map,
 		TypeInfoMap0 = !.Info ^ type_info_map,
+		RevTypeInfoMap0 = !.Info ^ rev_type_info_map,
 		TypeCtorMap0 = !.Info ^ type_ctor_map,
 		KnownSizeMap0 = !.Info ^ known_size_map,
 		process_par_conj(Goals0, Goals, !Info,
@@ -324,7 +327,9 @@ process_goal(Goal0, Goal, !Info) :-
 			KnownSizeMap0),
 		!:Info = !.Info ^ target_type_info_map := TargetTypeInfoMap0,
 		!:Info = !.Info ^ type_info_map := TypeInfoMap0,
+		!:Info = !.Info ^ rev_type_info_map := RevTypeInfoMap0,
 		!:Info = !.Info ^ type_ctor_map := map__init,
+		!:Info = !.Info ^ rev_type_ctor_map := map__init,
 		!:Info = !.Info ^ known_size_map := KnownSizeMap0,
 		GoalExpr = par_conj(Goals)
 	;
@@ -333,13 +338,20 @@ process_goal(Goal0, Goal, !Info) :-
 			Cases0 = [First0 | Later0],
 			TargetTypeInfoMap0 = !.Info ^ target_type_info_map,
 			TypeInfoMap0 = !.Info ^ type_info_map,
+			RevTypeInfoMap0 = !.Info ^ rev_type_info_map,
 			TypeCtorMap0 = !.Info ^ type_ctor_map,
+			RevTypeCtorMap0 = !.Info ^ rev_type_ctor_map,
 			KnownSizeMap0 = !.Info ^ known_size_map,
 			process_switch(First0, First, Later0, Later, !Info,
-				TargetTypeInfoMap0, TypeInfoMap0, TypeCtorMap0,
-				KnownSizeMap0, TypeInfoMap, KnownSizeMap),
+				TargetTypeInfoMap0,
+				TypeInfoMap0, RevTypeInfoMap0,
+				TypeCtorMap0, RevTypeCtorMap0,
+				TypeInfoMap, KnownSizeMap0, KnownSizeMap),
 			!:Info = !.Info ^ type_info_map := TypeInfoMap,
+			% The rev_type_info_map field is updated by
+			% the call to update_rev_maps below.
 			!:Info = !.Info ^ type_ctor_map := map__init,
+			!:Info = !.Info ^ rev_type_ctor_map := map__init,
 			!:Info = !.Info ^ known_size_map := KnownSizeMap,
 			Cases = [First | Later]
 		;
@@ -355,20 +367,29 @@ process_goal(Goal0, Goal, !Info) :-
 			Disjuncts0 = [First0 | Later0],
 			TargetTypeInfoMap0 = !.Info ^ target_type_info_map,
 			TypeInfoMap0 = !.Info ^ type_info_map,
+			RevTypeInfoMap0 = !.Info ^ rev_type_info_map,
 			TypeCtorMap0 = !.Info ^ type_ctor_map,
+			RevTypeCtorMap0 = !.Info ^ rev_type_ctor_map,
 			KnownSizeMap0 = !.Info ^ known_size_map,
 			process_disj(First0, First, Later0, Later, !Info,
-				TargetTypeInfoMap0, TypeInfoMap0, TypeCtorMap0,
-				KnownSizeMap0, TypeInfoMap, KnownSizeMap),
+				TargetTypeInfoMap0,
+				TypeInfoMap0, RevTypeInfoMap0,
+				TypeCtorMap0, RevTypeCtorMap0,
+				TypeInfoMap, KnownSizeMap0, KnownSizeMap),
 			!:Info = !.Info ^ type_info_map := TypeInfoMap,
+			% The rev_type_info_map field is updated by
+			% the call to update_rev_maps below.
 			!:Info = !.Info ^ type_ctor_map := map__init,
+			!:Info = !.Info ^ rev_type_ctor_map := map__init,
 			!:Info = !.Info ^ known_size_map := KnownSizeMap,
 			Disjuncts = [First | Later]
 		;
 			Disjuncts0 = [],
 			% An empty disj represents `fail'.
 			!:Info = !.Info ^ type_info_map := map__init,
-			!:Info = !.Info ^ type_ctor_map := map__init,
+			!:Info = !.Info ^ rev_type_ctor_map := map__init,
+			!:Info = !.Info ^ type_info_map := map__init,
+			!:Info = !.Info ^ rev_type_ctor_map := map__init,
 			Disjuncts = []
 		),
 		update_rev_maps(!Info),
@@ -378,7 +399,9 @@ process_goal(Goal0, Goal, !Info) :-
 		GoalExpr0 = if_then_else(Quant, Cond0, Then0, Else0),
 		TargetTypeInfoMap0 = !.Info ^ target_type_info_map,
 		TypeInfoMap0 = !.Info ^ type_info_map,
+		RevTypeInfoMap0 = !.Info ^ rev_type_info_map,
 		TypeCtorMap0 = !.Info ^ type_ctor_map,
+		RevTypeCtorMap0 = !.Info ^ rev_type_ctor_map,
 		KnownSizeMap0 = !.Info ^ known_size_map,
 
 		!:Info = !.Info ^ target_type_info_map := map__init,
@@ -389,12 +412,14 @@ process_goal(Goal0, Goal, !Info) :-
 		TypeInfoMapThen = !.Info ^ type_info_map,
 		KnownSizeMapThen = !.Info ^ known_size_map,
 
-		map__det_union(insist_on_same, TargetTypeInfoMapThen,
+		map__union(select_first, TargetTypeInfoMapThen,
 			TargetTypeInfoMap0, ElseTargetTypeInfoMap),
 		!:Info = !.Info ^ target_type_info_map :=
 			ElseTargetTypeInfoMap,
 		!:Info = !.Info ^ type_info_map := TypeInfoMap0,
+		!:Info = !.Info ^ rev_type_info_map := RevTypeInfoMap0,
 		!:Info = !.Info ^ type_ctor_map := TypeCtorMap0,
+		!:Info = !.Info ^ rev_type_ctor_map := RevTypeCtorMap0,
 		!:Info = !.Info ^ known_size_map := KnownSizeMap0,
 		process_goal(Else0, Else, !Info),
 		TypeInfoMapElse = !.Info ^ type_info_map,
@@ -414,7 +439,9 @@ process_goal(Goal0, Goal, !Info) :-
 		GoalExpr0 = not(NegGoal0),
 		TargetTypeInfoMap0 = !.Info ^ target_type_info_map,
 		TypeInfoMap0 = !.Info ^ type_info_map,
+		RevTypeInfoMap0 = !.Info ^ rev_type_info_map,
 		TypeCtorMap0 = !.Info ^ type_ctor_map,
+		RevTypeCtorMap0 = !.Info ^ rev_type_ctor_map,
 		KnownSizeMap0 = !.Info ^ known_size_map,
 		process_goal(NegGoal0, NegGoal, !Info),
 		% Variables constructed in negated goals are not available
@@ -423,7 +450,9 @@ process_goal(Goal0, Goal, !Info) :-
 		% fails.
 		!:Info = !.Info ^ target_type_info_map := TargetTypeInfoMap0,
 		!:Info = !.Info ^ type_info_map := TypeInfoMap0,
+		!:Info = !.Info ^ rev_type_info_map := RevTypeInfoMap0,
 		!:Info = !.Info ^ type_ctor_map := TypeCtorMap0,
+		!:Info = !.Info ^ rev_type_ctor_map := RevTypeCtorMap0,
 		!:Info = !.Info ^ known_size_map := KnownSizeMap0,
 		GoalExpr = not(NegGoal)
 	;
@@ -476,27 +505,31 @@ process_par_conj([Goal0 | Goals0], [Goal | Goals], !Info, TargetTypeInfoMap0,
 
 :- pred process_disj(hlds_goal::in, hlds_goal::out,
 	list(hlds_goal)::in, list(hlds_goal)::out, info::in, info::out,
-	type_info_map::in, type_info_map::in, type_ctor_map::in,
-	known_size_map::in, type_info_map::out, known_size_map::out) is det.
+	type_info_map::in, type_info_map::in, rev_type_info_map::in,
+	type_ctor_map::in, rev_type_ctor_map::in,
+	type_info_map::out, known_size_map::in, known_size_map::out) is det.
 
 process_disj(First0, First, Later0, Later, !Info, TargetTypeInfoMap,
-		TypeInfoMap0, TypeCtorMap0, KnownSizeMap0,
-		TypeInfoMap, KnownSizeMap) :-
+		TypeInfoMap0, RevTypeInfoMap0, TypeCtorMap0, RevTypeCtorMap0,
+		TypeInfoMap, KnownSizeMap0, KnownSizeMap) :-
 	!:Info = !.Info ^ type_info_map := TypeInfoMap0,
+	!:Info = !.Info ^ rev_type_info_map := RevTypeInfoMap0,
 	!:Info = !.Info ^ type_ctor_map := TypeCtorMap0,
+	!:Info = !.Info ^ rev_type_ctor_map := RevTypeCtorMap0,
 	!:Info = !.Info ^ known_size_map := KnownSizeMap0,
 	process_goal(First0, First, !Info),
 	TypeInfoMapFirst = !.Info ^ type_info_map,
 	KnownSizeMapFirst = !.Info ^ known_size_map,
 	(
 		Later0 = [Head0 | Tail0],
-		map__det_union(insist_on_same, TypeInfoMapFirst,
+		map__union(select_first, TypeInfoMapFirst,
 			TargetTypeInfoMap, LaterTargetTypeInfoMap),
 		!:Info = !.Info ^ target_type_info_map :=
 			LaterTargetTypeInfoMap,
 		process_disj(Head0, Head, Tail0, Tail, !Info,
-			TargetTypeInfoMap, TypeInfoMap0, TypeCtorMap0,
-			KnownSizeMap0, TypeInfoMapLater, KnownSizeMapLater),
+			TargetTypeInfoMap, TypeInfoMap0, RevTypeInfoMap0,
+			TypeCtorMap0, RevTypeCtorMap0,
+			TypeInfoMapLater, KnownSizeMap0, KnownSizeMapLater),
 		TypeInfoMap = map__common_subset(TypeInfoMapFirst,
 			TypeInfoMapLater),
 		KnownSizeMap = map__common_subset(KnownSizeMapFirst,
@@ -513,14 +546,17 @@ process_disj(First0, First, Later0, Later, !Info, TargetTypeInfoMap,
 
 :- pred process_switch(case::in, case::out,
 	list(case)::in, list(case)::out, info::in, info::out,
-	type_info_map::in, type_info_map::in, type_ctor_map::in,
-	known_size_map::in, type_info_map::out, known_size_map::out) is det.
+	type_info_map::in, type_info_map::in, rev_type_info_map::in,
+	type_ctor_map::in, rev_type_ctor_map::in,
+	type_info_map::out, known_size_map::in, known_size_map::out) is det.
 
 process_switch(First0, First, Later0, Later, !Info, TargetTypeInfoMap,
-		TypeInfoMap0, TypeCtorMap0, KnownSizeMap0,
-		TypeInfoMap, KnownSizeMap) :-
+		TypeInfoMap0, RevTypeInfoMap0, TypeCtorMap0, RevTypeCtorMap0,
+		TypeInfoMap, KnownSizeMap0, KnownSizeMap) :-
 	!:Info = !.Info ^ type_info_map := TypeInfoMap0,
+	!:Info = !.Info ^ rev_type_info_map := RevTypeInfoMap0,
 	!:Info = !.Info ^ type_ctor_map := TypeCtorMap0,
+	!:Info = !.Info ^ rev_type_ctor_map := RevTypeCtorMap0,
 	!:Info = !.Info ^ known_size_map := KnownSizeMap0,
 	First0 = case(FirstConsId, FirstGoal0),
 	process_goal(FirstGoal0, FirstGoal, !Info),
@@ -529,13 +565,15 @@ process_switch(First0, First, Later0, Later, !Info, TargetTypeInfoMap,
 	First = case(FirstConsId, FirstGoal),
 	(
 		Later0 = [Head0 | Tail0],
-		map__det_union(insist_on_same, TypeInfoMapFirst,
-			TargetTypeInfoMap, LaterTargetTypeInfoMap),
+		map__union(select_first, TargetTypeInfoMap,
+			TypeInfoMapFirst, LaterTargetTypeInfoMap),
 		!:Info = !.Info ^ target_type_info_map :=
 			LaterTargetTypeInfoMap,
 		process_switch(Head0, Head, Tail0, Tail, !Info,
-			TargetTypeInfoMap, TypeInfoMap0, TypeCtorMap0,
-			KnownSizeMap0, TypeInfoMapLater, KnownSizeMapLater),
+			TargetTypeInfoMap,
+			TypeInfoMap0, RevTypeInfoMap0,
+			TypeCtorMap0, RevTypeCtorMap0,
+			TypeInfoMapLater, KnownSizeMap0, KnownSizeMapLater),
 		TypeInfoMap = map__common_subset(TypeInfoMapFirst,
 			TypeInfoMapLater),
 		KnownSizeMap = map__common_subset(KnownSizeMapFirst,
@@ -1036,21 +1074,30 @@ record_known_type_ctor_info(Var, TypeCtorModule, TypeCtorName, TypeCtorArity,
 
 record_known_type_info(Var, TypeCtorInfoVar, ArgTypeInfoVars, !Info) :-
 	RevTypeCtorMap0 = !.Info ^ rev_type_ctor_map,
-	map__lookup(RevTypeCtorMap0, TypeCtorInfoVar, TypeCtor0),
-	RevTypeInfoMap0 = !.Info ^ rev_type_info_map,
-	(
-		list__map(map__search(RevTypeInfoMap0), ArgTypeInfoVars,
-			ArgTypes)
-	->
-		list__length(ArgTypes, Arity),
-		% Just in case TypeCtorInfo0 has fake arity,
-		% e.g. if it is a tuple.
-		TypeCtor0 = SymName - _DeclArity,
-		TypeCtor1 = SymName - Arity,
-		construct_type(TypeCtor1, ArgTypes, Type),
-		record_type_info_var(Type, Var, !Info)
+	( map__search(RevTypeCtorMap0, TypeCtorInfoVar, TypeCtor0) ->
+		RevTypeInfoMap0 = !.Info ^ rev_type_info_map,
+		(
+			list__map(map__search(RevTypeInfoMap0), ArgTypeInfoVars,
+				ArgTypes)
+		->
+			list__length(ArgTypes, Arity),
+			% Just in case TypeCtorInfo0 has fake arity,
+			% e.g. if it is a tuple.
+			TypeCtor0 = SymName - _DeclArity,
+			TypeCtor1 = SymName - Arity,
+			construct_type(TypeCtor1, ArgTypes, Type),
+			record_type_info_var(Type, Var, !Info)
+		;
+			!:Info = !.Info
+		)
 	;
-		!:Info = !.Info
+		% We don't know what type is being constructed, because we have
+		% forgotten what type constructor the type constructor variable
+		% stands for due to an intervening call. This cannot happen
+		% for HLDS code constructed directly by polymorphism.m, but
+		% can happen after that code has been rearranged by other
+		% compiler passes.
+		true
 	).
 
 :- pred record_type_info_var((type)::in, prog_var::in, info::in, info::out)
@@ -1239,9 +1286,9 @@ binds_arg_in_cell(Info, (CellInitInst - _ArgInitInst) ->
 
 %---------------------------------------------------------------------------%
 
-:- pred insist_on_same(T::in, T::in, T::out) is semidet.
+:- pred select_first(T::in, T::in, T::out) is det.
 
-insist_on_same(X, X, X).
+select_first(X, _, X).
 
 %---------------------------------------------------------------------------%
 

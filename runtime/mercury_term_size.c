@@ -2,7 +2,7 @@
 ** vim:ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2003-2004 The University of Melbourne.
+** Copyright (C) 2003-2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -262,6 +262,7 @@ try_again:
         case MR_TYPECTOR_REP_BASETYPECLASSINFO:
         case MR_TYPECTOR_REP_TYPEDESC:
         case MR_TYPECTOR_REP_TYPECTORDESC:
+        case MR_TYPECTOR_REP_PSEUDOTYPEDESC:
 #ifdef MR_DEBUG_TERM_SIZES
             if (MR_heapdebug && MR_lld_print_enabled) {
                 printf("MR_term_size: type_info etc %p\n", (void *) term);
