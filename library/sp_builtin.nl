@@ -7,6 +7,7 @@
 %
 %-----------------------------------------------------------------------------%
 
+:- nofileerrors.
 :- prolog_flag(redefine_warnings, _, off).
 
 % Declare the appropriate operators.
