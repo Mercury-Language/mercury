@@ -45,6 +45,7 @@ SOURCES= \
 	simplify_bug.m \
 	soln_context.m \
 	stack_alloc.m \
+	subtype_switch.m \
 	switches.m \
 	two_pragma_c_codes.m \
 	two_way_unif.m \
