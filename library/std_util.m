@@ -1300,8 +1300,8 @@ XXX `ui' modes don't work yet
 
 %%% :- implementation.
 
-%  This type is implemented in C.
-:- type mutvar(T) ---> mutvar(c_pointer).
+%  This type is a builtin-in type whose operations are implemented in C.
+:- type mutvar(T) ---> mutvar(private_builtin.ref(T)).
 
 :- pragma inline(new_mutvar/2).
 

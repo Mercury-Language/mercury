@@ -243,11 +243,17 @@
 
 :- type some_store_type ---> some_store_type. 
 
+% The store type itself is just a dummy type,
+% with no real representation.
+
 :- type store(S) ---> store(c_pointer).
 
-:- type generic_mutvar(T, S) ---> mutvar(c_pointer).
+% Mutvars and references are each represented as a pointer to a single word
+% on the heap.
 
-:- type generic_ref(T, S) ---> ref(c_pointer).
+:- type generic_mutvar(T, S) ---> mutvar(private_builtin.ref(T)).
+
+:- type generic_ref(T, S) ---> ref(private_builtin.ref(T)).
 
 store__new(S) :-
 	store__do_init(S).

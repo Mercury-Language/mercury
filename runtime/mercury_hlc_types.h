@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2002 The University of Melbourne.
+** Copyright (C) 2002-2003 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -58,6 +58,7 @@ typedef void MR_CALL (*MR_Cont) (void *); /* for --no-gcc-nested-functions */
   typedef struct mercury__builtin__void_0_s * MR_Void;
   typedef struct mercury__builtin__c_pointer_0_s * MR_C_Pointer;
   typedef struct mercury__private_builtin__heap_pointer_0_s * MR_Heap_Pointer;
+  typedef struct mercury__private_builtin__ref_1_s * MR_Reference;
   typedef MR_ClosurePtr MR_Pred;
   typedef MR_ClosurePtr MR_Func;
   typedef struct mercury__array__array_1_s * MR_Array;
@@ -78,6 +79,7 @@ typedef void MR_CALL (*MR_Cont) (void *); /* for --no-gcc-nested-functions */
   typedef MR_Word MR_Void;
   typedef MR_Word MR_C_Pointer;
   typedef MR_Word MR_Heap_Pointer;
+  typedef MR_Word MR_Reference;
   typedef MR_Word MR_Pred;
   typedef MR_Word MR_Func;
   typedef MR_Word MR_Array;

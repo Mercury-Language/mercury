@@ -2,7 +2,7 @@
 ** vim:ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2001-2002 The University of Melbourne.
+** Copyright (C) 2001-2003 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -1150,6 +1150,18 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
 
         case MR_TYPECTOR_REP_FOREIGN:
             handle_functor_name("<<foreign>>");
+            handle_zero_arity_args();
+            break;
+
+        case MR_TYPECTOR_REP_REFERENCE:
+            if (noncanon == MR_NONCANON_ABORT) {
+                /* XXX should throw an exception */
+                MR_fatal_error(MR_STRINGIFY(EXPAND_FUNCTION_NAME)
+                    ": attempt to deconstruct noncanonical term");
+                break;
+            }
+
+            handle_functor_name("<<reference>>");
             handle_zero_arity_args();
             break;
 

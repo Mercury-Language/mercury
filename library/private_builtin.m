@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2002 The University of Melbourne.
+% Copyright (C) 1994-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -452,7 +452,8 @@ static int MR_TYPECTOR_REP_BASETYPECLASSINFO	=34;
 static int MR_TYPECTOR_REP_TYPEDESC		=35;
 static int MR_TYPECTOR_REP_TYPECTORDESC		=36;
 static int MR_TYPECTOR_REP_FOREIGN		=37;
-static int MR_TYPECTOR_REP_UNKNOWN		=38;
+static int MR_TYPECTOR_REP_REFERENCE		=38;
+static int MR_TYPECTOR_REP_UNKNOWN		=39;
 
 static int MR_SECTAG_NONE				= 0;
 static int MR_SECTAG_LOCAL				= 1;
@@ -918,8 +919,8 @@ trailed_nondet_pragma_foreign_code :-
 
 %-----------------------------------------------------------------------------%
 
-	% This section of the module contains predicates that are used
-	% internally by the compiler for manipulating the heap.
+	% This section of the module contains predicates and types that are
+	% used internally by the compiler for manipulating the heap.
 	% These predicates should not be used by user programs directly.
 
 :- interface.
@@ -971,6 +972,12 @@ trailed_nondet_pragma_foreign_code :-
 	% Instead we generate code which calls this procedure,
 	% which will call error/1 with an appropriate message.
 :- pred reclaim_heap_nondet_pragma_foreign_code is erroneous.
+
+	% The following is a built-in reference type.
+	% It is used to define the types store.generic_ref/2,
+	% store.generic_mutvar/2, std_util.mutvar/1,
+	% benchmarking.int_ref/0, etc.
+:- type ref(T).
 
 	% N.B. interface continued below.
 
@@ -1073,8 +1080,8 @@ reclaim_heap_nondet_pragma_foreign_code :-
 
 %-----------------------------------------------------------------------------%
 
-% Code to define the `heap_pointer' type for the .NET back-end.
-% (For the C back-ends, it is defined in runtime/mercury_builtin_types.[ch].)
+% Code to define the `heap_pointer' and `ref' types for the .NET back-end.
+% (For the C back-ends, they're defined in runtime/mercury_builtin_types.[ch].)
 
 :- pragma foreign_code("MC++", "
 	
@@ -1111,7 +1118,37 @@ do_compare__heap_pointer_0_0(
 {
 	mercury::runtime::Errors::fatal_error(
 		""called compare/3 for type `private_builtin:heap_pointer'"");
-	return;
+}
+
+MR_DEFINE_BUILTIN_TYPE_CTOR_INFO(private_builtin, ref, 1,
+	MR_TYPECTOR_REP_REFERENCE) 
+
+static int
+__Unify__private_builtin__ref_1_0(MR_Word x, MR_Word y)
+{
+	return x == y;
+}
+
+static int
+do_unify__ref_1_0(MR_Box x, MR_Box y)
+{
+	return x == y;
+}
+
+static void
+__Compare__private_builtin__ref_1_0(
+	MR_Word_Ref result, MR_Word x, MR_Word y)
+{
+	mercury::runtime::Errors::fatal_error(
+		""called compare/3 for type `private_builtin.ref'"");
+}
+
+static void
+do_compare__ref_1_0(
+	MR_Word_Ref result, MR_Box x, MR_Box y)
+{
+	mercury::runtime::Errors::fatal_error(
+		""called compare/3 for type `private_builtin.ref'"");
 }
 
 ").

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2002 The University of Melbourne.
+** Copyright (C) 2002-2003 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -45,6 +45,8 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(
 MR_DECLARE_TYPE_CTOR_INFO_STRUCT(
 	MR_TYPE_CTOR_INFO_NAME(private_builtin, heap_pointer, 0));
 MR_DECLARE_TYPE_CTOR_INFO_STRUCT(
+	MR_TYPE_CTOR_INFO_NAME(private_builtin, ref, 1));
+MR_DECLARE_TYPE_CTOR_INFO_STRUCT(
 	MR_TYPE_CTOR_INFO_NAME(private_builtin, type_ctor_info, 1));
 MR_DECLARE_TYPE_CTOR_INFO_STRUCT(
 	MR_TYPE_CTOR_INFO_NAME(private_builtin, type_info, 1));
@@ -77,6 +79,8 @@ MR_bool MR_CALL mercury__builtin____Unify____c_pointer_0_0(
 	MR_C_Pointer x, MR_C_Pointer y); 
 MR_bool MR_CALL mercury__private_builtin____Unify____heap_pointer_0_0(
 	MR_Heap_Pointer x, MR_Heap_Pointer y); 
+MR_bool MR_CALL mercury__private_builtin____Unify____ref_1_0(
+	MR_Reference x, MR_Reference y); 
 MR_bool MR_CALL mercury__builtin____Unify____func_0_0(MR_Func x, MR_Func y); 
 MR_bool MR_CALL mercury__builtin____Unify____pred_0_0(MR_Pred x, MR_Pred y); 
 MR_bool MR_CALL mercury__builtin____Unify____tuple_0_0(MR_Tuple x, MR_Tuple y); 
@@ -111,6 +115,8 @@ void MR_CALL mercury__builtin____Compare____c_pointer_0_0(
 	MR_Comparison_Result *result, MR_C_Pointer x, MR_C_Pointer y);
 void MR_CALL mercury__private_builtin____Compare____heap_pointer_0_0(
 	MR_Comparison_Result *result, MR_Heap_Pointer x, MR_Heap_Pointer y);
+void MR_CALL mercury__private_builtin____Compare____ref_1_0(
+	MR_Comparison_Result *result, MR_Reference x, MR_Reference y);
 void MR_CALL mercury__builtin____Compare____func_0_0(
 	MR_Comparison_Result *result, MR_Func x, MR_Func y);
 void MR_CALL mercury__builtin____Compare____pred_0_0(

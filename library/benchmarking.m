@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2002 The University of Melbourne.
+% Copyright (C) 1994-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -762,7 +762,8 @@ do_nothing(_) :-
 
 %  Impure integer references.
 %  This type is implemented in C.
-:- type int_reference ---> int_reference(c_pointer).
+%  It is represented as a pointer to a single word on the heap.
+:- type int_reference ---> int_reference(private_builtin__ref(int)).
 
 %  Create a new int_reference given a term for it to reference.
 :- impure pred new_int_reference(int::in, int_reference::out) is det.

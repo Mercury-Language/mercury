@@ -2,7 +2,7 @@
 ** vim:ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2000-2002 The University of Melbourne.
+** Copyright (C) 2000-2003 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -673,6 +673,22 @@ start_label:
 
         case MR_TYPECTOR_REP_FOREIGN:
             MR_fatal_error(attempt_msg "terms of a foreign type");
+
+        case MR_TYPECTOR_REP_REFERENCE:
+#ifdef  select_compare_code
+            /*
+            ** This is not permitted, because keeping the order of references
+            ** consistent would cause significant difficulty for a copying
+            ** garbage collector.
+            */
+            MR_fatal_error(attempt_msg "terms of a reference type");
+#else
+            /*
+            ** XXX what should the first argument to return_unify_answer()
+            ** be here?
+            */
+            return_unify_answer(reference, (void *) x == (void *) y);
+#endif
 
         case MR_TYPECTOR_REP_UNKNOWN:
             MR_fatal_error(attempt_msg "terms of unknown type");

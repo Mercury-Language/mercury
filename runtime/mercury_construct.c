@@ -2,7 +2,7 @@
 ** vim:ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2002 The University of Melbourne.
+** Copyright (C) 2002-2003 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -160,6 +160,7 @@ MR_get_functor_info(MR_TypeInfo type_info, int functor_number,
     case MR_TYPECTOR_REP_TRAIL_PTR:
     case MR_TYPECTOR_REP_TICKET:
     case MR_TYPECTOR_REP_FOREIGN:
+    case MR_TYPECTOR_REP_REFERENCE:
         return MR_FALSE;
 
     case MR_TYPECTOR_REP_UNKNOWN:
@@ -317,6 +318,7 @@ MR_get_num_functors(MR_TypeInfo type_info)
         case MR_TYPECTOR_REP_TRAIL_PTR:
         case MR_TYPECTOR_REP_TICKET:
         case MR_TYPECTOR_REP_FOREIGN:
+        case MR_TYPECTOR_REP_REFERENCE:
             functors = -1;
             break;
 
