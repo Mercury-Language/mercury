@@ -520,7 +520,7 @@
 	in, di, uo, di, uo) is cc_multi.
 
 	% list__foldl3(Pred, List, !Acc1, !Acc2, !Acc3)
-	% Does the same job as list__foldl, but with two accumulators.
+	% Does the same job as list__foldl, but with three accumulators.
 	% (Although no more expressive than list__foldl, this is often
 	% a more convenient format, and a little more efficient).
 :- pred list__foldl3(pred(L, A1, A1, A2, A2, A3, A3), list(L),
@@ -539,7 +539,7 @@
 	in, in, out, in, out, di, uo) is cc_multi.
 
 	% list__foldl4(Pred, List, !Acc1, !Acc2, !Acc3, !Acc4)
-	% Does the same job as list__foldl, but with two accumulators.
+	% Does the same job as list__foldl, but with four accumulators.
 	% (Although no more expressive than list__foldl, this is often
 	% a more convenient format, and a little more efficient).
 :- pred list__foldl4(pred(L, A1, A1, A2, A2, A3, A3, A4, A4), list(L),

@@ -697,7 +697,7 @@ start_label:
                 int     result;
 
                 MR_save_transient_registers();
-                result = MR_compare_closures((MR_Closure *) x,
+                result = MR_compare_closures_representation((MR_Closure *) x,
                             (MR_Closure *) y);
                 MR_restore_transient_registers();
 

@@ -322,7 +322,8 @@ static	MR_Word	MR_generic_compare(MR_TypeInfo type_info, MR_Word x, MR_Word y);
 static	MR_Word	MR_generic_unify(MR_TypeInfo type_info, MR_Word x, MR_Word y);
 static	MR_Word	MR_generic_compare_representation(MR_TypeInfo type_info,
 			MR_Word x, MR_Word y);
-static	MR_Word	MR_compare_closures(MR_Closure *x, MR_Closure *y);
+static	MR_Word	MR_compare_closures_representation(MR_Closure *x, 
+			MR_Closure *y);
 
 /*
 ** The called closure may contain only input arguments. The extra arguments
@@ -820,7 +821,7 @@ MR_generic_compare_representation(MR_TypeInfo type_info, MR_Word x, MR_Word y)
 }
 
 static	MR_Word
-MR_compare_closures(MR_Closure *x, MR_Closure *y)
+MR_compare_closures_representation(MR_Closure *x, MR_Closure *y)
 {
 	MR_Closure_Layout   *x_layout;
 	MR_Closure_Layout   *y_layout;
@@ -912,7 +913,7 @@ MR_compare_closures(MR_Closure *x, MR_Closure *y)
 		}
 
 		arg_type_info = x_arg_type_info;
-		result = MR_generic_compare(arg_type_info,
+		result = MR_generic_compare_representation(arg_type_info,
 				x->MR_closure_hidden_args_0[i],
 				y->MR_closure_hidden_args_0[i]);
 		if (result != MR_COMPARE_EQUAL) {
