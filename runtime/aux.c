@@ -21,20 +21,6 @@ void mkframe_msg(void)
 		dumpnondstack();
 }
 
-void mkreclaim_msg(void)
-{
-	restore_registers();
-
-	printf("\nnew reclaim point for procedure %s\n", curprednm);
-	printf("new  fr: "); printnondstack(curfr);
-	printf("prev fr: "); printnondstack(recprevfr);
-	printf("redo ip: "); printlabel(recredoip);
-	printf("save hp: "); printheap(recsavehp);
-
-	if (detaildebug)
-		dumpnondstack();
-}
-
 void modframe_msg(void)
 {
 	restore_registers();
@@ -192,37 +178,32 @@ void printdetstack(const Word *s)
 
 void printnondstack(const Word *s)
 {
+#ifdef	SPEED
+	printf("ptr 0x%p, offset %3d words\n",
+		(const void *) s, s - nondstackmin);
+#else
 	printf("ptr 0x%p, offset %3d words, procedure %s\n",
 		(const void *) s, s - nondstackmin, (const char *) s[PREDNM]);
+#endif
 }
 
 void dumpframe(const Word *fr)
 {
 	reg	int	i;
 
-	if ((fr - bt_prevfr(fr)) == RECLAIM_SIZE)
-	{
-		printf("reclaim frame at ptr 0x%p, offset %3d words\n",
-			(const void *) fr, fr - nondstackmin);
-		printf("\t predname  %s\n", bt_prednm(fr));
-		printf("\t redoip    "); printlabel(bt_redoip(fr));
-		printf("\t prevfr    "); printnondstack(bt_prevfr(fr));
-		printf("\t savehp    "); printheap(bt_savehp(fr));
-	}
-	else
-	{
-		printf("frame at ptr 0x%p, offset %3d words\n",
-			(const void *) fr, fr - nondstackmin);
-		printf("\t predname  %s\n", bt_prednm(fr));
-		printf("\t succip    "); printlabel(bt_succip(fr));
-		printf("\t redoip    "); printlabel(bt_redoip(fr));
-		printf("\t succfr    "); printnondstack(bt_succfr(fr));
-		printf("\t prevfr    "); printnondstack(bt_prevfr(fr));
+	printf("frame at ptr 0x%p, offset %3d words\n",
+		(const void *) fr, fr - nondstackmin);
+#ifndef	SPEED
+	printf("\t predname  %s\n", bt_prednm(fr));
+#endif
+	printf("\t succip    "); printlabel(bt_succip(fr));
+	printf("\t redoip    "); printlabel(bt_redoip(fr));
+	printf("\t succfr    "); printnondstack(bt_succfr(fr));
+	printf("\t prevfr    "); printnondstack(bt_prevfr(fr));
 
-		for (i = 0; &bt_var(fr,i) > bt_prevfr(fr); i++)
-			printf("\t framevar(%d)  %d 0x%x\n",
-				i, bt_var(fr,i), bt_var(fr,i));
-	}
+	for (i = 0; &bt_var(fr,i) > bt_prevfr(fr); i++)
+		printf("\t framevar(%d)  %d 0x%x\n",
+			i, bt_var(fr,i), bt_var(fr,i));
 }
 
 void dumpnondstack(void)

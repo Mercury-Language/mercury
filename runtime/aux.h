@@ -2,7 +2,6 @@
 #define	AUX_H
 
 extern	void	mkframe_msg(void);
-extern	void	mkreclaim_msg(void);
 extern	void	modframe_msg(void);
 extern	void	succeed_msg(void);
 extern	void	succeeddiscard_msg(void);

@@ -65,10 +65,12 @@ typedef void	Code;		/* should be `typedef function_t Code' */
 	}
 #define AND ,	/* used to separate the labels */
 
+
 #ifdef __GNUC__
 
-/* Note that hash_string is also defined in compiler/string.nl and in
-   code/aux.c.  The three definitions must be kept equivalent.
+/*
+** Note that hash_string is also defined in compiler/string.nl and in
+** code/aux.c.  The three definitions must be kept equivalent.
 */
 
 #define hash_string(s)					\
@@ -83,7 +85,7 @@ typedef void	Code;		/* should be `typedef function_t Code' */
 	   hash;					\
 	})
 #else
-int hash_string(const char *);
+extern	int	hash_string(const char *);
 #endif
 
 #include	"engine.h"
@@ -104,8 +106,8 @@ int hash_string(const char *);
 				GOTO(proc);			\
 			} while (0)
 
-	/* used only by the hand-written example programs, not by
-	   the automatically generated code */
+/* used only by the hand-written example programs */
+/* not by the automatically generated code */
 #define	callentry(procname, succcont)				\
 			do {					\
 				extern EntryPoint ENTRY(procname); \
@@ -122,8 +124,8 @@ int hash_string(const char *);
 				GOTO(proc);			\
 			} while (0)
 
-	/* used only by the hand-written example programs, not by
-	   the automatically generated code */
+/* used only by the hand-written example programs */
+/* not by the automatically generated code */
 #define	tailcallentry(procname)					\
 			do {					\
 				extern EntryPoint ENTRY(procname); \
@@ -150,8 +152,8 @@ int hash_string(const char *);
 ** gcc's expression statements here
 */
 
-	/* used only by the hand-written example programs, not by
-	   the automatically generated code */
+/* used only by the hand-written example programs */
+/* not by the automatically generated code */
 #define create1(w1)	(					\
 				hp = hp + 1,			\
 				hp[-1] = (Word) (w1),		\
@@ -160,8 +162,8 @@ int hash_string(const char *);
 				/* return */ (Word) (hp - 1)	\
 			)
 
-	/* used only by the hand-written example programs, not by
-	   the automatically generated code */
+/* used only by the hand-written example programs */
+/* not by the automatically generated code */
 #define create2(w1, w2)	(					\
 				hp = hp + 2,			\
 				hp[-2] = (Word) (w1),		\
@@ -171,6 +173,8 @@ int hash_string(const char *);
 				/* return */ (Word) (hp - 2)	\
 			)
 
+/* used only by the hand-written example programs */
+/* not by the automatically generated code */
 #define create2_bf(w1)	(					\
 				hp = hp + 2,			\
 				hp[-2] = (Word) (w1),		\
@@ -178,6 +182,8 @@ int hash_string(const char *);
 				/* return */ (Word) (hp - 2)	\
 			)
 
+/* used only by the hand-written example programs */
+/* not by the automatically generated code */
 #define create2_fb(w2)	(					\
 				hp = hp + 2,			\
 				hp[-1] = (Word) (w2),		\
@@ -221,23 +227,39 @@ int hash_string(const char *);
 
 /* DEFINITIONS FOR NONDET STACK FRAMES */
 
+#ifdef	SPEED
+
+#define	REDOIP		(-0)	/* in this proc, set up at clause entry	*/
+#define	PREVFR		(-1)	/* prev frame on stack, set up at call	*/
+#define	SUCCIP		(-2)	/* in caller proc, set up at call	*/
+#define	SUCCFR		(-3)	/* frame of caller proc, set up at call	*/
+#define	SAVEVAL		(-4)	/* saved values start at this offset	*/
+
+#define	NONDET_FIXED_SIZE	4	/* units: words */
+
+#define	bt_prednm(fr)	"unknown"
+
+#else
+
 #define	PREDNM		(-0)	/* for debugging, set up at call 	*/
 #define	REDOIP		(-1)	/* in this proc, set up at clause entry	*/
 #define	PREVFR		(-2)	/* prev frame on stack, set up at call	*/
-#define	SAVEHP		(-3)	/* in caller proc, set up at call	*/
 #define	SUCCIP		(-3)	/* in caller proc, set up at call	*/
 #define	SUCCFR		(-4)	/* frame of caller proc, set up at call	*/
 #define	SAVEVAL		(-5)	/* saved values start at this offset	*/
 
+#define	NONDET_FIXED_SIZE	5	/* units: words */
+
 #define	bt_prednm(fr)	LVALUE_CAST(const char *, fr[PREDNM])
+
+#endif
+
 #define	bt_redoip(fr)	LVALUE_CAST(Code *, fr[REDOIP])
 #define	bt_prevfr(fr)	LVALUE_CAST(Word *, fr[PREVFR])
-#define	bt_savehp(fr)	LVALUE_CAST(Code *, fr[SAVEHP])
 #define	bt_succip(fr)	LVALUE_CAST(Code *, fr[SUCCIP])
 #define	bt_succfr(fr)	LVALUE_CAST(Word *, fr[SUCCFR])
 #define	bt_var(fr,n)	fr[SAVEVAL-n]
 
-/* the offsets used by nondet stack frames */
 #define	curprednm	bt_prednm(curfr)
 #define	curredoip	bt_redoip(curfr)
 #define	curprevfr	bt_prevfr(curfr)
@@ -245,16 +267,28 @@ int hash_string(const char *);
 #define	cursuccfr	bt_succfr(curfr)
 #define	framevar(n)	bt_var(curfr,n)
 
-/* the offsets used by reclaim points */
-#define	recprednm	bt_prednm(maxfr)
-#define	recredoip	bt_redoip(maxfr)
-#define	recprevfr	bt_prevfr(maxfr)
-#define	recsavehp	bt_savehp(maxfr)
-
-#define	RECLAIM_SIZE		4	/* units: words */
-#define	NONDET_FIXED_SIZE	5	/* units: words */
-
 /* DEFINITIONS FOR MANIPULATING THE NONDET STACK */
+
+#ifdef	SPEED
+
+#define	mkframe(prednm, n, redoip)				\
+			do {					\
+				reg	Word	*prevfr;	\
+				reg	Word	*succfr;	\
+								\
+				prevfr = maxfr;			\
+				succfr = curfr;			\
+				maxfr = maxfr + (NONDET_FIXED_SIZE + n);\
+				curfr = maxfr;			\
+				curfr[REDOIP] = (Word) redoip;	\
+				curfr[PREVFR] = (Word) prevfr;	\
+				curfr[SUCCIP] = (Word) succip;	\
+				curfr[SUCCFR] = (Word) succfr;	\
+				debugmkframe();			\
+				nondstack_overflow_check();	\
+			} while (0)
+
+#else
 
 #define	mkframe(prednm, n, redoip)				\
 			do {					\
@@ -274,20 +308,7 @@ int hash_string(const char *);
 				nondstack_overflow_check();	\
 			} while (0)
 
-/* obsolete */
-#define	mkreclaim(prednm)					\
-			do {					\
-				reg	Word	*prevfr;	\
-								\
-				prevfr = maxfr;			\
-				maxfr = maxfr + 4;		\
-				maxfr[PREDNM] = (Word) prednm;	\
-				maxfr[REDOIP] = (Word) doresethpfail;	\
-				maxfr[PREVFR] = (Word) prevfr;	\
-				maxfr[SAVEHP] = (Word) hp;	\
-				debugmkreclaim();		\
-				nondstack_overflow_check();	\
-			} while (0)
+#endif
 
 #define	modframe(redoip)					\
 			do {					\
@@ -415,7 +436,6 @@ int hash_string(const char *);
 #define	debugregs(msg)				((void)0)
 #define	debugframe(msg)				((void)0)
 #define	debugmkframe()				((void)0)
-#define	debugmkreclaim()			((void)0)
 #define	debugmodframe()				((void)0)
 #define	debugsucceed()				((void)0)
 #define	debugsucceeddiscard()			((void)0)
@@ -461,9 +481,6 @@ int hash_string(const char *);
 
 #define	debugframe(msg)	 \
 	IF (progdebug, (save_registers(), printframe(msg)))
-
-#define	debugmkreclaim() \
-	IF (nondstackdebug, (save_registers(), mkreclaim_msg()))
 
 #define	debugmodframe() \
 	IF (nondstackdebug, (save_registers(), modframe_msg()))

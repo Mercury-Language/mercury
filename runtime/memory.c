@@ -231,7 +231,9 @@ void init_memory(void)
 	nondstackend = (Word *) ((char *) nondstack + nondstack_size + unit);
 	assert(((int) nondstackend) % unit == 0);
 
+#ifndef	SPEED
 	nondstackmin[PREDNM] = (Word) "bottom";
+#endif
 
 	if (arena + total_size <= (char *) nondstackend)
 	{

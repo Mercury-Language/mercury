@@ -263,10 +263,6 @@ do_redo:
 do_fail:
 	fail();
 
-do_reset_hp_fail:
-	hp = recsavehp;
-	fail();
-
 do_reset_framevar0_fail:
 	hp = (Word *) framevar(0);
 	fail();
