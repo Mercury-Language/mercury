@@ -84,6 +84,7 @@ static void demangle(char *name) {
 	static const char ho_suffix[] = "__ho"; /* added by higher_order.m */
 
 	char *start = name;
+	char *module = NULL;	/* module name of type for special pred */
 	char *end = name + strlen(name);
 	char *position;		/* current position in string */
 	int mode_num;
@@ -228,6 +229,22 @@ static void demangle(char *name) {
 	}
 
 	/*
+	** Separate the module name from the type name for the compiler
+	** generated predicates.
+	*/
+	if (category != ORDINARY) {
+		module = start++;
+
+		/* Find the __ separating the module name from the type name. */
+		while (*start != '_' || *(start + 1) != '_') {
+			start++;
+		}
+
+		*start = '\0';
+		start += 2;
+	}
+
+	/*
 	** Make sure special predicates with unused_args 
 	** are reported correctly.
 	*/
@@ -242,7 +259,7 @@ static void demangle(char *name) {
 		}
 		*end = '\0';
 	}
-		
+
 	/*
 	** The compiler changes all names starting with `f_' so that
 	** they start with `f__' instead, and uses names starting with
@@ -253,6 +270,7 @@ static void demangle(char *name) {
 	** convert the list of ASCII codes back into an identifier.
 	** 
 	*/
+
 	if (strncmp(start, "f__" , 3) == 0) {
 		start++;
 		*start = 'f';
@@ -280,15 +298,16 @@ static void demangle(char *name) {
 	printf("<");
 	switch(category) {
 	case UNIFY:
-		printf("unification predicate for type '%s'/%d mode %d",
-			start, arity, mode_num);
+		printf("unification predicate for type '%s:%s'/%d mode %d",
+			module, start, arity, mode_num);
 		break;
 	case COMPARE:
-		printf("compare/3 predicate for type '%s'/%d",
-			start, arity);
+		printf("compare/3 predicate for type '%s:%s'/%d",
+			module, start, arity);
 		break;
 	case INDEX:
-		printf("index/3 predicate for type '%s'/%d", start, arity);
+		printf("index/3 predicate for type '%s:%s'/%d", module,
+			start, arity);
 		break;
 	default:
 		printf("predicate '%s'/%d mode %d", start, arity, mode_num);
