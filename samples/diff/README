@@ -1,0 +1,62 @@
+The Mercury modules in this directory have been derived from the
+'diff' sample distributed with Mercury 0.6.  That sample carries the
+following copyright information, description and to-do list (in
+diff.m):
+
+
+%-----------------------------------------------------------------------------%
+% Copyright (C) 1995 University of Melbourne.
+% This file may only be copied under the terms of the GNU General
+% Public License - see the file COPYING in the Mercury distribution.
+%-----------------------------------------------------------------------------%
+
+% File: diff.m
+% Main author: bromage
+
+% Something very similar to the standard diff utility.  Sort of.  :-)
+
+% On the still-to-do list:
+%	- Add command-line options.  Probably:
+%		--ignore-all-space
+%		--ignore-blank-lines
+%		--ignore-case
+%		--rcs
+%	  What others are easy and don't break up the code?
+
+
+The major changes I made were
+
+* Moved code for manipulating and displaying diffs to a separate
+  module called diffs.m (and changed their calls in diff.m).  The type
+  'lcss,' needed both by the rest of lcss.m and by diffs.m, was moved
+  to a new module lcsstype.m.
+
+* Made lcss.m independent of files, and allowed it to process any kind
+  of list by adding polymorphism.  (The file processing calls have
+  been moved to diff.m.)
+
+* Added type synonyms 'pos' and 'segment' in diffs.m to clarify the
+  types.  Renamed 'single_diff' to 'edit'.
+
+* Added end-of-file match to the generated lcss, thereby allowing the
+  to_diff predicate to be simplified considerably.
+
+* Numbered lists from 0 internally in the lcss-algorithm.  This made
+  to_diff simpler still, but also forced changes in the diff-printing
+  part.
+
+* Removed the swapping in find_lcss, because it doesn't seem to help.
+
+* The array(string) representing a file in file.m was also renumbered
+  to begin with 0.
+
+* Added and corrected comments.
+
+Have fun,
+
+ <><
+
+Marnix
+--
+Marnix Klooster
+marnix@worldonline.nl

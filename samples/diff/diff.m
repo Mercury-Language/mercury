@@ -4,18 +4,17 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-% File: diff.m
 % Main author: bromage
+% Simplified by Marnix Klooster <marnix@worldonline.nl>
+% Last changed 22 October 1996
 
 % Something very similar to the standard diff utility.  Sort of.  :-)
 
-% On the still-to-do list:
-%	- Add command-line options.  Probably:
-%		--ignore-all-space
-%		--ignore-blank-lines
-%		--ignore-case
-%		--rcs
-%	  What others are easy and don't break up the code?
+% At present no options are recognized.  To simulate the --rcs option,
+% find the call to diffs__display_diff, replace it by
+% diffs__display_diff_rcs, and recompile.
+
+%-----------------------------------------------------------------------------%
 
 :- module diff.
 
@@ -27,7 +26,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module string, list, file, lcss, std_util, require.
+:- import_module string, list, file, lcss, diffs, std_util, require.
 
 %-----------------------------------------------------------------------------%
 
@@ -113,8 +112,33 @@ main_2(no, [Fname1 | Rest]) -->
 :- pred diff__do_diff(file, file, io__state, io__state).
 :- mode diff__do_diff(in, in, di, uo) is det.
 diff__do_diff(File1, File2) -->
-	{ lcss__find_diff(File1, File2, Diff) },
-	lcss__display_diff(File1, File2, Diff).
+	{ diff__find_diff(File1, File2, Diff) },
+	diffs__display_diff(File1, File2, Diff).
+
+%-----------------------------------------------------------------------------%
+
+	% diff__find_diff takes two files and finds their
+	% differences.
+:- pred diff__find_diff(file, file, diff).
+:- mode diff__find_diff(in, in, out) is det.
+
+	% The process to "diff" two files is:
+	%
+	%	- Convert the files to lists.
+	%
+	%	- Identify the longest common subsequence
+	%	  in the lists.
+	%
+	%	- Use this information to determine the
+	%	  set of operations required to convert
+	%	  one list to the other.
+diff__find_diff(File1, File2, Diff) :-
+	file__to_list(File1, File1list),
+	file__to_list(File2, File2list),
+	file__get_numlines(File1, Length1),
+	file__get_numlines(File2, Length2),
+	lcss__find_lcss(File1list, File2list, Length1, Length2, Lcss),
+	diffs__to_diff(Lcss, Diff).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
