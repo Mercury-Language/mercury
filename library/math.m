@@ -216,7 +216,7 @@
 
 :- pragma c_code("
 
-	#include ""mercury_trace.h""
+	#include ""mercury_trace_base.h""
 	#include <stdio.h>
 
 	/*
