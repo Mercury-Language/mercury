@@ -378,11 +378,19 @@
 
 	% list__sort(Compare, Unsorted, Sorted) is true iff Sorted is a
 	% list containing the same elements as Unsorted, where Sorted is
-	% a sorted list, wrt the ordering defined by the predicate term
-	% Compare.
+	% a sorted list, with respect to the ordering defined by the predicate
+	% term Compare.
 	% (implementation due to Philip Dart)
 :- pred list__sort(pred(X, X, comparison_result), list(X), list(X)).
 :- mode list__sort(pred(in, in, out) is det, in, out) is det.
+
+	% list__sort_and_remove_dups(Compare, Unsorted, Sorted) is true iff 
+	% Sorted is a list containing the same elements as Unsorted, but with
+	% any duplicates removed. Where Sorted is a sorted list, with respect  
+	% to the ordering defined by the predicate term Compare.
+:- pred list__sort_and_remove_dups(pred(X, X, comparison_result), list(X), 
+	list(X)).
+:- mode list__sort_and_remove_dups(pred(in, in, out) is det, in, out) is det.
 
 	% list__merge(Compare, As, Bs, Sorted) is true iff Sorted is a
 	% list containing the elements of As and Bs in the order implied
@@ -391,6 +399,17 @@
 	% (implementation due to Philip Dart)
 :- pred list__merge(pred(X, X, comparison_result), list(X), list(X), list(X)).
 :- mode list__merge(pred(in, in, out) is det, in, in, out) is det.
+
+	% list__merge_and_remove_dups(P, As, Bs, Sorted) is true if and only if
+	% Sorted is a list containing the elements of As and Bs in the order 
+	% implied by their sorted merge. The ordering of elements is defined by
+	% the higher order comparison predicate P.
+	% As and Bs must be sorted.
+:- pred list__merge_and_remove_dups(pred(X, X, comparison_result),
+	list(X), list(X), list(X)).
+:- mode list__merge_and_remove_dups(pred(in, in, out) is det,
+	in, in, out) is det.
+
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -878,6 +897,10 @@ list__filter_map(P, [H0|T0], L) :-
 	list__filter_map(P, T0, L1).
 
 
+list__sort_and_remove_dups(P, L0, L) :-
+	list__sort(P, L0, L1),
+	list__remove_adjacent_dups(L1, L).
+
 list__sort(P, L0, L) :-
         list__length(L0, N),
         (
@@ -950,6 +973,26 @@ list__merge(P, [H1|T1], [H2|T2], L) :-
 		L = [H2|T],   
 		list__merge(P, [H1|T1], T2, T)
 	).
+
+list__merge_and_remove_dups(_P, [], [], []).
+list__merge_and_remove_dups(_P, [], [Y|Ys], [Y|Ys]).
+list__merge_and_remove_dups(_P, [X|Xs], [], [X|Xs]).
+list__merge_and_remove_dups(P, [H1|T1], [H2|T2], L) :-
+	call(P, H1, H2, C),
+	(
+		C = (<),
+		L = [H1|T],   
+		list__merge(P, T1, [H2|T2], T)
+	;
+		C = (=),
+		L = [H1 | T],
+		list__merge(P, T1, T2, T)
+	;
+		C = (>),
+		L = [H2|T],   
+		list__merge(P, [H1|T1], T2, T)
+	).
+
 
 %-----------------------------------------------------------------------------%
 
