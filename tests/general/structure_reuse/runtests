@@ -22,13 +22,13 @@ checkstatus=$?
 cat *.res > .allres
 if test ! -s .allres -a "$checkstatus" = 0
 then
-	echo "the tests in the general/accumulator directory succeeded"
+	echo "the tests in the general/structure_reuse directory succeeded"
 	echo "mmakeopts=$mmakeopts"
 	rm -f .allres INTRODUCED.diff
 	. ../../shutdown
 	exit 0
 else
-	echo "** the tests in the general/accumulator directory failed"
+	echo "** the tests in the general/structure_reuse directory failed"
 	echo "** as some test cases didn't produce the correct output"
 	echo "mmakeopts=$mmakeopts"
 	echo "the differences are:"
