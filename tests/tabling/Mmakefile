@@ -27,6 +27,7 @@ NONDET_PROGS = \
 	mday \
 	repeat \
 	seq \
+	seq2 \
 	tc_loop \
 	tc_minimal
 
