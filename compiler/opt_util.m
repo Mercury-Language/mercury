@@ -129,6 +129,13 @@
 	list(instruction)).
 :- mode opt_util__straight_alternative(in, out, out) is semidet.
 
+	% Find and return the initial sequence of instructions that do not
+	% refer to stackvars and do not branch.
+
+:- pred opt_util__no_stack_straight_line(list(instruction),
+	list(instruction), list(instruction)).
+:- mode opt_util__no_stack_straight_line(in, out, out) is det.
+
 	% Remove the labels from a block of code for jumpopt.
 
 :- pred opt_util__filter_out_labels(list(instruction), list(instruction)).
@@ -572,10 +579,6 @@ opt_util__straight_alternative_2([Instr0 | Instrs0], Between0, Between,
 	;
 		fail
 	).
-
-:- pred opt_util__no_stack_straight_line(list(instruction),
-	list(instruction), list(instruction)).
-:- mode opt_util__no_stack_straight_line(in, out, out) is det.
 
 opt_util__no_stack_straight_line(Instrs0, Shuffle, Instrs) :-
 	opt_util__no_stack_straight_line_2(Instrs0, [], RevShuffle, Instrs),

@@ -38,7 +38,7 @@
 
 :- implementation.
 
-:- import_module peephole, livemap, opt_util, code_util.
+:- import_module peephole, livemap, opt_util, code_util, opt_debug.
 :- import_module map, bintree_set, set, int, string, require, std_util.
 
 	% The first part of this code steps over the procedure prolog.
@@ -108,6 +108,11 @@ frameopt__main(Instrs0, Instrs, FillDelaySlot, TeardownMap, Mod) :-
 			Instrs = Instrs0,
 			Mod = no
 		;
+			% optional debugging code
+			% bimap__to_assoc_list(TeardownMap, LabelPairList),
+			% opt_debug__dump_label_pairs(LabelPairList, DebugMsg),
+			% DebugInstr = comment(DebugMsg) - "",
+			% Instrs = [DebugInstr | Instrs4],
 			Instrs = Instrs4,
 			Mod = yes
 		)
@@ -527,7 +532,7 @@ frameopt__prev_instrs_fill_slot_2(UsedLvals0, [Instr0 | Instrs]) :-
 	;
 		Uinstr0 = incr_sp(_)
 	;
-		Uinstr0 = incr_sp(_)
+		Uinstr0 = decr_sp(_)
 	).	
 
 %-----------------------------------------------------------------------------%

@@ -3245,7 +3245,7 @@ convert_type(T, T).
 
 report_warning(Message) -->
 	io__stderr_stream(StdErr),
-	( globals__io_lookup_bool_option( halt_at_warn, yes) ->
+	( globals__io_lookup_bool_option(halt_at_warn, yes) ->
 		io__set_exit_status(1)
 	;
 		[]
@@ -3253,7 +3253,7 @@ report_warning(Message) -->
 	io__write_string(StdErr, Message).
 
 report_warning(Stream, Message) -->
-	( globals__io_lookup_bool_option( halt_at_warn, yes) ->
+	( globals__io_lookup_bool_option(halt_at_warn, yes) ->
 		io__set_exit_status(1)
 	;
 		[]
@@ -3262,16 +3262,14 @@ report_warning(Stream, Message) -->
 
 report_warning(Module_name, Line_num, Message) -->
 	{ string__int_to_string(Line_num, Line_str) },
-	{ string__append_list( [Module_name, ".m: ", Line_str, ": Warning: ",
+	{ string__append_list([Module_name, ".m: ", Line_str, ": Warning: ",
 			Message, "\n"], Message_0) },
 	io__stderr_stream(StdErr),
 	io__write_string(StdErr, Message_0),
 	(
-		globals__io_lookup_bool_option( halt_at_warn, yes)
+		globals__io_lookup_bool_option(halt_at_warn, yes)
 	->
 		io__set_exit_status(1)
 	;
 		[]
 	).
-
-

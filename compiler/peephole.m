@@ -17,12 +17,46 @@
 :- import_module list, llds, map, bimap.
 
 :- pred peephole__optimize(list(instruction), list(instruction),
-	bimap(label, label), bool).
-:- mode peephole__optimize(in, out, in, out) is det.
+	bimap(label, label), bool, bool).
+:- mode peephole__optimize(in, out, in, in, out) is det.
 
 :- implementation.
 
 :- import_module code_util, opt_util, opt_debug, map, string, std_util.
+
+peephole__optimize(Instrs0, Instrs, TeardownMap, AfterFrameopt, Mod) :-
+	( AfterFrameopt = yes ->
+		map__init(SetupMap0),
+		peephole__find_setups(Instrs0, SetupMap0, SetupMap),
+		% map__to_assoc_list(SetupMap, SetupList),
+		% opt_debug__dump_label_pairs(SetupList, DebugMsg),
+		% DebugInstr = comment(DebugMsg) - "",
+		% Instrs1 = [DebugInstr | Instrs0]
+		Instrs1 = Instrs0
+	;
+		map__init(SetupMap),
+		Instrs1 = Instrs0
+	),
+	peephole__opt_instr_list(Instrs1, Instrs, TeardownMap, SetupMap, Mod).
+
+:- pred peephole__find_setups(list(instruction),
+	map(label, label), map(label, label)).
+:- mode peephole__find_setups(in, in, out) is det.
+
+peephole__find_setups([], SetupMap, SetupMap).
+peephole__find_setups([Instr0 - _ | Instrs], SetupMap0, SetupMap) :-
+	(
+		Instr0 = label(Label),
+		Instrs = [Instr1, Instr2, Instr3 | _],
+		Instr1 = incr_sp(N) - _,
+		Instr2 = assign(stackvar(N), lval(succip)) - _,
+		Instr3 = label(SetupLabel) - _
+	->
+		map__det_insert(SetupMap0, Label, SetupLabel, SetupMap1)
+	;
+		SetupMap1 = SetupMap0
+	),
+	peephole__find_setups(Instrs, SetupMap1, SetupMap).
 
 	% We zip down to the end of the instruction list, and start attempting
 	% to optimize instruction sequences. As long as we can continue
@@ -30,11 +64,16 @@
 	% when we find a sequence we can't optimize, we back up and try
 	% to optimize the sequence starting with the previous instruction.
 
-peephole__optimize([], [], _, no).
-peephole__optimize([Instr0 - Comment | Instrs0], Instrs, TeardownMap, Mod) :-
-	peephole__optimize(Instrs0, Instrs1, TeardownMap, Mod0),
-	peephole__opt_instr(Instr0, Comment, TeardownMap, Instrs1, Instrs,
-		Mod1),
+:- pred peephole__opt_instr_list(list(instruction), list(instruction),
+	bimap(label, label), map(label, label), bool).
+:- mode peephole__opt_instr_list(in, out, in, in, out) is det.
+
+peephole__opt_instr_list([], [], _, _, no).
+peephole__opt_instr_list([Instr0 - Comment | Instrs0], Instrs,
+		TeardownMap, SetupMap, Mod) :-
+	peephole__opt_instr_list(Instrs0, Instrs1, TeardownMap, SetupMap, Mod0),
+	peephole__opt_instr(Instr0, Comment, TeardownMap, SetupMap,
+		Instrs1, Instrs, Mod1),
 	( Mod0 = no, Mod1 = no ->
 		Mod = no
 	;
@@ -45,17 +84,19 @@ peephole__optimize([Instr0 - Comment | Instrs0], Instrs, TeardownMap, Mod) :-
 	% If successful, try it again.
 
 :- pred peephole__opt_instr(instr, string, bimap(label, label),
-	list(instruction), list(instruction), bool).
-:- mode peephole__opt_instr(in, in, in, in, out, out) is det.
+	map(label, label), list(instruction), list(instruction), bool).
+:- mode peephole__opt_instr(in, in, in, in, in, out, out) is det.
 
-peephole__opt_instr(Instr0, Comment0, TeardownMap, Instrs0, Instrs, Mod) :-
+peephole__opt_instr(Instr0, Comment0, TeardownMap, SetupMap,
+		Instrs0, Instrs, Mod) :-
 	(
 		opt_util__skip_comments(Instrs0, Instrs1),
-		peephole__match(Instr0, Comment0, TeardownMap, Instrs1, Instrs2)
+		peephole__match(Instr0, Comment0, TeardownMap, SetupMap,
+			Instrs1, Instrs2)
 	->
 		( Instrs2 = [Instr2 - Comment2 | Instrs3] ->
 			peephole__opt_instr(Instr2, Comment2, TeardownMap,
-				Instrs3, Instrs, _)
+				SetupMap, Instrs3, Instrs, _)
 		;
 			Instrs = Instrs2
 		),
@@ -65,15 +106,17 @@ peephole__opt_instr(Instr0, Comment0, TeardownMap, Instrs0, Instrs, Mod) :-
 		Mod = no
 	).
 
+%-----------------------------------------------------------------------------%
+
 	% Look for code patterns that can be optimized, and optimize them.
 
-:- pred peephole__match(instr, string, bimap(label, label),
+:- pred peephole__match(instr, string, bimap(label, label), map(label, label),
 	list(instruction), list(instruction)).
-:- mode peephole__match(in, in, in, in, out) is semidet.
+:- mode peephole__match(in, in, in, in, in, out) is semidet.
 
-% peephole__match(block(N, Block0), Comment, TeardownMap,
+% peephole__match(block(N, Block0), Comment, TeardownMap, SetupMap,
 % 		Instrs0, Instrs) :-
-% 	peephole__optimize(Block0, Block, TeardownMap, _),
+% 	peephole__opt_instr_list(Block0, Block, TeardownMap, SetupMap, _),
 % 	Instrs = [block(N, Block) - Comment | Instrs0].
 
 	% A `goto' can be deleted if the target of the jump is the very
@@ -83,7 +126,7 @@ peephole__opt_instr(Instr0, Comment0, TeardownMap, Instrs0, Instrs, Mod) :-
 	%	<comments, labels>	=>	<comments, labels>
 	%     next:			      next:
 
-peephole__match(goto(label(Label)), _, _, Instrs0, Instrs) :-
+peephole__match(goto(label(Label)), _, _, _, Instrs0, Instrs) :-
 	opt_util__is_this_label_next(Label, Instrs0, _),
 	Instrs = Instrs0.
 
@@ -106,7 +149,7 @@ peephole__match(goto(label(Label)), _, _, Instrs0, Instrs) :-
 	%	<comments, labels>	      next:
 	%     next:
 
-peephole__match(if_val(Rval, label(Target)), Comment, _, Instrs0, Instrs) :-
+peephole__match(if_val(Rval, label(Target)), Comment, _, _, Instrs0, Instrs) :-
 	( opt_util__is_const_condition(Rval, Taken) ->
 		(
 			Taken = yes,
@@ -152,7 +195,8 @@ peephole__match(if_val(Rval, label(Target)), Comment, _, Instrs0, Instrs) :-
 	% These two patterns are mutually exclusive because if_val is not
 	% straigh-line code.
 
-peephole__match(mkframe(Descr, Slots, Redoip1), Comment, _, Instrs0, Instrs) :-
+peephole__match(mkframe(Descr, Slots, Redoip1), Comment, _, _, Instrs0, Instrs)
+		:-
 	(
 		opt_util__next_modframe(Instrs0, [], Redoip2, Skipped, Rest),
 		opt_util__touches_nondet_ctrl(Skipped, no)
@@ -204,7 +248,7 @@ peephole__match(mkframe(Descr, Slots, Redoip1), Comment, _, Instrs0, Instrs) :-
 	% are not touched by the straight-line instructions, then we can
 	% discard the nondet stack frame early.
 
-peephole__match(modframe(Redoip), Comment, _, Instrs0, Instrs) :-
+peephole__match(modframe(Redoip), Comment, _, _, Instrs0, Instrs) :-
 	(
 		opt_util__next_modframe(Instrs0, [], Redoip2, Skipped, Rest),
 		opt_util__touches_nondet_ctrl(Skipped, no)
@@ -237,7 +281,7 @@ peephole__match(modframe(Redoip), Comment, _, Instrs0, Instrs) :-
 	%	succip = detstackvar(N)
 	%	decr_sp N
 
-peephole__match(incr_sp(N), _, _, Instrs0, Instrs) :-
+peephole__match(incr_sp(N), _, _, _, Instrs0, Instrs) :-
 	opt_util__no_stackvars_til_decr_sp(Instrs0, N, Between, Remain),
 	list__append(Between, Remain, Instrs).
 
@@ -248,18 +292,61 @@ peephole__match(incr_sp(N), _, _, Instrs0, Instrs) :-
 	%	succip = stackvar(N)		succip = stackvar(N)
 	%	decr_sp(N)		=>	decr_sp(N)
 	%	stackvar = succip
+	%
+	% We explicitly invoke peephole__opt_instr_list again, because it is
+	% possible that the elimination of the succip save has made possible
+	% the elimination of the decr_sp as well.
+	%
+	% If a teardown preceeds a conditional branch to a label that then
+	% builds a stack frame, it is better to postpone the teardown until
+	% after the branch and to redirect the branch to the equivalent label
+	% where the frame is already built.
+	%
+	%	succip = stackvar(N)
+	%	decr_sp(N)
+	%	<no uses of stackvars>	=>	<no uses of stackvars>
+	%	if_val (...) L1			if_val (...) already built L1
+	%					succip = stackvar(N)
+	%					decr_sp(N)
+	%
+	% This optimization makes sense only if the parallel label does not
+	% proceed discard the stack frame.
+	%
+	% The recursive invocation of peephole__opt_instr_list is required to
+	% push the frame discard code across any further if_vals.
 
-peephole__match(assign(Lval, Rval), Comment, TeardownMap, Instrs0, Instrs) :-
+peephole__match(assign(Lval, Rval), Comment, TeardownMap, SetupMap,
+		Instrs0, Instrs) :-
 	Lval = succip,
 	Rval = lval(stackvar(N)),
 	opt_util__skip_comments_livevals(Instrs0, Instrs1),
 	Instrs1 = [Instr1 | Instrs2],
 	Instr1 = decr_sp(N) - _,
 	opt_util__skip_comments_livevals(Instrs2, Instrs3),
-	Instrs3 = [Instr3 | Instrs4],
-	Instr3 = assign(stackvar(0), lval(succip)) - _,
-	Instr0 = assign(Lval, Rval) - Comment,
-	peephole__optimize([Instr0, Instr1 | Instrs4], Instrs, TeardownMap, _).
+	(
+		Instrs3 = [Instr3 | Instrs4],
+		Instr3 = assign(stackvar(0), lval(succip)) - _
+	->
+		Instr0 = assign(Lval, Rval) - Comment,
+		peephole__opt_instr_list([Instr0, Instr1 | Instrs4], Instrs,
+			TeardownMap, SetupMap, _)
+	;
+		opt_util__no_stack_straight_line(Instrs3, Between, Instrs4),
+		Instrs4 = [Instr4 | Instrs5],
+		Instr4 = if_val(TestRval, label(Label)) - Comment4,
+		map__search(SetupMap, Label, SetupLabel)
+	->
+		string__append(Comment4, " (bypassed setup)", Comment4prime),
+		Instr4prime = if_val(TestRval, label(SetupLabel))
+			- Comment4prime,
+		Instr0 = assign(Lval, Rval) - Comment,
+		Instrs6 = [Instr4prime, Instr0, Instr1 | Instrs5],
+		list__append(Between, Instrs6, Instrs7),
+		peephole__opt_instr_list(Instrs7, Instrs,
+			TeardownMap, SetupMap, _)
+	;
+		fail
+	).
 
 	% If an incr_sp follows a decr_sp of the same amount, then the two
 	% cancel out. The code in-between may assign to stack vars as long
@@ -272,16 +359,16 @@ peephole__match(assign(Lval, Rval), Comment, TeardownMap, Instrs0, Instrs) :-
 	%	<if_vals only with teardown equivalents>
 	%	incr_sp N
 
-peephole__match(decr_sp(N), _, TeardownMap, Instrs0, Instrs) :-
-	peephole_decr(N, TeardownMap, Instrs0, Instrs).
+peephole__match(decr_sp(N), _, TeardownMap, _, Instrs0, Instrs) :-
+	peephole__decr(N, TeardownMap, Instrs0, Instrs).
 
 %-----------------------------------------------------------------------------%
 
-:- pred peephole_decr(int, bimap(label, label),
+:- pred peephole__decr(int, bimap(label, label),
 	list(instruction), list(instruction)).
-:- mode peephole_decr(in, in, in, out) is semidet.
+:- mode peephole__decr(in, in, in, out) is semidet.
 
-peephole_decr(N, TeardownMap, Instrs0, Instrs) :-
+peephole__decr(N, TeardownMap, Instrs0, Instrs) :-
 	opt_util__skip_comments_livevals(Instrs0, Instrs1),
 	Instrs1 = [Instr1 | Instrs2],
 	Instr1 = Uinstr1 - Comment1,
@@ -292,7 +379,7 @@ peephole_decr(N, TeardownMap, Instrs0, Instrs) :-
 		Uinstr1 = if_val(Cond, Addr),
 		Addr = label(Label),
 		bimap__search(TeardownMap, OrigLabel, Label),
-		peephole_decr(N, TeardownMap, Instrs2, TailInstrs),
+		peephole__decr(N, TeardownMap, Instrs2, TailInstrs),
 		string__append(Comment1, " (original)", NewComment),
 		NewInstr = if_val(Cond, label(OrigLabel)) - NewComment,
 		Instrs = [NewInstr | TailInstrs]
@@ -300,21 +387,21 @@ peephole_decr(N, TeardownMap, Instrs0, Instrs) :-
 		Uinstr1 = assign(Lval, Rval),
 		opt_util__lval_refers_stackvars(Lval, no),
 		opt_util__rval_refers_stackvars(Rval, no),
-		peephole_decr(N, TeardownMap, Instrs2, TailInstrs),
+		peephole__decr(N, TeardownMap, Instrs2, TailInstrs),
 		Instrs = [Instr1 | TailInstrs]
 	;
 		Uinstr1 = incr_hp(Lval, _Tag, Rval),
 		opt_util__lval_refers_stackvars(Lval, no),
 		opt_util__rval_refers_stackvars(Rval, no),
-		peephole_decr(N, TeardownMap, Instrs2, TailInstrs),
+		peephole__decr(N, TeardownMap, Instrs2, TailInstrs),
 		Instrs = [Instr1 | TailInstrs]
 	;
 		Uinstr1 = comment(_),
-		peephole_decr(N, TeardownMap, Instrs2, TailInstrs),
+		peephole__decr(N, TeardownMap, Instrs2, TailInstrs),
 		Instrs = [Instr1 | TailInstrs]
 	;
 		Uinstr1 = livevals(_),
-		peephole_decr(N, TeardownMap, Instrs2, TailInstrs),
+		peephole__decr(N, TeardownMap, Instrs2, TailInstrs),
 		Instrs = [Instr1 | TailInstrs]
 	).
 

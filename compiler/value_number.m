@@ -197,7 +197,7 @@ vn__optimize_fragment_2(Instrs0, Livemap, ParEntries, LabelNo0, Tuple, Instrs) -
 		{ vn__push_livevals_back(Instrs4, Instrs5) },
 		{ vn__convert_back_modframe(Instrs5, Instrs6) },
 		{ bimap__init(TeardownMap) },
-		{ peephole__optimize(Instrs6, Instrs7, TeardownMap, _) },
+		{ peephole__optimize(Instrs6, Instrs7, TeardownMap, no, _) },
 
 		vn__cost_header_msg("original code sequence"),
 		vn__block_cost(Instrs0, yes, OrigCost),

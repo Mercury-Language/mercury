@@ -1117,13 +1117,12 @@ mercury_infix_op("and").	/* NU-Prolog */
 mercury_infix_op("=").
 mercury_infix_op("=..").
 mercury_infix_op("=:=").
-mercury_infix_op("=<").
 mercury_infix_op("==").
 mercury_infix_op("=\\=").
 mercury_infix_op(">").
 mercury_infix_op(">=").
 mercury_infix_op("<").
-mercury_infix_op("<=").
+mercury_infix_op("=<").
 mercury_infix_op("@<").		/* Prolog */
 mercury_infix_op("@=<").	/* Prolog */
 mercury_infix_op("@>").		/* Prolog */
@@ -1148,37 +1147,36 @@ mercury_infix_op("^").
 :- pred mercury_unary_prefix_op(string).
 :- mode mercury_unary_prefix_op(in) is semidet.
 
+mercury_unary_prefix_op("+").
+mercury_unary_prefix_op("-").
 mercury_unary_prefix_op(":-").
-mercury_unary_prefix_op(":-").
-mercury_unary_prefix_op("?-").
-mercury_unary_prefix_op("pred").
-mercury_unary_prefix_op("type").
-mercury_unary_prefix_op("module").
-mercury_unary_prefix_op("end_module").
-mercury_unary_prefix_op("import_module").
-mercury_unary_prefix_op("mode").
-mercury_unary_prefix_op("inst").
-mercury_unary_prefix_op("useIf").
 mercury_unary_prefix_op("::").
-mercury_unary_prefix_op("delete").
-mercury_unary_prefix_op("insert").
-mercury_unary_prefix_op("update").
-mercury_unary_prefix_op("sorted").
-mercury_unary_prefix_op("if").
-mercury_unary_prefix_op("dynamic").
-mercury_unary_prefix_op("pure").
+mercury_unary_prefix_op("?-").
 mercury_unary_prefix_op("\\+").
+mercury_unary_prefix_op("delete").
+mercury_unary_prefix_op("dynamic").
+mercury_unary_prefix_op("end_module").
+mercury_unary_prefix_op("if").
+mercury_unary_prefix_op("import_module").
+mercury_unary_prefix_op("insert").
+mercury_unary_prefix_op("inst").
 mercury_unary_prefix_op("lib").
 mercury_unary_prefix_op("listing").
 mercury_unary_prefix_op("man").
+mercury_unary_prefix_op("mode").
+mercury_unary_prefix_op("module").
 mercury_unary_prefix_op("nospy").
 mercury_unary_prefix_op("not").
 mercury_unary_prefix_op("once").
+mercury_unary_prefix_op("pred").
+mercury_unary_prefix_op("pure").
+mercury_unary_prefix_op("sorted").
 mercury_unary_prefix_op("spy").
+mercury_unary_prefix_op("type").
+mercury_unary_prefix_op("update").
+mercury_unary_prefix_op("useIf").
 mercury_unary_prefix_op("wait").
 mercury_unary_prefix_op("~").
-mercury_unary_prefix_op("+").
-mercury_unary_prefix_op("-").
 
 :- pred mercury_unary_postfix_op(string).
 :- mode mercury_unary_postfix_op(in) is semidet.

@@ -128,7 +128,8 @@ optimize__repeated(Instrs0, DoVn, Final, TeardownMap, Instrs, Mod) -->
 		;
 			[]
 		),
-		{ peephole__optimize(Instrs2, Instrs3, TeardownMap, Mod2) }
+		{ peephole__optimize(Instrs2, Instrs3, TeardownMap, Final,
+			Mod2) }
 	;
 		{ Instrs3 = Instrs2 },
 		{ Mod2 = no }
@@ -205,8 +206,7 @@ optimize__nonrepeat(Instrs0, Instrs) -->
 	globals__io_lookup_bool_option(optimize_peep, Peephole),
 	( { FrameOpt = yes, Peephole = yes } ->
 		% get rid of useless incr_sp/decr_sp pairs
-		{ bimap__init(Empty1) },
-		{ peephole__optimize(Instrs1, Instrs2, Empty1, _) }
+		{ peephole__optimize(Instrs1, Instrs2, TeardownMap, yes, _) }
 	;
 		{ Instrs2 = Instrs1 }
 	),
@@ -228,7 +228,7 @@ optimize__nonrepeat(Instrs0, Instrs) -->
 			Instrs4, RepMod),
 		( { RepMod = yes, FrameOpt = yes, Peephole = yes } ->
 			{ bimap__init(Empty2) },
-			{ peephole__optimize(Instrs4, Instrs5, Empty2, _) }
+			{ peephole__optimize(Instrs4, Instrs5, Empty2, yes, _) }
 		;
 			{ Instrs5 = Instrs4 }
 		),
