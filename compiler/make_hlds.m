@@ -116,7 +116,7 @@
 :- import_module recompilation.
 :- import_module libs__options, libs__globals.
 
-:- import_module string, char, int, set, bintree, map, multi_map, require.
+:- import_module string, char, int, set, map, multi_map, require.
 :- import_module bag, term, varset, getopt, assoc_list, term_io.
 
 parse_tree_to_hlds(module(Name, Items), MQInfo0, EqvMap, Module, QualInfo,
