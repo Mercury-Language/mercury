@@ -361,7 +361,7 @@ detect_deadness_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0), Deadness0,
 detect_deadness_in_goal_2(switch(Var, Det, Cases0), Deadness0,
 			ModuleInfo, Deadness, switch(Var, Det, Cases)) :-
 	set__init(Union0),
-	detect_deadness_in_cases(Cases0, Deadness0, ModuleInfo, Union0,
+	detect_deadness_in_cases(Var, Cases0, Deadness0, ModuleInfo, Union0,
 								Union, Cases),
 	set__union(Deadness0, Union, Deadness).
 
@@ -417,17 +417,20 @@ detect_deadness_in_disj([Goal0|Goals0], Deadness, ModuleInfo,
 
 %-----------------------------------------------------------------------------%
 
-:- pred detect_deadness_in_cases(list(case), set(var), module_info, set(var),
-						set(var), list(case)).
-:- mode detect_deadness_in_cases(in, in, in, in, out, out) is det.
+:- pred detect_deadness_in_cases(var, list(case), set(var), module_info,
+					set(var), set(var), list(case)).
+:- mode detect_deadness_in_cases(in, in, in, in, in, out, out) is det.
 
-detect_deadness_in_cases([], _Deadness, _ModuleInfo, Union, Union, []).
-detect_deadness_in_cases([case(Cons, Goal0)|Goals0], Deadness0, ModuleInfo,
-				Union0, Union, [case(Cons, Goal)|Goals]) :-
+detect_deadness_in_cases(_Var, [], _Deadness, _ModuleInfo, Union, Union, []).
+detect_deadness_in_cases(SwitchVar, [case(Cons, Goal0)|Goals0], Deadness0,
+			ModuleInfo, Union0, Union, [case(Cons, Goal)|Goals]) :-
 	detect_deadness_in_goal(Goal0, Deadness0, ModuleInfo, Deadness1, Goal1),
 	set__union(Union0, Deadness1, Union1),
-	detect_deadness_in_cases(Goals0, Deadness0, ModuleInfo,
-							Union1, Union, Goals),
+	detect_deadness_in_cases(SwitchVar, Goals0, Deadness0, ModuleInfo,
+							Union1, Union2, Goals),
+		% If the switch variable does not become dead in a case
+		% it must be put in the pre-death set of that case.
+	set__insert(Union2, SwitchVar, Union),
 	set__difference(Union, Deadness1, Residue),
 	stuff_deadness_residue_into_goal(Goal1, Residue, Goal).
 

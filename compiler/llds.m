@@ -677,6 +677,8 @@ output_c_procedure(Proc, PrintComments, EmitCLoops) -->
 		[]
 	),
 	io__write_string("/* code for predicate "),
+		% Now that we have unused_args.m mangling predicate names,
+		% we should probably demangle them here.
 	io__write_string(Name),
 	io__write_string("/"),
 	io__write_int(Arity),

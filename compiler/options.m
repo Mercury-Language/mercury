@@ -58,6 +58,7 @@
 		;	warn_nothing_exported
 		;	inhibit_warnings
 		;	halt_at_warn
+		;	warn_unused_args
 	% Verbosity options
 		;	verbose
 		;	very_verbose
@@ -152,6 +153,8 @@
 		;	procs_per_c_function
 		;	split_c_files
 		;	constraint_propagation
+		;	optimize_unused_args
+		;	optimize_higher_order
 	% Miscellaneous Options
 		;	builtin_module
 		;	heap_space
@@ -186,7 +189,8 @@ option_defaults_2(warning_option, [
 	warn_overlapping_scopes	-	bool(yes),
 	warn_missing_det_decls	-	bool(yes),
 	warn_det_decls_too_lax	-	bool(yes),
-	warn_nothing_exported	-	bool(yes)
+	warn_nothing_exported	-	bool(yes),
+	warn_unused_args	-	bool(yes)
 ]).
 option_defaults_2(verbosity_option, [
 		% Verbosity Options
@@ -304,6 +308,9 @@ option_defaults_2(optimization_option, [
 	common_goal		-	bool(yes),
 	procs_per_c_function	-	int(1),
 	split_c_files		-	bool(no),
+	constraint_propagation	-	bool(no),
+	optimize_unused_args	-	bool(yes),
+	optimize_higher_order	-	bool(yes),
 	constraint_propagation	-	bool(no)
 ]).
 option_defaults_2(miscellaneous_option, [
@@ -376,6 +383,7 @@ long_option("warn-overlapping-scopes",	warn_overlapping_scopes).
 long_option("warn-missing-det-decls",	warn_missing_det_decls).
 long_option("warn-det-decls-too-lax",	warn_det_decls_too_lax).
 long_option("warn-nothing-exported",	warn_nothing_exported).
+long_option("warn-unused-args",		warn_unused_args).
 long_option("inhibit-warnings",		inhibit_warnings).
 long_option("halt-at-warn",		halt_at_warn).
 long_option("typecheck-only",		typecheck_only).
@@ -462,6 +470,8 @@ long_option("split-C-files",		split_c_files).
 long_option("procs-per-c-function",	procs_per_c_function).
 long_option("procs-per-C-function",	procs_per_c_function).
 long_option("constraint-propagation",	constraint_propagation).
+long_option("optimize-unused-args",	optimize_unused_args).
+long_option("optimize-higher-order",	optimize_higher_order).
 
 options_help -->
 	io__write_string("\t-?, -h, --help\n"),
@@ -488,6 +498,8 @@ options_help -->
 	io__write_string("\t\twhich could have been stricter.\n"),
 	io__write_string("\t--no-warn-nothing-exported\n"),
 	io__write_string("\t\tDon't warn about modules which export nothing.\n"),
+	io__write_string("\t--no-warn-unused-args\n"),
+	io__write_string("\t\tDon't warn about predicate arguments which are not used\n"),
 
 	io__write_string("\nVerbosity Options:\n"),
 	io__write_string("\t-v, --verbose\n"),
@@ -748,6 +760,12 @@ options_help -->
 	io__write_string("\t\texecutable, typically by about 10-20%.\n"),
 	% io__write_string("\t--constraint-propagation\n"),
 	% io__write_string("\t\tEnable the C-tranformation.  (Doesn't work.)\n"),
+	io__write_string("\t--no-optimize-unused-args\n"),
+	io__write_string("\t\tDisable removal of unused predicate arguments.\n"),
+	io__write_string("\t\tThis will cause the compiler to generate less\n"),
+	io__write_string("\t\tefficient code for many polymorphic predicates.\n"),
+	io__write_string("\t--no-optimize-higher-order\n"),
+	io__write_string("\t\tDisable specialization of higher-order predicates.\n"),
 	io__write_string("\t-O-, --no-c-optimize\n"),
 	io__write_string("\t\tDon't enable the C compiler's optimizations.\n"),
 

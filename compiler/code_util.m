@@ -104,12 +104,10 @@ code_util__make_local_label(ModuleInfo, PredId, ProcId, LabelNum, Label) :-
 code_util__make_proc_label(ModuleInfo, PredId, ProcId, ProcLabel) :-
 	predicate_module(ModuleInfo, PredId, ModuleName),
 	predicate_name(ModuleInfo, PredId, PredName),
+	module_info_pred_info(ModuleInfo, PredId, PredInfo),
 	(
-		string__prefix(PredName, "__"),
-		\+ string__prefix(PredName, "__LambdaGoal__")
+		code_util__compiler_generated(PredInfo)
 	->
-		module_info_preds(ModuleInfo, Preds),
-		map__lookup(Preds, PredId, PredInfo),
 		pred_info_arg_types(PredInfo, _TypeVarSet, ArgTypes),
 		(
 			special_pred_get_type(PredName, ArgTypes, Type),

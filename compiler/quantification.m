@@ -182,7 +182,13 @@ implicitly_quantify_goal_2(disj(Goals0), _, disj(Goals)) -->
 
 implicitly_quantify_goal_2(switch(Var, Det, Cases0), _,
 					switch(Var, Det, Cases)) -->
-	implicitly_quantify_cases(Cases0, Cases).
+	implicitly_quantify_cases(Cases0, Cases),
+		% The switch variable is guaranteed to be non-local to the
+		% switch, since it has to be bound elsewhere, so we put it
+		% in the nonlocals here.
+	quantification__get_nonlocals(NonLocals0),
+	{ set__insert(NonLocals0, Var, NonLocals) },
+	quantification__set_nonlocals(NonLocals).
 
 implicitly_quantify_goal_2(not(Goal0), _, not(Goal)) -->
 		% quantified variables cannot be pushed inside a negation,
@@ -475,8 +481,9 @@ goal_vars_2(conj(Goals), Set0, Set) :-
 goal_vars_2(disj(Goals), Set0, Set) :-
 	goal_list_vars_2(Goals, Set0, Set).
 
-goal_vars_2(switch(_Var, _Det, Cases), Set0, Set) :-
-	case_list_vars_2(Cases, Set0, Set).
+goal_vars_2(switch(Var, _Det, Cases), Set0, Set) :-
+	set__insert(Set0, Var, Set1),
+	case_list_vars_2(Cases, Set1, Set).
 
 goal_vars_2(some(Vars, Goal), Set0, Set) :-
 	goal_vars(Goal, Set1),
