@@ -911,12 +911,15 @@ convert_functor_name(Name, GoedelName) :-
 
 valid_functor_tail(String) :-
 	( string__first_char(String, Char, Rest) ->
-		some [] (
+		(
 			is_alpha(Char) ;
 			is_digit(Char) ;
 			Char = '_'
-		),
-		valid_functor_tail(Rest)
+		->
+			valid_functor_tail(Rest)
+		;
+			fail
+		)
 	;
 		true
 	).
