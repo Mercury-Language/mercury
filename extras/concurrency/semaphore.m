@@ -285,14 +285,16 @@ semaphore__try_wait(Sem, Res) -->
 :- pragma foreign_proc("C#",
 		try_wait0(Semaphore::in, Res::out, _IO0::di, _IO::uo),
 		[will_not_call_mercury, thread_safe, promise_pure], "{
-	System.Threading.Monitor.Enter(Semaphore);
-
-	if (Semaphore.count > 0) {
-		Semaphore.count--;
-		System.Threading.Monitor.Exit(Semaphore);
-		Res = 0;
+	if (System.Threading.Monitor.TryEnter(Semaphore)) {
+		if (Semaphore.count > 0) {
+			Semaphore.count--;
+			System.Threading.Monitor.Exit(Semaphore);
+			Res = 0;
+		} else {
+			System.Threading.Monitor.Exit(Semaphore);
+			Res = 1;
+		}
 	} else {
-		System.Threading.Monitor.Exit(Semaphore);
 		Res = 1;
 	}
 }").
