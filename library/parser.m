@@ -289,7 +289,7 @@ parser__parse_rest(MaxPriority, IsArg, LeftPriority, LeftTerm, Term) -->
 	).
 
 %-----------------------------------------------------------------------------%
-	
+
 :- pred parser__parse_simple_term(int, parse(term),
 				parser__state, parser__state).
 :- mode parser__parse_simple_term(in, out, in, out) is det.
@@ -317,7 +317,7 @@ parser__parse_simple_term(Priority, Term) -->
 	%	atom --> open_curly, close_curly
 	% term --> variable		% priority 0
 	% term -->
-	
+
 :- pred parser__parse_simple_term_2(token, token_context, int, parse(term),
 				parser__state, parser__state).
 :- mode parser__parse_simple_term_2(in, in, in, out, in, out) is semidet.
@@ -637,7 +637,7 @@ parser__get_ops_table(OpTable) -->
 parser__adjust_priority(y, Priority, Priority).
 parser__adjust_priority(x, OldPriority, NewPriority) :-
 	NewPriority is OldPriority - 1.
-		
+
 :- pred parser__check_priority(ops__assoc, int, int).
 :- mode parser__check_priority(in, in, in) is semidet.
 
@@ -649,7 +649,7 @@ parser__check_priority(x, MaxPriority, Priority) :-
 :- pred parser__get_term_context(token_context, term__context,
 				parser__state, parser__state).
 :- mode parser__get_term_context(in, out, in, out) is det.
-		
+
 parser__get_term_context(TokenContext, TermContext) -->
 	=(parser__state(FileName, _Ops, _VarSet, _Tokens)),
 	{ term__context_init(FileName, TokenContext, TermContext) }.
