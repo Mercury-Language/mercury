@@ -119,7 +119,11 @@ disj_gen__generate_non_disj(Goals0, Code) -->
 	code_info__get_next_label(EndLab, yes),
 	disj_gen__generate_non_disj_2(Goals1, EndLab, RedoSaved, GoalsCode),
 	{ Code = tree(tree(SaveVarsCode, RedoIpCode),
-			tree(SaveHeapCode, GoalsCode)) }.
+			tree(SaveHeapCode, GoalsCode)) },
+		% since we don't know which disjunct we have come from
+		% we must set the current failure continuation to unkown.
+	code_info__pop_failure_cont,
+	code_info__push_failure_cont(unknown).
 
 :- pred disj_gen__generate_non_disj_2(list(hlds__goal), label, bool,
 					code_tree, code_info, code_info).
