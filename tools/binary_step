@@ -25,6 +25,8 @@ Options:
 		Pass <mmake-args> as options to \`mmake'.
 	-o <filename>, --output-file <filename>
 		Output results to <filename>.
+	-s <command>, --single-command <command>
+		Execute the given command using the constructed compiler.
 	-t <testdir>, --test-dir <testdir>
 		Execute runtests from the named subdirectory of tests.
 "
@@ -38,6 +40,7 @@ compile_only="false"
 jfactor=""
 mmake_opts=""
 outfile="DIFF.BINARY"
+single_command=""
 testdirs=""
 
 while [ $# -gt 0 ]; do
@@ -67,6 +70,13 @@ while [ $# -gt 0 ]; do
 		outfile="$2"; shift ;;
 	-o*)
 		outfile="` expr $1 : '-o\(.*\)' `"; ;;
+
+	-s|--single-command)
+		single_command="$2"; shift ;;
+	-s*)
+		single_command="` expr $1 : '-s\(.*\)' `" ;;
+	--single-command*)
+		single_command="` expr $1 : '--single-command\(.*\)' `" ;;
 
 	-t|--test-dir)
 		testdir="$2"; shift
@@ -164,7 +174,20 @@ export MERCURY_COMPILER
 MERCURY_INT_DIR=$root/stage3/library
 export MERCURY_INT_DIR
 
-if "$bootcheck" = true
+if test "$single_command" != ""
+then
+	echo "executing $single_command"
+	arg $single_command
+	if $single_command
+	then
+		echo "command successful"
+	else
+		echo "command not successful"
+		exit 1
+	fi
+fi
+
+if test "$bootcheck" = true
 then
 
 	# Rebuild the stage3 library and compiler from scratch

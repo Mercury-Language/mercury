@@ -11,7 +11,7 @@
 # versions, then the script stops after identifying only the file.
 #
 # The test for the composite stage2 compiler is either bootstrap checking
-# (the default, or the successful execution of the all the test cases in
+# (the default), or the successful execution of the all the test cases in
 # one or more dubdirectories of the tests directory.
 
 usage="\
@@ -41,6 +41,8 @@ Options:
 		Copy the runtime directory instead of linking it.
 		This is necessary if the test uses a compilation model option
 		that differs from the one used in the main runtime directory.
+	-s <command>, --single-command <command>
+		Execute the given command using each constructed compiler.
 	-t <testdir>, --test-dir <testdir>
 		Execute runtests from the named subdirectory of tests.
 "
@@ -101,6 +103,13 @@ while [ $# -gt 0 ]; do
 
 	-r|--copy-runtime)
 		copy_runtime=true ;;
+
+	-s|--single-command)
+		single_command="$2"; shift ;;
+	-s*)
+		single_command=` expr "$1" : '-s\(.*\)' ` ;;
+	--single-command*)
+		single_command=` expr "$1" : '--single-command\(.*\)' ` ;;
 
 	-t|--test-dir)
 		testdirs="$testdirs -t$2"; shift ;;
@@ -192,11 +201,13 @@ cd $root
 cp stage2.ok/library/*.dep stage2/library
 cp stage2.ok/library/*.int stage2/library
 cp stage2.ok/library/*.int2 stage2/library
+cp stage2.ok/library/*.int3 stage2/library
 cp stage2.ok/library/*.date stage2/library
 # cp stage2.ok/compiler/*.d stage2/compiler
 cp stage2.ok/compiler/*.dep stage2/compiler
 cp stage2.ok/compiler/*.int stage2/compiler
 cp stage2.ok/compiler/*.int2 stage2/compiler
+cp stage2.ok/compiler/*.int3 stage2/compiler
 cp stage2.ok/compiler/*.date stage2/compiler
 
 set -x
@@ -228,7 +239,7 @@ then
 
 	if test "$negative" = true
 	then
-		if binary_step $bootcheck $compile_only $jfactor -m "$mmake_opts" $outfile $testdirs
+		if binary_step $bootcheck $compile_only $jfactor -m "$mmake_opts" $outfile $testdirs -s "$single_command"
 		then
 			testeddir=library
 		else
@@ -236,7 +247,7 @@ then
 		fi
 		echo "solution seems to be in the $testeddir directory"
 	else
-		if binary_step $bootcheck $compile_only $jfactor -m "$mmake_opts" $outfile $testdirs
+		if binary_step $bootcheck $compile_only $jfactor -m "$mmake_opts" $outfile $testdirs -s "$single_command"
 		then
 			testeddir=compiler
 		else
@@ -297,7 +308,7 @@ do
 
 	if test "$negative" = true
 	then
-		if binary_step $bootcheck $compile_only $jfactor -m "$mmake_opts" $outfile $testdirs
+		if binary_step $bootcheck $compile_only $jfactor -m "$mmake_opts" $outfile $testdirs -s "$single_command"
 		then
 			echo "test succeeded"
 			lasttest=success
@@ -316,7 +327,7 @@ do
 			doubtful="$newdoubtful"
 		fi
 	else
-		if binary_step $bootcheck $compile_only $jfactor -m "$mmake_opts" $outfile $testdirs
+		if binary_step $bootcheck $compile_only $jfactor -m "$mmake_opts" $outfile $testdirs -s "$single_command"
 		then
 			echo "test succeeded"
 			lasttest=success
@@ -409,7 +420,7 @@ do
 
 	if test "$negative" = true
 	then
-		if binary_step $bootcheck $compile_only $jfactor -m "$mmake_opts" $outfile $testdirs
+		if binary_step $bootcheck $compile_only $jfactor -m "$mmake_opts" $outfile $testdirs -s "$single_command"
 		then
 			echo "test succeeded"
 			lasttest=success
@@ -428,7 +439,7 @@ do
 			doubtful="$newdoubtful"
 		fi
 	else
-		if binary_step $bootcheck $compile_only $jfactor -m "$mmake_opts" $outfile $testdirs
+		if binary_step $bootcheck $compile_only $jfactor -m "$mmake_opts" $outfile $testdirs -s "$single_command"
 		then
 			echo "test succeeded"
 			lasttest=success
