@@ -9,7 +9,7 @@
 
 	% Make implicit quantification explicit.
 	% For the rules on implicit quantification, see the
-	% file compiler/notes/IMPLICIT_QUANTIFICATION.
+	% Mercury language reference manual.
 	%
 	% Rather than making implicit quantification explicit by
 	% inserting additional existential quantifiers in the form of
@@ -40,8 +40,8 @@
 :- pred implicitly_quantify_clause_body(list(var), hlds__goal, hlds__goal).
 :- mode implicitly_quantify_clause_body(in, in, out) is det.
 
-:- pred implicitly_quantify_goal(hlds__goal, set(var), hlds__goal, set(var)).
-:- mode implicitly_quantify_goal(in, in, out, out) is det.
+:- pred implicitly_quantify_goal(hlds__goal, set(var), hlds__goal).
+:- mode implicitly_quantify_goal(in, in, out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -49,65 +49,105 @@
 :- import_module std_util, require.
 
 implicitly_quantify_clause_body(HeadVars, Goal0, Goal) :-
-	set__list_to_set(HeadVars, Set),
-	implicitly_quantify_goal(Goal0, Set, Goal, _).
+	set__list_to_set(HeadVars, OutsideVars),
+	implicitly_quantify_goal(Goal0, OutsideVars, Goal).
 
-implicitly_quantify_goal(Goal0 - GoalInfo0, OutsideVars,
+implicitly_quantify_goal(Goal0, OutsideVars, Goal) :-
+	set__init(QuantVars),
+	implicitly_quantify_goal(Goal0, OutsideVars, QuantVars, Goal, _).
+
+:- pred implicitly_quantify_goal(hlds__goal, set(var), set(var),
+				hlds__goal, set(var)).
+:- mode implicitly_quantify_goal(in, in, in, out, out) is det.
+
+implicitly_quantify_goal(Goal0 - GoalInfo0, OutsideVars, QuantVars,
 			Goal - GoalInfo, NonLocalVars) :-
-	implicitly_quantify_goal_2(Goal0, OutsideVars, Goal, NonLocalVars),
+	implicitly_quantify_goal_2(Goal0, OutsideVars, QuantVars,
+			Goal, NonLocalVars),
 	goal_info_set_nonlocals(GoalInfo0, NonLocalVars, GoalInfo).
 
-:- pred implicitly_quantify_goal_2(hlds__goal_expr, set(var),
+	% `OutsideVars' are the variables that have occurred outside
+	% this goal, not counting occurrences in quantifiers, and
+	% `QuantVars' are the variables that have been explicitly
+	% existentially quantified.  For example, for
+	%
+	%	test :- some [X] (p(X) ; not q(X) ; r(X), s(X)).
+	%
+	% when processing `r(X), s(X)', OutsideVars will be [] and
+	% QuantifiedVars will be [X]; when processing `r(X)',
+	% OutsideVars will be [X] and QuantifiedVars will be [],
+	% since now [X] has occured in a goal (`s(X)') outside of `r(X)'.
+	% When processing `not q(X)', OutsideVars will be [] and
+	% QuantifiedVars will be [X]; when processing `q(X)',
+	% OutsideVars will be [X] and QuantifiedVars will be [],
+	% since the quantification can't be pushed inside the negation.
+
+:- pred implicitly_quantify_goal_2(hlds__goal_expr, set(var), set(var),
 				   hlds__goal_expr, set(var)).
-:- mode implicitly_quantify_goal_2(in, in, out, out) is det.
+:- mode implicitly_quantify_goal_2(in, in, in, out, out) is det.
 
 	% we retain explicit existential quantifiers in the source code,
 	% even though they are redundant with the goal_info non_locals,
 	% so that we can easily recalculate the goal_info non_locals
 	% if necessary after program transformation.
 
-implicitly_quantify_goal_2(some(Vars, Goal0), OutsideVars,
+implicitly_quantify_goal_2(some(Vars, Goal0), OutsideVars, QuantVars,
 			   some(Vars, Goal), NonLocals) :-
-	set__insert_list(OutsideVars, Vars, OutsideVars1),
-	implicitly_quantify_goal(Goal0, OutsideVars1, Goal, NonLocals0),
+	check_overlapping_scopes(Vars, OutsideVars, QuantVars),
+	set__insert_list(QuantVars, Vars, QuantVars1),
+	implicitly_quantify_goal(Goal0, OutsideVars, QuantVars1,
+		Goal, NonLocals0),
 	set__delete_list(NonLocals0, Vars, NonLocals).
 
-implicitly_quantify_goal_2(conj(List0), OutsideVars,
+implicitly_quantify_goal_2(conj(List0), OutsideVars, QuantVars,
 			   conj(List), NonLocalVars) :-
-	implicitly_quantify_conj(List0, OutsideVars, List, NonLocalVars).
+	implicitly_quantify_conj(List0, OutsideVars, QuantVars,
+				List, NonLocalVars).
 
-implicitly_quantify_goal_2(disj(Goals0), OutsideVars,
+implicitly_quantify_goal_2(disj(Goals0), OutsideVars, QuantVars,
 			   disj(Goals), NonLocalVars) :-
-	implicitly_quantify_disj(Goals0, OutsideVars, Goals, NonLocalVars).
+	implicitly_quantify_disj(Goals0, OutsideVars, QuantVars,
+				Goals, NonLocalVars).
 
-implicitly_quantify_goal_2(switch(Var, Det, Cases0), OutsideVars,
+implicitly_quantify_goal_2(switch(Var, Det, Cases0), OutsideVars, QuantVars,
 			   switch(Var, Det, Cases), NonLocalVars) :-
-	implicitly_quantify_cases(Cases0, OutsideVars, Cases, NonLocalVars).
+	implicitly_quantify_cases(Cases0, OutsideVars, QuantVars,
+				Cases, NonLocalVars).
 
-implicitly_quantify_goal_2(not(Goal0), OutsideVars,
-		    not(Goal), NonLocals) :-
-	implicitly_quantify_goal(Goal0, OutsideVars, Goal, NonLocals).
+implicitly_quantify_goal_2(not(Goal0), OutsideVars, QuantVars,
+			   not(Goal), NonLocals) :-
+	% quantified variables cannot be pushed inside a negation,
+	% so we insert the quantified vars into the outside vars set,
+	% and initialize the new quantified vars set to be empty
+	set__union(OutsideVars, QuantVars, OutsideVars1),
+	set__init(QuantVars1),
+	implicitly_quantify_goal(Goal0, OutsideVars1, QuantVars1,
+				Goal, NonLocals).
 
-implicitly_quantify_goal_2(if_then_else(Vars, A0, B0, C0), OutsideVars,
+implicitly_quantify_goal_2(if_then_else(Vars, A0, B0, C0),
+				OutsideVars, QuantVars,
 		if_then_else(Vars, A, B, C), NonLocals) :-
-	set__insert_list(OutsideVars, Vars, OutsideVars0),
+	check_overlapping_scopes(Vars, OutsideVars, QuantVars),
+	set__insert_list(QuantVars, Vars, QuantVars1),
 	goal_vars(B0, VarsB),
-	set__union(OutsideVars0, VarsB, OutsideVars1),
-	implicitly_quantify_goal(A0, OutsideVars1, A, NonLocalsA),
+	set__union(OutsideVars, VarsB, OutsideVars1),
+	implicitly_quantify_goal(A0, OutsideVars1, QuantVars1, A, NonLocalsA),
 	set__union(OutsideVars, NonLocalsA, OutsideVars2),
-	implicitly_quantify_goal(B0, OutsideVars2, B, NonLocalsB),
-	implicitly_quantify_goal(C0, OutsideVars, C, NonLocalsC),
+	implicitly_quantify_goal(B0, OutsideVars2, QuantVars1, B, NonLocalsB),
+	implicitly_quantify_goal(C0, OutsideVars, QuantVars1, C, NonLocalsC),
 	set__union(NonLocalsA, NonLocalsB, NonLocalsSuccess),
 	set__union(NonLocalsSuccess, NonLocalsC, NonLocalsIfThenElse),
 	set__intersect(NonLocalsIfThenElse, OutsideVars, NonLocals).
 
-implicitly_quantify_goal_2(call(A, B, HeadArgs, D, E, F), OutsideVars,
+implicitly_quantify_goal_2(call(A, B, HeadArgs, D, E, F),
+		OutsideVars, _QuantVars,
 		call(A, B, HeadArgs, D, E, F), NonLocalVars) :-
 	term__vars_list(HeadArgs, HeadVars),
 	set__list_to_set(HeadVars, GoalVars),
 	set__intersect(GoalVars, OutsideVars, NonLocalVars).
 
-implicitly_quantify_goal_2(unify(TermA, TermB, X, Y, Z), OutsideVars,
+implicitly_quantify_goal_2(unify(TermA, TermB, X, Y, Z),
+			OutsideVars, _QuantVars,
 			unify(TermA, TermB, X, Y, Z), NonLocalVars) :-
 	term__vars(TermA, VarsA),
 	term__vars(TermB, VarsB),
@@ -115,60 +155,89 @@ implicitly_quantify_goal_2(unify(TermA, TermB, X, Y, Z), OutsideVars,
 	set__list_to_set(Vars, GoalVars),
 	set__intersect(GoalVars, OutsideVars, NonLocalVars).
 
-:- pred implicitly_quantify_conj(list(hlds__goal), set(var),
+:- pred implicitly_quantify_conj(list(hlds__goal), set(var), set(var),
 				 list(hlds__goal), set(var)).
-:- mode implicitly_quantify_conj(in, in, out, out) is det.
+:- mode implicitly_quantify_conj(in, in, in, out, out) is det.
 
-implicitly_quantify_conj(Goals0, OutsideVars, Goals, NonLocalVars) :-
+implicitly_quantify_conj(Goals0, OutsideVars, QuantVars, Goals, NonLocalVars) :-
 	get_vars(Goals0, FollowingVarsList),
-	implicitly_quantify_conj_2(Goals0, FollowingVarsList, OutsideVars,
+	implicitly_quantify_conj_2(Goals0, FollowingVarsList,
+				OutsideVars, QuantVars,
 				Goals, NonLocalVars).
 
-:- pred implicitly_quantify_conj_2(list(hlds__goal), list(set(var)), set(var),
+:- pred implicitly_quantify_conj_2(list(hlds__goal), list(set(var)),
+			set(var), set(var),
 			list(hlds__goal), set(var)).
-:- mode implicitly_quantify_conj_2(in, in, in, out, out) is det.
+:- mode implicitly_quantify_conj_2(in, in, in, in, out, out) is det.
 
-:- implicitly_quantify_conj_2(A, B, _, _, _) when A and B.
+:- implicitly_quantify_conj_2(A, B, _, _, _, _) when A and B.
 
-implicitly_quantify_conj_2([], _, _, [], NonLocalVars) :-
+implicitly_quantify_conj_2([], _, _, _, [], NonLocalVars) :-
 	set__init(NonLocalVars).
-implicitly_quantify_conj_2([_|_], [], _, _, _) :-
+implicitly_quantify_conj_2([_|_], [], _, _, _, _) :-
 	error("implicitly_quantify_conj_2: length mismatch").
 implicitly_quantify_conj_2([Goal0 | Goals0],
 			[FollowingVars | FollowingVarsList],
-			OutsideVars,
+			OutsideVars, QuantVars,
 			[Goal | Goals], NonLocalVars) :-
 	set__union(OutsideVars, FollowingVars, OutsideVars1),
-	implicitly_quantify_goal(Goal0, OutsideVars1, Goal, NonLocalVars1),
+	implicitly_quantify_goal(Goal0, OutsideVars1, QuantVars,
+		Goal, NonLocalVars1),
 	set__union(OutsideVars, NonLocalVars1, OutsideVars2),
-	implicitly_quantify_conj_2(Goals0, FollowingVarsList, OutsideVars2,
+	implicitly_quantify_conj_2(Goals0, FollowingVarsList,
+				OutsideVars2, QuantVars,
 				Goals, NonLocalVars2),
 	set__union(NonLocalVars1, NonLocalVars2, NonLocalVarsConj),
 	set__intersect(NonLocalVarsConj, OutsideVars, NonLocalVars).
 
-:- pred implicitly_quantify_disj(list(hlds__goal), set(var),
+:- pred implicitly_quantify_disj(list(hlds__goal), set(var), set(var),
 				 list(hlds__goal), set(var)).
-:- mode implicitly_quantify_disj(in, in, out, out) is det.
+:- mode implicitly_quantify_disj(in, in, in, out, out) is det.
 
-implicitly_quantify_disj([], _, [], NonLocalVars) :-
+implicitly_quantify_disj([], _, _, [], NonLocalVars) :-
 	set__init(NonLocalVars).
-implicitly_quantify_disj([Goal0 | Goals0], OutsideVars,
+implicitly_quantify_disj([Goal0 | Goals0], OutsideVars, QuantVars,
 			[Goal | Goals], NonLocalVars) :-
-	implicitly_quantify_goal(Goal0, OutsideVars, Goal, NonLocalVars0),
-	implicitly_quantify_disj(Goals0, OutsideVars, Goals, NonLocalVars1),
+	implicitly_quantify_goal(Goal0, OutsideVars, QuantVars,
+			Goal, NonLocalVars0),
+	implicitly_quantify_disj(Goals0, OutsideVars, QuantVars,
+			Goals, NonLocalVars1),
 	set__union(NonLocalVars0, NonLocalVars1, NonLocalVars).
 
-:- pred implicitly_quantify_cases(list(case), set(var),
+:- pred implicitly_quantify_cases(list(case), set(var), set(var),
 				 list(case), set(var)).
-:- mode implicitly_quantify_cases(in, in, out, out) is det.
+:- mode implicitly_quantify_cases(in, in, in, out, out) is det.
 
-implicitly_quantify_cases([], _, [], NonLocalVars) :-
+implicitly_quantify_cases([], _, _, [], NonLocalVars) :-
 	set__init(NonLocalVars).
-implicitly_quantify_cases([case(Cons, Goal0) | Cases0], OutsideVars,
+implicitly_quantify_cases([case(Cons, Goal0) | Cases0], OutsideVars, QuantVars,
 			[case(Cons, Goal) | Cases], NonLocalVars) :-
-	implicitly_quantify_goal(Goal0, OutsideVars, Goal, NonLocalVars0),
-	implicitly_quantify_cases(Cases0, OutsideVars, Cases, NonLocalVars1),
+	implicitly_quantify_goal(Goal0, OutsideVars, QuantVars,
+		Goal, NonLocalVars0),
+	implicitly_quantify_cases(Cases0, OutsideVars, QuantVars,
+		Cases, NonLocalVars1),
 	set__union(NonLocalVars0, NonLocalVars1, NonLocalVars).
+
+%-----------------------------------------------------------------------------%
+
+	% overlapping scopes are currently not implemented
+
+:- pred check_overlapping_scopes(list(var), set(var), set(var)).
+:- mode check_overlapping_scopes(in, in, in) is det.
+
+check_overlapping_scopes(Vars, OutsideVars, QuantVars) :-
+	(
+		list__member(Var, Vars),
+		(	set__member(Var, OutsideVars)
+		;	set__member(Var, QuantVars)
+		)
+	->
+		% XXX we should rename apart variables with overlapping
+		% scopes
+		error("implicitly_quantify_goal_2: sorry, not implemented: variable has overlapping scopes")
+	;
+		true
+	).
 
 %-----------------------------------------------------------------------------%
 
