@@ -10,7 +10,7 @@
 MAIN_TARGET=all
 
 MERCURY_DIR=..
-include ../Mmake.common
+include $(MERCURY_DIR)/Mmake.common
 
 #-----------------------------------------------------------------------------#
 
@@ -24,7 +24,7 @@ SICSTUS_SCRIPTS = mcs msc msl msp
 .SUFFIXES: .in
 
 .in:
-	cd ..; CONFIG_FILES=scripts/$@ CONFIG_HEADERS= ./config.status
+	CONFIG_FILES=$@ CONFIG_HEADERS= $(MERCURY_DIR)/config.status
 
 #-----------------------------------------------------------------------------#
 
