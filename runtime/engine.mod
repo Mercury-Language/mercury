@@ -80,7 +80,7 @@ static void init_registers(void)
 /* The gcc-specific version */
 
 void call_engine(Code *entry_point)
-{{
+{
 	/*
 	** Allocate some space for local variables in other
 	** procedures. This used to be done by just calling
@@ -93,7 +93,7 @@ void call_engine(Code *entry_point)
 	*/
 
 	unsigned char locals[LOCALS_SIZE];
-
+{
 
 #ifndef SPEED
 {
@@ -126,7 +126,7 @@ void call_engine(Code *entry_point)
 #ifndef SPEED
 	memset((void *)locals, MAGIC_MARKER, LOCALS_SIZE);
 #endif
-	debugmsg1("in `call_engine', locals at %p\n", locals);
+	debugmsg1("in `call_engine', locals at %p\n", (void *)locals);
 
 	/*
 	** Now just call the entry point
