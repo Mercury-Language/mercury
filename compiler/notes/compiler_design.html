@@ -550,7 +550,9 @@ for high-level optimizations (but which is not yet used).
 			<dd>
 			This is done by live_vars.m, which works
 			out which variables need to be saved on the
-			stack when, and then uses graph_colour.m to determine
+			stack when (trace.m determines what variables
+			are needed for debugging purposes).
+			It then uses graph_colour.m to determine
 			a good allocation of variables to stack slots.
 		<dt> migration of builtins following branched structures
 			<dd>
@@ -570,6 +572,11 @@ for high-level optimizations (but which is not yet used).
 			information so that we can generate correct code
 			by putting variables in the same spot at the end
 			of each branch.
+		<dt> computing goal paths
+			<dd>
+			The goal path of a goal defines its position in
+			the procedure body. This transformation attaches
+			its goal path to every goal, for use by the debugger.
 		</dl>
 
 <dt> code generation
@@ -592,6 +599,7 @@ for high-level optimizations (but which is not yet used).
 			<li> string_switch.m
 			<li> tag_switch.m
 			</ul>
+		<li> commit_gen.m (commits)
 		<li> pragma_c_gen.m (embedded C code)
 		</ul>
 		<p>
@@ -604,7 +612,7 @@ for high-level optimizations (but which is not yet used).
 		<dl>
 		<dt> code_info.m
 			<dd>
-			The main data structure for the code generator
+			The main data structure for the code generator.
 		<dt> code_exprn.m
 			<dd>
 			This defines the exprn_info type, which is 
@@ -614,19 +622,22 @@ for high-level optimizations (but which is not yet used).
 			the values/locations of variables.
 		<dt> exprn_aux.m
 			<dd>
-			Various preds which use exprn_info
+			Various preds which use exprn_info.
 		<dt> code_util.m
 			<dd>
-			Some miscellaneous preds used for code generation
+			Some miscellaneous preds used for code generation.
 		<dt> code_aux.m
 			<dd>
 			Some miscellaneous preds which, unlike those in
-			code_util, use code_info
+			code_util, use code_info.
 		<dt> continuation_info.m
 			<dd>
 			For accurate garbage collection, collects
 			information about each live value after calls,
 			and saves information about procedures.
+		<dt> trace.m
+			<dd>
+			Inserts calls to the runtime debugger.
 		</dl>
 
 <dt> code generation for `pragma export' declarations (export.m)
@@ -973,6 +984,6 @@ Some of them are obsolete; other are work-in-progress.
 <hr>
 <!-------------------------->
 
-Last update was $Date: 1999-07-14 04:17:20 $ by $Author: petdr $@cs.mu.oz.au. <br>
+Last update was $Date: 1999-07-14 05:41:49 $ by $Author: zs $@cs.mu.oz.au. <br>
 </body>
 </html>
