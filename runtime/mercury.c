@@ -855,8 +855,10 @@ MR_create3(MR_Word w1, MR_Word w2, MR_Word w3)
 MR_Box
 MR_box_float(MR_Float f)
 {
-	MR_Float *ptr = (MR_Float *)
-		MR_new_object(MR_Float, sizeof(MR_Float), "float");
+	MR_Float *ptr;
+
+	MR_make_hp_float_aligned();
+	ptr = (MR_Float *) MR_new_object(MR_Float, sizeof(MR_Float), "float");
 	*ptr = f;
 	return (MR_Box) ptr;
 }
@@ -880,8 +882,10 @@ MR_unbox_float(MR_Box b)
 MR_Box
 MR_asm_box_float(MR_Float f)
 {
-	MR_Float *ptr = (MR_Float *)
-		MR_new_object(MR_Float, sizeof(MR_Float), "float");
+	MR_Float *ptr;
+
+	MR_make_hp_float_aligned();
+	ptr = (MR_Float *) MR_new_object(MR_Float, sizeof(MR_Float), "float");
 	*ptr = f;
 	return (MR_Box) ptr;
 }
