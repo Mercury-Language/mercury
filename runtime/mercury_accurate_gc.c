@@ -166,7 +166,7 @@ MR_garbage_collect(void)
 	MR_Word *tmp_hp;
 
 	for (tmp_hp = old_heap->min; tmp_hp <= old_hp; tmp_hp++) {
-		*tmp_hp = 1;
+		*tmp_hp = 0xDEADBEAF;
 	}
     }
 
