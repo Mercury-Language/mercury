@@ -520,10 +520,8 @@ polymorphism__process_call(PredId, _ProcId, ArgVars0, ArgVars,
 	;
 		list__remove_dups(PredTypeVars0, PredTypeVars),
 		map__apply_to_list(ArgVars0, VarTypes0, ActualArgTypes),
-		map__keys(TypeInfoMap, HeadTypeVars),
-		map__init(TypeSubst0),
-		( type_unify_list(ActualArgTypes, PredArgTypes, HeadTypeVars,
-				TypeSubst0, TypeSubst1) ->
+		( type_list_subsumes(PredArgTypes, ActualArgTypes,
+				TypeSubst1) ->
 			TypeSubst = TypeSubst1
 		;
 		error("polymorphism__process_goal_2: type unification failed")
