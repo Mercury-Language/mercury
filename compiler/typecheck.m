@@ -867,13 +867,11 @@ get_type_stuff([TypeAssign | TypeAssigns], VarId, L) :-
 
 :- type arg_type_stuff ---> arg_type_stuff(type, type, tvarset).
 
-:- pred get_arg_type_stuff(args_type_assign_set, var, int,
-				list(arg_type_stuff)).
-:- mode get_arg_type_stuff(in, in, in, out) is det.
-get_arg_type_stuff([], _VarId, _ArgNum, []).
-get_arg_type_stuff([TypeAssign - ArgTypes | ArgTypeAssigns],
-			VarId, ArgNum, L) :-
-	get_arg_type_stuff(ArgTypeAssigns, VarId, ArgNum, L0),
+:- pred get_arg_type_stuff(args_type_assign_set, var, list(arg_type_stuff)).
+:- mode get_arg_type_stuff(in, in, out) is det.
+get_arg_type_stuff([], _VarId, []).
+get_arg_type_stuff([TypeAssign - ArgTypes | ArgTypeAssigns], VarId, L) :-
+	get_arg_type_stuff(ArgTypeAssigns, VarId, L0),
 	type_assign_get_type_bindings(TypeAssign, TypeBindings),
 	type_assign_get_typevarset(TypeAssign, TVarSet),
 	type_assign_get_var_types(TypeAssign, VarTypes),
@@ -888,7 +886,7 @@ get_arg_type_stuff([TypeAssign - ArgTypes | ArgTypeAssigns],
 		term__context_init(Context),
 		VarType = term__functor(term__atom("<any>"), [], Context)
 	),
-	list__index1_det(ArgTypes, ArgNum, ArgType),
+	list__index0_det(ArgTypes, 0, ArgType),
 	term__apply_rec_substitution(ArgType, TypeBindings, ArgType2),
 	term__apply_rec_substitution(VarType, TypeBindings, VarType2),
 	TypeStuff = arg_type_stuff(ArgType2, VarType2, TVarSet),
@@ -2446,8 +2444,7 @@ report_error_arg_var(TypeInfo, VarId, ArgTypeAssignSet0) -->
 	{ type_info_get_arg_num(TypeInfo, ArgNum) },
 	{ type_info_get_context(TypeInfo, Context) },
 	{ type_info_get_unify_context(TypeInfo, UnifyContext) },
-	{ get_arg_type_stuff(ArgTypeAssignSet0, VarId, ArgNum,
-			ArgTypeStuffList) },
+	{ get_arg_type_stuff(ArgTypeAssignSet0, VarId, ArgTypeStuffList) },
 	{ type_info_get_varset(TypeInfo, VarSet) },
 	write_context_and_pred_id(TypeInfo),
 	write_call_context(Context, CalledPredId, ArgNum, UnifyContext),
