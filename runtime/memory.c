@@ -54,7 +54,7 @@ static	void	simple_sighandler(int);
 #include <ucontext.h>
 #endif
 
-#ifdef	HAVE_SYSCONF
+#if defined(HAVE_SYSCONF) && defined(_SC_PAGESIZE)
 #define	getpagesize()	sysconf(_SC_PAGESIZE)
 #else
 #ifdef	HAVE_GETPAGESIZE
