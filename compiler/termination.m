@@ -91,6 +91,7 @@
 :- import_module check_hlds__inst_match.
 :- import_module check_hlds__mode_util.
 :- import_module check_hlds__type_util.
+:- import_module hlds__error_util.
 :- import_module hlds__hlds_data.
 :- import_module hlds__hlds_goal.
 :- import_module hlds__hlds_out.
@@ -131,7 +132,12 @@ termination__pass(Module0, Module) -->
 	{ module_info_ensure_dependency_info(Module1, Module2) },
 	{ module_info_dependency_info(Module2, DepInfo) },
 	{ hlds_dependency_info_get_dependency_ordering(DepInfo, SCCs) },
-	termination__process_all_sccs(SCCs, Module2, PassInfo, Module),
+		
+		% Ensure that termination pragmas for a proc. do conflict
+		% with termination pragmas for other procs. in the same SCC. 
+	check_pragmas_are_consistent(SCCs, Module2, Module3),
+	
+	termination__process_all_sccs(SCCs, Module3, PassInfo, Module),
 
 	globals__io_lookup_bool_option(make_optimization_interface,
 		MakeOptInt),
@@ -157,6 +163,111 @@ set_functor_info(size_data_elems, Module, use_map(WeightMap)) :-
 	find_weights(Module, WeightMap).
 
 %----------------------------------------------------------------------------%
+% Check that any user-supplied termination information (from pragma
+% terminates/does_not_terminate) is consistent for each SCC in the program.
+% 
+% The information will not be consistent if:
+% (1) One or more procs. in the SCC has a terminates pragma *and* one or more
+%     procs. in the SCC has a does_not_terminate pragma.
+% (2) One or more procs. in the SCC has a termination pragma (of either sort),
+%     *and* the termination status of one or more procs. in the SCC is 
+%     unknown.  (We check this after checking for the first case, so the
+%     termination info. for the known procs. will be consistent.)
+%
+% In the first case set the termination for all procs. in the SCC to 
+% can_loop and emit a warning.  In the second, set the termination of any
+% procs. whose termination status is unknown to be the same as those whose
+% termination status is known.
+
+:- pred check_pragmas_are_consistent(list(list(pred_proc_id)), module_info,
+	module_info, io__state, io__state).
+:- mode check_pragmas_are_consistent(in, in, out, di, uo) is det.
+
+check_pragmas_are_consistent(SCCs, Module0, Module) -->
+	list__foldl2(check_scc_pragmas_are_consistent, SCCs, Module0, Module).
+
+:- pred check_scc_pragmas_are_consistent(list(pred_proc_id), module_info, 
+	module_info, io__state, io__state).
+:- mode check_scc_pragmas_are_consistent(in, in, out, di, uo) is det.
+
+check_scc_pragmas_are_consistent(SCC, Module0, Module, !IO) :-
+	list__filter(is_termination_known(Module0), SCC, SCCTerminationKnown, 
+		SCCTerminationUnknown),
+	( 
+		SCCTerminationKnown = [],
+		Module = Module0
+	;
+		SCCTerminationKnown = [KnownPPId | _],
+		module_info_pred_proc_info(Module0, KnownPPId, _, KnownProcInfo),
+		proc_info_get_maybe_termination_info(KnownProcInfo, MaybeKnownTerm),
+		( 
+			MaybeKnownTerm = no,
+			unexpected(this_file, "No termination info. found.")
+		;
+			MaybeKnownTerm  = yes(KnownTermStatus)
+		),
+		( 
+			check_procs_known_term(KnownTermStatus, SCCTerminationKnown, 
+				Module0)
+		->
+				% Force any procs. in the SCC whose termination status is
+				% unknown to have the same termination status as those that
+				% are known.
+			set_termination_infos(SCCTerminationUnknown, KnownTermStatus,
+				Module0, Module)
+		;
+				% There is a conflict between the user-supplied termination
+				% information for two or more procs. in this SCC.  Emit
+				% a warning and then assume that they all loop.
+			get_context_from_scc(SCCTerminationKnown, Module0, Context),
+			NewTermStatus = can_loop([Context - inconsistent_annotations]),
+			set_termination_infos(SCC, NewTermStatus, Module0, Module),
+			
+			PredIds = list__map((func(proc(PredId, _)) = PredId), 
+				SCCTerminationKnown),
+			error_util__describe_several_pred_names(Module, PredIds, 
+				PredNames),	
+			Piece1 = words("are mutually recursive but some of their"),
+			Piece2 = words("termination pragmas are inconsistent."), 
+			Components = [words("Warning:")] ++ PredNames ++ [Piece1, Piece2],
+			error_util__report_warning(Context, 0, Components, !IO)
+		)	
+	).		
+
+	% Check that all procedures in an SCC whose termination status is known
+	% have the same termination status. 
+:- pred check_procs_known_term(termination_info, list(pred_proc_id), 
+	module_info). 
+:- mode check_procs_known_term(in, in, in) is semidet.
+
+check_procs_known_term(_, [], _).
+check_procs_known_term(Status, [PPId | PPIds], ModuleInfo) :-
+	module_info_pred_proc_info(ModuleInfo, PPId, _, ProcInfo),
+	proc_info_get_maybe_termination_info(ProcInfo, MaybeTerm),
+	(
+		MaybeTerm = no,		
+		unexpected(this_file, "No termination info for procedure.")
+	;
+		MaybeTerm = yes(PPIdStatus)
+	),
+	(
+		Status = cannot_loop,
+		PPIdStatus = cannot_loop
+	;
+		Status = can_loop(_),
+		PPIdStatus = can_loop(_)
+	),
+	check_procs_known_term(Status, PPIds, ModuleInfo).
+
+	% Succeeds iff the termination status of a procedure is known.
+:- pred is_termination_known(module_info, pred_proc_id).
+:- mode is_termination_known(in, in) is semidet.
+
+is_termination_known(Module, PPId) :-
+	module_info_pred_proc_info(Module, PPId, _, ProcInfo),
+	proc_info_get_maybe_termination_info(ProcInfo, yes(_)).	
+
+%----------------------------------------------------------------------------%
 
 :- pred termination__process_all_sccs(list(list(pred_proc_id)), module_info,
 	pass_info, module_info, io__state, io__state).
@@ -176,12 +287,12 @@ termination__process_all_sccs([SCC | SCCs], Module0, PassInfo, Module) -->
 :- mode termination__process_scc(in, in, in, out, di, uo) is det.
 
 termination__process_scc(SCC, Module0, PassInfo, Module) -->
-	{ IsArgSizeKnown = lambda([PPId::in] is semidet, (
+	{ IsArgSizeKnown = (pred(PPId::in) is semidet :- 
 		PPId = proc(PredId, ProcId),
 		module_info_pred_proc_info(Module0, PredId, ProcId,
 			_, ProcInfo),
 		proc_info_get_maybe_arg_size_info(ProcInfo, yes(_))
-	)) },
+	) },
 	{ list__filter(IsArgSizeKnown, SCC,
 		_SCCArgSizeKnown, SCCArgSizeUnknown) },
 	( { SCCArgSizeUnknown = [] } ->
@@ -203,24 +314,22 @@ termination__process_scc(SCC, Module0, PassInfo, Module) -->
 			ArgSizeErrors = Errors
 		}
 	),
-	{ IsTerminationKnown = lambda([PPId::in] is semidet, (
-		PPId = proc(PredId, ProcId),
-		module_info_pred_proc_info(Module0, PredId, ProcId,
-			_, ProcInfo),
-		proc_info_get_maybe_arg_size_info(ProcInfo, yes(_))
-	)) },
-	{ list__filter(IsTerminationKnown, SCC,
+	{ list__filter(is_termination_known(Module1), SCC,
 		_SCCTerminationKnown, SCCTerminationUnknown) },
 	( { SCCTerminationUnknown = [] } ->
+			%
+			% We may possibly have encountered inconsistent
+			% terminates/does_not_terminate pragmas for this SCC,
+			% so we need to report errors here as well.
 		{ Module = Module1 }
 	;
-		{ IsFatal = lambda([ContextError::in] is semidet, (
+		{ IsFatal = (pred(ContextError::in) is semidet :-
 			ContextError = _Context - Error,
 			( Error = horder_call
 			; Error = horder_args(_, _)
 			; Error = imported_pred
 			)
-		)) },
+		) },
 		{ list__filter(IsFatal, ArgSizeErrors, FatalErrors) },
 		{ list__append(TermErrors, FatalErrors, BothErrors) },
 		( { BothErrors = [_ | _] } ->
@@ -239,9 +348,9 @@ termination__process_scc(SCC, Module0, PassInfo, Module) -->
 		),
 		{ set_termination_infos(SCCTerminationUnknown,
 			TerminationResult, Module1, Module2) },
-		( { TerminationResult = can_loop(TerminationErrors) } ->
-			report_termination_errors(SCC, TerminationErrors,
-				Module2, Module)
+		( { TerminationResult = can_loop(TerminationErrors) } -> 
+				report_termination_errors(SCC, TerminationErrors, Module2, 
+					Module)
 		;
 			{ Module = Module2 }
 		)
@@ -846,3 +955,9 @@ termination__write_maybe_termination_info(MaybeTerminationInfo, Verbose) -->
 			[]
 		)
 	).
+
+%----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "termination.m".

@@ -57,6 +57,8 @@ TERM_PROGS= \
 	pl8_3_1a \
 	pl8_4_1 \
 	pl8_4_2 \
+	pragma_non_term \
+	pragma_term \
 	queens \
 	quicksort \
 	select \

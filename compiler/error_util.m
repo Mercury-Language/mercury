@@ -91,6 +91,9 @@
 :- pred error_util__describe_one_pred_name(module_info::in, pred_id::in,
 	string::out) is det.
 
+:- pred error_util__describe_several_pred_names(module_info::in,
+	list(pred_id)::in, list(format_component)::out) is det.
+
 :- pred error_util__describe_one_proc_name(module_info::in, pred_proc_id::in,
 	string::out) is det.
 
@@ -457,6 +460,10 @@ error_util__describe_one_pred_name(Module, PredId, Piece) :-
 			ArityPart,
 			"'"], Piece)
 	).
+
+error_util__describe_several_pred_names(Module, PredId, Pieces) :- 
+	list__map(error_util__describe_one_pred_name(Module), PredId, Pieces0),
+	error_util__list_to_pieces(Pieces0, Pieces).
 
 error_util__describe_one_proc_name(Module, proc(PredId, ProcId), Piece) :-
 	error_util__describe_one_pred_name(Module, PredId, PredPiece),

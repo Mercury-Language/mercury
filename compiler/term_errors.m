@@ -109,8 +109,12 @@
 			% least one output argument permits a norm greater
 			% than zero.
 
-	;	does_not_term_pragma(pred_id).
+	;	does_not_term_pragma(pred_id)
 			% The given procedure has a does_not_terminate pragma.
+	
+	;	inconsistent_annotations.
+			% The pragma terminates/does_not_terminate declarations
+			% for the procedures in this SCC are inconsistent. 
 
 :- type term_errors__error == pair(prog_context, termination_error).
 
@@ -438,6 +442,9 @@ term_errors__description(does_not_term_pragma(PredId), Single, Module,
 		Piece2 = fixed(Piece2Str)
 	),
 	list__append(Pieces1, [Piece2], Pieces).
+
+term_errors__description(inconsistent_annotations, _, _, Pieces, no) :-
+	Pieces = [words("The termination pragmas are inconsistent.")].
 
 %----------------------------------------------------------------------------%
 

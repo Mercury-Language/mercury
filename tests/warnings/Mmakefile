@@ -5,7 +5,8 @@ THIS_DIR = warnings
 #-----------------------------------------------------------------------------#
 
 COMPILE_PROGS=	\
-	arg_order_rearrangment
+	arg_order_rearrangment \
+	pragma_term_conflict 
 
 ERRORCHECK_PROGS= \
 	ambiguous_overloading \

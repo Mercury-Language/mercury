@@ -185,14 +185,6 @@ test(Args0) :-
 
 -----------------------------------------------------------------------------
 
-Subject: `:- pragma does_not_terminate'
-Date: Wed, 9 Jun 1999 16:29:09 +1000 (EST)
-
-`:- pragma does_not_terminate' declarations do not work.
-The compiler's termination analysis seems to ignore them.
-
------------------------------------------------------------------------------
-
 Date: Wed, 1 Dec 1999 22:52:57 +1100
 Subject: compiler infinite loop for cyclic type classes
 

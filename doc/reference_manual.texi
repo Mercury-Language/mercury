@@ -8331,7 +8331,9 @@ This declaration may be used to inform the compiler that this predicate
 or function is guaranteed to terminate for any input.  This is useful
 when the compiler cannot prove termination of some predicates or 
 functions which are in turn preventing the compiler from proving
-termination of other predicates or functions.
+termination of other predicates or functions.  This declaration
+affects not only the predicate specified but also
+any other predicates that are mutually recursive with it.
 
 @example
 :- pragma does_not_terminate(@var{Name}/@var{Arity}).
@@ -8340,7 +8342,8 @@ termination of other predicates or functions.
 This declaration may be used to inform the compiler that this predicate
 does not necessarily terminate.  This is useful for procedures defined
 using the C interface, which the compiler assumes to terminate by
-default.
+default.  This declaration affects not only the predicate specified
+but also any other predicates that are mutually recursive with it.  
 
 @example
 :- pragma check_termination(@var{Name}/@var{Arity}).

@@ -1,0 +1,2 @@
+:- module pragma_term.
+:- pragma termination_info((pragma_term.a), finite(0, []), cannot_loop).

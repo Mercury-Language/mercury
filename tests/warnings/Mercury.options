@@ -34,3 +34,7 @@ MCFLAGS-simple_code		= --common-struct
 MCFLAGS-infinite_recursion	= --excess-assign --common-struct
 
 MCFLAGS-warn_stubs		= --allow-stubs --warn-unused-args
+	
+	# Conflicting termination pragmas won't show up unless we 
+	# perform termination analysis.
+MCFLAGS-pragma_term_conflict = --enable-termination
