@@ -50,7 +50,7 @@ $(GCC_MAIN_LIBS): force
 MCFLAGS +=	-I $(BROWSER_DIR) -I $(ANALYSIS_DIR) \
 			--c-include-directory $(ANALYSIS_DIR) \
 			--no-main --linkage shared
-CFLAGS +=	-I $(ANALYSIS_DIR)
+CFLAGS +=	-I$(ANALYSIS_DIR)
 MLOBJS :=	../main.$O ../analysis/lib$(ANALYSIS_LIB_NAME).$A $(MLOBJS)
 ALL_MLLIBS =	$(MLLIBS) $(EXTRA_MLLIBS) $(GCC_BACKEND_LIBS)
 MLFLAGS +=	--no-main --shared
