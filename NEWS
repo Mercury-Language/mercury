@@ -27,7 +27,29 @@ NEWS since Mercury release 0.8:
   the lambda expression.
 
 * We've added a new predicate to the Mercury standard library:
-	bag__count_value/3.	
+	bag__count_value/3.
+
+  The following predicates have been replaced by functions with
+  the same names, and will be removed in a future release.
+  The predicate versions were intended for use in programs which needed
+  to work in both Prolog and Mercury, but executing Mercury programs using
+  Prolog is no longer supported.
+	float__ceiling_to_int/2,
+	float__floor_to_int/2,
+	float__round_to_int/2,
+	float__truncate_to_int/2,
+	float__abs/2,
+	float__max/3,
+	float__min/3,
+	float__pow/3,
+	float__hash/2,
+	float__max/1,
+	float__min/1,
+	float__epsilon/1,
+	float__radix/1,
+	float__mantissa_digits/1,
+	float__min_exponent/1,
+	float__max_exponent/1.
 
 * The extras distribution now includes support for dynamic linking.
 

@@ -141,9 +141,6 @@
 :- func pow(float, int) = float.
 
 	% Compute a non-negative integer hash value for a float.
-	% (Note: the hash values computed by the Mercury implementation of
-	% this predicate are different to those computed by the Prolog
-	% implementation.)
 :- func hash(float) = int.
 
 %
@@ -194,100 +191,6 @@
 :- func float__max_exponent = int.
 
 %---------------------------------------------------------------------------%
-
-% Predicate versions of the functions declared above.
-% These are intended for use in programs that need to work
-% in both Prolog and Mercury (e.g. for debugging).
-% These predicate versions will eventually become obsolete.
-
-%
-% Conversion predicates
-%
-
-	% float__ceiling_to_int(X, Ceil) is true if Ceil is the
-	% smallest integer not less than X.
-:- pred float__ceiling_to_int(float, int).
-:- mode float__ceiling_to_int(in, out) is det.
-
-	% float__floor_to_int(X, Ceil) is true if Ceil is the
-	% largest integer not greater than X.
-:- pred float__floor_to_int(float, int).
-:- mode float__floor_to_int(in, out) is det.
-
-	% float__round_to_int(X, Round) is true if Round is the
-	% integer closest to X.  If X has a fractional value of
-	% 0.5, it is rounded up.
-:- pred float__round_to_int(float, int).
-:- mode float__round_to_int(in, out) is det.
-
-	% float__truncate_to_int(X, Trunc) is true if Trunc is
-	% the integer closest to X such that |Trunc| =< |X|.
-:- pred float__truncate_to_int(float, int).
-:- mode float__truncate_to_int(in, out) is det.
-
-%
-% Miscellaneous predicates
-%
-
-	% absolute value
-:- pred float__abs(float, float).
-:- mode float__abs(in, out) is det.
-
-	% maximum
-:- pred float__max(float, float, float).
-:- mode float__max(in, in, out) is det.
-
-	% minimum
-:- pred float__min(float, float, float).
-:- mode float__min(in, in, out) is det.
-
-	% float__pow(Base, Exponent, Answer) is true iff Answer is
-	% Base raised to the power Exponent.  The exponent must be an 
-	% integer greater or equal to 0.  Currently this function runs
-	% at O(n), where n is the value of the exponent.
-:- pred float__pow(float, int, float).
-:- mode float__pow(in, in, out) is det.
-
-	% Compute a non-negative integer hash value for a float.
-	% (Note: the hash values computed by the Mercury implementation of
-	% this predicate are different to those computed by the Prolog
-	% implementation.)
-:- pred float__hash(float, int).
-:- mode float__hash(in, out) is det.
-
-%
-% System constant predicates
-%
-
-	% Maximum floating-point number
-:- pred float__max(float).
-:- mode float__max(out) is det.
-
-	% Minimum normalised floating-point number
-:- pred float__min(float).
-:- mode float__min(out) is det.
-
-	% Smallest number x such that 1.0 + x \= 1.0
-:- pred float__epsilon(float).
-:- mode float__epsilon(out) is det.
-
-	% Radix of the floating-point representation.
-:- pred float__radix(int).
-:- mode float__radix(out) is det.
-
-	% The number of base-radix digits in the mantissa.
-:- pred float__mantissa_digits(int).
-:- mode float__mantissa_digits(out) is det.
-
-	% Smallest exponent of a normalised floating-point number.
-:- pred float__min_exponent(int).
-:- mode float__min_exponent(out) is det.
-
-	% Largest exponent of a normalised floating-point number.
-:- pred float__max_exponent(int).
-:- mode float__max_exponent(out) is det.
-
-%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -298,39 +201,146 @@
 
 %---------------------------------------------------------------------------%
 
-/* The following predicates are obsolete.  Don't use them.
-   They will eventually disappear in some future release.
-*/
+%
+% Obsolete predicate versions of the functions declared above.
+% These were intended for use in programs that need to work
+% in both Prolog and Mercury. Running Mercury programs using
+% Prolog is no longer supported.
+%
 
-% :- pragma obsolete(builtin_float_plus/3).
+%
+% Conversion predicates
+%
+
+	% float__ceiling_to_int(X, Ceil) is true if Ceil is the
+	% smallest integer not less than X.
+:- pragma obsolete(float__ceiling_to_int/2).
+:- pred float__ceiling_to_int(float, int).
+:- mode float__ceiling_to_int(in, out) is det.
+
+	% float__floor_to_int(X, Ceil) is true if Ceil is the
+	% largest integer not greater than X.
+:- pragma obsolete(float__floor_to_int/2).
+:- pred float__floor_to_int(float, int).
+:- mode float__floor_to_int(in, out) is det.
+
+	% float__round_to_int(X, Round) is true if Round is the
+	% integer closest to X.  If X has a fractional value of
+	% 0.5, it is rounded up.
+:- pragma obsolete(float__round_to_int/2).
+:- pred float__round_to_int(float, int).
+:- mode float__round_to_int(in, out) is det.
+
+	% float__truncate_to_int(X, Trunc) is true if Trunc is
+	% the integer closest to X such that |Trunc| =< |X|.
+:- pragma obsolete(float__truncate_to_int/2).
+:- pred float__truncate_to_int(float, int).
+:- mode float__truncate_to_int(in, out) is det.
+
+%
+% Miscellaneous predicates
+%
+
+	% absolute value
+:- pragma obsolete(float__abs/2).
+:- pred float__abs(float, float).
+:- mode float__abs(in, out) is det.
+
+	% maximum
+:- pragma obsolete(float__max/3).
+:- pred float__max(float, float, float).
+:- mode float__max(in, in, out) is det.
+
+	% minimum
+:- pragma obsolete(float__min/3).
+:- pred float__min(float, float, float).
+:- mode float__min(in, in, out) is det.
+
+	% float__pow(Base, Exponent, Answer) is true iff Answer is
+	% Base raised to the power Exponent.  The exponent must be an 
+	% integer greater or equal to 0.  Currently this function runs
+	% at O(n), where n is the value of the exponent.
+:- pragma obsolete(float__pow/3).
+:- pred float__pow(float, int, float).
+:- mode float__pow(in, in, out) is det.
+
+	% Compute a non-negative integer hash value for a float.
+:- pragma obsolete(float__hash/2).
+:- pred float__hash(float, int).
+:- mode float__hash(in, out) is det.
+
+%
+% System constant predicates
+%
+
+	% Maximum floating-point number
+:- pragma obsolete(float__max/1).
+:- pred float__max(float).
+:- mode float__max(out) is det.
+
+	% Minimum normalised floating-point number
+:- pragma obsolete(float__min/1).
+:- pred float__min(float).
+:- mode float__min(out) is det.
+
+	% Smallest number x such that 1.0 + x \= 1.0
+:- pragma obsolete(float__epsilon/1).
+:- pred float__epsilon(float).
+:- mode float__epsilon(out) is det.
+
+	% Radix of the floating-point representation.
+:- pragma obsolete(float__radix/1).
+:- pred float__radix(int).
+:- mode float__radix(out) is det.
+
+	% The number of base-radix digits in the mantissa.
+:- pragma obsolete(float__mantissa_digits/1).
+:- pred float__mantissa_digits(int).
+:- mode float__mantissa_digits(out) is det.
+
+	% Smallest exponent of a normalised floating-point number.
+:- pragma obsolete(float__min_exponent/1).
+:- pred float__min_exponent(int).
+:- mode float__min_exponent(out) is det.
+
+	% Largest exponent of a normalised floating-point number.
+:- pragma obsolete(float__max_exponent/1).
+:- pred float__max_exponent(int).
+:- mode float__max_exponent(out) is det.
+
+%
+% Synonyms for the builtin arithmetic functions.
+%
+
+:- pragma obsolete(builtin_float_plus/3).
 :- pred builtin_float_plus(float, float, float).
 :- mode builtin_float_plus(in, in, uo) is det.
 
-% :- pragma obsolete(builtin_float_minus/3).
+:- pragma obsolete(builtin_float_minus/3).
 :- pred builtin_float_minus(float, float, float).
 :- mode builtin_float_minus(in, in, uo) is det.
 
-% :- pragma obsolete(builtin_float_times/3).
+:- pragma obsolete(builtin_float_times/3).
 :- pred builtin_float_times(float, float, float).
 :- mode builtin_float_times(in, in, uo) is det.
 
-% :- pragma obsolete(builtin_float_divide/3).
+:- pragma obsolete(builtin_float_divide/3).
 :- pred builtin_float_divide(float, float, float).
 :- mode builtin_float_divide(in, in, uo) is det.
 
-% :- pragma obsolete(builtin_float_gt/2).
+:- pragma obsolete(builtin_float_gt/2).
 :- pred builtin_float_gt(float, float).
 :- mode builtin_float_gt(in, in) is semidet.
 
-% :- pragma obsolete(builtin_float_lt/2).
+:- pragma obsolete(builtin_float_lt/2).
 :- pred builtin_float_lt(float, float).
 :- mode builtin_float_lt(in, in) is semidet.
 
-% :- pragma obsolete(builtin_float_ge/2).
+:- pragma obsolete(builtin_float_ge/2).
 :- pred builtin_float_ge(float, float).
 :- mode builtin_float_ge(in, in) is semidet.
 
-% :- pragma obsolete(builtin_float_le/2).
+:- pragma obsolete(builtin_float_le/2).
 :- pred builtin_float_le(float, float).
 :- mode builtin_float_le(in, in) is semidet.
 
@@ -364,53 +374,52 @@
 float(Int) = Float :-
 	int__to_float(Int, Float).
 
-	% float__ceiling_to_int(X, Ceil) is true if Ceil is the
+	% float__ceiling_to_int(X) returns the
 	% smallest integer not less than X.
-:- pragma c_code(float__ceiling_to_int(X :: in, Ceil :: out),
+:- pragma c_code(float__ceiling_to_int(X :: in) = (Ceil :: out),
 	[will_not_call_mercury, thread_safe],
 "
 	Ceil = (Integer) ceil(X);
 ").
 
-float__ceiling_to_int(X) = Ceil :- float__ceiling_to_int(X, Ceil).
+float__ceiling_to_int(X, float__ceiling_to_int(X)).
 
-	% float__floor_to_int(X, Floor) is true if Floor is the
+	% float__floor_to_int(X) returns the
 	% largest integer not greater than X.
-:- pragma c_code(float__floor_to_int(X :: in, Floor :: out),
+:- pragma c_code(float__floor_to_int(X :: in) = (Floor :: out),
 	[will_not_call_mercury, thread_safe],
 "
 	Floor = (Integer) floor(X);
 ").
 
-float__floor_to_int(X) = Floor :- float__floor_to_int(X, Floor).
+float__floor_to_int(X, float__floor_to_int(X)).
 
-	% float__round_to_int(X, Round) is true if Round is the
-	% integer closest to X.  If X has a fractional value of
-	% 0.5, it is rounded up.
-:- pragma c_code(float__round_to_int(X :: in, Round :: out),
+	% float__round_to_int(X) returns the integer closest to X.
+	% If X has a fractional value of 0.5, it is rounded up.
+:- pragma c_code(float__round_to_int(X :: in) = (Round :: out),
 	[will_not_call_mercury, thread_safe],
 "
 	Round = (Integer) floor(X + 0.5);
 ").
 
-float__round_to_int(X) = Round :- float__round_to_int(X, Round).
+float__round_to_int(X, float__round_to_int(X)).
 
-	% float__truncate_to_int(X, Trunc) is true if Trunc is
-	% the integer closest to X such that |Trunc| =< |X|.
-:- pragma c_code(float__truncate_to_int(X :: in, Trunc :: out),
+	% float__truncate_to_int(X) returns the integer closest
+	% to X such that |float__truncate_to_int(X)| =< |X|.
+:- pragma c_code(float__truncate_to_int(X :: in) = (Trunc :: out),
 	[will_not_call_mercury, thread_safe],
 "
 	Trunc = (Integer) X;
 ").
 
-float__truncate_to_int(X) = Trunc :- float__truncate_to_int(X, Trunc).
+float__truncate_to_int(X, float__truncate_to_int(X)).
 
 %---------------------------------------------------------------------------%
 %
 % Miscellaneous functions
 %
 
-float__abs(Num, Abs) :-
+float__abs(Num) = Abs :-
 	(
 		Num =< 0.0
 	->
@@ -419,9 +428,9 @@ float__abs(Num, Abs) :-
 		Abs = Num
 	).
 
-float__abs(Num) = Abs :- float__abs(Num, Abs).
+float__abs(Num, float__abs(Num)).
 
-float__max(X, Y, Max) :-
+float__max(X, Y) = Max :-
 	(
 		X >= Y
 	->
@@ -430,9 +439,9 @@ float__max(X, Y, Max) :-
 		Max = Y
 	).
 
-float__max(X, Y) = Max :- float__max(X, Y, Max).
+float__max(X, Y, float__max(X, Y)).
 
-float__min(X, Y, Min) :-
+float__min(X, Y) = Min :-
 	(
 		X =< Y
 	->
@@ -441,12 +450,12 @@ float__min(X, Y, Min) :-
 		Min = Y
 	).
 
-float__min(X, Y) = Min :- float__min(X, Y, Min).
+float__min(X, Y, float__min(X, Y)).
 
-% float_pow(Base, Exponent, Answer).
+% float_pow(Base, Exponent) = Answer.
 %	XXXX This function could be more efficient, with an int_mod pred, to
 %	reduce O(N) to O(logN) of the exponent.
-float__pow( X, Exp, Ans) :-
+float__pow(X, Exp) = Ans :-
 	( Exp < 0 ->
 		error("float__pow taken with exponent < 0\n")
 	; Exp = 1 ->
@@ -455,19 +464,18 @@ float__pow( X, Exp, Ans) :-
 		Ans = 1.0
 	;
 		New_e is Exp - 1,
-		float__pow(X, New_e, A2),
-		Ans is X * A2
+		Ans is X * float__pow(X, New_e)
 	).
 
-float__pow(X, Exp) = Pow :- float__pow(X, Exp, Pow).
+float__pow(X, Exp, float__pow(X, Exp)).
 
-:- pragma c_code(float__hash(F::in, H::out),
+:- pragma c_code(float__hash(F::in) = (H::out),
 	[will_not_call_mercury, thread_safe],
 "
 	H = hash_float(F);
 ").
 
-float__hash(F) = H :- float__hash(F, H).
+float__hash(F, float__hash(F)).
 
 %---------------------------------------------------------------------------%
 %
@@ -499,57 +507,57 @@ float__hash(F) = H :- float__hash(F, H).
 ").
 
 	% Maximum floating-point number
-:- pragma c_code(float__max(Max::out),
+:- pragma c_code(float__max = (Max::out),
 		[will_not_call_mercury, thread_safe],
 	"Max = ML_FLOAT_MAX;").
 
-float__max = Max :- float__max(Max).
+float__max(float__max).
 
 	% Minimum normalised floating-point number */
-:- pragma c_code(float__min(Min::out),
+:- pragma c_code(float__min = (Min::out),
 		[will_not_call_mercury, thread_safe],
 	"Min = ML_FLOAT_MIN;").
 
-float__min = Min :- float__min(Min).
+float__min(float__min).
 
 	% Smallest x such that x \= 1.0 + x
-:- pragma c_code(float__epsilon(Eps::out),
+:- pragma c_code(float__epsilon = (Eps::out),
 		[will_not_call_mercury, thread_safe],
 	"Eps = ML_FLOAT_EPSILON;").
 
-float__epsilon = Epsilon :- float__epsilon(Epsilon).
+float__epsilon(float__epsilon).
 
 	% Radix of the floating-point representation.
-:- pragma c_code(float__radix(Radix::out),
+:- pragma c_code(float__radix = (Radix::out),
 		[will_not_call_mercury, thread_safe],
 	"Radix = ML_FLOAT_RADIX;").
 
-float__radix = Radix :- float__radix(Radix).
+float__radix(float__radix).
 
 	% The number of base-radix digits in the mantissa.
-:- pragma c_code(float__mantissa_digits(MantDig::out),
+:- pragma c_code(float__mantissa_digits = (MantDig::out),
 		[will_not_call_mercury, thread_safe],
 	"MantDig = ML_FLOAT_MANT_DIG;").
 
-float__mantissa_digits = MantissaDig :- float__mantissa_digits(MantissaDig).
+float__mantissa_digits(float__mantissa_digits).
 
 	% Minimum negative integer such that:
 	%	radix ** (min_exponent - 1)
 	% is a normalised floating-point number.
-:- pragma c_code(float__min_exponent(MinExp::out),
+:- pragma c_code(float__min_exponent = (MinExp::out),
 		[will_not_call_mercury, thread_safe],
 	"MinExp = ML_FLOAT_MIN_EXP;").
 
-float__min_exponent = MinExponent :- float__min_exponent(MinExponent).
+float__min_exponent(float__min_exponent).
 
 	% Maximum integer such that:
 	%	radix ** (max_exponent - 1)
 	% is a normalised floating-point number.
-:- pragma c_code(float__max_exponent(MaxExp::out),
+:- pragma c_code(float__max_exponent = (MaxExp::out),
 		[will_not_call_mercury, thread_safe],
 	"MaxExp = ML_FLOAT_MIN_EXP;").
 
-float__max_exponent = MaxExponent :- float__max_exponent(MaxExponent).
+float__max_exponent(float__max_exponent).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
