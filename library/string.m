@@ -85,6 +85,13 @@
 %	string__first_char(String, Char, Rest) is true iff
 %		Char is the first character of String, and Rest is the
 %		remainder.
+%
+%		WARNING: string__first_char makes a copy of Rest
+%		because the garbage collector doesn't handle references
+%		into the middle of an object.
+%		Repeated use of string__first_char to iterate
+%		over a string will result in very poor performance.
+%		Use string__foldl or string__to_char_list instead.
 
 :- pred string__replace(string, string, string, string).
 :- mode string__replace(in, in, in, out) is semidet.
@@ -293,8 +300,6 @@
 %	string__sub_string_search(String, SubString, Index).
 %	`Index' is the position in `String' where the first occurrence of
 %	`SubString' begins.
-%	Do a brute-force search in the first string for the second string.
-%	XXX Note: not the most efficient algorithm.
 
 :- pred string__format(string, list(string__poly_type), string).
 :- mode string__format(in, in, out) is det.
@@ -864,29 +869,18 @@ string__combine_hash(H0, X, H) :-
 
 %-----------------------------------------------------------------------------%
 
-string__sub_string_search(String, Substring, Index) :- 
-	string__length(String, StringLength),
-	string__length(Substring, SubstringLength),
-	string__sub_string_search2(String, Substring, StringLength, 
-			SubstringLength, Index).
-
-:- pred string__sub_string_search2(string, string, int, int, int).
-:- mode string__sub_string_search2(in, in, in, in, out) is semidet.
-
-string__sub_string_search2(String0, SString, StrLen0,
-			SStrLen, Index) :-
-	StrLen0 >= SStrLen,
-	(
-		string__prefix(String0, SString)
-	->
-		Index = 0
-	;
-		string__first_char(String0, _, String),
-		StrLen is StrLen0 - 1,
-		string__sub_string_search2(String, SString, StrLen, 
-				SStrLen, Index0),
-		Index is Index0 + 1
-	).
+:- pragma c_code(string__sub_string_search(String::in, SubString::in,
+			Index::out) , [will_not_call_mercury, thread_safe],
+"{
+	char *match;
+	match = strstr(String, SubString);
+	if (match) {
+		Index = match - String;
+		SUCCESS_INDICATOR = TRUE;
+	} else {
+		SUCCESS_INDICATOR = FALSE;
+	}
+}").
 
 %-----------------------------------------------------------------------------%
 
