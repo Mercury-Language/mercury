@@ -582,7 +582,7 @@
 
 :- interface.
 
-:- import_module hlds_module, mlds.
+:- import_module hlds_module, hlds_pred, mlds.
 :- import_module io.
 
 %-----------------------------------------------------------------------------%
@@ -593,16 +593,21 @@
 :- pred ml_code_gen(module_info, mlds, io__state, io__state).
 :- mode ml_code_gen(in, out, di, uo) is det.
 
+	% Generate the mlds__pred_label for a given procedure.
+	%
+:- func ml_gen_pred_label(module_info, pred_id, proc_id) = mlds__pred_label.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
+:- import_module ml_base_type_info.
 :- import_module llds. % XXX needed for `code_model'.
 :- import_module code_util. % XXX needed for `code_util__compiler_generated'.
 			    % and `code_util__cons_id_to_tag'.
 :- import_module goal_util.
-:- import_module hlds_pred, hlds_goal, hlds_data, prog_data, special_pred.
+:- import_module hlds_goal, hlds_data, prog_data, special_pred.
 :- import_module hlds_out, builtin_ops, passes_aux, type_util, mode_util.
 :- import_module prog_util.
 :- import_module globals, options.
@@ -662,13 +667,8 @@ ml_gen_defns(ModuleInfo, MLDS_Defns) -->
 :- pred ml_gen_types(module_info, mlds__defns, io__state, io__state).
 :- mode ml_gen_types(in, out, di, uo) is det.
 
-ml_gen_types(_ModuleInfo, MLDS_TypeDefns) -->
-	/****
-	{ module_info_types(Module, TypeTable) },
-	...
-	****/
-	% XXX not yet implemented
-	{ MLDS_TypeDefns = [] }.
+ml_gen_types(ModuleInfo, MLDS_BaseTypeInfoDefns) -->
+	{ ml_base_type_info__generate_mlds(ModuleInfo, MLDS_BaseTypeInfoDefns) }.
 
 %-----------------------------------------------------------------------------%
 %
@@ -3993,7 +3993,6 @@ ml_gen_func_label(ModuleInfo, PredId, ProcId, MaybeSeqNum) = MLDS_Name :-
 	MLDS_PredLabel = ml_gen_pred_label(ModuleInfo, PredId, ProcId),
 	MLDS_Name = function(MLDS_PredLabel, ProcId, MaybeSeqNum, PredId).
 
-:- func ml_gen_pred_label(module_info, pred_id, proc_id) = mlds__pred_label.
 ml_gen_pred_label(ModuleInfo, PredId, ProcId) = MLDS_PredLabel :-
 	module_info_pred_info(ModuleInfo, PredId, PredInfo),
 	pred_info_module(PredInfo, PredModule),

@@ -495,7 +495,9 @@
 		% if the target language doesn't supported
 		% nested functions, and also for handling
 		% closures for higher-order code.
-	;	mlds__generic_env_ptr_type.
+	;	mlds__generic_env_ptr_type
+
+	;	mlds__base_type_info_type.
 
 :- type mercury_type == prog_data__type.
 

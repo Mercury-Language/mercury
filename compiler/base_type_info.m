@@ -4,20 +4,19 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
 %
+% File: base_type_info.m.
+% Author: zs.
+%
 % This module generates the LLDS code that defines global variables
 % to hold the type_ctor_info structures of the types defined by the
 % current module.
 %
-% These global variables are needed only with when we are using the
-% shared-one-or-two-cell way of representing type information.
-% It is up to the caller to check this. (When using other representations,
-% defining these global variables is harmless except for adding to
-% compilation time and executable size.)
-%
 % See polymorphism.m for a description of the various ways to represent
 % type information, including a description of the type_ctor_info structures.
 %
-% Author: zs.
+% WARNING: if you change this module, you will probably need to also
+% change ml_base_type_info.m, which does the smae thing for the MLDS
+% back-end.
 %
 %---------------------------------------------------------------------------%
 

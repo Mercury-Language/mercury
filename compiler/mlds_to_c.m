@@ -8,7 +8,7 @@
 % Main author: fjh.
 
 % TODO:
-%	- RTTI (base_type_info, base_type_layout, base_type_functors,
+%	- RTTI (base_type_layout, base_type_functors,
 %		module_layout, proc_layout)
 %	- type classes (base_typeclass_info)
 %	- trail ops
@@ -400,8 +400,9 @@ mlds_output_initializer(_Type, Initializer) -->
 		io__write_string(" = "),
 		mlds_output_rval(SingleValue)
 	;
-		% XXX we should eventually handle these...
-		{ error("sorry, complex initializers not yet implemented") }
+		io__write_string(" = {\n\t\t"),
+		io__write_list(Initializer, ",\n\t\t", mlds_output_rval),
+		io__write_string("}")
 	).
 
 %-----------------------------------------------------------------------------%
@@ -662,8 +663,13 @@ mlds_output_data_name(var(Name)) -->
 mlds_output_data_name(common(Num)) -->
 	io__write_string("common_"),
 	io__write_int(Num).
-mlds_output_data_name(type_ctor(_BaseData, _Name, _Arity)) -->
-	{ error("mlds_to_c.m: NYI: type_ctor") }.
+mlds_output_data_name(type_ctor(BaseData, Name, Arity)) -->
+	io__write_string("base_type_"),
+	io__write(BaseData),
+	io__write_string("_"),
+	io__write_string(Name),
+	io__write_string("_"),
+	io__write_int(Arity).
 mlds_output_data_name(base_typeclass_info(_ClassId, _InstanceId)) -->
 	{ error("mlds_to_c.m: NYI: basetypeclass_info") }.
 mlds_output_data_name(module_layout) -->
@@ -720,6 +726,8 @@ mlds_output_type(mlds__generic_type) -->
 	io__write_string("MR_Box").
 mlds_output_type(mlds__generic_env_ptr_type) -->
 	io__write_string("void *").
+mlds_output_type(mlds__base_type_info_type) -->
+	io__write_string("MR_BaseTypeInfo").
 mlds_output_type(mlds__cont_type) -->
 	globals__io_lookup_bool_option(gcc_nested_functions, GCC_NestedFuncs),
 	( { GCC_NestedFuncs = yes } ->
@@ -1689,8 +1697,9 @@ mlds_output_proc_label(PredLabel - ProcId) -->
 :- pred mlds_output_data_addr(mlds__data_addr, io__state, io__state).
 :- mode mlds_output_data_addr(in, di, uo) is det.
 
-mlds_output_data_addr(data_addr(_ModuleName, DataName)) -->
-	io__write_string("/* XXX ModuleName */"),
+mlds_output_data_addr(data_addr(ModuleName, DataName)) -->
+	mlds_output_module_name(mlds_module_name_to_sym_name(ModuleName)),
+	io__write_string("__"),
 	mlds_output_data_name(DataName).
 
 %-----------------------------------------------------------------------------%
