@@ -1413,37 +1413,19 @@ adjust_priority(Priority, x, Priority - 1).
 
 io__write_list_tail(Term) -->
 	( 
-		{ expand_univ(Term, ".", _Arity, [ListHead, ListTail]) }
+		{ expand(Term, ".", _Arity, [ListHead, ListTail]) }
 	->
 		io__write_string(", "),
 		io__write_univ(ListHead),
 		io__write_list_tail(ListTail)
 	;
-		{ expand_univ(Term, "[]", _Arity, []) }
+		{ expand(Term, "[]", _Arity, []) }
 	->
 		[]
 	;
 		io__write_string(" | "),
 		io__write_univ(Term)
 	).
-
-	% XXX expand_univ should be in std_util.m
-:- pred expand_univ(univ, string, int, list(univ)).
-:- mode expand_univ(in, out, out, out) is det.
-
-expand_univ(Univ, Name, Arity, Args) :-
-	% XXX expand is currently broken; it doesn't handle
-	% `univ' properly.  The commented out code is what
-	% we ought to have to use; instead, we can call expand
-	% directly.
-/****
-	( expand(Univ, "univ", 1, [Arg]) ->
-		expand(Arg, Name, Arity, Args)
-	;
-		error("expand returns wrong results for type univ")
-	).
-***/
-	expand(Univ, Name, Arity, Args).
 
 :- pred io__write_term_args(list(univ), io__state, io__state).
 :- mode io__write_term_args(in, di, uo) is det.
