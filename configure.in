@@ -218,7 +218,11 @@ EOF
 			--read-config-file-2003-03-01 \
 			--halt-at-warn $link_static_opt conftest \
 			</dev/null >&AC_FD_CC 2>&1 &&
-		test "`./conftest 2>&1 | tr -d '\015'`" = "Hello, world"
+		test "`./conftest 2>&1 | tr -d '\015'`" = "Hello, world" &&
+		$BOOTSTRAP_MC \
+			--record-term-sizes-as-words \
+			--compile-to-c conftest \
+			</dev/null >&AC_FD_CC 2>&1
 	then
 		AC_MSG_RESULT(yes)
 	else
