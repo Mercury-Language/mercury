@@ -439,6 +439,11 @@
 					% but are only nondet-live (so that
 					% we make sure we save them).
 			list(pair(lval))
+					% A list of lvalues (ie curfr, maxfr
+					% and redoip) that get saved onto the
+					% det stack even though the current
+					% context is nondet. We need to store
+					% these for GC purposes.
 	).
 
 :- type fall_through	==	stack(failure_cont).
