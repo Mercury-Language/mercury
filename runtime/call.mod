@@ -341,7 +341,7 @@ mercury__read_2_0:
 	/* we call 'ReadPred(...TypeInfos..., Term, X)' */
 	for (i = 1; i <= type_arity; i++) {
 		virtual_reg(i) =
-			field(0, type-info, i - 1 + OFFSET_FOR_ARG_TYPE_INFOS);
+			field(0, type_info, i - 1 + OFFSET_FOR_ARG_TYPE_INFOS);
 	}
 	virtual_reg(type_arity + 1) = term;
 	/* virtual_reg(type_arity + 2) will hold the result */
@@ -386,7 +386,7 @@ mercury__write_2_0:
 	/* we call 'WritePred(...TypeInfos..., X, Term)' */
 	for (i = 1; i <= type_arity; i++) {
 		virtual_reg(i) =
-			field(0, type-info, i - 1 + OFFSET_FOR_ARG_TYPE_INFOS);
+			field(0, type_info, i - 1 + OFFSET_FOR_ARG_TYPE_INFOS);
 	}
 	virtual_reg(type_arity + 1) = x;
 	/* virtual_reg(type_arity + 2) will hold the result */
