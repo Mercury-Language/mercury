@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2002 The University of Melbourne.
+% Copyright (C) 1999-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -2265,6 +2265,7 @@ rtti_enum_const("MR_TYPECTOR_REP_UNKNOWN", 38).
 rtti_enum_const("MR_SECTAG_NONE", 0).
 rtti_enum_const("MR_SECTAG_LOCAL", 1).
 rtti_enum_const("MR_SECTAG_REMOTE", 2).
+rtti_enum_const("MR_SECTAG_VARIABLE", 3).
 
 :- pred build_struct_type(gcc__struct_name::in,
 		list(pair(gcc__type, gcc__field_name))::in,
