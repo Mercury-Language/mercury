@@ -99,6 +99,7 @@ ORDINARY_PROGS=	\
 	rnd \
 	rtc_bug \
 	rtti_strings \
+	setjmp_test \
 	shift_test \
 	solve_quadratic \
 	space \

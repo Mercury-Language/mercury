@@ -294,6 +294,15 @@ postprocess_options_2(OptionTable, Target, GC_Method, TagsMethod,
 		[]
 	),
 
+	% Generating high-level C code requires putting each commit
+	% in its own function, to avoid problems with setjmp() and
+	% non-volatile local variables.
+	( { Target = c } ->
+		option_implies(highlevel_code, put_commit_in_own_func, bool(yes))
+	;
+		[]
+	),
+
 	% --high-level-code disables the use of low-level gcc extensions
 	option_implies(highlevel_code, gcc_non_local_gotos, bool(no)),
 	option_implies(highlevel_code, gcc_global_registers, bool(no)),

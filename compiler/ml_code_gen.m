@@ -659,12 +659,9 @@
 % BUGS:
 %	- XXX parameter passing problem for abstract equivalence types
 %         that are defined as float (or anything which doesn't map to `Word')
-%	- XXX setjmp() and volatile: local variables in functions that
-%	      call setjmp() need to be declared volatile
-%	- XXX problem with unboxed float on DEC Alphas.
 %
 % TODO:
-%	- XXX define compare & unify preds for array and RTTI types
+%	- XXX define compare & unify preds RTTI types
 %	- XXX need to generate correct layout information for closures
 %	      so that tests/hard_coded/copy_pred works.
 %	- XXX fix ANSI/ISO C conformance of the generated code (i.e. port to lcc)
@@ -682,12 +679,19 @@
 %	- support accurate GC
 %
 % POTENTIAL EFFICIENCY IMPROVEMENTS:
-%	- generate better code for switches
-%	- allow inlining of `pragma c_code' goals (see inlining.m)
+%	- optimize unboxed float on DEC Alphas.
+%	- generate better code for switches:
+%		- optimize switches so that the recursive case comes first
+%		  (see switch_gen.m).
+%		- apply the reverse tag test optimization
+%		  for types with two functors (see unify_gen.m)
+%		- binary search switches
+%		- lookup switches
 %	- generate local declarations for the `succeeded' variable;
 %	  this would help in nondet code, because it would avoid
 %	  the need to access the outermost function's `succeeded'
 %	  variable via the environment pointer
+%	  (be careful about the interaction with setjmp(), though)
 
 %-----------------------------------------------------------------------------%
 
@@ -1479,14 +1483,22 @@ ml_gen_commit(Goal, CodeModel, Context, MLDS_Decls, MLDS_Statements) -->
 		%		<succeeded = Goal>
 		% 	===>
 		%		bool succeeded;
-		%		MR_COMMIT_TYPE ref;
-		%		void success() {
-		%			succeeded = TRUE;
-		%			MR_DO_COMMIT(ref);
-		%		}
 		%	#ifdef NONDET_COPY_OUT
 		%		<local var decls>
 		%	#endif
+		%	#ifdef PUT_COMMIT_IN_OWN_FUNC
+		%	    /*
+		%	    ** to avoid problems with setjmp() and non-volatile
+		%	    ** local variables, we need to put the call to
+		%	    ** setjmp() in its own nested function
+		%	    */
+		%	    void commit_func()
+		%	    {
+		%       #endif
+		%		MR_COMMIT_TYPE ref;
+		%		void success() {
+		%			MR_DO_COMMIT(ref);
+		%		}
 		%		MR_TRY_COMMIT(ref, {
 		%			<Goal && success()>
 		%			succeeded = FALSE;
@@ -1496,6 +1508,10 @@ ml_gen_commit(Goal, CodeModel, Context, MLDS_Decls, MLDS_Statements) -->
 		%	#endif
 		%			succeeded = TRUE;
 		%		})
+		%	#ifdef PUT_COMMIT_IN_OWN_FUNC
+		%	    }
+		%	    commit_func();
+		%       #endif
 
 		ml_gen_maybe_make_locals_for_output_args(GoalInfo,
 			LocalVarDecls, CopyLocalsToOutputArgs,
@@ -1540,10 +1556,12 @@ ml_gen_commit(Goal, CodeModel, Context, MLDS_Decls, MLDS_Statements) -->
 				[SetSuccessTrue]), Context)) },
 		{ TryCommitStatement = mlds__statement(TryCommitStmt,
 			MLDS_Context) },
-
-		{ MLDS_Decls = list__append([CommitRefDecl,
-			SuccessFunc | LocalVarDecls], GoalStaticDecls) },
-		{ MLDS_Statements = [TryCommitStatement] },
+		{ CommitFuncLocalDecls = [CommitRefDecl, SuccessFunc |
+			GoalStaticDecls] },
+		maybe_put_commit_in_own_func(CommitFuncLocalDecls,
+			[TryCommitStatement], Context,
+			CommitFuncDecls, MLDS_Statements),
+		{ MLDS_Decls = LocalVarDecls ++ CommitFuncDecls },
 
 		ml_gen_info_set_var_lvals(OrigVarLvalMap)
 
@@ -1552,19 +1570,33 @@ ml_gen_commit(Goal, CodeModel, Context, MLDS_Decls, MLDS_Statements) -->
 		%	model_non in det context: (using try_commit/do_commit)
 		%		<do Goal>
 		%	===>
+		%	#ifdef NONDET_COPY_OUT
+		%		<local var decls>
+		%	#endif
+		%	#ifdef PUT_COMMIT_IN_NESTED_FUNC
+		%	    /*
+		%	    ** to avoid problems with setjmp() and non-volatile
+		%	    ** local variables, we need to put the call to
+		%	    ** setjmp() in its own nested functions
+		%	    */
+		%	    void commit_func()
+		%	    {
+		%       #endif
 		%		MR_COMMIT_TYPE ref;
 		%		void success() {
 		%			MR_DO_COMMIT(ref);
 		%		}
-		%	#ifdef NONDET_COPY_OUT
-		%		<local var decls>
-		%	#endif
 		%		MR_TRY_COMMIT(ref, {
+		%			<Goal && success()>
+		%		}, {
 		%	#ifdef NONDET_COPY_OUT
 		%			<copy local vars to output args>
 		%	#endif
-		%			<Goal && success()>
-		%		}, {})
+		%		})
+		%	#ifdef PUT_COMMIT_IN_NESTED_FUNC
+		%	    }
+		%	    commit_func();
+		%       #endif
 
 		ml_gen_maybe_make_locals_for_output_args(GoalInfo,
 			LocalVarDecls, CopyLocalsToOutputArgs,
@@ -1605,15 +1637,99 @@ ml_gen_commit(Goal, CodeModel, Context, MLDS_Decls, MLDS_Statements) -->
 			ml_gen_block([], CopyLocalsToOutputArgs, Context)) },
 		{ TryCommitStatement = mlds__statement(TryCommitStmt,
 			MLDS_Context) },
-
-		{ MLDS_Decls = list__append([CommitRefDecl,
-			SuccessFunc | LocalVarDecls], GoalStaticDecls) },
-		{ MLDS_Statements = [TryCommitStatement] },
+		{ CommitFuncLocalDecls = [CommitRefDecl, SuccessFunc |
+			GoalStaticDecls] },
+		maybe_put_commit_in_own_func(CommitFuncLocalDecls,
+			[TryCommitStatement], Context,
+			CommitFuncDecls, MLDS_Statements),
+		{ MLDS_Decls = LocalVarDecls ++ CommitFuncDecls },
 
 		ml_gen_info_set_var_lvals(OrigVarLvalMap)
 	;
 		% no commit required
 		ml_gen_goal(CodeModel, Goal, MLDS_Decls, MLDS_Statements)
+	).
+
+	% maybe_put_commit_in_own_func(Defns0, Stmts0, Defns, Stmts):
+	% if the --put-commit-in-own-func option is set, put
+	% the commit in its own function.  This is needed for
+	% the high-level C back-end, to handle problems with
+	% setjmp()/longjmp() clobbering non-volatile local variables.
+	%
+	% Detailed explanation:
+	%   For the high-level C back-end, we implement commits using
+	%   setjmp()/longjmp().  Unfortunately for us, ANSI/ISO C says
+	%   that longjmp() is allowed to clobber the values of any
+	%   non-volatile local variables in the function that called
+	%   setjmp() which have been modified between the setjmp()
+	%   and the longjmp().
+	%
+	%   To avoid this, whenever we generate a commit, we put
+	%   it in its own nested function, with the local variables
+	%   (e.g. `succeeded', plus any outputs from the goal that
+	%   we're committing over) remaining in the containing function.
+	%   This ensures that none of the variables which get modified
+	%   between the setjmp() and the longjmp() and which get
+	%   referenced after the longjmp() are local variables in the
+	%   function containing the setjmp().
+	%
+	%   [The obvious alternative of declaring the local variables in
+	%   the function containing setjmp() as `volatile' doesn't work,
+	%   since the assignments to those output variables may be deep
+	%   in some function called indirectly from the goal that we're
+	%   committing across, and assigning to a volatile-qualified
+	%   variable via a non-volatile pointer is undefined behaviour.
+	%   The only way to make it work would be to be to declare
+	%   *every* output argument that we pass by reference as
+	%   `volatile T *'.  But that would impose distributed fat and
+	%   would make interoperability difficult.]
+	%
+:- pred maybe_put_commit_in_own_func(mlds__defns, mlds__statements,
+		prog_context, mlds__defns, mlds__statements,
+		ml_gen_info, ml_gen_info).
+:- mode maybe_put_commit_in_own_func(in, in, in, out, out, in, out) is det.
+
+maybe_put_commit_in_own_func(CommitFuncLocalDecls, TryCommitStatements,
+		Context, MLDS_Decls, MLDS_Statements) -->
+	ml_gen_info_put_commit_in_own_func(PutCommitInOwnFunc),
+	( { PutCommitInOwnFunc = yes } ->
+		%
+		% Generate the `void commit_func() { ... }' wrapper
+		% around the main body that we generated above
+		%
+		ml_gen_new_func_label(no, CommitFuncLabel, 
+			CommitFuncLabelRval),
+		/* push nesting level */
+		{ CommitFuncBody = ml_gen_block(CommitFuncLocalDecls,
+			TryCommitStatements, Context) },
+		/* pop nesting level */
+		ml_gen_nondet_label_func(CommitFuncLabel, Context,
+			CommitFuncBody, CommitFunc),
+		%
+		% Generate the call to `commit_func();'
+		%
+		ml_gen_info_use_gcc_nested_functions(UseNestedFuncs),
+		( { UseNestedFuncs = yes } ->
+			{ ArgRvals = [] },
+			{ ArgTypes = [] }
+		;
+			ml_get_env_ptr(EnvPtrRval),
+			{ ArgRvals = [EnvPtrRval] },
+			{ ArgTypes = [mlds__generic_env_ptr_type] }
+		),
+		{ RetTypes = [] },
+		{ Signature = mlds__func_signature(ArgTypes, RetTypes) },
+		{ CallOrTailcall = call },
+		{ CallStmt = call(Signature, CommitFuncLabelRval, no,
+			ArgRvals, [], CallOrTailcall) },
+		{ CallStatement = mlds__statement(CallStmt,
+			mlds__make_context(Context)) },
+		% Package it all up
+		{ MLDS_Statements = [CallStatement] },
+		{ MLDS_Decls = [CommitFunc] }
+	;
+		{ MLDS_Statements = TryCommitStatements },
+		{ MLDS_Decls = CommitFuncLocalDecls }
 	).
 
 	%

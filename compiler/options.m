@@ -174,6 +174,7 @@
 		;	gcc_nested_functions
 		;	det_copy_out
 		;	nondet_copy_out
+		;	put_commit_in_own_func
 		;	unboxed_float
 		;       unboxed_enums
 		;       unboxed_no_tag_types
@@ -600,6 +601,7 @@ option_defaults_2(compilation_model_option, [
 	gcc_nested_functions	-	bool(no),
 	det_copy_out		-	bool(no),
 	nondet_copy_out		-	bool(no),
+	put_commit_in_own_func	-	bool(no),
 	unboxed_float           -       bool(no),
 	unboxed_enums           -       bool(yes),
 	unboxed_no_tag_types    -       bool(yes)
@@ -991,6 +993,7 @@ long_option("high-level-data",		highlevel_data).
 long_option("gcc-nested-functions",	gcc_nested_functions).
 long_option("det-copy-out",		det_copy_out).
 long_option("nondet-copy-out",		nondet_copy_out).
+long_option("put-commit-in-own-func",	put_commit_in_own_func).
 long_option("unboxed-float",		unboxed_float).
 long_option("unboxed-enums",		unboxed_enums).
 long_option("unboxed-no-tag-types",	unboxed_no_tag_types).
@@ -1934,6 +1937,16 @@ options_help_compilation_model -->
 %		"\tSpecify whether to handle output arguments for nondet",
 %		"\tprocedures using pass-by-value rather than pass-by-reference.",
 %		"\tThis option is ignored if the `--high-level-code' option is not enabled.",
+% The --put-commit-in-own-func option is not documented because
+% it is enabled automatically (by handle_options) in the situations
+% where it is needed; the user should never need to set it.
+%		"--put-commit-in-own-func",
+%		"\tPut each commit in its own C function.",
+%		"\tThis option only affects the MLDS back-ends.",
+%		"\tIt is needed for the high-level C back-end,",
+%		"\twhere commits are implemented via setjmp()/longjmp(),",
+%		"\tsince longjmp() may clobber any non-volatile local vars",
+%		"\tin the function that called setjmp().",
 		"--gc {none, conservative, accurate}",
 		"--garbage-collection {none, conservative, accurate}",
 		"\t\t\t\t(`.gc' grades use `--gc conservative',",
