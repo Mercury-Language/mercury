@@ -1032,7 +1032,7 @@ module_add_type_defn(Module0, TVarSet, TypeDefn, _Cond, Context,
 				io__write_strings([
 	"\tA quick work-around is just export the type as a concrete type,\n",
 	"\tby putting the type definition in the interface section.\n",
-	"\tA better work-around is to use a \"wrapper\" type, with just one\n",
+	"\tA better work-around is to use a ""wrapper"" type, with just one\n",
 	"\tfunctor that has just one arg, instead of an equivalence type.\n",
 	"\t(There's no performance penalty for this -- the compiler will\n",
 	"\toptimize the wrapper away.)\n"])
