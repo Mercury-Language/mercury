@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000 The University of Melbourne.
+% Copyright (C) 2000-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1463,17 +1463,26 @@ binaryop_to_il((<=), node([cgt(signed), ldc(int32, i(0)), ceq])) --> [].
 binaryop_to_il((>=), node([clt(signed), ldc(int32, i(0)), ceq])) --> [].
 
 	% Floating pointer operations.
-binaryop_to_il(float_plus, throw_unimplemented("floating point")) --> [].
-binaryop_to_il(float_minus, throw_unimplemented("floating point")) --> [].
-binaryop_to_il(float_times, throw_unimplemented("floating point")) --> [].
-binaryop_to_il(float_divide, throw_unimplemented("floating point")) --> [].
-binaryop_to_il(float_eq, throw_unimplemented("floating point")) --> [].
-binaryop_to_il(float_ne, throw_unimplemented("floating point")) --> [].
-binaryop_to_il(float_lt, throw_unimplemented("floating point")) --> [].
-binaryop_to_il(float_gt, throw_unimplemented("floating point")) --> [].
-binaryop_to_il(float_le, throw_unimplemented("floating point")) --> [].
-binaryop_to_il(float_ge, throw_unimplemented("floating point")) --> [].
-
+binaryop_to_il(float_plus, instr_node(I)) -->
+	{ I = add(nocheckoverflow, signed) }.
+binaryop_to_il(float_minus, instr_node(I)) -->
+	{ I = sub(nocheckoverflow, signed) }.
+binaryop_to_il(float_times, instr_node(I)) -->
+	{ I = mul(nocheckoverflow, signed) }.
+binaryop_to_il(float_divide, instr_node(I)) -->
+	{ I = div(signed) }.
+binaryop_to_il(float_eq, instr_node(I)) -->
+	{ I = ceq }.
+binaryop_to_il(float_ne, node(Instrs)) --> 
+	{ Instrs = [
+		ceq, 
+		ldc(int32, i(0)),
+		ceq
+	] }.
+binaryop_to_il(float_lt, node([clt(signed)])) --> [].
+binaryop_to_il(float_gt, node([cgt(signed)])) --> [].
+binaryop_to_il(float_le, node([cgt(signed), ldc(int32, i(0)), ceq])) --> [].
+binaryop_to_il(float_ge, node([clt(signed), ldc(int32, i(0)), ceq])) --> [].
 
 %-----------------------------------------------------------------------------%
 %

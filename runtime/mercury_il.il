@@ -1,5 +1,5 @@
 //
-// Copyright (C) 2000 The University of Melbourne.
+// Copyright (C) 2000-2001 The University of Melbourne.
 // This file may only be copied under the terms of the GNU Library General
 // Public License - see the file COPYING.LIB in the Mercury distribution.
 //
@@ -343,6 +343,13 @@ get_ftn_ptr_univ_unify() {
 {
 	ldarg ival
 	newobj instance void mercury.runtime.BoxedInt::.ctor(int32)
+	ret
+}
+
+.method static default class System.Object ToObject(float64 fval)
+{
+	ldarg fval
+	newobj instance void mercury.runtime.BoxedFloat::.ctor(float64)
 	ret
 }
 
