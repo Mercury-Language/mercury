@@ -1,3 +1,26 @@
+NEWS since Mercury release 0.10
+-------------------------------
+Note that Mercury 0.10 has not actually been released yet;
+this section documents changes in the development version of
+Mercury since we established a feature freeze for Mercury 0.10
+and split development of that version off onto a separate branch
+of our CVS repository.
+
+Changes to the standard library:
+
+* We've changed the semantics of deconstruct/4, in light of the introduction
+  of existentially quantified types. Previously, if deconstruct/4 was given
+  a value of type `univ' it automagically unwrapped it and gave back the
+  functor, arity and arguments of the unwrapped value. This behaviour was
+  not documented, but made sense because there was no way to unwrap a
+  univ without knowing (or guessing) its type. Now that univ is defined
+  as a normal (existentially quantified) type, this behaviour is unnecessary,
+  and a wart besides, so has been removed. If you have a univ and you want
+  to get the unwrapped value's functor, arity and arguments, then you can
+  call "univ_value(Univ)" to extract the value before calling deconstruct.
+  (Doing that also works in Mercury 0.9 and Mercury 0.10.)
+
+
 NEWS since Mercury release 0.9:
 -------------------------------
 
@@ -70,17 +93,6 @@ Changes to the Mercury language:
   separate predicate or function for each type class method definition.
 
 Changes to the standard library:
-
-* We've changed the semantics of deconstruct/4, in light of the introduction
-  of existentially quantified types. Previously, if deconstruct/4 was given
-  a value of type `univ' it automagically unwrapped it and gave back the
-  functor, arity and arguments of the unwrapped value. This behaviour was
-  not documented, but made sense because there was no way to unwrap a
-  univ without knowing (or guessing) its type. Now that univ is defined
-  as a normal (existentially quantified) type, this behaviour is unnecessary,
-  and a wart besides, so has been removed. If you have a univ and you want
-  to get the unwrapped value's functor, arity and arguments, then you can
-  call "univ_value(Univ)" to extract the value before calling deconstruct.
 
 * We've added new predicates map__foldl2, tree234__foldl2 and
   std_util__aggregate2, and builtin__promise_only_solution_io.
