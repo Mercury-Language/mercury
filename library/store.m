@@ -269,7 +269,7 @@ I wonder whether it is worth it?  Hmm, probably not.
 
 store__new_cyclic_mutvar(Func, MutVar) -->
 	store__unsafe_new_uninitialized_mutvar(MutVar),
-	{ Value = Func(MutVar) },
+	{ Value = apply(Func, MutVar) },
 	store__set_mutvar(MutVar, Value).
 
 %-----------------------------------------------------------------------------%
