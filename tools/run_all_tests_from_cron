@@ -36,12 +36,13 @@ case $HOST in
 	hydra)		ARCH=i686	FULLARCH=i686-pc-linux-gnu ;;
 	ender)		ARCH=i686	FULLARCH=i686-pc-linux-gnu ;;
 	roy)		ARCH=i686	FULLARCH=i686-pc-linux-gnu ;;
+	venus)		ARCH=i686	FULLARCH=i686-pc-linux-gnu ;;
 	*)		echo "$0: unknown HOST $HOST" 1>&2; exit 1 ;;
 esac
 
 case $HOST in
 	kryten|taifun) 	mail="rsh mundook /bin/mail" ;;
-	hydra|ender|roy) mail=/usr/bin/mail ;;
+	hydra|ender|roy|venus) mail=/usr/bin/mail ;;
 	*)		mail=/bin/mail ;;
 esac
 

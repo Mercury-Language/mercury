@@ -120,6 +120,7 @@ case $HOST in
 	roy) 		OPTIMIZE=-O4 ;;	# hlc
 	hydra)		OPTIMIZE=-O2 ;;
 	ender)		OPTIMIZE=-O3 ;;
+	venus) 		OPTIMIZE=-O5 ;;
 	kryten) 	OPTIMIZE=-O1 ;;	# currently not used
 	rimmer) 	OPTIMIZE=-O1 ;; # currently not used
 esac
@@ -164,7 +165,7 @@ TESTDIR=/home/mercury/public/test_mercury
 DIR=$TESTDIR/test_dirs/$HOST
 
 case $HOST in
-	hg|ender|roy)	
+	hg|ender|roy|venus)
 		INSTALL_DIR=/home/$HOST/public/$INSTALL_DIR_NAME/$FULLARCH ;;
 	*)		
 		INSTALL_DIR=/home/mercury/public/$INSTALL_DIR_NAME/$FULLARCH ;;
@@ -210,12 +211,13 @@ case $HOST in
 	hg) 		PARALLEL= ;; 	# one CPU
 	ender) 		PARALLEL= ;; 	# one CPU
 	roy) 		PARALLEL= ;; 	# one CPU
+	venus) 		PARALLEL= ;; 	# one CPU
 	*)		PARALLEL= ;;
 esac
 
 # version of the mercury compiler to use for bootstrapping
 case $HOST in
-	hg|ender|roy)
+	hg|ender|roy|venus)
 		BOOTSTRAP_MERCURY_COMPILER=/home/$HOST/public/$INSTALL_DIR_NAME/$FULLARCH/lib/mercury/bin/$FULLARCH/mercury_compile
 		;;
 	*)
@@ -319,7 +321,7 @@ cd $DIR || { false; exit 1; }
 rm -f mercury/extras/dynamic_linking/dl.m
 cvs checkout $CHECKOUT_OPTS mercury tests || { false; exit 1; }
 case $HOST in
-	murlibobo|kryten|taifun|quicksilver|hg|hydra|roy)
+	murlibobo|kryten|taifun|quicksilver|hg|hydra|roy|venus)
 		[ -d mercury/extras/clpr/CVS ] ||
 		(cd mercury/extras && cvs checkout $CHECKOUT_OPTS clpr) ||
 			{ false; exit 1; }
@@ -442,7 +444,7 @@ case $HOST in
 		# requires --enable-all-grades
 		GRADES="asm_fast.gc.tr asm_fast.tr"
 		;;
-	hg|quicksilver|hydra|ender|kryten|taifun)
+	hg|quicksilver|hydra|ender|kryten|taifun|venus)
 		GRADES="asm_fast.gc.tr"
 		;;
 	roy)
@@ -567,6 +569,12 @@ case $HOST in
 			asm_fast.gc.memprof asm_fast.gc.tr asm_fast.gc.tr.debug
 			asm_fast.par.gc hlc.gc"
 		;;
+	venus)
+		GRADES="asm_fast.gc asm_fast
+			asm_fast.gc.prof asm_fast.prof
+			asm_fast.gc.memprof asm_fast.gc.tr asm_fast.gc.tr.debug
+			hlc.gc"
+		;;
 	roy)
 		GRADES="hlc.gc hlc.gc.prof hlc.gc.memprof hlc.gc.tr hlc.par.gc
 			hl.gc  hl.gc.prof  hl.gc.memprof  hl.gc.tr  hl.par.gc"
@@ -653,6 +661,9 @@ esac
 case $HOST in
 	hg)	
 		fullname=i686-pc-linux-libc2.1-gnu-O4
+		;;
+	venus)	
+		fullname=i686-pc-linux-libc2.1-gnu-O5
 		;;
 	roy)	
 		fullname=i686-pc-linux-libc2.1-gnu-O4-hlc
