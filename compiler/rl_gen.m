@@ -16,22 +16,17 @@
 
 :- interface.
 
-:- import_module hlds_module, hlds_pred, rl.
+:- import_module hlds_module, rl.
 :- import_module io.
 
 :- pred rl_gen__module(module_info, rl_code, io__state, io__state).
 :- mode rl_gen__module(in, out, di, uo) is det.
 
-	% Find out the name of the RL procedure corresponding
-	% to the given Mercury procedure.
-:- pred rl_gen__get_entry_proc_name(module_info, pred_proc_id, rl_proc_name).
-:- mode rl_gen__get_entry_proc_name(in, in, out) is det.
-
 %-----------------------------------------------------------------------------%
 :- implementation.
 
 :- import_module code_aux, code_util, det_analysis, hlds_data, hlds_goal.
-:- import_module instmap, llds_out, mode_util, prog_data, prog_out.
+:- import_module hlds_pred, instmap, mode_util, prog_data, prog_out.
 :- import_module rl_relops, rl_info.
 :- import_module tree, type_util, dependency_graph.
 :- import_module inst_match, (inst), goal_util, inlining, globals, options.
@@ -155,16 +150,7 @@ rl_gen__proc_name(EntryPoints, RLProcId, ProcName) -->
 
 rl_gen__get_single_entry_proc_name(PredProcId, ProcName) -->
 	rl_info_get_module_info(ModuleInfo),
-	{ rl_gen__get_entry_proc_name(ModuleInfo, PredProcId, ProcName) }.
-
-rl_gen__get_entry_proc_name(ModuleInfo, proc(PredId, ProcId), ProcName) :-
-	code_util__make_proc_label(ModuleInfo, PredId, ProcId, Label),
-	llds_out__get_proc_label(Label, no, ProcLabel),
-	module_info_pred_info(ModuleInfo, PredId, PredInfo),
-	pred_info_module(PredInfo, PredModule0),
-	pred_info_get_aditi_owner(PredInfo, Owner),
-	prog_out__sym_name_to_string(PredModule0, PredModule),
-	ProcName = rl_proc_name(Owner, PredModule, ProcLabel, 2).
+	{ rl__get_entry_proc_name(ModuleInfo, PredProcId, ProcName) }.
 
 %-----------------------------------------------------------------------------%
 
@@ -219,8 +205,8 @@ rl_gen__scc_list_input_args(EntryPoint, ArgNo, InstMap, InstTable, ArgModes,
 		rl_info_get_module_info(ModuleInfo),
 		( { mode_is_input(InstMap, InstTable, ModuleInfo, Mode) } ->
 			(
-				{ type_is_higher_order(Type,
-					predicate, PredArgTypes) } 
+				{ type_is_higher_order(Type, predicate,
+					(aditi_bottom_up), PredArgTypes) } 
 			->
 				rl_info_get_new_temporary(schema(PredArgTypes),
 					InputRel),
@@ -940,7 +926,8 @@ rl_gen__goal_is_aditi_call(ModuleInfo, Goal, CallGoal, MaybeNegGoals) :-
 		MaybeNegGoals = no
 	; 
 		% XXX check that the var is an input relation variable.
-		Goal = higher_order_call(_, _, _, _, _, predicate) - _,
+		Goal = generic_call(higher_order(_, predicate, _),
+			_, _, _) - _,
 		CallGoal = Goal,
 		MaybeNegGoals = no
 	;
@@ -980,8 +967,8 @@ rl_gen__collect_call_info(CallGoal, MaybeNegGoals, DBCall) -->
 		{ DBCall = db_call(called_pred(PredProcId), MaybeNegGoals, 
 				InputArgs, OutputArgs, GoalInfo) }
 	;
-		{ CallGoal = higher_order_call(Var, Args, _,
-			argument_modes(_, ArgModes), _, predicate) - GoalInfo }
+		{ CallGoal = generic_call(higher_order(Var, predicate, _),
+			Args, argument_modes(_, ArgModes), _) - GoalInfo }
 	->
 		{ CallId = ho_called_var(Var) },
 		rl_info_get_module_info(ModuleInfo),
@@ -1020,8 +1007,8 @@ rl_gen__find_aditi_call(ModuleInfo, [Goal | Goals], RevBetweenGoals0,
 		% Only closure constructions can come 
 		% between two Aditi calls.
 		Goal = unify(_, _, _, Uni, _) - _,
-		Uni = construct(_, ConsId, _, _),
-		ConsId = pred_const(_, _)
+		Uni = construct(_, ConsId, _, _, _, _, _),
+		ConsId = pred_const(_, _, _)
 	->
 		rl_gen__find_aditi_call(ModuleInfo, Goals,
 			[Goal | RevBetweenGoals0], BetweenGoals, 
@@ -1041,8 +1028,8 @@ rl_gen__setup_var_rels([]) --> [].
 rl_gen__setup_var_rels([BetweenGoal | BetweenGoals]) -->
 	( 
 		{ BetweenGoal = unify(_, _, _, Uni, _) - _ },
-		{ Uni = construct(Var, ConsId, CurriedArgs, _) },
-		{ ConsId = pred_const(PredId, ProcId) }
+		{ Uni = construct(Var, ConsId, CurriedArgs, _, _, _, _) },
+		{ ConsId = pred_const(PredId, ProcId, _EvalMethod) }
 	->
 		{ Closure = closure_pred(CurriedArgs, 
 			proc(PredId, ProcId)) },
@@ -1729,8 +1716,13 @@ rl_gen__aggregate(InputRelationArg, UpdateAcc, ComputeInitial,
 		OutputRelation, Code) -->
 	rl_info_get_var_type(ComputeInitial, ComputeInitialType),
 	(
+		% XXX The type declaration in extras/aditi/aditi.m
+		% should be changed to require that the eval_method
+		% for the UpdateAcc and ComputeInitial parameters
+		% is `aditi_top_down', and the InputRelationArg
+		% is `aditi_bottom_up'.
 		{ type_is_higher_order(ComputeInitialType, 
-			predicate, ComputeInitialArgTypes) },
+			predicate, _, ComputeInitialArgTypes) },
 		{ ComputeInitialArgTypes = [GrpByType, _NGrpByType, AccType] }
 	->
 		%

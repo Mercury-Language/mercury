@@ -59,9 +59,9 @@ unify_gen__generate_unification(CodeModel, Uni, IMD, Code) -->
 		{ Uni = assign(Left, Right) },
 		unify_gen__generate_assignment(Left, Right, Code)
 	;
-		{ Uni = construct(Var, ConsId, Args, Modes) },
+		{ Uni = construct(Var, ConsId, Args, Modes, _, _, AditiInfo) },
 		unify_gen__generate_construction(Var, ConsId,
-			Args, Modes, IMD, Code)
+			Args, Modes, IMD, AditiInfo, Code)
 	;
 		{ Uni = deconstruct(Var, ConsId, Args, Modes, _Det) },
 		( { CodeModel = model_det } ->
@@ -226,7 +226,7 @@ unify_gen__generate_tag_rval_2(float_constant(Float), Rval, TestRval) :-
 	TestRval = binop(float_eq, Rval, const(float_const(Float))).
 unify_gen__generate_tag_rval_2(int_constant(Int), Rval, TestRval) :-
 	TestRval = binop(eq, Rval, const(int_const(Int))).
-unify_gen__generate_tag_rval_2(pred_closure_tag(_, _), _Rval, _TestRval) :-
+unify_gen__generate_tag_rval_2(pred_closure_tag(_, _, _), _Rval, _TestRval) :-
 	% This should never happen, since the error will be detected
 	% during mode checking.
 	error("Attempted higher-order unification").
@@ -266,32 +266,34 @@ unify_gen__generate_tag_rval_2(shared_local_tag(Bits, Num), Rval,
 	% instantiate the arguments of that term.
 
 :- pred unify_gen__generate_construction(prog_var, cons_id,
-	list(prog_var), list(uni_mode), instmap_delta, code_tree,
-	code_info, code_info).
-:- mode unify_gen__generate_construction(in, in, in, in, in, out, in, out)
+	list(prog_var), list(uni_mode), instmap_delta, maybe(rl_exprn_id),
+	code_tree, code_info, code_info).
+:- mode unify_gen__generate_construction(in, in, in, in, in, in, out, in, out)
 	is det.
 
-unify_gen__generate_construction(Var, Cons, Args, Modes, InstMapDelta, Code) -->
+unify_gen__generate_construction(Var, Cons, Args, Modes,
+		InstMapDelta, AditiInfo, Code) -->
 	code_info__cons_id_to_tag(Var, Cons, Tag),
-	unify_gen__generate_construction_2(Tag, Var, Args, Modes,
-			InstMapDelta, Code).
+	unify_gen__generate_construction_2(Tag, Var, Args,
+		Modes, InstMapDelta, AditiInfo, Code).
 
 :- pred unify_gen__generate_construction_2(cons_tag, prog_var, list(prog_var),
-	list(uni_mode), instmap_delta, code_tree, code_info, code_info).
-:- mode unify_gen__generate_construction_2(in, in, in, in, in, out,
+	list(uni_mode), instmap_delta, maybe(rl_exprn_id),
+	code_tree, code_info, code_info).
+:- mode unify_gen__generate_construction_2(in, in, in, in, in, in, out,
 	in, out) is det.
 
 unify_gen__generate_construction_2(string_constant(String),
-		Var, _Args, _Modes, _IMDelta, Code) -->
+		Var, _Args, _Modes, _IMDelta, _, Code) -->
 	unify_gen__cache_unification(Var, const(string_const(String)), Code).
 unify_gen__generate_construction_2(int_constant(Int),
-		Var, _Args, _Modes, _IMDelta, Code) -->
+		Var, _Args, _Modes, _IMDelta, _, Code) -->
 	unify_gen__cache_unification(Var, const(int_const(Int)), Code).
 unify_gen__generate_construction_2(float_constant(Float),
-		Var, _Args, _Modes, _IMDelta, Code) -->
+		Var, _Args, _Modes, _IMDelta, _, Code) -->
 	unify_gen__cache_unification(Var, const(float_const(Float)), Code).
-unify_gen__generate_construction_2(no_tag,
-		Var, Args, Modes, IMDelta, Code) -->
+unify_gen__generate_construction_2(no_tag, Var, Args, Modes,
+		IMDelta, _, Code) -->
 	( { Args = [Arg], Modes = [Mode] } ->
 		code_info__variable_type(Arg, Type),
 		unify_gen__generate_sub_unify(ref(Var), ref(Arg),
@@ -301,7 +303,7 @@ unify_gen__generate_construction_2(no_tag,
 		"unify_gen__generate_construction_2: no_tag: arity != 1") }
 	).
 unify_gen__generate_construction_2(unshared_tag(UnsharedTag),
-		Var, Args, Modes, IMDelta, Code) -->
+		Var, Args, Modes, IMDelta, _, Code) -->
 	code_info__get_module_info(ModuleInfo),
 	code_info__get_inst_table(InstTable),
 	code_info__get_instmap(InstMap0),
@@ -323,7 +325,7 @@ unify_gen__generate_construction_2(unshared_tag(UnsharedTag),
 	unify_gen__maybe_place_refs(Var, Code1),
 	{ Code = tree(Code0, Code1) }.
 unify_gen__generate_construction_2(shared_remote_tag(Bits0, Num0),
-		Var, Args, Modes, IMDelta, Code) -->
+		Var, Args, Modes, IMDelta, _, Code) -->
 	code_info__get_module_info(ModuleInfo),
 	code_info__get_inst_table(InstTable),
 	code_info__get_instmap(InstMap0),
@@ -346,12 +348,12 @@ unify_gen__generate_construction_2(shared_remote_tag(Bits0, Num0),
 	unify_gen__maybe_place_refs(Var, Code1),
 	{ Code = tree(Code0, Code1) }.
 unify_gen__generate_construction_2(shared_local_tag(Bits1, Num1),
-		Var, _Args, _Modes, _IMDelta, Code) -->
+		Var, _Args, _Modes, _IMDelta, _, Code) -->
 	unify_gen__cache_unification(Var, 
 		mkword(Bits1, unop(mkbody, const(int_const(Num1)))),
 		Code).
 unify_gen__generate_construction_2(type_ctor_info_constant(ModuleName,
-		TypeName, TypeArity), Var, Args, _Modes, _IMDelta, Code) -->
+		TypeName, TypeArity), Var, Args, _Modes, _IMDelta, _, Code) -->
 	( { Args = [] } ->
 		[]
 	;
@@ -360,7 +362,7 @@ unify_gen__generate_construction_2(type_ctor_info_constant(ModuleName,
 	unify_gen__cache_unification(Var, const(data_addr_const(data_addr(
 		ModuleName, type_ctor(info, TypeName, TypeArity)))), Code).
 unify_gen__generate_construction_2(base_typeclass_info_constant(ModuleName,
-		ClassId, Instance), Var, Args, _Modes, _IMDelta, Code) -->
+		ClassId, Instance), Var, Args, _Modes, _IMDelta, _, Code) -->
 	( { Args = [] } ->
 		[]
 	;
@@ -370,7 +372,7 @@ unify_gen__generate_construction_2(base_typeclass_info_constant(ModuleName,
 		ModuleName, base_typeclass_info(ClassId, Instance)))),
 		Code).
 unify_gen__generate_construction_2(tabling_pointer_constant(PredId, ProcId),
-		Var, Args, _Modes, _IMDelta, Code) -->
+		Var, Args, _Modes, _IMDelta, _, Code) -->
 	( { Args = [] } ->
 		[]
 	;
@@ -383,7 +385,7 @@ unify_gen__generate_construction_2(tabling_pointer_constant(PredId, ProcId),
 	unify_gen__cache_unification(Var, const(data_addr_const(DataAddr)),
 		Code).
 unify_gen__generate_construction_2(code_addr_constant(PredId, ProcId),
-		Var, Args, _Modes, _IMDelta, Code) -->
+		Var, Args, _Modes, _IMDelta, _, Code) -->
 	( { Args = [] } ->
 		[]
 	;
@@ -393,8 +395,9 @@ unify_gen__generate_construction_2(code_addr_constant(PredId, ProcId),
 	code_info__make_entry_label(ModuleInfo, PredId, ProcId, no, CodeAddr),
 	unify_gen__cache_unification(Var, const(code_addr_const(CodeAddr)),
 		Code).
-unify_gen__generate_construction_2(pred_closure_tag(PredId, ProcId),
-		Var, Args, Modes, IMDelta, Code) -->
+unify_gen__generate_construction_2(
+		pred_closure_tag(PredId, ProcId, EvalMethod),
+		Var, Args, Modes, IMDelta, _AditiInfo, Code) -->
 	% This code constructs or extends a closure.
 	% The structure of closures is defined in runtime/mercury_ho_call.h.
 
@@ -432,10 +435,11 @@ unify_gen__generate_construction_2(pred_closure_tag(PredId, ProcId),
 	{ proc_info_interface_code_model(ProcInfo, CodeModel) },
 	{ proc_info_headvars(ProcInfo, ProcHeadVars) },
 	(
+		{ EvalMethod = normal },
 		{ Args = [CallPred | CallArgs] },
 		{ ProcHeadVars = [ProcPred | ProcArgs] },
-		{ ProcInfoGoal = higher_order_call(ProcPred, ProcArgs, _, _,
-					CallDeterminism, _) - _GoalInfo },
+		{ ProcInfoGoal = generic_call(higher_order(ProcPred, _, _),
+			ProcArgs, _, CallDeterminism) - _GoalInfo },
 		{ determinism_to_code_model(CallDeterminism, CallCodeModel) },
 			% Check that the code models are compatible.
 			% Note that det is not compatible with semidet,
@@ -525,6 +529,21 @@ unify_gen__generate_construction_2(pred_closure_tag(PredId, ProcId),
 			CodeAddr),
 		{ code_util__extract_proc_label_from_code_addr(CodeAddr,
 			ProcLabel) },
+		(
+			{ EvalMethod = normal }
+		;
+			{ EvalMethod = (aditi_bottom_up) },
+			% XXX The closure_layout code needs to be changed
+			% to handle these.
+			{ error(
+			"Sorry, not implemented: `aditi_bottom_up' closures") }
+		;
+			{ EvalMethod = (aditi_top_down) },
+			% XXX The closure_layout code needs to be changed
+			% to handle these.
+			{ error(
+			"Sorry, not implemented: `aditi_top_down' closures") }
+		),
 		{ module_info_globals(ModuleInfo, Globals) },
 		{ globals__lookup_bool_option(Globals, typeinfo_liveness,
 			TypeInfoLiveness) },
@@ -825,7 +844,7 @@ unify_gen__generate_det_deconstruction(Var, Cons, Args, Modes, IMDelta,
 		{ Tag = float_constant(_Float) },
 		{ Code = empty }
 	;
-		{ Tag = pred_closure_tag(_, _) },
+		{ Tag = pred_closure_tag(_, _, _) },
 		{ Code = empty }
 	;
 		{ Tag = code_addr_constant(_, _) },

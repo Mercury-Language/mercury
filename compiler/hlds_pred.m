@@ -76,10 +76,30 @@
 
 :- type proc_table	==	map(proc_id, proc_info).
 
-:- type pred_call_id	--->	sym_name / arity.
+:- type call_id
+	--->	call(simple_call_id)
+	;	generic_call(generic_call_id)
+	.
+
+:- type generic_call_id
+	--->	higher_order(pred_or_func, arity)
+	;	class_method(class_id, simple_call_id)
+	;	aditi_builtin(aditi_builtin, simple_call_id)
+	.
+
+:- type simple_call_id == pair(pred_or_func, sym_name_and_arity).
 
 :- type pred_proc_id	--->	proc(pred_id, proc_id).
 :- type pred_proc_list	==	list(pred_proc_id).
+
+%-----------------------------------------------------------------------------%
+	
+	% This is used for a closure executed top-down on the Aditi
+	% side of the connection.
+	% These expression numbers are stored in the proc_info - the owner
+	% and module name from the pred_info are also required to completely
+	% identify the expressions.
+:- type rl_exprn_id == int.
 
 %-----------------------------------------------------------------------------%
 
@@ -296,6 +316,23 @@
 
 	;	dnf		% Requests that this predicate be transformed
 				% into disjunctive normal form.
+
+	;	aditi		% Generate bottom-up Aditi-RL for this
+				% predicate.
+
+	;	(aditi_top_down)
+				% Generate top-down Aditi-RL, not C, for this
+				% predicate. This is used for the builtin
+				% `delete' predicate - the closure is used
+				% to select which tuples are to be deleted.
+
+	;	base_relation	% This predicate is an Aditi base relation.
+
+			% `naive' and `psn' are mutually exclusive.
+	;	naive		% Use naive evaluation of this Aditi predicate.
+	;	psn		% Use predicate semi-naive evaluation of this
+				% Aditi predicate.
+	
 	;	aditi_memo	% Requests that this Aditi predicate be
 				% evaluated using memoing. This has no
 				% relation to eval_method field of the
@@ -304,14 +341,6 @@
 	;	aditi_no_memo	% Ensure that this Aditi predicate
 				% is not memoed.
 	
-	;	aditi		% Generate Aditi-RL for this predicate.
-	;	base_relation	% This predicate is an Aditi base relation.
-
-			% `naive' and `psn' are mutually exclusive.
-	;	naive		% Use naive evaluation of this Aditi predicate.
-	;	psn		% Use predicate semi-naive evaluation of this
-				% Aditi predicate.
-
 			% `context' and `supp_magic' are mutually
 			% exclusive. One of them must be performed
 			% on all Aditi predicates. `supp_magic'
@@ -331,12 +360,6 @@
 				% The reason for this marker is explained 
 				% where it is introduced in
 				% magic_util__create_closure.
-
-	;	aditi_interface	% No code is actually generated for this
-				% predicate type. A call to a predicate with
-				% this marker is generated as a call to
-				% do_*_aditi_call, which is defined in hand
-				% coded C in extras/aditi/aditi.m.
 
 	;	class_method	% Requests that this predicate be transformed
 				% into the appropriate call to a class method
@@ -467,10 +490,10 @@
 
 :- pred pred_info_create(module_name, sym_name, tvarset, existq_tvars,
 	list(type), condition, prog_context, import_status, pred_markers,
-	pred_or_func, class_constraints, aditi_owner, proc_info,
-	proc_id, pred_info).
+	pred_or_func, class_constraints, aditi_owner, set(assert_id),
+	proc_info, proc_id, pred_info).
 :- mode pred_info_create(in, in, in, in, in, in, in, in, in, in, in, in, in,
-	out, out) is det.
+		in, out, out) is det.
 
 :- pred pred_info_module(pred_info, module_name).
 :- mode pred_info_module(in, out) is det.
@@ -634,6 +657,12 @@
 :- pred pred_info_set_indexes(pred_info, list(index_spec), pred_info).
 :- mode pred_info_set_indexes(in, in, out) is det.
 
+:- pred pred_info_get_assertions(pred_info, set(assert_id)).
+:- mode pred_info_get_assertions(in, out) is det.
+
+:- pred pred_info_set_assertions(pred_info, set(assert_id), pred_info).
+:- mode pred_info_set_assertions(in, in, out) is det.
+
 :- pred pred_info_get_purity(pred_info, purity).
 :- mode pred_info_get_purity(in, out) is det.
 
@@ -650,6 +679,9 @@
 
 :- pred pred_info_set_markers(pred_info, pred_markers, pred_info).
 :- mode pred_info_set_markers(in, in, out) is det.
+
+:- pred pred_info_get_call_id(pred_info, simple_call_id).
+:- mode pred_info_get_call_id(in, out) is det.
 
 	% create an empty set of markers
 :- pred init_markers(pred_markers).
@@ -825,10 +857,13 @@ status_defined_in_this_module(local,			yes).
 					% it is an Aditi predicate. Set to
 					% the value of --aditi-user if no
 					% `:- pragma owner' declaration exists.
-			list(index_spec)
+			list(index_spec),
 					% Indexes if this predicate is
 					% an Aditi base relation, ignored
 					% otherwise.
+			set(assert_id)
+					% List of assertions which
+					% mention this predicate.
 		).
 
 pred_info_init(ModuleName, SymName, Arity, TypeVarSet, ExistQVars, Types,
@@ -841,15 +876,16 @@ pred_info_init(ModuleName, SymName, Arity, TypeVarSet, ExistQVars, Types,
 	list__delete_elems(TVars, ExistQVars, HeadTypeParams),
 	UnprovenBodyConstraints = [],
 	Indexes = [],
+	set__init(Assertions),
 	PredInfo = predicate(TypeVarSet, Types, Cond, ClausesInfo, Procs,
 		Context, PredModuleName, PredName, Arity, Status, TypeVarSet, 
 		GoalType, Markers, PredOrFunc, ClassContext, ClassProofs,
 		ExistQVars, HeadTypeParams, UnprovenBodyConstraints, User,
-		Indexes).
+		Indexes, Assertions).
 
 pred_info_create(ModuleName, SymName, TypeVarSet, ExistQVars, Types, Cond,
 		Context, Status, Markers, PredOrFunc, ClassContext, User,
-		ProcInfo, ProcId, PredInfo) :-
+		Assertions, ProcInfo, ProcId, PredInfo) :-
 	map__init(Procs0),
 	proc_info_declared_determinism(ProcInfo, MaybeDetism),
 	next_mode_id(Procs0, MaybeDetism, ProcId),
@@ -874,11 +910,11 @@ pred_info_create(ModuleName, SymName, TypeVarSet, ExistQVars, Types, Cond,
 		Context, ModuleName, PredName, Arity, Status, TypeVarSet, 
 		clauses, Markers, PredOrFunc, ClassContext, ClassProofs,
 		ExistQVars, HeadTypeParams, UnprovenBodyConstraints, User,
-		Indexes).
+		Indexes, Assertions).
 
 pred_info_procids(PredInfo, ProcIds) :-
 	PredInfo = predicate(_, _, _, _, Procs, _, _, _, _, _, _, _, 
-		_, _, _, _, _, _, _, _, _),
+		_, _, _, _, _, _, _, _, _, _),
 	map__keys(Procs, ProcIds).
 
 pred_info_non_imported_procids(PredInfo, ProcIds) :-
@@ -911,57 +947,57 @@ pred_info_exported_procids(PredInfo, ProcIds) :-
 
 pred_info_clauses_info(PredInfo, Clauses) :-
 	PredInfo = predicate(_, _, _, Clauses, _, _, _, _, _, _, _, _, _,
-		_, _, _, _, _, _, _, _).
+		_, _, _, _, _, _, _, _, _).
 
 pred_info_set_clauses_info(PredInfo0, Clauses, PredInfo) :-
 	PredInfo0 = predicate(A, B, C, _, E, F, G, H, I, J, K, L, M, N, O, P,
-		Q, R, S, T, U),
+		Q, R, S, T, U, V),
 	PredInfo = predicate(A, B, C, Clauses, E, F, G, H, I, J, K, 
-		L, M, N, O, P, Q, R, S, T, U).
+		L, M, N, O, P, Q, R, S, T, U, V).
 
 pred_info_arg_types(PredInfo, ArgTypes) :-
 	pred_info_arg_types(PredInfo, _TypeVars, _ExistQVars, ArgTypes).
 
 pred_info_arg_types(PredInfo, TypeVars, ExistQVars, ArgTypes) :-
 	PredInfo = predicate(TypeVars, ArgTypes, _, _, _, _, _, _, _, _, _,
-		_, _, _, _, _, ExistQVars, _, _, _, _).
+		_, _, _, _, _, ExistQVars, _, _, _, _, _).
 
 pred_info_set_arg_types(PredInfo0, TypeVarSet, ExistQVars, ArgTypes,
 		PredInfo) :-
 	PredInfo0 = predicate(_, _, C, D, E, F, G, H, I, J, K, L, M, N, O, P,
-		_, R, S, T, U),
+		_, R, S, T, U, V),
 	PredInfo = predicate(TypeVarSet, ArgTypes, C, D, E, F, G, H, I, J, K,
-		L, M, N, O, P, ExistQVars, R, S, T, U).
+		L, M, N, O, P, ExistQVars, R, S, T, U, V).
 
 pred_info_procedures(PredInfo, Procs) :-
 	PredInfo = predicate(_, _, _, _, Procs, _, _, _, _, _, _, 
-		_, _, _, _, _, _, _, _, _, _).
+		_, _, _, _, _, _, _, _, _, _, _).
 
 pred_info_set_procedures(PredInfo0, Procedures, PredInfo) :-
 	PredInfo0 = predicate(A, B, C, D, _, F, G, H, I, J, K, L, M, N, O, P,
-		Q, R, S, T, U),
+		Q, R, S, T, U, V),
 	PredInfo = predicate(A, B, C, D, Procedures, F, G, H, I, J, K, L, M, 
-		N, O, P, Q, R, S, T, U).
+		N, O, P, Q, R, S, T, U, V).
 
 pred_info_context(PredInfo, Context) :-
 	PredInfo = predicate(_, _, _, _, _, Context, _, _, _, 
-		_, _, _, _, _, _, _, _, _, _, _, _).
+		_, _, _, _, _, _, _, _, _, _, _, _, _).
 
 pred_info_module(PredInfo, Module) :-
 	PredInfo = predicate(_, _, _, _, _, _, Module, _, _, _, _, 
-		_, _, _, _, _, _, _, _, _, _).
+		_, _, _, _, _, _, _, _, _, _, _).
 
 pred_info_name(PredInfo, PredName) :-
 	PredInfo = predicate(_, _, _, _, _, _, _, PredName, _, _, _, 
-		_, _, _, _, _, _, _, _, _, _).
+		_, _, _, _, _, _, _, _, _, _, _).
 
 pred_info_arity(PredInfo, Arity) :-
 	PredInfo = predicate(_, _, _, _, _, _, _, _, Arity, _, _, 
-		_, _, _, _, _, _, _, _, _, _).
+		_, _, _, _, _, _, _, _, _, _, _).
 
 pred_info_import_status(PredInfo, ImportStatus) :-
 	PredInfo = predicate(_, _, _, _, _, _, _, _, _, ImportStatus, _, _, _,
-				_, _, _, _, _, _, _, _).
+				_, _, _, _, _, _, _, _, _).
 
 pred_info_is_imported(PredInfo) :-
 	pred_info_import_status(PredInfo, imported).
@@ -994,35 +1030,35 @@ procedure_is_exported(PredInfo, ProcId) :-
 
 pred_info_mark_as_external(PredInfo0, PredInfo) :-
 	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, _, K, L, M, N, O, P,
-		Q, R, S, T, U),
+		Q, R, S, T, U, V),
 	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, imported, K, L, M, 
-		N, O, P, Q, R, S, T, U).
+		N, O, P, Q, R, S, T, U, V).
 
 pred_info_set_import_status(PredInfo0, Status, PredInfo) :-
 	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, _, K, L, M, N, O, P,
-		Q, R, S, T, U),
+		Q, R, S, T, U, V),
 	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, Status, K, 
-		L, M, N, O, P, Q, R, S, T, U).
+		L, M, N, O, P, Q, R, S, T, U, V).
 
 pred_info_typevarset(PredInfo, TypeVarSet) :-
 	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, TypeVarSet, _, _, 
-		_, _, _, _, _, _, _, _).
+		_, _, _, _, _, _, _, _, _).
 
 pred_info_set_typevarset(PredInfo0, TypeVarSet, PredInfo) :-
 	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, J, _, L, M, N, O, P,
-		Q, R, S, T, U),
+		Q, R, S, T, U, V),
 	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, J, TypeVarSet, L, M,
-				N, O, P, Q, R, S, T, U).
+				N, O, P, Q, R, S, T, U, V).
 
 pred_info_get_goal_type(PredInfo, GoalType) :-
 	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, _, GoalType, _, 
-		_, _, _, _, _, _, _, _).
+		_, _, _, _, _, _, _, _, _).
 
 pred_info_set_goal_type(PredInfo0, GoalType, PredInfo) :-
 	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, J, K, _, M, N, O, P,
-		Q, R, S, T, U),
+		Q, R, S, T, U, V),
 	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, J, K, GoalType, M, 
-		N, O, P, Q, R, S, T, U).
+		N, O, P, Q, R, S, T, U, V).
 
 pred_info_requested_inlining(PredInfo0) :-
 	pred_info_get_markers(PredInfo0, Markers),
@@ -1056,41 +1092,41 @@ purity_to_markers(impure, [impure]).
 
 pred_info_get_markers(PredInfo, Markers) :-
 	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, _, _, Markers, 
-		_, _, _, _, _, _, _, _).
+		_, _, _, _, _, _, _, _, _).
 
 pred_info_set_markers(PredInfo0, Markers, PredInfo) :-
 	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, J, K, L, _, N, O, P,
-		Q, R, S, T, U),
+		Q, R, S, T, U, V),
 	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, J, K, L, Markers, 
-		N, O, P, Q, R, S, T, U).
+		N, O, P, Q, R, S, T, U, V).
 
 pred_info_get_is_pred_or_func(PredInfo, IsPredOrFunc) :-
 	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, _, _, _,
-			IsPredOrFunc, _, _, _, _, _, _, _).
+			IsPredOrFunc, _, _, _, _, _, _, _, _).
 
 pred_info_set_class_context(PredInfo0, ClassContext, PredInfo) :-
 	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, J, K, L, M, N, _, P,
-		Q, R, S, T, U),
+		Q, R, S, T, U, V),
 	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, J, K, L, M, N, 
-		ClassContext, P, Q, R, S, T, U).
+		ClassContext, P, Q, R, S, T, U, V).
 
 pred_info_get_class_context(PredInfo, ClassContext) :-
 	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, _, _, _, _, 
-		ClassContext, _, _, _, _, _, _).
+		ClassContext, _, _, _, _, _, _, _).
 
 pred_info_set_constraint_proofs(PredInfo0, Proofs, PredInfo) :-
 	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, _,
-		Q, R, S, T, U),
+		Q, R, S, T, U, V),
 	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, J, K, L, M, N, 
-		O, Proofs, Q, R, S, T, U).
+		O, Proofs, Q, R, S, T, U, V).
 
 pred_info_get_constraint_proofs(PredInfo, ConstraintProofs) :-
 	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
-		ConstraintProofs, _, _, _, _, _).
+		ConstraintProofs, _, _, _, _, _, _).
 
 pred_info_get_exist_quant_tvars(PredInfo, ExistQVars) :-
 	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
-		_, ExistQVars, _, _, _, _).
+		_, ExistQVars, _, _, _, _, _).
 
 pred_info_get_univ_quant_tvars(PredInfo, UnivQVars) :-
 	pred_info_arg_types(PredInfo, ArgTypes),
@@ -1101,45 +1137,63 @@ pred_info_get_univ_quant_tvars(PredInfo, UnivQVars) :-
 
 pred_info_get_head_type_params(PredInfo, HeadTypeParams) :-
 	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
-		_, _, HeadTypeParams, _, _, _).
+		_, _, HeadTypeParams, _, _, _, _).
 
 pred_info_set_head_type_params(PredInfo0, HeadTypeParams, PredInfo) :-
 	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P,
-		Q, _, S, T, U),
+		Q, _, S, T, U, V),
 	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P,
-		Q, HeadTypeParams, S, T, U).
+		Q, HeadTypeParams, S, T, U, V).
 
 pred_info_get_unproven_body_constraints(PredInfo, UnprovenBodyConstraints) :-
 	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
-		_, _, UnprovenBodyConstraints, _, _).
+		_, _, UnprovenBodyConstraints, _, _, _).
 
 pred_info_set_unproven_body_constraints(PredInfo0, UnprovenBodyConstraints,
 		PredInfo) :-
 	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P,
-		Q, R, _, T, U),
+		Q, R, _, T, U, V),
 	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P,
-		Q, R, UnprovenBodyConstraints, T, U).
+		Q, R, UnprovenBodyConstraints, T, U, V).
 
 
 pred_info_get_aditi_owner(PredInfo, Owner) :-
 	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
-		_, _, _, _, Owner, _).
+		_, _, _, _, Owner, _, _).
 
 pred_info_set_aditi_owner(PredInfo0, Owner, PredInfo) :-
 	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, J, K, L, M, N,
-		O, P, Q, R, S, _, U),
+		O, P, Q, R, S, _, U, V),
 	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, J, K, L, M, N, 
-		O, P, Q, R, S, Owner, U).
+		O, P, Q, R, S, Owner, U, V).
 
 pred_info_get_indexes(PredInfo, Indexes) :-
 	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
-		_, _, _, _, _, Indexes).
+		_, _, _, _, _, Indexes, _).
 
 pred_info_set_indexes(PredInfo0, Indexes, PredInfo) :-
 	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, J, K, L, M, N,
-		O, P, Q, R, S, T, _),
+		O, P, Q, R, S, T, _, V),
 	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, J, K, L, M, N, 
-		O, P, Q, R, S, T, Indexes).
+		O, P, Q, R, S, T, Indexes, V).
+
+pred_info_get_assertions(PredInfo, Assertions) :-
+	PredInfo = predicate(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
+		_, _, _, _, _, _, Assertions).
+
+pred_info_set_assertions(PredInfo0, Assertions, PredInfo) :-
+	PredInfo0 = predicate(A, B, C, D, E, F, G, H, I, J, K, L, M, N,
+		O, P, Q, R, S, T, U, _),
+	PredInfo  = predicate(A, B, C, D, E, F, G, H, I, J, K, L, M, N, 
+		O, P, Q, R, S, T, U, Assertions).
+
+%-----------------------------------------------------------------------------%
+
+pred_info_get_call_id(PredInfo, PredOrFunc - qualified(Module, Name)/Arity) :-
+	pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
+	pred_info_module(PredInfo, Module),
+	pred_info_name(PredInfo, Name),
+	pred_info_arity(PredInfo, Arity).
 
 %-----------------------------------------------------------------------------%
 
@@ -1288,9 +1342,12 @@ hlds_pred__define_new_pred(Goal0, Goal, ArgVars0, ExtraTypeInfos, _InstMap0,
 	proc_info_set_maybe_termination_info(ProcInfo0, TermInfo, ProcInfo),
 
 	map__apply_to_list(ArgVars, VarTypes, ArgTypes),
+
+	set__init(Assertions),
+
 	pred_info_create(ModuleName, SymName, TVarSet, ExistQVars, ArgTypes,
 		true, Context, local, Markers, predicate, ClassContext, 
-		Owner, ProcInfo, ProcId, PredInfo),
+		Owner, Assertions, ProcInfo, ProcId, PredInfo),
 
 	module_info_get_predicate_table(ModuleInfo0, PredTable0),
 	predicate_table_insert(PredTable0, PredInfo, PredId,
@@ -1491,6 +1548,12 @@ compute_arg_modes([Var | Vars], InstMap0, InstMap, [Mode | Modes]) :-
 :- pred proc_info_is_address_taken(proc_info, is_address_taken).
 :- mode proc_info_is_address_taken(in, out) is det.
 
+:- pred proc_info_get_rl_exprn_id(proc_info, maybe(rl_exprn_id)).
+:- mode proc_info_get_rl_exprn_id(in, out) is det.
+
+:- pred proc_info_set_rl_exprn_id(proc_info, rl_exprn_id, proc_info).
+:- mode proc_info_set_rl_exprn_id(in, in, out) is det.
+
 	% For a set of variables V, find all the type variables in the types 
 	% of the variables in V, and return set of typeinfo variables for 
 	% those type variables. (find all typeinfos for variables in V).
@@ -1572,8 +1635,15 @@ compute_arg_modes([Var | Vars], InstMap0, InstMap, [Mode | Modes]) :-
 					% typeinfo liveness for them, so that
 					% deep_copy and accurate gc have the
 					% RTTI they need for copying closures.
-			inst_table
+			inst_table,
 					% the inst_table for this proc
+			maybe(rl_exprn_id)
+					% For predicates with an
+					% `aditi_top_down' marker, which are
+					% executed top-down on the Aditi side
+					% of the connection, we generate an RL
+					% expression, for which this is an
+					% identifier. See rl_update.m.
 		).
 
 	% Some parts of the procedure aren't known yet. We initialize
@@ -1599,22 +1669,24 @@ proc_info_init(Arity, Types, Modes, DeclaredModes, MaybeArgLives,
 	map__init(TVarsMap),
 	inst_table_init(InstTable),
 	map__init(TCVarsMap),
+	RLExprn = no,
 	NewProc = procedure(
 		MaybeDet, BodyVarSet, BodyTypes, HeadVars, Modes, MaybeArgLives,
 		ClauseBody, MContext, StackSlots, InferredDet, CanProcess,
 		ArgInfo, InitialLiveness, TVarsMap, TCVarsMap, eval_normal,
-		no, no, DeclaredModes, IsAddressTaken, InstTable
+		no, no, DeclaredModes, IsAddressTaken, InstTable, RLExprn
 	).
 
 proc_info_set(DeclaredDetism, BodyVarSet, BodyTypes, HeadVars, HeadModes,
 		HeadLives, Goal, Context, StackSlots, InferredDetism,
 		CanProcess, ArgInfo, Liveness, TVarMap, TCVarsMap, ArgSizes,
 		Termination, IsAddressTaken, InstTable, ProcInfo) :-
+	RLExprn = no,
 	ProcInfo = procedure(
 		DeclaredDetism, BodyVarSet, BodyTypes, HeadVars, HeadModes,
 		HeadLives, Goal, Context, StackSlots, InferredDetism,
 		CanProcess, ArgInfo, Liveness, TVarMap, TCVarsMap, eval_normal, 
-		ArgSizes, Termination, no, IsAddressTaken, InstTable).
+		ArgSizes, Termination, no, IsAddressTaken, InstTable, RLExprn).
 
 proc_info_create(VarSet, VarTypes, HeadVars, HeadModes, Detism, Goal,
 		Context, TVarMap, TCVarsMap, IsAddressTaken, InstTable,
@@ -1622,17 +1694,18 @@ proc_info_create(VarSet, VarTypes, HeadVars, HeadModes, Detism, Goal,
 	map__init(StackSlots),
 	set__init(Liveness),
 	MaybeHeadLives = no,
+	RLExprn = no,
 	ProcInfo = procedure(yes(Detism), VarSet, VarTypes, HeadVars, HeadModes,
 		MaybeHeadLives, Goal, Context, StackSlots, Detism, yes, [],
 		Liveness, TVarMap, TCVarsMap, eval_normal, no, no, no, 
-		IsAddressTaken, InstTable).
+		IsAddressTaken, InstTable, RLExprn).
 
 proc_info_set_body(ProcInfo0, VarSet, VarTypes, HeadVars, Goal,
 		TI_VarMap, TCI_VarMap, ProcInfo) :-
 	ProcInfo0 = procedure(A, _, _, _, E, F, _,
-		H, I, J, K, L, M, _, _, P, Q, R, S, T, U),
+		H, I, J, K, L, M, _, _, P, Q, R, S, T, U, V),
 	ProcInfo = procedure(A, VarSet, VarTypes, HeadVars, E, F, Goal,
-		H, I, J, K, L, M, TI_VarMap, TCI_VarMap, P, Q, R, S, T, U).
+		H, I, J, K, L, M, TI_VarMap, TCI_VarMap, P, Q, R, S, T, U, V).
 
 proc_info_interface_determinism(ProcInfo, Determinism) :-
 	proc_info_declared_determinism(ProcInfo, MaybeDeterminism),
@@ -1691,87 +1764,91 @@ proc_info_declared_argmodes(ProcInfo, ArgModes) :-
 
 proc_info_declared_determinism(ProcInfo, A) :-
 	ProcInfo = procedure(A, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, 
-    		_, _, _, _, _).
+    		_, _, _, _, _, _).
 
 proc_info_varset(ProcInfo, B) :-
 	ProcInfo = procedure(_, B, _, _, _, _, _, _, _, _, _, _, _, _, _, _, 
-		_, _, _, _, _).
+		_, _, _, _, _, _).
 
 proc_info_vartypes(ProcInfo, C) :-
 	ProcInfo = procedure(_, _, C, _, _, _, _, _, _, _, _, _, _, _, _, _, 
-		_, _, _, _, _).
+		_, _, _, _, _, _).
 
 proc_info_headvars(ProcInfo, D) :-
 	ProcInfo = procedure(_, _, _, D, _, _, _, _, _, _, _, _, _, _, _, _, 
-		_, _, _, _, _).
+		_, _, _, _, _, _).
 
 proc_info_argmodes(ProcInfo, E) :-
 	ProcInfo = procedure(_, _, _, _, E, _, _, _, _, _, _, _, _, _, _, _, 
-		_, _, _, _, _).
+		_, _, _, _, _, _).
 
 proc_info_maybe_arglives(ProcInfo, F) :-
 	ProcInfo = procedure(_, _, _, _, _, F, _, _, _, _, _, _, _, _, _, _, 
-		_, _, _, _, _).
+		_, _, _, _, _, _).
 
 proc_info_goal(ProcInfo, G) :-
 	ProcInfo = procedure(_, _, _, _, _, _, G, _, _, _, _, _, _, _, _, _, 
-		_, _, _, _, _).
+		_, _, _, _, _, _).
 
 proc_info_context(ProcInfo, H) :-
 	ProcInfo = procedure(_, _, _, _, _, _, _, H, _, _, _, _, _, _, _, _, 
-		_, _, _, _, _).
+		_, _, _, _, _, _).
 
 proc_info_stack_slots(ProcInfo, I) :-
 	ProcInfo = procedure(_, _, _, _, _, _, _, _, I, _, _, _, _, _, _, _, 
-		_, _, _, _, _).
+		_, _, _, _, _, _).
 
 proc_info_inferred_determinism(ProcInfo, J) :-
 	ProcInfo = procedure(_, _, _, _, _, _, _, _, _, J, _, _, _, _, _, _, 
-		_, _, _, _, _).
+		_, _, _, _, _, _).
 
 proc_info_can_process(ProcInfo, K) :-
 	ProcInfo = procedure(_, _, _, _, _, _, _, _, _, _, K, _, _, _, _, _, 
-		_, _, _, _, _).
+		_, _, _, _, _, _).
 
 proc_info_arg_info(ProcInfo, L) :- 
 	ProcInfo = procedure(_, _, _, _, _, _, _, _, _, _, _, L, _, _, _, _, 
-		_, _, _, _, _).
+		_, _, _, _, _, _).
 
 proc_info_liveness_info(ProcInfo, M) :-
 	ProcInfo = procedure(_, _, _, _, _, _, _, _, _, _, _, _, M, _, _, _,
-		_, _, _, _, _).
+		_, _, _, _, _, _).
 
 proc_info_typeinfo_varmap(ProcInfo, N) :-
 	ProcInfo = procedure(_, _, _, _, _, _, _, _, _, _, _, _, _, N, _, _, 
-		_, _, _, _, _).
+		_, _, _, _, _, _).
 
 proc_info_typeclass_info_varmap(ProcInfo, O) :-
 	ProcInfo = procedure(_, _, _, _, _, _, _, _, _, _, _, _, _, _, O, _, 
-		_, _, _, _, _).
+		_, _, _, _, _, _).
 
 proc_info_eval_method(ProcInfo, P) :-
 	ProcInfo = procedure(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, P, 
-		_, _, _, _, _).
+		_, _, _, _, _, _).
 
 proc_info_get_maybe_arg_size_info(ProcInfo, Q) :-
 	ProcInfo = procedure(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, 
-		Q, _, _, _, _).
+		Q, _, _, _, _, _).
 
 proc_info_get_maybe_termination_info(ProcInfo, R) :-
 	ProcInfo = procedure(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, 
-		_, R, _, _, _).
+		_, R, _, _, _, _).
 
 proc_info_maybe_declared_argmodes(ProcInfo, S) :-
 	ProcInfo = procedure(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, 
-		_, _, S, _, _).
+		_, _, S, _, _, _).
 
 proc_info_is_address_taken(ProcInfo, T) :-
 	ProcInfo = procedure(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, 
-		_, _, _, T, _).
+		_, _, _, T, _, _).
 
 proc_info_inst_table(ProcInfo, U) :-
     ProcInfo = procedure(_, _, _, _, _, _, _, _, _,
-    		_, _, _, _, _, _, _, _, _, _, _, U).
+    		_, _, _, _, _, _, _, _, _, _, _, U, _).
+
+proc_info_get_rl_exprn_id(ProcInfo, V) :-
+	ProcInfo = procedure(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, 
+		_, _, _, _, _, V).
 
 % :- type proc_info
 % 	--->	procedure(
@@ -1830,111 +1907,124 @@ proc_info_inst_table(ProcInfo, U) :-
 %					% typeinfo liveness for them, so that
 %					% deep_copy and accurate gc have the
 %					% RTTI they need for copying closures.
-% U			inst_table
+% U			inst_table,
 %					% the inst_table for this proc
+% V			maybe(rl_exprn_id)
+%					% For predicates with an
+%					% `aditi_top_down' marker, which are
+%					% executed top-down on the Aditi side
+%					% of the connection, we generate an RL
+%					% expression, for which this is an
+%					% identifier. See rl_update.m.
 %		).
 
 proc_info_set_varset(ProcInfo0, B, ProcInfo) :-
 	ProcInfo0 = procedure(A, _, C, D, E, F, G, H, I, J, K, L, M, N, O, 
-		P, Q, R, S, T, U),
+		P, Q, R, S, T, U, V),
 	ProcInfo  = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, 
-		P, Q, R, S, T, U).
+		P, Q, R, S, T, U, V).
 
 proc_info_set_vartypes(ProcInfo0, C, ProcInfo) :-
 	ProcInfo0 = procedure(A, B, _, D, E, F, G, H, I, J, K, L, M, N, O, 
-		P, Q, R, S, T, U),
+		P, Q, R, S, T, U, V),
 	ProcInfo  = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, 
-		P, Q, R, S, T, U).
+		P, Q, R, S, T, U, V).
 
 proc_info_set_headvars(ProcInfo0, D, ProcInfo) :-
 	ProcInfo0 = procedure(A, B, C, _, E, F, G, H, I, J, K, L, M, N, O, 
-		P, Q, R, S, T, U),
+		P, Q, R, S, T, U, V),
 	ProcInfo  = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, 
-		P, Q, R, S, T, U).
+		P, Q, R, S, T, U, V).
 
 proc_info_set_argmodes(ProcInfo0, E, ProcInfo) :-
 	ProcInfo0 = procedure(A, B, C, D, _, F, G, H, I, J, K, L, M, N, O, 
-		P, Q, R, S, T, U),
+		P, Q, R, S, T, U, V),
 	ProcInfo  = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, 
-		P, Q, R, S, T, U).
+		P, Q, R, S, T, U, V).
 
 proc_info_set_maybe_arglives(ProcInfo0, F, ProcInfo) :-
 	ProcInfo0 = procedure(A, B, C, D, E, _, G, H, I, J, K, L, M, N, O, 
-		P, Q, R, S, T, U),
+		P, Q, R, S, T, U, V),
 	ProcInfo  = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, 
-		P, Q, R, S, T, U).
+		P, Q, R, S, T, U, V).
 
 proc_info_set_goal(ProcInfo0, G, ProcInfo) :-
 	ProcInfo0 = procedure(A, B, C, D, E, F, _, H, I, J, K, L, M, N, O, 
-		P, Q, R, S, T, U),
+		P, Q, R, S, T, U, V),
 	ProcInfo  = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, 
-		P, Q, R, S, T, U).
+		P, Q, R, S, T, U, V).
 
 proc_info_set_stack_slots(ProcInfo0, I, ProcInfo) :-
 	ProcInfo0 = procedure(A, B, C, D, E, F, G, H, _, J, K, L, M, N, O, 
-		P, Q, R, S, T, U),
+		P, Q, R, S, T, U, V),
 	ProcInfo  = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, 
-		P, Q, R, S, T, U).
+		P, Q, R, S, T, U, V).
 
 proc_info_set_inferred_determinism(ProcInfo0, J, ProcInfo) :-
 	ProcInfo0 = procedure(A, B, C, D, E, F, G, H, I, _, K, L, M, N, O, 
-		P, Q, R, S, T, U),
+		P, Q, R, S, T, U, V),
 	ProcInfo  = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, 
-		P, Q, R, S, T, U).
+		P, Q, R, S, T, U, V).
 
 proc_info_set_can_process(ProcInfo0, K, ProcInfo) :-
 	ProcInfo0 = procedure(A, B, C, D, E, F, G, H, I, J, _, L, M, N, O, 
-		P, Q, R, S, T, U),
+		P, Q, R, S, T, U, V),
 	ProcInfo  = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, 
-		P, Q, R, S, T, U).
+		P, Q, R, S, T, U, V).
 
 proc_info_set_arg_info(ProcInfo0, L, ProcInfo) :-
 	ProcInfo0 = procedure(A, B, C, D, E, F, G, H, I, J, K, _, M, N, O, 
-		P, Q, R, S, T, U),
+		P, Q, R, S, T, U, V),
 	ProcInfo  = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, 
-		P, Q, R, S, T, U).
+		P, Q, R, S, T, U, V).
 
 proc_info_set_liveness_info(ProcInfo0, M, ProcInfo) :-
 	ProcInfo0 = procedure(A, B, C, D, E, F, G, H, I, J, K, L, _, N, O, 
-		P, Q, R, S, T, U),
+		P, Q, R, S, T, U, V),
 	ProcInfo  = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, 
-		P, Q, R, S, T, U).
+		P, Q, R, S, T, U, V).
 
 proc_info_set_typeinfo_varmap(ProcInfo0, N, ProcInfo) :-
 	ProcInfo0 = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, _, O, 
-		P, Q, R, S, T, U),
+		P, Q, R, S, T, U, V),
 	ProcInfo  = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, 
-		P, Q, R, S, T, U).
+		P, Q, R, S, T, U, V).
 
 proc_info_set_typeclass_info_varmap(ProcInfo0, O, ProcInfo) :-
 	ProcInfo0 = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, _, 
-		P, Q, R, S, T, U),
+		P, Q, R, S, T, U, V),
 	ProcInfo  = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, 
-		P, Q, R, S, T, U).
+		P, Q, R, S, T, U, V).
 
 proc_info_set_eval_method(ProcInfo0, P, ProcInfo) :-
 	ProcInfo0 = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O,
-		_, Q, R, S, T, U),
+		_, Q, R, S, T, U, V),
 	ProcInfo  = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O,
-		P, Q, R, S, T, U).
+		P, Q, R, S, T, U, V).
 
 proc_info_set_maybe_arg_size_info(ProcInfo0, Q, ProcInfo) :-
 	ProcInfo0 = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, 
-		P, _, R, S, T, U),
+		P, _, R, S, T, U, V),
 	ProcInfo  = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, 
-		P, Q, R, S, T, U).
+		P, Q, R, S, T, U, V).
 
 proc_info_set_maybe_termination_info(ProcInfo0, R, ProcInfo) :-
 	ProcInfo0 = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, 
-		P, Q, _, S, T, U),
+		P, Q, _, S, T, U, V),
 	ProcInfo  = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, 
-		P, Q, R, S, T, U).
+		P, Q, R, S, T, U, V).
 
 proc_info_set_inst_table(ProcInfo0, U, ProcInfo) :-
 	ProcInfo0 = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O,
-		P, Q, R, S, T, _),
+		P, Q, R, S, T, _, V),
 	ProcInfo  = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O,
-		P, Q, R, S, T, U).
+		P, Q, R, S, T, U, V).
+
+proc_info_set_rl_exprn_id(ProcInfo0, V, ProcInfo) :-
+	ProcInfo0 = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, 
+		P, Q, R, S, T, U, _),
+	ProcInfo  = procedure(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, 
+		P, Q, R, S, T, U, yes(V)).
 
 proc_info_get_typeinfo_vars_setwise(ProcInfo, Vars, TypeInfoVars) :-
 	set__to_sorted_list(Vars, VarList),
@@ -2029,6 +2119,25 @@ proc_info_create_vars_from_types(ProcInfo0, Types, NewVars, ProcInfo) :-
 :- pred pred_args_to_func_args(list(T), list(T), T).
 :- mode pred_args_to_func_args(in, out, out) is det.
 
+	% adjust_func_arity(PredOrFunc, FuncArity, PredArity).
+	%
+	% We internally store the arity as the length of the argument
+	% list including the return value, which is one more than the
+	% arity of the function reported in error messages.
+:- pred adjust_func_arity(pred_or_func, int, int).
+:- mode adjust_func_arity(in, in, out) is det.
+:- mode adjust_func_arity(in, out, in) is det.
+
+	% Get the last two arguments from the list, failing if there
+	% aren't at least two arguments.
+:- pred get_state_args(list(T), list(T), T, T).
+:- mode get_state_args(in, out, out, out) is semidet.
+
+	% Get the last two arguments from the list, aborting if there
+	% aren't at least two arguments.
+:- pred get_state_args_det(list(T), list(T), T, T).
+:- mode get_state_args_det(in, out, out, out) is det.
+
 :- implementation.
 
 make_n_fresh_vars(BaseName, N, VarSet0, Vars, VarSet) :-
@@ -2060,6 +2169,23 @@ pred_args_to_func_args(PredArgs, FuncArgs, FuncReturn) :-
 		FuncReturn = FuncReturn0
 	;
 		error("pred_args_to_func_args: function missing return value?")
+	).
+
+adjust_func_arity(predicate, Arity, Arity).
+adjust_func_arity(function, Arity - 1, Arity).
+
+get_state_args(Args0, Args, State0, State) :-
+	list__reverse(Args0, RevArgs0),
+	RevArgs0 = [State, State0 | RevArgs],
+	list__reverse(RevArgs, Args).
+
+get_state_args_det(Args0, Args, State0, State) :-
+	( get_state_args(Args0, Args1, State0A, StateA) ->
+		Args = Args1,
+		State0 = State0A,
+		State = StateA
+	;
+		error("hlds_pred__get_state_args_det")
 	).
 
 %-----------------------------------------------------------------------------%

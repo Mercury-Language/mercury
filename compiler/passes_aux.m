@@ -33,6 +33,9 @@
 		;	update_module(pred(
 				proc_info, proc_info,
 				module_info, module_info))
+		;	update_module_predid(pred(
+				pred_id, proc_info, proc_info,
+				module_info, module_info))
 		;	update_module_io(pred(
 				pred_id, proc_id, proc_info, proc_info,
 				module_info, module_info,
@@ -88,6 +91,8 @@ about unbound type variables.
 		;	update_pred_error(pred(in, in, out, in, out,
 				out, out, di, uo) is det)
 		;	update_module(pred(in, out, in, out) is det)
+		;	update_module_predid(pred(in,
+				in, out, in, out) is det)
 		;	update_module_io(pred(in, in, in, out,
 				in, out, di, uo) is det)
 		;	update_module_cookie(pred(in, in, in, out, in, out,
@@ -117,6 +122,11 @@ about unbound type variables.
 :- pred process_all_nonimported_nonaditi_procs(task, module_info, module_info,
 	io__state, io__state).
 :- mode process_all_nonimported_nonaditi_procs(task, in, out, di, uo) is det.
+
+:- pred process_all_nonimported_nonaditi_procs(task, task,
+	module_info, module_info, io__state, io__state).
+:- mode process_all_nonimported_nonaditi_procs(task, out(task),
+	in, out, di, uo) is det.
 
 :- pred process_all_nonimported_procs(task, task,
 	module_info, module_info, io__state, io__state).
@@ -169,6 +179,14 @@ process_all_nonimported_nonaditi_procs(Task, ModuleInfo0, ModuleInfo) -->
 			\+ hlds_pred__pred_info_is_aditi_relation(PredInfo)
 		)) }, 
 	process_matching_nonimported_procs(Task, NotAditi, 
+		ModuleInfo0, ModuleInfo).
+
+process_all_nonimported_nonaditi_procs(Task0, Task,
+		ModuleInfo0, ModuleInfo) -->
+	{ NotAditi = lambda([PredInfo::in] is semidet, (
+			\+ hlds_pred__pred_info_is_aditi_relation(PredInfo)
+		)) }, 
+	process_matching_nonimported_procs(Task0, Task, NotAditi, 
 		ModuleInfo0, ModuleInfo).
 
 process_all_nonimported_procs(Task0, Task, ModuleInfo0, ModuleInfo) -->
@@ -256,6 +274,11 @@ process_nonimported_procs([ProcId | ProcIds], PredId, Task0, Task,
 	(
 		Task0 = update_module(Closure),
 		call(Closure, Proc0, Proc, ModuleInfo0, ModuleInfo8),
+		Task1 = Task0,
+		State9 = State0
+	;
+		Task0 = update_module_predid(Closure),
+		call(Closure, PredId, Proc0, Proc, ModuleInfo0, ModuleInfo8),
 		Task1 = Task0,
 		State9 = State0
 	;

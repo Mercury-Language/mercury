@@ -419,7 +419,7 @@ dead_proc_elim__examine_expr(not(Goal), CurrProc, Queue0, Queue,
 		Needed0, Needed) :-
 	dead_proc_elim__examine_goal(Goal, CurrProc, Queue0, Queue,
 		Needed0, Needed).
-dead_proc_elim__examine_expr(some(_, Goal), CurrProc, Queue0, Queue,
+dead_proc_elim__examine_expr(some(_, _, Goal), CurrProc, Queue0, Queue,
 		Needed0, Needed) :-
 	dead_proc_elim__examine_goal(Goal, CurrProc, Queue0, Queue,
 		Needed0, Needed).
@@ -435,9 +435,7 @@ dead_proc_elim__examine_expr(if_then_else(_, Cond, Then, Else, _),
 		Needed1, Needed2),
 	dead_proc_elim__examine_goal(Else, CurrProc, Queue2, Queue,
 		Needed2, Needed).
-dead_proc_elim__examine_expr(higher_order_call(_,_,_,_,_,_), _,
-		Queue, Queue, Needed, Needed).
-dead_proc_elim__examine_expr(class_method_call(_,_,_,_,_,_), _,
+dead_proc_elim__examine_expr(generic_call(_,_,_,_), _,
 		Queue, Queue, Needed, Needed).
 dead_proc_elim__examine_expr(call(PredId, ProcId, _,_,_,_),
 		CurrProc, Queue0, Queue, Needed0, Needed) :-
@@ -469,9 +467,9 @@ dead_proc_elim__examine_expr(pragma_c_code(_, PredId, ProcId, _, _, _, _),
 dead_proc_elim__examine_expr(unify(_,_,_, Uni, _), _CurrProc, Queue0, Queue,
 		Needed0, Needed) :-
 	(
-		Uni = construct(_, ConsId, _, _),
+		Uni = construct(_, ConsId, _, _, _, _, _),
 		(
-			ConsId = pred_const(PredId, ProcId),
+			ConsId = pred_const(PredId, ProcId, _),
 			Entity = proc(PredId, ProcId)
 		;
 			ConsId = code_addr_const(PredId, ProcId),
@@ -820,11 +818,10 @@ pre_modecheck_examine_goal(switch(_, _, Cases, _) - _) -->
 		pre_modecheck_examine_goal(Goal, Info0, Info)
 	)) },
 	list__foldl(ExamineCase, Cases).
-pre_modecheck_examine_goal(higher_order_call(_,_,_,_,_,_) - _) --> [].
-pre_modecheck_examine_goal(class_method_call(_,_,_,_,_,_) - _) --> [].
+pre_modecheck_examine_goal(generic_call(_,_,_,_) - _) --> [].
 pre_modecheck_examine_goal(not(Goal) - _) -->
 	pre_modecheck_examine_goal(Goal).
-pre_modecheck_examine_goal(some(_, Goal) - _) -->
+pre_modecheck_examine_goal(some(_, _, Goal) - _) -->
 	pre_modecheck_examine_goal(Goal).
 pre_modecheck_examine_goal(call(_, _, _, _, _, PredName) - _) -->
 	dead_pred_info_add_pred_name(PredName).
@@ -842,7 +839,7 @@ pre_modecheck_examine_unify_rhs(functor(Functor, _)) -->
 	;
 		[]
 	).
-pre_modecheck_examine_unify_rhs(lambda_goal(_, _, _, _, _, _, Goal)) -->
+pre_modecheck_examine_unify_rhs(lambda_goal(_, _, _, _, _, _, _, _, Goal)) -->
 	pre_modecheck_examine_goal(Goal).
 
 :- pred dead_pred_info_add_pred_name(sym_name::in, dead_pred_info::in, 

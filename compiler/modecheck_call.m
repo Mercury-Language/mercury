@@ -32,19 +32,15 @@
 		mode_info_di, mode_info_uo) is det.
 
 :- pred modecheck_higher_order_call(pred_or_func, prog_var, list(prog_var),
-		list(type), argument_modes, determinism, list(prog_var),
+		argument_modes, determinism, list(prog_var),
 		extra_goals, mode_info, mode_info).
-:- mode modecheck_higher_order_call(in, in, in, out, out, out, out, out,
+:- mode modecheck_higher_order_call(in, in, in, out, out, out, out,
 		mode_info_di, mode_info_uo) is det.
 
-:- pred modecheck_higher_order_pred_call(prog_var, list(prog_var), pred_or_func,
-		hlds_goal_info, hlds_goal_expr, mode_info, mode_info).
-:- mode modecheck_higher_order_pred_call(in, in, in, in, out,
-		mode_info_di, mode_info_uo) is det.
-
-:- pred modecheck_higher_order_func_call(prog_var, list(prog_var), prog_var,
-		hlds_goal_info, hlds_goal_expr, mode_info, mode_info).
-:- mode modecheck_higher_order_func_call(in, in, in, in, out,
+:- pred modecheck_aditi_builtin(aditi_builtin, simple_call_id,
+		list(prog_var), argument_modes, determinism,
+		list(prog_var), extra_goals, mode_info, mode_info).
+:- mode modecheck_aditi_builtin(in, in, in, in, out, out, out,
 		mode_info_di, mode_info_uo) is det.
 
 	%
@@ -77,51 +73,10 @@
 :- import_module mode_info, mode_debug, modes, mode_util, mode_errors.
 :- import_module clause_to_proc, inst_match, inst_util, make_hlds.
 :- import_module det_report, unify_proc.
-:- import_module map, bool, set, require.
+:- import_module int, map, bool, set, require.
 
-modecheck_higher_order_pred_call(PredVar, Args0, PredOrFunc, GoalInfo0, Goal)
-		-->
-	mode_checkpoint(enter, "higher-order call", GoalInfo0),
-	mode_info_set_call_context(higher_order_call(PredOrFunc)),
-	=(ModeInfo0),
-
-	{ mode_info_get_instmap(ModeInfo0, InstMap0) },
-	modecheck_higher_order_call(PredOrFunc, PredVar, Args0,
-			Types, Modes, Det, Args, ExtraGoals),
-
-	{ Call = higher_order_call(PredVar, Args, Types, Modes, Det,
-			PredOrFunc) },
-	handle_extra_goals(Call, ExtraGoals, GoalInfo0,
-			[PredVar | Args0], [PredVar | Args],
-			InstMap0, Goal),
-	mode_info_unset_call_context,
-	mode_checkpoint(exit, "higher-order predicate call", GoalInfo0).
-
-modecheck_higher_order_func_call(FuncVar, Args0, RetVar, GoalInfo0, Goal) -->
-	mode_checkpoint(enter, "higher-order function call", GoalInfo0),
-	mode_info_set_call_context(higher_order_call(function)),
-
-	=(ModeInfo0),
-	{ mode_info_get_instmap(ModeInfo0, InstMap0) },
-
-	{ list__append(Args0, [RetVar], Args1) },
-	modecheck_higher_order_call(function, FuncVar, Args1,
-			Types, Modes, Det, Args, ExtraGoals),
-
-	{ Call = higher_order_call(FuncVar, Args, Types, Modes, Det,
-				function) },
-	handle_extra_goals(Call, ExtraGoals, GoalInfo0,
-			[FuncVar | Args1], [FuncVar | Args],
-			InstMap0, Goal),
-
-	mode_info_unset_call_context,
-	mode_checkpoint(exit, "higher-order function call", GoalInfo0).
-
-modecheck_higher_order_call(PredOrFunc, PredVar, Args0, Types, Modes, Det, Args,
-		ExtraGoals, ModeInfo0, ModeInfo) :-
-
-	mode_info_get_types_of_vars(ModeInfo0, Args0, Types),
-
+modecheck_higher_order_call(PredOrFunc, PredVar, Args0, Modes, Det,
+		Args, ExtraGoals, ModeInfo0, ModeInfo) :-
 	%
 	% First, check that `PredVar' has a higher-order pred inst
 	% (of the appropriate arity)
@@ -136,47 +91,20 @@ modecheck_higher_order_call(PredOrFunc, PredVar, Args0, Types, Modes, Det, Args,
 	(
 		PredVarInst = ground(_Uniq, yes(PredInstInfo)),
 		PredInstInfo = pred_inst_info(_PredOrFunc, Modes0, Det0),
-		Modes0 = argument_modes(ArgInstTable, ArgModes0),
+		Modes0 = argument_modes(_, ArgModes0),
 		list__length(ArgModes0, Arity)
 	->
 		Det = Det0,
 		Modes = Modes0,
-
 		ArgOffset = 1,
 
-		%
-		% Check that `Args0' have livenesses which match the
-		% expected livenesses.
-		%
-			% YYY InstMap0 is probably incorrect here
-		get_arg_lives(ArgModes0, InstMap0, ArgInstTable, ModuleInfo0,
-			ExpectedArgLives),
-		modecheck_var_list_is_live(Args0, ExpectedArgLives, ArgOffset,
-			ModeInfo0, ModeInfo1),
-
-		inst_table_create_sub(InstTable0, ArgInstTable, Sub, InstTable1),
-		list__map(apply_inst_key_sub_mode(Sub), ArgModes0, ArgModes),
-		mode_info_set_inst_table(InstTable1, ModeInfo1, ModeInfo2),
-
-		%
-		% Check that `Args0' have insts which match the expected
-		% initial insts, set their new final insts (introducing
-		% extra unifications for implied modes, if necessary),
-		% then check that the final insts of the vars match the
-		% declared final insts.
-		%
-		mode_list_get_initial_insts(ArgModes, ModuleInfo0,
-				InitialInsts),
-		modecheck_var_has_inst_list(Args0, InitialInsts, ArgOffset,
-					ModeInfo2, ModeInfo3),
-		mode_list_get_final_insts(ArgModes, ModuleInfo0, FinalInsts),
-		modecheck_set_var_inst_list(Args0, InitialInsts, FinalInsts,
-			ArgOffset, Args, ExtraGoals, ModeInfo3, ModeInfo4),
+		modecheck_arg_list(ArgOffset, Args0, Args, Modes,
+			ExtraGoals, ModeInfo0, ModeInfo1),
 		( determinism_components(Det, _, at_most_zero) ->
 			instmap__init_unreachable(Instmap),
-			mode_info_set_instmap(Instmap, ModeInfo4, ModeInfo)
+			mode_info_set_instmap(Instmap, ModeInfo1, ModeInfo)
 		;
-			ModeInfo = ModeInfo4
+			ModeInfo = ModeInfo1
 		)
 	;
 		% the error occurred in argument 1, i.e. the pred term
@@ -191,6 +119,80 @@ modecheck_higher_order_call(PredOrFunc, PredVar, Args0, Types, Modes, Det, Args,
 		Args = Args0,
 		ExtraGoals = no_extra_goals
 	).
+
+modecheck_aditi_builtin(AditiBuiltin, CallId,
+		Args0, Modes, Det, Args, ExtraGoals) -->
+	{ aditi_builtin_determinism(AditiBuiltin, Det) },
+
+	% `aditi_insert' goals have type_info arguments for each
+	% of the arguments of the tuple to insert added to the
+	% start of the argument list by polymorphism.m.
+	( { AditiBuiltin = aditi_insert(_) } ->
+		{ CallId = _ - _/Arity },
+		{ ArgOffset = -Arity }
+	;
+		{ ArgOffset = 0 }
+	),
+
+	% The argument modes are set by post_typecheck.m, so all
+	% that needs to be done here is to check that they match.
+	modecheck_arg_list(ArgOffset, Args0, Args, Modes, ExtraGoals).
+
+:- pred aditi_builtin_determinism(aditi_builtin, determinism).
+:- mode aditi_builtin_determinism(in, out) is det.
+
+aditi_builtin_determinism(aditi_call(_, _, _, _), _) :-
+	error(
+	"modecheck_call__aditi_builtin_determinism: unexpected Aditi call"). 
+aditi_builtin_determinism(aditi_insert(_), det).
+aditi_builtin_determinism(aditi_delete(_, _), det).
+aditi_builtin_determinism(aditi_bulk_operation(_, _), det).
+aditi_builtin_determinism(aditi_modify(_, _), det).
+
+:- pred modecheck_arg_list(int, list(prog_var), list(prog_var),
+		argument_modes, extra_goals, mode_info, mode_info).
+:- mode modecheck_arg_list(in, in, out, in, out,
+		mode_info_di, mode_info_uo) is det.
+
+modecheck_arg_list(ArgOffset, Args0, Args, Modes,
+		ExtraGoals, ModeInfo0, ModeInfo) :-
+
+	Modes = argument_modes(ArgInstTable, ArgModes0),
+
+	%
+	% Check that `Args0' have livenesses which match the
+	% expected livenesses.
+	%
+	mode_info_get_module_info(ModeInfo0, ModuleInfo0),
+	mode_info_get_instmap(ModeInfo0, InstMap0),
+
+		% YYY InstMap0 is probably incorrect here
+	get_arg_lives(ArgModes0, InstMap0, ArgInstTable, ModuleInfo0,
+		ExpectedArgLives),
+	modecheck_var_list_is_live(Args0, ExpectedArgLives, ArgOffset,
+		ModeInfo0, ModeInfo1),	
+
+	%
+	% Substitute the inst_keys in the argument_modes.
+	%
+	mode_info_get_inst_table(ModeInfo1, InstTable0),
+	inst_table_create_sub(InstTable0, ArgInstTable, Sub, InstTable1),
+	list__map(apply_inst_key_sub_mode(Sub), ArgModes0, ArgModes),
+	mode_info_set_inst_table(InstTable1, ModeInfo1, ModeInfo2),
+
+	%
+	% Check that `Args0' have insts which match the expected
+	% initial insts, set their new final insts (introducing
+	% extra unifications for implied modes, if necessary),
+	% then check that the final insts of the vars match the
+	% declared final insts.
+	%
+	mode_list_get_initial_insts(ArgModes, ModuleInfo0, InitialInsts),
+	modecheck_var_has_inst_list(Args0, InitialInsts, ArgOffset,
+		ModeInfo2, ModeInfo3),
+	mode_list_get_final_insts(ArgModes, ModuleInfo0, FinalInsts),
+	modecheck_set_var_inst_list(Args0, InitialInsts, FinalInsts,
+		ArgOffset, Args, ExtraGoals, ModeInfo3, ModeInfo).
 
 modecheck_call_pred(PredId, ProcId0, ArgVars0, DeterminismKnown,
 		TheProcId, ArgVars, ExtraGoals, ModeInfo0, ModeInfo) :-

@@ -44,6 +44,10 @@
 :- pred prog_out__write_sym_name(sym_name, io__state, io__state).
 :- mode prog_out__write_sym_name(in, di, uo) is det.
 
+:- pred prog_out__write_sym_name_and_arity(sym_name_and_arity,
+		io__state, io__state).
+:- mode prog_out__write_sym_name_and_arity(in, di, uo) is det.
+
 	% Write out a symbol name, enclosed in single forward quotes ('...')
 	% if necessary, and with any special characters escaped.
 	% The output should be a syntactically valid Mercury term.
@@ -199,6 +203,11 @@ prog_out__write_sym_name(qualified(ModuleSpec,Name)) -->
 	term_io__write_escaped_string(Name).
 prog_out__write_sym_name(unqualified(Name)) -->
 	term_io__write_escaped_string(Name).
+
+prog_out__write_sym_name_and_arity(Name / Arity) -->
+	prog_out__write_sym_name(Name),
+	io__write_string("/"),
+	io__write_int(Arity).
 
 prog_out__write_quoted_sym_name(SymName) -->
 	io__write_string("'"),

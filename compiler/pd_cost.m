@@ -76,18 +76,10 @@ pd_cost__goal(call(_, _, Args, BuiltinState, _, _) - _, Cost) :-
 pd_cost__goal(not(Goal) - _, Cost) :-
 	pd_cost__goal(Goal, Cost).
 
-pd_cost__goal(some(_, Goal) - _, Cost) :-
+pd_cost__goal(some(_, _, Goal) - _, Cost) :-
 	pd_cost__goal(Goal, Cost).
 
-pd_cost__goal(higher_order_call(_, Args, _, _, _, _) - _, Cost) :-
-	list__length(Args, Arity),
-	pd_cost__reg_assign(AssignCost),
-	Cost0 = AssignCost * Arity // 2,
-	pd_cost__stack_flush(Cost1),
-	pd_cost__higher_order_call(Cost2),
-	Cost is Cost0 + Cost1 + Cost2.
-
-pd_cost__goal(class_method_call(_, _, Args, _, _, _) - _, Cost) :-
+pd_cost__goal(generic_call(_, Args, _, _) - _, Cost) :-
 	list__length(Args, Arity),
 	pd_cost__reg_assign(AssignCost),
 	Cost0 = AssignCost * Arity // 2,
@@ -121,7 +113,7 @@ pd_cost__unify(_, complicated_unify(_, _, _), Cost) :-
 pd_cost__unify(_, simple_test(_, _), Cost) :-
 	pd_cost__simple_test(Cost).
 
-pd_cost__unify(NonLocals, construct(Var, _, Args, _), Cost) :-
+pd_cost__unify(NonLocals, construct(Var, _, Args, _, _, _, _), Cost) :-
 	( set__member(Var, NonLocals) ->
 		list__length(Args, Arity),
 		pd_cost__heap_incr(Cost1),

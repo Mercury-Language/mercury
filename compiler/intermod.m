@@ -415,8 +415,9 @@ intermod__traverse_goal(
 	intermod_info_get_var_types(VarTypes),
 	intermod_info_get_tvarset(TVarSet),
 	( { invalid_pred_id(PredId0) } ->
-		{ typecheck__resolve_pred_overloading(ModuleInfo, Args,
-			VarTypes, TVarSet, PredName0, PredName1, PredId) }
+		{ map__apply_to_list(Args, VarTypes, ArgTypes) },
+		{ typecheck__resolve_pred_overloading(ModuleInfo, ArgTypes,
+			TVarSet, PredName0, PredName1, PredId) }
 	;
 		{ PredId = PredId0 },
 		{ PredName1 = PredName0 }
@@ -431,11 +432,8 @@ intermod__traverse_goal(
 	%
 	intermod_info_add_proc(PredId, DoWrite).
 
-intermod__traverse_goal(higher_order_call(A,B,C,D,E,F) - Info,
-			higher_order_call(A,B,C,D,E,F) - Info, yes) --> [].
-
-intermod__traverse_goal(class_method_call(A,B,C,D,E,F) - Info,
-			class_method_call(A,B,C,D,E,F) - Info, yes) --> [].
+intermod__traverse_goal(generic_call(A,B,C,D) - Info,
+			generic_call(A,B,C,D) - Info, yes) --> [].
 
 intermod__traverse_goal(switch(A, B, Cases0, D) - Info,
 		switch(A, B, Cases, D) - Info, DoWrite) -->
@@ -450,8 +448,8 @@ intermod__traverse_goal(unify(LVar, RHS0, C, D, E) - Info,
 intermod__traverse_goal(not(Goal0) - Info, not(Goal) - Info, DoWrite) -->
 	intermod__traverse_goal(Goal0, Goal, DoWrite).
 
-intermod__traverse_goal(some(Vars, Goal0) - Info, some(Vars, Goal) - Info,
-		DoWrite) -->
+intermod__traverse_goal(some(Vars, CanRemove, Goal0) - Info,
+		some(Vars, CanRemove, Goal) - Info, DoWrite) -->
 	intermod__traverse_goal(Goal0, Goal, DoWrite).
 
 intermod__traverse_goal(if_then_else(Vars, Cond0, Then0, Else0, SM) - Info,
@@ -625,17 +623,29 @@ intermod_info_add_proc(PredId, DoWrite) -->
 		intermod_info::out) is det.
 
 intermod__module_qualify_unify_rhs(_, var(Var), var(Var), yes) --> [].
-intermod__module_qualify_unify_rhs(_LVar, lambda_goal(A,B,C,Modes,E,F,Goal0),
-		lambda_goal(A,B,C,Modes,E,F,Goal), DoWrite) -->
-	intermod__traverse_goal(Goal0, Goal, DoWrite),
-	intermod_info_get_module_info(ModuleInfo),
-	{ module_info_modes(ModuleInfo, ModeTable) },
-	{ mode_table_get_mode_defns(ModeTable, ModeDefns) },
-	{ module_info_user_insts(ModuleInfo, UserInsts) },
-	{ user_inst_table_get_inst_defns(UserInsts, UserInstDefns) },
-	{ Modes = argument_modes(_ArgIKT, ArgModes) },
-	intermod__gather_proc_modes(ModuleInfo, ModeDefns,
-				UserInstDefns, ArgModes).
+
+intermod__module_qualify_unify_rhs(_LVar,
+		lambda_goal(A,EvalMethod,C,D,E,Modes,G,H,Goal0),
+		lambda_goal(A,EvalMethod,C,D,E,Modes,G,H,Goal), DoWrite) -->
+	( { EvalMethod = (aditi_top_down) } ->
+		% XXX Predicates which build this type of lambda expression
+		% can't be exported because the importing modules have
+		% no way of knowing which Aditi-RL bytecode fragment
+		% to use. The best way to handle these is probably to
+		% add some sort of lookup table to Aditi.
+		{ DoWrite = no },
+		{ Goal = Goal0 }
+	;
+		intermod__traverse_goal(Goal0, Goal, DoWrite),
+		intermod_info_get_module_info(ModuleInfo),
+		{ module_info_modes(ModuleInfo, ModeTable) },
+		{ mode_table_get_mode_defns(ModeTable, ModeDefns) },
+		{ module_info_user_insts(ModuleInfo, UserInsts) },
+		{ user_inst_table_get_inst_defns(UserInsts, UserInstDefns) },
+		{ Modes = argument_modes(_ArgIKT, ArgModes) },
+		intermod__gather_proc_modes(ModuleInfo, ModeDefns,
+					UserInstDefns, ArgModes)
+	).	
 
 	% Fully module-qualify the right-hand-side of a unification.
 	% For function calls and higher-order terms, call intermod__add_proc
@@ -686,24 +696,38 @@ intermod__module_qualify_unify_rhs(LVar, functor(Functor0, Vars),
 		{ Functor0 = cons(PredName, Arity) },
 		intermod_info_get_var_types(VarTypes),
 		{ map__lookup(VarTypes, LVar, LVarType) },
-		{ type_is_higher_order(LVarType, PredOrFunc, PredArgTypes) }
+		{ type_is_higher_order(LVarType, PredOrFunc,
+			EvalMethod, PredArgTypes) }
 	->
-		%
-		% Yes, the unification creates a higher-order term.
-		% Make sure that the predicate/function is exported.
-		%
-		{ map__apply_to_list(Vars, VarTypes, Types) },
-		{ list__append(Types, PredArgTypes, ArgTypes) },
-		{ get_pred_id_and_proc_id(PredName, PredOrFunc,
-			TVarSet, ArgTypes, ModuleInfo, PredId, _ProcId) },
-		intermod_info_add_proc(PredId, DoWrite),
-		%
-		% Fully module-qualify it.
-		%
-		{ unqualify_name(PredName, UnqualPredName) },
-		{ predicate_module(ModuleInfo, PredId, Module) },
-		{ QualifiedPredName = qualified(Module, UnqualPredName) },
-		{ Functor = cons(QualifiedPredName, Arity) }
+		( { EvalMethod = (aditi_top_down) } ->
+			% XXX Predicates which build this type of lambda
+			% expression can't be exported because the importing
+			% modules have no way of knowing which Aditi-RL
+			% bytecode fragment to use. The best way to handle
+			% these is probably to add some sort of lookup table
+			% to Aditi. 
+			{ DoWrite = no },
+			{ Functor = Functor0 }
+		;
+			%
+			% Yes, the unification creates a higher-order term.
+			% Make sure that the predicate/function is exported.
+			%
+			{ map__apply_to_list(Vars, VarTypes, Types) },
+			{ list__append(Types, PredArgTypes, ArgTypes) },
+			{ get_pred_id_and_proc_id(PredName, PredOrFunc,
+				TVarSet, ArgTypes, ModuleInfo,
+				PredId, _ProcId) },
+			intermod_info_add_proc(PredId, DoWrite),
+			%
+			% Fully module-qualify it.
+			%
+			{ unqualify_name(PredName, UnqualPredName) },
+			{ predicate_module(ModuleInfo, PredId, Module) },
+			{ QualifiedPredName =
+				qualified(Module, UnqualPredName) },
+			{ Functor = cons(QualifiedPredName, Arity) }
+		)
 	;
 		%
 		% Is it a functor symbol for which we can add
@@ -1161,6 +1185,11 @@ intermod__should_output_marker(inline, yes).
 intermod__should_output_marker(no_inline, yes).
 intermod__should_output_marker(dnf, yes).
 intermod__should_output_marker(aditi, yes).
+intermod__should_output_marker((aditi_top_down), _) :-
+	% We don't write out code for predicates which depend on
+	% predicates with this marker: see the comments in
+	% intermod__module_qualify_unify_rhs.
+	error("intermod__should_output_marker: aditi_top_down").
 intermod__should_output_marker(base_relation, yes).
 intermod__should_output_marker(aditi_memo, yes).
 intermod__should_output_marker(aditi_no_memo, yes).
@@ -1176,9 +1205,6 @@ intermod__should_output_marker(check_termination, no).
 intermod__should_output_marker(generate_inline, _) :-
 	% This marker should only occur after the magic sets transformation.
 	error("intermod__should_output_marker: generate_inline").
-intermod__should_output_marker(aditi_interface, _) :-
-	% This marker should only occur after the magic sets transformation.
-	error("intermod__should_output_marker: aditi_interface").
 
 	% Some pretty kludgy stuff to get c code written correctly.
 :- pred intermod__write_c_code(sym_name::in, pred_or_func::in, 

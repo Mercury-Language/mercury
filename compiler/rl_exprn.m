@@ -322,7 +322,7 @@ rl_exprn__set_term_arg_cons_id_code(string_const(Str), _, TupleNum, FieldNum,
 	;
 		Code = Code0
 	}.
-rl_exprn__set_term_arg_cons_id_code(pred_const(_, _), _, _, _, _, _, _) -->
+rl_exprn__set_term_arg_cons_id_code(pred_const(_, _, _), _, _, _, _, _, _) -->
 	{ error("rl_exprn__set_term_arg_cons_id_code") }.
 rl_exprn__set_term_arg_cons_id_code(code_addr_const(_, _),
 		_, _, _, _, _, _) -->
@@ -661,13 +661,11 @@ rl_exprn__goal(switch(Var, _, Cases, _) - _, Fail, Code) -->
 	{ GotoEnd = node([rl_EXP_jmp(EndSwitch)]) },
 	rl_exprn__cases(Var, Cases, GotoEnd, Fail, SwitchCode),
 	{ Code = tree(SwitchCode, node([rl_PROC_label(EndSwitch)])) }.
-rl_exprn__goal(higher_order_call(_, _, _, _, _, _) - _, _, _) -->
-	{ error("rl_exprn__goal: higher-order call not yet implemented") }.
-rl_exprn__goal(class_method_call(_, _, _, _, _, _) - _, _, _) -->
-	{ error("rl_exprn__goal: class method calls not yet implemented") }.
+rl_exprn__goal(generic_call(_, _, _, _) - _, _, _) -->
+	{ error("rl_exprn__goal: higher-order and class-method calls not yet implemented") }.
 rl_exprn__goal(pragma_c_code(_, _, _, _, _, _, _) - _, _, _) -->
 	{ error("rl_exprn__goal: pragma_c_code not yet implemented") }.
-rl_exprn__goal(some(_, Goal) - _, Fail, Code) -->
+rl_exprn__goal(some(_, _, Goal) - _, Fail, Code) -->
 	rl_exprn__goal(Goal, Fail, Code).
 
 :- pred rl_exprn__cases(prog_var::in, list(case)::in, byte_tree::in,
@@ -852,7 +850,7 @@ rl_exprn__inline_call(_PredId, _ProcId, CalledPredInfo,
 		byte_tree::in, byte_tree::out,
 		rl_exprn_info::in, rl_exprn_info::out) is det.
 	
-rl_exprn__unify(construct(Var, ConsId, Args, UniModes), 
+rl_exprn__unify(construct(Var, ConsId, Args, UniModes, _, _, _), 
 		GoalInfo, _Fail, Code) -->
 	rl_exprn_info_lookup_var_type(Var, Type),
 	rl_exprn_info_lookup_var(Var, VarReg),
@@ -898,7 +896,7 @@ rl_exprn__unify(construct(Var, ConsId, Args, UniModes),
 		{ ConsId = float_const(Float) },
 		rl_exprn__assign(reg(VarReg), const(float(Float)), Type, Code)
 	; 
-		{ ConsId = pred_const(_, _) },
+		{ ConsId = pred_const(_, _, _) },
 		{ error("rl_exprn__unify: unsupported cons_id - pred_const") }
 	; 
 		{ ConsId = code_addr_const(_, _) },

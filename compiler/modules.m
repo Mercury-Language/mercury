@@ -432,14 +432,6 @@
 :- pred get_ancestors(module_name, list(module_name)).
 :- mode get_ancestors(in, out) is det.
 
-	% get_partial_qualifiers(ModuleName, PartialQualifiers):
-	%	PartialQualifiers is the list of partial module
-	%	qualifiers for ModuleName; e.g. if the ModuleName is 
-	%	`foo:bar:baz', then ParentDeps would be [`bar:baz', `baz']).
-	%
-:- pred get_partial_qualifiers(module_name, list(module_name)).
-:- mode get_partial_qualifiers(in, out) is det.
-
 %-----------------------------------------------------------------------------%
 
 	% touch_interface_datestamp(ModuleName, Ext).
@@ -480,7 +472,7 @@
 
 :- implementation.
 :- import_module llds_out, passes_aux, prog_out, prog_util, mercury_to_mercury.
-:- import_module prog_io_util, globals, options, intermod, module_qual.
+:- import_module prog_io_util, globals, options, module_qual.
 
 :- import_module string, set, map, term, varset, dir, library.
 :- import_module assoc_list, relation, char, require.
@@ -3372,12 +3364,6 @@ get_ancestors_2(qualified(Parent, _), Ancestors0, Ancestors) :-
 
 %-----------------------------------------------------------------------------%
 
-get_partial_qualifiers(unqualified(_), []).
-get_partial_qualifiers(qualified(ParentQual, ChildName),
-			[PartialQual | PartialQuals]) :-
-	drop_one_qualifier(ParentQual, ChildName, PartialQual),
-	get_partial_qualifiers(PartialQual, PartialQuals).
-	
 :- pred drop_one_qualifier(module_name, string, module_name).
 :- mode drop_one_qualifier(in, in, out) is det.
 

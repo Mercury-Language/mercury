@@ -429,10 +429,27 @@ compute_expr_purity(call(PredId0,ProcId,Vars,BIState,UContext,Name0),
 						    DeclaredPurity),
 		{ NumErrors = NumErrors0 }
 	).
-compute_expr_purity(HOCall, HOCall, _, _, _, _, pure, NumErrors, NumErrors) -->
-	{ HOCall = higher_order_call(_,_,_,_,_,_) }.
-compute_expr_purity(CMCall, CMCall, _, _, _, _, pure, NumErrors, NumErrors) -->
-	{ CMCall = class_method_call(_,_,_,_,_,_) }.
+compute_expr_purity(generic_call(GenericCall0, Args, Modes0, Det),
+		generic_call(GenericCall, Args, Modes, Det),
+		GoalInfo, PredInfo, ModuleInfo, _InClosure, Purity,
+		NumErrors, NumErrors) -->
+	{ Purity = pure },
+	(
+		{ GenericCall0 = higher_order(_, _, _) },
+		{ GenericCall = GenericCall0 },
+		{ Modes = Modes0 }
+	;
+		{ GenericCall0 = class_method(_, _, _, _) },
+		{ GenericCall = GenericCall0 },
+		{ Modes = Modes0 }
+	;
+		{ GenericCall0 = aditi_builtin(Builtin0, CallId0) },
+		{ goal_info_get_context(GoalInfo, Context) },
+		post_typecheck__finish_aditi_builtin(ModuleInfo, PredInfo,
+			Args, Context, Builtin0, Builtin,
+			CallId0, CallId, Modes),
+		{ GenericCall = aditi_builtin(Builtin, CallId) }
+	).
 compute_expr_purity(switch(Var,Canfail,Cases0,Storemap),
 		switch(Var,Canfail,Cases,Storemap), _, PredInfo,
 		ModuleInfo, InClosure, Purity, NumErrors0, NumErrors) -->
@@ -442,12 +459,49 @@ compute_expr_purity(Unif0, Unif, GoalInfo, PredInfo, ModuleInfo, _,
 		pure, NumErrors0, NumErrors) -->
 	{ Unif0 = unify(A,RHS0,C,D,E) },
 	{ Unif  = unify(A,RHS,C,D,E) },
-	( { RHS0 = lambda_goal(F, G, H, I, J, K, Goal0 - Info0) } ->
-		{ RHS = lambda_goal(F, G, H, I, J, K, Goal - Info0) },
+	(
+		{ RHS0 = lambda_goal(F, EvalMethod, FixModes, H, Vars,
+			Modes0, K, L, Goal0 - Info0) }
+	->
+		{ RHS = lambda_goal(F, EvalMethod, modes_are_ok, H, Vars,
+			Modes, K, L, Goal - Info0) },
 		compute_expr_purity(Goal0, Goal, Info0, PredInfo, ModuleInfo,
 				    yes, Purity, NumErrors0, NumErrors1),
 		error_if_closure_impure(GoalInfo, Purity,
-					NumErrors1, NumErrors)
+					NumErrors1, NumErrors),
+		{
+			FixModes = modes_are_ok,
+			Modes = Modes0
+		;
+			FixModes = modes_need_fixing,
+			(
+				EvalMethod = normal,
+				error(
+	"compute_expr_purity: modes need fixing for normal lambda_goal")
+			;
+				EvalMethod = (aditi_top_down),
+				% `aditi_top_down' predicates can't call
+				% database predicates, so their `aditi__state'
+				% arguments must have mode `unused'.
+				% The `aditi__state's are passed even
+				% though they are not used so that the
+				% arguments of the closure and the
+				% base relation being updated match.
+				unused_mode(StateMode)
+			;
+				EvalMethod = (aditi_bottom_up),
+				% Make sure `aditi_bottom_up' expressions have
+				% a `ui' mode for their aditi_state.
+				StateMode = aditi_ui_mode
+			),
+			pred_info_clauses_info(PredInfo, ClausesInfo),
+			clauses_info_vartypes(ClausesInfo, VarTypes),
+			map__apply_to_list(Vars, VarTypes, LambdaVarTypes),
+			Modes0 = argument_modes(ArgInstTable, ArgModes0),
+			fix_aditi_state_modes(StateMode, LambdaVarTypes,
+				ArgModes0, ArgModes),
+			Modes = argument_modes(ArgInstTable, ArgModes)
+		}
 	;
 		{ RHS = RHS0 },
 		{ NumErrors = NumErrors0 }
@@ -460,8 +514,9 @@ compute_expr_purity(not(Goal0), not(Goal), _, PredInfo, ModuleInfo,
 		InClosure, Purity, NumErrors0, NumErrors) -->
 	compute_goal_purity(Goal0, Goal, PredInfo, ModuleInfo, 
 			    InClosure, Purity, NumErrors0, NumErrors).
-compute_expr_purity(some(Vars,Goal0), some(Vars,Goal), _, PredInfo,
-		ModuleInfo, InClosure, Purity, NumErrors0, NumErrors) -->
+compute_expr_purity(some(Vars, CanRemove, Goal0), some(Vars, CanRemove, Goal),
+		_, PredInfo, ModuleInfo, InClosure, Purity,
+		NumErrors0, NumErrors) -->
 	compute_goal_purity(Goal0, Goal, PredInfo, ModuleInfo, 
 			    InClosure, Purity, NumErrors0, NumErrors).
 compute_expr_purity(if_then_else(Vars,Goali0,Goalt0,Goale0,Store),
@@ -481,7 +536,6 @@ compute_expr_purity(Ccode, Ccode, _, _, ModuleInfo, _, Purity,
 	{ module_info_preds(ModuleInfo, Preds) },
 	{ map__lookup(Preds, PredId, PredInfo) },
 	{ pred_info_get_purity(PredInfo, Purity) }.
-	
 
 
 :- pred compute_goal_purity(hlds_goal, hlds_goal, pred_info,
@@ -532,7 +586,24 @@ compute_cases_purity([case(Ctor,IMDelta,Goal0)|Goals0],
 	compute_cases_purity(Goals0, Goals, PredInfo, ModuleInfo, InClosure,
 			     Purity2, Purity, NumErrors1, NumErrors).
 
+	% Make sure lambda expressions introduced by the compiler
+	% have the correct mode for their `aditi__state' arguments.
+:- pred fix_aditi_state_modes((mode), list(type), list(mode), list(mode)).
+:- mode fix_aditi_state_modes(in, in, in, out) is det.
 
+fix_aditi_state_modes(_, [], [], []).
+fix_aditi_state_modes(_, [_|_], [], []) :-
+	error("purity:fix_aditi_state_modes").
+fix_aditi_state_modes(_, [], [_|_], []) :-
+	error("purity:fix_aditi_state_modes").
+fix_aditi_state_modes(AditiStateMode, [Type | Types],
+		[ArgMode0 | Modes0], [ArgMode | Modes]) :-
+	( type_is_aditi_state(Type) ->
+		ArgMode = AditiStateMode
+	;
+		ArgMode = ArgMode0
+	),
+	fix_aditi_state_modes(AditiStateMode, Types, Modes0, Modes).
 
 %-----------------------------------------------------------------------------%
 %				Print error messages

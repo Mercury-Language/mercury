@@ -230,6 +230,7 @@
 :- import_module std_util, list, set_bbbtree.
 
 :- pred stack_layout__generate_llds(module_info::in, module_info::out,
+	global_data::in,
 	list(comp_gen_c_data)::out, list(comp_gen_c_data)::out,
 	set_bbbtree(label)::out) is det.
 
@@ -250,9 +251,8 @@
 	% Process all the continuation information stored in the HLDS,
 	% converting it into LLDS data structures.
 
-stack_layout__generate_llds(ModuleInfo0, ModuleInfo,
+stack_layout__generate_llds(ModuleInfo0, ModuleInfo, GlobalData,
 		PossiblyDynamicLayouts, StaticLayouts, LayoutLabels) :-
-	module_info_get_global_data(ModuleInfo0, GlobalData),
 	global_data_get_all_proc_layouts(GlobalData, ProcLayoutList),
 
 	module_info_name(ModuleInfo0, ModuleName),

@@ -226,10 +226,18 @@
 %-----------------------------------------------------------------------------%
 
 	% Construct a mode corresponding to the standard `in',
-	% `out', or `uo' mode.
+	% `out', `uo' or `unused' mode.
 :- pred in_mode((mode)::out) is det.
 :- pred out_mode((mode)::out) is det.
 :- pred uo_mode((mode)::out) is det.
+:- pred unused_mode((mode)::out) is det.
+
+	% Construct the modes used for `aditi__state' arguments.
+	% XXX These should be unique, but are not yet because that
+	% would require alias tracking.
+:- func aditi_ui_mode = (mode).
+:- func aditi_di_mode = (mode).
+:- func aditi_uo_mode = (mode).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -817,7 +825,7 @@ propagate_ctor_info(bound(Uniq, BoundInsts0), Type, _Constructors, InstTable,
 	).
 propagate_ctor_info(ground(Uniq, no), Type, Constructors, _, ModuleInfo,
 		Inst) :-
-	( type_is_higher_order(Type, function, ArgTypes) ->
+	( type_is_higher_order(Type, function, _, ArgTypes) ->
 		default_higher_order_func_inst(ArgTypes, ModuleInfo,
 			HigherOrderInstInfo),
 		Inst = ground(Uniq, yes(HigherOrderInstInfo))
@@ -834,7 +842,7 @@ propagate_ctor_info(ground(Uniq, yes(PredInstInfo0)), Type, _Ctors, _InstTable,
 	PredInstInfo = pred_inst_info(PredOrFunc,
 		argument_modes(ArgInstTable, ArgModes), Det),
 	(
-		type_is_higher_order(Type, PredOrFunc, ArgTypes),
+		type_is_higher_order(Type, PredOrFunc, _, ArgTypes),
 		list__same_length(ArgTypes, ArgModes0)
 	->
 		propagate_types_into_mode_list(ArgTypes, ArgInstTable,
@@ -892,7 +900,7 @@ propagate_ctor_info_lazily(bound(Uniq, BoundInsts0), Type0, Subst,
 propagate_ctor_info_lazily(ground(Uniq, no), Type0, Subst, _InstTable,
 		ModuleInfo, Inst) :-
 	apply_type_subst(Type0, Subst, Type),
-	( type_is_higher_order(Type, function, ArgTypes) ->
+	( type_is_higher_order(Type, function, _, ArgTypes) ->
 		default_higher_order_func_inst(ArgTypes, ModuleInfo,
 			HigherOrderInstInfo),
 		Inst = ground(Uniq, yes(HigherOrderInstInfo))
@@ -914,7 +922,7 @@ propagate_ctor_info_lazily(ground(Uniq, yes(PredInstInfo0)), Type0, Subst,
 		argument_modes(ArgInstTable, ArgModes), Det),
 	apply_type_subst(Type0, Subst, Type),
 	(
-		type_is_higher_order(Type, PredOrFunc, ArgTypes),
+		type_is_higher_order(Type, PredOrFunc, _, ArgTypes),
 		list__same_length(ArgTypes, ArgModes0)
 	->
 		propagate_types_into_mode_list(ArgTypes, ArgInstTable,
@@ -1600,24 +1608,13 @@ recompute_instmap_delta_3(if_then_else(Vars, A0, B0, C0, SM), GoalInfo0,
 		recompute_info_set_inst_table(InstTable)
 	).
 
-recompute_instmap_delta_3(some(Vars, Goal0), GoalInfo,
-		some(Vars, Goal), GoalInfo, InstMap, InstMapDelta) -->
+recompute_instmap_delta_3(some(Vars, CanRemove, Goal0), GoalInfo,
+		some(Vars, CanRemove, Goal), GoalInfo,
+		InstMap, InstMapDelta) -->
 	recompute_instmap_delta_2(Goal0, Goal, InstMap, _, InstMapDelta).
 
-recompute_instmap_delta_3(higher_order_call(A, Vars, B, Modes, C, D), GoalInfo,
-		higher_order_call(A, Vars, B, Modes, C, D), GoalInfo,
-		InstMap0, InstMapDelta) -->
-	=(RI0),
-	{ recompute_info_get_inst_table(RI0, InstTable0) },
-	{ Modes = argument_modes(ArgInstTable, ArgModes0) },
-	{ inst_table_create_sub(InstTable0, ArgInstTable, Sub, InstTable) },
-	{ list__map(apply_inst_key_sub_mode(Sub), ArgModes0, ArgModes) },
-	recompute_info_set_inst_table(InstTable),
-	recompute_instmap_delta_call_2(Vars, InstMap0, ArgModes, InstMap),
-	{ compute_instmap_delta(InstMap0, InstMap, InstMapDelta) }.
-
-recompute_instmap_delta_3(class_method_call(A, B, Vars, C, Modes, D), GoalInfo,
-		class_method_call(A, B, Vars, C, Modes, D), GoalInfo,
+recompute_instmap_delta_3(generic_call(A, Vars, Modes, D), GoalInfo,
+		generic_call(A, Vars, Modes, D), GoalInfo,
 		InstMap0, InstMapDelta) -->
 	=(RI0),
 	{ recompute_info_get_inst_table(RI0, InstTable0) },
@@ -1928,9 +1925,11 @@ recompute_instmap_delta_unify(Var, functor(ConsId, Vars), _UniMode0,
 		map__init(StoreMap),
 		Goal = disj([], StoreMap)
 	;
-		Unification0 = construct(_, RealConsId, _, _)
+		Unification0 = construct(_, RealConsId, _, _,
+			ReuseVar, CellIsUnique, RLExprnId)
 	->
-		Unification = construct(Var, RealConsId, Vars, UniModes),
+		Unification = construct(Var, RealConsId, Vars, UniModes,
+				ReuseVar, CellIsUnique, RLExprnId),
 		Det = det,
 		Goal = unify(Var, UnifyRhs, UniMode, Unification, UniContext)
 	;
@@ -1961,10 +1960,11 @@ recompute_instmap_delta_unify(Var, functor(ConsId, Vars), _UniMode0,
 
 	% var-lambda unification
 	%
-recompute_instmap_delta_unify(Var, lambda_goal(PredOrFunc, LambdaNonLocals,
-		Vars, LambdaModes, LambdaDet, _, LambdaGoal0), _UniMode0,
-		Unification0, UniContext, _GoalInfo, Goal, Det, InstMap0,
-		InstMapDelta, RI0, RI) :-
+recompute_instmap_delta_unify(Var,
+		lambda_goal(PredOrFunc, EvalMethod, FixModes, LambdaNonLocals,
+			Vars, LambdaModes, LambdaDet, _, LambdaGoal0),
+		_UniMode0, Unification0, UniContext, _GoalInfo, Goal, Det,
+		InstMap0, InstMapDelta, RI0, RI) :-
 
 	% First, compute the instmap_delta of the goal.
 
@@ -2017,16 +2017,21 @@ recompute_instmap_delta_unify(Var, lambda_goal(PredOrFunc, LambdaNonLocals,
 	ModeOfX = (InstOfX - UnifyInst),
 	ModeOfY = (InstOfY - UnifyInst),
 	UniMode = ModeOfX - ModeOfY,
-	UnifyRhs = lambda_goal(PredOrFunc, LambdaNonLocals, Vars,
-			LambdaModes, LambdaDet, IMDelta, LambdaGoal),
-	( Unification0 = construct(_, RealConsId, _, _) ->
+	UnifyRhs = lambda_goal(PredOrFunc, EvalMethod, FixModes,
+			LambdaNonLocals, Vars, LambdaModes,
+			LambdaDet, IMDelta, LambdaGoal),
+	(
+		Unification0 = construct(_, RealConsId, _, _,
+			ReuseVar, CellIsUnique, RLExprnId)
+	->
 		list__delete_elems(LambdaNonLocals, Vars, ArgVars),
 		instmap__lookup_vars(ArgVars, InstMap0, ArgInsts),
 		assoc_list__from_corresponding_lists(ArgInsts, ArgInsts,
 			ArgModes0),
 		mode_util__inst_pairs_to_uni_modes(ArgModes0, ArgModes0,
 			ArgModes),
-		Unification = construct(Var, RealConsId, Vars, ArgModes)
+		Unification = construct(Var, RealConsId, Vars, ArgModes,
+			ReuseVar, CellIsUnique, RLExprnId)
 	;
 		error("recompute_instmap_delta_unify: bad var-lambda unification")
 	),
@@ -2151,7 +2156,7 @@ recompute_instmap_delta_unify(Var, var(VarY), _UniMode0, Unification0,
 	compute_instmap_delta(InstMap0, InstMap, InstMapDelta),
 	recompute_info_set_module_info(ModuleInfo, RI0, RI1),
 	recompute_info_set_inst_table(InstTable, RI1, RI2),
-	( GoalChanged = bool:yes ->
+	( GoalChanged = bool__yes ->
 		recompute_info_set_goal_changed(RI2, RI)
 	;
 		RI = RI2
@@ -2392,7 +2397,13 @@ out_mode(Mode) :- make_std_mode("out", [], Mode).
 
 uo_mode(Mode) :- make_std_mode("uo", [], Mode).
 
-%-----------------------------------------------------------------------------%
+unused_mode(Mode) :- make_std_mode("unused", [], Mode).
+
+aditi_ui_mode = Mode :- in_mode(Mode). 
+
+aditi_di_mode = Mode :- in_mode(Mode).
+
+aditi_uo_mode = Mode :- out_mode(Mode).
 
 :- pred make_std_mode(string, list(inst), mode).
 :- mode make_std_mode(in, in, out) is det.

@@ -132,23 +132,19 @@ lco_in_goal_2(PredProcId, if_then_else(Vars, Cond, Then0, Else0, SM),
 			Proc1, Proc, Changed1),
 	bool__or(Changed0, Changed1, Changed).
 
-lco_in_goal_2(PredProcId, some(Vars, Goal0), some(Vars, Goal), Module0, Module,
+lco_in_goal_2(PredProcId, some(Vars, CanRemove, Goal0),
+		some(Vars, CanRemove, Goal), Module0, Module,
 		InstMap0, Proc0, Proc, Changed) :-
 	lco_in_sub_goal(PredProcId, Goal0, Goal, Module0, Module, InstMap0,
 		Proc0, Proc, Changed).
 
 lco_in_goal_2(_, not(Goal), not(Goal), Module, Module, _, Proc, Proc, no).
 
-lco_in_goal_2(_, higher_order_call(A,B,C,D,E,F),
-		higher_order_call(A,B,C,D,E,F),
-		Module, Module, _, Proc, Proc, no).
-
-lco_in_goal_2(_, class_method_call(A,B,C,D,E,F),
-		class_method_call(A,B,C,D,E,F),
-		Module, Module, _, Proc, Proc, no).
-
 lco_in_goal_2(_, call(A,B,C,D,E,F), call(A,B,C,D,E,F), Module, Module,
 		_, Proc, Proc, no).
+
+lco_in_goal_2(_, generic_call(A,B,C,D), generic_call(A,B,C,D),
+		Module, Module, _, Proc, Proc, no).
 
 lco_in_goal_2(_, unify(A,B,C,D,E), unify(A,B,C,D,E), Module, Module,
 		_, Proc, Proc, no).
@@ -217,12 +213,12 @@ lco_in_conj(PredProcId, [Goal0 | Goals0], Unifies0, Goals, Module0, Module,
 	instmap__apply_instmap_delta(InstMap0, InstMapDelta, InstMap1),
 	(
 		GoalExpr0 = unify(_, _, _, Unif, _),
-		Unif = construct(_, ConsId, _, _),
+		Unif = construct(_, ConsId, _, _, _, _, _),
 
 		% XXX For now, don't allow LCO on constructions of
 		% higher-order terms.  This is because we currently
 		% can't express non-ground higher-order terms.
-		ConsId \= pred_const(_, _)
+		ConsId \= pred_const(_, _, _)
 	->
 		Unifies1 = [Goal0 | Unifies0],
 		lco_in_conj(PredProcId, Goals0, Unifies1, Goals,
@@ -283,7 +279,7 @@ lco_in_conj(PredProcId, [Goal0 | Goals0], Unifies0, Goals, Module0, Module,
 			(
 				G = Expr - _,
 				Expr = unify(_, _, _, U, _),
-				U = construct(_, _, UVars, _)
+				U = construct(_, _, UVars, _, _, _, _)
 			->
 				set__insert_list(Vs0, UVars, Vs)
 			;
@@ -343,7 +339,7 @@ apply_penultimate_instmap_deltas([_ - GoalInfo | Goals], InstMap0, InstMap) :-
 
 goal_is_no_tag_construction(Module, Proc, Goal) :-
 	Goal = unify(_, _, _, Unif, _) - _,
-	Unif = construct(Var, _, _, _),
+	Unif = construct(Var, _, _, _, _, _, _),
 	proc_info_vartypes(Proc, VarTypes),
 	map__search(VarTypes, Var, Type),
 	type_constructors(Type, Module, Constructors),
@@ -360,7 +356,7 @@ check_only_one_ref_per_var(Unifies, CallVars, Module, CalledProcInfo,
 	Lambda = lambda([Goal::in, Vars::out, N0::in, N::out] is det, 
 		( 
 			Goal = unify(_, _, _, Unif, _) - _,
-			Unif = construct(_, _, Vars0, _)
+			Unif = construct(_, _, Vars0, _, _, _, _)
 		->
 			Vars = N0 - Vars0,
 			N is N0 + 1
@@ -775,11 +771,11 @@ fix_modes_of_binding_goal_2(call(PredId, ProcId0, Vars0, D, E, F), FMI0,
 		)
 	).
 
-fix_modes_of_binding_goal_2(higher_order_call(A, Vars0, C, D, E, F), FMI0,
+fix_modes_of_binding_goal_2(generic_call(A, Vars0, C, D), FMI0,
 		GoalInfo0, Module, _AliasedVars, Var, Goal, FMI) :-
 	add_unification_to_goal(Vars0, FMI0, GoalInfo0, Module, Var,
 		Vars, FMI, GoalInfo, Assign),
-	HigherOrder = higher_order_call(A, Vars, C, D, E, F) - GoalInfo,
+	HigherOrder = generic_call(A, Vars, C, D) - GoalInfo,
 	Goal = conj([HigherOrder, Assign]).
 
 fix_modes_of_binding_goal_2(switch(SVar, Det, Cases0, SM), FMI0, _, 
@@ -824,8 +820,8 @@ fix_modes_of_binding_goal_2(disj(Goals0, SM), FMI0, _, Module, AliasedVars,
 fix_modes_of_binding_goal_2(not(Goal), FMI, _, _, _, _, not(Goal),
 		FMI).
 
-fix_modes_of_binding_goal_2(some(Vars, Goal0), FMI0, _, Module, AliasedVars,
-		Var, some(Vars, Goal), FMI) :-
+fix_modes_of_binding_goal_2(some(Vars, CanRemove, Goal0), FMI0, _, Module,
+		AliasedVars, Var, some(Vars, CanRemove, Goal), FMI) :-
 	fix_modes_of_binding_goal(Module, AliasedVars, Var, Goal0, Goal, FMI0,
 		FMI).
 
@@ -848,13 +844,6 @@ fix_modes_of_binding_goal_2(pragma_c_code(A, B, C, Vars0, E, F, G),
 		Vars, FMI, GoalInfo, Assign),
 	PragmaC = pragma_c_code(A, B, C, Vars, E, F, G) - GoalInfo,
 	Goal = conj([PragmaC, Assign]).
-
-fix_modes_of_binding_goal_2(class_method_call(A, B, Vars0, D, E, F), FMI0,
-		GoalInfo0, Module, _AliasedVars, Var, Goal, FMI) :-
-	add_unification_to_goal(Vars0, FMI0, GoalInfo0, Module, Var, Vars, FMI,
-		GoalInfo, Assign),
-	ClassMethodCall = class_method_call(A, B, Vars, D, E, F) - GoalInfo,
-	Goal = conj([ClassMethodCall, Assign]).
 
 :- pred add_unification_to_goal(list(prog_var), fix_modes_info, hlds_goal_info,
 		module_info, prog_var, list(prog_var), fix_modes_info,
@@ -904,10 +893,10 @@ add_unification_to_goal(Vars0, FMI0, GoalInfo0, Module, Var,
 :- mode fix_modes_of_unify(in, in, in, in, in, in, in, out, out, out, out,
 		out, out) is det.
 
-fix_modes_of_unify(construct(LHSVar, ConsId, Vars, UniModes0), RHS, Modes, 
-		FMI0, GoalInfo, Module, Var,
-		construct(LHSVar, ConsId, Vars, UniModes), RHS, Modes, FMI,
-		GoalInfo, no) :-
+fix_modes_of_unify(construct(LHSVar, ConsId, Vars, UniModes0, E, F, G),
+		RHS, Modes, FMI0, GoalInfo, Module, Var,
+		construct(LHSVar, ConsId, Vars, UniModes, E, F, G),
+		RHS, Modes, FMI, GoalInfo, no) :-
 	( LHSVar = Var ->
 		FMI0 = fix_modes_info(VarSet, VarTypes, InstTable0, InstMap),
 		list__map_foldl(fix_uni_mode(Module, InstMap), 

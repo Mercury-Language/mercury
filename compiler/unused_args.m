@@ -55,7 +55,7 @@
 :- import_module hlds_pred, hlds_goal, hlds_data, hlds_out, type_util, instmap.
 :- import_module code_util, globals, make_hlds, mercury_to_mercury, mode_util.
 :- import_module options, prog_data, prog_out, quantification, special_pred.
-:- import_module passes_aux, inst_match, modules, polymorphism.
+:- import_module passes_aux, inst_match, modules, polymorphism, goal_util.
 
 :- import_module assoc_list, bool, char, int, list, map, require.
 :- import_module set, std_util, string.
@@ -472,21 +472,17 @@ traverse_goal(InstMap0, InstTable, ModuleInfo, not(Goal - GoalInfo), _,
 		UseInf0, UseInf).
 
 % handle quantification
-traverse_goal(InstMap0, InstTable, ModuleInfo, some(_,  Goal - GoalInfo), _,
+traverse_goal(InstMap0, InstTable, ModuleInfo, some(_, _, Goal - GoalInfo), _,
 		UseInf0, UseInf) :-
 	traverse_goal(InstMap0, InstTable, ModuleInfo, Goal, GoalInfo,
 		UseInf0, UseInf).
 
-
-% we assume that higher-order predicate calls use all variables involved
-traverse_goal(_, _, _, higher_order_call(PredVar,Args,_,_,_,_), _,
+% we assume that generic calls use all variables involved
+traverse_goal(_, _, _, generic_call(GenericCall, Args, _, _), _,
 		UseInf0, UseInf) :-
-	set_list_vars_used(UseInf0, [PredVar|Args], UseInf).
-
-% we assume that class method calls use all variables involved
-traverse_goal(_, _, _, class_method_call(PredVar,_,Args,_,_,_), _,
-		UseInf0, UseInf) :-
-	set_list_vars_used(UseInf0, [PredVar|Args], UseInf).
+	goal_util__generic_call_vars(GenericCall, CallArgs),
+	set_list_vars_used(UseInf0, CallArgs, UseInf1),
+	set_list_vars_used(UseInf1, Args, UseInf).
 
 % handle pragma c_code(...) -
 % only those arguments which have C names can be used in the C code.
@@ -539,8 +535,8 @@ traverse_goal(InstMap0, InstTable, ModuleInfo,
 
 	).
 
-traverse_goal(_, _, _, unify(Var1, _, _, construct(_, _, Args, _), _), _,
-					UseInf0, UseInf) :-
+traverse_goal(_, _, _, unify(Var1, _, _, construct(_, _, Args, _, _, _, _), _),
+		_, UseInf0, UseInf) :-
 	( local_var_is_used(UseInf0, Var1) ->
 		set_list_vars_used(UseInf0, Args, UseInf)
 	;
@@ -1342,8 +1338,8 @@ fixup_goal_expr(InstMap0, InstTable, ModuleInfo, UnusedVars, ProcCallInfo,
 	bool__or_list([Changed1, Changed2, Changed3], Changed).
 
 fixup_goal_expr(InstMap0, InstTable, ModuleInfo, UnusedVars, ProcCallInfo,
-		Changed, some(Vars, SubGoal0) - GoalInfo,
-		some(Vars, SubGoal) - GoalInfo) :-
+		Changed, some(Vars, CanRemove, SubGoal0) - GoalInfo,
+		some(Vars, CanRemove, SubGoal) - GoalInfo) :-
 	fixup_goal(InstMap0, InstTable, ModuleInfo, UnusedVars, ProcCallInfo,
 				Changed, SubGoal0, SubGoal).
 
@@ -1385,11 +1381,7 @@ fixup_goal_expr(InstMap0, InstTable, ModuleInfo, UnusedVars, _ProcCallInfo,
 
 fixup_goal_expr(_, _InstTable, _ModuleInfo, _UnusedVars, _ProcCallInfo, no,
 			GoalExpr - GoalInfo, GoalExpr - GoalInfo) :-
-	GoalExpr = higher_order_call(_, _, _, _, _, _).
-
-fixup_goal_expr(_, _InstTable, _ModuleInfo, _UnusedVars, _ProcCallInfo, no,
-			GoalExpr - GoalInfo, GoalExpr - GoalInfo) :-
-	GoalExpr = class_method_call(_, _, _, _, _, _).
+	GoalExpr = generic_call(_, _, _, _).
 
 fixup_goal_expr(_, _InstTable, _ModuleInfo, _UnusedVars, _ProcCallInfo, no,
 			GoalExpr - GoalInfo, GoalExpr - GoalInfo) :-
@@ -1489,15 +1481,13 @@ fixup_unify(_, _, _, UnusedVars, no, assign(Var1, Var2), _,
 	\+ list__member(Var1, UnusedVars).
 
 	% LVar unused => we don't need the unification
-fixup_unify(_, _, _, UnusedVars, no,
-		construct(LVar, ConsId, ArgVars, ArgModes), _,
-		construct(LVar, ConsId, ArgVars, ArgModes)) :-	
+fixup_unify(_, _, _, UnusedVars, no, Unify, _, Unify) :-
+	Unify = construct(LVar, _, _, _, _, _, _),
 	\+ list__member(LVar, UnusedVars).
 	
 fixup_unify(InstMapBefore, InstTable, ModuleInfo, UnusedVars, Changed,
-		deconstruct(LVar, ConsId, ArgVars, ArgModes, CanFail),
-		InstMapDelta,
-		deconstruct(LVar, ConsId, ArgVars, ArgModes, CanFail)) :-
+		Unify, InstMapDelta, Unify) :-
+	Unify =	deconstruct(LVar, _, ArgVars, ArgModes, CanFail),
 	\+ list__member(LVar, UnusedVars),
 	instmap__apply_instmap_delta(InstMapBefore, InstMapDelta,
 			InstMapAfter),

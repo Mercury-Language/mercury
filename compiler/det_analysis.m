@@ -126,7 +126,7 @@
 
 :- implementation.
 
-:- import_module det_report, purity.
+:- import_module purity.
 :- import_module type_util, modecheck_call, mode_util, options, passes_aux.
 :- import_module hlds_out, mercury_to_mercury.
 :- import_module assoc_list, bool, map, set, require, term.
@@ -375,13 +375,13 @@ det_infer_goal(Goal0 - GoalInfo0, InstMap0, SolnContext0, DetInfo,
 		Goal1 \= disj(_, _),	
 
 		% do we already have a commit?
-		Goal1 \= some(_, _)
+		Goal1 \= some(_, _, _)
 	->
 		% a commit needed - we must introduce an explicit `some'
 		% so that the code generator knows to insert the appropriate
 		% code for pruning
 		goal_info_set_determinism(GoalInfo0, InternalDetism, InnerInfo),
-		Goal = some([], Goal1 - InnerInfo),
+		Goal = some([], can_remove, Goal1 - InnerInfo),
 		Msgs = Msgs1
 	;
 		% either no commit needed, or a `some' already present
@@ -497,42 +497,20 @@ det_infer_goal_2(call(PredId, ModeId0, A, B, C, N), GoalInfo, _, SolnContext,
 		Detism = Detism0
 	).
 
-det_infer_goal_2(higher_order_call(PredVar, ArgVars, Types, Modes, Det0,
-			IsPredOrFunc),
+det_infer_goal_2(generic_call(GenericCall, ArgVars, Modes, Det0),
 		GoalInfo, _InstMap0, SolnContext,
 		_MiscInfo, _NonLocalVars, _DeltaInstMap,
-		higher_order_call(PredVar, ArgVars, Types, Modes, Det0,
-			IsPredOrFunc),
+		generic_call(GenericCall, ArgVars, Modes, Det0),
 		Det, Msgs) :-
 	determinism_components(Det0, CanFail, NumSolns),
 	(
 		NumSolns = at_most_many_cc,
 		SolnContext \= first_soln
 	->
-		Msgs = [higher_order_cc_pred_in_wrong_context(GoalInfo, Det0)],
-		% Code elsewhere relies on the assumption that
-		% SolnContext \= first_soln => NumSolns \= at_most_many_cc,
-		% so we need to enforce that here.
-		determinism_components(Det, CanFail, at_most_many)
-	;
-		Msgs = [],
-		Det = Det0
-	).
-
-det_infer_goal_2(class_method_call(TCVar, Num, ArgVars, Types, Modes, Det0),
-		GoalInfo, _InstMap0, SolnContext,
-		_MiscInfo, _NonLocalVars, _DeltaInstMap,
-		class_method_call(TCVar, Num, ArgVars, Types, Modes, Det0),
-		Det, Msgs) :-
-	determinism_components(Det0, CanFail, NumSolns),
-	(
-		NumSolns = at_most_many_cc,
-		SolnContext \= first_soln
-	->
-			% If called, this would give a slightly misleading
-			% error message. class_method_calls are introduced
-			% after det_analysis, though, so it doesn't really
-			% matter.
+		% This error can only occur for higher-order calls.
+		% class_method calls are only introduced by polymorphism,
+		% and the aditi_builtins are all det (for the updates)
+		% or introduced later (for calls).
 		Msgs = [higher_order_cc_pred_in_wrong_context(GoalInfo, Det0)],
 		% Code elsewhere relies on the assumption that
 		% SolnContext \= first_soln => NumSolns \= at_most_many_cc,
@@ -548,8 +526,9 @@ det_infer_goal_2(class_method_call(TCVar, Num, ArgVars, Types, Modes, Det0),
 det_infer_goal_2(unify(LT, RT0, M, U, C), GoalInfo, InstMap0, SolnContext,
 		DetInfo, _, _, unify(LT, RT, M, U, C), UnifyDet, Msgs) :-
 	(
-		RT0 = lambda_goal(PredOrFunc, NonLocalVars, Vars,
-			Modes, LambdaDeclaredDet, InstMapDelta, Goal0)
+		RT0 = lambda_goal(PredOrFunc, EvalMethod, FixModes,
+			NonLocalVars, Vars, Modes, LambdaDeclaredDet,
+			InstMapDelta, Goal0)
 	->
 		(
 			determinism_components(LambdaDeclaredDet, _,
@@ -565,8 +544,9 @@ det_infer_goal_2(unify(LT, RT0, M, U, C), GoalInfo, InstMap0, SolnContext,
 		det_check_lambda(LambdaDeclaredDet, LambdaInferredDet,
 				Goal, GoalInfo, DetInfo, Msgs2),
 		list__append(Msgs1, Msgs2, Msgs3),
-		RT = lambda_goal(PredOrFunc, NonLocalVars, Vars,
-			Modes, LambdaDeclaredDet, InstMapDelta, Goal)
+		RT = lambda_goal(PredOrFunc, EvalMethod, FixModes,
+			NonLocalVars, Vars, Modes, LambdaDeclaredDet,
+			InstMapDelta, Goal)
 	;
 		RT = RT0,
 		Msgs3 = []
@@ -663,8 +643,8 @@ det_infer_goal_2(not(Goal0), _, InstMap0, _SolnContext, DetInfo, _, _,
 	% but we cannot rely on explicit quantification to detect this.
 	% Therefore cuts are handled in det_infer_goal.
 
-det_infer_goal_2(some(Vars, Goal0), _, InstMap0, SolnContext, DetInfo, _, _,
-		some(Vars, Goal), Det, Msgs) :-
+det_infer_goal_2(some(Vars, CanRemove, Goal0), _, InstMap0, SolnContext,
+		DetInfo, _, _, some(Vars, CanRemove, Goal), Det, Msgs) :-
 	det_infer_goal(Goal0, InstMap0, SolnContext, DetInfo,
 		Goal, Det, Msgs).
 
@@ -929,7 +909,7 @@ det_type_has_user_defined_equality_pred(DetInfo, Type, TypeContext) :-
 % the concrete representation of the abstract values involved.
 :- pred det_infer_unify_examines_rep(unification::in, bool::out) is det.
 det_infer_unify_examines_rep(assign(_, _), no).
-det_infer_unify_examines_rep(construct(_, _, _, _), no).
+det_infer_unify_examines_rep(construct(_, _, _, _, _, _, _), no).
 det_infer_unify_examines_rep(deconstruct(_, _, _, _, _), yes).
 det_infer_unify_examines_rep(simple_test(_, _), yes).
 det_infer_unify_examines_rep(complicated_unify(_, _, _), no).
@@ -954,7 +934,7 @@ det_infer_unify_examines_rep(complicated_unify(_, _, _), no).
 
 det_infer_unify_canfail(deconstruct(_, _, _, _, CanFail), CanFail).
 det_infer_unify_canfail(assign(_, _), cannot_fail).
-det_infer_unify_canfail(construct(_, _, _, _), cannot_fail).
+det_infer_unify_canfail(construct(_, _, _, _, _, _, _), cannot_fail).
 det_infer_unify_canfail(simple_test(_, _), can_fail).
 det_infer_unify_canfail(complicated_unify(_, CanFail, _), CanFail).
 

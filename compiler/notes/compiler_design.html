@@ -156,8 +156,13 @@ stored in the io__state, using the type globals defined in globals.m.
 
 	make_hlds.m transforms the code into superhomogeneous form,
 	and at the same time converts the parse tree into the HLDS.
-	It converts `pragma import' and `pragma c_code' declarations
-	into clauses with HLDS `pragma_c_code' instructions for bodies.
+	It converts `pragma import', `pragma c_code' and `pragma fact_table'
+	declarations into clauses with HLDS `pragma_c_code'
+	instructions for bodies.
+	The `pragma fact_table' conversion is done by calling fact_table.m
+	which also reads the facts from the declared file and compiles them
+	into a separate C file for which the `pragma_c_code' contains lookup
+	code.
 	make_hlds.m also calls make_tags.m which chooses the data
 	representation for each discriminated union type by
 	assigning tags to each functor.
@@ -249,7 +254,17 @@ so that the compiler does the right thing for options such as
 	  of typechecking, but it is actually called from purity
 	  analysis (see below).  It contains the stuff related to
 	  type checking that can't be done in the main type checking pass.
+	  It also removes assertions from further processing.
 	</ul>
+
+<dt> assertions
+
+	<dd>
+	assertion.m is the abstract interface to the assertion table.
+	Currently all the compiler does is type check the assertions and
+	record for each predicate that is used in an assertion, which
+	assertion it is used in.  The set up of the assertion table occurs
+	in post_typecheck__finish_assertion.
 
 <dt> purity analysis
 	
@@ -535,7 +550,9 @@ for high-level optimizations (but which is not yet used).
 			<dd>
 			This is done by live_vars.m, which works
 			out which variables need to be saved on the
-			stack when, and then uses graph_colour.m to determine
+			stack when (trace.m determines what variables
+			are needed for debugging purposes).
+			It then uses graph_colour.m to determine
 			a good allocation of variables to stack slots.
 		<dt> migration of builtins following branched structures
 			<dd>
@@ -555,6 +572,11 @@ for high-level optimizations (but which is not yet used).
 			information so that we can generate correct code
 			by putting variables in the same spot at the end
 			of each branch.
+		<dt> computing goal paths
+			<dd>
+			The goal path of a goal defines its position in
+			the procedure body. This transformation attaches
+			its goal path to every goal, for use by the debugger.
 		</dl>
 
 <dt> code generation
@@ -577,6 +599,7 @@ for high-level optimizations (but which is not yet used).
 			<li> string_switch.m
 			<li> tag_switch.m
 			</ul>
+		<li> commit_gen.m (commits)
 		<li> pragma_c_gen.m (embedded C code)
 		</ul>
 		<p>
@@ -589,7 +612,7 @@ for high-level optimizations (but which is not yet used).
 		<dl>
 		<dt> code_info.m
 			<dd>
-			The main data structure for the code generator
+			The main data structure for the code generator.
 		<dt> code_exprn.m
 			<dd>
 			This defines the exprn_info type, which is 
@@ -599,19 +622,22 @@ for high-level optimizations (but which is not yet used).
 			the values/locations of variables.
 		<dt> exprn_aux.m
 			<dd>
-			Various preds which use exprn_info
+			Various preds which use exprn_info.
 		<dt> code_util.m
 			<dd>
-			Some miscellaneous preds used for code generation
+			Some miscellaneous preds used for code generation.
 		<dt> code_aux.m
 			<dd>
 			Some miscellaneous preds which, unlike those in
-			code_util, use code_info
+			code_util, use code_info.
 		<dt> continuation_info.m
 			<dd>
 			For accurate garbage collection, collects
 			information about each live value after calls,
 			and saves information about procedures.
+		<dt> trace.m
+			<dd>
+			Inserts calls to the runtime debugger.
 		</dl>
 
 <dt> code generation for `pragma export' declarations (export.m)
@@ -759,6 +785,11 @@ miscellaneous predicates for LLDS-to-LLDS optimization.
   puts them at the front. If a static term originally appeared several times,
   it will now appear as a single static term with multiple references to it.
 
+<li> transform_llds.m is responsible for doing any source to source
+     transformations on the llds which are required to make the C output
+     acceptable to various C compilers.  Currently computed gotos can have
+     their maximum size limited to avoid a fixed limit in lcc.
+
 <li> Final generation of C code is done in llds_out.m.
 </ul>
 
@@ -768,6 +799,8 @@ miscellaneous predicates for LLDS-to-LLDS optimization.
 
 <ul>
 <li> rl_gen.m converts HLDS to RL.
+
+<li> rl_relops.m generates RL for relational operations such as joins.
 
 <li> rl_info.m defines a state type.
 
@@ -781,6 +814,8 @@ and Aditi-RL to make optimization easier.
 <h3> 8. Aditi-RL optimization </h3>
 
 <ul>
+<li> rl_opt.m invokes the RL optimization passes.
+
 <li> rl_block.m converts an RL procedure into basic blocks, and performs
   other tasks such as detecting the loops in those basic blocks.
 
@@ -844,6 +879,9 @@ completed.
   form is emitted into &lt;filename&gt;.bytedebug for visual inspection.
 
 <li> bytecode_gen.m contains the predicates that translate HLDS into bytecode.
+
+<li> bytecode_data.m contains the predicates that translate ints, strings
+  and floats into bytecode. This is also used by rl_code.m.
 </ul>
 
 <hr>
@@ -946,6 +984,6 @@ Some of them are obsolete; other are work-in-progress.
 <hr>
 <!-------------------------->
 
-Last update was $Date: 1999-07-13 04:47:16 $ by $Author: dmo $@cs.mu.oz.au. <br>
+Last update was $Date: 1999-07-19 01:47:15 $ by $Author: stayl $@cs.mu.oz.au. <br>
 </body>
 </html>

@@ -186,7 +186,6 @@
 :- import_module prog_io_typeclass.
 :- import_module hlds_data, hlds_pred, prog_util, prog_out.
 :- import_module globals, options, (inst).
-:- import_module purity.
 
 :- import_module int, string, std_util, parser, term_io, dir, require.
 :- import_module assoc_list.

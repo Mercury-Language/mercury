@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-1998 University of Melbourne.
+% Copyright (C) 1997-1999 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -48,7 +48,7 @@ fill_expr_slots(switch(A, B, Cases0, D), Path0, switch(A, B, Cases, D)) :-
 	fill_switch_slots(Cases0, Path0, 0, Cases).
 fill_expr_slots(not(Goal0), Path0, not(Goal)) :-
 	fill_goal_slots(Goal0, [neg | Path0], Goal).
-fill_expr_slots(some(A, Goal0), Path0, some(A, Goal)) :-
+fill_expr_slots(some(A, B, Goal0), Path0, some(A, B, Goal)) :-
 	fill_goal_slots(Goal0, [exist | Path0], Goal).
 fill_expr_slots(if_then_else(A, Cond0, Then0, Else0, E), Path0,
 		if_then_else(A, Cond, Then, Else, E)) :-
@@ -56,10 +56,7 @@ fill_expr_slots(if_then_else(A, Cond0, Then0, Else0, E), Path0,
 	fill_goal_slots(Then0, [ite_then | Path0], Then),
 	fill_goal_slots(Else0, [ite_else | Path0], Else).
 fill_expr_slots(call(A,B,C,D,E,F), _Path0, call(A,B,C,D,E,F)).
-fill_expr_slots(higher_order_call(A,B,C,D,E,F), _Path0,
-		higher_order_call(A,B,C,D,E,F)).
-fill_expr_slots(class_method_call(A,B,C,D,E,F), _Path0,
-		class_method_call(A,B,C,D,E,F)).
+fill_expr_slots(generic_call(A,B,C,D), _Path0, generic_call(A,B,C,D)).
 fill_expr_slots(unify(A,B,C,D,E), _Path0, unify(A,B,C,D,E)).
 fill_expr_slots(pragma_c_code(A,B,C,D,E,F,G), _Path0,
 		pragma_c_code(A,B,C,D,E,F,G)).

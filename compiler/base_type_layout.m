@@ -613,8 +613,8 @@ base_type_layout__layout_special(_ConsId - ConsTag, LayoutInfo,
 		base_type_layout__encode_mkword(LayoutInfo, Tag, 
 			const(int_const(Value)), Rval)
 	;
-		ConsTag = pred_closure_tag(_, _),
-		error("type_ctor_layout: Unexpected tag - pred_closure_tag/2")
+		ConsTag = pred_closure_tag(_, _, _),
+		error("base_type_layout: Unexpected tag - pred_closure_tag/3")
 	;
 		ConsTag = code_addr_constant(_, _),
 		error("type_ctor_layout: Unexpected constant - code_addr_constant/2")
@@ -1131,8 +1131,10 @@ base_type_layout__construct_typed_pseudo_type_info(Type, Pseudo, LldsType,
 			% argument for their real arity, and then type
 			% arguments according to their types. 
 			% polymorphism.m has a detailed explanation.
-
-			type_is_higher_order(Type, _PredFunc, _TypeArgs)
+			% XXX polymorphism.m does not have a
+			% detailed explanation.
+			type_is_higher_order(Type, _PredFunc,
+				_EvalMethod, _TypeArgs)
 		->
 			TypeModule = unqualified(""),
 			TypeName = "pred",
@@ -1247,7 +1249,7 @@ base_type_layout__tag_type_and_value(no_tag, -1, no_tag).
 base_type_layout__tag_type_and_value(string_constant(_), -1, unused). 
 base_type_layout__tag_type_and_value(float_constant(_), -1, unused). 
 base_type_layout__tag_type_and_value(int_constant(_), -1, unused). 
-base_type_layout__tag_type_and_value(pred_closure_tag(_, _), -1, unused). 
+base_type_layout__tag_type_and_value(pred_closure_tag(_, _, _), -1, unused). 
 base_type_layout__tag_type_and_value(code_addr_constant(_, _), -1, unused).
 base_type_layout__tag_type_and_value(type_ctor_info_constant(_, _, _), -1,
 	unused). 

@@ -594,6 +594,8 @@ accumulator__acc_pred_info(NewTypes, NewProcInfo, PredInfo,
 	pred_info_get_class_context(PredInfo, ClassContext),
 	pred_info_get_aditi_owner(PredInfo, Owner),
 
+	set__init(Assertions),
+
 	proc_info_context(NewProcInfo, Context),
 	term__context_line(Context, Line),
 	Counter = 0,
@@ -605,7 +607,7 @@ accumulator__acc_pred_info(NewTypes, NewProcInfo, PredInfo,
 
 	pred_info_create(ModuleName, SymName, TypeVarSet, ExistQVars, Types,
 			Cond, PredContext, local, Markers, PredOrFunc,
-			ClassContext, Owner, NewProcInfo, NewProcId,
+			ClassContext, Owner, Assertions, NewProcInfo, NewProcId,
 			NewPredInfo).
 
 :- pred calculate_instmap(hlds_goals::in, instmap::in, instmap::out) is det.
@@ -1166,7 +1168,7 @@ accumulator__new_recursive_case(DP, C, R0, DoLCO, FullyStrict,
 accumulator__check_post_rec_goals([], _DynamicSet, Subst, Subst).
 accumulator__check_post_rec_goals([Goal | Goals], DynamicSet, Subst0, Subst) :-
 	Goal = unify(_TermL, _TermR, _Mode, Unify, _Context) - _GoalInfo,
-	Unify = construct(Var, _ConsId, Vars, _Modes),
+	Unify = construct(Var, _ConsId, Vars, _Modes, _, _, _),
 	set__list_to_set(Vars, VarsSet),
 	set__intersect(VarsSet, DynamicSet, DynamicVarsSet),
 	set__singleton_set(DynamicVarsSet, DynamicVar),
@@ -1323,7 +1325,7 @@ accumulator__check_assoc([Goal0 | Goal0s], InstMapBeforeGoal0, InstTable,
 
 goal_is_construction_unification(Goal - _GoalInfo) :-
 	Goal = unify(_, _, _, Unification, _),
-	Unification = construct(_, _, _, _).
+	Unification = construct(_, _, _, _, _, _, _).
 
 %-----------------------------------------------------------------------------%
 
@@ -1350,8 +1352,8 @@ accumulator__check_goal(if_then_else(_, _, _, _, _) - _, _) --> { fail }.
 
 accumulator__check_goal(not(_) - _, _) --> { fail }.
 
-accumulator__check_goal(some(Vars, Goal0) - GoalInfo,
-		some(Vars, Goal) - GoalInfo) -->
+accumulator__check_goal(some(Vars, CanRemove, Goal0) - GoalInfo,
+		some(Vars, CanRemove, Goal) - GoalInfo) -->
 	accumulator__check_goal(Goal0, Goal).
 
 	% All of these must fail because there is no way we can know
@@ -1359,9 +1361,8 @@ accumulator__check_goal(some(Vars, Goal0) - GoalInfo,
 	% XXX this may not be true for class_method_call, it may be
 	% possible to make it a condition that this method is always
 	% associative.
-accumulator__check_goal(higher_order_call(_,_,_,_,_,_) - _, _) --> { fail }.
+accumulator__check_goal(generic_call(_,_,_,_) - _, _) --> { fail }.
 accumulator__check_goal(pragma_c_code(_,_,_,_,_,_,_) - _, _) --> { fail }.
-accumulator__check_goal(class_method_call(_,_,_,_,_,_) - _, _) --> { fail }.
 
 accumulator__check_goal(unify(TermL, TermR, Mode, Unify, Context) - GoalInfo, 
 		unify(TermL, TermR, Mode, Unify, Context) - GoalInfo) -->
@@ -1417,7 +1418,7 @@ accumulator__check_goallist([Goal0 | Goals0], [Goal | Goals]) -->
 
 accumulator__check_assoc_unify_rhs(var(_)).
 accumulator__check_assoc_unify_rhs(functor(_, _)).
-accumulator__check_assoc_unify_rhs(lambda_goal(_, _, _, _, _, _, _)) :-
+accumulator__check_assoc_unify_rhs(lambda_goal(_, _, _, _, _, _, _, _, _)) :-
 		%
 		% For the moment just fail, as I am not sure how to
 		% handle this.
@@ -1432,7 +1433,8 @@ accumulator__check_assoc_unify_rhs(lambda_goal(_, _, _, _, _, _, _)) :-
 :- pred accumulator__check_assoc_unify(unification::in,
 		assoc_info::in, assoc_info::out) is semidet.
 
-accumulator__check_assoc_unify(construct(_Var, _ConsId, _Vars, _Modes)) -->
+accumulator__check_assoc_unify(
+		construct(_Var, _ConsId, _Vars, _Modes, _, _, _)) -->
 		%
 		% We shouldn't fail if we have this case as all the
 		% construction unification does is put a wrapper 

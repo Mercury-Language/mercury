@@ -12,7 +12,6 @@
 %	module_info
 %	dependency_info
 %	predicate_table
-%	global_data
 %
 % There is a separate interface section for each of these.
 
@@ -22,8 +21,9 @@
 
 :- interface.
 
-:- import_module hlds_pred, hlds_data, prog_data, unify_proc, special_pred.
-:- import_module globals, llds, continuation_info.
+:- import_module prog_data, module_qual.
+:- import_module hlds_pred, hlds_data, unify_proc, special_pred.
+:- import_module globals, llds.
 :- import_module relation, map, std_util, list, set, multi_map.
 
 :- implementation.
@@ -126,8 +126,9 @@
 	% Create an empty module_info for a given module name (and the
 	% global options).
 
-:- pred module_info_init(module_name, globals, module_info).
-:- mode module_info_init(in, in, out) is det.
+:- pred module_info_init(module_name, globals, partial_qualifier_info,
+		module_info).
+:- mode module_info_init(in, in, in, out) is det.
 
 :- pred module_info_get_predicate_table(module_info, predicate_table).
 :- mode module_info_get_predicate_table(in, out) is det.
@@ -148,12 +149,13 @@
 	module_info).
 :- mode module_info_set_special_pred_map(in, in, out) is det.
 
-:- pred module_info_get_global_data(module_info, global_data).
-:- mode module_info_get_global_data(in, out) is det.
+:- pred module_info_get_partial_qualifier_info(module_info,
+	partial_qualifier_info).
+:- mode module_info_get_partial_qualifier_info(in, out) is det.
 
-:- pred module_info_set_global_data(module_info, global_data, 
-	module_info).
-:- mode module_info_set_global_data(in, in, out) is det.
+:- pred module_info_set_partial_qualifier_info(module_info,
+	partial_qualifier_info, module_info).
+:- mode module_info_set_partial_qualifier_info(in, in, out) is det.
 
 :- pred module_info_types(module_info, type_table).
 :- mode module_info_types(in, out) is det.
@@ -554,7 +556,7 @@
 			predicate_table,
 			proc_requests,
 			special_pred_map,
-			global_data,
+			partial_qualifier_info,
 			type_table,
 			user_inst_table,
 			mode_table,
@@ -607,14 +609,13 @@
 
 	% A predicate which creates an empty module
 
-module_info_init(Name, Globals, ModuleInfo) :-
+module_info_init(Name, Globals, QualifierInfo, ModuleInfo) :-
 	predicate_table_init(PredicateTable),
 	unify_proc__init_requests(Requests),
 	map__init(UnifyPredMap),
 	map__init(Types),
 	user_inst_table_init(UserInsts),
 	mode_table_init(Modes),
-	global_data_init(GlobalData),
 	map__init(Ctors),
 	set__init(StratPreds),
 	map__init(UnusedArgInfo),
@@ -637,7 +638,7 @@ module_info_init(Name, Globals, ModuleInfo) :-
 		[], [], StratPreds, UnusedArgInfo, 0, ModuleNames,
 		no_aditi_compilation, TypeSpecInfo),
 	ModuleInfo = module(ModuleSubInfo, PredicateTable, Requests,
-		UnifyPredMap, GlobalData, Types, UserInsts, Modes, Ctors,
+		UnifyPredMap, QualifierInfo, Types, UserInsts, Modes, Ctors,
 		ClassTable, SuperClassTable, InstanceTable, AssertionTable, 0).
 
 %-----------------------------------------------------------------------------%
@@ -801,7 +802,7 @@ module_sub_set_type_spec_info(MI0, P, MI) :-
 % B			predicate_table,
 % C			proc_requests,
 % D			special_pred_map,
-% E			global_data,
+% E			partial_qualifier_info,
 % F			type_table,
 % G			user_inst_table,
 % H			mode_table,
@@ -832,7 +833,7 @@ module_info_get_proc_requests(MI0, C) :-
 module_info_get_special_pred_map(MI0, D) :-
 	MI0 = module(_, _, _, D, _, _, _, _, _, _, _, _, _, _).
 
-module_info_get_global_data(MI0, E) :-
+module_info_get_partial_qualifier_info(MI0, E) :-
 	MI0 = module(_, _, _, _, E, _, _, _, _, _, _, _, _, _).
 
 module_info_types(MI0, F) :-
@@ -882,7 +883,7 @@ module_info_set_special_pred_map(MI0, D, MI) :-
 	MI0 = module(A, B, C, _, E, F, G, H, I, J, K, L, M, N),
 	MI  = module(A, B, C, D, E, F, G, H, I, J, K, L, M, N).
 
-module_info_set_global_data(MI0, E, MI) :-
+module_info_set_partial_qualifier_info(MI0, E, MI) :-
 	MI0 = module(A, B, C, D, _, F, G, H, I, J, K, L, M, N),
 	MI  = module(A, B, C, D, E, F, G, H, I, J, K, L, M, N).
 
@@ -1206,8 +1207,6 @@ module_info_optimize(ModuleInfo0, ModuleInfo) :-
 	predicate_table_optimize(Preds0, Preds),
 	module_info_set_predicate_table(ModuleInfo0, Preds, ModuleInfo3),
 
-	% XXX Might want to optimize global_data here.
-
 	module_info_types(ModuleInfo3, Types0),
 	map__optimize(Types0, Types),
 	module_info_set_types(ModuleInfo3, Types, ModuleInfo4),
@@ -1498,18 +1497,28 @@ hlds_dependency_info_set_aditi_dependency_ordering(DepInfo0,
 				sym_name, arity, list(pred_id)) is semidet.
 :- mode predicate_table_search_pf_sym_arity(in, in, in, in, out) is semidet.
 
-	% predicate_table_insert(PredTable0, PredInfo, NeedQual, PredId,
-	% 		PredTable).
+	% Search the table for predicates or functions matching
+	% this pred_or_func category and sym_name.
+
+:- pred predicate_table_search_pf_sym(predicate_table, pred_or_func,
+				sym_name, list(pred_id)) is semidet.
+:- mode predicate_table_search_pf_sym(in, in, in, out) is semidet.
+
+	% predicate_table_insert(PredTable0, PredInfo,
+	%		NeedQual, PartialQualInfo, PredId, PredTable).
 	% 
 	% Insert PredInfo into PredTable0 and assign it a new pred_id.
 	% You should check beforehand that the pred doesn't already 
 	% occur in the table. 
-:- pred predicate_table_insert(predicate_table, pred_info, need_qualifier, 
-				pred_id, predicate_table).
-:- mode predicate_table_insert(in, in, in, out, out) is det.
+:- pred predicate_table_insert(predicate_table, pred_info, need_qualifier,
+		partial_qualifier_info, pred_id, predicate_table).
+:- mode predicate_table_insert(in, in, in, in, out, out) is det.
 
-	% Equivalent to predicate_table_insert(PredTable0, PredInfo, 
-	%	yes, PredId, PredTable). 
+	% Equivalent to predicate_table_insert/6, except that only the
+	% fully-qualified version of the predicate will be inserted into
+	% the predicate symbol table.  This is useful for creating
+	% compiler-generated predicates which will only ever be accessed
+	% via fully-qualified names.
 :- pred predicate_table_insert(predicate_table, pred_info, pred_id,
 				predicate_table).
 :- mode predicate_table_insert(in, in, out, out) is det.
@@ -1932,14 +1941,31 @@ predicate_table_search_pf_sym_arity(PredicateTable, PredOrFunc,
 	predicate_table_search_pf_name_arity(PredicateTable, PredOrFunc,
 		Name, Arity, PredIdList).
 
+predicate_table_search_pf_sym(PredicateTable, predicate,
+		SymName, PredIdList) :-
+	predicate_table_search_pred_sym(PredicateTable, SymName, PredIdList).
+predicate_table_search_pf_sym(PredicateTable, function, SymName, PredIdList) :-
+	predicate_table_search_func_sym(PredicateTable, SymName, PredIdList).
+
 %-----------------------------------------------------------------------------%
 
 predicate_table_insert(PredicateTable0, PredInfo, PredId, PredicateTable) :-
-	predicate_table_insert(PredicateTable0, PredInfo, must_be_qualified,
-		PredId, PredicateTable).
+	predicate_table_insert_2(PredicateTable0, PredInfo,
+			must_be_qualified, no, PredId, PredicateTable).
 
-predicate_table_insert(PredicateTable0, PredInfo, NeedQual,
+predicate_table_insert(PredicateTable0, PredInfo, NeedQual, QualInfo,
 		PredId, PredicateTable) :-
+	predicate_table_insert_2(PredicateTable0, PredInfo,
+			NeedQual, yes(QualInfo),
+			PredId, PredicateTable).
+
+:- pred predicate_table_insert_2(predicate_table, pred_info, need_qualifier,
+		maybe(partial_qualifier_info), pred_id, predicate_table).
+:- mode predicate_table_insert_2(in, in, in, in, out, out) is det.
+
+predicate_table_insert_2(PredicateTable0, PredInfo, NeedQual, MaybeQualInfo,
+		PredId, PredicateTable) :-
+
 	PredicateTable0 = predicate_table(Preds0, NextPredId0, PredIds0,
 				Pred_N_Index0, Pred_NA_Index0, Pred_MNA_Index0,
 				Func_N_Index0, Func_NA_Index0, Func_MNA_Index0),
@@ -1956,8 +1982,9 @@ predicate_table_insert(PredicateTable0, PredInfo, NeedQual,
 	pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
 	( 
 		PredOrFunc = predicate,
-		predicate_table_do_insert(Module, Name, Arity, NeedQual,
-			PredId, Pred_N_Index0, Pred_N_Index, 
+		predicate_table_do_insert(Module, Name, Arity,
+			NeedQual, MaybeQualInfo, PredId,
+			Pred_N_Index0, Pred_N_Index, 
 			Pred_NA_Index0, Pred_NA_Index,
 			Pred_MNA_Index0, Pred_MNA_Index),
 
@@ -1969,8 +1996,9 @@ predicate_table_insert(PredicateTable0, PredInfo, NeedQual,
 
 		FuncArity is Arity - 1,
 
-		predicate_table_do_insert(Module, Name, FuncArity, NeedQual,
-			PredId, Func_N_Index0, Func_N_Index, 
+		predicate_table_do_insert(Module, Name, FuncArity,
+			NeedQual, MaybeQualInfo, PredId,
+			Func_N_Index0, Func_N_Index, 
 			Func_NA_Index0, Func_NA_Index,
 			Func_MNA_Index0, Func_MNA_Index),
 
@@ -1989,20 +2017,16 @@ predicate_table_insert(PredicateTable0, PredInfo, NeedQual,
 				Pred_N_Index, Pred_NA_Index, Pred_MNA_Index,
 				Func_N_Index, Func_NA_Index, Func_MNA_Index).
 
-:- pred predicate_table_do_insert(module_name, string, arity, need_qualifier,
-	pred_id, name_index, name_index, name_arity_index, name_arity_index,
-	module_name_arity_index, module_name_arity_index).
-:- mode predicate_table_do_insert(in, in, in, in, in, 
+:- pred predicate_table_do_insert(module_name, string, arity,
+	need_qualifier, maybe(partial_qualifier_info),
+	pred_id, name_index, name_index, name_arity_index,
+	name_arity_index, module_name_arity_index, module_name_arity_index).
+:- mode predicate_table_do_insert(in, in, in, in, in, in,
 	in, out, in, out, in, out) is det.
 
-predicate_table_do_insert(Module, Name, Arity, NeedQual, PredId, 
-		N_Index0, N_Index, NA_Index0, NA_Index, 
+predicate_table_do_insert(Module, Name, Arity, NeedQual, MaybeQualInfo,
+		PredId, N_Index0, N_Index, NA_Index0, NA_Index, 
 		MNA_Index0, MNA_Index) :-
-
-	% XXX the code below doesn't handle mixing of
-	% `import_module' and `use_module' for
-	% parent & child modules properly.
-
 	( NeedQual = may_be_unqualified ->
 			% insert the unqualified name into the name index
 		multi_map__set(N_Index0, Name, PredId, N_Index),
@@ -2010,21 +2034,25 @@ predicate_table_do_insert(Module, Name, Arity, NeedQual, PredId,
 			% insert the unqualified name/arity into the
 			% name/arity index
 		NA = Name / Arity,
-		multi_map__set(NA_Index0, NA, PredId, NA_Index),
+		multi_map__set(NA_Index0, NA, PredId, NA_Index)
+	;
+		N_Index = N_Index0,
+		NA_Index = NA_Index0
+	),
 
+	( MaybeQualInfo = yes(QualInfo) ->
 			% insert partially module-qualified versions
 			% of the name into the module:name/arity index
-		get_partial_qualifiers(Module, PartialQuals),
+		get_partial_qualifiers(Module, QualInfo, PartialQuals),
 		list__map_foldl(lambda([AncModule::in, AncModule::out,
 				MNAs0::in, MNAs::out] is det,
 			insert_into_mna_index(AncModule, Name, Arity, PredId,
 					MNAs0, MNAs)),
 			PartialQuals, _, MNA_Index0, MNA_Index1)
 	;
-		N_Index = N_Index0,
-		NA_Index = NA_Index0,
 		MNA_Index1 = MNA_Index0
 	),
+
 		% insert the fully-qualified name into the
 		% module:name/arity index
 	insert_into_mna_index(Module, Name, Arity, PredId,
@@ -2133,150 +2161,5 @@ predicate_arity(ModuleInfo, PredId, Arity) :-
 	module_info_preds(ModuleInfo, Preds),
 	map__lookup(Preds, PredId, PredInfo),
 	pred_info_arity(PredInfo, Arity).
-
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-
-:- interface.
-
-:- type global_data.
-
-:- pred global_data_init(global_data::out) is det.
-
-:- pred global_data_add_new_proc_var(global_data::in,
-	pred_proc_id::in, comp_gen_c_var::in, global_data::out) is det.
-
-:- pred global_data_add_new_proc_layout(global_data::in,
-	pred_proc_id::in, proc_layout_info::in, global_data::out) is det.
-
-:- pred global_data_update_proc_layout(global_data::in,
-	pred_proc_id::in, proc_layout_info::in, global_data::out) is det.
-
-:- pred global_data_add_new_non_common_static_datas(global_data::in,
-	list(comp_gen_c_data)::in, global_data::out) is det.
-
-:- pred global_data_maybe_get_proc_layout(global_data::in, pred_proc_id::in,
-	proc_layout_info::out) is semidet.
-
-:- pred global_data_get_proc_layout(global_data::in, pred_proc_id::in,
-	proc_layout_info::out) is det.
-
-:- pred global_data_get_all_proc_vars(global_data::in,
-	list(comp_gen_c_var)::out) is det.
-
-:- pred global_data_get_all_proc_layouts(global_data::in,
-	list(proc_layout_info)::out) is det.
-
-:- pred global_data_get_all_non_common_static_data(global_data::in,
-	list(comp_gen_c_data)::out) is det.
-
-%-----------------------------------------------------------------------------%
-
-:- implementation.
-
-:- type proc_var_map	==	map(pred_proc_id, comp_gen_c_var).
-:- type proc_layout_map	==	map(pred_proc_id, proc_layout_info).
-
-:- type global_data
-	--->	global_data(
-			proc_var_map,		% Information about the global
-						% variables defined by each
-						% procedure.
-			proc_layout_map,	% Information about the
-						% layout structures defined
-						% by each procedure.
-			list(comp_gen_c_data)	% The list of global data
-						% structures that do not need
-						% to be checked by llds_common,
-						% because their construction
-						% ensures no overlaps.
-		).
-
-global_data_init(global_data(EmptyDataMap, EmptyLayoutMap, [])) :-
-	map__init(EmptyDataMap),
-	map__init(EmptyLayoutMap).
-
-global_data_add_new_proc_var(GlobalData0, PredProcId, ProcVar,
-		GlobalData) :-
-	global_data_get_proc_var_map(GlobalData0, ProcVarMap0),
-	map__det_insert(ProcVarMap0, PredProcId, ProcVar, ProcVarMap),
-	global_data_set_proc_var_map(GlobalData0, ProcVarMap,
-		GlobalData).
-
-global_data_add_new_proc_layout(GlobalData0, PredProcId, ProcLayout,
-		GlobalData) :-
-	global_data_get_proc_layout_map(GlobalData0, ProcLayoutMap0),
-	map__det_insert(ProcLayoutMap0, PredProcId, ProcLayout, ProcLayoutMap),
-	global_data_set_proc_layout_map(GlobalData0, ProcLayoutMap,
-		GlobalData).
-
-global_data_update_proc_layout(GlobalData0, PredProcId, ProcLayout,
-		GlobalData) :-
-	global_data_get_proc_layout_map(GlobalData0, ProcLayoutMap0),
-	map__det_update(ProcLayoutMap0, PredProcId, ProcLayout, ProcLayoutMap),
-	global_data_set_proc_layout_map(GlobalData0, ProcLayoutMap,
-		GlobalData).
-
-global_data_add_new_non_common_static_datas(GlobalData0, NewNonCommonStatics,
-		GlobalData) :-
-	global_data_get_non_common_static_data(GlobalData0, NonCommonStatics0),
-	list__append(NewNonCommonStatics, NonCommonStatics0, NonCommonStatics),
-	global_data_set_non_common_static_data(GlobalData0, NonCommonStatics,
-		GlobalData).
-
-global_data_maybe_get_proc_layout(GlobalData0, PredProcId, ProcLayout) :-
-	global_data_get_proc_layout_map(GlobalData0, ProcLayoutMap),
-	map__search(ProcLayoutMap, PredProcId, ProcLayout).
-
-global_data_get_proc_layout(GlobalData0, PredProcId, ProcLayout) :-
-	global_data_get_proc_layout_map(GlobalData0, ProcLayoutMap),
-	map__lookup(ProcLayoutMap, PredProcId, ProcLayout).
-
-global_data_get_all_proc_vars(GlobalData, ProcVars) :-
-	global_data_get_proc_var_map(GlobalData, ProcVarMap),
-	map__values(ProcVarMap, ProcVars).
-
-global_data_get_all_proc_layouts(GlobalData, ProcLayouts) :-
-	global_data_get_proc_layout_map(GlobalData, ProcLayoutMap),
-	map__values(ProcLayoutMap, ProcLayouts).
-
-global_data_get_all_non_common_static_data(GlobalData, NonCommonStatics) :-
-	global_data_get_non_common_static_data(GlobalData, NonCommonStatics).
-
-%-----------------------------------------------------------------------------%
-
-:- pred global_data_get_proc_var_map(global_data::in, proc_var_map::out)
-	is det.
-:- pred global_data_get_proc_layout_map(global_data::in, proc_layout_map::out)
-	is det.
-:- pred global_data_get_non_common_static_data(global_data::in,
-	list(comp_gen_c_data)::out) is det.
-:- pred global_data_set_proc_var_map(global_data::in, proc_var_map::in,
-	global_data::out) is det.
-:- pred global_data_set_proc_layout_map(global_data::in, proc_layout_map::in,
-	global_data::out) is det.
-:- pred global_data_set_non_common_static_data(global_data::in,
-	list(comp_gen_c_data)::in, global_data::out) is det.
-
-global_data_get_proc_var_map(GD, A) :-
-	GD = global_data(A, _, _).
-
-global_data_get_proc_layout_map(GD, B) :-
-	GD = global_data(_, B, _).
-
-global_data_get_non_common_static_data(GD, C) :-
-	GD = global_data(_, _, C).
-
-global_data_set_proc_var_map(GD0, A, GD) :-
-	GD0 = global_data(_, B, C),
-	GD  = global_data(A, B, C).
-
-global_data_set_proc_layout_map(GD0, B, GD) :-
-	GD0 = global_data(A, _, C),
-	GD  = global_data(A, B, C).
-
-global_data_set_non_common_static_data(GD0, C, GD) :-
-	GD0 = global_data(A, B, _),
-	GD  = global_data(A, B, C).
 
 %-----------------------------------------------------------------------------%

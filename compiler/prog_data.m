@@ -587,6 +587,26 @@
 
 :- type prog_context	==	term__context.
 
+	% Describe how a lambda expression is to be evaluated.
+	%
+	% `normal' is the top-down Mercury execution algorithm.
+	%
+	% `lambda_eval_method's other than `normal' are used for lambda
+	% expressions constructed for arguments of the builtin Aditi
+	% update constructs.
+	%
+	% `aditi_top_down' expressions are used by `aditi_delete'
+	% goals (see hlds_goal.m) to determine whether a tuple
+	% should be deleted.
+	%
+	% `aditi_bottom_up' expressions are used as database queries to
+	% produce a set of tuples to be inserted or deleted.
+:- type lambda_eval_method
+	--->	normal
+	;	(aditi_top_down)
+	;	(aditi_bottom_up)
+	.
+
 %-----------------------------------------------------------------------------%
 %
 % Types
@@ -848,6 +868,8 @@
 :- type sym_name 	
 	--->	unqualified(string)
 	;	qualified(module_specifier, string).
+:- type sym_name_and_arity
+	--->	sym_name / arity.
 
 :- type module_specifier ==	sym_name.
 :- type module_name 	== 	sym_name.

@@ -426,17 +426,22 @@ traverse_goal(switch(Var, CanFail, Cases0, SM) - Info,
 
 		% check whether this call could be specialized
 traverse_goal(Goal0, Goal) -->
-	{ Goal0 = higher_order_call(Var, Args, _,_,_,_) - GoalInfo }, 
-	maybe_specialize_higher_order_call(Var, no, Args, Goal0, Goals),
-	{ conj_list_to_goal(Goals, GoalInfo, Goal) }.
-
-		% class_method_calls are treated similarly to
-		% higher_order_calls.
-traverse_goal(Goal0, Goal) -->
-	{ Goal0 = class_method_call(Var, Method, Args,_,_,_) - GoalInfo },
-	maybe_specialize_higher_order_call(Var, yes(Method), Args,
-		Goal0, Goals),
-	{ conj_list_to_goal(Goals, GoalInfo, Goal) }.
+	{ Goal0 = generic_call(GenericCall, Args, _, _) - GoalInfo }, 
+	(
+		{
+			GenericCall = higher_order(Var, _, _),
+			MaybeMethod = no
+		;
+			GenericCall = class_method(Var, Method, _, _),
+			MaybeMethod = yes(Method)
+		}
+	->
+		maybe_specialize_higher_order_call(Var, MaybeMethod,
+			Args, Goal0, Goals),
+		{ conj_list_to_goal(Goals, GoalInfo, Goal) }
+	;
+		{ Goal = Goal0 }
+	).
 
 		% check whether this call could be specialized
 traverse_goal(Goal0, Goal) -->
@@ -455,7 +460,8 @@ traverse_goal(Goal0, Goal, Info0, Info) :-
 traverse_goal(not(NegGoal0) - Info, not(NegGoal) - Info) -->
 	traverse_goal(NegGoal0, NegGoal).
 
-traverse_goal(some(Vars, Goal0) - Info, some(Vars, Goal) - Info) -->
+traverse_goal(some(Vars, CanRemove, Goal0) - Info,
+		some(Vars, CanRemove, Goal) - Info) -->
 	traverse_goal(Goal0, Goal).
 
 traverse_goal(Goal, Goal) -->
@@ -588,7 +594,7 @@ check_unify(assign(Var1, Var2)) -->
 	% deconstructing a higher order term is not allowed
 check_unify(deconstruct(_, _, _, _, _)) --> [].
 	
-check_unify(construct(LVar, ConsId, Args, _Modes), Info0, Info) :- 
+check_unify(construct(LVar, ConsId, Args, _Modes, _, _, _), Info0, Info) :- 
 	Info0 = info(PredVars0, Requests, NewPreds, PredProcId,
 		PredInfo, ProcInfo, ModuleInfo, Params, Changed),
 	( is_interesting_cons_id(Params, ConsId) ->
@@ -628,7 +634,7 @@ is_interesting_cons_id(ho_params(_, _, yes, _, _),
 	( Name = "type_info"
 	; Name = "typeclass_info"
 	).
-is_interesting_cons_id(ho_params(yes, _, _, _, _), pred_const(_, _)).
+is_interesting_cons_id(ho_params(yes, _, _, _, _), pred_const(_, _, _)).
 is_interesting_cons_id(ho_params(_, _, yes, _, _),
 		type_ctor_info_const(_, _, _)).
 is_interesting_cons_id(ho_params(_, _, yes, _, _),
@@ -654,7 +660,7 @@ maybe_specialize_higher_order_call(PredVar, MaybeMethod, Args,
 	(
 		map__search(PredVars, PredVar, constant(ConsId, CurriedArgs)),
 		(
-			ConsId = pred_const(PredId0, ProcId0),
+			ConsId = pred_const(PredId0, ProcId0, _),
 			MaybeMethod = no
 		->
 			PredId = PredId0,
@@ -1012,12 +1018,12 @@ find_higher_order_args(ModuleInfo, CalleeStatus, [Arg | Args],
 		% extract fields from typeclass_infos).
 		ConsId \= int_const(_),
 
-		( ConsId = pred_const(_, _) ->
+		( ConsId = pred_const(_, _, _) ->
 			% If we don't have clauses for the callee, we can't
 			% specialize any higher-order arguments. We may be
 			% able to do user guided type specialization.
 			CalleeStatus \= imported,
-			type_is_higher_order(CalleeArgType, _, _)
+			type_is_higher_order(CalleeArgType, _, _, _)
 		;
 			true
 		)
@@ -1025,7 +1031,7 @@ find_higher_order_args(ModuleInfo, CalleeStatus, [Arg | Args],
 		% Find any known higher-order arguments
 		% in the list of curried arguments.
 		map__apply_to_list(CurriedArgs, VarTypes, CurriedArgTypes),
-		( ConsId = pred_const(PredId, _) ->
+		( ConsId = pred_const(PredId, _, _) ->
 			module_info_pred_info(ModuleInfo, PredId, PredInfo),
 			pred_info_arg_types(PredInfo, CurriedCalleeArgTypes)
 		;
@@ -1164,7 +1170,7 @@ find_matching_version(Info, CalledPred, CalledProc, Args0,
 			;
 				HigherOrder = yes,
 				list__member(HOArg, HigherOrderArgs),
-				HOArg = higher_order_arg(pred_const(_, _),
+				HOArg = higher_order_arg(pred_const(_, _, _),
 					_, _, _, _, _)
 			;
 				TypeSpec = yes
@@ -1399,7 +1405,7 @@ higher_order_args_match([RequestArg | Args1], [VersionArg | Args2],
 
 		% All the higher-order arguments must be present in the
 		% version otherwise we should create a new one.
-		ConsId1 \= pred_const(_, _),
+		ConsId1 \= pred_const(_, _, _),
 		PartialMatch = yes,
 		higher_order_args_match(Args1, [VersionArg | Args2], Args, _)
 	).
@@ -1808,7 +1814,7 @@ maybe_write_request(yes, ModuleInfo, Msg, SymName,
 output_higher_order_args(_, _, []) --> [].
 output_higher_order_args(ModuleInfo, NumToDrop, [HOArg | HOArgs]) -->
 	{ HOArg = higher_order_arg(ConsId, ArgNo, NumArgs, _, _, _) },
-	( { ConsId = pred_const(PredId, _ProcId) } ->
+	( { ConsId = pred_const(PredId, _ProcId, _) } ->
 		{ module_info_pred_info(ModuleInfo, PredId, PredInfo) },
 		{ pred_info_name(PredInfo, Name) },
 		{ pred_info_arity(PredInfo, Arity) },
@@ -1857,12 +1863,12 @@ fixup_preds(Params, [PredProcId | PredProcIds], NewPreds,
 	Info0 = info(PredVars0, Requests0, NewPreds, PredProcId,
 			PredInfo0, ProcInfo0, ModuleInfo0, Params, unchanged),
 	traverse_goal_0(Info0, Info),
-	Info = info(_, _, _, _, PredInfo1, ProcInfo, _, _, _),
+	Info = info(_, _, _, _, PredInfo1, ProcInfo, ModuleInfo1, _, _),
 	map__det_update(Procs0, ProcId, ProcInfo, Procs),
 	pred_info_set_procedures(PredInfo1, Procs, PredInfo),
 	map__det_update(Preds0, PredId, PredInfo, Preds),
-	module_info_set_preds(ModuleInfo0, Preds, ModuleInfo1),
-	fixup_preds(Params, PredProcIds, NewPreds, ModuleInfo1, ModuleInfo).
+	module_info_set_preds(ModuleInfo1, Preds, ModuleInfo2),
+	fixup_preds(Params, PredProcIds, NewPreds, ModuleInfo2, ModuleInfo).
 
 	% Create specialized versions of a single procedure.
 :- pred create_specialized_versions(ho_params::in, list(new_pred)::in,
@@ -2079,7 +2085,7 @@ construct_higher_order_terms(ModuleInfo, HeadVars0, HeadVars, ArgModes0,
 
 	list__index1_det(HeadVars0, Index, LVar),
 	(
-		( ConsId = pred_const(PredId, ProcId)
+		( ConsId = pred_const(PredId, ProcId, _)
 		; ConsId = code_addr_const(PredId, ProcId)
 		)
 	->

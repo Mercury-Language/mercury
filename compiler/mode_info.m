@@ -27,16 +27,11 @@
 	% XXX `side' is not used
 :- type mode_context
 	--->	call(	
-			pred_id,	% pred name / arity
+			call_id,
 			int		% argument number (offset so that
 					% the real arguments start at number 1
 					% whereas the type_info arguments
 					% have numbers <= 0).
-		)
-	;	higher_order_call(
-			pred_or_func,	% is it call/N (higher-order pred call)
-					% or apply/N (higher-order func call)?
-			int		% argument number
 		)
 	;	unify(
 			unify_context,	% original source of the unification
@@ -56,8 +51,7 @@
 
 :- type call_context
 	--->	unify(unify_context)
-	;	call(pred_id)
-	;	higher_order_call(pred_or_func).
+	;	call(call_id).
 
 :- type var_lock_reason
 	--->	negation
@@ -300,6 +294,11 @@
 :- pred mode_info_set_checking_extra_goals(bool, mode_info, mode_info).
 :- mode mode_info_set_checking_extra_goals(in,
 		mode_info_di, mode_info_uo) is det.
+
+	% Find the simple_call_id to use in error messages
+	% for the given pred_id.
+:- pred mode_info_get_call_id(mode_info, pred_id, simple_call_id).
+:- mode mode_info_get_call_id(mode_info_ui, in, out) is det.
 
 /*
 :- inst uniq_mode_info	=	bound_unique(
@@ -610,19 +609,13 @@ mode_info_set_mode_context(ModeContext,
 
 mode_info_set_call_context(unify(UnifyContext)) -->
 	mode_info_set_mode_context(unify(UnifyContext, left)).
-mode_info_set_call_context(call(PredId)) -->
-	mode_info_set_mode_context(call(PredId, 0)).
-mode_info_set_call_context(higher_order_call(PredOrFunc)) -->
-	mode_info_set_mode_context(higher_order_call(PredOrFunc, 0)).
+mode_info_set_call_context(call(CallId)) -->
+	mode_info_set_mode_context(call(CallId, 0)).
 
 mode_info_set_call_arg_context(ArgNum, ModeInfo0, ModeInfo) :-
 	mode_info_get_mode_context(ModeInfo0, ModeContext0),
-	( ModeContext0 = call(PredId, _) ->
-		mode_info_set_mode_context(call(PredId, ArgNum),
-			ModeInfo0, ModeInfo)
-	; ModeContext0 = higher_order_call(PredOrFunc, _) ->
-		mode_info_set_mode_context(
-			higher_order_call(PredOrFunc, ArgNum),
+	( ModeContext0 = call(CallId, _) ->
+		mode_info_set_mode_context(call(CallId, ArgNum),
 			ModeInfo0, ModeInfo)
 	; ModeContext0 = unify(_UnifyContext, _Side) ->
 		% This only happens when checking that the typeinfo variables
@@ -915,6 +908,13 @@ mode_info_set_checking_extra_goals(Checking,
 	;
 		true
 	).
+
+%-----------------------------------------------------------------------------%
+
+mode_info_get_call_id(ModeInfo, PredId, CallId) :-
+	mode_info_get_module_info(ModeInfo, ModuleInfo),
+	module_info_pred_info(ModuleInfo, PredId, PredInfo),
+	pred_info_get_call_id(PredInfo, CallId).
 
 %-----------------------------------------------------------------------------%
 

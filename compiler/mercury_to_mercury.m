@@ -1201,7 +1201,7 @@ mercury_output_cons_id(float_const(X), _) -->
 	io__write_float(X).
 mercury_output_cons_id(string_const(X), _) -->
 	term_io__quote_string(X).
-mercury_output_cons_id(pred_const(PredId, ProcId), _) -->
+mercury_output_cons_id(pred_const(PredId, ProcId, EvalMethod), _) -->
 	% XXX Sufficient, but probably should print this out in
 	%     name/arity form.
 
@@ -1211,6 +1211,8 @@ mercury_output_cons_id(pred_const(PredId, ProcId), _) -->
 	io__write_int(PredInt),
 	io__write_string(", "),
 	io__write_int(ProcInt),
+	io__write_string(", "),
+	io__write(EvalMethod),
 	io__write_string(")>").
 mercury_output_cons_id(code_addr_const(PredId, ProcId), _) -->
 	% XXX Sufficient, but probably should print this out in
@@ -2936,6 +2938,7 @@ mercury_infix_op("&").
 mercury_infix_op("to").		/* NU-Prolog */
 mercury_infix_op("<=").
 mercury_infix_op("<=>").
+mercury_infix_op("==>").
 mercury_infix_op("=>").
 mercury_infix_op("when").	/* NU-Prolog */
 mercury_infix_op("or").		/* NU-Prolog */
@@ -2984,6 +2987,8 @@ mercury_unary_prefix_op("::").
 mercury_unary_prefix_op("?-").
 mercury_unary_prefix_op("\\").
 mercury_unary_prefix_op("\\+").
+mercury_unary_prefix_op("aditi_bottom_up").
+mercury_unary_prefix_op("aditi_top_down").
 mercury_unary_prefix_op("assertion").
 mercury_unary_prefix_op("delete").
 mercury_unary_prefix_op("dynamic").

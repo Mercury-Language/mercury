@@ -37,7 +37,10 @@
 
 :- implementation.
 :- import_module assoc_list, bool, require, std_util, map, term, varset.
-:- import_module hlds_data, type_util, prog_data, prog_util, prog_out.
+:- import_module prog_data, prog_util, prog_out.
+
+% XXX we shouldn't import the HLDS here.
+:- import_module hlds_data, type_util.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -519,7 +519,7 @@ simplify__goal_2(conj(Goals0), GoalInfo0, Goal, GoalInfo, Info0, Info) :-
 			goal_info_set_determinism(GoalInfo0,
 				InnerDetism, InnerInfo),
 			InnerGoal = conj(Goals) - InnerInfo,
-			Goal = some([], InnerGoal)
+			Goal = some([], can_remove, InnerGoal)
 		;
 			Goal = conj(Goals)
 		),
@@ -665,13 +665,21 @@ simplify__goal_2(switch(Var, SwitchCanFail0, Cases0, SM),
 	).
 
 simplify__goal_2(Goal0, GoalInfo, Goal, GoalInfo, Info0, Info) :-
-	Goal0 = higher_order_call(Closure, Args, _, Modes, Det, _PredOrFunc),
-	( simplify_do_calls(Info0) ->
+	Goal0 = generic_call(GenericCall, Args, Modes, Det),
+	(
+		simplify_do_calls(Info0),
+		% XXX We should do duplicate call elimination for
+		% class method calls here.
+		GenericCall = higher_order(Closure, _, _)
+	->
 		common__optimise_higher_order_call(Closure, Args, Modes, Det,
 			Goal0, GoalInfo, Goal, Info0, Info)
-	; simplify_do_warn_calls(Info0) ->
-		% we need to do the pass, for the warnings, but we ignore
-		% the optimized goal and instead use the original one
+	;
+		simplify_do_warn_calls(Info0),
+		GenericCall = higher_order(Closure, _, _)
+	->
+		% We need to do the pass, for the warnings, but we ignore
+		% the optimized goal and instead use the original one.
 		common__optimise_higher_order_call(Closure, Args, Modes, Det,
 			Goal0, GoalInfo, _Goal1, Info0, Info),
 		Goal = Goal0
@@ -679,11 +687,6 @@ simplify__goal_2(Goal0, GoalInfo, Goal, GoalInfo, Info0, Info) :-
 		Goal = Goal0,
 		Info = Info0
 	).
-
-	% XXX We ought to do duplicate call elimination for class 
-	% XXX method calls here.
-simplify__goal_2(Goal, GoalInfo, Goal, GoalInfo, Info, Info) :-
-	Goal = class_method_call(_, _, _, _, _, _).
 
 simplify__goal_2(Goal0, GoalInfo0, Goal, GoalInfo, Info0, Info) :-
 	Goal0 = call(PredId, ProcId, Args, IsBuiltin, _, _),
@@ -841,8 +844,9 @@ simplify__goal_2(Goal0, GoalInfo0, Goal, GoalInfo, Info0, Info) :-
 		true_goal(Context, Goal - GoalInfo),
 		Info = Info0
 	;
-		RT0 = lambda_goal(PredOrFunc, NonLocals, Vars, 
-			Modes, LambdaDeclaredDet, IMDelta, LambdaGoal0)
+		RT0 = lambda_goal(PredOrFunc, EvalMethod, FixModes,
+			NonLocals, Vars, Modes, LambdaDeclaredDet, IMDelta,
+			LambdaGoal0)
 	->
 		simplify_info_enter_lambda(Info0, Info1),
 		simplify_info_get_common_info(Info1, Common1),
@@ -860,8 +864,8 @@ simplify__goal_2(Goal0, GoalInfo0, Goal, GoalInfo, Info0, Info) :-
 		simplify__goal(LambdaGoal0, LambdaGoal, Info3, Info4),
 		simplify_info_set_common_info(Info4, Common1, Info5),
 		simplify_info_set_instmap(Info5, InstMap1, Info6),
-		RT = lambda_goal(PredOrFunc, NonLocals, Vars, Modes, 
-			LambdaDeclaredDet, IMDelta, LambdaGoal),
+		RT = lambda_goal(PredOrFunc, EvalMethod, FixModes, NonLocals,
+			Vars, Modes, LambdaDeclaredDet, IMDelta, LambdaGoal),
 		simplify_info_leave_lambda(Info6, Info),
 		Goal = unify(LT0, RT, M, U0, C),
 		GoalInfo = GoalInfo0
@@ -1007,7 +1011,7 @@ simplify__goal_2(if_then_else(Vars, Cond0, Then0, Else0, SM),
 				at_most_many),
 			goal_info_set_determinism(GoalInfo0, InnerDetism,
 				InnerInfo),
-			Goal = some([], IfThenElse - InnerInfo)
+			Goal = some([], can_remove, IfThenElse - InnerInfo)
 		;
 			Goal = IfThenElse
 		),
@@ -1057,20 +1061,23 @@ simplify__goal_2(not(Goal0), GoalInfo0, Goal, GoalInfo, Info0, Info) :-
 		Info = Info3
 	).
 
-simplify__goal_2(some(Vars1, Goal1), SomeInfo, Goal, GoalInfo, Info0, Info) :-
+simplify__goal_2(some(Vars1, CanRemove0, Goal1), SomeInfo,
+		Goal, GoalInfo, Info0, Info) :-
 	simplify__goal(Goal1, Goal2, Info0, Info),
-	simplify__nested_somes(Vars1, Goal2, Vars, Goal3),
+	simplify__nested_somes(CanRemove0, Vars1, Goal2,
+		CanRemove, Vars, Goal3),
 	Goal3 = GoalExpr3 - GoalInfo3,
 	(
 		goal_info_get_determinism(GoalInfo3, Detism),
-		goal_info_get_determinism(SomeInfo, Detism)
+		goal_info_get_determinism(SomeInfo, Detism),
+		CanRemove = can_remove
 	->
 		% If the inner and outer detisms match the `some'
 		% is unnecessary.
 		Goal = GoalExpr3,
 		GoalInfo = GoalInfo3
 	;
-		Goal = some(Vars, Goal3),
+		Goal = some(Vars, CanRemove, Goal3),
 		GoalInfo = SomeInfo
 	).
 
@@ -1143,7 +1150,7 @@ simplify__process_compl_unify(XVar, YVar, UniMode, CanFail, OldTypeInfoVars,
 			BuiltinState, yes(CallContext), SymName)
 			- GoalInfo0 }
 
-	; { type_is_higher_order(Type, _, _) } ->
+	; { type_is_higher_order(Type, _, _, _) } ->
 		%
 		% convert higher-order unifications into calls to
 		% builtin_unify_pred (which calls error/1)
@@ -1332,14 +1339,26 @@ simplify__input_args_are_equiv([Arg|Args], [HeadVar|HeadVars], [Mode|Modes],
 %-----------------------------------------------------------------------------%
 
 	% replace nested `some's with a single `some',
-:- pred simplify__nested_somes(list(prog_var)::in, hlds_goal::in,
-		list(prog_var)::out, hlds_goal::out) is det.
+:- pred simplify__nested_somes(can_remove::in, list(prog_var)::in,
+		hlds_goal::in, can_remove::out, list(prog_var)::out,
+		hlds_goal::out) is det.
 
-simplify__nested_somes(Vars0, Goal0, Vars, Goal) :-
-	( Goal0 = some(Vars1, Goal1) - _ ->
+simplify__nested_somes(CanRemove0, Vars0, Goal0, CanRemove, Vars, Goal) :-
+	( Goal0 = some(Vars1, CanRemove1, Goal1) - _ ->
+		(
+			( CanRemove0 = cannot_remove
+			; CanRemove1 = cannot_remove
+			)
+		->
+			CanRemove2 = cannot_remove
+		;
+			CanRemove2 = can_remove
+		),
 		list__append(Vars0, Vars1, Vars2),
-		simplify__nested_somes(Vars2, Goal1, Vars, Goal)
+		simplify__nested_somes(CanRemove2, Vars2, Goal1,
+			CanRemove, Vars, Goal)
 	;
+		CanRemove = CanRemove0,
 		Vars = Vars0,
 		Goal = Goal0
 	).
@@ -1368,7 +1387,7 @@ simplify__maybe_wrap_goal(OuterGoalInfo, InnerGoalInfo,
 		GoalInfo = InnerGoalInfo,
 		Info = Info0
 	;
-		Goal = some([], Goal1 - InnerGoalInfo),
+		Goal = some([], can_remove, Goal1 - InnerGoalInfo),
 		GoalInfo = OuterGoalInfo,
 		simplify_info_set_rerun_det(Info0, Info)
 	).
@@ -2126,8 +2145,7 @@ simplify_info_maybe_clear_structs(BeforeAfter, Goal, Info0, Info) :-
 			BeforeAfter = before,
 			Goal = GoalExpr - _,
 			GoalExpr \= call(_, _, _, _, _, _),
-			GoalExpr \= higher_order_call(_, _, _, _, _, _),
-			GoalExpr \= class_method_call(_, _, _, _, _, _),
+			GoalExpr \= generic_call(_, _, _, _),
 			GoalExpr \= pragma_c_code(_, _, _, _, _, _, _)
 		)
 	->
@@ -2172,7 +2190,7 @@ goal_contains_goal(Goal - _, SubGoal) :-
 :- pred direct_subgoal(hlds_goal_expr, hlds_goal).
 :- mode direct_subgoal(in, out) is nondet.
 
-direct_subgoal(some(_, Goal), Goal).
+direct_subgoal(some(_, _, Goal), Goal).
 direct_subgoal(not(Goal), Goal).
 direct_subgoal(if_then_else(_, If, Then, Else, _), Goal) :-
 	( Goal = If

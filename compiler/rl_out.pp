@@ -98,34 +98,16 @@ rl_out__generate_schema_file_2(ModuleInfo, PredId) -->
 		{ Module = PredModule },
 		{ check_marker(Markers, base_relation) }
 	->
-		{ rl_out__get_perm_rel_info(ModuleInfo, PredId,
+		{ rl__get_permanent_relation_info(ModuleInfo, PredId,
 			Owner, ModuleName, PredName, PredArity0,
 			RelName, RelSchema) },
 		{ string__int_to_string(PredArity0, PredArity) },
 		io__write_strings([ModuleName, ":", PredName, "/", PredArity,
 			"\t", Owner, "/", ModuleName, "/", RelName,
 			"\t", RelSchema, "\n"])
-	;	
+	;
 		[]
 	).
-
-:- pred rl_out__get_perm_rel_info(module_info::in, pred_id::in,
-		string::out, string::out, string::out, int::out,
-		string::out, string::out) is det.
-
-rl_out__get_perm_rel_info(ModuleInfo, PredId, Owner, PredModule,
-		PredName, PredArity, RelName, SchemaString) :-
-	module_info_pred_info(ModuleInfo, PredId, PredInfo),
-	pred_info_name(PredInfo, PredName),
-	pred_info_module(PredInfo, PredModule0),
-	prog_out__sym_name_to_string(PredModule0, PredModule),
-	pred_info_get_aditi_owner(PredInfo, Owner),
-	pred_info_arity(PredInfo, PredArity),
-	string__format("%s__%i", [s(PredName), i(PredArity)], RelName),
-	pred_info_arg_types(PredInfo, ArgTypes0),
-	magic_util__remove_aditi_state(ArgTypes0, ArgTypes0, ArgTypes),
-	rl__schema_to_string(ModuleInfo, ArgTypes, SchemaString).
-
 
 %-----------------------------------------------------------------------------%
 
@@ -370,7 +352,7 @@ rl_out__generate_proc_bytecode(Proc) -->
 		% If one memoed relation is dropped, all must be 
 		% dropped for correctness. We could possibly be a
 		% little smarter about this.
-		rl_out__collect_memoed_rels(Owner, Name, MemoedList, 0,
+		rl_out__collect_memoed_relations(Owner, Name, MemoedList, 0,
 			CollectCode, NameCode),
 		rl_out__get_rel_var_list(MemoedList, RelVarCodes),
 		{ GroupCode = tree(node([rl_PROC_grouprels]), RelVarCodes) }
@@ -378,7 +360,7 @@ rl_out__generate_proc_bytecode(Proc) -->
 
 	rl_out_info_get_relation_addrs(Addrs),
 	{ map__to_assoc_list(Addrs, AddrsAL) },
-	rl_out__collect_permanent_rels(AddrsAL, [], PermRelCodes),
+	rl_out__collect_permanent_relations(AddrsAL, [], PermRelCodes),
 
 	rl_out_info_get_proc_expressions(Exprns),
 	{ list__length(Exprns, NumExprns) },
@@ -423,14 +405,13 @@ rl_out__generate_proc_bytecode(Proc) -->
 	% to maintain correctness. Aditi should prefer to drop unnamed 
 	% temporaries to named ones, since unnamed temporaries cannot
 	% possibly be used later.
-	% XXX Reference counting is not yet implemented in Aditi.
-:- pred rl_out__collect_memoed_rels(string::in, rl_proc_name::in,
+:- pred rl_out__collect_memoed_relations(string::in, rl_proc_name::in,
 		list(relation_id)::in, int::in, list(bytecode)::out,
 		list(bytecode)::out, rl_out_info::in,
 		rl_out_info::out) is det.
 
-rl_out__collect_memoed_rels(_, _, [], _, [], []) --> [].
-rl_out__collect_memoed_rels(Owner, ProcName, [Rel | Rels], Counter0,
+rl_out__collect_memoed_relations(_, _, [], _, [], []) --> [].
+rl_out__collect_memoed_relations(Owner, ProcName, [Rel | Rels], Counter0,
 		[GetCode | GetCodes], [NameCode, DropCode | NameCodes]) -->
 
 	rl_out_info_get_relation_addr(Rel, Addr),
@@ -472,17 +453,18 @@ rl_out__collect_memoed_rels(Owner, ProcName, [Rel | Rels], Counter0,
 	{ DropCode = rl_PROC_unsetrel(Addr) },
 
 	{ Counter is Counter0 + 1 },
-	rl_out__collect_memoed_rels(Owner, ProcName, Rels, Counter,
+	rl_out__collect_memoed_relations(Owner, ProcName, Rels, Counter,
 		GetCodes, NameCodes).
 
 	% Put pointers to all the permanent relations
 	% used by the procedure into variables.
-:- pred rl_out__collect_permanent_rels(assoc_list(relation_id, int)::in,
+:- pred rl_out__collect_permanent_relations(assoc_list(relation_id, int)::in,
 		list(bytecode)::in, list(bytecode)::out,
 		rl_out_info::in, rl_out_info::out) is det.
 
-rl_out__collect_permanent_rels([], Codes, Codes) --> [].
-rl_out__collect_permanent_rels([RelationId - Addr | Rels], Codes0, Codes) -->
+rl_out__collect_permanent_relations([], Codes, Codes) --> [].
+rl_out__collect_permanent_relations([RelationId - Addr | Rels],
+		Codes0, Codes) -->
 	rl_out_info_get_relations(Relations),
 	{ map__lookup(Relations, RelationId, RelInfo) },
 	{ RelInfo = relation_info(RelType, _Schema, _Index, _) },
@@ -491,7 +473,7 @@ rl_out__collect_permanent_rels([RelationId - Addr | Rels], Codes0, Codes) -->
 	->
 		rl_out_info_get_module_info(ModuleInfo),
 
-		{ rl_out__get_perm_rel_info(ModuleInfo, PredId,
+		{ rl__get_permanent_relation_info(ModuleInfo, PredId,
 			Owner, PredModule, _, _, RelName, SchemaString) },
 
 		rl_out_info_assign_const(string(Owner), OwnerConst), 
@@ -515,7 +497,7 @@ rl_out__collect_permanent_rels([RelationId - Addr | Rels], Codes0, Codes) -->
 	;
 		{ Codes1 = Codes0 }
 	),
-	rl_out__collect_permanent_rels(Rels, Codes1, Codes).
+	rl_out__collect_permanent_relations(Rels, Codes1, Codes).
 
 %-----------------------------------------------------------------------------%
 
@@ -684,7 +666,7 @@ rl_out__generate_instr(project(Output, Input, Cond0,
 
 	% If the produced tuple is independent of the input tuple,
 	% generate:
-	% if (empty(Input) {
+	% if (empty(Input)) {
 	% 	init(Output);
 	% } else
 	% 	init(Output);
@@ -755,7 +737,7 @@ rl_out__generate_instr(project(Output, Input, Cond0,
 		    OtherOutputInitCodeList, empty, OtherOutputInitCode) },
 
 		{ list__map(rl__output_rel_relation,
-			OtherOutputRels, OtherOutputRelations ) },
+			OtherOutputRels, OtherOutputRelations) },
 		rl_out__get_rel_var_list(OtherOutputRelations, VarListCode),
 		list__foldl2(rl_out__generate_project_exprn, OtherOutputs,
 			empty, ExprnListCode),

@@ -688,7 +688,7 @@ rl_key__extract_key_range_unify(simple_test(Var1, Var2)) -->
 	rl_key__unify_var_var(Var1, Var2).
 rl_key__extract_key_range_unify(assign(Var1, Var2)) -->
 	rl_key__unify_var_var(Var1, Var2).
-rl_key__extract_key_range_unify(construct(Var, ConsId, Args, _)) -->
+rl_key__extract_key_range_unify(construct(Var, ConsId, Args, _, _, _, _)) -->
 	rl_key__unify_functor(Var, ConsId, Args).
 rl_key__extract_key_range_unify(
 		deconstruct(Var, ConsId, Args, _, _)) -->

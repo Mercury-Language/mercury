@@ -57,9 +57,16 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
+
 :- import_module hlds_goal, hlds_data, prog_data.
 :- import_module mode_util, globals, options, code_util, goal_util.
-:- import_module llds, llds_out, mercury_to_mercury.
+:- import_module mercury_to_mercury.
+
+% XXX we should not import llds here -- this should depend only on the HLDS,
+% not on the LLDS.  But the LLDS stuff is unfortunately needed for producing
+% the LLDS labels used for dependency_graph__write_prof_dependency_graph.
+:- import_module llds, llds_out.
+
 :- import_module term, varset.
 :- import_module int, bool, term, require, string.
 :- import_module map, multi_map, set, std_util.
@@ -221,14 +228,11 @@ dependency_graph__add_arcs_in_goal_2(if_then_else(_Vars, Cond, Then, Else, _),
 dependency_graph__add_arcs_in_goal_2(not(Goal), Caller, DepGraph0, DepGraph) :-
 	dependency_graph__add_arcs_in_goal(Goal, Caller, DepGraph0, DepGraph).
 
-dependency_graph__add_arcs_in_goal_2(some(_Vars, Goal), Caller, 
+dependency_graph__add_arcs_in_goal_2(some(_Vars, _, Goal), Caller, 
 					DepGraph0, DepGraph) :-
 	dependency_graph__add_arcs_in_goal(Goal, Caller, DepGraph0, DepGraph).
 
-dependency_graph__add_arcs_in_goal_2(higher_order_call(_, _, _, _, _, _),
-		_Caller, DepGraph, DepGraph).
-
-dependency_graph__add_arcs_in_goal_2(class_method_call(_, _, _, _, _, _),
+dependency_graph__add_arcs_in_goal_2(generic_call(_, _, _, _),
 		_Caller, DepGraph, DepGraph).
 
 dependency_graph__add_arcs_in_goal_2(call(PredId, ProcId, _, Builtin, _, _),
@@ -257,7 +261,7 @@ dependency_graph__add_arcs_in_goal_2(unify(_,_,_,Unify,_), Caller,
 	    DepGraph0 = DepGraph
 	; Unify = simple_test(_, _),
 	    DepGraph0 = DepGraph
-	; Unify = construct(_, Cons, _, _),
+	; Unify = construct(_, Cons, _, _, _, _, _),
 	    dependency_graph__add_arcs_in_cons(Cons, Caller,
 				DepGraph0, DepGraph)
 	; Unify = deconstruct(_, Cons, _, _, _),
@@ -308,7 +312,7 @@ dependency_graph__add_arcs_in_cons(string_const(_), _Caller,
 				DepGraph, DepGraph).
 dependency_graph__add_arcs_in_cons(float_const(_), _Caller,
 				DepGraph, DepGraph).
-dependency_graph__add_arcs_in_cons(pred_const(Pred, Proc), Caller,
+dependency_graph__add_arcs_in_cons(pred_const(Pred, Proc, _), Caller,
 				DepGraph0, DepGraph) :-
 	(
 			% If the node isn't in the relation, then
@@ -661,7 +665,7 @@ process_aditi_goal(IsNeg, if_then_else(_, Cond, Then, Else, _) - _,
 	process_aditi_goal(yes, Cond, Map0, Map1),
 	process_aditi_goal(IsNeg, Then, Map1, Map2),
 	process_aditi_goal(IsNeg, Else, Map2, Map).
-process_aditi_goal(IsNeg, some(_, Goal) - _, Map0, Map) -->
+process_aditi_goal(IsNeg, some(_, _, Goal) - _, Map0, Map) -->
 	process_aditi_goal(IsNeg, Goal, Map0, Map).
 process_aditi_goal(_IsNeg, not(Goal) - _, Map0, Map) -->
 	process_aditi_goal(yes, Goal, Map0, Map).
@@ -671,15 +675,16 @@ process_aditi_goal(IsNeg, call(PredId, ProcId, Args, _, _, _) - _,
 
 process_aditi_goal(_IsNeg, unify(Var, _, _, Unify, _) - _, 
 		Map0, Map) -->
-	( { Unify = construct(_, pred_const(PredId, ProcId), _, _) } ->
+	(
+		{ Unify = construct(_, pred_const(PredId, ProcId, _),
+			_, _, _, _, _) }
+	->
 		aditi_scc_info_add_closure(Var, 
 			proc(PredId, ProcId), Map0, Map)
 	;
 		{ Map = Map0 }
 	).
-process_aditi_goal(_IsNeg, higher_order_call(_, _, _, _, _, _) - _, 
-		Map, Map) --> [].
-process_aditi_goal(_IsNeg, class_method_call(_, _, _, _, _, _) - _, 
+process_aditi_goal(_IsNeg, generic_call(_, _, _, _) - _, 
 		Map, Map) --> [].
 process_aditi_goal(_IsNeg, pragma_c_code(_, _, _, _, _, _, _) - _,
 		Map, Map) --> [].

@@ -666,27 +666,16 @@ parse_simple_pragma(ModuleName, PragmaType, MakePragma,
 
 parse_pred_name_and_arity(ModuleName, PragmaType, PredAndArityTerm,
 		ErrorTerm, Result) :-
-    (
-	PredAndArityTerm = term__functor(term__atom("/"), 
-		[PredNameTerm, ArityTerm], _)
-    ->
 	(
-	    parse_implicitly_qualified_term(ModuleName,
-		PredNameTerm, ErrorTerm, "", ok(PredName, [])),
-	    ArityTerm = term__functor(term__integer(Arity), [], _)
+		parse_name_and_arity(ModuleName, PredAndArityTerm,
+			PredName, Arity)
 	->
-	    Result = ok(PredName, Arity)
+		Result = ok(PredName, Arity)
 	;
-	    string__append_list(
-		["expected predname/arity for `:- pragma ",
-		 PragmaType, "' declaration"], ErrorMsg),
-	    Result = error(ErrorMsg, PredAndArityTerm)
-	)
-    ;
-	string__append_list(["expected predname/arity for `:- pragma ",
-		 PragmaType, "' declaration"], ErrorMsg),
-	Result = error(ErrorMsg, PredAndArityTerm)
-    ).
+		string__append_list(["expected predname/arity for `pragma ",
+			PragmaType, "' declaration"], ErrorMsg),
+		Result = error(ErrorMsg, ErrorTerm)
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -942,6 +931,7 @@ parse_arity_or_modes(ModuleName, PredAndModesTerm0,
 
 :- type maybe_pred_or_func_modes ==
 		maybe2(pair(sym_name, pred_or_func), argument_modes).
+
 :- type maybe_pred_or_func(T) == maybe2(sym_name, pair(list(T), maybe(T))).
 
 :- pred parse_pred_or_func_and_arg_modes(maybe(module_name), term, term,
@@ -982,38 +972,6 @@ parse_pred_or_func_and_arg_modes(MaybeModuleName, PredAndModesTerm,
 	;
 		PredAndArgsResult = error(ErrorMsg, Term),
 		Result = error(ErrorMsg, Term)
-	).
-
-:- pred parse_pred_or_func_and_args(maybe(sym_name), term, term, string,
-		maybe_pred_or_func(term)).
-:- mode parse_pred_or_func_and_args(in, in, in, in, out) is det.
-
-parse_pred_or_func_and_args(MaybeModuleName, PredAndArgsTerm, ErrorTerm,
-		Msg, PredAndArgsResult) :-
-	(
-		PredAndArgsTerm = term__functor(term__atom("="),
-			[FuncAndArgsTerm, FuncResultTerm], _)
-	->
-		FunctorTerm = FuncAndArgsTerm,
-		MaybeFuncResult = yes(FuncResultTerm)
-	;
-		FunctorTerm = PredAndArgsTerm,
-		MaybeFuncResult = no
-	),
-	(
-		MaybeModuleName = yes(ModuleName),
-		parse_implicitly_qualified_term(ModuleName, FunctorTerm,
-			ErrorTerm, Msg, Result)
-	;
-		MaybeModuleName = no,
-		parse_qualified_term(FunctorTerm, ErrorTerm, Msg, Result)
-	),
-	(
-		Result = ok(SymName, Args),
-		PredAndArgsResult = ok(SymName, Args - MaybeFuncResult)
-	;
-		Result = error(ErrorMsg, Term),
-		PredAndArgsResult = error(ErrorMsg, Term)
 	).
 
 :- pred convert_bool_list(term::in, list(bool)::out) is semidet.

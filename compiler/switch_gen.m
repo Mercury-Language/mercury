@@ -209,7 +209,7 @@ switch_gen__priority(unshared_tag(_), 2).
 switch_gen__priority(float_constant(_), 3).
 switch_gen__priority(shared_remote_tag(_, _), 4).
 switch_gen__priority(string_constant(_), 5).
-switch_gen__priority(pred_closure_tag(_, _), 6).	% should never occur
+switch_gen__priority(pred_closure_tag(_, _, _), 6).	% should never occur
 switch_gen__priority(code_addr_constant(_, _), 6).	% should never occur
 switch_gen__priority(type_ctor_info_constant(_, _, _), 6).% should never occur
 switch_gen__priority(base_typeclass_info_constant(_, _, _), 6).% shouldn't occur

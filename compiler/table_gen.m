@@ -224,19 +224,12 @@ table_gen__process_procs(PredId, [ProcId | ProcIds], Module0,
 		EvalMethod \= eval_normal
 	->
 		table_gen__process_proc(EvalMethod, PredId, ProcId, ProcInfo,
-			PredInfo, Module0, Module1),
-		module_info_get_global_data(Module1, GlobalData0),
-		code_util__make_proc_label(Module1, PredId, ProcId, ProcLabel),
-		module_info_name(Module0, ModuleName),
-		Var = tabling_pointer_var(ModuleName, ProcLabel),
-		global_data_add_new_proc_var(GlobalData0,
-			proc(PredId, ProcId), Var, GlobalData),
-		module_info_set_global_data(Module1, GlobalData, Module2)
+			PredInfo, Module0, Module1)
 	;
-		Module2 = Module0
+		Module1 = Module0
 	),
 
-	table_gen__process_procs(PredId, ProcIds, Module2, Module).
+	table_gen__process_procs(PredId, ProcIds, Module1, Module).
 
 %-----------------------------------------------------------------------------%
 
@@ -631,19 +624,8 @@ generate_get_table_goal(VarTypes0, VarTypes, VarSet0, VarSet,
 		PredId, ProcId, PredTableVar, Goal) :-
 	generate_new_table_var("PredTable", VarTypes0, VarTypes,
 		VarSet0, VarSet, PredTableVar),
-
 	ConsId = tabling_pointer_const(PredId, ProcId),
-	VarInst = ground(unique, no),
-	UnifyMode = (free(unique) - VarInst) - (VarInst - VarInst),
-	UnifyContext = unify_context(explicit, []),
-	GoalExpr = unify(PredTableVar, functor(ConsId, []), UnifyMode,
-			construct(PredTableVar, ConsId, [], []), UnifyContext),
-
-	set__singleton_set(NonLocals, PredTableVar),
-	instmap_delta_from_assoc_list([PredTableVar - VarInst],
-		InstMapDelta),
-	goal_info_init(NonLocals, InstMapDelta, det,
-		GoalInfo0),
+	make_const_construction(PredTableVar, ConsId, GoalExpr - GoalInfo0),
 	goal_info_add_feature(GoalInfo0, impure, GoalInfo),
 	Goal = GoalExpr - GoalInfo.
 
@@ -1223,23 +1205,9 @@ generate_call(PredName, Args, Detism0, Feature, InstMap, Module, Goal) :-
 
 gen_int_construction(VarName, VarValue, VarTypes0, VarTypes, VarSet0, VarSet,
 		Var, Goal) :-
-
-	varset__new_named_var(VarSet0, VarName, Var, VarSet),
-	term__context_init(Context),
-	VarType = term__functor(term__atom("int"), [], Context),
-	map__set(VarTypes0, Var, VarType, VarTypes),
-
-	Inst = bound(unique, [functor(int_const(VarValue), [])]),
-	VarUnify = unify(Var, functor(int_const(VarValue), []),
-		(free(unique) - Inst) - (Inst - Inst),
-		construct(Var, int_const(VarValue), [], []),
-		unify_context(explicit, [])),
-	set__singleton_set(VarNonLocals, Var),
-	instmap_delta_from_assoc_list([Var - Inst],
-		VarInstMapDelta),
-	goal_info_init(VarNonLocals, VarInstMapDelta, det,
-		VarGoalInfo),
-	Goal = VarUnify - VarGoalInfo.
+	make_int_const_construction(VarValue, Goal, Var,
+		VarTypes0, VarTypes, VarSet0, VarSet1),
+	varset__name_var(VarSet1, Var, VarName, VarSet).
 
 :- pred gen_string_construction(string, string, map(prog_var, type),
 		map(prog_var, type), prog_varset, prog_varset, prog_var,
@@ -1248,23 +1216,9 @@ gen_int_construction(VarName, VarValue, VarTypes0, VarTypes, VarSet0, VarSet,
 
 gen_string_construction(VarName, VarValue, VarTypes0, VarTypes, VarSet0, VarSet,
 		Var, Goal) :-
-
-	varset__new_named_var(VarSet0, VarName, Var, VarSet),
-	term__context_init(Context),
-	VarType = term__functor(term__atom("string"), [], Context),
-	map__set(VarTypes0, Var, VarType, VarTypes),
-
-	Inst = bound(unique, [functor(string_const(VarValue), [])]),
-	VarUnify = unify(Var, functor(string_const(VarValue), []),
-		(free(unique) - Inst) - (Inst - Inst),
-		construct(Var, string_const(VarValue), [], []),
-		unify_context(explicit, [])),
-	set__singleton_set(VarNonLocals, Var),
-	instmap_delta_from_assoc_list([Var - Inst],
-		VarInstMapDelta),
-	goal_info_init(VarNonLocals, VarInstMapDelta, det,
-		VarGoalInfo),
-	Goal = VarUnify - VarGoalInfo.
+	make_string_const_construction(VarValue, Goal, Var,
+		VarTypes0, VarTypes, VarSet0, VarSet1),
+	varset__name_var(VarSet1, Var, VarName, VarSet).
 
 :- pred get_table_var_type(type).
 :- mode get_table_var_type(out) is det.
