@@ -140,8 +140,8 @@
 
 :- implementation.
 
-:- pred code_info__get_stackslot_count(int, code_info, code_info).
-:- mode code_info__get_stackslot_count(out, in, out) is det.
+:- pred code_info__get_var_slot_count(int, code_info, code_info).
+:- mode code_info__get_var_slot_count(out, in, out) is det.
 
 :- pred code_info__get_label_count(int, code_info, code_info).
 :- mode code_info__get_label_count(out, in, out) is det.
@@ -170,25 +170,25 @@
 :- pred code_info__set_fail_stack(fail_stack, code_info, code_info).
 :- mode code_info__set_fail_stack(in, in, out) is det.
 
-:- pred code_info__get_push_count(int, code_info, code_info).
-:- mode code_info__get_push_count(out, in, out) is det.
+:- pred code_info__get_avail_temp_slots(set(lval), code_info, code_info).
+:- mode code_info__get_avail_temp_slots(out, in, out) is det.
 
-:- pred code_info__set_push_count(int, code_info, code_info).
-:- mode code_info__set_push_count(in, in, out) is det.
+:- pred code_info__set_avail_temp_slots(set(lval), code_info, code_info).
+:- mode code_info__set_avail_temp_slots(in, in, out) is det.
 
-:- pred code_info__get_max_push_count(int, code_info, code_info).
-:- mode code_info__get_max_push_count(out, in, out) is det.
+:- pred code_info__get_max_temp_slot_count(int, code_info, code_info).
+:- mode code_info__get_max_temp_slot_count(out, in, out) is det.
 
-:- pred code_info__set_max_push_count(int, code_info, code_info).
-:- mode code_info__set_max_push_count(in, in, out) is det.
+:- pred code_info__set_max_temp_slot_count(int, code_info, code_info).
+:- mode code_info__set_max_temp_slot_count(in, in, out) is det.
 
-:- pred code_info__get_pushed_values(stack(pair(lval, lval_or_ticket)),
+:- pred code_info__get_temps_in_use(map(lval, lval_or_ticket),
 	code_info, code_info).
-:- mode code_info__get_pushed_values(out, in, out) is det.
+:- mode code_info__get_temps_in_use(out, in, out) is det.
 
-:- pred code_info__set_pushed_values(stack(pair(lval, lval_or_ticket)),
+:- pred code_info__set_temps_in_use(map(lval, lval_or_ticket),
 	code_info, code_info).
-:- mode code_info__set_pushed_values(in, in, out) is det.
+:- mode code_info__set_temps_in_use(in, in, out) is det.
 
 :- pred code_info__get_zombies(set(var), code_info, code_info).
 :- mode code_info__get_zombies(out, in, out) is det.
@@ -204,13 +204,11 @@
 	code_info, code_info).
 :- mode code_info__set_resume_point_stack(in, in, out) is det.
 
-:- pred code_info__get_commit_vals(list(pair(lval, lval_or_ticket)),
-	code_info, code_info).
-:- mode code_info__get_commit_vals(out, in, out) is det.
+:- pred code_info__get_commit_triple_count(int, code_info, code_info).
+:- mode code_info__get_commit_triple_count(out, in, out) is det.
 
-:- pred code_info__set_commit_vals(list(pair(lval, lval_or_ticket)),
-	code_info, code_info).
-:- mode code_info__set_commit_vals(in, in, out) is det.
+:- pred code_info__set_commit_triple_count(int, code_info, code_info).
+:- mode code_info__set_commit_triple_count(in, in, out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -241,15 +239,16 @@
 			set(var),	% Variables that are forward live
 					% after this goal
 			instmap,	% insts of variables
-			int,		% The current number of extra
-					% temporary stackslots that have been
-					% pushed during the procedure
+			set(lval),	% Stack variables that have been used
+					% for temporaries and are now again
+					% available for reuse.
 			int,		% The maximum number of extra
 					% temporary stackslots that have been
-					% pushed during the procedure
+					% used during the procedure
 			globals,	% code generation options
-			stack(pair(lval, lval_or_ticket)),
-					% the locations in use on the stack
+			map(lval, lval_or_ticket),
+					% The temp locations in use on the stack
+					% and what they contain (for gc).
 			shape_table,	% Table of shapes.
 			follow_vars,	% Advisory information about where
 					% each variable will be needed next.
@@ -268,12 +267,16 @@
 					% When a variable included in the top
 					% set becomes no longer forward live,
 					% we must save its value to the stack.
-			list(pair(lval, lval_or_ticket))
-					% A list of lvalues (ie curfr, maxfr
-					% and redoip) that get saved onto the
-					% det stack even though the current
-					% context is nondet. We need to store
-					% these for GC purposes.
+			int
+					% A count of how many triples of
+					% curfr, maxfr and redoip are live on
+					% the det stack. These triples are
+					% pushed onto the det stack when
+					% generating code for commits within
+					% model_non procedures. The value
+					% numbering pass and the accurate
+					% garbage collector need to know about
+					% these slots.
 	).
 
 :- type lval_or_ticket  --->	ticket ; lval(lval).
@@ -290,20 +293,21 @@ code_info__init(Varset, Liveness, StackSlots, SaveSuccip, Globals,
 	globals__get_options(Globals, Options),
 	code_exprn__init_state(ArgList, Varset, Options, ExprnInfo),
 	stack__init(Continue),
-	stack__init(PushedVals0),
 	stack__init(ResumeSetStack0),
-	set__init(Zombies),
-	code_info__max_slot(StackSlots, SlotCount0),
+	set__init(AvailSlots0),
+	map__init(TempsInUse0),
+	set__init(Zombies0),
+	code_info__max_var_slot(StackSlots, VarSlotCount0),
 	proc_info_interface_code_model(ProcInfo, CodeModel),
 	(
 		CodeModel = model_non
 	->
-		SlotCount is SlotCount0 + 1
+		VarSlotCount is VarSlotCount0 + 1
 	;
-		SlotCount = SlotCount0
+		VarSlotCount = VarSlotCount0
 	),
 	C = code_info(
-		SlotCount,
+		VarSlotCount,
 		0,
 		Varset,
 		StackSlots,
@@ -317,15 +321,15 @@ code_info__init(Varset, Liveness, StackSlots, SaveSuccip, Globals,
 		ModuleInfo,
 		Liveness,
 		Requests,
-		0,
+		AvailSlots0,
 		0,
 		Globals,
-		PushedVals0,
+		TempsInUse0,
 		Shapes,
 		FollowVars,
-		Zombies,
+		Zombies0,
 		ResumeSetStack0,
-		[]
+		0
 	).
 
 	% XXX This should be in arg_info.m.
@@ -348,7 +352,7 @@ code_info__build_input_arg_list([V - Arg | Rest0], VarArgs) :-
 
 %---------------------------------------------------------------------------%
 
-code_info__get_stackslot_count(A, CI, CI) :-
+code_info__get_var_slot_count(A, CI, CI) :-
 	CI = code_info(A, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
 		_, _, _, _).
 
@@ -404,11 +408,11 @@ code_info__get_instmap(N, CI, CI) :-
 	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, _, N, _, _, _, _, _,
 		_, _, _, _).
 
-code_info__get_push_count(O, CI, CI) :-
+code_info__get_avail_temp_slots(O, CI, CI) :-
 	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, _, _, O, _, _, _, _,
 		_, _, _, _).
 
-code_info__get_max_push_count(P, CI, CI) :-
+code_info__get_max_temp_slot_count(P, CI, CI) :-
 	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, P, _, _, _,
 		_, _, _, _).
 
@@ -416,7 +420,7 @@ code_info__get_globals(Q, CI, CI) :-
 	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, Q, _, _,
 		_, _, _, _).
 
-code_info__get_pushed_values(R, CI, CI) :-
+code_info__get_temps_in_use(R, CI, CI) :-
 	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, R, _,
 		_, _, _, _).
 
@@ -436,74 +440,79 @@ code_info__get_resume_point_stack(V, CI, CI) :-
 	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
 		_, _, V, _).
 
-code_info__get_commit_vals(W, CI, CI) :-
+code_info__get_commit_triple_count(W, CI, CI) :-
 	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
 		_, _, _, W).
 
 % :- type code_info	--->
-% 		code_info(
-% 	A		int,		% The number of stack slots allocated.
-% 					% for storing variables.
-% 					% (Some extra stack slots are used
-% 					% for saving and restoring registers.)
-% 	B		int,		% Counter for the local labels used
-% 					% by this procedure.
-% 	C		varset,		% The variables in this procedure.
-% 	D		stack_slots,	% The map giving the stack slot
-% 					% to be used for each variable
-% 					% that will ever need to be stored
-% 					% on the stack.
-% 	E		pred_id,	% The label of the current predicate.
-% 	F		proc_id,	% The label of the current procedure.
-% 	G		int,		% Counter for cells in this proc.
-% 	H		exprn_info,	% A map storing the information about
-% 					% the status of each variable.
-% 	I		proc_info,	% The proc_info for the this procedure.
-% 	J		bool,		% do we need to store succip?
-% 	K		fail_stack,	% The failure continuation stack
-% 	L		module_info,	% The module_info structure - you just
-% 					% never know when you might need it.
-% 					% It should be read-only.
-% 	M		set(var),	% Variables that are forward live
-% 					% after this goal
-% 	N		instmap,	% insts of variables
-% 	O		int,		% The current number of extra
-% 					% temporary stackslots that have been
-% 					% pushed during the procedure
-% 	P		int,		% The maximum number of extra
-% 					% temporary stackslots that have been
-% 					% pushed during the procedure
-% 	Q		globals,	% code generation options
-% 	R		stack(pair(lval, lval_or_ticket)),
-% 					% the locations in use on the stack
-% 	S		shape_table,	% Table of shapes.
-% 	T		follow_vars,	% Advisory information about where
-% 					% each variable will be needed next.
-% 	U		set(var),	% Zombie variables; variables that have
-% 					% been killed but are protected by a
-% 					% resume point.
-% 	V		stack(set(var)),
-% 					% Each resumption point has an
-% 					% associated set of variables
-% 					% whose values may be needed on
-% 					% resumption at that point.
-% 					% This field gives those variables
-% 					% for a nested set of resumption
-% 					% points. Each element must be
-% 					% a superset of the ones below.
-% 					% When a variable included in the top
-% 					% set becomes no longer forward live,
-% 					% we must save its value to the stack.
-% 	W		list(pair(lval, lval_or_ticket))
-% 					% A list of lvalues (ie curfr, maxfr
-% 					% and redoip) that get saved onto the
-% 					% det stack even though the current
-% 					% context is nondet. We need to store
-% 					% these for GC purposes.
-% 	).
-
+%		code_info(
+%	A		int,		% The number of stack slots allocated.
+%					% for storing variables.
+%					% (Some extra stack slots are used
+%					% for saving and restoring registers.)
+%	B		int,		% Counter for the local labels used
+%					% by this procedure.
+%	C		varset,		% The variables in this procedure.
+%	D		stack_slots,	% The map giving the stack slot
+%					% to be used for each variable
+%					% that will ever need to be stored
+%					% on the stack.
+%	E		pred_id,	% The label of the current predicate.
+%	F		proc_id,	% The label of the current procedure.
+%	G		int,		% Counter for cells in this proc.
+%	H		exprn_info,	% A map storing the information about
+%					% the status of each variable.
+%	I		proc_info,	% The proc_info for the this procedure.
+%	J		bool,		% do we need to store succip?
+%	K		fail_stack,	% The failure continuation stack
+%	L		module_info,	% The module_info structure - you just
+%					% never know when you might need it.
+%					% It should be read-only.
+%	M		set(var),	% Variables that are forward live
+%					% after this goal
+%	N		instmap,	% insts of variables
+%	O		set(lval),	% Stack variables that have been used
+%					% for temporaries and are now again
+%					% available for reuse.
+%	P		int,		% The maximum number of extra
+%					% temporary stackslots that have been
+%					% used during the procedure
+%	Q		globals,	% code generation options
+%	R		map(lval, lval_or_ticket),
+%					% The temp locations in use on the stack
+%					% and what they contain (for gc).
+%	S		shape_table,	% Table of shapes.
+%	T		follow_vars,	% Advisory information about where
+%					% each variable will be needed next.
+%	U		set(var),	% Zombie variables; variables that have
+%					% been killed but are protected by a
+%					% resume point.
+%	V		stack(set(var)),
+%					% Each resumption point has an
+%					% associated set of variables
+%					% whose values may be needed on
+%					% resumption at that point.
+%					% This field gives those variables
+%					% for a nested set of resumption
+%					% points. Each element must be
+%					% a superset of the ones below.
+%					% When a variable included in the top
+%					% set becomes no longer forward live,
+%					% we must save its value to the stack.
+%	W		int,
+%					% A count of how many triples of
+%					% curfr, maxfr and redoip are live on
+%					% the det stack. These triples are
+%					% pushed onto the det stack when
+%					% generating code for commits within
+%					% model_non procedures. The value
+%					% numbering pass and the accurate
+%					% garbage collector need to know about
+%					% these slots.
+%	).
+%
 % we don't need
-% code_info__set_stackslot_count
+% code_info__set_var_slot_count
 % code_info__set_varset
 % code_info__set_pred_id
 % code_info__set_proc_id
@@ -553,20 +562,19 @@ code_info__set_instmap(N, CI0, CI) :-
 	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
 		R, S, T, U, V, W).
 
-code_info__set_push_count(O, CI0, CI) :-
-	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, _, P0, Q,
+code_info__set_avail_temp_slots(O, CI0, CI) :-
+	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, _, P, Q,
 		R, S, T, U, V, W),
-	int__max(P0, O, P),
 	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
 		R, S, T, U, V, W).
 
-code_info__set_max_push_count(P, CI0, CI) :-
+code_info__set_max_temp_slot_count(P, CI0, CI) :-
 	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, _, Q,
 		R, S, T, U, V, W),
 	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
 		R, S, T, U, V, W).
 
-code_info__set_pushed_values(R, CI0, CI) :-
+code_info__set_temps_in_use(R, CI0, CI) :-
 	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
 		_, S, T, U, V, W),
 	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
@@ -596,7 +604,7 @@ code_info__set_resume_point_stack(V, CI0, CI) :-
 	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
 		R, S, T, U, V, W).
 
-code_info__set_commit_vals(W, CI0, CI) :-
+code_info__set_commit_triple_count(W, CI0, CI) :-
 	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
 		R, S, T, U, V, _),
 	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,
@@ -721,11 +729,11 @@ code_info__set_commit_vals(W, CI0, CI) :-
 :- pred code_info__current_resume_point_vars(set(var), code_info, code_info).
 :- mode code_info__current_resume_point_vars(out, in, out) is det.
 
-:- pred code_info__add_commit_val(lval, lval, code_info, code_info).
-:- mode code_info__add_commit_val(in, in, in, out) is det.
+:- pred code_info__add_commit_triple(code_info, code_info).
+:- mode code_info__add_commit_triple(in, out) is det.
 
-:- pred code_info__rem_commit_val(code_info, code_info).
-:- mode code_info__rem_commit_val(in, out) is det.
+:- pred code_info__rem_commit_triple(code_info, code_info).
+:- mode code_info__rem_commit_triple(in, out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -898,19 +906,15 @@ code_info__pop_resume_point_vars -->
 
 %---------------------------------------------------------------------------%
 
-code_info__add_commit_val(Item, StackVar) -->
-	code_info__get_commit_vals(Stack0),
-	code_info__set_commit_vals([StackVar - lval(Item) | Stack0]).
+code_info__add_commit_triple -->
+	code_info__get_commit_triple_count(Count0),
+	{ Count is Count0 + 1 },
+	code_info__set_commit_triple_count(Count).
 
-code_info__rem_commit_val -->
-	code_info__get_commit_vals(Stack0),
-	(
-		{ Stack0 = [_ | Stack] },
-		code_info__set_commit_vals(Stack)
-	;
-		{ Stack0 = [] },
-		{ error("code_info__rem_commit_val: Empty list") }
-	).
+code_info__rem_commit_triple -->
+	code_info__get_commit_triple_count(Count0),
+	{ Count is Count0 - 1 },
+	code_info__set_commit_triple_count(Count).
 
 %---------------------------------------------------------------------------%
 
@@ -927,8 +931,8 @@ code_info__slap_code_info(C0, C1, C) :-
 	code_info__set_succip_used(S, C2, C3),
 	code_info__get_fail_stack(J, C0, _),
 	code_info__set_fail_stack(J, C3, C4),
-	code_info__get_max_push_count(PC, C1, _),
-	code_info__set_max_push_count(PC, C4, C5),
+	code_info__get_max_temp_slot_count(PC, C1, _),
+	code_info__set_max_temp_slot_count(PC, C4, C5),
 	code_info__get_shapes(Shapes, C1, _),
 	code_info__set_shapes(Shapes, C5, C).
 
@@ -1041,31 +1045,40 @@ code_info__succip_is_used -->
 :- pred code_info__do_soft_cut(lval, code_tree, code_info, code_info).
 :- mode code_info__do_soft_cut(in, out, in, out) is det.
 
-	% `semi_pre_commit' and `semi_commit' should be generated as a pair
-	% surrounding a nondet goal.
+	% `generate_semi_pre_commit' and `generate_semi_commit' should be
+	% called before and after generating the code for the nondet goal
+	% being cut across. If the goal succeeds, the `commit' will cut
+	% any choice points generated in the goal.
 	%
 	% `generate_semi_pre_commit' returns a label (a failure cont label)
-	% which should be passed to `generate_semi_commit'.
-	% If the goal succeeds, the `commit' will cut any choice points
-	% generated in the goal.
+	% and a tuple of stack slots; both of these should be passed to
+	% `generate_semi_commit'.
 
-:- pred code_info__generate_semi_pre_commit(label, code_tree,
+:- pred code_info__generate_semi_pre_commit(label, commit_slots, code_tree,
 	code_info, code_info).
-:- mode code_info__generate_semi_pre_commit(out, out, in, out) is det.
+:- mode code_info__generate_semi_pre_commit(out, out, out, in, out) is det.
 
-:- pred code_info__generate_semi_commit(label, code_tree, code_info, code_info).
-:- mode code_info__generate_semi_commit(in, out, in, out) is det.
+:- pred code_info__generate_semi_commit(label, commit_slots, code_tree,
+	code_info, code_info).
+:- mode code_info__generate_semi_commit(in, in, out, in, out) is det.
 
-	% `det_pre_commit' and `det_commit' should be generated as a pair
-	% surrounding a multidet goal.
-	% After the goal succeeds, the `commit' will cut any choice points
-	% generated in the goal.
+	% `generate_det_pre_commit' and `generate_det_commit' should be
+	% called before and after generating the code for the multi goal
+	% being cut across. If the goal succeeds, the `commit' will cut
+	% any choice points generated in the goal.
+	%
+	% `generate_det_pre_commit' returns a tuple of stack slots, which
+	% should be passed to `generate_det_commit'.
 
-:- pred code_info__generate_det_pre_commit(code_tree, code_info, code_info).
-:- mode code_info__generate_det_pre_commit(out, in, out) is det.
+:- pred code_info__generate_det_pre_commit(commit_slots, code_tree,
+	code_info, code_info).
+:- mode code_info__generate_det_pre_commit(out, out, in, out) is det.
 
-:- pred code_info__generate_det_commit(code_tree, code_info, code_info).
-:- mode code_info__generate_det_commit(out, in, out) is det.
+:- pred code_info__generate_det_commit(commit_slots, code_tree,
+	code_info, code_info).
+:- mode code_info__generate_det_commit(in, out, in, out) is det.
+
+:- type commit_slots	--->	commit_slots(lval, lval, lval).
 
 %---------------------------------------------------------------------------%
 
@@ -1792,8 +1805,8 @@ code_info__do_soft_cut(TheFrame, Code) -->
 
 %---------------------------------------------------------------------------%
 
-code_info__generate_semi_pre_commit(RedoLabel, PreCommit) -->
-	code_info__generate_pre_commit_saves(SaveCode),
+code_info__generate_semi_pre_commit(RedoLabel, Slots, PreCommit) -->
+	code_info__generate_pre_commit_saves(Slots, SaveCode),
 	code_info__top_failure_cont(FailureCont0),
 	{ FailureCont0 = failure_cont(_, FailureMap0) },
 	code_info__clone_resume_maps(FailureMap0, FailureMap),
@@ -1807,7 +1820,7 @@ code_info__generate_semi_pre_commit(RedoLabel, PreCommit) -->
 	]) },
 	{ PreCommit = tree(SaveCode, HijackCode) }.
 
-code_info__generate_semi_commit(RedoLabel, Commit) -->
+code_info__generate_semi_commit(RedoLabel, Slots, Commit) -->
 	code_info__get_next_label(SuccLabel),
 	{ GotoSuccLabel = node([
 		goto(label(SuccLabel)) - "Jump to success continuation"
@@ -1828,7 +1841,7 @@ code_info__generate_semi_commit(RedoLabel, Commit) -->
 	code_info__slap_code_info(CodeInfo0),
 	code_info__pop_failure_cont,
 
-	code_info__undo_pre_commit_saves(RestoreMaxfr, RestoreRedoip,
+	code_info__undo_pre_commit_saves(Slots, RestoreMaxfr, RestoreRedoip,
 		RestoreCurfr, PopCode),
 
 	{ SuccessCode =
@@ -1854,8 +1867,8 @@ code_info__generate_semi_commit(RedoLabel, Commit) -->
 
 %---------------------------------------------------------------------------%
 
-code_info__generate_det_pre_commit(PreCommit) -->
-	code_info__generate_pre_commit_saves(PreCommit),
+code_info__generate_det_pre_commit(Slots, PreCommit) -->
+	code_info__generate_pre_commit_saves(Slots, PreCommit),
 	% Since the code we are cutting is model_non, it will call
 	% unset_failure_cont. If the current top entry on the failure stack
 	% at the time is semidet, this would cause unset_failure_cont to abort.
@@ -1867,10 +1880,10 @@ code_info__generate_det_pre_commit(PreCommit) -->
 		stack_only(Empty, do_fail)) },
 	code_info__push_failure_cont(FailureCont).
 
-code_info__generate_det_commit(Commit) -->
+code_info__generate_det_commit(Slots, Commit) -->
 	% Remove the dummy failure continuation pushed by det_pre_commit.
 	code_info__pop_failure_cont,
-	code_info__undo_pre_commit_saves(RestoreMaxfr, RestoreRedoip,
+	code_info__undo_pre_commit_saves(Slots, RestoreMaxfr, RestoreRedoip,
 		RestoreCurfr, PopCode),
 	{ Commit = tree(RestoreMaxfr,
 		   tree(RestoreRedoip,
@@ -1880,10 +1893,11 @@ code_info__generate_det_commit(Commit) -->
 
 %---------------------------------------------------------------------------%
 
-:- pred code_info__generate_pre_commit_saves(code_tree, code_info, code_info).
-:- mode code_info__generate_pre_commit_saves(out, in, out) is det.
+:- pred code_info__generate_pre_commit_saves(commit_slots, code_tree,
+	code_info, code_info).
+:- mode code_info__generate_pre_commit_saves(out, out, in, out) is det.
 
-code_info__generate_pre_commit_saves(Code) -->
+code_info__generate_pre_commit_saves(Slots, Code) -->
 	code_info__get_proc_model(CodeModel),
 	( { CodeModel = model_non } ->
 		% the pushes and pops on the det stack below will cause
@@ -1901,14 +1915,15 @@ code_info__generate_pre_commit_saves(Code) -->
 		{ CurfrSlot = stackvar(1) },
 		{ MaxfrSlot = stackvar(2) },
 		{ RedoipSlot = stackvar(3) },
-		code_info__add_commit_val(curfr, CurfrSlot),
-		code_info__add_commit_val(maxfr, MaxfrSlot),
-		code_info__add_commit_val(redoip(lval(maxfr)), RedoipSlot)
+		{ Slots = commit_slots(CurfrSlot, MaxfrSlot, RedoipSlot) },
+		code_info__add_commit_triple
 	;
 		{ PushCode = empty },
-		code_info__push_temp(lval(curfr), CurfrSlot),
-		code_info__push_temp(lval(maxfr), MaxfrSlot),
-		code_info__push_temp(lval(redoip(lval(maxfr))), RedoipSlot)
+		code_info__acquire_temp_slot(lval(curfr), CurfrSlot),
+		code_info__acquire_temp_slot(lval(maxfr), MaxfrSlot),
+		code_info__acquire_temp_slot(lval(redoip(lval(maxfr))),
+			RedoipSlot),
+		{ Slots = commit_slots(CurfrSlot, MaxfrSlot, RedoipSlot) }
 	),
 	{ SaveCode = node([
 		assign(CurfrSlot, lval(curfr)) -
@@ -1920,28 +1935,14 @@ code_info__generate_pre_commit_saves(Code) -->
 	]) },
 	{ Code = tree(PushCode, SaveCode) }.
 
-:- pred code_info__undo_pre_commit_saves(code_tree, code_tree,
+:- pred code_info__undo_pre_commit_saves(commit_slots, code_tree, code_tree,
 	code_tree, code_tree, code_info, code_info).
-:- mode code_info__undo_pre_commit_saves(out, out, out, out, in, out) is det.
+:- mode code_info__undo_pre_commit_saves(in, out, out, out, out, in, out)
+	is det.
 
-code_info__undo_pre_commit_saves(RestoreMaxfr, RestoreRedoip,
+code_info__undo_pre_commit_saves(Slots, RestoreMaxfr, RestoreRedoip,
 		RestoreCurfr, PopCode) -->
-	code_info__get_proc_model(CodeModel),
-	( { CodeModel = model_non } ->
-		{ PopCode = node([decr_sp(3) -
-			"pop redoip, maxfr & curfr"]) },
-		{ RedoipSlot = stackvar(3) },
-		{ MaxfrSlot = stackvar(2) },
-		{ CurfrSlot = stackvar(1) },
-		code_info__rem_commit_val,
-		code_info__rem_commit_val,
-		code_info__rem_commit_val
-	;
-		{ PopCode = empty },
-		code_info__pop_temp(RedoipSlot),
-		code_info__pop_temp(MaxfrSlot),
-		code_info__pop_temp(CurfrSlot)
-	),
+	{ Slots = commit_slots(CurfrSlot, MaxfrSlot, RedoipSlot) },
 	{ RestoreMaxfr = node([
 		assign(maxfr, lval(MaxfrSlot)) -
 			"Prune away unwanted choice-points"
@@ -1953,7 +1954,20 @@ code_info__undo_pre_commit_saves(RestoreMaxfr, RestoreRedoip,
 	{ RestoreCurfr = node([
 		assign(curfr, lval(CurfrSlot)) -
 			"Restore nondet frame pointer"
-	]) }.
+	]) },
+	code_info__get_proc_model(CodeModel),
+	( { CodeModel = model_non } ->
+		code_info__rem_commit_triple,
+		{ PopCode = node([
+			decr_sp(3) -
+				"pop curfr, maxfr, and redoip"
+		]) }
+	;
+		code_info__release_temp_slot(CurfrSlot),
+		code_info__release_temp_slot(MaxfrSlot),
+		code_info__release_temp_slot(RedoipSlot),
+		{ PopCode = empty }
+	).
 
 :- pred code_info__clone_resume_maps(resume_maps, resume_maps,
 	code_info, code_info).
@@ -2165,12 +2179,6 @@ code_info__pickup_zombies(Zombies) -->
 	code_info, code_info).
 :- mode code_info__maybe_discard_ticket(in, out, in, out) is det.
 
-:- pred code_info__save_redoip(code_tree, code_info, code_info).
-:- mode code_info__save_redoip(out, in, out) is det.
-
-:- pred code_info__restore_redoip(code_tree, code_info, code_info).
-:- mode code_info__restore_redoip(out, in, out) is det.
-
 :- pred code_info__save_maxfr(lval, code_tree, code_info, code_info).
 :- mode code_info__save_maxfr(out, out, in, out) is det.
 
@@ -2179,19 +2187,14 @@ code_info__pickup_zombies(Zombies) -->
 :- implementation.
 
 code_info__save_hp(Code, HpSlot) -->
-	code_info__push_temp(lval(hp), HpSlot),
+	code_info__acquire_temp_slot(lval(hp), HpSlot),
 	{ Code = node([mark_hp(HpSlot) - "Save heap pointer"]) }.
 
 code_info__restore_hp(HpSlot, Code) -->
 	{ Code = node([restore_hp(lval(HpSlot)) - "Restore heap pointer"]) }.
 
 code_info__discard_hp(HpSlot) -->
-	code_info__get_stack_top(Lval),
-	( { Lval = HpSlot } ->
-		code_info__pop_temp(_)
-	;
-		{ error("improperly nested temp, used for hp") }
-	).
+	code_info__release_temp_slot(HpSlot).
 
 code_info__restore_and_discard_hp(HpSlot, Code) -->
 	{ Code = node([restore_hp(lval(HpSlot)) - "Restore heap pointer"]) },
@@ -2230,31 +2233,21 @@ code_info__maybe_discard_hp(MaybeHpSlot) -->
 % ZZZ
 
 code_info__save_ticket(Code, TicketSlot) -->
-	code_info__push_temp(ticket, TicketSlot),
+	code_info__acquire_temp_slot(ticket, TicketSlot),
 	{ Code = node([store_ticket(TicketSlot) - "Save solver state"]) }.
 
 code_info__restore_ticket(TicketSlot, Code) -->
 	{ Code = node([restore_ticket(lval(TicketSlot)) - "Restore solver state"]) }.
 
 code_info__restore_and_discard_ticket(TicketSlot, Code) -->
-	code_info__get_stack_top(Lval),
-	( { Lval = TicketSlot } ->
-		code_info__pop_temp(_)
-	;
-		{ error("improperly nested temp, used for ticket") }
-	),
-	{ Code = tree(
-		node([restore_ticket(lval(TicketSlot)) - "Restore solver state"]),
-		node([discard_ticket - "Pop ticket stack"]) )
-	}.
+	code_info__release_temp_slot(TicketSlot),
+	{ Code = node([
+		restore_ticket(lval(TicketSlot)) - "Restore solver state",
+		discard_ticket - "Pop ticket stack"
+	]) }.
 
 code_info__discard_ticket(TicketSlot, Code) -->
-	code_info__get_stack_top(Lval),
-	( { Lval = TicketSlot } ->
-		code_info__pop_temp(_)
-	;
-		{ error("improperly nested temp, used for ticket") }
-	),
+	code_info__release_temp_slot(TicketSlot),
 	{ Code = node([discard_ticket - "Pop ticket stack"]) }.
 
 code_info__maybe_save_ticket(Maybe, Code, MaybeTicketSlot) -->
@@ -2287,18 +2280,8 @@ code_info__maybe_discard_ticket(MaybeTicketSlot, Code) -->
 		{ Code = empty }
 	).
 
-code_info__save_redoip(Code) -->
-	code_info__push_temp(lval(redoip(lval(maxfr))), RedoIpSlot),
-	{ Code = node([assign(RedoIpSlot, lval(redoip(lval(maxfr))))
-		- "Save the redoip"]) }.
-
-code_info__restore_redoip(Code) -->
-	code_info__pop_temp(Lval),
-	{ Code = node([assign(redoip(lval(maxfr)), lval(Lval))
-		- "Restore the redoip"]) }.
-
 code_info__save_maxfr(MaxfrSlot, Code) -->
-	code_info__push_temp(lval(maxfr), MaxfrSlot),
+	code_info__acquire_temp_slot(lval(maxfr), MaxfrSlot),
 	{ Code = node([assign(MaxfrSlot, lval(maxfr)) - "Save maxfr"]) }.
 
 %---------------------------------------------------------------------------%
@@ -2638,34 +2621,50 @@ code_info__generate_stack_livevals(Args, LiveVals) -->
 	{ set__difference(Vars0, Args, Vars) },
 	{ set__to_sorted_list(Vars, VarList) },
 	{ set__init(LiveVals0) },
-	code_info__generate_stack_livevals_2(VarList, LiveVals0, LiveVals1),
-	code_info__get_pushed_values(Pushed0),
-	code_info__get_commit_vals(CommitVals),
-	{ stack__push_list(Pushed0, CommitVals, Pushed) },
-	{ code_info__generate_stack_livevals_3(Pushed, LiveVals1, LiveVals) }.
+	code_info__generate_var_livevals(VarList, LiveVals0, LiveVals1),
+	code_info__get_temps_in_use(TempsSet),
+	{ map__to_assoc_list(TempsSet, Temps) },
+	{ code_info__generate_temp_livevals(Temps, LiveVals1, LiveVals2) },
+	code_info__get_commit_triple_count(Triples),
+	{ code_info__generate_commit_livevals(Triples, LiveVals2, LiveVals) }.
 
-:- pred code_info__generate_stack_livevals_2(list(var), set(lval), set(lval),
+:- pred code_info__generate_var_livevals(list(var), set(lval), set(lval),
 	code_info, code_info).
-:- mode code_info__generate_stack_livevals_2(in, in, out, in, out) is det.
+:- mode code_info__generate_var_livevals(in, in, out, in, out) is det.
 
-code_info__generate_stack_livevals_2([], Vals, Vals) --> [].
-code_info__generate_stack_livevals_2([V | Vs], Vals0, Vals) -->
+code_info__generate_var_livevals([], Vals, Vals) --> [].
+code_info__generate_var_livevals([V | Vs], Vals0, Vals) -->
 	code_info__get_variable_slot(V, Slot),
 	{ set__insert(Vals0, Slot, Vals1) },
-	code_info__generate_stack_livevals_2(Vs, Vals1, Vals).
+	code_info__generate_var_livevals(Vs, Vals1, Vals).
 
-:- pred code_info__generate_stack_livevals_3(stack(pair(lval, lval_or_ticket)),
+:- pred code_info__generate_temp_livevals(assoc_list(lval, lval_or_ticket),
 	set(lval), set(lval)).
-:- mode code_info__generate_stack_livevals_3(in, in, out) is det.
+:- mode code_info__generate_temp_livevals(in, in, out) is det.
 
-code_info__generate_stack_livevals_3(Stack0, Vals0, Vals) :-
-	(
-		stack__pop(Stack0, Top - _, Stack1)
-	->
-		set__insert(Vals0, Top, Vals1),
-		code_info__generate_stack_livevals_3(Stack1, Vals1, Vals)
-	;
+code_info__generate_temp_livevals([], Vals, Vals).
+code_info__generate_temp_livevals([Slot - _ | Slots], Vals0, Vals) :-
+	set__insert(Vals0, Slot, Vals1),
+	code_info__generate_temp_livevals(Slots, Vals1, Vals).
+
+:- pred code_info__generate_commit_livevals(int, set(lval), set(lval)).
+:- mode code_info__generate_commit_livevals(in, in, out) is det.
+
+code_info__generate_commit_livevals(Triples0, Vals0, Vals) :-
+	( Triples0 = 0 ->
 		Vals = Vals0
+	;
+		CurfrSlot is (Triples0 - 1) * 3 + 1,
+		MaxfrSlot is (Triples0 - 1) * 3 + 2,
+		RedoipSlot is (Triples0 - 1) * 3 + 3,
+		CurfrVar = stackvar(CurfrSlot),
+		MaxfrVar = stackvar(MaxfrSlot),
+		RedoipVar = stackvar(RedoipSlot),
+		set__insert(Vals0, CurfrVar, Vals1),
+		set__insert(Vals1, MaxfrVar, Vals2),
+		set__insert(Vals2, RedoipVar, Vals3),
+		Triples1 is Triples0 - 1,
+		code_info__generate_commit_livevals(Triples1, Vals3, Vals)
 	).
 
 %---------------------------------------------------------------------------%
@@ -2676,48 +2675,69 @@ code_info__generate_stack_livelvals(Args, LiveVals) -->
 	{ set__difference(Vars0, Args, Vars) },
 	{ set__to_sorted_list(Vars, VarList) },
 	{ set__init(LiveVals0) },
-	code_info__generate_stack_livelvals_2(VarList, LiveVals0, LiveVals1),
+	code_info__generate_var_livelvals(VarList, LiveVals0, LiveVals1),
 	{ set__to_sorted_list(LiveVals1, LiveVals2) },
 	code_info__get_globals(Globals),
 	{ globals__get_gc_method(Globals, GC_Method) },
-	code_info__livevals_to_livelvals(LiveVals2, LiveVals3, GC_Method),
-	code_info__get_pushed_values(Pushed0),
-	code_info__get_commit_vals(CommitVals),
-	{ stack__push_list(Pushed0, CommitVals, Pushed) },
-	{ code_info__generate_stack_livelvals_3(Pushed, LiveVals3, LiveVals) }.
+	code_info__livevals_to_livelvals(LiveVals2, GC_Method, LiveVals3),
+	code_info__get_temps_in_use(TempsSet),
+	{ map__to_assoc_list(TempsSet, Temps) },
+	{ code_info__generate_temp_livelvals(Temps, LiveVals3, LiveVals4) },
+	code_info__get_commit_triple_count(Triples),
+	{ code_info__generate_commit_livelvals(Triples, LiveVals4, LiveVals) }.
 
-:- pred code_info__generate_stack_livelvals_2(list(var),
+:- pred code_info__generate_var_livelvals(list(var),
 	set(pair(lval, var)), set(pair(lval, var)), code_info, code_info).
-:- mode code_info__generate_stack_livelvals_2(in, in, out, in, out) is det.
+:- mode code_info__generate_var_livelvals(in, in, out, in, out) is det.
 
-code_info__generate_stack_livelvals_2([], Vals, Vals) --> [].
-code_info__generate_stack_livelvals_2([V | Vs], Vals0, Vals) -->
+code_info__generate_var_livelvals([], Vals, Vals) --> [].
+code_info__generate_var_livelvals([V | Vs], Vals0, Vals) -->
 	code_info__get_variable_slot(V, Slot),
 	{ set__insert(Vals0, Slot - V, Vals1) },
-	code_info__generate_stack_livelvals_2(Vs, Vals1, Vals).
+	code_info__generate_var_livelvals(Vs, Vals1, Vals).
 
-:- pred code_info__generate_stack_livelvals_3(stack(pair(lval,
-	lval_or_ticket)), list(liveinfo), list(liveinfo)).
-:- mode code_info__generate_stack_livelvals_3(in, in, out) is det.
+:- pred code_info__generate_temp_livelvals(assoc_list(lval, lval_or_ticket),
+	list(liveinfo), list(liveinfo)).
+:- mode code_info__generate_temp_livelvals(in, in, out) is det.
 
-code_info__generate_stack_livelvals_3(Stack0, LiveInfo0, LiveInfo) :-
-	(
-		stack__pop(Stack0, Top - StoredLval , Stack1)
-	->
-		code_info__get_shape_num(StoredLval, S_Num),
-		LiveInfo = [live_lvalue(Top, S_Num, no) | Lives],
-		code_info__generate_stack_livelvals_3(Stack1, LiveInfo0, Lives)
-	;
+code_info__generate_temp_livelvals([], LiveInfo, LiveInfo).
+code_info__generate_temp_livelvals([Slot - StoredLval | Slots],
+		LiveInfo0, [live_lvalue(Slot, S_Num, no) | LiveInfo1]) :-
+	code_info__get_shape_num(StoredLval, S_Num),
+	code_info__generate_temp_livelvals(Slots, LiveInfo0, LiveInfo1).
+
+:- pred code_info__generate_commit_livelvals(int,
+	list(liveinfo), list(liveinfo)).
+:- mode code_info__generate_commit_livelvals(in, in, out) is det.
+
+code_info__generate_commit_livelvals(Triples0, LiveInfo0, LiveInfo) :-
+	( Triples0 = 0 ->
 		LiveInfo = LiveInfo0
+	;
+		Triples1 is Triples0 - 1,
+		code_info__generate_commit_livelvals(Triples1,
+			LiveInfo0, LiveInfo1),
+		CurfrSlot is (Triples0 - 1) * 3 + 1,
+		MaxfrSlot is (Triples0 - 1) * 3 + 2,
+		RedoipSlot is (Triples0 - 1) * 3 + 3,
+		CurfrVar = stackvar(CurfrSlot),
+		MaxfrVar = stackvar(MaxfrSlot),
+		RedoipVar = stackvar(RedoipSlot),
+		code_info__get_shape_num(lval(curfr), CurfrSnum),
+		code_info__get_shape_num(lval(maxfr), MaxfrSnum),
+		code_info__get_shape_num(lval(redoip(lval(maxfr))), RedoipSnum),
+		LiveInfo2 = [live_lvalue(CurfrVar, CurfrSnum, no) | LiveInfo1],
+		LiveInfo3 = [live_lvalue(MaxfrVar, MaxfrSnum, no) | LiveInfo2],
+		LiveInfo  = [live_lvalue(RedoipVar, RedoipSnum, no) | LiveInfo3]
 	).
 
-:- pred code_info__livevals_to_livelvals(list(pair(lval, var)),
-	list(liveinfo), gc_method, code_info, code_info).
-:- mode code_info__livevals_to_livelvals(in, out, in, in, out) is det.
+:- pred code_info__livevals_to_livelvals(assoc_list(lval, var), gc_method,
+	list(liveinfo), code_info, code_info).
+:- mode code_info__livevals_to_livelvals(in, in, out, in, out) is det.
 
-code_info__livevals_to_livelvals([], [], _GC_Method, C, C).
-code_info__livevals_to_livelvals([L - V | Ls],
-		[live_lvalue(L, num(S_Num), TypeParams) | Lives], GC_Method) -->
+code_info__livevals_to_livelvals([], _GC_Method, []) --> [].
+code_info__livevals_to_livelvals([L - V | Ls], GC_Method,
+		[live_lvalue(L, num(S_Num), TypeParams) | Lives]) -->
 	(
 		{ GC_Method = accurate }
 	->
@@ -2746,7 +2766,7 @@ code_info__livevals_to_livelvals([L - V | Ls],
 		{ TypeParams = no },
 		{ S_Num = 0 }
 	),
-	code_info__livevals_to_livelvals(Ls, Lives, GC_Method).
+	code_info__livevals_to_livelvals(Ls, GC_Method, Lives).
 
 :- pred code_info__get_shape_num(lval_or_ticket, shape_num).
 :- mode code_info__get_shape_num(in, out) is det.
@@ -2813,66 +2833,46 @@ code_info__get_shape_num(ticket, ticket).
 
 :- implementation.
 
-:- pred code_info__push_temp(lval_or_ticket, lval, code_info, code_info).
-:- mode code_info__push_temp(in, out, in, out) is det.
+:- pred code_info__acquire_temp_slot(lval_or_ticket, lval,
+	code_info, code_info).
+:- mode code_info__acquire_temp_slot(in, out, in, out) is det.
 
-:- pred code_info__pop_temp(lval, code_info, code_info).
-:- mode code_info__pop_temp(out, in, out) is det.
-
-:- pred code_info__get_stack_top(lval, code_info, code_info).
-:- mode code_info__get_stack_top(out, in, out) is det.
-
-:- pred code_info__pop_stack(code_tree, code_info, code_info).
-:- mode code_info__pop_stack(out, in, out) is det.
+:- pred code_info__release_temp_slot(lval, code_info, code_info).
+:- mode code_info__release_temp_slot(in, in, out) is det.
 
 :- pred code_info__get_variable_slot(var, lval, code_info, code_info).
 :- mode code_info__get_variable_slot(in, out, in, out) is det.
 
-:- pred code_info__max_slot(stack_slots, int).
-:- mode code_info__max_slot(in, out) is det.
+:- pred code_info__max_var_slot(stack_slots, int).
+:- mode code_info__max_var_slot(in, out) is det.
 
 :- pred code_info__stack_variable(int, lval, code_info, code_info).
 :- mode code_info__stack_variable(in, out, in, out) is det.
 
-code_info__push_temp(Item, StackVar) -->
-	code_info__get_push_count(Count0),
-	{ Count is Count0 + 1 },
-	code_info__set_push_count(Count),
-	code_info__get_stackslot_count(NumSlots),
-	{ Slot is Count + NumSlots },
-	code_info__stack_variable(Slot, StackVar),
-	code_info__get_pushed_values(VStack0),
-	{ stack__push(VStack0, StackVar - Item, VStack) },
-	code_info__set_pushed_values(VStack).
+code_info__acquire_temp_slot(Item, StackVar) -->
+	code_info__get_avail_temp_slots(AvailSlots0),
+	( { set__remove_least(AvailSlots0, StackVarPrime, AvailSlots) } ->
+		{ StackVar = StackVarPrime },
+		code_info__set_avail_temp_slots(AvailSlots)
+	;
+		code_info__get_var_slot_count(VarSlots),
+		code_info__get_max_temp_slot_count(TempSlots0),
+		{ TempSlots is TempSlots0 + 1 },
+		{ Slot is VarSlots + TempSlots },
+		code_info__stack_variable(Slot, StackVar),
+		code_info__set_max_temp_slot_count(TempSlots)
+	),
+	code_info__get_temps_in_use(TempsInUse0),
+	{ map__det_insert(TempsInUse0, StackVar, Item, TempsInUse) },
+	code_info__set_temps_in_use(TempsInUse).
 
-	% `pop_stack' and `pop_temp' don't actually decrement the stack
-	% pointer, they just decrement the push count.  The space will
-	% be deallocated in the procedure epilogue.
-
-code_info__pop_stack(empty) -->
-	code_info__get_push_count(Count0),
-	{ Count is Count0 - 1 },
-	code_info__set_push_count(Count),
-	code_info__get_pushed_values(VStack0),
-	{ stack__pop_det(VStack0, _, VStack) },
-	code_info__set_pushed_values(VStack).
-
-code_info__pop_temp(StackVar) -->
-	code_info__get_push_count(Count0),
-	{ Count is Count0 - 1 },
-	code_info__set_push_count(Count),
-	code_info__get_pushed_values(VStack0),
-	{ stack__pop_det(VStack0, _, VStack) },
-	code_info__set_pushed_values(VStack),
-	code_info__get_stackslot_count(NumSlots),
-	{ Slot is Count0 + NumSlots },
-	code_info__stack_variable(Slot, StackVar).
-
-code_info__get_stack_top(StackVar) -->
-	code_info__get_push_count(Count),
-	code_info__get_stackslot_count(NumSlots),
-	{ Slot is Count + NumSlots },
-	code_info__stack_variable(Slot, StackVar).
+code_info__release_temp_slot(StackVar) -->
+	code_info__get_avail_temp_slots(AvailSlots0),
+	{ set__insert(AvailSlots0, StackVar, AvailSlots) },
+	code_info__set_avail_temp_slots(AvailSlots),
+	code_info__get_temps_in_use(TempsInUse0),
+	{ map__delete(TempsInUse0, StackVar, TempsInUse) },
+	code_info__set_temps_in_use(TempsInUse).
 
 %---------------------------------------------------------------------------%
 
@@ -2890,15 +2890,15 @@ code_info__get_variable_slot(Var, Slot) -->
 		{ error(Str) }
 	).
 
-code_info__max_slot(StackSlots, SlotCount) :-
+code_info__max_var_slot(StackSlots, SlotCount) :-
 	map__values(StackSlots, StackSlotList),
-	code_info__max_slot_2(StackSlotList, 0, SlotCount).
+	code_info__max_var_slot_2(StackSlotList, 0, SlotCount).
 
-:- pred code_info__max_slot_2(list(lval), int, int).
-:- mode code_info__max_slot_2(in, in, out) is det.
+:- pred code_info__max_var_slot_2(list(lval), int, int).
+:- mode code_info__max_var_slot_2(in, in, out) is det.
 
-code_info__max_slot_2([], Max, Max).
-code_info__max_slot_2([L | Ls], Max0, Max) :-
+code_info__max_var_slot_2([], Max, Max).
+code_info__max_var_slot_2([L | Ls], Max0, Max) :-
 	( L = stackvar(N) ->
 		int__max(N, Max0, Max1)
 	; L = framevar(N) ->
@@ -2906,11 +2906,11 @@ code_info__max_slot_2([L | Ls], Max0, Max) :-
 	;
 		Max1 = Max0
 	),
-	code_info__max_slot_2(Ls, Max1, Max).
+	code_info__max_var_slot_2(Ls, Max1, Max).
 
 code_info__get_total_stackslot_count(NumSlots) -->
-	code_info__get_stackslot_count(SlotsForVars),
-	code_info__get_max_push_count(SlotsForTemps),
+	code_info__get_var_slot_count(SlotsForVars),
+	code_info__get_max_temp_slot_count(SlotsForTemps),
 	{ NumSlots is SlotsForVars + SlotsForTemps }.
 
 code_info__stack_variable(Num, Lval) -->

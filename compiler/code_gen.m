@@ -674,9 +674,9 @@ code_gen__generate_det_goal_2(some(_Vars, Goal), _GoalInfo, Instr) -->
 		{ error("semidet model in det context") }
 	;
 		{ CodeModel = model_non },
-		code_info__generate_det_pre_commit(PreCommit),
+		code_info__generate_det_pre_commit(Slots, PreCommit),
 		code_gen__generate_goal(model_non, Goal, GoalCode),
-		code_info__generate_det_commit(Commit),
+		code_info__generate_det_commit(Slots, Commit),
 		{ Instr = tree(PreCommit, tree(GoalCode, Commit)) }
 	).
 code_gen__generate_det_goal_2(disj(Goals, StoreMap), _GoalInfo, Instr) -->
@@ -753,9 +753,9 @@ code_gen__generate_semi_goal_2(some(_Vars, Goal), _GoalInfo, Code) -->
 		code_gen__generate_goal(model_semi, Goal, Code)
 	;
 		{ CodeModel = model_non },
-		code_info__generate_semi_pre_commit(Label, PreCommit),
+		code_info__generate_semi_pre_commit(Label, Slots, PreCommit),
 		code_gen__generate_goal(model_non, Goal, GoalCode),
-		code_info__generate_semi_commit(Label, Commit),
+		code_info__generate_semi_commit(Label, Slots, Commit),
 		{ Code = tree(PreCommit, tree(GoalCode, Commit)) }
 	).
 code_gen__generate_semi_goal_2(disj(Goals, StoreMap), _GoalInfo, Code) -->
