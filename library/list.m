@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-2001 The University of Melbourne.
+% Copyright (C) 1993-2002 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -682,7 +682,7 @@
 	% calling error/1 if List is empty.
 :- func list__det_head(list(T)) = T.
 
-	% list__det_head(List) returns the tail of List,
+	% list__det_tail(List) returns the tail of List,
 	% calling error/1 if List is empty.
 :- func list__det_tail(list(T)) = list(T).
 
