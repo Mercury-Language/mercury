@@ -479,6 +479,13 @@ case $COMPILER in gcc)
 	esac ;;
 esac
 
+# `-I-' stops GCC searching in the user's include directories
+# for system header files. For example, it stops GCC finding
+# library/math.h instead of /usr/include/math.h. C compilers
+# which don't support `-I-' should harmlessly misinterpret this
+# as a search directory `-'.
+OVERRIDE_OPTS="$OVERRIDE_OPTS -I-"
+
 #
 # On sparc-sun-solaris2, we need to use -fPIC rather than -fpic if we're
 # using grade `none', because otherwise the Mercury standard library
@@ -501,7 +508,9 @@ case $assemble in true)
 esac
 
 
-ALL_CC_OPTS="$MERC_ALL_C_INCL_DIRS $ANSI_OPTS $CHECK_OPTS $OPT_OPTS \
+# The `-I-' option in $OVERRIDE_OPTS stops GCC searching the current
+# directory first, so add it back here.
+ALL_CC_OPTS="-I. $MERC_ALL_C_INCL_DIRS $ANSI_OPTS $CHECK_OPTS $OPT_OPTS \
 		$HLC_OPTS $HLD_OPTS $GCC_OPTS $GC_OPTS $DEFINE_OPTS \
 		$TRACE_OPTS $STACK_TRACE_OPTS $LLDEBUG_OPTS $C_DEBUG_OPTS \
 		$PROF_TIME_OPTS $PROF_CALLS_OPTS $PROF_MEMORY_OPTS \
