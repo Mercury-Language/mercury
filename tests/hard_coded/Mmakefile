@@ -61,8 +61,12 @@ PROGS=	\
 	string_loop \
 	test_imported_no_tag \
 	tim_qual1 \
+	typeclass_test_6 \
 	write \
 	write_reg1
+
+# we do not yet pass the following tests:
+#	typeclass_test_5.m (this is really a WISHLIST item)
 
 #-----------------------------------------------------------------------------#
 

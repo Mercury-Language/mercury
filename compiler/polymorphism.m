@@ -581,15 +581,15 @@ polymorphism__process_goal_expr(call(PredId0, ProcId0, ArgVars0,
 	->
 		{ classify_type(Type, ModuleInfo, TypeCategory) },
 		{ polymorphism__get_special_proc(TypeCategory, Type,
-			SpecialPredId, ModuleInfo, Name, PredId, ProcId) }
+			SpecialPredId, ModuleInfo, Name, PredId1, ProcId1) }
 	;
-		{ PredId = PredId0 },
-		{ ProcId = ProcId0 },
+		{ PredId1 = PredId0 },
+		{ ProcId1 = ProcId0 },
 		{ Name = Name0 }
 	),
 
-	polymorphism__process_call(PredId, ProcId, ArgVars0,
-		ArgVars, ExtraVars, ExtraGoals),
+	polymorphism__process_call(PredId1, ProcId1, ArgVars0,
+		PredId, ProcId, ArgVars, ExtraVars, ExtraGoals),
 	{ goal_info_get_nonlocals(GoalInfo, NonLocals0) },
 	{ set__insert_list(NonLocals0, ExtraVars, NonLocals) },
 	{ goal_info_set_nonlocals(GoalInfo, NonLocals, CallGoalInfo) },
@@ -744,11 +744,11 @@ polymorphism__process_goal_expr(if_then_else(Vars, A0, B0, C0, SM), GoalInfo,
 	polymorphism__process_goal(B0, B),
 	polymorphism__process_goal(C0, C).
 
-polymorphism__process_goal_expr(pragma_c_code(IsRecursive, PredId, ProcId,
+polymorphism__process_goal_expr(pragma_c_code(IsRecursive, PredId0, ProcId0,
 		ArgVars0, ArgInfo0, OrigArgTypes0, PragmaCode),
 		GoalInfo, Goal) -->
-	polymorphism__process_call(PredId, ProcId, ArgVars0,
-		ArgVars, ExtraVars, ExtraGoals),
+	polymorphism__process_call(PredId0, ProcId0, ArgVars0,
+		PredId, ProcId, ArgVars, ExtraVars, ExtraGoals),
 	%
 	% update the non-locals
 	%
@@ -831,17 +831,19 @@ polymorphism__process_case_list([Case0 | Cases0], [Case | Cases]) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred polymorphism__process_call(pred_id, proc_id, list(var), list(var),
+:- pred polymorphism__process_call(pred_id, proc_id, list(var),
+					pred_id, proc_id, list(var),
 					list(var), list(hlds_goal),
 					poly_info, poly_info).
-:- mode polymorphism__process_call(in, in, in, out, out, out, in, out) is det.
+:- mode polymorphism__process_call(in, in, in, out, out, out, out, out,
+					in, out) is det.
 
-polymorphism__process_call(PredId, _ProcId, ArgVars0, ArgVars,
+polymorphism__process_call(PredId0, ProcId0, ArgVars0, PredId, ProcId, ArgVars,
 				ExtraVars, ExtraGoals, Info0, Info) :-
 
 	Info0 = poly_info(A, VarTypes, TypeVarSet0, D, E, F, G, ModuleInfo),
 
-	module_info_pred_info(ModuleInfo, PredId, PredInfo),
+	module_info_pred_info(ModuleInfo, PredId0, PredInfo),
 	pred_info_arg_types(PredInfo, PredTypeVarSet, PredArgTypes0),
 	pred_info_get_class_context(PredInfo, PredClassContext0),
 		% rename apart
@@ -852,6 +854,8 @@ polymorphism__process_call(PredId, _ProcId, ArgVars0, ArgVars,
 	term__vars_list(PredArgTypes, PredTypeVars0),
 	( PredTypeVars0 = [] ->
 		% optimize for common case of non-polymorphic call
+		PredId = PredId0,
+		ProcId = ProcId0,
 		ArgVars = ArgVars0,
 		ExtraGoals = [],
 		ExtraVars = [],
@@ -876,9 +880,12 @@ polymorphism__process_call(PredId, _ProcId, ArgVars0, ArgVars,
 			% Make the typeclass_infos for the call, and return
 			% a list of which variables were constrained by the
 			% context
-		polymorphism__make_typeclass_info_vars(PredClassContext,
-			Subst, TypeSubst, ExtraTypeClassVars, 
-			ExtraTypeClassGoals, ConstrainedVars, Info1, Info2),
+		polymorphism__make_typeclass_info_vars(	
+			PredClassContext, Subst, TypeSubst,
+			hlds_class_proc(PredId0, ProcId0),
+			hlds_class_proc(PredId, ProcId),
+			ExtraTypeClassVars, ExtraTypeClassGoals,
+			ConstrainedVars, Info1, Info2),
 
 			% No need to make typeinfos for the constrained vars
 		list__delete_elems(PredTypeVars1, ConstrainedVars,
@@ -991,18 +998,24 @@ polymorphism__constraint_contains_vars(LambdaVars, ClassConstraint) :-
 
 %---------------------------------------------------------------------------%
 
-% Given a list of constraints, create a list of variables to hold the
-% typeclass_info for those constraints, and create a list of goals to 
-% initialize those typeclass_info variables to the appropriate 
-% typeclass_info structures for the constraints.
+% Given the list of constraints for a called predicate, create a list of
+% variables to hold the typeclass_info for those constraints,
+% and create a list of goals to initialize those typeclass_info variables
+% to the appropriate typeclass_info structures for the constraints.
+% If the called predicate is a class method, and we know which instance
+% it is, then instead of creating a type_info variable for the type class
+% instance, just return the pred_proc_id for that instance.
+% Otherwise return the original pred_proc_id unchanged.
 
 :- pred polymorphism__make_typeclass_info_vars(list(class_constraint),
-	substitution, tsubst, list(var), list(hlds_goal), list(var),
+	substitution, tsubst, hlds_class_proc, hlds_class_proc,
+	list(var), list(hlds_goal), list(var),
 	poly_info, poly_info).
-:- mode polymorphism__make_typeclass_info_vars(in, in, in, out, out, out, 
-	in, out) is det.
+:- mode polymorphism__make_typeclass_info_vars(in, in, in, in, out,
+	out, out, out, in, out) is det.
 
 polymorphism__make_typeclass_info_vars(PredClassContext, Subst, TypeSubst, 
+		PredProcId0, PredProcId,
 		ExtraVars, ExtraGoals, ConstrainedVars, Info0, Info) :-
 
 		% initialise the accumulators
@@ -1010,9 +1023,16 @@ polymorphism__make_typeclass_info_vars(PredClassContext, Subst, TypeSubst,
 	ExtraGoals0 = [],
 	ConstrainedVars0 = [],
 
+		% The PredProcId is set to `yes(_)' for the first call only,
+		% because we can only specialize method calls if we know
+		% which instance of the method's type class it is; knowing
+		% the instances for any of the other type class constraints
+		% on a method doesn't help us specialize the call.
+	MaybePredProcId0 = yes(PredProcId0),
+
 		% do the work
 	polymorphism__make_typeclass_info_vars_2(PredClassContext, 
-		Subst, TypeSubst, 
+		Subst, TypeSubst, MaybePredProcId0, MaybePredProcId,
 		ExtraVars0, ExtraVars1, 
 		ExtraGoals0, ExtraGoals1,
 		ConstrainedVars0, ConstrainedVars, 
@@ -1020,51 +1040,66 @@ polymorphism__make_typeclass_info_vars(PredClassContext, Subst, TypeSubst,
 	
 		% We build up the vars and goals in reverse order
 	list__reverse(ExtraVars1, ExtraVars),
-	list__reverse(ExtraGoals1, ExtraGoals).
+	list__reverse(ExtraGoals1, ExtraGoals),
+
+		% If we succeeded in specializing this call, then use
+		% the specialization, otherwise use the original call.
+	( MaybePredProcId = yes(PredProcId1) ->
+		PredProcId = PredProcId1
+	;
+		PredProcId = PredProcId0
+	).
 
 % Accumulator version of the above.
-:- pred polymorphism__make_typeclass_info_vars_2(list(class_constraint),
-	substitution, tsubst, 
+:- pred polymorphism__make_typeclass_info_vars_2(
+	list(class_constraint), substitution, tsubst,
+	maybe(hlds_class_proc), maybe(hlds_class_proc),
 	list(var), list(var), 
 	list(hlds_goal), list(hlds_goal), 
 	list(var), list(var),
 	poly_info, poly_info).
-:- mode polymorphism__make_typeclass_info_vars_2(in, in, in, in, out, in, out,
-	in, out, in, out) is det.
+:- mode polymorphism__make_typeclass_info_vars_2(in, in, in,
+	in, out, in, out, in, out, in, out, in, out) is det.
 
 polymorphism__make_typeclass_info_vars_2([], _Subst, _TypeSubst,
+		MaybePredProcId, MaybePredProcId,
 		ExtraVars, ExtraVars, 
 		ExtraGoals, ExtraGoals, 
 		ConstrainedVars, ConstrainedVars,
 		Info, Info).
 polymorphism__make_typeclass_info_vars_2([C|Cs], Subst, TypeSubst,
-		ExtraVars0, ExtraVars, 
+		MaybePredProcId0, MaybePredProcId,
+		ExtraVars0, ExtraVars,
 		ExtraGoals0, ExtraGoals, 
 		ConstrainedVars0, ConstrainedVars,
 		Info0, Info) :-
 	polymorphism__make_typeclass_info_var(C, Subst, TypeSubst,
+			MaybePredProcId0, MaybePredProcId,
 			ExtraGoals0, ExtraGoals1, 
-			ConstrainedVars0, ConstrainedVars1, Info0, Info1,
-			ExtraVar),
+			ConstrainedVars0, ConstrainedVars1,
+			Info0, Info1, MaybeExtraVar),
+	maybe_insert_var(MaybeExtraVar, ExtraVars0, ExtraVars1),
 	polymorphism__make_typeclass_info_vars_2(Cs, Subst, TypeSubst,
-			[ExtraVar|ExtraVars0], ExtraVars, 
+			no, _,
+			ExtraVars1, ExtraVars,
 			ExtraGoals1, ExtraGoals, 
 			ConstrainedVars1, ConstrainedVars,
 			Info1, Info).
 
 :- pred polymorphism__make_typeclass_info_var(class_constraint,
-	substitution, tsubst,
+	substitution, tsubst, maybe(hlds_class_proc), maybe(hlds_class_proc),
 	list(hlds_goal), list(hlds_goal), 
 	list(var), list(var),
 	poly_info, poly_info,
-	var). 
-:- mode polymorphism__make_typeclass_info_var(in, in, in, in, out, in, out, 
-	in, out, out) is det.
+	maybe(var)). 
+:- mode polymorphism__make_typeclass_info_var(in, in, in, in, out,
+	in, out, in, out, in, out, out) is det.
 
 polymorphism__make_typeclass_info_var(Constraint, Subst, TypeSubst,
+		MaybePredProcId0, MaybePredProcId,
 		ExtraGoals0, ExtraGoals, 
 		ConstrainedVars0, ConstrainedVars, 
-		Info0, Info, Var) :-
+		Info0, Info, MaybeVar) :-
 	Constraint = constraint(ClassName, NewConstrainedTypes),
 	list__length(NewConstrainedTypes, ClassArity),
 	ClassId = class_id(ClassName, ClassArity),
@@ -1083,6 +1118,8 @@ polymorphism__make_typeclass_info_var(Constraint, Subst, TypeSubst,
 			% We already have a typeclass_info for this constraint
 		ExtraGoals = ExtraGoals0,
 		Var = Location,
+		MaybeVar = yes(Var),
+		MaybePredProcId = no,
 		Info = Info0
 	;
 			% We don't have the typeclass_info as a parameter to
@@ -1094,42 +1131,113 @@ polymorphism__make_typeclass_info_var(Constraint, Subst, TypeSubst,
 		(
 				% We have to construct the typeclass_info
 				% using an instance declaration
-			Proof = apply_instance(InstanceDefn, InstanceNum),
+			Proof = apply_instance(ProofInstanceDefn, InstanceNum),
 
 				% The subst has already been applied to these
 				% constraints in typecheck.m
-			InstanceDefn = hlds_instance_defn(_,
+			ProofInstanceDefn = hlds_instance_defn(_,
 				InstanceConstraints, _, _, _, _, _),
 
-				% Make the type_infos for the types that are
-				% constrained by this. These are packaged in
-				% the typeclass_info
-			polymorphism__make_type_info_vars(ConstrainedTypes,
-				InstanceExtraTypeInfoVars, TypeInfoGoals, 
-				Info0, Info1),
+			%
+			% Check whether the callee is a class method,
+			% and that this contraint is the first constraint
+			% in that callee's constraint list (the one for
+			% its own type class).
+			% If so, specialize the call by replacing the
+			% generic class method call with a direct call
+			% to the class method for this instance.
+			%
+			(
+				% check that this constraint is the
+				% first constraint in the callee's
+				% constraint list
+				MaybePredProcId0 = yes(PredProcId0),
 
-				% Make the typeclass_infos for the constraints
-				% from the context of the instance decl.
-			polymorphism__make_typeclass_info_vars_2(
-				InstanceConstraints,
-				Subst, TypeSubst, 
-				[], InstanceExtraTypeClassInfoVars, 
-				ExtraGoals0, ExtraGoals1, 
-				[], _, Info1, Info2),
+				% check that the called pred is a class method
+				PredProcId0 = hlds_class_proc(PredId0, _),
+				module_info_pred_info(ModuleInfo, PredId0,
+						PredInfo),
+				pred_info_get_markers(PredInfo, Markers),
+				check_marker(Markers, class_method)
+			->
+				% Get the class methods, and figure out
+				% the method number of this class method.
+				module_info_classes(ModuleInfo, ClassTable),
+				map__lookup(ClassTable, ClassId, ClassDefn),
+				ClassDefn = hlds_class_defn(_, _, ClassMethods,
+						_, _),
+				( list__nth_member_search(ClassMethods,
+						PredProcId0, MethodNum0) ->
+					MethodNum = MethodNum0
+				;
+					error("poly: nth_member_search failed")
+				),
 
-			polymorphism__construct_typeclass_info(
-				InstanceExtraTypeInfoVars, 
-				InstanceExtraTypeClassInfoVars, 
-				ClassId, InstanceNum, Var, NewGoals, 
-				Info2, Info),
+				% Get the instance methods, and lookup
+				% the pred for the corresponding method number.
+				% (NB. We can't use ProofInstanceDefn,
+				% because its MaybeInstanceMethods field
+				% has not been updated (is still `no').)
+				module_info_instances(ModuleInfo,
+					InstanceTable),
+				map__lookup(InstanceTable, ClassId,
+					InstanceDefns),
+				list__index1_det(InstanceDefns, InstanceNum,
+					InstanceDefn),
+				InstanceDefn = hlds_instance_defn(_, _, _, _,
+					MaybeInstanceMethods, _, _),
+				( MaybeInstanceMethods = yes(InstanceMethods0)
+				->
+					InstanceMethods = InstanceMethods0
+				;
+					error("poly: no instance methods")
+				),
+				list__index1_det(InstanceMethods, MethodNum,
+					InstanceMethod),
+				MaybePredProcId = yes(InstanceMethod),
+				MaybeVar = no,
+				ExtraGoals = ExtraGoals0,
+				Info = Info0
+			;
 
-				% Oh, yuck. The type_info goals have already
-				% been reversed, so lets reverse them back.
-			list__reverse(TypeInfoGoals, RevTypeInfoGoals),
+					% Make the type_infos for the types
+					% that are constrained by this. These
+					% are packaged in the typeclass_info
+				polymorphism__make_type_info_vars(
+					ConstrainedTypes,
+					InstanceExtraTypeInfoVars,
+					TypeInfoGoals,
+					Info0, Info1),
 
-			list__append(ExtraGoals1, RevTypeInfoGoals,
-				ExtraGoals2),
-			list__append(NewGoals, ExtraGoals2, ExtraGoals)
+					% Make the typeclass_infos for the
+					% constraints from the context of the
+					% instance decl.
+				polymorphism__make_typeclass_info_vars_2(
+					InstanceConstraints, Subst, TypeSubst, 
+					no, _,
+					[], InstanceExtraTypeClassInfoVars, 
+					ExtraGoals0, ExtraGoals1, 
+					[], _,
+					Info1, Info2),
+
+				polymorphism__construct_typeclass_info(
+					InstanceExtraTypeInfoVars, 
+					InstanceExtraTypeClassInfoVars, 
+					ClassId, InstanceNum, Var, NewGoals, 
+					Info2, Info),
+
+				MaybeVar = yes(Var),
+				MaybePredProcId = no,
+
+					% Oh, yuck. The type_info goals have
+					% already been reversed, so lets
+					% reverse them back.
+				list__reverse(TypeInfoGoals, RevTypeInfoGoals),
+
+				list__append(ExtraGoals1, RevTypeInfoGoals,
+					ExtraGoals2),
+				list__append(NewGoals, ExtraGoals2, ExtraGoals)
+			)
 		;
 				% We have to extract the typeclass_info from
 				% another one
@@ -1140,6 +1248,9 @@ polymorphism__make_typeclass_info_var(Constraint, Subst, TypeSubst,
 			unqualify_name(ClassName, ClassNameString),
 			polymorphism__new_typeclass_info_var(VarSet0, VarTypes0,
 				ClassNameString, Var, VarSet1, VarTypes1),
+
+			MaybeVar = yes(Var),
+			MaybePredProcId = no,
 
 				% Then work out where to extract it from
 			SubClassConstraint0 = 
@@ -1157,12 +1268,17 @@ polymorphism__make_typeclass_info_var(Constraint, Subst, TypeSubst,
 
 				% Make the typeclass_info for the subclass
 			polymorphism__make_typeclass_info_var(
-				SubClassConstraint,
-				Subst, TypeSubst, 
+				SubClassConstraint, Subst, TypeSubst, 
+				no, _,
 				ExtraGoals0, ExtraGoals1, 
 				[], _,
 				Info1, Info2,
-				SubClassVar), 
+				MaybeSubClassVar), 
+			( MaybeSubClassVar = yes(SubClassVar0) ->
+				SubClassVar = SubClassVar0
+			;
+				error("MaybeSubClassVar = no")
+			),
 
 				% Look up the definition of the subclass
 			module_info_classes(ModuleInfo, ClassTable),
@@ -1404,11 +1520,17 @@ polymorphism__get_arg_superclass_vars(ClassDefn, InstanceTypes,
 polymorphism__make_superclasses_from_proofs([], _, _, 
 		Goals, Goals, Info, Info, Vars, Vars).
 polymorphism__make_superclasses_from_proofs([C|Cs], Subst, TypeSubst, 
-		Goals0, Goals, Info0, Info, Vars0, [Var|Vars]) :-
+		Goals0, Goals, Info0, Info, Vars0, Vars) :-
 	polymorphism__make_superclasses_from_proofs(Cs, Subst, TypeSubst,
-		Goals0, Goals1, Info0, Info1, Vars0, Vars),
+		Goals0, Goals1, Info0, Info1, Vars0, Vars1),
 	polymorphism__make_typeclass_info_var(C, Subst, TypeSubst,
-		Goals1, Goals, [], _, Info1, Info, Var).
+		no, _, Goals1, Goals, [], _, Info1, Info, MaybeVar),
+	maybe_insert_var(MaybeVar, Vars1, Vars).
+
+:- pred maybe_insert_var(maybe(var), list(var), list(var)).
+:- mode maybe_insert_var(in, in, out) is det.
+maybe_insert_var(no, Vars, Vars).
+maybe_insert_var(yes(Var), Vars, [Var | Vars]).
 
 %---------------------------------------------------------------------------%
 
