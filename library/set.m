@@ -5,19 +5,7 @@
 % Main authors: conway, fjh.
 
 % This file contains a `set' ADT.
-% Sets are implemented here as unsorted lists.
-% XXX Are they allowed to contain duplicates?
-% -- If so, there is a bug in set__delete, and the code for set__union
-%    should probably be replaced by a call to append.
-% -- If not, there is a bug in either the code for set__insert,
-%    or at least in the type declaration (the pred declaration
-%    for set__insert should have a `where' clause and be one of Lee's types).
-%    And there is still a problem in set__delete, since it should be
-%    semi-deterministic if both the set and the element are input, but
-%    the current implementation calls a non-deterministic predicate (delete/3)
-%    in a way which just happens to be semi-deterministic (since the list
-%    doesn't contain any duplicates - but the compiler couldn't be expected
-%    to know that.  (For the moment, we're going to just ignore this problem.)
+% Sets are implemented here as unsorted lists, which may contain duplicates.
 
 %--------------------------------------------------------------------------%
 
@@ -116,6 +104,8 @@
 :- pred set__intersect(set(T), set(T), set(T)).
 :- mode set__intersect(in, in, out).
 
+%--------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module list.
@@ -129,17 +119,8 @@ set__list_to_set(List, Set) :-
 :- set__insert_list(_, Xs, _) when Xs.	% NU-Prolog indexing.
 
 set__insert_list(Set0, List, Set) :-
-	% XXX are sets allowed to contain duplicates??
 	append(List, Set0, Set).
 
-/****
-set__insert_list(Set, [], Set).
-set__insert_list(Set0, [X | Xs], Set) :-
-	set__insert(Set0, X, Set1),
-	set__insert_list(Set1, Xs, Set).
-****/
-
-	% XXX are sets allowed to contain duplicates??
 set__insert(S0, E, [E|S0]).
 
 set__init([]).
@@ -167,7 +148,8 @@ set__delete_list(S0, [X | Xs], S) :-
 	set__delete_list(S1, Xs, S).
 
 set__delete(S0, E, S) :-
-	delete(S0, E, S).
+	member(E, S0),
+	set__remove(S0, E, S).
 
 :- set__remove_list(_, Xs, _) when Xs.
 
@@ -188,19 +170,6 @@ set__remove([E|Es], X, S) :-
 set__union(Set0, Set1, Set) :-
 	append(Set1, Set0, Set).
 
-/****
-set__union([], S, S).
-set__union([E|S0], S1, S) :-
-	(
-		member(E, S1)
-	->
-		S2 = S1
-	;
-		S2 = [E|S1]
-	),
-	set__union(S0, S2, S).
-****/
-
 set__intersect(S0, S1, S) :-
 	set__intersect_2(S0, S1, [], S).
 
@@ -218,3 +187,4 @@ set__intersect_2([E|S0], S1, S2, S) :-
 	),
 	set__intersect_2(S0, S1, S3, S).
 
+%--------------------------------------------------------------------------%
