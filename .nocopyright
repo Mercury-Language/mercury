@@ -1,5 +1,3 @@
-README.MS-Windows
-README.AIX
 .INSTALL.in
 config.sub
 config.guess
@@ -8,3 +6,19 @@ NEWS
 .reuse_trunk_sync_tag
 HISTORY
 RELEASE_NOTES
+README
+README.AIX
+README.BSDI
+README.DotNet
+README.FreeBSD
+README.HPUX
+README.IRIX-5
+README.Linux
+README.Linux-Alpha
+README.Linux-PPC
+README.Linux-m68k
+README.MS-VisualC
+README.MS-Windows
+README.OSF1
+README.Solaris
+README.lcc
