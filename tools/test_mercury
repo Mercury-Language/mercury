@@ -470,7 +470,7 @@ case $HOST in murlibobo)
 	rsh $BETA_FTPHOST \
 		"rm -f $BETA_FTPDIR/mercury-*-rotd-*-unstable.tar.gz" &&
 	rcp mercury-latest-unstable/mercury-*-$version-unstable.tar.gz \
-		$BETA_FTPHOST/$BETA_FTPDIR 
+		$BETA_FTPHOST:$BETA_FTPDIR 
 	rm -f $BETA_WEBDIR/mercury-*-rotd-*-unstable.tar.gz &&
 	cp mercury-latest-unstable/mercury-*-$version-unstable.tar.gz \
 		$BETA_WEBDIR
