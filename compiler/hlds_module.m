@@ -28,7 +28,7 @@
 :- implementation.
 
 :- import_module hlds_data, prog_data, shapes.
-:- import_module require, int, list, map, set, std_util.
+:- import_module require, int, string, list, map, set, std_util.
 
 %-----------------------------------------------------------------------------%
 
@@ -327,7 +327,13 @@ module_info_preds(ModuleInfo, Preds) :-
 
 module_info_pred_info(ModuleInfo, PredId, PredInfo) :-
 	module_info_preds(ModuleInfo, Preds),
-	map__lookup(Preds, PredId, PredInfo).
+	( map__search(Preds, PredId, PredInfoPrime) ->
+		PredInfo = PredInfoPrime
+	;
+		string__int_to_string(PredId, PredStr),
+		string__append("cannot find predicate number ", PredStr, Msg),
+		error(Msg)
+	).
 
 module_info_pred_proc_info(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo) :-
 	module_info_pred_info(ModuleInfo, PredId, PredInfo),

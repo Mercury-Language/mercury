@@ -269,7 +269,7 @@ modecheck_pred_modes_2([PredId | PredIds], ModuleInfo0, ModuleInfo) -->
 	; { pred_info_is_pseudo_imported(PredInfo0) } ->
 		{ ModuleInfo3 = ModuleInfo0 }
 	;
-		write_progress_message("% Mode-checking ",
+		write_pred_progress_message("% Mode-checking ",
 			PredId, ModuleInfo0),
 		modecheck_pred_mode(PredId, PredInfo0, ModuleInfo0,
 			ModuleInfo1, Errs),

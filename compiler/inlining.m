@@ -129,8 +129,8 @@ inlining__mark_proc_as_inlined(proc(PredId, ProcId), ModuleInfo,
 	( { pred_info_is_inlined(PredInfo) } ->
 		[]
 	;
-		write_progress_message("% Inlining a procedure of ",
-			PredId, ModuleInfo)
+		write_proc_progress_message("% Inlining ", PredId, ProcId,
+			ModuleInfo)
 	).
 
 %-----------------------------------------------------------------------------%

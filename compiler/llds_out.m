@@ -348,7 +348,6 @@ output_c_module(c_export(PragmaExports), BaseName) -->
 		[]	
 	).
 
-
 	% output_c_header_include_lines reverses the list of c header lines
 	% and passes them to output_c_header_include_lines_2 which outputs them.
 	% The list must be reversed since they are inserted in reverse order
@@ -378,7 +377,6 @@ output_c_header_include_lines_2([Code - Context|Hs]) -->
 	io__write_string(Code),
 	io__write_string("\n"),
 	output_c_header_include_lines_2(Hs).
-
 
 :- pred output_exported_c_functions(list(string), io__state, io__state).
 :- mode output_exported_c_functions(in, di, uo) is det.
@@ -1567,19 +1565,20 @@ get_proc_label(special_proc(Module, PredName, TypeName0, TypeArity,
 		"_", TypeArityString, "_", ModeNumString], 
 		ProcLabelString).
 
-
 %	llds_out__output_label_name/5 writes a name to standard out.  Depending
 %	on the name of the label module and arity, the module name may also
 %	be written as a qualifier.
 
 :- pred llds_out__output_label_name(string, string, int, io__state, io__state).
 :- mode llds_out__output_label_name(in, in, in, di, uo) is det.
+
 llds_out__output_label_name(Module, Name, Arity) -->
 	{ get_label_name(Module, Name, Arity, LabelName) },
 	io__write_string(LabelName).
 
 :- pred get_label_name(string, string, int, string).
 :- mode get_label_name(in, in, in, out) is det.
+
 get_label_name(Module0, Name0, Arity, LabelName) :-
 	get_label_prefix(Prefix),
 	(
@@ -1601,7 +1600,7 @@ get_label_name(Module0, Name0, Arity, LabelName) :-
 	;
 		string__append(Module0, "__", UnderscoresModule),
 		( string__append(UnderscoresModule, Name1, Name0) ->
-		 Name2 = Name1
+			Name2 = Name1
 		;
 			Name2 = Name0
 		),
@@ -1609,7 +1608,6 @@ get_label_name(Module0, Name0, Arity, LabelName) :-
 		llds_out__name_mangle(Name2, Name),
 		string__append_list([Prefix, Module, "__", Name], LabelName)
 	).
-
 
 	% To ensure that Mercury labels don't clash with C symbols, we
 	% prefix them with `mercury__'.

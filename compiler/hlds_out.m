@@ -50,6 +50,10 @@
 :- pred hlds_out__write_pred_id(module_info, pred_id, io__state, io__state).
 :- mode hlds_out__write_pred_id(in, in, di, uo) is det.
 
+:- pred hlds_out__write_pred_proc_id(module_info, pred_id, proc_id,
+				io__state, io__state).
+:- mode hlds_out__write_pred_proc_id(in, in, in, di, uo) is det.
+
 :- pred hlds_out__write_call_id(pred_or_func, pred_call_id,
 				io__state, io__state).
 :- mode hlds_out__write_call_id(in, in, di, uo) is det.
@@ -178,6 +182,12 @@ hlds_out__write_pred_id(ModuleInfo, PredId) -->
 		io__write_int(OrigArity)
 	),
 	io__write_string("'").
+
+hlds_out__write_pred_proc_id(ModuleInfo, PredId, ProcId) -->
+	hlds_out__write_pred_id(ModuleInfo, PredId),
+	io__write_string(" mode "),
+	{ ModeNum is ProcId mod 10000 },
+	io__write_int(ModeNum).
 
 hlds_out__write_call_id(PredOrFunc, Name/Arity) -->
 	hlds_out__write_pred_or_func(PredOrFunc),

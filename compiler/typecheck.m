@@ -248,7 +248,7 @@ typecheck_pred_type_2(PredId, PredInfo0, ModuleInfo, MaybePredInfo,
 		    IOState0, IOState),
 	        MaybePredInfo = no
 	    ;
-		write_progress_message("% Type-checking ",
+		write_pred_progress_message("% Type-checking ",
 			PredId, ModuleInfo, IOState0, IOState1),
 		term__vars_list(ArgTypes, HeadTypeParams),
 		type_info_init(IOState1, ModuleInfo, PredId,

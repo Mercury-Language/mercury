@@ -32,7 +32,8 @@
 :- import_module handle_options, prog_io, modules, make_hlds.
 :- import_module undef_types, typecheck, undef_modes, modes.
 :- import_module switch_detection, cse_detection, det_analysis, unique_modes.
-:- import_module (lambda), polymorphism, higher_order, inlining, common, dnf.
+:- import_module simplify, (lambda), polymorphism, higher_order, inlining.
+:- import_module common, dnf.
 :- import_module constraint, unused_args, dead_proc_elim, excess, liveness.
 :- import_module follow_code, follow_vars, live_vars, arg_info, store_alloc.
 :- import_module code_gen, optimize, export, llds_out.
@@ -432,7 +433,11 @@ mercury_compile__frontend_pass_2_by_phases(HLDS4, HLDS20, FoundError) -->
 	maybe_report_stats(Statistics),
 	mercury_compile__maybe_dump_hlds(HLDS9, "9", "unique_modes"),
 
-	{ HLDS20 = HLDS9 },
+	mercury_compile__simplify(HLDS9, HLDS10),
+	maybe_report_stats(Statistics),
+	mercury_compile__maybe_dump_hlds(HLDS10, "10", "simplify"),
+
+	{ HLDS20 = HLDS10 },
 	mercury_compile__maybe_dump_hlds(HLDS20, "20", "front_end"),
 
 	    %
@@ -626,7 +631,7 @@ mercury_compile__backend_pass_by_preds_2([PredId | PredIds], ModuleInfo0,
 		{ ModuleInfo1 = ModuleInfo0 },
 		{ Code1 = [] }
 	;
-		write_progress_message("% Generating code for ",
+		write_pred_progress_message("% Generating code for ",
 			PredId, ModuleInfo0),
 		mercury_compile__backend_pass_by_preds_3(ProcIds, PredId,
 			PredInfo, ModuleInfo0, ModuleInfo1, Code1)
@@ -812,6 +817,17 @@ mercury_compile__check_unique_modes(HLDS0, HLDS, FoundError) -->
 			"% Program is unique-mode-correct.\n"),
 		io__set_exit_status(OldStatus)
 	).
+
+:- pred mercury_compile__simplify(module_info, module_info,
+	io__state, io__state).
+:- mode mercury_compile__simplify(in, out, di, uo) is det.
+
+mercury_compile__simplify(HLDS0, HLDS) -->
+	globals__io_lookup_bool_option(verbose, Verbose),
+	maybe_write_string(Verbose, "% Simplifying goals...\n"),
+	maybe_flush_output(Verbose),
+	process_all_nonimported_procs(update_proc(simplify__proc), HLDS0, HLDS),
+	maybe_write_string(Verbose, "% done\n").
 
 %-----------------------------------------------------------------------------%
 

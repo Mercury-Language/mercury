@@ -25,16 +25,13 @@
 % :- mode detect_switches_in_proc(in, in, di, uo) is det.
 :- mode detect_switches_in_proc(in, in, in, out) is det.
 
-	% utility pred used by cse_detection.m
-:- pred interpret_unify(var, unify_rhs, substitution, substitution).
-:- mode interpret_unify(in, in, in, out) is semidet.
-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module hlds_goal, hlds_data, modes, mode_util, type_util, prog_data.
+:- import_module hlds_goal, hlds_data, prog_data.
+:- import_module modes, mode_util, type_util, det_util.
 :- import_module int, list, assoc_list, map, set, std_util, term, require.
 
 %-----------------------------------------------------------------------------%
@@ -121,10 +118,9 @@ detect_switches_in_goal(Goal0, InstMap0, VarTypes, ModuleInfo, Goal) :-
 
 detect_switches_in_goal_1(Goal0 - GoalInfo, InstMap0, VarTypes, ModuleInfo,
 		Goal - GoalInfo, InstMap) :-
-	goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
 	detect_switches_in_goal_2(Goal0, GoalInfo, InstMap0,
 		VarTypes, ModuleInfo, Goal),
-	apply_instmap_delta(InstMap0, InstMapDelta, InstMap).
+	update_instmap(Goal0 - GoalInfo, InstMap0, InstMap).
 
 	% Here we process each of the different sorts of goals.
 
@@ -422,21 +418,6 @@ find_bind_var_for_switch([Goal0 - GoalInfo | Goals0], Substitution0, Var,
 		Substitution = Substitution0,
 		MaybeFunctor = no
 	).
-
-interpret_unify(X, var(Y), Subst0, Subst) :-
-	term__unify(term__variable(X), term__variable(Y), Subst0, Subst).
-interpret_unify(X, functor(Functor, ArgVars), Subst0, Subst) :-
-	term__context_init(Context),
-	term__var_list_to_term_list(ArgVars, ArgTerms),
-	term__unify(term__variable(X),
-		term__functor(Functor, ArgTerms, Context),
-		Subst0, Subst).
-interpret_unify(_X, lambda_goal(_LambdaVars, _Modes, _Det, _Goal),
-		Subst0, Subst) :-
-		% For ease of implementation we just ignore unifications with
-		% lambda terms.  This is a safe approximation, it just
-		% prevents us from optimizing them as well as we would like.
-	Subst = Subst0.
 
 :- pred cases_to_switch(sorted_case_list, var, map(var, type), hlds__goal_info,
 	follow_vars, instmap, module_info, hlds__goal_expr).

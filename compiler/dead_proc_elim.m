@@ -330,9 +330,9 @@ dead_proc_elim__eliminate_procs(PredId, [ProcId | ProcIds], Needed, Keep, Name,
 	;
 		globals__io_lookup_bool_option(very_verbose, VeryVerbose),
 		( { VeryVerbose = yes } ->
-			write_progress_message(
-				"% Eliminated dead procedure of ",
-				PredId, ModuleInfo)
+			write_proc_progress_message(
+				"% Eliminated the dead procedure of ",
+				PredId, ProcId, ModuleInfo)
 		;
 			[]
 		),
