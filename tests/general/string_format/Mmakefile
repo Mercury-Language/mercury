@@ -43,7 +43,7 @@ include Mercury.options
 # file if the file fails, due to the size of the output file.
 #
 %.out: %
-	{ [ -f $*.inp ] && cat $*.inp; } | ./$< | dos2unix > $@ 2>&1 || \
+	{ [ -f $*.inp ] && cat $*.inp; } | ./$< > $@ 2>&1 || \
 		{ grep . $@ /dev/null | tail -n 20; exit 1; }
 
 #
