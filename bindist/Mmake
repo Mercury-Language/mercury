@@ -54,7 +54,11 @@ binary_distribution: bindist.configure bindist.build_vars
 	cp $(UTILS) $(MERCURY_VERSION)/util
 	cp $(CONFIG_FILES) $(MERCURY_VERSION)
 	cp $(README_ETC) $(MERCURY_VERSION)
-	cd ../samples; mmake realclean; cd Diff; mmake realclean
+	cd ../samples; mmake realclean
+	cd ../samples/diff; mmake realclean
+	cd ../samples/c_interface; mmake realclean
+	cd ../samples/c_interface/c_calls_mercury; mmake realclean
+	cd ../samples/c_interface/mercury_calls_c; mmake realclean
 	cp -r ../samples $(MERCURY_VERSION)/samples
 	for file in $(MISC_FILES); do \
 		cp bindist.$$file $(MERCURY_VERSION)/$$file || exit 1; \
