@@ -30,7 +30,7 @@ SICSTUS_SCRIPTS = msc msl msp
 #-----------------------------------------------------------------------------#
 
 .PHONY: all
-all: $(SCRIPTS) $(NUPROLOG_SCRIPTS) $(SICSTUS_SCRIPTS)
+all: $(SCRIPTS) $(NUPROLOG_SCRIPTS) $(SICSTUS_SCRIPTS) Mmake.vars
 
 #-----------------------------------------------------------------------------#
 
