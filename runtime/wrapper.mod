@@ -98,7 +98,7 @@ int main(int argc, char **argv)
 	}
 #endif
 
-	do_init_entries();
+	init_entries();
 
 #if defined(USE_GCC_GLOBAL_REGISTERS) && !defined(USE_ASM_LABELS)
 	do_init_modules();
@@ -114,17 +114,6 @@ int main(int argc, char **argv)
 	run_code();
 
 	return mercury_exit_status;
-}
-
-void do_init_entries(void)
-{
-	static	bool	done = FALSE;
-
-	if (! done)
-	{
-		init_entries();
-		done = TRUE;
-	}
 }
 
 void do_init_modules(void)
