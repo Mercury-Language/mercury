@@ -21,13 +21,14 @@ UTILS		= $(INSTALL_PREFIX)/bin/mkinit \
 		  $(INSTALL_PREFIX)/bin/mtags
 
 README_ETC	= ../COPYING ../COPYING.LIB ../HISTORY ../LIMITATIONS \
-		  ../NEWS ../RELEASE_NOTES ../BUGS
+		  ../NEWS ../RELEASE_NOTES ../BUGS ../WORK_IN_PROGRESS \
+		  ../VERSION
 
 SCRIPT_FILES	= ../scripts/*.in ../scripts/Mmake.rules
 
 CONFIG_FILES	= ../config.sub ../config.guess ../install-sh
 
-MISC_FILES	= INSTALL README README.MS-Windows \
+MISC_FILES	= INSTALL README README.Linux README.MS-Windows \
 		  build_vars Makefile.in configure configure.in
 
 #-----------------------------------------------------------------------------#
@@ -60,12 +61,25 @@ binary_distribution: bindist.configure bindist.build_vars
 	cp $(UTILS) $(MERCURY_VERSION)/util
 	cp $(CONFIG_FILES) $(MERCURY_VERSION)
 	cp $(README_ETC) $(MERCURY_VERSION)
-	cd ../samples; mmake realclean
-	cd ../samples/diff; mmake realclean
-	cd ../samples/c_interface; mmake realclean
-	cd ../samples/c_interface/c_calls_mercury; mmake realclean
-	cd ../samples/c_interface/mercury_calls_c; mmake realclean
+	-cd ../samples; mmake realclean
+	-cd ../samples/diff; mmake realclean
+	-cd ../samples/c_interface; mmake realclean
+	-cd ../samples/c_interface/c_calls_mercury; mmake realclean
+	-cd ../samples/c_interface/cplusplus_calls_mercury; mmake realclean
+	-cd ../samples/c_interface/mercury_calls_c; mmake realclean
+	-cd ../samples/c_interface/simpler_c_calls_mercury; mmake realclean
+	-cd ../samples/c_interface/simpler_cplusplus_calls_mercury; mmake realclean
+	-cd ../extras/cgi; mmake realclean
+	-cd ../extras/complex_numbers; mmake realclean
+	-cd ../extras/complex_numbers/tests; mmake realclean
+	-cd ../extras/complex_numbers/samples; mmake realclean
+	-cd ../extras/graphics; mmake realclean
+	-cd ../extras/graphics/samples/calc; mmake realclean
+	-cd ../extras/graphics/samples/maze; mmake realclean
+	-cd ../tests; mmake realclean
 	cp -r ../samples $(MERCURY_VERSION)/samples
+	cp -r ../extras $(MERCURY_VERSION)/extras
+	cp -r ../tests $(MERCURY_VERSION)/tests
 	for file in $(MISC_FILES); do \
 		sed	-e 's/<VERSION>/$(VERSION)/g' \
 			-e 's/<FULLARCH>/$(FULLARCH)/g' \
