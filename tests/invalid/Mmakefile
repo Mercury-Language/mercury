@@ -140,7 +140,7 @@ SINGLEMODULE_PROGS= \
 # --use-subdirs, otherwise (1) these tests will create the `Mercury'
 # subdirectory, which will mean that all remaining tests get run with
 # --use-subdirs and (2) if we're testing against a work-space, and the
-# workspace wasn't built with --use-subdirs, these tests will be fail with
+# workspace wasn't built with --use-subdirs, these tests will fail with
 # some misleading error messages, due to the standard library not being
 # in the expected place.
 USE_SUBDIR_MODULES = \
