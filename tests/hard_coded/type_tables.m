@@ -19,7 +19,8 @@ extern const struct MR_TypeCtorInfo_Struct mercury_data_list__type_ctor_info_lis
 extern const struct MR_TypeCtorInfo_Struct mercury_data_type_tables__type_ctor_info_list_0;
 ").
 
-:- pragma foreign_proc("C", main(IO0::di, IO::uo), [will_not_call_mercury],
+:- pragma foreign_proc("C", main(IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure],
 "
 	MR_TypeCtorInfo	tc1;
 	MR_TypeCtorInfo	tc2;
