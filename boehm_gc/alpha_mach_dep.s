@@ -1,5 +1,3 @@
- # $Id: alpha_mach_dep.s,v 1.2 1995-03-18 05:17:34 fjh Exp $
-
 # define call_push(x)    lda   $16, 0(x);    jsr   $26, GC_push_one
 
         .text
