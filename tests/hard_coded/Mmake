@@ -4,7 +4,8 @@ main_target: check
 
 #-----------------------------------------------------------------------------#
 
-PROGS=	qual_basic_test qual_basic_test2 qual_is_test qual_adv_test 
+PROGS=	qual_basic_test qual_basic_test2 qual_is_test qual_adv_test \
+	pragma_c_code
 
 #-----------------------------------------------------------------------------#
 
