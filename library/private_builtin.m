@@ -480,6 +480,19 @@ extern ModuleFunc type_info_module;
 void sys_init_type_info_module(void); /* suppress gcc -Wmissing-decl warning */
 void sys_init_type_info_module(void) {
 	type_info_module();
+
+	MR_INIT_TYPE_CTOR_INFO(
+	    mercury_data_private_builtin__type_ctor_info_type_ctor_info_1,
+	    private_builtin__type_info_1_0);
+	MR_INIT_TYPE_CTOR_INFO(
+	    mercury_data_private_builtin__type_ctor_info_type_info_1,
+	    private_builtin__type_info_1_0);
+	MR_INIT_TYPE_CTOR_INFO(
+	    mercury_data_private_builtin__type_ctor_info_base_typeclass_info_1,
+	    private_builtin__typeclass_info_1_0);
+	MR_INIT_TYPE_CTOR_INFO(
+	    mercury_data_private_builtin__type_ctor_info_typeclass_info_1,
+	    private_builtin__typeclass_info_1_0);
 }
 
 ").

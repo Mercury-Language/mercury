@@ -875,9 +875,9 @@ Define_extern_entry(mercury____Compare___builtin__c_pointer_0_0);
 const struct MR_TypeCtorInfo_struct
 mercury_data_builtin__type_ctor_info_c_pointer_0 = {
 	(Integer) 0,
-	ENTRY(mercury____Unify___builtin__c_pointer_0_0),
-	ENTRY(mercury____Index___builtin__c_pointer_0_0),
-	ENTRY(mercury____Compare___builtin__c_pointer_0_0),
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury____Unify___builtin__c_pointer_0_0)),
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury____Index___builtin__c_pointer_0_0)),
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury____Compare___builtin__c_pointer_0_0)),
 	MR_TYPECTOR_REP_C_POINTER,
 	(MR_TypeCtorFunctors) &mercury_data_builtin__type_ctor_functors_c_pointer_0,
 	(MR_TypeCtorLayout) &mercury_data_builtin__type_ctor_layout_c_pointer_0,
@@ -926,6 +926,9 @@ void sys_init_unify_c_pointer_module(void);
 	/* duplicate declaration to suppress gcc -Wmissing-decl warning */
 void sys_init_unify_c_pointer_module(void) {
 	unify_c_pointer_module();
+	MR_INIT_TYPE_CTOR_INFO(
+		mercury_data_builtin__type_ctor_info_c_pointer_0,
+		builtin__c_pointer_0_0);
 }
 
 ").

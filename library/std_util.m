@@ -1095,9 +1095,9 @@ const struct mercury_data_std_util__type_ctor_layout_univ_0_struct
 MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
 mercury_data_std_util__type_ctor_info_univ_0 = {
 	(Integer) 0,
-	ENTRY(mercury____Unify___std_util__univ_0_0),
-	ENTRY(mercury____Index___std_util__univ_0_0),
-	ENTRY(mercury____Compare___std_util__univ_0_0),
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury____Unify___std_util__univ_0_0)),
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury____Index___std_util__univ_0_0)),
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury____Compare___std_util__univ_0_0)),
 	MR_TYPECTOR_REP_UNIV,
 	(Word *) &mercury_data_std_util__type_ctor_functors_univ_0,
 	(Word *) &mercury_data_std_util__type_ctor_layout_univ_0,
@@ -1296,6 +1296,9 @@ extern ModuleFunc unify_univ_module;
 void sys_init_unify_univ_module(void); /* suppress gcc -Wmissing-decl warning */
 void sys_init_unify_univ_module(void) {
 	unify_univ_module();
+
+	MR_INIT_TYPE_CTOR_INFO(mercury_data_std_util__type_ctor_info_univ_0,
+		std_util__univ_0_0);
 }
 
 ").
@@ -1909,6 +1912,7 @@ ML_typecheck_arguments(Word type_info, int arity, Word arg_list,
 		list_arg_type_info = MR_field(MR_mktag(0),
 			MR_list_head(arg_list), UNIV_OFFSET_FOR_TYPEINFO);
 
+		/* XXX need to handle existential types */
 		arg_type_info = (Word) MR_create_type_info(
 			(Word *) type_info, (Word *) arg_vector[i]);
 

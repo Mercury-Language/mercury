@@ -284,9 +284,9 @@ const struct mercury_data_array__type_ctor_layout_array_1_struct
 MR_STATIC_CODE_CONST struct MR_TypeCtorInfo_struct
 mercury_data_array__type_ctor_info_array_1 = {
 	(Integer) 1,
-	ENTRY(mercury____Unify___array__array_1_0),
-	ENTRY(mercury____Index___array__array_1_0),
-	ENTRY(mercury____Compare___array__array_1_0),
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury____Unify___array__array_1_0)),
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury____Index___array__array_1_0)),
+	MR_MAYBE_STATIC_CODE(ENTRY(mercury____Compare___array__array_1_0)),
 	MR_TYPECTOR_REP_ARRAY,
 	(Word *) &mercury_data_array__type_ctor_functors_array_1,
 	(Word *) &mercury_data_array__type_ctor_layout_array_1,
@@ -338,11 +338,16 @@ END_MODULE
 /*
 INIT sys_init_array_module_builtins
 */
+
+extern ModuleFunc array_module_builtins;
+
 void sys_init_array_module_builtins(void);
 		/* suppress gcc -Wmissing-decl warning */
 void sys_init_array_module_builtins(void) {
-	extern ModuleFunc array_module;
 	array_module_builtins();
+	MR_INIT_TYPE_CTOR_INFO(
+		mercury_data_array__type_ctor_info_array_1,
+		array__array_1_0);
 }
 
 ").
