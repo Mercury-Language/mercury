@@ -3357,6 +3357,7 @@ mangle_dataname_module(yes(DataName), ModuleName0, ModuleName) :-
 				; Name = "base_typeclass_info", Arity = 1
 				; Name = "typeclass_info", Arity = 1
 				; Name = "heap_pointer", Arity = 0
+				; Name = "ref", Arity = 1
 				)
 			)		  
 		;
