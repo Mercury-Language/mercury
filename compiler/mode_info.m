@@ -578,7 +578,7 @@ mode_info_get_num_errors(ModeInfo, NumErrors) :-
 
 %-----------------------------------------------------------------------------%
 
-			% We keep track of the live variables and the nondet-live variables
+	% We keep track of the live variables and the nondet-live variables
 	% a bag, represented as a list of sets of vars.
 	% This allows us to easily add and remove sets of variables.
 	% It's probably not maximally efficient.
