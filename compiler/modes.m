@@ -1669,7 +1669,7 @@ modecheck_conj_list_3(DelayedGoals0, DelayedGoals, Goals,
 			%
 		DelayedGoals0 = [_ | _],
 
-		Goals0 = map(hlds_goal_from_delayed_goal, DelayedGoals0),
+		Goals0 = list.map(hlds_goal_from_delayed_goal, DelayedGoals0),
 
 		mode_info_get_delay_info(!.ModeInfo, DelayInfo0),
 		delay_info__enter_conj(DelayInfo0, DelayInfo1),
