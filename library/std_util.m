@@ -489,7 +489,23 @@ mercury_compare_type_info(Word type_info_1, Word type_info_2)
 	Word	base_type_info_1, base_type_info_2;
 #endif
 
-	/* First find the addresses of the unify preds in the type_infos */
+	/* Test to see if either of the type_infos are null
+	 * pointers, which represent a free type variable
+	 * (see compiler/polymorphism.m for
+	 * an explanation of when that can happen).
+	 * We define the ordering so that free type variables precede
+	 * ground types (this choice is arbitrary).
+	 * Free type variables are considered to have been instantiated
+	 * to a single type, so two free type variables compare equal.
+	 */
+	 if (type_info_1 == type_info_2)
+		return COMPARE_EQUAL;
+	 if (type_info_1 == (Word) NULL)
+		return COMPARE_LESS;
+	 if (type_info_2 == (Word) NULL)
+		return COMPARE_GREATER;
+
+	/* Next find the addresses of the unify preds in the type_infos */
 
 #ifdef	ONE_OR_TWO_CELL_TYPE_INFO
 	base_type_info_1 = field(mktag(0), type_info_1, 0);
