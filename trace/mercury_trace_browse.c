@@ -29,14 +29,11 @@
 #include "mercury_trace_internal.h"
 #include "mercury_trace_external.h"
 
-#include "mdb.browse.h"
-#include "mdb.browser_info.h"
-#include "mdb.interactive_query.h"
-#ifdef MR_HIGHLEVEL_CODE
-  #include "mercury.type_desc.h"
-#else
-  #include "type_desc.h"
-#endif
+#include "mdb.browse.mh"
+#include "mdb.browser_info.mh"
+#include "mdb.interactive_query.mh"
+
+#include "type_desc.mh"
 
 #include <stdio.h>
 

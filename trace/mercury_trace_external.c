@@ -29,13 +29,10 @@
 #include "mercury_trace_browse.h"
 #include "mercury_trace_vars.h"
 
-#include "mdb.debugger_interface.h"
-#include "mdb.collect_lib.h"
-#ifdef MR_HIGHLEVEL_CODE
-  #include "mercury.type_desc.h"
-#else
-  #include "type_desc.h"
-#endif
+#include "mdb.debugger_interface.mh"
+#include "mdb.collect_lib.mh"
+
+#include "type_desc.mh"
 
 #include "mercury_deep_copy.h"
 

@@ -2063,6 +2063,20 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 			Intermod),
 		globals__io_lookup_accumulating_option(intermod_directories,
 			IntermodDirs),
+
+			% If intermodule_optimization is enabled then
+			% build all the .c files before the .o files to
+			% avoid problems with foreign_import_module
+			% dependencies not being correctly calculated.
+		( { Intermod = yes } ->
+			io__write_strings(DepStream, [
+				"\n\n",
+				ObjFileName, " : "
+			]),
+			write_dependencies_list(AllDeps, ".c", DepStream)
+		;
+			[]
+		),
 		( { Intermod = yes ; UseOptFiles = yes } ->
 			io__write_strings(DepStream, [
 				"\n\n", 

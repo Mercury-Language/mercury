@@ -1104,28 +1104,28 @@ intermod__write_intermod_info_2(IntermodInfo) -->
 	globals__io_set_option(dump_hlds_options, string("")),
 	( { WriteHeader = yes } ->
 		{ module_info_get_foreign_decl(ModuleInfo, RevForeignDecls) },
+		{ module_info_get_pragma_exported_procs(ModuleInfo,
+				PragmaExportedProcs) },
 		{ module_info_get_foreign_import_module(ModuleInfo,
 			RevForeignImports) },
-		{ module_info_get_pragma_exported_procs(ModuleInfo,
-			PragmaExportedProcs) },
-		{ ForeignDecls = list__reverse(RevForeignDecls) },
 		{ ForeignImports0 = list__reverse(RevForeignImports) },
 
 		%
-		% If this module contains `:- pragma export' declarations,
+		% If this module contains `:- pragma export' or
+		% `:- pragma foreign_decl' declarations,
 		% they may be referred to by the C code we are writing
 		% to the `.opt' file, so write the implicit
 		% `:- pragma foreign_import_module("C", ModuleName).' 
 		% to the `.opt' file.
 		%
-		% XXX We should do this, but mmake can't handle
-		% the extra dependencies properly yet, so building
-		% the standard library fails (mmake attempts to build
-		% tree234.o before std_util.h is built).
-		%
-		{ semidet_fail, PragmaExportedProcs \= [] ->
-			% XXX Currently we only handle procedures
-			% exported to C.
+		% XXX Currently we only handle procedures
+		% exported to C.
+		{
+			% Check that the  import could contain anything.
+			( PragmaExportedProcs \= []
+			; RevForeignDecls \= []
+			)
+		->
 			module_info_name(ModuleInfo, ModuleName),
 			ForeignImportThisModule = foreign_import_module(c,
 				ModuleName, term__context_init),
@@ -1134,19 +1134,14 @@ intermod__write_intermod_info_2(IntermodInfo) -->
 		;
 			ForeignImports = ForeignImports0
 		},
+
 		list__foldl(
 		    (pred(ForeignImport::in, di, uo) is det -->
 		    	{ ForeignImport = foreign_import_module(Lang,
 						Import, _) },
 		    	mercury_output_pragma_foreign_import_module(Lang,
 				Import)
-		    ), ForeignImports),
-
-		list__foldl(
-		    (pred(ForeignDecl::in, di, uo) is det -->
-		    	{ ForeignDecl = foreign_decl_code(Lang, Header, _) },
-		    	mercury_output_pragma_foreign_decl(Lang, Header)
-		    ), ForeignDecls)
+		    ), ForeignImports)
 	;
 		[]
 	),

@@ -31,14 +31,10 @@
 #include "mercury_trace_internal.h"
 #include "mercury_trace_util.h"
 
-#ifdef MR_HIGHLEVEL_CODE
-  #include "mercury.type_desc.h"
-  #include "mercury.io.h"
-#else
-  #include "type_desc.h"
-  #include "io.h"
-#endif
-#include "mdb.help.h"
+#include "type_desc.mh"
+#include "io.mh"
+
+#include "mdb.help.mh"
 
 #include <stdio.h>
 

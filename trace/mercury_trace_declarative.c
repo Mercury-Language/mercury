@@ -45,13 +45,10 @@
 #include "mercury_string.h"
 #include "mercury_trace_base.h"
 
-#include "mdb.declarative_debugger.h"
-#include "mdb.declarative_execution.h"
-#ifdef MR_HIGHLEVEL_CODE
-  #include "mercury.std_util.h"
-#else
-  #include "std_util.h"
-#endif
+#include "mdb.declarative_debugger.mh"
+#include "mdb.declarative_execution.mh"
+
+#include "std_util.mh"
 
 #include <errno.h>
 

@@ -52,6 +52,7 @@ SINGLEMODULE_SOURCES= \
 	ext_type_bug.m \
 	exported_mode.m \
 	field_syntax_error.m \
+	foreign_decl_line_number.m \
 	foreign_singleton.m \
 	foreign_type_2.m \
 	foreign_type_visibility.m \
@@ -179,6 +180,7 @@ MCFLAGS-assert_in_interface =	--no-intermodule-optimization
 MCFLAGS-children =		--no-intermodule-optimization
 MCFLAGS-duplicate_modes	=	--verbose-error-messages
 MCFLAGS-exported_mode =		--infer-all --no-intermodule-optimization
+MCFLAGS-foreign_decl_line_number = --no-errorcheck-only --line-numbers --compile-only
 MCFLAGS-foreign_type =		--compile-only
 MCFLAGS-foreign_singleton =	--halt-at-warn
 MCFLAGS-foreign_type_2 =	--no-intermodule-optimization
@@ -215,7 +217,7 @@ ERRS=		$(SOURCES:%.m=%.err)
 ERR_RESS=	$(SOURCES:%.m=%.err_res)
 
 %.err: %.m
-	if $(MC) $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) --errorcheck-only $* \
+	if $(MC) --errorcheck-only $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) $* \
 		> $*.err 2>&1; \
 	then false; else true; fi
 

@@ -11,7 +11,7 @@
 :- type coord.
 
 :- func new(int, int) = coord.
-% :- pragma export(new(in, in) = out, "exported_new").
+:- pragma export(new(in, in) = out, "exported_new").
 
 :- func x(coord) = int.
 :- func y(coord) = int.

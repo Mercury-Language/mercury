@@ -69,6 +69,7 @@
 :- import_module backend_libs__foreign.
 :- import_module parse_tree__modules.
 :- import_module hlds__hlds_pred, check_hlds__type_util.
+:- import_module hlds__error_util.
 :- import_module backend_libs__code_model.
 :- import_module ll_backend__code_gen, ll_backend__code_util.
 :- import_module ll_backend__llds_out, ll_backend__arg_info.
@@ -80,13 +81,19 @@
 
 %-----------------------------------------------------------------------------%
 
-export__get_foreign_export_decls(HLDS, C_ExportDecls) :-
+export__get_foreign_export_decls(HLDS, ForeignExportDecls) :-
 	module_info_get_predicate_table(HLDS, PredicateTable),
 	predicate_table_get_preds(PredicateTable, Preds),
+
+	module_info_get_foreign_decl(HLDS, RevForeignDecls),
+	ForeignDecls = list__reverse(RevForeignDecls),
+
 	module_info_get_pragma_exported_procs(HLDS, ExportedProcs),
 	module_info_globals(HLDS, Globals),
 	export__get_foreign_export_decls_2(Preds, ExportedProcs, Globals,
-		HLDS, C_ExportDecls).
+		HLDS, C_ExportDecls),
+
+	ForeignExportDecls = foreign_export_decls(ForeignDecls, C_ExportDecls).
 
 :- pred export__get_foreign_export_decls_2(pred_table,
 		list(pragma_exported_proc), globals,
@@ -597,31 +604,21 @@ convert_type_from_mercury(Rval, Type, ConvertedRval) :-
 
 % Should this predicate go in llds_out.m?
 
-export__produce_header_file([], _) --> [].
-export__produce_header_file(C_ExportDecls, ModuleName) -->
-	{ C_ExportDecls = [_|_] },
-	export__produce_header_file(C_ExportDecls, ModuleName, ".mh"),
-
-	% XXX  We still need to produce the `.h' file for bootstrapping.
-	% The C files in the trace directory refer to std_util.h and io.h.
-	globals__io_lookup_bool_option(highlevel_code, HighLevelCode),
-	{
-		HighLevelCode = yes,
-		ModuleName = unqualified(StdLibModule),
-		mercury_std_library_module(StdLibModule)
-	->
-		HeaderModuleName = qualified(unqualified("mercury"),
-			       StdLibModule)
+export__produce_header_file(ForeignExportDecls, ModuleName) -->
+	( { ForeignExportDecls = foreign_export_decls([], []) } ->
+		[]
 	;
-		HeaderModuleName = ModuleName
-	},
-	export__produce_header_file(C_ExportDecls, HeaderModuleName, ".h").
+		export__produce_header_file(ForeignExportDecls,
+				ModuleName, ".mh")
+	).
 
-:- pred export__produce_header_file(foreign_export_decls, module_name, string,
-					io__state, io__state).
+:- pred export__produce_header_file(foreign_export_decls,
+		module_name, string, io__state, io__state).
 :- mode export__produce_header_file(in, in, in, di, uo) is det.
 
-export__produce_header_file(C_ExportDecls, ModuleName, HeaderExt) -->
+export__produce_header_file(ForeignExportDecls, ModuleName, HeaderExt) -->
+	{ ForeignExportDecls = foreign_export_decls(ForeignDecls,
+			C_ExportDecls) },
 	module_name_to_file_name(ModuleName, HeaderExt, yes, FileName),
 	io__open_output(FileName, Result),
 	(
@@ -656,6 +653,12 @@ export__produce_header_file(C_ExportDecls, ModuleName, HeaderExt) -->
 			"#include ""mercury_deep_profiling.h""\n",
 			"#endif\n",
 			"\n"]),
+
+		io__write_strings(["#ifndef ", decl_guard(ModuleName),
+				 "\n#define ", decl_guard(ModuleName), "\n"]),
+		list__foldl(output_foreign_decl, ForeignDecls),
+		io__write_string("\n#endif\n"),
+
 		export__produce_header_file_2(C_ExportDecls),
 		io__write_strings([
 			"\n",
@@ -676,7 +679,7 @@ export__produce_header_file(C_ExportDecls, ModuleName, HeaderExt) -->
 		io__set_exit_status(1)
 	).
 
-:- pred export__produce_header_file_2(foreign_export_decls, 
+:- pred export__produce_header_file_2(list(foreign_export_decl),
 		io__state, io__state).
 :- mode export__produce_header_file_2(in, di, uo) is det.
 export__produce_header_file_2([]) --> [].
@@ -693,8 +696,24 @@ export__produce_header_file_2([E|ExportedProcs]) -->
 		io__write_string(ArgDecls),
 		io__write_string(");\n")
 	;
-		{ error("export__produce_header_file_2: foreign languages other than C unimplemented") }
+		{ sorry(this_file,
+			"foreign languages other than C unimplemented") }
 	),
 	export__produce_header_file_2(ExportedProcs).
+
+:- pred output_foreign_decl(foreign_decl_code::in, io::di, io::uo) is det.
+
+export__output_foreign_decl(foreign_decl_code(Lang, Code, _Context)) -->
+	( { Lang = c } ->
+		io__write_string(Code),
+		io__nl
+	;
+		[]
+	).
+	
+%-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+this_file = "export.m".
 
 %-----------------------------------------------------------------------------%

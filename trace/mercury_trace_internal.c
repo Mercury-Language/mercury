@@ -29,9 +29,9 @@
 #include "mercury_trace_readline.h"
 #include "mercury_trace_source.h"
 
-#include "mdb.browse.h"
-#include "mdb.browser_info.h"
-#include "mdb.program_representation.h"
+#include "mdb.browse.mh"
+#include "mdb.browser_info.mh"
+#include "mdb.program_representation.mh"
 
 #include <stdio.h>
 #include <stdlib.h>

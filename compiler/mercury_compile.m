@@ -3181,7 +3181,8 @@ get_c_interface_info(HLDS, UseForeignLanguage, Foreign_InterfaceInfo) :-
 	% If this module contains `:- pragma export' declarations,
 	% add a "#include <module>.h" declaration.
 	% XXX pragma export is only supported for C.
-	( UseForeignLanguage = c, Foreign_ExportDecls \= [] ->
+	Foreign_ExportDecls = foreign_export_decls(_, ExportDecls),
+	( UseForeignLanguage = c, ExportDecls \= [] ->
 		% We put the new include at the end since the list is
 		% stored in reverse, and we want this include to come
 		% first.
@@ -3251,8 +3252,8 @@ mercury_compile__output_pass(HLDS0, GlobalData, Procs0, MaybeRLFile,
 	{ list__condense([CommonableData, NonCommonStaticData, ClosureLayouts,
 		TypeCtorTables, TypeClassInfos, PossiblyDynamicLayouts],
 		AllData) },
-	mercury_compile__construct_c_file(C_InterfaceInfo, Procs1, GlobalVars,
-		AllData, CFile, NumChunks),
+	mercury_compile__construct_c_file(HLDS, C_InterfaceInfo,
+		Procs1, GlobalVars, AllData, CFile, NumChunks),
 	mercury_compile__output_llds(ModuleName, CFile, LayoutLabels,
 		MaybeRLFile, Verbose, Stats),
 
@@ -3276,13 +3277,14 @@ mercury_compile__output_pass(HLDS0, GlobalData, Procs0, MaybeRLFile,
 
 	% Split the code up into bite-size chunks for the C compiler.
 
-:- pred mercury_compile__construct_c_file(foreign_interface_info,
+:- pred mercury_compile__construct_c_file(module_info, foreign_interface_info,
 	list(c_procedure), list(comp_gen_c_var), list(comp_gen_c_data),
 	c_file, int, io__state, io__state).
-:- mode mercury_compile__construct_c_file(in, in, in, in, out, out, di, uo)
+:- mode mercury_compile__construct_c_file(in, in, in, in, in, out, out, di, uo)
 	is det.
 
-mercury_compile__construct_c_file(C_InterfaceInfo, Procedures, GlobalVars,
+mercury_compile__construct_c_file(_Module,
+		C_InterfaceInfo, Procedures, GlobalVars,
 		AllData, CFile, ComponentCount) -->
 	{ C_InterfaceInfo = foreign_interface_info(ModuleSymName,
 		C_HeaderCode0, C_Includes, C_BodyCode0,
@@ -3303,7 +3305,10 @@ mercury_compile__construct_c_file(C_InterfaceInfo, Procedures, GlobalVars,
 	),
 	list__map_foldl(make_foreign_import_header_code, C_Includes,
 		C_HeaderCode1),
-	{ C_HeaderCode = C_HeaderCode0 ++ C_HeaderCode1 },
+
+	{ make_decl_guards(ModuleSymName, Start, End) },
+	{ C_HeaderCode = [End | C_HeaderCode0] ++ [Start | C_HeaderCode1] },
+
 	{ CFile = c_file(ModuleSymName, C_HeaderCode, C_BodyCode,
 		C_ExportDefns, GlobalVars, AllData, ChunkedModules) },
 	{ list__length(C_BodyCode, UserCCodeCount) },
@@ -3313,6 +3318,16 @@ mercury_compile__construct_c_file(C_InterfaceInfo, Procedures, GlobalVars,
 	{ list__length(ChunkedModules, CompGenCodeCount) },
 	{ ComponentCount is UserCCodeCount + ExportCount
 		+ CompGenVarCount + CompGenDataCount + CompGenCodeCount }.
+
+:- pred make_decl_guards(sym_name::in,
+		foreign_decl_code::out, foreign_decl_code::out) is det.
+
+make_decl_guards(ModuleName, StartGuard, EndGuard) :-
+	Define = decl_guard(ModuleName),
+	Start = "#ifndef " ++ Define ++ "\n#define " ++ Define ++ "\n",
+	End = "\n#endif",
+	StartGuard = foreign_decl_code(c, Start, term__context_init),
+	EndGuard = foreign_decl_code(c, End, term__context_init).
 
 :- pred make_foreign_import_header_code(foreign_import_module,
 		foreign_decl_code, io__state, io__state).
