@@ -25,7 +25,7 @@
 :- import_module mdbcomp__prim_data.
 :- import_module parse_tree__prog_data.
 
-:- import_module bool, list, std_util, string, term.
+:- import_module bool, io, list, std_util, string, term.
 
 :- type foreign_decl_info 		== list(foreign_decl_code).
 					% in reverse order
@@ -180,10 +180,12 @@
 	% which imports the foreign function, and return the varset,
 	% pragma_vars, argument types and other information about the
 	% generated predicate body.
+	%
 :- pred make_pragma_import(pred_info::in, proc_info::in, string::in,
-	prog_context::in, module_info::in, pragma_foreign_code_impl::out,
+	prog_context::in, pragma_foreign_code_impl::out,
 	prog_varset::out, list(pragma_var)::out, list(type)::out, arity::out,
-	pred_or_func::out) is det.
+	pred_or_func::out, module_info::in, module_info::out, io::di, io::uo)
+	is det.
 
 	% It is possible that more than one foreign language could be used to
 	% implement a particular piece of code.
@@ -239,6 +241,7 @@
 :- import_module hlds__code_model.
 :- import_module hlds__hlds_data.
 :- import_module hlds__hlds_module.
+:- import_module hlds__hlds_out.
 :- import_module hlds__hlds_pred.
 :- import_module libs__globals.
 :- import_module parse_tree__error_util.
@@ -455,8 +458,8 @@ make_pred_name_rest(il, _SymName) = "some_il_name".
 make_pred_name_rest(java, _SymName) = "some_java_name".
 
 make_pragma_import(PredInfo, ProcInfo, C_Function, Context,
-		ModuleInfo, PragmaImpl, VarSet, PragmaVars, ArgTypes,
-		Arity, PredOrFunc) :-
+		PragmaImpl, VarSet, PragmaVars, ArgTypes,
+		Arity, PredOrFunc, !ModuleInfo, !IO) :-
 	%
 	% lookup some information we need from the pred_info and proc_info
 	%
@@ -474,7 +477,7 @@ make_pragma_import(PredInfo, ProcInfo, C_Function, Context,
 	varset__new_vars(VarSet0, Arity, Vars, VarSet),
 	create_pragma_vars(Vars, Modes, 0, PragmaVars),
 	assoc_list__from_corresponding_lists(PragmaVars, ArgTypes,
-			PragmaVarsAndTypes),
+		PragmaVarsAndTypes),
 
 	%
 	% Construct parts of the C_code string for calling a C_function.
@@ -487,10 +490,12 @@ make_pragma_import(PredInfo, ProcInfo, C_Function, Context,
 	% the type-infos yet.  polymorphism.m is responsible for adding
 	% the type-info arguments to the list of variables.
 	%
-	handle_return_value(CodeModel, PredOrFunc, PragmaVarsAndTypes,
-			ModuleInfo, ArgPragmaVarsAndTypes, Return),
+	proc_info_declared_determinism(ProcInfo, MaybeDeclaredDetism),
+	handle_return_value(Context, MaybeDeclaredDetism, CodeModel,
+		PredOrFunc, PragmaVarsAndTypes, ArgPragmaVarsAndTypes,
+		Return, !ModuleInfo, !IO),
 	assoc_list__keys(ArgPragmaVarsAndTypes, ArgPragmaVars),
-	create_pragma_import_c_code(ArgPragmaVars, ModuleInfo,
+	create_pragma_import_c_code(ArgPragmaVars, !.ModuleInfo,
 			"", Variables),
 
 	%
@@ -499,7 +504,8 @@ make_pragma_import(PredInfo, ProcInfo, C_Function, Context,
 	PragmaImpl = import(C_Function, Return, Variables, yes(Context)).
 
 %
-% handle_return_value(CodeModel, PredOrFunc, Args0, M, Args, C_Code0):
+% handle_return_value(Context, DeclaredDetism, CodeModel, PredOrFunc, Args0,
+% 		M, Args, C_Code0):
 %	Figures out what to do with the C function's return value,
 %	based on Mercury procedure's code model, whether it is a predicate
 %	or a function, and (if it is a function) the type and mode of the
@@ -510,17 +516,23 @@ make_pragma_import(PredInfo, ProcInfo, C_Function, Context,
 %	Returns in Args all of Args0 that must be passed as arguments
 %	(i.e. all of them, or all of them except the return value).
 %
-:- pred handle_return_value(code_model::in, pred_or_func::in,
-	assoc_list(pragma_var, type)::in, module_info::in,
-	assoc_list(pragma_var, type)::out, string::out) is det.
+%	Causes an error message to be emitted if the code_model is
+%	not compatible witht the use of pragma import (ie. it is 
+%	model_non).
+%
+:- pred handle_return_value(prog_context::in, maybe(determinism)::in,
+	code_model::in, pred_or_func::in,
+	assoc_list(pragma_var, type)::in, assoc_list(pragma_var, type)::out,
+	string::out, module_info::in, module_info::out, io::di, io::uo) is det.
 
-handle_return_value(CodeModel, PredOrFunc, Args0, ModuleInfo, Args, C_Code0) :-
+handle_return_value(Context, MaybeDeclaredDetism, CodeModel, PredOrFunc,
+		Args0, Args, C_Code0, !ModuleInfo, !IO) :-
 	( CodeModel = model_det,
 		(
 			PredOrFunc = function,
 			pred_args_to_func_args(Args0, Args1, RetArg),
 			RetArg = pragma_var(_, RetArgName, RetMode) - RetType,
-			mode_to_arg_mode(ModuleInfo, RetMode, RetType,
+			mode_to_arg_mode(!.ModuleInfo, RetMode, RetType,
 				RetArgMode),
 			RetArgMode = top_out,
 			\+ type_util__is_dummy_argument_type(RetType)
@@ -539,12 +551,28 @@ handle_return_value(CodeModel, PredOrFunc, Args0, ModuleInfo, Args, C_Code0) :-
 		C_Code0 = "SUCCESS_INDICATOR = ",
 		Args2 = Args0
 	; CodeModel = model_non,
-		% XXX we should report an error here, rather than generating
-		% C code with `#error'...
+		(
+			MaybeDeclaredDetism = yes(DeclaredDetism),
+			DetismStr = determinism_to_string(DeclaredDetism)
+		;
+			MaybeDeclaredDetism = no,
+			DetismStr = "multi or nondet"
+		),
+		ErrorPieces = [
+			words("Error: `pragma_import' declaration for"),
+			words("a procedure that has a determinism of"),
+			fixed(DetismStr), suffix(".")
+		],
+		write_error_pieces(Context, 0, ErrorPieces, !IO),
+		module_info_incr_errors(!ModuleInfo),
+		%
+		% The following are just dummy values - they will
+		% never actually be used.
+		%
 		C_Code0 = "\n#error ""cannot import nondet procedure""\n",
 		Args2 = Args0
 	),
-	list__filter(include_import_arg(ModuleInfo), Args2, Args).
+	list__filter(include_import_arg(!.ModuleInfo), Args2, Args).
 
 %
 % include_import_arg(M, Arg):

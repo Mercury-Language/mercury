@@ -5074,8 +5074,8 @@ pred_add_pragma_import(PredId, ProcId, Attributes, C_Function, Context,
     pred_info_procedures(!.PredInfo, Procs),
     map__lookup(Procs, ProcId, ProcInfo),
     foreign__make_pragma_import(!.PredInfo, ProcInfo, C_Function, Context,
-        !.ModuleInfo, PragmaImpl, VarSet, PragmaVars, ArgTypes,
-        Arity, PredOrFunc),
+        PragmaImpl, VarSet, PragmaVars, ArgTypes,
+        Arity, PredOrFunc, !ModuleInfo, !IO),
 
     %
     % lookup some information we need from the pred_info and proc_info
