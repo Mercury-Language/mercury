@@ -36,6 +36,38 @@ public:
     }
 };
 
+__gc public class LowLevelData
+{
+
+public:
+	// Make a Mercury enumeration with the given integer value.
+static MR_Word make_enum(int enum_value) {
+
+	MR_Word e;
+	MR_newenum(e, enum_value);
+	return e;
+
+}
+
+	// Make an MR_Word with the given tag and arity.
+static MR_Word make_MR_Word(int tag, int arity) {
+	MR_Word e;
+	MR_newobj(e, tag, arity);
+	return e;
+
+}
+	// Set a field of an MR_Word with a given value.
+	// The first field is at index 1.
+static void set_MR_Word_field(MR_Word w, int index, System::Object *value) {
+	MR_objset(w, index, value);
+}
+	// Get the value from an MR_Word.
+	// The first field is at index 1.
+static System::Object * get_MR_Word_field(MR_Word w, int index) {
+	return w[index];
+}
+
+};
 
 __gc public class Errors {
     public:

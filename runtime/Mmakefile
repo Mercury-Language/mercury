@@ -336,6 +336,8 @@ install_init:
 install_lib: $(DOTNET_DLLS) install_headers install_dirs
 	cp `vpath_find $(DOTNET_DLLS)` $(INSTALL_MERC_LIB_DIR)
 
+#MS_ILASMFLAGS=/debug
+
 else
 
 .PHONY: install_headers

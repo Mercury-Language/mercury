@@ -237,11 +237,11 @@ promise_only_solution(Pred) = OutVal :-
                         (Y :: out(pred(out) is semidet)),
                 [will_not_call_mercury, thread_safe],
                 "Y = X;").
-:- pragma foreign_proc("MC++", cc_cast(X :: (pred(out) is cc_multi)) =
+:- pragma foreign_proc("C#", cc_cast(X :: (pred(out) is cc_multi)) =
                         (Y :: out(pred(out) is det)),
                 [will_not_call_mercury, thread_safe],
                 "Y = X;").
-:- pragma foreign_proc("MC++", cc_cast(X :: (pred(out) is cc_nondet)) =
+:- pragma foreign_proc("C#", cc_cast(X :: (pred(out) is cc_nondet)) =
                         (Y :: out(pred(out) is semidet)),
                 [will_not_call_mercury, thread_safe],
                 "Y = X;").
@@ -258,7 +258,7 @@ promise_only_solution_io(Pred, X) -->
 		(Y :: out(pred(out, di, uo) is det)),
                 [will_not_call_mercury, thread_safe],
                 "Y = X;").
-:- pragma foreign_proc("MC++", 
+:- pragma foreign_proc("C#", 
 		cc_cast_io(X :: (pred(out, di, uo) is cc_multi)) =
 		(Y :: out(pred(out, di, uo) is det)),
                 [will_not_call_mercury, thread_safe],

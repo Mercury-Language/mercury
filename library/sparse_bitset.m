@@ -781,15 +781,15 @@ mask(N) = \ unchecked_left_shift(\ 0, N).
 }").
 
 % XXX this needs to take reserve-tag into account too
-:- pragma foreign_proc("MC++", make_bitset_elem(A::in, B::in) = (Pair::out),
+:- pragma foreign_proc("C#", make_bitset_elem(A::in, B::in) = (Pair::out),
 		[will_not_call_mercury, thread_safe],
 "{
-#ifdef MR_RESERVE_TAG
-    #error ""sparse_bitset not implemented for MC++ in .rt grades""
+#if MR_RESERVE_TAG
+    #error ""sparse_bitset not implemented for .NET in .rt grades""
 #endif
-	MR_newobj((Pair), 0, 2);
-	MR_objset((Pair), 1, __box(A));
-	MR_objset((Pair), 2, __box(B));
+	Pair = mercury.runtime.LowLevelData.make_MR_Word(0, 2);
+	mercury.runtime.LowLevelData.set_MR_Word_field(Pair, 1, A);
+	mercury.runtime.LowLevelData.set_MR_Word_field(Pair, 2, B);
 }").
 
 %-----------------------------------------------------------------------------%

@@ -381,10 +381,10 @@ float(Int) = Float :-
 "
 	Ceil = (MR_Integer) ceil(X);
 ").
-:- pragma foreign_proc("MC++", float__ceiling_to_int(X :: in) = (Ceil :: out),
+:- pragma foreign_proc("C#", float__ceiling_to_int(X :: in) = (Ceil :: out),
 	[will_not_call_mercury, thread_safe],
 "
-	Ceil = (MR_Integer) System::Math::Ceiling(X);
+	Ceil = System.Convert.ToInt32(System.Math.Ceiling(X));
 ").
 
 float__ceiling_to_int(X, float__ceiling_to_int(X)).
@@ -396,10 +396,10 @@ float__ceiling_to_int(X, float__ceiling_to_int(X)).
 "
 	Floor = (MR_Integer) floor(X);
 ").
-:- pragma foreign_proc("MC++", float__floor_to_int(X :: in) = (Floor :: out),
+:- pragma foreign_proc("C#", float__floor_to_int(X :: in) = (Floor :: out),
 	[will_not_call_mercury, thread_safe],
 "
-	Floor = (MR_Integer) System::Math::Floor(X);
+	Floor = System.Convert.ToInt32(System.Math.Floor(X));
 ").
 
 float__floor_to_int(X, float__floor_to_int(X)).
@@ -411,10 +411,10 @@ float__floor_to_int(X, float__floor_to_int(X)).
 "
 	Round = (MR_Integer) floor(X + 0.5);
 ").
-:- pragma foreign_proc("MC++", float__round_to_int(X :: in) = (Round :: out),
+:- pragma foreign_proc("C#", float__round_to_int(X :: in) = (Round :: out),
 	[will_not_call_mercury, thread_safe],
 "
-	Round = (MR_Integer) System::Math::Floor(X + 0.5);
+	Round = System.Convert.ToInt32(System.Math.Floor(X + 0.5));
 ").
 
 float__round_to_int(X, float__round_to_int(X)).
@@ -426,10 +426,10 @@ float__round_to_int(X, float__round_to_int(X)).
 "
 	Trunc = (MR_Integer) X;
 ").
-:- pragma foreign_proc("MC++", float__truncate_to_int(X :: in) = (Trunc :: out),
+:- pragma foreign_proc("C#", float__truncate_to_int(X :: in) = (Trunc :: out),
 	[will_not_call_mercury, thread_safe],
 "
-	Trunc = (MR_Integer) X;
+	Trunc = System.Convert.ToInt32(X);
 ").
 
 float__truncate_to_int(X, float__truncate_to_int(X)).
@@ -494,7 +494,7 @@ float__pow(X, Exp, float__pow(X, Exp)).
 "
 	H = MR_hash_float(F);
 ").
-:- pragma foreign_proc("MC++", float__hash(F::in) = (H::out),
+:- pragma foreign_proc("C#", float__hash(F::in) = (H::out),
 	[will_not_call_mercury, thread_safe],
 "
 	H = F.GetHashCode();
@@ -535,9 +535,9 @@ float__hash(F, float__hash(F)).
 :- pragma foreign_proc("C", float__max = (Max::out),
 		[will_not_call_mercury, thread_safe],
 	"Max = ML_FLOAT_MAX;").
-:- pragma foreign_proc("MC++", float__max = (Max::out),
+:- pragma foreign_proc("C#", float__max = (Max::out),
 		[will_not_call_mercury, thread_safe],
-	"Max = MR_BoxedFloat::MaxValue;").
+	"Max = System.Double.MaxValue;").
 
 
 float__max(float__max).
@@ -546,9 +546,9 @@ float__max(float__max).
 :- pragma foreign_proc("C", float__min = (Min::out),
 		[will_not_call_mercury, thread_safe],
 	"Min = ML_FLOAT_MIN;").
-:- pragma foreign_proc("MC++", float__min = (Min::out),
+:- pragma foreign_proc("C#", float__min = (Min::out),
 		[will_not_call_mercury, thread_safe],
-	"Min = MR_BoxedFloat::MinValue;").
+	"Min = System.Double.MinValue;").
 
 float__min(float__min).
 
@@ -556,9 +556,9 @@ float__min(float__min).
 :- pragma foreign_proc("C", float__epsilon = (Eps::out),
 		[will_not_call_mercury, thread_safe],
 	"Eps = ML_FLOAT_EPSILON;").
-:- pragma foreign_proc("MC++", float__epsilon = (Eps::out),
+:- pragma foreign_proc("C#", float__epsilon = (Eps::out),
 		[will_not_call_mercury, thread_safe],
-	"Eps = MR_BoxedFloat::Epsilon;").
+	"Eps = System.Double.Epsilon;").
 
 float__epsilon(float__epsilon).
 
@@ -566,9 +566,10 @@ float__epsilon(float__epsilon).
 :- pragma foreign_proc("C", float__radix = (Radix::out),
 		[will_not_call_mercury, thread_safe],
 	"Radix = ML_FLOAT_RADIX;").
-:- pragma foreign_proc("MC++", float__radix = (_Radix::out),
+:- pragma foreign_proc("C#", float__radix = (_Radix::out),
 		[will_not_call_mercury, thread_safe], "
-	mercury::runtime::Errors::SORRY(""foreign code for this function"");
+	mercury.runtime.Errors.SORRY(""foreign code for this function"");
+	_Radix = 0;
 ").
 
 float__radix(float__radix).
@@ -577,9 +578,10 @@ float__radix(float__radix).
 :- pragma foreign_proc("C", float__mantissa_digits = (MantDig::out),
 		[will_not_call_mercury, thread_safe],
 	"MantDig = ML_FLOAT_MANT_DIG;").
-:- pragma foreign_proc("MC++", float__mantissa_digits = (_MantDig::out),
+:- pragma foreign_proc("C#", float__mantissa_digits = (_MantDig::out),
 		[will_not_call_mercury, thread_safe], "
-	mercury::runtime::Errors::SORRY(""foreign code for this function"");
+	mercury.runtime.Errors.SORRY(""foreign code for this function"");
+	_MantDig = 0;
 ").
 
 float__mantissa_digits(float__mantissa_digits).
@@ -590,9 +592,10 @@ float__mantissa_digits(float__mantissa_digits).
 :- pragma foreign_proc("C", float__min_exponent = (MinExp::out),
 		[will_not_call_mercury, thread_safe],
 	"MinExp = ML_FLOAT_MIN_EXP;").
-:- pragma foreign_proc("MC++", float__min_exponent = (_MinExp::out),
+:- pragma foreign_proc("C#", float__min_exponent = (_MinExp::out),
 		[will_not_call_mercury, thread_safe], "	
-	mercury::runtime::Errors::SORRY(""foreign code for this function"");
+	mercury.runtime.Errors.SORRY(""foreign code for this function"");
+	_MinExp = 0;
 ").
 
 float__min_exponent(float__min_exponent).
@@ -604,9 +607,10 @@ float__min_exponent(float__min_exponent).
 		[will_not_call_mercury, thread_safe],
 	"MaxExp = ML_FLOAT_MAX_EXP;").
 
-:- pragma foreign_proc("MC++", float__max_exponent = (_MaxExp::out),
+:- pragma foreign_proc("C#", float__max_exponent = (_MaxExp::out),
 		[will_not_call_mercury, thread_safe], "	
-	mercury::runtime::Errors::SORRY(""foreign code for this function"");
+	mercury.runtime.Errors.SORRY(""foreign code for this function"");
+	_MaxExp = 0;
 ").
 
 

@@ -227,12 +227,12 @@
 
 "). % end pragma foreign_decl
 
-:- pragma foreign_decl("MC++", "
+:- pragma foreign_code("C#", "
 
 	// This is not defined in the .NET Frameworks.
-	// For pi and e we use the constants defined in System::Math.
+	// For pi and e we use the constants defined in System.Math.
 
-	#define	ML_FLOAT_LN2		0.69314718055994530941
+	public static double ML_FLOAT_LN2 = 0.69314718055994530941;
 ").
 
 :- pragma foreign_code("C", "
@@ -259,15 +259,15 @@
 
 "). % end pragma foreign_code
 
-:- pragma foreign_code("MC++", "
+:- pragma foreign_code("C#", "
 
 /*
 ** Handle domain errors.
 */
 static void
-ML_math_domain_error(MR_String where)
+ML_math_domain_error(string where)
 {
-	throw new mercury::runtime::Exception(where);
+	throw new mercury.runtime.Exception(where);
 }
 
 "). % end pragma foreign_code
@@ -280,9 +280,9 @@ ML_math_domain_error(MR_String where)
 	math__pi = (Pi::out), [will_not_call_mercury, thread_safe],"
 	Pi = ML_FLOAT_PI;
 ").
-:- pragma foreign_proc("MC++", 
+:- pragma foreign_proc("C#", 
 	math__pi = (Pi::out), [will_not_call_mercury, thread_safe],"
-	Pi = System::Math::PI;
+	Pi = System.Math.PI;
 ").
 
 	% Base of natural logarithms
@@ -290,9 +290,9 @@ ML_math_domain_error(MR_String where)
 	math__e = (E::out), [will_not_call_mercury, thread_safe],"
 	E = ML_FLOAT_E;
 ").
-:- pragma foreign_proc("MC++", 
+:- pragma foreign_proc("C#", 
 	math__e = (E::out), [will_not_call_mercury, thread_safe],"
-	E = System::Math::E;
+	E = System.Math.E;
 ").
 
 %
@@ -304,10 +304,10 @@ ML_math_domain_error(MR_String where)
 		[will_not_call_mercury, thread_safe],"
 	Ceil = ceil(Num);
 ").
-:- pragma foreign_proc("MC++", 
+:- pragma foreign_proc("C#", 
 	math__ceiling(Num::in) = (Ceil::out),
 		[will_not_call_mercury, thread_safe],"
-	Ceil = System::Math::Ceiling(Num);
+	Ceil = System.Math.Ceiling(Num);
 ").
 
 %
@@ -319,10 +319,10 @@ ML_math_domain_error(MR_String where)
 		[will_not_call_mercury, thread_safe],"
 	Floor = floor(Num);
 ").
-:- pragma foreign_proc("MC++", 
+:- pragma foreign_proc("C#", 
 	math__floor(Num::in) = (Floor::out),
 		[will_not_call_mercury, thread_safe],"
-	Floor = System::Math::Floor(Num);
+	Floor = System.Math.Floor(Num);
 ").
 
 %
@@ -335,12 +335,12 @@ ML_math_domain_error(MR_String where)
 		[will_not_call_mercury, thread_safe],"
 	Rounded = floor(Num+0.5);
 ").
-:- pragma foreign_proc("MC++", 
+:- pragma foreign_proc("C#", 
 	math__round(Num::in) = (Rounded::out),
 		[will_not_call_mercury, thread_safe],"
-	// XXX the semantics of System::Math::Round() are not the same as ours.
+	// XXX the semantics of System.Math.Round() are not the same as ours.
 	// Unfortunately they are better (round to nearest even number).
-	Rounded = System::Math::Floor(Num+0.5);
+	Rounded = System.Math.Floor(Num+0.5);
 ").
 
 %
@@ -365,14 +365,15 @@ math__truncate(X) = (X < 0.0 -> math__ceiling(X) ; math__floor(X)).
 #endif
 	SquareRoot = sqrt(X);
 ").
-:- pragma foreign_proc("MC++", math__sqrt(X::in) = (SquareRoot::out),
+:- pragma foreign_proc("C#", math__sqrt(X::in) = (SquareRoot::out),
 		[will_not_call_mercury, thread_safe], "
-#ifndef ML_OMIT_MATH_DOMAIN_CHECKS
+#if ML_OMIT_MATH_DOMAIN_CHECKS
+#else
 	if (X < 0.0) {
 		ML_math_domain_error(""math__sqrt"");
 	}
 #endif
-	SquareRoot = System::Math::Sqrt(X);
+	SquareRoot = System.Math.Sqrt(X);
 ").
 
 
@@ -446,9 +447,11 @@ math__solve_quadratic(A, B, C) = Roots :-
 #endif
 ").
 
-:- pragma foreign_proc("MC++", math__pow(X::in, Y::in) = (Res::out),
+:- pragma foreign_proc("C#", math__pow(X::in, Y::in) = (Res::out),
 		[will_not_call_mercury, thread_safe], "
-#ifndef ML_OMIT_MATH_DOMAIN_CHECKS
+#if ML_OMIT_MATH_DOMAIN_CHECKS
+	Res = System.Math.Pow(X, Y);
+#else
 	if (X < 0.0) {
 		ML_math_domain_error(""math__pow"");
 	}
@@ -458,10 +461,8 @@ math__solve_quadratic(A, B, C) = Roots :-
 		}
 		Res = 0.0;
 	} else {
-		Res = System::Math::Pow(X, Y);
+		Res = System.Math.Pow(X, Y);
 	}
-#else
-	Res = System::Math::Pow(X, Y);
 #endif
 ").
 
@@ -474,9 +475,9 @@ math__solve_quadratic(A, B, C) = Roots :-
 		[will_not_call_mercury, thread_safe],"
 	Exp = exp(X);
 ").
-:- pragma foreign_proc("MC++", math__exp(X::in) = (Exp::out),
+:- pragma foreign_proc("C#", math__exp(X::in) = (Exp::out),
 		[will_not_call_mercury, thread_safe],"
-	Exp = System::Math::Exp(X);
+	Exp = System.Math.Exp(X);
 ").
 
 %
@@ -495,14 +496,15 @@ math__solve_quadratic(A, B, C) = Roots :-
 #endif
 	Log = log(X);
 ").
-:- pragma foreign_proc("MC++", math__ln(X::in) = (Log::out),
+:- pragma foreign_proc("C#", math__ln(X::in) = (Log::out),
 		[will_not_call_mercury, thread_safe], "
-#ifndef ML_OMIT_MATH_DOMAIN_CHECKS
+#if ML_OMIT_MATH_DOMAIN_CHECKS
+#else 
 	if (X <= 0.0) {
 		ML_math_domain_error(""math__ln"");
 	}
 #endif
-	Log = System::Math::Log(X);
+	Log = System.Math.Log(X);
 ").
 
 %
@@ -521,14 +523,15 @@ math__solve_quadratic(A, B, C) = Roots :-
 #endif
 	Log10 = log10(X);
 ").
-:- pragma foreign_proc("MC++", math__log10(X::in) = (Log10::out),
+:- pragma foreign_proc("C#", math__log10(X::in) = (Log10::out),
 		[will_not_call_mercury, thread_safe], "
-#ifndef ML_OMIT_MATH_DOMAIN_CHECKS
+#if ML_OMIT_MATH_DOMAIN_CHECKS
+#else
 	if (X <= 0.0) {
 		ML_math_domain_error(""math__log10"");
 	}
 #endif
-	Log10 = System::Math::Log10(X);
+	Log10 = System.Math.Log10(X);
 ").
 
 %
@@ -547,14 +550,15 @@ math__solve_quadratic(A, B, C) = Roots :-
 #endif
 	Log2 = log(X) / ML_FLOAT_LN2;
 ").
-:- pragma foreign_proc("MC++", math__log2(X::in) = (Log2::out),
+:- pragma foreign_proc("C#", math__log2(X::in) = (Log2::out),
 		[will_not_call_mercury, thread_safe], "
-#ifndef ML_OMIT_MATH_DOMAIN_CHECKS
+#if ML_OMIT_MATH_DOMAIN_CHECKS
+#else
 	if (X <= 0.0) {
 		ML_math_domain_error(""math__log2"");
 	}
 #endif
-	Log2 = System::Math::Log(X) / ML_FLOAT_LN2;
+	Log2 = System.Math.Log(X) / ML_FLOAT_LN2;
 ").
 
 %
@@ -578,9 +582,10 @@ math__solve_quadratic(A, B, C) = Roots :-
 #endif
 	Log = log(X)/log(B);
 ").
-:- pragma foreign_proc("MC++", math__log(B::in, X::in) = (Log::out),
+:- pragma foreign_proc("C#", math__log(B::in, X::in) = (Log::out),
 		[will_not_call_mercury, thread_safe], "
-#ifndef ML_OMIT_MATH_DOMAIN_CHECKS
+#if ML_OMIT_MATH_DOMAIN_CHECKS
+#else 
 	if (X <= 0.0 || B <= 0.0) {
 		ML_math_domain_error(""math__log"");
 	}
@@ -588,7 +593,7 @@ math__solve_quadratic(A, B, C) = Roots :-
 		ML_math_domain_error(""math__log"");
 	}
 #endif
-	Log = System::Math::Log(X,B);
+	Log = System.Math.Log(X,B);
 ").
 
 
@@ -599,9 +604,9 @@ math__solve_quadratic(A, B, C) = Roots :-
 		[will_not_call_mercury, thread_safe],"
 	Sin = sin(X);
 ").
-:- pragma foreign_proc("MC++", math__sin(X::in) = (Sin::out),
+:- pragma foreign_proc("C#", math__sin(X::in) = (Sin::out),
 		[will_not_call_mercury, thread_safe],"
-	Sin = System::Math::Sin(X);
+	Sin = System.Math.Sin(X);
 ").
 
 
@@ -612,9 +617,9 @@ math__solve_quadratic(A, B, C) = Roots :-
 		[will_not_call_mercury, thread_safe],"
 	Cos = cos(X);
 ").
-:- pragma foreign_proc("MC++", math__cos(X::in) = (Cos::out),
+:- pragma foreign_proc("C#", math__cos(X::in) = (Cos::out),
 		[will_not_call_mercury, thread_safe],"
-	Cos = System::Math::Cos(X);
+	Cos = System.Math.Cos(X);
 ").
 
 %
@@ -624,9 +629,9 @@ math__solve_quadratic(A, B, C) = Roots :-
 		[will_not_call_mercury, thread_safe],"
 	Tan = tan(X);
 ").
-:- pragma foreign_proc("MC++", math__tan(X::in) = (Tan::out),
+:- pragma foreign_proc("C#", math__tan(X::in) = (Tan::out),
 		[will_not_call_mercury, thread_safe],"
-	Tan = System::Math::Tan(X);
+	Tan = System.Math.Tan(X);
 ").
 
 %
@@ -645,14 +650,15 @@ math__solve_quadratic(A, B, C) = Roots :-
 #endif
 	ASin = asin(X);
 ").
-:- pragma foreign_proc("MC++", math__asin(X::in) = (ASin::out),
+:- pragma foreign_proc("C#", math__asin(X::in) = (ASin::out),
 		[will_not_call_mercury, thread_safe], "
-#ifndef ML_OMIT_MATH_DOMAIN_CHECKS
+#if ML_OMIT_MATH_DOMAIN_CHECKS
+#else
 	if (X < -1.0 || X > 1.0) {
 		ML_math_domain_error(""math__asin"");
 	}
 #endif
-	ASin = System::Math::Asin(X);
+	ASin = System.Math.Asin(X);
 ").
 
 %
@@ -671,14 +677,15 @@ math__solve_quadratic(A, B, C) = Roots :-
 #endif
 	ACos = acos(X);
 ").
-:- pragma foreign_proc("MC++", math__acos(X::in) = (ACos::out),
+:- pragma foreign_proc("C#", math__acos(X::in) = (ACos::out),
 		[will_not_call_mercury, thread_safe], "
-#ifndef ML_OMIT_MATH_DOMAIN_CHECKS
+#if ML_OMIT_MATH_DOMAIN_CHECKS
+#else
 	if (X < -1.0 || X > 1.0) {
 		ML_math_domain_error(""math__acos"");
 	}
 #endif
-	ACos = System::Math::Acos(X);
+	ACos = System.Math.Acos(X);
 ").
 
 
@@ -690,9 +697,9 @@ math__solve_quadratic(A, B, C) = Roots :-
 		[will_not_call_mercury, thread_safe],"
 	ATan = atan(X);
 ").
-:- pragma foreign_proc("MC++", math__atan(X::in) = (ATan::out),
+:- pragma foreign_proc("C#", math__atan(X::in) = (ATan::out),
 		[will_not_call_mercury, thread_safe],"
-	ATan = System::Math::Atan(X);
+	ATan = System.Math.Atan(X);
 ").
 
 %
@@ -703,9 +710,9 @@ math__solve_quadratic(A, B, C) = Roots :-
 		[will_not_call_mercury, thread_safe], "
 	ATan2 = atan2(Y, X);
 ").
-:- pragma foreign_proc("MC++", math__atan2(Y::in, X::in) = (ATan2::out), 
+:- pragma foreign_proc("C#", math__atan2(Y::in, X::in) = (ATan2::out), 
 		[will_not_call_mercury, thread_safe], "
-	ATan2 = System::Math::Atan2(Y, X);
+	ATan2 = System.Math.Atan2(Y, X);
 ").
 
 %
@@ -716,9 +723,9 @@ math__solve_quadratic(A, B, C) = Roots :-
 		[will_not_call_mercury, thread_safe],"
 	Sinh = sinh(X);
 ").
-:- pragma foreign_proc("MC++", math__sinh(X::in) = (Sinh::out),
+:- pragma foreign_proc("C#", math__sinh(X::in) = (Sinh::out),
 		[will_not_call_mercury, thread_safe],"
-	Sinh = System::Math::Sinh(X);
+	Sinh = System.Math.Sinh(X);
 ").
 
 %
@@ -729,9 +736,9 @@ math__solve_quadratic(A, B, C) = Roots :-
 		[will_not_call_mercury, thread_safe],"
 	Cosh = cosh(X);
 ").
-:- pragma foreign_proc("MC++", math__cosh(X::in) = (Cosh::out),
+:- pragma foreign_proc("C#", math__cosh(X::in) = (Cosh::out),
 		[will_not_call_mercury, thread_safe],"
-	Cosh = System::Math::Cosh(X);
+	Cosh = System.Math.Cosh(X);
 ").
 
 %
@@ -742,9 +749,9 @@ math__solve_quadratic(A, B, C) = Roots :-
 		[will_not_call_mercury, thread_safe],"
 	Tanh = tanh(X);
 ").
-:- pragma foreign_proc("MC++", math__tanh(X::in) = (Tanh::out),
+:- pragma foreign_proc("C#", math__tanh(X::in) = (Tanh::out),
 		[will_not_call_mercury, thread_safe],"
-	Tanh = System::Math::Tanh(X);
+	Tanh = System.Math.Tanh(X);
 ").
 
 %---------------------------------------------------------------------------%

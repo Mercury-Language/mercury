@@ -1019,16 +1019,18 @@ string__append_list(Lists, string__append_list(Lists)).
 	Str[len] = '\\0';
 }").
 
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 		string__append_list(_Strs::in) = (_Str::uo),
 		[will_not_call_mercury, thread_safe], "{
-	mercury::runtime::Errors::SORRY(""c code for this function"");
+	mercury.runtime.Errors.SORRY(""foreign code for this function"");
+	_Str = null;
 }").
 
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 		string__join_list(_Sep::in, _Strs::in) = (_Str::uo),
 		[will_not_call_mercury, thread_safe], "{
-	mercury::runtime::Errors::SORRY(""c code for this function"");
+	mercury.runtime.Errors.SORRY(""foreign code for this function"");
+	_Str = null;
 }").
 
 %-----------------------------------------------------------------------------%
@@ -1456,10 +1458,11 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
 		(MR_String) (MR_Word) MR_INTEGER_LENGTH_MODIFIER);
 }").
 
-:- pragma foreign_proc("MC++", 
+:- pragma foreign_proc("C#", 
 	int_length_modifer = (_LengthModifier::out),
 		[will_not_call_mercury, thread_safe], "{
-	mercury::runtime::Errors::SORRY(""c code for this function"");
+	mercury.runtime.Errors.SORRY(""foreign code for this function"");
+	_LengthModifier = null;
 }").
 
 
@@ -1474,10 +1477,11 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
 	Str = MR_make_string(MR_PROC_LABEL, FormatStr, (double) Val);
 	MR_restore_transient_hp();
 }").
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 	format_float(_FormatStr::in, _Val::in) = (_Str::out),
 		[will_not_call_mercury, thread_safe], "{
-	mercury::runtime::Errors::SORRY(""c code for this function"");
+	mercury.runtime.Errors.SORRY(""foreign code for this function"");
+	_Str = null;
 }").
 
 	% Create a string from a int using the format string.
@@ -1491,10 +1495,11 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
 	Str = MR_make_string(MR_PROC_LABEL, FormatStr, Val);
 	MR_restore_transient_hp();
 }").
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 	format_int(_FormatStr::in, _Val::in) = (_Str::out),
 		[will_not_call_mercury, thread_safe], "{
-	mercury::runtime::Errors::SORRY(""c code for this function"");
+	mercury.runtime.Errors.SORRY(""foreign code for this function"");
+	_Str = null;
 }").
 
 	% Create a string from a string using the format string.
@@ -1506,10 +1511,11 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
 		[will_not_call_mercury, thread_safe], "{
 	Str = MR_make_string(MR_PROC_LABEL, FormatStr, Val);
 }").
-:- pragma foreign_proc("MC++", 
+:- pragma foreign_proc("C#", 
 	format_string(_FormatStr::in, _Val::in) = (_Str::out),
 		[will_not_call_mercury, thread_safe], "{
-	mercury::runtime::Errors::SORRY(""c code for this function"");
+	mercury.runtime.Errors.SORRY(""foreign code for this function"");
+	_Str = null;
 }").
 
 	% Create a string from a char using the format string.
@@ -1523,10 +1529,11 @@ make_format(Flags, MaybeWidth, MaybePrec, LengthMod, Spec) = String :-
 	Str = MR_make_string(MR_PROC_LABEL, FormatStr, Val);
 	MR_restore_transient_hp();
 }").
-:- pragma foreign_proc("MC++", 
+:- pragma foreign_proc("C#", 
 	format_char(_FormatStr::in, _Val::in) = (_Str::out),
 		[will_not_call_mercury, thread_safe], "{
-	mercury::runtime::Errors::SORRY(""c code for this function"");
+	mercury.runtime.Errors.SORRY(""foreign code for this function"");
+	_Str = null;
 }").
 
 

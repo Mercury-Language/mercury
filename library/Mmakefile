@@ -91,10 +91,6 @@ MCS	=	$(M_ENV) $(MC) --split-c-files -c --cflags "$(ALL_CFLAGS)" \
 			$(INTERMODULE_OPTS) $(CHECK_TERM_OPTS)
 MGNUC	=	$(M_ENV) $(SCRIPTS_DIR)/mgnuc
 MGNUCFLAGS =	$(DLL_CFLAGS)
-	# -AI sets the assembly search path (just like -I for assemblies)
-MS_CLFLAGS  =	-AI$(RUNTIME_DIR) -I$(RUNTIME_DIR)
-MS_CL_NOASM=:noAssembly
-MS_CSCFLAGS=/t:module
 LDFLAGS	=	-L$(BOEHM_GC_DIR) -L$(RUNTIME_DIR)
 ALL_LDFLAGS =	$(LDFLAGS) $(EXTRA_LDFLAGS)
 LDLIBS	=	-l$(RT_LIB_NAME) \
@@ -218,7 +214,16 @@ lib_std: mercury.dll
 RUNTIME_DLLS=../runtime/mercury_mcpp.dll ../runtime/mercury_il.dll
 
 # Turn this on if you wish to enable .NET debugging.
-#MS_ILASMFLAGS = /debug
+DEBUG_MS_ILASMFLAGS=
+#DEBUG_MS_ILASMFLAGS=/debug
+#DEBUG_MS_CLFLAGS=/Zi
+#DEBUG_MS_CSCFLAGS=/debug
+
+	# -AI sets the assembly search path (just like -I for assemblies)
+MS_CLFLAGS  =	-AI`cygpath -w $(RUNTIME_DIR)` -I`cygpath -w $(RUNTIME_DIR)` $(DEBUG_MS_CLFLAGS)
+MS_CL_NOASM=:noAssembly
+MS_CSCFLAGS=/t:module $(DEBUG_MS_CSCFLAGS)
+MS_ILASMFLAGS=$(DEBUG_MS_ILASMFLAGS)
 
 # If you do generate a new strong name, you had better update
 # compiler/mlds_to_il.m to generate references to it.  It is also hard-coded

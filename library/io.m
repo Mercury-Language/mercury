@@ -2408,7 +2408,7 @@ io__write_private_builtin_type_info(PrivateBuiltinTypeInfo) -->
 "
 	VarOut = VarIn;
 ").
-:- pragma foreign_proc("MC++",
+:- pragma foreign_proc("C#",
 	unsafe_cast(VarIn::in) = (VarOut::out),
 		[will_not_call_mercury, thread_safe],
 "

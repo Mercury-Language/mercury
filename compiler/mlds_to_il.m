@@ -1579,8 +1579,10 @@ atomic_statement_to_il(inline_target_code(lang_C, _Code), Instrs) -->
 			% return a useful value.
 		{ RetType = void ->
 			StoreReturnInstr = empty
-		;
+		; RetType = simple_type(int32) ->
 			StoreReturnInstr = instr_node(stloc(name("succeeded")))
+		;
+			sorry(this_file, "functions in MC++")
 		},
 		MethodName =^ method_name,
 		{ assoc_list__keys(Params, TypeParams) },
