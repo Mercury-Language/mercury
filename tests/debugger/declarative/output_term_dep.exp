@@ -2,6 +2,8 @@
 mdb> echo on
 Command echo enabled.
 mdb> register --quiet
+mdb> context none
+Contexts will not be printed.
 mdb> break p
  0: + stop  interface pred output_term_dep:p/3-0 (det)
 mdb> break q
@@ -13,9 +15,9 @@ mdb> break s
 mdb> break t
  4: + stop  interface pred output_term_dep:t/2-0 (semidet)
 mdb> continue
-       3:      3  3 CALL pred output_term_dep:p/3-0 (det) output_term_dep.m:34 (output_term_dep.m:23)
+       3:      3  3 CALL pred output_term_dep:p/3-0 (det)
 mdb> finish
-      10:      3  3 EXIT pred output_term_dep:p/3-0 (det) output_term_dep.m:34 (output_term_dep.m:23)
+      10:      3  3 EXIT pred output_term_dep:p/3-0 (det)
 mdb> dd
 p(5, 8, 13)
 Valid? browse 2
@@ -29,14 +31,14 @@ Valid? yes
 Found incorrect contour:
 p(5, 8, 13)
 Is this a bug? yes
-      10:      3  3 EXIT pred output_term_dep:p/3-0 (det) output_term_dep.m:34 (output_term_dep.m:23)
+      10:      3  3 EXIT pred output_term_dep:p/3-0 (det)
 mdb> continue
 5
 8
 13
-      13:      8  3 CALL pred output_term_dep:q/1-0 (det) output_term_dep.m:65 (output_term_dep.m:58)
+      13:      8  3 CALL pred output_term_dep:q/1-0 (det)
 mdb> finish
-      20:      8  3 EXIT pred output_term_dep:q/1-0 (det) output_term_dep.m:65 (output_term_dep.m:58)
+      20:      8  3 EXIT pred output_term_dep:q/1-0 (det)
 mdb> dd
 q([[1, 2, 3], [], [99]])
 Valid? browse 1
@@ -50,12 +52,12 @@ Valid? yes
 Found incorrect contour:
 q([[1, 2, 3], [], [99]])
 Is this a bug? yes
-      20:      8  3 EXIT pred output_term_dep:q/1-0 (det) output_term_dep.m:65 (output_term_dep.m:58)
+      20:      8  3 EXIT pred output_term_dep:q/1-0 (det)
 mdb> continue
 [[1, 2, 3], [], [99]]
-      23:     13  3 CALL pred output_term_dep:r/2-0 (det) output_term_dep.m:110 (output_term_dep.m:89)
+      23:     13  3 CALL pred output_term_dep:r/2-0 (det)
 mdb> finish
-      26:     13  3 EXIT pred output_term_dep:r/2-0 (det) output_term_dep.m:110 (output_term_dep.m:89)
+      26:     13  3 EXIT pred output_term_dep:r/2-0 (det)
 mdb> dd
 r(1, 999)
 Valid? browse 2
@@ -63,12 +65,12 @@ browser> mark
 Found incorrect contour:
 r(1, 999)
 Is this a bug? yes
-      26:     13  3 EXIT pred output_term_dep:r/2-0 (det) output_term_dep.m:110 (output_term_dep.m:89)
+      26:     13  3 EXIT pred output_term_dep:r/2-0 (det)
 mdb> continue
 999
-      27:     14  3 CALL pred output_term_dep:r/2-0 (det) output_term_dep.m:110 (output_term_dep.m:92)
+      27:     14  3 CALL pred output_term_dep:r/2-0 (det)
 mdb> finish
-      39:     14  3 EXIT pred output_term_dep:r/2-0 (det) output_term_dep.m:110 (output_term_dep.m:92)
+      39:     14  3 EXIT pred output_term_dep:r/2-0 (det)
 mdb> dd
 r(2, 43)
 Valid? browse 2
@@ -81,12 +83,12 @@ Complete? yes
 Found incorrect contour:
 r(2, 43)
 Is this a bug? yes
-      39:     14  3 EXIT pred output_term_dep:r/2-0 (det) output_term_dep.m:110 (output_term_dep.m:92)
+      39:     14  3 EXIT pred output_term_dep:r/2-0 (det)
 mdb> continue
 43
-      40:     17  3 CALL pred output_term_dep:r/2-0 (det) output_term_dep.m:110 (output_term_dep.m:95)
+      40:     17  3 CALL pred output_term_dep:r/2-0 (det)
 mdb> finish
-      54:     17  3 EXIT pred output_term_dep:r/2-0 (det) output_term_dep.m:110 (output_term_dep.m:95)
+      54:     17  3 EXIT pred output_term_dep:r/2-0 (det)
 mdb> dd
 r(3, 57)
 Valid? browse 2
@@ -100,12 +102,12 @@ Valid? yes
 Found incorrect contour:
 r(3, 57)
 Is this a bug? yes
-      54:     17  3 EXIT pred output_term_dep:r/2-0 (det) output_term_dep.m:110 (output_term_dep.m:95)
+      54:     17  3 EXIT pred output_term_dep:r/2-0 (det)
 mdb> continue
 57
-      55:     21  3 CALL pred output_term_dep:r/2-0 (det) output_term_dep.m:110 (output_term_dep.m:98)
+      55:     21  3 CALL pred output_term_dep:r/2-0 (det)
 mdb> finish
-      64:     21  3 EXIT pred output_term_dep:r/2-0 (det) output_term_dep.m:110 (output_term_dep.m:98)
+      64:     21  3 EXIT pred output_term_dep:r/2-0 (det)
 mdb> dd
 r(4, -1)
 Valid? browse 2
@@ -118,12 +120,12 @@ Complete? yes
 Found incorrect contour:
 r(4, -1)
 Is this a bug? yes
-      64:     21  3 EXIT pred output_term_dep:r/2-0 (det) output_term_dep.m:110 (output_term_dep.m:98)
+      64:     21  3 EXIT pred output_term_dep:r/2-0 (det)
 mdb> continue
 -1
-      68:     25  3 CALL pred output_term_dep:s/3-0 (nondet) output_term_dep.m:169 (output_term_dep.m:150)
+      68:     25  3 CALL pred output_term_dep:s/3-0 (nondet)
 mdb> finish
-      76:     25  3 EXIT pred output_term_dep:s/3-0 (nondet) output_term_dep.m:169 (output_term_dep.m:150)
+      76:     25  3 EXIT pred output_term_dep:s/3-0 (nondet)
 mdb> dd
 s(1, 7, 7)
 Valid? browse 2
@@ -133,13 +135,13 @@ Valid? no
 Found incorrect contour:
 sa(7)
 Is this a bug? yes
-      72:     26  4 EXIT pred output_term_dep:sa/1-0 (det) output_term_dep.m:192 (output_term_dep.m:171)
+      72:     26  4 EXIT pred output_term_dep:sa/1-0 (det)
 mdb> continue
-      76:     25  3 EXIT pred output_term_dep:s/3-0 (nondet) output_term_dep.m:169 (output_term_dep.m:150)
+      76:     25  3 EXIT pred output_term_dep:s/3-0 (nondet)
 mdb> continue
-      79:     25  3 REDO pred output_term_dep:s/3-0 (nondet) output_term_dep.m:169 (output_term_dep.m:150)
+      79:     25  3 REDO pred output_term_dep:s/3-0 (nondet)
 mdb> finish
-      83:     25  3 EXIT pred output_term_dep:s/3-0 (nondet) output_term_dep.m:169 (output_term_dep.m:150)
+      83:     25  3 EXIT pred output_term_dep:s/3-0 (nondet)
 mdb> dd
 s(1, 7, 155)
 Valid? browse 3
@@ -149,13 +151,13 @@ Valid? no
 Found incorrect contour:
 sc(155)
 Is this a bug? yes
-      82:     29  4 EXIT pred output_term_dep:sc/1-0 (det) output_term_dep.m:202 (output_term_dep.m:178)
+      82:     29  4 EXIT pred output_term_dep:sc/1-0 (det)
 mdb> continue
-      83:     25  3 EXIT pred output_term_dep:s/3-0 (nondet) output_term_dep.m:169 (output_term_dep.m:150)
+      83:     25  3 EXIT pred output_term_dep:s/3-0 (nondet)
 mdb> continue
-      86:     25  3 REDO pred output_term_dep:s/3-0 (nondet) output_term_dep.m:169 (output_term_dep.m:150)
+      86:     25  3 REDO pred output_term_dep:s/3-0 (nondet)
 mdb> finish
-      93:     25  3 EXIT pred output_term_dep:s/3-0 (nondet) output_term_dep.m:169 (output_term_dep.m:150)
+      93:     25  3 EXIT pred output_term_dep:s/3-0 (nondet)
 mdb> dd
 s(1, 38, 7)
 Valid? browse 3
@@ -163,13 +165,13 @@ browser> mark
 Found incorrect contour:
 sa(7)
 Is this a bug? yes
-      92:     32  4 EXIT pred output_term_dep:sa/1-0 (det) output_term_dep.m:192 (output_term_dep.m:176)
+      92:     32  4 EXIT pred output_term_dep:sa/1-0 (det)
 mdb> continue
-      93:     25  3 EXIT pred output_term_dep:s/3-0 (nondet) output_term_dep.m:169 (output_term_dep.m:150)
+      93:     25  3 EXIT pred output_term_dep:s/3-0 (nondet)
 mdb> continue
-      96:     25  3 REDO pred output_term_dep:s/3-0 (nondet) output_term_dep.m:169 (output_term_dep.m:150)
+      96:     25  3 REDO pred output_term_dep:s/3-0 (nondet)
 mdb> finish
-     100:     25  3 EXIT pred output_term_dep:s/3-0 (nondet) output_term_dep.m:169 (output_term_dep.m:150)
+     100:     25  3 EXIT pred output_term_dep:s/3-0 (nondet)
 mdb> dd
 s(1, 38, 155)
 Valid? browse 3
@@ -177,18 +179,18 @@ browser> mark
 Found incorrect contour:
 sc(155)
 Is this a bug? yes
-      99:     34  4 EXIT pred output_term_dep:sc/1-0 (det) output_term_dep.m:202 (output_term_dep.m:178)
+      99:     34  4 EXIT pred output_term_dep:sc/1-0 (det)
 mdb> continue
-     100:     25  3 EXIT pred output_term_dep:s/3-0 (nondet) output_term_dep.m:169 (output_term_dep.m:150)
+     100:     25  3 EXIT pred output_term_dep:s/3-0 (nondet)
 mdb> continue
-     103:     25  3 REDO pred output_term_dep:s/3-0 (nondet) output_term_dep.m:169 (output_term_dep.m:150)
+     103:     25  3 REDO pred output_term_dep:s/3-0 (nondet)
 mdb> finish
-     104:     25  3 FAIL pred output_term_dep:s/3-0 (nondet) output_term_dep.m:169 (output_term_dep.m:150)
+     104:     25  3 FAIL pred output_term_dep:s/3-0 (nondet)
 mdb> continue
 no
-     107:     36  3 CALL pred output_term_dep:s/3-0 (nondet) output_term_dep.m:169 (output_term_dep.m:158)
+     107:     36  3 CALL pred output_term_dep:s/3-0 (nondet)
 mdb> finish
-     114:     36  3 EXIT pred output_term_dep:s/3-0 (nondet) output_term_dep.m:169 (output_term_dep.m:158)
+     114:     36  3 EXIT pred output_term_dep:s/3-0 (nondet)
 mdb> dd
 s(2, 7, 38)
 Valid? browse 3
@@ -198,13 +200,13 @@ Valid? no
 Found incorrect contour:
 sb(38)
 Is this a bug? yes
-     113:     38  4 EXIT pred output_term_dep:sb/1-0 (det) output_term_dep.m:197 (output_term_dep.m:183)
+     113:     38  4 EXIT pred output_term_dep:sb/1-0 (det)
 mdb> continue
-     114:     36  3 EXIT pred output_term_dep:s/3-0 (nondet) output_term_dep.m:169 (output_term_dep.m:158)
+     114:     36  3 EXIT pred output_term_dep:s/3-0 (nondet)
 mdb> continue
-     117:     36  3 REDO pred output_term_dep:s/3-0 (nondet) output_term_dep.m:169 (output_term_dep.m:158)
+     117:     36  3 REDO pred output_term_dep:s/3-0 (nondet)
 mdb> finish
-     123:     36  3 EXIT pred output_term_dep:s/3-0 (nondet) output_term_dep.m:169 (output_term_dep.m:158)
+     123:     36  3 EXIT pred output_term_dep:s/3-0 (nondet)
 mdb> dd
 s(2, 38, 155)
 Valid? browse 2
@@ -212,18 +214,18 @@ browser> mark
 Found incorrect contour:
 sb(38)
 Is this a bug? yes
-     120:     40  4 EXIT pred output_term_dep:sb/1-0 (det) output_term_dep.m:197 (output_term_dep.m:185)
+     120:     40  4 EXIT pred output_term_dep:sb/1-0 (det)
 mdb> continue
-     123:     36  3 EXIT pred output_term_dep:s/3-0 (nondet) output_term_dep.m:169 (output_term_dep.m:158)
+     123:     36  3 EXIT pred output_term_dep:s/3-0 (nondet)
 mdb> continue
-     126:     36  3 REDO pred output_term_dep:s/3-0 (nondet) output_term_dep.m:169 (output_term_dep.m:158)
+     126:     36  3 REDO pred output_term_dep:s/3-0 (nondet)
 mdb> continue
-     127:     36  3 FAIL pred output_term_dep:s/3-0 (nondet) output_term_dep.m:169 (output_term_dep.m:158)
+     127:     36  3 FAIL pred output_term_dep:s/3-0 (nondet)
 mdb> continue
 no
-     132:     44  3 CALL pred output_term_dep:t/2-0 (semidet) output_term_dep.m:225 (output_term_dep.m:214)
+     132:     44  3 CALL pred output_term_dep:t/2-0 (semidet)
 mdb> finish
-     143:     44  3 EXIT pred output_term_dep:t/2-0 (semidet) output_term_dep.m:225 (output_term_dep.m:214)
+     143:     44  3 EXIT pred output_term_dep:t/2-0 (semidet)
 mdb> dd
 t(1, 77)
 Valid? browse 2
@@ -239,6 +241,6 @@ Complete? yes
 Found incorrect contour:
 t(1, 77)
 Is this a bug? yes
-     143:     44  3 EXIT pred output_term_dep:t/2-0 (semidet) output_term_dep.m:225 (output_term_dep.m:214)
+     143:     44  3 EXIT pred output_term_dep:t/2-0 (semidet)
 mdb> continue
 77

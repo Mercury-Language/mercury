@@ -1,5 +1,6 @@
 echo on
 register --quiet
+context none
 break p
 break q
 break r
