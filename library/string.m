@@ -6,7 +6,7 @@
 
 :- module string.
 
-% Main author: fjh.
+% Main authors: fjh, dylan.
 % Stability: medium to high.
 
 % This modules provides basic string handling facilities.
@@ -273,21 +273,13 @@
 %
 %
 %	Note:
-%		%x will print with uppercase hex numbers.
-%
 %		%#.0e, %#.0E won't print a '.' before the 'e' ('#' ignored).
-%
-%		string__float_to_string returns large values in `%e' format,
-%		rather than `%f' format.  This means that a conversion to `%f'
-%		might not be properly formatted, and the width information may 
-%		be wrong.  It is better to use `%g' or `%e' if large floats 
-%		need to be printed.
 %
 %		Extra precision (as `0's) may be added to floats if the 
 %		precision value asks for this - IE numbers may come out more
 %		accurate than when they were typed.  A precision value of more
-%		than 15 will not find more accuracy, as string__float_to_string
-%		only generates 15 significant figures.
+%		than 15 will not find more accuracy, as
+%		string__f_float_to_string only generates 15 significant figures.
 %
 %		If a width or precision is specified, without a `.', a number
 %		is assumed to be a width and a `*' is assumed to be a precision.
@@ -744,8 +736,6 @@ string__sub_string_search2(String0, SString, StrLen0,
 
 %-----------------------------------------------------------------------------%
 
-%	XXXXX when string__to_lower exists, fix %x option.
-
 string__format(Format_string, Poly_list, Out_string ) :-
 	string__to_char_list(Format_string, Format_char_list),
 	string__format_2(Format_char_list, Poly_list, Out_string) .
@@ -854,12 +844,12 @@ string__format_mod_conv_char(Precision0, Poly_var, Conversion_in,
 	; 
 	Conversion_in = 'g' ->			%g is either %e of %f
 		(Poly_var = f(F) ->
-			string__float_abs(F, Ft),
+			float__abs(F, Ft),
 			int__pow(10, Prec, P),
 			int__to_float(P, Pe),
 			(
-				builtin_float_gt(Ft, 0.0001),
-				builtin_float_gt(Pe, Ft)
+				Ft > 0.0001,
+				Pe > Ft
 			->
 				Conversion_out = 'f',
 				Precision = yes(0)
@@ -873,12 +863,12 @@ string__format_mod_conv_char(Precision0, Poly_var, Conversion_in,
 	;
 	Conversion_in = 'G' ->		%G is either %E of %f
 		(Poly_var = f(F) ->
-			string__float_abs(F, Ft),
+			float__abs(F, Ft),
 			int__pow(10, Prec, P),
 			int__to_float(P, Pe),
 			(
-				builtin_float_gt(Ft, 0.0001),
-				builtin_float_gt(Pe, Ft)
+				Ft > 0.0001,
+				Pe > Ft
 			->
 				Conversion_out = 'f',
 				Precision = yes(0)
@@ -1022,7 +1012,8 @@ string__do_conversion_0(Conversion, Poly_t, Ostring, Precision, Flags,
 			Pfix_len = 0,
 			string__format_int_precision(SS, Ostring, Precision, _)
 		;
-			string__int_to_base_string(I, 16, S),
+			string__int_to_base_string(I, 16, S0),
+			string__to_lower(S0, S),
 			string__format_int_precision(S, SS, Precision, _),
 			(
 				list__member('#', Flags)
@@ -1081,18 +1072,18 @@ string__do_conversion_0(Conversion, Poly_t, Ostring, Precision, Flags,
 		Poly_t = f(F),
 		string__float_to_f_string(F, Fstring),
 		string__format_calc_prec(Fstring, Ostring, Precision),
-		(builtin_float_lt(F, 0.0) -> Mv_width = 1 ; Mv_width = 0)
+		(F < 0.0 -> Mv_width = 1 ; Mv_width = 0)
 	;
 	Conversion = 'e',
 		Poly_t = f(F),
 		string__format_calc_exp(F, Ostring, Precision, 0),
-		(builtin_float_lt(F, 0.0) -> Mv_width = 1 ; Mv_width = 0)
+		(F < 0.0 -> Mv_width = 1 ; Mv_width = 0)
 	;
 	Conversion = 'E' ,
 		Poly_t = f(F),
 		string__format_calc_exp(F, Otemp, Precision, 0),
 		string__to_upper(Otemp, Ostring),
-		(builtin_float_lt(F, 0.0) -> Mv_width = 1 ; Mv_width = 0)
+		(F < 0.0 -> Mv_width = 1 ; Mv_width = 0)
 	;
 	Conversion = 'p' ,
 		Poly_t = i(I),
@@ -1147,30 +1138,28 @@ string__format_int_precision(S, Ostring, Precision, Added_width) :-
 :- pred string__format_calc_exp(float, string, maybe(int), int).
 :- mode string__format_calc_exp(in, out, in, in) is det.
 string__format_calc_exp(F, Fstring, Precision, Exp) :-
-	( builtin_float_lt(F, 0.0) -> 
-		builtin_float_minus(0.0, F, Tf),
+	( F < 0.0 -> 
+		Tf is 0.0 - F,
 		string__format_calc_exp(Tf, Tst, Precision, Exp),
 		string__first_char(Fstring, '-', Tst)
+	; F > 0.0, F < 1.0 ->
+		Texp is Exp - 1,
+		FF is 10.0 * F,
+		string__format_calc_exp(FF, Fstring, Precision, Texp)
+	; F >= 10.0 ->
+		Texp is Exp + 1,
+		FF is F / 10.0,
+		string__format_calc_exp(FF, Fstring, Precision, Texp)
 	;
-		( builtin_float_lt(F, 1.0) ->
-			Texp is Exp - 1,
-			builtin_float_times(F, 10.0, FF),
-			string__format_calc_exp(FF, Fstring, Precision, Texp)
-		; builtin_float_ge(F, 10.0) ->
-			Texp is Exp + 1,
-			builtin_float_divide(F, 10.0, FF),
-			string__format_calc_exp(FF, Fstring, Precision, Texp)
+		string__float_to_f_string(F, Fs),
+		string__format_calc_prec(Fs, Fs2, Precision),
+		string__int_to_string(Exp, Exps),
+		( Exp < 0 ->
+			string__append("e", Exps, TFstring),
+			string__append(Fs2, TFstring, Fstring)
 		;
-			string__float_to_f_string(F, Fs),
-			string__format_calc_prec(Fs, Fs2, Precision),
-			string__int_to_string(Exp, Exps),
-			( Exp < 0 ->
-				string__append("e", Exps, TFstring),
-				string__append(Fs2, TFstring, Fstring)
-			;
-				string__append("e+", Exps, TFstring),
-				string__append(Fs2, TFstring, Fstring)
-			)
+			string__append("e+", Exps, TFstring),
+			string__append(Fs2, TFstring, Fstring)
 		)
 	).
 
@@ -1476,15 +1465,6 @@ string__format_int_from_char_list([L|Ls], I) :-
 		I = I_0
 	;
 		I = 0
-	).
-
-:- pred string__float_abs(float, float).
-:- mode string__float_abs(in, out) is det.
-string__float_abs(Fin, Fout) :-
-	( builtin_float_lt(Fin, 0.0) ->
-		builtin_float_minus(0.0, Fin, Fout)
-	;
-		Fout = Fin
 	).
 
 :- pred string__default_precision_and_width(int).
