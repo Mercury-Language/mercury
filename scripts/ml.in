@@ -34,6 +34,13 @@ SHLIB_RPATH_SEP=${MERCURY_SHLIB_RPATH_SEP="@SHLIB_RPATH_SEP@"}
 SHARED_LIBS=${MERCURY_SHARED_LIBS="@SHARED_LIBS@"}
 TMPDIR=${TMPDIR=/tmp}
 
+# When compiling in the hlc.gc grade using the Microsoft Visual C
+# compiler, the default maximum stack size of 4Mb is too low for a
+# recursive language.
+# XXX at some stage this should become an option to ml
+LINK=/stack:10485760	# 10 Mb
+export LINK
+
 # On some systems (Solaris for exemple), we need libraries to be able to 
 # use sockets. The name of the needed libraries is determined by autoconf
 # and passed through this variable.
