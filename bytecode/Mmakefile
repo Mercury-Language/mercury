@@ -50,14 +50,14 @@ MDIS_OBJS = bytecode.o disasm.o mdis.o mem.o util.o
 mdis: $(MDIS_OBJS)
 	$(MGNUC) $(CFLAGS) -static -o mdis $(MDIS_OBJS) $(LIBPATH) $(LIBS)
 
+LIBMBI_OBJS = bytecode.o mbi.o mem.o util.o
+LIBMBI_PIC_OBJS = $(LIBMBI_OBJS:.o=.$(EXT_FOR_PIC_OBJECTS))
 MBI_OBJS = mbi_main.o $(LIBMBI_OBJS)
+
 mbi: $(MBI_OBJS)
 	$(MGNUC) $(CFLAGS) -static -o mbi $(MBI_OBJS) $(LIBPATH) $(LIBS)
 
 libmbi: libmbi.a libmbi.$(EXT_FOR_SHARED_LIB)
-
-LIBMBI_OBJS = bytecode.o mbi.o mem.o util.o
-LIBMBI_PIC_OBJS = $(LIBMBI_OBJS:.o=.$(EXT_FOR_PIC_OBJECTS))
 
 libmbi.a: $(LIBMBI_OBJS)
 	rm -f libmbi.a
