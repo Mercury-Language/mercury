@@ -816,7 +816,7 @@ determinism_to_code_model(failure,     model_semi).
 	% An assertion is a goal that will always evaluate to true,
 	% subject to the constraints imposed by the quantifiers.
 	%
-	% ie :- assertion all [A] some [B] (B > A)
+	% ie :- promise all [A] some [B] (B > A)
 	% 
 	% The above assertion states that for all possible values of A,
 	% there will exist at least one value, B, such that B is greater

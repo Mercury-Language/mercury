@@ -149,7 +149,6 @@ aditi_bottom_up fx              500
 aditi_top_down  fx              500
 all             fxy             950
 and             xfy             720
-assertion       fx              1199
 div             yfx             400
 else            xfy             1170
 end_module      fx              1199
@@ -169,6 +168,7 @@ not             fy              900
 or              xfy             740
 pragma          fx              1199
 pred            fx              800
+promise         fx              1199
 rule            fx              1199
 semipure        fy              800
 some            fxy             950

@@ -428,7 +428,7 @@ mercury_output_item(pragma(Pragma), Context) -->
 	).
 
 mercury_output_item(assertion(Goal, VarSet), _) -->
-	io__write_string(":- assertion "),
+	io__write_string(":- promise "),
 	{ Indent = 1 },
 	mercury_output_newline(Indent),
 	mercury_output_goal(Goal, VarSet, Indent),
@@ -2838,6 +2838,7 @@ mercury_unary_prefix_op("\\").
 mercury_unary_prefix_op("\\+").
 mercury_unary_prefix_op("aditi_bottom_up").
 mercury_unary_prefix_op("aditi_top_down").
+	% XXX assertion bootstrap
 mercury_unary_prefix_op("assertion").
 mercury_unary_prefix_op("delete").
 mercury_unary_prefix_op("dynamic").
@@ -2859,6 +2860,7 @@ mercury_unary_prefix_op("not").
 mercury_unary_prefix_op("once").
 mercury_unary_prefix_op("pragma").
 mercury_unary_prefix_op("pred").
+mercury_unary_prefix_op("promise").
 mercury_unary_prefix_op("pure").
 mercury_unary_prefix_op("rule").	/* NU-Prolog */
 mercury_unary_prefix_op("semipure").

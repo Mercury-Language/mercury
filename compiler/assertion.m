@@ -515,7 +515,7 @@ write_assertion_interface_error(Context, Type, Module0, Module) -->
 	io__write_string("':\n"),
 
 	prog_out__write_context(Context),
-	io__write_string("  error: exported assertion refers to "),
+	io__write_string("  error: exported promise refers to "),
 	(
 		{ Type = call(PredOrFunc, SymName, Arity) },
 		hlds_out__write_simple_call_id(PredOrFunc, SymName, Arity),
@@ -538,7 +538,7 @@ write_assertion_interface_error(Context, Type, Module0, Module) -->
 		{ VerboseErrors = yes }
 	->
 		prog_out__write_context(Context),
-		io__write_string("  Either move the assertion into the "),
+		io__write_string("  Either move the promise into the "),
 		io__write_string("implementation section\n"),
 
 		prog_out__write_context(Context),

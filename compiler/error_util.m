@@ -336,7 +336,7 @@ error_util__describe_one_pred_name(Module, PredId, Piece) :-
 	(
 		pred_info_get_goal_type(PredInfo, assertion)
 	->
-		Piece = "assertion"
+		Piece = "promise"
 	;
 		string__int_to_string(OrigArity, ArityPart),
 		string__append_list([

@@ -725,7 +725,7 @@ add_item_clause(assertion(Goal0, VarSet),
 		% leverage off all the other checks in the compiler that
 		% operate on predicates.
 		%
-		% :- assertion all [A,B,R] ( R = A + B <=> R = B + A ).
+		% :- promise all [A,B,R] ( R = A + B <=> R = B + A ).
 		%
 		% becomes
 		%
@@ -2932,7 +2932,7 @@ module_add_clause(ModuleInfo0, ClauseVarSet, PredName, Args, Body, Status,
 			{ prog_out__sym_name_to_string(PredName, NameString) },
 			{ string__format("%s %s %s (%s).\n",
 				[s("Attempted to introduce a predicate"),
-				s("for an assertion with an identical"),
+				s("for a promise with an identical"),
 				s("name to an existing predicate"),
 				s(NameString)], String) },
 			{ error(String) }

@@ -330,7 +330,7 @@ hlds_out__write_pred_id(ModuleInfo, PredId) -->
 	;
 		{ pred_info_get_goal_type(PredInfo, assertion) }
 	->
-		io__write_string("assertion")
+		io__write_string("promise")
 	;
 		hlds_out__write_simple_call_id(PredOrFunc,
 			qualified(Module, Name), Arity)
@@ -847,7 +847,7 @@ hlds_out__write_assertion(Indent, ModuleInfo, _PredId, VarSet, AppendVarnums,
 		) },
 
 	hlds_out__write_indent(Indent),
-	io__write_string(":- assertion all["),
+	io__write_string(":- promise all["),
 	io__write_list(HeadVars, ", ", PrintVar),
 	io__write_string("] (\n"),
 
