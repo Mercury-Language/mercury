@@ -84,29 +84,29 @@ start_label:
         case MR_TYPECTOR_REP_DU:
             {
                 const MR_DuFunctorDesc  *functor_desc;
-#ifdef  select_compare_code
+  #ifdef  select_compare_code
                 const MR_DuFunctorDesc  *x_functor_desc;
                 const MR_DuFunctorDesc  *y_functor_desc;
                 MR_DuPtagLayout         *x_ptaglayout;
                 MR_DuPtagLayout         *y_ptaglayout;
-#else
-                MR_Word                    x_ptag;
-                MR_Word                    y_ptag;
-                MR_Word                    x_sectag;
-                MR_Word                    y_sectag;
+  #else
+                MR_Word                 x_ptag;
+                MR_Word                 y_ptag;
+                MR_Word                 x_sectag;
+                MR_Word                 y_sectag;
                 MR_DuPtagLayout         *ptaglayout;
-#endif
-                MR_Word                    *x_data_value;
-                MR_Word                    *y_data_value;
+  #endif
+                MR_Word                 *x_data_value;
+                MR_Word                 *y_data_value;
                 const MR_DuExistInfo    *exist_info;
                 int                     result;
                 int                     cur_slot;
                 int                     arity;
                 int                     i;
 
-#ifdef  select_compare_code
+  #ifdef  select_compare_code
 
-#define MR_find_du_functor_desc(data, data_value, functor_desc)               \
+  #define MR_find_du_functor_desc(data, data_value, functor_desc)             \
                 do {                                                          \
                     MR_DuPtagLayout         *ptaglayout;                      \
                     int                     ptag;                             \
@@ -127,7 +127,8 @@ start_label:
                             sectag = 0;                                       \
                             break;                                            \
                         case MR_SECTAG_VARIABLE:                              \
-                            MR_fatal_error("find_du_functor_desc(): attempt get functor desc of variable");                                                   \
+                            MR_fatal_error("find_du_functor_desc(): "         \
+                                "attempt get functor desc of variable");      \
                     }                                                         \
                                                                               \
                     functor_desc = ptaglayout->MR_sectag_alternatives[sectag];\
@@ -136,7 +137,7 @@ start_label:
                 MR_find_du_functor_desc(x, x_data_value, x_functor_desc);
                 MR_find_du_functor_desc(y, y_data_value, y_functor_desc);
 
-#undef MR_find_du_functor_desc
+  #undef MR_find_du_functor_desc
 
                 if (x_functor_desc->MR_du_functor_ordinal !=
                     y_functor_desc->MR_du_functor_ordinal)
@@ -151,7 +152,7 @@ start_label:
                 }
 
                 functor_desc = x_functor_desc;
-#else
+  #else /* ! select_compare_code */
                 x_ptag = MR_tag(x);
                 y_ptag = MR_tag(y);
 
@@ -193,7 +194,7 @@ start_label:
                 }
 
                 functor_desc = ptaglayout->MR_sectag_alternatives[x_sectag];
-#endif
+  #endif /* select_compare_code */
 
                 if (functor_desc->MR_du_functor_sectag_locn ==
                     MR_SECTAG_REMOTE)
@@ -235,11 +236,11 @@ start_label:
                         }
                         result = MR_compare_type_info(x_ti, y_ti);
                         if (result != MR_COMPARE_EQUAL) {
-#ifdef  select_compare_code
+  #ifdef  select_compare_code
                             return_answer(result);
-#else
+  #else
                             return_answer(FALSE);
-#endif
+  #endif
                         }
                     }
 
@@ -258,32 +259,32 @@ start_label:
                         arg_type_info = (MR_TypeInfo)
                             functor_desc->MR_du_functor_arg_types[i];
                     }
-#ifdef  select_compare_code
+  #ifdef  select_compare_code
                     result = MR_generic_compare(arg_type_info,
                         x_data_value[cur_slot], y_data_value[cur_slot]);
                     if (result != MR_COMPARE_EQUAL) {
                         return_answer(result);
                     }
-#else
+  #else
                     result = MR_generic_unify(arg_type_info,
                         x_data_value[cur_slot], y_data_value[cur_slot]);
                     if (! result) {
                         return_answer(FALSE);
                     }
-#endif
+  #endif
                     cur_slot++;
                 }
 
-#ifdef  select_compare_code
+  #ifdef  select_compare_code
                 return_answer(MR_COMPARE_EQUAL);
-#else
+  #else
                 return_answer(TRUE);
-#endif
+  #endif
             }
 
             break;
 
-#else
+#else /* ! MR_COMPARE_BY_RTTI */
 
         case MR_TYPECTOR_REP_EQUIV:
         case MR_TYPECTOR_REP_EQUIV_GROUND:
@@ -403,7 +404,11 @@ start_label:
         case MR_TYPECTOR_REP_ENUM:
         case MR_TYPECTOR_REP_INT:
         case MR_TYPECTOR_REP_CHAR:
+
 #ifdef  select_compare_code
+  #if defined(MR_DEEP_PROFILING) && defined(entry_point_is_mercury)
+            compare_call_exit_code(integer_compare);
+  #endif
             if ((MR_Integer) x == (MR_Integer) y) {
                 return_answer(MR_COMPARE_EQUAL);
             } else if ((MR_Integer) x < (MR_Integer) y) {
@@ -412,7 +417,17 @@ start_label:
                 return_answer(MR_COMPARE_GREATER);
             }
 #else
+  #if defined(MR_DEEP_PROFILING) && defined(entry_point_is_mercury)
+            if ((MR_Integer) x == (MR_Integer) y) {
+                unify_call_exit_code(integer_unify);
+                return_answer(TRUE);
+            } else {
+                unify_call_fail_code(integer_unify);
+                return_answer(FALSE);
+            }
+  #else
             return_answer((MR_Integer) x == (MR_Integer) y);
+  #endif
 #endif
 
         case MR_TYPECTOR_REP_FLOAT:
@@ -422,6 +437,9 @@ start_label:
                 fx = MR_word_to_float(x);
                 fy = MR_word_to_float(y);
 #ifdef  select_compare_code
+  #if defined(MR_DEEP_PROFILING) && defined(entry_point_is_mercury)
+                compare_call_exit_code(float_compare);
+  #endif
                 if (fx == fy) {
                     return_answer(MR_COMPARE_EQUAL);
                 } else if (fx < fy) {
@@ -430,7 +448,17 @@ start_label:
                     return_answer(MR_COMPARE_GREATER);
                 }
 #else
+  #if defined(MR_DEEP_PROFILING) && defined(entry_point_is_mercury)
+                if (fx == fy) {
+                    unify_call_exit_code(float_unify);
+                    return_answer(TRUE);
+                } else {
+                    unify_call_fail_code(float_unify);
+                    return_answer(FALSE);
+                }
+  #else
                 return_answer(fx == fy);
+  #endif
 #endif
             }
 
@@ -441,6 +469,9 @@ start_label:
                 result = strcmp((char *) x, (char *) y);
 
 #ifdef  select_compare_code
+  #if defined(MR_DEEP_PROFILING) && defined(entry_point_is_mercury)
+                compare_call_exit_code(string_compare);
+  #endif
                 if (result == 0) {
                     return_answer(MR_COMPARE_EQUAL);
                 } else if (result < 0) {
@@ -449,12 +480,25 @@ start_label:
                     return_answer(MR_COMPARE_GREATER);
                 }
 #else
+  #if defined(MR_DEEP_PROFILING) && defined(entry_point_is_mercury)
+                if (result == 0) {
+                    unify_call_exit_code(string_unify);
+                    return_answer(TRUE);
+                } else {
+                    unify_call_fail_code(string_unify);
+                    return_answer(FALSE);
+                }
+  #else
                 return_answer(result == 0);
+  #endif
 #endif
             }
 
         case MR_TYPECTOR_REP_C_POINTER:
 #ifdef	select_compare_code
+  #if defined(MR_DEEP_PROFILING) && defined(entry_point_is_mercury)
+            compare_call_exit_code(c_pointer_compare);
+  #endif
             if ((void *) x == (void *) y) {
                 return_answer(MR_COMPARE_EQUAL);
             } else if ((void *) x < (void *) y) {
@@ -463,7 +507,17 @@ start_label:
                 return_answer(MR_COMPARE_GREATER);
             }
 #else
-	        return_answer((void *) x == (void *) y);
+  #if defined(MR_DEEP_PROFILING) && defined(entry_point_is_mercury)
+            if ((void *) x == (void *) y) {
+                unify_call_exit_code(c_pointer_unify);
+                return_answer(TRUE);
+            } else {
+                unify_call_fail_code(c_pointer_unify);
+                return_answer(FALSE);
+            }
+  #else
+            return_answer((void *) x == (void *) y);
+  #endif
 #endif
 
         case MR_TYPECTOR_REP_TYPEINFO:
@@ -475,9 +529,22 @@ start_label:
                     (MR_TypeInfo) x, (MR_TypeInfo) y);
                 MR_restore_transient_registers();
 #ifdef	select_compare_code
+  #if defined(MR_DEEP_PROFILING) && defined(entry_point_is_mercury)
+                compare_call_exit_code(typeinfo_compare);
+  #endif
                 return_answer(result);
 #else
+  #if defined(MR_DEEP_PROFILING) && defined(entry_point_is_mercury)
+                if (result == MR_COMPARE_EQUAL) {
+                    unify_call_exit_code(typeinfo_unify);
+                    return_answer(TRUE);
+                } else {
+                    unify_call_fail_code(typeinfo_unify);
+                    return_answer(FALSE);
+                }
+  #else
                 return_answer(result == MR_COMPARE_EQUAL);
+  #endif
 #endif
             }
 

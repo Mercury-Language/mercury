@@ -41,6 +41,8 @@
 		inner_csd = pd->MR_pd_call_site_ptr_ptrs[csn];		\
 									\
 		if (inner_csd != NULL) {				\
+			int	inner_count;				\
+									\
 			inner_count = inner_csd->MR_csd_depth_count;	\
 			/* calls are computed from the other counts */	\
 			inner_csd->MR_csd_own.inc_field += inner_count;	\

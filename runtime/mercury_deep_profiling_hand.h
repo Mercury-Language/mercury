@@ -422,20 +422,18 @@
 */
 
 #define	MR_deep_prepare_normal_call(proclabel, first_slot, label, site)	\
-	MR_r1 = MR_stackvar(first_slot+1);				\
-	MR_r2 = site;							\
+	MR_r1 = site;							\
 	MR_call_localret(MR_ENTRY(					\
-		mercury__profiling_builtin__prepare_for_normal_call_2_0),\
+		mercury__profiling_builtin__prepare_for_normal_call_1_0),\
 		label, MR_ENTRY(proclabel));				\
     MR_define_label(label);						\
 	MR_update_prof_current_proc(MR_LABEL(proclabel))
 
 #define	MR_deep_prepare_ho_call(proclabel, first_slot, label, site, closure) \
-	MR_r1 = MR_stackvar(first_slot+1);				\
-	MR_r2 = site;							\
-	MR_r3 = closure;						\
+	MR_r1 = site;							\
+	MR_r2 = closure;						\
 	MR_call_localret(MR_ENTRY(					\
-		mercury__profiling_builtin__prepare_for_ho_call_3_0),	\
+		mercury__profiling_builtin__prepare_for_ho_call_2_0),	\
 		label, MR_ENTRY(proclabel));				\
     MR_define_label(label);						\
 	MR_update_prof_current_proc(MR_LABEL(proclabel))

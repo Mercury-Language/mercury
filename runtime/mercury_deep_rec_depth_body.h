@@ -30,8 +30,6 @@
 	MR_CallSiteDynamic	*csd;
 	MR_ProcDynamic		*pd;
 	MR_ProcStatic		*ps;
-	MR_CallSiteDynamic	*inner_csd;
-	int			inner_count;
 
 	MR_enter_instrumentation();
 	csd = (MR_CallSiteDynamic *) CSD;

@@ -216,25 +216,30 @@ typedef enum {
 
 #ifdef	MR_DEEP_PROFILING_STATISTICS
   extern int	MR_deep_prof_search_len;
-  extern void	MR_deep_profile_update_special_history(MR_TypeCtorInfo);
-  extern void	MR_deep_profile_update_closure_history(MR_Closure *);
+  extern void	MR_deep_profile_update_special_history(void);
+  extern void	MR_deep_profile_update_closure_history(void);
+  extern void	MR_deep_profile_update_method_history(void);
 
   #define MR_maybe_init_search_len()					\
   	do { MR_deep_prof_search_len = 0; } while(0)
   #define MR_maybe_increment_search_len()				\
   	do { MR_deep_prof_search_len++; } while (0)
-  #define MR_maybe_deep_profile_update_special_history(typectorinfo) 	\
-	MR_deep_profile_update_special_history(typectorinfo)
-  #define MR_maybe_deep_profile_update_closure_history(closure) 	\
-	MR_deep_profile_update_closure_history(closure)
+  #define MR_maybe_deep_profile_update_special_history()	 	\
+	MR_deep_profile_update_special_history()
+  #define MR_maybe_deep_profile_update_closure_history() 		\
+	MR_deep_profile_update_closure_history()
+  #define MR_maybe_deep_profile_update_method_history() 		\
+	MR_deep_profile_update_method_history()
 #else
   #define MR_maybe_init_search_len()					\
 	((void) 0)
   #define MR_maybe_increment_search_len()				\
 	((void) 0)
-  #define MR_maybe_deep_profile_update_special_history(typeinfo)	\
+  #define MR_maybe_deep_profile_update_special_history()		\
 	((void) 0)
-  #define MR_maybe_deep_profile_update_closure_history(closure)		\
+  #define MR_maybe_deep_profile_update_closure_history()		\
+	((void) 0)
+  #define MR_maybe_deep_profile_update_method_history()			\
 	((void) 0)
 #endif
 
@@ -321,20 +326,24 @@ extern	volatile unsigned		MR_quanta_outside_deep_profiling_code;
 
 #define MR_MAX_CLOSURE_LIST_LENGTH 256
 
-extern	int	MR_dictionary_search_lengths[MR_MAX_CLOSURE_LIST_LENGTH];
-extern	int	MR_closure_search_lengths[MR_MAX_CLOSURE_LIST_LENGTH];
-
 extern	int	MR_deep_prof_prep_normal_new;
 extern	int	MR_deep_prof_prep_normal_old;
 extern	int	MR_deep_prof_prep_special_new;
 extern	int	MR_deep_prof_prep_special_old;
 extern	int	MR_deep_prof_prep_ho_new;
 extern	int	MR_deep_prof_prep_ho_old;
+extern	int	MR_deep_prof_prep_method_new;
+extern	int	MR_deep_prof_prep_method_old;
+extern	int	MR_deep_prof_prep_callback_new;
+extern	int	MR_deep_prof_prep_callback_old;
+extern	int	MR_deep_prof_prep_tail_new;
+extern	int	MR_deep_prof_prep_tail_old;
 
-extern	int	MR_deep_prof_call_old;
-extern	int	MR_deep_prof_call_rec;
 extern	int	MR_deep_prof_call_new;
-extern	int	MR_deep_prof_call_inner;
+extern	int	MR_deep_prof_call_rec;
+extern	int	MR_deep_prof_call_old;
+extern	int	MR_deep_prof_call_builtin_new;
+extern	int	MR_deep_prof_call_builtin_old;
 
 #endif	/* MR_DEEP_PROFILING_STATISTICS */
 

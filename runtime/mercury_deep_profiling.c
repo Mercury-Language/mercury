@@ -92,6 +92,7 @@ int	MR_deep_num_dynlist_nodes = 0;
 
 int	MR_dictionary_search_lengths[MR_MAX_CLOSURE_LIST_LENGTH];
 int	MR_closure_search_lengths[MR_MAX_CLOSURE_LIST_LENGTH];
+int	MR_method_search_lengths[MR_MAX_CLOSURE_LIST_LENGTH];
 
 int	MR_deep_prof_prep_normal_new = 0;
 int	MR_deep_prof_prep_normal_old = 0;
@@ -99,11 +100,18 @@ int	MR_deep_prof_prep_special_new = 0;
 int	MR_deep_prof_prep_special_old = 0;
 int	MR_deep_prof_prep_ho_new = 0;
 int	MR_deep_prof_prep_ho_old = 0;
+int	MR_deep_prof_prep_method_new = 0;
+int	MR_deep_prof_prep_method_old = 0;
+int	MR_deep_prof_prep_callback_new = 0;
+int	MR_deep_prof_prep_callback_old = 0;
+int	MR_deep_prof_prep_tail_old = 0;
+int	MR_deep_prof_prep_tail_new = 0;
 
-int	MR_deep_prof_call_old = 0;
-int	MR_deep_prof_call_rec = 0;
 int	MR_deep_prof_call_new = 0;
-int	MR_deep_prof_call_inner = 0;
+int	MR_deep_prof_call_rec = 0;
+int	MR_deep_prof_call_old = 0;
+int	MR_deep_prof_call_builtin_new = 0;
+int	MR_deep_prof_call_builtin_old = 0;
 
 #endif	/* MR_DEEP_PROFILING_STATISTICS */
 
@@ -130,12 +138,19 @@ MR_setup_callback(void *entry)
 		if (csd_list->MR_csdlist_key == entry) {
 			MR_next_call_site_dynamic =
 				csd_list->MR_csdlist_call_site;
+#ifdef	MR_DEEP_PROFILING_STATISTICS
+			MR_deep_prof_prep_callback_old++;
+#endif
 			MR_leave_instrumentation();
 			return;
 		}
 
 		csd_list = csd_list->MR_csdlist_next;
 	}
+
+#ifdef	MR_DEEP_PROFILING_STATISTICS
+	MR_deep_prof_prep_callback_new++;
+#endif
 
 	MR_new_call_site_dynamic(csd);
 
@@ -154,7 +169,7 @@ MR_setup_callback(void *entry)
 int	MR_deep_prof_search_len;
 
 void
-MR_deep_profile_update_special_history(MR_TypeCtorInfo type_ctor_info)
+MR_deep_profile_update_special_history(void)
 {
 	if (MR_deep_prof_search_len < MR_MAX_CLOSURE_LIST_LENGTH) {
 		MR_dictionary_search_lengths[MR_deep_prof_search_len]++;
@@ -162,10 +177,18 @@ MR_deep_profile_update_special_history(MR_TypeCtorInfo type_ctor_info)
 }
 
 void
-MR_deep_profile_update_closure_history(MR_Closure *closure)
+MR_deep_profile_update_closure_history()
 {
 	if (MR_deep_prof_search_len < MR_MAX_CLOSURE_LIST_LENGTH) {
 		MR_closure_search_lengths[MR_deep_prof_search_len]++;
+	}
+}
+
+void
+MR_deep_profile_update_method_history()
+{
+	if (MR_deep_prof_search_len < MR_MAX_CLOSURE_LIST_LENGTH) {
+		MR_method_search_lengths[MR_deep_prof_search_len]++;
 	}
 }
 
@@ -356,10 +379,18 @@ MR_write_out_profiling_tree(void)
 		"MR_deep_prof_prep_normal_old:",
 		MR_deep_prof_prep_normal_old);
 	fprintf(stderr, "%-40s %10d\n",
+		"MR_deep_prof_prep_normal all:",
+		MR_deep_prof_prep_normal_new +
+		MR_deep_prof_prep_normal_old);
+	fprintf(stderr, "%-40s %10d\n",
 		"MR_deep_prof_prep_special_new:",
 		MR_deep_prof_prep_special_new);
 	fprintf(stderr, "%-40s %10d\n",
 		"MR_deep_prof_prep_special_old:",
+		MR_deep_prof_prep_special_old);
+	fprintf(stderr, "%-40s %10d\n",
+		"MR_deep_prof_prep_special all:",
+		MR_deep_prof_prep_special_new +
 		MR_deep_prof_prep_special_old);
 	fprintf(stderr, "%-40s %10d\n",
 		"MR_deep_prof_prep_ho_new:",
@@ -367,6 +398,40 @@ MR_write_out_profiling_tree(void)
 	fprintf(stderr, "%-40s %10d\n",
 		"MR_deep_prof_prep_ho_old:",
 		MR_deep_prof_prep_ho_old);
+	fprintf(stderr, "%-40s %10d\n",
+		"MR_deep_prof_prep_ho all:",
+		MR_deep_prof_prep_ho_new +
+		MR_deep_prof_prep_ho_old);
+	fprintf(stderr, "%-40s %10d\n",
+		"MR_deep_prof_prep_method_new:",
+		MR_deep_prof_prep_method_new);
+	fprintf(stderr, "%-40s %10d\n",
+		"MR_deep_prof_prep_method_old:",
+		MR_deep_prof_prep_method_old);
+	fprintf(stderr, "%-40s %10d\n",
+		"MR_deep_prof_prep_method all:",
+		MR_deep_prof_prep_method_new +
+		MR_deep_prof_prep_method_old);
+	fprintf(stderr, "%-40s %10d\n",
+		"MR_deep_prof_prep_callback_new:",
+		MR_deep_prof_prep_callback_new);
+	fprintf(stderr, "%-40s %10d\n",
+		"MR_deep_prof_prep_callback_old:",
+		MR_deep_prof_prep_callback_old);
+	fprintf(stderr, "%-40s %10d\n",
+		"MR_deep_prof_prep_callback all:",
+		MR_deep_prof_prep_callback_new +
+		MR_deep_prof_prep_callback_old);
+	fprintf(stderr, "%-40s %10d\n",
+		"MR_deep_prof_prep_tail_new:",
+		MR_deep_prof_prep_tail_new);
+	fprintf(stderr, "%-40s %10d\n",
+		"MR_deep_prof_prep_tail_old:",
+		MR_deep_prof_prep_tail_old);
+	fprintf(stderr, "%-40s %10d\n",
+		"MR_deep_prof_prep_tail all:",
+		MR_deep_prof_prep_tail_new +
+		MR_deep_prof_prep_tail_old);
 
 	fprintf(stderr, "%-40s %10d\n",
 		"MR_deep_prof_call_new:",
@@ -378,8 +443,44 @@ MR_write_out_profiling_tree(void)
 		"MR_deep_prof_call_old:",
 		MR_deep_prof_call_old);
 	fprintf(stderr, "%-40s %10d\n",
-		"MR_deep_prof_call_inner:",
-		MR_deep_prof_call_inner);
+		"MR_deep_prof_call all:",
+		MR_deep_prof_call_new +
+		MR_deep_prof_call_rec +
+		MR_deep_prof_call_old);
+	fprintf(stderr, "%-40s %10d\n",
+		"MR_deep_prof_call_builtin_new:",
+		MR_deep_prof_call_builtin_new);
+	fprintf(stderr, "%-40s %10d\n",
+		"MR_deep_prof_call_builtin_old:",
+		MR_deep_prof_call_builtin_old);
+	fprintf(stderr, "%-40s %10d\n",
+		"MR_deep_prof_call_builtin all:",
+		MR_deep_prof_call_builtin_new +
+		MR_deep_prof_call_builtin_old);
+
+	fprintf(stderr, "%-40s %10d\n",
+		"call prepare:",
+		MR_deep_prof_prep_normal_new +
+		MR_deep_prof_prep_normal_old +
+		MR_deep_prof_prep_special_new +
+		MR_deep_prof_prep_special_old +
+		MR_deep_prof_prep_ho_new +
+		MR_deep_prof_prep_ho_old +
+		MR_deep_prof_prep_method_new +
+		MR_deep_prof_prep_method_old +
+		MR_deep_prof_prep_callback_new +
+		MR_deep_prof_prep_callback_old +
+		MR_deep_prof_prep_tail_old +
+		MR_deep_prof_prep_tail_new);
+	fprintf(stderr, "%-40s %10d\n",
+		"call arrival:",
+		MR_deep_prof_prep_tail_old +
+		MR_deep_prof_prep_tail_new +
+		MR_deep_prof_call_new +
+		MR_deep_prof_call_rec +
+		MR_deep_prof_call_old +
+		MR_deep_prof_call_builtin_new +
+		MR_deep_prof_call_builtin_old);
 
 	fprintf(stderr, "\ntotal size of profiling tree: %10d bytes\n",
 		MR_deep_num_csd_nodes * sizeof(MR_CallSiteDynamic) +
@@ -403,6 +504,14 @@ MR_write_out_profiling_tree(void)
 		sizeof(MR_CallSiteDynList),
 		MR_deep_num_dynlist_nodes * sizeof(MR_CallSiteDynList));
 
+	fprintf(stderr, "\nTypeInfo search length histogram:\n");
+	for (i = 0; i < MR_MAX_CLOSURE_LIST_LENGTH; i++) {
+		if (MR_dictionary_search_lengths[i] > 0) {
+			fprintf(stderr, "\t%3d: %12d\n", i,
+				MR_dictionary_search_lengths[i]);
+		}
+	}
+
 	fprintf(stderr, "\nClosure search length histogram:\n");
 	for (i = 0; i < MR_MAX_CLOSURE_LIST_LENGTH; i++) {
 		if (MR_closure_search_lengths[i] > 0) {
@@ -411,11 +520,11 @@ MR_write_out_profiling_tree(void)
 		}
 	}
 
-	fprintf(stderr, "\nTypeInfo search length histogram:\n");
+	fprintf(stderr, "\nMethod search length histogram:\n");
 	for (i = 0; i < MR_MAX_CLOSURE_LIST_LENGTH; i++) {
-		if (MR_dictionary_search_lengths[i] > 0) {
+		if (MR_method_search_lengths[i] > 0) {
 			fprintf(stderr, "\t%3d: %12d\n", i,
-				MR_dictionary_search_lengths[i]);
+				MR_method_search_lengths[i]);
 		}
 	}
 #endif
