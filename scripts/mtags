@@ -6,7 +6,7 @@ eval "exec perl -S $0 $*"
     if $running_under_some_shell;
 
 #---------------------------------------------------------------------------#
-# Copyright (C) 1994-2000 The University of Melbourne.
+# Copyright (C) 1994-2001 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -242,6 +242,9 @@ sub output_name {
 	$match_line =~ s|\\|\\\\|g;   # replace `\' with `\\'
 	$match_line =~ s|/|\\/|g;     # replace `/' with `\/'
 
+	# $src_name holds the name as it was in the original source
+	$src_name = $name;
+
 	# output a tag for the fully-qualified name
 	if (substr($name, 0, length($module)) ne $module) {
 		$name = "${module}__$name";
@@ -281,7 +284,7 @@ sub output_single_name() {
 		# Output commands to alter the search buffer.
 		if ($search_definitions) {
 		    if ($kind eq "pred" || $kind eq "func") {
-			printf out ";kq|/^\\<%s\\>/;'q", $name;
+			printf out ";kq|/^\\<%s\\>/;'q", $src_name;
 		    } else {
 			printf out ";kq|-;/\\<%s\\>/;'q", $name;
 		    }
