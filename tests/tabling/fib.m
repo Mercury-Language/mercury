@@ -29,7 +29,7 @@ perform_trials(N) -->
 			MTime > 0	% untabled takes ten times as long
 		;
 			Time > 100,	% untabled takes at least 100 ms
-			MTime < 1	% while untabled takes at most 1 ms
+			MTime < 1	% while tabled takes at most 1 ms
 		}
 	->
 		io__write_string("tabling works\n")
