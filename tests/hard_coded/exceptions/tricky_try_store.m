@@ -27,7 +27,7 @@
 :- implementation.
 :- import_module exception, store, list.
 
-:- pred tricky(store__ref(T, S), int, store(S), store(S)).
+:- pred tricky(store_ref(T, S), int, store(S), store(S)).
 :- mode tricky(in, out, di, uo) is det.
 
 tricky(Key, _Output, Store0, _Store) :-
