@@ -247,7 +247,7 @@ all:	objs
 # test_mercury runs the tests using the installed libraries, so GRADEFLAGS
 # won't be set, but test_mercury runs the tests in at least one `.tr' grade
 # on all machines, so it isn't a problem.
-ifneq ($(WORKSPACE),)
+ifneq ($(origin WORKSPACE),undefined)
 GRADEFLAGS-complex_failure	= --use-trail
 GRADEFLAGS-semi_fail_in_non_ite	= --use-trail
 endif
