@@ -407,19 +407,11 @@ io__set_binary_output_stream(_NewStream, _OldStream) -->
 
 %-----------------------------------------------------------------------------%
 
-io__do_open_input(FileName, Result, Stream) -->
-	io__do_open(FileName, read, Result, Stream).
-
-io__do_open_output(FileName, Result, Stream) -->
-	io__do_open(FileName, write, Result, Stream).
-
-io__do_open_append(FileName, Result, Stream) -->
-	io__do_open(FileName, append, Result, Stream).
-
-io__do_open(File, Mode, Result, Stream) -->
+io__do_open(File, C_Mode, Result, Stream) -->
 	{ string__to_int_list(File, FileCodes) },
 	{ name(FileName, FileCodes) },
-	( { open(FileName, Mode, Stream0) } ->
+	{ io__convert_mode(C_Mode, Prolog_Mode) },
+	( { open(FileName, Prolog_Mode, Stream0) } ->
 		{ Result = 0 },
 		{ Stream = Stream0 }
 	;
@@ -427,6 +419,13 @@ io__do_open(File, Mode, Result, Stream) -->
 		{ Stream = garbage }
 	),
 	io__update_state.
+
+io__convert_mode("r", read).
+io__convert_mode("w", write).
+io__convert_mode("a", append).
+io__convert_mode("rb", _) :- error("binary IO not implemented for Prolog.").
+io__convert_mode("wb", _) :- error("binary IO not implemented for Prolog.").
+io__convert_mode("ab", _) :- error("binary IO not implemented for Prolog.").
 
 io__close_input(Stream) -->
 	io__do_close(Stream).
