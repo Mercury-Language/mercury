@@ -162,7 +162,7 @@ tar:
 	-rm -f config.status config.cache config.log configure.log
 	-rm -f runtime/conf.h
 	-rm -f Mmake.common
-	cd .. && (tar -cf - mercury-0.5 | gzip -9 > mercury-0.5.tar.gz)
+	cd .. && (tar -cf - mercury-0.5.1 | gzip -9 > mercury-0.5.1.tar.gz)
 
 #-----------------------------------------------------------------------------#
 
@@ -221,24 +221,22 @@ install_grades: scripts dep_library
 		        prof= \
 		        ;; \
 	        esac; \
-	        cd boehm_gc && \
-		$(SUBDIR_MMAKE) GRADE=$$grade PROF=$$prof install_lib && \
-	        cd .. && \
-		cd runtime && \
-		$(SUBDIR_MMAKE) GRADE=$$grade install_lib && \
-		cd .. && \
-		cd library && \
-		$(SUBDIR_MMAKE) GRADE=$$grade install_library && \
-		cd .. && \
-		cd boehm_gc && rm -f *.o *.pic_o *.a *.so && cd .. && \
-		cd runtime && rm -f *.o *.pic_o *.a *.so && cd .. && \
-		cd library && rm -f *.o *.pic_o *.a *.so && cd .. && \
-		true; \
+	        ( cd boehm_gc && \
+		  $(SUBDIR_MMAKE) GRADE=$$grade PROF=$$prof install_lib ) && \
+		( cd runtime && \
+		  $(SUBDIR_MMAKE) GRADE=$$grade install_lib ) && \
+		( cd library && \
+		  $(SUBDIR_MMAKE) GRADE=$$grade install_library ) && \
+		( cd boehm_gc && rm -f *.o *.pic_o *.a *.so ) && \
+		( cd runtime && rm -f *.o *.pic_o *.a *.so ) && \
+		( cd library && rm -f *.o *.pic_o *.a *.so ) && \
+		true \
+		|| exit 1; \
 	    fi; \
 	done
-	cd boehm_gc && { mv tmp_dir/* . || true; }
-	cd runtime && { mv tmp_dir/* . || true; }
-	cd library && { mv tmp_dir/* . || true; }
+	cd boehm_gc && { mv tmp_dir/* . ; rmdir tmp_dir; true; }
+	cd runtime  && { mv tmp_dir/* . ; rmdir tmp_dir; true; }
+	cd library  && { mv tmp_dir/* . ; rmdir tmp_dir; true; }
 
 #-----------------------------------------------------------------------------#
 
