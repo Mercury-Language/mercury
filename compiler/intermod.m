@@ -381,7 +381,7 @@ intermod__traverse_goal(switch(A, B, Cases0, D) - Info,
 	% or function calls.
 intermod__traverse_goal(unify(LVar, RHS0, C, D, E) - Info,
 			unify(LVar, RHS, C, D, E) - Info, DoWrite) -->
-	fix_function_or_higher_order_in_unify_rhs(LVar, RHS0, RHS, DoWrite).
+	intermod__module_qualify_unify_rhs(LVar, RHS0, RHS, DoWrite).
 
 intermod__traverse_goal(not(Goal0) - Info, not(Goal) - Info, DoWrite) -->
 	intermod__traverse_goal(Goal0, Goal, DoWrite).
@@ -485,13 +485,12 @@ intermod_info_add_proc(PredId, DoWrite) -->
 	% higher-order predicate constants in a unify_rhs.
 	% This has to wait until I implement module qualification of
 	% functions.
-:- pred fix_function_or_higher_order_in_unify_rhs(var::in, unify_rhs::in,
+:- pred intermod__module_qualify_unify_rhs(var::in, unify_rhs::in,
 		unify_rhs::out, bool::out, intermod_info::in,
 		intermod_info::out) is det.
 
-fix_function_or_higher_order_in_unify_rhs(_, var(Var), var(Var), yes) --> [].
-fix_function_or_higher_order_in_unify_rhs(_LVar,
-		lambda_goal(A,B,Modes,D,Goal0),
+intermod__module_qualify_unify_rhs(_, var(Var), var(Var), yes) --> [].
+intermod__module_qualify_unify_rhs(_LVar, lambda_goal(A,B,Modes,D,Goal0),
 		lambda_goal(A,B,Modes,D,Goal), DoWrite) -->
 	intermod__traverse_goal(Goal0, Goal, DoWrite),
 	intermod_info_get_module_info(ModuleInfo),
@@ -505,7 +504,7 @@ fix_function_or_higher_order_in_unify_rhs(_LVar,
 
 	% Check if the functor is actually a function call or a higher-order
 	% pred constant. If so, module qualify.
-fix_function_or_higher_order_in_unify_rhs(LVar, functor(Functor0, Vars),
+intermod__module_qualify_unify_rhs(LVar, functor(Functor0, Vars),
 				functor(Functor, Vars), DoWrite) -->
 	intermod_info_get_module_info(ModuleInfo),
 	{ module_info_get_predicate_table(ModuleInfo, PredTable) },
@@ -545,6 +544,14 @@ fix_function_or_higher_order_in_unify_rhs(LVar, functor(Functor0, Vars),
 		{ QualifiedPredName = qualified(Module, UnqualPredName) },
 		{ Functor = cons(QualifiedPredName, Arity) },
 		intermod_info_add_proc(PredId, DoWrite)
+	;
+		{ Functor0 = cons(unqualified(ConsName), ConsArity) },
+		{ map__lookup(VarTypes, LVar, VarType) },
+		{ type_to_type_id(VarType, TypeId, _) },
+		{ TypeId = qualified(TypeModule, _) - _ }
+	->
+		{ Functor = cons(qualified(TypeModule, ConsName), ConsArity) },
+		{ DoWrite = yes }
 	;
 		{ Functor = Functor0 },
 		{ DoWrite = yes }
