@@ -219,9 +219,10 @@ io__init_state(io__state(Names, current)) :-
 io__update_state(IOState0, IOState) :-
 	require(nonvar(IOState0),
 		"\nio.nl: I/O predicate called with free io__state"),
-	require(IOState0 = io__state(Names, current),
+	require(IOState0 = io__state(_, current),
 		"\nio.nl: cannot retry I/O operation"),
 	$replacn(2, IOState0, old),
+	IOState0 = io__state(Names, _),
 	IOState = io__state(Names, current).
 
 :- pred io__final_state(io__state).

@@ -353,13 +353,35 @@ typecheck_var_has_type(VarId, Type, TypeInfo0, TypeInfo) :-
 		typeinfo_get_io_state(TypeInfo0, IOState0),
 		typeinfo_get_context(TypeInfo0, Context),
 		typeinfo_get_predid(TypeInfo0, PredId),
-		report_error_var(PredId, Context, VarSet, VarId, Type, 
-					IOState0, IOState),
+		get_type_of_var(TypeAssignSet0, VarId, TypeOfVarList),
+		report_error_var(PredId, Context, VarSet, VarId, TypeOfVarList,
+				Type, IOState0, IOState),
 		typeinfo_set_io_state(TypeInfo0, IOState, TypeInfo1),
 		typeinfo_set_found_error(TypeInfo1, true, TypeInfo2),
 		typeinfo_set_type_assign_set(TypeInfo2, TypeAssignSet, TypeInfo)
 	else
 		typeinfo_set_type_assign_set(TypeInfo0, TypeAssignSet, TypeInfo)
+	).
+
+:- pred get_type_of_var(type_assign_set, variable, list(type)).
+:- mode get_type_of_var(input, input, output).
+get_type_of_var([], _VarId, []).
+get_type_of_var([TypeAssign | TypeAssigns], VarId, L) :-
+	get_type_of_var(TypeAssigns, VarId, L0),
+	type_assign_get_var_types(TypeAssign, VarTypes),
+	(if some [Type0]
+		map__search(VarTypes, VarId, Type0)
+	then
+		Type = Type0
+	else
+		type_assign_get_typevarset(TypeAssign, TVarSet),
+		varset__new_var(TVarSet, NewVar, _),
+		Type = term_variable(NewVar)
+	),
+	(if member_chk(Type, L0) then
+		L = L0
+	else
+		L = [Type | L0]
 	).
 
 :- pred typecheck_var_has_type_2(type_assign_set, var_id, type,
@@ -382,7 +404,8 @@ type_assign_var_has_type(TypeAssign0, VarId, Type,
 		map__search(VarTypes0, VarId, VarType)
 	then
 		(if some [TypeAssign1]
-			type_unify(TypeAssign0, VarType, Type, TypeAssign1)
+			type_assign_unify_type(TypeAssign0, VarType, Type,
+					TypeAssign1)
 		then
 			TypeAssignSet = [TypeAssign1 | TypeAssignSet0]
 		else
@@ -709,7 +732,7 @@ type_assign_unify_var_functor([ConsDefn | ConsDefns], Args, Y, TypeAssign0,
 
 			% check that the types of the arguments matches the
 			% specified arg types for this constructor
-		type_assign_term_has_type_list(Args, ArgTypes, TypeAssign2,
+		type_assign_term_has_type_list(Args, ArgTypes, TypeAssign1,
 			TypeInfo, TypeAssignSet1, TypeAssignSet2)
 	),
 
@@ -807,7 +830,7 @@ type_unify(term_variable(X), term_variable(Y), Bindings0, Bindings) :-
 			% both X and Y are unbound type variables -
 			% bind one to the other
 			(if X = Y then
-				true
+				Bindings = Bindings0
 			else
 				map__set(Bindings0, X, term_variable(Y),
 					Bindings)
@@ -1370,22 +1393,46 @@ report_error_unif(PredId, Context, VarSet, X, Y) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred report_error_var(pred_id, term__context, varset, var, type, 
+:- pred report_error_var(pred_id, term__context, varset, var, list(type), type, 
 			io__state, io__state).
-:- mode report_error_var(input, input, input, input, input, di, uo).
+:- mode report_error_var(input, input, input, input, input, input, di, uo).
 
-report_error_var(PredId, Context, VarSet, VarId, Type) -->
+report_error_var(PredId, Context, VarSet, VarId, TypesOfVar, Type) -->
 	prog_out__write_context(Context),
 	io__write_string("type error in clause for predicate `"),
 	write_pred_id(PredId),
 	io__write_string("':\n"),
 	io__write_string("variable `"),
 	write_var(VarId, VarSet),
-	io__write_string("has type `"),
-	io__write_string("(XXX)"),
-	io__write_string("', expected type was `"),
+	io__write_string("' has "),
+	write_type_list(TypesOfVar),
+	io__write_string(", expected type was `"),
 	write_type(Type),	% XXX
 	io__write_string("'.\n").
+
+:- pred write_type_list(list(type), io__state, io__state).
+:- mode write_type_list(input, di, uo).
+
+write_type_list([]) -->
+	{ error("type list should not be empty") }.
+write_type_list([Type]) -->
+	io__write_string("type `"),
+	write_type(Type),
+	io__write_string("'").
+write_type_list([Type|Types]) -->
+	io__write_string("overloaded type { "),
+	write_type(Type),
+	write_type_list_2(Types),
+	io__write_string(" }").
+
+:- pred write_type_list_2(list(type), io__state, io__state).
+:- mode write_type_list_2(input, di, uo).
+
+write_type_list_2([]) --> [].
+write_type_list_2([T | Ts]) -->
+	io__write_string(", "),
+	write_type(T),
+	write_type_list_2(Ts).
 
 %-----------------------------------------------------------------------------%
 
@@ -1420,10 +1467,10 @@ report_ambiguity_error(TypeInfo, TypeAssign1, TypeAssign2) -->
 	write_pred_id(PredId),
 	io__write_string(".\n"),
 	io__write_string("possible type assignments include:\n"),
-	{ map__keys(VarTypes1, Vars1) },
 	{ typeinfo_get_varset(TypeInfo, VarSet) },
 	{ type_assign_get_var_types(TypeAssign1, VarTypes1) },
 	{ type_assign_get_var_types(TypeAssign2, VarTypes2) },
+	{ map__keys(VarTypes1, Vars1) },
 	report_ambiguity_error_2(Vars1, VarSet, VarTypes1, VarTypes2).
 
 :- pred report_ambiguity_error_2(list(var), varset, type_assign, type_assign,

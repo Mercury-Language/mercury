@@ -171,9 +171,10 @@ term__unify(term_variable(X), term_variable(Y), Bindings0, Bindings) :-
 		else
 			% both X and Y are unbound variables -
 			% bind one to the other
-			(if X = Y
+			(if
+				X = Y
 			then
-				true
+				Bindings = Bindings0
 			else
 				map__set(Bindings0, X, term_variable(Y),
 					Bindings)

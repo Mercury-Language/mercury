@@ -19,7 +19,7 @@
 parse_tree_to_hlds(module(Name, Items), Module) -->
 	{ moduleinfo_init(Name, Module0) },
 	add_item_list_decls(Items, Module0, Module1),
-	{ statistics },
+	%%% { statistics },
 	add_item_list_clauses(Items, Module1, Module).
 
 %-----------------------------------------------------------------------------%

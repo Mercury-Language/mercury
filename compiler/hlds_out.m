@@ -175,7 +175,7 @@ hlds_out__write_clause(Indent, Clause) -->
 			VarTypes,
 			HeadVars,
 			Goal,
-			Context
+			_Context
 		),
 		Indent1 is Indent + 1
 	},
@@ -461,9 +461,9 @@ hlds_out__write_procs(Indent, PredId, ProcTable) -->
 		io__write_string("]\n")
 	).
 
-:- pred hlds_out__write_procs(int, pred_id, list(pred_mode_id),
+:- pred hlds_out__write_procs_2(int, pred_id, list(pred_mode_id),
 					proc_table, io_state, io_state).
-:- mode hlds_out__write_procs(input, input, input, input, input, output).
+:- mode hlds_out__write_procs_2(input, input, input, input, input, output).
 
 hlds_out__write_procs_2(Indent, PredId, ProcIds0, ProcTable) --> 
 	(if
@@ -505,7 +505,7 @@ hlds_out__write_proc(Indent, PredId, PredModeId, Proc) -->
 			HeadVars,
 			HeadModes,
 			Goal,
-			ModeContext
+			_ModeContext
 			%%% CallInfo
 		),
 		Indent1 is Indent + 1
@@ -657,7 +657,7 @@ hlds_out__write_unification(Indent, construct(VarId, ConsId, Vars, Modes)) -->
 	hlds_out__write_indent(Indent),
 	io__write_string("construct(\n"),
 	{ Indent1 is Indent + 1 },
-	io__write_int(Int),
+	io__write_int(VarId),
 	hlds_out__write_consid(Indent1, ConsId),
 	hlds_out__write_indent(Indent),
 	io__write_string(",\n"),
@@ -670,7 +670,7 @@ hlds_out__write_unification(Indent, deconstruct(VarId, ConsId, Vars, Modes)) -->
 	hlds_out__write_indent(Indent),
 	io__write_string("deconstruct(\n"),
 	{ Indent1 is Indent + 1 },
-	io__write_int(Int),
+	io__write_int(VarId),
 	hlds_out__write_consid(Indent1, ConsId),
 	hlds_out__write_indent(Indent),
 	io__write_string(",\n"),
@@ -798,7 +798,7 @@ hlds_out__write_varnames_2(Indent, VarNameList0) -->
 :- mode hlds_out__write_varterms(input, input, input, output).
 
 hlds_out__write_varterms(Indent, VarTerms) -->
-	{ map__to_assoc_list(VarNames, VarTermList) },
+	{ map__to_assoc_list(VarTerms, VarTermList) },
 	(if
 		{ VarTermList = [] }
 	then
