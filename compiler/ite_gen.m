@@ -239,7 +239,7 @@ ite_gen__generate_nondet_ite(CondGoal, ThenGoal, ElseGoal, Instr) -->
 	code_info__get_next_label(EndLab, no),
 	{ TestCode = tree(
 		tree(
-			tree(SaveMaxfrCode, ModContCode),
+			tree(ModContCode, SaveMaxfrCode),
 			HPSaveCode
 		),
 		CondCode
