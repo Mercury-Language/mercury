@@ -8,7 +8,7 @@ GRADEFLAGS += --use-trail
 
 # enable C debugging
 RM_C = :
-MGNUCFLAGS = -g -Werror
+MGNUCFLAGS = -g
 MLFLAGS = -g
 
 # We need this to use shared libraries on Linux
