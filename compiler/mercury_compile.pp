@@ -521,7 +521,7 @@ read_dependencies(Module, InterfaceDeps, ImplementationDeps) -->
 
 write_dependencies_list([], _, _) --> [].
 write_dependencies_list([Module | Modules], Suffix, DepStream) -->
-	io__write_string(DepStream, " "),
+	io__write_string(DepStream, " \\\n\t"),
 	io__write_string(DepStream, Module),
 	io__write_string(DepStream, Suffix),
 	write_dependencies_list(Modules, Suffix, DepStream).

@@ -215,6 +215,7 @@ insts_add(Insts0, VarSet, eqv_inst(Name, Args, Body), Cond, Context, Insts) -->
 		{ Insts = Insts1 }
 	;
 		{ Insts = Insts0 },
+		% XXX we should record each error using module_info_incr_errors
 		multiple_def_error(Name, Arity, "inst", Context)
 	).
 
@@ -243,6 +244,7 @@ modes_add(Modes0, VarSet, eqv_mode(Name, Args, Body), Cond, Context, Modes) -->
 		{ Modes = Modes1 }
 	;
 		{ Modes = Modes0 },
+		% XXX we should record each error using module_info_incr_errors
 		multiple_def_error(Name, Arity, "mode", Context)
 	).
 
@@ -304,7 +306,7 @@ module_add_type_defn(Module0, VarSet, TypeDefn, Cond, Context, Module) -->
 			io__set_output_stream(StdErr, OldStream),
 			prog_out__write_context(Context),
 			io__write_string(
-		"warning: undiscriminated union types not implemented.\n"),
+	"warning: undiscriminated union types (`+') not implemented.\n"),
 			io__set_output_stream(OldStream, _)
 		;
 			[]
@@ -342,10 +344,11 @@ ctors_add([Name - Args | Rest], TypeId, Context, Ctors0, Ctors) -->
 		{ list__member(OtherConsDefn, ConsDefns1) },
 		{ OtherConsDefn = hlds__cons_defn(_, TypeId, _) }
 	->
+		% XXX we should record each error using module_info_incr_errors
 		io__stderr_stream(StdErr),
 		io__set_output_stream(StdErr, OldStream),
 		prog_out__write_context(Context),
-		io__write_string("error: constructor `"),
+		io__write_string("Error: constructor `"),
 		hlds_out__write_cons_id(ConsId),
 		io__write_string("' for type `"),
 		hlds_out__write_type_id(TypeId),
@@ -422,19 +425,6 @@ preds_add(Module0, VarSet, PredName, Types, Cond, Context, Status, Module) -->
 module_add_mode(ModuleInfo0, _VarSet, PredName, Modes, Det, _Cond, MContext,
 			ModuleInfo) -->
 		%
-		% check that the determinism was specified
-		%
-	{ list__length(Modes, Arity) },
-	globals__io_lookup_bool_option(warn_missing_det_decls, ShouldWarn),
-	(
-		{ Det = unspecified },
-		{ ShouldWarn = yes }
-	->
-		unspecified_det_warning(PredName, Arity, MContext)
-	;
-		[]
-	),
-		%
 		% Lookup the pred declaration in the predicate table.
 		% If it's not there (or if it is ambiguous), print an
 		% error message and insert a dummy declaration for the
@@ -442,6 +432,7 @@ module_add_mode(ModuleInfo0, _VarSet, PredName, Modes, Det, _Cond, MContext,
 		% 
 	{ module_info_name(ModuleInfo0, ModuleName) },
 	{ unqualify_name(PredName, PName) },	% ignore any module qualifier
+	{ list__length(Modes, Arity) },
 	{ module_info_get_predicate_table(ModuleInfo0, PredicateTable0) },
 	(
 		{ predicate_table_search_m_n_a(PredicateTable0,
@@ -450,6 +441,7 @@ module_add_mode(ModuleInfo0, _VarSet, PredName, Modes, Det, _Cond, MContext,
 		{ PredicateTable1 = PredicateTable0 },
 		{ PredId = PredId0 }
 	;
+		% XXX we should record each error using module_info_incr_errors
 		undefined_pred_error(PredName, Arity, MContext,	
 			"mode declaration"),
 		{ preds_add_implicit(PredicateTable0,
@@ -457,11 +449,34 @@ module_add_mode(ModuleInfo0, _VarSet, PredName, Modes, Det, _Cond, MContext,
 				PredId, PredicateTable1) }
 		
 	),
-		% Lookup the pred_info for this predicate, and
-		% add the mode declaration to the proc_info for
-		% procedure.
+		%
+		% Lookup the pred_info for this predicate
+		%
 	{ predicate_table_get_preds(PredicateTable1, Preds0) },
 	{ map__lookup(Preds0, PredId, PredInfo0) },
+		%
+		% check that the determinism was specified
+		%
+	(
+		{ Det = unspecified }
+	->
+		( { pred_info_is_exported(PredInfo0) } ->
+			unspecified_det_error(PredName, Arity, MContext)
+		;
+			globals__io_lookup_bool_option(warn_missing_det_decls,
+				ShouldWarn),
+			{ ShouldWarn = yes }
+		->
+			unspecified_det_warning(PredName, Arity, MContext)
+		;
+			[]
+		)
+	;
+		[]
+	),
+		%
+		% add the mode declaration to the proc_info for this procedure.
+		%
 	{ pred_info_procedures(PredInfo0, Procs0) },
 		% XXX we should check that this mode declaration
 		% isn't the same as an existing one
@@ -575,6 +590,7 @@ module_add_clause(ModuleInfo0, VarSet, PredName, Args, Body, Context,
 		{ PredId = PredId0 },
 		{ PredicateTable1 = PredicateTable0 }
 	;
+		% XXX we should record each error using module_info_incr_errors
 		undefined_pred_error(PredName, Arity, Context, "clause"),
 		{ preds_add_implicit(PredicateTable0,
 				ModuleName, PredName, Arity, Context,
@@ -1274,10 +1290,34 @@ undefined_pred_error(Name, Arity, Context, Description) -->
 
 unspecified_det_warning(Name, Arity, Context) -->
 	prog_out__write_context(Context),
-	io__write_string("Warning: no determinism declaration for `"),
+	io__write_string("Warning: no determinism declaration for local pred"),
+	prog_out__write_context(Context),
+	io__write_string("  `"),
 	prog_out__write_sym_name(Name),
 	io__write_string("/"),
 	io__write_int(Arity),
-	io__write_string("\n").
+	io__write_string("'.\n"),
+	globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
+	( { VerboseErrors = yes } ->
+		prog_out__write_context(Context),
+		io__write_string("  (The determinism of this predicate will be automatically\n"),
+		io__write_string("  inferred by the compiler.)")
+	;
+		[]
+	).
+
+:- pred unspecified_det_error(sym_name, int, term__context, 
+				io__state, io__state).
+:- mode unspecified_det_error(in, in, in, di, uo) is det.
+
+unspecified_det_error(Name, Arity, Context) -->
+	prog_out__write_context(Context),
+	io__write_string("Error: no determinism declaration for exported pred"),
+	prog_out__write_context(Context),
+	io__write_string("  `"),
+	prog_out__write_sym_name(Name),
+	io__write_string("/"),
+	io__write_int(Arity),
+	io__write_string("'\n").
 
 %-----------------------------------------------------------------------------%

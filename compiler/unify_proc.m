@@ -22,10 +22,10 @@
 % different modules, each module will end up with a copy of the code for
 % that procedure.  In the long run it would be desireable to either delay
 % generation of complicated unification procedures until link time (like
-% Cfront) or to have a smart linker which could merge duplicate
-% definitions (like Borland C++).  However the amount of code duplication
-% involved is probably very small, so it's definitely not worth
-% worrying about right now.
+% Cfront does with C++ templates) or to have a smart linker which could
+% merge duplicate definitions (like Borland C++).  However the amount of
+% code duplication involved is probably very small, so it's definitely not
+% worth worrying about right now.
 
 %-----------------------------------------------------------------------------%
 
