@@ -1,5 +1,5 @@
 #---------------------------------------------------------------------------#
-# Copyright (C) 1997-2003 The University of Melbourne.
+# Copyright (C) 1997-2004 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -40,6 +40,9 @@
 	--il|--IL|--il-only|--IL-only)
 		target=il ;;
 
+	--java|--Java|--java-only|--Java-only)
+		target=java ;;
+
 	--high-level-code|-H)
 		highlevel_code=true ;;
 	--no-high-level-code|-H-)
@@ -73,7 +76,7 @@
 	--gc)
 		shift
 		case "$1" in
-			accurate|conservative|boehm|mps|none)
+			accurate|conservative|boehm|mps|none|automatic)
 				gc_method=$1 ;;
 			*)
 				echo "$0: invalid gc method \`$1'" 1>&2

@@ -5483,18 +5483,20 @@ Record the sizes of terms, using one cell as the unit of memory.
 @end ignore
 
 @sp 1
-@item @code{--gc @{none, conservative, boehm, mps, accurate@}}
-@itemx @code{--garbage-collection @{none, conservative, boehm, mps, accurate@}}
+@item @code{--gc @{none, boehm, mps, accurate, automatic@}}
+@itemx @code{--garbage-collection @{none, boehm, mps, accurate, automatic@}}
 @cindex Garbage collection
 @cindex Conservative garbage collection
 @cindex Boehm (et al) conservative garbage collector
 @cindex MPS conservative garbage collector
 @cindex Memory Pool System conservative garbage collector
 @cindex Accurate garbage collection
+@cindex Automatic garbage collection
 @findex --gc
 @findex --garbage-collection
 Specify which method of garbage collection to use.
-Grades containing @samp{.gc} use @samp{--gc boehm},
+Grades containing @samp{java} or @samp{il} use @samp{--gc automatic},
+grades containing @samp{.gc} use @samp{--gc boehm},
 grades containing @samp{.mps} use @samp{--gc mps},
 other grades use @samp{--gc none}.
 @samp{conservative} or @samp{boehm} is Hans Boehm et al's conservative
@@ -5503,7 +5505,8 @@ garbage collector.
 It requires @samp{--high-level-code}.
 @samp{mps} is another conservative collector based on Ravenbrook Limited's 
 MPS (Memory Pool System) kit.
-This option is ignored by the IL and Java back-ends, which always use
+@samp{automatic} means the target language provides it.
+This is the case for the IL and Java back-ends, which always use
 the underlying IL or Java implementation's garbage collector.
 
 @sp 1

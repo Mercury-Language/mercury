@@ -47,17 +47,32 @@
 	.
 
 	% The GC method specifies how we do garbage collection.
-	% This is only relevant for the C and asm back-ends;
-	% when compiling to IL or Java, where the target language
-	% implementation handles garbage collection automatically,
-	% the gc_method is set to `none'.  (XXX Maybe we should
-	% have a different alternative for that case?)
+	% The last four alternatives are for the C and asm back-ends;
+	% the first alternative is for compiling to IL or Java,
+	% where the target language implementation handles garbage
+	% collection automatically.
 	% 
 :- type gc_method
-	--->	none
-	;	boehm
-	;	mps
-	;	accurate.
+	--->	automatic % It is the responsibility of the target language
+			  % that we are compiling to to handle GC.
+
+	;	none	% No garbage collection. 
+			% But memory may be recovered on backtracking,
+			% if the --reclaim-heap-on-*failure options are set.
+
+	;	boehm	% The Boehm et al conservative collector.
+
+	;	mps	% A different conservative collector, based on
+			% Ravenbrook Limited's MPS (Memory Pool System) kit.
+			% Benchmarking indicated that this one performed worse
+			% than the Boehm collector, so we don't really
+			% support this option anymore.
+
+	;	accurate
+			% Our own home-grown copying collector.
+			% See runtime/mercury_accurate_gc.c
+			% and compiler/ml_elim_nested.m.
+	.
 
 	% Returns yes if the GC method is conservative,
 	% i.e. if it is `boehm' or `mps'.
@@ -264,6 +279,7 @@ convert_gc_method("conservative", boehm).
 convert_gc_method("boehm", boehm).
 convert_gc_method("mps", mps).
 convert_gc_method("accurate", accurate).
+convert_gc_method("automatic", automatic).
 
 convert_tags_method("none", none).
 convert_tags_method("low", low).
@@ -278,6 +294,7 @@ gc_is_conservative(boehm) = yes.
 gc_is_conservative(mps) = yes.
 gc_is_conservative(none) = no.
 gc_is_conservative(accurate) = no.
+gc_is_conservative(automatic) = no.
 
 %-----------------------------------------------------------------------------%
 

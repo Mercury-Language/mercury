@@ -251,7 +251,7 @@ postprocess_options(ok(OptionTable), Error) -->
                 { Error = yes("Invalid tags option (must be `none', `low' or `high')") }
             )
         ;
-            { Error = yes("Invalid GC option (must be `none', `conservative', `boehm', `mps' or `accurate')") }
+            { Error = yes("Invalid GC option (must be `none', `conservative', `boehm', `mps', `accurate', or `automatic')") }
 	)
     ;
         { Error = yes("Invalid target option (must be `c', `asm', `il', or `java')") }
@@ -325,7 +325,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
 			AutoIntermodOptimization),
 
 	% Generating IL implies:
-	%   - gc_method `none' and no heap reclamation on failure
+	%   - gc_method `automatic' and no heap reclamation on failure
 	%	  Because GC is handled automatically by the .NET CLR
 	%	  implementation.
 	%   - high-level code
@@ -368,7 +368,8 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
 	%   	  needed, so ensure that this dead code is removed.
 
 	( { Target = il } ->
-		globals__io_set_gc_method(none),
+		globals__io_set_gc_method(automatic),
+		globals__io_set_option(gc, string("automatic")),
 		globals__io_set_option(reclaim_heap_on_nondet_failure,
 			bool(no)),
 		globals__io_set_option(reclaim_heap_on_semidet_failure,
@@ -415,7 +416,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
 	),
 
 	% Generating Java implies
-	%   - gc_method `none' and no heap reclamation on failure
+	%   - gc_method `automatic' and no heap reclamation on failure
 	%	  Because GC is handled automatically by the Java
 	%	  implementation.
 	%   - high-level code
@@ -452,7 +453,8 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
 	%   	  intermodule optimization pulls in a lot of code which isn't
 	%   	  needed, so ensure that this dead code is removed.
 	( { Target = java } ->
-		globals__io_set_gc_method(none),
+		globals__io_set_gc_method(automatic),
+		globals__io_set_option(gc, string("automatic")),
 		globals__io_set_option(reclaim_heap_on_nondet_failure,
 			bool(no)),
 		globals__io_set_option(reclaim_heap_on_semidet_failure,

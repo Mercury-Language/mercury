@@ -33,8 +33,11 @@ In order to try this system you will need
 
 THE JAVA GRADE
 
-The Mercury compiler currently supports the grade 'java' to target Java
-bytecode.  Support for building and installation of this grade
+The Mercury compiler currently supports the grade `java' to target Java
+bytecode.  The java grade is enabled by using any of the options
+`--grade java', `--target java', or just `--java'.
+
+Support for building and installation of this grade
 is still somewhat rudimentary.
 
 To run a Mercury program using the java grade, you need to build the Mercury
@@ -54,7 +57,7 @@ You can now build programs such as hello.m or calculator.m in the samples
 directory.
 	
 	cd samples
-	mmc --make --grade java hello
+	mmc --make --java hello
 
 Now you can run hello
 
@@ -145,7 +148,7 @@ A. By default, javac already generates line number and source file debugging
    setting the JAVACFLAGS variable to include "-g" when invoking mmake,
    e.g.
 
-        mmc --make --grade java --target-debug <progname>
+        mmc --make --java --target-debug <progname>
 
    or
    	

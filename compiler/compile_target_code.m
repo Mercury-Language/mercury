@@ -460,6 +460,12 @@ compile_c_file(ErrorStream, PIC, C_File, O_File, Succeeded) -->
 	),
 	globals__io_get_gc_method(GC_Method),
 	{
+		GC_Method = automatic,
+		GC_Opt = ""
+	;
+		GC_Method = none,
+		GC_Opt = ""
+	;
 		GC_Method = boehm,
 		GC_Opt = "-DMR_CONSERVATIVE_GC -DMR_BOEHM_GC "
 	;
@@ -468,9 +474,6 @@ compile_c_file(ErrorStream, PIC, C_File, O_File, Succeeded) -->
 	;
 		GC_Method = accurate,
 		GC_Opt = "-DMR_NATIVE_GC "
-	;
-		GC_Method = none,
-		GC_Opt = ""
 	},
 	globals__io_lookup_bool_option(profile_calls, ProfileCalls),
 	{ ProfileCalls = yes ->
@@ -1310,6 +1313,10 @@ get_mercury_std_libs(TargetType, StdLibDir, StdLibs) -->
 	% GC libraries.
 	%
 	(
+		{ GCMethod = automatic },
+		{ StaticGCLibs = "" },
+		{ SharedGCLibs = "" }
+	;
 		{ GCMethod = none },
 		{ StaticGCLibs = "" },
 		{ SharedGCLibs = "" }

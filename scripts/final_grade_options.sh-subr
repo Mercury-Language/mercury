@@ -1,5 +1,5 @@
 #---------------------------------------------------------------------------#
-# Copyright (C) 1998-2002 The University of Melbourne.
+# Copyright (C) 1998-2002, 2004 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -52,6 +52,20 @@ esac
 #
 case $target in asm|il|java)
 	highlevel_code=true ;;
+esac
+
+#
+# --target Java implies --high-level-data
+#
+case $target in java)
+	highlevel_data=true ;;
+esac
+
+#
+# --target IL or Java implies --gc automatic
+#
+case $target in il|java)
+	gc_method=automatic ;;
 esac
 
 #
