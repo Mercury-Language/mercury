@@ -19,7 +19,7 @@ END-INFO-DIR-ENTRY
 @ifinfo
 This file is an aid for people porting Prolog programs to Mercury.
 
-Copyright (C) 1995-1998 The University of Melbourne.
+Copyright (C) 1995-1999 The University of Melbourne.
 
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice
@@ -48,7 +48,7 @@ into another language, under the above conditions for modified versions.
 @author Fergus Henderson
 @page
 @vskip 0pt plus 1filll
-Copyright @copyright{} 1995-1998 The University of Melbourne.
+Copyright @copyright{} 1995-1999 The University of Melbourne.
 
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice
@@ -150,25 +150,31 @@ OPERATOR        ASSOCIATIVITY   PRECEDENCE
 ~               fy              900
 all             fxy             950
 and             xfy             720
+div             yfx             400
 else            xfy             1170
 end_module      fx              1199
 func            fx              800
 if              fx              1160
 import_module   fx              1199
+include_module  fx              1199
 impure          fy              800
 inst            fx              1199
-is              xfx             700
+instance        fx              1199
+is              xfx             701
+lambda          fxy             950
 mod             xfx             300
 mode            fx              1199
 module          fx              1199
 not             fy              900
 or              xfy             740
+pragma          fx              1199
 pred            fx              800
 rule            fx              1199
 semipure        fy              800
 some            fxy             950
 then            xfx             1150
 type            fx              1180
+typeclass       fx              1199
 when            xfx             900
 where           xfx             1175
 @end example
@@ -549,7 +555,7 @@ The general solution to such problems is to use an if-then-else:
 
 @example
 :- pred factorial(int, int).
-:- mode factorial(int, int) is det.
+:- mode factorial(in, out) is det.
 
 factorial(N, F) :-
     ( N =< 0 ->
