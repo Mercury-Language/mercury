@@ -1,2 +1,0 @@
-:- module ack.
-:- pragma termination_info(ack:ack((builtin:in), (builtin:in), (builtin:out)), infinite, can_loop).

@@ -20,8 +20,8 @@
 
 :- import_module prog_data.
 :- import_module hlds_data, switch_util, type_util.
-:- import_module code_model.
 :- import_module mlds, ml_code_util.
+:- import_module llds. % XXX for code_model
 
 	% Should this switch be implemented as a dense jump table?
 	% If so, we return the starting and ending values for the table,

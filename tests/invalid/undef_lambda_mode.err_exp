@@ -1,3 +1,0 @@
-undef_lambda_mode.m:010: In mode declaration for lambda expression:
-undef_lambda_mode.m:010:   error: undefined mode `junk'/0.
-For more information, try recompiling with `-E'.

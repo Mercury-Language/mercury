@@ -1,5 +1,0 @@
-io_in_ite_cond.m:016: In clause for `main(di, uo)':
-io_in_ite_cond.m:016:   in argument 1 of call to predicate `io_in_ite_cond:foo/2':
-io_in_ite_cond.m:016:   mode error: variable `DCG_0' has instantiatedness `mostly_unique',
-io_in_ite_cond.m:016:   expected instantiatedness was `unique'.
-For more information, try recompiling with `-E'.

@@ -1,4 +1,0 @@
-double_underscore.m:011: In clause for predicate `double_underscore:p/2':
-double_underscore.m:011:   warning: variable `_X' occurs more than once in this scope.
-double_underscore.m:011: In clause for predicate `double_underscore:p/2':
-double_underscore.m:011:   warning: variable `_X' occurs more than once in this scope.
