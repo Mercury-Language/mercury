@@ -14,6 +14,27 @@
 #include "mercury_stack_trace.h"
 #include <stdio.h>
 
+static const char * detism_names[] = {
+	"failure",	/* 0 */
+	"",		/* 1 */
+	"semidet",	/* 2 */
+	"nondet",	/* 3 */
+	"erroneous",	/* 4 */
+	"",		/* 5 */
+	"det",		/* 6 */
+	"multidet",	/* 7 */
+	"",		/* 8 */
+	"",		/* 9 */
+	"cc_nondet",	/* 10 */
+	"",		/* 11 */
+	"",		/* 12 */
+	"",		/* 13 */
+	"cc_multidet"	/* 14 */
+};
+
+	
+
+
 void
 MR_dump_stack(Code *success_pointer, Word *det_stack_pointer,
 		Word *current_frame)
@@ -65,7 +86,12 @@ MR_dump_stack(Code *success_pointer, Word *det_stack_pointer,
 			break;
 		}
 		if (MR_DETISM_DET_STACK(determinism)) {
-			fprintf(stderr, "\t%s\n", label->e_name);
+		        fprintf(stderr, "\t%s:%s/%ld (mode %ld, %s)\n",
+				entry_layout->MR_sle_def_module,
+				entry_layout->MR_sle_name,
+				(long) entry_layout->MR_sle_arity,
+		                (long) entry_layout->MR_sle_mode,
+				detism_names[entry_layout->MR_sle_detism]);
 			if (type == MR_LVAL_TYPE_STACKVAR) {
 				success_pointer = (Code *) field(0, 
 					det_stack_pointer, -number);
@@ -75,10 +101,16 @@ MR_dump_stack(Code *success_pointer, Word *det_stack_pointer,
 			det_stack_pointer = det_stack_pointer - 
 				entry_layout->MR_sle_stack_slots;
 		} else {
-			fprintf(stderr, "\t%s\n", label->e_name);
+		        fprintf(stderr, "\t%s:%s/%ld (mode %ld, %s)\n",
+		                entry_layout->MR_sle_def_module,
+		                entry_layout->MR_sle_name,
+		                (long) entry_layout->MR_sle_arity,
+		                (long) entry_layout->MR_sle_mode,
+				detism_names[entry_layout->MR_sle_detism]);
 			success_pointer = bt_succip(current_frame);
 			current_frame = bt_succfr(current_frame);
 		}
 	} while (TRUE);
 #endif /* MR_STACK_TRACE */
 }
+
