@@ -293,7 +293,7 @@ static Float word_to_float(Word w) { union FloatWord tmp = w; return tmp.f; }
 #include	"overflow.h"
 #include	"debug.h"
 
-#include	"aux.h"
+#include	"misc.h"
 #include	"label.h"
 #include	"memory.h"
 #include	"wrapper.h"

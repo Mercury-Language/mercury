@@ -20,7 +20,7 @@
 
 	/* Mercury headers */
 #include "imp.h"
-#include "aux.h"
+#include "misc.h"
 
 	/* CLP(R) headers */
 #include "clpr/clpr/emul.h"
