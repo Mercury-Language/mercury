@@ -3551,11 +3551,13 @@ For example @code{int}, @code{list(T)} and @code{bintree(K,V)} are allowed,
 but @code{T}, @code{list(int)} and @code{bintree(T,T)} are not.
 The types in an instance declaration must not be abstract types which
 are elsewhere defined as equivalence types.
-A program may not contain more than one @code{instance} declaration for a
-particular type (or sequence of types, in the case of a multi-parameter
-type class).  These restrictions ensure that there are no overlapping instance
-declarations, ie. there is at most one instance declaration that may be 
-applied to any type (or sequence of types).
+A program may not contain more than one instance
+declaration for a particular type (or sequence of types, in
+the case of a multi-parameter type class) and typeclass.
+These restrictions ensure that there are no overlapping
+instance declarations, i.e. for each typeclass there is at
+most one instance declaration that may be applied to any
+type (or sequence of types). 
 
 Each @var{methoddefinition} entry in the @samp{where [@dots{}]} part
 of an @code{instance} declaration defines the implementation of one of
