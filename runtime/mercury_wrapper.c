@@ -560,8 +560,9 @@ mercury_runtime_init(int argc, char **argv)
 		int i;
 		MR_init_thread(MR_use_now);
 		MR_exit_now = MR_FALSE;
-		for (i = 1 ; i < MR_num_threads ; i++)
+		for (i = 1 ; i < MR_num_threads ; i++) {
 			MR_create_thread(NULL);
+		}
 	}
   #endif /* ! MR_THREAD_SAFE */
 #endif /* ! MR_HIGHLEVEL_CODE */
@@ -1637,8 +1638,9 @@ mercury_runtime_main(void)
 	{
 		int i;
 
-		for (i = 0; i < SAFETY_BUFFER_SIZE; i++)
+		for (i = 0; i < SAFETY_BUFFER_SIZE; i++) {
 			MR_assert(safety_buffer[i] == MAGIC_MARKER_2);
+		}
 	}
 #endif
 
