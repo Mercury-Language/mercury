@@ -8,36 +8,17 @@
 % Main author: fjh.
 
 % Note that this does *not* compile to GNU C -- instead it
-% actually generates GCC's internal "Tree" representation.
-
-% DONE:
-%	- parameter declarations
-%	- local variable declarations
-%	- most types
-%	- operators
-%	- assignment
-%	- if-then-else
-%	- labels & goto
-%	- switches
-%	- tag operations
-%	- output mode arguments
-%	- contexts (line numbers)
-%	- commits
-%	- while and do/while loops
-%	- struct initializers
-%	- RTTI
+% actually generates GCC's internal "Tree" representation,
+% without going via an external file.
 
 % TODO:
 % 	Implement the remaining things needed for standard Mercury:
 %	- boxing of floats
 %	- C interface
-%	- higher-order (or is this already done?)
-%	- tuples (?)
-%	- cast_to_unsigned
 %
 %	Implement implementation-specific features that are supported
 %	by other Mercury back-ends:
-%	- support --high-level-data
+%	- support --high-level-data (enum types, pred types, user_type)
 %	- support --profiling and --heap-profiling
 %	- support --nondet-copy-out
 %	- support --gcc-nested-functions (probably not worth it)
@@ -51,7 +32,10 @@
 %
 %	Improve efficiency of generated code:
 %	- --static-ground-terms
-%	- computed_goto
+%	- improve code for switches with default_is_unreachable.
+%	  One way would be to implement computed_goto and cast_to_unsigned,
+%	  and change target_supports_computed_goto_2(asm) in ml_switch_gen.m
+%	  to `yes'.
 %	- fix variable scoping
 %	- fix declaration flags (const, etc.)
 %	- implement annotation in gcc tree to force tailcalls
@@ -513,6 +497,7 @@ mlds_output_name_with_cast(ModuleName, Name - Type) -->
 %
 
 
+	% Handle MLDS definitions that occur at global scope.
 :- pred gen_defns(mlds_module_name, mlds__defns, global_info, global_info,
 		io__state, io__state).
 :- mode gen_defns(in, in, in, out, di, uo) is det.
@@ -522,6 +507,9 @@ gen_defns(ModuleName, [Defn | Defns], GlobalInfo0, GlobalInfo) -->
 	gen_defn(ModuleName, Defn, GlobalInfo0, GlobalInfo1),
 	gen_defns(ModuleName, Defns, GlobalInfo1, GlobalInfo).
 
+	% Handle MLDS definitions that are nested inside a
+	% function definition (or inside a block within a function),
+	% and which are hence local to that function.
 :- pred build_local_defns(mlds__defns, func_info, mlds_module_name, 
 		symbol_table, symbol_table, io__state, io__state).
 :- mode build_local_defns(in, in, in, in, out, di, uo) is det.
@@ -540,6 +528,8 @@ build_local_defns([Defn|Defns], FuncInfo, ModuleName, SymbolTable0, SymbolTable)
 		qual(ModuleName, Name), GCC_Defn) },
 	build_local_defns(Defns, FuncInfo, ModuleName, SymbolTable1, SymbolTable).
 
+	% Handle MLDS definitions that are nested inside a type, 
+	% i.e. fields of that type.
 :- pred build_field_defns(mlds__defns, mlds_module_name, global_info,
 		gcc__field_decls, field_table, field_table,
 		io__state, io__state).
@@ -641,10 +631,17 @@ build_local_defn_body(Name, FuncInfo, _Context, DefnBody, GCC_Defn) -->
 		build_local_data_defn(Name, Type, Initializer, FuncInfo, GCC_Defn)
 	;
 		{ DefnBody = mlds__function(_, _, _) },
-		{ sorry(this_file, "nested function") }
+		% nested functions should get eliminated by ml_elim_nested,
+		% unless --gcc-nested-functions is enabled.
+		% XXX --gcc-nested-functions is not yet implemented
+		{ sorry(this_file, "nested function (`--gcc-nested-functions' "
+			++ "not yet supported with `--target asm')") }
 	;
 		{ DefnBody = mlds__class(_) },
-		{ sorry(this_file, "nested type") }
+		% currently the MLDS code generator doesn't generate
+		% types nested inside functions, so we don't need to
+		% implement this
+		{ unexpected(this_file, "nested type") }
 	).
 
 :- pred build_field_defn_body(mlds__qualified_entity_name,
@@ -660,10 +657,10 @@ build_field_defn_body(Name, _Context, DefnBody, GlobalInfo, GCC_Defn) -->
 			GCC_Defn)
 	;
 		{ DefnBody = mlds__function(_, _, _) },
-		{ sorry(this_file, "function nested in type") }
+		{ unexpected(this_file, "function nested in type") }
 	;
 		{ DefnBody = mlds__class(_) },
-		{ sorry(this_file, "type nested in type") }
+		{ unexpected(this_file, "type nested in type") }
 	).
 
 %-----------------------------------------------------------------------------%
@@ -671,6 +668,9 @@ build_field_defn_body(Name, _Context, DefnBody, GlobalInfo, GCC_Defn) -->
 % Code to output data declarations/definitions
 %
 
+	% Handle an MLDS data definition that is nested inside a
+	% function definition (or inside a block within a function),
+	% and which is hence local to that function.
 :- pred build_local_data_defn(mlds__qualified_entity_name, mlds__type,
 		mlds__initializer, func_info, gcc__var_decl,
 		io__state, io__state).
@@ -683,7 +683,10 @@ build_local_data_defn(Name, Type, Initializer, FuncInfo, GCC_Defn) -->
 	( { UnqualName = data(var(VarName)) } ->
 		gcc__build_local_var_decl(VarName, GCC_Type, GCC_Defn)
 	;
-		{ sorry(this_file, "build_local_data_defn: non-var") }
+		% var/1 should be the only kind of mlds__data_name for which
+		% the MLDS code generator generates local definitions
+		% (within functions)
+		{ unexpected(this_file, "build_local_data_defn: non-var") }
 	),
 	( { Initializer = no_initializer } ->
 		[]
@@ -692,6 +695,8 @@ build_local_data_defn(Name, Type, Initializer, FuncInfo, GCC_Defn) -->
 		gcc__gen_assign(gcc__var_expr(GCC_Defn), GCC_Expr)
 	).
 
+	% Handle an MLDS data definition that is nested inside a type,
+	% i.e. a field definition.
 :- pred build_field_data_defn(mlds__qualified_entity_name, mlds__type,
 		mlds__initializer, global_info, gcc__field_decl,
 		io__state, io__state).
@@ -1371,6 +1376,19 @@ build_sized_array_type(GCC_Type, ArraySize, GCC_ArrayType) -->
 	gcc__build_array_type(GCC_Type, Size, GCC_ArrayType).
 
 %-----------------------------------------------------------------------------%
+
+:- type initializer_array_size
+	--->	array_size(int)
+	;	no_size.	% either the size is unknown,
+				% or the data is not an array
+
+:- func initializer_array_size(mlds__initializer) = initializer_array_size.
+initializer_array_size(no_initializer) = no_size.
+initializer_array_size(init_obj(_)) = no_size.
+initializer_array_size(init_struct(_)) = no_size.
+initializer_array_size(init_array(Elems)) = array_size(list__length(Elems)).
+
+%-----------------------------------------------------------------------------%
 %
 % Code to build RTTI types
 %
@@ -1784,17 +1802,6 @@ fixup_pseudo_type_info(PseudoTypeInfo0) = PseudoTypeInfo :-
 		PseudoTypeInfo = PseudoTypeInfo0
 	).
 
-:- type initializer_array_size
-	--->	array_size(int)
-	;	no_size.	% either the size is unknown,
-				% or the data is not an array
-
-:- func initializer_array_size(mlds__initializer) = initializer_array_size.
-initializer_array_size(no_initializer) = no_size.
-initializer_array_size(init_obj(_)) = no_size.
-initializer_array_size(init_struct(_)) = no_size.
-initializer_array_size(init_array(Elems)) = array_size(list__length(Elems)).
-
 %-----------------------------------------------------------------------------%
 %
 % Symbol tables and other (semi-)global data structures
@@ -1931,7 +1938,9 @@ gen_stmt(FuncInfo, goto(LabelName), _) -->
 	gcc__gen_goto(GCC_Label).
 gen_stmt(_FuncInfo, computed_goto(_Expr, _Labels), _) -->
 	% XXX not yet implemented
-	{ sorry(this_file, "computed goto") }.
+	% but we set target_supports_computed_goto to no
+	% for this target, so we shouldn't get any
+	{ unexpected(this_file, "computed goto") }.
 
 	%
 	% function call/return
@@ -2552,7 +2561,10 @@ build_unop_expr(unmkbody, Arg, Expr) -->
 	gcc__build_binop(gcc__rshift_expr, 'MR_intptr_t',
 		Arg, TagBitsExpr, Expr).
 build_unop_expr(cast_to_unsigned, _, _) -->
-	{ sorry(this_file, "cast_to_unsigned") }.
+	% cast_to_unsigned is only needed for dense (computed_goto) switches,
+	% and we set target_supports_computed_goto to no for this target,
+	% so we shouldn't get any of these
+	{ unexpected(this_file, "cast_to_unsigned") }.
 build_unop_expr(hash_string, Arg, Expr) -->
 	gcc__build_func_addr_expr(gcc__hash_string_func_decl,
 		HashStringFuncExpr),
@@ -2668,6 +2680,9 @@ build_args([Arg|Args], FuncInfo, GCC_ArgList) -->
 	gcc__cons_arg_list(GCC_Expr, GCC_ArgList0, GCC_ArgList).
 
 %-----------------------------------------------------------------------------%
+%
+% Code to output constants
+%
 
 :- pred build_rval_const(mlds__rval_const, global_info, gcc__expr,
 		io__state, io__state).
@@ -2694,8 +2709,6 @@ build_rval_const(data_addr_const(DataAddr), _, Expr) -->
 build_rval_const(null(_Type), _, Expr) -->
 	% XXX is it OK to ignore the type here?
 	gcc__build_null_pointer(Expr).
-
-%-----------------------------------------------------------------------------%
 
 :- pred build_code_addr(mlds__code_addr, global_info, gcc__expr,
 		io__state, io__state).
@@ -2761,48 +2774,12 @@ build_data_var_name(ModuleName, DataName) =
 	).
 
 %-----------------------------------------------------------------------------%
-
-:- pred defn_is_public(mlds__defn).
-:- mode defn_is_public(in) is semidet.
-
-defn_is_public(Defn) :-
-	Defn = mlds__defn(_Name, _Context, Flags, _Body),
-	access(Flags) \= private.
-
-:- pred defn_is_type(mlds__defn).
-:- mode defn_is_type(in) is semidet.
-
-defn_is_type(Defn) :-
-	Defn = mlds__defn(Name, _Context, _Flags, _Body),
-	Name = type(_, _).
-
-:- pred defn_is_function(mlds__defn).
-:- mode defn_is_function(in) is semidet.
-
-defn_is_function(Defn) :-
-	Defn = mlds__defn(Name, _Context, _Flags, _Body),
-	Name = function(_, _, _, _).
-
-:- pred defn_is_type_ctor_info(mlds__defn).
-:- mode defn_is_type_ctor_info(in) is semidet.
-
-defn_is_type_ctor_info(Defn) :-
-	Defn = mlds__defn(_Name, _Context, _Flags, Body),
-	Body = mlds__data(Type, _),
-	Type = mlds__rtti_type(RttiName),
-	RttiName = type_ctor_info.
-
-:- pred defn_is_commit_type_var(mlds__defn).
-:- mode defn_is_commit_type_var(in) is semidet.
-
-defn_is_commit_type_var(Defn) :-
-	Defn = mlds__defn(_Name, _Context, _Flags, Body),
-	Body = mlds__data(Type, _),
-	Type = mlds__commit_type.
-
-%-----------------------------------------------------------------------------%
+%
+% Generation of source context info (file name and line number annotations).
+%
 
 :- pred set_context(mlds__context::in, io__state::di, io__state::uo) is det.
+
 set_context(MLDS_Context) -->
 	{ ProgContext = mlds__get_prog_context(MLDS_Context) },
 	{ FileName = term__context_file(ProgContext) },
@@ -2819,6 +2796,8 @@ gen_context(MLDS_Context) -->
 	gcc__gen_line_note(FileName, LineNumber).
 
 %-----------------------------------------------------------------------------%
+%
+% "Typedefs", i.e. constants of type `gcc__type'.
 %
 % We use the same names for types as in the MLDS -> C back-end.
 %
@@ -2864,6 +2843,19 @@ gen_context(MLDS_Context) -->
 'MR_int_least32_t'	= gcc__int32_type_node.
 'MR_int_least64_t'	= gcc__int64_type_node.
 'MR_intptr_t'		= gcc__intptr_type_node.
+
+%-----------------------------------------------------------------------------%
+%
+% Utility predicates.
+%
+
+	% XXX This should be moved to ml_util.m
+:- pred defn_is_type(mlds__defn).
+:- mode defn_is_type(in) is semidet.
+
+defn_is_type(Defn) :-
+	Defn = mlds__defn(Name, _Context, _Flags, _Body),
+	Name = type(_, _).
 
 %-----------------------------------------------------------------------------%
 
