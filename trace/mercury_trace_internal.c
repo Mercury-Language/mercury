@@ -1011,7 +1011,7 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 					fprintf(MR_mdb_err,
 						"There is no event "
 						"at %s:%d.\n",
-						file, line);
+						file, breakline);
 				}
 			} else {
 				MR_fatal_error("cannot find current filename");
