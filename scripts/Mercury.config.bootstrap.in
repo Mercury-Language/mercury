@@ -34,13 +34,14 @@ DEFAULT_MERCURY_LINKAGE=@DEFAULT_LINKAGE@
 
 # The default optimization level should be after
 # all the options that describe the machine configuration.
+#
+# Insert this when the --java-interpreter option has been around for a while:
+#		--java-interpreter "$(MERCURY_JAVA_INTERPRETER)" \
 DEFAULT_MCFLAGS=\
 		@ALL_LOCAL_C_INCL_DIR_MMC_OPTS@ \
 		@ALL_LOCAL_C_LIB_DIR_MMC_OPTS@ \
 		--cc "$(MERCURY_C_COMPILER)" \
 		--java-compiler "$(MERCURY_JAVA_COMPILER)" \
-# uncomment this when the --java-interpreter option has been around for a while
-#		--java-interpreter "$(MERCURY_JAVA_INTERPRETER)" \
 		--grade "$(MERCURY_DEFAULT_GRADE)" \
 		--cflags-for-ansi "@CFLAGS_FOR_ANSI@" \
 		--cflags-for-optimization "@CFLAGS_FOR_OPT@" \
