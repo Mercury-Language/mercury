@@ -1,0 +1,43 @@
+# Copyright (C) 2001 Ralph Becket <rbeck@microsoft.com>
+#
+#   THIS FILE IS HEREBY CONTRIBUTED TO THE MERCURY PROJECT TO
+#   BE RELEASED UNDER WHATEVER LICENCE IS DEEMED APPROPRIATE
+#   BY THE ADMINISTRATORS OF THE MERCURY PROJECT.
+
+
+
+# Do the following:
+#
+# $ mmake depend
+# $ mmake
+#
+# And to install...
+#
+# $ mmake install
+
+# Omit this line if you want to install in the standard location.
+# Edit this line if you want to install the library elsewhere.
+# A directory $(INSTALL_PREFIX)/lib/mercury will be created, if
+# necessary, and everything put there.
+#
+#INSTALL_PREFIX = $(HOME)/mercury
+
+# Omit this line if you want to install the default grades.
+# Edit this line if you want to install with different grades.
+#
+#LIBGRADES = asm_fast.gc hlc.gc
+
+# The following standard libraries must be linked against in any
+# application using the curs library (i.e. MLLIBS must include
+# at least the following and in this order) :
+#
+MLLIBS = -lpanel -lncurses
+
+# Any application using this library will also need the following
+# in its Mmakefile:
+#
+#EXTRA_LIBRARIES = curs
+
+MAIN_TARGET = libcurs
+depend: curs.depend
+install: $(MAIN_TARGET).install
