@@ -283,18 +283,39 @@ do
 		echo "test clpr stuff for grade $grade" 1>&2
 		(cd mercury/extras/clpr &&
 			 mmake realclean $PARALLEL MMAKEFLAGS=$PARALLEL &&
-			 mmake depend	$PARALLEL MMAKEFLAGS=$PARALLEL &&
-			 mmake 		$PARALLEL MMAKEFLAGS=$PARALLEL &&
-			 mmake check	$PARALLEL MMAKEFLAGS=$PARALLEL &&
-			 mmake install	$PARALLEL MMAKEFLAGS=$PARALLEL &&
+			 mmake depend	 $PARALLEL MMAKEFLAGS=$PARALLEL \
+				GRADE=$grade \
+				EXTRA_MCFLAGS="$TEST_MCFLAGS" \
+				EXTRA_CFLAGS"$TEST_CFLAGS" &&
+			 mmake 		 $PARALLEL MMAKEFLAGS=$PARALLEL \
+				GRADE=$grade \
+				EXTRA_MCFLAGS="$TEST_MCFLAGS" \
+				EXTRA_CFLAGS"$TEST_CFLAGS" &&
+			 mmake check	 $PARALLEL MMAKEFLAGS=$PARALLEL \
+				GRADE=$grade \
+				EXTRA_MCFLAGS="$TEST_MCFLAGS" \
+				EXTRA_CFLAGS"$TEST_CFLAGS" &&
+			 mmake install	 $PARALLEL MMAKEFLAGS=$PARALLEL \
+				GRADE=$grade \
+				EXTRA_MCFLAGS="$TEST_MCFLAGS" \
+				EXTRA_CFLAGS"$TEST_CFLAGS" &&
 			 mmake realclean $PARALLEL MMAKEFLAGS=$PARALLEL) ||
 				status=1
 		echo "test trailed_update stuff for grade $grade" 1>&2
 		(cd mercury/extras/trailed_update &&
 			 mmake realclean $PARALLEL MMAKEFLAGS=$PARALLEL &&
-			 mmake depend	$PARALLEL MMAKEFLAGS=$PARALLEL &&
-			 mmake 		$PARALLEL MMAKEFLAGS=$PARALLEL &&
-			 mmake check	$PARALLEL MMAKEFLAGS=$PARALLEL &&
+			 mmake depend	 $PARALLEL MMAKEFLAGS=$PARALLEL \
+				GRADE=$grade \
+				EXTRA_MCFLAGS="$TEST_MCFLAGS" \
+				EXTRA_CFLAGS"$TEST_CFLAGS" &&
+			 mmake 		 $PARALLEL MMAKEFLAGS=$PARALLEL \
+				GRADE=$grade \
+				EXTRA_MCFLAGS="$TEST_MCFLAGS" \
+				EXTRA_CFLAGS"$TEST_CFLAGS" &&
+			 mmake check	 $PARALLEL MMAKEFLAGS=$PARALLEL \
+				GRADE=$grade \
+				EXTRA_MCFLAGS="$TEST_MCFLAGS" \
+				EXTRA_CFLAGS"$TEST_CFLAGS" &&
 			 mmake realclean $PARALLEL MMAKEFLAGS=$PARALLEL) ||
 				status=1
 	fi
