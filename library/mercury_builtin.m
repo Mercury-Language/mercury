@@ -308,6 +308,10 @@
 
 :- mode call(pred(in,  in,  in,  di,  out, uo)  is det,     in,  in,  in,  di,  out, uo)  is det.
 
+:- pred call(pred(T1, T2, T3, T4, T5, T6, T7), T1, T2, T3, T4, T5, T6, T7).
+
+:- mode call(pred(in,  in,  in,  in,  di,  out, uo)  is det,     in,  in,  in,  in,  di,  out, uo)  is det.
+
 % In addition, the following predicate-like constructs are builtin:
 %
 %	:- pred (T = T).
