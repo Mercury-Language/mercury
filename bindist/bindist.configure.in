@@ -198,6 +198,10 @@ AC_SUBST(AS)
 AC_PROG_CC
 AC_SUBST(CC)
 #-----------------------------------------------------------------------------#
+# Microsoft.NET configuration (the bindist may be installed on a machine
+# that supports .NET even if it was built on a machine that doesn't).
+# 
+MERCURY_CHECK_DOTNET
 
 # The following allows us to share some subroutines between the
 # `ml' and `mgnuc' scripts.
