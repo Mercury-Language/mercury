@@ -567,21 +567,22 @@ clauses_info_init(Arity, clauses_info(VarSet, VarTypes, HeadVars, [])) :-
 		list(proc_id)::in, varset::in, list(term)::in, goal::in,
 		term__context::in, clauses_info::out) is det.
 
-clauses_info_add_clause(ClausesInfo0, ModeIds, VarSet, Args, Body,
+clauses_info_add_clause(ClausesInfo0, ModeIds, CVarSet, Args, Body,
 		Context, ClausesInfo) :-
-	ClausesInfo0 = clauses_info(VarSet2, VarTypes, HeadVars, ClauseList0),
-	varset__merge_subst(VarSet, VarSet2, NewVarSet, Subst),
+	ClausesInfo0 = clauses_info(VarSet0, VarTypes, HeadVars, ClauseList0),
+	varset__merge_subst(VarSet0, CVarSet, VarSet, Subst),
 	transform(Subst, HeadVars, Args, Body, Goal),
 		% XXX we should avoid append - this gives O(N*N)
 	append(ClauseList0, [clause(ModeIds, Goal, Context)], ClauseList),
-	ClausesInfo = clauses_info(NewVarSet, VarTypes, HeadVars, ClauseList).
+	ClausesInfo = clauses_info(VarSet, VarTypes, HeadVars, ClauseList).
 
 :- pred transform(substitution, list(var), list(term), goal, hlds__goal).
 :- mode transform(input, input, input, input, output) is det.
 
-transform(Subst, HeadVars, Args, Body, Goal) :-
-	insert_head_unifications(HeadVars, Args, Body, Body2),
-	transform_goal(Body2, Subst, Goal).
+transform(Subst, HeadVars, Args0, Body, Goal) :-
+	transform_goal(Body, Subst, Goal0),
+	term__apply_substitution_to_list(Args0, Subst, Args),
+	insert_head_unifications(HeadVars, Args, Goal0, Goal).
 
 :- pred make_n_fresh_vars(int, varset, list(var), varset).
 :- mode make_n_fresh_vars(input, input, output, output).
@@ -606,17 +607,30 @@ make_n_fresh_vars_2(N, Max, VarSet0, Vars, VarSet) :-
 		make_n_fresh_vars_2(N1, Max, VarSet2, Vars1, VarSet)
 	).
 
-	% If/when we rewrite this to transform to superhomeneous form,
-	% this pred should operate on hlds__goals instead of goals
-	% so that it can insert additional context info.
-
-:- pred insert_head_unifications(list(var), list(term), goal, goal).
+:- pred insert_head_unifications(list(var), list(term), hlds__goal, hlds__goal).
 :- mode insert_head_unifications(input, input, input, output).
 
-insert_head_unifications([], [], Body, Body).
-insert_head_unifications([Var|Vars], [Arg|Args], Body0, Body) :-
-	Body = (unify(Arg, term_variable(Var)), Body1),
-	insert_head_unifications(Vars, Args, Body0, Body1).
+insert_head_unifications(HeadVars, Args, Goal0, Goal) :-
+	( HeadVars = [] ->
+		Goal = Goal0
+	;
+		insert_head_unifications_2(HeadVars, Args, 0, [Goal0], List),
+		goalinfo_init(GoalInfo),
+		Goal = conj(List) - GoalInfo
+	).
+
+insert_head_unifications_2([], [], _, List, List).
+insert_head_unifications_2([Var|Vars], [Arg|Args], N0, List0, List) :-
+	N1 is N0 + 1,
+	Goal = unify(Arg, term_variable(Var), Mode, UnifyInfo, UnifyC) -
+		GoalInfo,
+	goalinfo_init(GoalInfo),
+	UnifyC = unify_context(head(N1), []),
+		% fill in unused slots with garbage values
+	Mode = ((free -> free) - (free -> free)),
+	UnifyInfo = complicated_unify(Mode, Arg, term_variable(Var)),
+	List = [Goal | List1],
+	insert_head_unifications_2(Vars, Args, N1, List0, List1).
 
 :- pred transform_goal(goal, substitution, hlds__goal).
 :- mode transform_goal(input, input, output).

@@ -1065,10 +1065,10 @@ type_unify(term_functor(F, As, C), term_variable(X), Bindings0, Bindings) :-
 	( %%% if some [BindingOfX]
 		map__search(Bindings0, X, BindingOfX)
 	->
-		\+ term__occurs_list(As, X, Bindings0),
 		type_unify(term_functor(F, As, C), BindingOfX, Bindings0,
 			Bindings)
 	;
+		\+ term__occurs_list(As, X, Bindings0),
 		map__set(Bindings0, X, term_functor(F, As, C), Bindings)
 	).
 
