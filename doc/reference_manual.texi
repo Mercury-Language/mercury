@@ -4815,8 +4815,8 @@ fair search rule; and so forth.
 				       or function as a call to code
 				       written in a different
 				       programming language.
-* Data passing conventions::	       How Mercury types are represented
-				       on the various backends.
+* Data passing conventions::	       How Mercury types are passed to
+				       different languages.
 * Adding foreign declarations::        How to add declarations of
   				       entities in other programming
 				       languages.
@@ -5009,18 +5009,18 @@ items.
 @node Data passing conventions
 @section Data passing conventions
 
-For each backend,
-we explain how to map a Mercury type to a type on the backend.
+For each language,
+we explain how to map a Mercury type to a type in that foreign language.
 We also map the Mercury parameter passing convention
-to the backend parameter passing convention.
+to the language parameter passing convention.
 
 @menu
-* C backend	:: Data passing convention for the C backend.
-* IL backend	:: Data passing convention for the IL backend.
+* C language	:: Data passing convention for the C language.
+* IL language	:: Data passing convention for the IL language.
 @end menu
 
-@node C backend
-@subsection C backend
+@node C language
+@subsection C language
 
 For each of the Mercury types @code{int}, @code{float}, @code{char},
 and @code{string}, there is a C typedef for the corresponding type in C:
@@ -5087,8 +5087,8 @@ MR_list_cons(head,tail)    /* construct a list with the given head and tail */
 Note that the use of these macros is subject to some caveats
 (@pxref{Memory management}).
 
-@node IL backend
-@subsection IL backend
+@node IL language
+@subsection IL language
 
 The Mercury types @code{int}, @code{float}, @code{char},
 and @code{string} are mapped to the Common Language Runtime types 
@@ -5254,7 +5254,7 @@ Use the string "MC++" to set the foreign language to Managed C++.
 
 The input and output variables will have C types corresponding
 to their Mercury types, as determined by the rules specified in
-@ref{C backend}.
+@ref{C language}.
 
 The C code fragment may declare local variables, but it should not
 declare any labels or static variables unless there is also a Mercury
@@ -5462,7 +5462,7 @@ before returning.
 @c set @code{success} to false (zero).
 
 Each of the head variables will be represented by the Common Language
-Runtime types as specified in @pxref{IL backend}.
+Runtime types as specified in @pxref{IL language}.
 Note that in IL assembler the types
 @samp{System.Int32}, @samp{System.Double}, @samp{System.Char}
 and @samp{System.String}
@@ -6117,7 +6117,7 @@ Mercury User's Guide, and the @samp{man} pages for @samp{mmc} and @samp{ml}.
 @node Passing data to and from C
 @section Passing data to and from C
 
-This section has moved to @pxref{C backend}.
+This section has moved to @pxref{C language}.
 
 @node Using C pointers
 @section Using C pointers
