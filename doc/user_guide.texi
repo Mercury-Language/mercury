@@ -916,6 +916,10 @@ which could have been stricter.
 @item --no-warn-nothing-exported
 Don't warn about modules whose interface sections have no
 exported predicates, modes or types.
+
+@sp 1
+@item --no-warn-unused-args
+Don't warn about predicate arguments which are not used.
 @end table
 
 @node Verbosity options
@@ -1052,7 +1056,7 @@ Write out the dependency graph to @var{module}.dependency_graph.
 Dump the HLDS (intermediate representation) after
 the specified stage number or stage name to
 @file{@var{module}.hlds_dump.@var{num}-@var{name}}.
-Stage numbers range from 1 to 19.
+Stage numbers range from 1 to 21.
 Multiple dump options accumulate.
 
 @sp 1
@@ -1383,6 +1387,16 @@ but tends to severely stress the C compiler.
 
 @c @item --constraint-propagation
 @c Enable the constraint propagation transformation.
+
+@sp 1
+@item --no-optimize-unused-args
+Don't remove unused predicate arguments. The compiler will
+generate less efficient code for polymorphic predicates.
+
+@sp 1
+@item --no-optimize-higher-order
+Don't specialize calls to higher-order predicates where
+the higher-order arguments are known.
 
 @sp 1
 @item --no-c-optimize
