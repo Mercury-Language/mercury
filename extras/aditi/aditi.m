@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2000,2003 University of Melbourne.
+% Copyright (C) 1998-2000,2003, 2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -61,11 +61,11 @@
 :- type aditi__state.
 
 % XXX This will change to unique when the mode system is fully implemented.
-:- inst aditi_unique = ground.
-:- mode aditi_di :: in(aditi_unique).
-:- mode aditi_uo :: out(aditi_unique).
-:- mode aditi_ui :: in(aditi_unique).
-:- mode aditi_mui :: in(aditi_unique).
+:- inst aditi_unique == ground.
+:- mode aditi_di  == in(aditi_unique).
+:- mode aditi_uo  == out(aditi_unique).
+:- mode aditi_ui  == in(aditi_unique).
+:- mode aditi_mui == in(aditi_unique).
 
 :- type aditi__result(T)
 	--->	ok(T)
@@ -118,7 +118,7 @@
 :- mode aditi__disconnect(in, out, di, uo) is det.
 
 :- type aditi__transaction(T) == pred(T, aditi__state, aditi__state).
-:- inst aditi__transaction = (pred(out, aditi_di, aditi_uo) is det).
+:- inst aditi__transaction == (pred(out, aditi_di, aditi_uo) is det).
 
 	% aditi__transaction(Connection, Transaction, Result).
 	%
