@@ -48,7 +48,7 @@ ml c2init canonical_grade: canonical_grade.sh-subr
 
 .PHONY: install
 install: install_mmake install_scripts \
-	install_debugger_scripts install_emacs_scripts install_cgi_scripts
+	install_debugger_scripts install_emacs_scripts
 
 .PHONY: install_dirs
 install_dirs:
