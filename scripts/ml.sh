@@ -4,23 +4,36 @@
 #
 # Invokes GCC with the appropriate options to link in the Mercury library.
 #
-# Usage: ml [-v|--verbose] [-s <grade>] [<gcc options>] files...
+# Usage: ml [<ml options>] [<gcc options] files...
+# Options:
+# 	-v, --verbose
+#		Echo gcc command line before executing it
+#	--shared
+#		Link with the shared version of the Mercury library
+#	--static (the default)
+#		Link with the static version of the Mercury library
+#	-s <grade>
+#		Specify which grade of the Mercury library to link with
 #
 # Environment variables: MERCURY_C_LIB_DIR
 
 LIBDIR=${MERCURY_C_LIB_DIR:-@LIBDIR@/lib}
+verbose=false
+shared=false
+GRADE=none
+LIBMER=libmer.so
 
-case "$1" in
+while true; do
+    case "$1" in
 	-v|--verbose)
 		verbose=true
-		shift;;
-	*)
-		verbose=false
-		;;
-esac
-
-GRADE=none
-case "$1" in
+		shift ;;
+	--shared)
+		shared=true
+		shift ;;
+	--static)
+		shared=false
+		shift ;;
 	-s)
 		shift
 		GRADE="$1"
@@ -28,13 +41,18 @@ case "$1" in
 	-s*)
 		GRADE="` expr $1 : '-s\(.*\)' `"
 		shift ;;
-esac
+	*)
+		break
+		;;
+    esac
+done
 
-# The following will pick up both the .a and the .so
-# if they both exist (i.e. on systems which support shared libraries).
-# Otherwise it will just pick up the .a file.
-
-LIBDIR_OPTS="$LIBDIR/$GRADE/@FULLARCH@/libmer.*"
+if $shared; then
+	LIBMER=libmer.so
+else
+	LIBMER=libmer.a
+fi
+LIBDIR_OPTS="$LIBDIR/$GRADE/@FULLARCH@/$LIBMER"
 
 case "`hostname`" in
 	cadillac.dd.citri.edu.au)
