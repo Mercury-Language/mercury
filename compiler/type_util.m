@@ -48,7 +48,7 @@
 :- mode type_is_aditi_state(in) is semidet.
 
 	% A test for types that are defined by hand (not including
-	% the builtin types).  Don't generate base_type_*
+	% the builtin types).  Don't generate type_ctor_*
 	% for these types.
 
 :- pred type_id_is_hand_defined(type_id).
