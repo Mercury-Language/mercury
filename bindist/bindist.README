@@ -3,7 +3,7 @@ University of Melbourne Mercury compiler, version <VERSION>,
 built on a `<FULLARCH>' system.
 
 The Mercury implementation is free software, but it is Copyright (C)
-1993-1997 The University of Melbourne.  It is distributed under the
+1993-1998 The University of Melbourne.  It is distributed under the
 terms of the GNU General Public License.  See the file COPYING for
 copying permission.  The Mercury library and runtime (libmercury.* and
 libmer.*) are distributed under the terms of the GNU Library General
@@ -13,13 +13,13 @@ please contact us!  We are willing to come to alternative arrangements,
 if the need should arise.)
 
 This distribution also contains a slightly modified version of the
-conservative garbage collector distributed by Hans Boehm, version 4.11,
+conservative garbage collector distributed by Hans Boehm, version 4.13alpha2,
 which has the following copyright attached (taken from the README file
 of the garbage collector source):
 
 	Copyright 1988, 1989 Hans-J. Boehm, Alan J. Demers
 	Copyright (c) 1991-1996 by Xerox Corporation.  All rights reserved.
-	Copyright (c) 1996 by Silicon Graphics.  All rights reserved.
+        Copyright (c) 1996-1998 by Silicon Graphics.  All rights reserved.
 
 	THIS MATERIAL IS PROVIDED AS IS, WITH ABSOLUTELY NO WARRANTY
 	EXPRESSED OR IMPLIED.  ANY USE IS AT YOUR OWN RISK.
@@ -33,8 +33,26 @@ of the garbage collector source):
 
 A few files (config*) in the source and binary distributions are derived
 from code that is copyright by the Free Software Foundation, Inc.
-The `Togl' library in extras/graphics/Togl-1.2 is copyright by Brian
-Paul and Ben Bederson; see the file extras/graphics/Togl-1.2/LICENCE.
+
+The files in the `samples' directory are either public domain, or
+distributed under the GNU General Public License.
+
+Some of the files in the `extras' subdirectory (which is now distributed
+separately in the `mercury-extras' package) have fairly restrictive
+copyright licences:  
+
+	The `Togl' library in extras/graphics/mtogl/togl.* is copyright by
+	Brian Paul and Ben Bederson; see the file
+	extras/graphics/mtogl/LICENSE.TOGL.
+
+	The Tk files in extras/graphics/mtogl/tk.* are copyright
+	by the Regents of the University of California,
+	Sun Microsystems, Inc., and other parties. 
+	See the file extras/graphics/mtogl/LICENSE.TK.
+
+	The CLP(R) v1.2 implementation in extras/clpr/clpr is copyright
+	by IBM; see the file extras/clpr/clpr/README for details, in
+	particular the RESEARCH SOFTWARE DISCLAIMER and USER AGREEMENT.
 
 THIS MATERIAL IS PROVIDED AS IS, WITH ABSOLUTELY NO WARRANTY
 EXPRESSED OR IMPLIED.  ANY USE IS AT YOUR OWN RISK.  See the file COPYING.
@@ -53,7 +71,7 @@ For examples of larger programs, download the Mercury source distribution -
 the Mercury compiler and the Mercury profiler are written in Mercury.
 
 For more information about Mercury, see the Mercury WWW home page at
-http://www.cs.mu.oz.au/mercury, or send mail to mercury@cs.mu.oz.au.
+<http://www.cs.mu.oz.au/mercury/>, or send mail to mercury@cs.mu.oz.au.
 
 If you would like to join the Mercury mailing lists (there are two,
 mercury-users for general discussion, and mercury-announce for
@@ -70,9 +88,9 @@ The Mercury binary and source distributions are available via anonymous
 ftp or WWW from the following locations:
 
 	Australia:
-		ftp://turiel.cs.mu.oz.au/pub/mercury
+		ftp://turiel.cs.mu.oz.au/pub/mercury/
 	USA:
-		ftp://ftp.cs.sunysb.edu/pub/XSB/mercury
+		ftp://ftp.cs.sunysb.edu/pub/XSB/mercury/
 	Europe:
-		ftp://ftp.csd.uu.se/pub/Mercury
+		ftp://ftp.csd.uu.se/pub/Mercury/
 
