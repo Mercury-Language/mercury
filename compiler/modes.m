@@ -2142,15 +2142,15 @@ proc_check_eval_methods([ProcId|Rest], PredId, ModuleInfo0, ModuleInfo) -->
 				ModuleInfo0) } 
 		->
 			prog_out__write_context(Context),
-			io__write_string(" Sorry, not impemented: `pragma "),
+			io__write_string("Sorry, not impemented: `pragma "),
 			io__write_string(EvalMethodS),
 			io__write_string("'\n"),
 			prog_out__write_context(Context),
 			io__write_string(
-"    declaration not allowed for procedure with\n"),
+			    "  declaration not allowed for procedure with\n"),
 			prog_out__write_context(Context),
 			io__write_string(
-"    partially instantiated modes.\n"), 
+			    "  partially instantiated modes.\n"), 
 			( { VerboseErrors = yes } ->
 				io__write_string(
 "	Tabling of predicates/functions with partially instantiated modes
@@ -2167,14 +2167,14 @@ proc_check_eval_methods([ProcId|Rest], PredId, ModuleInfo0, ModuleInfo) -->
 				ModuleInfo1) } 
 		->
 			prog_out__write_context(Context),
-			io__write_string(" Error: `pragma "),
+			io__write_string("Error: `pragma "),
 			io__write_string(EvalMethodS),
 			io__write_string("'\n"),
 			prog_out__write_context(Context),
 			io__write_string(
-"    declaration not allowed for procedure with\n"),
+			    "  declaration not allowed for procedure with\n"),
 			prog_out__write_context(Context),
-			io__write_string("    unique modes.\n"), 
+			io__write_string("  unique modes.\n"), 
 			( { VerboseErrors = yes } ->
 				io__write_string(
 "	Tabling of predicates/functions with unique modes is not allowed
