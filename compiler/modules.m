@@ -2943,11 +2943,6 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 
 	module_name_to_lib_file_name("lib", ModuleName, ".install_hdrs", no,
 				LibInstallHdrsTargetName),
-	io__write_strings(DepStream, [
-		".PHONY : ", LibInstallHdrsTargetName, "\n",
-		LibInstallHdrsTargetName, " : $(", MakeVarName, ".hs) ",
-			"install_lib_dirs\n"
-	]),
 	globals__io_lookup_bool_option(highlevel_code, HighLevelCode),
 	( { HighLevelCode = yes } ->
 		%
@@ -2960,6 +2955,10 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 		% the `inc' directory, but doing that properly is non-trivial.)
 		%
 		io__write_strings(DepStream, [
+			".PHONY : ", LibInstallHdrsTargetName, "\n",
+			LibInstallHdrsTargetName, " : ",
+				"$(", MakeVarName, ".hs) ",
+				"install_lib_dirs\n",
 			"\tfor hdr in $(", MakeVarName, ".hs); do \\\n",
 			"\t	$(INSTALL) $$hdr $(INSTALL_INC_DIR)\\\n",
 			"\t	$(INSTALL) $$hdr $(INSTALL_INT_DIR)\\\n",
@@ -2969,6 +2968,8 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream) -->
 		% for non-MLDS grades, we don't need to install the header
 		% files, so this rule does nothing
 		io__write_strings(DepStream, [
+			".PHONY : ", LibInstallHdrsTargetName, "\n",
+			LibInstallHdrsTargetName, " :\n",
 			"\t\n\n"
 		])
 	),

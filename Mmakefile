@@ -402,6 +402,7 @@ install_split_library: scripts dep_library
 	{ mv -f *.dir *.dep *.h *.c *.o *.pic_o *.a *.so \
 		Mercury/cs/*.c Mercury/os/*.o tmp_dir || true; } && \
 	for grade in $(GRADE) $(LIBGRADES); do \
+	        $(SUBDIR_MMAKE) GRADE=$$grade depend && \
 	        $(SUBDIR_MMAKE) GRADE=$$grade install_split_library || \
 			{ scripts/mercury_cleanup_install; exit 1; }; \
 	        rm -rf *.dir *.dep *.h *.c *.o *.pic_o *.a *.so \
