@@ -129,9 +129,7 @@ handle_options(Args0, MaybeError, OptionArgs, Args, Link) -->
 process_options(Args0, OptionArgs, Args, Result) :-
 	OptionOps = option_ops(short_option, long_option,
 		option_defaults, special_handler),
-	% default to optimization level `-O2'
-	Args1 = ["-O2" | Args0],
-	getopt__process_options(OptionOps, Args1,
+	getopt__process_options(OptionOps, Args0,
 		OptionArgs, Args, Result).
 
 :- pred dump_arguments(list(string), io__state, io__state).

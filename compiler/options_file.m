@@ -901,7 +901,9 @@ lookup_options_variable(Vars, OptionsVariableClass, FlagsVar, Result) -->
 		{ ExtraFlagsResult = yes(ExtraFlags) },
 		{ ModuleFlagsResult = yes(TargetFlags) }
 	->
-		{ Result = yes(list__condense([DefaultFlags,
+		% Default to `-O2', even when mercury_compile
+		% is called directly, not by the mmc script.
+		{ Result = yes(list__condense([["-O2" | DefaultFlags],
 				Flags, ExtraFlags, TargetFlags])) }
 	;
 		{ Result = no }
