@@ -457,6 +457,7 @@ modecheck_goal_2(call(PredId, _, Args0, _, Context, PredName, Follow),
 	{ list__length(Args0, Arity) },
 	mode_info_set_call_context(call(PredName/Arity)),
 	=(ModeInfo0),
+	
 	modecheck_call_pred(PredId, Args0, Mode, Args, ExtraGoals),
 	=(ModeInfo),
 	{ mode_info_get_module_info(ModeInfo, ModuleInfo) },
@@ -475,12 +476,24 @@ modecheck_goal_2(unify(A0, B0, _, UnifyInfo0, UnifyContext), GoalInfo0, Goal)
 	modecheck_unification(A0, B0, UnifyInfo0, UnifyContext, GoalInfo0,
 				A, B, ExtraGoals, Mode, UnifyInfo),
 	=(ModeInfo),
-	{ Unify = unify(A, B, Mode, UnifyInfo, UnifyContext) },
-	{ unify_rhs_vars(B0, B0Vars) },
-	{ unify_rhs_vars(B, BVars) },
-	{ handle_extra_goals(Unify, ExtraGoals, GoalInfo0,
-				[A0|B0Vars], [A|BVars],
-				ModeInfo0, ModeInfo, Goal) },
+	% optimize away unifications with dead variables
+	(
+		{ UnifyInfo = assign(AssignTarget, _),
+		  mode_info_var_is_live(ModeInfo, AssignTarget, dead)
+		; UnifyInfo = construct(ConstructTarget, _, _, _),
+		  mode_info_var_is_live(ModeInfo, ConstructTarget, dead)
+		}
+	->
+		% replace the unification with `true'
+		{ Goal = conj([]) }
+	;
+		{ Unify = unify(A, B, Mode, UnifyInfo, UnifyContext) },
+		{ unify_rhs_vars(B0, B0Vars) },
+		{ unify_rhs_vars(B, BVars) },
+		{ handle_extra_goals(Unify, ExtraGoals, GoalInfo0,
+					[A0|B0Vars], [A|BVars],
+					ModeInfo0, ModeInfo, Goal) }
+	),
 	mode_info_unset_call_context,
 	mode_checkpoint(exit, "unify").
 
@@ -1657,13 +1670,13 @@ modecheck_unification(X, lambda_goal(Vars, Modes, Det, Goal0),
 	ExtraGoals = [] - [].
 
 :- pred modecheck_unify_lambda(var, list(var),
-				list(mode), determinism, unification,
-				pair(mode), unification, mode_info, mode_info).
+			list(mode), determinism, unification,
+			pair(mode), unification, mode_info, mode_info).
 :- mode modecheck_unify_lambda(in, in, in, in, in,
-				out, out, mode_info_di, mode_info_uo) is det.
+			out, out, mode_info_di, mode_info_uo) is det.
 
-modecheck_unify_lambda(X, ArgVars, LambdaModes, LambdaDet,
-			Unification0, Mode, Unification, ModeInfo0, ModeInfo) :-
+modecheck_unify_lambda(X, ArgVars, LambdaModes, LambdaDet, Unification0,
+		Mode, Unification, ModeInfo0, ModeInfo) :-
 	mode_info_get_module_info(ModeInfo0, ModuleInfo0),
 	mode_info_get_instmap(ModeInfo0, InstMap0),
 	instmap_lookup_var(InstMap0, X, InstOfX),
@@ -2039,10 +2052,9 @@ categorize_unify_var_var(ModeOfX, ModeOfY, LiveX, LiveY, X, Y, Det, VarTypes,
 		mode_is_unused(ModuleInfo0, ModeOfX),
 		mode_is_unused(ModuleInfo0, ModeOfY)
 	->
-		% For free-free unifications, we pretend that they
-		% are an assignment to the dead variable.
-		% (It might be a better idea to have a separate category
-		% for these)
+		% For free-free unifications, we pretend for a moment that they
+		% are an assignment to the dead variable - they will then
+		% be optimized away.
 		( LiveX = dead ->
 			Unification = assign(X, Y)
 		; LiveY = dead ->

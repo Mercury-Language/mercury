@@ -843,6 +843,20 @@ code_exprn__place_var_2(cached(Exprn0), Var, Lval, Code) -->
 			assign(Lval, Exprn) - Comment
 		]) }
 	;
+		% if the variable already has its value stored in the
+		% right place, we don't need to generated any code
+		{ Exprn0 = var(Var1) },
+		code_exprn__get_vars(Vars0),
+		{ map__search(Vars0, Var1, Stat0) },
+		{ Stat0 = evaled(VarRvals) },
+		{ set__member(lval(Lval), VarRvals) }
+	->
+		{ ClearCode = empty },
+		{ ExprnCode = empty },
+		code_exprn__add_lval_reg_dependencies(Lval),
+		{ set__singleton_set(LvalSet, lval(Lval)) },
+		{ Stat = evaled(LvalSet) }
+	;
 			% move stuff out of the way
 		code_exprn__clear_lval(Lval, Exprn0, Exprn1, ClearCode),
 			% reserve the register
@@ -855,6 +869,7 @@ code_exprn__place_var_2(cached(Exprn0), Var, Lval, Code) -->
 		(
 			{ Exprn2 = create(_, _, _) }
 		->
+			% XXX why is this necessary?
 			code_exprn__get_var_rvals(Var, Rvals7),
 			{ set__to_sorted_list(Rvals7, RvalList7) },
 			{ code_exprn__select_rval(RvalList7, Exprn3) },
