@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-1999 The University of Melbourne. 
+# Copyright (C) 1995-2000 The University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -235,7 +235,6 @@ tar: README INSTALL
 		mv $$ROOTNAME/trial	stuff-to-exclude;		\
 		mv $$ROOTNAME/bytecode	stuff-to-exclude;		\
 		mv $$ROOTNAME/lp_solve	stuff-to-exclude;		\
-		mv $$ROOTNAME/extras/morphine	stuff-to-exclude;	\
 		mv $$ROOTNAME/extras/opium_m	stuff-to-exclude;	\
 		mv $$ROOTNAME/extras/aditi stuff-to-exclude;		\
 		mv $$ROOTNAME/extras	mercury-extras-$(VERSION);	\
@@ -251,7 +250,6 @@ tar: README INSTALL
 		mv mercury-extras-$(VERSION)	$$ROOTNAME/extras;	\
 		mv mercury-tests-$(VERSION)	tests;			\
 		mv stuff-to-exclude/opium_m	$$ROOTNAME/extras/opium_m;\
-		mv stuff-to-exclude/morphine	$$ROOTNAME/extras/morphine;\
 		mv stuff-to-exclude/aditi	$$ROOTNAME/extras/aditi;\
 		mv stuff-to-exclude/*		$$ROOTNAME;		\
 		rmdir stuff-to-exclude;					\
