@@ -19,18 +19,19 @@
 <p>
 
 Sometimes changes need to be made to the Mercury system that mean
-previous versions of the compiler will no longer successfully compile.
+previous versions of the compiler will no longer successfully compile
+the new version.
 <p>
 
 Whenever anyone makes a change which prevents bootstrapping with a
 previous version of the compiler, they should add a cvs tag to all the
-files in the relevant directories before *commiting*, and mention this tag
-in the log message.  The tag should be of the form
+files in the relevant directories <em>before committing</em>, and
+mention this tag in the log message.  The tag should be of the form
 bootstrap_YYYYMMDD_&lt;short_description_of_change&gt;.
 <p>
 
 The rationale for the cvs tag is that it allows machines to be
-bootstrapped (if they didn't manage to do it in an overnight build)
+bootstrapped (if they didn't manage to do it in a daily build)
 by doing `cvs update -r&lt;tag&gt;' on the relevant build directory.
 After that compiler has been installed, a `cvs update -A' will remove
 the cvs sticky tags.
@@ -42,6 +43,6 @@ bootstrap.  Practically this may be difficult to achieve in some cases.
 
 <hr>
 
-Last update was $Date: 1999-07-19 04:45:10 $ by $Author: trd $@cs.mu.oz.au. <br>
+Last update was $Date: 1999-07-19 18:31:05 $ by $Author: trd $@cs.mu.oz.au. <br>
 </body>
 </html>
