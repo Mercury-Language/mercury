@@ -33,7 +33,7 @@ esac
 #
 # The default optimization level should be after
 # all the options that describe the machine configuration.
-DEFAULT_MCFLAGS=${DEFAULT_MCFLAGS="\
+DEFAULT_MCFLAGS=${DEFAULT_MCFLAGS-"\
 		$MERCURY_ALL_MC_C_INCL_DIRS \
 		--cc \"${MERCURY_C_COMPILER=@CC@}\" \
 		--grade \"${MERCURY_DEFAULT_GRADE=@DEFAULT_GRADE@}\" \
