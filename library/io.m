@@ -5150,7 +5150,7 @@ io__close_stream(_) -->
 	if ( Status == -1 ) {
 		/* 
 		** Return values of 127 or -1 from system() indicate that
-		** the system call failed.  Dont return -1, as -1 indicates
+		** the system call failed. Don't return -1, as -1 indicates
 		** that the system call was killed by signal number 1. 
 		*/
 		Status = 127;
