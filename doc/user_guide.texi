@@ -283,7 +283,7 @@ the heap will start out with a zero size,
 and will be dynamically expanded as needed,
 When not using conservative garbage collection,
 the heap has a fixed size like the stacks.
-The default size is 40 Mb, but this can be overridden
+The default size is 4 Mb, but this can be overridden
 with the @samp{-sh} option.
 
 @node Using Prolog
@@ -507,7 +507,8 @@ or it can add additional rules, dependencies, and actions.
 
 Mmake's builtin rules are defined by the file
 @file{@var{prefix}/lib/mercury/mmake/Mmake.rules}
-(where @var{prefix} is @file{/usr/local} by default)
+(where @var{prefix} is @file{/usr/local/mercury-@var{version}} by default,
+and @var{version} is the version number, e.g. @samp{0.6}),
 as well as the rules in the automatically-generated @file{.dep} files.
 These rules define the following targets:
 
@@ -532,6 +533,12 @@ Error messages are placed in @file{.err} files.
 @item @var{main-module}
 Compiles and links @var{main-module} using the Mercury compiler.
 Error messages are placed in @file{.err2} files.
+
+@item @var{main-module}.split
+Compiles and links @var{main-module} using the Mercury compiler,
+with the @samp{--split-c-files} option enabled.
+@xref{Output-level (LLDS->C) optimization options} for more information
+about @samp{--split-c-files}.
 
 @item @var{main-module}.nu
 Compiles and links @var{main-module} using NU-Prolog.
@@ -856,6 +863,7 @@ use @samp{mc --help} to get the most up-to-date list.
 * Compilation model options::
 * Code generation options::   
 * Optimization options::   
+* Link options::   
 * Miscellaneous options::   
 @end menu
 
@@ -1043,10 +1051,11 @@ Output comments in the @file{@var{module}.c} file.
 This is primarily useful for trying to understand
 how the generated C code relates to the source code,
 e.g. in order to debug the compiler.
-It works best if used in conjunction with the @samp{--no-optimize} option.
+The code may be easier to understand if you also use the
+@samp{--no-llds-optimize} option.
 
 @sp 1
-@item -l
+@item -n
 @itemx --line-numbers
 Output source line numbers in the generated code.
 Only works with the @samp{--convert-to-goedel} and @samp{--convert-to-mercury}
@@ -1134,6 +1143,7 @@ As above, plus @code{--conservative-gc}.
 As above, plus @code{--profiling}.
 
 @end table
+
 @sp 1
 Reminder: the following optimizations should not be set individually.
 Instead, you should use the @samp{--grade} option to change the setting of
@@ -1199,10 +1209,25 @@ this option is probably not useful to anyone except the Mercury implementors.
 We recommend that you use instead use `mnp' or `msp'.
 @xref{Using Prolog} for details.
 
+@sp 1
+@item @code{--args @{old, compact@}}
+@item @code{--arg-convention @{old, compact@}}
+(This option is not intended for general use.)
+Use the specified argument passing convention
+in the generated low-level C code.
+With the @samp{simple} convention,
+the @var{n}th argument is passed in or out using register r@var{n}.
+With the @samp{compact} convention,
+the @var{n}th input argument is passed using register r@var{n}
+and the @var{n}th output argument is returned using register r@var{n}.
+The @samp{compact} convention generally leads to more efficient code.
+However, currently only the @samp{simple} convention is supported.
+
 @end table
 
 @node Code generation options
 @section Code generation options
+
 @table @code
 @item --no-trad-passes
 The default @samp{--trad-passes} completely processes each predicate
@@ -1218,34 +1243,6 @@ before going on the next phase on all predicates.
 @c polymorphism from working except in special cases.)
 
 @sp 1
-@item --excess-assign
-Remove excess assignment unifications.
-
-@c @sp 1
-@c @item --prev-code
-@c Migrate into the start of branched goals.
-
-@sp 1
-@item --no-follow-code
-Don't migrate builtin goals into branched goals.
-
-@sp 1
-@item --no-follow-vars
-Don't optimize the assignment of registers in branched goals.
-
-@sp 1
-@item --args @{old, compact@}
-Use the specified argument passing convention
-in the generated low-level C code.
-With the @samp{simple} convention,
-the @var{n}th argument is passed in or out using register r@var{n}.
-With the @samp{compact} convention,
-the @var{n}th input argument is passed using register r@var{n}
-and the @var{n}th output argument is returned using register r@var{n}.
-This generally leads to more efficient code.
-However, currently only the @samp{simple} convention is supported.
-
-@sp 1
 @item --no-reclaim-heap-on-nondet-failure
 Don't reclaim heap on backtracking in nondet code.
 
@@ -1259,10 +1256,6 @@ Emit the fail or redo macro instead of a branch
 to the fail or redo code in the runtime system.
 
 @sp 1
-@item --no-simple-neg
-Don't generate simplified code for simple negations.
-
-@sp 1
 @item --cc @var{compiler-name}
 Specify which C compiler to use.
 
@@ -1274,77 +1267,95 @@ Specify the directory containing the Mercury C header files.
 @item --cflags @var{options}
 Specify options to be passed to the C compiler.
 
-@sp 1
-@item -o @var{filename}
-@itemx --output-file @var{filename}
-Specify the name of the final executable.
-(The default executable name is the same as the name of the
-first module on the command line, but without the @samp{.m} extension.)
-
-@sp 1
-@item --link-flags @var{options}
-Specify options to be passed to @samp{ml}, the Mercury linker.
 @end table
 
 @node Optimization options
 @section Optimization options
+
+@menu
+* Selecting an optimization level::
+* High-level (HLDS->HLDS) optimization options::
+* Medium-level (HLDS->LLDS) optimization options::
+* Low-level (LLDS->LLDS) optimization options::
+* Output-level (LLDS->C) optimization options::
+@end menu
+
+@node Selecting an optimization level
+@subsection Selecting an optimization level
+
 @table @code
-@item --no-optimize
-Disable the optimization passes.
+@item -O @var{n}
+@itemx --opt-level @var{n}
+@itemx --optimization-level @var{n}
+Set optimization level to @var{n}.
+Optimimization level 0 means no optimization
+while optimimization level 5 means full optimization.
+@end table
+
+@node High-level (HLDS->HLDS) optimization options
+@subsection High-level (HLDS->HLDS) optimization options
+
+These optimizations are high-level transformations on our HLDS (high-level
+data structure).
+
+@table @code
+@item --no-inlining
+Disable the inlining of simple procedures.
 
 @sp 1
-@item --optimize-dead
+@item --no-common-struct
+Disable optimization of common term structures.
+
+@sp 1
+@item --no-common-goal
+Disable optimization of common goals.
+At the moment this optimization
+detects only common deconstruction unifications.
+Disabling this optimization reduces the class of predicates
+that the compiler considers to be deterministic.
+
+@c @item --constraint-propagation
+@c Enable the constraint propagation transformation.
+
+@c @sp 1
+@c @item --prev-code
+@c Migrate into the start of branched goals.
+
+@sp 1
+@item --no-follow-code
+Don't migrate builtin goals into branched goals.
+
+@sp 1
+@item --no-optimize-unused-args
+Don't remove unused predicate arguments. The compiler will
+generate less efficient code for polymorphic predicates.
+
+@sp 1
+@item --no-optimize-higher-order
+Don't specialize calls to higher-order predicates where
+the higher-order arguments are known.
+
+@sp 1
+@item --optimize-dead-procs.
 Enable dead predicate elimination.
 
 @sp 1
-@item --no-optimize-peep
-Disable local peephole optimizations.
-
-@sp 1
-@item --no-optimize-jumps
-Disable elimination of jumps to jumps.
-
-@sp 1
-@item --no-optimize-fulljumps
-Disable elimination of jumps to ordinary code.
-
-@sp 1
-@item --no-optimize-labels
-Disable elimination of dead labels and code.
-
-@sp 1
-@item --optimize-dups
-Enable elimination of duplicate code.
+@item --excess-assign
+Remove excess assignment unifications.
 
 @c @sp 1
-@c @item --optimize-copyprop
-@c Enable the copy propagation optimization.
+@c @item --no-specialize
+@c Disable the specialization of procedures.
 
-@sp 1
-@item --optimize-value-number
-Perform value numbering on extended basic blocks.
-@c @samp{-DALL_INTERIOR_POINTERS}.
+@end table
 
-@c @item --pred-value-number
-@c Extend value numbering to whole predicates, rather than just basic blocks.
+@node Medium-level (HLDS->LLDS) optimization options
+@subsection Medium-level (HLDS->LLDS) optimization options
 
-@sp 1
-@item --no-optimize-frames
-Disable stack frame optimizations.
+These optimizations are applied during the process of generating
+low-level intermediate code from our high-level data structure.
 
-@sp 1
-@item --no-optimize-delay-slot
-Disable branch delay slot optimizations.
-
-@sp 1
-@item --optimize-repeat @var{n}
-Iterate most optimizations at most @var{n} times (default: 3).
-
-@sp 1
-@item --optimize-vnrepeat @var{n}
-Iterate value numbering at most @var{n} times (default: 1).
-
-@sp 1
+@table @code
 @item --no-static-ground-terms
 Disable the optimization of constructing constant ground terms
 at compile time and storing them as static constants.
@@ -1379,24 +1390,84 @@ must be at least this number (default: 8).
 Disable the middle recursion optimization.
 
 @sp 1
-@item --no-inlining
-Disable the inlining of simple procedures.
+@item --no-simple-neg
+Don't generate simplified code for simple negations.
+
+@sp 1
+@item --no-follow-vars
+Don't optimize the assignment of registers in branched goals.
+
+@end table
+
+@node Low-level (LLDS->LLDS) optimization options
+@subsection Low-level (LLDS->LLDS) optimization options
+
+These optimizations are transformations that are applied to our
+low-level intermediate code before emitting C code.
+
+@table @code
+@item --no-llds-optimize
+Disable the low-level optimization passes.
+
+@sp 1
+@item --no-optimize-peep
+Disable local peephole optimizations.
+
+@sp 1
+@item --no-optimize-jumps
+Disable elimination of jumps to jumps.
+
+@sp 1
+@item --no-optimize-fulljumps
+Disable elimination of jumps to ordinary code.
+
+@sp 1
+@item --no-optimize-labels
+Disable elimination of dead labels and code.
+
+@sp 1
+@item --optimize-dups
+Enable elimination of duplicate code.
 
 @c @sp 1
-@c @item --no-specialize
-@c Disable the specialization of procedures.
+@c @item --optimize-copyprop
+@c Enable the copy propagation optimization.
 
 @sp 1
-@item --no-common-struct
-Disable optimization of common term structures.
+@item --optimize-value-number
+Perform value numbering on extended basic blocks.
+
+@c @sp 1
+@c @item --pred-value-number
+@c Extend value numbering to whole predicates, rather than just basic blocks.
 
 @sp 1
-@item --no-common-goal
-Disable optimization of common goals.
-At the moment this optimization
-detects only common deconstruction unifications.
-Disabling this optimization reduces the class of predicates
-that the compiler considers to be deterministic.
+@item --no-optimize-frames
+Disable stack frame optimizations.
+
+@sp 1
+@item --no-optimize-delay-slot
+Disable branch delay slot optimizations.
+
+@sp 1
+@item --optimize-repeat @var{n}
+Iterate most optimizations at most @var{n} times (default: 3).
+
+@sp 1
+@item --optimize-vnrepeat @var{n}
+Iterate value numbering at most @var{n} times (default: 1).
+
+@end table
+
+@node Output-level (LLDS->C) optimization options
+@subsection Output-level (LLDS->C) optimization options
+
+These optimizations are applied during the process of generating
+C intermediate code from our low-level data structure.
+
+@table @code
+@item --no-emit-c-loops
+Use only gotos -- don't emit C loop constructs.
 
 @sp 1
 @item --procs-per-c-function @var{n}
@@ -1409,29 +1480,24 @@ putting all the procedures in a single function,
 which produces the most efficient code
 but tends to severely stress the C compiler.
 
-@c @item --constraint-propagation
-@c Enable the constraint propagation transformation.
-
 @sp 1
-@item --no-optimize-unused-args
-Don't remove unused predicate arguments. The compiler will
-generate less efficient code for polymorphic predicates.
-
-@sp 1
-@item --no-optimize-higher-order
-Don't specialize calls to higher-order predicates where
-the higher-order arguments are known.
+@item --split-c-files
+Generate each C function in its own C file,
+so that the linker will optimize away unused code.
+This has the same effect as @samp{--optimize-dead-procs},
+except that it works globally at link time, rather than
+over a single module, so it does a much better job of
+eliminating unused procedures.
+This option significantly increases compilation time,
+link time, and intermediate disk space requirements,
+but in return reduces the size of the final
+executable, typically by about 10-20%.
+This option is only useful with @samp{--procs-per-c-function 1}.
 
 @sp 1
 @item --no-c-optimize
 Don't enable the C compiler's optimizations.
 
-@sp 1
-@item -O @var{n}, --opt-level @var{n}
-Set optimization level to @var{n}.
-Optimimization level 0 means no optimization
-while optimimization level 5 means full optimization.
-@c For a full description of each optimization level, see below.
 @end table
 
 @node Miscellaneous options
@@ -1460,6 +1526,34 @@ Print a usage message.
 @c This option is now obsolete.  In the past it was used to avoid
 @c NU-Prolog's "Panic: growing stacks has required shifting the heap"
 @c message.
+@end table
+
+@node Link options
+@section Link options
+@table @code
+@sp 1
+@item -o @var{filename}
+@itemx --output-file @var{filename}
+Specify the name of the final executable.
+(The default executable name is the same as the name of the
+first module on the command line, but without the @samp{.m} extension.)
+
+@sp 1
+@item --link-flags @var{options}
+Specify options to be passed to @samp{ml}, the Mercury linker.
+
+@sp 1
+@item -L @var{directory}
+@item --library-directory @var{directory}
+Append @var{dir} to the list of directories in which to search for libraries.
+
+@item -l @var{library}
+@item --library @var{library}
+Link with the specified library.
+
+@item --link-object @var{object}
+Link with the specified object file.
+
 @end table
 
 @node Environment
