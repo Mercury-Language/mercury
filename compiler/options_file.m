@@ -872,7 +872,7 @@ lookup_options_variable(Vars, OptionsVariableClass, FlagsVar, Result) -->
 		{ ExtraFlagsResult = yes([]) }
 	;
 		lookup_variable_words_report_error(Vars, VarName, FlagsResult),
-		lookup_variable_words_report_error(Vars, VarName,
+		lookup_variable_words_report_error(Vars, "EXTRA_" ++ VarName,
 			ExtraFlagsResult)
 	),
 	(
