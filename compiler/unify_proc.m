@@ -1171,10 +1171,23 @@ unify_proc__quantify_clause_body(HeadVars, Goal0, Context, Clause, !Info) :-
 %	__Unify__(X, Y) :-
 %		(
 %			X = a1,
+% #if 0
 %			Y = X
+%			% Actually, to avoid infinite recursion,
+%			% the above unification is done as type int:
+%			%	CastX = unsafe_cast(X) `with_type` int,
+%			%	CastY = unsafe_cast(Y) `with_type` int,
+%			%	CastX = CastY
+% #else
+%			Y = a1
+% #endif
 %		;
 %			X = a2,
-%			Y = X
+% #if 0
+%			Y = X	% Likewise, done as type int
+% #else
+%			Y = a2
+% #endif
 %		;
 %			X = b(X1),
 %			Y = b(Y2),
@@ -1191,12 +1204,21 @@ unify_proc__quantify_clause_body(HeadVars, Goal0, Context, Clause, !Info) :-
 %			X3 = Y3
 %		).
 %
-% Note that in the disjuncts handling constants, we want to unify Y with X,
-% not with the constant. This allows dupelim to take the code fragments
-% implementing the switch arms for constants and eliminate all but one of them.
+% Note that in the disjuncts handling constants, we want to unify Y with X
+% (as shown in the "#if 0 ... #else" parts), not with the constant
+% (as shown in the "#else" ... "#endif" parts).
+% Doing this allows dupelim to take the code fragments implementing
+% the switch arms for constants and eliminate all but one of them.
 % This can be a significant code size saving for types with lots of constants,
 % such as the one representing Aditi bytecodes, which can lead to significant
 % reductions in C compilation time.
+% XXX But the optimization doesn't work, because it breaks determinism
+% analysis.  In particular, if X and Y both have insts `bound(a2)', then
+% determinism analysis will infer that the unification can't fail and thus
+% that the procedure is det, but casting to int loses the binding information,
+% and so mode and determinism analysis can't tell that CastX = CastY is det.
+% (See e.g. tests/general/det_complicated_unify2.m.)
+% Hence this optimization is currently disabled.
 
 :- pred unify_proc__generate_du_unify_clauses(list(constructor), prog_var,
 		prog_var, prog_context, list(clause),
@@ -1211,6 +1233,8 @@ unify_proc__generate_du_unify_clauses([Ctor | Ctors], X, Y, Context,
 	list__length(ArgTypes, FunctorArity),
 	FunctorConsId = cons(FunctorName, FunctorArity),
 	(
+		% XXX This optimization disabled, see XXX comment above.
+		semidet_fail,
 		ArgTypes = [],
 		can_compare_constants_as_ints(!.Info) = yes
 	->
