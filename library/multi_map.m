@@ -21,7 +21,7 @@
 
 :- module multi_map.
 :- interface.
-:- import_module map, list.
+:- import_module map, list, assoc_list, set.
 
 %-----------------------------------------------------------------------------%
 

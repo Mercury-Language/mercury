@@ -14,7 +14,7 @@
 %-----------------------------------------------------------------------------%
 :- module prolog.
 :- interface.
-:- import_module std_util.
+:- import_module std_util, list.
 
 % We define !/0 (and !/2 for dcgs) to be equivalent to `true'.  This is for
 % backwards compatibility with Prolog systems.  But of course it only works
