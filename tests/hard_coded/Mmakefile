@@ -78,6 +78,7 @@ PROGS=	\
 # Not working:
 # 	cycles - loops when compiled in a non-GC grade with --deforestation.
 # 	cycles2 - loops when compiled in a non-GC grade.
+#	nested, nested2 - sometimes fail if using parallel makes
 
 #-----------------------------------------------------------------------------#
 

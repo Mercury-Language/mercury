@@ -1283,7 +1283,7 @@ intermod__grab_optfiles(Module0, Module, FoundError) -->
 		%
 		% Read in the .opt files for imported and ancestor modules.
 		%
-	{ Module0 = module_imports(ModuleName, Ancestors0, InterfaceDeps0,
+	{ Module0 = module_imports(_, ModuleName, Ancestors0, InterfaceDeps0,
 					ImplementationDeps0, _, _, _, _, _) },
 	{ list__condense([Ancestors0, InterfaceDeps0, ImplementationDeps0],
 		OptFiles) },

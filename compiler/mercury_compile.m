@@ -198,7 +198,7 @@ process_module_2(ModuleName, ModulesToLink) -->
 		{ ModulesToLink = [] }
 	; { MakeInterface = yes } ->
 		{ split_into_submodules(ModuleName, Items0, SubModuleList) },
-		list__foldl(make_interface, SubModuleList),
+		list__foldl(make_interface(FileName), SubModuleList),
 		{ ModulesToLink = [] }
 	; { MakeShortInterface = yes } ->
 		{ split_into_submodules(ModuleName, Items0, SubModuleList) },
@@ -206,7 +206,7 @@ process_module_2(ModuleName, ModulesToLink) -->
 		{ ModulesToLink = [] }
 	; { MakePrivateInterface = yes } ->
 		{ split_into_submodules(ModuleName, Items0, SubModuleList) },
-		list__foldl(make_private_interface, SubModuleList),
+		list__foldl(make_private_interface(FileName), SubModuleList),
 		{ ModulesToLink = [] }
 	; { ConvertToMercury = yes } ->
 		module_name_to_file_name(ModuleName, ".ugly", yes,
@@ -218,7 +218,7 @@ process_module_2(ModuleName, ModulesToLink) -->
 		{ ModulesToLink = [] }
 	;
 		{ split_into_submodules(ModuleName, Items0, SubModuleList) },
-		list__foldl(compile, SubModuleList),
+		list__foldl(compile(FileName), SubModuleList),
 		list__map_foldl(module_to_link, SubModuleList, ModulesToLink)
 
 		% XXX it would be better to do something like
@@ -231,25 +231,26 @@ process_module_2(ModuleName, ModulesToLink) -->
 		% i.e. compile nested modules to a single C file.
 	).
 
-:- pred make_interface(pair(module_name, item_list), io__state, io__state).
-:- mode make_interface(in, di, uo) is det.
+:- pred make_interface(file_name, pair(module_name, item_list),
+			io__state, io__state).
+:- mode make_interface(in, in, di, uo) is det.
 
-make_interface(Module - Items) -->
-	make_interface(Module, Items).
+make_interface(SourceFileName, ModuleName - Items) -->
+	make_interface(SourceFileName, ModuleName, Items).
 
 :- pred make_short_interface(pair(module_name, item_list),
 				io__state, io__state).
 :- mode make_short_interface(in, di, uo) is det.
 
-make_short_interface(Module - Items) -->
-	make_short_interface(Module, Items).
+make_short_interface(ModuleName - Items) -->
+	make_short_interface(ModuleName, Items).
 
-:- pred make_private_interface(pair(module_name, item_list),
+:- pred make_private_interface(file_name, pair(module_name, item_list),
 				io__state, io__state).
-:- mode make_private_interface(in, di, uo) is det.
+:- mode make_private_interface(in, in, di, uo) is det.
 
-make_private_interface(Module - Items) -->
-	make_private_interface(Module, Items).
+make_private_interface(SourceFileName, ModuleName - Items) -->
+	make_private_interface(SourceFileName, ModuleName, Items).
 
 :- pred module_to_link(pair(module_name, item_list), string,
 			io__state, io__state).
@@ -273,11 +274,13 @@ module_to_link(ModuleName - _Items, ModuleToLink) -->
 	% The initial arrangement has the stage numbers increasing by three
 	% so that new stages can be slotted in without too much trouble.
 
-:- pred compile(pair(module_name, item_list), io__state, io__state).
-:- mode compile(in, di, uo) is det.
+:- pred compile(file_name, pair(module_name, item_list),
+		io__state, io__state).
+:- mode compile(in, in, di, uo) is det.
 
-compile(ModuleName - Items0) -->
-	grab_imported_modules(ModuleName, Items0, Module, Error2),
+compile(SourceFileName, ModuleName - Items0) -->
+	grab_imported_modules(SourceFileName, ModuleName, Items0,
+		Module, Error2),
 	( { Error2 \= fatal } ->
 		mercury_compile(Module)
 	;
@@ -487,7 +490,7 @@ mercury_compile__maybe_grab_optfiles(Imports0, Verbose, MaybeTransOptDeps,
 			% not creating the trans opt file, then import the
 			% trans_opt files for all the modules that are
 			% imported (or used), and for all ancestor modules.
-			{ Imports0 = module_imports(_Module, Ancestors,
+			{ Imports0 = module_imports(_File, _Module, Ancestors,
 				InterfaceImports, ImplementationImports,
 				_IndirectImports, _PublicChildren, _FactDeps,
 				_Items, _Error) },

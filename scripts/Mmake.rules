@@ -108,6 +108,8 @@ endif
 #-----------------------------------------------------------------------------#
 #
 # Rules for building interface files
+# WARNING: any changes here will probably need to be
+# duplicated in compiler/modules.m.
 #
 
 $(date0s_subdir)%.date0 : %.m
@@ -152,6 +154,8 @@ $(trans_opts_subdir)%.trans_opt : $(trans_opt_dates_subdir)%.trans_opt_date
 #-----------------------------------------------------------------------------#
 #
 # Rules for compiling Mercury source files
+# WARNING: any changes here will probably need to be
+# duplicated in compiler/modules.m.
 #
 
 $(cs_subdir)%.c : %.m

@@ -891,7 +891,7 @@ The following example illustrates this:
         ;       @{ @{ int @} @}.
 @end example
 
-This defines a type with two constructors, @code{';'}/2 and @code{'@{@}'/1},
+This defines a type with two constructors, @code{';'/2} and @code{'@{@}'/1},
 whose argument types are all @code{int}.
 
 Each discriminated union type definition introduces a distinct type.
@@ -2705,14 +2705,17 @@ names.
 @node Implementation bugs and limitations
 @subsection Implementation bugs and limitations
 
-The current implementation of sub-modules is incomplete. 
-In particular:
+The current implementation of sub-modules has a couple of minor
+limitations.
 
 @itemize @bullet
-@item it supports only separate sub-modules, not nested sub-modules; 
-@item if you mix an @samp{import_module} declaration for a parent module
-      with a @samp{use_module} declaration for the child, or vice versa,
-      then the compiler may report some spurious errors.
+@item
+if you mix an @samp{import_module} declaration for a parent module
+with a @samp{use_module} declaration for the child, or vice versa,
+then the compiler may report some spurious errors.
+@item
+Using @samp{mmake} to do parallel makes (e.g. @samp{mmake --jobs 2})
+don't always work correctly in the case of nested sub-modules.
 @end itemize
 
 @node Type classes

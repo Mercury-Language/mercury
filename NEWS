@@ -246,19 +246,24 @@ Changes to the Mercury language:
 * Mode inference can now infer "mostly-unique" modes as well as
   "unique" modes.
 
-* The module system now includes support for logically nested sub-modules
-  with separate compilation.
+* The module system now includes support for nested sub-modules
+  with optional separate compilation.
 
-  The aim of this extension is to provide better support for structuring
-  large software packages.
+  The aim of this extension is twofold: to provide better support
+  for structuring large software packages, and to provide
+  more fine-grained encapsulation.
 
-  Modules may now contain `:- include_module' declarations.
-  If a module `foo' contains an `include_module bar' declaration,
-  this specifies that module `foo' contains the sub-module `foo:bar'.
-  Since a sub-module is logically part of the containing module,
-  it has access to all the entities declared in or imported into
-  the containing module, including those declared in the implementation
-  section.
+* The module system now includes support for sub-modules.
+
+  The aim of this extension is twofold.  One aim is to provide more
+  fine-grained encapsulation control: nested sub-modules within a
+  single source file provide a convenient method for encapsulating
+  units smaller than a source file.  The other aim is to provide better
+  support for structuring large software packages that consist of many
+  source files.  Sub-modules can be defined in separate files, with
+  separate compilation, which means that you can also use this feature
+  to combine a group of existing Mercury modules into a single logical
+  package, with proper namespace control and encapsulation.
 
   See the "Modules" chapter of the Mercury language reference manual for
   details.
