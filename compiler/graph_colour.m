@@ -34,12 +34,12 @@ graph_colour__group_elements(Constraints, Colours) :-
 	graph_colour__find_all_colours(ConstraintList, AllVars, ColourList),
 	set__list_to_set(ColourList, Colours),
 	(
-		% some [S,C] (
+		% some [S,T,C] (
 			set__member(S, Colours),
-			set__member(C, S),
 			set__member(T, Colours),
-			T \= S,
-			set__member(C, T)
+			set__member(C, S),
+			set__member(C, T),
+			T \= S
 		% )
 	->
 		error("graph_colour__group_elements: sanity check failed")
