@@ -888,7 +888,12 @@ code_info__generate_forced_saves_2([V|Vs], Store, Call, Code) -->
 		{ code_exprn__place_var(V, Lval, Code0, Exprn0, Exprn) },
 		code_info__set_exprn_info(Exprn)
 	;
-		{ error("code_info__generate_forced_saves: variable not found") }
+		code_info__get_varset(Varset),
+		{ varset__lookup_name(Varset, V, Name) },
+		{ string__format(
+		"code_info__generate_forced_saves: variable `%s' not found",
+		[s(Name)], Str) },
+		{ error(Str) }
 	),
 	code_info__generate_forced_saves_2(Vs, Store, Call, Code1),
 	{ Code = tree(Code0, Code1) }.

@@ -17,6 +17,10 @@
 
 :- import_module hlds_goal, llds, code_gen, code_info, code_util, std_util.
 
+:- pred disj_gen__generate_det_disj(list(hlds__goal),
+					code_tree, code_info, code_info).
+:- mode disj_gen__generate_det_disj(in, out, in, out) is det.
+
 :- pred disj_gen__generate_semi_disj(list(hlds__goal), follow_vars,
 					code_tree, code_info, code_info).
 :- mode disj_gen__generate_semi_disj(in, in, out, in, out) is det.
@@ -29,7 +33,80 @@
 :- implementation.
 
 :- import_module bool, set, tree, list, map, std_util, require.
-:- import_module options, globals.
+:- import_module hlds_data, options, globals.
+
+%---------------------------------------------------------------------------%
+
+disj_gen__generate_det_disj(Goals, Code) -->
+	code_info__get_globals(Globals),
+		% If we are using constraints, save the current solver state
+		% before the first disjunct.
+	{ globals__lookup_bool_option(Globals,
+			constraints, SaveTicket) },
+	code_info__maybe_save_ticket(SaveTicket, SaveTicketCode),
+	code_info__get_next_label(EndLabel),
+	disj_gen__generate_det_disj_2(Goals, EndLabel, GoalsCode),
+	{ Code = tree(SaveTicketCode, GoalsCode) }.
+
+:- pred disj_gen__generate_det_disj_2(list(hlds__goal), label,
+					code_tree, code_info, code_info).
+:- mode disj_gen__generate_det_disj_2(in, in, out, in, out) is det.
+
+	% To generate code for a det disjunction, we generate a
+	% chain (if-then-else style) of goals until we come to
+	% one that cannot fail. When we get to a goal that can't
+	% fail, we just generate that goal.
+disj_gen__generate_det_disj_2([], _, _) -->
+	{ error("Empty det disj!") }.
+disj_gen__generate_det_disj_2([Goal|Goals], EndLabel, Code) -->
+	{ Goal = _ - GoalInfo },
+	{ goal_info_get_determinism(GoalInfo, GoalDet) },
+	{ goal_info_get_code_model(GoalInfo, GoalModel) },
+	{ determinism_components(GoalDet, CanFail, _) },
+	code_info__get_globals(Globals),
+	{ globals__lookup_bool_option(Globals,
+			constraints, RestoreTicket) },
+	(
+		{ CanFail = cannot_fail }
+	->
+		code_info__maybe_restore_ticket_and_pop(RestoreTicket, 
+			RestoreAndPopCode),
+		code_gen__generate_forced_goal(GoalModel, Goal, GoalCode),
+		{ EndCode = node([label(EndLabel) - "end of det disj"]) },
+		{ Code = tree(RestoreAndPopCode, tree(GoalCode, EndCode)) }
+	;
+		code_info__get_live_variables(VarList),
+		{ set__list_to_set(VarList, Vars) },
+		code_info__make_known_failure_cont(Vars, no, ModContCode),
+
+		code_info__grab_code_info(CodeInfo),
+
+		code_info__maybe_restore_ticket(RestoreTicket,
+			RestoreTicketCode),
+
+			% generate the case as a semi-deterministic goal
+		code_gen__generate_forced_goal(GoalModel, Goal, GoalCode),
+		{ BranchCode = node([goto(label(EndLabel)) -
+						"skip to the end"]) },
+		{ ThisCode = tree(GoalCode, BranchCode) },
+
+			% If there are more cases, then we need to restore
+			% the machine state, and clear registers, since
+			% we need to use the saved input vars.
+		code_info__slap_code_info(CodeInfo),
+		code_info__restore_failure_cont(RestoreContCode),
+		code_info__remake_with_call_info,
+		(
+			{ Goals \= [] }
+		->
+			disj_gen__generate_det_disj_2(Goals, EndLabel, RestCode)
+		;
+			% a det disj should have at least one det disjunct
+			{ error("disj_gen__generate_det_disj: huh?") }
+		),
+		{ Code = tree(ModContCode, tree(RestoreTicketCode,
+			tree(ThisCode, tree(RestoreContCode, RestCode)))) }
+	).
 
 %---------------------------------------------------------------------------%
 

@@ -704,8 +704,10 @@ code_gen__generate_det_goal_2(some(Vars, Goal), _GoalInfo, Instr) -->
 	code_info__get_nondet_lives(NondetLives0),
 	{ set__delete_list(NondetLives0, Vars, NondetLives) },
 	code_info__set_nondet_lives(NondetLives).
-code_gen__generate_det_goal_2(disj(_Goals, _FV), _GoalInfo, _Instr) -->
-	{ error("Disjunction cannot occur in deterministic code.") }.
+code_gen__generate_det_goal_2(disj(Goals, FV), _GoalInfo, Instr) -->
+	code_info__push_store_map(FV),
+	disj_gen__generate_det_disj(Goals, Instr),
+	code_info__pop_store_map.
 code_gen__generate_det_goal_2(not(Goal), _GoalInfo, Instr) -->
 	code_gen__generate_negation_general(model_det, Goal, Instr).
 code_gen__generate_det_goal_2(higher_order_call(PredVar, Args, Types,
