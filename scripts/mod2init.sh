@@ -48,6 +48,16 @@ for mod in $modules; do
 	echo "extern void $mod(void);";
 done
 echo "";
+echo "#ifdef CONSERVATIVE_GC";
+echo "/* This works around a bug in the Solaris 2.X (X <= 4) linker. */";
+echo "/* The reason it is here is that it needs to be in statically linked */";
+echo "/* code, it won't work if it is in the dynamically linked library. */";
+echo "void init_gc(void)";
+echo "{";
+echo "    GC_INIT();";
+echo "}";
+echo "#endif";
+echo "";
 echo "void init_modules(void)";
 echo "{";
 for mod in $modules; do
