@@ -1,4 +1,7 @@
-# define call_push(x)    lda   $16, 0(x);    jsr   $26, GC_push_one
+# define call_push(x)             \
+        lda     $16, 0(x);        \
+        jsr     $26, GC_push_one; \
+        ldgp    $gp, 0($26)
 
         .text
         .align  4
@@ -49,7 +52,6 @@ GC_push_regs:
         call_push($29)   # Global Pointer
  #      call_push($30)   # Stack Pointer
 
-        ldgp    $gp, 0($26)
         ldq     $26, 8($sp)
         lda     $sp, 32($sp)
         ret     $31, ($26), 1
