@@ -1949,7 +1949,7 @@ mode of a predicate do indeed occur in a single-solution context.
 
 You can declare two different modes of a predicate which differ
 only in ``cc-ness'' (i.e. one being @samp{multi} and the other
-@samp{cc_multi}, or one being @samp{nondet} and the other {cc_nondet}).
+@samp{cc_multi}, or one being @samp{nondet} and the other @samp{cc_nondet}).
 In that case, the compiler will select the appropriate one for each
 call depending on whether the call comes from a single-solution context
 or not.  Calls from single-solution contexts will call the committed
