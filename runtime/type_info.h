@@ -22,84 +22,39 @@
 /*
 ** Decide which type_info representation we will use.
 **
-** At the end, exactly one of the two macros ONE_CELL_TYPE_INFO and
-** ONE_OR_TWO_CELL_TYPE_INFO should defined. If it is the latter, then
-** SHARED_ONE_OR_TWO_CELL_TYPE_INFO may be defined as well.
+** At present, only SHARED_ONE_OR_TWO_CELL_TYPE_INFO is available.
+**
 */
 
-#if defined(SHARED_ONE_OR_TWO_CELL_TYPE_INFO)
-    /* #define		SHARED_ONE_OR_TWO_CELL_TYPE_INFO */
-    #define		ONE_OR_TWO_CELL_TYPE_INFO
-    #undef		ONE_CELL_TYPE_INFO
-#elif defined(ONE_OR_TWO_CELL_TYPE_INFO)
-    #undef		SHARED_ONE_OR_TWO_CELL_TYPE_INFO
-    /* #define		ONE_OR_TWO_CELL_TYPE_INFO */
-    #undef		ONE_CELL_TYPE_INFO
-#elif defined(ONE_CELL_TYPE_INFO)
-    #undef		SHARED_ONE_OR_TWO_CELL_TYPE_INFO
-    #undef		ONE_OR_TWO_CELL_TYPE_INFO
-    /* #define		ONE_CELL_TYPE_INFO */
-#else
-    /* use the default type_info representation: shared-one-or-two-cell */
-    #define		SHARED_ONE_OR_TWO_CELL_TYPE_INFO
-    #define		ONE_OR_TWO_CELL_TYPE_INFO
-    #undef		ONE_CELL_TYPE_INFO
-#endif
+#define		SHARED_ONE_OR_TWO_CELL_TYPE_INFO
 
 /*---------------------------------------------------------------------------*/
 
 /*
 ** Define offsets of fields in the base_type_info or type_info structure.
-** If ONE_OR_TWO_CELL_TYPE_INFO, these are offsets into the base_type_info,
-** otherwise they are offsets into the type_info.
 ** See polymorphism.m for explanation of these offsets and how the
 ** type_info and base_type_info structures are laid out.
 **
 ** ANY CHANGES HERE MUST BE MATCHED BY CORRESPONDING CHANGES
 ** TO THE DOCUMENTATION IN compiler/polymorphism.m.
 **
-** Note that USE_TYPE_TO_TERM is presently undefined. Code may break if it
-** is just redefined here - changes also need to be made to the compiler.
-**
 ** The one_or_two_cell type_info representation
 ** *depends* on OFFSET_FOR_COUNT being 0.
 */
+
 #define OFFSET_FOR_COUNT 0
 #define OFFSET_FOR_UNIFY_PRED 1
 #define OFFSET_FOR_INDEX_PRED 2
 #define OFFSET_FOR_COMPARE_PRED 3
-#ifdef USE_TYPE_TO_TERM
-  #define OFFSET_FOR_TERM_TO_TYPE_PRED 4
-  #define OFFSET_FOR_TYPE_TO_TERM_PRED 5
-#else
-  /* tough luck, those are only defined if USE_TYPE_TO_TERM is set */
-#endif
-#ifdef ONE_OR_TWO_CELL_TYPE_INFO
-  #ifdef USE_TYPE_TO_TERM
-    #define OFFSET_FOR_BASE_TYPE_LAYOUT 6
-    #define OFFSET_FOR_BASE_TYPE_FUNCTORS 7
-    #define OFFSET_FOR_TYPE_NAME 8
-  #else
-    #define OFFSET_FOR_BASE_TYPE_LAYOUT 4
-    #define OFFSET_FOR_BASE_TYPE_FUNCTORS 5
-    #define OFFSET_FOR_TYPE_NAME 6
-  #endif
-#else
-  /* tough luck, those are only defined for one-or-two-cell type_infos */
-#endif
+#define OFFSET_FOR_BASE_TYPE_LAYOUT 4
+#define OFFSET_FOR_BASE_TYPE_FUNCTORS 5
+#define OFFSET_FOR_TYPE_NAME 6
 
 /*
 ** Define offsets of fields in the type_info structure.
 */
-#ifdef ONE_OR_TWO_CELL_TYPE_INFO
-  #define OFFSET_FOR_ARG_TYPE_INFOS 1
-#else
-  #ifdef USE_TYPE_TO_TERM
-    #define OFFSET_FOR_ARG_TYPE_INFOS 6
-  #else
-    #define OFFSET_FOR_ARG_TYPE_INFOS 4
-  #endif
-#endif
+
+#define OFFSET_FOR_ARG_TYPE_INFOS 1
 
 /*
 ** Where the predicate arity and args are stored in the type_info.
@@ -110,13 +65,8 @@
 ** For one-cell, the arity is at the same offset as the count.
 */
 
-#ifdef ONE_OR_TWO_CELL_TYPE_INFO
-	#define TYPEINFO_OFFSET_FOR_PRED_ARITY 1
-	#define TYPEINFO_OFFSET_FOR_PRED_ARGS 2
-#else
-	#define TYPEINFO_OFFSET_FOR_PRED_ARITY OFFSET_FOR_COUNT
-	#define TYPEINFO_OFFSET_FOR_PRED_ARGS OFFSET_FOR_ARG_TYPE_INFOS
-#endif
+#define TYPEINFO_OFFSET_FOR_PRED_ARITY 1
+#define TYPEINFO_OFFSET_FOR_PRED_ARGS 2
 
 /*---------------------------------------------------------------------------*/
 

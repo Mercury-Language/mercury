@@ -240,7 +240,6 @@ mercury__unify_2_0:
 	Word	x, y;
 	int	i;
 
-#ifdef	ONE_OR_TWO_CELL_TYPE_INFO
 	Word	base_type_info;
 
 	x = mercury__unify__x;
@@ -258,16 +257,6 @@ mercury__unify_2_0:
 				OFFSET_FOR_UNIFY_PRED);
 		args_base = mercury__unify__typeinfo;
 	}
-#else
-	x = mercury__unify__x;
-	y = mercury__unify__y;
-
-	type_arity = field(0, mercury__unify__typeinfo, OFFSET_FOR_COUNT);
-	unify_pred = (Code *) field(0, mercury__unify__typeinfo,
-			OFFSET_FOR_UNIFY_PRED);
-	args_base = (Word) ((Word *) mercury__unify__typeinfo
-			- 1 + OFFSET_FOR_ARG_TYPE_INFOS);
-#endif
 
 	save_registers();
 
@@ -312,7 +301,6 @@ mercury__index_2_0:
 	Word	x;
 	int	i;
 
-#ifdef	ONE_OR_TWO_CELL_TYPE_INFO
 	Word	base_type_info;
 
 	x = r2;
@@ -327,12 +315,6 @@ mercury__index_2_0:
 				OFFSET_FOR_INDEX_PRED);
 		args_base = r1;
 	}
-#else
-	x = r2;
-	type_arity = field(0, r1, OFFSET_FOR_COUNT);
-	index_pred = (Code *) field(0, r1, OFFSET_FOR_INDEX_PRED);
-	args_base = (Word) ((Word *) r1 - 1 + OFFSET_FOR_ARG_TYPE_INFOS);
-#endif
 
 	save_registers();
 
@@ -424,7 +406,6 @@ mercury__compare_3_3:
 	Word	x, y;
 	int	i;
 
-#ifdef	ONE_OR_TWO_CELL_TYPE_INFO
 	Word	base_type_info;
 
 	x = mercury__compare__x;
@@ -442,16 +423,6 @@ mercury__compare_3_3:
 				OFFSET_FOR_COMPARE_PRED);
 		args_base = mercury__compare__typeinfo;
 	}
-#else
-	x = mercury__compare__x;
-	y = mercury__compare__y;
-
-	type_arity = field(0, mercury__compare__typeinfo, OFFSET_FOR_COUNT);
-	compare_pred = (Code *) field(0, mercury__compare__typeinfo,
-			OFFSET_FOR_COMPARE_PRED);
-	args_base = (Word) ((Word *) mercury__compare__typeinfo
-			- 1 + OFFSET_FOR_ARG_TYPE_INFOS);
-#endif
 
 	save_registers();
 
@@ -489,108 +460,6 @@ mercury__compare_3_0_i1:
 	save_registers();
 	r2 = virtual_reg(type_arity + 1);
 	proceed();
-#endif
-}
-
-/*
-** mercury__type_to_term_2_0 is called as `type_to_term(TypeInfo, X, Term)'
-** in the mode `type_to_term(in, in, out) is det'.
-**
-** With both conventions, the inputs are in r1 and r2.
-** With the simple parameter convention, the output is in r3;
-** with the compact parameter convention, the output is in r1.
-**
-** We call the type-specific type_to_term routine as
-** `TypeToTermPred(...ArgTypeInfos..., X, Term)' is det.
-**
-** With both conventions, the inputs are in r1, ... rN.
-** With the simple parameter convention, the output is in rN+1;
-** with the compact parameter convention, the output is in r1.
-**
-** With the compact convention, we can make the call to the type-specific
-** routine a tail call, and we do so. With the simple convention, we can't.
-*/
-
-mercury__type_to_term_2_0:
-{
-#ifndef USE_TYPE_TO_TERM
-	fatal_error("type_to_term/2 and term_to_type/2 not implemented");
-#else
-
-	Code	*type_to_term_pred;	/* address of the type_to_term pred */
-					/* for this type */
-	int	type_arity;	/* number of type_info args */
-	Word	args_base;	/* the address of the word before the first */
-				/* type_info argument */
-	Word	x;
-	int	i;
-
-  #ifdef ONE_OR_TWO_CELL_TYPE_INFO
-	Word	base_type_info;
-
-	x = r2;
-
-	base_type_info = field(0, r1, 0);
-	if (base_type_info == 0) {
-		type_arity = 0;
-		type_to_term_pred = (Code *) field(0, r1,
-				OFFSET_FOR_TYPE_TO_TERM_PRED);
-		/* args_base will not be needed */
-	} else {
-		type_arity = field(0, base_type_info, OFFSET_FOR_COUNT);
-		type_to_term_pred = (Code *) field(0, base_type_info,
-				OFFSET_FOR_TYPE_TO_TERM_PRED);
-		args_base = r1;
-	}
-  #else /* not ONE_OR_TWO_CELL_TYPE_INFO */
-	x = r2;
-
-	type_arity = field(0, r1, OFFSET_FOR_COUNT);
-	type_to_term_pred = (Code *) field(0, r1, OFFSET_FOR_TYPE_TO_TERM_PRED);
-	args_base = (Word) ((Word *) r1 - 1 + OFFSET_FOR_ARG_TYPE_INFOS);
-  #endif /* not ONE_OR_TWO_CELL_TYPE_INFO */
-
-	save_registers();
-
-	/* we call 'TypeToTermPred(...ArgTypeInfos..., X, Term)' */
-	for (i = 1; i <= type_arity; i++) {
-		virtual_reg(i) = field(0, args_base, i);
-	}
-	virtual_reg(type_arity + 1) = x;
-
-	restore_registers();
-
-  #ifdef COMPACT_ARGS
-	tailcall(type_to_term_pred, LABEL(mercury__type_to_term_2_0));
-  #else /* not COMPACT_ARGS */
-	push(succip);
-	push(type_arity);
-	call(type_to_term_pred, LABEL(mercury__type_to_term_2_0_i1),
-		LABEL(mercury__type_to_term_2_0));
-  #endif /* not COMPACT_ARGS */
-#endif /* USE_TYPE_TO_TERM */
-}
-/*
-** Since mod2c declares this label, we must define it,
-** even though it is not needed with COMPACT_ARGS.
-*/
-mercury__type_to_term_2_0_i1:
-{
-#ifndef USE_TYPE_TO_TERM
-	fatal_error("type_to_term/2 and term_to_type/2 not implemented");
-#else
-  #ifdef COMPACT_ARGS
-	fatal_error("mercury__type_to_term_2_0_i1 reached in "
-		"COMPACT_ARGS mode");
-  #else
-	int	type_arity;
-	
-	type_arity = pop();
-	succip = pop();
-	save_registers();
-	r3 = virtual_reg(type_arity + 2);
-	proceed();
-  #endif
 #endif
 }
 
