@@ -8,6 +8,7 @@
 /* reserve MAX_FAKE_REG virtual regs,
  * numbered from 0 to MAX_FAKE_REG-1 */
 extern	Word	fake_reg[MAX_FAKE_REG];
+extern	Word	virtual_reg_map[MAX_VIRTUAL_REG+1];
 
 /* these arrays are of size MAX_FAKE_REG */
 extern	Word	*saved_regs;

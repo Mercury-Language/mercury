@@ -88,4 +88,8 @@
 
 #include	"regorder.h"
 
+/* define the macro for doing reg-number translations */
+
+#define virtual_reg(num)	(fake_reg[virtual_reg_map[(num)]])
+
 #endif /* REGS_H */

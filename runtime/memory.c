@@ -73,6 +73,8 @@ static	void	setup_signal(void);
 
 Word	fake_reg[MAX_FAKE_REG];
 
+Word	virtual_reg_map[MAX_VIRTUAL_REG+1] = VIRTUAL_REG_MAP_BODY;
+
 Word	*saved_regs;
 Word	*num_uses;
 

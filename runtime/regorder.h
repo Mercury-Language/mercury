@@ -30,42 +30,77 @@
 #define r30		count_usage(30, mr34)
 #define r31		count_usage(31, mr35)
 #define r32		count_usage(32, mr36)
-#define r33		count_usage(33, mr37)
-#define r34		count_usage(34, mr38)
-#define r35		count_usage(35, mr39)
-#define r36		count_usage(36, mr40)
-#define r37		count_usage(37, mr41)
-#define r38		count_usage(38, mr42)
-#define r39		count_usage(39, mr43)
-#define r40		count_usage(40, mr44)
-#define r41		count_usage(41, mr45)
-#define r42		count_usage(42, mr46)
-#define r43		count_usage(43, mr47)
-#define r44		count_usage(44, mr48)
-#define r45		count_usage(45, mr49)
-#define r46		count_usage(46, mr50)
-#define r47		count_usage(47, mr51)
-#define r48		count_usage(48, mr52)
-#define r49		count_usage(49, mr53)
-#define r50		count_usage(50, mr54)
-#define r51		count_usage(51, mr55)
-#define r52		count_usage(52, mr56)
-#define r53		count_usage(53, mr57)
-#define r54		count_usage(54, mr58)
-#define r55		count_usage(55, mr59)
-#define r56		count_usage(56, mr60)
-#define r57		count_usage(57, mr61)
-#define r58		count_usage(58, mr62)
-#define r59		count_usage(59, mr63)
-#define r60		count_usage(60, mr64)
-#define r61		count_usage(61, mr65)
-#define r62		count_usage(62, mr66)
-#define r63		count_usage(63, mr67)
-#define r64		count_usage(64, mr68)
-#define r65		count_usage(65, mr69)
 
 #define succip		LVALUE_CAST(Code *, count_usage(SI_RN, mr0))
 #define hp		LVALUE_CAST(Word *, count_usage(HP_RN, mr5))
 #define sp		LVALUE_CAST(Word *, count_usage(SP_RN, mr6))
 #define curfr		LVALUE_CAST(Word *, count_usage(CF_RN, mr8))
 #define maxfr		LVALUE_CAST(Word *, count_usage(MF_RN, mr9))
+
+#define VIRTUAL_REG_MAP_BODY	{ \
+	0, \
+	1, \
+	2, \
+	3, \
+	4, \
+	5, \
+	6, \
+	7, \
+	8, \
+	9, \
+	10, \
+	11, \
+	12, \
+	13, \
+	14, \
+	15, \
+	16, \
+	17, \
+	18, \
+	19, \
+	20, \
+	21, \
+	22, \
+	23, \
+	24, \
+	25, \
+	26, \
+	27, \
+	28, \
+	29, \
+	30, \
+	31, \
+	32, \
+	33, \
+	34, \
+	35, \
+	36, \
+	37, \
+	38, \
+	39, \
+	40, \
+	41, \
+	42, \
+	43, \
+	44, \
+	45, \
+	46, \
+	47, \
+	48, \
+	49, \
+	50, \
+	51, \
+	52, \
+	53, \
+	54, \
+	55, \
+	56, \
+	57, \
+	58, \
+	59, \
+	60, \
+	61, \
+	62, \
+	63, \
+	64, \
+}

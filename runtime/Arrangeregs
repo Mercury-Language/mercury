@@ -89,6 +89,7 @@ BEGIN	{
 	}
 END	{
 		printf "/* this code automatically generated, do not edit */\n";
+		printf "/* #defines for the normal use of the registers */\n";
 		for (i = 0; i < numregs; i++)
 		{
 			if (backer[i] == "")
@@ -106,4 +107,20 @@ END	{
 		"#define %s\t LVALUE_CAST(%s, count_usage(%s, mr%d))\n", \
 				name[i], cast[i], counter[i], backer[i];
 		}
+
+		printf "/* The body of the virtual register map */\n";
+		printf "#define VIRTUAL_REG_MAP_BODY\t{\\\n";
+		printf "\t0,\\\n";
+		for (i = 0; i < numregs; i++)
+		{
+			if (backer[i] == "")
+			{
+				printf "no backer for r%d\n", i;
+				exit;
+			}
+
+			if (cast[i] == "")
+				printf "\t%d,\\\n", backer[i];
+		}
+		printf "}\n";
 	}
