@@ -192,13 +192,9 @@ OTHER_PROGS= \
 	vn_float \
 	zero_arity
 
-# The following require that num_tag_bits > 1
-ifeq "$(filter java% il%,$(GRADE))" ""
-RESERVE_TAG= \
+# The following programs require that num_tag_bits >= 1
+RESERVE_TAG_PROGS = \
 	reserve_tag
-else
-RESERVE_TAG=
-endif
 
 # XXX The mode system can't handle the following test cases yet:
 #	assoc_list_bug
@@ -255,12 +251,18 @@ endif
 ifneq "$(filter hl% java% il%,$(GRADE))$(findstring profdeep,$(GRADE))" ""
 	# We currently don't do any testing in grade java on this directory.
 	ifneq "$(findstring java,$(GRADE))$" ""
-		OBJ_PROGS=
+		PROGS3 =
 	else
-		OBJ_PROGS=$(PROGS2)
+		PROGS3 = $(PROGS2)
 	endif
 else
-	OBJ_PROGS=$(PROGS2) $(ADITI_PROGS)
+	PROGS3 = $(PROGS2) $(ADITI_PROGS)
+endif
+
+ifeq "$(filter java% il%,$(GRADE))" ""
+	OBJ_PROGS = $(PROGS3) $(RESERVE_TAG_PROGS)
+else
+	OBJ_PROGS = $(PROGS3)
 endif
 
 ifneq "$(findstring profdeep,$(GRADE))$(findstring java,$(GRADE))" ""
@@ -270,9 +272,9 @@ else
 endif
 
 ifneq "$(findstring tsw,$(GRADE))$(findstring tsc,$(GRADE))" ""
-	PROGS = $(OBJ_PROGS) $(ALL_RLO_PROGS) $(RESERVE_TAG)
+	PROGS = $(OBJ_PROGS) $(ALL_RLO_PROGS)
 else
-	PROGS = $(OBJ_PROGS) $(ALL_RLO_PROGS) $(IL_PROGS) $(RESERVE_TAG)
+	PROGS = $(OBJ_PROGS) $(ALL_RLO_PROGS) $(IL_PROGS)
 endif
 
 # `mmc --make' doesn't expect subdirectories to appear in targets.
