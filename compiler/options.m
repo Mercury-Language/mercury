@@ -376,8 +376,13 @@ option_defaults_2(optimization_option, [
 	inline_simple		-	bool(no),
 	inline_single_use	-	bool(no),
 	inline_compound_threshold -	int(0),
+	inline_simple_threshold	-	int(0),
+/********
+XXX the compiler aborts on `mc --inline-simple-threshold 5 library/string.m',
+so this is disabled for the moment.
 	inline_simple_threshold	-	int(5),	% has no effect until
 						% --inline-simple is enabled
+*********/
 	inline_vars_threshold	-	int(100),
 	intermod_inline_simple_threshold
 				-	int(0),
