@@ -92,8 +92,7 @@ unify_gen__generate_unification(CodeModel, Uni, GoalInfo, Code, !CI) :-
 			Code = empty
 		)
 	;
-		Uni = deconstruct(Var, ConsId, Args, Modes,
-				_CanFail, _CanCGC),
+		Uni = deconstruct(Var, ConsId, Args, Modes, _CanFail, _CanCGC),
 		( CodeModel = model_det ->
 			unify_gen__generate_det_deconstruction(Var, ConsId,
 				Args, Modes, Code, !CI)
@@ -129,8 +128,8 @@ unify_gen__generate_assignment(VarA, VarB, empty, !CI) :-
 		code_info__assign_var_to_var(VarA, VarB, !CI)
 	;
 		% For free-free unifications, the mode analysis reports
-		% them as assignment to the dead variable.  For such
-		% unifications we of course don't generate any code
+		% them as assignment to the dead variable. For such
+		% unifications we of course don't generate any code.
 		true
 	).
 
@@ -276,25 +275,24 @@ unify_gen__generate_tag_test_rval_2(single_functor, _Rval, TestRval) :-
 	TestRval = const(true).
 unify_gen__generate_tag_test_rval_2(unshared_tag(UnsharedTag), Rval,
 		TestRval) :-
-	TestRval = binop(eq,	unop(tag, Rval),
-				unop(mktag, const(int_const(UnsharedTag)))).
+	VarPtag = unop(tag, Rval),
+	ConstPtag = unop(mktag, const(int_const(UnsharedTag))),
+	TestRval = binop(eq, VarPtag, ConstPtag).
 unify_gen__generate_tag_test_rval_2(shared_remote_tag(Bits, Num), Rval,
 		TestRval) :-
-	TestRval = binop(and,
-			binop(eq,	unop(tag, Rval),
-					unop(mktag, const(int_const(Bits)))), 
-			binop(eq,	lval(field(yes(Bits), Rval,
-						const(int_const(0)))),
-					const(int_const(Num)))).
+	VarPtag = unop(tag, Rval),
+	ConstPtag = unop(mktag, const(int_const(Bits))),
+	PtagTestRval = binop(eq, VarPtag, ConstPtag),
+	VarStag = lval(field(yes(Bits), Rval, const(int_const(0)))),
+	ConstStag = const(int_const(Num)),
+	StagTestRval = binop(eq, VarStag, ConstStag),
+	TestRval = binop(and, PtagTestRval, StagTestRval).
 unify_gen__generate_tag_test_rval_2(shared_local_tag(Bits, Num), Rval,
 		TestRval) :-
-	TestRval = binop(eq,	Rval,
-			mkword(Bits, unop(mkbody, const(int_const(Num))))).
-
+	ConstStag = mkword(Bits, unop(mkbody, const(int_const(Num)))),
+	TestRval = binop(eq, Rval, ConstStag).
 unify_gen__generate_tag_test_rval_2(reserved_address(RA), Rval, TestRval) :-
-	TestRval = binop(eq,	Rval,
-			unify_gen__generate_reserved_address(RA)).
-
+	TestRval = binop(eq, Rval, unify_gen__generate_reserved_address(RA)).
 unify_gen__generate_tag_test_rval_2(
 		shared_with_reserved_addresses(ReservedAddrs, ThisTag),
 		Rval, FinalTestRval) :-
@@ -311,8 +309,8 @@ unify_gen__generate_tag_test_rval_2(
 	FinalTestRval = list__foldr(CheckReservedAddrs, ReservedAddrs,
 		MatchesThisTag).
 
-
 :- func unify_gen__generate_reserved_address(reserved_address) = rval.
+
 unify_gen__generate_reserved_address(null_pointer) = const(int_const(0)).
 unify_gen__generate_reserved_address(small_pointer(N)) = const(int_const(N)).
 unify_gen__generate_reserved_address(reserved_object(_, _, _)) = _ :-
@@ -341,7 +339,7 @@ unify_gen__generate_construction(Var, Cons, Args, Modes, Size, GoalInfo,
 	unify_gen__generate_construction_2(Tag, Var, Args,
 		Modes, Size, GoalInfo, Code, !CI).
 
-:- pred unify_gen__generate_construction_2(cons_tag::in, prog_var::in, 
+:- pred unify_gen__generate_construction_2(cons_tag::in, prog_var::in,
 	list(prog_var)::in, list(uni_mode)::in, maybe(term_size_value)::in,
 	hlds_goal_info::in, code_tree::out, code_info::in, code_info::out)
 	is det.
@@ -481,9 +479,9 @@ unify_gen__generate_construction_2(
 %
 %	P = l(P0, X, Y, Z)
 %
-%  where
+% where
 %
-%	l(P0, A, B, C, ...) :- P0(A, B, C, ...).  % higher-order call
+%	l(P0, A, B, C, ...) :- P0(A, B, C, ...).	% higher-order call
 %
 % as a special case, and generate special code to construct the
 % new closure P from the old closure P0 by appending the args X, Y, Z.
@@ -525,8 +523,8 @@ unify_gen__generate_construction_2(
 		Deep = no
 	->
 		( CallArgs = [] ->
-			% if there are no new arguments, we can just use the old
-			% closure
+			% if there are no new arguments, we can just use the
+			% old closure
 			code_info__assign_var_to_var(Var, CallPred, !CI),
 			Code = empty
 		;
@@ -721,11 +719,11 @@ unify_gen__generate_cons_args(Vars, Types, Modes, ModuleInfo, Args) :-
 		error("unify_gen__generate_cons_args: length mismatch")
 	).
 
-	% Create a list of maybe(rval) for the arguments
-	% for a construction unification.  For each argument which
-	% is input to the construction unification, we produce `yes(var(Var))',
-	% but if the argument is free, we just produce `no', meaning don't
-	% generate an assignment to that field.
+	% Create a list of maybe(rval) for the arguments for a construction
+	% unification. For each argument which is input to the construction
+	% unification, we produce `yes(var(Var))', but if the argument is free,
+	% we just produce `no', meaning don't generate an assignment to that
+	% field.
 
 :- pred unify_gen__generate_cons_args_2(list(prog_var)::in, list(type)::in,
 	list(uni_mode)::in, module_info::in, list(maybe(rval))::out)
@@ -750,13 +748,11 @@ unify_gen__generate_cons_args_2([Var | Vars], [Type | Types],
 unify_gen__construct_cell(Var, Ptag, Rvals, Size, Code, !CI) :-
 	VarType = code_info__variable_type(!.CI, Var),
 	unify_gen__var_type_msg(VarType, VarTypeMsg),
-	% If we're doing accurate GC, then
-	% for types which hold RTTI that will be traversed
-	% by the collector at GC-time, we need to allocate
-	% an extra word at the start, to hold the forwarding
-	% pointer.  Normally we would just overwrite the
-	% first word of the object in the "from" space,
-	% but this can't be done for objects which will be
+	% If we're doing accurate GC, then for types which hold RTTI that
+	% will be traversed by the collector at GC-time, we need to allocate
+	% an extra word at the start, to hold the forwarding pointer.
+	% Normally we would just overwrite the first word of the object
+	% in the "from" space, but this can't be done for objects which will be
 	% referenced during the garbage collection process.
 	(
 		code_info__get_globals(!.CI, Globals),
@@ -783,11 +779,11 @@ unify_gen__var_types(CI, Vars, Types) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred unify_gen__make_fields_and_argvars(list(prog_var)::in, rval::in,
-	int::in, int::in, list(uni_val)::out, list(uni_val)::out) is det.
-
 	% Construct a pair of lists that associates the fields of
 	% a term with variables.
+
+:- pred unify_gen__make_fields_and_argvars(list(prog_var)::in, rval::in,
+	int::in, int::in, list(uni_val)::out, list(uni_val)::out) is det.
 
 unify_gen__make_fields_and_argvars([], _, _, _, [], []).
 unify_gen__make_fields_and_argvars([Var | Vars], Rval, Field0, TagNum,
@@ -850,7 +846,8 @@ unify_gen__generate_det_deconstruction_2(Var, Cons, Args, Modes, Tag, Code,
 		Code = empty
 	;
 		Tag = table_io_decl_tag(_),
-		error("unify_gen__generate_det_deconstruction: table_io_decl_tag")
+		error("unify_gen__generate_det_deconstruction: " ++
+			"table_io_decl_tag")
 	;
 		Tag = no_tag,
 		( Args = [Arg], Modes = [Mode] ->
@@ -858,7 +855,8 @@ unify_gen__generate_det_deconstruction_2(Var, Cons, Args, Modes, Tag, Code,
 			unify_gen__generate_sub_unify(ref(Var), ref(Arg),
 				Mode, Type, Code, !CI)
 		;
-			error("unify_gen__generate_det_deconstruction: no_tag: arity != 1")
+			error("unify_gen__generate_det_deconstruction: " ++
+				"no_tag: arity != 1")
 		)
 	;
 		Tag = single_functor,
@@ -892,8 +890,8 @@ unify_gen__generate_det_deconstruction_2(Var, Cons, Args, Modes, Tag, Code,
 		% important for tag tests, not for det deconstructions,
 		% so here we just recurse on the real representation.
 		Tag = shared_with_reserved_addresses(_RAs, ThisTag),
-		unify_gen__generate_det_deconstruction_2(Var, Cons, Args, Modes,
-			ThisTag, Code, !CI)
+		unify_gen__generate_det_deconstruction_2(Var, Cons, Args,
+			Modes, ThisTag, Code, !CI)
 	).
 
 %---------------------------------------------------------------------------%
@@ -1054,6 +1052,7 @@ unify_gen__var_type_msg(Type, Msg) :-
 %---------------------------------------------------------------------------%
 
 :- func this_file = string.
+
 this_file = "unify_gen.m".
 
 %---------------------------------------------------------------------------%
