@@ -105,6 +105,7 @@
 :- import_module svbimap.
 :- import_module sveqvclass.
 :- import_module svmap.
+:- import_module svmulti_map.
 :- import_module svqueue.
 :- import_module svrelation.
 :- import_module svset.
@@ -241,6 +242,7 @@ mercury_std_library_module("svbag").
 mercury_std_library_module("svbimap").
 mercury_std_library_module("sveqvclass").
 mercury_std_library_module("svmap").
+mercury_std_library_module("svmulti_map").
 mercury_std_library_module("svqueue").
 mercury_std_library_module("svrelation").
 mercury_std_library_module("svset").
