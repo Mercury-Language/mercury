@@ -91,6 +91,10 @@ Changes to the Mercury standard library:
 
 * We've added a new library module, `array2d'.
 
+* We've added a new predicate, list__map2_foldl, to list.m.
+
+* We've added a new predicate, map__common_subset, to map.m.
+
 * We've added a predicate, map_fold, to set.m.
 
 * We've added a predicate, expand_braces, to dir.m.

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-2002 The University of Melbourne.
+% Copyright (C) 1993-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -337,6 +337,21 @@
 :- func map__det_intersect(func(V, V) = V, map(K, V), map(K, V)) = map(K, V).
 :- mode map__det_intersect(func(in, in) = out is semidet, in, in) = out is det.
 
+	% Given two maps M1 and M2, create a third map M3 that has only the
+	% keys that occur in both M1 and M2. For keys that occur in both M1
+	% and M2, compute the corresponding values. If they are the same,
+	% include the key/value pair in M3. If they differ, do not include the
+	% key in M3.
+	%
+	% This predicate effectively considers the input maps to be sets of
+	% key/value pairs, computes the intersection of those two sets, and
+	% returns the map corresponding to the intersection.
+	%
+	% map__common_subset is very similar to map__intersect, but can succeed
+	% even with an output map that does not contain an entry for a key
+	% value that occurs in both input maps.
+:- func map__common_subset(map(K, V), map(K, V)) = map(K, V).
+
 	% Given two maps M1 and M2, create a third map M3 that all the keys
 	% that occur in either M1 and M2. For keys that occur in both M1
 	% and M2, compute the value in the final map by applying the supplied
@@ -356,7 +371,6 @@
 :- func map__det_union(func(V, V) = V, map(K, V), map(K, V)) = map(K, V).
 :- mode map__det_union(func(in, in) = out is semidet, in, in) = out is det.
 
-
 	% Field selection for maps.
 
 	% Map ^ elem(Key) = map__search(Map, Key).
@@ -364,7 +378,6 @@
 
 	% Map ^ det_elem(Key) = map__lookup(Map, Key).
 :- func map__det_elem(K, map(K, V)) = V. 
-
 
 	% Field update for maps.
 
@@ -731,6 +744,54 @@ map__det_intersect(CommonPred, Map1, Map2, Common) :-
 		Common = CommonPrime
 	;
 		error("map__det_intersect: map__intersect failed")
+	).
+
+%-----------------------------------------------------------------------------%
+
+map__common_subset(Map1, Map2) = Common :-
+	map__to_sorted_assoc_list(Map1, AssocList1),
+	map__to_sorted_assoc_list(Map2, AssocList2),
+	map__init(Common0),
+	map__common_subset_2(AssocList1, AssocList2, Common0) = Common.
+
+:- func map__common_subset_2(assoc_list(K, V), assoc_list(K, V),
+	map(K, V)) = map(K, V).
+
+map__common_subset_2(AssocList1, AssocList2, Common0) = Common :-
+	(
+		AssocList1 = [],
+		AssocList2 = [],
+		Common = Common0
+	;
+		AssocList1 = [_ | _],
+		AssocList2 = [],
+		Common = Common0
+	;
+		AssocList1 = [],
+		AssocList2 = [_ | _],
+		Common = Common0
+	;
+		AssocList1 = [Key1 - Value1 | AssocTail1],
+		AssocList2 = [Key2 - Value2 | AssocTail2],
+		compare(R, Key1, Key2),
+		(
+			R = (=),
+			( Value1 = Value2 ->
+				map__det_insert(Common0, Key1, Value1, Common1)
+			;
+				Common1 = Common0
+			),
+			Common = map__common_subset_2(AssocTail1, AssocTail2,
+				Common1)
+		;
+			R = (<),
+			Common = map__common_subset_2(AssocTail1, AssocList2,
+				Common0)
+		;
+			R = (>),
+			Common = map__common_subset_2(AssocList1, AssocTail2,
+				Common0)
+		)
 	).
 
 %-----------------------------------------------------------------------------%
