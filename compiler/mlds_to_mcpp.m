@@ -507,8 +507,9 @@ write_managed_cpp_lval(var(Var, _VarType)) -->
 :- mode write_managed_cpp_defn_decl(in, di, uo) is det.
 write_managed_cpp_defn_decl(Defn) -->
 	{ Defn = mlds__defn(Name, _Context, _Flags, DefnBody) },
-	( { DefnBody = data(Type, _Initializer) },
-  	  { Name = data(var(VarName)) }
+	(
+		{ DefnBody = data(Type, _Initializer, _GC_TraceCode) },
+		{ Name = data(var(VarName)) }
 	->
 		write_managed_cpp_type(Type),
 		io__write_string(" "),

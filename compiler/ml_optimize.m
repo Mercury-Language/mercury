@@ -85,7 +85,7 @@ optimize_in_defn(ModuleName, Globals, Defn0) = Defn :-
 			Attributes),
 		Defn = mlds__defn(Name, Context, Flags, DefnBody)
 	;
-		DefnBody0 = mlds__data(_, _),
+		DefnBody0 = mlds__data(_, _, _),
 		Defn = Defn0
 	;
 		DefnBody0 = mlds__class(ClassDefn0),
@@ -241,8 +241,8 @@ generate_assign_args(_, [_|_], [], [], []) :-
 generate_assign_args(_, [], [_|_], [], []) :-
 	error("generate_assign_args: length mismatch").
 generate_assign_args(_, [], [], [], []).
-generate_assign_args(OptInfo, 
-	[Name - Type | Rest], [Arg | Args], Statements, TempDefns) :-
+generate_assign_args(OptInfo, [mlds__argument(Name, Type, GC_TraceCode) | Rest],
+		[Arg | Args], Statements, TempDefns) :-
 	(
 		%
 		% extract the variable name
@@ -282,7 +282,8 @@ generate_assign_args(OptInfo,
 				TempName),
 			Initializer = init_obj(Arg),
 			TempDefn = ml_gen_mlds_var_decl(var(TempName),
-				Type, Initializer, OptInfo ^ context),
+				Type, Initializer, GC_TraceCode,
+				OptInfo ^ context),
 
 			Statement = statement(
 				atomic(assign(
@@ -447,7 +448,7 @@ convert_assignments_into_initializers(Defns0, Statements0, OptInfo,
 		\+ (
 			list__member(OtherDefn, FollowingDefns),
 			OtherDefn = mlds__defn(data(var(OtherVarName)),
-				_, _, data(_Type, OtherInitializer)),
+				_, _, data(_Type, OtherInitializer, _GC)),
 			( rval_contains_var(RHS, qual(Qualifier, OtherVarName))
 			; initializer_contains_var(OtherInitializer, ThisVar)
 			)
@@ -484,9 +485,9 @@ set_initializer([Defn0 | Defns0], VarName, Rval, [Defn | Defns]) :-
 	Defn0 = mlds__defn(Name, Context, Flags, DefnBody0),
 	(
 		Name = data(var(VarName)), 
-		DefnBody0 = mlds__data(Type, _OldInitializer)
+		DefnBody0 = mlds__data(Type, _OldInitializer, GC_TraceCode)
 	->
-		DefnBody = mlds__data(Type, init_obj(Rval)),
+		DefnBody = mlds__data(Type, init_obj(Rval), GC_TraceCode),
 		Defn = mlds__defn(Name, Context, Flags, DefnBody),
 		Defns = Defns0
 	;

@@ -1036,6 +1036,20 @@ trailed_nondet_pragma_foreign_code :-
 :- pred free_heap(_T).
 :- mode free_heap(di) is det.
 
+	% gc_trace/1 is used for accurate garbage collection in the
+	% the MLDS->C backend.  It takes as parameters a pointer to
+	% a variable (normally on the stack) and, implicitly,
+	% a type_info which describes the type of that variable.
+	% It traverses the heap object(s) pointed to by that variable,
+	% copying them to the new heap area, and updating the
+	% variable to point to the new copy.  This is done by calling
+	% MR_agc_deep_copy() (from runtime/mercury_deep_copy*).
+
+:- type mutvar(T) ---> mutvar(c_pointer).
+	% a no_tag type, i.e. the representation is just a c_pointer.
+
+:- impure pred gc_trace(mutvar(T)::in) is det.
+
 	% mark_hp/1 and restore_hp/1 are used by the MLDS back-end,
 	% to implement heap reclamation on failure.
 	% (The LLDS back-end does not use these; instead it inserts
@@ -1061,6 +1075,26 @@ trailed_nondet_pragma_foreign_code :-
 
 :- pragma foreign_decl("C", "
 	#include ""mercury_heap.h""	/* for MR_free_heap() */
+").
+
+% default (Mercury) implementation for gc_trace/1
+% This should be overridden by the appropriate foreign language implementation.
+gc_trace(_::in) :-
+	sorry("private_builtin__gc_trace/1").
+
+:- pragma foreign_proc("C", gc_trace(Pointer::in),
+	[will_not_call_mercury, thread_safe],
+"
+#ifdef NATIVE_GC
+	*(MR_Word *)Pointer =
+		MR_agc_deep_copy((MR_Word *) Pointer,
+			(MR_TypeInfo) TypeInfo_for_T,
+			MR_ENGINE(heap_zone2->min),
+                        MR_ENGINE(heap_zone2->hardmax));
+#else
+	MR_fatal_error(""private_builtin__gc_trace/2: ""
+		""called when accurate GC not enabled"");
+#endif
 ").
 
 % default (Mercury) implementation for free_heap/1

@@ -142,9 +142,13 @@ ml_gen_generic_call(GenericCall, ArgVars, ArgModes, CodeModel, Context,
 	%
 	% insert the `closure_arg' parameter
 	%
+	% XXX The GC handling for `closure_arg' here is wrong
+	{ GC_TraceCode = no }, % XXX wrong
 	{ ClosureArgType = mlds__generic_type },
-	{ ClosureArg = data(var(var_name("closure_arg", no))) - 
-		ClosureArgType },
+	{ ClosureArg = mlds__argument(
+		data(var(var_name("closure_arg", no))),
+		ClosureArgType,
+		GC_TraceCode) },
 	{ Params0 = mlds__func_params(ArgParams0, RetParam) },
 	{ Params = mlds__func_params([ClosureArg | ArgParams0], RetParam) },
 	{ Signature = mlds__get_func_signature(Params) },
@@ -206,8 +210,11 @@ ml_gen_generic_call(GenericCall, ArgVars, ArgModes, CodeModel, Context,
 	ml_gen_info_new_conv_var(ConvVarNum),
 	{ FuncVarName = var_name(
 		string__format("func_%d", [i(ConvVarNum)]), no) },
+	% the function address is always a pointer to code,
+	% not to the heap, so the GC doesn't need to trace it
+	{ GC_TraceCode = no },
 	{ FuncVarDecl = ml_gen_mlds_var_decl(var(FuncVarName),
-		FuncType, mlds__make_context(Context)) },
+		FuncType, GC_TraceCode, mlds__make_context(Context)) },
 	ml_gen_var_lval(FuncVarName, FuncType, FuncVarLval),
 	{ AssignFuncVar = ml_gen_assign(FuncVarLval, FuncRval, Context) },
 	{ FuncVarRval = lval(FuncVarLval) },
@@ -308,6 +315,8 @@ ml_gen_call(PredId, ProcId, ArgNames, ArgLvals, ActualArgTypes, CodeModel,
 	%
 	% Compute the function signature
 	%
+	=(MLDSGenInfo),
+	{ ml_gen_info_get_module_info(MLDSGenInfo, ModuleInfo) },
 	{ Params = ml_gen_proc_params(ModuleInfo, PredId, ProcId) },
 	{ Signature = mlds__get_func_signature(Params) },
 
@@ -319,8 +328,6 @@ ml_gen_call(PredId, ProcId, ArgNames, ArgLvals, ActualArgTypes, CodeModel,
 	%
 	% Compute the callee's Mercury argument types and modes
 	%
-	=(MLDSGenInfo),
-	{ ml_gen_info_get_module_info(MLDSGenInfo, ModuleInfo) },
 	{ module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
 		PredInfo, ProcInfo) },
 	{ pred_info_get_is_pred_or_func(PredInfo, PredOrFunc) },
@@ -510,7 +517,22 @@ ml_gen_cont_params(OutputArgTypes, Params) -->
 ml_gen_cont_params_2([], _, []) --> [].
 ml_gen_cont_params_2([Type | Types], ArgNum, [Argument | Arguments]) -->
 	{ ArgName = ml_gen_arg_name(ArgNum) },
-	{ Argument = data(var(ArgName)) - Type },
+	% XXX Figuring out the correct GC code here is difficult,
+	% since doing that requires knowing the HLDS types, but
+	% here we only have the MLDS types.
+	% Fortunately this code should only get executed
+	% if --nondet-copy-out is enabled, which is not normally
+	% the case when --gc accurate is enabled, so handling this
+	% is not very important.
+	ml_gen_info_get_globals(Globals),
+	{ globals__get_gc_method(Globals, GC) },
+	( { GC = accurate } ->
+		{ sorry(this_file, "--gc accurate & --nondet-copy-out") }
+	;
+		{ Maybe_GC_TraceCode = no }
+	),
+	{ Argument = mlds__argument(data(var(ArgName)), Type,
+		Maybe_GC_TraceCode) },
 	ml_gen_cont_params_2(Types, ArgNum + 1, Arguments).
 
 :- pred ml_gen_copy_args_to_locals(list(mlds__lval), list(mlds__type),
@@ -553,7 +575,7 @@ ml_gen_proc_addr_rval(PredId, ProcId, CodeAddrRval) -->
 	{ ml_gen_info_get_module_info(MLDSGenInfo, ModuleInfo) },
 	{ ml_gen_pred_label(ModuleInfo, PredId, ProcId,
 		PredLabel, PredModule) },
-	{ Params = ml_gen_proc_params(ModuleInfo, PredId, ProcId) },
+	ml_gen_proc_params(PredId, ProcId, Params),
 	{ Signature = mlds__get_func_signature(Params) },
 	{ QualifiedProcLabel = qual(PredModule, PredLabel - ProcId) },
 	{ CodeAddrRval = const(code_addr_const(proc(QualifiedProcLabel,
@@ -820,10 +842,7 @@ ml_gen_box_or_unbox_lval(CallerType, CalleeType, VarLval, VarName, Context,
 		{ ArgVarName = mlds__var_name(string__format(
 			"conv%d_%s", [i(ConvVarNum), s(VarNameStr)]),
 			MaybeNum) },
-		=(Info),
-		{ ml_gen_info_get_module_info(Info, ModuleInfo) },
-		{ ArgVarDecl = ml_gen_var_decl(ArgVarName, CalleeType,
-			mlds__make_context(Context), ModuleInfo) },
+		ml_gen_var_decl(ArgVarName, CalleeType, Context, ArgVarDecl),
 		{ ConvDecls = [ArgVarDecl] },
 
 		% create the lval for the variable and use it for the

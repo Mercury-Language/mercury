@@ -711,6 +711,7 @@ ml_gen_closure_wrapper(PredId, ProcId, Offset, NumClosureArgs,
 	%
 	% allocate some fresh type variables to use as the Mercury types
 	% of the boxed arguments
+	% XXX The accurate GC handling for closures arguments is wrong
 	%
 	{ ProcBoxedArgTypes = ml_make_boxed_types(ProcArity) },
 
@@ -736,13 +737,17 @@ ml_gen_closure_wrapper(PredId, ProcId, Offset, NumClosureArgs,
 	},
 	{ WrapperHeadVarNames = ml_gen_wrapper_head_var_names(1,
 		list__length(WrapperHeadVars)) },
-	{ WrapperParams0 = ml_gen_params(ModuleInfo, WrapperHeadVarNames,
-		WrapperBoxedArgTypes, WrapperArgModes, PredOrFunc, CodeModel) },
+	ml_gen_params(WrapperHeadVarNames, WrapperBoxedArgTypes,
+		WrapperArgModes, PredOrFunc, CodeModel, WrapperParams0),
 
 	% then insert the `closure_arg' parameter
 	{ ClosureArgType = mlds__generic_type },
-	{ ClosureArg = data(var(
-		var_name("closure_arg", no))) - ClosureArgType },
+	% XXX FIXME The GC handling for closures is wrong
+	{ GC_TraceCode = no },
+	{ ClosureArg = mlds__argument(
+		data(var(var_name("closure_arg", no))),
+		ClosureArgType,
+		GC_TraceCode) },
 	{ WrapperParams0 = mlds__func_params(WrapperArgs0, WrapperRetType) },
 	{ WrapperParams = mlds__func_params([ClosureArg | WrapperArgs0],
 		WrapperRetType) },
@@ -770,8 +775,10 @@ ml_gen_closure_wrapper(PredId, ProcId, Offset, NumClosureArgs,
 	{ ClosureArgName = mlds__var_name("closure_arg", no) },
 	{ MLDS_Context = mlds__make_context(Context) },
 	{ ClosureType = mlds__generic_type },
+	% XXX FIXME The GC handling for closures is wrong
+	{ GC_TraceCode = no },
 	{ ClosureDecl = ml_gen_mlds_var_decl(var(ClosureName),
-		ClosureType, MLDS_Context) },
+		ClosureType, GC_TraceCode, MLDS_Context) },
 	ml_gen_var_lval(ClosureName, ClosureType, ClosureLval),
 	ml_gen_var_lval(ClosureArgName, ClosureArgType, ClosureArgLval),
 	{ InitClosure = ml_gen_assign(ClosureLval, lval(ClosureArgLval),
@@ -1016,10 +1023,7 @@ ml_gen_local_for_output_arg(VarName, Type, Context, LocalVarDefn) -->
 	%
 	% Generate a declaration for a corresponding local variable.
 	%
-	=(MLDSGenInfo),
-	{ ml_gen_info_get_module_info(MLDSGenInfo, ModuleInfo) },
-	{ LocalVarDefn = ml_gen_var_decl(VarName, Type,
-		mlds__make_context(Context), ModuleInfo) }.
+	ml_gen_var_decl(VarName, Type, Context, LocalVarDefn).
 
 %-----------------------------------------------------------------------------%
 		

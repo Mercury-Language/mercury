@@ -733,11 +733,11 @@ write_func_args(ModuleName, [Arg | Args]) -->
 	%
 	% Output a fully qualified name preceded by a cast.
 	%
-:- pred mlds_output_name_with_cast(mlds_module_name::in,
-		pair(mlds__entity_name, mlds__type)::in,
+:- pred mlds_output_name_with_cast(mlds_module_name::in, mlds__argument::in,
 		io__state::di, io__state::uo) is det.
 
-mlds_output_name_with_cast(ModuleName, Name - Type) -->
+mlds_output_name_with_cast(ModuleName, Arg) -->
+	{ Arg = mlds__argument(Name, Type, _GC_TraceCode) },
 	mlds_output_cast(Type),
 	mlds_output_fully_qualified_name(qual(ModuleName, Name)).
 
@@ -756,7 +756,8 @@ det_func_signature(mlds__func_params(Args, _RetTypes)) = Params :-
 		error("det_func_signature: function missing return value?")
 	),
 	(
-		ReturnArg = _ReturnArgName - mlds__ptr_type(ReturnArgType0)
+		ReturnArg = mlds__argument(_ReturnArgName,
+			mlds__ptr_type(ReturnArgType0), _GC_TraceCode)
 	->
 		ReturnArgType = ReturnArgType0
 	;
@@ -838,11 +839,10 @@ mlds_output_decl(Indent, ModuleName, Defn) -->
 		globals__io_lookup_bool_option(highlevel_data, HighLevelData),
 		(
 			{ HighLevelData = yes },
-			{ DefnBody = mlds__function(_, Signature, _, _) }
+			{ DefnBody = mlds__function(_, Params, _, _) }
 		->
-			{ Signature = mlds__func_params(Parameters,
-				_RetTypes) },
-			{ assoc_list__values(Parameters, ParamTypes) },
+			{ Params = mlds__func_params(Arguments, _RetTypes) },
+			{ ParamTypes = mlds__get_arg_types(Arguments) },
 			mlds_output_type_forward_decls(Indent, ParamTypes)
 		;
 			[]
@@ -891,7 +891,7 @@ mlds_type_contains_type(mlds__array_type(Type), Type).
 mlds_type_contains_type(mlds__ptr_type(Type), Type).
 mlds_type_contains_type(mlds__func_type(Parameters), Type) :-
 	Parameters = mlds__func_params(Arguments, RetTypes),
-	( list__member(_Name - Type, Arguments)
+	( list__member(mlds__argument(_Name, Type, _GC_TraceCode), Arguments)
 	; list__member(Type, RetTypes)
 	).
 
@@ -926,7 +926,7 @@ mlds_output_type_forward_decl(Indent, Type) -->
 
 mlds_output_defn(Indent, ModuleName, Defn) -->
 	{ Defn = mlds__defn(Name, Context, Flags, DefnBody) },
-	( { DefnBody \= mlds__data(_, _) } ->
+	( { DefnBody \= mlds__data(_, _, _) } ->
 		io__nl
 	;
 		[]
@@ -942,8 +942,9 @@ mlds_output_defn(Indent, ModuleName, Defn) -->
 
 mlds_output_decl_body(Indent, Name, Context, DefnBody) -->
 	(
-		{ DefnBody = mlds__data(Type, Initializer) },
-		mlds_output_data_decl(Name, Type, initializer_array_size(Initializer))
+		{ DefnBody = mlds__data(Type, Initializer, _GC_TraceCode) },
+		mlds_output_data_decl(Name, Type,
+			initializer_array_size(Initializer))
 	;
 		{ DefnBody = mlds__function(MaybePredProcId, Signature,
 			_MaybeBody, _Attrs) },
@@ -961,8 +962,11 @@ mlds_output_decl_body(Indent, Name, Context, DefnBody) -->
 
 mlds_output_defn_body(Indent, Name, Context, DefnBody) -->
 	(
-		{ DefnBody = mlds__data(Type, Initializer) },
-		mlds_output_data_defn(Name, Type, Initializer)
+		{ DefnBody = mlds__data(Type, Initializer,
+			Maybe_GC_TraceCode) },
+		mlds_output_data_defn(Name, Type, Initializer),
+		mlds_output_maybe_gc_trace_code(Indent, Name,
+			Maybe_GC_TraceCode, "")
 	;
 		{ DefnBody = mlds__function(MaybePredProcId, Signature,
 			MaybeBody, _Attributes) },
@@ -973,6 +977,25 @@ mlds_output_defn_body(Indent, Name, Context, DefnBody) -->
 		mlds_output_class(Indent, Name, Context, ClassDefn)
 	).
 
+:- pred mlds_output_maybe_gc_trace_code(indent::in,
+		mlds__qualified_entity_name::in,
+		maybe(mlds__statement)::in, string::in,
+		io__state::di, io__state::uo) is det.
+mlds_output_maybe_gc_trace_code(Indent, Name, Maybe_GC_TraceCode,
+		MaybeNewLine) -->
+	(
+		{ Maybe_GC_TraceCode = no }
+	; 
+		{ Maybe_GC_TraceCode = yes(GC_TraceCode) },
+		io__write_string(MaybeNewLine),
+		io__write_string("#if 0 /* GC trace code */\n"),
+		% XXX this value for FuncInfo is bogus
+		% However, this output is only for debugging anyway,
+		% so it doesn't really matter.
+		{ FuncInfo = func_info(Name) },
+		mlds_output_statement(Indent, FuncInfo, GC_TraceCode),
+		io__write_string("#endif\n")
+	).
 
 %-----------------------------------------------------------------------------%
 %
@@ -1083,8 +1106,12 @@ mlds_make_base_class(Context, ClassId, MLDS_Defn, BaseNum0, BaseNum) :-
 	BaseName = mlds__var_name(string__format("base_%d", [i(BaseNum0)]),
 		no),
 	Type = ClassId,
+	% We only need GC tracing code for top-level variables,
+	% not for base classes.
+	GC_TraceCode = no,
 	MLDS_Defn = mlds__defn(data(var(BaseName)), Context,
-		ml_gen_public_field_decl_flags, data(Type, no_initializer)),
+		ml_gen_public_field_decl_flags,
+		data(Type, no_initializer, GC_TraceCode)),
 	BaseNum = BaseNum0 + 1.
 
 	% Output the definitions of the enumeration constants
@@ -1123,7 +1150,7 @@ is_enum_const(Defn) :-
 mlds_output_enum_constant(Indent, EnumModuleName, Defn) -->
 	{ Defn = mlds__defn(Name, Context, _Flags, DefnBody) },
 	(
-		{ DefnBody = data(Type, Initializer) }
+		{ DefnBody = data(Type, Initializer, _GC_TraceCode) }
 	->
 		mlds_indent(Context, Indent),
 		mlds_output_fully_qualified_name(qual(EnumModuleName, Name)),
@@ -1262,9 +1289,9 @@ mlds_output_func(Indent, Name, Context, Signature, FunctionBody) -->
 		mlds_indent(Context, Indent),
 		io__write_string("{\n"),
 
-		{ FuncInfo = func_info(Name, Signature) },
 		mlds_maybe_output_time_profile_instr(Context, Indent + 1, Name),
 
+		{ FuncInfo = func_info(Name) },
 		mlds_output_statement(Indent + 1, FuncInfo, Body),
 
 		mlds_indent(Context, Indent),
@@ -1332,17 +1359,20 @@ mlds_output_params(OutputPrefix, OutputSuffix, Indent, ModuleName,
 	io__write_char(')').
 
 :- pred mlds_output_param(output_type, output_type,
-		indent, mlds_module_name, mlds__context,
-		pair(mlds__entity_name, mlds__type), io__state, io__state).
-:- mode mlds_output_param(in(output_type), in(output_type),
-		in, in, in, in, di, uo) is det.
+		indent, mlds_module_name, mlds__context, mlds__argument,
+		io__state, io__state).
+:- mode mlds_output_param(in(output_type), in(output_type), in, in, in, in,
+		di, uo) is det.
 
 
-mlds_output_param(OutputPrefix, OutputSuffix, Indent,
-		ModuleName, Context, Name - Type) -->
+mlds_output_param(OutputPrefix, OutputSuffix, Indent, ModuleName, Context,
+		Arg) -->
+	{ Arg = mlds__argument(Name, Type, Maybe_GC_TraceCode) },
+	{ QualName = qual(ModuleName, Name) },
 	mlds_indent(Context, Indent),
-	mlds_output_data_decl_ho(OutputPrefix, OutputSuffix,
-			qual(ModuleName, Name), Type).
+	mlds_output_data_decl_ho(OutputPrefix, OutputSuffix, QualName, Type),
+	mlds_output_maybe_gc_trace_code(Indent, QualName, Maybe_GC_TraceCode,
+		"\n").
 
 :- pred mlds_output_func_type_prefix(func_params, io__state, io__state).
 :- mode mlds_output_func_type_prefix(in, di, uo) is det.
@@ -1381,11 +1411,10 @@ mlds_output_param_types(Parameters) -->
 	),
 	io__write_char(')').
 
-:- pred mlds_output_param_type(pair(mlds__entity_name, mlds__type),
-		io__state, io__state).
+:- pred mlds_output_param_type(mlds__argument, io__state, io__state).
 :- mode mlds_output_param_type(in, di, uo) is det.
 
-mlds_output_param_type(_Name - Type) -->
+mlds_output_param_type(mlds__argument(_Name, Type, _GC_TraceCode)) -->
 	mlds_output_type(Type).
 
 %-----------------------------------------------------------------------------%
@@ -1937,7 +1966,7 @@ mlds_output_abstractness(concrete) --> [].
 %
 
 :- type func_info
-	--->	func_info(mlds__qualified_entity_name, mlds__func_params).
+	--->	func_info(mlds__qualified_entity_name).
 
 :- pred mlds_output_statements(indent, func_info, list(mlds__statement),
 		io__state, io__state).
@@ -1965,7 +1994,7 @@ mlds_output_stmt(Indent, FuncInfo, block(Defns, Statements), Context) -->
 	mlds_indent(Indent),
 	io__write_string("{\n"),
 	( { Defns \= [] } ->
-		{ FuncInfo = func_info(FuncName, _) },
+		{ FuncInfo = func_info(FuncName) },
 		{ FuncName = qual(ModuleName, _) },
 
 		% output forward declarations for any nested functions
@@ -2130,7 +2159,7 @@ mlds_output_stmt(Indent, _FuncInfo, computed_goto(Expr, Labels), Context) -->
 mlds_output_stmt(Indent, CallerFuncInfo, Call, Context) -->
 	{ Call = call(_Signature, FuncRval, MaybeObject, CallArgs,
 		Results, IsTailCall) },
-	{ CallerFuncInfo = func_info(Name, _Params) },
+	{ CallerFuncInfo = func_info(Name) },
 	%
 	% Optimize general tail calls.
 	% We can't really do much here except to insert `return'
@@ -2506,7 +2535,7 @@ mlds_output_atomic_stmt(Indent, FuncInfo, NewObject, Context) -->
 	mlds_indent(Indent),
 	io__write_string("{\n"),
 
-	{ FuncInfo = func_info(FuncName, _) },
+	{ FuncInfo = func_info(FuncName) },
 	mlds_maybe_output_heap_profile_instr(Context, Indent + 1, Args,
 			FuncName, MaybeCtorName),
 

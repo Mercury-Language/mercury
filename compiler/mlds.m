@@ -291,7 +291,7 @@
 :- import_module prog_data, builtin_ops, rtti, code_model.
 :- import_module foreign, type_util.
 
-:- import_module bool, list, assoc_list, std_util, map.
+:- import_module bool, list, std_util, map.
 
 %-----------------------------------------------------------------------------%
 
@@ -449,7 +449,11 @@
 		% constants or variables
 	--->	mlds__data(
 			mlds__type,
-			mlds__initializer
+			mlds__initializer,
+				% If accurate GC is enabled, we associate
+				% with each variable the code needed to
+				% trace that variable when doing GC.
+			mlds__maybe_gc_trace_code
 		)
 		% functions
 	;	mlds__function(
@@ -463,6 +467,14 @@
 	;	mlds__class(
 			mlds__class_defn
 		).
+
+	% If accurate GC is enabled, we associate with each variable
+	% (including function parameters) the code needed to trace that
+	% variable when doing GC.
+	% `no' here indicates that no GC tracing code is needed,
+	% e.g. because accurate GC isn't enabled, or because the
+	% variable can never contain pointers to objects on the heap.
+:- type mlds__maybe_gc_trace_code == maybe(mlds__statement).
 
 	% It is possible for the function to be defined externally
 	% (i.e. the original Mercury procedure was declared `:- external').
@@ -486,10 +498,18 @@
 		mlds__arguments,	% names and types of arguments (inputs)
 		mlds__return_types	% types of return values (outputs)
 	).
-
-:- type mlds__arguments == assoc_list(mlds__entity_name, mlds__type).
+:- type mlds__arguments == list(mlds__argument).
+:- type mlds__argument
+	---> mlds__argument(
+		mlds__entity_name,		% argument name
+		mlds__type,			% argument type
+		mlds__maybe_gc_trace_code	% GC tracing code for this
+						% argument, if needed
+	).
 :- type mlds__arg_types == list(mlds__type).
 :- type mlds__return_types == list(mlds__type).
+
+:- func mlds__get_arg_types(mlds__arguments) = list(mlds__type).
 
 	% An mlds__func_signature is like an mlds__func_params
 	% except that it only includes the function's type, not
@@ -1595,7 +1615,11 @@ mercury_type_to_mlds_type(ModuleInfo, Type) = MLDSType :-
 
 mlds__get_func_signature(func_params(Parameters, RetTypes)) =
 		func_signature(ParamTypes, RetTypes) :-
-	assoc_list__values(Parameters, ParamTypes).
+	ParamTypes = mlds__get_arg_types(Parameters).
+
+mlds__get_arg_types(Parameters) = ArgTypes :-
+	GetArgType = (func(mlds__argument(_, Type, _)) = Type),
+	ArgTypes = list__map(GetArgType, Parameters).
 
 %-----------------------------------------------------------------------------%
 

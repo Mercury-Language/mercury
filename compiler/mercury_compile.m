@@ -3261,36 +3261,39 @@ mercury_compile__mlds_backend(HLDS51, MLDS) -->
 
 	%
 	% Note that we call ml_elim_nested twice --
-	% the first time to flatten nested functions,
-	% and the second time to chain the stack frames
-	% together, for accurate GC.
+	% the first time to chain the stack frames together, for accurate GC,
+	% and the second time to flatten nested functions.
 	% These two passes are quite similar,
 	% but must be done separately.
+	% Currently chaining the stack frames together for accurate GC
+	% needs to be done first, because the code for doing that
+	% can't handle the env_ptr references that the other pass
+	% generates.
 	%
-
-	globals__io_lookup_bool_option(gcc_nested_functions, NestedFuncs),
-	( { NestedFuncs = no } ->
-		maybe_write_string(Verbose,
-			"% Flattening nested functions...\n"),
-		ml_elim_nested(hoist_nested_funcs, MLDS20, MLDS30),
-		maybe_write_string(Verbose, "% done.\n")
-	;
-		{ MLDS30 = MLDS20 }
-	),
-	maybe_report_stats(Stats),
-	mercury_compile__maybe_dump_mlds(MLDS30, "30", "nested_funcs"),
 
 	globals__io_get_gc_method(GC),
 	( { GC = accurate } ->
 		maybe_write_string(Verbose,
 			"% Threading GC stack frames...\n"),
-		ml_elim_nested(chain_gc_stack_frames, MLDS30, MLDS35),
+		ml_elim_nested(chain_gc_stack_frames, MLDS20, MLDS30),
+		maybe_write_string(Verbose, "% done.\n")
+	;
+		{ MLDS30 = MLDS20 }
+	),
+	maybe_report_stats(Stats),
+	mercury_compile__maybe_dump_mlds(MLDS30, "30", "gc_frames"),
+
+	globals__io_lookup_bool_option(gcc_nested_functions, NestedFuncs),
+	( { NestedFuncs = no } ->
+		maybe_write_string(Verbose,
+			"% Flattening nested functions...\n"),
+		ml_elim_nested(hoist_nested_funcs, MLDS30, MLDS35),
 		maybe_write_string(Verbose, "% done.\n")
 	;
 		{ MLDS35 = MLDS30 }
 	),
 	maybe_report_stats(Stats),
-	mercury_compile__maybe_dump_mlds(MLDS35, "35", "gc_frames"),
+	mercury_compile__maybe_dump_mlds(MLDS35, "35", "nested_funcs"),
 
 	globals__io_lookup_bool_option(optimize, Optimize),
 	( { Optimize = yes } ->

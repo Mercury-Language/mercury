@@ -77,6 +77,11 @@ rtti_data_to_mlds(ModuleInfo, RttiData) = MLDS_Defns :-
 		Exported = rtti_name_is_exported(RttiName),
 		Flags = rtti_data_decl_flags(Exported),
 
+		% The GC never needs to trace these definitions,
+		% because they are static constants, and can point
+		% only to other static constants, not to the heap.
+		GC_TraceCode = no,
+
 		%
 		% Generate the declaration body,
 		% i.e. the type and the initializer
@@ -85,7 +90,7 @@ rtti_data_to_mlds(ModuleInfo, RttiData) = MLDS_Defns :-
 		module_info_name(ModuleInfo, ModuleName),
 		gen_init_rtti_data_defn(RttiData, ModuleName, ModuleInfo,
 			Initializer, ExtraDefns),
-		DefnBody = mlds__data(MLDS_Type, Initializer),
+		DefnBody = mlds__data(MLDS_Type, Initializer, GC_TraceCode),
 
 		%
 		% put it all together

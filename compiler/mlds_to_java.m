@@ -58,8 +58,7 @@
 :- import_module rtti_to_mlds.	% for mlds_rtti_type_name.
 :- import_module hlds_pred.	% for pred_proc_id.
 :- import_module modules.       % for mercury_std_library_name.
-:- import_module ml_code_util.	% for ml_gen_mlds_var_decl, which is used by
-				% the code that handles derived classes
+:- import_module ml_code_util.	% for ml_gen_local_var_decl_flags.
 :- import_module ml_type_gen.	% for ml_gen_type_name
 :- import_module export.	% for export__type_to_type_string
 :- import_module globals, options, passes_aux.
@@ -121,7 +120,7 @@ defn_is_unify_or_compare(Defn) :-
 
 defn_is_rtti_data(Defn) :-
 	Defn = mlds__defn(_Name, _Context, _Flags, Body),
-	Body = mlds__data(Type, _),
+	Body = mlds__data(Type, _, _),
 	Type = mlds__rtti_type(_).
 
 	% Succeeds iff this type is a enumeration.
@@ -440,8 +439,11 @@ generate_wrapper_method(ModuleName, Defn0, Defn) :-
 		% Create new argument.
 		% There is only one as "call" takes an array of Object.
 		%
-	        Arg = data(var(var_name("args", no))) - 
-				mlds__array_type(mlds__generic_type),
+		GC_TraceCode = no, % GC tracing code not needed for java
+	        Arg = mlds__argument(
+			data(var(var_name("args", no))),
+			mlds__array_type(mlds__generic_type),
+			GC_TraceCode),
 		Args = [Arg],
 		%
 		% Create new declarations for old arguments and assign
@@ -484,7 +486,7 @@ generate_wrapper_method(ModuleName, Defn0, Defn) :-
 generate_wrapper_decls(_, _, [], _, []).
 generate_wrapper_decls(ModuleName, Context, [Arg | Args], 
 		Count, [Defn | Defns]) :-
-	Arg = Name - Type,
+	Arg = mlds__argument(Name, Type, GC_TraceCode),
 	Flags = ml_gen_local_var_decl_flags,
 	ArrayIndex = const(int_const(Count)),		
 	NewVarName = qual(mercury_module_name_to_mlds(ModuleName), 
@@ -497,7 +499,7 @@ generate_wrapper_decls(ModuleName, Context, [Arg | Args],
 	%
 	Initializer = binop(array_index(elem_type_generic),
 		lval(NewArgLval), ArrayIndex),
-	Body = mlds__data(Type, init_obj(Initializer)),	
+	Body = mlds__data(Type, init_obj(Initializer), GC_TraceCode),
 	Defn = mlds__defn(Name, Context, Flags, Body),
 	%	
 	% Recursively call ourself to process the next argument.		
@@ -630,7 +632,7 @@ output_defn(Indent, ModuleName, Defn) -->
 		mlds__context, mlds__entity_defn, io__state, io__state).
 :- mode output_defn_body(in, in, in, in, di, uo) is det.
 
-output_defn_body(_, Name, _, mlds__data(Type, Initializer)) -->
+output_defn_body(_, Name, _, mlds__data(Type, Initializer, _GCTraceCode)) -->
 	output_data_defn(Name, Type, Initializer).
 output_defn_body(Indent, Name, Context, 
 		mlds__function(MaybePredProcId, Signature, MaybeBody,
@@ -809,7 +811,7 @@ output_enum_constants(Indent, EnumModuleName, EnumConsts) -->
 output_enum_constant(Indent, EnumModuleName, Defn) -->
 	{ Defn = mlds__defn(Name, _Context, _Flags, DefnBody) },
 	(
-		{ DefnBody = data(Type, Initializer) }
+		{ DefnBody = data(Type, Initializer, _GC_TraceCode) }
 	->
 		indent_line(Indent),
 		io__write_string("public static final int "),
@@ -1041,10 +1043,11 @@ output_params(Indent, ModuleName, Context, Parameters) -->
 	io__write_char(')').
 
 :- pred output_param(indent, mlds_module_name, mlds__context,
-		pair(mlds__entity_name, mlds__type), io__state, io__state).
+		mlds__argument, io__state, io__state).
 :- mode output_param(in, in, in, in, di, uo) is det.
 
-output_param(Indent, ModuleName, Context, Name - Type) -->
+output_param(Indent, ModuleName, Context, Arg) -->
+	{ Arg = mlds__argument(Name, Type, _GC_TraceCode) },
 	indent_line(Context, Indent),
 	output_type(Type),
 	io__write_char(' '),

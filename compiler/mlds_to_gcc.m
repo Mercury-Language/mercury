@@ -769,7 +769,7 @@ build_field_defn(Defn, ModuleName, GlobalInfo, GCC_Defn) -->
 
 gen_defn_body(Name, Context, Flags, DefnBody, GlobalInfo0, GlobalInfo) -->
 	(
-		{ DefnBody = mlds__data(Type, Initializer) },
+		{ DefnBody = mlds__data(Type, Initializer, _GC_TraceCode) },
 		{ LocalVars = map__init },
 		{ LabelTable = map__init },
 		{ DefnInfo = defn_info(GlobalInfo0, Name, LocalVars,
@@ -807,7 +807,7 @@ gen_defn_body(Name, Context, Flags, DefnBody, GlobalInfo0, GlobalInfo) -->
 
 build_local_defn_body(Name, DefnInfo, _Context, Flags, DefnBody, GCC_Defn) -->
 	(
-		{ DefnBody = mlds__data(Type, Initializer) },
+		{ DefnBody = mlds__data(Type, Initializer, _GC_TraceCode) },
 		build_local_data_defn(Name, Flags, Type,
 			Initializer, DefnInfo, GCC_Defn)
 	;
@@ -833,7 +833,7 @@ build_local_defn_body(Name, DefnInfo, _Context, Flags, DefnBody, GCC_Defn) -->
 
 build_field_defn_body(Name, _Context, Flags, DefnBody, GlobalInfo, GCC_Defn) -->
 	(
-		{ DefnBody = mlds__data(Type, Initializer) },
+		{ DefnBody = mlds__data(Type, Initializer, _GC_TraceCode) },
 		build_field_data_defn(Name, Type, Initializer, GlobalInfo,
 			GCC_Defn),
 		add_field_decl_flags(Flags, GCC_Defn)
@@ -1354,8 +1354,12 @@ is_static_member(Defn) :-
 mlds_make_base_class(Context, ClassId, MLDS_Defn, BaseNum0, BaseNum) :-
 	BaseName = string__format("base_%d", [i(BaseNum0)]),
 	Type = ClassId,
+	% We only need GC tracing code for top-level variables,
+	% not for base classes.
+	GC_TraceCode = no,
 	MLDS_Defn = mlds__defn(data(var(var_name(BaseName, no))), Context,
-		ml_gen_public_field_decl_flags, data(Type, no_initializer)),
+		ml_gen_public_field_decl_flags,
+		data(Type, no_initializer, GC_TraceCode)),
 	BaseNum = BaseNum0 + 1.
 
 /***********
@@ -1641,7 +1645,7 @@ build_param_types_and_decls([Arg|Args], ModuleName, GlobalInfo,
 		ParamTypes, ParamDecls, SymbolTable) -->
 	build_param_types_and_decls(Args, ModuleName, GlobalInfo,
 		ParamTypes0, ParamDecls0, SymbolTable0),
-	{ Arg = ArgName - Type },
+	{ Arg = mlds__argument(ArgName, Type, _GC_TraceCode) },
 	build_type(Type, GlobalInfo, GCC_Type),
 	( { ArgName = data(var(ArgVarName)) } ->
 		{ GCC_ArgVarName = ml_var_name_to_string(ArgVarName) },

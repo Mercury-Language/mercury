@@ -303,7 +303,8 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 	( { ILFuncPtrTypes = yes, ILRefAnyFields = yes } ->
 		[]
 	;
-		option_implies(verifiable_code, put_nondet_env_on_heap, bool(yes))
+		option_implies(verifiable_code, put_nondet_env_on_heap,
+			bool(yes))
 	),
 
 	% Generating Java implies high-level code, turning off nested functions,
@@ -625,6 +626,36 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 		globals__io_set_option(body_typeinfo_liveness, bool(yes)),
 		globals__io_set_option(allow_hijacks, bool(no)),
 		globals__io_set_option(optimize_frames, bool(no))
+	;
+		[]
+	),
+
+	% ml_gen_params_base and ml_declare_env_ptr_arg, in ml_code_util.m,
+	% both assume (for accurate GC) that continuation environments
+	% are always allocated on the stack, which means that things won't
+	% if --gc accurate and --put-nondet-env-on-heap are both enabled.
+	globals__io_lookup_bool_option(put_nondet_env_on_heap,
+		PutNondetEnvOnHeap),
+	(
+		{ HighLevel = yes },
+		{ GC_Method = accurate },
+		{ PutNondetEnvOnHeap = yes }
+	->
+		usage_error("--gc accurate is incompatible with " ++
+			"--put-nondet-env-on-heap")
+	;
+		[]
+	),
+	% ml_gen_cont_params in ml_call_gen.m will call sorry/1
+	% if --gc accurate and --nondet-copy-out are both enabled.
+	globals__io_lookup_bool_option(nondet_copy_out, NondetCopyOut),
+	(
+		{ HighLevel = yes },
+		{ GC_Method = accurate },
+		{ NondetCopyOut = yes }
+	->
+		usage_error("--gc accurate is incompatible with " ++
+			"--nondet-copy-out")
 	;
 		[]
 	),

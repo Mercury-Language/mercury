@@ -419,7 +419,7 @@ write_csharp_lval(var(Var, _VarType)) -->
 write_csharp_defn_decl(Defn) -->
 	{ Defn = mlds__defn(Name, _Context, _Flags, DefnBody) },
 	(
-		{ DefnBody = data(Type, _Initializer) },
+		{ DefnBody = data(Type, _Initializer, _GC_TraceCode) },
 		{ Name = data(var(VarName)) }
 	->
 		write_csharp_parameter_type(Type),
@@ -531,10 +531,10 @@ write_il_type_modifier_as_csharp_type(readonly) -->
 write_il_type_modifier_as_csharp_type(volatile) --> 
 	io__write_string("volatile").
 
-:- pred write_input_arg_as_csharp_type(
-	pair(mlds__entity_name, mlds__type)::in,
+:- pred write_input_arg_as_csharp_type(mlds__argument::in,
 	io__state::di, io__state::uo) is det.
-write_input_arg_as_csharp_type(EntityName - Type) --> 
+write_input_arg_as_csharp_type(Arg) --> 
+	{ Arg = mlds__argument(EntityName, Type, _GC_TraceCode) },
 	get_il_data_rep(DataRep),
 	write_il_type_as_csharp_type(mlds_type_to_ilds_type(DataRep, Type)),
 	io__write_string(" "),

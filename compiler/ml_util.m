@@ -306,13 +306,13 @@ defn_is_function(Defn) :-
 
 defn_is_type_ctor_info(Defn) :-
 	Defn = mlds__defn(_Name, _Context, _Flags, Body),
-	Body = mlds__data(Type, _),
+	Body = mlds__data(Type, _, _),
 	Type = mlds__rtti_type(RttiName),
 	RttiName = type_ctor_info.
 
 defn_is_commit_type_var(Defn) :-
 	Defn = mlds__defn(_Name, _Context, _Flags, Body),
-	Body = mlds__data(Type, _),
+	Body = mlds__data(Type, _, _),
 	Type = mlds__commit_type.
 
 defn_is_public(Defn) :-

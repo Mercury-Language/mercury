@@ -132,7 +132,7 @@ mark_tailcalls_in_defn(Defn0) = Defn :-
 			Attributes),
 		Defn = mlds__defn(Name, Context, Flags, DefnBody)
 	;
-		DefnBody0 = mlds__data(_, _),
+		DefnBody0 = mlds__data(_, _, _),
 		Defn = Defn0
 	;
 		DefnBody0 = mlds__class(ClassDefn0),
@@ -539,7 +539,7 @@ locals_member(Name, LocalsList) :-
 	;
 		Locals = params(Params),
 		list__member(Param, Params),
-		Param = Name - _Type
+		Param = mlds__argument(Name, _, _)
 	).
 
 %-----------------------------------------------------------------------------%

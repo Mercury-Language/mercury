@@ -233,6 +233,12 @@
 	term__context, list(prog_var), list(hlds_goal), poly_info, poly_info).
 :- mode polymorphism__make_type_info_vars(in, in, out, out, in, out) is det.
 
+% Likewise, but for a single type.
+
+:- pred polymorphism__make_type_info_var(type,
+	term__context, prog_var, list(hlds_goal), poly_info, poly_info).
+:- mode polymorphism__make_type_info_var(in, in, out, out, in, out) is det.
+
 	% polymorphism__gen_extract_type_info(TypeVar, TypeClassInfoVar, Index,
 	%		ModuleInfo, Goals, TypeInfoVar, ...):
 	%
@@ -2600,10 +2606,6 @@ polymorphism__make_type_info_vars([Type | Types], Context,
 		ExtraVars2, ExtraGoals2, Info1, Info),
 	ExtraVars = [Var | ExtraVars2],
 	list__append(ExtraGoals1, ExtraGoals2, ExtraGoals).
-
-:- pred polymorphism__make_type_info_var(type, prog_context,
-		prog_var, list(hlds_goal), poly_info, poly_info).
-:- mode polymorphism__make_type_info_var(in, in, out, out, in, out) is det.
 
 polymorphism__make_type_info_var(Type, Context, Var, ExtraGoals,
 		Info0, Info) :-

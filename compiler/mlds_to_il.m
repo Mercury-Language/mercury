@@ -293,7 +293,7 @@ transform_mlds(MLDS0) = MLDS :-
 
 	list__filter((pred(D::in) is semidet :-
 			( D = mlds__defn(_, _, _, mlds__function(_, _, _, _))
-			; D = mlds__defn(_, _, _, mlds__data(_, _))
+			; D = mlds__defn(_, _, _, mlds__data(_, _, _))
 			)
 		), MLDS0 ^ defns ++ ExportDefns, MercuryCodeMembers, Others),
 	WrapperClass = wrapper_class(list__map(rename_defn, MercuryCodeMembers)),
@@ -318,8 +318,9 @@ wrapper_class(Members)
 
 rename_defn(defn(Name, Context, Flags, Entity0))
 	= defn(Name, Context, Flags, Entity) :-
-	( Entity0 = data(Type, Initializer),
-		Entity = data(Type, rename_initializer(Initializer))
+	( Entity0 = data(Type, Initializer, GC_TraceCode),
+		Entity = data(Type, rename_initializer(Initializer),
+			rename_maybe_statement(GC_TraceCode))
 	; Entity0 = function(MaybePredProcId, Params, FunctionBody0,
 			Attributes),
 		( FunctionBody0 = defined_here(Stmt),
@@ -337,6 +338,11 @@ rename_defn(defn(Name, Context, Flags, Entity0))
 				list__map(rename_defn, Members)))
 	).
 
+:- func rename_maybe_statement(maybe(mlds__statement)) = maybe(mlds__statement).
+
+rename_maybe_statement(no) = no.
+rename_maybe_statement(yes(Stmt)) = yes(rename_statement(Stmt)).
+
 :- func rename_statement(mlds__statement) = mlds__statement.
 
 rename_statement(statement(block(Defns, Stmts), Context))
@@ -346,14 +352,10 @@ rename_statement(statement(block(Defns, Stmts), Context))
 rename_statement(statement(while(Rval, Loop, IterateOnce), Context))
 	= statement(while(rename_rval(Rval),
 			rename_statement(Loop), IterateOnce), Context).
-rename_statement(statement(if_then_else(Rval, Then, MaybeElse0), Context))
+rename_statement(statement(if_then_else(Rval, Then, MaybeElse), Context))
 	= statement(if_then_else(rename_rval(Rval),
-			rename_statement(Then), MaybeElse), Context) :-
-	( MaybeElse0 = no,
-		MaybeElse = no
-	; MaybeElse0 = yes(Else),
-		MaybeElse = yes(rename_statement(Else))
-	).
+			rename_statement(Then),
+			rename_maybe_statement(MaybeElse)), Context).
 rename_statement(statement(switch(Type, Rval, Range, Cases, Default0), Context))
 	= statement(switch(Type, rename_rval(Rval), Range,
 			list__map(rename_switch_case, Cases), Default),
@@ -502,7 +504,7 @@ rename_var(qual(ModuleName, Name), _Type)
 	% data definitions, but they're not part of the CLS.
 	% Since they are not part of the CLS, we don't generate them,
 	% and so there's no need to handle them here.
-mlds_defn_to_ilasm_decl(defn(_Name, _Context, _Flags, data(_Type, _Init)),
+mlds_defn_to_ilasm_decl(defn(_Name, _Context, _Flags, data(_Type, _Init, _GC)),
 		_Decl, Info, Info) :-
 	sorry(this_file, "top level data definition!").
 mlds_defn_to_ilasm_decl(defn(_Name, _Context, _Flags,
@@ -800,7 +802,7 @@ interface_id_to_class_name(_) = Result :-
 
 generate_method(ClassName, _, defn(Name, Context, Flags, Entity),
 		ClassMember) -->
-	{ Entity = data(Type, DataInitializer) },
+	{ Entity = data(Type, DataInitializer, _GC_TraceCode) },
 
 	{ FieldName = entity_name_to_ilds_id(Name) },
 
@@ -1235,8 +1237,13 @@ mlds_export_to_mlds_defn(
 	list__map_foldl(
 		(pred(RT::in, RV - Lval::out, N0::in, N0 + 1::out) is det :-
 			VN = var_name("returnval" ++ int_to_string(N0), no),
+			% We don't need to worry about tracing variables for
+			% accurate GC in the IL back-end -- the .NET runtime
+			% system itself provides accurate GC.
+			GC_TraceCode = no,
 			RV = ml_gen_mlds_var_decl(
-				var(VN), RT, no_initializer, Context),
+				var(VN), RT, no_initializer, GC_TraceCode,
+				Context),
 			Lval = var(qual(ModuleName, VN), RT)
 		), RetTypes, ReturnVars, 0, _),
 
@@ -1247,9 +1254,10 @@ mlds_export_to_mlds_defn(
 			error("exported method has argument without var name")
 		)
 	),
-	ArgTypes = assoc_list__values(Inputs),
+	ArgTypes = mlds__get_arg_types(Inputs),
 	ArgRvals = list__map(
-		(func(EntName - Type) = lval(var(VarName, Type)) :-
+		(func(mlds__argument(EntName, Type, _GC_TraceCode)) =
+				lval(var(VarName, Type)) :-
 			VarName = EntNameToVarName(EntName)
 		), Inputs),
 	ReturnVarDecls = assoc_list__keys(ReturnVars),
@@ -1305,7 +1313,7 @@ generate_defn_initializer(defn(Name, Context, _DeclFlags, Entity),
 		Tree0, Tree) --> 
 	( 
 		{ Name = data(DataName) },
-		{ Entity = mlds__data(MLDSType, Initializer) }
+		{ Entity = mlds__data(MLDSType, Initializer, _GC_TraceCode) }
 	->
 		( { Initializer = no_initializer } ->
 			{ Tree = Tree0 }
@@ -2806,9 +2814,9 @@ mlds_signature_to_ilds_type_params(DataRep,
 		func_signature(Args, _Returns), Params) :-
 	Params = list__map(mlds_type_to_ilds_type(DataRep), Args).
 
-:- func mlds_arg_to_il_arg(pair(mlds__entity_name, mlds__type)) = 
-		pair(ilds__id, mlds__type).
-mlds_arg_to_il_arg(EntityName - Type) = Id - Type :-
+:- func mlds_arg_to_il_arg(mlds__argument) = pair(ilds__id, mlds__type).
+mlds_arg_to_il_arg(mlds__argument(EntityName, Type, _GC_TraceCode)) =
+		Id - Type :-
 	mangle_entity_name(EntityName, Id).
 
 
@@ -2846,10 +2854,10 @@ params_to_il_signature(DataRep, ModuleName, FuncParams) = ILSignature :-
 	),
 	ILSignature = signature(call_conv(no, default), Param, ILInputTypes).
 
-:- func input_param_to_ilds_type(il_data_rep, mlds_module_name, 
-		pair(entity_name, mlds__type)) = ilds__param.
-input_param_to_ilds_type(DataRep, _ModuleName, EntityName - MldsType) 
-		= ILType - yes(Id) :-
+:- func input_param_to_ilds_type(il_data_rep, mlds_module_name, mlds__argument)
+	= ilds__param.
+input_param_to_ilds_type(DataRep, _ModuleName, Arg) = ILType - yes(Id) :-
+	Arg = mlds__argument(EntityName, MldsType, _GC_TraceCode),
 	mangle_entity_name(EntityName, Id),
 	ILType = mlds_type_to_ilds_type(DataRep, MldsType).
 
@@ -3607,8 +3615,10 @@ common_prefix([X|Xs], [Y|Ys], Prefix, TailXs, TailYs) :-
 
 defn_to_local(ModuleName, 
 	mlds__defn(Name, _Context, _DeclFlags, Entity), Id - MLDSType) :-
-	( Name = data(DataName),
-	  Entity = mlds__data(MLDSType0, _Initializer) ->
+	(
+		Name = data(DataName),
+		Entity = mlds__data(MLDSType0, _Initializer, _GC_TraceCode)
+	->
 		mangle_dataname(DataName, MangledDataName),
 		mangle_mlds_var(qual(ModuleName,
 			var_name(MangledDataName, no)), Id),
@@ -4063,7 +4073,7 @@ il_info_init(ModuleName, AssemblyName, Imports, ILDataRep,
 il_info_new_class(ClassDefn) -->
 	{ ClassDefn = class_defn(_, _, _, _, _, Members) },
 	{ list__filter_map((pred(M::in, S::out) is semidet :-
-			M = mlds__defn(Name, _, _, data(_, _)),
+			M = mlds__defn(Name, _, _, data(_, _, _)),
 			S = entity_name_to_ilds_id(Name)
 		), Members, FieldNames)
 	},

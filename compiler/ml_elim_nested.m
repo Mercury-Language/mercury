@@ -149,9 +149,21 @@
 % and chain these structs together.  At GC time, we traverse the chain
 % of structs.  This allows us to accurately scan the C stack.
 %
-% XXX Currently the only part which is implemented is the code to chain
-%     the stack frames together; we don't yet generate the code to
-%     traverse the stack frames.  Doing that here is tricky...
+% XXX Accurate GC is still not yet fully implemented.
+% TODO:
+%	- add call to GC_check at start of every possibly-recursive function
+%	  that might allocate memory (probably via a separate MLDS pass)
+%	- fix problem with undeclared local vars for some test cases
+%	  (e.g. tests/valid/agc_unbound_typevars*).
+%	- fix problem with type classes & `constraint(...)' types
+%	  (the compiler goes into an infinite loop and runs out of
+%	  stack space for test cases using type classes)
+%	- handle `pragma export'
+%	- support higher-order code: fix problems with tracing closures
+%
+% There are also some things that could be done to improve efficiency,
+% e.g.
+%	- optimize away temporary variables
 %
 %-----------------------------------------------------------------------------%
 %
@@ -173,7 +185,7 @@
 %		void (*trace)(void *this_frame);
 %	};
 %		
-% XXX Currently, rather than using a nested structure,
+% Actually, rather than using a nested structure,
 % we just put these fields directly in the <function_name>_frame struct.
 % (This turned out to be a little easier.)
 %
@@ -233,15 +245,18 @@
 %		...
 %	};
 %
-%	/*
-%	** XXX Generation of the *_trace() functions is
-%	**     not yet implemented.
-%	*/
 %	static void
 %	foo_trace(void *this_frame) {
 %		struct foo_frame *frame = (struct foo_frame *)this_frame;
-%		MR_GC_TRAVERSE(<TypeInfo for type of arg1>, &frame->arg1);
-%		MR_GC_TRAVERSE(<TypeInfo for type of local1>, &frame->local1);
+%
+%		... code to construct TypeInfo for type of arg1 ...
+%		mercury__private_builtin__gc_trace_1_p_0(
+%			<TypeInfo for type of arg1>, &frame->arg1);
+%
+%		... code to construct TypeInfo for type of local1 ...
+%		mercury__private_builtin__gc_trace_1_p_0(
+%			<TypeInfo for type of local1>, &frame->local1);
+%
 %		...
 %	}
 %
@@ -297,9 +312,6 @@
 % This implicitly zeros out the remaining fields.
 % Only the non-null fields, i.e. the arguments and the trace
 % field, need to be explicitly assigned using assignment statements.
-% XXX Currently we leave the trace field as null,
-% since the code to generate the *_trace functions is
-% not yet implemented.
 %
 % The code in the Mercury runtime to traverse the stack frames would
 % look something like this:
@@ -370,20 +382,20 @@ ml_elim_nested(Action, MLDS0, MLDS) -->
 	% Or handle accurate GC:
 	% put all variables that might contain pointers in structs
 	% and chain these structs together into a "shadow stack".
+	% Extract out the code to trace these variables,
+	% putting it in a function whose address is stored in
+	% the shadow stack frame.
 	%
 :- func ml_elim_nested_defns(action, mlds_module_name, globals, outervars,
 		mlds__defn) = list(mlds__defn).
 ml_elim_nested_defns(Action, ModuleName, Globals, OuterVars, Defn0)
 		= Defns :-
 	Defn0 = mlds__defn(Name, Context, Flags, DefnBody0),
-	( DefnBody0 = mlds__function(PredProcId, Params,
+	( DefnBody0 = mlds__function(PredProcId, Params0,
 			defined_here(FuncBody0), Attributes) ->
 		EnvName = ml_env_name(Name, Action),
-			% XXX this should be optimized to generate 
-			% EnvTypeName from just EnvName
-		ml_create_env(Action, EnvName, [], Context, ModuleName, Globals,
-			_EnvTypeDefn, EnvTypeName, _EnvDecls, _InitEnv),
-		
+		EnvTypeName = ml_create_env_type_name(EnvName,
+			 ModuleName, Globals),
 		EnvPtrTypeName = ml_make_env_ptr_type(Globals, EnvTypeName),
 
 		%
@@ -396,11 +408,13 @@ ml_elim_nested_defns(Action, ModuleName, Globals, OuterVars, Defn0)
 		%
 		ElimInfo0 = elim_info_init(Action, ModuleName,
 			OuterVars, EnvTypeName, EnvPtrTypeName),
-		Params = mlds__func_params(Arguments, RetValues),
-		ml_maybe_add_args(Arguments, FuncBody0, ModuleName,
+		Params0 = mlds__func_params(Arguments0, RetValues),
+		ml_maybe_add_args(Arguments0, FuncBody0, ModuleName,
 			Context, ElimInfo0, ElimInfo1),
-		flatten_statement(FuncBody0, FuncBody1, ElimInfo1, ElimInfo),
+		flatten_arguments(Arguments0, Arguments, ElimInfo1, ElimInfo2),
+		flatten_statement(FuncBody0, FuncBody1, ElimInfo2, ElimInfo),
 		elim_info_finish(ElimInfo, NestedFuncs0, Locals),
+		Params = mlds__func_params(Arguments, RetValues),
 
 		%
 		% Split the locals that we need to process
@@ -432,19 +446,22 @@ ml_elim_nested_defns(Action, ModuleName, Globals, OuterVars, Defn0)
 			% Create a struct to hold the local variables,
 			% and initialize the environment pointers for
 			% both the containing function and the nested
-			% functions
+			% functions.  Also generate the GC tracing function,
+			% if Action = chain_gc_stack_frames.
 			%
-			ml_create_env(Action, EnvName, LocalVars, Context,
-				ModuleName, Globals, EnvTypeDefn,
-				_EnvTypeName, EnvDecls, InitEnv),
+			ml_create_env(Action, EnvName, EnvTypeName, LocalVars,
+				Context, ModuleName, Name, Globals,
+				EnvTypeDefn, EnvDecls, InitEnv,
+				GCTraceFuncDefns),
 			list__map_foldl(
-				ml_insert_init_env(EnvTypeName, ModuleName,
-					Globals), NestedFuncs0, NestedFuncs,
+				ml_insert_init_env(Action, EnvTypeName,
+					ModuleName, Globals),
+					NestedFuncs0, NestedFuncs,
 					no, InsertedEnv),
 
 			% Hoist out the local statics and the nested functions
-			HoistedDefns0 = list__append(HoistedStatics,
-				NestedFuncs),
+			HoistedDefns0 = HoistedStatics ++ GCTraceFuncDefns ++
+				NestedFuncs,
 
 			% 
 			% When hoisting nested functions,
@@ -555,12 +572,13 @@ ml_maybe_add_args([], _, _, _) --> [].
 ml_maybe_add_args([Arg|Args], FuncBody, ModuleName, Context) -->
 	=(ElimInfo),
 	(
-		{ Arg = data(var(VarName)) - Type },
-		{ ml_should_add_local_data(ElimInfo, VarName, Type,
+		{ Arg = mlds__argument(data(var(VarName)), _Type,
+			GC_TraceCode) },
+		{ ml_should_add_local_data(ElimInfo, VarName, GC_TraceCode,
 			[], [FuncBody]) }
 	->
 		{ ml_conv_arg_to_var(Context, Arg, ArgToCopy) },
-		elim_info_add_local_data(ArgToCopy)
+		elim_info_add_and_flatten_local_data(ArgToCopy)
 	;
 		[]
 	),
@@ -582,8 +600,9 @@ ml_maybe_copy_args([Arg|Args], FuncBody, ElimInfo, ClassType, EnvPtrTypeName,
 		EnvPtrTypeName,	Context, ArgsToCopy0, CodeToCopyArgs0),
 	ModuleName = elim_info_get_module_name(ElimInfo),
 	(
-		Arg = data(var(VarName)) - FieldType,
-		ml_should_add_local_data(ElimInfo, VarName, FieldType,
+		Arg = mlds__argument(data(var(VarName)), FieldType,
+			GC_TraceCode),
+		ml_should_add_local_data(ElimInfo, VarName, GC_TraceCode,
 			[], [FuncBody])
 	->
 		ml_conv_arg_to_var(Context, Arg, ArgToCopy),
@@ -599,8 +618,9 @@ ml_maybe_copy_args([Arg|Args], FuncBody, ElimInfo, ClassType, EnvPtrTypeName,
 		FieldName = named_field(qual(EnvModuleName, FieldNameString),
 			EnvPtrTypeName),
 		Tag = yes(0),
+		EnvPtrName = env_name_base(ElimInfo ^ action) ++ "_ptr",
 		EnvPtr = lval(var(qual(ModuleName,
-				mlds__var_name("env_ptr", no)),
+				mlds__var_name(EnvPtrName, no)),
 			EnvPtrTypeName)),
 		EnvArgLval = field(Tag, EnvPtr, FieldName, FieldType, 
 			EnvPtrTypeName),
@@ -615,6 +635,22 @@ ml_maybe_copy_args([Arg|Args], FuncBody, ElimInfo, ClassType, EnvPtrTypeName,
 		CodeToCopyArgs = CodeToCopyArgs0
 	).
 
+	% Create the environment struct type.
+:- func ml_create_env_type_name(mlds__class_name, mlds_module_name, globals) =
+	mlds__type.
+ml_create_env_type_name(EnvClassName, ModuleName, Globals) = EnvTypeName :-
+		% If we're allocating it on the heap, then we need to use 
+		% a class type rather than a struct (value type).
+		% This is needed for verifiable code on the IL back-end.
+	globals__lookup_bool_option(Globals, put_nondet_env_on_heap, OnHeap),
+	( OnHeap = yes ->
+		EnvTypeKind = mlds__class
+	;
+		EnvTypeKind = mlds__struct
+	),
+	EnvTypeName = class_type(qual(ModuleName, EnvClassName), 0,
+		EnvTypeKind).
+
 	% Create the environment struct type,
 	% the declaration of the environment variable,
 	% and the declaration and initializer for the environment
@@ -627,19 +663,24 @@ ml_maybe_copy_args([Arg|Args], FuncBody, ElimInfo, ClassType, EnvPtrTypeName,
 	%	struct <EnvClassName> *env_ptr;
 	%	env_ptr = &env;
 	%
-:- pred ml_create_env(action, mlds__class_name, list(mlds__defn), mlds__context,
-		mlds_module_name, globals, mlds__defn, mlds__type,
-		list(mlds__defn), list(mlds__statement)).
-:- mode ml_create_env(in, in, in, in, in, in, out, out, out, out) is det.
+:- pred ml_create_env(action, mlds__class_name, mlds__type, list(mlds__defn),
+		mlds__context, mlds_module_name, mlds__entity_name, globals,
+		mlds__defn, list(mlds__defn), list(mlds__statement),
+		list(mlds__defn)).
+:- mode ml_create_env(in, in, in, in, in, in, in, in, out, out, out, out)
+		is det.
 
-ml_create_env(Action, EnvClassName, LocalVars, Context, ModuleName, Globals,
-		EnvTypeDefn, EnvTypeName, EnvDecls, InitEnv) :-
+ml_create_env(Action, EnvClassName, EnvTypeName, LocalVars, Context,
+		ModuleName, FuncName, Globals, EnvTypeDefn, EnvDecls, InitEnv,
+		GCTraceFuncDefns) :-
 	%
 	% generate the following type:
 	%
 	%	struct <EnvClassName> {
 	%	  #ifdef ACCURATE_GC
-	%		struct MR_StackChain fixed_fields;
+	%		/* these fixed fields match `struct MR_StackChain' */
+	%		void *prev;
+	%		void (*trace)(...);
 	%	  #endif
 	%		<LocalVars>
 	%	};
@@ -655,69 +696,35 @@ ml_create_env(Action, EnvClassName, LocalVars, Context, ModuleName, Globals,
 		EnvTypeKind = mlds__struct,
 		BaseClasses = []
 	),
-	EnvTypeName = class_type(qual(ModuleName, EnvClassName), 0,
-		EnvTypeKind),
 	EnvTypeEntityName = type(EnvClassName, 0),
 	EnvTypeFlags = env_type_decl_flags,
 	Fields0 = list__map(convert_local_to_field, LocalVars),
 
+	%
+	% Extract the GC tracing code from the fields
+	%
+	list__map2(extract_gc_trace_code, Fields0, Fields1,
+		GC_TraceStatements0),
+	GC_TraceStatements = list__condense(GC_TraceStatements0),
+
 	( Action = chain_gc_stack_frames ->
-		%
-		% insert the fixed fields:
-		%	void *prev;
-		%	void (*trace)(...);
-		%
-		PrevFieldName = data(var(var_name("prev", no))),
-		PrevFieldFlags = ml_gen_public_field_decl_flags,
-		PrevFieldType = mlds__generic_env_ptr_type,
-		PrevFieldDefnBody = mlds__data(PrevFieldType, no_initializer),
-		PrevFieldDecl = mlds__defn(PrevFieldName, Context,
-				PrevFieldFlags, PrevFieldDefnBody),
-
-		TraceFieldName = data(var(var_name("trace", no))),
-		TraceFieldFlags = ml_gen_public_field_decl_flags,
-		TraceFieldType = mlds__generic_type, % XXX
-		TraceFieldDefnBody = mlds__data(TraceFieldType, no_initializer),
-		TraceFieldDecl = mlds__defn(TraceFieldName, Context,
-				TraceFieldFlags, TraceFieldDefnBody),
-
-		Fields = [PrevFieldDecl, TraceFieldDecl | Fields0],
-
-		%
-		% Set the initializer for the `prev' field
-		% to the global stack chain.
-		%
-		% Since there no values for the remaining fields in the
-		% initializer, this means the remaining fields will get
-		% initialized to zero (C99 6.7.8 #21).
-		%
-		% XXX This uses a non-const initializer, which is a
-		% feature that is only supported in C99 and GNU C;
-		% it won't work in C89.  We should just generate
-		% a bunch of assignments to all the fields,
-		% rather than relying on initializers like this.
-		%
-		% XXX We should initialize the `trace' field.
-		%
-		StackChain = ml_stack_chain_var,
-		EnvInitializer = init_struct([init_obj(lval(StackChain))]),
-
-		%
-		% Generate code to set the global stack chain
-		% to point to the current environment.
-		%	 stack_chain = env_ptr;
-		%
-		EnvPtrTypeName = ml_make_env_ptr_type(Globals, EnvTypeName),
-		EnvPtr = lval(var(qual(ModuleName,
-				mlds__var_name("env_ptr", no)),
-			EnvPtrTypeName)),
-		AssignToStackChain = assign(StackChain, EnvPtr),
-		LinkStackChain = [mlds__statement(atomic(AssignToStackChain),
-			Context)]
+		ml_chain_stack_frames(Fields1, GC_TraceStatements,
+			EnvTypeName, Context, FuncName, ModuleName, Globals,
+			Fields, EnvInitializer, LinkStackChain,
+			GCTraceFuncDefns),
+		GC_TraceEnv = no
 	;
-		Fields = Fields0,
+		( GC_TraceStatements = [] ->
+			GC_TraceEnv = no
+		;
+			GC_TraceEnv = yes(
+				ml_block([], GC_TraceStatements, Context)
+			)
+		),
+		Fields = Fields1,
 		EnvInitializer = no_initializer,
-		LinkStackChain = []
+		LinkStackChain = [],
+		GCTraceFuncDefns = []
 	),
 
 	Imports = [],
@@ -733,17 +740,18 @@ ml_create_env(Action, EnvClassName, LocalVars, Context, ModuleName, Globals,
 	%
 	%	struct <EnvClassName> env; // = { ... }
 	%
-	EnvVarName = data(var(var_name("env", no))),
+	EnvVarName = var_name(env_name_base(Action), no),
+	EnvVarEntityName = data(var(EnvVarName)),
 	EnvVarFlags = ml_gen_local_var_decl_flags,
-	EnvVarDefnBody = mlds__data(EnvTypeName, EnvInitializer),
-	EnvVarDecl = mlds__defn(EnvVarName, Context, EnvVarFlags,
+	EnvVarDefnBody = mlds__data(EnvTypeName, EnvInitializer, GC_TraceEnv),
+	EnvVarDecl = mlds__defn(EnvVarEntityName, Context, EnvVarFlags,
 		EnvVarDefnBody),
 
 	%
 	% declare the `env_ptr' var, and
 	% initialize the `env_ptr' with the address of `env'
 	%
-	EnvVar = qual(ModuleName, mlds__var_name("env", no)),
+	EnvVar = qual(ModuleName, EnvVarName),
 
 	%
 	% generate code to initialize the environment pointer,
@@ -761,10 +769,187 @@ ml_create_env(Action, EnvClassName, LocalVars, Context, ModuleName, Globals,
 		EnvVarAddr = mem_addr(var(EnvVar, EnvTypeName)),
 		NewObj = []
 	),
-	ml_init_env(EnvTypeName, EnvVarAddr, Context, ModuleName,
+	ml_init_env(Action, EnvTypeName, EnvVarAddr, Context, ModuleName,
 		Globals, EnvPtrVarDecl, InitEnv0),
 	EnvDecls = [EnvVarDecl, EnvPtrVarDecl],
 	InitEnv = NewObj ++ [InitEnv0] ++ LinkStackChain.
+
+:- pred ml_chain_stack_frames(mlds__defns, mlds__statements, mlds__type,
+		mlds__context, mlds__entity_name, mlds_module_name, globals,
+		mlds__defns, mlds__initializer, mlds__statements, mlds__defns).
+:- mode ml_chain_stack_frames(in, in, in, in, in, in, in, out, out, out, out)
+		is det.
+
+ml_chain_stack_frames(Fields0, GCTraceStatements, EnvTypeName, Context,
+		FuncName, ModuleName, Globals, Fields,
+		EnvInitializer, LinkStackChain, GCTraceFuncDefns) :-
+	%
+	% Generate code to declare and initialize the
+	% environment pointer for the GC trace function
+	% from that function's `this_frame' parameter:
+	%
+	%	struct foo_frame *frame;
+	%	frame = (struct foo_frame *) this_frame;
+	%
+	ThisFrameName = qual(ModuleName, var_name("this_frame", no)),
+	ThisFrameRval = lval(var(ThisFrameName,
+		mlds__generic_type)),
+	CastThisFrameRval = unop(cast(mlds__ptr_type(EnvTypeName)),
+		ThisFrameRval),
+	ml_init_env(chain_gc_stack_frames, EnvTypeName, CastThisFrameRval,
+		Context, ModuleName, Globals, FramePtrDecl, InitFramePtr),
+
+	%
+	% Put the environment pointer declaration and initialization
+	% and the GC tracing code in a function:
+	%
+	%	void foo_trace(void *this_frame) {
+	%		struct foo_frame *frame;
+	%		frame = (struct foo_frame *) this_frame;
+	%		<GCTraceStatements>
+	%	}
+	%
+	gen_gc_trace_func(FuncName, ModuleName,
+		FramePtrDecl, [InitFramePtr | GCTraceStatements],
+		Context, GCTraceFuncAddr, GCTraceFuncParams,
+		GCTraceFuncDefn),
+	GCTraceFuncDefns = [GCTraceFuncDefn],
+
+	%
+	% insert the fixed fields in the struct <EnvClassName>:
+	%	void *prev;
+	%	void (*trace)(...);
+	%
+	PrevFieldName = data(var(var_name("prev", no))),
+	PrevFieldFlags = ml_gen_public_field_decl_flags,
+	PrevFieldType = mlds__generic_env_ptr_type,
+	PrevFieldDefnBody = mlds__data(PrevFieldType,
+		no_initializer, no),
+	PrevFieldDecl = mlds__defn(PrevFieldName, Context,
+			PrevFieldFlags, PrevFieldDefnBody),
+
+	TraceFieldName = data(var(var_name("trace", no))),
+	TraceFieldFlags = ml_gen_public_field_decl_flags,
+	TraceFieldType = mlds__func_type(GCTraceFuncParams),
+	TraceFieldDefnBody = mlds__data(TraceFieldType,
+		no_initializer, no),
+	TraceFieldDecl = mlds__defn(TraceFieldName, Context,
+			TraceFieldFlags, TraceFieldDefnBody),
+
+	Fields = [PrevFieldDecl, TraceFieldDecl | Fields0],
+
+	%
+	% Set the initializer so that the `prev' field
+	% is initialized to the global stack chain,
+	% and the `trace' field is initialized to the
+	% address of the GC tracing function:
+	%
+	%	... = { stack_chain, foo_trace };
+	%
+	% Since there no values for the remaining fields in the
+	% initializer, this means the remaining fields will get
+	% initialized to zero (C99 6.7.8 #21).
+	%
+	% XXX This uses a non-const initializer, which is a
+	% feature that is only supported in C99 and GNU C;
+	% it won't work in C89.  We should just generate
+	% a bunch of assignments to all the fields,
+	% rather than relying on initializers like this.
+	%
+	StackChain = ml_stack_chain_var,
+	EnvInitializer = init_struct([
+		init_obj(lval(StackChain)),
+		init_obj(const(code_addr_const(GCTraceFuncAddr)))
+	]),
+
+	%
+	% Generate code to set the global stack chain
+	% to point to the current environment:
+	%
+	%	 stack_chain = frame_ptr;
+	%
+	EnvPtrTypeName = ml_make_env_ptr_type(Globals, EnvTypeName),
+	EnvPtr = lval(var(qual(ModuleName,
+			mlds__var_name("frame_ptr", no)),
+		EnvPtrTypeName)),
+	AssignToStackChain = assign(StackChain, EnvPtr),
+	LinkStackChain = [mlds__statement(atomic(AssignToStackChain),
+		Context)].
+
+:- pred gen_gc_trace_func(mlds__entity_name, mlds_module_name,
+		mlds__defn, list(mlds__statement), mlds__context,
+		mlds__code_addr, mlds__func_params, mlds__defn).
+:- mode gen_gc_trace_func(in, in, in, in, in, out, out, out) is det.
+
+gen_gc_trace_func(FuncName, PredModule, FramePointerDecl, GCTraceStatements,
+		Context, GCTraceFuncAddr, FuncParams, GCTraceFuncDefn) :-
+	%
+	% Compute the signature of the GC tracing function
+	%
+	ArgName = data(var(var_name("this_frame", no))),
+	ArgType = mlds__generic_type,
+	Argument = mlds__argument(ArgName, ArgType, no),
+	FuncParams = mlds__func_params([Argument], []),
+	Signature = mlds__get_func_signature(FuncParams),
+	%
+	% Compute the name of the GC tracing function
+	%
+	% To compute the name, we just take the name of the original function
+	% and add 100000 to the original function's sequence number.
+	% XXX This is a bit of a hack; maybe we should add
+	% another field to the `function' ctor for mlds__entity_name.
+	%
+	( FuncName = function(PredLabel, ProcId, MaybeSeqNum, PredId) ->
+		( MaybeSeqNum = yes(SeqNum)
+		; MaybeSeqNum = no, SeqNum = 0
+		),
+		NewSeqNum = SeqNum + 100000,
+		GCTraceFuncName = function(PredLabel, ProcId, yes(NewSeqNum),
+			PredId),
+		ProcLabel = qual(PredModule, PredLabel - ProcId),
+		GCTraceFuncAddr = internal(ProcLabel, NewSeqNum, Signature)
+	;
+		error("gen_gc_trace_func: not a function")
+	),
+	%
+	% Construct the function definition
+	%
+	Statement = mlds__statement(
+		block([FramePointerDecl], GCTraceStatements),
+		Context),
+	DeclFlags = ml_gen_gc_trace_func_decl_flags,
+	MaybePredProcId = no,
+	Attributes = [],
+	FuncDefn = function(MaybePredProcId, FuncParams, 
+		defined_here(Statement), Attributes),
+	GCTraceFuncDefn = mlds__defn(GCTraceFuncName, Context, DeclFlags,
+		FuncDefn).
+
+	% Return the declaration flags appropriate for a procedure definition.
+	%
+:- func ml_gen_gc_trace_func_decl_flags = mlds__decl_flags.
+ml_gen_gc_trace_func_decl_flags = MLDS_DeclFlags :-
+	Access = private,
+	PerInstance = one_copy,
+	Virtuality = non_virtual,
+	Finality = overridable,
+	Constness = modifiable,
+	Abstractness = concrete,
+	MLDS_DeclFlags = init_decl_flags(Access, PerInstance,
+		Virtuality, Finality, Constness, Abstractness).
+
+:- pred extract_gc_trace_code(mlds__defn, mlds__defn, mlds__statements).
+:- mode extract_gc_trace_code(in, out, out) is det.
+
+extract_gc_trace_code(mlds__defn(Name, Context, Flags, Body0),
+		mlds__defn(Name, Context, Flags, Body), GCTraceStmts) :-
+	( Body0 = data(Type, Init, yes(GCTraceStmt)) ->
+		Body = data(Type, Init, no),
+		GCTraceStmts = [GCTraceStmt]
+	;
+		Body = Body0,
+		GCTraceStmts = []
+	).
 
 	% When converting local variables into fields of the
 	% environment struct, we need to change `local' access
@@ -813,10 +998,11 @@ convert_local_to_global(mlds__defn(Name, Context, Flags0, Body)) =
 	% If we perform this transformation, set Init to "yes",
 	% otherwise leave it unchanged.
 	%
-:- pred ml_insert_init_env(mlds__type, mlds_module_name, globals,
+:- pred ml_insert_init_env(action, mlds__type, mlds_module_name, globals,
 		mlds__defn, mlds__defn, bool, bool).
-:- mode ml_insert_init_env(in, in, in, in, out, in, out) is det.
-ml_insert_init_env(TypeName, ModuleName, Globals, Defn0, Defn, Init0, Init) :-
+:- mode ml_insert_init_env(in, in, in, in, in, out, in, out) is det.
+ml_insert_init_env(Action, TypeName, ModuleName, Globals, Defn0, Defn,
+		Init0, Init) :-
 	Defn0 = mlds__defn(Name, Context, Flags, DefnBody0),
 	(
 		DefnBody0 = mlds__function(PredProcId, Params,
@@ -834,8 +1020,8 @@ ml_insert_init_env(TypeName, ModuleName, Globals, Defn0, Defn, Init0, Init) :-
 			% environment type for this procedure.
 		CastEnvPtrVal = unop(cast(EnvPtrVarType), EnvPtrVal),
 
-		ml_init_env(TypeName, CastEnvPtrVal, Context, ModuleName,
-			Globals, EnvPtrDecl, InitEnvPtr),
+		ml_init_env(Action, TypeName, CastEnvPtrVal, Context,
+			ModuleName, Globals, EnvPtrDecl, InitEnvPtr),
 		FuncBody = mlds__statement(block([EnvPtrDecl],
 				[InitEnvPtr, FuncBody0]), Context),
 		DefnBody = mlds__function(PredProcId, Params,
@@ -863,24 +1049,30 @@ ml_make_env_ptr_type(Globals, EnvType) = EnvPtrType :-
 	%	struct <EnvClassName> *env_ptr;
 	%	env_ptr = <EnvPtrVal>;
 	%
-:- pred ml_init_env(mlds__type, mlds__rval,
+:- pred ml_init_env(action, mlds__type, mlds__rval,
 		mlds__context, mlds_module_name, globals,
 		mlds__defn, mlds__statement).
-:- mode ml_init_env(in, in, in, in, in, out, out) is det.
+:- mode ml_init_env(in, in, in, in, in, in, out, out) is det.
 
-ml_init_env(EnvTypeName, EnvPtrVal, Context, ModuleName, Globals,
+ml_init_env(Action, EnvTypeName, EnvPtrVal, Context, ModuleName, Globals,
 		EnvPtrVarDecl, InitEnvPtr) :-
 	%
 	% generate the following variable declaration:
 	%
 	%	<EnvTypeName> *env_ptr;
 	%
-	EnvPtrVarName = data(var(mlds__var_name("env_ptr", no))),
+	EnvPtrVarName = mlds__var_name(env_name_base(Action) ++ "_ptr", no),
+	EnvPtrVarEntityName = data(var(EnvPtrVarName)),
 	EnvPtrVarFlags = ml_gen_local_var_decl_flags,
 	EnvPtrVarType = ml_make_env_ptr_type(Globals, EnvTypeName),
-	EnvPtrVarDefnBody = mlds__data(EnvPtrVarType, no_initializer),
-	EnvPtrVarDecl = mlds__defn(EnvPtrVarName, Context, EnvPtrVarFlags,
-		EnvPtrVarDefnBody),
+	% The env_ptr never needs to be traced by the GC,
+	% since the environment that it points to will always
+	% be on the stack, not into the heap.
+	GC_TraceCode = no,
+	EnvPtrVarDefnBody = mlds__data(EnvPtrVarType, no_initializer,
+		GC_TraceCode),
+	EnvPtrVarDecl = mlds__defn(EnvPtrVarEntityName, Context,
+		EnvPtrVarFlags, EnvPtrVarDefnBody),
 
 	%
 	% generate the following statement:
@@ -890,7 +1082,7 @@ ml_init_env(EnvTypeName, EnvPtrVal, Context, ModuleName, Globals,
 	% (note that the caller of this routine is responsible
 	% for inserting a cast in <EnvPtrVal> if needed).
 	%
-	EnvPtrVar = qual(ModuleName, mlds__var_name("env_ptr", no)),
+	EnvPtrVar = qual(ModuleName, EnvPtrVarName),
 	AssignEnvPtr = assign(var(EnvPtrVar, EnvPtrVarType), EnvPtrVal),
 	InitEnvPtr = mlds__statement(atomic(AssignEnvPtr), Context).
 
@@ -899,13 +1091,13 @@ ml_init_env(EnvTypeName, EnvPtrVal, Context, ModuleName, Globals,
 	% struct field.  We need to do this so as to include function
 	% parameter in the environment struct.
 	%
-:- pred ml_conv_arg_to_var(mlds__context, pair(entity_name, mlds__type),
-		mlds__defn).
+:- pred ml_conv_arg_to_var(mlds__context, mlds__argument, mlds__defn).
 :- mode ml_conv_arg_to_var(in, in, out) is det.
 
-ml_conv_arg_to_var(Context, Name - Type, LocalVar) :-
+ml_conv_arg_to_var(Context, Arg, LocalVar) :-
+	Arg = mlds__argument(Name, Type, GC_TraceCode),
 	Flags = ml_gen_local_var_decl_flags,
-	DefnBody = mlds__data(Type, no_initializer),
+	DefnBody = mlds__data(Type, no_initializer, GC_TraceCode),
 	LocalVar = mlds__defn(Name, Context, Flags, DefnBody).
 
 	% Return the declaration flags appropriate for an environment struct
@@ -963,7 +1155,7 @@ ml_env_name(data(_), _) = _ :-
 	error("ml_env_name: expected function, got data").
 ml_env_name(function(PredLabel, ProcId, MaybeSeqNum, _PredId),
 		Action) = ClassName :-
-	Base = (if Action = chain_gc_stack_frames then "locals" else "env"),
+	Base = env_name_base(Action),
 	PredLabelString = ml_pred_label_name(PredLabel),
 	proc_id_to_int(ProcId, ModeNum),
 	( MaybeSeqNum = yes(SeqNum) ->
@@ -977,6 +1169,10 @@ ml_env_name(function(PredLabel, ProcId, MaybeSeqNum, _PredId),
 	).
 ml_env_name(export(_), _) = _ :-
 	error("ml_env_name: expected function, got export").
+
+:- func env_name_base(action) = string.
+env_name_base(chain_gc_stack_frames) = "frame".
+env_name_base(hoist_nested_funcs) = "env".
 
 :- func ml_pred_label_name(mlds__pred_label) = string.
 
@@ -1017,8 +1213,10 @@ ml_module_name_string(ModuleName) = ModuleNameString :-
 %-----------------------------------------------------------------------------%
 
 %
-% flatten_maybe_statement:
+% flatten_arguments:
+% flatten_argument:
 % flatten_function_body:
+% flatten_maybe_statement:
 % flatten_statements:
 % flatten_statement:
 %	Recursively process the statement(s), calling fixup_var on every
@@ -1026,6 +1224,22 @@ ml_module_name_string(ModuleName) = ModuleNameString :-
 %	for every definition they contain (e.g. definitions of local
 %	variables and nested functions).
 %
+
+:- pred flatten_arguments(mlds__arguments, mlds__arguments,
+		elim_info, elim_info).
+:- mode flatten_arguments(in, out, in, out) is det.
+
+flatten_arguments(Arguments0, Arguments) -->
+	list__map_foldl(flatten_argument, Arguments0, Arguments).
+
+:- pred flatten_argument(mlds__argument, mlds__argument,
+		elim_info, elim_info).
+:- mode flatten_argument(in, out, in, out) is det.
+
+flatten_argument(Argument0, Argument) -->
+	{ Argument0 = mlds__argument(Name, Type, MaybeGCTraceCode0) },
+	{ Argument = mlds__argument(Name, Type, MaybeGCTraceCode) },
+	flatten_maybe_statement(MaybeGCTraceCode0, MaybeGCTraceCode).
 
 :- pred flatten_function_body(function_body, function_body,
 		elim_info, elim_info).
@@ -1176,36 +1390,44 @@ flatten_nested_defn(Defn0, FollowingDefns, FollowingStatements, Defns) -->
 		%
 		% mark the function as private / one_copy,
 		% rather than as local / per_instance,
-		% since we're about to hoist it out to the top level
+		% if we're about to hoist it out to the top level
 		%
-		{ Flags1 = set_access(Flags0, private) },
-		{ Flags = set_per_instance(Flags1, one_copy) },
-
-		{ DefnBody = mlds__function(PredProcId, Params, FuncBody,
-			Attributes) },
+		=(ElimInfo),
+		{ Action = ElimInfo ^ action },
+		( { Action = hoist_nested_funcs } ->
+			{ Flags1 = set_access(Flags0, private) },
+			{ Flags = set_per_instance(Flags1, one_copy) }
+		;
+			{ Flags = Flags0 }
+		),
+		{ DefnBody = mlds__function(PredProcId, Params,
+			FuncBody, Attributes) },
 		{ Defn = mlds__defn(Name, Context, Flags, DefnBody) },
+		( { Action = hoist_nested_funcs } ->
+			% Note that we assume that we can safely hoist stuff
+			% inside nested functions into the containing function.
+			% If that wasn't the case, we'd need code something
+			% like this:
+			/***************
+			{ LocalVars = elim_info_get_local_data(ElimInfo) },
+			{ OuterVars0 = elim_info_get_outer_vars(ElimInfo) },
+			{ OuterVars = [LocalVars | OuterVars0] },
+			{ FlattenedDefns = ml_elim_nested_defns(ModuleName,
+				OuterVars, Defn0) },
+			list__foldl(elim_info_add_nested_func, FlattenedDefns),
+			***************/
 
-		% Note that we assume that we can safely hoist stuff
-		% inside nested functions into the containing function.
-		% If that wasn't the case, we'd need code something
-		% like this:
-		/***************
-		{ LocalVars = elim_info_get_local_data(ElimInfo) },
-		{ OuterVars0 = elim_info_get_outer_vars(ElimInfo) },
-		{ OuterVars = [LocalVars | OuterVars0] },
-		{ FlattenedDefns = ml_elim_nested_defns(ModuleName,
-			OuterVars, Defn0) },
-		list__foldl(elim_info_add_nested_func, FlattenedDefns),
-		***************/
-
-		%
-		% strip out the now flattened nested function,
-		% and store it in the elim_info
-		%
-		elim_info_add_nested_func(Defn),
-		{ Defns = [] }
+			%
+			% strip out the now flattened nested function,
+			% and store it in the elim_info
+			%
+			elim_info_add_nested_func(Defn),
+			{ Defns = [] }
+		;
+			{ Defns = [Defn] }
+		)
 	;
-		{ DefnBody0 = mlds__data(Type, _) },
+		{ DefnBody0 = mlds__data(Type, Init, MaybeGCTraceCode0) },
 		%
 		% for local variable definitions, if they are
 		% referenced by any nested functions, then
@@ -1225,14 +1447,19 @@ flatten_nested_defn(Defn0, FollowingDefns, FollowingStatements, Defns) -->
 			;
 				{ Name = data(var(VarName)) },
 				{ ml_should_add_local_data(ElimInfo,
-					VarName, Type,
+					VarName, MaybeGCTraceCode0,
 					FollowingDefns, FollowingStatements) }
 			)
 		->
-			elim_info_add_local_data(Defn0),
+			elim_info_add_and_flatten_local_data(Defn0),
 			{ Defns = [] }
 		;
-			{ Defns = [Defn0] }
+			flatten_maybe_statement(MaybeGCTraceCode0,
+				MaybeGCTraceCode),
+			{ DefnBody = mlds__data(Type, Init, MaybeGCTraceCode) },
+			{ Defn = mlds__defn(Name, Context, Flags0, DefnBody) },
+
+			{ Defns = [Defn] }
 		)
 	;
 		{ DefnBody0 = mlds__class(_) },
@@ -1252,16 +1479,16 @@ flatten_nested_defn(Defn0, FollowingDefns, FollowingStatements, Defns) -->
 	% it should be added to the environment struct
 	% (if it's a variable) or hoisted out to the top level
 	% (if it's a static const).
-:- pred ml_should_add_local_data(elim_info, mlds__var_name, mlds__type,
-		mlds__defns, mlds__statements).
+:- pred ml_should_add_local_data(elim_info, mlds__var_name,
+		mlds__maybe_gc_trace_code, mlds__defns, mlds__statements).
 :- mode ml_should_add_local_data(in, in, in, in, in) is semidet.
 
-ml_should_add_local_data(ElimInfo, VarName, Type,
+ml_should_add_local_data(ElimInfo, VarName, MaybeGCTraceCode,
 		FollowingDefns, FollowingStatements) :-
 	Action = ElimInfo ^ action,
 	(
 		Action = chain_gc_stack_frames,
-		ml_type_might_contain_pointers(Type) = yes
+		MaybeGCTraceCode = yes(_)
 	;
 		Action = hoist_nested_funcs,
 		ml_need_to_hoist(ElimInfo ^ module_name, VarName,
@@ -1282,6 +1509,9 @@ ml_should_add_local_data(ElimInfo, VarName, Type,
 	% so to keep things simple we do the same for the
 	% C back-end to, i.e. we always hoist all static constants.
 	%
+	% XXX Do we need to check for references from the GC_TraceCode
+	% fields here?
+	%
 :- pred ml_need_to_hoist(mlds_module_name, mlds__var_name,
 		mlds__defns, mlds__statements).
 :- mode ml_need_to_hoist(in, in, in, in) is semidet.
@@ -1301,64 +1531,40 @@ ml_need_to_hoist(ModuleName, VarName,
 		defn_contains_var(FollowingDefn, QualVarName)
 	;
 		FollowingDefn = mlds__defn(_, _, _,
-			mlds__data(_, Initializer)),
+			mlds__data(_, Initializer, _)),
 		ml_decl_is_static_const(FollowingDefn),
 		initializer_contains_var(Initializer, QualVarName)
 	).
 
-	% Return `yes' if the type needs to be traced by
-	% the accurate garbage collector, i.e. if it might
-	% contain pointers.
 	%
-	% It's always safe to return `yes' here, so if in doubt, we do.
+	% Add the variable definition to the
+	% local_data field of the elim_info,
+	% fix up any references inside the GC tracing code,
+	% and then update the GC tracing code in the
+	% local_data.
 	%
-	% For floats, we can return `no' even though they might
-	% get boxed in some circumstances, because if they are
-	% boxed then they will be represented as mlds__generic_type.
+	% Note that we need to add the variable definition
+	% to the local_data *before* we fix up the GC tracing
+	% code, otherwise references to the variable itself
+	% in the GC tracing code won't get fixed.
 	%
-	% Note that with --gcc-nested-functions,
-	% cont_type will be a function pointer that
-	% may point to a trampoline function,
-	% which might in fact contain pointers.
-	% But the pointers will only be pointers to
-	% code and pointers to the stack, not pointers
-	% to the heap, so we don't need to trace them
-	% for accurate GC.
-	% Hence we can return `no' here for mlds__cont_type.
+:- pred elim_info_add_and_flatten_local_data(mlds__defn::in,
+		elim_info::in, elim_info::out) is det.
 
-:- func ml_type_might_contain_pointers(mlds__type) = bool.
-
-ml_type_might_contain_pointers(mercury_type(_Type, TypeCategory, _)) =
-	ml_type_category_might_contain_pointers(TypeCategory).
-ml_type_might_contain_pointers(mercury_array_type(_)) = yes.
-ml_type_might_contain_pointers(mlds__native_int_type) = no.
-ml_type_might_contain_pointers(mlds__native_float_type) = no.
-ml_type_might_contain_pointers(mlds__native_bool_type) = no.
-ml_type_might_contain_pointers(mlds__native_char_type) = no.
-ml_type_might_contain_pointers(mlds__foreign_type(_, _)) = yes.
-ml_type_might_contain_pointers(mlds__class_type(_, _, Category)) =
-	(if Category = mlds__enum then no else yes).
-ml_type_might_contain_pointers(mlds__ptr_type(_)) = yes.
-ml_type_might_contain_pointers(mlds__array_type(_)) = yes.
-ml_type_might_contain_pointers(mlds__func_type(_)) = no.
-ml_type_might_contain_pointers(mlds__generic_type) = yes.
-ml_type_might_contain_pointers(mlds__generic_env_ptr_type) = yes.
-ml_type_might_contain_pointers(mlds__pseudo_type_info_type) = yes.
-ml_type_might_contain_pointers(mlds__cont_type(_)) = no. 
-ml_type_might_contain_pointers(mlds__commit_type) = no.
-ml_type_might_contain_pointers(mlds__rtti_type(_)) = yes.
-ml_type_might_contain_pointers(mlds__unknown_type) = yes.
-
-:- func ml_type_category_might_contain_pointers(builtin_type) = bool.
-ml_type_category_might_contain_pointers(int_type) = no.
-ml_type_category_might_contain_pointers(char_type) = no.
-ml_type_category_might_contain_pointers(str_type) = yes.
-ml_type_category_might_contain_pointers(float_type) = no.
-ml_type_category_might_contain_pointers(pred_type) = yes.
-ml_type_category_might_contain_pointers(tuple_type) = yes.
-ml_type_category_might_contain_pointers(enum_type) = no.
-ml_type_category_might_contain_pointers(polymorphic_type) = yes.
-ml_type_category_might_contain_pointers(user_type) = yes.
+elim_info_add_and_flatten_local_data(Defn0) -->
+	(
+		{ Defn0 = mlds__defn(Name, Context, Flags, DefnBody0) },
+		{ DefnBody0 = mlds__data(Type, Init, MaybeGCTraceCode0) }
+	->
+		elim_info_add_local_data(Defn0),
+		flatten_maybe_statement(MaybeGCTraceCode0, MaybeGCTraceCode),
+		{ DefnBody = mlds__data(Type, Init, MaybeGCTraceCode) },
+		{ Defn = mlds__defn(Name, Context, Flags, DefnBody) },
+		elim_info_remove_local_data(Defn0),
+		elim_info_add_local_data(Defn)
+	;
+		elim_info_add_local_data(Defn0)
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -1513,6 +1719,7 @@ fixup_var(ThisVar, ThisVarType, Lval, ElimInfo, ElimInfo) :-
 	Locals = elim_info_get_local_data(ElimInfo),
 	ClassType = elim_info_get_env_type_name(ElimInfo),
 	EnvPtrVarType = elim_info_get_env_ptr_type_name(ElimInfo),
+	Action = ElimInfo ^ action,
 	(
 		%
 		% Check for references to local variables
@@ -1523,13 +1730,13 @@ fixup_var(ThisVar, ThisVarType, Lval, ElimInfo, ElimInfo) :-
 		IsLocalVar = (pred(VarType::out) is nondet :-
 			list__member(Var, Locals),
 			Var = mlds__defn(data(var(ThisVarName)), _, _, 
-				data(VarType, _)),
+				data(VarType, _, _)),
 			\+ ml_decl_is_static_const(Var)
 			),
 		solutions(IsLocalVar, [FieldType])
 	->
 		EnvPtr = lval(var(qual(ModuleName,
-			mlds__var_name("env_ptr", no)),
+			mlds__var_name(env_name_base(Action) ++ "_ptr", no)),
 			EnvPtrVarType)),
 		EnvModuleName = ml_env_module_name(ClassType),
 		ThisVarFieldName = ml_var_name_to_string(ThisVarName),
@@ -1542,6 +1749,7 @@ fixup_var(ThisVar, ThisVarType, Lval, ElimInfo, ElimInfo) :-
 		% For those, the code generator will have left the
 		% type as mlds__unknown_type, and we need to fill
 		% it in here.
+		Action = hoist_nested_funcs,
 		ThisVarName = mlds__var_name("env_ptr", no),
 		ThisVarType = mlds__unknown_type
 	->
@@ -1662,7 +1870,7 @@ defn_contains_defn(mlds__defn(_Name, _Context, _Flags, DefnBody), Defn) :-
 :- pred defn_body_contains_defn(mlds__entity_defn, mlds__defn).
 :- mode defn_body_contains_defn(in, out) is nondet.
 
-% defn_body_contains_defn(mlds__data(_Type, _Initializer), _Defn) :- fail.
+% defn_body_contains_defn(mlds__data(_Type, _Initializer, _), _Defn) :- fail.
 defn_body_contains_defn(mlds__function(_PredProcId, _Params, FunctionBody,
 		_Attrs), Name) :-
 	function_body_contains_defn(FunctionBody, Name).
@@ -1798,7 +2006,8 @@ defn_contains_var(mlds__defn(_Name, _Context, _Flags, DefnBody), Name) :-
 :- pred defn_body_contains_var(mlds__entity_defn, mlds__var).
 :- mode defn_body_contains_var(in, in) is semidet.
 
-defn_body_contains_var(mlds__data(_Type, Initializer), Name) :-
+	% XXX Should we include variables in the GC_TraceCode field here?
+defn_body_contains_var(mlds__data(_Type, Initializer, _GC_TraceCode), Name) :-
 	initializer_contains_var(Initializer, Name).
 defn_body_contains_var(mlds__function(_PredProcId, _Params, FunctionBody,
 		_Attrs), Name) :-
@@ -2195,6 +2404,15 @@ elim_info_add_nested_func(NestedFunc, ElimInfo,
 :- mode elim_info_add_local_data(in, in, out) is det.
 elim_info_add_local_data(LocalVar, ElimInfo,
 	ElimInfo ^ local_data := [LocalVar | ElimInfo ^ local_data]).
+
+:- pred elim_info_remove_local_data(mlds__defn, elim_info, elim_info).
+:- mode elim_info_remove_local_data(in, in, out) is det.
+elim_info_remove_local_data(LocalVar, ElimInfo0, ElimInfo) :-
+	( list__delete_first(ElimInfo0 ^ local_data, LocalVar, LocalData) ->
+		ElimInfo = ElimInfo0 ^ local_data := LocalData
+	;
+		error("elim_info_remove_local_data: not found")
+	).
 
 :- pred elim_info_finish(elim_info, list(mlds__defn), list(mlds__defn)).
 :- mode elim_info_finish(in, out, out) is det.
