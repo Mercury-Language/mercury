@@ -26,10 +26,14 @@
 
 :- type io__stream.
 
+:- type io__result	--->	ok
+			;	eof
+			;	error.
+
 % External interface: exported predicates
 
 :- pred io__progname(string, string, io__state, io__state).
-:- mode io__progname(input, output, di, uo).
+:- mode io__progname(in, output, di, uo).
 % 	io__progname(DefaultProgname, Progname)
 %		Returns the name that the program was invoked with,
 %		if available, or DefaultProgname if the name is not
@@ -38,52 +42,60 @@
 %		Does not modify the IO state.
 
 :- pred io__write_string(string, io__state, io__state).
-:- mode io__write_string(input, di, uo).
+:- mode io__write_string(in, di, uo).
 %		Writes a string to the current output stream.
 
 :- pred io__write_string(io__stream, string, io__state, io__state).
-:- mode io__write_string(input, input, di, uo).
+:- mode io__write_string(in, in, di, uo).
 %		Writes a string to the specified stream.
 
+:- pred io__read_char(character, io__result, io__state, io__state).
+:- mode io__read_char(out, out, di, uo).
+%		Reads a character from the current input stream.
+
 :- pred io__write_char(character, io__state, io__state).
-:- mode io__write_char(input, di, uo).
+:- mode io__write_char(in, di, uo).
 %		Writes a character to the current output stream.
 
+:- pred io__read_char(io__stream, character, io__result, io__state, io__state).
+:- mode io__read_char(in, out, out, di, uo).
+%		Reads a character from specified stream.
+
 :- pred io__write_char(io__stream, character, io__state, io__state).
-:- mode io__write_char(input, input, di, uo).
+:- mode io__write_char(in, in, di, uo).
 %		Writes a character to the specified stream.
 
 :- pred io__write_int(int, io__state, io__state).
-:- mode io__write_int(input, di, uo).
+:- mode io__write_int(in, di, uo).
 %		Writes an integer to the current output stream.
 
 :- pred io__write_int(io__stream, int, io__state, io__state).
-:- mode io__write_int(input, input, di, uo).
+:- mode io__write_int(in, in, di, uo).
 %		Writes an integer to the specified stream.
 
 :- pred io__write_float(float, io__state, io__state).
-:- mode io__write_float(input, di, uo).
+:- mode io__write_float(in, di, uo).
 %	io__write_float(Float, IO0, IO1).
 %		Writes a floating point number to the current output stream.
 
 :- pred io__write_float(io__stream, float, io__state, io__state).
-:- mode io__write_float(input, input, di, uo).
+:- mode io__write_float(in, in, di, uo).
 %	io__write_float(Float, IO0, IO1).
 %		Writes a floating point number to the specified stream.
 
 :- pred io__write_anything(_T, io__state, io__state).
-:- mode io__write_anything(input, di, uo).
+:- mode io__write_anything(in, di, uo).
 %		Writes it's argument to the current output stream.
 %		The argument may be of any type.
 
 :- pred io__write_anything(io__stream, _T, io__state, io__state).
-:- mode io__write_anything(input, input, di, uo).
+:- mode io__write_anything(in, in, di, uo).
 %		Writes it's argument to the specified stream.
 %		The argument may be of any type.
 
 :- type res ---> ok ; error.
 :- pred io__see(string, res, io__state, io__state).
-:- mode io__see(input, output, di, uo).
+:- mode io__see(in, output, di, uo).
 %	io__see(File, Result, IO0, IO1).
 %		Attempts to open a file for input, and if successful
 %		sets the current input stream to the newly opened stream.
@@ -95,7 +107,7 @@
 %		The current input stream reverts to standard input.
 
 :- pred io__tell(string, res, io__state, io__state).
-:- mode io__tell(input, output, di, uo).
+:- mode io__tell(in, output, di, uo).
 %	io__tell(File, Result, IO0, IO1).
 %		Attempts to open a file for output, and if successful
 %		sets the current output stream to the newly opened stream.
@@ -114,7 +126,7 @@
 %		Does not modify the IO state.
 
 :- pred io__set_output_stream(io__stream, io__stream, io__state, io__state).
-:- mode io__set_output_stream(input, output, di, uo).
+:- mode io__set_output_stream(in, output, di, uo).
 %	io__set_output_stream(NewStream, OldStream, IO0, IO)
 %		Changes the current output stream to the stream specified.
 %		Returns the previous stream.
@@ -125,7 +137,7 @@
 %		Does not modify the IO state.
 
 :- pred io__set_input_stream(io__stream, io__stream, io__state, io__state).
-:- mode io__set_input_stream(input, output, di, uo).
+:- mode io__set_input_stream(in, output, di, uo).
 %       io__set_input_stream(NewStream, OldStream, IO0, IO1)
 %		Changes the current input stream to the stream specified.
 %		Returns the previous stream.
@@ -163,11 +175,11 @@
 %	Flush the output buffer of the current output stream.
 
 :- pred io__flush_output(io__stream, io__state, io__state).
-:- mode io__flush_output(input, di, uo).
+:- mode io__flush_output(in, di, uo).
 %	Flush the output buffer of the specified output stream.
 
 :- pred io__stream_name(io__stream, string, io__state, io__state).
-:- mode io__stream_name(input, output, di, uo).
+:- mode io__stream_name(in, output, di, uo).
 %	Retrieves the human-readable name associated with a stream.
 %	For file streams, this is the filename.
 %	For stdin this is the string "<standard input>" (and similarly
@@ -183,7 +195,7 @@
 	% Doesn't modify the io__state.
 
 :- pred io__set_globals(univ, io__state, io__state).
-:- mode io__set_globals(input, di, uo).
+:- mode io__set_globals(in, di, uo).
 
 	% Write some memory/time usage statistics to stdout.
 
@@ -219,6 +231,7 @@
 /*
 :- external("NU-Prolog", io__progname/4).
 :- external("NU-Prolog", io__write_string/3).
+:- external("NU-Prolog", io__read_char/4).
 :- external("NU-Prolog", io__write_char/3).
 :- external("NU-Prolog", io__write_int/3).
 :- external("NU-Prolog", io__write_float/3).
@@ -240,6 +253,10 @@ io__write_int(Int) -->
 io__write_string(String) -->
 	io__output_stream(Stream),
 	io__write_string(Stream, String).
+
+io__read_char(Char, Result) -->
+	io__input_stream(Stream),
+	io__read_char(Stream, Char, Result).
 
 io__write_char(Char) -->
 	io__output_stream(Stream),

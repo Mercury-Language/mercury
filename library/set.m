@@ -2,8 +2,7 @@
 %--------------------------------------------------------------------------%
 
 % File: set.nl.
-% Main author: conway.
-% (As usual, hacked a little by fjh ;-).
+% Main authors: conway, fjh.
 
 % This file contains a `set' ADT.
 % Sets are implemented here as unsorted lists.
