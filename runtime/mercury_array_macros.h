@@ -47,7 +47,7 @@
 **	int	widget_max = 0;
 **	int	widget_next = 0;
 **
-** where widgets is a pointer to a malloc'd array of items, widget_max
+** where widgets is a pointer to a MR_malloc'd array of items, widget_max
 ** gives the number of elements in the array, and widget_next is the
 ** index of the first free slot in the widgets array. Widget_max is
 ** zero if and only if widgets is NULL.
@@ -63,13 +63,12 @@
 	do {								    \
 		if (base##_next >= base##_max) {			    \
 			if (base##_max == 0) {				    \
-				base##_max = init;			    \
-				base##s = checked_malloc(		    \
-						base##_max * sizeof(type)); \
+				base##_max = (init);			    \
+				base##s = MR_NEW_ARRAY(type, base##_max);   \
 			} else {					    \
 				base##_max *= 2;			    \
-				base##s = checked_realloc(base##s, 	    \
-						base##_max * sizeof(type)); \
+				base##s = MR_RESIZE_ARRAY(base##s, type,    \
+						base##_max);		    \
 			}						    \
 		}							    \
 	} while(0)
@@ -85,15 +84,14 @@
 
 #define	MR_ensure_big_enough(slot, base, type, init)	  		    \
 	do {								    \
-		if (slot >= base##_max) {				    \
+		if ((slot) >= base##_max) {				    \
 			if (base##_max == 0) {				    \
-				base##_max = max(init, slot + 1);	    \
-				base##s = checked_malloc(		    \
-						base##_max * sizeof(type)); \
+				base##_max = max((init), (slot) + 1);	    \
+				base##s = MR_NEW_ARRAY(type, base##_max); \
 			} else {					    \
-				base##_max = max(base##_max * 2, slot + 1); \
-				base##s = checked_realloc(base##s, 	    \
-						base##_max * sizeof(type)); \
+				base##_max = max(base##_max * 2, (slot) + 1); \
+				base##s = MR_RESIZE_ARRAY(base##s, type,    \
+						base##_max);		    \
 			}						    \
 		}							    \
 	} while(0)
@@ -105,23 +103,21 @@
 ** base##_max variable.
 */
 
-#define	MR_ensure_big_enough2(slot, base, s1, s2, type, init)  		    \
-	do {								    \
-		if (slot >= base##_max) {				    \
-			if (base##_max == 0) {				    \
-				base##_max = max(init, slot + 1);	    \
-				base##s1 = checked_malloc(		    \
-						base##_max * sizeof(type)); \
-				base##s2 = checked_malloc(		    \
-						base##_max * sizeof(type)); \
-			} else {					    \
-				base##_max = max(base##_max * 2, slot + 1); \
-				base##s1 = checked_realloc(base##s1, 	    \
-						base##_max * sizeof(type)); \
-				base##s2 = checked_realloc(base##s2, 	    \
-						base##_max * sizeof(type)); \
-			}						    \
-		}							    \
+#define	MR_ensure_big_enough2(slot, base, s1, s2, type, init)  		      \
+	do {								      \
+		if ((slot) >= base##_max) {				      \
+			if (base##_max == 0) {				      \
+				base##_max = max((init), (slot) + 1);	      \
+				base##s1 = MR_NEW_ARRAY(type,	base##_max);  \
+				base##s2 = MR_NEW_ARRAY(type,	base##_max);  \
+			} else {					      \
+				base##_max = max(base##_max * 2, (slot) + 1); \
+				base##s1 = MR_RESIZE_ARRAY(base##s1, type,    \
+						base##_max);		      \
+				base##s2 = MR_RESIZE_ARRAY(base##s2, type,    \
+						base##_max);		      \
+			}						      \
+		}							      \
 	} while(0)
 
 /*

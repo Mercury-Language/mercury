@@ -2192,13 +2192,13 @@ Declare_entry(mercury__builtin_compare_non_canonical_type_3_0);
 ** Expand the given data using its type_info, find its
 ** functor, arity, argument vector and type_info vector.
 ** 
-** The info.type_info_vector is allocated using newmem().
-** (We need to use newmem() rather than malloc(), since this
-** vector may contain pointers into the Mercury heap, and
-** memory allocated with malloc will not be traced by the
+** The info.type_info_vector is allocated using MR_GC_malloc().
+** (We need to use MR_GC_malloc() rather than MR_malloc() or malloc(),
+** since this vector may contain pointers into the Mercury heap, and
+** memory allocated with MR_malloc() or malloc() will not be traced by the
 ** Boehm collector.)
 ** It is the responsibility of the caller to deallocate this
-** memory (using oldmem()), and to copy any fields of this vector to
+** memory (using MR_GC_free()), and to copy any fields of this vector to
 ** the Mercury heap. The type_infos that the elements of
 ** this vector point to are either
 ** 	- already allocated on the heap.
@@ -2308,7 +2308,8 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
                 if (info->need_args) {
                     info->argument_vector = (Word *) data_value;
     
-                    info->type_info_vector = newmem(info->arity * sizeof(Word));
+                    info->type_info_vector = MR_GC_NEW_ARRAY(Word,
+		    				info->arity);
 
                     for (i = 0; i < info->arity ; i++) {
                         Word *arg_pseudo_type_info;
@@ -2349,7 +2350,8 @@ ML_expand(Word* type_info, Word *data_word_ptr, ML_Expand_Info *info)
                      */
                 info->argument_vector = (Word *) data_word_ptr;
 
-                info->type_info_vector = newmem(info->arity * sizeof(Word));
+                info->type_info_vector = MR_GC_NEW_ARRAY(Word,
+						info->arity);
 
                 for (i = 0; i < info->arity ; i++) {
                     Word *arg_pseudo_type_info;
@@ -2641,7 +2643,7 @@ ML_arg(Word term_type_info, Word *term_ptr, Word argument_index,
 	** Free the allocated type_info_vector, since we just copied
 	** the stuff we want out of it.
 	*/
-	oldmem(info.type_info_vector);
+	MR_GC_free(info.type_info_vector);
 
 	return success;
 }
@@ -2843,7 +2845,7 @@ det_argument(Type, ArgumentIndex) = Argument :-
 	 * all its arguments onto the heap. 
 	 */
 
-	oldmem(info.type_info_vector);
+	MR_GC_free(info.type_info_vector);
 
 }").
 

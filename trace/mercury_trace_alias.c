@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998 The University of Melbourne.
+** Copyright (C) 1998-1999 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -53,8 +53,8 @@ MR_trace_add_alias(char *name, char **words, int word_count)
 
 	MR_alias_records[slot].MR_alias_name = MR_copy_string(name);
 	MR_alias_records[slot].MR_alias_word_count = word_count;
-	MR_alias_records[slot].MR_alias_words = checked_malloc(word_count
-							* sizeof(char *));
+	MR_alias_records[slot].MR_alias_words = MR_NEW_ARRAY(char *,
+							word_count);
 	for (i = 0; i < word_count; i++) {
 		MR_alias_records[slot].MR_alias_words[i]
 			= MR_copy_string(words[i]);

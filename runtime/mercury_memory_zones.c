@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998 The University of Melbourne.
+** Copyright (C) 1998-1999 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -132,7 +132,7 @@ init_zones()
 {
 
 #ifdef  MR_THREAD_SAFE
-	free_memory_zones_lock = make(MercuryLock);
+	free_memory_zones_lock = MR_GC_NEW(MercuryLock);
 	pthread_mutex_init(free_memory_zones_lock, MR_MUTEX_ATTR);
 #endif
 
@@ -147,7 +147,7 @@ init_offsets()
 
 	offset_counter = 0;
 
-	offset_vector = allocate_array(size_t, CACHE_SLICES - 1);
+	offset_vector = MR_GC_NEW_ARRAY(size_t, CACHE_SLICES - 1);
 
 	fake_reg_offset = (Unsigned) MR_fake_reg % pcache_size;
 
@@ -170,7 +170,7 @@ get_zone(void)
 	*/
 	MR_LOCK(free_memory_zones_lock, "get_zone");
 	if (free_memory_zones == NULL) {
-		zone = (MemoryZone *) make(MemoryZone);
+		zone = MR_GC_NEW(MemoryZone);
 	} else {
 		zone = free_memory_zones;
 		free_memory_zones = free_memory_zones->next;

@@ -255,7 +255,7 @@ ML_report_full_memory_stats(void)
 	} else {
 		table_size = MR_memprof_types.num_entries;
 	}
-	table = make_many(ML_memprof_report_entry, table_size);
+	table = MR_GC_NEW_ARRAY(ML_memprof_report_entry, table_size);
 
 	/*
 	** Print the by-procedure memory profile
@@ -286,7 +286,7 @@ ML_report_full_memory_stats(void)
 	/*
 	** Deallocate space for the table
 	*/
-	oldmem(table);
+	MR_GC_free(table);
 
 	/*
 	** Print the overall memory usage

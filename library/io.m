@@ -1340,13 +1340,13 @@ io__read_line_as_string(Stream, Result, IO0, IO) :-
 			/* Grow the read buffer */
 			read_buf_size = ML_IO_READ_LINE_GROW(read_buf_size);
 			if (read_buffer == initial_read_buffer) {
-				read_buffer = checked_malloc(read_buf_size
-						* sizeof(Char));
+				read_buffer = MR_NEW_ARRAY(Char,
+						read_buf_size);
 				memcpy(read_buffer, initial_read_buffer,
 					ML_IO_READ_LINE_START);
 			} else {
-				read_buffer = checked_realloc(read_buffer,
-						read_buf_size * sizeof(Char));
+				read_buffer = MR_RESIZE_ARRAY(read_buffer,
+						Char, read_buf_size);
 			}
 		}
 	}
@@ -1360,7 +1360,7 @@ io__read_line_as_string(Stream, Result, IO0, IO) :-
 		RetString = NULL;
 	}
 	if (read_buffer != initial_read_buffer) {
-		free(read_buffer);
+		MR_free(read_buffer);
 	}
 	update_io(IO0, IO);
 ").
@@ -2687,7 +2687,7 @@ mercury_open(const char *filename, const char *type)
 	
 	f = fopen(filename, type);
 	if (!f) return NULL;
-	mf = make(MercuryFile);
+	mf = MR_GC_NEW(MercuryFile);
 	mf->file = f;
 	mf->line_number = 1;
 	return mf;
@@ -2793,7 +2793,7 @@ mercury_close(MercuryFile* mf)
 			mercury_io_error(mf, ""error closing file: %s"",
 				strerror(errno));
 		}
-		oldmem(mf);
+		MR_GC_free(mf);
 	}
 }
 

@@ -334,7 +334,7 @@ MR_trace_internal_init_from_home_dir(void)
 		return;
 	}
 
-	buf = checked_malloc(strlen(env) + strlen(MDBRC_FILENAME) + 2);
+	buf = MR_NEW_ARRAY(char, strlen(env) + strlen(MDBRC_FILENAME) + 2);
 	(void) strcpy(buf, env);
 	(void) strcat(buf, "/");
 	(void) strcat(buf, MDBRC_FILENAME);
@@ -343,7 +343,7 @@ MR_trace_internal_init_from_home_dir(void)
 		fclose(fp);
 	}
 
-	free(buf);
+	MR_free(buf);
 }
 
 static void
@@ -475,8 +475,8 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 			event_info, event_details, jumpaddr);
 	}
 
-	free(line);
-	free(orig_words);
+	MR_free(line);
+	MR_free(orig_words);
 
 	return next;
 }
@@ -1111,7 +1111,7 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 			len += strlen(words[i]) + 1;
 		}
 		len++;
-		MR_mmc_options = realloc(MR_mmc_options, len);
+		MR_mmc_options = MR_realloc(MR_mmc_options, len);
 
 		/* copy the arguments to MR_mmc_options */
 		MR_mmc_options[0] = '\0';
@@ -1432,7 +1432,7 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 						confirmed = TRUE;
 					}
 
-					free(line2);
+					MR_free(line2);
 				}
 			}
 
@@ -1774,7 +1774,7 @@ MR_trace_read_help_text(void)
 	while ((text = MR_trace_getline("cat> ", MR_mdb_in, MR_mdb_out))
 			!= NULL) {
 		if (streq(text, "end")) {
-			free(text);
+			MR_free(text);
 			break;
 		}
 
@@ -1788,7 +1788,7 @@ MR_trace_read_help_text(void)
 		next_char_slot += line_len;
 		doc_chars[next_char_slot] = '\n';
 		next_char_slot += 1;
-		free(text);
+		MR_free(text);
 	}
 
 	doc_chars[next_char_slot] = '\0';
@@ -1833,8 +1833,8 @@ MR_trace_is_number(const char *word, int *value)
 ** given by *word_count.
 **
 ** The lifetime of the elements of the *words array expires when
-** the line array is freed or further modified or when MR_trace_parse_line
-** is called again, whichever comes first.
+** the line array is MR_free()'d or further modified or when
+** MR_trace_parse_line is called again, whichever comes first.
 **
 ** The return value is NULL if everything went OK, and an error message
 ** otherwise.
@@ -1877,7 +1877,7 @@ MR_trace_parse_line(char *line, char ***words, int *word_max, int *word_count)
 			/* Only part of the first word constitutes a number. */
 			/* Put it in an extra word at the start. */
 			MR_ensure_big_enough(raw_word_count, raw_word,
-				char **, MR_INIT_WORD_COUNT);
+				char *, MR_INIT_WORD_COUNT);
 
 			for (i = raw_word_count; i > 0; i--) {
 				raw_words[i] = raw_words[i-1];
@@ -1944,7 +1944,7 @@ MR_trace_break_into_words(char *line, char ***words_ptr, int *word_max_ptr)
 			return token_number;
 		}
 
-		MR_ensure_big_enough(token_number, word, char **,
+		MR_ensure_big_enough(token_number, word, char *,
 			MR_INIT_WORD_COUNT);
 		words[token_number] = line + char_pos;
 
@@ -1985,7 +1985,7 @@ MR_trace_expand_aliases(char ***words, int *word_max, int *word_count)
 	if (MR_trace_lookup_alias(alias_key, &alias_words, &alias_word_count))
 	{
 		MR_ensure_big_enough(*word_count + alias_word_count,
-			*word, const char *, MR_INIT_WORD_COUNT);
+			*word, char *, MR_INIT_WORD_COUNT);
 
 		/* Move the original words (except the alias key) up. */
 		for (i = *word_count - 1; i >= alias_copy_start; i--) {
@@ -2033,7 +2033,7 @@ MR_trace_source_from_open_file(FILE *fp)
 /*
 ** If there any lines waiting in the queue, return the first of these.
 ** If not, print the prompt to mdb_out, read a line from mdb_in,
-** and return it in a malloc'd buffer holding the line (without the final
+** and return it in a MR_malloc'd buffer holding the line (without the final
 ** newline).
 ** If EOF occurs on a nonempty line, treat the EOF as a newline; if EOF
 ** occurs on an empty line, return NULL.
@@ -2082,7 +2082,7 @@ MR_trace_getline_queue(void)
 			MR_line_tail = NULL;
 		}
 
-		free(old);
+		MR_free(old);
 		return contents;
 	} else {
 		return NULL;
@@ -2094,7 +2094,7 @@ MR_insert_line_at_head(const char *contents)
 {
 	MR_Line	*line;
 
-	line = checked_malloc(sizeof(MR_Line));
+	line = MR_NEW(MR_Line);
 	line->MR_line_contents = MR_copy_string(contents);
 	line->MR_line_next = MR_line_head;
 
@@ -2108,15 +2108,9 @@ static void
 MR_insert_line_at_tail(const char *contents)
 {
 	MR_Line	*line;
-	char	*copy;
-	int	len;
 
-	len = strlen(contents);
-	copy = checked_malloc(len + 1);
-	strcpy(copy, contents);
-
-	line = checked_malloc(sizeof(MR_Line));
-	line->MR_line_contents = copy;
+	line = MR_NEW(MR_Line);
+	line->MR_line_contents = MR_copy_string(contents);
 	line->MR_line_next = NULL;
 
 	if (MR_line_tail == NULL) {

@@ -145,7 +145,7 @@ MR_register_generator_ptr(MR_Subgoal **generator_ptr)
 {
 	struct MR_CutGeneratorListNode	*node;
 
-	node = make(struct MR_CutGeneratorListNode);
+	node = MR_GC_NEW(struct MR_CutGeneratorListNode);
 	node->generator_ptr = generator_ptr;
 	node->next_generator = MR_cut_stack[MR_cut_next - 1].generators;
 	MR_cut_stack[MR_cut_next - 1].generators = node;

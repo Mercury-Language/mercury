@@ -331,7 +331,7 @@ garbage_collect(Code *success_ip, Word *stack_pointer, Word *current_frame)
             }
         }
 
-        free(type_params);
+        MR_free(type_params);
 
         result = MR_stack_walk_step(entry_layout, &return_label_layout,
             (Word **) &stack_pointer, &current_frame, &problem);
@@ -481,7 +481,7 @@ MR_agc_add_root(Word *root_addr, Word *type_info)
 {
 	MR_RootList node;
 
-	node = checked_malloc(sizeof(*node));
+	node = MR_malloc(sizeof(*node));
 	node->root = root_addr;
 	node->type_info = type_info;
 

@@ -422,48 +422,6 @@ printlabel(/* const */ Code *w)
 	fprintf(stdout, "\n");
 }
 
-void *
-newmem(size_t n)
-{
-	reg	void	*p;
-
-#ifdef CONSERVATIVE_GC
-	p = GC_MALLOC(n);
-#else
-	p = malloc(n);
-#endif
-	if (p == NULL && n != 0) {
-		fatal_error("ran out of memory");
-	}
-
-	return p;
-}
-
-void 
-oldmem(void *p)
-{
-#ifdef CONSERVATIVE_GC
-	GC_FREE(p);
-#else
-	free(p);
-#endif
-}
-
-void* 
-resizemem(void *p, size_t size)
-{
-#ifdef CONSERVATIVE_GC
-	p = GC_REALLOC(p, size);
-#else
-	p = realloc(p, size);
-#endif
-	if (p == NULL) {
-		fatal_error("ran out of memory");
-	}
-
-	return p;
-}
-
 void
 MR_warning(const char *fmt, ...)
 {

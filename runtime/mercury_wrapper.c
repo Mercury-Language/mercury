@@ -365,8 +365,8 @@ do_init_modules(void)
 
 /*
 ** Given a string, parse it into arguments and create an argv vector for it.
-** Returns args, argv, and argc.  It is the caller's responsibility to oldmem()
-** args and argv when they are no longer needed.
+** Returns args, argv, and argc.  It is the caller's responsibility to
+** MR_GC_free() args and argv when they are no longer needed.
 */
 
 static void
@@ -428,8 +428,8 @@ make_argv(const char *string, char **args_ptr, char ***argv_ptr, int *argc_ptr)
 	/*
 	** Allocate the space
 	*/
-	args = make_many(char, args_len);
-	argv = make_many(char *, argc + 1);
+	args = MR_GC_NEW_ARRAY(char, args_len);
+	argv = MR_GC_NEW_ARRAY(char *, argc + 1);
 
 	/*
 	** Now do a pass over the string, copying the arguments into `args'
@@ -519,18 +519,18 @@ process_environment_options(void)
 		** to getopt().
 		*/
 		cmd = "mercury_runtime ";
-		dummy_command_line = make_many(char,
+		dummy_command_line = MR_GC_NEW_ARRAY(char,
 					strlen(options) + strlen(cmd) + 1);
 		strcpy(dummy_command_line, cmd);
 		strcat(dummy_command_line, options);
 		
 		make_argv(dummy_command_line, &arg_str, &argv, &argc);
-		oldmem(dummy_command_line);
+		MR_GC_free(dummy_command_line);
 
 		process_options(argc, argv);
 
-		oldmem(arg_str);
-		oldmem(argv);
+		MR_GC_free(arg_str);
+		MR_GC_free(argv);
 	}
 }
 

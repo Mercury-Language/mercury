@@ -1434,7 +1434,7 @@ Define_entry(mercury__table_nondet_resume_1_0);
 		}
 #endif
 	} else {
-		MR_cur_leader->resume_info = make(MR_ResumeInfo);
+		MR_cur_leader->resume_info = MR_GC_NEW(MR_ResumeInfo);
 
 		save_transient_registers();
 		save_state(&(MR_cur_leader->resume_info->leader_state),

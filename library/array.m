@@ -557,7 +557,7 @@ ML_resize_array(MR_ArrayType *old_array, Integer array_size,
 		elements_to_copy = array_size;
 	}
 
-	array = (MR_ArrayType *) make_many(Word, array_size + 1);
+	array = (MR_ArrayType *) MR_GC_NEW_ARRAY(Word, array_size + 1);
 	array->size = array_size;
 	for (i = 0; i < elements_to_copy; i++) {
 		array->elements[i] = old_array->elements[i];
@@ -570,7 +570,7 @@ ML_resize_array(MR_ArrayType *old_array, Integer array_size,
 	** since the mode on the old array is `array_di', it is safe to
 	** deallocate the storage for it
 	*/
-	oldmem(old_array);
+	MR_GC_free(old_array);
 
 	return array;
 }
@@ -603,7 +603,7 @@ ML_shrink_array(MR_ArrayType *old_array, Integer array_size)
 		fatal_error(""array__shrink: can't shrink to a larger size"");
 	}
 
-	array = (MR_ArrayType *) make_many(Word, array_size + 1);
+	array = (MR_ArrayType *) MR_GC_NEW_ARRAY(Word, array_size + 1);
 	array->size = array_size;
 	for (i = 0; i < array_size; i++) {
 		array->elements[i] = old_array->elements[i];
@@ -613,7 +613,7 @@ ML_shrink_array(MR_ArrayType *old_array, Integer array_size)
 	** since the mode on the old array is `array_di', it is safe to
 	** deallocate the storage for it
 	*/
-	oldmem(old_array);
+	MR_GC_free(old_array);
 
 	return array;
 }

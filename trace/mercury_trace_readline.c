@@ -39,8 +39,8 @@
 
 /*
 ** Print the prompt to the `out' file, read a line from the `in' file,
-** and return it in a malloc'd buffer holding the line (without the final
-** newline).
+** and return it in a MR_malloc'd buffer holding the line (without the
+** final newline).
 ** If EOF occurs on a nonempty line, treat the EOF as a newline; if EOF
 ** occurs on an empty line, return NULL.
 */
@@ -64,6 +64,21 @@ MR_trace_readline(const char *prompt, FILE *in, FILE *out)
 
 	line = readline((char *) prompt);
 
+	/*
+	** readline() allocates with malloc(), and we want
+	** to return something allocated with MR_malloc(),
+	** but that's OK, because MR_malloc() and malloc()
+	** are interchangable.
+	*/
+#if 0
+	{
+		char *tmp = line;
+
+		line = MR_copy_string(line);
+		free(tmp);
+	}
+#endif
+
 	if (line != NULL && line[0] != '\0') {
 		add_history(line);
 	}
@@ -74,7 +89,7 @@ MR_trace_readline(const char *prompt, FILE *in, FILE *out)
 }
 
 /*
-** Read a line from a file, and return a pointer to a malloc'd buffer
+** Read a line from a file, and return a pointer to a MR_malloc'd buffer
 ** holding the line (without the final newline). If EOF occurs on a
 ** nonempty line, treat the EOF as a newline; if EOF occurs on an empty
 ** line, return NULL.
@@ -101,7 +116,7 @@ MR_trace_readline_raw(FILE *fp)
 		contents[i] = '\0';
 		return contents;
 	} else {
-		free(contents);
+		MR_free(contents);
 		return NULL;
 	}
 }

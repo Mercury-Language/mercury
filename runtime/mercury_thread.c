@@ -33,7 +33,7 @@ create_thread(MR_ThreadGoal *goal)
 	pthread_attr_t attrs;
 	int err;
 
-	thread = make(MercuryThread);
+	thread = MR_GC_NEW(MercuryThread);
 	pthread_attr_init(&attrs);
 	err = pthread_create(thread, &attrs, create_thread_2, (void *) goal);
 

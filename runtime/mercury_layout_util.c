@@ -82,7 +82,7 @@ MR_materialize_typeinfos_base(const MR_Stack_Layout_Vars *vars,
 
 	if (vars->MR_slvs_tvars != NULL) {
 		count = vars->MR_slvs_tvars->MR_tp_param_count;
-		type_params = checked_malloc((count + 1) * sizeof(Word));
+		type_params = MR_NEW_ARRAY(Word, count + 1);
 
 		/*
 		** type_params should look like a typeinfo;

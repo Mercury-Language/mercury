@@ -55,18 +55,18 @@ init_thread_stuff(void)
 {
 #ifdef	MR_THREAD_SAFE
 
-	MR_runqueue_lock = make(MercuryLock);
+	MR_runqueue_lock = MR_GC_NEW(MercuryLock);
 	pthread_mutex_init(MR_runqueue_lock, MR_MUTEX_ATTR);
 
-	MR_runqueue_cond = make(MercuryCond);
+	MR_runqueue_cond = MR_GC_NEW(MercuryCond);
 	pthread_cond_init(MR_runqueue_cond, MR_COND_ATTR);
 
-	free_context_list_lock = make(MercuryLock);
+	free_context_list_lock = MR_GC_NEW(MercuryLock);
 	pthread_mutex_init(free_context_list_lock, MR_MUTEX_ATTR);
 
 	pthread_mutex_init(&MR_global_lock, MR_MUTEX_ATTR);
 
-	MR_pending_contexts_lock = make(MercuryLock);
+	MR_pending_contexts_lock = MR_GC_NEW(MercuryLock);
 	pthread_mutex_init(MR_pending_contexts_lock, MR_MUTEX_ATTR);
 
 	MR_KEY_CREATE(&MR_engine_base_key, NULL);
@@ -160,7 +160,7 @@ create_context(void)
 	MR_LOCK(free_context_list_lock, "create_context");
 	if (free_context_list == NULL) {
 		MR_UNLOCK(free_context_list_lock, "create_context i");
-		c = (MR_Context *) make(MR_Context);
+		c = MR_GC_NEW(MR_Context);
 		c->detstack_zone = NULL;
 		c->nondetstack_zone = NULL;
 #ifdef MR_USE_TRAIL

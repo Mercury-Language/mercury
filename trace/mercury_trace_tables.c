@@ -100,7 +100,7 @@ MR_insert_module_info(const MR_Module_Layout *module)
 {
 	int	slot;
 
-	MR_ensure_room_for_next(MR_module_info, MR_Module_Layout *,
+	MR_ensure_room_for_next(MR_module_info, const MR_Module_Layout *,
 		INIT_MODULE_TABLE_SIZE);
 	MR_prepare_insert_into_sorted(MR_module_infos, MR_module_info_next,
 		slot,

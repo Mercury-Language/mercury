@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1993-1998 The University of Melbourne.
+** Copyright (C) 1993-1999 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -29,7 +29,7 @@ MR_ht_init_table(MR_Hash_Table *table)
 {
 	reg	int	i;
 
-	table->MR_ht_store = make_many(List *, table->MR_ht_size);
+	table->MR_ht_store = MR_GC_NEW_ARRAY(List *, table->MR_ht_size);
 
 	for (i = 0; i < table->MR_ht_size; i++) {
 		table->MR_ht_store[i] = NULL;

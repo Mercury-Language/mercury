@@ -21,7 +21,7 @@
 
 #include "mercury_prof_mem.h"
 
-#include "mercury_std.h"	/* for newmem() */
+#include "mercury_memory.h"	/* for MR_GC_malloc() */
 #include "mercury_types.h"	/* for Word */
 
 /*----------------------------------------------------------------------------*/
@@ -69,7 +69,7 @@ MR_prof_malloc(size_t size)
 
 	/* Here we waste a bit of space but hopefully not to much */
 	if (mem_left < size) {
-		next = newmem(MEMORY_BLOCK * size);
+		next = MR_GC_malloc(MEMORY_BLOCK * size);
 		mem_left = MEMORY_BLOCK * size;
 	}
 

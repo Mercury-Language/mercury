@@ -197,7 +197,7 @@ MR_add_spy_point(MR_Spy_When when, MR_Spy_Action action,
 	}
 
 	/* Insert the spy point at the head of the list for the proc. */
-	point = checked_malloc(sizeof(MR_Spy_Point));
+	point = MR_NEW(MR_Spy_Point);
 	point->spy_when    = when;
 	point->spy_exists  = TRUE;
 	point->spy_enabled = TRUE;

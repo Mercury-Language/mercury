@@ -341,7 +341,7 @@ MR_trace_decl_wrong_answer_fail(MR_Trace_Cmd_Info *cmd,
 		MR_edt_parent = (MR_Edt_Node *) MR_based_framevar(
 				MR_saved_curfr(saved_regs), decl_slot + 1);
 	}
-	deallocate_memory(edt_node);
+	MR_free(edt_node);
 }
 
 /*
@@ -399,8 +399,8 @@ MR_trace_decl_save_args(const MR_Stack_Layout_Label *layout, Word *saved_regs,
 	}
 
 	arg_count = MR_all_desc_var_count(vars);
-	arg_values = allocate_array(Word, arg_count);
-	arg_types = allocate_array(Word, arg_count);
+	arg_values = MR_NEW_ARRAY(Word, arg_count);
+	arg_types = MR_NEW_ARRAY(Word, arg_count);
 
 	base_sp = MR_saved_sp(saved_regs);
 	base_curfr = MR_saved_curfr(saved_regs);
@@ -479,7 +479,7 @@ MR_edt_node_construct(const MR_Stack_Layout_Label *layout,
 {
 	MR_Edt_Node 	*edt_node;
 
-	edt_node = allocate_object(MR_Edt_Node);
+	edt_node = MR_NEW(MR_Edt_Node);
 	edt_node->MR_edt_node_tag = node_tag;
 	edt_node->MR_edt_node_layout = layout;
 	edt_node->MR_edt_node_path = NULL;

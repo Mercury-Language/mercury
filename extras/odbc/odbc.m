@@ -892,7 +892,7 @@ odbc__int_to_attribute_type_2(5, null).
 	** Notes on memory allocation:
 	**
 	** C data structures (MODBC_Statement and MODBC_Column) are allocated 
-	** using newmem/oldmem. 
+	** using MR_GC_malloc/MR_GC_free.
 	**
 	** MODBC_Statement contains a statement handle which must be freed 
 	** using SQLFreeStmt.
@@ -905,7 +905,7 @@ odbc__int_to_attribute_type_2(5, null).
 	** it is stored within a MODBC_Column.
 	**
 	** Other data types have a buffer which is allocated once using
-	** newmem.
+	** MR_GC_malloc.
 	*/
 
 	/*
@@ -914,7 +914,7 @@ odbc__int_to_attribute_type_2(5, null).
 	** MODBC_CHUNK_SIZE must be a multiple of sizeof(Word).
 	*/
 #define MODBC_CHUNK_WORDS	1024
-#define MODBC_CHUNK_SIZE	MODBC_CHUNK_WORDS * sizeof(Word)
+#define MODBC_CHUNK_SIZE	(MODBC_CHUNK_WORDS * sizeof(Word))
 
 typedef enum {
 	MODBC_INT	= 0,	/* Word-sized Integer */
@@ -987,7 +987,7 @@ void odbc_get_data_in_one_go(MODBC_Statement *stat, int column_id);
 
 
 		/* Doing manual deallocation of the statement object. */
-	statement = make(MODBC_Statement);
+	statement = MR_NEW(MODBC_Statement);
 		
 	statement->num_columns = 0;
 	statement->row = NULL;
@@ -1117,7 +1117,7 @@ void odbc_get_data_in_one_go(MODBC_Statement *stat, int column_id);
 	** Allocate an array containing the info for each column.
 	** The extra column is because ODBC counts columns starting from 1.
 	*/
-	statement->row = make_many(MODBC_Column, num_columns + 1);
+	statement->row = MR_NEW_ARRAY(MODBC_Column, num_columns + 1);
 
 	/*
 	** Use SQLBindCol unless there are columns with no set maximum length.
@@ -1605,13 +1605,13 @@ odbc_do_cleanup_statement(MODBC_Statement *stat)
 			if (! is_variable_length_sql_type(
 				    	stat->row[i].sql_type)) 
 			{
-				oldmem(stat->row[i].data);
+				MR_GC_free(stat->row[i].data);
 			}
 		    }
-		    oldmem(stat->row);
+		    MR_GC_free(stat->row);
 		}
 		rc = SQLFreeStmt(stat->stat_handle, SQL_DROP);
-		oldmem(stat);
+		MR_GC_free(stat);
 		return rc;
 	} else {
 		return SQL_SUCCESS;

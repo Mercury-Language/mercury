@@ -137,7 +137,7 @@ MercuryEngine *create_engine(void)
 {
 	MercuryEngine *eng;
 
-	eng = make(MercuryEngine);
+	eng = MR_GC_NEW(MercuryEngine);
 	init_engine(eng);
 	return eng;
 }
@@ -146,7 +146,7 @@ void
 destroy_engine(MercuryEngine *eng)
 {
 	finalize_engine(eng);
-	free(eng);
+	MR_GC_free(eng);
 }
 
 /*---------------------------------------------------------------------------*/
@@ -352,7 +352,7 @@ call_engine_inner(Code *entry_point)
 {
 	MercuryThreadList *new_element;
 
-	new_element = make(MercuryThreadList);
+	new_element = MR_GC_NEW(MercuryThreadList);
 	new_element->thread = MR_ENGINE(this_context)->owner_thread;
 	new_element->next = MR_ENGINE(saved_owners);
 	MR_ENGINE(saved_owners) = new_element;
@@ -389,7 +389,7 @@ Define_label(engine_done);
 	{
 		val = tmp->thread;
 		MR_ENGINE(saved_owners) = tmp->next;
-		oldmem(tmp);
+		MR_GC_free(tmp);
 	} else {
 		val = 0;
 	}

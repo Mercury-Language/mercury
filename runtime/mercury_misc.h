@@ -8,7 +8,6 @@
 ** mercury_misc.h -	debugging messages,
 **			MR_warning(),
 **			fatal_error(),
-**			checked_malloc(),
 **			MR_memcpy
 **			MR_fd_zero
 */

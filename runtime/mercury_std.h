@@ -54,11 +54,6 @@
 
 #define	ungetchar(c)		ungetc(c, stdin)
 
-/* XXX these should go in mercury_memory.h or mercury_heap.h */
-#define make(t)			((t *) newmem(sizeof(t)))
-#define make_many(t, n)		((t *) newmem((n) * sizeof(t)))
-#define resize_many(t, p, n)	((t *) resizemem((p), (n) * sizeof(t)))
-
 #ifndef	TRUE
 #define	TRUE		1
 #endif
@@ -105,10 +100,5 @@
 #endif
 
 /*---------------------------------------------------------------------------*/
-
-/* XXX these should go in mercury_memory.h or mercury_heap.h */
-extern	void	*newmem(size_t);
-extern	void	*resizemem(void *, size_t);
-extern	void	oldmem(void *);
 
 #endif /* not MERCURY_STD_H */

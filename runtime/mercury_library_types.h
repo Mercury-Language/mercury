@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998 The University of Melbourne.
+** Copyright (C) 1998-1999 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -14,6 +14,7 @@
 
 #include <stdio.h>		/* for `FILE' */
 #include "mercury_types.h"	/* for `Word' and `Integer' */
+#include "mercury_std.h"	/* for MR_VARIABLE_SIZED */
 
 /*
 ** The C `MercuryFile' type is used for the Mercury `io__stream' type
@@ -34,9 +35,9 @@ typedef struct mercury_file {
 
 typedef struct {
 	Integer size;
-	Word elements[1]; /* really this is variable-length */
+	Word elements[MR_VARIABLE_SIZED];
 } MR_ArrayType;
 
-#define MR_make_array(sz) ((MR_ArrayType *) make_many(Word, (sz) + 1))
+#define MR_make_array(sz) ((MR_ArrayType *) MR_GC_NEW_ARRAY(Word, (sz) + 1))
 
 #endif /* not MERCURY_LIBRARY_TYPES_H */
