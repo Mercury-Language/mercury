@@ -317,11 +317,9 @@ mercury_compare_type_info(Word type_info_1, Word type_info_2)
 :- pragma(c_code, "
 
 /*
- *
- * Univ has a special value reserved for it, since it needs to
- * be handled slightly differently - the first word is the
- * typeinfo structure for this type, the second is the actual data.
- *
+ * Univ has a special value reserved for its layout, since it needs to
+ * be handled as a special case. See above for information on 
+ * the representation of data of type `univ'.
  */
 
 #ifdef  USE_TYPE_LAYOUT
