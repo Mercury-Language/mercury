@@ -179,7 +179,7 @@ typedef const MR_ReservedAddrFunctorDesc *MR_ReservedAddrFunctors;
 /*
 ** XXX Currently we hard-code the declarations of the first
 ** ten of these type-info struct types; this imposes a fixed
-** limit of 10 on the arity of types.  (If this is exceeded,
+** limit of 20 on the arity of types.  (If this is exceeded,
 ** you'll get a parse error in the generated C code, due to
 ** an undeclared type.)
 ** Note that the code for compare and unify in runtime/mercury.c
@@ -199,6 +199,16 @@ MR_HIGHER_ORDER_PSEUDOTYPEINFO_STRUCT(MR_HO_PseudoTypeInfo_Struct7, 7);
 MR_HIGHER_ORDER_PSEUDOTYPEINFO_STRUCT(MR_HO_PseudoTypeInfo_Struct8, 8);
 MR_HIGHER_ORDER_PSEUDOTYPEINFO_STRUCT(MR_HO_PseudoTypeInfo_Struct9, 9);
 MR_HIGHER_ORDER_PSEUDOTYPEINFO_STRUCT(MR_HO_PseudoTypeInfo_Struct10, 10);
+MR_HIGHER_ORDER_PSEUDOTYPEINFO_STRUCT(MR_HO_PseudoTypeInfo_Struct11, 11);
+MR_HIGHER_ORDER_PSEUDOTYPEINFO_STRUCT(MR_HO_PseudoTypeInfo_Struct12, 12);
+MR_HIGHER_ORDER_PSEUDOTYPEINFO_STRUCT(MR_HO_PseudoTypeInfo_Struct13, 13);
+MR_HIGHER_ORDER_PSEUDOTYPEINFO_STRUCT(MR_HO_PseudoTypeInfo_Struct14, 14);
+MR_HIGHER_ORDER_PSEUDOTYPEINFO_STRUCT(MR_HO_PseudoTypeInfo_Struct15, 15);
+MR_HIGHER_ORDER_PSEUDOTYPEINFO_STRUCT(MR_HO_PseudoTypeInfo_Struct16, 16);
+MR_HIGHER_ORDER_PSEUDOTYPEINFO_STRUCT(MR_HO_PseudoTypeInfo_Struct17, 17);
+MR_HIGHER_ORDER_PSEUDOTYPEINFO_STRUCT(MR_HO_PseudoTypeInfo_Struct18, 18);
+MR_HIGHER_ORDER_PSEUDOTYPEINFO_STRUCT(MR_HO_PseudoTypeInfo_Struct19, 19);
+MR_HIGHER_ORDER_PSEUDOTYPEINFO_STRUCT(MR_HO_PseudoTypeInfo_Struct20, 20);
 
 MR_FIRST_ORDER_PSEUDOTYPEINFO_STRUCT(MR_FO_PseudoTypeInfo_Struct1, 1);
 MR_FIRST_ORDER_PSEUDOTYPEINFO_STRUCT(MR_FO_PseudoTypeInfo_Struct2, 2);
@@ -210,6 +220,16 @@ MR_FIRST_ORDER_PSEUDOTYPEINFO_STRUCT(MR_FO_PseudoTypeInfo_Struct7, 7);
 MR_FIRST_ORDER_PSEUDOTYPEINFO_STRUCT(MR_FO_PseudoTypeInfo_Struct8, 8);
 MR_FIRST_ORDER_PSEUDOTYPEINFO_STRUCT(MR_FO_PseudoTypeInfo_Struct9, 9);
 MR_FIRST_ORDER_PSEUDOTYPEINFO_STRUCT(MR_FO_PseudoTypeInfo_Struct10, 10);
+MR_FIRST_ORDER_PSEUDOTYPEINFO_STRUCT(MR_FO_PseudoTypeInfo_Struct11, 11);
+MR_FIRST_ORDER_PSEUDOTYPEINFO_STRUCT(MR_FO_PseudoTypeInfo_Struct12, 12);
+MR_FIRST_ORDER_PSEUDOTYPEINFO_STRUCT(MR_FO_PseudoTypeInfo_Struct13, 13);
+MR_FIRST_ORDER_PSEUDOTYPEINFO_STRUCT(MR_FO_PseudoTypeInfo_Struct14, 14);
+MR_FIRST_ORDER_PSEUDOTYPEINFO_STRUCT(MR_FO_PseudoTypeInfo_Struct15, 15);
+MR_FIRST_ORDER_PSEUDOTYPEINFO_STRUCT(MR_FO_PseudoTypeInfo_Struct16, 16);
+MR_FIRST_ORDER_PSEUDOTYPEINFO_STRUCT(MR_FO_PseudoTypeInfo_Struct17, 17);
+MR_FIRST_ORDER_PSEUDOTYPEINFO_STRUCT(MR_FO_PseudoTypeInfo_Struct18, 18);
+MR_FIRST_ORDER_PSEUDOTYPEINFO_STRUCT(MR_FO_PseudoTypeInfo_Struct19, 19);
+MR_FIRST_ORDER_PSEUDOTYPEINFO_STRUCT(MR_FO_PseudoTypeInfo_Struct20, 20);
 
 typedef struct MR_HO_PseudoTypeInfo_Struct1 MR_HO_PseudoTypeInfo_Struct1;
 typedef struct MR_HO_PseudoTypeInfo_Struct2 MR_HO_PseudoTypeInfo_Struct2;
@@ -221,6 +241,16 @@ typedef struct MR_HO_PseudoTypeInfo_Struct7 MR_HO_PseudoTypeInfo_Struct7;
 typedef struct MR_HO_PseudoTypeInfo_Struct8 MR_HO_PseudoTypeInfo_Struct8;
 typedef struct MR_HO_PseudoTypeInfo_Struct9 MR_HO_PseudoTypeInfo_Struct9;
 typedef struct MR_HO_PseudoTypeInfo_Struct10 MR_HO_PseudoTypeInfo_Struct10;
+typedef struct MR_HO_PseudoTypeInfo_Struct11 MR_HO_PseudoTypeInfo_Struct11;
+typedef struct MR_HO_PseudoTypeInfo_Struct12 MR_HO_PseudoTypeInfo_Struct12;
+typedef struct MR_HO_PseudoTypeInfo_Struct13 MR_HO_PseudoTypeInfo_Struct13;
+typedef struct MR_HO_PseudoTypeInfo_Struct14 MR_HO_PseudoTypeInfo_Struct14;
+typedef struct MR_HO_PseudoTypeInfo_Struct15 MR_HO_PseudoTypeInfo_Struct15;
+typedef struct MR_HO_PseudoTypeInfo_Struct16 MR_HO_PseudoTypeInfo_Struct16;
+typedef struct MR_HO_PseudoTypeInfo_Struct17 MR_HO_PseudoTypeInfo_Struct17;
+typedef struct MR_HO_PseudoTypeInfo_Struct18 MR_HO_PseudoTypeInfo_Struct18;
+typedef struct MR_HO_PseudoTypeInfo_Struct19 MR_HO_PseudoTypeInfo_Struct19;
+typedef struct MR_HO_PseudoTypeInfo_Struct20 MR_HO_PseudoTypeInfo_Struct20;
 
 typedef struct MR_FO_PseudoTypeInfo_Struct1 MR_FO_PseudoTypeInfo_Struct1;
 typedef struct MR_FO_PseudoTypeInfo_Struct2 MR_FO_PseudoTypeInfo_Struct2;
@@ -232,6 +262,16 @@ typedef struct MR_FO_PseudoTypeInfo_Struct7 MR_FO_PseudoTypeInfo_Struct7;
 typedef struct MR_FO_PseudoTypeInfo_Struct8 MR_FO_PseudoTypeInfo_Struct8;
 typedef struct MR_FO_PseudoTypeInfo_Struct9 MR_FO_PseudoTypeInfo_Struct9;
 typedef struct MR_FO_PseudoTypeInfo_Struct10 MR_FO_PseudoTypeInfo_Struct10;
+typedef struct MR_FO_PseudoTypeInfo_Struct11 MR_FO_PseudoTypeInfo_Struct11;
+typedef struct MR_FO_PseudoTypeInfo_Struct12 MR_FO_PseudoTypeInfo_Struct12;
+typedef struct MR_FO_PseudoTypeInfo_Struct13 MR_FO_PseudoTypeInfo_Struct13;
+typedef struct MR_FO_PseudoTypeInfo_Struct14 MR_FO_PseudoTypeInfo_Struct14;
+typedef struct MR_FO_PseudoTypeInfo_Struct15 MR_FO_PseudoTypeInfo_Struct15;
+typedef struct MR_FO_PseudoTypeInfo_Struct16 MR_FO_PseudoTypeInfo_Struct16;
+typedef struct MR_FO_PseudoTypeInfo_Struct17 MR_FO_PseudoTypeInfo_Struct17;
+typedef struct MR_FO_PseudoTypeInfo_Struct18 MR_FO_PseudoTypeInfo_Struct18;
+typedef struct MR_FO_PseudoTypeInfo_Struct19 MR_FO_PseudoTypeInfo_Struct19;
+typedef struct MR_FO_PseudoTypeInfo_Struct20 MR_FO_PseudoTypeInfo_Struct20;
 
 /*---------------------------------------------------------------------------*/
 /*
