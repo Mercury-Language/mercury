@@ -45,13 +45,16 @@
 :- pred code_util__neg_rval(rval, rval).
 :- mode code_util__neg_rval(in, out) is det.
 
-:- pred code_util__atom_to_binop(string, binary_op).
-:- mode code_util__atom_to_binop(in, out) is semidet.
-:- mode code_util__atom_to_binop(out, in) is semidet.
+:- pred code_util__is_builtin(module_info, pred_id, proc_id, is_builtin).
+:- mode code_util__is_builtin(in, in, in, out) is det.
 
-:- pred code_util__atom_to_unop(string, unary_op).
-:- mode code_util__atom_to_unop(in, out) is semidet.
-:- mode code_util__atom_to_unop(out, in) is semidet.
+:- pred code_util__builtin_binop(string, int, binary_op).
+:- mode code_util__builtin_binop(in, in, out) is semidet.
+:- mode code_util__builtin_binop(out, out, in) is semidet.
+
+:- pred code_util__builtin_unop(string, int, unary_op).
+:- mode code_util__builtin_unop(in, in, out) is semidet.
+:- mode code_util__builtin_unop(out, out, in) is semidet.
 
 %---------------------------------------------------------------------------%
 
@@ -114,22 +117,35 @@ code_util__arg_loc_to_register(ArgLoc, r(ArgLoc)).
 
 %-----------------------------------------------------------------------------%
 
-code_util__atom_to_binop("builtin_plus", (+)).
-code_util__atom_to_binop("builtin_minus", (-)).
-code_util__atom_to_binop("builtin_times", (*)).
-code_util__atom_to_binop("builtin_div", (/)).
-code_util__atom_to_binop("builtin_mod", (mod)).
-code_util__atom_to_binop("builtin_left_shift", (<<)).
-code_util__atom_to_binop("builtin_right_shift", (>>)).
-code_util__atom_to_binop("builtin_bit_and", (&)).
-code_util__atom_to_binop("builtin_bit_or", (|)).
-code_util__atom_to_binop("builtin_bit_xor", (^)).
-code_util__atom_to_binop(">", (>)).
-code_util__atom_to_binop("<", (<)).
-code_util__atom_to_binop(">=", (>=)).
-code_util__atom_to_binop("=<", (<=)).
+code_util__is_builtin(ModuleInfo, PredId0, _PredMode0, IsBuiltin) :-
+	predicate_name(ModuleInfo, PredId0, PredName),
+	predicate_arity(ModuleInfo, PredId0, Arity),
+	(
+		( code_util__builtin_binop(PredName, Arity, _)
+		; code_util__builtin_unop(PredName, Arity, _)
+		)
+	->
+		IsBuiltin = is_builtin
+	;
+		IsBuiltin = not_builtin
+	).
 
-code_util__atom_to_unop("builtin_bit_neg", bitwise_complement).
+code_util__builtin_binop("builtin_plus", 3, (+)).
+code_util__builtin_binop("builtin_minus", 3, (-)).
+code_util__builtin_binop("builtin_times", 3, (*)).
+code_util__builtin_binop("builtin_div", 3, (/)).
+code_util__builtin_binop("builtin_mod", 3, (mod)).
+code_util__builtin_binop("builtin_left_shift", 3, (<<)).
+code_util__builtin_binop("builtin_right_shift", 3, (>>)).
+code_util__builtin_binop("builtin_bit_and", 3, (&)).
+code_util__builtin_binop("builtin_bit_or", 3, (|)).
+code_util__builtin_binop("builtin_bit_xor", 3, (^)).
+code_util__builtin_binop(">", 2, (>)).
+code_util__builtin_binop("<", 2, (<)).
+code_util__builtin_binop(">=", 2, (>=)).
+code_util__builtin_binop("=<", 2, (<=)).
+
+code_util__builtin_unop("builtin_bit_neg", 2, bitwise_complement).
 
 %-----------------------------------------------------------------------------%
 

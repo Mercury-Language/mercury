@@ -384,21 +384,6 @@ io__final_state(IOState) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- pred io__get_globals(univ, io__state, io__state).
-:- mode io__get_globals(out, di, uo).
-
-io__get_globals(Globals, IOState, IOState) :-
-	IOState = io__state(_StreamNames, Globals, _S).
-
-:- pred io__set_globals(univ, io__state, io__state).
-:- mode io__set_globals(in, di, uo).
-
-io__set_globals(Globals, io__state(StreamNames, _, S),
-		io__state(StreamNames, Globals, S)).
-
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-
 io__preallocate_heap_space(N) -->
 	{ preallocate_heap(N) },
 	io__update_state.

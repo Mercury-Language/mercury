@@ -132,7 +132,7 @@
 
 :- implementation.
 :- import_module int, list, map, string, require, std_util, bintree.
-:- import_module varset, term, prog_util, type_util.
+:- import_module varset, term, prog_util, type_util, code_util.
 :- import_module term_io, prog_out, hlds_out, mercury_to_mercury.
 :- import_module options, getopt, globals.
 :- import_module undef_types.
@@ -2119,11 +2119,15 @@ type_assign_set_type_bindings(type_assign(A, B, _), TypeBindings,
 :- mode report_warning_no_clauses(in, in, in, di, uo) is det.
 
 report_warning_no_clauses(PredId, PredInfo, ModuleInfo) -->
-	{ pred_info_context(PredInfo, Context) },
-	prog_out__write_context(Context),
-	io__write_string("Warning: no clauses for "),
-	hlds_out__write_pred_id(ModuleInfo, PredId),
-	io__write_string("\n").
+	( { code_util__is_builtin(ModuleInfo, PredId, 0, is_builtin) } ->
+		[]
+	;
+		{ pred_info_context(PredInfo, Context) },
+		prog_out__write_context(Context),
+		io__write_string("Warning: no clauses for "),
+		hlds_out__write_pred_id(ModuleInfo, PredId),
+		io__write_string("\n")
+	).
 
 %-----------------------------------------------------------------------------%
 

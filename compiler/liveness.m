@@ -103,21 +103,26 @@ detect_liveness_in_goal(Goal0 - GoalInfo0, Liveness0, ModuleInfo,
 	goal_info_post_delta_liveness(GoalInfo0, PostDelta0),
 	goal_info_get_nonlocals(GoalInfo0, NonLocals),
 	PreDelta0 = _PreBirths0 - PreDeaths,
-	PostDelta0 = PostBirths0 - PostDeaths,
+	PostDelta0 = _PostBirths0 - PostDeaths,
+		% work out which variables get born in this goal
+	set__difference(NonLocals, Liveness0, NewVarsSet),
+	set__to_sorted_list(NewVarsSet, NewVarsList),
+	goal_info_get_instmap_delta(GoalInfo0, InstMapDelta),
+	set__init(Births0),
+	find_binding_occurrences(NewVarsList, ModuleInfo, InstMapDelta,
+		Births0, Births),
+	set__union(Liveness0, Births, Liveness),
 	(
 		goal_is_atomic(Goal0)
 	->
-		set__difference(NonLocals, Liveness0, PreBirths),
-		set__union(Liveness0, PreBirths, Liveness),
+		PreBirths = Births,
 		Goal = Goal0,
 		PostDelta = PostDelta0
 	;
-		set__union(Liveness0, NonLocals, Liveness),
 		set__init(PreBirths),
 		detect_liveness_in_goal_2(Goal0, Liveness0,
 						ModuleInfo, Liveness1, Goal),
-		set__difference(NonLocals, Liveness1, PostBirths1),
-		set__union(PostBirths0, PostBirths1, PostBirths),
+		set__difference(Births, Liveness1, PostBirths),
 		PostDelta = PostBirths - PostDeaths
 	),
 	PreDelta = PreBirths - PreDeaths,
@@ -132,6 +137,28 @@ detect_liveness_in_goal(Goal0, Liveness0, ModuleInfo, Goal) :-
 	detect_liveness_in_goal(Goal0, Liveness0, ModuleInfo, _, Goal).
 
 	% Here we process each of the different sorts of goals.
+
+%-----------------------------------------------------------------------------%
+
+	% Given a list of variables and an instmap delta, determine
+	% which of those variables become bound (according to the instmap
+	% delta) and insert them into the accumulated set of bound vars.
+
+:- pred find_binding_occurrences(list(var), module_info, instmap_delta,
+				set(var), set(var)).
+:- mode find_binding_occurrences(in, in, in, in, out) is det.
+
+find_binding_occurrences([], _, _, BoundVars, BoundVars).
+find_binding_occurrences([Var | Vars], ModuleInfo, InstMapDelta, BoundVars0,
+		BoundVars) :-
+	instmap_lookup_var(InstMapDelta, Var, Inst),
+	( inst_is_bound(ModuleInfo, Inst) ->
+		set__insert(BoundVars0, Var, BoundVars1)
+	;
+		BoundVars1 = BoundVars0
+	),
+	find_binding_occurrences(Vars, ModuleInfo, InstMapDelta, BoundVars1,
+		BoundVars).
 
 %-----------------------------------------------------------------------------%
 

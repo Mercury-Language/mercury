@@ -467,4 +467,12 @@ io__report_stats -->
 	{ report_stats }.
 
 %-----------------------------------------------------------------------------%
+
+io__get_globals(Globals, IOState, IOState) :-
+	IOState = io__state(_StreamNames, Globals, _S).
+
+io__set_globals(Globals, io__state(StreamNames, _, S),
+		io__state(StreamNames, Globals, S)).
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

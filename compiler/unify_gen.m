@@ -74,6 +74,9 @@ unify_gen__generate_assignment(VarA, VarB, empty) -->
 	->
 		code_info__cache_expression(VarA, var(VarB))
 	;
+		% For free-free unifications, the mode analysis reports
+		% them as assignment to the dead variable.  For such
+		% unifications we of course don't generate any code
 		{ true }
 	).
 

@@ -35,7 +35,8 @@
 	% This whole section just traverses the module structure.
 
 generate_arg_info(ModuleInfo0, ModuleInfo) :-
-	module_info_predids(ModuleInfo0, PredIds),
+	module_info_preds(ModuleInfo0, Preds),
+	map__keys(Preds, PredIds),
 	generate_pred_arg_info(PredIds, ModuleInfo0, ModuleInfo).
 
 :- pred generate_pred_arg_info(list(pred_id), module_info, module_info).

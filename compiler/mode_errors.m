@@ -86,6 +86,10 @@
 :- pred report_mode_error(mode_error, mode_info, io__state, io__state).
 :- mode report_mode_error(in, mode_info_no_io, di, uo) is det.
 
+:- pred report_warning_no_modes(pred_id, pred_info, module_info,
+				io__state, io__state).
+:- mode report_warning_no_modes(in, in, in, di, uo) is det.
+
 	% initialize the mode_context.
 
 :- pred mode_context_init(mode_context).
@@ -538,6 +542,15 @@ write_mode_context(call(PredId, _ArgNum), Context) -->
 
 write_mode_context(unify(UnifyContext, _Side), Context) -->
 	hlds_out__write_unify_context(UnifyContext, Context).
+
+%-----------------------------------------------------------------------------%
+
+report_warning_no_modes(PredId, PredInfo, ModuleInfo) -->
+	{ pred_info_context(PredInfo, Context) },
+	prog_out__write_context(Context),
+	io__write_string("Warning: no modes for "),
+	hlds_out__write_pred_id(ModuleInfo, PredId),
+	io__write_string("\n").
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

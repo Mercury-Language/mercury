@@ -84,7 +84,7 @@ a local variable, then report the error [this idea not yet implemented].
 
 :- import_module undef_modes, mode_info, delay_info, mode_errors.
 :- import_module list, map, varset, term, prog_out, string, require, std_util.
-:- import_module type_util, mode_util, prog_io.
+:- import_module type_util, mode_util, code_util, prog_io.
 :- import_module globals, options, mercury_to_mercury, hlds_out, int, set.
 
 %-----------------------------------------------------------------------------%
@@ -130,9 +130,7 @@ modecheck_pred_modes_2([], ModuleInfo, ModuleInfo) --> [].
 modecheck_pred_modes_2([PredId | PredIds], ModuleInfo0, ModuleInfo) -->
 	{ module_info_preds(ModuleInfo0, Preds0) },
 	{ map__lookup(Preds0, PredId, PredInfo0) },
-	{ pred_info_clauses_info(PredInfo0, ClausesInfo0) },
-	{ ClausesInfo0 = clauses_info(_, _, _, Clauses0) },
-	( { Clauses0 = [] } ->
+	( { pred_info_is_imported(PredInfo0) } ->
 		{ ModuleInfo3 = ModuleInfo0 }
 	;
 		globals__io_lookup_bool_option(very_verbose, VeryVerbose),
@@ -246,9 +244,15 @@ get_clause_goals([Clause | Clauses], Goals) :-
 modecheck_procs(PredId, ModuleInfo, PredInfo0, PredInfo, NumErrors) -->
 	{ pred_info_procedures(PredInfo0, Procs0) },
 	{ map__keys(Procs0, ProcIds) },
-	modecheck_procs_2(ProcIds, PredId, ModuleInfo, Procs0, 0,
-				Procs, NumErrors),
-	{ pred_info_set_procedures(PredInfo0, Procs, PredInfo) }.
+	( { ProcIds = [] } ->
+		report_warning_no_modes(PredId, PredInfo, ModuleInfo),
+		{ PredInfo = PredInfo0 },
+		{ NumErrors = 0 }
+	;
+		modecheck_procs_2(ProcIds, PredId, ModuleInfo, Procs0, 0,
+					Procs, NumErrors),
+		{ pred_info_set_procedures(PredInfo0, Procs, PredInfo) }
+	).
 
 	% Iterate over the list of modes for a predicate.
 
@@ -468,11 +472,14 @@ modecheck_goal_2(some(Vs, G0), _, some(Vs, G)) -->
 	modecheck_goal(G0, G),
 	mode_checkpoint(exit, "some").
 
-modecheck_goal_2(call(PredId, _, Args0, Builtin, PredName, Follow), _, Goal) -->
+modecheck_goal_2(call(PredId, _, Args0, _, PredName, Follow), _, Goal) -->
 	mode_checkpoint(enter, "call"),
 	{ list__length(Args0, Arity) },
 	mode_info_set_call_context(call(PredName/Arity)),
 	modecheck_call_pred(PredId, Args0, Mode, Args, ExtraGoals),
+	=(ModeInfo),
+	{ mode_info_get_module_info(ModeInfo, ModuleInfo) },
+	{ code_util__is_builtin(ModuleInfo, PredId, Mode, Builtin) },
 	{ Call = call(PredId, Mode, Args, Builtin, PredName, Follow) },
 	{ goal_info_init(GoalInfo) },	% XXX bug!
 	{ CallGoal = Call - GoalInfo },
