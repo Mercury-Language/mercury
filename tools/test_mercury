@@ -279,7 +279,7 @@ case $HOST in
 esac
 for grade in $GRADES kludge_for_broken_shells
 do
-	if [ "$GRADE" != kludge_for_broken_shells ]; then
+	if [ "$grade" != kludge_for_broken_shells ]; then
 		echo "test clpr stuff for grade $grade" 1>&2
 		(cd mercury/extras/clpr &&
 			 mmake realclean $PARALLEL MMAKEFLAGS=$PARALLEL &&
