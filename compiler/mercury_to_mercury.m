@@ -1182,7 +1182,7 @@ mercury_quote_qualified_atom(Name) -->
 			\+ lexer__graphic_token_char(Char)) }
 	->
 		io__write_string("'"),
-		term_io__write_quoted_string(Name),
+		term_io__write_escaped_string(Name),
 		io__write_string("'")
 	;
 		term_io__quote_atom(Name)

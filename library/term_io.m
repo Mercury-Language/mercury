@@ -76,16 +76,22 @@
 	% Given a character C, write C in single-quotes,
 	% escaped if necessary, to stdout.
 
-:- pred term_io__quote_single_char(character, io__state, io__state).
-:- mode term_io__quote_single_char(in, di, uo) is det.
+:- pred term_io__write_escaped_char(character, io__state, io__state).
+:- mode term_io__write_escaped_char(in, di, uo) is det.
 	% Given a character C, write C, escaped if necessary, to stdout.
 	% The character is not enclosed in quotes.
 
-:- pred term_io__write_quoted_string(string, io__state, io__state).
-:- mode term_io__write_quoted_string(in, di, uo) is det.
+:- pred term_io__write_escaped_string(string, io__state, io__state).
+:- mode term_io__write_escaped_string(in, di, uo) is det.
 	% Given a string S, write S, with characters
 	% escaped if necessary, to stdout.
 	% The string is not enclosed in quotes.
+
+	% `term_io__quote_single_char' is the old (misleading) name for
+	% `term_io__write_escaped_char'.  Use the latter instead.
+:- pragma obsolete(term_io__quote_single_char/3).
+:- pred term_io__quote_single_char(character, io__state, io__state).
+:- mode term_io__quote_single_char(in, di, uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -356,7 +362,7 @@ term_io__write_constant(term__string(S)) -->
 
 term_io__quote_char(C) -->
 	io__write_char(''''),
-	term_io__quote_single_char(C),
+	term_io__write_escaped_char(C),
 	io__write_char('''').
 
 term_io__quote_atom(S) -->
@@ -392,25 +398,28 @@ term_io__quote_atom(S) -->
 	;
 		% anything else must be output as a quoted token (6.4.2)
 		io__write_char(''''),
-		term_io__write_quoted_string(S),
+		term_io__write_escaped_string(S),
 		io__write_char('''')
 	).
 
 term_io__quote_string(S) -->
 	io__write_char('"'),
-	term_io__write_quoted_string(S),
+	term_io__write_escaped_string(S),
 	io__write_char('"').
 
-term_io__write_quoted_string(S0) -->
+term_io__write_escaped_string(S0) -->
 	( { string__first_char(S0, Char, S1) } ->
-		term_io__quote_single_char(Char),
-		term_io__write_quoted_string(S1)
+		term_io__write_escaped_char(Char),
+		term_io__write_escaped_string(S1)
 	;
 		[]
 	).
 
 term_io__quote_single_char(Char) -->
-	( { mercury_quote_special_char(Char, QuoteChar) } ->
+	term_io__write_escaped_char(Char).
+
+term_io__write_escaped_char(Char) -->
+	( { mercury_escape_special_char(Char, QuoteChar) } ->
 		io__write_char('\\'),
 		io__write_char(QuoteChar)
 	; { is_mercury_source_char(Char) } ->
@@ -495,15 +504,20 @@ is_mercury_punctuation_char('|').
 
 %-----------------------------------------------------------------------------%
 
-:- pred mercury_quote_special_char(character, character).
-:- mode mercury_quote_special_char(in, out) is semidet.
+	% mercury_escape_special_char(Char, EscapeChar)
+	% is true iff Char is character for which there is a special
+	% backslash-escape character EscapeChar that can be used
+	% after a backslash in string literals or atoms to represent Char.
 
-mercury_quote_special_char('''', '''').
-mercury_quote_special_char('"', '"').
-mercury_quote_special_char('\\', '\\').
-mercury_quote_special_char('\n', 'n').
-mercury_quote_special_char('\t', 't').
-mercury_quote_special_char('\b', 'b').
+:- pred mercury_escape_special_char(character, character).
+:- mode mercury_escape_special_char(in, out) is semidet.
+
+mercury_escape_special_char('''', '''').
+mercury_escape_special_char('"', '"').
+mercury_escape_special_char('\\', '\\').
+mercury_escape_special_char('\n', 'n').
+mercury_escape_special_char('\t', 't').
+mercury_escape_special_char('\b', 'b').
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
