@@ -143,7 +143,7 @@
 	% sym_name_and_args takes a term and returns a sym_name and a list of
 	% argument terms.
 	% It fals if the input is not valid syntax for a QualifiedTerm.
-:- pred sym_name_and_args(term, sym_name, list(term)).
+:- pred sym_name_and_args(term(T), sym_name, list(term(T))).
 :- mode sym_name_and_args(in, out, out) is semidet.
 
 	% parse_qualified_term/4 takes a term (and also the containing
@@ -152,7 +152,7 @@
 	% and returns a sym_name and a list of argument terms.
 	% Returns an error on ill-formed input.
 	% See also parse_implicitly_qualified_term/5 (below).
-:- pred parse_qualified_term(term, term, string, maybe_functor).
+:- pred parse_qualified_term(term(T), term(T), string, maybe_functor(T)).
 :- mode parse_qualified_term(in, in, in, out) is det.
 
 	% parse_implicitly_qualified_term(DefaultModName, Term,
@@ -173,8 +173,8 @@
 	% name of the current module) -- specifying a module qualifier
 	% explicitly is redundant, but it is allowed, so long as the
 	% module qualifier specified matches the default.
-:- pred parse_implicitly_qualified_term(module_name, term, term, string,
-					maybe_functor).
+:- pred parse_implicitly_qualified_term(module_name, term(T), term(T), string,
+					maybe_functor(T)).
 :- mode parse_implicitly_qualified_term(in, in, in, in, out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -286,7 +286,7 @@ search_for_file([Dir | Dirs], FileName, R) -->
 
 	% extract the final `:- end_module' declaration if any
 
-:- type module_end ---> no ; yes(module_name, term__context).
+:- type module_end ---> no ; yes(module_name, prog_context).
 
 :- pred get_end_module(item_list, item_list, module_end).
 :- mode get_end_module(in, out, out) is det.
@@ -725,33 +725,42 @@ parse_item(ModuleName, VarSet, Term, Result) :-
 			),
 			Body = term__functor(term__atom("true"), [], TheContext)
 		),
-		parse_goal(Body, VarSet, Body2, VarSet2),
+		varset__coerce(VarSet, ProgVarSet),
+		parse_goal(Body, ProgVarSet, Body2, ProgVarSet2),
 		(
 			Head = term__functor(term__atom("="),
 					[FuncHead, FuncResult], _)
 		->
 			parse_implicitly_qualified_term(ModuleName,
 				FuncHead, Head, "equation head", R2),
-			process_func_clause(R2, FuncResult, VarSet2, Body2, R3)
+			process_func_clause(R2, FuncResult, ProgVarSet2, Body2,
+				R3)
 		;
 			parse_implicitly_qualified_term(ModuleName,
 				Head, Term, "clause head", R2),
-			process_pred_clause(R2, VarSet2, Body2, R3)
+			process_pred_clause(R2, ProgVarSet2, Body2, R3)
 		),
 		add_context(R3, TheContext, Result)
 	).
 
-:- pred process_pred_clause(maybe_functor, varset, goal, maybe1(item)).
+:- pred process_pred_clause(maybe_functor, prog_varset, goal, maybe1(item)).
 :- mode process_pred_clause(in, in, in, out) is det.
-process_pred_clause(ok(Name, Args), VarSet, Body,
-		ok(pred_clause(VarSet, Name, Args, Body))).
-process_pred_clause(error(ErrMessage, Term), _, _, error(ErrMessage, Term)).
+process_pred_clause(ok(Name, Args0), VarSet, Body,
+		ok(pred_clause(VarSet, Name, Args, Body))) :-
+	list__map(term__coerce, Args0, Args).
+process_pred_clause(error(ErrMessage, Term0), _, _, error(ErrMessage, Term)) :-
+	term__coerce(Term0, Term).
 
-:- pred process_func_clause(maybe_functor, term, varset, goal, maybe1(item)).
+:- pred process_func_clause(maybe_functor, term, prog_varset, goal,
+		maybe1(item)).
 :- mode process_func_clause(in, in, in, in, out) is det.
-process_func_clause(ok(Name, Args), Result, VarSet, Body,
-		ok(func_clause(VarSet, Name, Args, Result, Body))).
-process_func_clause(error(ErrMessage, Term), _, _, _, error(ErrMessage, Term)).
+process_func_clause(ok(Name, Args0), Result0, VarSet, Body,
+		ok(func_clause(VarSet, Name, Args, Result, Body))) :-
+	list__map(term__coerce, Args0, Args),
+	term__coerce(Result0, Result).
+process_func_clause(error(ErrMessage, Term0), _, _, _,
+		error(ErrMessage, Term)) :-
+	term__coerce(Term0, Term).
 
 %-----------------------------------------------------------------------------%
 
@@ -950,11 +959,13 @@ process_decl(_ModuleName, VarSet, "export_op", [OpSpec], Attributes, Result) :-
 	parse_symlist_decl(parse_op_specifier, make_op, make_export,
 		OpSpec, Attributes, VarSet, Result).
 
-process_decl(_ModuleName, VarSet, "interface", [], Attributes, Result) :-
+process_decl(_ModuleName, VarSet0, "interface", [], Attributes, Result) :-
+	varset__coerce(VarSet0, VarSet),
 	Result0 = ok(module_defn(VarSet, interface)),
 	check_no_attributes(Result0, Attributes, Result).
 
-process_decl(_ModuleName, VarSet, "implementation", [], Attributes, Result) :-
+process_decl(_ModuleName, VarSet0, "implementation", [], Attributes, Result) :-
+	varset__coerce(VarSet0, VarSet),
 	Result0 = ok(module_defn(VarSet, implementation)),
 	check_no_attributes(Result0, Attributes, Result).
 
@@ -964,11 +975,12 @@ process_decl(_ModuleName, VarSet, "external", [PredSpec], Attributes,
 	process_maybe1(make_external(VarSet), Result0, Result1),
 	check_no_attributes(Result1, Attributes, Result).
 
-process_decl(DefaultModuleName, VarSet, "module", [ModuleName], Attributes,
+process_decl(DefaultModuleName, VarSet0, "module", [ModuleName], Attributes,
 		Result) :-
 	parse_module_name(DefaultModuleName, ModuleName, Result0),
 	(	
 		Result0 = ok(ModuleNameSym), 
+		varset__coerce(VarSet0, VarSet),
 		Result1 = ok(module_defn(VarSet, module(ModuleNameSym)))
 	;	
 		Result0 = error(A, B),
@@ -976,11 +988,12 @@ process_decl(DefaultModuleName, VarSet, "module", [ModuleName], Attributes,
 	),
 	check_no_attributes(Result1, Attributes, Result).
 
-process_decl(DefaultModuleName, VarSet, "include_module", [ModuleNames],
+process_decl(DefaultModuleName, VarSet0, "include_module", [ModuleNames],
 		Attributes, Result) :-
 	parse_list(parse_module_name(DefaultModuleName), ModuleNames, Result0),
 	(	
 		Result0 = ok(ModuleNameSyms), 
+		varset__coerce(VarSet0, VarSet),
 		Result1 = ok(module_defn(VarSet,
 				include_module(ModuleNameSyms)))
 	;	
@@ -989,8 +1002,8 @@ process_decl(DefaultModuleName, VarSet, "include_module", [ModuleNames],
 	),
 	check_no_attributes(Result1, Attributes, Result).
 
-process_decl(DefaultModuleName, VarSet, "end_module", [ModuleName], Attributes,
-		Result) :-
+process_decl(DefaultModuleName, VarSet0, "end_module", [ModuleName],
+		Attributes, Result) :-
 	%
 	% The name in an `end_module' declaration not inside the
 	% scope of the module being ended, so the default module name
@@ -1002,6 +1015,7 @@ process_decl(DefaultModuleName, VarSet, "end_module", [ModuleName], Attributes,
 	parse_module_name(ParentOfDefaultModuleName, ModuleName, Result0),
 	(	
 		Result0 = ok(ModuleNameSym), 
+		varset__coerce(VarSet0, VarSet),
 		Result1 = ok(module_defn(VarSet, end_module(ModuleNameSym)))
 	;	
 		Result0 = error(A, B),
@@ -1037,11 +1051,13 @@ parse_decl_attribute("<=", [Decl, Constraints],
 		constraints(univ, Constraints), Decl).
 parse_decl_attribute("=>", [Decl, Constraints],
 		constraints(exist, Constraints), Decl).
-parse_decl_attribute("some", [TVars, Decl],
+parse_decl_attribute("some", [TVars0, Decl],
 		quantifier(exist, TVarsList), Decl) :-
+	term__coerce(TVars0, TVars),
 	parse_list_of_vars(TVars, TVarsList).
-parse_decl_attribute("all", [TVars, Decl],
+parse_decl_attribute("all", [TVars0, Decl],
 		quantifier(univ, TVarsList), Decl) :-
+	term__coerce(TVars0, TVars),
 	parse_list_of_vars(TVars, TVarsList).
 
 :- pred check_no_attributes(maybe1(item), decl_attrs, maybe1(item)).
@@ -1091,11 +1107,15 @@ parse_type_decl(ModuleName, VarSet, TypeDecl, Result) :-
 
 :- pred make_type_defn(varset, condition, type_defn, item).
 :- mode make_type_defn(in, in, in, out) is det.
-make_type_defn(VarSet, Cond, TypeDefn, type_defn(VarSet, TypeDefn, Cond)).
+
+make_type_defn(VarSet0, Cond, TypeDefn, type_defn(VarSet, TypeDefn, Cond)) :-
+	varset__coerce(VarSet0, VarSet).
 
 :- pred make_external(varset, sym_name_specifier, item).
 :- mode make_external(in, in, out) is det.
-make_external(VarSet, SymSpec, module_defn(VarSet, external(SymSpec))).
+
+make_external(VarSet0, SymSpec, module_defn(VarSet, external(SymSpec))) :-
+	varset__coerce(VarSet0, VarSet).
 
 %-----------------------------------------------------------------------------%
 
@@ -1309,8 +1329,10 @@ process_uu_type(ModuleName, Head, Body, Result) :-
 :- pred process_uu_type_2(maybe_functor, term, maybe1(type_defn)).
 :- mode process_uu_type_2(in, in, out) is det.
 process_uu_type_2(error(Error, Term), _, error(Error, Term)).
-process_uu_type_2(ok(Name, Args), Body, ok(uu_type(Name, Args, List))) :-
-		sum_to_list(Body, List).
+process_uu_type_2(ok(Name, Args0), Body0, ok(uu_type(Name, Args, List))) :-
+	list__map(term__coerce, Args0, Args),
+	term__coerce(Body0, Body),
+	sum_to_list(Body, List).
 
 %-----------------------------------------------------------------------------%
 
@@ -1324,17 +1346,19 @@ process_eqv_type(ModuleName, Head, Body, Result) :-
 :- pred process_eqv_type_2(maybe_functor, term, maybe1(type_defn)).
 :- mode process_eqv_type_2(in, in, out) is det.
 process_eqv_type_2(error(Error, Term), _, error(Error, Term)).
-process_eqv_type_2(ok(Name, Args), Body, Result) :-
+process_eqv_type_2(ok(Name, Args0), Body0, Result) :-
 	% check that all the variables in the body occur in the head
 	(
 		(
-			term__contains_var(Body, Var2),
-			\+ term__contains_var_list(Args, Var2)
+			term__contains_var(Body0, Var2),
+			\+ term__contains_var_list(Args0, Var2)
 		)
 	->
 		Result = error("free type parameter in RHS of type definition",
-				Body)
+				Body0)
 	;
+		list__map(term__coerce, Args0, Args),
+		term__coerce(Body0, Body),
 		Result = ok(eqv_type(Name, Args, Body))
 	).
 
@@ -1356,9 +1380,10 @@ process_du_type(ModuleName, Head, Body, EqualityPred, Result) :-
 			maybe1(maybe(equality_pred)), maybe1(type_defn)).
 :- mode process_du_type_2(in, in, in, in, out) is det.
 process_du_type_2(_, error(Error, Term), _, _, error(Error, Term)).
-process_du_type_2(ModuleName, ok(Functor, Args), Body, MaybeEqualityPred,
+process_du_type_2(ModuleName, ok(Functor, Args0), Body, MaybeEqualityPred,
 		Result) :-
 	% check that body is a disjunction of constructors
+	list__map(term__coerce, Args0, Args),
 	(
 		convert_constructors(ModuleName, Body, Constrs)
 	->
@@ -1457,7 +1482,8 @@ process_abstract_type(ModuleName, Head, Result) :-
 :- pred process_abstract_type_2(maybe_functor, maybe1(type_defn)).
 :- mode process_abstract_type_2(in, out) is det.
 process_abstract_type_2(error(Error, Term), error(Error, Term)).
-process_abstract_type_2(ok(Functor, Args), ok(abstract_type(Functor, Args))).
+process_abstract_type_2(ok(Functor, Args0), ok(abstract_type(Functor, Args))) :-
+	list__map(term__coerce, Args0, Args).
 
 %-----------------------------------------------------------------------------%
 
@@ -1542,7 +1568,8 @@ convert_constructor(ModuleName, Term0, Result) :-
 	( 
 		Term0 = term__functor(term__atom("some"), [Vars, Term1], _)
 	->
-		parse_list_of_vars(Vars, ExistQVars),
+		parse_list_of_vars(Vars, ExistQVars0),
+		list__map(term__coerce_var, ExistQVars0, ExistQVars),
 		Term2 = Term1
 	;
 		ExistQVars = [],
@@ -1594,13 +1621,15 @@ process_pred(ModuleName, VarSet, PredType, Cond, MaybeDet, Attributes0,
 			maybe1(item)).
 :- mode process_pred_2(in, in, in, in, in, in, in, in, out) is det.
 
-process_pred_2(ok(F, As0), PredType, VarSet, MaybeDet, Cond, ExistQVars,
+process_pred_2(ok(F, As0), PredType, VarSet0, MaybeDet, Cond, ExistQVars,
 		ClassContext, Attributes0, Result) :-
 	( convert_type_and_mode_list(As0, As) ->
 		( verify_type_and_mode_list(As) ->
 	        	get_purity(Attributes0, Purity, Attributes),
-			Result0 = ok(pred(VarSet, ExistQVars, F, As, MaybeDet,
-				Cond, Purity, ClassContext)),
+			varset__coerce(VarSet0, TVarSet),
+			varset__coerce(VarSet0, IVarSet),
+			Result0 = ok(pred(TVarSet, IVarSet, ExistQVars, F,
+				As, MaybeDet, Cond, Purity, ClassContext)),
 			check_no_attributes(Result0, Attributes, Result)
 		;
 			Result = error("some but not all arguments have modes",
@@ -1840,7 +1869,7 @@ process_func_2(ModuleName, VarSet, Term, Cond, MaybeDet,
 			maybe1(item)).
 :- mode process_func_3(in, in, in, in, in, in, in, in, in, out) is det.
 
-process_func_3(ok(F, As0), FuncTerm, ReturnTypeTerm, VarSet, MaybeDet, Cond,
+process_func_3(ok(F, As0), FuncTerm, ReturnTypeTerm, VarSet0, MaybeDet, Cond,
 		ExistQVars, ClassContext, Attributes, Result) :-
 	( convert_type_and_mode_list(As0, As) ->
 		( \+ verify_type_and_mode_list(As) ->
@@ -1872,9 +1901,11 @@ process_func_3(ok(F, As0), FuncTerm, ReturnTypeTerm, VarSet, MaybeDet, Cond,
 				% note: impure or semipure functions are not
 				% allowed
 				Purity = (pure),
-				Result0 = ok(func(VarSet, ExistQVars, F, As,
-					ReturnType, MaybeDet, Cond, Purity,
-					ClassContext)),
+				varset__coerce(VarSet0, TVarSet),
+				varset__coerce(VarSet0, IVarSet),
+				Result0 = ok(func(TVarSet, IVarSet, ExistQVars,
+					F, As, ReturnType, MaybeDet, Cond,
+					Purity, ClassContext)),
 				check_no_attributes(Result0, Attributes,
 					Result)
 			)
@@ -1917,10 +1948,11 @@ process_mode(ModuleName, VarSet, Term, Cond, MaybeDet, Result) :-
 			condition, maybe1(item)).
 :- mode process_pred_mode(in, in, in, in, in, out) is det.
 
-process_pred_mode(ok(F, As0), PredMode, VarSet, MaybeDet, Cond, Result) :-
+process_pred_mode(ok(F, As0), PredMode, VarSet0, MaybeDet, Cond, Result) :-
 	(
 		convert_mode_list(As0, As)
 	->
+		varset__coerce(VarSet0, VarSet),
 		Result = ok(pred_mode(VarSet, F, As, MaybeDet, Cond))
 	;
 		Result = error("syntax error in predicate mode declaration",
@@ -1932,12 +1964,13 @@ process_pred_mode(error(M, T), _, _, _, _, error(M, T)).
 			condition, maybe1(item)).
 :- mode process_func_mode(in, in, in, in, in, in, out) is det.
 
-process_func_mode(ok(F, As0), FuncMode, RetMode0, VarSet, MaybeDet, Cond,
+process_func_mode(ok(F, As0), FuncMode, RetMode0, VarSet0, MaybeDet, Cond,
 		Result) :-
 	(
 		convert_mode_list(As0, As)
 	->
 		( convert_mode(RetMode0, RetMode) ->
+			varset__coerce(VarSet0, VarSet),
 			Result = ok(func_mode(VarSet, F, As, RetMode, MaybeDet,
 					Cond))
 		;
@@ -2048,7 +2081,8 @@ convert_inst_defn_2(ok(Name, Args), Head, Body, Result) :-
 		( %%% some [ConvertedBody]
 			convert_inst(Body, ConvertedBody)
 		->
-			Result = ok(eqv_inst(Name, Args, ConvertedBody))
+			list__map(term__coerce, Args, InstArgs),
+			Result = ok(eqv_inst(Name, InstArgs, ConvertedBody))
 		;
 			Result = error("syntax error in inst body", Body)
 		)
@@ -2085,12 +2119,15 @@ convert_abstract_inst_defn_2(ok(Name, Args), Head, Result) :-
 			"repeated inst parameters in abstract inst definition",
 				Head)
 	;
-		Result = ok(abstract_inst(Name, Args))
+		list__map(term__coerce, Args, InstArgs),
+		Result = ok(abstract_inst(Name, InstArgs))
 	).
 
 :- pred make_inst_defn(varset, condition, inst_defn, item).
 :- mode make_inst_defn(in, in, in, out) is det.
-make_inst_defn(VarSet, Cond, InstDefn, inst_defn(VarSet, InstDefn, Cond)).
+
+make_inst_defn(VarSet0, Cond, InstDefn, inst_defn(VarSet, InstDefn, Cond)) :-
+	varset__coerce(VarSet0, VarSet).
 
 %-----------------------------------------------------------------------------%
 
@@ -2162,7 +2199,8 @@ convert_mode_defn_2(ok(Name, Args), Head, Body, Result) :-
 		( %%% some [ConvertedBody]
 			convert_mode(Body, ConvertedBody)
 		->
-			Result = ok(eqv_mode(Name, Args, ConvertedBody))
+			list__map(term__coerce, Args, InstArgs),
+			Result = ok(eqv_mode(Name, InstArgs, ConvertedBody))
 		;
 			% catch-all error message - we should do
 			% better than this
@@ -2195,7 +2233,8 @@ convert_type_and_mode(Term, Result) :-
 
 :- pred make_mode_defn(varset, condition, mode_defn, item).
 :- mode make_mode_defn(in, in, in, out) is det.
-make_mode_defn(VarSet, Cond, ModeDefn, mode_defn(VarSet, ModeDefn, Cond)).
+make_mode_defn(VarSet0, Cond, ModeDefn, mode_defn(VarSet, ModeDefn, Cond)) :-
+	varset__coerce(VarSet0, VarSet).
 
 %-----------------------------------------------------------------------------%
 
@@ -2220,8 +2259,9 @@ parse_symlist_decl(ParserPred, MakeSymListPred, MakeModuleDefnPred,
 :- pred make_module_defn(maker(T, sym_list), maker(sym_list, module_defn),
 			varset, T, item).
 :- mode make_module_defn(maker, maker, in, in, out) is det.
-make_module_defn(MakeSymListPred, MakeModuleDefnPred, VarSet, T,
+make_module_defn(MakeSymListPred, MakeModuleDefnPred, VarSet0, T,
 		module_defn(VarSet, ModuleDefn)) :-
+	varset__coerce(VarSet0, VarSet),
 	call(MakeSymListPred, T, SymList),
 	call(MakeModuleDefnPred, SymList, ModuleDefn).
 
@@ -2477,10 +2517,11 @@ parse_predicate_specifier(Term, Result) :-
 
 :- pred process_typed_predicate_specifier(maybe_functor, maybe1(pred_specifier)).
 :- mode process_typed_predicate_specifier(in, out) is det.
-process_typed_predicate_specifier(ok(Name, Args), ok(Result)) :-
-    ( Args = [] ->
+process_typed_predicate_specifier(ok(Name, Args0), ok(Result)) :-
+    ( Args0 = [] ->
 	Result = sym(name(Name))
     ;
+    	list__map(term__coerce, Args0, Args),
 	Result = name_args(Name, Args)
     ).
 process_typed_predicate_specifier(error(Msg, Term), error(Msg, Term)).
@@ -2581,7 +2622,7 @@ make_name_specifier(Name, name(Name)).
 %	We also allow the syntax `Module__Name'
 %	as an alternative for `Module:Name'.
 
-:- pred parse_symbol_name(term, maybe1(sym_name)).
+:- pred parse_symbol_name(term(T), maybe1(sym_name)).
 :- mode parse_symbol_name(in, out) is det.
 parse_symbol_name(Term, Result) :-
     ( 
@@ -2596,10 +2637,12 @@ parse_symbol_name(Term, Result) :-
 		Result = ok(qualified(Module, Name))
 	    ;
 	    	ModuleResult = error(_, _),
-		Result = error("module name identifier expected before ':' in qualified symbol name", Term)
+		term__coerce(Term, ErrorTerm),
+		Result = error("module name identifier expected before ':' in qualified symbol name", ErrorTerm)
             )
         ;
-            Result = error("identifier expected after ':' in qualified symbol name", Term)
+	    term__coerce(Term, ErrorTerm),
+            Result = error("identifier expected after ':' in qualified symbol name", ErrorTerm)
 	)
     ;
         ( 
@@ -2608,7 +2651,8 @@ parse_symbol_name(Term, Result) :-
     	    string_to_sym_name(Name, "__", SymName),
 	    Result = ok(SymName)
         ;
-            Result = error("symbol name expected", Term)
+	    term__coerce(Term, ErrorTerm),
+            Result = error("symbol name expected", ErrorTerm)
         )
     ).
 
@@ -2663,7 +2707,8 @@ parse_implicitly_qualified_term(DefaultModName, Term, ContainingTerm, Msg,
 			SymName = qualified(ModName, _),
 			\+ match_sym_name(ModName, DefaultModName)
 		->
-			Result = error("module qualifier in definition does not match preceding `:- module' declaration", Term)
+			term__coerce(Term, ErrorTerm),
+			Result = error("module qualifier in definition does not match preceding `:- module' declaration", ErrorTerm)
 		;
 			unqualify_name(SymName, UnqualName),
 			Result = ok(qualified(DefaultModName, UnqualName), Args)
@@ -2686,10 +2731,12 @@ parse_qualified_term(Term, ContainingTerm, Msg, Result) :-
 	        Result = ok(qualified(Module, Name), Args)
 	    ;
 	        ModuleResult = error(_, _),
-		Result = error("module name identifier expected before ':' in qualified symbol name", Term)
+		term__coerce(Term, ErrorTerm),
+		Result = error("module name identifier expected before ':' in qualified symbol name", ErrorTerm)
             )
         ;
-            Result = error("identifier expected after ':' in qualified symbol name", Term)
+	    term__coerce(Term, ErrorTerm),
+            Result = error("identifier expected after ':' in qualified symbol name", ErrorTerm)
 	)
     ;
         ( 
@@ -2705,10 +2752,11 @@ parse_qualified_term(Term, ContainingTerm, Msg, Result) :-
 	    % (hopefully that _will_ have a term__context).
 	    %
 	    ( Term = term__variable(_) ->
-	    	ErrorTerm = ContainingTerm
+	    	ErrorTerm0 = ContainingTerm
 	    ;
-	    	ErrorTerm = Term
+	    	ErrorTerm0 = Term
 	    ),
+	    term__coerce(ErrorTerm0, ErrorTerm),
 	    Result = error(ErrorMsg, ErrorTerm)
         )
     ).
@@ -2769,7 +2817,8 @@ make_op_specifier(X, sym(X)).
 
 :- pred parse_type(term, maybe1(type)).
 :- mode parse_type(in, out) is det.
-parse_type(T, ok(T)).
+parse_type(T0, ok(T)) :-
+	term__coerce(T0, T).
 
 :- pred convert_constructor_arg_list(list(term), list(constructor_arg)).
 :- mode convert_constructor_arg_list(in, out) is det.
@@ -2790,7 +2839,8 @@ convert_constructor_arg_list([Term | Terms], [Arg | Args]) :-
 
 :- pred convert_type(term, type).
 :- mode convert_type(in, out) is det.
-convert_type(T, T).
+convert_type(T0, T) :-
+	term__coerce(T0, T).
 
 %-----------------------------------------------------------------------------%
 

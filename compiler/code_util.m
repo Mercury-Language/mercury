@@ -18,7 +18,7 @@
 :- interface.
 
 :- import_module hlds_module, hlds_pred, hlds_goal, hlds_data, prog_data, llds.
-:- import_module list, assoc_list, set, std_util, term.
+:- import_module list, assoc_list, set, std_util.
 
 	% Create a code address which holds the address of the specified
 	% procedure.
@@ -110,8 +110,8 @@
 	% Each to be assigned rval is guaranteed to be either in a form
 	% acceptable for a test rval, or in the form of a variable.
 
-:- pred code_util__translate_builtin(module_name, string, proc_id, list(var),
-	maybe(rval), maybe(pair(var, rval))).
+:- pred code_util__translate_builtin(module_name, string, proc_id,
+	list(prog_var), maybe(rval), maybe(pair(prog_var, rval))).
 :- mode code_util__translate_builtin(in, in, in, in, out, out) is semidet.
 
 	% Find out how a function symbol (constructor) is represented
@@ -149,7 +149,7 @@
 
 	% Return the set of locations occupied by output arguments.
 
-:- pred code_util__output_args(assoc_list(var, arg_info), set(lval)).
+:- pred code_util__output_args(assoc_list(prog_var, arg_info), set(lval)).
 :- mode code_util__output_args(in, out) is det.
 
 	% These predicates return the set of lvals referenced in an rval
@@ -166,8 +166,8 @@
 
 :- implementation.
 
-:- import_module prog_data, type_util, special_pred.
-:- import_module bool, char, int, string, set, map, term, varset.
+:- import_module prog_data, type_util, term, varset, special_pred.
+:- import_module bool, char, int, string, set, map.
 :- import_module require, std_util, assoc_list.
 
 %---------------------------------------------------------------------------%
@@ -366,8 +366,8 @@ code_util__translate_builtin(FullyQualifiedModule, PredName, ProcId, Args,
 	code_util__translate_builtin_2(ModuleName, PredName, ProcInt, Args,
 		BinOp, AsgOp).
 
-:- pred code_util__translate_builtin_2(string, string, int, list(var),
-	maybe(rval), maybe(pair(var, rval))).
+:- pred code_util__translate_builtin_2(string, string, int, list(prog_var),
+	maybe(rval), maybe(pair(prog_var, rval))).
 :- mode code_util__translate_builtin_2(in, in, in, in, out, out) is semidet.
 
 code_util__translate_builtin_2("private_builtin", "unsafe_type_cast", 0,

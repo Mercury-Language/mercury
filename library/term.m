@@ -10,6 +10,8 @@
 
 % This file provides a type `term' used to represent Prolog terms,
 % and various predicates to manipulate terms and substitutions.
+% Terms are polymorphic so that terms representing different kinds of
+% thing can be made to be of different types so they don't get mixed up.
 
 %-----------------------------------------------------------------------------%
 
@@ -19,8 +21,12 @@
 
 %-----------------------------------------------------------------------------%
 
-:- type term		--->	term__functor(const, list(term), term__context)
-			;	term__variable(var).
+:- type term(T)		--->	term__functor(
+					const,
+					list(term(T)),
+					term__context
+				)
+			;	term__variable(var(T)).
 :- type const		--->	term__atom(string)
 			;	term__integer(int)
 			;	term__string(string)
@@ -29,19 +35,27 @@
 :- type term__context   --->    term__context(string, int).
 				% file name, line number.
 
-:- type var.
-:- type var_supply.
+:- type var(T).
+:- type var_supply(T).
+
+:- type generic
+	--->	generic.
+
+:- type term	==	term(generic).
+:- type var	==	var(generic).
 
 %-----------------------------------------------------------------------------%
 
 	% The following predicates can convert values of (almost)
 	% any type to the type `term' and back again.
 
-:- type term_to_type_result(T)
+:- type term_to_type_result(T, U)
 	--->	ok(T)
-	;	error(term_to_type_error).
+	;	error(term_to_type_error(U)).
 
-:- pred term__try_term_to_type(term, term_to_type_result(T)).
+:- type term_to_type_result(T) == term_to_type_result(T, generic).
+
+:- pred term__try_term_to_type(term(U), term_to_type_result(T, U)).
 :- mode term__try_term_to_type(in, out) is det.
 	% term__try_term_to_type(Term, Result):
 	% Try to convert the given term to a ground value of type T.
@@ -57,10 +71,10 @@
 	% ArgContexts specifies the path from the root of the term
 	% to the offending subterm.
 
-:- type term_to_type_error
-	--->	type_error(term, type_info, term__context,
+:- type term_to_type_error(T)
+	--->	type_error(term(T), type_info, term__context,
 			term_to_type_context)
-	;	mode_error(var, term_to_type_context).
+	;	mode_error(var(T), term_to_type_context).
 
 :- type term_to_type_context == list(term_to_type_arg_context).
 
@@ -71,75 +85,77 @@
 			term__context	% filename & line number
 		).
 
-:- pred term__term_to_type(term, T).
+:- pred term__term_to_type(term(U), T).
 :- mode term__term_to_type(in, out) is semidet.
 	% term_to_type(Term, Type) :- try_term_to_type(Term, ok(Type)).
 
-:- pred term__det_term_to_type(term, T).
+:- pred term__det_term_to_type(term(_), T).
 :- mode term__det_term_to_type(in, out) is det.
 	% like term_to_type, but calls error/1 rather than failing.
 
-:- pred term__type_to_term(T, term).
+:- pred term__type_to_term(T, term(_)).
 :- mode term__type_to_term(in, out) is det.
 	% converts a value to a term representation of that value
 
-:- pred term__univ_to_term(univ, term).
+:- pred term__univ_to_term(univ, term(_)).
 :- mode term__univ_to_term(in, out) is det.
 	% calls term__type_to_term on the value stored in the univ
 	% (as distinct from the univ itself).
 
 %-----------------------------------------------------------------------------%
 
-:- pred term__vars(term, list(var)).
+:- pred term__vars(term(T), list(var(T))).
 :- mode term__vars(in, out) is det.
 %	term__vars(Term, Vars)
 %		Vars is the list of variables contained in Term, in the order 
 %		obtained by traversing the term depth first, left-to-right.
 
-:- pred term__vars_2(term, list(var), list(var)).
+:- pred term__vars_2(term(T), list(var(T)), list(var(T))).
 :- mode term__vars_2(in, in, out) is det.
 %		As above, but with an accumulator.
 
-:- pred term__vars_list(list(term), list(var)).
+:- pred term__vars_list(list(term(T)), list(var(T))).
 :- mode term__vars_list(in, out) is det.
 %	term__vars_list(TermList, Vars)
 %		Vars is the list of variables contained in TermList, in the
 %		order obtained by traversing the list of terms depth-first,
 %		left-to-right.
 
-:- pred term__contains_var(term, var).
+:- pred term__contains_var(term(T), var(T)).
 :- mode term__contains_var(in, in) is semidet.
 :- mode term__contains_var(in, out) is nondet.
 %	term__contains_var(Term, Var)
 %		True if Term contains Var. (On backtracking returns all the 
 %		variables contained in Term.)
 
-:- pred term__contains_var_list(list(term), var).
+:- pred term__contains_var_list(list(term(T)), var(T)).
 :- mode term__contains_var_list(in, in) is semidet.
 :- mode term__contains_var_list(in, out) is nondet.
 %	term__contains_var_list(TermList, Var)
 %		True if TermList contains Var. (On backtracking returns all the 
 %		variables contained in Term.)
 
-:- type substitution == map(var, term).
+:- type substitution(T) == map(var(T), term(T)).
+:- type substitution	== substitution(generic).
 
-:- pred term__unify(term, term, substitution, substitution).
+:- pred term__unify(term(T), term(T), substitution(T), substitution(T)).
 :- mode term__unify(in, in, in, out) is semidet.
 %	term__unify(Term1, Term2, Bindings0, Bindings)
 %		unify (with occur check) two terms with respect to a set
 %	 	of bindings and possibly update the set of bindings
 
-:- pred term__substitute(term, var, term, term).
+:- pred term__substitute(term(T), var(T), term(T), term(T)).
 :- mode term__substitute(in, in, in, out) is det.
 %	term__substitute(Term0, Var, Replacement, Term) :
 %		replace all occurrences of Var in Term0 with Replacement,
 %		and return the result in Term.
 
-:- pred term__substitute_list(list(term), var, term, list(term)).
+:- pred term__substitute_list(list(term(T)), var(T), term(T), list(term(T))).
 :- mode term__substitute_list(in, in, in, out) is det.
 %		as above, except for a list of terms rather than a single term
 
-:- pred term__substitute_corresponding(list(var), list(term), term, term).
+:- pred term__substitute_corresponding(list(var(T)), list(term(T)),
+		term(T), term(T)).
 :- mode term__substitute_corresponding(in, in, in, out) is det.
 %       term__substitute_corresponding(Vars, Repls, Term0, Term).
 %		replace all occurrences of variables in Vars with
@@ -148,75 +164,75 @@
 %	        length as Repls, the behaviour is undefined and probably
 %		harmful.
 
-:- pred term__substitute_corresponding_list(list(var), list(term), list(term),
-						list(term)).
+:- pred term__substitute_corresponding_list(list(var(T)), list(term(T)),
+		list(term(T)), list(term(T))).
 :- mode term__substitute_corresponding_list(in, in, in, out) is det.
 %       term__substitute_corresponding_list(Vars, Repls, TermList0, TermList).
 %		As above, except applies to a list of terms rather than a
 %		single term.
 
-:- pred term__apply_rec_substitution(term, substitution, term).
+:- pred term__apply_rec_substitution(term(T), substitution(T), term(T)).
 :- mode term__apply_rec_substitution(in, in, out) is det.
 %	term__apply_rec_substitution(Term0, Substitution, Term) :
 %		recursively apply substitution to Term0 until
 %		no more substitions can be applied, and then
 %		return the result in Term.
 
-:- pred term__apply_rec_substitution_to_list(list(term), substitution,
-						list(term)).
+:- pred term__apply_rec_substitution_to_list(list(term(T)), substitution(T),
+						list(term(T))).
 :- mode term__apply_rec_substitution_to_list(in, in, out) is det.
 
-:- pred term__apply_substitution(term, substitution, term).
+:- pred term__apply_substitution(term(T), substitution(T), term(T)).
 :- mode term__apply_substitution(in, in, out) is det.
 %	term__apply_substitution(Term0, Substitution, Term) :
 %		apply substitution to Term0 and return the result in Term.
 
-:- pred term__apply_substitution_to_list(list(term), substitution,
-						list(term)).
+:- pred term__apply_substitution_to_list(list(term(T)), substitution(T),
+						list(term(T))).
 :- mode term__apply_substitution_to_list(in, in, out) is det.
 %	term__apply_substitution_to_list(TermList0, Substitution, TermList) :
 %		as above, except for a list of terms rather than a single term
 
 
-:- pred term__occurs(term, var, substitution).
+:- pred term__occurs(term(T), var(T), substitution(T)).
 :- mode term__occurs(in, in, in) is semidet.
 %	term__occurs(Term0, Var, Substitution) :
 %		true iff Var occurs in the term resulting after
 %		applying Substitution to Term0.
 
-:- pred term__occurs_list(list(term), var, substitution).
+:- pred term__occurs_list(list(term(T)), var(T), substitution(T)).
 :- mode term__occurs_list(in, in, in) is semidet.
 %		as above, except for a list of terms rather than a single term
 
-:- pred term__relabel_variable(term, var, var, term).
+:- pred term__relabel_variable(term(T), var(T), var(T), term(T)).
 :- mode term__relabel_variable(in, in, in, out) is det.
 %	term__relabel_variable(Term0, OldVar, NewVar, Term) :
 %		replace all occurences of OldVar in Term0 with
 %		NewVar and put the result in Term.
 
-:- pred term__relabel_variables(list(term), var, var, list(term)).
+:- pred term__relabel_variables(list(term(T)), var(T), var(T), list(term(T))).
 :- mode term__relabel_variables(in, in, in, out) is det.
 %	term__relabel_variables(Terms0, OldVar, NewVar, Terms) :
 %		same as term__relabel_variable but for a list of terms.
 
-:- pred term__apply_variable_renaming(term, map(var, var), term).
+:- pred term__apply_variable_renaming(term(T), map(var(T), var(T)), term(T)).
 :- mode term__apply_variable_renaming(in, in, out) is det.
 % 		same as term__relabel_variable, except relabels
 % 		multiple variables. If a variable is not in the
 % 		map, it is not replaced.
 
-:- pred term__apply_variable_renaming_to_list(list(term), map(var, var),
-							 list(term)).
+:- pred term__apply_variable_renaming_to_list(list(term(T)),
+		map(var(T), var(T)), list(term(T))).
 :- mode term__apply_variable_renaming_to_list(in, in, out) is det.
 %		applies term__apply_variable_renaming to a list of terms.
 		
 
-:- pred term__is_ground(term, substitution).
+:- pred term__is_ground(term(T), substitution(T)).
 :- mode term__is_ground(in, in) is semidet.
 %	term__is_ground(Term, Bindings) is true iff no variables contained
 %		in Term are non-ground in Bindings.
 
-:- pred term__is_ground(term).
+:- pred term__is_ground(term(T)).
 :- mode term__is_ground(in) is semidet.
 %	term__is_ground(Term) is true iff Term contains no variables.
 
@@ -225,19 +241,19 @@
 	% To manage a supply of variables, use the following 2 predicates.
 	% (We might want to give these a unique mode later.)
 
-:- pred term__init_var_supply(var_supply).
+:- pred term__init_var_supply(var_supply(T)).
 :- mode term__init_var_supply(out) is det.
 :- mode term__init_var_supply(in) is semidet. % implied
 %	term__init_var_supply(VarSupply) :
 %		returns a fresh var_supply for producing fresh variables.
 
-:- pred term__create_var(var_supply, var, var_supply).
+:- pred term__create_var(var_supply(T), var(T), var_supply(T)).
 :- mode term__create_var(in, out, out) is det.
 %	term__create_var(VarSupply0, Variable, VarSupply) :
 %		create a fresh variable (var) and return the
 %		updated var_supply.
 
-:- pred term__var_to_int(var, int).
+:- pred term__var_to_int(var(T), int).
 :- mode term__var_to_int(in, out) is det.
 %		Convert a variable to an int.
 %		Different variables map to different ints.
@@ -268,15 +284,37 @@
 	% of vars.  Abort (call error/1) if the list contains
 	% any non-variables.
 
-:- pred term__term_list_to_var_list(list(term), list(var)).
+:- pred term__term_list_to_var_list(list(term(T)), list(var(T))).
 :- mode term__term_list_to_var_list(in, out) is det.
 
 	% Convert a list of terms which are all vars into a list
 	% of vars (or vice versa).
 
-:- pred term__var_list_to_term_list(list(var), list(term)).
+:- pred term__var_list_to_term_list(list(var(T)), list(term(T))).
 :- mode term__var_list_to_term_list(in, out) is det.
 :- mode term__var_list_to_term_list(out, in) is semidet.
+
+%-----------------------------------------------------------------------------%
+	
+	% term__generic_term(Term) is true iff `Term' is a term of type
+	% `term' ie `term(generic)'.
+	% It is useful because in some instances it doesn't matter what
+	% the type of a term is, and passing it to this predicate will
+	% ground the type avoiding unbound type variable warnings.
+:- pred term__generic_term(term).
+:- mode term__generic_term(in) is det.
+
+	% Coerce a term of type `T' into a term of type `U'.
+:- pred term__coerce(term(T), term(U)).
+:- mode term__coerce(in, out) is det.
+
+	% Coerce a var of type `T' into a var of type `U'.
+:- pred term__coerce_var(var(T), var(U)).
+:- mode term__coerce_var(in, out) is det.
+
+	% Coerce a var_supply of type `T' into a var_supply of type `U'.
+:- pred term__coerce_var_supply(var_supply(T), var_supply(U)).
+:- mode term__coerce_var_supply(in, out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -292,7 +330,7 @@
 	% This predidicate is being phased out, because of the problem
 	% mentioned in the "BEWARE:" below.
 :- pragma obsolete(term__compare/4).
-:- pred term__compare(comparison_result, term, term, substitution).
+:- pred term__compare(comparison_result, term(T), term(T), substitution(T)).
 :- mode term__compare(out, in, in, in) is semidet.
 %	term__compare(Comparison, Term1, Term2, Bindings) is true iff
 %		there is a binding of Comparison to <, =, or > such
@@ -311,8 +349,10 @@
 
 %-----------------------------------------------------------------------------%
 
-:- type var_supply	==	int.
-:- type var		==	int.
+:- type var_supply(T)
+	--->	var_supply(int).
+:- type var(T)
+	--->	var(int).
 
 %-----------------------------------------------------------------------------%
 
@@ -331,15 +371,15 @@ term__try_term_to_type(Term, Result) :-
 		Result = error(Error)
 	).
 
-:- pred term__try_term_to_univ(term::in, type_info::in,
-		term_to_type_result(univ)::out) is det.
+:- pred term__try_term_to_univ(term(T)::in, type_info::in,
+		term_to_type_result(univ, T)::out) is det.
 
 term__try_term_to_univ(Term, Type, Result) :-
 	term__try_term_to_univ_2(Term, Type, [], Result).
 	
-:- pred term__try_term_to_univ_2(term::in, type_info::in,
+:- pred term__try_term_to_univ_2(term(T)::in, type_info::in,
 		term_to_type_context::in,
-		term_to_type_result(univ)::out) is det.
+		term_to_type_result(univ, T)::out) is det.
 
 term__try_term_to_univ_2(term__variable(Var), _Type, Context,
 		error(mode_error(Var, Context))).
@@ -380,9 +420,9 @@ term__try_term_to_univ_2(Term, Type, Context, Result) :-
 
 :- pred term__term_to_univ_special_case(string::in, string::in, 
 		list(type_info)::in, 
-		term::in(bound(term__functor(ground, ground, ground))),
+		term(T)::in(bound(term__functor(ground, ground, ground))),
 		type_info::in, term_to_type_context::in,
-		term_to_type_result(univ)::out) is semidet.
+		term_to_type_result(univ, T)::out) is semidet.
 /*
 ** XXX the following clauses for mercury_builtin:* are
 ** for bootstrapping only, and should eventually be deleted
@@ -463,9 +503,9 @@ term__term_to_univ_special_case("std_util", "type_info", _, _, _, _, _) :-
 	% ditto
 	fail.
 
-:- pred term__term_list_to_univ_list(list(term)::in, list(type_info)::in,
+:- pred term__term_list_to_univ_list(list(term(T))::in, list(type_info)::in,
 		term__const::in, int::in, term_to_type_context::in,
-		term__context::in, term_to_type_result(list(univ))::out)
+		term__context::in, term_to_type_result(list(univ), T)::out)
 		is semidet.
 term__term_list_to_univ_list([], [], _, _, _, _, ok([])).
 term__term_list_to_univ_list([ArgTerm|ArgTerms], [Type|Types],
@@ -559,7 +599,7 @@ term__univ_to_term(Univ, Term) :-
 
 :- pred term__univ_to_term_special_case(string::in, string::in, 
 		list(type_info)::in, univ::in, term__context::in,
-		term::out) is semidet.
+		term(T)::out) is semidet.
 
 /*
 ** XXX the following clauses for mercury_builtin:* are
@@ -620,7 +660,7 @@ term__univ_to_term_special_case("array", "array", [ElemType], Univ, Context,
 same_type(_, _).
 
 :- pred term__univ_list_to_term_list(list(univ)::in,
-				list(term)::out) is det.
+				list(term(T))::out) is det.
 
 term__univ_list_to_term_list([], []).
 term__univ_list_to_term_list([Value|Values], [Term|Terms]) :-
@@ -628,7 +668,8 @@ term__univ_list_to_term_list([Value|Values], [Term|Terms]) :-
 	term__univ_list_to_term_list(Values, Terms).
 
 % given a type_info, return a term that represents the name of that type.
-:- pred type_info_to_term(term__context::in, type_info::in, term::out) is det.
+:- pred type_info_to_term(term__context::in, type_info::in,
+		term(T)::out) is det.
 type_info_to_term(Context, TypeInfo, Term) :-
 	type_ctor_and_args(TypeInfo, TypeCtor, ArgTypes),
 	TypeName = type_ctor_name(TypeCtor),
@@ -673,7 +714,7 @@ term__vars_2(term__variable(V), Vs, [V|Vs]).
 term__vars_2(term__functor(_,Args,_), Vs0, Vs) :-
 	term__vars_2_list(Args, Vs0, Vs).
 
-:- pred term__vars_2_list(list(term), list(var), list(var)).
+:- pred term__vars_2_list(list(term(T)), list(var(T)), list(var(T))).
 :- mode term__vars_2_list(in, in, out) is det.
 
 term__vars_2_list([], Vs, Vs).
@@ -701,7 +742,7 @@ term__contains_var_list([_|Ts], V) :-
 	%
 	% CURRENTLY NOT USED.
 
-:- pred term__contains_functor(term, const, list(term)).
+:- pred term__contains_functor(term(T), const, list(term(T))).
 % :- mode term__contains_functor(in, in, in) is semidet.
 :- mode term__contains_functor(in, out, out) is nondet.
 
@@ -717,7 +758,7 @@ term__contains_functor(term__functor(_, Args, _), SubFunctor, SubArgs) :-
 	%
 	% CURRENTLY NOT USED.
 
-:- pred term__subterm(term, term).
+:- pred term__subterm(term(T), term(T)).
 :- mode term__subterm(in, in) is semidet.
 :- mode term__subterm(in, out) is multidet.
 
@@ -825,7 +866,8 @@ term__unify(term__functor(F, As, C), term__variable(X), Bindings0, Bindings) :-
 term__unify(term__functor(F, AsX, _), term__functor(F, AsY, _)) -->
 	term__unify_list(AsX, AsY).
 
-:- pred term__unify_list(list(term), list(term), substitution, substitution).
+:- pred term__unify_list(list(term(T)), list(term(T)),
+		substitution(T), substitution(T)).
 :- mode term__unify_list(in, in, in, out) is semidet.
 
 term__unify_list([], []) --> [].
@@ -901,8 +943,8 @@ term__substitute_corresponding_list(Ss, Rs, TermList0, TermList) :-
 		)
 	).
 
-:- pred term__substitute_corresponding_2(list(var), list(term),
-					substitution, substitution).
+:- pred term__substitute_corresponding_2(list(var(T)), list(term(T)),
+					substitution(T), substitution(T)).
 :- mode term__substitute_corresponding_2(in, in, in, out) is semidet.
 
 term__substitute_corresponding_2([], [], Subst, Subst).
@@ -956,16 +998,16 @@ term__apply_substitution_to_list([Term0 | Terms0], Substitution,
 %-----------------------------------------------------------------------------%
 
 	% create a new supply of variables
-term__init_var_supply(0).
+term__init_var_supply(var_supply(0)).
 
 	% We number variables using sequential numbers,
 
-term__create_var(VarSupply0, VarSupply, VarSupply) :-
-	VarSupply is VarSupply0 + 1.
+term__create_var(var_supply(V0), var(V), var_supply(V)) :-
+	V is V0 + 1.
 
 %-----------------------------------------------------------------------------%
 
-term__var_to_int(Var, Var).
+term__var_to_int(var(Var), Var).
 
 %-----------------------------------------------------------------------------%
 
@@ -1032,7 +1074,7 @@ term__is_ground(term__variable(V), Bindings) :-
 term__is_ground(term__functor(_, Args, _), Bindings) :-
 	term__is_ground_2(Args, Bindings).
 
-:- pred term__is_ground_2(list(term), substitution).
+:- pred term__is_ground_2(list(term(T)), substitution(T)).
 :- mode term__is_ground_2(in, in) is semidet.
 
 term__is_ground_2([], _Bindings).
@@ -1045,7 +1087,7 @@ term__is_ground_2([Term|Terms], Bindings) :-
 term__is_ground(term__functor(_, Args, _)) :-
 	term__is_ground_2(Args).
 
-:- pred term__is_ground_2(list(term)).
+:- pred term__is_ground_2(list(term(T))).
 :- mode term__is_ground_2(in) is semidet.
 
 term__is_ground_2([]).
@@ -1063,4 +1105,17 @@ term__compare(Cmp, Term1, Term2, Bindings) :-
 	compare(Cmp, TermA, TermB).
 
 %-----------------------------------------------------------------------------%
+
+term__generic_term(_).
+
+%-----------------------------------------------------------------------------%
+
+term__coerce(term__variable(var(V)), term__variable(var(V))).
+term__coerce(term__functor(Cons, Args0, Ctxt),
+		term__functor(Cons, Args, Ctxt)) :-
+	list__map(term__coerce, Args0, Args).
+
+term__coerce_var(var(V), var(V)).
+
+term__coerce_var_supply(var_supply(Supply), var_supply(Supply)).
 

@@ -38,7 +38,7 @@
 :- module post_typecheck.
 :- interface.
 :- import_module hlds_module, hlds_pred, io.
-:- import_module list, term, prog_data.
+:- import_module list, prog_data.
 
 	% Check that the all of the types which have been inferred
 	% for the variables in the clause do not contain any unbound type
@@ -53,7 +53,7 @@
 
 	% Handle any unresolved overloading for a predicate call.
 	%
-:- pred post_typecheck__resolve_pred_overloading(pred_id, list(var),
+:- pred post_typecheck__resolve_pred_overloading(pred_id, list(prog_var),
 		pred_info, module_info, sym_name, sym_name, pred_id).
 :- mode post_typecheck__resolve_pred_overloading(in, in, in, in, in,
 		out, out) is det.
@@ -78,10 +78,10 @@
 :- implementation.
 
 :- import_module typecheck, clause_to_proc, mode_util, inst_match.
-:- import_module mercury_to_mercury, prog_out, hlds_out.
+:- import_module mercury_to_mercury, prog_out, hlds_out, term.
 :- import_module globals, options.
 
-:- import_module map, set, assoc_list, varset, bool, std_util.
+:- import_module map, set, assoc_list, bool, std_util.
 
 %-----------------------------------------------------------------------------%
 %			Check for unbound type variables
@@ -131,9 +131,9 @@ post_typecheck__check_type_bindings(PredId, PredInfo0, PredInfo, ModuleInfo,
 		pred_info_set_clauses_info(PredInfo0, ClausesInfo, PredInfo)
 	).
 
-:- pred check_type_bindings_2(assoc_list(var, (type)), list(var),
-			assoc_list(var, (type)), assoc_list(var, (type)),
-			set(tvar), set(tvar)).
+:- pred check_type_bindings_2(assoc_list(prog_var, (type)), list(tvar),
+		assoc_list(prog_var, (type)), assoc_list(prog_var, (type)),
+		set(tvar), set(tvar)).
 :- mode check_type_bindings_2(in, in, in, out, in, out) is det.
 
 check_type_bindings_2([], _, Errs, Errs, Set, Set).
@@ -155,8 +155,8 @@ check_type_bindings_2([Var - Type | VarTypes], HeadTypeParams,
 %
 % bind all the type variables in `UnboundTypeVarsSet' to the type `void' ...
 %
-:- pred bind_type_vars_to_void(set(var), term__context,
-				map(var, type), map(var, type)).
+:- pred bind_type_vars_to_void(set(tvar), prog_context,
+				map(prog_var, type), map(prog_var, type)).
 :- mode bind_type_vars_to_void(in, in, in, out) is det.
 
 bind_type_vars_to_void(UnboundTypeVarsSet, Context,
@@ -210,8 +210,8 @@ report_unsatisfied_constraints(Constraints, PredId, PredInfo, ModuleInfo) -->
 %
 % report a warning: uninstantiated type parameter
 %
-:- pred report_unresolved_type_warning(assoc_list(var, (type)), pred_id,
-			pred_info, module_info, varset, io__state, io__state).
+:- pred report_unresolved_type_warning(assoc_list(prog_var, (type)), pred_id,
+		pred_info, module_info, prog_varset, io__state, io__state).
 :- mode report_unresolved_type_warning(in, in, in, in, in, di, uo) is det.
 
 report_unresolved_type_warning(Errs, PredId, PredInfo, ModuleInfo, VarSet) -->
@@ -258,8 +258,8 @@ report_unresolved_type_warning(Errs, PredId, PredInfo, ModuleInfo, VarSet) -->
 		[]
 	).
 
-:- pred write_type_var_list(assoc_list(var, (type)), term__context,
-			varset, tvarset, io__state, io__state).
+:- pred write_type_var_list(assoc_list(prog_var, (type)), prog_context,
+			prog_varset, tvarset, io__state, io__state).
 :- mode write_type_var_list(in, in, in, in, di, uo) is det.
 
 write_type_var_list([], _, _, _) --> [].

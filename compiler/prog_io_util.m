@@ -26,7 +26,8 @@
 :- interface.
 
 :- import_module prog_data, hlds_data, (inst).
-:- import_module list, term, io.
+:- import_module term.
+:- import_module list, map, term, io.
 
 :- type maybe2(T1, T2)	--->	error(string, term)
 			;	ok(T1, T2).
@@ -34,12 +35,20 @@
 :- type maybe1(T)	--->	error(string, term)
 			;	ok(T).
 
+:- type maybe1(T, U)	--->	error(string, term(U))
+			;	ok(T).
+
 :- type maybe_functor	== 	maybe2(sym_name, list(term)).
+:- type maybe_functor(T) == 	maybe2(sym_name, list(term(T))).
 
 :- type maybe_item_and_context
-			==	maybe2(item, term__context).
+			==	maybe2(item, prog_context).
 
-:- pred add_context(maybe1(item), term__context, maybe_item_and_context).
+:- type var2tvar	==	map(var, tvar).
+
+:- type var2pvar	==	map(var, prog_var).
+
+:- pred add_context(maybe1(item), prog_context, maybe_item_and_context).
 :- mode add_context(in, in, out) is det.
 
 %
@@ -47,7 +56,7 @@
 % These predicates simply fail if they encounter a syntax error.
 %
 
-:- pred parse_list_of_vars(term, list(var)).
+:- pred parse_list_of_vars(term(T), list(var(T))).
 :- mode parse_list_of_vars(in, out) is semidet.
 
 :- pred convert_mode_list(list(term), list(mode)).
@@ -67,17 +76,17 @@
 
 	% convert a "disjunction" (bunch of terms separated by ';'s) to a list
 
-:- pred disjunction_to_list(term, list(term)).
+:- pred disjunction_to_list(term(T), list(term(T))).
 :- mode disjunction_to_list(in, out) is det.
 
 	% convert a "conjunction" (bunch of terms separated by ','s) to a list
 
-:- pred conjunction_to_list(term, list(term)).
+:- pred conjunction_to_list(term(T), list(term(T))).
 :- mode conjunction_to_list(in, out) is det.
 
 	% convert a "sum" (bunch of terms separated by '+' operators) to a list
 
-:- pred sum_to_list(term, list(term)).
+:- pred sum_to_list(term(T), list(term(T))).
 :- mode sum_to_list(in, out) is det.
 
 % The following /3, /4 and /5 predicates are to be used for reporting
@@ -102,7 +111,7 @@
 :- implementation.
 
 :- import_module prog_io, prog_io_goal, hlds_pred, options, globals.
-:- import_module bool, string, std_util.
+:- import_module bool, string, std_util, term.
 
 add_context(error(M, T), _, error(M, T)).
 add_context(ok(Item), Context, ok(Item, Context)).
@@ -176,7 +185,8 @@ convert_inst_list([H0|T0], [H|T]) :-
 	convert_inst(H0, H),
 	convert_inst_list(T0, T).
 
-convert_inst(term__variable(V), inst_var(V)).
+convert_inst(term__variable(V0), inst_var(V)) :-
+	term__coerce_var(V0, V).
 convert_inst(Term, Result) :-
 	Term = term__functor(Name, Args0, _Context),
 	% `free' insts
@@ -321,13 +331,13 @@ sum_to_list(Term, List) :-
 	% general predicate to convert terms separated by any specified
 	% operator into a list
 
-:- pred binop_term_to_list(string, term, list(term)).
+:- pred binop_term_to_list(string, term(T), list(term(T))).
 :- mode binop_term_to_list(in, in, out) is det.
 
 binop_term_to_list(Op, Term, List) :-
 	binop_term_to_list_2(Op, Term, [], List).
 
-:- pred binop_term_to_list_2(string, term, list(term), list(term)).
+:- pred binop_term_to_list_2(string, term(T), list(term(T)), list(term(T))).
 :- mode binop_term_to_list_2(in, in, in, out) is det.
 
 binop_term_to_list_2(Op, Term, List0, List) :-

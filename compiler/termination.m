@@ -69,7 +69,7 @@
 	% such annotations can be part of .opt and .trans_opt files.
 
 :- pred termination__write_pragma_termination_info(pred_or_func::in,
-	sym_name::in, list(mode)::in, term__context::in,
+	sym_name::in, list(mode)::in, prog_context::in,
 	maybe(arg_size_info)::in, maybe(termination_info)::in,
 	io__state::di, io__state::uo) is det.
 
@@ -79,9 +79,9 @@
 
 :- import_module term_pass1, term_pass2, term_errors.
 :- import_module inst_match, passes_aux, options, globals.
-:- import_module hlds_data, hlds_goal, dependency_graph.
+:- import_module hlds_data, hlds_goal, dependency_graph, varset.
 :- import_module mode_util, hlds_out, code_util, prog_out, prog_util.
-:- import_module mercury_to_mercury, varset, type_util, special_pred.
+:- import_module mercury_to_mercury, type_util, special_pred.
 :- import_module modules.
 
 :- import_module map, int, char, string, relation.
@@ -504,7 +504,7 @@ set_generated_terminates([ProcId | ProcIds], SpecialPredId,
 		ProcTable1, ProcTable).
 
 :- pred special_pred_id_to_termination(special_pred_id::in, 
-	list(var)::in, arg_size_info::out, termination_info::out) is det.
+	list(prog_var)::in, arg_size_info::out, termination_info::out) is det.
 
 special_pred_id_to_termination(compare, HeadVars, ArgSize, Termination) :-
 	term_util__make_bool_list(HeadVars, [no, no, no], OutList),
@@ -702,7 +702,7 @@ termination__make_opt_int_preds([ PredId | PredIds ], Module) -->
 	termination__make_opt_int_preds(PredIds, Module).
 
 :- pred termination__make_opt_int_procs(pred_id, list(proc_id), proc_table,
-	pred_or_func, sym_name, term__context, io__state, io__state).
+	pred_or_func, sym_name, prog_context, io__state, io__state).
 :- mode termination__make_opt_int_procs(in, in, in, in, in, in, di, uo) is det.
 
 termination__make_opt_int_procs(_PredId, [], _, _, _, _) --> [].

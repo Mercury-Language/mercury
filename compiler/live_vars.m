@@ -38,7 +38,7 @@
 :- import_module liveness, code_aux, globals, graph_colour, instmap, options.
 :- import_module trace.
 :- import_module list, map, set, std_util, assoc_list, bool.
-:- import_module int, term, require.
+:- import_module int, require.
 
 %-----------------------------------------------------------------------------%
 
@@ -70,12 +70,13 @@ allocate_stack_slots_in_proc(ProcInfo0, PredId, ModuleInfo, ProcInfo) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-% The stack_slots structure (map(var, lval)) is threaded through the traversal
-% of the goal. The liveness information is computed from the liveness
+% The stack_slots structure (map(prog_var, lval)) is threaded through the
+% traversal of the goal. The liveness information is computed from the liveness
 % delta annotations.
 
-:- pred build_live_sets_in_goal(hlds_goal, set(var), set(var), set(set(var)),
-	module_info, proc_info, set(var), set(var), set(set(var))).
+:- pred build_live_sets_in_goal(hlds_goal, set(prog_var), set(prog_var),
+	set(set(prog_var)), module_info, proc_info, set(prog_var),
+	set(prog_var), set(set(prog_var))).
 :- mode build_live_sets_in_goal(in, in, in, in, in, in, out, out, out) is det.
 
 build_live_sets_in_goal(Goal0 - GoalInfo, Liveness0, ResumeVars0, LiveSets0,
@@ -170,9 +171,9 @@ build_live_sets_in_goal(Goal0 - GoalInfo, Liveness0, ResumeVars0, LiveSets0,
 	% `LiveSets' is the interference graph, i.e. the set of sets
 	% of variables which need to be on the stack at the same time.
 
-:- pred build_live_sets_in_goal_2(hlds_goal_expr, set(var), set(var),
-	set(set(var)), hlds_goal_info, module_info, proc_info,
-	set(var), set(var), set(set(var))).
+:- pred build_live_sets_in_goal_2(hlds_goal_expr, set(prog_var), set(prog_var),
+	set(set(prog_var)), hlds_goal_info, module_info, proc_info,
+	set(prog_var), set(prog_var), set(set(prog_var))).
 :- mode build_live_sets_in_goal_2(in, in, in, in, in, in, in, out, out, out)
 	is det.
 
@@ -422,9 +423,9 @@ build_live_sets_in_goal_2(pragma_c_code(Attributes, PredId, ProcId,
 
 %-----------------------------------------------------------------------------%
 
-:- pred build_live_sets_in_conj(list(hlds_goal), set(var), set(var),
-	set(set(var)), module_info, proc_info, set(var), set(var),
-	set(set(var))).
+:- pred build_live_sets_in_conj(list(hlds_goal), set(prog_var), set(prog_var),
+	set(set(prog_var)), module_info, proc_info, set(prog_var),
+	set(prog_var), set(set(prog_var))).
 :- mode build_live_sets_in_conj(in, in, in, in, in, in, out, out, out) is det.
 
 build_live_sets_in_conj([], Liveness, ResumeVars, LiveSets,
@@ -453,9 +454,9 @@ build_live_sets_in_conj([Goal0 | Goals0], Liveness0, ResumeVars0, LiveSets0,
 	% build_live_sets_in_disj is used for both disjunctions and
 	% parallel conjunctions.
 
-:- pred build_live_sets_in_disj(list(hlds_goal), set(var), set(var),
-	set(set(var)), hlds_goal_info, module_info, proc_info,
-	set(var), set(var), set(set(var))).
+:- pred build_live_sets_in_disj(list(hlds_goal), set(prog_var), set(prog_var),
+	set(set(prog_var)), hlds_goal_info, module_info, proc_info,
+	set(prog_var), set(prog_var), set(set(prog_var))).
 :- mode build_live_sets_in_disj(in, in, in, in, in, in, in, out, out, out)
 	is det.
 
@@ -486,9 +487,9 @@ build_live_sets_in_disj([Goal0 | Goals0], Liveness0, ResumeVars0, LiveSets0,
 
 %-----------------------------------------------------------------------------%
 
-:- pred build_live_sets_in_cases(list(case), set(var), set(var),
-	set(set(var)), module_info, proc_info, set(var), set(var),
-	set(set(var))).
+:- pred build_live_sets_in_cases(list(case), set(prog_var), set(prog_var),
+	set(set(prog_var)), module_info, proc_info, set(prog_var),
+	set(prog_var), set(set(prog_var))).
 :- mode build_live_sets_in_cases(in, in, in, in, in, in, out, out, out) is det.
 
 build_live_sets_in_cases([], Liveness, ResumeVars, LiveSets, _, _,
@@ -526,7 +527,7 @@ build_live_sets_in_cases([case(_Cons, Goal0) | Goals0],
 	% since this makes a significant difference to the output set of vars.
 
 :- pred maybe_add_alternate_liveness_typeinfos(module_info, proc_info,
-	set(var), set(var), set(var)).
+	set(prog_var), set(prog_var), set(prog_var)).
 :- mode maybe_add_alternate_liveness_typeinfos(in, in, in, in, out) is det.
 
 maybe_add_alternate_liveness_typeinfos(ModuleInfo, ProcInfo, OutVars,
@@ -549,7 +550,8 @@ maybe_add_alternate_liveness_typeinfos(ModuleInfo, ProcInfo, OutVars,
 
 %-----------------------------------------------------------------------------%
 
-:- pred find_output_vars(pred_id, proc_id, list(var), module_info, set(var)).
+:- pred find_output_vars(pred_id, proc_id, list(prog_var), module_info,
+		set(prog_var)).
 :- mode find_output_vars(in, in, in, in, out) is det.
 
 find_output_vars(PredId, ProcId, ArgVars, ModuleInfo, OutVars) :-
@@ -560,7 +562,8 @@ find_output_vars(PredId, ProcId, ArgVars, ModuleInfo, OutVars) :-
 	proc_info_arg_info(ProcInfo, ArgInfo),
 	find_output_vars_from_arg_info(ArgVars, ArgInfo, OutVars).
 
-:- pred find_output_vars_from_arg_info(list(var), list(arg_info), set(var)).
+:- pred find_output_vars_from_arg_info(list(prog_var), list(arg_info),
+		set(prog_var)).
 :- mode find_output_vars_from_arg_info(in, in, out) is det.
 
 find_output_vars_from_arg_info(ArgVars, ArgInfo, OutVars) :-
@@ -568,7 +571,8 @@ find_output_vars_from_arg_info(ArgVars, ArgInfo, OutVars) :-
 	set__init(OutVars0),
 	find_output_vars_2(ArgPairs, OutVars0, OutVars).
 
-:- pred find_output_vars_2(assoc_list(var, arg_info), set(var), set(var)).
+:- pred find_output_vars_2(assoc_list(prog_var, arg_info), set(prog_var),
+		set(prog_var)).
 :- mode find_output_vars_2(in, in, out) is det.
 
 find_output_vars_2([], OutVars, OutVars).
@@ -584,7 +588,7 @@ find_output_vars_2([Var - arg_info(_, Mode) | Rest], OutVars0, OutVars) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred allocate_stack_slots(list(set(var)), code_model, int, stack_slots).
+:- pred allocate_stack_slots(list(set(prog_var)), code_model, int, stack_slots).
 :- mode allocate_stack_slots(in, in, in, out) is det.
 
 allocate_stack_slots(ColourList, CodeModel, NumReservedSlots, StackSlots) :-
@@ -595,7 +599,7 @@ allocate_stack_slots(ColourList, CodeModel, NumReservedSlots, StackSlots) :-
 	allocate_stack_slots_2(ColourList, FirstVarSlot, CodeModel,
 		StackSlots0, StackSlots).
 
-:- pred allocate_stack_slots_2(list(set(var)), int, code_model,
+:- pred allocate_stack_slots_2(list(set(prog_var)), int, code_model,
 	stack_slots, stack_slots).
 :- mode allocate_stack_slots_2(in, in, in, in, out) is det.
 
@@ -615,7 +619,8 @@ allocate_stack_slots_2([Vars | VarSets], N0, CodeModel,
 	allocate_stack_slots_2(VarSets, N1, CodeModel,
 		StackSlots1, StackSlots).
 
-:- pred allocate_same_stack_slot(list(var), lval, stack_slots, stack_slots).
+:- pred allocate_same_stack_slot(list(prog_var), lval, stack_slots,
+		stack_slots).
 :- mode allocate_same_stack_slot(in, in, in, out) is det.
 
 allocate_same_stack_slot([], _Slot, StackSlots, StackSlots).

@@ -18,7 +18,7 @@
 
 :- import_module hlds_module, hlds_pred, hlds_goal, hlds_data, instmap.
 :- import_module prog_data, mode_errors, delay_info, (inst).
-:- import_module map, list, varset, set, bool, term, assoc_list, std_util.
+:- import_module map, list, set, bool, assoc_list, std_util.
 
 :- interface.
 
@@ -79,12 +79,12 @@
 	--->	may_change_called_proc
 	;	may_not_change_called_proc.
 
-:- type locked_vars == assoc_list(var_lock_reason, set(var)).
+:- type locked_vars == assoc_list(var_lock_reason, set(prog_var)).
 
 :- type mode_info.
 
-:- pred mode_info_init(io__state, module_info, pred_id, proc_id, term__context,
-		set(var), instmap, how_to_check_goal, mode_info).
+:- pred mode_info_init(io__state, module_info, pred_id, proc_id, prog_context,
+		set(prog_var), instmap, how_to_check_goal, mode_info).
 :- mode mode_info_init(di, in, in, in, in, in, in, in, mode_info_uo) is det.
 
 :- pred mode_info_get_io_state(mode_info, io__state).
@@ -114,10 +114,10 @@
 :- pred mode_info_get_procid(mode_info, proc_id).
 :- mode mode_info_get_procid(mode_info_ui, out) is det.
 
-:- pred mode_info_get_context(mode_info, term__context).
+:- pred mode_info_get_context(mode_info, prog_context).
 :- mode mode_info_get_context(mode_info_ui, out) is det.
 
-:- pred mode_info_set_context(term__context, mode_info, mode_info).
+:- pred mode_info_set_context(prog_context, mode_info, mode_info).
 :- mode mode_info_set_context(in, mode_info_di, mode_info_uo) is det.
 
 :- pred mode_info_get_mode_context(mode_info, mode_context).
@@ -159,55 +159,58 @@
 :- pred mode_info_set_errors(list(mode_error_info), mode_info, mode_info).
 :- mode mode_info_set_errors(in, mode_info_di, mode_info_uo) is det.
 
-:- pred mode_info_add_live_vars(set(var), mode_info, mode_info).
+:- pred mode_info_add_live_vars(set(prog_var), mode_info, mode_info).
 :- mode mode_info_add_live_vars(in, mode_info_di, mode_info_uo) is det.
 
-:- pred mode_info_remove_live_vars(set(var), mode_info, mode_info).
+:- pred mode_info_remove_live_vars(set(prog_var), mode_info, mode_info).
 :- mode mode_info_remove_live_vars(in, mode_info_di, mode_info_uo) is det.
 
-:- pred mode_info_var_list_is_live(list(var), mode_info, list(is_live)).
+:- pred mode_info_var_list_is_live(list(prog_var), mode_info, list(is_live)).
 :- mode mode_info_var_list_is_live(in, mode_info_ui, out) is det.
 
-:- pred mode_info_var_is_live(mode_info, var, is_live).
+:- pred mode_info_var_is_live(mode_info, prog_var, is_live).
 :- mode mode_info_var_is_live(mode_info_ui, in, out) is det.
 
-:- pred mode_info_var_is_nondet_live(mode_info, var, is_live).
+:- pred mode_info_var_is_nondet_live(mode_info, prog_var, is_live).
 :- mode mode_info_var_is_nondet_live(mode_info_ui, in, out) is det.
 
-:- pred mode_info_get_liveness(mode_info, set(var)).
+:- pred mode_info_get_liveness(mode_info, set(prog_var)).
 :- mode mode_info_get_liveness(mode_info_ui, out) is det.
 
-:- pred mode_info_get_liveness_2(list(set(var)), set(var), set(var)).
+:- pred mode_info_get_liveness_2(list(set(prog_var)), set(prog_var),
+		set(prog_var)).
 :- mode mode_info_get_liveness_2(in, in, out) is det.
 
-:- pred mode_info_get_varset(mode_info, varset).
+:- pred mode_info_get_varset(mode_info, prog_varset).
 :- mode mode_info_get_varset(mode_info_ui, out) is det.
 
-:- pred mode_info_set_varset(varset, mode_info, mode_info).
+:- pred mode_info_set_varset(prog_varset, mode_info, mode_info).
 :- mode mode_info_set_varset(in, mode_info_di, mode_info_uo) is det.
 
-:- pred mode_info_get_instvarset(mode_info, varset).
+:- pred mode_info_get_instvarset(mode_info, inst_varset).
 :- mode mode_info_get_instvarset(mode_info_ui, out) is det.
 
-:- pred mode_info_get_var_types(mode_info, map(var,type)).
+:- pred mode_info_get_var_types(mode_info, map(prog_var, type)).
 :- mode mode_info_get_var_types(mode_info_ui, out) is det.
 
-:- pred mode_info_set_var_types(map(var, type), mode_info, mode_info).
+:- pred mode_info_set_var_types(map(prog_var, type), mode_info, mode_info).
 :- mode mode_info_set_var_types(in, mode_info_di, mode_info_uo) is det.
 
-:- pred mode_info_get_types_of_vars(mode_info, list(var), list(type)).
+:- pred mode_info_get_types_of_vars(mode_info, list(prog_var), list(type)).
 :- mode mode_info_get_types_of_vars(mode_info_ui, in, out) is det.
 
-:- pred mode_info_lock_vars(var_lock_reason, set(var), mode_info, mode_info).
+:- pred mode_info_lock_vars(var_lock_reason, set(prog_var),
+		mode_info, mode_info).
 :- mode mode_info_lock_vars(in, in, mode_info_di, mode_info_uo) is det.
 
-:- pred mode_info_unlock_vars(var_lock_reason, set(var), mode_info, mode_info).
+:- pred mode_info_unlock_vars(var_lock_reason, set(prog_var),
+		mode_info, mode_info).
 :- mode mode_info_unlock_vars(in, in, mode_info_di, mode_info_uo) is det.
 
-:- pred mode_info_var_is_locked(mode_info, var, var_lock_reason).
+:- pred mode_info_var_is_locked(mode_info, prog_var, var_lock_reason).
 :- mode mode_info_var_is_locked(mode_info_ui, in, out) is semidet.
 
-:- pred mode_info_var_is_locked_2(locked_vars, var, var_lock_reason).
+:- pred mode_info_var_is_locked_2(locked_vars, prog_var, var_lock_reason).
 :- mode mode_info_var_is_locked_2(in, in, out) is semidet.
 
 :- pred mode_info_get_delay_info(mode_info, delay_info).
@@ -216,31 +219,33 @@
 :- pred mode_info_set_delay_info(delay_info, mode_info, mode_info).
 :- mode mode_info_set_delay_info(in, mode_info_di, mode_info_uo) is det.
 
-:- pred mode_info_get_live_vars(mode_info, list(set(var))).
+:- pred mode_info_get_live_vars(mode_info, list(set(prog_var))).
 :- mode mode_info_get_live_vars(mode_info_ui, out) is det.
 
-:- pred mode_info_set_live_vars(list(set(var)), mode_info, mode_info).
+:- pred mode_info_set_live_vars(list(set(prog_var)), mode_info, mode_info).
 :- mode mode_info_set_live_vars(in, mode_info_di, mode_info_uo) is det.
 
-:- pred mode_info_get_nondet_live_vars(mode_info, list(set(var))).
+:- pred mode_info_get_nondet_live_vars(mode_info, list(set(prog_var))).
 :- mode mode_info_get_nondet_live_vars(mode_info_no_io, out) is det.
 
-:- pred mode_info_set_nondet_live_vars(list(set(var)), mode_info, mode_info).
+:- pred mode_info_set_nondet_live_vars(list(set(prog_var)),
+		mode_info, mode_info).
 :- mode mode_info_set_nondet_live_vars(in, mode_info_di, mode_info_uo) is det.
 
-:- pred mode_info_get_last_checkpoint_insts(mode_info, assoc_list(var, inst)).
+:- pred mode_info_get_last_checkpoint_insts(mode_info,
+		assoc_list(prog_var, inst)).
 :- mode mode_info_get_last_checkpoint_insts(mode_info_no_io, out) is det.
 
-:- pred mode_info_set_last_checkpoint_insts(assoc_list(var, inst),
+:- pred mode_info_set_last_checkpoint_insts(assoc_list(prog_var, inst),
 	mode_info, mode_info).
 :- mode mode_info_set_last_checkpoint_insts(in, mode_info_di, mode_info_uo)
 	is det.
 
-:- pred mode_info_get_parallel_vars(list(pair(set(var))), mode_info,
+:- pred mode_info_get_parallel_vars(list(pair(set(prog_var))), mode_info,
 		mode_info).
 :- mode mode_info_get_parallel_vars(out, mode_info_di, mode_info_uo) is det.
 
-:- pred mode_info_set_parallel_vars(list(pair(set(var))), mode_info,
+:- pred mode_info_set_parallel_vars(list(pair(set(prog_var))), mode_info,
 		mode_info).
 :- mode mode_info_set_parallel_vars(in, mode_info_di, mode_info_uo) is det.
 
@@ -296,7 +301,7 @@
 
         % record a mode error (and associated context info) in the mode_info.
 
-:- pred mode_info_error(set(var), mode_error, mode_info, mode_info).
+:- pred mode_info_error(set(prog_var), mode_error, mode_info, mode_info).
 :- mode mode_info_error(in, in, mode_info_di, mode_info_uo) is det.
 
 :- pred mode_info_add_error(mode_error_info, mode_info, mode_info).
@@ -308,6 +313,7 @@
 :- implementation.
 
 :- import_module delay_info, mode_errors, mode_util.
+:- import_module term, varset.
 :- import_module require, std_util, queue.
 
 :- type mode_info 
@@ -316,9 +322,10 @@
 			module_info,
 			pred_id,	% The pred we are checking
 			proc_id,	% The mode which we are checking
-			varset,		% The variables in the current proc
-			map(var, type),	% The types of the variables
-			term__context,	% The line number of the subgoal we
+			prog_varset,	% The variables in the current proc
+			map(prog_var, type),
+					% The types of the variables
+			prog_context,	% The line number of the subgoal we
 					% are currently checking
 			mode_context,	% A description of where in the
 					% goal the error occurred
@@ -332,14 +339,15 @@
 			list(mode_error_info),
 					% The mode errors found
 
-			list(set(var)),	% The live variables,
+			list(set(prog_var)),	% The live variables,
 	% i.e. those variables which may be referenced again on forward
 	% execution or after shallow backtracking.  (By shallow
 	% backtracking, I mean semidet backtracking in a negation,
 	% if-then-else, or semidet disjunction within the current
 	% predicate.)
 
-			list(set(var)),	% The nondet-live variables,
+			list(set(prog_var)),
+					% The nondet-live variables,
 	% i.e. those variables which may be referenced again after deep
 	% backtracking TO THE CURRENT EXECUTION POINT.  These are the
 	% variables which need to be made mostly_unique rather than
@@ -349,7 +357,7 @@
 	% execution point, since those variables will *already* have
 	% been marked as mostly_unique rather than unique.)
 
-			assoc_list(var, inst),
+			assoc_list(prog_var, inst),
 	% This field is used by the checkpoint code when debug_modes is on.
 	% It has the instmap that was current at the last mode checkpoint,
 	% so that checkpoints do not print out the insts of variables
@@ -357,7 +365,7 @@
 	% This field will always contain an empty list if debug_modes is off,
 	% since its information is not needed then.
 
-			list(pair(set(var), set(var))),
+			list(pair(set(prog_var), set(prog_var))),
 	% A stack of pairs of sets of variables used to mode-check
 	% parallel conjunctions. The first set is the nonlocals of
 	% the parallel conjunction. The second set is a subset of the

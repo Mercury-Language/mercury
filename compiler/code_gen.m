@@ -855,8 +855,8 @@ code_gen__generate_goals([Goal | Goals], CodeModel, Instr) -->
 
 %---------------------------------------------------------------------------%
 
-:- pred code_gen__select_args_with_mode(assoc_list(var, arg_info)::in,
-	arg_mode::in, list(var)::out, list(lval)::out) is det.
+:- pred code_gen__select_args_with_mode(assoc_list(prog_var, arg_info)::in,
+	arg_mode::in, list(prog_var)::out, list(lval)::out) is det.
 
 code_gen__select_args_with_mode([], _, [], []).
 code_gen__select_args_with_mode([Var - ArgInfo | Args], DesiredMode, Vs, Ls) :-

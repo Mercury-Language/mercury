@@ -82,7 +82,7 @@
 
 :- interface.
 :- import_module hlds_goal, hlds_module, hlds_pred, prog_data.
-:- import_module io, list, map, term, varset.
+:- import_module io, list, map.
 
 :- pred inlining(module_info, module_info, io__state, io__state).
 :- mode inlining(in, out, di, uo) is det.
@@ -100,10 +100,11 @@
 	% for the called goal and various information about the variables
 	% and types in the procedure currently being analysed, rename the
 	% goal for the called procedure so that it can be inlined.
-:- pred inlining__do_inline_call(list(tvar), list(var), pred_info, proc_info, 
-	varset, varset, map(var, type), map(var, type),
-	tvarset, tvarset, map(tvar, type_info_locn), 
-	map(tvar, type_info_locn), hlds_goal).
+:- pred inlining__do_inline_call(list(tvar), list(prog_var),
+		pred_info, proc_info, prog_varset, prog_varset,
+		map(prog_var, type), map(prog_var, type),
+		tvarset, tvarset, map(tvar, type_info_locn), 
+		map(tvar, type_info_locn), hlds_goal).
 :- mode inlining__do_inline_call(in, in, in, in, in, out, in, out,
 	in, out, in, out, out) is det.
 
@@ -122,6 +123,7 @@
 :- implementation.
 
 :- import_module globals, options, llds.
+:- import_module term, varset.
 :- import_module dead_proc_elim, type_util, mode_util, goal_util.
 :- import_module passes_aux, code_aux, quantification, det_analysis, prog_data.
 
@@ -334,8 +336,8 @@ inlining__mark_proc_as_inlined(proc(PredId, ProcId), ModuleInfo,
 
 			% the following fields are updated as a result
 			% of inlining
-		varset,			% varset
-		map(var, type),		% variable types
+		prog_varset,		% varset
+		map(prog_var, type),	% variable types
 		tvarset,		% type variables
 		map(tvar, type_info_locn),% type_info varset, a mapping from 
 					% type variables to variables

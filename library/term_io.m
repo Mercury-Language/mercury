@@ -35,8 +35,11 @@
 %		Does not modify the io__state.
 *****/
 
-:- type read_term ---> eof ; error(string, int) ; term(varset, term).
-:- pred term_io__read_term(read_term, io__state, io__state).
+:- type read_term(T) ---> eof ; error(string, int) ; term(varset(T), term(T)).
+
+:- type read_term	== read_term(generic).
+
+:- pred term_io__read_term(read_term(T), io__state, io__state).
 :- mode term_io__read_term(out, di, uo) is det.
 
 %	term_io__read_term(Result, IO0, IO1).
@@ -45,11 +48,11 @@
 %		representation. Binds Result to either `eof',
 %		`term(VarSet, Term)', or `error(Message, LineNumber)'.
 
-:- pred term_io__write_term(varset, term, io__state, io__state).
+:- pred term_io__write_term(varset(T), term(T), io__state, io__state).
 :- mode term_io__write_term(in, in, di, uo) is det.
 %		Writes a term to standard output.
 
-:- pred term_io__write_term_nl(varset, term, io__state, io__state).
+:- pred term_io__write_term_nl(varset(T), term(T), io__state, io__state).
 :- mode term_io__write_term_nl(in, in, di, uo) is det.
 %		As above, except it appends a period and new-line.
 
@@ -58,7 +61,7 @@
 %		Writes a constant (integer, float, string, or atom)
 %		to stdout.
 
-:- pred term_io__write_variable(var, varset, io__state, io__state).
+:- pred term_io__write_variable(var(T), varset(T), io__state, io__state).
 :- mode term_io__write_variable(in, in, di, uo) is det.
 %		Writes a variable to stdout.
 
@@ -149,7 +152,7 @@ term_io__read_term(Result) -->
 term_io__write_variable(Variable, VarSet) -->
 	term_io__write_variable_2(Variable, VarSet, 0, _, _).
 
-:- pred term_io__write_variable_2(var, varset, int, varset, int,
+:- pred term_io__write_variable_2(var(T), varset(T), int, varset(T), int,
 				io__state, io__state).
 :- mode term_io__write_variable_2(in, in, in, out, out, di, uo) is det.
 
@@ -184,7 +187,7 @@ term_io__write_variable_2(Id, VarSet0, N0, VarSet, N) -->
 term_io__write_term(VarSet, Term) -->
 	term_io__write_term_2(Term, VarSet, 0, _, _).
 
-:- pred term_io__write_term_2(term, varset, int, varset, int,
+:- pred term_io__write_term_2(term(T), varset(T), int, varset(T), int,
 				io__state, io__state).
 :- mode term_io__write_term_2(in, in, in, out, out, di, uo) is det.
 
@@ -192,7 +195,7 @@ term_io__write_term_2(Term, VarSet0, N0, VarSet, N) -->
 	{ ops__max_priority(MaxPriority) },
 	term_io__write_term_3(Term, MaxPriority + 1, VarSet0, N0, VarSet, N).
 
-:- pred term_io__write_arg_term(term, varset, int, varset, int,
+:- pred term_io__write_arg_term(term(T), varset(T), int, varset(T), int,
 				io__state, io__state).
 :- mode term_io__write_arg_term(in, in, in, out, out, di, uo) is det.
 
@@ -200,8 +203,8 @@ term_io__write_arg_term(Term, VarSet0, N0, VarSet, N) -->
 	{ ArgPriority = 1000 },
 	term_io__write_term_3(Term, ArgPriority - 1, VarSet0, N0, VarSet, N).
 
-:- pred term_io__write_term_3(term, ops__priority, varset, int, varset, int,
-				io__state, io__state).
+:- pred term_io__write_term_3(term(T), ops__priority, varset(T), int, varset(T),
+		int, io__state, io__state).
 :- mode term_io__write_term_3(in, in, in, in, out, out, di, uo) is det.
 
 term_io__write_term_3(term__variable(Id), _, VarSet0, N0, VarSet, N) -->
@@ -352,7 +355,7 @@ maybe_write_char(Char, Priority, OpPriority) -->
 adjust_priority(Priority, y, Priority).
 adjust_priority(Priority, x, Priority - 1).
 
-:- pred term_io__write_list_tail(term, varset, int, varset, int,
+:- pred term_io__write_list_tail(term(T), varset(T), int, varset(T), int,
 				io__state, io__state).
 :- mode term_io__write_list_tail(in, in, in, out, out, di, uo) is det.
 
@@ -380,7 +383,7 @@ term_io__write_list_tail(Term, VarSet0, N0, VarSet, N) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred term_io__write_term_args(list(term), varset, int, varset, int,
+:- pred term_io__write_term_args(list(term(T)), varset(T), int, varset(T), int,
 				io__state, io__state).
 :- mode term_io__write_term_args(in, in, in, out, out, di, uo) is det.
 

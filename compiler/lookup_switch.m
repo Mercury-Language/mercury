@@ -41,25 +41,26 @@
 
 :- interface.
 
-:- import_module hlds_goal, hlds_data, llds, switch_gen, code_info.
-:- import_module std_util, map, set, list, term.
+:- import_module hlds_goal, hlds_data, llds, switch_gen, code_info, prog_data.
+:- import_module std_util, map, set, list.
 
 :- type case_consts == list(pair(int, list(rval))).
 
-:- type rval_map == map(var, list(pair(int, rval))).
+:- type rval_map == map(prog_var, list(pair(int, rval))).
 
-:- pred lookup_switch__is_lookup_switch(var, cases_list, hlds_goal_info,
+:- pred lookup_switch__is_lookup_switch(prog_var, cases_list, hlds_goal_info,
 		can_fail, int, code_model, int, int, can_fail, can_fail,
-		list(var), case_consts, maybe(set(var)),
+		list(prog_var), case_consts, maybe(set(prog_var)),
 		code_info, code_info).
 :- mode lookup_switch__is_lookup_switch(in, in, in, in, in, in, out, out,
 		out, out, out, out, out, in, out) is semidet.
 
 	% Generate code for a switch using a lookup table.
 
-:- pred lookup_switch__generate(var, list(var), case_consts,
-		int, int, can_fail, can_fail, maybe(set(var)), store_map,
-		branch_end, branch_end, code_tree, code_info, code_info).
+:- pred lookup_switch__generate(prog_var, list(prog_var), case_consts,
+		int, int, can_fail, can_fail, maybe(set(prog_var)),
+		store_map, branch_end, branch_end, code_tree,
+		code_info, code_info).
 :- mode lookup_switch__generate(in, in, in, in, in, in, in, in, in,
 		in, out, out, in, out) is det.
 
@@ -153,7 +154,7 @@ lookup_switch__is_lookup_switch(CaseVar, TaggedCases, GoalInfo,
 
 %---------------------------------------------------------------------------%
 
-:- pred lookup_switch__figure_out_output_vars(hlds_goal_info, list(var),
+:- pred lookup_switch__figure_out_output_vars(hlds_goal_info, list(prog_var),
 		code_info, code_info).
 :- mode lookup_switch__figure_out_output_vars(in, out, in, out) is det.
 
@@ -187,8 +188,8 @@ lookup_switch__figure_out_output_vars(GoalInfo, OutVars) -->
 
 %---------------------------------------------------------------------------%
 
-:- pred lookup_switch__generate_constants(cases_list, list(var),
-		code_model, case_consts, maybe(set(var)),
+:- pred lookup_switch__generate_constants(cases_list, list(prog_var),
+		code_model, case_consts, maybe(set(prog_var)),
 		code_info, code_info).
 :- mode lookup_switch__generate_constants(in, in, in, out, out,
 		in, out) is semidet.
@@ -211,7 +212,7 @@ lookup_switch__generate_constants([Case|Cases], Vars, CodeModel,
 
 %---------------------------------------------------------------------------%
 
-:- pred lookup_switch__get_case_rvals(list(var), list(rval),
+:- pred lookup_switch__get_case_rvals(list(prog_var), list(rval),
 		code_info, code_info).
 :- mode lookup_switch__get_case_rvals(in, out, in, out) is semidet.
 
@@ -430,7 +431,7 @@ generate_bit_vec_args([Word - Bits|Rest], Count, [yes(Rval)|Rvals]) :-
 
 %------------------------------------------------------------------------------%
 
-:- pred lookup_switch__generate_terms(rval, list(var),
+:- pred lookup_switch__generate_terms(rval, list(prog_var),
 		case_consts, int, code_info, code_info).
 :- mode lookup_switch__generate_terms(in, in, in, in, in, out) is det.
 
@@ -445,7 +446,7 @@ lookup_switch__generate_terms(Index, OutVars, CaseVals, Start) -->
 	{ rearrange_vals(OutVars, CaseVals, Start, Empty, ValMap) },
 	lookup_switch__generate_terms_2(Index, OutVars, ValMap).
 
-:- pred lookup_switch__generate_terms_2(rval, list(var),
+:- pred lookup_switch__generate_terms_2(rval, list(prog_var),
 		rval_map, code_info, code_info).
 :- mode lookup_switch__generate_terms_2(in, in, in, in, out) is det.
 
@@ -481,7 +482,7 @@ construct_args([Index - Rval|Rest], Count0, [yes(Arg)|Args]) :-
 
 %------------------------------------------------------------------------------%
 
-:- pred rearrange_vals(list(var), case_consts, int, rval_map, rval_map).
+:- pred rearrange_vals(list(prog_var), case_consts, int, rval_map, rval_map).
 :- mode rearrange_vals(in, in, in, in, out) is det.
 
 	% For the purpose of constructing the terms, the case_consts
@@ -494,7 +495,7 @@ rearrange_vals(Vars, [Tag - Rvals|Rest], Start, Map0, Map) :-
 	rearrange_vals_2(Pairs, Index, Map0, Map1),
 	rearrange_vals(Vars, Rest, Start, Map1, Map).
 
-:- pred rearrange_vals_2(list(pair(var, rval)), int, rval_map, rval_map).
+:- pred rearrange_vals_2(list(pair(prog_var, rval)), int, rval_map, rval_map).
 :- mode rearrange_vals_2(in, in, in, out) is det.
 
 rearrange_vals_2([], _, Map, Map).

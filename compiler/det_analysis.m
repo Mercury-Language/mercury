@@ -383,7 +383,7 @@ det_infer_goal(Goal0 - GoalInfo0, InstMap0, SolnContext0, DetInfo,
 %-----------------------------------------------------------------------------%
 
 :- pred det_infer_goal_2(hlds_goal_expr, hlds_goal_info, instmap,
-	soln_context, det_info, set(var), instmap_delta,
+	soln_context, det_info, set(prog_var), instmap_delta,
 	hlds_goal_expr, determinism, list(det_msg)).
 :- mode det_infer_goal_2(in, in, in, in, in, in, in, out, out, out) is det.
 
@@ -862,7 +862,7 @@ det_find_matching_non_cc_mode_2([ProcId1 - ProcInfo | Rest],
 
 %-----------------------------------------------------------------------------%
 
-:- pred det_check_for_noncanonical_type(var, bool, can_fail, soln_context,
+:- pred det_check_for_noncanonical_type(prog_var, bool, can_fail, soln_context,
 		hlds_goal_info, cc_unify_context, det_info, list(det_msg),
 		soln_count, list(det_msg)).
 :- mode det_check_for_noncanonical_type(in, in, in, in,
@@ -908,7 +908,7 @@ det_check_for_noncanonical_type(Var, ExaminesRepresentation, CanFail,
 % return true iff there was a `where equality is <predname>' declaration
 % for the specified type.
 :- pred det_type_has_user_defined_equality_pred(det_info::in, (type)::in,
-		term__context::out) is semidet.
+		prog_context::out) is semidet.
 det_type_has_user_defined_equality_pred(DetInfo, Type, TypeContext) :-
 	det_info_get_module_info(DetInfo, ModuleInfo),
 	module_info_types(ModuleInfo, TypeTable),

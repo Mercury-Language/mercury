@@ -13,7 +13,7 @@
 :- interface.
 
 :- import_module hlds_data, hlds_pred, llds, prog_data, (inst), instmap.
-:- import_module list, set, map, term, std_util.
+:- import_module list, set, map, std_util.
 
 	% Here is how goals are represented
 
@@ -37,7 +37,7 @@
 	;	call(
 			pred_id,	% which predicate are we calling?
 			proc_id,	% which mode of the predicate?
-			list(var),	% the list of argument variables
+			list(prog_var),	% the list of argument variables
 			builtin_state,	% is the predicate builtin, and if yes,
 					% do we generate inline code for it?
 			maybe(call_unify_context),
@@ -48,8 +48,8 @@
 		)
 
 	;	higher_order_call(
-			var,		% the predicate to call
-			list(var),	% the list of argument variables
+			prog_var,	% the predicate to call
+			list(prog_var),	% the list of argument variables
 			list(type),	% the types of the argument variables
 			list(mode),	% the modes of the argument variables
 			determinism,	% the determinism of the called pred
@@ -57,9 +57,9 @@
 		)
 
 	;	class_method_call(
-			var,		% the typeclass_info for the instance
+			prog_var,	% the typeclass_info for the instance
 			int,		% the number of the method to call
-			list(var),	% the list of argument variables (other
+			list(prog_var),	% the list of argument variables (other
 					% than this instance's typeclass_info)
 			list(type),	% the types of the argument variables
 			list(mode),	% the modes of the argument variables
@@ -70,7 +70,7 @@
 		% into switches by the switch detection pass.
 
 	;	switch(
-			var,		% the variable we are switching on
+			prog_var,	% the variable we are switching on
 			can_fail,	% whether or not the switch test itself
 					% can fail (i.e. whether or not it
 					% covers all the possible cases)
@@ -89,7 +89,7 @@
 		% are known. Mode analysis fills in the missing information.
 
 	;	unify(
-			var,		% the variable on the left hand side
+			prog_var,	% the variable on the left hand side
 					% of the unification
 			unify_rhs,	% whatever is on the right hand side
 					% of the unification
@@ -125,7 +125,7 @@
 		% (except to recompute the goal_info quantification).
 		% `all Vs' gets converted to `not some Vs not'.
 
-	;	{ some(list(var), hlds_goal) }
+	;	{ some(list(prog_var), hlds_goal) }
 
 		% An if-then-else,
 		% `if some <Vars> <Condition> then <Then> else <Else>'.
@@ -134,7 +134,7 @@
 		% but not the <Else> part.
 
 	;	if_then_else(
-			list(var),	% The locally existentially quantified
+			list(prog_var),	% The locally existentially quantified
 					% variables <Vars>.
 			hlds_goal,	% The <Condition>
 			hlds_goal,	% The <Then> part
@@ -154,7 +154,7 @@
 			pragma_c_code_attributes,
 			pred_id,	% The called predicate
 			proc_id, 	% The mode of the predicate
-			list(var),	% The (Mercury) argument variables
+			list(prog_var),	% The (Mercury) argument variables
 			list(maybe(pair(string, mode))),
 					% C variable names and the original
 					% mode declaration for each of the
@@ -200,18 +200,18 @@
 			%	functor to match with,
 			%	goal to execute if match succeeds.
 
-:- type stack_slots	==	map(var, lval).
+:- type stack_slots	==	map(prog_var, lval).
 				% Maps variables to their stack slots.
 				% The only legal lvals in the range are
 				% stackvars and framevars.
 
-:- type follow_vars	==	map(var, lval).
+:- type follow_vars	==	map(prog_var, lval).
 				% Advisory information about where variables
 				% ought to be put next. The legal range
 				% includes the nonexistent register r(-1),
 				% which indicates any available register.
 
-:- type store_map	==	map(var, lval).
+:- type store_map	==	map(prog_var, lval).
 				% Authoritative information about where
 				% variables must be put at the ends of
 				% branches of branched control structures.
@@ -222,20 +222,20 @@
 				% the set of legal lvals.
 
 	% Initially all unifications are represented as
-	% unify(var, unify_rhs, _, _, _), but mode analysis replaces
+	% unify(prog_var, unify_rhs, _, _, _), but mode analysis replaces
 	% these with various special cases (construct/deconstruct/assign/
 	% simple_test/complicated_unify).
 	% The cons_id for functor/2 cannot be a pred_const, code_addr_const,
 	% or base_type_info_const, since none of these can be created when
 	% the unify_rhs field is used.
 :- type unify_rhs
-	--->	var(var)
-	;	functor(cons_id, list(var))
+	--->	var(prog_var)
+	;	functor(cons_id, list(prog_var))
 	;	lambda_goal(
 			pred_or_func, 
-			list(var),	% non-locals of the goal excluding
+			list(prog_var),	% non-locals of the goal excluding
 					% the lambda quantified variables
-			list(var),	% lambda quantified variables
+			list(prog_var),	% lambda quantified variables
 			list(mode),	% modes of the lambda 
 					% quantified variables
 			determinism,
@@ -249,11 +249,11 @@
 		% Constructions are written using `:=', e.g. Y := f(X).
 
 	--->	construct(
-			var,		% the variable being constructed
+			prog_var,	% the variable being constructed
 					% e.g. Y in above example
 			cons_id,	% the cons_id of the functor
 					% f/1 in the above example
-			list(var),	% the list of argument variables
+			list(prog_var),	% the list of argument variables
 					% [X] in the above example
 					% For a unification with a lambda
 					% expression, this is the list of
@@ -275,11 +275,11 @@
 		% a mode error.
 
 	;	deconstruct(
-			var,		% The variable being deconstructed
+			prog_var,	% The variable being deconstructed
 					% e.g. Y in the above example.
 			cons_id,	% The cons_id of the functor,
 					% e.g. f/1 in the above example
-			list(var),	% The list of argument variables,
+			list(prog_var),	% The list of argument variables,
 					% e.g. [X] in the above example.
 			list(uni_mode), % The lists of modes of the argument
 					% sub-unifications.
@@ -291,14 +291,14 @@
 		% written Y := X.
 
 	;	assign(
-			var,	% variable being assigned to
-			var	% variable whose value is being assigned
+			prog_var, % variable being assigned to
+			prog_var  % variable whose value is being assigned
 		)
 
 		% Y = X where the type of X and Y is an atomic
 		% type and they are both input, written Y == X.
 
-	;	simple_test(var, var)
+	;	simple_test(prog_var, prog_var)
 
 		% Y = X where the type of Y and X is not an
 		% atomic type, and where the top-level node
@@ -360,7 +360,7 @@
 
 :- type call_unify_context
 	--->	call_unify_context(
-			var,		% the LHS of the unification
+			prog_var,	% the LHS of the unification
 			unify_rhs,	% the RHS of the unification
 			unify_context	% the context of the unification
 		).
@@ -377,7 +377,7 @@
 	    ;	(semipure).	% This goal is semipure.  See hlds_pred.m.
 
 	% see compiler/notes/allocation.html for what these alternatives mean
-:- type resume_point	--->	resume_point(set(var), resume_locs)
+:- type resume_point	--->	resume_point(set(prog_var), resume_locs)
 			;	no_resume_point.
 
 :- type resume_locs	--->	orig_only
@@ -410,10 +410,10 @@
 	% if this structure is modified.
 :- type hlds_goal_info
 	---> goal_info(
-		set(var),	% the pre-birth set
-		set(var),	% the post-birth set
-		set(var),	% the pre-death set
-		set(var),	% the post-death set
+		set(prog_var),	% the pre-birth set
+		set(prog_var),	% the post-birth set
+		set(prog_var),	% the pre-death set
+		set(prog_var),	% the post-death set
 				% (all four are computed by liveness.m)
 				% NB for atomic goals, the post-deadness
 				% should be applied _before_ the goal
@@ -442,9 +442,9 @@
 				% conservative approximations, so if either
 				% says a goal is unreachable then it is.
 
-		term__context,
+		prog_context,
 
-		set(var),	% the non-local vars in the goal,
+		set(prog_var),	% the non-local vars in the goal,
 				% i.e. the variables that occur both inside
 				% and outside of the goal.
 				% (computed by quantification.m)
@@ -512,7 +512,8 @@ get_pragma_c_var_names_2([MaybeName | MaybeNames], Names0, Names) :-
 :- pred goal_info_init(hlds_goal_info).
 :- mode goal_info_init(out) is det.
 
-:- pred goal_info_init(set(var), instmap_delta, determinism, hlds_goal_info).
+:- pred goal_info_init(set(prog_var), instmap_delta, determinism,
+		hlds_goal_info).
 :- mode goal_info_init(in, in, in, out) is det.
 
 % Instead of recording the liveness of every variable at every
@@ -523,28 +524,28 @@ get_pragma_c_var_names_2([MaybeName | MaybeNames], Names0, Names) :-
 % variable can occur in both the post-death and post-birth sets,
 % or in both the pre-death and pre-birth sets.
 
-:- pred goal_info_get_pre_births(hlds_goal_info, set(var)).
+:- pred goal_info_get_pre_births(hlds_goal_info, set(prog_var)).
 :- mode goal_info_get_pre_births(in, out) is det.
 
-:- pred goal_info_set_pre_births(hlds_goal_info, set(var), hlds_goal_info).
+:- pred goal_info_set_pre_births(hlds_goal_info, set(prog_var), hlds_goal_info).
 :- mode goal_info_set_pre_births(in, in, out) is det.
 
-:- pred goal_info_get_post_births(hlds_goal_info, set(var)).
+:- pred goal_info_get_post_births(hlds_goal_info, set(prog_var)).
 :- mode goal_info_get_post_births(in, out) is det.
 
-:- pred goal_info_set_post_births(hlds_goal_info, set(var), hlds_goal_info).
+:- pred goal_info_set_post_births(hlds_goal_info, set(prog_var), hlds_goal_info).
 :- mode goal_info_set_post_births(in, in, out) is det.
 
-:- pred goal_info_get_pre_deaths(hlds_goal_info, set(var)).
+:- pred goal_info_get_pre_deaths(hlds_goal_info, set(prog_var)).
 :- mode goal_info_get_pre_deaths(in, out) is det.
 
-:- pred goal_info_set_pre_deaths(hlds_goal_info, set(var), hlds_goal_info).
+:- pred goal_info_set_pre_deaths(hlds_goal_info, set(prog_var), hlds_goal_info).
 :- mode goal_info_set_pre_deaths(in, in, out) is det.
 
-:- pred goal_info_get_post_deaths(hlds_goal_info, set(var)).
+:- pred goal_info_get_post_deaths(hlds_goal_info, set(prog_var)).
 :- mode goal_info_get_post_deaths(in, out) is det.
 
-:- pred goal_info_set_post_deaths(hlds_goal_info, set(var), hlds_goal_info).
+:- pred goal_info_set_post_deaths(hlds_goal_info, set(prog_var), hlds_goal_info).
 :- mode goal_info_set_post_deaths(in, in, out) is det.
 
 :- pred goal_info_get_code_model(hlds_goal_info, code_model).
@@ -557,10 +558,10 @@ get_pragma_c_var_names_2([MaybeName | MaybeNames], Names0, Names) :-
 	hlds_goal_info).
 :- mode goal_info_set_determinism(in, in, out) is det.
 
-:- pred goal_info_get_nonlocals(hlds_goal_info, set(var)).
+:- pred goal_info_get_nonlocals(hlds_goal_info, set(prog_var)).
 :- mode goal_info_get_nonlocals(in, out) is det.
 
-:- pred goal_info_set_nonlocals(hlds_goal_info, set(var), hlds_goal_info).
+:- pred goal_info_set_nonlocals(hlds_goal_info, set(prog_var), hlds_goal_info).
 :- mode goal_info_set_nonlocals(in, in, out) is det.
 
 :- pred goal_info_get_features(hlds_goal_info, set(goal_feature)).
@@ -587,10 +588,10 @@ get_pragma_c_var_names_2([MaybeName | MaybeNames], Names0, Names) :-
 				hlds_goal_info).
 :- mode goal_info_set_instmap_delta(in, in, out) is det.
 
-:- pred goal_info_get_context(hlds_goal_info, term__context).
+:- pred goal_info_get_context(hlds_goal_info, prog_context).
 :- mode goal_info_get_context(in, out) is det.
 
-:- pred goal_info_set_context(hlds_goal_info, term__context, hlds_goal_info).
+:- pred goal_info_set_context(hlds_goal_info, prog_context, hlds_goal_info).
 :- mode goal_info_set_context(in, in, out) is det.
 
 :- pred goal_info_get_follow_vars(hlds_goal_info, maybe(follow_vars)).
@@ -619,7 +620,7 @@ get_pragma_c_var_names_2([MaybeName | MaybeNames], Names0, Names) :-
 :- pred goal_set_resume_point(hlds_goal, resume_point, hlds_goal).
 :- mode goal_set_resume_point(in, in, out) is det.
 
-:- pred goal_info_resume_vars_and_loc(resume_point, set(var), resume_locs).
+:- pred goal_info_resume_vars_and_loc(resume_point, set(prog_var), resume_locs).
 :- mode goal_info_resume_vars_and_loc(in, out, out) is det.
 
 	% Convert a goal to a list of conjuncts.
@@ -691,18 +692,18 @@ get_pragma_c_var_names_2([MaybeName | MaybeNames], Names0, Names) :-
 :- pred true_goal(hlds_goal).
 :- mode true_goal(out) is det.
 
-:- pred true_goal(term__context, hlds_goal).
+:- pred true_goal(prog_context, hlds_goal).
 :- mode true_goal(in, out) is det.
 
 	% Return the HLDS equivalent of `fail'.
 :- pred fail_goal(hlds_goal).
 :- mode fail_goal(out) is det.
 
-:- pred fail_goal(term__context, hlds_goal).
+:- pred fail_goal(prog_context, hlds_goal).
 :- mode fail_goal(in, out) is det.
 
        % Return the union of all the nonlocals of a list of goals.
-:- pred goal_list_nonlocals(list(hlds_goal), set(var)).
+:- pred goal_list_nonlocals(list(hlds_goal), set(prog_var)).
 :- mode goal_list_nonlocals(in, out) is det.
 
        % Compute the instmap_delta resulting from applying 
@@ -718,7 +719,7 @@ get_pragma_c_var_names_2([MaybeName | MaybeNames], Names0, Names) :-
 
 :- implementation.
 
-:- import_module det_analysis.
+:- import_module det_analysis, term.
 :- import_module require.
 
 goal_info_init(GoalInfo) :-
@@ -779,14 +780,14 @@ goal_info_get_goal_path(GoalInfo, GoalPath) :-
 
 % :- type hlds_goal_info
 % 	--->	goal_info(
-% 		A	set(var),	% the pre-birth set
-% 		B	set(var),	% the post-birth set
-% 		C	set(var),	% the pre-death set
-% 		D	set(var),	% the post-death set
+% 		A	set(prog_var),	% the pre-birth set
+% 		B	set(prog_var),	% the post-birth set
+% 		C	set(prog_var),	% the pre-death set
+% 		D	set(prog_var),	% the post-death set
 % 		E	determinism, 	% the overall determinism of the goal
 % 		F	instmap_delta,	% the change in insts over this goal
-% 		G	term__context,
-% 		H	set(var),	% the non-local vars in the goal
+% 		G	prog_context,
+% 		H	set(prog_var),	% the non-local vars in the goal
 % 		I	maybe(follow_vars),
 % 		J	set(goal_feature),
 %		K	resume_point,

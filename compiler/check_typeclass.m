@@ -59,11 +59,11 @@
 
 :- import_module map, list, std_util, hlds_pred, hlds_data, prog_data, require.
 :- import_module type_util, assoc_list, mode_util, inst_match, hlds_module.
-:- import_module term, varset, typecheck, int, globals, make_hlds, error_util. 
+:- import_module typecheck, int, globals, make_hlds, error_util. 
 :- import_module base_typeclass_info, string, hlds_goal, set, prog_out.
-:- import_module mercury_to_mercury.
+:- import_module mercury_to_mercury, varset, term.
 
-:- type error_message == pair(term__context, list(format_component)).
+:- type error_message == pair(prog_context, list(format_component)).
 :- type error_messages == list(error_message).
 
 check_typeclass__check_instance_decls(ModuleInfo0, ModuleInfo, FoundError, 
@@ -124,8 +124,8 @@ check_one_class(ClassTable, ClassId - InstanceDefns0,
 
 
 	% check one instance of one class
-:- pred check_class_instance(class_id, list(class_constraint), list(var),
-	hlds_class_interface, varset, list(pred_id), 
+:- pred check_class_instance(class_id, list(class_constraint), list(tvar),
+	hlds_class_interface, tvarset, list(pred_id), 
 	hlds_instance_defn, hlds_instance_defn, 
 	pair(error_messages, module_info), 
 	pair(error_messages, module_info)).
@@ -190,7 +190,7 @@ check_class_instance(ClassId, SuperClasses, Vars, ClassInterface, ClassVarSet,
 %----------------------------------------------------------------------------%
 
 	% check one pred in one instance of one class
-:- pred check_instance_pred(class_id, list(var), hlds_class_interface, 
+:- pred check_instance_pred(class_id, list(tvar), hlds_class_interface, 
 	pred_id, hlds_instance_defn, hlds_instance_defn,
 	pair(error_messages, module_info), pair(error_messages, module_info)).
 :- mode check_instance_pred(in,in, in, in, in, out, in, out) is det.
@@ -259,7 +259,7 @@ check_instance_pred(ClassId, ClassVars, ClassInterface, PredId,
 		_ExistQVars, _ArgTypes, _ClassContext, _ArgModes, Errors,
 		_ArgTypeVars, _Status, _PredOrFunc).
 
-:- pred check_instance_pred_procs(class_id, list(var), sym_name,
+:- pred check_instance_pred_procs(class_id, list(tvar), sym_name,
 	hlds_instance_defn, hlds_instance_defn, 
 	instance_method_info, instance_method_info).
 :- mode check_instance_pred_procs(in, in, in, in, out, in, out) is det.
@@ -370,7 +370,7 @@ check_instance_pred_procs(ClassId, ClassVars, MethodName, InstanceDefn0,
 	).
 
 :- pred get_matching_instance_names(list(instance_method), pred_or_func,
-	sym_name, arity, list(pair(sym_name, term__context))).
+	sym_name, arity, list(pair(sym_name, prog_context))).
 :- mode get_matching_instance_names(in, in, in, in, out) is det.
 
 get_matching_instance_names(InstanceInterface, PredOrFunc, PredName,
@@ -405,8 +405,8 @@ get_matching_instance_names(InstanceInterface, PredOrFunc, PredName,
 	% Just a bit simpler than using a pair of pairs
 :- type triple(T1, T2, T3) ---> triple(T1, T2, T3).
 
-:- pred produce_auxiliary_procs(list(var), 
-	list(type), list(class_constraint), varset, sym_name, term__context,
+:- pred produce_auxiliary_procs(list(tvar), 
+	list(type), list(class_constraint), tvarset, sym_name, prog_context,
 	pred_id, list(proc_id), instance_method_info, instance_method_info).
 :- mode produce_auxiliary_procs(in, in, in, in, in, in, out, out, 
 	in, out) is det.
@@ -531,7 +531,8 @@ produce_auxiliary_procs(ClassVars,
 		ExistQVars, ArgTypes, ClassContext, ArgModes, Errors,
 		ArgTypeVars, Status, PredOrFunc).
 
-:- pred apply_substitution_to_var_list(list(var), map(var, term), list(var)).
+:- pred apply_substitution_to_var_list(list(var(T)), map(var(T), term(T)),
+		list(var(T))).
 :- mode apply_substitution_to_var_list(in, in, out) is det.
 
 apply_substitution_to_var_list(Vars0, RenameSubst, Vars) :-
@@ -577,7 +578,7 @@ make_introduced_pred_name(ClassId, MethodName, PredArity,
 % types in this instance declaration
 
 :- pred check_superclass_conformance(class_id, list(class_constraint), 
-	list(var), varset, hlds_instance_defn, hlds_instance_defn, 
+	list(tvar), tvarset, hlds_instance_defn, hlds_instance_defn, 
 	pair(error_messages, module_info), pair(error_messages, module_info)).
 :- mode check_superclass_conformance(in, in, in, in, in, out, in, out) is det.
 
@@ -645,7 +646,7 @@ check_superclass_conformance(ClassId, SuperClasses0, ClassVars0, ClassVarSet,
 		InstanceDefn = InstanceDefn0
 	).
 
-:- pred constraint_list_to_string(varset, list(class_constraint), string).
+:- pred constraint_list_to_string(tvarset, list(class_constraint), string).
 :- mode constraint_list_to_string(in, in, out) is det.
 
 constraint_list_to_string(_, [], "").
@@ -654,7 +655,7 @@ constraint_list_to_string(VarSet, [C|Cs], String) :-
 	constraint_list_to_string_2(VarSet, Cs, String1),
 	string__append_list(["`", String0, "'", String1], String).
 
-:- pred constraint_list_to_string_2(varset, list(class_constraint), string).
+:- pred constraint_list_to_string_2(tvarset, list(class_constraint), string).
 :- mode constraint_list_to_string_2(in, in, out) is det.
 
 constraint_list_to_string_2(_VarSet, [], "").

@@ -19,7 +19,7 @@
 :- interface.
 
 :- import_module hlds_module, prog_data, llds.
-:- import_module io, term.
+:- import_module io.
 
 	% From the module_info, get a list of c_export_decls,
 	% each of which holds information about the declaration
@@ -41,10 +41,10 @@
 					io__state, io__state).
 :- mode export__produce_header_file(in, in, di, uo) is det.
 
-	% Convert the term, which represents a type, to a string corresponding
-	% to its C type. (Defaults to Word).
-:- pred export__term_to_type_string(term, string).
-:- mode export__term_to_type_string(in, out) is det.
+	% Convert the type, to a string corresponding to its C type.
+	% (Defaults to Word).
+:- pred export__type_to_type_string(type, string).
+:- mode export__type_to_type_string(in, out) is det.
 
 	% Generate C code to convert an rval (represented as a string), from
 	% a C type to a mercury C type (ie. convert strings and floats to
@@ -72,6 +72,7 @@
 :- implementation.
 
 :- import_module code_gen, code_util, hlds_pred, llds_out, modules.
+:- import_module term, varset.
 
 :- import_module library, map, int, string, std_util, assoc_list, require.
 :- import_module list, bool.
@@ -246,7 +247,7 @@ get_export_info(Preds, PredId, ProcId, C_RetType,
 			RetArgMode = top_out,
 			\+ export__exclude_argument_type(RetType)
 		->
-			export__term_to_type_string(RetType, C_RetType),
+			export__type_to_type_string(RetType, C_RetType),
 			argloc_to_string(RetArgLoc, RetArgString0),
 			convert_type_from_mercury(RetArgString0, RetType,
 				RetArgString),
@@ -342,7 +343,7 @@ get_argument_declaration(ArgInfo, Type, Num, NameThem, TypeString, ArgName) :-
 	;
 		ArgName = ""
 	),
-	export__term_to_type_string(Type, TypeString0),
+	export__type_to_type_string(Type, TypeString0),
 	(
 		Mode = top_out
 	->
@@ -550,7 +551,7 @@ export__produce_header_file_2([E|ExportedProcs]) -->
 	% Convert a term representation of a variable type to a string which
 	% represents the C type of the variable
 	% Apart from special cases, local variables become Words
-export__term_to_type_string(Type, Result) :-
+export__type_to_type_string(Type, Result) :-
 	( Type = term__functor(term__atom("int"), [], _) ->
 		Result = "Integer"
 	; Type = term__functor(term__atom("float"), [], _) ->

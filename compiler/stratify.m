@@ -948,7 +948,7 @@ check_case_list([Case|Goals], Calls0, Calls) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- pred emit_message(pred_proc_id, term__context, string, bool, 
+:- pred emit_message(pred_proc_id, prog_context, string, bool, 
 		module_info, module_info, io__state, io__state).
 :- mode emit_message(in, in, in, in, in, out, di, uo) is det.
 

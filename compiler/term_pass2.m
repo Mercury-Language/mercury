@@ -43,7 +43,7 @@
 	==	map(pred_proc_id,		% The max noninfinite weight
 						% call from this proc
 			map(pred_proc_id,	% to this proc
-				pair(term__context, int))).
+				pair(prog_context, int))).
 						% is at this context and with
 						% this weight.
 
@@ -387,9 +387,9 @@ prove_termination_in_scc_pass([PPId | PPIds], FixDir, Module, PassInfo,
 
 %-----------------------------------------------------------------------------
 
-:- pred update_rec_input_suppliers(list(var)::in, bag(var)::in,
+:- pred update_rec_input_suppliers(list(prog_var)::in, bag(prog_var)::in,
 	fixpoint_dir::in, list(bool)::in, list(bool)::out,
-	bag(var)::in, bag(var)::out) is det.
+	bag(prog_var)::in, bag(prog_var)::out) is det.
 
 update_rec_input_suppliers([], _, _, [], [], RecBag, RecBag).
 update_rec_input_suppliers([_ | _], _, _, [], [], _, _) :-
@@ -441,7 +441,7 @@ update_rec_input_suppliers([Arg | Args], ActiveVars, FixDir,
 % details of the call into the list of "infinite" calls.
 
 :- pred add_call_arcs(list(path_info)::in,
-	bag(var)::in, call_weight_info::in, call_weight_info::out) is det.
+	bag(prog_var)::in, call_weight_info::in, call_weight_info::out) is det.
 
 add_call_arcs([], _RecInputSuppliers, CallInfo, CallInfo).
 add_call_arcs([Path | Paths], RecInputSuppliers, CallInfo0, CallInfo) :-
@@ -533,8 +533,8 @@ zero_or_positive_weight_cycles_from(PPId, CallWeights, Module, Cycles) :-
 		PPId, Context, 0, [], CallWeights, Cycles).
 
 :- pred zero_or_positive_weight_cycles_from_neighbours(assoc_list(pred_proc_id,
-	pair(term__context, int))::in, pred_proc_id::in, term__context::in,
-	int::in, assoc_list(pred_proc_id, term__context)::in,
+	pair(prog_context, int))::in, pred_proc_id::in, prog_context::in,
+	int::in, assoc_list(pred_proc_id, prog_context)::in,
 	call_weight_graph::in, list(term_errors__error)::out) is det.
 
 zero_or_positive_weight_cycles_from_neighbours([], _, _, _, _, _, []).
@@ -548,8 +548,8 @@ zero_or_positive_weight_cycles_from_neighbours([Neighbour | Neighbours],
 	list__append(Cycles1, Cycles2, Cycles).
 
 :- pred zero_or_positive_weight_cycles_from_neighbour(pair(pred_proc_id,
-	pair(term__context, int))::in, pred_proc_id::in, term__context::in,
-	int::in, assoc_list(pred_proc_id, term__context)::in,
+	pair(prog_context, int))::in, pred_proc_id::in, prog_context::in,
+	int::in, assoc_list(pred_proc_id, prog_context)::in,
 	call_weight_graph::in, list(term_errors__error)::out) is det.
 
 zero_or_positive_weight_cycles_from_neighbour(CurPPId - (Context - EdgeWeight),

@@ -70,16 +70,17 @@
 :- interface. 
 
 :- import_module hlds_module, hlds_pred, hlds_goal, hlds_data, prog_data.
-:- import_module list, map, set, term, varset.
+:- import_module list, map, set.
 
 :- pred lambda__process_pred(pred_id, module_info, module_info).
 :- mode lambda__process_pred(in, in, out) is det.
 
-:- pred lambda__transform_lambda(pred_or_func, string, list(var), list(mode), 
-		determinism, list(var), set(var), hlds_goal, unification,
-		varset, map(var, type), class_constraints, tvarset,
-		map(tvar, type_info_locn), map(class_constraint, var),
-		module_info, unify_rhs, unification, module_info).
+:- pred lambda__transform_lambda(pred_or_func, string, list(prog_var),
+		list(mode), determinism, list(prog_var), set(prog_var),
+		hlds_goal, unification, prog_varset, map(prog_var, type),
+		class_constraints, tvarset, map(tvar, type_info_locn),
+		map(class_constraint, prog_var), module_info, unify_rhs,
+		unification, module_info).
 :- mode lambda__transform_lambda(in, in, in, in, in, in, in, in, in, in, in,
 		in, in, in, in, in, out, out, out) is det.
 
@@ -88,21 +89,21 @@
 
 :- implementation.
 
-:- import_module make_hlds, globals, options.
+:- import_module make_hlds, globals, options, term, varset.
 :- import_module goal_util, prog_util, mode_util, inst_match, llds, arg_info.
 
 :- import_module bool, string, std_util, require.
 
 :- type lambda_info --->
 		lambda_info(
-			varset,			% from the proc_info
-			map(var, type),		% from the proc_info
+			prog_varset,		% from the proc_info
+			map(prog_var, type),	% from the proc_info
 			class_constraints,	% from the pred_info
 			tvarset,		% from the proc_info
 			map(tvar, type_info_locn),	
 						% from the proc_info 
 						% (typeinfos)
-			map(class_constraint, var),
+			map(class_constraint, prog_var),
 						% from the proc_info
 						% (typeclass_infos)
 			pred_or_func,
@@ -260,9 +261,9 @@ lambda__process_cases([case(ConsId, Goal0) | Cases0],
 	lambda__process_goal(Goal0, Goal),
 	lambda__process_cases(Cases0, Cases).
 
-:- pred lambda__process_lambda(pred_or_func, list(var), list(mode), determinism,
-		list(var), hlds_goal, unification, unify_rhs, unification,
-		lambda_info, lambda_info).
+:- pred lambda__process_lambda(pred_or_func, list(prog_var), list(mode),
+		determinism, list(prog_var), hlds_goal, unification,
+		unify_rhs, unification, lambda_info, lambda_info).
 :- mode lambda__process_lambda(in, in, in, in, in, in, in, out, out,
 		in, out) is det.
 

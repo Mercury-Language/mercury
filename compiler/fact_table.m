@@ -56,7 +56,7 @@
 	% fact_table_compile_facts(PredName, Arity, FileName, PredInfo0, 
 	% 	PredInfo, Context, ModuleInfo, C_HeaderCode, PrimaryProcID)
 :- pred fact_table_compile_facts(sym_name, arity, string, pred_info, pred_info,
-		term__context, module_info, string, proc_id,
+		prog_context, module_info, string, proc_id,
 		io__state, io__state).
 :- mode fact_table_compile_facts(in, in, in, in, out, in, in, out, out,
 		di, uo) is det.
@@ -87,12 +87,12 @@
 :- implementation.
 
 :- import_module int, map, std_util, assoc_list, char, require, library, bool.
-:- import_module float, math, getopt, term, string.
+:- import_module float, math, getopt, string.
 :- import_module parser, term_io.
 
 :- import_module prog_util, prog_out, llds_out, modules, hlds_out, hlds_data.
 :- import_module globals, options, passes_aux, arg_info, llds, mode_util.
-:- import_module code_util, export, inst_match.
+:- import_module prog_io, code_util, export, inst_match, term.
 
 :- type fact_result
 	--->	ok ; error.
@@ -333,7 +333,7 @@ compile_facts(PredName, Arity, PredInfo, ModuleInfo, FactArgInfos, ProcStreams,
 	).
 
 	% do syntactic and semantic checks on a fact term
-:- pred check_fact_term(sym_name, arity, pred_info, module_info, term,
+:- pred check_fact_term(sym_name, arity, pred_info, module_info, prog_term,
 		list(fact_arg_info), list(proc_stream),
 		maybe(pair(io__output_stream, string)), int, fact_result,
 		io__state, io__state).
@@ -366,8 +366,8 @@ check_fact_term(PredName, Arity0, PredInfo, ModuleInfo,
 		    { PredOrFunc = function },
 		    { TopLevel = "=" },
 		    { Terms0 = [ FuncHeadTerm , FuncResultTerm ] },
-		    { FuncHeadTerm = term__functor(term__atom(PredString), 
-			Terms1, _) },
+		    { FuncHeadTerm = term__functor(
+		    	term__atom(PredString), Terms1, _) },
 		    { list__append(Terms1, [FuncResultTerm], Terms) },
 		    { Arity is Arity0 + 1 }
 		)
@@ -435,8 +435,8 @@ check_fact_term(PredName, Arity0, PredInfo, ModuleInfo,
 % Check that the mode of the fact is correct.  All terms must be ground and be
 % a constant of the correct type.  Only string, int and float are supported at
 % the moment.
-:- pred check_fact_type_and_mode(list(type), list(term), int, pred_or_func, 
-	term__context, fact_result, io__state, io__state).
+:- pred check_fact_type_and_mode(list(type), list(prog_term), int,
+		pred_or_func, prog_context, fact_result, io__state, io__state).
 :- mode check_fact_type_and_mode(in, in, in, in, in, out,
 	di, uo) is det.
 
@@ -508,8 +508,8 @@ check_fact_type_and_mode(Types0, [Term | Terms], ArgNum0, PredOrFunc,
 		)
 	).
 
-:- pred report_type_error(term__context, int, list(term), pred_or_func, 
-				io__state, io__state).
+:- pred report_type_error(prog_context, int, list(prog_term), pred_or_func, 
+		io__state, io__state).
 :- mode report_type_error(in, in, in, in, di, uo) is det.
 
 report_type_error(Context, ArgNum, RemainingTerms, PredOrFunc) -->
@@ -639,7 +639,7 @@ struct fact_table_hash_entry_i {
 	% Create a struct for the fact table consisting of any arguments
 	% that are output in some mode.
 	% Also ensure that are arguments are either string, float or int.
-:- pred write_fact_table_struct(list(fact_arg_info), int, term__context, 
+:- pred write_fact_table_struct(list(fact_arg_info), int, prog_context, 
 		string, fact_result, io__state, io__state).
 :- mode write_fact_table_struct(in, in, in, out, out, di, uo) is det.
 
@@ -757,7 +757,7 @@ fill_in_fact_arg_infos([Mode | Modes], ModuleInfo, [Info0 | Infos0],
 	% (out, out, ..., out) procs are multidet and (in, in, .., in) procs are
 	% semidet.  Return a list of procs containing both in's and out's.
 	% These need further analysis later in pass 2.
-:- pred infer_determinism_pass_1(pred_info, pred_info,term__context,
+:- pred infer_determinism_pass_1(pred_info, pred_info,prog_context,
 		module_info, list(proc_id), bool, bool, bool,
 		list(fact_arg_info), list(fact_arg_info),
 		fact_result, io__state, io__state).
@@ -978,7 +978,7 @@ open_sort_files([ProcID | ProcIDs], ProcStreams) -->
 	% Note lines written out here need to be read back in by 
 	% read_sort_file_line so if any changes are made here, corresponding
 	% changes should be made there too.
-:- pred write_sort_file_lines(list(proc_stream), proc_table, list(term), 
+:- pred write_sort_file_lines(list(proc_stream), proc_table, list(prog_term), 
 		module_info, string, list(fact_arg_info), bool,
 		io__state, io__state).
 :- mode write_sort_file_lines(in, in, in, in, in, in, in, di, uo) is det.
@@ -1014,7 +1014,7 @@ write_sort_file_lines([proc_stream(ProcID, Stream) | ProcStreams], ProcTable,
 	% with the sort program.  The tilde ('~') character is used in the
 	% sort file to separate the sort key from the data.
 
-:- pred make_sort_file_key(assoc_list(mode, term), module_info, string).
+:- pred make_sort_file_key(assoc_list(mode, prog_term), module_info, string).
 :- mode make_sort_file_key(in, in, out) is det.
 
 make_sort_file_key([], _, "").
@@ -1032,7 +1032,7 @@ make_sort_file_key([(Mode - Term) | ModeTerms], ModuleInfo, Key) :-
 	).
 
 	% like make_sort_file_key but for the output arguments of the fact
-:- pred make_fact_data_string(assoc_list(fact_arg_info, term), string).
+:- pred make_fact_data_string(assoc_list(fact_arg_info, prog_term), string).
 :- mode make_fact_data_string(in, out) is det.
 
 make_fact_data_string([], "").
@@ -1500,7 +1500,7 @@ write_secondary_hash_tables([ProcID - FileName | ProcFiles], StructName,
 		(
 			{ MaybeFirstFact = yes(FirstFact) },
 			build_hash_table(0, 0, HashTableName, StructName, 0,
-				ArgModes, ModuleInfo, FactArgInfos, no,
+				ArgModes, ModuleInfo, FactArgInfos, bool:no,
 				OutputStream, FirstFact, no, no, FactMap, _),
 			io__seen,
 			delete_temporary_file(FileName),
@@ -3227,7 +3227,7 @@ generate_argument_vars_code_2(PragmaVars0, ArgInfos0, Types0, DeclCode,
 :- pred generate_arg_decl_code(string::in, (type)::in, string::out) is det.
 
 generate_arg_decl_code(Name, Type, DeclCode) :-
-	export__term_to_type_string(Type, C_Type),
+	export__type_to_type_string(Type, C_Type),
 	string__format("\t\t%s %s;\n", [s(C_Type), s(Name)], DeclCode).
 
 :- pred generate_arg_input_code(string::in, (type)::in, int::in, int::in,

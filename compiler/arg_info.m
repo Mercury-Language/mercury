@@ -23,7 +23,7 @@
 :- module arg_info.
 :- interface. 
 :- import_module hlds_module, hlds_pred, llds, globals, prog_data.
-:- import_module bool, list, assoc_list, term.
+:- import_module bool, list, assoc_list.
 
 :- pred generate_arg_info(module_info, module_info).
 :- mode generate_arg_info(in, out) is det.
@@ -47,8 +47,8 @@
 
 	% Given a list of the head variables and their argument information,
 	% return a list giving the input variables and their initial locations.
-:- pred arg_info__build_input_arg_list(assoc_list(var, arg_info),
-	assoc_list(var, rval)).
+:- pred arg_info__build_input_arg_list(assoc_list(prog_var, arg_info),
+	assoc_list(prog_var, rval)).
 :- mode arg_info__build_input_arg_list(in, out) is det.
 
 %-----------------------------------------------------------------------------%

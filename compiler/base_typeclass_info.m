@@ -34,8 +34,8 @@
 :- implementation.
 
 :- import_module hlds_data, hlds_pred, hlds_out.
-:- import_module code_util, globals, options.
-:- import_module bool, string, map, std_util, require, assoc_list, term.
+:- import_module code_util, globals, options, term.
+:- import_module bool, string, map, std_util, require, assoc_list.
 
 %---------------------------------------------------------------------------%
 

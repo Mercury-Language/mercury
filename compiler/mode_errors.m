@@ -19,7 +19,7 @@
 
 :- import_module hlds_data, hlds_pred, hlds_module, hlds_goal.
 :- import_module prog_data, mode_info, (inst).
-:- import_module bool, set, assoc_list, term, list.
+:- import_module bool, set, assoc_list, list.
 
 %-----------------------------------------------------------------------------%
 
@@ -27,11 +27,11 @@
 	---> disj
 	;    if_then_else.
 
-:- type merge_errors == assoc_list(var, list(inst)).
+:- type merge_errors == assoc_list(prog_var, list(inst)).
 
 :- type delayed_goal
 	--->	delayed_goal(
-			set(var),	% The vars it's waiting on
+			set(prog_var),	% The vars it's waiting on
 			mode_error_info,% The reason it can't be scheduled
 			hlds_goal	% The goal itself
 		).
@@ -45,21 +45,22 @@
 			% mutually exclusive bindings - ie the process
 			% of unifying the instmaps from the end of each
 			% branch failed.
-	;	mode_error_higher_order_pred_var(pred_or_func, var, inst, arity)
+	;	mode_error_higher_order_pred_var(pred_or_func, prog_var, inst,
+				arity)
 			% the predicate variable in a higher-order predicate
 			% or function call didn't have a higher-order
 			% predicate or function inst of the appropriate arity
-	;	mode_error_var_is_live(var)
+	;	mode_error_var_is_live(prog_var)
 			% call to a predicate which will clobber its argument,
 			% but the argument is still live
-	;	mode_error_var_has_inst(var, inst, inst)
+	;	mode_error_var_has_inst(prog_var, inst, inst)
 			% call to a predicate with an insufficiently
 			% instantiated variable (for preds with one mode)
-	;	mode_error_unify_pred(var, mode_error_unify_rhs, type,
+	;	mode_error_unify_pred(prog_var, mode_error_unify_rhs, type,
 				pred_or_func)
 			% an attempt was made to unify two higher-order
 			% predicate or function variables.
-	;	mode_error_implied_mode(var, inst, inst)
+	;	mode_error_implied_mode(prog_var, inst, inst)
 			% a call to a predicate with an overly
 			% instantiated variable would use an implied
 			% mode of the predicate.  XXX This is temporary - 
@@ -68,30 +69,31 @@
 	;	mode_error_no_mode_decl
 			% a call to a predicate for which there are
 			% no mode declarations
-	;	mode_error_no_matching_mode(list(var), list(inst))
+	;	mode_error_no_matching_mode(list(prog_var), list(inst))
 			% call to a predicate with an insufficiently
 			% instantiated variable (for preds with >1 mode)
-	;	mode_error_bind_var(var_lock_reason, var, inst, inst)
+	;	mode_error_bind_var(var_lock_reason, prog_var, inst, inst)
 			% attempt to bind a non-local variable inside
 			% a negated context, or attempt to re-bind a variable
 			% in a parallel conjunct
-	;	mode_error_non_local_lambda_var(var, inst)
+	;	mode_error_non_local_lambda_var(prog_var, inst)
 			% attempt to pass a live non-ground var as a
 			% non-local variable to a lambda goal
-	;	mode_error_unify_var_var(var, var, inst, inst)
+	;	mode_error_unify_var_var(prog_var, prog_var, inst, inst)
 			% attempt to unify two free variables
-	;	mode_error_unify_var_functor(var, cons_id, list(var),
+	;	mode_error_unify_var_functor(prog_var, cons_id, list(prog_var),
 							inst, list(inst))
 			% attempt to unify a free var with a functor containing
 			% free arguments
-	;	mode_error_unify_var_lambda(var, inst, inst)
+	;	mode_error_unify_var_lambda(prog_var, inst, inst)
 			% some sort of error in
 			% attempt to unify a variable with lambda expression
 	;	mode_error_conj(list(delayed_goal), schedule_culprit)
 			% a conjunction contains one or more unscheduleable
 			% goals; schedule_culprit gives the reason why
 			% they couldn't be scheduled.
-	;	mode_error_final_inst(int, var, inst, inst, final_inst_error)
+	;	mode_error_final_inst(int, prog_var, inst, inst,
+				final_inst_error)
 			% one of the head variables did not have the
 			% expected final inst on exit from the proc
 	.
@@ -109,18 +111,18 @@
 					% fit into the above two categories.
 
 :- type mode_error_unify_rhs
-	--->	error_at_var(var)
-	;	error_at_functor(cons_id, list(var))
-	;	error_at_lambda(list(var), list(mode)).
+	--->	error_at_var(prog_var)
+	;	error_at_functor(cons_id, list(prog_var))
+	;	error_at_lambda(list(prog_var), list(mode)).
 
 :- type mode_error_info
 	---> mode_error_info(
-		set(var),	% the variables which caused the error
+		set(prog_var),	% the variables which caused the error
 				% (we will attempt to reschedule the goal
 				% if the one of these variables becomes
 				% more instantiated)
 		mode_error,	% the nature of the error
-		term__context,	% where the error occurred
+		prog_context,	% where the error occurred
 		mode_context	% where the error occurred
 	).
 
@@ -173,8 +175,8 @@
 
 :- import_module hlds_out.
 :- import_module mode_info, mode_util, prog_out, mercury_to_mercury.
-:- import_module options, globals.
-:- import_module int, map, io, term_io, varset.
+:- import_module options, globals, varset, term.
+:- import_module int, map, io, term_io.
 :- import_module std_util, require.
 
 	% just dispatch on the diffferent sorts of mode errors
@@ -311,7 +313,7 @@ find_important_errors([Error | Errors], ImportantErrors, OtherErrors) :-
 	),
 	find_important_errors(Errors, ImportantErrors1, OtherErrors1).
 
-:- pred report_mode_error_conj_2(list(delayed_goal), varset, term__context,
+:- pred report_mode_error_conj_2(list(delayed_goal), prog_varset, prog_context,
 				mode_info, io__state, io__state).
 :- mode report_mode_error_conj_2(in, in, in, mode_info_no_io, di, uo) is det.
 
@@ -400,8 +402,8 @@ write_merge_context(if_then_else) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred report_mode_error_bind_var(mode_info, var_lock_reason, var, inst, inst,
-					io__state, io__state).
+:- pred report_mode_error_bind_var(mode_info, var_lock_reason, prog_var,
+		inst, inst, io__state, io__state).
 :- mode report_mode_error_bind_var(mode_info_ui, in, in, in, in, di, uo) is det.
 
 report_mode_error_bind_var(ModeInfo, Reason, Var, VarInst, Inst) -->
@@ -460,7 +462,7 @@ report_mode_error_bind_var(ModeInfo, Reason, Var, VarInst, Inst) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred report_mode_error_non_local_lambda_var(mode_info, var, inst,
+:- pred report_mode_error_non_local_lambda_var(mode_info, prog_var, inst,
 					io__state, io__state).
 :- mode report_mode_error_non_local_lambda_var(mode_info_ui, in, in,
 					di, uo) is det.
@@ -483,8 +485,8 @@ report_mode_error_non_local_lambda_var(ModeInfo, Var, VarInst) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred report_mode_error_no_matching_mode(mode_info, list(var), list(inst),
-					io__state, io__state).
+:- pred report_mode_error_no_matching_mode(mode_info, list(prog_var),
+		list(inst), io__state, io__state).
 :- mode report_mode_error_no_matching_mode(mode_info_ui, in, in, di, uo) is det.
 
 report_mode_error_no_matching_mode(ModeInfo, Vars, Insts) -->
@@ -511,9 +513,8 @@ report_mode_error_no_matching_mode(ModeInfo, Vars, Insts) -->
 	),
 	io__write_string(".\n").
 
-:- pred report_mode_error_higher_order_pred_var(mode_info, pred_or_func, var,
-					inst, arity,
-					io__state, io__state).
+:- pred report_mode_error_higher_order_pred_var(mode_info, pred_or_func,
+		prog_var, inst, arity, io__state, io__state).
 :- mode report_mode_error_higher_order_pred_var(mode_info_ui, in, in, in, in,
 					di, uo) is det.
 
@@ -540,7 +541,8 @@ report_mode_error_higher_order_pred_var(ModeInfo, PredOrFunc, Var, VarInst,
 	),
 	io__write_string(").\n").
 
-:- pred report_mode_error_var_is_live(mode_info, var, io__state, io__state).
+:- pred report_mode_error_var_is_live(mode_info, prog_var,
+		io__state, io__state).
 :- mode report_mode_error_var_is_live(mode_info_ui, in, di, uo) is det.
 
 report_mode_error_var_is_live(ModeInfo, Var) -->
@@ -554,7 +556,7 @@ report_mode_error_var_is_live(ModeInfo, Var) -->
 	mercury_output_var(Var, VarSet, no),
 	io__write_string("' is still live.\n").
 
-:- pred report_mode_error_var_has_inst(mode_info, var, inst, inst,
+:- pred report_mode_error_var_has_inst(mode_info, prog_var, inst, inst,
 					io__state, io__state).
 :- mode report_mode_error_var_has_inst(mode_info_ui, in, in, in, di, uo) is det.
 
@@ -574,7 +576,7 @@ report_mode_error_var_has_inst(ModeInfo, Var, VarInst, Inst) -->
 	output_inst(Inst, InstVarSet),
 	io__write_string("'.\n").
 
-:- pred report_mode_error_implied_mode(mode_info, var, inst, inst,
+:- pred report_mode_error_implied_mode(mode_info, prog_var, inst, inst,
 					io__state, io__state).
 :- mode report_mode_error_implied_mode(mode_info_ui, in, in, in, di, uo) is det.
 
@@ -613,7 +615,7 @@ report_mode_error_no_mode_decl(ModeInfo) -->
 	prog_out__write_context(Context),
 	io__write_string("  no mode declaration for called predicate.\n").
 
-:- pred report_mode_error_unify_pred(mode_info, var, mode_error_unify_rhs,
+:- pred report_mode_error_unify_pred(mode_info, prog_var, mode_error_unify_rhs,
 					type, pred_or_func,
 					io__state, io__state).
 :- mode report_mode_error_unify_pred(mode_info_ui, in, in, in, in,
@@ -622,6 +624,7 @@ report_mode_error_no_mode_decl(ModeInfo) -->
 report_mode_error_unify_pred(ModeInfo, X, RHS, Type, PredOrFunc) -->
 	{ mode_info_get_context(ModeInfo, Context) },
 	{ mode_info_get_varset(ModeInfo, VarSet) },
+	{ mode_info_get_instvarset(ModeInfo, InstVarSet) },
 	mode_info_write_context(ModeInfo),
 	prog_out__write_context(Context),
 	io__write_string("  In unification of `"),
@@ -636,7 +639,8 @@ report_mode_error_unify_pred(ModeInfo, X, RHS, Type, PredOrFunc) -->
 	;
 		{ RHS = error_at_lambda(ArgVars, ArgModes) },
 		io__write_string("lambda(["),
-		hlds_out__write_var_modes(ArgVars, ArgModes, VarSet, no),
+		hlds_out__write_var_modes(ArgVars, ArgModes, VarSet,
+			InstVarSet, no),
 		io__write_string("] ... )")
 	),
 	io__write_string("':\n"),
@@ -667,8 +671,8 @@ report_mode_error_unify_pred(ModeInfo, X, RHS, Type, PredOrFunc) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred report_mode_error_unify_var_var(mode_info, var, var, inst, inst,
-					io__state, io__state).
+:- pred report_mode_error_unify_var_var(mode_info, prog_var, prog_var,
+		inst, inst, io__state, io__state).
 :- mode report_mode_error_unify_var_var(mode_info_ui, in, in, in, in, di, uo)
 	is det.
 
@@ -698,7 +702,7 @@ report_mode_error_unify_var_var(ModeInfo, X, Y, InstX, InstY) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred report_mode_error_unify_var_lambda(mode_info, var, inst, inst,
+:- pred report_mode_error_unify_var_lambda(mode_info, prog_var, inst, inst,
 					io__state, io__state).
 :- mode report_mode_error_unify_var_lambda(mode_info_ui, in, in, in, di, uo)
 	is det.
@@ -725,8 +729,8 @@ report_mode_error_unify_var_lambda(ModeInfo, X, InstX, InstY) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred report_mode_error_unify_var_functor(mode_info, var, cons_id, list(var),
-					inst, list(inst), io__state, io__state).
+:- pred report_mode_error_unify_var_functor(mode_info, prog_var, cons_id,
+		list(prog_var), inst, list(inst), io__state, io__state).
 :- mode report_mode_error_unify_var_functor(mode_info_ui, in, in, in, in, in,
 			di, uo) is det.
 
@@ -797,7 +801,7 @@ mode_info_write_context(ModeInfo) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred report_mode_error_final_inst(mode_info, int, var, inst, inst,
+:- pred report_mode_error_final_inst(mode_info, int, prog_var, inst, inst,
 				final_inst_error, io__state, io__state).
 :- mode report_mode_error_final_inst(mode_info_ui, in, in, in, in, in,
 				di, uo) is det.
@@ -841,7 +845,7 @@ mode_context_init(uninitialized).
 
 	% XXX some parts of the mode context never get set up
 
-:- pred write_mode_context(mode_context, term__context, module_info,
+:- pred write_mode_context(mode_context, prog_context, module_info,
 				io__state, io__state).
 :- mode write_mode_context(in, in, in, di, uo) is det.
 
@@ -1019,14 +1023,14 @@ report_mode_errors(ModeInfo0, ModeInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred output_inst((inst), varset, io__state, io__state).
+:- pred output_inst((inst), inst_varset, io__state, io__state).
 :- mode output_inst(in, in, di, uo) is det.
 
 output_inst(Inst0, VarSet) -->
 	{ strip_builtin_qualifiers_from_inst(Inst0, Inst) },
 	mercury_output_inst(Inst, VarSet).
 
-:- pred output_inst_list(list(inst), varset, io__state, io__state).
+:- pred output_inst_list(list(inst), inst_varset, io__state, io__state).
 :- mode output_inst_list(in, in, di, uo) is det.
 
 output_inst_list(Insts0, VarSet) -->

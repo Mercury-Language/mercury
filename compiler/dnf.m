@@ -59,8 +59,8 @@
 :- implementation.
 
 :- import_module hlds_goal, hlds_data, prog_data, instmap.
-:- import_module excess, make_hlds, mode_util.
-:- import_module require, map, string, int, term, varset.
+:- import_module excess, make_hlds, mode_util, term, varset.
+:- import_module require, map, string, int.
 
 	% Traverse the module structure.
 
@@ -156,12 +156,12 @@ dnf__transform_proc(ProcInfo0, PredInfo0, MaybeNonAtomic,
 
 :- type dnf_info --->	dnf_info(
 				tvarset,
-				map(var, type),
+				map(prog_var, type),
 				class_constraints,
-				varset,
+				prog_varset,
 				pred_markers,
 				map(tvar, type_info_locn),
-				map(class_constraint, var)	
+				map(class_constraint, prog_var)	
 			).
 
 :- pred dnf__transform_goal(hlds_goal::in, instmap::in,
@@ -389,8 +389,9 @@ dnf__define_new_pred(Goal0, Goal, InstMap0, PredName, DnfInfo,
 		VarSet, Markers, ModuleInfo0, ModuleInfo, PredProcId),
 	PredProcId = proc(PredId, _).
 
-:- pred dnf__compute_arg_types_modes(list(var)::in, map(var, type)::in,
-	instmap::in, instmap::in, list(type)::out, list(mode)::out) is det.
+:- pred dnf__compute_arg_types_modes(list(prog_var)::in,
+		map(prog_var, type)::in, instmap::in, instmap::in,
+		list(type)::out, list(mode)::out) is det.
 
 dnf__compute_arg_types_modes([], _, _, _, [], []).
 dnf__compute_arg_types_modes([Var | Vars], VarTypes, InstMap0, InstMap,

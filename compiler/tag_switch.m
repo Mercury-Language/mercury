@@ -14,13 +14,13 @@
 
 :- interface.
 
-:- import_module hlds_goal, hlds_data, llds, switch_gen, code_info.
-:- import_module list, term.
+:- import_module hlds_goal, hlds_data, prog_data, llds, switch_gen, code_info.
+:- import_module list.
 
 	% Generate intelligent indexing code for tag based switches.
 
-:- pred tag_switch__generate(list(extended_case), var, code_model, can_fail,
-	store_map, label, branch_end, branch_end, code_tree,
+:- pred tag_switch__generate(list(extended_case), prog_var, code_model,
+	can_fail, store_map, label, branch_end, branch_end, code_tree,
 	code_info, code_info).
 :- mode tag_switch__generate(in, in, in, in, in, in, in, out, out, in, out)
 	is det.

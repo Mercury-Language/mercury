@@ -21,18 +21,18 @@
 :- interface.
 
 :- import_module hlds_goal, hlds_data, prog_data, mode_info.
-:- import_module map, term, list.
+:- import_module map, list.
 
 	% Modecheck a unification
-:- pred modecheck_unification( var, unify_rhs, unification, unify_context,
+:- pred modecheck_unification(prog_var, unify_rhs, unification, unify_context,
 			hlds_goal_info, hlds_goal_expr, mode_info, mode_info).
 :- mode modecheck_unification(in, in, in, in, in, out,
 			mode_info_di, mode_info_uo) is det.
 
 	% Work out what kind of unification a var-var unification is.
-:- pred categorize_unify_var_var(mode, mode, is_live, is_live, var, var,
-			determinism, unify_context, map(var, type), mode_info,
-			hlds_goal_expr, mode_info).
+:- pred categorize_unify_var_var(mode, mode, is_live, is_live, prog_var,
+		prog_var, determinism, unify_context, map(prog_var, type),
+		mode_info, hlds_goal_expr, mode_info).
 :- mode categorize_unify_var_var(in, in, in, in, in, in, in, in, in,
 			mode_info_di, out, mode_info_uo) is det.
 
@@ -41,7 +41,7 @@
 	% of two vars, a unification of a var and a functor, or a
 	% conjunction thereof), return a list of all the variables in the
 	% goal.
-:- pred unify_vars(hlds_goal_expr, list(var)).
+:- pred unify_vars(hlds_goal_expr, list(prog_var)).
 :- mode unify_vars(in, out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -54,8 +54,9 @@
 :- import_module mode_debug, mode_util, mode_info, modes, mode_errors.
 :- import_module inst_match, inst_util, unify_proc, code_util, unique_modes.
 :- import_module typecheck, modecheck_call, (inst), quantification.
+:- import_module term, varset.
 
-:- import_module bool, std_util, int, set, require, varset.
+:- import_module bool, std_util, int, set, require.
 :- import_module string, assoc_list.
 
 %-----------------------------------------------------------------------------%
@@ -505,7 +506,7 @@ modecheck_unification(X,
 		Unification = Unification0
 	).
 
-:- pred modecheck_unify_lambda(var, pred_or_func, list(var),
+:- pred modecheck_unify_lambda(prog_var, pred_or_func, list(prog_var),
 		list(mode), determinism, unify_rhs, unification,
 		pair(mode), unify_rhs, unification, mode_info, mode_info).
 :- mode modecheck_unify_lambda(in, in, in, in, in, in, in,
@@ -558,9 +559,9 @@ modecheck_unify_lambda(X, PredOrFunc, ArgVars, LambdaModes,
 		RHS = RHS0
 	).
 
-:- pred modecheck_unify_functor(var, (type), cons_id, list(var), unification,
-			unify_context, hlds_goal_info,
-			hlds_goal_expr, mode_info, mode_info).
+:- pred modecheck_unify_functor(prog_var, (type), cons_id, list(prog_var),
+		unification, unify_context, hlds_goal_info, hlds_goal_expr,
+		mode_info, mode_info).
 :- mode modecheck_unify_functor(in, in, in, in, in, in, in,
 			out, mode_info_di, mode_info_uo) is det.
 
@@ -751,8 +752,8 @@ modecheck_unify_functor(X, TypeOfX, ConsId0, ArgVars0, Unification0,
 	% complicated unifications.  If they are, we split them out
 	% into separate unifications by introducing fresh variables here.
 
-:- pred split_complicated_subunifies(unification, list(var),
-			unification, list(var), extra_goals,
+:- pred split_complicated_subunifies(unification, list(prog_var),
+			unification, list(prog_var), extra_goals,
 			mode_info, mode_info).
 :- mode split_complicated_subunifies(in, in, out, out, out,
 			mode_info_di, mode_info_uo) is det.
@@ -780,9 +781,9 @@ split_complicated_subunifies(Unification0, ArgVars0,
 		{ ExtraGoals = no_extra_goals }
 	).
 
-:- pred split_complicated_subunifies_2(list(var), list(uni_mode),
-			list(var), list(uni_mode), extra_goals,
-			mode_info, mode_info).
+:- pred split_complicated_subunifies_2(list(prog_var), list(uni_mode),
+		list(prog_var), list(uni_mode), extra_goals,
+		mode_info, mode_info).
 :- mode split_complicated_subunifies_2(in, in, out, out, out,
 			mode_info_di, mode_info_uo) is semidet.
 
@@ -1009,8 +1010,8 @@ categorize_unify_var_var(ModeOfX, ModeOfY, LiveX, LiveY, X, Y, Det,
 % be deterministic or semideterministic.
 
 :- pred categorize_unify_var_lambda(mode, list(mode),
-			var, list(var), pred_or_func, unify_rhs, unification, 
-			mode_info, unify_rhs, unification, mode_info).
+		prog_var, list(prog_var), pred_or_func, unify_rhs, unification, 
+		mode_info, unify_rhs, unification, mode_info).
 :- mode categorize_unify_var_lambda(in, in, in, in, in, in,
 			in, mode_info_di, out, out, mode_info_uo) is det.
 
@@ -1100,8 +1101,8 @@ categorize_unify_var_lambda(ModeOfX, ArgModes0, X, ArgVars,
 % unification or a deconstruction.  It also works out whether it will
 % be deterministic or semideterministic.
 
-:- pred categorize_unify_var_functor(mode, list(mode), list(mode), var,
-		cons_id, list(var), map(var, type),
+:- pred categorize_unify_var_functor(mode, list(mode), list(mode), prog_var,
+		cons_id, list(prog_var), map(prog_var, type),
 		unification, mode_info, unification, mode_info).
 :- mode categorize_unify_var_functor(in, in, in, in, in, in, in, in,
 			mode_info_di, out, mode_info_uo) is det.
@@ -1176,7 +1177,7 @@ categorize_unify_var_functor(ModeOfX, ModeOfXArgs, ArgModes0,
 
 %-----------------------------------------------------------------------------%
 
-:- pred bind_args(inst, list(var), mode_info, mode_info).
+:- pred bind_args(inst, list(prog_var), mode_info, mode_info).
 :- mode bind_args(in, in, mode_info_di, mode_info_uo) is semidet.
 
 bind_args(not_reached, _) -->
@@ -1194,7 +1195,7 @@ bind_args(bound(_Uniq, List), Args) -->
 		bind_args_2(Args, InstList)
 	).
 
-:- pred bind_args_2(list(var), list(inst), mode_info, mode_info).
+:- pred bind_args_2(list(prog_var), list(inst), mode_info, mode_info).
 :- mode bind_args_2(in, in, mode_info_di, mode_info_uo) is semidet.
 
 bind_args_2([], []) --> [].
@@ -1202,7 +1203,7 @@ bind_args_2([Arg | Args], [Inst | Insts]) -->
 	modecheck_set_var_inst(Arg, Inst),
 	bind_args_2(Args, Insts).
 
-:- pred ground_args(uniqueness, list(var), mode_info, mode_info).
+:- pred ground_args(uniqueness, list(prog_var), mode_info, mode_info).
 :- mode ground_args(in, in, mode_info_di, mode_info_uo) is det.
 
 ground_args(_Uniq, []) --> [].
@@ -1254,8 +1255,8 @@ mode_set_args([Inst | Insts], FinalInst, [Mode | Modes]) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred make_fresh_vars(list(type), varset, map(var, type),
-			list(var), varset, map(var, type)).
+:- pred make_fresh_vars(list(type), prog_varset, map(prog_var, type),
+			list(prog_var), prog_varset, map(prog_var, type)).
 :- mode make_fresh_vars(in, in, in, out, out, out) is det.
 
 make_fresh_vars([], VarSet, VarTypes, [], VarSet, VarTypes).
@@ -1285,7 +1286,7 @@ unify_vars(Unify, UnifyVars) :-
 		error("modecheck_unify: unify_vars")
 	).
 
-:- pred unify_conj_vars(list(hlds_goal), list(var)).
+:- pred unify_conj_vars(list(hlds_goal), list(prog_var)).
 :- mode unify_conj_vars(in, out) is det.
 
 unify_conj_vars([], []).

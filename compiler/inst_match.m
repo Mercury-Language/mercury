@@ -40,7 +40,7 @@ mode system to distinguish between different representations.
 :- interface.
 
 :- import_module hlds_module, prog_data, (inst).
-:- import_module list, term.
+:- import_module list.
 
 %-----------------------------------------------------------------------------%
 
@@ -231,7 +231,6 @@ mode system to distinguish between different representations.
 	% Nondeterministically produce all the inst_vars contained
 	% in the specified list of modes.
 
-:- type inst_var == var.
 :- pred mode_list_contains_inst_var(list(mode), module_info, inst_var).
 :- mode mode_list_contains_inst_var(in, in, out) is nondet.
 

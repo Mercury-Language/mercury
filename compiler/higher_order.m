@@ -43,10 +43,10 @@
 :- import_module code_util, globals, make_hlds, mode_util, goal_util.
 :- import_module type_util, options, prog_data, prog_out, quantification.
 :- import_module mercury_to_mercury, inlining, polymorphism, prog_util.
-:- import_module special_pred.
+:- import_module special_pred, term, varset.
 
 :- import_module assoc_list, char, int, list, map, require, set.
-:- import_module std_util, string, varset, term.
+:- import_module std_util, string.
 
 	% Iterate collecting requests and processing them until there
 	% are no more requests remaining.
@@ -108,8 +108,8 @@ process_requests(Params, Requests0, GoalSizes0, NextHOid0, NextHOid,
 	---> request(
 		pred_proc_id,			% calling pred
 		pred_proc_id,			% called pred 
-		list(var),			% call args
-		list(var),			% call extra typeinfo vars
+		list(prog_var),			% call args
+		list(prog_var),			% call extra typeinfo vars
 		list(higher_order_arg),
 		list(type),			% argument types in caller
 		list(type),			% Extra typeinfo argument
@@ -128,7 +128,7 @@ process_requests(Params, Requests0, GoalSizes0, NextHOid0, NextHOid,
 		cons_id,
 	 	int,			% index in argument vector
 		int,			% number of curried args
-		list(var),		% curried arguments in caller
+		list(prog_var),		% curried arguments in caller
 		list(type),		% curried argument types in caller
 		list(higher_order_arg)	% higher-order curried arguments
 					% with known values
@@ -140,7 +140,7 @@ process_requests(Params, Requests0, GoalSizes0, NextHOid0, NextHOid,
 		
 	% Used to hold the value of known higher order variables.
 	% If a variable is not in the map, it does not have a value yet.
-:- type pred_vars == map(var, maybe_const). 
+:- type pred_vars == map(prog_var, maybe_const). 
 
 	% The list of vars is a list of the curried arguments, which must
 	% be explicitly passed to the specialized predicate.
@@ -148,7 +148,8 @@ process_requests(Params, Requests0, GoalSizes0, NextHOid0, NextHOid,
 	% must be constants. For pred_consts and type_infos, non-constant
 	% arguments are passed through to any specialised version.
 :- type maybe_const --->
-		constant(cons_id, list(var))	% unique possible value
+		constant(cons_id, list(prog_var))
+						% unique possible value
 	;	multiple_values			% multiple possible values,
 						% cannot specialise.
 	.
@@ -192,8 +193,8 @@ process_requests(Params, Requests0, GoalSizes0, NextHOid0, NextHOid,
 		pred_proc_id,		% requesting caller
 		sym_name,		% name 
 		list(higher_order_arg),	% specialized args
-		list(var),		% unspecialised argument vars in caller
-		list(var),		% extra typeinfo vars in caller
+		list(prog_var),		% unspecialised argument vars in caller
+		list(prog_var),		% extra typeinfo vars in caller
 		list(type),		% unspecialised argument types
 					% in requesting caller
 		list(type),		% extra typeinfo argument
@@ -471,18 +472,18 @@ merge_pred_vars(PredVars1, PredVars2, PredVars) :-
 	
 		% find out which variables after a disjunction cannot
 		% be specialized
-:- pred merge_pred_var_lists(assoc_list(var, maybe_const)::in,  	
-			assoc_list(var, maybe_const)::in,
-			assoc_list(var, maybe_const)::out) is det.
+:- pred merge_pred_var_lists(assoc_list(prog_var, maybe_const)::in,  	
+			assoc_list(prog_var, maybe_const)::in,
+			assoc_list(prog_var, maybe_const)::out) is det.
 
 merge_pred_var_lists([], List, List).
 merge_pred_var_lists([PredVar | PredVars], List2, MergedList) :-
 	merge_pred_var_with_list(PredVar, List2, MergedList1),
 	merge_pred_var_lists(PredVars, MergedList1, MergedList).
 
-:- pred merge_pred_var_with_list(pair(var, maybe_const)::in,
-			assoc_list(var, maybe_const)::in,
-			assoc_list(var, maybe_const)::out) is det.
+:- pred merge_pred_var_with_list(pair(prog_var, maybe_const)::in,
+			assoc_list(prog_var, maybe_const)::in,
+			assoc_list(prog_var, maybe_const)::out) is det.
 
 merge_pred_var_with_list(VarValue, [], [VarValue]).
 merge_pred_var_with_list(Var1 - Value1, [Var2 - Value2 | Vars], MergedList) :-
@@ -569,8 +570,8 @@ is_interesting_cons_id(ho_params(_, yes, _), int_const(_)).
 
 	% Process a higher-order call or class_method_call to see if it
 	% could possibly be specialized.
-:- pred maybe_specialize_higher_order_call(var::in, maybe(int)::in,
-	list(var)::in, hlds_goal::in, hlds_goal::out, 
+:- pred maybe_specialize_higher_order_call(prog_var::in, maybe(int)::in,
+	list(prog_var)::in, hlds_goal::in, hlds_goal::out, 
 	higher_order_info::in, higher_order_info::out) is det.
 
 maybe_specialize_higher_order_call(PredVar, MaybeMethod, Args,
@@ -722,10 +723,10 @@ maybe_specialize_call(Goal0 - GoalInfo, Goal - GoalInfo, Info0, Info) :-
 	% curried arguments that need to be explicitly passed.
 	% The order of the argument list must match that generated
 	% by construct_higher_order_terms.
-:- pred find_higher_order_args(module_info::in, list(var)::in, list(type)::in,
-		map(var, type)::in, pred_vars::in, int::in,
+:- pred find_higher_order_args(module_info::in, list(prog_var)::in,
+		list(type)::in, map(prog_var, type)::in, pred_vars::in, int::in,
 		list(higher_order_arg)::in, list(higher_order_arg)::out,
-		list(var)::in, list(var)::out) is det.
+		list(prog_var)::in, list(prog_var)::out) is det.
 
 find_higher_order_args(_, [], _, _, _, _,
 		HOArgs, HOArgs, NewArgs, NewArgs).
@@ -784,7 +785,7 @@ find_higher_order_args(ModuleInfo, [Arg | Args],
 :- type find_result
 	--->	match(
 			new_pred,	% Specialised version to use.
-			list(var)	% Ordered list of extra type-info
+			list(prog_var)	% Ordered list of extra type-info
 					% variables to add to the front of
 					% the argument list, empty if
 					% --typeinfo-liveness is not set.
@@ -793,7 +794,7 @@ find_higher_order_args(ModuleInfo, [Arg | Args],
 	.
 
 :- pred find_matching_version(higher_order_info::in, 
-	pred_id::in, proc_id::in, list(var)::in, list(var)::in,
+	pred_id::in, proc_id::in, list(prog_var)::in, list(prog_var)::in,
 	list(higher_order_arg)::in, find_result::out) is det.
 
 	% Args0 is the original list of arguments.
@@ -847,8 +848,8 @@ find_matching_version(Info, CalledPred, CalledProc, Args0, Args1,
 	).
 
 :- pred search_for_version(bool::in, module_info::in, request::in, 
-		list(var)::in, list(new_pred)::in, new_pred::out,
-		list(var)::out) is semidet.
+		list(prog_var)::in, list(new_pred)::in, new_pred::out,
+		list(prog_var)::out) is semidet.
 
 search_for_version(TypeInfoLiveness, ModuleInfo, Request, ExtraTypeInfos,
 		[Version | Versions], Match, OrderedExtraTypeInfos) :-
@@ -867,7 +868,8 @@ search_for_version(TypeInfoLiveness, ModuleInfo, Request, ExtraTypeInfos,
 	% the new_pred, maybe ordering the list of extra type_infos
 	% in the caller predicate to match up with those in the caller.
 :- pred version_matches(bool::in, module_info::in, request::in, 
-	new_pred::in, maybe(list(var))::in, list(var)::out) is semidet.
+		new_pred::in, maybe(list(prog_var))::in, list(prog_var)::out)
+		is semidet.
 
 version_matches(TypeInfoLiveness, _ModuleInfo, Request, Version,
 		MaybeExtraTypeInfos, OrderedExtraTypeInfos) :-
@@ -910,27 +912,29 @@ version_matches(TypeInfoLiveness, _ModuleInfo, Request, Version,
 
 	% Put the extra typeinfos for --typeinfo-liveness in the correct
 	% order by looking at their types.
-:- pred order_typeinfos(tsubst::in, assoc_list(var, type)::in,
-		list(type)::in, list(var)::in, list(var)::out) is semidet.
+:- pred order_typeinfos(tsubst::in, assoc_list(prog_var, type)::in,
+		list(type)::in, list(prog_var)::in, list(prog_var)::out)
+		is semidet.
 
 order_typeinfos(_, [], [], RevOrderedVars, OrderedVars) :-
 	list__reverse(RevOrderedVars, OrderedVars).
 order_typeinfos(Subn, VarsAndTypes0, [VersionType | VersionTypes],
 		RevOrderedVars0, OrderedVars) :-
 	term__apply_rec_substitution(VersionType, Subn, VersionType1),
-	strip_term_context(VersionType1, VersionType2),
+	strip_prog_context(VersionType1, VersionType2),
 	order_typeinfos_2(VersionType2, Var, VarsAndTypes0, VarsAndTypes),
 	order_typeinfos(Subn, VarsAndTypes, VersionTypes,
 		[Var | RevOrderedVars0], OrderedVars).	
 
 	% Find the variable in the requesting predicate which corresponds
 	% to the current extra typeinfo argument.
-:- pred order_typeinfos_2((type)::in, var::out, assoc_list(var, type)::in,
-		assoc_list(var, type)::out) is semidet.
+:- pred order_typeinfos_2((type)::in, prog_var::out,
+		assoc_list(prog_var, type)::in,
+		assoc_list(prog_var, type)::out) is semidet.
 
 order_typeinfos_2(VersionType, Var, [Var1 - VarType | VarsAndTypes0],
 		VarsAndTypes) :-
-	( strip_term_context(VarType, VersionType) ->
+	( strip_prog_context(VarType, VersionType) ->
 		Var = Var1,
 		VarsAndTypes = VarsAndTypes0
 	;
@@ -954,7 +958,7 @@ higher_order_args_match([Arg1 | Args1], [Arg2 | Args2]) :-
 		% if the right argument of an assignment is a higher order
 		% term with a known value, we need to add an entry for
 		% the left argument
-:- pred maybe_add_alias(var::in, var::in, higher_order_info::in,
+:- pred maybe_add_alias(prog_var::in, prog_var::in, higher_order_info::in,
 				higher_order_info::out) is det.
 
 maybe_add_alias(LVar, RVar,
@@ -994,7 +998,7 @@ higher_order_info_update_changed_status(Changed1, Info0, Info) :-
 	% compiler/polymorphism.m, library/private_builtin.m and
 	% runtime/mercury_type_info.h.
 :- pred interpret_typeclass_info_manipulator(typeclass_info_manipulator::in,
-	list(var)::in, hlds_goal_expr::in, hlds_goal_expr::out,
+	list(prog_var)::in, hlds_goal_expr::in, hlds_goal_expr::out,
 	higher_order_info::in, higher_order_info::out) is det.
 
 interpret_typeclass_info_manipulator(_, Args, Goal0, Goal, Info0, Info) :-
@@ -1038,7 +1042,7 @@ interpret_typeclass_info_manipulator(_, Args, Goal0, Goal, Info0, Info) :-
 	% Succeed if the called pred is "unify", "compare" or "index" and
 	% is specializable, returning a specialized goal.
 :- pred specialize_special_pred(higher_order_info::in, pred_id::in,
-		proc_id::in, list(var)::in, maybe(call_unify_context)::in,
+		proc_id::in, list(prog_var)::in, maybe(call_unify_context)::in,
 		hlds_goal_expr::out) is semidet.
 		
 specialize_special_pred(Info0, CalledPred, _CalledProc, Args,
@@ -1516,10 +1520,10 @@ create_specialized_versions(Params, [NewPred | NewPreds], NewPredMap0,
 		% higher-order and type_info constants for a call to
 		% traverse_goal, and a var-var renaming from the requesting
 		% call's arguments to the headvars of this predicate.
-:- pred construct_higher_order_terms(module_info::in, list(var)::in, 
-		list(var)::out, list(mode)::in, list(mode)::out,
+:- pred construct_higher_order_terms(module_info::in, list(prog_var)::in, 
+		list(prog_var)::out, list(mode)::in, list(mode)::out,
 		list(higher_order_arg)::in, proc_info::in, proc_info::out,
-		map(var, var)::in, map(var, var)::out,
+		map(prog_var, prog_var)::in, map(prog_var, prog_var)::out,
 		pred_vars::in, pred_vars::out) is det.
 
 construct_higher_order_terms(_, HeadVars, HeadVars, ArgModes, ArgModes,
@@ -1634,7 +1638,7 @@ find_class_context(ModuleInfo, [Type | Types], [Mode | Modes],
 
 maybe_add_constraint(Constraints0, Constraint0, Constraints) :-
 	Constraint0 = constraint(ClassName, Types0),
-	strip_term_contexts(Types0, Types),
+	strip_prog_contexts(Types0, Types),
 	Constraint = constraint(ClassName, Types),
 	(
 		% Remove duplicates.
@@ -1649,9 +1653,9 @@ maybe_add_constraint(Constraints0, Constraint0, Constraints) :-
 
 	% Make sure that the typeclass_infos required by `--typeinfo-liveness'
 	% are in the typeclass_info_varmap.
-:- pred add_extra_typeclass_infos(list(var)::in, list(type)::in,
-		map(class_constraint, var)::in,
-		map(class_constraint, var)::out) is det.
+:- pred add_extra_typeclass_infos(list(prog_var)::in, list(type)::in,
+		map(class_constraint, prog_var)::in,
+		map(class_constraint, prog_var)::out) is det.
 
 add_extra_typeclass_infos(Vars, Types, TCVarMap0, TCVarMap) :-
 	( add_extra_typeclass_infos_2(Vars, Types, TCVarMap0, TCVarMap1) ->
@@ -1660,14 +1664,14 @@ add_extra_typeclass_infos(Vars, Types, TCVarMap0, TCVarMap) :-
 		error("higher_order:add_extra_typeclass_infos")
 	).
 		
-:- pred add_extra_typeclass_infos_2(list(var)::in, list(type)::in,
-		map(class_constraint, var)::in,
-		map(class_constraint, var)::out) is semidet.
+:- pred add_extra_typeclass_infos_2(list(prog_var)::in, list(type)::in,
+		map(class_constraint, prog_var)::in,
+		map(class_constraint, prog_var)::out) is semidet.
 
 add_extra_typeclass_infos_2([], [], TCVarMap, TCVarMap).
 add_extra_typeclass_infos_2([Var | Vars], [Type0 | Types],
 		TCVarMap0, TCVarMap) :-
-	strip_term_context(Type0, Type),
+	strip_prog_context(Type0, Type),
 	( polymorphism__typeclass_info_class_constraint(Type, Constraint) ->
 		map__set(TCVarMap0, Constraint, Var, TCVarMap1)
 	;

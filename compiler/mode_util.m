@@ -16,7 +16,7 @@
 
 :- import_module hlds_module, hlds_pred, hlds_goal, hlds_data, prog_data.
 :- import_module (inst), instmap.
-:- import_module bool, list, term.
+:- import_module bool, list.
 
 	% mode_get_insts returns the initial instantiatedness and
 	% the final instantiatedness for a given mode, aborting
@@ -152,7 +152,7 @@
 	% Given the switched on variable and the instmaps before the switch
 	% and after a branch make sure that any information added by the
 	% functor test gets added to the instmap for the case.
-:- pred fixup_switch_var(var, instmap, instmap, hlds_goal, hlds_goal). 
+:- pred fixup_switch_var(prog_var, instmap, instmap, hlds_goal, hlds_goal). 
 :- mode fixup_switch_var(in, in, in, in, out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -177,7 +177,7 @@
 :- implementation.
 :- import_module require, int, map, set, std_util, assoc_list.
 :- import_module prog_util, type_util.
-:- import_module inst_match, inst_util.
+:- import_module inst_match, inst_util, term.
 
 %-----------------------------------------------------------------------------%
 
@@ -1221,7 +1221,8 @@ recompute_instmap_delta_conj(Atomic, [Goal0 | Goals0], [Goal | Goals],
 %-----------------------------------------------------------------------------%
 
 :- pred recompute_instmap_delta_disj(bool, list(hlds_goal), list(hlds_goal),
-		instmap, set(var), instmap_delta, module_info, module_info).
+		instmap, set(prog_var), instmap_delta,
+		module_info, module_info).
 :- mode recompute_instmap_delta_disj(in, in, out, in, in, out, in, out) is det.
 
 recompute_instmap_delta_disj(_, [], [], _, _, InstMapDelta) -->
@@ -1240,7 +1241,7 @@ recompute_instmap_delta_disj(Atomic, [Goal0 | Goals0], [Goal | Goals],
 		InstMapDelta1, InstMapDelta).
 
 :- pred recompute_instmap_delta_par_conj(bool, list(hlds_goal),
-		list(hlds_goal), instmap, set(var), instmap_delta,
+		list(hlds_goal), instmap, set(prog_var), instmap_delta,
 		module_info, module_info).
 :- mode recompute_instmap_delta_par_conj(in, in, out, in, in, out,
 		in, out) is det.
@@ -1262,8 +1263,9 @@ recompute_instmap_delta_par_conj(Atomic, [Goal0 | Goals0], [Goal | Goals],
 
 %-----------------------------------------------------------------------------%
 
-:- pred recompute_instmap_delta_cases(bool, var, list(case), list(case),
-		instmap, set(var), instmap_delta, module_info, module_info).
+:- pred recompute_instmap_delta_cases(bool, prog_var, list(case), list(case),
+		instmap, set(prog_var), instmap_delta,
+		module_info, module_info).
 :- mode recompute_instmap_delta_cases(in, in, in, out,
 		in, in, out, in, out) is det.
 
@@ -1285,7 +1287,8 @@ recompute_instmap_delta_cases(Atomic, Var, [Case0 | Cases0], [Case | Cases],
 %-----------------------------------------------------------------------------%
 
 :- pred recompute_instmap_delta_call(pred_id, proc_id,
-		list(var), instmap, instmap_delta, module_info, module_info).
+		list(prog_var), instmap, instmap_delta,
+		module_info, module_info).
 :- mode recompute_instmap_delta_call(in, in, in, in, out, in, out) is det.
 
 recompute_instmap_delta_call(PredId, ProcId, Args, InstMap,
@@ -1303,7 +1306,7 @@ recompute_instmap_delta_call(PredId, ProcId, Args, InstMap,
 			ModuleInfo, InstMapDelta)
 	).
 
-:- pred recompute_instmap_delta_call_2(list(var), instmap, list(mode),
+:- pred recompute_instmap_delta_call_2(list(prog_var), instmap, list(mode),
 		list(mode), module_info, module_info).
 :- mode recompute_instmap_delta_call_2(in, in, in, out, in, out) is det.
 

@@ -17,8 +17,8 @@
 :- import_module prog_data, prog_io_util.
 :- import_module varset, term.
 
-:- pred parse_dcg_clause(module_name, varset, term, term, term__context,
-			maybe_item_and_context).
+:- pred parse_dcg_clause(module_name, varset, term, term,
+		prog_context, maybe_item_and_context).
 :- mode parse_dcg_clause(in, in, in, in, in, out) is det.
 
 	% parse_dcg_pred_goal(GoalTerm, VarSet0, Goal,
@@ -27,24 +27,27 @@
 	% `VarSet0' is the initial varset, and `VarSet' is
 	% the final varset. `DCGVarInitial' is the first DCG variable,
 	% and `DCGVarFinal' is the final DCG variable.
-:- pred parse_dcg_pred_goal(term, varset, goal, var, var, varset).
+:- pred parse_dcg_pred_goal(term, prog_varset, goal, prog_var,
+		prog_var, prog_varset).
 :- mode parse_dcg_pred_goal(in, in, out, out, out, out) is det.
 
 :- implementation.
 
 :- import_module prog_io, prog_io_goal, prog_util, purity.
-:- import_module int, string, std_util, varset, list.
+:- import_module int, map, string, std_util, list.
 
 %-----------------------------------------------------------------------------%
 
 parse_dcg_clause(ModuleName, VarSet0, DCG_Head, DCG_Body, DCG_Context,
 		Result) :-
-	new_dcg_var(VarSet0, 0, VarSet1, N0, DCG_0_Var),
-	parse_dcg_goal(DCG_Body, VarSet1, N0, DCG_0_Var,
-			Body, VarSet, _N, DCG_Var),
+	varset__coerce(VarSet0, ProgVarSet0),
+	new_dcg_var(ProgVarSet0, 0, ProgVarSet1, N0, DCG_0_Var),
+	parse_dcg_goal(DCG_Body, ProgVarSet1, N0, DCG_0_Var,
+			Body, ProgVarSet, _N, DCG_Var),
 	parse_implicitly_qualified_term(ModuleName,
 			DCG_Head, DCG_Body, "DCG clause head", HeadResult),
-	process_dcg_clause(HeadResult, VarSet, DCG_0_Var, DCG_Var, Body, R),
+	process_dcg_clause(HeadResult, ProgVarSet, DCG_0_Var, DCG_Var,
+		Body, R),
 	add_context(R, DCG_Context, Result).
 
 %-----------------------------------------------------------------------------%
@@ -58,7 +61,7 @@ parse_dcg_pred_goal(GoalTerm, VarSet0, Goal, DCGVar0, DCGVar, VarSet) :-
 
 	% Used to allocate fresh variables needed for the DCG expansion.
 
-:- pred new_dcg_var(varset, int, varset, int, var).
+:- pred new_dcg_var(prog_varset, int, prog_varset, int, prog_var).
 :- mode new_dcg_var(in, in, out, out, out) is det.
 
 new_dcg_var(VarSet0, N0, VarSet, N, DCG_0_Var) :-
@@ -72,7 +75,8 @@ new_dcg_var(VarSet0, N0, VarSet, N, DCG_0_Var) :-
 
 	% Expand a DCG goal.
 
-:- pred parse_dcg_goal(term, varset, int, var, goal, varset, int, var).
+:- pred parse_dcg_goal(term, prog_varset, int, prog_var, goal,
+		prog_varset, int, prog_var).
 :- mode parse_dcg_goal(in, in, in, in, out, out, out, out) is det.
 
 parse_dcg_goal(Term, VarSet0, N0, Var0, Goal, VarSet, N, Var) :-
@@ -85,14 +89,15 @@ parse_dcg_goal(Term, VarSet0, N0, Var0, Goal, VarSet, N, Var) :-
 	),
 	% next, parse it
 	(
-		sym_name_and_args(Term, SymName, Args0)
+		term__coerce(Term, ProgTerm),
+		sym_name_and_args(ProgTerm, SymName, Args0)
 	->
 		% First check for the special cases:
 		(
 			SymName = unqualified(Functor),
-			parse_dcg_goal_2(Functor, Args0, Context,
-					VarSet0, N0, Var0,
-					Goal1, VarSet1, N1, Var1)
+			list__map(term__coerce, Args0, Args1),
+			parse_dcg_goal_2(Functor, Args1, Context,
+				VarSet0, N0, Var0, Goal1, VarSet1, N1, Var1)
 		->
 			Goal = Goal1,
 			VarSet = VarSet1,
@@ -105,8 +110,8 @@ parse_dcg_goal(Term, VarSet0, N0, Var0, Goal, VarSet, N, Var) :-
 			% non-terminal's argument list.
 			new_dcg_var(VarSet0, N0, VarSet, N, Var),
 			list__append(Args0,
-				[term__variable(Var0), term__variable(Var)],
-				Args),
+				[term__variable(Var0),
+					term__variable(Var)], Args),
 			Goal = call(SymName, Args, pure) - Context
 		)
 	;
@@ -114,8 +119,10 @@ parse_dcg_goal(Term, VarSet0, N0, Var0, Goal, VarSet, N, Var) :-
 		% Just translate it into a call to call/3 - the typechecker
 		% will catch calls to numbers and strings.
 		new_dcg_var(VarSet0, N0, VarSet, N, Var),
-		Goal = call(unqualified("call"), [Term, term__variable(Var0),
-				term__variable(Var)], pure) - Context
+		term__coerce(Term, ProgTerm),
+		Goal = call(unqualified("call"), [ProgTerm,
+			term__variable(Var0), term__variable(Var)],
+			pure) - Context
 	).
 
 	% parse_dcg_goal_2(Functor, Args, Context, VarSet0, N0, Var0,
@@ -128,22 +135,21 @@ parse_dcg_goal(Term, VarSet0, N0, Var0, Goal, VarSet, N, Var) :-
 	% Var0 and Var are an accumulator pair we use to keep track of
 	% the current DCG variable.
 
-:- pred parse_dcg_goal_2(string, list(term), term__context, varset, int, var,
-				goal, varset, int, var).
+:- pred parse_dcg_goal_2(string, list(term), prog_context, prog_varset,
+		int, prog_var, goal, prog_varset, int, prog_var).
 :- mode parse_dcg_goal_2(in, in, in, in, in, in, out, out, out, out)
 				is semidet.
 
 	% Ordinary goal inside { curly braces }.
-parse_dcg_goal_2("{}", [G], _, VarSet0, N, Var,
-		Goal, VarSet, N, Var) :-
+parse_dcg_goal_2("{}", [G], _, VarSet0, N, Var, Goal, VarSet, N, Var) :-
 	parse_goal(G, VarSet0, Goal, VarSet).
 parse_dcg_goal_2("impure", [G], _, VarSet0, N0, Var0, Goal, VarSet, N, Var) :-
-	parse_dcg_goal_with_purity(G, VarSet0, N0, Var0, (impure), Goal,
-				   VarSet, N, Var).
+	parse_dcg_goal_with_purity(G, VarSet0, N0, Var0, (impure),
+		Goal, VarSet, N, Var).
 parse_dcg_goal_2("semipure", [G], _, VarSet0, N0, Var0, Goal, VarSet, N,
 		Var) :-
-	parse_dcg_goal_with_purity(G, VarSet0, N0, Var0, (semipure), Goal,
-				   VarSet, N, Var).
+	parse_dcg_goal_with_purity(G, VarSet0, N0, Var0, (semipure),
+		Goal, VarSet, N, Var).
 
 	% Empty list - just unify the input and output DCG args.
 parse_dcg_goal_2("[]", [], Context, VarSet0, N0, Var0,
@@ -157,13 +163,14 @@ parse_dcg_goal_2("[]", [], Context, VarSet0, N0, Var0,
 parse_dcg_goal_2(".", [X, Xs], Context, VarSet0, N0, Var0,
 		Goal, VarSet, N, Var) :-
 	new_dcg_var(VarSet0, N0, VarSet, N, Var),
-	term_list_append_term(term__functor(term__atom("."), [X, Xs], Context),
-			term__variable(Var), Term), 
+	ConsTerm0 = term__functor(term__atom("."), [X, Xs], Context),
+	term__coerce(ConsTerm0, ConsTerm),
+	term_list_append_term(ConsTerm, term__variable(Var), Term), 
 	Goal = unify(term__variable(Var0), Term) - Context.
 
 	% Call to '='/1 - unify argument with DCG input arg.
-parse_dcg_goal_2("=", [A], Context, VarSet, N, Var,
-		Goal, VarSet, N, Var) :-
+parse_dcg_goal_2("=", [A0], Context, VarSet, N, Var, Goal, VarSet, N, Var) :-
+	term__coerce(A0, A),
 	Goal = unify(A, term__variable(Var)) - Context.
 
 	% If-then (Prolog syntax).
@@ -220,8 +227,10 @@ parse_dcg_goal_2(";", [A0, B0], Context, VarSet0, N0, Var0,
 		parse_dcg_if_then_else(Cond0, Then0, B0, Context,
 			VarSet0, N0, Var0, Goal, VarSet, N, Var)
 	;
-		parse_dcg_goal(A0, VarSet0, N0, Var0, A1, VarSet1, N1, VarA),
-		parse_dcg_goal(B0, VarSet1, N1, Var0, B1, VarSet, N, VarB),
+		parse_dcg_goal(A0, VarSet0, N0, Var0,
+			A1, VarSet1, N1, VarA),
+		parse_dcg_goal(B0, VarSet1, N1, Var0,
+			B1, VarSet, N, VarB),
 		( VarA = Var0, VarB = Var0 ->
 			Var = Var0,
 			Goal = (A1 ; B1) - Context
@@ -268,23 +277,27 @@ parse_dcg_goal_2( "\\+", [A0], Context, VarSet0, N0, Var0,
 
 	% Universal quantification.
 parse_dcg_goal_2("all", [Vars0, A0], Context,
-		VarSet0, N0, Var0, all(Vars, A) - Context, VarSet, N, Var) :-
-	term__vars(Vars0, Vars),
+		VarSet0, N0, Var0, all(Vars, A) - Context,
+		VarSet, N, Var) :-
+	term__coerce(Vars0, Vars1),
+	term__vars(Vars1, Vars),
 	parse_dcg_goal(A0, VarSet0, N0, Var0, A, VarSet, N, Var).
 
 	% Existential quantification.
 parse_dcg_goal_2("some", [Vars0, A0], Context,
-		VarSet0, N0, Var0, some(Vars, A) - Context, VarSet, N, Var) :-
-	term__vars(Vars0, Vars),
+		VarSet0, N0, Var0, some(Vars, A) - Context,
+		VarSet, N, Var) :-
+	term__coerce(Vars0, Vars1),
+	term__vars(Vars1, Vars),
 	parse_dcg_goal(A0, VarSet0, N0, Var0, A, VarSet, N, Var).
 
-:- pred parse_dcg_goal_with_purity(term, varset, int, var, purity, goal,
-	varset, int, var).
+:- pred parse_dcg_goal_with_purity(term, prog_varset, int, prog_var,
+		purity, goal, prog_varset, int, prog_var).
 :- mode parse_dcg_goal_with_purity(in, in, in, in, in, out, out, out, out)
 	is det.
 
-parse_dcg_goal_with_purity(G, VarSet0, N0, Var0, Purity, Goal, VarSet, N,
-		Var) :-
+parse_dcg_goal_with_purity(G, VarSet0, N0, Var0, Purity, Goal, VarSet,
+		N, Var) :-
 	parse_dcg_goal(G, VarSet0, N0, Var0, Goal1, VarSet, N, Var),
 	(   Goal1 = call(Pred, Args, pure) - Context ->
 		Goal = call(Pred, Args, Purity) - Context
@@ -294,10 +307,11 @@ parse_dcg_goal_with_purity(G, VarSet0, N0, Var0, Purity, Goal, VarSet, N,
 		% descriptive for these errors.
 		Goal1 = _ - Context,
 		purity_name(Purity, PurityString),
-		Goal = call(unqualified(PurityString), [G], pure) - Context
+		term__coerce(G, G1),
+		Goal = call(unqualified(PurityString), [G1], pure) - Context
 	).
 
-:- pred append_to_disjunct(goal, goal_expr, term__context, goal).
+:- pred append_to_disjunct(goal, goal_expr, prog_context, goal).
 :- mode append_to_disjunct(in, in, in, out) is det.
 
 append_to_disjunct(Disjunct0, Goal, Context, Disjunct) :-
@@ -309,13 +323,15 @@ append_to_disjunct(Disjunct0, Goal, Context, Disjunct) :-
 		Disjunct = (Disjunct0, Goal - Context) - Context
 	).
 
-:- pred parse_some_vars_dcg_goal(term, vars, varset, int, var,
-				goal, varset, int, var).
+:- pred parse_some_vars_dcg_goal(term, list(prog_var), prog_varset,
+		int, prog_var, goal, prog_varset, int, prog_var).
 :- mode parse_some_vars_dcg_goal(in, out, in, in, in, out, out, out, out)
 	is det.
-parse_some_vars_dcg_goal(A0, SomeVars, VarSet0, N0, Var0, A, VarSet, N, Var) :-
+parse_some_vars_dcg_goal(A0, SomeVars, VarSet0, N0, Var0,
+		A, VarSet, N, Var) :-
 	( A0 = term__functor(term__atom("some"), [SomeVars0, A1], _Context) ->
-		term__vars(SomeVars0, SomeVars),
+		term__coerce(SomeVars0, SomeVars1),
+		term__vars(SomeVars1, SomeVars),
 		A2 = A1
 	;
 		SomeVars = [],
@@ -343,16 +359,18 @@ parse_some_vars_dcg_goal(A0, SomeVars, VarSet0, N0, Var0, A, VarSet, N, Var) :-
 	%	)
 	% so that the implicit quantification of DCG_2 is correct.
 
-:- pred parse_dcg_if_then(term, term, term__context, varset, int, var,
-		list(var), goal, goal, varset, int, var).
-:- mode parse_dcg_if_then(in, in, in, in, in, in, out, out, out, out, out, out)
-	is det.
+:- pred parse_dcg_if_then(term, term, prog_context, prog_varset, int,
+		prog_var, list(prog_var), goal, goal, prog_varset, int,
+		prog_var).
+:- mode parse_dcg_if_then(in, in, in, in, in, in, out, out, out, out, out,
+		out) is det.
 
 parse_dcg_if_then(Cond0, Then0, Context, VarSet0, N0, Var0,
 		SomeVars, Cond, Then, VarSet, N, Var) :-
 	parse_some_vars_dcg_goal(Cond0, SomeVars, VarSet0, N0, Var0,
 				Cond, VarSet1, N1, Var1),
-	parse_dcg_goal(Then0, VarSet1, N1, Var1, Then1, VarSet2, N2, Var2),
+	parse_dcg_goal(Then0, VarSet1, N1, Var1, Then1, VarSet2, N2,
+		Var2),
 	( Var0 \= Var1, Var1 = Var2 ->
 		new_dcg_var(VarSet2, N2, VarSet, N, Var),
 		Unify = unify(term__variable(Var), term__variable(Var2)),
@@ -364,16 +382,17 @@ parse_dcg_if_then(Cond0, Then0, Context, VarSet0, N0, Var0,
 		VarSet = VarSet2
 	).
 
-:- pred parse_dcg_if_then_else(term, term, term, term__context,
-	varset, int, var, goal, varset, int, var).
+:- pred parse_dcg_if_then_else(term, term, term, prog_context,
+		prog_varset, int, prog_var, goal, prog_varset, int, prog_var).
 :- mode parse_dcg_if_then_else(in, in, in, in, in, in, in,
-	out, out, out, out) is det.
+		out, out, out, out) is det.
 
 parse_dcg_if_then_else(Cond0, Then0, Else0, Context, VarSet0, N0, Var0,
 		Goal, VarSet, N, Var) :-
 	parse_dcg_if_then(Cond0, Then0, Context, VarSet0, N0, Var0,
 		SomeVars, Cond, Then1, VarSet1, N1, VarThen),
-	parse_dcg_goal(Else0, VarSet1, N1, Var0, Else1, VarSet, N, VarElse),
+	parse_dcg_goal(Else0, VarSet1, N1, Var0, Else1, VarSet, N,
+		VarElse),
 	( VarThen = Var0, VarElse = Var0 ->
 		Var = Var0,
 		Then = Then1,
@@ -409,7 +428,7 @@ parse_dcg_if_then_else(Cond0, Then0, Else0, Context, VarSet0, N0, Var0,
 	%	this predicate will append the term Term
 	%	onto the end of the list
 
-:- pred term_list_append_term(term, term, term).
+:- pred term_list_append_term(term(T), term(T), term(T)).
 :- mode term_list_append_term(in, in, out) is semidet.
 
 term_list_append_term(List0, Term, List) :-
@@ -421,10 +440,13 @@ term_list_append_term(List0, Term, List) :-
 		term_list_append_term(Tail0, Term, Tail)
 	).
 
-:- pred process_dcg_clause(maybe_functor, varset, var, var, goal, maybe1(item)).
+:- pred process_dcg_clause(maybe_functor, prog_varset, prog_var,
+		prog_var, goal, maybe1(item)).
 :- mode process_dcg_clause(in, in, in, in, in, out) is det.
 
 process_dcg_clause(ok(Name, Args0), VarSet, Var0, Var, Body,
 		ok(pred_clause(VarSet, Name, Args, Body))) :-
-	list__append(Args0, [term__variable(Var0), term__variable(Var)], Args).
+	list__map(term__coerce, Args0, Args1),
+	list__append(Args1, [term__variable(Var0),
+		term__variable(Var)], Args).
 process_dcg_clause(error(Message, Term), _, _, _, _, error(Message, Term)).

@@ -363,10 +363,11 @@
 :- import_module hlds_goal, hlds_data, llds, (lambda).
 :- import_module type_util, mode_util, quantification, instmap, prog_io.
 :- import_module code_util, unify_proc, prog_util, make_hlds.
+:- import_module term, varset.
 :- import_module (inst), hlds_out, base_typeclass_info, goal_util, passes_aux.
 
 :- import_module bool, int, string, list, set, map.
-:- import_module term, varset, std_util, require, assoc_list, prog_out.
+:- import_module std_util, require, assoc_list, prog_out.
 
 %-----------------------------------------------------------------------------%
 
@@ -608,8 +609,8 @@ polymorphism__process_proc(ProcId, ProcInfo0, PredInfo0, ModuleInfo0,
 % in a more consistent manner.
 
 :- pred polymorphism__setup_headvars(pred_info, proc_info,
-		list(var), list(mode), list(tvar), list(tvar), list(var),
-		list(var), poly_info, poly_info).
+		list(prog_var), list(mode), list(tvar), list(tvar),
+		list(prog_var), list(prog_var), poly_info, poly_info).
 :- mode polymorphism__setup_headvars(in, in, out, out, out, out, out, out,
 		in, out) is det.
 
@@ -732,9 +733,8 @@ polymorphism__setup_headvars(PredInfo, ProcInfo, HeadVars, ArgModes,
 % for existentially quantified type variables in the head
 %
 :- pred polymorphism__produce_existq_tvars(
-			pred_info, proc_info,
-			list(tvar), list(var), list(var), hlds_goal, hlds_goal,
-			poly_info, poly_info).
+		pred_info, proc_info, list(tvar), list(prog_var), list(prog_var),
+		hlds_goal, hlds_goal, poly_info, poly_info).
 :- mode polymorphism__produce_existq_tvars(in, in, in, in, in, in, out,
 			in, out) is det.
 
@@ -811,7 +811,8 @@ polymorphism__produce_existq_tvars(PredInfo, ProcInfo,
 			GoalList),
 	conj_list_to_goal(GoalList, GoalInfo, Goal).
 
-:- pred polymorphism__assign_var_list(list(var), list(var), list(hlds_goal)).
+:- pred polymorphism__assign_var_list(list(prog_var), list(prog_var),
+		list(hlds_goal)).
 :- mode polymorphism__assign_var_list(in, in, out) is det.
 
 polymorphism__assign_var_list([], [_|_], _) :-
@@ -823,7 +824,7 @@ polymorphism__assign_var_list([Var1 | Vars1], [Var2 | Vars2], [Goal | Goals]) :-
 	polymorphism__assign_var(Var1, Var2, Goal),
 	polymorphism__assign_var_list(Vars1, Vars2, Goals).
 
-:- pred polymorphism__assign_var(var, var, hlds_goal).
+:- pred polymorphism__assign_var(prog_var, prog_var, hlds_goal).
 :- mode polymorphism__assign_var(in, in, out) is det.
 
 polymorphism__assign_var(Var1, Var2, Goal) :-
@@ -833,7 +834,7 @@ polymorphism__assign_var(Var1, Var2, Goal) :-
 		polymorphism__assign_var_2(Var1, Var2, Goal)
 	).
 
-:- pred polymorphism__assign_var_2(var, var, hlds_goal).
+:- pred polymorphism__assign_var_2(prog_var, prog_var, hlds_goal).
 :- mode polymorphism__assign_var_2(in, in, out) is det.
 
 polymorphism__assign_var_2(Var1, Var2, Goal) :-
@@ -1280,8 +1281,8 @@ polymorphism__process_case_list([Case0 | Cases0], [Case | Cases]) -->
 % existential/universal type_infos and type_class_infos
 % in a more consistent manner.
 
-:- pred polymorphism__process_call(pred_id, list(var), hlds_goal_info,
-		list(var), list(var), hlds_goal_info,
+:- pred polymorphism__process_call(pred_id, list(prog_var), hlds_goal_info,
+		list(prog_var), list(prog_var), hlds_goal_info,
 		list(hlds_goal), poly_info, poly_info).
 :- mode polymorphism__process_call(in, in, in,
 		out, out, out, out, in, out) is det.
@@ -1308,8 +1309,8 @@ polymorphism__process_call(PredId, ArgVars0, GoalInfo0,
 		TypeVarSet = TypeVarSet0,
 		map__init(Subst)
 	;
-		varset__merge_subst(TypeVarSet0, PredTypeVarSet, TypeVarSet,
-			Subst),
+		varset__merge_subst(TypeVarSet0, PredTypeVarSet,
+			TypeVarSet, Subst),
 		term__apply_substitution_to_list(PredArgTypes0, Subst,
 			PredArgTypes),
 		term__var_list_to_term_list(PredExistQVars0,
@@ -1461,8 +1462,8 @@ polymorphism__process_call(PredId, ArgVars0, GoalInfo0,
 		goal_info_set_instmap_delta(GoalInfo1, InstmapDelta, GoalInfo)
 	).
 
-:- pred polymorphism__update_typeclass_infos(list(class_constraint), list(var),
-			poly_info, poly_info).
+:- pred polymorphism__update_typeclass_infos(list(class_constraint),
+		list(prog_var), poly_info, poly_info).
 :- mode polymorphism__update_typeclass_infos(in, in, in, out) is det.
 
 polymorphism__update_typeclass_infos(Constraints, Vars, Info0, Info) :-
@@ -1471,8 +1472,8 @@ polymorphism__update_typeclass_infos(Constraints, Vars, Info0, Info) :-
 		TypeClassInfoMap),
 	poly_info_set_typeclass_info_map(TypeClassInfoMap, Info0, Info).
 
-:- pred insert_typeclass_info_locns(list(class_constraint), list(var), 
-	map(class_constraint, var), map(class_constraint, var)).
+:- pred insert_typeclass_info_locns(list(class_constraint), list(prog_var), 
+	map(class_constraint, prog_var), map(class_constraint, prog_var)).
 :- mode insert_typeclass_info_locns(in, in, in, out) is det.
 
 insert_typeclass_info_locns([], [], TypeClassInfoMap, TypeClassInfoMap).
@@ -1504,7 +1505,7 @@ constraint_get_tvars(constraint(_Name, Args), TVars) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred polymorphism__fixup_quantification(list(var), existq_tvars,
+:- pred polymorphism__fixup_quantification(list(prog_var), existq_tvars,
 			hlds_goal, hlds_goal, poly_info, poly_info).
 :- mode polymorphism__fixup_quantification(in, in, in, out, in, out) is det.
 
@@ -1536,8 +1537,8 @@ polymorphism__fixup_quantification(HeadVars, ExistQVars, Goal0, Goal,
 	).
 
 :- pred polymorphism__fixup_lambda_quantification(hlds_goal,
-		list(var), list(var), existq_tvars,
-		hlds_goal, set(var), poly_info, poly_info).
+		list(prog_var), list(prog_var), existq_tvars,
+		hlds_goal, set(prog_var), poly_info, poly_info).
 :- mode polymorphism__fixup_lambda_quantification(in, in, in, in, out, out,
 		in, out) is det.
 
@@ -1581,8 +1582,8 @@ polymorphism__fixup_lambda_quantification(Goal0, ArgVars, LambdaVars,
 
 %-----------------------------------------------------------------------------%
 
-:- pred polymorphism__process_lambda(pred_or_func, list(var),
-		list(mode), determinism, list(var), set(var),
+:- pred polymorphism__process_lambda(pred_or_func, list(prog_var),
+		list(mode), determinism, list(prog_var), set(prog_var),
 		hlds_goal, unification, unify_rhs, unification,
 		poly_info, poly_info).
 :- mode polymorphism__process_lambda(in, in, in, in, in, in, in, in, out, out,
@@ -1611,7 +1612,7 @@ polymorphism__process_lambda(PredOrFunc, Vars, Modes, Det, OrigNonLocals,
 		ModuleInfo0, Functor, Unification, ModuleInfo),
 	poly_info_set_module_info(ModuleInfo, PolyInfo0, PolyInfo).
 
-:- pred polymorphism__constraint_contains_vars(list(var), class_constraint).
+:- pred polymorphism__constraint_contains_vars(list(tvar), class_constraint).
 :- mode polymorphism__constraint_contains_vars(in, in) is semidet.
 
 polymorphism__constraint_contains_vars(LambdaVars, ClassConstraint) :-
@@ -1636,8 +1637,8 @@ polymorphism__constraint_contains_vars(LambdaVars, ClassConstraint) :-
 % just return the variable in the TypeClassInfoMap.
 
 :- pred polymorphism__make_typeclass_info_vars(list(class_constraint),
-	existq_tvars, term__context,
-	list(var), list(hlds_goal),
+	existq_tvars, prog_context,
+	list(prog_var), list(hlds_goal),
 	poly_info, poly_info).
 :- mode polymorphism__make_typeclass_info_vars(in, in, in,
 	out, out, in, out) is det.
@@ -1664,8 +1665,8 @@ polymorphism__make_typeclass_info_vars(PredClassContext,
 % Accumulator version of the above.
 :- pred polymorphism__make_typeclass_info_vars_2(
 	list(class_constraint),
-	existq_tvars, term__context,
-	list(var), list(var), 
+	existq_tvars, prog_context,
+	list(prog_var), list(prog_var), 
 	list(hlds_goal), list(hlds_goal), 
 	poly_info, poly_info).
 :- mode polymorphism__make_typeclass_info_vars_2(in, in, in,
@@ -1690,9 +1691,9 @@ polymorphism__make_typeclass_info_vars_2([C|Cs], ExistQVars,
 			Info1, Info).
 
 :- pred polymorphism__make_typeclass_info_var(class_constraint,
-	existq_tvars, term__context,
+	existq_tvars, prog_context,
 	list(hlds_goal), list(hlds_goal),
-	poly_info, poly_info, maybe(var)). 
+	poly_info, poly_info, maybe(prog_var)). 
 :- mode polymorphism__make_typeclass_info_var(in, in, in, in, out,
 	in, out, out) is det.
 
@@ -1875,12 +1876,14 @@ polymorphism__make_typeclass_info_var(Constraint, ExistQVars,
 
 				% Make the goal for the call
 			varset__init(DummyTVarSet0),
-			varset__new_var(DummyTVarSet0, TCVar, DummyTVarSet),
+			varset__new_var(DummyTVarSet0, TCVar,
+				DummyTVarSet),
 			mercury_private_builtin_module(PrivateBuiltin),
 			ExtractSuperClass = qualified(PrivateBuiltin, 
 					  "superclass_from_typeclass_info"),
 			construct_type(qualified(PrivateBuiltin,
-				"typeclass_info") - 1, [term__variable(TCVar)],
+				"typeclass_info") - 1,
+				[term__variable(TCVar)],
 				TypeClassInfoType),
 			construct_type(unqualified("int") - 0, [], IntType),
 			get_pred_id_and_proc_id(ExtractSuperClass, predicate, 
@@ -1909,10 +1912,10 @@ polymorphism__make_typeclass_info_var(Constraint, ExistQVars,
 		)
 	).
 
-:- pred polymorphism__construct_typeclass_info(list(var), list(var), class_id, 
-	class_constraint, int, 
+:- pred polymorphism__construct_typeclass_info(list(prog_var), list(prog_var),
+	class_id, class_constraint, int, 
 	list(type), map(class_constraint, constraint_proof),
-	existq_tvars, var, list(hlds_goal), poly_info, poly_info).
+	existq_tvars, prog_var, list(hlds_goal), poly_info, poly_info).
 :- mode polymorphism__construct_typeclass_info(in, in, in, in, in, in, in, in,
 	out, out, in, out) is det.
 
@@ -2022,7 +2025,7 @@ polymorphism__construct_typeclass_info(ArgTypeInfoVars, ArgTypeClassInfoVars,
 
 :- pred polymorphism__get_arg_superclass_vars(hlds_class_defn, list(type),
 	map(class_constraint, constraint_proof), existq_tvars,
-	list(var), list(hlds_goal), poly_info, poly_info).
+	list(prog_var), list(hlds_goal), poly_info, poly_info).
 :- mode polymorphism__get_arg_superclass_vars(in, in, in, in, out, out, 
 	in, out) is det.
 
@@ -2056,7 +2059,7 @@ polymorphism__get_arg_superclass_vars(ClassDefn, InstanceTypes,
 
 :- pred polymorphism__make_superclasses_from_proofs(list(class_constraint), 
 	existq_tvars, list(hlds_goal), list(hlds_goal), 
-	poly_info, poly_info, list(var), list(var)).
+	poly_info, poly_info, list(prog_var), list(prog_var)).
 :- mode polymorphism__make_superclasses_from_proofs(in, in, in, out, 
 	in, out, in, out) is det.
 
@@ -2072,7 +2075,7 @@ polymorphism__make_superclasses_from_proofs([C|Cs],
 		MaybeVar),
 	maybe_insert_var(MaybeVar, Vars1, Vars).
 
-:- pred maybe_insert_var(maybe(var), list(var), list(var)).
+:- pred maybe_insert_var(maybe(prog_var), list(prog_var), list(prog_var)).
 :- mode maybe_insert_var(in, in, out) is det.
 maybe_insert_var(no, Vars, Vars).
 maybe_insert_var(yes(Var), Vars, [Var | Vars]).
@@ -2085,7 +2088,7 @@ maybe_insert_var(yes(Var), Vars, [Var | Vars]).
 % Update the varset and vartypes accordingly.
 
 :- pred polymorphism__make_type_info_vars(list(type), existq_tvars,
-	term__context, list(var), list(hlds_goal), poly_info, poly_info).
+	prog_context, list(prog_var), list(hlds_goal), poly_info, poly_info).
 :- mode polymorphism__make_type_info_vars(in, in, in, out, out, in, out) is det.
 
 polymorphism__make_type_info_vars([], _, _, [], [], Info, Info).
@@ -2098,8 +2101,8 @@ polymorphism__make_type_info_vars([Type | Types], ExistQVars, Context,
 	ExtraVars = [Var | ExtraVars2],
 	list__append(ExtraGoals1, ExtraGoals2, ExtraGoals).
 
-:- pred polymorphism__make_type_info_var(type, existq_tvars, term__context,
-		var, list(hlds_goal), poly_info, poly_info).
+:- pred polymorphism__make_type_info_var(type, existq_tvars, prog_context,
+		prog_var, list(hlds_goal), poly_info, poly_info).
 :- mode polymorphism__make_type_info_var(in, in, in, out, out, in, out) is det.
 
 polymorphism__make_type_info_var(Type, ExistQVars, Context, Var, ExtraGoals,
@@ -2236,7 +2239,7 @@ polymorphism__make_type_info_var(Type, ExistQVars, Context, Var, ExtraGoals,
 	).
 
 :- pred polymorphism__construct_type_info(type, type_id, list(type),
-	bool, existq_tvars, term__context, var, list(hlds_goal),
+	bool, existq_tvars, prog_context, prog_var, list(hlds_goal),
 	poly_info, poly_info).
 :- mode polymorphism__construct_type_info(in, in, in, in, in, in, out, out, 
 	in, out) is det.
@@ -2272,9 +2275,9 @@ polymorphism__construct_type_info(Type, TypeId, TypeArgs, IsHigherOrder,
 		% 	TypeInfoVar = type_info(BaseVar, Arity,
 		% 				ArgTypeInfoVars...).
 
-:- pred polymorphism__maybe_init_second_cell(list(var), list(hlds_goal), type,
-	bool, var, varset, map(var, type), list(hlds_goal),
-	var, varset, map(var, type), list(hlds_goal)).
+:- pred polymorphism__maybe_init_second_cell(list(prog_var), list(hlds_goal),
+	type, bool, prog_var, prog_varset, map(prog_var, type), list(hlds_goal),
+	prog_var, prog_varset, map(prog_var, type), list(hlds_goal)).
 :- mode polymorphism__maybe_init_second_cell(in, in, in, in, in, in, in, in,
 	out, out, out, out) is det.
 
@@ -2327,8 +2330,8 @@ polymorphism__maybe_init_second_cell(ArgTypeInfoVars, ArgTypeInfoGoals, Type,
 
 	% Create a unification `CountVar = <NumTypeArgs>'
 
-:- pred polymorphism__make_count_var(int, varset, map(var, type),
-	var, hlds_goal, varset, map(var, type)).
+:- pred polymorphism__make_count_var(int, prog_varset, map(prog_var, type),
+	prog_var, hlds_goal, prog_varset, map(prog_var, type)).
 :- mode polymorphism__make_count_var(in, in, in, out, out, out, out) is det.
 
 polymorphism__make_count_var(NumTypeArgs, VarSet0, VarTypes0,
@@ -2343,7 +2346,7 @@ polymorphism__make_count_var(NumTypeArgs, VarSet0, VarTypes0,
 	% where Var is a freshly introduced variable and Num is an
 	% integer constant.
 
-:- pred polymorphism__init_with_int_constant(var, int, hlds_goal).
+:- pred polymorphism__init_with_int_constant(prog_var, int, hlds_goal).
 :- mode polymorphism__init_with_int_constant(in, in, out) is det.
 
 polymorphism__init_with_int_constant(CountVar, Num, CountUnifyGoal) :-
@@ -2440,8 +2443,9 @@ polymorphism__get_builtin_pred_id(Name, Arity, ModuleInfo, PredId) :-
 	% These unifications WILL lead to the creation of cells on the
 	% heap at runtime.
 
-:- pred polymorphism__init_type_info_var(type, list(var), string,
-	varset, map(var, type), var, hlds_goal, varset, map(var, type)).
+:- pred polymorphism__init_type_info_var(type, list(prog_var), string,
+	prog_varset, map(prog_var, type), prog_var, hlds_goal, prog_varset,
+	map(prog_var, type)).
 :- mode polymorphism__init_type_info_var(in, in, in, in, in, out, out, out, out)
 	is det.
 
@@ -2494,8 +2498,8 @@ polymorphism__init_type_info_var(Type, ArgVars, Symbol, VarSet0, VarTypes0,
 	% in the module that defines the type.
 
 :- pred polymorphism__init_const_base_type_info_var(type, type_id,
-	module_info, varset, map(var, type), var, hlds_goal,
-	varset, map(var, type)).
+	module_info, prog_varset, map(prog_var, type), prog_var, hlds_goal,
+	prog_varset, map(prog_var, type)).
 :- mode polymorphism__init_const_base_type_info_var(in, in, in, in, in,
 	out, out, out, out) is det.
 
@@ -2532,7 +2536,7 @@ polymorphism__init_const_base_type_info_var(Type, TypeId,
 
 %---------------------------------------------------------------------------%
 
-:- pred polymorphism__make_head_vars(list(tvar), tvarset, list(var),
+:- pred polymorphism__make_head_vars(list(tvar), tvarset, list(prog_var),
 				poly_info, poly_info).
 :- mode polymorphism__make_head_vars(in, in, out, in, out) is det.
 
@@ -2553,7 +2557,7 @@ polymorphism__make_head_vars([TypeVar|TypeVars], TypeVarSet, TypeInfoVars) -->
 	polymorphism__make_head_vars(TypeVars, TypeVarSet, TypeInfoVars1).
 
 
-:- pred polymorphism__new_type_info_var(type, string, var,
+:- pred polymorphism__new_type_info_var(type, string, prog_var,
 					poly_info, poly_info).
 :- mode polymorphism__new_type_info_var(in, in, out, in, out) is det.
 
@@ -2565,8 +2569,9 @@ polymorphism__new_type_info_var(Type, Symbol, Var, Info0, Info) :-
 	poly_info_set_varset_and_types(VarSet, VarTypes, Info0, Info).
 
 
-:- pred polymorphism__new_type_info_var(type, string, varset, map(var, type),
-					var, varset, map(var, type)).
+:- pred polymorphism__new_type_info_var(type, string, prog_varset,
+		map(prog_var, type), prog_var, prog_varset,
+		map(prog_var, type)).
 :- mode polymorphism__new_type_info_var(in, in, in, in, out, out, out) is det.
 
 polymorphism__new_type_info_var(Type, Symbol, VarSet0, VarTypes0,
@@ -2584,8 +2589,8 @@ polymorphism__new_type_info_var(Type, Symbol, VarSet0, VarTypes0,
 
 %---------------------------------------------------------------------------%
 
-:- pred extract_type_info(type, tvar, var, int, list(hlds_goal),
-	var, poly_info, poly_info).
+:- pred extract_type_info(type, tvar, prog_var, int, list(hlds_goal),
+		prog_var, poly_info, poly_info).
 :- mode extract_type_info(in, in, in, in, out, out, in, out) is det.
 
 extract_type_info(Type, TypeVar, TypeClassInfoVar, Index, Goals,
@@ -2600,9 +2605,10 @@ extract_type_info(Type, TypeVar, TypeClassInfoVar, Index, Goals,
 	poly_info_set_varset_and_types(VarSet, VarTypes, PolyInfo0, PolyInfo1),
 	poly_info_set_type_info_map(TypeInfoLocns, PolyInfo1, PolyInfo).
 
-:- pred extract_type_info_2(type, tvar, var, int, module_info, list(hlds_goal),
-	var, varset, map(var, type), map(tvar, type_info_locn),
-	varset, map(var, type), map(tvar, type_info_locn)).
+:- pred extract_type_info_2(type, tvar, prog_var, int, module_info,
+		list(hlds_goal), prog_var, prog_varset, map(prog_var, type),
+		map(tvar, type_info_locn), prog_varset, map(prog_var, type),
+		map(tvar, type_info_locn)).
 :- mode extract_type_info_2(in, in, in, in, in, out, out, in, in, in, out, out,
 	out) is det.
 
@@ -2660,7 +2666,7 @@ extract_type_info_2(Type, _TypeVar, TypeClassInfoVar, Index, ModuleInfo, Goals,
 	% the typeinfo locations map for each constrained type var.
 
 :- pred polymorphism__make_typeclass_info_head_vars(list(class_constraint),
-		list(var), poly_info, poly_info).
+		list(prog_var), poly_info, poly_info).
 :- mode polymorphism__make_typeclass_info_head_vars(in, out, in, out)
 		is det.
 
@@ -2671,7 +2677,7 @@ polymorphism__make_typeclass_info_head_vars(Constraints, ExtraHeadVars) -->
 	{ list__reverse(ExtraHeadVars1, ExtraHeadVars) }.
 
 :- pred polymorphism__make_typeclass_info_head_vars_2(list(class_constraint),
-		list(var), list(var), poly_info, poly_info).
+		list(prog_var), list(prog_var), poly_info, poly_info).
 :- mode polymorphism__make_typeclass_info_head_vars_2(in, in, out, in, out)
 		is det.
 
@@ -2752,9 +2758,9 @@ polymorphism__make_typeclass_info_head_vars_2([C|Cs],
 :- pred is_pair(pair(_, _)::in) is det.
 is_pair(_).
 
-:- pred polymorphism__new_typeclass_info_var(varset, map(var, type), 
-		class_constraint, string, var, 
-		varset, map(var, type)).
+:- pred polymorphism__new_typeclass_info_var(prog_varset, map(prog_var, type), 
+		class_constraint, string, prog_var, 
+		prog_varset, map(prog_var, type)).
 :- mode polymorphism__new_typeclass_info_var(in, in,
 		in, in, out, out, out) is det.
 
@@ -2943,8 +2949,8 @@ delete_nth([X|Xs], N0, Result) :-
 
 :- type poly_info --->
 		poly_info(
-			varset,			% from the proc_info
-			map(var, type),		% from the proc_info
+			prog_varset,		% from the proc_info
+			map(prog_var, type),	% from the proc_info
 			tvarset,		% from the proc_info
 			map(tvar, type_info_locn),		
 						% specifies the location of
@@ -2952,7 +2958,7 @@ delete_nth([X|Xs], N0, Result) :-
 						% for each of the pred's type
 						% parameters
 
-			map(class_constraint, var),		
+			map(class_constraint, prog_var),		
 						% specifies the location of
 						% the typeclass_info var
 						% for each of the pred's class
@@ -2991,13 +2997,13 @@ init_poly_info(ModuleInfo, PredInfo, ProcInfo, PolyInfo) :-
 				TypeInfoMap, TypeClassInfoMap,
 				Proofs, PredName, ModuleInfo).
 
-:- pred poly_info_get_varset(poly_info, varset).
+:- pred poly_info_get_varset(poly_info, prog_varset).
 :- mode poly_info_get_varset(in, out) is det.
 
 poly_info_get_varset(PolyInfo, VarSet) :-
 	PolyInfo = poly_info(VarSet, _, _, _, _, _, _, _).
 
-:- pred poly_info_get_var_types(poly_info, map(var, type)).
+:- pred poly_info_get_var_types(poly_info, map(prog_var, type)).
 :- mode poly_info_get_var_types(in, out) is det.
 
 poly_info_get_var_types(PolyInfo, VarTypes) :-
@@ -3016,7 +3022,7 @@ poly_info_get_type_info_map(PolyInfo, TypeInfoMap) :-
 	PolyInfo = poly_info(_, _, _, TypeInfoMap, _, _, _, _).
 
 :- pred poly_info_get_typeclass_info_map(poly_info,
-					map(class_constraint, var)).
+					map(class_constraint, prog_var)).
 :- mode poly_info_get_typeclass_info_map(in, out) is det.
 
 poly_info_get_typeclass_info_map(PolyInfo, TypeClassInfoMap) :-
@@ -3042,14 +3048,14 @@ poly_info_get_module_info(PolyInfo, ModuleInfo) :-
 	PolyInfo = poly_info(_, _, _, _, _, _, _, ModuleInfo).
 
 
-:- pred poly_info_set_varset(varset, poly_info, poly_info).
+:- pred poly_info_set_varset(prog_varset, poly_info, poly_info).
 :- mode poly_info_set_varset(in, in, out) is det.
 
 poly_info_set_varset(VarSet, PolyInfo0, PolyInfo) :-
 	PolyInfo0 = poly_info(_, B, C, D, E, F, G, H),
 	PolyInfo = poly_info(VarSet, B, C, D, E, F, G, H).
 
-:- pred poly_info_set_varset_and_types(varset, map(var, type),
+:- pred poly_info_set_varset_and_types(prog_varset, map(prog_var, type),
 					poly_info, poly_info).
 :- mode poly_info_set_varset_and_types(in, in, in, out) is det.
 
@@ -3072,7 +3078,7 @@ poly_info_set_type_info_map(TypeInfoMap, PolyInfo0, PolyInfo) :-
 	PolyInfo0 = poly_info(A, B, C, _, E, F, G, H),
 	PolyInfo = poly_info(A, B, C, TypeInfoMap, E, F, G, H).
 
-:- pred poly_info_set_typeclass_info_map(map(class_constraint, var),
+:- pred poly_info_set_typeclass_info_map(map(class_constraint, prog_var),
 					poly_info, poly_info).
 :- mode poly_info_set_typeclass_info_map(in, in, out) is det.
 

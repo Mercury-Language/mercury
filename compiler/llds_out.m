@@ -125,12 +125,12 @@
 
 :- implementation.
 
-:- import_module globals, options.
+:- import_module globals, options, varset, term.
 :- import_module exprn_aux, prog_util, prog_out, hlds_pred.
 :- import_module export, mercury_to_mercury, modules.
 
-:- import_module int, list, char, string, std_util, term, varset.
-:- import_module map, set, bintree_set, assoc_list, require.
+:- import_module int, list, char, string, map, std_util.
+:- import_module set, bintree_set, assoc_list, require.
 :- import_module library.	% for the version number.
 
 %-----------------------------------------------------------------------------%
@@ -1488,7 +1488,7 @@ output_pragma_c_component(pragma_c_user_code(MaybeContext, C_Code)) -->
 output_pragma_c_component(pragma_c_raw_code(C_Code)) -->
 	io__write_string(C_Code).
 
-:- pred output_set_line_num(term__context, io__state, io__state).
+:- pred output_set_line_num(prog_context, io__state, io__state).
 :- mode output_set_line_num(in, di, uo) is det.
 
 output_set_line_num(Context) -->
@@ -1541,7 +1541,7 @@ output_pragma_decls([D|Decls]) -->
 	(
 		{ D = pragma_c_arg_decl(Type, VarName) },
 		% Apart from special cases, the local variables are Words
-		{ export__term_to_type_string(Type, VarType) },
+		{ export__type_to_type_string(Type, VarType) },
 		io__write_string("\t"),
 		io__write_string(VarType),
 		io__write_string("\t"),
@@ -1687,7 +1687,7 @@ output_gc_livevals_2([LiveInfo | LiveInfos]) -->
 	io__write_string("\n"),
 	output_gc_livevals_2(LiveInfos).
 
-:- pred output_gc_livevals_params(assoc_list(var, set(layout_locn)),
+:- pred output_gc_livevals_params(assoc_list(tvar, set(layout_locn)),
 	io__state, io__state).
 :- mode output_gc_livevals_params(in, di, uo) is det.
 
@@ -1746,10 +1746,13 @@ output_live_value_type(var(Var, Name, Type, Inst)) -->
 	io__write_string(", "),
 	io__write_string(Name),
 	io__write_string(", "),
-	{ varset__init(NewVarset) },
-	mercury_output_term(Type, NewVarset, no),
+		% XXX Fake type varset
+	{ varset__init(NewTVarset) },
+	mercury_output_term(Type, NewTVarset, no),
 	io__write_string(", "),
-	mercury_output_inst(Inst, NewVarset),
+		% XXX Fake inst varset
+	{ varset__init(NewIVarset) },
+	mercury_output_inst(Inst, NewIVarset),
 	io__write_string(")").
 
 :- pred output_temp_decls(int, string, io__state, io__state).

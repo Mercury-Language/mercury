@@ -39,14 +39,14 @@
 	% This is called from make_hlds.m to qualify the mode of a lambda
 	% expression.
 :- pred module_qual__qualify_lambda_mode_list(list(mode), list(mode),
-		term__context, mq_info, mq_info,
+		prog_context, mq_info, mq_info,
 		io__state, io__state) is det.
 :- mode module_qual__qualify_lambda_mode_list(in, out, 
 		in, in, out, di, uo) is det.
 
 	% This is called from make_hlds.m to qualify an 
 	% explicit type qualification.
-:- pred module_qual__qualify_type_qualification(type, type, term__context,
+:- pred module_qual__qualify_type_qualification(type, type, prog_context,
 		mq_info, mq_info, io__state, io__state).
 :- mode module_qual__qualify_type_qualification(in, out, in, in,
 		out, di, uo) is det.
@@ -65,8 +65,8 @@
 
 :- import_module hlds_data, hlds_module, hlds_pred, type_util, prog_out.
 :- import_module prog_util, mercury_to_mercury, modules, globals, options.
-:- import_module (inst), instmap.
-:- import_module int, map, require, set, std_util, string, term, varset.
+:- import_module (inst), instmap, term, varset.
+:- import_module int, map, require, set, std_util, string.
 
 module_qual__module_qualify_items(Items0, Items, ModuleName, ReportErrors,
 			Info, NumErrors, UndefTypes, UndefModes) -->
@@ -138,8 +138,8 @@ collect_mq_info_2(mode_defn(_, ModeDefn, _), Info0, Info) :-
 	add_mode_defn(ModeDefn, Info0, Info).
 collect_mq_info_2(module_defn(_, ModuleDefn), Info0, Info) :-
 	process_module_defn(ModuleDefn, Info0, Info).
-collect_mq_info_2(pred(_,_,_,_,_,_,_,_), Info, Info).
-collect_mq_info_2(func(_,_,_,_,_,_,_,_,_), Info, Info).
+collect_mq_info_2(pred(_,__,_,_,_,_,_,_,_), Info, Info).
+collect_mq_info_2(func(_,_,__,_,_,_,_,_,_,_), Info, Info).
 collect_mq_info_2(pred_mode(_,_,_,_,_), Info, Info).
 collect_mq_info_2(func_mode(_,_,_,_,_,_), Info, Info).
 collect_mq_info_2(pragma(_), Info, Info).
@@ -187,7 +187,7 @@ add_mode_defn(eqv_mode(SymName, Params, _), Info0, Info) :-
 	id_set_insert(NeedQualifier, SymName - Arity, Modes0, Modes),
 	mq_info_set_modes(Info0, Modes, Info).
 
-:- pred add_typeclass_defn(sym_name::in, list(var)::in, 
+:- pred add_typeclass_defn(sym_name::in, list(tvar)::in, 
 	mq_info::in, mq_info::out) is det.
 
 add_typeclass_defn(SymName, Params, Info0, Info) :-
@@ -283,9 +283,9 @@ module_qualify_item(module_defn(A, ModuleDefn) - Context,
 	{ update_import_status(ModuleDefn, Info0, Info, Continue) }.
 
 module_qualify_item(
-		pred(A, B, SymName, TypesAndModes0, C, D, E,
+		pred(A, IVs, B, SymName, TypesAndModes0, C, D, E,
 			Constraints0) - Context,
-		pred(A, B, SymName, TypesAndModes,  C, D, E,
+		pred(A, IVs, B, SymName, TypesAndModes,  C, D, E,
 			Constraints) - Context,
 		Info0, Info, yes) -->
 	{ list__length(TypesAndModes0, Arity) },
@@ -295,9 +295,9 @@ module_qualify_item(
 	qualify_class_constraints(Constraints0, Constraints, Info2, Info).
 
 module_qualify_item(
-		func(A, B, SymName, TypesAndModes0, TypeAndMode0, F, G, H,
+		func(A, IVs, B, SymName, TypesAndModes0, TypeAndMode0, F, G, H,
 			Constraints0) - Context,
-		func(A, B, SymName, TypesAndModes, TypeAndMode, F, G, H,
+		func(A, IVs, B, SymName, TypesAndModes, TypeAndMode, F, G, H,
 			Constraints) - Context,
 		Info0, Info, yes) -->
 	{ list__length(TypesAndModes0, Arity) },
@@ -383,7 +383,7 @@ update_import_status(include_module(_), Info0, Info, yes) :-
 
 	% Qualify the constructors or other types in a type definition.	
 :- pred qualify_type_defn(type_defn::in, type_defn::out, mq_info::in,
-	mq_info::out, term__context::in, io__state::di, io__state::uo) is det.
+	mq_info::out, prog_context::in, io__state::di, io__state::uo) is det.
 
 qualify_type_defn(du_type(SymName, Params, Ctors0, MaybeEqualityPred0),
 		du_type(SymName, Params, Ctors, MaybeEqualityPred),
@@ -430,7 +430,7 @@ qualify_constructors([Ctor0 | Ctors0], [Ctor | Ctors], Info0, Info) -->
 
 	% Qualify the inst parameters of an inst definition.
 :- pred qualify_inst_defn(inst_defn::in, inst_defn::out, mq_info::in,
-	mq_info::out, term__context::in, io__state::di, io__state::uo) is det.
+	mq_info::out, prog_context::in, io__state::di, io__state::uo) is det.
 
 qualify_inst_defn(eqv_inst(SymName, Params, Inst0),
 		eqv_inst(SymName, Params, Inst), Info0, Info, Context) -->
@@ -444,7 +444,7 @@ qualify_inst_defn(abstract_inst(SymName, Params),
 
 	% Qualify the mode parameter of an equivalence mode definition.
 :- pred qualify_mode_defn(mode_defn::in, mode_defn::out, mq_info::in,
-	mq_info::out, term__context::in, io__state::di, io__state::uo) is det.
+	mq_info::out, prog_context::in, io__state::di, io__state::uo) is det.
 
 qualify_mode_defn(eqv_mode(SymName, Params, Mode0),
 		eqv_mode(SymName, Params, Mode), Info0, Info, Context) -->
@@ -758,10 +758,10 @@ qualify_class_interface([M0|M0s], [M|Ms], MQInfo0, MQInfo) -->
 	% There is no need to qualify the method name, since that is
 	% done when the item is parsed.
 qualify_class_method(
-		pred(Varset, ExistQVars, Name, TypesAndModes0, MaybeDet, Cond,
-			ClassContext0, Context), 
-		pred(Varset, ExistQVars, Name, TypesAndModes, MaybeDet, Cond, 
-			ClassContext, Context), 
+		pred(TypeVarset, InstVarset, ExistQVars, Name, TypesAndModes0,
+			MaybeDet, Cond, ClassContext0, Context), 
+		pred(TypeVarset, InstVarset, ExistQVars, Name, TypesAndModes,
+			MaybeDet, Cond, ClassContext, Context), 
 		MQInfo0, MQInfo
 		) -->
 	qualify_types_and_modes(TypesAndModes0, TypesAndModes, 
@@ -769,10 +769,10 @@ qualify_class_method(
 	qualify_class_constraints(ClassContext0, ClassContext, 
 		MQInfo1, MQInfo).
 qualify_class_method(
-		func(Varset, ExistQVars, Name, TypesAndModes0, ReturnMode0,
-			MaybeDet, Cond, ClassContext0, Context), 
-		func(Varset, ExistQVars, Name, TypesAndModes, ReturnMode,
-			MaybeDet, Cond, ClassContext, Context), 
+		func(TypeVarset, InstVarset, ExistQVars, Name, TypesAndModes0,
+			ReturnMode0, MaybeDet, Cond, ClassContext0, Context), 
+		func(TypeVarset, InstVarset, ExistQVars, Name, TypesAndModes,
+			ReturnMode, MaybeDet, Cond, ClassContext, Context), 
 		MQInfo0, MQInfo
 		) -->
 	qualify_types_and_modes(TypesAndModes0, TypesAndModes, 
@@ -893,7 +893,7 @@ find_unique_match(Id0, Id, Ids, TypeOfId, Info0, Info) -->
 	;	inst_id
 	;	class_id.
 
-:- type error_context == pair(error_context2, term__context).
+:- type error_context == pair(error_context2, prog_context).
 
 :- type id == pair(sym_name, int).
 
@@ -1063,7 +1063,7 @@ is_or_are([_], "is").
 is_or_are([_, _ | _], "are").
 
 	% Output an error message about an ill-formed type.
-:- pred report_invalid_type(term, error_context, io__state, io__state).
+:- pred report_invalid_type(type, error_context, io__state, io__state).
 :- mode report_invalid_type(in, in, di, uo) is det.
 
 report_invalid_type(Type, ErrorContext - Context) -->

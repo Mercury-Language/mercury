@@ -26,7 +26,7 @@
 
 	% library modules
 :- import_module int, list, map, set, std_util, dir, require, string, bool.
-:- import_module library, getopt, term, set_bbbtree, varset.
+:- import_module library, getopt, set_bbbtree.
 
 	% the main compiler passes (mostly in order of execution)
 :- import_module handle_options, prog_io, prog_out, modules, module_qual.
@@ -37,7 +37,7 @@
 :- import_module bytecode_gen, bytecode.
 :- import_module (lambda), polymorphism, termination, higher_order, inlining.
 :- import_module deforest, dnf, constraint, unused_args, dead_proc_elim.
-:- import_module lco, saved_vars, liveness.
+:- import_module lco, saved_vars, liveness, term, varset.
 :- import_module follow_code, live_vars, arg_info, store_alloc, goal_path.
 :- import_module code_gen, optimize, export, base_type_info, base_type_layout.
 :- import_module llds_common, transform_llds, llds_out.

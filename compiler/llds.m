@@ -17,7 +17,7 @@
 :- interface.
 
 :- import_module hlds_pred, hlds_data, tree, prog_data, (inst).
-:- import_module bool, list, set, map, term, std_util.
+:- import_module bool, list, map, set, std_util.
 
 %-----------------------------------------------------------------------------%
 
@@ -42,8 +42,8 @@
 :- type c_header_info 	==	list(c_header_code).	% in reverse order
 :- type c_body_info 	==	list(c_body_code).	% in reverse order
 
-:- type c_header_code	==	pair(string, term__context).
-:- type c_body_code	==	pair(string, term__context).
+:- type c_header_code	==	pair(string, prog_context).
+:- type c_body_code	==	pair(string, prog_context).
 
 :- type c_export_defns == list(c_export).
 :- type c_export_decls == list(c_export_decl).
@@ -363,7 +363,7 @@
 			string,		% The field declarations, supplied
 					% by the user in the `pragma c_code'
 					% declaration.
-			maybe(term__context)
+			maybe(prog_context)
 					% Where the field declarations
 					% originally appeared.
 		).
@@ -392,7 +392,7 @@
 :- type pragma_c_component
 	--->	pragma_c_inputs(list(pragma_c_input))
 	;	pragma_c_outputs(list(pragma_c_output))
-	;	pragma_c_user_code(maybe(term__context), string)
+	;	pragma_c_user_code(maybe(prog_context), string)
 	;	pragma_c_raw_code(string).
 
 	% A pragma_c_input represents the code that initializes one
@@ -458,7 +458,8 @@
 	;	redoip				% A stored redoip.
 	;	redofr				% A stored redofr.
 	;	hp				% A stored heap pointer.
-	;	var(var, string, type, inst)	% A variable (the var number
+	;	var(prog_var, string, type, inst)
+						% A variable (the var number
 						% and name are for execution
 						% tracing; we have to store
 						% the name here because when
@@ -566,7 +567,7 @@
 
 	/* pseudo-values */
 
-	;	lvar(var).	% The location of the specified variable.
+	;	lvar(prog_var).	% The location of the specified variable.
 				% `var' lvals are used during code generation,
 				% but should not be present in the LLDS at any
 				% stage after code generation.
@@ -577,7 +578,7 @@
 		% The value of an `lval' rval is just the value stored in
 		% the specified lval.
 
-	;	var(var)
+	;	var(prog_var)
 		% The value of a `var' rval is just the value of the
 		% specified variable.
 		% `var' rvals are used during code generation,

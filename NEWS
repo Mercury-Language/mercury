@@ -94,6 +94,15 @@ Changes to the Mercury standard library:
   See the "benchmarking" chapter of the Mercury Library Reference Manual
   for details.
 
+* The types `term', `var', `var_supply' and `varset' are now polymorphic.
+  This allows one to distinguish between terms, etc. denoting different kinds
+  of things by giving them different types. The new coercion predicates
+  listed below allow one to coerce terms, etc between types.
+
+  The monomorphic versions of these have been retained as equivalences
+  to the polymorphic ones with the type variable instantiated to a dummy
+  type `generic'.
+
 * Miscellaneous new predicates.
 
   The Mercury standard library now includes the following new predicates:
@@ -118,6 +127,10 @@ Changes to the Mercury standard library:
 	  set__count/2
 	  set_ordlist__count/2
 	  store__new_cyclic_mutvar/4
+	  term__coerce/2
+	  term__coerce_var/2
+	  term__coerce_var_supply/2
+	  varset__coerce/2
 	  varset__select/3
 
   In addition, there are four new system constants added to the float

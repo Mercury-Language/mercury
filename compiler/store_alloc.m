@@ -36,10 +36,10 @@
 
 :- implementation.
 
-:- import_module follow_vars, liveness, hlds_goal, llds.
+:- import_module follow_vars, liveness, hlds_goal, llds, prog_data.
 :- import_module options, globals, goal_util, mode_util, instmap, trace.
 :- import_module list, map, set, std_util, assoc_list.
-:- import_module bool, int, require, term.
+:- import_module bool, int, require.
 
 :- type stack_slot_info
 	--->	stack_slot_info(
@@ -84,8 +84,8 @@ store_alloc_in_proc(ProcInfo0, PredId, ModuleInfo, ProcInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred store_alloc_in_goal(hlds_goal, liveness_info, set(var), module_info,
-	stack_slot_info, hlds_goal, liveness_info).
+:- pred store_alloc_in_goal(hlds_goal, liveness_info, set(prog_var),
+		module_info, stack_slot_info, hlds_goal, liveness_info).
 :- mode store_alloc_in_goal(in, in, in, in, in, out, out) is det.
 
 store_alloc_in_goal(Goal0 - GoalInfo0, Liveness0, ResumeVars0, ModuleInfo,
@@ -141,7 +141,8 @@ store_alloc_in_goal(Goal0 - GoalInfo0, Liveness0, ResumeVars0, ModuleInfo,
 	% Here we process each of the different sorts of goals.
 
 :- pred store_alloc_in_goal_2(hlds_goal_expr, liveness_info,
-	set(var), module_info, stack_slot_info, hlds_goal_expr, liveness_info).
+		set(prog_var), module_info, stack_slot_info, hlds_goal_expr,
+		liveness_info).
 :- mode store_alloc_in_goal_2(in, in, in, in, in, out, out) is det.
 
 store_alloc_in_goal_2(conj(Goals0), Liveness0, ResumeVars0, ModuleInfo,
@@ -208,7 +209,7 @@ store_alloc_in_goal_2(pragma_c_code(A, B, C, D, E, F, G), Liveness, _, _,
 
 %-----------------------------------------------------------------------------%
 
-:- pred store_alloc_in_conj(list(hlds_goal), liveness_info, set(var),
+:- pred store_alloc_in_conj(list(hlds_goal), liveness_info, set(prog_var),
 	module_info, stack_slot_info, list(hlds_goal), liveness_info).
 :- mode store_alloc_in_conj(in, in, in, in, in, out, out) is det.
 
@@ -233,7 +234,7 @@ store_alloc_in_conj([Goal0 | Goals0], Liveness0, ResumeVars0, ModuleInfo,
 
 %-----------------------------------------------------------------------------%
 
-:- pred store_alloc_in_par_conj(list(hlds_goal), liveness_info, set(var),
+:- pred store_alloc_in_par_conj(list(hlds_goal), liveness_info, set(prog_var),
 	module_info, stack_slot_info, list(hlds_goal), liveness_info).
 :- mode store_alloc_in_par_conj(in, in, in, in, in, out, out) is det.
 
@@ -247,7 +248,7 @@ store_alloc_in_par_conj([Goal0 | Goals0], Liveness0, ResumeVars0, ModuleInfo,
 
 %-----------------------------------------------------------------------------%
 
-:- pred store_alloc_in_disj(list(hlds_goal), liveness_info, set(var),
+:- pred store_alloc_in_disj(list(hlds_goal), liveness_info, set(prog_var),
 	module_info, stack_slot_info, list(hlds_goal), liveness_info).
 :- mode store_alloc_in_disj(in, in, in, in, in, out, out) is det.
 
@@ -269,7 +270,7 @@ store_alloc_in_disj([Goal0 | Goals0], Liveness0, ResumeVars0, ModuleInfo,
 
 %-----------------------------------------------------------------------------%
 
-:- pred store_alloc_in_cases(list(case), liveness_info, set(var),
+:- pred store_alloc_in_cases(list(case), liveness_info, set(prog_var),
 	module_info, stack_slot_info, list(case), liveness_info).
 :- mode store_alloc_in_cases(in, in, in, in, in, out, out) is det.
 
@@ -298,8 +299,8 @@ store_alloc_in_cases([case(Cons, Goal0) | Goals0], Liveness0, ResumeVars0,
 	% generate a store map that maps every live variable to its own
 	% real location.
 
-:- pred store_alloc_allocate_storage(list(var), follow_vars, stack_slot_info,
-	store_map).
+:- pred store_alloc_allocate_storage(list(prog_var), follow_vars,
+		stack_slot_info, store_map).
 :- mode store_alloc_allocate_storage(in, in, in, out) is det.
 
 store_alloc_allocate_storage(LiveVars, FollowVars, StackSlotInfo, StoreMap) :-
@@ -318,7 +319,8 @@ store_alloc_allocate_storage(LiveVars, FollowVars, StackSlotInfo, StoreMap) :-
 	store_alloc_allocate_extras(LiveVars, N, SeenLvals, StackSlotInfo,
 		StoreMap1, StoreMap).
 
-:- pred store_alloc_remove_nonlive(list(var), list(var), store_map, store_map).
+:- pred store_alloc_remove_nonlive(list(prog_var), list(prog_var),
+		store_map, store_map).
 :- mode store_alloc_remove_nonlive(in, in, in, out) is det.
 
 store_alloc_remove_nonlive([], _LiveVars, StoreMap, StoreMap).
@@ -330,7 +332,7 @@ store_alloc_remove_nonlive([Var | Vars], LiveVars, StoreMap0, StoreMap) :-
 	),
 	store_alloc_remove_nonlive(Vars, LiveVars, StoreMap1, StoreMap).
 
-:- pred store_alloc_handle_conflicts_and_nonreal(list(var),
+:- pred store_alloc_handle_conflicts_and_nonreal(list(prog_var),
 	int, int, set(lval), set(lval), store_map, store_map).
 :- mode store_alloc_handle_conflicts_and_nonreal(in, in, out, in, out, in, out)
 	is det.
@@ -357,8 +359,8 @@ store_alloc_handle_conflicts_and_nonreal([Var | Vars], N0, N,
 	store_alloc_handle_conflicts_and_nonreal(Vars, N1, N,
 		SeenLvals1, SeenLvals, StoreMap1, StoreMap).
 
-:- pred store_alloc_allocate_extras(list(var), int, set(lval), stack_slot_info,
-	store_map, store_map).
+:- pred store_alloc_allocate_extras(list(prog_var), int, set(lval),
+		stack_slot_info, store_map, store_map).
 :- mode store_alloc_allocate_extras(in, in, in, in, in, out) is det.
 
 store_alloc_allocate_extras([], _, _, _, StoreMap, StoreMap).

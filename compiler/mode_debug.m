@@ -58,8 +58,8 @@ mode_checkpoint(Port, Msg, ModeInfo0, ModeInfo) :-
 	),
 	mode_info_set_io_state(ModeInfo1, IOState, ModeInfo).
 
-:- pred mode_checkpoint_2(port, string, assoc_list(var, inst),
-	assoc_list(var, inst), mode_info, io__state, io__state).
+:- pred mode_checkpoint_2(port, string, assoc_list(prog_var, inst),
+	assoc_list(prog_var, inst), mode_info, io__state, io__state).
 :- mode mode_checkpoint_2(in, in, in, out, mode_info_ui, di, uo) is det.
 
 mode_checkpoint_2(Port, Msg, OldInstList, NewInstList, ModeInfo) -->
@@ -100,8 +100,8 @@ mode_checkpoint_2(Port, Msg, OldInstList, NewInstList, ModeInfo) -->
 	io__write_string("\n"),
 	io__flush_output.
 
-:- pred write_var_insts(assoc_list(var, inst), assoc_list(var, inst),
-	varset, varset, io__state, io__state).
+:- pred write_var_insts(assoc_list(prog_var, inst), assoc_list(prog_var, inst),
+	prog_varset, inst_varset, io__state, io__state).
 :- mode write_var_insts(in, in, in, in, di, uo) is det.
 
 write_var_insts([], _, _, _) --> [].

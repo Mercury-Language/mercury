@@ -81,7 +81,7 @@
 :- implementation.
 
 :- import_module hlds_pred, (inst), mode_util, prog_data, pd_util.
-:- import_module assoc_list, bool, int, map, require, set, term.
+:- import_module assoc_list, bool, int, map, require, set.
 
 :- type global_term_info
 	--->	global_term_info(
@@ -217,7 +217,7 @@ pd_term__local_check(ModuleInfo, Goal1, InstMap, Cover0, Cover) :-
 	).
 
 :- pred pd_term__do_local_check(module_info::in, instmap::in, 
-		list(var)::in, assoc_list(int, int)::in, 
+		list(prog_var)::in, assoc_list(int, int)::in, 
 		assoc_list(int, int)::out) is semidet.
 
 pd_term__do_local_check(ModuleInfo, InstMap, Args, OldSizes, NewSizes) :-
@@ -240,7 +240,7 @@ pd_term__update_global_term_info(TermInfo0, ProcPair,
 
 %-----------------------------------------------------------------------------%
 
-:- pred pd_term__initial_sizes(module_info::in, instmap::in, list(var)::in,
+:- pred pd_term__initial_sizes(module_info::in, instmap::in, list(prog_var)::in,
 		int::in, assoc_list(int, int)::out) is det.
 
 pd_term__initial_sizes(_, _, [], _, []).
@@ -254,7 +254,7 @@ pd_term__initial_sizes(ModuleInfo, InstMap, [Arg | Args], ArgNo,
 %-----------------------------------------------------------------------------%
 
 :- pred pd_term__get_matching_sizes(module_info::in, instmap::in, 
-		list(var)::in, assoc_list(int, int)::in, 
+		list(prog_var)::in, assoc_list(int, int)::in, 
 		assoc_list(int, int)::out, int::out, int::out) is det.
 
 pd_term__get_matching_sizes(_, _, _, [], [], 0, 0).

@@ -238,8 +238,8 @@
 
 :- import_module hlds_data, hlds_pred, hlds_out, type_util.
 :- import_module code_util, globals, options, special_pred, prog_util.
-:- import_module assoc_list, bool, string, int, map, std_util, require.
 :- import_module term.
+:- import_module assoc_list, bool, string, int, map, std_util, require.
 
 :- type layout_info 	--->	
 	layout_info(

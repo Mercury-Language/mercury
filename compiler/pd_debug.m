@@ -12,7 +12,7 @@
 
 :- interface.
 
-:- import_module pd_info, hlds_goal, hlds_pred.
+:- import_module pd_info, hlds_goal, hlds_pred, prog_data.
 :- import_module list, string.
 
 :- pred pd_debug__do_io(pred(io__state, io__state)::pred(di, uo) is det,
@@ -33,7 +33,7 @@
 :- pred pd_debug__message(string::in, list(string__poly_type)::in,
 		pd_info::pd_info_di, pd_info::pd_info_uo) is det.
 
-:- pred pd_debug__message(term__context::in, string::in, 
+:- pred pd_debug__message(prog_context::in, string::in, 
 		list(string__poly_type)::in,
 		pd_info::pd_info_di, pd_info::pd_info_uo) is det.
 

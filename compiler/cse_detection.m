@@ -36,9 +36,9 @@
 :- import_module hlds_goal, hlds_data, options, globals, goal_util, hlds_out.
 :- import_module modes, mode_util, make_hlds, quantification, instmap.
 :- import_module prog_data, switch_detection, det_util, inst_match.
-:- import_module switch_detection.
+:- import_module switch_detection, term, varset.
 
-:- import_module int, bool, list, map, set, std_util, require, term, varset.
+:- import_module int, bool, list, map, set, std_util, require.
 
 %-----------------------------------------------------------------------------%
 
@@ -119,7 +119,8 @@ detect_cse_in_proc(ProcId, PredId, ModuleInfo0, ModuleInfo) -->
 		detect_cse_in_proc(ProcId, PredId, ModuleInfo3, ModuleInfo)
 	).
 
-:- type cse_info	--->	cse_info(varset, map(var, type), module_info).
+:- type cse_info
+	--->	cse_info(prog_varset, map(prog_var, type), module_info).
 
 :- pred detect_cse_in_proc_2(proc_id, pred_id, bool, module_info, module_info).
 % :- mode detect_cse_in_proc_2(in, in, out, di, uo) is det.
@@ -316,7 +317,7 @@ detect_cse_in_par_conj([Goal0 | Goals0], InstMap0, CseInfo0, CseInfo,
 	% structure. Now for each non-local variable, we check whether each
 	% branch matches that variable against the same functor.
 
-:- pred detect_cse_in_disj(list(var), list(hlds_goal), hlds_goal_info,
+:- pred detect_cse_in_disj(list(prog_var), list(hlds_goal), hlds_goal_info,
 	store_map, instmap, cse_info, cse_info, bool, hlds_goal_expr).
 :- mode detect_cse_in_disj(in, in, in, in, in, in, out, out, out) is det.
 
@@ -354,7 +355,7 @@ detect_cse_in_disj_2([Goal0 | Goals0], InstMap0, CseInfo0, CseInfo, Redo,
 	detect_cse_in_disj_2(Goals0, InstMap0, CseInfo1, CseInfo, Redo2, Goals),
 	bool__or(Redo1, Redo2, Redo).
 
-:- pred detect_cse_in_cases(list(var), var, can_fail, list(case),
+:- pred detect_cse_in_cases(list(prog_var), prog_var, can_fail, list(case),
 	hlds_goal_info, store_map, instmap, cse_info, cse_info, bool,
 	hlds_goal_expr).
 :- mode detect_cse_in_cases(in, in, in, in, in, in, in, in, out, out, out)
@@ -399,7 +400,7 @@ detect_cse_in_cases_2([Case0 | Cases0], InstMap, CseInfo0, CseInfo, Redo,
 	detect_cse_in_cases_2(Cases0, InstMap, CseInfo1, CseInfo, Redo2, Cases),
 	bool__or(Redo1, Redo2, Redo).
 
-:- pred detect_cse_in_ite(list(var), list(var),
+:- pred detect_cse_in_ite(list(prog_var), list(prog_var),
 	hlds_goal, hlds_goal, hlds_goal, hlds_goal_info,
 	store_map, instmap, cse_info, cse_info, bool, hlds_goal_expr).
 :- mode detect_cse_in_ite(in, in, in, in, in, in, in, in, in, out, out, out)
@@ -459,7 +460,7 @@ detect_cse_in_ite_2(Cond0, Then0, Else0, InstMap0, CseInfo0, CseInfo, Redo,
 %	has been hoisted out, with the new variables as the functor arguments.
 %	Unify is the unification that was hoisted out.
 
-:- pred common_deconstruct(list(hlds_goal), var, cse_info, cse_info,
+:- pred common_deconstruct(list(hlds_goal), prog_var, cse_info, cse_info,
 	hlds_goal, list(hlds_goal)).
 :- mode common_deconstruct(in, in, in, out, out, out) is semidet.
 
@@ -468,7 +469,7 @@ common_deconstruct(Goals0, Var, CseInfo0, CseInfo, Unify, Goals) :-
 		Goals, MaybeUnifyGoal),
 	MaybeUnifyGoal = yes(Unify).
 
-:- pred common_deconstruct_2(list(hlds_goal), var, maybe(hlds_goal),
+:- pred common_deconstruct_2(list(hlds_goal), prog_var, maybe(hlds_goal),
 	cse_info, cse_info, list(hlds_goal), maybe(hlds_goal)).
 :- mode common_deconstruct_2(in, in, in, in, out, out, out) is semidet.
 
@@ -483,7 +484,7 @@ common_deconstruct_2([Goal0 | Goals0], Var, MaybeUnify0,
 
 %-----------------------------------------------------------------------------%
 
-:- pred common_deconstruct_cases(list(case), var, cse_info, cse_info,
+:- pred common_deconstruct_cases(list(case), prog_var, cse_info, cse_info,
 	hlds_goal, list(case)).
 :- mode common_deconstruct_cases(in, in, in, out, out, out) is semidet.
 
@@ -493,7 +494,7 @@ common_deconstruct_cases(Cases0, Var, CseInfo0, CseInfo,
 		Cases, MaybeUnifyGoal),
 	MaybeUnifyGoal = yes(Unify).
 
-:- pred common_deconstruct_cases_2(list(case), var, maybe(hlds_goal),
+:- pred common_deconstruct_cases_2(list(case), prog_var, maybe(hlds_goal),
 	cse_info, cse_info, list(case), maybe(hlds_goal)).
 :- mode common_deconstruct_cases_2(in, in, in, in, out, out, out) is semidet.
 
@@ -514,8 +515,8 @@ common_deconstruct_cases_2([case(ConsId, Goal0) | Cases0], Var, MaybeUnify0,
 	% this branch.
 :- type cse_result == pair(maybe(hlds_goal), bool).
 
-:- pred find_bind_var_for_cse_in_deconstruct(var, hlds_goal, list(hlds_goal),
-	cse_result, cse_result, cse_info, cse_info).
+:- pred find_bind_var_for_cse_in_deconstruct(prog_var, hlds_goal,
+		list(hlds_goal), cse_result, cse_result, cse_info, cse_info).
 :- mode find_bind_var_for_cse_in_deconstruct(in, in, out,
 	in, out, in, out) is det.
 
@@ -550,8 +551,8 @@ find_bind_var_for_cse_in_deconstruct(Var, Goal0, Goals,
 	),
 	CseResult = MaybeUnify - Seen.
 
-:- pred construct_common_unify(var, hlds_goal, hlds_goal, varset, varset,
-	map(var, type), map(var, type), list(hlds_goal)).
+:- pred construct_common_unify(prog_var, hlds_goal, hlds_goal, prog_varset,
+	prog_varset, map(prog_var, type), map(prog_var, type), list(hlds_goal)).
 :- mode construct_common_unify(in, in, out, in, out, in, out, out) is det.
 
 construct_common_unify(Var, GoalExpr0 - GoalInfo, Goal, Varset0, Varset,
@@ -574,9 +575,9 @@ construct_common_unify(Var, GoalExpr0 - GoalInfo, Goal, Varset0, Varset,
 		error("unexpected goal in construct_common_unify")
 	).
 
-:- pred create_parallel_subterms(list(var), term__context, unify_context,
-	varset, varset, map(var, type), map(var, type), map(var, var),
-	list(hlds_goal)).
+:- pred create_parallel_subterms(list(prog_var), prog_context, unify_context,
+	prog_varset, prog_varset, map(prog_var, type), map(prog_var, type),
+	map(prog_var, prog_var), list(hlds_goal)).
 :- mode create_parallel_subterms(in, in, in, in, out, in, out, out, out) is det.
 
 create_parallel_subterms([], _, _, Varset, Varset, Typemap, Typemap, Sub, []) :-
@@ -596,8 +597,8 @@ create_parallel_subterms([OFV | OFV0], Context, UnifyContext, Varset0, Varset,
 
 %-----------------------------------------------------------------------------%
 
-:- pred find_similar_deconstruct(hlds_goal, hlds_goal, term__context,
-	list(hlds_goal)).
+:- pred find_similar_deconstruct(hlds_goal, hlds_goal, prog_context,
+		list(hlds_goal)).
 :- mode find_similar_deconstruct(in, in, in, out) is semidet.
 
 find_similar_deconstruct(OldUnifyGoal, NewUnifyGoal, Context, Replacements) :-
@@ -616,8 +617,8 @@ find_similar_deconstruct(OldUnifyGoal, NewUnifyGoal, Context, Replacements) :-
 		error("find_similar_deconstruct: non-deconstruct unify")
 	).
 
-:- pred pair_subterms(list(var), list(var), term__context, unify_context,
-	list(hlds_goal)).
+:- pred pair_subterms(list(prog_var), list(prog_var), prog_context,
+		unify_context, list(hlds_goal)).
 :- mode pair_subterms(in, in, in, in, out) is det.
 
 pair_subterms(OFV0, NFV0, Context, UnifyContext, Replacements) :-

@@ -16,34 +16,34 @@
 
 :- import_module hlds_module, hlds_pred, hlds_goal, hlds_data.
 :- import_module det_util, prog_data.
-:- import_module io, list, term, varset.
+:- import_module io, list.
 
 :- type det_msg	--->
 			% warnings
-			multidet_disj(term__context, list(term__context))
-		;	det_disj(term__context, list(term__context))
-		;	semidet_disj(term__context, list(term__context))
-		;	zero_soln_disj(term__context, list(term__context))
-		;	zero_soln_disjunct(term__context)
-		;	ite_cond_cannot_fail(term__context)
-		;	ite_cond_cannot_succeed(term__context)
-		;	negated_goal_cannot_fail(term__context)
-		;	negated_goal_cannot_succeed(term__context)
-		;	warn_obsolete(pred_id, term__context)
+			multidet_disj(prog_context, list(prog_context))
+		;	det_disj(prog_context, list(prog_context))
+		;	semidet_disj(prog_context, list(prog_context))
+		;	zero_soln_disj(prog_context, list(prog_context))
+		;	zero_soln_disjunct(prog_context)
+		;	ite_cond_cannot_fail(prog_context)
+		;	ite_cond_cannot_succeed(prog_context)
+		;	negated_goal_cannot_fail(prog_context)
+		;	negated_goal_cannot_succeed(prog_context)
+		;	warn_obsolete(pred_id, prog_context)
 				% warning about calls to predicates
 				% for which there is a `:- pragma obsolete'
 				% declaration.
-		;	warn_infinite_recursion(term__context)
+		;	warn_infinite_recursion(prog_context)
 				% warning about recursive calls
 				% which would cause infinite loops.
-		;	duplicate_call(seen_call_id, term__context,
-				term__context)
+		;	duplicate_call(seen_call_id, prog_context,
+				prog_context)
 				% multiple calls with the same input args.
 			% errors
-		;	cc_unify_can_fail(hlds_goal_info, var, type, varset,
-				cc_unify_context)
-		;	cc_unify_in_wrong_context(hlds_goal_info, var, type,
-				varset, cc_unify_context)
+		;	cc_unify_can_fail(hlds_goal_info, prog_var, type,
+				prog_varset, cc_unify_context)
+		;	cc_unify_in_wrong_context(hlds_goal_info, prog_var,
+				type, prog_varset, cc_unify_context)
 		;	cc_pred_in_wrong_context(hlds_goal_info, determinism,
 				pred_id, proc_id)
 		;	higher_order_cc_pred_in_wrong_context(hlds_goal_info,
@@ -120,7 +120,7 @@
 
 :- import_module hlds_data, type_util, mode_util, inst_match.
 :- import_module globals, options, prog_out, hlds_out, mercury_to_mercury.
-:- import_module passes_aux.
+:- import_module passes_aux, term, varset.
 
 :- import_module bool, int, map, set, std_util, require, string.
 
@@ -630,7 +630,7 @@ det_diagnose_goal_2(pragma_c_code(_, _, _, _, _, _, _), GoalInfo, Desired,
 
 %-----------------------------------------------------------------------------%
 
-:- pred report_higher_order_call_context(term__context::in,
+:- pred report_higher_order_call_context(prog_context::in,
 		io__state::di, io__state::uo) is det.
 report_higher_order_call_context(Context) -->
 	prog_out__write_context(Context),
@@ -639,7 +639,7 @@ report_higher_order_call_context(Context) -->
 %-----------------------------------------------------------------------------%
 
 :- pred det_diagnose_atomic_goal(determinism, determinism, 
-		pred(io__state, io__state), term__context,
+		pred(io__state, io__state), prog_context,
 		io__state, io__state).
 :- mode det_diagnose_atomic_goal(in, in, pred(di, uo) is det, in,
 		di, uo) is det.
@@ -739,7 +739,7 @@ det_diagnose_disj([Goal | Goals], Desired, Actual, SwitchContext, DetInfo,
 		ClausesWithSoln1, ClausesWithSoln, Diagnosed2),
 	{ bool__or(Diagnosed1, Diagnosed2, Diagnosed) }.
 
-:- pred det_diagnose_switch(var, list(case), determinism,
+:- pred det_diagnose_switch(prog_var, list(case), determinism,
 	list(switch_context), det_info, bool, io__state, io__state).
 :- mode det_diagnose_switch(in, in, in, in, in, out, di, uo) is det.
 
@@ -786,9 +786,9 @@ det_output_consid_list([ConsId | ConsIds], First) -->
 
 %-----------------------------------------------------------------------------%
 
-:- type switch_context --->	switch_context(var, cons_id).
+:- type switch_context --->	switch_context(prog_var, cons_id).
 
-:- pred det_diagnose_write_switch_context(term__context, list(switch_context),
+:- pred det_diagnose_write_switch_context(prog_context, list(switch_context),
 	det_info, io__state, io__state).
 :- mode det_diagnose_write_switch_context(in, in, in, di, uo) is det.
 
@@ -808,7 +808,7 @@ det_diagnose_write_switch_context(Context, [SwitchContext | SwitchContexts],
 
 %-----------------------------------------------------------------------------%
 
-:- pred det_report_call_context(term__context, maybe(call_unify_context),
+:- pred det_report_call_context(prog_context, maybe(call_unify_context),
 	det_info, pred_id, proc_id, io__state, io__state).
 :- mode det_report_call_context(in, in, in, in, in, di, uo) is det.
 
@@ -868,8 +868,8 @@ det_report_call_context(Context, CallUnifyContext, DetInfo, PredId, ModeId) -->
 % with a capital letter) and whether it is the last part (in which case we
 % omit the word "in" on the final "... in unification ...").
 
-:- pred det_report_unify_context(bool, bool, term__context, unify_context,
-	det_info, var, unify_rhs, io__state, io__state).
+:- pred det_report_unify_context(bool, bool, prog_context, unify_context,
+	det_info, prog_var, unify_rhs, io__state, io__state).
 :- mode det_report_unify_context(in, in, in, in, in, in, in, di, uo) is det.
 
 det_report_unify_context(First0, Last, Context, UnifyContext, DetInfo, LT, RT)
@@ -879,6 +879,9 @@ det_report_unify_context(First0, Last, Context, UnifyContext, DetInfo, LT, RT)
 	{ det_get_proc_info(DetInfo, ProcInfo) },
 	{ proc_info_varset(ProcInfo, Varset) },
 	{ det_info_get_module_info(DetInfo, ModuleInfo) },
+		% We don't have the inst varset - it's not in the
+		% proc_info, so we'll just make one up....
+	{ varset__init(InstVarSet) },
 	( { First = yes } ->
 		( { Last = yes } ->
 			io__write_string("  Unification ")
@@ -905,11 +908,13 @@ det_report_unify_context(First0, Last, Context, UnifyContext, DetInfo, LT, RT)
 			io__write_string("of `"),
 			mercury_output_var(LT, Varset, no),
 			io__write_string("' and `"),
-			hlds_out__write_unify_rhs(RT, ModuleInfo, Varset, no, 3)
+			hlds_out__write_unify_rhs(RT, ModuleInfo, Varset,
+				InstVarSet, no, 3)
 		)
 	;
 		io__write_string("with `"),
-		hlds_out__write_unify_rhs(RT, ModuleInfo, Varset, no, 3)
+		hlds_out__write_unify_rhs(RT, ModuleInfo, Varset, InstVarSet,
+			no, 3)
 	),
 	io__write_string("'").
 
@@ -1291,7 +1296,7 @@ det_report_seen_call_id(SeenCall, ModuleInfo) -->
 	).
 %-----------------------------------------------------------------------------%
 
-:- pred det_report_context_lines(list(term__context), bool, 
+:- pred det_report_context_lines(list(prog_context), bool, 
 		io__state, io__state).
 :- mode det_report_context_lines(in, in, di, uo) is det.
 

@@ -19,41 +19,41 @@
 :- interface.
 
 :- import_module prog_data, hlds_pred, hlds_data, hlds_goal, llds, code_info.
-:- import_module term, list, set, assoc_list.
+:- import_module list, set, assoc_list.
 
-:- pred call_gen__generate_higher_order_call(code_model, var, list(var),
-			list(type), list(mode), determinism, hlds_goal_info,
-			code_tree, code_info, code_info).
+:- pred call_gen__generate_higher_order_call(code_model, prog_var,
+			list(prog_var), list(type), list(mode), determinism,
+			hlds_goal_info, code_tree, code_info, code_info).
 :- mode call_gen__generate_higher_order_call(in, in, in, in, in, in, in, out,
 				in, out) is det.
 
-:- pred call_gen__generate_class_method_call(code_model, var, int, list(var),
-			list(type), list(mode), determinism, hlds_goal_info,
-			code_tree, code_info, code_info).
+:- pred call_gen__generate_class_method_call(code_model, prog_var, int,
+			list(prog_var), list(type), list(mode), determinism,
+			hlds_goal_info, code_tree, code_info, code_info).
 :- mode call_gen__generate_class_method_call(in, in, in, in, in, in, in, in,
 				out, in, out) is det.
 
-:- pred call_gen__generate_call(code_model, pred_id, proc_id, list(var),
+:- pred call_gen__generate_call(code_model, pred_id, proc_id, list(prog_var),
 			hlds_goal_info, code_tree, code_info, code_info).
 :- mode call_gen__generate_call(in, in, in, in, in, out, in, out) is det.
 
-:- pred call_gen__generate_builtin(code_model, pred_id, proc_id, list(var),
+:- pred call_gen__generate_builtin(code_model, pred_id, proc_id, list(prog_var),
 			code_tree, code_info, code_info).
 :- mode call_gen__generate_builtin(in, in, in, in, out, in, out) is det.
 
-:- pred call_gen__partition_args(assoc_list(var, arg_info),
-						list(var), list(var)).
+:- pred call_gen__partition_args(assoc_list(prog_var, arg_info),
+						list(prog_var), list(prog_var)).
 :- mode call_gen__partition_args(in, out, out) is det.
 
-:- pred call_gen__input_arg_locs(assoc_list(var, arg_info), 
-				assoc_list(var, arg_loc)).
+:- pred call_gen__input_arg_locs(assoc_list(prog_var, arg_info), 
+				assoc_list(prog_var, arg_loc)).
 :- mode call_gen__input_arg_locs(in, out) is det.
 
-:- pred call_gen__output_arg_locs(assoc_list(var, arg_info), 
-				assoc_list(var, arg_loc)).
+:- pred call_gen__output_arg_locs(assoc_list(prog_var, arg_info), 
+				assoc_list(prog_var, arg_loc)).
 :- mode call_gen__output_arg_locs(in, out) is det.
 
-:- pred call_gen__save_variables(set(var), code_tree,
+:- pred call_gen__save_variables(set(prog_var), code_tree,
 						code_info, code_info).
 :- mode call_gen__save_variables(in, out, in, out) is det.
 
@@ -435,7 +435,8 @@ call_gen__save_variables(Args, Code) -->
 	{ set__to_sorted_list(Vars, Variables) },
 	call_gen__save_variables_2(Variables, Code).
 
-:- pred call_gen__save_variables_2(list(var), code_tree, code_info, code_info).
+:- pred call_gen__save_variables_2(list(prog_var), code_tree,
+		code_info, code_info).
 :- mode call_gen__save_variables_2(in, out, in, out) is det.
 
 call_gen__save_variables_2([], empty) --> [].
@@ -446,7 +447,7 @@ call_gen__save_variables_2([Var | Vars], Code) -->
 
 %---------------------------------------------------------------------------%
 
-:- pred call_gen__rebuild_registers(assoc_list(var, arg_info),
+:- pred call_gen__rebuild_registers(assoc_list(prog_var, arg_info),
 							code_info, code_info).
 :- mode call_gen__rebuild_registers(in, in, out) is det.
 
@@ -454,7 +455,7 @@ call_gen__rebuild_registers(Args) -->
 	code_info__clear_all_registers,
 	call_gen__rebuild_registers_2(Args).
 
-:- pred call_gen__rebuild_registers_2(assoc_list(var, arg_info),
+:- pred call_gen__rebuild_registers_2(assoc_list(prog_var, arg_info),
 							code_info, code_info).
 :- mode call_gen__rebuild_registers_2(in, in, out) is det.
 
@@ -558,7 +559,8 @@ call_gen__partition_args([V - arg_info(_Loc,Mode) | Rest], Ins, Outs) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred call_gen__select_out_args(assoc_list(var, arg_info), set(var)).
+:- pred call_gen__select_out_args(assoc_list(prog_var, arg_info),
+		set(prog_var)).
 :- mode call_gen__select_out_args(in, out) is det.
 
 call_gen__select_out_args([], Out) :-
@@ -615,8 +617,9 @@ call_gen__output_arg_locs([Var - arg_info(Loc, Mode) | Args], Vs) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred call_gen__generate_call_vn_livevals(list(arg_loc)::in, set(var)::in,
-	code_tree::out, code_info::in, code_info::out) is det.
+:- pred call_gen__generate_call_vn_livevals(list(arg_loc)::in,
+	set(prog_var)::in, code_tree::out,
+	code_info::in, code_info::out) is det.
 
 call_gen__generate_call_vn_livevals(InputArgLocs, OutputArgs, Code) -->
 	code_info__generate_call_vn_livevals(InputArgLocs, OutputArgs,
@@ -627,8 +630,8 @@ call_gen__generate_call_vn_livevals(InputArgLocs, OutputArgs, Code) -->
 
 %---------------------------------------------------------------------------%
 
-:- pred call_gen__generate_immediate_args(list(var), int, list(lval), code_tree,
-							code_info, code_info).
+:- pred call_gen__generate_immediate_args(list(prog_var), int, list(lval),
+		code_tree, code_info, code_info).
 :- mode call_gen__generate_immediate_args(in, in, out, out, in, out) is det.
 
 call_gen__generate_immediate_args([], _N, [], empty) --> [].
@@ -641,7 +644,8 @@ call_gen__generate_immediate_args([V | Vs], N0, [Lval | Lvals], Code) -->
 
 %---------------------------------------------------------------------------%
 
-:- pred call_gen__outvars_to_outargs(list(var), int, assoc_list(var,arg_info)).
+:- pred call_gen__outvars_to_outargs(list(prog_var), int,
+		assoc_list(prog_var, arg_info)).
 :- mode call_gen__outvars_to_outargs(in, in, out) is det.
 
 call_gen__outvars_to_outargs([], _N, []).

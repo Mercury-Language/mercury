@@ -128,7 +128,7 @@ about unbound type variables.
 
 
 :- pred report_pred_proc_id(module_info, pred_id, proc_id, 
-		maybe(term__context), term__context, io__state, io__state).
+		maybe(prog_context), prog_context, io__state, io__state).
 :- mode report_pred_proc_id(in, in, in, in, out, di, uo) is det.
 
 :- pred report_pred_name_mode(pred_or_func, string, list((mode)),
@@ -141,8 +141,8 @@ about unbound type variables.
 
 :- import_module options, globals, hlds_out, prog_out, mode_util.
 :- import_module mercury_to_mercury.
-:- import_module int, map, tree234, require.
 :- import_module varset.
+:- import_module int, map, tree234, require.
 
 process_all_nonimported_procs(Task, ModuleInfo0, ModuleInfo) -->
 	{ module_info_predids(ModuleInfo0, PredIds) },
@@ -446,4 +446,5 @@ report_pred_name_mode(function, FuncName, ArgModes) -->
 	),
 	io__write_string(" = "),
 	mercury_output_mode(FuncRetMode, InstVarSet).
+
 %-----------------------------------------------------------------------------%

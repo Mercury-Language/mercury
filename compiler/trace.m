@@ -47,7 +47,7 @@
 
 :- import_module hlds_goal, hlds_pred, hlds_module.
 :- import_module globals, prog_data, llds, code_info.
-:- import_module map, std_util, set, term.
+:- import_module map, std_util, set.
 
 	% The kinds of external ports for which the code we generate will
 	% call MR_trace. The redo port is not on this list, because for that
@@ -85,7 +85,8 @@
 	% of the procedure (those partially clobbered may still be of interest,
 	% although to handle them properly we need to record insts in stack
 	% layouts).
-:- pred trace__fail_vars(module_info::in, proc_info::in, set(var)::out) is det.
+:- pred trace__fail_vars(module_info::in, proc_info::in,
+		set(prog_var)::out) is det.
 
 	% Return the number of slots reserved for tracing information.
 	% If there are N slots, the reserved slots will be 1 through N.
@@ -140,9 +141,9 @@
 
 :- implementation.
 
-:- import_module continuation_info, type_util, llds_out, tree.
+:- import_module continuation_info, type_util, llds_out, tree, varset.
 :- import_module (inst), instmap, inst_match, mode_util, options.
-:- import_module list, bool, int, string, map, std_util, varset, require.
+:- import_module list, bool, int, string, map, std_util, require.
 
 	% The redo port is not included in this type; see the comment
 	% on the type external_trace_port above.
@@ -163,7 +164,7 @@
 	;	internal(
 			goal_path,	% The path of the goal whose start
 					% this port represents.
-			set(var)	% The pre-death set of this goal.
+			set(prog_var)	% The pre-death set of this goal.
 		)
 	;	nondet_pragma.
 
@@ -543,7 +544,7 @@ trace__maybe_setup_redo_event(TraceInfo, Code) :-
 		Code = empty
 	).
 
-:- pred trace__produce_vars(list(var)::in, varset::in, instmap::in,
+:- pred trace__produce_vars(list(prog_var)::in, prog_varset::in, instmap::in,
 	set(tvar)::in, set(tvar)::out, list(var_info)::out, code_tree::out,
 	code_info::in, code_info::out) is det.
 
@@ -574,8 +575,8 @@ trace__produce_vars([Var | Vars], VarSet, InstMap, Tvars0, Tvars,
 
 %-----------------------------------------------------------------------------%
 
-:- pred trace__build_fail_vars(list(var)::in, list(inst)::in,
-	list(arg_info)::in, module_info::in, list(var)::out) is semidet.
+:- pred trace__build_fail_vars(list(prog_var)::in, list(inst)::in,
+	list(arg_info)::in, module_info::in, list(prog_var)::out) is semidet.
 
 trace__build_fail_vars([], [], [], _, []).
 trace__build_fail_vars([Var | Vars], [Inst | Insts], [Info | Infos],

@@ -32,10 +32,10 @@
 :- import_module dependency_graph, hlds_data, det_analysis, globals.
 :- import_module mode_util, goal_util, prog_data, prog_util, purity.
 :- import_module modes, mode_info, unique_modes, options, hlds_out.
-:- import_module quantification.
+:- import_module quantification, term, varset.
 
 :- import_module assoc_list, bool, getopt, int, list, map, require.
-:- import_module set, std_util, string, term, varset.
+:- import_module set, std_util, string.
 
 deforestation(ModuleInfo0, ModuleInfo, IO0, IO) :-
 	proc_arg_info_init(ProcArgInfo0),
@@ -234,7 +234,7 @@ deforest__disj([Goal0 | Goals0], [Goal | Goals]) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred deforest__cases(var::in, list(case)::in, list(case)::out,
+:- pred deforest__cases(prog_var::in, list(case)::in, list(case)::out,
 		pd_info::pd_info_di, pd_info::pd_info_uo) is det.
 
 deforest__cases(_, [], []) --> [].
@@ -281,7 +281,7 @@ deforest__compute_goal_infos([Goal | Goals0],
 	deforest__compute_goal_infos(Goals0, Goals).
 
 :- pred deforest__get_branch_vars_goal(hlds_goal::in, 
-		maybe(pd_branch_info(var))::out, pd_info::pd_info_di, 
+		maybe(pd_branch_info(prog_var))::out, pd_info::pd_info_di, 
 		pd_info::pd_info_uo) is det.
 
 deforest__get_branch_vars_goal(Goal, MaybeBranchInfo) -->
@@ -308,10 +308,12 @@ deforest__get_branch_vars_goal(Goal, MaybeBranchInfo) -->
 
 %-----------------------------------------------------------------------------%
 
-:- type annotated_conj == assoc_list(hlds_goal, maybe(pd_branch_info(var))).
+:- type annotated_conj
+	==	assoc_list(hlds_goal, maybe(pd_branch_info(prog_var))).
 
-:- pred deforest__conj(annotated_conj::in, set(var)::in, list(hlds_goal)::in, 
-	list(hlds_goal)::out, pd_info::pd_info_di, pd_info::pd_info_uo) is det.
+:- pred deforest__conj(annotated_conj::in, set(prog_var)::in,
+		list(hlds_goal)::in, list(hlds_goal)::out,
+		pd_info::pd_info_di, pd_info::pd_info_uo) is det.
 
 deforest__conj([], _, RevGoals, Goals) --> 
 	{ list__reverse(RevGoals, Goals) }.
@@ -343,10 +345,12 @@ deforest__conj([Goal0 - MaybeBranchInfo | Goals0], NonLocals,
 :- type deforest_info
 	---> deforest_info(
 		hlds_goal,		% earlier goal in conjunction
-		pd_branch_info(var),	% branch_info for earlier goal
+		pd_branch_info(prog_var),
+					%branch_info for earlier goal
 		list(hlds_goal),	% goals in between
 		hlds_goal,		% later goal in conjunction
-		pd_branch_info(var),	% branch_info for later goal
+		pd_branch_info(prog_var),
+					% branch_info for later goal
 		set(int)		% branches for which there is
 					% extra information about the second
 					% goal, numbering starts at 1.
@@ -355,9 +359,9 @@ deforest__conj([Goal0 - MaybeBranchInfo | Goals0], NonLocals,
 	% Search backwards through the conjunction for the last
 	% goal which contains extra information about the variable 
 	% being switched on.
-:- pred deforest__detect_deforestation(hlds_goal::in, pd_branch_info(var)::in, 
-		annotated_conj::in, annotated_conj::out, 
-		deforest_info::out) is semidet.
+:- pred deforest__detect_deforestation(hlds_goal::in,
+		pd_branch_info(prog_var)::in, annotated_conj::in,
+		annotated_conj::out, deforest_info::out) is semidet.
 
 deforest__detect_deforestation(EarlierGoal, BranchInfo, 
 		Goals0, Goals1, DeforestInfo) :-
@@ -365,7 +369,7 @@ deforest__detect_deforestation(EarlierGoal, BranchInfo,
 		Goals0, Goals1, DeforestInfo).
 	
 :- pred deforest__search_for_deforest_goal(hlds_goal::in,
-		pd_branch_info(var)::in, annotated_conj::in,
+		pd_branch_info(prog_var)::in, annotated_conj::in,
 		annotated_conj::in, annotated_conj::out,
 		deforest_info::out) is semidet.
 
@@ -397,8 +401,8 @@ deforest__search_for_deforest_goal(EarlierGoal, EarlierBranchInfo,
 	% we have more information in the first than in the instmap.
 	% Get the branches in the first goal which contain this extra
 	% information.
-:- pred deforest__potential_deforestation(pd_branch_info(var)::in, 
-		pd_branch_info(var)::in, set(int)::out) is semidet.
+:- pred deforest__potential_deforestation(pd_branch_info(prog_var)::in, 
+		pd_branch_info(prog_var)::in, set(int)::out) is semidet.
 
 deforest__potential_deforestation(Info1, Info2, DeforestBranches) :-
 	Info1 = pd_branch_info(VarMap1, _, _),
@@ -423,7 +427,7 @@ deforest__potential_deforestation(Info1, Info2, DeforestBranches) :-
 
 	% Take the part of a conjunction found to have potential
 	% for deforestation and attempt the optimization.
-:- pred deforest__handle_deforestation(set(var)::in, deforest_info::in,
+:- pred deforest__handle_deforestation(set(prog_var)::in, deforest_info::in,
 		list(hlds_goal)::in, list(hlds_goal)::out, 
 		annotated_conj::in, annotated_conj::out, 
 		bool::out, pd_info::pd_info_di, pd_info::pd_info_uo) is det.
@@ -701,7 +705,7 @@ deforest__check_improvement(Optimized0, CostDelta0, SizeDelta0, Optimized) -->
 %-----------------------------------------------------------------------------%
 
 	% Attempt deforestation on a pair of calls.
-:- pred deforest__call_call(set(var)::in, deforest_info::in, 
+:- pred deforest__call_call(set(prog_var)::in, deforest_info::in, 
 		hlds_goal::out, bool::out,
 		pd_info::pd_info_di, pd_info::pd_info_uo) is det.
 
@@ -786,7 +790,7 @@ deforest__call_call(ConjNonLocals, DeforestInfo, Goal, Optimized) -->
 	% Create a new procedure for a conjunction to be deforested, then
 	% recursively process that procedure.
 :- pred deforest__create_deforest_goal(hlds_goal::in, hlds_goals::in, 
-	hlds_goal::in, hlds_goal::in, set(var)::in, bool::in,
+	hlds_goal::in, hlds_goal::in, set(prog_var)::in, bool::in,
 	pair(pred_proc_id)::in, int::in, maybe(pred_proc_id)::in, 
 	hlds_goal::out, bool::out, pd_info::pd_info_di, 
 	pd_info::pd_info_uo) is det.
@@ -946,7 +950,7 @@ deforest__create_deforest_goal(EarlierGoal, BetweenGoals, LaterGoal,
 
 	% Create a goal to call a newly created version.
 :- pred deforest__create_call_goal(pred_proc_id::in, version_info::in, 
-		map(var, var)::in, tsubst::in, hlds_goal::out, 
+		map(prog_var, prog_var)::in, tsubst::in, hlds_goal::out, 
 		pd_info::pd_info_di, pd_info::pd_info_uo) is det.
 
 deforest__create_call_goal(proc(PredId, ProcId), VersionInfo,
@@ -993,9 +997,10 @@ deforest__create_call_goal(proc(PredId, ProcId), VersionInfo,
 	{ Goal = call(PredId, ProcId, Args, not_builtin, no, 
 			qualified(PredModule, PredName)) - GoalInfo }.
 	
-:- pred deforest__create_deforest_call_args(list(var)::in, list(type)::in,
-	map(var, var)::in, substitution::in, list(var)::out, varset::in,
-	varset::out, map(var, type)::in, map(var, type)::out) is det.
+:- pred deforest__create_deforest_call_args(list(prog_var)::in, list(type)::in,
+	map(prog_var, prog_var)::in, tsubst::in,
+	list(prog_var)::out, prog_varset::in, prog_varset::out,
+	map(prog_var, type)::in, map(prog_var, type)::out) is det.
 	
 deforest__create_deforest_call_args([], [], _, _, [], 
 		VarSet, VarSet, VarTypes, VarTypes).
@@ -1024,7 +1029,7 @@ deforest__create_deforest_call_args([OldArg | OldArgs], [ArgType | ArgTypes],
 	% Combine the two goals to be deforested and the 
 	% goals in between into a conjunction.
 :- pred deforest__create_conj(hlds_goal::in, list(hlds_goal)::in, 
-		hlds_goal::in, set(var)::in, hlds_goal::out) is det.
+		hlds_goal::in, set(prog_var)::in, hlds_goal::out) is det.
 
 deforest__create_conj(EarlierGoal, BetweenGoals, LaterGoal, 
 			NonLocals, FoldGoal) :-
@@ -1047,7 +1052,7 @@ deforest__create_conj(EarlierGoal, BetweenGoals, LaterGoal,
 	% termination check to fail and/or the insts of the versions
 	% not to match in an attempt to achieve folding.
 :- pred deforest__try_generalisation(hlds_goal::in, list(hlds_goal)::in,
-		hlds_goal::in, hlds_goal::in, set(var)::in, 
+		hlds_goal::in, hlds_goal::in, set(prog_var)::in, 
 		pair(pred_proc_id)::in, int::in, 
 		pred_proc_id::in, hlds_goal::out, bool::out,
 		pd_info::pd_info_di, pd_info::pd_info_uo) is det.
@@ -1095,11 +1100,12 @@ deforest__try_generalisation(EarlierGoal, BetweenGoals, LaterGoal, FoldGoal,
 		{ Optimized = no }
 	).	
 
-:- pred deforest__do_generalisation(list(var)::in, map(var, var)::in,
-	instmap::in, hlds_goal::in, list(hlds_goal)::in, hlds_goal::in, 
-	hlds_goal::in, set(var)::in, pair(pred_proc_id)::in, int::in, 
-	pred_proc_id::in, hlds_goal::out, bool::out, 
-	pd_info::pd_info_di, pd_info::pd_info_uo) is det.
+:- pred deforest__do_generalisation(list(prog_var)::in,
+		map(prog_var, prog_var)::in, instmap::in, hlds_goal::in,
+		list(hlds_goal)::in, hlds_goal::in, hlds_goal::in,
+		set(prog_var)::in, pair(pred_proc_id)::in, int::in, 
+		pred_proc_id::in, hlds_goal::out, bool::out, 
+		pd_info::pd_info_di, pd_info::pd_info_uo) is det.
 
 deforest__do_generalisation(VersionArgs, Renaming, VersionInstMap, EarlierGoal, 
 		BetweenGoals, LaterGoal, FoldGoal, ConjNonLocals, 
@@ -1136,8 +1142,9 @@ deforest__do_generalisation(VersionArgs, Renaming, VersionInstMap, EarlierGoal,
 	),
 	pd_info_set_instmap(InstMap0).
 
-:- pred deforest__try_MSG(module_info::in, instmap::in, list(var)::in, 
-		map(var, var)::in, instmap::in, instmap::out) is semidet.
+:- pred deforest__try_MSG(module_info::in, instmap::in, list(prog_var)::in, 
+		map(prog_var, prog_var)::in,
+		instmap::in, instmap::out) is semidet.
 
 deforest__try_MSG(_, _, [], _, InstMap, InstMap).
 deforest__try_MSG(ModuleInfo, VersionInstMap, [VersionArg | VersionArgs], 
@@ -1169,10 +1176,10 @@ deforest__try_MSG(ModuleInfo, VersionInstMap, [VersionArg | VersionArgs],
 	%
 	% XXX this only undoes one level of generalisation.
 :- pred deforest__match_generalised_version(module_info::in, 
-		hlds_goal::in, list(var)::in, list(type)::in, hlds_goal::in, 
-		list(hlds_goal)::in, hlds_goal::in, set(var)::in, 
-		varset::in, map(var, type)::in, 
-		version_index::in, map(var, var)::out) is semidet.
+		hlds_goal::in, list(prog_var)::in, list(type)::in,
+		hlds_goal::in, list(hlds_goal)::in, hlds_goal::in,
+		set(prog_var)::in, prog_varset::in, map(prog_var, type)::in, 
+		version_index::in, map(prog_var, prog_var)::out) is semidet.
 
 deforest__match_generalised_version(ModuleInfo, VersionGoal, VersionArgs, 
 		VersionArgTypes, FirstGoal, BetweenGoals, LastGoal, 
@@ -1256,9 +1263,10 @@ deforest__match_generalised_version(ModuleInfo, VersionGoal, VersionArgs,
 	% sub-conjunction. This is needed to ensure that the temporary 
 	% list in double_append is found to be local to the conjunction 
 	% and can be removed.
-:- pred deforest__get_sub_conj_nonlocals(set(var)::in, deforest_info::in,
+:- pred deforest__get_sub_conj_nonlocals(set(prog_var)::in, deforest_info::in,
 		list(hlds_goal)::in, list(hlds_goal)::in, 
-		list(hlds_goal)::in, annotated_conj::in, set(var)::out) is det.
+		list(hlds_goal)::in, annotated_conj::in,
+		set(prog_var)::out) is det.
 
 deforest__get_sub_conj_nonlocals(NonLocals0, DeforestInfo, 
 		RevBeforeGoals, BeforeIrrelevant, AfterIrrelevant, 
@@ -1380,7 +1388,7 @@ deforest__can_move_goal_backward(ModuleInfo, FullyStrict, ThisGoal, Goals) :-
 	% Tack the second goal and the goals in between onto the end
 	% of each branch of the first goal, unfolding the second goal
 	% in the branches which have extra information about the arguments.
-:- pred deforest__push_goal_into_goal(set(var)::in, set(int)::in,
+:- pred deforest__push_goal_into_goal(set(prog_var)::in, set(int)::in,
 		hlds_goal::in, hlds_goals::in, hlds_goal::in, hlds_goal::out, 
 		pd_info::pd_info_di, pd_info::pd_info_uo) is det.
 
@@ -1438,7 +1446,7 @@ deforest__push_goal_into_goal(NonLocals, DeforestInfo, EarlierGoal,
 	pd_info_set_instmap(InstMap0).
 
 :- pred deforest__append_goal_to_disjuncts(hlds_goals::in, hlds_goals::in,
-	hlds_goal::in, set(var)::in, int::in, set(int)::in, 
+	hlds_goal::in, set(prog_var)::in, int::in, set(int)::in, 
 	hlds_goals::out, pd_info::pd_info_di, pd_info::pd_info_uo) is det.
 
 deforest__append_goal_to_disjuncts([], _, _, _, _, _, []) --> [].
@@ -1453,9 +1461,10 @@ deforest__append_goal_to_disjuncts([Goal0 | Goals0], BetweenGoals,
 	deforest__append_goal_to_disjuncts(Goals0, BetweenGoals, GoalToAppend, 
 		NonLocals, NextBranch, Branches, Goals).
 
-:- pred deforest__append_goal_to_cases(var::in, list(case)::in, hlds_goals::in,
-	hlds_goal::in, set(var)::in, int::in, set(int)::in,
-	list(case)::out, pd_info::pd_info_di, pd_info::pd_info_uo) is det.
+:- pred deforest__append_goal_to_cases(prog_var::in, list(case)::in,
+		hlds_goals::in, hlds_goal::in, set(prog_var)::in, int::in,
+		set(int)::in, list(case)::out, pd_info::pd_info_di,
+		pd_info::pd_info_uo) is det.
 
 deforest__append_goal_to_cases(_, [], _, _, _, _, _, []) --> [].
 deforest__append_goal_to_cases(Var, [case(ConsId, Goal0) | Cases0], 
@@ -1471,7 +1480,7 @@ deforest__append_goal_to_cases(Var, [case(ConsId, Goal0) | Cases0],
 		NonLocals, NextCase, Branches, Cases).
 
 :- pred deforest__append_goal(hlds_goal::in, hlds_goals::in, 
-	hlds_goal::in, set(var)::in, int::in, set(int)::in,
+	hlds_goal::in, set(prog_var)::in, int::in, set(int)::in,
 	hlds_goal::out, pd_info::pd_info_di, pd_info::pd_info_uo) is det.
 
 deforest__append_goal(Goal0, BetweenGoals, GoalToAppend0,
@@ -1500,8 +1509,8 @@ deforest__append_goal(Goal0, BetweenGoals, GoalToAppend0,
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- pred deforest__call(pred_id::in, proc_id::in, list(var)::in, sym_name::in,
-		hlds_goal::in, hlds_goal::out, 
+:- pred deforest__call(pred_id::in, proc_id::in, list(prog_var)::in,
+		sym_name::in, hlds_goal::in, hlds_goal::out, 
 		pd_info::pd_info_di, pd_info::pd_info_uo) is det.
 
 deforest__call(PredId, ProcId, Args, SymName, Goal0, Goal) -->
@@ -1557,7 +1566,7 @@ deforest__call(PredId, ProcId, Args, SymName, Goal0, Goal) -->
 	).
 
 :- pred deforest__unfold_call(bool::in, bool::in, pred_id::in, proc_id::in, 
-		list(var)::in, hlds_goal::in, hlds_goal::out, bool::out,
+		list(prog_var)::in, hlds_goal::in, hlds_goal::out, bool::out,
 		pd_info::pd_info_di, pd_info::pd_info_uo) is det.
 
 deforest__unfold_call(CheckImprovement, CheckVars, PredId, ProcId, Args, 

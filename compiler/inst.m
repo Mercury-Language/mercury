@@ -13,7 +13,7 @@
 :- interface.
 
 :- import_module prog_data, hlds_data, hlds_pred.
-:- import_module list, std_util, term.
+:- import_module list, std_util.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -28,7 +28,7 @@
 				% The pred_inst_info is used for
 				% higher-order pred modes
 	;		not_reached
-	;		inst_var(var)
+	;		inst_var(inst_var)
 				% A defined_inst is possibly recursive
 				% inst whose value is stored in the
 				% inst_table.  This is used both for

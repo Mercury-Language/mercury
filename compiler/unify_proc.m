@@ -62,7 +62,7 @@
 	% Add a new request for a unification procedure to the
 	% proc_requests table.
 
-:- pred unify_proc__request_unify(unify_proc_id, determinism, term__context,
+:- pred unify_proc__request_unify(unify_proc_id, determinism, prog_context,
 				module_info, module_info).
 :- mode unify_proc__request_unify(in, in, in, in, out) is det.
 
@@ -71,7 +71,7 @@
 	% proc_id.  (This is used by unique_modes.m.)
 
 :- pred unify_proc__request_proc(pred_id, list(mode), maybe(list(is_live)),
-				maybe(determinism), term__context,
+				maybe(determinism), prog_context,
 				module_info, proc_id, module_info).
 :- mode unify_proc__request_proc(in, in, in, in, in, in, out, out) is det.
 
@@ -99,7 +99,7 @@
 	% special predicates (compare/3, index/3, unify, etc.)
 
 :- pred unify_proc__generate_clause_info(special_pred_id, type,
-			hlds_type_body, term__context, module_info,
+			hlds_type_body, prog_context, module_info,
 			clauses_info).
 :- mode unify_proc__generate_clause_info(in, in, in, in, in, out) is det.
 
@@ -107,12 +107,12 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module tree, map, queue, int, string, require, term.
+:- import_module tree, map, queue, int, string, require.
 
-:- import_module code_util, code_info, type_util, varset.
+:- import_module code_util, code_info, type_util.
 :- import_module mercury_to_mercury, hlds_out.
 :- import_module make_hlds, prog_util, prog_out, inst_match.
-:- import_module quantification, clause_to_proc.
+:- import_module quantification, clause_to_proc, term, varset.
 :- import_module globals, options, modes, mode_util, (inst).
 :- import_module switch_detection, cse_detection, det_analysis, unique_modes.
 
@@ -476,9 +476,8 @@ unify_proc__generate_clause_info(SpecialPredId, Type, TypeBody, Context,
 	unify_proc__info_extract(VarTypeInfo, VarSet, Types),
 	ClauseInfo = clauses_info(VarSet, Types, Types, Args, Clauses).
 
-:- pred unify_proc__generate_unify_clauses(hlds_type_body, var, var,
-				term__context, list(clause),
-				unify_proc_info, unify_proc_info).
+:- pred unify_proc__generate_unify_clauses(hlds_type_body, prog_var, prog_var,
+		prog_context, list(clause), unify_proc_info, unify_proc_info).
 :- mode unify_proc__generate_unify_clauses(in, in, in, in, out, in, out)
 	is det.
 
@@ -513,9 +512,8 @@ unify_proc__generate_unify_clauses(TypeBody, H1, H2, Context, Clauses) -->
 			Clauses)
 	).
 
-:- pred unify_proc__generate_index_clauses(hlds_type_body, var, var,
-				term__context, list(clause),
-				unify_proc_info, unify_proc_info).
+:- pred unify_proc__generate_index_clauses(hlds_type_body, prog_var, prog_var,
+		prog_context, list(clause), unify_proc_info, unify_proc_info).
 :- mode unify_proc__generate_index_clauses(in, in, in, in, out, in, out)
 	is det.
 
@@ -544,9 +542,9 @@ unify_proc__generate_index_clauses(TypeBody, X, Index, Context, Clauses) -->
 			Clauses)
 	).
 
-:- pred unify_proc__generate_compare_clauses(hlds_type_body, var, var, var,
-				term__context,
-				list(clause), unify_proc_info, unify_proc_info).
+:- pred unify_proc__generate_compare_clauses(hlds_type_body, prog_var, prog_var,
+		prog_var, prog_context, list(clause),
+		unify_proc_info, unify_proc_info).
 :- mode unify_proc__generate_compare_clauses(in, in, in, in, in, out, in, out)
 	is det.
 
@@ -574,8 +572,8 @@ unify_proc__generate_compare_clauses(TypeBody, Res, H1, H2, Context, Clauses)
 			Clauses)
 	).
 
-:- pred unify_proc__quantify_clause_body(list(var), hlds_goal, term__context,
-			list(clause), unify_proc_info, unify_proc_info).
+:- pred unify_proc__quantify_clause_body(list(prog_var), hlds_goal,
+		prog_context, list(clause), unify_proc_info, unify_proc_info).
 :- mode unify_proc__quantify_clause_body(in, in, in, out, in, out) is det.
 
 unify_proc__quantify_clause_body(HeadVars, Goal, Context, Clauses) -->
@@ -617,9 +615,9 @@ unify_proc__quantify_clause_body(HeadVars, Goal, Context, Clauses) -->
 			).
 */
 
-:- pred unify_proc__generate_du_unify_clauses(list(constructor), var, var,
-				term__context, list(clause),
-				unify_proc_info, unify_proc_info).
+:- pred unify_proc__generate_du_unify_clauses(list(constructor), prog_var,
+		prog_var, prog_context, list(clause),
+		unify_proc_info, unify_proc_info).
 :- mode unify_proc__generate_du_unify_clauses(in, in, in, in, out, in, out)
 	is det.
 
@@ -674,9 +672,9 @@ unify_proc__generate_du_unify_clauses([Ctor | Ctors], H1, H2, Context,
 			).
 */
 
-:- pred unify_proc__generate_du_index_clauses(list(constructor), var, var,
-				term__context, int, list(clause),
-				unify_proc_info, unify_proc_info).
+:- pred unify_proc__generate_du_index_clauses(list(constructor), prog_var,
+		prog_var, prog_context, int, list(clause),
+		unify_proc_info, unify_proc_info).
 :- mode unify_proc__generate_du_index_clauses(in, in, in, in, in, out, in, out)
 	is det.
 
@@ -749,8 +747,8 @@ unify_proc__generate_du_index_clauses([Ctor | Ctors], X, Index, Context, N,
 */
 
 :- pred unify_proc__generate_du_compare_clauses(
-			list(constructor), var, var, var, term__context,
-			list(clause), unify_proc_info, unify_proc_info).
+		list(constructor), prog_var, prog_var, prog_var, prog_context,
+		list(clause), unify_proc_info, unify_proc_info).
 :- mode unify_proc__generate_du_compare_clauses(in, in, in, in, in,
 			out, in, out) is det.
 
@@ -772,10 +770,10 @@ unify_proc__generate_du_compare_clauses(Ctors, Res, X, Y, Context, [Clause]) -->
 	{ Clause = clause([], Body, Context) }.
 
 :- pred unify_proc__generate_du_compare_clauses_2(
-			list(constructor), var, var, var, term__context,
-			hlds_goal, unify_proc_info, unify_proc_info).
+		list(constructor), prog_var, prog_var, prog_var, prog_context,
+		hlds_goal, unify_proc_info, unify_proc_info).
 :- mode unify_proc__generate_du_compare_clauses_2(in, in, in, in, in,
-			out, in, out) is det.
+		out, in, out) is det.
 
 unify_proc__generate_du_compare_clauses_2(Ctors, Res, X, Y, Context, Goal) -->
 	{ construct_type(unqualified("int") - 0, [], IntType) },
@@ -855,9 +853,9 @@ unify_proc__generate_du_compare_clauses_2(Ctors, Res, X, Y, Context, Goal) -->
 		)
 */
 
-:- pred unify_proc__generate_compare_cases(list(constructor), var, var, var,
-			term__context, list(hlds_goal),
-			unify_proc_info, unify_proc_info).
+:- pred unify_proc__generate_compare_cases(list(constructor), prog_var,
+		prog_var, prog_var, prog_context, list(hlds_goal),
+		unify_proc_info, unify_proc_info).
 :- mode unify_proc__generate_compare_cases(in, in, in, in, in, out, in, out)
 	is det.
 
@@ -867,9 +865,9 @@ unify_proc__generate_compare_cases([Ctor | Ctors], R, X, Y, Context,
 	unify_proc__generate_compare_case(Ctor, R, X, Y, Context, Case),
 	unify_proc__generate_compare_cases(Ctors, R, X, Y, Context, Cases).
 
-:- pred unify_proc__generate_compare_case(constructor, var, var, var,
-			term__context, hlds_goal,
-			unify_proc_info, unify_proc_info).
+:- pred unify_proc__generate_compare_case(constructor, prog_var, prog_var,
+		prog_var, prog_context, hlds_goal,
+		unify_proc_info, unify_proc_info).
 :- mode unify_proc__generate_compare_case(in, in, in, in, in, out, in, out)
 	is det.
 
@@ -918,8 +916,8 @@ unify_proc__generate_compare_case(Ctor, R, X, Y, Context, Case) -->
 
 */
 
-:- pred unify_proc__compare_args(list(var), list(var), var, term__context,
-				hlds_goal, unify_proc_info, unify_proc_info).
+:- pred unify_proc__compare_args(list(prog_var), list(prog_var), prog_var,
+		prog_context, hlds_goal, unify_proc_info, unify_proc_info).
 :- mode unify_proc__compare_args(in, in, in, in, out, in, out) is det.
 
 unify_proc__compare_args([], [], R, Context, Return_Equal) -->
@@ -964,7 +962,7 @@ unify_proc__compare_args([_|_], [], _, _, _) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred unify_proc__build_call(string, list(var), term__context, hlds_goal,
+:- pred unify_proc__build_call(string, list(prog_var), prog_context, hlds_goal,
 			unify_proc_info, unify_proc_info).
 :- mode unify_proc__build_call(in, in, in, out, in, out) is det.
 
@@ -1006,7 +1004,7 @@ unify_proc__build_call(Name, ArgVars, Context, Goal) -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred unify_proc__make_fresh_vars_from_types(list(type), list(var),
+:- pred unify_proc__make_fresh_vars_from_types(list(type), list(prog_var),
 					unify_proc_info, unify_proc_info).
 :- mode unify_proc__make_fresh_vars_from_types(in, out, in, out) is det.
 
@@ -1015,7 +1013,7 @@ unify_proc__make_fresh_vars_from_types([Type | Types], [Var | Vars]) -->
 	unify_proc__info_new_var(Type, Var),
 	unify_proc__make_fresh_vars_from_types(Types, Vars).
 
-:- pred unify_proc__make_fresh_vars(list(constructor_arg), list(var),
+:- pred unify_proc__make_fresh_vars(list(constructor_arg), list(prog_var),
 					unify_proc_info, unify_proc_info).
 :- mode unify_proc__make_fresh_vars(in, out, in, out) is det.
 
@@ -1024,7 +1022,8 @@ unify_proc__make_fresh_vars([_Name - Type | Args], [Var | Vars]) -->
 	unify_proc__info_new_var(Type, Var),
 	unify_proc__make_fresh_vars(Args, Vars).
 
-:- pred unify_proc__unify_var_lists(list(var), list(var), list(hlds_goal)).
+:- pred unify_proc__unify_var_lists(list(prog_var), list(prog_var),
+		list(hlds_goal)).
 :- mode unify_proc__unify_var_lists(in, in, out) is det.
 
 unify_proc__unify_var_lists([], [_|_], _) :-
@@ -1051,22 +1050,28 @@ unify_proc__unify_var_lists([Var1 | Vars1], [Var2 | Vars2], [Goal | Goals]) :-
 :- pred unify_proc__info_init(module_info, unify_proc_info).
 :- mode unify_proc__info_init(in, out) is det.
 
-:- pred unify_proc__info_new_var(type, var, unify_proc_info, unify_proc_info).
+:- pred unify_proc__info_new_var(type, prog_var,
+		unify_proc_info, unify_proc_info).
 :- mode unify_proc__info_new_var(in, out, in, out) is det.
 
-:- pred unify_proc__info_extract(unify_proc_info, varset, map(var, type)).
+:- pred unify_proc__info_extract(unify_proc_info, prog_varset,
+		map(prog_var, type)).
 :- mode unify_proc__info_extract(in, out, out) is det.
 
-:- pred unify_proc__info_get_varset(varset, unify_proc_info, unify_proc_info).
+:- pred unify_proc__info_get_varset(prog_varset,
+		unify_proc_info, unify_proc_info).
 :- mode unify_proc__info_get_varset(out, in, out) is det.
 
-:- pred unify_proc__info_set_varset(varset, unify_proc_info, unify_proc_info).
+:- pred unify_proc__info_set_varset(prog_varset,
+		unify_proc_info, unify_proc_info).
 :- mode unify_proc__info_set_varset(in, in, out) is det.
 
-:- pred unify_proc__info_get_types(map(var, type), unify_proc_info, unify_proc_info).
+:- pred unify_proc__info_get_types(map(prog_var, type),
+		unify_proc_info, unify_proc_info).
 :- mode unify_proc__info_get_types(out, in, out) is det.
 
-:- pred unify_proc__info_set_types(map(var, type), unify_proc_info, unify_proc_info).
+:- pred unify_proc__info_set_types(map(prog_var, type),
+		unify_proc_info, unify_proc_info).
 :- mode unify_proc__info_set_types(in, in, out) is det.
 
 :- pred unify_proc__info_get_module_info(module_info,
@@ -1079,8 +1084,8 @@ unify_proc__unify_var_lists([Var1 | Vars1], [Var2 | Vars2], [Goal | Goals]) :-
 
 :- type unify_proc_info
 	--->	unify_proc_info(
-			varset,
-			map(var, type),
+			prog_varset,
+			map(prog_var, type),
 			module_info
 		).
 

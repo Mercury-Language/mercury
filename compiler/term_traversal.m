@@ -22,7 +22,7 @@
 
 :- import_module term_util, term_errors.
 :- import_module hlds_module, hlds_pred, hlds_goal, prog_data.
-:- import_module list, bag, map, std_util, set, term.
+:- import_module list, bag, map, std_util, set.
 
 :- type traversal_info
 	--->	ok(
@@ -66,7 +66,7 @@
 	--->	path_info(
 			pred_proc_id,	% The identify of the procedure
 					% that this path is within.
-			maybe(pair(pred_proc_id, term__context)),
+			maybe(pair(pred_proc_id, prog_context)),
 					% If no, path was started at the end
 					% of the procedure given by field 1.
 					% If yes, the arg names the procedure
@@ -76,7 +76,7 @@
 					% In pass 2, all starts should be yes.
 			int,			
 			list(pred_proc_id),
-			bag(var)
+			bag(prog_var)
 					% These three fields describe the
 					% right hand side of the inequation
 					% we are propagating.
@@ -85,14 +85,14 @@
 :- type traversal_params.
 
 :- pred init_traversal_params(module_info::in, functor_info::in,
-	pred_proc_id::in, term__context::in, map(var, type)::in,
+	pred_proc_id::in, prog_context::in, map(prog_var, type)::in,
 	used_args::in, used_args::in, int::in, int::in,
 	traversal_params::out) is det.
 
 :- pred traverse_goal(hlds_goal::in, traversal_params::in,
 	traversal_info::in, traversal_info::out) is det.
 
-:- pred upper_bound_active_vars(list(path_info)::in, bag(var)::out) is det.
+:- pred upper_bound_active_vars(list(path_info)::in, bag(prog_var)::out) is det.
 
 :- implementation.
 
@@ -330,7 +330,7 @@ add_path(_, error(Errors, CanLoop), error(Errors, CanLoop)).
 add_path(Path, ok(Paths0, CanLoop), ok(Paths, CanLoop)) :-
 	set__insert(Paths0, Path, Paths).
 
-:- pred add_error(term__context::in, termination_error::in,
+:- pred add_error(prog_context::in, termination_error::in,
 	traversal_params::in, traversal_info::in, traversal_info::out) is det.
 
 add_error(Context, Error, Params, error(Errors0, CanLoop),
@@ -341,7 +341,7 @@ add_error(Context, Error, Params, error(Errors0, CanLoop),
 add_error(Context, Error, _, ok(_, CanLoop),
 		error([Context - Error], CanLoop)).
 
-:- pred called_can_loop(term__context::in, termination_error::in,
+:- pred called_can_loop(prog_context::in, termination_error::in,
 	traversal_params::in, traversal_info::in, traversal_info::out) is det.
 
 called_can_loop(Context, Error, Params, error(Errors, CanLoop0),
@@ -396,8 +396,8 @@ combine_paths(ok(Paths1, CanLoop1), ok(Paths2, CanLoop2), Params,
 
 %-----------------------------------------------------------------------------%
 
-:- pred compute_rec_start_vars(list(var)::in, list(bool)::in,
-	bag(var)::out) is det.
+:- pred compute_rec_start_vars(list(prog_var)::in, list(bool)::in,
+	bag(prog_var)::out) is det.
 
 compute_rec_start_vars([], [], Out) :-
 	bag__init(Out).
@@ -425,9 +425,9 @@ compute_rec_start_vars([Var | Vars], [RecInputSupplier | RecInputSuppliers],
 	% input or output bags. The predicate fails if invoked on a higher
 	% order unification.
 
-:- pred unify_change(var::in, cons_id::in, list(var)::in, list(uni_mode)::in,
-	traversal_params::in, int::out, bag(var)::out, bag(var)::out)
-	is semidet.
+:- pred unify_change(prog_var::in, cons_id::in, list(prog_var)::in,
+	list(uni_mode)::in, traversal_params::in, int::out, bag(prog_var)::out,
+	bag(prog_var)::out) is semidet.
 
 unify_change(OutVar, ConsId, Args0, Modes0, Params, Gamma, InVars, OutVars) :-
 	params_get_functor_info(Params, FunctorInfo),
@@ -445,7 +445,7 @@ unify_change(OutVar, ConsId, Args0, Modes0, Params, Gamma, InVars, OutVars) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred record_change(bag(var)::in, bag(var)::in, int::in,
+:- pred record_change(bag(prog_var)::in, bag(prog_var)::in, int::in,
 	list(pred_proc_id)::in, traversal_info::in, traversal_info::out) is det.
 
 record_change(_, _, _, _, error(Errors, CanLoop), error(Errors, CanLoop)).
@@ -456,8 +456,8 @@ record_change(InVars, OutVars, Gamma, CalledPPIds, ok(Paths0, CanLoop),
 	record_change_2(PathsList0, InVars, OutVars, Gamma, CalledPPIds,
 		NewPaths0, NewPaths).
 
-:- pred record_change_2(list(path_info)::in, bag(var)::in, bag(var)::in,
-	int::in, list(pred_proc_id)::in,
+:- pred record_change_2(list(path_info)::in, bag(prog_var)::in,
+		bag(prog_var)::in, int::in, list(pred_proc_id)::in,
 	set(path_info)::in, set(path_info)::out) is det.
 
 record_change_2([], _, _, _, _, PathSet, PathSet).
@@ -481,7 +481,7 @@ record_change_2([Path0 | Paths0], InVars, OutVars, CallGamma, CallPPIds,
 
 %-----------------------------------------------------------------------------%
 
-:- pred error_if_intersect(bag(var)::in, term__context::in,
+:- pred error_if_intersect(bag(prog_var)::in, prog_context::in,
 	termination_error::in, traversal_info::in, traversal_info::out) is det.
 
 error_if_intersect(_, _, _, error(Errors, CanLoop), error(Errors, CanLoop)).
@@ -496,7 +496,8 @@ error_if_intersect(OutVars, Context, ErrorMsg, ok(Paths, CanLoop), Info)
 		Info = ok(Paths, CanLoop)
 	).
 
-:- pred some_active_vars_in_bag(list(path_info)::in, bag(var)::in) is semidet.
+:- pred some_active_vars_in_bag(list(path_info)::in,
+		bag(prog_var)::in) is semidet.
 
 some_active_vars_in_bag([Path | Paths], OutVars) :-
 	(
@@ -522,8 +523,8 @@ upper_bound_active_vars([Path | Paths], ActiveVars) :-
 			module_info,
 			functor_info,
 			pred_proc_id,	% The procedure we are tracing through.
-			term__context,	% The context of the procedure.
-			map(var, type),
+			prog_context,	% The context of the procedure.
+			map(prog_var, type),
 			map(pred_proc_id, list(bool)),
 					% Output suppliers of each procedure.
 					% Empty during pass 2.
@@ -547,9 +548,9 @@ init_traversal_params(ModuleInfo, FunctorInfo, PredProcId, Context, VarTypes,
 	is det.
 :- pred params_get_ppid(traversal_params::in, pred_proc_id::out)
 	is det.
-:- pred params_get_context(traversal_params::in, term__context::out)
+:- pred params_get_context(traversal_params::in, prog_context::out)
 	is det.
-:- pred params_get_var_types(traversal_params::in, map(var, type)::out)
+:- pred params_get_var_types(traversal_params::in, map(prog_var, type)::out)
 	is det.
 :- pred params_get_output_suppliers(traversal_params::in,
 	map(pred_proc_id, list(bool))::out) is det.

@@ -58,26 +58,26 @@
 :- import_module passes_aux, inst_match, modules, polymorphism.
 
 :- import_module assoc_list, bool, char, int, list, map, require.
-:- import_module set, std_util, string, term, varset. 
+:- import_module set, std_util, string.
 
 		% Information about the dependencies of a variable
 		% that is not known to be used.
 :- type usage_info --->
-		unused(set(var), set(arg)).
+		unused(set(prog_var), set(arg)).
 
 	% A collection of variable usages for each procedure.
 :- type var_usage == map(pred_proc_id, var_dep).
 
 	% arguments are stored as their variable id, not their index
 	%	in the argument vector
-:- type arg == pair(pred_proc_id, var). 
+:- type arg == pair(pred_proc_id, prog_var). 
 
 		% Contains dependency information for the variables
 		% in a procedure that are not yet known to be used.
-:- type var_dep == map(var, usage_info).
+:- type var_dep == map(prog_var, usage_info).
 
 :- type warning_info --->
-		warning_info(term__context, string, int, list(int)).
+		warning_info(prog_context, string, int, list(int)).
 			% context, pred name, arity, list of args to warn 
 
 
@@ -284,7 +284,7 @@ setup_pred_args(ModuleInfo, PredId, [ProcId | Rest], UnusedArgInfo, VarUsage0,
 		VarUsage, PredProcs1, PredProcs, OptProcs1, OptProcs).
 
 
-:- pred initialise_vardep(var_dep::in, list(var)::in, var_dep::out) is det.
+:- pred initialise_vardep(var_dep::in, list(prog_var)::in, var_dep::out) is det.
 
 initialise_vardep(VarDep, [], VarDep).
 initialise_vardep(VarDep0, [Var | Vars], VarDep) :-
@@ -301,8 +301,8 @@ initialise_vardep(VarDep0, [Var | Vars], VarDep) :-
 	% head variable.
 	% For example, if HeadVar1 has type list(T), then TypeInfo_for_T
 	% is used if HeadVar1 is used.
-:- pred setup_typeinfo_deps(list(var)::in, map(var, type)::in, pred_proc_id::in,
-			map(tvar, type_info_locn)::in, 
+:- pred setup_typeinfo_deps(list(prog_var)::in, map(prog_var, type)::in,
+			pred_proc_id::in, map(tvar, type_info_locn)::in, 
 			var_dep::in, var_dep::out) is det.
 
 setup_typeinfo_deps([], _, _, _, VarDep, VarDep). 
@@ -327,7 +327,7 @@ setup_typeinfo_deps([Var | Vars], VarTypeMap, PredProcId, TVarMap, VarDep0,
 
 	% Get output arguments for a procedure given the headvars and the
 	% argument modes, and set them as used.
-:- pred setup_output_args(module_info::in, list(var)::in, list(mode)::in,
+:- pred setup_output_args(module_info::in, list(prog_var)::in, list(mode)::in,
 			var_dep::in, var_dep::out) is det.
 
 setup_output_args(ModuleInfo, HVars, ArgModes, VarDep0, VarDep) :-
@@ -356,7 +356,7 @@ setup_output_args(ModuleInfo, HVars, ArgModes, VarDep0, VarDep) :-
 
 	% searches for the dependencies of a variable, succeeds if the variable
 	%	is definitely used
-:- pred var_is_used(pred_proc_id::in, var::in, var_usage::in) is semidet.
+:- pred var_is_used(pred_proc_id::in, prog_var::in, var_usage::in) is semidet.
 
 var_is_used(PredProc, Var, VarUsage) :-
 	\+ (
@@ -364,13 +364,14 @@ var_is_used(PredProc, Var, VarUsage) :-
 		map__contains(UsageInfos, Var)
 	).
 
-:- pred local_var_is_used(var_dep::in, var::in) is semidet.
+:- pred local_var_is_used(var_dep::in, prog_var::in) is semidet.
 
 local_var_is_used(VarDep, Var) :-
 	\+ map__contains(VarDep, Var).
 
 		% add a list of aliases for a variable
-:- pred add_aliases(var_dep::in, var::in, list(var)::in, var_dep::out) is det.
+:- pred add_aliases(var_dep::in, prog_var::in, list(prog_var)::in,
+		var_dep::out) is det.
 
 add_aliases(UseInf0, Var, Aliases, UseInf) :-
 	(
@@ -384,18 +385,19 @@ add_aliases(UseInf0, Var, Aliases, UseInf) :-
 		UseInf = UseInf0
 	).
 
-:- pred set_list_vars_used(var_dep::in, list(var)::in, var_dep::out) is det.
+:- pred set_list_vars_used(var_dep::in, list(prog_var)::in,
+		var_dep::out) is det.
 
 set_list_vars_used(UseInfo0, Vars, UseInfo) :-
 	map__delete_list(UseInfo0, Vars, UseInfo).
 
-:- pred set_var_used(var_dep::in, var::in, var_dep::out) is det.
+:- pred set_var_used(var_dep::in, prog_var::in, var_dep::out) is det.
 
 set_var_used(UseInfo0, Var, UseInfo) :-
 	map__delete(UseInfo0, Var, UseInfo).
 
 
-:- pred lookup_local_var(var_dep::in, var::in, usage_info::out) is semidet.
+:- pred lookup_local_var(var_dep::in, prog_var::in, usage_info::out) is semidet.
 
 lookup_local_var(VarDep, Var, UsageInfo) :-
 	map__search(VarDep, Var, UsageInfo).
@@ -525,8 +527,8 @@ traverse_goal(_, unify(Var, Rhs, _, complicated_unify(_, _), _),
 	).
 
 	% add PredProc - HeadVar as an alias for the same element of Args.
-:- pred add_pred_call_arg_dep(pred_proc_id::in, list(var)::in, list(var)::in,
-					var_dep::in, var_dep::out) is det.
+:- pred add_pred_call_arg_dep(pred_proc_id::in, list(prog_var)::in,
+		list(prog_var)::in, var_dep::in, var_dep::out) is det.
 
 add_pred_call_arg_dep(PredProc, LocalArguments, HeadVarIds,
 					UseInf0, UseInf) :-
@@ -545,8 +547,8 @@ add_pred_call_arg_dep(PredProc, LocalArguments, HeadVarIds,
 	).
 		
 
-:- pred add_arg_dep(var_dep::in, var::in, pred_proc_id::in,
-					var::in, var_dep::out) is det.
+:- pred add_arg_dep(var_dep::in, prog_var::in, pred_proc_id::in,
+					prog_var::in, var_dep::out) is det.
 
 add_arg_dep(UseInf0, Var, PredProc, Arg, UseInf) :-
 	(
@@ -561,8 +563,9 @@ add_arg_dep(UseInf0, Var, PredProc, Arg, UseInf) :-
 			
 	% Partition the arguments to a deconstruction into inputs
 	% and outputs.
-:- pred partition_deconstruct_args(module_info::in, list(var)::in,
-		list(uni_mode)::in, list(var)::out, list(var)::out) is det.
+:- pred partition_deconstruct_args(module_info::in, list(prog_var)::in,
+		list(uni_mode)::in, list(prog_var)::out,
+		list(prog_var)::out) is det.
 
 partition_deconstruct_args(ModuleInfo, ArgVars, ArgModes,
 		InputVars, OutputVars) :-
@@ -599,7 +602,7 @@ partition_deconstruct_args(ModuleInfo, ArgVars, ArgModes,
 	).
 
 		% add Alias as an alias for all of Vars
-:- pred add_construction_aliases(var_dep::in, var::in, list(var)::in,
+:- pred add_construction_aliases(var_dep::in, prog_var::in, list(prog_var)::in,
 						var_dep::out) is det.
 
 add_construction_aliases(UseInf, _, [], UseInf).
@@ -686,7 +689,7 @@ unused_args_check_proc(PredProcId, Changed0, Changed, VarUsage0, VarUsage) :-
 
 	% check each var of a procedure in turn 
 :- pred unused_args_check_all_vars(var_usage::in, bool::in, bool::out,
-			list(var)::in, var_dep::in, var_dep::out) is det.
+			list(prog_var)::in, var_dep::in, var_dep::out) is det.
 
 unused_args_check_all_vars(_, Changed, Changed, [], LocalVars, LocalVars). 
 unused_args_check_all_vars(VarUsage, Changed0, Changed, [Var| Vars],
@@ -701,6 +704,10 @@ unused_args_check_all_vars(VarUsage, Changed0, Changed, [Var| Vars],
 				% current variable depends on are used.
 				set__member(Argument, ArgDep0),
 				Argument = PredProc - ArgVar,
+/*###707 [cc] In clause for predicate `unused_args:unused_args_check_all_vars/6':%%%*/
+/*###707 [cc] in argument 2 of call to pred `var_is_used/3':%%%*/
+/*###707 [cc] type error: variable `ArgVar' has type `(term:var)',%%%*/
+/*###707 [cc] expected type was `(term:var((prog_data:prog_var_type)))'.%%%*/
 				var_is_used(PredProc, ArgVar, VarUsage)
 			;	
 				% Check whether any variables that the
@@ -1081,7 +1088,7 @@ remove_listof_elements(List0, ArgNo, ElemsToRemove, List) :-
 	).
 
 	
-:- pred get_unused_arg_nos(var_dep::in, list(var)::in, int::in,
+:- pred get_unused_arg_nos(var_dep::in, list(prog_var)::in, int::in,
 						list(int)::out) is det.
 
 get_unused_arg_nos(_, [], _, []).
@@ -1184,7 +1191,7 @@ do_fixup_unused_args(VarUsage, proc(OldPredId, OldProcId), ProcCallInfo,
 
 
 % 	this is the important bit of the transformation
-:- pred fixup_goal(module_info::in, list(var)::in, proc_call_info::in,
+:- pred fixup_goal(module_info::in, list(prog_var)::in, proc_call_info::in,
 			bool::out, hlds_goal::in, hlds_goal::out) is det.
 
 fixup_goal(ModuleInfo, UnusedVars, ProcCallInfo, Changed, Goal0, Goal) :-
@@ -1201,7 +1208,7 @@ fixup_goal(ModuleInfo, UnusedVars, ProcCallInfo, Changed, Goal0, Goal) :-
 	Goal = GoalExpr - GoalInfo.
 		
 
-:- pred fixup_goal_expr(module_info::in, list(var)::in, proc_call_info::in,
+:- pred fixup_goal_expr(module_info::in, list(prog_var)::in, proc_call_info::in,
 			bool::out, hlds_goal::in, hlds_goal::out) is det.
 
 fixup_goal_expr(ModuleInfo, UnusedVars, ProcCallInfo, Changed,
@@ -1291,7 +1298,7 @@ fixup_goal_expr(_ModuleInfo, _UnusedVars, _ProcCallInfo, no,
 	GoalExpr = pragma_c_code(_, _, _, _, _, _, _).
 
 	% Remove useless unifications from a list of conjuncts.
-:- pred fixup_conjuncts(module_info::in, list(var)::in, proc_call_info::in,
+:- pred fixup_conjuncts(module_info::in, list(prog_var)::in, proc_call_info::in,
 		bool::in, bool::out, hlds_goals::in, hlds_goals::out) is det. 
 
 fixup_conjuncts(_, _, _, Changed, Changed, [], []).
@@ -1322,7 +1329,7 @@ fixup_conjuncts(ModuleInfo, UnusedVars, ProcCallInfo, Changed0, Changed,
 	% We can't remove unused goals from the list of disjuncts as we do
 	% for conjuncts, since that would change the determinism of
 	% the goal.
-:- pred fixup_disjuncts(module_info::in, list(var)::in, proc_call_info::in,
+:- pred fixup_disjuncts(module_info::in, list(prog_var)::in, proc_call_info::in,
 		bool::in, bool::out, hlds_goals::in, hlds_goals::out) is det. 
 
 fixup_disjuncts(_, _, _, Changed, Changed, [], []).
@@ -1340,7 +1347,7 @@ fixup_disjuncts(ModuleInfo, UnusedVars, ProcCallInfo, Changed0, Changed,
 	fixup_disjuncts(ModuleInfo, UnusedVars, ProcCallInfo,
 			Changed1, Changed, Goals0, Goals).
 
-:- pred fixup_cases(module_info::in, list(var)::in, proc_call_info::in,
+:- pred fixup_cases(module_info::in, list(prog_var)::in, proc_call_info::in,
 		bool::in, bool::out, list(case)::in, list(case)::out) is det.
 		
 fixup_cases(_, _, _, Changed, Changed, [], []).
@@ -1361,7 +1368,7 @@ fixup_cases(ModuleInfo, UnusedVars, ProcCallInfo, Changed0, Changed,
 
 		% fix up a unification, fail if the unification is no
 		%	longer needed
-:- pred fixup_unify(module_info::in, list(var)::in, bool::out,
+:- pred fixup_unify(module_info::in, list(prog_var)::in, bool::out,
 				unification::in, unification::out) is semidet.
 
 	% a simple test doesn't have any unused vars to fixup
@@ -1400,8 +1407,9 @@ fixup_unify(_, _, _, complicated_unify(_, _), _) :-
 	% so Changed will be yes and quantification will be rerun. Fails if
 	% none of the arguments are used. Arguments which further instantiate
 	% the deconstructed variable are ignored in this.
-:- pred check_deconstruct_args(module_info::in, list(var)::in, list(var)::in,
-			list(uni_mode)::in, bool::out, bool::in) is semidet.
+:- pred check_deconstruct_args(module_info::in, list(prog_var)::in,
+		list(prog_var)::in, list(uni_mode)::in,
+		bool::out, bool::in) is semidet.
 						
 check_deconstruct_args(ModuleInfo, UnusedVars, Args, Modes, Changed, Used) :-
 	(
@@ -1430,7 +1438,7 @@ check_deconstruct_args(ModuleInfo, UnusedVars, Args, Modes, Changed, Used) :-
 
 	% Remove unused vars from the instmap_delta, quantification fixes
 	%	up the rest.
-:- pred fixup_goal_info(list(var)::in, hlds_goal_info::in,
+:- pred fixup_goal_info(list(prog_var)::in, hlds_goal_info::in,
 						hlds_goal_info::out) is det.
 
 fixup_goal_info(UnusedVars, GoalInfo0, GoalInfo) :-
