@@ -80,9 +80,9 @@ Options:
 		be reported in the output of bootcheck, to allow the statistics
 		files to be matched with the bootcheck that created them.
 	-W, --windows
-        Translate paths into the Microsoft Windows format and use the
-        extension \`.lib' for libraries. This option also implies
-        --no-sym-links.
+		Translate paths into the Microsoft Windows format and use the
+		extension \`.lib' for libraries. This option also implies
+		--no-sym-links.
 	--no-sym-links
 		Use this option on systems which don't support symbolic links.
 "
