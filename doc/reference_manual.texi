@@ -104,18 +104,38 @@ for common programming tasks.
 @node Syntax, Types, Introduction, Top
 @chapter Syntax
 
+@menu
+* Syntax Overview::
+* Tokens::
+* Terms::
+* Items::
+* Declarations::
+* Facts::
+* Rules::
+* Goals::
+* DCG-rules::
+* DCG-goals::
+* Implicit quantification::
+@end menu
+
+@node Syntax Overview, Tokens,, Syntax
+
 Mercury's syntax is similar to the syntax of (pure) Prolog, with some
 additional declarations for types, modes, determinism, and the module system.
 A Mercury program consists of a set of modules.  Each module is a file
 containing a sequence of items (declarations and clauses).  Each item
 is a term followed by a period.  Each term is composed of a sequence
 of tokens, and each token is composed of a sequence of characters.
+Like Prolog, Mercury has the Definite Clause Grammar (DCG) notation
+for clauses.
 
+@node Tokens, Terms, Syntax Overview, Syntax
 @section Tokens
 
 Tokens in Mercury are exactly the same as in ISO Prolog.
 @c XXX need to document this properly!
 
+@node Terms, Items, Tokens, Syntax
 @section Terms
 
 Terms in Mercury are exactly the same as in ISO Prolog, with one
@@ -123,6 +143,7 @@ exception: double-quoted strings are atomic in Mercury,
 they are not abbreviations for lists of character codes.
 @c XXX need to document this properly!
 
+@node Items, Declarations, Terms, Syntax
 @section Items
 
 Each item in a Mercury module is either a declaration or a clause.
@@ -131,6 +152,7 @@ declaration, otherwise it is a clause.  If the top-level functor of the
 term is @samp{:-/2}, the item is a rule.  If the top-level functor is
 @samp{-->/2}, the item is a DCG rule.  Otherwise, the item is a fact.
 
+@node Declarations, Facts, Items, Syntax
 @section Declarations
 
 The allowed declarations are:
@@ -156,14 +178,27 @@ more detail in their respective chapters.
 (Note that for historical reasons, the current implementation allows
 @samp{when/2} declarations, but ignores them.)
 
-@section Clauses
+@node Facts, Rules, Declarations, Syntax
+@section Facts
 
-A clause is an item of the form @samp{@var{Head} :- @var{Body}}.
+A fact is an item of the form @samp{@var{Head}}, where the top-level
+functor of @var{Head} is not @code{:-/1}, @code{:-/2}, or @code{-->/2}.
+The @var{Head} term must not be a variable.  The top-level functor
+of the @var{Head} determines which predicate the clause belongs to;
+the predicate must have been declared in a previous @samp{pred}
+declaration in this module.  A fact is equivalent to a rule
+@samp{@var{Head} :- true}.
+
+@node Rules, Goals, Facts, Syntax
+@section Rules
+
+A rule is an item of the form @samp{@var{Head} :- @var{Body}}.
 The @var{Head} term must not be a variable.  The top-level functor
 of the @var{Head} determines which predicate the clause belongs to;
 the predicate must have been declared in a previous @samp{pred}
 declaration in this module.  The @var{Body} must be a valid goal.
 
+@node Goals, DCG-rules, Rules, Syntax
 @section Goals
 
 A goal is a term of one of the following forms:
@@ -219,10 +254,155 @@ the interface of an imported module.
 
 @end table
 
+@node DCG-rules, DCG-goals, Goals, Syntax
+@section DCG-rules
+
+DCG-rules in Mercury have identical syntax and semantics to
+DCG-rules in Prolog.
+
+A DCG-rule is an item of the form @samp{@var{Head} --> @var{Body}}.
+The @var{Head} term must not be a variable.  
+A DCG-rule is an abbreviation for an ordinary rule with two
+additional implicit arguments appended to the arguments of @var{Head}.
+These arguments are fresh variables which we shall call
+@var{V_in} and @var{V_out}.
+The @var{Body} must be a valid DCG-goal, and is an abbreviation for
+an ordinary goal.  We shall define a function
+@samp{DCG-transform(@var{V_in}, @var{V_out}, @var{DCG-goal})} which
+specifies how DCG goals are transformed into ordinary goals.
+
+@node DCG-goals, Implicit quantification, DCG-rules, Syntax
+@section DCG-goals
+
+A DCG-goal is a term of one of the following forms:
+
+@table @code
+@item some @var{Vars} @var{DCG-goal}
+A DCG existential quantification.  @var{Vars} must be a list of variables.
+@var{DCG-goal} must be a valid DCG-goal.
+
+Semantics:
+@example
+transform(V_in, V_out, some Vars DCG_goal) = 
+some Vars transform(V_in, V_out, DCG_goal)
+@end example
+
+@item all @var{Vars} @var{DCG-goal}
+A DCG universal quantification.  @var{Vars} must be a list of variables.
+@var{DCG-goal} must be a valid DCG-goal.
+
+Semantics:
+@example
+transform(V_in, V_out, all Vars DCG_goal) = 
+all Vars transform(V_in, V_out, DCG_goal)
+@end example
+
+@item @var{DCG-goal1}, @var{DCG-goal2}
+A DCG sequence.  Intuitively, this means ``parse DCG-goal1 and then
+parse DCG-goal2'' or ``do DCG-goal1 and then do DCG-goal2''.  (Note
+that the only way this construct actually forces the desired sequencing
+is by the modes of the implicit DCG arguments.) @var{DCG-goal1} and
+@var{DCG-goal2} must be valid DCG-goals.
+
+Semantics:
+@example
+transform(V_in, V_out, (DCG-goal1, DCG-goal2)) =
+transform(V_in, V_new, DCG_goal1), transform(V_new, V_out, DCG_goal2)
+@end example
+where V_new is a fresh variable.
+
+@item @var{DCG-goal1} ; @var{DCG-goal2}
+A disjunction.  @var{DCG-goal1} and @var{DCG-goal2} must be valid goals.
+@var{DCG-goal1} must not be of the form @samp{DCG-goal1a -> DCG-goal1b}.
+(If it is, then the goal is an if-then-else, not a disjunction.)
+
+Semantics:
+@example
+transform(V_in, V_out, (DCG_goal1 ; DCG_goal2)) =
+transform(V_in, V_out, DCG_goal1) ; transform(V_in, V_out, DCG_goal2)
+@end example
+
+@item @{ @var{Goal} @}
+A brace-enclosed ordinary goal.  @var{Goal} must be a valid goal.
+
+Semantics:
+@example
+transform(V_in, V_out, @{ Goal @}) = (Goal, V_out = V_in)
+@end example
+
+@itemx [@var{Term}, ...]
+A DCG input match.  Unifies the implicit DCG input variable V_in, which
+must have type @samp{list(_)}, with a list whose initial elements are
+the terms specified and whose tail is the implicit DCG output variable
+V_out.
+
+Semantics:
+@example
+transform(V_in, V_out, [Term1, ...]) = (V_in = [Term, ... | V_Out])
+@end example
+
+@item []
+The null DCG goal (an empty DCG input match).
+Equivalent to @samp{@{ true @}}.
+
+Semantics:
+@example
+transform(V_in, V_out, []) = (V_out = V_in)
+@end example
+
+@item not @var{DCG-goal}
+@itemx \+ @var{DCG-goal}
+A DCG negation.  The two different syntaxes have identical semantics.
+@var{Goal} must be a valid goal.
+
+Semantics:
+@example
+transform(V_in, V_out, not DCG_goal) =
+(not transform(V_in, V_new, DCG_goal), V_out = Vin)
+@end example
+where V_new is a fresh variable.
+
+@item if @var{CondGoal} then @var{ThenGoal} else @var{ElseGoal}
+@itemx @var{CondGoal} -> @var{ThenGoal} ; @var{ElseGoal}
+A DCG if-then-else.  The two different syntaxes have identical semantics.
+@var{CondGoal}, @var{ThenGoal}, and @var{ElseGoal} must be valid DCG-goals.
+
+Semantics:
+@example
+transform(V_in, V_out, if CondGoal then ThenGoal else ElseGoal) =
+if transform(V_in, V_cond, CondGoal) then
+	transform(V_cond, V_out, ThenGoal)
+else
+        transform(V_in, V_out, ElseGoal)
+@end example
+
+@item =(@var{Term})
+A DCG unification.  Unifies @var{Term} with the implicit DCG argument.
+
+Semantics:
+@example
+transform(V_in, V_out, =(Term)) = (Term = V_in, V_out = Vin)
+@end example
+
+@item @var{DCG-call}
+Any term which does not match any of the above forms must be
+a DCG predicate call.  If the term is a variable @var{Var}, it is treated
+as if it were @samp{call(@var{Var})}.  Then, the two implicit DCG
+arguments are appended to the specified arguments.
+
+Semantics:
+@example
+transform(V_in, V_out, p(A1, ..., AN)) = p(A1, ..., AN, V_in, V_Out)
+@end example
+
+@end table
+
+@node Implicit quantification,, DCG-goals, Syntax
 @section Implicit quantification
 
 The rule for implicit quantification in Mercury is not the same
 as the usual one in mathematical logic.  In Mercury variables
+that do not occur in the head of a clause
 are implicitly extentially quantified around their closest
 enclosing scope (in a sense to be made precise in the following
 paragraphs).  This allows most existential quantifiers to be omitted,
@@ -238,7 +418,7 @@ if-then-else and the other goal is either the ``then'' part
 or the condition of the if-then-else.
 
 If a variable occurs in a negated context
-and which does not occur outside of that negated context
+and does not occur outside of that negated context
 other than in parallel goals (and in the case of a variable in the
 condition of an if-then-else, other than in the ``then'' part of the
 if-then-else), then that variable is implicitly existentially
@@ -369,9 +549,60 @@ The type declarations
 declare types @code{t1/0} and @code{t/2} to be abstract types.
 Such declarations are only useful in the interface section of a module.
 This means that the type names will be exported, but the constructors
-(constants and functors) for these types will not be exported.
+(functors) for these types will not be exported.
 
 @end itemize
+
+Constructors may be overloaded amoung different types:
+there may be any number of constructors with a given name and arity,
+so long as they all have different types.
+However, there must be only one constructor with a given name, arity, and type.
+(There is no particularly good reason for this restriction; it might be
+dropped sometime in the future.)
+Note that excessive overloading of constructors can slow down type checking
+and can make the program confusing for human readers, so overloading
+should not be over-used.
+
+The argument types of each predicate must be explicitly declared
+with a @samp{:- pred} declaration.  These declarations may be
+polymorphic.  For example:
+
+@example
+	:- pred list__member(T, list(T)).
+@end example
+
+Predicates may not be overloaded: there must only be one predicate
+with a given name and arity in each program.
+(This restriction will hopefully be relaxed in the future.)
+
+The compiler infers the types of variables and overloaded
+constructors.  A @dfn{type assignment} is an assignment of a type to
+each variables and constructor in a clause.  A type assignment is
+@dfn{valid} if it satisfies the following conditions.  Each constructor
+in a clause must have been declared in at least one type declaration.
+The type assigned to each constructor must match one of the type
+declarations for that constructor, and the types assigned to the arguments
+of that constructor must match the argument types specified in that
+type declaration.  The type assigned to each predicate
+argument much match the type specified in the @samp{:- pred}
+declaration for that predicate.  The type assigned to each head
+argument in a clause must exactly match the type specified in the
+corresponding @samp{:- pred} declaration.
+(Here ``match'' means to be an instance of, i.e. to be identical to for some
+substitution of the type parameters, and ``exactly match'' means
+to be identical up to renaming of type parameters.)
+
+One type assignment @var{A} is said to be @dfn{more general} than
+another type assignment @var{B} if there is a binding of the type
+parameters in A that makes it identical (up to renaming of
+parameters) to B.  If there is more than one valid type assignment,
+the compiler must choose the most general one.
+If there are two valid type assignments which are not identical up to
+renaming and neither of which is more general than the other, then there
+is a type ambiguity, and compiler must report an error.
+A clause is @dfn{type-correct} if there is a unique (up to renaming)
+most general valid type assignment.  Every clause in a Mercury program
+must be type-correct.
 
 @node Modes, Determinism, Types, Top
 @chapter Modes
@@ -383,11 +614,11 @@ To describe states of instantiation,
 we use information provided by the type system.
 Types can be viewed as regular trees with two kinds of nodes:
 or-nodes representing types
-and and-nodes representing function symbols.
-The children of an or-node are the function symbols
+and and-nodes representing constructors.
+The children of an or-node are the constructors
 that can be used to construct terms of that type;
 the children of an and-node are the types
-of the arguments of the function symbol.
+of the arguments of the constructors.
 We attach mode information to the or-nodes of type trees.
 
 An @dfn{instantiatedness tree} is an assignment
