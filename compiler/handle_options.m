@@ -1027,6 +1027,22 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod,
 	),
 
 	%
+	% Find the configuration file.
+	%
+	globals__io_lookup_maybe_string_option(config_file, ConfigFile),
+	% yes("") means `--config-file' was not passed on the command line.
+	( { ConfigFile = yes("") } ->
+		( { MaybeStdLibDir = yes(StdLibDir1) } ->
+			globals__io_set_option(config_file, maybe_string(yes(
+				StdLibDir1/"conf"/"Mercury.config")))
+		;
+			globals__io_set_option(config_file, maybe_string(no))
+		)
+	;
+		[]
+	),
+
+	%
 	% Handle the `.opt', C header and library search directories.
 	% These couldn't be handled by options.m because they are grade
 	% dependent.

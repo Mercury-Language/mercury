@@ -34,7 +34,7 @@ EMACS_SCRIPTS = gud.el
 
 .PHONY: all
 all: $(SCRIPTS) $(DEBUGGER_SCRIPTS) $(EMACS_SCRIPTS)
-all: Mmake.vars
+all: Mmake.vars Mercury.config
 
 #-----------------------------------------------------------------------------#
 
@@ -48,7 +48,7 @@ mercury_config: ../configure.help
 #-----------------------------------------------------------------------------#
 
 .PHONY: install
-install: install_mmake install_scripts \
+install: install_mmake install_scripts install_config \
 	install_debugger_scripts install_emacs_scripts
 
 .PHONY: install_dirs
@@ -56,6 +56,7 @@ install_dirs:
 	[ -d $(INSTALL_BINDIR) ] || mkdir -p $(INSTALL_BINDIR)
 	[ -d $(INSTALL_LIBDIR)/mmake ] || mkdir -p $(INSTALL_LIBDIR)/mmake
 	[ -d $(INSTALL_LIBDIR)/mdb ] || mkdir -p $(INSTALL_LIBDIR)/mdb
+	[ -d $(INSTALL_CONF_DIR) ] || mkdir -p $(INSTALL_CONF_DIR)
 	[ -d $(INSTALL_ELISP_DIR) ] || mkdir -p $(INSTALL_ELISP_DIR)
 	[ -d $(INSTALL_RECONF_DIR)/scripts ] || \
 		mkdir -p $(INSTALL_RECONF_DIR)/scripts
@@ -78,6 +79,11 @@ install_scripts: $(SCRIPTS) install_dirs
 	done
 	cp *.in *.sh-subr $(SCRIPTS) $(INSTALL_RECONF_DIR)/scripts
 	-rm -f $(INSTALL_BINDIR)/mmake.old
+
+.PHONY: install_config
+install_config: Mercury.config install_dirs
+	rm -f $(INSTALL_CONF_DIR)/Mercury.config
+	cp `vpath_find Mercury.config` $(INSTALL_CONF_DIR)
 
 .PHONY: install_debugger_scripts
 install_debugger_scripts: $(DEBUGGER_SCRIPTS) install_dirs

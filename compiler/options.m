@@ -1890,6 +1890,8 @@ long_option("pre-link-command",		pre_link_command).
 long_option("extra-init-command",	extra_init_command).
 long_option("mercury-configuration-directory",
 				mercury_configuration_directory_special).
+long_option("mercury-config-dir",
+				mercury_configuration_directory_special).
 long_option("install-prefix",		install_prefix).
 long_option("install-command",		install_command).
 long_option("library-grade",		libgrades).
@@ -1913,6 +1915,7 @@ long_option("fullarch",			fullarch).
 long_option("bug-intermod-2002-06-13",	compiler_sufficiently_recent).
 long_option("bug-foreign_import-2002-08-06", compiler_sufficiently_recent).
 long_option("install-opt-files-2002-08-30", compiler_sufficiently_recent).
+long_option("read-config-file-2003-03-01", compiler_sufficiently_recent).
  
 %-----------------------------------------------------------------------------%
 
@@ -3935,6 +3938,7 @@ options_help_build_system -->
 		"\tfrom <file>.  If the `--config-file' option is not set,",
 		"\ta default configuration will be used, unless",
 		"\t`--no-mercury-stdlib-dir' is passed to mmc.",
+		"\tThe configuration file is just an options file.",
 		"-I <dir>, --search-directory <dir>",
 		"\tAppend <dir> to the list of directories to be searched for",
 		"\timported modules.",

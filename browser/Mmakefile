@@ -87,7 +87,7 @@ $(DEPENDS)	: Mercury.modules
 # won't work without the Mercury.modules file.
 .PHONY: Mercury.modules
 Mercury.modules:
-	$(MC) -f *.m
+	$(MC) $(ALL_MCFLAGS) -f *.m
 
 .PHONY: check
 check		: $(BROWSER_LIB_NAME).check

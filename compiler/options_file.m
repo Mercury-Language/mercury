@@ -20,7 +20,14 @@
 
 :- func options_variables_init = options_variables.
 
-:- pred read_options_files(maybe(options_variables)::out,
+	% Read a single options file.  No searching will be done.
+	% This is used to read the configuration file.
+:- pred read_options_file(file_name::in, options_variables::in,
+	maybe(options_variables)::out, io__state::di, io__state::uo) is det.
+
+	% Read all options files specified by `--options-file' options.
+:- pred read_options_files(options_variables::in,
+		maybe(options_variables)::out,
 		io__state::di, io__state::uo) is det.
 
 	% Look up the DEFAULT_MCFLAGS variable.
@@ -74,14 +81,37 @@
 
 options_variables_init = map__init.
 
-read_options_files(MaybeVariables) -->
+read_options_file(OptionsFile, Variables0, MaybeVariables) -->
+	promise_only_solution_io(
+	    (pred(R::out, di, uo) is cc_multi -->
+		try_io(
+	    	    (pred((Variables1)::out, di, uo) is det -->
+			read_options_file(error, no_search, no, OptionsFile,
+				Variables0, Variables1)
+		    ), R)
+	    ), OptionsFileResult),
+	(
+		{ OptionsFileResult = succeeded(Variables) },
+		{ MaybeVariables = yes(Variables) }
+	;
+		{ OptionsFileResult = exception(Exception) },
+		{ Exception = univ(found_options_file_error) ->
+			MaybeVariables = no
+		;
+			rethrow(OptionsFileResult)
+		}
+	;
+		{ OptionsFileResult = failed },
+		{ error("read_options_files") }
+	).
+
+read_options_files(Variables0, MaybeVariables) -->
 	promise_only_solution_io(
 	    (pred(R::out, di, uo) is cc_multi -->
 		try_io(
 	    	    (pred((Variables1)::out, di, uo) is det -->
 			globals__io_lookup_accumulating_option(options_files,
 				OptionsFiles),
-			{ Variables0 = options_variables_init },
 			{ ReadFile =
 			    (pred(OptionsFile::in, Vars0::in, Vars::out,
 					di, uo) is det -->
@@ -132,6 +162,10 @@ read_options_file(ErrorIfNotExist0, Search, MaybeDirName, OptionsFile0,
 		Variables0, Variables) -->
     ( { OptionsFile0 = "-" } ->
 	% Read from standard input.
+	debug_msg(
+		(pred(di, uo) is det -->
+			io__write_string("Reading options file from stdin.\n")
+		)),
 	read_options_lines(dir__this_directory, Variables0, Variables)
     ;
 	( { OptionsFile0 = "Mercury.options" } ->
@@ -171,6 +205,13 @@ read_options_file(ErrorIfNotExist0, Search, MaybeDirName, OptionsFile0,
 	search_for_file_returning_dir(Dirs, FileToFind, MaybeDir),
 	(
 		{ MaybeDir = ok(FoundDir) },
+		debug_msg(
+			(pred(di, uo) is det -->
+				io__write_string("Reading options file "),
+				io__write_string(FoundDir / OptionsFile),
+				io__nl
+			)),
+
 		read_options_lines(FoundDir, Variables0, Variables),
 		io__input_stream(OptionsStream),
 		io__set_input_stream(OldInputStream, _),
@@ -430,8 +471,14 @@ expand_variables_2(Variables, [Char | Chars], RevChars0, RevChars,
 :- pred report_undefined_variables(list(string)::in,
 		io__state::di, io__state::uo) is det.
 
-report_undefined_variables([]) --> [].
-report_undefined_variables([_|Rest] @ UndefVars) -->
+report_undefined_variables(Vars) -->
+	report_undefined_variables_2(list__sort_and_remove_dups(Vars)).
+
+:- pred report_undefined_variables_2(list(string)::in,
+		io__state::di, io__state::uo) is det.
+
+report_undefined_variables_2([]) --> [].
+report_undefined_variables_2([_|Rest] @ UndefVars) -->
 	globals__io_lookup_bool_option(warn_undefined_options_variables, Warn),
 	( { Warn = yes } ->
 		io__input_stream_name(FileName),
@@ -439,14 +486,15 @@ report_undefined_variables([_|Rest] @ UndefVars) -->
 		{ Context = term__context_init(FileName, LineNumber) },
 
 		{ error_util__list_to_pieces(
-			list__map((func(Var) = "`" ++ Var ++ "'"), UndefVars),
+			list__map((func(Var) = "`" ++ Var ++ "'"),
+				list__sort_and_remove_dups(UndefVars)),
 			VarList) },
-		{ Rest = [], Word = "variable"
-		; Rest = [_|_], Word = "variables"
+		{ Rest = [], Word = "variable", IsOrAre = "is"
+		; Rest = [_|_], Word = "variables", IsOrAre = "are"
 		},
 		{ Pieces =
 			[words("Warning: "), words(Word) | VarList]
-			++ [words("are undefined.")] },
+			++ [words(IsOrAre), words("undefined.")] },
 		write_error_pieces(Context, 0, Pieces),
 
 		globals__io_lookup_bool_option(halt_at_warn, Halt),
@@ -775,6 +823,8 @@ lookup_mmc_maybe_module_options(Vars, MaybeModuleName, Result) -->
 	;	lib_dirs
 	;	lib_grades
 	;	install_prefix
+	;	stdlib_dir
+	;	config_dir
 	;	linkage
 	;	mercury_linkage
 	.
@@ -784,12 +834,15 @@ lookup_mmc_maybe_module_options(Vars, MaybeModuleName, Result) -->
 	% `LIBRARIES' should come before `MLLIBS' (Mercury libraries
 	% depend on C libraries, but C libraries typically do not
 	% depend on Mercury libraries).
+	% `MERCURY_STDLIB_DIR' and `MERCURY_CONFIG_DIR' should come before
+	% `MCFLAGS'. Settings in `MCFLAGS' (e.g. `--no-mercury-stdlib-dir')
+	% should override settings of these MERCURY_STDLIB_DIR
+	% in the environment.
 options_variable_types =
-	[grade_flags, linkage, mercury_linkage, mmc_flags, c_flags, java_flags,
-	ilasm_flags, csharp_flags, mcpp_flags,
-	ml_objs, lib_dirs, ld_flags,
-	libraries, ml_libs, c2init_args,
-	lib_grades, install_prefix].
+	[grade_flags, linkage, mercury_linkage, lib_grades, stdlib_dir,
+	config_dir, mmc_flags, c_flags, java_flags, ilasm_flags,
+	csharp_flags, mcpp_flags, ml_objs, lib_dirs, ld_flags,
+	libraries, ml_libs, c2init_args, install_prefix].
 
 :- func options_variable_name(options_variable_type) = string.
 
@@ -809,6 +862,8 @@ options_variable_name(libraries) = "LIBRARIES".
 options_variable_name(lib_dirs) = "LIB_DIRS".
 options_variable_name(lib_grades) = "LIBGRADES".
 options_variable_name(install_prefix) = "INSTALL_PREFIX".
+options_variable_name(stdlib_dir) = "MERCURY_STDLIB_DIR".
+options_variable_name(config_dir) = "MERCURY_CONFIG_DIR".
 options_variable_name(linkage) = "LINKAGE".
 options_variable_name(mercury_linkage) = "MERCURY_LINKAGE".
 
@@ -828,7 +883,9 @@ options_variable_type_is_target_specific(ld_libflags) = yes.
 options_variable_type_is_target_specific(c2init_args) = yes.
 options_variable_type_is_target_specific(libraries) = yes.
 options_variable_type_is_target_specific(lib_dirs) = no.
-options_variable_type_is_target_specific(install_prefix) = no.
+options_variable_type_is_target_specific(install_prefix) = yes.
+options_variable_type_is_target_specific(stdlib_dir) = no.
+options_variable_type_is_target_specific(config_dir) = no.
 options_variable_type_is_target_specific(lib_grades) = yes.
 options_variable_type_is_target_specific(linkage) = yes.
 options_variable_type_is_target_specific(mercury_linkage) = yes.
@@ -885,6 +942,8 @@ mmc_option_type(libraries) = option([], "--mercury-library").
 mmc_option_type(lib_dirs) = option([], "--mercury-library-directory").
 mmc_option_type(lib_grades) = option(["--no-libgrade"], "--libgrade").
 mmc_option_type(install_prefix) = option([], "--install-prefix").
+mmc_option_type(stdlib_dir) = option([], "--mercury-stdlib-dir").
+mmc_option_type(config_dir) = option([], "--mercury-config-dir").
 mmc_option_type(linkage) = option([], "--linkage").
 mmc_option_type(mercury_linkage) = option([], "--mercury-linkage").
 

@@ -8,6 +8,9 @@
 # You need to have already installed the Mercury compiler.
 
 MERCURY_DIR=..
+# Make sure we get a version of Mmake.vars with INSTALL_PREFIX
+# pointing to the configured installation directory.
+include $(MERCURY_DIR)/scripts/Mmake.vars
 include $(MERCURY_DIR)/Mmake.common
 
 MERCURY_VERSION	= mercury-$(VERSION).$(FULLARCH)
@@ -33,7 +36,7 @@ INSTALL_SCRIPTS	= ../scripts/c2init ../scripts/mmc \
 		../scripts/ml ../scripts/mmake ../scripts/mprof \
 		../scripts/mdb ../scripts/mkfifo_using_mknod \
 		../scripts/mercury_config ../scripts/Mmake.vars \
-		../scripts/mdbrc
+		../scripts/mdbrc ../scripts/Mercury.config
 
 SCRIPT_FILES	= $(INSTALL_SCRIPTS) ../scripts/*.in ../scripts/*.sh-subr \
 		  ../scripts/Mmake.rules \

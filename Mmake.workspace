@@ -98,6 +98,8 @@ MTAGSFLAGS +=	$(EXTRA_MTAGSFLAGS)
 
 VPATH =		$(LIBRARY_DIR)
 
+MCFLAGS +=	--config-file $(SCRIPTS_DIR)/Mercury.config
+
 ifeq ($(MMAKE_USE_MMC_MAKE),yes)
 MCFLAGS +=	--options-file $(WORKSPACE)/Mercury.options
 endif

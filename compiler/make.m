@@ -19,7 +19,7 @@
 
 :- interface.
 
-:- include_module make__options_file.
+:- include_module make__options_file, make__util.
 
 :- import_module parse_tree.
 
@@ -27,19 +27,21 @@
 :- import_module io, list.
 
 	% make__process_args(OptionArgs, NonOptionArgs).
-:- pred make__process_args(list(string)::in, list(file_name)::in,
-		io__state::di, io__state::uo) is det.
+:- pred make__process_args(options_variables::in, list(string)::in,
+		list(file_name)::in, io__state::di, io__state::uo) is det.
 
 :- pred make__write_module_dep_file(module_imports::in,
 		io__state::di, io__state::uo) is det.
 
 :- func make__module_dep_file_extension = string.
 
+:- type make_info.
+
 %-----------------------------------------------------------------------------%
 :- implementation.
 
 :- include_module make__dependencies, make__module_dep_file.
-:- include_module make__module_target, make__program_target, make__util.
+:- include_module make__module_target, make__program_target.
 
 :- import_module hlds, libs, backend_libs.
 :- import_module top_level. % XXX unwanted dependency
@@ -192,35 +194,8 @@ make__write_module_dep_file(Imports) -->
 
 make__module_dep_file_extension = ".module_dep".
 
-make__process_args(OptionArgs, Targets0) -->
-    read_options_files(MaybeVariables),
+make__process_args(Variables, OptionArgs, Targets0) -->
     (
-    	{ MaybeVariables = yes(Variables) },
-	% Look up the MCFLAGS and GRADEFLAGS from the options file.
-    	lookup_mmc_options(Variables, MaybeMCFlags),
-        (
-		{ MaybeMCFlags = yes(MCFlags) },
-		handle_options(MCFlags ++ OptionArgs, MaybeError,
-			_, _, _),
-		(
-			{ MaybeError = yes(OptionsError) },
-			usage_error(OptionsError),
-			{ Continue0 = no }
-		;
-			{ MaybeError = no },
-			{ Continue0 = yes }
-		)
-	;
-		{ MaybeMCFlags = no },
-		{ Continue0 = no }
-	)
-    ;
-	{ MaybeVariables = no },
-	{ Variables = options_variables_init },
-        { Continue0 = no }
-    ),
-    (
-	{ Continue0 = yes },
 	{ Targets0 = [] }
     ->
     	lookup_main_target(Variables, MaybeMAIN_TARGET),
@@ -241,7 +216,7 @@ make__process_args(OptionArgs, Targets0) -->
 		{ Continue = no }
 	)
     ;
-	{ Continue = Continue0 },
+	{ Continue = yes },
 	{ Targets = Targets0 }
     ),
     ( { Continue = no } ->	

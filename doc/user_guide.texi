@@ -860,12 +860,14 @@ Parallel builds are not yet supported.
 Note that @samp{--use-subdirs} is automatically enabled if you specify
 @samp{mmc --make}.
 
+@cindex Options files
+@cindex Mercury.options
 The Mmake variables above can be used by @samp{mmc --make} if they
 are set in a file called @file{Mercury.options}. The @file{Mercury.options}
 file has the same syntax as an Mmakefile, but only variable assignments and
 @samp{include} directives are allowed.  All variables in the Mercury.options
 are treated as if they are assigned using @samp{:=}. Variables may also
-be set in the environment.
+be set in the environment, overriding settings in options files.
 
 @samp{mmc --make} can be used in conjunction with Mmake. This is useful
 for projects which include source code written in languages other than
@@ -6315,10 +6317,21 @@ which a library to be installed should be built.
 @sp 1
 @item --options-file @var{file}
 @findex --options-file
+@cindex Options files
+@cindex Mercury.options
 Add @var{file} to the list of options files to be processed.
 If @var{file} is @samp{-}, an options file will be read from the
 standard input.  By default the file @file{Mercury.options}
 in the current directory will be read.
+See @ref{Using Mmake} for a description of the syntax of options files.
+
+@item --config-file @var{file}
+@findex --config-file
+@cindex Options files
+Read the Mercury compiler's configuration information from @var{file}.
+If the @samp{--config-file} option is not set, a default configuration
+will be used, unless @samp{--no-mercury-stdlib-dir} is passed to mmc.
+The configuration file is just an options file (@pxref{Using Mmake}).
 
 @sp 1
 @item --options-search-directory @var{dir}

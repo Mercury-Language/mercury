@@ -20,7 +20,7 @@ INSTALL_SCRIPTS		= scripts/c2init scripts/mmc \
 			scripts/mercury_update_interface scripts/mgnuc \
 			scripts/ml scripts/mmake scripts/mprof \
 			scripts/mdb scripts/mkfifo_using_mknod \
-			scripts/mercury_config
+			scripts/mercury_config scripts/Mercury.config
 
 CGI_PROG_NAME		= mdprof_cgi
 

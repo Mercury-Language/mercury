@@ -153,6 +153,7 @@ esac
 # Copy the new configuration into place.
 #
 cp runtime/mercury_conf.h $output_libdir/conf || exit 1
+cp scripts/Mercury.config $output_libdir/conf || exit 1
 cp scripts/Mmake.vars $output_libdir/mmake || exit 1
 if [ "$input_prefix" != "$output_prefix" ]; then
 	cp $input_prefix/bin/mdemangle${exe_ext} \
@@ -164,7 +165,7 @@ cd scripts
 echo *
 for file in *; do
 	case "$file" in
-		*.in|Mmake.*|mdbrc|*.sh-subr) ;;
+		*.in|Mmake.*|Mercury.config|mdbrc|*.sh-subr) ;;
 		*)
 			cp $file $output_prefix/bin || exit 1
 			chmod u+w $output_prefix/bin/$file || exit 1

@@ -111,7 +111,8 @@
 :- import_module recompilation, recompilation__usage.
 :- import_module recompilation__check.
 :- import_module libs__timestamp.
-:- import_module make, make__options_file, backend_libs__compile_target_code.
+:- import_module make, make__options_file, make__util.
+:- import_module backend_libs__compile_target_code.
 
 	% inter-module analysis framework
 :- import_module analysis.
@@ -128,48 +129,102 @@
 real_main -->
 	gc_init,
 
-	 	% All messages go to stderr
-	io__stderr_stream(StdErr),
-	io__set_output_stream(StdErr, _),
-	io__command_line_arguments(Args0),
+         % All messages go to stderr
+    io__stderr_stream(StdErr),
+    io__set_output_stream(StdErr, _),
+    io__command_line_arguments(Args0),
 
-	% Lookup the the default options in the
-	% environment (set by the mmc script).
-	( { Args0 = ["--invoked-by-mmc-make" | _] } ->
-		{ MaybeMCFlags = yes([]) }
-	;
-		lookup_default_options(options_variables_init, MaybeMCFlags)
-	),
+    ( { Args0 = ["--invoked-by-mmc-make" | _] } ->
+        % All the configuration options were passed
+        % on the command line.
+        { process_options(Args0, OptionArgs, NonOptionArgs, _) },
+        { MaybeMCFlags = yes([]) },
+        { Variables = options_variables_init },
+	{ Link = no }
+    ;
+	%
+	% Find out which options files to read.
+	%
+	handle_options(Args0, MaybeError0, OptionArgs, NonOptionArgs, Link),
 	(
-		{ MaybeMCFlags = yes(MCFlags) },
-		handle_options(MCFlags ++ Args0, MaybeError,
-	    		OptionArgs0, NonOptionArgs, Link),
-		(
-			{ MaybeError = no },
-			%
-			% When computing the option arguments to pass
-			% to `--make', only include the command-line
-			% arguments, not the contents of DEFAULT_MCFLAGS.
-			%
-			globals__io_lookup_bool_option(make, Make),
-			{ Make = yes ->
-				process_options(Args0, OptionArgs, _, _)
-			;
-				% OptionArgs is only used with `--make'.
-				OptionArgs = OptionArgs0
-			}
-		;
-			{ MaybeError = yes(_) },
-			{ OptionArgs = OptionArgs0 }
-		),
-		main_2(MaybeError, OptionArgs, NonOptionArgs, Link)
+	    { MaybeError0 = yes(Error0) },
+            usage_error(Error0),
+            { Variables = options_variables_init },
+            { MaybeMCFlags = no }
 	;
-		{ MaybeMCFlags = no },
-		io__set_exit_status(1)
-	).
+            { MaybeError0 = no },
+            read_options_files(options_variables_init, MaybeVariables0),
+            (
+	        { MaybeVariables0 = yes(Variables0) },
+                lookup_mmc_options(Variables0, MaybeMCFlags0),
+                (
+		    { MaybeMCFlags0 = yes(MCFlags0) },
+
+		    %
+		    % Process the options again to find out which
+		    % configuration file to read.
+		    %
+                    handle_options(MCFlags0 ++ Args0, MaybeError1, 
+                        _, _, _),
+                    (
+                        { MaybeError1 = yes(Error1) },
+                        usage_error(Error1),
+                        { Variables = options_variables_init },
+                        { MaybeMCFlags = no }
+                    ;
+                        { MaybeError1 = no },
+
+                        globals__io_lookup_maybe_string_option(config_file,
+                            MaybeConfigFile),
+                        (
+                            { MaybeConfigFile = yes(ConfigFile) },
+                            read_options_file(ConfigFile, Variables0,
+    				MaybeVariables),
+                            (
+                                { MaybeVariables = yes(Variables) },
+                                lookup_mmc_options(Variables, MaybeMCFlags)
+                            ;
+                                { MaybeVariables = no },
+                                { MaybeMCFlags = no },
+                                { Variables = options_variables_init }
+                            )
+                        ;
+                            { MaybeConfigFile = no },
+                            { Variables = options_variables_init },
+                            lookup_mmc_options(Variables, MaybeMCFlags)
+                        )
+		    )
+		;
+		    { MaybeMCFlags0 = no },
+                    { Variables = options_variables_init },
+                    { MaybeMCFlags = no }
+                )
+	    ;
+	    	{ MaybeVariables0 = no },
+                { Variables = options_variables_init },
+                { MaybeMCFlags = no }
+	    )
+        )
+    ),
+    (
+        { MaybeMCFlags = yes(MCFlags) },
+
+        handle_options(MCFlags ++ OptionArgs, MaybeError,
+                _, _, _),
+
+        %
+        % When computing the option arguments to pass
+        % to `--make', only include the command-line
+        % arguments, not the contents of DEFAULT_MCFLAGS.
+        %
+        main_2(MaybeError, Variables, OptionArgs, NonOptionArgs, Link)
+    ;
+        { MaybeMCFlags = no },
+        io__set_exit_status(1)
+    ).
 
 main(Args) -->
-	main_2(no, [], Args, no).
+	main_2(no, options_variables_init, [], Args, no).
 
 %-----------------------------------------------------------------------------%
 
@@ -200,13 +255,13 @@ gc_init --> [].
 
 %-----------------------------------------------------------------------------%
 
-:- pred main_2(maybe(string), list(string), list(string),
+:- pred main_2(maybe(string), options_variables, list(string), list(string),
 		bool, io__state, io__state).
-:- mode main_2(in, in, in, in, di, uo) is det.
+:- mode main_2(in, in, in, in, in, di, uo) is det.
 
-main_2(yes(ErrorMessage), _, _, _) -->
+main_2(yes(ErrorMessage), _, _, _, _) -->
 	usage_error(ErrorMessage).
-main_2(no, OptionArgs, Args, Link) -->
+main_2(no, OptionVariables, OptionArgs, Args, Link) -->
 	globals__io_lookup_bool_option(help, Help),
 	globals__io_lookup_bool_option(generate_source_file_mapping,
 		GenerateMapping),
@@ -246,16 +301,21 @@ main_2(no, OptionArgs, Args, Link) -->
 	; { GenerateMapping = yes } ->
 		source_file_map__write_source_file_map(Args)
 	; { Make = yes } ->
-		make__process_args(OptionArgs, Args)
+		make__process_args(OptionVariables, OptionArgs, Args)
 	; { Args = [], FileNamesFromStdin = no } ->
 		usage
 	;
-		process_all_args(Args, ModulesToLink),
+		process_all_args(OptionVariables, OptionArgs,
+			Args, ModulesToLink),
 		io__get_exit_status(ExitStatus),
 		( { ExitStatus = 0 } ->
-			( { Link = yes } ->
-				compile_target_code__link_module_list(
-					ModulesToLink, Succeeded),
+			( { Link = yes, ModulesToLink = [FirstModule | _] } ->
+				{ file_name_to_module_name(FirstModule,
+					MainModuleName) },
+				compile_with_module_options(MainModuleName,
+					OptionVariables, OptionArgs,
+					compile_target_code__link_module_list(
+						ModulesToLink), Succeeded),
 				maybe_set_exit_status(Succeeded)
 			;
 				[]
@@ -281,10 +341,11 @@ main_2(no, OptionArgs, Args, Link) -->
 		)
 	).
 
-:- pred process_all_args(list(string), list(string), io__state, io__state).
-:- mode process_all_args(in, out, di, uo) is det.
+:- pred process_all_args(options_variables, list(string),
+		list(string), list(string), io__state, io__state).
+:- mode process_all_args(in, in, in, out, di, uo) is det.
 
-process_all_args(Args, ModulesToLink) -->
+process_all_args(OptionVariables, OptionArgs, Args, ModulesToLink) -->
 	% Because of limitations in the GCC back-end,
 	% we can only call the GCC back-end once (per process),
 	% to generate a single assembler file, rather than
@@ -302,7 +363,8 @@ process_all_args(Args, ModulesToLink) -->
 			% starting the gcc backend to avoid overwriting
 			% the output assembler file even if recompilation 
 			% is found to be unnecessary.
-		    	mercury_compile__process_args(Args, ModulesToLink)
+		    	mercury_compile__process_args(OptionVariables,
+					OptionArgs, Args, ModulesToLink)
 		    ;
 			io__write_string(
 "Sorry, not implemented: `--target asm' with `--smart-recompilation'\n"),
@@ -312,9 +374,11 @@ process_all_args(Args, ModulesToLink) -->
 			{ ModulesToLink = [] }
 		    )
 		;
-		    compile_using_gcc_backend(
+		    compile_using_gcc_backend(OptionVariables, OptionArgs,
 		    	string_to_file_or_module(FirstArg),
-			mercury_compile__process_args(Args), ModulesToLink)
+			mercury_compile__process_args(OptionVariables,
+				OptionArgs, Args),
+			ModulesToLink)
 	        )
 	    ;
 		io__write_string(
@@ -326,7 +390,8 @@ process_all_args(Args, ModulesToLink) -->
 		% If we're NOT using the GCC back-end,
 		% then we can just call process_args directly,
 		% rather than via GCC.
-	    mercury_compile__process_args(Args, ModulesToLink)
+	    mercury_compile__process_args(OptionVariables, OptionArgs,
+	    		Args, ModulesToLink)
 	).
 
 :- pred compiling_to_asm(globals::in) is semidet.
@@ -345,13 +410,14 @@ compiling_to_asm(Globals) :-
 		OptionList),
 	bool__or_list(BoolList) = no.
 
-:- pred compile_using_gcc_backend(file_or_module,
-		frontend_callback(list(string)),
+:- pred compile_using_gcc_backend(options_variables, list(string),
+		file_or_module, frontend_callback(list(string)),
 		list(string), io__state, io__state).
-:- mode compile_using_gcc_backend(in, in(frontend_callback),
+:- mode compile_using_gcc_backend(in, in, in, in(frontend_callback),
 		out, di, uo) is det.
 
-compile_using_gcc_backend(FirstFileOrModule, CallBack, ModulesToLink) -->
+compile_using_gcc_backend(OptionVariables, OptionArgs, FirstFileOrModule,
+		CallBack, ModulesToLink) -->
 	% The name of the assembler file that we generate
 	% is based on name of the first module named
 	% on the command line.  (Mmake requires this.)
@@ -418,8 +484,11 @@ compile_using_gcc_backend(FirstFileOrModule, CallBack, ModulesToLink) -->
 			io__output_stream(OutputStream),
 			get_linked_target_type(TargetType),
 			get_object_code_type(TargetType, PIC),
-			compile_target_code__assemble(OutputStream,
-				PIC, ModuleName, AssembleOK),
+			compile_with_module_options(ModuleName,
+				OptionVariables, OptionArgs,
+				compile_target_code__assemble(OutputStream,
+					PIC, ModuleName),
+				AssembleOK),
 			maybe_set_exit_status(AssembleOK)
 		;
 			[]
@@ -493,23 +562,26 @@ do_rename_file(OldFileName, NewFileName, Result) -->
 		{ Result = Result0 }
 	).
 
-:- pred process_args(list(string), list(string), io__state, io__state).
-:- mode process_args(in, out, di, uo) is det.
+:- pred process_args(options_variables, list(string), list(string),
+		list(string), io__state, io__state).
+:- mode process_args(in, in, in, out, di, uo) is det.
 
-process_args(Args, ModulesToLink) -->
+process_args(OptionVariables, OptionArgs, Args, ModulesToLink) -->
 	globals__io_lookup_bool_option(filenames_from_stdin,
 		FileNamesFromStdin),
 	( { FileNamesFromStdin = yes } ->
-		process_stdin_arg_list([], ModulesToLink)
+		process_stdin_arg_list(OptionVariables, OptionArgs,
+			[], ModulesToLink)
 	;
-		process_arg_list(Args, ModulesToLink)
+		process_arg_list(OptionVariables, OptionArgs,
+			Args, ModulesToLink)
 	).
 
-:- pred process_stdin_arg_list(list(string), list(string), 
-		io__state, io__state).
-:- mode process_stdin_arg_list(in, out, di, uo) is det.
+:- pred process_stdin_arg_list(options_variables, list(string), list(string),
+		list(string), io__state, io__state).
+:- mode process_stdin_arg_list(in, in, in, out, di, uo) is det.
 
-process_stdin_arg_list(Modules0, Modules) -->
+process_stdin_arg_list(OptionVariables, OptionArgs, Modules0, Modules) -->
 	( { Modules0 \= [] } -> garbage_collect ; [] ),
 	io__read_line_as_string(FileResult),
 	( 
@@ -519,9 +591,10 @@ process_stdin_arg_list(Modules0, Modules) -->
 		;
 			Arg = Line
 		},
-		process_arg(Arg, Module),
+		process_arg(OptionVariables, OptionArgs, Arg, Module),
 		{ list__append(Module, Modules0, Modules1) },
-		process_stdin_arg_list(Modules1, Modules)
+		process_stdin_arg_list(OptionVariables, OptionArgs,
+			Modules1, Modules)
 	;
 		{ FileResult = eof },
 		{ Modules = Modules0 }
@@ -534,22 +607,24 @@ process_stdin_arg_list(Modules0, Modules) -->
 		io__set_exit_status(1)
 	).
 
-:- pred process_arg_list(list(string), list(string), io__state, io__state).
-:- mode process_arg_list(in, out, di, uo) is det.
+:- pred process_arg_list(options_variables, list(string), list(string),
+		list(string), io__state, io__state).
+:- mode process_arg_list(in, in, in, out, di, uo) is det.
 
-process_arg_list(Args, Modules) -->
-	process_arg_list_2(Args, ModulesList),
+process_arg_list(OptionVariables, OptionArgs, Args, Modules) -->
+	process_arg_list_2(OptionVariables, OptionArgs, Args, ModulesList),
 	{ list__condense(ModulesList, Modules) }.
 
-:- pred process_arg_list_2(list(string), list(list(string)),
-			io__state, io__state).
-:- mode process_arg_list_2(in, out, di, uo) is det.
+:- pred process_arg_list_2(options_variables, list(string), list(string),
+		list(list(string)), io__state, io__state).
+:- mode process_arg_list_2(in, in, in, out, di, uo) is det.
 
-process_arg_list_2([], []) --> [].
-process_arg_list_2([Arg | Args], [Modules | ModulesList]) -->
-	process_arg(Arg, Modules),
+process_arg_list_2(_, _, [], []) --> [].
+process_arg_list_2(OptionVariables, OptionArgs, [Arg | Args],
+		[Modules | ModulesList]) -->
+	process_arg(OptionVariables, OptionArgs, Arg, Modules),
 	( { Args \= [] } -> garbage_collect ; [] ),
-	process_arg_list_2(Args, ModulesList).
+	process_arg_list_2(OptionVariables, OptionArgs, Args, ModulesList).
 
 	% Figure out whether the argument is a module name or a file name.
 	% Open the specified file or module, and process it.
@@ -557,11 +632,33 @@ process_arg_list_2([Arg | Args], [Modules | ModulesList]) -->
 	% if they were compiled to seperate object files)
 	% that should be linked into the final executable.
 
-:- pred process_arg(string, list(string), io__state, io__state).
-:- mode process_arg(in, out, di, uo) is det.
+:- pred process_arg(options_variables, list(string), string,
+		list(string), io__state, io__state).
+:- mode process_arg(in, in, in, out, di, uo) is det.
 
-process_arg(Arg, ModulesToLink) -->
+process_arg(OptionVariables, OptionArgs, Arg, ModulesToLink) -->
 	{ FileOrModule = string_to_file_or_module(Arg) },
+	globals__io_lookup_bool_option(invoked_by_mmc_make, InvokedByMake),
+	( { InvokedByMake = no } ->
+    		build_with_module_options(
+			file_or_module_to_module_name(FileOrModule),
+        		OptionVariables, OptionArgs, [],
+			(pred(_::in, yes::out, _::in,
+					Modules::out, di, uo) is det -->	
+	    			process_arg_2(OptionVariables, OptionArgs,
+					FileOrModule, Modules)
+			), _, [], ModulesToLink)
+	;
+		% `mmc --make' has already set up the options.
+		process_arg_2(OptionVariables, OptionArgs,
+			FileOrModule, ModulesToLink)
+	).
+
+:- pred process_arg_2(options_variables, list(string),
+		file_or_module, list(string), io__state, io__state).
+:- mode process_arg_2(in, in, in, out, di, uo) is det.
+
+process_arg_2(OptionVariables, OptionArgs, FileOrModule, ModulesToLink) -->
 	globals__io_lookup_bool_option(generate_dependencies, GenerateDeps),
 	( { GenerateDeps = yes } ->
 		{ ModulesToLink = [] },
@@ -573,7 +670,8 @@ process_arg(Arg, ModulesToLink) -->
 			generate_module_dependencies(ModuleName)
 		)
 	;
-		process_module(FileOrModule, ModulesToLink)
+		process_module(OptionVariables, OptionArgs,
+			FileOrModule, ModulesToLink)
 	).
 
 :- type file_or_module
@@ -596,6 +694,13 @@ string_to_file_or_module(String) = FileOrModule :-
 		file_name_to_module_name(String, ModuleName),
 		FileOrModule = module(ModuleName) 			
 	).
+
+:- func file_or_module_to_module_name(file_or_module) = module_name.
+
+file_or_module_to_module_name(file(FileName)) = ModuleName :-
+	% Assume the module name matches the file name.
+	file_name_to_module_name(FileName, ModuleName).
+file_or_module_to_module_name(module(ModuleName)) = ModuleName.
 
 :- pred read_module(file_or_module, bool, module_name, file_name,
 		maybe(timestamp), item_list, module_error,
@@ -706,10 +811,11 @@ read_module(file(FileName), ReturnTimestamp, ModuleName, SourceFileName,
 	maybe_report_stats(Stats),
 	{ string__append(FileName, ".m", SourceFileName) }.
 
-:- pred process_module(file_or_module, list(string), io__state, io__state).
-:- mode process_module(in, out, di, uo) is det.
+:- pred process_module(options_variables, list(string),
+		file_or_module, list(string), io__state, io__state).
+:- mode process_module(in, in, in, out, di, uo) is det.
 
-process_module(FileOrModule, ModulesToLink) -->
+process_module(OptionVariables, OptionArgs, FileOrModule, ModulesToLink) -->
 	globals__io_lookup_bool_option(halt_at_syntax_errors, HaltSyntax),
 	globals__io_lookup_bool_option(make_interface, MakeInterface),
 	globals__io_lookup_bool_option(make_short_interface,
@@ -738,8 +844,7 @@ process_module(FileOrModule, ModulesToLink) -->
 		( { halt_at_module_error(HaltSyntax, Error) } ->
 			[]
 		;
-			split_into_submodules(ModuleName,
-				Items, SubModuleList),
+			split_into_submodules(ModuleName, Items, SubModuleList),
 			list__foldl(
 				(pred(SubModule::in, di, uo) is det -->
 					ProcessModule(FileName, ModuleName,
@@ -817,7 +922,8 @@ process_module(FileOrModule, ModulesToLink) -->
 		;
 			( { Target = asm, Smart = yes } ->
 			    % See the comment in process_all_args.
-			    compile_using_gcc_backend(FileOrModule,
+			    compile_using_gcc_backend(OptionVariables,
+			    	OptionArgs, FileOrModule,
 				process_module_2(FileOrModule,
 					ModulesToRecompile, ReadModules),
 				ModulesToLink)
@@ -955,6 +1061,28 @@ halt_at_module_error(HaltSyntax, some_module_errors) :- HaltSyntax = yes.
 
 module_to_link(ModuleName - _Items, ModuleToLink) -->
 	{ module_name_to_file_name(ModuleName, ModuleToLink) }.
+
+:- type compile == pred(bool, io__state, io__state).
+:- inst compile == (pred(out, di, uo) is det).
+
+:- pred compile_with_module_options(module_name::in, options_variables::in,
+		list(string)::in, compile::in(compile),
+		bool::out, io__state::di, io__state::uo) is det.
+
+compile_with_module_options(ModuleName, OptionVariables, OptionArgs,
+		Compile, Succeeded) -->
+	globals__io_lookup_bool_option(invoked_by_mmc_make, InvokedByMake),
+	( { InvokedByMake = yes } ->
+		% `mmc --make' has already set up the options.
+		Compile(Succeeded)
+	;
+		build_with_module_options(ModuleName, OptionVariables,
+			OptionArgs, [],
+			(pred(_::in, Succeeded0::out,
+					X::in, X::out, di, uo) is det -->
+				Compile(Succeeded0)
+			), Succeeded, unit, _)
+	).
 
 %-----------------------------------------------------------------------------%
 

@@ -43,15 +43,38 @@
 
 %-----------------------------------------------------------------------------%
 
-:- type build(T) == pred(T, bool, make_info, make_info, io__state, io__state).
+:- type build(T, Info) == pred(T, bool, Info, Info, io__state, io__state).
+:- type build(T) == build(T, make_info).
 :- inst build == (pred(in, out, in, out, di, uo) is det).
 
+	% build_with_module_options(ModuleName, ExtraArgs, Builder,
+	%	Succeeded, Info0, Info).
+	%
 	% Perform the given closure after updating the option_table in
 	% the globals in the io__state to contain the module-specific
-	% options for the specified module.
+	% options for the specified module and the extra options given
+	% in the ExtraArgs.
+	% Adds `--invoked-by-mmc-make' and `--use-subdirs' to the option
+	% list.
+	% The old option table will be restored afterwards.
 :- pred build_with_module_options(module_name::in,
 	list(string)::in, build(list(string))::in(build), bool::out,
 	make_info::in, make_info::out, io__state::di, io__state::uo) is det.
+
+	% build_with_module_options(ModuleName, OptionsVariables,
+	%	OptionArgs, ExtraArgs, Builder, Succeeded, Info0, Info).
+	%
+	% Perform the given closure after updating the option_table in
+	% the globals in the io__state to contain the module-specific
+	% options for the specified module and the extra options given
+	% in ExtraArgs and OptionArgs 
+	% Does not add `--invoked-by-mmc-make' and `--use-subdirs'
+	% to the option list.
+	% The old option table will be restored afterwards.
+:- pred build_with_module_options(module_name::in, options_variables::in,
+	list(string)::in, list(string)::in,
+	build(list(string), Info)::in(build),
+	bool::out, Info::in, Info::out, io__state::di, io__state::uo) is det.
 
 	% Perform the given closure with an output stream created
 	% to append to the error file for the given module.
@@ -282,14 +305,29 @@ build_with_output_redirect(ModuleName, Build, Succeeded, Info0, Info) -->
 
 build_with_module_options(ModuleName, ExtraOptions,
 		Build, Succeeded, Info0, Info) -->
-	lookup_mmc_module_options(Info0 ^ options_variables,
-		ModuleName, OptionsResult),
+	build_with_module_options(yes, ModuleName, Info0 ^ options_variables,
+		Info0 ^ option_args, ExtraOptions, Build, Succeeded,
+		Info0, Info).
+
+build_with_module_options(ModuleName, OptionVariables,
+		OptionArgs, ExtraOptions, Build, Succeeded, Info0, Info) -->
+	build_with_module_options(no, ModuleName, OptionVariables,
+		OptionArgs, ExtraOptions, Build, Succeeded, Info0, Info).
+
+:- pred build_with_module_options(bool::in, module_name::in,
+	options_variables::in, list(string)::in, list(string)::in,
+	build(list(string), Info)::in(build),
+	bool::out, Info::in, Info::out, io__state::di, io__state::uo) is det.
+
+build_with_module_options(InvokedByMmcMake, ModuleName, OptionVariables,
+		OptionArgs, ExtraOptions, Build, Succeeded, Info0, Info) -->
+	lookup_mmc_module_options(OptionVariables, ModuleName, OptionsResult),
 	(
 		{ OptionsResult = no },
 		{ Info = Info0 },
 		{ Succeeded = no }
 	;
-		{ OptionsResult = yes(OptionArgs) }, 
+		{ OptionsResult = yes(ModuleOptionArgs) }, 
 		globals__io_get_globals(Globals),
 
 		% --invoked-by-mmc-make disables reading DEFAULT_MCFLAGS
@@ -298,9 +336,17 @@ build_with_module_options(ModuleName, ExtraOptions,
 		% --use-subdirs is needed because the code to install
 		% libraries uses `--use-grade-subdirs' and assumes the
 		% interface files were built with `--use-subdirs'.
-		{ AllOptionArgs = list__condense([
-		    ["--invoked-by-mmc-make" | OptionArgs],
-		    Info0 ^ option_args, ExtraOptions, ["--use-subdirs"]]) },
+		{ InvokedByMmcMake = yes ->
+			UseSubdirs = ["--use-subdirs"],
+			InvokedByMake = ["--invoked-by-mmc-make"]
+		;
+			UseSubdirs = [],
+			InvokedByMake = []
+		},
+
+		{ AllOptionArgs = list__condense([InvokedByMake,
+			ModuleOptionArgs, OptionArgs,
+			ExtraOptions, UseSubdirs]) },
 		handle_options(AllOptionArgs, OptionsError, _, _, _),
 		(
 			{ OptionsError = yes(OptionsMessage) },

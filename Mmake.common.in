@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-2002 The University of Melbourne. 
+# Copyright (C) 1995-2003 The University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -108,6 +108,12 @@ EXE_RPATH_SEP	= ''@EXE_RPATH_SEP@''
 # Specify any extra libraries that must be linked in when linking shared
 # objects.
 SHARED_LIBS		= @SHARED_LIBS@
+
+# Set the installation prefix. This is done here as well as
+# in scripts/Mmake.vars to avoid accidentally overwriting an
+# existing installation when using an installed mmake.
+INSTALL_PREFIX		= @prefix@
+FINAL INSTALL_PREFIX	= @prefix@
 
 #-----------------------------------------------------------------------------#
 

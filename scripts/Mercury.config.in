@@ -1,65 +1,37 @@
 #! /bin/sh
 # @configure_input@
 #---------------------------------------------------------------------------#
-# Copyright (C) 1994-1998, 2000-2003 The University of Melbourne.
+# Copyright (C) 2003 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
 #
-# MMC - Melbourne Mercury Compiler.
+# Mercury.config
 #
-# Use `mmc -h' for help.
+# Configuration file for the Melbourne Mercury Compiler.
 #
-# Environment variables: MERCURY_STDLIB_DIR, MERCURY_CONFIG_DIR,
-# MERCURY_INT_DIR, MERCURY_ALL_MC_C_INCL_DIRS, MERCURY_COMPILER,
-# MERCURY_C_COMPILER, MERCURY_DEFAULT_GRADE, MERCURY_DEFAULT_OPT_LEVEL.
+# Environment variables: MERCURY_STDLIB_DIR, MERCURY_C_COMPILER,
+# MERCURY_DEFAULT_GRADE, MERCURY_DEFAULT_OPT_LEVEL.
 
-MC=${MERCURY_COMPILER="@LIBDIR@/bin/@FULLARCH@/mercury_compile"}
-case "$MERCURY_INT_DIR" in
-    "")
-	INT_DIR_OPT=
-	CONFIG_DIR=${MERCURY_STDLIB_DIR-@LIBDIR@}
-	MERCURY_CONFIG_DIR=${MERCURY_CONFIG_DIR=$CONFIG_DIR}
-	MERCURY_STDLIB_DIR=${MERCURY_STDLIB_DIR=@LIBDIR@}
-	export MERCURY_CONFIG_DIR MERCURY_STDLIB_DIR
-	STDLIB_DIR_OPT="--mercury-standard-library-directory \"${MERCURY_STDLIB_DIR}\""
-	if [ "$MERCURY_STDLIB_DIR" != "$MERCURY_CONFIG_DIR" ]; then
-		CONFIG_DIR_OPT="--mercury-configuration-directory \"${CONFIG_DIR}\""
-	else
-		CONFIG_DIR_OPT=
-	fi
-	;;
-    *)
-	INT_DIR_OPT="-I $MERCURY_INT_DIR"
-	STDLIB_DIR_OPT=--no-mercury-standard-library-directory
-	CONFIG_DIR_OPT=--no-mercury-configuration-directory
-	unset MERCURY_STDLIB_DIR MERCURY_CONFIG_DIR
-	CONFIG_DIR_OPT=
-	;;
-esac
+# These settings won't override settings in the environment.
+MERCURY_STDLIB_DIR=@LIBDIR@
+MERCURY_DEFAULT_OPT_LEVEL=-O2
+MERCURY_DEFAULT_GRADE=@DEFAULT_GRADE@
+MERCURY_ALL_MC_C_INCL_DIRS=
+MERCURY_C_COMPILER="@CC@"
+MERCURY_MATH_LIB="@MATH_LIB@"
+# $(MATH_LIB) needs to be defined because it may
+# be used by the substitution for SHARED_LIBS.
+MATH_LIB=$(MERCURY_MATH_LIB)
 
-MATH_LIB=${MERCURY_MATH_LIB="@MATH_LIB@"}
-SHARED_LIBS="@SHARED_LIBS_SH@"
-
-DEFAULT_MERCURY_LINKAGE=${MERCURY_LINKAGE=@DEFAULT_LINKAGE@}
-export DEFAULT_MERCURY_LINKAGE
-
-# The default options settings are passed in the DEFAULT_MCFLAGS enviroment
-# variable, rather than on the command line, so that they can be overridden
-# by the value of MCFLAGS in the Mercury.options file. 
-#
 # The default optimization level should be after
 # all the options that describe the machine configuration.
-#
-# XXX Add --linker-trace-flags "@LDFLAGS_FOR_TRACE@" and
-#	--shlib-linker-trace-flags "@LD_LIBFLAGS_FOR_TRACE@"
-#	once those options are accepted everywhere.
-DEFAULT_MCFLAGS=${DEFAULT_MCFLAGS-"\
+DEFAULT_MCFLAGS=\
+		$(MERCURY_ALL_MC_C_INCL_DIRS) \
 		@ALL_LOCAL_C_INCL_DIR_MMC_OPTS@ \
 		@ALL_LOCAL_C_LIB_DIR_MMC_OPTS@ \
-		$MERCURY_ALL_MC_C_INCL_DIRS \
-		--cc \"${MERCURY_C_COMPILER=@CC@}\" \
-		--grade \"${MERCURY_DEFAULT_GRADE=@DEFAULT_GRADE@}\" \
+		--cc "$(MERCURY_C_COMPILER)" \
+		--grade "$(MERCURY_DEFAULT_GRADE)" \
 		--cflags-for-ansi \"@CFLAGS_FOR_ANSI@\" \
 		--cflags-for-optimization \"@CFLAGS_FOR_OPT@\" \
 		--cflags-for-warnings \"@CFLAGS_FOR_WARNINGS@\" \
@@ -74,7 +46,7 @@ DEFAULT_MCFLAGS=${DEFAULT_MCFLAGS-"\
 		--link-with-pic-object-file-extension \".@EXT_FOR_LINK_WITH_PIC_OBJECTS@\" \
 		--executable-file-extension \"@EXT_FOR_EXE@\" \
 		--shared-library-extension \".@EXT_FOR_SHARED_LIB@\" \
-		--library-extension \".@LIB_SUFFIX@\"
+		--library-extension \".@LIB_SUFFIX@\" \
 		--create-archive-command \"@AR@\" \
 		--create-archive-command-output-flag \"@AR_LIBFILE_OPT@\" \
 		--create-archive-command-flags \"@ARFLAGS@\" \
@@ -83,11 +55,13 @@ DEFAULT_MCFLAGS=${DEFAULT_MCFLAGS-"\
 		--link-shared-lib-command \"@LINK_SHARED_OBJ@\" \
 		--trace-libs \"@TRACE_LIBS_SYSTEM@\" \
 		--thread-libs \"@THREAD_LIBS@\" \
-		--shared-libs \"$SHARED_LIBS\" \
-		--math-lib \"$MATH_LIB\" \
+		--shared-libs \"@SHARED_LIBS@\" \
+		--math-lib \"@MATH_LIB@\" \
 		--readline-libs \"@READLINE_LIBRARIES@\" \
 		--linker-thread-flags \"@LDFLAGS_FOR_THREADS@\" \
 		--shlib-linker-thread-flags \"@LD_LIBFLAGS_FOR_THREADS@\" \
+		--linker-trace-flags "@LDFLAGS_FOR_TRACE@" \
+		--shlib-linker-trace-flags "@LD_LIBFLAGS_FOR_TRACE@" \
 		--linker-static-flags \"@LD_STATIC_FLAGS@\" \
 		--linker-strip-flag \"@LD_STRIP_FLAG@\" \
 		--linker-debug-flags \"@LDFLAGS_FOR_DEBUG@\" \
@@ -100,7 +74,6 @@ DEFAULT_MCFLAGS=${DEFAULT_MCFLAGS-"\
 		--linker-error-undefined-flag \"@ERROR_UNDEFINED@\" \
 		--fullarch \"@FULLARCH@\" \
 		--install-prefix \"@prefix@\" \
-		@LIBGRADE_OPTS@ \
 		--num-real-r-regs \"@NUM_REAL_R_REGS@\" \
 		--num-real-r-temps \"@NUM_REAL_R_TEMPS@\" \
 		--conf-low-tag-bits \"@LOW_TAG_BITS@\" \
@@ -110,14 +83,6 @@ DEFAULT_MCFLAGS=${DEFAULT_MCFLAGS-"\
 		@HAVE_DELAY_SLOT@ \
 		@HAVE_BOXED_FLOATS@ \
 		@MCFLAGS_FOR_CC@ \
-		${MERCURY_DEFAULT_OPT_LEVEL=-O2} \
-		$STDLIB_DIR_OPT \
-		$CONFIG_DIR_OPT \
-		"}
-export DEFAULT_MCFLAGS
-
-case $# in
-	0) exec $MC $INT_DIR_OPT ;;
-	*) exec $MC "$@" $INT_DIR_OPT ;;
-esac
+		$(MERCURY_DEFAULT_OPT_LEVEL) \
+		@LIBGRADE_OPTS@ 
 

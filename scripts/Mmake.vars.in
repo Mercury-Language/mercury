@@ -57,7 +57,7 @@ GPATH		= $(VPATH)
 
 DEFAULT_GRADE	= $(MERCURY_DEFAULT_GRADE)
 GRADE		= $(DEFAULT_GRADE)
-GRADESTRING	= $(shell $(MCOGS) $(ALL_GRADEFLAGS))
+GRADESTRING	= $(shell $(MCOGS) $(ALL_GRADEFLAGS) $(ALL_MCFLAGS))
 
 # This may be overridden on the command line
 TARGET_ASM	= no

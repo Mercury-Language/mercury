@@ -609,7 +609,9 @@ uninstall:
 .PHONY : bindist
 bindist: WORK_IN_PROGRESS TODO
 	cd bindist; \
-		PATH="$(INSTALL_PREFIX)/bin:$$PATH" mmake binary_distribution
+		PATH="$(INSTALL_PREFIX)/bin:$$PATH" \
+		MMAKE_DIR="$(INSTALL_MMAKE_DIR)" \
+		mmake -v binary_distribution
 
 #-----------------------------------------------------------------------------#
 
