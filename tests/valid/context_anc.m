@@ -5,9 +5,9 @@
 
 :- import_module aditi.
 
-:- pred left_anc(aditi:state, int, int).
-:- mode left_anc(aditi:aditi_ui, in, out) is nondet.
-:- pragma aditi(left_anc/3).
+:- pred left_anc(aditi:state, int).
+:- mode left_anc(aditi:aditi_ui, out) is nondet.
+:- pragma aditi(left_anc/2).
 
 :- pred right_anc(aditi:state, int, int).
 :- mode right_anc(aditi:aditi_ui, in, out) is nondet.
@@ -23,6 +23,13 @@
 
 :- implementation.
 
+:- pragma aditi_no_memo(left_anc/3).
+left_anc(DB, Y) :-
+	left_anc(DB, 2, Y).
+
+:- pred left_anc(aditi:state, int, int).
+:- mode left_anc(aditi:aditi_ui, in, out) is nondet.
+:- pragma aditi(left_anc/3).
 :- pragma aditi_no_memo(left_anc/3).
 :- pragma context(left_anc/3).
 
