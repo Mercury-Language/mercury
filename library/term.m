@@ -332,8 +332,9 @@ term__try_term_to_univ_2(Term, Type, Context, Result) :-
 	(
 		type_ctor_and_args(Type, TypeCtor, TypeArgs),
 		term__term_to_univ_special_case(
-			type_ctor_name(TypeCtor), TypeArgs,
-			Term, Type, Context, SpecialCaseResult)
+			type_ctor_module_name(TypeCtor),
+			type_ctor_name(TypeCtor), 
+			TypeArgs, Term, Type, Context, SpecialCaseResult)
 	->
 		Result = SpecialCaseResult
 	;
@@ -361,24 +362,29 @@ term__try_term_to_univ_2(Term, Type, Context, Result) :-
 		Result = error(type_error(Term, Type, TermContext, RevContext))
 	).
 
-:- pred term__term_to_univ_special_case(string::in, list(type_info)::in,
+:- pred term__term_to_univ_special_case(string::in, string::in, 
+		list(type_info)::in, 
 		term::in(bound(term__functor(ground, ground, ground))),
 		type_info::in, term_to_type_context::in,
 		term_to_type_result(univ)::out) is semidet.
-term__term_to_univ_special_case("character", [], Term, _, _, ok(Univ)) :-
+term__term_to_univ_special_case("mercury_builtin", "character", [],
+		Term, _, _, ok(Univ)) :-
 	Term = term__functor(term__atom(FunctorName), [], _),
 	string__first_char(FunctorName, Char, ""),
 	type_to_univ(Char, Univ).
-term__term_to_univ_special_case("int", [], Term, _, _, ok(Univ)) :-
+term__term_to_univ_special_case("mercury_builtin", "int", [],
+		Term, _, _, ok(Univ)) :-
 	Term = term__functor(term__integer(Int), [], _),
 	type_to_univ(Int, Univ).
-term__term_to_univ_special_case("string", [], Term, _, _, ok(Univ)) :-
+term__term_to_univ_special_case("mercury_builtin", "string", [],
+		Term, _, _, ok(Univ)) :-
 	Term = term__functor(term__string(String), [], _),
 	type_to_univ(String, Univ).
-term__term_to_univ_special_case("float", [], Term, _, _, ok(Univ)) :-
+term__term_to_univ_special_case("mercury_builtin", "float", [],
+		Term, _, _, ok(Univ)) :-
 	Term = term__functor(term__float(Float), [], _),
 	type_to_univ(Float, Univ).
-term__term_to_univ_special_case("array", [ElemType], Term, _Type,
+term__term_to_univ_special_case("array", "array", [ElemType], Term, _Type,
 		PrevContext, Result) :-
 	%
 	% arrays are represented as terms of the form
@@ -419,15 +425,16 @@ term__term_to_univ_special_case("array", [ElemType], Term, _Type,
 		ArgResult = error(Error),
 		Result = error(Error)
 	).
-term__term_to_univ_special_case("c_pointer", _, _, _, _, _) :-
+term__term_to_univ_special_case("mercury_builtin", "c_pointer", _, _, _, 
+		_, _) :-
 	fail.
-term__term_to_univ_special_case("univ", _, _, _, _, _) :-
+term__term_to_univ_special_case("std_util", "univ", _, _, _, _, _) :-
 	% Implementing this properly would require keeping a
 	% global table mapping from type names to type_infos
 	% for all of the types in the program...
 	% so for the moment, we don't allow it.
 	fail.
-term__term_to_univ_special_case("type_info", _, _, _, _, _) :-
+term__term_to_univ_special_case("std_util", "type_info", _, _, _, _, _) :-
 	% ditto
 	fail.
 
@@ -549,8 +556,7 @@ list_of_any(_).
 
 %-----------------------------------------------------------------------------%
 
-term__type_to_term(Val, Term) :-
-	type_to_univ(Val, Univ),
+term__type_to_term(Val, Term) :- type_to_univ(Val, Univ),
 	term__univ_to_term(Univ, Term).
 
 term__univ_to_term(Univ, Term) :-
@@ -561,8 +567,9 @@ term__univ_to_term(Univ, Term) :-
 		(
 			type_ctor_and_args(Type, TypeCtor, TypeArgs),
 			TypeName = type_ctor_name(TypeCtor),
-			term__univ_to_term_special_case(TypeName, TypeArgs,
-				Univ, Context, SpecialCaseTerm)
+			ModuleName = type_ctor_module_name(TypeCtor),
+			term__univ_to_term_special_case(ModuleName, TypeName,
+				TypeArgs, Univ, Context, SpecialCaseTerm)
 		->
 			Term = SpecialCaseTerm
 		;
@@ -580,27 +587,28 @@ term__univ_to_term(Univ, Term) :-
 			Context)
 	).
 
-:- pred term__univ_to_term_special_case(string::in, list(type_info)::in,
-		univ::in, term__context::in, term::out) is semidet.
+:- pred term__univ_to_term_special_case(string::in, string::in, 
+		list(type_info)::in, univ::in, term__context::in,
+		term::out) is semidet.
 
-term__univ_to_term_special_case("int", [], Univ, Context,
+term__univ_to_term_special_case("mercury_builtin", "int", [], Univ, Context,
 		term__functor(term__integer(Int), [], Context)) :-
 	det_univ_to_type(Univ, Int).
-term__univ_to_term_special_case("float", [], Univ, Context,
+term__univ_to_term_special_case("mercury_builtin", "float", [], Univ, Context,
 		term__functor(term__float(Float), [], Context)) :-
 	det_univ_to_type(Univ, Float).
-term__univ_to_term_special_case("character", [], Univ, Context,
-		term__functor(term__atom(CharName), [], Context)) :-
+term__univ_to_term_special_case("mercury_builtin", "character", [], Univ, 
+		Context, term__functor(term__atom(CharName), [], Context)) :-
 	det_univ_to_type(Univ, Character),
 	string__char_to_string(Character, CharName).
-term__univ_to_term_special_case("string", [], Univ, Context,
+term__univ_to_term_special_case("mercury_builtin", "string", [], Univ, Context,
 		term__functor(term__string(String), [], Context)) :-
 	det_univ_to_type(Univ, String).
-term__univ_to_term_special_case("type_info", [], Univ, Context,
+term__univ_to_term_special_case("std_util", "type_info", [], Univ, Context,
 		term__functor(term__atom("type_info"), [Term], Context)) :-
 	det_univ_to_type(Univ, TypeInfo),
 	type_info_to_term(Context, TypeInfo, Term).
-term__univ_to_term_special_case("univ", [], Univ, Context, Term) :-
+term__univ_to_term_special_case("std_util", "univ", [], Univ, Context, Term) :-
 	Term = term__functor(term__atom("univ"),
 			% XXX what operator should we use for type
 			% qualification?
@@ -618,7 +626,8 @@ XXX existential types not implemented
 	type_info_to_term(Context, univ_type(UnivValue), TypeTerm),
 	term__univ_to_term(UnivValue, ValueTerm).
 
-term__univ_to_term_special_case("array", [ElemType], Univ, Context, Term) :-
+term__univ_to_term_special_case("array", "array", [ElemType], Univ, Context, 
+		Term) :-
 	Term = term__functor(term__atom("array"), [ArgsTerm], Context),
 	ListTypeCtor = type_ctor(type_of([0])),
 	ListType = det_make_type(ListTypeCtor, [ElemType]),
@@ -650,8 +659,18 @@ term__univ_list_to_term_list([Value|Values], [Term|Terms]) :-
 type_info_to_term(Context, TypeInfo, Term) :-
 	type_ctor_and_args(TypeInfo, TypeCtor, ArgTypes),
 	TypeName = type_ctor_name(TypeCtor),
+	ModuleName = type_ctor_name(TypeCtor),
 	list__map(type_info_to_term(Context), ArgTypes, ArgTerms),
-	Term = term__functor(term__atom(TypeName), ArgTerms, Context).
+
+	( ModuleName = "mercury_builtin" ->
+		Term = term__functor(term__atom(TypeName), ArgTerms, Context)
+	;
+		Term = term__functor(term__atom(":"), % TYPE_QUAL_OP
+			[term__functor(term__atom(ModuleName), [], Context),
+			 term__functor(term__atom(TypeName), 
+			 	ArgTerms, Context)], Context)
+	).
+		
 
 :- pred require_equal(T::in, T::in) is det.
 require_equal(X, Y) :-

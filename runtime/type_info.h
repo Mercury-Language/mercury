@@ -48,7 +48,8 @@
 #define OFFSET_FOR_COMPARE_PRED 3
 #define OFFSET_FOR_BASE_TYPE_LAYOUT 4
 #define OFFSET_FOR_BASE_TYPE_FUNCTORS 5
-#define OFFSET_FOR_TYPE_NAME 6
+#define OFFSET_FOR_TYPE_MODULE_NAME 6
+#define OFFSET_FOR_TYPE_NAME 7
 
 /*
 ** Define offsets of fields in the type_info structure.
@@ -296,6 +297,8 @@
 	((Integer) (T) / 2 )
 #define MR_TYPECTOR_GET_HOT_NAME(T)				\
 	((ConstString) ( ( ((Integer) (T)) % 2 ) ? "func" : "pred" ))
+#define MR_TYPECTOR_GET_HOT_MODULE_NAME(T)				\
+	((ConstString) "mercury_builtin")
 #define MR_TYPECTOR_GET_HOT_BASE_TYPE_INFO(T)			\
 	((Word) ( ( ((Integer) (T)) % 2 ) ?		\
 		(const Word *) &mercury_data___base_type_info_func_0 :	\
@@ -706,6 +709,9 @@ typedef struct {
 
 #define MR_BASE_TYPEINFO_GET_TYPE_NAME(BaseTypeInfo)			\
 		(((String *) (BaseTypeInfo))[OFFSET_FOR_TYPE_NAME])
+
+#define MR_BASE_TYPEINFO_GET_TYPE_MODULE_NAME(BaseTypeInfo)		\
+		(((String *) (BaseTypeInfo))[OFFSET_FOR_TYPE_MODULE_NAME])
 
 /*---------------------------------------------------------------------------*/
 

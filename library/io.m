@@ -1373,10 +1373,8 @@ io__write_univ(Univ, Priority) -->
 		io__write_univ_as_univ(OrigUniv)
 	; { univ_to_type(Univ, C_Pointer) } ->
 		io__write_c_pointer(C_Pointer)
-	; { type_ctor_name(type_ctor(univ_type(Univ))) = "array" } ->
-		%
-		% XXX shouldn't type names be module-qualified?
-		%     shouldn't that be "array:array"?
+	; { type_ctor_name(type_ctor(univ_type(Univ))) = "array" },
+	  { type_ctor_module_name(type_ctor(univ_type(Univ))) = "array" } ->
 		%
 		% Note that we can't use univ_to_type above, because we
 		% want to match on a non-ground type `array(T)'

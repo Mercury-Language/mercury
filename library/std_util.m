@@ -207,9 +207,10 @@
 :- mode type_of(unused) = out is det.
 
 	% type_name(Type) returns the name of the specified type
-	% (e.g. type_name(type_of([2,3])) = "list(int)").
+	% (e.g. type_name(type_of([2,3])) = "list:list(int)").
 	% Any equivalence types will be fully expanded.
-	% XXX we should think about what happens with module qualifiers...
+	% Builtin types (those defined in mercury_builtin.m) will
+	% not have a module qualifier.
 	%
 :- func type_name(type_info) = string.
 
@@ -248,9 +249,15 @@
 	% type_ctor_name(TypeCtor) returns the name of specified
 	% type constructor.
 	% (e.g. type_ctor_name(type_ctor(type_of([2,3]))) = "list").
-	% XXX we should think about what happens with module qualifiers...
 	%
 :- func type_ctor_name(type_ctor_info) = string.
+
+	% type_ctor_module_name(TypeCtor) returns the module name of specified
+	% type constructor.
+	% (e.g. type_ctor_module_name(type_ctor(type_of(2))) =
+	% 		"mercury_builtin").
+	%
+:- func type_ctor_module_name(type_ctor_info) = string.
 
 	% type_ctor_arity(TypeCtor) returns the arity of specified
 	% type constructor.
@@ -258,13 +265,13 @@
 	%
 :- func type_ctor_arity(type_ctor_info) = int.
 
-	% type_ctor_name_and_arity(TypeCtor, Name, Arity) :-
+	% type_ctor_name_and_arity(TypeCtor, ModuleName, TypeName, Arity) :-
 	%	Name = type_ctor_name(TypeCtor),
+	%	ModuleName = type_ctor_module_name(TypeCtor),
 	%	Arity = type_ctor_arity(TypeCtor).
-	% XXX we should think about what happens with module qualifiers...
 	%
-:- pred type_ctor_name_and_arity(type_ctor_info, string, int).
-:- mode type_ctor_name_and_arity(in, out, out) is det.
+:- pred type_ctor_name_and_arity(type_ctor_info, string, string, int).
+:- mode type_ctor_name_and_arity(in, out, out, out) is det.
 
 	% make_type(TypeCtor, TypeArgs) = Type:
 	%	True iff `Type' is a type constructed by applying
@@ -1192,11 +1199,15 @@ Word 	ML_make_type(int arity, Word *base_type_info, Word arg_type_list);
 
 type_name(Type) = TypeName :-
 	type_ctor_and_args(Type, TypeCtor, ArgTypes),
-	type_ctor_name_and_arity(TypeCtor, Name, Arity),
+	type_ctor_name_and_arity(TypeCtor, ModuleName, Name, Arity),
 	( Arity = 0 ->
-		TypeName = Name
+		UnqualifiedTypeName = Name
 	;
-		( Name = "func" -> IsFunc = yes ; IsFunc = no ),
+		( ModuleName = "mercury_builtin", Name = "func" -> 
+			IsFunc = yes 
+		 ; 
+		 	IsFunc = no 
+		),
 		(
 			IsFunc = yes,
 			ArgTypes = [FuncRetType]
@@ -1204,12 +1215,18 @@ type_name(Type) = TypeName :-
 			FuncRetTypeName = type_name(FuncRetType),
 			string__append_list(
 				["((func) = ", FuncRetTypeName, ")"],
-				TypeName)
+				UnqualifiedTypeName)
 		;
 			type_arg_names(ArgTypes, IsFunc, ArgTypeNames),
 			string__append_list([Name, "(" | ArgTypeNames], 
-				TypeName)
+				UnqualifiedTypeName)
 		)
+	),
+	( ModuleName = "mercury_builtin" ->
+		TypeName = UnqualifiedTypeName
+	;
+		string__append_list([ModuleName, ":", 
+			UnqualifiedTypeName], TypeName)
 	).
 
 :- pred type_arg_names(list(type_info), bool, list(string)).
@@ -1232,10 +1249,13 @@ type_args(Type) = ArgTypes :-
 	type_ctor_and_args(Type, _TypeCtor, ArgTypes).
 
 type_ctor_name(TypeCtor) = Name :-
-	type_ctor_name_and_arity(TypeCtor, Name, _Arity).
+	type_ctor_name_and_arity(TypeCtor, _ModuleName, Name, _Arity).
+
+type_ctor_module_name(TypeCtor) = ModuleName :-
+	type_ctor_name_and_arity(TypeCtor, ModuleName, _Name, _Arity).
 
 type_ctor_arity(TypeCtor) = Arity :-
-	type_ctor_name_and_arity(TypeCtor, _Name, Arity).
+	type_ctor_name_and_arity(TypeCtor, _ModuleName, _Name, Arity).
 
 det_make_type(TypeCtor, ArgTypes) = Type :-
 	( make_type(TypeCtor, ArgTypes) = NewType ->
@@ -1396,18 +1416,23 @@ Word ML_make_ctor_info(Word *type_info, Word *base_type_info)
 }
 ").
 
-:- pragma c_code(type_ctor_name_and_arity(TypeCtor::in,
-	TypeCtorName::out, TypeCtorArity::out), will_not_call_mercury, "
+:- pragma c_code(type_ctor_name_and_arity(TypeCtor::in, 
+		TypeCtorModuleName::out, TypeCtorName::out, 
+		TypeCtorArity::out), will_not_call_mercury, "
 {
 	Word *type_ctor = (Word *) TypeCtor;
 
 	if (MR_TYPECTOR_IS_HIGHER_ORDER(type_ctor)) {
 		TypeCtorName = (String) (Word) 
 			MR_TYPECTOR_GET_HOT_NAME(type_ctor);
+		TypeCtorModuleName = (String) (Word) 
+			MR_TYPECTOR_GET_HOT_MODULE_NAME(type_ctor);
 		TypeCtorArity = MR_TYPECTOR_GET_HOT_ARITY(type_ctor);
 	} else {
 		TypeCtorName = MR_BASE_TYPEINFO_GET_TYPE_NAME(type_ctor);
 		TypeCtorArity = MR_BASE_TYPEINFO_GET_TYPE_ARITY(type_ctor);
+		TypeCtorModuleName = 
+			MR_BASE_TYPEINFO_GET_TYPE_MODULE_NAME(type_ctor);
 	}
 }
 ").
