@@ -17,7 +17,7 @@
 	;	signal(int)
 	.
 
-:- pred wait(posix__result({pid, status}), io__state, io__state).
+:- pred wait(posix__result({pid_t, status}), io__state, io__state).
 :- mode wait(out, di, uo) is det.
 
 %------------------------------------------------------------------------------%

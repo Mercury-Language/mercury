@@ -1,5 +1,5 @@
 %------------------------------------------------------------------------------%
-% Copyright (C) 1999 The University of Melbourne.
+% Copyright (C) 1999, 2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %------------------------------------------------------------------------------%
@@ -33,11 +33,11 @@
 :- pred open(string, list(oflag), posix__result(fd), io__state, io__state).
 :- mode open(in, in, out, di, uo) is det.
 
-:- pred open(string, list(oflag), (mode), posix__result(fd),
+:- pred open(string, list(oflag), mode_t, posix__result(fd),
 		io__state, io__state).
 :- mode open(in, in, in, out, di, uo) is det.
 
-:- pred creat(string, (mode), posix__result(fd), io__state, io__state).
+:- pred creat(string, mode_t, posix__result(fd), io__state, io__state).
 :- mode creat(in, in, out, di, uo) is det.
 
 :- pred close(fd, posix__result, io__state, io__state).
@@ -85,7 +85,7 @@ open(PathName, FlagList, Mode, Result) -->
 		{ Result = ok(fd(FdNo)) }
 	).
 
-:- pred open0(string, int, (mode), int, io__state, io__state).
+:- pred open0(string, int, mode_t, int, io__state, io__state).
 :- mode open0(in, in, in, out, di, uo) is det.
 
 :- pragma c_code(open0(PathName::in, Flags::in, Mode::in, FileDes::out,
@@ -105,7 +105,7 @@ creat(PathName, Mode, Result) -->
 		{ Result = ok(fd(FdNo)) }
 	).
 
-:- pred creat0(string, (mode), int, io__state, io__state).
+:- pred creat0(string, mode_t, int, io__state, io__state).
 :- mode creat0(in, in, out, di, uo) is det.
 
 :- pragma c_code(creat0(PathName::in, Mode::in, FileDes::out,

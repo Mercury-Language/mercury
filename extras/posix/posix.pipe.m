@@ -4,18 +4,16 @@
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %------------------------------------------------------------------------------%
 %
-% module: posix__mkdir.m
+% module: posix__pipe.m
 % main author: Michael Day <miked@lendtech.com.au>
 %
 %------------------------------------------------------------------------------%
-:- module posix__mkdir.
+:- module posix__pipe.
 
 :- interface.
 
-:- import_module string.
-
-:- pred mkdir(string, mode_t, posix__result, io__state, io__state).
-:- mode mkdir(in, in, out, di, uo) is det.
+:- pred pipe(posix__result({fd, fd}), io__state, io__state).
+:- mode pipe(out, di, uo) is det.
 
 %------------------------------------------------------------------------------%
 
@@ -25,28 +23,31 @@
 
 :- pragma c_header_code("
 	#include <sys/types.h>
-	#include <sys/stat.h>
+	#include <unistd.h>
 ").
 
 %------------------------------------------------------------------------------%
 
-mkdir(Path, Mode, Result) -->
-	mkdir0(Path, Mode, Res),
-	( if { Res = 0 } then
-	    { Result = ok }
+pipe(Result) -->
+	pipe0(Reading, Writing, Res),
+	( if { Res \= 0 } then
+		errno(Err),
+		{ Result = error(Err) }
 	else
-	    errno(Err),
-	    { Result = error(Err) }
-	).				    
+		{ Result = ok({Reading, Writing}) }
+	).
 
-:- pred mkdir0(string, mode_t, int, io__state, io__state).
-:- mode mkdir0(in, in, out, di, uo) is det.
+:- pred pipe0(fd, fd, int, io__state, io__state).
+:- mode pipe0(out, out, out, di, uo) is det.
 
-:- pragma c_code(mkdir0(Path::in, Mode::in, Res::out, IO0::di, IO::uo),
-	    [will_not_call_mercury, thread_safe], "
-	Res = mkdir(Path, Mode);
+:- pragma c_code(pipe0(R::out, W::out, Res::out, IO0::di, IO::uo),
+		[will_not_call_mercury], "{
+	int filedes[2];
+	Res = pipe(filedes);
+	R = filedes[0];
+	W = filedes[1];
 	IO = IO0;
-").
-		
+}").
+
 %------------------------------------------------------------------------------%
 

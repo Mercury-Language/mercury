@@ -4,49 +4,47 @@
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %------------------------------------------------------------------------------%
 %
-% module: posix__mkdir.m
+% module: posix__kill.m
 % main author: Michael Day <miked@lendtech.com.au>
 %
 %------------------------------------------------------------------------------%
-:- module posix__mkdir.
+:- module posix__kill.
 
 :- interface.
 
-:- import_module string.
+:- import_module int.
 
-:- pred mkdir(string, mode_t, posix__result, io__state, io__state).
-:- mode mkdir(in, in, out, di, uo) is det.
+:- pred kill(pid_t, int, posix__result, io__state, io__state).
+:- mode kill(in, in, out, di, uo) is det.
 
 %------------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module int.
-
 :- pragma c_header_code("
 	#include <sys/types.h>
-	#include <sys/stat.h>
+	#include <signal.h>
 ").
 
 %------------------------------------------------------------------------------%
 
-mkdir(Path, Mode, Result) -->
-	mkdir0(Path, Mode, Res),
-	( if { Res = 0 } then
-	    { Result = ok }
+kill(Pid, Sig, Result) -->
+	kill0(Pid, Sig, Res),
+	( if { Res \= 0 } then
+		errno(Err),
+		{ Result = error(Err) }
 	else
-	    errno(Err),
-	    { Result = error(Err) }
-	).				    
+		{ Result = ok }
+	).
 
-:- pred mkdir0(string, mode_t, int, io__state, io__state).
-:- mode mkdir0(in, in, out, di, uo) is det.
+:- pred kill0(pid_t, int, int, io__state, io__state).
+:- mode kill0(in, in, out, di, uo) is det.
 
-:- pragma c_code(mkdir0(Path::in, Mode::in, Res::out, IO0::di, IO::uo),
-	    [will_not_call_mercury, thread_safe], "
-	Res = mkdir(Path, Mode);
+:- pragma c_code(kill0(Pid::in, Sig::in, Res::out, IO0::di, IO::uo),
+		[will_not_call_mercury], "{
+	Res = kill(Pid, Sig);
 	IO = IO0;
-").
-		
+}").
+
 %------------------------------------------------------------------------------%
 

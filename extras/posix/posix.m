@@ -37,15 +37,18 @@
 :- include_module posix__dup.
 :- include_module posix__exec.
 :- include_module posix__fork.
+:- include_module posix__kill.
 :- include_module posix__lseek.
 :- include_module posix__mkdir.
 :- include_module posix__open.
 :- include_module posix__opendir.
+:- include_module posix__pipe.
 :- include_module posix__read.
 :- include_module posix__readdir.
 :- include_module posix__rmdir.
 :- include_module posix__select.
 :- include_module posix__socket.
+:- include_module posix__stat.
 :- include_module posix__wait.
 :- include_module posix__write.
 
@@ -55,8 +58,23 @@
 	% Directory streams.
 :- type dir ---> dir(c_pointer).
 
+	% Devices.
+:- type dev_t ---> dev(int).
+
+	% File modes.
+:- type mode_t ---> mode(int).
+
+	% Inodes.
+:- type ino_t ---> ino(int).
+
 	% Process identifiers.
-:- type pid ---> pid(int).
+:- type pid_t ---> pid(int).
+
+	% User identifiers.
+:- type uid_t ---> uid(int).
+
+	% Group identifiers.
+:- type gid_t ---> gid(int).
 
 :- type error
 	--->	e2BIG			/* Arg list too long */
@@ -115,7 +133,7 @@
 	;	error(posix__error)
 	.
 
-:- type (mode)	--->	mode(int).
+:- type (mode) == mode_t. % XXX This is deprecated; please use mode_t.
 
 :- type timeval
 	--->	timeval(int, int). % time(Sec, uSec)
