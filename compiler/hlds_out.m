@@ -1965,10 +1965,15 @@ hlds_out__write_unification(construct(Var, ConsId, ArgVars, ArgModes, _, _, _),
 hlds_out__write_unification(deconstruct(Var, ConsId, ArgVars, ArgModes,
 		CanFail, CanCGC),
 		ModuleInfo, ProgVarSet, InstVarSet, AppendVarnums, Indent) -->
-	hlds_out__write_indent(Indent),
-	io__write_string("% Compile time garbage collect: "),
-	io__write(CanCGC),
-	io__nl,
+	globals__io_lookup_string_option(dump_hlds_options, Verbose),
+	( { string__contains_char(Verbose, 'G') } ->
+		hlds_out__write_indent(Indent),
+		io__write_string("% Compile time garbage collect: "),
+		io__write(CanCGC),
+		io__nl
+	;
+		[]
+	),
 	hlds_out__write_indent(Indent),
 	io__write_string("% "),
 	mercury_output_var(Var, ProgVarSet, AppendVarnums),
