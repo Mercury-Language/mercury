@@ -771,8 +771,8 @@ make_private_interface(SourceFileName, MaybeTimestamp, ModuleName - Items) -->
 :- pred halt_at_module_error(bool, module_error).
 :- mode halt_at_module_error(in, in) is semidet.
 
-halt_at_module_error(_, fatal).
-halt_at_module_error(HaltSyntax, yes) :- HaltSyntax = yes.
+halt_at_module_error(_, fatal_module_errors).
+halt_at_module_error(HaltSyntax, some_module_errors) :- HaltSyntax = yes.
 
 :- pred module_to_link(pair(module_name, item_list), string,
 			io__state, io__state).
@@ -895,7 +895,7 @@ compile(SourceFileName, RootModuleName - NestedSubModules0,
 	check_for_no_exports(Items, ModuleName),
 	grab_imported_modules(SourceFileName, ModuleName, ReadModules,
 		MaybeTimestamp, Items, Module, Error2),
-	( { Error2 \= fatal } ->
+	( { Error2 \= fatal_module_errors } ->
 		{ ModuleName = RootModuleName ->
 			NestedSubModules = NestedSubModules0
 		;

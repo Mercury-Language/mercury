@@ -483,7 +483,6 @@ typecheck_pred_type(PredId, PredInfo0, ModuleInfo, PredInfo, Error, Changed,
 		pred_info_set_unproven_body_constraints(PredInfo4,
 				UnprovenBodyConstraints, PredInfo5),
 
-		is_bool(Inferring),
 		( Inferring = yes ->
 			%
 			% We need to infer which of the head variable
@@ -586,10 +585,6 @@ typecheck_pred_type(PredId, PredInfo0, ModuleInfo, PredInfo, Error, Changed,
 		typecheck_info_get_io_state(TypeCheckInfo4, IOState)
 	    )
 	).
-
-% is_bool/1 is used to avoid a type ambiguity
-:- pred is_bool(bool::in) is det.
-is_bool(_).
 
 :- pred rename_instance_method_constraints(map(tvar, tvar),
 		maybe(instance_method_constraints),

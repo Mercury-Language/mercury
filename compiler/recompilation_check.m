@@ -217,7 +217,7 @@ recompilation_check__should_recompile_3(IsSubModule, FindTargetFiles,
 			throw(recompile_exception(module_changed(FileName),
 					ErrorInfo))
 		;
-			( Error \= no
+			( Error \= no_module_errors
 			; MaybeNewTimestamp = no
 			)
 		->
@@ -685,7 +685,7 @@ check_imported_module(Term, Info0, Info) -->
 				module_changed(FileName), Info1))
 		)
 	;
-		Error \= no
+		Error \= no_module_errors
 	->
 		throw(recompile_exception(
 			file_error(FileName,

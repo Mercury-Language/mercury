@@ -2071,7 +2071,12 @@ intermod__grab_optfiles(Module0, Module, FoundError) -->
 		% Figure out whether anything went wrong
 		%
 	{ module_imports_get_error(Module, FoundError0) },
-	{ ( FoundError0 \= no ; OptError = yes ; UAError = yes) ->
+	{
+		( FoundError0 \= no_module_errors
+		; OptError = yes
+		; UAError = yes
+		)
+	->
 		FoundError = yes
 	;
 		FoundError = no
@@ -2116,14 +2121,14 @@ read_optimization_interfaces([Import | Imports],
 update_error_status(FileType, FileName, ModuleError, Messages,
 		Error0, Error1) -->
 	(
-		{ ModuleError = no },
+		{ ModuleError = no_module_errors },
 		{ Error1 = Error0 }
 	;
-		{ ModuleError = yes },
+		{ ModuleError = some_module_errors },
 		prog_out__write_messages(Messages),
 		{ Error1 = yes }
 	;
-		{ ModuleError = fatal },
+		{ ModuleError = fatal_module_errors },
 		{
 			FileType = opt,
 			WarningOption = warn_missing_opt_files

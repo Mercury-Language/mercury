@@ -80,9 +80,9 @@
 	% Program is the parse tree.
 
 :- type module_error
-	--->	no	% no errors
-	;	yes	% some syntax errors
-	;	fatal.	% couldn't open the file
+	--->	no_module_errors 	% no errors
+	;	some_module_errors	% some syntax errors
+	;	fatal_module_errors.	% couldn't open the file
 
 :- type file_name == string.
 :- type dir_name == string.
@@ -298,7 +298,7 @@ prog_io__read_module_2(FileName, DefaultModuleName, Search, SearchOpt,
 			%
 			{ ModuleName = DefaultModuleName },
 			{ Items = [] },
-			{ Error = no },
+			{ Error = no_module_errors },
 			{ Messages = [] }
 		;
 			read_all_items(DefaultModuleName, ModuleName,
@@ -314,7 +314,7 @@ prog_io__read_module_2(FileName, DefaultModuleName, Search, SearchOpt,
 		  string__append(Message2, "'", Message),
 		  dummy_term(Term),
 		  Messages = [Message - Term],
-		  Error = fatal,
+		  Error = fatal_module_errors,
 		  Items = [],
 		  ModuleName = DefaultModuleName,
 		  MaybeModuleTimestamp = no
@@ -399,7 +399,7 @@ check_end_module(EndModule, Messages0, Items0, Error0,
             add_error(
 "`:- end_module' declaration doesn't match `:- module' declaration",
 			Term, Messages0, Messages),
-	    Error = yes
+	    Error = some_module_errors
         ;
 	    Messages = Messages0,
 	    Error = Error0
@@ -555,7 +555,7 @@ read_first_item(DefaultModuleName, SourceFileName, ModuleName,
 	    },
 	    { make_module_decl(ModuleName, FirstContext, FixedFirstItem) },
 	    { Items0 = [FixedFirstItem] },
-	    { Error0 = no },
+	    { Error0 = no_module_errors },
 	    read_items_loop(ModuleName, SourceFileName,
 			Messages0, Items0, Error0,
 			Messages, Items, Error)
@@ -591,7 +591,7 @@ read_first_item(DefaultModuleName, SourceFileName, ModuleName,
 		MaybeSecondItem) },
 
 	    { Items0 = [FixedFirstItem] },
-	    { Error0 = no },
+	    { Error0 = no_module_errors },
 	    read_items_loop_2(MaybeSecondItem, ModuleName, SourceFileName,
 		Messages0, Items0, Error0,
 		Messages, Items, Error)
@@ -665,7 +665,7 @@ read_items_loop_2(syntax_error(ErrorMsg, LineNumber), ModuleName,
 	  ThisError = ErrorMsg - Term,
 	  Msgs1 = [ThisError | Msgs0],
 	  Items1 = Items0,
-	  Error1 = yes
+	  Error1 = some_module_errors
 	},
 	read_items_loop(ModuleName, SourceFileName, Msgs1, Items1, Error1,
 		Msgs, Items, Error).
@@ -677,7 +677,7 @@ read_items_loop_2(error(M, T), ModuleName, SourceFileName,
 	{
 	  add_error(M, T, Msgs0, Msgs1),
 	  Items1 = Items0,
-	  Error1 = yes
+	  Error1 = some_module_errors
 	},
  	read_items_loop(ModuleName, SourceFileName, Msgs1, Items1, Error1,
 			Msgs, Items, Error).
@@ -697,7 +697,7 @@ read_items_loop_2(ok(Item0, Context), ModuleName0, SourceFileName0,
 
 			globals__io_lookup_bool_option(halt_at_warn, Halt),
 			{ Halt = yes ->
-				Error1 = yes
+				Error1 = some_module_errors
 			;
 				Error1 = Error0
 			}

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2000 The University of Melbourne.
+% Copyright (C) 1997-2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -138,7 +138,7 @@ trans_opt__grab_optfiles(Module0, TransOptDeps, Module, FoundError) -->
 	{ module_imports_get_items(Module1, Items0) },
 	{ list__append(Items0, OptItems, Items) },
 	{ module_imports_set_items(Module1, Items, Module2) },
-	{ module_imports_set_error(Module2, no, Module) },
+	{ module_imports_set_error(Module2, no_module_errors, Module) },
 
 	maybe_write_string(Verbose, "% Done.\n").
 
