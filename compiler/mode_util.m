@@ -2342,6 +2342,9 @@ normalise_inst(Inst0, Type, InstMap, InstTable, ModuleInfo, NormalisedInst) :-
 		(
 			inst_is_ground(Inst, InstMap, InstTable, ModuleInfo),
 			inst_is_unique(Inst, InstMap, InstTable, ModuleInfo),
+			% If a unique insts contains aliases then removing
+			% them may cause the inst to become shared.
+			\+ inst_contains_aliases(Inst, InstTable, ModuleInfo),
 			% don't infer unique modes for introduced type_infos
 			% arguments, because that leads to an increase
 			% in the number of inferred modes without any benefit
@@ -2352,6 +2355,9 @@ normalise_inst(Inst0, Type, InstMap, InstTable, ModuleInfo, NormalisedInst) :-
 			inst_is_ground(Inst, InstMap, InstTable, ModuleInfo),
 			inst_is_mostly_unique(Inst, InstMap, InstTable,
 					ModuleInfo),
+			% If a unique insts contains aliases then removing
+			% them may cause the inst to become shared.
+			\+ inst_contains_aliases(Inst, InstTable, ModuleInfo),
 			% don't infer unique modes for introduced type_infos
 			% arguments, because that leads to an increase
 			% in the number of inferred modes without any benefit

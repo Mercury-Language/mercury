@@ -293,6 +293,10 @@ mode system to distinguish between different representations.
 		inst_key).
 :- mode inst_contains_inst_key(in, in, in, in, in) is semidet.
 
+	% Succeed iff the specified inst contains any alias insts.
+:- pred inst_contains_aliases(inst, inst_table, module_info).
+:- mode inst_contains_aliases(in, in, in) is semidet.
+
 	% Nondeterministically produce all the inst_vars contained
 	% in the specified list of modes.
 
@@ -1628,6 +1632,31 @@ inst_contains_inst_key_2(InstMap, InstTable, ModuleInfo, Expansions,
 	list__member(Inst, Insts),
 	inst_contains_inst_key_2(InstMap, InstTable, ModuleInfo, Expansions,
 		Inst, Key).
+
+%-----------------------------------------------------------------------------%
+
+inst_contains_aliases(Inst, InstTable, ModuleInfo) :-
+	set__init(Expansions),
+	inst_contains_aliases_2(Inst, InstTable, ModuleInfo, Expansions).
+
+:- pred inst_contains_aliases_2(inst, inst_table, module_info, set(inst_name)).
+:- mode inst_contains_aliases_2(in, in, in, in) is semidet.
+
+inst_contains_aliases_2(alias(_), _, _, _).
+inst_contains_aliases_2(bound(_, BIs), InstTable, ModuleInfo, Expansions) :-
+	list__member(functor(_, Insts), BIs),
+	list__member(Inst, Insts),
+	inst_contains_aliases_2(Inst, InstTable, ModuleInfo, Expansions).
+inst_contains_aliases_2(abstract_inst(_, Insts), InstTable, ModuleInfo, 
+		Expansions) :-
+	list__member(Inst, Insts),
+	inst_contains_aliases_2(Inst, InstTable, ModuleInfo, Expansions).
+inst_contains_aliases_2(defined_inst(InstName), InstTable, ModuleInfo,
+		Expansions0) :-
+	\+ set__member(InstName, Expansions0),
+	set__insert(Expansions0, InstName, Expansions),
+	inst_lookup(InstTable, ModuleInfo, InstName, Inst),
+	inst_contains_aliases_2(Inst, InstTable, ModuleInfo, Expansions).
 
 %-----------------------------------------------------------------------------%
 

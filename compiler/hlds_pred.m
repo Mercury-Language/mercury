@@ -20,7 +20,7 @@
 :- implementation.
 
 :- import_module code_aux, goal_util, make_hlds, prog_util.
-:- import_module mode_util, type_util, options.
+:- import_module inst_util, mode_util, type_util, options.
 :- import_module int, string, require, assoc_list.
 
 %-----------------------------------------------------------------------------%
@@ -1266,13 +1266,14 @@ clauses_info_set_typeclass_info_varmap(clauses_info(A, B, C, D, E, F, _),
 
 hlds_pred__define_new_pred(Goal0, Goal, ArgVars0, ExtraTypeInfos, InstMap0,
 		PredName, TVarSet, VarTypes0, ClassContext, TVarMap, TCVarMap,
-		VarSet0, Markers, Owner, IsAddressTaken, InstTable,
+		VarSet0, Markers, Owner, IsAddressTaken, InstTable0,
 		ModuleInfo0, ModuleInfo, PredProcId) :-
 	Goal0 = _GoalExpr - GoalInfo,
 	goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
 	instmap__apply_instmap_delta(InstMap0, InstMapDelta, InstMap),
 	
-	compute_arg_modes(ArgVars0, InstMap0, InstMap, ArgModes),
+	compute_arg_modes(ModuleInfo0, ArgVars0, InstMap0, InstMap, ArgModes,
+		InstTable0, InstTable),
 	hlds_pred__define_new_pred(Goal0, Goal, ArgVars0, ExtraTypeInfos,
 		InstMap0, ArgModes, PredName, TVarSet, VarTypes0,
 		ClassContext, TVarMap, TCVarMap, VarSet0, Markers,
@@ -1358,15 +1359,20 @@ hlds_pred__define_new_pred(Goal0, Goal, ArgVars0, ExtraTypeInfos, _InstMap0,
 	Goal = GoalExpr - GoalInfo,
 	PredProcId = proc(PredId, ProcId).
 
-:- pred compute_arg_modes(list(prog_var)::in, instmap::in, instmap::in,
-		list(mode)::out) is det.
+:- pred compute_arg_modes(module_info::in, list(prog_var)::in, instmap::in,
+	instmap::in, list(mode)::out, inst_table::in, inst_table::out) is det.
 
-compute_arg_modes([], _, _, []).
-compute_arg_modes([Var | Vars], InstMap0, InstMap, [Mode | Modes]) :-
-	instmap__lookup_var(InstMap0, Var, Inst0),
-	instmap__lookup_var(InstMap, Var, Inst),
-	Mode = (Inst0 -> Inst),
-	compute_arg_modes(Vars, InstMap0, InstMap, Modes).
+compute_arg_modes(ModuleInfo, Vars, InitialInstMap, FinalInstMap, Modes,
+		InstTable0, InstTable) :-
+	instmap__lookup_vars(Vars, InitialInstMap, InitialInsts0),
+	normalise_inst_keys_in_insts(InitialInstMap, ModuleInfo, InitialInsts0,
+		InitialInsts, InstTable0, InstTable1),
+
+	instmap__lookup_vars(Vars, FinalInstMap, FinalInsts0),
+	normalise_inst_keys_in_insts(FinalInstMap, ModuleInfo, FinalInsts0,
+		FinalInsts, InstTable1, InstTable),
+
+	inst_lists_to_mode_list(InitialInsts, FinalInsts, Modes).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -20,7 +20,7 @@
 :- interface.
 
 :- import_module hlds_module, prog_data, mode_info, (inst), mode_errors.
-:- import_module hlds_data, inst_table.
+:- import_module hlds_data, inst_table, inst_util.
 
 :- import_module map, bool, set, list, assoc_list, std_util.
 
@@ -276,7 +276,21 @@
 		inst).
 :- mode instmap__inst_key_table_lookup(in, in, in, out) is det.
 
+	% Remove all dependencies on instmap alias substitutions from the
+	% list of insts.
+:- pred instmap__expand_alias_substitutions(instmap, module_info, list(inst),
+		list(inst), inst_table, inst_table).
+:- mode instmap__expand_alias_substitutions(in, in, in, out, in, out) is det.
+
+:- pred instmap__remove_singleton_inst_key_from_inst(inst_key_counts,
+	module_info, inst_table, instmap, inst, inst).
+:- mode instmap__remove_singleton_inst_key_from_inst(in, in, in, in, in, out)
+	is det.
+
 %-----------------------------------------------------------------------------%
+
+:- pred instmap__find_latest_inst_key(instmap, inst_key, inst_key).
+:- mode instmap__find_latest_inst_key(in, in, out) is det.
 
 :- pred instmap__inst_keys_are_equivalent(inst_key, instmap, inst_key, instmap).
 :- mode instmap__inst_keys_are_equivalent(in, in, in, in) is semidet.
@@ -295,7 +309,7 @@
 :- implementation.
 
 :- import_module mode_util, inst_match, prog_data, goal_util.
-:- import_module hlds_data, inst_util, term.
+:- import_module hlds_data, uniq_count, term.
 
 :- import_module std_util, require, multi_map, set_bbbtree, string.
 
@@ -448,12 +462,12 @@ instmap__set_vars(_, [_ | _], [], _) :-
 instmap__set_vars(_, [], [_ | _], _) :-
 	error("instmap__set_vars").
 
-:- pred find_latest_inst_key(inst_key_sub, inst_key, inst_key).
-:- mode find_latest_inst_key(in, in, out) is det.
+:- pred find_latest_inst_key_from_sub(inst_key_sub, inst_key, inst_key).
+:- mode find_latest_inst_key_from_sub(in, in, out) is det.
 
-find_latest_inst_key(Sub, IK0, IK) :-
+find_latest_inst_key_from_sub(Sub, IK0, IK) :-
 	( map__search(Sub, IK0, IK1) ->
-		find_latest_inst_key(Sub, IK1, IK)
+		find_latest_inst_key_from_sub(Sub, IK1, IK)
 	;
 		IK = IK0
 	).
@@ -461,8 +475,8 @@ find_latest_inst_key(Sub, IK0, IK) :-
 instmap__add_alias(unreachable, _, _, unreachable).
 instmap__add_alias(reachable(Fwd, Alias0), From0, To0, reachable(Fwd, Alias)) :-
 		% XXX Do we need to path compress the alias map here?
-	find_latest_inst_key(Alias0, From0, From),
-	find_latest_inst_key(Alias0, To0, To),
+	find_latest_inst_key_from_sub(Alias0, From0, From),
+	find_latest_inst_key_from_sub(Alias0, To0, To),
 	map__det_insert(Alias0, From, To, Alias).
 
 instmap__set(unreachable, _Var, _Inst, unreachable).
@@ -621,108 +635,6 @@ get_reachable_instmaps -->
 
 %-----------------------------------------------------------------------------%
 
-:- interface.
-
-% Export this stuff for use in inst_util.m.
-  
-:- type uniq_count
-	--->	known(int)
-	;	many.
-
-:- type uniq_counts(T) == map(T, uniq_count).
-
-:- type inst_key_counts == uniq_counts(inst_key).
-
-:- pred inc_uniq_count(T, uniq_counts(T), uniq_counts(T)).
-:- mode inc_uniq_count(in, in, out) is det.
-
-:- pred dec_uniq_count(T, uniq_counts(T), uniq_counts(T)).
-:- mode dec_uniq_count(in, in, out) is det.
-
-:- pred has_count_zero(uniq_counts(T), T).
-:- mode has_count_zero(in, in) is semidet.
-
-:- pred has_count_one(uniq_counts(T), T).
-:- mode has_count_one(in, in) is semidet.
-
-:- pred has_count_many(uniq_counts(T), T).
-:- mode has_count_many(in, in) is semidet.
-
-:- pred set_count_many(T, uniq_counts(T), uniq_counts(T)).
-:- mode set_count_many(in, in, out) is det.
-
-:- pred uniq_count_max(uniq_count, uniq_count, uniq_count).
-:- mode uniq_count_max(in, in, out) is det.
-
-:- pred uniq_counts_max_merge(uniq_counts(T), uniq_counts(T), uniq_counts(T)).
-:- mode uniq_counts_max_merge(in, in, out) is det.
-
-:- implementation.
-
-:- import_module int.
-
-inc_uniq_count(Item, Map0, Map) :-
-	( map__search(Map0, Item, C0) ->
-		(
-			C0 = known(N),
-			map__det_update(Map0, Item, known(N + 1), Map)
-		;
-			C0 = many,
-			Map = Map0
-		)
-	;
-		map__det_insert(Map0, Item, known(1), Map)
-	).
-
-dec_uniq_count(Item, Map0, Map) :-
-	( map__search(Map0, Item, C0) ->
-		(
-			C0 = known(N0),
-			int__max(N0 - 1, 0, N),
-			map__det_update(Map0, Item, known(N), Map)
-		;
-			C0 = many,
-			Map = Map0
-		)
-	;
-		Map = Map0
-	).
-
-has_count_zero(Map, Item) :-
-	map__search(Map, Item, Count) => Count = known(0).
-
-has_count_one(Map, Item) :-
-	map__search(Map, Item, known(1)).
-
-has_count_many(Map, Item) :-
-	map__search(Map, Item, Count),
-	( Count = known(N), N > 1
-	; Count = many
-	).
-
-set_count_many(Item, Map0, Map) :-
-	map__set(Map0, Item, many, Map).
-
-uniq_count_max(many, _, many).
-uniq_count_max(known(_), many, many).
-uniq_count_max(known(A), known(B), known(C)) :-
-	int__max(A, B, C).
-
-uniq_counts_max_merge(MapA, MapB, Map) :-
-	map__foldl(lambda([Item::in, CountA::in, M0::in, M::out] is det,
-		( map__search(M0, Item, CountB) ->
-			uniq_count_max(CountA, CountB, Count),
-			( Count = CountB ->
-				M = M0
-			;
-				map__det_update(M0, Item, Count, M)
-			)
-		;
-			map__det_insert(M0, Item, CountA, M)
-		)), MapA, MapB, Map).
-
-%-----------------------------------------------------------------------------%
-
 	% instmap__count_inst_keys(Vars, InstMaps, InstTable, SeenKeys,
 	%		DuplicateKeys, InstKeys):
 	%	Return a set of all inst_keys which appear more than
@@ -754,51 +666,8 @@ instmap__count_inst_keys(Vars, ModuleInfo, InstTable, InstMap, IKCounts) :-
 instmap__count_inst_keys_2([], _InstTable, _ModuleInfo, _InstMap) --> [].
 instmap__count_inst_keys_2([V | Vs], ModuleInfo, InstTable, InstMap) -->
 	{ instmap__lookup_var(InstMap, V, Inst) },
-	{ set__init(SeenTwice) },
-	instmap__count_inst_keys_in_inst(no, InstMap, InstTable, ModuleInfo,
-		SeenTwice, Inst),
+	count_inst_keys_in_inst(InstMap, InstTable, ModuleInfo, Inst),
 	instmap__count_inst_keys_2(Vs, ModuleInfo, InstTable, InstMap).
-
-:- pred instmap__count_inst_keys_in_inst(bool, instmap, inst_table, module_info,
-	set(inst_name), inst, inst_key_counts, inst_key_counts).
-:- mode instmap__count_inst_keys_in_inst(in, in, in, in, in, in, in, out)
-	is det.
-
-instmap__count_inst_keys_in_inst(SetCountMany, InstMap, InstTable, ModuleInfo,
-		SeenTwice, Inst) -->
-	inst_fold(InstMap, InstTable, ModuleInfo,
-	    count_inst_keys_before(SetCountMany), 
-	    count_inst_keys_after(InstMap, InstTable, ModuleInfo, SeenTwice),
-	    uniq_counts_max_merge, Inst).
-
-:- pred count_inst_keys_before(bool::in, (inst)::in, set(inst_name)::in,
-	inst_key_counts::in, inst_key_counts::out) is semidet.
-
-count_inst_keys_before(SetCountMany, alias(Key), _) -->
-	(
-		{ SetCountMany = yes },
-		set_count_many(Key)
-	;
-		{ SetCountMany = no },
-		inc_uniq_count(Key)
-	).
-
-:- pred count_inst_keys_after(instmap::in, inst_table::in, module_info::in,
-	set(inst_name)::in, (inst)::in, set(inst_name)::in,
-	inst_key_counts::in, inst_key_counts::out) is semidet.
-
-count_inst_keys_after(InstMap, InstTable, ModuleInfo, SeenTwice0,
-		defined_inst(InstName), SeenOnce) -->
-	{ set__member(InstName, SeenOnce) },
-	{ \+ set__member(InstName, SeenTwice0) },
-	{ set__insert(SeenTwice0, InstName, SeenTwice) },
-
-		% We need to count the inst_keys in a recursive inst twice
-		% because the inst may be unfolded an arbitrary number of
-		% times.
-	instmap__count_inst_keys_in_inst(yes, InstMap, InstTable, ModuleInfo,
-		SeenTwice, defined_inst(InstName)).
-
 %-----------------------------------------------------------------------------%
 
 	% instmap__merge_2(Vars, Liveness, InstMaps, ModuleInfo, ErrorList):
@@ -972,17 +841,49 @@ instmap__expand_subs_2(_, _, _, _, [], [], InstTable, InstTable).
 instmap__expand_subs_2(Keys, ModuleInfo, Sub, SeenIKs0,
 		[Var - Inst0 | VarInsts0], [Var - Inst | VarInsts],
 		InstTable0, InstTable) :-
-	instmap__expand_inst_sub(Keys, ModuleInfo, Sub, SeenIKs0, SeenIKs,
+	instmap__expand_inst_sub(yes(Keys), ModuleInfo, Sub, SeenIKs0, SeenIKs,
 		Inst0, Inst, InstTable0, InstTable1),
 	instmap__expand_subs_2(Keys, ModuleInfo, Sub, SeenIKs,
 		VarInsts0, VarInsts, InstTable1, InstTable).
 
-:- pred instmap__expand_inst_sub(inst_key_set, module_info,
+instmap__expand_alias_substitutions(unreachable, _, Insts, Insts) --> [].
+instmap__expand_alias_substitutions(reachable(_, Sub), ModuleInfo, Insts0,
+		Insts) -->
+	( { map__is_empty(Sub) } ->
+		% Optimise this case.
+		{ Insts = Insts0 }
+	;
+		{ map__init(SeenIKs0) },
+		instmap__expand_alias_substitutions_2(ModuleInfo, Sub, SeenIKs0,
+			Insts0, Insts)
+	).
+
+:- pred instmap__expand_alias_substitutions_2(module_info, inst_key_sub,
+		inst_key_sub, list(inst), list(inst), inst_table, inst_table).
+:- mode instmap__expand_alias_substitutions_2(in, in, in, in, out, in, out)
+		is det.
+
+instmap__expand_alias_substitutions_2(_, _, _, [], []) --> [].
+instmap__expand_alias_substitutions_2(ModuleInfo, Sub, SeenIKs0,
+		[Inst0 | Insts0], [Inst | Insts]) -->
+	instmap__expand_inst_sub(no, ModuleInfo, Sub, SeenIKs0, SeenIKs1,
+		Inst0, Inst),
+	instmap__expand_alias_substitutions_2(ModuleInfo, Sub, SeenIKs1,
+		Insts0, Insts).
+
+	% instmap__expand_inst_sub(MaybeKeys, ModuleInfo, Sub, SeekIKs0,
+	%		SeenIKs, Inst0, Inst, InstTable0, InstTable)
+	% 	Expand alias substitutions in Inst0.
+	% 	If MaybeKeys = yes(Keys) then only expand inst_keys that
+	% 	are members of Keys.  Otherwise, expand all inst_keys that
+	%	have substitutions on them.
+
+:- pred instmap__expand_inst_sub(maybe(inst_key_set), module_info,
 	inst_key_sub, inst_key_sub, inst_key_sub, inst, inst,
 	inst_table, inst_table).
 :- mode instmap__expand_inst_sub(in, in, in, in, out, in, out, in, out) is det.
 
-instmap__expand_inst_sub(Keys, ModuleInfo, Sub, SeenIKs0, SeenIKs,
+instmap__expand_inst_sub(MaybeKeys, ModuleInfo, Sub, SeenIKs0, SeenIKs,
 		alias(IK0), Inst, InstTable0, InstTable) :-
 	( map__search(SeenIKs0, IK0, IK1) ->
 		% We have seen IK0 before and replaced it with IK1.
@@ -991,11 +892,12 @@ instmap__expand_inst_sub(Keys, ModuleInfo, Sub, SeenIKs0, SeenIKs,
 		InstTable = InstTable0
 	; map__search(Sub, IK0, IK1) ->
 		% IK0 has a substitution so recursively expand it.
-		instmap__expand_inst_sub(Keys, ModuleInfo, Sub, SeenIKs0,
+		instmap__expand_inst_sub(MaybeKeys, ModuleInfo, Sub, SeenIKs0,
 			SeenIKs1, alias(IK1), Inst1, InstTable0, InstTable),
 		(
 			Inst1 = alias(IK1),
-			\+ set_bbbtree__member(IK0, Keys)
+			MaybeKeys = yes(KeysToExpand),
+			\+ set_bbbtree__member(IK0, KeysToExpand)
 		->
 			Inst = alias(IK0),
 			map__det_insert(SeenIKs1, IK0, IK0, SeenIKs)
@@ -1010,7 +912,7 @@ instmap__expand_inst_sub(Keys, ModuleInfo, Sub, SeenIKs0, SeenIKs,
 	;
 		inst_table_get_inst_key_table(InstTable0, IKT0),
 		inst_key_table_lookup(IKT0, IK0, Inst0),
-		instmap__expand_inst_sub(Keys, ModuleInfo, Sub, SeenIKs0,
+		instmap__expand_inst_sub(MaybeKeys, ModuleInfo, Sub, SeenIKs0,
 			SeenIKs1, Inst0, Inst1, InstTable0, InstTable1),
 		( Inst0 = Inst1 ->
 			Inst = alias(IK0),
@@ -1038,17 +940,17 @@ instmap__expand_inst_sub(_, _, _, SeenIKs, SeenIKs, not_reached,
 		not_reached, InstTable, InstTable).
 instmap__expand_inst_sub(_, _, _, _, _, inst_var(_), _, _, _) :-
 	error("instmap__expand_inst_sub: inst_var(_)").
-instmap__expand_inst_sub(Keys, ModuleInfo, Sub, SeenIKs0, SeenIKs,
+instmap__expand_inst_sub(MaybeKeys, ModuleInfo, Sub, SeenIKs0, SeenIKs,
 		bound(U, BoundInsts0), bound(U, BoundInsts),
 		InstTable0, InstTable) :-
-	instmap__expand_bound_insts_sub(Keys, ModuleInfo, Sub, SeenIKs0,
+	instmap__expand_bound_insts_sub(MaybeKeys, ModuleInfo, Sub, SeenIKs0,
 		SeenIKs, BoundInsts0, BoundInsts, InstTable0, InstTable).
-instmap__expand_inst_sub(Keys, ModuleInfo, Sub, SeenIKs0, SeenIKs,
+instmap__expand_inst_sub(MaybeKeys, ModuleInfo, Sub, SeenIKs0, SeenIKs,
 		abstract_inst(N, Insts0), abstract_inst(N, Insts),
 		InstTable0, InstTable) :-
-	instmap__expand_inst_list_sub(Keys, ModuleInfo, Sub, SeenIKs0, SeenIKs,
-		Insts0, Insts, InstTable0, InstTable).
-instmap__expand_inst_sub(Keys, ModuleInfo, Sub, SeenIKs0, SeenIKs,
+	instmap__expand_inst_list_sub(MaybeKeys, ModuleInfo, Sub, SeenIKs0,
+		SeenIKs, Insts0, Insts, InstTable0, InstTable).
+instmap__expand_inst_sub(MaybeKeys, ModuleInfo, Sub, SeenIKs0, SeenIKs,
 		defined_inst(InstName), Inst, InstTable0, InstTable) :-
 	inst_table_get_other_insts(InstTable0, OtherInsts0),
 	other_inst_table_mark_inst_name(OtherInsts0, InstName, NewInstName),
@@ -1070,7 +972,7 @@ instmap__expand_inst_sub(Keys, ModuleInfo, Sub, SeenIKs0, SeenIKs,
 		% Recursively expand the inst.
 		inst_lookup(InstTable1, ModuleInfo, InstName, Inst0),
 		inst_expand_defined_inst(InstTable1, ModuleInfo, Inst0, Inst1),
-		instmap__expand_inst_sub(Keys, ModuleInfo, Sub, SeenIKs0,
+		instmap__expand_inst_sub(MaybeKeys, ModuleInfo, Sub, SeenIKs0,
 			SeenIKs, Inst1, Inst2, InstTable1, InstTable2),
 
 		% Update the substitution_inst_table with the known value.
@@ -1097,7 +999,7 @@ instmap__expand_inst_sub(Keys, ModuleInfo, Sub, SeenIKs0, SeenIKs,
 		Inst = Inst2
 	).
 
-:- pred instmap__expand_bound_insts_sub(inst_key_set, module_info,
+:- pred instmap__expand_bound_insts_sub(maybe(inst_key_set), module_info,
 	inst_key_sub, inst_key_sub, inst_key_sub, list(bound_inst),
 	list(bound_inst), inst_table, inst_table).
 :- mode instmap__expand_bound_insts_sub(in, in, in, in, out, in, out, in, out)
@@ -1105,16 +1007,16 @@ instmap__expand_inst_sub(Keys, ModuleInfo, Sub, SeenIKs0, SeenIKs,
 
 instmap__expand_bound_insts_sub(_, _, _, SeenIKs, SeenIKs, [], [],
 		InstTable, InstTable).
-instmap__expand_bound_insts_sub(Keys, ModuleInfo, Sub, SeenIKs0, SeenIKs,
+instmap__expand_bound_insts_sub(MaybeKeys, ModuleInfo, Sub, SeenIKs0, SeenIKs,
 		[functor(ConsId, Insts0) | BoundInsts0],
 		[functor(ConsId, Insts) | BoundInsts], InstTable0, InstTable) :-
-	instmap__expand_inst_list_sub(Keys, ModuleInfo, Sub,
+	instmap__expand_inst_list_sub(MaybeKeys, ModuleInfo, Sub,
 		SeenIKs0, SeenIKs1, Insts0, Insts, InstTable0, InstTable1),
-	instmap__expand_bound_insts_sub(Keys, ModuleInfo, Sub,
+	instmap__expand_bound_insts_sub(MaybeKeys, ModuleInfo, Sub,
 		SeenIKs1, SeenIKs, BoundInsts0, BoundInsts,
 		InstTable1, InstTable).
 
-:- pred instmap__expand_inst_list_sub(inst_key_set, module_info,
+:- pred instmap__expand_inst_list_sub(maybe(inst_key_set), module_info,
 	inst_key_sub, inst_key_sub, inst_key_sub, list(inst), list(inst),
 	inst_table, inst_table).
 :- mode instmap__expand_inst_list_sub(in, in, in, in, out, in, out, in, out)
@@ -1122,12 +1024,12 @@ instmap__expand_bound_insts_sub(Keys, ModuleInfo, Sub, SeenIKs0, SeenIKs,
 
 instmap__expand_inst_list_sub(_, _, _, SeenIKs, SeenIKs, [], [],
 		InstTable, InstTable).
-instmap__expand_inst_list_sub(Keys, ModuleInfo, Sub,
+instmap__expand_inst_list_sub(MaybeKeys, ModuleInfo, Sub,
 		SeenIKs0, SeenIKs, [Inst0 | Insts0], [Inst | Insts],
 		InstTable0, InstTable) :-
-	instmap__expand_inst_sub(Keys, ModuleInfo, Sub, SeenIKs0,
+	instmap__expand_inst_sub(MaybeKeys, ModuleInfo, Sub, SeenIKs0,
 		SeenIKs1, Inst0, Inst, InstTable0, InstTable1),
-	instmap__expand_inst_list_sub(Keys, ModuleInfo, Sub,
+	instmap__expand_inst_list_sub(MaybeKeys, ModuleInfo, Sub,
 		SeenIKs1, SeenIKs, Insts0, Insts, InstTable1, InstTable).
 
 %-----------------------------------------------------------------------------%
@@ -1153,11 +1055,6 @@ instmap__remove_singleton_inst_keys_2(IKCounts, ModuleInfo, InstTable, Var,
 	instmap__remove_singleton_inst_key_from_inst(IKCounts, ModuleInfo,
 		InstTable, InstMap0, Inst0, Inst),
 	instmap__set(InstMap0, Var, Inst, InstMap).
-
-:- pred instmap__remove_singleton_inst_key_from_inst(inst_key_counts,
-	module_info, inst_table, instmap, inst, inst).
-:- mode instmap__remove_singleton_inst_key_from_inst(in, in, in, in, in, out)
-	is det.
 
 instmap__remove_singleton_inst_key_from_inst(IKCounts, ModuleInfo, InstTable,
 		InstMap, alias(IK), Inst) :-
@@ -1519,12 +1416,16 @@ instmap__apply_alias_sub(reachable(_, Alias), Inst0, Inst) :-
 instmap__inst_key_table_lookup(unreachable, IKT, Key, Inst) :-
 	inst_key_table_lookup(IKT, Key, Inst).
 instmap__inst_key_table_lookup(reachable(_, Alias), IKT, Key0, Inst) :-
-	find_latest_inst_key(Alias, Key0, Key),
+	find_latest_inst_key_from_sub(Alias, Key0, Key),
 	inst_key_table_lookup(IKT, Key, Inst0),
 	inst_apply_sub(Alias, Inst0, Inst).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
+
+instmap__find_latest_inst_key(InstMap, IK0, IK) :-
+	instmap__get_inst_key_sub(InstMap, Sub),
+	find_latest_inst_key_from_sub(Sub, IK0, IK).
 
 instmap__inst_keys_are_equivalent(KeyA, InstMapA, KeyB, InstMapB) :-
 	(
@@ -1532,8 +1433,8 @@ instmap__inst_keys_are_equivalent(KeyA, InstMapA, KeyB, InstMapB) :-
 	;
 		InstMapA = reachable(_, AliasMapA),
 		InstMapB = reachable(_, AliasMapB),
-		find_latest_inst_key(AliasMapA, KeyA, Key),
-		find_latest_inst_key(AliasMapB, KeyB, Key)
+		find_latest_inst_key_from_sub(AliasMapA, KeyA, Key),
+		find_latest_inst_key_from_sub(AliasMapB, KeyB, Key)
 	).
 
 %-----------------------------------------------------------------------------%

@@ -179,6 +179,30 @@ in the general case.
 		inst_fold_merge_pred, in, in, out) is det.
 
 %-----------------------------------------------------------------------------%
+
+:- import_module uniq_count.
+
+:- type inst_key_counts == uniq_counts(inst_key).
+
+	% Count the occurrences of each inst_key in an inst.
+:- pred count_inst_keys_in_inst(instmap, inst_table, module_info,
+	inst, inst_key_counts, inst_key_counts).
+:- mode count_inst_keys_in_inst(in, in, in, in, in, out) is det.
+
+	% Count the occurrences of each inst_key in a list of insts.
+:- pred count_inst_keys_in_insts(instmap, inst_table, module_info,
+	list(inst), inst_key_counts).
+:- mode count_inst_keys_in_insts(in, in, in, in, out) is det.
+
+	% ``Normalise'' the inst_keys in a list of insts.  This is done
+	% by first removing any alias insts with singleton inst_keys and
+	% then expanding all instmap alias substitutions so they no longer
+	% depend on the instmap.
+:- pred normalise_inst_keys_in_insts(instmap, module_info, 
+		list(inst), list(inst), inst_table, inst_table).
+:- mode normalise_inst_keys_in_insts(in, in, in, out, in, out) is det.
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -2314,7 +2338,7 @@ expand_inst(IsLive, LiveCounts, Inst0, InstMap0, InstTable0, ModuleInfo0,
 		( IsLive = dead ->
 			inst_expand(InstMap0, InstTable0, ModuleInfo0, Inst0,
 				Inst1),
-			( has_count_many(Counts0, IK) ->
+			( has_count_greater_than_one(Counts0, IK) ->
 				make_clobbered_inst(Inst1, InstTable0,
 					ModuleInfo0, InstMap0, Inst, InstTable,
 					ModuleInfo, InstMap, RemovedKeys),
@@ -2327,7 +2351,7 @@ expand_inst(IsLive, LiveCounts, Inst0, InstMap0, InstTable0, ModuleInfo0,
 				ModuleInfo = ModuleInfo0,
 				Counts = Counts0
 			)
-		; has_count_many(LiveCounts, IK) ->
+		; has_count_greater_than_one(LiveCounts, IK) ->
 			% If the inst_key has multiple references, we need to
 			% hang on to it.
 			Inst = Inst0,
@@ -2480,6 +2504,69 @@ inst_fold_3(InstMap, InstTable, ModuleInfo, Recursive, Before, After,
 		Merge, abstract_inst(_, Insts)) -->
 	list__foldl(inst_fold_2(InstMap, InstTable, ModuleInfo, Recursive,
 		Before, After, Merge), Insts).
+
+%-----------------------------------------------------------------------------%
+
+count_inst_keys_in_inst(InstMap, InstTable, ModuleInfo, Inst) -->
+	{ set__init(SeenTwice) },
+	count_inst_keys_in_inst(no, InstMap, InstTable, ModuleInfo,
+		SeenTwice, Inst).
+
+count_inst_keys_in_insts(InstMap, InstTable, ModuleInfo, Insts, Count) :-
+	map__init(Count0),
+	list__foldl(count_inst_keys_in_inst(InstMap, InstTable, ModuleInfo),
+		Insts, Count0, Count).
+
+:- pred count_inst_keys_in_inst(bool, instmap, inst_table, module_info,
+	set(inst_name), inst, inst_key_counts, inst_key_counts).
+:- mode count_inst_keys_in_inst(in, in, in, in, in, in, in, out)
+	is det.
+
+count_inst_keys_in_inst(SetCountMany, InstMap, InstTable, ModuleInfo,
+		SeenTwice, Inst) -->
+	inst_fold(InstMap, InstTable, ModuleInfo,
+	    count_inst_keys_before(SetCountMany, InstMap), 
+	    count_inst_keys_after(InstMap, InstTable, ModuleInfo, SeenTwice),
+	    uniq_counts_max_merge, Inst).
+
+:- pred count_inst_keys_before(bool::in, instmap::in, (inst)::in,
+	set(inst_name)::in, inst_key_counts::in, inst_key_counts::out)
+	is semidet.
+
+count_inst_keys_before(SetCountMany, InstMap, alias(Key0), _) -->
+	{ instmap__find_latest_inst_key(InstMap, Key0, Key) },
+	(
+		{ SetCountMany = yes },
+		set_count_many(Key)
+	;
+		{ SetCountMany = no },
+		inc_uniq_count(Key)
+	).
+
+:- pred count_inst_keys_after(instmap::in, inst_table::in, module_info::in,
+	set(inst_name)::in, (inst)::in, set(inst_name)::in,
+	inst_key_counts::in, inst_key_counts::out) is semidet.
+
+count_inst_keys_after(InstMap, InstTable, ModuleInfo, SeenTwice0,
+		defined_inst(InstName), SeenOnce) -->
+	{ set__member(InstName, SeenOnce) },
+	{ \+ set__member(InstName, SeenTwice0) },
+	{ set__insert(SeenTwice0, InstName, SeenTwice) },
+
+		% We need to count the inst_keys in a recursive inst twice
+		% because the inst may be unfolded an arbitrary number of
+		% times.
+	count_inst_keys_in_inst(yes, InstMap, InstTable, ModuleInfo,
+		SeenTwice, defined_inst(InstName)).
+
+normalise_inst_keys_in_insts(InstMap, ModuleInfo, Insts0, Insts, InstTable0,
+		InstTable) :-
+	count_inst_keys_in_insts(InstMap, InstTable0, ModuleInfo, Insts0,
+		IKCounts),
+	list__map(instmap__remove_singleton_inst_key_from_inst(IKCounts,
+		ModuleInfo, InstTable0, InstMap), Insts0, Insts1),
+	instmap__expand_alias_substitutions(InstMap, ModuleInfo, Insts1,
+		Insts, InstTable0, InstTable).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

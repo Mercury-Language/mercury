@@ -449,8 +449,18 @@ modecheck_end_of_call(ProcInfo, ArgVars0, ArgOffset, ArgVars, ExtraGoals,
 insert_new_mode(PredId, ArgVars, MaybeDet, ProcId, ModeInfo0, ModeInfo) :-
 	% figure out the values of all the variables we need to
 	% create a new mode for this predicate
-	get_var_insts_and_lives(ArgVars, ModeInfo0, InitialInsts, ArgLives),
+	get_var_insts_and_lives(ArgVars, ModeInfo0, InitialInsts0, ArgLives),
 	mode_info_get_module_info(ModeInfo0, ModuleInfo0),
+	mode_info_get_inst_table(ModeInfo0, InstTable0),
+	mode_info_get_instmap(ModeInfo0, InstMap0),
+	mode_info_get_var_types(ModeInfo0, Types),
+	map__apply_to_list(ArgVars, Types, ArgTypes),
+
+	normalise_inst_keys_in_insts(InstMap0, ModuleInfo0, InitialInsts0,
+		InitialInsts1, InstTable0, InstTable),
+	normalise_insts(InitialInsts1, ArgTypes, InstMap0, InstTable,
+		ModuleInfo0, InitialInsts),
+
 	module_info_preds(ModuleInfo0, Preds0),
 	map__lookup(Preds0, PredId, PredInfo0),
 	pred_info_context(PredInfo0, Context),
@@ -464,8 +474,7 @@ insert_new_mode(PredId, ArgVars, MaybeDet, ProcId, ModeInfo0, ModeInfo) :-
 	% and insert it into the queue of requested procedures.
 	%
 	% create the new mode
-	inst_table_init(ArgInstTable),
-	unify_proc__request_proc(PredId, argument_modes(ArgInstTable, Modes),
+	unify_proc__request_proc(PredId, argument_modes(InstTable, Modes),
 		yes(ArgLives), MaybeDet, Context, ModuleInfo0, ProcId,
 		ModuleInfo),
 
@@ -486,10 +495,7 @@ get_var_insts_and_lives([Var | Vars], ModeInfo,
 	mode_info_get_module_info(ModeInfo, ModuleInfo),
 	mode_info_get_instmap(ModeInfo, InstMap),
 	mode_info_get_inst_table(ModeInfo, InstTable),
-	mode_info_get_var_types(ModeInfo, VarTypes),
-	instmap__lookup_var(InstMap, Var, Inst0),
-	map__lookup(VarTypes, Var, Type),
-	normalise_inst(Inst0, Type, InstMap, InstTable, ModuleInfo, Inst),
+	instmap__lookup_var(InstMap, Var, Inst),
 
 	mode_info_var_is_live(ModeInfo, Var, IsLive0),
 
