@@ -598,7 +598,7 @@ static int
 __Unify____void_0_0(MR_Word x, MR_Word y)
 {
 	mercury::runtime::Errors::fatal_error(
-		""called unify for type `void'"");
+		S""called unify for type `void'"");
 	return 0;
 }
 
@@ -606,7 +606,7 @@ static int
 __Unify____c_pointer_0_0(MR_Word x, MR_Word y)
 {
 	mercury::runtime::Errors::fatal_error(
-		""called unify for type `c_pointer'"");
+		S""called unify for type `c_pointer'"");
 	return 0;
 }
 
@@ -614,7 +614,7 @@ static int
 __Unify____func_0_0(MR_Word x, MR_Word y)
 {
 	mercury::runtime::Errors::fatal_error(
-		""called unify for `func' type"");
+		S""called unify for `func' type"");
 	return 0;
 }
 
@@ -622,7 +622,7 @@ static int
 __Unify____pred_0_0(MR_Word x, MR_Word y)
 {
 	mercury::runtime::Errors::fatal_error(
-		""called unify for `pred' type"");
+		S""called unify for `pred' type"");
 	return 0;
 }
 
@@ -630,7 +630,7 @@ static int
 __Unify____tuple_0_0(MR_Word x, MR_Word y)
 {
 	mercury::runtime::Errors::fatal_error(
-		""called unify for `tuple' type"");
+		S""called unify for `tuple' type"");
 	return 0;
 }
 
@@ -653,7 +653,7 @@ __Compare____float_0_0(
 		x == y ? MR_COMPARE_EQUAL :
 		x < y ? MR_COMPARE_LESS :
 		(mercury::runtime::Errors::fatal_error(
-			""incomparable floats in compare/3""),
+			S""incomparable floats in compare/3""),
 			MR_COMPARE_EQUAL)); 
 	MR_newenum(*result, r);
 }
@@ -685,7 +685,7 @@ __Compare____void_0_0(MR_Word_Ref result,
 	MR_Word x, MR_Word y)
 {
 	mercury::runtime::Errors::fatal_error(
-		""called compare/3 for type `void'"");
+		S""called compare/3 for type `void'"");
 }
 
 static void
@@ -693,7 +693,7 @@ __Compare____c_pointer_0_0(
 	MR_Word_Ref result, MR_Word x, MR_Word y)
 {
 	mercury::runtime::Errors::fatal_error(
-		""called compare/3 for type `c_pointer'"");
+		S""called compare/3 for type `c_pointer'"");
 }
 
 static void
@@ -701,7 +701,7 @@ __Compare____func_0_0(MR_Word_Ref result,
 	MR_Word x, MR_Word y)
 {
 	mercury::runtime::Errors::fatal_error(
-		""called compare/3 for `func' type"");
+		S""called compare/3 for `func' type"");
 }
 
 static void
@@ -709,7 +709,7 @@ __Compare____pred_0_0(MR_Word_Ref result,
 	MR_Word x, MR_Word y)
 {
 	mercury::runtime::Errors::fatal_error(
-		""called compare/3 for `pred' type"");
+		S""called compare/3 for `pred' type"");
 }
 
 static void
@@ -717,7 +717,7 @@ __Compare____tuple_0_0(MR_Word_Ref result,
 	MR_Word x, MR_Word y)
 {
 	mercury::runtime::Errors::fatal_error(
-		""called compare/3 for `pred' type"");
+		S""called compare/3 for `pred' type"");
 }
 
 /*
@@ -761,7 +761,7 @@ static int
 do_unify__void_0_0(MR_Box x, MR_Box y)
 {
 	mercury::runtime::Errors::fatal_error(
-		""called unify for type `void'"");
+		S""called unify for type `void'"");
 	return 0;
 }
 
@@ -777,7 +777,7 @@ static int
 do_unify__func_0_0(MR_Box x, MR_Box y)
 {
 	mercury::runtime::Errors::fatal_error(
-		""called unify for `func' type"");
+		S""called unify for `func' type"");
 	return 0;
 }
 
@@ -785,7 +785,7 @@ static int
 do_unify__pred_0_0(MR_Box x, MR_Box y)
 {
 	mercury::runtime::Errors::fatal_error(
-		""called unify for `pred' type"");
+		S""called unify for `pred' type"");
 	return 0;
 }
 
@@ -793,7 +793,7 @@ static int
 do_unify__tuple_0_0(MR_Box x, MR_Box y)
 {
 	mercury::runtime::Errors::fatal_error(
-		""called unify for `tuple' type"");
+		S""called unify for `tuple' type"");
 	return 0;
 }
 
@@ -840,7 +840,7 @@ static void
 do_compare__void_0_0(MR_Word_Ref result, MR_Box x, MR_Box y)
 {
 	mercury::runtime::Errors::fatal_error(
-		""called compare/3 for type `void'"");
+		S""called compare/3 for type `void'"");
 }
 
 static void
@@ -857,21 +857,21 @@ static void
 do_compare__func_0_0(MR_Word_Ref result, MR_Box x, MR_Box y)
 {
 	mercury::runtime::Errors::fatal_error(
-		""called compare/3 for func type"");
+		S""called compare/3 for func type"");
 }
 
 static void
 do_compare__pred_0_0(MR_Word_Ref result, MR_Box x, MR_Box y)
 {
 	mercury::runtime::Errors::fatal_error(
-		""called compare/3 for pred type"");
+		S""called compare/3 for pred type"");
 }
 
 static void
 do_compare__tuple_0_0(MR_Word_Ref result, MR_Box x, MR_Box y)
 {
 	mercury::runtime::Errors::fatal_error(
-		""called compare/3 for tuple type"");
+		S""called compare/3 for tuple type"");
 }
 
 ").

@@ -1045,7 +1045,7 @@ non_cc_call(P::pred(in, out, di, uo) is cc_multi, X::in, More::out,
 
 #ifdef MR_USE_TRAIL
 	/* XXX trailing not yet implemented for the MLDS back-end */
-	mercury::runtime::Errors::SORRY(""foreign code for get_registers"");
+	mercury::runtime::Errors::SORRY(S""foreign code for get_registers"");
 #else
 	TrailPtr = 0;
 #endif
@@ -1068,7 +1068,8 @@ non_cc_call(P::pred(in, out, di, uo) is cc_multi, X::in, More::out,
 	[will_not_call_mercury, thread_safe],
 "
 #ifdef MR_USE_TRAIL
-	mercury::runtime::Errors::SORRY(""foreign code for check_for_floundering"");
+	mercury::runtime::Errors::SORRY(
+		S""foreign code for check_for_floundering"");
 #endif
 ").
 
@@ -1091,7 +1092,8 @@ non_cc_call(P::pred(in, out, di, uo) is cc_multi, X::in, More::out,
 	[will_not_call_mercury, thread_safe],
 "
 #ifdef MR_USE_TRAIL
-	mercury::runtime::Errors::SORRY(""foreign code for discard_trail_ticket"");
+	mercury::runtime::Errors::SORRY(
+		S""foreign code for discard_trail_ticket"");
 #endif
 ").
 

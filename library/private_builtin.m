@@ -459,7 +459,7 @@ static int
 __Unify____type_info_1_0(
 	MR_Word type_info, MR_Word x, MR_Word y)
 {
-	mercury::runtime::Errors::SORRY(""unify for type_info"");
+	mercury::runtime::Errors::SORRY(S""unify for type_info"");
 	return 0;
 }
 
@@ -467,7 +467,7 @@ static int
 __Unify____typeclass_info_1_0(
 	MR_Word type_info, MR_Word x, MR_Word y)
 {
-	mercury::runtime::Errors::SORRY(""unify for typeclass_info"");
+	mercury::runtime::Errors::SORRY(S""unify for typeclass_info"");
 	return 0;
 }
 
@@ -475,7 +475,7 @@ static int
 __Unify____base_typeclass_info_1_0(
 	MR_Word type_info, MR_Word x, MR_Word y)
 {
-	mercury::runtime::Errors::SORRY(""unify for base_typeclass_info"");
+	mercury::runtime::Errors::SORRY(S""unify for base_typeclass_info"");
 	return 0;
 }
 
@@ -483,7 +483,7 @@ static int
 __Unify____type_ctor_info_1_0(
 	MR_Word type_info, MR_Word x, MR_Word y)
 {
-	mercury::runtime::Errors::SORRY(""unify for type_ctor_info"");
+	mercury::runtime::Errors::SORRY(S""unify for type_ctor_info"");
 	return 0;
 }
 
@@ -491,28 +491,28 @@ static void
 __Compare____type_ctor_info_1_0(
 	MR_Word type_info, MR_Word_Ref result, MR_Word x, MR_Word y)
 {
-	mercury::runtime::Errors::SORRY(""compare for type_ctor_info"");
+	mercury::runtime::Errors::SORRY(S""compare for type_ctor_info"");
 }
 
 static void
 __Compare____type_info_1_0(
 	MR_Word type_info, MR_Word_Ref result, MR_Word x, MR_Word y)
 {
-	mercury::runtime::Errors::SORRY(""compare for type_info"");
+	mercury::runtime::Errors::SORRY(S""compare for type_info"");
 }
 
 static void
 __Compare____typeclass_info_1_0(
 	MR_Word type_info, MR_Word_Ref result, MR_Word x, MR_Word y)
 {
-	mercury::runtime::Errors::SORRY(""compare for typeclass_info"");
+	mercury::runtime::Errors::SORRY(S""compare for typeclass_info"");
 }
 
 static void
 __Compare____base_typeclass_info_1_0(
 	MR_Word type_info, MR_Word_Ref result, MR_Word x, MR_Word y)
 {
-	mercury::runtime::Errors::SORRY(""compare for base_typeclass_info"");
+	mercury::runtime::Errors::SORRY(S""compare for base_typeclass_info"");
 }
 
 static int
@@ -781,7 +781,7 @@ static void init_runtime(void)
 	[will_not_call_mercury, thread_safe],
 "
 #ifdef MR_USE_TRAIL
-	mercury::runtime::Errors::SORRY(""foreign code for this function"");
+	mercury::runtime::Errors::SORRY(S""foreign code for this function"");
 	// MR_store_ticket(Ticket);
 #else
 	Ticket = 0;
@@ -792,7 +792,7 @@ static void init_runtime(void)
 	[will_not_call_mercury, thread_safe],
 "
 #ifdef MR_USE_TRAIL
-	mercury::runtime::Errors::SORRY(""foreign code for this function"");
+	mercury::runtime::Errors::SORRY(S""foreign code for this function"");
 	// MR_reset_ticket(Ticket, MR_undo);
 #endif
 ").
@@ -801,7 +801,7 @@ static void init_runtime(void)
 	[will_not_call_mercury, thread_safe],
 "
 #ifdef MR_USE_TRAIL
-	mercury::runtime::Errors::SORRY(""foreign code for this function"");
+	mercury::runtime::Errors::SORRY(S""foreign code for this function"");
 	// MR_reset_ticket(Ticket, MR_commit);
 #endif
 ").
@@ -810,7 +810,7 @@ static void init_runtime(void)
 	[will_not_call_mercury, thread_safe],
 "
 #ifdef MR_USE_TRAIL
-	mercury::runtime::Errors::SORRY(""foreign code for this function"");
+	mercury::runtime::Errors::SORRY(S""foreign code for this function"");
 	// MR_reset_ticket(Ticket, MR_solve);
 #endif
 ").
@@ -819,7 +819,7 @@ static void init_runtime(void)
 	[will_not_call_mercury, thread_safe],
 "
 #ifdef MR_USE_TRAIL
-	mercury::runtime::Errors::SORRY(""foreign code for this function"");
+	mercury::runtime::Errors::SORRY(S""foreign code for this function"");
 	// MR_discard_ticket();
 #endif
 ").
@@ -828,7 +828,7 @@ static void init_runtime(void)
 	[will_not_call_mercury, thread_safe],
 "
 #ifdef MR_USE_TRAIL
-	mercury::runtime::Errors::SORRY(""foreign code for this function"");
+	mercury::runtime::Errors::SORRY(S""foreign code for this function"");
 	// MR_prune_ticket();
 #endif
 ").
@@ -837,7 +837,7 @@ static void init_runtime(void)
 	[will_not_call_mercury, thread_safe],
 "
 #ifdef MR_USE_TRAIL
-	mercury::runtime::Errors::SORRY(""foreign code for this function"");
+	mercury::runtime::Errors::SORRY(S""foreign code for this function"");
 	// MR_mark_ticket_stack(TicketCounter);
 #else
 	TicketCounter = 0;
@@ -848,7 +848,7 @@ static void init_runtime(void)
 	[will_not_call_mercury, thread_safe],
 "
 #ifdef MR_USE_TRAIL
-	mercury::runtime::Errors::SORRY(""foreign code for this function"");
+	mercury::runtime::Errors::SORRY(S""foreign code for this function"");
 	// MR_prune_tickets_to(TicketCounter);
 #endif
 ").
@@ -1016,7 +1016,7 @@ static int
 __Unify__private_builtin__heap_pointer_0_0(MR_Word x, MR_Word y)
 {
 	mercury::runtime::Errors::fatal_error(
-		""called unify for type `private_builtin:heap_pointer'"");
+		S""called unify for type `private_builtin:heap_pointer'"");
 	return 0;
 }
 

@@ -782,13 +782,13 @@ XXX :- external stops us from using these two definitions
 	retry_code(""),
 	common_code("
 		mercury::runtime::Errors::SORRY(
-			""foreign code for this function"");
+			S""foreign code for this function"");
 	")
 ).
 
 :- pragma foreign_proc("MC++",
 	table_nondet_resume(_A::in), [will_not_call_mercury, promise_pure], "
-	mercury::runtime::Errors::SORRY(""foreign code for this function"");
+	mercury::runtime::Errors::SORRY(S""foreign code for this function"");
 ").
 
 */

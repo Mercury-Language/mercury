@@ -86,14 +86,14 @@ __gc public class Errors {
     static void SORRY(MR_String s) 
     {
         MR_String msg;
-        msg = System::String::Concat("Sorry, unimplemented: ", s);
+        msg = System::String::Concat(S"Sorry, unimplemented: ", s);
         throw new mercury::runtime::SystemException(msg);
     }
 
     static void fatal_error(MR_String s)
     {
         MR_String msg;
-        msg = System::String::Concat("Fatal error: ", s);
+        msg = System::String::Concat(S"Fatal error: ", s);
         throw new mercury::runtime::SystemException(msg);
     }
 };

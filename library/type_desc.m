@@ -193,13 +193,15 @@ static void
 __Compare____type_ctor_desc_0_0(
 	MR_ComparisonResult *result, MR_TypeInfo_0 x, MR_TypeInfo_0 y)
 {
-	mercury::runtime::Errors::SORRY(""foreign code for comparing type_ctor_descs"");
+	mercury::runtime::Errors::SORRY(
+		S""foreign code for comparing type_ctor_descs"");
 }
 
 static MR_bool
 __Unify____type_ctor_desc_0_0(MR_TypeInfo_0 x, MR_TypeInfo_0 y)
 {
-	mercury::runtime::Errors::SORRY(""foreign code for unifying type_ctor_descs"");
+	mercury::runtime::Errors::SORRY(
+		S""foreign code for unifying type_ctor_descs"");
 	return 0;
 }
 
@@ -207,13 +209,15 @@ static void
 special___Compare___type_ctor_desc_0_0(
 	MR_ComparisonResult *result, MR_TypeInfo_0 x, MR_TypeInfo_0 y)
 {
-	mercury::runtime::Errors::SORRY(""foreign code for comparing type_ctor_descs"");
+	mercury::runtime::Errors::SORRY(
+		S""foreign code for comparing type_ctor_descs"");
 }
 
 static MR_bool
 special___Unify___type_ctor_desc_0_0(MR_TypeInfo_0 x, MR_TypeInfo_0 y)
 {
-	mercury::runtime::Errors::SORRY(""foreign code for unifying type_ctor_descs"");
+	mercury::runtime::Errors::SORRY(
+		S""foreign code for unifying type_ctor_descs"");
 	return 0;
 }
 

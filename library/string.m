@@ -3486,7 +3486,7 @@ strchars(I, End, Str) =
 	MR_Integer len;
 	MR_Word tmp;
 	if (Count <= 0) {
-		Left = """";
+		Left = S"""";
 		Right = Str;
 	} else {
 		len = Str->get_Length();

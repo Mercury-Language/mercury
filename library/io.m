@@ -3734,24 +3734,24 @@ static mercury_open(MR_String filename, MR_String openmode,
         System::IO::Stream *stream = 0;
 
 	try {
-		if (System::String::op_Equality(openmode, ""r"")) {
+		if (System::String::op_Equality(openmode, S""r"")) {
 			// Like '<' in Bourne shell.
 			// Read a file.  The file must exist already.
 			mode   = System::IO::FileMode::Open;
 			access = System::IO::FileAccess::Read;
-		} else if (System::String::op_Equality(openmode, ""w"")) {
+		} else if (System::String::op_Equality(openmode, S""w"")) {
 			// Like '>' in Bourne shell.
 			// Overwrite an existing file, or create a new file.
 			mode   = System::IO::FileMode::Create;
 			access = System::IO::FileAccess::Write;
-		} else if (System::String::op_Equality(openmode, ""a"")) {
+		} else if (System::String::op_Equality(openmode, S""a"")) {
 			// Like '>>' in Bourne shell.
 			// Append to an existing file, or create a new file.
 			mode   = System::IO::FileMode::Append;
 			access = System::IO::FileAccess::Write;
 		} else {
 			mercury::runtime::Errors::SORRY(System::String::Concat(
-				""foreign code for this function, open mode:"",
+				S""foreign code for this function, open mode:"",
 				openmode));
 		}
 
@@ -3895,7 +3895,7 @@ mercury_print_string(MR_MercuryFile mf, MR_String s)
 		for (int i = 0; i < s->Length; i++) {
 			if (s->Chars[i] == '\\n') {
 				mf->line_number++;
-				mf->writer->WriteLine("""");
+				mf->writer->WriteLine(S"""");
 			} else {
 				mf->writer->Write(s->Chars[i]);
 			}
@@ -3940,8 +3940,7 @@ mercury_print_binary_string(MR_MercuryFile mf, MR_String s)
 	// sanity check
 	if (mf->file_encoding != ML_raw_binary) {
 		mercury::runtime::Errors::fatal_error(
-			""mercury_print_binary_string: ""
-			""file encoding is not raw binary"");
+	S""mercury_print_binary_string: file encoding is not raw binary"");
 	}
 
 	//
@@ -3983,7 +3982,7 @@ mercury_print_binary_string(MR_MercuryFile mf, MR_String s)
 		byte_array[i] = s->get_Chars(i);
 		if (byte_array[i] != s->get_Chars(i)) {
 			mercury::runtime::Errors::SORRY(
-			""write_bytes: Unicode char does not fit in a byte"");
+			S""write_bytes: Unicode char does not fit in a byte"");
 		}
 	}
 #endif
@@ -4068,9 +4067,7 @@ mercury_getc(MR_MercuryFile mf)
 				break;
 			default:
 				mercury::runtime::Errors::SORRY(
-					""mercury_getc: ""
-					""Environment::NewLine::Length ""
-					""is neither 1 nor 2"");
+	S""mercury_getc: Environment::NewLine::Length is neither 1 nor 2"");
 			}
 		}
 		break;
@@ -4083,7 +4080,7 @@ mercury_ungetc(MR_MercuryFile mf, int code)
 {
 	if (mf->putback != -1) {
 		mercury::runtime::Errors::SORRY(
-			""mercury_ungetc: max one character of putback"");
+			S""mercury_ungetc: max one character of putback"");
 	}
 	mf->putback = code;
 	if (code == '\\n') {
@@ -4384,7 +4381,7 @@ ML_fprintf(MercuryFile* mf, const char *format, ...)
 		MR_word_to_c_pointer(File));
 	if (mf->putback != -1) {
 		mercury::runtime::Errors::SORRY(
-			""io__putback_byte: max one character of putback"");
+			S""io__putback_byte: max one character of putback"");
 	}
 	mf->putback = Byte;
 	MR_update_io(IO0, IO);
@@ -4503,7 +4500,7 @@ ML_fprintf(MercuryFile* mf, const char *format, ...)
 			w->Write(Character);
 			break;
 		case ML_OS_text_encoding:
-			w->WriteLine("""");
+			w->WriteLine(S"""");
 			break;
 		}
 		mercury_current_text_output->line_number++;
@@ -4729,7 +4726,7 @@ io__seek_binary(Stream, Whence, Offset, IO0, IO) :-
 			w->Write(Character);
 			break;
 		case ML_OS_text_encoding:
-			w->WriteLine("""");
+			w->WriteLine(S"""");
 			break;
 		}
 		stream->line_number++;
@@ -5680,9 +5677,9 @@ io__make_temp(Dir, Prefix, Name) -->
 			StringToHGlobalAnsi(Prefix).ToPointer());;
 	char tmpFileName[MAX_PATH];
 	System::String *msg[] = {
-			""Unable to create temporary file in "",
+			S""Unable to create temporary file in "",
 			Dir,
-			"" with prefix "",
+			S"" with prefix "",
 			Prefix
 		};
 
@@ -5691,23 +5688,23 @@ io__make_temp(Dir, Prefix, Name) -->
 
 	if (result == 0) {
 		Error = -1;
-		FileName = """";
-		ErrorMessage = System::String::Join("""", msg);
+		FileName = S"""";
+		ErrorMessage = System::String::Join(S"""", msg);
 	} else {
 		Error = 0;
 		FileName = tmpFileName;
-		ErrorMessage = """";
+		ErrorMessage = S"""";
 	}
 	*/
 
 	try {
 		FileName = System::IO::Path::GetTempFileName();
 		Error = 0;
-		ErrorMessage = """";
+		ErrorMessage = S"""";
 	}
 	catch (System::Exception *e)
 	{
-		FileName = """";
+		FileName = S"""";
 		Error = -1;
 		ErrorMessage = e->Message;
 	}
