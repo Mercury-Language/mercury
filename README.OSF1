@@ -31,3 +31,6 @@ but we suspect that it is a bug in the dynamic loader.  The work-around
 is to link the program in question statically, or to run the program
 with the environment variable LD_BIND_NOW set to a non-null value.
 
+GNU strip does not work with Compaq Tru64 UNIX V5.1.
+If you get a message like "bash: Cannot allocate space for bss" when
+running a program, use the system's strip command, not GNU strip.
