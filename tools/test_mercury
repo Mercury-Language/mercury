@@ -110,12 +110,12 @@ MERCURY_COMPILER=$BOOTSTRAP_MERCURY_COMPILER
 export MERCURY_COMPILER
 cd mercury || { false; exit 1; }
 
-if test -s mercury/tools/list.$HOST
+if test -s tools/list.$HOST
 then
-	mercury/tools/expand_params `mercury/tools/cur_param mercury/tools $HOST` > Mmake.params
+	tools/expand_params `tools/cur_param tools $HOST` > Mmake.params
 else
 	echo 'MC = ../scripts/mc' > Mmake.params
-	echo 'MCFLAGS = -O5' >> Mmake.params
+	echo 'MCFLAGS = -O4' >> Mmake.params
 fi
 
 autoconf || { false; exit 1; }
