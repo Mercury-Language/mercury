@@ -86,6 +86,12 @@ BEGIN_MODULE(call_module)
 	init_entry_ai(mercury__compare_3_3);
 BEGIN_CODE
 
+/*
+** Note: this routine gets ignored for profiling.
+** That means it should be called using noprof_call()
+** rather than call().  See comment in output_call in
+** compiler/llds_out for explanation.
+*/
 Define_entry(mercury__do_call_closure);
 {
 	MR_Closure	*closure;
@@ -119,8 +125,17 @@ Define_entry(mercury__do_call_closure);
 
 	restore_registers();
 
+	/*
+	** Note that we pass MR_prof_current_proc rather than
+	** LABEL(do_call_closure), so that the call gets recorded
+	** as having come from our caller.
+	** XXX This won't do the right thing if PROFILE_CALLS is
+	** defined but PROFILE_TIME isn't, since MR_prof_current_proc
+	** will be NULL in that case.  But that combination of
+	** configuration parameters isn't really supported.
+	*/
 	tailcall(closure->MR_closure_code,
-		LABEL(mercury__do_call_closure));
+		MR_prof_current_proc);
 }
 
 	/*
@@ -131,6 +146,12 @@ Define_entry(mercury__do_call_closure);
 	** r5+:input args
 	*/
 
+/*
+** Note: this routine gets ignored for profiling.
+** That means it should be called using noprof_call()
+** rather than call().  See comment in output_call in
+** compiler/llds_out for explanation.
+*/
 Define_entry(mercury__do_call_class_method);
 {
 	MR_Code 	*destination;
@@ -167,7 +188,16 @@ Define_entry(mercury__do_call_class_method);
 
 	restore_registers();
 
-	tailcall(destination, LABEL(mercury__do_call_class_method));
+	/*
+	** Note that we pass MR_prof_current_proc rather than
+	** LABEL(do_call_class_method), so that the call gets recorded
+	** as having come from our caller.
+	** XXX This won't do the right thing if PROFILE_CALLS is
+	** defined but PROFILE_TIME isn't, since MR_prof_current_proc
+	** will be NULL in that case.  But that combination of
+	** configuration parameters isn't really supported.
+	*/
+	tailcall(destination, MR_prof_current_proc);
 }
 
 /*

@@ -113,6 +113,12 @@
 			GOTO(proc);				\
 		} while (0)
 
+#define	noprof_tailcall(proc)					\
+		do {						\
+			debugtailcall(proc);			\
+			GOTO(proc);				\
+		} while (0)
+
 #define	proceed()						\
 		do {						\
 			debugproceed();				\

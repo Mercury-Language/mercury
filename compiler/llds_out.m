@@ -3069,14 +3069,12 @@ output_goto(do_trace_redo_fail_shallow, _) -->
 	io__write_string("GOTO(ENTRY(MR_do_trace_redo_fail_shallow));\n").
 output_goto(do_trace_redo_fail_deep, _) -->
 	io__write_string("GOTO(ENTRY(MR_do_trace_redo_fail_deep));\n").
-output_goto(do_call_closure, CallerLabel) -->
-	io__write_string("tailcall(ENTRY(mercury__do_call_closure),\n\t\t"),
-	output_label_as_code_addr(CallerLabel),
-	io__write_string(");\n").
+output_goto(do_call_closure, _CallerLabel) -->
+	% see comment in output_call for why we use `noprof_' here
+	io__write_string("noprof_tailcall(ENTRY(mercury__do_call_closure));\n").
 output_goto(do_call_class_method, CallerLabel) -->
-	io__write_string("tailcall(ENTRY(mercury__do_call_class_method),\n\t\t"),
-	output_label_as_code_addr(CallerLabel),
-	io__write_string(");\n").
+	% see comment in output_call for why we use `noprof_' here
+	io__write_string("noprof_tailcall(ENTRY(mercury__do_call_class_method));\n").
 output_goto(do_det_aditi_call, CallerLabel) -->
 	io__write_string("tailcall(ENTRY(do_det_aditi_call),\n\t\t"),
 	output_label_as_code_addr(CallerLabel),
@@ -3123,6 +3121,23 @@ output_goto(do_not_reached, CallerLabel) -->
 :- mode output_call(in, in, in, di, uo) is det.
 
 output_call(Target, Continuation, CallerLabel) -->
+	% For profiling, we ignore calls to do_call_closure
+	% and do_call_class_method, because in general they
+	% lead to cycles in the call graph that screw up the
+	% profile.  By generating a `noprof_call' rather than
+	% a `call', we ensure that time spent inside those
+	% routines is credited to the caller, rather than to
+	% do_call_closure or do_call_class_method itself.
+	(
+		{ Target = do_call_closure
+		; Target = do_call_class_method
+		}
+	->
+		{ ProfileCall = no },
+		io__write_string("noprof_")
+	;
+		{ ProfileCall = yes }
+	},
 	(
 		{ Target = label(Label) },
 		% We really shouldn't be calling internal labels ...
@@ -3146,8 +3161,12 @@ output_call(Target, Continuation, CallerLabel) -->
 		io__write_string(",\n\t\t"),
 		output_code_addr(Continuation)
 	),
-	io__write_string(",\n\t\t"),
-	output_label_as_code_addr(CallerLabel),
+	( { ProfileCall = yes } ->
+		io__write_string(",\n\t\t"),
+		output_label_as_code_addr(CallerLabel)
+	;
+		[]
+	),
 	io__write_string(");\n").
 
 output_code_addr(label(Label)) -->
