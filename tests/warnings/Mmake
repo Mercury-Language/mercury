@@ -4,7 +4,7 @@ main_target: check
 
 #-----------------------------------------------------------------------------#
 
-PROGS= pragma_c_code_unused_var
+PROGS= pragma_c_code_unused_var unused_args_test
 
 #-----------------------------------------------------------------------------#
 
@@ -19,6 +19,9 @@ ERRS=	$(PROGS:%=%.err)
 RESS=	$(PROGS:%=%.res)
 
 #-----------------------------------------------------------------------------#
+unused_args_test.err:
+	$(MC) -C --warn-unused-args unused_args_test > unused_args_test.err 2>&1
+	-rm -f unused_args_test.c
 
 depend: $(DEPENDS)
 

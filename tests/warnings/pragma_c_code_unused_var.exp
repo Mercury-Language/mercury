@@ -1,2 +1,2 @@
-pragma_c_code_unused_var.m:13: Warning: variable `String' does not occur in C code
-pragma_c_code_unused_var.m:13:   in pragma(c_code, ...) for predicate `c_hello_world/3'.
+pragma_c_code_unused_var.m:013: Warning: variable `String' does not occur in C code
+pragma_c_code_unused_var.m:013:   in pragma(c_code, ...) for predicate `c_hello_world/3'.
