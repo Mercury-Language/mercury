@@ -62,11 +62,6 @@
 :- mode try(pred(out) is cc_multi,  out(cannot_fail)) is cc_multi.
 :- mode try(pred(out) is cc_nondet, out)              is cc_multi.
 
-% As above. This version has only one mode, so it can be passed
-% as a closure (e.g. to builtin.promise_only_solution).
-:- pred try_det(pred(T),		exception_result(T)).
-:- mode try_det(pred(out) is det,       out(cannot_fail)) is cc_multi.
-
 %
 % try_io(Goal, Result, IO_0, IO):
 %    Operational semantics:
@@ -88,13 +83,6 @@
 :- mode try_io(pred(out, di, uo) is cc_multi,
 		out(cannot_fail), di, uo) is cc_multi.
 
-% As above. This version has only one mode, so it can be passed
-% as a closure (e.g. to builtin.promise_only_solution_io).
-:- pred try_io_det(pred(T, io__state, io__state),
-		exception_result(T), io__state, io__state).
-:- mode try_io_det(pred(out, di, uo) is det,     
-		out(cannot_fail), di, uo) is cc_multi.
-
 %
 % try_store(Goal, Result, Store_0, Store):
 %    Just like try_io, but for stores rather than io__states.
@@ -104,13 +92,6 @@
 :- mode try_store(pred(out, di, uo) is det,     
 		out(cannot_fail), di, uo) is cc_multi.
 :- mode try_store(pred(out, di, uo) is cc_multi,
-		out(cannot_fail), di, uo) is cc_multi.
-
-% As above. This version has only one mode, so it can be passed
-% as a closure (e.g. to builtin.promise_only_solution_io).
-:- pred try_store_det(pred(T, store(S), store(S)),
-		exception_result(T), store(S), store(S)).
-:- mode try_store_det(pred(out, di, uo) is det,     
 		out(cannot_fail), di, uo) is cc_multi.
 
 %
@@ -416,8 +397,6 @@ try(_Detism, Goal, Result) :-
 	builtin_catch(wrap_success_or_failure(Goal), wrap_exception, Result).
 *********************/
 
-try_det(Goal, Result) :- try(Goal, Result).
-
 try(Goal, Result) :-
 	get_determinism(Goal, Detism),
 	try(Detism, Goal, Result).
@@ -492,8 +471,6 @@ incremental_try_all(Goal, AccPred, Acc0, Acc) :-
 % We need to switch on the Detism argument
 % for the same reason as above.
 
-try_store_det(StoreGoal, Result) --> try_store(StoreGoal, Result).
-
 try_store(StoreGoal, Result) -->
 	{ get_determinism_2(StoreGoal, Detism) },
 	try_store(Detism, StoreGoal, Result).
@@ -538,8 +515,6 @@ handle_store_result(Result0, Result, Store0, Store) :-
 		% the store was from the goal which just threw an exception.
 		unsafe_promise_unique(Store0, Store)
 	).
-
-try_io_det(IO_Goal, Result) --> try_io(IO_Goal, Result).
 
 try_io(IO_Goal, Result) -->
 	{ get_determinism_2(IO_Goal, Detism) },

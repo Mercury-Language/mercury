@@ -137,10 +137,6 @@ Changes to the Mercury standard library:
 	input_stream_foldl2_io_maybe_stop/{6,7},
 	binary_input_stream_foldl2_io_maybe_stop/{6,7}.
 
-* We've added predicates try_det/2, try_io_det/4 and try_store_det/4
-  to exception.m.  These predicates have only one mode, so it's more
-  convenient to pass them to promise_only_solution.
-
 * exception.m now contains a predicate finally/6 which can be used to
   ensure that resources are released whether a called closure exits
   normally or throws an exception.
