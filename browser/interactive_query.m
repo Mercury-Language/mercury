@@ -37,6 +37,7 @@
 query(QueryType, Imports, Options, MDB_Stdin, MDB_Stdout) -->
 	% write_import_list(Imports),
 	print(MDB_Stdout, query_prompt(QueryType)),
+	io__flush_output(MDB_Stdout),
 	io__set_input_stream(MDB_Stdin, OldStdin),
 	term_io__read_term(Result),
 	io__set_input_stream(OldStdin, _),

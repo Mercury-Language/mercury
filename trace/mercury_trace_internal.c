@@ -1033,6 +1033,7 @@ MR_trace_handle_cmd(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 		for (i = 1; i < word_count; i++) {
 			len += strlen(words[i]) + 1;
 		}
+		len++;
 		MR_mmc_options = realloc(MR_mmc_options, len);
 
 		/* copy the arguments to MR_mmc_options */

@@ -70,8 +70,36 @@ multi_parameter.out: multi_parameter multi_parameter.inp
 	$(MDB) ./multi_parameter < multi_parameter.inp \
 		> multi_parameter.out 2>&1
 
-queens.out: queens queens.inp
-	$(MDB) ./queens < queens.inp > queens.out 2>&1
+# Note that queens.out.orig depends on $(queens.ints) because queens.inp
+# contains interactive queries that require queens.ints to have been built.
+queens.out.orig: queens queens.inp $(queens.ints)
+	$(MDB) ./queens < queens.inp > queens.out.orig 2>&1
+
+# We pipe the output through sed to remove some spurious warnings that
+# `ld' issues.
+# XXX we should fix the spurious warnings about unresolved symbols.
+# (The spurious warnings about exception handling are due to a flaw
+# in the Digital Unix 3.2 linker, so that one is DEC's problem.)
+queens.out: queens.out.orig
+	cat queens.out.orig | \
+		sed \
+		    -e '/\/usr\/bin\/ld:$$/N' \
+		    -e 's/\/usr\/bin\/ld:.//' \
+		    -e '/Warning: Linking some objects which contain exception information sections$$/N' \
+		    -e 's/Warning: Linking some objects which contain exception information sections.//' \
+		    -e '/	and some which do not. This may cause fatal runtime exception handling$$/N' \
+		    -e 's/	and some which do not. This may cause fatal runtime exception handling.//' \
+		    -e '/	problems (last obj encountered without exceptions was .*)\.$$/N' \
+		    -e 's/	problems (last obj encountered without exceptions was .*)\..//' \
+		    -e '/Warning: Unresolved:$$/N' \
+		    -e 's/Warning: Unresolved:.//' \
+		    -e '/<predicate .main.\/2 mode 0>$$/N' \
+		    -e 's/<predicate .main.\/2 mode 0>.//' \
+		    -e '/<predicate .queens:qperm.\/2 mode 0>$$/N' \
+		    -e 's/<predicate .queens:qperm.\/2 mode 0>.//' \
+		    -e '/__start$$/N' \
+		    -e 's/__start.//' \
+		    > queens.out
 
 # We ignore the result of this action because
 # the exit status of grep is not useful in this case
