@@ -21,7 +21,7 @@ include $(MAKEFILE_ADITI)
 # LIBGRADES-aditi = $(filter %.gc%,$(LIBGRADES))
 # but gmake patterns can't include multiple wildcards.
 LIBGRADES-aditi = \
-	$(shell echo $(LIBGRADES) | tr ' ' '\n' | grep '.gc' | grep -v 'hlc')
+	$(shell echo $(LIBGRADES) | tr ' ' '\n' | grep '.gc' | grep -v 'hl')
 
 #----------------------------------------------------------------------------#
 
