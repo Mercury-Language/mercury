@@ -304,7 +304,7 @@ handle_release mercury-compiler-${CURRENT_RELEASE}.tar.gz
 # so that the most recently dated ones come first.
 #
 for file in `ls -1 mercury-compiler-${BETA_RELEASE}-beta*.tar.gz \
-		mercury-${BETA_RELEASE}-beta*.tar.gz 2>&1 | sort -r`
+		mercury-${BETA_RELEASE}-beta*.tar.gz 2>/dev/null | sort -r`
 do
 	case $file in
 		*-unstable*) ;;
