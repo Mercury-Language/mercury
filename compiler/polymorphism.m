@@ -1237,14 +1237,14 @@ polymorphism__process_unify_functor(X0, ConsId0, ArgVars0, Mode0,
 	%
 	% with
 	%
-	%       X = lambda [A1::in, A2::out] (list__append(Y, A1, A2))
+	%       X = (pred(A1::in, A2::out) is ... :- list__append(Y, A1, A2))
 	%
 	% We do this because it makes two things easier.
-	% Firstly, mode analysis needs to check that the lambda-goal doesn't
+	% First, mode analysis needs to check that the lambda-goal doesn't
 	% bind any non-local variables (e.g. `Y' in above example).
 	% This would require a bit of moderately tricky special-case code
 	% if we didn't expand them here.
-	% Secondly, this pass (polymorphism.m) is a lot easier
+	% Second, this pass (polymorphism.m) is a lot easier
 	% if we don't have to handle higher-order pred consts.
 	% If it turns out that the predicate was non-polymorphic,
 	% lambda.m will turn the lambda expression back into a
@@ -2114,8 +2114,6 @@ polymorphism__make_typeclass_info_var(Constraint, Seen, ExistQVars,
 
 polymorphism__make_typeclass_info_from_proof(Constraint, Seen, Proof,
 		ExistQVars, Context, MaybeVar, !ExtraGoals, !Info) :-
-	!.Info = poly_info(VarSet0, VarTypes0, TypeVarSet, TypeInfoMap0,
-		TypeClassInfoMap0, Proofs, PredName, ModuleInfo),
 	Constraint = constraint(ClassName, ConstrainedTypes),
 	list__length(ConstrainedTypes, ClassArity),
 	ClassId = class_id(ClassName, ClassArity),
@@ -2123,177 +2121,185 @@ polymorphism__make_typeclass_info_from_proof(Constraint, Seen, Proof,
 			% We have to construct the typeclass_info
 			% using an instance declaration
 		Proof = apply_instance(InstanceNum),
-
-		module_info_instances(ModuleInfo, InstanceTable),
-		map__lookup(InstanceTable, ClassId, InstanceList),
-		list__index1_det(InstanceList, InstanceNum,
-			ProofInstanceDefn),
-
-		ProofInstanceDefn = hlds_instance_defn(_, _, _,
-			InstanceConstraints0, InstanceTypes0, _, _,
-			InstanceTVarset, SuperClassProofs0),
-
-		term__vars_list(InstanceTypes0, InstanceTvars),
-		get_unconstrained_tvars(InstanceTvars,
-			InstanceConstraints0, UnconstrainedTvars0),
-
-			% We can ignore the typevarset because all the
-			% type variables that are created are bound
-			% when we call type_list_subsumes then apply
-			% the resulting bindings.
-			% XXX expand comment
-		varset__merge_subst(TypeVarSet, InstanceTVarset,
-			_NewTVarset, RenameSubst),
-		term__apply_substitution_to_list(InstanceTypes0,
-			RenameSubst, InstanceTypes),
-		type_list_subsumes_det(InstanceTypes, ConstrainedTypes,
-			InstanceSubst),
-		apply_subst_to_constraint_list(RenameSubst,
-			InstanceConstraints0, InstanceConstraints1),
-		apply_rec_subst_to_constraint_list(InstanceSubst,
-			InstanceConstraints1, InstanceConstraints2),
-		% XXX document diamond as guess
-		InstanceConstraints =
-			InstanceConstraints2 `list__delete_elems` Seen,
-		apply_subst_to_constraint_proofs(RenameSubst,
-			SuperClassProofs0, SuperClassProofs1),
-		apply_rec_subst_to_constraint_proofs(InstanceSubst,
-			SuperClassProofs1, SuperClassProofs2),
-
-		term__var_list_to_term_list(UnconstrainedTvars0,
-			UnconstrainedTypes0),
-		term__apply_substitution_to_list(UnconstrainedTypes0,
-			RenameSubst, UnconstrainedTypes1),
-		term__apply_rec_substitution_to_list(
-			UnconstrainedTypes1, InstanceSubst,
-			UnconstrainedTypes),
-
-			% XXX why name of output?
-		map__overlay(Proofs, SuperClassProofs2, SuperClassProofs),
-
-			% Make the type_infos for the types
-			% that are constrained by this. These
-			% are packaged in the typeclass_info
-		polymorphism__make_type_info_vars(ConstrainedTypes, Context,
-			InstanceExtraTypeInfoVars, TypeInfoGoals, !Info),
-
-			% Make the typeclass_infos for the
-			% constraints from the context of the
-			% instance decl.
-		polymorphism__make_typeclass_info_vars_2(InstanceConstraints,
-			Seen, ExistQVars, Context, [],
-			InstanceExtraTypeClassInfoVars0, !ExtraGoals, !Info),
-
-			% Make the type_infos for the unconstrained
-			% type variables from the head of the
-			% instance declaration
-		polymorphism__make_type_info_vars(UnconstrainedTypes, Context,
-			InstanceExtraTypeInfoUnconstrainedVars,
-			UnconstrainedTypeInfoGoals, !Info),
-
-			% The variables are built up in reverse order.
-		list__reverse(InstanceExtraTypeClassInfoVars0,
-			InstanceExtraTypeClassInfoVars),
-
-		polymorphism__construct_typeclass_info(
-			InstanceExtraTypeInfoUnconstrainedVars,
-			InstanceExtraTypeInfoVars,
-			InstanceExtraTypeClassInfoVars,
-			ClassId, Constraint, InstanceNum, ConstrainedTypes,
-			SuperClassProofs, ExistQVars, Var, NewGoals, !Info),
-
-		MaybeVar = yes(Var),
-
-			% Oh, yuck. The type_info goals have already been
-			% reversed, so lets reverse them back.
-		list__reverse(TypeInfoGoals, RevTypeInfoGoals),
-		list__reverse(UnconstrainedTypeInfoGoals,
-			RevUnconstrainedTypeInfoGoals),
-
-		list__condense([RevUnconstrainedTypeInfoGoals, NewGoals,
-			!.ExtraGoals, RevTypeInfoGoals], !:ExtraGoals)
+		polymorphism__make_typeclass_info_from_instance(Constraint,
+			Seen, ClassId, InstanceNum, ExistQVars, Context,
+			MaybeVar, !ExtraGoals, !Info)
 	;
 		% XXX MR_Dictionary should have MR_Dictionaries for superclass
 			% We have to extract the typeclass_info from
 			% another one
 		Proof = superclass(SubClassConstraint),
-
-			% First create a variable to hold the new
-			% typeclass_info
-		unqualify_name(ClassName, ClassNameString),
-		polymorphism__new_typeclass_info_var(Constraint,
-			ClassNameString, Var, VarSet0, VarSet1,
-			VarTypes0, VarTypes1),
-
-		MaybeVar = yes(Var),
-
-			% Then work out where to extract it from
-		SubClassConstraint =
-			constraint(SubClassName, SubClassTypes),
-		list__length(SubClassTypes, SubClassArity),
-		SubClassId = class_id(SubClassName, SubClassArity),
-
-		!:Info = poly_info(VarSet1, VarTypes1, TypeVarSet,
-			TypeInfoMap0, TypeClassInfoMap0, Proofs,
-			PredName, ModuleInfo),
-
-			% Make the typeclass_info for the subclass
-		polymorphism__make_typeclass_info_var(
-			SubClassConstraint, Seen,
-			ExistQVars, Context,
-			!ExtraGoals, !Info, MaybeSubClassVar),
-		( MaybeSubClassVar = yes(SubClassVar0) ->
-			SubClassVar = SubClassVar0
-		;
-			error("MaybeSubClassVar = no")
-		),
-
-			% Look up the definition of the subclass
-		module_info_classes(ModuleInfo, ClassTable),
-		map__lookup(ClassTable, SubClassId, SubClassDefn),
-		SubClassDefn = hlds_class_defn(_, SuperClasses0,
-			SubClassVars, _, _, _, _),
-
-			% Work out which superclass typeclass_info to
-			% take
-		map__from_corresponding_lists(SubClassVars,
-			SubClassTypes, SubTypeSubst),
-		apply_subst_to_constraint_list(SubTypeSubst,
-			SuperClasses0, SuperClasses),
-		(
-			list__nth_member_search(SuperClasses, Constraint,
-				SuperClassIndex0)
-		->
-			SuperClassIndex0 = SuperClassIndex
-		;
-				% We shouldn't have got this far if
-				% the constraints were not satisfied
-			error("polymorphism.m: constraint " ++
-				"not in constraint list")
-		),
-
-		poly_info_get_varset(!.Info, VarSet2),
-		poly_info_get_var_types(!.Info, VarTypes2),
-		make_int_const_construction(SuperClassIndex,
-			yes("SuperClassIndex"), IndexGoal, IndexVar,
-			VarTypes2, VarTypes, VarSet2, VarSet),
-		poly_info_set_varset_and_types(VarSet, VarTypes, !Info),
-
-			% We extract the superclass typeclass_info by
-			% inserting a call to
-			% superclass_from_typeclass_info in
-			% private_builtin.
-			% Note that superclass_from_typeclass_info
-			% does not need extra type_info arguments
-			% even though its declaration is polymorphic.
-		goal_util__generate_simple_call(mercury_private_builtin_module,
-			"superclass_from_typeclass_info", predicate,
-			[SubClassVar, IndexVar, Var], only_mode, det, no,
-			[], ModuleInfo, term__context_init, SuperClassGoal),
-
-			% Add it to the accumulator
-		!:ExtraGoals = [SuperClassGoal, IndexGoal | !.ExtraGoals]
+		polymorphism__make_typeclass_info_from_subclass(Constraint,
+			Seen, ClassId, SubClassConstraint, ExistQVars, Context,
+			MaybeVar, !ExtraGoals, !Info)
 	).
+
+:- pred polymorphism__make_typeclass_info_from_instance(class_constraint::in,
+	list(class_constraint)::in, class_id::in, int::in, existq_tvars::in,
+	prog_context::in, maybe(prog_var)::out,
+	list(hlds_goal)::in, list(hlds_goal)::out,
+	poly_info::in, poly_info::out) is det.
+
+polymorphism__make_typeclass_info_from_instance(Constraint, Seen,
+		ClassId, InstanceNum, ExistQVars, Context, MaybeVar,
+		!ExtraGoals, !Info) :-
+	Constraint = constraint(_ClassName, ConstrainedTypes),
+	!.Info = poly_info(_VarSet0, _VarTypes0, TypeVarSet, _TypeInfoMap0,
+		_TypeClassInfoMap0, Proofs, _PredName, ModuleInfo),
+
+	module_info_instances(ModuleInfo, InstanceTable),
+	map__lookup(InstanceTable, ClassId, InstanceList),
+	list__index1_det(InstanceList, InstanceNum, ProofInstanceDefn),
+
+	ProofInstanceDefn = hlds_instance_defn(_, _, _, InstanceConstraints0,
+		InstanceTypes0, _, _, InstanceTVarset, SuperClassProofs0),
+
+	term__vars_list(InstanceTypes0, InstanceTvars),
+	get_unconstrained_tvars(InstanceTvars,
+		InstanceConstraints0, UnconstrainedTvars0),
+
+		% We can ignore the typevarset because all the
+		% type variables that are created are bound
+		% when we call type_list_subsumes then apply
+		% the resulting bindings.
+		% XXX expand comment
+	varset__merge_subst(TypeVarSet, InstanceTVarset,
+		_NewTVarset, RenameSubst),
+	term__apply_substitution_to_list(InstanceTypes0,
+		RenameSubst, InstanceTypes),
+	type_list_subsumes_det(InstanceTypes, ConstrainedTypes, InstanceSubst),
+	apply_subst_to_constraint_list(RenameSubst,
+		InstanceConstraints0, InstanceConstraints1),
+	apply_rec_subst_to_constraint_list(InstanceSubst,
+		InstanceConstraints1, InstanceConstraints2),
+	% XXX document diamond as guess
+	InstanceConstraints = InstanceConstraints2 `list__delete_elems` Seen,
+	apply_subst_to_constraint_proofs(RenameSubst,
+		SuperClassProofs0, SuperClassProofs1),
+	apply_rec_subst_to_constraint_proofs(InstanceSubst,
+		SuperClassProofs1, SuperClassProofs2),
+
+	term__var_list_to_term_list(UnconstrainedTvars0, UnconstrainedTypes0),
+	term__apply_substitution_to_list(UnconstrainedTypes0, RenameSubst,
+		UnconstrainedTypes1),
+	term__apply_rec_substitution_to_list(UnconstrainedTypes1,
+		InstanceSubst, UnconstrainedTypes),
+
+		% XXX why name of output?
+	map__overlay(Proofs, SuperClassProofs2, SuperClassProofs),
+
+		% Make the type_infos for the types
+		% that are constrained by this. These
+		% are packaged in the typeclass_info
+	polymorphism__make_type_info_vars(ConstrainedTypes, Context,
+		InstanceExtraTypeInfoVars, TypeInfoGoals, !Info),
+
+		% Make the typeclass_infos for the constraints from the
+		% context of the instance decl.
+	polymorphism__make_typeclass_info_vars_2(InstanceConstraints,
+		Seen, ExistQVars, Context, [],
+		InstanceExtraTypeClassInfoVars0, !ExtraGoals, !Info),
+
+		% Make the type_infos for the unconstrained
+		% type variables from the head of the
+		% instance declaration
+	polymorphism__make_type_info_vars(UnconstrainedTypes, Context,
+		InstanceExtraTypeInfoUnconstrainedVars,
+		UnconstrainedTypeInfoGoals, !Info),
+
+		% The variables are built up in reverse order.
+	list__reverse(InstanceExtraTypeClassInfoVars0,
+		InstanceExtraTypeClassInfoVars),
+
+	polymorphism__construct_typeclass_info(
+		InstanceExtraTypeInfoUnconstrainedVars,
+		InstanceExtraTypeInfoVars,
+		InstanceExtraTypeClassInfoVars,
+		ClassId, Constraint, InstanceNum, ConstrainedTypes,
+		SuperClassProofs, ExistQVars, Var, NewGoals, !Info),
+
+	MaybeVar = yes(Var),
+
+		% Oh, yuck. The type_info goals have already been
+		% reversed, so lets reverse them back.
+	list__reverse(TypeInfoGoals, RevTypeInfoGoals),
+	list__reverse(UnconstrainedTypeInfoGoals,
+		RevUnconstrainedTypeInfoGoals),
+
+	list__condense([RevUnconstrainedTypeInfoGoals, NewGoals,
+		!.ExtraGoals, RevTypeInfoGoals], !:ExtraGoals).
+
+:- pred polymorphism__make_typeclass_info_from_subclass(class_constraint::in,
+	list(class_constraint)::in, class_id::in, class_constraint::in,
+	existq_tvars::in, prog_context::in, maybe(prog_var)::out,
+	list(hlds_goal)::in, list(hlds_goal)::out,
+	poly_info::in, poly_info::out) is det.
+
+polymorphism__make_typeclass_info_from_subclass(Constraint,
+		Seen, ClassId, SubClassConstraint, ExistQVars, Context,
+		MaybeVar, !ExtraGoals, !Info) :-
+	!.Info = poly_info(VarSet0, VarTypes0, TypeVarSet, TypeInfoMap0,
+		TypeClassInfoMap0, Proofs, PredName, ModuleInfo),
+	ClassId = class_id(ClassName, _ClassArity),
+	% First create a variable to hold the new typeclass_info.
+	unqualify_name(ClassName, ClassNameString),
+	polymorphism__new_typeclass_info_var(Constraint, ClassNameString,
+		Var, VarSet0, VarSet1, VarTypes0, VarTypes1),
+	MaybeVar = yes(Var),
+	% Then work out where to extract it from
+	SubClassConstraint = constraint(SubClassName, SubClassTypes),
+	list__length(SubClassTypes, SubClassArity),
+	SubClassId = class_id(SubClassName, SubClassArity),
+	!:Info = poly_info(VarSet1, VarTypes1, TypeVarSet, TypeInfoMap0,
+		TypeClassInfoMap0, Proofs, PredName, ModuleInfo),
+
+	% Make the typeclass_info for the subclass
+	polymorphism__make_typeclass_info_var(SubClassConstraint, Seen,
+		ExistQVars, Context, !ExtraGoals, !Info, MaybeSubClassVar),
+	( MaybeSubClassVar = yes(SubClassVar0) ->
+		SubClassVar = SubClassVar0
+	;
+		error("MaybeSubClassVar = no")
+	),
+
+	% Look up the definition of the subclass
+	module_info_classes(ModuleInfo, ClassTable),
+	map__lookup(ClassTable, SubClassId, SubClassDefn),
+	SubClassDefn = hlds_class_defn(_, SuperClasses0,
+		SubClassVars, _, _, _, _),
+
+	% Work out which superclass typeclass_info to take.
+	map__from_corresponding_lists(SubClassVars, SubClassTypes,
+		SubTypeSubst),
+	apply_subst_to_constraint_list(SubTypeSubst, SuperClasses0,
+		SuperClasses),
+	(
+		list__nth_member_search(SuperClasses, Constraint,
+			SuperClassIndex0)
+	->
+		SuperClassIndex0 = SuperClassIndex
+	;
+			% We shouldn't have got this far if
+			% the constraints were not satisfied
+		error("polymorphism.m: constraint not in constraint list")
+	),
+
+	poly_info_get_varset(!.Info, VarSet2),
+	poly_info_get_var_types(!.Info, VarTypes2),
+	make_int_const_construction(SuperClassIndex, yes("SuperClassIndex"),
+		IndexGoal, IndexVar, VarTypes2, VarTypes, VarSet2, VarSet),
+	poly_info_set_varset_and_types(VarSet, VarTypes, !Info),
+
+	% We extract the superclass typeclass_info by inserting a call
+	% to superclass_from_typeclass_info in private_builtin.
+	% Note that superclass_from_typeclass_info does not need
+	% extra type_info arguments even though its declaration
+	% is polymorphic.
+	goal_util__generate_simple_call(mercury_private_builtin_module,
+		"superclass_from_typeclass_info", predicate,
+		[SubClassVar, IndexVar, Var], only_mode, det, no,
+		[], ModuleInfo, term__context_init, SuperClassGoal),
+	!:ExtraGoals = [SuperClassGoal, IndexGoal | !.ExtraGoals].
 
 :- pred polymorphism__construct_typeclass_info(list(prog_var)::in,
 	list(prog_var)::in, list(prog_var)::in, class_id::in,
@@ -2580,18 +2586,17 @@ get_type_info_locn(TypeVar, TypeInfoLocn, !Info) :-
 		TypeInfoLocn = TypeInfoLocn0
 	;
 		%
-		% Otherwise, we need to create a new type_info
-		% variable, and set the location for this type
-		% variable to be that type_info variable.
+		% Otherwise, we need to create a new type_info variable, and
+		% set the location for this type variable to be that
+		% type_info variable.
 		%
-		% This is wrong if the type variable is one of
-		% the existentially quantified variables of a called
-		% predicate and the variable occurs in an existential
-		% type-class constraint. In that case the type-info
-		% will be stored in the typeclass_info variable produced
-		% by the predicate, not in a type_info variable.
-		% make_typeclass_info_headvar will fix this up when
-		% the typeclass_info is created.
+		% This is wrong if the type variable is one of the
+		% existentially quantified variables of a called predicate
+		% and the variable occurs in an existential type-class
+		% constraint. In that case the type-info will be stored
+		% in the typeclass_info variable produced by the predicate,
+		% not in a type_info variable. make_typeclass_info_headvar
+		% will fix this up when the typeclass_info is created.
 		%
 		type_util__var(Type, TypeVar),
 		polymorphism__new_type_info_var(Type, type_info, Var, !Info),
@@ -2669,8 +2674,7 @@ polymorphism__maybe_init_second_cell(Type, TypeCtorVar, TypeCtorIsVarArity,
 			ArityGoal, ArityVar, !VarTypes, !VarSet),
 		polymorphism__init_type_info_var(Type,
 			[TypeCtorVar, ArityVar | ArgTypeInfoVars],
-			no, Var, TypeInfoGoal,
-			!VarSet, !VarTypes),
+			no, Var, TypeInfoGoal, !VarSet, !VarTypes),
 		list__append([ArityGoal |  ArgTypeInfoGoals], [TypeInfoGoal],
 			ExtraGoals1),
 		list__append(ExtraGoals0, ExtraGoals1, ExtraGoals)
@@ -2950,9 +2954,8 @@ polymorphism__gen_extract_type_info(TypeVar, TypeClassInfoVar, Index,
 	% Create a head var for each class constraint, and make an entry in
 	% the typeinfo locations map for each constrained type var.
 
-:- pred polymorphism__make_typeclass_info_head_vars(
-	list(class_constraint)::in, list(prog_var)::out,
-	poly_info::in, poly_info::out) is det.
+:- pred polymorphism__make_typeclass_info_head_vars(list(class_constraint)::in,
+	list(prog_var)::out, poly_info::in, poly_info::out) is det.
 
 polymorphism__make_typeclass_info_head_vars(Constraints, ExtraHeadVars,
 		!Info) :-
@@ -2974,18 +2977,18 @@ polymorphism__make_typeclass_info_head_var(Constraint, ExtraHeadVar, !Info) :-
 
 		Constraint = constraint(ClassName0, ClassTypes),
 
-			% Work out how many superclass the class has
+			% Work out how many superclasses the class has.
 		list__length(ClassTypes, ClassArity),
 		ClassId = class_id(ClassName0, ClassArity),
 		module_info_classes(ModuleInfo, ClassTable),
 		map__lookup(ClassTable, ClassId, ClassDefn),
-		ClassDefn = hlds_class_defn(_, SuperClasses, _, _, _, _, _),
+		SuperClasses = ClassDefn ^ class_supers,
 		list__length(SuperClasses, NumSuperClasses),
 
 		unqualify_name(ClassName0, ClassName),
 
 			% Make a new variable to contain the dictionary for
-			% this typeclass constraint
+			% this typeclass constraint.
 		polymorphism__new_typeclass_info_var(Constraint, ClassName,
 			ExtraHeadVar, VarSet0, VarSet1, VarTypes0, VarTypes1),
 
@@ -2994,7 +2997,7 @@ polymorphism__make_typeclass_info_head_var(Constraint, ExtraHeadVar, !Info) :-
 			% info.
 
 			% The first type_info will be just after the superclass
-			% infos
+			% infos.
 		First = NumSuperClasses + 1,
 		term__vars_list(ClassTypes, ClassTypeVars0),
 		MakeIndex = (pred(Elem0::in, Elem::out,
