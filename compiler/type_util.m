@@ -92,7 +92,7 @@
 :- pred type_util__type_id_arity(module_info, type_id, arity).
 :- mode type_util__type_id_arity(in, in, out) is det.
 
-	% If the type is a du type, return the list of it's constructors.
+	% If the type is a du type, return the list of its constructors.
 
 :- pred type_constructors(type, module_info, list(constructor)).
 :- mode type_constructors(in, in, out) is semidet.
@@ -297,7 +297,7 @@ make_type_id(term__atom(Name), Arity, unqualified(Name) - Arity).
 
 %-----------------------------------------------------------------------------%
 
-	% If the type is a du type, return the list of it's constructors.
+	% If the type is a du type, return the list of its constructors.
 
 type_constructors(Type, ModuleInfo, Constructors) :-
 	type_to_type_id(Type, TypeId, TypeArgs),
