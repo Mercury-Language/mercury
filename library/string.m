@@ -1020,13 +1020,13 @@ string__append_list(Lists, string__append_list(Lists)).
 }").
 
 :- pragma foreign_proc("MC++",
-		string__append_list(_Strs::in) = (_Str::out),
+		string__append_list(_Strs::in) = (_Str::uo),
 		[will_not_call_mercury, thread_safe], "{
 	mercury::runtime::Errors::SORRY(""c code for this function"");
 }").
 
 :- pragma foreign_proc("MC++",
-		string__join_list(_Sep::in, _Strs::in) = (_Str::out),
+		string__join_list(_Sep::in, _Strs::in) = (_Str::uo),
 		[will_not_call_mercury, thread_safe], "{
 	mercury::runtime::Errors::SORRY(""c code for this function"");
 }").
