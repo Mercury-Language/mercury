@@ -281,9 +281,9 @@
 			exp_predname	:: sym_name,
 			exp_p_or_f	:: pred_or_func,
 			exp_modes	:: list(mode),
-			exp_c_func	:: string
+			exp_foreign_name :: string
 			% Predname, Predicate/function, Modes,
-			% C function name.
+			% foreign function name.
 		)
 
 	;	import(
@@ -331,12 +331,11 @@
 
 	;	unused_args(
 			unused_p_or_f	:: pred_or_func,
-			unusused_name	:: sym_name,
+			unused_name	:: sym_name,
 			unused_arity	:: arity,
 			unused_mode	:: mode_num,
 			unused_args	:: list(int)
-			% PredName, Arity, Mode number, Optimized pred name,
-			% 	Removed arguments.
+			% PredName, Arity, Mode number, Removed arguments.
 			% Used for inter-module unused argument
 			% removal, should only appear in .opt files.
 		)
@@ -370,9 +369,9 @@
 		)
 
 	;	fact_table(
-			facttable_name	:: sym_name,
-			facttable_arity :: arity,
-			facttable_file	:: string
+			fact_table_name	:: sym_name,
+			fact_table_arity :: arity,
+			fact_table_file	:: string
 			% Predname, Arity, Fact file name.
 		)
 
