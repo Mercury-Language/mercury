@@ -22,14 +22,21 @@
 historyLength(500).
 
 portray(Term) :-
-	compound(Term),
-	Term =.. [F|As],
-	write(F),
-	write('('),
-	portray_args(As),
-	write(')'),
-	!.
-portray(Term) :- write(Term).
+	!,
+	myportray(Term).
+
+myportray(Term) :-
+	( list_of_char_codes(Term) ->
+		format("""~s""", [Term])
+	; compound(Term) ->
+		Term =.. [F|Args],
+		write(F),
+		write('('),
+		portray_args(Args),
+		write(')')
+	;
+		write(Term)
+	).
 
 portray_args([]).
 portray_args([X|Xs]) :-
@@ -43,12 +50,21 @@ portray_args_2([X|Xs]) :-
 	portray_args_2(Xs).
 
 portray2(Term) :-
-	( compound(Term) ->
+	( list_of_char_codes(Term) ->
+		format("""~s""", [Term])
+	; compound(Term) ->
 		functor(Term,F,N),
 		format("<~a/~d>", [F,N])
 	;
 		write(Term)
 	).
+
+list_of_char_codes([]).
+list_of_char_codes([X|Xs]) :-
+	integer(X),
+	X >= 0,
+	X < 256,
+	list_of_char_codes(Xs).
 
 spyHook(_, Term) :-
 	!,
