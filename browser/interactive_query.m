@@ -498,12 +498,13 @@ cleanup_query(_Options) -->
 % executable was compiled in, in a form suitable for
 % passing as a `--grade' option to mmc or ml.
 %
-:- pragma c_header_code("
+:- pragma foreign_decl("C", "
 	#include ""mercury_grade.h""
 	#include ""mercury_string.h""
 ").
-:- pragma c_code(grade_option = (GradeOpt::out),
-	[thread_safe, will_not_call_mercury],
+:- pragma foreign_proc("C", 
+	grade_option = (GradeOpt::out),
+	[promise_pure, thread_safe, will_not_call_mercury],
 "
 	MR_make_aligned_string(GradeOpt, (MR_String) MR_GRADE_OPT);
 ").
@@ -613,8 +614,12 @@ dynamically_load_and_run -->
 :- func inst_cast(io_pred) = io_pred.
 :- mode inst_cast(in) = out(io_pred) is det.
 
-:- pragma c_code(inst_cast(X::in) = (Y::out(io_pred)),
-	[will_not_call_mercury, thread_safe], "Y = X").
+:- pragma foreign_proc("C",
+	inst_cast(X::in) = (Y::out(io_pred)),
+	[promise_pure, will_not_call_mercury, thread_safe], 
+"
+	Y = X
+").
 
 inst_cast(_) = _ :-
 	private_builtin__sorry("inst_cast").

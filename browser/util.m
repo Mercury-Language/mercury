@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1998-2002 The University of Melbourne.
+% Copyright (C) 1998-2002, 2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -108,7 +108,7 @@ util__trace_getline(Prompt, Result, MdbIn, MdbOut) -->
 :- pred call_trace_getline(input_stream::in, output_stream::in, string::in,
 	string::out, int::out, io__state::di, io__state::uo) is det.
 
-:- pragma c_header_code("
+:- pragma foreign_decl("C", "
 	#include ""mercury_wrapper.h""
 	#include ""mercury_string.h""
 	#include ""mercury_trace_base.h""

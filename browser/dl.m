@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2003 The University of Melbourne.
+% Copyright (C) 1998-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -81,7 +81,7 @@
 :- implementation.
 :- import_module std_util, require, string, list, int.
 
-:- pragma c_header_code("
+:- pragma foreign_decl("C", "
 	#include <stdio.h>
 	#include ""mercury_conf.h""
 	#include ""mercury_string.h""	/* for MR_make_aligned_string_copy() */
