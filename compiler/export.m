@@ -104,6 +104,8 @@ export__get_c_export_defns(Module, ExportedProcsCode) :-
 	% For each exported procedure, produce a C function.
 	% The code we generate is in the form
 	%
+	% Declare_entry(<label of called proc>); /* or Declare_static */
+	%
 	% #if SEMIDET
 	%   bool
 	% #elif FUNCTION
@@ -133,11 +135,9 @@ export__get_c_export_defns(Module, ExportedProcsCode) :-
 	%		/* save the registers which may be clobbered      */
 	%		/* by the C function call MR_call_engine().       */
 	%	save_transient_registers();
-	%	{
-	%		/* The Declare_entry may not be necessary	  */
-	%       Declare_entry(<label of called proc>);
+	%
 	%	(void) MR_call_engine(ENTRY(<label of called proc>), FALSE);
-	%	}
+	%
 	%		/* restore the registers which may have been      */
 	%		/* clobbered by the return from the C function    */
 	%		/* MR_call_engine()				  */
@@ -179,13 +179,14 @@ export__to_c(Preds, [E|ExportedProcs], Module, ExportedProcsCode) :-
 	llds_out__get_proc_label(ProcLabel, yes, ProcLabelString),
 
 	( Exported = yes ->
-		string__append_list(["Declare_entry", "(",
-				ProcLabelString, ");\n"], DeclareString)
+		DeclareString = "Declare_entry"
 	;
-		DeclareString = ""
+		DeclareString = "Declare_static"
 	),
 
 	string__append_list([	"\n",
+				DeclareString, "(", ProcLabelString, ");\n",
+				"\n",
 				C_RetType, "\n", 
 				C_Function, "(", ArgDecls, ")\n{\n",
 				"#if NUM_REAL_REGS > 0\n",
@@ -197,11 +198,8 @@ export__to_c(Preds, [E|ExportedProcs], Module, ExportedProcsCode) :-
 				"\trestore_registers();\n", 
 				InputArgs,
 				"\tsave_transient_registers();\n",
-				"\t{\n\t",
-				DeclareString,
 				"\t(void) MR_call_engine(ENTRY(",
-				ProcLabelString,
-				"), FALSE);\n\t}\n",
+					ProcLabelString, "), FALSE);\n",
 				"\trestore_transient_registers();\n",
 				MaybeFail,
 				OutputArgs,
