@@ -343,7 +343,7 @@ ilasm__output_decl(namespace(DottedName, Contents), Info0, Info) -->
 ilasm__output_decl(method(MethodHead, MethodDecls), Info0, Info) --> 
 	io__write_string(".method "),
 	output_methodhead(MethodHead, Info0, Info1),
-	io__write_string(" {\n"),
+	io__write_string("\n{\n"),
 	ilasm__write_list(MethodDecls, "\n", output_method_body_decl,
 		Info1, Info),
 	io__write_string("}\n").
@@ -434,13 +434,9 @@ ilasm__output_classdecl(
 		[]
 	),
 	io__write_list(FieldAttrs, " ", io__write),
-	( { FieldAttrs \= [] } ->
-		io__write_string(" ")
-	;
-		[]
-	),
+	io__write_string("\n\t"),
 	output_type(Type, Info0, Info),
-	io__write_string(" "),
+	io__write_string("\n\t"),
 	output_id(IlId),
 	output_field_initializer(Initializer).
 
@@ -455,7 +451,7 @@ ilasm__output_classdecl(
 		io__nl,
 		io__write_string("\t.get instance "),
 		output_name_signature_and_call_conv(GetSignature,
-				yes(GetMethodName), Info1, Info2)
+				yes(GetMethodName), "\t\t", Info1, Info2)
 	; { MaybeGet = no },
 		{ Info2 = Info1 }
 	),
@@ -463,7 +459,7 @@ ilasm__output_classdecl(
 		io__nl,
 		io__write_string("\t.set instance "),
 		output_name_signature_and_call_conv(SetSignature,
-				yes(SetMethodName), Info2, Info)
+				yes(SetMethodName), "\t\t", Info2, Info)
 	; { MaybeSet = no },
 		{ Info = Info2 }
 	),
@@ -514,7 +510,7 @@ ilasm__output_methodhead(methodhead(Attrs, MethodName, Signature,
 	;
 		[]
 	),
-	output_name_signature_and_call_conv(Signature, yes(MethodName),
+	output_name_signature_and_call_conv(Signature, yes(MethodName), "\t",
 		Info0, Info),
 	io__write_list(ImplAttrs, " ", io__write).
 
@@ -564,22 +560,30 @@ output_call_conv(call_conv(IsInstance, IlCallConv)) -->
 	).
 
 :- pred output_name_signature_and_call_conv(signature::in,
-	maybe(member_name)::in, ilasm_info::in, ilasm_info::out,
+	maybe(member_name)::in, string::in, ilasm_info::in, ilasm_info::out,
 	io__state::di, io__state::uo) is det.
 output_name_signature_and_call_conv(signature(CallConv, ReturnType,
-		 ArgTypes), MaybeMethodName, Info0, Info) -->
+		 ArgTypes), MaybeMethodName, Indent, Info0, Info) -->
 	output_call_conv(CallConv),
-	io__write_string(" "),
+	io__write_string("\n"),
+	io__write_string(Indent),
 	output_ret_type(ReturnType, Info0, Info1),
-	io__write_string(" "),
 	( { MaybeMethodName = yes(MethodName) } ->
+		io__write_string("\n"),
+		io__write_string(Indent),
 		output_member_name(MethodName)
 	;
-		[]
+		io__write_string(" ")
 	),
-	io__write_string("("),
-	ilasm__write_list(ArgTypes, ", ", output_param, Info1, Info),
-	io__write_string(")").
+	( { ArgTypes = [] } ->
+		io__write_string("()"),
+		{ Info = Info0 }
+	;
+		io__write_string("(\n\t\t"),
+		ilasm__write_list(ArgTypes, ",\n\t\t", output_param,
+			Info1, Info),
+		io__write_string("\n\t)")
+	).
 
 :- pred output_member_name(member_name::in, io__state::di,
 	 io__state::uo) is det.
@@ -767,27 +771,32 @@ output_debug_instruction(Instr, Info0, Info) -->
 		output_trace_instr(Instr, Info1, Info),
 		io__write_string("\n")
 
-
 	; { Instr = start_block(scope(Locals), Id) } ->
 		{ string__format("{\t// #%d", [i(Id)], S) },
 		io__write_string(S),
 		io__nl,
 		output_trace(S),
 
+		( { Locals = [] } ->
+			{ Info = Info0 }
+		;
 			% output the .locals decl
-		io__write_string(".locals ("),
-		ilasm__write_list(Locals, ", ", output_local, Info0, Info1),
-		io__write_string(")"),
-		io__write_string("\n"),
+			io__write_string("\t.locals (\n\t\t"),
+			ilasm__write_list(Locals, ",\n\t\t", output_local,
+				Info0, Info1),
+			io__write_string("\n\t)"),
+			io__write_string("\n"),
 
-			% trace the .locals decl
-		io__write_string("\t\tldstr """),
-		io__write_string(".locals ("),
-		ilasm__write_list(Locals, ", ", output_local, Info1, Info),
-		io__write_string(")"),
-		io__write_string("\\n"""),
-		io__write_string("\n"),
-		io__write_string("\t\tcall void ['mscorlib']System.Console::Write(class ['mscorlib']System.String)\n")
+				% trace the .locals decl
+			io__write_string("\t\tldstr """),
+			io__write_string(".locals (\\n\\t\\t"),
+			ilasm__write_list(Locals, ",\\n\\t\\t", output_local,
+				Info1, Info),
+			io__write_string(")"),
+			io__write_string("\\n"""),
+			io__write_string("\n"),
+			io__write_string("\t\tcall void ['mscorlib']System.Console::Write(class ['mscorlib']System.String)\n")
+		)
 
 	;
 		output_trace_instr(Instr, Info0, Info1),
@@ -855,9 +864,13 @@ output_instr(start_block(scope(Locals), Id), Info0, Info) -->
 	io__write_string("{"),
 	io__write_string("\t// #"),
 	io__write_int(Id),
-	io__write_string("\n\t.locals ("),
-	ilasm__write_list(Locals, ", ", output_local, Info0, Info),
-	io__write_string(")\n").
+	( { Locals = [] } ->
+		{ Info = Info0 }
+	;
+		io__write_string("\n\t.locals (\n\t\t"),
+		ilasm__write_list(Locals, ",\n\t\t", output_local, Info0, Info),
+		io__write_string("\n\t)\n")
+	).
 
 output_instr(start_block(try, Id), I, I) -->
 	io__write_string(".try {"),
@@ -889,11 +902,11 @@ output_instr(end_block(try, Id), I, I) -->
 	io__write_string(" (try block)").
 
 output_instr(context(File, Line), I, I) -->
-	io__write_string(".line "),
+	io__write_string("\n\t.line "),
 	io__write_int(Line),
 	io__write_string(" '"),
 	io__write_string(File),
-	io__write_string("'\n").
+	io__write_string("'").
 
 output_instr(call(MethodRef), Info0, Info) --> 
 	io__write_string("call\t"),
@@ -905,7 +918,7 @@ output_instr(callvirt(MethodRef), Info0, Info) -->
 
 output_instr(calli(Signature), Info0, Info) -->
 	io__write_string("calli\t"),
-	output_name_signature_and_call_conv(Signature, no, Info0, Info).
+	output_name_signature_and_call_conv(Signature, no, "\t\t", Info0, Info).
 
 output_instr(ret, I, I) --> 
 	io__write_string("ret").
@@ -1291,7 +1304,7 @@ output_target(label_target(Label)) -->
 	io__state::di, io__state::uo) is det.
 output_fieldref(fieldref(Type, ClassMemberName), Info0, Info) -->
 	output_type(Type, Info0, Info1),
-	io__write_string(" "),
+	io__write_string("\n\t\t"),
 	output_class_member_name(ClassMemberName, Info1, Info).
 
 :- pred output_methodref(methodref::in, ilasm_info::in, ilasm_info::out,
@@ -1304,11 +1317,17 @@ output_methodref(methoddef(call_conv(IsInstance, _), ReturnType,
 		[]
 	),
 	output_ret_type(ReturnType, Info0, Info1),
-	io__write_string(" "),
+	io__write_string("\n\t\t"),
 	output_class_member_name(ClassMemberName, Info1, Info2),
-	io__write_string("("),
-	ilasm__write_list(ArgTypes, ", ", output_type, Info2, Info),
-	io__write_string(")").
+	( { ArgTypes = [] } ->
+		io__write_string("()\n"),
+		{ Info = Info0 }
+	;
+		io__write_string("(\n\t\t\t"),
+		ilasm__write_list(ArgTypes, ",\n\t\t\t", output_type,
+			Info2, Info),
+		io__write_string("\n\t\t)")
+	).
 output_methodref(local_method(call_conv(IsInstance, _), ReturnType, 
 		MethodName, ArgTypes), Info0, Info) -->
 	( { IsInstance = yes } ->
@@ -1317,11 +1336,17 @@ output_methodref(local_method(call_conv(IsInstance, _), ReturnType,
 		[]
 	),
 	output_ret_type(ReturnType, Info0, Info1),
-	io__write_string(" "),
+	io__write_string("\n\t\t"),
 	output_member_name(MethodName),
-	io__write_string("("),
-	ilasm__write_list(ArgTypes, ", ", output_type, Info1, Info),
-	io__write_string(")").
+	( { ArgTypes = [] } ->
+		io__write_string("()\n"),
+		{ Info = Info0 }
+	;
+		io__write_string("(\n\t\t\t"),
+		ilasm__write_list(ArgTypes, ",\n\t\t\t", output_type,
+			Info1, Info),
+		io__write_string("\n\t\t)")
+	).
 
 :- pred output_classattr(classattr::in, io__state::di, io__state::uo) is det.
 
