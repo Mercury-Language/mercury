@@ -1967,39 +1967,39 @@ make_maybe_where_details(
 		EqualityIsResult,
 		ComparisonIsResult,
 		WhereEndResult,
-		WhereTerm) =
+		WhereTerm) = Result :-
 	(
 		TypeIsAbstractNoncanonicalResult = error(String, Term)
 	->
-		error(String, Term)
+		Result = error(String, Term)
 	;
 		RepresentationIsResult = error(String, Term)
 	->
-		error(String, Term)
+		Result = error(String, Term)
 	;
 		InitialisationIsResult = error(String, Term)
 	->
-		error(String, Term)
+		Result = error(String, Term)
 	;
 		GroundIsResult = error(String, Term)
 	->
-		error(String, Term)
+		Result = error(String, Term)
 	;
 		AnyIsResult = error(String, Term)
 	->
-		error(String, Term)
+		Result = error(String, Term)
 	;
 		EqualityIsResult = error(String, Term)
 	->
-		error(String, Term)
+		Result = error(String, Term)
 	;
 		ComparisonIsResult = error(String, Term)
 	->
-		error(String, Term)
+		Result = error(String, Term)
 	;
 		WhereEndResult = error(String, Term)
 	->
-		error(String, Term)
+		Result = error(String, Term)
 	;
 		TypeIsAbstractNoncanonicalResult = ok(yes(_))
 	->
@@ -2014,9 +2014,9 @@ make_maybe_where_details(
 			EqualityIsResult       = ok(no),
 			ComparisonIsResult     = ok(no)
 		->
-			ok(no, yes(abstract_noncanonical_type(IsSolverType)))
+			Result = ok(no, yes(abstract_noncanonical_type(IsSolverType)))
 		;
-			error("`where type_is_abstract_noncanonical' " ++
+			Result = error("`where type_is_abstract_noncanonical' " ++
 				" excludes other `where ...' attributes",
 				WhereTerm)
 		)
@@ -2042,9 +2042,9 @@ make_maybe_where_details(
 				MaybeUnifyCompare = yes(unify_compare(
 					MaybeEqPred, MaybeCmpPred))
 			),
-			ok(yes(MaybeSolverTypeDetails, MaybeUnifyCompare))
+			Result = ok(MaybeSolverTypeDetails, MaybeUnifyCompare)
 		;
-			error("missing solver type attribute: " ++
+			Result = error("missing solver type attribute: " ++
 				"required solver type attributes are " ++
 				"`representation', `initialisation', " ++
 				"`ground', and `any'", WhereTerm)
@@ -2058,15 +2058,15 @@ make_maybe_where_details(
 		;	AnyIsResult            = ok(yes(_))
 		)
 	->
-		error("solver type attribute given for non-solver type",
+		Result = error("solver type attribute given for non-solver type",
 			WhereTerm)
 	;
 		EqualityIsResult = ok(MaybeEqPred),
 		ComparisonIsResult = ok(MaybeCmpPred)
 	->
-		ok(no, yes(unify_compare(MaybeEqPred, MaybeCmpPred)))
+		Result = ok(no, yes(unify_compare(MaybeEqPred, MaybeCmpPred)))
 	;
-		func_error("prog_io__make_maybe_where_details: " ++
+		error("prog_io__make_maybe_where_details: " ++
 			"shouldn't have reached this point!")
 	).
 
