@@ -141,8 +141,6 @@
 %%% :- export_type mode_table.
 :- type mode_table	==	map(mode_id, hlds__mode_defn).
 
-:- type mode_info	==	map(var, mode).
-
 %-----------------------------------------------------------------------------%
 
 	% The symbol table for insts.
