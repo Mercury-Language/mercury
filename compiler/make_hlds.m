@@ -985,7 +985,11 @@ module_add_type_defn(Module0, TVarSet, TypeDefn, _Cond, Context,
 		),
 		{ construct_qualified_term(Name, Args, Type) },
 		(
-			{ Body = abstract_type }
+			( 
+				{ Body = abstract_type }
+			;
+				{ type_id_is_hand_defined(TypeId) }
+			)
 		->
 			{ special_pred_list(SpecialPredIds) },
 			{ add_special_pred_decl_list(SpecialPredIds,
