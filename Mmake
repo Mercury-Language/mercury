@@ -113,11 +113,10 @@ bootstrap_check: stage_1 stage_2 stage_3
 stage_1: all
 	[ -d stage1 ] || mkdir stage1
 	mv compiler/mercury_compile stage1
-	mv compiler/*.mod library/*.mod stage1
 	mv compiler/*.c library/*.c stage1
 	mv compiler/*.o library/*.o stage1
-	cd compiler && rm -f *.mod *.c *.o *.pic_o mercury_compile
-	cd library && rm -f *.mod *.c *.o *.pic_o *.a *.so
+	cd compiler && rm -f *.c *.o *.pic_o mercury_compile
+	cd library && rm -f *.c *.o *.pic_o *.a *.so
 
 .PHONY: stage_2
 stage_2:
@@ -129,11 +128,10 @@ stage_2:
 	$(SUBDIR_MMAKE)
 	[ -d stage2 ] || mkdir stage2
 	mv compiler/mercury_compile stage2
-	mv compiler/*.mod library/*.mod stage2
 	mv compiler/*.c library/*.c stage2
 	mv compiler/*.o library/*.o stage2
-	cd compiler && rm -f *.mod *.c *.o *.pic_o mercury_compile
-	cd library && rm -f *.mod *.c *.o *.pic_o *.a *.so
+	cd compiler && rm -f *.c *.o *.pic_o mercury_compile
+	cd library && rm -f *.c *.o *.pic_o *.a *.so
 
 .PHONY: stage_3
 stage_3:
@@ -145,11 +143,10 @@ stage_3:
 	$(SUBDIR_MMAKE)
 	[ -d stage3 ] || mkdir stage3
 	mv compiler/mercury_compile stage3
-	mv compiler/*.mod library/*.mod stage3
 	mv compiler/*.c library/*.c stage3
 	mv compiler/*.o library/*.o stage3
-	cd compiler && rm -f *.mod *.c *.o *.pic_o mercury_compile
-	cd library && rm -f *.mod *.c *.o *.pic_o *.a *.so
+	cd compiler && rm -f *.c *.o *.pic_o mercury_compile
+	cd library && rm -f *.c *.o *.pic_o *.a *.so
 
 .PHONY: stage_4
 stage_4:
@@ -161,11 +158,10 @@ stage_4:
 	$(SUBDIR_MMAKE)
 	[ -d stage4 ] || mkdir stage4
 	mv compiler/mercury_compile stage4
-	mv compiler/*.mod library/*.mod stage4
 	mv compiler/*.c library/*.c stage4
 	mv compiler/*.o library/*.o stage4
-	cd compiler && rm -f *.mod *.c *.o *.pic_o mercury_compile
-	cd library && rm -f *.mod *.c *.o *.pic_o *.a *.so
+	cd compiler && rm -f *.c *.o *.pic_o mercury_compile
+	cd library && rm -f *.c *.o *.pic_o *.a *.so
 
 #-----------------------------------------------------------------------------#
 
@@ -219,10 +215,10 @@ install_library_grades: dep_library
 	cd library && \
 	rm -rf tmp_dir && \
 	mkdir tmp_dir && \
-	(mv -f *.mod *.c *.o *.pic_o *.a *.so tmp_dir || true) && \
+	(mv -f *.c *.o *.pic_o *.a *.so tmp_dir || true) && \
 	for grade in $(LIBGRADES); do \
 		$(SUBDIR_MMAKE) GRADE=$$grade install_library || exit 1; \
-		rm -f *.mod *.c *.o *.pic_o *.a *.so; \
+		rm -f *.c *.o *.pic_o *.a *.so; \
 	done && \
 	(mv tmp_dir/* . || true)
 
