@@ -630,12 +630,16 @@ module_info_init(Name, Globals, QualifierInfo, ModuleInfo) :-
 	map__init(ClassTable),
 	map__init(InstanceTable),
 	map__init(SuperClassTable),
-	set__init(ModuleNames),
+
+	% the builtin modules are automatically imported
+	mercury_public_builtin_module(PublicBuiltin),
+	mercury_private_builtin_module(PrivateBuiltin),
+	set__list_to_set([PublicBuiltin, PrivateBuiltin], ImportedModules),
 
 	assertion_table_init(AssertionTable),
 
 	ModuleSubInfo = module_sub(Name, Globals, [], [], no, 0, 0, [], 
-		[], [], StratPreds, UnusedArgInfo, 0, ModuleNames,
+		[], [], StratPreds, UnusedArgInfo, 0, ImportedModules,
 		no_aditi_compilation, TypeSpecInfo),
 	ModuleInfo = module(ModuleSubInfo, PredicateTable, Requests,
 		UnifyPredMap, QualifierInfo, Types, Insts, Modes, Ctors,

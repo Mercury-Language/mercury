@@ -14,6 +14,7 @@ SOURCES= \
 	bigtest.m \
 	bind_var_errors.m \
 	builtin_int.m \
+	builtin_proc.m \
 	circ_type.m \
 	constructor_warning.m \
 	det_errors.m \
