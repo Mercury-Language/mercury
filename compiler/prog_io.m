@@ -1035,7 +1035,7 @@ parse_decl_attribute("impure", [Decl], purity(impure), Decl).
 parse_decl_attribute("semipure", [Decl], purity(semipure), Decl).
 parse_decl_attribute("<=", [Decl, Constraints],
 		constraints(univ, Constraints), Decl).
-parse_decl_attribute("&", [Decl, Constraints],
+parse_decl_attribute("=>", [Decl, Constraints],
 		constraints(exist, Constraints), Decl).
 parse_decl_attribute("some", [TVars, Decl],
 		quantifier(exist, TVarsList), Decl) :-
@@ -1075,7 +1075,7 @@ attribute_description(quantifier(univ, _), "universal quantifier (`all')").
 attribute_description(quantifier(exist, _), "existential quantifier (`some')").
 attribute_description(constraints(univ, _), "type class constraint (`<=')").
 attribute_description(constraints(exist, _),
-	"existentially quantified type class constraint (`&')").
+	"existentially quantified type class constraint (`=>')").
 
 %-----------------------------------------------------------------------------%
 
@@ -1432,7 +1432,7 @@ process_du_type_2(ModuleName, ok(Functor, Args), Body, MaybeEqualityPred,
 			term__contains_var_list(Args, Var),
 			\+ list__member(Var, ExistQVars)
 		->
-			Result = error("type variables in class constraints introduced with `&' must be explicitly existentially quantified using `some'",
+			Result = error("type variables in class constraints introduced with `=>' must be explicitly existentially quantified using `some'",
 					Body)
 		;
 			(
@@ -1658,15 +1658,17 @@ get_class_context(ModuleName, RevAttributes0, RevAttributes, MaybeContext) :-
 	%	1. universal quantifiers	all		950
 	%	2. existential quantifiers	some		950
 	%	3. universal constraints	<=		920
-	%	4. existential constraints	&		1020	[*]
+	%	4. existential constraints	=>		920	[*]
 	%	5. the decl itself 		pred or func	800
 	%
 	% When we reach here, Attributes0 contains declaration attributes
 	% in the opposite order -- innermost to outermost -- so we reverse
 	% them before we start.
 	%
-	% [*] Note that the precedence of `&' is not quite what we want for
-	% this purpose -- the user will have to put in explicit parentheses.
+	% [*] Note that the semantic meaning of `=>' is not quite
+	%     the same as implication; logically speaking it's more
+	%     like conjunction.  Oh well, at least it has the right
+	%     precedence.
 	%
 	% In theory it could make sense to allow the order of 2 & 3 to be
 	% swapped, or (in the case of multiple constraints & multiple
@@ -1763,7 +1765,7 @@ combine_constraint_list_results(ok(Constraints0), ok(Constraints1),
 get_existential_constraints_from_term(ModuleName, PredType0, PredType,
 		MaybeExistentialConstraints) :-
 	(	
-		PredType0 = term__functor(term__atom("&"), 
+		PredType0 = term__functor(term__atom("=>"), 
 			[PredType1, ExistentialConstraints], _)
 	->
 		PredType = PredType1,

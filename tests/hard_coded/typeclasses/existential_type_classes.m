@@ -27,11 +27,11 @@
 
 	% my_univ_value(Univ):
 	%	returns the value of the object stored in Univ.
-:- some [T] (func my_univ_value(univ) = T & fooable(T)).
+:- some [T] func my_univ_value(univ) = T => fooable(T).
 
-:- some [T] (func call_my_univ_value(univ) = T & fooable(T)).
+:- some [T] func call_my_univ_value(univ) = T => fooable(T).
 
-:- some [T] (func my_exist_t = T & fooable(T)).
+:- some [T] func my_exist_t = T => fooable(T).
 
 :- pred int_foo(int::in, int::out) is det.
 int_foo(X, 2*X).

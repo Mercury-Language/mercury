@@ -1190,14 +1190,14 @@ mercury_output_ctor(Ctor, VarSet) -->
 		io__write_string("(")
 	),
 
-	% we need to quote ';'/2, '{}'/2, '&'/2, and 'some'/2
+	% we need to quote ';'/2, '{}'/2, '=>'/2, and 'some'/2
 	{ list__length(Args, Arity) },
 	(
 		{ Arity = 2 },
 		{ Name = unqualified(";")
 		; Name = unqualified("{}")
 		; Name = unqualified("some")
-		; Name = unqualified("&")
+		; Name = unqualified("=>")
 		}
 	->
 		io__write_string("{ ")
@@ -1220,7 +1220,7 @@ mercury_output_ctor(Ctor, VarSet) -->
 		{ Name = unqualified(";")
 		; Name = unqualified("{}")
 		; Name = unqualified("some")
-		; Name = unqualified("&")
+		; Name = unqualified("=>")
 		}
 	->
 		io__write_string(" }")
@@ -1228,7 +1228,7 @@ mercury_output_ctor(Ctor, VarSet) -->
 		[]
 	),
 
-	mercury_output_class_constraint_list(Constraints, VarSet, "&"),
+	mercury_output_class_constraint_list(Constraints, VarSet, "=>"),
 	(
 		{ ExistQVars = [] }
 	->
@@ -1443,7 +1443,7 @@ mercury_output_quantifier(VarSet, ExistQVars) -->
 
 mercury_output_class_context(ClassContext, ExistQVars, VarSet) -->
 	{ ClassContext = constraints(UnivCs, ExistCs) },
-	mercury_output_class_constraint_list(ExistCs, VarSet, "&"),
+	mercury_output_class_constraint_list(ExistCs, VarSet, "=>"),
 	( { ExistQVars = [], ExistCs = [] } -> 
 		[] 
 	; 
