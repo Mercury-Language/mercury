@@ -49,6 +49,7 @@
 		;	statistics
 		;	debug_types
 		;	debug_modes
+		;	debug_detism
 		;	vndebug
 	% Output options
 		;	make_interface
@@ -91,7 +92,7 @@
 		;	conf_low_tag_bits
 				% The undocumented conf_low_tag_bits option
 				% is used by the `mc' script to pass the
-				% default value for num_tag_bits,
+				% default value for num_tag_bits
 				% assuming --tags low.
 				% The reason that `mc' doesn't just
 				% pass a default value for --num-tag-bits
@@ -118,10 +119,12 @@
 		;	cflags_for_regs
 		;	cflags_for_gotos
 		;	c_include_directory
+		;	aditi
 	% Optimization Options
 		;	opt_level
 		;	opt_space	% default is to optimize time
 	%	- HLDS
+		;	inlining
 		;	inline_simple
 		;	inline_single_use
 		;	inline_threshold
@@ -223,6 +226,7 @@ option_defaults_2(verbosity_option, [
 	statistics		-	bool(no),
 	debug_types		- 	bool(no),
 	debug_modes		- 	bool(no),
+	debug_detism		- 	bool(no),
 	vndebug			- 	int(0)
 ]).
 option_defaults_2(output_option, [
@@ -319,6 +323,7 @@ option_defaults_2(code_gen_option, [
 					% the `mc' script will override the
 					% above default with a value determined
 					% at configuration time
+	aditi			-	bool(no),
 
 		% split_c_files is really an optimization option,
 		% but we list it here as a code_gen_option,
@@ -335,6 +340,7 @@ option_defaults_2(optimization_option, [
 	opt_level		-	int_special,
 	opt_space		-	special,
 % HLDS
+	inlining		-	bool_special,
 	inline_simple		-	bool(no),
 	inline_single_use	-	bool(no),
 	inline_threshold	-	int(0),
@@ -452,6 +458,7 @@ long_option("verbose-error-messages",	verbose_errors).
 long_option("statistics",		statistics).
 long_option("debug-types",		debug_types).
 long_option("debug-modes",		debug_modes).
+long_option("debug-detism",		debug_detism).
 long_option("vndebug",			vndebug).
 
 % output options (mutually exclusive)
@@ -539,6 +546,7 @@ long_option("optimize-space",		opt_space).
 long_option("optimise-space",		opt_space).
 
 % HLDS->HLDS optimizations
+long_option("inlining", 		inlining).
 long_option("inline-simple",		inline_simple).
 long_option("inline-single-use",	inline_single_use).
 long_option("inline-threshold",		inline_threshold).
@@ -621,6 +629,16 @@ long_option("search-directory",		search_directories).
 
 %-----------------------------------------------------------------------------%
 
+special_handler(inlining, bool(Value), OptionTable0, ok(OptionTable)) :-
+	map__set(OptionTable0, inline_simple, bool(Value), OptionTable1),
+	map__set(OptionTable1, inline_single_use, bool(Value), OptionTable2),
+	(
+		Value = yes,
+		map__set(OptionTable2, inline_threshold, int(10), OptionTable)
+	;
+		Value = no,
+		map__set(OptionTable2, inline_threshold, int(0), OptionTable)
+	).
 special_handler(everything_in_one_c_function, none, OptionTable0,
 		ok(OptionTable)) :-
 	map__set(OptionTable0, procs_per_c_function, int(0),
@@ -740,8 +758,8 @@ opt_level(1, OptionTable, [
 	optimize_labels		-	bool(yes),
 	optimize_frames		-	bool(yes),
 	optimize_delay_slot	-	bool(DelaySlot),
+	follow_vars		-	bool(yes),
 	middle_rec		-	bool(yes),
-	follow_code		-	bool(yes),
 	emit_c_loops		-	bool(yes)
 	% dups?
 ]) :-
@@ -769,10 +787,9 @@ opt_level(2, _, [
 % payoff even if they increase compilation time quite a bit
 
 opt_level(3, _, [
-	optimize_value_number	-	bool(yes),
 %%%	optimize_copyprop	-	bool(yes),
 	optimize_unused_args	-	bool(yes),	
-	optimize_higher_order	-	bool(no),	% it loops on prog_io
+	optimize_higher_order	-	bool(yes),	% it loops on prog_io
 	optimize_repeat		-	int(4),
 	optimize_vnrepeat	-	int(1)
 ]).
@@ -780,18 +797,20 @@ opt_level(3, _, [
 % Optimization level 4: apply optimizations which may have some
 % payoff even if they increase compilation time quite a bit
 
-% Currently this just enables pred_value_number
+% Currently this just enables value_number
 
 opt_level(4, _, [
-	pred_value_number	-	bool(yes)
+	optimize_value_number	-	bool(yes)
 ]).
 
 % Optimization level 5: apply optimizations which may have some
 % payoff even if they increase compilation time a lot
 
-% Currently this just runs a second pass of value numbering
+% Currently this enables pred_value_number
+% and runs a second pass of value numbering
 
 opt_level(5, _, [
+	pred_value_number	-	bool(yes),
 	optimize_repeat		-	int(5),
 	optimize_vnrepeat	-	int(2)
 ]).
@@ -813,7 +832,24 @@ opt_level(6, _, [
 options_help -->
 	io__write_string("\t-?, -h, --help\n"),
 	io__write_string("\t\tPrint this usage message.\n"),
+	options_help_warning,
+	options_help_verbosity,
+	options_help_output,
+	options_help_aux_output,
+	options_help_semantics,
+	options_help_compilation_model,
+	options_help_code_generation,
+	options_help_optimization,
+	options_help_hlds_hlds_optimization,
+	options_help_hlds_llds_optimization,
+	options_help_llds_llds_optimization,
+	options_help_output_optimization,
+	options_help_link,
+	options_help_misc.
 
+:- pred options_help_warning(io__state::di, io__state::uo) is det.
+
+options_help_warning -->
 	io__write_string("\nWarning Options:\n"),
 	io__write_string("\t-w, --inhibit-warnings\n"),
 	io__write_string("\t\tDisable all warning messages.\n"),
@@ -840,8 +876,11 @@ options_help -->
 	io__write_string("\t--no-warn-nothing-exported\n"),
 	io__write_string("\t\tDon't warn about modules which export nothing.\n"),
 	io__write_string("\t--warn-unused-args\n"),
-	io__write_string("\t\tWarn about predicate arguments which are not used.\n"),
+	io__write_string("\t\tWarn about predicate arguments which are not used.\n").
 
+:- pred options_help_verbosity(io__state::di, io__state::uo) is det.
+
+options_help_verbosity -->
 	io__write_string("\nVerbosity Options:\n"),
 	io__write_string("\t-v, --verbose\n"),
 	io__write_string("\t\tOutput progress messages at each stage in the compilation.\n"),
@@ -858,12 +897,17 @@ options_help -->
 	io__write_string("\t\tOutput detailed debugging traces of the type checking.\n"),
 	io__write_string("\t-N, --debug-modes\n"),
 	io__write_string("\t\tOutput detailed debugging traces of the mode checking.\n"),
+	io__write_string("\t--debug-detism\n"),
+	io__write_string("\t\tOutput detailed debugging traces of determinism analysis.\n"),
 	io__write_string("\t--vndebug <n>\n"),
 	io__write_string("\t\tOutput detailed debugging traces of the value numbering\n"),
 	io__write_string("\t\toptimization pass. The different bits in the number\n"),
 	io__write_string("\t\targument of this option control the printing of\n"),
-	io__write_string("\t\tdifferent types of tracing messages.\n"),
+	io__write_string("\t\tdifferent types of tracing messages.\n").
 
+:- pred options_help_output(io__state::di, io__state::uo) is det.
+
+options_help_output -->
 	io__write_string("\nOutput Options:\n"),
 	io__write_string("\tThese options are mutually exclusive.\n"),
 	io__write_string("\tOnly the first one specified will apply.\n"),
@@ -892,8 +936,11 @@ options_help -->
 	io__write_string("\t\tGenerate C code in `<module>.c', but not object code.\n"),
 	io__write_string("\t-c, --compile-only\n"),
 	io__write_string("\t\tGenerate C code in `<module>.c' and object code in `<module>.o'\n"),
-	io__write_string("\t\tbut do not attempt to link the named modules.\n"),
+	io__write_string("\t\tbut do not attempt to link the named modules.\n").
 
+:- pred options_help_aux_output(io__state::di, io__state::uo) is det.
+
+options_help_aux_output -->
 	io__write_string("\n Auxiliary Output Options:\n"),
 	io__write_string("\t--auto-comments\n"),
 	io__write_string("\t\tOutput comments in the `<module>.c' file.\n"),
@@ -910,8 +957,11 @@ options_help -->
 	io__write_string("\t\tStage numbers range from 1-19.\n"),
 	io__write_string("\t\tMultiple dump options accumulate.\n"),
 	io__write_string("\t-D, --verbose-dump-hlds\n"),
-	io__write_string("\t\tWith --dump-hlds, dumps some additional info.\n"),
+	io__write_string("\t\tWith --dump-hlds, dumps some additional info.\n").
 
+:- pred options_help_semantics(io__state::di, io__state::uo) is det.
+
+options_help_semantics -->
 	io__write_string("\nLanguage semantics options:\n"),
 	io__write_string("(See the Mercury language reference manual for detailed explanations.)\n"),
 	io__write_string("\t--no-reorder-conj\n"),
@@ -925,14 +975,17 @@ options_help -->
 	io__write_string("\t\tIf there is no type declaration for a predicate or function,\n"),
 	io__write_string("\t\tdon't try to infer the type, just report an errror.\n"),
 
-	io__write_string("\t\n"),
+	io__write_string("\t\n").
 /****
 % The --no-infer-det option has not yet been implemented.
 	io__write_string("\t--no-infer-det, --no-infer-determinism\n"),
 	io__write_string("\t\tIf there is no determinism declaration for a procedure,\n"),
-	io__write_string("\t\tdon't try to infer the determinism, just report an errror.\n"),
+	io__write_string("\t\tdon't try to infer the determinism, just report an errror.\n").
 ****/
 
+:- pred options_help_compilation_model(io__state::di, io__state::uo) is det.
+
+options_help_compilation_model -->
 	io__write_string("\nCompilation model options:\n"),
 	io__write_string("\tThe following compilation options affect the generated\n"),
 	io__write_string("\tcode in such a way that the entire program must be\n"),
@@ -1033,8 +1086,11 @@ options_help -->
 	io__write_string("\t\tUse unboxed single-precision floating point numbers,\n"),
 	io__write_string("\t\trather than boxed double-precision floats.\n"),
 	io__write_string("\t\t(The C code also needs to be compiled with\n"),
-	io__write_string("\t\t`-DUSE_SINGLE_PREC_FLOAT'.)\n"),
+	io__write_string("\t\t`-DUSE_SINGLE_PREC_FLOAT'.)\n").
 
+:- pred options_help_code_generation(io__state::di, io__state::uo) is det.
+
+options_help_code_generation -->
 	io__write_string("\nCode generation options:\n"),
 	io__write_string("\t--no-trad-passes\n"),
 	io__write_string("\t\tThe default --trad-passes completely processes each predicate\n"),
@@ -1060,8 +1116,11 @@ options_help -->
 	io__write_string("\t--c-include-directory <dir>\n"),
 	io__write_string("\t\tSpecify the directory containing the Mercury C header files.\n"),
 	io__write_string("\t--cflags <options>\n"),
-	io__write_string("\t\tSpecify options to be passed to the C compiler.\n"),
+	io__write_string("\t\tSpecify options to be passed to the C compiler.\n").
 
+:- pred options_help_optimization(io__state::di, io__state::uo) is det.
+
+options_help_optimization -->
 	io__write_string("\nOptimization Options:\n"),
 	io__write_string("\t-O <n>, --opt-level <n>, --optimization-level <n>\n"),
 	io__write_string("\t\tSet optimization level to <n>.\n"),
@@ -1072,9 +1131,14 @@ options_help -->
 	io__write_string("\t--opt-space, --optimize-space\n"),
 	io__write_string("\t\tTurn on optimizations that reduce code size\n"),
 	io__write_string("\t\tand turn off optimizations that significantly\n"),
-	io__write_string("\t\tincrease code size.\n"),
+	io__write_string("\t\tincrease code size.\n").
 
+:- pred options_help_hlds_hlds_optimization(io__state::di, io__state::uo) is det.
+
+options_help_hlds_hlds_optimization -->
 	io__write_string("\n    High-level (HLDS->HLDS) optimizations:\n"),
+	io__write_string("\t--no-inlining\n"),
+	io__write_string("\t\tDisable all forms of inlining.\n"),
 	io__write_string("\t--no-inline-simple\n"),
 	io__write_string("\t\tDisable the inlining of simple procedures.\n"),
 	io__write_string("\t--no-inline-single-use\n"),
@@ -1105,8 +1169,11 @@ options_help -->
 	io__write_string("\t\tThis will cause the compiler to generate less\n"),
 	io__write_string("\t\tefficient code for many polymorphic predicates.\n"),
 	io__write_string("\t--no-optimize-higher-order\n"),
-	io__write_string("\t\tDisable specialization of higher-order predicates.\n"),
+	io__write_string("\t\tDisable specialization of higher-order predicates.\n").
 
+:- pred options_help_hlds_llds_optimization(io__state::di, io__state::uo) is det.
+
+options_help_hlds_llds_optimization -->
 	io__write_string("\n    Medium-level (HLDS->LLDS) optimizations:\n"),
 	io__write_string("\t--no-smart-indexing\n"),
 	io__write_string("\t\tGenerate switches as a simple if-then-else chains;\n"),
@@ -1138,8 +1205,11 @@ options_help -->
 	io__write_string("\t--no-simple-neg\n"),
 	io__write_string("\t\tDon't generate simplified code for simple negations.\n"),
 	io__write_string("\t--no-follow-vars\n"),
-	io__write_string("\t\tDon't optimize the assignment of registers in branched goals.\n"),
+	io__write_string("\t\tDon't optimize the assignment of registers in branched goals.\n").
 
+:- pred options_help_llds_llds_optimization(io__state::di, io__state::uo) is det.
+
+options_help_llds_llds_optimization -->
 	io__write_string("\n    Low-level (LLDS->LLDS) optimizations:\n"),
 	io__write_string("\t--no-llds-optimize\n"),
 	io__write_string("\t\tDisable the low-level optimization passes.\n"),
@@ -1166,10 +1236,13 @@ options_help -->
 	io__write_string("\t--optimize-repeat <n>\n"),
 	io__write_string("\t\tIterate most optimizations at most <n> times (default: 3).\n"),
 	io__write_string("\t--optimize-vnrepeat <n>\n"),
-	io__write_string("\t\tIterate value numbering at most <n> times (default: 1).\n"),
+	io__write_string("\t\tIterate value numbering at most <n> times (default: 1).\n").
 	% io__write_string("\t--pred-value-number\n"),
-	% io__write_string("\t\tExtend value numbering to entire predicates\n"),
+	% io__write_string("\t\tExtend value numbering to entire predicates\n").
 
+:- pred options_help_output_optimization(io__state::di, io__state::uo) is det.
+
+options_help_output_optimization -->
 	io__write_string("\n    Output-level (LLDS->C) optimizations:\n"),
 	io__write_string("\t--no-emit-c-loops\n"),
 	io__write_string("\t\tUse only gotos, don't emit C loop constructs.\n"),
@@ -1192,8 +1265,11 @@ options_help -->
 	io__write_string("\t\texecutable, typically by about 10-20%.\n"),
 	io__write_string("\t\tThis option is only useful with `--procs-per-c-function 1'.\n"),
 	io__write_string("\t--no-c-optimize\n"),
-	io__write_string("\t\tDon't enable the C compiler's optimizations.\n"),
+	io__write_string("\t\tDon't enable the C compiler's optimizations.\n").
 
+:- pred options_help_link(io__state::di, io__state::uo) is det.
+
+options_help_link -->
 	io__write_string("\nLink Options:\n"),
 	io__write_string("\t-o <filename>, --output-file <filename>\n"),
 	io__write_string("\t\tSpecify the name of the final executable.\n"),
@@ -1207,8 +1283,11 @@ options_help -->
 	io__write_string("\t\tLink with the specified library.\n"),
 	io__write_string("\t--link-object <object-file>\n"),
 	io__write_string("\t\tLink with the specified object file.\n"),
-	io__write_string("\t\tof the first module on the command line.)\n"),
+	io__write_string("\t\tof the first module on the command line.)\n").
 
+:- pred options_help_misc(io__state::di, io__state::uo) is det.
+
+options_help_misc -->
 	io__write_string("\nMiscellaneous Options:\n"),
 	% io__write_string("\t-H <n>, --heap-space <n>\n"),
 	% io__write_string("\t\tPre-allocate <n> kilobytes of heap space.\n"),

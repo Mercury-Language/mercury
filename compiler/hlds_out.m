@@ -117,11 +117,12 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module bool, string, list, set, map, require, std_util, assoc_list.
-:- import_module term, term_io, varset, getopt.
 
 :- import_module mercury_to_mercury, globals, options.
-:- import_module prog_out, prog_util.
+:- import_module llds_out, prog_out, prog_util.
+
+:- import_module bool, string, list, set, map, require, std_util, assoc_list.
+:- import_module term, term_io, varset, getopt.
 
 hlds_out__write_type_id(Name - Arity) -->
 	prog_out__write_sym_name(Name),
@@ -603,6 +604,34 @@ hlds_out__write_goal(Goal - GoalInfo, ModuleInfo, VarSet, Indent) -->
 			mercury_output_newline(Indent)
 		;
 			[]
+		),
+		(
+			( { Goal = disj(_, FV) }
+			; { Goal = switch(_, _, _, FV) }
+			; { Goal = if_then_else(_, _, _, _, FV) }
+			),
+			{ map__to_assoc_list(FV, FVList) },
+			{ FVList \= [] }
+		->
+			io__write_string("% follow vars map:\n"),
+			hlds_out__write_var_to_lvals(FVList,
+				VarSet, Indent),
+			hlds_out__write_indent(Indent)
+		;
+			[]
+		),
+		{ goal_info_store_map(GoalInfo, StoreMap) },
+		(
+			{ StoreMap = yes(VarLocMap) },
+			{ map__to_assoc_list(VarLocMap, VarLocList) },
+			{ VarLocList \= [] }
+		->
+			io__write_string("% store map:\n"),
+			hlds_out__write_var_to_lvals(VarLocList,
+				VarSet, Indent),
+			hlds_out__write_indent(Indent)
+		;
+			[]
 		)
 	;
 		[]
@@ -1032,23 +1061,26 @@ hlds_out__write_var_types_2([Var | Vars], Indent, VarSet, VarTypes, TypeVarSet)
 
 hlds_out__write_call_info(Indent, CallInfo, VarSet) -->
 	{ map__to_assoc_list(CallInfo, VarSlotList) },
-	hlds_out__write_call_info_2(VarSlotList, Indent, VarSet).
+	hlds_out__write_var_to_lvals(VarSlotList, VarSet, Indent).
 
-:- pred hlds_out__write_call_info_2(assoc_list(var, lval), int, varset,
+:- pred hlds_out__write_var_to_lvals(assoc_list(var, lval), varset, int,
 						io__state, io__state).
-:- mode hlds_out__write_call_info_2(in, in, in, di, uo) is det.
+:- mode hlds_out__write_var_to_lvals(in, in, in, di, uo) is det.
 
-hlds_out__write_call_info_2([], _, _) --> [].
-hlds_out__write_call_info_2([Var - Slot | Vars], Indent, VarSet) -->
+hlds_out__write_var_to_lvals([], _, _) --> [].
+hlds_out__write_var_to_lvals([Var - Loc | VarLocs], VarSet, Indent) -->
 	hlds_out__write_indent(Indent),
 	io__write_string("% "),
 	mercury_output_var(Var, VarSet),
-	io__write_string(" ("),
-	io__write_anything(Var),
-	io__write_string(") <- "),
-	io__write_anything(Slot),
+	io__write_string(" -> "),
+	{ llds_out__lval_to_string(Loc, LocStrPrime) ->
+		LocStr = LocStrPrime
+	;
+		LocStr = "unknown location"
+	},
+	io__write_string(LocStr),
 	io__write_string("\n"),
-	hlds_out__write_call_info_2(Vars, Indent, VarSet).
+	hlds_out__write_var_to_lvals(VarLocs, VarSet, Indent).
 
 %-----------------------------------------------------------------------------%
 

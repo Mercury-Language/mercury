@@ -249,9 +249,8 @@ code_exprn__clobber_regs_2([V - Stat | Rest], Critical, OldVars, Vars0, Vars) :-
 			->
 				error("code_exprn__clobber_regs: attempt to clobber critical register")
 			;
-				true
-			),
-			Vars1 = Vars0
+				Vars1 = Vars0
+			)
 		;
 			map__set(Vars0, V, Stat, Vars1)
 		)
@@ -266,9 +265,8 @@ code_exprn__clobber_regs_2([V - Stat | Rest], Critical, OldVars, Vars0, Vars) :-
 			->
 				error("code_exprn__clobber_regs: attempt to clobber critical register")
 			;
-				true
-			),
-			Vars1 = Vars0
+				Vars1 = Vars0
+			)
 		;
 			map__set(Vars0, V, evaled(Rvals), Vars1)
 		)
@@ -714,25 +712,25 @@ code_exprn__update_dependent_vars_3([R0 | Rs0], Var, Rval, [R | Rs]) -->
 :- pred code_exprn__select_rval(list(rval), rval).
 :- mode code_exprn__select_rval(in, out) is det.
 
-code_exprn__select_rval(Rs, Rval) :-
+code_exprn__select_rval(Rvals, Rval) :-
 	(
-		Rs = []
+		Rvals = []
 	->
 		error("code_exprn__select_rval: no rvals")
 	;
-		code_exprn__select_reg(Rs, Rval0)
+		code_exprn__select_reg(Rvals, Rval0)
 	->
 		Rval = Rval0
 	;
-		code_exprn__select_simple_const(Rs, Rval1)
+		code_exprn__select_simple_const(Rvals, Rval1)
 	->
 		Rval = Rval1
 	;
-		code_exprn__select_stackvar(Rs, Rval2)
+		code_exprn__select_stackvar(Rvals, Rval2)
 	->
 		Rval = Rval2
 	;
-		Rs = [Rval3 | _]
+		Rvals = [Rval3 | _]
 	->
 		Rval = Rval3
 	;

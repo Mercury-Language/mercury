@@ -22,7 +22,6 @@
 :- mode detect_switches(in, out, di, uo) is det.
 
 :- pred detect_switches_in_proc(proc_id, pred_id, module_info, module_info).
-% :- mode detect_switches_in_proc(in, in, di, uo) is det.
 :- mode detect_switches_in_proc(in, in, in, out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -56,7 +55,6 @@ detect_switches_in_preds([PredId | PredIds], ModuleInfo0, ModuleInfo) -->
 
 :- pred detect_switches_in_pred(pred_id, pred_info, module_info, module_info,
 	io__state, io__state).
-% :- mode detect_switches_in_pred(in, in, di, uo, di, uo) is det.
 :- mode detect_switches_in_pred(in, in, in, out, di, uo) is det.
 
 detect_switches_in_pred(PredId, PredInfo0, ModuleInfo0, ModuleInfo,
@@ -66,7 +64,6 @@ detect_switches_in_pred(PredId, PredInfo0, ModuleInfo0, ModuleInfo,
 
 :- pred detect_switches_in_procs(list(proc_id), pred_id,
 	module_info, module_info).
-% :- mode detect_switches_in_procs(in, in, di, uo) is det.
 :- mode detect_switches_in_procs(in, in, in, out) is det.
 
 detect_switches_in_procs([], _PredId, ModuleInfo, ModuleInfo).
@@ -321,11 +318,10 @@ partition_disj(Goals0, Var, Left, CasesAssocList) :-
 	map__init(Cases0),
 	partition_disj_trial(Goals0, Var, [], Left, Cases0, Cases),
 	map__to_assoc_list(Cases, CasesAssocList),
-	CasesAssocList = [_,_|_].	% there must be more than one case
+	CasesAssocList = [_, _ | _].	% there must be more than one case
 
 :- pred partition_disj_trial(list(hlds__goal), var,
 	list(hlds__goal), list(hlds__goal), cases, cases).
-% :- mode partition_disj_trial(in, in, di, uo, di, uo) is det.
 :- mode partition_disj_trial(in, in, in, out, in, out) is det.
 
 partition_disj_trial([], _Var, Left, Left, Cases, Cases).
@@ -480,10 +476,9 @@ delete_unreachable_cases([Case | Cases0], [ConsId | ConsIds], Cases) :-
 :- mode functors_to_cons_ids(in, out) is det.
 
 functors_to_cons_ids([], []).
-functors_to_cons_ids([Functor|Functors], [ConsId|ConsIds]) :-
+functors_to_cons_ids([Functor | Functors], [ConsId | ConsIds]) :-
 	Functor = functor(ConsId, _ArgInsts),
 	functors_to_cons_ids(Functors, ConsIds).
-
 
 	% check whether a switch handles all the possible
 	% constants/functors for the type

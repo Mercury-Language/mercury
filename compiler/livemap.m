@@ -163,15 +163,21 @@ livemap__build_livemap_instr(Instr0, Instrs0, Instrs,
 		livemap__look_for_livevals(Instrs0, Instrs,
 			Livevals0, Livevals1, "goto", LivevalsNeeded, Found),
 		( Found = yes ->
-			Livevals = Livevals1
+			Livevals3 = Livevals1
 		; CodeAddr = label(Label) ->
 			set__init(Livevals2),
 			livemap__insert_label_livevals([Label],
-				Livemap0, Livevals2, Livevals)
+				Livemap0, Livevals2, Livevals3)
 		; ( CodeAddr = do_redo ; CodeAddr = do_fail ) ->
-			Livevals = Livevals1
+			Livevals3 = Livevals1
 		;
 			error("unknown label type in build_livemap")
+		),
+		livemap__special_code_addr(CodeAddr, MaybeSpecial),
+		( MaybeSpecial = yes(Special) ->
+			set__insert(Livevals3, Special, Livevals)
+		;
+			Livevals = Livevals3
 		),
 		Livemap = Livemap0,
 		Ccode = Ccode0
@@ -196,16 +202,22 @@ livemap__build_livemap_instr(Instr0, Instrs0, Instrs,
 		(
 			Found = yes,
 			% This if_val was put here by middle_rec.
-			Livevals = Livevals1
+			Livevals3 = Livevals1
 		;
 			Found = no,
 			livemap__make_live([Rval], Livevals1, Livevals2),
 			( CodeAddr = label(Label) ->
 				livemap__insert_label_livevals([Label],
-					Livemap0, Livevals2, Livevals)
+					Livemap0, Livevals2, Livevals3)
 			;	
-				Livevals = Livevals2
+				Livevals3 = Livevals2
 			)
+		),
+		livemap__special_code_addr(CodeAddr, MaybeSpecial),
+		( MaybeSpecial = yes(Special) ->
+			set__insert(Livevals3, Special, Livevals)
+		;
+			Livevals = Livevals3
 		),
 		Livemap = Livemap0,
 		Ccode = Ccode0
@@ -297,6 +309,19 @@ livemap__look_for_livevals(Instrs0, Instrs, Livevals0, Livevals,
 		Livevals = Livevals0,
 		Found = no
 	).
+
+:- pred livemap__special_code_addr(code_addr, maybe(lval)).
+:- mode livemap__special_code_addr(in, out) is det.
+
+livemap__special_code_addr(label(_), no).
+livemap__special_code_addr(imported(_), no).
+livemap__special_code_addr(succip, yes(succip)).
+livemap__special_code_addr(do_succeed(_), yes(succip(lval(curfr)))).
+livemap__special_code_addr(do_redo, yes(redoip(lval(maxfr)))).
+livemap__special_code_addr(do_fail, no).
+livemap__special_code_addr(do_det_closure, no).
+livemap__special_code_addr(do_semidet_closure, no).
+livemap__special_code_addr(do_nondet_closure, no).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

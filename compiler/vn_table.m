@@ -130,7 +130,7 @@
 
 :- implementation.
 
-:- import_module opt_debug.
+:- import_module llds, opt_debug.
 :- import_module int, string, require.
 
 :- type vn_tables --->	vn_tables(vn,
@@ -296,7 +296,18 @@ vn_table__add_new_use(Vn, NewUse, VnTables0, VnTables) :-
 	),
 	(
 		list__member(NewUse, Uses0),
-		\+ NewUse = src_access(_)
+		\+ (
+			NewUse = src_access(_)
+		;
+			NewUse = src_vn(UserVn),
+			map__lookup(Vn_to_rval_table0, UserVn, VnRval),
+			VnRval = vn_binop(Operator, _, _),
+			( Operator = (+)
+			; Operator = (*)
+			; Operator = float_plus
+			; Operator = float_times
+			)
+		)
 	->
 		opt_debug__dump_tables(VnTables0, T_str),
 		opt_debug__dump_vn(Vn, V_str),

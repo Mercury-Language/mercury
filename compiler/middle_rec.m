@@ -150,16 +150,17 @@ middle_rec__generate_switch(Var, BaseConsId, Base, Recursive, SwitchGoalInfo,
 	{ RecCode = tree(RecCodeFrag, EpilogFrag) },
 	{ LiveValCode = [ livevals(LiveArgs) - "" ] },
 
-	{ tree__flatten(RecCode, RecListList) },
-	{ list__condense(RecListList, RecList) },
-	{ middle_rec__split_rec_code(RecList, BeforeList0, AfterList) },
-	{ list__append(BeforeList0, AfterList, RecCodeList) },
-	{ middle_rec__find_unused_register(RecCodeList, AuxReg) },
-	{ middle_rec__add_counter_to_livevals(BeforeList0, AuxReg,
-		BeforeList) },
-
 	{ tree__flatten(BaseCode, BaseListList) },
 	{ list__condense(BaseListList, BaseList) },
+	{ tree__flatten(RecCode, RecListList) },
+	{ list__condense(RecListList, RecList) },
+
+	{ list__append(BaseList, RecList, AvoidList) },
+	{ middle_rec__find_unused_register(AvoidList, AuxReg) },
+
+	{ middle_rec__split_rec_code(RecList, BeforeList0, AfterList) },
+	{ middle_rec__add_counter_to_livevals(BeforeList0, AuxReg,
+		BeforeList) },
 
 	{ middle_rec__generate_downloop_test(EntryTestList,
 		Loop1Label, Loop1Test) },

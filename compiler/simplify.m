@@ -23,8 +23,8 @@
 :- import_module list, io.
 
 :- pred simplify__proc(pred_id, proc_id, module_info,
-	proc_info, io__state, proc_info, io__state).
-:- mode simplify__proc(in, in, in, in, di, out, uo) is det.
+	proc_info, proc_info, int, int, io__state, io__state).
+:- mode simplify__proc(in, in, in, in, out, out, out, di, uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -36,7 +36,8 @@
 
 %-----------------------------------------------------------------------------%
 
-simplify__proc(PredId, ProcId, ModuleInfo0, Proc0, State0, Proc, State) :-
+simplify__proc(PredId, ProcId, ModuleInfo0, Proc0, Proc, WarnCnt, ErrCnt,
+		State0, State) :-
 	globals__io_get_globals(Globals, State0, State1),
 	det_info_init(ModuleInfo0, PredId, ProcId, Globals, DetInfo),
 	proc_info_goal(Proc0, Goal0),
@@ -47,7 +48,7 @@ simplify__proc(PredId, ProcId, ModuleInfo0, Proc0, State0, Proc, State) :-
 	simplify__goal(Goal0, InstMap0, DetInfo, Goal, Msgs),
 
 	proc_info_set_goal(Proc0, Goal, Proc),
-	det_report_msgs(Msgs, ModuleInfo0, State2, State).
+	det_report_msgs(Msgs, ModuleInfo0, WarnCnt, ErrCnt, State2, State).
 
 %-----------------------------------------------------------------------------%
 
@@ -265,11 +266,16 @@ simplify__goal_2(pragma_c_code(A, B, C, D, E), _, _, _,
 :- mode simplify__conj(in, in, in, out, out) is det.
 
 simplify__conj([], _InstMap0, _DetInfo, [], []).
-simplify__conj([Goal0 | Goals0], InstMap0, DetInfo, [Goal | Goals], Msgs) :-
-	simplify__goal(Goal0, InstMap0, DetInfo, Goal, MsgsA),
-	update_instmap(Goal0, InstMap0, InstMap1),
-	simplify__conj(Goals0, InstMap1, DetInfo, Goals, MsgsB),
-	list__append(MsgsA, MsgsB, Msgs).
+simplify__conj([Goal0 | Goals0], InstMap0, DetInfo, Goals, Msgs) :-
+	( Goal0 = conj([]) - _ ->
+		simplify__conj(Goals0, InstMap0, DetInfo, Goals, Msgs)
+	;
+		simplify__goal(Goal0, InstMap0, DetInfo, Goal, MsgsA),
+		update_instmap(Goal0, InstMap0, InstMap1),
+		simplify__conj(Goals0, InstMap1, DetInfo, Goals1, MsgsB),
+		Goals = [Goal | Goals1],
+		list__append(MsgsA, MsgsB, Msgs)
+	).
 
 :- pred simplify__disj(list(hlds__goal), instmap, det_info, list(hlds__goal),
 	list(det_msg)).

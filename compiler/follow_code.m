@@ -242,11 +242,6 @@ move_follow_code_select([Goal|Goals], FollowGoals, RestGoals) :-
 		move_follow_code_select(Goals, FollowGoals0, RestGoals),
 		FollowGoals = [Goal|FollowGoals0]
 	;
-		move_follow_code_is_call(Goal)
-	->
-		FollowGoals = [Goal],
-		RestGoals = Goals
-	;
 		FollowGoals = [],
 		RestGoals = [Goal|Goals]
 	).
