@@ -9,7 +9,7 @@ eval mmake $mmakeopts depend || exit 1
 eval mmake -k $mmakeopts check
 checkstatus=$?
 
-cat *.res > .allres
+cat *.res_compile *.res_error > .allres
 if test ! -s .allres -a "$checkstatus" = 0
 then
 	echo "the tests in the warnings directory succeeded"

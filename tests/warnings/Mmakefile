@@ -4,8 +4,10 @@ main_target: check
 
 #-----------------------------------------------------------------------------#
 
-PROGS=	\
-	arg_order_rearrangment \
+COMPILE_PROGS=	\
+	arg_order_rearrangment
+
+ERRORCHECK_PROGS= \
 	det_infer_warning \
 	double_underscore \
 	duplicate_call \
@@ -31,20 +33,27 @@ MCFLAGS-inference_test		= --infer-all
 
 #-----------------------------------------------------------------------------#
 
-%.res:	%.exp %.c
+%.res_error:	%.exp %.err
+	-rm -f $@
+	diff -c $*.exp $*.err > $@
+
+%.res_compile:	%.exp %.c
 	-rm -f $@
 	diff -c $*.exp $*.err > $@
 
 #-----------------------------------------------------------------------------#
 
+PROGS=$(COMPILE_PROGS) $(ERRORCHECK_PROGS)
 DEPENDS=$(PROGS:%=%.depend)
-RESS=	$(PROGS:%=%.res)
+
+RES_ERRORS=	$(ERRORCHECK_PROGS:%=%.res_error)
+RES_COMPILES=	$(COMPILE_PROGS:%=%.res_compile)
 
 #-----------------------------------------------------------------------------#
 
 depend:	$(DEPENDS)
 
-check:	$(RESS)
+check:	$(RES_COMPILES) $(RES_ERRORS)
 
 all:	$(PROGS)
 
@@ -56,6 +65,6 @@ clean_err:
 	rm -f *.err
 
 clean_res:
-	rm -f *.res
+	rm -f *.res_compile *.res_error
 
 #-----------------------------------------------------------------------------#
