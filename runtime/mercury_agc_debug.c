@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2003 The University of Melbourne.
+** Copyright (C) 1998-2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -44,8 +44,9 @@ static  void	dump_live_variables(const MR_Label_Layout *layout,
 void
 MR_agc_dump_roots(MR_RootList roots)
 {
-#ifdef MR_NATIVE_GC
+#ifndef MR_HIGHLEVEL_CODE
 	MR_Word	saved_regs[MR_MAX_FAKE_REG];
+#endif
 
 	fflush(NULL);
 	fprintf(stderr, "Dumping roots\n");
@@ -54,6 +55,7 @@ MR_agc_dump_roots(MR_RootList roots)
 		while (roots != NULL) {
 
 
+#ifndef MR_HIGHLEVEL_CODE
 			/*
 			** Restore the registers, because we need to save them
 			** to a more permanent backing store (we are going to
@@ -66,21 +68,24 @@ MR_agc_dump_roots(MR_RootList roots)
 
 			MR_hp = MR_ENGINE(MR_eng_debug_heap_zone->min);
 			MR_virtual_hp = MR_ENGINE(MR_eng_debug_heap_zone->min);
+#endif /* !MR_HIGHLEVEL_CODE */
 
 			fflush(NULL);
 			MR_write_variable(roots->type_info, *roots->root);
 			fflush(NULL);
 			fprintf(stderr, "\n");
 
+#ifndef MR_HIGHLEVEL_CODE
 			MR_copy_saved_regs_to_regs(MR_MAX_FAKE_REG - 1,
 				saved_regs);
 			MR_save_registers();
+#endif /* !MR_HIGHLEVEL_CODE */
 			roots = roots->next;
 		}
 	}
-#endif /* MR_NATIVE_GC */
 }
 
+#ifndef MR_HIGHLEVEL_CODE
 void
 MR_agc_dump_nondet_stack_frames(MR_Internal *label, MR_MemoryZone *heap_zone,
 	MR_Word *stack_pointer, MR_Word *current_frame, MR_Word *max_frame)
@@ -177,7 +182,6 @@ void
 MR_agc_dump_stack_frames(MR_Internal *label, MR_MemoryZone *heap_zone,
 	MR_Word *stack_pointer, MR_Word *current_frame)
 {
-#ifdef MR_NATIVE_GC
 	MR_Word			saved_regs[MR_MAX_FAKE_REG];
 	int			i, short_var_count, long_var_count;
 	MR_Word			*type_params;
@@ -238,7 +242,6 @@ MR_agc_dump_stack_frames(MR_Internal *label, MR_MemoryZone *heap_zone,
 			entry_layout = layout->MR_sll_entry;
 		}
 	}
-#endif /* MR_NATIVE_GC */
 }
 
 static void
@@ -346,7 +349,6 @@ static void
 dump_long_value(MR_Long_Lval locn, MR_MemoryZone *heap_zone,
 	MR_Word *stack_pointer, MR_Word *current_frame, MR_bool do_regs)
 {
-#ifdef MR_NATIVE_GC
 	int	locn_num;
 	MR_Word	value = 0;
 	int	difference;
@@ -425,14 +427,12 @@ dump_long_value(MR_Long_Lval locn, MR_MemoryZone *heap_zone,
 			fprintf(stderr, "\t       \t(%lx)", (long) value);
 		}
 	}
-#endif /* MR_NATIVE_GC */
 }
 
 static void
 dump_short_value(MR_Short_Lval locn, MR_MemoryZone *heap_zone,
 	MR_Word *stack_pointer, MR_Word *current_frame, MR_bool do_regs)
 {
-#ifdef MR_NATIVE_GC
 	int	locn_num;
 	MR_Word	value = 0;
 	int	difference;
@@ -499,7 +499,8 @@ dump_short_value(MR_Short_Lval locn, MR_MemoryZone *heap_zone,
 			fprintf(stderr, "\t       \t(%lx)", (long) value);
 		}
 	}
-#endif /* MR_NATIVE_GC */
 }
+
+#endif /* !MR_HIGHLEVEL_CODE */
 
 #endif /* MR_NATIVE_GC */

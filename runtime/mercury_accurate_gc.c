@@ -2,7 +2,7 @@
 ** vim:sw=4 ts=4 expandtab
 */
 /*
-** Copyright (C) 1998-2003 The University of Melbourne.
+** Copyright (C) 1998-2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -56,6 +56,8 @@
 
   void          MR_garbage_collect(void);
   static void   traverse_stack(struct MR_StackChain *top);
+  static void   resize_and_reset_gc_threshold(MR_MemoryZone *old_heap,
+                    MR_MemoryZone *new_heap);
 
 #else /* !MR_HIGHLEVEL_CODE */
 
@@ -229,8 +231,7 @@ resize_and_reset_gc_threshold(MR_MemoryZone *old_heap, MR_MemoryZone *new_heap)
     if (gc_heap_size < old_heap_space) {
         gc_heap_size = old_heap_space;
     }
-    old_heap->gc_threshold = (MR_Word *)
-            ((char *) old_heap->bottom + gc_heap_size);
+    old_heap->gc_threshold = ((char *) old_heap->bottom + gc_heap_size);
 }
 
 /*---------------------------------------------------------------------------*/
