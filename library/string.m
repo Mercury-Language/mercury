@@ -1143,15 +1143,29 @@ string__format_calc_prec(Istring, Ostring, Precision) :-
 %
 :- pred string__find_index( string, char, int).
 :- mode string__find_index( in, in, out) is semidet.
-string__find_index([], _C, _Index) :- fail.
-string__find_index([X|Xs], C, Index) :-
+%string__find_index([], _C, _Index) :- fail.
+%string__find_index([X|Xs], C, Index) :-
+%	(
+%		X = C
+%	->
+%		Index = 1
+%	;
+%		string__find_index(Xs, C, Index0),
+%		Index is Index0 + 1
+%	).
+string__find_index(X, C, Index) :-
 	(
-		X = C
+	X = ""
 	->
-		Index = 1
+		fail
 	;
-		string__find_index(Xs, C, Index0),
-		Index is Index0 + 1
+		(string__first_char(X, C, _)
+		->
+			Index = 1
+		;
+			string__find_index(X, C, Index0),
+			Index is Index0 + 1
+		)
 	).
 %
 %string__find_index( A, Ch, Check, Ret) :-
