@@ -487,6 +487,17 @@ postprocess_options_2(OptionTable, GC_Method, TagsMethod, PrologDialect,
 	% we are expecting some to be missing.
 	option_implies(use_opt_files, warn_missing_opt_files, bool(no)),
 
+	% --no-lazy-code assumes that const(_) rvals are really constant,
+	% and that create(_) rvals with constant arguments can be materialized
+	% in an assignable rval without further code. For float_consts,
+	% the former is true only if either static_ground_terms or
+	% unboxed_floats is true, and the latter cannot be true without
+	% static_ground_terms.
+	option_neg_implies(lazy_code, static_ground_terms, bool(yes)),
+
+	% --no-lazy-code requires --follow-vars for acceptable performance.
+	option_neg_implies(lazy_code, follow_vars, bool(yes)),
+
 	% --optimize-frames requires --optimize-labels and --optimize-jumps
 	option_implies(optimize_frames, optimize_labels, bool(yes)),
 	option_implies(optimize_frames, optimize_jumps, bool(yes)).

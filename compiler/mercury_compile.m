@@ -1237,7 +1237,7 @@ mercury_compile__backend_pass_by_preds_2([PredId | PredIds], ModuleInfo0,
 		; hlds_pred__pred_info_is_aditi_relation(PredInfo)
 		}
 	->
-		{ ModuleInfo1 = ModuleInfo0 },
+		{ ModuleInfo3 = ModuleInfo0 },
 		{ GlobalData1 = GlobalData0 },
 		{ Code1 = [] }
 	;
@@ -1249,12 +1249,43 @@ mercury_compile__backend_pass_by_preds_2([PredId | PredIds], ModuleInfo0,
 		;
 			[]
 		),
-		mercury_compile__backend_pass_by_preds_3(ProcIds, PredId,
-			PredInfo, ModuleInfo0, ModuleInfo1,
-			GlobalData0, GlobalData1, Code1)
+		(
+			{ pred_info_module(PredInfo, PredModule) },
+			{ pred_info_name(PredInfo, PredName) },
+                        { pred_info_arity(PredInfo, PredArity) },
+                        { no_type_info_builtin(PredModule, PredName,
+				PredArity) }
+		->
+				% These predicates should never be traced,
+				% since they do not obey typeinfo_liveness.
+				% Since they may be opt_imported into other
+				% modules, we must switch off the tracing
+				% of such preds on a pred-by-pred basis.
+			{ module_info_globals(ModuleInfo0, Globals0) },
+			{ globals__get_trace_level(Globals0, TraceLevel) },
+			{ globals__set_trace_level(Globals0, none, Globals1) },
+			{ module_info_set_globals(ModuleInfo0, Globals1,
+				ModuleInfo1) },
+			{ copy(Globals1, Globals1Unique) },
+			globals__io_set_globals(Globals1Unique),
+			mercury_compile__backend_pass_by_preds_3(ProcIds,
+				PredId, PredInfo, ModuleInfo1, ModuleInfo2,
+				GlobalData0, GlobalData1, Code1),
+			{ module_info_globals(ModuleInfo2, Globals2) },
+			{ globals__set_trace_level(Globals2, TraceLevel,
+				Globals) },
+			{ module_info_set_globals(ModuleInfo2, Globals,
+				ModuleInfo3) },
+			{ copy(Globals, GlobalsUnique) },
+			globals__io_set_globals(GlobalsUnique)
+		;
+			mercury_compile__backend_pass_by_preds_3(ProcIds,
+				PredId, PredInfo, ModuleInfo0, ModuleInfo3,
+				GlobalData0, GlobalData1, Code1)
+		)
 	),
 	mercury_compile__backend_pass_by_preds_2(PredIds,
-		ModuleInfo1, ModuleInfo, GlobalData1, GlobalData, Code2),
+		ModuleInfo3, ModuleInfo, GlobalData1, GlobalData, Code2),
 	{ list__append(Code1, Code2, Code) }.
 
 :- pred mercury_compile__backend_pass_by_preds_3(list(proc_id), pred_id,
@@ -1288,7 +1319,7 @@ mercury_compile__backend_pass_by_preds_3([ProcId | ProcIds], PredId, PredInfo,
 
 mercury_compile__backend_pass_by_preds_4(PredInfo, ProcInfo0, ProcId, PredId,
 		ModuleInfo0, ModuleInfo, GlobalData0, GlobalData, Proc) -->
-	globals__io_get_globals(Globals),
+	{ module_info_globals(ModuleInfo0, Globals) },
 	{ globals__lookup_bool_option(Globals, follow_code, FollowCode) },
 	{ globals__lookup_bool_option(Globals, prev_code, PrevCode) },
 	( { FollowCode = yes ; PrevCode = yes } ->
@@ -1335,8 +1366,7 @@ mercury_compile__backend_pass_by_preds_4(PredInfo, ProcInfo0, ProcId, PredId,
 				PredId, ProcId, ModuleInfo3),
 	{ module_info_get_cell_counter(ModuleInfo3, CellCounter0) },
 	{ generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo3,
-		Globals, GlobalData0, GlobalData1, CellCounter0, CellCounter,
-		Proc0) },
+		GlobalData0, GlobalData1, CellCounter0, CellCounter, Proc0) },
 	{ globals__lookup_bool_option(Globals, optimize, Optimize) },
 	( { Optimize = yes } ->
 		optimize__proc(Proc0, GlobalData1, Proc)

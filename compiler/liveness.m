@@ -58,7 +58,7 @@
 % slightly differently.  The runtime system needs access to the
 % typeinfo variables of any variable that is live at a continuation.
 % 
-% Hence, the invariant needed for alternate liveness calculation:
+% Hence, the invariant needed for typeinfo-liveness calculation:
 % 	a variable holding a typeinfo must be live at any continuation
 % 	where any variable whose type is described (in whole or in part)
 % 	by that typeinfo is live.
@@ -464,7 +464,7 @@ detect_deadness_in_goal_2(conj(Goals0), _, Deadness0, LiveInfo,
 detect_deadness_in_goal_2(par_conj(Goals0, SM), GoalInfo, Deadness0, LiveInfo,
 		Deadness, par_conj(Goals, SM)) :-
 	set__init(Union0),
-	goal_info_get_code_gen_nonlocals(GoalInfo, NonLocals),
+	liveness__get_nonlocals_and_typeinfos(LiveInfo, GoalInfo, NonLocals),
 	detect_deadness_in_par_conj(Goals0, Deadness0, NonLocals,
 		LiveInfo, Union0, Union, Goals),
 	set__union(Union, Deadness0, Deadness).
@@ -1110,7 +1110,8 @@ find_value_giving_occurrences([Var | Vars], LiveInfo, InstMapDelta,
 
 %-----------------------------------------------------------------------------%
 
-	% Get the nonlocals, and, if doing alternate liveness, add the
+
+	% Get the nonlocals, and, if doing typeinfo liveness, add the
 	% typeinfo vars for the nonlocals.
 
 :- pred liveness__get_nonlocals_and_typeinfos(live_info::in, hlds_goal_info::in,

@@ -45,6 +45,9 @@
 :- mode exprn_aux__args_contain_rval(in, in) is semidet.
 :- mode exprn_aux__args_contain_rval(in, out) is nondet.
 
+:- pred exprn_aux__substitute_lval_in_lval(lval, lval, lval, lval).
+:- mode exprn_aux__substitute_lval_in_lval(in, in, in, out) is det.
+
 :- pred exprn_aux__substitute_lval_in_rval(lval, lval, rval, rval).
 :- mode exprn_aux__substitute_lval_in_rval(in, in, in, out) is det.
 
@@ -87,6 +90,10 @@
 :- pred exprn_aux__maybe_rval_list_addrs(list(maybe(rval)),
 	list(code_addr), list(data_addr)).
 :- mode exprn_aux__maybe_rval_list_addrs(in, out, out) is det.
+
+:- func exprn_aux__var_lval_to_rval(prog_var, lval) = rval.
+
+:- func exprn_aux__lval_to_rval(lval) = rval.
 
 %------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%
@@ -426,9 +433,6 @@ exprn_aux__substitute_lval_in_mem_ref(OldLval, NewLval, MemRef0, MemRef) :-
 			Rval0, Rval),
 		MemRef = heap_ref(Rval, Tag, N)
 	).
-
-:- pred exprn_aux__substitute_lval_in_lval(lval, lval, lval, lval).
-:- mode exprn_aux__substitute_lval_in_lval(in, in, in, out) is det.
 
 exprn_aux__substitute_lval_in_lval(OldLval, NewLval, Lval0, Lval) :-
 	(
@@ -933,6 +937,10 @@ exprn_aux__maybe_rval_list_addrs([MaybeRval | MaybeRvals],
 		exprn_aux__maybe_rval_list_addrs(MaybeRvals,
 			CodeAddrs, DataAddrs)
 	).
+
+exprn_aux__var_lval_to_rval(_, Lval) = lval(Lval).
+
+exprn_aux__lval_to_rval(Lval) = lval(Lval).
 
 %------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%

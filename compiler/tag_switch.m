@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1999 The University of Melbourne.
+% Copyright (C) 1994-2000 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -222,7 +222,8 @@ tag_switch__generate(Cases, Var, CodeModel, CanFail, StoreMap, EndLabel,
 	% or if the "register" we get is likely to be slower than
 	% recomputing the tag from scratch.
 
-	code_info__produce_variable_in_reg(Var, VarCode, VarRval),
+	code_info__produce_variable_in_reg(Var, VarCode, VarLval),
+	{ VarRval = lval(VarLval) },
 	code_info__acquire_reg(r, PtagReg),
 	code_info__release_reg(PtagReg),
 	{

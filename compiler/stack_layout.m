@@ -253,7 +253,7 @@
 :- implementation.
 
 :- import_module globals, options, llds_out, trace.
-:- import_module hlds_data, hlds_pred, prog_data, prog_out.
+:- import_module hlds_data, hlds_pred, prog_data, prog_util, prog_out.
 :- import_module rtti, ll_pseudo_type_info, (inst), code_util.
 :- import_module assoc_list, bool, string, int, require.
 :- import_module map, term, set.
@@ -265,7 +265,9 @@
 
 stack_layout__generate_llds(ModuleInfo0, ModuleInfo, GlobalData,
 		PossiblyDynamicLayouts, StaticLayouts, LayoutLabels) :-
-	global_data_get_all_proc_layouts(GlobalData, ProcLayoutList),
+	global_data_get_all_proc_layouts(GlobalData, ProcLayoutList0),
+	list__filter(stack_layout__valid_proc_layout, ProcLayoutList0,
+		ProcLayoutList),
 
 	module_info_name(ModuleInfo0, ModuleName),
 	module_info_get_cell_counter(ModuleInfo0, CellCounter0),
@@ -336,6 +338,20 @@ stack_layout__generate_llds(ModuleInfo0, ModuleInfo, GlobalData,
 	PossiblyDynamicLayouts = ProcLayouts,
 	stack_layout__get_cell_counter(CellCounter, LayoutInfo, _),
 	module_info_set_cell_counter(ModuleInfo0, CellCounter, ModuleInfo).
+
+:- pred stack_layout__valid_proc_layout(proc_layout_info::in) is semidet.
+
+stack_layout__valid_proc_layout(ProcLayoutInfo) :-
+	ProcLayoutInfo = proc_layout_info(EntryLabel, _Detism,
+		_StackSlots, _SuccipLoc, _MaybeCallLabel, _MaxTraceReg,
+		_TraceSlotInfo, _ForceProcIdLayout, _InternalMap),
+	code_util__extract_proc_label_from_label(EntryLabel, ProcLabel),
+	(
+		ProcLabel = proc(_, _, DeclModule, Name, Arity, _),
+		\+ no_type_info_builtin(DeclModule, Name, Arity)
+	;
+		ProcLabel = special_proc(_, _, _, _, _, _)
+	).
 
 %---------------------------------------------------------------------------%
 

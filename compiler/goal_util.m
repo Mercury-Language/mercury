@@ -533,7 +533,10 @@ goal_util__name_apart_goalinfo(GoalInfo0, Must, Subn, GoalInfo) :-
 		MaybeFollowVars = no
 	;
 		MaybeFollowVars0 = yes(FollowVars0),
-		goal_util__rename_var_maps(FollowVars0, Must, Subn, FollowVars),
+		FollowVars0 = follow_vars(FollowVarsMap0, NextReserved),
+		goal_util__rename_var_maps(FollowVarsMap0, Must, Subn,
+			FollowVarsMap),
+		FollowVars = follow_vars(FollowVarsMap, NextReserved),
 		MaybeFollowVars = yes(FollowVars)
 	),
 	goal_info_set_follow_vars(GoalInfo6, MaybeFollowVars, GoalInfo).

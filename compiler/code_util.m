@@ -86,6 +86,9 @@
 :- pred code_util__arg_loc_to_register(arg_loc, lval).
 :- mode code_util__arg_loc_to_register(in, out) is det.
 
+:- pred code_util__max_mentioned_reg(list(lval), int).
+:- mode code_util__max_mentioned_reg(in, out) is det.
+
 	% Determine whether a goal might allocate some heap space,
 	% i.e. whether it contains any construction unifications
 	% or predicate calls.  BEWARE that this predicate is only
@@ -177,6 +180,9 @@
 
 :- pred code_util__lvals_in_lval(lval, list(lval)).
 :- mode code_util__lvals_in_lval(in, out) is det.
+
+:- pred code_util__lvals_in_lvals(list(lval), list(lval)).
+:- mode code_util__lvals_in_lvals(in, out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -376,6 +382,23 @@ code_util__extract_proc_label_from_label(exported(ProcLabel), ProcLabel).
 %-----------------------------------------------------------------------------%
 
 code_util__arg_loc_to_register(ArgLoc, reg(r, ArgLoc)).
+
+%-----------------------------------------------------------------------------%
+
+code_util__max_mentioned_reg(Lvals, MaxRegNum) :-
+	code_util__max_mentioned_reg_2(Lvals, 0, MaxRegNum).
+
+:- pred code_util__max_mentioned_reg_2(list(lval)::in, int::in, int::out)
+	is det.
+
+code_util__max_mentioned_reg_2([], MaxRegNum, MaxRegNum).
+code_util__max_mentioned_reg_2([Lval | Lvals], MaxRegNum0, MaxRegNum) :-
+	( Lval = reg(r, N) ->
+		int__max(MaxRegNum0, N, MaxRegNum1)
+	;
+		MaxRegNum1 = MaxRegNum0
+	),
+	code_util__max_mentioned_reg_2(Lvals, MaxRegNum1, MaxRegNum).
 
 %-----------------------------------------------------------------------------%
 
@@ -769,6 +792,12 @@ code_util__output_args([_V - arg_info(Loc, Mode) | Args], Vs) :-
 	).
 
 %-----------------------------------------------------------------------------%
+
+code_util__lvals_in_lvals([], []).
+code_util__lvals_in_lvals([First | Rest], Lvals) :-
+	code_util__lvals_in_lval(First, FirstLvals),
+	code_util__lvals_in_lvals(Rest, RestLvals),
+	list__append(FirstLvals, RestLvals, Lvals).
 
 code_util__lvals_in_rval(lval(Lval), [Lval | Lvals]) :-
 	code_util__lvals_in_lval(Lval, Lvals).

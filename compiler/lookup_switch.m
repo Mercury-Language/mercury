@@ -16,7 +16,7 @@
 % field macro) in the array of results. The array is padded with "0"s for
 % cases that are not covered. This is fine, since we do the lookup after
 % we check the bit-vector for the appropriate case.
-
+ 
 % The current implementation works out whether or not it can do a lookup
 % switch by generating code for each case and looking to see that no code
 % got generated (ie only the exprn cache got modified) and that the output
@@ -48,21 +48,18 @@
 
 :- type rval_map == map(prog_var, list(pair(int, rval))).
 
-:- pred lookup_switch__is_lookup_switch(prog_var, cases_list, hlds_goal_info,
-		can_fail, int, code_model, int, int, can_fail, can_fail,
-		list(prog_var), case_consts, maybe(set(prog_var)),
-		code_info, code_info).
-:- mode lookup_switch__is_lookup_switch(in, in, in, in, in, in, out, out,
-		out, out, out, out, out, in, out) is semidet.
+:- pred lookup_switch__is_lookup_switch(prog_var::in, cases_list::in,
+	hlds_goal_info::in, can_fail::in, int::in, store_map::in,
+	branch_end::in, branch_end::out, code_model::in, int::out, int::out,
+	can_fail::out, can_fail::out, list(prog_var)::out, case_consts::out,
+	maybe(set(prog_var))::out, code_info::in, code_info::out) is semidet.
 
 	% Generate code for a switch using a lookup table.
 
-:- pred lookup_switch__generate(prog_var, list(prog_var), case_consts,
-		int, int, can_fail, can_fail, maybe(set(prog_var)),
-		store_map, branch_end, branch_end, code_tree,
-		code_info, code_info).
-:- mode lookup_switch__generate(in, in, in, in, in, in, in, in, in,
-		in, out, out, in, out) is det.
+:- pred lookup_switch__generate(prog_var::in, list(prog_var)::in,
+	case_consts::in, int::in, int::in, can_fail::in, can_fail::in,
+	maybe(set(prog_var))::in, store_map::in, branch_end::in,
+	code_tree::out, code_info::in, code_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -79,10 +76,11 @@
 	% We need the code_info structure to generate code for the cases to
 	% get the constants (if they exist). We can't throw it away at the
 	% end because we may have allocated some new static ground term labels.
-lookup_switch__is_lookup_switch(CaseVar, TaggedCases, GoalInfo,
-		CanFail0, ReqDensity, CodeModel, FirstVal, LastVal,
-		NeedRangeCheck, NeedBitVecTest, OutVars,
-			CaseValues, MLiveness) -->
+lookup_switch__is_lookup_switch(CaseVar, TaggedCases, GoalInfo, SwitchCanFail,
+		ReqDensity, StoreMap, MaybeEnd0, MaybeEnd, CodeModel,
+		FirstVal, LastVal, NeedRangeCheck, NeedBitVecTest, OutVars,
+		CaseValues, MLiveness) -->
+
 		% Since lookup switches rely on static ground terms to
 		% work efficiently, there is no point in using a lookup
 		% switch if static-ground-terms are not enabled. Well,
@@ -118,7 +116,8 @@ lookup_switch__is_lookup_switch(CaseVar, TaggedCases, GoalInfo,
 	;
 		{ NeedBitVecTest0 = can_fail }
 	),
-	( { CanFail0 = can_fail } ->
+	(
+		{ SwitchCanFail = can_fail },
 		% For semidet switches, we normally need to check that
 		% the variable is in range before we index into the jump table.
 		% However, if the range of the type is sufficiently small,
@@ -129,8 +128,10 @@ lookup_switch__is_lookup_switch(CaseVar, TaggedCases, GoalInfo,
 		code_info__get_module_info(ModuleInfo),
 		{ classify_type(Type, ModuleInfo, TypeCategory) },
 		(
-			dense_switch__type_range(TypeCategory, Type, TypeRange),
-			{ dense_switch__calc_density(NumCases, TypeRange, DetDensity) },
+			dense_switch__type_range(TypeCategory, Type,
+				TypeRange),
+			{ dense_switch__calc_density(NumCases, TypeRange,
+				DetDensity) },
 			{ DetDensity > ReqDensity }
 		->
 			{ NeedRangeCheck = cannot_fail },
@@ -138,26 +139,26 @@ lookup_switch__is_lookup_switch(CaseVar, TaggedCases, GoalInfo,
 			{ FirstVal = 0 },
 			{ LastVal is TypeRange - 1 }
 		;
-			{ NeedRangeCheck = CanFail0 },
+			{ NeedRangeCheck = SwitchCanFail },
 			{ NeedBitVecTest = NeedBitVecTest0 },
 			{ FirstVal = FirstCaseVal },
 			{ LastVal = LastCaseVal }
 		)
 	;
-		{ NeedRangeCheck = CanFail0 },
+		{ SwitchCanFail = cannot_fail },
+		{ NeedRangeCheck = cannot_fail },
 		{ NeedBitVecTest = NeedBitVecTest0 },
 		{ FirstVal = FirstCaseVal },
 		{ LastVal = LastCaseVal }
 	),
 	lookup_switch__figure_out_output_vars(GoalInfo, OutVars),
-	lookup_switch__generate_constants(TaggedCases, OutVars, CodeModel,
-		CaseValues, MLiveness).
+	lookup_switch__generate_constants(TaggedCases, OutVars, StoreMap,
+		MaybeEnd0, MaybeEnd, CodeModel, CaseValues, MLiveness).
 
 %---------------------------------------------------------------------------%
 
-:- pred lookup_switch__figure_out_output_vars(hlds_goal_info, list(prog_var),
-		code_info, code_info).
-:- mode lookup_switch__figure_out_output_vars(in, out, in, out) is det.
+:- pred lookup_switch__figure_out_output_vars(hlds_goal_info::in,
+	list(prog_var)::out, code_info::in, code_info::out) is det.
 
 	% Figure out which variables are bound in the switch.
 	% We do this by using the current instmap and the instmap delta in
@@ -189,36 +190,43 @@ lookup_switch__figure_out_output_vars(GoalInfo, OutVars) -->
 
 %---------------------------------------------------------------------------%
 
-:- pred lookup_switch__generate_constants(cases_list, list(prog_var),
-		code_model, case_consts, maybe(set(prog_var)),
-		code_info, code_info).
-:- mode lookup_switch__generate_constants(in, in, in, out, out,
-		in, out) is semidet.
+:- pred lookup_switch__generate_constants(cases_list::in, list(prog_var)::in,
+	store_map::in, branch_end::in, branch_end::out, code_model::in,
+	case_consts::out, maybe(set(prog_var))::out,
+	code_info::in, code_info::out) is semidet.
 
 	% To figure out if the outputs are constants, we generate code for
 	% the cases, and check to see if each of the output vars is a constant,
 	% and that no actual code was generated for the goal.
-lookup_switch__generate_constants([], _Vars, _CodeModel, [], no) --> [].
-lookup_switch__generate_constants([Case|Cases], Vars, CodeModel,
-		[CaseVal|Rest], yes(Liveness)) -->
+lookup_switch__generate_constants([], _Vars, _StoreMap, MaybeEnd, MaybeEnd,
+		_CodeModel, [], no) --> [].
+lookup_switch__generate_constants([Case | Cases], Vars, StoreMap,
+		MaybeEnd0, MaybeEnd, CodeModel,
+		[CaseVal | Rest], yes(Liveness)) -->
 	{ Case = case(_, int_constant(CaseTag), _, Goal) },
 	code_info__remember_position(BranchStart),
 	code_gen__generate_goal(CodeModel, Goal, Code),
-	code_info__get_forward_live_vars(Liveness),
 	{ tree__tree_of_lists_is_empty(Code) },
+	code_info__get_forward_live_vars(Liveness),
 	lookup_switch__get_case_rvals(Vars, CaseRvals),
 	{ CaseVal = CaseTag - CaseRvals },
+		% EndCode code may contain instructions that place Vars
+		% in the locations dictated by StoreMap, and thus does not have
+		% to be empty. (The array lookup code will put those variables
+		% in those locations directly.)
+	code_info__generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd1,
+		_EndCode),
 	code_info__reset_to_position(BranchStart),
-	lookup_switch__generate_constants(Cases, Vars, CodeModel, Rest, _).
+	lookup_switch__generate_constants(Cases, Vars, StoreMap,
+		MaybeEnd1, MaybeEnd, CodeModel, Rest, _).
 
 %---------------------------------------------------------------------------%
 
-:- pred lookup_switch__get_case_rvals(list(prog_var), list(rval),
-		code_info, code_info).
-:- mode lookup_switch__get_case_rvals(in, out, in, out) is semidet.
+:- pred lookup_switch__get_case_rvals(list(prog_var)::in, list(rval)::out,
+	code_info::in, code_info::out) is semidet.
 
 lookup_switch__get_case_rvals([], []) --> [].
-lookup_switch__get_case_rvals([Var|Vars], [Rval|Rvals]) -->
+lookup_switch__get_case_rvals([Var | Vars], [Rval | Rvals]) -->
 	code_info__produce_variable(Var, Code, Rval),
 	{ tree__tree_of_lists_is_empty(Code) },
 	code_info__get_globals(Globals),
@@ -232,11 +240,10 @@ lookup_switch__get_case_rvals([Var|Vars], [Rval|Rvals]) -->
 	% lookup_switch__rval_is_constant(Rval, ExprnOpts) is
 	% true iff Rval is a constant. This depends on the options governing
 	% nonlocal gotos, asm labels enabled, and static ground terms, etc.
-:- pred lookup_switch__rval_is_constant(rval, exprn_opts).
-:- mode lookup_switch__rval_is_constant(in, in) is semidet.
+:- pred lookup_switch__rval_is_constant(rval::in, exprn_opts::in) is semidet.
 
 	% Based on code_exprn__rval_is_constant, but differs in
-	% that it doesn't happen with respect to the expresion cache.
+	% that it doesn't happen with respect to the expression cache.
 
 lookup_switch__rval_is_constant(const(Const), ExprnOpts) :-
 	exprn_aux__const_is_constant(Const, ExprnOpts, yes).
@@ -257,11 +264,11 @@ lookup_switch__rval_is_constant(create(_, Args, _, StatDyn, _, _, _),
 		lookup_switch__rvals_are_constant(Args, ExprnOpts)
 	).
 
-:- pred lookup_switch__rvals_are_constant(list(maybe(rval)), exprn_opts).
-:- mode lookup_switch__rvals_are_constant(in, in) is semidet.
+:- pred lookup_switch__rvals_are_constant(list(maybe(rval))::in,
+	exprn_opts::in) is semidet.
 
 lookup_switch__rvals_are_constant([], _).
-lookup_switch__rvals_are_constant([MRval|MRvals], ExprnOpts) :-
+lookup_switch__rvals_are_constant([MRval | MRvals], ExprnOpts) :-
 	MRval = yes(Rval),
 	lookup_switch__rval_is_constant(Rval, ExprnOpts),
 	lookup_switch__rvals_are_constant(MRvals, ExprnOpts).
@@ -270,11 +277,12 @@ lookup_switch__rvals_are_constant([MRval|MRvals], ExprnOpts) :-
 
 lookup_switch__generate(Var, OutVars, CaseValues,
 		StartVal, EndVal, NeedRangeCheck, NeedBitVecCheck,
-		MLiveness, StoreMap, MaybeEnd0, MaybeEnd, Code) -->
-		% Evaluate the variable which we are going to be switching on
+		MLiveness, StoreMap, MaybeEnd0, Code) -->
+
+		% Evaluate the variable which we are going to be switching on.
 	code_info__produce_variable(Var, VarCode, Rval),
 		% If the case values start at some number other than 0,
-		% then subtract that number to give us a zero-based index
+		% then subtract that number to give us a zero-based index.
 	{ StartVal = 0 ->
 		Index = Rval
 	;
@@ -282,7 +290,7 @@ lookup_switch__generate(Var, OutVars, CaseValues,
 	},
 		% If the switch is not locally deterministic, we need to
 		% check that the value of the variable lies within the
-		% appropriate range
+		% appropriate range.
 	(
 		{ NeedRangeCheck = can_fail },
 		{ Difference is EndVal - StartVal },
@@ -314,7 +322,7 @@ lookup_switch__generate(Var, OutVars, CaseValues,
 		{ MLiveness = no },
 		{ error("lookup_switch__generate: no liveness!") }
 	),
-	code_info__generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd,
+	code_info__generate_branch_end(StoreMap, MaybeEnd0, _MaybeEnd,
 		LookupCode),
 		% Assemble to code together
 	{ Comment = node([comment("lookup switch") - ""]) },
@@ -328,10 +336,9 @@ lookup_switch__generate(Var, OutVars, CaseValues,
 
 %------------------------------------------------------------------------------%
 
-:- pred lookup_switch__generate_bitvec_test(rval, case_consts, int, int,
-		code_tree, code_info, code_info).
-:- mode lookup_switch__generate_bitvec_test(in, in, in, in, out,
-		in, out) is det.
+:- pred lookup_switch__generate_bitvec_test(rval::in, case_consts::in,
+	int::in, int::in, code_tree::out, code_info::in, code_info::out)
+	is det.
 
 	% The bitvector is an array of words (where we use the first
 	% 32 bits of each word). Each bit represents a tag value for
@@ -366,9 +373,8 @@ lookup_switch__generate_bitvec_test(Index, CaseVals, Start, _End,
 			Word) },
 	code_info__fail_if_rval_is_false(HasBit, CheckCode).
 
-
-:- pred lookup_switch__get_word_bits(int, code_info, code_info).
-:- mode lookup_switch__get_word_bits(out, in, out) is det.
+:- pred lookup_switch__get_word_bits(int::out, code_info::in, code_info::out)
+	is det.
 
 	% Prevent cross-compilation errors by making sure that
 	% the bitvector uses a number of bits that will fit both
@@ -383,8 +389,8 @@ lookup_switch__get_word_bits(WordBits) -->
 	{ getopt__lookup_int_option(Options, bits_per_word, TargetWordBits) },
 	{ int__min(HostWordBits, TargetWordBits, WordBits) }.
 
-:- pred generate_bit_vec(case_consts, int, int, rval, code_info, code_info).
-:- mode generate_bit_vec(in, in, in, out, in, out) is det.
+:- pred generate_bit_vec(case_consts::in, int::in, int::in, rval::out,
+	code_info::in, code_info::out) is det.
 
 	% we generate the bitvector by iterating through the cases
 	% marking the bit for each case. (We represent the bitvector
@@ -400,12 +406,11 @@ generate_bit_vec(CaseVals, Start, WordBits, BitVec) -->
 	{ BitVec = create(0, Args, uniform(no), must_be_static,
 		CellNo, "lookup_switch_bit_vector", Reuse) }.
 
-:- pred generate_bit_vec_2(case_consts, int, int,
-			map(int, int), map(int, int)).
-:- mode generate_bit_vec_2(in, in, in, in, out) is det.
+:- pred generate_bit_vec_2(case_consts::in, int::in, int::in,
+	map(int, int)::in, map(int, int)::out) is det.
 
 generate_bit_vec_2([], _, _, Bits, Bits).
-generate_bit_vec_2([Tag-_|Rest], Start, WordBits, Bits0, Bits) :-
+generate_bit_vec_2([Tag - _ | Rest], Start, WordBits, Bits0, Bits) :-
 	Val is Tag - Start,
 	Word is Val // WordBits,
 	Offset is Val mod WordBits,
@@ -419,16 +424,16 @@ generate_bit_vec_2([Tag-_|Rest], Start, WordBits, Bits0, Bits) :-
 	map__set(Bits0, Word, X1, Bits1),
 	generate_bit_vec_2(Rest, Start, WordBits, Bits1, Bits).
 
-:- pred generate_bit_vec_args(list(pair(int)), int, list(maybe(rval))).
-:- mode generate_bit_vec_args(in, in, out) is det.
+:- pred generate_bit_vec_args(list(pair(int))::in, int::in,
+	list(maybe(rval))::out) is det.
 
 generate_bit_vec_args([], _, []).
-generate_bit_vec_args([Word - Bits|Rest], Count, [yes(Rval)|Rvals]) :-
+generate_bit_vec_args([Word - Bits | Rest], Count, [yes(Rval) | Rvals]) :-
 	(
 		Count < Word
 	->
 		WordVal = 0,
-		Remainder = [Word - Bits|Rest]
+		Remainder = [Word - Bits | Rest]
 	;
 		WordVal = Bits,
 		Remainder = Rest
@@ -439,27 +444,25 @@ generate_bit_vec_args([Word - Bits|Rest], Count, [yes(Rval)|Rvals]) :-
 
 %------------------------------------------------------------------------------%
 
-:- pred lookup_switch__generate_terms(rval, list(prog_var),
-		case_consts, int, code_info, code_info).
-:- mode lookup_switch__generate_terms(in, in, in, in, in, out) is det.
+:- pred lookup_switch__generate_terms(rval::in, list(prog_var)::in,
+	case_consts::in, int::in, code_info::in, code_info::out) is det.
 
 	% Add an expression to the expression cache in the code_info
 	% structure for each of the output variables of the lookup
 	% switch. This is done by creating a `create' term for the
 	% array, and caching an expression for the variable to get the
-	% Index'th field of that therm.
+	% Index'th field of that term.
 
 lookup_switch__generate_terms(Index, OutVars, CaseVals, Start) -->
 	{ map__init(Empty) },
 	{ rearrange_vals(OutVars, CaseVals, Start, Empty, ValMap) },
 	lookup_switch__generate_terms_2(Index, OutVars, ValMap).
 
-:- pred lookup_switch__generate_terms_2(rval, list(prog_var),
-		rval_map, code_info, code_info).
-:- mode lookup_switch__generate_terms_2(in, in, in, in, out) is det.
+:- pred lookup_switch__generate_terms_2(rval::in, list(prog_var)::in,
+	rval_map::in, code_info::in, code_info::out) is det.
 
 lookup_switch__generate_terms_2(_Index, [], _Map) --> [].
-lookup_switch__generate_terms_2(Index, [Var|Vars], Map) -->
+lookup_switch__generate_terms_2(Index, [Var | Vars], Map) -->
 	{ map__lookup(Map, Var, Vals0) },
 	{ list__sort(Vals0, Vals) },
 	{ construct_args(Vals, 0, Args) },
@@ -467,22 +470,22 @@ lookup_switch__generate_terms_2(Index, [Var|Vars], Map) -->
 	{ Reuse = no },
 	{ ArrayTerm = create(0, Args, uniform(no), must_be_static,
 		CellNo, "lookup_switch_data", Reuse) },
-	{ LookupTerm = lval(field(yes(0), ArrayTerm, Index)) },
-	code_info__cache_expression(Var, LookupTerm),
+	{ LookupLval = field(yes(0), ArrayTerm, Index) },
+	code_info__assign_lval_to_var(Var, LookupLval),
 	lookup_switch__generate_terms_2(Index, Vars, Map).
 
-:- pred construct_args(list(pair(int, rval)), int, list(maybe(rval))).
-:- mode construct_args(in, in, out) is det.
+:- pred construct_args(list(pair(int, rval))::in, int::in,
+	list(maybe(rval))::out) is det.
 
 construct_args([], _, []).
-construct_args([Index - Rval|Rest], Count0, [yes(Arg)|Args]) :-
+construct_args([Index - Rval | Rest], Count0, [yes(Arg) | Args]) :-
 	(
 		Count0 < Index
 	->
 		% If this argument (array element) is a place-holder and
 		% will never be referenced, just fill it in with a `0'
 		Arg = const(int_const(0)),
-		Remainder = [Index - Rval|Rest]
+		Remainder = [Index - Rval | Rest]
 	;
 		Arg = Rval,
 		Remainder = Rest
@@ -492,28 +495,29 @@ construct_args([Index - Rval|Rest], Count0, [yes(Arg)|Args]) :-
 
 %------------------------------------------------------------------------------%
 
-:- pred rearrange_vals(list(prog_var), case_consts, int, rval_map, rval_map).
-:- mode rearrange_vals(in, in, in, in, out) is det.
+:- pred rearrange_vals(list(prog_var)::in, case_consts::in, int::in,
+	rval_map::in, rval_map::out) is det.
 
 	% For the purpose of constructing the terms, the case_consts
 	% structure is a bit inconvenient, so we rearrange the data
 	% into a map from var to list of tag-value pairs.
+
 rearrange_vals(_Vars, [], _Start, Map, Map).
-rearrange_vals(Vars, [Tag - Rvals|Rest], Start, Map0, Map) :-
+rearrange_vals(Vars, [Tag - Rvals | Rest], Start, Map0, Map) :-
 	assoc_list__from_corresponding_lists(Vars, Rvals, Pairs),
 	Index is Tag - Start,
 	rearrange_vals_2(Pairs, Index, Map0, Map1),
 	rearrange_vals(Vars, Rest, Start, Map1, Map).
 
-:- pred rearrange_vals_2(list(pair(prog_var, rval)), int, rval_map, rval_map).
-:- mode rearrange_vals_2(in, in, in, out) is det.
+:- pred rearrange_vals_2(list(pair(prog_var, rval))::in, int::in,
+	rval_map::in, rval_map::out) is det.
 
 rearrange_vals_2([], _, Map, Map).
-rearrange_vals_2([Var - Rval|Rest], Tag, Map0, Map) :-
+rearrange_vals_2([Var - Rval | Rest], Tag, Map0, Map) :-
 	(
 		map__search(Map0, Var, Vals0)
 	->
-		Vals = [Tag - Rval|Vals0]
+		Vals = [Tag - Rval | Vals0]
 	;
 		Vals = [Tag - Rval]
 	),

@@ -1065,9 +1065,12 @@ hlds_out__write_goal_a(Goal - GoalInfo, ModuleInfo, VarSet, AppendVarnums,
 		(
 			{ MaybeFollowVars = yes(FollowVars) }
 		->
-			{ map__to_assoc_list(FollowVars, FVlist) },
+			{ FollowVars = follow_vars(FollowVarsMap, NextReg) },
+			{ map__to_assoc_list(FollowVarsMap, FVlist) },
 			hlds_out__write_indent(Indent),
-			io__write_string("% follow vars:\n"),
+			io__write_string("% follow vars: "),
+			io__write_int(NextReg),
+			io__write_string("\n"),
 			hlds_out__write_var_to_lvals(FVlist,
 				VarSet, AppendVarnums, Indent)
 		;

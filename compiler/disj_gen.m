@@ -248,6 +248,15 @@ disj_gen__generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
 			code_info__reset_resume_known(BranchStart)
 		),
 
+			% Forget the variables that are needed only at the
+			% resumption point at the start of the next disjunct,
+			% so that we don't generate exceptions when their
+			% storage is clobbered by the movement of the live
+			% variables to the places indicated in the store map.
+		code_info__pop_resume_point,
+		code_info__pickup_zombies(Zombies),
+		code_info__make_vars_forward_dead(Zombies),
+
 			% Put every variable whose value is needed after
 			% the disjunction to the place indicated by StoreMap,
 			% and accumulate information about the code_info state

@@ -1837,7 +1837,7 @@ simplify__disj([Goal0 | Goals0], RevGoals0, Goals,  PostBranchInstMaps0,
 	****/
 
 :- pred simplify__fixup_disj(list(hlds_goal), determinism, bool,
-	hlds_goal_info, follow_vars, hlds_goal_expr,
+	hlds_goal_info, store_map, hlds_goal_expr,
 	simplify_info, simplify_info).
 :- mode simplify__fixup_disj(in, in, in, in, in, out, in, out) is det.
 
@@ -1864,7 +1864,7 @@ simplify__fixup_disj(Disjuncts, _, _OutputVars, GoalInfo, SM,
 	%		Disjunct3
 	%	).
 
-:- pred det_disj_to_ite(list(hlds_goal), hlds_goal_info, follow_vars,
+:- pred det_disj_to_ite(list(hlds_goal), hlds_goal_info, store_map,
 	hlds_goal).
 :- mode det_disj_to_ite(in, in, in, out) is det.
 

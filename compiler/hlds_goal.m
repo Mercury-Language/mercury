@@ -350,11 +350,21 @@
 				% The only legal lvals in the range are
 				% stackvars and framevars.
 
-:- type follow_vars	==	map(prog_var, lval).
+:- type follow_vars_map	==	map(prog_var, lval).
+
+:- type follow_vars	--->	follow_vars(follow_vars_map, int).
 				% Advisory information about where variables
-				% ought to be put next. The legal range
-				% includes the nonexistent register r(-1),
-				% which indicates any available register.
+				% ought to be put next. Variables may or may
+				% not appear in the map. If they do, then the
+				% associated lval says where the value of that
+				% variable ought to be put when it is computed,
+				% or, if the lval refers to the nonexistent
+				% register r(-1), it says that it should be
+				% put into an available register. The integer
+				% in the second half of the pair gives the
+				% number of the first register that is
+				% not reserved for other purposes, and is
+				% free to hold such variables.
 
 :- type store_map	==	map(prog_var, lval).
 				% Authoritative information about where
