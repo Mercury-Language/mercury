@@ -30,7 +30,7 @@
 				
 				% The front-end annotates each call with
 				% its mode
-			;	call(pred_id, mode_id, list(term))
+			;	call(pred_id, mode_id, list(var_id))
 
 				% Deterministic disjunctions are converted
 				% into case statements by the compiler
