@@ -57,3 +57,10 @@ solutions(P, L) :-
 	findall(X, call(P, X), L).
 
 %-----------------------------------------------------------------------------%
+
+% This is buggy in the backwards mode, but it will just have to do for
+% the moment.
+
+type_to_univ(X, X).
+
+%-----------------------------------------------------------------------------%
