@@ -6,32 +6,32 @@ main_target: check
 # Generate the .exp files that are used as a basis of comparison to check
 # the correctness of the code emitted by the Mercury compiler.
 exp:
-	for dir in $(NUPROLOG_SUBDIRS); do \
+	+for dir in $(NUPROLOG_SUBDIRS); do \
 		(cd $$dir && mmake $(MMAKEFLAGS) exp) || exit 1; \
 	done
 
 # run the tests
 check:
-	for dir in $(SUBDIRS); do \
+	+for dir in $(SUBDIRS); do \
 		(cd $$dir && mmake $(MMAKEFLAGS) check) || exit 1; \
 	done
 
 dep:
-	for dir in $(SUBDIRS); do \
+	+for dir in $(SUBDIRS); do \
 		(cd $$dir && mmake $(MMAKEFLAGS) dep) || exit 1; \
 	done
 
 depend:
-	for dir in $(SUBDIRS); do \
+	+for dir in $(SUBDIRS); do \
 		(cd $$dir && mmake $(MMAKEFLAGS) depend) || exit 1; \
 	done
 
 realclean:
-	for dir in $(SUBDIRS); do \
+	+for dir in $(SUBDIRS); do \
 		(cd $$dir && mmake $(MMAKEFLAGS) realclean) || exit 1; \
 	done
 
 clean:
-	for dir in $(SUBDIRS); do \
+	+for dir in $(SUBDIRS); do \
 		(cd $$dir && mmake $(MMAKEFLAGS) clean) || exit 1; \
 	done

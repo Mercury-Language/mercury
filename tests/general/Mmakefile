@@ -136,32 +136,32 @@ all_local:	$(PROGS)
 SUBDIRS = accumulator
 
 check_subdirs:
-	for dir in $(SUBDIRS); do \
+	+for dir in $(SUBDIRS); do \
 		(cd $$dir && $(SUBDIR_MMAKE) check) || exit 1; \
 	done
 
 dep_subdirs:
-	for dir in $(SUBDIRS); do \
+	+for dir in $(SUBDIRS); do \
 		(cd $$dir && $(SUBDIR_MMAKE) dep) || exit 1; \
 	done
 
 depend_subdirs:
-	for dir in $(SUBDIRS); do \
+	+for dir in $(SUBDIRS); do \
 		(cd $$dir && $(SUBDIR_MMAKE) depend) || exit 1; \
 	done
 
 realclean_subdirs:
-	for dir in $(SUBDIRS); do \
+	+for dir in $(SUBDIRS); do \
 		(cd $$dir && $(SUBDIR_MMAKE) realclean) || exit 1; \
 	done
 
 clean_subdirs:
-	for dir in $(SUBDIRS); do \
+	+for dir in $(SUBDIRS); do \
 		(cd $$dir && $(SUBDIR_MMAKE) clean) || exit 1; \
 	done
 
 all_subdirs:
-	for dir in $(SUBDIRS); do \
+	+for dir in $(SUBDIRS); do \
 		(cd $$dir && $(SUBDIR_MMAKE) all) || exit 1; \
 	done
 

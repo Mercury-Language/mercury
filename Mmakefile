@@ -59,65 +59,65 @@ dep: dep_library dep_browser dep_compiler dep_profiler dep_deep_profiler
 dep_library: library/$(deps_subdir)library.dep
 
 library/$(deps_subdir)library.dep:
-	cd library && $(SUBDIR_MMAKE) depend
+	+cd library && $(SUBDIR_MMAKE) depend
 
 .PHONY: dep_browser
 dep_browser: browser/$(deps_subdir)mdb.dep
 
 browser/$(deps_subdir)mdb.dep:
-	cd browser && $(SUBDIR_MMAKE) depend
+	+cd browser && $(SUBDIR_MMAKE) depend
 
 .PHONY: dep_compiler
 dep_compiler: compiler/$(deps_subdir)mercury_compile.dep
 
 compiler/$(deps_subdir)mercury_compile.dep: library/$(deps_subdir)library.dep
-	cd compiler && $(SUBDIR_MMAKE) depend
+	+cd compiler && $(SUBDIR_MMAKE) depend
 
 .PHONY: dep_profiler
 dep_profiler: profiler/$(deps_subdir)mercury_profile.dep
 
 profiler/$(deps_subdir)mercury_profile.dep: library/$(deps_subdir)library.dep
-	cd profiler && $(SUBDIR_MMAKE) depend
+	+cd profiler && $(SUBDIR_MMAKE) depend
 
 .PHONY: dep_deep_profiler
 dep_deep_profiler: deep_profiler/$(deps_subdir)mdprof_cgi.dep \
 		deep_profiler/$(deps_subdir)mdprof_server.dep
 
 deep_profiler/$(deps_subdir)mdprof_cgi.dep: library/$(deps_subdir)library.dep
-	cd deep_profiler && $(SUBDIR_MMAKE) mdprof_cgi.depend
+	+cd deep_profiler && $(SUBDIR_MMAKE) mdprof_cgi.depend
 
 deep_profiler/$(deps_subdir)mdprof_server.dep: library/$(deps_subdir)library.dep
-	cd deep_profiler && $(SUBDIR_MMAKE) mdprof_server.depend
+	+cd deep_profiler && $(SUBDIR_MMAKE) mdprof_server.depend
 
 # depend_library MUST be done before depend_compiler and depend_profiler
 
 .PHONY: depend
 depend:
-	cd library && $(SUBDIR_MMAKE) depend
-	cd browser && $(SUBDIR_MMAKE) depend
-	cd compiler && $(SUBDIR_MMAKE) depend
-	cd profiler && $(SUBDIR_MMAKE) depend
-	cd deep_profiler && $(SUBDIR_MMAKE) depend
+	+cd library && $(SUBDIR_MMAKE) depend
+	+cd browser && $(SUBDIR_MMAKE) depend
+	+cd compiler && $(SUBDIR_MMAKE) depend
+	+cd profiler && $(SUBDIR_MMAKE) depend
+	+cd deep_profiler && $(SUBDIR_MMAKE) depend
 
 .PHONY: depend_library
 depend_library:
-	cd library && $(SUBDIR_MMAKE) depend
+	+cd library && $(SUBDIR_MMAKE) depend
 
 .PHONY: depend_browser
 depend_browser:
-	cd browser && $(SUBDIR_MMAKE) depend
+	+cd browser && $(SUBDIR_MMAKE) depend
 
 .PHONY: depend_compiler
 depend_compiler:
-	cd compiler && $(SUBDIR_MMAKE) depend
+	+cd compiler && $(SUBDIR_MMAKE) depend
 
 .PHONY: depend_profiler
 depend_profiler:
-	cd profiler && $(SUBDIR_MMAKE) depend
+	+cd profiler && $(SUBDIR_MMAKE) depend
 
 .PHONY: depend_deep_profiler
 depend_deep_profiler:
-	cd deep_profiler && $(SUBDIR_MMAKE) depend
+	+cd deep_profiler && $(SUBDIR_MMAKE) depend
 
 #-----------------------------------------------------------------------------#
 
@@ -126,53 +126,53 @@ all: README INSTALL mercury-compiler.spec $(SUBDIRS)
 
 .PHONY: util
 util: scripts
-	cd util && $(SUBDIR_MMAKE)
+	+cd util && $(SUBDIR_MMAKE)
 
 .PHONY: scripts
 scripts:
-	cd scripts && $(SUBDIR_MMAKE)
+	+cd scripts && $(SUBDIR_MMAKE)
 
 .PHONY: boehm_gc
 boehm_gc: scripts
-	gc_grade=`scripts/ml --grade $(GRADE) --print-gc-grade`; \
+	+gc_grade=`scripts/ml --grade $(GRADE) --print-gc-grade`; \
 	cd boehm_gc && $(SUBDIR_MMAKE) GC_GRADE=$$gc_grade
 
 .PHONY: runtime
 runtime: scripts boehm_gc
-	cd runtime && $(SUBDIR_MMAKE)
+	+cd runtime && $(SUBDIR_MMAKE)
 
 .PHONY: library
 library: dep_library scripts util boehm_gc runtime
-	cd library && $(SUBDIR_MMAKE)
+	+cd library && $(SUBDIR_MMAKE)
 
 .PHONY: browser
 browser: dep_browser scripts util boehm_gc runtime library
-	cd browser && $(SUBDIR_MMAKE)
+	+cd browser && $(SUBDIR_MMAKE)
 
 .PHONY: runtime
 trace: scripts boehm_gc runtime library browser
-	cd trace && $(SUBDIR_MMAKE)
+	+cd trace && $(SUBDIR_MMAKE)
 
 .PHONY: compiler
 compiler: dep_compiler scripts util boehm_gc runtime library browser trace
-	cd compiler && $(SUBDIR_MMAKE)
+	+cd compiler && $(SUBDIR_MMAKE)
 
 .PHONY: libmmc
 libmmc: dep_compiler scripts util boehm_gc runtime library browser trace
-	cd compiler && $(SUBDIR_MMAKE) libmmc
+	+cd compiler && $(SUBDIR_MMAKE) libmmc
 
 .PHONY: doc
 doc: scripts util
-	cd doc && $(SUBDIR_MMAKE)
+	+cd doc && $(SUBDIR_MMAKE)
 
 .PHONY: profiler
 profiler: dep_profiler scripts util boehm_gc runtime library browser trace
-	cd profiler && $(SUBDIR_MMAKE)
+	+cd profiler && $(SUBDIR_MMAKE)
 
 .PHONY: deep_profiler
 deep_profiler: dep_deep_profiler scripts util boehm_gc runtime library \
 		browser trace
-	cd deep_profiler && $(SUBDIR_MMAKE)
+	+cd deep_profiler && $(SUBDIR_MMAKE)
 
 #-----------------------------------------------------------------------------#
 
@@ -181,23 +181,23 @@ tags: tags_compiler tags_library tags_browser tags_profiler tags_deep_profiler
 
 .PHONY: tags_compiler
 tags_compiler:
-	cd compiler && $(SUBDIR_MMAKE) tags
+	+cd compiler && $(SUBDIR_MMAKE) tags
 
 .PHONY: tags_library
 tags_library:
-	cd library && $(SUBDIR_MMAKE) tags
+	+cd library && $(SUBDIR_MMAKE) tags
 
 .PHONY: tags_browser
 tags_browser:
-	cd browser && $(SUBDIR_MMAKE) tags
+	+cd browser && $(SUBDIR_MMAKE) tags
 
 .PHONY: tags_profiler
 tags_profiler:
-	cd profiler && $(SUBDIR_MMAKE) tags
+	+cd profiler && $(SUBDIR_MMAKE) tags
 
 .PHONY: tags_deep_profiler
 tags_deep_profiler:
-	cd deep_profiler && $(SUBDIR_MMAKE) tags
+	+cd deep_profiler && $(SUBDIR_MMAKE) tags
 
 #-----------------------------------------------------------------------------#
 
@@ -248,23 +248,23 @@ mercury-compiler.spec: .mercury-compiler.spec.in VERSION
 tar: README INSTALL
 	touch Mmake.params
 	cd util && mmake
-	cd runtime && $(SUBDIR_MMAKE) cs $(RT_LIB_NAME).init
-	cd library && $(SUBDIR_MMAKE) depend
-	cd library && $(SUBDIR_MMAKE) all-ints cs $(STD_LIB_NAME).init tags
-	cd browser && $(SUBDIR_MMAKE) depend
-	cd browser && $(SUBDIR_MMAKE) all-ints cs $(BROWSER_LIB_NAME).init tags
-	cd trace && $(SUBDIR_MMAKE) cs
-	cd compiler && $(SUBDIR_MMAKE) depend
-	cd compiler && $(SUBDIR_MMAKE) cs tags
-	cd profiler && $(SUBDIR_MMAKE) depend
-	cd profiler && $(SUBDIR_MMAKE) cs tags
-	cd deep_profiler && $(SUBDIR_MMAKE) depend
-	cd deep_profiler && $(SUBDIR_MMAKE) cs tags
-	cd doc && $(SUBDIR_MMAKE) info html dvi mdb_doc
-	cd bindist && $(SUBDIR_MMAKE) bindist.configure
+	+cd runtime && $(SUBDIR_MMAKE) cs $(RT_LIB_NAME).init
+	+cd library && $(SUBDIR_MMAKE) depend
+	+cd library && $(SUBDIR_MMAKE) all-ints cs $(STD_LIB_NAME).init tags
+	+cd browser && $(SUBDIR_MMAKE) depend
+	+cd browser && $(SUBDIR_MMAKE) all-ints cs $(BROWSER_LIB_NAME).init tags
+	+cd trace && $(SUBDIR_MMAKE) cs
+	+cd compiler && $(SUBDIR_MMAKE) depend
+	+cd compiler && $(SUBDIR_MMAKE) cs tags
+	+cd profiler && $(SUBDIR_MMAKE) depend
+	+cd profiler && $(SUBDIR_MMAKE) cs tags
+	+cd deep_profiler && $(SUBDIR_MMAKE) depend
+	+cd deep_profiler && $(SUBDIR_MMAKE) cs tags
+	+cd doc && $(SUBDIR_MMAKE) info html dvi mdb_doc
+	+cd bindist && $(SUBDIR_MMAKE) bindist.configure
 	# the following command might fail on Windows?
 	-cd bindist && $(SUBDIR_MMAKE) bindist.build_vars
-	cd extras/dynamic_linking && $(SUBSUBDIR_MMAKE) sources
+	+cd extras/dynamic_linking && $(SUBSUBDIR_MMAKE) sources
 	# clean up
 	cd scripts && mmake realclean
 	cd scripts && mmake canonical_grade
@@ -349,48 +349,48 @@ install_main: all \
  
 .PHONY: install_scripts
 install_scripts: scripts
-	cd scripts && $(SUBDIR_MMAKE) install
+	+cd scripts && $(SUBDIR_MMAKE) install
 
 .PHONY: install_util
 install_util: util
-	cd util && $(SUBDIR_MMAKE) install
+	+cd util && $(SUBDIR_MMAKE) install
 
 .PHONY: install_runtime
 install_runtime: runtime
-	cd runtime && $(SUBDIR_MMAKE) install
+	+cd runtime && $(SUBDIR_MMAKE) install
 
 .PHONY: install_trace
 install_trace: trace
-	cd trace && $(SUBDIR_MMAKE) install
+	+cd trace && $(SUBDIR_MMAKE) install
 
 .PHONY: install_boehm_gc
 install_boehm_gc: boehm_gc
-	gc_grade=`scripts/ml --grade $(GRADE) --print-gc-grade`; \
+	+gc_grade=`scripts/ml --grade $(GRADE) --print-gc-grade`; \
 	cd boehm_gc && $(SUBDIR_MMAKE) install GC_GRADE=$$gc_grade
 
 .PHONY: install_library
 install_library: dep_library library
-	cd library && $(SUBDIR_MMAKE) install
+	+cd library && $(SUBDIR_MMAKE) install
 
 .PHONY: install_browser
 install_browser: dep_browser browser
-	cd browser && $(SUBDIR_MMAKE) install
+	+cd browser && $(SUBDIR_MMAKE) install
 
 .PHONY: install_compiler
 install_compiler: dep_compiler compiler
-	cd compiler && $(SUBDIR_MMAKE) install
+	+cd compiler && $(SUBDIR_MMAKE) install
 
 .PHONY: install_doc
 install_doc: doc
-	cd doc && $(SUBDIR_MMAKE) install
+	+cd doc && $(SUBDIR_MMAKE) install
 
 .PHONY: install_profiler
 install_profiler: profiler
-	cd profiler && $(SUBDIR_MMAKE) install
+	+cd profiler && $(SUBDIR_MMAKE) install
 
 .PHONY: install_deep_profiler
 install_deep_profiler: deep_profiler
-	cd deep_profiler && $(SUBDIR_MMAKE) install
+	+cd deep_profiler && $(SUBDIR_MMAKE) install
 
 .PHONY: install_grades
 install_grades: scripts
@@ -417,7 +417,7 @@ install_grades: scripts
 	# runs the newly installed compiler, rather than using the
 	# bootstrap compiler.
 	#
-	for grade in x $(LIBGRADES); do \
+	+for grade in x $(LIBGRADES); do \
 	    if [ "$$grade" != "x" ]; then \
 	    	gc_grade=`scripts/ml --grade $$grade --print-gc-grade`; \
 	        ( cd boehm_gc && \
@@ -479,7 +479,7 @@ install_split_library: scripts dep_library
 	mkdir tmp_dir && \
 	{ mv -f *.dir *.dep *.h *.c *.$O *.pic_o *.$A *.so \
 		Mercury/cs/*.c Mercury/os/*.$O tmp_dir || true; } && \
-	for grade in $(GRADE) $(LIBGRADES); do \
+	+for grade in $(GRADE) $(LIBGRADES); do \
 	        $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade depend && \
 	        $(SUBDIR_MMAKE) MC=mmc GRADE=$$grade install_split_library || \
 			{ scripts/mercury_cleanup_install; exit 1; }; \
@@ -535,9 +535,9 @@ touch_files:
 
 .PHONY: uninstall
 uninstall:
-	cd scripts; $(SUBDIR_MMAKE) uninstall
-	cd util; $(SUBDIR_MMAKE) uninstall
-	cd doc; $(SUBDIR_MMAKE) uninstall
+	+cd scripts; $(SUBDIR_MMAKE) uninstall
+	+cd util; $(SUBDIR_MMAKE) uninstall
+	+cd doc; $(SUBDIR_MMAKE) uninstall
 	-rm -r $(INSTALL_LIBDIR)
 
 #-----------------------------------------------------------------------------#
@@ -553,14 +553,14 @@ clean: clean_subdirs clean_tests
 .PHONY: clean_subdirs
 clean_subdirs:
 	rm -rf runtime/tmp_dir library/tmp_dir browser/tmp_dir trace/tmp_dir
-	for dir in $(SUBDIRS); do \
+	+for dir in $(SUBDIRS); do \
 		if [ "$$dir" = scripts ]; then continue; fi; \
 		(cd $$dir; $(SUBDIR_MMAKE) clean) \
 	done
 
 .PHONY: clean_tests
 clean_tests:
-	if test -d tests; then \
+	+if test -d tests; then \
 		(cd tests; $(MMAKE) clean) \
 	fi
 
@@ -572,11 +572,11 @@ realclean_local: realclean_config
 .PHONY: realclean_subdirs
 realclean_subdirs: clean_subdirs
 	rm -rf stage[1-3]
-	for dir in $(SUBDIRS); do \
+	+for dir in $(SUBDIRS); do \
 		if [ "$$dir" = scripts ]; then continue; fi; \
 		(cd $$dir; $(SUBDIR_MMAKE) realclean) \
 	done
-	cd scripts; $(SUBDIR_MMAKE) realclean
+	+cd scripts; $(SUBDIR_MMAKE) realclean
 
 .PHONY: realclean_config
 realclean_config:
@@ -584,7 +584,7 @@ realclean_config:
 
 .PHONY: realclean_tests
 realclean_tests:
-	if test -d tests; then \
+	+if test -d tests; then \
 		(cd tests; $(MMAKE) realclean) \
 	fi
 
