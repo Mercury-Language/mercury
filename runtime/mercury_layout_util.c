@@ -864,7 +864,7 @@ MR_generate_proc_name_from_layout(const MR_Proc_Layout *proc_layout,
 {
 	if (MR_PROC_LAYOUT_COMPILER_GENERATED(proc_layout)) {
 		*proc_name_ptr = proc_layout->MR_sle_proc_id.
-			MR_proc_comp.MR_comp_pred_name;
+			MR_proc_uci.MR_uci_pred_name;
 		if (MR_streq(*proc_name_ptr, "__Unify__")) {
 			*arity_ptr = 2;
 		} else if (MR_streq(*proc_name_ptr, "__Compare__")) {
@@ -903,7 +903,7 @@ MR_proc_id_arity_addedargs_predfunc(const MR_Proc_Layout *proc, int *arity_ptr,
 		** and index. (The index predicate doesn't need these
 		** typeinfos, but it has them anyway.)
 		*/
-		*num_added_args_ptr = proc->MR_sle_comp.MR_comp_type_arity;
+		*num_added_args_ptr = proc->MR_sle_uci.MR_uci_type_arity;
 		*arity_ptr = proc->MR_sle_num_head_vars - *num_added_args_ptr;
 		*pred_or_func_ptr = MR_PREDICATE;
 	} else {

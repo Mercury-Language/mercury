@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001 The University of Melbourne.
+% Copyright (C) 2001, 2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -182,13 +182,13 @@
 			user_arity		:: int,
 			user_mode		:: int
 		)
-	;	compiler_generated(
-			comp_gen_type_name	:: string,
-			comp_gen_type_module	:: string,
-			comp_gen_def_module	:: string,
-			comp_gen_pred_name	:: string,
-			comp_gen_arity		:: int,
-			comp_gen_mode		:: int
+	;	uci_pred(
+			uci_type_name		:: string,
+			uci_type_module		:: string,
+			uci_def_module		:: string,
+			uci_pred_name		:: string,
+			uci_arity		:: int,
+			uci_mode		:: int
 		).
 
 :- type call_site_array_slot
@@ -434,7 +434,7 @@ decl_module(ProcId) = DeclModule :-
 	(
 		ProcId = user_defined(_, DeclModule, _, _, _, _)
 	;
-		ProcId = compiler_generated(_, DeclModule, _, _, _, _)
+		ProcId = uci_pred(_, DeclModule, _, _, _, _)
 	).
 
 dummy_proc_id = user_defined(predicate, "unknown", "unknown", "unknown",

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-2003 The University of Melbourne.
+** Copyright (C) 1997-2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -52,9 +52,15 @@
 ** and remove them when increasing the binary compatibility version number.   
 ** Searching for MR_RTTI_VERSION__ should find all code related to the
 ** RTTI version number.
+**
+** The MR_GRADE_EXEC_TRACE_VERSION_NO and MR_GRADE_DEEP_PROF_VERSION_NO
+** macros should be incremented when a change breaks binary backwards
+** compatibility only in debugging and deep profiling grades respectively.
 */
 
 #define MR_GRADE_PART_0	v12_
+#define MR_GRADE_EXEC_TRACE_VERSION_NO	1
+#define MR_GRADE_DEEP_PROF_VERSION_NO	1
 
 #ifdef MR_HIGHLEVEL_CODE
 
@@ -127,8 +133,8 @@
 #endif
 
 #ifdef MR_DEEP_PROFILING
-  #define MR_GRADE_PART_5	MR_PASTE2(MR_GRADE_PART_4, _profdeep)
-  #define MR_GRADE_OPT_PART_5	MR_GRADE_OPT_PART_4 ".profdeep"
+  #define MR_GRADE_PART_5	MR_PASTE3(MR_GRADE_PART_4, _profdeep, MR_GRADE_DEEP_PROF_VERSION_NO)
+  #define MR_GRADE_OPT_PART_5	MR_GRADE_OPT_PART_4 ".profdeep" MR_STRINGIFY(MR_GRADE_DEEP_PROF_VERSION_NO)
   #if defined(MR_MPROF_PROFILE_TIME) || defined(MR_MPROF_PROFILE_CALLS) \
 	|| defined(MR_MPROF_PROFILE_MEMORY)
     /*
@@ -312,40 +318,20 @@
   #define MR_GRADE_OPT_PART_12	MR_GRADE_OPT_PART_11
 #endif
 
-/*
-** Stack traces aren't strictly binary incompatible - but if you
-** try to do a stack trace you might find it doesn't work very
-** well unless all modules are compiled in with --stack-trace.
-** Hence we consider it effectively binary incompatible.
-** Similar considerations apply to procedure call tracing.
-*/
 #if defined(MR_DECL_DEBUG)
-  #define MR_GRADE_PART_13		MR_PASTE2(MR_GRADE_PART_12, _decldebug)
-  #define MR_GRADE_OPT_PART_13		MR_GRADE_OPT_PART_12 ".decldebug"
-  #if ! defined(MR_STACK_TRACE)
-    #error "declarative debugging require stack traces"
-  #endif
-  #if ! defined(MR_REQUIRE_TRACING)
+  #define MR_GRADE_PART_13		MR_PASTE3(MR_GRADE_PART_12, _decldebug, MR_GRADE_EXEC_TRACE_VERSION_NO)
+  #define MR_GRADE_OPT_PART_13		MR_GRADE_OPT_PART_12 ".decldebug" MR_STRINGIFY(MR_GRADE_EXEC_TRACE_VERSION_NO)
+  #if ! defined(MR_EXEC_TRACE)
     #error "declarative debugging require execution tracing"
   #endif
 #else
-  #if defined(MR_STACK_TRACE)
-    #if defined(MR_REQUIRE_TRACING)
-      #define MR_GRADE_PART_13		MR_PASTE2(MR_GRADE_PART_12, _debug)
-      #define MR_GRADE_OPT_PART_13	MR_GRADE_OPT_PART_12 ".debug"
-    #else
-      #define MR_GRADE_PART_13		MR_PASTE2(MR_GRADE_PART_12, _strce)
-      #define MR_GRADE_OPT_PART_13	MR_GRADE_OPT_PART_12 ".strce"
-    #endif
-  #else
-    #if defined(MR_REQUIRE_TRACING)
-      #define MR_GRADE_PART_13		MR_PASTE2(MR_GRADE_PART_12, _trace)
-      #define MR_GRADE_OPT_PART_13	MR_GRADE_OPT_PART_12 ".trace"
+  #if defined(MR_EXEC_TRACE)
+    #define MR_GRADE_PART_13		MR_PASTE3(MR_GRADE_PART_12, _debug, MR_GRADE_EXEC_TRACE_VERSION_NO)
+    #define MR_GRADE_OPT_PART_13	MR_GRADE_OPT_PART_12 ".debug" MR_STRINGIFY(MR_GRADE_EXEC_TRACE_VERSION_NO)
     #else
       #define MR_GRADE_PART_13		MR_GRADE_PART_12
       #define MR_GRADE_OPT_PART_13	MR_GRADE_OPT_PART_12
     #endif
-  #endif
 #endif
 
 #ifdef MR_RECORD_TERM_SIZES

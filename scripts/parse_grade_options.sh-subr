@@ -158,23 +158,10 @@
 	--no-pic-reg)
 		pic_reg=false ;;
 
-# The following more fine-grained options have been omitted
-# since they are not very useful and would probably only confuse people.
-#	--stack-trace)
-#		stack_trace=true ;;
-#	--no-stack-trace)
-#		stack_trace=false ;;
-#	--require-tracing)
-#		require_tracing=true ;;
-#	--no-require-tracing)
-#		require_tracing=false ;;
-
 	--debug)
-		stack_trace=true
-		require_tracing=true ;;
+		debug=true ;;
 	--no-debug)
-		stack_trace=false
-		require_tracing=false ;;
+		debug=false ;;
 
 	--decl-debug)
 		decl_debug=true ;;
@@ -210,8 +197,7 @@
 		reserve_tag=false
 		use_minimal_model=false
 		pic_reg=false
-		stack_trace=false
-		require_tracing=false
+		debug=false
 		decl_debug=false
 
 		grade_pieces=`echo $grade | tr '.' ' '`
@@ -412,23 +398,11 @@
 					pic_reg=true
 					;;
 
-# The following more fine-grained options have been omitted
-# since they are not very useful and would probably only confuse people.
-#				trace)
-#					stack_trace=false
-#					require_tracing=true
-#
-#				strce)
-#					stack_trace=true
-#					require_tracing=false
-
 				debug)
-					stack_trace=true
-					require_tracing=true
+					debug=true
 					;;
+
 				decldebug)
-					stack_trace=true
-					require_tracing=true
 					decl_debug=true
 					;;
 

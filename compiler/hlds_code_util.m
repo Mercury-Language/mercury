@@ -70,8 +70,8 @@ cons_id_to_tag(type_info_cell_constructor(_), _, _) = unshared_tag(0).
 cons_id_to_tag(typeclass_info_cell_constructor, _, _) = unshared_tag(0).
 cons_id_to_tag(tabling_pointer_const(PredId,ProcId), _, _) =
 		tabling_pointer_constant(PredId,ProcId).
-cons_id_to_tag(deep_profiling_proc_static(PPId), _, _) =
-		deep_profiling_proc_static_tag(PPId).
+cons_id_to_tag(deep_profiling_proc_layout(PPId), _, _) =
+		deep_profiling_proc_layout_tag(PPId).
 cons_id_to_tag(table_io_decl(PPId), _, _) = table_io_decl_tag(PPId).
 cons_id_to_tag(cons(Name, Arity), Type, ModuleInfo) = Tag :-
 	(

@@ -141,16 +141,14 @@
 **
 ** MR_STACK_TRACE
 **	Require the inclusion of the layout information needed by error/1
-**	and the debugger to print stack traces. This effect is achieved by
-**	including MR_STACK_TRACE in the mangled grade (see mercury_grade.h).
+**	and the debugger to print stack traces. Set from the values of
+**	MR_EXEC_TRACE and MR_DEEP_PROFILING.
 **
-** MR_REQUIRE_TRACING
+** MR_EXEC_TRACE
 **	Require that all Mercury procedures linked in should be compiled
 **	with at least interface tracing.  This effect is achieved
-**	by including MR_REQUIRE_TRACING in the mangled grade
+**	by including MR_EXEC_TRACE in the mangled grade
 **	(see mercury_grade.h).
-**	Note that MR_REQUIRE_TRACING is talking about execution tracing,
-**	not stack tracing; these are two independently configurable features.
 **
 ** MR_DECL_DEBUG
 **	Require that all Mercury procedures linked in should be compiled
@@ -158,8 +156,7 @@
 **	is achieved by including MR_DECL_DEBUG in the mangled grade
 **	(see mercury_grade.h).
 **
-**	Setting MR_DECL_DEBUG requires MR_REQUIRE_TRACING and MR_STACK_TRACE
-**	to be set also.
+**	Setting MR_DECL_DEBUG requires MR_EXEC_TRACE to be set also.
 **
 ** MR_LOWLEVEL_DEBUG
 **	Enables various low-level debugging stuff,
@@ -167,6 +164,19 @@
 **	the low-level code generation.
 **	Causes the generated code to become VERY big and VERY inefficient.
 **	Slows down compilation a LOT.
+**
+** MR_DEEP_PROFILING_LOWLEVEL_DEBUG
+**	Enables the debugging of the code that builds the deep profiling graph.
+**
+** MR_DEEP_PROFILING_DEBUG
+**	Enables the debugging of the code that writes out deep profiling data
+**	files by also printing out the same information in a human readable
+**	form.
+**
+** MR_DEEP_PROFILING_DETAIL_DEBUG
+**	Enables the debugging of the code that writes out the atomic components
+**	(integers, strings, pointers, etc) of the deep profiling data
+**	structures.
 **
 ** MR_DEBUG_DD_BACK_END
 **	Enables low-level debugging messages on the operation of the
@@ -222,7 +232,8 @@
 ** MR_DEBUG_LABEL_NAMES
 ** 	Registers labels and their names, enabling label addresses to be
 ** 	converted back to a form in which they are usable by a developer.
-** 	Implied by MR_TABLE_DEBUG and MR_DEBUG_RETRY.
+** 	Implied by MR_DEEP_PROFILING_LOWLEVEL_DEBUG, MR_TABLE_DEBUG, and
+** 	MR_DEBUG_RETRY.
 **
 ** MR_DEBUG_LABEL_GOAL_PATHS
 ** 	When printing label names, print the goal path of the label as well,
@@ -251,6 +262,29 @@
 **	commands, which cause the debugger to check the integrity of the
 **	representations of all the terms reachable from the stack.
 */
+
+/*
+** Execution tracing and deep profiling both need stack traces, e.g.
+** simulate exits from calls between an exception being thrown and being
+** caught. Stack tracing is therefore automatically enabled in debugging and
+** deep profiling grades.
+**
+** In theory, we could allow stack traces to be enabled even in non-debug,
+** non-deep-profiling grades. However, if you try to do a stack trace, you
+** would find it doesn't work very well unless all modules are compiled
+** with stack tracing. We could define a grade for situations in which
+** MR_STACK_TRACE is defined but MR_EXEC_TRACE and MR_DEEP_PROFILING aren't,
+** but such a grade wouldn't be very useful. We therefore ensure that
+** MR_STACK_TRACE is set iff at least one of MR_EXEC_TRACE and
+** MR_DEEP_PROFILING is set.
+*/
+
+#ifdef MR_STACK_TRACE
+  #error "MR_STACK_TRACE set independently"
+#endif
+#if defined(MR_EXEC_TRACE) || defined(MR_DEEP_PROFILING)
+  #define MR_STACK_TRACE
+#endif
 
 #ifdef	MR_HIGHLEVEL_CODE
   #ifdef MR_LOWLEVEL_DEBUG
@@ -317,6 +351,14 @@
 ** If MR_RECORD_TERM_SIZES_AS_CELLS is not defined, the default is
 ** to record term sizes as the number of heap words. Meaningful only if
 ** MR_RECORD_TERM_SIZES is defined. For implementors only.
+**
+** MR_DEEP_PROFILING_EXPLICIT_CALL_COUNTS
+** If defined, we explicitly record the number of calls in each
+** call_site_dynamic, instead of computing it from the other port counts.
+** Useful only for measuring the overhead of the recording. Defining this macro
+** makes the generated Deep.data files incompatible with the assumptions
+** of read_profile.m and measurements.m in the deep_profiler directory.
+** For implementors only.
 **
 ** MR_DEEP_PROFILING_PERF_TEST
 ** Allows the selective performance testing of various aspects of deep
@@ -564,7 +606,8 @@
 */
 
 /* MR_TABLE_DEBUG and MR_DEBUG_RETRY imply MR_DEBUG_LABEL_NAMES */
-#if defined(MR_TABLE_DEBUG) || defined(MR_DEBUG_RETRY)
+#if defined(MR_DEEP_PROFILING_LOWLEVEL_DEBUG) || defined(MR_TABLE_DEBUG) \
+	|| defined(MR_DEBUG_RETRY)
   #define MR_DEBUG_LABEL_NAMES
 #endif
 

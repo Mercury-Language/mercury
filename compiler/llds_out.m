@@ -713,7 +713,8 @@ output_debugger_init_list([Data | Datas], !IO) :-
 		Data = layout_data(LayoutData),
 		LayoutData = module_layout_data(ModuleName, _,_,_,_,_,_)
 	->
-		io__write_string("\tif (MR_register_module_layout != NULL) {\n",
+		io__write_string(
+			"\tif (MR_register_module_layout != NULL) {\n",
 			!IO),
 		io__write_string("\t\t(*MR_register_module_layout)(", !IO),
 		io__write_string("\n\t\t\t&", !IO),
@@ -731,7 +732,8 @@ output_write_proc_static_list_decls([], !DeclSet, !IO).
 output_write_proc_static_list_decls([Data | Datas], !DeclSet, !IO) :-
 	(
 		Data = layout_data(LayoutData),
-		LayoutData = proc_static_data(_, _, _, _, _)
+		LayoutData = proc_layout_data(_, _, MaybeRest),
+		MaybeRest = proc_id(yes(_), _)
 	->
 		output_maybe_layout_data_decl(LayoutData, !DeclSet, !IO)
 	;
@@ -746,11 +748,24 @@ output_write_proc_static_list([], !IO).
 output_write_proc_static_list([Data | Datas], !IO) :-
 	(
 		Data = layout_data(LayoutData),
-		LayoutData = proc_static_data(RttiProcLabel, _, _, _, _)
+		LayoutData = proc_layout_data(RttiProcLabel, _, MaybeRest),
+		MaybeRest = proc_id(yes(_), _)
 	->
-		io__write_string("\tMR_write_out_proc_static(fp, ", !IO),
-		io__write_string("(MR_ProcStatic *)\n\t\t&", !IO),
-		output_layout_name(proc_static(RttiProcLabel), !IO),
+		ProcLabel = make_proc_label_from_rtti(RttiProcLabel),
+		UserOrUCI = proc_label_user_or_uci(ProcLabel),
+		Kind = proc_layout_proc_id(UserOrUCI),
+		(
+			UserOrUCI = user,
+			io__write_string(
+				"\tMR_write_out_user_proc_static(fp,\n\t\t&",
+				!IO)
+		;
+			UserOrUCI = uci,
+			io__write_string(
+				"\tMR_write_out_uci_proc_static(fp,\n\t\t&",
+				!IO)
+		),
+		output_layout_name(proc_layout(RttiProcLabel, Kind), !IO),
 		io__write_string(");\n", !IO)
 	;
 		true

@@ -381,17 +381,7 @@ typedef	struct MR_Label_Layout_No_Var_Info_Struct {
 /*
 ** Define a stack layout for an internal label.
 **
-** The MR_MAKE_INTERNAL_LAYOUT_WITH_ENTRY variant allows you to specify
-** the label name (l) and the entry label name (e) independently, which
-** means that it can be used for labels in code fragments which are
-** simultaneously part of several procedures. (Some hand-written code
-** in the library is like this; the different procedures usually differ
-** only in attributes such as the uniqueness of their arguments.)
-**
-** The MR_MAKE_INTERNAL_LAYOUT variant assumes that the internal label
-** is in the procedure named by the entry label.
-**
-** The only useful information in the structures created by these macros
+** The only useful information in the structures created by this macro
 ** is the reference to the procedure layout, which allows you to find the
 ** stack frame size and the succip location, thereby enabling stack tracing.
 **
@@ -405,19 +395,16 @@ typedef	struct MR_Label_Layout_No_Var_Info_Struct {
 #define	MR_LABEL_LAYOUT_REF(label)					\
 	((const MR_Label_Layout *) &MR_LAYOUT_FROM_LABEL(MR_add_prefix(label)))
 
-#define MR_MAKE_INTERNAL_LAYOUT_WITH_ENTRY(label, entry) \
+#define MR_MAKE_USER_INTERNAL_LAYOUT(module, name, arity, mode, label)	\
 	MR_Label_Layout_No_Var_Info					\
-	MR_LAYOUT_FROM_LABEL(label) = {					\
+	MR_label_layout_user_name(module, name, arity, mode, label) = {	\
 		(MR_Proc_Layout *) &					\
-			MR_PASTE2(mercury_data__proc_layout__, entry),	\
+			MR_proc_layout_user_name(module, name, arity, mode), \
 		-1,							\
 		MR_FALSE,						\
 		0,							\
 		-1		/* No info about live values */		\
 	}
-
-#define MR_MAKE_INTERNAL_LAYOUT(entry, labelnum)			\
-	MR_MAKE_INTERNAL_LAYOUT_WITH_ENTRY(entry##_i##labelnum, entry)
 
 /*
 ** These macros are used as shorthands in generated C source files.
@@ -813,16 +800,20 @@ typedef	struct MR_Exec_Trace_Struct {
 **   one for user-defined procedures and one for procedures of the compiler
 **   generated Unify, Index and Compare predicates.
 **
-** - The third group is the MR_Exec_Trace structure, which contains
-**   information specifically intended for the debugger. It will be generated
-**   only if the module is compiled with execution tracing.
+** - The third group is the MR_Exec_Trace and MR_ProcStatic structures, which
+**   contain information specifically intended for the debugger and the deep
+**   profiler respectively. The MR_Exec_Trace structure will be generated
+**   only if the module is compiled with execution tracing, while the
+**   MR_ProcStatic structure will be generated only if the module is compiled
+**   in a deep profiling grade.
 **
 ** The runtime system considers all proc layout structures to be of type
 ** MR_Proc_Layout, but must use the macros defined below to check for the 
 ** existence of each substructure before accessing the fields of that
 ** substructure. The macros are MR_PROC_LAYOUT_HAS_PROC_ID to check for the
-** MR_Proc_Id substructure and MR_PROC_LAYOUT_HAS_EXEC_TRACE to check for the
-** MR_Exec_Trace substructure.
+** MR_Proc_Id substructure, MR_PROC_LAYOUT_HAS_EXEC_TRACE to check for the
+** MR_Exec_Trace substructure. and MR_PROC_LAYOUT_HAS_PROC_STATIC to check for
+** the MR_ProcStatic substructure.
 **
 ** The reason why some substructures may be missing is to save space.
 ** If the options with which a module is compiled do not require execution
@@ -831,61 +822,48 @@ typedef	struct MR_Exec_Trace_Struct {
 ** substructure will not be present either
 **
 ** The compiler itself generates proc layout structures using the following
-** five types.
+** three types.
 **
 ** - When generating only stack traversal information, the compiler will
 **   generate proc layout structures of type MR_Proc_Layout_Traversal.
 **
-** - When generating only stack traversal and procedure id information, the
-**   compiler will generate proc layout structures of types MR_Proc_Layout_User
-**   and MR_Proc_Layout_Compiler.
-**
-** - When generating all three groups of information, the compiler will
-**   generate proc layout structures of types MR_Proc_Layout_User_Exec
-**   and MR_Proc_Layout_Compiler_Exec.
+** - When generating stack traversal and procedure id information, plus
+**   possibly others, the compiler will generate proc layout structures of
+**   types MR_Proc_Layout_User and MR_Proc_Layout_UCI.
 */
 
 struct MR_Proc_Layout_Struct {
 	MR_Stack_Traversal	MR_sle_traversal;
 	MR_Proc_Id		MR_sle_proc_id;
-	MR_Exec_Trace		MR_sle_exec_trace;
+	MR_STATIC_CODE_CONST MR_Exec_Trace	*MR_sle_exec_trace;
+	MR_ProcStatic				*MR_sle_proc_static;
 };
+
+typedef	struct MR_Proc_Layout_User_Struct {
+	MR_Stack_Traversal	MR_user_traversal;
+	MR_User_Proc_Id		MR_user_id;
+	MR_STATIC_CODE_CONST MR_Exec_Trace	*MR_sle_exec_trace;
+	MR_ProcStatic				*MR_sle_proc_static;
+} MR_Proc_Layout_User;
+
+typedef	struct MR_Proc_Layout_UCI_Struct {
+	MR_Stack_Traversal			MR_uci_traversal;
+	MR_UCI_Proc_Id				MR_uci_id;
+	MR_STATIC_CODE_CONST MR_Exec_Trace	*MR_sle_exec_trace;
+	MR_ProcStatic				*MR_sle_proc_static;
+} MR_Proc_Layout_UCI;
 
 typedef	struct MR_Proc_Layout_Traversal_Struct {
 	MR_Stack_Traversal	MR_trav_traversal;
 	MR_Word			MR_trav_no_proc_id;	/* will be -1 */
 } MR_Proc_Layout_Traversal;
 
-typedef	struct MR_Proc_Layout_User_Struct {
-	MR_Stack_Traversal	MR_user_traversal;
-	MR_User_Proc_Id		MR_user_id;
-	MR_Word			MR_user_no_exec_trace;	/* will be NULL */
-} MR_Proc_Layout_User;
-
-typedef	struct MR_Proc_Layout_Compiler_Struct {
-	MR_Stack_Traversal	MR_comp_traversal;
-	MR_Compiler_Proc_Id	MR_comp_id;
-	MR_Word			MR_comp_no_exec_trace;	/* will be NULL */
-} MR_Proc_Layout_Compiler;
-
-typedef	struct MR_Proc_Layout_User_Exec_Struct {
-	MR_Stack_Traversal	MR_user_exec_traversal;
-	MR_User_Proc_Id		MR_user_exec_id;
-	MR_Exec_Trace		MR_user_exec_trace;
-} MR_Proc_Layout_User_Exec;
-
-typedef	struct MR_Proc_Layout_Compiler_Exec_Struct {
-	MR_Stack_Traversal	MR_comp_exec_traversal;
-	MR_Compiler_Proc_Id	MR_comp_exec_id;
-	MR_Exec_Trace		MR_comp_exec_trace;
-} MR_Proc_Layout_Compiler_Exec;
-
 #define	MR_PROC_LAYOUT_HAS_PROC_ID(entry)			\
 		((MR_Word) entry->MR_sle_user.MR_user_pred_or_func != -1)
 
 #define	MR_PROC_LAYOUT_HAS_EXEC_TRACE(entry)			\
 		(MR_PROC_LAYOUT_HAS_PROC_ID(entry)		\
-		&& entry->MR_sle_call_label != NULL)
+		&& entry->MR_sle_exec_trace != NULL)
 
 #define	MR_sle_code_addr	MR_sle_traversal.MR_trav_code_addr
 #define	MR_sle_succip_locn	MR_sle_traversal.MR_trav_succip_locn
@@ -893,28 +871,28 @@ typedef	struct MR_Proc_Layout_Compiler_Exec_Struct {
 #define	MR_sle_detism		MR_sle_traversal.MR_trav_detism
 
 #define	MR_sle_user		MR_sle_proc_id.MR_proc_user
-#define	MR_sle_comp		MR_sle_proc_id.MR_proc_comp
+#define	MR_sle_uci		MR_sle_proc_id.MR_proc_uci
 
-#define	MR_sle_call_label	MR_sle_exec_trace.MR_exec_call_label
-#define	MR_sle_module_layout	MR_sle_exec_trace.MR_exec_module_layout
-#define	MR_sle_proc_rep		MR_sle_exec_trace.MR_exec_proc_rep
-#define	MR_sle_tabling_pointer	MR_sle_exec_trace.MR_exec_tabling_pointer
-#define	MR_sle_table_info	MR_sle_exec_trace.MR_exec_table_info
-#define	MR_sle_head_var_nums	MR_sle_exec_trace.MR_exec_head_var_nums
-#define	MR_sle_num_head_vars	MR_sle_exec_trace.MR_exec_num_head_vars
-#define	MR_sle_used_var_names	MR_sle_exec_trace.MR_exec_used_var_names
-#define	MR_sle_max_named_var_num MR_sle_exec_trace.MR_exec_max_named_var_num
-#define	MR_sle_max_r_num	MR_sle_exec_trace.MR_exec_max_r_num
-#define	MR_sle_maybe_from_full	MR_sle_exec_trace.MR_exec_maybe_from_full
-#define	MR_sle_maybe_io_seq	MR_sle_exec_trace.MR_exec_maybe_io_seq
-#define	MR_sle_maybe_trail	MR_sle_exec_trace.MR_exec_maybe_trail
-#define	MR_sle_maybe_maxfr	MR_sle_exec_trace.MR_exec_maybe_maxfr
-#define	MR_sle_maybe_call_table MR_sle_exec_trace.MR_exec_maybe_call_table
-#define	MR_sle_maybe_decl_debug MR_sle_exec_trace.MR_exec_maybe_decl_debug
+#define	MR_sle_call_label	MR_sle_exec_trace->MR_exec_call_label
+#define	MR_sle_module_layout	MR_sle_exec_trace->MR_exec_module_layout
+#define	MR_sle_proc_rep		MR_sle_exec_trace->MR_exec_proc_rep
+#define	MR_sle_tabling_pointer	MR_sle_exec_trace->MR_exec_tabling_pointer
+#define	MR_sle_table_info	MR_sle_exec_trace->MR_exec_table_info
+#define	MR_sle_head_var_nums	MR_sle_exec_trace->MR_exec_head_var_nums
+#define	MR_sle_num_head_vars	MR_sle_exec_trace->MR_exec_num_head_vars
+#define	MR_sle_used_var_names	MR_sle_exec_trace->MR_exec_used_var_names
+#define	MR_sle_max_named_var_num MR_sle_exec_trace->MR_exec_max_named_var_num
+#define	MR_sle_max_r_num	MR_sle_exec_trace->MR_exec_max_r_num
+#define	MR_sle_maybe_from_full	MR_sle_exec_trace->MR_exec_maybe_from_full
+#define	MR_sle_maybe_io_seq	MR_sle_exec_trace->MR_exec_maybe_io_seq
+#define	MR_sle_maybe_trail	MR_sle_exec_trace->MR_exec_maybe_trail
+#define	MR_sle_maybe_maxfr	MR_sle_exec_trace->MR_exec_maybe_maxfr
+#define	MR_sle_maybe_call_table MR_sle_exec_trace->MR_exec_maybe_call_table
+#define	MR_sle_maybe_decl_debug MR_sle_exec_trace->MR_exec_maybe_decl_debug
 
 #define	MR_sle_eval_method(proc_layout_ptr)				\
 			((MR_EvalMethod) (proc_layout_ptr)->		\
-				MR_sle_exec_trace.MR_exec_eval_method_CAST_ME)
+				MR_sle_exec_trace->MR_exec_eval_method_CAST_ME)
 
 	/* Adjust the arity of functions for printing. */
 #define MR_sle_user_adjusted_arity(entry)				\
@@ -924,7 +902,7 @@ typedef	struct MR_Proc_Layout_Compiler_Exec_Struct {
 
 /*
 ** Define a layout structure for a procedure, containing information
-** for the first two substructures.
+** for stack traversal and procedure identification.
 **
 ** The slot count and the succip location parameters do not have to be
 ** supplied for procedures that live on the nondet stack, since for such
@@ -939,11 +917,11 @@ typedef	struct MR_Proc_Layout_Compiler_Exec_Struct {
 ** is hand-written as C modules cannot be inlined in other Mercury modules.
 **
 ** Due to the possibility that code addresses are not static, any use of
-** the MR_MAKE_PROC_LAYOUT macro has to be accompanied by a call to the
+** the MR_MAKE_PROC_ID_PROC_LAYOUT macro has to be accompanied by a call to the
 ** MR_INIT_PROC_LAYOUT_ADDR macro in the initialization code of the C module
 ** that defines the entry. (The cast in the body of MR_INIT_PROC_LAYOUT_ADDR
 ** is needed because compiler-generated layout structures may use any of the
-** five variant types listed above.)
+** variant types listed above.)
 */ 
 
 #define	MR_PROC_NO_SLOT_COUNT		-1
@@ -961,26 +939,96 @@ typedef	struct MR_Proc_Layout_Compiler_Exec_Struct {
 		} while (0)
 #endif
 
-#define MR_MAKE_PROC_LAYOUT(entry, detism, slots, succip_locn,		\
-		pf, module, name, arity, mode) 				\
-	MR_Proc_Layout_User						\
-	MR_PASTE2(mercury_data__proc_layout__, entry) = {		\
+#define MR_MAKE_USER_PROC_STATIC_PROC_LAYOUT(sc, detism, slots, succip_locn, \
+		pf, module, name, arity, mode, proc_static)		\
+	MR_declare_entry(MR_proc_entry_user_name(module, name, 		\
+		arity, mode));						\
+	sc const MR_Proc_Layout_User					\
+	MR_proc_layout_user_name(module, name, arity, mode) = {		\
 		{							\
-			MR_MAKE_PROC_LAYOUT_ADDR(entry),		\
+			MR_MAKE_PROC_LAYOUT_ADDR(			\
+				MR_proc_entry_user_name(module, name,	\
+					arity, mode)),			\
 			succip_locn,					\
 			slots,						\
 			detism						\
 		},							\
 		{							\
 			pf,						\
-			module,						\
-			module,						\
-			name,						\
+			MR_STRINGIFY(module),				\
+			MR_STRINGIFY(module),				\
+			MR_STRINGIFY(name),				\
 			arity,						\
 			mode						\
 		},							\
-		0							\
+		NULL,							\
+		(MR_ProcStatic *) proc_static				\
 	}
+
+#define MR_MAKE_UCI_PROC_STATIC_PROC_LAYOUT(sc, detism, slots, succip_locn, \
+		module, name, type, arity, mode, proc_static)		\
+	MR_declare_entry(MR_proc_entry_uci_name(module, name,		\
+		type, arity, mode)); 					\
+	sc const MR_Proc_Layout_UCI					\
+	MR_proc_layout_uci_name(module, name, type, arity, mode) = {	\
+		{							\
+			MR_MAKE_PROC_LAYOUT_ADDR(			\
+				MR_proc_entry_uci_name(module, name,	\
+					type, arity, mode)),		\
+			succip_locn,					\
+			slots,						\
+			detism						\
+		},							\
+		{							\
+			MR_STRINGIFY(type),				\
+			MR_STRINGIFY(module),				\
+			MR_STRINGIFY(module),				\
+			MR_STRINGIFY(name),				\
+			arity,						\
+			mode						\
+		},							\
+		NULL,							\
+		(MR_ProcStatic *) proc_static				\
+	}
+
+#define MR_STATIC_USER_PROC_STATIC_PROC_LAYOUT(detism, slots, succip_locn, \
+		pf, module, name, arity, mode)				\
+	MR_MAKE_USER_PROC_STATIC_PROC_LAYOUT(static, detism, slots,	\
+		succip_locn, pf, module, name, arity, mode,		\
+		&MR_proc_static_user_name(module, name, arity, mode))
+#define MR_EXTERN_USER_PROC_STATIC_PROC_LAYOUT(detism, slots, succip_locn, \
+		pf, module, name, arity, mode)				\
+	MR_MAKE_USER_PROC_STATIC_PROC_LAYOUT(/* extern */, detism, slots, \
+		succip_locn, pf, module, name, arity, mode,		\
+		&MR_proc_static_user_name(module, name, arity, mode))
+
+#define MR_STATIC_UCI_PROC_STATIC_PROC_LAYOUT(detism, slots, succip_locn, \
+		module, name, type, arity, mode)			\
+	MR_MAKE_UCI_PROC_STATIC_PROC_LAYOUT(static, detism, slots,	\
+		succip_locn, module, name, type, arity, mode,		\
+		&MR_proc_static_uci_name(module, name, type, arity, mode))
+#define MR_EXTERN_UCI_PROC_STATIC_PROC_LAYOUT(detism, slots, succip_locn, \
+		module, name, type, arity, mode)			\
+	MR_MAKE_UCI_PROC_STATIC_PROC_LAYOUT(/* extern */, detism, slots,\
+		succip_locn, module, name, type, arity, mode,		\
+		&MR_proc_static_uci_name(module, name, type, arity, mode))
+
+#define MR_STATIC_USER_PROC_ID_PROC_LAYOUT(detism, slots, succip_locn,	\
+		pf, module, name, arity, mode)				\
+	MR_MAKE_USER_PROC_STATIC_PROC_LAYOUT(static, detism, slots,	\
+		succip_locn, pf, module, name, arity, mode, NULL)
+#define MR_EXTERN_USER_PROC_ID_PROC_LAYOUT(detism, slots, succip_locn,	\
+		pf, module, name, arity, mode)				\
+	MR_MAKE_USER_PROC_STATIC_PROC_LAYOUT(/* extern */, detism, slots,\
+		succip_locn, pf, module, name, arity, mode, NULL)
+
+#define MR_DECLARE_UCI_PROC_STATIC_LAYOUTS(mod, n, a)                       \
+	const MR_Proc_Layout_UCI					\
+		MR_proc_layout_uci_name(mod, __Unify__, n, a, 0);	\
+	const MR_Proc_Layout_UCI					\
+		MR_proc_layout_uci_name(mod, __Compare__, n, a, 0);	\
+	const MR_Proc_Layout_UCI					\
+		MR_proc_layout_uci_name(mod, __CompareRep__, n, a, 0);
 
 /*
 ** In procedures compiled with execution tracing, three items are stored
@@ -1102,7 +1150,7 @@ struct MR_Module_Layout_Struct {
 ** the context where the closure was created.
 **
 ** The compiler generates closure id structures as either MR_User_Closure_Id
-** or MR_Compiler_Closure_Id structures in order to avoid initializing the
+** or MR_UCI_Closure_Id structures in order to avoid initializing the
 ** MR_Proc_Id union through an inappropriate member.
 */
 
@@ -1122,12 +1170,12 @@ struct MR_User_Closure_Id_Struct {
 	MR_ConstString		MR_user_closure_goal_path;
 };
 
-struct MR_Compiler_Closure_Id_Struct {
-	MR_Compiler_Proc_Id	MR_comp_closure_proc_id;
-	MR_ConstString		MR_comp_closure_module_name;
-	MR_ConstString		MR_comp_closure_file_name;
-	MR_Integer		MR_comp_closure_line_number;
-	MR_ConstString		MR_comp_closure_goal_path;
+struct MR_UCI_Closure_Id_Struct {
+	MR_UCI_Proc_Id		MR_uci_closure_proc_id;
+	MR_ConstString		MR_uci_closure_module_name;
+	MR_ConstString		MR_uci_closure_file_name;
+	MR_Integer		MR_uci_closure_line_number;
+	MR_ConstString		MR_uci_closure_goal_path;
 };
 
 #endif /* not MERCURY_STACK_LAYOUT_H */

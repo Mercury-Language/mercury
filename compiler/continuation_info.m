@@ -10,8 +10,8 @@
 %
 % This file defines the data structures the code generator uses to collect
 % information that will later be converted into layout tables for accurate
-% garbage collection, for stack tracing, execution tracing and perhaps
-% other purposes.
+% garbage collection, stack tracing, execution tracing, deep profiling and
+% perhaps other purposes.
 %
 % Information is collected in several passes.
 %
@@ -51,7 +51,6 @@
 
 :- interface.
 
-:- import_module backend_libs__rtti.
 :- import_module hlds__hlds_goal.
 :- import_module hlds__hlds_module.
 :- import_module hlds__hlds_pred.
@@ -59,6 +58,7 @@
 :- import_module libs__globals.
 :- import_module libs__trace_params.
 :- import_module ll_backend__global_data.
+:- import_module ll_backend__layout.
 :- import_module ll_backend__llds.
 :- import_module ll_backend__trace.
 :- import_module parse_tree__inst.
@@ -129,9 +129,10 @@
 			is_being_traced :: bool,
 					% True if the effective trace level
 					% of the procedure is not none.
-			need_all_names	:: bool
+			need_all_names	:: bool,
 					% True iff we need the names of all the
 					% variables.
+			deep_prof	:: maybe(proc_layout_proc_static)
 		).
 
 	%

@@ -772,7 +772,7 @@ bytecode_gen__map_cons_id(ByteInfo, Var, ConsId, ByteConsId) :-
 		ConsId = table_io_decl(_),
 		sorry(this_file, "bytecode cannot implement table io decl")
 	;
-		ConsId = deep_profiling_proc_static(_),
+		ConsId = deep_profiling_proc_layout(_),
 		sorry(this_file, "bytecode cannot implement deep profiling")
 	).
 
@@ -788,32 +788,40 @@ bytecode_gen__map_cons_tag(shared_remote_tag(Primary, Secondary),
 bytecode_gen__map_cons_tag(shared_local_tag(Primary, Secondary),
 	shared_local_tag(Primary, Secondary)).
 bytecode_gen__map_cons_tag(string_constant(_), _) :-
-	unexpected(this_file, "string_constant cons tag for non-string_constant cons id").
+	unexpected(this_file, "string_constant cons tag " ++
+		"for non-string_constant cons id").
 bytecode_gen__map_cons_tag(int_constant(IntVal), enum_tag(IntVal)).
 bytecode_gen__map_cons_tag(float_constant(_), _) :-
-	unexpected(this_file, "float_constant cons tag for non-float_constant cons id").
+	unexpected(this_file, "float_constant cons tag " ++
+		"for non-float_constant cons id").
 bytecode_gen__map_cons_tag(pred_closure_tag(_, _, _), _) :-
-	unexpected(this_file, "pred_closure_tag cons tag for non-pred_const cons id").
+	unexpected(this_file, "pred_closure_tag cons tag " ++
+		"for non-pred_const cons id").
 bytecode_gen__map_cons_tag(type_ctor_info_constant(_, _, _), _) :-
-	unexpected(this_file, "type_ctor_info_constant cons tag for non-type_ctor_info_constant cons id").
+	unexpected(this_file, "type_ctor_info_constant cons tag " ++
+		"for non-type_ctor_info_constant cons id").
 bytecode_gen__map_cons_tag(base_typeclass_info_constant(_, _, _), _) :-
-	unexpected(this_file, "base_typeclass_info_constant cons tag for non-base_typeclass_info_constant cons id").
+	unexpected(this_file, "base_typeclass_info_constant cons tag " ++
+		"for non-base_typeclass_info_constant cons id").
 bytecode_gen__map_cons_tag(tabling_pointer_constant(_, _), _) :-
-	unexpected(this_file, "tabling_pointer_constant cons tag for non-tabling_pointer_constant cons id").
-bytecode_gen__map_cons_tag(deep_profiling_proc_static_tag(_), _) :-
-	unexpected(this_file, "deep_profiling_proc_static_tag cons tag for non-deep_profiling_proc_static cons id").
+	unexpected(this_file, "tabling_pointer_constant cons tag " ++
+		"for non-tabling_pointer_constant cons id").
+bytecode_gen__map_cons_tag(deep_profiling_proc_layout_tag(_), _) :-
+	unexpected(this_file, "deep_profiling_proc_layout_tag cons tag " ++
+		"for non-deep_profiling_proc_static cons id").
 bytecode_gen__map_cons_tag(table_io_decl_tag(_), _) :-
-	unexpected(this_file, "table_io_decl_tag cons tag for non-table_io_decl cons id").
+	unexpected(this_file, "table_io_decl_tag cons tag " ++
+		"for non-table_io_decl cons id").
 bytecode_gen__map_cons_tag(reserved_address(_), _) :-
 	% These should only be generated if the --num-reserved-addresses
 	% or --num-reserved-objects options are used.
-	sorry(this_file,
-	   "bytecode with --num-reserved-addresses or --num-reserved-objects").
+	sorry(this_file, "bytecode with --num-reserved-addresses " ++
+		"or --num-reserved-objects").
 bytecode_gen__map_cons_tag(shared_with_reserved_addresses(_, _), _) :-
 	% These should only be generated if the --num-reserved-addresses
 	% or --num-reserved-objects options are used.
-	sorry(this_file,
-	   "bytecode with --num-reserved-addresses or --num-reserved-objects").
+	sorry(this_file, "bytecode with --num-reserved-addresses " ++
+		"or --num-reserved-objects").
 
 %---------------------------------------------------------------------------%
 

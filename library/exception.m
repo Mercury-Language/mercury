@@ -646,7 +646,7 @@ catch_impl(Pred::(pred(out) is nondet), Handler::in(handler), T::out) :-
 #ifndef ML_HLC_EXCEPTION_GUARD
 #define ML_HLC_EXCEPTION_GUARD
 
-#ifdef MR_HIGHLEVEL_CODE
+  #ifdef MR_HIGHLEVEL_CODE
 
   #ifdef MR_USE_GCC_NESTED_FUNCTIONS
   	#define MR_CONT_PARAMS		MR_NestedCont cont
@@ -731,7 +731,7 @@ catch_impl(Pred::(pred(out) is nondet), Handler::in(handler), T::out) :-
 		MR_Pred handler_pred, MR_Box *output,
 		MR_CONT_PARAMS);
 
-#endif /* MR_HIGHLEVEL_CODE */
+  #endif /* MR_HIGHLEVEL_CODE */
 
 #endif /* ML_HLC_EXCEPTION_GUARD */
 ").
@@ -866,18 +866,19 @@ typedef struct ML_ExceptionHandler_struct {
 	MR_Univ		exception;
 } ML_ExceptionHandler;
 
-#ifndef MR_THREAD_SAFE
+  #ifndef MR_THREAD_SAFE
   ML_ExceptionHandler	*ML_exception_handler;
-#endif
+  #endif
 
-#ifdef MR_THREAD_SAFE
-  #define ML_GET_EXCEPTION_HANDLER()	MR_GETSPECIFIC(MR_exception_handler_key)
+  #ifdef MR_THREAD_SAFE
+    #define ML_GET_EXCEPTION_HANDLER()		\
+    	MR_GETSPECIFIC(MR_exception_handler_key)
   #define ML_SET_EXCEPTION_HANDLER(val)	\
   	pthread_setspecific(MR_exception_handler_key, (val))
-#else  /* !MR_THREAD_SAFE */
+  #else  /* !MR_THREAD_SAFE */
   #define ML_GET_EXCEPTION_HANDLER()	ML_exception_handler
   #define ML_SET_EXCEPTION_HANDLER(val)	ML_exception_handler = (val)
-#endif /* !MR_THREAD_SAFE */
+  #endif /* !MR_THREAD_SAFE */
 
 void MR_CALL
 mercury__exception__builtin_throw_1_p_0(MR_Univ exception)
@@ -888,16 +889,16 @@ mercury__exception__builtin_throw_1_p_0(MR_Univ exception)
 		ML_report_uncaught_exception((MR_Word) exception);
 		exit(EXIT_FAILURE);
 	} else {
-#ifdef	MR_DEBUG_JMPBUFS
+  #ifdef MR_DEBUG_JMPBUFS
 		fprintf(stderr, ""throw longjmp %p\\n"",
 			exception_handler->handler);
-#endif
+  #endif
 		exception_handler->exception = exception;
 		longjmp(exception_handler->handler, 1);
 	}
 }
 
-#ifdef MR_NATIVE_GC
+  #ifdef MR_NATIVE_GC
 
 /*
 ** The following code is needed to trace the local variables
@@ -961,7 +962,7 @@ mercury__exception__builtin_catch_gc_trace(void *frame)
 
   #define ML_AGC_LOCAL(NAME) (agc_locals.NAME)
 
-#else /* !MR_NATIVE_GC */
+  #else /* !MR_NATIVE_GC */
 
   /* If accurate GC is not enabled, we define all of these as NOPs. */
   #define ML_DECLARE_AGC_HANDLER
@@ -969,7 +970,7 @@ mercury__exception__builtin_catch_gc_trace(void *frame)
   #define ML_UNINSTALL_AGC_HANDLER()
   #define ML_AGC_LOCAL(name) (name)
 
-#endif /* !MR_NATIVE_GC */
+  #endif /* !MR_NATIVE_GC */
 
 void MR_CALL
 mercury__exception__builtin_catch_model_det(MR_Mercury_Type_Info type_info,
@@ -983,19 +984,19 @@ mercury__exception__builtin_catch_model_det(MR_Mercury_Type_Info type_info,
 
 	ML_INSTALL_AGC_HANDLER(type_info, handler_pred);
 
-#ifdef	MR_DEBUG_JMPBUFS
+  #ifdef MR_DEBUG_JMPBUFS
 	fprintf(stderr, ""detcatch setjmp %p\\n"", this_handler.handler);
-#endif
+  #endif
 
 	if (setjmp(this_handler.handler) == 0) {
 		ML_call_goal_det_handcoded(type_info, pred, output);
 		ML_SET_EXCEPTION_HANDLER(this_handler.prev);
 		ML_UNINSTALL_AGC_HANDLER();
 	} else {
-#ifdef	MR_DEBUG_JMPBUFS
+  #ifdef MR_DEBUG_JMPBUFS
 		fprintf(stderr, ""detcatch caught jmp %p\\n"",
 			this_handler.handler);
-#endif
+  #endif
 
 		ML_SET_EXCEPTION_HANDLER(this_handler.prev);
 		ML_UNINSTALL_AGC_HANDLER();
@@ -1017,9 +1018,9 @@ mercury__exception__builtin_catch_model_semi(MR_Mercury_Type_Info type_info,
 
 	ML_INSTALL_AGC_HANDLER(type_info, handler_pred);
 
-#ifdef	MR_DEBUG_JMPBUFS
+  #ifdef MR_DEBUG_JMPBUFS
 	fprintf(stderr, ""semicatch setjmp %p\\n"", this_handler.handler);
-#endif
+  #endif
 
 	if (setjmp(this_handler.handler) == 0) {
 		MR_bool result = ML_call_goal_semi_handcoded(type_info, pred,
@@ -1028,10 +1029,10 @@ mercury__exception__builtin_catch_model_semi(MR_Mercury_Type_Info type_info,
 		ML_UNINSTALL_AGC_HANDLER();
 		return result;
 	} else {
-#ifdef	MR_DEBUG_JMPBUFS
+  #ifdef MR_DEBUG_JMPBUFS
 		fprintf(stderr, ""semicatch caught jmp %p\\n"",
 			this_handler.handler);
-#endif
+  #endif
 
 		ML_SET_EXCEPTION_HANDLER(this_handler.prev);
 		ML_UNINSTALL_AGC_HANDLER();
@@ -1042,7 +1043,7 @@ mercury__exception__builtin_catch_model_semi(MR_Mercury_Type_Info type_info,
 	}
 }
 
-#ifdef MR_USE_GCC_NESTED_FUNCTIONS
+  #ifdef MR_USE_GCC_NESTED_FUNCTIONS
 
 void MR_CALL
 mercury__exception__builtin_catch_model_non(MR_Mercury_Type_Info type_info,
@@ -1077,9 +1078,9 @@ mercury__exception__builtin_catch_model_non(MR_Mercury_Type_Info type_info,
 
 	ML_INSTALL_AGC_HANDLER(type_info, handler_pred);
 
-#ifdef	MR_DEBUG_JMPBUFS
+    #ifdef MR_DEBUG_JMPBUFS
 	fprintf(stderr, ""noncatch setjmp %p\\n"", this_handler.handler);
-#endif
+    #endif
 
 	if (setjmp(this_handler.handler) == 0) {
 		ML_call_goal_non_handcoded(type_info, pred, output,
@@ -1087,10 +1088,10 @@ mercury__exception__builtin_catch_model_non(MR_Mercury_Type_Info type_info,
 		ML_SET_EXCEPTION_HANDLER(this_handler.prev);
 		ML_UNINSTALL_AGC_HANDLER();
 	} else {
-#ifdef	MR_DEBUG_JMPBUFS
+    #ifdef MR_DEBUG_JMPBUFS
 		fprintf(stderr, ""noncatch caught jmp %p\\n"",
 			this_handler.handler);
-#endif
+    #endif
 
 		ML_SET_EXCEPTION_HANDLER(this_handler.prev);
 		ML_UNINSTALL_AGC_HANDLER();
@@ -1101,7 +1102,7 @@ mercury__exception__builtin_catch_model_non(MR_Mercury_Type_Info type_info,
 	}
 }
 
-#else /* ! MR_USE_GCC_NESTED_FUNCTIONS */
+  #else /* ! MR_USE_GCC_NESTED_FUNCTIONS */
 
 struct ML_catch_env {
 	ML_ExceptionHandler	this_handler;
@@ -1146,9 +1147,9 @@ mercury__exception__builtin_catch_model_non(MR_Mercury_Type_Info type_info,
 
 	ML_INSTALL_AGC_HANDLER(type_info, handler_pred);
 
-#ifdef	MR_DEBUG_JMPBUFS
+    #ifdef MR_DEBUG_JMPBUFS
 	fprintf(stderr, ""noncatch setjmp %p\\n"", locals.this_handler.handler);
-#endif
+    #endif
 
 	if (setjmp(locals.this_handler.handler) == 0) {
 		ML_call_goal_non_handcoded(type_info, pred, output,
@@ -1170,10 +1171,10 @@ mercury__exception__builtin_catch_model_non(MR_Mercury_Type_Info type_info,
 		** for this handler.
 		*/
 
-#ifdef	MR_DEBUG_JMPBUFS
+    #ifdef MR_DEBUG_JMPBUFS
 		fprintf(stderr, ""noncatch caught jmp %p\\n"",
 			locals.this_handler.handler);
-#endif
+    #endif
 
 		ML_SET_EXCEPTION_HANDLER(locals.this_handler.prev);
 		ML_UNINSTALL_AGC_HANDLER();
@@ -1184,7 +1185,7 @@ mercury__exception__builtin_catch_model_non(MR_Mercury_Type_Info type_info,
 	}
 }
 
-#endif /* ! MR_USE_GCC_NESTED_FUNCTIONS */
+  #endif /* ! MR_USE_GCC_NESTED_FUNCTIONS */
 
 #endif /* MR_HIGHLEVEL_CODE */
 ").
@@ -1420,9 +1421,12 @@ void mercury_sys_init_exceptions_write_out_proc_statics(FILE *fp);
 #ifndef MR_HIGHLEVEL_CODE
 
 /*
-** MR_trace_throw():
+** MR_throw_walk_stack():
 **	Unwind the stack as far as possible, until we reach a frame
-**	with an exception handler.  As we go, invoke
+**	with an exception handler.  As we go, invoke either or both
+**	of two actions.
+**
+**	(1) If MR_trace_enabled is set, then invoke
 **	`MR_trace(..., MR_PORT_EXCEPTION, ...)' for each stack frame,
 **	to signal to the debugger that that procedure has exited via
 **	an exception.  This allows to user to use the `retry' command
@@ -1433,23 +1437,35 @@ void mercury_sys_init_exceptions_write_out_proc_statics(FILE *fp);
 **	print a warning and then continue.  It might be better to just
 **	`#ifdef' out all this code (and the code in builtin_throw which
 **	calls it) if MR_STACK_TRACE is not defined.
+**
+**	(2) In deep profiling grades, execute the actions appropriate for
+**	    execution leaving the procedure invocation via the exception port.
+**	    (Deep profiling grades always set MR_STACK_TRACE, so in such grades
+**	    we *will* be able to traverse the stack all the way.
+**
+** The arguments base_sp and base_curfr always hold MR_sp and MR_curfr.
+** They exist only because we cannot take the addresses of MR_sp and MR_curfr.
 */
 
-#define WARNING(msg)							\\
+  #ifdef MR_DEEP_PROFILING
+    #define WARNING(msg)						\\
+	do {								\\
+		MR_fatal_error(""cannot update exception counts: %s\\n"",\\
+			msg);						\\
+	} while (0)
+  #else
+    #define WARNING(msg)						\\
 	do {								\\
 		fflush(stdout);						\\
 		fprintf(stderr, ""mdb: warning: %s\\n""			\\
 			""This may result in some exception events\\n""	\\
 			""being omitted from the trace.\\n"", (msg));	\\
 	} while (0)
-
-/*
-** base_sp and base_curfr always hold MR_sp and MR_curfr. They exist
-** only because we cannot take the addresses of MR_sp and MR_curfr.
-*/
+  #endif
 
 static MR_Code *
-ML_trace_throw(MR_Code *success_pointer, MR_Word *base_sp, MR_Word *base_curfr)
+ML_throw_walk_stack(MR_Code *success_pointer, MR_Word *base_sp,
+	MR_Word *base_curfr)
 {
 	const MR_Internal	*label;
 	const MR_Label_Layout	*return_label_layout;
@@ -1469,6 +1485,20 @@ ML_trace_throw(MR_Code *success_pointer, MR_Word *base_sp, MR_Word *base_curfr)
 		MR_Code 			*MR_jumpaddr;
 		MR_Stack_Walk_Step_Result	result;
 		const char			*problem;
+  #ifdef MR_DEEP_PROFILING
+		MR_CallSiteDynamic		*csd;
+		const MR_Proc_Layout		*pl;
+		MR_ProcStatic			*ps;
+		MR_ProcStatic			*proc_static;
+		int				top_csd_slot;
+		int				middle_csd_slot;
+		MR_CallSiteDynamic		*top_csd;
+		MR_CallSiteDynamic		*middle_csd;
+    #ifndef MR_USE_ACTIVATION_COUNTS
+		int				old_outermost_slot;
+		MR_ProcDynamic			*old_outermost;
+    #endif
+  #endif
 
 		/*
 		** check if we've reached a frame with an exception handler
@@ -1481,16 +1511,118 @@ ML_trace_throw(MR_Code *success_pointer, MR_Word *base_sp, MR_Word *base_curfr)
 			return NULL;
 		}
 
+  #ifdef MR_DEEP_PROFILING
+
+  		/*
+		** The following code is based on the logic of
+		** runtime/mercury_deep_leave_port_body.h, differing
+		** in getting its parameters directly from stack frames
+		** guided by RTTI data and in having the additional error
+		** handling required by this. Any changes here may need to be
+		** reflected there and vice versa.
+		*/
+
+    #ifdef MR_EXEC_TRACE
+		if (! MR_disable_deep_profiling_in_debugger) {
+		/* The matching parenthesis is near the end of the loop */
+    #endif
+
+		MR_enter_instrumentation();
+
+		proc_static = entry_layout->MR_sle_proc_static;
+		top_csd_slot = proc_static->MR_ps_cur_csd_stack_slot;
+		middle_csd_slot = proc_static->MR_ps_next_csd_stack_slot;
+
+		if (top_csd_slot <= 0) {
+			MR_fatal_error(""builtin_throw: no top csd slot"");
+		}
+
+		if (middle_csd_slot <= 0) {
+			MR_fatal_error(""builtin_throw: no middle csd slot"");
+		}
+
+    #ifndef MR_USE_ACTIVATION_COUNTS
+		old_outermost_slot = proc_static->
+			MR_ps_old_outermost_stack_slot;
+
+		if (old_outermost_slot <= 0) {
+			MR_fatal_error(""builtin_throw: no old_outer slot"");
+		}
+    #endif
+
+		if (MR_DETISM_DET_STACK(entry_layout->MR_sle_detism)) {
+  			top_csd = (MR_CallSiteDynamic *)
+				MR_based_stackvar(base_sp, top_csd_slot);
+  			middle_csd = (MR_CallSiteDynamic *)
+				MR_based_stackvar(base_sp, middle_csd_slot);
+    #ifndef MR_USE_ACTIVATION_COUNTS
+  			old_outermost = (MR_ProcDynamic *)
+				MR_based_stackvar(base_sp,
+					old_outermost_slot);
+    #endif
+		} else {
+  			top_csd = (MR_CallSiteDynamic *)
+				MR_based_framevar(base_curfr, top_csd_slot);
+  			middle_csd = (MR_CallSiteDynamic *)
+				MR_based_framevar(base_curfr,
+					middle_csd_slot);
+    #ifndef MR_USE_ACTIVATION_COUNTS
+  			old_outermost = (MR_ProcDynamic *)
+				MR_based_framevar(base_curfr,
+					old_outermost_slot);
+    #endif
+  		}
+
+		csd = middle_csd;
+		MR_deep_assert(csd, NULL, NULL,
+			csd == MR_current_call_site_dynamic);
+
+    #ifdef MR_DEEP_PROFILING_PORT_COUNTS
+		csd->MR_csd_own.MR_own_excps++;
+    #endif
+
+		MR_deep_assert(csd, NULL, NULL,
+			csd->MR_csd_callee_ptr != NULL);
+		pl = csd->MR_csd_callee_ptr->MR_pd_proc_layout;
+		MR_deep_assert(csd, pl, NULL, pl != NULL);
+		ps = pl->MR_sle_proc_static;
+		MR_deep_assert(csd, pl, ps, ps != NULL);
+
+    #ifdef MR_USE_ACTIVATION_COUNTS
+		/* decrement activation count */
+		ps->MR_ps_activation_count--;
+		MR_deep_assert(csd, pl, ps, ps->MR_ps_activation_count >= 0);
+    #else
+		/* set outermost activation pointer */
+		ps->MR_ps_outermost_activation_ptr = old_outermost;
+    #endif
+
+		/* set current csd */
+		MR_current_call_site_dynamic = top_csd;
+
+		MR_leave_instrumentation();
+    #ifdef MR_EXEC_TRACE
+		/* The matching parenthesis is near the start of the loop */
+		}
+    #endif
+
+  #endif
+
+  		if (MR_trace_enabled) {
 		/*
 		** invoke MR_trace() to trace the exception
 		*/
-		if (return_label_layout->MR_sll_port != MR_PORT_EXCEPTION) {
-			MR_fatal_error(""return layout port is not exception"");
+			if (return_label_layout->MR_sll_port !=
+					MR_PORT_EXCEPTION)
+			{
+				MR_fatal_error(""return layout port ""
+					""is not exception"");
 		}
 
 		MR_jumpaddr = MR_trace(return_label_layout);
 		if (MR_jumpaddr != NULL) {
 			return MR_jumpaddr;
+		}
 		}
 
 		/*
@@ -1596,113 +1728,112 @@ MR_declare_label(mercury__exception__builtin_catch_3_5_i8);
 
 MR_declare_label(mercury__exception__builtin_throw_1_0_i1);
 
-/*
-** MR_MAKE_PROC_LAYOUT(entry, detism, slots, succip_locn, pred_or_func,
-**			module, name, arity, mode)
-*/
+#define	MR_DUMMY_LINE	0
+
+MR_call_sites_user_one_ho(exception, builtin_catch, 3, 0, MR_DUMMY_LINE);
+MR_proc_static_user_one_site(exception, builtin_catch, 3, 0,
+	""exception.m"", MR_DUMMY_LINE, MR_TRUE);
+MR_call_sites_user_one_ho(exception, builtin_catch, 3, 1, MR_DUMMY_LINE);
+MR_proc_static_user_one_site(exception, builtin_catch, 3, 1,
+	""exception.m"", MR_DUMMY_LINE, MR_TRUE);
+MR_call_sites_user_one_ho(exception, builtin_catch, 3, 2, MR_DUMMY_LINE);
+MR_proc_static_user_one_site(exception, builtin_catch, 3, 2,
+	""exception.m"", MR_DUMMY_LINE, MR_TRUE);
+MR_call_sites_user_one_ho(exception, builtin_catch, 3, 3, MR_DUMMY_LINE);
+MR_proc_static_user_one_site(exception, builtin_catch, 3, 3,
+	""exception.m"", MR_DUMMY_LINE, MR_TRUE);
+MR_call_sites_user_one_ho(exception, builtin_catch, 3, 4, MR_DUMMY_LINE);
+MR_proc_static_user_one_site(exception, builtin_catch, 3, 4,
+	""exception.m"", MR_DUMMY_LINE, MR_TRUE);
+MR_call_sites_user_one_ho(exception, builtin_catch, 3, 5, MR_DUMMY_LINE);
+MR_proc_static_user_one_site(exception, builtin_catch, 3, 5,
+	""exception.m"", MR_DUMMY_LINE, MR_TRUE);
 
 /*
 ** The various procedures of builtin_catch all allocate their stack frames
 ** on the nondet stack, so for the purposes of doing stack traces we say
 ** they have MR_DETISM_NON, even though they are not actually nondet.
+**
+** MR_STATIC_USER_PROC_STATIC_PROC_LAYOUT(detism, slots, succip_locn,
+**	pred_or_func, module, name, arity, mode)
 */
 
-MR_MAKE_PROC_LAYOUT(mercury__exception__builtin_catch_3_0,
-	MR_DETISM_NON, MR_PROC_NO_SLOT_COUNT, MR_LONG_LVAL_TYPE_UNKNOWN,
-	MR_PREDICATE, ""exception"", ""builtin_catch"", 3, 0);
-MR_MAKE_PROC_LAYOUT(mercury__exception__builtin_catch_3_1,
-	MR_DETISM_NON, MR_PROC_NO_SLOT_COUNT, MR_LONG_LVAL_TYPE_UNKNOWN,
-	MR_PREDICATE, ""exception"", ""builtin_catch"", 3, 1);
-MR_MAKE_PROC_LAYOUT(mercury__exception__builtin_catch_3_2,
-	MR_DETISM_NON, MR_PROC_NO_SLOT_COUNT, MR_LONG_LVAL_TYPE_UNKNOWN,
-	MR_PREDICATE, ""exception"", ""builtin_catch"", 3, 2);
-MR_MAKE_PROC_LAYOUT(mercury__exception__builtin_catch_3_3,
-	MR_DETISM_NON, MR_PROC_NO_SLOT_COUNT, MR_LONG_LVAL_TYPE_UNKNOWN,
-	MR_PREDICATE, ""exception"", ""builtin_catch"", 3, 3);
-MR_MAKE_PROC_LAYOUT(mercury__exception__builtin_catch_3_4,
-	MR_DETISM_NON, MR_PROC_NO_SLOT_COUNT, MR_LONG_LVAL_TYPE_UNKNOWN,
-	MR_PREDICATE, ""exception"", ""builtin_catch"", 3, 4);
-MR_MAKE_PROC_LAYOUT(mercury__exception__builtin_catch_3_5,
-	MR_DETISM_NON, MR_PROC_NO_SLOT_COUNT, MR_LONG_LVAL_TYPE_UNKNOWN,
-	MR_PREDICATE, ""exception"", ""builtin_catch"", 3, 5);
+MR_STATIC_USER_PROC_STATIC_PROC_LAYOUT(
+	MR_DETISM_NON, MR_PROC_NO_SLOT_COUNT, -1,
+	MR_PREDICATE, exception, builtin_catch, 3, 0);
+MR_STATIC_USER_PROC_STATIC_PROC_LAYOUT(
+	MR_DETISM_NON, MR_PROC_NO_SLOT_COUNT, -1,
+	MR_PREDICATE, exception, builtin_catch, 3, 1);
+MR_STATIC_USER_PROC_STATIC_PROC_LAYOUT(
+	MR_DETISM_NON, MR_PROC_NO_SLOT_COUNT, -1,
+	MR_PREDICATE, exception, builtin_catch, 3, 2);
+MR_STATIC_USER_PROC_STATIC_PROC_LAYOUT(
+	MR_DETISM_NON, MR_PROC_NO_SLOT_COUNT, -1,
+	MR_PREDICATE, exception, builtin_catch, 3, 3);
+MR_STATIC_USER_PROC_STATIC_PROC_LAYOUT(
+	MR_DETISM_NON, MR_PROC_NO_SLOT_COUNT, -1,
+	MR_PREDICATE, exception, builtin_catch, 3, 4);
+MR_STATIC_USER_PROC_STATIC_PROC_LAYOUT(
+	MR_DETISM_NON, MR_PROC_NO_SLOT_COUNT, -1,
+	MR_PREDICATE, exception, builtin_catch, 3, 5);
 
 #ifdef	MR_DEEP_PROFILING
-MR_MAKE_INTERNAL_LAYOUT(mercury__exception__builtin_catch_3_0, 1);
-MR_MAKE_INTERNAL_LAYOUT(mercury__exception__builtin_catch_3_1, 1);
-MR_MAKE_INTERNAL_LAYOUT(mercury__exception__builtin_catch_3_2, 1);
-MR_MAKE_INTERNAL_LAYOUT(mercury__exception__builtin_catch_3_3, 1);
-MR_MAKE_INTERNAL_LAYOUT(mercury__exception__builtin_catch_3_4, 1);
-MR_MAKE_INTERNAL_LAYOUT(mercury__exception__builtin_catch_3_5, 1);
+MR_MAKE_USER_INTERNAL_LAYOUT(exception, builtin_catch, 3, 0, 1);
+MR_MAKE_USER_INTERNAL_LAYOUT(exception, builtin_catch, 3, 1, 1);
+MR_MAKE_USER_INTERNAL_LAYOUT(exception, builtin_catch, 3, 2, 1);
+MR_MAKE_USER_INTERNAL_LAYOUT(exception, builtin_catch, 3, 3, 1);
+MR_MAKE_USER_INTERNAL_LAYOUT(exception, builtin_catch, 3, 4, 1);
+MR_MAKE_USER_INTERNAL_LAYOUT(exception, builtin_catch, 3, 5, 1);
 #endif
 
-MR_MAKE_INTERNAL_LAYOUT(mercury__exception__builtin_catch_3_0, 2);
-MR_MAKE_INTERNAL_LAYOUT(mercury__exception__builtin_catch_3_1, 2);
-MR_MAKE_INTERNAL_LAYOUT(mercury__exception__builtin_catch_3_2, 2);
-MR_MAKE_INTERNAL_LAYOUT(mercury__exception__builtin_catch_3_3, 2);
-MR_MAKE_INTERNAL_LAYOUT(mercury__exception__builtin_catch_3_4, 2);
-MR_MAKE_INTERNAL_LAYOUT(mercury__exception__builtin_catch_3_5, 2);
+MR_MAKE_USER_INTERNAL_LAYOUT(exception, builtin_catch, 3, 0, 2);
+MR_MAKE_USER_INTERNAL_LAYOUT(exception, builtin_catch, 3, 1, 2);
+MR_MAKE_USER_INTERNAL_LAYOUT(exception, builtin_catch, 3, 2, 2);
+MR_MAKE_USER_INTERNAL_LAYOUT(exception, builtin_catch, 3, 3, 2);
+MR_MAKE_USER_INTERNAL_LAYOUT(exception, builtin_catch, 3, 4, 2);
+MR_MAKE_USER_INTERNAL_LAYOUT(exception, builtin_catch, 3, 5, 2);
 
 #ifdef	MR_DEEP_PROFILING
-MR_MAKE_INTERNAL_LAYOUT(mercury__exception__builtin_catch_3_0, 3);
-MR_MAKE_INTERNAL_LAYOUT(mercury__exception__builtin_catch_3_1, 3);
-MR_MAKE_INTERNAL_LAYOUT(mercury__exception__builtin_catch_3_2, 3);
-MR_MAKE_INTERNAL_LAYOUT(mercury__exception__builtin_catch_3_3, 3);
-MR_MAKE_INTERNAL_LAYOUT(mercury__exception__builtin_catch_3_4, 3);
-MR_MAKE_INTERNAL_LAYOUT(mercury__exception__builtin_catch_3_5, 3);
+MR_MAKE_USER_INTERNAL_LAYOUT(exception, builtin_catch, 3, 0, 3);
+MR_MAKE_USER_INTERNAL_LAYOUT(exception, builtin_catch, 3, 1, 3);
+MR_MAKE_USER_INTERNAL_LAYOUT(exception, builtin_catch, 3, 2, 3);
+MR_MAKE_USER_INTERNAL_LAYOUT(exception, builtin_catch, 3, 3, 3);
+MR_MAKE_USER_INTERNAL_LAYOUT(exception, builtin_catch, 3, 4, 3);
+MR_MAKE_USER_INTERNAL_LAYOUT(exception, builtin_catch, 3, 5, 3);
 #endif
 
 #ifdef	MR_DEEP_PROFILING
-MR_MAKE_INTERNAL_LAYOUT(mercury__exception__builtin_catch_3_4, 4);
-MR_MAKE_INTERNAL_LAYOUT(mercury__exception__builtin_catch_3_5, 4);
-MR_MAKE_INTERNAL_LAYOUT(mercury__exception__builtin_catch_3_4, 5);
-MR_MAKE_INTERNAL_LAYOUT(mercury__exception__builtin_catch_3_5, 5);
+MR_MAKE_USER_INTERNAL_LAYOUT(exception, builtin_catch, 3, 4, 4);
+MR_MAKE_USER_INTERNAL_LAYOUT(exception, builtin_catch, 3, 5, 4);
+MR_MAKE_USER_INTERNAL_LAYOUT(exception, builtin_catch, 3, 4, 5);
+MR_MAKE_USER_INTERNAL_LAYOUT(exception, builtin_catch, 3, 5, 5);
 #endif
 
 #if	defined(MR_USE_TRAIL) || defined(MR_DEEP_PROFILING)
-MR_MAKE_INTERNAL_LAYOUT(mercury__exception__builtin_catch_3_4, 6);
-MR_MAKE_INTERNAL_LAYOUT(mercury__exception__builtin_catch_3_5, 6);
+MR_MAKE_USER_INTERNAL_LAYOUT(exception, builtin_catch, 3, 4, 6);
+MR_MAKE_USER_INTERNAL_LAYOUT(exception, builtin_catch, 3, 5, 6);
 #endif
 
 #ifdef	MR_DEEP_PROFILING
-MR_MAKE_INTERNAL_LAYOUT(mercury__exception__builtin_catch_3_4, 7);
-MR_MAKE_INTERNAL_LAYOUT(mercury__exception__builtin_catch_3_5, 7);
+MR_MAKE_USER_INTERNAL_LAYOUT(exception, builtin_catch, 3, 4, 7);
+MR_MAKE_USER_INTERNAL_LAYOUT(exception, builtin_catch, 3, 5, 7);
 #endif
 
 #ifdef	MR_DEEP_PROFILING
-MR_MAKE_INTERNAL_LAYOUT(mercury__exception__builtin_catch_3_0, 8);
-MR_MAKE_INTERNAL_LAYOUT(mercury__exception__builtin_catch_3_1, 8);
-MR_MAKE_INTERNAL_LAYOUT(mercury__exception__builtin_catch_3_2, 8);
-MR_MAKE_INTERNAL_LAYOUT(mercury__exception__builtin_catch_3_3, 8);
-MR_MAKE_INTERNAL_LAYOUT(mercury__exception__builtin_catch_3_4, 8);
-MR_MAKE_INTERNAL_LAYOUT(mercury__exception__builtin_catch_3_5, 8);
+MR_MAKE_USER_INTERNAL_LAYOUT(exception, builtin_catch, 3, 0, 8);
+MR_MAKE_USER_INTERNAL_LAYOUT(exception, builtin_catch, 3, 1, 8);
+MR_MAKE_USER_INTERNAL_LAYOUT(exception, builtin_catch, 3, 2, 8);
+MR_MAKE_USER_INTERNAL_LAYOUT(exception, builtin_catch, 3, 3, 8);
+MR_MAKE_USER_INTERNAL_LAYOUT(exception, builtin_catch, 3, 4, 8);
+MR_MAKE_USER_INTERNAL_LAYOUT(exception, builtin_catch, 3, 5, 8);
 #endif
 
-MR_MAKE_PROC_LAYOUT(mercury__exception__builtin_throw_1_0,
+MR_proc_static_user_no_site(exception, builtin_throw, 1, 0,
+	""exception.m"", MR_DUMMY_LINE, MR_TRUE);
+MR_STATIC_USER_PROC_STATIC_PROC_LAYOUT(
         MR_DETISM_DET, 1, MR_LONG_LVAL_STACKVAR(1),
-        MR_PREDICATE, ""exception"", ""builtin_throw"", 1, 0);
-MR_MAKE_INTERNAL_LAYOUT(mercury__exception__builtin_throw_1_0, 1);
-
-#ifdef	MR_DEEP_PROFILING
-/* XXX the 0s are fake line numbers */
-MR_proc_static_user_ho(exception, builtin_catch, 3, 0,
-	""exception.m"", 0, MR_TRUE);
-MR_proc_static_user_ho(exception, builtin_catch, 3, 1,
-	""exception.m"", 0, MR_TRUE);
-MR_proc_static_user_ho(exception, builtin_catch, 3, 2,
-	""exception.m"", 0, MR_TRUE);
-MR_proc_static_user_ho(exception, builtin_catch, 3, 3,
-	""exception.m"", 0, MR_TRUE);
-MR_proc_static_user_ho(exception, builtin_catch, 3, 4,
-	""exception.m"", 0, MR_TRUE);
-MR_proc_static_user_ho(exception, builtin_catch, 3, 5,
-	""exception.m"", 0, MR_TRUE);
-/*
-** XXX Builtin_throw will eventually be able to make calls in deep profiling
-** grades. In the meantime, we need its proc_static structure for its callers.
-*/
-MR_proc_static_user_empty(exception, builtin_throw, 1, 0,
-	""exception.m"", 0, MR_FALSE);
-#endif
+        MR_PREDICATE, exception, builtin_throw, 1, 0);
+MR_MAKE_USER_INTERNAL_LAYOUT(exception, builtin_throw, 1, 0, 1);
 
 MR_BEGIN_MODULE(exceptions_module)
 	MR_init_entry_sl(mercury__exception__builtin_catch_3_0);
@@ -1799,7 +1930,7 @@ MR_BEGIN_CODE
 
 /* mercury__exception__builtin_catch_3_0: the det version */
 #define	proc_label		mercury__exception__builtin_catch_3_0
-#define	proc_static		MR_proc_static_user_name(exception,	\
+#define	proc_layout		MR_proc_layout_user_name(exception,	\
 					builtin_catch, 3, 0)
 #define	excp_handler		MR_MODEL_DET_HANDLER
 #define	model			""[model det]""
@@ -1811,13 +1942,13 @@ MR_BEGIN_CODE
 
 #include ""mercury_exception_catch_body.h""
 
-#undef	proc_static
+#undef	proc_layout
 #undef	proc_label
 
 /* mercury__exception__builtin_catch_3_2: the cc_multi version */
 /* identical to mercury__exception__builtin_catch_3_0 except for label names */
 #define	proc_label		mercury__exception__builtin_catch_3_2
-#define	proc_static		MR_proc_static_user_name(exception,	\
+#define	proc_layout		MR_proc_layout_user_name(exception,	\
 					builtin_catch, 3, 2)
 
 #include ""mercury_exception_catch_body.h""
@@ -1827,12 +1958,12 @@ MR_BEGIN_CODE
 #undef	save_results
 #undef	model
 #undef	excp_handler
-#undef	proc_static
+#undef	proc_layout
 #undef	proc_label
 
 /* mercury__exception__builtin_catch_3_1: the semidet version */
 #define	proc_label		mercury__exception__builtin_catch_3_1
-#define	proc_static		MR_proc_static_user_name(exception,	\
+#define	proc_layout		MR_proc_layout_user_name(exception,	\
 					builtin_catch, 3, 1)
 #define	excp_handler		MR_MODEL_SEMI_HANDLER
 #define	model			""[model semi]""
@@ -1848,13 +1979,13 @@ MR_BEGIN_CODE
 
 #include ""mercury_exception_catch_body.h""
 
-#undef	proc_static
+#undef	proc_layout
 #undef	proc_label
 
 /* mercury__exception__builtin_catch_3_3: the cc_nondet version */
 /* identical to mercury__exception__builtin_catch_3_1 except for label names */
 #define	proc_label		mercury__exception__builtin_catch_3_3
-#define	proc_static		MR_proc_static_user_name(exception,	\
+#define	proc_layout		MR_proc_layout_user_name(exception,	\
 					builtin_catch, 3, 3)
 
 #include ""mercury_exception_catch_body.h""
@@ -1864,12 +1995,12 @@ MR_BEGIN_CODE
 #undef	save_results
 #undef	model
 #undef	excp_handler
-#undef	proc_static
+#undef	proc_layout
 #undef	proc_label
 
 /* mercury__exception__builtin_catch_3_4: the multi version */
 #define	proc_label		mercury__exception__builtin_catch_3_4
-#define	proc_static		MR_proc_static_user_name(exception,	\
+#define	proc_layout		MR_proc_layout_user_name(exception,	\
 					builtin_catch, 3, 4)
 #define	excp_handler		MR_MODEL_NON_HANDLER
 #define	model			""[model non]""
@@ -1883,13 +2014,13 @@ MR_BEGIN_CODE
 
 #include ""mercury_exception_catch_body.h""
 
-#undef	proc_static
+#undef	proc_layout
 #undef	proc_label
 
 /* mercury__exception__builtin_catch_3_5: the nondet version */
 /* identical to mercury__exception__builtin_catch_3_4 except for label names */
 #define	proc_label		mercury__exception__builtin_catch_3_5
-#define	proc_static		MR_proc_static_user_name(exception,	\
+#define	proc_layout		MR_proc_layout_user_name(exception,	\
 					builtin_catch, 3, 5)
 
 #include ""mercury_exception_catch_body.h""
@@ -1901,7 +2032,7 @@ MR_BEGIN_CODE
 #undef	save_results
 #undef	model
 #undef	excp_handler
-#undef	proc_static
+#undef	proc_layout
 #undef	proc_label
 
 /*
@@ -1924,18 +2055,25 @@ MR_define_entry(mercury__exception__builtin_throw_1_0);
 	MR_bool				trace_from_full;
 	MR_Word				*orig_curfr;
 	MR_Unsigned			exception_event_number;
+	MR_bool				walk_stack;
 
 	exception = MR_r1;
 	exception_event_number = MR_trace_event_number;
 
 	/*
-	** let the debugger trace exception throwing
+	** let the debugger and/or the deep profiler trace exception throwing
 	*/
-	if (MR_trace_enabled) {
+#ifdef	MR_DEEP_PROFILING
+	walk_stack = MR_TRUE;
+#else
+	walk_stack = MR_trace_enabled;
+#endif
+
+	if (walk_stack) {
 		MR_Code *MR_jumpaddr;
 		MR_trace_set_exception_value(exception);
 		MR_save_transient_registers();
-		MR_jumpaddr = ML_trace_throw(MR_succip, MR_sp, MR_curfr);
+		MR_jumpaddr = ML_throw_walk_stack(MR_succip, MR_sp, MR_curfr);
 		MR_restore_transient_registers();
 		if (MR_jumpaddr != NULL) MR_GOTO(MR_jumpaddr);
 	}
@@ -2000,14 +2138,14 @@ MR_define_entry(mercury__exception__builtin_throw_1_0);
 						(long) exception_event_number);
 				}
 			}
-			if (MR_trace_enabled) {
+			if (walk_stack) {
 				/*
-				** The stack has already been unwound
-				** by ML_trace_throw(), so we can't dump it.
+				** The stack has already been unwound by
+				** ML_throw_walk_stack(), so we can't dump it.
 				** (In fact, if we tried to dump the now-empty
 				** stack, we'd get incorrect results, since
-				** ML_trace_throw() does not restore MR_succip
-				** to the appropriate value.)
+				** ML_throw_walk_stack() does not restore
+				** MR_succip to the appropriate value.)
 				*/
 			} else {
 				MR_dump_stack(MR_succip, MR_sp, MR_curfr,
@@ -2230,20 +2368,20 @@ mercury_sys_init_exceptions_init_type_tables(void)
 void
 mercury_sys_init_exceptions_write_out_proc_statics(FILE *fp)
 {
-	MR_write_out_proc_static(fp, (MR_ProcStatic *)
-		&MR_proc_static_user_name(exception, builtin_catch, 3, 0));
-	MR_write_out_proc_static(fp, (MR_ProcStatic *)
-		&MR_proc_static_user_name(exception, builtin_catch, 3, 1));
-	MR_write_out_proc_static(fp, (MR_ProcStatic *)
-		&MR_proc_static_user_name(exception, builtin_catch, 3, 2));
-	MR_write_out_proc_static(fp, (MR_ProcStatic *)
-		&MR_proc_static_user_name(exception, builtin_catch, 3, 3));
-	MR_write_out_proc_static(fp, (MR_ProcStatic *)
-		&MR_proc_static_user_name(exception, builtin_catch, 3, 4));
-	MR_write_out_proc_static(fp, (MR_ProcStatic *)
-		&MR_proc_static_user_name(exception, builtin_catch, 3, 5));
-	MR_write_out_proc_static(fp, (MR_ProcStatic *)
-		&MR_proc_static_user_name(exception, builtin_throw, 1, 0));
+	MR_write_out_user_proc_static(fp,
+		&MR_proc_layout_user_name(exception, builtin_catch, 3, 0));
+	MR_write_out_user_proc_static(fp,
+		&MR_proc_layout_user_name(exception, builtin_catch, 3, 1));
+	MR_write_out_user_proc_static(fp,
+		&MR_proc_layout_user_name(exception, builtin_catch, 3, 2));
+	MR_write_out_user_proc_static(fp,
+		&MR_proc_layout_user_name(exception, builtin_catch, 3, 3));
+	MR_write_out_user_proc_static(fp,
+		&MR_proc_layout_user_name(exception, builtin_catch, 3, 4));
+	MR_write_out_user_proc_static(fp,
+		&MR_proc_layout_user_name(exception, builtin_catch, 3, 5));
+	MR_write_out_user_proc_static(fp,
+		&MR_proc_layout_user_name(exception, builtin_throw, 1, 0));
 }
 #endif
 

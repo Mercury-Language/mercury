@@ -737,6 +737,10 @@
 				% feature, even if their determinism puts an
 				% at_most_zero upper bound on the number of
 				% solutions they have.
+	;	save_deep_excp_vars
+				% This goal generates the deep profiling
+				% variables that the exception handler needs
+				% to execute the exception port code.
 	;	hide_debug_event
 				% The events associated with this goal should
 				% be hidden. This is used e.g. by the tabling

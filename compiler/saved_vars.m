@@ -209,6 +209,7 @@ ok_to_duplicate(preserve_backtrack_into) = no.
 ok_to_duplicate(hide_debug_event) = no.
 ok_to_duplicate(tailcall) = no.
 ok_to_duplicate(keep_constant_binding) = no.
+ok_to_duplicate(save_deep_excp_vars) = no.
 
 % Divide a list of goals into an initial subsequence of goals that
 % construct constants, and all other goals.

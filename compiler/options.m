@@ -197,15 +197,10 @@
 		% Compilation model options for optional features:
 
 		%   (a) Debugging
-		%	For documentation of the stack_trace, require_tracing,
-		%	and decl_debug options, see the documentation for
-		%	MR_STACK_TRACE, MR_REQUIRE_TRACING, and MR_DECL_DEBUG
-		%	in runtime/mercury_conf_param.h.
-		%	The debug option just means both stack_trace and
-		%	require_tracing.
-		;	debug
-		;	stack_trace
-		;	require_tracing
+		%	For documentation of the exec_trace and decl_debug
+		%	options, see the documentation for MR_EXEC_TRACE
+		%	and MR_DECL_DEBUG in runtime/mercury_conf_param.h.
+		;	exec_trace
 		;	decl_debug
 
 		%   (b) Profiling
@@ -299,6 +294,7 @@
 				% The foreign programming languages that this
 				% backend can interface to.
 		; 	backend_foreign_languages
+		;	stack_trace
 				% Stack layout information required to do
 				% a stack trace.
 		;       basic_stack_layout
@@ -865,9 +861,7 @@ option_defaults_2(compilation_model_option, [
 
 		% Optional feature compilation model options:
 		% (a) Debuggging
-	debug			-	bool_special,
-	stack_trace		-	bool(no),
-	require_tracing		-	bool(no),
+	exec_trace		-	bool(no),
 	decl_debug		-	bool(no),
 		% (b) Profiling
 	profiling		-	bool_special,
@@ -884,7 +878,7 @@ option_defaults_2(compilation_model_option, [
 	use_lots_of_ho_specialization
 				-	bool(no),
 	deep_profile_tail_recursion
-				-	bool(yes),
+				-	bool(no),
 	record_term_sizes_as_words -	bool(no),
 	record_term_sizes_as_cells -	bool(no),
 		% (c) Miscellaneous optional features
@@ -948,6 +942,7 @@ option_defaults_2(internal_use_option, [
 					% The backend_foreign_languages option
 					% depends on the target and is set in
 					% handle_options.
+	stack_trace		-	bool(no),
 	basic_stack_layout	-	bool(no),
 	agc_stack_layout	-	bool(no),
 	procid_stack_layout	-	bool(no),
@@ -1505,11 +1500,7 @@ long_option("java-only",                java_only).
 long_option("Java-only",                java_only).
 	% Optional features compilation model options:
 	% (a) debugging
-long_option("debug",			debug).
-% The following options are not allowed, because they're
-% not very useful and would probably only confuse people.
-% long_option("stack-trace",		stack_trace).
-% long_option("require-tracing",	require_tracing).
+long_option("debug",			exec_trace).
 long_option("decl-debug",       	decl_debug).
 	% (b) profiling
 long_option("profiling",		profiling).
@@ -2018,9 +2009,6 @@ special_handler(deep_profiling, none, OptionTable0, ok(OptionTable)) :-
 	map__set(OptionTable1, profile_calls, bool(no), OptionTable2),
         map__set(OptionTable2, profile_memory, bool(no), OptionTable3),
         map__set(OptionTable3, profile_deep, bool(yes), OptionTable).
-special_handler(debug, bool(Value), OptionTable0, ok(OptionTable)) :-
-	map__set(OptionTable0, stack_trace, bool(Value), OptionTable1),
-	map__set(OptionTable1, require_tracing, bool(Value), OptionTable).
 special_handler(inlining, bool(Value), OptionTable0, ok(OptionTable)) :-
 	map__set(OptionTable0, inline_simple, bool(Value), OptionTable1),
 	map__set(OptionTable1, inline_builtins, bool(Value), OptionTable2),

@@ -919,7 +919,8 @@ enum MR_long_option {
 	MR_MDB_IN_WINDOW,
 	MR_FORCE_READLINE,
 	MR_NUM_OUTPUT_ARGS,
-	MR_DEBUG_THREADS_OPT
+	MR_DEBUG_THREADS_OPT,
+	MR_DEEP_PROF_DEBUG_FILE_OPT
 };
 
 struct MR_option MR_long_opts[] = {
@@ -942,7 +943,8 @@ struct MR_option MR_long_opts[] = {
 	{ "mdb-in-window",		0, 0, MR_MDB_IN_WINDOW },
 	{ "force-readline",		0, 0, MR_FORCE_READLINE },
 	{ "num-output-args", 		1, 0, MR_NUM_OUTPUT_ARGS },
-	{ "debug-threads",		0, 0, MR_DEBUG_THREADS_OPT }
+	{ "debug-threads",		0, 0, MR_DEBUG_THREADS_OPT },
+	{ "deep-debug-file",		0, 0, MR_DEEP_PROF_DEBUG_FILE_OPT }
 };
 
 static void
@@ -1094,6 +1096,10 @@ process_options(int argc, char **argv)
 #ifdef MR_THREAD_SAFE
 			MR_debug_threads = MR_TRUE;
 #endif
+			break;
+
+		case MR_DEEP_PROF_DEBUG_FILE_OPT:
+			MR_deep_prof_debug_file_flag = MR_TRUE;
 			break;
 
 		case 'a':

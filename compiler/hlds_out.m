@@ -322,8 +322,8 @@ hlds_out__cons_id_to_string(typeclass_info_cell_constructor) =
 	"<typeclass_info_cell_constructor>".
 hlds_out__cons_id_to_string(tabling_pointer_const(_, _)) =
 	"<tabling_pointer>".
-hlds_out__cons_id_to_string(deep_profiling_proc_static(_)) =
-	"<deep_profiling_proc_static>".
+hlds_out__cons_id_to_string(deep_profiling_proc_layout(_)) =
+	"<deep_profiling_proc_layout>".
 hlds_out__cons_id_to_string(table_io_decl(_)) = "<table_io_decl>".
 
 hlds_out__write_cons_id(cons(SymName, Arity)) -->
@@ -346,8 +346,8 @@ hlds_out__write_cons_id(typeclass_info_cell_constructor) -->
 	io__write_string("<typeclass_info_cell_constructor>").
 hlds_out__write_cons_id(tabling_pointer_const(_, _)) -->
 	io__write_string("<tabling_pointer>").
-hlds_out__write_cons_id(deep_profiling_proc_static(_)) -->
-	io__write_string("<deep_profiling_proc_static>").
+hlds_out__write_cons_id(deep_profiling_proc_layout(_)) -->
+	io__write_string("<deep_profiling_proc_layout>").
 hlds_out__write_cons_id(table_io_decl(_)) -->
 	io__write_string("<table_io_decl>").
 
@@ -2590,9 +2590,9 @@ hlds_out__write_functor_cons_id(ConsId, ArgVars, VarSet, ModuleInfo,
 		io__write_int(ProcIdInt, !IO),
 		io__write_string(")", !IO)
 	;
-		ConsId = deep_profiling_proc_static(RttiProcLabel),
+		ConsId = deep_profiling_proc_layout(RttiProcLabel),
 		rtti__proc_label_pred_proc_id(RttiProcLabel, PredId, ProcId),
-		io__write_string("deep_profiling_proc_static(", !IO),
+		io__write_string("deep_profiling_proc_layout(", !IO),
 		hlds_out__write_pred_id(ModuleInfo, PredId, !IO),
 		proc_id_to_int(ProcId, ProcIdInt),
 		io__write_string(" (mode ", !IO),
@@ -3524,8 +3524,12 @@ hlds_out__write_proc(Indent, AppendVarnums, ModuleInfo, PredId, ProcId,
 
 	(
 		MaybeDeepProfileInfo = yes(DeepProfileInfo),
-		DeepProfileInfo = deep_profile_proc_info(Role, _SCC),
-		io__write_string("% deep profile info: ", !IO),
+		DeepProfileInfo = deep_profile_proc_info(MaybeRecInfo,
+			MaybeDeepLayout),
+		(
+			MaybeRecInfo = yes(DeepRecInfo),
+			DeepRecInfo = deep_recursion_info(Role, _),
+			io__write_string("% deep recursion info: ", !IO),
 		(
 			Role = inner_proc(DeepPredProcId),
 			io__write_string("inner, outer is ", !IO)
@@ -3540,6 +3544,32 @@ hlds_out__write_proc(Indent, AppendVarnums, ModuleInfo, PredId, ProcId,
 		io__write_string("/", !IO),
 		io__write_int(DeepProcInt, !IO),
 		io__write_string("\n", !IO)
+	;
+			MaybeRecInfo = no
+		),
+		(
+			MaybeDeepLayout = yes(DeepLayout),
+			DeepLayout = hlds_deep_layout(_, ExcpVars),
+			ExcpVars = hlds_deep_excp_vars(TopCSD, MiddleCSD,
+				MaybeOldOutermost),
+			io__write_string("% deep layout info: ", !IO),
+			io__write_string("TopCSD is ", !IO),
+			mercury_output_var(TopCSD, VarSet, AppendVarnums, !IO),
+			io__write_string(", MiddleCSD is ", !IO),
+			mercury_output_var(MiddleCSD, VarSet, AppendVarnums,
+				!IO),
+			(
+				MaybeOldOutermost = yes(OldOutermost),
+				io__write_string(", OldOutermost is ", !IO),
+				mercury_output_var(OldOutermost, VarSet,
+					AppendVarnums, !IO)
+			;
+				MaybeOldOutermost = no
+			),
+			io__write_string("\n", !IO)
+		;
+			MaybeDeepLayout = no
+		)
 	;
 		MaybeDeepProfileInfo = no
 	),

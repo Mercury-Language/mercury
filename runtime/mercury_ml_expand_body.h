@@ -749,7 +749,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                 MR_Closure_Layout   *closure_layout;
                 MR_Proc_Id          *proc_id;
                 MR_User_Proc_Id     *user_proc_id;
-                MR_Compiler_Proc_Id *comp_proc_id;
+                MR_UCI_Proc_Id      *uci_proc_id;
                 MR_ConstString      name;
                 int                 num_args;
                 int                 i;
@@ -764,7 +764,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
                 if (proc_id->MR_proc_user.MR_user_arity < 0) {
                     name = "dynlink_proc";  /* XXX */
                 } else if (MR_PROC_ID_COMPILER_GENERATED(*proc_id)) {
-                    name = proc_id->MR_proc_comp.MR_comp_pred_name;
+                    name = proc_id->MR_proc_uci.MR_uci_pred_name;
                 } else {
                     name = proc_id->MR_proc_user.MR_user_name;
                 }

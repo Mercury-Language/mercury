@@ -53,6 +53,7 @@
 :- import_module backend_libs__type_ctor_info.
 :- import_module check_hlds__type_util.
 :- import_module hlds__hlds_data.
+:- import_module hlds__hlds_pred.
 :- import_module ml_backend__ml_closure_gen.
 :- import_module ml_backend__ml_code_util.
 :- import_module ml_backend__ml_unify_gen.
@@ -1371,7 +1372,7 @@ gen_init_special_pred(ModuleInfo, RttiProcIdUniv, Init, !ExtraDefns) :-
 	% which unboxes the arguments if necessary.
 	%
 	( univ_to_type(RttiProcIdUniv, RttiProcId) ->
-		( RttiProcId ^ arity = 0 ->
+		( RttiProcId ^ proc_arity = 0 ->
 			% If there are no arguments, then there's no unboxing
 			% to do, so we don't need a wrapper.
 			% (This case can occur with --no-special-preds, where

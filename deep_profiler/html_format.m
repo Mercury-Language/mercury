@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2002 The University of Melbourne.
+% Copyright (C) 2001-2002, 2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -907,13 +907,13 @@ fields_header(Pref, IdFields, TotalsDisp, WrapFunc) = HTML :-
 	( show_port_counts(Fields) = yes ->
 		Calls = WrapFunc("Calls", by_cost(calls, self, overall)),
 		FirstRow1 = FirstRow0 ++
-			"<TH COLSPAN=4>Port counts\n",
+			"<TH COLSPAN=5>Port counts\n",
 		SecondRow1 = SecondRow0 ++
-			string__format("<TH ALIGN=RIGHT>%s\n",
-				[s(Calls)]) ++
+			string__format("<TH ALIGN=RIGHT>%s\n", [s(Calls)]) ++
 			"<TH ALIGN=RIGHT>Exits\n" ++
 			"<TH ALIGN=RIGHT>Fails\n" ++
-			"<TH ALIGN=RIGHT>Redos\n"
+			"<TH ALIGN=RIGHT>Redos\n" ++
+			"<TH ALIGN=RIGHT>Excps\n"
 	;
 		FirstRow1 = FirstRow0,
 		SecondRow1 = SecondRow0
@@ -1346,6 +1346,7 @@ own_and_desc_to_html(Own, Desc, Pref, Deep, TotalsDisp) = HTML :-
 	Exits = exits(Own),
 	Fails = fails(Own),
 	Redos = redos(Own),
+	Excps = excps(Own),
 
 	OwnQuanta = quanta(Own),
 	TotalQuanta = inherit_quanta(OwnPlusDesc),
@@ -1392,7 +1393,9 @@ own_and_desc_to_html(Own, Desc, Pref, Deep, TotalsDisp) = HTML :-
 			string__format("<TD CLASS=port ALIGN=RIGHT>%s</TD>\n",
 				[s(commas(Fails))]) ++
 			string__format("<TD CLASS=port ALIGN=RIGHT>%s</TD>\n",
-				[s(commas(Redos))])
+				[s(commas(Redos))]) ++
+			string__format("<TD CLASS=port ALIGN=RIGHT>%s</TD>\n",
+				[s(commas(Excps))])
 	;
 		PortHTML = ""
 	),

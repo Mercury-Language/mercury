@@ -23,8 +23,7 @@
 # .tr grade is not compatible with .mm
 #	(see comment in runtime/mercury_tabling.c for rationale)
 #
-case $use_trail,$use_minimal_model in
-	true,true)
+case $use_trail,$use_minimal_model in true,true)
 		echo "trailing and minimal model tabling are not compatible" 1>&2
 		exit 1 ;;
 esac
@@ -33,8 +32,7 @@ esac
 # .debug grade implies --use-trail in the absence of .mm
 #	(see comment in compiler/handle_options.m for rationale)
 #
-case $stack_trace,$require_tracing,$use_minimal_model in
-	true,true,false)
+case $debug,$use_minimal_model in true,false)
 		use_trail=true ;;
 esac
 
@@ -42,9 +40,7 @@ esac
 # --decl-debug implies --debug
 #
 case $decl_debug in true)
-	require_tracing=true
-	stack_trace=true
-	;;
+	debug=true ;;
 esac
 
 #

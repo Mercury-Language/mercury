@@ -263,9 +263,9 @@ unify_gen__generate_tag_test_rval_2(base_typeclass_info_constant(_, _, _), _,
 unify_gen__generate_tag_test_rval_2(tabling_pointer_constant(_, _), _, _) :-
 	% This should never happen
 	error("Attempted tabling_pointer unification").
-unify_gen__generate_tag_test_rval_2(deep_profiling_proc_static_tag(_), _, _) :-
+unify_gen__generate_tag_test_rval_2(deep_profiling_proc_layout_tag(_), _, _) :-
 	% This should never happen
-	error("Attempted deep_profiling_proc_static_tag unification").
+	error("Attempted deep_profiling_proc_layout_tag unification").
 unify_gen__generate_tag_test_rval_2(table_io_decl_tag(_), _, _) :-
 	% This should never happen
 	error("Attempted table_io_decl_tag unification").
@@ -425,14 +425,23 @@ unify_gen__generate_construction_2(tabling_pointer_constant(PredId, ProcId),
 	code_info__assign_const_to_var(Var,
 		const(data_addr_const(DataAddr, no)), !CI).
 unify_gen__generate_construction_2(
-		deep_profiling_proc_static_tag(RttiProcLabel),
+		deep_profiling_proc_layout_tag(RttiProcLabel),
 		Var, Args, _Modes, _, _, empty, !CI) :-
 	( Args = [] ->
 		true
 	;
 		error("unify_gen: deep_profiling_proc_static has args")
 	),
-	DataAddr = layout_addr(proc_static(RttiProcLabel)),
+	IsSpecial = RttiProcLabel ^ pred_is_special_pred,
+	(
+		IsSpecial = yes(_),
+		UserOrUCI = uci
+	;
+		IsSpecial = no,
+		UserOrUCI = user
+	),
+	ProcKind = proc_layout_proc_id(UserOrUCI),
+	DataAddr = layout_addr(proc_layout(RttiProcLabel, ProcKind)),
 	code_info__assign_const_to_var(Var,
 		const(data_addr_const(DataAddr, no)), !CI).
 unify_gen__generate_construction_2(table_io_decl_tag(RttiProcLabel),
@@ -842,7 +851,7 @@ unify_gen__generate_det_deconstruction_2(Var, Cons, Args, Modes, Tag, Code,
 		Tag = tabling_pointer_constant(_, _),
 		Code = empty
 	;
-		Tag = deep_profiling_proc_static_tag(_),
+		Tag = deep_profiling_proc_layout_tag(_),
 		Code = empty
 	;
 		Tag = table_io_decl_tag(_),

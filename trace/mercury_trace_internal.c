@@ -16,6 +16,7 @@
 #include "mercury_getopt.h"
 #include "mercury_signal.h"
 #include "mercury_builtin_types.h"
+#include "mercury_deep_profiling.h"
 
 #include "mercury_trace.h"
 #include "mercury_trace_internal.h"
@@ -664,6 +665,9 @@ MR_trace_event_internal(MR_Trace_Cmd_Info *cmd, MR_bool interactive,
 	*/
 
 	MR_turn_off_debug(&MR_saved_debug_state, MR_FALSE);
+#if	defined(MR_DEEP_PROFILING) && defined(MR_EXEC_TRACE)
+	MR_disable_deep_profiling_in_debugger = MR_TRUE;
+#endif
 
 	MR_trace_internal_ensure_init();
 
@@ -709,6 +713,9 @@ MR_trace_event_internal(MR_Trace_Cmd_Info *cmd, MR_bool interactive,
 
 	MR_scroll_next = 0;
 	MR_turn_debug_back_on(&MR_saved_debug_state);
+#if	defined(MR_DEEP_PROFILING) && defined(MR_EXEC_TRACE)
+	MR_disable_deep_profiling_in_debugger = MR_FALSE;
+#endif
 	return jumpaddr;
 }
 

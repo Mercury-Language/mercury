@@ -546,17 +546,11 @@ compile_c_file(ErrorStream, PIC, C_File, O_File, Succeeded, !IO) :-
 	;
 		DeclDebugOpt = ""
 	),
-	globals__io_lookup_bool_option(require_tracing, RequireTracing, !IO),
-	( RequireTracing = yes ->
-		RequireTracingOpt = "-DMR_REQUIRE_TRACING "
+	globals__io_lookup_bool_option(exec_trace, ExecTrace, !IO),
+	( ExecTrace = yes ->
+		ExecTraceOpt = "-DMR_EXEC_TRACE "
 	;
-		RequireTracingOpt = ""
-	),
-	globals__io_lookup_bool_option(stack_trace, StackTrace, !IO),
-	( StackTrace = yes ->
-		StackTraceOpt = "-DMR_STACK_TRACE "
-	;
-		StackTraceOpt = ""
+		ExecTraceOpt = ""
 	),
 	globals__io_lookup_bool_option(target_debug, Target_Debug, !IO),
 	( Target_Debug = yes ->
@@ -636,7 +630,7 @@ compile_c_file(ErrorStream, PIC, C_File, O_File, Succeeded, !IO) :-
 		GC_Opt, ProfileCallsOpt, ProfileTimeOpt, ProfileMemoryOpt,
 		ProfileDeepOpt, RecordTermSizesOpt, PIC_Reg_Opt, TagsOpt,
 		NumTagBitsOpt, Target_DebugOpt, LL_DebugOpt,
-		DeclDebugOpt, RequireTracingOpt, StackTraceOpt,
+		DeclDebugOpt, ExecTraceOpt,
 		UseTrailOpt, ReserveTagOpt, MinimalModelOpt, TypeLayoutOpt,
 		InlineAllocOpt, " ", AnsiOpt, " ", WarningOpt, " ", CFLAGS,
 		" -c ", C_File, " ", NameObjectFile, O_File], Command),

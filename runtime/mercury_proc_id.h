@@ -32,7 +32,7 @@ typedef	enum {
 ** MR_PROC_LAYOUT_COMPILER_GENERATED, which will return true only if
 ** the procedure is of the second type.
 **
-** The compiler generates MR_User_Proc_Id and MR_Compiler_Proc_Id structures
+** The compiler generates MR_User_Proc_Id and MR_UCI_Proc_Id structures
 ** in order to avoid having to initialize the MR_Proc_Id union through the
 ** inapplicable alternative, since the C standard in widespread use now
 ** doesn't support that.
@@ -50,18 +50,18 @@ struct MR_User_Proc_Id_Struct {
 	MR_int_least16_t	MR_user_mode;
 };
 
-struct MR_Compiler_Proc_Id_Struct {
-	MR_ConstString		MR_comp_type_name;
-	MR_ConstString		MR_comp_type_module;
-	MR_ConstString		MR_comp_def_module;
-	MR_ConstString		MR_comp_pred_name;
-	MR_int_least16_t	MR_comp_type_arity;
-	MR_int_least16_t	MR_comp_mode;
+struct MR_UCI_Proc_Id_Struct {
+	MR_ConstString		MR_uci_type_name;
+	MR_ConstString		MR_uci_type_module;
+	MR_ConstString		MR_uci_def_module;
+	MR_ConstString		MR_uci_pred_name;
+	MR_int_least16_t	MR_uci_type_arity;
+	MR_int_least16_t	MR_uci_mode;
 };
 
 union MR_Proc_Id_Union {
 	MR_User_Proc_Id		MR_proc_user;
-	MR_Compiler_Proc_Id	MR_proc_comp;
+	MR_UCI_Proc_Id		MR_proc_uci;
 };
 
 #define	MR_PROC_ID_COMPILER_GENERATED(proc_id)				\

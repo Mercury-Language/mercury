@@ -1484,8 +1484,7 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
 	globals__io_lookup_bool_option(statistics, Stats, !IO),
 	mercury_compile__maybe_output_prof_call_graph(Verbose, Stats,
 		HLDS21, HLDS25, !IO),
-	mercury_compile__middle_pass(ModuleName, HLDS25, HLDS50,
-		DeepProfilingStructures, !IO),
+	mercury_compile__middle_pass(ModuleName, HLDS25, HLDS50, !IO),
 	globals__io_lookup_bool_option(highlevel_code, HighLevelCode, !IO),
 	globals__io_lookup_bool_option(aditi_only, AditiOnly, !IO),
 	globals__io_get_target(Target, !IO),
@@ -1617,8 +1616,7 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
 			FactTableBaseFiles = []
 		;
 			mercury_compile__backend_pass(HLDS50, HLDS,
-				DeepProfilingStructures, GlobalData, LLDS,
-				!IO),
+				GlobalData, LLDS, !IO),
 			mercury_compile__output_pass(HLDS, GlobalData, LLDS,
 				MaybeRLFile, ModuleName, _CompileErrors,
 				FactTableBaseFiles, !IO)
@@ -2241,9 +2239,9 @@ mercury_compile__frontend_pass_by_phases(!HLDS, FoundError, !IO) :-
 %-----------------------------------------------------------------------------%
 
 :- pred mercury_compile__middle_pass(module_name::in, module_info::in,
-	module_info::out, list(layout_data)::out, io::di, io::uo) is det.
+	module_info::out, io::di, io::uo) is det.
 
-mercury_compile__middle_pass(ModuleName, !HLDS, DeepProfilingStructs, !IO) :-
+mercury_compile__middle_pass(ModuleName, !HLDS, !IO) :-
 	globals__io_lookup_bool_option(verbose, Verbose, !IO),
 	globals__io_lookup_bool_option(statistics, Stats, !IO),
 
@@ -2350,8 +2348,7 @@ mercury_compile__middle_pass(ModuleName, !HLDS, DeepProfilingStructs, !IO) :-
 	% Deep profiling transformation should be done late in the piece
 	% since it munges the code a fair amount and introduces strange
 	% disjunctions that might confuse other hlds->hlds transformations.
-	mercury_compile__maybe_deep_profiling(Verbose, Stats, !HLDS,
-		DeepProfilingStructs, !IO),
+	mercury_compile__maybe_deep_profiling(Verbose, Stats, !HLDS, !IO),
 	mercury_compile__maybe_dump_hlds(!.HLDS, "50", "deep_profiling", !IO),
 
 	mercury_compile__maybe_dump_hlds(!.HLDS, "51", "middle_pass", !IO).
@@ -2419,18 +2416,16 @@ mercury_compile__maybe_generate_rl_bytecode(ModuleInfo,
 %-----------------------------------------------------------------------------%
 
 :- pred mercury_compile__backend_pass(module_info::in, module_info::out,
-	list(layout_data)::in, global_data::out, list(c_procedure)::out,
+	global_data::out, list(c_procedure)::out,
 	io::di, io::uo) is det.
 
-mercury_compile__backend_pass(!HLDS, DeepProfilingStructures,
-		GlobalData, LLDS, !IO) :-
+mercury_compile__backend_pass(!HLDS, GlobalData, LLDS, !IO) :-
 	module_info_name(!.HLDS, ModuleName),
 	globals__io_lookup_bool_option(unboxed_float, UnboxFloat, !IO),
 	globals__io_lookup_bool_option(common_data, DoCommonData, !IO),
 	StaticCellInfo0 = init_static_cell_info(ModuleName, UnboxFloat,
 		DoCommonData),
-	global_data_init(DeepProfilingStructures, StaticCellInfo0,
-		GlobalData0),
+	global_data_init(StaticCellInfo0, GlobalData0),
 
 	globals__io_lookup_bool_option(verbose, Verbose, !IO),
 	globals__io_lookup_bool_option(statistics, Stats, !IO),
@@ -3447,22 +3442,19 @@ mercury_compile__maybe_term_size_prof(Verbose, Stats, !HLDS, !IO) :-
 	).
 
 :- pred mercury_compile__maybe_deep_profiling(bool::in, bool::in,
-	module_info::in, module_info::out, list(layout_data)::out,
-	io::di, io::uo) is det.
+	module_info::in, module_info::out, io::di, io::uo) is det.
 
-mercury_compile__maybe_deep_profiling(Verbose, Stats, !HLDS,
-		DeepProfStructs, !IO) :-
-	globals__io_lookup_bool_option(profile_deep, Dead, !IO),
-	( Dead = yes ->
+mercury_compile__maybe_deep_profiling(Verbose, Stats, !HLDS, !IO) :-
+	globals__io_lookup_bool_option(profile_deep, ProfileDeep, !IO),
+	( ProfileDeep = yes ->
 		maybe_write_string(Verbose,
 			"% Applying deep profiling transformation...\n", !IO),
 		maybe_flush_output(Verbose, !IO),
-		apply_deep_profiling_transformation(!HLDS, DeepProfStructs,
-			!IO),
+		apply_deep_profiling_transformation(!HLDS),
 		maybe_write_string(Verbose, "% done.\n", !IO),
 		maybe_report_stats(Stats, !IO)
 	;
-		DeepProfStructs = []
+		true
 	).
 
 :- pred mercury_compile__maybe_introduce_accumulators(bool::in, bool::in,
@@ -3757,7 +3749,6 @@ mercury_compile__output_pass(HLDS, GlobalData0, Procs, MaybeRLFile,
 	% XXX We assume that the foreign language we use is C
 	get_c_interface_info(HLDS, c, C_InterfaceInfo),
 	global_data_get_all_proc_vars(GlobalData, GlobalVars),
-	global_data_get_all_deep_prof_data(GlobalData, DeepProfData),
 	global_data_get_all_closure_layouts(GlobalData, ClosureLayouts),
 	global_data_get_static_cell_info(GlobalData, StaticCellInfo),
 	StaticCells = get_static_cells(StaticCellInfo),
@@ -3766,7 +3757,7 @@ mercury_compile__output_pass(HLDS, GlobalData0, Procs, MaybeRLFile,
 	% Next we put it all together and output it to one or more C files.
 	%
 	list__condense([StaticCells, ClosureLayouts, StackLayouts,
-		DeepProfData, TypeCtorTables, TypeClassInfos], AllData),
+		TypeCtorTables, TypeClassInfos], AllData),
 	mercury_compile__construct_c_file(HLDS, C_InterfaceInfo,
 		Procs, GlobalVars, AllData, CFile, NumChunks, !IO),
 	mercury_compile__output_llds(ModuleName, CFile, LayoutLabels,

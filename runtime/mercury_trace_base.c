@@ -68,7 +68,7 @@ MR_Unsigned		MR_io_tabling_start_event_num = 0;
 MR_Unsigned		MR_io_tabling_stop_event_num = 0;
 MR_bool			MR_io_tabling_debug = MR_FALSE;
 
-#ifdef	MR_REQUIRE_TRACING
+#ifdef	MR_EXEC_TRACE
   MR_bool		MR_io_tabling_allowed = MR_TRUE;
 #else
   MR_bool		MR_io_tabling_allowed = MR_FALSE;

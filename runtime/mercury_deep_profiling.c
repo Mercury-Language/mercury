@@ -23,21 +23,24 @@
 #include "mercury_prof_time.h"
 #include "mercury_runtime_util.h"	/* for strerror() on some systems */
 #include "mercury_deep_profiling.h"
+#include "mercury_deep_profiling_hand.h"
 
 #ifdef MR_DEEP_PROFILING
 
 #include <stdio.h>
 #include <errno.h>
 
+#ifdef	MR_EXEC_TRACE
+MR_bool	MR_disable_deep_profiling_in_debugger = MR_FALSE;
+#endif
+
 MR_CallSiteStatic	MR_main_parent_call_site_statics[1] =
 {
 	{ MR_callback, NULL, NULL, "Mercury runtime", 0, "" }
 };
 
-MR_User_ProcStatic	MR_main_parent_proc_static =
+MR_ProcStatic	MR_main_parent_proc_static =
 {
-	{ MR_PREDICATE, "Mercury runtime", "Mercury runtime",
-	  "Mercury runtime", 0, 0 },
 	"Mercury runtime",
 	0,
 	MR_TRUE,
@@ -46,7 +49,19 @@ MR_User_ProcStatic	MR_main_parent_proc_static =
 #ifdef	MR_USE_ACTIVATION_COUNTS
 	0,
 #endif
-	NULL
+	NULL,
+	-1,
+	-1,
+	-1
+};
+
+MR_Proc_Layout_User	MR_main_parent_proc_layout =
+{
+	{ MR_do_not_reached, MR_DETISM_DET, -1, MR_LONG_LVAL_TYPE_UNKNOWN },
+	{ MR_PREDICATE, "Mercury runtime", "Mercury runtime",
+	  "Mercury runtime", 0, 0 },
+	NULL,
+	&MR_main_parent_proc_static
 };
 
 MR_CallSiteDynamic	*MR_main_parent_call_site_dynamics[1] =
@@ -56,7 +71,7 @@ MR_CallSiteDynamic	*MR_main_parent_call_site_dynamics[1] =
 
 MR_ProcDynamic		MR_main_parent_proc_dynamic =
 {
-	(MR_ProcStatic *) &MR_main_parent_proc_static,
+	(MR_Proc_Layout *) &MR_main_parent_proc_layout,
 	&MR_main_parent_call_site_dynamics[0]
 };
 
@@ -66,11 +81,11 @@ MR_CallSiteDynamic	MR_main_grandparent_call_site_dynamic =
 	{
 #ifdef MR_DEEP_PROFILING_PORT_COUNTS
   #ifdef MR_DEEP_PROFILING_EXPLICIT_CALL_COUNTS
-	0,
+	1,
   #else
 	/* the call count is computed from the other counts */
   #endif
-	1, 0, 0,
+	1, 0, 0, 0,
 #endif
 #ifdef MR_DEEP_PROFILING_TIMING
 	0,
@@ -125,8 +140,9 @@ int	MR_deep_prof_call_builtin_old = 0;
 #endif	/* MR_DEEP_PROFILING_STATISTICS */
 
 void
-MR_deep_assert_failed(const MR_CallSiteDynamic *csd, const MR_ProcStatic *ps,
-	const char *cond, const char *filename, int linenumber)
+MR_deep_assert_failed(const MR_CallSiteDynamic *csd, const MR_Proc_Layout *pl,
+	const MR_ProcStatic *ps, const char *cond,
+	const char *filename, int linenumber)
 {
 	char	buf[1024];
 	char	bufcsd[1024];
@@ -136,6 +152,12 @@ MR_deep_assert_failed(const MR_CallSiteDynamic *csd, const MR_ProcStatic *ps,
 		sprintf(bufcsd, ", csd %p\n", csd);
 	} else {
 		strcpy(bufcsd, "");
+	}
+
+	if (pl != NULL) {
+		sprintf(bufps, ", pl %p\n", pl);
+	} else {
+		strcpy(bufps, "");
 	}
 
 	if (ps != NULL) {
@@ -328,9 +350,11 @@ MR_write_out_profiling_tree(void)
 	}
 
 #ifdef	MR_DEEP_PROFILING_DEBUG
+	if (MR_deep_prof_debug_file_flag) {
 	debug_fp = fopen("Deep.debug", "w");
 	if (debug_fp == NULL) {
 		debug_fp = stderr;
+	}
 	}
 #endif
 
@@ -365,17 +389,18 @@ MR_write_out_profiling_tree(void)
 	}
 
 #ifdef MR_DEEP_PROFILING_DEBUG
+	if (debug_fp != NULL) {
 	fprintf(debug_fp, "root = %p, %d\n",
 		&MR_main_parent_proc_dynamic, root_pd_id);
+	}
 #endif
 
 	MR_write_ptr(fp, kind_pd, root_pd_id);
 
 	MR_write_out_proc_dynamic(fp, &MR_main_parent_proc_dynamic);
 
-	MR_write_out_proc_static(fp,
-		(MR_ProcStatic *) &MR_main_parent_proc_static);
-	MR_deep_assert(NULL, NULL,
+	MR_write_out_user_proc_static(fp, &MR_main_parent_proc_layout);
+	MR_deep_assert(NULL, NULL, NULL,
 		MR_address_of_write_out_proc_statics != NULL);
 	(*MR_address_of_write_out_proc_statics)(fp);
 
@@ -579,97 +604,112 @@ MR_deep_data_output_error(const char *op)
 static void
 MR_write_out_id_string(FILE *fp)
 {
-	/* This string must match id_string deep_profiler/read_profile.m */
-	const char	*id_string = "Mercury deep profiler data";
+	/* Must be the same as id_string in deep_profiler/read_profile.m */
+	const char	*id_string = "Mercury deep profiler data version 1\n";
 
 	fputs(id_string, fp);
 }
 
 void
-MR_write_out_proc_static(FILE *fp, const MR_ProcStatic *ps)
+MR_write_out_user_proc_static(FILE *fp, const MR_Proc_Layout_User *proc_layout)
 {
+	MR_write_out_proc_static(fp, (const MR_Proc_Layout *) proc_layout);
+}
+
+void
+MR_write_out_uci_proc_static(FILE *fp, const MR_Proc_Layout_UCI *proc_layout)
+{
+	MR_write_out_proc_static(fp, (const MR_Proc_Layout *) proc_layout);
+}
+
+void
+MR_write_out_proc_static(FILE *fp, const MR_Proc_Layout *proc_layout)
+{
+	const MR_ProcStatic	*ps;
+	const MR_Proc_Id	*procid;
 	int	ps_id;
 	int	css_id;
 	MR_bool	already_written;
 	int	i;
 
+	if (proc_layout == NULL) {
+		MR_fatal_error("MR_write_out_proc_static: null proc_layout");
+	}
+
+	ps = proc_layout->MR_sle_proc_static;
 	if (ps == NULL) {
 		MR_fatal_error("MR_write_out_proc_static: null ps");
 	}
 
-	(void) MR_hash_table_insert(MR_proc_static_table, ps,
+	(void) MR_hash_table_insert(MR_proc_static_table, proc_layout,
 		&ps_id, &already_written, MR_TRUE);
 
 #ifdef MR_DEEP_PROFILING_DEBUG
-	fprintf(debug_fp, "proc_static %p/%d\n", ps, ps_id);
+	if (debug_fp != NULL) {
+		fprintf(debug_fp, "proc_static %p/%p/%d\n",
+			proc_layout, ps, ps_id);
 	fprintf(debug_fp, "  filename \"%s\", linenumber %d, "
 			"interface %d, %d call sites\n",
 		ps->MR_ps_file_name, ps->MR_ps_line_number,
 		ps->MR_ps_is_in_interface, ps->MR_ps_num_call_sites);
+	}
 #endif
 
 	if (already_written) {
 		MR_fatal_error("MR_write_out_proc_static: seen ps");
 	}
 
-	MR_hash_table_flag_written(MR_proc_static_table, ps);
+	MR_hash_table_flag_written(MR_proc_static_table, proc_layout);
 
 	MR_write_byte(fp, MR_deep_token_proc_static);
 	MR_write_ptr(fp, kind_ps, ps_id);
 
-	if (MR_PROC_ID_COMPILER_GENERATED(ps->MR_ps_proc_id)) {
+	procid = &proc_layout->MR_sle_proc_id;
+	if (MR_PROC_ID_COMPILER_GENERATED(*procid)) {
 #ifdef MR_DEEP_PROFILING_DEBUG
+		if (debug_fp != NULL) {
 		fprintf(debug_fp, "  compiler %s/%s/%s/%s/%d/%d\n",
-			ps->MR_ps_proc_id.MR_proc_comp.MR_comp_type_name,
-			ps->MR_ps_proc_id.MR_proc_comp.MR_comp_type_module,
-			ps->MR_ps_proc_id.MR_proc_comp.MR_comp_def_module,
-			ps->MR_ps_proc_id.MR_proc_comp.MR_comp_pred_name,
-			ps->MR_ps_proc_id.MR_proc_comp.MR_comp_type_arity,
-			ps->MR_ps_proc_id.MR_proc_comp.MR_comp_mode);
+				procid->MR_proc_uci.MR_uci_type_name,
+				procid->MR_proc_uci.MR_uci_type_module,
+				procid->MR_proc_uci.MR_uci_def_module,
+				procid->MR_proc_uci.MR_uci_pred_name,
+				procid->MR_proc_uci.MR_uci_type_arity,
+				procid->MR_proc_uci.MR_uci_mode);
+		}
 #endif
 
-		MR_write_byte(fp, MR_deep_token_isa_compiler_generated);
-		MR_write_string(fp,
-			ps->MR_ps_proc_id.MR_proc_comp.MR_comp_type_name);
-		MR_write_string(fp,
-			ps->MR_ps_proc_id.MR_proc_comp.MR_comp_type_module);
-		MR_write_string(fp,
-			ps->MR_ps_proc_id.MR_proc_comp.MR_comp_def_module);
-		MR_write_string(fp,
-			ps->MR_ps_proc_id.MR_proc_comp.MR_comp_pred_name);
-		MR_write_num(fp,
-			ps->MR_ps_proc_id.MR_proc_comp.MR_comp_type_arity);
-		MR_write_num(fp,
-			ps->MR_ps_proc_id.MR_proc_comp.MR_comp_mode);
+		MR_write_byte(fp, MR_deep_token_isa_uci_pred);
+		MR_write_string(fp, procid->MR_proc_uci.MR_uci_type_name);
+		MR_write_string(fp, procid->MR_proc_uci.MR_uci_type_module);
+		MR_write_string(fp, procid->MR_proc_uci.MR_uci_def_module);
+		MR_write_string(fp, procid->MR_proc_uci.MR_uci_pred_name);
+		MR_write_num(fp, procid->MR_proc_uci.MR_uci_type_arity);
+		MR_write_num(fp, procid->MR_proc_uci.MR_uci_mode);
 	} else {
 #ifdef MR_DEEP_PROFILING_DEBUG
+		if (debug_fp != NULL) {
 		fprintf(debug_fp, "  user %d/%s/%s/%s/%d/%d\n",
-			ps->MR_ps_proc_id.MR_proc_user.MR_user_pred_or_func,
-			ps->MR_ps_proc_id.MR_proc_user.MR_user_decl_module,
-			ps->MR_ps_proc_id.MR_proc_user.MR_user_def_module,
-			ps->MR_ps_proc_id.MR_proc_user.MR_user_name,
-			ps->MR_ps_proc_id.MR_proc_comp.MR_comp_type_arity,
-			ps->MR_ps_proc_id.MR_proc_comp.MR_comp_mode);
+				procid->MR_proc_user.MR_user_pred_or_func,
+				procid->MR_proc_user.MR_user_decl_module,
+				procid->MR_proc_user.MR_user_def_module,
+				procid->MR_proc_user.MR_user_name,
+				procid->MR_proc_user.MR_user_arity,
+				procid->MR_proc_user.MR_user_mode);
+		}
 #endif
 
-		if (ps->MR_ps_proc_id.MR_proc_user.MR_user_pred_or_func
-			== MR_PREDICATE)
+		if (procid->MR_proc_user.MR_user_pred_or_func == MR_PREDICATE)
 		{
 			MR_write_byte(fp, MR_deep_token_isa_predicate);
 		} else {
 			MR_write_byte(fp, MR_deep_token_isa_function);
 		}
 
-		MR_write_string(fp,
-			ps->MR_ps_proc_id.MR_proc_user.MR_user_decl_module);
-		MR_write_string(fp,
-			ps->MR_ps_proc_id.MR_proc_user.MR_user_def_module);
-		MR_write_string(fp,
-			ps->MR_ps_proc_id.MR_proc_user.MR_user_name);
-		MR_write_num(fp,
-			ps->MR_ps_proc_id.MR_proc_user.MR_user_arity);
-		MR_write_num(fp,
-			ps->MR_ps_proc_id.MR_proc_user.MR_user_mode);
+		MR_write_string(fp, procid->MR_proc_user.MR_user_decl_module);
+		MR_write_string(fp, procid->MR_proc_user.MR_user_def_module);
+		MR_write_string(fp, procid->MR_proc_user.MR_user_name);
+		MR_write_num(fp, procid->MR_proc_user.MR_user_arity);
+		MR_write_num(fp, procid->MR_proc_user.MR_user_mode);
 	}
 
 	MR_write_string(fp, ps->MR_ps_file_name);
@@ -682,9 +722,12 @@ MR_write_out_proc_static(FILE *fp, const MR_ProcStatic *ps)
 			&ps->MR_ps_call_sites[i], &css_id, NULL, MR_FALSE);
 
 #ifdef MR_DEEP_PROFILING_DEBUG
+		if (debug_fp != NULL) {
 		fprintf(debug_fp,
-			"call site id %d in proc_static %p/%d -> %d\n",
-			i, ps, ps_id, css_id);
+				"call site id %d in "
+				"proc_static %p/%p/%d -> %d\n",
+				i, proc_layout, ps, ps_id, css_id);
+		}
 #endif
 
 		MR_write_ptr(fp, kind_css, css_id);
@@ -692,8 +735,11 @@ MR_write_out_proc_static(FILE *fp, const MR_ProcStatic *ps)
 
 	for (i = 0; i < ps->MR_ps_num_call_sites; i++) {
 #ifdef MR_DEEP_PROFILING_DEBUG
-		fprintf(debug_fp, "in proc_static %p/%d, call site %d\n",
-			ps, ps_id, i);
+		if (debug_fp != NULL) {
+			fprintf(debug_fp,
+				"in proc_static %p/%p/%d, call site %d\n",
+				proc_layout, ps, ps_id, i);
+		}
 #endif
 
 		MR_write_out_call_site_static(fp, &ps->MR_ps_call_sites[i]);
@@ -721,11 +767,14 @@ MR_write_out_call_site_static(FILE *fp, const MR_CallSiteStatic *css)
 	MR_hash_table_flag_written(MR_call_site_static_table, css);
 
 #ifdef MR_DEEP_PROFILING_DEBUG
+	if (debug_fp != NULL) {
 	fprintf(debug_fp, "call_site_static %p/%d\n", css, css_id);
 	fprintf(debug_fp,
-		"  filename \"%s\", linenum %d, goal path %s, kind %d\n",
+			"  filename \"%s\", linenum %d, "
+			"goal path %s, kind %d\n",
 		css->MR_css_file_name, css->MR_css_line_number,
 		css->MR_css_goal_path, css->MR_css_kind);
+	}
 #endif
 
 	MR_write_byte(fp, MR_deep_token_call_site_static);
@@ -736,8 +785,10 @@ MR_write_out_call_site_static(FILE *fp, const MR_CallSiteStatic *css)
 			css->MR_css_callee_ptr_if_known,
 			&ps_id, NULL, MR_FALSE);
 #ifdef MR_DEEP_PROFILING_DEBUG
+		if (debug_fp != NULL) {
 		fprintf(debug_fp, "  callee %p/%d\n",
 			css->MR_css_callee_ptr_if_known, ps_id);
+		}
 #endif
 		MR_write_num(fp, ps_id);
 		if (css->MR_css_type_subst_if_known != NULL) {
@@ -767,11 +818,14 @@ MR_write_out_call_site_dynamic(FILE *fp, const MR_CallSiteDynamic *csd)
 	MR_deep_num_csd_nodes++;
 #endif
 
-	MR_deep_assert(csd, NULL, csd->MR_csd_callee_ptr != NULL);
+	MR_deep_assert(csd, NULL, NULL, csd->MR_csd_callee_ptr != NULL);
 
 #ifdef MR_DEEP_PROFILING_DEBUG
-	fprintf(debug_fp, "call_site_dynamic %p: callee proc_dynamic %p\n",
+	if (debug_fp != NULL) {
+		fprintf(debug_fp,
+			"call_site_dynamic %p: callee proc_dynamic %p\n",
 		csd, csd->MR_csd_callee_ptr);
+	}
 #endif
 
 	MR_write_byte(fp, MR_deep_token_call_site_dynamic);
@@ -792,6 +846,11 @@ MR_write_out_call_site_dynamic(FILE *fp, const MR_CallSiteDynamic *csd)
 
 	MR_write_ptr(fp, kind_pd, pd_id);
 
+	/*
+	** The masks here must exactly correspond with the masks in
+	** predicate read_profile in deep_profiler/read_profile.m.
+	*/
+
 #ifdef MR_DEEP_PROFILING_PORT_COUNTS
   #ifdef MR_DEEP_PROFILING_EXPLICIT_CALL_COUNTS
 	if (csd->MR_csd_own.MR_own_calls != 0)
@@ -803,16 +862,18 @@ MR_write_out_call_site_dynamic(FILE *fp, const MR_CallSiteDynamic *csd)
 		bitmask |= 0x0004;
 	if (csd->MR_csd_own.MR_own_redos != 0)
 		bitmask |= 0x0008;
+	if (csd->MR_csd_own.MR_own_excps != 0)
+		bitmask |= 0x0010;
 #endif
 #ifdef MR_DEEP_PROFILING_TIMING
 	if (csd->MR_csd_own.MR_own_quanta != 0)
-		bitmask |= 0x0010;
+		bitmask |= 0x0020;
 #endif
 #ifdef MR_DEEP_PROFILING_MEMORY
 	if (csd->MR_csd_own.MR_own_allocs != 0)
-		bitmask |= 0x0020;
-	if (csd->MR_csd_own.MR_own_words != 0)
 		bitmask |= 0x0040;
+	if (csd->MR_csd_own.MR_own_words != 0)
+		bitmask |= 0x0080;
 #endif
 
 	MR_write_num(fp, bitmask);
@@ -828,6 +889,8 @@ MR_write_out_call_site_dynamic(FILE *fp, const MR_CallSiteDynamic *csd)
 		MR_write_num(fp, csd->MR_csd_own.MR_own_fails);
 	if (csd->MR_csd_own.MR_own_redos != 0)
 		MR_write_num(fp, csd->MR_csd_own.MR_own_redos);
+	if (csd->MR_csd_own.MR_own_excps != 0)
+		MR_write_num(fp, csd->MR_csd_own.MR_own_excps);
 #endif
 
 #ifdef MR_DEEP_PROFILING_TIMING
@@ -848,10 +911,11 @@ MR_write_out_call_site_dynamic(FILE *fp, const MR_CallSiteDynamic *csd)
 static void
 MR_write_out_proc_dynamic(FILE *fp, const MR_ProcDynamic *pd)
 {
-	int	i;
+	const MR_ProcStatic	*ps;
 	int	pd_id;
 	int	ps_id;
 	MR_bool	already_written;
+	int			i;
 
 	if (pd == NULL) {
 		/*
@@ -872,36 +936,42 @@ MR_write_out_proc_dynamic(FILE *fp, const MR_ProcDynamic *pd)
 		return;
 	}
 
+	ps = pd->MR_pd_proc_layout->MR_sle_proc_static;
+
 	MR_hash_table_flag_written(MR_proc_dynamic_table, pd);
-	(void) MR_hash_table_insert(MR_proc_static_table,
-		pd->MR_pd_proc_static, &ps_id, NULL, MR_FALSE);
+	(void) MR_hash_table_insert(MR_proc_static_table, ps, &ps_id,
+		NULL, MR_FALSE);
 
 #ifdef MR_DEEP_PROFILING_STATISTICS
 	MR_deep_num_pd_nodes++;
-	MR_deep_num_pd_array_slots +=
-		pd->MR_pd_proc_static->MR_ps_num_call_sites;
+	MR_deep_num_pd_array_slots += ps->MR_ps_num_call_sites;
 #endif
 
 	MR_write_byte(fp, MR_deep_token_proc_dynamic);
 	MR_write_ptr(fp, kind_pd, pd_id);
 	MR_write_ptr(fp, kind_ps, ps_id);
-	MR_write_num(fp, pd->MR_pd_proc_static->MR_ps_num_call_sites);
+	MR_write_num(fp, ps->MR_ps_num_call_sites);
 
 #ifdef MR_DEEP_PROFILING_DEBUG
-	fprintf(debug_fp, "proc_dynamic %p/%d, proc_static %p/%d\n",
-		pd, pd_id, pd->MR_pd_proc_static, ps_id);
+	if (debug_fp != NULL) {
+		fprintf(debug_fp, "proc_dynamic %p/%d, proc_static %p/%p/%d\n",
+			pd, pd_id, pd->MR_pd_proc_layout, ps, ps_id);
+	}
 #endif
 
-	for (i = 0; i < pd->MR_pd_proc_static->MR_ps_num_call_sites; i++) {
-		MR_write_kind(fp, pd->MR_pd_proc_static->
-			MR_ps_call_sites[i].MR_css_kind);
-		switch (pd->MR_pd_proc_static->MR_ps_call_sites[i].MR_css_kind)
+	for (i = 0; i < ps->MR_ps_num_call_sites; i++) {
+		MR_write_kind(fp, ps->MR_ps_call_sites[i].MR_css_kind);
+		switch (ps->MR_ps_call_sites[i].MR_css_kind)
 		{
 			case MR_normal_call:
 #ifdef MR_DEEP_PROFILING_DEBUG
+				if (debug_fp != NULL) {
 				fprintf(debug_fp,
-					"  normal call from pd %p to pd %p\n",
-					pd, pd->MR_pd_call_site_ptr_ptrs[i]);
+						"  normal call from pd %p "
+						"to pd %p\n",
+						pd, pd->
+						MR_pd_call_site_ptr_ptrs[i]);
+				}
 #endif
 				MR_write_csd_ptr(fp,
 					pd->MR_pd_call_site_ptr_ptrs[i]);
@@ -918,8 +988,8 @@ MR_write_out_proc_dynamic(FILE *fp, const MR_ProcDynamic *pd)
 		}
 	}
 
-	for (i = 0; i < pd->MR_pd_proc_static->MR_ps_num_call_sites; i++) {
-		switch (pd->MR_pd_proc_static->MR_ps_call_sites[i].MR_css_kind)
+	for (i = 0; i < ps->MR_ps_num_call_sites; i++) {
+		switch (ps->MR_ps_call_sites[i].MR_css_kind)
 		{
 			case MR_normal_call:
 				MR_write_out_call_site_dynamic(fp,
@@ -947,8 +1017,10 @@ MR_write_out_ho_call_site_ptrs(FILE *fp, const MR_ProcDynamic *pd,
 		MR_deep_num_dynlist_nodes++;
 #endif
 #ifdef MR_DEEP_PROFILING_DEBUG
+		if (debug_fp != NULL) {
 		fprintf(debug_fp, "  multi call from pd %p to pd %p\n",
 			pd, dynlist->MR_csdlist_call_site);
+		}
 #endif
 		MR_write_csd_ptr(fp, dynlist->MR_csdlist_call_site);
 		dynlist = dynlist->MR_csdlist_next;
@@ -985,7 +1057,9 @@ static void
 MR_write_ptr(FILE *fp, MR_NodeKind kind, int node_id)
 {
 #ifdef	MR_DEEP_PROFILING_DETAIL_DEBUG
+	if (debug_fp != NULL) {
 	fprintf(debug_fp, "ptr: %d\n", node_id);
+	}
 #endif
 
 	/* MR_write_byte(fp, (int) kind); */
@@ -998,7 +1072,9 @@ MR_write_kind(FILE *fp, MR_CallSite_Kind kind)
 	int	byte;
 
 #ifdef	MR_DEEP_PROFILING_DETAIL_DEBUG
+	if (debug_fp != NULL) {
 	fprintf(debug_fp, "call_site_kind: %d\n", (int) kind);
+	}
 #endif
 
 	/* convert from a MR_CallSite_Kind to an MR_Profiling_Encoding_Token */
@@ -1017,7 +1093,9 @@ static void
 MR_write_byte(FILE *fp, const char byte)
 {
 #ifdef	MR_DEEP_PROFILING_DETAIL_DEBUG
+	if (debug_fp != NULL) {
 	fprintf(debug_fp, "byte: %d\n", (int) byte);
+	}
 #endif
 	putc(byte, fp);
 }
@@ -1036,10 +1114,12 @@ MR_write_num(FILE *fp, unsigned long num)
 	int		i;
 
 #ifdef	MR_DEEP_PROFILING_DETAIL_DEBUG
+	if (debug_fp != NULL) {
 	fprintf(debug_fp, "num: %ld\n", num);
+	}
 #endif
 
-	MR_deep_assert(NULL, NULL, (int) num >= 0);
+	MR_deep_assert(NULL, NULL, NULL, (int) num >= 0);
 
 	i = 0;
 	do {
@@ -1062,10 +1142,12 @@ MR_write_fixed_size_int(FILE *fp, unsigned long num)
 	int	i;
 
 #ifdef	MR_DEEP_PROFILING_DETAIL_DEBUG
+	if (debug_fp != NULL) {
 	fprintf(debug_fp, "fixed_size_int: %ld\n", num);
+	}
 #endif
 
-	MR_deep_assert(NULL, NULL, (int) num >= 0);
+	MR_deep_assert(NULL, NULL, NULL, (int) num >= 0);
 
 	for (i = 0; i < MR_FIXED_SIZE_INT_BYTES; i++) {
 		putc(num & ((1 << 8) - 1), fp);
@@ -1079,7 +1161,9 @@ MR_write_string(FILE *fp, const char *ptr)
 	int	i, len;
 
 #ifdef	MR_DEEP_PROFILING_DETAIL_DEBUG
+	if (debug_fp != NULL) {
 	fprintf(debug_fp, "string: <%s>\n", ptr);
+	}
 #endif
 
 	len = strlen(ptr);

@@ -98,9 +98,7 @@ MDBCOMP_LIB_NAME=mer_mdbcomp
 
 MAYBE_STATIC_OPT=""
 
-# --require-tracing (which is implied by --debug and by --decl-debug)
-# implies --trace
-case $require_tracing in
+case $debug in
 	true)	trace=true ;;
 	false)	;;
 esac

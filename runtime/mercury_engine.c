@@ -63,6 +63,7 @@ MR_Debug_Flag_Info	MR_debug_flag_info[MR_MAXFLAG] = {
 	{ "enabled",	MR_LLD_DEBUG_ENABLED_FLAG },
 	{ "notnearest",	MR_NOT_NEAREST_FLAG },
 	{ "debugslots",	MR_DEBUG_SLOTS_FLAG },
+	{ "deepdebugfile",	MR_DEEP_PROF_DEBUG_FILE_FLAG },
 	{ "detail",	MR_DETAILFLAG }
 };
 

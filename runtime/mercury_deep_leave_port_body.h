@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2001-2002 The University of Melbourne.
+** Copyright (C) 2001-2002, 2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -25,17 +25,27 @@
 ** OldOutermostActivationPtr:	The id of the outermost activation of the
 **				current user procedure before the current call
 **				to it. Needed only with MR_VERSION_SR.
+**
+** Note that the code in ML_trace_throw() in library/exception.m is based
+** on the logic of this file, so if you make any changes here, you should
+** consider similar changes there.
 */
 
 #ifdef MR_DEEP_PROFILING
 {
 	MR_CallSiteDynamic	*csd;
+	const MR_Proc_Layout	*pl;
 	MR_ProcStatic		*ps;
+
+  #ifdef MR_EXEC_TRACE
+  	if (! MR_disable_deep_profiling_in_debugger) {
+	/* The matching parenthesis is at the end of the file */
+  #endif
 
 	MR_enter_instrumentation();
 
 	csd = (MR_CallSiteDynamic *) MiddleCSD;
-	MR_deep_assert(csd, NULL, csd == MR_current_call_site_dynamic);
+	MR_deep_assert(csd, NULL, NULL, csd == MR_current_call_site_dynamic);
 
   #ifdef MR_DEEP_PROFILING_PORT_COUNTS
 	/* increment exit/fail count */
@@ -48,15 +58,17 @@
     #endif
   #endif
 
-	MR_deep_assert(csd, NULL, csd->MR_csd_callee_ptr != NULL);
-	ps = csd->MR_csd_callee_ptr->MR_pd_proc_static;
-	MR_deep_assert(csd, ps, ps != NULL);
+	MR_deep_assert(csd, NULL, NULL, csd->MR_csd_callee_ptr != NULL);
+	pl = csd->MR_csd_callee_ptr->MR_pd_proc_layout;
+	MR_deep_assert(csd, pl, NULL, pl != NULL);
+	ps = pl->MR_sle_proc_static;
+	MR_deep_assert(csd, pl, ps, ps != NULL);
 
   #if defined(MR_VERSION_AC)
     #ifdef MR_USE_ACTIVATION_COUNTS
 	/* decrement activation count */
 	ps->MR_ps_activation_count--;
-	MR_deep_assert(csd, ps, ps->MR_ps_activation_count >= 0);
+	MR_deep_assert(csd, pl, ps, ps->MR_ps_activation_count >= 0);
     #else
 	MR_fatal_error(MR_PROCNAME ": MR_USE_ACTIVATION_COUNTS not enabled");
     #endif
@@ -81,6 +93,11 @@
 	** For MR_FAIL_PORT code, the failure we should execute here
 	** is handled by code inserted by the compiler.
 	*/
+
+  #ifdef MR_EXEC_TRACE
+	/* The matching parenthesis is at the start of the file */
+	}
+  #endif
 }
 #else
 	MR_fatal_error(MR_PROCNAME ": deep profiling not enabled");

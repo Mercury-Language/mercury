@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2001-2002 The University of Melbourne.
+** Copyright (C) 2001-2002, 2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -29,15 +29,18 @@
   #ifdef MR_DEEP_PROFILING_TAIL_RECURSION
 	MR_CallSiteDynamic	*csd;
 	MR_ProcDynamic		*pd;
+	const MR_Proc_Layout	*pl;
 	MR_ProcStatic		*ps;
 
 	MR_enter_instrumentation();
 	csd = CSD;
-	MR_deep_assert(csd, NULL, csd == MR_current_call_site_dynamic);
+	MR_deep_assert(csd, NULL, NULL, csd == MR_current_call_site_dynamic);
 	pd = csd->MR_csd_callee_ptr;
-	MR_deep_assert(csd, NULL, pd != NULL);
-	ps = pd->MR_pd_proc_static;
-	MR_deep_assert(csd, ps, ps != NULL);
+	MR_deep_assert(csd, NULL, NULL, pd != NULL);
+	pl = pd->MR_pd_proc_layout;
+	MR_deep_assert(csd, pl, NULL, pl != NULL);
+	ps = pl->MR_sle_proc_static;
+	MR_deep_assert(csd, pl, ps, ps != NULL);
 
 	MR_REC_DEPTH_BODY
 

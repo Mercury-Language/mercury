@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2001 The University of Melbourne.
+** Copyright (C) 2001, 2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -11,7 +11,7 @@
 ** the following macros:
 ** 
 ** proc_label
-** proc_static
+** proc_layout
 ** body_code
 **
 ** It should also define may_need_fail_action for the model_non versions.
@@ -30,10 +30,10 @@
 ** allocated as follows.
 */
 
-#define	CALL_PORT_RETURN_LABEL(pl)	MR_PASTE3(pl, _i, 1)
-#define	EXIT_PORT_RETURN_LABEL(pl)	MR_PASTE3(pl, _i, 2)
-#define	FAIL_LABEL(pl)			MR_PASTE3(pl, _i, 3)
-#define	FAIL_PORT_RETURN_LABEL(pl)	MR_PASTE3(pl, _i, 4)
+#define	CALL_PORT_RETURN_LABEL(pl)	MR_label_name(pl, 1)
+#define	EXIT_PORT_RETURN_LABEL(pl)	MR_label_name(pl, 2)
+#define	FAIL_LABEL(pl)			MR_label_name(pl, 3)
+#define	FAIL_PORT_RETURN_LABEL(pl)	MR_label_name(pl, 4)
 
 /*****************************************************************************/
 
@@ -46,7 +46,7 @@ MR_define_entry(proc_label);
 	MR_stackvar(1) = MR_r1;
 	MR_stackvar(2) = MR_r2;
 
-	MR_deep_semi_call(proc_label, proc_static, FIRST_DEEP_SLOT,
+	MR_deep_semi_call(proc_label, proc_layout, FIRST_DEEP_SLOT,
 		CALL_PORT_RETURN_LABEL(proc_label));
 
 	MR_r1 = MR_stackvar(1);

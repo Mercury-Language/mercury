@@ -18,7 +18,6 @@
 :- interface.
 
 :- import_module backend_libs__proc_label.
-:- import_module backend_libs__rtti.
 :- import_module hlds__hlds_goal.
 :- import_module hlds__hlds_llds.
 :- import_module hlds__hlds_module.
@@ -101,6 +100,7 @@
 :- implementation.
 
 :- import_module backend_libs__builtin_ops.
+:- import_module backend_libs__rtti.
 :- import_module hlds__code_model.
 :- import_module hlds__special_pred.
 :- import_module libs__globals.
@@ -116,16 +116,7 @@ code_util__make_entry_label(ModuleInfo, PredId, ProcId, Immed, ProcAddr) :-
 	code_util__make_entry_label_from_rtti(RttiProcLabel, Immed, ProcAddr).
 
 code_util__make_entry_label_from_rtti(RttiProcLabel, Immed, ProcAddr) :-
-	(
-		(
-			RttiProcLabel ^ is_imported = yes
-		;
-			RttiProcLabel ^ is_pseudo_imported = yes,
-			% only the (in, in) mode of unification is imported
-			hlds_pred__in_in_unification_proc_id(
-				RttiProcLabel^proc_id)
-		)
-	->
+	( RttiProcLabel ^ proc_is_imported = yes ->
 		ProcLabel = make_proc_label_from_rtti(RttiProcLabel),
 		ProcAddr = imported(ProcLabel)
 	;
@@ -149,7 +140,7 @@ code_util__make_local_entry_label_from_rtti(RttiProcLabel, Immed, Label) :-
 		% If we want to define the label or use it to put it
 		% into a data structure, a label that is usable only
 		% within the current C module won't do.
-		( RttiProcLabel ^ is_exported = yes ->
+		( RttiProcLabel ^ proc_is_exported = yes ->
 			Label = exported(ProcLabel)
 		;
 			Label = local(ProcLabel)

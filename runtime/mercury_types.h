@@ -201,18 +201,18 @@ typedef const MR_Closure                        *MR_ClosurePtr;
 
 typedef struct MR_Closure_Id_Struct             MR_Closure_Id;
 typedef struct MR_User_Closure_Id_Struct        MR_User_Closure_Id;
-typedef struct MR_Compiler_Closure_Id_Struct    MR_Compiler_Closure_Id;
+typedef struct MR_UCI_Closure_Id_Struct         MR_UCI_Closure_Id;
 
 typedef struct MR_Type_Param_Locns_Struct       MR_Type_Param_Locns;
 
 typedef struct MR_User_Proc_Id_Struct           MR_User_Proc_Id;
-typedef struct MR_Compiler_Proc_Id_Struct       MR_Compiler_Proc_Id;
+typedef struct MR_UCI_Proc_Id_Struct            MR_UCI_Proc_Id;
 typedef union  MR_Proc_Id_Union                 MR_Proc_Id;
 
 typedef struct MR_CallSiteStatic_Struct         MR_CallSiteStatic;
 typedef struct MR_CallSiteDynamic_Struct        MR_CallSiteDynamic;
 typedef struct MR_User_ProcStatic_Struct        MR_User_ProcStatic;
-typedef struct MR_Compiler_ProcStatic_Struct    MR_Compiler_ProcStatic;
+typedef struct MR_UCI_ProcStatic_Struct         MR_UCI_ProcStatic;
 typedef struct MR_ProcStatic_Struct             MR_ProcStatic;
 typedef struct MR_ProcDynamic_Struct            MR_ProcDynamic;
 typedef struct MR_ProfilingMetrics_Struct       MR_ProfilingMetrics;

@@ -31,7 +31,9 @@ ENDINIT
 #include "mercury_deep_profiling.h"
 #include "mercury_deep_profiling_hand.h"
 #include "mercury_layout_util.h"
-#include "mercury_builtin_types.h"	/* for unify/compare of pred/func */
+#include "mercury_builtin_types.h"
+#include "mercury_builtin_types_proc_layouts.h"
+	/* for unify/compare of pred/func and for proc_layout structures */
 
 #ifdef	MR_DEEP_PROFILING
   #ifdef MR_DEEP_PROFILING_STATISTICS
@@ -54,7 +56,7 @@ ENDINIT
 			((void) 0)
   #endif
 
-  #define	special_pred_call_leave_code(ps, field)			\
+  #define	special_pred_call_leave_code(pl, field)			\
 	do {								\
 		MR_CallSiteDynamic	*csd;				\
 		MR_ProcDynamic		*pd;				\
@@ -62,7 +64,7 @@ ENDINIT
 		csd = MR_next_call_site_dynamic;			\
 		pd = csd->MR_csd_callee_ptr;				\
 		if (pd == NULL) {					\
-			MR_new_proc_dynamic(pd, (MR_ProcStatic *) &ps);	\
+			MR_new_proc_dynamic(pd, (MR_Proc_Layout *) &pl); \
 			csd->MR_csd_callee_ptr = pd;			\
 			maybe_incr_prof_call_builtin_new();		\
 		} else {						\
@@ -72,45 +74,20 @@ ENDINIT
 		csd->MR_csd_own.field++;				\
 	} while (0)
 
-  #define	unify_call_exit_code(predname)				\
+  #define	unify_call_exit_code(mod, pred, type, a)		\
 	special_pred_call_leave_code(					\
-		MR_proc_static_user_builtin_name(predname, 2, 0),	\
+		MR_proc_layout_uci_name(mod, pred, type, a, 0),		\
 		MR_own_exits)
 
-  #define	unify_call_fail_code(predname)				\
+  #define	unify_call_fail_code(mod, pred, type, a)		\
 	special_pred_call_leave_code(					\
-		MR_proc_static_user_builtin_name(predname, 2, 0),	\
+		MR_proc_layout_uci_name(mod, pred, type, a, 0),		\
 		MR_own_fails)
 
-  #define	compare_call_exit_code(predname)			\
+  #define	compare_call_exit_code(mod, pred, type, a)		\
 	special_pred_call_leave_code(					\
-		MR_proc_static_user_builtin_name(predname, 3, 0),	\
+		MR_proc_layout_uci_name(mod, pred, type, a, 0),		\
 		MR_own_exits)
-
-  #define MR_define_unify_compare_proc_statics(builtin)			\
-	MR_proc_static_user_builtin_empty(				\
-		MR_PASTE2(builtin, _unify), 2, 0,			\
-		"mercury_ho_call.c", 0, MR_TRUE);			\
-	MR_proc_static_user_builtin_empty(				\
-		MR_PASTE2(builtin, _compare), 3, 0,			\
-		"mercury_ho_call.c", 0, MR_TRUE);			\
-	MR_proc_static_user_builtin_empty(				\
-		MR_PASTE2(builtin, _compare_representation), 3, 0,	\
-		"mercury_ho_call.c", 0, MR_TRUE)
-
-  MR_define_unify_compare_proc_statics(user);
-  MR_define_unify_compare_proc_statics(integer);
-  MR_define_unify_compare_proc_statics(float);
-  MR_define_unify_compare_proc_statics(string);
-  MR_define_unify_compare_proc_statics(c_pointer);
-  MR_define_unify_compare_proc_statics(reference);
-  MR_define_unify_compare_proc_statics(typeinfo);
-  MR_define_unify_compare_proc_statics(typectorinfo);
-  MR_define_unify_compare_proc_statics(typedesc);
-  MR_define_unify_compare_proc_statics(typectordesc);
-  MR_define_unify_compare_proc_statics(tuple);
-  MR_define_unify_compare_proc_statics(func);
-  MR_define_unify_compare_proc_statics(pred);
 
 #endif
 
@@ -874,18 +851,18 @@ MR_compare_closures(MR_Closure *x, MR_Closure *y)
 
 	if (x_proc_id != y_proc_id) {
 		if (MR_PROC_ID_COMPILER_GENERATED(*x_proc_id)) {
-			x_module_name = x_proc_id->MR_proc_comp.
-						MR_comp_def_module;
-			x_pred_name = x_proc_id->MR_proc_comp.MR_comp_pred_name;
+			x_module_name = x_proc_id->MR_proc_uci.
+						MR_uci_def_module;
+			x_pred_name = x_proc_id->MR_proc_uci.MR_uci_pred_name;
 		} else {
 			x_module_name = x_proc_id->MR_proc_user.
 						MR_user_decl_module;
 			x_pred_name = x_proc_id->MR_proc_user.MR_user_name;
 		}
 		if (MR_PROC_ID_COMPILER_GENERATED(*y_proc_id)) {
-			y_module_name = y_proc_id->MR_proc_comp.
-						MR_comp_def_module;
-			y_pred_name = y_proc_id->MR_proc_comp.MR_comp_pred_name;
+			y_module_name = y_proc_id->MR_proc_uci.
+						MR_uci_def_module;
+			y_pred_name = y_proc_id->MR_proc_uci.MR_uci_pred_name;
 		} else {
 			y_module_name = y_proc_id->MR_proc_user.
 						MR_user_decl_module;
@@ -1123,41 +1100,5 @@ void mercury_sys_init_call_init_type_tables(void)
 #ifdef	MR_DEEP_PROFILING
 void mercury_sys_init_call_write_out_proc_statics(FILE *fp)
 {
-	MR_write_out_proc_static(fp, (MR_ProcStatic *)
-		&MR_proc_static_user_builtin_name(integer_unify, 2, 0));
-	MR_write_out_proc_static(fp, (MR_ProcStatic *)
-		&MR_proc_static_user_builtin_name(integer_compare, 3, 0));
-	MR_write_out_proc_static(fp, (MR_ProcStatic *)
-		&MR_proc_static_user_builtin_name(float_unify, 2, 0));
-	MR_write_out_proc_static(fp, (MR_ProcStatic *)
-		&MR_proc_static_user_builtin_name(float_compare, 3, 0));
-	MR_write_out_proc_static(fp, (MR_ProcStatic *)
-		&MR_proc_static_user_builtin_name(string_unify, 2, 0));
-	MR_write_out_proc_static(fp, (MR_ProcStatic *)
-		&MR_proc_static_user_builtin_name(string_compare, 3, 0));
-	MR_write_out_proc_static(fp, (MR_ProcStatic *)
-		&MR_proc_static_user_builtin_name(c_pointer_unify, 2, 0));
-	MR_write_out_proc_static(fp, (MR_ProcStatic *)
-		&MR_proc_static_user_builtin_name(c_pointer_compare, 3, 0));
-	MR_write_out_proc_static(fp, (MR_ProcStatic *)
-		&MR_proc_static_user_builtin_name(reference_unify, 2, 0));
-	MR_write_out_proc_static(fp, (MR_ProcStatic *)
-		&MR_proc_static_user_builtin_name(reference_compare, 3, 0));
-	MR_write_out_proc_static(fp, (MR_ProcStatic *)
-		&MR_proc_static_user_builtin_name(typeinfo_unify, 2, 0));
-	MR_write_out_proc_static(fp, (MR_ProcStatic *)
-		&MR_proc_static_user_builtin_name(typeinfo_compare, 3, 0));
-	MR_write_out_proc_static(fp, (MR_ProcStatic *)
-		&MR_proc_static_user_builtin_name(typectorinfo_unify, 2, 0));
-	MR_write_out_proc_static(fp, (MR_ProcStatic *)
-		&MR_proc_static_user_builtin_name(typectorinfo_compare, 3, 0));
-	MR_write_out_proc_static(fp, (MR_ProcStatic *)
-		&MR_proc_static_user_builtin_name(typedesc_unify, 2, 0));
-	MR_write_out_proc_static(fp, (MR_ProcStatic *)
-		&MR_proc_static_user_builtin_name(typedesc_compare, 3, 0));
-	MR_write_out_proc_static(fp, (MR_ProcStatic *)
-		&MR_proc_static_user_builtin_name(typectordesc_unify, 2, 0));
-	MR_write_out_proc_static(fp, (MR_ProcStatic *)
-		&MR_proc_static_user_builtin_name(typectordesc_compare, 3, 0));
 }
 #endif

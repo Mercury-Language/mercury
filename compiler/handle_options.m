@@ -228,13 +228,13 @@ check_option_values(OptionTable0, OptionTable, Target, GC_Method, TagsMethod,
 			"`simple', `total' or  `num-data-elems').", !Errors)
 	),
 	map__lookup(OptionTable0, trace, Trace),
-	map__lookup(OptionTable0, require_tracing, RequireTracingOpt),
+	map__lookup(OptionTable0, exec_trace, ExecTraceOpt),
 	map__lookup(OptionTable0, decl_debug, DeclDebugOpt),
 	(
 		Trace = string(TraceStr),
-		RequireTracingOpt = bool(RequireTracing),
+		ExecTraceOpt = bool(ExecTrace),
 		DeclDebugOpt = bool(DeclDebug),
-		convert_trace_level(TraceStr, RequireTracing, DeclDebug,
+		convert_trace_level(TraceStr, ExecTrace, DeclDebug,
 			MaybeTraceLevel)
 	->
 		(
@@ -732,12 +732,16 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
 	option_implies(target_debug, strip, bool(no)),
 
 	% --decl-debug is an extension of --debug
-	option_implies(decl_debug, require_tracing, bool(yes)),
-	option_implies(decl_debug, stack_trace, bool(yes)),
+	option_implies(decl_debug, exec_trace, bool(yes)),
 
-	% The `.debug' grade (i.e. --stack-trace plus --require-tracing)
-	% implies --use-trail, except with --use-minimal-model, which is
-	% not compatible with --use-trail.
+	% We need to be able to simulate exits for calls between where an
+	% exception is thrown to where it is caught both in the debugger and
+	% for deep profiling.
+	option_implies(exec_trace, stack_trace, bool(yes)),
+	option_implies(profile_deep, stack_trace, bool(yes)),
+
+	% The `.debug' grade implies --use-trail, except with
+	% --use-minimal-model, which is not compatible with --use-trail.
 	%
 	% The reason for this is to avoid unnecessary proliferation in
 	% the number of different grades.  If you're using --debug,
@@ -745,9 +749,8 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
 	% be able to afford the minor performance hit caused by
 	% --use-trail.
 
-	globals__io_lookup_bool_option(stack_trace, StackTrace),
-	globals__io_lookup_bool_option(require_tracing, RequireTracing),
-	( { StackTrace = yes, RequireTracing = yes, UseMinimalModel = no } ->
+	globals__io_lookup_bool_option(exec_trace, ExecTrace),
+	( { ExecTrace = yes, UseMinimalModel = no } ->
 		globals__io_set_option(use_trail, bool(yes))
 	;
 		[]
@@ -755,7 +758,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
 
 	% In debugging grades, we want to generate executables in which
 	% one can do retries across I/O safely.
-	option_implies(require_tracing, trace_table_io_all, bool(yes)),
+	option_implies(exec_trace, trace_table_io_all, bool(yes)),
 
 	% --trace-table-io-all is compulsory application of --trace-table-io
 	option_implies(trace_table_io_all, trace_table_io, bool(yes)),
@@ -860,9 +863,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
 		[]
 	),
 
-	% Deep profiling will eventually use `procid' stack layouts,
-	% but for now, we use a separate copy of each MR_Proc_Id structure.
-	% option_implies(profile_deep, procid_stack_layout, bool(yes)),
+	option_implies(profile_deep, procid_stack_layout, bool(yes)),
 	globals__io_lookup_bool_option(profile_deep, ProfileDeep),
 	globals__io_lookup_bool_option(highlevel_code, HighLevel),
 	( { ProfileDeep = yes } ->
@@ -1844,17 +1845,9 @@ grade_component_table("picreg", pic, [pic_reg - bool(yes)], no).
 
 	% Debugging/Tracing components
 grade_component_table("decldebug", trace,
-	[stack_trace - bool(yes), require_tracing - bool(yes),
-	decl_debug - bool(yes)], no).
+	[exec_trace - bool(yes), decl_debug - bool(yes)], no).
 grade_component_table("debug", trace,
-	[stack_trace - bool(yes), require_tracing - bool(yes),
-	decl_debug - bool(no)], no).
-grade_component_table("trace", trace,
-	[stack_trace - bool(no), require_tracing - bool(yes),
-	decl_debug - bool(no)], no).
-grade_component_table("strce", trace,
-	[stack_trace - bool(yes), require_tracing - bool(no),
-	decl_debug - bool(no)], no).
+	[exec_trace - bool(yes), decl_debug - bool(no)], no).
 
 :- pred reset_grade_options(option_table::in, option_table::out) is det.
 
@@ -1884,8 +1877,7 @@ grade_start_values(use_trail - bool(no)).
 grade_start_values(reserve_tag - bool(no)).
 grade_start_values(use_minimal_model - bool(no)).
 grade_start_values(pic_reg - bool(no)).
-grade_start_values(stack_trace - bool(no)).
-grade_start_values(require_tracing - bool(no)).
+grade_start_values(exec_trace - bool(no)).
 grade_start_values(decl_debug - bool(no)).
 
 :- pred split_grade_string(string, list(string)).

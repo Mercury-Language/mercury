@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2002 The University of Melbourne.
+** Copyright (C) 2002, 2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -16,24 +16,40 @@
 ** compare_code
 */
 
-#define	proc_label	MR_TYPE_UNIFY_FUNC(module, type, arity)
-#define	proc_static	MR_proc_static_compiler_name(module, __Unify__, type, \
-				arity, 0)
+#define	proc_label	MR_proc_entry_uci_name(module, __Unify__,	\
+				type, arity, 0)
+#define	proc_layout	MR_proc_layout_uci_name(module, __Unify__,	\
+				type, arity, 0)
 #define	body_code	do { unify_code } while(0)
 
 #include	"mercury_hand_unify_body.h"
 
 #undef	proc_label
-#undef	proc_static
+#undef	proc_layout
 #undef	body_code
 
-#define	proc_label	MR_TYPE_COMPARE_FUNC(module, type, arity)
-#define	proc_static	MR_proc_static_compiler_name(module, __Compare__, type, \
-				arity, 0)
+#define	proc_label	MR_proc_entry_uci_name(module, __Compare__,	\
+				type, arity, 0)
+#define	proc_layout	MR_proc_layout_uci_name(module, __Compare__,	\
+				type, arity, 0)
 #define	body_code	do { compare_code } while(0)
 
 #include	"mercury_hand_compare_body.h"
 
 #undef	proc_label
-#undef	proc_static
+#undef	proc_layout
+#undef	body_code
+
+#define	proc_label	MR_proc_entry_uci_name(module, __CompareRep__,	\
+				type, arity, 0)
+#define	proc_layout	MR_proc_layout_uci_name(module, __CompareRep__,	\
+				type, arity, 0)
+#define	body_code	do { MR_fatal_error(				\
+				"direct type-specific compare_rep call"); \
+			} while(0)
+
+#include	"mercury_hand_compare_body.h"
+
+#undef	proc_label
+#undef	proc_layout
 #undef	body_code

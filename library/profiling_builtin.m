@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 2001-2002 The University of Melbourne.
+% Copyright (C) 2001-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -20,7 +20,7 @@
 
 :- interface.
 
-:- type proc_static.
+:- type proc_layout.
 :- type proc_dynamic.
 :- type call_site_dynamic.
 
@@ -36,10 +36,10 @@
 
 :- impure pred prepare_for_tail_call(int::in) is det.
 
-:- impure pred det_call_port_code_ac(proc_static::in,
+:- impure pred det_call_port_code_ac(proc_layout::in,
 	call_site_dynamic::out, call_site_dynamic::out) is det.
 
-:- impure pred det_call_port_code_sr(proc_static::in, call_site_dynamic::out,
+:- impure pred det_call_port_code_sr(proc_layout::in, call_site_dynamic::out,
 	call_site_dynamic::out, proc_dynamic::out) is det.
 
 :- impure pred det_exit_port_code_ac(call_site_dynamic::in,
@@ -48,10 +48,10 @@
 :- impure pred det_exit_port_code_sr(call_site_dynamic::in,
 	call_site_dynamic::in, proc_dynamic::in) is det.
 
-:- impure pred semi_call_port_code_ac(proc_static::in,
+:- impure pred semi_call_port_code_ac(proc_layout::in,
 	call_site_dynamic::out, call_site_dynamic::out) is det.
 
-:- impure pred semi_call_port_code_sr(proc_static::in, call_site_dynamic::out,
+:- impure pred semi_call_port_code_sr(proc_layout::in, call_site_dynamic::out,
 	call_site_dynamic::out, proc_dynamic::out) is det.
 
 :- impure pred semi_exit_port_code_ac(call_site_dynamic::in,
@@ -66,10 +66,10 @@
 :- impure pred semi_fail_port_code_sr(call_site_dynamic::in,
 	call_site_dynamic::in, proc_dynamic::in) is failure.
 
-:- impure pred non_call_port_code_ac(proc_static::in, call_site_dynamic::out,
+:- impure pred non_call_port_code_ac(proc_layout::in, call_site_dynamic::out,
 	call_site_dynamic::out, proc_dynamic::out) is det.
 
-:- impure pred non_call_port_code_sr(proc_static::in, call_site_dynamic::out,
+:- impure pred non_call_port_code_sr(proc_layout::in, call_site_dynamic::out,
 	call_site_dynamic::out, proc_dynamic::out, proc_dynamic::out) is det.
 
 :- impure pred non_exit_port_code_ac(call_site_dynamic::in,
@@ -231,17 +231,17 @@
 
 :- implementation.
 
-:- type proc_static		---> proc_static(c_pointer).
+:- type proc_layout		---> proc_layout(c_pointer).
 :- type proc_dynamic		---> proc_dynamic(c_pointer).
 :- type call_site_dynamic	---> call_site_dynamic(c_pointer).
 
-:- pragma foreign_type("C", proc_static, 	"MR_ProcStatic *").
+:- pragma foreign_type("C", proc_layout, 	"MR_Proc_Layout *").
 :- pragma foreign_type("C", proc_dynamic,	"MR_ProcDynamic *").
 :- pragma foreign_type("C", call_site_dynamic,	"MR_CallSiteDynamic *").
 
 % The IL type definitions are dummies. They are needed to compile the library
 % in IL grades, but deep profiling is not (yet) supported in IL grades.
-:- pragma foreign_type(il, proc_static,       "class [mscorlib]System.Object").
+:- pragma foreign_type(il, proc_layout,       "class [mscorlib]System.Object").
 :- pragma foreign_type(il, proc_dynamic,      "class [mscorlib]System.Object").
 :- pragma foreign_type(il, call_site_dynamic, "class [mscorlib]System.Object").
 
@@ -292,7 +292,7 @@
 %---------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
-	prepare_for_normal_call(N::in),
+	prepare_for_normal_call(CSN::in),
 	[thread_safe, will_not_call_mercury],
 "{
 #ifdef MR_DEEP_PROFILING
@@ -301,12 +301,20 @@
 	MR_CallSiteDynamic	*child_csd;
 
 	MR_enter_instrumentation();
-	csd = MR_current_call_site_dynamic;
-	MR_deep_assert(csd, NULL, csd != NULL);
-	pd = csd->MR_csd_callee_ptr;
-	MR_deep_assert(csd, NULL, pd != NULL);
 
-	child_csd = pd->MR_pd_call_site_ptr_ptrs[N];
+  #ifdef MR_DEEP_PROFILING_LOWLEVEL_DEBUG
+	if (MR_calldebug && MR_lld_print_enabled) {
+		MR_print_deep_prof_vars(stdout, ""prepare_for_normal_call"");
+		printf(""call site number: %d\\n"", CSN);
+	}
+  #endif
+
+	csd = MR_current_call_site_dynamic;
+	MR_deep_assert(csd, NULL, NULL, csd != NULL);
+	pd = csd->MR_csd_callee_ptr;
+	MR_deep_assert(csd, NULL, NULL, pd != NULL);
+
+	child_csd = pd->MR_pd_call_site_ptr_ptrs[CSN];
 
   #ifdef MR_DEEP_PROFILING_STATISTICS
 	if (child_csd == NULL) {
@@ -318,7 +326,7 @@
 
 	if (child_csd == NULL) {
 		MR_new_call_site_dynamic(child_csd);
-		pd->MR_pd_call_site_ptr_ptrs[N] = child_csd;
+		pd->MR_pd_call_site_ptr_ptrs[CSN] = child_csd;
 	}
 
 	MR_next_call_site_dynamic = child_csd;
@@ -344,10 +352,24 @@
 	void			*void_key;
 
 	MR_enter_instrumentation();
+
+  #ifdef MR_DEEP_PROFILING_LOWLEVEL_DEBUG
+	if (MR_calldebug && MR_lld_print_enabled) {
+		MR_print_deep_prof_vars(stdout, ""prepare_for_special_call"");
+		printf(""call site number: %d\\n"", CSN);
+		type_info = (MR_TypeInfo) TypeInfo;
+		type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
+		printf(""type constructor: %s:%s/%d\\n"",
+			type_ctor_info->MR_type_ctor_module_name,
+			type_ctor_info->MR_type_ctor_name,
+			type_ctor_info->MR_type_ctor_arity);
+	}
+  #endif
+
 	csd = MR_current_call_site_dynamic;
-	MR_deep_assert(csd, NULL, csd != NULL);
+	MR_deep_assert(csd, NULL, NULL, csd != NULL);
 	pd = csd->MR_csd_callee_ptr;
-	MR_deep_assert(csd, NULL, pd != NULL);
+	MR_deep_assert(csd, NULL, NULL, pd != NULL);
 
 	type_info = (MR_TypeInfo) TypeInfo;
 	type_ctor_info = MR_TYPEINFO_GET_TYPE_CTOR_INFO(type_info);
@@ -396,11 +418,23 @@
   #endif
 
 	MR_enter_instrumentation();
+
+  #ifdef MR_DEEP_PROFILING_LOWLEVEL_DEBUG
+	if (MR_calldebug && MR_lld_print_enabled) {
+		MR_print_deep_prof_vars(stdout, ""prepare_for_ho_call"");
+		printf(""call site number: %d\\n"", CSN);
+		closure = (MR_Closure *) Closure;
+		printf(""closure: layout %p, code %p\\n"",
+			(void *) closure->MR_closure_layout,
+			(void *) closure->MR_closure_code);
+	}
+  #endif
+
 	closure = (MR_Closure *) Closure;
 	csd = MR_current_call_site_dynamic;
-	MR_deep_assert(csd, NULL, csd != NULL);
+	MR_deep_assert(csd, NULL, NULL, csd != NULL);
 	pd = csd->MR_csd_callee_ptr;
-	MR_deep_assert(csd, NULL, pd != NULL);
+	MR_deep_assert(csd, NULL, NULL, pd != NULL);
 
   #ifdef MR_DEEP_PROFILING_KEY_USES_ID
 	void_key = (void *) (closure->MR_closure_layout);
@@ -449,10 +483,18 @@
   #endif
 
 	MR_enter_instrumentation();
+
+  #ifdef MR_DEEP_PROFILING_LOWLEVEL_DEBUG
+	if (MR_calldebug && MR_lld_print_enabled) {
+		MR_print_deep_prof_vars(stdout, ""prepare_for_method_call"");
+		printf(""call site number: %d\\n"", CSN);
+	}
+  #endif
+
 	csd = MR_current_call_site_dynamic;
-	MR_deep_assert(csd, NULL, csd != NULL);
+	MR_deep_assert(csd, NULL, NULL, csd != NULL);
 	pd = csd->MR_csd_callee_ptr;
-	MR_deep_assert(csd, NULL, pd != NULL);
+	MR_deep_assert(csd, NULL, NULL, pd != NULL);
 
 	void_key = (void *)
 		MR_typeclass_info_class_method(TypeClassInfo, MethodNum);
@@ -492,10 +534,18 @@
 	MR_ProcDynamic		*pd;
 
 	MR_enter_instrumentation();
+
+  #ifdef MR_DEEP_PROFILING_LOWLEVEL_DEBUG
+	if (MR_calldebug && MR_lld_print_enabled) {
+		MR_print_deep_prof_vars(stdout, ""prepare_for_callback"");
+		printf(""call site number: %d\\n"", CSN);
+	}
+  #endif
+
 	csd = MR_current_call_site_dynamic;
-	MR_deep_assert(csd, NULL, csd != NULL);
+	MR_deep_assert(csd, NULL, NULL, csd != NULL);
 	pd = csd->MR_csd_callee_ptr;
-	MR_deep_assert(csd, NULL, pd != NULL);
+	MR_deep_assert(csd, NULL, NULL, pd != NULL);
 
 	MR_current_callback_site = (MR_CallSiteDynList **)
 		&(pd->MR_pd_call_site_ptr_ptrs[CSN]);
@@ -521,15 +571,16 @@
 	MR_enter_instrumentation();
 
   #ifdef MR_DEEP_PROFILING_LOWLEVEL_DEBUG
-	if (MR_calldebug) {
+	if (MR_calldebug && MR_lld_print_enabled) {
 		MR_print_deep_prof_vars(stdout, ""prepare_for_tail_call"");
+		printf(""call site number: %d\\n"", CSN);
 	}
   #endif
 
 	csd = MR_current_call_site_dynamic;
-	MR_deep_assert(csd, NULL, csd != NULL);
+	MR_deep_assert(csd, NULL, NULL, csd != NULL);
 	pd = csd->MR_csd_callee_ptr;
-	MR_deep_assert(csd, NULL, pd != NULL);
+	MR_deep_assert(csd, NULL, NULL, pd != NULL);
 
 	child_csd = pd->MR_pd_call_site_ptr_ptrs[CSN];
 
@@ -563,14 +614,18 @@
   #ifdef MR_USE_ACTIVATION_COUNTS
 	MR_CallSiteDynamic	*csd;
 	MR_ProcDynamic		*pd;
+	const MR_Proc_Layout	*pl;
 	MR_ProcStatic		*ps;
 
 	MR_enter_instrumentation();
 	csd = MR_current_call_site_dynamic;
-	MR_deep_assert(csd, NULL, csd != NULL);
+	MR_deep_assert(csd, NULL, NULL, csd != NULL);
 	pd = csd->MR_csd_callee_ptr;
-	MR_deep_assert(csd, NULL, pd != NULL);
-	ps = pd->MR_pd_proc_static;
+	MR_deep_assert(csd, NULL, NULL, pd != NULL);
+	pl = pd->MR_pd_proc_layout;
+	MR_deep_assert(csd, pl, NULL, pl != NULL);
+	ps = pl->MR_sle_proc_static;
+	MR_deep_assert(csd, pl, ps, ps != NULL);
 
 	Count = ps->MR_ps_activation_count;
 	ps->MR_ps_activation_count = 0;
@@ -593,14 +648,18 @@
   #ifndef MR_USE_ACTIVATION_COUNTS
 	MR_CallSiteDynamic	*csd;
 	MR_ProcDynamic		*pd;
+	const MR_Proc_Layout	*pl;
 	MR_ProcStatic		*ps;
 
 	MR_enter_instrumentation();
 	csd = MR_current_call_site_dynamic;
-	MR_deep_assert(csd, NULL, csd != NULL);
+	MR_deep_assert(csd, NULL, NULL, csd != NULL);
 	pd = csd->MR_csd_callee_ptr;
-	MR_deep_assert(csd, NULL, pd != NULL);
-	ps = pd->MR_pd_proc_static;
+	MR_deep_assert(csd, NULL, NULL, pd != NULL);
+	pl = pd->MR_pd_proc_layout;
+	MR_deep_assert(csd, pl, NULL, pl != NULL);
+	ps = pl->MR_sle_proc_static;
+	MR_deep_assert(csd, pl, ps, ps != NULL);
 
 	Ptr = ps->MR_ps_outermost_activation_ptr;
 	ps->MR_ps_outermost_activation_ptr = NULL;
@@ -621,14 +680,18 @@
   #ifdef MR_USE_ACTIVATION_COUNTS
 	MR_CallSiteDynamic	*csd;
 	MR_ProcDynamic		*pd;
+	const MR_Proc_Layout	*pl;
 	MR_ProcStatic		*ps;
 
 	MR_enter_instrumentation();
 	csd = MR_current_call_site_dynamic;
-	MR_deep_assert(csd, NULL, csd != NULL);
+	MR_deep_assert(csd, NULL, NULL, csd != NULL);
 	pd = csd->MR_csd_callee_ptr;
-	MR_deep_assert(csd, NULL, pd != NULL);
-	ps = pd->MR_pd_proc_static;
+	MR_deep_assert(csd, NULL, NULL, pd != NULL);
+	pl = pd->MR_pd_proc_layout;
+	MR_deep_assert(csd, pl, NULL, pl != NULL);
+	ps = pl->MR_sle_proc_static;
+	MR_deep_assert(csd, pl, ps, ps != NULL);
 
 	ps->MR_ps_activation_count = 0;
 	ps->MR_ps_outermost_activation_ptr = NULL;
@@ -649,14 +712,18 @@
   #ifndef MR_USE_ACTIVATION_COUNTS
 	MR_CallSiteDynamic	*csd;
 	MR_ProcDynamic		*pd;
+	const MR_Proc_Layout	*pl;
 	MR_ProcStatic		*ps;
 
 	MR_enter_instrumentation();
 	csd = MR_current_call_site_dynamic;
-	MR_deep_assert(csd, NULL, csd != NULL);
+	MR_deep_assert(csd, NULL, NULL, csd != NULL);
 	pd = csd->MR_csd_callee_ptr;
-	MR_deep_assert(csd, NULL, pd != NULL);
-	ps = pd->MR_pd_proc_static;
+	MR_deep_assert(csd, NULL, NULL, pd != NULL);
+	pl = pd->MR_pd_proc_layout;
+	MR_deep_assert(csd, pl, NULL, pl != NULL);
+	ps = pl->MR_sle_proc_static;
+	MR_deep_assert(csd, pl, ps, ps != NULL);
 
 	ps->MR_ps_outermost_activation_ptr = NULL;
 	MR_leave_instrumentation();
@@ -676,14 +743,18 @@
   #ifdef MR_USE_ACTIVATION_COUNTS
 	MR_CallSiteDynamic	*csd;
 	MR_ProcDynamic		*pd;
+	const MR_Proc_Layout	*pl;
 	MR_ProcStatic		*ps;
 
 	MR_enter_instrumentation();
 	csd = MR_current_call_site_dynamic;
-	MR_deep_assert(csd, NULL, csd != NULL);
+	MR_deep_assert(csd, NULL, NULL, csd != NULL);
 	pd = csd->MR_csd_callee_ptr;
-	MR_deep_assert(csd, NULL, pd != NULL);
-	ps = pd->MR_pd_proc_static;
+	MR_deep_assert(csd, NULL, NULL, pd != NULL);
+	pl = pd->MR_pd_proc_layout;
+	MR_deep_assert(csd, pl, NULL, pl != NULL);
+	ps = pl->MR_sle_proc_static;
+	MR_deep_assert(csd, pl, ps, ps != NULL);
 
 	ps->MR_ps_activation_count = Count;
 	ps->MR_ps_outermost_activation_ptr = Ptr;
@@ -704,14 +775,18 @@
   #ifndef MR_USE_ACTIVATION_COUNTS
 	MR_CallSiteDynamic	*csd;
 	MR_ProcDynamic		*pd;
+	const MR_Proc_Layout	*pl;
 	MR_ProcStatic		*ps;
 
 	MR_enter_instrumentation();
 	csd = MR_current_call_site_dynamic;
-	MR_deep_assert(csd, NULL, csd != NULL);
+	MR_deep_assert(csd, NULL, NULL, csd != NULL);
 	pd = csd->MR_csd_callee_ptr;
-	MR_deep_assert(csd, NULL, pd != NULL);
-	ps = pd->MR_pd_proc_static;
+	MR_deep_assert(csd, NULL, NULL, pd != NULL);
+	pl = pd->MR_pd_proc_layout;
+	MR_deep_assert(csd, pl, NULL, pl != NULL);
+	ps = pl->MR_sle_proc_static;
+	MR_deep_assert(csd, pl, ps, ps != NULL);
 
 	ps->MR_ps_outermost_activation_ptr = Ptr;
 	MR_leave_instrumentation();

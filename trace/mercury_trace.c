@@ -639,7 +639,7 @@ MR_trace_retry(MR_Event_Info *event_info, MR_Event_Details *event_details,
             retry_event_num = MR_event_num_framevar(base_curfr) + 1;
         }
 
-#ifdef  MR_REQUIRE_TRACING
+#ifdef  MR_EXEC_TRACE
         all_actions_tabled = MR_TRUE;
 #else
         all_actions_tabled = assume_all_io_is_tabled;

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2001-2002 The University of Melbourne.
+** Copyright (C) 2001-2002, 2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -26,8 +26,14 @@
 #ifdef MR_DEEP_PROFILING
 {
 	MR_CallSiteDynamic	*csd;
-	MR_ProcDynamic		*pd;
+	const MR_ProcDynamic	*pd;
+	const MR_Proc_Layout	*pl;
 	MR_ProcStatic		*ps;
+
+  #ifdef MR_EXEC_TRACE
+  	if (! MR_disable_deep_profiling_in_debugger) {
+	/* The matching parenthesis is at the end of the file */
+  #endif
 
 	MR_enter_instrumentation();
 	csd = (MR_CallSiteDynamic *) MiddleCSD;
@@ -38,9 +44,11 @@
   #endif
 
 	pd = csd->MR_csd_callee_ptr;
-	MR_deep_assert(csd, NULL, pd != NULL);
-	ps = pd->MR_pd_proc_static;
-	MR_deep_assert(csd, ps, ps != NULL);
+	MR_deep_assert(csd, NULL, NULL, pd != NULL);
+	pl = pd->MR_pd_proc_layout;
+	MR_deep_assert(csd, pl, NULL, pl != NULL);
+	ps = pl->MR_sle_proc_static;
+	MR_deep_assert(csd, pl, ps, ps != NULL);
 
   #if defined(MR_VERSION_AC)
     #ifdef MR_USE_ACTIVATION_COUNTS
@@ -61,6 +69,11 @@
     #endif
   #else
     #error "mercury_deep_redo_port_body.h: neither MR_VERSION_AC nor MR_VERSION_SR"
+  #endif
+
+  #ifdef MR_EXEC_TRACE
+	/* The matching parenthesis is at the start of the file */
+	}
   #endif
 
 	MR_leave_instrumentation();

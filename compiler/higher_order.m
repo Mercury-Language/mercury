@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2003 The University of Melbourne.
+% Copyright (C) 1996-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -718,7 +718,7 @@ is_interesting_cons_id(Params, type_info_cell_constructor(_)) =
 is_interesting_cons_id(Params, typeclass_info_cell_constructor) =
 	Params ^ user_type_spec.
 is_interesting_cons_id(_Params, tabling_pointer_const(_, _)) = no.
-is_interesting_cons_id(_Params, deep_profiling_proc_static(_)) = no.
+is_interesting_cons_id(_Params, deep_profiling_proc_layout(_)) = no.
 is_interesting_cons_id(_Params, table_io_decl(_)) = no.
 
 	% Process a higher-order call or class_method_call to see if it

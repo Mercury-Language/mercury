@@ -15,12 +15,7 @@
 #include "mercury_std.h"
 #include "mercury_deep_profiling.h"
 
-#define	MR_proc_static_user_builtin_name(name, arity, mode)		\
-	MR_PASTE6(mercury_data__proc_static__,				\
-		name, _, arity, _, mode)
-#define	MR_call_sites_user_builtin_name(name, arity, mode)		\
-	MR_PASTE6(mercury_data__proc_static_call_sites__mercury__,	\
-		name, _, arity, _, mode)
+/*****************************************************************************/
 
 #define	MR_proc_static_user_name(module, name, arity, mode)		\
 	MR_PASTE8(mercury_data__proc_static__,				\
@@ -29,12 +24,14 @@
 	MR_PASTE8(mercury_data__proc_static_call_sites__mercury__,	\
 		module, __, name, _, arity, _, mode)
 
-#define	MR_proc_static_compiler_name(module, name, type, arity, mode)	\
+#define	MR_proc_static_uci_name(module, name, type, arity, mode)	\
 	MR_PASTE10(mercury_data__proc_static__,				\
 		name, _, module, __, type, _, arity, _, mode)
-#define	MR_call_sites_compiler_name(module, name, type, arity, mode)	\
+#define	MR_call_sites_uci_name(module, name, type, arity, mode)		\
 	MR_PASTE10(mercury_data__proc_static_call_sites__mercury__,	\
 		name, _, module, __, type, _, arity, _, mode)
+
+/*****************************************************************************/
 
 #ifdef MR_USE_ACTIVATION_COUNTS
   #define	MR_maybe_activation_count_field		0,
@@ -42,144 +39,77 @@
   #define	MR_maybe_activation_count_field
 #endif
 
-#define	MR_proc_static_user_builtin_empty(name, arity, mode, file, line, interface)\
-	MR_User_ProcStatic						\
-	MR_proc_static_user_builtin_name(name, arity, mode) = {		\
-		{							\
-			MR_PREDICATE,					\
-			"builtin",					\
-			"builtin",					\
-			MR_STRINGIFY(name),				\
-			arity, 						\
-			mode, 						\
-		},							\
+#define	MR_proc_static_no_site(global_var_name, file, line, interface)	\
+	MR_ProcStatic global_var_name = {				\
 		file,							\
 		line,							\
 		interface,						\
 		0,							\
 		NULL,							\
 		MR_maybe_activation_count_field				\
-		NULL							\
-	}
-
-#define	MR_proc_static_compiler_empty(module, name, type, arity, mode, file, line, interface) \
-	MR_Compiler_ProcStatic						\
-	MR_proc_static_compiler_name(module, name, type, arity, mode) = { \
-		{							\
-			MR_STRINGIFY(type),				\
-			MR_STRINGIFY(module),				\
-			MR_STRINGIFY(module),				\
-			MR_STRINGIFY(name),				\
-			arity, 						\
-			mode, 						\
-		},							\
-		file,							\
-		line,							\
-		interface,						\
-		0,							\
 		NULL,							\
-		MR_maybe_activation_count_field				\
-		NULL							\
+		MR_LONG_LVAL_TYPE_UNKNOWN,				\
+		MR_LONG_LVAL_TYPE_UNKNOWN,				\
+		MR_LONG_LVAL_TYPE_UNKNOWN				\
 	}
 
-#define	MR_proc_static_user_empty(module, name, arity, mode, file, line, interface)\
-	MR_User_ProcStatic						\
-	MR_proc_static_user_name(module, name, arity, mode) = {		\
-		{							\
-			MR_PREDICATE,					\
-			MR_STRINGIFY(module),				\
-			MR_STRINGIFY(module),				\
-			MR_STRINGIFY(name),				\
-			arity, 						\
-			mode, 						\
-		},							\
-		file,							\
-		line,							\
-		interface,						\
-		0,							\
-		NULL,							\
-		MR_maybe_activation_count_field				\
-		NULL							\
-	}
-
-#define	MR_proc_static_user_plain(module, name, arity, mode, cmodule, cname, carity, cmode, file, line, interface)\
-	static const MR_CallSiteStatic					\
-	MR_call_sites_user_name(module, name, arity, mode)[] = {	\
-		{ MR_normal_call, (MR_ProcStatic *)			\
-		&MR_proc_static_user_name(cmodule, cname, carity, cmode),\
-		NULL, "", line, "" }					\
-	};								\
-									\
-	MR_User_ProcStatic						\
-	MR_proc_static_user_name(module, name, arity, mode) = {		\
-		{							\
-			MR_PREDICATE,					\
-			MR_STRINGIFY(module),				\
-			MR_STRINGIFY(module),				\
-			MR_STRINGIFY(name),				\
-			arity, 						\
-			mode, 						\
-		},							\
+#define	MR_proc_static_one_site(global_var_name, call_sites_var_name,	\
+		file, line, interface)					\
+	MR_ProcStatic global_var_name = {				\
 		file,							\
 		line,							\
 		interface,						\
 		1,							\
+		call_sites_var_name,					\
+		MR_maybe_activation_count_field				\
+		NULL,							\
+		MR_LONG_LVAL_TYPE_UNKNOWN,				\
+		MR_LONG_LVAL_TYPE_UNKNOWN,				\
+		MR_LONG_LVAL_TYPE_UNKNOWN				\
+	}
+
+#define	MR_proc_static_user_no_site(module, name, arity, mode,		\
+		file, line, interface) 					\
+	MR_proc_static_no_site(						\
+		MR_proc_static_user_name(module, name, arity, mode),	\
+			file, line, interface)
+
+#define	MR_proc_static_user_one_site(module, name, arity, mode,		\
+		file, line, interface) 					\
+	MR_proc_static_one_site(					\
+		MR_proc_static_user_name(module, name, arity, mode),	\
 		MR_call_sites_user_name(module, name, arity, mode),	\
-		MR_maybe_activation_count_field				\
-		NULL							\
-	}
+			file, line, interface)
 
-#define	MR_proc_static_compiler_plain(module, name, type, arity, mode, cmodule, cname, carity, cmode, file, line, interface)\
+#define	MR_proc_static_uci_no_site(module, name, type, arity, mode,	\
+		file, line, interface) 					\
+	MR_proc_static_no_site(						\
+		MR_proc_static_uci_name(module, name, type, arity, mode), \
+			file, line, interface)
+
+#define	MR_proc_static_uci_one_site(module, name, type, arity, mode,	\
+		file, line, interface) 					\
+	MR_proc_static_one_site(					\
+		MR_proc_static_uci_name(module, name, type, arity, mode), \
+		MR_call_sites_uci_name(module, name, type, arity, mode), \
+			file, line, interface)
+
+/*****************************************************************************/
+
+#define	MR_call_sites_uci_one_normal(module, name, type, arity, mode,	\
+		cmodule, cname, carity, cmode, line)			\
 	static const MR_CallSiteStatic					\
-	MR_call_sites_compiler_name(module, name, type, arity, mode)[] = {\
-		{ MR_normal_call, (MR_ProcStatic *)			\
-		&MR_proc_static_user_name(cmodule, cname, carity, cmode),\
+	MR_call_sites_uci_name(module, name, type, arity, mode)[] = {	\
+		{ MR_normal_call, (MR_Proc_Layout *)			\
+		&MR_proc_layout_user_name(cmodule, cname, carity, cmode),\
 		NULL, "", line, "" }					\
-	};								\
-									\
-	MR_Compiler_ProcStatic						\
-	MR_proc_static_compiler_name(module, name, type, arity, mode) = {\
-		{							\
-			MR_STRINGIFY(type),				\
-			MR_STRINGIFY(module),				\
-			MR_STRINGIFY(module),				\
-			MR_STRINGIFY(name),				\
-			arity, 						\
-			mode, 						\
-		},							\
-		file,							\
-		line,							\
-		interface,						\
-		1,							\
-		MR_call_sites_compiler_name(module, name, type, arity, mode),\
-		MR_maybe_activation_count_field				\
-		NULL							\
 	}
 
-#define	MR_proc_static_user_ho(module, name, arity, mode, file, line, interface)	\
+#define	MR_call_sites_user_one_ho(module, name, arity, mode, line)	\
 	static const MR_CallSiteStatic					\
 	MR_call_sites_user_name(module, name, arity, mode)[] = {	\
 		{ MR_higher_order_call, NULL,				\
 		NULL, "", line, "" }					\
-	};								\
-									\
-	MR_User_ProcStatic						\
-	MR_proc_static_user_name(module, name, arity, mode) = {		\
-		{							\
-			MR_PREDICATE,					\
-			MR_STRINGIFY(module),				\
-			MR_STRINGIFY(module),				\
-			MR_STRINGIFY(name),				\
-			arity, 						\
-			mode, 						\
-		},							\
-		file,							\
-		line,							\
-		interface,						\
-		1,							\
-		MR_call_sites_user_name(module, name, arity, mode),	\
-		MR_maybe_activation_count_field				\
-		NULL							\
 	}
 
 /*****************************************************************************/
@@ -345,8 +275,8 @@
 	MR_update_prof_current_proc(MR_LABEL(proclabel));		\
 	MR_framevar(first_slot) = MR_r1;	/* TopCSD */		\
 	MR_framevar(first_slot+1) = MR_r2;	/* MiddleCSD */		\
-	MR_framevar(first_slot+3) = MR_r3;	/* OldActivationPtr */	\
-	MR_framevar(first_slot+4) = MR_r4;	/* NewActivationPtr */	\
+	MR_framevar(first_slot+2) = MR_r3;	/* OldActivationPtr */	\
+	MR_framevar(first_slot+3) = MR_r4;	/* NewActivationPtr */	\
 	(void) 0
 
 #define	MR_deep_non_exit_sr(proclabel, first_slot, label)		\
@@ -381,20 +311,20 @@
 /*****************************************************************************/
 
 #ifdef	MR_USE_ACTIVATION_COUNTS
-  #define	MR_deep_det_call(proclabel, procstatic, first_slot, label) \
-		MR_deep_det_call_ac(proclabel, procstatic, first_slot, label)
+  #define	MR_deep_det_call(proclabel, proclayout, first_slot, label) \
+		MR_deep_det_call_ac(proclabel, proclayout, first_slot, label)
   #define	MR_deep_det_exit(proclabel, first_slot, label)		\
 		MR_deep_det_exit_ac(proclabel, first_slot, label)
 
-  #define	MR_deep_semi_call(proclabel, procstatic, first_slot, label) \
-		MR_deep_semi_call_ac(proclabel, procstatic, first_slot, label)
+  #define	MR_deep_semi_call(proclabel, proclayout, first_slot, label) \
+		MR_deep_semi_call_ac(proclabel, proclayout, first_slot, label)
   #define	MR_deep_semi_exit(proclabel, first_slot, label)		\
 		MR_deep_semi_exit_ac(proclabel, first_slot, label)
   #define	MR_deep_semi_fail(proclabel, first_slot, label)		\
 		MR_deep_semi_fail_ac(proclabel, first_slot, label)
 
-  #define	MR_deep_non_call(proclabel, procstatic, first_slot, label) \
-		MR_deep_non_call_ac(proclabel, procstatic, first_slot, label)
+  #define	MR_deep_non_call(proclabel, proclayout, first_slot, label) \
+		MR_deep_non_call_ac(proclabel, proclayout, first_slot, label)
   #define	MR_deep_non_exit(proclabel, first_slot, label)		\
 		MR_deep_non_exit_ac(proclabel, first_slot, label)
   #define	MR_deep_non_redo(proclabel, first_slot, label)		\
@@ -402,20 +332,20 @@
   #define	MR_deep_non_fail(proclabel, first_slot, label)		\
 		MR_deep_non_fail_ac(proclabel, first_slot, label)
 #else
-  #define	MR_deep_det_call(proclabel, procstatic, first_slot, label) \
-		MR_deep_det_call_sr(proclabel, procstatic, first_slot, label)
+  #define	MR_deep_det_call(proclabel, proclayout, first_slot, label) \
+		MR_deep_det_call_sr(proclabel, proclayout, first_slot, label)
   #define	MR_deep_det_exit(proclabel, first_slot, label)		\
 		MR_deep_det_exit_sr(proclabel, first_slot, label)
 
-  #define	MR_deep_semi_call(proclabel, procstatic, first_slot, label) \
-		MR_deep_semi_call_sr(proclabel, procstatic, first_slot, label)
+  #define	MR_deep_semi_call(proclabel, proclayout, first_slot, label) \
+		MR_deep_semi_call_sr(proclabel, proclayout, first_slot, label)
   #define	MR_deep_semi_exit(proclabel, first_slot, label)		\
 		MR_deep_semi_exit_sr(proclabel, first_slot, label)
   #define	MR_deep_semi_fail(proclabel, first_slot, label)		\
 		MR_deep_semi_fail_sr(proclabel, first_slot, label)
 
-  #define	MR_deep_non_call(proclabel, procstatic, first_slot, label) \
-		MR_deep_non_call_sr(proclabel, procstatic, first_slot, label)
+  #define	MR_deep_non_call(proclabel, proclayout, first_slot, label) \
+		MR_deep_non_call_sr(proclabel, proclayout, first_slot, label)
   #define	MR_deep_non_exit(proclabel, first_slot, label)		\
 		MR_deep_non_exit_sr(proclabel, first_slot, label)
   #define	MR_deep_non_redo(proclabel, first_slot, label)		\

@@ -492,8 +492,8 @@ MR_setup_subgoal(MR_TrieNode trie_node)
 ** suspensions and resumptions of derivations.
 */
 
-#define SUSPEND_LABEL(name) MR_PASTE3(MR_SUSPEND_ENTRY, _, name)
-#define RESUME_LABEL(name)  MR_PASTE3(MR_RESUME_ENTRY, _, name)
+#define SUSPEND_LABEL(name) MR_label_name(MR_SUSPEND_ENTRY, name)
+#define RESUME_LABEL(name)  MR_label_name(MR_RESUME_ENTRY, name)
 
 /*
 ** Given pointers to two ordinary frames on the nondet stack, return the
@@ -1278,10 +1278,10 @@ mercury__table_builtin__table_nondet_suspend_2_p_0(
 MR_define_extern_entry(MR_SUSPEND_ENTRY);
 MR_define_extern_entry(MR_RESUME_ENTRY);
 
-MR_MAKE_PROC_LAYOUT(MR_SUSPEND_ENTRY, MR_DETISM_NON, 0, -1,
-    MR_PREDICATE, "table_builtin", "table_nondet_suspend", 2, 0);
-MR_MAKE_PROC_LAYOUT(MR_RESUME_ENTRY, MR_DETISM_NON, 0, -1,
-    MR_PREDICATE, "table_builtin", "table_nondet_resume", 1, 0);
+MR_EXTERN_USER_PROC_ID_PROC_LAYOUT(MR_DETISM_NON, 0, -1,
+    MR_PREDICATE, table_builtin, table_nondet_suspend, 2, 0);
+MR_EXTERN_USER_PROC_ID_PROC_LAYOUT(MR_DETISM_NON, 0, -1,
+    MR_PREDICATE, table_builtin, table_nondet_resume, 1, 0);
 
 #ifndef  MR_USE_MINIMAL_MODEL
 
@@ -1319,24 +1319,24 @@ MR_declare_label(RESUME_LABEL(RestartPoint));
 MR_declare_label(RESUME_LABEL(FixPointCheck));
 MR_declare_label(RESUME_LABEL(ReachedFixpoint));
 
-MR_MAKE_INTERNAL_LAYOUT_WITH_ENTRY(
-    SUSPEND_LABEL(Call), MR_SUSPEND_ENTRY);
-MR_MAKE_INTERNAL_LAYOUT_WITH_ENTRY(
-    RESUME_LABEL(LoopOverSubgoals), MR_RESUME_ENTRY);
-MR_MAKE_INTERNAL_LAYOUT_WITH_ENTRY(
-    RESUME_LABEL(StartCompletionOp), MR_RESUME_ENTRY);
-MR_MAKE_INTERNAL_LAYOUT_WITH_ENTRY(
-    RESUME_LABEL(LoopOverSuspensions), MR_RESUME_ENTRY);
-MR_MAKE_INTERNAL_LAYOUT_WITH_ENTRY(
-    RESUME_LABEL(ReturnAnswer), MR_RESUME_ENTRY);
-MR_MAKE_INTERNAL_LAYOUT_WITH_ENTRY(
-    RESUME_LABEL(RedoPoint), MR_RESUME_ENTRY);
-MR_MAKE_INTERNAL_LAYOUT_WITH_ENTRY(
-    RESUME_LABEL(RestartPoint), MR_RESUME_ENTRY);
-MR_MAKE_INTERNAL_LAYOUT_WITH_ENTRY(
-    RESUME_LABEL(FixPointCheck), MR_RESUME_ENTRY);
-MR_MAKE_INTERNAL_LAYOUT_WITH_ENTRY(
-    RESUME_LABEL(ReachedFixpoint), MR_RESUME_ENTRY);
+MR_MAKE_USER_INTERNAL_LAYOUT(table_builtin, table_nondet_suspend, 2, 0,
+    Call);
+MR_MAKE_USER_INTERNAL_LAYOUT(table_builtin, table_nondet_resume, 1, 0,
+    LoopOverSubgoals);
+MR_MAKE_USER_INTERNAL_LAYOUT(table_builtin, table_nondet_resume, 1, 0,
+    StartCompletionOp);
+MR_MAKE_USER_INTERNAL_LAYOUT(table_builtin, table_nondet_resume, 1, 0,
+    LoopOverSuspensions);
+MR_MAKE_USER_INTERNAL_LAYOUT(table_builtin, table_nondet_resume, 1, 0,
+    ReturnAnswer);
+MR_MAKE_USER_INTERNAL_LAYOUT(table_builtin, table_nondet_resume, 1, 0,
+    RedoPoint);
+MR_MAKE_USER_INTERNAL_LAYOUT(table_builtin, table_nondet_resume, 1, 0,
+    RestartPoint);
+MR_MAKE_USER_INTERNAL_LAYOUT(table_builtin, table_nondet_resume, 1, 0,
+    FixPointCheck);
+MR_MAKE_USER_INTERNAL_LAYOUT(table_builtin, table_nondet_resume, 1, 0,
+    ReachedFixpoint);
 
 MR_BEGIN_MODULE(table_nondet_suspend_resume_module)
     MR_init_entry_sl(MR_SUSPEND_ENTRY);

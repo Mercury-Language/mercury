@@ -182,7 +182,6 @@ ORDINARY_PROGS=	\
 	user_compare \
 	user_defined_equality2 \
 	write \
-	write_binary \
 	write_reg1 \
 	write_reg2
 
@@ -261,16 +260,6 @@ else
 	C_ONLY_PROGS=
 endif
 
-# XXX test_array2d does not work in at least asm_fast.gc.profdeep; the
-# problem does not lie in test_array2d or array2d and has not yet been
-# fixed.
-ifeq "$(findstring profdeep,$(GRADE))" ""
-	BROKEN_FOR_PROFDEEP = \
-		test_array2d
-else
-	BROKEN_FOR_PROFDEEP =
-endif
-
 # constant_prop_2 fails in hl*prof* grades, due to a complicated phase
 # ordering problem.  The first simplify pass eliminates a call to
 # private_builtin.typed_unify, but does not yet simplify the if-then-else
@@ -282,17 +271,32 @@ endif
 # so link_error is now dead.  But dead proc elimination doesn't get run
 # again, so we go ahead and emit a declaration for link_error, and in
 # MLDS profiling grades also a reference, which causes the test case to fail.
+
+# constant_prop_2 relies on deleting all references to an external predicate,
+# but the appearance of the call in the caller puts a reference to its proc
+# layout structure into the call sites array of its caller, even if the call
+# is never made. We could fix this by skipping over call sites in unreachable
+# code, but doing so would require duplicating, in deep_profiling.m, the code
+# used by simplify.m to eliminate the unreachable code. Since the only profit
+# would be to pass unrealistic test cases like constant_prop_2, this is not
+# worth doing.
+
 ifeq "$(findstring hl,$(GRADE))$(findstring prof,$(GRADE))" "hlprof"
-	NONHLPROF_PROGS =
+	PROF_PROGS =
 else
-	NONHLPROF_PROGS = constant_prop_2
+  ifeq "$(findstring profdeep,$(GRADE))" ""
+	PROF_PROGS = \
+		constant_prop_2
+  else
+	PROF_PROGS =
+  endif
 endif
 
 # These tests trigger a bug in lcc
 ifeq "$(findstring lcc,$(shell $(MGNUC) -v 2>&1))" "lcc"
-  BROKEN_FOR_LCC_PROGS =
+	BROKEN_FOR_LCC_PROGS =
 else
-  BROKEN_FOR_LCC_PROGS = \
+	BROKEN_FOR_LCC_PROGS = \
 		bigtest \
 		rnd
 endif
@@ -339,13 +343,15 @@ endif
 # The following tests are passed only in some grades.
 
 # Deep profiling cannot yet handle exceptions being caught, which the
-# allow_stubs, dir_test and user_defined_equality test cases do.
+# test cases below do.
 
 ifeq "$(findstring profdeep,$(GRADE))" ""
 	EXCEPTION_PROGS = \
 		allow_stubs \
 		dir_test \
-		user_defined_equality
+		test_array2d \
+		user_defined_equality \
+		write_binary
 else
 	EXCEPTION_PROGS =
 endif
@@ -431,12 +437,12 @@ endif
 ifneq "$(findstring java,$(GRADE))" ""
 	PROGS = $(JAVA_PROGS) $(JAVA_PASS_PROGS)
 else
-	PROGS = $(ORDINARY_PROGS) $(NONHLPROF_PROGS) $(BROKEN_FOR_LCC_PROGS) \
+	PROGS = $(ORDINARY_PROGS) $(PROF_PROGS) $(BROKEN_FOR_LCC_PROGS) \
 		$(CLOSURE_LAYOUT_PROGS) $(EXCEPTION_PROGS) \
 		$(BACKEND_PROGS) $(NONDET_C_PROGS) \
 		$(C_AND_GC_ONLY_PROGS) $(STATIC_LINK_PROGS) \
-		$(CHAR_REP_PROGS) $(BROKEN_FOR_PROFDEEP)  \
-		$(C_ONLY_PROGS) $(DOTNET_PROGS) $(JAVA_PROGS)
+		$(CHAR_REP_PROGS) $(C_ONLY_PROGS) \
+		$(DOTNET_PROGS) $(JAVA_PROGS)
 endif
 
 # --split-c-files does not work in the hl* grades (e.g. hlc.gc),
@@ -476,7 +482,7 @@ no_fully_strict.out: no_fully_strict
 		grep . $@.tmp; \
 		exit 1; \
 	else \
-                sed	-e 's/exception.m:[0-9]*/exception.m:NNNN/g' \
+		sed	-e 's/exception.m:[0-9]*/exception.m:NNNN/g' \
 			-e 's/require.m:[0-9]*/require.m:NNNN/g' \
 			< $@.tmp > $@; \
 		rm -f $@.tmp; \

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001 The University of Melbourne.
+% Copyright (C) 2001, 2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -22,6 +22,7 @@
 :- func exits(own_prof_info) = int.
 :- func fails(own_prof_info) = int.
 :- func redos(own_prof_info) = int.
+:- func excps(own_prof_info) = int.
 :- func quanta(own_prof_info) = int.
 :- func allocs(own_prof_info) = int.
 :- func words(own_prof_info) = int.
@@ -48,7 +49,7 @@
 :- func sum_own_infos(list(own_prof_info)) = own_prof_info.
 :- func sum_inherit_infos(list(inherit_prof_info)) = inherit_prof_info.
 
-:- func compress_profile(int, int, int, int, int, int) = own_prof_info.
+:- func compress_profile(int, int, int, int, int, int, int) = own_prof_info.
 :- func compress_profile(own_prof_info) = own_prof_info.
 
 :- func own_to_string(own_prof_info) = string.
@@ -61,21 +62,21 @@
 :- import_module string.
 
 :- type own_prof_info
-	--->	all(int, int, int, int, int, int)
-			% exits, fails, redos, quanta, allocs, words
+	--->	all(int, int, int, int, int, int, int)
+			% exits, fails, redos, excps, quanta, allocs, words
 			% implicit calls = exits + fails - redos
 	;	det(int, int, int, int)
 			% exits, quanta, allocs, words;
-			% implicit fails == redos == 0
+			% implicit fails == redos == excps == 0
 			% implicit calls == exits
 	;	fast_det(int, int, int)
 			% exits, allocs, words;
-			% implicit fails == redos == 0
+			% implicit fails == redos == excps == 0
 			% implicit calls == exits
 			% implicit quanta == 0
 	;	fast_nomem_semi(int, int).
 			% exits, fails
-			% implicit redos == 0
+			% implicit redos == excps == 0
 			% implicit calls == exits + fails
 			% implicit quanta == 0
 			% implicit allocs == words == 0
@@ -91,6 +92,7 @@ calls(fast_nomem_semi(Exits, Fails)) = Exits + Fails.
 exits(fast_nomem_semi(Exits, _)) = Exits.
 fails(fast_nomem_semi(_, Fails)) = Fails.
 redos(fast_nomem_semi(_, _)) = 0.
+excps(fast_nomem_semi(_, _)) = 0.
 quanta(fast_nomem_semi(_, _)) = 0.
 allocs(fast_nomem_semi(_, _)) = 0.
 words(fast_nomem_semi(_, _)) = 0.
@@ -99,6 +101,7 @@ calls(fast_det(Exits, _, _)) = Exits.
 exits(fast_det(Exits, _, _)) = Exits.
 fails(fast_det(_, _, _)) = 0.
 redos(fast_det(_, _, _)) = 0.
+excps(fast_det(_, _, _)) = 0.
 quanta(fast_det(_, _, _)) = 0.
 allocs(fast_det(_, Allocs, _)) = Allocs.
 words(fast_det(_, _, Words)) = Words.
@@ -107,17 +110,19 @@ calls(det(Exits, _, _, _)) = Exits.
 exits(det(Exits, _, _, _)) = Exits.
 fails(det(_, _, _, _)) = 0.
 redos(det(_, _, _, _)) = 0.
+excps(det(_, _, _, _)) = 0.
 quanta(det(_, Quanta, _, _)) = Quanta.
 allocs(det(_, _, Allocs, _)) = Allocs.
 words(det(_, _, _, Words)) = Words.
 
-calls(all(Exits, Fails, Redos, _, _, _)) = Exits + Fails - Redos.
-exits(all(Exits, _, _, _, _, _)) = Exits.
-fails(all(_, Fails, _, _, _, _)) = Fails.
-redos(all(_, _, Redos, _, _, _)) = Redos.
-quanta(all(_, _, _, Quanta, _, _)) = Quanta.
-allocs(all(_, _, _, _, Allocs, _)) = Allocs.
-words(all(_, _, _, _, _, Words)) = Words.
+calls(all(Exits, Fails, Redos, Excps, _, _, _)) = Exits + Fails + Excps - Redos.
+exits(all(Exits, _, _, _, _, _, _)) = Exits.
+fails(all(_, Fails, _, _, _, _, _)) = Fails.
+redos(all(_, _, Redos, _, _, _, _)) = Redos.
+excps(all(_, _, _, Excps, _, _, _)) = Excps.
+quanta(all(_, _, _, _, Quanta, _, _)) = Quanta.
+allocs(all(_, _, _, _, _, Allocs, _)) = Allocs.
+words(all(_, _, _, _, _, _, Words)) = Words.
 
 zero_own_prof_info = fast_nomem_semi(0, 0).
 
@@ -155,20 +160,22 @@ add_inherit_to_own(PI1, PI2) = SumPI :-
 	Exits = exits(PI2),
 	Fails = fails(PI2),
 	Redos = redos(PI2),
+	Excps = excps(PI2),
 	Quanta = inherit_quanta(PI1) + quanta(PI2),
 	Allocs = inherit_allocs(PI1) + allocs(PI2),
 	Words = inherit_words(PI1) + words(PI2),
-	SumPI = compress_profile(Exits, Fails, Redos,
+	SumPI = compress_profile(Exits, Fails, Redos, Excps,
 		Quanta, Allocs, Words).
 
 add_own_to_own(PI1, PI2) = SumPI :-
 	Exits = exits(PI1) + exits(PI2),
 	Fails = fails(PI1) + fails(PI2),
 	Redos = redos(PI1) + redos(PI2),
+	Excps = excps(PI1) + excps(PI2),
 	Quanta = quanta(PI1) + quanta(PI2),
 	Allocs = allocs(PI1) + allocs(PI2),
 	Words = words(PI1) + words(PI2),
-	SumPI = compress_profile(Exits, Fails, Redos,
+	SumPI = compress_profile(Exits, Fails, Redos, Excps,
 		Quanta, Allocs, Words).
 
 sum_own_infos(Owns) =
@@ -177,9 +184,10 @@ sum_own_infos(Owns) =
 sum_inherit_infos(Inherits) =
 	list__foldl(add_inherit_to_inherit, Inherits, zero_inherit_prof_info).
 
-compress_profile(Exits, Fails, Redos, Quanta, Allocs, Words) = PI :-
+compress_profile(Exits, Fails, Redos, Excps, Quanta, Allocs, Words) = PI :-
 	(
 		Redos = 0,
+		Excps = 0,
 		Quanta = 0,
 		Allocs = 0,
 		Words = 0
@@ -187,7 +195,8 @@ compress_profile(Exits, Fails, Redos, Quanta, Allocs, Words) = PI :-
 		PI = fast_nomem_semi(Exits, Fails)
 	;
 		Fails = 0,
-		Redos = 0
+		Redos = 0,
+		Excps = 0
 	->
 		( Quanta = 0 ->
 			PI = fast_det(Exits, Allocs, Words)
@@ -195,14 +204,15 @@ compress_profile(Exits, Fails, Redos, Quanta, Allocs, Words) = PI :-
 			PI = det(Exits, Quanta, Allocs, Words)
 		)
 	;
-		PI = all(Exits, Fails, Redos, Quanta, Allocs, Words)
+		PI = all(Exits, Fails, Redos, Excps, Quanta, Allocs, Words)
 	).
 
 compress_profile(PI0) = PI :-
 	(
-		PI0 = all(Exits, Fails, Redos, Quanta, Allocs, Words),
+		PI0 = all(Exits, Fails, Redos, Excps, Quanta, Allocs, Words),
 		(
 			Redos = 0,
+			Excps = 0,
 			Quanta = 0,
 			Allocs = 0,
 			Words = 0
@@ -210,7 +220,8 @@ compress_profile(PI0) = PI :-
 			PI = fast_nomem_semi(Exits, Fails)
 		;
 			Fails = 0,
-			Redos = 0
+			Redos = 0,
+			Excps = 0
 		->
 			( Quanta = 0 ->
 				PI = fast_det(Exits, Allocs, Words)
@@ -243,11 +254,12 @@ compress_profile(PI0) = PI :-
 
 %-----------------------------------------------------------------------------%
 
-own_to_string(all(Exits, Fails, Redos, Quanta, Allocs, Words)) =
+own_to_string(all(Exits, Fails, Redos, Excps, Quanta, Allocs, Words)) =
 	"all(" ++
 	string__int_to_string(Exits) ++ ", " ++
 	string__int_to_string(Fails) ++ ", " ++
 	string__int_to_string(Redos) ++ ", " ++
+	string__int_to_string(Excps) ++ ", " ++
 	string__int_to_string(Quanta) ++ ", " ++
 	string__int_to_string(Allocs) ++ ", " ++
 	string__int_to_string(Words) ++

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2001-2002 The University of Melbourne.
+** Copyright (C) 2001-2002, 2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -20,7 +20,7 @@
 **
 ** The code including this file should have the following variables in scope:
 **
-** ProcStatic:			The proc_static of the procedure whose call
+** ProcLayout:			The proc_layout of the procedure whose call
 **				port we are at.
 ** MiddleCSD:			The id of the current csd.
 ** TopCSD:			The id of the parent's csd.
@@ -35,7 +35,13 @@
 #ifdef MR_DEEP_PROFILING
 {
 	MR_CallSiteDynamic	*csd;
+	const MR_Proc_Layout	*pl;
 	MR_ProcStatic		*ps;
+
+  #ifdef MR_EXEC_TRACE
+  	if (! MR_disable_deep_profiling_in_debugger) {
+	/* The matching parenthesis is at the end of the file */
+  #endif
 
 	MR_enter_instrumentation();
 
@@ -47,6 +53,10 @@
 
 	TopCSD = (MR_Word) MR_current_call_site_dynamic;
 	MiddleCSD = (MR_Word) MR_next_call_site_dynamic;
+
+	MR_deep_assert(NULL, NULL, NULL, MR_current_call_site_dynamic != NULL);
+	MR_deep_assert(NULL, NULL, NULL, MR_next_call_site_dynamic != NULL);
+
 	csd = MR_next_call_site_dynamic;
 	MR_current_call_site_dynamic = csd;
   #ifdef MR_DEEP_PROFILING_PORT_COUNTS
@@ -63,7 +73,10 @@
 	MR_next_call_site_dynamic = NULL;
   #endif
 
-	ps = (MR_ProcStatic *) ProcStatic;
+	pl = (const MR_Proc_Layout *) ProcLayout;
+	MR_deep_assert(csd, pl, NULL, pl != NULL);
+	ps = pl->MR_sle_proc_static;
+	MR_deep_assert(csd, pl, ps, ps != NULL);
   #ifdef MR_VERSION_SR
 	OldOutermostActivationPtr =
 		(MR_Word) ps->MR_ps_outermost_activation_ptr;
@@ -71,7 +84,7 @@
 
   #if defined(MR_VERSION_AC)
     #ifdef MR_USE_ACTIVATION_COUNTS
-	MR_deep_assert(csd, ps, ps->MR_ps_activation_count == 0
+	MR_deep_assert(csd, pl, ps, ps->MR_ps_activation_count == 0
 		|| ps->MR_ps_outermost_activation_ptr != NULL);
 
       #ifdef MR_DEEP_PROFILING_STATISTICS
@@ -94,7 +107,7 @@
 	} else {
 		MR_ProcDynamic	*pd;
 
-		MR_new_proc_dynamic(pd, ps);
+		MR_new_proc_dynamic(pd, pl);
 		csd->MR_csd_callee_ptr = pd;
 		ps->MR_ps_outermost_activation_ptr = pd;
 	}
@@ -122,7 +135,7 @@
 	} else {
 		MR_ProcDynamic	*pd;
 
-		MR_new_proc_dynamic(pd, ps);
+		MR_new_proc_dynamic(pd, pl);
 		csd->MR_csd_callee_ptr = pd;
 		ps->MR_ps_outermost_activation_ptr = csd->MR_csd_callee_ptr;
 	}
@@ -139,6 +152,11 @@
   #endif
 
 	MR_leave_instrumentation();
+
+  #ifdef MR_EXEC_TRACE
+	/* The matching parenthesis is at the start of the file */
+	}
+  #endif
 }
 #else
 	MR_fatal_error(MR_PROCNAME ": deep profiling not enabled");

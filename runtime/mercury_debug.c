@@ -930,6 +930,11 @@ MR_print_deep_prof_var(FILE *fp, const char *name, MR_CallSiteDynamic *csd)
 	if (csd == NULL) {
 		fprintf(fp, "\n");
 	} else {
+		const MR_ProcDynamic	*pd;
+		const MR_Proc_Layout	*pl;
+		const MR_ProcStatic	*ps;
+		const MR_Proc_Id	*proc_id;
+
 		fprintf(fp, ", depth %d,",
 			csd->MR_csd_depth_count);
 
@@ -942,29 +947,28 @@ MR_print_deep_prof_var(FILE *fp, const char *name, MR_CallSiteDynamic *csd)
 			csd->MR_csd_own.MR_own_fails,
 			csd->MR_csd_own.MR_own_redos);
 
-		fprintf(fp, "  pd: %p", csd->MR_csd_callee_ptr);
-		if (csd->MR_csd_callee_ptr == NULL) {
+		pd = csd->MR_csd_callee_ptr;
+		fprintf(fp, "  pd: %p", pd);
+		if (pd == NULL) {
 			fprintf(fp, "\n");
-		} else if (csd->MR_csd_callee_ptr->MR_pd_proc_static == NULL) {
-			fprintf(fp, ", ps is NULL\n");
+		} else if (pd->MR_pd_proc_layout == NULL) {
+			fprintf(fp, ", pl is NULL\n");
 		} else {
-			MR_ProcStatic	*ps;
-			MR_Proc_Id	*proc_id;
-
-			ps = csd->MR_csd_callee_ptr->MR_pd_proc_static;
-			fprintf(fp, ", ps: %p\n", ps);
-			proc_id = &ps->MR_ps_proc_id;
+			pl = pd->MR_pd_proc_layout;
+			ps = pl->MR_sle_proc_static;
+			fprintf(fp, ", pl: %p, ps: %p\n", pl, ps);
+			proc_id = &pl->MR_sle_proc_id;
 			if (MR_PROC_ID_COMPILER_GENERATED(*proc_id)) {
 				fprintf(fp, "  %s:%s %s/%d-%d\n  ",
-					proc_id->MR_proc_comp.
-						MR_comp_type_module,
-					proc_id->MR_proc_comp.
-						MR_comp_type_name,
-					proc_id->MR_proc_comp.
-						MR_comp_pred_name,
-					proc_id->MR_proc_comp.
-						MR_comp_type_arity,
-					proc_id->MR_proc_comp.MR_comp_mode);
+					proc_id->MR_proc_uci.
+						MR_uci_type_module,
+					proc_id->MR_proc_uci.
+						MR_uci_type_name,
+					proc_id->MR_proc_uci.
+						MR_uci_pred_name,
+					proc_id->MR_proc_uci.
+						MR_uci_type_arity,
+					proc_id->MR_proc_uci.MR_uci_mode);
 			} else {
 				fprintf(fp, "  %s.%s/%d-%d\n  ",
 					proc_id->MR_proc_user.

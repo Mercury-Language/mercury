@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1993-1995, 1997-2003 The University of Melbourne.
+** Copyright (C) 1993-1995, 1997-2004 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -238,6 +238,14 @@ typedef	char		MR_small_bool;
 #define MR_PASTE9_2(a,b,c,d,e,f,g,h,i)	    a##b##c##d##e##f##g##h##i
 #define MR_PASTE10(a,b,c,d,e,f,g,h,i,j)	    MR_PASTE10_2(a,b,c,d,e,f,g,h,i,j)
 #define MR_PASTE10_2(a,b,c,d,e,f,g,h,i,j)   a##b##c##d##e##f##g##h##i##j
+#define MR_PASTE11(a,b,c,d,e,f,g,h,i,j,k)     \
+				MR_PASTE11_2(a,b,c,d,e,f,g,h,i,j,k)
+#define MR_PASTE11_2(a,b,c,d,e,f,g,h,i,j,k)   \
+				a##b##c##d##e##f##g##h##i##j##k
+#define MR_PASTE12(a,b,c,d,e,f,g,h,i,j,k,l)	\
+				MR_PASTE12_2(a,b,c,d,e,f,g,h,i,j,k,l)
+#define MR_PASTE12_2(a,b,c,d,e,f,g,h,i,j,k,l) \
+				a##b##c##d##e##f##g##h##i##j##k##l
 
 /*
 ** MR_CHECK_EXPR_TYPE(expr, type):

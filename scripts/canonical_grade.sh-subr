@@ -1,5 +1,5 @@
 #---------------------------------------------------------------------------#
-# Copyright (C) 2000-2003 The University of Melbourne.
+# Copyright (C) 2000-2004 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -127,12 +127,10 @@ esac
 # 	false)	;;
 # esac
 
-case $stack_trace,$require_tracing,$decl_debug in
-	true,true,true)		GRADE="$GRADE.decldebug" ;;
-	true,true,false)	GRADE="$GRADE.debug" ;;
-	false,true,false)	GRADE="$GRADE.trace" ;;
-	true,false,false)	GRADE="$GRADE.strce" ;;
-	false,false,false)	;;
+case $debug,$decl_debug in
+	true,true)		GRADE="$GRADE.decldebug" ;;
+	true,false)		GRADE="$GRADE.debug" ;;
+	false,false)		;;
 	*)			progname=`basename $0`
 				echo "$progname: error: invalid combination of debugging options." 1>&2
 				exit 1

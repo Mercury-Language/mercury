@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2003 The University of Melbourne.
+% Copyright (C) 2003-2004 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -18,7 +18,6 @@
 
 :- interface. 
 
-:- import_module backend_libs__rtti.
 :- import_module hlds__hlds_module.
 :- import_module hlds__hlds_pred.
 :- import_module hlds__special_pred.
@@ -89,9 +88,9 @@ make_proc_label_from_rtti(RttiProcLabel) = ProcLabel :-
 	RttiProcLabel = rtti_proc_label(PredOrFunc, ThisModule,
 		PredModule, PredName, PredArity, _ArgTypes, _PredId, ProcId,
 		_ProcHeadVarsWithNames, _ArgModes, _CodeModel,
-		IsImported, _IsPseudoImported, _IsExported,
-		IsSpecialPredInstance),
-	( IsSpecialPredInstance = yes(SpecialPred - TypeCtor) ->
+		PredIsImported, _PredIsPseudoImported, IsSpecialPred,
+		_ProcIsExported, _ProcIsImported),
+	( IsSpecialPred = yes(SpecialPred - TypeCtor) ->
 		(
 			% All type_ctors other than tuples here should be
 			% module qualified, since builtin types are
@@ -123,7 +122,7 @@ make_proc_label_from_rtti(RttiProcLabel) = ProcLabel :-
 			error(ErrorMessage)
 		)
 	;
-		ProcLabel = make_user_proc_label(ThisModule, IsImported,
+		ProcLabel = make_user_proc_label(ThisModule, PredIsImported,
 			PredOrFunc, PredModule, PredName, PredArity, ProcId)
 	).
 

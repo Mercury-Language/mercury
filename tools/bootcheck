@@ -122,6 +122,14 @@ Options:
 		--no-sym-links.
 	--no-sym-links
 		Use this option on systems which don't support symbolic links.
+	--disable-debug-libs
+		Make the trace and browser libraries empty. This can be useful
+		when trying to track down the reason why they are being linked
+		into the compiler in the first place.
+	--keep-deep-data
+		Keep the Deep.data files resulting from the bootcheck. The
+		usual behavior is to delete them in the interest of conserving
+		disk space.
 "
 
 unset WORKSPACE
@@ -169,8 +177,10 @@ use_mmc_make=no
 compile_times=false
 write_out_profile_data=true
 type_stats=""
+disable_debug_libs=false
+delete_deep_data=true
 
-if test -r .KEEP_OBJS
+if test -f .KEEP_OBJS
 then
 	keep_objs=true
 fi
@@ -315,6 +325,12 @@ while [ $# -gt 0 ]; do
 
 	--no-sym-links)
 		use_cp=true ;;
+
+	--disable-debug-libs)
+		disable_debug_libs=true ;;
+
+	--keep-deep-data)
+		delete_deep_data=false ;;
 
 	--)	
 		shift; break ;;
@@ -643,6 +659,31 @@ then
 			/bin/rm -f Mmake.params
 			cp $root/Mmake.stage.params Mmake.params
 		fi
+		if test -f $root/Mmake.stage.browser.params
+		then
+			/bin/rm -f browser/Mmake.browser.params
+			cp $root/Mmake.stage.browser.params browser/Mmake.browser.params
+		fi
+		if test -f $root/Mmake.stage.deep.params
+		then
+			/bin/rm -f deep_profiler/Mmake.deep.params
+			cp $root/Mmake.stage.deep.params deep_profiler/Mmake.deep.params
+		fi
+		if test -f $root/Mmake.stage.library.params
+		then
+			/bin/rm -f library/Mmake.library.params
+			cp $root/Mmake.stage.library.params library/Mmake.library.params
+		fi
+		if test -f $root/Mmake.stage.runtime.params
+		then
+			/bin/rm -f runtime/Mmake.runtime.params
+			cp $root/Mmake.stage.runtime.params runtime/Mmake.runtime.params
+		fi
+		if test -f $root/Mmake.stage.trace.params
+		then
+			/bin/rm -f trace/Mmake.trace.params
+			cp $root/Mmake.stage.trace.params trace/Mmake.trace.params
+		fi
 		if test -f $root/Mercury.stage.options
 		then
 			/bin/rm -f Mercury.options
@@ -726,6 +767,14 @@ then
 			exit 1
 		fi
 
+		if $disable_debug_libs
+		then
+			/bin/rm $stage2dir/browser/lib$BROWSER_LIB_NAME.a
+			ar cr $stage2dir/browser/lib$BROWSER_LIB_NAME.a
+			/bin/rm $stage2dir/trace/lib$TRACE_LIB_NAME.a
+			ar cr $stage2dir/trace/lib$TRACE_LIB_NAME.a
+		fi
+
 		if (cd $stage2dir && $MMAKE $mmake_opts $jfactor analysis)
 		then
 			echo "building of stage 2 analysis successful"
@@ -755,8 +804,10 @@ then
 		then
 			ls -lt $stage2dir/library/*.c
 			ls -lt $stage2dir/library/*.o
+			ls -lt $stage2dir/library/*.{a,so}
 			ls -lt $stage2dir/compiler/*.c
 			ls -lt $stage2dir/compiler/*.o
+			ls -lt $stage2dir/compiler/mercury_compile
 		fi
 	fi
 
@@ -1281,6 +1332,11 @@ then
 	fi
 
 	cd $root
+fi
+
+if $delete_deep_data
+then
+	(cd $root; find stage2 tests -name Deep.data -print | xargs /bin/rm -f)
 fi
 
 #-----------------------------------------------------------------------------#

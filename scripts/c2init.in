@@ -57,13 +57,15 @@ ANALYSIS_LIB_NAME=mer_analysis
 
 MKINIT=${MERCURY_MKINIT=mkinit}
 
-case $require_tracing in
-	true)
+case $debug in true)
 		trace_opt="-t" ;;
 esac
 
-case $stack_trace in
-	true)
+case $debug in true)
+	init_opt="-i" ;;
+esac
+
+case $profile_deep in true)
 		init_opt="-i" ;;
 esac
 

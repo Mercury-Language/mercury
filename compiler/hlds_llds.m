@@ -257,6 +257,8 @@
 
 %-----------------------------------------------------------------------------%
 
+:- func stack_slot_num(stack_slot) = int.
+
 :- func stack_slot_to_abs_locn(stack_slot) = abs_locn.
 :- func key_stack_slot_to_abs_locn(_, stack_slot) = abs_locn.
 
@@ -697,6 +699,9 @@ rename_vars_in_var_locn_list([Var0 - Locn | VarLocns0], Must, Subn,
 	rename_vars_in_var_locn_list(VarLocns0, Must, Subn, VarLocns).
 
 %-----------------------------------------------------------------------------%
+
+stack_slot_num(det_slot(N)) = N.
+stack_slot_num(nondet_slot(N)) = N.
 
 stack_slot_to_abs_locn(det_slot(N)) = abs_stackvar(N).
 stack_slot_to_abs_locn(nondet_slot(N)) = abs_framevar(N).

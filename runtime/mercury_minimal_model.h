@@ -230,8 +230,10 @@ extern	MR_Subgoal	*MR_setup_subgoal(MR_TrieNode);
 
 #ifndef	MR_HIGHLEVEL_CODE
 
-  #define MR_SUSPEND_ENTRY     mercury__table_builtin__table_nondet_suspend_2_0
-  #define MR_RESUME_ENTRY      mercury__table_builtin__table_nondet_resume_1_0
+  #define MR_SUSPEND_ENTRY     MR_proc_entry_user_name(table_builtin,	\
+		  			table_nondet_suspend, 2, 0)
+  #define MR_RESUME_ENTRY      MR_proc_entry_user_name(table_builtin,	\
+		  			table_nondet_resume, 1, 0)
 
   MR_declare_entry(MR_SUSPEND_ENTRY);
   MR_declare_entry(MR_RESUME_ENTRY);

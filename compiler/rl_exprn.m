@@ -524,7 +524,7 @@ rl_exprn__set_term_arg_cons_id_code(typeclass_info_cell_constructor,
 rl_exprn__set_term_arg_cons_id_code(tabling_pointer_const(_, _),
 		_, _, _, _, _, _) -->
 	{ error("rl_exprn__set_term_arg_cons_id_code") }.
-rl_exprn__set_term_arg_cons_id_code(deep_profiling_proc_static(_),
+rl_exprn__set_term_arg_cons_id_code(deep_profiling_proc_layout(_),
 		_, _, _, _, _, _) -->
 	{ error("rl_exprn__set_term_arg_cons_id_code") }.
 rl_exprn__set_term_arg_cons_id_code(table_io_decl(_),
@@ -1166,23 +1166,28 @@ rl_exprn__unify(construct(Var, ConsId, Args, UniModes, _, _, _),
 		{ Code = empty }
 	; 
 		{ ConsId = base_typeclass_info_const(_, _, _, _) },
-		{ error("rl_exprn__unify: unsupported cons_id - base_typeclass_info_const") }
+		{ error("rl_exprn__unify: unsupported cons_id - " ++
+			"base_typeclass_info_const") }
 	; 
 		{ ConsId = type_info_cell_constructor(_) },
 		% XXX for now we ignore these and hope it doesn't matter.
 		{ Code = empty }
 	; 
 		{ ConsId = typeclass_info_cell_constructor },
-		{ error("rl_exprn__unify: unsupported cons_id - typeclass_info_cell_constructor") }
+		{ error("rl_exprn__unify: unsupported cons_id - " ++
+			"typeclass_info_cell_constructor") }
 	; 
 		{ ConsId = tabling_pointer_const(_, _) },
-		{ error("rl_exprn__unify: unsupported cons_id - tabling_pointer_const") }
+		{ error("rl_exprn__unify: unsupported cons_id - " ++
+			"tabling_pointer_const") }
 	; 
-		{ ConsId = deep_profiling_proc_static(_) },
-		{ error("rl_exprn__unify: unsupported cons_id - deep_profiling_proc_static") }
+		{ ConsId = deep_profiling_proc_layout(_) },
+		{ error("rl_exprn__unify: unsupported cons_id - " ++
+			"deep_profiling_proc_layout") }
 	; 
 		{ ConsId = table_io_decl(_) },
-		{ error("rl_exprn__unify: unsupported cons_id - table_io_decl") }
+		{ error("rl_exprn__unify: unsupported cons_id - " ++
+			"table_io_decl") }
 	).
 		
 rl_exprn__unify(deconstruct(Var, ConsId, Args, UniModes, CanFail, _CanCGC),

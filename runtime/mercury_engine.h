@@ -64,8 +64,9 @@ extern	MR_bool	MR_debugflag[];
 #define	MR_LLD_DEBUG_ENABLED_FLAG 	18
 #define	MR_NOT_NEAREST_FLAG 		19
 #define	MR_DEBUG_SLOTS_FLAG		20
-#define	MR_DETAILFLAG			21
-#define	MR_MAXFLAG			22
+#define	MR_DEEP_PROF_DEBUG_FILE_FLAG 	21
+#define	MR_DETAILFLAG			22
+#define	MR_MAXFLAG			23
 /* MR_DETAILFLAG should be the last real flag */
 
 /*
@@ -130,6 +131,10 @@ extern	MR_bool	MR_debugflag[];
 ** MR_debug_slots_flag controls whether dumps of nondet stack frames will
 ** print the values of the fixed stack slots used by the debugger, in the
 ** stack frames of procedures compiled with debugging.
+**
+** MR_deep_prof_debug_file_flag, if set, causes the runtime, whenever it is
+** generating a Deep.data file, to also generate a human-readable Deep.debug
+** file.
 */
 
 #define	MR_progdebug		MR_debugflag[MR_PROGFLAG]
@@ -153,6 +158,8 @@ extern	MR_bool	MR_debugflag[];
 #define	MR_lld_debug_enabled	MR_debugflag[MR_LLD_DEBUG_ENABLED_FLAG]
 #define	MR_not_nearest_flag	MR_debugflag[MR_NOT_NEAREST_FLAG]
 #define	MR_debug_slots_flag	MR_debugflag[MR_DEBUG_SLOTS_FLAG]
+#define	MR_deep_prof_debug_file_flag	MR_debugflag[\
+						MR_DEEP_PROF_DEBUG_FILE_FLAG]
 #define	MR_detaildebug		MR_debugflag[MR_DETAILFLAG]
 
 typedef struct {

@@ -24,7 +24,7 @@
 :- import_module parse_tree__prog_data.
 :- import_module transform_hlds__term_util.
 
-:- import_module bool, list, set, map, std_util, term, varset.
+:- import_module bool, list, assoc_list, set, map, std_util, term, varset.
 
 :- implementation.
 
@@ -43,7 +43,7 @@
 :- import_module libs__options.
 
 % Standard library modules.
-:- import_module int, string, require, assoc_list.
+:- import_module int, string, require.
 
 %-----------------------------------------------------------------------------%
 
@@ -103,6 +103,58 @@
 
 :- type pred_proc_id	--->	proc(pred_id, proc_id).
 :- type pred_proc_list	==	list(pred_proc_id).
+
+:- type prog_var_name == string.
+
+	% The rtti_proc_label type holds all the information about a procedure
+	% that we need to compute the entry label for that procedure
+	% in the target language (the llds__code_addr or mlds__code_addr).
+:- type rtti_proc_label --->
+	rtti_proc_label(
+		pred_or_func		::	pred_or_func,
+		this_module		::	module_name,
+		proc_module		::	module_name,
+		proc_name		::	string,
+		proc_arity		::	arity,
+		proc_arg_types		::	list(type),
+		pred_id			::	pred_id,
+		proc_id			::	proc_id,
+		proc_headvars		::	assoc_list(prog_var,
+							prog_var_name),
+		proc_arg_modes		::	list(arg_mode),
+		proc_interface_detism	::	determinism,
+
+		% The following booleans hold values computed from the
+		% pred_info, using procedures
+		%	pred_info_is_imported/1,
+		%	pred_info_is_pseudo_imported/1,
+		%	pred_info_get_maybe_special_pred_info/1
+		% respectively.
+		% We store booleans here, rather than storing the
+		% pred_info, to avoid retaining a reference to the
+		% parts of the pred_info that we aren't interested in,
+		% so that those parts can be garbage collected.
+		% We use booleans rather than an import_status
+		% so that we can continue to use the above-mentioned
+		% abstract interfaces rather than hard-coding tests
+		% on the import_status.
+
+		pred_is_imported	::	bool,
+		pred_is_pseudo_imported	::	bool,
+		pred_is_special_pred	::	maybe(special_pred),
+
+		% The following boolean holds a value computed from the
+		% proc_info, using procedure_is_exported/2
+
+		proc_is_exported	::	bool,
+
+		% The following bool is true if the procedure was
+		% imported, either because the containing predicate
+		% was imported, or because it was pseudoimported
+		% and the procedure is an in-in unify procedure.
+
+		proc_is_imported	::	bool
+	).
 
 %-----------------------------------------------------------------------------%
 
@@ -1556,8 +1608,8 @@ compute_arg_types_modes([Var | Vars], VarTypes, InstMap0, InstMap,
 			inner_proc	:: pred_proc_id
 		).
 
-:- type deep_profile_proc_info
-	--->	deep_profile_proc_info(
+:- type deep_recursion_info
+	--->	deep_recursion_info(
 			role		:: deep_profile_role,
 			visible_scc	:: list(visible_scc_data)
 					% If the procedure is not tail
@@ -1577,6 +1629,79 @@ compute_arg_types_modes([Var | Vars], VarTypes, InstMap0, InstMap,
 					% that correspond to tail calls.
 					% (Call sites are numbered depth-first,
 					% left-to-right, from zero.)
+		).
+
+:- type call_site_static_data			% defines MR_CallSiteStatic
+	--->	normal_call(
+			normal_callee		:: rtti_proc_label,
+			normal_type_subst	:: string,
+			normal_file_name	:: string,
+			normal_line_number	:: int,
+			normal_goal_path	:: goal_path
+		)
+	;	special_call(
+			special_file_name	:: string,
+			special_line_number	:: int,
+			special_goal_path	:: goal_path
+		)
+	;	higher_order_call(
+			higher_order_file_name	:: string,
+			ho_line_number		:: int,
+			ho_goal_path		:: goal_path
+		)
+	;	method_call(
+			method_file_name	:: string,
+			method_line_number	:: int,
+			method_goal_path	:: goal_path
+		)
+	;	callback(
+			callback_file_name	:: string,
+			callback_line_number	:: int,
+			callback_goal_path	:: goal_path
+		).
+
+:- type hlds_proc_static
+	--->	hlds_proc_static(	% defines part of MR_ProcStatic
+			proc_static_file_name	:: string,
+			proc_static_line_number :: int,
+			proc_is_in_interface	:: bool,
+			call_site_statics	:: list(call_site_static_data)
+		).
+
+	% The hlds_deep_excp_vars gives the variables that hold
+	% the values returned by the call port code, which are needed to let
+	% exception.throw perform the work we need to do at the excp port.
+:- type hlds_deep_excp_vars
+	--->	hlds_deep_excp_vars(
+			top_csd		:: prog_var,
+			middle_csd	:: prog_var,
+			old_outermost	:: maybe(prog_var)
+					% Needed only with the save/restore
+					% approach, not the activation counting
+					% approach.
+		).
+
+:- type hlds_deep_layout
+	--->	hlds_deep_layout(
+			deep_layout_static :: hlds_proc_static,
+			deep_layout_excp   :: hlds_deep_excp_vars
+		).
+
+:- type deep_profile_proc_info
+	--->	deep_profile_proc_info(
+			deep_rec	:: maybe(deep_recursion_info),
+			deep_layout	:: maybe(hlds_deep_layout)
+					% The first field is set during
+					% the first, tail recursion
+					% part of the deep profiling
+					% transformation, if that is enabled.
+					% The deep_layout field is set during
+					% the second part; it will be bound
+					% to `no' before and during the first
+					% part, and to `yes' after the second.
+					% The contents of this field govern
+					% what will go into MR_ProcStatic
+					% structures.
 		).
 
 :- type table_arg_info
@@ -2741,8 +2866,7 @@ builtin_state(ModuleInfo, CallerPredId, PredId, ProcId) = BuiltinState :-
 		( InlineBuiltins = yes
 		; CallerPredId = PredId
 		),
-		is_inline_builtin(ModuleName, PredName,
-			ProcId, Arity)
+		is_inline_builtin(ModuleName, PredName, ProcId, Arity)
 	->
 		BuiltinState = inline_builtin
 	;

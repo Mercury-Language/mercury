@@ -506,7 +506,7 @@ dependency_graph__add_arcs_in_cons(typeclass_info_cell_constructor,
 		_Caller, !DepGraph).
 dependency_graph__add_arcs_in_cons(tabling_pointer_const(_, _),
 		_Caller, !DepGraph).
-dependency_graph__add_arcs_in_cons(deep_profiling_proc_static(_),
+dependency_graph__add_arcs_in_cons(deep_profiling_proc_layout(_),
 		_Caller, !DepGraph).
 dependency_graph__add_arcs_in_cons(table_io_decl(_),
 		_Caller, !DepGraph).

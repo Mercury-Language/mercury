@@ -47,36 +47,36 @@
 #ifdef  select_compare_code
   #if defined(MR_DEEP_PROFILING) && defined(entry_point_is_mercury)
     #ifdef include_compare_rep_code
-      #define return_compare_answer(kind, answer)                           \
+      #define return_compare_answer(mod, type, arity, answer)               \
         do {                                                                \
-            compare_call_exit_code(MR_PASTE2(kind, _compare_representation)); \
+            compare_call_exit_code(mod, __CompareRep__, type, arity);       \
             raw_return_answer(answer);                                      \
         } while (0)
     #else
-      #define return_compare_answer(kind, answer)                           \
+      #define return_compare_answer(mod, type, arity, answer)               \
         do {                                                                \
-            compare_call_exit_code(MR_PASTE2(kind, _compare));              \
+            compare_call_exit_code(mod, __Compare__, type, arity);          \
             raw_return_answer(answer);                                      \
         } while (0)
     #endif
   #else
-    #define return_compare_answer(kind, answer)                             \
+    #define return_compare_answer(mod, type, arity, answer)                 \
         raw_return_answer(answer)
   #endif
 #else
   #if defined(MR_DEEP_PROFILING) && defined(entry_point_is_mercury)
-    #define return_unify_answer(kind, answer)                               \
+    #define return_unify_answer(mod, type, arity, answer)                   \
         do {                                                                \
             if (answer) {                                                   \
-                unify_call_exit_code(MR_PASTE2(kind, _unify));              \
+                unify_call_exit_code(mod, __Unify__, type, arity);          \
                 raw_return_answer(MR_TRUE);                                 \
             } else {                                                        \
-                unify_call_fail_code(MR_PASTE2(kind, _unify));              \
+                unify_call_fail_code(mod, __Unify__, type, arity);          \
                 raw_return_answer(MR_FALSE);                                \
             }                                                               \
         } while (0)
   #else
-    #define return_unify_answer(kind, answer)                               \
+    #define return_unify_answer(mod, type, arity, answer)                   \
         raw_return_answer(answer)
   #endif
 #endif
@@ -223,9 +223,11 @@ start_label:
                     if (x_functor_desc->MR_du_functor_ordinal <
                         y_functor_desc->MR_du_functor_ordinal)
                     {
-                        return_compare_answer(user, MR_COMPARE_LESS);
+                        return_compare_answer(builtin, user_by_rtti, 0,
+                            MR_COMPARE_LESS);
                     } else {
-                        return_compare_answer(user, MR_COMPARE_GREATER);
+                        return_compare_answer(builtin, user_by_rtti, 0,
+                            MR_COMPARE_GREATER);
                     }
                 }
 
@@ -320,9 +322,11 @@ start_label:
                         MR_restore_transient_registers();
                         if (result != MR_COMPARE_EQUAL) {
   #ifdef  select_compare_code
-                            return_compare_answer(user, result);
+                            return_compare_answer(builtin, user_by_rtti, 0,
+                                result);
   #else
-                            return_unify_answer(user, MR_FALSE);
+                            return_unify_answer(builtin, user_by_rtti, 0,
+                                MR_FALSE);
   #endif
                         }
                     }
@@ -355,7 +359,8 @@ start_label:
     #endif
                     MR_restore_transient_registers();
                     if (result != MR_COMPARE_EQUAL) {
-                        return_compare_answer(user, result);
+                        return_compare_answer(builtin, user_by_rtti, 0,
+                            result);
                     }
   #else
                     MR_save_transient_registers();
@@ -363,16 +368,18 @@ start_label:
                         x_data_value[cur_slot], y_data_value[cur_slot]);
                     MR_restore_transient_registers();
                     if (! result) {
-                        return_unify_answer(user, MR_FALSE);
+                        return_unify_answer(builtin, user_by_rtti, 0,
+                            MR_FALSE);
                     }
   #endif
                     cur_slot++;
                 }
 
   #ifdef  select_compare_code
-                return_compare_answer(user, MR_COMPARE_EQUAL);
+                return_compare_answer(builtin, user_by_rtti, 0,
+                    MR_COMPARE_EQUAL);
   #else
-                return_unify_answer(user, MR_TRUE);
+                return_unify_answer(builtin, user_by_rtti, 0, MR_TRUE);
   #endif
             }
 
@@ -476,7 +483,7 @@ start_label:
                                 ((MR_Word *) x)[i], ((MR_Word *) y)[i]);
                     MR_restore_transient_registers();
                     if (result != MR_COMPARE_EQUAL) {
-                        return_compare_answer(tuple, result);
+                        return_compare_answer(builtin, tuple, 0, result);
                     }
 #else
                     MR_save_transient_registers();
@@ -484,14 +491,14 @@ start_label:
                                 ((MR_Word *) x)[i], ((MR_Word *) y)[i]);
                     MR_restore_transient_registers();
                     if (! result) {
-                        return_unify_answer(tuple, MR_FALSE);
+                        return_unify_answer(builtin, tuple, 0, MR_FALSE);
                     }
 #endif
                 }
 #ifdef  select_compare_code
-                return_compare_answer(tuple, MR_COMPARE_EQUAL);
+                return_compare_answer(builtin, tuple, 0, MR_COMPARE_EQUAL);
 #else
-                return_unify_answer(tuple, MR_TRUE);
+                return_unify_answer(builtin, tuple, 0, MR_TRUE);
 #endif
             }
 
@@ -505,14 +512,15 @@ start_label:
 
 #ifdef  select_compare_code
             if ((MR_Integer) x == (MR_Integer) y) {
-                return_compare_answer(integer, MR_COMPARE_EQUAL);
+                return_compare_answer(builtin, int, 0, MR_COMPARE_EQUAL);
             } else if ((MR_Integer) x < (MR_Integer) y) {
-                return_compare_answer(integer, MR_COMPARE_LESS);
+                return_compare_answer(builtin, int, 0, MR_COMPARE_LESS);
             } else {
-                return_compare_answer(integer, MR_COMPARE_GREATER);
+                return_compare_answer(builtin, int, 0, MR_COMPARE_GREATER);
             }
 #else
-            return_unify_answer(integer, (MR_Integer) x == (MR_Integer) y);
+            return_unify_answer(builtin, int, 0,
+                (MR_Integer) x == (MR_Integer) y);
 #endif
 
         case MR_TYPECTOR_REP_FLOAT:
@@ -523,14 +531,15 @@ start_label:
                 fy = MR_word_to_float(y);
 #ifdef  select_compare_code
                 if (fx == fy) {
-                    return_compare_answer(float, MR_COMPARE_EQUAL);
+                    return_compare_answer(builtin, float, 0, MR_COMPARE_EQUAL);
                 } else if (fx < fy) {
-                    return_compare_answer(float, MR_COMPARE_LESS);
+                    return_compare_answer(builtin, float, 0, MR_COMPARE_LESS);
                 } else {
-                    return_compare_answer(float, MR_COMPARE_GREATER);
+                    return_compare_answer(builtin, float, 0,
+                        MR_COMPARE_GREATER);
                 }
 #else
-                return_unify_answer(float, fx == fy);
+                return_unify_answer(builtin, float, 0, fx == fy);
 #endif
             }
 
@@ -542,14 +551,17 @@ start_label:
 
 #ifdef  select_compare_code
                 if (result == 0) {
-                    return_compare_answer(string, MR_COMPARE_EQUAL);
+                    return_compare_answer(builtin, string, 0,
+                        MR_COMPARE_EQUAL);
                 } else if (result < 0) {
-                    return_compare_answer(string, MR_COMPARE_LESS);
+                    return_compare_answer(builtin, string, 0,
+                        MR_COMPARE_LESS);
                 } else {
-                    return_compare_answer(string, MR_COMPARE_GREATER);
+                    return_compare_answer(builtin, string, 0,
+                        MR_COMPARE_GREATER);
                 }
 #else
-                return_unify_answer(string, result == 0);
+                return_unify_answer(builtin, string, 0, result == 0);
 #endif
             }
 
@@ -566,14 +578,18 @@ start_label:
         case MR_TYPECTOR_REP_C_POINTER:
 #ifdef  select_compare_code
             if ((void *) x == (void *) y) {
-                return_compare_answer(c_pointer, MR_COMPARE_EQUAL);
+                return_compare_answer(builtin, c_pointer, 0,
+                    MR_COMPARE_EQUAL);
             } else if ((void *) x < (void *) y) {
-                return_compare_answer(c_pointer, MR_COMPARE_LESS);
+                return_compare_answer(builtin, c_pointer, 0,
+                    MR_COMPARE_LESS);
             } else {
-                return_compare_answer(c_pointer, MR_COMPARE_GREATER);
+                return_compare_answer(builtin, c_pointer, 0,
+                    MR_COMPARE_GREATER);
             }
 #else
-            return_unify_answer(c_pointer, (void *) x == (void *) y);
+            return_unify_answer(builtin, c_pointer, 0,
+                (void *) x == (void *) y);
 #endif
 
         case MR_TYPECTOR_REP_TYPEINFO:
@@ -585,7 +601,7 @@ start_label:
                 result = MR_compare_type_info(
                     (MR_TypeInfo) x, (MR_TypeInfo) y);
                 MR_restore_transient_registers();
-                return_compare_answer(typeinfo, result);
+                return_compare_answer(private_builtin, type_info, 1, result);
 #else
                 MR_bool result;
 
@@ -593,7 +609,7 @@ start_label:
                 result = MR_unify_type_info(
                     (MR_TypeInfo) x, (MR_TypeInfo) y);
                 MR_restore_transient_registers();
-                return_unify_answer(typeinfo, result);
+                return_unify_answer(private_builtin, type_info, 1, result);
 #endif
             }
 
@@ -611,7 +627,7 @@ start_label:
                 result = MR_compare_type_info(
                     (MR_TypeInfo) x, (MR_TypeInfo) y);
                 MR_restore_transient_registers();
-                return_compare_answer(typedesc, result);
+                return_compare_answer(type_desc, type_desc, 0, result);
 #else
                 MR_bool result;
 
@@ -619,7 +635,7 @@ start_label:
                 result = MR_unify_type_info(
                     (MR_TypeInfo) x, (MR_TypeInfo) y);
                 MR_restore_transient_registers();
-                return_unify_answer(typedesc, result);
+                return_unify_answer(type_desc, type_desc, 0, result);
 #endif
             }
 
@@ -632,7 +648,8 @@ start_label:
                 result = MR_compare_type_ctor_info(
                     (MR_TypeCtorInfo) x, (MR_TypeCtorInfo) y);
                 MR_restore_transient_registers();
-                return_compare_answer(typectorinfo, result);
+                return_compare_answer(private_builtin, type_ctor_info, 1,
+                    result);
 #else
                 MR_bool result;
 
@@ -640,7 +657,8 @@ start_label:
                 result = MR_unify_type_ctor_info(
                     (MR_TypeCtorInfo) x, (MR_TypeCtorInfo) y);
                 MR_restore_transient_registers();
-                return_unify_answer(typectorinfo, result);
+                return_unify_answer(private_builtin, type_ctor_info, 1,
+                    result);
 #endif
             }
 
@@ -653,7 +671,7 @@ start_label:
                 result = MR_compare_type_ctor_desc(
                     (MR_TypeCtorDesc) x, (MR_TypeCtorDesc) y);
                 MR_restore_transient_registers();
-                return_compare_answer(typectordesc, result);
+                return_compare_answer(type_desc, type_ctor_desc, 0, result);
 #else
                 MR_bool result;
 
@@ -661,7 +679,7 @@ start_label:
                 result = MR_unify_type_ctor_desc(
                     (MR_TypeCtorDesc) x, (MR_TypeCtorDesc) y);
                 MR_restore_transient_registers();
-                return_unify_answer(typectordesc, result);
+                return_unify_answer(type_desc, type_ctor_desc, 0, result);
 #endif
             }
 
@@ -680,9 +698,9 @@ start_label:
                 MR_restore_transient_registers();
 
                 if (MR_type_ctor_rep(type_ctor_info) == MR_TYPECTOR_REP_FUNC) {
-                    return_compare_answer(func, result);
+                    return_compare_answer(builtin, func, 0, result);
                 } else {
-                    return_compare_answer(pred, result);
+                    return_compare_answer(builtin, pred, 0, result);
                 }
 #else
                 MR_fatal_error(attempt_msg "higher-order terms");
@@ -731,7 +749,8 @@ start_label:
             */
             MR_fatal_error(attempt_msg "terms of a reference type");
 #else
-            return_unify_answer(reference, (void *) x == (void *) y);
+            return_unify_answer(private_builtin, ref, 1,
+                (void *) x == (void *) y);
 #endif
 
         case MR_TYPECTOR_REP_UNKNOWN:

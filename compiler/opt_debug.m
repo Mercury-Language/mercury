@@ -514,15 +514,19 @@ opt_debug__dump_layout_name(label_layout(Label, LabelVars), Str) :-
 	),
 	string__append_list(["label_layout(", LabelStr, ", ",
 		LabelVarsStr, ")"], Str).
-opt_debug__dump_layout_name(proc_layout(ProcLabel, _), Str) :-
-	opt_debug__dump_proclabel(ProcLabel, ProcLabelStr),
+opt_debug__dump_layout_name(proc_layout(RttiProcLabel, _), Str) :-
+	opt_debug__dump_rttiproclabel(RttiProcLabel, ProcLabelStr),
 	string__append_list(["proc_layout(", ProcLabelStr, ")"], Str).
-opt_debug__dump_layout_name(proc_layout_head_var_nums(ProcLabel), Str) :-
-	opt_debug__dump_proclabel(ProcLabel, ProcLabelStr),
+opt_debug__dump_layout_name(proc_layout_exec_trace(RttiProcLabel), Str) :-
+	opt_debug__dump_rttiproclabel(RttiProcLabel, ProcLabelStr),
+	string__append_list(["proc_layout_exec_trace(", ProcLabelStr, ")"],
+		Str).
+opt_debug__dump_layout_name(proc_layout_head_var_nums(RttiProcLabel), Str) :-
+	opt_debug__dump_rttiproclabel(RttiProcLabel, ProcLabelStr),
 	string__append_list(["proc_layout_head_var_nums(", ProcLabelStr, ")"],
 		Str).
-opt_debug__dump_layout_name(proc_layout_var_names(ProcLabel), Str) :-
-	opt_debug__dump_proclabel(ProcLabel, ProcLabelStr),
+opt_debug__dump_layout_name(proc_layout_var_names(RttiProcLabel), Str) :-
+	opt_debug__dump_rttiproclabel(RttiProcLabel, ProcLabelStr),
 	string__append_list(["proc_layout_var_names(", ProcLabelStr, ")"],
 		Str).
 opt_debug__dump_layout_name(closure_proc_id(ProcLabel, SeqNo, _), Str) :-
@@ -667,6 +671,12 @@ opt_debug__dump_label_pairs([L1 - L2 | Labels], Str) :-
 	opt_debug__dump_label(L2, L2_str),
 	opt_debug__dump_label_pairs(Labels, L_str),
 	string__append_list([" ", L1_str, "-", L2_str, L_str], Str).
+
+:- pred opt_debug__dump_rttiproclabel(rtti_proc_label::in, string::out) is det.
+
+opt_debug__dump_rttiproclabel(RttiProcLabel, Str) :-
+	ProcLabel = make_proc_label_from_rtti(RttiProcLabel),
+	opt_debug__dump_proclabel(ProcLabel, Str).
 
 opt_debug__dump_proclabel(proc(Module, _PredOrFunc, PredModule,
 		PredName, Arity, ProcId), Str) :-

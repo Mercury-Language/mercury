@@ -933,16 +933,16 @@ MR_output_current_slots(const MR_Label_Layout *layout,
 			depth,
 			port,
 			(MR_String)
-			layout->MR_sll_entry->MR_sle_comp.MR_comp_type_name,
+			layout->MR_sll_entry->MR_sle_uci.MR_uci_type_name,
 			(MR_String)
-			layout->MR_sll_entry->MR_sle_comp.MR_comp_type_module,
+			layout->MR_sll_entry->MR_sle_uci.MR_uci_type_module,
 			(MR_String)
-			layout->MR_sll_entry->MR_sle_comp.MR_comp_def_module,
+			layout->MR_sll_entry->MR_sle_uci.MR_uci_def_module,
 			(MR_String)
-			layout->MR_sll_entry->MR_sle_comp.MR_comp_pred_name,
+			layout->MR_sll_entry->MR_sle_uci.MR_uci_pred_name,
 			/* is the type_ctor's arity what is wanted? XXX */
-			layout->MR_sll_entry->MR_sle_comp.MR_comp_type_arity,
-			layout->MR_sll_entry->MR_sle_comp.MR_comp_mode,
+			layout->MR_sll_entry->MR_sle_uci.MR_uci_type_arity,
+			layout->MR_sll_entry->MR_sle_uci.MR_uci_mode,
 			layout->MR_sll_entry->MR_sle_detism,
 			(MR_String) (MR_Word) path,
 			lineno,
@@ -1037,16 +1037,16 @@ MR_found_match(const MR_Label_Layout *layout,
 			depth,
 			port,
 			(MR_String)
-			layout->MR_sll_entry->MR_sle_comp.MR_comp_type_name,
+			layout->MR_sll_entry->MR_sle_uci.MR_uci_type_name,
 			(MR_String)
-			layout->MR_sll_entry->MR_sle_comp.MR_comp_type_module,
+			layout->MR_sll_entry->MR_sle_uci.MR_uci_type_module,
 			(MR_String)
-			layout->MR_sll_entry->MR_sle_comp.MR_comp_def_module,
+			layout->MR_sll_entry->MR_sle_uci.MR_uci_def_module,
 			(MR_String)
-			layout->MR_sll_entry->MR_sle_comp.MR_comp_pred_name,
+			layout->MR_sll_entry->MR_sle_uci.MR_uci_pred_name,
 			/* is the type_ctor's arity what is wanted? XXX */
-			layout->MR_sll_entry->MR_sle_comp.MR_comp_type_arity,
-			layout->MR_sll_entry->MR_sle_comp.MR_comp_mode,
+			layout->MR_sll_entry->MR_sle_uci.MR_uci_type_arity,
+			layout->MR_sll_entry->MR_sle_uci.MR_uci_mode,
 			layout->MR_sll_entry->MR_sle_detism,
 			arguments,
 			(MR_String) (MR_Word) path,
@@ -1373,18 +1373,18 @@ MR_print_proc_id_to_socket(const MR_Proc_Layout *entry,
 		MR_send_message_to_socket_format(
 			/* XXX Names with " may cause some problems here */
 			"proc(\"%s\",\"%s\",\"%s\",%ld,%ld).\n",
-			entry->MR_sle_comp.MR_comp_pred_name,
-			entry->MR_sle_comp.MR_comp_type_module,
-			entry->MR_sle_comp.MR_comp_type_name,
-			(long) entry->MR_sle_comp.MR_comp_type_arity,
-			(long) entry->MR_sle_comp.MR_comp_mode);
+			entry->MR_sle_uci.MR_uci_pred_name,
+			entry->MR_sle_uci.MR_uci_type_module,
+			entry->MR_sle_uci.MR_uci_type_name,
+			(long) entry->MR_sle_uci.MR_uci_type_arity,
+			(long) entry->MR_sle_uci.MR_uci_mode);
 
-		if (strcmp(entry->MR_sle_comp.MR_comp_type_module,
-				entry->MR_sle_comp.MR_comp_def_module) != 0)
+		if (strcmp(entry->MR_sle_uci.MR_uci_type_module,
+			entry->MR_sle_uci.MR_uci_def_module) != 0)
 		{
 			MR_send_message_to_socket_format(
 				"def_module(\"%s\").\n",
-				entry->MR_sle_comp.MR_comp_def_module);
+				entry->MR_sle_uci.MR_uci_def_module);
 		}
 	} else {
 		if (entry->MR_sle_user.MR_user_pred_or_func == MR_PREDICATE) {

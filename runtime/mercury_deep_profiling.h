@@ -15,7 +15,6 @@
 #define MERCURY_DEEP_PROFILING_H
 
 #include "mercury_types.h"		/* for MR_ConstString etc */
-#include "mercury_proc_id.h"		/* for MR_Proc_Id */
 #include "mercury_ho_call.h"
 #include <stdio.h>
 
@@ -37,6 +36,7 @@ struct MR_ProfilingMetrics_Struct {
 	unsigned				MR_own_exits;
 	unsigned				MR_own_fails;
 	unsigned				MR_own_redos;
+	unsigned				MR_own_excps;
 #endif
 #ifdef MR_DEEP_PROFILING_TIMING
 	volatile unsigned			MR_own_quanta;
@@ -54,7 +54,7 @@ struct MR_ProfilingMetrics_Struct {
 
 struct MR_CallSiteStatic_Struct {
     	MR_CallSite_Kind			MR_css_kind;
-	MR_ProcStatic				*MR_css_callee_ptr_if_known;
+	MR_Proc_Layout				*MR_css_callee_ptr_if_known;
 	MR_ConstString				MR_css_type_subst_if_known;
 	MR_ConstString				MR_css_file_name;
 	int					MR_css_line_number;
@@ -62,7 +62,6 @@ struct MR_CallSiteStatic_Struct {
 };
 
 struct MR_ProcStatic_Struct {
-	MR_Proc_Id				MR_ps_proc_id;
 	MR_ConstString				MR_ps_file_name;
 	int					MR_ps_line_number;
 	int					MR_ps_is_in_interface;
@@ -72,32 +71,9 @@ struct MR_ProcStatic_Struct {
 	int					MR_ps_activation_count;
 #endif
 	MR_ProcDynamic				*MR_ps_outermost_activation_ptr;
-};
-
-struct MR_User_ProcStatic_Struct {
-	MR_User_Proc_Id				MR_ps_proc_id;
-	MR_ConstString				MR_ps_file_name;
-	int					MR_ps_line_number;
-	int					MR_ps_is_in_interface;
-	int					MR_ps_num_call_sites;
-	const MR_CallSiteStatic			*MR_ps_call_sites;
-#ifdef MR_USE_ACTIVATION_COUNTS
-	int					MR_ps_activation_count;
-#endif
-	MR_ProcDynamic				*MR_ps_outermost_activation_ptr;
-};
-
-struct MR_Compiler_ProcStatic_Struct {
-	MR_Compiler_Proc_Id			MR_ps_proc_id;
-	MR_ConstString				MR_ps_file_name;
-	int					MR_ps_line_number;
-	int					MR_ps_is_in_interface;
-	int					MR_ps_num_call_sites;
-	const MR_CallSiteStatic			*MR_ps_call_sites;
-#ifdef MR_USE_ACTIVATION_COUNTS
-	int					MR_ps_activation_count;
-#endif
-	MR_ProcDynamic				*MR_ps_outermost_activation_ptr;
+	int					MR_ps_cur_csd_stack_slot;
+	int					MR_ps_next_csd_stack_slot;
+	int					MR_ps_old_outermost_stack_slot;
 };
 
 struct MR_CallSiteDynamic_Struct {
@@ -107,7 +83,7 @@ struct MR_CallSiteDynamic_Struct {
 };
 
 struct MR_ProcDynamic_Struct {
-	MR_ProcStatic				*MR_pd_proc_static;
+	const MR_Proc_Layout			*MR_pd_proc_layout;
 	MR_CallSiteDynamic			**MR_pd_call_site_ptr_ptrs;
 };
 
@@ -130,7 +106,7 @@ typedef enum {
 	MR_deep_token_callback,
 	MR_deep_token_isa_predicate,
 	MR_deep_token_isa_function,
-	MR_deep_token_isa_compiler_generated
+	MR_deep_token_isa_uci_pred
 } MR_Profile_Encoding_Token;
 
 #define	MR_enter_instrumentation()					\
@@ -155,6 +131,7 @@ typedef enum {
 		(csd)->MR_csd_own.MR_own_exits = 0;			\
 		(csd)->MR_csd_own.MR_own_fails = 0;			\
 		(csd)->MR_csd_own.MR_own_redos = 0;			\
+		(csd)->MR_csd_own.MR_own_excps = 0;			\
 	} while (0)
 #else
   #define MR_init_own_ports(csd)					\
@@ -203,17 +180,19 @@ typedef enum {
 		MR_init_depth_count(newcsd);				\
 	} while (0)
 
-#define	MR_new_proc_dynamic(pd, ps)					\
+#define	MR_new_proc_dynamic(pd, pl)					\
 	do {								\
+		MR_ProcStatic	*psl;					\
 		int	npdi;						\
 									\
 		(pd) = MR_PROFILING_MALLOC(MR_ProcDynamic);		\
-		(pd)->MR_pd_proc_static = (ps);				\
+		(pd)->MR_pd_proc_layout = (pl);				\
+		psl = (pl)->MR_sle_proc_static;				\
 		(pd)->MR_pd_call_site_ptr_ptrs =			\
 			MR_PROFILING_MALLOC_ARRAY(MR_CallSiteDynamic *,	\
-				(ps)->MR_ps_num_call_sites);		\
+				psl->MR_ps_num_call_sites);		\
 									\
-		for (npdi = 0; npdi < (ps)->MR_ps_num_call_sites; npdi++) { \
+		for (npdi = 0; npdi < psl->MR_ps_num_call_sites; npdi++) { \
 			(pd)->MR_pd_call_site_ptr_ptrs[npdi] = NULL;	\
 		}							\
 	} while (0)
@@ -305,16 +284,20 @@ typedef enum {
 	} while (0)
 
 #ifdef	MR_DEEP_CHECKS
-  #define MR_deep_assert(csd, ps, cond)					\
+  #define MR_deep_assert(csd, pl, ps, cond)				\
  	do {								\
 		if (!(cond)) {						\
-			MR_deep_assert_failed(csd, ps, MR_STRINGIFY(cond),\
-				__FILE__, __LINE__);			\
+			MR_deep_assert_failed(csd, pl, ps,		\
+				MR_STRINGIFY(cond), __FILE__, __LINE__); \
 		}							\
 	} while (0)
 #else
-  #define MR_deep_assert(csd, ps, cond)					\
+  #define MR_deep_assert(csd, pl, ps, cond)				\
   	((void) 0)
+#endif
+
+#if	defined(MR_DEEP_PROFILING) && defined(MR_EXEC_TRACE)
+extern	MR_bool				MR_disable_deep_profiling_in_debugger;
 #endif
 
 extern	MR_CallSiteDynamic		*MR_current_call_site_dynamic;
@@ -352,10 +335,15 @@ extern	int	MR_deep_prof_call_builtin_old;
 #endif	/* MR_DEEP_PROFILING_STATISTICS */
 
 extern	void	MR_deep_assert_failed(const MR_CallSiteDynamic *csd,
-			const MR_ProcStatic *ps, const char *cond,
-			const char *filename, int linenumber);
+			const MR_Proc_Layout *pl, const MR_ProcStatic *ps,
+			const char *cond, const char *filename,
+			int linenumber);
 extern	void	MR_setup_callback(void *entry);
-extern	void	MR_write_out_proc_static(FILE *fp, const MR_ProcStatic *ptr);
+extern	void	MR_write_out_user_proc_static(FILE *fp,
+			const MR_Proc_Layout_User *ptr);
+extern	void	MR_write_out_uci_proc_static(FILE *fp,
+			const MR_Proc_Layout_UCI *ptr);
+extern	void	MR_write_out_proc_static(FILE *fp, const MR_Proc_Layout *ptr);
 extern	void	MR_write_out_profiling_tree(void);
 
 extern	void	MR_deep_prof_init(void);

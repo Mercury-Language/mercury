@@ -1262,16 +1262,16 @@ MR_print_proc_id_internal(FILE *fp, const MR_Proc_Layout *entry, MR_bool spec)
         }
 
         fprintf(fp, "%s for %s.%s/%ld-%ld",
-            entry->MR_sle_comp.MR_comp_pred_name,
-            entry->MR_sle_comp.MR_comp_type_module,
-            entry->MR_sle_comp.MR_comp_type_name,
-            (long) entry->MR_sle_comp.MR_comp_type_arity,
-            (long) entry->MR_sle_comp.MR_comp_mode);
+            entry->MR_sle_uci.MR_uci_pred_name,
+            entry->MR_sle_uci.MR_uci_type_module,
+            entry->MR_sle_uci.MR_uci_type_name,
+            (long) entry->MR_sle_uci.MR_uci_type_arity,
+            (long) entry->MR_sle_uci.MR_uci_mode);
 
-        if (strcmp(entry->MR_sle_comp.MR_comp_type_module,
-            entry->MR_sle_comp.MR_comp_def_module) != 0)
+        if (strcmp(entry->MR_sle_uci.MR_uci_type_module,
+            entry->MR_sle_uci.MR_uci_def_module) != 0)
         {
-            fprintf(fp, " {%s}", entry->MR_sle_comp.MR_comp_def_module);
+            fprintf(fp, " {%s}", entry->MR_sle_uci.MR_uci_def_module);
         }
     } else {
         if (entry->MR_sle_user.MR_user_pred_or_func == MR_PREDICATE) {

@@ -27,6 +27,7 @@ HDRS		=	\
 			mercury_array_macros.h	\
 			mercury_bootstrap.h	\
 			mercury_builtin_types.h	\
+			mercury_builtin_types_proc_layouts.h	\
 			mercury_calls.h		\
 			mercury_conf.h		\
 			mercury_conf_bootstrap.h \

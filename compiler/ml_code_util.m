@@ -16,7 +16,6 @@
 :- interface.
 
 :- import_module backend_libs__builtin_ops.
-:- import_module backend_libs__rtti.
 :- import_module hlds__code_model.
 :- import_module hlds__hlds_module.
 :- import_module hlds__hlds_pred.
@@ -742,6 +741,7 @@
 :- implementation.
 
 :- import_module backend_libs__foreign.
+:- import_module backend_libs__rtti.
 :- import_module check_hlds__mode_util.
 :- import_module check_hlds__polymorphism.
 :- import_module check_hlds__type_util.
@@ -1090,10 +1090,11 @@ ml_gen_proc_params(PredId, ProcId, FuncParams, !Info) :-
 	%
 ml_gen_proc_params_from_rtti(ModuleInfo, RttiProcId) = FuncParams :-
 	HeadVars = RttiProcId ^ proc_headvars,
-	ArgTypes = RttiProcId ^ arg_types,
+	ArgTypes = RttiProcId ^ proc_arg_types,
 	ArgModes = RttiProcId ^ proc_arg_modes,
-	PredOrFunc = RttiProcId ^ pred_or_func,
-	CodeModel = RttiProcId ^ proc_interface_code_model,
+	PredOrFunc = RttiProcId^pred_or_func,
+	Detism = RttiProcId^proc_interface_detism,
+	determinism_to_code_model(Detism, CodeModel),
 	HeadVarNames = list__map((func(Var - Name) = Result :-
 			term__var_to_int(Var, N),
 			Result = mlds__var_name(Name, yes(N))
@@ -1380,12 +1381,10 @@ ml_gen_pred_label_from_rtti(ModuleInfo, RttiProcLabel, MLDS_PredLabel,
 		MLDS_Module) :-
 	RttiProcLabel = rtti_proc_label(PredOrFunc, ThisModule, PredModule,
 		PredName, PredArity, _ArgTypes, PredId, ProcId,
-		_HeadVarsWithNames, _ArgModes, CodeModel,
-		IsImported, _IsPseudoImported, _IsExported,
-		IsSpecialPredInstance),
-	(
-		IsSpecialPredInstance = yes(SpecialPred - TypeCtor)
-	->
+		_HeadVarsWithNames, _ArgModes, Detism,
+		PredIsImported, _PredIsPseudoImported,
+		IsSpecialPred, _ProcIsExported, _ProcIsImported),
+	( IsSpecialPred = yes(SpecialPred - TypeCtor) ->
 		(
 			% All type_ctors other than tuples here should be
 			% module qualified, since builtin types are handled
@@ -1428,7 +1427,7 @@ ml_gen_pred_label_from_rtti(ModuleInfo, RttiProcLabel, MLDS_PredLabel,
 			% Work out which module supplies the code for
 			% the predicate.
 			ThisModule \= PredModule,
-			IsImported = no
+			PredIsImported = no
 		->
 			% This predicate is a specialized version of
 			% a pred from a `.opt' file.
@@ -1449,6 +1448,7 @@ ml_gen_pred_label_from_rtti(ModuleInfo, RttiProcLabel, MLDS_PredLabel,
 		;
 			NonOutputFunc = no
 		),
+		determinism_to_code_model(Detism, CodeModel),
 		MLDS_PredLabel = pred(PredOrFunc, MaybeDeclaringModule,
 			PredName, PredArity, CodeModel, NonOutputFunc)
 	),

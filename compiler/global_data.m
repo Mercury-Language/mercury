@@ -18,15 +18,13 @@
 :- import_module ll_backend__continuation_info.
 :- import_module ll_backend__exprn_aux.
 :- import_module ll_backend__llds.
-:- import_module ll_backend__layout.
 :- import_module parse_tree__prog_data. % for module_name
 
 :- import_module bool, list.
 
 :- type global_data.
 
-:- pred global_data_init(list(layout_data)::in, static_cell_info::in,
-	global_data::out) is det.
+:- pred global_data_init(static_cell_info::in, global_data::out) is det.
 
 :- pred global_data_add_new_proc_var( pred_proc_id::in, comp_gen_c_var::in,
 	global_data::in, global_data::out) is det.
@@ -53,9 +51,6 @@
 	list(proc_layout_info)::out) is det.
 
 :- pred global_data_get_all_closure_layouts(global_data::in,
-	list(comp_gen_c_data)::out) is det.
-
-:- pred global_data_get_all_deep_prof_data(global_data::in,
 	list(comp_gen_c_data)::out) is det.
 
 :- pred global_data_get_static_cell_info(global_data::in,
@@ -119,11 +114,6 @@
 						% it is possible, although
 						% unlikely, for two closures
 						% to have the same layout.
-			deep_prof_data		:: list(comp_gen_c_data),
-						% The list of global data
-						% structures created by the
-						% deep profiling
-						% transformation.
 			static_cell_info	:: static_cell_info
 						% Information about all the
 						% statically allocated cells
@@ -134,12 +124,11 @@
 
 wrap_layout_data(LayoutData) = layout_data(LayoutData).
 
-global_data_init(LayoutData, StaticCellInfo, GlobalData) :-
+global_data_init(StaticCellInfo, GlobalData) :-
 	map__init(EmptyDataMap),
 	map__init(EmptyLayoutMap),
-	WrappedLayoutData = list__map(wrap_layout_data, LayoutData),
 	GlobalData = global_data(EmptyDataMap, EmptyLayoutMap, [],
-		WrappedLayoutData, StaticCellInfo).
+		StaticCellInfo).
 
 global_data_add_new_proc_var(PredProcId, ProcVar, GlobalData0, GlobalData) :-
 	ProcVarMap0 = GlobalData0 ^ proc_var_map,
@@ -182,9 +171,6 @@ global_data_get_all_proc_layouts(GlobalData, ProcLayouts) :-
 
 global_data_get_all_closure_layouts(GlobalData, ClosureLayouts) :-
 	ClosureLayouts = GlobalData ^ closure_layouts.
-
-global_data_get_all_deep_prof_data(GlobalData, LayoutData) :-
-	LayoutData = GlobalData ^ deep_prof_data.
 
 global_data_get_static_cell_info(GlobalData, StaticCellInfo) :-
 	StaticCellInfo = GlobalData ^ static_cell_info.

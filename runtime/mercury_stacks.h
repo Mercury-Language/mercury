@@ -386,10 +386,20 @@ typedef struct MR_Exception_Handler_Frame_struct {
 	)
 } MR_Exception_Handler_Frame;
 
+/*
+** In deep profiling grades, we need (a) 1 stack slot (framevar 1)
+** to save the input closure across the call port code; (b) up to 2 stack slots
+** (framevars 1 and 2) to store the result and maybe the success indicator,
+** and (c) 4 stack slots (frame vars 3 to 6) for use by the profiling
+** routines themselves. We can reuse framevar 1 for two purposes because their
+** live ranges do not overlap.
+*/
+
 #ifdef	MR_DEEP_PROFILING
-  #define MR_EXCEPTION_FRAMEVARS	2
+  #define MR_EXCEPTION_FRAMEVARS	6
+  #define MR_EXCEPTION_FIRST_DEEP_SLOT	3
 #else
-  #define MR_EXCEPTION_FRAMEVARS	0
+  #define MR_EXCEPTION_FRAMEVARS	2
 #endif
 
 #define MR_EXCEPTION_STRUCT \
@@ -405,9 +415,6 @@ typedef struct MR_Exception_Handler_Frame_struct {
 		** redoip when unwinding the nondet stack in		      \
 		** builtin_throw/1), and save the stuff we will		      \
 		** need if an exception is thrown.			      \
-		**							      \
-		** In deep profiling grades, we need two stack slots to save  \
-		** intermediate values in across calls to profiling routines. \
 		*/							      \
 		MR_mkpragmaframe((name), MR_EXCEPTION_FRAMEVARS,	      \
 			MR_Exception_Handler_Frame_struct,		      \

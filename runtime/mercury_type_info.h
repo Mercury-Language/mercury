@@ -1313,34 +1313,6 @@ typedef void MR_CALL MR_CompareFunc_5(MR_Mercury_Type_Info,
   #define MR_DEFINE_TYPE_CTOR_INFO_STRING(s)                            \
         MR_string_const(MR_STRINGIFY(s), sizeof(MR_STRINGIFY(s))-1)
 
-  #define MR_UNIFY_COMPARE_DECLS(m, n, a)                               \
-        MR_declare_entry(MR_TYPE_UNIFY_FUNC(m, n, a));                  \
-        MR_declare_entry(MR_TYPE_COMPARE_FUNC(m, n, a));
-
-  #define MR_UNIFY_COMPARE_DEFNS(m, n, a)                               \
-        MR_define_extern_entry(MR_TYPE_UNIFY_FUNC(m, n, a));            \
-        MR_define_extern_entry(MR_TYPE_COMPARE_FUNC(m, n, a));
-
-  #ifdef MR_DEEP_PROFILING
-
-    #define MR_UNIFY_COMPARE_LABELS(m, n, a)                            \
-        MR_init_entry(MR_TYPE_UNIFY_FUNC(m, n, a));                     \
-        MR_init_entry(MR_TYPE_COMPARE_FUNC(m, n, a));                   \
-        MR_init_label(MR_PASTE2(MR_TYPE_UNIFY_FUNC(m, n, a), _i1));     \
-        MR_init_label(MR_PASTE2(MR_TYPE_UNIFY_FUNC(m, n, a), _i2));     \
-        MR_init_label(MR_PASTE2(MR_TYPE_UNIFY_FUNC(m, n, a), _i3));     \
-        MR_init_label(MR_PASTE2(MR_TYPE_UNIFY_FUNC(m, n, a), _i4));     \
-        MR_init_label(MR_PASTE2(MR_TYPE_COMPARE_FUNC(m, n, a), _i1));   \
-        MR_init_label(MR_PASTE2(MR_TYPE_COMPARE_FUNC(m, n, a), _i2));
-
-  #else  /* ! MR_DEEP_PROFILING */
-
-    #define MR_UNIFY_COMPARE_LABELS(m, n, a)                            \
-        MR_init_entry(MR_TYPE_UNIFY_FUNC(m, n, a));                     \
-        MR_init_entry(MR_TYPE_COMPARE_FUNC(m, n, a));
-
-  #endif /* MR_DEEP_PROFILING */
-
 #endif /* MR_HIGHLEVEL_CODE */
 
 #define MR_DEFINE_TYPE_CTOR_INFO_BODY_FLAG(m, n, a, cr, u, c, f)        \
@@ -1485,20 +1457,6 @@ typedef void MR_CALL MR_CompareFunc_5(MR_Mercury_Type_Info,
 
 #define MR_REGISTER_TYPE_CTOR_INFO(m, n, a)                             \
     MR_register_type_ctor_info(&MR_TYPE_CTOR_INFO_NAME(m, n, a))
-
-#define MR_DEFINE_PROC_STATICS(mod, n, a)                               \
-    MR_proc_static_compiler_empty(mod, __Unify__, n, a, 0,              \
-        MR_STRINGIFY(mod) ".m", 0, MR_TRUE);                  \
-    MR_proc_static_compiler_empty(mod, __Compare__, n, a, 0,            \
-        MR_STRINGIFY(mod) ".m", 0, MR_TRUE);
-
-#define MR_WRITE_OUT_PROC_STATICS(fp, m, n, a)                          \
-    do {                                                                \
-        MR_write_out_proc_static(fp, (MR_ProcStatic *)                  \
-            &MR_proc_static_compiler_name(m, __Unify__, n, a, 0));      \
-        MR_write_out_proc_static(fp, (MR_ProcStatic *)                  \
-            &MR_proc_static_compiler_name(m, __Compare__, n, a, 0));    \
-    } while (0)
 
 /*---------------------------------------------------------------------------*/
 

@@ -431,9 +431,9 @@ ml_gen_constant(tabling_pointer_constant(PredId, ProcId), VarType, Rval,
 	DataAddr = data_addr(PredModule, tabling_pointer(PredLabel - ProcId)),
 	Rval = unop(cast(MLDS_VarType), const(data_addr_const(DataAddr))).
 
-ml_gen_constant(deep_profiling_proc_static_tag(_), _, _, !Info) :-
+ml_gen_constant(deep_profiling_proc_layout_tag(_), _, _, !Info) :-
 	error("ml_gen_constant: " ++
-		"deep_profiling_proc_static_tag not yet supported").
+		"deep_profiling_proc_layout_tag not yet supported").
 
 ml_gen_constant(table_io_decl_tag(_), _, _, !Info) :-
 	error("ml_gen_constant: table_io_decl_tag not yet supported").
@@ -1325,7 +1325,7 @@ ml_gen_det_deconstruct_2(Tag, Type, Var, ConsId, Args, Modes, Context,
 		Tag = tabling_pointer_constant(_, _),
 		Statements = []
 	;
-		Tag = deep_profiling_proc_static_tag(_),
+		Tag = deep_profiling_proc_layout_tag(_),
 		Statements = []
 	;
 		Tag = table_io_decl_tag(_),
@@ -1443,7 +1443,7 @@ ml_tag_offset_and_argnum(Tag, TagBits, OffSet, ArgNum) :-
 		Tag = tabling_pointer_constant(_, _),
 		error("ml_tag_offset_and_argnum")
 	;
-		Tag = deep_profiling_proc_static_tag(_),
+		Tag = deep_profiling_proc_layout_tag(_),
 		error("ml_tag_offset_and_argnum")
 	;
 		Tag = table_io_decl_tag(_),
@@ -1761,9 +1761,9 @@ ml_gen_tag_test_rval(base_typeclass_info_constant(_, _, _), _, _, _) = _ :-
 ml_gen_tag_test_rval(tabling_pointer_constant(_, _), _, _, _) = _ :-
 	% This should never happen
 	error("Attempted tabling_pointer unification").
-ml_gen_tag_test_rval(deep_profiling_proc_static_tag(_), _, _, _) = _ :-
+ml_gen_tag_test_rval(deep_profiling_proc_layout_tag(_), _, _, _) = _ :-
 	% This should never happen
-	error("Attempted deep_profiling_proc_static unification").
+	error("Attempted deep_profiling_proc_layout unification").
 ml_gen_tag_test_rval(table_io_decl_tag(_), _, _, _) = _ :-
 	% This should never happen
 	error("Attempted table_io_decl unification").

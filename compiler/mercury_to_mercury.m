@@ -1577,8 +1577,8 @@ mercury_format_cons_id(typeclass_info_cell_constructor, _) -->
 	add_string("<typeclass_info_cell_constructor>").
 mercury_format_cons_id(tabling_pointer_const(_, _), _) -->
 	add_string("<tabling pointer>").
-mercury_format_cons_id(deep_profiling_proc_static(_), _) -->
-	add_string("<deep_profiling_proc_static>").
+mercury_format_cons_id(deep_profiling_proc_layout(_), _) -->
+	add_string("<deep_profiling_proc_layout>").
 mercury_format_cons_id(table_io_decl(_), _) -->
 	add_string("<table_io_decl>").
 

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1997-2003 University of Melbourne.
+% Copyright (C) 1997-2004 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -17,9 +17,9 @@
 % The tables we generate are mostly of (Mercury) types defined in layout.m,
 % which are turned into C code (global variable declarations and
 % initializations) by layout_out.m.
-% 
+%
 % The C types of the structures we generate are defined and documented in
-% runtime/mercury_stack_layout.h. 
+% runtime/mercury_stack_layout.h.
 %
 %---------------------------------------------------------------------------%
 
@@ -82,10 +82,7 @@
 	% converting it into LLDS data structures.
 
 stack_layout__generate_llds(ModuleInfo0, !GlobalData, Layouts, LayoutLabels) :-
-	global_data_get_all_proc_layouts(!.GlobalData, ProcLayoutList0),
-	list__filter(stack_layout__valid_proc_layout, ProcLayoutList0,
-		ProcLayoutList),
-
+	global_data_get_all_proc_layouts(!.GlobalData, ProcLayoutList),
 	module_info_globals(ModuleInfo0, Globals),
 	globals__lookup_bool_option(Globals, agc_stack_layout, AgcLayout),
 	globals__lookup_bool_option(Globals, trace_stack_layout, TraceLayout),
@@ -217,7 +214,7 @@ concat_string_list(Strings, Len, string_with_0s(Result)) :-
 % string representation allows strings to contain embedded null
 % characters.  So we check that.
 concat_string_list_2(StringsList, _Len, StringWithNulls) :-
-	(	
+	(
 		char__to_int(NullChar, 0),
 		NullCharString = string__char_to_string(NullChar),
 		string__length(NullCharString, 1)
@@ -233,7 +230,7 @@ concat_string_list_2(StringsList, _Len, StringWithNulls) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred stack_layout__format_label_tables(map(string, label_table)::in, 
+:- pred stack_layout__format_label_tables(map(string, label_table)::in,
 	list(file_layout_data)::out) is det.
 
 stack_layout__format_label_tables(LabelTableMap, SourceFileLayouts) :-
@@ -286,56 +283,51 @@ stack_layout__add_line_no(LineNo, LineInfo, RevList0, RevList) :-
 :- pred stack_layout__construct_layouts(proc_layout_info::in,
 	stack_layout_info::in, stack_layout_info::out) is det.
 
-stack_layout__construct_layouts(ProcLayoutInfo) -->
-	{ ProcLayoutInfo = proc_layout_info(RttiProcLabel, EntryLabel, Detism,
-		StackSlots, SuccipLoc, EvalMethod, MaybeCallLabel, MaxTraceReg,
-		HeadVars, MaybeGoal, InstMap, TraceSlotInfo, ForceProcIdLayout,
-		VarSet, VarTypes, InternalMap, MaybeTableIoDecl, IsBeingTraced,
-		NeedsAllNames) },
-	{ map__to_assoc_list(InternalMap, Internals) },
-	{ compute_var_number_map(HeadVars, VarSet, Internals, MaybeGoal,
-		VarNumMap) },
+stack_layout__construct_layouts(ProcLayoutInfo, !Info) :-
+	ProcLayoutInfo = proc_layout_info(RttiProcLabel, EntryLabel, _Detism,
+		_StackSlots, _SuccipLoc, _EvalMethod, _MaybeCallLabel,
+		_MaxTraceReg, HeadVars, MaybeGoal, _InstMap, _TraceSlotInfo,
+		ForceProcIdLayout, VarSet, _VarTypes, InternalMap,
+		MaybeTableIoDecl, _IsBeingTraced, _NeedsAllNames,
+		_MaybeDeepProfInfo),
+	map__to_assoc_list(InternalMap, Internals),
+	compute_var_number_map(HeadVars, VarSet, Internals, MaybeGoal,
+		VarNumMap),
 
-	{ code_util__extract_proc_label_from_label(EntryLabel, ProcLabel) },
-	stack_layout__get_procid_stack_layout(ProcIdLayout0),
-	{ bool__or(ProcIdLayout0, ForceProcIdLayout, ProcIdLayout) },
+	code_util__extract_proc_label_from_label(EntryLabel, ProcLabel),
+	stack_layout__get_procid_stack_layout(ProcIdLayout0, !Info),
+	bool__or(ProcIdLayout0, ForceProcIdLayout, ProcIdLayout),
 	(
-		{ ProcIdLayout = yes
+		( ProcIdLayout = yes
 		; MaybeTableIoDecl = yes(_)
-		}
+		)
 	->
-		{ UserOrCompiler = proc_label_user_or_compiler(ProcLabel) },
-		stack_layout__get_trace_stack_layout(TraceLayout),
-		{
-			TraceLayout = yes,
-			(
-				IsBeingTraced = no,
-				Kind = proc_layout_proc_id(UserOrCompiler)
-			;
-				IsBeingTraced = yes,
-				Kind = proc_layout_exec_trace(UserOrCompiler)
-			)
-		;
-			TraceLayout = no,
-			Kind = proc_layout_proc_id(UserOrCompiler)
-		}
+		Kind = proc_layout_proc_id(proc_label_user_or_uci(ProcLabel))
 	;
-		{ Kind = proc_layout_traversal }
+		Kind = proc_layout_traversal
 	),
 
-	{ ProcLayoutName = proc_layout(ProcLabel, Kind) },
+	ProcLayoutName = proc_layout(RttiProcLabel, Kind),
 
-	list__map_foldl(stack_layout__construct_internal_layout(ProcLayoutName,
-		VarNumMap), Internals, InternalLayouts),
-	stack_layout__get_label_tables(LabelTables0),
-	{ list__foldl(stack_layout__update_label_table, InternalLayouts,
-		LabelTables0, LabelTables) },
-	stack_layout__set_label_tables(LabelTables),
-	stack_layout__construct_proc_layout(RttiProcLabel, EntryLabel,
-		ProcLabel, Detism, StackSlots, SuccipLoc, EvalMethod,
-		MaybeCallLabel, MaxTraceReg, HeadVars, MaybeGoal, InstMap,
-		TraceSlotInfo, VarSet, VarTypes, MaybeTableIoDecl,
-		Kind, NeedsAllNames, VarNumMap).
+	(
+		( !.Info ^ agc_stack_layout = yes
+		; !.Info ^ trace_stack_layout = yes
+		),
+		valid_proc_layout(ProcLayoutInfo)
+	->
+		list__map_foldl(stack_layout__construct_internal_layout(
+			ProcLayoutName, VarNumMap), Internals, InternalLayouts,
+			!Info)
+	;
+		InternalLayouts = []
+	),
+
+	stack_layout__get_label_tables(LabelTables0, !Info),
+	list__foldl(stack_layout__update_label_table, InternalLayouts,
+		LabelTables0, LabelTables),
+	stack_layout__set_label_tables(LabelTables, !Info),
+	stack_layout__construct_proc_layout(ProcLayoutInfo, Kind, VarNumMap,
+		!Info).
 
 %---------------------------------------------------------------------------%
 
@@ -431,22 +423,13 @@ stack_layout__context_is_valid(Context) :-
 
 %---------------------------------------------------------------------------%
 
-	% Construct a procedure-specific layout.
-
-:- pred stack_layout__construct_proc_layout(rtti_proc_label::in, label::in,
-	proc_label::in, determinism::in, int::in, maybe(int)::in,
-	eval_method::in, maybe(label)::in, int::in, list(prog_var)::in,
-	maybe(hlds_goal)::in, instmap::in, trace_slot_info::in, prog_varset::in,
-	vartypes::in, maybe(proc_table_info)::in,
-	proc_layout_kind::in, bool::in, var_num_map::in,
+:- pred stack_layout__construct_proc_traversal(label::in, determinism::in,
+	int::in, maybe(int)::in, proc_layout_stack_traversal::out, 
 	stack_layout_info::in, stack_layout_info::out) is det.
 
-stack_layout__construct_proc_layout(RttiProcLabel, EntryLabel, ProcLabel,
-		Detism, StackSlots, MaybeSuccipLoc, EvalMethod, MaybeCallLabel,
-		MaxTraceReg, HeadVars, MaybeGoal, InstMap, TraceSlotInfo,
-		VarSet, VarTypes, MaybeTableInfo, Kind,
-		NeedsAllNames, VarNumMap) -->
-	{
+stack_layout__construct_proc_traversal(EntryLabel, Detism, NumStackSlots,
+		MaybeSuccipLoc, Traversal, !Info) :-
+	(
 		MaybeSuccipLoc = yes(Location)
 	->
 		( determinism_components(Detism, _, at_most_many) ->
@@ -458,7 +441,7 @@ stack_layout__construct_proc_layout(RttiProcLabel, EntryLabel, ProcLabel,
 			SuccipInt),
 		MaybeSuccipInt = yes(SuccipInt)
 	;
-			% Use a dummy location 1 if there is no succip slot
+			% Use a dummy location if there is no succip slot
 			% on the stack.
 			%
 			% This case can arise in two circumstances.
@@ -485,45 +468,70 @@ stack_layout__construct_proc_layout(RttiProcLabel, EntryLabel, ProcLabel,
 			% Future uses of stack layouts will have to have
 			% similar constraints.
 		MaybeSuccipInt = no
-	},
-	stack_layout__get_static_code_addresses(StaticCodeAddr),
-	{ StaticCodeAddr = yes ->
+	),
+	stack_layout__get_static_code_addresses(StaticCodeAddr, !Info),
+	(
+		StaticCodeAddr = yes,
 		MaybeEntryLabel = yes(EntryLabel)
 	;
+		StaticCodeAddr = no,
 		MaybeEntryLabel = no
-	},
-	{ TraversalGroup = proc_layout_stack_traversal(MaybeEntryLabel,
-		MaybeSuccipInt, StackSlots, Detism) },
-	(
-		{ Kind = proc_layout_traversal },
-		{ MaybeRest = no_proc_id }
-	;
-		{ Kind = proc_layout_proc_id(_) },
-		{ MaybeRest = proc_id_only }
-	;
-		{ Kind = proc_layout_exec_trace(_) },
-		stack_layout__construct_trace_layout(RttiProcLabel, EvalMethod,
-			MaybeCallLabel, MaxTraceReg, HeadVars, MaybeGoal,
-			InstMap, TraceSlotInfo, VarSet, VarTypes,
-			MaybeTableInfo, NeedsAllNames, VarNumMap, ExecTrace),
-		{ MaybeRest = proc_id_and_exec_trace(ExecTrace) }
 	),
+	Traversal = proc_layout_stack_traversal(MaybeEntryLabel,
+		MaybeSuccipInt, NumStackSlots, Detism).
 
-	{ ProcLayout = proc_layout_data(ProcLabel, TraversalGroup, MaybeRest) },
-	{ Data = layout_data(ProcLayout) },
-	{ LayoutName = proc_layout(ProcLabel, Kind) },
-	stack_layout__add_proc_layout_data(Data, LayoutName, EntryLabel),
+	% Construct a procedure-specific layout.
 
+:- pred stack_layout__construct_proc_layout(proc_layout_info::in,
+	proc_layout_kind::in, var_num_map::in,
+	stack_layout_info::in, stack_layout_info::out) is det.
+
+stack_layout__construct_proc_layout(ProcLayoutInfo, Kind, VarNumMap, !Info) :-
+	ProcLayoutInfo = proc_layout_info(RttiProcLabel, EntryLabel, Detism,
+		StackSlots, SuccipLoc, EvalMethod, MaybeCallLabel, MaxTraceReg,
+		HeadVars, MaybeGoal, InstMap, TraceSlotInfo,
+		_ForceProcIdLayout, VarSet, VarTypes, _InternalMap,
+		MaybeTableInfo, IsBeingTraced, NeedsAllNames,
+		MaybeProcStatic),
+	stack_layout__construct_proc_traversal(EntryLabel, Detism, StackSlots,
+		SuccipLoc, Traversal, !Info),
 	(
-		{ MaybeTableInfo = no }
+		Kind = proc_layout_traversal,
+		More = no_proc_id
 	;
-		{ MaybeTableInfo = yes(TableInfo) },
-		stack_layout__get_static_cell_info(StaticCellInfo0),
-		{ stack_layout__make_table_data(RttiProcLabel, Kind,
+		Kind = proc_layout_proc_id(_),
+		stack_layout__get_trace_stack_layout(TraceStackLayout, !Info),
+		(
+			TraceStackLayout = yes,
+			IsBeingTraced = yes,
+			valid_proc_layout(ProcLayoutInfo)
+		->
+			stack_layout__construct_trace_layout(RttiProcLabel,
+				EvalMethod, MaybeCallLabel, MaxTraceReg,
+				HeadVars, MaybeGoal, InstMap, TraceSlotInfo,
+				VarSet, VarTypes, MaybeTableInfo,
+				NeedsAllNames, VarNumMap, ExecTrace, !Info),
+			MaybeExecTrace = yes(ExecTrace)
+		;
+			MaybeExecTrace = no
+		),
+		More = proc_id(MaybeProcStatic, MaybeExecTrace)
+	),
+	ProcLayout = proc_layout_data(RttiProcLabel, Traversal, More),
+	Data = layout_data(ProcLayout),
+	LayoutName = proc_layout(RttiProcLabel, Kind),
+	stack_layout__add_proc_layout_data(Data, LayoutName, EntryLabel,
+		!Info),
+	(
+		MaybeTableInfo = no
+	;
+		MaybeTableInfo = yes(TableInfo),
+		stack_layout__get_static_cell_info(StaticCellInfo0, !Info),
+		stack_layout__make_table_data(RttiProcLabel, Kind,
 			TableInfo, TableData,
-			StaticCellInfo0, StaticCellInfo) },
-		stack_layout__set_static_cell_info(StaticCellInfo),
-		stack_layout__add_table_data(TableData)
+			StaticCellInfo0, StaticCellInfo),
+		stack_layout__set_static_cell_info(StaticCellInfo, !Info),
+		stack_layout__add_table_data(TableData, !Info)
 	).
 
 :- pred stack_layout__construct_trace_layout(rtti_proc_label::in,

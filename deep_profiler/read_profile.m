@@ -107,7 +107,10 @@ read_id_string(Res, !IO) :-
 
 :- func id_string = string.
 
-id_string = "Mercury deep profiler data".
+% This must the same string as the one written by MR_write_out_id_string
+% in runtime/mercury_deep_profiling.c.
+
+id_string = "Mercury deep profiler data version 1\n".
 
 :- func init_deep(int, int, int, int, int, int, int, int, int, int)
 	= initial_deep.
@@ -315,8 +318,8 @@ read_proc_id(Res, !IO) :-
 	read_deep_byte(Res0, !IO),
 	(
 		Res0 = ok(Byte),
-		( Byte = token_isa_compiler_generated ->
-			read_proc_id_compiler_generated(Res, !IO)
+		( Byte = token_isa_uci_pred ->
+			read_proc_id_uci_pred(Res, !IO)
 		; Byte = token_isa_predicate ->
 			read_proc_id_user_defined(predicate, Res, !IO)
 		; Byte = token_isa_function ->
@@ -331,10 +334,10 @@ read_proc_id(Res, !IO) :-
 		Res = error(Err)
 	).
 
-:- pred read_proc_id_compiler_generated(maybe_error(proc_id)::out,
+:- pred read_proc_id_uci_pred(maybe_error(proc_id)::out,
 	io__state::di, io__state::uo) is det.
 
-read_proc_id_compiler_generated(Res, !IO) :-
+read_proc_id_uci_pred(Res, !IO) :-
 	io_combinator__maybe_error_sequence_6(
 		read_string,
 		read_string,
@@ -345,7 +348,7 @@ read_proc_id_compiler_generated(Res, !IO) :-
 		(pred(TypeName::in, TypeModule::in, DefModule::in,
 			PredName::in, Arity::in, Mode::in, ProcId::out)
 			is det :-
-			ProcId = ok(compiler_generated(TypeName, TypeModule,
+			ProcId = ok(uci_pred(TypeName, TypeModule,
 				DefModule, PredName, Arity, Mode))
 		),
 		Res, !IO).
@@ -370,7 +373,7 @@ read_proc_id_user_defined(PredOrFunc, Res, !IO) :-
 
 :- func raw_proc_id_to_string(proc_id) = string.
 
-raw_proc_id_to_string(compiler_generated(TypeName, TypeModule, _DefModule,
+raw_proc_id_to_string(uci_pred(TypeName, TypeModule, _DefModule,
 		PredName, Arity, Mode)) =
 	string__append_list(
 		[PredName, " for ", TypeModule, ":", TypeName,
@@ -385,7 +388,7 @@ raw_proc_id_to_string(user_defined(PredOrFunc, DeclModule, _DefModule,
 
 :- func refined_proc_id_to_string(proc_id) = string.
 
-refined_proc_id_to_string(compiler_generated(TypeName, TypeModule, _DefModule,
+refined_proc_id_to_string(uci_pred(TypeName, TypeModule, _DefModule,
 		RawPredName, Arity, Mode)) = Name :-
 	( RawPredName = "__Unify__" ->
 		PredName = "Unify"
@@ -596,10 +599,17 @@ read_profile(Res, !IO) :-
 	read_num(Res0, !IO),
 	(
 		Res0 = ok(Mask),
+
+		% The masks here must correspond exactly with the masks in
+		% MR_write_out_call_site_dynamic in mercury_deep_profiling.c
+		% in the runtime.
 		some [!MaybeError] (
 			!:MaybeError = no,
-			% Calls are computed from the other counts in
-			% measurements.m.
+			% We normally assume that the configuration macro
+			% MR_DEEP_PROFILING_EXPLICIT_CALL_COUNTS is not
+			% defined, and thus mercury_deep_profiling.m never
+			% writes out call counts (instead, call counts are
+			% computed from other port counts in measurements.m).
 			% maybe_read_num_handle_error(Mask, 0x0001, Calls,
 			% 	!MaybeError, !IO),
 			maybe_read_num_handle_error(Mask, 0x0002, Exits,
@@ -608,11 +618,13 @@ read_profile(Res, !IO) :-
 				!MaybeError, !IO),
 			maybe_read_num_handle_error(Mask, 0x0008, Redos,
 				!MaybeError, !IO),
-			maybe_read_num_handle_error(Mask, 0x0010, Quanta,
+			maybe_read_num_handle_error(Mask, 0x0010, Excps,
 				!MaybeError, !IO),
-			maybe_read_num_handle_error(Mask, 0x0020, Mallocs,
+			maybe_read_num_handle_error(Mask, 0x0020, Quanta,
 				!MaybeError, !IO),
-			maybe_read_num_handle_error(Mask, 0x0040, Words,
+			maybe_read_num_handle_error(Mask, 0x0040, Mallocs,
+				!MaybeError, !IO),
+			maybe_read_num_handle_error(Mask, 0x0080, Words,
 				!MaybeError, !IO),
 			LastMaybeError = !.MaybeError
 		),
@@ -621,7 +633,7 @@ read_profile(Res, !IO) :-
 			Res = error(Error)
 		;
 			LastMaybeError = no,
-			Res = ok(compress_profile(Exits, Fails, Redos, 
+			Res = ok(compress_profile(Exits, Fails, Redos, Excps,
 				Quanta, Mallocs, Words))
 		)
 	;
@@ -1129,10 +1141,10 @@ make_dummy_psptr = proc_static_ptr(-1).
 	[will_not_call_mercury, thread_safe],
 	"X = MR_deep_token_isa_function;").
 
-:- func token_isa_compiler_generated = int.
-:- pragma c_code(token_isa_compiler_generated = (X::out),
+:- func token_isa_uci_pred = int.
+:- pragma c_code(token_isa_uci_pred = (X::out),
 	[will_not_call_mercury, thread_safe],
-	"X = MR_deep_token_isa_compiler_generated;").
+	"X = MR_deep_token_isa_uci_pred;").
 
 %------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%

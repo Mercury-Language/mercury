@@ -90,6 +90,7 @@
 :- import_module ll_backend__continuation_info.
 :- import_module ll_backend__disj_gen.
 :- import_module ll_backend__ite_gen.
+:- import_module ll_backend__layout.
 :- import_module ll_backend__llds_out.
 :- import_module ll_backend__middle_rec.
 :- import_module ll_backend__par_conj_gen.
@@ -356,12 +357,23 @@ generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo,
 		IsBeingTraced = bool__not(EffTraceIsNone),
 		NeedsAllNames = eff_trace_needs_all_var_names(PredInfo,
 			ProcInfo, TraceLevel, TraceSuppress),
+		proc_info_get_maybe_deep_profile_info(ProcInfo,
+			MaybeHLDSDeepInfo),
+		(
+			MaybeHLDSDeepInfo = yes(HLDSDeepInfo),
+			DeepProfInfo = generate_deep_prof_info(ProcInfo,
+				HLDSDeepInfo),
+			MaybeDeepProfInfo = yes(DeepProfInfo)
+		;
+			MaybeHLDSDeepInfo = no,
+			MaybeDeepProfInfo = no
+		),
 		ProcLayout = proc_layout_info(RttiProcLabel, EntryLabel,
 			Detism, TotalSlots, MaybeSuccipSlot, EvalMethod,
 			MaybeTraceCallLabel, MaxTraceReg, HeadVars, MaybeGoal,
 			InstMap0, TraceSlotInfo, ForceProcId, VarSet, VarTypes,
 			InternalMap, MaybeTableInfo, IsBeingTraced,
-			NeedsAllNames),
+			NeedsAllNames, MaybeDeepProfInfo),
 		global_data_add_new_proc_layout(proc(PredId, ProcId),
 			ProcLayout, !GlobalData)
 	;
@@ -412,6 +424,44 @@ generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo,
 			Instructions, ProcLabel, LabelCounter,
 			MayAlterRtti)
 	).
+
+:- func generate_deep_prof_info(proc_info, deep_profile_proc_info)
+	= proc_layout_proc_static.
+
+generate_deep_prof_info(ProcInfo, HLDSDeepInfo) = DeepProfInfo :-
+	HLDSDeepInfo ^ deep_layout = MaybeHLDSDeepLayout,
+	(
+		MaybeHLDSDeepLayout = yes(HLDSDeepLayout)
+	;
+		MaybeHLDSDeepLayout = no,
+		error("generate_deep_prof_info: " ++
+			"no HLDS deep profiling layout info")
+	),
+	HLDSDeepLayout = hlds_deep_layout(HLDSProcStatic, HLDSExcpVars),
+	HLDSExcpVars = hlds_deep_excp_vars(TopCSDVar, MiddleCSDVar,
+		MaybeOldOutermostVar),
+	proc_info_stack_slots(ProcInfo, StackSlots),
+	( map__search(StackSlots, TopCSDVar, TopCSDSlot) ->
+		TopCSDSlotNum = stack_slot_num(TopCSDSlot),
+		map__lookup(StackSlots, MiddleCSDVar, MiddleCSDSlot),
+		MiddleCSDSlotNum = stack_slot_num(MiddleCSDSlot),
+		(
+			MaybeOldOutermostVar = yes(OldOutermostVar),
+			map__lookup(StackSlots, OldOutermostVar,
+				OldOutermostSlot),
+			OldOutermostSlotNum = stack_slot_num(OldOutermostSlot)
+		;
+			MaybeOldOutermostVar = no,
+			OldOutermostSlotNum = -1
+		)
+	;
+		TopCSDSlotNum = -1,
+		MiddleCSDSlotNum = -1,
+		OldOutermostSlotNum = -1
+	),
+	DeepExcpSlots = deep_excp_slots(TopCSDSlotNum, MiddleCSDSlotNum,
+		OldOutermostSlotNum),
+	DeepProfInfo = proc_layout_proc_static(HLDSProcStatic, DeepExcpSlots).
 
 :- pred maybe_add_tabling_pointer_var(module_info::in,
 	pred_id::in, proc_id::in, proc_info::in, proc_label::in,
@@ -1084,6 +1134,8 @@ code_gen__generate_goal(ContextModel, Goal - GoalInfo, Code, !CI) :-
 
 		code_gen__generate_goal_2(Goal, GoalInfo, CodeModel, GoalCode,
 			!CI),
+		goal_info_get_features(GoalInfo, Features),
+		code_info__get_proc_info(!.CI, ProcInfo),
 
 			% If the predicate's evaluation method is memo,
 			% loopcheck or minimal model, the goal generated
@@ -1097,7 +1149,6 @@ code_gen__generate_goal(ContextModel, Goal - GoalInfo, Code, !CI) :-
 			% If tracing is not enabled, then CallTableVar isn't
 			% guaranteed to have a stack slot.
 		(
-			goal_info_get_features(GoalInfo, Features),
 			set__member(call_table_gen, Features),
 			code_info__get_proc_info(!.CI, ProcInfo),
 			proc_info_get_call_table_tip(ProcInfo,
@@ -1106,10 +1157,39 @@ code_gen__generate_goal(ContextModel, Goal - GoalInfo, Code, !CI) :-
 			code_info__get_maybe_trace_info(!.CI, yes(_))
 		->
 			code_info__save_variables_on_stack([CallTableVar],
-				SaveCode, !CI),
-			Code = tree(GoalCode, SaveCode)
+				TipSaveCode, !CI),
+			CodeUptoTip = tree(GoalCode, TipSaveCode)
 		;
-			Code = GoalCode
+			CodeUptoTip = GoalCode
+		),
+			% After the goal that generates the variables needed
+			% at the exception port, on which deep_profiling.m puts
+			% the save_deep_excp_vars feature, save those variables
+			% in their stack slots. The procedure layout structure
+			% gives the identity of their slots, and exception.m
+			% expects to find the variables in their stack slots.
+			%
+			% These variables are computed by the call port code
+			% and are needed by the exit and fail port codes, so
+			% their lifetime is the entire procedure invocation.
+			% If the procedure makes any calls other than the ones
+			% inserted by deep profiling, then all the variables
+			% will have stack slots, and we save them all on the
+			% stack. If the procedure doesn't make any such calls,
+			% then the variables won't have stack slots, but they
+			% won't *need* stack slots either, since there is no
+			% way for such a leaf procedure to throw an exception.
+			% (Throwing requires calling exception__throw, directly
+			% or indirectly.)
+		(
+			set__member(save_deep_excp_vars, Features)
+		->
+			DeepSaveVars = compute_deep_save_excp_vars(ProcInfo),
+			code_info__save_variables_on_stack(DeepSaveVars,
+				DeepSaveCode, !CI),
+			Code = tree(CodeUptoTip, DeepSaveCode)
+		;
+			Code = CodeUptoTip
 		),
 
 			% Make live any variables which subsequent goals
@@ -1118,6 +1198,37 @@ code_gen__generate_goal(ContextModel, Goal - GoalInfo, Code, !CI) :-
 		code_info__post_goal_update(GoalInfo, !CI)
 	;
 		Code = empty
+	).
+
+:- func compute_deep_save_excp_vars(proc_info) = list(prog_var).
+
+compute_deep_save_excp_vars(ProcInfo) = DeepSaveVars :-
+	proc_info_get_maybe_deep_profile_info(ProcInfo, MaybeDeepProfInfo),
+	(
+		MaybeDeepProfInfo = yes(DeepProfInfo),
+		MaybeDeepLayout = DeepProfInfo ^ deep_layout,
+		MaybeDeepLayout = yes(DeepLayout)
+	->
+		ExcpVars = DeepLayout ^ deep_layout_excp,
+		ExcpVars = hlds_deep_excp_vars(TopCSDVar, MiddleCSDVar,
+			MaybeOldOutermostVar),
+		proc_info_stack_slots(ProcInfo, StackSlots),
+		( map__search(StackSlots, TopCSDVar, _) ->
+			% If one of these variables has a stack
+			% slot, the others must have one too.
+			(
+				MaybeOldOutermostVar = yes(OldOutermostVar),
+				DeepSaveVars = [TopCSDVar, MiddleCSDVar,
+					OldOutermostVar]
+			;
+				MaybeOldOutermostVar = no,
+				DeepSaveVars = [TopCSDVar, MiddleCSDVar]
+			)
+		;
+			DeepSaveVars = []
+		)
+	;
+		error("compute_deep_save_excp_vars: inconsistent proc_info")
 	).
 
 %---------------------------------------------------------------------------%

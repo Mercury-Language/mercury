@@ -35,38 +35,9 @@
 #include "mercury_deep_profiling_hand.h"
 #include "mercury_profiling_builtin.h"
 #include "mercury_builtin_types.h"
+#include "mercury_builtin_types_proc_layouts.h"
 
 /*---------------------------------------------------------------------------*/
-
-#ifdef	MR_DEEP_PROFILING
-
-MR_DEFINE_PROC_STATICS(builtin, int, 0);
-MR_DEFINE_PROC_STATICS(builtin, string, 0);
-MR_DEFINE_PROC_STATICS(builtin, float, 0);
-MR_DEFINE_PROC_STATICS(builtin, character, 0);
-MR_DEFINE_PROC_STATICS(builtin, void, 0);
-MR_DEFINE_PROC_STATICS(builtin, c_pointer, 0);
-MR_DEFINE_PROC_STATICS(builtin, pred, 0);
-MR_DEFINE_PROC_STATICS(builtin, func, 0);
-MR_DEFINE_PROC_STATICS(builtin, tuple, 0);
-MR_DEFINE_PROC_STATICS(builtin, succip, 0);
-MR_DEFINE_PROC_STATICS(builtin, hp, 0);
-MR_DEFINE_PROC_STATICS(builtin, curfr, 0);
-MR_DEFINE_PROC_STATICS(builtin, maxfr, 0);
-MR_DEFINE_PROC_STATICS(builtin, redofr, 0);
-MR_DEFINE_PROC_STATICS(builtin, redoip, 0);
-MR_DEFINE_PROC_STATICS(builtin, trailptr, 0);
-MR_DEFINE_PROC_STATICS(builtin, ticket, 0);
-MR_DEFINE_PROC_STATICS(private_builtin, heap_pointer, 0);
-MR_DEFINE_PROC_STATICS(private_builtin, ref, 1);
-MR_DEFINE_PROC_STATICS(private_builtin, type_ctor_info, 1);
-MR_DEFINE_PROC_STATICS(private_builtin, type_info, 1);
-MR_DEFINE_PROC_STATICS(private_builtin, base_typeclass_info, 1);
-MR_DEFINE_PROC_STATICS(private_builtin, typeclass_info, 1);
-MR_DEFINE_PROC_STATICS(type_desc, type_ctor_desc, 0);
-MR_DEFINE_PROC_STATICS(type_desc, type_desc, 0);
-
-#endif
 
 /*
 ** Define MR_TypeCtorInfos for the builtin types
@@ -704,55 +675,202 @@ mercury__private_builtin__do_compare__base_typeclass_info_1_0(
 
 MR_MODULE_STATIC_OR_EXTERN MR_ModuleFunc mercury_builtin_types;
 
-MR_UNIFY_COMPARE_DEFNS(builtin, int, 0)
-MR_UNIFY_COMPARE_DEFNS(builtin, string, 0)
-MR_UNIFY_COMPARE_DEFNS(builtin, float, 0)
-MR_UNIFY_COMPARE_DEFNS(builtin, character, 0)
-MR_UNIFY_COMPARE_DEFNS(builtin, void, 0)
-MR_UNIFY_COMPARE_DEFNS(builtin, c_pointer, 0)
-MR_UNIFY_COMPARE_DEFNS(builtin, pred, 0)
-MR_UNIFY_COMPARE_DEFNS(builtin, func, 0)
-MR_UNIFY_COMPARE_DEFNS(builtin, tuple, 0)
-MR_UNIFY_COMPARE_DEFNS(builtin, succip, 0)
-MR_UNIFY_COMPARE_DEFNS(builtin, hp, 0)
-MR_UNIFY_COMPARE_DEFNS(builtin, curfr, 0)
-MR_UNIFY_COMPARE_DEFNS(builtin, maxfr, 0)
-MR_UNIFY_COMPARE_DEFNS(builtin, redofr, 0)
-MR_UNIFY_COMPARE_DEFNS(builtin, redoip, 0)
-MR_UNIFY_COMPARE_DEFNS(builtin, trailptr, 0)
-MR_UNIFY_COMPARE_DEFNS(builtin, ticket, 0)
-MR_UNIFY_COMPARE_DEFNS(private_builtin, heap_pointer, 0)
-MR_UNIFY_COMPARE_DEFNS(private_builtin, ref, 1)
-MR_UNIFY_COMPARE_DEFNS(private_builtin, type_ctor_info, 1)
-MR_UNIFY_COMPARE_DEFNS(private_builtin, type_info, 1)
-MR_UNIFY_COMPARE_DEFNS(private_builtin, base_typeclass_info, 1)
-MR_UNIFY_COMPARE_DEFNS(private_builtin, typeclass_info, 1)
-MR_UNIFY_COMPARE_DEFNS(type_desc, type_ctor_desc, 0)
-MR_UNIFY_COMPARE_DEFNS(type_desc, type_desc, 0)
+  #define MR_UNIFY_COMPARE_REP_DEFNS(m, n, a)				\
+    MR_define_extern_entry(MR_proc_entry_uci_name(m, __Unify__, n, a, 0)); \
+    MR_define_extern_entry(MR_proc_entry_uci_name(m, __Compare__, n, a, 0)); \
+    MR_define_extern_entry(MR_proc_entry_uci_name(m, __CompareRep__, n, a, 0));
+
+  #ifdef MR_DEEP_PROFILING
+
+    #define MR_UNIFY_COMPARE_REP_DECLS(m, n, a)				\
+      MR_declare_entry(MR_proc_entry_uci_name(m, __Unify__, n, a, 0));	\
+      MR_declare_entry(MR_proc_entry_uci_name(m, __Compare__, n, a, 0)); \
+      MR_declare_entry(MR_proc_entry_uci_name(m, __CompareRep__, n, a, 0)); \
+      MR_declare_label(MR_label_uci_name(m, __Unify__, n, a, 0, 1));	\
+      MR_declare_label(MR_label_uci_name(m, __Unify__, n, a, 0, 2));	\
+      MR_declare_label(MR_label_uci_name(m, __Unify__, n, a, 0, 3));	\
+      MR_declare_label(MR_label_uci_name(m, __Unify__, n, a, 0, 4));	\
+      MR_declare_label(MR_label_uci_name(m, __Compare__, n, a, 0, 1));	\
+      MR_declare_label(MR_label_uci_name(m, __Compare__, n, a, 0, 2));	\
+      MR_declare_label(MR_label_uci_name(m, __CompareRep__, n, a, 0, 1)); \
+      MR_declare_label(MR_label_uci_name(m, __CompareRep__, n, a, 0, 2));
+
+    #define MR_UNIFY_COMPARE_REP_LABELS(m, n, a)			\
+      MR_init_entry(MR_proc_entry_uci_name(m, __Unify__, n, a, 0));	\
+      MR_init_entry(MR_proc_entry_uci_name(m, __Compare__, n, a, 0));	\
+      MR_init_entry(MR_proc_entry_uci_name(m, __CompareRep__, n, a, 0));\
+      MR_init_label(MR_label_uci_name(m, __Unify__, n, a, 0, 1));	\
+      MR_init_label(MR_label_uci_name(m, __Unify__, n, a, 0, 2));	\
+      MR_init_label(MR_label_uci_name(m, __Unify__, n, a, 0, 3));	\
+      MR_init_label(MR_label_uci_name(m, __Unify__, n, a, 0, 4));	\
+      MR_init_label(MR_label_uci_name(m, __Compare__, n, a, 0, 1));	\
+      MR_init_label(MR_label_uci_name(m, __Compare__, n, a, 0, 2));	\
+      MR_init_label(MR_label_uci_name(m, __CompareRep__, n, a, 0, 1));	\
+      MR_init_label(MR_label_uci_name(m, __CompareRep__, n, a, 0, 2));
+
+  #else  /* ! MR_DEEP_PROFILING */
+
+    #define MR_UNIFY_COMPARE_REP_DECLS(m, n, a)				\
+      MR_declare_entry(MR_proc_entry_uci_name(m, __Unify__, n, a, 0));	\
+      MR_declare_entry(MR_proc_entry_uci_name(m, __Compare__, n, a, 0)); \
+      MR_declare_entry(MR_proc_entry_uci_name(m, __CompareRep__, n, a, 0));
+
+    #define MR_UNIFY_COMPARE_REP_LABELS(m, n, a)			\
+      MR_init_entry(MR_proc_entry_uci_name(m, __Unify__, n, a, 0));	\
+      MR_init_entry(MR_proc_entry_uci_name(m, __Compare__, n, a, 0));	\
+      MR_init_entry(MR_proc_entry_uci_name(m, __CompareRep__, n, a, 0));
+
+  #endif /* MR_DEEP_PROFILING */
+
+MR_UNIFY_COMPARE_REP_DECLS(builtin, int, 0)
+MR_UNIFY_COMPARE_REP_DECLS(builtin, string, 0)
+MR_UNIFY_COMPARE_REP_DECLS(builtin, float, 0)
+MR_UNIFY_COMPARE_REP_DECLS(builtin, character, 0)
+MR_UNIFY_COMPARE_REP_DECLS(builtin, void, 0)
+MR_UNIFY_COMPARE_REP_DECLS(builtin, c_pointer, 0)
+MR_UNIFY_COMPARE_REP_DECLS(builtin, pred, 0)
+MR_UNIFY_COMPARE_REP_DECLS(builtin, func, 0)
+MR_UNIFY_COMPARE_REP_DECLS(builtin, tuple, 0)
+MR_UNIFY_COMPARE_REP_DECLS(builtin, succip, 0)
+MR_UNIFY_COMPARE_REP_DECLS(builtin, hp, 0)
+MR_UNIFY_COMPARE_REP_DECLS(builtin, curfr, 0)
+MR_UNIFY_COMPARE_REP_DECLS(builtin, maxfr, 0)
+MR_UNIFY_COMPARE_REP_DECLS(builtin, redofr, 0)
+MR_UNIFY_COMPARE_REP_DECLS(builtin, redoip, 0)
+MR_UNIFY_COMPARE_REP_DECLS(builtin, trailptr, 0)
+MR_UNIFY_COMPARE_REP_DECLS(builtin, ticket, 0)
+MR_UNIFY_COMPARE_REP_DECLS(private_builtin, heap_pointer, 0)
+MR_UNIFY_COMPARE_REP_DECLS(private_builtin, ref, 1)
+MR_UNIFY_COMPARE_REP_DECLS(private_builtin, type_ctor_info, 1)
+MR_UNIFY_COMPARE_REP_DECLS(private_builtin, type_info, 1)
+MR_UNIFY_COMPARE_REP_DECLS(private_builtin, base_typeclass_info, 1)
+MR_UNIFY_COMPARE_REP_DECLS(private_builtin, typeclass_info, 1)
+MR_UNIFY_COMPARE_REP_DECLS(type_desc, type_ctor_desc, 0);
+MR_UNIFY_COMPARE_REP_DECLS(type_desc, type_desc, 0);
+MR_UNIFY_COMPARE_REP_DECLS(builtin, user_by_rtti, 0);
+
+MR_UNIFY_COMPARE_REP_DEFNS(builtin, int, 0)
+MR_UNIFY_COMPARE_REP_DEFNS(builtin, string, 0)
+MR_UNIFY_COMPARE_REP_DEFNS(builtin, float, 0)
+MR_UNIFY_COMPARE_REP_DEFNS(builtin, character, 0)
+MR_UNIFY_COMPARE_REP_DEFNS(builtin, void, 0)
+MR_UNIFY_COMPARE_REP_DEFNS(builtin, c_pointer, 0)
+MR_UNIFY_COMPARE_REP_DEFNS(builtin, pred, 0)
+MR_UNIFY_COMPARE_REP_DEFNS(builtin, func, 0)
+MR_UNIFY_COMPARE_REP_DEFNS(builtin, tuple, 0)
+MR_UNIFY_COMPARE_REP_DEFNS(builtin, succip, 0)
+MR_UNIFY_COMPARE_REP_DEFNS(builtin, hp, 0)
+MR_UNIFY_COMPARE_REP_DEFNS(builtin, curfr, 0)
+MR_UNIFY_COMPARE_REP_DEFNS(builtin, maxfr, 0)
+MR_UNIFY_COMPARE_REP_DEFNS(builtin, redofr, 0)
+MR_UNIFY_COMPARE_REP_DEFNS(builtin, redoip, 0)
+MR_UNIFY_COMPARE_REP_DEFNS(builtin, trailptr, 0)
+MR_UNIFY_COMPARE_REP_DEFNS(builtin, ticket, 0)
+MR_UNIFY_COMPARE_REP_DEFNS(private_builtin, heap_pointer, 0)
+MR_UNIFY_COMPARE_REP_DEFNS(private_builtin, ref, 1)
+MR_UNIFY_COMPARE_REP_DEFNS(private_builtin, type_ctor_info, 1)
+MR_UNIFY_COMPARE_REP_DEFNS(private_builtin, type_info, 1)
+MR_UNIFY_COMPARE_REP_DEFNS(private_builtin, base_typeclass_info, 1)
+MR_UNIFY_COMPARE_REP_DEFNS(private_builtin, typeclass_info, 1)
+MR_UNIFY_COMPARE_REP_DEFNS(type_desc, type_ctor_desc, 0)
+MR_UNIFY_COMPARE_REP_DEFNS(type_desc, type_desc, 0)
+MR_UNIFY_COMPARE_REP_DEFNS(builtin, user_by_rtti, 0)
+
+  #ifdef MR_DEEP_PROFILING
+
+/*
+** The generic unify, compare and compare_rep predicates do different things
+** for different kinds of type constructors, but these things all fall into
+** one of two categories: either the implementation is entirely in C code,
+** or the implementation is a tailcall to a Mercury predicate. In neither
+** case do the generic predicates allocate a stack frame, which is why
+** the stack traversal component of the procedure layouts won't ever be
+** referenced.
+*/
+
+    #define MR_DEFINE_PROC_STATIC_LAYOUTS(mod, tname, tarity)		\
+      MR_proc_static_uci_no_site(mod, __Unify__, tname, tarity, 0,	\
+	  MR_STRINGIFY(mod) ".m", 0, MR_TRUE);				\
+      MR_EXTERN_UCI_PROC_STATIC_PROC_LAYOUT(				\
+	  MR_DETISM_SEMI, 0, MR_LONG_LVAL_TYPE_UNKNOWN,			\
+	  mod, __Unify__, tname, tarity, 0);				\
+      MR_proc_static_uci_no_site(mod, __Compare__, tname, tarity, 0,	\
+	  MR_STRINGIFY(mod) ".m", 0, MR_TRUE);				\
+      MR_EXTERN_UCI_PROC_STATIC_PROC_LAYOUT(				\
+	  MR_DETISM_DET, 0, MR_LONG_LVAL_TYPE_UNKNOWN,			\
+	  mod, __Compare__, tname, tarity, 0);				\
+      MR_proc_static_uci_no_site(mod, __CompareRep__, tname, tarity, 0,	\
+	  MR_STRINGIFY(mod) ".m", 0, MR_TRUE);				\
+      MR_EXTERN_UCI_PROC_STATIC_PROC_LAYOUT(				\
+	  MR_DETISM_DET, 0, MR_LONG_LVAL_TYPE_UNKNOWN,			\
+	  mod, __CompareRep__, tname, tarity, 0);
+
+    #define MR_WRITE_OUT_PROC_STATIC_LAYOUTS(fp, m, n, a)		\
+      do {								\
+	  MR_write_out_uci_proc_static(fp,				\
+	    &MR_proc_layout_uci_name(m, __Unify__, n, a, 0));		\
+	  MR_write_out_uci_proc_static(fp,				\
+	    &MR_proc_layout_uci_name(m, __Compare__, n, a, 0));		\
+	  MR_write_out_uci_proc_static(fp,				\
+	    &MR_proc_layout_uci_name(m, __CompareRep__, n, a, 0));	\
+      } while (0)
+
+MR_DEFINE_PROC_STATIC_LAYOUTS(builtin, int, 0);
+MR_DEFINE_PROC_STATIC_LAYOUTS(builtin, string, 0);
+MR_DEFINE_PROC_STATIC_LAYOUTS(builtin, float, 0);
+MR_DEFINE_PROC_STATIC_LAYOUTS(builtin, character, 0);
+MR_DEFINE_PROC_STATIC_LAYOUTS(builtin, void, 0);
+MR_DEFINE_PROC_STATIC_LAYOUTS(builtin, c_pointer, 0);
+MR_DEFINE_PROC_STATIC_LAYOUTS(builtin, pred, 0);
+MR_DEFINE_PROC_STATIC_LAYOUTS(builtin, func, 0);
+MR_DEFINE_PROC_STATIC_LAYOUTS(builtin, tuple, 0);
+MR_DEFINE_PROC_STATIC_LAYOUTS(builtin, succip, 0);
+MR_DEFINE_PROC_STATIC_LAYOUTS(builtin, hp, 0);
+MR_DEFINE_PROC_STATIC_LAYOUTS(builtin, curfr, 0);
+MR_DEFINE_PROC_STATIC_LAYOUTS(builtin, maxfr, 0);
+MR_DEFINE_PROC_STATIC_LAYOUTS(builtin, redofr, 0);
+MR_DEFINE_PROC_STATIC_LAYOUTS(builtin, redoip, 0);
+MR_DEFINE_PROC_STATIC_LAYOUTS(builtin, trailptr, 0);
+MR_DEFINE_PROC_STATIC_LAYOUTS(builtin, ticket, 0);
+MR_DEFINE_PROC_STATIC_LAYOUTS(private_builtin, heap_pointer, 0);
+MR_DEFINE_PROC_STATIC_LAYOUTS(private_builtin, ref, 1);
+MR_DEFINE_PROC_STATIC_LAYOUTS(private_builtin, type_ctor_info, 1);
+MR_DEFINE_PROC_STATIC_LAYOUTS(private_builtin, type_info, 1);
+MR_DEFINE_PROC_STATIC_LAYOUTS(private_builtin, base_typeclass_info, 1);
+MR_DEFINE_PROC_STATIC_LAYOUTS(private_builtin, typeclass_info, 1);
+MR_DEFINE_PROC_STATIC_LAYOUTS(type_desc, type_ctor_desc, 0);
+MR_DEFINE_PROC_STATIC_LAYOUTS(type_desc, type_desc, 0);
+MR_DEFINE_PROC_STATIC_LAYOUTS(builtin, user_by_rtti, 0);
+
+#endif
 
 MR_BEGIN_MODULE(mercury_builtin_types)
-	MR_UNIFY_COMPARE_LABELS(builtin, int, 0)
-	MR_UNIFY_COMPARE_LABELS(builtin, string, 0)
-	MR_UNIFY_COMPARE_LABELS(builtin, float, 0)
-	MR_UNIFY_COMPARE_LABELS(builtin, character, 0)
-	MR_UNIFY_COMPARE_LABELS(builtin, void, 0)
-	MR_UNIFY_COMPARE_LABELS(builtin, c_pointer, 0)
-	MR_UNIFY_COMPARE_LABELS(builtin, pred, 0)
-	MR_UNIFY_COMPARE_LABELS(builtin, func, 0)
-	MR_UNIFY_COMPARE_LABELS(builtin, tuple, 0)
-	MR_UNIFY_COMPARE_LABELS(builtin, succip, 0)
-	MR_UNIFY_COMPARE_LABELS(builtin, hp, 0)
-	MR_UNIFY_COMPARE_LABELS(builtin, curfr, 0)
-	MR_UNIFY_COMPARE_LABELS(builtin, maxfr, 0)
-	MR_UNIFY_COMPARE_LABELS(builtin, redofr, 0)
-	MR_UNIFY_COMPARE_LABELS(builtin, trailptr, 0)
-	MR_UNIFY_COMPARE_LABELS(builtin, ticket, 0)
-	MR_UNIFY_COMPARE_LABELS(private_builtin, heap_pointer, 0)
-	MR_UNIFY_COMPARE_LABELS(private_builtin, ref, 1)
-	MR_UNIFY_COMPARE_LABELS(private_builtin, type_ctor_info, 1)
-	MR_UNIFY_COMPARE_LABELS(private_builtin, type_info, 1)
-	MR_UNIFY_COMPARE_LABELS(private_builtin, base_typeclass_info, 1)
-	MR_UNIFY_COMPARE_LABELS(private_builtin, typeclass_info, 1)
+	MR_UNIFY_COMPARE_REP_LABELS(builtin, int, 0)
+	MR_UNIFY_COMPARE_REP_LABELS(builtin, string, 0)
+	MR_UNIFY_COMPARE_REP_LABELS(builtin, float, 0)
+	MR_UNIFY_COMPARE_REP_LABELS(builtin, character, 0)
+	MR_UNIFY_COMPARE_REP_LABELS(builtin, void, 0)
+	MR_UNIFY_COMPARE_REP_LABELS(builtin, c_pointer, 0)
+	MR_UNIFY_COMPARE_REP_LABELS(builtin, pred, 0)
+	MR_UNIFY_COMPARE_REP_LABELS(builtin, func, 0)
+	MR_UNIFY_COMPARE_REP_LABELS(builtin, tuple, 0)
+	MR_UNIFY_COMPARE_REP_LABELS(builtin, succip, 0)
+	MR_UNIFY_COMPARE_REP_LABELS(builtin, hp, 0)
+	MR_UNIFY_COMPARE_REP_LABELS(builtin, curfr, 0)
+	MR_UNIFY_COMPARE_REP_LABELS(builtin, maxfr, 0)
+	MR_UNIFY_COMPARE_REP_LABELS(builtin, redofr, 0)
+	MR_UNIFY_COMPARE_REP_LABELS(builtin, redoip, 0)
+	MR_UNIFY_COMPARE_REP_LABELS(builtin, trailptr, 0)
+	MR_UNIFY_COMPARE_REP_LABELS(builtin, ticket, 0)
+	MR_UNIFY_COMPARE_REP_LABELS(private_builtin, heap_pointer, 0)
+	MR_UNIFY_COMPARE_REP_LABELS(private_builtin, ref, 1)
+	MR_UNIFY_COMPARE_REP_LABELS(private_builtin, type_ctor_info, 1)
+	MR_UNIFY_COMPARE_REP_LABELS(private_builtin, type_info, 1)
+	MR_UNIFY_COMPARE_REP_LABELS(private_builtin, base_typeclass_info, 1)
+	MR_UNIFY_COMPARE_REP_LABELS(private_builtin, typeclass_info, 1)
+	MR_UNIFY_COMPARE_REP_LABELS(type_desc, type_ctor_desc, 0)
+	MR_UNIFY_COMPARE_REP_LABELS(type_desc, type_desc, 0)
+	MR_UNIFY_COMPARE_REP_LABELS(builtin, user_by_rtti, 0)
 MR_BEGIN_CODE
 
 /*****************************************************************************/
@@ -1333,6 +1451,33 @@ MR_BEGIN_CODE
 
 /*****************************************************************************/
 
+/*
+** We need a proc_static structure with which to record profiling information
+** about compare_representation when it compares the representations of
+** user-defined types. The proc_layout structure which contains the proc_static
+** structure also needs a procedure label. The simplest way to provide one
+** is to define unify, compare and compare_rep procedures, all of which are
+** designed to be unused (if they *are* called, they will abort).
+*/
+
+#define	module		builtin
+#define	type		user_by_rtti
+#define	arity		0
+#define	unify_code	MR_fatal_error(					\
+				"called unify/2 for `user_by_rtti' type");
+#define	compare_code	MR_fatal_error(					\
+				"called compare/3 for `user_by_rtti' type");
+
+#include "mercury_hand_unify_compare_body.h"
+
+#undef	module
+#undef	type
+#undef	arity
+#undef	unify_code
+#undef	compare_code
+
+/*****************************************************************************/
+
 MR_END_MODULE
 
 #endif /* ! MR_HIGHLEVEL_CODE */
@@ -1453,31 +1598,31 @@ mercury_sys_init_mercury_builtin_types_init_type_tables(void)
 void
 mercury_sys_init_mercury_builtin_types_write_out_proc_statics(FILE *fp)
 {
-	MR_WRITE_OUT_PROC_STATICS(fp, builtin, int, 0);
-	MR_WRITE_OUT_PROC_STATICS(fp, builtin, string, 0);
-	MR_WRITE_OUT_PROC_STATICS(fp, builtin, float, 0);
-	MR_WRITE_OUT_PROC_STATICS(fp, builtin, character, 0);
-	MR_WRITE_OUT_PROC_STATICS(fp, builtin, void, 0);
-	MR_WRITE_OUT_PROC_STATICS(fp, builtin, c_pointer, 0);
-	MR_WRITE_OUT_PROC_STATICS(fp, builtin, pred, 0);
-	MR_WRITE_OUT_PROC_STATICS(fp, builtin, func, 0);
-	MR_WRITE_OUT_PROC_STATICS(fp, builtin, tuple, 0);
-	MR_WRITE_OUT_PROC_STATICS(fp, builtin, succip, 0);
-	MR_WRITE_OUT_PROC_STATICS(fp, builtin, hp, 0);
-	MR_WRITE_OUT_PROC_STATICS(fp, builtin, curfr, 0);
-	MR_WRITE_OUT_PROC_STATICS(fp, builtin, maxfr, 0);
-	MR_WRITE_OUT_PROC_STATICS(fp, builtin, redofr, 0);
-	MR_WRITE_OUT_PROC_STATICS(fp, builtin, redoip, 0);
-	MR_WRITE_OUT_PROC_STATICS(fp, builtin, trailptr, 0);
-	MR_WRITE_OUT_PROC_STATICS(fp, builtin, ticket, 0);
-	MR_WRITE_OUT_PROC_STATICS(fp, private_builtin, heap_pointer, 0);
-	MR_WRITE_OUT_PROC_STATICS(fp, private_builtin, ref, 1);
-	MR_WRITE_OUT_PROC_STATICS(fp, private_builtin, type_ctor_info, 1);
-	MR_WRITE_OUT_PROC_STATICS(fp, private_builtin, type_info, 1);
-	MR_WRITE_OUT_PROC_STATICS(fp, private_builtin, base_typeclass_info, 1);
-	MR_WRITE_OUT_PROC_STATICS(fp, private_builtin, typeclass_info, 1);
-	MR_WRITE_OUT_PROC_STATICS(fp, type_desc, type_ctor_desc, 0);
-	MR_WRITE_OUT_PROC_STATICS(fp, type_desc, type_desc, 0);
+	MR_WRITE_OUT_PROC_STATIC_LAYOUTS(fp, builtin, int, 0);
+	MR_WRITE_OUT_PROC_STATIC_LAYOUTS(fp, builtin, string, 0);
+	MR_WRITE_OUT_PROC_STATIC_LAYOUTS(fp, builtin, float, 0);
+	MR_WRITE_OUT_PROC_STATIC_LAYOUTS(fp, builtin, character, 0);
+	MR_WRITE_OUT_PROC_STATIC_LAYOUTS(fp, builtin, void, 0);
+	MR_WRITE_OUT_PROC_STATIC_LAYOUTS(fp, builtin, c_pointer, 0);
+	MR_WRITE_OUT_PROC_STATIC_LAYOUTS(fp, builtin, pred, 0);
+	MR_WRITE_OUT_PROC_STATIC_LAYOUTS(fp, builtin, func, 0);
+	MR_WRITE_OUT_PROC_STATIC_LAYOUTS(fp, builtin, tuple, 0);
+	MR_WRITE_OUT_PROC_STATIC_LAYOUTS(fp, builtin, succip, 0);
+	MR_WRITE_OUT_PROC_STATIC_LAYOUTS(fp, builtin, hp, 0);
+	MR_WRITE_OUT_PROC_STATIC_LAYOUTS(fp, builtin, curfr, 0);
+	MR_WRITE_OUT_PROC_STATIC_LAYOUTS(fp, builtin, maxfr, 0);
+	MR_WRITE_OUT_PROC_STATIC_LAYOUTS(fp, builtin, redofr, 0);
+	MR_WRITE_OUT_PROC_STATIC_LAYOUTS(fp, builtin, redoip, 0);
+	MR_WRITE_OUT_PROC_STATIC_LAYOUTS(fp, builtin, trailptr, 0);
+	MR_WRITE_OUT_PROC_STATIC_LAYOUTS(fp, builtin, ticket, 0);
+	MR_WRITE_OUT_PROC_STATIC_LAYOUTS(fp, private_builtin, heap_pointer, 0);
+	MR_WRITE_OUT_PROC_STATIC_LAYOUTS(fp, private_builtin, ref, 1);
+	MR_WRITE_OUT_PROC_STATIC_LAYOUTS(fp, private_builtin, type_ctor_info, 1);
+	MR_WRITE_OUT_PROC_STATIC_LAYOUTS(fp, private_builtin, type_info, 1);
+	MR_WRITE_OUT_PROC_STATIC_LAYOUTS(fp, private_builtin, base_typeclass_info, 1);
+	MR_WRITE_OUT_PROC_STATIC_LAYOUTS(fp, private_builtin, typeclass_info, 1);
+	MR_WRITE_OUT_PROC_STATIC_LAYOUTS(fp, type_desc, type_ctor_desc, 0);
+	MR_WRITE_OUT_PROC_STATIC_LAYOUTS(fp, type_desc, type_desc, 0);
 }
 #endif
 
