@@ -147,6 +147,18 @@ get_type_info(_) = _ :-
 	% matching foreign_proc version.
 	private_builtin__sorry("get_type_info").
 
+:- func get_var_arity_typeinfo_arity(type_info) = int.
+
+:- pragma foreign_proc("C#",
+	get_var_arity_typeinfo_arity(TypeInfo::in) = (Arity::out),
+	[will_not_call_mercury, promise_pure, thread_safe],
+" 
+	Arity = (int) TypeInfo[(int) var_arity_ti.arity];
+").
+
+get_var_arity_typeinfo_arity(_) = _ :-
+	private_builtin__sorry("get_var_arity_typeinfo_arity").
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -256,14 +268,54 @@ generic_unify(X, Y) :-
 
 :- pred unify_tuple(type_info::in, T::in, T::in) is semidet.
 
-unify_tuple(_, _, _) :- 
-	semidet_unimplemented("tuple unifications").
+unify_tuple(TypeInfo, TermA, TermB) :- 
+	Arity = get_var_arity_typeinfo_arity(TypeInfo),
+	unify_tuple_pos(1, Arity, TypeInfo, TermA, TermB).
+
+:- pred unify_tuple_pos(int::in, int::in,
+		type_info::in, T::in, T::in) is semidet.
+
+unify_tuple_pos(Loc, TupleArity, TypeInfo, TermA, TermB) :-
+	( Loc > TupleArity ->
+		true
+	;
+		ArgTypeInfo = TypeInfo ^ var_arity_type_info_index(Loc),
+
+		SubTermA = get_subterm(ArgTypeInfo, TermA, Loc - 1, 0),
+		SubTermB = get_subterm(ArgTypeInfo, TermB, Loc - 1, 0),
+
+		generic_unify(SubTermA, unsafe_cast(SubTermB)),
+
+		unify_tuple_pos(Loc + 1, TupleArity, TypeInfo, TermA, TermB)
+	).
 
 :- pred compare_tuple(type_info::in, comparison_result::out, T::in, T::in)
 	is det.
 
-compare_tuple(_, (=), _, _) :- 
-	det_unimplemented("tuple comparisons").
+compare_tuple(TypeInfo, Result, TermA, TermB) :- 
+	Arity = get_var_arity_typeinfo_arity(TypeInfo),
+	compare_tuple_pos(1, Arity, TypeInfo, Result, TermA, TermB).
+
+:- pred compare_tuple_pos(int::in, int::in, type_info::in,
+		comparison_result::out, T::in, T::in) is det.
+
+compare_tuple_pos(Loc, TupleArity, TypeInfo, Result, TermA, TermB) :-
+	( Loc > TupleArity ->
+		Result = (=)
+	;
+		ArgTypeInfo = TypeInfo ^ var_arity_type_info_index(Loc),
+
+		SubTermA = get_subterm(ArgTypeInfo, TermA, Loc - 1, 0),
+		SubTermB = get_subterm(ArgTypeInfo, TermB, Loc - 1, 0),
+
+		generic_compare(SubResult, SubTermA, unsafe_cast(SubTermB)),
+		( SubResult = (=) ->
+			compare_tuple_pos(Loc + 1, TupleArity, TypeInfo,
+					Result, TermA, TermB)
+		;
+			Result = SubResult
+		)
+	).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -442,6 +494,7 @@ compare_type_infos(Res, TypeInfo1, TypeInfo2) :-
 
 :- pred compare_collapsed_type_infos(comparison_result::out,
 		type_info::in, type_info::in) is det.
+
 compare_collapsed_type_infos(Res, TypeInfo1, TypeInfo2) :-
 	TypeCtorInfo1 = get_type_ctor_info(TypeInfo1),
 	TypeCtorInfo2 = get_type_ctor_info(TypeInfo2),
@@ -451,20 +504,47 @@ compare_collapsed_type_infos(Res, TypeInfo1, TypeInfo2) :-
 	compare(NameRes, TypeCtorInfo1 ^ type_ctor_name,
 		TypeCtorInfo2 ^ type_ctor_name),
 	( NameRes = (=) ->
-		compare(Res, 
+		compare(ModNameRes, 
 			TypeCtorInfo1 ^ type_ctor_module_name,
 			TypeCtorInfo2 ^ type_ctor_module_name),
 		( 
-			Res = (=),
+			ModNameRes = (=),
 			type_ctor_is_variable_arity(TypeCtorInfo1)
 		->
-			% XXX code to handle tuples and higher order
-			error("rtti_implementation.m: unimplemented: tuples and higher order type comparisons")
+			Arity1 = get_var_arity_typeinfo_arity(TypeInfo1),
+			Arity2 = get_var_arity_typeinfo_arity(TypeInfo2),
+			compare(ArityRes, Arity1, Arity2),
+			( ArityRes = (=) ->
+				compare_var_arity_typeinfos(1, Arity1,
+						Res, TypeInfo1, TypeInfo2)
+			;
+				Res = ArityRes
+			)
 		;
-			true
+			Res = ModNameRes
 		)
 	;
 		Res = NameRes
+	).
+
+:- pred compare_var_arity_typeinfos(int::in, int::in,
+		comparison_result::out, type_info::in, type_info::in) is det.
+
+compare_var_arity_typeinfos(Loc, Arity, Result, TypeInfoA, TypeInfoB) :-
+	( Loc > Arity ->
+		Result = (=)
+	;
+		SubTypeInfoA = TypeInfoA ^ var_arity_type_info_index(Loc),
+		SubTypeInfoB = TypeInfoB ^ var_arity_type_info_index(Loc),
+
+		compare_collapsed_type_infos(SubResult,
+				SubTypeInfoA, SubTypeInfoB),
+		( SubResult = (=) ->
+			compare_var_arity_typeinfos(Loc + 1, Arity, Result,
+					TypeInfoA, TypeInfoB)
+		;
+			Result = SubResult
+		)
 	).
 
 :- pred type_ctor_is_variable_arity(type_ctor_info::in) is semidet.
@@ -512,13 +592,14 @@ type_ctor_and_args(TypeInfo0, TypeCtorInfo, TypeArgs) :-
 	( 
 		type_ctor_is_variable_arity(TypeCtorInfo)
 	->
-		error("rtti_implementation.m: unimplemented: tuples and higher order type comparisons")
+		Arity = get_var_arity_typeinfo_arity(TypeInfo),
+		TypeArgs = iterate(1, Arity,
+			(func(X) = TypeInfo ^ var_arity_type_info_index(X))
+		)
 	;
 		Arity = type_ctor_arity(TypeCtorInfo),
 		TypeArgs = iterate(1, Arity,
-			(func(X) = Y :-
-				Y = TypeInfo ^ type_info_index(X)
-			)
+			(func(X) = TypeInfo ^ type_info_index(X))
 		)
 	).
 
@@ -1066,6 +1147,18 @@ pseudotypeinfo_max_var = 1024.
 
 :- pragma foreign_code("C#", "
 
+	// The field numbers of the contents of type_infos.
+	enum fixed_arity_ti {
+		type_ctor_info		= 0,
+		arg_type_infos		= 1
+	}
+
+	enum var_arity_ti {
+		type_ctor_info		= 0,
+		arity			= 1,
+		arg_type_infos		= 2
+	}
+
 	// The field numbers of the contents of type_ctor_infos.
 	// Fill this in as you add new field accessors.
 
@@ -1395,6 +1488,11 @@ typeclass_info_type_info(TypeClassInfo, Index) = unsafe_cast(TypeInfo) :-
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
+
+:- func var_arity_type_info_index(int, type_info) = type_info.
+
+var_arity_type_info_index(Index, TypeInfo) =
+	TypeInfo ^ type_info_index(Index + 1).
 
 :- func type_info_index(int, type_info) = type_info.
 
