@@ -21,7 +21,9 @@
 ** MR_dump_stack:
 ** 	Given the succip, det stack pointer and current frame, generate a 
 ** 	stack dump showing the name of each active procedure on the
-** 	stack.
+** 	stack. If include_trace_data data is set, also print the
+**	call event number, call sequence number and depth for every
+**	traced procedure.
 ** 	NOTE: MR_dump_stack will assume that the succip is for the
 ** 	topmost stack frame.  If you call MR_dump_stack from some
 ** 	pragma c_code, that may not be the case.
@@ -39,7 +41,7 @@
 */
 
 extern	void	MR_dump_stack(Code *success_pointer, Word *det_stack_pointer,
-			Word *current_frame);
+			Word *current_frame, bool include_trace_data);
 
 /*
 ** MR_dump_stack_from_layout:
@@ -53,7 +55,8 @@ extern	void	MR_dump_stack(Code *success_pointer, Word *det_stack_pointer,
 
 extern	const char	*MR_dump_stack_from_layout(FILE *fp,
 				const MR_Stack_Layout_Entry *entry_layout,
-				Word *det_stack_pointer, Word *current_frame);
+				Word *det_stack_pointer, Word *current_frame,
+				bool include_trace_data);
 
 /*
 ** MR_dump_nondet_stack_from_layout:
@@ -136,11 +139,15 @@ Word	*MR_nondet_stack_trace_bottom;
 ** consisting of "pred" or "func", module name, pred or func name, arity,
 ** mode number and determinism, followed by an optional extra string,
 ** and a newline.
+**
+** If the procedure has trace layout information and the relevant one of
+** base_sp and base_curfr is not NULL, it also prints the call event number,
+** call sequence number and call depth of the call.
 */
 
 extern	void	MR_print_proc_id_for_debugger(
 			const MR_Stack_Layout_Entry *entry);
 extern	void	MR_print_proc_id(FILE *fp, const MR_Stack_Layout_Entry *entry,
-			const char *extra);
+			const char *extra, Word *base_sp, Word *base_curfr);
 
 #endif /* MERCURY_STACK_TRACE_H */

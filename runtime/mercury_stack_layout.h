@@ -381,11 +381,18 @@ typedef	struct MR_Stack_Layout_Entry_Struct {
 ** In procedures compiled with execution tracing, three items are stored
 ** in stack slots with fixed numbers. They are:
 **
-**	the event number of the call event,
+**	the event number of the last event before the call event,
 **	the call number, and
 **	the call depth.
 **
-** The following macros will access them. They can be used whenever
+** Note that the first slot does not store the number of the call event
+** itself, but rather the number of the call event minus one. The reason
+** for this is that (a) incrementing the number stored in this slot would
+** increase executable size, and (b) if the procedure is shallow traced,
+** MR_trace may not be called for the call event, so we cannot shift the
+** burden of initializing fields to the MR_trace of the call event either.
+**
+** The following macros will access the fixed slots. They can be used whenever
 ** MR_ENTRY_LAYOUT_HAS_EXEC_TRACE(entry) is true; which set you should use
 ** depends on the determinism of the procedure.
 **

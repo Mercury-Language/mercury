@@ -138,6 +138,8 @@ static	bool	MR_trace_options_when_action(MR_Spy_When *when,
 static	bool	MR_trace_options_quiet(bool *verbose,
 			char ***words, int *word_count,
 			const char *cat, const char *item);
+static	bool	MR_trace_options_detailed(bool *detailed, char ***words,
+			int *word_count, const char *cat, const char *item);
 static	bool	MR_trace_options_confirmed(bool *confirmed, char ***words,
 			int *word_count, const char *cat, const char *item);
 static	void	MR_trace_usage(const char *cat, const char *item);
@@ -741,14 +743,22 @@ MR_trace_debug_cmd(char *line, MR_Trace_Cmd_Info *cmd,
 			MR_trace_usage("browsing", "print");
 		}
 	} else if (streq(words[0], "stack")) {
-		if (word_count == 1) {
+		bool	include_trace_data;
+
+		include_trace_data = FALSE;
+		if (! MR_trace_options_detailed(&include_trace_data,
+				&words, &word_count, "browsing", "stack"))
+		{
+			; /* the usage message has already been printed */
+		} else if (word_count == 1) {
 			const char	*result;
 
 			do_init_modules();
 			result = MR_dump_stack_from_layout(stdout,
 					layout->MR_sll_entry,
 					MR_saved_sp(saved_regs),
-					MR_saved_curfr(saved_regs));
+					MR_saved_curfr(saved_regs),
+					include_trace_data);
 			if (result != NULL) {
 				printf("%s.\n", result);
 			}
@@ -1204,7 +1214,8 @@ static struct MR_option MR_trace_strict_print_opts[] =
 	{ "none",	FALSE,	NULL,	'n' },
 	{ "some",	FALSE,	NULL,	's' },
 	{ "nostrict",	FALSE,	NULL,	'N' },
-	{ "strict",	FALSE,	NULL,	'S' }
+	{ "strict",	FALSE,	NULL,	'S' },
+	{ NULL,		FALSE,	NULL,	0 }
 };
 
 static bool
@@ -1256,7 +1267,8 @@ static struct MR_option MR_trace_when_action_opts[] =
 	{ "entry",	FALSE,	NULL,	'e' },
 	{ "interface",	FALSE,	NULL,	'i' },
 	{ "print",	FALSE,	NULL,	'P' },
-	{ "stop",	FALSE,	NULL,	'S' }
+	{ "stop",	FALSE,	NULL,	'S' },
+	{ NULL,		FALSE,	NULL,	0 }
 };
 
 static bool
@@ -1289,6 +1301,39 @@ MR_trace_options_when_action(MR_Spy_When *when, MR_Spy_Action *action,
 
 			case 'S':
 				*action = MR_SPY_STOP;
+				break;
+
+			default:
+				MR_trace_usage(cat, item);
+				return FALSE;
+		}
+	}
+
+	*words = *words + MR_optind - 1;
+	*word_count = *word_count - MR_optind + 1;
+	return TRUE;
+}
+
+static struct MR_option MR_trace_detailed_opts[] =
+{
+	{ "detailed",	FALSE,	NULL,	'd' },
+	{ NULL,		FALSE,	NULL,	0 }
+};
+
+static bool
+MR_trace_options_detailed(bool *detailed, char ***words, int *word_count,
+	const char *cat, const char *item)
+{
+	int	c;
+
+	MR_optind = 0;
+	while ((c = MR_getopt_long(*word_count, *words, "d",
+			MR_trace_detailed_opts, NULL)) != EOF)
+	{
+		switch (c) {
+
+			case 'd':
+				*detailed = TRUE;
 				break;
 
 			default:
@@ -1336,7 +1381,8 @@ MR_trace_options_confirmed(bool *confirmed, char ***words, int *word_count,
 static struct MR_option MR_trace_quiet_opts[] =
 {
 	{ "quiet",	FALSE,	NULL,	'q' },
-	{ "verbose",	FALSE,	NULL,	'v' }
+	{ "verbose",	FALSE,	NULL,	'v' },
+	{ NULL,		FALSE,	NULL,	0 }
 };
 
 static bool
@@ -1550,7 +1596,8 @@ MR_print_spy_point(int spy_point_num)
 		MR_spy_points[spy_point_num]->spy_enabled ? "+" : "-",
 		MR_spy_action_string(MR_spy_points[spy_point_num]->spy_action),
 		MR_spy_when_string(MR_spy_points[spy_point_num]->spy_when));
-	MR_print_proc_id_for_debugger(MR_spy_points[spy_point_num]->spy_proc);
+	MR_print_proc_id(stdout, MR_spy_points[spy_point_num]->spy_proc,
+		NULL, NULL, NULL);
 }
 
 static void
@@ -1595,15 +1642,25 @@ MR_trace_browse_check_level(const MR_Stack_Layout_Label *top_layout,
 	Word				*base_sp;
 	Word				*base_curfr;
 	const char 			*problem;
+	const MR_Stack_Layout_Label	*label_layout;
+	const MR_Stack_Layout_Entry	*entry;
 
 	base_sp = MR_saved_sp(saved_regs);
 	base_curfr = MR_saved_curfr(saved_regs);
-	if (MR_find_nth_ancestor(top_layout, ancestor_level,
-			&base_sp, &base_curfr, &problem) == NULL)
-	{
+	label_layout = MR_find_nth_ancestor(top_layout, ancestor_level,
+			&base_sp, &base_curfr, &problem);
+
+	if (label_layout == NULL) {
 		return problem;
 	} else {
-		return NULL;
+		entry = label_layout->MR_sll_entry;
+		printf("%4d ", ancestor_level);
+		MR_print_proc_id(stdout, entry, "", base_sp, base_curfr);
+		if (MR_ENTRY_LAYOUT_HAS_EXEC_TRACE(entry)) {
+			return NULL;
+		} else {
+			return "this procedure does not have debugging info";
+		}
 	}
 }
 
@@ -2292,14 +2349,7 @@ MR_trace_event_print_internal_report(const MR_Stack_Layout_Label *layout,
 		(long) MR_trace_event_number, (long) seqno, (long) depth);
 
 	MR_trace_print_port(port);
-
-	/*
-	** The following should be a full identification of the procedure
-	** provided (a) there was no intermodule optimization and (b) we are
-	** not interested in tracing compiler-generated procedures.
-	*/
-
-	MR_print_proc_id(stdout, layout->MR_sll_entry, path);
+	MR_print_proc_id(stdout, layout->MR_sll_entry, path, NULL, NULL);
 }
 
 static void

@@ -33,10 +33,12 @@ mdb> print *
        V_10                 		[2, 3, 4, 5]
        V_11                 		1
 mdb> level 1
+   1       5       4    3 pred queens:qperm/2-0 (nondet) 
 Ancestor level set to 1.
 mdb> print *
        HeadVar__1           		[1, 2, 3, 4, 5]
 mdb> up 1
+   2       4       3    2 pred queens:queen/2-0 (nondet) 
 Ancestor level set to 2.
 mdb> vars
         0 HeadVar__1
@@ -82,6 +84,17 @@ mdb> goto -a 20
       18:      9  6 DISJ pred queens:qdelete/3-0 (nondet) c2;d1;
       19:      9  6 EXIT pred queens:qdelete/3-0 (nondet) 
       20:     10  6 CALL pred queens:qperm/2-0 (nondet) 
+mdb> stack
+   0    4* pred queens:qperm/2-0 (nondet)
+   4       pred queens:queen/2-0 (nondet)
+   5       pred queens:main/2-0 (cc_multi)
+mdb> stack -d
+   0      20      10    6 pred queens:qperm/2-0 (nondet)
+   1      15       8    5 pred queens:qperm/2-0 (nondet)
+   2      10       6    4 pred queens:qperm/2-0 (nondet)
+   3       5       4    3 pred queens:qperm/2-0 (nondet)
+   4       4       3    2 pred queens:queen/2-0 (nondet)
+   5       1       1    1 pred queens:main/2-0 (cc_multi)
 mdb> print *
        HeadVar__1           		[4, 5]
 mdb> 

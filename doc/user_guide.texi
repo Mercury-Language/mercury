@@ -3340,11 +3340,17 @@ At the moment this command prints the entire value of every variable,
 even if this is very big. Later it will merely invoke a configurable
 dynamic term browser, which will eventually have its own sublanguage.
 @sp 1
-@item stack
-Prints the names of the ancestors of the call specified by the
-current event. If two or more ancestor calls are for the same
-predicate, the procedure identification will be printed once
+@item stack [-d]
+Prints the names of the ancestors of the call
+specified by the current event.
+If two or more ancestor calls are for the same procedure,
+the procedure identification will be printed once
 with the appropriate multiplicity annotation.
+@sp 1
+The option @samp{-d} or @samp{--detailed}
+specifies that for each ancestor call,
+the call's event number, sequence number and depth should also be printed
+if the call is to a procedure that is being execution traced.
 @sp 1
 This command will report an error if there is no stack trace
 information available about any ancestor.
@@ -3365,17 +3371,24 @@ between the current environment and the requested ancestor.
 @item down [@var{num}]
 Sets the current environment to the stack frame
 of the @var{num}'th level descendant of the current environment
-(the immediate caller is the first-level ancestor).
+(the procedure called by the current environment
+is the first-level descendant).
 @sp 1
 If @var{num} is not specified, the default value is one.
 @sp 1
-This command will report an error if the current environment
-doesn't have the required number of descendants.
+This command will report an error
+if there is no execution trace information about the requested descendant.
 @sp 1
 @item level [@var{num}]
 Sets the current environment to the stack frame of the @var{num}'th
 level ancestor of the call to which the current event belongs.
 The zero'th ancestor is the call of the event itself.
+@sp 1
+This command will report an error
+if the current environment doesn't have the required number of ancestors,
+or if there is no execution trace information about the requested ancestor,
+or if there is no stack trace information about any of the ancestors
+between the current environment and the requested ancestor.
 @sp 1
 @item current
 Prints the current event.

@@ -35,6 +35,8 @@ print *
 print *
 
 goto -a 20
+stack
+stack -d
 print *
 
 retry

@@ -35,14 +35,16 @@ static const char * detism_names[] = {
 
 static	void	MR_dump_stack_record_init(void);
 static	void	MR_dump_stack_record_frame(FILE *fp,
-			const MR_Stack_Layout_Entry *);
+			const MR_Stack_Layout_Entry *,
+			Word *base_sp, Word *base_curfr);
 static	void	MR_dump_stack_record_flush(FILE *fp);
 static	void	MR_dump_stack_record_print(FILE *fp,
-			const MR_Stack_Layout_Entry *, int, int);
+			const MR_Stack_Layout_Entry *, int, int,
+			Word *base_sp, Word *base_curfr);
 
 void
 MR_dump_stack(Code *success_pointer, Word *det_stack_pointer,
-		Word *current_frame)
+	Word *current_frame, bool include_trace_data)
 {
 #ifndef MR_STACK_TRACE
 	fprintf(stderr, "Stack dump not available in this grade.\n");
@@ -62,7 +64,7 @@ MR_dump_stack(Code *success_pointer, Word *det_stack_pointer,
 		layout = label->i_layout;
 		entry_layout = layout->MR_sll_entry;
 		result = MR_dump_stack_from_layout(stderr, entry_layout,
-			det_stack_pointer, current_frame);
+			det_stack_pointer, current_frame, include_trace_data);
 
 		if (result != NULL) {
 			fprintf(stderr, "%s\n", result);
@@ -73,13 +75,15 @@ MR_dump_stack(Code *success_pointer, Word *det_stack_pointer,
 
 const char *
 MR_dump_stack_from_layout(FILE *fp, const MR_Stack_Layout_Entry *entry_layout,
-	Word *det_stack_pointer, Word *current_frame)
+	Word *det_stack_pointer, Word *current_frame, bool include_trace_data)
 {
 	MR_Stack_Walk_Step_Result	result;
 	const MR_Stack_Layout_Label	*return_label_layout;
 	const char			*problem;
 	Word				*stack_trace_sp;
 	Word				*stack_trace_curfr;
+	Word				*old_trace_sp;
+	Word				*old_trace_curfr;
 
 	do_init_modules();
 	MR_dump_stack_record_init();
@@ -88,17 +92,33 @@ MR_dump_stack_from_layout(FILE *fp, const MR_Stack_Layout_Entry *entry_layout,
 	stack_trace_curfr = current_frame;
 
 	do {
+		old_trace_sp    = stack_trace_sp;
+		old_trace_curfr = stack_trace_curfr;
+
 		result = MR_stack_walk_step(entry_layout, &return_label_layout,
 				&stack_trace_sp, &stack_trace_curfr, &problem);
 		if (result == STEP_ERROR_BEFORE) {
 			MR_dump_stack_record_flush(fp);
 			return problem;
 		} else if (result == STEP_ERROR_AFTER) {
-			MR_dump_stack_record_frame(fp, entry_layout);
+			if (include_trace_data) {
+				MR_dump_stack_record_frame(fp, entry_layout,
+					old_trace_sp, old_trace_curfr);
+			} else {
+				MR_dump_stack_record_frame(fp, entry_layout,
+					NULL, NULL);
+			}
+
 			MR_dump_stack_record_flush(fp);
 			return problem;
 		} else {
-			MR_dump_stack_record_frame(fp, entry_layout);
+			if (include_trace_data) {
+				MR_dump_stack_record_frame(fp, entry_layout,
+					old_trace_sp, old_trace_curfr);
+			} else {
+				MR_dump_stack_record_frame(fp, entry_layout,
+					NULL, NULL);
+			}
 		}
 
 		if (return_label_layout == NULL) {
@@ -258,6 +278,8 @@ MR_dump_nondet_stack_from_layout(FILE *fp, Word *base_maxfr)
 static	const MR_Stack_Layout_Entry	*prev_entry_layout;
 static	int				prev_entry_layout_count;
 static	int				prev_entry_start_level;
+static	Word				*prev_entry_base_sp;
+static	Word				*prev_entry_base_curfr;
 static	int				current_level;
 
 static void
@@ -270,15 +292,42 @@ MR_dump_stack_record_init(void)
 }
 
 static void
-MR_dump_stack_record_frame(FILE *fp, const MR_Stack_Layout_Entry *entry_layout)
+MR_dump_stack_record_frame(FILE *fp, const MR_Stack_Layout_Entry *entry_layout,
+	Word *base_sp, Word *base_curfr)
 {
-	if (entry_layout == prev_entry_layout) {
-		prev_entry_layout_count++;
-	} else {
+	bool	must_flush;
+
+	must_flush = 
+		/*
+		** We cannot merge two calls if they are to different
+		** procedures.
+		*/
+
+		(entry_layout != prev_entry_layout) ||
+
+		/*
+		** We cannot merge two calls even to the same procedure.
+		** if we are printing trace data, since this will differ
+		** between the calls.
+		**
+		** Note that it is not possible for two calls to the same
+		** procedure to differ on whether the procedure has trace
+		** layout data or not; this is why we don't have to test
+		** prev_entry_base_sp and prev_entry_base_curfr.
+		*/
+
+		((base_sp != NULL) || (base_curfr != NULL));
+
+	if (must_flush) {
 		MR_dump_stack_record_flush(fp);
+
 		prev_entry_layout = entry_layout;
 		prev_entry_layout_count = 1;
 		prev_entry_start_level = current_level;
+		prev_entry_base_sp = base_sp;
+		prev_entry_base_curfr = base_curfr;
+	} else {
+		prev_entry_layout_count++;
 	}
 
 	current_level++;
@@ -289,37 +338,68 @@ MR_dump_stack_record_flush(FILE *fp)
 {
 	if (prev_entry_layout != NULL) {
 		MR_dump_stack_record_print(fp, prev_entry_layout,
-			prev_entry_layout_count, prev_entry_start_level);
+			prev_entry_layout_count, prev_entry_start_level,
+			prev_entry_base_sp, prev_entry_base_curfr);
 	}
 }
 
 static void
 MR_dump_stack_record_print(FILE *fp, const MR_Stack_Layout_Entry *entry_layout,
-	int count, int start_level)
+	int count, int start_level, Word *base_sp, Word *base_curfr)
 {
-	fprintf(fp, "%9d ", start_level);
+	fprintf(fp, "%4d ", start_level);
 
 	if (count > 1) {
 		fprintf(fp, " %3d* ", count);
-	} else {
+	} else if ((base_sp == NULL) && (base_curfr == NULL)) {
 		fprintf(fp, "%5s ", "");
+	} else {
+		/*
+		** If we are printing trace data, we need all the horizonal
+		** room we can get, and there will not be any repeated lines,
+		** so we don't reserve space for the repeat counts.
+		*/
 	}
 
-	MR_print_proc_id(fp, entry_layout, NULL);
+	MR_print_proc_id(fp, entry_layout, NULL, base_sp, base_curfr);
 }
 
 void
 MR_print_proc_id_for_debugger(const MR_Stack_Layout_Entry *entry_layout)
 {
-	MR_print_proc_id(stdout, entry_layout, NULL);
+	MR_print_proc_id(stdout, entry_layout, NULL, NULL, NULL);
 }
 
 void
 MR_print_proc_id(FILE *fp, const MR_Stack_Layout_Entry *entry,
-	const char *extra)
+	const char *extra, Word *base_sp, Word *base_curfr)
 {
 	if (! MR_ENTRY_LAYOUT_HAS_PROC_ID(entry)) {
 		fatal_error("cannot print procedure id without layout");
+	}
+
+	if (MR_ENTRY_LAYOUT_HAS_EXEC_TRACE(entry)) {
+		if (MR_DETISM_DET_STACK(entry->MR_sle_detism)) {
+			if (base_sp != NULL) {
+				fprintf(fp, "%7lu %7lu %4lu ",
+					(unsigned long)
+					MR_event_num_stackvar(base_sp) + 1,
+					(unsigned long)
+					MR_call_num_stackvar(base_sp),
+					(unsigned long)
+					MR_call_depth_stackvar(base_sp));
+			}
+		} else {
+			if (base_curfr != NULL) {
+				fprintf(fp, "%7lu %7lu %4lu ",
+					(unsigned long)
+					MR_event_num_framevar(base_curfr) + 1,
+					(unsigned long)
+					MR_call_num_framevar(base_curfr),
+					(unsigned long)
+					MR_call_depth_framevar(base_curfr));
+			}
+		}
 	}
 
 	if (MR_ENTRY_LAYOUT_COMPILER_GENERATED(entry)) {
