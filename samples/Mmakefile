@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995 The University of Melbourne.
+# Copyright (C) 1995-1997 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -10,7 +10,7 @@
 # To build these programs, first install the Mercury compiler,
 # type `mmake depend', and then type `mmake'.
 
-PROGS=	hello cat calculator sort eliza ultra_sub \
+PROGS=	hello cat calculator sort eliza ultra_sub e \
 	all_solutions committed_choice interpreter expand_terms
 
 DEPENDS=$(PROGS:%=%.depend)
