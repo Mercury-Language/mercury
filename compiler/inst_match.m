@@ -796,13 +796,13 @@ abstractly_unify_inst_3(live,		bound(UniqY, List0), free, Real, M0,
 
 abstractly_unify_inst_3(live, bound(UniqX, ListX), bound(UniqY, ListY), Real,
 			M0,	bound(Uniq, List), Det, M) :-
-	unify_uniq(live, Real, UniqX, UniqY, Uniq),
+	unify_uniq(dead, Real, UniqX, UniqY, Uniq),
 	abstractly_unify_bound_inst_list(live, ListX, ListY, Real, M0,
 		List, Det, M).
 
 abstractly_unify_inst_3(live, bound(UniqX, BoundInsts0), ground(UniqY, _),
 		Real, M0, bound(Uniq, BoundInsts), semidet, M) :-
-	unify_uniq(live, Real, UniqX, UniqY, Uniq),
+	unify_uniq(dead, Real, UniqX, UniqY, Uniq),
 	make_ground_bound_inst_list(BoundInsts0, live, UniqY, Real, M0,
 			BoundInsts, M).
 
@@ -819,7 +819,7 @@ abstractly_unify_inst_3(live, ground(Uniq0, yes(PredInst)), free, Real, M,
 
 abstractly_unify_inst_3(live, ground(UniqX, yes(_)), bound(UniqY, BoundInsts0),
 		Real, M0, bound(Uniq, BoundInsts), semidet, M) :-
-	unify_uniq(live, Real, UniqX, UniqY, Uniq),
+	unify_uniq(dead, Real, UniqX, UniqY, Uniq),
 	make_ground_bound_inst_list(BoundInsts0, live, UniqX, Real, M0,
 			BoundInsts, M).
 
@@ -832,7 +832,7 @@ abstractly_unify_inst_3(live, ground(UniqA, yes(PredInstA)),
 	;
 		PredInst = no
 	),
-	unify_uniq(live, Real, UniqA, UniqB, Uniq).
+	unify_uniq(dead, Real, UniqA, UniqB, Uniq).
 
 abstractly_unify_inst_3(live, ground(Uniq, no), Inst0, Real, M0,
 				Inst, Det, M) :-
@@ -1161,12 +1161,12 @@ make_ground_inst(free(T), IsLive, Uniq0, Real, M,
 	unify_uniq(IsLive, Real, unique, Uniq0, Uniq).
 make_ground_inst(bound(Uniq0, BoundInsts0), IsLive, Uniq1, Real, M0,
 		bound(Uniq, BoundInsts), M) :-
-	unify_uniq(IsLive, Real, Uniq0, Uniq1, Uniq),
+	unify_uniq(dead, Real, Uniq0, Uniq1, Uniq),
 	make_ground_bound_inst_list(BoundInsts0, IsLive, Uniq1, Real, M0,
 					BoundInsts, M).
-make_ground_inst(ground(Uniq0, _PredInst), IsLive, Uniq1, Real, M,
+make_ground_inst(ground(Uniq0, _PredInst), _IsLive, Uniq1, Real, M,
 		ground(Uniq, no), M) :-
-	unify_uniq(IsLive, Real, Uniq0, Uniq1, Uniq).
+	unify_uniq(dead, Real, Uniq0, Uniq1, Uniq).
 make_ground_inst(inst_var(_), _, _, _, _, _, _) :-
 	error("free inst var").
 make_ground_inst(abstract_inst(_,_), _, _, _, M, ground(shared, no), M).
