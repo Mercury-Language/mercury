@@ -271,8 +271,8 @@
 
 :- type hlds__type_body	--->	du_type(list(constructor))
 			;	uu_type(list(type))
-			;	eqv_type(type).
-
+			;	eqv_type(type)
+			;	abstract_type.
 
 :- type hlds__inst_defn --->	hlds__inst_defn(varset, list(inst_param),
 					inst, condition, term__context).
@@ -324,7 +324,7 @@
 :- pred moduleinfo_modeids(module_info, list(mode_id)).
 :- mode moduleinfo_modeids(input, output).
 
-:- pred moduleinfo_ctors(module_info, mode_table).
+:- pred moduleinfo_ctors(module_info, cons_table).
 :- mode moduleinfo_ctors(input, output).
 
 :- pred moduleinfo_consids(module_info, list(cons_id)).

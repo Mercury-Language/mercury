@@ -24,6 +24,8 @@
 :- interface.
 :- import_module list, std_util.
 
+:- type bintree(_K, _V).
+
 :- pred bintree__init(bintree(K,V)).
 :- mode bintree__init(output).
 
@@ -35,6 +37,9 @@
 
 :- pred bintree__set(bintree(K,V), K, V, bintree(K,V)).
 :- mode bintree__set(input, input, input, output).
+
+:- pred bintree__search_insert(bintree(K,V), K, V, bintree(K,V)).
+:- mode bintree__search_insert(input, input, input, output).
 
 :- pred bintree__search(bintree(K,V), K, V).
 :- mode bintree__search(input, input, output).
@@ -59,7 +64,8 @@
 
 :- type bintree(K,V)		--->	empty
 				;	tree(
-						pair(K,V),
+						K,
+						V,
 						bintree(K,V),
 						bintree(K,V)
 					).
@@ -70,8 +76,8 @@ bintree__init(empty).
 
 %-----------------------------------------------------------------------------%
 
-bintree__insert(empty, Key, Value, tree(Key - Value, empty, empty)).
-bintree__insert(tree(Key0 - Value0, Left, Right), Key, Value, Tree) :-
+bintree__insert(empty, Key, Value, tree(Key, Value, empty, empty)).
+bintree__insert(tree(Key0, Value0, Left, Right), Key, Value, Tree) :-
 	compare(Result, Key0, Key),
 	(if
 		Result = (=)
@@ -81,22 +87,22 @@ bintree__insert(tree(Key0 - Value0, Left, Right), Key, Value, Tree) :-
 		Result = (<)
 	then
 		bintree__insert(Right, Key, Value, NewRight),
-		Tree = tree(Key0 - Value0, Left, NewRight)
+		Tree = tree(Key0, Value0, Left, NewRight)
 	else
 		bintree__insert(Left, Key, Value, NewLeft),
-		Tree = tree(Key0 - Value0, NewLeft, Right)
+		Tree = tree(Key0, Value0, NewLeft, Right)
 	).
 
 %-----------------------------------------------------------------------------%
 
-bintree__search_insert(empty, Key, Value, tree(Key - Value, empty, empty)).
-bintree__search_insert(tree(Key0 - Value0, Left, Right), Key, Value, Tree) :-
+bintree__search_insert(empty, Key, Value, tree(Key, Value, empty, empty)).
+bintree__search_insert(tree(Key0, Value0, Left, Right), Key, Value, Tree) :-
 	compare(Result, Key0, Key),
 	(if
 		Result = (=)
 	then
 		(if Value = Value0 then
-			Tree = tree(Key0 - Value0, Left, Right)
+			Tree = tree(Key0, Value0, Left, Right)
 		else
 			fail
 		)
@@ -104,54 +110,54 @@ bintree__search_insert(tree(Key0 - Value0, Left, Right), Key, Value, Tree) :-
 		Result = (<)
 	then
 		bintree__search_insert(Right, Key, Value, NewRight),
-		Tree = tree(Key0 - Value0, Left, NewRight)
+		Tree = tree(Key0, Value0, Left, NewRight)
 	else
 		bintree__search_insert(Left, Key, Value, NewLeft),
-		Tree = tree(Key0 - Value0, NewLeft, Right)
+		Tree = tree(Key0, Value0, NewLeft, Right)
 	).
 
 %-----------------------------------------------------------------------------%
 
 bintree__update(empty, _Key, _Value, _Tree) :-
 	fail.
-bintree__update(tree(Key0 - Value0, Left, Right), Key, Value, Tree) :-
+bintree__update(tree(Key0, Value0, Left, Right), Key, Value, Tree) :-
 	compare(Result, Key0, Key),
 	(if
 		Result = (=)
 	then
-		Tree = tree(Key0 - Value, Left, Right)
+		Tree = tree(Key0, Value, Left, Right)
 	else if
 		Result = (<)
 	then
 		bintree__update(Right, Key, Value, NewRight),
-		Tree = tree(Key0 - Value0, Left, NewRight)
+		Tree = tree(Key0, Value0, Left, NewRight)
 	else
 		bintree__update(Left, Key, Value, NewLeft),
-		Tree = tree(Key0 - Value0, NewLeft, Right)
+		Tree = tree(Key0, Value0, NewLeft, Right)
 	).
 
 %-----------------------------------------------------------------------------%
 
-bintree__set(empty, Key, Value, tree(Key - Value, empty, empty)).
-bintree__set(tree(Key0 - Value0, Left, Right), Key, Value, Tree) :-
+bintree__set(empty, Key, Value, tree(Key, Value, empty, empty)).
+bintree__set(tree(Key0, Value0, Left, Right), Key, Value, Tree) :-
 	compare(Result, Key0, Key),
 	(if
 		Result = (=)
 	then
-		Tree = tree(Key0 - Value, Left, Right)
+		Tree = tree(Key0, Value, Left, Right)
 	else if
 		Result = (<)
 	then
 		bintree__set(Right, Key, Value, NewRight),
-		Tree = tree(Key0 - Value0, Left, NewRight)
+		Tree = tree(Key0, Value0, Left, NewRight)
 	else
 		bintree__set(Left, Key, Value, NewLeft),
-		Tree = tree(Key0 - Value0, NewLeft, Right)
+		Tree = tree(Key0, Value0, NewLeft, Right)
 	).
 
 %-----------------------------------------------------------------------------%
 
-bintree__search(tree(K0 - V0, Left, Right), K, V) :-
+bintree__search(tree(K0, V0, Left, Right), K, V) :-
 	compare(Result, K0, K),
 	(if
 		Result = (=)
@@ -168,7 +174,7 @@ bintree__search(tree(K0 - V0, Left, Right), K, V) :-
 %-----------------------------------------------------------------------------%
 
 bintree__delete(empty, _K, empty).
-bintree__delete(tree(K0 - V0, Left, Right), K, Tree) :-
+bintree__delete(tree(K0, V0, Left, Right), K, Tree) :-
 	compare(Result, K0, K),
 	(if
 		Result = (=)
@@ -178,10 +184,10 @@ bintree__delete(tree(K0 - V0, Left, Right), K, Tree) :-
 		Result = (<)
 	then
 		bintree__delete(Right, K, Tree1),
-		Tree = tree(K0 - V0, Left, Tree1)
+		Tree = tree(K0, V0, Left, Tree1)
 	else
 		bintree__delete(Left, K, Tree1),
-		Tree = tree(K0 - V0, Tree1, Right)
+		Tree = tree(K0, V0, Tree1, Right)
 	).
 
 :- pred bintree__fixup(bintree(K,V), bintree(K,V), bintree(K,V)).
@@ -202,20 +208,20 @@ bintree__fixup(Left, Right, Tree) :-
 		(if
 			LD > RD
 		then
-			bintree__knock_left(Left, Node, Left1),
+			bintree__knock_left(Left, K, V, Left1),
 			Right1 = Right
 		else
-			bintree__knock_right(Right, Node, Right1),
+			bintree__knock_right(Right, K, V, Right1),
 			Left1 = Left
 		),
-		Tree = tree(Node, Left1, Right1)
+		Tree = tree(K, V, Left1, Right1)
 	).
 
 :- pred bintree__right_depth(bintree(K,V), int).
 :- mode bintree__right_depth(input, output).
 
 bintree__right_depth(empty, 0).
-bintree__right_depth(tree(_Node, _Left, Right), N) :-
+bintree__right_depth(tree(_K, _V, _Left, Right), N) :-
 	bintree__right_depth(Right, M),
 	N is M + 1.
 
@@ -223,36 +229,38 @@ bintree__right_depth(tree(_Node, _Left, Right), N) :-
 :- mode bintree__left_depth(input, output).
 
 bintree__left_depth(empty, 0).
-bintree__left_depth(tree(_Node, Left, _Right), N) :-
+bintree__left_depth(tree(_K, _V, Left, _Right), N) :-
 	bintree__left_depth(Left, M),
 	N is M + 1.
 
-:- pred bintree__knock_left(bintree(K,V), pair(K, V), bintree(K, V)).
-:- mode bintree__knock_left(input, input, output).
+:- pred bintree__knock_left(bintree(K,V), K, V, bintree(K, V)).
+:- mode bintree__knock_left(input, input, input, output).
 
-bintree__knock_left(tree(Node0, Left, Right), Node, Tree) :-
+bintree__knock_left(tree(K0, V0, Left, Right), K, V, Tree) :-
 	(if
 		Right = empty
 	then
-		Node = Node0,
+		K = K0,
+		V = V0,
 		Tree = Left
 	else
-		bintree__knock_left(Right, Node, Right1),
-		Tree = tree(Node0, Left, Right1)
+		bintree__knock_left(Right, K, V, Right1),
+		Tree = tree(K0, V0, Left, Right1)
 	).
 
-:- pred bintree__knock_right(bintree(K,V), pair(K, V), bintree(K, V)).
-:- mode bintree__knock_right(input, input, output).
+:- pred bintree__knock_right(bintree(K,V), K, V, bintree(K, V)).
+:- mode bintree__knock_right(input, input, input, output).
 
-bintree__knock_right(tree(Node0, Left, Right), Node, Tree) :-
+bintree__knock_right(tree(K0, V0, Left, Right), K, V, Tree) :-
 	(if
 		Left = empty
 	then
-		Node = Node0,
+		K = K0,
+		V = V0,
 		Tree = Right
 	else
-		bintree__knock_right(Left, Node, Left1),
-		Tree = tree(Node0, Left1, Right)
+		bintree__knock_right(Left, K, V, Left1),
+		Tree = tree(K0, V0, Left1, Right)
 	).
 
 %-----------------------------------------------------------------------------%
@@ -277,9 +285,9 @@ bintree__to_list(Tree, List) :-
 :- mode bintree__to_list_2(input, input, output).
 
 bintree__to_list_2(empty, List, List).
-bintree__to_list_2(tree(Node, Left, Right), List0, List) :-
+bintree__to_list_2(tree(K, V, Left, Right), List0, List) :-
 	bintree__to_list_2(Right, List0, List1),
-	bintree__to_list_2(Left, [Node | List1], List).
+	bintree__to_list_2(Left, [K - V | List1], List).
 
 %-----------------------------------------------------------------------------%
 
@@ -290,8 +298,8 @@ bintree__keys(Tree, List) :-
 :- mode bintree__keys_2(input, input, output).
 
 bintree__keys_2(empty, List, List).
-bintree__keys_2(tree(K - V, Left, Right), List0, List) :-
+bintree__keys_2(tree(K, _V, Left, Right), List0, List) :-
 	bintree__keys_2(Right, List0, List1),
-	bintree__keys_2(Left, [K - V | List1], List).
+	bintree__keys_2(Left, [K | List1], List).
 
 %-----------------------------------------------------------------------------%

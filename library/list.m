@@ -23,10 +23,18 @@
 :- mode member(output, input).
 :- mode member(input, input).
 
+	% member_chk/2 is just a particular mode of member/2.
+	% The reason that it is a separate predicate is because
+	% the usual implementation of member/2 leaves choice points
+	% around if you call it with both args input.
+
+:- pred member_chk(T, list(T)).
+:- mode member_chk(input, input).
+
 :- pred member(T, list(T), list(T)).
 :- mode member(output, input, output).
 
-:- pred length(list(T), integer).
+:- pred length(list(T), int).
 :- mode length(input_list_skel, output).
 :- mode length(ouput_list_skel, input).
 
@@ -56,5 +64,12 @@ condense([L|Ls], R) :-
 same_length([], []).
 same_length([_|L1], [_|L2]) :-
 	same_length(L1, L2).
+
+member_chk(X, [Y | Ys]) :-
+	( X = Y ->
+		true
+	;
+		member_chk(X, Ys)
+	).
 
 %-----------------------------------------------------------------------------%

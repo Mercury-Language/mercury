@@ -164,6 +164,13 @@
 :- mode io__flush_output(input, di, uo).
 %	Flush the output buffer of the specified output stream.
 
+:- pred io__stream_name(io__stream, io__filename, io__state, io__state).
+:- mode io__stream_name(input, output, di, uo).
+%	Retrieves the human-readable name associated with a stream.
+%	For file streams, this is the filename.
+%	For stdin this is the string "<standard input>" (and similarly
+%	for stdout, stderr).
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -172,11 +179,14 @@
 /* Most of these predicates are implemented using non-logical NU-Prolog code
    in io.nu.nl. */
 
-:- type io__state	---> 	io__state(io__state_2).
+:- type io__state	---> 	io__state(io__stream_names, io__state_2).
+
+:- type io__stream_names =	map(io__stream, string).
+
 :- type io__state_2	---> 	old
 			;	current.
+
 :- type io__stream	--->	stream(int, int)
-			;	user
 			;	user_input
 			;	user_output
 			;	user_error.
@@ -220,6 +230,15 @@ io__write_anything(Term) -->
 io__flush_output -->
 	io__output_stream(Stream),
 	io__flush_output(Stream).
+
+io__stream_name(Stream, Name, IOState, IOState) :-
+	IOState = io__state(StreamNames, _),
+	( map__search(StreamNames, Stream, Name1) ->
+		Name = Name1
+	;
+		Name = "<stream name unavailable>"
+	).
+
 %-----------------------------------------------------------------------------%
 
 io__stdin_stream(user_input) --> [].

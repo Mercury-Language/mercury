@@ -69,8 +69,10 @@ prog_out__write_message(Msg - Term) -->
 	% error message.
 
 prog_out__write_context(Context) -->
+	{ term__context_file(Context, FileName) },
 	{ term__context_line(Context, LineNumber) },
-	io__write_string("Line "),
+	io__write_string(FileName),
+	io__write_string(" "),
 	io__write_int(LineNumber),
 	io__write_string(": ").
 

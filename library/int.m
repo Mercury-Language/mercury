@@ -25,8 +25,7 @@
 			;	(int__expr - int__expr)
 			;	(int__expr / int__expr).
 
-:- pred is(int, int__expr).
-:- mode is(output, input).
+:- pred is(int :: output, int__expr :: input) is det.
 
 :- implementation.
 

@@ -29,9 +29,11 @@ io__current_ops(Ops) -->
 
 :- io__read_term(_, IO0, _) when IO0.
 io__read_term(Result) -->
+	io__input_stream(Stream),
+	io__stream_name(Stream, StreamName),
 	{
 	    io__get_token_list(Tokens0, LineNumber),
-	    term__context_init(LineNumber, Context),
+	    term__context_init(StreamName, LineNumber, Context),
 	    convert_tokens(Tokens0, Tokens),
 	    ( treadTerm(Tokens, Term0, NameList, VarList) ->
 		expandTerm(Term0, Term1),

@@ -24,21 +24,16 @@
 	% string__prefix(String, Prefix) is true iff Prefix is a
 	% prefix of String
 
-:- pred char_to_string(character, string).
-:- mode char_to_string(input, output).
-:- mode char_to_string(output, input).
-%	char_to_string(Char, String).
+:- pred string__char_to_string(character, string).
+:- mode string__char_to_string(input, output).
+:- mode string__char_to_string(output, input).
+%	string__char_to_string(Char, String).
 %		Converts a character (single-character atom) to a string
-%		(or vice versa).
+%		or vice versa.
 
 :- pred string__int_to_string(int, string).
 :- mode string__int_to_string(input, output).
 %	Convert an integer to a string.
-
-:- pred string__char_to_str(character, string).
-:- mode string__char_to_str(input, output).
-:- mode string__char_to_str(output, input).
-%	Convert a char to a string or vice versa.
 
 :- pred string__first_char(string, character, string).
 :- mode string__first_char(input, output, output).
@@ -59,7 +54,7 @@
 
 :- implementation.
 
-:- type string == list(integer).
+:- type string == list(int).
 
 string__append(A, B, C) :-
 	append(A, B, C).

@@ -116,14 +116,6 @@ process_files_3(error(Errors), _, _, _) -->
 
 %-----------------------------------------------------------------------------%
 
-goedel_write_context(Context) -->
-	{ term__context_line(Context, LineNumber) },
-	io__write_string("% Line "),
-	io__write_int(LineNumber),
-	io__write_string(": ").
-
-%-----------------------------------------------------------------------------%
-
 :- pred convert_to_goedel(string, list(item_and_context), io__state, io__state).
 :- mode convert_to_goedel(input, input, di, uo).
 
@@ -247,7 +239,9 @@ goedel_replace_eqv_type_defn(du_type(TName, TArgs, TBody0),
 				Name, Args, Body,
 				du_type(TName, TArgs, TBody)) :-
 	goedel_replace_eqv_type_du(TBody0, Name, Args, Body, no, TBody, yes).
-
+goedel_replace_eqv_type_defn(abstract_type(_TName, _TArgs),
+				_Name, _Args, _Body, _) :-
+	fail.
 
 :- pred goedel_replace_eqv_type_uu(list(type), string, list(type_param),
 					type, yes_or_no, list(type), yes_or_no).
@@ -357,7 +351,7 @@ goedel_output_item_list([Item - Context | Items]) -->
 		io__stderr_stream(StdErr),
 		io__set_output_stream(StdErr, OldStream),
 		io__write_string("\n"),
-		goedel_write_context(Context),
+		prog_out__write_context(Context),
 		io__write_string("mercury_to_goedel internal error.\n"),
 		io__write_string("Failed to process the following item:\n"),
 		io__write_anything(Item),
@@ -384,7 +378,7 @@ goedel_output_item(pred(VarSet, PredName, TypesAndModes, _Det, _Cond), Context)
 		-->
 	( { option_write_line_numbers } ->
 		io__write_string("\n"),
-		goedel_write_context(Context)
+		prog_out__write_context(Context)
 	),
 	io__write_string("\n"),
 	goedel_output_pred(VarSet, PredName, TypesAndModes, Context).
@@ -398,7 +392,7 @@ goedel_output_item(module_defn(_VarSet, _ModuleDefn), _Context) -->
 
 goedel_output_item(clause(VarSet, PredName, Args, Body), Context) -->
 	( { option_write_line_numbers } ->
-		goedel_write_context(Context),
+		prog_out__write_context(Context),
 		io__write_string("\n")
 	),
 	goedel_output_clause(VarSet, PredName, Args, Body, Context).
@@ -439,14 +433,21 @@ goedel_output_type_defn(VarSet, TypeDefn, Context) -->
 goedel_output_type_defn_2(uu_type(_Name, _Args, _Body), _VarSet, Context) -->
 	io__stderr_stream(StdErr),
 	io__set_output_stream(StdErr, OldStream),
-	goedel_write_context(Context),
+	prog_out__write_context(Context),
 	io__write_string("warning: undiscriminated union types not yet supported.\n"),
+	io__set_output_stream(OldStream, _).
+
+goedel_output_type_defn_2(abstract_type(_Name, _Args), _VarSet, Context) -->
+	io__stderr_stream(StdErr),
+	io__set_output_stream(StdErr, OldStream),
+	prog_out__write_context(Context),
+	io__write_string("warning: abstract type definition ignored.\n"),
 	io__set_output_stream(OldStream, _).
 
 goedel_output_type_defn_2(eqv_type(_Name, _Args, _Body), _VarSet, Context) -->
 	io__stderr_stream(StdErr),
 	io__set_output_stream(StdErr, OldStream),
-	goedel_write_context(Context),
+	prog_out__write_context(Context),
 	io__write_string("mercury_to_goedel internal error:\n"),
 	io__write_string("equivalence type unexpected.\n"),
 	io__set_output_stream(OldStream, _).
@@ -489,7 +490,7 @@ goedel_output_type_defn_2(du_type(Name, Args, Body), VarSet, Context) -->
 
 goedel_output_type_defn_3(Name2, Name3, Args, Body, VarSet, Context) -->
 	( { option_write_line_numbers } ->
-		goedel_write_context(Context),
+		prog_out__write_context(Context),
 		io__write_string("\n")
 	),
 	{ length(Args, Arity) },

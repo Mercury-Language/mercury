@@ -31,10 +31,10 @@
 :- type term		--->	term_functor(const,list(term), term__context)
 			;	term_variable(variable).
 :- type const 		--->	term_atom(string)
-			;	term_integer(integer)
+			;	term_integer(int)
 			;	term_string(string)
 			;	term_float(float).
-:- type variable	==	integer.
+:- type variable	==	int.
 
 %-----------------------------------------------------------------------------%
 	% term__vars(Term, Vars) is true if Vars is the list of variables
@@ -98,20 +98,31 @@ term__subterm(term_functor(_, Args, _), SubTerm) :-
 	% number (and even that is only the line number at the
 	% end of the entire read-term).
 
-:- type term__context == int.
+:- type term__context	--->	term__context(string, int).
+				% file, line number.
 
 	% Given a term context, return the source line number.
 
 :- pred term__context_line(term__context, int).
 :- mode term__context_line(input, output).
-term__context_line(LineNumber, LineNumber).
+term__context_line(term__context(_, LineNumber), LineNumber).
 
-	% Used by io.nl to initialize the term context when reading
-	% in a term.
+	% Given a term context, return the source line number.
+
+:- pred term__context_file(term__context, string).
+:- mode term__context_file(input, output).
+term__context_file(term__context(FileName, _), FileName).
+
+	% Used to initialize the term context when reading in
+	% (or otherwise constructing) a term.
 
 :- pred term__context_init(int, term__context).
 :- mode term__context_init(input, output).
-term__context_init(LineNumber, LineNumber).
+term__context_init(LineNumber, term__context("", LineNumber)).
+
+:- pred term__context_init(string, int, term__context).
+:- mode term__context_init(input, input, output).
+term__context_init(File, LineNumber, term__context(File, LineNumber)).
 
 %-----------------------------------------------------------------------------%
 

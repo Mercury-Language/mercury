@@ -1,11 +1,7 @@
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
-
-:- module prog_io.
-:- import_module string, int, list, varset, term, io.
-
-%-----------------------------------------------------------------------------%
 %
+% File: prog_io.nl.
 % Main author: fjh.
 %
 % This module defines a data structure for representing Mercury
@@ -50,15 +46,13 @@
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
+:- module prog_io.
 :- interface.
+:- import_module string, int, list, varset, term, io.
 
-%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 	% This is how programs (and parse errors) are represented.
-
-:- type maybe_program	--->	ok(message_list, program)
-			;	error(message_list).
 
 :- type message_list	==	list(pair(string, term)).
 				% the error/warning message, and the
@@ -66,8 +60,10 @@
 
 :- type program		--->	module(
 					module_name,
-					list(item_and_context)
+					item_list
 				).
+
+:- type item_list	==	list(item_and_context).
 
 :- type item_and_context ==	pair(item, term__context).
 
@@ -139,7 +135,8 @@
 :- type type_defn	--->	du_type(sym_name, list(type_param),
 						list(constructor))
 			;	uu_type(sym_name, list(type_param), list(type))
-			;	eqv_type(sym_name, list(type_param), type).
+			;	eqv_type(sym_name, list(type_param), type)
+			;	abstract_type(sym_name, list(type_param)).
 
 :- type constructor	==	pair(sym_name, list(type)).
 
@@ -240,21 +237,21 @@
 
 % This module (prog_io) exports the following predicate:
 
-:- pred prog_io__read_program(string, maybe_program, io__state, io__state).
-:- mode prog_io__read_program(input, output, di, uo).
+:- pred prog_io__read_program(string, bool, message_list, item_list,
+				io__state, io__state).
+:- mode prog_io__read_program(input, output, output, output, di, uo).
 
-% 	read_program(FileName, Result)
-%	- reads and parses file 'FileName'. Result is either
-%	  ok(Warnings,Program) or error(Messages) where Warnings
-%	  is a list of warning messages, Program is the parse tree,
-%	  and Messages is a list of warning/error messages.
+% 	read_program(ModuleName, Error, Messages, Program)
+%	- reads and parses the module 'ModuleName'.  Error is `yes'
+%	  if a syntax error was detected and `no' otherwise,
+%	  Messages is a list of warning/error messages,
+%	  and Program is the parse tree.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 	% When actually reading in type declarations, we need to
@@ -276,20 +273,20 @@
 % and then reverse them afterwards.  (Using difference lists would require
 % late-input modes.)
 
-prog_io__read_program(FileName, Result) -->
-	io__op(1199, fx, "rule"),
-	io__op(1179, xfy, "--->"),		% XXX should be automatic
+prog_io__read_module(Module, Error, Messages, Prog) -->
+	% io__op(1199, fx, "rule"),
+	% io__op(1179, xfy, "--->"),		% XXX should be automatic
+	{ string__append(Module, ".nl", FileName) },
 	io__see(FileName, R),
 	(if { R = ok } then
-		read_all_items(RevMessages, RevItems0, Error),
+		read_all_items(RevMessages, RevItems0, Error0),
 		{
 		  get_end_module(RevItems0, RevItems, EndModule),
-
-		  reverse(RevMessages, Messages),
-		  reverse(RevItems, Items),
-
-		  check_begin_module(Messages, Items, Error, EndModule,
-				     Result)
+		  reverse(RevMessages, Messages0),
+		  reverse(RevItems, Items0),
+		  check_begin_module(Messages0, Items0, Error0, EndModule,
+				     Messages, Items, Error),
+		  Prog = module(Module, Items)
 		},
 		io__seen
 	else
@@ -299,7 +296,9 @@ prog_io__read_program(FileName, Result) -->
 		  string__append(Message1, FileName, Message2),
 		  string__append(Message2, "'.\n", Message),
 		  dummy_term(Term),
-		  Result = error([Message - Term])
+		  Messages = [Message - Term],
+		  Error = yes,
+		  Prog = module(Module, [])
 		}
 	).
 
@@ -310,8 +309,7 @@ prog_io__read_program(FileName, Result) -->
 
 :- type module_end ---> no ; yes(module_name, term__context).
 
-:- pred get_end_module(list(item_and_context), list(item_and_context),
-			module_end).
+:- pred get_end_module(item_list, item_list, module_end).
 :- mode get_end_module(input, output, output).
 
 get_end_module(RevItems0, RevItems, EndModule) :-
@@ -333,11 +331,12 @@ get_end_module(RevItems0, RevItems, EndModule) :-
 	% and that the end_module declaration (if any) is correct,
 	% and construct the final parsing result.
 
-:- pred check_begin_module(message_list, list(item_and_context), yes_or_no,
-			   module_end, maybe_program).
-:- mode check_begin_module(input, input, input, input, output).
+:- pred check_begin_module(message_list, item_list, bool,
+			   module_end, message_list, item_list, bool).
+:- mode check_begin_module(input, input, input, input, output, output, output).
 
-check_begin_module(Messages0, Items0, Error, EndModule, Result) :-
+check_begin_module(Messages0, Items0, Error0, EndModule,
+		Messages, Items, Error) :-
 
     % check that the first item is a `:- module ModuleName'
     % declaration
@@ -358,19 +357,20 @@ check_begin_module(Messages0, Items0, Error, EndModule, Result) :-
             ThisError = 
 "`:- end_module' declaration doesn't match `:- module' declaration" - Term,
             append([ThisError], Messages0, Messages),
-            Result = error(Messages)
+	    Items = Items1,
+            Error = yes
         else
-            (if Error = yes then
-                Result = error(Messages0)
-            else
-                Result = ok(Messages0, module(ModuleName1,Items1))
-            )
+	    Messages = Messages0,
+	    Items = Items1,
+	    Error = Error0
         )
     else
 	dummy_term(Term2),
         ThisError = "module should start with a `:- module' declaration" -
 				Term2,
-        Result = error([ThisError | Messages0])
+        Messages = [ThisError | Messages0],
+	Items = Items0,
+	Error = yes
     ).
 
 	% Create a dummy term.
@@ -405,10 +405,7 @@ dummy_term_with_context(Context, Term) :-
 	% which may be a declaration or a clause.
 
 
-:- type yes_or_no ---> yes ; no.
-
-:- pred read_all_items(message_list, list(item_and_context), yes_or_no,
-			io__state, io__state).
+:- pred read_all_items(message_list, item_list, bool, io__state, io__state).
 :- mode read_all_items(output, output, output, di, uo).
 
 read_all_items(Messages, Items, Error) -->
@@ -430,8 +427,8 @@ read_all_items(Messages, Items, Error) -->
 	% implementation unless the compiler is smart enough to inline
 	% read_items_loop_2.
 
-:- pred read_items_loop(message_list, list(item), yes_or_no, message_list,
-			list(item), yes_or_no, io__state,io__state).
+:- pred read_items_loop(message_list, list(item), bool, message_list,
+			list(item), bool, io__state, io__state).
 :- mode read_items_loop(input, input, input, output, output, output, di, uo).
 
 read_items_loop(Msgs1, Items1, Error1, Msgs, Items, Error) -->
@@ -441,7 +438,7 @@ read_items_loop(Msgs1, Items1, Error1, Msgs, Items, Error) -->
 %-----------------------------------------------------------------------------%
 
 :- pred read_items_loop_2(maybe_item_or_eof, message_list, list(item),
-	yes_or_no, message_list, list(item), yes_or_no, io__state, io__state).
+	bool, message_list, list(item), bool, io__state, io__state).
 :- mode read_items_loop_2(input, input, input, input,
 			output, output, output, di, uo).
 
@@ -454,9 +451,12 @@ read_items_loop_2(syntax_error(ErrorMsg), Msgs0, Items0, _Error0,
 			Msgs, Items, Error) -->
 	% if the next item was a syntax error, then insert it in
 	% the list of messages and continue looping
+	io__input_stream(Stream),
+	io__stream_name(Stream, StreamName),
+	% XXX the line number is slightly off
 	io__get_line_number(LineNumber),
 	{
-	  term__context_init(LineNumber, Context),
+	  term__context_init(StreamName, LineNumber, Context),
 	  dummy_term_with_context(Context, Term),
 	  ThisError = ErrorMsg - Term,
 	  Msgs1 = [ThisError | Msgs0],
@@ -566,7 +566,7 @@ process_clause(ok(Name, Args), VarSet, Body,
 		ok(clause(VarSet, Name, Args, Body))).
 process_clause(error(ErrMessage, Term), _, _, error(ErrMessage, Term)).
 
-:- pred join_error(yes_or_no, yes_or_no, yes_or_no).
+:- pred join_error(bool, bool, bool).
 :- mode join_error(input, input, output).
 join_error(yes, _, yes).
 join_error(no, Error, Error).
@@ -791,13 +791,16 @@ process_decl(_VarSet, "when", [_Goal, _Cond], Result) :-
 :- pred parse_type_decl(varset, term, maybe(item)).
 :- mode parse_type_decl(input, input, output).
 parse_type_decl(VarSet, TypeDecl, Result) :-
-    (if some [R, Cond]
-	parse_type_decl_type(TypeDecl, Cond, R) 
-    then
-	parse_type_decl_2(R, VarSet, Cond, Result)
-    else
-	Result = error("Invalid type declaration (need =, == or --->)", TypeDecl)
-    ).
+	(if some [R, Cond]
+		parse_type_decl_type(TypeDecl, Cond, R) 
+	then
+		R1 = R,
+		Cond1 = Cond
+	else
+		process_abstract_type(TypeDecl, R1),
+		Cond1 = true
+	),
+	parse_type_decl_2(R1, VarSet, Cond1, Result).
 
 :- pred parse_type_decl_2(maybe(type_defn), varset, condition, maybe(item)).
 :- mode parse_type_decl_2(input, input, input, output).
@@ -991,6 +994,25 @@ process_du_type_2(ok(Functor,Args), Body, Result) :-
 	else
 		Result = error("Invalid RHS of type definition", Body)
 	).
+
+%-----------------------------------------------------------------------------%
+
+	% process_abstract_type(TypeHead, Result)
+	% checks that its argument is well formed, and if it is,
+	% binds Result to a representation of the type information about the
+	% TypeHead.
+
+:- pred process_abstract_type(term, term, maybe(type_defn)).
+:- mode process_abstract_type(input, input, output).
+process_abstract_type(Head, Result) :-
+	dummy_term(Body),
+	check_for_errors(Head, Body, Result0),
+	process_abstract_type_2(Result0, Result).
+
+:- pred process_abstract_type_2(maybe_functor, maybe(type_defn)).
+:- mode process_abstract_type_2(input, output).
+process_abstract_type_2(error(Error, Term), error(Error, Term)).
+process_abstract_type_2(ok(Functor, Args), ok(abstract_type(Functor, Args))).
 
 %-----------------------------------------------------------------------------%
 

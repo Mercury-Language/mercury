@@ -112,21 +112,11 @@ map__set(Map0, K, V, Map) :-
 
 %-----------------------------------------------------------------------------%
 
-	% XXX efficiency
-
 :- pred map__keys(map(K, _V), list(K)).
 :- mode map__keys(input, output).
 
 map__keys(Map, KeyList) :-
-	bintree__to_list(Map, List),
-	map__keys_2(List, [], KeyList).
-
-:- pred map__keys_2(map(K, _V), list(K), list(K)).
-:- mode map__keys_2(input, input, output).
-
-map__keys_2([], Keys, Keys).
-map__keys_2([Key - _ | Rest], Keys0, Keys) :-
-	map__keys_2(Rest, [Key | Keys0], Keys).
+	bintree__keys(Map, KeyList).
 
 %-----------------------------------------------------------------------------%
 

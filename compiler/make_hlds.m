@@ -190,10 +190,6 @@ mode_is_compat(hlds__mode_defn(_, Args, Body, _, _),
 
 %-----------------------------------------------------------------------------%
 
-:- pred types_add(type_table, varset, type_defn, condition, term__context,
-		type_table, io__state, io__state).
-:- mode types_add(input, input, input, input, input, output, di, uo).
-
 :- pred module_add_type_defn(module_info, varset, hlds__type_defn, condition,
 			term__context, module_info, io__state, io__state).
 :- mode module_add_type_defn(input, input, input, input, input, output, di, uo).
@@ -236,6 +232,7 @@ module_add_type_defn(Module0, VarSet, TypeDefn, Cond, Context, Module) -->
 type_name_args(du_type(Name, Args, Body), Name, Args, du_type(Body)).
 type_name_args(uu_type(Name, Args, Body), Name, Args, uu_type(Body)).
 type_name_args(eqv_type(Name, Args, Body), Name, Args, eqv_type(Body)).
+type_name_args(abstract_type(Name, Args), Name, Args, abstract_type).
 
 :- pred type_is_compat(hlds__type_defn, hlds__type_defn).
 :- mode type_is_compat(input, input).
@@ -252,7 +249,7 @@ ctors_add([Name - Args | Rest], TypeId, Context, Ctors0, Ctors) :-
 	make_cons_id(Name, Args, TypeId, ConsId),
 	ConsDefn = hlds__cons_defn(Args, TypeId, Context),
 	(if some [ConsDefns0]
-		map__search(Ctors, ConsId, ConsDefns0)
+		map__search(Ctors0, ConsId, ConsDefns0)
 	then
 		ConsDefns1 = ConsDefns0
 	else
@@ -437,6 +434,7 @@ determinism_to_category(unspecified, unspecified).
 	% XXX efficiency could be improved
 	% we should probably store the next available ModeId rather
 	% than recomputing it all the time
+
 :- pred next_mode_id(proc_table, pred_mode_id).
 :- mode next_mode_id(input, output).
 
@@ -569,7 +567,7 @@ transform_goal(call(Goal), call(PredId, ModeId, Args, Builtin) - GoalInfo) :-
 
 	% XXX serious design flaw
 	% XXX we need to know the module name!!!
-	ModuleName = "test",
+	ModuleName = "xxx",
 
 	require(Goal = term_functor(term_atom(PredName), Args, _),
 		"fatal error: called term is not an atom"),

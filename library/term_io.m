@@ -95,6 +95,8 @@ io__write_term_2(term_variable(Id), VarSet0, N0, VarSet, N) -->
 		{ VarSet = VarSet0 },
 		io_write_string(Name)
 	;
+		% XXX problems with name clashes
+
 		{ string__int_to_string(N0, Num) },
 		{ string__append("_", Num, VarName) },
 		{ varset__name_var(VarSet0, Id, VarName, VarSet) },

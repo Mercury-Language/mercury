@@ -11,7 +11,8 @@
 
 io__gc_call(Goal) -->
 	io__update_state,
-	{ io__call(Goal) }.
+	io__call(Goal),
+	io__update_state.
 
 %-----------------------------------------------------------------------------%
 
@@ -35,24 +36,25 @@ main(Args) :-
 run(Args) :-
 	atoms_to_strings(Args,ArgStrings),
 	save_progname(ArgStrings),
-	io__call(main_predicate(ArgStrings)).
+	io__init_state(IOState0),
+	io__call(main_predicate(ArgStrings), IOState0, IOState),
+	io__final_state(IOState).
 
 :- pred io__call(pred).
-io__call(Goal) :-
-	io__init_state(IOState0),
-	findall(Goal, ( call(Goal, IOState0, IOState1),
-			io__final_state(IOState1) ), Solutions),
-	io__call_2(Goal, Solutions).
+io__call(Goal, IOState0, IOState) :-
+	findall(Goal - IOState1, call(Goal, IOState0, IOState1), Solutions),
+	io__call_2(Goal, Solutions, IOState).
 
-:- pred io__call_2(pred, list(_)).
-io__call_2(Goal, Solutions) :-
+:- pred io__call_2(pred, list(_), io__state).
+io__call_2(Goal, Solutions, IOState) :-
 	(Solutions = [] ->
 		write('\nio.nl: error: goal "'),
 		print(Goal),
 		write('." failed.\n'),
 		abort
-	; Solutions = [SingleSolution] ->
-		Goal = SingleSolution
+	; Solutions = [SingleSolution - IOState0] ->
+		Goal = SingleSolution,
+		IOState = IOState0
 	;
 		write('\nio.nl: error: goal "'),
 		print(Goal),
@@ -106,17 +108,19 @@ io__set_output_stream(NewStream, OldStream) -->
 	% Declarative versions of Prolog's see/1 and seen/0.
 
 io__see(File, Result) -->
-	{
-		name(FileName, File),
-		(if see(FileName) then
-			Result = ok
-		else
-			Result = error
-		)
-	},
+	{ name(FileName, File) },
+	( { see(FileName) } ->
+		{ Result = ok },
+		io__input_stream(Stream),
+		io__insert_stream_name(Stream, File)
+	;
+		{ Result = error }
+	),
 	io__update_state.
 
 io__seen -->
+	io__input_stream(Stream),
+	io__delete_stream_name(Stream),
 	{ seen },
 	io__update_state.
 
@@ -126,19 +130,38 @@ io__seen -->
 	% Declarative versions of Prolog's tell/1 and told/0.
 
 io__tell(File, Result) -->
-	{
-		name(FileName, File),
-		(if tell(FileName) then
-			Result = ok
-		else
-			Result = error
-		)
-	},
+	{ name(FileName, File) },
+	( { tell(FileName) } ->
+		{ Result = ok },
+		io__output_stream(Stream),
+		io__insert_stream_name(Stream, File)
+	;
+		{ Result = error }
+	),
 	io__update_state.
 
 io__told -->
+	io__output_stream(Stream),
+	io__delete_stream_name(Stream),
 	{ told },
 	io__update_state.
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+:- pred io__delete_stream_name(io__stream, io__state, io__state).
+:- mode io__delete_stream_name(input, di, uo).
+
+io__delete_stream_name(Stream, io__state(StreamNames0, S),
+		io__state(StreamNames, S)) :-
+	map__delete(StreamNames0, Stream, StreamNames).
+
+:- pred io__insert_stream_name(io__stream, string, io__state, io__state).
+:- mode io__insert_stream_name(input, string, di, uo).
+
+io__insert_stream_name(Stream, Name, io__state(StreamNames0, S),
+		io__state(StreamNames, S)) :-
+	map__insert(StreamNames0, Stream, Name, StreamNames).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -186,16 +209,20 @@ io__flush_output(Stream) -->
 	% used again.
 
 :- pred io__init_state(io__state).
-io__init_state(io__state(current)).
+io__init_state(io__state(Names, current)) :-
+	map__init(Names0),
+	map__insert(Names0, user_input, "<standard input>", Names1),
+	map__insert(Names1, user_output, "<standard output>", Names2),
+	map__insert(Names2, user_error, "<standard error>", Names).
 
 :- pred io__update_state(io__state, io__state).
 io__update_state(IOState0, IOState) :-
 	require(nonvar(IOState0),
 		"\nio.nl: I/O predicate called with free io__state"),
-	require(IOState0 = io__state(current),
+	require(IOState0 = io__state(Names, current),
 		"\nio.nl: cannot retry I/O operation"),
-	$replacn(1, IOState0, old),
-	IOState = io__state(current).
+	$replacn(2, IOState0, old),
+	IOState = io__state(Names, current).
 
 :- pred io__final_state(io__state).
 io__final_state(IOState) :-
