@@ -21,7 +21,7 @@
 %---------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module tree, list, map, std_util, require.
+:- import_module tree, list, map, std_util, require, options, globals.
 
 %---------------------------------------------------------------------------%
 
@@ -104,28 +104,32 @@ disj_gen__generate_non_disj_2([Goal|Goals], EndLab, DisjCode) -->
 	(
 		{ Goals = [_|_] }
 	->
-		(
-			code_info__failure_cont(ContLab0)
-		->
-			{ ContCode = node([
-				modframe(yes(ContLab0)) -
-						"Set failure continuation"
-			]) },
-			{ FailCode = node([
-				goto(EndLab) - "Jump to end of disj",
-				label(ContLab0) - "Start of next disjunct"
-			]) }
-		;
-			{ error("generate_non_disj_2: missing failure continuation (1)") }
-		),
+		code_info__get_failure_cont(ContLab0),
+		{ ContCode = node([
+			modframe(yes(ContLab0)) -
+					"Set failure continuation"
+		]) },
+		{ FailCode = node([
+			goto(EndLab) - "Jump to end of disj",
+			label(ContLab0) - "Start of next disjunct"
+		]) },
 		code_info__grab_code_info(CodeInfo),
-		code_gen__generate_forced_non_goal(Goal, GoalCode),
-		code_info__slap_code_info(CodeInfo),
-		( code_info__pop_failure_cont(_) ->
-			[]
-		;
-			{ error("generate_non_disj_2: missing failure continuation (2)") }
+		code_info__get_globals(Globals),
+		{ globals__lookup_bool_option(Globals,
+			reclaim_heap_on_nondet_failure, ReclaimHeap) },
+		( { ReclaimHeap = yes } ->
+			code_info__save_hp(SaveHeapCode)
+		;	
+			{ SaveHeapCode = empty }
 		),
+		code_gen__generate_forced_non_goal(Goal, GoalCode),
+		( { ReclaimHeap = yes } ->
+			code_info__restore_hp(RestoreHeapCode)
+		;	
+			{ RestoreHeapCode = empty }
+		),
+		code_info__slap_code_info(CodeInfo),
+		code_info__pop_failure_cont_det(_),
 		(
 			{ Goals = [_,_|_] }
 		->
@@ -134,6 +138,8 @@ disj_gen__generate_non_disj_2([Goal|Goals], EndLab, DisjCode) -->
 		;
 			[]
 		),
+		{ DisjCode = tree(tree(tree(ContCode,SaveHeapCode), GoalCode),
+			tree(FailCode, tree(RestoreHeapCode, RestCode))) },
 		disj_gen__generate_non_disj_2(Goals, EndLab, RestCode)
 	;
 		(
@@ -151,9 +157,10 @@ disj_gen__generate_non_disj_2([Goal|Goals], EndLab, DisjCode) -->
 		code_gen__generate_forced_non_goal(Goal, GoalCode),
 		{ RestCode = node([
 			label(EndLab) - "End of disj"
-		]) }
-	),
-	{ DisjCode = tree(tree(ContCode, GoalCode), tree(FailCode, RestCode)) }.
+		]) },
+		{ DisjCode = tree(tree(ContCode, GoalCode),
+			tree(FailCode, RestCode)) }
+	).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

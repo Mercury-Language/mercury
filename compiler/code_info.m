@@ -187,8 +187,8 @@
 							code_info, code_info).
 :- mode code_info__cons_id_to_tag(in, in, out, in, out) is det.
 
-:- pred code_info__get_stackslot_count(int, code_info, code_info).
-:- mode code_info__get_stackslot_count(out, in, out) is det.
+:- pred code_info__get_total_stackslot_count(int, code_info, code_info).
+:- mode code_info__get_total_stackslot_count(out, in, out) is det.
 
 :- pred code_info__reset_variable_target(var, lval, code_info, code_info).
 :- mode code_info__reset_variable_target(in, in, in, out) is semidet.
@@ -336,6 +336,9 @@
 :- type code_info	--->
 		code_info(
 			int,		% The number of stack slots allocated.
+					% for storing variables.
+					% (Some extra stack slots are used
+					% for saving and restoring registers.)
 			int,		% Counter for the local labels used
 					% by this procedure.
 			varset,		% The variables in this procedure.
@@ -361,7 +364,8 @@
 					% and the current context (respectively)
 			maybe(label),	% The first failure continuation for
 					% nondet code
-			int,		% The number of extra stackslots
+			pair(int),	% The current and maximum (respectively)
+					% number of extra temporary stackslots
 					% that have been pushed during the
 					% procedure
 			globals		% code generation options
@@ -415,7 +419,7 @@ code_info__init(Varset, Liveness, CallInfo, SaveSuccip, Globals,
 		StoreMapStack,
 		Category - Category,
 		no,
-		0,
+		0 - 0,
 		Globals
 	).
 
@@ -1979,21 +1983,10 @@ code_info__save_hp(Code) -->
 code_info__restore_hp(Code) -->
 	code_info__pop_lval(hp, Code).
 
-code_info__pop_stack(Code) -->
-	code_info__get_push_count(Count0),
-	{ Count is Count0 - 1 },
-	code_info__set_push_count(Count),
-	{ Code = node([
-		decr_sp(1) - "Decrement stack pointer"
-	]) }.
-
-
 %---------------------------------------------------------------------------%
 
-code_info__stack_variable(Num0, Lval) -->
+code_info__stack_variable(Num, Lval) -->
 	code_info__get_proc_category(Cat),
-	code_info__get_push_count(Count),
-	{ Num is Num0 + Count },
 	(
 		{ Cat = nondeterministic }
 	->
@@ -2004,55 +1997,87 @@ code_info__stack_variable(Num0, Lval) -->
 
 %---------------------------------------------------------------------------%
 
+	% The det stack frame is organized as follows.
+	%
+	%		... unused ...
+	%	sp --->	<first unused slot>
+	%		<space for local var 1>
+	%		... local vars ...
+	%		<space for local var n>
+	%		<space for temporary reg save 1>
+	%		... temporary reg saves ...
+	%		<space for temporary reg save n>
+	%		<space for succip>
+	%
+	% The stack pointer poinst to the first free location at the
+	% top of the stack.
+	%
+	% `code_info__num_stackslots' counts the number of slots reserved 
+	% for saving local variables.
+	%
+	% `code_info__max_push_count' counts the number of slots reserved
+	% for saving and restoring registers (hp, redoip, etc.)
+	%
+	% `code_info__succip_used' determines whether we need a slot to
+	% hold the succip.
+	%
+	% The variable part of the nondet stack is organized in the same way
+	% as the det stack (but the nondet stack also contains several other
+	% fixed fields.)
+
+%---------------------------------------------------------------------------%
+
+	% Returns the total stackslot count, but not including space for
+	% succip.
+code_info__get_total_stackslot_count(NumSlots) -->
+	code_info__get_stackslot_count(SlotsForVars),
+	code_info__get_max_push_count(SlotsForTemps),
+	{ NumSlots is SlotsForVars + SlotsForTemps }.
+
+%---------------------------------------------------------------------------%
+
+	% `push_rval' doesn't actually increment the stack pointer, it just
+	% increments the push count.  The space will be allocated in the
+	% procedure prologue.
+
 :- pred code_info__push_rval(rval, code_tree, code_info, code_info).
 :- mode code_info__push_rval(in, out, in, out) is det.
 
 code_info__push_rval(Rval, Code) -->
-	code_info__get_globals(Globals),
-	(
-		{ globals__get_gc_method(Globals, accurate) }
-	->
-		{ error("`push' is incompatible with accurate GC") }
-	;
-		[]
-	),
-	code_info__get_proc_category(Cat),
-	(
-		{ Cat = nondeterministic }
-	->
-		{ error("Cannot push onto nondet stack") }
-	;
-		code_info__get_push_count(Count0),
-		{ Count is Count0 + 1 },
-		code_info__set_push_count(Count),
-		{ Code = node([
-			incr_sp(1) - "Increment stack pointer",
-			assign(stackvar(1), Rval) -
-					"Store value"
-		]) }
-	).
+	code_info__get_push_count(Count0),
+	{ Count is Count0 + 1 },
+	code_info__set_push_count(Count),
+	code_info__get_stackslot_count(NumSlots),
+	{ Slot is Count + NumSlots },
+	code_info__stack_variable(Slot, StackVar),
+	{ Code = node([
+		assign(StackVar, Rval) - "Save value on the stack"
+	]) }.
 
 %---------------------------------------------------------------------------%
+
+	% `pop_stack' and `pop_lval' don't actually decrement the stack
+	% pointer, they just decrement the push count.  The space will
+	% be deallocated in the procedure epilogue.
+
+code_info__pop_stack(empty) -->
+	code_info__get_push_count(Count0),
+	{ Count is Count0 - 1 },
+	code_info__set_push_count(Count).
 
 :- pred code_info__pop_lval(lval, code_tree, code_info, code_info).
 :- mode code_info__pop_lval(in, out, in, out) is det.
 
 code_info__pop_lval(Lval, Code) -->
-	code_info__get_proc_category(Cat),
-	(
-		{ Cat = nondeterministic }
-	->
-		{ error("Cannot pop off nondet stack") }
-	;
-		code_info__get_push_count(Count0),
-		{ Count is Count0 - 1 },
-		code_info__set_push_count(Count),
-		{ Code = node([
-			assign(Lval, lval(stackvar(1))) -
-					"Store value",
-			decr_sp(1) - "Decrement stack pointer"
-		]) }
-	).
+	code_info__get_push_count(Count0),
+	{ Count is Count0 - 1 },
+	code_info__set_push_count(Count),
+	code_info__get_stackslot_count(NumSlots),
+	{ Slot is Count0 + NumSlots },
+	code_info__stack_variable(Slot, StackVar),
+	{ Code = node([
+		assign(Lval, lval(StackVar)) - "Restore value from stack"
+	]) }.
 
 %---------------------------------------------------------------------------%
 
@@ -2109,6 +2134,11 @@ code_info__generate_icond_branch(Rval, YesLab, NoLab, Code) -->
 	]) }.
 
 %---------------------------------------------------------------------------%
+
+	% `pre_commit' and `commit' should be generated as a pair
+	% surrounding a non-det goal.
+	% If the goal succeeds, the `commit' will cut any choice points
+	% generated in the goal.
 
 code_info__generate_pre_commit(PreCommit, FailLabel) -->
 	code_info__get_next_label(FailLabel),
@@ -2168,7 +2198,7 @@ code_info__get_failure_cont(Cont) -->
 	->
 		{ Cont = Cont0 }
 	;
-		{ error("No failure continuation") }
+		{ error("code_info__get_failure_cont: no failure continuation") }
 	).
 
 code_info__failure_cont(Cont) -->
@@ -2182,7 +2212,7 @@ code_info__unset_failure_cont -->
 	->
 		code_info__set_fall_through(Fall)
 	;
-		{ error("No failure continuation") }
+		{ error("code_info__unset_failure_cont: no failure continuation") }
 	).
 
 %---------------------------------------------------------------------------%
@@ -2208,6 +2238,9 @@ code_info__current_store_map(Map) -->
 	).
 
 %---------------------------------------------------------------------------%
+
+:- pred code_info__get_stackslot_count(int, code_info, code_info).
+:- mode code_info__get_stackslot_count(out, in, out) is det.
 
 :- pred code_info__set_stackslot_count(int, code_info, code_info).
 :- mode code_info__set_stackslot_count(in, in, out) is det.
@@ -2261,6 +2294,12 @@ code_info__current_store_map(Map) -->
 
 :- pred code_info__set_push_count(int, code_info, code_info).
 :- mode code_info__set_push_count(in, in, out) is det.
+
+:- pred code_info__get_max_push_count(int, code_info, code_info).
+:- mode code_info__get_max_push_count(out, in, out) is det.
+
+:- pred code_info__set_max_push_count(int, code_info, code_info).
+:- mode code_info__set_max_push_count(in, in, out) is det.
 
 :- pred code_info__get_store_map(stack(map(var, lval)), code_info, code_info).
 :- mode code_info__get_store_map(out, in, out) is det.
@@ -2384,11 +2423,25 @@ code_info__set_continuation(P, CI0, CI) :-
 	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R).
 
 code_info__get_push_count(Q, CI, CI) :-
-	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, Q, _).
+	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
+		Q - _, _).
+
+code_info__get_max_push_count(QMax, CI, CI) :-
+	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
+		_ - QMax, _).
 
 code_info__set_push_count(Q, CI0, CI) :-
-	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, _, R),
-	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R).
+	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P,
+		_ - QMax0, R),
+	int__max(QMax0, Q, QMax),
+	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P,
+		Q - QMax, R).
+
+code_info__set_max_push_count(QMax, CI0, CI) :-
+	CI0 = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P,
+		Q - _, R),
+	CI = code_info(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P,
+		Q - QMax, R).
 
 code_info__get_globals(R, CI, CI) :-
 	CI = code_info(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, R).
@@ -2409,7 +2462,9 @@ code_info__slap_code_info(C0, C1, C) :-
 	code_info__get_store_map(F, C1, _),
 	code_info__set_store_map(F, C3, C4),
 	code_info__get_fall_through(J, C1, _),
-	code_info__set_fall_through(J, C4, C).
+	code_info__set_fall_through(J, C4, C5),
+	code_info__get_max_push_count(PC, C1, _),
+	code_info__set_max_push_count(PC, C5, C).
 
 %---------------------------------------------------------------------------%
 
