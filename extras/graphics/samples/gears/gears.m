@@ -29,7 +29,7 @@
 :- import_module glut, glut.window, glut.callback.
 :- import_module globals.
 
-:- import_module char, float, int, list, math, string.
+:- import_module std_util, char, float, int, list, math, string.
 
 %-----------------------------------------------------------------------------%
 
@@ -57,7 +57,26 @@ gears.main_2(Limit, !IO) :-
 	glut.init(!IO),
 	glut.init_display_mode([rgba, depth, double], !IO),
 	glut.window.create("Gears", !IO),
+
+	mogl.get_string(version,    VersionResult, !IO),
+	mogl.get_string(vendor,     VendorResult, !IO),
+	mogl.get_string(renderer,   RendererResult, !IO),
+	mogl.get_string(extensions, ExtensionsResult, !IO),
+
+	io.write_string("GL Version: ", !IO),
+	write_maybe(VersionResult, !IO),
+
+	io.write_string("GL Vendor: ", !IO),
+	write_maybe(VendorResult, !IO),
 	
+	io.write_string("Renderer: ", !IO),
+	write_maybe(RendererResult, !IO),
+
+	% XXX We could format the extensions list a bit
+	% better than this.
+	io.write_string("Available Extensions: ", !IO),
+	write_maybe(ExtensionsResult, !IO),
+
 	gears.init(Limit, !IO),
 
 	glut.callback.display_func(gears.draw, !IO),
@@ -66,6 +85,11 @@ gears.main_2(Limit, !IO) :-
 	glut.callback.special_func(gears.special, !IO),
 	glut.callback.visibility_func(gears.visible, !IO),
 	glut.main_loop(!IO).
+
+:- pred write_maybe(maybe(string)::in, io::di, io::uo) is det.
+
+write_maybe(no, !IO) :- io.write_string("unknown.\n", !IO).
+write_maybe(yes(Str), !IO) :- io.write_string(Str ++ ".\n", !IO).
 
 :- pred gears.gear(float::in, float::in, float::in, int::in, float::in,
 	io::di, io::uo) is det.

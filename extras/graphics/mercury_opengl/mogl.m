@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997, 2003-2004 The University of Melbourne.
+% Copyright (C) 1997, 2003-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -14,7 +14,7 @@
 %
 % TODO:
 % 	- finish texture mapping stuff
-% 	- finsh pixel rectangle stuff
+% 	- finish pixel rectangle stuff
 % 	- vertex arrays
 % 	- evaluators
 % 	- various state queries
@@ -31,7 +31,7 @@
 
 :- interface.
 
-:- import_module io, int, float, list, bool.
+:- import_module io, int, float, list, bool, std_util.
 
 %------------------------------------------------------------------------------%
 %
@@ -649,7 +649,7 @@
 % Evaluators.
 %
 
-% Evalutators not implemented
+% Evaluators not implemented
 
 %------------------------------------------------------------------------------%
 %
@@ -791,7 +791,8 @@
 :- pred get_boolean(single_boolean_state::in, bool::out, io::di, io::uo)
 	is det.
 
-:- pred get_boolean(quad_boolean_state::in, bool::out, bool::out, bool::out, bool::out,
+:- pred get_boolean(quad_boolean_state::in,
+	bool::out, bool::out, bool::out, bool::out,
 	io::di, io::uo) is det.
 
 :- type single_integer_state
@@ -918,6 +919,19 @@
 
 :- pred get_float(quad_float_state::in, float::out, float::out, float::out,
 	float::out, io::di, io::uo) is det.
+
+:- type string_name
+	--->	vendor
+	;	renderer
+	;	version
+	;	extensions.
+
+	% get_string(StrName, MaybeResult, !IO).
+	% MaybeResult is yes(Result) where Result is a string containing
+	% the requested information.  If the requested information is
+	% not available then MaybeResult is no.
+	% 
+:- pred get_string(string_name::in, maybe(string)::out, io::di, io::uo) is det.
 
 %------------------------------------------------------------------------------%
 %
@@ -3508,10 +3522,9 @@ new_list(Num, Mode, !IO) :-
 	IO = IO0;
 ").
 
-	% XXX Add `terminates' attribute.
 :- pragma foreign_proc("C",
 	is_list(L::in, R::out, IO0::di, IO::uo),
-	[may_call_mercury, promise_pure],
+	[will_not_call_mercury, promise_pure],
 "
 	if (glIsList((GLuint) L)) {
 		R = MR_YES;
@@ -4250,6 +4263,58 @@ get_float(Param, V0, V1, V2, V3, !IO) :-
 	V3 = (MR_Float) values[3];
 	IO = IO0;
 ").
+
+%------------------------------------------------------------------------------%
+
+:- pragma foreign_decl("C", "
+	extern const GLenum string_name_flags[];
+").
+
+:- pragma foreign_code("C", "
+	const GLenum string_name_flags[] = {
+		GL_VENDOR,
+		GL_RENDERER,
+		GL_VERSION,
+		GL_EXTENSIONS
+	};
+").
+:- func string_name_to_int(string_name) = int.
+
+string_name_to_int(vendor)     = 0.
+string_name_to_int(renderer)   = 1.
+string_name_to_int(version)    = 2.
+string_name_to_int(extensions) = 3.
+
+get_string(StringName, Result, !IO) :-
+	get_string_2(string_name_to_int(StringName), Result, !IO).
+
+:- pred get_string_2(int::in, maybe(string)::out, io::di, io::uo) is det.
+:- pragma foreign_proc("C",
+	get_string_2(StrFlag::in, Result::out, IO0::di, IO::uo),
+	[may_call_mercury, promise_pure, terminates],
+"
+	const GLubyte *c_str;
+	MR_String mer_str;
+
+	c_str = glGetString(string_name_flags[StrFlag]);
+
+	if (c_str == NULL) {
+		Result = MOGL_get_string_no();
+	} else {
+		MR_make_aligned_string_copy(mer_str, c_str);
+		Result = MOGL_get_string_yes(mer_str);				
+	}		
+	
+	IO = IO0;
+").
+
+:- func get_string_no = maybe(string).
+:- pragma export(get_string_no = out, "MOGL_get_string_no").
+get_string_no = no.
+
+:- func get_string_yes(string) = maybe(string).
+:- pragma export(get_string_yes(in) = out, "MOGL_get_string_yes").
+get_string_yes(Str) = yes(Str).
 
 %------------------------------------------------------------------------------%
 %
