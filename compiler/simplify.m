@@ -110,28 +110,26 @@ simplify__goal_2(conj(Goals0), GoalInfo0, InstMap0, DetInfo, Goal, Msgs) :-
 		% a singleton conjunction is equivalent to the goal itself
 		simplify__goal(SingleGoal0, InstMap0, DetInfo, Goal - _, Msgs)
 	;
-		simplify__conj(Goals0, InstMap0, DetInfo, Goals1, Msgs),
+		simplify__conj(Goals0, InstMap0, DetInfo, Goals, Msgs),
 		%
 		% Conjunctions that cannot produce solutions may nevertheless
-		% contain nondet and multidet goals. If this happens, the part
-		% of the conjunction up to and including the always-failing
-		% goal are put inside a some to appease the code generator.
+		% contain nondet and multidet goals. If this happens, the
+		% conjunction is put inside a `some' to appease the code
+		% generator.
 		%
 		goal_info_get_determinism(GoalInfo0, Detism),
-		( determinism_components(Detism, CanFail, at_most_zero) ->
-			simplify__fixup_nosoln_conj(Goals1, Goals, no, NeedCut),
-			( NeedCut = yes ->
-				determinism_components(InnerDetism,
-					CanFail, at_most_many),
-				goal_info_set_determinism(GoalInfo0,
-					InnerDetism, InnerInfo),
-				InnerGoal = conj(Goals) - InnerInfo,
-				Goal = some([], InnerGoal)
-			;
-				Goal = conj(Goals)
-			)
+		(
+			determinism_components(Detism, CanFail, at_most_zero),
+			simplify__contains_multisoln_goal(Goals)
+		->
+			determinism_components(InnerDetism,
+				CanFail, at_most_many),
+			goal_info_set_determinism(GoalInfo0,
+				InnerDetism, InnerInfo),
+			InnerGoal = conj(Goals) - InnerInfo,
+			Goal = some([], InnerGoal)
 		;
-			Goal = conj(Goals1)
+			Goal = conj(Goals)
 		)
 	).
 
@@ -313,14 +311,22 @@ simplify__goal_2(pragma_c_code(A, B, C, D, E, F), _, _, _,
 
 simplify__conj([], _InstMap0, _DetInfo, [], []).
 simplify__conj([Goal0 | Goals0], InstMap0, DetInfo, Goals, Msgs) :-
+	% optimize `true, ...' to `...'
 	( Goal0 = conj([]) - _ ->
 		simplify__conj(Goals0, InstMap0, DetInfo, Goals, Msgs)
 	;
 		simplify__goal(Goal0, InstMap0, DetInfo, Goal, MsgsA),
 		update_instmap(Goal0, InstMap0, InstMap1),
-		simplify__conj(Goals0, InstMap1, DetInfo, Goals1, MsgsB),
-		Goals = [Goal | Goals1],
-		list__append(MsgsA, MsgsB, Msgs)
+		% delete unreachable goals
+		( InstMap1 = unreachable ->
+			Goals = [Goal],
+			Msgs = MsgsA
+		;
+			simplify__conj(Goals0, InstMap1, DetInfo,
+				Goals1, MsgsB),
+			Goals = [Goal | Goals1],
+			list__append(MsgsA, MsgsB, Msgs)
+		)
 	).
 
 :- pred simplify__disj(list(hlds__goal), instmap, det_info, list(hlds__goal),
@@ -460,27 +466,11 @@ det_disj_to_ite([Disjunct | Disjuncts], GoalInfo, FV, Goal) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred simplify__fixup_nosoln_conj(list(hlds__goal), list(hlds__goal),
-	bool, bool).
-:- mode simplify__fixup_nosoln_conj(in, out, in, out) is det.
+:- pred simplify__contains_multisoln_goal(list(hlds__goal)::in) is semidet.
 
-simplify__fixup_nosoln_conj([], _, _, _) :-
-	error("conjunction without solutions has no failing goal").
-simplify__fixup_nosoln_conj([Goal0 | Goals0], Goals, NeedCut0, NeedCut) :-
-	Goal0 = _ - GoalInfo0,
-	goal_info_get_determinism(GoalInfo0, Detism0),
-	determinism_components(Detism0, _, MaxSolns0),
-	( MaxSolns0 = at_most_zero ->
-		Goals = [Goal0],
-		NeedCut = NeedCut0
-	;
-		( MaxSolns0 = at_most_many ->
-			NeedCut1 = yes
-		;
-			NeedCut1 = NeedCut0
-		),
-		simplify__fixup_nosoln_conj(Goals0, Goals1, NeedCut1, NeedCut),
-		Goals = [Goal0 | Goals1]
-	).
+simplify__contains_multisoln_goal(Goals) :-
+	list__member(_Goal - GoalInfo, Goals),
+	goal_info_get_determinism(GoalInfo, Detism),
+	determinism_components(Detism, _, at_most_many).
 
 %-----------------------------------------------------------------------------%
