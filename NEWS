@@ -56,8 +56,10 @@ Portability improvements:
 Changes to the Mercury debugger:
 * Users can now limit the output from stack traces.
 * Users can now put breakpoints on unify and compare predicates.
+* Users can now arrange to have the goal and/or some variables printed
+  every time execution arrives at a breakpoint.
 * Users can now save runtime values to files.
-* Ability to tell the declarative debugger to trust entire modules or 
+* Users can now tell the declarative debugger to trust entire modules or 
   individual predicates or functions.
 
 Changes to the compiler back-ends:

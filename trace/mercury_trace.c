@@ -69,9 +69,10 @@ static  MR_Trace_Cmd_Info   MR_trace_ctrl = {
 };
 
 MR_Code             *MR_trace_real(const MR_Label_Layout *layout);
-static  MR_Code     *MR_trace_event(MR_Trace_Cmd_Info *cmd, MR_bool interactive,
-                        const MR_Label_Layout *layout, MR_Trace_Port port,
-                        MR_Unsigned seqno, MR_Unsigned depth);
+static  MR_Code     *MR_trace_event(MR_Trace_Cmd_Info *cmd,
+                        MR_bool interactive, const MR_Label_Layout *layout,
+                        MR_Trace_Port port, MR_Unsigned seqno,
+                        MR_Unsigned depth);
 static  MR_bool     MR_in_traced_region(const MR_Proc_Layout *proc_layout,
                         MR_Word *base_sp, MR_Word *base_curfr);
 static  MR_bool     MR_is_io_state(MR_PseudoTypeInfo pti);
@@ -122,12 +123,12 @@ static  void        MR_abandon_call_table_array(void);
 MR_Code *
 MR_trace_real(const MR_Label_Layout *layout)
 {
-    MR_Integer      maybe_from_full;
-    MR_Unsigned     seqno;
-    MR_Unsigned     depth;
-    MR_Spy_Action   action;
-    MR_bool         match;
-    MR_Trace_Port   port;
+    MR_Integer          maybe_from_full;
+    MR_Unsigned         seqno;
+    MR_Unsigned         depth;
+    MR_Spy_Action       action;
+    MR_bool             match;
+    MR_Trace_Port       port;
 
     /* in case MR_sp or MR_curfr is transient */
     MR_restore_transient_registers();
@@ -344,7 +345,21 @@ check_stop_print:
         }
 #endif
 
-        match = MR_event_matches_spy_point(layout, port, &action);
+        {
+            /*
+            ** We ignore the print_list computed here, because we want to
+            ** execute the print list of a matched spy point even if the event
+            ** is the end event of a command. In that case, the code above
+            ** invokes MR_trace_event directly without coming here. We
+            ** therefore invoke MR_event_matches_spy_point in MR_trace_event.
+            ** The invocation here is only to find out if we want to stop.
+            */
+
+            MR_Spy_Print_List   print_list;
+            match = MR_event_matches_spy_point(layout, port, &action,
+                &print_list);
+        }
+
         if (! match) {
             if (MR_trace_ctrl.MR_trace_print_level == MR_PRINT_LEVEL_ALL) {
                 return MR_trace_event(&MR_trace_ctrl, MR_FALSE, layout, port,
@@ -457,7 +472,12 @@ MR_trace_event(MR_Trace_Cmd_Info *cmd, MR_bool interactive,
 
         jumpaddr = MR_trace_event_external(cmd, &event_info);
     } else {
-        jumpaddr = MR_trace_event_internal(cmd, interactive, &event_info);
+        MR_Spy_Action       action;         /* ignored */
+        MR_Spy_Print_List   print_list;
+
+        (void) MR_event_matches_spy_point(layout, port, &action, &print_list);
+        jumpaddr = MR_trace_event_internal(cmd, interactive, print_list,
+            &event_info);
     }
 #else
     /*

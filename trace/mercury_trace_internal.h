@@ -11,6 +11,7 @@
 #include "mercury_trace.h"	/* for MR_Event_Info, etc. */
 #include "mercury_std.h"	/* for MR_bool */
 #include "mercury_trace_completion.h"	/* for MR_Make_Completer */
+#include "mercury_trace_spy.h"	/* for MR_Spy_Print_List */
 
 #include <stdio.h>		/* for FILE */
 
@@ -36,10 +37,7 @@ typedef enum {
 extern	MR_Trace_Mode	MR_trace_decl_mode;
 
 extern	MR_Code	*MR_trace_event_internal(MR_Trace_Cmd_Info *cmd,
-			MR_bool interactive, MR_Event_Info *event_info);
-
-
-extern	MR_Code	*MR_trace_event_internal_report(MR_Trace_Cmd_Info *cmd,
+			MR_bool interactive, MR_Spy_Print_List print_list,
 			MR_Event_Info *event_info);
 
 /*

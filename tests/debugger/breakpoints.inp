@@ -27,10 +27,18 @@ delete 0
 break info
 disable 3
 break nodiag
+break_print -v -n 1 HeadVar__1 HeadVar__2
 continue
+break_print 1 none
+set -p depth 10
+set -p size 20
+break_print -p -n 1 HeadVar__1 HeadVar__2
 continue
 finish -N
 finish -n
+break_print 1 none
+break_print -f -n 1 HeadVar__1
+break_print -f -e -n 1 HeadVar__2
 continue
 continue
 finish
@@ -60,4 +68,12 @@ break -O test_in_ab
 break -O testmod.test_in_ab
 break -O a.testmod.test_in_ab
 break -O b.testmod.test_in_ab
+delete *
+break -O -p goal test_in_a
+break -O -P -p HeadVar__1 test_in_b
+break info
+continue
+break_print 0 none
+break_print 0 *
+continue
 continue

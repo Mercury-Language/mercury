@@ -1922,6 +1922,19 @@ unless the current debugger command has specifically disabled this behaviour
 @sp 1
 Neither of these will happen if the break point is disabled.
 @sp 1
+Every break point has a print list.
+Every time execution stops at an event that matches the breakpoint,
+mdb implicitly executes a print command for each element
+in the breakpoint's print list.
+A print list element can be the word @samp{goal},
+which causes the goal to the printed as if by @samp{print goal};
+it can be the word @samp{*},
+which causes all the variables to the printed as if by @samp{print *};
+or it can be the name or number of a variable,
+possibly followed (without white space) by term path,
+which causes the specified variable or part thereof to the printed
+as if the element were given as an argument to the @samp{print} command.
+@sp 1
 @item strict commands
 @cindex strict debugger commands
 When a debugger command steps over some events
@@ -2887,7 +2900,7 @@ output to be in XML.
 
 @sp 1
 @table @code
-@item break [-PS] [-E@var{ignore-count}] [-I@var{ignore-count}] @var{filename}:@var{linenumber}
+@item break [-PS] [-E@var{ignore-count}] [-I@var{ignore-count}] [-n] [-p@var{print-spec}]* @var{filename}:@var{linenumber}
 @kindex break (mdb command)
 Puts a break point on the specified line of the specified source file,
 if there is an event or a call at that position.
@@ -2908,9 +2921,20 @@ tell the debugger to ignore the breakpoint
 until after @var{ignore-count} occurrences of interface events
 that match the breakpoint.
 @sp 1
-By default, the initial state of the break point is @samp{stop},
-and the ignore count is zero.
-@item break [-AOPSaei] [-E@var{ignore-count}] [-I@var{ignore-count}] @var{proc-spec}
+Each occurrence of the options
+@samp{-p@var{printspec}} and @samp{--print-list @var{printspec}}
+tells the debugger to include the specified entity
+in the breakpoint's print list.
+@sp 1
+Normally, if a variable with the given name or number doesn't exist
+when execution reaches the breakpoint, mdb will issue a warning.
+The option @samp{-n} or @samp{--no-warn}, if present, suppresses this warning.
+This can be useful if e.g. the name is the name of an output variable,
+which of course won't be present at call events.
+@sp 1
+By default, the action of the break point is @samp{stop},
+the ignore count is zero, and the print list is empty.
+@item break [-AOPSaei] [-E@var{ignore-count}] [-I@var{ignore-count}] [-n] [-p@var{print-spec}]* @var{proc-spec}
 @c <module name> <predicate name> [<arity> [<mode> [<predfunc>]]]
 Puts a break point on the specified procedure.
 @sp 1
@@ -2947,11 +2971,22 @@ tell the debugger to ignore the breakpoint
 until after @var{ignore-count} occurrences of interface events
 that match the breakpoint.
 @sp 1
+Each occurrence of the options
+@samp{-p@var{printspec}} and @samp{--print-list @var{printspec}}
+tells the debugger to include the specified entity
+in the breakpoint's print list.
+@sp 1
+Normally, if a variable with the given name or number doesn't exist
+when execution reaches the breakpoint, mdb will issue a warning.
+The option @samp{-n} or @samp{--no-warn}, if present, suppresses this warning.
+This can be useful if e.g. the name is the name of an output variable,
+which of course won't be present at call events.
+@sp 1
 By default, the action of the break point is @samp{stop},
 its invocation condition is @samp{interface},
-and the ignore count is zero.
+the ignore count is zero, and the print list is empty.
 @sp 1
-@item break [-PS] [-E@var{ignore-count}] [-I@var{ignore-count}] here
+@item break [-PS] [-E@var{ignore-count}] [-I@var{ignore-count}] [-n] [-p@var{print-spec}]* here
 Puts a break point on the procedure referred to by the current event,
 with the invocation condition being the event at the current location
 in the procedure body.
@@ -2970,11 +3005,22 @@ tell the debugger to ignore the breakpoint
 until after @var{ignore-count} occurrences of interface events
 that match the breakpoint.
 @sp 1
-By default, the initial state of the break point is @samp{stop},
-and the ignore count is zero.
+Each occurrence of the options
+@samp{-p@var{printspec}} and @samp{--print-list @var{printspec}}
+tells the debugger to include the specified entity
+in the breakpoint's print list.
+@sp 1
+Normally, if a variable with the given name or number doesn't exist
+when execution reaches the breakpoint, mdb will issue a warning.
+The option @samp{-n} or @samp{--no-warn}, if present, suppresses this warning.
+This can be useful if e.g. the name is the name of an output variable,
+which of course won't be present at call events.
+@sp 1
+By default, the action of the break point is @samp{stop},
+the ignore count is zero, and the print list is empty.
 @sp 1
 @item break info
-Lists the details and status of all break points.
+Lists the details, status and print lists of all break points.
 @sp 1
 @item ignore [-E@var{ignore-count}] [-I@var{ignore-count}] @var{num}
 @sp 1
@@ -3009,6 +3055,27 @@ If neither option is given,
 the default is to ignore one call event
 that matches the most recently added breakpoint.
 Reports an error if the most recently added breakpoint has since been deleted.
+@sp 1
+@item break_print [-fpv] [-e] [-n] @var{num} @var{print-spec}*
+@sp 1
+Adds the specified print list elements (there may be more than one)
+to the print list of the brakpoint numbered @var{num}.
+@sp 1
+Normally, if a variable with the given name or number doesn't exist
+when execution reaches the breakpoint, mdb will issue a warning.
+The option @samp{-n} or @samp{--no-warn}, if present, suppresses this warning.
+This can be useful if e.g. the name is the name of an output variable,
+which of course won't be present at call events.
+@sp 1
+Normally, the specified elements will be added
+at the start of the breakpoint's print list.
+The option @samp{-e} or @samp{--end}, if present,
+causes them to be added at the end.
+@sp 1
+By default, the the specified elements will be printed with format "flat".
+The options @samp{-f} or @samp{--flat}, @samp{-p} or @samp{--pretty},
+and @samp{-v} or @samp{--verbose}, if given,
+explicitly specify the format to use.
 @sp 1
 @item disable @var{num}
 @kindex disable (mdb command)

@@ -90,16 +90,51 @@ mdb> disable 3
  3: - stop      entry pred breakpoints.qperm/2-0 (nondet)
 mdb> break nodiag
  0: + stop  interface pred breakpoints.nodiag/3-0 (semidet)
+mdb> break_print -v -n 1 HeadVar__1 HeadVar__2
+ 1: + stop  interface pred breakpoints.qperm/2-0 (nondet)
+            HeadVar__1 (verbose, nowarn), HeadVar__2 (verbose, nowarn)
 mdb> continue
       E3:     C3 CALL pred breakpoints.qperm/2-0 (nondet) breakpoints.m:64 (breakpoints.m:61)
+       HeadVar__1             	
+[|]
+1-1
+2-[|]
+  1-2
+  2-[|]
+    1-3
+    2-[|]/2
+
+mdb> break_print 1 none
+ 1: + stop  interface pred breakpoints.qperm/2-0 (nondet)
+mdb> set -p depth 10
+mdb> set -p size 20
+mdb> break_print -p -n 1 HeadVar__1 HeadVar__2
+ 1: + stop  interface pred breakpoints.qperm/2-0 (nondet)
+            HeadVar__1 (pretty, nowarn), HeadVar__2 (pretty, nowarn)
 mdb> continue
       E4:     C3 SWTC pred breakpoints.qperm/2-0 (nondet) s2; breakpoints.m:65
 mdb> finish -N
       E5:     C4 CALL pred breakpoints.qperm/2-0 (nondet) breakpoints.m:64 (breakpoints.m:68)
+       HeadVar__1             	
+[2, 3, 4, 5]
 mdb> finish -n
       E6:     C4 EXIT pred breakpoints.qperm/2-0 (nondet) breakpoints.m:64 (breakpoints.m:68)
+       HeadVar__1             	
+[2, 3, 4, 5]
+       HeadVar__2             	
+[2, 3, 4, 5]
+mdb> break_print 1 none
+ 1: + stop  interface pred breakpoints.qperm/2-0 (nondet)
+mdb> break_print -f -n 1 HeadVar__1
+ 1: + stop  interface pred breakpoints.qperm/2-0 (nondet)
+            HeadVar__1 (flat, nowarn)
+mdb> break_print -f -e -n 1 HeadVar__2
+ 1: + stop  interface pred breakpoints.qperm/2-0 (nondet)
+            HeadVar__1 (flat, nowarn), HeadVar__2 (flat, nowarn)
 mdb> continue
       E7:     C3 EXIT pred breakpoints.qperm/2-0 (nondet) breakpoints.m:64 (breakpoints.m:61)
+       HeadVar__1             	[1, 2, 3, 4, 5]
+       HeadVar__2             	[1, 2, 3, 4, 5]
 mdb> continue
       E8:     C5 CALL pred breakpoints.safe/1-0 (semidet) breakpoints.m:74 (breakpoints.m:62)
 mdb> finish
@@ -187,7 +222,36 @@ mdb> break -O a.testmod.test_in_ab
  0: + stop  interface func breakpoints.a.testmod.test_in_ab/0-0 (det)
 mdb> break -O b.testmod.test_in_ab
  1: + stop  interface func breakpoints.b.testmod.test_in_ab/0-0 (det)
+mdb> delete *
+ 0: E stop  interface func breakpoints.a.testmod.test_in_ab/0-0 (det)
+ 1: E stop  interface func breakpoints.b.testmod.test_in_ab/0-0 (det)
+mdb> break -O -p goal test_in_a
+ 0: + stop  interface func breakpoints.a.testmod.test_in_a/0-0 (det)
+            goal (flat)
+mdb> break -O -P -p HeadVar__1 test_in_b
+ 1: + print interface func breakpoints.b.testmod.test_in_b/0-0 (det)
+            HeadVar__1 (flat)
+mdb> break info
+ 0: + stop  interface func breakpoints.a.testmod.test_in_a/0-0 (det)
+            goal (flat)
+ 1: + print interface func breakpoints.b.testmod.test_in_b/0-0 (det)
+            HeadVar__1 (flat)
 mdb> continue
 [1, 3, 5, 2, 4]
+     E14:     C9 CALL func breakpoints.a.testmod.test_in_a/0-0 (det) breakpoints.a.testmod.m:10 (breakpoints.m:27)
+test_in_a = '_'
+mdb> break_print 0 none
+ 0: + stop  interface func breakpoints.a.testmod.test_in_a/0-0 (det)
+mdb> break_print 0 *
+ 0: + stop  interface func breakpoints.a.testmod.test_in_a/0-0 (det)
+            all (flat)
+mdb> continue
+     E15:     C9 EXIT func breakpoints.a.testmod.test_in_a/0-0 (det) breakpoints.a.testmod.m:10 (breakpoints.m:27)
+       HeadVar__1             	"a"
+mdb> continue
 "a"
+     E16:    C10 CALL func breakpoints.b.testmod.test_in_b/0-0 (det) breakpoints.b.testmod.m:10 (breakpoints.m:29)
+mdb: there is no variable named HeadVar__1.
+     E17:    C10 EXIT func breakpoints.b.testmod.test_in_b/0-0 (det) breakpoints.b.testmod.m:10 (breakpoints.m:29)
+       HeadVar__1             	"b"
 "b"

@@ -318,7 +318,7 @@ MR_trace_decl_debug(MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info)
 				(unsigned long) event_info->MR_event_number,
 				(unsigned long) MR_edt_last_event);
 		MR_trace_decl_mode = MR_TRACE_INTERACTIVE;
-		return MR_trace_event_internal(cmd, MR_TRUE, event_info);
+		return MR_trace_event_internal(cmd, MR_TRUE, NULL, event_info);
 	}
 
 	if (!MR_PROC_LAYOUT_HAS_EXEC_TRACE(entry)) {
@@ -1427,7 +1427,7 @@ MR_trace_restart_decl_debug(
 		MR_trace_decl_mode = MR_TRACE_INTERACTIVE;
 		MR_debug_enabled = MR_TRUE;
 		MR_update_trace_func_enabled();
-		return MR_trace_event_internal(cmd, MR_TRUE, event_info);
+		return MR_trace_event_internal(cmd, MR_TRUE, NULL, event_info);
 	}
 
 	return jumpaddr;
@@ -1552,7 +1552,7 @@ MR_decl_diagnosis(MR_Trace_Node root, MR_Trace_Cmd_Info *cmd,
 		MR_trace_call_depth = event_details->MR_call_depth;
 		MR_trace_event_number = event_details->MR_event_number;
 
-		return MR_trace_event_internal(cmd, MR_TRUE, event_info);
+		return MR_trace_event_internal(cmd, MR_TRUE, NULL, event_info);
 	}
 
 	if (MR_trace_decl_in_dd_dd_mode) {
@@ -1697,7 +1697,7 @@ MR_decl_go_to_selected_event(MR_Unsigned event, MR_Trace_Cmd_Info *cmd,
 		MR_trace_decl_mode = MR_TRACE_INTERACTIVE;
 		MR_debug_enabled = MR_TRUE;
 		MR_update_trace_func_enabled();
-		return MR_trace_event_internal(cmd, MR_TRUE, event_info);
+		return MR_trace_event_internal(cmd, MR_TRUE, NULL, event_info);
 	}
 
 	cmd->MR_trace_cmd = MR_CMD_GOTO;
