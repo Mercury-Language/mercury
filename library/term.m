@@ -224,6 +224,9 @@ term__occurs(term_variable(X), Y, Bindings) :-
 term__occurs(term_functor(_F, As, _), Y, Bindings) :-
 	term__occurs_list(As, Y, Bindings).
 
+:- pred term__occurs_list(list(term), variable, substitution).
+:- mode term__occurs_list(input, input, input).
+
 term__occurs_list([Term | Terms], Y, Bindings) :-
 	(if
 		term__occurs(Term, Y, Bindings)
