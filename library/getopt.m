@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1999 The University of Melbourne.
+% Copyright (C) 1994-1999,2001 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General 
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -75,10 +75,12 @@
 
 % getopt__process_options(OptionOps, Args, NonOptionArgs, Result)
 %
-%	Scans through 'Args' looking for options, places all the
-%	non-option arguments in 'NonOptionArgs', and records the
-%	options in the OptionTable.  OptionTable is a map from 
-%	a user-defined option type to option_data.
+% getopt__process_options(OptionOps, Args, OptionArgs, NonOptionArgs, Result)
+%
+%	Scans through 'Args' looking for options, places all the option
+%	arguments in OptionArgs, places all the	non-option arguments in
+%	'NonOptionArgs', and records the options in the OptionTable.
+%	OptionTable is a map from a user-defined option type to option_data.
 %	If an invalid option is encountered, we return error(Message)
 %	otherwise we return ok(OptionTable) in 'Result'.
 % 
@@ -109,6 +111,14 @@
 :- pred getopt__process_options(
 		option_ops(OptionType)::in(option_ops),
 		list(string)::in,
+		list(string)::out,
+		maybe_option_table(OptionType)::out
+	) is det.
+
+:- pred getopt__process_options(
+		option_ops(OptionType)::in(option_ops),
+		list(string)::in,
+		list(string)::out,
 		list(string)::out,
 		maybe_option_table(OptionType)::out
 	) is det.
@@ -214,22 +224,30 @@
 :- import_module require, string.
 
 getopt__process_options(OptionOps, Args0, Args, Result) :-
+	getopt__process_options(OptionOps, Args0, _, Args, Result).
+
+getopt__process_options(OptionOps, Args0, OptionArgs, NonOptionArgs, Result) :-
 	getopt__get_option_defaults(OptionOps, OptionDefaultsPred),
 	solutions(lambda([OptionDataPair::out] is nondet, (
 			OptionDataPair = Option - OptionData,
 			call(OptionDefaultsPred, Option, OptionData)
 		)), OptionDefaultsList),
 	map__from_assoc_list(OptionDefaultsList, OptionTable0),
-	getopt__process_arguments(Args0, Args, OptionOps, OptionTable0, Result).
+	getopt__process_arguments(Args0, NonOptionArgs, OptionOps,
+		[], RevOptionArgs, OptionTable0, Result),
+	OptionArgs = list__reverse(RevOptionArgs).
 
 :- pred getopt__process_arguments(list(string)::in, list(string)::out,
-	option_ops(OptionType)::in(option_ops), option_table(OptionType)::in,
+	option_ops(OptionType)::in(option_ops), list(string)::in,
+	list(string)::out, option_table(OptionType)::in,
 	maybe_option_table(OptionType)::out) is det.
 
-getopt__process_arguments([], [], _, OptionTable, ok(OptionTable)).
+getopt__process_arguments([], [], _, OptionArgs, OptionArgs,
+		OptionTable, ok(OptionTable)).
 getopt__process_arguments([Option | Args0], Args, OptionOps,
-		OptionTable0, Result) :-
+		OptionArgs0, OptionArgs, OptionTable0, Result) :-
 	( Option = "--" ->	% "--" terminates option processing
+		OptionArgs = OptionArgs0,
 		Args = Args0,
 		Result = ok(OptionTable0)
 	; string__append("--no-", LongOption, Option) ->
@@ -240,15 +258,18 @@ getopt__process_arguments([Option | Args0], Args, OptionOps,
 				OptionOps, OptionTable0, Result1),
 			( Result1 = ok(OptionTable1) ->
 				getopt__process_arguments(Args0, Args,
-					OptionOps, OptionTable1, Result)
+					OptionOps, [Option | OptionArgs0],
+					OptionArgs, OptionTable1, Result)
 			;
 				Result = Result1,
+				OptionArgs = OptionArgs0,
 				Args = Args0
 			)
 		;
 			string__append_list(["unrecognized option `",
 				Option, "'"], ErrorMsg),
 			Result = error(ErrorMsg),
+			OptionArgs = OptionArgs0,
 			Args = Args0
 		)
 	; string__append("--", LongOptionStr, Option) ->
@@ -269,17 +290,20 @@ getopt__process_arguments([Option | Args0], Args, OptionOps,
 			( map__search(OptionTable0, Flag, OptionData) ->
 				getopt__handle_long_option(Option, Flag,
 					OptionData, MaybeArg, Args0, Args,
-					OptionOps, OptionTable0, Result)
+					OptionOps, [Option | OptionArgs0],
+					OptionArgs, OptionTable0, Result)
 			;
 				string__append_list(["unknown type for option `",
 					Option, "'"], ErrorMsg),
 				Result = error(ErrorMsg),
+				OptionArgs = OptionArgs0,
 				Args = Args0
 			)
 		;
 			string__append("unrecognized option `", Option, Tmp),
 			string__append(Tmp, "'", ErrorMsg),
 			Result = error(ErrorMsg),
+			OptionArgs = OptionArgs0,
 			Args = Args0
 		)
 	; string__first_char(Option, '-', ShortOptions), ShortOptions \= "" ->
@@ -294,15 +318,20 @@ getopt__process_arguments([Option | Args0], Args, OptionOps,
 					OptionOps, OptionTable0, Result1),
 				( Result1 = ok(OptionTable1) ->
 					getopt__process_arguments(Args0, Args,
-						OptionOps, OptionTable1, Result)
+						OptionOps,
+						[Option | OptionArgs0],
+						OptionArgs, OptionTable1,
+						Result)
 				;
 					Result = Result1,
+					OptionArgs = OptionArgs0,
 					Args = Args0
 				)
 			;
 				string__append_list(["unrecognized option `-",
 					ShortOptions, "'"], ErrorMsg),
 				Result = error(ErrorMsg),
+				OptionArgs = OptionArgs0,
 				Args = Args0
 			)
 		;
@@ -312,12 +341,16 @@ getopt__process_arguments([Option | Args0], Args, OptionOps,
 			% The first element of Args0 may also be an argument
 			% of an option.
 			getopt__handle_short_options(ShortOptionsList,
-				OptionOps, Args0, Args1, OptionTable0, Result1),
+				OptionOps, Args0, Args1,
+				[Option | OptionArgs0], OptionArgs1,
+				OptionTable0, Result1),
 			( Result1 = ok(OptionTable1) ->
 				getopt__process_arguments(Args1, Args,
-					OptionOps, OptionTable1, Result)
+					OptionOps, OptionArgs1, OptionArgs,
+					OptionTable1, Result)
 			;
 				Result = Result1,
+				OptionArgs = OptionArgs1,
 				Args = Args0
 			)
 		)
@@ -326,17 +359,19 @@ getopt__process_arguments([Option | Args0], Args, OptionOps,
 		% As a GNU extension, keep searching for options
 		% in the remaining arguments.
 		getopt__process_arguments(Args0, Args1, OptionOps,
-			OptionTable0, Result),
+			OptionArgs0, OptionArgs, OptionTable0, Result),
 		Args = [Option | Args1]
 	).
 
 :- pred getopt__handle_long_option(string::in, OptionType::in, option_data::in,
 	maybe(string)::in, list(string)::in, list(string)::out,
-	option_ops(OptionType)::in(option_ops), option_table(OptionType)::in,
+	option_ops(OptionType)::in(option_ops), list(string)::in,
+	list(string)::out, option_table(OptionType)::in,
 	maybe_option_table(OptionType)::out) is det.
 
 getopt__handle_long_option(Option, Flag, OptionData, MaybeOptionArg0,
-		Args0, Args, OptionOps, OptionTable0, Result) :-
+		Args0, Args, OptionOps, OptionArgs0, OptionArgs,
+		OptionTable0, Result) :-
 	(
 		getopt__need_arg(OptionData, yes),
 		MaybeOptionArg0 = no
@@ -344,19 +379,23 @@ getopt__handle_long_option(Option, Flag, OptionData, MaybeOptionArg0,
 		( Args0 = [Arg | ArgsTail] ->
 			MaybeOptionArg = yes(Arg),
 			Args1 = ArgsTail,
-			MissingArg = no
+			MissingArg = no,
+			OptionArgs1 = [Arg | OptionArgs0]
 		;
 			MaybeOptionArg = no,
 			Args1 = Args0,
+			OptionArgs1 = OptionArgs0,
 			MissingArg = yes
 		)
 	;
 		MaybeOptionArg = MaybeOptionArg0,
 		Args1 = Args0,
+		OptionArgs1 = OptionArgs0,
 		MissingArg = no
 	),
 	( MissingArg = yes ->
 		Args = Args0,
+		OptionArgs = OptionArgs1,
 		string__append_list(["option `", Option,
 			"' needs an argument"],
 			ErrorMsg),
@@ -366,32 +405,38 @@ getopt__handle_long_option(Option, Flag, OptionData, MaybeOptionArg0,
 			MaybeOptionArg, OptionOps, OptionTable0, Result1),
 		( Result1 = ok(OptionTable1) ->
 			getopt__process_arguments(Args1, Args,
-				OptionOps, OptionTable1, Result)
+				OptionOps, OptionArgs1, OptionArgs,
+				OptionTable1, Result)
 		;
 			Result = Result1,
+			OptionArgs = OptionArgs1,
 			Args = Args1
 		)
 	).
 
 :- pred getopt__handle_short_options(list(char)::in,
 	option_ops(OptionType)::in(option_ops), list(string)::in,
-	list(string)::out, option_table(OptionType)::in,
+	list(string)::out, list(string)::in, list(string)::out,
+	option_table(OptionType)::in,
 	maybe_option_table(OptionType)::out) is det.
 
-getopt__handle_short_options([], _, Args, Args, OptionTable, ok(OptionTable)).
+getopt__handle_short_options([], _, Args, Args, OptionArgs, OptionArgs,
+		OptionTable, ok(OptionTable)).
 getopt__handle_short_options([Opt | Opts0], OptionOps, Args0, Args,
-		OptionTable0, Result) :-
+		OptionArgs0, OptionArgs, OptionTable0, Result) :-
 	getopt__get_short_options(OptionOps, ShortOptionPred),
 	( call(ShortOptionPred, Opt, Flag) ->
 		( map__search(OptionTable0, Flag, OptionData) ->
 			( getopt__need_arg(OptionData, yes) ->
 				getopt__get_short_option_arg(Opts0, Arg,
-					Args0, Args1),
+					Args0, Args1,
+					OptionArgs0, OptionArgs1),
 				MaybeOptionArg = yes(Arg),
 				Opts1 = []
 			;
 				MaybeOptionArg = no,
 				Opts1 = Opts0,
+				OptionArgs1 = OptionArgs0,
 				Args1 = Args0
 			),
 			string__from_char_list(['-', Opt], Option),
@@ -400,9 +445,11 @@ getopt__handle_short_options([Opt | Opts0], OptionOps, Args0, Args,
 				OptionTable0, Result1),
 			( Result1 = ok(OptionTable1) ->
 				getopt__handle_short_options(Opts1, OptionOps,
-					Args1, Args, OptionTable1, Result)
+					Args1, Args, OptionArgs1, OptionArgs,
+					OptionTable1, Result)
 			;
 				Result = Result1,
+				OptionArgs = OptionArgs1,
 				Args = Args1
 			)
 		;
@@ -410,6 +457,7 @@ getopt__handle_short_options([Opt | Opts0], OptionOps, Args0, Args,
 			string__append_list(["unknown type for option `-",
 				OptString, "'"], ErrorMsg),
 			Result = error(ErrorMsg),
+			OptionArgs = OptionArgs0,
 			Args = Args0
 		)
 	;
@@ -417,22 +465,26 @@ getopt__handle_short_options([Opt | Opts0], OptionOps, Args0, Args,
 		string__append_list(["unrecognized option `-", OptString, "'"],
 			ErrorMsg),
 		Result = error(ErrorMsg),
+		OptionArgs = OptionArgs0,
 		Args = Args0
 	).
 
 :- pred getopt__get_short_option_arg(list(char), string,
-	list(string), list(string)).
-:- mode getopt__get_short_option_arg(in, out, in, out) is det.
+	list(string), list(string), list(string), list(string)).
+:- mode getopt__get_short_option_arg(in, out, in, out, in, out) is det.
 
-getopt__get_short_option_arg(Opts, Arg, Args0, Args) :-
+getopt__get_short_option_arg(Opts, Arg, Args0, Args,
+		OptionArgs0, OptionArgs) :-
 	(
 		Opts = [],
 		Args0 = [ArgPrime | ArgsPrime]
 	->
+		OptionArgs = [ArgPrime | OptionArgs0],
 		Arg = ArgPrime,
 		Args = ArgsPrime
 	;
 		string__from_char_list(Opts, Arg),
+		OptionArgs = OptionArgs0,
 		Args = Args0
 	).
 
