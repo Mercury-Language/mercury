@@ -2767,7 +2767,7 @@ select_output_vars(ModuleInfo, HeadVars, HeadModes, VarTypes) = OutputVars :-
 	; HeadVars = [Var|Vars], HeadModes = [Mode|Modes] ->
 		map__lookup(VarTypes, Var, VarType),
 		(
-			\+ mode_to_arg_mode(ModuleInfo, Mode, VarType, top_in)
+			mode_to_arg_mode(ModuleInfo, Mode, VarType, top_out)
 		->
 			OutputVars1 = select_output_vars(ModuleInfo,
 					Vars, Modes, VarTypes),

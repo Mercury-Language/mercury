@@ -1420,10 +1420,27 @@ unsorted_aggregate(Generator, Accumulator, Acc0, Acc) :-
 	[will_not_call_mercury, thread_safe, promise_pure],
 	"Y = X;").
 
+:- pragma foreign_proc("Java",
+	cc_multi_equal(X::in, Y::out),
+	[will_not_call_mercury, thread_safe, promise_pure],
+	"Y = X;").
+:- pragma foreign_proc("Java",
+	cc_multi_equal(X::di, Y::uo),
+	[will_not_call_mercury, thread_safe, promise_pure],
+	"Y = X;").
+
+% We can't just use "true" and "fail" here, because that provokes warnings
+% from determinism analysis, and the library is compiled with --halt-at-warn.
+% So instead we use 0+0 = (or \=) 0.
+% This is guaranteed to succeed or fail (respectively),
+% and with a bit of luck will even get optimized by constant propagation.
+% But this optimization won't happen until after determinism analysis,
+% which doesn't know anything about integer arithmetic,
+% so this code won't provide a warning from determinism analysis.
 semidet_succeed :-
-	true.
+	0 + 0 = 0.
 semidet_fail :-
-	fail.
+	0 + 0 \= 0.
 
 :- pragma promise_pure(cc_multi_equal/2).
 cc_multi_equal(X, X).

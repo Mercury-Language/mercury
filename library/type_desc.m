@@ -321,6 +321,14 @@ do_compare__type_desc_0_0(
 	TypeInfo = TypeInfo_for_T;
 ").
 
+:- pragma foreign_proc("Java",
+	type_of(_Value::unused) = (TypeInfo::out),
+	[will_not_call_mercury, thread_safe, promise_pure],
+"
+	TypeInfo = TypeInfo_for_T;
+").
+
+
 :- pragma foreign_proc("C", 
 	has_type(_Arg::unused, TypeInfo::in),
 	[will_not_call_mercury, thread_safe, promise_pure],
@@ -334,6 +342,14 @@ do_compare__type_desc_0_0(
 "
 	TypeInfo_for_T = TypeInfo;
 ").
+
+:- pragma foreign_proc("Java", 
+	has_type(_Arg::unused, TypeInfo::in),
+	[will_not_call_mercury, thread_safe, promise_pure],
+"
+	TypeInfo_for_T = TypeInfo;
+").
+
 
 % Export this function in order to use it in runtime/mercury_trace_external.c
 :- pragma export(type_name(in) = out, "ML_type_name").
@@ -593,5 +609,16 @@ type_ctor_name_and_arity(TypeCtorDesc::in, ModuleName::out,
 get_type_info_for_type_info = TypeDesc :-
 	Type = type_of(1),
 	TypeDesc = type_of(Type).
+
+%-----------------------------------------------------------------------------%
+
+:- pragma foreign_code("Java", "
+	public class type_desc_0 {
+		// ...
+	}
+	public class type_ctor_desc_0 {
+		// ...
+	}
+").
 
 %-----------------------------------------------------------------------------%

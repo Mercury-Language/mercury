@@ -246,7 +246,10 @@
 % The store type itself is just a dummy type,
 % with no real representation.
 
-:- type store(S) ---> store(c_pointer).
+	% XXX we use `mkstore' here rather than `store' to work
+	%     around a bug with the Java back-end: it generates
+	%     invalid Java code if we use `store'.
+:- type store(S) ---> mkstore(c_pointer).
 
 % Mutvars and references are each represented as a pointer to a single word
 % on the heap.

@@ -23,6 +23,10 @@
 %	handle foreign code written in Java
 %
 % TODO: 
+% 	Support for Java in Mmake and mmc --make
+% 	Fix problem with type names and constructor names that are the same
+% 		(Java does not allow the name of a nested class to be
+% 		the same as its enclosing class)
 %	General code cleanup
 %	handle static ground terms
 %	RTTI (requires static ground terms)
@@ -83,6 +87,7 @@
 :- import_module parse_tree__modules.       % for mercury_std_library_name.
 :- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_out.
+:- import_module parse_tree__prog_util.
 
 :- import_module bool, int, string, library, list, map, set.
 :- import_module assoc_list, term, std_util, require.
@@ -90,6 +95,9 @@
 %-----------------------------------------------------------------------------%
 
 mlds_to_java__output_mlds(MLDS) -->
+	% Note that the Java file name that we use for modules in the
+	% Mercury standard library do not include a "mercury." prefix;
+	% that's why we don't call mercury_module_name_to_mlds here.
 	{ ModuleName = mlds__get_module_name(MLDS) },
 	{ JavaSafeModuleName = valid_module_name(ModuleName) },
 	module_name_to_file_name(JavaSafeModuleName, ".java", yes, 
@@ -303,8 +311,9 @@ valid_symbol_name(SymName) = ValidSymName :-
 		ValidSymName = SymName
 	).
 
+:- type java_module_name == sym_name.
 
-:- func valid_module_name(mercury_module_name) = mercury_module_name.
+:- func valid_module_name(java_module_name) = java_module_name.
 :- mode valid_module_name(in) = out is det.
 
 valid_module_name(unqualified(String)) =  ValidModuleName :-
@@ -383,19 +392,21 @@ output_java_src_file(Indent, MLDS) -->
 	{ Defns = WrapperDefns ++ Defns0 },
 	%
 	% Get the foreign code for Java
+	% XXX We should not ignore _RevImports and _ExportDefns
 	%
 	{ ForeignCode = mlds_get_java_foreign_code(AllForeignCode) },
 	{ ForeignCode = mlds__foreign_code(RevForeignDecls, _RevImports,
-		_RevBodyCode, _ExportDefns) },
+		RevBodyCode, _ExportDefns) },
 	{ ForeignDecls = list__reverse(RevForeignDecls) },
+	{ ForeignBodyCode = list__reverse(RevBodyCode) },
 	%
 	% Output transformed MLDS as Java source.  
 	%
-	output_src_start(Indent, ModuleName, Imports, Defns), 
+	output_src_start(Indent, ModuleName, Imports, ForeignDecls, Defns), 
 	{ list__filter(defn_is_rtti_data, Defns, _RttiDefns, NonRttiDefns) },
 	% XXX Need to output RTTI data at this point.
 	% Output Java foreign code declarations.
-	io__write_list(ForeignDecls, "\n", output_java_decl(Indent)),
+	io__write_list(ForeignBodyCode, "\n", output_java_body_code(Indent)),
 	{ CtorData = none },  % Not a constructor.
 	output_defns(Indent + 1, MLDS_ModuleName, CtorData, NonRttiDefns),
 	output_src_end(Indent, ModuleName).
@@ -419,6 +430,17 @@ output_java_decl(Indent, foreign_decl_code(Lang, Code, Context)) -->
 		{ sorry(this_file, "foreign code other than Java") }
 	).
 
+:- pred output_java_body_code(indent, user_foreign_code, io__state, io__state).
+:- mode output_java_body_code(in, in, di, uo) is det.
+
+output_java_body_code(Indent, user_foreign_code(Lang, Code, Context)) -->
+	% only output Java code
+	( { Lang = java } ->
+		indent_line(make_context(Context), Indent),
+		io__write_string(Code), io__nl
+	;
+		{ sorry(this_file, "foreign code other than Java") }
+	).
 
 :- func mlds_get_java_foreign_code(map(foreign_language, mlds__foreign_code))
 		= mlds__foreign_code.
@@ -428,8 +450,6 @@ mlds_get_java_foreign_code(AllForeignCode) = ForeignCode :-
 	( map__search(AllForeignCode, java, ForeignCode0) ->
 		ForeignCode = ForeignCode0
 	;
-		% This can occur when compiling to a non-C target
-		% using "--mlds-dump all"
 		ForeignCode = foreign_code([], [], [], [])
 	).
 
@@ -940,21 +960,25 @@ pred_label_string(special_pred(PredName, MaybeTypeModule,
 % 
 
 :- pred output_src_start(indent, mercury_module_name, mlds__imports, 
-	mlds__defns, io__state, io__state).
+	list(foreign_decl_code), mlds__defns, io__state, io__state).
 
-:- mode output_src_start(in, in, in, in, di, uo) is det.
+:- mode output_src_start(in, in, in, in, in, di, uo) is det.
 
-output_src_start(Indent, ModuleName, Imports, Defns) -->
-	{ JavaSafeModuleName = valid_module_name(ModuleName) },
-	output_auto_gen_comment(ModuleName),
+output_src_start(Indent, MercuryModuleName, Imports, ForeignDecls, Defns) -->
+	{ MLDSModuleName = mercury_module_name_to_mlds(MercuryModuleName) },
+	{ ModuleSymName = mlds_module_name_to_sym_name(MLDSModuleName) },
+	{ JavaSafeModuleName = valid_module_name(ModuleSymName) },
+	output_auto_gen_comment(MercuryModuleName),
 	indent_line(Indent),
 	io__write_string("/* :- module "),
-	prog_out__write_sym_name(JavaSafeModuleName),
+	prog_out__write_sym_name(MercuryModuleName),
 	io__write_string(". */\n\n"),
 	output_package_info(JavaSafeModuleName),	
 	output_imports(Imports), 
+	io__write_list(ForeignDecls, "\n", output_java_decl(Indent)),
 	io__write_string("public class "),
-	prog_out__write_sym_name(JavaSafeModuleName),
+	{ unqualify_name(JavaSafeModuleName, ClassName) },
+	io__write_string(ClassName),
 	io__write_string(" {\n"),
 	maybe_write_main_driver(Indent + 1, JavaSafeModuleName, Defns).
 
@@ -976,11 +1000,11 @@ output_package_info(qualified(Module, _)) -->
 	% `main' predicate. Save the command line arguments in the class 
 	% variable `args' in the class `mercury.runtime.JavaInternal'.
 	%
-:- pred maybe_write_main_driver(indent, mercury_module_name,  
+:- pred maybe_write_main_driver(indent, java_module_name,  
 	mlds__defns, io__state, io__state). 
 :- mode maybe_write_main_driver(in, in, in, di, uo) is det.
 
-maybe_write_main_driver(Indent, ModuleName, Defns) -->
+maybe_write_main_driver(Indent, JavaSafeModuleName, Defns) -->
 	(
 		{ defns_contain_main(Defns) }
 	->
@@ -996,7 +1020,7 @@ maybe_write_main_driver(Indent, ModuleName, Defns) -->
 		%
 		io__write_string("mercury.runtime.JavaInternal.args = args;\n"),
 		indent_line(Indent + 1),
-		prog_out__write_sym_name(ModuleName),
+		prog_out__write_sym_name(JavaSafeModuleName),
 		io__write_string(".main_2_p_0();\n"),
 		indent_line(Indent + 1),
 		io__write_string("return;\n"), 
@@ -1011,17 +1035,16 @@ maybe_write_main_driver(Indent, ModuleName, Defns) -->
 :- mode output_src_end(in, in, di, uo) is det.
 
 output_src_end(Indent, ModuleName) -->
-	{ JavaSafeModuleName = valid_module_name(ModuleName) },
 	io__write_string("}\n"),
 	indent_line(Indent),
 	io__write_string("// :- end_module "),
-	prog_out__write_sym_name(JavaSafeModuleName),
+	prog_out__write_sym_name(ModuleName),
 	io__write_string(".\n").
 
 	% Output a Java comment saying that the file was automatically
 	% generated and give details such as the compiler version.
 	%
-:- pred output_auto_gen_comment(module_name, io__state, io__state).
+:- pred output_auto_gen_comment(mercury_module_name, io__state, io__state).
 :- mode output_auto_gen_comment(in, di, uo) is det.
 
 output_auto_gen_comment(ModuleName) --> 
@@ -1035,6 +1058,7 @@ output_auto_gen_comment(ModuleName) -->
 	io__write_string("//\n"),
 	io__write_string("//\n"),
 	io__nl.
+
 %-----------------------------------------------------------------------------%
 %
 % Code to output declarations and definitions.
@@ -1443,15 +1467,24 @@ output_func(Indent, Name, CtorData, Context, Signature, MaybeBody)
 		-->
 	output_func_decl(Indent, Name, CtorData, Context, Signature),
 	(
-		{ MaybeBody = external },
-		io__write_string(";\n")
-	;
 		{ MaybeBody = defined_here(Body) },
 		io__write_string("\n"),
 		indent_line(Context, Indent),
 		io__write_string("{\n"),
 		{ FuncInfo = func_info(Name, Signature) },
 		output_statement(Indent + 1, FuncInfo, Body, _ExitMethods),
+		indent_line(Context, Indent),
+		io__write_string("}\n")	% end the function
+	;
+		{ MaybeBody = external },
+		% Java requires that all function definitions have a body.
+		% So for each external function "Foo", we emit a body
+		% which is just a call to "extern_Foo" with the same
+		% parameters.
+		io__write_string("\n"),
+		indent_line(Context, Indent),
+		io__write_string("{\n"),
+		output_extern_call(Indent + 1, Name, Context, Signature),
 		indent_line(Context, Indent),
 		io__write_string("}\n")	% end the function
 	).
@@ -1482,8 +1515,6 @@ output_func_decl(Indent, QualifiedName, none, Context, Signature) -->
 	output_name(Name),	
 	output_params(Indent, ModuleName, Context, Parameters).
 
-
-
 :- pred output_params(indent, mlds_module_name, mlds__context,
 		mlds__arguments, io__state, io__state).
 :- mode output_params(in, in, in, in, di, uo) is det.
@@ -1508,6 +1539,55 @@ output_param(Indent, ModuleName, Context, Arg) -->
 	indent_line(Context, Indent),
 	output_type(Type),
 	io__write_char(' '),
+	output_fully_qualified_name(qual(ModuleName, Name)).
+
+%-----------------------------------------------------------------------------%
+
+	% Java requires that all function declarations have a body.
+	% So for each function "Foo" which is declared as "external",
+	% we emit a body which is just a call to "extern_Foo" with the same
+	% parameters.
+
+:- pred output_extern_call(indent, qualified_entity_name,
+		mlds__context, func_params, io__state, io__state).
+:- mode output_extern_call(in, in, in, in, di, uo) is det.
+
+output_extern_call(Indent, QualifiedName, Context, Signature) -->
+	{ Signature = mlds__func_params(Parameters, RetTypes) },
+	{ QualifiedName = qual(ModuleName, Name) },
+	indent_line(Context, Indent),
+	( { RetTypes \= [] } ->
+		io__write_string("return ")
+	;
+		[]
+	),
+	io__write_string("extern_"),
+	output_name(Name),
+	output_extern_call_args(Indent, ModuleName, Context, Parameters),
+	io__write_string(";\n").
+
+:- pred output_extern_call_args(indent, mlds_module_name, mlds__context,
+		mlds__arguments, io__state, io__state).
+:- mode output_extern_call_args(in, in, in, in, di, uo) is det.
+
+output_extern_call_args(Indent, ModuleName, Context, Parameters) -->
+	io__write_char('('),
+	( { Parameters = [] } ->
+		[]
+	;
+		io__nl,
+		io__write_list(Parameters, ",\n",
+			output_extern_call_arg(Indent + 1, ModuleName, Context))
+	),
+	io__write_char(')').
+
+:- pred output_extern_call_arg(indent, mlds_module_name, mlds__context,
+		mlds__argument, io__state, io__state).
+:- mode output_extern_call_arg(in, in, in, in, di, uo) is det.
+
+output_extern_call_arg(Indent, ModuleName, Context, Arg) -->
+	{ Arg = mlds__argument(Name, _Type, _GC_TraceCode) },
+	indent_line(Context, Indent),
 	output_fully_qualified_name(qual(ModuleName, Name)).
 
 %-----------------------------------------------------------------------------%
@@ -2741,7 +2821,9 @@ output_lval(var(qual(_ModuleName, Name), _VarType)) -->
 :- mode output_mangled_name(in, di, uo) is det.
 
 output_mangled_name(Name) -->
-	io__write_string(name_mangle(Name)).
+	{ MangledName = name_mangle(Name) },
+	{ JavaSafeName = valid_symbol_name(MangledName) },
+	io__write_string(JavaSafeName).
 
 :- pred mlds_output_bracketed_lval(mlds__lval, io__state, io__state).
 :- mode mlds_output_bracketed_lval(in, di, uo) is det.

@@ -193,13 +193,32 @@ cs: $($(STD_LIB_NAME).cs)
 ss: $($(STD_LIB_NAME).ss)
 pic_ss: $($(STD_LIB_NAME).pic_ss)
 ils: $($(STD_LIB_NAME).ils)
+javas: $($(STD_LIB_NAME).javas)
 else
 os: $(STD_LIB_NAME).os
 cs: $(STD_LIB_NAME).cs
 ss: $(STD_LIB_NAME).ss
 pic_ss: $(STD_LIB_NAME).pic_ss
 ils: $(STD_LIB_NAME).ils
+javas: $(STD_LIB_NAME).javas
 endif
+
+# The names `int', `float', and `char' can't be used as class names,
+# because they are Java keywords.  So we use `mr_int', `mr_float', and
+# `mr_char' instead.  Since Java implementations often assume that
+# a class foo is located in a file foo.java, we similarly mangle the
+# Java file names for these standard library modules.
+JAVAS = ` echo $($(STD_LIB_NAME).javas) | sed \
+		-e 's/ int.java/ mr_int.java/' \
+		-e 's/ float.java/ mr_float.java/' \
+		-e 's/ char.java/ mr_char.java/' `
+
+# We need to invoke javac on all of the classes at the same time,
+# rather than compiling them separately.  This is needed because
+# otherwise javac doesn't handle cyclic dependencies between different
+# modules.
+classes: javas
+	$(JAVAC) $(JAVACFLAGS) $(JAVAS)
 
 #-----------------------------------------------------------------------------#
 
@@ -271,7 +290,17 @@ builtin__cpp_code.dll : builtin__csharp_code.dll
 exception__csharp_code.dll : exception__cpp_code.dll
 CSHARP_ASSEMBLY_REFS-exception__csharp_code += /addmodule:exception__cpp_code.dll
 
-else	# GRADE != il
+endif
+#-----------------------------------------------------------------------------#
+ifeq ("$(findstring java,$(GRADE))","java")
+# XXX Mmake should add this dependency automatically
+lib_std: classes
+endif
+#-----------------------------------------------------------------------------#
+#
+# Some extra rules that we need for the C and asm back-ends
+#
+ifeq ("$(findstring il,$(GRADE))$(findstring java,$(GRADE))","")
 
 # The following dependency is just there to improve compilation speed;
 # making tree234.$O first improves effective parallelism with parallel makes.
@@ -297,9 +326,9 @@ MCFLAGS += --extra-init-command \
 			grep '^INIT ' $$$${module}.m; \
 			true; \
 		done"
-endif
+endif	# 
 
-endif	# GRADE != il
+endif	# GRADE != il && GRADE != java
 #-----------------------------------------------------------------------------#
 
 # Ensure we recompile library__version if VERSION is changed.

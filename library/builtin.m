@@ -1091,6 +1091,42 @@ namespace mercury.builtin {
 }
 ").
 
+:- pragma foreign_code("Java", "
+	public static class void_0
+	{
+		// Make the constructor private to ensure that we can
+		// never create an instance of this class.
+		private void_0()
+		{
+		}
+	}
+").
+
+%-----------------------------------------------------------------------------%
+
+:- pragma foreign_code("Java", "
+
+    public static mercury.private_builtin.type_info_1 builtin__type_ctor_info_int_0 = new mercury.private_builtin.type_info_1();
+    
+    public static mercury.private_builtin.type_info_1 builtin__type_ctor_info_string_0 = new mercury.private_builtin.type_info_1();
+
+    public static mercury.private_builtin.type_info_1 builtin__type_ctor_info_character_0 = new mercury.private_builtin.type_info_1();
+
+    public static boolean unify_2_p_0(mercury.private_builtin.type_info_1 ti,
+		    java.lang.Object x, java.lang.Object y)
+    {
+      throw new java.lang.Error(""unify/3 not implemented"");
+    }
+
+    public static comparison_result_0 compare_3_p_0(
+	mercury.private_builtin.type_info_1 ti,
+	java.lang.Object x, java.lang.Object y)
+    {
+      throw new java.lang.Error(""compare/3 not implemented"");
+    }
+
+").
+
 :- end_module builtin.
 
 %-----------------------------------------------------------------------------%

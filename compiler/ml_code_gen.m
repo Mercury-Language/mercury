@@ -865,9 +865,14 @@ ml_gen_foreign_code(ModuleInfo, All_MLDS_ForeignCode) -->
 
 ml_gen_imports(ModuleInfo, MLDS_ImportList) :-
 		% Determine all the mercury imports.
+		% XXX This is overly conservative,
+		% i.e. we import more than we really need.
 	module_info_globals(ModuleInfo, Globals),
 	globals__get_target(Globals, Target),
-	module_info_get_all_deps(ModuleInfo, AllImports),
+	module_info_get_all_deps(ModuleInfo, AllImports0),
+		% No module needs to import itself.
+	module_info_name(ModuleInfo, ThisModule),
+	AllImports = set__delete(AllImports0, ThisModule),
 	P = (func(Name) = mercury_import(
 				compiler_visible_interface,
 				mercury_module_name_to_mlds(Name))),
@@ -1163,7 +1168,6 @@ ml_gen_proc_defn(ModuleInfo, PredId, ProcId, MLDS_ProcDefnBody, ExtraDefns) :-
 		% value (rather than being passed by reference) and remove
 		% them from the byref_output_vars field in the ml_gen_info.
 		( CodeModel = model_non ->
-		
  			ml_set_up_initial_succ_cont(ModuleInfo, 
 				CopiedOutputVars, MLDSGenInfo0, MLDSGenInfo1)
  		;
@@ -2437,6 +2441,8 @@ ml_gen_ordinary_pragma_java_proc(_CodeModel, Attributes,
 			AssignOutputsList, ConvDecls, ConvStatements),
 	%
 	% Put it all together
+	% XXX FIXME need to handle model_semi code here,
+	%     i.e. provide some equivalent to SUCCESS_INDICATOR.
 	%
 	{ Java_Code = list__condense([
 			ArgDeclsList,
@@ -2554,6 +2560,11 @@ ml_gen_outline_args([ml_c_arg(Var, MaybeVarMode, OrigType) | Args],
 ml_gen_ordinary_pragma_il_proc(_CodeModel, Attributes,
 	PredId, ProcId, ArgVars, ArgDatas, OrigArgTypes,
 	ForeignCode, Context, MLDS_Decls, MLDS_Statements) -->
+
+	% XXX FIXME need to handle model_semi code here,
+	%     i.e. provide some equivalent to SUCCESS_INDICATOR.
+
+	% XXX FIXME do we handle top_unused mode correctly?
 
 	{ MLDSContext = mlds__make_context(Context) },
 

@@ -2963,7 +2963,7 @@ string__to_int_list(String, IntList) :-
 	SUCCESS_INDICATOR = (Str->IndexOf(Ch) != -1);
 ").
 string__contains_char(String, Char) :-
-	string__contains_char(String, Char, 0, string__length(Char)).
+	string__contains_char(String, Char, 0, string__length(String)).
 
 :- pred string__contains_char(string::in, char::in,
 		int::in, int::in) is semidet.
@@ -2998,7 +2998,6 @@ string__index(Str, Index, Char) :-
 
 :- pred string__index_check(int, int).
 :- mode string__index_check(in, in) is semidet.
-:- pragma promise_pure(string__index_check/2).
 /* We should consider making this routine a compiler built-in. */
 :- pragma foreign_proc("C",
 	string__index_check(Index::in, Length::in),
@@ -3215,6 +3214,12 @@ string__set_char(Ch, Index, Str0, Str) :-
 "
 	Length = Str->get_Length();
 ").
+:- pragma foreign_proc("Java",
+	string__length(Str::in, Length::uo),
+		[will_not_call_mercury, promise_pure, thread_safe], "
+	Length = Str.length();
+").
+
 
 /*
 :- pred string__length(string, int).
@@ -3231,6 +3236,11 @@ string__set_char(Ch, Index, Str0, Str) :-
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	Length = Str->get_Length();
+").
+:- pragma foreign_proc("Java",
+	string__length(Str::ui, Length::uo),
+		[will_not_call_mercury, promise_pure, thread_safe], "
+	Length = Str.length();
 ").
 
 :- pragma promise_pure(string__length/2).
@@ -3526,7 +3536,7 @@ strchars(I, End, Str) =
 string__split(Str, Count, Left, Right) :-
 	( Count =< 0 ->
 		Left = "",
-		Right = Str
+		copy(Str, Right)
 	;
 		string__to_char_list(Str, List),
 		Len = string__length(Str),

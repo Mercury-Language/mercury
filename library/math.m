@@ -548,7 +548,7 @@ math__log2(X) = Log :-
 		[thread_safe, promise_pure], "
 	Log2 = System.Math.Log(X) / ML_FLOAT_LN2;
 ").
-math__log10_2(X) = math__ln_2(X) / math__ln_2(2.0).
+math__log2_2(X) = math__ln_2(X) / math__ln_2(2.0).
 
 %
 % math__log(B, X) = Log is true if Log is the logarithm to
@@ -582,7 +582,7 @@ math__log(B, X) = Log :-
 		[thread_safe, promise_pure], "
 	Log = System.Math.Log(X, B);
 ").
-math__log_2(X, B) = math__ln_2(X) / math__log_2(B).
+math__log_2(X, B) = math__ln_2(X) / math__ln_2(B).
 
 %
 % math__sin(X) = Sin is true if Sin is the sine of X.
