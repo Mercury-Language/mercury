@@ -37,6 +37,7 @@ p3 :-
 	r(Y),
 	X = Y.
 
+/*
 :- external(q/1).
 :- external(r/1).
-	
+*/

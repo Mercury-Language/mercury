@@ -1,6 +1,8 @@
-:- module t.
+:- module tiny.
+:- interface.
+:- import_module io.
 
-:- pred p is det.
+:- pred main(io::di, io::uo) is det.
 
-p.
+main --> [].
 

@@ -9,12 +9,11 @@
 
 :- interface.
 
-:- import_module int, io.
+:- import_module int, io, list.
 
-:- type var --->	x ; y ; z.
-:- type term --->	term(int, poly).
-:- type poly --->	poly(var, list(term)) ; const(int).
-:- type list(T) --->	[] ; [T | list(T)].
+:- type poly__var --->	x ; y ; z.
+:- type poly__term --->	term(int, poly).
+:- type poly --->	poly(poly__var, list(poly__term)) ; const(int).
 
 :- pred main(io__state, io__state).
 :- mode main(di, uo) is det.
@@ -53,10 +52,10 @@ main1(Out) :-
 :- pred poly_add(poly, poly, poly).
 :- mode poly_add(in, in, out) is det.
 
-:- pred term_add(list(term), list(term), list(term)).
+:- pred term_add(list(poly__term), list(poly__term), list(poly__term)).
 :- mode term_add(in, in, out) is det.
 
-:- pred add_to_order_zero_term(list(term), poly, list(term)).
+:- pred add_to_order_zero_term(list(poly__term), poly, list(poly__term)).
 :- mode add_to_order_zero_term(in, in, out) is det.
 
 :- pred poly_exp(int, poly, poly).
@@ -65,16 +64,16 @@ main1(Out) :-
 :- pred poly_mul(poly, poly, poly).
 :- mode poly_mul(in, in, out) is det.
 
-:- pred term_mul(list(term), list(term), list(term)).
+:- pred term_mul(list(poly__term), list(poly__term), list(poly__term)).
 :- mode term_mul(in, in, out) is det.
 
-:- pred single_term_mul(list(term), term, list(term)).
+:- pred single_term_mul(list(poly__term), poly__term, list(poly__term)).
 :- mode single_term_mul(in, in, out) is det.
 
-:- pred mul_through(list(term), poly, list(term)).
+:- pred mul_through(list(poly__term), poly, list(poly__term)).
 :- mode mul_through(in, in, out) is det.
 
-:- pred lt(var, var).
+:- pred lt(poly__var, poly__var).
 :- mode lt(in, in) is semidet.
 
 :- pred even(int).
@@ -83,16 +82,16 @@ main1(Out) :-
 :- pred print_poly(poly, io__state, io__state).
 :- mode print_poly(in, di, uo) is det.
 
-:- pred print_var(var, io__state, io__state).
+:- pred print_var(poly__var, io__state, io__state).
 :- mode print_var(in, di, uo) is det.
 
-:- pred print_terms(list(term), io__state, io__state).
+:- pred print_terms(list(poly__term), io__state, io__state).
 :- mode print_terms(in, di, uo) is det.
 
-:- pred print_terms_2(list(term), io__state, io__state).
+:- pred print_terms_2(list(poly__term), io__state, io__state).
 :- mode print_terms_2(in, di, uo) is det.
 
-:- pred print_term(term, io__state, io__state).
+:- pred print_term(poly__term, io__state, io__state).
 :- mode print_term(in, di, uo) is det.
 
 print_poly(const(N)) -->

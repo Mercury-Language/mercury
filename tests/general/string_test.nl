@@ -1,14 +1,15 @@
 :- module string_test.
-:- import_module string, list, io.
+:- import_module io.
 
 :- interface.
 
-:- pred main_predicate(list(string), io__state, io__state).
-:- mode main_predicate(in, di, uo) is det.
+:- pred main(io__state, io__state).
+:- mode main(di, uo) is det.
 
 :- implementation.
+:- import_module string, list.
 
-main_predicate(_) -->
+main -->
 	test("foo", "bar").
 
 :- pred test(string, string, io__state, io__state).

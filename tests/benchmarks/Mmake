@@ -1,0 +1,33 @@
+#-----------------------------------------------------------------------------#
+
+main_target: check
+
+include ../Mmake
+
+#-----------------------------------------------------------------------------#
+
+PROGS=	cqueens crypt deriv deriv2 nrev poly primes qsort queens \
+	tak query
+DEPENDS=$(PROGS:%=%.depend)
+OUTS=	$(PROGS:%=%.out)
+EXPS=	$(PROGS:%=%.exp)
+RESS=	$(PROGS:%=%.res)
+MODS=	$(PROGS:%=%.mod)
+SS=	$(PROGS:%=%.s)
+
+depend: $(DEPENDS)
+
+check: $(EXPS) $(OUTS) $(RESS)
+
+mods: $(MODS)
+
+ss: $(SS)
+
+all:	$(PROGS)
+
+dir.%: $(PROGS) $(SS)
+	-mkdir $@
+	cp $(PROGS) $(SS) $@
+	cp BenchEntry $@
+
+#-----------------------------------------------------------------------------#

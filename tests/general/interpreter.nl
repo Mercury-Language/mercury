@@ -14,24 +14,20 @@
 
 :- module interpreter.
 :- interface.
-:- import_module list, string, io.
+:- import_module io.
 
-:- pred main_predicate(list(string), io__state, io__state).
-:- mode main_predicate(in, di, uo) is det.
+:- pred main(io__state, io__state).
+:- mode main(di, uo) is det.
 
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module term, varset, term_io, require, std_util.
+:- import_module list, string, term, varset, term_io, require, std_util.
 
-main_predicate(Args0) -->
+main -->
 	io__write_string("Pure Prolog Interpreter.\n\n"),
+	io__command_line_arguments(Args),
 	{ database_init(Database0) },
-	{ Args0 = [_|Args1] ->
-		Args = Args1
-	;
-		Args = []
-	},
 	consult_list(Args, Database0, Database),
 	main_loop(Database).
 
@@ -360,7 +356,7 @@ database_assert_clause(Database, VarSet, Term, [Clause | Database]) :-
 		Body = B
 	;
 		Head = Term,
-		term__context_init(0, Context),
+		term__context_init(Context),
 		Body = term__functor(term__atom("true"), [], Context)
 	),
 	Clause = clause(VarSet, Head, Body).

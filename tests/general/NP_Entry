@@ -1,3 +1,3 @@
-arithmetic	io__init_state(I0), main_predicate([],I0,_), fail
-string_test	io__init_state(I0), main_predicate([],I0,_), fail
-interpreter	io__init_state(I0), main_predicate([],I0,_), fail
+arithmetic	r("")
+string_test	r("")
+interpreter	r("")

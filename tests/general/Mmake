@@ -1,0 +1,24 @@
+#-----------------------------------------------------------------------------#
+
+main_target: check
+
+include ../Mmake
+
+#-----------------------------------------------------------------------------#
+
+PROGS=	arithmetic string_test interpreter
+DEPENDS=$(PROGS:%=%.depend)
+OUTS=	$(PROGS:%=%.out)
+EXPS=	$(PROGS:%=%.exp)
+RESS=	$(PROGS:%=%.res)
+MODS=	$(PROGS:%=%.mod)
+
+depend: $(DEPENDS)
+
+check: $(EXPS) $(OUTS) $(RESS)
+
+mods: $(MODS)
+
+all:	$(PROGS)
+
+#-----------------------------------------------------------------------------#
