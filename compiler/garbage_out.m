@@ -24,10 +24,8 @@
 :- module garbage_out.
 :- interface.
 
-:- import_module int, map, std_util, list, io, hlds, require,
-		 llds, prog_io, type_util, string, term, term_io,
-		 shapes, varset.
-
+:- import_module int, list, io.
+:- import_module hlds, llds.
 
 :- type garbage_output --->	garbage_output( cont_list, 
 						shape_table, 
@@ -55,7 +53,9 @@
 
 :- implementation.
 
-:- import_module assoc_list.
+:- import_module string, assoc_list, map, std_util, require.
+:- import_module term, term_io, varset.
+:- import_module prog_io, type_util, shapes.
 
 %-----------------------------------------------------------------------------%
 % Out main predicate, it just collects and outputs the garbage.
