@@ -212,6 +212,7 @@
 :- mode term__var_list_to_term_list(in, out) is det.
 :- mode term__var_list_to_term_list(out, in) is semidet.
 
+:- type var		==	int.
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -221,7 +222,6 @@
 
 %-----------------------------------------------------------------------------%
 
-:- type var		==	int.
 :- type var_supply	==	int.
 
 %-----------------------------------------------------------------------------%
@@ -536,7 +536,10 @@ term__init_var_supply(0).
 
 term__create_var(VarSupply0, Var, VarSupply) :-
 	VarSupply is VarSupply0 + 1,
-	bit_reverse(VarSupply, Var).
+	random__bit_reverse(VarSupply, Var).
+
+/**** doesn't work under sicstus or nu-prolog because they don't have
+      32 bit integers!!!
 
 	% Reverse the (lower 32) bits of an integer.
 
@@ -840,12 +843,14 @@ bit_rev(253, 191).
 bit_rev(254, 127).
 bit_rev(255, 255).
 
+****/
+
 %-----------------------------------------------------------------------------%
 
 	% To convert a variable to an int, we want to undo the bit-reversal.
 
 term__var_to_int(Var0, Var) :-
-	bit_reverse(Var0, Var).
+	random__bit_reverse(Var0, Var).
 
 %-----------------------------------------------------------------------------%
 

@@ -78,6 +78,9 @@ A \= B :- \+ A = B.
 
 % Various hacks to get things to work
 
+
+/***** temp hack - this code is now in random.nl
+
 random__random(R, X, X1) :-
 	X1 is X + 1,
 	bit_reverse(X1, R).
@@ -91,19 +94,18 @@ bit_reverse(A, B) :-
 	bit_rev(A2, B0),
 	B is (B2 << 16) + (B1 << 8) + B0.
 
-/*
-bit_rev(A, B) :-
-	A0 is A /\ 1,
-	A1 is (A >> 1) /\ 1,
-	A2 is (A >> 2) /\ 1,
-	A3 is (A >> 3) /\ 1,
-	A4 is (A >> 4) /\ 1,
-	A5 is (A >> 5) /\ 1,
-	A6 is (A >> 6) /\ 1,
-	A7 is (A >> 7) /\ 1,
-	B is (A0 << 7) + (A1 << 6) + (A2 << 5) + (A3 << 4) + (A4 << 3) +
-		(A5 << 2) + (A6 << 1) + A7.
-*/
+% bit_rev(A, B) :-
+% 	A0 is A /\ 1,
+% 	A1 is (A >> 1) /\ 1,
+% 	A2 is (A >> 2) /\ 1,
+% 	A3 is (A >> 3) /\ 1,
+% 	A4 is (A >> 4) /\ 1,
+% 	A5 is (A >> 5) /\ 1,
+% 	A6 is (A >> 6) /\ 1,
+% 	A7 is (A >> 7) /\ 1,
+% 	B is (A0 << 7) + (A1 << 6) + (A2 << 5) + (A3 << 4) + (A4 << 3) +
+% 		(A5 << 2) + (A6 << 1) + A7.
+
 bit_rev(0, 0).
 bit_rev(1, 128).
 bit_rev(2, 64).
@@ -360,6 +362,8 @@ bit_rev(252, 63).
 bit_rev(253, 191).
 bit_rev(254, 127).
 bit_rev(255, 255).
+
+********/
 
 bimap__search(bimap(O, C), K, V) :-
 	( nonvar(K) ->
