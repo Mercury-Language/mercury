@@ -523,9 +523,15 @@ invoke_system_command(ErrorStream, Verbosity, Command,
 	% and error streams.
 	%
 	io__make_temp(TmpFile),
-	io__call_system_return_signal(
-		string__append_list([Command, " > ", TmpFile, " 2>&1"]),
-		Result),
+	{ use_dotnet ->
+		% XXX can't use Bourne shell syntax to redirect on .NET
+		% XXX the output will go to the wrong place!
+		CommandRedirected = Command
+	;
+		CommandRedirected = 
+			string__append_list([Command, " > ", TmpFile, " 2>&1"])
+	},
+	io__call_system_return_signal(CommandRedirected, Result),
 	(
 		{ Result = ok(exited(Status)) },
 		maybe_write_string(PrintCommand, "% done.\n"),
@@ -631,6 +637,17 @@ make_command_string(String0, QuoteType, String) :-
 	;
 		String = String0
 	).
+
+	% Are we compiling in a .NET environment?
+:- pred use_dotnet is semidet.
+:- pragma foreign_proc("C#",
+	use_dotnet,
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+	SUCCESS_INDICATOR = true;
+").
+% The following clause is only used if there is no matching foreign_proc.
+use_dotnet :- semidet_fail.
 
 	% Are we compiling in a win32 environment?
 	%
