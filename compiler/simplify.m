@@ -346,7 +346,7 @@ simplify__goal_2(Goal0, GoalInfo, Goal, GoalInfo, Info0, Info) :-
 	).
 
 simplify__goal_2(Goal0, GoalInfo, Goal, GoalInfo, Info0, Info) :-
-	Goal0 = call(PredId, ProcId, Args, _, _, _),
+	Goal0 = call(PredId, ProcId, Args, IsBuiltin, _, _),
 
 	%
 	% check for calls to predicates with `pragma obsolete' declarations
@@ -379,6 +379,15 @@ simplify__goal_2(Goal0, GoalInfo, Goal, GoalInfo, Info0, Info) :-
 		simplify_info_get_det_info(Info1, DetInfo),
 		det_info_get_pred_id(DetInfo, PredId),
 		det_info_get_proc_id(DetInfo, ProcId),
+
+		%
+		% Don't count inline builtins.
+		% (The compiler generates code for builtins that looks
+		% recursive, so that you can take their address, but since
+		% the recursive call actually expands into inline
+		% instructions, so it's not infinite recursion.)
+		%
+		IsBuiltin \= inline_builtin,
 
 		%
 		% Are the input arguments the same (or equivalent)?
