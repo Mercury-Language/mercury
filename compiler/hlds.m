@@ -245,7 +245,7 @@
 
 :- type goal_info	--->	goalinfo(
 					map(var_id, is_live), 
-					category
+					category,
 					map(var_id, inst)
 				).
 
