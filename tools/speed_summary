@@ -22,6 +22,10 @@
 # The point of discarding the highest and lowest values is to reduce the impact
 # of non-recurring events such as the initial loading of the program into
 # memory.
+#
+# You can ask for the reported times to be also expressed as a percentage of a
+# given base time by setting the variable BASE on the command line (e.g. with
+# a command such as "speed_summary BASE=13.7 batchname").
 
 NF == 8	{
 		variant = $1;
@@ -92,8 +96,14 @@ END	{
 					total += times[variant "@" i];
 				}
 
-				printf "%s average of %d with ignore=%d %9.2f\n",
+				printf "%s average of %d with ignore=%d %9.2f",
 					variant, count, ignore, total/num;
+				if (BASE + 0 != 0) {
+					percent = (100 * total/num) / BASE;
+					printf " (%6.3f%%)", percent;
+				}
+
+				printf "\n"
 			}
 		}
 
