@@ -21,8 +21,11 @@ DEBUGGER_PROGS=	\
 	existential_type_classes	\
 	implied_instance		\
 	interpreter			\
-	multi_parameter			\
-	queens
+	multi_parameter
+
+# The following tests are disabled, since currently they get some spurious
+# failures if readline support is enabled:
+#	queens
 
 MCFLAGS = --trace deep
 MLFLAGS = --trace
