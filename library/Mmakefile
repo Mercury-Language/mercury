@@ -226,7 +226,7 @@ MODULES_CONTAINING_C_CODE=	\
 		table_builtin	\
 		time
 
-CPP_DLLS=$(MODULES_CONTAINING_C_CODE:%=%__cpp_code.dll)
+CPP_DLLS=$(MODULES_CONTAINING_C_CODE:%=%__c_code.dll)
 
 ALL_DLLS=$(CPP_DLLS) $(library.dlls) $(RUNTIME_DLLS) 
 
