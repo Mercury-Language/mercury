@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2002 The University of Melbourne.
+% Copyright (C) 1998-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -85,6 +85,7 @@
 	#include <stdio.h>
 	#include ""mercury_conf.h""
 	#include ""mercury_string.h""	/* for MR_make_aligned_string_copy() */
+	#include ""mercury_ho_call.h""
 #ifdef MR_HAVE_DLFCN_H
 	#include <dlfcn.h>
 #endif
@@ -148,188 +149,27 @@ mercury_sym(Handle, MercuryProc0, Result) -->
 		Result = error(Msg)
 	;
 		Result0 = ok(Address),
-		%
-		% convert the procedure address to a closure
-		%
-		( high_level_code ->
-			NumCurriedInputArgs = 1,
-			ClosureLayout = make_closure_layout,
-			HL_Closure = make_closure(ClosureLayout,
-				dl__generic_closure_wrapper,
-				NumCurriedInputArgs, Address),
-			private_builtin__unsafe_type_cast(HL_Closure, Value)
-		;
-			NumCurriedInputArgs = 0,
-			ClosureLayout = make_closure_layout,
-			LL_Closure = make_closure(ClosureLayout, Address,
-				NumCurriedInputArgs, Address),
-			private_builtin__unsafe_type_cast(LL_Closure, Value)
-		),
-		Result = ok(Value)
+		private_builtin__unsafe_type_cast(make_closure(Address),
+			Closure),
+		Result = ok(Closure)
 	}.
 
 :- pragma foreign_decl("C",
 "
 #include ""mercury_ho_call.h""
-extern	int	ML_DL_closure_counter;
 ").
 
-:- pragma foreign_code("C",
-"
-int	ML_DL_closure_counter = 0;
-").
+	% Convert the given procedure address to a closure.
+:- func make_closure(c_pointer) = c_pointer.
 
-:- func make_closure_layout = c_pointer.
-
-:- pragma foreign_proc("C", make_closure_layout = (ClosureLayout::out),
-	[will_not_call_mercury, promise_pure, thread_safe],
+make_closure(_) = _ :- private_builtin__sorry("dl__make_closure").
+:- pragma foreign_proc("C", make_closure(ProcAddr::in) = (Closure::out),
+	[will_not_call_mercury, promise_pure],
 "{
-	MR_Closure_Id			*closure_id;
-	MR_Closure_Dyn_Link_Layout	*closure_layout;
-	char				buf[80];
-
-	/* create a goal path that encodes a unique id for this closure */
-	ML_DL_closure_counter++;
-	sprintf(buf, ""@%d;"", ML_DL_closure_counter);
-
-	/*
-	** XXX All the allocations in this code should use malloc
-	** in deep profiling grades.
-	*/
-
-	MR_incr_hp_type(closure_id, MR_Closure_Id);
-	closure_id->MR_closure_proc_id.MR_proc_user.MR_user_pred_or_func =
-		MR_PREDICATE;
-	closure_id->MR_closure_proc_id.MR_proc_user.MR_user_decl_module =
-		""unknown"";
-	closure_id->MR_closure_proc_id.MR_proc_user.MR_user_def_module =
-		""unknown"";
-	closure_id->MR_closure_proc_id.MR_proc_user.MR_user_name = ""unknown"";
-	closure_id->MR_closure_proc_id.MR_proc_user.MR_user_arity = -1;
-	closure_id->MR_closure_proc_id.MR_proc_user.MR_user_mode = -1;
-	closure_id->MR_closure_module_name = ""dl"";
-	closure_id->MR_closure_file_name = __FILE__;
-	closure_id->MR_closure_line_number = __LINE__;
-	MR_make_aligned_string_copy(closure_id->MR_closure_goal_path, buf);
-
-	MR_incr_hp_type(closure_layout, MR_Closure_Dyn_Link_Layout);
-	closure_layout->MR_closure_dl_id = closure_id;
-	closure_layout->MR_closure_dl_type_params = NULL;
-	closure_layout->MR_closure_dl_num_all_args = 0;
-
-	ClosureLayout = (MR_Word) closure_layout;
+	MR_save_transient_hp();
+	Closure = (MR_Word) MR_make_closure((MR_Code *) ProcAddr);
+	MR_restore_transient_hp();
 }").
-
-make_closure_layout = _ :-
-	private_builtin__sorry("dl__make_closure_layout").
-
-:- func make_closure(c_pointer, c_pointer, int, c_pointer) = c_pointer.
-
-:- pragma foreign_proc("C",
-	make_closure(ClosureLayout::in,
-		Address::in, NumArgs::in, FirstArg::in) = (Closure::out),
-	[will_not_call_mercury, promise_pure, thread_safe],
-"{
-	MR_Closure	*closure;
-	/*
-	** XXX All the allocations in this code should use malloc
-	** in deep profiling grades, perhaps?
-	*/
-	MR_incr_hp(MR_LVALUE_CAST(MR_Word, closure), 3 + NumArgs);
-	closure->MR_closure_layout = (MR_Closure_Layout *) ClosureLayout;
-	closure->MR_closure_code = (MR_Code *) Address;
-	closure->MR_closure_num_hidden_args = NumArgs;
-	switch (NumArgs) {
-	case 0:
-		break;
-	case 1:
-		closure->MR_closure_hidden_args(1) = FirstArg;
-		break;
-	default:
-		/* Not supported. */
-		MR_fatal_error(""dl.m: make_closure: NumArgs > 1"");
-	}
-	Closure = (MR_Word) closure;
-}").
-
-make_closure(_, _, _, _) = _ :-
-	private_builtin__sorry("dl__make_closure").
-
-:- pragma c_header_code("
-extern MR_Box MR_CALL ML_DL_generic_closure_wrapper(void *closure,
-	MR_Box arg1, MR_Box arg2, MR_Box arg3, MR_Box arg4, MR_Box arg5,
-	MR_Box arg6, MR_Box arg7, MR_Box arg8, MR_Box arg9, MR_Box arg10,
-	MR_Box arg11, MR_Box arg12, MR_Box arg13, MR_Box arg14, MR_Box arg15,
-	MR_Box arg16, MR_Box arg17, MR_Box arg18, MR_Box arg19, MR_Box arg20);
-").
-
-:- pragma foreign_code("C", "
-
-/*
-** For the --high-level-code grades, the closure will be passed
-** as an argument to the wrapper procedure.  The wrapper procedure
-** then extracts any needed curried arguments from the closure,
-** and calls the real procedure.  Normally the wrapper procedure
-** knows which real procedure it will call, but for dl.m we use
-** a generic wrapper procedure, and treat the real procedure
-** as a curried argument of the generic wrapper.  That is always
-** the only curried argument, so all the wrapper needs to do
-** is to extract the procedure address from the closure, and
-** then call it, passing the same arguments that it was passed,
-** except for the closure itself.
-**
-** XXX Using a single generic wrapper procedure is a nasty hack. 
-** We play fast and loose with the C type system here.  In reality
-** this will get called with different return type, different
-** argument types, and with fewer than 20 arguments.  Likewise, the
-** procedure that it calls may actually have different arity, return type
-** and argument types than we pass.  So we really ought to have lots of
-** different wrapper procedures, for each different return type, number
-** of arguments, and even for each different set of argument types.
-** Doing it right might require run-time code generation!
-** But with traditional C calling conventions, using a single wrapper
-** like this will work anyway, at least for arguments whose type is the
-** same size as MR_Box.  It fails for arguments of type `char' or `float'.
-**
-** XXX This will also fail for calling conventions where the callee pops the
-** arguments.  To handle that right, we'd need different wrappers for
-** each different number of arguments.  (Doing that would also be slightly
-** more efficient, so it may worth doing...)
-**
-** There are also a couple of libraries called `ffcall' and `libffi'
-** which we might be able use to do this in a more portable manner.
-*/
-MR_Box MR_CALL
-ML_DL_generic_closure_wrapper(void *closure,
-	MR_Box arg1, MR_Box arg2, MR_Box arg3, MR_Box arg4, MR_Box arg5,
-	MR_Box arg6, MR_Box arg7, MR_Box arg8, MR_Box arg9, MR_Box arg10,
-	MR_Box arg11, MR_Box arg12, MR_Box arg13, MR_Box arg14, MR_Box arg15,
-	MR_Box arg16, MR_Box arg17, MR_Box arg18, MR_Box arg19, MR_Box arg20)
-{
-	typedef MR_Box MR_CALL FuncType(
-		MR_Box a1, MR_Box a2, MR_Box a3, MR_Box a4, MR_Box a5,
-		MR_Box a6, MR_Box a7, MR_Box a8, MR_Box a9, MR_Box a10,
-		MR_Box a11, MR_Box a12, MR_Box a13, MR_Box a14, MR_Box a15,
-		MR_Box a16, MR_Box a17, MR_Box a18, MR_Box a19, MR_Box a20);
-	FuncType *proc = (FuncType *)
-		MR_field(MR_mktag(0), closure, (MR_Integer) 3);
-	return (*proc)(arg1, arg2, arg3, arg4, arg5,
-		arg6, arg7, arg8, arg9, arg10,
-		arg11, arg12, arg13, arg14, arg15,
-		arg16, arg17, arg18, arg19, arg20);
-}
-
-").
-	 
-:- func dl__generic_closure_wrapper = c_pointer.
-:- pragma foreign_proc("C",
-	dl__generic_closure_wrapper = (WrapperFuncAddr::out),
-	[will_not_call_mercury, promise_pure, thread_safe],
-"
-	WrapperFuncAddr = (MR_Word) &ML_DL_generic_closure_wrapper;
-").
-dl__generic_closure_wrapper = _ :-
-	private_builtin__sorry("dl__generic_closure_wrapper").
 
 %
 % Check that the result type matches the information

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1999-2002 The University of Melbourne.
+** Copyright (C) 1999-2003 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -20,6 +20,7 @@
 
 #include "mercury_stack_layout.h"	/* for MR_Closure_Id etc */
 #include "mercury_type_info.h"		/* for MR_PseudoTypeInfo */
+#include "mercury_types.h"		/* for MR_Closure */
 #ifndef	MR_HIGHLEVEL_CODE
   #include "mercury_goto.h"		/* for MR_declare_entry */
 #endif
@@ -118,6 +119,14 @@ struct MR_Closure_Struct {
 /* in mercury_types.h: typedef struct MR_Closure_Struct MR_Closure; */
 
 #define	MR_closure_hidden_args(i)	MR_closure_hidden_args_0[(i) - 1]
+
+/*
+** Build a closure for the given procedure address.
+** This is used by browser/dl.m and Aditi.
+** MR_make_closure allocates heap, so call MR_{save,restore}_transient_hp()
+** around calls to it.
+*/
+extern	MR_Closure	*MR_make_closure(MR_Code *address);
 
 #ifdef	MR_HIGHLEVEL_CODE
 

@@ -1014,6 +1014,143 @@ finish_closure_compare:
 
 #endif /* not MR_HIGHLEVEL_CODE */
 
+/*---------------------------------------------------------------------------*/
+/*
+** Code to construct closures, for use by browser/dl.m and Aditi.
+*/
+
+#ifdef MR_HIGHLEVEL_CODE
+extern MR_Box MR_CALL MR_generic_closure_wrapper(void *closure,
+	MR_Box arg1, MR_Box arg2, MR_Box arg3, MR_Box arg4, MR_Box arg5,
+	MR_Box arg6, MR_Box arg7, MR_Box arg8, MR_Box arg9, MR_Box arg10,
+	MR_Box arg11, MR_Box arg12, MR_Box arg13, MR_Box arg14, MR_Box arg15,
+	MR_Box arg16, MR_Box arg17, MR_Box arg18, MR_Box arg19, MR_Box arg20);
+#endif
+
+struct MR_Closure_Struct *
+MR_make_closure(MR_Code *proc_addr)
+{
+	static	int			closure_counter = 0;
+	MR_Closure			*closure;
+	MR_Closure_Id			*closure_id;
+	MR_Closure_Dyn_Link_Layout	*closure_layout;
+	char				buf[80];
+	int				num_hidden_args;
+
+	MR_restore_transient_hp();
+
+	/* create a goal path that encodes a unique id for this closure */
+	closure_counter++;
+	sprintf(buf, "@%d;", closure_counter);
+
+	/*
+	** XXX All the allocations in this code should use malloc
+	** in deep profiling grades.
+	*/
+
+	/*
+	** Construct the MR_Closure_Id.
+	*/
+	MR_incr_hp_type(closure_id, MR_Closure_Id);
+	closure_id->MR_closure_proc_id.MR_proc_user.MR_user_pred_or_func =
+		MR_PREDICATE;
+	closure_id->MR_closure_proc_id.MR_proc_user.MR_user_decl_module =
+		"unknown";
+	closure_id->MR_closure_proc_id.MR_proc_user.MR_user_def_module =
+		"unknown";
+	closure_id->MR_closure_proc_id.MR_proc_user.MR_user_name = "unknown";
+	closure_id->MR_closure_proc_id.MR_proc_user.MR_user_arity = -1;
+	closure_id->MR_closure_proc_id.MR_proc_user.MR_user_mode = -1;
+	closure_id->MR_closure_module_name = "dl";
+	closure_id->MR_closure_file_name = __FILE__;
+	closure_id->MR_closure_line_number = __LINE__;
+	MR_make_aligned_string_copy(closure_id->MR_closure_goal_path, buf);
+
+	/*
+	** Construct the MR_Closure_Layout.
+	*/
+	MR_incr_hp_type(closure_layout, MR_Closure_Dyn_Link_Layout);
+	closure_layout->MR_closure_dl_id = closure_id;
+	closure_layout->MR_closure_dl_type_params = NULL;
+	closure_layout->MR_closure_dl_num_all_args = 0;
+
+	/*
+	** Construct the MR_Closure.
+	*/
+#ifdef MR_HIGHLEVEL_CODE
+	num_hidden_args = 1;
+#else
+	num_hidden_args = 0;
+#endif
+	MR_incr_hp(MR_LVALUE_CAST(MR_Word, closure), 3 + num_hidden_args);
+
+	closure->MR_closure_layout = (MR_Closure_Layout *) closure_layout;
+	closure->MR_closure_code = proc_addr;
+	closure->MR_closure_num_hidden_args = num_hidden_args;
+#ifdef MR_HIGHLEVEL_CODE
+	closure->MR_closure_hidden_args(1) = &MR_generic_closure_wrapper;
+#endif
+
+	MR_save_transient_hp();
+	return closure;
+}
+
+#ifdef MR_HIGHLEVEL_CODE
+/*
+** For the --high-level-code grades, the closure will be passed
+** as an argument to the wrapper procedure.  The wrapper procedure
+** then extracts any needed curried arguments from the closure,
+** and calls the real procedure.  Normally the wrapper procedure
+** knows which real procedure it will call, but for dl.m we use
+** a generic wrapper procedure, and treat the real procedure
+** as a curried argument of the generic wrapper.  That is always
+** the only curried argument, so all the wrapper needs to do
+** is to extract the procedure address from the closure, and
+** then call it, passing the same arguments that it was passed,
+** except for the closure itself.
+**
+** XXX Using a single generic wrapper procedure is a nasty hack. 
+** We play fast and loose with the C type system here.  In reality
+** this will get called with different return type, different
+** argument types, and with fewer than 20 arguments.  Likewise, the
+** procedure that it calls may actually have different arity, return type
+** and argument types than we pass.  So we really ought to have lots of
+** different wrapper procedures, for each different return type, number
+** of arguments, and even for each different set of argument types.
+** Doing it right might require run-time code generation!
+** But with traditional C calling conventions, using a single wrapper
+** like this will work anyway, at least for arguments whose type is the
+** same size as MR_Box.  It fails for arguments of type `char' or `float'.
+**
+** XXX This will also fail for calling conventions where the callee pops the
+** arguments.  To handle that right, we'd need different wrappers for
+** each different number of arguments.  (Doing that would also be slightly
+** more efficient, so it may worth doing...)
+**
+** There are also a couple of libraries called `ffcall' and `libffi'
+** which we might be able use to do this in a more portable manner.
+*/
+MR_Box MR_CALL
+MR_generic_closure_wrapper(void *closure,
+	MR_Box arg1, MR_Box arg2, MR_Box arg3, MR_Box arg4, MR_Box arg5,
+	MR_Box arg6, MR_Box arg7, MR_Box arg8, MR_Box arg9, MR_Box arg10,
+	MR_Box arg11, MR_Box arg12, MR_Box arg13, MR_Box arg14, MR_Box arg15,
+	MR_Box arg16, MR_Box arg17, MR_Box arg18, MR_Box arg19, MR_Box arg20)
+{
+	typedef MR_Box MR_CALL FuncType(
+		MR_Box a1, MR_Box a2, MR_Box a3, MR_Box a4, MR_Box a5,
+		MR_Box a6, MR_Box a7, MR_Box a8, MR_Box a9, MR_Box a10,
+		MR_Box a11, MR_Box a12, MR_Box a13, MR_Box a14, MR_Box a15,
+		MR_Box a16, MR_Box a17, MR_Box a18, MR_Box a19, MR_Box a20);
+	FuncType *proc = (FuncType *)
+		MR_field(MR_mktag(0), closure, (MR_Integer) 3);
+	return (*proc)(arg1, arg2, arg3, arg4, arg5,
+		arg6, arg7, arg8, arg9, arg10,
+		arg11, arg12, arg13, arg14, arg15,
+		arg16, arg17, arg18, arg19, arg20);
+}
+#endif /* MR_HIGHLEVEL_CODE */
+
 /*
 ** The initialization function needs to be defined even when
 ** MR_HIGHLEVEL_CODE is set, because it will get included
