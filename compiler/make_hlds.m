@@ -183,7 +183,7 @@ parse_tree_to_hlds(module(Name, Items), MQInfo0, EqvMap, Module, QualInfo,
 				construct_type(TypeCtor, [], Type),
 				add_special_preds(TVarSet, Type, TypeCtor,
 						Body, Context, Status, M0, M)
-			), builtin_type_ctors_with_no_type_defn, !Module)
+			), builtin_type_ctors_with_no_hlds_type_defn, !Module)
 	;
 		true
 	),

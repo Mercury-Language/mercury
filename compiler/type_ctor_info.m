@@ -91,7 +91,8 @@ type_ctor_info__generate_hlds(!ModuleInfo) :-
 		ModuleName = mercury_public_builtin_module,
 		compiler_generated_rtti_for_the_builtins(!.ModuleInfo)
 	->
-		TypeCtors = builtin_type_ctors_with_no_type_defn ++ TypeCtors0
+		TypeCtors = builtin_type_ctors_with_no_hlds_type_defn ++
+				TypeCtors0
 	;
 		TypeCtors = TypeCtors0
 	),
@@ -114,16 +115,29 @@ type_ctor_info__gen_type_ctor_gen_infos([TypeCtor | TypeCtors], TypeTable,
 		ModuleName, ModuleInfo, TypeCtorGenInfos1),
 	TypeCtor = SymName - TypeArity,
 	(
-	    % Check if we should generate a type_ctor_info for this type.
-	    % There are three cases that we have to check
-	    % 	- the builtin types which have no type defn
-	    % 	- the builtin types which are declared abstract
-	    % 	- all the rest of the types
+	    % There are four cases that we have to check
+	    %
+	    %   - the builtin types which have no hlds_type_defn
+	    %     (i.e. no declaration and no definition)
+	    %
+	    %   - the builtin types which have a fake type body and
+	    %     such have to have hand-defined rtti.
+	    %	  (types such as private_builtin.type_info which is
+	    %	  defined as a discriminated union type)
+	    %
+	    %   - the builtin types which are declared abstract
+	    %     and are not defined
+	    %     (i.e. they have a declaration, but no definition)
+	    %
+	    %   - all the rest of the types
+	    %     (types with a definition, or both a declaration
+	    %     and a definition)
+	    %
 	    SymName = qualified(TypeModuleName, TypeName),
 	    ( 
 		TypeModuleName = ModuleName,
 		( list__member(TypeCtor,
-				builtin_type_ctors_with_no_type_defn) ->
+				builtin_type_ctors_with_no_hlds_type_defn) ->
 		    % the builtin types with no type definition.
 		    compiler_generated_rtti_for_the_builtins(ModuleInfo),
 		    TypeModuleName = unqualified(ModuleNameString),
@@ -133,9 +147,13 @@ type_ctor_info__gen_type_ctor_gen_infos([TypeCtor | TypeCtors], TypeTable,
 		    map__lookup(TypeTable, TypeCtor, TypeDefn),
 		    hlds_data__get_type_defn_body(TypeDefn, TypeBody),
 		    (
-			TypeBody = abstract_type(_)
+		    	( TypeBody = abstract_type(_)
+			; type_ctor_has_hand_defined_rtti(TypeCtor, TypeBody)
+			)
 		    ->
 			% the builtin types which are declared abstract
+			% or which have hand defined rtti due to having
+			% a fake type body.
 			compiler_generated_rtti_for_the_builtins(ModuleInfo),
 			TypeModuleName = unqualified(ModuleNameString),
 			( builtin_type_ctor(ModuleNameString,

@@ -862,7 +862,7 @@ special_pred_needs_typecheck(PredInfo, ModuleInfo) :-
 	% check that the special pred isn't one of the builtin
 	% types which don't have a hlds_type_defn
 	%
-	\+ list__member(TypeCtor, builtin_type_ctors_with_no_type_defn),
+	\+ list__member(TypeCtor, builtin_type_ctors_with_no_hlds_type_defn),
 	%
 	% check whether that type is a type for which there is
 	% a user-defined equality predicate, or which is existentially typed.

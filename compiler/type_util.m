@@ -70,9 +70,8 @@
 :- mode type_ctor_is_tuple(in) is semidet.
 
 	% The list of type_ctors which are builtins which do not have a
-	% hlds_type_defn, ie. those builtin type which are not declared as
-	% abstract types in the standard library.
-:- func builtin_type_ctors_with_no_type_defn = list(type_ctor).
+	% hlds_type_defn.
+:- func builtin_type_ctors_with_no_hlds_type_defn = list(type_ctor).
 
 	% Succeed iff there was either a `where equality is <predname>' or a
 	% `where comparison is <predname>' declaration for the principal type
@@ -2062,7 +2061,7 @@ cell_type_name(typeclass_info_cell) = "typeclass_info".
 
 %-----------------------------------------------------------------------------%
 
-builtin_type_ctors_with_no_type_defn =
+builtin_type_ctors_with_no_hlds_type_defn =
 	[ qualified(mercury_public_builtin_module, "int") - 0,
 	  qualified(mercury_public_builtin_module, "string") - 0,
 	  qualified(mercury_public_builtin_module, "character") - 0,
