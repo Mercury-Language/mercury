@@ -383,23 +383,39 @@ MR_define_extern_entry(mercury__do_call_class_method);
 ** These are the real implementations of unify and compare.
 */
 
+/* the entry labels in this block are for bootstrapping only */
 MR_define_extern_entry(mercury__unify_2_0);
 MR_define_extern_entry(mercury__compare_3_0);
 MR_define_extern_entry(mercury__compare_3_1);
 MR_define_extern_entry(mercury__compare_3_2);
 MR_define_extern_entry(mercury__compare_3_3);
-MR_declare_label(mercury__compare_3_0_i1);
 MR_define_extern_entry(mercury__compare_representation_3_0);
+
+MR_define_extern_entry(mercury__builtin__unify_2_0);
+MR_define_extern_entry(mercury__builtin__compare_3_0);
+MR_define_extern_entry(mercury__builtin__compare_3_1);
+MR_define_extern_entry(mercury__builtin__compare_3_2);
+MR_define_extern_entry(mercury__builtin__compare_3_3);
+MR_declare_label(mercury__builtin__compare_3_0_i1);
+MR_define_extern_entry(mercury__builtin__compare_representation_3_0);
 
 MR_BEGIN_MODULE(call_module)
 	MR_init_entry_an(mercury__do_call_closure);
 	MR_init_entry_an(mercury__do_call_class_method);
+
 	MR_init_entry_an(mercury__unify_2_0);
 	MR_init_entry_an(mercury__compare_3_0);
 	MR_init_entry_an(mercury__compare_3_1);
 	MR_init_entry_an(mercury__compare_3_2);
 	MR_init_entry_an(mercury__compare_3_3);
 	MR_init_entry_an(mercury__compare_representation_3_0);
+
+	MR_init_entry_an(mercury__builtin__unify_2_0);
+	MR_init_entry_an(mercury__builtin__compare_3_0);
+	MR_init_entry_an(mercury__builtin__compare_3_1);
+	MR_init_entry_an(mercury__builtin__compare_3_2);
+	MR_init_entry_an(mercury__builtin__compare_3_3);
+	MR_init_entry_an(mercury__builtin__compare_representation_3_0);
 MR_BEGIN_CODE
 
 /*
@@ -528,11 +544,19 @@ MR_define_entry(mercury__do_call_class_method);
 }
 
 /*
-** mercury__unify_2_0 is called as `unify(TypeInfo, X, Y)'
+** mercury__builtin__unify_2_0 is called as `unify(TypeInfo, X, Y)'
 ** in the mode `unify(in, in, in) is semidet'.
 */
 
 MR_define_entry(mercury__unify_2_0);
+#ifdef MR_MPROF_PROFILE_CALLS
+{
+	MR_tailcall(MR_ENTRY(mercury__builtin__unify_2_0),
+		MR_LABEL(mercury__unify_2_0));
+}
+#endif
+
+MR_define_entry(mercury__builtin__unify_2_0);
 {
 
 #define	DECLARE_LOCALS							\
@@ -558,7 +582,7 @@ MR_define_entry(mercury__unify_2_0);
 
 #define	tailcall_user_pred()						\
 	MR_tailcall(type_ctor_info->MR_type_ctor_unify_pred, 		\
-		MR_LABEL(mercury__unify_2_0))
+		MR_LABEL(mercury__builtin__unify_2_0))
 
 #define	start_label		unify_start
 #define	call_user_code_label	call_unify_in_proc
@@ -581,7 +605,7 @@ MR_define_entry(mercury__unify_2_0);
 }
 
 /*
-** mercury__compare_3_3 is called as `compare(TypeInfo, Result, X, Y)'
+** mercury__builtin__compare_3_3 is called as `compare(TypeInfo, Result, X, Y)'
 ** in the mode `compare(in, out, in, in) is det'.
 **
 ** (The additional entry points replace either or both "in"s with "ui"s.)
@@ -590,22 +614,54 @@ MR_define_entry(mercury__unify_2_0);
 MR_define_entry(mercury__compare_3_0);
 #ifdef MR_MPROF_PROFILE_CALLS
 {
-	MR_tailcall(MR_ENTRY(mercury__compare_3_3), MR_LABEL(mercury__compare_3_0));
+	MR_tailcall(MR_ENTRY(mercury__builtin__compare_3_3),
+		MR_LABEL(mercury__compare_3_0));
 }
 #endif
 MR_define_entry(mercury__compare_3_1);
 #ifdef MR_MPROF_PROFILE_CALLS
 {
-	MR_tailcall(MR_ENTRY(mercury__compare_3_3), MR_LABEL(mercury__compare_3_1));
+	MR_tailcall(MR_ENTRY(mercury__builtin__compare_3_3),
+		MR_LABEL(mercury__compare_3_1));
 }
 #endif
 MR_define_entry(mercury__compare_3_2);
 #ifdef MR_MPROF_PROFILE_CALLS
 {
-	MR_tailcall(MR_ENTRY(mercury__compare_3_3), MR_LABEL(mercury__compare_3_2));
+	MR_tailcall(MR_ENTRY(mercury__builtin__compare_3_3),
+		MR_LABEL(mercury__compare_3_2));
 }
 #endif
 MR_define_entry(mercury__compare_3_3);
+#ifdef MR_MPROF_PROFILE_CALLS
+{
+	MR_tailcall(MR_ENTRY(mercury__builtin__compare_3_3),
+		MR_LABEL(mercury__compare_3_3));
+}
+#endif
+
+MR_define_entry(mercury__builtin__compare_3_0);
+#ifdef MR_MPROF_PROFILE_CALLS
+{
+	MR_tailcall(MR_ENTRY(mercury__builtin__compare_3_3),
+		MR_LABEL(mercury__builtin__compare_3_0));
+}
+#endif
+MR_define_entry(mercury__builtin__compare_3_1);
+#ifdef MR_MPROF_PROFILE_CALLS
+{
+	MR_tailcall(MR_ENTRY(mercury__builtin__compare_3_3),
+		MR_LABEL(mercury__builtin__compare_3_1));
+}
+#endif
+MR_define_entry(mercury__builtin__compare_3_2);
+#ifdef MR_MPROF_PROFILE_CALLS
+{
+	MR_tailcall(MR_ENTRY(mercury__builtin__compare_3_3),
+		MR_LABEL(mercury__builtin__compare_3_2));
+}
+#endif
+MR_define_entry(mercury__builtin__compare_3_3);
 {
 
 #define	DECLARE_LOCALS							\
@@ -631,7 +687,7 @@ MR_define_entry(mercury__compare_3_3);
 
 #define	tailcall_user_pred()						\
 	MR_tailcall(type_ctor_info->MR_type_ctor_compare_pred,		\
-		MR_LABEL(mercury__compare_3_3))
+		MR_LABEL(mercury__builtin__compare_3_3))
 
 #define	start_label		compare_start
 #define	call_user_code_label	call_compare_in_proc
@@ -656,12 +712,19 @@ MR_define_entry(mercury__compare_3_3);
 }
 
 /*
-** mercury__compare_representation_3_0 is called as
+** mercury__builtin__compare_representation_3_0 is called as
 ** `compare_representation(TypeInfo, Result, X, Y)' in the mode
 ** `compare_representation(in, uo, in, in) is cc_multi'.
 */
 
 MR_define_entry(mercury__compare_representation_3_0);
+#ifdef MR_MPROF_PROFILE_CALLS
+{
+	MR_tailcall(MR_ENTRY(mercury__builtin__compare_representation_3_0),
+		MR_LABEL(mercury__compare_representation_3_0));
+}
+#endif
+MR_define_entry(mercury__builtin__compare_representation_3_0);
 {
 
 #define	DECLARE_LOCALS							\

@@ -174,19 +174,13 @@ make_pred_or_func_name(DefiningModule, PredOrFunc, DeclaringModule,
 	DefiningModuleName = sym_name_mangle(DefiningModule),
 	(
 		(
-			mercury_private_builtin_module(DeclaringModule)
-		;
-			mercury_public_builtin_module(DeclaringModule)
-		;
 			Name0 = "main",
 			Arity = 2
 		;
 			string__prefix(Name0, "__")
 		)
 		% The conditions above define which labels are printed without
-		% module qualification.  XXX Changes to runtime/* are necessary
-		% to allow `builtin' or `private_builtin' labels to be
-		% qualified.
+		% module qualification.
 	->
 		LabelName0 = Name0
 	;
