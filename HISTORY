@@ -89,7 +89,7 @@ Mercury 0.4, 14 September 1995
 * `list__sort/2' has been renamed as `list__sort_and_remove_dups/2'.
 * There is a new `list__sort/2' which does not remove duplicates.
 
-Mercury 0.5, 15 Febuary 1995
+Mercury 0.5, 15 Febuary 1996
 ----------------------------
 
 * We now support committed choice nondeterminism in a logical and declarative
