@@ -6317,12 +6317,6 @@ clauses_info_add_clause(ModeIds0, CVarSet, TVarSet0, Args, Body, Context,
 
 %-----------------------------------------------------------------------------
 
-:- type foreign_proc_action
-    --->    ignore
-    ;       add
-    ;       split_add(int, clause)
-    ;       replace(int).
-
     % Add the pragma_foreign_proc goal to the clauses_info for this procedure.
     % To do so, we must also insert unifications between the variables in the
     % pragma foreign_proc declaration and the head vars of the pred. Also
@@ -6351,73 +6345,8 @@ clauses_info_add_pragma_foreign_proc(Purity, Attributes0, PredId, ProcId,
     globals__io_get_globals(Globals, !IO),
     globals__io_get_target(Target, !IO),
 
-        % We traverse the clauses, and decide which action to perform.
-        %
-        % If there are no clauses, we will simply add this clause.
-        %
-        % If there are matching foreign_proc clauses for this proc_id,
-        % we will either replace them or ignore the new clause
-        % (depending on the preference of the two foreign languages).
-        %
-        % If there is a matching Mercury clause for this proc_id, we
-        % will either
-        %   - replace it if there is only one matching mode in its
-        %     proc_id list.
-        %   - remove the matching proc_id from its proc_id list,
-        %     and add this clause as a new clause for this mode.
-
-    list__foldl2(
-        (pred(C::in, Action0::in, Action::out, N0::in, N::out) is det :-
-            C = clause(ProcIds, B, ClauseLang, D),
-            (
-                ClauseLang = mercury,
-                ProcIds = [ProcId]
-            ->
-                Action = replace(N0)
-            ;
-                ClauseLang = mercury,
-                list__delete_first(ProcIds, ProcId, MercuryProcIds)
-            ->
-                NewMercuryClause = clause(MercuryProcIds, B, ClauseLang, D),
-                Action = split_add(N0, NewMercuryClause)
-            ;
-                ClauseLang = foreign_language(OldLang),
-                list__member(ProcId, ProcIds)
-            ->
-                (
-                    yes = foreign__prefer_foreign_language(Globals, Target,
-                        OldLang, NewLang)
-                ->
-
-                    % This language is preferred to the old
-                    % language, so we should replace it
-                    Action = replace(N0)
-                ;
-                    % Just ignore it.
-                    Action = ignore
-                )
-            ;
-                Action = Action0
-            ),
-            N = N0 + 1
-        ), ClauseList, add, FinalAction, 1, _),
-
-    UpdateClauses = (pred(NewCl::in, Cs::out) is det :-
-        (
-            FinalAction = ignore,
-            Cs = ClauseList
-        ;
-            FinalAction = add,
-            Cs = [NewCl | ClauseList]
-        ;
-            FinalAction = replace(X),
-            list__replace_nth_det(ClauseList, X, NewCl, Cs)
-        ;
-            FinalAction = split_add(X, Clause),
-            list__replace_nth_det(ClauseList, X, Clause, Cs1),
-            Cs = [NewCl | Cs1]
-        )
-    ),
+    list__foldl2(decide_action(Globals, Target, NewLang, ProcId),
+        ClauseList, add, FinalAction, 1, _),
 
     globals__io_get_backend_foreign_languages(BackendForeignLanguages, !IO),
     pragma_get_vars(PVars, Args0),
@@ -6475,24 +6404,93 @@ clauses_info_add_pragma_foreign_proc(Purity, Attributes0, PredId, ProcId,
             % build the pragma_c_code
         goal_info_init(GoalInfo0),
         goal_info_set_context(GoalInfo0, Context, GoalInfo1),
-        % Put the purity in the goal_info in case
-        % this foreign code is inlined
+        % Put the purity in the goal_info in case this foreign code is inlined.
         add_goal_info_purity_feature(GoalInfo1, Purity, GoalInfo),
         make_foreign_args(HeadVars, ArgInfo, OrigArgTypes,
             ForeignArgs),
         HldsGoal0 = foreign_proc(Attributes, PredId, ProcId,
             ForeignArgs, [], PragmaImpl) - GoalInfo,
         map__init(EmptyVarTypes),
-        implicitly_quantify_clause_body(HeadVars, _Warnings, HldsGoal0,
-            HldsGoal, VarSet0, VarSet, EmptyVarTypes, _),
-        NewClause = clause([ProcId], HldsGoal,
-            foreign_language(NewLang), Context),
-        UpdateClauses(NewClause, NewClauseList),
+        implicitly_quantify_clause_body(HeadVars, _Warnings,
+            HldsGoal0, HldsGoal, VarSet0, VarSet, EmptyVarTypes, _),
+        NewClause = clause([ProcId], HldsGoal, foreign_language(NewLang),
+            Context),
+        (
+            FinalAction = ignore,
+            NewClauseList = ClauseList
+        ;
+            FinalAction = add,
+            NewClauseList = [NewClause | ClauseList]
+        ;
+            FinalAction = replace(N),
+            list__replace_nth_det(ClauseList, N, NewClause, NewClauseList)
+        ;
+            FinalAction = split_add(N, Clause),
+            list__replace_nth_det(ClauseList, N, Clause, NewClauseListTail),
+            NewClauseList = [NewClause | NewClauseListTail]
+        ),
         HasForeignClauses = yes,
         !:ClausesInfo = clauses_info(VarSet, VarTypes, TVarNameMap,
             VarTypes1, HeadVars, NewClauseList,
             TI_VarMap, TCI_VarMap, HasForeignClauses)
     ).
+
+    % As we traverse the clauses, at each one decide which action to perform.
+    %
+    % If there are no clauses, we will simply add this clause.
+    %
+    % If there are matching foreign_proc clauses for this proc_id,
+    % we will either replace them or ignore the new clause
+    % (depending on the preference of the two foreign languages).
+    %
+    % If there is a matching Mercury clause for this proc_id, we will either
+    %   - replace it if there is only one matching mode in its proc_id list.
+    %   - remove the matching proc_id from its proc_id list, and add this
+    %     clause as a new clause for this mode.
+
+:- type foreign_proc_action
+    --->    ignore
+    ;       add
+    ;       split_add(int, clause)
+    ;       replace(int).
+
+:- pred decide_action(globals::in, compilation_target::in,
+    foreign_language::in, proc_id::in, clause::in,
+    foreign_proc_action::in, foreign_proc_action::out,
+    int::in, int::out) is det.
+
+decide_action(Globals, Target, NewLang, ProcId, Clause, !Action, !ClauseNum) :-
+    Clause = clause(ProcIds, Body, ClauseLang, Context),
+    (
+        ClauseLang = mercury,
+        ( ProcIds = [ProcId] ->
+            !:Action = replace(!.ClauseNum)
+        ; list__delete_first(ProcIds, ProcId, MercuryProcIds) ->
+            NewMercuryClause = clause(MercuryProcIds, Body, ClauseLang,
+                Context),
+            !:Action = split_add(!.ClauseNum, NewMercuryClause)
+        ;
+            true
+        )
+    ;
+        ClauseLang = foreign_language(OldLang),
+        ( list__member(ProcId, ProcIds) ->
+            (
+                yes = foreign__prefer_foreign_language(Globals, Target,
+                    OldLang, NewLang)
+            ->
+                % This language is preferred to the old
+                % language, so we should replace it
+                !:Action = replace(!.ClauseNum)
+            ;
+                % Just ignore it.
+                !:Action = ignore
+            )
+        ;
+            true
+        )
+    ),
+    !:ClauseNum = !.ClauseNum + 1.
 
 :- pred allocate_vars_for_saved_vars(list(string)::in,
     list(pair(prog_var, string))::out,
