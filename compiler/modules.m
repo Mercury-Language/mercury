@@ -2046,7 +2046,10 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps) -->
 		module_name_to_file_name(ModuleName, ".date0", no,
 						Date0FileName),
 		io__write_strings(DepStream, [
-				"\n\n", DateFileName, " ",
+				"\n\n", DateFileName, " : ", Date0FileName
+		]),
+		io__write_strings(DepStream, [
+				"\n", DateFileName, " ",
 				Date0FileName, " : ",
 				SourceFileName
 		]),
