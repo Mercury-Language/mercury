@@ -52,25 +52,7 @@
 % 1) discriminated unions:
 %	:- type tree(T) ---> nil ; t(tree(T), T, tree(T)).
 %
-% 2) undiscriminated unions [NOT YET IMPLEMENTED].
-%	If rhs has a single type then the two
-%	types have same structure but *different* name.
-%	Basically just syntactic sugar for discriminated unions,
-%	except that it also works for builtin types like int.
-%
-%		% an undiscriminate union
-%		% same as type t3 ---> a ; b ; c ; d.
-%	:- type t3 = t1 + t2.
-%
-%	:- type t1 ---> a ; b.
-%	:- type t2 ---> c ; d.
-%
-%		% another undiscriminated union
-%	:- type number = int + float.
-%
-%    undiscriminated unions are NOT YET IMPLEMENTED.
-%
-% 3) equivalent types (treated identically, ie, same name.  Any number
+% 2) equivalent types (treated identically, ie, same name.  Any number
 %	of types can be equivalent; the *canonical* one is the one
 %	which is not defined using ==):
 %	:- type real == float.
@@ -82,13 +64,15 @@
 %    give better error messages.  However, this is not a high
 %    priority.
 %
+% 3) higher-order predicate types
+%	pred, pred(T), pred(T1, T2), pred(T1, T2, T3), ... 
+%
 % 4) builtin types
 %	character, int, float, string
-%	pred, pred(T), pred(T1, T2), pred(T1, T2, T3), ... 
 %       These types have special syntax for constants.
-%	There may be other types (short integers, complex numbers, rationals,
-%	etc.) provided by the system, but they can just be part of the
-%	standard library.
+%	There may be other types (list(T), unit, univ,
+%	etc.) provided by the system, but they can just
+%	be part of the standard library.
 %
 % Each predicate must have a `:- pred' declaration specifying the
 % types of the arguments for that predicate.
@@ -96,14 +80,14 @@
 %-----------------------------------------------------------------------------%
 %  Wish list:
 %
-%	improve the error reporting for the unify var & functor case
-%
 % 	we should handle explicit type qualifications
 % 	(and remove them here) but we don't do so yet
 %
 %	we should handle equivalence types here
 %
 %	we should handle overloading of predicates
+%
+%	we should allow type inference for non-exported predicates
 %
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
