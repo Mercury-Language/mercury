@@ -120,10 +120,22 @@ logfile="$tm_dir/logs/$logname"
 
 tmpfile=/tmp/run_test$$
 trap 'rm -f $tmpfile $tmpscript; exit 1' 1 2 3 13 15
-{
+
+# We can't just fold this into the case statement below because sh
+# (but not bash) executes compound commands with redirection in a
+# sub-shell, and we need the value of $test_status in the subject
+# for the mail below.
 if nice -5 sh $tmpscript $HOST $ARCH $FULLARCH $BRANCH $C_COMPILER \
 		> $logfile 2>&1
 then
+	test_status="succeeded"
+else
+	test_status="FAILED"
+fi
+
+{
+case "$test_status" in
+    succeeded)
 	fgrep '**' $logfile > $logfile.errs
 	if [ -s $logfile.errs ]; then
 		echo "test passed (with some errors supressed/ignored)"
@@ -149,8 +161,8 @@ then
 		size mercury_compile
 		echo
 	} >> $tm_dir/logs/sizes
-	test_status="succeeded"
-else
+	;;
+    FAILED)
 	fgrep '**' $logfile > $logfile.errs
 	echo test FAILED
 	echo log file in $logfile
@@ -158,8 +170,8 @@ else
 	echo
 	echo last 20 lines of log file:
 	tail -20 $logfile
-	test_status="FAILED"
-fi
+	;;
+esac
 } > $tmpfile 2>&1
 
 # NB we can't just pipe into `mail', because `mail' times out while
