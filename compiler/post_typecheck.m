@@ -1226,7 +1226,34 @@ post_typecheck__translate_get_function(ModuleInfo, PredInfo0, PredInfo,
 		ConsId, FieldNumber),
 
 	get_cons_id_arg_types_adding_existq_tvars(ModuleInfo, ConsId,
-		TermType, ArgTypes, _, PredInfo0, PredInfo),
+		TermType, ArgTypes0, ExistQVars, PredInfo0, PredInfo),
+
+	%
+	% If the type of the field we are extracting contains existentially
+	% quantified type variables then we need to rename any other
+	% occurrences of those type variables in the arguments of the
+	% constructor so that they match those in the type of the field.
+	% (We don't need to do this for field updates because if any
+	% existentially quantified type variables occur in field to set
+	% and other fields then the field update should have been disallowed
+	% by typecheck.m because the result can't be well-typed).
+	%
+	( ExistQVars \= [] ->
+		map__lookup(VarTypes0, FieldVar, FieldType),
+		list__index1_det(ArgTypes0, FieldNumber, FieldArgType),
+		(
+			type_list_subsumes([FieldArgType], [FieldType],
+				FieldSubst)
+		->
+			term__apply_rec_substitution_to_list(ArgTypes0,
+				FieldSubst, ArgTypes)
+		;
+			error(
+	"post_typecheck__translate_get_function: type_list_subsumes failed")
+		)
+	;
+		ArgTypes = ArgTypes0
+	),
 
 	split_list_at_index(FieldNumber, ArgTypes,
 		TypesBeforeField, _, TypesAfterField),
