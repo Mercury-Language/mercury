@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2002 The University of Melbourne.
+% Copyright (C) 1999-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1887,7 +1887,8 @@ ml_gen_hl_tag_field_id(Type, ModuleInfo) = FieldId :-
 	module_info_types(ModuleInfo, TypeTable),
 	TypeDefn = map__lookup(TypeTable, TypeCtor),
 	hlds_data__get_type_defn_body(TypeDefn, TypeDefnBody),
-	( TypeDefnBody = du_type(Ctors, TagValues, _, _, _) ->
+	( TypeDefnBody = du_type(Ctors, TagValues, _, _, _ReservedTag, _) ->
+		% XXX we probably shouldn't ignore ReservedTag here
 		(
 			(some [Ctor] (
 				list__member(Ctor, Ctors),

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002 The University of Melbourne.
+% Copyright (C) 2002-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1077,7 +1077,7 @@ use_cell(CellVar, FieldVarList, ConsId, Goal) -->
 			{ module_info_types(ModuleInfo, TypeTable) },
 			{ map__lookup(TypeTable, TypeCtor, TypeDefn) },
 			{ hlds_data__get_type_defn_body(TypeDefn, TypeBody) },
-			{ TypeBody = du_type(_, ConsTable, _, _, _) }
+			{ TypeBody = du_type(_, ConsTable, _, _, _, _) }
 		->
 			{ map__lookup(ConsTable, ConsId, ConsTag) },
 			{ ConsTag = no_tag ->

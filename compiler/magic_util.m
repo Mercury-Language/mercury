@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2002 University of Melbourne.
+% Copyright (C) 1998-2003 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1374,7 +1374,7 @@ magic_util__check_type_ctor(Parents, TypeCtor, Errors0, Errors) -->
 		set(argument_error)::in, set(argument_error)::out, 
 		magic_info::in, magic_info::out) is det.
 
-magic_util__check_type_defn(du_type(Ctors, _, _, _, _),
+magic_util__check_type_defn(du_type(Ctors, _, _, _, _, _),
 		Parents, Errors0, Errors) -->
 	list__foldl2(magic_util__check_ctor(Parents), Ctors, Errors0, Errors).
 magic_util__check_type_defn(eqv_type(_), _, _, _) -->

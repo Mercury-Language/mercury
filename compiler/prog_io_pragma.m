@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2002 The University of Melbourne.
+% Copyright (C) 1996-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -837,6 +837,13 @@ parse_pragma_type(ModuleName, "type_spec", PragmaTerms, ErrorTerm,
 		ErrorTerm)
 	).
 
+parse_pragma_type(ModuleName, "reserve_tag", PragmaTerms, ErrorTerm,
+		_VarSet, Result) :-
+	parse_simple_type_pragma(ModuleName, "reserve_tag",
+		lambda([Name::in, Arity::in, Pragma::out] is det,
+			Pragma = reserve_tag(Name, Arity)),
+		PragmaTerms, ErrorTerm, Result).
+
 parse_pragma_type(ModuleName, "fact_table", PragmaTerms, ErrorTerm,
 		_VarSet, Result) :-
 	(
@@ -1060,6 +1067,7 @@ parse_pragma_type(ModuleName, "check_termination", PragmaTerms,
 			Pragma = check_termination(Name, Arity)),
 		PragmaTerms, ErrorTerm, Result).
 
+	% This parses a pragma that refers to a predicate or function.
 :- pred parse_simple_pragma(module_name, string,
 			pred(sym_name, int, pragma_type),
 			list(term), term, maybe1(item)).
@@ -1068,8 +1076,33 @@ parse_pragma_type(ModuleName, "check_termination", PragmaTerms,
 
 parse_simple_pragma(ModuleName, PragmaType, MakePragma,
 				PragmaTerms, ErrorTerm, Result) :-
+	parse_simple_pragma_base(ModuleName, PragmaType,
+		"predicate or function", MakePragma, PragmaTerms, ErrorTerm,
+		Result).
+
+	% This parses a pragma that refers to type.
+:- pred parse_simple_type_pragma(module_name, string,
+			pred(sym_name, int, pragma_type),
+			list(term), term, maybe1(item)).
+:- mode parse_simple_type_pragma(in, in, pred(in, in, out) is det,
+			in, in, out) is det.
+
+parse_simple_type_pragma(ModuleName, PragmaType, MakePragma,
+				PragmaTerms, ErrorTerm, Result) :-
+	parse_simple_pragma_base(ModuleName, PragmaType, "type", MakePragma,
+		PragmaTerms, ErrorTerm, Result).
+		
+	% This parses a pragma that refers to symbol name / arity.
+:- pred parse_simple_pragma_base(module_name, string, string,
+			pred(sym_name, int, pragma_type),
+			list(term), term, maybe1(item)).
+:- mode parse_simple_pragma_base(in, in, in, pred(in, in, out) is det,
+			in, in, out) is det.
+
+parse_simple_pragma_base(ModuleName, PragmaType, NameKind, MakePragma,
+		PragmaTerms, ErrorTerm, Result) :-
 	( PragmaTerms = [PredAndArityTerm] ->
-	    parse_pred_name_and_arity(ModuleName, PragmaType,
+	    parse_simple_name_and_arity(ModuleName, PragmaType, NameKind,
 		PredAndArityTerm, ErrorTerm, NameArityResult),
 	    (
 	    	NameArityResult = ok(PredName, Arity),
@@ -1089,15 +1122,25 @@ parse_simple_pragma(ModuleName, PragmaType, MakePragma,
 		maybe2(sym_name, arity)).
 :- mode parse_pred_name_and_arity(in, in, in, in, out) is det.
 
-parse_pred_name_and_arity(ModuleName, PragmaType, PredAndArityTerm,
-		ErrorTerm, Result) :-
+parse_pred_name_and_arity(ModuleName, PragmaType, NameAndArityTerm, ErrorTerm,
+		Result) :-
+	parse_simple_name_and_arity(ModuleName, PragmaType,
+		"predicate or function", NameAndArityTerm, ErrorTerm, Result).
+
+:- pred parse_simple_name_and_arity(module_name, string, string, term, term,
+		maybe2(sym_name, arity)).
+:- mode parse_simple_name_and_arity(in, in, in, in, in, out) is det.
+
+parse_simple_name_and_arity(ModuleName, PragmaType, NameKind,
+		NameAndArityTerm, ErrorTerm, Result) :-
 	(
-		parse_name_and_arity(ModuleName, PredAndArityTerm,
-			PredName, Arity)
+		parse_name_and_arity(ModuleName, NameAndArityTerm,
+			Name, Arity)
 	->
-		Result = ok(PredName, Arity)
+		Result = ok(Name, Arity)
 	;
-		string__append_list(["expected predname/arity for `pragma ",
+		string__append_list(["expected ", NameKind,
+			" name/arity for `pragma ",
 			PragmaType, "' declaration"], ErrorMsg),
 		Result = error(ErrorMsg, ErrorTerm)
 	).

@@ -596,6 +596,14 @@ mercury_output_item(_UnqualifiedItemNames, pragma(Pragma), Context) -->
 		{ Pragma = fact_table(Pred, Arity, FileName) },
 		mercury_format_pragma_fact_table(Pred, Arity, FileName)
 	;
+		{ Pragma = reserve_tag(TypeName, TypeArity) },
+		add_string(":- pragma reserve_tag("),
+		mercury_format_bracketed_sym_name(TypeName,
+			next_to_graphic_token),
+		add_string("/"),
+		add_int(TypeArity),
+		add_string(").\n")
+	;
 		{ Pragma = aditi(Pred, Arity) },
 		mercury_output_pragma_decl(Pred, Arity, predicate, "aditi")
 	;

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1996, 1998-2002 The University of Melbourne.
+% Copyright (C) 1994-1996, 1998-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -45,6 +45,13 @@
 	% constants are distinguished by a secondary tag, if there are more
 	% than one of them.
 
+	% If there is a `pragma reserve_tag' declaration for the type,
+	% or if the `--reserve-tag' option is set,
+	% then we reserve the first primary tag (for representing
+	% unbound variables).  This is used by HAL, for Herbrand constraints
+	% (i.e. Prolog-style logic variables).
+	% This also disables enumerations and no_tag types.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -54,15 +61,16 @@
 :- import_module parse_tree__prog_data, hlds__hlds_data, libs__globals.
 :- import_module bool, list.
 
-% assign_constructor_tags(Constructors, TypeCtor, Globals, TagValues, IsEnum):
+% assign_constructor_tags(Constructors, TypeCtor, ReservedTagPragma, Globals,
+%		TagValues, IsEnum):
 %	Assign a constructor tag to each constructor for a discriminated
 %	union type, and determine whether the type is an enumeration
 %	type or not.  (`Globals' is passed because exact way in which
 %	this is done is dependent on a compilation option.)
 
-:- pred assign_constructor_tags(list(constructor), type_ctor, globals,
+:- pred assign_constructor_tags(list(constructor), type_ctor, bool, globals,
 				cons_tag_values, bool).
-:- mode assign_constructor_tags(in, in, in, out, out) is det.
+:- mode assign_constructor_tags(in, in, in, in, out, out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -75,7 +83,8 @@
 
 %-----------------------------------------------------------------------------%
 
-assign_constructor_tags(Ctors, TypeCtor, Globals, CtorTags, IsEnum) :-
+assign_constructor_tags(Ctors, TypeCtor, ReservedTagPragma, Globals,
+		CtorTags, IsEnum) :-
 
 		% work out how many tag bits and reserved addresses
 		% we've got to play with
@@ -88,8 +97,9 @@ assign_constructor_tags(Ctors, TypeCtor, Globals, CtorTags, IsEnum) :-
 
 		% determine if we need to reserve a tag for use by HAL's
 		% Herbrand constraint solver
-		% (this also disables enumerations and no_tag types)
-	globals__lookup_bool_option(Globals, reserve_tag, ReserveTag),
+		% (This also disables enumerations and no_tag types.)
+	globals__lookup_bool_option(Globals, reserve_tag, GlobalReserveTag),
+	ReserveTag = GlobalReserveTag `or` ReservedTagPragma,
 
 		% We do not bother reserving a tag for type_infos --- these
 		% types are implemented in C, and there is no way (at present)
@@ -117,7 +127,8 @@ assign_constructor_tags(Ctors, TypeCtor, Globals, CtorTags, IsEnum) :-
 		IsEnum = no,
 		(
 				% Try representing it as a no-tag type
-			type_constructors_should_be_no_tag(Ctors, Globals,
+			type_constructors_should_be_no_tag(Ctors,
+				ReserveTag, Globals,
 				SingleFunc, SingleArg, _)
 		->
 			make_cons_id_from_qualified_sym_name(SingleFunc,

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2002 The University of Melbourne.
+% Copyright (C) 1994-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -2887,11 +2887,17 @@ hlds_out__write_type_params_2(Tvarset, [P | Ps]) -->
 :- mode hlds_out__write_type_body(in, in, in, di, uo) is det.
 
 hlds_out__write_type_body(Indent, Tvarset, du_type(Ctors, Tags, Enum,
-		MaybeEqualityPred, Foreign)) -->
+		MaybeEqualityPred, ReservedTag, Foreign)) -->
 	io__write_string(" --->\n"),
 	( { Enum = yes } ->
 		hlds_out__write_indent(Indent),
 		io__write_string("/* enumeration */\n")
+	;
+		[]
+	),
+	( { ReservedTag = yes } ->
+		hlds_out__write_indent(Indent),
+		io__write_string("/* reserved_tag */\n")
 	;
 		[]
 	),

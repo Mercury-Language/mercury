@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2002 The University of Melbourne.
+% Copyright (C) 1997-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -255,7 +255,7 @@ find_weights_for_type_list([TypeCtor - TypeDefn | TypeList],
 find_weights_for_type(TypeCtor, TypeDefn, Weights0, Weights) :-
 	hlds_data__get_type_defn_body(TypeDefn, TypeBody),
 	(
-		TypeBody = du_type(Constructors, _, _, _, _),
+		TypeBody = du_type(Constructors, _, _, _, _, _),
 		hlds_data__get_type_defn_tparams(TypeDefn, TypeParams),
 		find_weights_for_cons_list(Constructors, TypeCtor, TypeParams,
 			Weights0, Weights)

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2002 The University of Melbourne.
+% Copyright (C) 1996-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -13,7 +13,9 @@
 %	- The clauses for exported preds that have higher-order pred arguments.
 %	- The pred/mode declarations for local predicates that the
 %	  above clauses use.
-% 	- Non-exported types, insts and modes used by the above.
+% 	- Non-exported types, insts and modes used by the above
+%	- Pragma reserve_tag or foreign_type declarations for any types
+%	  output due to the line above
 %	- :- import_module declarations to import stuff used by the above.
 %	- pragma declarations for the exported preds.
 %	- pragma foreign_header declarations if any pragma_foreign_code 
@@ -999,7 +1001,8 @@ intermod__gather_types_2(TypeCtor, TypeDefn0, Info0, Info) :-
 	->
 	    (
 		hlds_data__get_type_defn_body(TypeDefn0, TypeBody0),
-		TypeBody0 = du_type(Ctors, Tags, Enum, MaybeUserEq0, Foreign),
+		TypeBody0 = du_type(Ctors, Tags, Enum, MaybeUserEq0,
+			ReservedTag, Foreign),
 		MaybeUserEq0 = yes(UserEq0)
 	    ->
 		module_info_get_special_pred_map(ModuleInfo, SpecialPreds),
@@ -1008,7 +1011,8 @@ intermod__gather_types_2(TypeCtor, TypeDefn0, Info0, Info) :-
 		pred_info_arg_types(UnifyPredInfo, TVarSet, _, ArgTypes),
 		typecheck__resolve_pred_overloading(ModuleInfo, ArgTypes,
 			TVarSet, UserEq0, UserEq, UserEqPredId),
-		TypeBody = du_type(Ctors, Tags, Enum, yes(UserEq), Foreign),
+		TypeBody = du_type(Ctors, Tags, Enum, yes(UserEq), 
+			ReservedTag, Foreign),
 		hlds_data__set_type_defn_body(TypeDefn0, TypeBody, TypeDefn),
 		intermod__add_proc(UserEqPredId, _, Info1, Info2)
 	    ;	
@@ -1178,9 +1182,9 @@ intermod__write_type(TypeCtor - TypeDefn) -->
 	{ hlds_data__get_type_defn_tparams(TypeDefn, Args) },
 	{ hlds_data__get_type_defn_body(TypeDefn, Body) },
 	{ hlds_data__get_type_defn_context(TypeDefn, Context) },
-	{ TypeCtor = Name - _Arity },
+	{ TypeCtor = Name - Arity },
 	(
-		{ Body = du_type(Ctors, _, _, MaybeEqualityPred, _) },
+		{ Body = du_type(Ctors, _, _, MaybeEqualityPred, _, _) },
 		{ TypeBody = du_type(Ctors, MaybeEqualityPred) }
 	;
 		{ Body = eqv_type(EqvType) },
@@ -1197,7 +1201,7 @@ intermod__write_type(TypeCtor - TypeDefn) -->
 
 	(
 		{ Body = foreign_type(ForeignTypeBody)
-		; Body = du_type(_, _, _, _, yes(ForeignTypeBody))
+		; Body = du_type(_, _, _, _, _, yes(ForeignTypeBody))
 		},
 		{ ForeignTypeBody = foreign_type_body(MaybeIL, MaybeC) }
 	->
@@ -1217,6 +1221,15 @@ intermod__write_type(TypeCtor - TypeDefn) -->
 		; { MaybeC = no },
 			[]
 		)
+	;
+		[]
+	),
+	(
+		{ Body = du_type(_, _, _, _, ReservedTag, _) },
+		{ ReservedTag = yes }
+	->
+		mercury_output_item(pragma(reserve_tag(Name, Arity)),
+			Context)
 	;
 		[]
 	).

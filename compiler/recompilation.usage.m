@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2002 University of Melbourne.
+% Copyright (C) 2001-2003 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1031,7 +1031,7 @@ recompilation__usage__find_items_used_by_class_method(
 	recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
 recompilation__usage__find_items_used_by_type_body(
-		du_type(Ctors, _, _, _, _)) -->
+		du_type(Ctors, _, _, _, _, _)) -->
 	list__foldl(
 	    (pred(Ctor::in, in, out) is det -->
 		{ Ctor = ctor(_, Constraints, _, CtorArgs) },

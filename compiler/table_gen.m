@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2002 The University of Melbourne.
+% Copyright (C) 1997-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1343,7 +1343,7 @@ gen_lookup_call_for_type(TypeCat, Type, TableVar, ArgVar, Context,
 			map__lookup(TypeDefnTable, TypeCtor, TypeDefn),
 			hlds_data__get_type_defn_body(TypeDefn, TypeBody),
 			(
-				TypeBody = du_type(Ctors, _, yes, no, _)
+				TypeBody = du_type(Ctors, _, yes, no, _, _)
 			->
 				list__length(Ctors, EnumRange)
 			;

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2002 The University of Melbourne.
+% Copyright (C) 1999-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -122,8 +122,9 @@ ml_gen_type_2(abstract_type, _, _, _) --> [].
 ml_gen_type_2(eqv_type(_EqvType), _, _, _) --> []. % XXX Fixme!
 	% For a description of the problems with equivalence types,
 	% see our BABEL'01 paper "Compiling Mercury to the .NET CLR".
-ml_gen_type_2(du_type(Ctors, TagValues, IsEnum, MaybeEqualityPred, _),
-		ModuleInfo, TypeCtor, TypeDefn) -->
+ml_gen_type_2(du_type(Ctors, TagValues, IsEnum, MaybeEqualityPred,
+		_ReservedTag, _), ModuleInfo, TypeCtor, TypeDefn) -->
+	% XXX we probably shouldn't ignore _ReservedTag
 	{ ml_gen_equality_members(MaybeEqualityPred, MaybeEqualityMembers) },
 	( { IsEnum = yes } ->
 		ml_gen_enum_type(TypeCtor, TypeDefn, Ctors, TagValues,

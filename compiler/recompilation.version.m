@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2002 The University of Melbourne.
+% Copyright (C) 2001-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -554,6 +554,7 @@ is_pred_pragma(source_file(_), no).
 is_pred_pragma(unused_args(PredOrFunc, Name, Arity, _, _),
 		yes(yes(PredOrFunc) - Name / Arity)).
 is_pred_pragma(fact_table(Name, Arity, _), yes(no - Name / Arity)).
+is_pred_pragma(reserve_tag(_TypeName, _TypeArity), no).
 is_pred_pragma(aditi(Name, Arity), yes(no - Name / Arity)).
 is_pred_pragma(base_relation(Name, Arity), yes(no - Name / Arity)).
 is_pred_pragma(aditi_index(Name, Arity, _), yes(no - Name / Arity)).

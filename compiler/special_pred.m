@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2000,2002 The University of Melbourne.
+% Copyright (C) 1995-2000,2002-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -210,7 +210,7 @@ special_pred_is_generated_lazily_2(ModuleInfo, _TypeCtor, Body, Status) :-
 	\+ special_pred_for_type_needs_typecheck(Body).
 
 special_pred_for_type_needs_typecheck(Body) :-
-	Body = du_type(Ctors, _, _, MaybeEqualityPred, _),
+	Body = du_type(Ctors, _, _, MaybeEqualityPred, _, _),
 	(
 		MaybeEqualityPred = yes(_)
 	;

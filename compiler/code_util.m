@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2002 The University of Melbourne.
+% Copyright (C) 1994-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -735,7 +735,7 @@ code_util__cons_id_to_tag(cons(Name, Arity), Type, ModuleInfo, Tag) :-
 		map__lookup(TypeTable, TypeCtor, TypeDefn),
 		hlds_data__get_type_defn_body(TypeDefn, TypeBody),
 		(
-			TypeBody = du_type(_, ConsTable0, _, _, _)
+			TypeBody = du_type(_, ConsTable0, _, _, _, _)
 		->
 			ConsTable = ConsTable0
 		;

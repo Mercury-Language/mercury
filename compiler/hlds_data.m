@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2002 The University of Melbourne.
+% Copyright (C) 1996-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -299,14 +299,22 @@ make_cons_id_from_qualified_sym_name(SymName, Args, cons(SymName, Arity)) :-
 	--->	du_type(
 					% the ctors for this type
 			du_type_ctors :: list(constructor), 
+
 					% their tag values
 			du_type_cons_tag_values :: cons_tag_values,
+
 					% is this type an enumeration?
 			du_type_is_enum :: bool,
+
 					% user-defined equality pred
 			du_type_usereq :: maybe(sym_name),
+
+					% is there a `:- pragma reserve_tag'
+					% pragma for this type?
+			du_type_reserved_tag :: bool,
+
 					% are there `:- pragma foreign' type
-					% declarations for this type.
+					% declarations for this type?
 			du_type_is_foreign_type :: maybe(foreign_type_body)
 		)
 	;	eqv_type(type)

@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2002 The University of Melbourne.
+% Copyright (C) 1996-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -930,6 +930,7 @@ qualify_pragma(type_spec(A, B, C, D, MaybeModes0, Subst0, G, H),
 	),
 	qualify_type_spec_subst(Subst0, Subst, Info1, Info).
 qualify_pragma(X@fact_table(_, _, _), X, Info, Info) --> [].
+qualify_pragma(X@reserve_tag(_, _), X, Info, Info) --> [].
 qualify_pragma(X@aditi(_, _), X, Info, Info) --> [].
 qualify_pragma(X@base_relation(_, _), X, Info, Info) --> [].
 qualify_pragma(X@aditi_index(_, _, _), X, Info, Info) --> [].

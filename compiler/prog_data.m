@@ -244,6 +244,9 @@
 	;	fact_table(sym_name, arity, string)
 			% Predname, Arity, Fact file name.
 
+	;	reserve_tag(sym_name, arity)
+			% Typename, Arity
+
 
 	%
 	% Aditi pragmas

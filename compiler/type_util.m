@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2002 The University of Melbourne.
+% Copyright (C) 1994-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -20,8 +20,9 @@
 
 :- import_module hlds__hlds_module, hlds__hlds_pred, hlds__hlds_data.
 :- import_module parse_tree__prog_data, libs__globals.
+
 :- import_module term.
-:- import_module std_util, list, map.
+:- import_module bool, std_util, list, map.
 
 %-----------------------------------------------------------------------------%
 
@@ -305,11 +306,15 @@
 :- pred type_constructors_are_type_info(list(constructor)).
 :- mode type_constructors_are_type_info(in) is semidet.
 
+	% type_constructors_should_be_no_tag(Ctors, ReservedTag, Globals,
+	%	FunctorName, FunctorArgType, MaybeFunctorArgName):
 	% Check whether some constructors are a no_tag type, and that this
-	% is compatible with the grade options set in the globals.
-:- pred type_constructors_should_be_no_tag(list(constructor), globals,
+	% is compatible with the ReservedTag setting for this type and
+	% the grade options set in the globals.
+:- pred type_constructors_should_be_no_tag(list(constructor), bool, globals,
 	sym_name, type, maybe(string)).
-:- mode type_constructors_should_be_no_tag(in, in, out, out, out) is semidet.
+:- mode type_constructors_should_be_no_tag(in, in, in, out, out, out)
+	is semidet.
 
 	% Unify (with occurs check) two types with respect to a type
 	% substitution and update the type bindings.
@@ -489,7 +494,7 @@
 
 :- import_module parse_tree__prog_io, parse_tree__prog_io_goal.
 :- import_module parse_tree__prog_util, libs__options, libs__globals.
-:- import_module bool, char, int, string.
+:- import_module char, int, string.
 :- import_module assoc_list, require, varset.
 
 type_util__type_ctor_module(_ModuleInfo, TypeName - _Arity, ModuleName) :-
@@ -1117,11 +1122,12 @@ type_is_single_ctor_single_arg(Ctors, Ctor, MaybeArgName, ArgType) :-
 	% assign single functor of arity one a `no_tag' tag
 	% (unless it is type_info/1 or we are reserving a tag,
 	% or if it is one of the dummy types)
-type_constructors_should_be_no_tag(Ctors, Globals, 
+type_constructors_should_be_no_tag(Ctors, ReserveTagPragma, Globals, 
 			SingleFunc, SingleArg, MaybeArgName) :-
 	type_constructors_are_no_tag_type(Ctors, SingleFunc, SingleArg, 
 		MaybeArgName),
 	(
+		ReserveTagPragma = no,
 		globals__lookup_bool_option(Globals, reserve_tag, no),
 		globals__lookup_bool_option(Globals, unboxed_no_tag_types, yes)
 	;

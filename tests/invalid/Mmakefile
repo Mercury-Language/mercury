@@ -102,6 +102,7 @@ SINGLEMODULE_PROGS= \
 	qual_basic_test2 \
 	qualified_cons_id2 \
 	record_syntax_errors \
+	reserve_tag \
 	some \
 	spurious_mode_error \
 	state_vars_test1 \

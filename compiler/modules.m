@@ -1474,9 +1474,9 @@ split_clauses_and_decls([ItemAndContext0 | Items0],
 	).
 
 % pragma `obsolete', `terminates', `does_not_terminate' 
-% `termination_info', `check_termination', `aditi', `base_relation'
-% and `owner' pragma declarations are supposed to go in the interface,
-% but all other pragma declarations are implementation
+% `termination_info', `check_termination', `aditi', `base_relation',
+% `owner', and `reserve_tag' pragma declarations are supposed to go
+% in the interface, but all other pragma declarations are implementation
 % details only, and should go in the implementation.
 
 % XXX we should allow c_header_code;
@@ -1497,6 +1497,9 @@ pragma_allowed_in_interface(source_file(_), yes).
 	% yes, but the parser will strip out `source_file' pragmas anyway...
 pragma_allowed_in_interface(fact_table(_, _, _), no).
 pragma_allowed_in_interface(tabled(_, _, _, _, _), no).
+	% `reserve_tag' must be in the interface iff the corresponding
+	% type definition is in the interface. This is checked in make_hlds.m.
+pragma_allowed_in_interface(reserve_tag(_, _), yes).
 pragma_allowed_in_interface(promise_pure(_, _), no).
 pragma_allowed_in_interface(promise_semipure(_, _), no).
 pragma_allowed_in_interface(unused_args(_, _, _, _, _), no).

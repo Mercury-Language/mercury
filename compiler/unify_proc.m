@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2002 The University of Melbourne.
+% Copyright (C) 1994-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -544,11 +544,12 @@ unify_proc__add_lazily_generated_unify_pred(TypeCtor,
 		ConsId = cons(CtorSymName, TupleArity),
 		map__from_assoc_list([ConsId - single_functor],
 			ConsTagValues),
+		TypeBody = du_type([Ctor], ConsTagValues, IsEnum,
+			UnifyPred, ReservedTag, IsForeign),
 		UnifyPred = no,
 		IsEnum = no,
 		IsForeign = no,
-		TypeBody = du_type([Ctor], ConsTagValues, IsEnum,
-			UnifyPred, IsForeign),
+		ReservedTag = no,
 		construct_type(TypeCtor, TupleArgTypes, Type),
 
 		term__context_init(Context)
@@ -705,7 +706,7 @@ unify_proc__generate_clause_info(SpecialPredId, Type, TypeBody, Context,
 
 unify_proc__generate_unify_clauses(TypeBody, H1, H2, Context, Clauses) -->
 	(
-		{ TypeBody = du_type(Ctors, _, IsEnum, MaybeEqPred, _) },
+		{ TypeBody = du_type(Ctors, _, IsEnum, MaybeEqPred, _, _) },
 		( { MaybeEqPred = yes(PredName) } ->
 			%
 			% Just generate a call to the specified predicate,
@@ -795,7 +796,7 @@ generate_unify_clauses_eqv_type(EqvType, H1, H2, Context, Clauses) -->
 
 unify_proc__generate_index_clauses(TypeBody, X, Index, Context, Clauses) -->
 	(
-		{ TypeBody = du_type(Ctors, _, IsEnum, MaybeEqPred, _) },
+		{ TypeBody = du_type(Ctors, _, IsEnum, MaybeEqPred, _, _) },
 		( { MaybeEqPred = yes(_) } ->
 			%
 			% For non-canonical types, the generated comparison
@@ -842,7 +843,7 @@ unify_proc__generate_index_clauses(TypeBody, X, Index, Context, Clauses) -->
 unify_proc__generate_compare_clauses(Type, TypeBody, Res, H1, H2, Context,
 		Clauses) -->
 	(
-		{ TypeBody = du_type(Ctors, _, IsEnum, MaybeEqPred, _) },
+		{ TypeBody = du_type(Ctors, _, IsEnum, MaybeEqPred, _, _) },
 		( { MaybeEqPred = yes(_) } ->
 			%
 			% just generate code that will call error/1

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-2002 The University of Melbourne.
+% Copyright (C) 1996-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -135,7 +135,8 @@ type_ctor_info__gen_type_ctor_gen_info(TypeCtor, TypeName, TypeArity, TypeDefn,
 		;
 			SpecialPreds = no,
 			hlds_data__get_type_defn_body(TypeDefn, Body),
-			Body = du_type(_, _, _, yes(_UserDefinedEquality), _)
+			Body = du_type(_, _, _, yes(_UserDefinedEquality),
+				_, _)
 		)
 	->
 		map__lookup(SpecMap, unify - TypeCtor, UnifyPredId),
@@ -229,7 +230,8 @@ type_ctor_info__construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo,
 			UnivTvars, ExistTvars, MaybePseudoTypeInfo),
 		Details = eqv(MaybePseudoTypeInfo)
 	;
-		TypeBody = du_type(Ctors, ConsTagMap, Enum, EqualityPred, _),
+		TypeBody = du_type(Ctors, ConsTagMap, Enum, EqualityPred,
+			ReservedTag, _),
 		(
 			EqualityPred = yes(_),
 			EqualityAxioms = user_defined
@@ -237,16 +239,16 @@ type_ctor_info__construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo,
 			EqualityPred = no,
 			EqualityAxioms = standard
 		),
-		globals__lookup_bool_option(Globals, reserve_tag, ReserveTag),
 		(
 			Enum = yes,
 			type_ctor_info__make_enum_details(Ctors, ConsTagMap,
-				ReserveTag, EqualityAxioms, Details)
+				ReservedTag, EqualityAxioms, Details)
 		;
 			Enum = no,
 			(
 				type_constructors_should_be_no_tag(Ctors, 
-					Globals, Name, ArgType, MaybeArgName)
+					ReservedTag, Globals, Name, ArgType,
+					MaybeArgName)
 			->
 				type_ctor_info__make_notag_details(TypeArity,
 					Name, ArgType, MaybeArgName,
@@ -391,7 +393,7 @@ type_ctor_info__make_notag_details(TypeArity, SymName, ArgType, MaybeArgName,
 type_ctor_info__make_enum_details(Ctors, ConsTagMap, ReserveTag,
 		EqualityAxioms, Details) :-
 	( ReserveTag = yes ->
-		unexpected("type_ctor_info", "enum in .rt grade")
+		unexpected("type_ctor_info", "enum with reserved tag")
 	;
 		true
 	),

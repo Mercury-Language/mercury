@@ -18,7 +18,7 @@
 @ifinfo
 This file documents the Mercury programming language, version <VERSION>.
 
-Copyright (C) 1995-2002 The University of Melbourne.
+Copyright (C) 1995-2003 The University of Melbourne.
 
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice
@@ -7854,6 +7854,11 @@ extensions to the Mercury language:
                                 Support for bottom-up evaluation of Mercury
                                 predicates.
 @end menu
+@c XXX The `reserved tag' pragma is not documented because it is intended to
+@c     be used with `any' insts, which are themselves not yet documented.
+@c     Also, it is a quite low-level facility, and very
+@c     implementation-specific...
+@c * Reserved tag::		Support for Herbrand constraint solvers.
 
 @node Fact tables
 @section Fact tables
@@ -8845,6 +8850,50 @@ Aditi distribution.
 
 @end ifset
 @c aditi
+
+@c XXX The `reserved tag' pragma is not documented because it is intended to
+@c     be used with `any' insts, which are themselves not yet documented.
+@c     Also, it is a quite low-level facility, and very
+@c     implementation-specific...
+@c
+@c @node Reserved tag
+@c @section Reserved tag
+@c 
+@c The University of Melbourne Mercury implementation includes some fairly
+@c low-level support for implementing Herbrand constraint solvers
+@c (i.e. Prolog-style logic variables).
+@c 
+@c In particular, you can use the @samp{reserve_tag} pragma
+@c to tell the compiler to reserve a tag in the data representation
+@c for a type.  The intent is for this tag to be used to represent
+@c unbound variables with inst @samp{any}.
+@c
+@c The @samp{reserve_tag} pragma declaration has the following form:
+@c @example
+@c :- pragma reserve_tag(@var{type-name} / @var{type-arity}).
+@c @end example
+@c
+@c The @var{type-name} and @var{type-arity} must specify the name
+@c and arity of a discriminated union type defined in the same module,
+@c and the @samp{reserve_tag} pragma must occur in the same section
+@c (interface or implementation) of the module as the type definition.
+@c
+@c The effect of this declaration is that values whose primary
+@c tag is zero are reserved for use in representing unbound variables.
+@c Note that to actually create an unbound variable, you need to
+@c use the foreign language interface code, and the code will probably
+@c need to be aware of the Mercury compiler's data representation.
+@c
+@c The @samp{reserve_tag} pragma has the same effect to the
+@c @samp{--reserve-tag} compiler option (which is documented
+@c in the Mercury user's guide),
+@c except that the pragma applies just to the specified type,
+@c whereas the compiler option applies to discriminated union types
+@c in the program.
+@c
+@c Note that neither the @samp{reserve_tag} pragma nor the @samp{--reserve-tag}
+@c compiler option will have any useful effect if the @samp{--high-level-data} 
+@c option is used (e.g. for the .NET or Java back-ends).
 
 @node Bibliography
 @chapter Bibliography

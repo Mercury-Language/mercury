@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2002 The University of Melbourne.
+% Copyright (C) 1993-2003 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -487,10 +487,16 @@ add_item_decl_pass_2(pragma(Pragma), Context, Status, Module0, Status, Module)
 		{ Module = Module0 }
 	;
 		% Handle pragma fact_table decls later on (when we process
-		% clauses).
+		% clauses -- since these decls take the place of clauses).
 		{ Pragma = fact_table(_, _, _) },
 		{ Module = Module0 }
 	;
+		% Handle pragma reserve_tag decls later on (when we process
+		% clauses -- they need to be handled after the type definitions
+		% have been added).
+		{ Pragma = reserve_tag(_, _) },	
+		{ Module = Module0 }
+	;	
 		{ Pragma = aditi(PredName, Arity) },
 		maybe_enable_aditi_compilation(Status, Context,
 			Module0, Module1),
@@ -803,6 +809,12 @@ add_item_clause(pragma(Pragma), Status, Status, Context,
 			Context, Module0, Module),
 		{ Info = Info0 }
 	;
+		{ Pragma = reserve_tag(TypeName, TypeArity) }
+	->
+		add_pragma_reserve_tag(TypeName, TypeArity, Status,
+			Context, Module0, Module),
+		{ Info = Info0 }
+	;
  		% don't worry about any pragma declarations other than the
  		% clause-like pragmas (c_code, tabling and fact_table),
 		% foreign_type and the termination_info pragma here,
@@ -985,6 +997,115 @@ add_pragma_foreign_type(Context, item_status(ImportStatus, NeedQual),
 			words("defined as foreign_type without being declared.")
 		] },
 		error_util__write_error_pieces(Context, 0, ErrorPieces),
+		{ module_info_incr_errors(Module0, Module) }
+	).
+
+%-----------------------------------------------------------------------------%
+
+:- pred add_pragma_reserve_tag(sym_name, arity, import_status, prog_context,
+	module_info, module_info, io__state, io__state).
+:- mode add_pragma_reserve_tag(in, in, in, in, in, out, di, uo) is det.
+
+add_pragma_reserve_tag(TypeName, TypeArity, PragmaStatus, Context,
+		Module0, Module) -->
+	{ TypeCtor = TypeName - TypeArity },
+	{ module_info_types(Module0, Types0) },
+	{ TypeStr = error_util__describe_sym_name_and_arity(
+			TypeName / TypeArity) },
+	{ ErrorPieces1 = [
+		words("In"),
+		fixed("`pragma reserve_tag'"),
+		words("declaration for"),
+		fixed(TypeStr ++ ":")
+	] },
+	( 
+		{ map__search(Types0, TypeCtor, TypeDefn0) }
+	->
+		{ hlds_data__get_type_defn_body(TypeDefn0, TypeBody0) },
+		{ hlds_data__get_type_defn_status(TypeDefn0, TypeStatus) },
+		(
+			not {
+				TypeStatus = PragmaStatus
+			;
+				TypeStatus = abstract_exported,
+				( PragmaStatus = local
+				; PragmaStatus = exported_to_submodules
+				)
+			}
+		->
+			error_util__write_error_pieces(Context, 0,
+				ErrorPieces1),
+			{ ErrorPieces2 = [
+				words("error: `reserve_tag' declaration must"),
+				words("have the same visibility as the"),
+				words("type definition.")
+			] },
+			error_util__write_error_pieces_not_first_line(Context,
+				0, ErrorPieces2),
+			io__set_exit_status(1),
+			{ module_info_incr_errors(Module0, Module) }
+
+		;
+			{ TypeBody0 = du_type(Body, _CtorTags0, _IsEnum0,
+				EqualityPred, ReservedTag0, IsForeign) }
+		->
+			(
+				{ ReservedTag0 = yes },
+				% make doubly sure that we don't get any
+				% spurious warnings with intermodule
+				% optimization...
+				{ TypeStatus \= opt_imported }
+			->
+				error_util__write_error_pieces(Context, 0,
+					ErrorPieces1),
+				{ ErrorPieces2 = [
+					words("warning: multiple"),
+					fixed("`pragma reserved_tag'"),
+					words("declarations for the same type.")
+				] },
+				error_util__write_error_pieces_not_first_line(
+					Context, 0, ErrorPieces2)
+			;
+				[]
+			),
+			%
+			% We passed all the semantic checks.
+			% Mark the type has having a reserved tag,
+			% and recompute the constructor tags.
+			%
+			{ ReservedTag = yes },
+			{ module_info_globals(Module0, Globals) },
+			{ assign_constructor_tags(Body, TypeCtor, ReservedTag,
+				Globals, CtorTags, IsEnum) },
+			{ TypeBody = du_type(Body, CtorTags, IsEnum,
+				EqualityPred, ReservedTag, IsForeign) },
+			{ hlds_data__set_type_defn_body(TypeDefn0, TypeBody,
+				TypeDefn) },
+			{ map__set(Types0, TypeCtor, TypeDefn, Types) },
+			{ module_info_set_types(Module0, Types, Module) }
+		;
+			error_util__write_error_pieces(Context, 0,
+				ErrorPieces1),
+			{ ErrorPieces2 = [
+				words("error:"),
+				fixed(TypeStr),
+				words("is not a discriminated union type.")
+			] },
+			error_util__write_error_pieces_not_first_line(Context,
+				0, ErrorPieces2),
+			io__set_exit_status(1),
+			{ module_info_incr_errors(Module0, Module) }
+		)
+	;
+		error_util__write_error_pieces(Context, 0,
+			ErrorPieces1),
+		{ ErrorPieces2 = [
+			words("error: undefined type"),
+			fixed(TypeStr ++ ".")
+		] },
+		error_util__write_error_pieces_not_first_line(Context,
+			0, ErrorPieces2),
+		io__set_exit_status(1),
 		{ module_info_incr_errors(Module0, Module) }
 	).
 
@@ -2205,7 +2326,7 @@ process_type_defn(TypeCtor, TypeDefn, Module0, Module) -->
 	{ hlds_data__get_type_defn_status(TypeDefn, Status) },
 	{ hlds_data__get_type_defn_need_qualifier(TypeDefn, NeedQual) },
 	(
-		{ Body = du_type(ConsList, _, _, _, _) }
+		{ Body = du_type(ConsList, _, _, _, ReservedTag, _) }
 	->
 		{ module_info_ctors(Module0, Ctors0) },
 		{ module_info_get_partial_qualifier_info(Module0, PQInfo) },
@@ -2219,7 +2340,7 @@ process_type_defn(TypeCtor, TypeDefn, Module0, Module) -->
 		globals__io_get_globals(Globals),
 		{
 			type_constructors_should_be_no_tag(ConsList, 
-				Globals, Name, CtorArgType, _)
+				ReservedTag, Globals, Name, CtorArgType, _)
 		->
 			NoTagType = no_tag_type(Args, Name, CtorArgType),
 			module_info_no_tag_types(Module2, NoTagTypes0),
@@ -2351,7 +2472,7 @@ generating_code(bool__not(NotGeneratingCode)) -->
 	% output in the .opt file.
 merge_foreign_type_bodies(Target, MakeOptInterface,
 		foreign_type(ForeignTypeBody0),
-		Body1 @ du_type(_, _, _, _, MaybeForeignTypeBody1), Body) :-
+		Body1 @ du_type(_, _, _, _, _, MaybeForeignTypeBody1), Body) :-
 	( MaybeForeignTypeBody1 = yes(ForeignTypeBody1)
 	; MaybeForeignTypeBody1 = no,
 		ForeignTypeBody1 = foreign_type_body(no, no)
@@ -2367,7 +2488,7 @@ merge_foreign_type_bodies(Target, MakeOptInterface,
 		Body = Body1 ^ du_type_is_foreign_type := yes(ForeignTypeBody)
 	).
 merge_foreign_type_bodies(Target, MakeOptInterface,
-		Body0 @ du_type(_, _, _, _, _),
+		Body0 @ du_type(_, _, _, _, _, _),
 		Body1 @ foreign_type(_), Body) :-
 	merge_foreign_type_bodies(Target, MakeOptInterface, Body1, Body0, Body).
 merge_foreign_type_bodies(_, _, foreign_type(Body0), foreign_type(Body1),
@@ -2477,9 +2598,18 @@ combine_status_abstract_imported(Status2, Status) :-
 :- mode convert_type_defn(in, in, in, out) is det.
 
 convert_type_defn(du_type(Body, EqualityPred), TypeCtor, Globals,
-		du_type(Body, CtorTags, IsEnum, EqualityPred, IsForeign)) :-
-	IsForeign = no,
-	assign_constructor_tags(Body, TypeCtor, Globals, CtorTags, IsEnum).
+		du_type(Body, CtorTags, IsEnum, EqualityPred,
+			ReservedTagPragma, IsForeign)) :-
+	% Initially, when we first see the `:- type' definition,
+	% we assign the constructor tags assuming that there is no
+	% `:- pragma reserve_tag' declaration for this type.
+	% (If it turns out that there was one, then we will recompute the
+	% constructor tags by callling assign_constructor_tags again,
+	% with ReservedTagPragma = yes, when processing the pragma.)
+	ReservedTagPragma = no,
+	assign_constructor_tags(Body, TypeCtor, ReservedTagPragma, Globals,
+		CtorTags, IsEnum),
+	IsForeign = no.
 convert_type_defn(eqv_type(Body), _, _, eqv_type(Body)).
 convert_type_defn(abstract_type, _, _, abstract_type).
 
@@ -3489,7 +3619,7 @@ add_special_preds(Module0, TVarSet, Type, TypeCtor,
 			status_defined_in_this_module(Status, yes)
 		->
 			(
-				Body = du_type(Ctors, _, IsEnum,
+				Body = du_type(Ctors, _, IsEnum, _,
 						UserDefinedEquality, _),
 				IsEnum = no,
 				UserDefinedEquality = no,
@@ -3565,7 +3695,7 @@ add_special_pred(SpecialPredId, Module0, TVarSet, Type, TypeCtor, TypeBody,
 			Module = Module0
 		;
 			SpecialPredId = compare,
-			( TypeBody = du_type(_, _, _, yes(_), _) ->
+			( TypeBody = du_type(_, _, _, yes(_), _, _) ->
 					% The compiler generated comparison
 					% procedure prints an error message,
 					% since comparisons of types with
@@ -3608,7 +3738,7 @@ add_special_pred_for_real(SpecialPredId,
 	->
 		pred_info_set_import_status(PredInfo0, Status, PredInfo1)
 	;
-		TypeBody = du_type(_, _, _, yes(_), _),
+		TypeBody = du_type(_, _, _, yes(_), _, _),
 		pred_info_import_status(PredInfo0, OldStatus),
 		OldStatus = pseudo_imported,
 		status_is_imported(Status, no)
@@ -3708,7 +3838,7 @@ add_special_pred_decl_for_real(SpecialPredId,
 	import_status::out) is det.
 
 add_special_pred_unify_status(TypeBody, Status0, Status) :-
-	( TypeBody = du_type(_, _, _, yes(_), _) ->
+	( TypeBody = du_type(_, _, _, yes(_), _, _) ->
 			% If the type has user-defined equality,
 			% then we create a real __Unify__ predicate
 			% for it, whose body calls the user-specified

@@ -149,6 +149,7 @@ OTHER_PROGS= \
 	record_syntax_bug_5 \
 	recursive_no_tag_type \
 	reg_bug \
+	reserve_tag \
 	same_length_2 \
 	semidet_disj \
 	shape_type \
