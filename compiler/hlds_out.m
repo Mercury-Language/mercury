@@ -72,6 +72,9 @@
 :- pred hlds_out__write_pred_id(module_info::in, pred_id::in, io::di, io::uo)
 	is det.
 
+:- pred hlds_out__write_pred_proc_id(module_info::in, pred_proc_id::in, io::di,
+	io::uo) is det.
+
 :- pred hlds_out__write_pred_proc_id(module_info::in, pred_id::in, proc_id::in,
 	io::di, io::uo) is det.
 
@@ -403,6 +406,9 @@ hlds_out__write_pred_id(ModuleInfo, PredId, !IO) :-
 		io__write_string("deleted predicate ", !IO),
 		io__write_int(PredIdInt, !IO)
 	).
+
+hlds_out__write_pred_proc_id(ModuleInfo, proc(PredId, ProcId), !IO) :-
+	hlds_out__write_pred_proc_id(ModuleInfo, PredId, ProcId, !IO).
 
 hlds_out__write_pred_proc_id(ModuleInfo, PredId, ProcId, !IO) :-
 	hlds_out__write_pred_id(ModuleInfo, PredId, !IO),

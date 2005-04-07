@@ -1038,6 +1038,12 @@ qualify_pragma(termination_info(PredOrFunc, SymName, ModeList0, Args, Term),
 		termination_info(PredOrFunc, SymName, ModeList, Args, Term),
 		!Info, !IO) :-
 	qualify_mode_list(ModeList0, ModeList, !Info, !IO).
+qualify_pragma(termination2_info(PredOrFunc, SymName, ModeList0, HeadVars,
+			SuccessArgs, FailureArgs, Term), 
+		termination2_info(PredOrFunc, SymName, ModeList, HeadVars,
+			SuccessArgs, FailureArgs, Term), 
+		!Info, !IO)  :-
+	qualify_mode_list(ModeList0, ModeList, !Info, !IO).
 qualify_pragma(X@terminates(_, _), X, !Info, !IO).
 qualify_pragma(X@does_not_terminate(_, _), X, !Info, !IO).
 qualify_pragma(X@check_termination(_, _), X, !Info, !IO).

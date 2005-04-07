@@ -36,6 +36,8 @@
 :- implementation.
 
 :- import_module libs__globals.
+:- import_module libs__lp_rational.
+:- import_module libs__rat.
 :- import_module parse_tree__prog_io.
 :- import_module parse_tree__prog_io_goal.
 :- import_module parse_tree__prog_util.
@@ -1113,7 +1115,7 @@ parse_pragma_type(ModuleName, "termination_info", PragmaTerms, ErrorTerm,
             MaybeTerminationInfo = yes(can_loop(unit))
         ;
             TerminationTerm = term__functor(term__atom("cannot_loop"), [], _),
-            MaybeTerminationInfo = yes(cannot_loop)
+            MaybeTerminationInfo = yes(cannot_loop(unit))
         ),
         Result0 = ok(pragma(termination_info(PredOrFunc, PredName,
             ModeList, MaybeArgSizeInfo, MaybeTerminationInfo)))
@@ -1122,6 +1124,48 @@ parse_pragma_type(ModuleName, "termination_info", PragmaTerms, ErrorTerm,
     ;
         Result = error("syntax error in `:- pragma termination_info' " ++
             "declaration", ErrorTerm)
+    ).
+		
+parse_pragma_type(ModuleName, "termination2_info", PragmaTerms, ErrorTerm,
+	_VarSet, Result) :-
+    (
+	PragmaTerms = [
+	    PredAndModesTerm0,
+	    HeadVarListTerm,
+	    SuccessArgSizeTerm,
+	    FailureArgSizeTerm,
+	    TerminationTerm
+	],
+	parse_pred_or_func_and_arg_modes(yes(ModuleName), PredAndModesTerm0,
+		ErrorTerm, "`:- pragma termination2_info' declaration",
+		NameAndModesResult),
+	NameAndModesResult = ok(PredName - PredOrFunc, ModeList),
+	convert_int_list(HeadVarListTerm, HeadVarListResult),
+	HeadVarListResult = ok(HeadVars),
+	parse_arg_size_constraints(SuccessArgSizeTerm, SuccessArgSizeResult),
+	SuccessArgSizeResult = ok(SuccessArgSizeInfo),
+	parse_arg_size_constraints(FailureArgSizeTerm, FailureArgSizeResult),
+	FailureArgSizeResult = ok(FailureArgSizeInfo),
+	(
+		TerminationTerm = term__functor(term__atom("not_set"), [], _),
+		MaybeTerminationInfo = no
+	;
+		TerminationTerm = term__functor(term__atom("can_loop"), [], _),
+		MaybeTerminationInfo = yes(can_loop(unit))
+	;
+		TerminationTerm = term__functor(term__atom("cannot_loop"),
+			[], _),
+		MaybeTerminationInfo = yes(cannot_loop(unit))
+	),
+	Result0 = ok(pragma(termination2_info(PredOrFunc, PredName, 
+		ModeList, HeadVars, SuccessArgSizeInfo, 
+		FailureArgSizeInfo, MaybeTerminationInfo)))
+    ->
+	    Result = Result0
+    ;
+	    Result = error(
+            "syntax error in `:- pragma termination2_info' declaration",
+		    ErrorTerm)
     ).
 
 parse_pragma_type(ModuleName, "terminates", PragmaTerms, ErrorTerm, _VarSet,
@@ -1136,6 +1180,13 @@ parse_pragma_type(ModuleName, "does_not_terminate", PragmaTerms, ErrorTerm,
     parse_simple_pragma(ModuleName, "does_not_terminate",
         (pred(Name::in, Arity::in, Pragma::out) is det :-
             Pragma = does_not_terminate(Name, Arity)),
+        PragmaTerms, ErrorTerm, Result).
+
+parse_pragma_type(ModuleName, "check_termination", PragmaTerms, ErrorTerm,
+        _VarSet, Result) :-
+    parse_simple_pragma(ModuleName, "check_termination",
+        (pred(Name::in, Arity::in, Pragma::out) is det :-
+            Pragma = check_termination(Name, Arity)),
         PragmaTerms, ErrorTerm, Result).
 
 parse_pragma_type(ModuleName, "exceptions", PragmaTerms, ErrorTerm, _VarSet,
@@ -1186,13 +1237,6 @@ parse_pragma_type(ModuleName, "exceptions", PragmaTerms, ErrorTerm, _VarSet,
     ;
         Result = error("error in `:- pragma exceptions'", ErrorTerm)
     ).
-
-parse_pragma_type(ModuleName, "check_termination", PragmaTerms, ErrorTerm,
-        _VarSet, Result) :-
-    parse_simple_pragma(ModuleName, "check_termination",
-        (pred(Name::in, Arity::in, Pragma::out) is det :-
-            Pragma = check_termination(Name, Arity)),
-        PragmaTerms, ErrorTerm, Result).
 
     % This parses a pragma that refers to a predicate or function.
     %
@@ -1717,6 +1761,7 @@ parse_pred_or_func_and_arg_modes(MaybeModuleName, PredAndModesTerm,
         Result = error(ErrorMsg, Term)
     ).
 
+
 :- pred convert_bool_list(term::in, list(bool)::out) is semidet.
 
 convert_bool_list(ListTerm, Bools) :-
@@ -1780,3 +1825,64 @@ convert_type_spec_pair(Term, TypeSpec) :-
     term__coerce_var(TypeVar0, TypeVar),
     convert_type(SpecTypeTerm0, SpecType),
     TypeSpec = TypeVar - SpecType.
+
+%------------------------------------------------------------------------------%%
+%
+% Parsing termination2_info pragmas.
+%
+
+:- pred parse_arg_size_constraints(term::in, 
+	maybe1(maybe(list(arg_size_constr)))::out) is semidet.
+
+parse_arg_size_constraints(ArgSizeTerm, Result) :-
+	(			
+		ArgSizeTerm = term__functor(term__atom("not_set"), [], _),
+		Result = ok(no)	
+	;
+		ArgSizeTerm = term__functor(term__atom("constraints"), 
+			[Constraints0], _),
+		convert_list(Constraints0, parse_arg_size_constraint,
+			ConstraintsResult),
+		ConstraintsResult = ok(Constraints),
+		Result = ok(yes(Constraints))
+	).
+
+:- pred parse_arg_size_constraint(term::in, arg_size_constr::out) is semidet.
+
+parse_arg_size_constraint(Term, Constr) :-
+	(
+		Term = term__functor(term__atom("le"),
+			[Terms, ConstantTerm], _),
+		convert_list(Terms, parse_lp_term, TermsResult),
+		TermsResult = ok(LPTerms),
+		parse_rational(ConstantTerm, Constant),
+		Constr = le(LPTerms, Constant)
+
+	;
+		Term = term__functor(term__atom("eq"),
+			[Terms, ConstantTerm], _),
+		convert_list(Terms, parse_lp_term, TermsResult),
+		TermsResult = ok(LPTerms),
+		parse_rational(ConstantTerm, Constant),
+		Constr = eq(LPTerms, Constant)
+	).
+
+:- pred parse_lp_term(term::in, pair(int, rat)::out) is semidet.
+
+parse_lp_term(Term, LpTerm) :-
+	Term = term__functor(term__atom("term"), [VarIdTerm, CoeffTerm], _),
+	VarIdTerm = term__functor(term__integer(VarId), [], _),
+	parse_rational(CoeffTerm, Coeff),
+	LpTerm = VarId - Coeff.	 
+
+:- pred parse_rational(term::in, rat::out) is semidet.
+
+parse_rational(Term, Rational) :-
+	Term = term__functor(term__atom("r"), [NumerTerm, DenomTerm], _),
+	NumerTerm = term__functor(term__integer(Numer), [], _),
+	DenomTerm = term__functor(term__integer(Denom), [], _),
+	Rational = rat__rat(Numer, Denom). 
+
+%------------------------------------------------------------------------------%
+:- end_module prog_io_pragma.
+%------------------------------------------------------------------------------%

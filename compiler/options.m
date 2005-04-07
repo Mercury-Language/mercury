@@ -118,6 +118,7 @@
 		;	debug_modes_pred_id
 		;	debug_det
 		;	debug_opt
+		;	debug_term  % term = constraint termination analysis 
 		;	debug_opt_pred_id
 		;	debug_pd	% pd = partial deduction/deforestation
 		;	debug_rl_gen
@@ -502,6 +503,17 @@
 		;	termination_norm
 		;	termination_error_limit
 		;	termination_path_limit
+	%
+	% Stuff for the new termination analyser.
+	%
+		;	termination2
+		;	check_termination2
+		;	verbose_check_termination2
+		;	termination2_norm
+		;	widening_limit       
+		;	arg_size_analysis_only      
+		;	propagate_failure_constrs
+		;	term2_maximum_matrix_size
 		;	analyse_exceptions
 		;	untuple
 		;	tuple
@@ -827,6 +839,7 @@ option_defaults_2(verbosity_option, [
 	debug_modes_verbose	- 	bool(no),
 	debug_modes_pred_id	- 	int(-1),
 	debug_det		- 	bool(no),
+	debug_term		-   bool(no),
 	debug_opt		- 	bool(no),
 	debug_opt_pred_id	- 	int(-1),
 	debug_pd		-	bool(no),
@@ -1085,6 +1098,16 @@ option_defaults_2(special_optimization_option, [
 	termination_error_limit	-	int(3),
 	termination_path_limit	-	int(256),
 	split_c_files		-	bool(no),
+	termination2		-	bool(no),
+	termination2_norm	-	string("total"),
+	check_termination2	-	bool(no),
+	verbose_check_termination2 - 	bool(no),
+	widening_limit			-	int(4),
+	arg_size_analysis_only - bool(no),
+	propagate_failure_constrs  - bool(yes),
+	% XXX This is just a guess - I'm not sure what sensible
+	% value for this is.
+	term2_maximum_matrix_size - int(70),
 	analyse_exceptions 	-	bool(no)
 ]).
 option_defaults_2(optimization_option, [
@@ -1480,6 +1503,8 @@ long_option("debug-modes-verbose",	debug_modes_verbose).
 long_option("debug-modes-pred-id",	debug_modes_pred_id).
 long_option("debug-determinism",	debug_det).
 long_option("debug-det",		debug_det).
+long_option("debug-termination",	debug_term).
+long_option("debug-term",		debug_term).
 long_option("debug-opt",		debug_opt).
 long_option("debug-opt-pred-id",	debug_opt_pred_id).
 long_option("debug-pd",			debug_pd).
@@ -1836,6 +1861,26 @@ long_option("termination-error-limit",	termination_error_limit).
 long_option("term-err-limit",		termination_error_limit).
 long_option("termination-path-limit",	termination_path_limit).
 long_option("term-path-limit",		termination_path_limit).
+long_option("enable-termination2",	termination2).
+long_option("enable-term2",		termination2).
+long_option("check-termination2",	check_termination2).
+long_option("check-term2",		check_termination2).
+long_option("chk-term2",		check_termination2).
+long_option("verbose-check-termination2",verbose_check_termination2).
+long_option("verb-check-term2",		verbose_check_termination2).
+long_option("verb-chk-term2",		verbose_check_termination2).
+long_option("termination2-widening-limit", widening_limit).
+long_option("term2-widening-limit",		widening_limit).
+long_option("arg-size-analysis-only", 		arg_size_analysis_only).
+long_option("termination2-propagate-failure-constraints",
+	propagate_failure_constrs).
+long_option("term2-propagate-failure-constraints",
+	propagate_failure_constrs).
+long_option("term2-propagate-failure-constrs", propagate_failure_constrs).
+long_option("termination2-norm", termination2_norm).
+long_option("term2-norm", termination2_norm).
+long_option("termination2-maximum-matrix-size", term2_maximum_matrix_size).
+long_option("term2-max-matrix-size", term2_maximum_matrix_size).
 long_option("analyse-exceptions", 	analyse_exceptions).
 long_option("untuple",			untuple).
 long_option("tuple",			tuple).
@@ -2763,6 +2808,10 @@ options_help_verbosity -->
 		"\tmode checking of the predicate or function with the specified pred id.",
 		"--debug-det, --debug-determinism",
 		"\tOutput detailed debugging traces of determinism analysis.",
+% The new termination analyser is currently a work-in-progress.
+%
+		%"--debug-term, --debug-termination",
+		%"\tOutput detailed debugging traces of the termination2 analysis.",
 		"--debug-opt",
 		"\tOutput detailed debugging traces of the optimization process.",
 		"--debug-opt-pred-id <n>",
@@ -3080,8 +3129,46 @@ options_help_termination -->
 		"--term-path-limit <n>, --termination-path-limit <n>",
 		"\tPerform termination analysis only on predicates",
 		"\twith at most <n> paths (default: 256)."
-	]).
 
+% The following options are used to control the new termination analyser.
+% They are currently disabled because that is still a work-in-progress.
+%
+% 		"--enable-term2, --enable-termination2",
+% 		"\tAnalyse each predicate to discover if it terminates. ",
+% 		"\tThis uses an alternative termination analysis based",
+% 		"\ton convex constraints.",
+% 		"--chk-term2, --check-termination2",
+% 		"\tEnable the alternative termination analysis, and emit warnings for",
+% 		"\tsome predicates or functions that cannot be proved to terminate.  In",
+% 		"\tmany cases where the compiler is unable to prove termination",
+% 		"\tthe problem is either a lack of information about the",
+% 		"\ttermination properties of other predicates, or because language",
+% 		"\tconstructs (such as higher order calls) were used which could",
+% 		"\tnot be analysed.  In these cases the compiler does not emit a",
+% 		"\twarning of non-termination, as it is likely to be spurious.",
+% 		"--verb-chk-term2, --verb-check-term2, --verbose-check-termination2",
+% 		"--termination2-norm {simple, total, num-data-elems}",
+% 		"\tTell the alternative termination analyser which norm to use.",
+% 		"\tSee the description of the `--termination-norm' option for a",
+% 		"\tdescription of the different types of norm available."
+% 		"--term2-widening-limit <n>, --termination2-widening-limit <n>",
+% 		"\tSet the threshold for the number of iterations after which the",
+% 		"\targument size analyser invokes widening.",
+% 		"--term2-propagate-failure-constrs, --termination2-propagate-failure-constraints",
+% 		"\tMake the argument analyser infer information about the sizes of any"
+% 		"\tinputs to a goal in contexts where that goal fails."
+% 		"--term2-max-matrix-size <n>, --termination2-maximum-matrix-size <n>",
+% 		"\tLimit the sizes of constraints systems in the analyser to <n>",
+% 		"\tconstraints.  Use approximations of some constraint operations,",
+% 		"\tsuch as projection, if this threshold is exceeded.  This will",
+% 		"\tspeed up the analysis at the cost of reduced precision.",
+
+% This option is for developers only.
+% It is useful for benchmarking the argument size analysis.
+% 		"--term2-argument-size-analysis-only, --term2-arg-size-analysis-only",
+%		"\tPerform argument size analysis on each SCC but do not",
+%		"\tattempt to infer termination,"
+	]).
 
 :- pred options_help_compilation_model(io::di, io::uo) is det.
 

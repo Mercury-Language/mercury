@@ -25,27 +25,45 @@
 
 %-----------------------------------------------------------------------------%
 
-% The functor_info type contains information about how the weight of a term
-% is calculated.
-
+	% The functor_info type contains information about how the weight
+	% of a term is calculated.
+	%
 :- type functor_info.
 
-% This predicate sets the functor_info depending on the value of the
-% termination_norm option.
+	% This predicate sets the functor_info depending on the value of the
+	% termination_norm or termination2_norm option.
+	%
+:- func set_functor_info(globals.termination_norm, module_info) = functor_info.  
 
-:- pred set_functor_info(globals__termination_norm::in, module_info::in,
-	functor_info::out) is det.
-
-% This predicate computes the weight of a functor and the set of arguments
-% of that functor whose sizes should be counted towards the size of the whole
-% term.
-
+	% This predicate computes the weight of a functor and the set of
+	% arguments of that functor whose sizes should be counted towards the
+	% size of the whole term.
+	%
+	% NOTE: the list of arguments and the list of modes must be the
+	% same length.  They must also *not* contain any type-info
+	% related arguments as this may cause an exception to be thrown
+	% when using the `--num-data-elems' norm.  (This is because the
+	% weight table doesn't keep track of type-info related variables
+	% - it used to but intervening compiler passes tend to do things
+	% to the code in the mean time so the whole lot becomes
+	% inconsistent - in the end it's just easier to ignore them). 
+	%
 :- pred functor_norm(functor_info::in, type_ctor::in, cons_id::in,
 	module_info::in, int::out, list(prog_var)::in, list(prog_var)::out,
 	list(uni_mode)::in, list(uni_mode)::out) is det.
 
-% Succeeds if all values of the given type are zero size (for all norms).
-
+	% This function computes a lower bound on the weight of a fuctor.
+	% If the lower bound is zero then the weight of that functor is
+	% also zero.  If the lower bound is non-zero then there may be
+	% no upper bound on the size of the functor.  (And if there was
+	% this function wouldn't tell you about it anyhow).
+	%
+:- func functor_lower_bound(functor_info, type_ctor, cons_id, module_info) 
+	= int.
+	
+	% Succeeds if all values of the given type are zero size
+	% (for all norms).
+	%
 :- pred zero_size_type((type)::in, module_info::in) is semidet.
 
 %-----------------------------------------------------------------------------%
@@ -58,6 +76,7 @@
 :- import_module check_hlds__type_util.
 :- import_module hlds__hlds_data.
 :- import_module libs__options.
+:- import_module parse_tree__error_util.
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_type.
 
@@ -66,6 +85,7 @@
 :- import_module map.
 :- import_module require.
 :- import_module std_util.
+:- import_module string.
 
 %-----------------------------------------------------------------------------%
 
@@ -226,11 +246,11 @@ search_weight_table(WeightMap, TypeCtor, ConsId, WeightInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-set_functor_info(total, _Module, total).
-set_functor_info(simple, _Module, simple).
-set_functor_info(num_data_elems, Module, use_map_and_args(WeightMap)) :-
+set_functor_info(total, _Module) = total.
+set_functor_info(simple, _Module) = simple.
+set_functor_info(num_data_elems, Module) = use_map_and_args(WeightMap) :-
 	find_weights(Module, WeightMap).
-set_functor_info(size_data_elems, Module, use_map(WeightMap)) :-
+set_functor_info(size_data_elems, Module) = use_map(WeightMap) :-
 	find_weights(Module, WeightMap).
 
 %-----------------------------------------------------------------------------%
@@ -268,14 +288,16 @@ functor_norm(use_map_and_args(WeightMap), TypeCtor, ConsId, _, Int, !Args,
 		->
 			true
 		;
-			error("Unmatched lists in functor_norm_filter_args.")
+			unexpected(this_file, "Unmatched lists in " ++
+				"functor_norm_filter_args.")
 		)
 	;
 		Int = 0
 	).
 
-% This predicate will fail if the length of the input lists are not matched.
-
+	% This predicate will fail if the length of the input lists are
+	% not matched.
+	%
 :- pred functor_norm_filter_args(list(bool)::in, list(prog_var)::in,
 	list(prog_var)::out, list(uni_mode)::in, list(uni_mode)::out)
 	is semidet.
@@ -290,8 +312,26 @@ functor_norm_filter_args([no | Bools], [_Arg0 | Args0], Args,
 
 %-----------------------------------------------------------------------------%
 
+functor_lower_bound(simple, _, ConsId, _) =
+	( if ConsId = cons(_, Arity), Arity \= 0 then 1 else 0).
+functor_lower_bound(total, _, ConsId, _) =
+	( if ConsId = cons(_, Arity) then Arity else 0 ).
+functor_lower_bound(use_map(WeightMap), TypeCtor, ConsId, _) = Weight :-
+	( if	search_weight_table(WeightMap, TypeCtor, ConsId, WeightInfo)
+	  then	WeightInfo = weight(Weight, _)
+	  else	Weight = 0
+	).
+functor_lower_bound(use_map_and_args(WeightMap), TypeCtor, ConsId, _) 
+		= Weight :-
+	( if	search_weight_table(WeightMap, TypeCtor, ConsId, WeightInfo)
+	  then	WeightInfo = weight(Weight, _)
+	  else	Weight = 0
+	).
+
+%-----------------------------------------------------------------------------%
+
 zero_size_type(Type, Module) :-
-	classify_type(Module, Type) = TypeCategory,
+	type_util.classify_type(Module, Type) = TypeCategory,
 	zero_size_type_category(TypeCategory, yes).
 
 :- pred zero_size_type_category(type_category::in, bool::out) is det.
@@ -312,5 +352,11 @@ zero_size_type_category(variable_type, no).
 zero_size_type_category(user_ctor_type, no).
 
 %-----------------------------------------------------------------------------%
-:- end_module transform_hlds__term_norm.
+
+:- func this_file = string.
+
+this_file = "term_norm.m".
+
+%-----------------------------------------------------------------------------%
+:- end_module term_norm.
 %-----------------------------------------------------------------------------%

@@ -83,6 +83,7 @@
 :- import_module parse_tree__prog_io.
 :- import_module parse_tree__prog_out.
 :- import_module transform_hlds__intermod.
+:- import_module transform_hlds__term_constr_main.
 :- import_module transform_hlds__termination.
 :- import_module transform_hlds__exception_analysis.
 
@@ -132,13 +133,17 @@ trans_opt__write_optfile(Module, !IO) :-
 		module_info_predids(Module, PredIds),
 		list__foldl(termination__write_pred_termination_info(Module),
 			PredIds, !IO),
+% XXX Writing termination2_info pragma to .trans_opt files is currently
+% disabled.  (The code in term_constr_main also needs to be uncommented).
+% 		list__foldl(term_constr_main.output_pred_termination2_info(Module),
+% 			PredIds, !IO),
 		
 		module_info_exception_info(Module, ExceptionInfo),
 		list__foldl(
 			exception_analysis__write_pragma_exceptions(Module,
 				ExceptionInfo),
 			PredIds, !IO),
-		
+	
 		io__set_output_stream(OldStream, _, !IO),
 		io__close_output(Stream, !IO),
 

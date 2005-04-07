@@ -120,7 +120,7 @@
 	% Access predicates for the `globals' structure.
 
 :- pred globals__init(option_table::di, compilation_target::di, gc_method::di,
-	tags_method::di, termination_norm::di,
+	tags_method::di, termination_norm::di, termination_norm::di,
 	trace_level::di, trace_suppress_items::di, 
 	maybe_thread_safe::di, globals::uo) is det.
 
@@ -131,6 +131,8 @@
 :- pred globals__get_gc_method(globals::in, gc_method::out) is det.
 :- pred globals__get_tags_method(globals::in, tags_method::out) is det.
 :- pred globals__get_termination_norm(globals::in, termination_norm::out)
+	is det.
+:- pred globals__get_termination2_norm(globals::in, termination_norm::out)
 	is det.
 :- pred globals__get_trace_level(globals::in, trace_level::out) is det.
 :- pred globals__get_trace_suppress(globals::in, trace_suppress_items::out)
@@ -192,7 +194,7 @@
 	% io__state using io__set_globals and io__get_globals.
 
 :- pred globals__io_init(option_table::di, compilation_target::in,
-	gc_method::in, tags_method::in,
+	gc_method::in, tags_method::in, termination_norm::in,
 	termination_norm::in, trace_level::in, trace_suppress_items::in,
 	maybe_thread_safe::in, io::di, io::uo) is det.
 
@@ -207,7 +209,12 @@
 :- pred globals__io_get_tags_method(tags_method::out, io::di, io::uo) is det.
 :- pred globals__io_get_termination_norm(termination_norm::out,
 	io::di, io::uo) is det.
+
+:- pred globals__io_get_termination2_norm(termination_norm::out,
+	io::di, io::uo) is det.
+
 :- pred globals__io_get_trace_level(trace_level::out, io::di, io::uo) is det.
+
 :- pred globals__io_get_trace_suppress(trace_suppress_items::out,
 	io::di, io::uo) is det.
 :- pred globals__io_get_maybe_thread_safe(maybe_thread_safe::out,
@@ -327,6 +334,7 @@ gc_is_conservative(automatic) = no.
 			gc_method 		:: gc_method,
 			tags_method 		:: tags_method,
 			termination_norm 	:: termination_norm,
+			termination2_norm	:: termination_norm,
 			trace_level 		:: trace_level,
 			trace_suppress_items	:: trace_suppress_items,
 			source_file_map		:: maybe(source_file_map),
@@ -335,9 +343,10 @@ gc_is_conservative(automatic) = no.
 		).
 
 globals__init(Options, Target, GC_Method, TagsMethod,
-		TerminationNorm, TraceLevel, TraceSuppress, MaybeThreadSafe,
+		TerminationNorm, Termination2Norm, TraceLevel, TraceSuppress,
+		MaybeThreadSafe,
 	globals(Options, Target, GC_Method, TagsMethod,
-		TerminationNorm, TraceLevel, TraceSuppress,
+		TerminationNorm, Termination2Norm, TraceLevel, TraceSuppress, 
 		no, no, MaybeThreadSafe)).
 
 globals__get_options(Globals, Globals ^ options).
@@ -345,6 +354,7 @@ globals__get_target(Globals, Globals ^ target).
 globals__get_gc_method(Globals, Globals ^ gc_method).
 globals__get_tags_method(Globals, Globals ^ tags_method).
 globals__get_termination_norm(Globals, Globals ^ termination_norm).
+globals__get_termination2_norm(Globals, Globals ^ termination2_norm).
 globals__get_trace_level(Globals, Globals ^ trace_level).
 globals__get_trace_suppress(Globals, Globals ^ trace_suppress_items).
 globals__get_source_file_map(Globals, Globals ^ source_file_map).
@@ -481,20 +491,21 @@ globals__imported_is_constant(NonLocalGotos, AsmLabels, IsConst) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-globals__io_init(Options, Target, GC_Method, TagsMethod,
-		TerminationNorm, TraceLevel, TraceSuppress,
-		MaybeThreadSafe) -->
-	{ copy(Target, Target1) },
-	{ copy(GC_Method, GC_Method1) },
-	{ copy(TagsMethod, TagsMethod1) },
-	{ copy(TerminationNorm, TerminationNorm1) },
-	{ copy(TraceLevel, TraceLevel1) },
-	{ copy(TraceSuppress, TraceSuppress1) },
-	{ copy(MaybeThreadSafe, MaybeThreadSafe1) },
-	{ globals__init(Options, Target1, GC_Method1, TagsMethod1,
-		TerminationNorm1, TraceLevel1, TraceSuppress1,
-		MaybeThreadSafe1, Globals) },
-	globals__io_set_globals(Globals).
+globals__io_init(Options, Target, GC_Method, TagsMethod, TerminationNorm,
+		Termination2Norm, TraceLevel, TraceSuppress, MaybeThreadSafe,
+		!IO) :-
+	copy(Target, Target1),
+	copy(GC_Method, GC_Method1),
+	copy(TagsMethod, TagsMethod1),
+	copy(TerminationNorm, TerminationNorm1),
+	copy(Termination2Norm, Termination2Norm1),
+	copy(TraceLevel, TraceLevel1),
+	copy(TraceSuppress, TraceSuppress1),
+	copy(MaybeThreadSafe, MaybeThreadSafe1),
+	globals__init(Options, Target1, GC_Method1, TagsMethod1,
+		TerminationNorm1, Termination2Norm1, TraceLevel1,
+		TraceSuppress1, MaybeThreadSafe1, Globals),
+	globals__io_set_globals(Globals, !IO).
 
 globals__io_get_target(Target) -->
 	globals__io_get_globals(Globals),
@@ -511,6 +522,10 @@ globals__io_get_tags_method(Tags_Method) -->
 globals__io_get_termination_norm(TerminationNorm) -->
 	globals__io_get_globals(Globals),
 	{ globals__get_termination_norm(Globals, TerminationNorm) }.
+
+globals__io_get_termination2_norm(Termination2Norm, !IO) :-
+	globals__io_get_globals(Globals, !IO),
+	globals__get_termination2_norm(Globals, Termination2Norm).
 
 globals__io_get_trace_level(TraceLevel) -->
 	globals__io_get_globals(Globals),

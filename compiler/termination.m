@@ -114,7 +114,7 @@ termination__pass(!Module, !IO) :-
 
 		% Find out what norm we should use, and set up for using it
 	globals__io_get_termination_norm(TermNorm, !IO),
-	set_functor_info(TermNorm, !.Module, FunctorInfo),
+	FunctorInfo = set_functor_info(TermNorm, !.Module),
 	globals__io_lookup_int_option(termination_error_limit, MaxErrors, !IO),
 	globals__io_lookup_int_option(termination_path_limit, MaxPaths, !IO),
 	PassInfo = pass_info(FunctorInfo, MaxErrors, MaxPaths),
@@ -186,7 +186,8 @@ check_foreign_code_attributes_2([PPId], !Module, !IO) :-
 			MaybeTermination = no,
 			( attributes_imply_termination(Attributes) ->
 				proc_info_set_maybe_termination_info(
-					yes(cannot_loop), ProcInfo0, ProcInfo)
+					yes(cannot_loop(unit)),
+					ProcInfo0, ProcInfo)
 			;
 				TermErr = Context - does_not_term_foreign(PPId),
 				proc_info_set_maybe_termination_info(
@@ -197,7 +198,7 @@ check_foreign_code_attributes_2([PPId], !Module, !IO) :-
 			% If there was a `pragma terminates' declaration
 			% for this procedure then check that the foreign
 			% code attributes do not contradict this.
-			MaybeTermination = yes(cannot_loop),
+			MaybeTermination = yes(cannot_loop(_)),
 			( terminates(Attributes) = does_not_terminate ->
 				TermErr = Context - inconsistent_annotations,
 				proc_info_set_maybe_termination_info(
@@ -344,8 +345,8 @@ check_procs_known_term(Status, [PPId | PPIds], Module) :-
 		MaybeTerm = yes(PPIdStatus)
 	),
 	(
-		Status = cannot_loop,
-		PPIdStatus = cannot_loop
+		Status = cannot_loop(_),
+		PPIdStatus = cannot_loop(_)
 	;
 		Status = can_loop(_),
 		PPIdStatus = can_loop(_)
@@ -620,7 +621,7 @@ check_preds([PredId | PredIds], !Module, !IO) :-
 	->
 		( check_marker(Markers, terminates) ->
 			change_procs_termination_info(ProcIds, yes,
-				cannot_loop, ProcTable0, ProcTable2)
+				cannot_loop(unit), ProcTable0, ProcTable2)
 		;
 			ProcTable2 = ProcTable0
 		)
@@ -644,7 +645,7 @@ check_preds([PredId | PredIds], !Module, !IO) :-
 			)
 		->
 			change_procs_termination_info(ProcIds, yes,
-				cannot_loop, ProcTable0, ProcTable1)
+				cannot_loop(unit), ProcTable0, ProcTable1)
 		;
 			TerminationError = Context - imported_pred,
 			TerminationInfo = can_loop([TerminationError]),
@@ -742,15 +743,15 @@ set_generated_terminates([ProcId | ProcIds], SpecialPredId, !ProcTable) :-
 special_pred_id_to_termination(compare, HeadVars, ArgSize, Termination) :-
 	term_util__make_bool_list(HeadVars, [no, no, no], OutList),
 	ArgSize = finite(0, OutList),
-	Termination = cannot_loop.
+	Termination = cannot_loop(unit).
 special_pred_id_to_termination(unify, HeadVars, ArgSize, Termination) :-
 	term_util__make_bool_list(HeadVars, [yes, yes], OutList),
 	ArgSize = finite(0, OutList),
-	Termination = cannot_loop.
+	Termination = cannot_loop(unit).
 special_pred_id_to_termination(index, HeadVars, ArgSize, Termination) :-
 	term_util__make_bool_list(HeadVars, [no, no], OutList),
 	ArgSize = finite(0, OutList),
-	Termination = cannot_loop.
+	Termination = cannot_loop(unit).
 special_pred_id_to_termination(initialise, _, _, _) :-
 	unexpected(this_file, "special_pred_id_to_termination/4 " ++
 		"initialise predicate").
@@ -778,8 +779,8 @@ set_builtin_terminates([ProcId | ProcIds], PredId, PredInfo, Module,
 		ArgSizeInfo = yes(infinite([Context - Error]))
 	),
 	proc_info_set_maybe_arg_size_info(ArgSizeInfo, ProcInfo0, ProcInfo1),
-	proc_info_set_maybe_termination_info(yes(cannot_loop), ProcInfo1,
-		ProcInfo),
+	proc_info_set_maybe_termination_info(yes(cannot_loop(unit)),
+		ProcInfo1, ProcInfo),
 	map__det_update(!.ProcTable, ProcId, ProcInfo, !:ProcTable),
 	set_builtin_terminates(ProcIds, PredId, PredInfo, Module, !ProcTable).
 

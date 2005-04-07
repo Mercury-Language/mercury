@@ -26,6 +26,7 @@
 :- import_module libs__globals.
 :- import_module mdbcomp__prim_data.
 :- import_module parse_tree__prog_data.
+:- import_module transform_hlds__term_constr_main.
 :- import_module transform_hlds__term_util.
 
 :- import_module assoc_list.
@@ -1294,7 +1295,7 @@ hlds_pred__define_new_pred(Origin, Goal0, Goal, ArgVars0, ExtraTypeInfos,
 		% Approximate the termination information
 		% for the new procedure.
 	( goal_cannot_loop(ModuleInfo0, Goal0) ->
-		TermInfo = yes(cannot_loop)
+		TermInfo = yes(cannot_loop(unit))
 	;
 		TermInfo = no
 	),
@@ -1872,14 +1873,14 @@ clauses_info_set_typeclass_info_varmap(X, CI,
 	maybe(list(mode))::in, list(mode)::in, maybe(list(is_live))::in,
 	maybe(determinism)::in, is_address_taken::in, proc_info::out) is det.
 
-:- pred proc_info_set(prog_context::in,prog_varset::in, vartypes::in,
+:- pred proc_info_set(prog_context::in, prog_varset::in, vartypes::in,
 	list(prog_var)::in, inst_varset::in, list(mode)::in,
 	maybe(list(is_live))::in, maybe(determinism)::in, determinism::in,
 	hlds_goal::in, bool::in,
 	type_info_varmap::in, typeclass_info_varmap::in,
 	maybe(arg_size_info)::in, maybe(termination_info)::in,
-	is_address_taken::in, stack_slots::in, maybe(list(arg_info))::in,
-	liveness_info::in, proc_info::out) is det.
+	termination2_info::in, is_address_taken::in, stack_slots::in,
+	maybe(list(arg_info))::in, liveness_info::in, proc_info::out) is det.
 
 :- pred proc_info_create(prog_context::in, prog_varset::in, vartypes::in,
 	list(prog_var)::in, inst_varset::in, list(mode)::in,
@@ -1989,6 +1990,12 @@ clauses_info_set_typeclass_info_varmap(X, CI,
 	proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_maybe_untuple_info(
 	maybe(untuple_proc_info)::in,
+	proc_info::in, proc_info::out) is det.
+
+:- pred proc_info_get_termination2_info(proc_info::in, 
+	termination2_info::out) is det.
+
+:- pred proc_info_set_termination2_info(termination2_info::in, 
 	proc_info::in, proc_info::out) is det.
 
 :- pred proc_info_head_modes_constraint(proc_info::in, mode_constraint::out)
@@ -2187,6 +2194,10 @@ clauses_info_set_typeclass_info_varmap(X, CI,
 					% The termination properties of the
 					% procedure. Set by termination
 					% analysis.
+		termination2		:: termination2_info,
+					% Termination properties and argument
+					% size constraints for the procedure.
+					% Set by termination2 analysis.
 		is_address_taken	:: is_address_taken,
 					% Is the address of this procedure
 					% taken? If yes, we will need to use
@@ -2302,24 +2313,26 @@ proc_info_init(MContext, Arity, Types, DeclaredModes, Modes, MaybeArgLives,
 	CanProcess = yes,
 	map__init(TVarsMap),
 	map__init(TCVarsMap),
+	Term2Info = term_constr_main__term2_info_init,
 	NewProc = proc_info(MContext, BodyVarSet, BodyTypes, HeadVars,
 		InstVarSet, DeclaredModes, Modes, no, MaybeArgLives,
 		MaybeDet, InferredDet, ClauseBody, CanProcess, ModeErrors,
 		TVarsMap, TCVarsMap, eval_normal,
-		proc_sub_info(no, no, IsAddressTaken, StackSlots,
+		proc_sub_info(no, no, Term2Info, IsAddressTaken, StackSlots,
 		ArgInfo, InitialLiveness, no, no, no, no, no)).
 
 proc_info_set(Context, BodyVarSet, BodyTypes, HeadVars, InstVarSet, HeadModes,
 		HeadLives, DeclaredDetism, InferredDetism, Goal, CanProcess,
-		TVarMap, TCVarsMap, ArgSizes, Termination, IsAddressTaken,
-		StackSlots, ArgInfo, Liveness, ProcInfo) :-
+		TVarMap, TCVarsMap, ArgSizes, Termination, Termination2,
+		IsAddressTaken, StackSlots, ArgInfo, Liveness, ProcInfo) :-
 	ModeErrors = [],
 	ProcInfo = proc_info(Context, BodyVarSet, BodyTypes, HeadVars,
 		InstVarSet, no, HeadModes, no, HeadLives,
 		DeclaredDetism, InferredDetism, Goal, CanProcess, ModeErrors,
 		TVarMap, TCVarsMap, eval_normal,
-		proc_sub_info(ArgSizes, Termination, IsAddressTaken,
-		StackSlots, ArgInfo, Liveness, no, no, no, no, no)).
+		proc_sub_info(ArgSizes, Termination, Termination2,
+		IsAddressTaken, StackSlots, ArgInfo, Liveness, no, no, no,
+			no, no)).
 
 proc_info_create(Context, VarSet, VarTypes, HeadVars, InstVarSet,
 		HeadModes, Detism, Goal, TVarMap, TCVarsMap,
@@ -2335,11 +2348,12 @@ proc_info_create(Context, VarSet, VarTypes, HeadVars, InstVarSet, HeadModes,
 	set__init(Liveness),
 	MaybeHeadLives = no,
 	ModeErrors = [],
+	Term2Info = term_constr_main__term2_info_init,
 	ProcInfo = proc_info(Context, VarSet, VarTypes, HeadVars,
 		InstVarSet, no, HeadModes, no, MaybeHeadLives,
 		MaybeDeclaredDetism, Detism, Goal, yes, ModeErrors,
 		TVarMap, TCVarsMap, eval_normal,
-		proc_sub_info(no, no, IsAddressTaken,
+		proc_sub_info(no, no, Term2Info, IsAddressTaken,
 		StackSlots, no, Liveness, no, no, no, no, no)).
 
 proc_info_set_body(VarSet, VarTypes, HeadVars, Goal, TI_VarMap, TCI_VarMap,
@@ -2490,6 +2504,13 @@ proc_info_arg_info(ProcInfo, ArgInfo) :-
 		MaybeArgInfo0 = no,
 		error("proc_info_arg_info: arg_pass_info not set")
 	).
+
+proc_info_get_termination2_info(ProcInfo, Termination2Info) :-
+	Termination2Info = ProcInfo ^ proc_sub_info ^ termination2.
+
+proc_info_set_termination2_info(Termination2Info, !ProcInfo) :-
+	!:ProcInfo = !.ProcInfo ^ proc_sub_info ^ termination2 :=
+		Termination2Info.
 
 proc_info_get_typeinfo_vars(Vars, VarTypes, TVarMap, TypeInfoVars) :-
 	set__to_sorted_list(Vars, VarList),

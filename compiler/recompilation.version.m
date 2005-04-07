@@ -626,7 +626,10 @@ is_pred_pragma(promise_pure(Name, Arity), yes(no - Name / Arity)).
 is_pred_pragma(promise_semipure(Name, Arity), yes(no - Name / Arity)).
 is_pred_pragma(termination_info(PredOrFunc, Name, Modes, _, _),
 		yes(yes(PredOrFunc) - Name / Arity)) :-
-	adjust_func_arity(PredOrFunc, Arity, list__length(Modes)).
+	adjust_func_arity(PredOrFunc, Arity, list__length(Modes)).	
+is_pred_pragma(termination2_info(PredOrFunc, Name, Modes, _, _, _, _),
+		yes(yes(PredOrFunc) - Name / Arity)) :-
+	adjust_func_arity(PredOrFunc, Arity, list__length(Modes)).	
 is_pred_pragma(terminates(Name, Arity), yes(no - Name / Arity)).
 is_pred_pragma(does_not_terminate(Name, Arity), yes(no - Name / Arity)).
 is_pred_pragma(check_termination(Name, Arity), yes(no - Name / Arity)).

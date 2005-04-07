@@ -103,12 +103,12 @@ prove_termination_in_scc(SCC, Module, PassInfo, SingleArgs, Termination) :-
 			prove_termination_in_scc_single_arg(SCC,
 				Module, PassInfo)
 		->
-			Termination = cannot_loop
+			Termination = cannot_loop(unit)
 		;
 			Termination = Termination1
 		)
 	;
-		Termination1 = cannot_loop,
+		Termination1 = cannot_loop(unit),
 		Termination = Termination1
 	).
 
@@ -202,7 +202,7 @@ prove_termination_in_scc_single_arg_2(TrialPPId, RestSCC, ArgNum0,
 		ArgNum0, Module, InitRecSuppliers),
 	prove_termination_in_scc_trial([TrialPPId | RestSCC], InitRecSuppliers,
 		up, Module, PassInfo, Termination),
-	( Termination = cannot_loop ->
+	( Termination = cannot_loop(unit) ->
 		true
 	;
 		ArgNum1 = ArgNum0 + 1,
@@ -306,7 +306,7 @@ prove_termination_in_scc_trial(SCC, InitRecSuppliers, FixDir, Module,
 			list__take_upto(MaxErrors, Cycles, ReportedCycles),
 			Termination = can_loop(ReportedCycles)
 		;
-			Termination = cannot_loop
+			Termination = cannot_loop(unit)
 		)
 	;
 		Result = error(Errors),

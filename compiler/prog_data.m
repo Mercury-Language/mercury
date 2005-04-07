@@ -20,6 +20,8 @@
 
 :- import_module libs__globals.
 :- import_module libs__options.
+:- import_module libs__rat.
+
 :- import_module mdbcomp__prim_data.
 :- import_module recompilation.
 
@@ -495,6 +497,16 @@
 			% trans_opt files.
 		)
 
+	;	termination2_info(
+			pred_or_func, 
+			sym_name, 
+			list(mode),
+			list(int),
+			maybe(pragma_constr_arg_size_info),
+			maybe(pragma_constr_arg_size_info),
+			maybe(pragma_termination_info)
+		)
+
 	;	terminates(
 			term_name	:: sym_name,
 			term_arity	:: arity
@@ -629,21 +641,38 @@
 				% There is no finite integer for which the
 				% above equation is true.
 
-:- type generic_termination_info(ErrorInfo)
-	--->	cannot_loop	% This procedure definitely terminates for all
-				% possible inputs.
+:- type generic_termination_info(TermInfo, ErrorInfo)
+	--->	cannot_loop(TermInfo)	% This procedure definitely terminates
+					% for all possible inputs.
 	;	can_loop(ErrorInfo).
 				% This procedure might not terminate.
 
 :- type pragma_arg_size_info	== generic_arg_size_info(unit).
-:- type pragma_termination_info	== generic_termination_info(unit).
+:- type pragma_termination_info	== generic_termination_info(unit, unit).
+
+%
+% Stuff for the `termination2_info' pragma.
+%
+	
+	% This is the form in which termination information from other 
+	% modules (imported via `.opt' or `.trans_opt' files) comes.
+	% We convert this to an intermediate form and let the termination
+	% analyser convert it to the correct form.
+
+:- type arg_size_constr
+	--->	le(list(arg_size_term), rat)
+	;	eq(list(arg_size_term), rat).
+
+:- type arg_size_term == pair(int, rat).
+
+:- type pragma_constr_arg_size_info == list(arg_size_constr).
 
 %
 % Stuff for the `unused_args' pragma.
 %
 
 	% This `mode_num' type is only used for mode numbers written out in
-	% automatically-generateed `pragma unused_args' pragmas in `.opt'
+	% automatically-generated `pragma unused_args' pragmas in `.opt'
 	% files.
 	% The mode_num gets converted to an HLDS proc_id by make_hlds.m.
 	% We don't want to use the `proc_id' type here since the parse tree
@@ -666,7 +695,7 @@
 		;	conditional.
 				% Whether the procedure will not throw an
 				% exception depends upon the value of one
-				% or more polymorpyhic arguments.
+				% or more polymorphic arguments.
 				% XXX This needs to be extended for ho
 				% preds.  (See exception_analysis.m for
 				% more details).
@@ -756,7 +785,7 @@
 	;	import(
 			string,		% Pragma imported C func name
 			string,		% Code to handle return value
-			string,		% Comma seperated variables which
+			string,		% Comma separated variables which
 					% the import function is called
 					% with.
 

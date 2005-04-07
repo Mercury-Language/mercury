@@ -146,6 +146,7 @@
 	% Use this for features that should be implemented (or at
 	% least could be implemented).
 	%
+:- func sorry(string, string) = _ is erroneous.
 :- pred sorry(string::in, string::in) is erroneous.
 
 	% unexpected(ModuleName, Message)
@@ -154,6 +155,7 @@
 	% Use this to handle cases which are not expected to arise (i.e.
 	% bugs).
 	%
+:- func unexpected(string, string) = _ is erroneous.
 :- pred unexpected(string::in, string::in) is erroneous.
 
 	% Record the fact that a warning has been issued; set the exit status
@@ -662,11 +664,13 @@ report_error_right_num_args([Arity | Arities], !IO) :-
 
 	% Call error/1 with a "Sorry, not implemented" message.
 	%
+sorry(Module, What) = _ :- sorry(Module, What).
 sorry(Module, What) :-
 	string__format("%s: Sorry, not implemented: %s",
 		[s(Module), s(What)], ErrorMessage),
 	error(ErrorMessage).
 
+unexpected(Module, What) = _ :- unexpected(Module, What).
 unexpected(Module, What) :-
 	string__format("%s: Unexpected: %s",
 		[s(Module), s(What)], ErrorMessage),

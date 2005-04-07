@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2003 The University of Melbourne.
+% Copyright (C) 2002-2003, 2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -25,6 +25,11 @@
 % OS interfaces not provided by the standard library
 :- include_module process_util.
 :- include_module timestamp.
+
+% Constraint machinery for the termination analyser.
+:- include_module lp_rational.
+:- include_module polyhedron.
+:- include_module rat.
 
 :- end_module libs.
 

@@ -56,7 +56,7 @@
 	generic_arg_size_info(list(term_errors__error)).
 
 :- type termination_info ==
-	generic_termination_info(list(term_errors__error)).
+	generic_termination_info(unit, list(term_errors__error)).
 
 % The type `used_args' holds a mapping which specifies for each procedure
 % which of its arguments are used.
@@ -345,9 +345,10 @@ get_context_from_scc(SCC, Module, Context) :-
 %-----------------------------------------------------------------------------%
 
 add_context_to_termination_info(no, _, no).
-add_context_to_termination_info(yes(cannot_loop), _, yes(cannot_loop)).
+add_context_to_termination_info(yes(cannot_loop(_)), _,
+	yes(cannot_loop(unit))).
 add_context_to_termination_info(yes(can_loop(_)), Context,
-		yes(can_loop([Context - imported_pred]))).
+	yes(can_loop([Context - imported_pred]))).
 
 add_context_to_arg_size_info(no, _, no).
 add_context_to_arg_size_info(yes(finite(A, B)), _, yes(finite(A, B))).

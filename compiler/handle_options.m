@@ -163,13 +163,13 @@ dump_arguments([Arg | Args], !IO) :-
 postprocess_options(error(ErrorMessage), [ErrorMessage], !IO).
 postprocess_options(ok(OptionTable0), Errors, !IO) :-
 	check_option_values(OptionTable0, OptionTable, Target, GC_Method,
-		TagsMethod, TermNorm, TraceLevel, TraceSuppress,
+		TagsMethod, TermNorm, Term2Norm, TraceLevel, TraceSuppress,
 		MaybeThreadSafe, [], CheckErrors),
 	(
 		CheckErrors = [],
 		postprocess_options_2(OptionTable, Target, GC_Method,
-			TagsMethod, TermNorm, TraceLevel, TraceSuppress,
-			MaybeThreadSafe, [], Errors, !IO)
+			TagsMethod, TermNorm, Term2Norm, TraceLevel,
+			TraceSuppress, MaybeThreadSafe, [], Errors, !IO)
 	;
 		CheckErrors = [_ | _],
 		Errors = CheckErrors
@@ -177,11 +177,12 @@ postprocess_options(ok(OptionTable0), Errors, !IO) :-
 
 :- pred check_option_values(option_table::in, option_table::out,
 	compilation_target::out, gc_method::out, tags_method::out,
-	termination_norm::out, trace_level::out, trace_suppress_items::out,
-	maybe_thread_safe::out, list(string)::in, list(string)::out) is det.
+	termination_norm::out, termination_norm::out, trace_level::out,
+	trace_suppress_items::out, maybe_thread_safe::out,
+	list(string)::in, list(string)::out) is det.
 
 check_option_values(OptionTable0, OptionTable, Target, GC_Method, TagsMethod,
-		TermNorm, TraceLevel, TraceSuppress, MaybeThreadSafe,
+		TermNorm, Term2Norm, TraceLevel, TraceSuppress, MaybeThreadSafe,
 		!Errors) :-
 	map__lookup(OptionTable0, target, Target0),
 	(
@@ -239,6 +240,18 @@ check_option_values(OptionTable0, OptionTable, Target, GC_Method, TagsMethod,
 		TermNorm = simple,	% dummy
 		add_error("Invalid argument to option " ++
 			"`--termination-norm'\n\t(must be " ++
+			"`simple', `total' or `num-data-elems').", !Errors)
+	),
+	map__lookup(OptionTable0, termination2_norm, Term2Norm0),
+	(
+		Term2Norm0 = string(Term2NormStr),
+		convert_termination_norm(Term2NormStr, Term2NormPrime)
+	->
+		Term2Norm = Term2NormPrime
+	;
+		Term2Norm = simple,	% dummy
+		add_error("Invalid argument to option " ++
+			"`--termination2-norm'\n\t(must be" ++
 			"`simple', `total' or `num-data-elems').", !Errors)
 	),
 	map__lookup(OptionTable0, trace, Trace),
@@ -313,18 +326,22 @@ add_error(Error, Errors0, Errors) :-
 	% of repeated appends to be a problem.
 	list__append(Errors0, [Error], Errors).
 
+	% NOTE: each termination analyser has its own norm setting.
+	%
 :- pred postprocess_options_2(option_table::in, compilation_target::in,
 	gc_method::in, tags_method::in, termination_norm::in,
-	trace_level::in, trace_suppress_items::in, maybe_thread_safe::in,
-	list(string)::in, list(string)::out, io::di, io::uo) is det.
+	termination_norm::in, trace_level::in, trace_suppress_items::in,
+	maybe_thread_safe::in, list(string)::in, list(string)::out,
+	io::di, io::uo) is det.
 
 postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
-		TermNorm, TraceLevel, TraceSuppress, MaybeThreadSafe,
-		!Errors) -->
+		TermNorm, Term2Norm, TraceLevel, TraceSuppress, 
+		MaybeThreadSafe, !Errors) -->
 	{ unsafe_promise_unique(OptionTable0, OptionTable1) }, % XXX
 	globals__io_init(OptionTable1, Target, GC_Method, TagsMethod0,
-		TermNorm, TraceLevel, TraceSuppress, MaybeThreadSafe),
-
+		TermNorm, Term2Norm, TraceLevel, TraceSuppress,
+		MaybeThreadSafe),
+	
 	% Conservative GC implies --no-reclaim-heap-*
 	( { gc_is_conservative(GC_Method) = yes } ->
 		globals__io_set_option(
@@ -621,6 +638,11 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
 	option_implies(verbose_check_termination, check_termination,bool(yes)),
 	option_implies(check_termination, termination, bool(yes)),
 	option_implies(check_termination, warn_missing_trans_opt_files,
+		bool(yes)),
+	option_implies(verbose_check_termination2, check_termination2,
+		bool(yes)),
+	option_implies(check_termination2, termination2, bool(yes)),
+	option_implies(check_termination2, warn_missing_trans_opt_files,
 		bool(yes)),
 	option_implies(make_transitive_opt_interface, transitive_optimization,
 		bool(yes)),
@@ -1467,7 +1489,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
 	;
 		[]
 	).
-
+	
 	% These option implications only affect the low-level (LLDS) code
 	% generator.  They may in fact be harmful if set for the high-level
 	% code generator, because sometimes the same option has different

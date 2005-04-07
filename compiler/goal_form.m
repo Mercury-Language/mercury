@@ -127,6 +127,7 @@
 :- import_module hlds__hlds_data.
 :- import_module parse_tree__error_util.
 :- import_module parse_tree__prog_data.
+:- import_module transform_hlds__term_constr_main.
 :- import_module transform_hlds__term_util.
 
 :- import_module bool.
@@ -203,8 +204,14 @@ goal_cannot_loop_expr(MaybeModuleInfo, Goal) :-
 	Goal = call(PredId, ProcId, _, _, _, _),
 	MaybeModuleInfo = yes(ModuleInfo),
 	module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
-	proc_info_get_maybe_termination_info(ProcInfo, MaybeTermInfo),
-	MaybeTermInfo = yes(cannot_loop).
+	(
+		proc_info_get_maybe_termination_info(ProcInfo, MaybeTermInfo),
+		MaybeTermInfo = yes(cannot_loop(_))
+	;
+		proc_info_get_termination2_info(ProcInfo, Term2Info),
+		Term2Info ^ term_status = yes(cannot_loop(_))
+	
+	).
 goal_cannot_loop_expr(_, unify(_, _, _, Uni, _)) :-
 	(
 		Uni = assign(_, _)

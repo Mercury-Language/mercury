@@ -130,6 +130,8 @@
 :- import_module hlds__special_pred.
 :- import_module libs__globals.
 :- import_module libs__options.
+:- import_module libs__polyhedron.
+:- import_module libs__lp_rational.
 :- import_module ll_backend.
 :- import_module ll_backend__fact_table.
 :- import_module ll_backend__llds.
@@ -147,6 +149,8 @@
 :- import_module parse_tree__prog_util.
 :- import_module parse_tree__prog_type.
 :- import_module recompilation.
+:- import_module transform_hlds__term_constr_main.
+:- import_module transform_hlds__term_constr_util.
 :- import_module transform_hlds__term_util.
 
 :- import_module assoc_list.
@@ -866,6 +870,9 @@ add_item_decl_pass_2(Item, Context, !Status, !ModuleInfo, !IO) :-
         % these pragmas
         Pragma = termination_info(_, _, _, _, _)
     ;
+        % As for termination_info pragmas
+        Pragma = termination2_info(_, _, _, _, _, _, _)
+    ;
         Pragma = terminates(Name, Arity),
         add_pred_marker("terminates", Name, Arity, ImportStatus, Context,
             terminates, [check_termination, does_not_terminate], !ModuleInfo,
@@ -881,7 +888,6 @@ add_item_decl_pass_2(Item, Context, !Status, !ModuleInfo, !IO) :-
             Context, check_termination, [terminates, does_not_terminate],
             !ModuleInfo, !IO)
     ).
-
 add_item_decl_pass_2(Item, _Context, !Status, !ModuleInfo, !IO) :-
     Item = pred_or_func(_TypeVarSet, _InstVarSet, _ExistQVars,
         PredOrFunc, SymName, TypesAndModes, _WithType, _WithInst,
@@ -1113,6 +1119,15 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
     ->
         add_pragma_termination_info(PredOrFunc, SymName, ModeList,
             MaybeArgSizeInfo, MaybeTerminationInfo, Context,
+            !ModuleInfo, !IO)
+    ;
+        Pragma = termination2_info(PredOrFunc, SymName, ModeList,
+            HeadVarIds, MaybeSuccessArgSizeInfo, 
+            MaybeFailureArgSizeInfo, MaybeTerminationInfo)
+    ->
+        add_pragma_termination2_info(PredOrFunc, SymName, ModeList,
+            HeadVarIds, MaybeSuccessArgSizeInfo,
+            MaybeFailureArgSizeInfo, MaybeTerminationInfo, Context,
             !ModuleInfo, !IO)
     ;
         Pragma = reserve_tag(TypeName, TypeArity)
@@ -2028,6 +2043,92 @@ handle_pragma_type_spec_modes(SymName, Arity, Context, MaybeModes, ProcIds,
     ).
 
 %-----------------------------------------------------------------------------%
+
+:- pred add_pragma_termination2_info(pred_or_func::in, sym_name::in, 
+    list(mode)::in, list(int)::in, maybe(pragma_constr_arg_size_info)::in,
+    maybe(pragma_constr_arg_size_info)::in, 
+    maybe(pragma_termination_info)::in, prog_context::in, module_info::in, 
+    module_info::out, io::di, io::uo) is det.
+add_pragma_termination2_info(PredOrFunc, SymName, ModeList, HeadVarIds,
+        MaybePragmaSuccessArgSizeInfo, MaybePragmaFailureArgSizeInfo,
+        MaybePragmaTerminationInfo,
+        Context, !ModuleInfo, !IO) :-
+    module_info_get_predicate_table(!.ModuleInfo, Preds),
+    list.length(ModeList, Arity),
+    (
+        predicate_table_search_pf_sym_arity(Preds,
+        is_fully_qualified, PredOrFunc, SymName, Arity, PredIds),
+        PredIds \= []
+    ->
+        ( PredIds = [PredId] ->
+        module_info_preds(!.ModuleInfo, PredTable0),
+        map.lookup(PredTable0, PredId, PredInfo0),
+        pred_info_procedures(PredInfo0, ProcTable0),
+        map.to_assoc_list(ProcTable0, ProcList),
+        ( 
+            get_procedure_matching_declmodes(ProcList, 
+                ModeList, !.ModuleInfo, ProcId)
+        ->
+            map.lookup(ProcTable0, ProcId, ProcInfo0),
+            add_context_to_constr_termination_info(
+                MaybePragmaTerminationInfo, Context,
+                MaybeTerminationInfo),
+            
+            some [!TermInfo] (  
+                proc_info_get_termination2_info(ProcInfo0, !:TermInfo),
+        
+                !:TermInfo = !.TermInfo ^ import_headvarids 
+                    := yes(HeadVarIds),
+                !:TermInfo = !.TermInfo ^ import_success := 
+                    MaybePragmaSuccessArgSizeInfo,
+                !:TermInfo = !.TermInfo ^ import_failure :=
+                    MaybePragmaFailureArgSizeInfo,
+                !:TermInfo = !.TermInfo ^ term_status := 
+                    MaybeTerminationInfo,
+            
+                proc_info_set_termination2_info(!.TermInfo,
+                    ProcInfo0, ProcInfo)
+            ),
+            map__det_update(ProcTable0, ProcId, ProcInfo,
+                ProcTable),
+            pred_info_set_procedures(ProcTable, PredInfo0,
+                PredInfo),
+            map__det_update(PredTable0, PredId, PredInfo,
+                PredTable),
+            module_info_set_preds(PredTable, !ModuleInfo)
+        ;
+            module_info_incr_errors(!ModuleInfo), 
+            prog_out__write_context(Context, !IO),
+            io.write_string(
+                "Error: `:- pragma termination2_info' " ++
+                "declaration for undeclared mode of ", !IO),
+            hlds_out.write_simple_call_id(PredOrFunc,
+                SymName/Arity, !IO),
+            io.write_string(".\n", !IO)
+        )
+        ;
+        prog_out.write_context(Context, !IO),
+        io.write_string("Error: ambiguous predicate name ", !IO),
+        hlds_out.write_simple_call_id(PredOrFunc, SymName/Arity, !IO),
+        io.nl(!IO),
+        prog_out.write_context(Context, !IO),
+        io.write_string(
+            "  in `pragma termination2_info'.\n", !IO),
+        module_info_incr_errors(!ModuleInfo)
+        )
+    ;
+        % XXX This happens in `.trans_opt' files sometimes --
+        % so just ignore it
+        true    
+    /***
+        ****   undefined_pred_or_func_error(
+        ****        SymName, Arity, Context,
+        ****        "`:- pragma termination2_info' declaration"),
+        ****   { module_info_incr_errors(!ModuleInfo) }
+        ***/
+    ).
+
+%------------------------------------------------------------------------------%
 
 :- pred add_pragma_termination_info(pred_or_func::in, sym_name::in,
     list(mode)::in, maybe(pragma_arg_size_info)::in,

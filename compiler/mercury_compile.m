@@ -69,6 +69,7 @@
 :- import_module transform_hlds__lambda.
 :- import_module backend_libs__type_ctor_info.
 :- import_module transform_hlds__termination.
+:- import_module transform_hlds__term_constr_main.
 :- import_module transform_hlds__exception_analysis.
 :- import_module transform_hlds__higher_order.
 :- import_module transform_hlds__accumulator.
@@ -2122,6 +2123,7 @@ mercury_compile__maybe_write_optfile(MakeOptInt, !HLDS, !IO) :-
 	globals__lookup_bool_option(Globals, verbose, Verbose),
 	globals__lookup_bool_option(Globals, statistics, Stats),
 	globals__lookup_bool_option(Globals, termination, Termination),
+	globals__lookup_bool_option(Globals, termination2, Termination2),
 	globals__lookup_bool_option(Globals, analyse_exceptions,
 		ExceptionAnalysis),
 
@@ -2135,6 +2137,7 @@ mercury_compile__maybe_write_optfile(MakeOptInt, !HLDS, !IO) :-
 		(
 			( IntermodArgs = yes
 			; Termination = yes
+			; Termination2 = yes
 			; ExceptionAnalysis = yes
 			)
 		->
@@ -2157,7 +2160,13 @@ mercury_compile__maybe_write_optfile(MakeOptInt, !HLDS, !IO) :-
 					mercury_compile__maybe_termination(
 						Verbose, Stats, !HLDS, !IO)
 				;
-					true
+					true	
+				),
+				( Termination2 = yes ->
+					mercury_compile__maybe_termination2(
+						Verbose, Stats, !HLDS, !IO)
+				;
+					true	
 				)
 			;
 				io__set_exit_status(1, !IO)
@@ -2200,8 +2209,8 @@ mercury_compile__maybe_write_optfile(MakeOptInt, !HLDS, !IO) :-
 
 is_bool(_).
 
-:- pred mercury_compile__output_trans_opt_file(module_info::in,
-	io::di, io::uo) is det.
+:- pred mercury_compile__output_trans_opt_file(module_info::in, io::di,
+	io::uo) is det.
 
 mercury_compile__output_trans_opt_file(HLDS0, !IO) :-
 	globals__io_lookup_bool_option(verbose, Verbose, !IO),
@@ -2210,8 +2219,11 @@ mercury_compile__output_trans_opt_file(HLDS0, !IO) :-
 		HLDS1, !IO),
 	mercury_compile__maybe_dump_hlds(HLDS1, 118, "exception_analysis",
 		!IO),
-	mercury_compile__maybe_termination(Verbose, Stats, HLDS1, HLDS, !IO),
-	mercury_compile__maybe_dump_hlds(HLDS, 120, "termination", !IO),
+	mercury_compile__maybe_termination(Verbose, Stats, HLDS1, HLDS2, !IO),
+	mercury_compile__maybe_dump_hlds(HLDS2, 120, "termination", !IO),
+	mercury_compile__maybe_termination2(Verbose, Stats, HLDS2, HLDS,
+		!IO),
+	mercury_compile__maybe_dump_hlds(HLDS, 121, "termination_2", !IO),
 	trans_opt__write_optfile(HLDS, !IO).
 
 :- pred mercury_compile__frontend_pass_by_phases(module_info::in,
@@ -2333,6 +2345,9 @@ mercury_compile__middle_pass(ModuleName, !HLDS, !IO) :-
 	mercury_compile__maybe_termination(Verbose, Stats, !HLDS, !IO),
 	mercury_compile__maybe_dump_hlds(!.HLDS, 120, "termination", !IO),
 
+	mercury_compile__maybe_termination2(Verbose, Stats, !HLDS, !IO),
+	mercury_compile__maybe_dump_hlds(!.HLDS, 121, "termination2", !IO),
+	
 	mercury_compile__maybe_type_ctor_infos(Verbose, Stats, !HLDS, !IO),
 	mercury_compile__maybe_dump_hlds(!.HLDS, 125, "type_ctor_infos", !IO),
 
@@ -2901,6 +2916,28 @@ mercury_compile__maybe_termination(Verbose, Stats, !HLDS, !IO) :-
 			"% Termination checking done.\n", !IO),
 		maybe_report_stats(Stats, !IO)
 	;
+		true
+	).
+
+:- pred mercury_compile__maybe_termination2(bool::in, bool::in,
+	module_info::in, module_info::out, io::di, io::uo) is det.
+
+mercury_compile__maybe_termination2(Verbose, Stats, !HLDS, !IO) :-
+	globals__io_lookup_bool_option(polymorphism, Polymorphism, !IO),
+	globals__io_lookup_bool_option(termination2, Termination2, !IO),
+	% Termination analysis requires polymorphism to be run,
+	% as termination analysis does not handle complex unification.
+	( 
+		Polymorphism = yes,
+		Termination2 = yes
+	->
+		maybe_write_string(Verbose, "% Detecting termination 2...\n",
+			!IO),
+		term_constr_main__pass(!HLDS, !IO),
+		maybe_write_string(Verbose, "% Termination 2 checking done.\n",
+			!IO),
+ 		maybe_report_stats(Stats, !IO)
+ 	;
 		true
 	).
 
