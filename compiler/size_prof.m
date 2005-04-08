@@ -799,14 +799,6 @@ process_args([Arg | Args], !KnownSize, !MaybeSizeVar, Context, Goals, !Info) :-
 		ArgGoals = []
 	; zero_size_type(Type, !.Info ^ module_info) ->
 		ArgGoals = []
-	; type_is_higher_order(Type, _, _, _, _) ->
-		% Even if higher order types are not zero size for thes
-		% termination analyzer, they are zero size for us.
-		% If the type is a function type, then make_type_info below
-		% would in any case throw an exception, because it can't
-		% construct a function type with an empty list of arguments
-		% (since it has no return value type).
-		ArgGoals = []
 	;
 		make_type_info(Context, Type, TypeInfoVar, TypeInfoGoals,
 			!Info),

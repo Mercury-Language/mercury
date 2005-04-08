@@ -345,7 +345,7 @@ zero_size_type_category(type_info_type, yes).
 zero_size_type_category(type_ctor_info_type, yes).
 zero_size_type_category(typeclass_info_type, yes).
 zero_size_type_category(base_typeclass_info_type, yes).
-zero_size_type_category(higher_order_type, no).
+zero_size_type_category(higher_order_type, yes).
 zero_size_type_category(tuple_type, no).
 zero_size_type_category(enum_type, yes).
 zero_size_type_category(variable_type, no).

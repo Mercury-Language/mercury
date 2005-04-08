@@ -296,8 +296,6 @@ is_zero_size_prog_var(ModuleInfo, VarTypes, Var) :-
 		% in the constraints - they won't tell us anything
 		% useful.
 		type_util.is_dummy_argument_type(Type)
-	;
-		prog_type.type_is_higher_order(Type, _, _, _, _)
 	).
 
 add_context_to_constr_termination_info(no, _, no).
