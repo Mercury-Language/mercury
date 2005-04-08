@@ -10,17 +10,15 @@
 
 % This pass has three components:
 %
-%	o Segregate the procedures into those that have determinism
-%		declarations, and those that don't
+% - Segregate the procedures into those that have determinism declarations,
+%   and those that don't.
 %
-%	o A step of performing a local inference pass on each procedure
-%		without a determinism declaration is iterated until
-%		a fixpoint is reached
+% - A step of performing a local inference pass on each procedure
+%   without a determinism declaration is iterated until a fixpoint is reached.
 %
-%	o A checking step is performed on all the procedures that have
-%		determinism declarations to ensure that they are at
-%		least as deterministic as their declaration. This uses
-%		a form of the local inference pass.
+% - A checking step is performed on all the procedures that have determinism
+%   declarations to ensure that they are at least as deterministic as their
+%   declaration. This uses a form of the local inference pass.
 %
 % If we are to avoid global inference for predicates with
 % declarations, then it must be an error, not just a warning,
@@ -69,17 +67,19 @@
 	% Perform determinism inference for local predicates with no
 	% determinism declarations, and determinism checking for all other
 	% predicates.
+	%
 :- pred determinism_pass(module_info::in, module_info::out,
 	io::di, io::uo) is det.
 
 	% Check the determinism of a single procedure
 	% (only works if the determinism of the procedures it calls
 	% has already been inferred).
+	%
 :- pred determinism_check_proc(proc_id::in, pred_id::in,
 	module_info::in, module_info::out, io::di, io::uo) is det.
 
 	% Infer the determinism of a procedure.
-
+	%
 :- pred det_infer_proc(pred_id::in, proc_id::in, module_info::in,
 	module_info::out, globals::in, determinism::out, determinism::out,
 	list(det_msg)::out) is det.
@@ -87,20 +87,22 @@
 	% Infers the determinism of `Goal0' and returns this in `Detism'.
 	% It annotates the goal and all its subgoals with their determinism
 	% and returns the annotated goal in `Goal'.
-
+	%
 :- pred det_infer_goal(hlds_goal::in, instmap::in, soln_context::in,
 	det_info::in, hlds_goal::out, determinism::out, list(det_msg)::out)
 	is det.
 
 	% Work out how many solutions are needed for a given determinism.
+	%
 :- pred det_get_soln_context(determinism::in, soln_context::out) is det.
 
 :- type soln_context
 	--->	all_solns
 	;	first_soln.
 
-	% The tables for computing the determinism of compound goals
-	% from the determinism of their components.
+	% The following predicates implement the tables for computing
+	% the determinism of compound goals from the determinism
+	% of their components.
 
 :- pred det_conjunction_detism(determinism::in, determinism::in,
 	determinism::out) is det.
@@ -184,7 +186,7 @@ determinism_check_proc(ProcId, PredId, !ModuleInfo, !IO) :-
 	% If this ever becomes a problem, we should switch to doing
 	% iterations only on strongly connected components of the
 	% dependency graph.
-
+	%
 global_inference_pass(!ModuleInfo, ProcList, Debug, !IO) :-
 	global_inference_single_pass(ProcList, Debug, !ModuleInfo, [], Msgs,
 		unchanged, Changed, !IO),
@@ -207,8 +209,8 @@ global_inference_single_pass([], _, !ModuleInfo, !Msgs, !Changed, !IO).
 global_inference_single_pass([proc(PredId, ProcId) | PredProcs], Debug,
 		!ModuleInfo, !Msgs, !Changed, !IO) :-
 	globals__io_get_globals(Globals, !IO),
-	det_infer_proc(PredId, ProcId, !ModuleInfo, Globals,
-		Detism0, Detism, ProcMsgs),
+	det_infer_proc(PredId, ProcId, !ModuleInfo, Globals, Detism0, Detism,
+		ProcMsgs),
 	( Detism = Detism0 ->
 		ChangeStr = "old"
 	;
@@ -286,12 +288,11 @@ det_infer_proc(PredId, ProcId, !ModuleInfo, Globals, Detism0, Detism,
 	det_infer_goal(Goal0, InstMap0, SolnContext, DetInfo,
 		Goal, Detism1, !:Msgs),
 
-		% Take the worst of the old and new detisms.
-		% This is needed to prevent loops on p :- not(p)
-		% at least if the initial assumed detism is det.
-		% This may also be needed to ensure that we don't change
-		% the interface determinism of procedures, if we are
-		% re-running determinism analysis.
+	% Take the worst of the old and new detisms. This is needed
+	% to prevent loops on p :- not(p), at least if the initial assumed
+	% detism is det. This may also be needed to ensure that we don't change
+	% the interface determinism of procedures, if we are re-running
+	% determinism analysis.
 
 	determinism_components(Detism0, CanFail0, MaxSoln0),
 	determinism_components(Detism1, CanFail1, MaxSoln1),
@@ -299,7 +300,8 @@ det_infer_proc(PredId, ProcId, !ModuleInfo, Globals, Detism0, Detism,
 	det_switch_maxsoln(MaxSoln0, MaxSoln1, MaxSoln),
 	determinism_components(Detism2, CanFail, MaxSoln),
 
-		% Now see if the evaluation model can change the detism
+	% Now see if the evaluation model can change the detism.
+
 	proc_info_eval_method(Proc0, EvalMethod),
 	Detism = eval_method_change_determinism(EvalMethod, Detism2),
 
@@ -320,7 +322,7 @@ det_infer_proc(PredId, ProcId, !ModuleInfo, Globals, Detism0, Detism,
 		true
 	),
 
-		% Save the newly inferred information
+		% Save the newly inferred information.
 	proc_info_set_goal(Goal, Proc0, Proc1),
 	proc_info_set_inferred_determinism(Detism, Proc1, Proc),
 
@@ -330,21 +332,23 @@ det_infer_proc(PredId, ProcId, !ModuleInfo, Globals, Detism0, Detism,
 	% been declared to have these determinisms should have been
 	% picked up in make_hlds, so this is just to catch those whose
 	% determinisms need to be inferred.
-	
+
 	module_info_get_pragma_exported_procs(!.ModuleInfo,
 		ExportedProcs),
 	(
 		list.member(pragma_exported_proc(PredId, ProcId, _, _),
 			ExportedProcs),
-		( Detism = multidet ; Detism = nondet )		
+		( Detism = multidet
+		; Detism = nondet
+		)
 	->
 		list.cons(export_model_non_proc(PredId, ProcId, Detism),
 			!Msgs)
 	;
 		true
 	),
-		
-		%  Put back the new proc_info structure.
+
+	%  Put back the new proc_info structure.
 	map__det_update(Procs0, ProcId, Proc, Procs),
 	pred_info_set_procedures(Procs, Pred0, Pred),
 	map__det_update(Preds0, PredId, Pred, Preds),
@@ -353,13 +357,12 @@ det_infer_proc(PredId, ProcId, !ModuleInfo, Globals, Detism0, Detism,
 %-----------------------------------------------------------------------------%
 
 det_infer_goal(Goal0 - GoalInfo0, InstMap0, SolnContext0, DetInfo,
-		Goal - GoalInfo, Detism, Msgs) :-
+		Goal - GoalInfo, Detism, !:Msgs) :-
 	goal_info_get_nonlocals(GoalInfo0, NonLocalVars),
 	goal_info_get_instmap_delta(GoalInfo0, DeltaInstMap),
 
 	% If a pure or semipure goal has no output variables,
 	% then the goal is in a single-solution context.
-
 	(
 		det_no_output_vars(NonLocalVars, InstMap0, DeltaInstMap,
 			DetInfo),
@@ -376,7 +379,6 @@ det_infer_goal(Goal0 - GoalInfo0, InstMap0, SolnContext0, DetInfo,
 		AddPruning = no,
 		SolnContext = SolnContext0
 	),
-
 
 	(
 		Goal0 = scope(ScopeReason, _),
@@ -404,7 +406,7 @@ det_infer_goal(Goal0 - GoalInfo0, InstMap0, SolnContext0, DetInfo,
 	),
 
 	det_infer_goal_2(Goal0, GoalInfo0, InstMap0, SolnContext, DetInfo,
-		NonLocalVars, DeltaInstMap, Goal1, InternalDetism0, Msgs1),
+		NonLocalVars, DeltaInstMap, Goal1, InternalDetism0, !:Msgs),
 
 	determinism_components(InternalDetism0, InternalCanFail,
 		InternalSolns0),
@@ -418,7 +420,6 @@ det_infer_goal(Goal0 - GoalInfo0, InstMap0, SolnContext0, DetInfo,
 	;
 		InternalSolns = InternalSolns0
 	),
-
 	(
 		( InternalSolns = at_most_many
 		; InternalSolns = at_most_many_cc
@@ -440,7 +441,6 @@ det_infer_goal(Goal0 - GoalInfo0, InstMap0, SolnContext0, DetInfo,
 	determinism_components(Detism, InternalCanFail, Solns),
 	goal_info_set_determinism(GoalInfo0, Detism, GoalInfo),
 
-	%
 	% The code generators assume that conjunctions containing
 	% multi or nondet goals and if-then-elses containing
 	% multi or nondet conditions can only occur inside other
@@ -450,7 +450,6 @@ det_infer_goal(Goal0 - GoalInfo0, InstMap0, SolnContext0, DetInfo,
 	% invariants would not hold after determinism analysis
 	% (the number of solutions of the inner goal would be changed
 	% back from at_most_many to at_most_one or at_most_zero).
-	%
 	(
 		%
 		% If-then-elses that are det or semidet may
@@ -467,12 +466,11 @@ det_infer_goal(Goal0 - GoalInfo0, InstMap0, SolnContext0, DetInfo,
 	->
 		FinalInternalSolns = at_most_many
 	;
-		%
 		% Conjunctions that cannot produce solutions may nevertheless
 		% contain nondet and multidet goals. If this happens, the
-		% conjunction is put inside a `some' to appease the code
+		% conjunction is put inside a scope goal to appease the code
 		% generator.
-		%
+
 		Goal1 = conj(ConjGoals),
 		Solns = at_most_zero,
 		some [ConjGoalInfo] (
@@ -490,7 +488,6 @@ det_infer_goal(Goal0 - GoalInfo0, InstMap0, SolnContext0, DetInfo,
 		FinalInternalSolns),
 
 	% See how we should introduce the commit operator, if one is needed.
-
 	(
 		% do we need a commit?
 		Detism \= FinalInternalDetism,
@@ -508,14 +505,12 @@ det_infer_goal(Goal0 - GoalInfo0, InstMap0, SolnContext0, DetInfo,
 		% a commit needed - we must introduce an explicit `commit'
 		% so that the code generator knows to insert the appropriate
 		% code for pruning
-		goal_info_set_determinism(GoalInfo0,
-			FinalInternalDetism, InnerInfo),
-		Goal = scope(commit(dont_force_pruning), Goal1 - InnerInfo),
-		Msgs = Msgs1
+		goal_info_set_determinism(GoalInfo0, FinalInternalDetism,
+			InnerInfo),
+		Goal = scope(commit(dont_force_pruning), Goal1 - InnerInfo)
 	;
 		% either no commit needed, or a `scope' already present
-		Goal = Goal1,
-		Msgs = Msgs1
+		Goal = Goal1
 	).
 
 %-----------------------------------------------------------------------------%
@@ -523,46 +518,47 @@ det_infer_goal(Goal0 - GoalInfo0, InstMap0, SolnContext0, DetInfo,
 :- pred det_infer_goal_2(hlds_goal_expr::in, hlds_goal_info::in, instmap::in,
 	soln_context::in, det_info::in, set(prog_var)::in, instmap_delta::in,
 	hlds_goal_expr::out, determinism::out, list(det_msg)::out) is det.
-	% The determinism of a conjunction is the worst case of the elements
-	% of that conjuction.
 
 det_infer_goal_2(conj(Goals0), _, InstMap0, SolnContext, DetInfo, _, _,
-		conj(Goals), Detism, Msgs) :-
+		conj(Goals), Detism, !:Msgs) :-
+	% The determinism of a conjunction is the worst case of the elements
+	% of that conjuction.
 	det_infer_conj(Goals0, InstMap0, SolnContext, DetInfo,
-		Goals, Detism, Msgs).
+		Goals, Detism, !:Msgs).
 
 det_infer_goal_2(par_conj(Goals0), GoalInfo, InstMap0, SolnContext,
-		DetInfo, _, _, par_conj(Goals), Detism, Msgs) :-
+		DetInfo, _, _, par_conj(Goals), Detism, !:Msgs) :-
 	det_infer_par_conj(Goals0, InstMap0, SolnContext, DetInfo,
-		Goals, Detism, Msgs0),
+		Goals, Detism, !:Msgs),
 	(
 		determinism_components(Detism, CanFail, Solns),
 		CanFail = cannot_fail,
 		Solns \= at_most_many
 	->
-		Msgs = Msgs0
+		true
 	;
 		det_info_get_pred_id(DetInfo, PredId),
 		det_info_get_proc_id(DetInfo, ProcId),
 		Msg = par_conj_not_det(Detism, PredId, ProcId, GoalInfo, Goals),
-		Msgs = [Msg|Msgs0]
+		!:Msgs = [Msg | !.Msgs]
 	).
 
 det_infer_goal_2(disj(Goals0), _, InstMap0, SolnContext, DetInfo, _, _,
-		disj(Goals), Detism, Msgs) :-
+		disj(Goals), Detism, !:Msgs) :-
 	det_infer_disj(Goals0, InstMap0, SolnContext, DetInfo,
-		can_fail, at_most_zero, Goals, Detism, Msgs).
+		can_fail, at_most_zero, Goals, Detism, !:Msgs).
+
+det_infer_goal_2(switch(Var, SwitchCanFail, Cases0), GoalInfo,
+		InstMap0, SolnContext, DetInfo, _, _,
+		switch(Var, SwitchCanFail, Cases), Detism, !:Msgs) :-
 
 	% The determinism of a switch is the worst of the determinism of each
 	% of the cases. Also, if only a subset of the constructors are handled,
 	% then it is semideterministic or worse - this is determined
 	% in switch_detection.m and handled via the SwitchCanFail field.
 
-det_infer_goal_2(switch(Var, SwitchCanFail, Cases0), GoalInfo,
-		InstMap0, SolnContext, DetInfo, _, _,
-		switch(Var, SwitchCanFail, Cases), Detism, Msgs) :-
 	det_infer_switch(Cases0, InstMap0, SolnContext, DetInfo,
-		cannot_fail, at_most_zero, Cases, CasesDetism, Msgs0),
+		cannot_fail, at_most_zero, Cases, CasesDetism, !:Msgs),
 	determinism_components(CasesDetism, CasesCanFail, CasesSolns),
 	% The switch variable tests are in a first_soln context if and only
 	% if the switch goal as a whole was in a first_soln context and the
@@ -578,24 +574,25 @@ det_infer_goal_2(switch(Var, SwitchCanFail, Cases0), GoalInfo,
 	ExaminesRep = yes,
 	det_check_for_noncanonical_type(Var, ExaminesRep, SwitchCanFail,
 		SwitchSolnContext, GoalInfo, switch, DetInfo, SwitchSolns,
-		Msgs0, Msgs),
+		!Msgs),
 	det_conjunction_canfail(SwitchCanFail, CasesCanFail, CanFail),
 	det_conjunction_maxsoln(SwitchSolns, CasesSolns, NumSolns),
 	determinism_components(Detism, CanFail, NumSolns).
+
+det_infer_goal_2(call(PredId, ModeId0, A, B, C, N), GoalInfo, _,
+		SolnContext, DetInfo, _, _,
+		call(PredId, ModeId, A, B, C, N), Detism, !:Msgs) :-
 
 	% For calls, just look up the determinism entry associated with
 	% the called predicate.
 	% This is the point at which annotations start changing
 	% when we iterate to fixpoint for global determinism inference.
 
-det_infer_goal_2(call(PredId, ModeId0, A, B, C, N), GoalInfo, _,
-		SolnContext, DetInfo, _, _,
-		call(PredId, ModeId, A, B, C, N), Detism, Msgs) :-
 	det_lookup_detism(DetInfo, PredId, ModeId0, Detism0),
-	%
+
 	% Make sure we don't try to call a committed-choice pred
 	% from a non-committed-choice context.
-	%
+
 	determinism_components(Detism0, CanFail, NumSolns),
 	(
 		NumSolns = at_most_many_cc,
@@ -603,14 +600,14 @@ det_infer_goal_2(call(PredId, ModeId0, A, B, C, N), GoalInfo, _,
 	->
 		(
 			det_find_matching_non_cc_mode(DetInfo, PredId, ModeId0,
-				ModeId1)
+				ModeIdPrime)
 		->
-			ModeId = ModeId1,
-			Msgs = [],
+			ModeId = ModeIdPrime,
+			!:Msgs = [],
 			determinism_components(Detism, CanFail, at_most_many)
 		;
-			Msgs = [cc_pred_in_wrong_context(GoalInfo, Detism0,
-					PredId, ModeId0)],
+			!:Msgs = [cc_pred_in_wrong_context(GoalInfo, Detism0,
+				PredId, ModeId0)],
 			ModeId = ModeId0,
 			% Code elsewhere relies on the assumption that
 			%	SolnContext \= first_soln =>
@@ -619,7 +616,7 @@ det_infer_goal_2(call(PredId, ModeId0, A, B, C, N), GoalInfo, _,
 			determinism_components(Detism, CanFail, at_most_many)
 		)
 	;
-		Msgs = [],
+		!:Msgs = [],
 		ModeId = ModeId0,
 		Detism = Detism0
 	).
@@ -627,8 +624,7 @@ det_infer_goal_2(call(PredId, ModeId0, A, B, C, N), GoalInfo, _,
 det_infer_goal_2(generic_call(GenericCall, ArgVars, Modes, Det0),
 		GoalInfo, _InstMap0, SolnContext,
 		_MiscInfo, _NonLocalVars, _DeltaInstMap,
-		generic_call(GenericCall, ArgVars, Modes, Det0),
-		Det, Msgs) :-
+		generic_call(GenericCall, ArgVars, Modes, Det0), Det, Msgs) :-
 	determinism_components(Det0, CanFail, NumSolns),
 	(
 		NumSolns = at_most_many_cc,
@@ -648,12 +644,13 @@ det_infer_goal_2(generic_call(GenericCall, ArgVars, Modes, Det0),
 		Det = Det0
 	).
 
+det_infer_goal_2(unify(LHS, RHS0, Mode, Unify, Context), GoalInfo, InstMap0,
+		SolnContext, DetInfo, _, _,
+		unify(LHS, RHS, Mode, Unify, Context), UnifyDet, !:Msgs) :-
 	% unifications are either deterministic or semideterministic.
 	% (see det_infer_unify).
-det_infer_goal_2(unify(LT, RT0, M, U, C), GoalInfo, InstMap0, SolnContext,
-		DetInfo, _, _, unify(LT, RT, M, U, C), UnifyDet, Msgs) :-
 	(
-		RT0 = lambda_goal(Purity, PredOrFunc, EvalMethod, FixModes,
+		RHS0 = lambda_goal(Purity, PredOrFunc, EvalMethod, FixModes,
 			NonLocalVars, Vars, Modes, LambdaDeclaredDet, Goal0)
 	->
 		(
@@ -668,21 +665,21 @@ det_infer_goal_2(unify(LT, RT0, M, U, C), GoalInfo, InstMap0, SolnContext,
 		instmap__pre_lambda_update(ModuleInfo, Vars, Modes,
 			InstMap0, InstMap1),
 		det_infer_goal(Goal0, InstMap1, LambdaSolnContext, DetInfo,
-				Goal, LambdaInferredDet, Msgs1),
+			Goal, LambdaInferredDet, Msgs1),
 		det_check_lambda(LambdaDeclaredDet, LambdaInferredDet,
-				Goal, GoalInfo, DetInfo, Msgs2),
-		list__append(Msgs1, Msgs2, Msgs3),
-		RT = lambda_goal(Purity, PredOrFunc, EvalMethod, FixModes,
+			Goal, GoalInfo, DetInfo, Msgs2),
+		list__append(Msgs1, Msgs2, !:Msgs),
+		RHS = lambda_goal(Purity, PredOrFunc, EvalMethod, FixModes,
 			NonLocalVars, Vars, Modes, LambdaDeclaredDet, Goal)
 	;
-		RT = RT0,
-		Msgs3 = []
+		RHS = RHS0,
+		!:Msgs = []
 	),
-	det_infer_unify_canfail(U, UnifyCanFail),
-	det_infer_unify_examines_rep(U, ExaminesRepresentation),
-	det_check_for_noncanonical_type(LT, ExaminesRepresentation,
-		UnifyCanFail, SolnContext, GoalInfo, unify(C), DetInfo,
-		UnifyNumSolns, Msgs3, Msgs),
+	det_infer_unify_canfail(Unify, UnifyCanFail),
+	det_infer_unify_examines_rep(Unify, ExaminesRepresentation),
+	det_check_for_noncanonical_type(LHS, ExaminesRepresentation,
+		UnifyCanFail, SolnContext, GoalInfo, unify(Context), DetInfo,
+		UnifyNumSolns, !Msgs),
 	determinism_components(UnifyDet, UnifyCanFail, UnifyNumSolns).
 
 det_infer_goal_2(if_then_else(Vars, Cond0, Then0, Else0), _GoalInfo0,
@@ -742,11 +739,12 @@ det_infer_goal_2(if_then_else(Vars, Cond0, Then0, Else0), _GoalInfo0,
 		det_switch_canfail(ThenCanFail, ElseCanFail, CanFail),
 		determinism_components(Detism, CanFail, MaxSoln)
 	),
+	Msgs = CondMsgs ++ ThenMsgs ++ ElseMsgs.
 
-	list__append(ThenMsgs, ElseMsgs, AfterMsgs),
-	list__append(CondMsgs, AfterMsgs, Msgs).
+det_infer_goal_2(not(Goal0), _, InstMap0, _SolnContext, DetInfo, _, _,
+		not(Goal), Det, Msgs) :-
 
-	% Negations are almost always semideterministic.  It is an error for
+	% Negations are almost always semideterministic. It is an error for
 	% a negation to further instantiate any non-local variable. Such
 	% errors will be reported by the mode analysis.
 	%
@@ -754,8 +752,6 @@ det_infer_goal_2(if_then_else(Vars, Cond0, Then0, Else0), _GoalInfo0,
 	% cannot succeed or cannot fail?
 	% Answer: yes, probably, but it's not a high priority.
 
-det_infer_goal_2(not(Goal0), _, InstMap0, _SolnContext, DetInfo, _, _,
-		not(Goal), Det, Msgs) :-
 	det_infer_goal(Goal0, InstMap0, first_soln, DetInfo,
 		Goal, NegDet, Msgs),
 	det_negation_det(NegDet, MaybeDet),
@@ -813,27 +809,29 @@ det_infer_goal_2(scope(Reason, Goal0), GoalInfo0, InstMap0, SolnContext0,
 		Goal, Det, SubMsgs),
 	list__append(SubMsgs, ScopeMsgs, Msgs).
 
-	% pragma foregin_codes are handled in the same way as predicate calls
 det_infer_goal_2(foreign_proc(Attributes, PredId, ProcId, Args, ExtraArgs,
 			PragmaCode),
 		GoalInfo, _, SolnContext, DetInfo, _, _,
 		foreign_proc(Attributes, PredId, ProcId, Args, ExtraArgs,
 			PragmaCode),
 		Detism, Msgs) :-
+	% Foreign_procs are handled in the same way as predicate calls.
+
 	det_info_get_module_info(DetInfo, ModuleInfo),
 	module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
 	proc_info_declared_determinism(ProcInfo, MaybeDetism),
-	( MaybeDetism = yes(Detism0) ->
+	(
+		MaybeDetism = yes(Detism0),
 		determinism_components(Detism0, CanFail, NumSolns0),
-		( 
+		(
 			may_throw_exception(Attributes) =
 				will_not_throw_exception,
 			Detism0 = erroneous
 		->
 			Msgs0 = [will_not_throw_with_erroneous(PredId, ProcId)]
 		;
-			Msgs0 = []	
-		),  
+			Msgs0 = []
+		),
 		( PragmaCode = nondet(_, _, _, _, _, _, _, _, _) ->
 			% pragma C codes of this form
 			% can have more than one solution
@@ -854,6 +852,7 @@ det_infer_goal_2(foreign_proc(Attributes, PredId, ProcId, Args, ExtraArgs,
 		),
 		determinism_components(Detism, CanFail, NumSolns)
 	;
+		MaybeDetism = no,
 		Msgs = [pragma_c_code_without_det_decl(PredId, ProcId)],
 		Detism = erroneous
 	).
@@ -913,7 +912,7 @@ det_infer_conj([Goal0 | Goals0], InstMap0, SolnContext, DetInfo,
 	% Finally combine the results computed above.
 	%
 	det_conjunction_detism(DetismA, DetismB, Detism),
-	list__append(MsgsA, MsgsB, Msgs).
+	Msgs = MsgsA ++ MsgsB.
 
 :- pred det_infer_par_conj(list(hlds_goal)::in, instmap::in, soln_context::in,
 	det_info::in, list(hlds_goal)::out, determinism::out,
@@ -934,7 +933,7 @@ det_infer_par_conj([Goal0 | Goals0], InstMap0, SolnContext, DetInfo,
 	det_conjunction_maxsoln(MaxSolnsA, MaxSolnsB, MaxSolns),
 	det_conjunction_canfail(CanFailA, CanFailB, CanFail),
 	determinism_components(Detism, CanFail, MaxSolns),
-	list__append(MsgsA, MsgsB, Msgs).
+	Msgs = MsgsA ++ MsgsB.
 
 :- pred det_infer_disj(list(hlds_goal)::in, instmap::in, soln_context::in,
 	det_info::in, can_fail::in, soln_count::in, list(hlds_goal)::out,
@@ -980,7 +979,7 @@ det_infer_disj([Goal0 | Goals0], InstMap0, SolnContext, DetInfo, CanFail0,
 	),
 	det_infer_disj(Goals0, InstMap0, SolnContext, DetInfo, CanFail2,
 		MaxSolns3, Goals1, Detism, Msgs2),
-	list__append(Msgs1, Msgs2, Msgs).
+	Msgs = Msgs1 ++ Msgs2.
 
 :- pred det_infer_switch(list(case)::in, instmap::in, soln_context::in,
 	det_info::in, can_fail::in, soln_count::in, list(case)::out,
@@ -1004,16 +1003,16 @@ det_infer_switch([Case0 | Cases0], InstMap0, SolnContext, DetInfo, CanFail0,
 	det_switch_maxsoln(MaxSolns0, MaxSolns1, MaxSolns2),
 	det_infer_switch(Cases0, InstMap0, SolnContext, DetInfo, CanFail2,
 		MaxSolns2, Cases, Detism, Msgs2),
-	list__append(Msgs1, Msgs2, Msgs).
+	Msgs = Msgs1 ++ Msgs2.
 
 %-----------------------------------------------------------------------------%
 
 	% det_find_matching_non_cc_mode(DetInfo, PredId, ProcId0, ProcId):
-	%	Search for a mode of the given predicate that
-	% 	is identical to the mode ProcId0, except that its
-	%	determinism is non-cc whereas ProcId0's detism is cc.
-	%	Let ProcId be the first such mode.
-
+	%
+	% Search for a mode of the given predicate that is identical
+	% to the mode ProcId0, except that its determinism is non-cc
+	% whereas ProcId0's detism is cc. Let ProcId be the first such mode.
+	%
 :- pred det_find_matching_non_cc_mode(det_info::in, pred_id::in, proc_id::in,
 	proc_id::out) is semidet.
 
@@ -1056,11 +1055,10 @@ det_check_for_noncanonical_type(Var, ExaminesRepresentation, CanFail,
 		SolnContext, GoalInfo, GoalContext, DetInfo, NumSolns,
 		!Msgs) :-
 	(
-		%
 		% check for unifications that attempt to examine
 		% the representation of a type that does not have
 		% a single representation for each abstract value
-		%
+
 		ExaminesRepresentation = yes,
 		det_get_proc_info(DetInfo, ProcInfo),
 		proc_info_vartypes(ProcInfo, VarTypes),
@@ -1087,9 +1085,9 @@ det_check_for_noncanonical_type(Var, ExaminesRepresentation, CanFail,
 		NumSolns = at_most_one
 	).
 
-% Return true iff the principal type constructor of the given type
-% has user-defined equality.
-
+	% Return true iff the principal type constructor of the given type
+	% has user-defined equality.
+	%
 :- pred det_type_has_user_defined_equality_pred(det_info::in,
 	(type)::in) is semidet.
 
@@ -1097,20 +1095,20 @@ det_type_has_user_defined_equality_pred(DetInfo, Type) :-
 	det_info_get_module_info(DetInfo, ModuleInfo),
 	type_has_user_defined_equality_pred(ModuleInfo, Type, _).
 
-% Return yes iff the results of the specified unification might depend on
-% the concrete representation of the abstract values involved.
-
+	% Return yes iff the results of the specified unification might depend
+	% on the concrete representation of the abstract values involved.
+	%
 :- pred det_infer_unify_examines_rep(unification::in, bool::out) is det.
 
 det_infer_unify_examines_rep(assign(_, _), no).
 det_infer_unify_examines_rep(construct(_, _, _, _, _, _, _), no).
 det_infer_unify_examines_rep(deconstruct(_, _, _, _, _, _), yes).
 det_infer_unify_examines_rep(simple_test(_, _), yes).
-det_infer_unify_examines_rep(complicated_unify(_, _, _), no).
 	% Some complicated modes of complicated unifications _do_
 	% examine the representation...
 	% but we will catch those by reporting errors in the
 	% compiler-generated code for the complicated unification.
+det_infer_unify_examines_rep(complicated_unify(_, _, _), no).
 
 	% Deconstruction unifications cannot fail if the type
 	% only has one constructor, or if the variable is known to be
@@ -1121,7 +1119,7 @@ det_infer_unify_examines_rep(complicated_unify(_, _, _), no).
 	% those deconstruction unifications which might fail.
 	% But switch_detection.m may set it back to cannot_fail again,
 	% if it moves the functor test into a switch instead.
-
+	%
 :- pred det_infer_unify_canfail(unification::in, can_fail::out) is det.
 
 det_infer_unify_canfail(deconstruct(_, _, _, _, CanFail, _), CanFail).
@@ -1141,12 +1139,12 @@ det_get_soln_context(DeclaredDetism, SolnContext) :-
 		SolnContext = all_solns
 	).
 
-% When figuring out the determinism of a conjunction,
-% if the second goal is unreachable, then then the
-% determinism of the conjunction is just the determinism
-% of the first goal.
-
 det_conjunction_detism(DetismA, DetismB, Detism) :-
+	% When figuring out the determinism of a conjunction,
+	% if the second goal is unreachable, then then the
+	% determinism of the conjunction is just the determinism
+	% of the first goal.
+
 	determinism_components(DetismA, CanFailA, MaxSolnA),
 	( MaxSolnA = at_most_zero ->
 		Detism = DetismA
@@ -1157,12 +1155,12 @@ det_conjunction_detism(DetismA, DetismB, Detism) :-
 		determinism_components(Detism, CanFail, MaxSoln)
 	).
 
-% Figuring out the determinism of a parallel conjunction is much
-% easier than for a sequential conjunction, since you simply
-% ignore the case where the second goal is unreachable.  Just do
-% a normal solution count.
-
 det_par_conjunction_detism(DetismA, DetismB, Detism) :-
+	% Figuring out the determinism of a parallel conjunction is much
+	% easier than for a sequential conjunction, since you simply
+	% ignore the case where the second goal is unreachable. Just do
+	% a normal solution count.
+
 	determinism_components(DetismA, CanFailA, MaxSolnA),
 	determinism_components(DetismB, CanFailB, MaxSolnB),
 	det_conjunction_canfail(CanFailA, CanFailB, CanFail),
@@ -1176,19 +1174,17 @@ det_switch_detism(DetismA, DetismB, Detism) :-
 	det_switch_maxsoln(MaxSolnA, MaxSolnB, MaxSoln),
 	determinism_components(Detism, CanFail, MaxSoln).
 
-% For the at_most_zero, at_most_one, at_most_many,
-% we're just doing abstract interpretation to count
-% the number of solutions.  Similarly, for the can_fail
-% and cannot_fail components, we're doing abstract
-% interpretation to count the possible number of failures.
-% If the num_solns is at_most_many_cc, this means that
-% the goal might have many logical solutions if there were no
-% pruning, but that the goal occurs in a single-solution
-% context, so only the first solution will be returned.
-%
-% The reason why we don't throw an exception in det_switch_maxsoln and
-% det_disjunction_maxsoln is given in the documentation of the test case
-% invalid/magicbox.m.
+	% These predicates do abstract interpretation to count
+	% the number of solutions and the possible number of failures.
+	%
+	% If the num_solns is at_most_many_cc, this means that
+	% the goal might have many logical solutions if there were no
+	% pruning, but that the goal occurs in a single-solution
+	% context, so only the first solution will be returned.
+	%
+	% The reason why we don't throw an exception in det_switch_maxsoln and
+	% det_disjunction_maxsoln is given in the documentation of the
+	% test case invalid/magicbox.m.
 
 :- pred det_conjunction_maxsoln(soln_count::in, soln_count::in,
 	soln_count::out) is det.
@@ -1285,10 +1281,10 @@ det_negation_det(failure,	yes(det)).
 
 %-----------------------------------------------------------------------------%
 
-	% determinism_declarations takes a module_info as input and
+	% Determinism_declarations takes a module_info as input and
 	% returns two lists of procedure ids, the first being those
 	% with determinism declarations, and the second being those without.
-
+	%
 :- pred determinism_declarations(module_info::in, pred_proc_list::out,
 	pred_proc_list::out, pred_proc_list::out) is det.
 
@@ -1298,10 +1294,10 @@ determinism_declarations(ModuleInfo, DeclaredProcs,
 	segregate_procs(ModuleInfo, PredProcs, DeclaredProcs,
 		UndeclaredProcs, NoInferProcs).
 
-	% get_all_pred_procs takes a module_info and returns a list
-	% of all the procedures ids for that module (except class methods,
-	% which do not need to be checked since we generate the code ourselves).
-
+	% Get_all_pred_procs takes a module_info and returns a list of all
+	% the procedures ids for that module (except class methods, which
+	% do not need to be checked since we generate the code ourselves).
+	%
 :- pred get_all_pred_procs(module_info::in, pred_proc_list::out) is det.
 
 get_all_pred_procs(ModuleInfo, PredProcs) :-
@@ -1312,30 +1308,41 @@ get_all_pred_procs(ModuleInfo, PredProcs) :-
 :- pred get_all_pred_procs_2(pred_table::in, list(pred_id)::in,
 	pred_proc_list::in, pred_proc_list::out) is det.
 
-get_all_pred_procs_2(_Preds, [], PredProcs, PredProcs).
-get_all_pred_procs_2(Preds, [PredId|PredIds], PredProcs0, PredProcs) :-
+get_all_pred_procs_2(_Preds, [], !PredProcs).
+get_all_pred_procs_2(Preds, [PredId | PredIds], !PredProcs) :-
 	map__lookup(Preds, PredId, Pred),
 	ProcIds = pred_info_procids(Pred),
-	fold_pred_modes(PredId, ProcIds, PredProcs0, PredProcs1),
-	get_all_pred_procs_2(Preds, PredIds, PredProcs1, PredProcs).
+	fold_pred_modes(PredId, ProcIds, !PredProcs),
+	get_all_pred_procs_2(Preds, PredIds, !PredProcs).
 
 :- pred fold_pred_modes(pred_id::in, list(proc_id)::in, pred_proc_list::in,
 	pred_proc_list::out) is det.
 
-fold_pred_modes(_PredId, [], PredProcs, PredProcs).
-fold_pred_modes(PredId, [ProcId|ProcIds], PredProcs0, PredProcs) :-
-	fold_pred_modes(PredId, ProcIds, [proc(PredId, ProcId) | PredProcs0],
-		PredProcs).
+fold_pred_modes(_PredId, [], !PredProcs).
+fold_pred_modes(PredId, [ProcId | ProcIds], !PredProcs) :-
+	!:PredProcs = [proc(PredId, ProcId) | !.PredProcs],
+	fold_pred_modes(PredId, ProcIds, !PredProcs).
 
-	% segregate_procs(ModuleInfo, PredProcs, DeclaredProcs, UndeclaredProcs)
-	% splits the list of procedures PredProcs into DeclaredProcs and
-	% UndeclaredProcs.
-
+	% segregate_procs(ModuleInfo, PredProcs,
+	%	DeclaredProcs, UndeclaredProcs, NoInferProcs):
+	%
+	% The predicate partitions the pred_proc_ids in PredProcs into three
+	% categories:
+	%
+	% - DeclaredProcs holds the procedures that have declarations that need
+	%   to be checked.
+	%
+	% - UndeclaredProcs holds the procedures that don't have declarations
+	%   whose determinism needs to be inferred.
+	%
+	% - NoInferProcs holds the procedures whose determinism is already
+	%   known, and which should not be processed further.
+	%
 :- pred segregate_procs(module_info::in, pred_proc_list::in,
 	pred_proc_list::out, pred_proc_list::out, pred_proc_list::out) is det.
 
-segregate_procs(ModuleInfo, PredProcs, DeclaredProcs,
-		UndeclaredProcs, NoInferProcs) :-
+segregate_procs(ModuleInfo, PredProcs, DeclaredProcs, UndeclaredProcs,
+		NoInferProcs) :-
 	segregate_procs_2(ModuleInfo, PredProcs, [], DeclaredProcs,
 		[], UndeclaredProcs, [], NoInferProcs).
 
@@ -1346,8 +1353,9 @@ segregate_procs(ModuleInfo, PredProcs, DeclaredProcs,
 
 segregate_procs_2(_ModuleInfo, [], !DeclaredProcs,
 		!UndeclaredProcs, !NoInferProcs).
-segregate_procs_2(ModuleInfo, [proc(PredId, ProcId) | PredProcs],
+segregate_procs_2(ModuleInfo, [PredProcId | PredProcIds],
 		!DeclaredProcs, !UndeclaredProcs, !NoInferProcs) :-
+	PredProcId = proc(PredId, ProcId),
 	module_info_preds(ModuleInfo, Preds),
 	map__lookup(Preds, PredId, Pred),
 	(
@@ -1361,22 +1369,20 @@ segregate_procs_2(ModuleInfo, [proc(PredId, ProcId) | PredProcs],
 			check_marker(Markers, class_method)
 		)
 	->
-		!:NoInferProcs = [proc(PredId, ProcId) | !.NoInferProcs]
+		!:NoInferProcs = [PredProcId | !.NoInferProcs]
 	;
 		pred_info_procedures(Pred, Procs),
 		map__lookup(Procs, ProcId, Proc),
 		proc_info_declared_determinism(Proc, MaybeDetism),
 		(
 			MaybeDetism = no,
-			!:UndeclaredProcs =
-				[proc(PredId, ProcId) | !.UndeclaredProcs]
+			!:UndeclaredProcs = [PredProcId | !.UndeclaredProcs]
 		;
 			MaybeDetism = yes(_),
-			!:DeclaredProcs =
-				[proc(PredId, ProcId) | !.DeclaredProcs]
+			!:DeclaredProcs = [PredProcId | !.DeclaredProcs]
 		)
 	),
-	segregate_procs_2(ModuleInfo, PredProcs, !DeclaredProcs,
+	segregate_procs_2(ModuleInfo, PredProcIds, !DeclaredProcs,
 		!UndeclaredProcs, !NoInferProcs).
 
 	% We can't infer a tighter determinism for imported procedures or
@@ -1385,6 +1391,7 @@ segregate_procs_2(ModuleInfo, [proc(PredId, ProcId) | PredProcs],
 	% make_hlds.m since inter-module optimization means that the
 	% import_status of procedures isn't determined until after all
 	% items are processed.
+	%
 :- pred set_non_inferred_proc_determinism(pred_proc_id::in,
 	module_info::in, module_info::out) is det.
 
@@ -1393,13 +1400,14 @@ set_non_inferred_proc_determinism(proc(PredId, ProcId), !ModuleInfo) :-
 	pred_info_procedures(PredInfo0, Procs0),
 	map__lookup(Procs0, ProcId, ProcInfo0),
 	proc_info_declared_determinism(ProcInfo0, MaybeDet),
-	( MaybeDet = yes(Det) ->
+	(
+		MaybeDet = yes(Det),
 		proc_info_set_inferred_determinism(Det, ProcInfo0, ProcInfo),
 		map__det_update(Procs0, ProcId, ProcInfo, Procs),
 		pred_info_set_procedures(Procs, PredInfo0, PredInfo),
 		module_info_set_pred_info(PredId, PredInfo, !ModuleInfo)
 	;
-		true
+		MaybeDet = no
 	).
 
 %-----------------------------------------------------------------------------%
