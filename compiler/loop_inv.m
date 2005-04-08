@@ -228,6 +228,13 @@ hoist_loop_invariants(PredId, ProcId, PredInfo, ProcInfo0, ProcInfo,
             %
         InvGoals \= []
 
+            % NOTE!  At this point it is vital that
+            % - none of the InvVars are used as (partially) unique
+            % inputs in any goals;
+            % - all of the InvVars are either head vars or constructed
+            % by one of the InvGoals;
+            % - all non-local vars in InvGoals are also in InvVars.
+
       then
 
             % The set of computed invariant vars is the difference
@@ -543,6 +550,10 @@ refine_candidate_inv_args_2(yes(X), Y) = ( if X = Y then yes(X) else no ).
     % The list returned will not contain duplicate goals judged
     % to be the same by equivalent_goals/2.
     %
+    % We do not hoist goals with unique outputs that are elsewhere
+    % used as unique inputs since the user may clobber the variable
+    % in question.
+    %
 :- pred inv_goals_vars(module_info::in, prog_vars::in,
         hlds_goals::in, hlds_goals::out, prog_vars::in, prog_vars::out) is det.
 
@@ -563,7 +574,8 @@ inv_goals_vars(ModuleInfo, UniquelyUsedVars,
 inv_goals_vars_2(MI, UUVs, Goal, IGs0, IGs, IVs0, IVs) :-
     ( if
         not invariant_goal(IGs0, Goal),
-        input_args_are_invariant(MI, UUVs, Goal, IVs0)
+        not has_uniquely_used_arg(UUVs, Goal),
+        input_args_are_invariant(MI, Goal, IVs0)
       then
         IGs = [Goal | IGs0],
         IVs = add_outputs(MI, UUVs, Goal, IVs0)
@@ -571,6 +583,15 @@ inv_goals_vars_2(MI, UUVs, Goal, IGs0, IGs, IVs0, IVs) :-
         IGs = IGs0,
         IVs = IVs0
     ).
+
+%-----------------------------------------------------------------------------%
+
+:- pred has_uniquely_used_arg(prog_vars::in, hlds_goal::in) is semidet.
+
+has_uniquely_used_arg(UUVs, _GoalExpr - GoalInfo) :-
+    hlds_goal__goal_info_get_nonlocals(GoalInfo, NonLocals),
+    list__member(UUV, UUVs),
+    set__member(UUV, NonLocals).
 
 %------------------------------------------------------------------------------%
 
@@ -582,18 +603,15 @@ invariant_goal(InvariantGoals, Goal) :-
 
 %------------------------------------------------------------------------------%
 
-:- pred input_args_are_invariant(module_info::in, prog_vars::in,
-    hlds_goal::in, prog_vars::in) is semidet.
+:- pred input_args_are_invariant(module_info::in, hlds_goal::in, prog_vars::in)
+        is semidet.
 
-input_args_are_invariant(ModuleInfo, UniquelyUsedVars, Goal, InvVars) :-
+input_args_are_invariant(ModuleInfo, Goal, InvVars) :-
     Inputs = goal_inputs(ModuleInfo, Goal),
     all [V] (
         list__member(V, Inputs)
     =>
-        (
-            list__member(V, InvVars),
-            not list__member(V, UniquelyUsedVars)
-        )
+        list__member(V, InvVars)
     ).
 
 %------------------------------------------------------------------------------%
