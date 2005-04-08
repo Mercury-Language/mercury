@@ -1951,17 +1951,38 @@ L1 ++ L2 = list__append(L1, L2).
 
 %-----------------------------------------------------------------------------%
 
-list__series(I, OK, Succ) =
+list__series(I, OK, Succ) = Series :-
+	% In order to ensure that our stack consumption is constant,
+	% not linear, we build the series "backwards" and then reverse it.
+	list__series_2(I, OK, Succ, [], Series0),
+	list__reverse(Series0, Series).
+
+:- pred list__series_2(T, pred(T), func(T) = T, list(T), list(T)).
+:- mode list__series_2(in, pred(in) is semidet, func(in) = out is det,
+	in, out) is det.
+
+list__series_2(I, OK, Succ, !Series) :-
 	( OK(I) ->
-		[I | list__series(Succ(I), OK, Succ)]
+		!:Series = [ I | !.Series ],
+		list__series_2(Succ(I), OK, Succ, !Series)
 	;
-	  	[]
-	).
+		true
+	).	
 
 %-----------------------------------------------------------------------------%
 
-Lo `..` Hi =
-	list__series(Lo, ( pred(I::in) is semidet :- I =< Hi ), plus(1)).
+Lo `..` Hi = List :- successive_integers(Lo, Hi, [], List).
+
+:- pred successive_integers(int::in, int::in, list(int)::in, list(int)::out)
+	is det.
+
+successive_integers(Lo, Hi, !Ints) :-
+	( Lo =< Hi ->
+		!:Ints = [ Hi | !.Ints ],
+		successive_integers(Lo, Hi - 1, !Ints)
+	;
+		true
+	).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
