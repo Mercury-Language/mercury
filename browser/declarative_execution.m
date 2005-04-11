@@ -396,6 +396,8 @@
 :- pred absolute_arg_num(arg_pos::in, trace_atom::in, int::out)
 	is det.
 
+:- pred user_arg_num(arg_pos::in, trace_atom::in, int::out) is det.
+
 %-----------------------------------------------------------------------------%
 	
 :- implementation.
@@ -1582,9 +1584,17 @@ absolute_arg_num(user_head_var(N), atom(_, Args), ArgNum) :-
 	head_var_num_to_arg_num(Args, N, 1, ArgNum).
 absolute_arg_num(any_head_var_from_back(M), atom(_, Args), length(Args)-M+1).
 
+user_arg_num(user_head_var(ArgNum), _, ArgNum).
+user_arg_num(any_head_var(AnyArgNum), atom(_, Args), ArgNum) :-
+	arg_num_to_head_var_num(Args, AnyArgNum, 1, ArgNum).
+user_arg_num(any_head_var_from_back(AnyArgNumFromBack), atom(_, Args), ArgNum) 
+		:-
+	arg_num_to_head_var_num(Args, 
+		list.length(Args) - AnyArgNumFromBack + 1, 1, ArgNum).
+
 :- pred head_var_num_to_arg_num(list(trace_atom_arg)::in, int::in, int::in,
 	int::out) is det.
-
+	
 head_var_num_to_arg_num([], _, _, _) :-
 	throw(internal_error("head_var_num_to_arg_num",
 		"nonexistent head_var_num")).
@@ -1602,6 +1612,28 @@ head_var_num_to_arg_num([Arg | Args], SearchUserHeadVarNum, CurArgNum,
 		;
 			head_var_num_to_arg_num(Args, SearchUserHeadVarNum - 1,
 				CurArgNum + 1, ArgNum)
+		)
+	).
+
+:- pred arg_num_to_head_var_num(list(trace_atom_arg)::in, int::in, int::in,
+	int::out) is det.
+
+arg_num_to_head_var_num([], _, _, _) :-
+	throw(internal_error("arg_num_to_head_var_num",
+		"nonexistent arg num")).
+arg_num_to_head_var_num([Arg | Args], ArgNum, CurArgNum, UserArgNum) :-
+	Arg = arg_info(UserVis, _, _),
+	(
+		UserVis = no,
+		arg_num_to_head_var_num(Args, ArgNum - 1, CurArgNum,
+			UserArgNum)
+	;
+		UserVis = yes,
+		( ArgNum = 1 ->
+			UserArgNum = CurArgNum
+		;
+			arg_num_to_head_var_num(Args, ArgNum - 1,
+				CurArgNum + 1, UserArgNum)
 		)
 	).
 

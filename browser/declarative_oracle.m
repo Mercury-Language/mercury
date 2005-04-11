@@ -67,11 +67,9 @@
 	%
 :- pred trust_standard_library(oracle_state::in, oracle_state::out) is det.
 
-	% remove_trusted(N, !Oracle).
-	% Removes the (N-1)th trusted object from the set of trusted objects.
-	% Fails if there are fewer than N-1 trusted modules (or N < 0).
-	% The trusted set is turned into a sorted list before finding the
-	% (N-1)th element.
+	% remove_trusted(Id, !Oracle).
+	% Removes the trusted object with the given Id from the set of trusted
+	% objects.
 	%
 :- pred remove_trusted(int::in, oracle_state::in, oracle_state::out)
 	is semidet.

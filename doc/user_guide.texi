@@ -4108,8 +4108,9 @@ The session can be resume with a @samp{dd --resume} command.
 List the filename and line number of the predicate the current question
 is about as well as the filename and line number where the predicate 
 was called (if this information is available).  Also print some information
-about the state of the bug search, such as the current search mode and
-how many events are yet to be eliminated.
+about the state of the bug search, such as the current search mode,
+how many events are yet to be eliminated and the reason for asking
+the current question.
 @sp 1
 @item help
 Summarize the list of available commands.

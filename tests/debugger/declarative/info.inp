@@ -1,12 +1,52 @@
 register --quiet
 context none
 echo on
-s
+break info.last
+c
+delete *
 f
-dd
+dd -s divide_and_query
+info
+n
+info
+n
 info
 a
-dd -s divide_and_query
+
+f
+dd
+n
+info
+b 2
+mark
+info
+y
+info
+n
+info
+b 1
+cd 1
+mark
+info
+a
+break q
+c
+delete *
+f
+dd
+b 3
+cd 1/1
+mark
+info
+a
+
+f
+dd
+b 4
+mark
+info
+n
+n
 info
 a
 quit -y

@@ -49,6 +49,8 @@
 			% this question and then for analysis to continue.
 	;	revise(decl_question(T)).
 
+:- func reason_to_string(reason_for_question) = string.
+
 :- type analyser_state(T).
 
 :- type search_mode.
@@ -124,9 +126,11 @@
 :- implementation.
 
 :- import_module mdb.declarative_edt.
+:- import_module mdb.declarative_execution.
+:- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.program_representation.
 
-:- import_module exception, counter, array, list, float.
+:- import_module bool, exception, counter, array, list, float.
 :- import_module math, string, map, int. 
 
 	% Describes what search strategy is being used by the analyser and the
@@ -213,10 +217,39 @@ top_down_search_mode = top_down.
 	% which is the root of an implicit subtree.
 	% 
 :- type search_response
-	--->	question(suspect_id)
+	--->	question(suspect_id, reason_for_question)
 	;	require_explicit_subtree(suspect_id)
 	;	require_explicit_supertree
 	;	no_suspects.
+
+	% The reason the declarative debugger asked a question.
+	%
+:- type reason_for_question
+	--->	start 			% The first question.
+	;	top_down
+	;	binding_node(
+			binding_prim_op		:: primitive_op_type,
+			binding_filename	:: string,	
+			binding_line_no		:: int, 	
+				% The path of the subterm in the binding node,
+				% if it appears in the binding node's atom.
+			maybe_atom_path		:: maybe(term_path),
+			binding_proc		:: proc_label,
+			binding_node_eliminated	:: bool
+		)
+	;	subterm_no_proc_rep	% No proc rep when tracking subterm.
+	;	binding_node_eliminated
+	;	binary(
+			binary_reason_bottom	:: int, 
+			binary_reason_top	:: int, 
+			binary_reason_split	:: int
+		)
+	;	divide_and_query(
+			old_weight		:: int,
+			choosen_subtree_weight 	:: int
+		)
+	;	skipped
+	;	revise.
 
 	% The analyser state records all of the information that needs
 	% to be remembered across multiple invocations of the analyser.
@@ -249,7 +282,7 @@ top_down_search_mode = top_down.
 				% before asking the oracle, so the analyser
 				% knows how to modify the search space when 
 				% it gets an answer.
-			last_search_question	:: maybe(suspect_id),
+			last_search_question	:: maybe(suspect_and_reason),
 
 				% This field allows us to map I/O action
 				% numbers to the actions themselves.
@@ -262,6 +295,9 @@ top_down_search_mode = top_down.
 				% analysis step.
 			debug_origin		:: maybe(subterm_origin(T))
 	).
+
+:- type suspect_and_reason
+	--->	suspect_and_reason(suspect_id, reason_for_question).
 
 :- type explicit_tree_type
 
@@ -321,7 +357,7 @@ start_or_resume_analysis(Store, AnalysisType, Response, !Analyser) :-
 			!:Analyser = !.Analyser ^ search_space := SearchSpace,
 			topmost_det(SearchSpace, TopMostId),
 			!:Analyser = !.Analyser ^ last_search_question := 
-				yes(TopMostId),
+				yes(suspect_and_reason(TopMostId, start)),
 			edt_question(!.Analyser ^ io_action_map, Store, Node, 
 				Question),
 			Response = revise(Question)
@@ -333,7 +369,8 @@ start_or_resume_analysis(Store, AnalysisType, Response, !Analyser) :-
 
 continue_analysis(Store, Answer, Response, !Analyser) :-
 	(
-		!.Analyser ^ last_search_question = yes(SuspectId),
+		!.Analyser ^ last_search_question = yes(
+			suspect_and_reason(SuspectId, _)),
 		process_answer(Store, Answer, SuspectId, !Analyser)
 	;
 		!.Analyser ^ last_search_question = no,
@@ -413,7 +450,8 @@ revise_analysis(Store, Response, !Analyser) :-
 		Response = revise(Question),
 		revise_root(Store, SearchSpace, SearchSpace1),
 		!:Analyser = !.Analyser ^ search_space := SearchSpace1,
-		!:Analyser = !.Analyser ^ last_search_question := yes(RootId),
+		!:Analyser = !.Analyser ^ last_search_question := 
+			yes(suspect_and_reason(RootId, revise)),
 		!:Analyser = !.Analyser ^ search_mode := 
 			!.Analyser ^ fallback_search_mode
 	;
@@ -466,7 +504,8 @@ decide_analyser_response(Store, Response, !Analyser) :-
 	analyser_state(T)::in, analyser_state(T)::out, 
 	analyser_response(T)::out) is det <= mercury_edt(S, T).
 
-handle_search_response(Store, question(SuspectId), !Analyser, Response) :-
+handle_search_response(Store, question(SuspectId, Reason), !Analyser,
+		Response) :-
 	SearchSpace = !.Analyser ^ search_space,
 	Node = get_edt_node(SearchSpace, SuspectId),
 	edt_question(!.Analyser ^ io_action_map, Store, Node,
@@ -493,7 +532,8 @@ handle_search_response(Store, question(SuspectId), !Analyser, Response) :-
 		% incorrectly before.
 		Response = revise(OracleQuestion)
 	),
-	!:Analyser = !.Analyser ^ last_search_question := yes(SuspectId).
+	!:Analyser = !.Analyser ^ last_search_question := 
+		yes(suspect_and_reason(SuspectId, Reason)).
 
 handle_search_response(_, require_explicit_subtree(SuspectId), !Analyser, 
 		Response) :-
@@ -594,14 +634,14 @@ top_down_search(Store, !SearchSpace, Response) :-
 		SearchSpace1 = !:SearchSpace,
 		(
 			MaybeDescendent = yes(Unknown),
-			Response = question(Unknown)
+			Response = question(Unknown, top_down)
 		;
 			MaybeDescendent = no,
 			(
 				choose_skipped_suspect(!.SearchSpace,
 					SkippedSuspect)
 			->
-				Response = question(SkippedSuspect)
+				Response = question(SkippedSuspect, skipped)
 			;
 				%
 				% Try to extend the search space upwards.  If
@@ -671,22 +711,49 @@ follow_subterm_end_search(Store, !SearchSpace, LastUnknown, SuspectId, ArgPos,
 	find_subterm_origin(Store, SuspectId, ArgPos, TermPath, !SearchSpace,
 		FindOriginResponse),
 	(
-		FindOriginResponse = primitive_op(PrimitiveOpId, _, _),
-		%
-		% XXX In future the filename and line number of the primitive
-		% operation could be printed out if the node in which the
-		% primitive operation occured turned out to be a bug.
-		%
+		FindOriginResponse = primitive_op(BindingSuspectId, FileName, 
+			LineNo, PrimOpType, Output),
+		ProcLabel = get_proc_label_for_suspect(Store, !.SearchSpace,
+			BindingSuspectId),
+		( 
+			Output = yes,
+			% BindingSuspectId = SuspectId since the
+			% subterm is an output of SuspectId.
+			BindingNode = get_edt_node(!.SearchSpace, 
+				SuspectId),
+			ArgNum = edt_arg_pos_to_user_arg_num(Store, 
+				BindingNode, ArgPos),
+			MaybePath = yes([ArgNum | TermPath])
+		;
+			Output = no,
+			% Since the subterm is not an output of the 
+			% binding node, it will not appear in any of the
+			% arguments of the binding node (it can't be an 
+			% input, because then it would have been bound outside
+			% the node).
+			MaybePath = no
+		),
 		(
-			suspect_unknown(!.SearchSpace, PrimitiveOpId)
+			% We ask about the binding node even if it was 
+			% previously skipped, since this behaviour is
+			% more predictable from the user's perspective.
+			%
+			( suspect_unknown(!.SearchSpace, BindingSuspectId)
+			; suspect_skipped(!.SearchSpace, BindingSuspectId)
+			)
 		->
-			SearchResponse = question(PrimitiveOpId),
-			setup_binary_search(!.SearchSpace,  PrimitiveOpId,
+			SearchResponse = question(BindingSuspectId, 
+				binding_node(PrimOpType, FileName, LineNo,
+					MaybePath, ProcLabel, no)),
+			setup_binary_search(!.SearchSpace, BindingSuspectId,
 				NewMode)
 		;
 			(
 				LastUnknown = yes(Unknown),
-				SearchResponse = question(Unknown),
+				Reason = binding_node(PrimOpType, 
+					FileName, LineNo, MaybePath, ProcLabel,
+					yes),
+				SearchResponse = question(Unknown, Reason),
 				setup_binary_search(!.SearchSpace, 
 					Unknown, NewMode)
 			;
@@ -694,15 +761,15 @@ follow_subterm_end_search(Store, !SearchSpace, LastUnknown, SuspectId, ArgPos,
 				search(Store, !SearchSpace, FallBackSearchMode, 
 					FallBackSearchMode, NewMode, 
 					SearchResponse)
-				)
+			)
 		)
 	;
 		FindOriginResponse = not_found,
 		(
 			LastUnknown = yes(Unknown),
-			SearchResponse = question(Unknown),
-			setup_binary_search(!.SearchSpace,  
-				Unknown, NewMode)
+			SearchResponse = question(Unknown, 
+				subterm_no_proc_rep),
+			setup_binary_search(!.SearchSpace, Unknown, NewMode)
 		;
 			LastUnknown = no,
 			search(Store, !SearchSpace, FallBackSearchMode, 
@@ -745,7 +812,8 @@ follow_subterm_end_search(Store, !SearchSpace, LastUnknown, SuspectId, ArgPos,
 		->
 			(
 				LastUnknown = yes(Unknown),
-				SearchResponse = question(Unknown),
+				SearchResponse = question(Unknown, 
+					binding_node_eliminated),
 				setup_binary_search(!.SearchSpace,
 					Unknown, NewMode)
 			;
@@ -759,7 +827,7 @@ follow_subterm_end_search(Store, !SearchSpace, LastUnknown, SuspectId, ArgPos,
 			% This recursive call will not lead to an infinite loop
 			% because eventually either the sub-term will be bound
 			% (and find_subterm_origin will respond with
-			% primitive_op/2) or there will be insufficient tracing
+			% primitive_op/3) or there will be insufficient tracing
 			% information to continue (and find_subterm_origin will
 			% respond with not_found).
 			%
@@ -844,7 +912,8 @@ binary_search(Store, PathArray, Top, Bottom, LastTested, !SearchSpace,
 			NewMode = binary(PathArray, NewTop - NewBottom, 
 				UnknownClosestToMiddle),
 			Response = question(PathArray ^ elem(
-				UnknownClosestToMiddle))
+				UnknownClosestToMiddle), binary(NewBottom, 
+					NewTop, UnknownClosestToMiddle))
 		;
 			% No unknown suspects on the path, so revert to
 			% the fallback search mode.
@@ -959,10 +1028,13 @@ find_middle_weight_if_children(Store, SuspectId, TopId, MaybeLastUnknown,
 	search_space(T)::out, search_response::out)
 	is det <= mercury_edt(S, T).
 
-find_middle_weight(Store, [], _, MaybeLastUnknown, !SearchSpace, Response) :-
+find_middle_weight(Store, [], TopId, MaybeLastUnknown, !SearchSpace, Response) 
+		:-
 	(
 		MaybeLastUnknown = yes(LastUnknown),
-		Response = question(LastUnknown)
+		Response = question(LastUnknown, divide_and_query(
+			get_weight(!.SearchSpace, TopId), 
+			get_weight(!.SearchSpace, LastUnknown)))
 	;
 		MaybeLastUnknown = no,
 		% This could happen when there were no unknown suspects 
@@ -972,7 +1044,8 @@ find_middle_weight(Store, [], _, MaybeLastUnknown, !SearchSpace, Response) :-
 	).
 find_middle_weight(Store, [SuspectId | SuspectIds], TopId, MaybeLastUnknown, 
 		!SearchSpace, Response) :-
-	Target = get_weight(!.SearchSpace, TopId) // 2,
+	TopWeight = get_weight(!.SearchSpace, TopId),
+	Target = TopWeight // 2,
 	%
 	% Find the heaviest suspect:
 	%
@@ -1007,18 +1080,27 @@ find_middle_weight(Store, [SuspectId | SuspectIds], TopId, MaybeLastUnknown,
 					LastUnknownWeight - Target <
 						Target - MaxWeight
 				->
-					Response = question(LastUnknown)
+					Response = question(LastUnknown, 
+						divide_and_query(TopWeight,
+							LastUnknownWeight))
 				;					
-					Response = question(Heaviest)
+					Response = question(Heaviest,
+						divide_and_query(TopWeight,
+							MaxWeight))
 				)
 			;
 				MaybeLastUnknown = no,
-				Response = question(Heaviest)
+				Response = question(Heaviest, 
+					divide_and_query(TopWeight, MaxWeight))
 			)
 		;
 			(
 				MaybeLastUnknown = yes(LastUnknown),
-				Response = question(LastUnknown)
+				LastUnknownWeight = get_weight(!.SearchSpace, 
+					LastUnknown),
+				Response = question(LastUnknown,
+					divide_and_query(TopWeight,
+						LastUnknownWeight))
 			;
 				MaybeLastUnknown = no,
 				% Look deeper until we find an unknown:
@@ -1045,6 +1127,80 @@ max_weight(SearchSpace, SuspectId, {PrevMax, PrevSuspectId},
 		NewSuspectId = PrevSuspectId
 	).
 
+reason_to_string(start) = "this is the node where the `dd' command "
+	++ "was issued.".
+
+reason_to_string(binding_node(PrimOpType, FileName, LineNo,
+		MaybePath, ProcLabel, Eliminated)) = Str :-
+	PrimOpStr = primitive_op_type_to_string(PrimOpType),
+	LineNoStr = int_to_string(LineNo),
+	get_pred_attributes(ProcLabel, SymModule, Name, Arity, 
+		PredOrFunc),
+	(
+		PredOrFunc = function,
+		PredOrFuncStr = "function"
+	;
+		PredOrFunc = predicate,
+		PredOrFuncStr = "predicate"
+	),
+	Module = sym_name_to_string(SymModule),
+	ArityStr = int_to_string(Arity),
+	(
+		Eliminated = yes,
+		EliminatedSent = " That node was, however, previously "
+			++ "eliminated from the bug search."
+	;
+		Eliminated = no,
+		EliminatedSent = ""
+	),
+	(
+		MaybePath = yes(Path),
+		PathStrings = list.map(int_to_string, Path),
+		PathStr = string.join_list("/", PathStrings),
+		PathSent = "The path to the subterm in the atom is " ++
+			PathStr ++ "."
+	;
+		MaybePath = no,
+		PathSent = ""
+	),
+	Str = "the marked subterm was bound by the " ++ 
+		PrimOpStr ++ " inside the " ++ PredOrFuncStr ++
+		" " ++ Module ++ "." ++ Name ++ "/" ++ ArityStr ++
+		" (" ++ FileName ++ ":" ++ LineNoStr ++ "). " ++
+		PathSent ++ EliminatedSent.
+		
+reason_to_string(top_down) = "this is the next node in the top-down " 
+	++ "search.".
+
+reason_to_string(subterm_no_proc_rep) = 
+	"tracking of the marked subterm had to be aborted here, because of "
+	++ "missing tracing information.".
+
+reason_to_string(binding_node_eliminated) = 
+	"tracking of the marked subterm was stopped here, because the binding "
+	++ "node lies in a portion of the tree which has been eliminated.".
+
+reason_to_string(binary(Bottom, Top, Split)) = Str :-
+	PathLengthStr = int_to_string_thousands(Bottom - Top + 1),
+	SubPath1LengthStr = int_to_string_thousands(Bottom - Split),
+	SubPath2LengthStr = int_to_string_thousands(Split - Top + 1),
+	Str = "this node divides a path of length " ++ PathLengthStr
+		++ " into two paths of length " ++
+		SubPath1LengthStr ++ " and " ++ SubPath2LengthStr ++ ".".
+
+reason_to_string(divide_and_query(OldWeight, SubtreeWeight)) = Str :-
+	Weight1Str = int_to_string_thousands(OldWeight - SubtreeWeight),
+	Weight2Str = int_to_string_thousands(SubtreeWeight),
+	Str = "this node divides the suspect area into " ++
+		"two regions of " ++ Weight1Str ++ " and " ++ Weight2Str ++
+		" events each.".
+
+reason_to_string(skipped) = "there are no more non-skipped questions "
+	++ "left.".
+
+reason_to_string(revise) = "this node is being revised, because of "
+	++ "an unsuccessful previous bug search.".
+
 %-----------------------------------------------------------------------------%
 
 show_info(Store, OutStream, Analyser, Response, !IO) :-
@@ -1056,10 +1212,11 @@ show_info(Store, OutStream, Analyser, Response, !IO) :-
 		% Get the context of the current question.
 		%
 		(
-			Analyser ^ last_search_question = yes(LastQuestionId),
+			Analyser ^ last_search_question = 
+				yes(suspect_and_reason(LastId, Reason)),
 			(
 				edt_context(Store, get_edt_node(SearchSpace, 
-					LastQuestionId), FileName -  LineNo, 
+					LastId), FileName -  LineNo, 
 					MaybeReturnContext)
 			->
 				(
@@ -1122,8 +1279,12 @@ show_info(Store, OutStream, Analyser, Response, !IO) :-
 		InfoMessage = string.format_table([left(!.FieldNames),
 			left(!.Data)], " : ")
 	),
- 	io.format(OutStream, "\n%s\n\n", [s(InfoMessage)], !IO),
-	Node = get_edt_node(SearchSpace, LastQuestionId),
+	ReasonStr = reason_to_string(Reason),
+	ReasonSent = "The current question was chosen because " ++ ReasonStr,
+	WrappedReason = string.word_wrap(ReasonSent, 72),
+ 	io.format(OutStream, "\n%s\n%s\n\n", [s(InfoMessage), 
+		s(WrappedReason)], !IO),
+	Node = get_edt_node(SearchSpace, LastId),
 	edt_question(Analyser ^ io_action_map, Store, Node,
 		OracleQuestion),
 	Response = oracle_question(OracleQuestion).

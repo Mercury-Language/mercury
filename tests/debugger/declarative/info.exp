@@ -1,34 +1,184 @@
-      E1:     C1 CALL pred info.main/2-0 (det) info.m:13
+      E1:     C1 CALL pred info.main/2-0 (det) info.m:26
 mdb> mdb> Contexts will not be printed.
 mdb> echo on
 Command echo enabled.
-mdb> s
-      E2:     C2 CALL pred info.p/1-0 (det)
+mdb> break info.last
+ 0: + stop  interface pred info.last/2-0 (semidet)
+mdb> c
+      E2:     C2 CALL pred info.last/2-0 (semidet)
+mdb> delete *
+ 0: E stop  interface pred info.last/2-0 (semidet)
 mdb> f
-      E3:     C2 EXIT pred info.p/1-0 (det)
-mdb> dd
-p(1)
-Valid? info
-
-Context of current question : info.m:19 (info.m:14)
-Search mode                 : top down             
-Number of suspect events    : 2                    
-
-p(1)
-Valid? a
-Diagnosis aborted.
-      E3:     C2 EXIT pred info.p/1-0 (det)
+      E3:     C2 EXIT pred info.last/2-0 (semidet)
 mdb> dd -s divide_and_query
-p(1)
+last([1, 2, 3, 4, 5, 6, 7, 8, ...], t/1)
 Valid? info
 
-Context of current question   : info.m:19 (info.m:14)
+Context of current question   : info.m:43 (info.m:15)
 Search mode                   : divide and query     
-Estimated questions remaining : 1                    
-Number of suspect events      : 2                    
+Estimated questions remaining : 5                    
+Number of suspect events      : 30                   
+The current question was chosen because this is the node where the `dd'
+command was issued.
 
-p(1)
+last([1, 2, 3, 4, 5, 6, 7, 8, ...], t/1)
+Valid? n
+last([6, 7, 8, 9, 10], t(10))
+Valid? info
+
+Context of current question   : info.m:43 (info.m:45)
+Search mode                   : divide and query     
+Estimated questions remaining : 5                    
+Number of suspect events      : 30                   
+The current question was chosen because this node divides the suspect
+area into two regions of 15 and 15 events each.
+
+last([6, 7, 8, 9, 10], t(10))
+Valid? n
+last([9, 10], t(10))
+Valid? info
+
+Context of current question   : info.m:43 (info.m:45)
+Search mode                   : divide and query     
+Estimated questions remaining : 4                    
+Number of suspect events      : 15                   
+The current question was chosen because this node divides the suspect
+area into two regions of 9 and 6 events each.
+
+last([9, 10], t(10))
 Valid? a
 Diagnosis aborted.
-      E3:     C2 EXIT pred info.p/1-0 (det)
+      E3:     C2 EXIT pred info.last/2-0 (semidet)
+mdb> 
+      E4:     C3 CALL pred info.last/2-0 (semidet)
+mdb> f
+      E5:     C3 EXIT pred info.last/2-0 (semidet)
+mdb> dd
+last([101, 112, 103, 104, 105, 106, 107, 108], t/1)
+Valid? n
+last([112, 103, 104, 105, 106, 107, 108], t(108))
+Valid? info
+
+Context of current question : info.m:43 (info.m:45)
+Search mode                 : top down             
+Number of suspect events    : 24                   
+The current question was chosen because this is the next node in the
+top-down search.
+
+last([112, 103, 104, 105, 106, 107, 108], t(108))
+Valid? b 2
+browser> mark
+last([108], t(108))
+Valid? info
+
+Context of current question : info.m:43 (info.m:45)
+Search mode                 : binary search on path
+Number of suspect events    : 21                   
+The current question was chosen because the marked subterm was bound by
+the unification inside the predicate info.last/2 (info.m:43). The path
+to the subterm in the atom is 2.
+
+last([108], t(108))
+Valid? y
+last([104, 105, 106, 107, 108], t(108))
+Valid? info
+
+Context of current question : info.m:43 (info.m:45)
+Search mode                 : binary search on path
+Number of suspect events    : 18                   
+The current question was chosen because this node divides a path of
+length 6 into two paths of length 3 and 3.
+
+last([104, 105, 106, 107, 108], t(108))
+Valid? n
+last([106, 107, 108], t(108))
+Valid? info
+
+Context of current question : info.m:43 (info.m:45)
+Search mode                 : binary search on path
+Number of suspect events    : 12                   
+The current question was chosen because this node divides a path of
+length 3 into two paths of length 1 and 2.
+
+last([106, 107, 108], t(108))
+Valid? b 1
+browser> cd 1
+browser> mark
+last([105, 106, 107, 108], t(108))
+Valid? info
+
+Context of current question : info.m:43 (info.m:45)
+Search mode                 : binary search on path
+Number of suspect events    : 6                    
+The current question was chosen because tracking of the marked subterm
+was stopped here, because the binding node lies in a portion of the tree
+which has been eliminated.
+
+last([105, 106, 107, 108], t(108))
+Valid? a
+Diagnosis aborted.
+      E5:     C3 EXIT pred info.last/2-0 (semidet)
+mdb> break q
+ 0: + stop  interface pred info.q/4-0 (det)
+mdb> c
+      E6:     C4 CALL pred info.q/4-0 (det)
+mdb> delete *
+ 0: E stop  interface pred info.q/4-0 (det)
+mdb> f
+      E7:     C4 EXIT pred info.q/4-0 (det)
+mdb> dd
+q(0, "lala", t(t(t("lala"))), 2)
+Valid? b 3
+browser> cd 1/1
+browser> mark
+f(0, "lala") = t(t(t("lala")))
+Valid? info
+
+Context of current question : info.m:51 (info.m:34)
+Search mode                 : binary search on path
+Number of suspect events    : 6                    
+The current question was chosen because the marked subterm was bound by
+the unification inside the function info.f/3 (info.m:52). The path to
+the subterm in the atom is 3/1/1.
+
+f(0, "lala") = t(t(t("lala")))
+Valid? a
+Diagnosis aborted.
+      E7:     C4 EXIT pred info.q/4-0 (det)
+mdb> 
+      E8:     C5 CALL pred info.q/4-0 (det)
+mdb> f
+      E9:     C5 EXIT pred info.q/4-0 (det)
+mdb> dd
+q(1, "lala", t(t(t("lala"))), 2)
+Valid? b 4
+browser> mark
+fproc(1) = 2
+Valid? info
+
+Context of current question : info.m:57 (info.m:37)
+Search mode                 : binary search on path
+Number of suspect events    : 6                    
+The current question was chosen because the marked subterm was bound by
+the foreign procedure call inside the function info.fproc/2 (info.m:57).
+The path to the subterm in the atom is 2.
+
+fproc(1) = 2
+Valid? n
+Found incorrect contour:
+fproc(1) = 2
+Is this a bug? n
+fproc(1) = 2
+Valid? [no] info
+
+Context of current question : info.m:57 (info.m:37)
+Search mode                 : top down             
+Number of suspect events    : 6                    
+The current question was chosen because this node is being revised,
+because of an unsuccessful previous bug search.
+
+fproc(1) = 2
+Valid? [no] a
+Diagnosis aborted.
+      E9:     C5 EXIT pred info.q/4-0 (det)
 mdb> quit -y

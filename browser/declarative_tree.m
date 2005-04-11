@@ -66,7 +66,10 @@
 		pred(edt_same_nodes/3) is trace_same_event_numbers,
 		pred(edt_topmost_node/2) is trace_topmost_node,
  		pred(edt_weight/4) is trace_weight,
- 		pred(edt_context/4) is trace_context
+ 		pred(edt_context/4) is trace_context,
+		func(edt_proc_label/2) is trace_node_proc_label,
+		func(edt_arg_pos_to_user_arg_num/3) is
+			trace_arg_pos_to_user_arg_num
 	].
 
 %-----------------------------------------------------------------------------%
@@ -430,6 +433,21 @@ possible_sym_library_module_name(ModuleStr, qualified(unqualified("library"),
 not_at_depth_limit(Store, Ref) :-
 	call_node_from_id(Store, Ref, CallNode),
 	CallNode ^ call_at_max_depth = no.
+
+:- func trace_node_proc_label(wrap(S), edt_node(R)) = proc_label
+	<= annotated_trace(S, R).
+
+trace_node_proc_label(wrap(Store), dynamic(Ref)) = ProcLabel :-
+	det_edt_return_node_from_id(Store, Ref, Node),
+	(
+		Node = fail(_, _, _, _, Label)
+	;
+		Node = exit(_, _, _, _, _, Label, _)
+	;
+		Node = excp(_, _, _, _, _, Label)
+	),
+	ProcLayout = get_proc_layout_from_label_layout(Label),
+	ProcLabel = get_proc_label_from_layout(ProcLayout).
 
 :- type contour_type
 			% The contour ends with an EXIT event.
@@ -1480,7 +1498,7 @@ traverse_primitives([Prim | Prims], Var0, TermPath0, Store, ProcRep,
 		( list.member(Var0, BoundVars) ->
 			(
 				TermPath0 = [],
-				Origin = primitive_op(File, Line)
+				Origin = primitive_op(File, Line, unification)
 			;
 				TermPath0 = [TermPathStep0 | TermPath],
 				list.index1_det(FieldVars, TermPathStep0,
@@ -1534,7 +1552,7 @@ traverse_primitives([Prim | Prims], Var0, TermPath0, Store, ProcRep,
 	;
 		AtomicGoal = pragma_foreign_code_rep(_Args),
 		( list.member(Var0, BoundVars) ->
-			Origin = primitive_op(File, Line)
+			Origin = primitive_op(File, Line, foreign_proc)
 		;
 			traverse_primitives(Prims, Var0, TermPath0,
 				Store, ProcRep, Origin)
@@ -1562,7 +1580,7 @@ traverse_primitives([Prim | Prims], Var0, TermPath0, Store, ProcRep,
 	;
 		AtomicGoal = builtin_call_rep(_, _, _),
 		( list.member(Var0, BoundVars) ->
-			Origin = primitive_op(File, Line)
+			Origin = primitive_op(File, Line, builtin_call)
 		;
 			traverse_primitives(Prims, Var0, TermPath0,
 				Store, ProcRep, Origin)
@@ -1591,7 +1609,7 @@ traverse_call(BoundVars, File, Line, Args, MaybeNodeId,
 			Origin = output(dynamic(NodeId), Pos, TermPath)
 		;
 			MaybeNodeId = no,
-			Origin = primitive_op(File, Line)
+			Origin = primitive_op(File, Line, untraced_call)
 		)
 	;
 		traverse_primitives(Prims, Var, TermPath, Store, ProcRep,
@@ -1716,6 +1734,15 @@ trace_atom_subterm_is_ground(atom(_, Args), ArgPos, _) :-
 	select_arg_at_pos(ArgPos, Args, ArgInfo),
 	ArgInfo = arg_info(_, _, MaybeArg),
 	MaybeArg = yes(_).
+
+:- func trace_arg_pos_to_user_arg_num(wrap(S), edt_node(R), arg_pos) = int
+	<= annotated_trace(S, R).
+
+trace_arg_pos_to_user_arg_num(wrap(Store), dynamic(Ref), ArgPos) = ArgNum :-
+	get_edt_call_node(Store, Ref, CallId),
+	call_node_from_id(Store, CallId, Call),
+	Atom = get_trace_call_atom(Call),
+	user_arg_num(ArgPos, Atom, ArgNum).
 
 %-----------------------------------------------------------------------------%
 

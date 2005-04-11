@@ -55,10 +55,11 @@
 :- interface.
 
 :- import_module mdbcomp.program_representation.
+:- import_module mdbcomp.prim_data.
 :- import_module mdb.io_action.
 :- import_module mdb.declarative_debugger.
 
-:- import_module list, std_util.
+:- import_module bool, list, std_util.
 
 	% This typeclass defines how EDTs may be accessed by this module.
 	% An EDT is a tree of nodes, each of which contains a question
@@ -155,7 +156,16 @@
 		% fail.
 		%
 	pred edt_context(S::in, T::in, pair(string, int)::out, 
-		maybe(pair(string, int))::out) is semidet
+		maybe(pair(string, int))::out) is semidet,
+
+		% Return the proc label for the given node.
+		%
+	func edt_proc_label(S, T) = proc_label,
+
+		% Convert an arg_pos to a user arg number using the
+		% atom of the given node.
+		%
+	func edt_arg_pos_to_user_arg_num(S, T, arg_pos) = int
 ].
 
 :- type subterm_mode
@@ -176,14 +186,24 @@
 	;	input(arg_pos, term_path)
 
 			% Subterm was constructed in the body.  We record
-			% the filename and line number of the primitive
-			% operation (unification or inlined foreign_proc)
-			% that constructed it.
-	;	primitive_op(string, int)
+			% the filename, line number and type of the primitive
+			% operation that constructed it.
+	;	primitive_op(string, int, primitive_op_type)
 
 			% The origin could not be found due to missing
 			% information.
 	;	not_found.
+
+	% The type of primitive operation that bound a subterm that was being
+	% tracked.
+	%
+:- type primitive_op_type
+	--->	foreign_proc
+	;	builtin_call
+	;	untraced_call
+	;	unification.
+
+:- func primitive_op_type_to_string(primitive_op_type) = string.
 
 	% This type defines a search space in which the declarative debugger
 	% can look for bugs.  The search space keeps track of which nodes in
@@ -314,9 +334,19 @@
 	;	origin(suspect_id, arg_pos, term_path)
 	
 			% The subterm was bound by a primitive operation inside
-			% the suspect.  The arguments are the filename and line
-			% number of primitive op that bound the subterm.
-	;	primitive_op(suspect_id, string, int)
+			% the suspect.  The other arguments are the filename,
+			% line number and type of the primitive operation 
+			% that bound the subterm.
+	;	primitive_op(
+			suspect_id,		% The node in which the subterm 
+						% was bound.
+			string, 		% File name of primitive op.
+			int, 			% Line number of primitive op.
+			primitive_op_type,	% Type of primitive operation.
+			bool			% Whether the subterm appears
+						% as an output of the
+						% binding node.
+			)
 			
 			% The suspect is the root of an implicit subtree and
 			% the origin lies in one of it's children.
@@ -464,11 +494,16 @@
 :- pred check_search_space_consistency(S::in, search_space(T)::in, string::in) 
 	is det <= mercury_edt(S, T).
 
+	% Return the proc_label for the given suspect.
+	%
+:- func get_proc_label_for_suspect(S, search_space(T), suspect_id) = proc_label
+	<= mercury_edt(S, T).
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module exception, map, int, counter, std_util, string, bool, bimap.
+:- import_module exception, map, int, counter, std_util, string, bimap.
 :- import_module float.
 
 	% A suspect is an edt node with some additional information relevant
@@ -891,7 +926,7 @@ find_subterm_origin(Store, SuspectId, ArgPos, TermPath, !SearchSpace,
 		(
 			Suspect ^ parent = yes(ParentId),
 			resolve_origin(Store, Node, ArgPos, TermPath,
-				ParentId, !SearchSpace, Response)
+				ParentId, no, !SearchSpace, Response)
 		;
 			Suspect ^ parent = no,
 			(
@@ -900,7 +935,7 @@ find_subterm_origin(Store, SuspectId, ArgPos, TermPath, !SearchSpace,
 			->
 				topmost_det(!.SearchSpace, NewRootId),
 				resolve_origin(Store, Node, ArgPos,
-					TermPath, NewRootId, !SearchSpace,
+					TermPath, NewRootId, no, !SearchSpace,
 					Response)
 			;
 				Response = require_explicit_supertree
@@ -909,29 +944,31 @@ find_subterm_origin(Store, SuspectId, ArgPos, TermPath, !SearchSpace,
 	;
 		Mode = subterm_out,
 		resolve_origin(Store, Node, ArgPos,
-			TermPath, SuspectId, !SearchSpace,
+			TermPath, SuspectId, yes, !SearchSpace,
 			Response)
 	).
 
-	% resolve_origin(Store, Node, ArgPos, TermPath, SuspectId,
+	% resolve_origin(Store, Node, ArgPos, TermPath, SuspectId, Output,
 	% 	!SearchSpace, Response).
 	% Find the origin of the subterm in Node and report the origin as
 	% SuspectId if the origin is a primitive op or an input and as the
 	% appropriate child of SuspectId if the origin is an output.  SuspectId
 	% should point to a parent of Node if the mode of the sub-term is
 	% input and should point to Node itself if the mode of the sub-term is
-	% output.
+	% output.  Output should be yes if the sub-term is an output of
+	% SuspectId and no if it isn't.
 	%
 :- pred resolve_origin(S::in, T::in, arg_pos::in, term_path::in, 
-	suspect_id::in, search_space(T)::in, search_space(T)::out, 
+	suspect_id::in, bool::in, search_space(T)::in, search_space(T)::out, 
 	find_origin_response::out) is det <= mercury_edt(S, T).
 	
-resolve_origin(Store, Node, ArgPos, TermPath, SuspectId, !SearchSpace, 
+resolve_origin(Store, Node, ArgPos, TermPath, SuspectId, Output, !SearchSpace, 
 		Response) :-
 	edt_dependency(Store, Node, ArgPos, TermPath, _, Origin),
 	(
-		Origin = primitive_op(FileName, LineNo),
-		Response = primitive_op(SuspectId, FileName, LineNo)
+		Origin = primitive_op(FileName, LineNo, PrimOpType),
+		Response = primitive_op(SuspectId, FileName, LineNo, 
+			PrimOpType, Output)
 	;
 		Origin = not_found,
 		Response = not_found
@@ -1844,3 +1881,11 @@ get_path(SearchSpace, BottomId, TopId, PathSoFar, Path) :-
 		get_path(SearchSpace, ParentId, TopId, [BottomId | PathSoFar],
 			Path)
 	).
+
+primitive_op_type_to_string(foreign_proc) = "foreign procedure call".
+primitive_op_type_to_string(builtin_call) = "builtin operation".
+primitive_op_type_to_string(untraced_call) = "untraced call".
+primitive_op_type_to_string(unification) = "unification".
+
+get_proc_label_for_suspect(Store, SearchSpace, SuspectId) = 
+	edt_proc_label(Store, get_edt_node(SearchSpace, SuspectId)).
