@@ -7012,7 +7012,7 @@ report_error_duplicate_module_decl(ModuleName - Context, !IO) :-
 :- pred report_items_after_end_module(prog_context::in, io::di, io::uo) is det.
 
 report_items_after_end_module(Context, !IO) :-
-    ErrorPieces = [words("Error: item(s) after end_module delcaration.")],
+    ErrorPieces = [words("Error: item(s) after end_module declaration.")],
     write_error_pieces(Context, 0, ErrorPieces, !IO),
     io.set_exit_status(1, !IO).
 
