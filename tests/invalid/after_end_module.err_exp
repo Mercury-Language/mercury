@@ -1,2 +1,2 @@
-after_end_module.m:009: Error: item(s) after end_module delcaration.
+after_end_module.m:009: Error: item(s) after end_module declaration.
 For more information, try recompiling with `-E'.
