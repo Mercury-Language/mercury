@@ -90,6 +90,10 @@
 	pred(unify_oo/2) is cint_unify_oo
 ].
 
+:- instance eq(int) where [
+	pred(unify_oo/2) is int_unify_oo
+].
+
 :- instance add(cint) where [].
 :- instance neq(cint) where [].
 :- instance ord(cint) where [].
