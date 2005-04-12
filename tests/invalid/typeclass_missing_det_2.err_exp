@@ -1,4 +1,4 @@
 typeclass_missing_det_2.m:011: Error: no determinism declaration for type class
 typeclass_missing_det_2.m:011:   method predicate
-typeclass_missing_det_2.m:011:   `typeclass_missing_det_2.p/1'.
+typeclass_missing_det_2.m:011:   `typeclass_missing_det_2.p'/1.
 For more information, try recompiling with `-E'.

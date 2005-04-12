@@ -463,7 +463,9 @@
     % - report an error if the `implementation' section of a sub-module
     %   is contained inside the `interface' section of its parent module
     % - check for modules declared as both nested and separate sub-modules.
-
+    % - check for non-abstract typeclass instance declarations in module
+    %   interfaces.
+    %
 :- type module_list == list(pair(module_name, item_list)).
 
 :- pred split_into_submodules(module_name::in, item_list::in, module_list::out,
@@ -6797,6 +6799,7 @@ split_into_submodules(ModuleName, Items0, ModuleList, !IO) :-
     InParentInterface = no,
     split_into_submodules_2(ModuleName, Items0, InParentInterface,
         Items, ModuleList, !IO),
+
     %
     % Check that there are no items after the end_module declaration.
     %
@@ -6896,11 +6899,11 @@ split_into_submodules_3(ModuleName, [Item | Items1],
         %
         ( Item = module_defn(_, interface) - _Context ->
             InInterface1 = yes
-        ; Item = module_defn(_, implementation) - Context ->
+        ; Item = module_defn(_, implementation) - ImplContext ->
             (
                 InParentInterface = yes,
-                report_error_implementation_in_interface(ModuleName, Context,
-                    !IO)
+                report_error_implementation_in_interface(ModuleName,
+                    ImplContext, !IO)
             ;
                 InParentInterface = no
             ),
@@ -6908,6 +6911,20 @@ split_into_submodules_3(ModuleName, [Item | Items1],
         ;
             InInterface1 = InInterface0
         ),
+        %
+        % Check to make sure that a non-abstract instance declaration
+        % does not occur in a module interface.
+        %
+        (
+            InInterface1 = yes,
+            Item = instance(_, _, _, Body, _, _) - InstanceContext,
+            Body \= abstract
+        ->
+            report_non_abstract_instance_in_interface(InstanceContext, !IO)
+        ;
+            true
+        ),
+
         %
         % parse the remaining items for this module,
         %
@@ -7019,6 +7036,15 @@ report_error_duplicate_module_decl(ModuleName - Context, !IO) :-
 
 report_items_after_end_module(Context, !IO) :-
     ErrorPieces = [words("Error: item(s) after end_module declaration.")],
+    write_error_pieces(Context, 0, ErrorPieces, !IO),
+    io.set_exit_status(1, !IO).
+            
+:- pred report_non_abstract_instance_in_interface(prog_context::in,
+    io::di, io::uo) is det.
+
+report_non_abstract_instance_in_interface(Context, !IO) :-
+    ErrorPieces = [words("Error: non-abstract instance declaration"),
+        words("in module interface.")],
     write_error_pieces(Context, 0, ErrorPieces, !IO),
     io.set_exit_status(1, !IO).
 

@@ -13,14 +13,16 @@
 :- typeclass io(T) where [
 	pred output(T::in, io__state::di, io__state::uo) is det
 ].
-	
-:- instance io(foo) where [
-	pred(output/3) is io__write
-].
+
+:- instance io(foo).
 
 :- pred main(io__state::di, io__state::uo) is det.
 
 :- implementation.
+
+:- instance io(foo) where [
+	pred(output/3) is io__write
+].
 
 init_foo(a).
 

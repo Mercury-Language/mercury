@@ -7,10 +7,6 @@
 	func coerce(B) = S
 ].
 
-:- instance solver_for(float, string) where [
-	coerce(Float) = string__float_to_string(Float)
-].
-
 :- pred mg(T, T) <= solver_for(float, T).
 :- mode mg(in, out) is det.
 
@@ -18,6 +14,10 @@
 
 :- implementation.
 :- import_module std_util.
+
+:- instance solver_for(float, string) where [
+	coerce(Float) = string__float_to_string(Float)
+].
 
 mg(S0, S) :-
 	( semidet_succeed ->

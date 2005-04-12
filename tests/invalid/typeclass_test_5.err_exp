@@ -1,9 +1,9 @@
-typeclass_test_5.m:015: In instance declaration for `typeclass_test_5.c2(int)':
-typeclass_test_5.m:015:   multiple implementations of type class predicate
-typeclass_test_5.m:015:   method `typeclass_test_5.p/1'.
-typeclass_test_5.m:016: First definition appears here.
-typeclass_test_5.m:017: Subsequent definition appears here.
-typeclass_test_5.m:015: In instance declaration for `typeclass_test_5.c2(int)':
-typeclass_test_5.m:015:   superclass constraint(s) not satisfied:
-typeclass_test_5.m:015:   `typeclass_test_5.c1(int)'.
+typeclass_test_5.m:020: In instance declaration for `typeclass_test_5.c2(int)':
+typeclass_test_5.m:020:   multiple implementations of type class predicate
+typeclass_test_5.m:020:   method `typeclass_test_5.p/1'.
+typeclass_test_5.m:021: First definition appears here.
+typeclass_test_5.m:022: Subsequent definition appears here.
+typeclass_test_5.m:020: In instance declaration for `typeclass_test_5.c2(int)':
+typeclass_test_5.m:020:   superclass constraint(s) not satisfied:
+typeclass_test_5.m:020:   `typeclass_test_5.c1(int)'.
 For more information, try recompiling with `-E'.

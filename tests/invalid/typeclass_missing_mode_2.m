@@ -10,6 +10,11 @@
 :- typeclass c(T) where [
 	pred p(T)		% error -- missing mode declaration for p/1
 ].
+
+:- instance c(int).
+
+:- implementation.
+
 :- instance c(int) where [
 	p(_) :- true
 ].

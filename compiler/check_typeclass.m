@@ -59,6 +59,9 @@
 :- pred check_typeclass__check_typeclasses(qual_info::in, qual_info::out,
 	module_info::in, module_info::out, bool::out, io::di, io::uo) is det.
 
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module check_hlds__inst_match.
@@ -91,6 +94,8 @@
 :- import_module svset.
 :- import_module term.
 :- import_module varset.
+
+%---------------------------------------------------------------------------%
 
 check_typeclass__check_typeclasses(!QualInfo, !ModuleInfo, FoundError, !IO) :-
 	check_typeclass__check_instance_decls(!QualInfo, !ModuleInfo,
@@ -159,13 +164,10 @@ check_one_class(ClassTable, ClassId - InstanceDefns0,
 		Interface = abstract
 	->
 		ClassId = class_id(ClassName, ClassArity),
-		sym_name_and_arity_to_string(ClassName / ClassArity,
-			ClassNameStr),
 		ErrorPieces = [
 			words("Error: no definition for typeclass"),
-			words(string__append_list(["`", ClassNameStr, "'."]))
+			sym_name_and_arity(ClassName / ClassArity)
 		],
-
 		Messages0 = !.CheckTCInfo ^ error_messages,
 		!:CheckTCInfo = !.CheckTCInfo ^ error_messages :=
 			[TermContext - ErrorPieces | Messages0],
@@ -237,12 +239,11 @@ check_concrete_class_instance(ClassId, Vars, HLDSClassInterface,
 	(
 		ClassInterface = abstract,
 		ClassId = class_id(ClassName, ClassArity),
-		sym_name_and_arity_to_string(ClassName / ClassArity,
-			ClassNameStr),
 		ErrorPieces = [
 			words("Error: instance declaration for"),
 			words("abstract typeclass"),
-			words(string__append_list(["`", ClassNameStr, "'."]))
+			sym_name_and_arity(ClassName / ClassArity),
+			suffix(".")	
 		],
 		!:Errors = [TermContext - ErrorPieces | !.Errors]
 	;
@@ -333,29 +334,29 @@ check_for_bogus_methods(InstanceMethods, ClassId, ClassPredIds, Context,
 		% Construct an appropriate error message.
 		%
 		ClassId = class_id(ClassName, ClassArity),
-		mdbcomp__prim_data__sym_name_to_string(ClassName, 
-			ClassNameString),
-		string__int_to_string(ClassArity, ClassArityString),
-		string__append_list([
-			"In instance declaration for `",
-			ClassNameString, "/", ClassArityString, "': ",
-			"incorrect method name(s): "],
-			ErrorMsgStart),
-		BogusInstanceMethodNames = list__map(format_method_name,
+		ErrorMsgStart =  [
+			words("In instance declaration for"),
+			sym_name_and_arity(ClassName / ClassArity),
+			suffix(":"),
+			words("incorrect method name(s):")
+		],
+		ErrorMsgBody0 = list.map(format_method_name,
 			BogusInstanceMethods),
-		ErrorMsgBody0 = list_to_pieces(BogusInstanceMethodNames),
-		ErrorMsgBody = list__append(ErrorMsgBody0, [words(".")]),
-		NewError = Context - [words(ErrorMsgStart) | ErrorMsgBody],
+		ErrorMsgBody1 = list.condense(ErrorMsgBody0),
+		ErrorMsgBody = list__append(ErrorMsgBody1, [suffix(".")]),
+		NewError = Context - ( ErrorMsgStart ++ ErrorMsgBody ),
 		!:Errors = [NewError | !.Errors]
 	).
 
-:- func format_method_name(instance_method) = string.
+:- func format_method_name(instance_method) = format_components.
 
-format_method_name(Method) = StringName :-
+format_method_name(Method) = MethodName :-
 	Method = instance_method(PredOrFunc, Name, _Defn, Arity, _Context),
 	adjust_func_arity(PredOrFunc, Arity, PredArity),
-	StringName = hlds_out__simple_call_id_to_string(
-		PredOrFunc - Name/PredArity).
+	MethodName = [
+		pred_or_func(PredOrFunc),
+		sym_name_and_arity(Name / PredArity)
+	].	
 
 %----------------------------------------------------------------------------%
 
@@ -540,7 +541,7 @@ check_instance_pred_procs(ClassId, ClassVars, MethodName, Markers,
 			MethodNameString),
 		mdbcomp__prim_data__sym_name_to_string(ClassName, 
 			ClassNameString),
-		pred_or_func_to_string(PredOrFunc, PredOrFuncString),
+		PredOrFuncString = pred_or_func_to_string(PredOrFunc),
 		string__int_to_string(Arity, ArityString),
 		InstanceTypesString = mercury_type_list_to_string(
 			InstanceVarSet, InstanceTypes),
@@ -575,22 +576,23 @@ check_instance_pred_procs(ClassId, ClassVars, MethodName, Markers,
 		OrderedInstanceMethods = OrderedInstanceMethods0,
 		InstanceDefn = InstanceDefn0,
 		ClassId = class_id(ClassName, _ClassArity),
-		mdbcomp__prim_data__sym_name_to_string(MethodName, 
-			MethodNameString),
 		mdbcomp__prim_data__sym_name_to_string(ClassName, 
 			ClassNameString),
-		pred_or_func_to_string(PredOrFunc, PredOrFuncString),
-		string__int_to_string(Arity, ArityString),
 		InstanceTypesString = mercury_type_list_to_string(
 			InstanceVarSet, InstanceTypes),
-		string__append_list([
-			"In instance declaration for `",
-			ClassNameString, "(", InstanceTypesString, ")': ",
-			"no implementation for type class ",
-			PredOrFuncString, " method `",
-			MethodNameString, "/", ArityString, "'."],
-			NewError),
-		Errors = [InstanceContext - [words(NewError)] | Errors0],
+		
+		Error = [words("In instance declaration for"),
+			fixed("`" ++ ClassNameString 
+				++ "(" ++ InstanceTypesString 
+				++ ")'"),
+			suffix(":"),
+			words("no implementation for type class"),
+			pred_or_func(PredOrFunc),
+			words("method"),
+			sym_name_and_arity(MethodName / Arity),
+			suffix(".")
+		], 
+		Errors = [InstanceContext - Error | Errors0],
 		Info = instance_method_info(ModuleInfo, QualInfo, PredName,
 			Arity, ExistQVars, ArgTypes, ClassContext,
 			ArgModes, Errors,
@@ -650,11 +652,6 @@ get_matching_instance_defns(concrete(InstanceMethods), PredOrFunc, MethodName,
 		%
 		ResultList = MatchingMethods
 	).
-
-:- pred pred_or_func_to_string(pred_or_func::in, string::out) is det.
-
-pred_or_func_to_string(predicate, "predicate").
-pred_or_func_to_string(function, "function").
 
 :- pred produce_auxiliary_procs(class_id::in, list(tvar)::in, pred_markers::in,
 	list(type)::in, list(prog_constraint)::in, tvarset::in,
@@ -1025,3 +1022,6 @@ report_cyclic_classes(ClassTable, ClassPath, !IO) :-
 add_path_element(class_id(Name, Arity), RevPieces0) =
 	[sym_name_and_arity(Name/Arity), words("<=") | RevPieces0].
 
+%---------------------------------------------------------------------------%
+:- end_module check_typeclass.
+%---------------------------------------------------------------------------%

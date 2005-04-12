@@ -10,6 +10,10 @@
 		mode print_modified(in, di, uo) is det
 	].
 
+:- instance class(int).
+
+:- implementation.
+
 :- instance class(int) where [
 		pred(print_modified/3) is print_modified_int
 	].	

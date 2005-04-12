@@ -8,10 +8,6 @@
 	func coerce(B) = S
 ].
 
-:- instance solver_for(list(T), float) where [
-	coerce(_) = 42.0
-].
-
 :- pred mg(T, T) <= solver_for(list(T), T).
 :- mode mg(in, out) is det.
 
@@ -19,6 +15,10 @@
 
 :- implementation.
 :- import_module std_util.
+
+:- instance solver_for(list(T), float) where [
+	coerce(_) = 42.0
+].
 
 mg(S0, S) :-
 	( semidet_succeed ->

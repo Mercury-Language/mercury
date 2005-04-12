@@ -3,5 +3,5 @@ typeclass_missing_det_3.m:001:   `typeclass_missing_det_3' does not export
 typeclass_missing_det_3.m:001:   anything.
 typeclass_missing_det_3.m:013: Error: no determinism declaration for type class
 typeclass_missing_det_3.m:013:   method predicate
-typeclass_missing_det_3.m:013:   `typeclass_missing_det_3.write/3'.
+typeclass_missing_det_3.m:013:   `typeclass_missing_det_3.write'/3.
 For more information, try recompiling with `-E'.

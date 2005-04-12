@@ -19,11 +19,11 @@
 	mode m(in, in, di, uo) is det
 ].
 
+:- implementation.
+
 :- instance p(list(T), list(T)) where [
 	pred(m/4) is write_list_pair
 ].
-
-:- implementation.
 
 main -->
 	m([1,2,3], [4,5,6]),

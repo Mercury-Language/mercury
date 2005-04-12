@@ -1,7 +1,7 @@
 missing_det_decls.m:005: Error: no determinism declaration for exported
-missing_det_decls.m:005:   predicate `missing_det_decls.exp1/0'.
+missing_det_decls.m:005:   predicate `missing_det_decls.exp1'/0.
 missing_det_decls.m:008: Error: no determinism declaration for exported
-missing_det_decls.m:008:   predicate `missing_det_decls.exp2/1'.
+missing_det_decls.m:008:   predicate `missing_det_decls.exp2'/1.
 missing_det_decls.m:013: Error: no determinism declaration for local predicate
 missing_det_decls.m:013:   `missing_det_decls.loc1/0'.
 missing_det_decls.m:016: Error: no determinism declaration for local predicate

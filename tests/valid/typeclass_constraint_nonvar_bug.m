@@ -25,9 +25,58 @@
 :- typeclass lin_int_solver(T) <= lin_arith_solver(int, T) where [].
 :- typeclass int_solver(T) <= (arith(T), lin_int_solver(T)) where [].
 
-:- instance eq(int) where [
-	pred(unify_oo/2) is int_unify_oo
-].
+:- instance eq(int).
+
+:- instance add(int).
+:- instance neq(int).
+:- instance ord(int).
+:- instance mult(int).
+:- instance sord(int).
+:- instance strict(int).
+:- instance arith(int).
+
+:- type cint ---> a ; b.
+
+:- instance eq(cint).
+
+:- instance add(cint).
+:- instance neq(cint).
+:- instance ord(cint).
+:- instance mult(cint).
+:- instance sord(cint).
+:- instance strict(cint).
+:- instance arith(cint).
+
+:- instance solver(cint).
+
+:- instance solver_for(int, cint).
+:- instance lin_mult(int, cint).
+:- instance lin_arith_solver(int, cint).
+:- instance arith_solver(int, cint).
+
+:- instance lin_int_solver(cint).
+:- instance int_solver(cint).
+
+:- type list(T) ---> [] ; [T | list(T)].
+:- instance eq(list(T)).
+
+:- type arc ---> arc(int, int).
+:- instance eq(arc).
+
+:- type graph ---> graph(list(arc)).
+:- instance eq(graph).
+
+:- pred int_unify_oo(int::in, int::in) is semidet.
+
+:- pred cint_unify_oo(cint::in, cint::in) is semidet.
+
+:- pred list_unify_oo(list(T)::in, list(T)::in) is semidet <= eq(T).
+
+:- pred arc_unify_oo(arc::in, arc::in) is semidet.
+
+:- pred graph_unify_oo(graph::in, graph::in) is semidet.
+
+:- implementation.
 
 :- instance add(int) where [].
 :- instance neq(int) where [].
@@ -36,8 +85,6 @@
 :- instance sord(int) where [].
 :- instance strict(int) where [].
 :- instance arith(int) where [].
-
-:- type cint ---> a ; b.
 
 :- instance eq(cint) where [
 	pred(unify_oo/2) is cint_unify_oo
@@ -61,34 +108,17 @@
 :- instance lin_int_solver(cint) where [].
 :- instance int_solver(cint) where [].
 
-
-:- type list(T) ---> [] ; [T | list(T)].
 :- instance eq(list(T)) <= eq(T) where [
 	pred(unify_oo/2) is list_unify_oo
 ].
 
-:- type arc ---> arc(int, int).
 :- instance eq(arc) where [
 	pred(unify_oo/2) is arc_unify_oo
 ].
 
-:- type graph ---> graph(list(arc)).
 :- instance eq(graph) where [
 	pred(unify_oo/2) is graph_unify_oo
 ].
-
-
-:- pred int_unify_oo(int::in, int::in) is semidet.
-
-:- pred cint_unify_oo(cint::in, cint::in) is semidet.
-
-:- pred list_unify_oo(list(T)::in, list(T)::in) is semidet <= eq(T).
-
-:- pred arc_unify_oo(arc::in, arc::in) is semidet.
-
-:- pred graph_unify_oo(graph::in, graph::in) is semidet.
-
-:- implementation.
 
 int_unify_oo(X, X).
 

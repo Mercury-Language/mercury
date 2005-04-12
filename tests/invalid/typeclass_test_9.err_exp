@@ -1,15 +1,12 @@
-typeclass_test_9.m:001: In module `typeclass_test_9':
-typeclass_test_9.m:001:   warning: module `std_util' is imported in the
-typeclass_test_9.m:001:   interface, but is not used in the interface.
-typeclass_test_9.m:004: In declaration for predicate `typeclass_test_9.p/0':
-typeclass_test_9.m:004:   error in type class constraints: type variable `T'
-typeclass_test_9.m:004:   occurs only in the constraints, not in the
-typeclass_test_9.m:004:   predicate's argument types.
-typeclass_test_9.m:006: In declaration for predicate `typeclass_test_9.q/0':
-typeclass_test_9.m:006:   error in type class constraints: type variable `T'
-typeclass_test_9.m:006:   occurs only in the constraints, not in the
-typeclass_test_9.m:006:   predicate's argument types.
-typeclass_test_9.m:010: Error: multiply defined (or overlapping) instance
-typeclass_test_9.m:010:   declarations for class `typeclass_test_9.foo'/1.
-typeclass_test_9.m:007: Previous instance declaration was here.
+typeclass_test_9.m:003: In declaration for predicate `typeclass_test_9.p/0':
+typeclass_test_9.m:003:   error in type class constraints: type variable `T'
+typeclass_test_9.m:003:   occurs only in the constraints, not in the
+typeclass_test_9.m:003:   predicate's argument types.
+typeclass_test_9.m:005: In declaration for predicate `typeclass_test_9.q/0':
+typeclass_test_9.m:005:   error in type class constraints: type variable `T'
+typeclass_test_9.m:005:   occurs only in the constraints, not in the
+typeclass_test_9.m:005:   predicate's argument types.
+typeclass_test_9.m:018: Error: multiply defined (or overlapping) instance
+typeclass_test_9.m:018:   declarations for class `typeclass_test_9.foo'/1.
+typeclass_test_9.m:015: Previous instance declaration was here.
 For more information, try recompiling with `-E'.

@@ -10,11 +10,11 @@
 	pred p(T::in, io__state::di, io__state::uo) is det
 ].
 
+:- implementation.
+
 :- instance +(int) where [
 	pred(p/3) is io__write_int
 ].
-
-:- implementation.
 
 main --> foo(1), io__nl.
 

@@ -12,18 +12,18 @@
 :- type foo ---> foo.
 :- type bar ---> bar.
 
+:- pred foo_m1(foo::in, string::out) is det.
+
+:- pred foo_m2(foo::in, int::in) is det.
+
+:- implementation.
+
 :- instance c(foo) where [
 	pred(m1/2) is foo_m1
 ].
 :- instance c(bar) where [
 	pred(m1/2) is bar_m1
 ].
-
-:- pred foo_m1(foo::in, string::out) is det.
-
-:- pred foo_m2(foo::in, int::in) is det.
-
-:- implementation.
 
 main -->
 	[].

@@ -1,8 +1,8 @@
 typeclass_test_4.m:014: In instance declaration for
 typeclass_test_4.m:014:   `typeclass_test_4.numbered_type(int)': no
 typeclass_test_4.m:014:   implementation for type class function method
-typeclass_test_4.m:014:   `typeclass_test_4.type_num/1'.
+typeclass_test_4.m:014:   `typeclass_test_4.type_num'/1.
 typeclass_test_4.m:014: In instance declaration for
-typeclass_test_4.m:014:   `typeclass_test_4.numbered_type/1': incorrect method
-typeclass_test_4.m:014:   name(s): function `typeclass_test_4.type_num/0' .
+typeclass_test_4.m:014:   `typeclass_test_4.numbered_type'/1: incorrect method
+typeclass_test_4.m:014:   name(s): function `typeclass_test_4.type_num'/1.
 For more information, try recompiling with `-E'.

@@ -25,6 +25,10 @@
 	mode handle_typedefs(in, in, out) 
 ].
 
+:- instance actions(pstate).
+
+:- implementation.
+
 :- instance actions(pstate) where [
         pred(handle_typedefs/2) is pstate_handle_typedefs
 ].

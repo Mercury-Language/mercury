@@ -9208,7 +9208,8 @@ unspecified_det_for_local(Name, Arity, PredOrFunc, Context, !IO) :-
 unspecified_det_for_method(Name, Arity, PredOrFunc, Context, !IO) :-
     Pieces = [words("Error: no determinism declaration"),
         words("for type class method"),
-        words(simple_call_id_to_string(PredOrFunc, Name, Arity)),
+        pred_or_func(PredOrFunc),
+        sym_name_and_arity(Name / Arity),
         suffix(".")],
     write_error_pieces(Context, 0, Pieces, !IO),
     io__set_exit_status(1, !IO).
@@ -9218,7 +9219,8 @@ unspecified_det_for_method(Name, Arity, PredOrFunc, Context, !IO) :-
 
 unspecified_det_for_exported(Name, Arity, PredOrFunc, Context, !IO) :-
     Pieces = [words("Error: no determinism declaration for exported"),
-        words(simple_call_id_to_string(PredOrFunc, Name, Arity)),
+        pred_or_func(PredOrFunc),
+        sym_name_and_arity(Name / Arity),
         suffix(".")],
     write_error_pieces(Context, 0, Pieces, !IO),
     io__set_exit_status(1, !IO).
@@ -9228,7 +9230,8 @@ unspecified_det_for_exported(Name, Arity, PredOrFunc, Context, !IO) :-
 
 clause_for_imported_pred_error(Name, Arity, PredOrFunc, Context, !IO) :-
     Pieces = [words("Error: clause for imported"),
-        words(simple_call_id_to_string(PredOrFunc, Name, Arity)),
+        pred_or_func(PredOrFunc),
+        sym_name_and_arity(Name / Arity),
         suffix(".")],
     write_error_pieces(Context, 0, Pieces, !IO),
     io__set_exit_status(1, !IO).

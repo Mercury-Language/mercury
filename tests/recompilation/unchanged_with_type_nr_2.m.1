@@ -27,9 +27,12 @@
 :- func with_type_6 `with_type` map_func(T, T) is det <= string(T).
 
 :- typeclass string(T) where [].
-:- instance string(string) where [].
+
+:- instance string(string).
 
 :- implementation.
+
+:- instance string(string) where [].
 
 with_type_1(_, _, X, X).
 

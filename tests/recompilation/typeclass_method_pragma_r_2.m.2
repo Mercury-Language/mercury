@@ -10,16 +10,20 @@
 
 :- pred init_foo(foo::out) is det.
 
+:- pragma obsolete(output/3).
+
 :- typeclass io(T) where [
 	pred output(T::in, io__state::di, io__state::uo) is det
 ].
-:- pragma obsolete(output/3).
+
+:- instance io(foo).
+
+:- implementation.
 
 :- instance io(foo) where [
 	pred(output/3) is io__write
 ].
 
-:- implementation.
 
 init_foo(a).
 

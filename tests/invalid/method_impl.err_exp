@@ -1,7 +1,7 @@
-method_impl.m:016: In clause for type class method implementation:
-method_impl.m:016:   in argument 2 of predicate `foo_m1/2':
-method_impl.m:016:   type error: variable `HeadVar__2' has type `int',
-method_impl.m:016:   expected type was `string'.
-method_impl.m:019: In clause for type class method implementation:
-method_impl.m:019:   error: undefined predicate `bar_m1/2'.
+method_impl.m:022: In clause for type class method implementation:
+method_impl.m:022:   in argument 2 of predicate `foo_m1/2':
+method_impl.m:022:   type error: variable `HeadVar__2' has type `int',
+method_impl.m:022:   expected type was `string'.
+method_impl.m:025: In clause for type class method implementation:
+method_impl.m:025:   error: undefined predicate `bar_m1/2'.
 For more information, try recompiling with `-E'.

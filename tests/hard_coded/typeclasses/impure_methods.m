@@ -12,19 +12,7 @@
 
 :- type foo ---> foo.
 
-	% impure implementations of impure methods
-:- instance c(foo) where [
-	pred(m1/1) is foo_m1,
-	pred(m2/2) is foo_m2
-].
-
 :- type goo ---> goo.
-
-	% pure implementations of impure methods
-:- instance c(goo) where [
-	pred(m1/1) is goo_m1,
-	pred(m2/2) is goo_m2
-].
 
 :- impure pred foo_m1(foo::in) is det.
 :- semipure pred foo_m2(foo::in, int::out) is det.
@@ -33,6 +21,18 @@
 :- pred goo_m2(goo::in, int::out) is det.
 
 :- implementation.
+	
+% impure implementations of impure methods
+:- instance c(foo) where [
+	pred(m1/1) is foo_m1,
+	pred(m2/2) is foo_m2
+].
+	
+% pure implementations of impure methods
+:- instance c(goo) where [
+	pred(m1/1) is goo_m1,
+	pred(m2/2) is goo_m2
+].
 
 :- pragma promise_pure(main/2). 
 

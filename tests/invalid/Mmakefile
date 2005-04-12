@@ -85,6 +85,7 @@ SINGLEMODULE= \
 	impure_method_impl \
 	inline_conflict \
 	inst_list_dup \
+	instance_bug \
 	invalid_export_detism \
 	invalid_import_detism \
 	invalid_main \
