@@ -274,6 +274,7 @@ c_util__quote_one_char(Char, RevChars0, RevChars) :-
 :- pred c_util__escape_special_char(char::in, char::out) is semidet.
 
 c_util__escape_special_char('"', '"').
+c_util__escape_special_char('''', '''').
 c_util__escape_special_char('\\', '\\').
 c_util__escape_special_char('\n', 'n').
 c_util__escape_special_char('\t', 't').

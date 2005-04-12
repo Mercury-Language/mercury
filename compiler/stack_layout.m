@@ -57,6 +57,11 @@
 :- pred stack_layout__represent_determinism_rval(determinism::in,
 	rval::out) is det.
 
+:- type stack_layout_info.
+
+:- pred stack_layout__lookup_string_in_table(string::in, int::out,
+	stack_layout_info::in, stack_layout_info::out) is det.
+
 :- implementation.
 
 :- import_module backend_libs__rtti.
@@ -575,8 +580,9 @@ stack_layout__construct_trace_layout(RttiProcLabel, EvalMethod, EffTraceLevel,
 		ProcBytes = []
 	;
 		NeedGoalRep = yes,
-		ProcBytes = prog_rep__represent_proc(HeadVars,
-			Goal, InstMap, VarTypes, VarNumMap, ModuleInfo)
+		prog_rep__represent_proc(HeadVars,
+			Goal, InstMap, VarTypes, VarNumMap, ModuleInfo, 
+			!Info, ProcBytes)
 	),
 	(
 		MaybeCallLabel = yes(CallLabelPrime),
@@ -1758,9 +1764,6 @@ stack_layout__set_static_cell_info(SCI, LI, LI ^ static_cell_info := SCI).
 					% in reverse order.
 		int			% Next available offset
 	).
-
-:- pred stack_layout__lookup_string_in_table(string::in, int::out,
-	stack_layout_info::in, stack_layout_info::out) is det.
 
 stack_layout__lookup_string_in_table(String, Offset, !Info) :-
 	StringTable0 = !.Info ^ string_table,

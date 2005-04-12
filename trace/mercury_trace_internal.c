@@ -1401,7 +1401,8 @@ MR_trace_browse_proc_body(MR_Event_Info *event_info, MR_Browser browser,
     }
 
     MR_TRACE_CALL_MERCURY(
-        MR_DD_trace_read_rep(entry->MR_sle_body_bytes, &rep);
+        MR_DD_trace_read_rep(entry->MR_sle_body_bytes, 
+            event_info->MR_event_sll, &rep);
     );
 
     (*browser)(ML_proc_rep_type(), rep, caller, format);
@@ -2468,7 +2469,8 @@ MR_trace_cmd_save_to_file(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
                 problem = "current procedure has no body bytecodes";
             } else {
                 MR_TRACE_CALL_MERCURY(
-                    MR_DD_trace_read_rep(entry->MR_sle_body_bytes, &rep);
+                    MR_DD_trace_read_rep(entry->MR_sle_body_bytes, 
+                        event_info->MR_event_sll, &rep);
                 );
 
                 browser_term = MR_type_value_to_browser_term(

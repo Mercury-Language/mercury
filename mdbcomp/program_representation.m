@@ -271,6 +271,17 @@
 
 :- func byte_to_goal_type(int) = bytecode_goal_type is semidet.
 
+	% A variable number is represented in a byte if there are no more than
+	% 255 variables in the procedure.  Otherwise a short is used.
+	%
+:- type var_num_rep
+	--->	byte
+	;	short.
+
+:- pred var_num_rep_byte(var_num_rep, int).
+:- mode var_num_rep_byte(in, out) is det.
+:- mode var_num_rep_byte(out, in) is semidet.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -447,5 +458,10 @@ goal_type_byte(13, goal_ho_call).
 goal_type_byte(14, goal_method_call).
 goal_type_byte(15, goal_plain_call).
 goal_type_byte(16, goal_builtin_call).
+
+%-----------------------------------------------------------------------------%
+
+var_num_rep_byte(byte, 0).
+var_num_rep_byte(short, 1).
 
 %-----------------------------------------------------------------------------%
