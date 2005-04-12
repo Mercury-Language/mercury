@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 2002-2004 University of Melbourne.
+# Copyright (C) 2002-2005 University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -35,10 +35,6 @@ MCFLAGS-libs.process_util = --no-ansi-c
 MGFLAGS-make.module_dep_file = --no-ansi-c
 MCFLAGS-make.module_target = --no-ansi-c
 MCFLAGS-make.program_target = --no-ansi-c
-
-# Bug workarounds.
-MCFLAGS-mode_robdd.tfeirn = -O0
-MCFLAGS-mode_robdd.implications = -O0
 
 # The c_code in the module gcc.m needs the header files from the GNU C
 # distribution.  Note that we need to compile these with
