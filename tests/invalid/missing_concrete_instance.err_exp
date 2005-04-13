@@ -1,0 +1,5 @@
+missing_concrete_instance.m:011: Error: abstract instance declaration for
+missing_concrete_instance.m:011:   `missing_concrete_instance.foo(int)' has no
+missing_concrete_instance.m:011:   corresponding concrete instance in the
+missing_concrete_instance.m:011:   implementation.
+For more information, try recompiling with `-E'.
