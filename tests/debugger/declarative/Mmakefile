@@ -208,6 +208,7 @@ browser_mode.out: browser_mode browser_mode.inp
 
 builtin_call_rep.out: builtin_call_rep builtin_call_rep.inp
 	$(MDB_STD) ./builtin_call_rep  < builtin_call_rep.inp \
+		| sed 's/\"int\.m\", [0-9]\+/\"int\.m\", NN/' \
 		> builtin_call_rep.out 2>&1 \
 	|| { grep . $@ /dev/null; exit 1; }
 
