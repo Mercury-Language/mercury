@@ -820,7 +820,8 @@ determinism_components(failure,     can_fail,    at_most_zero).
 
 	% For each class, we keep track of a list of its instances, since there
 	% can be more than one instance of each class.
-:- type instance_table == map(class_id, list(hlds_instance_defn)).
+	%
+:- type instance_table == multi_map(class_id, hlds_instance_defn).
 
 	% Information about a single `instance' declaration
 :- type hlds_instance_defn --->

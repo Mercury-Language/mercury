@@ -97,6 +97,7 @@ SINGLEMODULE= \
 	make_opt_error \
 	merge_ground_any \
 	method_impl \
+	missing_concrete_instance \
 	missing_det_decls \
 	missing_init_pred \
 	missing_interface_import \
