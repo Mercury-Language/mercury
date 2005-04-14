@@ -852,7 +852,7 @@ typedef	struct MR_Exec_Trace_Struct {
 ** existence of each substructure before accessing the fields of that
 ** substructure. The macros are MR_PROC_LAYOUT_HAS_PROC_ID to check for the
 ** MR_Proc_Id substructure, MR_PROC_LAYOUT_HAS_EXEC_TRACE to check for the
-** MR_Exec_Trace substructure. and MR_PROC_LAYOUT_HAS_PROC_STATIC to check for
+** MR_Exec_Trace substructure, and MR_PROC_LAYOUT_HAS_PROC_STATIC to check for
 ** the MR_ProcStatic substructure.
 **
 ** The reason why some substructures may be missing is to save space.
