@@ -36,6 +36,9 @@ MGFLAGS-make.module_dep_file = --no-ansi-c
 MCFLAGS-make.module_target = --no-ansi-c
 MCFLAGS-make.program_target = --no-ansi-c
 
+# Bug workarounds
+MCFLAGS-mode_robdd.tfeirn = -O3
+
 # The c_code in the module gcc.m needs the header files from the GNU C
 # distribution.  Note that we need to compile these with
 # -DMR_NO_BACKWARDS_COMPAT, because otherwise there are name
