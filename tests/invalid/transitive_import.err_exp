@@ -1,7 +1,7 @@
-transitive_import.m:016: In declaration of instance of typeclass `enum.enum'/1:
-transitive_import.m:016:   error: undefined typeclass `enum.enum'/1
-transitive_import.m:016:   (the module `enum' has not been imported).
-transitive_import.m:025: In definition of function `transitive_import.assoc_list_first'/1:
-transitive_import.m:025:   error: undefined type `std_util.pair'/2
-transitive_import.m:025:   (the module `std_util' has not been imported).
+transitive_import.m:016: In definition of function `transitive_import.assoc_list_first'/1:
+transitive_import.m:016:   error: undefined type `std_util.pair'/2
+transitive_import.m:016:   (the module `std_util' has not been imported).
+transitive_import.m:023: In declaration of instance of typeclass `enum.enum'/1:
+transitive_import.m:023:   error: undefined typeclass `enum.enum'/1
+transitive_import.m:023:   (the module `enum' has not been imported).
 For more information, try recompiling with `-E'.

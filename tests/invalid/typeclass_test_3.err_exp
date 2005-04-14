@@ -4,5 +4,5 @@ typeclass_test_3.m:014:   implementation for type class function method
 typeclass_test_3.m:014:   `typeclass_test_3.type_num/1'.
 typeclass_test_3.m:014: In instance declaration for
 typeclass_test_3.m:014:   `typeclass_test_3.numbered_type/1': incorrect method
-typeclass_test_3.m:014:   name(s): function `typeclass_test_3.type_num/0' .
+typeclass_test_3.m:014:   name(s): function `typeclass_test_3.type_num/1'.
 For more information, try recompiling with `-E'.

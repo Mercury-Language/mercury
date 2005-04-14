@@ -11,9 +11,6 @@
 		pred compare_t(comparison_result::out, T::in, T::in) is det
 ].
 
-:- instance comparable_t(int) where [
-		pred(compare_t/3) is compare_int
-].
 :- pred compare_int(comparison_result::out, int::in, int::in) is det.
 
 :- pred type_spec(list(T)::in, list(T)::in, list(T)::out) is det.
@@ -25,14 +22,6 @@
 
 :- typeclass all_zero(T) where [
 		pred all_zero(T::in) is semidet
-	].
-
-:- instance all_zero(list(T)) <= all_zero(T) where [
-		pred(all_zero/1) is list_all_zero
-	].
-
-:- instance all_zero(int) where [
-		pred(all_zero/1) is is_zero
 	].
 
 :- pred is_zero(int::in) is semidet.
@@ -63,6 +52,18 @@
 :- implementation.
 
 :- import_module type_spec_2.
+
+:- instance comparable_t(int) where [
+		pred(compare_t/3) is compare_int
+].
+
+:- instance all_zero(list(T)) <= all_zero(T) where [
+		pred(all_zero/1) is list_all_zero
+	].
+
+:- instance all_zero(int) where [
+		pred(all_zero/1) is is_zero
+	].
 
 main -->
 	{ type_spec([1,2,3], [3,4,5], Result1) },

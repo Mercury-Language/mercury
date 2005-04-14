@@ -20,11 +20,11 @@
 	mode m(in, in, di, uo) is det
 ].
 
+:- implementation.
+
 :- instance p(maybe(T), maybe(U)) where [
 	pred(m/4) is write_maybe_pair
 ].
-
-:- implementation.
 
 main -->
 	m(yes("ok"), yes(1)),

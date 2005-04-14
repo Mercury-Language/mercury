@@ -12,11 +12,13 @@
 			io__state::di, io__state::uo) is det
 ].
 
+:- instance io(int).
+
+:- implementation.
+
 :- instance io(int) where [
 	id(T, T),
 	(output(U, U, T) --> io__write(T))
 ].
-
-:- implementation.
 
 p(T, T).

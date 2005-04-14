@@ -8,15 +8,9 @@
 
 :- typeclass c(T) where [].
 
-:- instance c(int) where [].
-
 :- typeclass c2(T1, T2) where [].
 
-:- instance c2(int, string) where [].
-
 :- typeclass c3(T1, T2) where [].
-
-:- instance c3(int, float) where [].
 
 :- type f(X) ---> some [T] f(int, T, list(X), int).
 
@@ -49,6 +43,10 @@
 :- implementation.
 
 :- import_module std_util.
+
+:- instance c(int) where [].
+:- instance c2(int, string) where [].
+:- instance c3(int, float) where [].
 
 main -->
 	io__write_string("Writing copies of terms:\n"),

@@ -28,12 +28,8 @@
 	mode handle_typedefs(in, in, out) is det
 ].
 
-:- instance super(pstate) where [
-].
-
-:- instance actions(pstate) where [
-        pred(handle_typedefs/2) is id
-].
+:- instance super(pstate).
+:- instance actions(pstate).
 
 :- pred foo(A) <= super(A).
 :- mode foo(in) is det.
@@ -41,6 +37,13 @@
 :- pred bar is det.
 
 :- implementation.
+
+:- instance super(pstate) where [
+].
+
+:- instance actions(pstate) where [
+        pred(handle_typedefs/2) is id
+].
 
 bar :-
 	foo(pstate).

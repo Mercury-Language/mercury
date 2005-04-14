@@ -11,11 +11,11 @@
         mode m(in, di, uo) is det
 ].
 
+:- implementation.
+
 :- instance p(list(T)) where [
         pred(m/3) is io__write
 ].
-
-:- implementation.
 
 main -->
         call_m([1, 2, 3]),

@@ -12,15 +12,15 @@
 
 :- type foo ---> foo.
 
-:- instance c(foo) where [
-	pred(m1/2) is foo_m1,
-	pred(m2/2) is foo_m2
-].
-
 :- semipure pred foo_m1(foo::in, int::out) is det.
 :- impure pred foo_m2(foo::in, int::out) is det.
 
 :- implementation.
+
+:- instance c(foo) where [
+	pred(m1/2) is foo_m1,
+	pred(m2/2) is foo_m2
+].
 
 main -->
 	[].

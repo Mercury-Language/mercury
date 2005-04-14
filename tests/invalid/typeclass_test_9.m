@@ -1,9 +1,17 @@
 :- module typeclass_test_9.
 :- interface.
-:- import_module std_util.
 :- typeclass foo(T) where [pred p is semidet].
 :- typeclass bar(T) where [].
 :- typeclass baz(T) where [pred q is semidet].
+
+:- instance foo(int).
+:- instance foo(int).
+:- instance bar(int).
+:- instance baz(int).
+
+:- implementation.
+:- import_module std_util.
+
 :- instance foo(int) where [
 	pred(p/0) is semidet_succeed
 ].

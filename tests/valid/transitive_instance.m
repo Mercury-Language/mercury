@@ -15,6 +15,10 @@
 	:- interface.
 
 	:- typeclass c1(T) where []. 
+	
+	:- instance c1(int).
+
+	:- implementation.
 
 	:- instance c1(int) where [].
 
@@ -28,6 +32,10 @@
 	:- import_module transitive_instance__sub1.
 
 	:- typeclass c2(T) <= c1(T) where [].
+
+	:- instance c2(int).
+
+	:- implementation.
 
 	:- instance c2(int) where [].
 

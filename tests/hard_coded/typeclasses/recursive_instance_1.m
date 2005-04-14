@@ -1,12 +1,17 @@
 :- module recursive_instance_1.
 :- interface.
 
-:- import_module int, io.
-:- import_module list.
+:- import_module io.
 
 :- typeclass foo(T, U) where [
 	func bar(T) = U
 ].
+
+:- pred main(io::di, io::uo) is det.
+
+:- implementation.
+:- import_module std_util, char.
+:- import_module int, list.
 
 :- instance foo(int, list(T)) <= foo(list(int), T) where [
 	bar(N) = ( N < 0 -> [bar([N+1])] ; [] )
@@ -22,11 +27,6 @@
 	),
 	( bar([]) = 0 )
 ].
-
-:- pred main(io::di, io::uo) is det.
-
-:- implementation.
-:- import_module std_util, char.
 
 main -->
 	{ X = bar([0,1,2]) },

@@ -12,15 +12,15 @@
 	pred p(T), mode p(out) is det
 ].
 
-:- instance c2(int) where [
-	pred(p/1) is get_int,
-	pred(p/1) is get_int2
-].
-
 :- pred get_int(int::out) is det.
 :- pred get_int2(int::out) is det.
 
 :- implementation.
+
+:- instance c2(int) where [
+	pred(p/1) is get_int,
+	pred(p/1) is get_int2
+].
 
 main --> [].
 

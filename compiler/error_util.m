@@ -64,8 +64,14 @@
 				% the sym_name, followed by '/' and the arity,
 				% all surrounded by `' quotes.
 
-	;	nl.		% Insert a line break if there has been text
+	;	nl		% Insert a line break if there has been text
 				% output since the last line break.
+	
+	;	pred_or_func(pred_or_func).
+				% Output the string "predicate" or "function"
+				% as appropriate.
+
+:- type format_components == list(format_component).
 
 	% Convert a list of strings into a list of format_components
 	% separated by commas, with the last two elements separated by `and'.
@@ -348,6 +354,9 @@ error_pieces_to_string([Component | Components]) = Str :-
 			Str = Word ++ " " ++ TailStr
 		)
 	;
+		Component = pred_or_func(PredOrFunc),
+		Str = pred_or_func_to_string(PredOrFunc)
+	;
 		Component = nl,
 		Str = "\n" ++ TailStr
 	).
@@ -362,39 +371,38 @@ error_pieces_to_string([Component | Components]) = Str :-
 	list(word)::in, list(list(string))::in, list(list(string))::out)
 	is det.
 
-convert_components_to_word_list([], RevWords0, Paras0, Paras) :-
+convert_components_to_word_list([], RevWords0, !Paras) :-
 	Strings = rev_words_to_strings(RevWords0),
-	list__reverse([Strings | Paras0], Paras).
+	list__reverse([Strings | !.Paras], !:Paras).
 convert_components_to_word_list([Component | Components], RevWords0,
-		Paras0, Paras) :-
+		!Paras) :-
 	(
 		Component = fixed(Word),
-		RevWords1 = [word(Word) | RevWords0],
-		Paras1 = Paras0
+		RevWords1 = [word(Word) | RevWords0]
 	;
 		Component = suffix(Word),
-		RevWords1 = [suffix_word(Word) | RevWords0],
-		Paras1 = Paras0
+		RevWords1 = [suffix_word(Word) | RevWords0]
 	;
 		Component = words(WordsStr),
-		break_into_words(WordsStr, RevWords0, RevWords1),
-		Paras1 = Paras0
+		break_into_words(WordsStr, RevWords0, RevWords1)
 	;
 		Component = sym_name(SymName),
-		RevWords1 = [word(sym_name_to_word(SymName)) | RevWords0],
-		Paras1 = Paras0
+		RevWords1 = [word(sym_name_to_word(SymName)) | RevWords0]
 	;
 		Component = sym_name_and_arity(SymNameAndArity),
 		Word = sym_name_and_arity_to_word(SymNameAndArity),
-		RevWords1 = [word(Word) | RevWords0],
-		Paras1 = Paras0
+		RevWords1 = [word(Word) | RevWords0]
+	;
+		Component = pred_or_func(PredOrFunc),
+		Word = pred_or_func_to_string(PredOrFunc),
+		RevWords1 = [word(Word) | RevWords0]
 	;
 		Component = nl,
 		Strings = rev_words_to_strings(RevWords0),
-		Paras1 = [Strings | Paras0],
+		list.cons(Strings, !Paras),
 		RevWords1 = []
 	),
-	convert_components_to_word_list(Components, RevWords1, Paras1, Paras).
+	convert_components_to_word_list(Components, RevWords1, !Paras).
 
 :- func rev_words_to_strings(list(word)) = list(string).
 
@@ -588,6 +596,10 @@ append_punctuation([Piece0], Punc) = [Piece] :-
 	;
 		Piece0 = sym_name_and_arity(SymNameAndArity),
 		String = sym_name_and_arity_to_word(SymNameAndArity),
+		Piece = fixed(string__append(String, char_to_string(Punc)))
+	;
+		Piece0 = pred_or_func(PredOrFunc),
+		String = pred_or_func_to_string(PredOrFunc),
 		Piece = fixed(string__append(String, char_to_string(Punc)))
 	;
 		Piece0 = nl,

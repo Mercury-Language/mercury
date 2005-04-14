@@ -9,12 +9,6 @@
 
 :- typeclass solver_for_float(U) <= solver_for(float, U) where [].
 
-:- instance solver_for(float, string) where [
-	coerce(Float) = string__float_to_string(Float)
-].
-
-:- instance solver_for_float(string) where [].
-
 :- pred mg(T, T) <= solver_for_float(T).
 :- mode mg(in, out) is det.
 
@@ -22,6 +16,12 @@
 
 :- implementation.
 :- import_module std_util.
+
+:- instance solver_for(float, string) where [
+	coerce(Float) = string__float_to_string(Float)
+].
+
+:- instance solver_for_float(string) where [].
 
 mg(S0, S) :-
 	( semidet_succeed ->
