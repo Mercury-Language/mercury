@@ -1088,7 +1088,7 @@ then
 	fi
 
 	if (cd $stage3dir && $MMAKE $mmake_opts dep_library dep_mdbcomp \
-		dep_browser dep_analysis dep_compiler)
+		dep_browser_all dep_analysis dep_compiler)
 	then
 		echo "building of stage 3 dependencies successful"
 	else

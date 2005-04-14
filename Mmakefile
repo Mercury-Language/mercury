@@ -88,8 +88,20 @@ mdbcomp/$(deps_subdir)$(MDBCOMP_LIB_NAME).dep:
 dep_browser: \
 	browser/$(deps_subdir)$(BROWSER_LIB_NAME).dep
 
+.PHONY: dep_browser_all
+dep_browser_all: \
+	browser/$(deps_subdir)$(BROWSER_LIB_NAME).dep \
+	browser/$(deps_subdir)browse_test.dep \
+	browser/$(deps_subdir)declarative_test.dep
+
 browser/$(deps_subdir)$(BROWSER_LIB_NAME).dep:
 	+cd browser && $(SUBDIR_MMAKE) $(BROWSER_LIB_NAME).depend
+
+browser/$(deps_subdir)browse_test.dep:
+	+cd browser && $(SUBDIR_MMAKE) browse_test.depend
+
+browser/$(deps_subdir)declarative_test.dep:
+	+cd browser && $(SUBDIR_MMAKE) declarative_test.depend
 
 .PHONY: dep_analysis
 dep_analysis: analysis/$(deps_subdir)$(ANALYSIS_LIB_NAME).dep
