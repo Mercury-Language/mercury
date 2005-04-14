@@ -486,7 +486,8 @@ process_assert(all_state_vars(_, G) - _, Symbols, Success) :-
 	process_assert(G, Symbols, Success).
 process_assert(promise_purity(_I, _P, G) - _, Symbols, Success) :-
 	process_assert(G, Symbols, Success).
-process_assert(promise_equivalent_solutions(_V, G) - _, Symbols, Success) :-
+process_assert(promise_equivalent_solutions(_V, _D, _C, G) - _,
+		Symbols, Success) :-
 	process_assert(G, Symbols, Success).
 process_assert(implies(GA, GB) - _, Symbols, Success) :-
 	process_assert(GA, SymbolsA, SuccessA),

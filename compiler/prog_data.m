@@ -1099,7 +1099,9 @@
 
 	% other scopes
 	;	promise_purity(implicit_purity_promise, purity, goal)
-	;	promise_equivalent_solutions(prog_vars, goal)
+	;	promise_equivalent_solutions(prog_vars, prog_vars, prog_vars,
+			goal)	% (OrdinaryVars, DotStateVars, ColonStateVars,
+				% Goal)
 
 	% implications
 	;	implies(goal, goal)	% A => B

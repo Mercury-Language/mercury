@@ -79,6 +79,16 @@
 	%
 :- pred parse_vars(term(T)::in, list(var(T))::out) is semidet.
 
+	% parse_vars_and_state_vars(Term, OrdinaryVars, DotStateVars,
+	% 	ColonStateVars).
+	% Similar to parse_vars, but also allow state variables to appear
+	% in the list.  The outputs separate the parsed variables into
+	% ordinary variables, state variables listed as !.X, and state
+	% variables listed as !:X.
+	%
+:- pred parse_vars_and_state_vars(term(T)::in, list(var(T))::out,
+	list(var(T))::out, list(var(T))::out) is semidet.
+
 :- pred parse_name_and_arity(module_name::in, term(_T)::in,
 	sym_name::out, arity::out) is semidet.
 
@@ -587,6 +597,24 @@ parse_vars(functor(atom("[|]"), [H, T], _), !:Vs) :-
 	parse_vars(T, !:Vs),
 	H = variable(V),
 	!:Vs = [V | !.Vs].
+
+parse_vars_and_state_vars(functor(atom("[]"),  [],     _), [],   [],   []).
+parse_vars_and_state_vars(functor(atom("[|]"), [H, T], _), !:Os, !:Ds, !:Cs) :-
+	parse_vars_and_state_vars(T, !:Os, !:Ds, !:Cs),
+	(
+		H = functor(atom("!"), [variable(V)], _),
+		!:Ds = [V | !.Ds],
+		!:Cs = [V | !.Cs]
+	;
+		H = functor(atom("!."), [variable(V)], _),
+		!:Ds = [V | !.Ds]
+	;
+		H = functor(atom("!:"), [variable(V)], _),
+		!:Cs = [V | !.Cs]
+	;
+		H = variable(V),
+		!:Os = [V | !.Os]
+	).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

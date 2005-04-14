@@ -255,9 +255,11 @@ parse_goal_2("some", [QVars, A0], GoalExpr, !V):-
 
 parse_goal_2("promise_equivalent_solutions", [OVars, A0], GoalExpr, !V):-
 	parse_goal(A0, A, !V),
-	parse_vars(OVars, Vars0),
+	parse_vars_and_state_vars(OVars, Vars0, DotSVars0, ColonSVars0),
 	list__map(term__coerce_var, Vars0, Vars),
-	GoalExpr = promise_equivalent_solutions(Vars, A).
+	list__map(term__coerce_var, DotSVars0, DotSVars),
+	list__map(term__coerce_var, ColonSVars0, ColonSVars),
+	GoalExpr = promise_equivalent_solutions(Vars, DotSVars, ColonSVars, A).
 
 parse_goal_2("promise_pure", [A0], GoalExpr, !V):-
 	parse_goal(A0, A, !V),

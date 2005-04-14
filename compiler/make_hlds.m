@@ -6762,13 +6762,21 @@ transform_goal_2(promise_purity(Implicit, Purity, Goal0), _, Subst,
         !SInfo, !IO),
     goal_info_init(GoalInfo).
 
-transform_goal_2(promise_equivalent_solutions(Vars0, Goal0), _, Subst,
+transform_goal_2(
+        promise_equivalent_solutions(Vars0, DotSVars0, ColonSVars0, Goal0),
+        Context, Subst,
         scope(promise_equivalent_solutions(Vars), Goal) - GoalInfo,
         !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO) :-
-    substitute_vars(Vars0, Subst, Vars),
+    substitute_vars(Vars0, Subst, Vars1),
+    substitute_vars(DotSVars0, Subst, DotSVars1),
+    convert_dot_state_vars(Context, DotSVars1, DotSVars, !VarSet, !SInfo, !IO),
     transform_goal(Goal0, Subst, Goal, !VarSet, !ModuleInfo, !QualInfo,
         !SInfo, !IO),
-    goal_info_init(GoalInfo).
+    goal_info_init(GoalInfo),
+    substitute_vars(ColonSVars0, Subst, ColonSVars1),
+    convert_dot_state_vars(Context, ColonSVars1, ColonSVars, !VarSet,
+        !SInfo, !IO),
+    Vars = Vars1 ++ DotSVars ++ ColonSVars.
 
 transform_goal_2(if_then_else(Vars0, StateVars0, Cond0, Then0, Else0), Context,
         Subst, if_then_else(Vars, Cond, Then, Else) - GoalInfo,
@@ -6956,6 +6964,31 @@ transform_goal_2(unify(A0, B0, Purity), Context, Subst, Goal, !VarSet,
             !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO),
         finish_call(!VarSet, !SInfo)
     ).
+
+
+:- pred convert_dot_state_vars(prog_context::in, prog_vars::in, prog_vars::out,
+        prog_varset::in, prog_varset::out, svar_info::in, svar_info::out,
+        io::di, io::uo) is det.
+
+convert_dot_state_vars(_Context, [], [], !VarSet, !SInfo, !IO).
+
+convert_dot_state_vars(Context, [Dot0 | Dots0], [Dot | Dots],
+        !VarSet, !SInfo, !IO) :-
+    dot(Context, Dot0, Dot, !VarSet, !SInfo, !IO),
+    convert_dot_state_vars(Context, Dots0, Dots, !VarSet, !SInfo, !IO).
+
+
+:- pred convert_colon_state_vars(prog_context::in,
+        prog_vars::in, prog_vars::out, prog_varset::in, prog_varset::out,
+        svar_info::in, svar_info::out, io::di, io::uo) is det.
+
+convert_colon_state_vars(_Context, [], [], !VarSet, !SInfo, !IO).
+
+convert_colon_state_vars(Context, [Colon0 | Colons0], [Colon | Colons],
+        !VarSet, !SInfo, !IO) :-
+    colon(Context, Colon0, Colon, !VarSet, !SInfo, !IO),
+    convert_colon_state_vars(Context, Colons0, Colons, !VarSet, !SInfo, !IO).
+
 
 :- pred report_svar_unify_error(prog_context::in, prog_varset::in, svar::in,
     io::di, io::uo) is det.

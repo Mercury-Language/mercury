@@ -2548,17 +2548,40 @@ mercury_output_goal_2(all_state_vars(Vars, Goal), VarSet, Indent, !IO) :-
         io__write_string(")", !IO)
     ).
 
-mercury_output_goal_2(promise_equivalent_solutions(Vars, Goal), VarSet,
+mercury_output_goal_2(
+        promise_equivalent_solutions(Vars, DotSVars, ColonSVars, Goal), VarSet,
         Indent, !IO) :-
     (
         Vars = [],
+        DotSVars = [],
+        ColonSVars = []
+    ->
         % This should have been caught be prog_io_goal when reading in
         % the term, but there is no point in aborting here.
         mercury_output_goal(Goal, VarSet, Indent, !IO)
     ;
-        Vars = [_ | _],
         io__write_string("promise_equivalent_solutions [", !IO),
         mercury_output_vars(Vars, VarSet, no, !IO),
+        (
+            Vars \= [],
+            DotSVars \= []
+        ->
+            io.write_string(", ", !IO)
+        ;
+            true
+        ),
+        mercury_output_state_vars_using_prefix(DotSVars, "!.", VarSet, no,
+            !IO),
+        (
+            ( Vars \= [] ; DotSVars \= [] ),
+            ColonSVars \= []
+        ->
+            io.write_string(", ", !IO)
+        ;
+            true
+        ),
+        mercury_output_state_vars_using_prefix(ColonSVars, "!:", VarSet, no,
+            !IO),
         io__write_string("] (", !IO),
         Indent1 = Indent + 1,
         mercury_output_newline(Indent1, !IO),
@@ -2657,6 +2680,27 @@ mercury_output_goal_2(unify(A, B, Purity), VarSet, _Indent, !IO) :-
     mercury_output_term(A, VarSet, no, !IO),
     io__write_string(" = ", !IO),
     mercury_output_term(B, VarSet, no, next_to_graphic_token, !IO).
+
+
+:- pred mercury_output_state_vars_using_prefix(prog_vars::in, string::in,
+        prog_varset::in, bool::in, io::di, io::uo) is det.
+
+mercury_output_state_vars_using_prefix([], _BangPrefix, _VarSet,
+        _AppendVarnums, !IO).
+mercury_output_state_vars_using_prefix([SVar | SVars], BangPrefix, VarSet,
+        AppendVarnums, !IO) :-
+    io__write_string(BangPrefix, !IO),
+    mercury_format_var(SVar, VarSet, AppendVarnums, !IO),
+    (
+        SVars \= []
+    ->
+        io__write_string(", ", !IO)
+    ;
+        true
+    ),
+    mercury_output_state_vars_using_prefix(SVars, BangPrefix, VarSet,
+        AppendVarnums, !IO).
+
 
 :- pred mercury_output_call(sym_name::in, list(prog_term)::in, prog_varset::in,
     int::in, io::di, io::uo) is det.
