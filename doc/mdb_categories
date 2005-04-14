@@ -32,8 +32,8 @@ browsing   - Commands that let users explore the state of the computation.
 end
 document_category 500 breakpoint
 breakpoint - Commands that let users set and control breakpoints.
-             The breakpoint commands are `break', `disable', `enable',
-             `delete', `modules', `procedures' and `register'.
+             The breakpoint commands are `break', `condition', `disable', 
+	     `enable', `delete', `modules', `procedures' and `register'.
 
 end
 document_category 600 table_io

@@ -927,9 +927,13 @@ MR_trace_internal_ensure_init(void)
             MR_scroll_limit = n;
         }
 
-        MR_trace_internal_init_from_env();
-        MR_trace_internal_init_from_local();
+        /*
+        ** These functions add the commands to the front of the queue, so
+        ** we call them in the reverse order we want the commands executed.
+        */
         MR_trace_internal_init_from_home_dir();
+        MR_trace_internal_init_from_local();
+        MR_trace_internal_init_from_env();
 
         MR_saved_debug_state.MR_sds_io_tabling_enabled = MR_TRUE;
         MR_io_tabling_phase = MR_IO_TABLING_BEFORE;
@@ -7549,10 +7553,36 @@ MR_trace_source(const char *filename, MR_bool ignore_errors)
 static void
 MR_trace_source_from_open_file(FILE *fp)
 {
-    char    *line;
+    char    *contents;
+    MR_Line *line;
+    MR_Line *prev_line;
+    MR_Line *old_head;
 
-    while ((line = MR_trace_readline_raw(fp)) != NULL) {
-        MR_insert_line_at_tail(line);
+    prev_line = NULL;
+    old_head = MR_line_head;
+
+    /*
+    ** Insert the sourced commands at the front of the command queue, 
+    ** preserving their order in the sourced file.
+    */
+    while ((contents = MR_trace_readline_raw(fp)) != NULL) {
+        line = MR_NEW(MR_Line);
+        line->MR_line_contents = MR_copy_string(contents);
+        
+        if (prev_line == NULL) {
+            MR_line_head = line;
+        } else {
+            prev_line->MR_line_next = line;
+        }
+
+        prev_line = line;
+    }
+
+    if (prev_line != NULL) {
+        prev_line->MR_line_next = old_head;
+        if (MR_line_tail == NULL) {
+            MR_line_tail = prev_line;
+        }
     }
 
     MR_trace_internal_interacting = MR_FALSE;
