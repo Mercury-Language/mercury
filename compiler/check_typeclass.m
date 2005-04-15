@@ -85,10 +85,12 @@
 :- import_module int.
 :- import_module list.
 :- import_module map.
+:- import_module multi_map.
 :- import_module require.
 :- import_module set.
 :- import_module std_util.
 :- import_module string.
+:- import_module svmulti_map.
 :- import_module svset.
 :- import_module term.
 :- import_module varset.
@@ -98,6 +100,7 @@
 check_typeclass__check_typeclasses(!QualInfo, !ModuleInfo, FoundError, !IO) :-
 	check_typeclass__check_instance_decls(!QualInfo, !ModuleInfo,
 		FoundInstanceError, !IO),
+ 	check_for_missing_concrete_instances(!ModuleInfo, !IO),
 	module_info_classes(!.ModuleInfo, ClassTable),
 	check_for_cyclic_classes(ClassTable, FoundCycleError, !IO),
 	FoundError = bool.or(FoundInstanceError, FoundCycleError).
@@ -143,7 +146,8 @@ check_typeclass__check_instance_decls(!QualInfo, !ModuleInfo, FoundError,
 			qual_info	:: qual_info
 		).
 
-	% check all the instances of one class.
+	% Check all the instances of one class.
+	%
 :- pred check_one_class(class_table::in,
 	pair(class_id, list(hlds_instance_defn))::in,
 	pair(class_id, list(hlds_instance_defn))::out,
@@ -185,7 +189,8 @@ check_one_class(ClassTable, ClassId - InstanceDefns0,
 			!CheckTCInfo, !IO)
 	).
 
-	% check one instance of one class
+	% Check one instance of one class.
+	%
 :- pred check_class_instance(class_id::in, list(class_constraint)::in,
 	list(tvar)::in, hlds_class_interface::in, class_interface::in,
 	tvarset::in, list(pred_id)::in,
@@ -432,7 +437,8 @@ check_instance_pred(ClassId, ClassVars, ClassInterface, PredId,
 		UnivCs = OtherUnivCs,
 		ClassContext = constraints(UnivCs, ExistCs)
 	;
-		error("check_instance_pred: no constraint on class method")
+		unexpected(this_file,
+			"check_instance_pred: no constraint on class method")
 	),
 
 	MethodName0 = pred_info_name(PredInfo),
@@ -838,7 +844,7 @@ check_superclass_conformance(ClassId, SuperClasses0, ClassVars0, ClassVarSet,
 	( term__var_list_to_term_list(ClassVars1, ClassVarTerms) ->
 		ClassVars = ClassVars1
 	;
-		error("ClassVarTerms are not vars")
+		unexpected(this_file, "ClassVarTerms are not vars.")
 	),
 
 		% Calculate the bindings
@@ -897,6 +903,143 @@ constraint_list_to_string_2(VarSet, [C | Cs], String) :-
 	String0 = mercury_constraint_to_string(VarSet, C),
 	constraint_list_to_string_2(VarSet, Cs, String1),
 	string__append_list([", `", String0, "'", String1], String).
+
+%---------------------------------------------------------------------------%
+%
+% Check that every abstract instance in the interface of a module
+% has a corresponding concrete instance in the implementation.
+%
+
+:- pred check_for_missing_concrete_instances(
+	module_info::in, module_info::out, io::di, io::uo) is det.
+
+check_for_missing_concrete_instances(!ModuleInfo, !IO) :-
+	module_info_instances(!.ModuleInfo, InstanceTable),
+	%
+	% Grab all the abstract instance declarations in the interface
+	% of this module and all the concrete instances defined in the
+	% implementation.
+	%
+	gather_abstract_and_concrete_instances(InstanceTable,
+		AbstractInstances, ConcreteInstances),
+	map.foldl(check_for_corresponding_instances(ConcreteInstances),
+		AbstractInstances, !IO).
+
+	% gather_abstract_and_concrete_instances(Table,
+	% 	AbstractInstances, ConcreteInstances).
+	%
+	% Search the instance_table and create a table of abstract
+	% instances that occur in the module interface and a table of
+	% concrete instances that occur in the module implementation.
+	% Imported instances are not included at all. 
+	% 	
+:- pred gather_abstract_and_concrete_instances(instance_table::in,
+	instance_table::out, instance_table::out) is det.
+
+gather_abstract_and_concrete_instances(InstanceTable, Abstracts,
+		Concretes) :-
+	map.foldl2(partition_instances_for_class, InstanceTable,
+		multi_map.init, Abstracts, multi_map.init, Concretes).
+
+	% Partition all the non-imported instances for a particular
+	% class into two groups, those that are abstract and in the
+	% module interface and those that are concrete and in the module
+	% implementation.  Concrete instances cannot occur in the
+	% interface and we ignore abstract instances in the
+	% implementation.
+	%
+:- pred partition_instances_for_class(class_id::in,
+	list(hlds_instance_defn)::in, instance_table::in, instance_table::out,
+	instance_table::in, instance_table::out) is det.
+
+partition_instances_for_class(ClassId, Instances, !Abstracts, !Concretes) :-
+	list.foldl2(partition_instances_for_class_2(ClassId), Instances,
+		!Abstracts, !Concretes).
+
+:- pred partition_instances_for_class_2(class_id::in, hlds_instance_defn::in, 
+	instance_table::in, instance_table::out,
+	instance_table::in, instance_table::out) is det.
+
+partition_instances_for_class_2(ClassId, InstanceDefn, !Abstracts,
+		!Concretes) :-
+	ImportStatus = InstanceDefn ^ instance_status,
+	status_is_imported(ImportStatus, IsImported),
+	(
+		IsImported = no,
+		Body = InstanceDefn ^ instance_body,
+		(
+			Body = abstract,
+			status_is_exported_to_non_submodules(ImportStatus,
+				IsExported),
+			(
+				IsExported = yes,
+				svmulti_map.add(ClassId, InstanceDefn,
+					!Abstracts)
+			;
+				IsExported = no
+			)
+		;
+			Body = concrete(_),
+			svmulti_map.add(ClassId, InstanceDefn,
+				!Concretes)	
+		)
+	;
+		IsImported = yes
+	).
+
+:- pred check_for_corresponding_instances(instance_table::in,
+	class_id::in, list(hlds_instance_defn)::in, io::di, io::uo) is det.
+
+check_for_corresponding_instances(Concretes, ClassId, InstanceDefns, !IO) :-
+	list.foldl(check_for_corresponding_instances_2(Concretes, ClassId),
+		InstanceDefns, !IO).
+
+:- pred check_for_corresponding_instances_2(instance_table::in, class_id::in,
+	hlds_instance_defn::in, io::di, io::uo) is det.
+
+check_for_corresponding_instances_2(Concretes, ClassId, AbstractInstance,
+		!IO) :- 
+	AbstractTypes = AbstractInstance ^ instance_types,
+	( multi_map.search(Concretes, ClassId, ConcreteInstances) ->		
+		(
+			list.member(ConcreteInstance, ConcreteInstances),
+			ConcreteTypes = ConcreteInstance ^ instance_types,
+			ConcreteTypes = AbstractTypes
+		->
+			MissingConcreteError = no
+		;
+			% There were concrete instances for ClassId in the
+			% implementation but none of them matches the
+			% abstract instance we have.
+			MissingConcreteError = yes
+		)				
+	;
+		% There were no concrete instances for ClassId in the
+		% implementation.
+		MissingConcreteError = yes
+	),
+	(
+		MissingConcreteError = yes,
+		ClassId = class_id(ClassName, _),
+		prim_data.sym_name_to_string(ClassName, ClassNameString),
+		AbstractTypesString = mercury_type_list_to_string(
+			AbstractInstance ^ instance_tvarset, AbstractTypes),
+		AbstractInstanceName = "`" ++ ClassNameString ++
+			"(" ++ AbstractTypesString ++ ")'",
+		% XXX Should we mention any constraints on the instance
+		%     declaration here?
+		ErrorPieces = [words("Error: abstract instance declaration"),
+			words("for"), fixed(AbstractInstanceName),
+			words("has no corresponding concrete"),
+			words("instance in the implementation.")
+		],	
+		AbstractInstanceContext = AbstractInstance ^ instance_context,
+		write_error_pieces(AbstractInstanceContext, 0, ErrorPieces,
+			!IO),
+		io.set_exit_status(1, !IO)	
+	;
+		MissingConcreteError = no
+	).
 
 %---------------------------------------------------------------------------%
 
@@ -987,7 +1130,8 @@ get_constraint_id(constraint(Name, Args)) = class_id(Name, length(Args)).
 report_cyclic_classes(ClassTable, ClassPath, !IO) :-
 	(
 		ClassPath = [],
-		error("report_cyclic_classes: empty cycle found")
+		unexpected(this_file,
+			"report_cyclic_classes: empty cycle found.")
 	;
 		ClassPath = [ClassId | Tail],
 		Context = map.lookup(ClassTable, ClassId) ^ class_context,
@@ -1006,6 +1150,12 @@ report_cyclic_classes(ClassTable, ClassPath, !IO) :-
 
 add_path_element(class_id(Name, Arity), RevPieces0) =
 	[sym_name_and_arity(Name/Arity), words("<=") | RevPieces0].
+
+%---------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "check_typeclass.m".
 
 %---------------------------------------------------------------------------%
 :- end_module check_typeclass.
