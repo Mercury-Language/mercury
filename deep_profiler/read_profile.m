@@ -399,6 +399,8 @@ refined_proc_id_to_string(uci_pred(TypeName, TypeModule, _DefModule,
         PredName = "Compare"
     ; RawPredName = "__Index__" ->
         PredName = "Index"
+    ; RawPredName = "__CompareRep__" ->
+        PredName = "CompareRep"
     ;
         string__append("unknown special predicate name ", RawPredName, Msg),
         error(Msg)
