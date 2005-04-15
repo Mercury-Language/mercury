@@ -1,0 +1,4 @@
+quant_constraint_2.m:012: In declaration of function `quant_constraint_2.q/0':
+quant_constraint_2.m:012:   type variable T is universally constrained, but is
+quant_constraint_2.m:012:   existentially quantified.
+For more information, try recompiling with `-E'.
