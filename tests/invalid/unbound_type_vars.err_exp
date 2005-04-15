@@ -20,4 +20,7 @@ unbound_type_vars.m:034: In declaration for predicate `unbound_type_vars.p5/1':
 unbound_type_vars.m:034:   error in type class constraints: type variable `T2'
 unbound_type_vars.m:034:   occurs only in the constraints, not in the
 unbound_type_vars.m:034:   predicate's argument types.
+unbound_type_vars.m:034: In declaration of predicate `unbound_type_vars.p5/1':
+unbound_type_vars.m:034:   type variable T2 is universally constrained, but is
+unbound_type_vars.m:034:   existentially quantified.
 For more information, try recompiling with `-E'.

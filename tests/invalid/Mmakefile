@@ -122,6 +122,8 @@ SINGLEMODULE= \
 	prog_io_erroneous \
 	qual_basic_test2 \
 	qualified_cons_id2 \
+	quant_constraint_1 \
+	quant_constraint_2 \
 	record_syntax_errors \
 	some \
 	spurious_mode_error \

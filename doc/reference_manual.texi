@@ -5211,20 +5211,18 @@ then the existential constraints must precede the universal constraints.)
 For example:
 
 @example
-% Here `c1(T2)' and `c2(T1, T2)' are existential constraints,
+% Here `c1(T2)' and `c2(T2)' are existential constraints,
 % and `c3(T1)' is a universal constraint,
-:- all [T1] some [T2] ((pred p(T1, T2) => (c1(T2), c2(T1, T2))) <= c3(T1)).
+:- all [T1] some [T2] ((pred p(T1, T2) => (c1(T2), c2(T2))) <= c3(T1)).
 @end example
 
-In general, constraints that constrain any existentially quantified
-type variables should be existential constraints, and constraints that
-constrain only universally quantified type variables should be
-universal constraints.  (The only time exceptions to this rule would
-make any sense at all would be if there were instance declarations that
-were visible in the definition of the caller but which due to module
-visibility issues were not in the definition of the callee, or vice
-versa.  But even then, any exception to this rule would have to involve
-a rather obscure coding style, which we do not recommend.)
+Existential constraints must only constrain type variables
+that are explicitly existentially quantified.
+Likewise, universal constraints must only constrain type variables
+that are universally quantified,
+although in this case the quantification does not have to be explicit
+because universal quantification is the default
+(see @ref{Syntax for explicit type quantifiers}).
 
 @node Existentially typed data types
 @section Existentially typed data types

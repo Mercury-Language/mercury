@@ -33,6 +33,9 @@
 :- func describe_one_pred_name(module_info, should_module_qualify, pred_id)
 	= list(format_component).
 
+:- func describe_one_pred_info_name(should_module_qualify, pred_info)
+	= list(format_component).
+
 :- func describe_one_pred_name_mode(module_info, should_module_qualify,
 	pred_id, inst_varset, list(mode)) = list(format_component).
 
@@ -73,8 +76,11 @@
 
 describe_one_pred_name(Module, ShouldModuleQualify, PredId) = Pieces :-
 	module_info_pred_info(Module, PredId, PredInfo),
-	ModuleName = pred_info_module(PredInfo),
+	Pieces = describe_one_pred_info_name(ShouldModuleQualify, PredInfo).
+
+describe_one_pred_info_name(ShouldModuleQualify, PredInfo) = Pieces :-
 	PredName = pred_info_name(PredInfo),
+	ModuleName = pred_info_module(PredInfo),
 	Arity = pred_info_orig_arity(PredInfo),
 	PredOrFunc = pred_info_is_pred_or_func(PredInfo),
 	PredOrFuncStr = pred_or_func_to_string(PredOrFunc),
