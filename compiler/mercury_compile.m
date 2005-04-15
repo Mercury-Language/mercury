@@ -1957,33 +1957,40 @@ mercury_compile__frontend_pass(QualInfo0, FoundUndefTypeError,
 	% typecheck would get internal errors
 	%
 	globals__io_get_globals(Globals, !IO),
+	globals__lookup_bool_option(Globals, verbose, Verbose),
 	( FoundUndefTypeError = yes ->
 		!:FoundError = yes,
-		globals__lookup_bool_option(Globals, verbose, Verbose),
 		maybe_write_string(Verbose,
 			"% Program contains undefined type error(s).\n", !IO),
 		io__set_exit_status(1, !IO)
 	;
-		mercury_compile__frontend_pass_no_type_error(QualInfo0,
-			FoundUndefModeError, !FoundError, !HLDS, !IO)
+		maybe_write_string(Verbose,
+			"% Checking typeclasses...\n", !IO),
+		check_typeclass__check_typeclasses(QualInfo0, QualInfo, !HLDS,
+			FoundTypeclassError, !IO),
+		mercury_compile__maybe_dump_hlds(!.HLDS, 5, "typeclass", !IO),
+		make_hlds__set_module_recompilation_info(QualInfo, !HLDS),
+
+		%
+		% We can't continue after a typeclass error, since typecheck
+		% can get internal errors.
+		%
+		( FoundTypeclassError = yes ->
+			!:FoundError = yes
+		;
+			mercury_compile__frontend_pass_no_type_error(
+				FoundUndefModeError, !FoundError, !HLDS, !IO)
+		)
 	).
 
-:- pred mercury_compile__frontend_pass_no_type_error(qual_info::in,
-	bool::in, bool::in, bool::out, module_info::in, module_info::out,
-	io::di, io::uo) is det.
+:- pred mercury_compile__frontend_pass_no_type_error(bool::in, bool::in,
+	bool::out, module_info::in, module_info::out, io::di, io::uo) is det.
 
-mercury_compile__frontend_pass_no_type_error(QualInfo0,
-		FoundUndefModeError, !FoundError, !HLDS, !IO) :-
+mercury_compile__frontend_pass_no_type_error(FoundUndefModeError, !FoundError,
+		!HLDS, !IO) :-
 	globals__io_get_globals(Globals, !IO),
 	globals__lookup_bool_option(Globals, verbose, Verbose),
 	globals__lookup_bool_option(Globals, statistics, Stats),
-	maybe_write_string(Verbose,
-		"% Checking typeclasses...\n", !IO),
-	check_typeclass__check_typeclasses(QualInfo0, QualInfo, !HLDS,
-		FoundTypeclassError, !IO),
-	mercury_compile__maybe_dump_hlds(!.HLDS, 5, "typeclass", !IO),
-	make_hlds__set_module_recompilation_info(QualInfo, !HLDS),
-
 	globals__lookup_bool_option(Globals, intermodule_optimization,
 		Intermod),
 	globals__lookup_bool_option(Globals, use_opt_files, UseOptFiles),
@@ -2056,18 +2063,18 @@ mercury_compile__frontend_pass_no_type_error(QualInfo0,
 		mercury_compile__maybe_dump_hlds(!.HLDS, 20, "puritycheck",
 			!IO),
 
+		!:FoundError = !.FoundError `or` FoundTypeError,
+
 		%
 		% Stop here if `--typecheck-only' was specified.
 		%
 		globals__lookup_bool_option(Globals, typecheck_only,
 			TypecheckOnly),
 		( TypecheckOnly = yes ->
-			bool__or(FoundTypeError, FoundTypeclassError,
-				!:FoundError)
+			true
 		;
 			( FoundTypeError = yes
 			; FoundPostTypecheckError = yes
-			; FoundTypeclassError = yes
 			)
 		->
 			%
@@ -2092,8 +2099,7 @@ mercury_compile__frontend_pass_no_type_error(QualInfo0,
 			% if our job was to write out the `.opt' file,
 			% then we're done
 			( MakeOptInt = yes ->
-				bool__or(FoundTypeError, FoundTypeclassError,
-					!:FoundError)
+				true
 			;
 				%
 				% Now go ahead and do the rest of mode checking
@@ -2101,9 +2107,8 @@ mercury_compile__frontend_pass_no_type_error(QualInfo0,
 				%
 				mercury_compile__frontend_pass_by_phases(!HLDS,
 					FoundModeOrDetError, !IO),
-				!:FoundError = FoundTypeError
+				!:FoundError = !.FoundError
 					`or` FoundModeOrDetError
-					`or` FoundTypeclassError
 			)
 		)
 	).

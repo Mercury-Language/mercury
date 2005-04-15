@@ -92,6 +92,14 @@
 :- func component_list_to_pieces(list(format_component)) =
 	list(format_component).
 
+	% choose_number(List, Singular, Plural) = Form
+	%
+	% Choose between a singular version and a plural version of something,
+	% based on the length of a list.  Chooses the plural if the list is
+	% empty.
+	%
+:- func choose_number(list(T), U, U) = U.
+
 	% Display the given error message, without a context and with standard
 	% indentation.
 :- pred write_error_pieces_plain(list(format_component)::in,
@@ -223,6 +231,10 @@ component_list_to_pieces(
 	list__append(append_punctuation([Component1], ','),
 		component_list_to_pieces(
 			[Component2, Component3 | Components])).
+
+choose_number([], _Singular, Plural) = Plural.
+choose_number([_], Singular, _Plural) = Singular.
+choose_number([_, _ | _], _Singular, Plural) = Plural.
 
 write_error_pieces_plain(Components, !IO) :-
 	write_error_pieces_maybe_with_context(yes, no, 0, Components, !IO).

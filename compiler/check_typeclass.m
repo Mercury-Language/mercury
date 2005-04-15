@@ -70,6 +70,7 @@
 :- import_module check_hlds__type_util.
 :- import_module hlds__hlds_code_util.
 :- import_module hlds__hlds_data.
+:- import_module hlds__hlds_error_util.
 :- import_module hlds__hlds_goal.
 :- import_module hlds__hlds_out.
 :- import_module hlds__hlds_pred.
@@ -102,10 +103,13 @@
 check_typeclass__check_typeclasses(!QualInfo, !ModuleInfo, FoundError, !IO) :-
 	check_typeclass__check_instance_decls(!QualInfo, !ModuleInfo,
 		FoundInstanceError, !IO),
- 	check_for_missing_concrete_instances(!ModuleInfo, !IO),
+ 	check_for_missing_concrete_instances(!ModuleInfo, FoundMissingError,
+		!IO),
 	module_info_classes(!.ModuleInfo, ClassTable),
 	check_for_cyclic_classes(ClassTable, FoundCycleError, !IO),
-	FoundError = bool.or(FoundInstanceError, FoundCycleError).
+	check_constraint_quant(!ModuleInfo, FoundQuantError, !IO),
+	FoundError = bool.or_list([FoundInstanceError, FoundMissingError,
+		FoundCycleError, FoundQuantError]).
 
 %---------------------------------------------------------------------------%
 
@@ -929,9 +933,9 @@ constraint_list_to_string_2(VarSet, [C | Cs], String) :-
 %
 
 :- pred check_for_missing_concrete_instances(
-	module_info::in, module_info::out, io::di, io::uo) is det.
+	module_info::in, module_info::out, bool::out, io::di, io::uo) is det.
 
-check_for_missing_concrete_instances(!ModuleInfo, !IO) :-
+check_for_missing_concrete_instances(!ModuleInfo, FoundError, !IO) :-
 	module_info_instances(!.ModuleInfo, InstanceTable),
 	%
 	% Grab all the abstract instance declarations in the interface
@@ -940,8 +944,8 @@ check_for_missing_concrete_instances(!ModuleInfo, !IO) :-
 	%
 	gather_abstract_and_concrete_instances(InstanceTable,
 		AbstractInstances, ConcreteInstances),
-	map.foldl(check_for_corresponding_instances(ConcreteInstances),
-		AbstractInstances, !IO).
+	map.foldl2(check_for_corresponding_instances(ConcreteInstances),
+		AbstractInstances, no, FoundError, !IO).
 
 	% gather_abstract_and_concrete_instances(Table,
 	% 	AbstractInstances, ConcreteInstances).
@@ -1006,17 +1010,19 @@ partition_instances_for_class_2(ClassId, InstanceDefn, !Abstracts,
 	).
 
 :- pred check_for_corresponding_instances(instance_table::in,
-	class_id::in, list(hlds_instance_defn)::in, io::di, io::uo) is det.
+	class_id::in, list(hlds_instance_defn)::in, bool::in, bool::out,
+	io::di, io::uo) is det.
 
-check_for_corresponding_instances(Concretes, ClassId, InstanceDefns, !IO) :-
-	list.foldl(check_for_corresponding_instances_2(Concretes, ClassId),
-		InstanceDefns, !IO).
+check_for_corresponding_instances(Concretes, ClassId, InstanceDefns,
+		!FoundError, !IO) :-
+	list.foldl2(check_for_corresponding_instances_2(Concretes, ClassId),
+		InstanceDefns, !FoundError, !IO).
 
 :- pred check_for_corresponding_instances_2(instance_table::in, class_id::in,
-	hlds_instance_defn::in, io::di, io::uo) is det.
+	hlds_instance_defn::in, bool::in, bool::out, io::di, io::uo) is det.
 
 check_for_corresponding_instances_2(Concretes, ClassId, AbstractInstance,
-		!IO) :- 
+		!FoundError, !IO) :- 
 	AbstractTypes = AbstractInstance ^ instance_types,
 	( multi_map.search(Concretes, ClassId, ConcreteInstances) ->		
 		(
@@ -1054,6 +1060,7 @@ check_for_corresponding_instances_2(Concretes, ClassId, AbstractInstance,
 		AbstractInstanceContext = AbstractInstance ^ instance_context,
 		write_error_pieces(AbstractInstanceContext, 0, ErrorPieces,
 			!IO),
+		!:FoundError = yes,
 		io.set_exit_status(1, !IO)	
 	;
 		MissingConcreteError = no
@@ -1166,6 +1173,92 @@ report_cyclic_classes(ClassTable, ClassPath, !IO) :-
 add_path_element(class_id(Name, Arity), RevPieces0) =
 	[sym_name_and_arity(Name/Arity), words("<=") | RevPieces0].
 
+
+%---------------------------------------------------------------------------%
+%
+% Check that all types appearing in universal (existential) constraints are
+% universally (existentially) quantified.
+%
+
+:- pred check_constraint_quant(module_info::in, module_info::out,
+	bool::out, io::di, io::uo) is det.
+
+check_constraint_quant(!ModuleInfo, FoundError, !IO) :-
+	module_info_predids(!.ModuleInfo, PredIds),
+	list.foldl3(check_constraint_quant_2, PredIds, !ModuleInfo,
+		no, FoundError, !IO).
+
+:- pred check_constraint_quant_2(pred_id::in,
+	module_info::in, module_info::out, bool::in, bool::out,
+	io::di, io::uo) is det.
+
+check_constraint_quant_2(PredId, !ModuleInfo, !FoundError, !IO) :-
+	module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
+	pred_info_get_exist_quant_tvars(PredInfo, ExistQVars),
+	pred_info_get_class_context(PredInfo, Constraints),
+	Constraints = constraints(UnivCs, ExistCs),
+	prog_type.constraint_list_get_tvars(UnivCs, UnivTVars),
+	solutions((pred(V::out) is nondet :-
+			list.member(V, UnivTVars),
+			list.member(V, ExistQVars)
+		), BadUnivTVars),
+	maybe_report_badly_quantified_vars(PredInfo, universal_constraint,
+		BadUnivTVars, !ModuleInfo, !FoundError, !IO),
+	prog_type.constraint_list_get_tvars(ExistCs, ExistTVars),
+	list.delete_elems(ExistTVars, ExistQVars, BadExistTVars),
+	maybe_report_badly_quantified_vars(PredInfo, existential_constraint,
+		BadExistTVars, !ModuleInfo, !FoundError, !IO).
+
+:- type quant_error_type
+	--->	universal_constraint
+	;	existential_constraint.
+
+:- pred maybe_report_badly_quantified_vars(pred_info::in, quant_error_type::in,
+	list(tvar)::in, module_info::in, module_info::out,
+	bool::in, bool::out, io::di, io::uo) is det.
+
+maybe_report_badly_quantified_vars(PredInfo, QuantErrorType, TVars,
+		!ModuleInfo, !FoundError, !IO) :-
+	(
+		TVars = []
+	;
+		TVars = [_ | _],
+		report_badly_quantified_vars(PredInfo, QuantErrorType, TVars,
+			!IO),
+		module_info_incr_errors(!ModuleInfo),
+		!:FoundError = yes,
+		io.set_exit_status(1, !IO)
+	).
+
+:- pred report_badly_quantified_vars(pred_info::in, quant_error_type::in,
+	list(tvar)::in, io::di, io::uo) is det.
+
+report_badly_quantified_vars(PredInfo, QuantErrorType, TVars, !IO) :-
+	pred_info_typevarset(PredInfo, TVarSet),
+	pred_info_context(PredInfo, Context),
+
+	InDeclaration = [words("In declaration of")] ++
+		describe_one_pred_info_name(should_module_qualify, PredInfo) ++
+		[suffix(":")],
+	TypeVariables = [words("type variable"),
+			suffix(choose_number(TVars, "", "s"))],
+	TVarsStrs = list.map((func(V) = mercury_var_to_string(V, TVarSet, no)),
+			TVars),
+	TVarsPart = list_to_pieces(TVarsStrs),
+	Are = words(choose_number(TVars, "is", "are")),
+	(
+		QuantErrorType = universal_constraint,
+		BlahConstrained = words("universally constrained"),
+		BlahQuantified = words("existentially quantified")
+	;
+		QuantErrorType = existential_constraint,
+		BlahConstrained = words("existentially constrained"),
+		BlahQuantified = words("universally quantified")
+	),
+	Pieces = InDeclaration ++ TypeVariables ++ TVarsPart ++
+		[Are, BlahConstrained, suffix(","), words("but"), Are,
+		BlahQuantified, suffix(".")],
+	write_error_pieces(Context, 0, Pieces, !IO).
 
 %---------------------------------------------------------------------------%
 
