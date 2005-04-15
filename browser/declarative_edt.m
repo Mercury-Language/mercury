@@ -49,6 +49,10 @@
 % case the duplicate events might not have been included in the ancestor's
 % weights, so should be added.
 %
+% When debugging, a search space consistency check can be turned on by
+% compiling with the C macro MR_DD_CHECK_SEARCH_SPACE defined (i.e. by
+% putting "EXTRA_CFLAGS=-DMR_DD_CHECK_SEARCH_SPACE" in Mmake.browser.params).
+%
 
 :- module mdb.declarative_edt.
 
@@ -487,12 +491,13 @@
 :- pred revise_root(S::in, search_space(T)::in, search_space(T)::out) 
 	is det <= mercury_edt(S, T).
 
-	% Check the consistency of the search space and throw an exception
+	% Check the consistency of the search space if the
+	% MR_DD_CHECK_SEARCH_SPACE C macro is defined.  Throw an exception
 	% if it's not consistent.  Used for assertion checking during
 	% debugging.
 	%
-:- pred check_search_space_consistency(S::in, search_space(T)::in, string::in) 
-	is det <= mercury_edt(S, T).
+:- pred maybe_check_search_space_consistency(S::in, search_space(T)::in,
+	string::in) is det <= mercury_edt(S, T).
 
 	% Return the proc_label for the given suspect.
 	%
@@ -1127,6 +1132,18 @@ force_propagate_status_downwards(Status, StopStatusSet, SuspectId,
 		StopSuspects = []
 	).
 
+maybe_check_search_space_consistency(Store, SearchSpace, Context) :-
+	(
+		should_check_search_space_consistency
+	->
+		check_search_space_consistency(Store, SearchSpace, Context)
+	;
+		true
+	).
+
+:- pred check_search_space_consistency(S::in, search_space(T)::in,
+	string::in) is det <= mercury_edt(S, T).
+
 check_search_space_consistency(Store, SearchSpace, Context) :-
 	(
 		find_inconsistency_in_weights(Store, SearchSpace, Message)
@@ -1136,6 +1153,19 @@ check_search_space_consistency(Store, SearchSpace, Context) :-
 	;
 		true
 	).
+
+:- pred should_check_search_space_consistency is semidet.
+
+:- pragma foreign_proc("C", 
+	should_check_search_space_consistency, 
+	[will_not_call_mercury, promise_pure, thread_safe],
+"
+	#ifdef MR_DD_CHECK_SEARCH_SPACE
+		SUCCESS_INDICATOR = MR_TRUE;
+	#else
+		SUCCESS_INDICATOR = MR_FALSE;
+	#endif
+").
 
 	% Calculate the weight of a suspect based on the weights of its
 	% children.  If the node is correct or inadmissible then the weight is

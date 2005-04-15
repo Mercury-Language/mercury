@@ -465,10 +465,7 @@ revise_analysis(Store, Response, !Analyser) :-
 	is det <= mercury_edt(S, T).
 
 decide_analyser_response(Store, Response, !Analyser) :-
-	% Do a sanity check before the search.  So we can determine afterwards
-	% if the search corrupted the search space at all.
-	% XXX this should be removed at some stage as it's relatively slow.
-	check_search_space_consistency(Store, !.Analyser ^ search_space,
+	maybe_check_search_space_consistency(Store, !.Analyser ^ search_space,
 		"Start of decide_analyser_response"),
 	some [!SearchSpace] (
 		!:SearchSpace = !.Analyser ^ search_space,
@@ -494,10 +491,7 @@ decide_analyser_response(Store, Response, !Analyser) :-
 				!Analyser, Response)
 		)
 	),
-	% Do a sanity check after the search to determine if the search 
-	% corrupted the search space at all. 
-	% XXX this should be removed at some stage as it's relatively slow.
-	check_search_space_consistency(Store, !.Analyser ^ search_space,
+	maybe_check_search_space_consistency(Store, !.Analyser ^ search_space,
 		"End of decide_analyser_response").
 
 :- pred handle_search_response(S::in, search_response::in, 
