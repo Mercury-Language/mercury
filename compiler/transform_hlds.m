@@ -38,22 +38,18 @@
    :- include_module term_errors.
    :- include_module term_norm.
    :- include_module term_util.
-   :- include_module lp. % this could alternatively go in the `libs' module
 
 :- include_module term_constr_main.
-    	%
-		% The termination analyser.
-		%
-	:- include_module term_constr_initial.
+    :- include_module term_constr_initial.
 		% Pass 1.
-	:- include_module term_constr_build.
-	:- include_module term_constr_fixpoint.
+    :- include_module term_constr_build.
+    :- include_module term_constr_fixpoint.
 		% Pass 2.
-	:- include_module term_constr_pass2.	
+    :- include_module term_constr_pass2.	
 		% Other bits.
-	:- include_module term_constr_util. 
-	:- include_module term_constr_data.
-	:- include_module term_constr_errors.
+    :- include_module term_constr_util. 
+    :- include_module term_constr_data.
+    :- include_module term_constr_errors.
 
 :- include_module post_term_analysis.
 :- include_module exception_analysis.

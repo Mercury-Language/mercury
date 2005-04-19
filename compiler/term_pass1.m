@@ -59,10 +59,9 @@
 :- import_module check_hlds__type_util.
 :- import_module hlds__hlds_data.
 :- import_module hlds__hlds_goal.
+:- import_module libs__lp.
 :- import_module parse_tree__error_util.
 :- import_module parse_tree__prog_data.
-:- import_module transform_hlds__lp.
-:- import_module transform_hlds__term_errors.
 :- import_module transform_hlds__term_traversal.
 
 :- import_module bag.

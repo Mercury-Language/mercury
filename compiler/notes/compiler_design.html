@@ -823,11 +823,6 @@ and contains utility predicates.
 <li>
 post_term_analysis.m contains error checking routines and optimizations
 that depend upon the information obtained by termination analysis.
-<li>
-lp.m is used by term_pass1.m. It implements the Linear Programming
-algorithm for optimizing a set of linear constraints with respect to
-a linear cost function.  (XXX Perhaps this should be put in the libs.m
-package rather than the check_hlds.m package.)
 </ul>
 
 <p>
@@ -1573,6 +1568,11 @@ The following modules are part of the libs.m package.
 		Used by the LLDS, RL, and IL back-ends for collecting
 		together the different fragments of the generated code.
 
+	<dt> lp.m
+		<dd>
+		Implements the linear programming algorithm for optimizing
+		a set of linear constraints with respect to a linear
+		cost function.  This is used by termination analyser.
 	</dl>
 
 <hr>
@@ -1607,6 +1607,6 @@ The following modules are part of the libs.m package.
 <hr>
 <!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
 
-Last update was $Date: 2005-03-31 04:44:24 $ by $Author: zs $@cs.mu.oz.au. <br>
+Last update was $Date: 2005-04-19 02:47:16 $ by $Author: juliensf $@cs.mu.oz.au. <br>
 </body>
 </html>

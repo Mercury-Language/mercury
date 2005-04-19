@@ -26,7 +26,8 @@
 :- include_module process_util.
 :- include_module timestamp.
 
-% Constraint machinery for the termination analyser.
+% Constraint machinery for the termination analysers.
+:- include_module lp.
 :- include_module lp_rational.
 :- include_module polyhedron.
 :- include_module rat.
