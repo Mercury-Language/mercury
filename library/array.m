@@ -1245,7 +1245,7 @@ array(List) = Array :-
 array__from_list([], Array) :-
 	array__make_empty_array(Array).
 array__from_list(List, Array) :-
-	List = [ Head | Tail ],
+	List = [Head | Tail],
 	list__length(List, Len),
 	array__init(Len, Head, Array0),
 	array__insert_items(Tail, 1, Array0, Array).
