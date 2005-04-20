@@ -147,6 +147,7 @@
 
 	;	typeclass(
 			tc_constraints		:: list(prog_constraint),
+			tc_fundeps		:: list(prog_fundep),
 			tc_class_name		:: class_name,
 			tc_class_params		:: list(tvar),
 			tc_class_methods	:: class_interface,
@@ -824,6 +825,7 @@
 	% expected semantics.
 	% (This invariant now applies to all types, but is
 	% especially important here.)
+	%
 :- type prog_constraint
 	--->	constraint(
 			class_name,
@@ -840,6 +842,18 @@
 						% constraints
 		).
 
+	% A functional dependency on the variables in the head of a class
+	% declaration.  This asserts that, given the complete set of
+	% instances of this class, the binding of the range variables
+	% can be uniquely determined from the binding of the domain
+	% variables.
+	%
+:- type prog_fundep
+	--->	fundep(
+			domain			:: list(tvar),
+			range			:: list(tvar)
+		).
+
 :- type class_name == sym_name.
 :- type class_id
 	--->	class_id(class_name, arity).
@@ -853,12 +867,14 @@
 	% that occurs in the body of a type class definition.
 	% Such declarations may either declare class methods,
 	% or they may declare modes of class methods.
+	%
 :- type class_method
 		% pred_or_func(...) here represents a `pred ...' or `func ...'
 		% declaration in a type class body, which declares
 		% a predicate or function method.  Such declarations
 		% specify the type of the predicate or function,
 		% and may optionally also specify the mode and determinism.
+		%
 	--->	pred_or_func(
 			tvarset,		% type variables
 			inst_varset,		% inst variables
@@ -881,6 +897,7 @@
 		% pred_or_func_mode(...) here represents a `mode ...'
 		% declaration in a type class body.  Such a declaration
 		% declares a mode for one of the type class methods.
+		%
 	; 	pred_or_func_mode(
 			inst_varset,		% inst variables
 			maybe(pred_or_func),	% whether the method is a pred

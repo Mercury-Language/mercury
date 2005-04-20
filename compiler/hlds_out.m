@@ -3420,8 +3420,8 @@ hlds_out__write_class_defn(Indent, ClassId - ClassDefn, !IO) :-
 	hlds_out__write_class_id(ClassId, !IO),
 	io__write_string(":\n", !IO),
 
-	ClassDefn = hlds_class_defn(_, Constraints, Vars, _, Interface,
-		VarSet, Context),
+	ClassDefn = hlds_class_defn(_, Constraints, FunDeps, _, Vars, _,
+		Interface, VarSet, Context),
 
 	term__context_file(Context, FileName),
 	term__context_line(Context, LineNumber),
@@ -3449,6 +3449,11 @@ hlds_out__write_class_defn(Indent, ClassId - ClassDefn, !IO) :-
 	io__nl(!IO),
 
 	hlds_out__write_indent(Indent, !IO),
+	io__write_string("% Functional dependencies: ", !IO),
+	io__write_list(FunDeps, ", ", hlds_output_fundep, !IO),
+	io__nl(!IO),
+
+	hlds_out__write_indent(Indent, !IO),
 	io__write_string("% Constraints: ", !IO),
 	io__write_list(Constraints, ", ",
 		mercury_output_constraint(VarSet, AppendVarNums), !IO),
@@ -3458,6 +3463,28 @@ hlds_out__write_class_defn(Indent, ClassId - ClassDefn, !IO) :-
 	io__write_string("% Class Methods: ", !IO),
 	io__write_list(Interface, ", ", hlds_out__write_class_proc, !IO),
 	io__nl(!IO).
+
+:- pred hlds_output_fundep(hlds_class_fundep::in, io::di, io::uo) is det.
+
+hlds_output_fundep(fundep(Domain, Range), !IO) :-
+	hlds_output_fundep_2(Domain, !IO),
+	io.write_string(" >> ", !IO),
+	hlds_output_fundep_2(Range, !IO).
+
+:- pred hlds_output_fundep_2(set(hlds_class_argpos)::in, io::di, io::uo)
+	is det.
+
+hlds_output_fundep_2(ArgNumSet, !IO) :-
+	ArgNumList = set.to_sorted_list(ArgNumSet),
+	(
+		ArgNumList = [ArgNum]
+	->
+		io.write_int(ArgNum, !IO)
+	;
+		io.write_char('{', !IO),
+		io.write_list(ArgNumList, ", ", io.write_int, !IO),
+		io.write_char('}', !IO)
+	).
 
 	% Just output the class methods as pred_ids and proc_ids because
 	% its probably not that useful to have the names. If that information
@@ -3999,10 +4026,10 @@ write_constraint_map_2(Indent, VarSet, AppendVarNums, ConstraintId,
 hlds_out__write_constraint_id(ConstraintId, !IO) :-
 	ConstraintId = constraint_id(ConstraintType, GoalPath, N),
 	(
-		ConstraintType = existential,
+		ConstraintType = assumed,
 		io__write_string("(E, ", !IO)
 	;
-		ConstraintType = universal,
+		ConstraintType = unproven,
 		io__write_string("(A, ", !IO)
 	),
 	goal_path_to_string(GoalPath, GoalPathStr),

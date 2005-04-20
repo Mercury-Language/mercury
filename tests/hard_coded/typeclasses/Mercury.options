@@ -8,6 +8,7 @@ MCFLAGS-inference_test_2 = --infer-all
 MCFLAGS-intermod_typeclass_bug = --intermodule-optimization
 MCFLAGS-intermod_typeclass_bug2 = --intermodule-optimization
 MCFLAGS-lambda_multi_constraint_same_tvar = --infer-all
+MCFLAGS-no_fundep_infer = --infer-all
 
 	# Check that the exported specialized versions are still created.
 MCFLAGS-type_spec_2 = --no-user-guided-type-specialization

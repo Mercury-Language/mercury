@@ -1,0 +1,4 @@
+mpj3.m:019: Inconsistent instance declaration for typeclass `mpj3.coll'/2 with
+mpj3.m:019:   functional dependency `(C -> E)'.
+mpj3.m:017: Here is the conflicting instance.
+For more information, try recompiling with `-E'.

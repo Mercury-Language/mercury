@@ -159,9 +159,7 @@ base_typeclass_info__gen_superclass_count(ClassId, ModuleInfo,
 		NumSuperClasses, ClassArity) :-
 	module_info_classes(ModuleInfo, ClassTable),
 	map__lookup(ClassTable, ClassId, ClassDefn),
-	ClassDefn = hlds_class_defn(_, SuperClassConstraints, ClassVars,
-		_, _, _, _),
-	list__length(SuperClassConstraints, NumSuperClasses),
-	list__length(ClassVars, ClassArity).
+	list__length(ClassDefn ^ class_supers, NumSuperClasses),
+	list__length(ClassDefn ^ class_vars, ClassArity).
 
 %----------------------------------------------------------------------------%

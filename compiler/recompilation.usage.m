@@ -996,8 +996,8 @@ recompilation__usage__find_items_used_by_item((typeclass), ClassItemId,
 	ModuleInfo = !.Info ^ module_info,
 	module_info_classes(ModuleInfo, Classes),
 	map__lookup(Classes, ClassId, ClassDefn),
-	ClassDefn = hlds_class_defn(_, Constraints, _, ClassInterface,
-		_, _, _),
+	Constraints = ClassDefn ^ class_supers,
+	ClassInterface = ClassDefn ^ class_interface,
 	recompilation__usage__find_items_used_by_class_constraints(
 		Constraints, !Info),
 	(

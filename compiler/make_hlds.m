@@ -484,9 +484,9 @@ add_item_decl_pass_1(Item, _, !Status, !ModuleInfo, no, !IO) :-
     Item = nothing(_).
 
 add_item_decl_pass_1(Item, Context, !Status, !ModuleInfo, no, !IO) :-
-    Item = typeclass(Constraints, Name, Vars, Interface, VarSet),
-    module_add_class_defn(Constraints, Name, Vars, Interface, VarSet, Context,
-        !.Status, !ModuleInfo, !IO).
+    Item = typeclass(Constraints, FunDeps, Name, Vars, Interface, VarSet),
+	module_add_class_defn(Constraints, FunDeps, Name, Vars, Interface,
+		VarSet, Context, !.Status, !ModuleInfo, !IO).
 
     % We add instance declarations on the second pass so that we don't add
     % an instance declaration before its class declaration.
@@ -927,7 +927,7 @@ add_item_decl_pass_2(Item, _, !Status, !ModuleInfo, !IO) :-
 add_item_decl_pass_2(Item, _, !Status, !ModuleInfo, !IO) :-
     Item = nothing(_).
 add_item_decl_pass_2(Item, _, !Status, !ModuleInfo, !IO) :-
-    Item = typeclass(_, _, _, _, _).
+    Item = typeclass(_, _, _, _, _, _).
 add_item_decl_pass_2(Item, Context, !Status, !ModuleInfo, !IO) :-
     Item = instance(Constraints, Name, Types, Body, VarSet,
         InstanceModuleName),
@@ -1170,8 +1170,8 @@ add_item_clause(promise(PromiseType, Goal, VarSet, UnivVars),
         !.Status, !ModuleInfo, !QualInfo, !IO).
 
 add_item_clause(nothing(_), !Status, _, !ModuleInfo, !QualInfo, !IO).
-add_item_clause(typeclass(_, _, _, _, _), !Status, _, !ModuleInfo, !QualInfo,
-    !IO).
+add_item_clause(typeclass(_, _, _, _, _, _), !Status, _, !ModuleInfo,
+    !QualInfo, !IO).
 add_item_clause(instance(_, _, _, _, _, _), !Status, _, !ModuleInfo, !QualInfo,
     !IO).
 
@@ -3427,13 +3427,13 @@ module_add_pred_or_func(TypeVarSet, InstVarSet, ExistQVars,
         MaybePredProcId = no
     ).
 
-:- pred module_add_class_defn(list(prog_constraint)::in, sym_name::in,
-    list(tvar)::in, class_interface::in, tvarset::in, prog_context::in,
-    item_status::in, module_info::in, module_info::out,
-    io::di, io::uo) is det.
+:- pred module_add_class_defn(list(prog_constraint)::in,
+    list(prog_fundep)::in, sym_name::in, list(tvar)::in, class_interface::in,
+    tvarset::in, prog_context::in, item_status::in,
+    module_info::in, module_info::out, io::di, io::uo) is det.
 
-module_add_class_defn(Constraints, Name, Vars, Interface, VarSet, Context,
-        Status, !ModuleInfo, !IO) :-
+module_add_class_defn(Constraints, FunDeps, Name, Vars, Interface, VarSet,
+        Context, Status, !ModuleInfo, !IO) :-
     module_info_classes(!.ModuleInfo, Classes0),
     module_info_superclasses(!.ModuleInfo, SuperClasses0),
     list__length(Vars, ClassArity),
@@ -3444,13 +3444,15 @@ module_add_class_defn(Constraints, Name, Vars, Interface, VarSet, Context,
     ;
         ImportStatus1 = ImportStatus0
     ),
+    HLDSFunDeps = list__map(make_hlds_fundep(Vars), FunDeps),
     (
         % the typeclass is exported if *any* occurrence is exported,
         % even a previous abstract occurrence
         map__search(Classes0, ClassId, OldDefn)
     ->
-        OldDefn = hlds_class_defn(OldStatus, OldConstraints, OldVars,
-            OldInterface, OldMethods, OldVarSet, OldContext),
+        OldDefn = hlds_class_defn(OldStatus, OldConstraints, OldFunDeps,
+            _OldAncestors, OldVars, OldInterface, OldMethods, OldVarSet,
+            OldContext),
         combine_status(ImportStatus1, OldStatus, ImportStatus),
         (
             OldInterface = concrete(_),
@@ -3467,10 +3469,22 @@ module_add_class_defn(Constraints, Name, Vars, Interface, VarSet, Context,
         ->
             % Always report the error, even in `.opt' files.
             DummyStatus = local,
-            multiple_def_error(DummyStatus, Name, ClassArity,
-                "typeclass", Context, OldContext, _, !IO),
+            multiple_def_error(DummyStatus, Name, ClassArity, "typeclass",
+                Context, OldContext, _, !IO),
             prog_out__write_context(Context, !IO),
             io__write_string("  The superclass constraints do not match.\n",
+                !IO),
+            io__set_exit_status(1, !IO),
+            ErrorOrPrevDef = yes
+        ;
+            \+ class_fundeps_are_identical(OldFunDeps, HLDSFunDeps)
+        ->
+            % Always report the error, even in `.opt' files.
+            DummyStatus = local,
+            multiple_def_error(DummyStatus, Name, ClassArity, "typeclass",
+                Context, OldContext, _, !IO),
+            prog_out__write_context(Context, !IO),
+            io__write_string("  The functional dependencies do not match.\n",
                 !IO),
             io__set_exit_status(1, !IO),
             ErrorOrPrevDef = yes
@@ -3517,8 +3531,10 @@ module_add_class_defn(Constraints, Name, Vars, Interface, VarSet, Context,
             ClassMethods = ClassMethods0
         ),
 
-        Defn = hlds_class_defn(ImportStatus, Constraints, Vars,
-            ClassInterface, ClassMethods, VarSet, Context),
+        % Ancestors is not set until check_typeclass.
+        Ancestors = [],
+        Defn = hlds_class_defn(ImportStatus, Constraints, HLDSFunDeps,
+            Ancestors, Vars, ClassInterface, ClassMethods, VarSet, Context),
         map__set(Classes0, ClassId, Defn, Classes),
         module_info_set_classes(Classes, !ModuleInfo),
 
@@ -3540,6 +3556,32 @@ module_add_class_defn(Constraints, Name, Vars, Interface, VarSet, Context,
         true
     ).
 
+:- func make_hlds_fundep(list(tvar), prog_fundep) = hlds_class_fundep.
+
+make_hlds_fundep(TVars, fundep(Domain0, Range0)) = fundep(Domain, Range) :-
+	Domain = make_hlds_fundep_2(TVars, Domain0),
+	Range = make_hlds_fundep_2(TVars, Range0).
+
+:- func make_hlds_fundep_2(list(tvar), list(tvar)) = set(hlds_class_argpos).
+
+make_hlds_fundep_2(TVars, List) = list.foldl(Func, List, set.init) :-
+	Func = (func(TVar, Set0) = set.insert(Set0, N) :-
+		N = get_list_index(TVars, 1, TVar)
+	).
+
+:- func get_list_index(list(T), hlds_class_argpos, T) = hlds_class_argpos.
+
+get_list_index([], _, _) = _ :-
+	error("get_list_index: element not found").
+get_list_index([E | Es], N, X) =
+	(
+		X = E
+	->
+		N
+	;
+		get_list_index(Es, N + 1, X)
+	).
+
 :- pred superclass_constraints_are_identical(list(tvar)::in, tvarset::in,
     list(prog_constraint)::in, list(tvar)::in, tvarset::in,
     list(prog_constraint)::in) is semidet.
@@ -3555,6 +3597,17 @@ superclass_constraints_are_identical(OldVars0, OldVarSet, OldConstraints0,
     apply_variable_renaming_to_prog_constraint_list(VarRenaming,
         OldConstraints1, OldConstraints),
     OldConstraints = Constraints.
+
+:- pred class_fundeps_are_identical(hlds_class_fundeps::in,
+	hlds_class_fundeps::in) is semidet.
+
+class_fundeps_are_identical(OldFunDeps0, FunDeps0) :-
+	% Allow for the functional dependencies to be in a different order.
+	% we rely on the fact that sets (ordered lists) have a canonical
+	% representation.
+	sort_and_remove_dups(OldFunDeps0, OldFunDeps),
+	sort_and_remove_dups(FunDeps0, FunDeps),
+	OldFunDeps = FunDeps.
 
 :- pred module_add_class_interface(sym_name::in, list(tvar)::in,
     list(class_method)::in, item_status::in,
@@ -3786,8 +3839,6 @@ add_new_pred(TVarSet, ExistQVars, PredName, Types, Purity, ClassContext,
     ;
         Status = ItemStatus
     ),
-    check_tvars_in_constraints(ClassContext, Types, TVarSet, PredOrFunc,
-        PredName, Context, !ModuleInfo, !IO),
     module_info_name(!.ModuleInfo, ModuleName),
     list__length(Types, Arity),
     (
@@ -3842,88 +3893,6 @@ add_new_pred(TVarSet, ExistQVars, PredName, Types, Purity, ClassContext,
             module_info_set_predicate_table(PredTable, !ModuleInfo)
         )
     ).
-
-%-----------------------------------------------------------------------------%
-
-    %
-    % check for type variables which occur in the the class constraints,
-    % but which don't occur in the predicate argument types
-    %
-:- pred check_tvars_in_constraints(prog_constraints::in, list(type)::in,
-    tvarset::in, pred_or_func::in, sym_name::in, prog_context::in,
-    module_info::in, module_info::out, io::di, io::uo) is det.
-
-check_tvars_in_constraints(ClassContext, ArgTypes, TVarSet,
-        PredOrFunc, PredName, Context, !ModuleInfo, !IO) :-
-    solutions(constrained_tvar_not_in_arg_types(ClassContext, ArgTypes),
-        UnboundTVars),
-    (
-        UnboundTVars = []
-    ;
-        UnboundTVars = [_ | _],
-        module_info_incr_errors(!ModuleInfo),
-        report_unbound_tvars_in_class_context(UnboundTVars, ArgTypes,
-            TVarSet, PredOrFunc, PredName, Context, !IO)
-    ).
-
-:- pred constrained_tvar_not_in_arg_types(prog_constraints::in, list(type)::in,
-    tvar::out) is nondet.
-
-constrained_tvar_not_in_arg_types(ClassContext, ArgTypes, TVar) :-
-    ClassContext = constraints(UnivCs, ExistCs),
-    ( Constraints = UnivCs ; Constraints = ExistCs ),
-    prog_type__constraint_list_get_tvars(Constraints, TVars),
-    list__member(TVar, TVars),
-    \+ term__contains_var_list(ArgTypes, TVar).
-
-:- pred report_unbound_tvars_in_class_context(list(tvar)::in, list(type)::in,
-    tvarset::in, pred_or_func::in, sym_name::in, prog_context::in,
-    io::di, io::uo) is det.
-
-% The error message is intended to look like this:
-%
-% very_long_module_name:001: In declaration for function `long_function/2':
-% very_long_module_name:001:   error in type class constraints: type variables
-% very_long_module_name:001:   `T1, T2, T3' occur only in the constraints,
-% very_long_module_name:001:   not in the function's argument or result types.
-%
-% very_long_module_name:002: In declaration for predicate `long_predicate/3':
-% very_long_module_name:002:   error in type class constraints: type variable
-% very_long_module_name:002:   `T' occurs only in the constraints,
-% very_long_module_name:002:   not in the predicate's argument types.
-
-report_unbound_tvars_in_class_context(UnboundTVars, ArgTypes, TVarSet,
-        PredOrFunc, PredName, Context, !IO) :-
-    list__length(ArgTypes, Arity),
-    Part1 = [words("In declaration for"),
-        words(simple_call_id_to_string(PredOrFunc, PredName, Arity)),
-        suffix(":"), nl,
-        words("error in type class constraints:")],
-    (
-        UnboundTVars = [],
-        error("report_unbound_tvars_in_class_context: no type vars")
-    ;
-        UnboundTVars = [TVar],
-        Part2 = [words("type variable"),
-            words("`" ++ mercury_var_to_string(TVar, TVarSet, no) ++ "'"),
-            words("occurs")]
-    ;
-        UnboundTVars = [_, _ | _],
-        Part2 = [words("type variable"),
-            words("`" ++ mercury_vars_to_string(UnboundTVars, TVarSet, no)
-                ++ "'"),
-            words("occur")]
-    ),
-    Part3 = [words("only in the constraints, not in the")],
-    (
-        PredOrFunc = predicate,
-        Part4 = [words("predicate's argument types.")]
-    ;
-        PredOrFunc = function,
-        Part4 = [words("function's argument or result types.")]
-    ),
-    write_error_pieces(Context, 0, Part1 ++ Part2 ++ Part3 ++ Part4, !IO),
-    io__set_exit_status(1, !IO).
 
 %-----------------------------------------------------------------------------%
 

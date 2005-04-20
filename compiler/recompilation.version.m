@@ -229,7 +229,7 @@ distribute_pragma_items_class_items(MaybePredOrFunc, SymName, Arity,
 		% Does this pragma match any of the methods
 		% of this class.
 		list__member(_ - ClassItem, !.ClassItems),
-		ClassItem = typeclass(_, _, _, Interface, _) - _,
+		ClassItem = typeclass(_, _, _, _, Interface, _) - _,
 		Interface = concrete(Methods),
 		list__member(Method, Methods),
 		Method = pred_or_func(_, _, _, MethodPredOrFunc, SymName,
@@ -451,15 +451,12 @@ recompilation__version__add_gathered_item_2(Item, ItemType, NameArity,
 			Section - (PredOrFuncModeItem - ItemContext)
 			| MatchingItems0]
 	;
-		Item = typeclass(Constraints, ClassName, ClassArgs,
-			ClassInterface0, ClassTVarSet),
-		ClassInterface0 = concrete(Methods0)
+		Item ^ tc_class_methods = concrete(Methods0)
 	->
 		MethodsList = list__map(
 			split_class_method_types_and_modes, Methods0),
 		list__condense(MethodsList, Methods),
-		TypeclassItem = typeclass(Constraints, ClassName, ClassArgs,
-			concrete(Methods), ClassTVarSet),
+		TypeclassItem = Item ^ tc_class_methods := concrete(Methods),
 		MatchingItems = [Section - (TypeclassItem - ItemContext)
 			| MatchingItems0]
 	;
@@ -572,7 +569,7 @@ item_to_item_id_2(Item, ItemId) :-
 item_to_item_id_2(pragma(_), no).
 item_to_item_id_2(promise(_, _, _, _), no).
 item_to_item_id_2(Item, yes(item_id((typeclass), ClassName - ClassArity))) :-
-	Item = typeclass(_, ClassName, ClassVars, _, _),
+	Item = typeclass(_, _, ClassName, ClassVars, _, _),
 	list__length(ClassVars, ClassArity).
 
 	% Instances are handled separately (unlike other items, the module
@@ -785,9 +782,11 @@ item_is_unchanged(Item1, Item2) = Result :-
 	).
 
 item_is_unchanged(Item1, Item2) = Result :-
-	Item1 = typeclass(Constraints, Name, Vars, Interface1, _VarSet),
+	Item1 = typeclass(Constraints, FunDeps, Name, Vars, Interface1,
+		_VarSet),
 	(
-		Item2 = typeclass(Constraints, Name, Vars, Interface2, _),
+		Item2 = typeclass(Constraints, FunDeps, Name, Vars, Interface2,
+			_),
 		class_interface_is_unchanged(Interface1, Interface2)
 	->
 		Result = yes

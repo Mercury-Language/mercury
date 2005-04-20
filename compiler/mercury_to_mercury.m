@@ -370,6 +370,7 @@
 :- import_module libs__globals.
 :- import_module libs__options.
 :- import_module libs__rat.
+:- import_module parse_tree__error_util.
 :- import_module parse_tree__prog_io_util.
 :- import_module parse_tree__prog_out.
 :- import_module parse_tree__prog_util.
@@ -695,7 +696,8 @@ mercury_output_item(_, promise(PromiseType, Goal0, VarSet, UnivVars), _,
     io__write_string(".\n", !IO).
 mercury_output_item(_, nothing(_), _, !IO).
 mercury_output_item(UnqualifiedItemNames,
-        typeclass(Constraints, ClassName0, Vars, Interface, VarSet), _, !IO) :-
+        typeclass(Constraints, FunDeps, ClassName0, Vars, Interface, VarSet),
+        _, !IO) :-
     maybe_unqualify_sym_name(UnqualifiedItemNames, ClassName0, ClassName),
     io__write_string(":- typeclass ", !IO),
 
@@ -710,8 +712,8 @@ mercury_output_item(UnqualifiedItemNames,
         ), !IO),
     io__write_char(')', !IO),
     AppendVarnums = no,
-    mercury_format_prog_constraint_list(Constraints, VarSet, "<=",
-        AppendVarnums, !IO),
+    mercury_format_fundeps_and_prog_constraint_list(FunDeps, Constraints,
+        VarSet, AppendVarnums, !IO),
     (
         Interface = abstract,
         io__write_string(".\n", !IO)
@@ -2115,8 +2117,39 @@ mercury_format_class_context(ClassContext, ExistQVars, VarSet,
     ;
         add_string(")", !U)
     ),
-    mercury_format_prog_constraint_list(UnivCs, VarSet, "<=",
+    mercury_format_prog_constraint_list(UnivCs, VarSet, "<=", AppendVarnums,
+        !U).
+
+:- pred mercury_format_fundeps_and_prog_constraint_list(list(prog_fundep)::in,
+    list(prog_constraint)::in, tvarset::in, bool::in, U::di, U::uo) is det
+    <= output(U).
+
+mercury_format_fundeps_and_prog_constraint_list(FunDeps, Constraints, VarSet,
+        AppendVarnums, !U) :-
+    list.map(make_fundep_constraint, FunDeps, FunDepConstraints),
+    AllConstraints = FunDepConstraints ++ Constraints,
+    mercury_format_prog_constraint_list(AllConstraints, VarSet, "<=",
         AppendVarnums, !U).
+
+:- pred make_fundep_constraint(prog_fundep::in, prog_constraint::out) is det.
+
+make_fundep_constraint(fundep(Domain, Range), Constraint) :-
+    make_fundep_constraint_arg(Domain, DomainArg),
+    make_fundep_constraint_arg(Range, RangeArg),
+    Constraint = constraint(unqualified("->"), [DomainArg, RangeArg]).
+
+:- pred make_fundep_constraint_arg(list(tvar)::in, (type)::out) is det.
+
+make_fundep_constraint_arg(TVars, Arg) :-
+    var_list_to_term_list(TVars, TVarTerms),
+    (
+        TVarTerms = [],
+        unexpected(this_file, "make_fundep_constraint_arg: empty list")
+    ;
+        TVarTerms = [First | Rest],
+        term.context_init(Context),
+        list_to_conjunction(Context, First, Rest, Arg)
+    ).
 
 :- pred mercury_format_prog_constraint_list(list(prog_constraint)::in,
     tvarset::in, string::in, bool::in, U::di, U::uo) is det <= output(U).
@@ -2133,13 +2166,11 @@ mercury_format_prog_constraint_list(Constraints, VarSet, Operator,
         add_string(")", !U)
     ).
 
-mercury_output_constraint(VarSet, AppendVarnums, constraint(Name, Types),
-        !IO) :-
-    mercury_format_constraint(VarSet, AppendVarnums,
-        constraint(Name, Types), !IO).
+mercury_output_constraint(VarSet, AppendVarnums, Constraint, !IO) :-
+    mercury_format_constraint(VarSet, AppendVarnums, Constraint, !IO).
 
-mercury_constraint_to_string(VarSet, constraint(Name, Types)) = String :-
-    mercury_format_constraint(VarSet, no, constraint(Name, Types), "", String).
+mercury_constraint_to_string(VarSet, Constraint) = String :-
+    mercury_format_constraint(VarSet, no, Constraint, "", String).
 
 :- pred mercury_format_constraint(tvarset::in, bool::in, prog_constraint::in,
     U::di, U::uo) is det <= output(U).
@@ -4217,6 +4248,12 @@ write_maybe_pragma_termination_info(yes(Termination), !IO) :-
 		TerminationStr = "cannot_loop"
 	),
 	io.write_string(TerminationStr, !IO).	
+
+%---------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "mercury_to_mercury.m".
 
 %-----------------------------------------------------------------------------%
 :- end_module mercury_to_mercury.

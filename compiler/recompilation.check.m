@@ -915,7 +915,7 @@ check_for_ambiguities(NeedQualifier, OldTimestamp, VersionNumbers,
 	check_for_simple_item_ambiguity(NeedQualifier, OldTimestamp,
 		VersionNumbers, (mode), Name, list__length(Params), _, !Info).
 check_for_ambiguities(NeedQualifier, OldTimestamp, VersionNumbers,
-		typeclass(_, Name, Params, Interface, _) - _, !Info) :-
+		typeclass(_, _, Name, Params, Interface, _) - _, !Info) :-
 	check_for_simple_item_ambiguity(NeedQualifier, OldTimestamp,
 		VersionNumbers, (typeclass), Name, list__length(Params),
 		NeedsCheck, !Info),

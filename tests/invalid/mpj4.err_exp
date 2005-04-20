@@ -1,0 +1,8 @@
+mpj4.m:020: In clause for function `mpj4.g/1':
+mpj4.m:020:   in function result term of clause head:
+mpj4.m:020:   in argument 2 of functor `f/3':
+mpj4.m:020:   type error in unification of argument
+mpj4.m:020:   and constant `"foo"'.
+mpj4.m:020:   argument has type `int',
+mpj4.m:020:   constant `"foo"' has type `string'.
+For more information, try recompiling with `-E'.

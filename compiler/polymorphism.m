@@ -1856,7 +1856,7 @@ polymorphism__process_call(PredId, ArgVars0, GoalInfo0, GoalInfo,
 		poly_info_get_constraint_map(!.Info, ConstraintMap),
 		goal_info_get_goal_path(GoalInfo0, GoalPath),
 		list__length(ParentUnivConstraints, NumUnivConstraints),
-		lookup_hlds_constraint_list(ConstraintMap, universal, GoalPath,
+		lookup_hlds_constraint_list(ConstraintMap, unproven, GoalPath,
 			NumUnivConstraints, ActualUnivConstraints),
 		term__apply_rec_substitution_to_list(ParentExistQVarTerms,
 			ParentToActualTypeSubst, ActualExistQVarTerms),
@@ -1871,7 +1871,7 @@ polymorphism__process_call(PredId, ArgVars0, GoalInfo0, GoalInfo,
 			% quantified typeclass_infos in the call,
 			% insert them into the typeclass_info map
 		list__length(ParentExistConstraints, NumExistConstraints),
-		lookup_hlds_constraint_list(ConstraintMap, existential,
+		lookup_hlds_constraint_list(ConstraintMap, assumed,
 			GoalPath, NumExistConstraints, ActualExistConstraints),
 		polymorphism__make_existq_typeclass_info_vars(
 			ActualExistConstraints, ExtraExistClassVars,
@@ -2353,14 +2353,12 @@ polymorphism__make_typeclass_info_from_subclass(Constraint,
 	% Look up the definition of the subclass
 	module_info_classes(ModuleInfo, ClassTable),
 	map__lookup(ClassTable, SubClassId, SubClassDefn),
-	SubClassDefn = hlds_class_defn(_, SuperClasses0,
-		SubClassVars, _, _, _, _),
 
 	% Work out which superclass typeclass_info to take.
-	map__from_corresponding_lists(SubClassVars, SubClassTypes,
+	map__from_corresponding_lists(SubClassDefn ^ class_vars, SubClassTypes,
 		SubTypeSubst),
-	apply_subst_to_prog_constraint_list(SubTypeSubst, SuperClasses0,
-		SuperClasses),
+	apply_subst_to_prog_constraint_list(SubTypeSubst,
+		SubClassDefn ^ class_supers, SuperClasses),
 	(
 		list__nth_member_search(SuperClasses, Constraint,
 			SuperClassIndex0)

@@ -49,7 +49,7 @@
 				% in one piece, as it is.
 
 	;	suffix(string)	% This string should appear in the output
-				% in one pieces, as it is, appended directly
+				% in one piece, as it is, appended directly
 				% after the previous format_component, without
 				% any intervening space.
 

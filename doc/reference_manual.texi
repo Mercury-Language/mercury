@@ -51,6 +51,7 @@ into another language, under the above conditions for modified versions.
 @author Chris Speirs
 @author Tyson Dowd
 @author Ralph Becket
+@author Mark Brown
 @page
 @vskip 0pt plus 1filll
 Copyright @copyright{} 1995--2005 The University of Melbourne.
@@ -4559,6 +4560,7 @@ set of operations is defined.
 * Type class constraints on predicates and functions::
 * Type class constraints on type class declarations::
 * Type class constraints on instance declarations::
+* Functional dependencies::
 @end menu
 
 @node Typeclass declarations
@@ -4576,6 +4578,12 @@ The @code{typeclass} declaration gives the name of the type class that
 it is defining, the
 names of the type variables which are parameters to the type class, and the
 operations (i.e.@: methods) which form the interface of the type class.
+For each method, all parameters of the typeclass must be determined by
+the type variables appearing in the type signature of the method.
+A variable is determined by a type signature if it appears in the
+type signature, but if functional dependencies are present
+then it may also be determined from other variables
+(@pxref{Functional dependencies}).
 
 For example,
 
@@ -4898,8 +4906,12 @@ A type class constraint has the form:
 @noindent
 where @var{Typeclass} is the name of a type class and @var{Type} is 
 a type.
-Any variable that appears in @var{Type} must also appear in
+Any variable that appears in @var{Type} must be determined by
 the predicate's or function's type signature.
+A variable is determined by a type signature if it appears in the
+type signature, but if functional dependencies are present
+then it may also be determined from other variables
+(@pxref{Functional dependencies}).
 Each type class constraint in a predicate or function declaration must contain
 at least one variable.
 
@@ -5024,6 +5036,146 @@ abstract instance declaration must exactly match the type class
 constraints on the corresponding non-abstract instance declaration that
 defines that instance.
 @c XXX The current implementation does not enforce that rule.
+
+@node Functional dependencies
+@section Functional dependencies
+
+Type classes may be defined to have functional dependencies between arguments.
+There may be any number of functional dependencies on one typeclass.
+Each constraint is expressed with the same syntax as typeclass constraints
+on typeclass declarations, using a special constraint of the form
+@code{(@var{Domain} -> @var{Range})}.
+
+The @var{Domain} and @var{Range} arguments are either single type variables,
+or conjunctions of type variables separated by commas.
+
+@example
+	:- typeclass @var{Typeclass}(@var{Var}, @dots{})@
+<= ((@var{D} -> @var{R}), @dots{}) @dots{}
+
+	:- typeclass @var{Typeclass}(@var{Var}, @dots{})@
+<= (@var{D1}, @var{D2}, @dots{} -> @var{R1}, @var{R2}, @dots{}), @dots{}
+@end example
+
+Each type variable must appear in the parameter list of the typeclass.
+Abstract typeclass declarations must have exactly the same functional
+dependencies as in the implementation.
+
+Mutually recursive functional dependencies are allowed,
+so the following examples are legal:
+
+@example
+	:- typeclass foo(A, B) <= ((A -> B), (B -> A)).
+	:- typeclass bar(A, B, C, D)@
+<= ((A, B -> C), (B, C -> D), (D -> A, C)).
+@end example
+
+A functional dependency on a typeclass places an additional requirement
+on the set of instances which are allowed for that type class.
+The requirement is that all types bound to variables in the range of the
+functional dependency must be able to be uniquely determined by the types
+bound to variables in the domain of the functional dependency.
+If more than one functional dependency is present,
+then the requirement for each one must be satisfied.
+
+For example, given the typeclass declaration
+
+@example
+	:- typeclass baz(A, B) <= (A -> B) where @dots{}
+@end example
+
+@noindent
+it would be illegal to have both of the instances
+
+@example
+	:- instance baz(int, int) where @dots{}
+	:- instance baz(int, string) where @dots{}
+@end example
+
+@noindent
+although either one would be acceptable on its own.
+
+The following instance would also be illegal
+
+@example
+	:- instance baz(string, list(T)) where @dots{}
+@end example
+
+@noindent
+since the variable @samp{T} may not always be bound to the same type.
+
+The extra requirements that result from the use of functional dependencies
+allow the bindings of some variables to be determined from the bindings
+of others.  This in turn relaxes some of the requirements on typeclass
+constraints on predicate and function signatures.
+
+Without any functional dependencies, all variables in constraints must
+appear in the signature of the predicate or function being declared.
+However, variables which are in the range of a functional dependency need
+not appear in the signature, since it is known that their bindings will
+be determined from the bindings of the variables in the domain.
+
+More formally, the constraints on a predicate or function signature
+@emph{induce} a set of functional dependencies on the variables appearing
+in those constraints.  A functional dependency
+@samp{(A1, @dots{} -> B1, @dots{})} is induced from a constraint
+@samp{@var{Typeclass}(@var{Type1}, @dots{})} if and only if the typeclass
+@samp{@var{Typeclass}} has a functional dependency
+@samp{(D1, @dots{} -> R1, @dots{})},
+and for each typeclass parameter @samp{Di} there exists an @samp{Aj}
+every type variable appearing in the @samp{@var{Typek}}
+corresponding to @samp{Di},
+and each @samp{Bi} appears in the @samp{@var{Typej}} bound to the typeclass
+parameter @samp{Rk} for some @var{k}.
+
+For example, with the definition of @code{baz} above, the constraint
+@code{baz(map(X, Y), list(Z))} induces the constraint @code{(X, Y -> Z)},
+since @var{X} and @var{Y} appear in the domain argument, and @var{Z} appears
+in the range argument.
+
+The set of type variables determined from a signature is
+the @emph{closure} of the set appearing in the signature
+under the functional dependencies induced from the constraints.
+The closure is defined as the smallest set of variables which includes
+all of the variables appearing in the signature,
+and is such that, for each induced functional dependency
+@samp{@var{Domain} -> @var{Range}},
+if the closure includes all of the variables in @var{Domain} then it
+includes all of the variables in @var{Range}.
+
+For example, the declaration
+
+@example
+	:- pred p(X, Y) <= baz(map(X, Y), list(Z)).
+@end example
+
+@noindent
+is acceptable since the closure of @{@var{X}, @var{Y}@} under the
+induced functional dependency must include @var{Z}.
+Moreover, the typeclass @code{baz/2} would be allowed to have a method
+that only uses the first parameter, @var{A}, since the second parameter,
+@var{B}, would always be determined from the first.
+
+The presence of functional dependencies also allows ``improvement'' to
+occur during type inference.  This can occur in two ways.
+First, if two constraints of a given class match on all of the domain
+arguments of a functional dependency on that class,
+then it can be inferred that they also match on the range arguments.
+For example, given the constraints @code{baz(A, B1)} and @code{baz(A, B2)},
+it will be inferred that @code{B1 = B2}.
+
+Similarly, if a constraint of a given class is subsumed by a known instance
+of that class in the domain arguments, then its range arguments can be
+unified with the corresponding instance range arguments.
+For example, given the instance:
+
+@example
+	:- instance baz(list(T), string) where @dots{}
+@end example
+
+@noindent
+then the constraint @code{baz(list(int), X)} can be improved with the
+inference that @code{X = string}.
 
 @node Existential types
 @chapter Existential types

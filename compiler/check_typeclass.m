@@ -5,9 +5,9 @@
 %---------------------------------------------------------------------------%
 %
 % This module checks conformance of instance declarations to the typeclass
-% declaration.
+% declaration.  It takes various steps to do this.
 %
-% It does so by, for every method of every instance, generating a new pred
+% First, for every method of every instance it generates a new pred
 % whose types and modes are as expected by the typeclass declaration and
 % whose body just calls the implementation provided by the instance
 % declaration.
@@ -34,13 +34,28 @@
 % determinism and uniqueness correctness since the generated pred is checked
 % in each of those passes too.
 %
-% In addition, this pass checks that all superclass constraints are satisfied
-% by the instance declaration.
+% Second, this pass checks that all superclass constraints are satisfied
+% by the instance declaration.  To do this it attempts to perform context
+% reduction on the typeclass constraints, using the instance constraints
+% as assumptions.
 %
-% This pass also checks for cycles in the typeclass hierarchy.
+% Third, typeclass constraints on predicate and function declarations are
+% checked for ambiguity, taking into consideration the information
+% provided by functional depencies.
+%
+% Fourth, all visible instances are checked for range-restrictedness and
+% mutual consistency, with respect to any functional dependencies.  This
+% doesn't necessarily catch all cases of inconsistent instances, however,
+% since in general that cannot be done until link time.  We try to catch
+% as many cases as possible here, though, since we can give better error
+% messages.
+%
+% This module also checks for cycles in the typeclass hierarchy, and checks
+% that each abstract instance has a corresponding concrete instance.
 %
 % This pass fills in the super class proofs and instance method pred/proc ids
-% in the instance table of the HLDS.
+% in the instance table of the HLDS, and fills in the fundeps_ancestors in
+% the class table.
 %
 % Author: dgj.
 %
@@ -74,6 +89,7 @@
 :- import_module hlds__hlds_goal.
 :- import_module hlds__hlds_out.
 :- import_module hlds__hlds_pred.
+:- import_module hlds__passes_aux.
 :- import_module libs__globals.
 :- import_module libs__options.
 :- import_module mdbcomp__prim_data.
@@ -93,6 +109,7 @@
 :- import_module set.
 :- import_module std_util.
 :- import_module string.
+:- import_module svmap.
 :- import_module svmulti_map.
 :- import_module svset.
 :- import_module term.
@@ -101,15 +118,29 @@
 %---------------------------------------------------------------------------%
 
 check_typeclass__check_typeclasses(!QualInfo, !ModuleInfo, FoundError, !IO) :-
+	globals__io_lookup_bool_option(verbose, Verbose, !IO),
+	maybe_write_string(Verbose, "% Checking typeclass instances...\n", !IO),
 	check_typeclass__check_instance_decls(!QualInfo, !ModuleInfo,
 		FoundInstanceError, !IO),
+
+	maybe_write_string(Verbose, "% Checking for cyclic classes...\n", !IO),
+	check_for_cyclic_classes(!ModuleInfo, FoundCycleError, !IO),
+
+	maybe_write_string(Verbose,
+		"% Checking for missing concrete instances...\n", !IO),
  	check_for_missing_concrete_instances(!ModuleInfo, FoundMissingError,
 		!IO),
-	module_info_classes(!.ModuleInfo, ClassTable),
-	check_for_cyclic_classes(ClassTable, FoundCycleError, !IO),
-	check_constraint_quant(!ModuleInfo, FoundQuantError, !IO),
-	FoundError = bool.or_list([FoundInstanceError, FoundMissingError,
-		FoundCycleError, FoundQuantError]).
+
+	maybe_write_string(Verbose,
+		"% Checking functional dependencies on instances...\n", !IO),
+	check_functional_dependencies(!ModuleInfo, FoundFunDepError, !IO),
+
+	maybe_write_string(Verbose,
+		"% Checking typeclass constraints...\n", !IO),
+	check_constraints(!ModuleInfo, FoundConstraintsError, !IO),
+
+	FoundError = bool.or_list([FoundInstanceError, FoundCycleError,
+		FoundMissingError, FoundFunDepError, FoundConstraintsError]).
 
 %---------------------------------------------------------------------------%
 
@@ -164,9 +195,9 @@ check_one_class(ClassTable, ClassId - InstanceDefns0,
 	ClassId - InstanceDefns, !CheckTCInfo, !IO) :-
 
 	map__lookup(ClassTable, ClassId, ClassDefn),
-	ClassDefn = hlds_class_defn(ImportStatus, SuperClasses, ClassVars,
-		Interface, ClassInterface, ClassVarSet, TermContext),
-
+	ClassDefn = hlds_class_defn(ImportStatus, SuperClasses, _FunDeps,
+		_Ancestors, ClassVars, Interface, ClassInterface, ClassVarSet,
+		TermContext),
 	(
 		status_defined_in_this_module(ImportStatus, yes),
 		Interface = abstract
@@ -843,14 +874,14 @@ check_superclass_conformance(ClassId, ProgSuperClasses0, ClassVars0,
 		InstanceProgConstraints, InstanceTypes, F, G, InstanceVarSet0,
 		Proofs0),
 	varset__merge_subst(InstanceVarSet0, ClassVarSet, InstanceVarSet1,
-		Subst),
+		RenameSubst),
 
 		% Make the constraints in terms of the instance variables
-	apply_subst_to_prog_constraint_list(Subst, ProgSuperClasses0,
+	apply_subst_to_prog_constraint_list(RenameSubst, ProgSuperClasses0,
 		ProgSuperClasses),
 
 		% Now handle the class variables
-	map__apply_to_list(ClassVars0, Subst, ClassVarTerms),
+	map__apply_to_list(ClassVars0, RenameSubst, ClassVarTerms),
 	( term__var_list_to_term_list(ClassVars1, ClassVarTerms) ->
 		ClassVars = ClassVars1
 	;
@@ -860,26 +891,36 @@ check_superclass_conformance(ClassId, ProgSuperClasses0, ClassVars0,
 		% Calculate the bindings
 	map__from_corresponding_lists(ClassVars, InstanceTypes, TypeSubst),
 
+	module_info_classes(ModuleInfo, ClassTable),
 	module_info_instances(ModuleInfo, InstanceTable),
 	module_info_superclasses(ModuleInfo, SuperClassTable),
 
-		% These constraints are not required to be put into the
-		% final constraint_map, so we initialise them with no
-		% constraint_id and throw away the constraint_map that
-		% results.
-	map__init(ConstraintMap0),
+		% Build a suitable constraint context for checking the
+		% instance.  To do this, we assume any constraints on the
+		% instance declaration (that is, treat them as universal
+		% constraints on a predicate) and try to prove the constraints
+		% on the class declaration (that is, treat them as existential
+		% constraints on a predicate).
+		%
+		% We don't bother assigning ids to these constraints, since
+		% the resulting constraint map is not used anyway.
+		%
+	init_hlds_constraint_list(ProgSuperClasses, SuperClasses),
 	init_hlds_constraint_list(InstanceProgConstraints,
 		InstanceConstraints),
-	init_hlds_constraint_list(ProgSuperClasses, SuperClasses),
-
-		% Try to reduce the superclass constraints,
-		% using the declared instance constraints
-		% and the usual context reduction rules.
-	typecheck__reduce_context_by_rule_application(InstanceTable,
-		SuperClassTable, InstanceConstraints, TypeSubst,
-		InstanceVarSet1, InstanceVarSet2, Proofs0, Proofs1,
-		ConstraintMap0, _,
-		SuperClasses, UnprovenConstraints),
+	make_hlds_constraints(ClassTable, InstanceVarSet1, SuperClasses,
+		InstanceConstraints, Constraints0),
+		
+		% Try to reduce the superclass constraints, using the declared
+		% instance constraints and the usual context reduction rules.
+		%
+	map__init(ConstraintMap0),
+	typecheck__reduce_context_by_rule_application(ClassTable,
+		InstanceTable, SuperClassTable, ClassVars, TypeSubst, _,
+		InstanceVarSet1, InstanceVarSet2,
+		Proofs0, Proofs1, ConstraintMap0, _,
+		Constraints0, Constraints),
+	UnprovenConstraints = Constraints ^ unproven,
 
 	(
 		UnprovenConstraints = [],
@@ -1067,13 +1108,21 @@ check_for_corresponding_instances_2(Concretes, ClassId, AbstractInstance,
 	).
 
 %-----------------------------------------------------------------------------%
+%
+% Check for cyclic classes in the class table by traversing the
+% class hierarchy for each class.  While we are doing this, calculate
+% the set of ancestors with functional dependencies for each class,
+% and enter this information in the class table.
+%
 
-:- pred check_for_cyclic_classes(class_table::in, bool::out, io::di, io::uo)
-	is det.
+:- pred check_for_cyclic_classes(module_info::in, module_info::out, bool::out,
+	io::di, io::uo) is det.
 
-check_for_cyclic_classes(ClassTable, Errors, !IO) :-
-	ClassIds = map__keys(ClassTable),
-	foldl2(find_cycles(ClassTable, []), ClassIds, set.init, _, [], Cycles),
+check_for_cyclic_classes(!ModuleInfo, Errors, !IO) :-
+	module_info_classes(!.ModuleInfo, ClassTable0),
+	ClassIds = map__keys(ClassTable0),
+	foldl3(find_cycles([]), ClassIds, ClassTable0, ClassTable, set.init, _,
+		[], Cycles),
 	(
 		Cycles = [],
 		Errors = no
@@ -1081,22 +1130,37 @@ check_for_cyclic_classes(ClassTable, Errors, !IO) :-
 		Cycles = [_ | _],
 		Errors = yes,
 		foldl(report_cyclic_classes(ClassTable), Cycles, !IO)
-	).
+	),
+	module_info_set_classes(ClassTable, !ModuleInfo).
 
 :- type class_path == list(class_id).
 
-	% find_cycles(ClassTable, Path, ClassId, !Visited, !Cycles)
+	% find_cycles(Path, ClassId, !ClassTable, !Visited, !Cycles)
 	%
 	% Perform a depth first traversal of the class hierarchy, starting
 	% from ClassId.  Path contains a list of nodes joining the current
 	% node to the root.  When we reach a node that has already been
 	% visited, check whether there is a cycle in the Path.
 	%
-:- pred find_cycles(class_table::in, class_path::in, class_id::in,
+:- pred find_cycles(class_path::in, class_id::in,
+	class_table::in, class_table::out,
 	set(class_id)::in, set(class_id)::out,
 	list(class_path)::in, list(class_path)::out) is det.
 
-find_cycles(ClassTable, Path, ClassId, !Visited, !Cycles) :-
+find_cycles(Path, ClassId, !ClassTable, !Visited, !Cycles) :-
+	find_cycles_2(Path, ClassId, _, _, !ClassTable, !Visited, !Cycles).
+
+	% As above, but also return this class's parameters and ancestor list.
+	%
+:- pred find_cycles_2(class_path::in, class_id::in, list(tvar)::out,
+	list(prog_constraint)::out, class_table::in, class_table::out,
+	set(class_id)::in, set(class_id)::out,
+	list(class_path)::in, list(class_path)::out) is det.
+
+find_cycles_2(Path, ClassId, Params, Ancestors, !ClassTable, !Visited,
+		!Cycles) :-
+	ClassDefn0 = map.lookup(!.ClassTable, ClassId),
+	Params = ClassDefn0 ^ class_vars,
 	( set.member(ClassId, !.Visited) ->
 		(
 			find_cycle(ClassId, Path, [ClassId], Cycle)
@@ -1104,13 +1168,53 @@ find_cycles(ClassTable, Path, ClassId, !Visited, !Cycles) :-
 			!:Cycles = [Cycle | !.Cycles]
 		;
 			true
-		)
+		),
+		Ancestors = ClassDefn0 ^ class_fundep_ancestors
 	;
 		svset.insert(ClassId, !Visited),
-		ClassIds = get_superclass_ids(ClassTable, ClassId),
-		foldl2(find_cycles(ClassTable, [ClassId | Path]), ClassIds,
-			!Visited, !Cycles)
+
+			%
+			% Make this class its own ancestor, but only if it
+			% has fundeps on it.
+			%
+		FunDeps = ClassDefn0 ^ class_fundeps,
+		(
+			FunDeps = [],
+			Ancestors0 = []
+		;
+			FunDeps = [_ | _],
+			ClassId = class_id(ClassName, _),
+			term.var_list_to_term_list(Params, ParamTerms),
+			Ancestors0 = [constraint(ClassName, ParamTerms)]
+		),
+		Superclasses = ClassDefn0 ^ class_supers,
+		foldl4(find_cycles_3([ClassId | Path]), Superclasses,
+			!ClassTable, !Visited, !Cycles, Ancestors0, Ancestors),
+		ClassDefn = ClassDefn0 ^ class_fundep_ancestors := Ancestors,
+		svmap.det_update(ClassId, ClassDefn, !ClassTable)
 	).
+
+	% As we go, accumulate the ancestors from all the superclasses,
+	% with the class parameters bound to the corresponding arguments.
+	% Note that we don't need to merge varsets because typeclass
+	% parameters are guaranteed to be distinct variables.
+	%
+:- pred find_cycles_3(class_path::in, prog_constraint::in,
+	class_table::in, class_table::out,
+	set(class_id)::in, set(class_id)::out,
+	list(class_path)::in, list(class_path)::out,
+	list(prog_constraint)::in, list(prog_constraint)::out) is det.
+
+find_cycles_3(Path, Constraint, !ClassTable, !Visited, !Cycles, !Ancestors) :-
+	Constraint = constraint(Name, Args),
+	list.length(Args, Arity),
+	ClassId = class_id(Name, Arity),
+	find_cycles_2(Path, ClassId, Params, NewAncestors0, !ClassTable,
+		!Visited, !Cycles),
+	map.from_corresponding_lists(Params, Args, Binding),
+	apply_subst_to_prog_constraint_list(Binding, NewAncestors0,
+		NewAncestors),
+	list.append(NewAncestors, !Ancestors).
 
 	% find_cycle(ClassId, PathRemaining, PathSoFar, Cycle)
 	%
@@ -1129,17 +1233,6 @@ find_cycle(ClassId, [Head | Tail], Path0, Cycle) :-
 	;
 		find_cycle(ClassId, Tail, Path, Cycle)
 	).
-
-:- func get_superclass_ids(class_table, class_id) = list(class_id).
-
-get_superclass_ids(ClassTable, ClassId) = SuperclassIds :-
-	ClassDefn = map.lookup(ClassTable, ClassId),
-	SuperclassIds = list.map(get_constraint_class_id,
-		ClassDefn ^ class_supers).
-
-:- func get_constraint_class_id(prog_constraint) = class_id.
-
-get_constraint_class_id(constraint(Name, Args)) = class_id(Name, length(Args)).
 
 	% Report an error using the format
 	%
@@ -1173,6 +1266,435 @@ report_cyclic_classes(ClassTable, ClassPath, !IO) :-
 add_path_element(class_id(Name, Arity), RevPieces0) =
 	[sym_name_and_arity(Name/Arity), words("<=") | RevPieces0].
 
+%---------------------------------------------------------------------------%
+
+	% Check that all instances are range restricted with respect to the
+	% functional dependencies.  This means that, for each functional
+	% dependency, the set of tvars in the range arguments must be a
+	% subset of the set of tvars in the domain arguments.
+	% (Note that with the requirement of distinct variables as arguments,
+	% this implies that all range arguments must be ground.  However,
+	% this code should work even if that requirement is lifted in future.)
+	%
+	% Also, check that all pairs of visible instances are mutually
+	% consistent with respect to the functional dependencies.  This is
+	% true iff the most general unifier of corresponding domain arguments
+	% (if it exists) is also a unifier of the corresponding range
+	% arguments.
+	%
+:- pred check_functional_dependencies(module_info::in, module_info::out,
+	bool::out, io::di, io::uo) is det.
+
+check_functional_dependencies(!ModuleInfo, FoundError, !IO) :-
+	module_info_instances(!.ModuleInfo, InstanceTable),
+	map.keys(InstanceTable, ClassIds),
+	list.foldl3(check_fundeps_class, ClassIds, !ModuleInfo, no, FoundError,
+		!IO).
+
+:- pred check_fundeps_class(class_id::in, module_info::in, module_info::out,
+	bool::in, bool::out, io::di, io::uo) is det.
+
+check_fundeps_class(ClassId, !ModuleInfo, !FoundError, !IO) :-
+	module_info_classes(!.ModuleInfo, ClassTable),
+	map.lookup(ClassTable, ClassId, ClassDefn),
+	module_info_instances(!.ModuleInfo, InstanceTable),
+	map.lookup(InstanceTable, ClassId, InstanceDefns),
+	FunDeps = ClassDefn ^ class_fundeps,
+	check_range_restrictedness(ClassId, InstanceDefns, FunDeps,
+		!ModuleInfo, !FoundError, !IO),
+	check_consistency(ClassId, ClassDefn, InstanceDefns, FunDeps,
+		!ModuleInfo, !FoundError, !IO).
+
+:- pred check_range_restrictedness(class_id::in, list(hlds_instance_defn)::in,
+	hlds_class_fundeps::in, module_info::in, module_info::out,
+	bool::in, bool::out, io::di, io::uo) is det.
+
+check_range_restrictedness(_, [], _, !ModuleInfo, !FoundError, !IO).
+check_range_restrictedness(ClassId, [InstanceDefn | InstanceDefns], FunDeps,
+		!ModuleInfo, !FoundError, !IO) :-
+	list.foldl3(check_range_restrictedness_2(ClassId, InstanceDefn),
+		FunDeps, !ModuleInfo, !FoundError, !IO),
+	check_range_restrictedness(ClassId, InstanceDefns, FunDeps,
+		!ModuleInfo, !FoundError, !IO).
+
+:- pred check_range_restrictedness_2(class_id::in, hlds_instance_defn::in,
+	hlds_class_fundep::in, module_info::in, module_info::out,
+	bool::in, bool::out, io::di, io::uo) is det.
+
+check_range_restrictedness_2(ClassId, InstanceDefn, FunDep, !ModuleInfo,
+		!FoundError, !IO) :-
+	Types = InstanceDefn ^ instance_types,
+	FunDep = fundep(Domain, Range),
+	DomainTypes = restrict_list_elements(Domain, Types),
+	DomainVars = term.vars_list(DomainTypes),
+	RangeTypes = restrict_list_elements(Range, Types),
+	RangeVars = term.vars_list(RangeTypes),
+	solutions((pred(V::out) is nondet :-
+			member(V, RangeVars),
+			\+ member(V, DomainVars)
+		), UnboundVars),
+	(
+		UnboundVars = []
+	;
+		UnboundVars = [_ | _],
+		report_range_restriction_error(ClassId, InstanceDefn,
+			UnboundVars, !IO),
+		!:FoundError = yes,
+		module_info_incr_errors(!ModuleInfo)
+	).
+
+% The error message is intended to look like this:
+%
+% very_long_module_name:001: In instance for typeclass `long_class/2':
+% very_long_module_name:001:   functional dependency not satisfied: type
+% very_long_module_name:001:   variables T1, T2 and T3 occur in the range of a
+% very_long_module_name:001:   functional dependency, but are not in the
+% very_long_module_name:001:   domain.
+
+:- pred report_range_restriction_error(class_id::in, hlds_instance_defn::in,
+	list(tvar)::in, io::di, io::uo) is det.
+
+report_range_restriction_error(ClassId, InstanceDefn, Vars, !IO) :-
+	ClassId = class_id(SymName, Arity),
+	TVarSet = InstanceDefn ^ instance_tvarset,
+	Context = InstanceDefn ^ instance_context,
+
+	VarsStrs = list.map(
+			(func(Var) = mercury_var_to_string(Var, TVarSet, no)),
+			Vars),
+
+	Msg = [ words("In instance for typeclass"),
+		sym_name_and_arity(SymName / Arity),
+		suffix(":"), nl,
+		words("functional dependency not satisfied:"),
+		words(choose_number(Vars, "type variable", "type variables"))]
+		++ list_to_pieces(VarsStrs) ++
+		[words(choose_number(Vars, "occurs", "occur")),
+		words("in the range of the functional dependency, but"),
+		words(choose_number(Vars, "is", "are")),
+		words("not in the domain.")],
+	write_error_pieces(Context, 0, Msg, !IO),
+	io__set_exit_status(1, !IO).
+
+	% Check the consistency of each (unordered) pair of instances.
+	%
+:- pred check_consistency(class_id::in, hlds_class_defn::in,
+	list(hlds_instance_defn)::in, hlds_class_fundeps::in,
+	module_info::in, module_info::out, bool::in, bool::out,
+	io::di, io::uo) is det.
+
+check_consistency(_, _, [], _, !ModuleInfo, !FoundError, !IO).
+check_consistency(ClassId, ClassDefn, [Instance | Instances], FunDeps,
+		!ModuleInfo, !FoundError, !IO) :-
+	list.foldl3(
+		check_consistency_pair(ClassId, ClassDefn, FunDeps, Instance),
+		Instances, !ModuleInfo, !FoundError, !IO),
+	check_consistency(ClassId, ClassDefn, Instances, FunDeps, !ModuleInfo,
+		!FoundError, !IO).
+
+:- pred check_consistency_pair(class_id::in, hlds_class_defn::in,
+	hlds_class_fundeps::in, hlds_instance_defn::in, hlds_instance_defn::in,
+	module_info::in, module_info::out, bool::in, bool::out, io::di, io::uo)
+	is det.
+
+check_consistency_pair(ClassId, ClassDefn, FunDeps, InstanceA, InstanceB,
+		!ModuleInfo, !FoundError, !IO) :-
+	list.foldl3(
+		check_consistency_pair_2(ClassId, ClassDefn, InstanceA,
+			InstanceB),
+		FunDeps, !ModuleInfo, !FoundError, !IO).
+
+:- pred check_consistency_pair_2(class_id::in, hlds_class_defn::in,
+	hlds_instance_defn::in, hlds_instance_defn::in, hlds_class_fundep::in,
+	module_info::in, module_info::out, bool::in, bool::out, io::di, io::uo)
+	is det.
+
+check_consistency_pair_2(ClassId, ClassDefn, InstanceA, InstanceB, FunDep,
+		!ModuleInfo, !FoundError, !IO) :-
+	TVarSetA = InstanceA ^ instance_tvarset,
+	TVarSetB = InstanceB ^ instance_tvarset,
+	varset.merge_subst(TVarSetA, TVarSetB, _, RenameSubst),
+
+	TypesA = InstanceA ^ instance_types,
+	TypesB0 = InstanceB ^ instance_types,
+	TypesB = term.apply_substitution_to_list(TypesB0, RenameSubst),
+
+	FunDep = fundep(Domain, Range),
+	DomainA = restrict_list_elements(Domain, TypesA),
+	DomainB = restrict_list_elements(Domain, TypesB),
+
+	(
+		type_unify_list(DomainA, DomainB, [], map.init, Subst)
+	->
+		RangeA0 = restrict_list_elements(Range, TypesA),
+		RangeB0 = restrict_list_elements(Range, TypesB),
+		term.apply_rec_substitution_to_list(RangeA0, Subst, RangeA),
+		term.apply_rec_substitution_to_list(RangeB0, Subst, RangeB),
+		(
+			RangeA = RangeB
+		->
+			true
+		;
+			report_consistency_error(ClassId, ClassDefn, InstanceA,
+				InstanceB, FunDep, !IO),
+			!:FoundError = yes,
+			module_info_incr_errors(!ModuleInfo)
+		)
+	;
+		true
+	).
+
+:- pred report_consistency_error(class_id::in, hlds_class_defn::in,
+	hlds_instance_defn::in, hlds_instance_defn::in, hlds_class_fundep::in,
+	io::di, io::uo) is det.
+
+report_consistency_error(ClassId, ClassDefn, InstanceA, InstanceB, FunDep,
+		!IO) :-
+	ClassId = class_id(SymName, Arity),
+	Params = ClassDefn ^ class_vars,
+	TVarSet = ClassDefn ^ class_tvarset,
+	ContextA = InstanceA ^ instance_context,
+	ContextB = InstanceB ^ instance_context,
+
+	FunDep = fundep(Domain, Range),
+	DomainParams = restrict_list_elements(Domain, Params),
+	RangeParams = restrict_list_elements(Range, Params),
+	DomainList = mercury_vars_to_string(DomainParams, TVarSet, no),
+	RangeList = mercury_vars_to_string(RangeParams, TVarSet, no),
+	FunDepStr = "`(" ++ DomainList ++ " -> " ++ RangeList ++ ")'",
+
+	ErrorPiecesA = [
+		words("Inconsistent instance declaration for typeclass"),
+		sym_name_and_arity(SymName / Arity),
+		words("with functional dependency"),
+		fixed(FunDepStr),
+		suffix(".")
+	],
+	ErrorPiecesB = [
+		words("Here is the conflicting instance.")
+	],
+		
+	write_error_pieces(ContextA, 0, ErrorPiecesA, !IO),
+	write_error_pieces(ContextB, 0, ErrorPiecesB, !IO),
+	io__set_exit_status(1, !IO).
+
+	% XXX this is duplicated in typecheck
+:- func restrict_list_elements(set(hlds_class_argpos), list(T)) = list(T).
+
+restrict_list_elements(Elements, List) =
+        restrict_list_elements_2(Elements, 1, List).
+
+:- func restrict_list_elements_2(set(hlds_class_argpos), int, list(T)) =
+	list(T).
+
+restrict_list_elements_2(_, _, []) = [].
+restrict_list_elements_2(Elements, Index, [X | Xs]) =
+        (
+                set__member(Index, Elements)
+        ->
+                [X | restrict_list_elements_2(Elements, Index + 1, Xs)]
+        ;
+                restrict_list_elements_2(Elements, Index + 1, Xs)
+        ).
+
+%---------------------------------------------------------------------------%
+
+	% Look for pred or func declarations for which the type variables in
+	% the constraints are not all determined by the type variables in the
+	% type and the functional dependencies.
+	%
+:- pred check_typeclass.check_constraints(module_info::in,
+	module_info::out, bool::out, io::di, io::uo) is det.
+
+check_typeclass.check_constraints(!ModuleInfo, FoundError, !IO) :-
+	module_info_predids(!.ModuleInfo, PredIds),
+	list.foldl3(check_pred_constraints, PredIds, !ModuleInfo,
+		no, FoundError, !IO).
+
+:- pred check_pred_constraints(pred_id::in, module_info::in,
+	module_info::out, bool::in, bool::out, io::di, io::uo) is det.
+
+check_pred_constraints(PredId, !ModuleInfo, !FoundError, !IO) :-
+	module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
+	(
+		pred_info_import_status(PredInfo, ImportStatus),
+		needs_no_ambiguity_check(ImportStatus)
+	->
+		true
+	;
+		write_pred_progress_message(
+			"% Checking typeclass constraints on ",
+			PredId, !.ModuleInfo, !IO),
+		check_pred_type_ambiguities(PredInfo, !ModuleInfo, !FoundError,
+			!IO),
+		check_constraint_quant(PredInfo, !ModuleInfo, !FoundError, !IO)
+	).
+
+:- pred needs_no_ambiguity_check(import_status::in) is semidet.
+
+needs_no_ambiguity_check(imported(_)).
+needs_no_ambiguity_check(opt_imported).
+needs_no_ambiguity_check(abstract_imported).
+needs_no_ambiguity_check(pseudo_imported).
+
+:- pred check_pred_type_ambiguities(pred_info::in, module_info::in,
+	module_info::out, bool::in, bool::out, io::di, io::uo) is det.
+
+check_pred_type_ambiguities(PredInfo, !ModuleInfo, !FoundError, !IO) :-
+	pred_info_arg_types(PredInfo, ArgTypes),
+	TVars = list_to_set(term.vars_list(ArgTypes)),
+	pred_info_get_class_context(PredInfo, Constraints),
+	module_info_classes(!.ModuleInfo, ClassTable),
+	InducedFunDeps = induced_fundeps(ClassTable, Constraints),
+	FunDepsClosure = fundeps_closure(InducedFunDeps, TVars),
+	solutions(constrained_var_not_in_closure(Constraints, FunDepsClosure),
+		UnboundTVars),
+	(
+		UnboundTVars = []
+	->
+		true
+	;
+		report_unbound_tvars_in_class_context(UnboundTVars, PredInfo,
+			!IO),
+		!:FoundError = yes,
+		module_info_incr_errors(!ModuleInfo)
+	).
+
+:- pred constrained_var_not_in_closure(prog_constraints::in, set(tvar)::in,
+	tvar::out) is nondet.
+
+constrained_var_not_in_closure(ClassContext, Closure, UnboundTVar) :-
+	ClassContext = constraints(UnivCs, ExistCs),
+	(
+		Constraints = UnivCs
+	;
+		Constraints = ExistCs
+	),
+	prog_type.constraint_list_get_tvars(Constraints, TVars),
+	list.member(UnboundTVar, TVars),
+	\+ set.member(UnboundTVar, Closure).
+
+:- type induced_fundeps == list(induced_fundep).
+:- type induced_fundep
+	--->	fundep(
+			domain		:: set(tvar),
+			range		:: set(tvar)
+		).
+
+:- func induced_fundeps(class_table, prog_constraints) = induced_fundeps.
+
+induced_fundeps(ClassTable, constraints(UnivCs, ExistCs))
+	= foldl(induced_fundeps_2(ClassTable), UnivCs,
+		foldl(induced_fundeps_2(ClassTable), ExistCs, [])).
+
+:- func induced_fundeps_2(class_table, prog_constraint, induced_fundeps)
+	= induced_fundeps.
+
+induced_fundeps_2(ClassTable, constraint(Name, Args), FunDeps0) = FunDeps :-
+	Arity = length(Args),
+	ClassDefn = map.lookup(ClassTable, class_id(Name, Arity)),
+	FunDeps = foldl(induced_fundep(Args), ClassDefn ^ class_fundeps,
+		FunDeps0).
+
+:- func induced_fundep(list(type), hlds_class_fundep, induced_fundeps)
+	= induced_fundeps.
+
+induced_fundep(Args, fundep(Domain0, Range0), FunDeps)
+		= [fundep(Domain, Range) | FunDeps] :-
+	Domain = set.fold(induced_vars(Args), Domain0, set.init),
+	Range = set.fold(induced_vars(Args), Range0, set.init).
+
+:- func induced_vars(list(type), int, set(tvar)) = set(tvar).
+
+induced_vars(Args, ArgNum, Vars) = union(Vars, NewVars) :-
+	Arg = list.index1_det(Args, ArgNum),
+	NewVars = set.list_to_set(term.vars(Arg)).
+
+:- func fundeps_closure(induced_fundeps, set(tvar)) = set(tvar).
+
+fundeps_closure(FunDeps, TVars) = fundeps_closure_2(FunDeps, TVars, set.init).
+
+:- func fundeps_closure_2(induced_fundeps, set(tvar), set(tvar)) = set(tvar).
+
+fundeps_closure_2(FunDeps0, NewVars0, Result0) = Result :-
+	(
+		set.empty(NewVars0)
+	->
+		Result = Result0
+	;
+		Result1 = set.union(Result0, NewVars0),
+		FunDeps1 = list.map(remove_vars(NewVars0), FunDeps0),
+		list.foldl2(collect_determined_vars, FunDeps1, [], FunDeps,
+			set.init, NewVars),
+		Result = fundeps_closure_2(FunDeps, NewVars, Result1)
+	).
+
+:- func remove_vars(set(tvar), induced_fundep) = induced_fundep.
+
+remove_vars(Vars, fundep(Domain0, Range0)) = fundep(Domain, Range) :-
+	Domain = set.difference(Domain0, Vars),
+	Range = set.difference(Range0, Vars).
+
+:- pred collect_determined_vars(induced_fundep::in, induced_fundeps::in,
+	induced_fundeps::out, set(tvar)::in, set(tvar)::out) is det.
+
+collect_determined_vars(FunDep @ fundep(Domain, Range), !FunDeps, !Vars) :-
+	(
+		set.empty(Domain)
+	->
+		!:Vars = set.union(Range, !.Vars)
+	;
+		!:FunDeps = [FunDep | !.FunDeps]
+	).
+
+% The error message is intended to look like this:
+%
+% very_long_module_name:001: In declaration for function `long_function/2':
+% very_long_module_name:001:   error in type class constraints: type variables
+% very_long_module_name:001:   T1, T2 and T3 occur in the constraints, but are
+% very_long_module_name:001:   not determined by the function's argument or
+% very_long_module_name:001:   result types.
+%
+% very_long_module_name:002: In declaration for predicate `long_predicate/3':
+% very_long_module_name:002:   error in type class constraints: type variable
+% very_long_module_name:002:   T occurs in the constraints, but is not
+% very_long_module_name:002:   determined by the predicate's argument types.
+
+:- pred report_unbound_tvars_in_class_context(list(tvar)::in, pred_info::in,
+	io::di, io::uo) is det.
+
+report_unbound_tvars_in_class_context(Vars, PredInfo, !IO) :-
+	pred_info_context(PredInfo, Context),
+	pred_info_arg_types(PredInfo, TVarSet, _, ArgTypes),
+	PredName = pred_info_name(PredInfo),
+	Module = pred_info_module(PredInfo),
+	SymName = qualified(Module, PredName),
+	Arity = length(ArgTypes),
+	PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+
+	VarsStrs = list.map(
+			(func(Var) = mercury_var_to_string(Var, TVarSet, no)),
+			Vars),
+
+	Msg0 = [words("In declaration for"),
+		words(simple_call_id_to_string(PredOrFunc, SymName, Arity)),
+		suffix(":"), nl,
+		words("error in type class constraints:"),
+		words(choose_number(Vars, "type variable", "type variables"))]
+		++ list_to_pieces(VarsStrs) ++
+		[words(choose_number(Vars, "occurs", "occur")),
+		words("in the constraints, but"),
+		words(choose_number(Vars, "is", "are")),
+		words("not determined by the")],
+	(
+		PredOrFunc = predicate,
+		Msg = Msg0 ++ [words("predicate's argument types.")]
+	;
+		PredOrFunc = function,
+		Msg = Msg0 ++ [words("function's argument or result types.")]
+	),
+	write_error_pieces(Context, 0, Msg, !IO),
+	io__set_exit_status(1, !IO).
 
 %---------------------------------------------------------------------------%
 %
@@ -1180,20 +1702,11 @@ add_path_element(class_id(Name, Arity), RevPieces0) =
 % universally (existentially) quantified.
 %
 
-:- pred check_constraint_quant(module_info::in, module_info::out,
-	bool::out, io::di, io::uo) is det.
-
-check_constraint_quant(!ModuleInfo, FoundError, !IO) :-
-	module_info_predids(!.ModuleInfo, PredIds),
-	list.foldl3(check_constraint_quant_2, PredIds, !ModuleInfo,
-		no, FoundError, !IO).
-
-:- pred check_constraint_quant_2(pred_id::in,
+:- pred check_constraint_quant(pred_info::in,
 	module_info::in, module_info::out, bool::in, bool::out,
 	io::di, io::uo) is det.
 
-check_constraint_quant_2(PredId, !ModuleInfo, !FoundError, !IO) :-
-	module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
+check_constraint_quant(PredInfo, !ModuleInfo, !FoundError, !IO) :-
 	pred_info_get_exist_quant_tvars(PredInfo, ExistQVars),
 	pred_info_get_class_context(PredInfo, Constraints),
 	Constraints = constraints(UnivCs, ExistCs),

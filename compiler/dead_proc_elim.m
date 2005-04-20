@@ -267,7 +267,7 @@ get_instance_pred_procs(Instance, !Queue, !Needed) :-
 	is det.
 
 get_class_pred_procs(Class, !Queue, !Needed) :-
-	Class = hlds_class_defn(_, _, _, _, Methods, _, _),
+	Methods = Class ^ class_hlds_interface,
 	list__foldl2(get_class_interface_pred_proc, Methods, !Queue, !Needed).
 
 :- pred get_class_interface_pred_proc(hlds_class_proc::in,

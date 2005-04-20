@@ -302,7 +302,7 @@ collect_mq_info_2(promise(_PromiseType, Goal, _ProgVarSet, _UnivVars),
 			!Info)
 	).
 collect_mq_info_2(nothing(_), !Info).
-collect_mq_info_2(typeclass(_, SymName, Params, _, _), !Info) :-
+collect_mq_info_2(typeclass(_, _, SymName, Params, _, _), !Info) :-
 	% This item is not visible in the current module.
 	( mq_info_get_import_status(!.Info, abstract_imported) ->
 		true
@@ -660,10 +660,10 @@ module_qualify_item(promise(T, G, V, U) - Context,
 		promise(T, G, V, U) - Context, !Info, yes, !IO).
 module_qualify_item(nothing(A) - Context, nothing(A) - Context,
 		!Info, yes, !IO).
-module_qualify_item(typeclass(Constraints0, Name, Vars, Interface0, VarSet) -
-			Context,
-		typeclass(Constraints, Name, Vars, Interface, VarSet) -
-			Context,
+module_qualify_item(typeclass(Constraints0, FunDeps, Name, Vars, Interface0,
+			VarSet) - Context,
+		typeclass(Constraints, FunDeps, Name, Vars, Interface, VarSet)
+			- Context,
 		!Info, yes, !IO) :-
 	list.length(Vars, Arity),
 	mq_info_set_error_context(class(Name - Arity) - Context, !Info),

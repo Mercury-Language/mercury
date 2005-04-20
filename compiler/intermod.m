@@ -1440,19 +1440,37 @@ intermod__write_classes(ModuleInfo, !IO) :-
 	hlds_class_defn::in, io::di, io::uo) is det.
 
 intermod__write_class(ModuleName, ClassId, ClassDefn, !IO) :-
-	ClassDefn = hlds_class_defn(ImportStatus, Constraints,
-		TVars, Interface, _HLDSClassInterface,
+	ClassDefn = hlds_class_defn(ImportStatus, Constraints, HLDSFunDeps,
+		_Ancestors, TVars, Interface, _HLDSClassInterface,
 		TVarSet, Context),
 	ClassId = class_id(QualifiedClassName, _),
 	(
 		QualifiedClassName = qualified(ModuleName, _),
 		import_status_to_write(ImportStatus)
 	->
-		Item = typeclass(Constraints, QualifiedClassName, TVars,
-			Interface, TVarSet),
+		FunDeps = list.map(unmake_hlds_class_fundep(TVars),
+			HLDSFunDeps),
+		Item = typeclass(Constraints, FunDeps, QualifiedClassName,
+			TVars, Interface, TVarSet),
 		mercury_output_item(Item, Context, !IO)
 	;
 		true
+	).
+
+:- func unmake_hlds_class_fundep(list(tvar), hlds_class_fundep) = prog_fundep.
+
+unmake_hlds_class_fundep(TVars, fundep(Domain0, Range0))
+		= fundep(Domain, Range) :-
+	Domain = unmake_hlds_class_fundep_2(TVars, Domain0),
+	Range = unmake_hlds_class_fundep_2(TVars, Range0).
+
+:- func unmake_hlds_class_fundep_2(list(tvar), set(hlds_class_argpos)) =
+	list(tvar).
+
+unmake_hlds_class_fundep_2(TVars, Set) = solutions(P) :-
+	P = (pred(TVar::out) is nondet :-
+		set.member(N, Set),
+		TVar = list.index1_det(TVars, N)
 	).
 
 :- pred intermod__write_instances(assoc_list(class_id, hlds_instance_defn)::in,
@@ -2076,22 +2094,16 @@ adjust_class_status(!ModuleInfo) :-
 	pair(class_id, hlds_class_defn)::out,
 	module_info::in, module_info::out) is det.
 
-adjust_class_status_2(ClassId - ClassDefn0, ClassId - ClassDefn,
-			ModuleInfo0, ModuleInfo) :-
+adjust_class_status_2(ClassId - ClassDefn0, ClassId - ClassDefn, !ModuleInfo) :-
 	(
-		ClassDefn0 = hlds_class_defn(Status0, Constraints, TVars,
-				Interface, HLDSClassInterface,
-				TVarSet, Context),
-		import_status_to_write(Status0)
+		import_status_to_write(ClassDefn0 ^ class_status)
 	->
-		ClassDefn = hlds_class_defn(exported, Constraints, TVars,
-				Interface, HLDSClassInterface,
-				TVarSet, Context),
-		class_procs_to_pred_ids(HLDSClassInterface, PredIds),
-		set_list_of_preds_exported(PredIds, ModuleInfo0, ModuleInfo)
+		ClassDefn = ClassDefn0 ^ class_status := exported,
+		class_procs_to_pred_ids(ClassDefn ^ class_hlds_interface,
+			PredIds),
+		set_list_of_preds_exported(PredIds, !ModuleInfo)
 	;
-		ClassDefn = ClassDefn0,
-		ModuleInfo = ModuleInfo0
+		ClassDefn = ClassDefn0
 	).
 
 :- pred class_procs_to_pred_ids(list(hlds_class_proc)::in, list(pred_id)::out)

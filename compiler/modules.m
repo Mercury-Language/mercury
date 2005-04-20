@@ -7235,7 +7235,7 @@ item_needs_imports(module_defn(_, _)) = no.
 item_needs_imports(pragma(_)) = yes.
 item_needs_imports(pred_or_func(_, _, _, _, _, _, _, _, _, _, _, _)) = yes.
 item_needs_imports(pred_or_func_mode(_, _, _, _, _, _, _)) = yes.
-item_needs_imports(Item @ typeclass(_, _, _, _, _)) =
+item_needs_imports(Item @ typeclass(_, _, _, _, _, _)) =
     (
         Item ^ tc_class_methods = abstract,
         \+ (
@@ -7279,7 +7279,7 @@ include_in_int_file_implementation(module_defn(_, Defn)) :-
     % Since these constructors are abstractly exported,
     % we won't need the local instance declarations.
     %
-include_in_int_file_implementation(typeclass(_, _, _, _, _)).
+include_in_int_file_implementation(typeclass(_, _, _, _, _, _)).
 include_in_int_file_implementation(pragma(foreign_import_module(_, _))).
 
 :- pred make_abstract_defn(item::in, short_interface_kind::in, item::out)
@@ -7327,8 +7327,8 @@ make_abstract_defn(type_defn(_VarSet, _Name, _Args, TypeDefn, _Cond) @ Item0,
     ).
 make_abstract_defn(instance(_, _, _, _, _, _) @ Item0, int2, Item) :-
     make_abstract_instance(Item0, Item).
-make_abstract_defn(typeclass(A, B, C, _, E), _,
-        typeclass(A, B, C, abstract, E)).
+make_abstract_defn(typeclass(_, _, _, _, _, _) @ Item, _,
+        Item ^ tc_class_methods := abstract).
 
 :- pred make_abstract_unify_compare(item::in, short_interface_kind::in,
     item::out) is semidet.
@@ -7516,7 +7516,7 @@ reorderable(type_defn(_, _, _, _, _) - _).
 reorderable(inst_defn(_, _, _, _, _) - _).
 reorderable(mode_defn(_, _, _, _, _) - _).
 reorderable(promise(_, _, _, _) - _).
-reorderable(typeclass(_, _, _, _, _) - _).
+reorderable(typeclass(_, _, _, _, _, _) - _).
 reorderable(instance(_, _, _, _, _, _) - _).
 
     % Given a list of items for which chunkable succeeds, we need to keep
@@ -7546,7 +7546,7 @@ chunkable(mode_defn(_, _, _, _, _) - _).
 chunkable(pred_or_func(_, _, _, _, _, _, _, _, _, _, _, _) - _).
 chunkable(pred_or_func_mode(_, _, _, _, _, _, _) - _).
 chunkable(promise(_, _, _, _) - _).
-chunkable(typeclass(_, _, _, _, _) - _).
+chunkable(typeclass(_, _, _, _, _, _) - _).
 chunkable(instance(_, _, _, _, _, _) - _).
 
     % Given a list of items for which symname_ordered succeeds, we need to keep

@@ -1,0 +1,9 @@
+mpj1.m:014: In clause for function `mpj1.g/1':
+mpj1.m:014:   in function result term of clause head:
+mpj1.m:014:   in argument 2 of functor `f/3':
+mpj1.m:014:   type error in unification of argument
+mpj1.m:014:   and constant `2'.
+mpj1.m:014:   argument has type `string',
+mpj1.m:014:   constant `2' has type `int'.
+mpj1.m:012: Inferred :- func f(E, E, T4) = T4 <= (mpj1.coll(E, T4)).
+For more information, try recompiling with `-E'.

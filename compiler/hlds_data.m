@@ -26,7 +26,12 @@
 
 :- implementation.
 
+:- import_module check_hlds__type_util.
+
 :- import_module int.
+:- import_module svmulti_map.
+:- import_module term.
+:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -786,14 +791,22 @@ determinism_components(failure,     can_fail,    at_most_zero).
 
 :- interface.
 
+:- import_module set.
+
 :- type class_table == map(class_id, hlds_class_defn).
 
 	% Information about a single `typeclass' declaration
+	%
 :- type hlds_class_defn --->
 	hlds_class_defn(
 		class_status		:: import_status,
 		class_supers		:: list(prog_constraint),
 					% SuperClasses
+		class_fundeps		:: hlds_class_fundeps,
+					% Functional dependencies
+		class_fundep_ancestors	:: list(prog_constraint),
+					% All ancestors which have fundeps
+					% on them.
 		class_vars		:: list(tvar),
 					% ClassVars
 		class_interface		:: class_interface,
@@ -811,6 +824,21 @@ determinism_components(failure,     can_fail,    at_most_zero).
 					% Location of declaration
 	).
 
+	% In the HLDS, functional dependencies are represented using
+	% argument positions (counting from 1) rather than type variables.
+	% We know that there will be a one-one correspondence since
+	% typeclass parameters must be distinct variables, and using
+	% argument positions is more efficient.
+	%
+:- type hlds_class_fundeps == list(hlds_class_fundep).
+:- type hlds_class_fundep
+	--->	fundep(
+			domain		:: set(hlds_class_argpos),
+			range		:: set(hlds_class_argpos)
+		).
+
+:- type hlds_class_argpos == int.
+
 :- type hlds_class_interface	==	list(hlds_class_proc).
 :- type hlds_class_proc
 	---> 	hlds_class_proc(
@@ -819,11 +847,16 @@ determinism_components(failure,     can_fail,    at_most_zero).
 		).
 
 	% For each class, we keep track of a list of its instances, since there
-	% can be more than one instance of each class.
+	% can be more than one instance of each class.  Each visible instance
+	% is assigned a unique identifier (integers beginning from one).
+	% The position in the list of instances corresponds to the instance_id.
 	%
-:- type instance_table == multi_map(class_id, hlds_instance_defn).
+:- type instance_table == map(class_id, list(hlds_instance_defn)).
+
+:- type instance_id == int.
 
 	% Information about a single `instance' declaration
+	%
 :- type hlds_instance_defn --->
 	hlds_instance_defn(
 		instance_module		:: module_name,
@@ -869,7 +902,7 @@ determinism_components(failure,     can_fail,    at_most_zero).
 :- type constraint_id
 	--->	constraint_id(
 			constraint_type,
-				% Existential or universal.
+				% Assumed or unproven.
 
 			goal_path,
 				% The location of the atomic goal which is
@@ -879,8 +912,8 @@ determinism_components(failure,     can_fail,    at_most_zero).
 		).
 
 :- type constraint_type
-	--->	existential
-	;	universal.
+	--->	unproven
+	;	assumed.
 
 	% The identifier of a constraint is stored along with the constraint.
 	% Each value of this type may have more than one identifier because
@@ -896,12 +929,36 @@ determinism_components(failure,     can_fail,    at_most_zero).
 
 :- type hlds_constraints
 	--->	constraints(
-			universal	:: list(hlds_constraint),
-						% Universal constraints.
+			unproven	:: list(hlds_constraint),
+					% Unproven constraints.  These are
+					% the constraints that we must prove
+					% (that is, universal constraints from
+					% the goal being checked, or
+					% existential constraints on the head).
 
-			existential	:: list(hlds_constraint)
-						% Existential constraints.
+			assumed		:: list(hlds_constraint),
+					% Assumed constraints.  These are
+					% constraints we can use in proofs
+					% (that is, existential constraints
+					% from the goal being checked, or
+					% universal constraints on the head).
+
+			redundant	:: redundant_constraints
+					% Constraints that are known to be
+					% redundant.  This includes constraints
+					% that have already been proved as well
+					% as constraints that are ancestors of
+					% other unproven or redundant
+					% constraints.  Not all such
+					% constraints are included, only those
+					% which may be used for the purposes
+					% of improvement.
 		).
+
+	% Redundant constraints are partitioned by class, which helps us
+	% process them more efficiently.
+	%
+:- type redundant_constraints == multi_map(class_id, hlds_constraint).
 
 	% During type checking we fill in a constraint_map which gives
 	% the constraint that corresponds to each identifier.  This is used
@@ -911,7 +968,7 @@ determinism_components(failure,     can_fail,    at_most_zero).
 
 	% `Proof' of why a constraint is redundant
 :- type constraint_proof
-			% Apply the instance decl with the given number.
+			% Apply the instance decl with the given identifier.
 			% Note that we don't store the actual
 			% hlds_instance_defn for two reasons:
 			% - That would require storing a renamed version of
@@ -925,22 +982,51 @@ determinism_components(failure,     can_fail,    at_most_zero).
 			%   would require the class relation to be
 			%   topologically sorted before checking the
 			%   instance declarations.
-	--->	apply_instance(int)
+	--->	apply_instance(instance_id)
 
 			% The constraint is redundant because of the
 			% following class's superclass declaration
 	;	superclass(prog_constraint).
 
+	% The constraint_proof_map is a map which for each type class
+	% constraint records how/why that constraint was satisfied.
+	% This information is used to determine how to construct the
+	% typeclass_info for that constraint.
+	%
 :- type constraint_proof_map == map(prog_constraint, constraint_proof).
+
+:- pred empty_hlds_constraints(hlds_constraints::out) is det.
 
 :- pred init_hlds_constraint_list(list(prog_constraint)::in,
 	list(hlds_constraint)::out) is det.
 
-:- pred make_hlds_constraints(prog_constraints::in, goal_path::in,
+:- pred make_head_hlds_constraints(class_table::in, tvarset::in,
+	prog_constraints::in, hlds_constraints::out) is det.
+
+:- pred make_body_hlds_constraints(class_table::in, tvarset::in, goal_path::in,
+	prog_constraints::in, hlds_constraints::out) is det.
+
+	% make_hlds_constraints(ClassTable, TVarSet, UnprovenConstraints,
+	% 	AssumedConstraints, Constraints)
+	%
+	% ClassTable is the class_table for the module.  TVarSet is the
+	% tvarset for the predicate this class context is for.
+	% UnprovenConstraints is a list of constraints which will need to
+	% be proven (that is, universal constraints in the body or
+	% existential constraints in the head).  AssumedConstraints is a
+	% list of constraints that may be used in proofs (that is,
+	% existential constraints in the body or universal constraints in
+	% the head).
+	%
+:- pred make_hlds_constraints(class_table::in, tvarset::in,
+	list(hlds_constraint)::in, list(hlds_constraint)::in,
 	hlds_constraints::out) is det.
 
 :- pred make_hlds_constraint_list(list(prog_constraint)::in,
 	constraint_type::in, goal_path::in, list(hlds_constraint)::out) is det.
+
+:- pred merge_hlds_constraints(hlds_constraints::in, hlds_constraints::in,
+	hlds_constraints::out) is det.
 
 :- pred retrieve_prog_constraints(hlds_constraints::in, prog_constraints::out)
 	is det.
@@ -960,12 +1046,19 @@ determinism_components(failure,     can_fail,    at_most_zero).
 :- pred update_constraint_map(hlds_constraint::in, constraint_map::in,
 	constraint_map::out) is det.
 
+:- pred update_redundant_constraints(class_table::in, tvarset::in,
+	list(hlds_constraint)::in,
+	redundant_constraints::in, redundant_constraints::out) is det.
+
 :- pred lookup_hlds_constraint_list(constraint_map::in, constraint_type::in,
 	goal_path::in, int::in, list(prog_constraint)::out) is det.
 
 %-----------------------------------------------------------------------------%
 
 :- implementation.
+
+empty_hlds_constraints(Constraints) :-
+	Constraints = constraints([], [], multi_map.init).
 
 init_hlds_constraint_list(ProgConstraints, Constraints) :-
 	list.map(init_hlds_constraint, ProgConstraints, Constraints).
@@ -974,14 +1067,31 @@ init_hlds_constraint_list(ProgConstraints, Constraints) :-
 
 init_hlds_constraint(constraint(Name, Types), constraint([], Name, Types)).
 
-make_hlds_constraints(ProgConstraints, GoalPath, Constraints) :-
-	ProgConstraints = constraints(UnivProgConstraints,
-		ExistProgConstraints),
-	make_hlds_constraint_list(UnivProgConstraints, universal, GoalPath,
-		UnivConstraints),
-	make_hlds_constraint_list(ExistProgConstraints, existential, GoalPath,
-		ExistConstraints),
-	Constraints = constraints(UnivConstraints, ExistConstraints).
+make_head_hlds_constraints(ClassTable, TVarSet, ProgConstraints,
+		Constraints) :-
+	ProgConstraints = constraints(UnivConstraints, ExistConstraints),
+	GoalPath = [],
+	make_hlds_constraint_list(UnivConstraints, assumed, GoalPath,
+		AssumedConstraints),
+	make_hlds_constraint_list(ExistConstraints, unproven, GoalPath,
+		UnprovenConstraints),
+	make_hlds_constraints(ClassTable, TVarSet, UnprovenConstraints,
+		AssumedConstraints, Constraints).
+
+make_body_hlds_constraints(ClassTable, TVarSet, GoalPath, ProgConstraints,
+		Constraints) :-
+	ProgConstraints = constraints(UnivConstraints, ExistConstraints),
+	make_hlds_constraint_list(UnivConstraints, unproven, GoalPath,
+		UnprovenConstraints),
+	make_hlds_constraint_list(ExistConstraints, assumed, GoalPath,
+		AssumedConstraints),
+	make_hlds_constraints(ClassTable, TVarSet, UnprovenConstraints,
+		AssumedConstraints, Constraints).
+
+make_hlds_constraints(ClassTable, TVarSet, Unproven, Assumed, Constraints) :-
+	list.foldl(update_redundant_constraints_2(ClassTable, TVarSet),
+		Unproven, multi_map.init, Redundant),
+	Constraints = constraints(Unproven, Assumed, Redundant).
 
 make_hlds_constraint_list(ProgConstraints, ConstraintType, GoalPath,
 		Constraints) :-
@@ -999,10 +1109,18 @@ make_hlds_constraint_list_2([P | Ps], T, G, N, [H | Hs]) :-
 	H = constraint([Id], Name, Types),
 	make_hlds_constraint_list_2(Ps, T, G, N + 1, Hs).
 
+merge_hlds_constraints(ConstraintsA, ConstraintsB, Constraints) :-
+	ConstraintsA = constraints(UnprovenA, AssumedA, RedundantA),
+	ConstraintsB = constraints(UnprovenB, AssumedB, RedundantB),
+	list.append(UnprovenA, UnprovenB, Unproven),
+	list.append(AssumedA, AssumedB, Assumed),
+	multi_map.merge(RedundantA, RedundantB, Redundant),
+	Constraints = constraints(Unproven, Assumed, Redundant).
+
 retrieve_prog_constraints(Constraints, ProgConstraints) :-
-	Constraints = constraints(UnivConstraints, ExistConstraints),
-	retrieve_prog_constraint_list(UnivConstraints, UnivProgConstraints),
-	retrieve_prog_constraint_list(ExistConstraints, ExistProgConstraints),
+	Constraints = constraints(Unproven, Assumed, _),
+	retrieve_prog_constraint_list(Unproven, UnivProgConstraints),
+	retrieve_prog_constraint_list(Assumed, ExistProgConstraints),
 	ProgConstraints = constraints(UnivProgConstraints,
 		ExistProgConstraints).
 
@@ -1035,6 +1153,58 @@ update_constraint_map(Constraint, !ConstraintMap) :-
 update_constraint_map_2(ProgConstraint, ConstraintId, ConstraintMap0,
 		ConstraintMap) :-
 	map.set(ConstraintMap0, ConstraintId, ProgConstraint, ConstraintMap).
+
+update_redundant_constraints(ClassTable, TVarSet, Constraints, !Redundant) :-
+	list.foldl(update_redundant_constraints_2(ClassTable, TVarSet),
+		Constraints, !Redundant).
+
+:- pred update_redundant_constraints_2(class_table::in, tvarset::in,
+	hlds_constraint::in, redundant_constraints::in,
+	redundant_constraints::out) is det.
+
+update_redundant_constraints_2(ClassTable, TVarSet, Constraint, !Redundant) :-
+	Constraint = constraint(_, Name, Args),
+	list.length(Args, Arity),
+	ClassId = class_id(Name, Arity),
+	map.lookup(ClassTable, ClassId, ClassDefn),
+	ClassAncestors0 = ClassDefn ^ class_fundep_ancestors,
+	list.map(init_hlds_constraint, ClassAncestors0, ClassAncestors),
+	(
+		% Optimize the simple case.
+		ClassAncestors = []
+	;
+		ClassAncestors = [_ | _],
+		ClassTVarSet = ClassDefn ^ class_tvarset,
+		ClassParams = ClassDefn ^ class_vars,
+
+			%
+			% We can ignore the resulting tvarset, since any new
+			% variables will become bound when the arguments are
+			% bound.  (This follows from the fact that constraints
+			% on class declarations can only use variables that
+			% appear in the head of the declaration.)
+			%
+		varset.merge_subst(TVarSet, ClassTVarSet, _, RenameSubst),
+		apply_subst_to_constraint_list(RenameSubst, ClassAncestors,
+			RenamedAncestors),
+		term.var_list_to_term_list(ClassParams, ClassParamTerms),
+		term.apply_substitution_to_list(ClassParamTerms, RenameSubst,
+			RenamedParamTerms),
+		term.term_list_to_var_list(RenamedParamTerms, RenamedParams),
+		map.from_corresponding_lists(RenamedParams, Args, Subst),
+		apply_subst_to_constraint_list(Subst, RenamedAncestors,
+			Ancestors),
+		list.foldl(add_redundant_constraint, Ancestors, !Redundant)
+	).
+
+:- pred add_redundant_constraint(hlds_constraint::in,
+	redundant_constraints::in, redundant_constraints::out) is det.
+
+add_redundant_constraint(Constraint, !Redundant) :-
+	Constraint = constraint(_, Name, Args),
+	list.length(Args, Arity),
+	ClassId = class_id(Name, Arity),
+	svmulti_map.add(ClassId, Constraint, !Redundant).
 
 lookup_hlds_constraint_list(ConstraintMap, ConstraintType, GoalPath, Count,
 		Constraints) :-

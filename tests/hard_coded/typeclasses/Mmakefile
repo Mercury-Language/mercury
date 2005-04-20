@@ -9,6 +9,7 @@ TYPECLASSES_PROGS= \
 	arbitrary_constraint_pred_2 \
 	arbitrary_constraint_pred_1 \
 	complicated_constraint \
+	complicated_fundeps \
 	constrained_lambda \
 	extract_typeinfo \
 	exist_disjunction \
@@ -19,6 +20,9 @@ TYPECLASSES_PROGS= \
 	existential_type_switch \
 	extra_typeinfo \
 	func_default_mode_bug \
+	fundeps_1 \
+	fundeps_2 \
+	fundeps_3 \
 	ground_constraint \
 	ground_constraint_2 \
 	ho_map \
@@ -42,6 +46,7 @@ TYPECLASSES_PROGS= \
 	multi_moded \
 	multi_parameter \
 	multi_parameter_bug \
+	no_fundep_infer \
 	nondet_class_method \
 	operator_classname \
 	record_syntax \

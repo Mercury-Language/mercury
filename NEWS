@@ -1,6 +1,12 @@
 NEWS since the 0.12.0 fork:
 ----------------------------------
 
+Changes to the Mercury language:
+* We have added support for functional dependencies to the typeclass system.
+  See the "Type classes" section of the Mercury Language Refence Manual for
+  details.
+
+Changes to the Mercury standard library:
 * We have added string.word_wrap/2.
 
 NEWS since Mercury release 0.11.0:

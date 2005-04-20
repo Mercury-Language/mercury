@@ -1,0 +1,9 @@
+typeclass_test_12.m:003: In declaration for predicate `typeclass_test_12.p/0':
+typeclass_test_12.m:003:   error in type class constraints: type variable T
+typeclass_test_12.m:003:   occurs in the constraints, but is not determined by
+typeclass_test_12.m:003:   the predicate's argument types.
+typeclass_test_12.m:005: In declaration for function `typeclass_test_12.q/0':
+typeclass_test_12.m:005:   error in type class constraints: type variable T
+typeclass_test_12.m:005:   occurs in the constraints, but is not determined by
+typeclass_test_12.m:005:   the function's argument or result types.
+For more information, try recompiling with `-E'.

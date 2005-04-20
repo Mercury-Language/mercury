@@ -1,0 +1,9 @@
+fundeps_vars.m:020: Error: domain and range of functional dependency must be comma-separated lists of variables: c -> e.
+fundeps_vars.m:027: Error: type variable in functional dependency is not a parameter of this type class: (_1 -> _2, _3), foo(_2).
+fundeps_vars.m:035: In declaration of instance of typeclass `coll'/2:
+fundeps_vars.m:035:   error: undefined typeclass `coll'/2.
+fundeps_vars.m:042: In definition of predicate `fundeps_vars.test'/2:
+fundeps_vars.m:042:   error: undefined typeclass `coll'/2.
+fundeps_vars.m:035: Error: instance declaration for `coll'/2 without preceding
+fundeps_vars.m:035:   typeclass declaration.
+For more information, try recompiling with `-E'.

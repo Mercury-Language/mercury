@@ -123,7 +123,7 @@
 :- pred constraint_list_get_tvars(list(prog_constraint)::in, list(tvar)::out)
 	is det.
 	
-	% constraint_list_get_tvars(Constraint, TVars):
+	% constraint_get_tvars(Constraint, TVars):
 	%	return the list of type variables contained in a constraint.
 	%
 :- pred constraint_get_tvars(prog_constraint::in, list(tvar)::out) is det.

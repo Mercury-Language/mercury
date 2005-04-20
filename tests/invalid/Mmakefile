@@ -32,6 +32,8 @@ MULTIMODULE_PROGS= \
 
 SINGLEMODULE= \
 	after_end_module \
+	ambiguous_method \
+	ambiguous_method_2 \
 	any_mode \
 	any_should_not_match_bound \
 	assert_in_interface \
@@ -53,6 +55,7 @@ SINGLEMODULE= \
 	circ_type2 \
 	circ_type3 \
 	circ_type5 \
+	complex_constraint_err \
 	conflicting_tabling_pragmas \
 	constrained_poly_insts \
 	constructor_warning \
@@ -77,18 +80,21 @@ SINGLEMODULE= \
 	freefree \
 	func_errors \
 	funcs_as_preds \
+	fundeps_vars \
 	ho_default_func_1 \
 	ho_default_func_3 \
 	ho_type_mode_bug \
 	ho_unique_error \
 	illtyped_compare \
 	impure_method_impl \
+	inconsistent_instances \
 	inline_conflict \
 	inst_list_dup \
 	instance_bug \
 	invalid_export_detism \
 	invalid_import_detism \
 	invalid_main \
+	invalid_new \
 	invalid_typeclass \
 	io_in_ite_cond \
 	lambda_syntax_error \
@@ -105,6 +111,9 @@ SINGLEMODULE= \
 	modes_erroneous \
 	mostly_uniq1 \
 	mostly_uniq2 \
+	mpj1 \
+	mpj3 \
+	mpj4 \
 	multimode_dcg \
 	multimode_missing_impure \
 	multimode_syntax \
@@ -125,6 +134,7 @@ SINGLEMODULE= \
 	qualified_cons_id2 \
 	quant_constraint_1 \
 	quant_constraint_2 \
+	range_restrict \
 	record_syntax_errors \
 	some \
 	spurious_mode_error \
@@ -147,6 +157,7 @@ SINGLEMODULE= \
 	typeclass_test_1 \
 	typeclass_test_10 \
 	typeclass_test_11 \
+	typeclass_test_12 \
 	typeclass_test_2 \
 	typeclass_test_3 \
 	typeclass_test_4 \
@@ -170,6 +181,7 @@ SINGLEMODULE= \
 	unify_mode_error \
 	uniq_modes \
 	uniq_neg \
+	unsatisfiable_constraint \
 	uu_type \
 	vars_in_wrong_places \
 	with_type

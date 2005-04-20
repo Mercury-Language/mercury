@@ -67,7 +67,7 @@ parse_typeclass(ModuleName, VarSet, TypeClassTerm, Result) :-
 		parse_non_empty_class(ModuleName, Name, Methods, VarSet,
 			Result)
 	;
-		parse_class_name(ModuleName, Arg, VarSet, Result)
+		parse_class_head(ModuleName, Arg, VarSet, Result)
 	).
 
 :- pred parse_non_empty_class(module_name::in, term::in, term::in, varset::in,
@@ -78,17 +78,18 @@ parse_non_empty_class(ModuleName, Name, Methods, VarSet, Result) :-
 	parse_class_methods(ModuleName, Methods, VarSet, ParsedMethods),
 	(
 		ParsedMethods = ok(MethodList),
-		parse_class_name(ModuleName, Name, VarSet, ParsedNameAndVars),
+		parse_class_head(ModuleName, Name, VarSet, ParsedNameAndVars),
 		(
 			ParsedNameAndVars = error(String, Term)
 		->
 			Result = error(String, Term)
 		;
-			ParsedNameAndVars = ok(typeclass(Constraints,
-				NameString, Vars, _, _))
+			ParsedNameAndVars = ok(Item),
+			Item = typeclass(_, _, _, _, _, _)
 		->
-			Result = ok(typeclass(Constraints, NameString, Vars,
-				concrete(MethodList), TVarSet))
+			Result = ok((Item
+				^ tc_class_methods := concrete(MethodList))
+				^ tc_varset := TVarSet)
 		;
 				% if the item we get back isn't a typeclass,
 				% something has gone wrong...
@@ -99,10 +100,10 @@ parse_non_empty_class(ModuleName, Name, Methods, VarSet, Result) :-
 		Result = error(String, Term)
 	).
 
-:- pred parse_class_name(module_name::in, term::in, varset::in,
+:- pred parse_class_head(module_name::in, term::in, varset::in,
 	maybe1(item)::out) is det.
 
-parse_class_name(ModuleName, Arg, VarSet, Result) :-
+parse_class_head(ModuleName, Arg, VarSet, Result) :-
 	(
 		Arg = term__functor(term__atom("<="), [Name, Constraints], _)
 	->
@@ -121,34 +122,54 @@ parse_constrained_class(ModuleName, Decl, Constraints, VarSet, Result) :-
 	parse_superclass_constraints(ModuleName, Constraints,
 		ParsedConstraints),
 	(
-		ParsedConstraints = ok(ConstraintList),
+		ParsedConstraints = ok(ConstraintList, FunDeps),
 		parse_unconstrained_class(ModuleName, Decl, TVarSet, Result0),
 		(
 			Result0 = error(_, _)
 		->
 			Result = Result0
 		;
-			Result0 = ok(typeclass(_, Name, Vars, Interface,
-				VarSet0))
+			Result0 = ok(Item),
+			Item = typeclass(_, _, _, _, _, _)
 		->
 			(
 				%
-				% check for type variables in the constraints
+				% Check for type variables in the constraints
 				% which do not occur in the type class
-				% parameters
+				% parameters.
 				%
 				prog_type__constraint_list_get_tvars(
 					ConstraintList, ConstrainedVars),
 				list__member(Var, ConstrainedVars),
-				\+ list__member(Var, Vars)
+				\+ list__member(Var, Item ^ tc_class_params)
 			->
 				Result = error("type variable in " ++
 					"superclass constraint is not " ++
 					"a parameter of this type class",
 					Constraints)
 			;
-				Result = ok(typeclass(ConstraintList, Name,
-					Vars, Interface, VarSet0))
+				%
+				% Check for type variables in the fundeps
+				% which do not occur in the type class
+				% parameters.
+				%
+				list__member(FunDep, FunDeps),
+				FunDep = fundep(Domain, Range),
+				(
+					list__member(Var, Domain)
+				;
+					list__member(Var, Range)
+				),
+				\+ list__member(Var, Item ^ tc_class_params)
+			->
+				Result = error("type variable in " ++
+					"functional dependency is not " ++
+					"a parameter of this type class",
+					Constraints)
+			;
+				Result = ok((Item
+					^ tc_constraints := ConstraintList)
+					^ tc_fundeps := FunDeps)
 			)
 		;
 				% if the item we get back isn't a typeclass,
@@ -161,12 +182,46 @@ parse_constrained_class(ModuleName, Decl, Constraints, VarSet, Result) :-
 	).
 
 :- pred parse_superclass_constraints(module_name::in, term::in,
-	maybe1(list(prog_constraint))::out) is det.
+	maybe2(list(prog_constraint), list(prog_fundep))::out) is det.
 
-parse_superclass_constraints(ModuleName, Constraints, Result) :-
-	parse_simple_class_constraints(ModuleName, Constraints,
-		"constraints on class declarations may only constrain " ++
-		"type variables and ground types", Result).
+parse_superclass_constraints(_ModuleName, ConstraintsTerm, Result) :-
+	parse_arbitrary_constraints(ConstraintsTerm, Result0),
+	(
+		Result0 = ok(ArbitraryConstraints),
+		(
+			collect_simple_and_fundep_constraints(
+				ArbitraryConstraints,
+				Constraints, FunDeps)
+		->
+			Result = ok(Constraints, FunDeps)
+		;
+			ErrorMessage = "constraints on class declarations" ++
+				" may only constrain type variables and" ++
+				" ground types",
+			Result = error(ErrorMessage, ConstraintsTerm)
+		)
+	;
+		Result0 = error(String, Term),
+		Result = error(String, Term)
+	).
+
+:- pred collect_simple_and_fundep_constraints(list(arbitrary_constraint)::in,
+	list(prog_constraint)::out, list(prog_fundep)::out) is semidet.
+
+collect_simple_and_fundep_constraints([], [], []).
+collect_simple_and_fundep_constraints([Constraint | Constraints],
+		SimpleConstraints, FunDeps) :-
+	collect_simple_and_fundep_constraints(Constraints, SimpleConstraints0,
+		FunDeps0),
+	(
+		Constraint = simple(SimpleConstraint),
+		SimpleConstraints = [SimpleConstraint | SimpleConstraints0],
+		FunDeps = FunDeps0
+	;
+		Constraint = fundep(FunDep),
+		FunDeps = [FunDep | FunDeps0],
+		SimpleConstraints = SimpleConstraints0
+	).
 
 :- pred parse_unconstrained_class(module_name::in, term::in, tvarset::in,
 	maybe1(item)::out) is det.
@@ -183,7 +238,7 @@ parse_unconstrained_class(ModuleName, Name, TVarSet, Result) :-
 			list__length(SortedTermVars) =
 				list__length(TermVars) `with_type` int
 		->
-			Result = ok(typeclass([], ClassName, Vars,
+			Result = ok(typeclass([], [], ClassName, Vars,
 					abstract, TVarSet))
 		;
 			Result = error("expected distinct variables " ++
@@ -294,6 +349,7 @@ parse_simple_class_constraints(_ModuleName, ConstraintsTerm, ErrorMessage,
 	(
 		Result0 = ok(ArbitraryConstraints),
 		(
+			% Fail if any of the constraints aren't simple.
 			list.map(get_simple_constraint, ArbitraryConstraints,
 				Constraints)
 		->
@@ -315,16 +371,23 @@ parse_class_and_inst_constraints(_ModuleName, ConstraintsTerm, Result) :-
 	parse_arbitrary_constraints(ConstraintsTerm, Result0),
 	(
 		Result0 = ok(ArbitraryConstraints),
-		collect_class_and_inst_constraints(ArbitraryConstraints,
-			ProgConstraints, InstVarSub),
-		Result = ok(ProgConstraints, InstVarSub)
+		(
+			collect_class_and_inst_constraints(ArbitraryConstraints,
+				ProgConstraints, InstVarSub)
+		->
+			Result = ok(ProgConstraints, InstVarSub)
+		;
+			ErrorMessage = "functional dependencies are only" ++
+				" allowed in typeclass declarations",
+			Result = error(ErrorMessage, ConstraintsTerm)
+		)
 	;
 		Result0 = error(Msg, Term),
 		Result = error(Msg, Term)
 	).
 
 :- pred collect_class_and_inst_constraints(list(arbitrary_constraint)::in,
-	list(prog_constraint)::out, inst_var_sub::out) is det.
+	list(prog_constraint)::out, inst_var_sub::out) is semidet.
 
 collect_class_and_inst_constraints([], [], map.init).
 collect_class_and_inst_constraints([Constraint | Constraints],
@@ -354,9 +417,14 @@ collect_class_and_inst_constraints([Constraint | Constraints],
 			% An arbitrary class constraint not matching the
 			% description of "simple".
 
-	;	inst_constraint(inst_var, inst).
+	;	inst_constraint(inst_var, inst)
 			% A constraint on an inst variable (that is, one
 			% whose head is '=<'/2).
+
+	;	fundep(prog_fundep).
+			% A functional dependency (that is, one whose head
+			% is '->'/2 and whose arguments are comma-separated
+			% variables.
 
 :- type arbitrary_constraints == list(arbitrary_constraint).
 
@@ -393,6 +461,10 @@ parse_arbitrary_constraint(ConstraintTerm, Result) :-
 	->
 		Result = ok(inst_constraint(InstVar, Inst))
 	;
+		parse_fundep(ConstraintTerm, Result0)
+	->
+		Result = Result0
+	;
 		parse_qualified_term(ConstraintTerm, ConstraintTerm,
 			"class constraint", ok(ClassName, Args0))
 	->
@@ -420,6 +492,28 @@ parse_inst_constraint(Term, InstVar, Inst) :-
 	Arg1 = term__variable(InstVar0),
 	term__coerce_var(InstVar0, InstVar),
 	convert_inst(no_allow_constrained_inst_var, Arg2, Inst).
+
+:- pred parse_fundep(term::in, maybe1(arbitrary_constraint)::out) is semidet.
+
+parse_fundep(Term, Result) :-
+	Term = term__functor(term__atom("->"), [DomainTerm, RangeTerm], _),
+	(
+		parse_fundep_2(DomainTerm, Domain),
+		parse_fundep_2(RangeTerm, Range)
+	->
+		Result = ok(fundep(fundep(Domain, Range)))
+	;
+		ErrorMessage = "domain and range of functional dependency" ++
+			" must be comma-separated lists of variables",
+		Result = error(ErrorMessage, Term)
+	).
+
+:- pred parse_fundep_2(term::in, list(tvar)::out) is semidet.
+
+parse_fundep_2(Term, TVars) :-
+	TypeTerm = term__coerce(Term),
+	conjunction_to_list(TypeTerm, List),
+	term__var_list_to_term_list(TVars, List).
 
 :- pred constraint_is_not_simple(prog_constraint::in) is semidet.
 

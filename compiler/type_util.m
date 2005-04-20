@@ -1677,10 +1677,14 @@ apply_substitutions_to_typeclass_var_map_2(TRenaming, TSubst, VarRenaming,
 %-----------------------------------------------------------------------------%
 
 apply_rec_subst_to_constraints(Subst, !Constraints) :-
-	!.Constraints = constraints(UnivCs0, ExistCs0),
-	apply_rec_subst_to_constraint_list(Subst, UnivCs0, UnivCs),
-	apply_rec_subst_to_constraint_list(Subst, ExistCs0, ExistCs),
-	!:Constraints = constraints(UnivCs, ExistCs).
+	!.Constraints = constraints(Unproven0, Assumed0, Redundant0),
+	apply_rec_subst_to_constraint_list(Subst, Unproven0, Unproven),
+	apply_rec_subst_to_constraint_list(Subst, Assumed0, Assumed),
+	Pred = (pred(_::in, C0::in, C::out) is det :-
+		apply_rec_subst_to_constraint_list(Subst, C0, C)
+	),
+	map.map_values(Pred, Redundant0, Redundant),
+	!:Constraints = constraints(Unproven, Assumed, Redundant).
 
 apply_rec_subst_to_constraint_list(Subst, !Constraints) :-
 	list__map(apply_rec_subst_to_constraint(Subst), !Constraints).
@@ -1690,11 +1694,15 @@ apply_rec_subst_to_constraint(Subst, !Constraint) :-
 	term.apply_rec_substitution_to_list(Types0, Subst, Types),
 	!:Constraint = constraint(Ids, Name, Types).
 
-apply_subst_to_constraints(Subst,
-		constraints(UniversalCs0, ExistentialCs0),
-		constraints(UniversalCs, ExistentialCs)) :-
-	apply_subst_to_constraint_list(Subst, UniversalCs0, UniversalCs),
-	apply_subst_to_constraint_list(Subst, ExistentialCs0, ExistentialCs).
+apply_subst_to_constraints(Subst, !Constraints) :-
+	!.Constraints = constraints(Unproven0, Assumed0, Redundant0),
+	apply_subst_to_constraint_list(Subst, Unproven0, Unproven),
+	apply_subst_to_constraint_list(Subst, Assumed0, Assumed),
+	Pred = (pred(_::in, C0::in, C::out) is det :-
+		apply_subst_to_constraint_list(Subst, C0, C)
+	),
+	map.map_values(Pred, Redundant0, Redundant),
+	!:Constraints = constraints(Unproven, Assumed, Redundant).
 
 apply_subst_to_constraint_list(Subst, Constraints0, Constraints) :-
 	list__map(apply_subst_to_constraint(Subst), Constraints0, Constraints).
@@ -1770,13 +1778,17 @@ apply_variable_renaming_to_type_map(Renaming, Map0, Map) :-
 			term__apply_variable_renaming(Type0, Renaming, Type)
 		), Map0, Map).
 
-apply_variable_renaming_to_constraints(Renaming,
-		constraints(UniversalCs0, ExistentialCs0),
-		constraints(UniversalCs, ExistentialCs)) :-
-	apply_variable_renaming_to_constraint_list(Renaming,
-		UniversalCs0, UniversalCs),
-	apply_variable_renaming_to_constraint_list(Renaming,
-		ExistentialCs0, ExistentialCs).
+apply_variable_renaming_to_constraints(Renaming, !Constraints) :-
+	!.Constraints = constraints(Unproven0, Assumed0, Redundant0),
+	apply_variable_renaming_to_constraint_list(Renaming, Unproven0,
+		Unproven),
+	apply_variable_renaming_to_constraint_list(Renaming, Assumed0,
+		Assumed),
+	Pred = (pred(_::in, C0::in, C::out) is det :-
+		apply_variable_renaming_to_constraint_list(Renaming, C0, C)
+	),
+	map.map_values(Pred, Redundant0, Redundant),
+	!:Constraints = constraints(Unproven, Assumed, Redundant).
 
 apply_variable_renaming_to_constraint_list(Renaming, !Constraints) :-
 	list__map(apply_variable_renaming_to_constraint(Renaming),

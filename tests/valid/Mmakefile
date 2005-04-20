@@ -19,11 +19,17 @@ TRAIL_PROGS= \
 
 TYPECLASS_PROGS= \
 	abstract_typeclass \
+	complex_constraint \
 	constraint_proof_bug \
 	func_method \
 	instance_superclass \
 	instance_unconstrained_tvar \
+	mpj2 \
+	mpj5 \
+	mpj6 \
+	mpj7 \
 	repeated_class_constraint \
+	superclass_improvement \
 	typeclass_constraint_no_var \
 	typeclass_constraint_nonvar_bug \
 	typeclass_det_warning
