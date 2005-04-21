@@ -1330,8 +1330,8 @@ check_range_restrictedness_2(ClassId, InstanceDefn, FunDep, !ModuleInfo,
 	RangeTypes = restrict_list_elements(Range, Types),
 	RangeVars = term.vars_list(RangeTypes),
 	solutions((pred(V::out) is nondet :-
-			member(V, RangeVars),
-			\+ member(V, DomainVars)
+			list.member(V, RangeVars),
+			\+ list.member(V, DomainVars)
 		), UnboundVars),
 	(
 		UnboundVars = []
