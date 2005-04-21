@@ -4563,7 +4563,7 @@ For each method, all parameters of the typeclass must be determined by
 the type variables appearing in the type signature of the method.
 A variable is determined by a type signature if it appears in the
 type signature, but if functional dependencies are present
-then it may also be determined from other variables
+then it may also be determined from the other variables
 (@pxref{Functional dependencies}).
 
 For example,
@@ -5021,12 +5021,9 @@ defines that instance.
 @node Functional dependencies
 @section Functional dependencies
 
-Type classes may be defined to have functional dependencies between arguments.
-There may be any number of functional dependencies on one typeclass.
-Each constraint is expressed with the same syntax as typeclass constraints
-on typeclass declarations, using a special constraint of the form
+Type class constraints may include any number of functional dependencies.
+A functional dependency constraint takes the form
 @code{(@var{Domain} -> @var{Range})}.
-
 The @var{Domain} and @var{Range} arguments are either single type variables,
 or conjunctions of type variables separated by commas.
 
