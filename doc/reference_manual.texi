@@ -3467,42 +3467,20 @@ but no matter which order you remove them,
 the maximum value in the set should be the same.
 
 If you know that there will only ever be at most one distinct
-solution, then you can use the function
-@samp{promise_only_solution/1}, which is defined
-as a builtin function in the Mercury standard library.
-
-@example
-:- func promise_only_solution(pred(T)) = T.
-:- mode promise_only_solution(pred(out) is cc_multi) = out is det.
-:- mode promise_only_solution(pred(out) is cc_nondet) = out is semidet.
-@end example
-
-@noindent
-A call to that function, e.g.@: @samp{promise_only_solution(Pred)}, constitutes a
-promise on the part of the caller that the argument @samp{Pred} has at most
-one solution, i.e.@: that
-
-@example
-not some [X1, X2] (Pred(X1), Pred(X2), X1 \= X2)
-@end example
-
-@noindent
-holds.  @samp{promise_only_solution(Pred)} presumes that this
-assumption is satisfied, and returns the value of @samp{X} for which
-@samp{Pred(X)} is true, if any.  If the assumption is not
-satisfied, then the behaviour is undefined.
+solution under the equality theory of the output variables, then you can use a
+@samp{promise_equivalent_solutions} determinism cast.
 
 Note that specifying a user-defined equivalence relation
 as the equality predicate for user-defined types
 (@pxref{User-defined equality and comparison})
-means that the @samp{promise_only_solution/1} function
+means that @samp{promise_equivalent_solutions}
 can be used to express more general forms of equivalence.
 For example, if you define a set type which represents sets as unsorted lists,
 you would want to define a user-defined equivalence relation for that type,
 which could sort the lists before comparing them.
-The @samp{promise_only_solution/1} function could then be used for sets
-even though the lists used to represent the sets
-might not be in the same order in every solution.
+The @samp{promise_equivalent_solutions} determinism cast could then be used for
+sets even though the lists used to represent the sets might not be in the same
+order in every solution.
 
 @node Committed choice nondeterminism
 @section Committed choice nondeterminism
@@ -3668,7 +3646,10 @@ A comparison predicate can also be supplied.
 
 :- pred set_compare(builtin.comparison_result::uo,
                 set(T)::in, set(T)::in) is det.
-set_compare(promise_only_solution(set_compare_2(Set1, Set2)), Set1, Set2).
+set_compare(Result, Set1, Set2) :-
+	promise_equivalent_solutions [Result] (
+		set_compare_2(Set1, Set2, Result)
+	).
 
 :- pred set_compare_2(set(T)::in, set(T)::in,
                 builtin.comparison_result::uo) is cc_multi.
