@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2002-2004 The University of Melbourne.
+** Copyright (C) 2002-2005 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -109,11 +109,11 @@ Zoltan.
 ** of a given type class.
 */
 
-typedef struct {
+struct MR_TypeClassMethod_Struct {
     MR_ConstString              MR_tc_method_name;
     const MR_int_least8_t       MR_tc_method_arity;
     const MR_PredFunc           MR_tc_method_pred_func;
-} MR_TypeClassMethod;
+};
 
 /*
 ** MR_TypeClassId structures are intended to provide a printable representation
@@ -139,7 +139,7 @@ typedef struct {
 ** to method descriptors, one for each method.
 */
 
-typedef struct {
+struct MR_TypeClassId_Struct {
     MR_ConstString              MR_tc_id_module_name;
     MR_ConstString              MR_tc_id_name;
     const MR_int_least8_t       MR_tc_id_arity;
@@ -147,7 +147,7 @@ typedef struct {
     const MR_int_least16_t      MR_tc_id_num_methods;
     const MR_ConstString        *MR_tc_id_type_var_names;
     const MR_TypeClassMethod    *MR_tc_id_methods;
-} MR_TypeClassId;
+};
 
 /*
 ** We generate one static MR_TypeClassDecl structure for each typeclass
@@ -281,12 +281,12 @@ struct MR_Instance_Struct {
 ** of this design at runtime, just as we do for type_ctor_infos.
 */
 
-typedef struct {
+struct MR_ClassDict_Struct {
     MR_Integer              MR_class_dict_version_number;
     MR_TypeClassDecl        MR_class_dict_class;
     MR_TypeInfo             *MR_class_dict_type_binding;
     MR_Code                 *MR_class_dict_methods;
-} MR_ClassDict;
+};
 
 /*
 ** A MR_Dictionary_Struct structure corresponds to a fully solved type class
@@ -307,10 +307,10 @@ typedef struct {
 ** (The +1 is because array numbering starts at 0.)
 */
 
-typedef struct {
+struct MR_Dictionary_Struct {
     MR_Instance             *MR_dict_top_instance;
     MR_ClassDict            *MR_dict_class_methods;
     MR_ClassDict            **MR_dict_superclass_dicts;
-} MR_Dictionary_Struct;
+};
 
 #endif /* not MERCURY_TYPECLASS_INFO_H */
