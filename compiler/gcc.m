@@ -184,7 +184,10 @@
 %
 
 % A GCC `tree' representing a declaration.
-:- type gcc__decl.
+% XXX This doesn't have a definition and appears to be unused anyway.
+% - juliensf
+%
+%:- type gcc__decl.
 
 %
 % Stuff for variable declarations

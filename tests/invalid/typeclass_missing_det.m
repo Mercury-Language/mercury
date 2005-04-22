@@ -9,3 +9,5 @@
 :- typeclass c(T) where [
 	pred p(T::in)		% error -- missing det declaration for p/1
 ].
+
+:- type dummy ---> dummy.

@@ -5157,7 +5157,7 @@ write_inference_message(PredInfo, !IO) :-
 report_no_clauses(MessageKind, PredId, PredInfo, ModuleInfo, !IO) :-
 	pred_info_context(PredInfo, Context),
 	PredPieces = describe_one_pred_name(ModuleInfo,
-		should_not_module_qualify, PredId),
+		should_module_qualify, PredId),
 	ErrorMsg = [words(MessageKind ++ ": no clauses for ") | PredPieces] ++
 		[suffix(".")],
 	error_util__write_error_pieces(Context, 0, ErrorMsg, !IO).

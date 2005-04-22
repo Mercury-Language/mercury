@@ -1,0 +1,7 @@
+type_with_no_defn.m:005: Error: abstract declaration for type
+type_with_no_defn.m:005:   `type_with_no_defn.alpha'/0 has no corresponding
+type_with_no_defn.m:005:   definition.
+type_with_no_defn.m:013: Error: abstract declaration for type
+type_with_no_defn.m:013:   `type_with_no_defn.baz'/0 has no corresponding
+type_with_no_defn.m:013:   definition.
+For more information, try recompiling with `-E'.

@@ -8,6 +8,8 @@
 
 :- implementation.
 
+	:- type foo ---> foo.
+
 	:- module import_in_parent__sub.
 
 	:- interface.

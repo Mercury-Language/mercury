@@ -10,3 +10,5 @@
 	pred p(T),
 	mode p(in)		% error -- missing det declaration for p/1
 ].
+
+:- type dummy ---> dummy.
