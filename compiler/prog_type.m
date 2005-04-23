@@ -84,6 +84,14 @@
 :- pred construct_higher_order_func_type(purity::in, lambda_eval_method::in,
 	list(type)::in, (type)::in, (type)::out) is det.
 	
+	% Make error messages more readable by removing "builtin."
+	% qualifiers.
+	%
+:- pred strip_builtin_qualifiers_from_type((type)::in, (type)::out) is det.
+
+:- pred strip_builtin_qualifiers_from_type_list(list(type)::in,
+	list(type)::out) is det.
+
 %-----------------------------------------------------------------------------%
 %
 % Utility predicates dealing with typeclass constraints.
@@ -378,6 +386,26 @@ qualify_higher_order_type(normal, Type, Type).
 qualify_higher_order_type((aditi_bottom_up), Type0,
 	term.functor(term.atom("aditi_bottom_up"), [Type0], Context)) :-
 	term.context_init(Context).
+
+strip_builtin_qualifiers_from_type(Type0, Type) :-
+	( type_to_ctor_and_args(Type0, TypeCtor0, Args0) ->
+		strip_builtin_qualifiers_from_type_list(Args0, Args),
+		TypeCtor0 = SymName0 - Arity,
+		(
+			SymName0 = qualified(Module, Name),
+			mercury_public_builtin_module(Module)
+		->
+			SymName = unqualified(Name)
+		;
+			SymName = SymName0
+		),
+		construct_type(SymName - Arity, Args, Type)
+	;
+		Type = Type0
+	).
+
+strip_builtin_qualifiers_from_type_list(Types0, Types) :-
+	list__map(strip_builtin_qualifiers_from_type, Types0, Types).
 
 %-----------------------------------------------------------------------------%
 

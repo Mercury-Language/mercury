@@ -839,6 +839,8 @@ determinism_components(failure,     can_fail,    at_most_zero).
 
 :- type hlds_class_argpos == int.
 
+:- func restrict_list_elements(set(hlds_class_argpos), list(T)) = list(T).
+
 :- type hlds_class_interface	==	list(hlds_class_proc).
 :- type hlds_class_proc
 	---> 	hlds_class_proc(
@@ -886,6 +888,30 @@ determinism_components(failure,     can_fail,    at_most_zero).
 					% the constraints on the class
 					% declaration), for this instance.
 	).
+
+%-----------------------------------------------------------------------------%
+
+:- implementation.
+
+restrict_list_elements(Elements, List) =
+	restrict_list_elements_2(Elements, 1, List).
+
+:- func restrict_list_elements_2(set(hlds_class_argpos), hlds_class_argpos,
+	list(T)) = list(T).
+
+restrict_list_elements_2(_, _, []) = [].
+restrict_list_elements_2(Elements, Index, [X | Xs]) =
+	(
+		set__member(Index, Elements)
+	->
+		[X | restrict_list_elements_2(Elements, Index + 1, Xs)]
+	;
+		restrict_list_elements_2(Elements, Index + 1, Xs)
+	).
+
+%-----------------------------------------------------------------------------%
+
+:- interface.
 
 	% Identifiers for constraints which are unique across a given
 	% type_assign.  Integers in these values refer to the position in

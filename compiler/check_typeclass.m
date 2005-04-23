@@ -81,7 +81,7 @@
 
 :- import_module check_hlds__inst_match.
 :- import_module check_hlds__mode_util.
-:- import_module check_hlds__typecheck.
+:- import_module check_hlds__typeclasses.
 :- import_module check_hlds__type_util.
 :- import_module hlds__hlds_code_util.
 :- import_module hlds__hlds_data.
@@ -915,7 +915,7 @@ check_superclass_conformance(ClassId, ProgSuperClasses0, ClassVars0,
 		% instance constraints and the usual context reduction rules.
 		%
 	map__init(ConstraintMap0),
-	typecheck__reduce_context_by_rule_application(ClassTable,
+	typeclasses__reduce_context_by_rule_application(ClassTable,
 		InstanceTable, SuperClassTable, ClassVars, TypeSubst, _,
 		InstanceVarSet1, InstanceVarSet2,
 		Proofs0, Proofs1, ConstraintMap0, _,
@@ -1477,25 +1477,6 @@ report_consistency_error(ClassId, ClassDefn, InstanceA, InstanceB, FunDep,
 	write_error_pieces(ContextA, 0, ErrorPiecesA, !IO),
 	write_error_pieces(ContextB, 0, ErrorPiecesB, !IO),
 	io__set_exit_status(1, !IO).
-
-	% XXX this is duplicated in typecheck
-:- func restrict_list_elements(set(hlds_class_argpos), list(T)) = list(T).
-
-restrict_list_elements(Elements, List) =
-        restrict_list_elements_2(Elements, 1, List).
-
-:- func restrict_list_elements_2(set(hlds_class_argpos), int, list(T)) =
-	list(T).
-
-restrict_list_elements_2(_, _, []) = [].
-restrict_list_elements_2(Elements, Index, [X | Xs]) =
-        (
-                set__member(Index, Elements)
-        ->
-                [X | restrict_list_elements_2(Elements, Index + 1, Xs)]
-        ;
-                restrict_list_elements_2(Elements, Index + 1, Xs)
-        ).
 
 %---------------------------------------------------------------------------%
 
