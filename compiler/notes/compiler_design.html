@@ -483,8 +483,9 @@ so that the compiler does the right thing for options such as
 <dt> checking typeclass instances (check_typeclass.m)
 	<dd>
 	check_typeclass.m both checks that instance declarations satisfy all 
-	the appropriate superclass constraints and
-	performs a source-to-source transformation on the
+	the appropriate superclass constraints
+	(including functional dependencies)
+	and performs a source-to-source transformation on the
 	methods from the instance declarations.
 	The transformed code is checked for type, mode, uniqueness, purity
 	and determinism correctness by the later passes, which has the effect
@@ -495,11 +496,18 @@ so that the compiler does the right thing for options such as
 	pred_ids and proc_ids are assigned to the methods for each instance. 
 
 	<p>
-	In addition,
-	while checking that the superclasses of a class are satisfied
+	While checking that the superclasses of a class are satisfied
 	by the instance declaration, a set of constraint_proofs are built up 
 	for the superclass constraints. These are used by polymorphism.m when
 	generating the base_typeclass_info for the instance.
+
+	<p>
+	This module also checks that there are no ambiguous pred/func
+	declarations (that is, it checks that all type variables in constraints
+	are determined by type variables in arguments),
+	checks that there are no cycles in the typeclass hierarchy,
+	and checks that each abstract instance has a corresponding
+	typeclass instance.
 	<p>
 
 <dt> type checking
@@ -513,7 +521,10 @@ so that the compiler does the right thing for options such as
 	  for function calls or calls to overloaded predicates; that can't
 	  be done in a single pass of typechecking, and so it is done
 	  later on (in post_typecheck.m, for both preds and function calls)
-	  Typeclass constraints are checked here, and
+	<li> typecheck_info.m defines the main data structures used by
+	  typechecking.
+	<li> typecheck_errors.m handles outputting of type errors.
+	<li> typeclasses.m checks typeclass constraints, and
 	  any redundant constraints that are eliminated are recorded (as
 	  constraint_proofs) in the pred_info for future reference.
 	<li> type_util.m contains utility predicates dealing with types
@@ -1607,6 +1618,6 @@ The following modules are part of the libs.m package.
 <hr>
 <!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
 
-Last update was $Date: 2005-04-19 02:47:16 $ by $Author: juliensf $@cs.mu.oz.au. <br>
+Last update was $Date: 2005-04-24 01:47:58 $ by $Author: mark $@cs.mu.oz.au. <br>
 </body>
 </html>

@@ -41,7 +41,7 @@
 %
 % Third, typeclass constraints on predicate and function declarations are
 % checked for ambiguity, taking into consideration the information
-% provided by functional depencies.
+% provided by functional dependencies.
 %
 % Fourth, all visible instances are checked for range-restrictedness and
 % mutual consistency, with respect to any functional dependencies.  This
