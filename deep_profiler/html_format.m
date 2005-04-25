@@ -72,7 +72,7 @@
 :- type one_two_id_line_group	== line_group(one_id, two_id_sub_lines).
 
 	% This function takes a context description (which may be empty)
-	% and a HTML string describing all fields on in row but the first,
+	% and a HTML string describing all fields in a row but the first,
 	% and returns the HTML for the full row.
 :- func add_context(string, line_group(one_id, LL)) = line_group(two_id, LL).
 

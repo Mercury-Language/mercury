@@ -43,7 +43,7 @@
 :- import_module string.
 
 % The web server should always set QUERY_STRING. It may also pass its contents
-% as arguments, but if any characters specials to the shell occur in the query,
+% as arguments, but if any characters special to the shell occur in the query,
 % they will screw up the argument list. We therefore look at the argument list
 % only if QUERY_STRING isn't set, which means that the program was invoked
 % from the command line for debugging.
@@ -164,7 +164,7 @@ process_args(ProgName, Args, Options, !IO) :-
 	).
 
 % This predicate is for debugging the command line given to mdprof_cgi by the
-% web server, should that be necessary
+% web server, should that be necessary.
 %
 % :- pred write_bracketed_string(string::in, io::di, io::uo)
 % 	is det.
@@ -306,7 +306,7 @@ handle_query_from_new_server(Cmd, Pref, FileName, ToServerPipe, FromServerPipe,
 		),
 		(
 			ServerProcess = no,
-			% --no-server process should be specified only during
+			% --no-server-process should be specified only during
 			% debugging.
 			release_lock(Debug, MutexFile, !IO),
 			remove_want_file(WantFile, !IO),
@@ -338,8 +338,8 @@ handle_query_from_new_server(Cmd, Pref, FileName, ToServerPipe, FromServerPipe,
 		io__format("error reading data file: %s\n", [s(Error)], !IO)
 	).
 
-% Become the new server. Delete the mutex and want files when we get out
-% of the critical region.
+	% Become the new server. Delete the mutex and want files
+	% when we get out of the critical region.
 
 :- pred start_server(option_table::in, string::in, string::in,
 	maybe(io__output_stream)::in, string::in, string::in, deep::in,
@@ -359,8 +359,7 @@ start_server(Options, ToServerPipe, FromServerPipe, MaybeStartupStream,
 		DetachProcess = yes,
 		detach_process(DetachRes, !IO)
 	),
-	(
-		DetachRes = in_child(ChildHasParent) ->
+	( DetachRes = in_child(ChildHasParent) ->
 		% We are in the child; start serving queries.
 		(
 			ChildHasParent = child_has_parent,
@@ -408,8 +407,7 @@ start_server(Options, ToServerPipe, FromServerPipe, MaybeStartupStream,
 		lookup_bool_option(Options, canonical_clique, Canonical),
 		server_loop(ToServerPipe, FromServerPipe, TimeOut,
 			MaybeDebugStream, Debug, Canonical, 0, Deep, !IO)
-	;
-		DetachRes = in_parent ->
+	; DetachRes = in_parent ->
 		% We are in the parent after we spawned the child. We cause
 		% the process to exit simply by not calling server_loop.
 		%

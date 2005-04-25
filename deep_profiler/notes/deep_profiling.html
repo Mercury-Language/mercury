@@ -193,10 +193,10 @@ one for each different procedure that was called from that call site.
 
 <h2>The Mercury deep profiling tool mdprof</h2>
 
-The Mercury deep profiler consists of four programs.
+The Mercury deep profiler consists of three programs.
 One is the web browser of the user's choice:
 this implements the user interface.
-The other three are mdprof, mdprof_cgi and mdprof_server.
+The other two are mdprof and mdprof_cgi.
 
 <dl>
 <dt> mdprof
@@ -204,7 +204,7 @@ The other three are mdprof, mdprof_cgi and mdprof_server.
 This a simple shell script.
 It is invoked by the web server in response to queries of the right form.
 It does nothing more than set up the PATH environment variable
-to contain the directory in which mdprof_cgi and mdprof_server were installed,
+to contain the directory in which mdprof_cgi was installed,
 and then invoke mdprof_cgi.
 <dt> mdprof_cgi
 <dd>
@@ -215,19 +215,19 @@ in the environment variable QUERY_STRING which is set by the web server,
 an URL component containing the name of a profiling data file
 and a query specifying which part of that data file is to be displayed.
 Mdprof_cgi checks whether a server process already exists
-for the given profiling data file, and if not, it creates that process.
-It then sends it the query, passes the results back to the web server,
-and exits.
-<dt> mdprof_server
-<dd>
-This is a Mercury program.
-It reads in the profiling data file
-whose name is passed to it on the command line by mdprof_cgi,
+for the given profiling data file.
+If the answer is yes, it passes the query to the server,
+gets back the reply, gives it to the web server, and exits.
+If the answer is no, it reads in the named profiling data file,
 processes it to materialize information that is required by queries
 but is stored in the profiling data file only implicitly,
-and then goes into a loop awaiting queries.
-When it gets a query from mdprof_cgi, it answers the query
-and goes back to sleep.
+and answers the query directly.
+It then forks itself.
+The parent exits to let the web server finish rendering the generated page.
+The child process becomes a server process,
+which goes into a loop awaiting queries.
+When it gets a query from mdprof_cgi,
+it answers the query and goes back to sleep.
 It exits when it has not received a query for a set timeout period,
 which by default is thirty minutes,
 or when it receives a "query" telling it to shut down.
@@ -238,51 +238,72 @@ or one wants to recover its space occupied by its virtual memory.)
 <dd>
 </dl>
 
-The reason for the split between mdprof/mdprof_cgi and mdprof_server
-is simply that the web server requires the program it invokes to exit
-before it displays the page the program generates,
-and we don't want have to read and process the deep profiling data file
+The reason why we create the server process via a fork
+instead of simply making the initial mdprof_cgi process the server process
+is that the web server requires the program it invokes to exit
+before it displays the page the program generates.
+Doing without a server doesn't work
+because we don't want have to read and process the deep profiling data file
 for every page to be displayed,
 since that takes a significant fraction of a minute.
 The reason for the split between mdprof and mdprof_cgi
-is to make it easy to specify and to modify
-the name of the directory containing the server program.
+is to make it possible to specify some parameters of the deep profiler
+without needing to recompile a Mercury program or even needing to know Mercury.
 
 <p>
 
-Mdprof_cgi and mdprof_server communicate via a pair of named pipes, whose names
-have the form /var/tmp/mdprof_server_{from,to}_<i>mangled_data_file_name</i>.
+The elements of the interface between the client and server roles of mdprof_cgi
+are documented in interface.m.
+The client and server communicate via a pair of named pipes
+whose names include a mangled form of the data file name.
 (The mangling is required to replace any slashes in the name of the data file.)
 The existence of these files serves as an approximation of a lock;
 the idea is that they exist if and only if a server process
 for that data file is alive and serving queries via those pipes.
 Mdprof_cgi creates a server process for the data file
 if and only if these named pipes do not exist.
-They are created and destroyed only by mdprof_server,
-and they are always created and destroyed together.
-Mdprof_server creates them as soon as it starts
-and deletes them just before it exits.
-There is no race condition when the pipes are deleted:
-while a server process may exist for a very short while
-after the pipes are deleted,
-it will not do anything after that deletion except shut down.
-There <i>is</i> a race condition when the pipes are created.
+They are created only by mdprof_cgi transforms itself into a server,
+and destroyed only when this server exits.
+The two files are always created and destroyed together.
+
+<p>
+
+There are potential race conditions
+both when the pipes are created and when they are destroyed.
 It is possible for the web server to receive two requests
 for a given data file in quick succession,
 and it is possible that when the second invocation of mdprof_cgi
 checks whether the pipes exist,
 the first invocation of mdprof_cgi
-either has not yet created the server process
-or that the server process has not yet created the pipes.
-However, the window of vulnerability is small,
-the likelyhood that two different users will start mdprof browsing sessions
-during that window is very small,
-and the likelyhood that one user will start two different sessions
-during that window is even smaller.
-The mechanisms required for locking would in any case be
-operating system dependent.
-Since the programming cost is significant and the benefits are not,
-we simply live with the window of vulnerability.
+has not yet forked itself off as a server process.
+We avoid this by putting all code
+that creates, destroys, or test the existence of the named pipes
+inside a critical region protected by a lock on a mutex file.
+Whichever invocation of mdprof_cgi gets the lock first will become the server;
+any others will not be able to perform the test for the existence of a server
+until after there is a server.
+
+<p>
+
+The other race condition involves a client arriving
+between the time that the server gets the timeout signal
+and the time that the server actually deletes the named pipes and exits.
+To fix this, we make clients create a file indicating that they want a server
+before they get the lock on the mutex file.
+If the shutting-down server gets the mutex first,
+it will abort the shutdown if it finds any want files around.
+If it does not find any want files, it shuts down,
+but because it holds the mutex lock throughout the process of shutdown,
+no client can observe its decision process.
+
+<p>
+
+In the absence of the want files,
+a server that got a timeout signal would have no decision to make.
+It would therefore be possible for a client to arrive
+and find that the named pipes exist,
+without knowing that the server process is already committed to shutting down,
+which can leave the client sending its query to a now nonexistent server.
 
 <hr>
 <!---------------------------------------------------------------------------->
@@ -290,6 +311,20 @@ we simply live with the window of vulnerability.
 <h2>The modules of the deep profiler</h2>
 
 <dl>
+<dt> mdprof_cgi.m
+<dd>
+This file contains the program that is executed by the web server
+to handle each web page request.
+<dt> mdprof_dump.m
+<dd>
+This is the main module of a program
+for dumping out the contents of Deep.data files,
+for use in debugging.
+<dt> mdprof_test.m
+<dd>
+This is the main module of a test program for checking that
+all the web pages can be created without runtime aborts.
+Its output can be gigabytes in size.
 <dt> array_util.m
 <dd>
 This module contains utility predicates for handling arrays.
@@ -319,56 +354,54 @@ put into runtime/mercury_conf.h by the configure script.
 This module provides an ADT for storing dense sets of small integers.
 The sets are represented as bit vectors, which are implemented as arrays
 of integers. This is used by cliques.m.
+<dt> dump.m
+<dd>
+This module provides a mechanism for dumping out some of the deep profiler's
+data structures for debugging.
+<dt> exclude.m
+<dd>
+This module implements contour exclusion,
+which is a mechanism for propagating measurements
+from regions in the call graph below a given line (the contour) to that line.
+<dt> html_format.m
+<dd>
+This module contains code that sets the format of the HTML tables
+we generate for individual queries.
 <dt> interface.m
 <dd>
-This module defines the type of the commands
-that mdprof_cgi passes to mdprof_server,
+This module defines the type of the commands sent from clients to servers,
 as well as utility predicates for manipulating commands and responses.
 <dt> io_combinator.m
 <dd>
 This module a set of I/O combinators for use by read_profile.m.
-<dt> mdprof_cgi.m
-<dd>
-This file contains the program that is executed by the web server
-to handle each web page requests.
-<dt> mdprof_server.m
-<dd>
-This file defines the top level predicates of mdprof_server.
-It is mostly concerned with option handling.
 <dt> measurements.m
 <dd>
 This module defines the data structures
 that store deep profiling measurements
 and the operations on them.
-<dt> merge.m
-<dd>
-This module contains code for recursively merging
-sets of ProcDynamic and CallSiteDynamic nodes.
-mdprof_uses this code to make sure that each clique contains
-at most ProcDynamic structure for any given procedure.
 <dt> profile.m
 <dd>
-This file defines the main data structures of mdprof_server,
+This file defines the main data structures of the server,
 and predicates for accessing them.
+<dt> query.m
+<dd>
+This module contains the top level predicates for servicing individual queries.
 <dt> read_profile.m
 <dd>
-This module contains code for reading in the deep profiling data files
-created by deep profiled executables.
-<dt> server.m
-<dd>
-This module contains the main server loop of mdprof_server;
-each iteration of the server loop serves up one web page.
-The module also contains test code for checking that all the web pages
-can be created without runtime aborts.
+This module contains code for reading in a deep profiling data file.
 <dt> startup.m
 <dd>
-This module contains the code for turning the raw list of nodes read in by
-read_profile.m into the data structure that mdprof_server needs to service
-requests for web pages.
+This module contains the code
+for turning the raw list of nodes read in by read_profile.m
+into the data structure that the server needs
+to service requests for web pages.
 <dt> timeout.m
 <dd>
-This module implements the timeouts that mdprof_server uses
+This module implements the timeouts that mdprof_sgi uses
 to shut down after it hasn't received any queries for a while.
+<dt> top_procs.m
+<dd>
+This module contains code to find the top procedures by several criteria.
 <dt> util.m
 <dd>
 This module defines utility predicates for both mdprof_cgi and mdprof_server.

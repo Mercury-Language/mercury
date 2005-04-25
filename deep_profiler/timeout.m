@@ -14,7 +14,7 @@
 % creates a temporary file, it adds its name to the array; when it deletes
 % the temporary file, it deletes its name from the array. When we get an
 % unexpected signal, we clean up by deleting all the temporary files named
-% in the array. The 
+% in the array.
 %
 % We establish the exit action to clean up the files as soon as they are
 % created, but we don't want the parent process after the fork to delete them
@@ -62,8 +62,7 @@
 	% (The mutex file exists iff some process holds the lock.)
 	% If the bool is `yes', meaning debugging is enabled, do nothing.
 	%
-:- pred get_lock(bool::in, string::in,
-	io::di, io::uo) is det.
+:- pred get_lock(bool::in, string::in, io::di, io::uo) is det.
 
 	% Release the lock on the named mutex file if the bool is `no'.
 	% (The mutex file exists iff some process holds the lock.)
@@ -384,7 +383,6 @@ MP_handle_timeout(void)
 	*/
 	MP_delete_cleanup_files();
 	exit(EXIT_SUCCESS);
-
 }
 
 void
@@ -566,7 +564,7 @@ MP_do_release_lock(const char *mutex_file)
 	/*
 	** Mercury exceptions do not cause signals. The default exception
 	** handler prints and error message and exits. To ensure that
-	** we delete up the files we need to clean up, we get the exit
+	** we delete the files we need to clean up, we get the exit
 	** library function to invoke MP_delete_cleanup_files through
 	** MP_handle_fatal_exception.
 	*/
