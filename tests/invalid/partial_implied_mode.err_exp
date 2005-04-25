@@ -2,5 +2,9 @@ partial_implied_mode.m:033: In clause for `'__Unify__'((unique(partial_implied_m
 partial_implied_mode.m:033:   mode error in unification of `HeadVar__1' and `partial_implied_mode2.physic_quantity(V_11, V_4, V_12)'.
 partial_implied_mode.m:033:   Variable `HeadVar__1' has instantiatedness `unique(partial_implied_mode2.physic_quantity(ground, free, unique(partial_implied_mode2.absol(free, free))))',
 partial_implied_mode.m:033:   term `partial_implied_mode2.physic_quantity(V_11, V_4, V_12)'
-partial_implied_mode.m:033:   has instantiatedness `partial_implied_mode2.physic_quantity(free, ground, free)'.
+partial_implied_mode.m:033:   has instantiatedness `partial_implied_mode2.physic_quantity(
+partial_implied_mode.m:033:     free,
+partial_implied_mode.m:033:     ground,
+partial_implied_mode.m:033:     free
+partial_implied_mode.m:033:   )'.
 For more information, try recompiling with `-E'.

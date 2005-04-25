@@ -5,12 +5,16 @@ occurs.m:008: In clause for `p':
 occurs.m:008:   mode error in unification of `X' and `occurs.f(X)'.
 occurs.m:008:   Variable `X' has instantiatedness `free',
 occurs.m:008:   term `occurs.f(X)'
-occurs.m:008:   has instantiatedness `occurs.f(free)'.
+occurs.m:008:   has instantiatedness `occurs.f(
+occurs.m:008:     free
+occurs.m:008:   )'.
 occurs.m:018: In clause for `p3':
 occurs.m:018:   mode error in unification of `X' and `occurs.f(X)'.
 occurs.m:018:   Variable `X' has instantiatedness `unique(occurs.f(free))',
 occurs.m:018:   term `occurs.f(X)'
-occurs.m:018:   has instantiatedness `occurs.f(unique(occurs.f(free)))'.
+occurs.m:018:   has instantiatedness `occurs.f(
+occurs.m:018:     unique(occurs.f(free))
+occurs.m:018:   )'.
 occurs.m:010: In `p2':
 occurs.m:010:   warning: determinism declaration could be tighter.
 occurs.m:010:   Declared `semidet', inferred `failure'.
