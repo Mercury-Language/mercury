@@ -260,8 +260,8 @@ merge_proc_dynamics(MergeInfo, Clique, CandidatePDPtrs, ChosenPDPtr,
 			InitDeep0, InitDeep1, Redirect1, Redirect),
 		PrimePD = PrimePD0 ^ pd_sites := PrimeSites,
 		ProcDynamics1 = InitDeep1 ^ init_proc_dynamics,
-		update_proc_dynamics(u(ProcDynamics1), PrimePDPtr, PrimePD,
-			ProcDynamics),
+		update_proc_dynamics(PrimePDPtr, PrimePD,
+			u(ProcDynamics1), ProcDynamics),
 		InitDeep = InitDeep1 ^ init_proc_dynamics := ProcDynamics,
 		ChosenPDPtr = PrimePDPtr
 	;
@@ -400,8 +400,8 @@ merge_call_site_dynamics(MergeInfo, Clique, ParentPDPtr, CandidateCSDPtrs,
 		lookup_call_site_dynamics(CallSiteDynamics0, FirstCSDPtr,
 			FirstCSD0),
 		FirstCSD = FirstCSD0 ^ csd_caller := ParentPDPtr,
-		update_call_site_dynamics(u(CallSiteDynamics0), FirstCSDPtr,
-			FirstCSD, CallSiteDynamics),
+		update_call_site_dynamics(FirstCSDPtr, FirstCSD,
+			u(CallSiteDynamics0), CallSiteDynamics),
 		InitDeep1 = InitDeep0 ^ init_call_site_dynamics
 			:= CallSiteDynamics,
 		(
@@ -449,8 +449,8 @@ merge_call_site_dynamics_2(MergeInfo, Clique, PrimeCSDPtr, RestCSDPtrs,
 	PrimeOwn0 = PrimeCSD0 ^ csd_own_prof,
 	list__foldl(accumulate_csd_owns, RestCSDs, PrimeOwn0, PrimeOwn1),
 	PrimeCSD1 = PrimeCSD0 ^ csd_own_prof := PrimeOwn1,
-	update_call_site_dynamics(u(CallSiteDynamics0), PrimeCSDPtr, PrimeCSD1,
-		CallSiteDynamics1),
+	update_call_site_dynamics(PrimeCSDPtr, PrimeCSD1,
+		u(CallSiteDynamics0), CallSiteDynamics1),
 	InitDeep1 = InitDeep0 ^ init_call_site_dynamics := CallSiteDynamics1,
 	(
 		MergeChildren = no,
@@ -467,8 +467,8 @@ merge_call_site_dynamics_2(MergeInfo, Clique, PrimeCSDPtr, RestCSDPtrs,
 		lookup_call_site_dynamics(CallSiteDynamics2, PrimeCSDPtr,
 			PrimeCSD2),
 		PrimeCSD = PrimeCSD2 ^ csd_callee := ChosenPDPtr,
-		update_call_site_dynamics(u(CallSiteDynamics2),
-			PrimeCSDPtr, PrimeCSD, CallSiteDynamics),
+		update_call_site_dynamics(PrimeCSDPtr, PrimeCSD,
+			u(CallSiteDynamics2), CallSiteDynamics),
 		InitDeep = InitDeep2 ^ init_call_site_dynamics
 			:= CallSiteDynamics
 	).

@@ -60,6 +60,8 @@
 	in, array_di, array_uo, in, out) is det.
 :- mode array_foldl2_from_1(pred(in, in, in, out, di, uo) is det,
 	in, in, out, di, uo) is det.
+:- mode array_foldl2_from_1(pred(in, in, in, out, in, out) is det,
+	in, in, out, in, out) is det.
 
 	% Performs a foldl2 on all the elements of the given array
 	% between the two index values given by the first two arguments,
@@ -75,6 +77,8 @@
 	array_di, array_uo, in, out) is det.
 :- mode array_foldl2(in, in, pred(in, in, in, out, di, uo) is det, in,
 	in, out, di, uo) is det.
+:- mode array_foldl2(in, in, pred(in, in, in, out, in, out) is det, in,
+	in, out, in, out) is det.
 
 	% Performs the same computation as list__foldl; the only difference
 	% is that the accumulator is an array and has an array mode.

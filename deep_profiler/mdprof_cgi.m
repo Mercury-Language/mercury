@@ -289,7 +289,7 @@ handle_query_from_new_server(Cmd, Pref, FileName, ToServerPipe, FromServerPipe,
 		MaybeStartupStream = no
 	),
 	read_and_startup(Machine, [FileName], Canonical, MaybeStartupStream,
-		Res, !IO),
+		[], Res, !IO),
 	(
 		Res = ok(Deep),
 		try_exec(Cmd, Pref, Deep, HTML, !IO),
@@ -452,7 +452,7 @@ server_loop(ToServerPipe, FromServerPipe, TimeOut0, MaybeStartupStream,
 	CmdPref0 = cmd_pref(Cmd0, Pref0),
 	( Cmd0 = restart ->
 		read_and_startup(Deep0 ^ server_name, [Deep0 ^ data_file_name],
-			Canonical, MaybeStartupStream, MaybeDeep, !IO),
+			Canonical, MaybeStartupStream, [], MaybeDeep, !IO),
 		(
 			MaybeDeep = ok(Deep),
 			MaybeMsg = no,

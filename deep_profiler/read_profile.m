@@ -397,22 +397,22 @@ refined_proc_id_to_string(uci_pred(TypeName, TypeModule, _DefModule,
         PredName = "Unify"
     ; RawPredName = "__Compare__" ->
         PredName = "Compare"
-    ; RawPredName = "__Index__" ->
-        PredName = "Index"
     ; RawPredName = "__CompareRep__" ->
         PredName = "CompareRep"
+    ; RawPredName = "__Index__" ->
+        PredName = "Index"
+    ; RawPredName = "__Initialise__" ->
+        PredName = "Initialise"
     ;
         string__append("unknown special predicate name ", RawPredName, Msg),
         error(Msg)
     ),
-    Name0 = string__append_list(
-        [PredName, " for ", TypeModule, ":", TypeName,
-            "/", string__int_to_string(Arity)]),
+    Name0 = string__append_list([PredName, " for ", TypeModule, ":", TypeName,
+        "/", string__int_to_string(Arity)]),
     ( Mode = 0 ->
         Name = Name0
     ;
-        Name = string__append_list([Name0, " mode ", 
-            string__int_to_string(Mode)])
+        Name = string__append_list([Name0, " mode ", int_to_string(Mode)])
     ).
 refined_proc_id_to_string(user_defined(PredOrFunc, DeclModule, _DefModule,
         ProcName, Arity, Mode)) = Name :-
