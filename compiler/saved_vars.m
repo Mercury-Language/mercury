@@ -34,9 +34,7 @@
 	proc_info::in, proc_info::out, module_info::in, module_info::out,
 	io::di, io::uo) is det.
 
-:- pred saved_vars_proc_no_io(proc_info::in, proc_info::out,
-	module_info::in, module_info::out) is det.
-
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -47,6 +45,7 @@
 :- import_module hlds__hlds_out.
 :- import_module hlds__passes_aux.
 :- import_module hlds__quantification.
+:- import_module parse_tree__error_util.
 :- import_module parse_tree__prog_data.
 
 :- import_module bool.
@@ -64,6 +63,9 @@ saved_vars_proc(PredId, ProcId, ProcInfo0, ProcInfo, !ModuleInfo, !IO) :-
 	write_proc_progress_message("% Minimizing saved vars in ",
 		PredId, ProcId, !.ModuleInfo, !IO),
 	saved_vars_proc_no_io(ProcInfo0, ProcInfo, !ModuleInfo).
+
+:- pred saved_vars_proc_no_io(proc_info::in, proc_info::out,
+	module_info::in, module_info::out) is det.
 
 saved_vars_proc_no_io(!ProcInfo, !ModuleInfo) :-
 	proc_info_goal(!.ProcInfo, Goal0),
@@ -147,7 +149,8 @@ saved_vars_in_goal(GoalExpr0 - GoalInfo0, Goal, !SlotInfo) :-
 	;
 		GoalExpr0 = shorthand(_),
 		% these should have been expanded out by now
-		error("saved_vars_in_goal: unexpected shorthand")
+		unexpected(this_file,
+			"saved_vars_in_goal: unexpected shorthand")
 	).
 
 %-----------------------------------------------------------------------------%
@@ -188,10 +191,10 @@ saved_vars_in_conj([Goal0 | Goals0], NonLocals, Goals, !SlotInfo) :-
 		Goals = [Goal1 | Goals1]
 	).
 
-% ok_to_duplicate returns `no' for features which shouldn't be on construction
-% unifications in the first place as well as for construction unifications
-% that shouldn't be duplicated.
-
+	% ok_to_duplicate returns `no' for features which shouldn't be
+	% on construction unifications in the first place as well as for
+	% construction unifications that shouldn't be duplicated.
+	%
 :- func ok_to_duplicate(goal_feature) = bool.
 
 ok_to_duplicate(constraint) = no.
@@ -209,9 +212,9 @@ ok_to_duplicate(keep_constant_binding) = no.
 ok_to_duplicate(save_deep_excp_vars) = no.
 ok_to_duplicate(dont_warn_singleton) = yes.
 
-% Divide a list of goals into an initial subsequence of goals that
-% construct constants, and all other goals.
-
+	% Divide a list of goals into an initial subsequence of goals
+	% that construct constants, and all other goals.
+	%
 :- pred skip_constant_constructs(list(hlds_goal)::in, list(hlds_goal)::out,
 	list(hlds_goal)::out) is det.
 
@@ -228,12 +231,14 @@ skip_constant_constructs([Goal0 | Goals0], Constants, Others) :-
 		Others = [Goal0 | Goals0]
 	).
 
-% Decide whether the value of the given variable is needed immediately
-% in the goal, or whether the unification that constructs a value for
-% the variable can be usefully pushed into the goal.
-%
-% The logic of this predicate must match the logic of saved_vars_delay_goal.
-
+	% Decide whether the value of the given variable is needed
+	% immediately in the goal, or whether the unification that
+	% constructs a value for the variable can be usefully pushed
+	% into the goal.
+	%
+	% NOTE: the logic of this predicate must match the logic of
+	% saved_vars_delay_goal.
+	%
 :- pred can_push(prog_var::in, hlds_goal::in) is semidet.
 
 can_push(Var, First) :-
@@ -258,20 +263,22 @@ can_push(Var, First) :-
 		true
 	).
 
-% The main inputs of this predicate are a list of goals in a conjunction,
-% and a goal Construct that assigns a constant to a variable Var.
-%
-% When we find an atomic goal in the conjunction that refers to Var,
-% we create a new variable NewVar, rename both this goal and Construct
-% to refer to NewVar instead of Var, and insert the new version of Construct
-% before the new version of the goal.
-%
-% When we find a non-atomic goal in the conjunction that refers to Var,
-% we push Construct into each of its components.
-%
-% If Var is exported from the conjunction, we include Construct at the end
-% of the conjunction to give it its value.
-
+	% The main inputs of this predicate are a list of goals in a
+	% conjunction, and a goal Construct that assigns a constant to a
+	% variable Var.
+	%
+	% When we find an atomic goal in the conjunction that refers to
+	% Var, we create a new variable NewVar, rename both this goal
+	% and Construct to refer to NewVar instead of Var, and insert
+	% the new version of Construct before the new version of the
+	% goal.
+	%
+	% When we find a non-atomic goal in the conjunction that refers
+	% to Var, we push Construct into each of its components.
+	%
+	% If Var is exported from the conjunction, we include Construct
+	% at the end of the conjunction to give it its value.
+	%
 :- pred saved_vars_delay_goal(list(hlds_goal)::in, hlds_goal::in, prog_var::in,
 	bool::in, list(hlds_goal)::out, slot_info::in, slot_info::out) is det.
 
@@ -399,7 +406,8 @@ saved_vars_delay_goal([Goal0 | Goals0], Construct, Var, IsNonLocal, Goals,
 		;
 			Goal0Expr = shorthand(_),
 			% these should have been expanded out by now
-			error("saved_vars_delay_goal: unexpected shorthand")
+			unexpected(this_file,
+				"saved_vars_delay_goal: unexpected shorthand")
 		)
 	;
 		saved_vars_delay_goal(Goals0, Construct, Var, IsNonLocal,
@@ -407,9 +415,10 @@ saved_vars_delay_goal([Goal0 | Goals0], Construct, Var, IsNonLocal, Goals,
 		Goals = [Goal0 | Goals1]
 	).
 
-% Push a non-renamed version of the given construction into the given goal.
-% Also traverse the goal looking for further opprtunities.
-
+	% Push a non-renamed version of the given construction into the
+	% given goal.  Also traverse the goal looking for further
+	% opportunities.
+	%
 :- pred push_into_goal(hlds_goal::in, hlds_goal::in, prog_var::in,
 	hlds_goal::out, slot_info::in, slot_info::out) is det.
 
@@ -420,11 +429,11 @@ push_into_goal(Goal0, Construct, Var, Goal, !SlotInfo) :-
 	saved_vars_delay_goal(Conj1, Construct, Var, no, Conj, !SlotInfo),
 	conj_list_to_goal(Conj, Goal1Info, Goal).
 
-% Push a renamed version of the given construction into the given goal.
-% If the goal does not refer to the variable bound by the construction,
-% then this would have no effect, so we merely traverse the goal looking
-% for other opportunities.
-
+	% Push a renamed version of the given construction into the
+	% given goal.  If the goal does not refer to the variable bound
+	% by the construction, then this would have no effect, so we
+	% merely traverse the goal looking for other opportunities.
+	%
 :- pred push_into_goal_rename(hlds_goal::in, hlds_goal::in, prog_var::in,
 	hlds_goal::out, slot_info::in, slot_info::out) is det.
 
@@ -439,9 +448,10 @@ push_into_goal_rename(Goal0, Construct, Var, Goal, !SlotInfo) :-
 	;
 		saved_vars_in_goal(Goal0, Goal, !SlotInfo)
 	).
-
-% Push renamed versions of the given construction into each of several goals.
-
+	
+	% Push renamed versions of the given construction into each of
+	% several goals.
+	%
 :- pred push_into_goals_rename(list(hlds_goal)::in, hlds_goal::in,
 	prog_var::in, list(hlds_goal)::out, slot_info::in, slot_info::out)
 	is det.
@@ -451,9 +461,10 @@ push_into_goals_rename([Goal0 | Goals0], Construct, Var, [Goal | Goals],
 		!SlotInfo) :-
 	push_into_goal_rename(Goal0, Construct, Var, Goal, !SlotInfo),
 	push_into_goals_rename(Goals0, Construct, Var, Goals, !SlotInfo).
-
-% Push renamed versions of the given construction into each of several cases.
-
+	
+	% Push renamed versions of the given construction into each of
+	% several cases.
+	%
 :- pred push_into_cases_rename(list(case)::in, hlds_goal::in, prog_var::in,
 	list(case)::out, slot_info::in, slot_info::out) is det.
 
@@ -465,9 +476,10 @@ push_into_cases_rename([case(ConsId, Goal0) | Cases0], Construct, Var,
 
 %-----------------------------------------------------------------------------%
 
-	% saved_vars_in_disj does a saved_vars_in_goal on an list of independent
-	% goals, and is used to process disjunctions and parallel conjunctions.
-
+	% saved_vars_in_disj does a saved_vars_in_goal on an list of
+	% independent goals, and is used to process disjunctions and
+	% parallel conjunctions.
+	%
 :- pred saved_vars_in_disj(list(hlds_goal)::in, list(hlds_goal)::out,
 	slot_info::in, slot_info::out) is det.
 
@@ -487,10 +499,11 @@ saved_vars_in_switch([case(Cons, Goal0) | Cases0],
 
 %-----------------------------------------------------------------------------%
 
-:- type slot_info	--->	slot_info(
-					prog_varset,
-					vartypes
-				).
+:- type slot_info
+	---> slot_info(
+		prog_varset,
+		vartypes
+	).
 
 :- pred init_slot_info(prog_varset::in, map(prog_var, type)::in,
 	slot_info::out) is det.
@@ -512,4 +525,12 @@ rename_var(Var, NewVar, Substitution, !SlotInfo) :-
 	map__det_insert(VarTypes0, NewVar, Type, VarTypes),
 	!:SlotInfo = slot_info(Varset, VarTypes).
 
+%-----------------------------------------------------------------------------%
+
+:- func this_file = string.
+
+this_file = "saved_vars.m".
+
+%-----------------------------------------------------------------------------%
+:- end_module saved_vars.
 %-----------------------------------------------------------------------------%
