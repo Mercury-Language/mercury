@@ -61,12 +61,18 @@ aditi_update_mode_errors.m:098:   expected instantiatedness was `(func(in, out) 
 aditi_update_mode_errors.m:102: In clause for `aditi_update_modes10((aditi.aditi_di), (aditi.aditi_uo))':
 aditi_update_mode_errors.m:102:   in call to function `int.+/2':
 aditi_update_mode_errors.m:102:   mode error: arguments `X0, V_12, V_10'
-aditi_update_mode_errors.m:102:   have insts `free, unique(1), free',
+aditi_update_mode_errors.m:102:   have the following insts:
+aditi_update_mode_errors.m:102:     free,
+aditi_update_mode_errors.m:102:     unique(1),
+aditi_update_mode_errors.m:102:     free
 aditi_update_mode_errors.m:102:   which does not match any of the modes for function `int.+/2'.
 aditi_update_mode_errors.m:105: In clause for `aditi_update_modes11((aditi.aditi_di), (aditi.aditi_uo))':
 aditi_update_mode_errors.m:105:   in call to function `int.+/2':
 aditi_update_mode_errors.m:105:   mode error: arguments `X0, V_12, V_10'
-aditi_update_mode_errors.m:105:   have insts `free, unique(1), free',
+aditi_update_mode_errors.m:105:   have the following insts:
+aditi_update_mode_errors.m:105:     free,
+aditi_update_mode_errors.m:105:     unique(1),
+aditi_update_mode_errors.m:105:     free
 aditi_update_mode_errors.m:105:   which does not match any of the modes for function `int.+/2'.
 aditi_update_mode_errors.m:115: In clause for `aditi_update_modes12((aditi.aditi_di), (aditi.aditi_uo))':
 aditi_update_mode_errors.m:115:   in argument 2 of `aditi_bulk_modify' of predicate `aditi_update_mode_errors.p/3':

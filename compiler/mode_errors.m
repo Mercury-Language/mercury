@@ -513,13 +513,13 @@ report_mode_error_in_callee(ModeInfo0, Vars, Insts,
 	mercury_output_vars(Vars, VarSet, no),
 	io__write_string("'\n"),
 	prog_out__write_context(Context),
-	io__write_string("  have insts `"),
-	output_inst_list(Insts, ModeInfo0),
-	io__write_string("',\n"),
+	io__write_string("  have the following insts:\n"),
+	output_inst_list_sep_lines(Context, Insts, ModeInfo0),
 	prog_out__write_context(Context),
 	io__write_string("  which does not match any of the valid modes for\n"),
 	globals__io_lookup_bool_option(verbose_errors, VerboseErrors),
-	( { VerboseErrors = yes } ->
+	(
+		{ VerboseErrors = yes },
 		prog_out__write_context(Context),
 		io__write_string("  the callee ("),
 		hlds_out__write_pred_id(ModuleInfo, CalleePredId),
@@ -527,10 +527,12 @@ report_mode_error_in_callee(ModeInfo0, Vars, Insts,
 		prog_out__write_context(Context),
 		io__write_string("  because of the following error.\n")
 	;
+		{ VerboseErrors = no },
 		prog_out__write_context(Context),
 		io__write_string("  the callee, because of the following error.\n")
 	),
-	( { CalleeModeErrors = [First | _] } ->
+	(
+		{ CalleeModeErrors = [First | _] },
 		{ First = mode_error_info(_, CalleeModeError,
 			CalleeContext, CalleeModeContext) },
 		{ mode_info_set_predid(CalleePredId, ModeInfo0, ModeInfo1) },
@@ -540,6 +542,7 @@ report_mode_error_in_callee(ModeInfo0, Vars, Insts,
 			ModeInfo3, ModeInfo4) },
 		report_mode_error(CalleeModeError, ModeInfo4)
 	;
+		{ CalleeModeErrors = [] },
 		{ error("report_mode_error_in_callee: no error") }
 	).
 
@@ -555,9 +558,8 @@ report_mode_error_no_matching_mode(ModeInfo, Vars, Insts) -->
 	mercury_output_vars(Vars, VarSet, no),
 	io__write_string("'\n"),
 	prog_out__write_context(Context),
-	io__write_string("  have insts `"),
-	output_inst_list(Insts, ModeInfo),
-	io__write_string("',\n"),
+	io__write_string("  have the following insts:\n"),
+	output_inst_list_sep_lines(Context, Insts, ModeInfo),
 	prog_out__write_context(Context),
 	io__write_string("  which does not match any of the modes for "),
 	{ mode_info_get_mode_context(ModeInfo, ModeContext) },
@@ -583,11 +585,13 @@ report_mode_error_higher_order_pred_var(ModeInfo, PredOrFunc, Var, VarInst,
 	output_inst(VarInst, ModeInfo),
 	io__write_string("',\n"),
 	prog_out__write_context(Context),
-	(	{ PredOrFunc = predicate },
+	(
+		{ PredOrFunc = predicate },
 		io__write_string(
 			"  expecting higher-order pred inst (of arity "),
 		io__write_int(Arity)
-	;	{ PredOrFunc = function },
+	;
+		{ PredOrFunc = function },
 		io__write_string(
 			"  expecting higher-order func inst (of arity "),
 		{ Arity1 = Arity - 1 },
@@ -826,15 +830,18 @@ report_mode_error_unify_var_functor(ModeInfo, X, ConsId, Args, InstX, ArgInsts)
 	prog_out__write_context(Context),
 	io__write_string("  term `"),
 	hlds_out__write_functor_cons_id(ConsId, Args, VarSet, ModuleInfo, no),
-	( { Args \= [] } ->
+	(
+		{ Args = [_ | _] },
 		io__write_string("'\n"),
 		prog_out__write_context(Context),
 		io__write_string("  has instantiatedness `"),
 		mercury_output_cons_id(ConsId, does_not_need_brackets),
-		io__write_string("("),
-		output_inst_list(ArgInsts, ModeInfo),
-		io__write_string(")")
+		io__write_string("(\n"),
+		output_inst_list_sep_lines(Context, ArgInsts, ModeInfo),
+		prog_out__write_context(Context),
+		io__write_string("  )")
 	;
+		{ Args = [] },
 		io__write_string("' has instantiatedness `"),
 		mercury_output_cons_id(ConsId, does_not_need_brackets)
 	),
@@ -1091,23 +1098,41 @@ report_mode_errors(!ModeInfo, !IO) :-
 
 :- pred output_inst((inst)::in, mode_info::in, io::di, io::uo) is det.
 
-output_inst(Inst0, ModeInfo) -->
-	{ strip_builtin_qualifiers_from_inst(Inst0, Inst) },
-	{ mode_info_get_instvarset(ModeInfo, InstVarSet) },
-	{ mode_info_get_module_info(ModeInfo, ModuleInfo) },
-	mercury_output_expanded_inst(Inst, InstVarSet, ModuleInfo).
+output_inst(Inst0, ModeInfo, !IO) :-
+	strip_builtin_qualifiers_from_inst(Inst0, Inst),
+	mode_info_get_instvarset(ModeInfo, InstVarSet),
+	mode_info_get_module_info(ModeInfo, ModuleInfo),
+	mercury_output_expanded_inst(Inst, InstVarSet, ModuleInfo, !IO).
 
 :- pred output_inst_list(list(inst)::in, mode_info::in, io::di, io::uo) is det.
 
-output_inst_list([], _) --> [].
-output_inst_list([Inst | Insts], ModeInfo) -->
-	output_inst(Inst, ModeInfo),
-	( { Insts = [] } ->
-		[]
+output_inst_list([], _, !IO).
+output_inst_list([Inst | Insts], ModeInfo, !IO) :-
+	output_inst(Inst, ModeInfo, !IO),
+	(
+		Insts = []
 	;
-		io__write_string(", "),
-		output_inst_list(Insts, ModeInfo)
+		Insts = [_ | _],
+		io__write_string(", ", !IO),
+		output_inst_list(Insts, ModeInfo, !IO)
 	).
+
+:- pred output_inst_list_sep_lines(prog_context::in, list(inst)::in,
+	mode_info::in, io::di, io::uo) is det.
+
+output_inst_list_sep_lines(_Context, [], _, !IO).
+output_inst_list_sep_lines(Context, [Inst | Insts], ModeInfo, !IO) :-
+	prog_out__write_context(Context, !IO),
+	io__write_string("    ", !IO),
+	output_inst(Inst, ModeInfo, !IO),
+	(
+		Insts = []
+	;
+		Insts = [_ | _],
+		io__write_string(",", !IO)
+	),
+	io__nl(!IO),
+	output_inst_list_sep_lines(Context, Insts, ModeInfo, !IO).
 
 %-----------------------------------------------------------------------------%
 
