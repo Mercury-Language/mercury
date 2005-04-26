@@ -27,23 +27,24 @@
 	% build_with_check_for_interrupt(Build, Cleanup,
 	%	Succeeded, Info0, Info)
 	%
-	% Apply `Build' with signal handlers installed to check for signals
-	% which would normally kill the process. If a signal occurs call
-	% `Cleanup', then restore signal handlers to their defaults and
-	% reraise the signal to kill the current process.
+	% Apply `Build' with signal handlers installed to check for
+	% signals which would normally kill the process. If a signal
+	% occurs call `Cleanup', then restore signal handlers to their
+	% defaults and reraise the signal to kill the current process.
 	% An action being performed in a child process by
 	% call_in_forked_process will be killed if a fatal signal
 	% (SIGINT, SIGTERM, SIGHUP or SIGQUIT) is received by the
-	% current process.
-	% An action being performed within the current process or by
-	% system() will run to completion, with the interrupt being taken
-	% immediately afterwards.
+	% current process.  An action being performed within the current
+	% process or by system() will run to completion, with the
+	% interrupt being taken immediately afterwards.
+	%
 :- pred build_with_check_for_interrupt(build0(Info)::in(build0),
 	post_signal_cleanup(Info)::in(post_signal_cleanup), bool::out,
 	Info::in, Info::out, io::di, io::uo) is det.
 
 	% raise_signal(Signal).
 	% Send `Signal' to the current process.
+	%
 :- pred raise_signal(int::in, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
@@ -52,6 +53,7 @@
 :- inst io_pred == (pred(out, di, uo) is det).
 
 	% Does fork() work on the current platform.
+	%
 :- pred can_fork is semidet.
 
 	% call_in_forked_process(P, AltP, Succeeded)
@@ -65,14 +67,17 @@
 	%
 	% If fork() is not supported on the current architecture,
 	% `AltP' will be called instead in the current process.
+	%
 :- pred call_in_forked_process(io_pred::in(io_pred), io_pred::in(io_pred),
 	bool::out, io::di, io::uo) is det.
 
 	% As above, but if fork() is not available, just call the
 	% predicate in the current process.
+	%
 :- pred call_in_forked_process(io_pred::in(io_pred), bool::out,
 	io::di, io::uo) is det.
 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.

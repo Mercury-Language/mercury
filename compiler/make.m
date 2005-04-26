@@ -17,6 +17,7 @@
 % - parallel/distributed builds
 %
 %-----------------------------------------------------------------------------%
+
 :- module make.
 
 :- interface.
@@ -34,6 +35,8 @@
 :- import_module io.
 :- import_module list.
 
+%-----------------------------------------------------------------------------%
+
     % make__process_args(OptionArgs, NonOptionArgs).
     %
 :- pred make__process_args(options_variables::in, list(string)::in,
@@ -46,6 +49,7 @@
 
 :- type make_info.
 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -74,10 +78,8 @@
 :- import_module libs__timestamp.
 :- import_module parse_tree__error_util.
 :- import_module parse_tree__mercury_to_mercury.
-:- import_module parse_tree__modules.
 :- import_module parse_tree__prog_data.
 :- import_module parse_tree__prog_foreign.
-:- import_module parse_tree__prog_io.
 :- import_module parse_tree__prog_io_util.
 :- import_module parse_tree__prog_out.
 :- import_module top_level__mercury_compile. % XXX unwanted dependency
@@ -89,7 +91,6 @@
 :- import_module exception.
 :- import_module getopt_io.
 :- import_module int.
-:- import_module list.
 :- import_module map.
 :- import_module parser.
 :- import_module require.
@@ -98,6 +99,8 @@
 :- import_module string.
 :- import_module term.
 :- import_module term_io.
+
+%-----------------------------------------------------------------------------%
 
 :- type make_info --->
     make_info(
@@ -417,4 +420,6 @@ search_backwards_for_dot(String, Index, DotIndex) :-
         search_backwards_for_dot(String, Index - 1, DotIndex)
     ).
 
+%-----------------------------------------------------------------------------%
+:- end_module make.
 %-----------------------------------------------------------------------------%

@@ -13,9 +13,12 @@
 
 :- interface.
 
+%-----------------------------------------------------------------------------%
+
 	% make_linked_target(Target, Success, Info0, Info).
 	%
 	% Build a library or an executable.
+	%
 :- pred make_linked_target(linked_target_file::in, bool::out,
 	make_info::in, make_info::out, io::di, io::uo) is det.
 
@@ -24,14 +27,18 @@
 	% Handle miscellaneous target types, including clean-up, library
 	% installation, and building all files of a given type for all
 	% modules in the program.
+	%
 :- pred make_misc_target(pair(module_name, misc_target_type)::in,
 	bool::out, make_info::in, make_info::out, io::di, io::uo) is det.
 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module hlds__passes_aux.
+
+%-----------------------------------------------------------------------------%
 
 make_linked_target(MainModuleName - FileType, Succeeded, !Info, !IO) :-
 	( FileType = shared_library ->
@@ -687,13 +694,14 @@ install_library_grade(LinkSucceeded0, ModuleName, AllModules, Grade, Succeeded,
 	%
 	Cleanup = make_grade_clean(ModuleName, AllModules),
 	build_with_check_for_interrupt(
-	    (pred(GradeSuccess::out, MInfo::in, MInfo::out, di, uo) is det -->
+	    (pred(GradeSuccess::out, MInfo::in, MInfo::out, !.IO::di, !:IO::uo)
+			is det :-
 		call_in_forked_process(
-		    (pred(GradeSuccess0::out, di, uo) is det -->
+		    (pred(GradeSuccess0::out, !.IO::di, !:IO::uo) is det :-
 			install_library_grade_2(LinkSucceeded0,
 			    Grade, ModuleName, AllModules,
-			    MInfo, GradeSuccess0)
-		    ), GradeSuccess)
+			    MInfo, GradeSuccess0, !IO)
+		    ), GradeSuccess, !IO)
 	    ), Cleanup, Succeeded, !Info, !IO).
 
 :- pred install_library_grade_2(bool::in, string::in, module_name::in,
@@ -712,10 +720,10 @@ install_library_grade_2(LinkSucceeded0, Grade, ModuleName, AllModules,
 	OptionArgs = OptionArgs0 ++ ["--grade", Grade, "--use-grade-subdirs"],
 
 	verbose_msg(
-		(pred(di, uo) is det -->
-			io__write_string("Installing grade "),
-			io__write_string(Grade),
-			io__nl
+		(pred(!.IO::di, !:IO::uo) is det :-
+			io__write_string("Installing grade ", !IO),
+			io__write_string(Grade, !IO),
+			io__nl(!IO)
 		), !IO),
 
 	lookup_mmc_options(Info0 ^ options_variables, MaybeMCFlags, !IO),
@@ -769,6 +777,7 @@ install_library_grade_2(LinkSucceeded0, Grade, ModuleName, AllModules,
 
 	% Install the `.a', `.so', `.jar', `.opt' and `.mih' files
 	% for the current grade.
+	%
 :- pred install_library_grade_files(bool::in, string::in, module_name::in,
 	list(module_name)::in, bool::out, make_info::in, make_info::out,
 	io::di, io::uo) is det.
@@ -814,6 +823,7 @@ install_library_grade_files(LinkSucceeded0, Grade, ModuleName, AllModules,
 	).
 
 	% Install the `.opt' and `.mih' files for the current grade.
+	%
 :- pred install_grade_ints_and_headers(bool::in, string::in, module_name::in,
 	bool::out, make_info::in, make_info::out, io::di, io::uo) is det.
 
@@ -874,6 +884,7 @@ install_grade_ints_and_headers(LinkSucceeded, Grade, ModuleName, Succeeded,
 	% Install a file in the given directory, and in
 	% directory/Mercury/exts if the symlinks for the
 	% subdirectories couldn't be created (e.g. on Windows).
+	%
 :- pred install_subdir_file(bool::in, dir_name::in, module_name::in,
 	string::in, bool::out, io::di, io::uo) is det.
 
@@ -896,12 +907,12 @@ install_subdir_file(SubdirLinkSucceeded, InstallDir, ModuleName, Ext,
 
 install_file(FileName, InstallDir, Succeeded, !IO) :-
 	verbose_msg(
-		(pred(di, uo) is det -->
-			io__write_string("Installing file "),
-			io__write_string(FileName),
-			io__write_string(" in "),
-			io__write_string(InstallDir),
-			io__nl
+		(pred(!.IO::di, !:IO::uo) is det :-
+			io__write_string("Installing file ", !IO),
+			io__write_string(FileName, !IO),
+			io__write_string(" in ", !IO),
+			io__write_string(InstallDir, !IO),
+			io__nl(!IO)
 		), !IO),
 	globals__io_lookup_string_option(install_command, InstallCommand, !IO),
 	Command = string__join_list("	", list__map(quote_arg,
@@ -932,9 +943,10 @@ make_install_dirs(Result, LinkResult, !IO) :-
 	;
 		LinkResult = no,
 		list__map_foldl(
-			(pred(Ext::in, MkDirResult::out, di, uo) is det -->
+			(pred(Ext::in, MkDirResult::out, !.IO::di, !:IO::uo)
+					is det:-
 				make_directory(IntsSubdir/(Ext ++ "s"),
-					MkDirResult)
+					MkDirResult, !IO)
 			), Subdirs, MkDirResults, !IO),
 		Results = Results0 ++ MkDirResults
 	),
@@ -993,6 +1005,7 @@ make_install_symlink(Subdir, Ext, Succeeded, !IO) :-
 %-----------------------------------------------------------------------------%
 
 	% Clean up grade-dependent files.
+	%
 :- pred make_grade_clean(module_name::in, list(module_name)::in,
 	make_info::in, make_info::out, io::di, io::uo) is det.
 
@@ -1083,16 +1096,19 @@ make_module_clean(ModuleName, !Info, !IO) :-
 	% Remove object and assembler files.
 	%
 	list__foldl2(
-	    (pred(PIC::in, !.Info::in, !:Info::out, di, uo) is det -->
-		remove_target_file(ModuleName, object_code(PIC), !Info),
-		remove_target_file(ModuleName, asm_code(PIC), !Info),
-		remove_target_file(ModuleName, foreign_object(PIC, c), !Info),
+	    (pred(PIC::in, !.Info::in, !:Info::out, !.IO::di, !:IO::uo)
+			is det :-
+		remove_target_file(ModuleName, object_code(PIC), !Info, !IO),
+		remove_target_file(ModuleName, asm_code(PIC), !Info, !IO),
+		remove_target_file(ModuleName, foreign_object(PIC, c), !Info,
+			!IO),
 		list__foldl2(
 		    (pred(FactTableFile::in, !.Info::in, !:Info::out,
-				di, uo) is det -->
+				!.IO::di, !:IO::uo) is det :-
 			remove_target_file(ModuleName,
-				fact_table_object(PIC, FactTableFile), !Info)
-		    ), FactTableFiles, !Info)
+				fact_table_object(PIC, FactTableFile), !Info,
+					!IO)
+		    ), FactTableFiles, !Info, !IO)
 	    ),
 	    [pic, link_with_pic, non_pic], !Info, !IO),
 
@@ -1131,4 +1147,6 @@ make_module_realclean(ModuleName, !Info, !IO) :-
 
 this_file = "make.program_target.m".
 
+%-----------------------------------------------------------------------------%
+:- end_module make.program_target.
 %-----------------------------------------------------------------------------%

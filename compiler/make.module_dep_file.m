@@ -21,18 +21,24 @@
 :- import_module io.
 :- import_module std_util.
 
+%-----------------------------------------------------------------------------%
+
     % Get the dependencies for a given module.
     % Dependencies are generated on demand, not by a `mmc --make depend'
     % command, so this predicate may need to read the source for
     % the module.
+    %
 :- pred get_module_dependencies(module_name::in, maybe(module_imports)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 :- pred write_module_dep_file(module_imports::in, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
+
+%-----------------------------------------------------------------------------%
 
 get_module_dependencies(ModuleName, MaybeImports, !Info, !IO) :-
     RebuildDeps = !.Info ^ rebuild_dependencies,
@@ -617,4 +623,6 @@ maybe_write_importing_module(ModuleName, yes(ImportingModuleName), !IO) :-
     prog_out__write_sym_name(ImportingModuleName, !IO),
     io__write_string("'.\n", !IO).
 
+%-----------------------------------------------------------------------------%
+:- end_module make.module_dep_file.
 %-----------------------------------------------------------------------------%

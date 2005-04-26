@@ -16,9 +16,12 @@
 
 :- interface.
 
+%-----------------------------------------------------------------------------%
+
     % make_module_target(Target, Success, Info0, Info).
     %
     % Make a target corresponding to a single module.
+    %
 :- pred make_module_target(dependency_file::in, bool::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
@@ -28,6 +31,7 @@
     % Makes sure any timestamps for files which may have changed
     % in building the target are recomputed next time they are needed.
     % Exported for use by make__module_dep_file__write_module_dep_file.
+    %
 :- pred record_made_target(target_file::in, compilation_task_type::in,
     bool::in, make_info::in, make_info::out, io::di, io::uo) is det.
 
@@ -46,14 +50,18 @@
 
     % Find the foreign code files generated when a module is processed.
     % The `pic' field is only used for C foreign code.
+    %
 :- pred external_foreign_code_files(pic::in, module_imports::in,
     list(foreign_code_file)::out, io::di, io::uo) is det.
 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module hlds__passes_aux.
+
+%-----------------------------------------------------------------------------%
 
 :- pred make_module_target(dependency_file::in, bool::in, bool::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
@@ -123,11 +131,12 @@ make_module_target(target(TargetFile) @ Dep, Succeeded, !Info, !IO) :-
                 DepFiles = set__to_sorted_list(DepFiles0),
 
                 debug_msg(
-                   (pred(di, uo) is det -->
-                        write_target_file(TargetFile),
-                        io__write_string(": dependencies:\n"),
-                        io__write_list(DepFiles, ", ", write_dependency_file),
-                        io__nl
+                   (pred(!.IO::di, !:IO::uo) is det :-
+                        write_target_file(TargetFile, !IO),
+                        io__write_string(": dependencies:\n", !IO),
+                        io__write_list(DepFiles, ", ", write_dependency_file,
+                            !IO),
+                        io__nl(!IO)
                 ), !IO),
 
                 globals__io_lookup_bool_option(keep_going, KeepGoing, !IO),
@@ -766,16 +775,16 @@ touched_files(TargetFile, process_module(Task), TouchedTargetFiles,
     ),
     globals__io_get_globals(Globals, !IO),
     list__foldl2(
-        (pred((TargetModuleName - TargetFileType)::in, TimestampFiles0::in,
-            TimestampFiles1::out, di, uo) is det -->
+        (pred((TargetModuleName - TargetFileType)::in, !.TimestampFiles::in,
+            !:TimestampFiles::out, !.IO::di, !:IO::uo) is det :-
         (
-            { TimestampExt = timestamp_extension(Globals, TargetFileType) }
+            TimestampExt = timestamp_extension(Globals, TargetFileType)
         ->
             module_name_to_file_name(TargetModuleName, TimestampExt, no,
-                TimestampFile),
-            { TimestampFiles1 = [TimestampFile | TimestampFiles0] }
+                TimestampFile, !IO),
+            list.cons(TimestampFile, !TimestampFiles)
         ;
-            { TimestampFiles1 = TimestampFiles0 }
+            true
         )
     ), TouchedTargetFiles, [], TimestampFileNames, !IO),
     TouchedFileNames = list__condense([ForeignCodeFiles, TimestampFileNames]).
@@ -883,6 +892,9 @@ target_type_to_pic(TargetType) = Result :-
 %-----------------------------------------------------------------------------%
 
 :- func this_file = string.
+
 this_file = "make.module_target.m".
 
+%-----------------------------------------------------------------------------%
+:- end_module make.module_target.
 %-----------------------------------------------------------------------------%

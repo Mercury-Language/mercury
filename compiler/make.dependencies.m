@@ -16,6 +16,8 @@
 
 :- interface.
 
+%-----------------------------------------------------------------------------%
+
     % find_module_deps(ModuleName, Succeeded, Deps, !Info, !IO).
     %
     % The reason we don't return maybe(Deps) is that with `--keep-going'
@@ -99,6 +101,7 @@
 :- func init_cached_transitive_dependencies = cached_transitive_dependencies.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -114,6 +117,7 @@ union_deps(FindDeps, ModuleName, Success, Deps0, set__union(Deps0, Deps),
     % This is important because the calls to get_module_dependencies
     % from the dependency calculation predicates can result in
     % every module in the program being read.
+    %
 :- func combine_deps(find_module_deps(T)::in(find_module_deps),
     find_module_deps(T)::in(find_module_deps)) =
     (find_module_deps(T)::out(find_module_deps)) is det.
@@ -644,7 +648,7 @@ get_foreign_imported_modules_3(MaybeLanguages, ForeignImportModule)
 
 %-----------------------------------------------------------------------------%
 
-    %
+    
     % foreign_imports(Lang, ModuleName, Success, Modules, !Info, !IO)
     %
     % From the module, ModuleName, extract the set of modules, Modules,
@@ -690,13 +694,13 @@ filter(Filter, F, ModuleName, Success, Modules, !Info, !IO) :-
     Modules = set__filter((pred(M::in) is semidet :- Filter(ModuleName, M)),
         Modules0).
 
-%
-% If the current module we are compiling is not in the standard library
-% and the module we are importing is then remove it, otherwise keep it.
-% When compiling with `--target il', if the current module is not in the
-% standard library, we link with mercury.dll rather than the DLL file for
-% the imported module.
-%
+
+    % If the current module we are compiling is not in the standard
+    % library and the module we are importing is then remove it,
+    % otherwise keep it.  When compiling with `--target il', if the
+    % current module is not in the standard library, we link with
+    % mercury.dll rather than the DLL file for the imported module.
+    %
 :- pred maybe_keep_std_lib_module(module_name::in, module_name::in) is semidet.
 
 maybe_keep_std_lib_module(CurrentModule, ImportedModule) :-
@@ -868,10 +872,10 @@ check_dependencies_debug_unbuilt(TargetFileName, UnbuiltDependencies, !IO) :-
     io__write_string(TargetFileName, !IO),
     io__write_string(": dependencies could not be built.\n\t", !IO),
     io__write_list(UnbuiltDependencies, ",\n\t",
-        (pred((DepTarget - DepStatus)::in, di, uo) is det -->
-            write_dependency_file(DepTarget),
-            io__write_string(" - "),
-            io__write(DepStatus)
+        (pred((DepTarget - DepStatus)::in, !.IO::di, !:IO::uo) is det :-
+            write_dependency_file(DepTarget, !IO),
+            io__write_string(" - ", !IO),
+            io__write(DepStatus, !IO)
         ), !IO),
     io__nl(!IO).
 
@@ -891,9 +895,9 @@ check_dependencies(TargetFileName, MaybeTimestamp, BuildDepsSucceeded,
     ;
         UnbuiltDependencies = [],
         debug_msg(
-            (pred(di, uo) is det -->
-                io__write_string(TargetFileName),
-                io__write_string(": finished dependencies\n")
+            (pred(!.IO::di, !:IO::uo) is det :-
+                io__write_string(TargetFileName, !IO),
+                io__write_string(": finished dependencies\n", !IO)
             ), !IO),
         list__map_foldl2(get_dependency_timestamp, DepFiles,
             DepTimestamps, !Info, !IO),
@@ -933,9 +937,9 @@ check_dependency_timestamps(TargetFileName, MaybeTimestamp, BuildDepsSucceeded,
         MaybeTimestamp = error(_),
         DepsResult = out_of_date,
         debug_msg(
-            (pred(di, uo) is det -->
-                io__write_string(TargetFileName),
-                io__write_string(" does not exist.\n")
+            (pred(!.IO::di, !:IO::uo) is det :-
+                io__write_string(TargetFileName, !IO),
+                io__write_string(" does not exist.\n", !IO)
             ), !IO)
     ;
         MaybeTimestamp = ok(Timestamp),
@@ -1055,9 +1059,8 @@ dependency_status(target(Target) @ Dep, Status, !Info, !IO) :-
             MaybeImports = yes(Imports),
             ( Imports ^ module_dir \= dir__this_directory ->
                 %
-                % Targets from libraries are always
-                % considered to be up-to-date if they
-                % exist.
+                % Targets from libraries are always considered to be
+                % up-to-date if they exist.
                 %
                 get_target_timestamp(yes, Target, MaybeTimestamp, !Info, !IO),
                 (
@@ -1085,4 +1088,6 @@ dependency_status(target(Target) @ Dep, Status, !Info, !IO) :-
 
 this_file = "make.dependencies.m".
 
+%-----------------------------------------------------------------------------%
+:- end_module make.dependencies.
 %-----------------------------------------------------------------------------%

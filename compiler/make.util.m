@@ -13,11 +13,11 @@
 
 :- interface.
 
-	%
-	% Versions of foldl which stop if the supplied predicate returns `no'
-	% for any element of the list.
-	%
-
+%-----------------------------------------------------------------------------%
+%
+% Versions of foldl which stop if the supplied predicate returns `no'
+% for any element of the list.
+%
 	% foldl2_pred_with_status(T, Succeeded, !Info).
 	%
 :- type foldl2_pred_with_status(T, Info, IO) ==
@@ -111,8 +111,9 @@
 	bool::out, make_info::in, make_info::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
-
-	% Timestamp handling.
+%
+% Timestamp handling.
+%
 
 	% Find the timestamp updated when a target is produced.
 	%
@@ -159,8 +160,9 @@
 	maybe_error(timestamp)) = maybe_error(timestamp).
 
 %-----------------------------------------------------------------------------%
-
-	% Remove file a file, deleting the cached timestamp.
+%
+% Remove file a file, deleting the cached timestamp.
+%
 
 	% Remove the target file and the corresponding timestamp file.
 	%
@@ -202,8 +204,9 @@
 :- pred target_is_grade_or_arch_dependent(module_target_type::in) is semidet.
 
 %-----------------------------------------------------------------------------%
-
-	% Debugging, verbose and error messages.
+%
+% Debugging, verbose and error messages.
+%
 
 	% Apply the given predicate if `--debug-make' is set.
 	%
@@ -248,8 +251,11 @@
 	make_info::in, make_info::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
+
+%-----------------------------------------------------------------------------%
 
 foldl2_maybe_stop_at_error(KeepGoing, MakeTarget,
 		Targets, Success, !Info, !IO) :-
@@ -1002,4 +1008,6 @@ maybe_warn_up_to_date_target(Target @ (ModuleName - FileType), !Info, !IO) :-
 
 this_file = "make.util.m".
 
+%-----------------------------------------------------------------------------%
+:- end_module make.util.
 %-----------------------------------------------------------------------------%
