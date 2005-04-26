@@ -12,3 +12,4 @@ libgc.lib
 *.ilk
 *.pdb
 gc_cpp.cpp
+libgc.dylib

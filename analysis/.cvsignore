@@ -28,4 +28,5 @@ Mercury
 *.ilk
 *.pdb
 libmer_analysis.lib
+libmer_analysis.dylib
 Mercury.modules

@@ -12,6 +12,7 @@
 *.mh
 *.pic_o
 *.dylib
+*.mih
 mer_mdbcomp.init
 mer_mdbcomp.dv
 mer_mdbcomp.mh

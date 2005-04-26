@@ -33,6 +33,7 @@ library.dep
 library.dv
 Mercury
 libmer_std.lib
+libmer_std.dylib
 *.mh
 *.mih
 *.java

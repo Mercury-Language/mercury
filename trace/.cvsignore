@@ -2,3 +2,4 @@
 *.ilk
 *.pdb
 libmer_trace.lib
+libmer_trace.dylib

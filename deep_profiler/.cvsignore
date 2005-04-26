@@ -15,6 +15,9 @@
 *.date
 *.date3
 *.*_date
+*.dep
+*.dv
+mdprof_test
 mdprof_cgi
 mdprof_server
 Mercury

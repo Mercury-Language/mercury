@@ -19,9 +19,9 @@
 *.optdate
 *.trans_opt
 *.trans_opt_date
+*.mih
 mdb*.h
 mdb*.mh
-mdb*.mih
 mer_browser.init
 mer_browser.dv
 mer_browser.mh
@@ -39,6 +39,7 @@ mdb.init
 *.ilk
 *.pdb
 libmer_browser.lib
+libmer_browser.dylib
 *.*_date
 Mercury.modules
 browse_test
