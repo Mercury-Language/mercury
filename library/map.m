@@ -729,7 +729,7 @@ map__overlay_2([K - V | AssocList], Map0, Map) :-
 
 map__overlay_large_map(Map0, Map1, Map) :-
 	map__to_assoc_list(Map0, AssocList),
-	map__overlay_2(AssocList, Map1, Map).
+	map__overlay_large_map_2(AssocList, Map1, Map).
 
 :- pred map__overlay_large_map_2(assoc_list(K, V)::in,
 	map(K, V)::in, map(K, V)::out) is det.
