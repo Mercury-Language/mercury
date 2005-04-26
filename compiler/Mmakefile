@@ -9,6 +9,7 @@
 MERCURY_DIR=..
 LINK_STATIC=yes
 include $(MERCURY_DIR)/Mmake.common
+-include Mmake.compiler.params
 
 # Module-specific options should go in Mercury.options so they
 # can be found by `mmc --make'.
