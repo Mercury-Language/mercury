@@ -1,2 +1,4 @@
 uu_type.m:022: Error: type parameters must be variables: hiddenrenamedtype = hiddentype.
+uu_type.m:012: Error: abstract declaration for type
+uu_type.m:012:   `uu_type.hiddenrenamedtype/0' has no corresponding definition.
 For more information, try recompiling with `-E'.

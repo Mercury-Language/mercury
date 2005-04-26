@@ -25,4 +25,6 @@ types.m:018: In clause for predicate `types.r/0':
 types.m:018:   error: undefined predicate `s/0'.
 types.m:020: In clause for predicate `types.a/1':
 types.m:020:   error: undefined predicate `b/1'.
+types.m:048: Error: abstract declaration for type `types.t/2' has no
+types.m:048:   corresponding definition.
 For more information, try recompiling with `-E'.

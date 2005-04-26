@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2004 The University of Melbourne.
+% Copyright (C) 2001-2005 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -183,7 +183,10 @@
 %
 
 % A GCC `tree' representing a declaration.
-:- type gcc__decl.
+% XXX This doesn't have a definition and appears to be unused anyway.
+% - juliensf
+%
+%:- type gcc__decl.
 
 %
 % Stuff for variable declarations

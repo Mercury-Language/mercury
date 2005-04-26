@@ -21,6 +21,8 @@
 %	- it reports errors for unsatisfied type class constraints
 %	- it reports an error if there are indistinguishable modes for
 %	  a predicate of function.
+%	- it checks that declarations for abstract types also have a
+%	  corresponding definition somewhere in the module. 
 %
 % These actions cannot be done until after type inference is complete,
 % so they need to be a separate "post-typecheck pass".  For efficiency
@@ -145,7 +147,10 @@
 post_typecheck__finish_preds(PredIds, ReportTypeErrors, NumErrors,
 		FoundTypeError, !ModuleInfo, !IO) :-
 	post_typecheck__finish_preds(PredIds, ReportTypeErrors,
-		!ModuleInfo, 0, NumErrors, no, FoundTypeError, !IO).
+		!ModuleInfo, 0, NumErrors0, no, FoundTypeError0, !IO),
+	check_for_missing_definitions(!.ModuleInfo,
+		NumErrors0, NumErrors, FoundTypeError0, FoundTypeError,
+		!IO).
 
 :- pred post_typecheck__finish_preds(list(pred_id)::in, bool::in,
 	module_info::in, module_info::out, int::in, int::out,
@@ -1634,4 +1639,80 @@ make_new_var(Type, Var, !VarTypes, !VarSet) :-
 	map__det_insert(!.VarTypes, Var, Type, !:VarTypes).
 
 %-----------------------------------------------------------------------------%
+%
+% Check that every abstract type in a module has at least one definition
+% in either the interface or implementation of the module.  A type may
+% have several definitions, e.g. some foreign definitions and a default
+% Mercury definition.
+%
+
+:- pred check_for_missing_definitions(module_info::in,
+	int::in, int::out, bool::in, bool::out, io::di, io::uo) is det.
+
+check_for_missing_definitions(ModuleInfo, !NumErrors, !FoundTypeError,
+		!IO) :-
+	module_info_types(ModuleInfo, TypeTable),
+	map.foldl3(check_for_missing_definitions_2, TypeTable,
+		 !NumErrors, !FoundTypeError, !IO).
+
+:- pred check_for_missing_definitions_2(type_ctor::in, hlds_type_defn::in,
+	int::in, int::out, bool::in, bool::out, io::di, io::uo) is det.
+
+check_for_missing_definitions_2(TypeCtor, TypeDefn, !NumErrors,
+		!FoundTypeError, !IO) :-
+	( 
+		get_type_defn_status(TypeDefn, ImportStatus),
+		status_defined_in_this_module(ImportStatus, LocalDefn),
+		LocalDefn = yes,
+		get_type_defn_body(TypeDefn, TypeBody),
+		TypeBody = abstract_type(_)
+	->
+		% We expect builtin types character, float, int and
+		% string to have abstract declarations with no
+		% definitions.  The following types from the type_desc
+		% module also only have abstract declarations:
+		% 	
+		% 	- type_desc/0
+		% 	- pseudo_type_desc/0
+		% 	- type_ctor_desc/0
+		% 	
+		% We do not emit an error for these types.  In addition,
+		% we also don't bother checking for corresponding
+		% definitions in any of the builtin modules in the
+		% standard library.
+		%
+		TypeCtor = SymName - Arity,
+		BuiltinTypeCtors = builtin_type_ctors_with_no_hlds_type_defn,
+		(
+			sym_name_get_module_name(SymName, ModuleName),
+			not any_mercury_builtin_module(ModuleName),
+			%
+			% Several of the type defined in type_desc do not
+			% have Mercury definitions.
+			% 
+			not ModuleName = unqualified("type_desc"),
+			not list.member(TypeCtor, BuiltinTypeCtors)
+		->
+			ErrorPieces = [
+				words("Error: abstract"),
+				words("declaration for type"),
+				sym_name_and_arity(SymName / Arity),
+				words("has no corresponding"),
+				words("definition.")
+			], 	
+			get_type_defn_context(TypeDefn, TypeContext),
+			write_error_pieces(TypeContext, 0,
+				ErrorPieces, !IO),
+			io.set_exit_status(1, !IO),
+			!:FoundTypeError = yes,
+			!:NumErrors = !.NumErrors + 1	
+		;
+			true
+		)
+	;
+		true
+	).	
+
+%-----------------------------------------------------------------------------%
+:- end_module post_typecheck.
 %-----------------------------------------------------------------------------%

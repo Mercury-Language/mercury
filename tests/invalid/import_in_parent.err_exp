@@ -1,3 +1,3 @@
-import_in_parent.m:019: In clause for predicate `import_in_parent.sub.foo/1':
-import_in_parent.m:019:   error: undefined predicate `bool.foo/1'.
+import_in_parent.m:021: In clause for predicate `import_in_parent.sub.foo/1':
+import_in_parent.m:021:   error: undefined predicate `bool.foo/1'.
 For more information, try recompiling with `-E'.

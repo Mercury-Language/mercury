@@ -156,6 +156,7 @@ SINGLEMODULE= \
 	type_mismatch \
 	types	\
 	type_vars \
+	type_with_no_defn \
 	unbound_type_vars \
 	undeclared_mode \
 	undef_inst \

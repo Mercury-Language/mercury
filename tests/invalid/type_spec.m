@@ -26,3 +26,7 @@
 :- pragma type_spec(type_spec2/1, U = list(U)).
 
 :- pragma type_spec(type_spec2/1, (U = int, U = list(int))).
+
+:- implementation.
+
+:- type the_type(T, U) ---> the_type(T, U).
