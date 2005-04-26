@@ -273,6 +273,18 @@ parse_goal_2("promise_impure", [A0], GoalExpr, !V):-
 	parse_goal(A0, A, !V),
 	GoalExpr = promise_purity(dont_make_implicit_promises, impure, A).
 
+parse_goal_2("promise_pure_implicit", [A0], GoalExpr, !V):-
+	parse_goal(A0, A, !V),
+	GoalExpr = promise_purity(make_implicit_promises, pure, A).
+
+parse_goal_2("promise_semipure_implicit", [A0], GoalExpr, !V):-
+	parse_goal(A0, A, !V),
+	GoalExpr = promise_purity(make_implicit_promises, semipure, A).
+
+parse_goal_2("promise_impure_implicit", [A0], GoalExpr, !V):-
+	parse_goal(A0, A, !V),
+	GoalExpr = promise_purity(make_implicit_promises, impure, A).
+
 	% The following is a temporary hack to handle `is' in
 	% the parser - we ought to handle it in the code generation -
 	% but then `is/2' itself is a bit of a hack

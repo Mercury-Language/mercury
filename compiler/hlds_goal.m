@@ -207,7 +207,7 @@
 		% preserves this fact.
 
 	--->	exist_quant(list(prog_var))
-
+		%
 		% Even though the code inside the scope may have multiple
 		% solutions, the creater of the scope (which may be the user
 		% or a compiler pass) promises that all these solutions are
@@ -227,7 +227,7 @@
 		% If it is not valid, the compiler must emit an error message.
 
 	;	promise_equivalent_solutions(list(prog_var))
-
+		%
 		% The goal inside the scope implements an interface of the
 		% specified purity, even if its implementation uses less pure
 		% components.
@@ -239,7 +239,7 @@
 		% annotations on the goals inside the scope.
 
 	;	promise_purity(implicit_purity_promise, purity)
-
+		%
 		% This scope exists to delimit a piece of code
 		% with at_most_many components but with no outputs,
 		% whose overall determinism is thus at_most_one,
@@ -251,7 +251,7 @@
 		% succeed at most once even if the inner goal is impure.
 
 	;	commit(force_pruning)
-
+		%
 		% The scope exists to prevent other compiler passes from
 		% arbitrarily moving computations in or out of the scope.
 		% This kind of scope can only be introduced by program
@@ -272,7 +272,7 @@
 		% the inner or the outer goal, or about pruning.
 
 	;	barrier(removable)
-
+		%
 		% The goal inside the scope, which should be a conjunction,
 		% results from the conversion of one ground term to
 		% superhomogeneous form. The variable specifies what the

@@ -337,12 +337,13 @@ puritycheck_pred(PredId, !PredInfo, ModuleInfo, NumErrors, !IO) :-
 	clauses_info_varset(ClausesInfo0, VarSet0),
 	RunPostTypecheck = yes,
 	PurityInfo0 = purity_info(ModuleInfo, RunPostTypecheck,
-		!.PredInfo, VarTypes0, VarSet0, []),
+		!.PredInfo, VarTypes0, VarSet0, [],
+		dont_make_implicit_promises),
 	pred_info_get_goal_type(!.PredInfo, GoalType),
 	compute_purity(GoalType, Clauses0, Clauses, ProcIds, pure, Purity,
 		PurityInfo0, PurityInfo),
 	PurityInfo = purity_info(_, _, !:PredInfo,
-		VarTypes, VarSet, RevMessages),
+		VarTypes, VarSet, RevMessages, _),
 	clauses_info_set_vartypes(VarTypes, ClausesInfo0, ClausesInfo1),
 	clauses_info_set_varset(VarSet, ClausesInfo1, ClausesInfo2),
 	Messages = list__reverse(RevMessages),
@@ -388,9 +389,10 @@ repuritycheck_proc(ModuleInfo, proc(_PredId, ProcId), !PredInfo) :-
 	proc_info_varset(ProcInfo0, VarSet0),
 	RunPostTypeCheck = no,
 	PurityInfo0 = purity_info(ModuleInfo, RunPostTypeCheck,
-		!.PredInfo, VarTypes0, VarSet0, []),
+		!.PredInfo, VarTypes0, VarSet0, [],
+		dont_make_implicit_promises),
 	compute_goal_purity(Goal0, Goal, Bodypurity, PurityInfo0, PurityInfo),
-	PurityInfo = purity_info(_, _, !:PredInfo, VarTypes, VarSet, _),
+	PurityInfo = purity_info(_, _, !:PredInfo, VarTypes, VarSet, _, _),
 	proc_info_set_goal(Goal, ProcInfo0, ProcInfo1),
 	proc_info_set_vartypes(VarTypes, ProcInfo1, ProcInfo2),
 	proc_info_set_varset(VarSet, ProcInfo2, ProcInfo),
@@ -669,26 +671,33 @@ compute_expr_purity(not(Goal0), NotGoal, GoalInfo0, Purity, !Info) :-
 	).
 compute_expr_purity(scope(Reason, Goal0), scope(Reason, Goal),
 		_, Purity, !Info) :-
-	compute_goal_purity(Goal0, Goal, Purity0, !Info),
 	(
 		Reason = exist_quant(_),
-		Purity = Purity0
+		compute_goal_purity(Goal0, Goal, Purity, !Info)
 	;
-			% XXX Use Implicit when checking Goal0
-		Reason = promise_purity(_Implicit, PromisedPurity),
-		Purity = best_purity(Purity0, PromisedPurity)
+		Reason = promise_purity(Implicit, PromisedPurity),
+		ImplicitPurity0 = !.Info ^ implicit_purity,
+		(
+			Implicit = make_implicit_promises,
+			!:Info = !.Info ^ implicit_purity := Implicit
+		;
+			Implicit = dont_make_implicit_promises
+		),
+		compute_goal_purity(Goal0, Goal, _, !Info),
+		!:Info = !.Info ^ implicit_purity := ImplicitPurity0,
+		Purity = PromisedPurity
 	;
 		Reason = promise_equivalent_solutions(_),
-		Purity = Purity0
+		compute_goal_purity(Goal0, Goal, Purity, !Info)
 	;
 		Reason = commit(_),
-		Purity = Purity0
+		compute_goal_purity(Goal0, Goal, Purity, !Info)
 	;
 		Reason = barrier(_),
-		Purity = Purity0
+		compute_goal_purity(Goal0, Goal, Purity, !Info)
 	;
 		Reason = from_ground_term(_),
-		Purity = Purity0
+		compute_goal_purity(Goal0, Goal, Purity, !Info)
 	).
 compute_expr_purity(if_then_else(Vars, Cond0, Then0, Else0),
 		if_then_else(Vars, Cond, Then, Else), _, Purity, !Info) :-
@@ -769,7 +778,10 @@ check_higher_order_purity(GoalInfo, ConsId, Var, Args, ActualPurity, !Info) :-
 
 	% Check for a bogus purity annotation on the unification
 	infer_goal_info_purity(GoalInfo, DeclaredPurity),
-	( DeclaredPurity \= pure ->
+	(
+		DeclaredPurity \= pure,
+		!.Info ^ implicit_purity = dont_make_implicit_promises
+	->
 		goal_info_get_context(GoalInfo, Context),
 		Message = impure_unification_expr_error(Context,
 			DeclaredPurity),
@@ -881,9 +893,16 @@ perform_goal_purity_checks(Context, PredId, DeclaredPurity, ActualPurity,
 		!Info) :-
 	ModuleInfo = !.Info ^ module_info,
 	PredInfo = !.Info ^ pred_info,
+	ImplicitPurity = !.Info ^ implicit_purity,
 	module_info_pred_info(ModuleInfo, PredId, CalleePredInfo),
 	pred_info_get_purity(CalleePredInfo, ActualPurity),
 	(
+		% If implicit_purity = make_implicit_promises then
+		% we don't report purity errors or warnings.
+		ImplicitPurity = make_implicit_promises
+	->
+		true
+	;
 		% The purity of the callee should match the
 		% purity declared at the call
 		ActualPurity = DeclaredPurity
@@ -1262,7 +1281,12 @@ impure_unification_expr_error(Context, Purity, !IO) :-
 			pred_info		:: pred_info,
 			vartypes		:: vartypes,
 			varset			:: prog_varset,
-			messages		:: post_typecheck_messages
+			messages		:: post_typecheck_messages,
+			implicit_purity		:: implicit_purity_promise
+				% If this is make_implicit_promises then purity
+				% annotations are optional in the current scope
+				% and purity warnings/errors should not be
+				% generated.
 		).
 
 :- pred purity_info_add_message(post_typecheck_message::in,

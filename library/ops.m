@@ -333,6 +333,9 @@ ops__op_table("solver", before, fy, 1181).	% Mercury extension
 ops__op_table("promise_pure", before, fx, 950).	% Mercury extension
 ops__op_table("promise_impure", before, fx, 950).	% Mercury extension
 ops__op_table("promise_semipure", before, fx, 950).	% Mercury extension
+ops__op_table("promise_pure_implicit", before, fx, 950).    % Mercury extension
+ops__op_table("promise_impure_implicit", before, fx, 950).  % Mercury extension
+ops__op_table("promise_semipure_implicit", before, fx, 950).% Mercury extension
 ops__op_table("promise_equivalent_solutions", before, fxy, 950).
 						% Mercury extension
 ops__op_table("some", before, fxy, 950).	% Mercury/NU-Prolog extension

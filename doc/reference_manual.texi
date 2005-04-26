@@ -639,10 +639,23 @@ A purity cast.
 This goal promises that @var{Goal} implements a semipure interface,
 even though it may include impure components.
 
-@c @item @code{promise_impure @var{Goal}}
-@c A purity cast.
-@c @var{Goal} must be a valid goal.
-@c This goal promises that @var{Goal} implements an impure interface.
+@item @code{promise_impure @var{Goal}}
+A purity cast.
+@var{Goal} must be a valid goal.
+This goal instructs the compiler to treat @var{Goal} as though it were impure,
+regardless of its actual purity.
+
+@item @code{promise_pure_implicit @var{Goal}}
+Equivalent to @code{promise_pure @var{Goal}}, except that purity annotations on
+semipure and impure subgoals in @var{Goal} are optional.
+
+@item @code{promise_semipure_implicit @var{Goal}}
+Equivalent to @code{promise_semipure @var{Goal}}, except that purity
+annotations on semipure and impure subgoals in @var{Goal} are optional.
+
+@item @code{promise_impure_implicit @var{Goal}}
+Equivalent to @code{promise_impure @var{Goal}}, except that purity annotations
+on semipure and impure subgoals in @var{Goal} are optional.
 
 @item @code{promise_equivalent_solutions @var{Vars} @var{Goal}}
 A determinism cast.

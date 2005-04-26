@@ -170,6 +170,42 @@ parse_dcg_goal_2("semipure", [G], _, Goal, !VarSet, !Counter, !Var) :-
 	parse_dcg_goal_with_purity(G, (semipure), Goal, !VarSet, !Counter,
 		!Var).
 
+parse_dcg_goal_2("promise_pure", [G], Context, Goal,
+		!VarSet, !Counter, !Var) :-
+	parse_dcg_goal(G, Goal0, !VarSet, !Counter, !Var),
+	Goal = promise_purity(dont_make_implicit_promises, (pure), Goal0) -
+		Context.
+
+parse_dcg_goal_2("promise_semipure", [G], Context, Goal,
+		!VarSet, !Counter, !Var) :-
+	parse_dcg_goal(G, Goal0, !VarSet, !Counter, !Var),
+	Goal = promise_purity(dont_make_implicit_promises, (semipure), Goal0) -
+		Context.
+
+parse_dcg_goal_2("promise_impure", [G], Context, Goal,
+		!VarSet, !Counter, !Var) :-
+	parse_dcg_goal(G, Goal0, !VarSet, !Counter, !Var),
+	Goal = promise_purity(dont_make_implicit_promises, (impure), Goal0) -
+		Context.
+
+parse_dcg_goal_2("promise_pure_implicit", [G], Context, Goal,
+		!VarSet, !Counter, !Var) :-
+	parse_dcg_goal(G, Goal0, !VarSet, !Counter, !Var),
+	Goal = promise_purity(make_implicit_promises, (pure), Goal0) -
+		Context.
+
+parse_dcg_goal_2("promise_semipure_implicit", [G], Context, Goal,
+		!VarSet, !Counter, !Var) :-
+	parse_dcg_goal(G, Goal0, !VarSet, !Counter, !Var),
+	Goal = promise_purity(make_implicit_promises, (semipure), Goal0) -
+		Context.
+
+parse_dcg_goal_2("promise_impure_implicit", [G], Context, Goal,
+		!VarSet, !Counter, !Var) :-
+	parse_dcg_goal(G, Goal0, !VarSet, !Counter, !Var),
+	Goal = promise_purity(make_implicit_promises, (impure), Goal0) -
+		Context.
+
 	% Empty list - just unify the input and output DCG args.
 parse_dcg_goal_2("[]", [], Context, Goal, !VarSet, !Counter, Var0, Var) :-
 	new_dcg_var(!VarSet, !Counter, Var),

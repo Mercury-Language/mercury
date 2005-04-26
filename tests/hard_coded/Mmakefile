@@ -95,6 +95,8 @@ ORDINARY_PROGS=	\
 	ho_univ_to_type \
 	impossible_unify \
 	impure_foreign \
+	impure_foreign2 \
+	impure_foreign3 \
 	impure_prune \
 	integer_test \
 	intermod_c_code \
@@ -173,6 +175,7 @@ ORDINARY_PROGS=	\
 	test_bitset \
 	test_cord \
 	test_imported_no_tag \
+	test_promise_impure_implicit \
 	time_test \
 	tim_qual1 \
 	transform_value \
