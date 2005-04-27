@@ -145,10 +145,24 @@ The work-around is to add an explicit type qualification.
 
 test(Args0) :-
 	MakeIndex =
-		lambda([Elem0::in, Elem::out, Index0::in, Index::out] is det, (
+		(pred(Elem0::in, Elem::out, Index0::in, Index::out) is det :-
 			Elem = Elem0 - Index0,
 			Index is Index0 + 1
-		)),
-	list__map_foldl(MakeIndex, Args0, _, 0, _).
+	),
+	list.map_foldl(MakeIndex, Args0, _, 0, _).
+
+-----------------------------------------------------------------------------
+Subject: mode analysis bug
+Date: 1 December 2004
+
+The Mercury compiler sometimes aborts with the following error message:
+
+  	Uncaught Mercury exception:
+  	Software Error: inappropriate determinism inside a negation
+
+This bug is due to a limitation in the mode checker.  It has only
+been reported as occurring when inlining is enabled.  A workaround
+is to disable inlining for any affected files.  This can be done
+by using the option `--no-inlining'.  
 
 -----------------------------------------------------------------------------
