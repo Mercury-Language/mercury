@@ -3777,7 +3777,7 @@ options_help_llds_llds_optimization -->
 		"\tConvert nondet calls into tail calls whenever possible, even",
 		"\twhen this requires a runtime check. This option tries to",
 		"\tminimize stack consumption, possibly at the expense of speed.",
-		"--use-local-vars",
+		"--no-use-local-vars",
 		"\tDisable the transformation to use local variables in C code",
 		"\tblocks wherever possible.",
 		"--no-optimize-labels",
