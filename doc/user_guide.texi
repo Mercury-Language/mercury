@@ -7158,7 +7158,7 @@ when this requires a runtime check. This option tries to
 minimize stack consumption, possibly at the expense of speed.
 
 @sp 1
-@item --use-local-vars
+@item --no-use-local-vars
 @findex --use-local-vars
 Disable the transformation to use local variables in C code
 blocks wherever possible.
