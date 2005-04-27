@@ -325,8 +325,17 @@ build_target_2(ModuleName, process_module(ModuleTask), ArgFileName,
 	% Mercury stacks. If the compilation is run in a separate
 	% process, it is also easier to kill if an interrupt arrives.
 	%
+	% We do the same for intermodule-optimization interfaces
+	% because if type checking gets overloaded by ambiguities
+	% it can be difficult to kill the compiler otherwise.
 	io__set_output_stream(ErrorStream, OldOutputStream),
-	( { ModuleTask = compile_to_target_code } ->
+	(
+		(
+			{ ModuleTask = compile_to_target_code }
+		;
+			{ ModuleTask = make_optimization_interface }
+		)	
+	->
 		call_in_forked_process(call_mercury_compile_main([ModuleArg]),
 			invoke_mmc(ErrorStream, ArgFileName,
 				AllOptionArgs ++ [ModuleArg]),
