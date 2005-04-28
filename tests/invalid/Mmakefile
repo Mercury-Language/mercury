@@ -183,6 +183,7 @@ SINGLEMODULE= \
 	uniq_modes \
 	uniq_neg \
 	unsatisfiable_constraint \
+	unsatisfiable_super \
 	uu_type \
 	vars_in_wrong_places \
 	with_type

@@ -183,20 +183,35 @@ typeclasses__reduce_context_by_rule_application_2(ClassTable, InstanceTable,
 		!ConstraintMap, !Constraints, !Seen) :-
 	apply_rec_subst_to_constraints(!.Bindings, !Constraints),
 	apply_improvement_rules(ClassTable, InstanceTable, HeadTypeParams,
-		!TVarSet, !Bindings, !Constraints, AppliedImprovementRule),
+		!.Constraints, !TVarSet, !Bindings, AppliedImprovementRule),
+
+		% We want to make sure that any changes to the bindings are
+		% reflected in the constraints, so that the full effect of the
+		% improvement rules applies as soon as possible.  We therefore
+		% apply the bindings to the constraints (but only if the
+		% bindings have actually changed since they were last applied).
+		%
+	(
+		AppliedImprovementRule = yes,
+		apply_rec_subst_to_constraints(!.Bindings, !Constraints)
+	;
+		AppliedImprovementRule = no
+	),
+
 	eliminate_assumed_constraints(!ConstraintMap, !Constraints,
 		EliminatedAssumed),
 	apply_instance_rules(ClassTable, InstanceTable, !TVarSet, !Proofs,
 		!ConstraintMap, !Seen, !Constraints, AppliedInstanceRule),
-	apply_class_rules(SuperClassTable, HeadTypeParams, !.TVarSet,
-		!Proofs, !ConstraintMap, !Constraints, AppliedClassRule),
+	apply_class_rules(SuperClassTable, !.TVarSet, !Proofs, !ConstraintMap,
+		!Constraints, AppliedClassRule),
 	(
 		AppliedImprovementRule = no,
 		EliminatedAssumed = no,
 		AppliedInstanceRule = no,
 		AppliedClassRule = no
 	->
-			% We have reached fixpoint
+			% We have reached fixpoint.
+			%
 		sort_and_merge_dups(!Constraints)
 	;
 		typeclasses__reduce_context_by_rule_application_2(ClassTable,
@@ -249,20 +264,18 @@ merge_constraints(constraint(IdsA, Name, Types), constraint(IdsB, Name, Types),
 	list__sort_and_remove_dups(Ids0, Ids).
 
 :- pred apply_improvement_rules(class_table::in, instance_table::in,
-	head_type_params::in, tvarset::in, tvarset::out,
-	tsubst::in, tsubst::out, hlds_constraints::in, hlds_constraints::out,
-	bool::out) is det.
+	head_type_params::in, hlds_constraints::in, tvarset::in, tvarset::out,
+	tsubst::in, tsubst::out, bool::out) is det.
 
-apply_improvement_rules(ClassTable, InstanceTable, HeadTypeParams, !TVarSet,
-		!Bindings, !Constraints, Changed) :-
+apply_improvement_rules(ClassTable, InstanceTable, HeadTypeParams, Constraints,
+		!TVarSet, !Bindings, Changed) :-
 	% XXX should we sort and merge the constraints here?
-	do_class_improvement(ClassTable, HeadTypeParams, !.Constraints,
+	do_class_improvement(ClassTable, HeadTypeParams, Constraints,
 		!Bindings, Changed1),
 	% XXX do we really need to modify the varset?  See the comment above
 	% find_matching_instance_rule.
 	do_instance_improvement(ClassTable, InstanceTable, HeadTypeParams,
-		!.Constraints, !TVarSet, !Bindings, Changed2),
-	apply_rec_subst_to_constraints(!.Bindings, !Constraints),
+		Constraints, !TVarSet, !Bindings, Changed2),
 	Changed = bool__or(Changed1, Changed2).
 
 :- pred do_class_improvement(class_table::in, head_type_params::in,
@@ -698,44 +711,50 @@ find_matching_instance_rule_2([Instance | Instances], InstanceNum0, Constraint,
 	% superclass relation to find a path from the inferred constraint to
 	% another (declared or inferred) constraint.
 	%
-:- pred apply_class_rules(superclass_table::in, head_type_params::in,
-	tvarset::in, constraint_proof_map::in, constraint_proof_map::out,
+:- pred apply_class_rules(superclass_table::in, tvarset::in,
+	constraint_proof_map::in, constraint_proof_map::out,
 	constraint_map::in, constraint_map::out,
 	hlds_constraints::in, hlds_constraints::out, bool::out) is det.
 
-apply_class_rules(SuperClassTable, HeadTypeParams, TVarSet, !Proofs,
-		!ConstraintMap, !Constraints, Changed) :-
+apply_class_rules(SuperClassTable, TVarSet, !Proofs, !ConstraintMap,
+		!Constraints, Changed) :-
 	!.Constraints = constraints(Unproven0, Assumed, _),
-	apply_class_rules_2(Assumed, SuperClassTable, HeadTypeParams, TVarSet,
-		!Proofs, !ConstraintMap, Unproven0, Unproven, Changed),
+	apply_class_rules_2(Assumed, SuperClassTable, TVarSet, !Proofs,
+		!ConstraintMap, Unproven0, Unproven, Changed),
 	!:Constraints = !.Constraints ^ unproven := Unproven.
 
 :- pred apply_class_rules_2(list(hlds_constraint)::in, superclass_table::in,
-	head_type_params::in, tvarset::in,
-	constraint_proof_map::in, constraint_proof_map::out,
+	tvarset::in, constraint_proof_map::in, constraint_proof_map::out,
 	constraint_map::in, constraint_map::out,
 	list(hlds_constraint)::in, list(hlds_constraint)::out,
 	bool::out) is det.
 
-apply_class_rules_2(_, _, _, _, !Proofs, !ConstraintMap, [], [], no).
-apply_class_rules_2(AssumedConstraints, SuperClassTable, HeadTypeParams,
-		TVarSet, !Proofs, !ConstraintMap,
-		[Constraint0 | Constraints0], Constraints, Changed) :-
+apply_class_rules_2(_, _, _, !Proofs, !ConstraintMap, [], [], no).
+apply_class_rules_2(AssumedConstraints, SuperClassTable, TVarSet, !Proofs,
+		!ConstraintMap, [Constraint0 | Constraints0], Constraints,
+		Changed) :-
+	Parents = [],
+	retrieve_prog_constraint(Constraint0, ProgConstraint0),
+
+		% The head_type_params argument contains all the variables from
+		% the original constraint that we are trying to prove. (These
+		% are the type variables that must not be bound as we search
+		% through the superclass relation).
+		%
+	constraint_get_tvars(ProgConstraint0, HeadTypeParams),
 	(
-		Parents = [],
-		retrieve_prog_constraint(Constraint0, ProgConstraint0),
 		eliminate_constraint_by_class_rules(ProgConstraint0, _, _,
 			AssumedConstraints, SuperClassTable, HeadTypeParams,
 			TVarSet, Parents, !Proofs)
 	->
 		update_constraint_map(Constraint0, !ConstraintMap),
 		apply_class_rules_2(AssumedConstraints, SuperClassTable,
-			HeadTypeParams, TVarSet, !Proofs, !ConstraintMap,
+			TVarSet, !Proofs, !ConstraintMap,
 			Constraints0, Constraints, _),
 		Changed = yes
 	;
 		apply_class_rules_2(AssumedConstraints, SuperClassTable,
-			HeadTypeParams, TVarSet, !Proofs, !ConstraintMap,
+			TVarSet, !Proofs, !ConstraintMap,
 			Constraints0, TailConstraints, Changed),
 		Constraints = [Constraint0 | TailConstraints]
 	).
@@ -745,11 +764,6 @@ apply_class_rules_2(AssumedConstraints, SuperClassTable, HeadTypeParams,
 	% is also passed in --- these are the constraints that we are
 	% (recursively) in the process of checking, and is used to ensure that
 	% we don't get into a cycle in the relation.
-	%
-	% The head_type_params argument contains all the variables from the
-	% original constraint that we are trying to prove. (These are the
-	% type variables that must not be bound as we search through the
-	% superclass relation).
 	%
 :- pred eliminate_constraint_by_class_rules(prog_constraint::in,
 	prog_constraint::out, tsubst::out, list(hlds_constraint)::in,
@@ -784,8 +798,9 @@ eliminate_constraint_by_class_rules(C, SubstC, SubClassSubst,
 			% Do the first level of search. We search for
 			% an assumed constraint which unifies with any
 			% of the subclass constraints.
+		varset__vars(TVarSet, XXXHeadTypeParams),
 		list.find_first_map(
-			match_assumed_constraint(HeadTypeParams,
+			match_assumed_constraint(XXXHeadTypeParams,
 				SubClassConstraints),
 			AssumedConstraints, SubClass - SubClassSubst0)
 	->
