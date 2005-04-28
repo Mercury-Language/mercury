@@ -35,6 +35,8 @@
 :- import_module backend_libs.
 :- import_module backend_libs.foreign.
 
+:- import_module check_hlds.type_util.
+
 :- import_module hlds.goal_form.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_data.
@@ -94,7 +96,7 @@ warn_non_term_user_special_preds(ModuleInfo, !IO) :-
 		Termination = yes, WarnSpecialPreds = yes,
 		%
 		% Don't run this pass if we are only building the
-		% optimization inferface and we are compiling
+		% optimization interface and we are compiling
 		% with `--transitive-intermodule-optimization'
 		% enabled because we'll get more accurate results
 		% when we build the .trans_opt files.  Any warnings 
@@ -117,10 +119,15 @@ warn_non_term_user_special_preds(ModuleInfo, !IO) :-
 warn_non_term_user_special_pred(ModuleInfo, TypeTable,
 		SpecialPredId - TypeCtor, PredId, !IO) :-
 	%
-	% index predicate cannot be defined by the user and should
-	% always terminate in any case.
+	% index predicates cannot be defined by the user and should
+	% always terminate in any case.  Do not perform this
+	% check for builtin types that don't have hlds_type_defns.
 	%
-	( SpecialPredId \= index ->
+	BuiltinTypeCtors = builtin_type_ctors_with_no_hlds_type_defn,
+	(
+		SpecialPredId \= index,
+		not list.member(TypeCtor, BuiltinTypeCtors)
+	->
 		map.lookup(TypeTable, TypeCtor, TypeDefn),
 		get_type_defn_status(TypeDefn, ImportStatus),
 		(
@@ -211,14 +218,14 @@ special_pred_needs_term_check(ModuleInfo, SpecialPredId, TypeDefn) :-
 :- pred get_user_unify_compare(module_info::in, hlds_type_body::in,
 	unify_compare::out) is semidet.
 
-get_user_unify_compare(_ModuleInfo, du_type(_, _, _, yes(UnifyCompare), _, _),
-		UnifyCompare).
-get_user_unify_compare(ModuleInfo, foreign_type(ForeignTypeBody),
-		UnifyCompare) :-
+get_user_unify_compare(_ModuleInfo, TypeBody, UnifyCompare) :-
+	TypeBody = du_type(_, _, _, yes(UnifyCompare), _, _).
+get_user_unify_compare(ModuleInfo, TypeBody, UnifyCompare) :-
+	TypeBody = foreign_type(ForeignTypeBody),
 	UnifyCompare = foreign_type_body_has_user_defined_eq_comp_pred(
 		ModuleInfo, ForeignTypeBody).
-get_user_unify_compare(_ModuleInfo, solver_type(_, yes(UnifyCompare)),
-		UnifyCompare).
+get_user_unify_compare(_ModuleInfo, TypeBody, UnifyCompare) :-
+	TypeBody = solver_type(_, yes(UnifyCompare)).
 
 :- pred emit_non_term_user_special_warning(prog_context::in,
 	special_pred_id::in, type_ctor::in, io::di, io::uo) is det.

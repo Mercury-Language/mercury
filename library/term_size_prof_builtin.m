@@ -64,10 +64,13 @@
 :- impure pred complexity_redo_proc(complexity_slot::in) is failure.
 
 %---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module int.
+:- import_module require.
+:- import_module std_util.
 
 :- pragma foreign_decl("C", "
 #ifndef MR_TERM_SIZE_PROFILING_GUARD
@@ -152,7 +155,7 @@ measure_size_acc(_Value, Size0, Size) :-
 }").
 
 increment_size(_Value, _Incr) :-
-	private_builtin__imp.
+	impure private_builtin__imp.
 
 %---------------------------------------------------------------------------%
 
@@ -200,7 +203,7 @@ increment_size(_Value, _Incr) :-
 ").
 
 complexity_is_active(IsActive) :-
-	private_builtin__imp,
+	impure private_builtin__imp,
 	( semidet_succeed ->
 		error("complexity_mark_active: not implemented")
 	;
@@ -209,19 +212,19 @@ complexity_is_active(IsActive) :-
 	).
 
 complexity_call_proc(Slot) :-
-	private_builtin__imp,
+	impure private_builtin__imp,
 	% Required only to avoid warnings; never executed.
 	private_builtin__unsafe_type_cast(0, Slot).
 
 complexity_exit_proc(_Slot) :-
-	private_builtin__imp.
+	impure private_builtin__imp.
 
 complexity_fail_proc(_Slot) :-
-	private_builtin__imp,
+	impure private_builtin__imp,
 	fail.
 
 complexity_redo_proc(_Slot) :-
-	private_builtin__imp,
+	impure private_builtin__imp,
 	fail.
 
 %---------------------------------------------------------------------------%
