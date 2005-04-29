@@ -75,7 +75,8 @@ Compilation error(s) occurred.
 <stdin>:014: In clause for `run(di, uo)':
 <stdin>:014:   in call to predicate `mdb_query.query/1':
 <stdin>:014:   mode error: arguments `List'
-<stdin>:014:   have insts `free',
+<stdin>:014:   have the following insts:
+<stdin>:014:     free
 <stdin>:014:   which does not match any of the valid modes for
 <stdin>:014:   the callee, because of the following error.
 <stdin>:026: In clause for `query(out(not_reached))':
