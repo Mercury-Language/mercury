@@ -7,6 +7,7 @@
 #-----------------------------------------------------------------------------#
 
 MCFLAGS-mer_browser = --no-warn-nothing-exported
+MCFLAGS-mdb.dice = --no-warn-nothing-exported
 
 # XXX Disable higher order specialization for declarative_edt since this
 # optimization has a suspected bug that mdb.declarative_edt.revise_root/3
